@@ -44,17 +44,18 @@
 
 use crate::interaction::InteractiveState;
 use crate::widget::{
-    Button, Card, Checkbox, ColorSwatch, Divider, LevelMeter, ListItem, NumberInput, ProgressBar,
-    SectionHeader, Slider, Spinner, Tag, TextInput, Toggle, paint_button, paint_card,
-    paint_checkbox, paint_color_swatch, paint_divider, paint_level_meter, paint_list_item,
-    paint_number_input_with_buffer, paint_progress_bar, paint_section_header, paint_slider,
-    paint_spinner, paint_tag, paint_text_input, paint_toggle,
+    Button, ButtonState, Card, Checkbox, ColorSwatch, Divider, IconButtonStyle, IconGlyph,
+    LevelMeter, ListItem, NumberInput, ProgressBar, SectionHeader, Slider, Spinner, Tag, TextInput,
+    Toggle, paint_button, paint_card, paint_checkbox, paint_color_swatch, paint_divider,
+    paint_icon_button, paint_level_meter, paint_list_item, paint_number_input_with_buffer,
+    paint_progress_bar, paint_section_header, paint_slider, paint_spinner, paint_tag,
+    paint_text_input, paint_toggle,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
-use ph2d_vector::VectorScene;
+use ph2d_vector::{BezPath, VectorScene};
 
 /// O valor que um controle contínuo mostra na prévia.
 ///
@@ -107,14 +108,23 @@ const PREVIEW_ID: NodeId = NodeId(0);
 /// conhece o tipo produz, e o que a prévia sem documento tem em mãos. Cada braço decide o que
 /// mostrar sem ele — e a decisão é sempre *o neutro que se LÊ como neutro*, nunca um valor
 /// inventado que o artista tomaria por escolha sua.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-pub struct SkinParam {
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+pub struct SkinParam<'a> {
     /// A cor de uma [`WidgetKind::ColorSwatch`] — o **preenchimento da forma** que a veste.
     ///
     /// ⚠️ Ela não é um campo autorado novo: é o fill que o documento já carrega, lido pela
     /// `Paint::primary_color`, cujo próprio doc diz *"pra swatch de UI"*. Zero schema, zero
     /// controle a mais — o artista pinta o retângulo e a swatch é daquela cor.
     pub rgba: Option<[u8; 4]>,
+    /// O glifo de um [`WidgetKind::IconButton`] — **a forma que o artista desenhou**, normalizada
+    /// na caixa de 24×24 que o pintor de ícone espera.
+    ///
+    /// ⚠️ **O tipo é o [`IconGlyph`] do catálogo, e a escolha é deliberada.** Ele já tem
+    /// exactamente as duas rotas que um ícone pode ter — *o desenho* (`Path`) e *a escolha do
+    /// `IconId`* (`Builtin`) —, então a segunda rota não custa um campo novo nem uma variante
+    /// nova: ela é o outro braço de um enum que existe para isto. Quem escolhe é o CONSTRUTOR; o
+    /// pintor recebe um glifo e desenha-o.
+    pub icon: Option<IconGlyph<'a>>,
 }
 
 /// **A PELE PREENCHE A MOLDURA — uma frase, doze tipos** (BUGS_vector #26).
@@ -164,8 +174,9 @@ pub use kind::WidgetKind;
 ///
 /// `label` é o `Name` da entidade — o rótulo que o widget mostra.
 ///
-/// `param` é o que o retângulo, o rótulo e os tokens **não conseguem** responder — hoje, só a cor
-/// de uma [`WidgetKind::ColorSwatch`] (ver [`SkinParam`]). Todo outro tipo passa o neutro.
+/// `param` é o que o retângulo, o rótulo e os tokens **não conseguem** responder — a cor de uma
+/// [`WidgetKind::ColorSwatch`] e o glifo de um [`WidgetKind::IconButton`] (ver [`SkinParam`]).
+/// Todo outro tipo passa o neutro.
 ///
 /// ⚠️ Quem chama isto tem de ser quem chamaria o painel nativo: mesma `VectorScene`, mesmo
 /// `TextSystem`, mesmo `Theme`. É essa igualdade de argumentos que torna o gate de bytes possível
@@ -341,6 +352,23 @@ pub fn paint_widget_skin_with(
             // artista não fez.
             let rgba = param.rgba.unwrap_or([0, 0, 0, 0]);
             paint_color_swatch(&ColorSwatch::new(id, label, rgba), rect, scene, theme);
+        }
+        WidgetKind::IconButton => {
+            // ⚠️ **`Compact`, e não `Chip`** — o `Chip` é a PÍLULA da TopBar (`Radius::Xl`, *"hero
+            // cards, splash"*), e o próprio doc do estilo nomeia o defeito: numa caixa densa ele
+            // arredonda numa lozenga *"não importa em que preset de raio o tema esteja"*. Uma row
+            // de painel é densa por definição.
+            //
+            // ⚠️ **Sem glifo, o botão desenha a MOLDURA e mais nada** — o irmão exacto do xadrez
+            // da swatch. Um `IconId` de reserva seria uma escolha que o artista não fez, e ele a
+            // leria como sua; um retângulo vazio é *nenhum ícone escolhido*, que é o que é.
+            let empty = BezPath::new();
+            let glyph = param.icon.unwrap_or(IconGlyph::Path(&empty));
+            let mut state = ButtonState::Normal;
+            if let Some(InteractiveState::Button { state: s }) = live {
+                state = *s;
+            }
+            paint_icon_button(rect, glyph, IconButtonStyle::Compact, state, scene, theme);
         }
         WidgetKind::LevelMeter => {
             // ⚠️ Um medidor é READOUT: ele não tem estado de interação (não há

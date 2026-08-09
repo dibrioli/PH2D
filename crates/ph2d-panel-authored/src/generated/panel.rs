@@ -7,12 +7,49 @@
 pub const PANEL_ID: &str = "color";
 pub const PANEL_TITLE: &str = "Color";
 
-/// `(tipo do catálogo, rótulo, chave, cor)` — a chave vira `NodeId` por hash, e a
-/// cor só é `Some` onde o tipo É uma cor.
-pub const ROWS: &[(WidgetKind, &str, &str, Option<[u8; 4]>)] = &[
-    (WidgetKind::SectionHeader, "Appearance", "appearance", None),
-    (WidgetKind::Slider, "Opacity", "opacity", None),
-    (WidgetKind::Toggle, "Visible", "visible", None),
-    (WidgetKind::Button, "Reset", "reset", None),
-    (WidgetKind::ColorSwatch, "Tint", "tint", Some([214, 92, 64, 255])),
+/// A tabela deste painel. A chave vira `NodeId` por hash; a cor só é `Some` onde o tipo
+/// É uma cor, e o ícone (SVG) onde ele É um botão de ícone.
+pub const ROWS: &[RowConst] = &[
+    RowConst {
+        kind: WidgetKind::SectionHeader,
+        label: "Appearance",
+        key: "appearance",
+        rgba: None,
+        icon: None,
+    },
+    RowConst {
+        kind: WidgetKind::Slider,
+        label: "Opacity",
+        key: "opacity",
+        rgba: None,
+        icon: None,
+    },
+    RowConst {
+        kind: WidgetKind::Toggle,
+        label: "Visible",
+        key: "visible",
+        rgba: None,
+        icon: None,
+    },
+    RowConst {
+        kind: WidgetKind::Button,
+        label: "Reset",
+        key: "reset",
+        rgba: None,
+        icon: None,
+    },
+    RowConst {
+        kind: WidgetKind::ColorSwatch,
+        label: "Tint",
+        key: "tint",
+        rgba: Some([214, 92, 64, 255]),
+        icon: None,
+    },
+    RowConst {
+        kind: WidgetKind::IconButton,
+        label: "Play",
+        key: "play",
+        rgba: None,
+        icon: Some("M11.999999999999998,23.412678195541844 C11.999999999999998,23.412678195541844 8.662616460750566,15.38864586978363 8.662616460750566,15.38864586978363 C8.662616460750566,15.38864586978363 0,14.694167859477503 0,14.694167859477503 C0,14.694167859477503 6.599999999999998,9.040565145024928 6.599999999999998,9.040565145024928 C6.599999999999998,9.040565145024928 4.583592135001259,0.5873218044581421 4.583592135001259,0.5873218044581421 C4.583592135001259,0.5873218044581421 11.999999999999996,5.117235493795974 11.999999999999996,5.117235493795974 C11.999999999999996,5.117235493795974 19.41640786499873,0.5873218044581421 19.41640786499873,0.5873218044581421 C19.41640786499873,0.5873218044581421 17.4,9.040565145024928 17.4,9.040565145024928 C17.4,9.040565145024928 24,14.694167859477503 24,14.694167859477503 C24,14.694167859477503 15.337383539249432,15.38864586978363 15.337383539249432,15.38864586978363 C15.337383539249432,15.38864586978363 11.999999999999998,23.412678195541844 11.999999999999998,23.412678195541844 Z"),
+    },
 ];

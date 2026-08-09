@@ -447,6 +447,9 @@ mod vec_widget_edit;
 mod vec_widget_value;
 mod warp_smoke;
 mod wetpaint_smoke;
+/// **O DESENHO É O GLIFO** — a porta única que normaliza a forma de um `IconButton` na caixa de
+/// 24×24. Ela é UMA porque o canvas e o codegen precisam do mesmo glifo por motivos diferentes.
+mod widget_icon;
 /// **A PELE por-widget** (plano UI/UX W6.2) — uma forma marcada é pintada pelo pintor REAL do
 /// catálogo, no z dela. A ponte mora aqui porque só a shell alcança as duas metades.
 mod widget_live;

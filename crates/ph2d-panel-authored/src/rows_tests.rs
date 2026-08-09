@@ -11,11 +11,18 @@ use ph2d_editor_core::ids;
 fn the_rows_are_the_generated_table_in_order() {
     let live = rows();
     assert_eq!(live.len(), crate::generated::ROWS.len());
-    for (r, (kind, label, key, rgba)) in live.iter().zip(crate::generated::ROWS) {
-        assert_eq!(r.kind, *kind);
-        assert_eq!(r.label, *label);
-        assert_eq!(r.key, *key);
-        assert_eq!(r.rgba, *rgba);
+    for (r, c) in live.iter().zip(crate::generated::ROWS) {
+        assert_eq!(r.kind, c.kind);
+        assert_eq!(r.label, c.label);
+        assert_eq!(r.key, c.key);
+        assert_eq!(r.rgba, c.rgba);
+        // ⚠️ Compara a CURVA reconstituída com o texto de origem, e não os dois textos: é a
+        // travessia que pode perder, e é ela que decide se o painel desenha o glifo do artista.
+        assert_eq!(
+            r.icon.as_ref().map(ph2d_vector::BezPath::to_svg),
+            c.icon.map(str::to_string),
+            "a curva reconstituida nao e' a que o gerado carrega"
+        );
     }
 }
 
@@ -66,6 +73,7 @@ fn only_the_kinds_that_respond_are_controls() {
             key: "x",
             id: ph2d_a11y::NodeId(1),
             rgba: None,
+            icon: None,
         }
         .is_control()
     };
@@ -78,6 +86,8 @@ fn only_the_kinds_that_respond_are_controls() {
         WidgetKind::Tag,
         WidgetKind::ListItem,
         WidgetKind::NumberInput,
+        // ⚠️ Um botão de ÍCONE é um botão: o que muda é a face, nunca o gesto.
+        WidgetKind::IconButton,
     ];
     let draws = [
         WidgetKind::ProgressBar,
@@ -152,5 +162,10 @@ fn the_paint_hands_what_it_knows_to_the_skin() {
         window.contains("rgba: row.rgba"),
         "a pele recebe um parametro que nao e' o da row — a swatch pintaria o xadrez para \
          sempre, com o pintor correto e toda a suite verde"
+    );
+    assert!(
+        window.contains("icon: row.icon"),
+        "a pele recebe um glifo que nao e' o da row — o botao de icone pintaria a moldura vazia \
+         para sempre, com o pintor correto e toda a suite verde"
     );
 }

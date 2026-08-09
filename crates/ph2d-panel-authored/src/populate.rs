@@ -23,7 +23,11 @@ use crate::rows::{Row, rows};
 /// artista não escolheu. O zero é honesto: nada foi mexido ainda.
 fn initial(kind: WidgetKind) -> Option<InteractiveState> {
     Some(match kind {
-        WidgetKind::Button => InteractiveState::Button {
+        // ⚠️ **Os dois botões partilham o estado, e isso não é atalho:** um botão de ícone é um
+        // botão cuja face é um glifo — o que muda é o que ele DESENHA, nunca o que ele SENTE. Um
+        // `InteractiveState::IconButton` seria um segundo nome para *pressionado*, e o pintor
+        // teria de aceitar os dois.
+        WidgetKind::Button | WidgetKind::IconButton => InteractiveState::Button {
             state: ButtonState::Normal,
         },
         WidgetKind::Toggle => InteractiveState::Toggle {

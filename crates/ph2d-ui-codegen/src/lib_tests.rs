@@ -8,6 +8,7 @@ fn row(kind: &str, label: &str, key: &str) -> RowSpec {
         label: label.into(),
         key: key.into(),
         rgba: None,
+        icon: None,
     }
 }
 
@@ -15,6 +16,14 @@ fn row(kind: &str, label: &str, key: &str) -> RowSpec {
 fn row_tinted(kind: &str, label: &str, key: &str, rgba: [u8; 4]) -> RowSpec {
     RowSpec {
         rgba: Some(rgba),
+        ..row(kind, label, key)
+    }
+}
+
+/// A mesma row, com o glifo que só um botão de ícone carrega.
+fn row_iconed(kind: &str, label: &str, key: &str, d: &str) -> RowSpec {
+    RowSpec {
+        icon: Some(d.into()),
         ..row(kind, label, key)
     }
 }
@@ -63,7 +72,7 @@ fn the_rows_come_out_in_the_order_they_went_in() {
 fn the_kind_comes_out_as_a_catalogue_path() {
     let src = emit(&demo());
     assert!(
-        src.contains("(WidgetKind::Slider, \"Opacity\", \"opacity\", None)"),
+        src.contains("kind: WidgetKind::Slider,") && src.contains("label: \"Opacity\","),
         "a row nao saiu com o caminho do catalogo:\n{src}"
     );
 }
@@ -111,16 +120,16 @@ fn an_empty_panel_emits_an_empty_table() {
         rows: Vec::new(),
     });
     assert!(
-        src.contains("pub const ROWS: &[(WidgetKind, &str, &str, Option<[u8; 4]>)] = &[\n];"),
+        src.contains("pub const ROWS: &[RowConst] = &[\n];"),
         "a tabela vazia nao saiu bem formada:\n{src}"
     );
 }
 
 /// **A cor sai como um literal que o Rust aceita, e só onde ela existe.**
 ///
-/// ⚠️ O `None` não é a ausência do campo: a tupla tem sempre quatro posições, porque uma tupla de
-/// aridade variável não é um tipo. E o `Some` sai com os quatro canais — deixar o alfa de fora
-/// faria uma swatch transparente emitir como opaca, em silêncio.
+/// ⚠️ O `None` não é a ausência do campo: a struct tem sempre os cinco, e omitir um não compila —
+/// que é metade da razão de ela ter substituído a tupla. E o `Some` sai com os quatro canais:
+/// deixar o alfa de fora faria uma swatch transparente emitir como opaca, em silêncio.
 #[test]
 fn the_colour_comes_out_as_a_literal_only_where_it_exists() {
     let src = emit(&PanelSpec {
@@ -132,11 +141,37 @@ fn the_colour_comes_out_as_a_literal_only_where_it_exists() {
         ],
     });
     assert!(
-        src.contains("(WidgetKind::Slider, \"Opacity\", \"opacity\", None)"),
+        src.contains("label: \"Opacity\",\n        key: \"opacity\",\n        rgba: None,"),
         "quem nao tem cor emitiu alguma coisa:\n{src}"
     );
     assert!(
-        src.contains("(WidgetKind::ColorSwatch, \"Tint\", \"tint\", Some([214, 92, 64, 128]))"),
+        src.contains("rgba: Some([214, 92, 64, 128]),"),
         "a cor nao saiu com os quatro canais:\n{src}"
+    );
+}
+
+/// **O glifo sai como um literal de string, e só onde ele existe.**
+///
+/// ⚠️ E ele passa pelo MESMO escapador do rótulo: um `d` de SVG não tem aspas hoje, mas o campo é
+/// texto vindo de fora desta crate, e um emissor que concatenasse a string crua produziria um
+/// arquivo que não compila no dia em que ela tivesse uma. *O escape é do CAMPO, não do conteúdo
+/// que ele carrega hoje.*
+#[test]
+fn the_glyph_comes_out_as_a_string_only_where_it_exists() {
+    let src = emit(&PanelSpec {
+        id: "demo".into(),
+        title: "Demo".into(),
+        rows: vec![
+            row("Slider", "Opacity", "opacity"),
+            row_iconed("IconButton", "Play", "play", "M0,0 L2,1 \"Z\""),
+        ],
+    });
+    assert!(
+        src.contains("label: \"Opacity\",\n        key: \"opacity\",\n        rgba: None,\n        icon: None,"),
+        "quem nao tem glifo emitiu alguma coisa:\n{src}"
+    );
+    assert!(
+        src.contains(r#"icon: Some("M0,0 L2,1 \"Z\""),"#),
+        "o glifo nao saiu escapado:\n{src}"
     );
 }

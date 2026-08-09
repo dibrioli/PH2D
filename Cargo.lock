@@ -6893,6 +6893,7 @@ dependencies = [
  "ph2d-host",
  "ph2d-tokens",
  "ph2d-ui-testkit",
+ "ph2d-vector",
 ]
 
 [[package]]

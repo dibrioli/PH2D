@@ -43,6 +43,7 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     // Mesma razão do irmão acima: módulo de teste, e quem tem a11y é o pintor real do catálogo.
     ("skin/frame_tests.rs", "test module; parent owns a11y"),
     ("skin/kind_tests.rs", "test module; parent owns a11y"),
+    ("skin/param_tests.rs", "test module; parent owns a11y"),
     // ⚠️ Este NÃO é módulo de teste: é o CATÁLOGO (o enum `WidgetKind` e o que cada tipo É), o
     // irmão de assunto do pintor. Ele não desenha nada, então não há nó de a11y a construir — o
     // `skin.rs` ao lado é quem pinta, e é ele quem responde pela árvore.

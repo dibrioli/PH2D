@@ -14,6 +14,12 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 # A régua do painel (ROW_H_PX, Spacing) e o tema — nenhum literal de px nasce aqui (HR-15).
 ph2d-tokens = { path = "../ph2d-tokens" }
+# ⚠️ **A GEOMETRIA entrou com o `IconButton`, e a aresta é honesta.** A row de um botão de ícone
+# carrega o glifo que o artista desenhou; o gerado o traz como texto SVG e o `rows()` o reconstitui
+# UMA vez. Reparsear a string por quadro seria um parser no laço de pintura, e guardar o texto em
+# vez da curva empurraria a mesma conta para o pintor. Nenhum pacote externo novo: o
+# `ph2d-editor-core` ao lado já depende desta crate.
+ph2d-vector = { path = "../ph2d-vector" }
 
 # ⚠️ **Sem `ph2d-i18n`, e a ausência é a decisão.** Toda string que este painel mostra — o título
 # e o rótulo de cada row — é o `Name` que o ARTISTA digitou; ela viaja no documento como o nome de

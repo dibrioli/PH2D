@@ -71,6 +71,21 @@ fn colour_of(sim: &SimWorld, scene: &VecScene, e: Entity) -> Option<[u8; 4]> {
     Some([c.r, c.g, c.b, c.a])
 }
 
+/// **O glifo que uma row desenha**, quando o tipo dela É um botão de ícone — a forma que veste o
+/// widget, pela porta única [`crate::widget_icon::icon_face`].
+///
+/// ⚠️ Ele sai daqui como **texto SVG** porque é isso que um `const` de código gerado consegue
+/// carregar: um `BezPath` não é construível em `const`. Quem o reconstitui é o `rows()` do painel,
+/// uma vez, e a viagem `to_svg`/`from_svg` é a do próprio kurbo — não um formato inventado aqui.
+///
+/// ⚠️ E, como o `label` e a cor ao lado, ele é um **SNAPSHOT**: o painel gerado desenha o ícone
+/// que a forma tinha quando alguém apertou o botão. Quem quer o glifo VIVO olha a moldura no
+/// canvas, que relê o documento a cada quadro.
+fn icon_of(sim: &SimWorld, scene: &VecScene, e: Entity) -> Option<String> {
+    let id: VecPathId = sim.world().get::<VecPathRef>(e)?.0;
+    crate::widget_icon::icon_face(scene.path(id)?).map(|p| p.to_svg())
+}
+
 /// Percorre a sub-árvore de `frame` **na ordem dos filhos**, juntando quem veste.
 fn walk(sim: &SimWorld, scene: &VecScene, e: Entity, out: &mut Vec<RowSpec>) {
     if let Some(w) = sim.world().get::<VecWidget>(e)
@@ -81,11 +96,13 @@ fn walk(sim: &SimWorld, scene: &VecScene, e: Entity, out: &mut Vec<RowSpec>) {
             .takes_colour()
             .then(|| colour_of(sim, scene, e))
             .flatten();
+        let icon = kind.takes_icon().then(|| icon_of(sim, scene, e)).flatten();
         out.push(RowSpec {
             kind: kind.ident().to_string(),
             key: key_of(&label),
             label,
             rgba,
+            icon,
         });
     }
     // ⚠️ `Children` preserva a ordem de inserção da hierarquia, que é a ordem que o layout flui e

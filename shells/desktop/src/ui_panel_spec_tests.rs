@@ -201,3 +201,65 @@ fn a_shape_without_fill_leaves_the_swatch_empty() {
     assert_eq!(spec.rows.len(), 1);
     assert_eq!(spec.rows[0].rgba, None, "uma forma sem tinta inventou uma");
 }
+
+/// **O botão de ícone carrega o DESENHO da forma que o veste** — e só ele.
+///
+/// ⚠️ Irmão exato de [`only_the_swatch_carries_the_shapes_fill`], e a fixture segue a mesma lei:
+/// as DUAS formas têm geometria, senão *"o glifo sai do desenho"* e *"ninguém carrega glifo"*
+/// seriam indistinguíveis.
+///
+/// ⚠️ E o glifo é conferido contra a **porta única**, não contra uma string escrita à mão: um
+/// literal aqui seria uma segunda normalização, e ela divergiria da do canvas exactamente no dia
+/// em que alguém mexesse na lei — que é a divergência que a porta existe para impedir.
+#[test]
+fn only_the_icon_button_carries_the_shapes_drawing() {
+    use ph2d_vec_scene::{VecPath, rectangle, star};
+
+    let mut sim = SimWorld::new();
+    let mut scene = VecScene::new();
+    let frame = sim
+        .world_mut()
+        .spawn((Name("Bar".into()), Transform::IDENTITY))
+        .id();
+    let mut add = |sim: &mut SimWorld, name: &str, kind: u16, p: VecPath| {
+        let id = scene.push_path(p);
+        let e = sim
+            .world_mut()
+            .spawn((
+                Name(name.into()),
+                Transform::IDENTITY,
+                VecPathRef(id),
+                VecWidget { kind },
+            ))
+            .id();
+        sim.world_mut().entity_mut(e).insert(ChildOf(frame));
+        id
+    };
+    let star_id = add(
+        &mut sim,
+        "Play",
+        WidgetKind::IconButton.code(),
+        star([0.0, 0.0], 1.0, 1.0, 5, 0.45),
+    );
+    add(
+        &mut sim,
+        "Opacity",
+        WidgetKind::Slider.code(),
+        rectangle([-1.0, -0.4], [1.0, 0.4]),
+    );
+
+    let want = crate::widget_icon::icon_face(scene.path(star_id).expect("a forma existe"))
+        .expect("a estrela tem figura")
+        .to_svg();
+    let spec = of(&sim, &scene, frame);
+    let got: Vec<(&str, Option<&str>)> = spec
+        .rows
+        .iter()
+        .map(|r| (r.kind.as_str(), r.icon.as_deref()))
+        .collect();
+    assert_eq!(
+        got,
+        vec![("IconButton", Some(want.as_str())), ("Slider", None)],
+        "o glifo nao saiu do desenho, ou vazou para quem nao o consome"
+    );
+}

@@ -24,6 +24,7 @@ fn every_kind_agrees_with_itself_about_being_a_control() {
             key: "x",
             id: ph2d_a11y::NodeId(1),
             rgba: None,
+            icon: None,
         };
         assert_eq!(
             initial(kind).is_some(),

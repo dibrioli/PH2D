@@ -16,7 +16,29 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::widget::WidgetKind;
+use ph2d_vector::BezPath;
 use std::sync::OnceLock;
+
+/// **Uma linha TAL COMO O GERADOR A ESCREVE** — o dado bruto, antes de o id sair da chave.
+///
+/// ⚠️ **Era uma TUPLA, e o `clippy::type_complexity` foi quem disse que ela tinha crescido**
+/// (`(WidgetKind, &str, &str, Option<[u8; 4]>, Option<&str>)`, cinco posições). O doc do
+/// `ph2d-ui-codegen` justificava a tupla dizendo que *"uma struct teria de ser definida em algum
+/// lugar, e o único lugar honesto seria junto do `WidgetKind`"* — e a premissa estava errada: o
+/// lugar honesto é **aqui**, na crate que COMPILA o gerado. O emissor escreve o nome deste tipo
+/// sem o conhecer, exactamente como já escreve `WidgetKind::Slider`.
+///
+/// ⚠️ E o ganho não é cosmético: uma tupla é **posicional**, então cada campo novo re-escreve todo
+/// consumidor que a desestrutura — aconteceu duas vezes no mesmo dia, com a cor e com o glifo. Um
+/// campo novo aqui não toca em quem não o lê.
+pub struct RowConst {
+    pub kind: WidgetKind,
+    pub label: &'static str,
+    pub key: &'static str,
+    pub rgba: Option<[u8; 4]>,
+    /// O glifo, em texto SVG — ver [`Row::icon`], que é a curva reconstituída dele.
+    pub icon: Option<&'static str>,
+}
 
 /// Uma linha do painel, com o id já derivado da chave.
 pub struct Row {
@@ -28,6 +50,12 @@ pub struct Row {
     pub id: NodeId,
     /// A cor que esta row mostra, quando o tipo dela É uma cor — ver [`ph2d_editor_core::widget::SkinParam`].
     pub rgba: Option<[u8; 4]>,
+    /// O glifo que esta row desenha, quando o tipo dela É um botão de ícone.
+    ///
+    /// ⚠️ **Curva, e não o texto SVG que o gerado carrega** — a conversão acontece UMA vez, aqui
+    /// no `OnceLock`, ao lado da derivação do id. Reparsear por quadro seria um parser de string
+    /// no laço de pintura.
+    pub icon: Option<BezPath>,
 }
 
 impl Row {
@@ -50,6 +78,7 @@ impl Row {
                 | WidgetKind::Tag
                 | WidgetKind::ListItem
                 | WidgetKind::NumberInput
+                | WidgetKind::IconButton
         )
     }
 }
@@ -65,12 +94,17 @@ pub fn rows() -> &'static [Row] {
     ROWS.get_or_init(|| {
         crate::generated::ROWS
             .iter()
-            .map(|&(kind, label, key, rgba)| Row {
-                kind,
-                label,
-                key,
-                id: ids::authored_row_id(key),
-                rgba,
+            .map(|r| Row {
+                kind: r.kind,
+                label: r.label,
+                key: r.key,
+                id: ids::authored_row_id(r.key),
+                rgba: r.rgba,
+                // ⚠️ `ok()` e não `expect`: a string vem de código GERADO por `to_svg`, então
+                // malformada ela não pode estar — mas um painel que entra em pânico ao abrir
+                // trocaria um ícone ausente pela aplicação inteira. Sem curva, o botão desenha a
+                // moldura, que é o neutro que o pintor já tem.
+                icon: r.icon.and_then(|d| BezPath::from_svg(d).ok()),
             })
             .collect()
     })

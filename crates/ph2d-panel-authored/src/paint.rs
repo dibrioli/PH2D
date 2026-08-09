@@ -25,8 +25,8 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    AUTHORED_SCROLLBAR_ID, SkinParam, paint_scrollbar, paint_widget_skin_with, scrollbar_is_needed,
-    scrollbar_thumb_rect, scrollbar_track_rect,
+    AUTHORED_SCROLLBAR_ID, IconGlyph, SkinParam, paint_scrollbar, paint_widget_skin_with,
+    scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
@@ -139,7 +139,10 @@ fn paint_body(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, mut y: f32) -> f
             row.label,
             row.id,
             store.get(row.id),
-            SkinParam { rgba: row.rgba },
+            SkinParam {
+                rgba: row.rgba,
+                icon: row.icon.as_ref().map(IconGlyph::Path),
+            },
             r,
             scene,
             text_system,

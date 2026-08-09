@@ -223,6 +223,66 @@ fn line_has_allowlist(line: &str) -> bool {
     line.contains("LITERAL-PX-OK")
 }
 
+/// **Os intervalos de TEXTO de uma linha** — o que está entre aspas não é literal numérico.
+///
+/// # Por que isto existe (2026-08-09)
+///
+/// O caminhador percorria bytes crus, então os dígitos **dentro de uma string** contavam como
+/// literais. Enquanto nenhuma string do app carregava números isso era inofensivo; a primeira que
+/// carregou foi o **`d` de um SVG** — o glifo autorado que o painel gerado transporta —, e o gate
+/// pediu que se trocassem quarenta e sete coordenadas de uma curva por *tokens de design*.
+///
+/// ⚠️ **Não é afrouxar o gate, é medir a coisa certa:** a mensagem dele manda *usar um token*, e um
+/// caractere dentro de uma string não tem token nenhum para usar. Um número de design nunca vive
+/// dentro de aspas — ele é multiplicado, somado, passado a um pintor —, então nada de real deixa
+/// de ser visto. O que se perde é o falso positivo.
+///
+/// ⚠️ **Literais de CARÁCTER são pulados como unidade**, e essa metade é obrigatória: o código
+/// deste repo escreve `'"'` (o próprio emissor do codegen o faz), e um caminhador que tomasse
+/// aquela aspa por abertura de string dessincronizaria a linha inteira — deixando de ver números
+/// REAIS depois dela.
+fn string_spans(line: &str) -> Vec<(usize, usize)> {
+    let b = line.as_bytes();
+    let (mut out, mut i) = (Vec::new(), 0usize);
+    while i < b.len() {
+        match b[i] {
+            // `'a'`, `'\n'`, `'"'` — pula o literal inteiro, nunca o seu conteúdo.
+            b'\'' => {
+                let mut j = i + 1;
+                if j < b.len() && b[j] == b'\\' {
+                    j += 1;
+                }
+                j += 1;
+                if j < b.len() && b[j] == b'\'' {
+                    i = j + 1;
+                } else {
+                    i += 1;
+                }
+            }
+            b'"' => {
+                let start = i;
+                let mut j = i + 1;
+                while j < b.len() {
+                    if b[j] == b'\\' {
+                        j += 2;
+                        continue;
+                    }
+                    if b[j] == b'"' {
+                        break;
+                    }
+                    j += 1;
+                }
+                // Uma aspa sem par fecha no fim da linha: o resto É texto.
+                let end = j.min(b.len());
+                out.push((start, end));
+                i = end + 1;
+            }
+            _ => i += 1,
+        }
+    }
+    out
+}
+
 /// Path allowlist. `blender_color_picker/` carries HSV/hue-math
 /// tables that legitimately use raw numerics (60.0 / 360.0 hue,
 /// 0.6 / 0.7 lightness, etc.); same allow as `no_literal_color`.
@@ -352,8 +412,13 @@ fn no_magic_numeric_in_widget_or_screens() {
                     continue;
                 }
                 let bytes = line.as_bytes();
+                let strings = string_spans(line);
                 let mut i = 0;
                 while i < bytes.len() {
+                    if let Some(&(_, end)) = strings.iter().find(|(a, b)| i >= *a && i < *b) {
+                        i = end;
+                        continue;
+                    }
                     if let Some((len, lit)) = float_literal_at(bytes, i) {
                         let abs = line_start + i;
                         if !in_test_module(&test_ranges, abs) && !is_structural(&lit) {
@@ -395,6 +460,38 @@ fn no_magic_numeric_in_widget_or_screens() {
             panic!("{message}");
         }
     }
+}
+
+/// **Um número DENTRO de uma string não é um literal** — e um fora dela continua a ser.
+///
+/// ⚠️ As duas metades, porque só o par prova alguma coisa: sem a segunda, um `string_spans` que
+/// devolvesse a linha inteira deixaria o gate cego e este teste verde.
+#[test]
+fn digits_inside_a_string_are_text_and_digits_outside_it_are_not() {
+    let line =
+        r#"    (WidgetKind::IconButton, "Play", "play", None, Some("M0,0 C7.25,3.5 1,2 0,0 Z")),"#;
+    let spans = string_spans(line);
+    let inside = |needle: &str| {
+        let at = line.find(needle).expect("a agulha esta' na linha");
+        spans.iter().any(|(a, b)| at >= *a && at < *b)
+    };
+    assert!(inside("7.25"), "o numero do SVG nao foi visto como texto");
+    assert!(inside("3.5"), "o numero do SVG nao foi visto como texto");
+
+    // O CONTROLE: o mesmo número, fora das aspas, continua a ser um literal.
+    let code = "        let w = 7.25;";
+    assert!(
+        string_spans(code).is_empty(),
+        "uma linha sem aspas ganhou um intervalo de texto"
+    );
+
+    // E a aspa dentro de um literal de CARÁCTER não abre string nenhuma.
+    let ch = r#"    out.push('"'); let w = 7.25;"#;
+    let at = ch.find("7.25").expect("a agulha esta' na linha");
+    assert!(
+        !string_spans(ch).iter().any(|(a, b)| at >= *a && at < *b),
+        "um literal de caractere dessincronizou a linha — numeros REAIS ficariam invisiveis"
+    );
 }
 
 /// Smoke: the matcher accepts/rejects the cases we care about.

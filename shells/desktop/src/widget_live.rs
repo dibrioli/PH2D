@@ -18,6 +18,10 @@
 //!   Hierarquia. Sem `Name`, rótulo vazio: o widget desenha a moldura e mais nada, que é a
 //!   resposta honesta para um objeto sem nome.
 //!
+//! ⚠️ **E o GLIFO de um `IconButton` é a QUARTA resposta, dada pelo próprio desenho** — a forma
+//! que veste o botão *é* o ícone, normalizada por [`crate::widget_icon::icon_face`], a MESMA porta
+//! que o painel gerado percorre. Ver o doc dela para o que a pose não faz.
+//!
 //! # A APARÊNCIA não vem daqui, e isso é decisão
 //!
 //! Cor, raio e tipografia saem dos **tokens** (`ph2d_tokens::resolve`, que a W6.1 tornou
@@ -37,7 +41,7 @@
 //! mede um pixel"*.
 
 use ph2d_ecs::{Entity, Name, SimWorld, VecWidget};
-use ph2d_editor::widget::{SkinParam, WidgetKind, paint_widget_skin};
+use ph2d_editor::widget::{IconGlyph, SkinParam, WidgetKind, paint_widget_skin};
 use ph2d_editor::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
@@ -46,6 +50,7 @@ use ph2d_vec_scene::{Paint, VecPathId, VecScene, VecXforms};
 use ph2d_vector::Affine;
 
 use crate::vec_entities::VecEntityMap;
+use crate::widget_icon::icon_face;
 
 /// A pele autorada de `id`, se houver. **Porta única**: o cozimento e o painel perguntam AQUI.
 pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecWidget> {
@@ -133,11 +138,16 @@ pub(crate) fn build(
         // canvas a moldura relê o documento a cada quadro, então recolorir a forma recolore a
         // swatch enquanto o artista arrasta; o painel gerado é código escrito uma vez, e mostra a
         // cor que a forma tinha quando alguém apertou o botão.
+        // ⚠️ **O glifo vive no ESCOPO do laço, e tem de viver.** `IconGlyph::Path` empresta o
+        // `BezPath`, então normalizá-lo dentro do construtor do `SkinParam` deixaria o temporário
+        // morrer antes da chamada. Uma `Option` nomeada é o que dá ao empréstimo um dono.
+        let face = kind.takes_icon().then(|| icon_face(path)).flatten();
         let param = SkinParam {
             rgba: kind
                 .takes_colour()
                 .then(|| path.fill.as_ref().map(colour_of))
                 .flatten(),
+            icon: face.as_ref().map(IconGlyph::Path),
         };
         paint_widget_skin(kind, &label, param, rect, &mut skin, text, theme);
         out.insert(path.id, skin);

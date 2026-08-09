@@ -32,6 +32,7 @@ pub enum WidgetKind {
     NumberInput,
     LevelMeter,
     ColorSwatch,
+    IconButton,
 }
 
 impl WidgetKind {
@@ -51,13 +52,17 @@ impl WidgetKind {
     ///
     /// | natureza | tipos | o que falta |
     /// |---|---|---|
-    /// | vestível **hoje** | os catorze desta lista | nada |
-    /// | pede **parâmetro por-tipo** | `ColorSwatch` · `IconButton` | um canal no `RowSpec` |
+    /// | vestível **hoje** | os dezasseis desta lista | nada |
     /// | pede **filhos autorados** | `Tabs` · `Dropdown` · `RadioGroup` · `SegmentedAdaptive` | a LISTA vem dos filhos (degrau 3) |
     ///
-    /// ⚠️ Pôr um da terceira família aqui obrigaria a inventar a lista, e a prévia mostraria itens
-    /// que o documento não tem.
-    pub const ALL: [WidgetKind; 15] = [
+    /// ⚠️ **A segunda família ESVAZIOU-SE, e é isso que o canal existia para fazer:** os dois que
+    /// pediam um parâmetro por-tipo — a `ColorSwatch` e o `IconButton` — entraram pelo
+    /// [`SkinParam`](super::SkinParam), um campo com neutro cada. O que resta ausente é só a
+    /// família da LISTA.
+    ///
+    /// ⚠️ Pôr um dela aqui obrigaria a inventar a lista, e a prévia mostraria itens que o documento
+    /// não tem.
+    pub const ALL: [WidgetKind; 16] = [
         WidgetKind::Button,
         WidgetKind::Toggle,
         WidgetKind::Checkbox,
@@ -73,6 +78,7 @@ impl WidgetKind {
         WidgetKind::NumberInput,
         WidgetKind::LevelMeter,
         WidgetKind::ColorSwatch,
+        WidgetKind::IconButton,
     ];
 
     /// O código que viaja no documento. Estável para sempre.
@@ -94,6 +100,7 @@ impl WidgetKind {
             WidgetKind::NumberInput => 13,
             WidgetKind::LevelMeter => 14,
             WidgetKind::ColorSwatch => 15,
+            WidgetKind::IconButton => 16,
         }
     }
 
@@ -110,6 +117,18 @@ impl WidgetKind {
     #[must_use]
     pub const fn takes_colour(self) -> bool {
         matches!(self, WidgetKind::ColorSwatch)
+    }
+
+    /// **Este tipo CONSOME um ícone?** — a porta única do canal [`SkinParam::icon`].
+    ///
+    /// Irmã exata de [`Self::takes_colour`], perguntada pelos mesmos dois CONSTRUTORES e nunca
+    /// pelo pintor. Ler a geometria de toda forma vestida custaria uma normalização por-quadro
+    /// por-widget para um glifo que catorze dos dezasseis tipos não desenham.
+    ///
+    /// [`SkinParam::icon`]: super::SkinParam::icon
+    #[must_use]
+    pub const fn takes_icon(self) -> bool {
+        matches!(self, WidgetKind::IconButton)
     }
 
     /// A tradução de volta. **`None` é o caso que este canal existe para suportar**: um documento
@@ -150,6 +169,7 @@ impl WidgetKind {
             WidgetKind::NumberInput => "NumberInput",
             WidgetKind::LevelMeter => "LevelMeter",
             WidgetKind::ColorSwatch => "ColorSwatch",
+            WidgetKind::IconButton => "IconButton",
         }
     }
 
@@ -172,6 +192,7 @@ impl WidgetKind {
             WidgetKind::NumberInput => "panel.vector.widget.kind.number_input",
             WidgetKind::LevelMeter => "panel.vector.widget.kind.level_meter",
             WidgetKind::ColorSwatch => "panel.vector.widget.kind.color_swatch",
+            WidgetKind::IconButton => "panel.vector.widget.kind.icon_button",
         }
     }
 }

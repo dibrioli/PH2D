@@ -247,3 +247,64 @@ fn the_swatch_on_the_canvas_wears_its_own_fill() {
          que nao fala de cor"
     );
 }
+
+/// **O botão de ícone do canvas veste o DESENHO da própria forma** — o irmão exato do gate acima.
+///
+/// ⚠️ **As duas formas têm a MESMA caixa, e a fixture a obtém por CONSTRUÇÃO, não por sorte.** A
+/// moldura do widget sai dos limites de tela da forma, então duas formas de caixas diferentes
+/// dariam peles diferentes por um motivo que não é o glifo — e o gate passaria sobre uma ponte que
+/// entrega `SkinParam::default()`. Duas estrelas de mesmos vértices EXTERNOS e miolos diferentes
+/// têm a mesma caixa (os vértices internos são estritamente mais próximos do centro) e desenhos
+/// distintos, e é a única coisa que pode diferir.
+///
+/// ⚠️ **A primeira fixture era um retângulo contra uma estrela "inscrita nele", e estava ERRADA:**
+/// os vértices externos de uma estrela de cinco pontas não tocam os cantos da caixa, então as
+/// caixas divergiam e a metade do `Slider` sangrou. O gate apanhou a própria premissa — e por isso
+/// ela é agora **afirmada**, não assumida.
+///
+/// ⚠️ E a metade oposta mantém a fronteira escrita: um `Slider` sobre as MESMAS duas formas tem de
+/// pintar igual — se ele respondesse, editar a geometria mudaria a aparência de um controle que
+/// não fala de desenho nenhum.
+#[test]
+fn the_icon_button_on_the_canvas_wears_its_own_drawing() {
+    let shape = |waist: f64| ph2d_vec_scene::star([0.0, 0.0], 1.0, 0.4, 5, waist);
+    let scene_of = |kind: WidgetKind, waist: f64| {
+        let (mut scene, sim, map, xf, id) = scene_with(Some(kind.code()), Some("Play"));
+        *scene.path_mut(id).expect("a forma existe") = shape(waist);
+        (scene, sim, map, xf, id)
+    };
+    let skin_of = |kind: WidgetKind, waist: f64| {
+        let (scene, sim, map, xf, id) = scene_of(kind, waist);
+        let skins = build_for(&scene, &sim, &map, &xf);
+        let e = skins
+            .get(&id)
+            .expect("a forma marcada tem pele")
+            .inner()
+            .encoding();
+        (e.n_paths, e.path_data.clone(), e.draw_data.clone())
+    };
+
+    // A premissa da fixture, AFIRMADA: as duas formas ocupam a mesma moldura.
+    let frame_of_waist = |waist: f64| {
+        let (scene, _, _, xf, id) = scene_of(WidgetKind::IconButton, waist);
+        crate::widget_live::frame_of(&scene, &xf, &LiveGeometry::new(), id, camera())
+            .map(|r| (r.x.to_bits(), r.y.to_bits(), r.w.to_bits(), r.h.to_bits()))
+    };
+    assert_eq!(
+        frame_of_waist(0.45),
+        frame_of_waist(0.15),
+        "as duas formas nao partilham a moldura — o gate mediria outra coisa"
+    );
+
+    assert_ne!(
+        skin_of(WidgetKind::IconButton, 0.45),
+        skin_of(WidgetKind::IconButton, 0.15),
+        "o botao de icone pintou igual com dois desenhos — a ponte nao le a geometria"
+    );
+    assert_eq!(
+        skin_of(WidgetKind::Slider, 0.45),
+        skin_of(WidgetKind::Slider, 0.15),
+        "o Slider respondeu ao desenho da forma — editar a arte mudaria um controle que nao \
+         fala de geometria"
+    );
+}

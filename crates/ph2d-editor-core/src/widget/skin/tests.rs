@@ -16,6 +16,13 @@ mod frame;
 #[path = "kind_tests.rs"]
 mod kind;
 
+// ⚠️ **O corte é de ASSUNTO, e as duas metades falham por motivos diferentes:** aqui mora *a pele
+// é a que o painel nativo pinta* (o gate de bytes, o rótulo, o estado vivo, a moldura); ali, *o
+// canal de parâmetro por-tipo chega ao braço certo e é inerte em todos os outros*. Uma cresce com
+// o catálogo do design system, a outra com o número de campos do `SkinParam`.
+#[path = "param_tests.rs"]
+mod param;
+
 /// A impressão digital de uma cena: os caminhos, os bytes de geometria e de tinta, **e os
 /// glifos**.
 ///
@@ -370,99 +377,5 @@ fn the_level_meter_preview_shows_its_peak_marker() {
         print(&preview),
         print(&flat),
         "o pico da previa nao esta' acima do RMS — a marca desaparece dentro da barra"
-    );
-}
-
-/// **A COR chega ao pintor** — o gate do canal [`SkinParam`].
-///
-/// ⚠️ Sem ele, o braço da swatch podia ignorar o parâmetro e pintar sempre o xadrez: a lista de
-/// tipos continuaria completa, todo gate de presença ficaria verde, e o defeito seria *a swatch
-/// não mostra a cor que o artista pintou* — visível só numa screenshot.
-///
-/// ⚠️ **Duas asserções, e as duas são precisas.** *Duas cores diferentes pintam diferente* sozinha
-/// ficaria verde num braço que lesse só o CANAL ALFA; *`Some` difere de `None`* sozinha ficaria
-/// verde num braço que só distinguisse "tem cor" de "não tem". Juntas, o parâmetro tem de chegar
-/// inteiro.
-#[test]
-fn the_colour_reaches_the_paint() {
-    let mut ts = text();
-    let paint_with = |rgba, ts: &mut TextSystem| {
-        let mut sc = ph2d_vector::VectorScene::new();
-        paint_widget_skin(
-            WidgetKind::ColorSwatch,
-            "Tint",
-            SkinParam { rgba },
-            rect(),
-            &mut sc,
-            ts,
-            Theme::Forge,
-        );
-        print(&sc)
-    };
-    let red = paint_with(Some([200, 40, 40, 255]), &mut ts);
-    let blue = paint_with(Some([40, 40, 200, 255]), &mut ts);
-    let empty = paint_with(None, &mut ts);
-    assert_ne!(
-        red, blue,
-        "duas cores pintaram a MESMA swatch — o parametro nao chega ao pintor"
-    );
-    assert_ne!(
-        red, empty,
-        "uma swatch com cor pintou como uma sem — o xadrez de transparencia e' o `None`, e ele \
-         tem de ser distinguivel de uma cor escolhida"
-    );
-}
-
-/// **E o parâmetro é INERTE em quem não o consome.**
-///
-/// ⚠️ O irmão do gate acima, e o que mantém a fronteira escrita: um braço que passasse a ler a cor
-/// faria o `Slider` mudar de tinta por o artista ter pintado a forma — sem ninguém ter decidido
-/// isso, e sem um teste falhar.
-///
-/// ⚠️ **A exclusão é LITERAL, e não `takes_colour()`** — escrita assim porque a primeira versão
-/// usava a própria função sob teste para escolher quem varrer: com ela devolvendo `true` para
-/// todos, o laço ficava VAZIO e o gate passava por vácuo (medido). *Um oráculo que se filtra a si
-/// próprio não pode falhar pelo motivo que alega.* Quem pina a lista é o gate irmão.
-#[test]
-fn the_colour_is_inert_in_every_kind_that_does_not_take_it() {
-    let mut ts = text();
-    let mut checked = 0;
-    for kind in WidgetKind::ALL {
-        if matches!(kind, WidgetKind::ColorSwatch) {
-            continue;
-        }
-        checked += 1;
-        let mut a = ph2d_vector::VectorScene::new();
-        let mut b = ph2d_vector::VectorScene::new();
-        paint_widget_skin(
-            kind,
-            "Save",
-            SkinParam::default(),
-            rect(),
-            &mut a,
-            &mut ts,
-            Theme::Forge,
-        );
-        paint_widget_skin(
-            kind,
-            "Save",
-            SkinParam {
-                rgba: Some([200, 40, 40, 255]),
-            },
-            rect(),
-            &mut b,
-            &mut ts,
-            Theme::Forge,
-        );
-        assert_eq!(
-            print(&a),
-            print(&b),
-            "{kind:?} respondeu a uma cor que ele nao declara consumir"
-        );
-    }
-    assert_eq!(
-        checked,
-        WidgetKind::ALL.len() - 1,
-        "a varredura ficou vazia — o gate passaria por vacuo"
     );
 }

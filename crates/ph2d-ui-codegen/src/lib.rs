@@ -33,11 +33,21 @@
 //!
 //! ⚠️ **Daí a régua desta wave:** *o gerado é o que VARIA entre dois painéis, e nada mais.*
 //!
-//! ⚠️ **E a row é uma TUPLA, não uma struct `Row`.** Uma struct teria de ser *definida* em algum
-//! lugar, e o único lugar honesto seria junto do `WidgetKind` — ou seja, superfície foundational
-//! nova para um formato que a fatia seguinte ainda vai mexer. A tupla não inventa tipo nenhum, e
-//! **`WidgetKind::Slider` continua conferido pelo compilador**: renomear um variante do catálogo
-//! **quebra o build do gerado**, que é exatamente o que se quer de código gerado.
+//! ⚠️ **A row é uma STRUCT (`RowConst`) definida por quem COMPILA o gerado**, não por esta crate.
+//!
+//! Ela nasceu TUPLA, com o argumento de que *"uma struct teria de ser definida em algum lugar, e o
+//! único lugar honesto seria junto do `WidgetKind`"* — superfície foundational nova. A premissa
+//! estava errada: o lugar honesto é a **crate do painel**, que já hospeda o `include!`. O emissor
+//! escreve o nome do tipo sem o conhecer, exactamente como já escreve `WidgetKind::Slider`.
+//!
+//! ⚠️ **Quem disse que a tupla tinha crescido foi o `clippy::type_complexity`**, à quinta posição.
+//! E o preço real não era a legibilidade: uma tupla é **posicional**, então todo campo novo
+//! re-escreve cada consumidor que a desestrutura — o que aconteceu duas vezes no mesmo dia (a cor,
+//! e depois o glifo). Um campo novo numa struct não toca em quem não o lê.
+//!
+//! ⚠️ **E a prova de compilação fica igual**: `WidgetKind::Slider` continua conferido pelo
+//! compilador, e agora o nome dos CAMPOS também — renomear um variante do catálogo, ou um campo do
+//! `RowConst`, **quebra o build do gerado**, que é exatamente o que se quer de código gerado.
 //!
 //! # O ID de cada row é DERIVADO da chave, nunca cunhado aqui
 //!
@@ -70,6 +80,17 @@ pub struct RowSpec {
     /// tinha quando o código foi escrito. Quem quer a cor VIVA olha a moldura no canvas, que lê o
     /// documento a cada quadro.
     pub rgba: Option<[u8; 4]>,
+    /// **O glifo que esta row desenha**, quando o tipo dela É um botão de ícone — o desenho da
+    /// forma que veste o widget, em **texto SVG**.
+    ///
+    /// ⚠️ **Texto, e não geometria, porque o destino é um `const`:** um `BezPath` não é
+    /// construível em tempo de compilação. O painel gerado carrega a string e reconstitui a curva
+    /// uma vez, no `OnceLock` que já resolve os ids — o mesmo lugar, o mesmo custo amortizado.
+    ///
+    /// ⚠️ **E esta crate segue sem opinião sobre geometria**: ela não conhece `BezPath`, não sabe
+    /// normalizar nada e não vai aprender. Quem produz a string é o dono do documento, exactamente
+    /// como o `kind` chega aqui já resolvido em texto.
+    pub icon: Option<String>,
 }
 
 /// **O painel que uma árvore autorada descreve.**
@@ -108,23 +129,32 @@ pub fn emit(spec: &PanelSpec) -> String {
     out.push_str(";\npub const PANEL_TITLE: &str = ");
     push_str_literal(&mut out, &spec.title);
     out.push_str(
-        ";\n\n/// `(tipo do catálogo, rótulo, chave, cor)` — a chave vira `NodeId` por hash, e a\n/// cor só é `Some` onde o tipo É uma cor.\npub const ROWS: &[(WidgetKind, &str, &str, Option<[u8; 4]>)] = &[\n",
+        ";\n\n/// A tabela deste painel. A chave vira `NodeId` por hash; a cor só é `Some` onde o tipo\n/// É uma cor, e o ícone (SVG) onde ele É um botão de ícone.\npub const ROWS: &[RowConst] = &[\n",
     );
     for r in &spec.rows {
-        out.push_str("    (WidgetKind::");
+        out.push_str("    RowConst {\n        kind: WidgetKind::");
         out.push_str(&r.kind);
-        out.push_str(", ");
+        out.push_str(",\n        label: ");
         push_str_literal(&mut out, &r.label);
-        out.push_str(", ");
+        out.push_str(",\n        key: ");
         push_str_literal(&mut out, &r.key);
-        out.push_str(", ");
+        out.push_str(",\n        rgba: ");
         match r.rgba {
             None => out.push_str("None"),
             Some([r8, g8, b8, a8]) => {
                 out.push_str(&format!("Some([{r8}, {g8}, {b8}, {a8}])"));
             }
         }
-        out.push_str("),\n");
+        out.push_str(",\n        icon: ");
+        match &r.icon {
+            None => out.push_str("None"),
+            Some(d) => {
+                out.push_str("Some(");
+                push_str_literal(&mut out, d);
+                out.push(')');
+            }
+        }
+        out.push_str(",\n    },\n");
     }
     out.push_str("];\n");
     out

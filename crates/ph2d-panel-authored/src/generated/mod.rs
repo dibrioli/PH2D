@@ -10,9 +10,12 @@
 //! que o texto era válido e nada mais. Agora ele é a fonte da lista viva — a mesma prova, mais
 //! forte, porque um formato que o runtime não consegue percorrer também deixa de compilar.
 //!
-//! ⚠️ **`WidgetKind` tem de estar em escopo AQUI**, porque o gerado o nomeia sem importar: ele não
-//! sabe onde será incluído, e um `use` dentro dele fixaria um caminho que só serve a um hospedeiro.
+//! ⚠️ **`WidgetKind` e `RowConst` têm de estar em escopo AQUI**, porque o gerado os nomeia sem
+//! importar: ele não sabe onde será incluído, e um `use` dentro dele fixaria um caminho que só
+//! serve a um hospedeiro. É a mesma relação com os dois — o emissor escreve o nome, o hospedeiro
+//! diz de onde ele vem, e o compilador confere.
 
+use crate::rows::RowConst;
 use ph2d_editor_core::widget::WidgetKind;
 
 include!("panel.rs");

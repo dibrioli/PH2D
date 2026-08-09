@@ -26,6 +26,7 @@ fn the_codes_are_pinned_and_unique() {
     assert_eq!(WidgetKind::NumberInput.code(), 13);
     assert_eq!(WidgetKind::LevelMeter.code(), 14);
     assert_eq!(WidgetKind::ColorSwatch.code(), 15);
+    assert_eq!(WidgetKind::IconButton.code(), 16);
 
     let mut seen = std::collections::BTreeSet::new();
     for kind in WidgetKind::ALL {
@@ -81,4 +82,32 @@ fn the_colour_taking_list_is_exactly_the_swatch() {
         .filter(|k| k.takes_colour())
         .collect();
     assert_eq!(takers, vec![WidgetKind::ColorSwatch]);
+}
+
+/// **Quem CONSOME um ícone é exactamente o botão de ícone** — o irmão da lista acima, e ele existe
+/// pela MESMA razão: a `takes_icon` não é consultada pelo pintor, ela decide quem **normaliza a
+/// geometria da forma**. Uma mutação dela sobrevive a todo gate de pintura, e o preço seria uma
+/// normalização por-quadro por-widget para catorze tipos que não desenham glifo nenhum.
+#[test]
+fn the_icon_taking_list_is_exactly_the_icon_button() {
+    let takers: Vec<WidgetKind> = WidgetKind::ALL
+        .into_iter()
+        .filter(|k| k.takes_icon())
+        .collect();
+    assert_eq!(takers, vec![WidgetKind::IconButton]);
+}
+
+/// **Os dois canais são DISJUNTOS** — nenhum tipo pede os dois parâmetros.
+///
+/// ⚠️ Não é uma lei do mundo (um dia um tipo pode pedir cor E glifo, e então isto é reescrito com
+/// um motivo); é a afirmação de que **hoje** cada campo do canal tem um dono só, que é o que torna
+/// os dois gates de inércia acima capazes de excluir UM tipo cada.
+#[test]
+fn no_kind_asks_for_both_channels() {
+    for kind in WidgetKind::ALL {
+        assert!(
+            !(kind.takes_colour() && kind.takes_icon()),
+            "{kind:?} pede os dois canais — os gates de inercia excluem um tipo cada"
+        );
+    }
 }

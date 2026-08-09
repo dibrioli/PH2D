@@ -32,7 +32,7 @@
 //! sincronizados no `main`.
 
 use ph2d_editor::widget::WidgetKind;
-use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecPathId, rectangle};
+use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecPathId, rectangle, star};
 
 /// A moldura, e os filhos que ela contém: `(caixa, nome, o que ele veste)`.
 ///
@@ -40,8 +40,8 @@ use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecPathId, rectangle};
 /// staleness (`the_generated_panel_is_not_stale`) constrói o mundo a partir dela para emitir o
 /// código e comparar com o arquivo commitado. Uma segunda lista escrita à mão no gate divergiria
 /// desta no dia em que uma row entrasse — e o gate ficaria verde sobre o painel errado.
-pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 7] = [
-    ([-2.0, -2.8, 2.0, 2.4], "Color", None),
+pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 8] = [
+    ([-2.0, -3.9, 2.0, 2.4], "Color", None),
     (
         [-1.8, 1.4, 1.8, 2.2],
         "Appearance",
@@ -55,8 +55,32 @@ pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 7] = [
         "Tint",
         Some(WidgetKind::ColorSwatch),
     ),
+    (
+        [-0.4, -3.7, 0.4, -2.9],
+        "Play",
+        Some(WidgetKind::IconButton),
+    ),
     ([-1.7, 1.25, 1.7, 1.35], "Backdrop", None),
 ];
+
+/// **A GEOMETRIA de cada forma da tabela** — e para UMA delas ela é o GLIFO.
+///
+/// ⚠️ **Porta única, pela mesma razão do [`authored_fill`]:** o gate de staleness constrói o mundo
+/// desta tabela para emitir o código, e o SVG do ícone atravessa o `RowSpec` — uma segunda
+/// construção do lado do gate faria o golden concordar com uma forma que ninguém desenha.
+///
+/// ⚠️ **A ESTRELA é o CONTROLE do ícone, e ela não é enfeite.** Um retângulo num botão de ícone
+/// seria indistinguível de *nenhum ícone*: a moldura do chip já é um retângulo. Com uma figura
+/// reconhecível, *"o glifo é o desenho"* e *"o pintor põe um glifo qualquer"* deixam de ser a
+/// mesma foto — que é a pergunta de olho desta fatia.
+#[must_use]
+pub(crate) fn authored_path(r: &[f64; 4], kind: Option<WidgetKind>) -> VecPath {
+    if matches!(kind, Some(WidgetKind::IconButton)) {
+        let (cx, cy) = ((r[0] + r[2]) * 0.5, (r[1] + r[3]) * 0.5);
+        return star([cx, cy], (r[2] - r[0]) * 0.5, (r[3] - r[1]) * 0.5, 5, 0.45);
+    }
+    rectangle([r[0], r[1]], [r[2], r[3]])
+}
 
 /// **A tinta de cada forma da tabela** — e para UMA delas ela é o CONTEÚDO, não a decoração.
 ///
@@ -104,7 +128,7 @@ fn build(app: &mut crate::App) {
         return;
     };
     for (i, (r, _, kind)) in AUTHORED.iter().enumerate() {
-        let mut p: VecPath = rectangle([r[0], r[1]], [r[2], r[3]]);
+        let mut p: VecPath = authored_path(r, *kind);
         // A moldura é escura; quem veste fica visível; o desenho puro fica apagado, para a foto
         // dizer qual é qual — e a swatch leva a própria (ver [`authored_fill`]).
         let c = authored_fill(i, *kind);
@@ -218,8 +242,8 @@ fn announce(app: &mut crate::App) {
         spec.title,
         spec.rows.len()
     );
-    if spec.rows.len() != 5 {
-        eprintln!("[ui-panel] ⚠️ **PARE**: eram para ser 5 rows (o 'Backdrop' e' desenho puro).");
+    if spec.rows.len() != 6 {
+        eprintln!("[ui-panel] ⚠️ **PARE**: eram para ser 6 rows (o 'Backdrop' e' desenho puro).");
         return;
     }
     eprintln!(
@@ -270,6 +294,14 @@ fn announce(app: &mut crate::App) {
     eprintln!(" 14. E o **Ctrl+Z** move o slider de volta junto com a arte — mover um controle e'");
     eprintln!("     uma edicao, e um passo por GESTO (nao por frame). ⚠️ Abrir a cena, ao");
     eprintln!("     contrario, nao autora nada: a fila de undo nasce vazia.");
+    eprintln!(" 15. ⚠️ **O DESENHO E' O GLIFO**: a ultima row chama-se 'Play' e e' um botao de");
+    eprintln!("     icone. Olhe a ESTRELA — ela e' a forma que voce desenhou, endireitada e");
+    eprintln!("     encaixada na caixa de 24x24 do icone, com a moldura do botao a' volta. No");
+    eprintln!("     canvas e no painel tem de ser **a mesma estrela**: se so' um dos dois a");
+    eprintln!("     mostrar, PARE — e' exatamente a divergencia que a porta unica existe para");
+    eprintln!("     impedir. Edite os nos dela no modo Node e re-rode: o glifo acompanha.");
+    eprintln!("     ⚠️ **O limite, dito:** girar a forma pelo gizmo NAO gira o glifo — ele e' o");
+    eprintln!("     desenho autorado, nao a pose.");
 }
 
 #[cfg(test)]

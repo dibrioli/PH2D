@@ -19,6 +19,12 @@ use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme};
 use ph2d_vector::{BezPath, VectorScene};
 
 /// Glyph source for a canonical icon button.
+///
+/// ⚠️ **The derives are what let this ride in [`crate::widget::SkinParam`]** — a skin parameter is
+/// a `Copy` field with a neutral default, and this enum already answers exactly the question that
+/// channel asks (*which* icon?) in both of the two ways it can be answered. `Eq` is deliberately
+/// absent: a `BezPath` holds `f64`.
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum IconGlyph<'a> {
     /// Built-in editor glyph from the `IconId` table.
     Builtin(IconId),

@@ -2,7 +2,7 @@
 
 use super::*;
 use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, Transform, VecPathRef, VecWidget};
-use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecScene, rectangle};
+use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecScene};
 
 /// **O mundo que a tabela autorada descreve** — a mesma fonte que a cena usa para montar a árvore.
 ///
@@ -13,10 +13,11 @@ pub(crate) fn world_from_authored() -> (SimWorld, VecScene, Entity) {
     let mut scene = VecScene::new();
     let mut frame = None;
     for (i, (r, name, kind)) in AUTHORED.iter().enumerate() {
-        // ⚠️ A cena é construída da MESMA tabela e com a MESMA tinta que o smoke desenha — a cor
-        // da swatch atravessa o `RowSpec`, então uma segunda paleta aqui faria o golden concordar
-        // com uma cena que ninguém vê.
-        let mut p: VecPath = rectangle([r[0], r[1]], [r[2], r[3]]);
+        // ⚠️ A cena é construída da MESMA tabela, com a MESMA tinta e a MESMA geometria que o
+        // smoke desenha — a cor da swatch e o SVG do ícone atravessam o `RowSpec`, então uma
+        // segunda paleta (ou uma segunda forma) aqui faria o golden concordar com uma cena que
+        // ninguém vê.
+        let mut p: VecPath = super::authored_path(r, *kind);
         let c = super::authored_fill(i, *kind);
         p.fill = Some(Paint::Solid(Rgba8::new(c[0], c[1], c[2], 255)));
         scene.push_path(p);
@@ -63,7 +64,7 @@ fn the_scene_keeps_a_child_that_is_only_drawing() {
         .skip(1)
         .filter(|(_, _, k)| k.is_none())
         .count();
-    assert_eq!(dressed, 5, "a cena deixou de ter cinco filhos vestidos");
+    assert_eq!(dressed, 6, "a cena deixou de ter seis filhos vestidos");
     assert!(
         plain >= 1,
         "a cena perdeu o filho de desenho puro — o CONTROLE"
@@ -118,10 +119,11 @@ fn the_compiled_golden_carries_the_same_panel() {
         "o golden tem outro numero de rows"
     );
     for (got, want) in ROWS.iter().zip(&spec.rows) {
-        assert_eq!(got.0.ident(), want.kind, "o tipo da row divergiu");
-        assert_eq!(got.1, want.label, "o rotulo da row divergiu");
-        assert_eq!(got.2, want.key, "a chave da row divergiu");
-        assert_eq!(got.3, want.rgba, "a cor da row divergiu");
+        assert_eq!(got.kind.ident(), want.kind, "o tipo da row divergiu");
+        assert_eq!(got.label, want.label, "o rotulo da row divergiu");
+        assert_eq!(got.key, want.key, "a chave da row divergiu");
+        assert_eq!(got.rgba, want.rgba, "a cor da row divergiu");
+        assert_eq!(got.icon, want.icon.as_deref(), "o icone da row divergiu");
     }
 }
 

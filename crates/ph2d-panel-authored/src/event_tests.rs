@@ -7,9 +7,16 @@ use ph2d_ui_testkit::MockPanelHost;
 
 use crate::state::{AuthoredIntent, drain_intents};
 
-/// A row do tipo pedido, ou `None` se a tabela gerada não a contém.
-fn row_of(kind: WidgetKind) -> Option<&'static crate::rows::Row> {
-    crate::rows::rows().iter().find(|r| r.kind == kind)
+/// O `(id, chave)` da row do tipo pedido, ou `None` se a tabela não a contém.
+///
+/// ⚠️ Devolve os DADOS e não a `Row`: a tabela viva vive sob um `RefCell` thread-local, então uma
+/// referência não escapa — e o que os gates abaixo precisam é do id e da chave.
+fn row_of(kind: WidgetKind) -> Option<(ph2d_a11y::NodeId, String)> {
+    crate::rows::with_rows(|t| {
+        t.iter()
+            .find(|r| r.kind == kind)
+            .map(|r| (r.id, r.key.clone()))
+    })
 }
 
 /// Dirige um evento e devolve o que o painel enfileirou.
@@ -30,13 +37,13 @@ fn fire(store_edit: impl FnOnce(&mut WidgetStore), ev: WidgetEvent) -> Vec<Autho
 /// o que garante que o número que sai daqui é o mesmo que o `paint` desenha no frame seguinte.
 #[test]
 fn a_slider_says_which_key_changed_and_to_what() {
-    let Some(row) = row_of(WidgetKind::Slider) else {
+    let Some((row_id, row_key)) = row_of(WidgetKind::Slider) else {
         return;
     };
     let out = fire(
         |s| {
             s.register(
-                row.id,
+                row_id,
                 InteractiveState::Slider {
                     state: SliderState::Normal,
                     value: 0.42,
@@ -44,12 +51,12 @@ fn a_slider_says_which_key_changed_and_to_what() {
                 },
             );
         },
-        WidgetEvent::ValueChanged(row.id),
+        WidgetEvent::ValueChanged(row_id),
     );
     assert_eq!(
         out,
         vec![AuthoredIntent::Value {
-            key: row.key.to_string(),
+            key: row_key.clone(),
             value: 0.42,
         }]
     );
@@ -58,25 +65,25 @@ fn a_slider_says_which_key_changed_and_to_what() {
 /// **Um toggle diz o estado que ele PASSOU a ter.**
 #[test]
 fn a_toggle_says_the_flag_it_now_carries() {
-    let Some(row) = row_of(WidgetKind::Toggle) else {
+    let Some((row_id, row_key)) = row_of(WidgetKind::Toggle) else {
         return;
     };
     let out = fire(
         |s| {
             s.register(
-                row.id,
+                row_id,
                 InteractiveState::Toggle {
                     state: ToggleState::Normal,
                     on: true,
                 },
             );
         },
-        WidgetEvent::Toggled(row.id),
+        WidgetEvent::Toggled(row_id),
     );
     assert_eq!(
         out,
         vec![AuthoredIntent::Flag {
-            key: row.key.to_string(),
+            key: row_key.clone(),
             on: true,
         }]
     );
@@ -85,14 +92,14 @@ fn a_toggle_says_the_flag_it_now_carries() {
 /// **Um botão DISPARA — sem valor, porque ele não tem nenhum.**
 #[test]
 fn a_button_fires_without_a_value() {
-    let Some(row) = row_of(WidgetKind::Button) else {
+    let Some((row_id, row_key)) = row_of(WidgetKind::Button) else {
         return;
     };
-    let out = fire(|_| {}, WidgetEvent::Click(row.id));
+    let out = fire(|_| {}, WidgetEvent::Click(row_id));
     assert_eq!(
         out,
         vec![AuthoredIntent::Fired {
-            key: row.key.to_string(),
+            key: row_key.clone(),
         }]
     );
 }

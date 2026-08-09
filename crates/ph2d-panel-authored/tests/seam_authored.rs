@@ -55,7 +55,7 @@ fn host() -> (MockPanelHost, AuthoredPanelState) {
 #[test]
 fn every_control_row_is_alive_under_a_real_pointer() {
     let mut checked = 0;
-    for row in rows::rows() {
+    for row in rows::baked() {
         if !row.is_control() {
             continue;
         }
@@ -98,7 +98,7 @@ fn every_control_row_is_alive_under_a_real_pointer() {
 /// ficar verde — o oposto da cura.
 #[test]
 fn a_display_only_row_is_not_clickable() {
-    let Some(row) = rows::rows().iter().find(|r| !r.wants_pointer()) else {
+    let Some(row) = rows::baked().iter().find(|r| !r.wants_pointer()) else {
         panic!("a tabela gerada perdeu a row de desenho puro — o CONTROLE deste gate");
     };
     let (mut h, mut st) = host();
@@ -121,10 +121,10 @@ fn a_display_only_row_is_not_clickable() {
 /// o próprio cabeçalho seria uma seção que o artista fecha e não consegue reabrir.
 #[test]
 fn clicking_a_section_header_folds_the_rows_under_it() {
-    let Some(header) = rows::rows().iter().find(|r| r.folds_a_section()) else {
+    let Some(header) = rows::baked().iter().find(|r| r.folds_a_section()) else {
         panic!("a tabela gerada perdeu o cabecalho de secao — o SUJEITO deste gate");
     };
-    let Some(under) = rows::rows()
+    let Some(under) = rows::baked()
         .iter()
         .skip_while(|r| r.id != header.id)
         .find(|r| r.wants_pointer() && r.id != header.id)
@@ -168,7 +168,7 @@ fn clicking_a_section_header_folds_the_rows_under_it() {
 /// altura que não é a das rows convence o painel de coisas que não são verdade.
 #[test]
 fn folding_a_section_shrinks_the_reported_height() {
-    let Some(header) = rows::rows().iter().find(|r| r.folds_a_section()) else {
+    let Some(header) = rows::baked().iter().find(|r| r.folds_a_section()) else {
         panic!("a tabela gerada perdeu o cabecalho de secao");
     };
     let (mut h, mut st) = host();
@@ -229,7 +229,7 @@ fn the_close_button_is_alive_and_hides_the_panel() {
 /// isso que ele afirma o VALOR que o store carrega, que é o mesmo lugar de onde o `paint` lê.
 #[test]
 fn dragging_a_slider_row_moves_the_value_the_paint_reads() {
-    let Some(row) = rows::rows().iter().find(|r| r.kind == WidgetKind::Slider) else {
+    let Some(row) = rows::baked().iter().find(|r| r.kind == WidgetKind::Slider) else {
         return;
     };
     let (mut h, mut st) = host();

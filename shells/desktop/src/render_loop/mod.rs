@@ -7367,6 +7367,25 @@ impl crate::App {
             // As PELES de widget deste frame (plano UI/UX W6.2). Cozidas AQUI, depois do `sync`
             // (senão uma forma recém-marcada ainda não tem entidade) e com a câmera na mão —
             // quem sabe onde a forma está na tela é quem tem a projeção.
+            // **O PAINEL AUTORADO SEGUE O DOCUMENTO** — publicado a cada quadro em que ele
+            // está na tela. Sem isto o painel desenha a tabela COMPILADA, e o artista precisa de
+            // colar o código gerado e recompilar para ver o que acabou de desenhar: um ciclo de
+            // compilação dentro do laço de autoria (report do Enio, 2026-08-09).
+            //
+            // ⚠️ **Só com o painel VISÍVEL**, e é a lei do ADR-0125: o custo de descrever um
+            // painel é trabalho de autoria, não de quadro. Fechado, ele não paga nada — e a
+            // publicação de `None` devolve o painel à tabela compilada, que é o que um build sem
+            // documento autorado tem de mostrar.
+            let live_rows = hero
+                .is_panel_visible(
+                    <ph2d_panel_authored::AuthoredPanel as ph2d_editor::panel::Panel>::ID,
+                )
+                .then(|| {
+                    crate::ui_panel_spec::authored_frame(sim, vec_scene)
+                        .map(|f| crate::ui_panel_spec::live_rows(sim, vec_scene, f))
+                })
+                .flatten();
+            ph2d_panel_authored::rows::set_live_rows(live_rows);
             let vec_skins = crate::widget_live::build(
                 vec_scene,
                 sim,

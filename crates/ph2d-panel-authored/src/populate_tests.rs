@@ -1,6 +1,7 @@
 //! Gates do **registro** (plano UI/UX W8b.2).
 
 use super::*;
+use crate::rows::baked;
 use ph2d_editor_core::interaction::WidgetStore;
 
 fn populated() -> WidgetStore {
@@ -20,8 +21,8 @@ fn every_kind_agrees_with_itself_about_being_a_control() {
     for kind in WidgetKind::ALL {
         let row = Row {
             kind,
-            label: "x",
-            key: "x",
+            label: "x".to_string(),
+            key: "x".to_string(),
             id: ph2d_a11y::NodeId(1),
             rgba: None,
             icon: None,
@@ -44,7 +45,7 @@ fn every_kind_agrees_with_itself_about_being_a_control() {
 #[test]
 fn every_control_row_is_registered() {
     let store = populated();
-    for row in rows() {
+    for row in baked() {
         if row.is_control() {
             assert!(
                 store.get(row.id).is_some(),
@@ -63,7 +64,7 @@ fn every_control_row_is_registered() {
 fn a_display_only_row_is_not_registered() {
     let store = populated();
     let mut checked = 0;
-    for row in rows() {
+    for row in baked() {
         if !row.is_control() {
             assert!(
                 store.get(row.id).is_none(),

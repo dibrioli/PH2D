@@ -31,8 +31,12 @@ fn the_two_halves_read_the_glyph_through_one_door() {
         )
         .unwrap_or_else(|e| panic!("{who} ({path}) nao foi lido: {e}"));
 
+        // ⚠️ A âncora é o NOME, sem o parêntese: uma porta pode ser CHAMADA (`icon_face(p)`) ou
+        // PASSADA (`.and_then(icon_face)`), e as duas a percorrem igual. Ancorar na sintaxe da
+        // chamada fez este gate ficar vermelho sobre um produto correto no dia em que a metade do
+        // spec virou uma referência de função — o gate estava a descrever a forma, não a lei.
         assert!(
-            src.contains("icon_face("),
+            src.contains("icon_face"),
             "{who} nao pergunta o glifo a' porta unica (`widget_icon::icon_face`)"
         );
         // ⚠️ `build_bezpath` é a porta CRUA da geometria — legítima para quem desenha a forma,

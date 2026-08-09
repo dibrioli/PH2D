@@ -13,7 +13,7 @@ use ph2d_editor_core::widget::{
     TagState, TextInputState, ToggleState, WidgetKind, format_number,
 };
 
-use crate::rows::{Row, rows};
+use crate::rows::{Row, with_rows};
 
 /// O estado inicial de uma row que RESPONDE, ou `None` para as que só desenham.
 ///
@@ -119,22 +119,24 @@ fn chrome(store: &mut WidgetStore) {
 pub fn populate(store: &mut WidgetStore) {
     button(store, ids::AUTHORED_CLOSE);
     chrome(store);
-    for row in rows() {
-        // A pergunta é feita ao `is_control`, e o `initial` a espelha. As duas concordam por
-        // construção — há gate a exigi-lo, porque uma delas mudar sozinha é o caminho para um
-        // controle registado que o `paint` não desenha (ou o contrário).
-        if let Some(st) = initial(row.kind) {
-            debug_assert!(Row::is_control(row), "registado sem ser controle");
-            store.register(row.id, st);
+    with_rows(|table| {
+        for row in table {
+            // A pergunta é feita ao `is_control`, e o `initial` a espelha. As duas concordam por
+            // construção — há gate a exigi-lo, porque uma delas mudar sozinha é o caminho para um
+            // controle registado que o `paint` não desenha (ou o contrário).
+            if let Some(st) = initial(row.kind) {
+                debug_assert!(Row::is_control(row), "registado sem ser controle");
+                store.register(row.id, st);
+            }
+            // ⚠️ **Um cabeçalho não é registado como widget** — ele não tem `InteractiveState`, e o
+            // despacho o trata ANTES do `switch` justamente por isso. O que ele precisa é de ser
+            // MARCADO: sem esta linha o chevron desenha, o retângulo de hit existe, o clique chega —
+            // e não dobra nada, porque o despacho não sabe que aquele id é uma seção.
+            if row.folds_a_section() {
+                store.mark_collapsible_section(row.id);
+            }
         }
-        // ⚠️ **Um cabeçalho não é registado como widget** — ele não tem `InteractiveState`, e o
-        // despacho o trata ANTES do `switch` justamente por isso. O que ele precisa é de ser
-        // MARCADO: sem esta linha o chevron desenha, o retângulo de hit existe, o clique chega —
-        // e não dobra nada, porque o despacho não sabe que aquele id é uma seção.
-        if row.folds_a_section() {
-            store.mark_collapsible_section(row.id);
-        }
-    }
+    });
 }
 
 #[cfg(test)]

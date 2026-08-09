@@ -9,7 +9,7 @@ use ph2d_editor_core::ids;
 /// dia em que o artista acrescentasse um filho, e o gate ficaria verde sobre o painel errado.
 #[test]
 fn the_rows_are_the_generated_table_in_order() {
-    let live = rows();
+    let live = baked();
     assert_eq!(live.len(), crate::generated::ROWS.len());
     for (r, c) in live.iter().zip(crate::generated::ROWS) {
         assert_eq!(r.kind, c.kind);
@@ -40,17 +40,17 @@ fn the_rows_are_the_generated_table_in_order() {
 /// existem aqui. É o mesmo arranjo do `wet_tuning_ids_dont_collide`.
 #[test]
 fn the_row_ids_do_not_collide_with_each_other_nor_with_the_chrome() {
-    let mut seen: Vec<(ph2d_a11y::NodeId, &str)> = vec![
-        (ids::AUTHORED_PANEL, "panel"),
-        (ids::AUTHORED_CLOSE, "close"),
-        (ids::AUTHORED_DRAG_HANDLE, "drag"),
-        (ids::AUTHORED_RESIZE_HANDLE, "resize"),
-        (ids::AUTHORED_RESIZE_HANDLE_BL, "resize_bl"),
+    let mut seen: Vec<(ph2d_a11y::NodeId, String)> = vec![
+        (ids::AUTHORED_PANEL, "panel".to_string()),
+        (ids::AUTHORED_CLOSE, "close".to_string()),
+        (ids::AUTHORED_DRAG_HANDLE, "drag".to_string()),
+        (ids::AUTHORED_RESIZE_HANDLE, "resize".to_string()),
+        (ids::AUTHORED_RESIZE_HANDLE_BL, "resize_bl".to_string()),
     ];
-    for r in rows() {
+    for r in baked() {
         // ⚠️ Duas rows de mesmo RÓTULO têm a mesma chave de propósito (ver o doc de
         // `duplicate_keys`), então o que se afirma é: chaves distintas dão ids distintos.
-        if seen.iter().any(|(_, k)| *k == r.key) {
+        if seen.iter().any(|(_, k)| k == &r.key) {
             continue;
         }
         assert!(
@@ -58,7 +58,7 @@ fn the_row_ids_do_not_collide_with_each_other_nor_with_the_chrome() {
             "a row `{}` colide com um id ja' usado",
             r.key
         );
-        seen.push((r.id, r.key));
+        seen.push((r.id, r.key.clone()));
     }
 }
 
@@ -76,8 +76,8 @@ fn only_the_kinds_that_respond_are_controls() {
     let is = |kind| {
         Row {
             kind,
-            label: "x",
-            key: "x",
+            label: "x".to_string(),
+            key: "x".to_string(),
             id: ph2d_a11y::NodeId(1),
             rgba: None,
             icon: None,
@@ -189,8 +189,8 @@ fn the_paint_hands_what_it_knows_to_the_skin() {
 fn only_the_section_header_folds_and_it_is_never_a_control() {
     let row = |kind| Row {
         kind,
-        label: "x",
-        key: "x",
+        label: "x".to_string(),
+        key: "x".to_string(),
         id: ph2d_a11y::NodeId(1),
         rgba: None,
         icon: None,
@@ -213,4 +213,54 @@ fn only_the_section_header_folds_and_it_is_never_a_control() {
             "{kind:?}: a porta do ponteiro divergiu das duas perguntas que ela soma"
         );
     }
+}
+
+/// **O DOCUMENTO ABERTO VENCE O CÓDIGO COLADO** — a lei da tabela viva (report do Enio,
+/// 2026-08-09: *"por que fechar o app e reabrir? isso não pode ser num app pro"*).
+///
+/// ⚠️ E a metade que importa tanto quanto é a VOLTA: publicar `None` devolve o painel à tabela
+/// compilada. Sem ela, fechar o documento deixaria o painel a descrever uma árvore que já não
+/// existe — e um build sem documento autorado nenhum não teria painel para mostrar.
+#[test]
+fn the_open_document_wins_over_the_pasted_code_and_giving_it_back_restores_it() {
+    let baked_len = with_rows(<[Row]>::len);
+    assert!(
+        baked_len > 0,
+        "a tabela compilada esta' vazia — o controle nao vale"
+    );
+
+    let mine = vec![Row {
+        kind: WidgetKind::Slider,
+        label: "Ao vivo".to_string(),
+        key: "ao_vivo".to_string(),
+        id: ph2d_editor_core::ids::authored_row_id("ao_vivo"),
+        rgba: None,
+        icon: None,
+        icon_id: None,
+    }];
+    set_live_rows(Some(mine));
+    with_rows(|t| {
+        assert_eq!(t.len(), 1, "a tabela viva nao venceu a compilada");
+        assert_eq!(t[0].label, "Ao vivo");
+    });
+
+    set_live_rows(None);
+    assert_eq!(
+        with_rows(<[Row]>::len),
+        baked_len,
+        "tirar o documento nao devolveu o painel a' tabela compilada"
+    );
+}
+
+/// **Uma tabela viva VAZIA não é a ausência de uma** — o painel de um documento sem controles
+/// mostra-se vazio, e não o painel compilado de outra pessoa.
+#[test]
+fn an_empty_live_table_is_not_the_absence_of_one() {
+    set_live_rows(Some(Vec::new()));
+    assert_eq!(
+        with_rows(<[Row]>::len),
+        0,
+        "um documento com zero rows caiu na tabela compilada — o `Option` colapsou"
+    );
+    set_live_rows(None);
 }

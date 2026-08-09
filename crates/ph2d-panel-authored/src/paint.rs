@@ -32,7 +32,6 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
 
 use crate::AuthoredPanel;
-use crate::rows::rows;
 use crate::state::AuthoredPanelState;
 
 pub(crate) fn paint(_state: &mut AuthoredPanelState, ctx: &mut PaintCtx) {
@@ -135,40 +134,43 @@ pub(crate) fn paint(_state: &mut AuthoredPanelState, ctx: &mut PaintCtx) {
 /// gerado que dobra por regras diferentes das dos vinte e três painéis escritos à mão.
 fn paint_body(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, mut y: f32) -> f32 {
     let mut folded = false;
-    for row in rows() {
-        if row.folds_a_section() {
-            folded = ctx.host.store().is_collapsed(row.id);
-        } else if folded {
-            continue;
+    // ⚠️ A tabela vem por CLOSURE porque a viva não é `'static` — ver `rows::with_rows`.
+    crate::rows::with_rows(|table| {
+        for row in table {
+            if row.folds_a_section() {
+                folded = ctx.host.store().is_collapsed(row.id);
+            } else if folded {
+                continue;
+            }
+            let r = Rect::new(x, y, w, ROW_H_PX);
+            let scene = &mut *ctx.scene;
+            let text_system = &mut *ctx.text_system;
+            let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+            // ⚠️ Quem RESPONDE ou quem DOBRA ganha retângulo de hit — a pergunta é feita UMA vez, ao
+            // `wants_pointer`. Um `Divider` registado seria um controle que acende sob o rato e não
+            // faz nada; um cabeçalho SEM registo seria um chevron desenhado que não dobra.
+            if row.wants_pointer() {
+                hit_index.register(row.id, r);
+            }
+            paint_widget_skin_with(
+                row.kind,
+                &row.label,
+                row.id,
+                store.get(row.id),
+                SkinParam {
+                    rgba: row.rgba,
+                    // ⚠️ A precedência sai da porta única do catálogo — a MESMA que o canvas
+                    // percorre. Um `if` aqui seria a terceira cópia da regra.
+                    icon: icon_glyph(row.icon_id, row.icon.as_ref()),
+                },
+                r,
+                scene,
+                text_system,
+                theme,
+            );
+            y += ROW_H_PX + Spacing::Xs.px();
         }
-        let r = Rect::new(x, y, w, ROW_H_PX);
-        let scene = &mut *ctx.scene;
-        let text_system = &mut *ctx.text_system;
-        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        // ⚠️ Quem RESPONDE ou quem DOBRA ganha retângulo de hit — a pergunta é feita UMA vez, ao
-        // `wants_pointer`. Um `Divider` registado seria um controle que acende sob o rato e não
-        // faz nada; um cabeçalho SEM registo seria um chevron desenhado que não dobra.
-        if row.wants_pointer() {
-            hit_index.register(row.id, r);
-        }
-        paint_widget_skin_with(
-            row.kind,
-            row.label,
-            row.id,
-            store.get(row.id),
-            SkinParam {
-                rgba: row.rgba,
-                // ⚠️ A precedência sai da porta única do catálogo — a MESMA que o canvas
-                // percorre. Um `if` aqui seria a terceira cópia da regra.
-                icon: icon_glyph(row.icon_id, row.icon.as_ref()),
-            },
-            r,
-            scene,
-            text_system,
-            theme,
-        );
-        y += ROW_H_PX + Spacing::Xs.px();
-    }
+    });
     y
 }
 

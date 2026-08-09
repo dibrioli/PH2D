@@ -10,7 +10,7 @@ use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::widget::CheckboxValue;
 
 use crate::AuthoredPanel;
-use crate::rows::row_for;
+use crate::rows::row_key_for;
 use crate::state::{AuthoredIntent, AuthoredPanelState, push_intent};
 
 pub(crate) fn apply_event(
@@ -35,10 +35,9 @@ pub(crate) fn apply_event(
         | WidgetEvent::TextChanged(id) => id,
         _ => return EventOutcome::Ignored,
     };
-    let Some(row) = row_for(id) else {
+    let Some(key) = row_key_for(id) else {
         return EventOutcome::Ignored;
     };
-    let key = row.key.to_string();
     let store = host.store();
     // A leitura é do store, e o braço escolhido é o do que o store DE FACTO guarda — não o do
     // tipo declarado. Registo trocado dá `Ignored`, nunca um valor inventado.

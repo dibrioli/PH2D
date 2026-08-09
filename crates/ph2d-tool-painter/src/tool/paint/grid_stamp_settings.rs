@@ -130,6 +130,14 @@ impl PainterTool {
         self.paint.eraser || self.paint.grid_erase
     }
 
+    /// As LINHAS da grade num eixo, dentro de `[lo, hi]` px de imagem: `(primeira, passo, quantas)`.
+    /// Delegação pura para a porta do spec ([`ph2d_painter_brush::BrushSpec::grid_line_run`]) — é ela
+    /// que o carimbo usa, e o overlay tem de desenhar a MESMA rede ou o artista acredita no desenho.
+    #[must_use]
+    pub fn grid_line_run(&self, axis: usize, lo: f32, hi: f32) -> (f32, f32, u32) {
+        self.paint.brush.grid_line_run(axis, lo, hi)
+    }
+
     /// O curso `0..1` que representa um tamanho de célula — a inversa de [`Self::set_grid_cell_norm`],
     /// para o painel desenhar o thumb onde o valor de fato está.
     #[must_use]

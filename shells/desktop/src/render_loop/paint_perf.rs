@@ -19,10 +19,10 @@ pub(super) const PANEL_LABELS: [&str; PANEL_SUB] =
     ["commit", "layerclone", "brushsnap", "pub", "shapebake"];
 
 /// The twelve calls `draw_overlays` makes, in call order.
-pub(super) const CHROME_SUB: usize = 12;
+pub(super) const CHROME_SUB: usize = 13;
 pub(super) const CHROME_LABELS: [&str; CHROME_SUB] = [
     "wet", "ring", "curve", "ellipse", "line", "poly", "badges", "selgiz", "deform", "stencil",
-    "symm", "fill",
+    "symm", "grid", "fill",
 ];
 
 #[derive(Clone, Copy, Default)]

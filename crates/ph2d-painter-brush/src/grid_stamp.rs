@@ -79,6 +79,31 @@ impl BrushSpec {
         (major * 0.5 / t0, flatten, angle)
     }
 
+    /// **As LINHAS da grade num eixo**, dentro de `[lo, hi]` (px de imagem): `(primeira, passo,
+    /// quantas)`. A linha `k` é `offset + k·célula` — a FRONTEIRA entre as células `k−1` e `k`, a
+    /// mesma que o [`Self::grid_cell_at`] usa para decidir de quem é um ponto.
+    ///
+    /// ⚠️ **É a mesma porta que o carimbo**, e é o ponto inteiro deste módulo: um overlay que
+    /// re-derivasse a rede desenharia linhas que a tinta não respeita — e um desenho errado parece
+    /// autoritativo, então o artista acreditaria nele em vez do carimbo. O gate que ancora as duas é
+    /// o `the_drawn_line_is_the_boundary_the_stamp_lands_between`.
+    ///
+    /// A contagem é `0` para uma janela vazia ou invertida; nenhum chamador precisa checar antes.
+    #[must_use]
+    pub fn grid_line_run(&self, axis: usize, lo: f32, hi: f32) -> (f32, f32, u32) {
+        let step = self.grid_cell()[axis & 1];
+        let off = self.grid_offset_px[axis & 1];
+        let off = if off.is_finite() { off } else { 0.0 };
+        if !(lo.is_finite() && hi.is_finite()) || hi < lo {
+            return (lo, step, 0);
+        }
+        let k0 = ((lo - off) / step).ceil();
+        let first = off + k0 * step;
+        // `+1` porque as duas pontas contam: uma janela de exatamente uma célula tem DUAS linhas.
+        let n = ((hi - first) / step).floor() + 1.0;
+        (first, step, if n > 0.0 { n as u32 } else { 0 })
+    }
+
     /// Este spec, reescrito para carimbar UMA célula: raio, achatamento e ângulo saem da grade.
     ///
     /// É a porta que o tool usa antes de estampar — assim o dab que o motor emitiu (cujo `radius_px`
@@ -106,6 +131,119 @@ fn sane(v: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **A linha desenhada É a fronteira entre as células em que o carimbo pousa.**
+    ///
+    /// O gate que ancora o overlay ao carimbo: o centro da célula `k` tem de cair exatamente no MEIO
+    /// entre a linha `k` e a linha `k+1`. Uma re-derivação que tivesse deslizado meia célula — o erro
+    /// clássico de quem confunde `floor` com `round` — passa por qualquer teste que só olhe para o
+    /// espaçamento, e falha aqui.
+    ///
+    /// **Mutação que deve sangrar:** trocar o `ceil` do `grid_line_run` por `floor`, ou o `off + k·c`
+    /// por `off + (k + 0.5)·c` (as linhas passando pelos centros em vez das bordas).
+    #[test]
+    fn the_drawn_line_is_the_boundary_the_stamp_lands_between() {
+        for (cell, off) in [
+            ([32.0, 32.0], [0.0, 0.0]),
+            ([40.0, 24.0], [7.0, 13.0]),
+            ([9.5, 9.5], [0.25, 0.75]),
+        ] {
+            let s = spec(cell, off);
+            for axis in 0..2 {
+                let (first, step, n) = s.grid_line_run(axis, 0.0, 200.0);
+                assert!(
+                    n >= 2,
+                    "a janela tem de conter linhas — fixture vazia não prova nada"
+                );
+                for k in 0..n - 1 {
+                    let a = first + step * k as f32;
+                    let b = a + step;
+                    let mid = 0.5 * (a + b);
+                    // O ponto médio entre duas linhas vizinhas é o centro de UMA célula, e é aquela
+                    // a que ele pertence.
+                    let mut p = [mid, mid];
+                    p[1 - axis] = s.grid_cell_center([0, 0])[1 - axis]; // o outro eixo, num centro
+                    let cellf = s.grid_cell_at(p);
+                    let centre = s.grid_cell_center(cellf)[axis];
+                    assert!(
+                        (centre - mid).abs() < 1e-3,
+                        "meio das linhas {a}..{b} = {mid}, mas o carimbo pousa em {centre} (eixo \
+                         {axis}, célula {cell:?}, offset {off:?}) — o desenho e a tinta discordam \
+                         sobre onde a célula está"
+                    );
+                }
+            }
+        }
+    }
+
+    /// A janela degenerada não produz linha nenhuma — e nem pânico. Um overlay é desenhado a cada
+    /// quadro, inclusive no quadro em que a sprite ainda não tem tamanho.
+    #[test]
+    fn a_degenerate_window_draws_nothing() {
+        let s = spec([32.0, 32.0], [0.0, 0.0]);
+        for (lo, hi) in [(10.0, 5.0), (f32::NAN, 100.0), (0.0, f32::INFINITY)] {
+            let (_, _, n) = s.grid_line_run(0, lo, hi);
+            if hi.is_infinite() {
+                continue; // um alcance infinito é o chamador errando, não a porta
+            }
+            assert_eq!(n, 0, "janela ({lo}, {hi}) devia dar zero linhas");
+        }
+    }
+
+    /// **Toda linha devolvida está DENTRO da janela pedida.** É a promessa literal da porta, e sem
+    /// este gate ela não estava sendo verificada por nada: uma mutação `ceil → floor` no primeiro
+    /// índice mantém a rede — mesmo passo, mesma fase — e só desloca o COMEÇO para fora de `lo`, então
+    /// passa por todo teste que só olhe para o espaçamento ou para o alinhamento com o carimbo.
+    ///
+    /// O preço da falha é o chamador desenhar fora da janela que ele recortou, que é exatamente o
+    /// custo que o recorte existe para remover.
+    ///
+    /// **Mutação que deve sangrar:** `ceil` → `floor` no `k0`.
+    #[test]
+    fn every_line_lands_inside_the_window_it_was_asked_for() {
+        for (cell, off) in [
+            ([32.0, 32.0], [0.0, 0.0]),
+            ([40.0, 24.0], [7.0, 13.0]),
+            ([9.5, 9.5], [0.25, 0.75]),
+        ] {
+            let s = spec(cell, off);
+            for axis in 0..2 {
+                // Janelas que NÃO começam no zero — é ali que `ceil` e `floor` divergem, e uma fixture
+                // ancorada em zero com offset zero não contém o fenômeno.
+                for (lo, hi) in [(0.0f32, 200.0f32), (37.0, 210.0), (100.5, 140.5)] {
+                    let (first, step, n) = s.grid_line_run(axis, lo, hi);
+                    assert!(
+                        n > 0,
+                        "janela ({lo}, {hi}) devia conter linhas (célula {cell:?})"
+                    );
+                    assert!(
+                        first >= lo - 1e-3,
+                        "a primeira linha ({first}) está ANTES de lo ({lo}) — o chamador desenha fora \
+                         da janela que recortou (eixo {axis}, célula {cell:?}, offset {off:?})"
+                    );
+                    let last = first + step * (n - 1) as f32;
+                    assert!(
+                        last <= hi + 1e-3,
+                        "a última linha ({last}) passa de hi ({hi})"
+                    );
+                    // E a SEGUINTE já está fora: a contagem não deixa linha visível de fora.
+                    assert!(
+                        last + step > hi + 1e-3,
+                        "a contagem parou cedo — sobrou uma linha dentro da janela sem desenhar"
+                    );
+                }
+            }
+        }
+    }
+
+    /// Uma janela de EXATAMENTE uma célula tem DUAS linhas — as duas pontas contam. É o off-by-one
+    /// que faz a última coluna da tela ficar sem borda.
+    #[test]
+    fn a_window_of_one_cell_has_both_of_its_edges() {
+        let s = spec([32.0, 32.0], [0.0, 0.0]);
+        let (first, _, n) = s.grid_line_run(0, 0.0, 32.0);
+        assert_eq!((first, n), (0.0, 2));
+    }
 
     fn spec(cell: [f32; 2], off: [f32; 2]) -> BrushSpec {
         BrushSpec {

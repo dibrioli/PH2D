@@ -134,8 +134,18 @@ pub(super) fn draw_overlays(
     mark(&mut perf[9], &mut t);
     draw_symmetry_overlay(painter, hero, sim, camera, window_size, vector_scene);
     mark(&mut perf[10], &mut t);
-    super::painter_bridge_fill_overlay::draw_fill_cursor(painter, vector_scene, cursor);
+    // A rede do Grid Stamp — depois da simetria (as duas são guias de canvas) e antes do cursor de Fill.
+    super::painter_bridge_grid::draw_grid_overlay(
+        painter,
+        hero,
+        sim,
+        camera,
+        window_size,
+        vector_scene,
+    );
     mark(&mut perf[11], &mut t);
+    super::painter_bridge_fill_overlay::draw_fill_cursor(painter, vector_scene, cursor);
+    mark(&mut perf[12], &mut t);
 }
 
 /// Sync the painter's shape-editor grab tolerance to the LIVE camera, once per frame BEFORE the overlays

@@ -211,10 +211,14 @@ fn sliding_along_a_slope_is_not_absorbed() {
 ///
 /// Ela é `pub` porque tem DOIS consumidores (o integrador e a ponte, que a chama
 /// antes da lei); este gate pina o que ela responde a cada um.
+///
+/// ⚠️ **O piso passado é ZERO, e isso É a afirmação** (§8.1): com piso zero a
+/// lei reduz LITERALMENTE à de antes dele — este gate é, hoje, o pino de que
+/// chão plano não mudou um bit.
 #[test]
 fn the_supported_velocity_drops_only_what_the_ground_holds() {
     // No chão, a caminho do chão: some a componente ao longo de `up`.
-    let held = supported_velocity([2.0, -5.0], true, UP);
+    let held = supported_velocity([2.0, -5.0], true, UP, 0.0);
     assert!(
         (held[1]).abs() < 1e-6,
         "a queda tem de sair inteira: {held:?}"
@@ -225,14 +229,44 @@ fn the_supported_velocity_drops_only_what_the_ground_holds() {
     );
     // No AR o valor é verbatim — é ali que a queda de facto acontece.
     assert_eq!(
-        supported_velocity([2.0, -5.0], false, UP),
+        supported_velocity([2.0, -5.0], false, UP, 0.0),
         [2.0, -5.0],
         "no ar nada e' absorvido"
     );
     // A SAIR do chão (um pulo) também é verbatim, senão a decolagem morre.
     assert_eq!(
-        supported_velocity([2.0, 7.0], true, UP),
+        supported_velocity([2.0, 7.0], true, UP, 0.0),
         [2.0, 7.0],
         "subir nao e' cair"
+    );
+}
+
+/// **O PISO NUNCA É POSITIVO, e a SUBIDA fica byte-idêntica** (§8.1).
+///
+/// ⚠️ **Este gate nasceu de uma mutação SOBREVIVENTE**: tirar o `min(0.0)` do
+/// [`surface_descent`] passava na suíte inteira, e o doc ao lado dele afirmava
+/// que sem ele o personagem *"seria lançado ladeira acima"*. Medido, ele não é
+/// lançado — ele **sobe 1,2-1,7% mais rápido**, uma mudança de comportamento
+/// pequena, plausível e **não medida por ninguém antes de ser pedida**.
+///
+/// O que o `min` entrega é a promessa da wave: *chão plano e SUBIDA não mudam
+/// um bit*. É isso que este gate afirma, e é o que a mutação quebra.
+#[test]
+fn the_floor_never_lifts_and_a_climb_is_untouched() {
+    // Uma rampa que SOBE para a direita: a tangente aponta para cima.
+    let n = [-0.4226, 0.9063]; // ~25°
+    for v in [[6.0_f32, 2.5], [0.5, 0.2], [0.0, 0.0], [-6.0, -2.5]] {
+        let floor = surface_descent(v, n, UP);
+        assert!(
+            floor <= 0.0,
+            "o piso da absorcao nunca pode ser positivo (v = {v:?} deu {floor})"
+        );
+    }
+    // E numa superfície plana ele é ZERO EXATO — é este valor que faz a lei
+    // reduzir, termo a termo, à de antes do piso.
+    assert_eq!(
+        surface_descent([9.0, -3.0], UP, UP),
+        0.0,
+        "chao plano tem de dar piso zero EXATO"
     );
 }

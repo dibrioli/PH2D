@@ -39,17 +39,19 @@
 //!   dinamico     0.44   0.44   0.44   0.44   0.44   0.44   <- a MOLA, nao o numero
 //! ```
 //!
-//! **DESCER** — e aqui a medição é categórica: variar a `cling_distance` de
-//! 0,05 a 2,00 deixa **todas as 24 células idênticas ao quarto decimal**, e a
-//! mutação `snap_to_ground: None` produz a **MESMA tabela, número por número**.
-//! O `snap_to_ground` deste produto **não é fraco: ele nunca dispara**.
+//! **DESCER — a medição de manhã dizia INERTE, e a §8.1 a derrubou no mesmo
+//! dia.** Fica escrita porque o mecanismo é o achado:
 //!
-//! ⚠️ **E o CONTROLE POSITIVO é o que torna isso uma afirmação** — sem ele
+//! Antes da cura, variar a `cling_distance` de 0,05 a 2,00 deixava **todas as
+//! 24 células idênticas ao quarto decimal**, e a mutação `snap_to_ground: None`
+//! produzia a **MESMA tabela, número por número** — o snap **nunca disparava**.
+//!
+//! ⚠️ **E o CONTROLE POSITIVO é o que tornou isso uma afirmação** — sem ele
 //! *"nada mudou"* é indistinguível de *"o arquivo não está no laço"*. Armado
 //! `autostep: None` no mesmo `CharacterParams`, a coluna de subida colapsa de
 //! 0,10-0,60 para 0,06-0,10 ⇒ a sonda VÊ aquele struct.
 //!
-//! # ⚠️ O porquê está na fonte do rapier, e fecha o laço com a §8.1
+//! # ⚠️ O porquê está na fonte do rapier, e é o MESMO mecanismo da §8.1
 //!
 //! `rapier2d-0.28/src/control/character_controller.rs::snap_to_ground` abre com
 //!
@@ -58,21 +60,29 @@
 //! ```
 //!
 //! ou seja: o snap só age quando o deslocamento EFETIVO do tique tem componente
-//! para BAIXO. E a lei cinemática **zera a vertical enquanto no chão** (a
-//! `supported_velocity` a absorver ao longo do `up`) — que é, palavra por
-//! palavra, o mecanismo que a §8.1 nomeia para o salto da descida.
+//! para BAIXO. E a lei cinemática **zerava a vertical enquanto no chão** (a
+//! `supported_velocity` sem piso) — que é, palavra por palavra, o mecanismo do
+//! salto da descida.
 //!
-//! **As duas coisas são UM defeito:** a absorção que faz o personagem descolar
-//! da rampa é a mesma que torna o remédio do rapier inalcançável. Curar a §8.1
-//! (separar a descida COMANDADA da deriva da GRAVIDADE antes da soma) devolve o
-//! `snap_to_ground` ao ar **de graça** — e é por isso que **não há gate a pinar
-//! a inércia**: um gate que afirmasse *"mexer no `cling` não muda a descida"*
-//! pediria que a cura o quebrasse.
+//! ⇒ **as duas coisas eram UM defeito**, e curar a §8.1 devolveu o snap ao ar
+//! de graça, exatamente como esta sonda previu.
 //!
-//! ⇒ **A resposta da §7.4:** o *"`snap_to_ground` mínimo útil"* **não existe
-//! hoje** — nenhum valor dele muda um número. O acoplamento `snap = step =
-//! cling` **não custa nada por enquanto**, porque só uma das metades está viva,
-//! e o número é, na prática, *a altura do degrau*.
+//! # A §7.4 RE-MEDIDA, com a lei curada (o mínimo útil EXISTE)
+//!
+//! ```text
+//!   cling   0.02   0.04   0.06   0.08   0.10   0.12   0.15   0.25 .. 2.00
+//!   salto   0.639  0.417  0.417  0.417  0.010  0.010  0.010  0.010 .. 0.010
+//! ```
+//!
+//! ⇒ **o `snap_to_ground` mínimo útil está entre 0,08 e 0,10 m** para esta
+//! cápsula, e o default de `0,25` tem **2,5× de margem**. O acoplamento
+//! `snap = step = cling` segue barato: a metade *subir* pede 1:1 o degrau que o
+//! artista quer, e a *descer* pede um piso pequeno que o mesmo número cobre com
+//! folga. Gate: `the_ground_snap_is_load_bearing_again`.
+//!
+//! ⚠️ **A tabela de BEIRADA não mudou, e é correto:** sair de um penhasco é
+//! CAIR — o `floor_snap_length` do Godot existe para descer escadas, não para
+//! colar o personagem a uma quina.
 //!
 //! Rodar: `cargo test -p ph2d-physics-ecs --release --test measure_snap_and_step
 //! -- --ignored --nocapture`
@@ -332,7 +342,9 @@ fn measure_what_each_half_of_the_number_buys() {
 fn measure_whether_a_bigger_cling_cures_the_descent_hop() {
     println!("\n=== O SALTO DA DESCIDA CONTRA O `cling` (rampa 25 graus, 6 m/s) ===\n");
     println!("{:>10}  {:>14}  {:>14}", "cling", "salto (m)", "andou (m)");
-    for cling in [0.05_f32, 0.15, 0.25, 0.50, 1.00, 2.00] {
+    for cling in [
+        0.02_f32, 0.04, 0.06, 0.08, 0.10, 0.12, 0.15, 0.25, 0.50, 1.00, 2.00,
+    ] {
         let (hop, ran) = ramp_hop(cling);
         println!("{cling:>10.2}  {hop:>14.4}  {ran:>14.2}");
     }
@@ -340,6 +352,38 @@ fn measure_whether_a_bigger_cling_cures_the_descent_hop() {
         "\nLEITURA: se o salto CAIR com o `cling`, o `snap` alcanca o chao e o\n\
          defeito da §8.1 tem mitigacao autorada; se nao mexer, o snap nunca foi\n\
          a metade que falta e a §8.1 continua sendo so' o eixo.\n"
+    );
+}
+
+/// **O `snap_to_ground` VOLTOU A VIVER, e este é o mínimo útil** — a §7.4,
+/// re-medida depois de a §8.1 ser curada.
+///
+/// ⚠️ **Esta é a nota que a cura obrigou a reconferir** (CLAUDE.md §0). Antes
+/// dela, variar o `cling` de 0,05 a 2,00 não movia um número e a resposta desta
+/// §7.4 era *"o mínimo útil não existe"*. Com o piso da absorção, o
+/// deslocamento do tique passa a ter componente para baixo, o rapier deixa de
+/// recusar o snap, e o degrau aparece:
+///
+/// ```text
+///   cling   0.02   0.04   0.06   0.08   0.10   0.12   0.15   0.25 .. 2.00
+///   salto   0.639  0.417  0.417  0.417  0.010  0.010  0.010  0.010 .. 0.010
+/// ```
+///
+/// ⇒ **o mínimo útil está entre 0,08 e 0,10 m** para esta cápsula, e o default
+/// (`RideConfig::STARTING_POINT`, 0,25) tem **2,5× de margem**.
+#[test]
+fn the_ground_snap_is_load_bearing_again() {
+    let (small, _) = ramp_hop(0.02);
+    let (default, _) = ramp_hop(0.25);
+    assert!(
+        default < 0.05,
+        "no default o personagem segue a rampa: saltou {default:.4} m"
+    );
+    assert!(
+        small > 10.0 * default.max(1.0e-4),
+        "e o knob tem de MORDER: com `cling` 0,02 o salto era 0,639 contra \
+         {default:.4} — se os dois ficaram iguais, o `snap_to_ground` voltou a \
+         ser inerte e a §7.4 tem de ser reescrita outra vez"
     );
 }
 
@@ -379,9 +423,41 @@ fn the_step_it_climbs_is_the_number_the_artist_authored() {
     }
 }
 
+/// **A SUBIDA caminhada** — o outro lado do piso, e o que decide se o `min(0)`
+/// dele é load-bearing ou higiene.
+///
+/// Devolve `(altura ganha, andou)`.
+#[test]
+#[ignore = "sonda"]
+fn measure_what_the_floors_min_does_to_a_climb() {
+    println!("\n=== A SUBIDA (o piso seria POSITIVO sem o `min(0)`) ===\n");
+    println!("{:>10}  {:>14}  {:>12}", "rampa", "subiu (m)", "andou (m)");
+    for slope in [10.0_f32, 25.0, 40.0] {
+        let (rise, ran) = ramp_walk(-slope, 0.25);
+        println!("{slope:>10.0}  {rise:>14.4}  {ran:>12.2}");
+    }
+    println!(
+        "\nLEITURA: com o `min(0)` estes numeros sao os do mundo de ANTES do\n\
+         piso (o piso e' zero a subir). Sem ele, o piso vira positivo e a\n\
+         absorcao passa a EMPURRAR para cima -- compare as duas corridas.\n"
+    );
+}
+
 /// A descida caminhada de 25°, com o `cling` escolhido: `(salto, andou)`.
 fn ramp_hop(cling: f32) -> (f32, f32) {
-    let theta = 25.0_f32.to_radians();
+    let (hop, ran, _) = ramp_run(25.0, cling);
+    (hop, ran)
+}
+
+/// A caminhada numa rampa: `(altura ganha, andou)`. Inclinação NEGATIVA sobe.
+fn ramp_walk(slope_deg: f32, cling: f32) -> (f32, f32) {
+    let (_, ran, rise) = ramp_run(slope_deg, cling);
+    (rise, ran)
+}
+
+/// `(salto perpendicular, andou, altura ganha)`.
+fn ramp_run(slope_deg: f32, cling: f32) -> (f32, f32, f32) {
+    let theta = slope_deg.to_radians();
     let mut sim = SimWorld::new();
     sim.world_mut().spawn((
         Name::new("Ramp"),
@@ -421,6 +497,7 @@ fn ramp_hop(cling: f32) -> (f32, f32) {
         },
         Transform::from_translation(Vec2::new(-15.0, 15.0 * theta.tan() + 1.0)),
     ));
+    let y_start_ref = 15.0 * theta.tan();
     e.insert(PlayerMode::Kinematic);
     let who = e.id();
     let mut bridge = PhysicsBridge::new();
@@ -432,12 +509,8 @@ fn ramp_hop(cling: f32) -> (f32, f32) {
         (t.translation.x * theta.sin() + t.translation.y * theta.cos()) - FLOOR_TOP
     };
     let settled = perp(&sim);
-    let x0 = sim
-        .world()
-        .get::<Transform>(who)
-        .expect("player")
-        .translation
-        .x;
+    let p0 = *sim.world().get::<Transform>(who).expect("player");
+    let (x0, y0) = (p0.translation.x, p0.translation.y);
     bridge.set_player_input(
         who,
         PlayerInput {
@@ -450,11 +523,11 @@ fn ramp_hop(cling: f32) -> (f32, f32) {
         bridge.dispatch(&mut sim, true, t);
         worst = worst.max(perp(&sim));
     }
-    let x1 = sim
-        .world()
-        .get::<Transform>(who)
-        .expect("player")
-        .translation
-        .x;
-    (worst - settled, x1 - x0)
+    let t1 = *sim.world().get::<Transform>(who).expect("player");
+    let _ = y_start_ref;
+    (
+        worst - settled,
+        t1.translation.x - x0,
+        t1.translation.y - y0,
+    )
 }

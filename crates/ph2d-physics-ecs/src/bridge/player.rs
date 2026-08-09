@@ -302,8 +302,33 @@ impl PhysicsBridge {
             // embaixo e não junto do `was`: **a ordem é a correção**. Com a
             // pergunta velha o tique do contato entrava na lei com a queda
             // inteira e saía deslocado ao longo da NORMAL da rampa.
+            // ⚠️ **O PISO da absorção (§8.1), e ele é uma pergunta DIFERENTE da
+            // de baixo — por isso mora aqui fora.**
+            //
+            // A absorção pergunta *"há chão AGORA?"* e a resposta é o `footing`
+            // fresco (o parágrafo acima). O piso pergunta *"ele JÁ vinha a
+            // andar no chão?"*, e essa é a do INTEGRADOR (`was.kin.grounded`,
+            // o tique anterior): num POUSO a referência é uma QUEDA, cuja
+            // projeção tangencial numa rampa é indistinguível de uma caminhada
+            // — medido, o personagem pousava 1,4 cm ao lado. Ver
+            // `surface_descent`.
+            //
+            // ⚠️ **Juntá-las num `if` só dentro do braço abaixo é o que faz o
+            // arch-gate vizinho disparar**, e ele está certo: o texto daquele
+            // ramo é o que prova que a absorção não usa a resposta velha.
+            let floor = if was.kin.grounded {
+                // A MESMA referência e a MESMA superfície que o integrador vai
+                // usar — é isso que faz as duas chamadas concordarem.
+                ph2d_platformer::surface_descent(
+                    was.kin.velocity,
+                    stand.map_or(UP, |s| s.normal),
+                    UP,
+                )
+            } else {
+                0.0
+            };
             let vel = if owner.writes_own_pose() {
-                ph2d_platformer::supported_velocity(was.kin.velocity, stand.is_some(), UP)
+                ph2d_platformer::supported_velocity(was.kin.velocity, stand.is_some(), UP, floor)
             } else {
                 solver_vel
             };

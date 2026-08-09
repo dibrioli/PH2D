@@ -963,7 +963,7 @@ Reservada de propósito: `autostep` afinado, `min_slope_slide_angle` exposto, ou
 
 ---
 
-## §8.1 — ABERTO: o personagem DESCE a rampa aos pulos (2026-08-09)
+## §8.1 — FECHADO: o personagem DESCE a rampa aos pulos (2026-08-09)
 
 ⚠️ **Achado por uma mutação que SOBREVIVEU.** Neutralizar o `snap_to_ground`
 passava em toda a suíte, e eu atribuí isso à falta de uma fixture com **descida
@@ -1006,10 +1006,55 @@ quando ela corre, as duas já estão somadas num `v` só. A cura de verdade é
 separá-las antes da soma — absorver só o que o motor **não** comandou —, e isso
 é desenho com cena própria, não uma linha.
 
-O número está pinado num gate VERDE
-(`the_descent_hop_is_still_there_and_this_is_its_number`, o precedente do
-Painter): ele não afirma que o produto está certo, ele impede o defeito de
-crescer em silêncio e obriga a cura a atualizá-lo.
+### A cura, no mesmo dia: um PISO para a absorção
+
+A saída não era escolher um dos dois eixos — era dar à absorção um **piso**, e
+a régua dele **não é o alvo da caminhada**, é geometria: *dada a velocidade
+tangencial que ele já tinha, que descida seguir esta superfície exige?*
+(`ph2d_platformer::surface_descent`, `along × (tangente · up)`, nunca positiva).
+
+| salto (m) | 1 m/s | 3 m/s | 6 m/s |
+|---|---|---|---|
+| 10° | 0,0170 → **0,0029** | 0,0329 → **0,0043** | 0,0806 → **0,0043** |
+| 25° | 0,0412 → **0,0064** | 0,1459 → **0,0096** | 0,5652 → **0,0096** |
+| 40° | 0,0654 → **0,0082** | 0,4434 → **0,0123** | 1,3258 → **0,0188** |
+
+⚠️ **`normal == up` reduz LITERALMENTE à lei anterior** (a tangente é
+perpendicular a `up`, o piso é zero) ⇒ **chão plano e SUBIDA são
+byte-idênticos**, e é essa a rede de segurança da mudança.
+
+⚠️ **Duas descobertas, cada uma nascida de um gate VERMELHO** — e as duas são a
+mesma lição, *a régua não pode ser derivada do número que ela vai corrigir*:
+
+1. **A referência é a velocidade que ele JÁ TINHA**, não o `v` do tique. Com o
+   `v`, a componente tangencial da **própria gravidade** alimentava o piso e o
+   `..._does_not_creep_up_a_ramp` voltava (**0,0299 m**).
+2. **O piso só vale para movimento CONTINUADO no chão.** Num POUSO a referência
+   é uma queda, e uma queda vertical sobre uma rampa **tem componente
+   tangencial**: o `..._landing_does_not_slide_along_the_ramp_normal` media
+   **0,01432 m**. O piso é gateado em `was.kin.grounded` — a pergunta do
+   INTEGRADOR, que é justamente a que o arch-gate vizinho PROÍBE para a
+   absorção; por isso as duas vivem em bindings separados, e há gate a exigir a
+   separação.
+
+⚠️ **E o `min(0)` do piso é CONSERVADORISMO, não correção** — a mutação que o
+remove sobreviveu, e o doc afirmava que sem ele o personagem *"seria lançado
+ladeira acima"*. Medido: ele **sobe 1,2-1,7% mais rápido**. O `min` existe para
+a subida ficar byte-idêntica; ligá-lo é decisão própria, com cena própria.
+
+⚠️ **Resíduo honesto de 1-2 cm**, da mesma ordem da folga do pé da §7.5 (1,0 a
+4,5 cm) — é o mesmo *"onde o último sweep o deixou"*, e um gate em `0,0000`
+pediria uma exatidão que o controlador do rapier não dá.
+
+⚠️ **E isto RE-ABRIU a §7.4:** o `snap_to_ground` deixou de ser inerte (o
+deslocamento do tique passou a ter componente para baixo, que é o que o rapier
+exige) ⇒ **o mínimo útil existe e está entre 0,08 e 0,10 m**, com o default de
+0,25 a dar 2,5× de margem. Gate `the_ground_snap_is_load_bearing_again`.
+
+⚠️ **O `physics_ecs_c9` NÃO se moveu com a cura** — nenhuma lane tinha um player
+cinemático numa rampa, ou seja o harness de determinismo era **cego à lei
+nova**. Lane acrescentada (`C9 Ramp`): 113 → **115 corpos**, hash
+`7bb90663…` (debug ≡ release), e a mutação do piso a move.
 
 ---
 

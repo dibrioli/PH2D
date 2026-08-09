@@ -122,21 +122,112 @@ pub struct KinematicState {
 /// [`KinematicState::grounded`]) — o que mudou foi QUANDO ela é feita, não quem
 /// a responde: a `footing` segue a porta única da lei sobre chão (K4), e este
 /// `grounded` segue vindo de quem tocou no mundo.
+/// # ⚠️ E ela absorve até um PISO, que é a descida que a superfície exige (§8.1)
+///
+/// A versão sem piso absorvia **toda** componente para baixo, e isso é certo
+/// parado e errado a descer: numa rampa, a parte vertical da caminhada é o que
+/// faz o personagem SEGUIR a superfície, e cancelá-la o deixa a andar na
+/// horizontal enquanto o chão foge por baixo. Medido, o salto chegava a
+/// **1,3258 m** a 40°/6 m/s, com o modo dinâmico em `0,0000` exato.
+///
+/// ⛔ **Trocar o EIXO pela normal foi tentado, medido e REVERTIDO** — o
+/// personagem parado passava a derivar 0,7297 m e nunca assentava; o `up` está
+/// aqui de propósito (é o `floor_stop_on_slope` do Godot). As duas metades
+/// pedem coisas opostas do mesmo eixo, e a saída não é escolher uma.
+///
+/// O piso separa-as **sem trocar o eixo**, e a régua não é o alvo da caminhada
+/// — é GEOMETRIA: *dada a minha velocidade TANGENCIAL, que descida seguir esta
+/// superfície exige?* (`along × (tangente · up)`, nunca positiva).
+///
+/// | situação | `along` | piso | efeito |
+/// |---|---|---|---|
+/// | parado numa rampa | 0 | 0 | absorve tudo — **não escorrega** |
+/// | a descer a 6 m/s | 6 | −2,54 | mantém exatamente o que a rampa pede |
+/// | a subir | −6 | 0 (o `min`) | inalterado |
+/// | a pousar parado | 0 | 0 | absorve tudo |
+///
+/// ⚠️ **O ponto fixo é estável, e é o que impede a rampa de virar um tobogã:** a
+/// gravidade empurra `into` abaixo do piso, a absorção o traz de volta AO piso
+/// (nunca acima), e o freio da caminhada devolve a tangencial ao alvo.
+///
+/// ⚠️ **`normal == up` reduz LITERALMENTE à lei anterior** — `perp_cw(up)` é
+/// perpendicular a `up`, logo `tangente · up` é zero, logo o piso é zero e a
+/// expressão é a de antes, termo a termo. É por isso que **chão plano e subida
+/// são byte-idênticos**, e é a rede de segurança desta mudança: quem não sabe a
+/// superfície passa `up` e recebe o mundo de ontem.
 #[must_use]
-pub fn supported_velocity(v: Vec2, grounded: bool, up: Vec2) -> Vec2 {
+pub fn supported_velocity(v: Vec2, grounded: bool, up: Vec2, floor: f32) -> Vec2 {
     if !grounded {
         return v;
     }
-    // ⚠️ **`into < 0.0`, e não `!(into >= 0.0)`** — a extração tinha de ser *pure
-    // code motion*, e as duas formas divergem em `NaN`: a primeira não absorve
-    // (o `NaN` passa intacto, como passava antes), a segunda propagaria o `NaN`
-    // para os dois eixos.
     let into = v[0] * up[0] + v[1] * up[1];
-    if into < 0.0 {
-        [v[0] - up[0] * into, v[1] - up[1] * into]
+    // ⚠️ **`into < floor`, e não `!(into >= floor)`** — as duas divergem em
+    // `NaN`: a primeira não absorve (o `NaN` passa intacto, como sempre passou),
+    // a segunda o propagaria para os dois eixos.
+    if into < floor {
+        let take = into - floor;
+        [v[0] - up[0] * take, v[1] - up[1] * take]
     } else {
         v
     }
+}
+
+/// **O piso da absorção: a descida que SEGUIR esta superfície exige** (§8.1) —
+/// a definição, com dois chamadores.
+///
+/// ⚠️ **A referência é a velocidade que o personagem JÁ TINHA, nunca a que está
+/// a ser corrigida**, e a diferença é a wave inteira. A 1ª versão media o
+/// `along` sobre o `v` do tique — que já leva a gravidade somada —, e **a
+/// gravidade tem componente TANGENCIAL numa rampa**: o piso lia o começo de um
+/// escorregão como *"ele está a caminhar para baixo"* e o autorizava. Medido, o
+/// personagem parado voltava a derivar **0,0299 m** (contra 0,0000 com a
+/// referência certa). *Uma régua derivada do número que ela vai corrigir mede a
+/// própria correção.*
+///
+/// A régua honesta é o estado de ENTRADA: o que ele possuía antes de este tique
+/// lhe somar nada.
+///
+/// ⚠️ **Nunca positiva** (o `min`) — e a razão é CONSERVADORISMO, não correção.
+///
+/// Eu tinha escrito aqui que sem o `min` *"o personagem seria lançado ladeira
+/// acima"*, e a **mutação que o remove SOBREVIVEU à suíte**. Medido então em
+/// vez de argumentado (`measure_what_the_floors_min_does_to_a_climb`), a subida
+/// caminhada em 4 s:
+///
+/// ```text
+///   rampa      com o min      sem o min
+///     10°         4.1118         4.1629   (+1,2%)
+///     25°         9.9453        10.0732   (+1,3%)
+///     40°        15.0329        15.2959   (+1,7%)
+/// ```
+///
+/// Sem o `min` o piso fica POSITIVO a subir e a absorção **assiste a subida**
+/// em vez de a lançar. É pequeno, é plausível, e **ninguém o mediu antes de
+/// pedir** — o `min` existe para a metade *subida* ficar **byte-idêntica** ao
+/// mundo de antes do piso, que é a promessa desta wave. Ligá-lo é uma decisão
+/// própria, com cena própria. Gate: `the_floor_never_lifts_and_a_climb_is_untouched`.
+///
+/// ⚠️ **Superfície plana (ou `normal == up`) devolve ZERO exatamente** —
+/// `perp_cw` é perpendicular a `up`, então o produto é zero — e é isso que faz
+/// o chão plano e a subida serem **byte-idênticos** ao mundo de antes do piso.
+///
+/// # ⚠️ Só vale para movimento CONTINUADO no chão — num POUSO o piso é zero
+///
+/// A referência de quem acaba de aterrar é uma QUEDA, e uma queda vertical sobre
+/// uma rampa **tem componente tangencial** (`v · perp_cw(n) = v·sen θ`): esta
+/// função não a distingue de uma caminhada, e autorizá-la faz o personagem
+/// pousar deslizando. Medido nesta fixture, largado na vertical sobre uma rampa:
+/// **+0,01432 m** ao lado, contra `0,00000` com o piso gateado na continuidade.
+///
+/// ⇒ **quem chama gateia em *"ele já estava no chão no tique anterior?"***. É a
+/// mesma pergunta do integrador (`KinematicState::grounded`, *"eu TOQUEI no
+/// mundo?"*, respondida pelo tique passado), e não a do `footing` — as duas
+/// parecem a mesma e é justamente no tique do CONTATO que elas discordam.
+#[must_use]
+pub fn surface_descent(reference: Vec2, normal: Vec2, up: Vec2) -> f32 {
+    let t = crate::perp_cw(normal);
+    let along = reference[0] * t[0] + reference[1] * t[1];
+    (along * (t[0] * up[0] + t[1] * up[1])).min(0.0)
 }
 
 #[must_use]
@@ -157,7 +248,15 @@ pub fn kinematic_advance(
     // Ver [`supported_velocity`]: a pergunta do INTEGRADOR, não a da lei — e a
     // MESMA porta que a ponte usa para não entregar à lei uma queda que este
     // passo vai apagar.
-    let v = supported_velocity(v, state.grounded, up);
+    //
+    // ⚠️ **A superfície entra por aqui** (§8.1): sem ela a absorção cancela a
+    // descida que a caminhada comandou e o personagem desce a rampa aos pulos.
+    // Sem chão o piso é zero — `up` é o neutro exprimível.
+    //
+    // ⚠️ **A referência é `state.velocity`, o que ele tinha ANTES deste tique**,
+    // e não o `v` de duas linhas acima: ver o aviso do [`surface_descent`].
+    let floor = surface_descent(state.velocity, footing.map_or(up, |s| s.normal), up);
+    let v = supported_velocity(v, state.grounded, up, floor);
 
     let wanted = [(v[0] + carry[0]) * dt, (v[1] + carry[1]) * dt];
     (

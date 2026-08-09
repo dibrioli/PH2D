@@ -149,4 +149,19 @@ fn the_law_is_handed_the_velocity_the_ground_already_holds() {
         "e NUNCA com o `grounded` do integrador, que no tique do contato ainda \
          diz `no ar`. Trecho:\n{arm}"
     );
+    // ⚠️ **E o PISO da §8.1 é a OUTRA pergunta, resolvida ANTES do braço.**
+    //
+    // Ele pergunta *"ele já vinha a andar no chão?"* e a resposta certa é
+    // justamente a do integrador — a que a asserção acima proíbe para a
+    // absorção. As duas moram em bindings separados de propósito: escritas num
+    // `if` só dentro do braço, a asserção acima dispara (e disparou), porque o
+    // texto daquele ramo é o que prova que a absorção não usa a resposta velha.
+    let floor = src
+        .find("let floor = if was.kin.grounded")
+        .expect("o piso da §8.1 tem de ser resolvido por um binding proprio");
+    assert!(
+        stand < floor && floor < bind,
+        "o piso nasce DEPOIS do chao fresco (precisa da normal) e ANTES da \
+         absorcao que o consome"
+    );
 }

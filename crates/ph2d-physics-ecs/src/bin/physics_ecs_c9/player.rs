@@ -352,4 +352,56 @@ pub fn spawn(sim: &mut SimWorld) {
         },
         Transform::from_translation(Vec2::new(CORNER_X, 1.3)),
     ));
+
+    // ── A RAMPA A DESCER (§8.1) ─────────────────────────────────────────────
+    //
+    // ⚠️ **Esta lane existe porque o hash NÃO se moveu quando a lei mudou.** O
+    // piso da absorção (`surface_descent`) só é diferente de zero numa
+    // superfície INCLINADA, e nenhuma lane do c9 tinha uma sob um player
+    // cinemático — o harness de determinismo era **cego à lei nova**, e um
+    // harness cego não prova nada sobre ela.
+    //
+    // ⚠️ A rampa é ESTÁTICA e o personagem CAMINHA (a fita dá `drive`): o piso
+    // é função da velocidade tangencial, então um personagem parado o deixaria
+    // em zero e a lane voltaria a não medir nada.
+    const RAMP_X: f32 = 240.0;
+    let slope = -20.0_f32.to_radians();
+    sim.world_mut().spawn((
+        Name::new("C9 Ramp"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 14.0,
+                half_y: 0.25,
+            },
+            ..Collider::default()
+        },
+        Transform {
+            rotation: slope,
+            ..Transform::from_translation(Vec2::new(RAMP_X, 0.0))
+        },
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Ramp Player"),
+        RigidBody {
+            kind: BodyKind::Kinematic,
+        },
+        Collider {
+            shape: ColliderShape::Capsule {
+                half_height: 0.3,
+                radius: 0.2,
+            },
+            ..Collider::default()
+        },
+        LockRotation,
+        ph2d_physics_ecs::PlayerMode::Kinematic,
+        PlatformPlayer {
+            float_height: 0.9,
+            ..PlatformPlayer::default()
+        },
+        // Acima da face da rampa naquele x, com folga para assentar.
+        Transform::from_translation(Vec2::new(RAMP_X - 6.0, 6.0 * slope.abs().tan() + 1.1)),
+    ));
 }

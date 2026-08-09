@@ -45,7 +45,7 @@
 //! aparência no modo que o módulo recomenda, e a §6 do plano diz que quem
 //! decide isso é uma cena. O que fica é o número e um gate de LIMITE.
 //!
-//! # ⚠️ E a caçada achou um SEGUNDO defeito, maior — que fica ABERTO
+//! # ⚠️ E a caçada achou um SEGUNDO defeito, maior — CURADO no mesmo dia
 //!
 //! A mutação `snap_to_ground: None` sobrevivia a toda a suíte, e eu atribuí
 //! isso a *"nenhuma fixture continha uma descida caminhada"*. ⚠️ **A atribuição
@@ -85,9 +85,28 @@
 //! deriva da GRAVIDADE da descida COMANDADA pela caminhada, porque quando ela
 //! corre as duas já estão somadas num `v` só.
 //!
-//! ⇒ A cura de verdade é separar as duas antes da soma (absorver só o que o
-//! motor **não** comandou), e isso é desenho, não uma linha. Fica ABERTO, com
-//! o número ao lado e o gate que o pina abaixo.
+//! ⇒ **A cura FECHOU no mesmo dia, e a saída não era escolher um dos dois
+//! eixos — era dar um PISO à absorção**, medido em geometria e não no alvo da
+//! caminhada: *dada a velocidade tangencial que ele já tinha, que descida
+//! seguir esta superfície exige?* Ver `ph2d_platformer::surface_descent`.
+//!
+//! ```text
+//!           1 m/s            3 m/s            6 m/s
+//!   10°   0.0170 -> 0.0029  0.0329 -> 0.0043  0.0806 -> 0.0043
+//!   25°   0.0412 -> 0.0064  0.1459 -> 0.0096  0.5652 -> 0.0096
+//!   40°   0.0654 -> 0.0082  0.4434 -> 0.0123  1.3258 -> 0.0188
+//! ```
+//!
+//! ⚠️ **As duas metades exigiram DUAS descobertas, e cada uma nasceu de um
+//! gate vermelho:** a régua tem de ser a velocidade que ele **já tinha** (com a
+//! do tique, a componente tangencial da PRÓPRIA GRAVIDADE alimentava o piso e o
+//! `..._does_not_creep_up_a_ramp` voltava, 0,0299 m); e o piso só vale para
+//! movimento **CONTINUADO** no chão (num pouso a referência é uma queda, cuja
+//! projeção tangencial é indistinguível de uma caminhada — o
+//! `..._landing_does_not_slide_along_the_ramp_normal` media 0,01432 m).
+//!
+//! O gate que pinava o defeito virou o gate que pina a cura
+//! (`the_descent_follows_the_surface`), que é o que ele existia para forçar.
 //!
 //! Rodar: `cargo test -p ph2d-physics-ecs --release --test measure_foot_gap
 //! -- --ignored --nocapture`
@@ -426,36 +445,57 @@ fn measure_whether_he_hops_down_a_ramp() {
     );
 }
 
-/// **O SALTO DA DESCIDA AINDA ESTÁ LÁ, E ESTE É O NÚMERO DELE.**
+/// **A DESCIDA SEGUE A SUPERFÍCIE** — a §8.1, fechada em 2026-08-09.
 ///
-/// ⚠️ **Um gate VERDE sobre um defeito, de propósito** — o precedente é o
-/// `the_documented_hardening_is_still_there_and_this_is_its_number` do Painter.
-/// Ele não afirma que o produto está certo; ele **pina o defeito** para que a
-/// cura tenha de o atualizar deliberadamente, e para que ele não CRESÇA em
-/// silêncio enquanto ninguém olha.
+/// ⚠️ **Este gate era o PINO de um defeito e virou o pino da cura**, e a
+/// substituição é o que o pino existia para forçar: ele afirmava
+/// `hop ∈ 0,4..0,8` com a nota *"se DIMINUIU, alguém curou o defeito e este
+/// gate tem de ser reescrito"*, e foi exatamente isso que aconteceu.
 ///
-/// O controle é o modo dinâmico, que é `0,0000` — sem ele o número não
-/// distingue *"o cinemático salta"* de *"a sonda mede mal"*.
+/// Medido antes e depois, salto em metros:
+///
+/// ```text
+///           1 m/s            3 m/s            6 m/s
+///   10°   0.0170 -> 0.0029  0.0329 -> 0.0043  0.0806 -> 0.0043
+///   25°   0.0412 -> 0.0064  0.1459 -> 0.0096  0.5652 -> 0.0096
+///   40°   0.0654 -> 0.0082  0.4434 -> 0.0123  1.3258 -> 0.0188
+/// ```
+///
+/// ⚠️ **O resíduo de 1-2 cm NÃO é zero, e o teto o diz** — ele é da mesma ordem
+/// da folga do pé que este arquivo mede na §7.5 (1,0 a 4,5 cm, conforme a
+/// aproximação), ou seja o mesmo *"onde o último sweep o deixou"*. Um gate em
+/// `0,0000` estaria a pedir uma exatidão que o controlador do rapier não dá.
+///
+/// ⚠️ **E o CONTROLE dinâmico continua sendo a metade que dá sentido ao
+/// número**: sem ele, `0,0096` não distingue *o cinemático segue a superfície*
+/// de *a sonda parou de medir*.
 #[test]
-fn the_descent_hop_is_still_there_and_this_is_its_number() {
-    // 25°, 6 m/s: o caso do meio da varredura.
-    let (_, _, travelled) = walk_down(true, 25.0, 6.0);
-    let (rest_k, worst_k, _) = walk_down(true, 25.0, 6.0);
-    let (rest_d, worst_d, _) = walk_down(false, 25.0, 6.0);
-    assert!(
-        travelled > 10.0,
-        "a fixture tem de CONTER a descida: andou {travelled:.2} m"
-    );
-    assert!(
-        (worst_d - rest_d).abs() < 1.0e-3,
-        "o CONTROLE tem de seguir a superficie: o dinamico saltou {:.4} m",
-        worst_d - rest_d
-    );
-    let hop = worst_k - rest_k;
-    assert!(
-        (0.4..0.8).contains(&hop),
-        "o salto do cinematico a 25°/6 m/s era 0,565 m e mediu {hop:.4} — se \
-         DIMINUIU, alguem curou o defeito e este gate tem de ser reescrito; se \
-         cresceu, uma wave o piorou"
-    );
+fn the_descent_follows_the_surface() {
+    // O teto: 3 cm, contra o pior medido de 1,88 cm — 1,6x de distância, e uma
+    // ordem de grandeza abaixo do 0,5652 que esta linha media antes da cura.
+    const CEILING: f32 = 0.03;
+    for (slope, speed) in [(10.0_f32, 6.0_f32), (25.0, 6.0), (40.0, 6.0), (40.0, 3.0)] {
+        let (rest_k, worst_k, travelled) = walk_down(true, slope, speed);
+        let (rest_d, worst_d, _) = walk_down(false, slope, speed);
+        // ⚠️ **A barra é 8 m e não 10, e a diferença é geometria:** o que se mede
+        // é o deslocamento HORIZONTAL, e o caso lento-e-íngreme (40°/3 m/s) anda
+        // `12 · cos 40° = 9,2`. Os 10 que este gate herdou vinham de quando ele
+        // media UMA célula (25°/6) e reprovavam a varredura por trigonometria.
+        assert!(
+            travelled > 8.0,
+            "a fixture tem de CONTER a descida a {slope}°/{speed}: andou \
+             {travelled:.2} m"
+        );
+        assert!(
+            (worst_d - rest_d).abs() < 1.0e-3,
+            "o CONTROLE tem de seguir a superficie: o dinamico saltou {:.4} m",
+            worst_d - rest_d
+        );
+        let hop = worst_k - rest_k;
+        assert!(
+            hop < CEILING,
+            "a {slope}°/{speed} m/s ele saltou {hop:.4} m da superficie — a §8.1 \
+             foi curada e media 0,0043 a 0,0188; isto e' uma regressao"
+        );
+    }
 }

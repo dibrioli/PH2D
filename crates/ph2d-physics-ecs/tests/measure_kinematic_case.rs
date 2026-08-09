@@ -202,6 +202,16 @@ fn measure_what_the_raft_feels_in_both_modes() {
         (true, None),
         (false, Some(1.0_f32)),
         (true, Some(1.0_f32)),
+        // ⚠️ **5 kg está FORA do regime físico desta fixture, e a linha fica
+        // para dizer isso.** A jangada não tem peso próprio, então `5·9,81/3 =
+        // 16,35 m/s²` — ela foge para baixo MAIS RÁPIDO que a gravidade, e um
+        // personagem não consegue continuar em cima de um chão nessas
+        // condições: o cinemático separa-se dela (70%), que é o correto, e é o
+        // DINÂMICO que segue a empurrar (1367%) porque a mola dele está
+        // ancorada na própria inércia. Quem quiser subir este número tem de
+        // subir a massa da jangada junto.
+        (false, Some(5.0_f32)),
+        (true, Some(5.0_f32)),
     ] {
         let mut sim = SimWorld::new();
         let raft = sim

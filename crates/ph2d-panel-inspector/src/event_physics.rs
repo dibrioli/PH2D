@@ -50,10 +50,12 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             ids::INSP_PHYS_OFFSET_X => Some(PhysicsFieldEdit::OffsetX(v)),
             ids::INSP_PHYS_OFFSET_Y => Some(PhysicsFieldEdit::OffsetY(v)),
             ids::INSP_PHYS_DENSITY => Some(PhysicsFieldEdit::Density(v)),
-            // The explicit Mass row (Manual mode) — Dynamic-only, the same gate the
-            // painter offers it under. The row is only painted in Manual mode, so
-            // this cannot fire otherwise, but a refusal in the paint loop is not one.
-            ids::INSP_PHYS_MASS if info.kind_tag == 0 => Some(PhysicsFieldEdit::Mass(v)),
+            // The explicit Mass row (Manual mode) — gated on `mass_is_read`, the
+            // SAME question the painter asks (a kinematic player's mass is read by
+            // the 3rd law; see `InspectorPhysicsInfo::mass_is_read`). The row is
+            // only painted in Manual mode, so this cannot fire otherwise, but a
+            // refusal in the paint loop is not one.
+            ids::INSP_PHYS_MASS if info.mass_is_read => Some(PhysicsFieldEdit::Mass(v)),
             ids::INSP_PHYS_RESTITUTION => Some(PhysicsFieldEdit::Restitution(v)),
             ids::INSP_PHYS_FRICTION => Some(PhysicsFieldEdit::Friction(v)),
             // Honoured only for a Dynamic body — the same gate the painter
@@ -214,9 +216,13 @@ fn click_edit(
         // Freeze Position Y — the vertical sibling, same gate.
         (info.has_body && info.kind_tag == 0).then_some(PhysicsFieldEdit::LockPositionY(i == 1))
     } else if let Some(i) = ids::INSP_PHYS_MASSMODE.iter().position(|&o| o == id) {
-        // Mass source: `0` Auto, `1` Manual. Dynamic-only, the same gate the
-        // painter offers it under (a Static/Kinematic body has infinite mass).
-        (info.has_body && info.kind_tag == 0).then_some(PhysicsFieldEdit::MassMode(i == 1))
+        // Mass source: `0` Auto, `1` Manual. ⚠️ **`mass_is_read`, a MESMA porta
+        // que o pintor consulta** — e não `kind_tag == 0`, que era a pergunta de
+        // quando Dynamic e *"alguém lê a massa"* coincidiam. Hoje um player
+        // cinemático tem a massa lida pela 3ª lei, e as duas metades TÊM de
+        // concordar: gateá-las em perguntas diferentes é o toggle pintado,
+        // registrado e morto sob o mouse.
+        (info.has_body && info.mass_is_read).then_some(PhysicsFieldEdit::MassMode(i == 1))
     } else if let Some(i) = ids::INSP_PHYS_REST_COMBINE.iter().position(|&o| o == id) {
         // Restitution combine (W-Material): four segments Average/Min/Multiply/Max.
         // Gated on `has_body` like its siblings — but NOT Dynamic-only: it is a

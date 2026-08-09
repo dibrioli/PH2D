@@ -207,8 +207,30 @@ pub struct InspectorPhysicsInfo {
     /// [`mass`](InspectorPhysicsInfo::mass) kg, and the section shows the Mass row).
     /// Mirrors the PRESENCE of the optional `MassOverride` component. Density and
     /// mass are the same quantity by two roads, so exactly one is ever live.
-    /// Dynamic-only — a Static/Kinematic body has infinite mass.
+    /// Offered where the mass is READ — see
+    /// [`mass_is_read`](InspectorPhysicsInfo::mass_is_read).
     pub mass_manual: bool,
+    /// **Alguma coisa LÊ a massa deste corpo?** — a pergunta que decide se a
+    /// seção oferece o par *Auto | Manual*, e ela não é *"o corpo é Dynamic?"*.
+    ///
+    /// ⚠️ Ela era, e a premissa envelheceu. O `paint_mass_source` gateava em
+    /// `kind == Dynamic` com a razão escrita ao lado — *"a Static/Kinematic body
+    /// has infinite mass (rapier ignores both)"* — e isso continua verdade para
+    /// o SOLVER e deixou de ser verdade para o **player cinemático**: a 3ª lei
+    /// (K6) transmite o peso dele ao chão pela `apply_ground_reaction`, que
+    /// multiplica a aceleração pela massa do PLAYER. Medido na jangada, um
+    /// player Snap pressiona com **100,0% de `m·g`**, exactamente como o
+    /// dinâmico, e o `MassOverride` escala os dois de forma idêntica
+    /// (`measure_kinematic_case::measure_what_the_raft_feels_in_both_modes`).
+    ///
+    /// Sem isto o artista de um player cinemático só alcança o peso pela
+    /// **Densidade** — e o argumento inteiro da W-Mass é que *o artista pensa em
+    /// massa, não em densidade*.
+    ///
+    /// ⚠️ **Não é `kind == Kinematic`**, é *kinematic **E** player*: numa
+    /// plataforma cinemática comum nada lê a massa, e a row seria o controle
+    /// morto que a regra do módulo proíbe.
+    pub mass_is_read: bool,
     /// The explicit mass in kg, shown in the Mass row when
     /// [`mass_manual`](InspectorPhysicsInfo::mass_manual) is `true` (the
     /// `MassOverride` component's value). Meaningless in Auto mode, where Density is

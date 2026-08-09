@@ -79,6 +79,8 @@ fn with_body() -> InspectorPhysicsInfo {
         lock_x: false,
         lock_y: false,
         mass_manual: false,
+        // O `with_body()` e' DINAMICO, e a massa de um dinamico e' lida.
+        mass_is_read: true,
         mass: 1.0,
         dominance: 0,
         restitution_combine_tag: 0,
@@ -962,7 +964,7 @@ fn lock_rotation_is_offered_and_committed_only_for_a_dynamic_body() {
 /// (presence AND absence — an absence gate alone stays green with nothing painted);
 /// and that the Mass commit reaches the bus.
 #[test]
-fn mass_source_toggle_swaps_density_for_mass_and_is_dynamic_only() {
+fn mass_source_toggle_swaps_density_for_mass_and_follows_who_reads_it() {
     use ph2d_editor_core::zones::Rect;
     use ph2d_ui_testkit::MockPanelHost as Host;
 
@@ -1003,28 +1005,48 @@ fn mass_source_toggle_swaps_density_for_mass_and_is_dynamic_only() {
         "Dynamic Manual should paint the Mass toggle + Mass row, not Density (the two \
          are one quantity, so exactly one is live)"
     );
-    // Static: no toggle, plain Density (unchanged from before this existed).
+    // ⚠️ **A pergunta que este painel faz é `mass_is_read`, NÃO `kind_tag`** — e a
+    // 1ª versão deste gate fazia a segunda. Enquanto as duas coincidiam ele
+    // estava certo por acidente; hoje um **player cinemático** tem a massa lida
+    // (a 3ª lei a transmite ao chão, medido em 100,0% de `m·g`) e um Static não,
+    // então a fixture tem de declarar as DUAS metades. Quem resolve a pergunta é
+    // a shell, uma vez — este painel não sabe o que é um player.
+    // Massa que ninguém lê (um Static, ou uma plataforma cinemática comum):
+    // sem toggle, Density simples, exactamente como antes disto existir.
     assert_eq!(
         painted(InspectorPhysicsInfo {
             kind_tag: 1,
+            mass_is_read: false,
             ..with_body()
         }),
         (false, true, false),
-        "a Static body should keep the plain Density row and NOT offer the Mass toggle"
+        "a body whose mass nothing reads should keep the plain Density row"
+    );
+    // ⚠️ **O PLAYER CINEMÁTICO** — `kind_tag` 2 e a massa LIDA: o toggle aparece.
+    // É esta linha que separa *"o corpo é dinâmico?"* de *"alguém lê a massa?"*.
+    assert_eq!(
+        painted(InspectorPhysicsInfo {
+            kind_tag: 2,
+            mass_is_read: true,
+            ..with_body()
+        }),
+        (true, true, false),
+        "a KINEMATIC player has its mass read by the 3rd law, so the toggle is offered"
     );
 
-    // The toggle is honoured only for a Dynamic body.
-    for (tag, offered) in [(0u8, true), (1, false), (2, false)] {
+    // O handler concorda com o pintor — nos dois lados da pergunta.
+    for read in [true, false] {
         let info = InspectorPhysicsInfo {
-            kind_tag: tag,
+            kind_tag: 2,
+            mass_is_read: read,
             ..with_body()
         };
         for &id in ids::INSP_PHYS_MASSMODE.iter() {
             assert_eq!(
                 !click(info.clone(), id).is_empty(),
-                offered,
-                "kind_tag={tag}: the event handler disagrees with the painter about \
-                 whether the Mass toggle is offered"
+                read,
+                "mass_is_read={read}: the event handler disagrees with the painter \
+                 about whether the Mass toggle is offered"
             );
         }
     }

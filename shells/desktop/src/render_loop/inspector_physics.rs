@@ -193,6 +193,7 @@ pub(crate) fn build_physics_info(
             lock_x: false,
             lock_y: false,
             mass_manual: false,
+            mass_is_read: false,
             mass: 1.0,
             dominance: 0,
             restitution_combine_tag: 0,
@@ -293,6 +294,16 @@ pub(crate) fn build_physics_info(
         // Manual mode = the override is present; its value is shown in the Mass row.
         // In Auto mode the Mass row is not shown, so its value is unused (0.0).
         mass_manual: mass_ov.is_some(),
+        // ⚠️ **Dynamic OU player cinemático** — ver `mass_is_read`. A 3ª lei
+        // transmite o peso de um player Snap ao chão pela massa do corpo, então
+        // ali ela deixou de ser o número que o rapier ignora.
+        mass_is_read: rb.is_some_and(|b| {
+            b.kind == ph2d_physics_ecs::BodyKind::Dynamic
+                || (b.kind == ph2d_physics_ecs::BodyKind::Kinematic
+                    && world
+                        .get::<ph2d_physics_ecs::PlatformPlayer>(entity)
+                        .is_some())
+        }),
         mass: mass_ov.unwrap_or(0.0),
         dominance,
         restitution_combine_tag: material.restitution.tag(),

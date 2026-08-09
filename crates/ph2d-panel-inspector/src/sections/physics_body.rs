@@ -167,7 +167,7 @@ pub(super) fn paint_body_face(
         x,
         w,
         yy,
-        info.kind_tag == KIND_DYNAMIC,
+        info.mass_is_read,
         info.mass_manual,
     );
 

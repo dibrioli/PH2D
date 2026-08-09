@@ -346,3 +346,110 @@ fn adding_a_body_to_a_plain_sprite_still_seeds_a_collider_from_it() {
         col.shape
     );
 }
+
+/// **O PESO DE UM PLAYER CINEMÁTICO É AUTORÁVEL PELA §11, e ele CHEGA ao chão.**
+///
+/// A 4ª condição da política do módulo — *a sequência leva a algum lugar* — para o
+/// par de controles que a `W-KinWeight` destravou. Um teste por-edit diria que o
+/// `MassMode` e o `Mass` escrevem os componentes certos e ficaria verde com a row
+/// **nunca oferecida**, que era o mundo até agora: o `paint_mass_source` gateava em
+/// `kind == Dynamic` com a razão *"a Static/Kinematic body has infinite mass"* — uma
+/// premissa que envelheceu, porque a 3ª lei (K6) transmite o peso de um player Snap
+/// ao chão pela massa DELE.
+///
+/// ⚠️ **O oráculo é a CENA, nunca o componente:** uma jangada sem peso próprio
+/// (`GravityScale(0)`, então todo milímetro é do personagem) tem de afundar MAIS
+/// quando o artista autora uma massa maior. Medido pela sonda irmã
+/// (`ph2d-physics-ecs/tests/measure_kinematic_case.rs`), um player Snap pressiona
+/// com 100,0% de `m·g`, exactamente como o dinâmico.
+#[test]
+fn authoring_the_mass_of_a_kinematic_player_reaches_the_ground() {
+    /// Quanto a jangada acelera com o player em cima, com e sem massa autorada.
+    fn raft_accel(authored: Option<f32>) -> f32 {
+        let mut sim = SimWorld::new();
+        let raft = sim
+            .world_mut()
+            .spawn((
+                Transform::from_translation(Vec2::new(0.0, 0.0)),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 3.0,
+                        half_y: 0.25,
+                    },
+                    ..Collider::default()
+                },
+                ph2d_physics_ecs::GravityScale(0.0),
+            ))
+            .id();
+        let who = sim
+            .world_mut()
+            .spawn((
+                Transform::from_translation(Vec2::new(0.0, 0.75)),
+                RigidBody {
+                    kind: BodyKind::Kinematic,
+                },
+                Collider {
+                    shape: ColliderShape::Capsule {
+                        half_height: 0.3,
+                        radius: 0.2,
+                    },
+                    ..Collider::default()
+                },
+                ph2d_physics_ecs::LockRotation,
+                ph2d_physics_ecs::PlatformPlayer::default(),
+                ph2d_physics_ecs::PlayerMode::Kinematic,
+            ))
+            .id();
+
+        // ⚠️ **Pela §11, não pelo ECS** — é o gesto que está sob teste. E o
+        // snapshot tem de OFERECER o par antes: sem `mass_is_read` o painel nem
+        // pinta a row, e o edit abaixo seria um clique que o artista não pode dar.
+        assert!(
+            snapshot(&sim, who).mass_is_read,
+            "a §11 tem de oferecer a massa a um player CINEMATICO — e' o chao que a le'"
+        );
+        if let Some(kg) = authored {
+            apply(&mut sim, who, PhysicsFieldEdit::MassMode(true));
+            apply(&mut sim, who, PhysicsFieldEdit::Mass(kg));
+        }
+
+        let mut bridge = PhysicsBridge::new();
+        let y = |s: &SimWorld| s.world().get::<Transform>(raft).unwrap().translation.y;
+        for tick in 1..=60u64 {
+            bridge.dispatch(&mut sim, true, tick);
+        }
+        // ⚠️ A ACELERAÇÃO por segunda diferença, e não o deslocamento: depois do
+        // assentamento a jangada já tem velocidade (nada a segura), e um oráculo
+        // de posição mediria `v₀·t` junto.
+        let y0 = y(&sim);
+        for tick in 61..=120u64 {
+            bridge.dispatch(&mut sim, true, tick);
+        }
+        let y1 = y(&sim);
+        for tick in 121..=180u64 {
+            bridge.dispatch(&mut sim, true, tick);
+        }
+        y1.mul_add(-2.0, y(&sim)) + y0
+    }
+
+    let auto = raft_accel(None);
+    // ⚠️ **1 kg, e o TETO desta fixture é a massa da jangada (3 kg).** Ela não
+    // tem peso próprio de propósito — todo milímetro é do personagem —, então
+    // uma massa autorada acima dela faz a jangada fugir para baixo mais rápido
+    // que a gravidade, e aí o personagem separa-se dela (correctamente) em vez
+    // de a afundar mais. Medido: 5 kg dão `16,35 m/s²` e o número COLAPSA.
+    let heavy = raft_accel(Some(1.0));
+    assert!(
+        auto < -0.1,
+        "a jangada tem de sentir o player cinematico ja' na massa automatica \
+         (acel {auto:+.4}); zero aqui e' a 3a lei a nao atravessar o modo"
+    );
+    assert!(
+        heavy < auto * 2.0,
+        "autorar 1 kg tem de afundar a jangada MUITO mais que a massa automatica \
+         (~0,37 kg): auto {auto:+.4} contra autorada {heavy:+.4}"
+    );
+}

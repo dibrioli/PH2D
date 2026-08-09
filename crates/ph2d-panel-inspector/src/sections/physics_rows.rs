@@ -2,7 +2,7 @@
 //! panel's 600-LOC file cap (W-Mass pushed it over).
 //!
 //! These are pure "which rows does this body show" helpers; the section painter in
-//! `physics.rs` calls them. They take resolved booleans (`is_dynamic`, `mass_manual`)
+//! `physics.rs` calls them. They take resolved booleans (`mass_is_read`, `mass_manual`)
 //! rather than the whole `InspectorPhysicsInfo`, so this file shares no private
 //! consts with `physics.rs` — the two only meet at the call site.
 
@@ -158,10 +158,16 @@ pub(super) fn paint_material_rows(
 ///
 /// Density and mass are the same quantity by two roads (`mass = density × area`), so
 /// exactly one is ever live — showing both would be the "two doors to one quantity"
-/// bug. The toggle is Dynamic-only because a Static/Kinematic body has infinite mass
-/// (rapier ignores both); those keep the plain Density row, unchanged from before
-/// this existed. `is_dynamic`/`mass_manual` are resolved by the caller so this file
-/// needs none of `physics.rs`'s private tag consts.
+/// bug.
+///
+/// ⚠️ **The toggle is offered where the mass is READ, which is no longer the same as
+/// "the body is Dynamic".** This doc used to say *Dynamic-only because a
+/// Static/Kinematic body has infinite mass (rapier ignores both)* — still true of the
+/// SOLVER, and false of the **kinematic player**, whose weight reaches the ground
+/// through the 3rd law (K6): measured, a Snap player presses with **100.0% of `m·g`**,
+/// exactly like the dynamic one. The caller resolves the question once
+/// (`InspectorPhysicsInfo::mass_is_read`); bodies whose mass nothing reads keep the
+/// plain Density row, unchanged from before this existed.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn paint_mass_source(
     scene: &mut VectorScene,
@@ -172,11 +178,11 @@ pub(super) fn paint_mass_source(
     x: f32,
     w: f32,
     y: f32,
-    is_dynamic: bool,
+    mass_is_read: bool,
     mass_manual: bool,
 ) -> f32 {
     let mut yy = y;
-    if is_dynamic {
+    if mass_is_read {
         yy = seg_row(
             scene,
             text_system,

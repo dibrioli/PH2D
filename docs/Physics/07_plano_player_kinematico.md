@@ -953,7 +953,7 @@ Reservada de propósito: `autostep` afinado, `min_slope_slide_angle` exposto, ou
 | # | número | como se mede |
 |---|---|---|
 | 1 | **custo de um `move_shape`** por player por tique, contra o cast+solver de hoje | ✅ **MEDIDO 2026-08-09** (`measure_player_budget`): **+0,34 µs/player, +37%** sobre o dinâmico, linear em N (µs/player plano de 10 a 200) ⇒ **~1200 personagens cinemáticos** cabem nos 1,5 ms do HR-4 (contra ~1648 dinâmicos) nesta máquina. **O orçamento não é o teto deste modo.** Gate de FORMA `the_cost_of_a_player_is_linear_in_their_number` |
-| 2 | **deriva de rampa** nos dois modos, varrendo `θ` | a fixture do gate 1, a mesma varredura que produziu a lei do `ride.rs` |
+| 2 | **deriva de rampa** nos dois modos, varrendo `θ` | ✅ **MEDIDO 2026-08-09** (`measure_ramp_drift_modes`) — **a deriva cinemática é `0,0000` em TODA rampa** (10° a 45°, e também em 60 s), contra a dinâmica que CRESCE (0,0197 → 0,0575 de 10° a 45° a ¼ do teto, e `0,0000` no default, que está no teto). *Sob Snap não há mola a integrar* ⇒ a lei cinemática **não tem termo em θ**. ⚠️ **E a varredura derrubou DUAS coisas:** a lei publicada do `ride.rs` (`0,153·sen θ·(1−d)`) **satura acima de ~20°** — acerta a 10°/20° e erra 13%/23%/29% a 30°/40°/45°, porque foi ajustada noutro rig; e **acima do limite de rampa o cinemático fica PARADO** (§8.3). Gate `the_kinematic_drift_does_not_grow_with_the_ramp` |
 | 3 | **penetração** no impacto nos dois modos | a fixture da W2a |
 | 4 | `snap_to_ground` mínimo útil | ✅ **MEDIDO 2026-08-09** (`measure_snap_and_step`) — e **os dois números são UM** (`snap_distance` e `step_height` saem ambos da `cling_distance`). **SUBIR segue o número 1:1** (cling 0,15/0,25/0,40/0,60 → degrau 0,20/0,28/0,40/0,60; a cápsula sozinha sobe 0,06). **DESCER é INERTE:** variar o `cling` de 0,05 a 2,00 deixa as 24 células **idênticas**, e a mutação `snap_to_ground: None` dá a **mesma tabela** — o rapier o gateia em `translation.dot(up) < -1e-5` e a lei zera a vertical no chão ⇒ *o mínimo útil não existe, porque nenhum valor faz nada*. **É o MESMO mecanismo da §8.1.** Gate `the_step_it_climbs_is_the_number_the_artist_authored` |
 | 5 | quanto o `offset` (a folga do controlador) custa em aparência | ✅ **MEDIDO 2026-08-09** (`measure_foot_gap`) — e **a pergunta estava mal colocada**: a folga não é o `offset` (1 cm relativo), é **onde o último sweep parou**, de **1,0 a 4,5 cm** conforme a aproximação, com amplitude zero. O dinâmico é aritmética exacta (`float − meia-extensão`). ⚠️ **E a caçada achou um defeito MAIOR, ABERTO** — ver a §8.1 |
@@ -1104,6 +1104,71 @@ num ponto alto**, e `r × F` faz o resto. O dinâmico empurra com força
 O número está pinado em `the_pushed_crate_still_tumbles_and_this_is_its_number`
 (uma RAZÃO contra o controle dinâmico, porque um caixote a dar doze voltas é
 caótico e um valor literal seria derrubado por qualquer mudança sem relação).
+
+---
+
+## §8.3 — NA FILA: o cinemático fica PARADO numa rampa que o próprio `max_slope` recusa (2026-08-09)
+
+Achado a fechar o item 2 do §7, não por reporte. O dinâmico escorrega de uma
+rampa de 50°/60° e sai de quadro (24,2 m / 16,5 m em 5 s); **o cinemático fica
+imóvel, para sempre** — `x = 0,0000` EXACTO em 300 tiques.
+
+⚠️ **É o `max_slope` a não fazer o que o nome dele promete, e a metade que
+falta é exactamente a que a W9 não cobriu.** O doc do `slope.rs` conta que em
+2026-08-04 o número autorado deixava de ser honrado a SUBIR (o modo-ar escalava
+o que a perna recusara) e a cura foi o veredito `Steep`. A metade de DESCER
+nunca foi conferida: hoje o artista escreve 45 e o personagem fica em pé numa
+parede de 80°.
+
+### Atribuído em quatro passos, cada um descartando um suspeito
+
+1. **Ele repousa na rampa, não paira** — distância perpendicular ao plano menos
+   o suporte da cápsula dá **5,5 cm** a 60° (5,2 a 50°), a folga do controlador.
+   A mola de flutuação não está a segurá-lo.
+2. **O limite é INERTE ali** — trocar `max_slope_deg` de 45 para 90 para 5 dá a
+   MESMA pose a 60° e a 80°, enquanto a 45° ela muda (1,3175 contra 1,3741).
+   *O veredito de rampa não é quem congela.*
+3. **O rapier manda DESLIZAR** — `is_nonslip_slope = ângulo <= min_slope_slide_angle`
+   é `60 <= 45`, falso, então o `handle_slide` dele cai no ramo *"let it slide"*.
+   Logo o deslocamento **pedido** é que era zero.
+4. **E era** (instrumentado, depois removido): `stand=None vel=[0,0]
+   wanted=[0,0] grounded_was=true`.
+
+### A causa: DUAS respostas para a mesma pergunta, no mesmo tique
+
+- A **ponte** absorve com `stand.is_some()` — *"isto é CHÃO?"*, a **K4**, que
+  conhece o limite de rampa.
+- O **integrador** (`kinematic_advance`) absorve com `state.grounded` — *"eu
+  TOQUEI?"*, a resposta do CONTROLADOR, que não conhece limite nenhum.
+
+E é a segunda que decide o `wanted`. Numa rampa de 60° a lei **recusa a
+superfície** e **absorve a gravidade na mesma**, então não sobra deslocamento
+para o deslizamento do rapier redirecionar.
+
+⚠️ **O `state.grounded` está ali de propósito** (o comentário no `kinematic.rs`
+o diz: *"a pergunta do INTEGRADOR, não a da lei — e a MESMA porta que a ponte
+usa para não entregar à lei uma queda que este passo vai apagar"*), então isto
+**não é um `if` errado, é um contrato a decidir**. Não é a cura da §8.1: com
+`footing = None` o piso dela é zero e a expressão reduz à de antes.
+
+### As três saídas, com o preço de cada uma — decisão do Enio
+
+1. **A absorção pede as DUAS** (`state.grounded && footing.is_some()`). Chão
+   plano e rampa caminhável ficam **byte-idênticos** (as duas verdadeiras); só o
+   caso *toco-mas-não-é-chão* muda, e ali o rapier já sabe deslizar. ⚠️ Preço: o
+   gate `the_ground_absorbs_only_what_points_into_it` do `ph2d-platformer` usa
+   uma fixture com `grounded: true` e **amostra `None`** — ela passaria a
+   significar *"no ar"*, e o contrato da lei muda com ela.
+2. **Um piso derivado da superfície ÍNGREME**, reusando o maquinário da §8.1: em
+   vez de cortar a absorção, deixá-la absorver só o que uma rampa de 60° de
+   facto segura. É o mais fiel e o mais caro (a `surface_descent` hoje toma a
+   velocidade que ele JÁ tinha, e parado ela é zero — precisaria de um segundo
+   termo).
+3. **Aceitar**, e então o `max_slope` passa a ser documentado como *"o que ele
+   consegue SUBIR"* e nada mais. Custa uma linha de doc e uma promessa a menos.
+
+**Recomendação: (1).** É a que faz o número autorado voltar a significar o que
+diz, e a que tem o menor conjunto de casos alterados.
 
 ---
 

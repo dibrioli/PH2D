@@ -17,6 +17,17 @@ pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
         param: "cols",
         max: 512.0,
     },
+    // MEASURED (`is_the_useful_pressure_coupled_to_stiffness`, a 8x8 body squeezed
+    // by a force field for 5 s, worst area ratio reached): the term does what it
+    // says up to **2** at every stiffness (0,985..1,058), starts overshooting at
+    // **3** (1,30..1,49) and is plainly diverging by **6** (1,49..2,70). Four is
+    // where it is wrong at every stiffness, so it is where the box stops — the
+    // 2..4 strip is still typable on purpose, because an over-pressured balloon
+    // that wobbles is a look somebody may want and the artist SEES it.
+    ParamHardMax {
+        param: "pressure",
+        max: 4.0,
+    },
 ];
 
 pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
@@ -74,6 +85,17 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 0.5,
         step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "pressure",
+        label: "Pressure",
+        // The slider is the FINGER's range, not the ceiling (doc 88 §11): 2 is
+        // where the measured band of *does what it says* ends. The typable max
+        // is twice that.
+        min: 0.0,
+        max: 2.0,
+        step: 0.05,
         widget: ParamWidget::Slider,
     },
     ParamUiHint {

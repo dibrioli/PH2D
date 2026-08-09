@@ -53,7 +53,7 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 mod params_ui;
 use params_ui::{PARAM_HARD_MAX, PARAM_HINTS, PARAM_UNITS};
 mod shape;
-use shape::{rest_shape, shape_goals};
+use shape::{boundary_area, pressure_scale, rest_shape, shape_goals};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 /// The value type of the `anchor_*` inputs (mirror of `motion.look_at::VALUE`).
@@ -144,6 +144,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "pin",
             default: 1.0,
         },
+        // Internal pressure: the WEIGHT of the volume defence. 0 = off (and
+        // byte-identical to the body that shipped), 1 = the goal targets exactly
+        // the rest area. See `Params::pressure`.
+        ParamSpec {
+            name: "pressure",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -159,6 +166,21 @@ struct Params {
     /// shape), higher = more squash & stretch (area-preserved).
     beta: f32,
     damping: f32,
+    /// **The gas inside the jelly** — how hard the body defends the AREA its rest
+    /// shape encloses (Cavalry Forge *pressure*; Houdini Vellum *Balloon*).
+    ///
+    /// ⚠️ This is not reachable by any other knob, and that was MEASURED before it
+    /// was built (`pressure_probe`): the goal is either the RIGID rest shape or
+    /// the paper's AREA-PRESERVED linear map, so both already carry the rest area
+    /// — but the cloud only travels `stiffness` of the way there each step, and
+    /// the volume is lost in that lag. A body squeezed by a `force.attractor`
+    /// settles at **90,8 %** of its rest area and stays there for ever; a shaken
+    /// one loses **15 %**; and turning `stretch` all the way up changes that to
+    /// **90,7 %**, which is to say nothing at all.
+    ///
+    /// `0` is off, and off is byte-identical: the shoelace never runs and the goal
+    /// is the expression that shipped.
+    pressure: f32,
     pin: bool,
 }
 
@@ -245,7 +267,35 @@ fn step(
         }
     }
     // Match the rest shape and pull each particle a fraction toward its goal.
-    let goals = shape_goals(&pred, rest, p.beta);
+    //
+    // The pressure term rides INTO the goal rather than beside it: a soft body
+    // that defends its volume is one whose goal is bigger than its rest shape
+    // while it is squashed, and everything downstream (the `stiffness` pull, the
+    // pin, the velocity read-back, the NaN guard) then applies to it unchanged.
+    // A separate outward push after the projection would be a second author of
+    // the same positions, and the two would have to agree about the centroid.
+    //
+    // ⚠️ The `> 0.0` guard is COST and robustness, not correctness, and a mutation
+    // says so: forcing the term to run at zero gain leaves every gate green,
+    // because `0 · finite` is exactly `0` and `x · 1.0` is exactly `x` in
+    // IEEE-754 — the answer is already the answer that shipped. What the guard
+    // buys is the boundary shoelace nobody asked for, and a neutral that stays
+    // structural if a future edit gives `pressure_scale` a term the gain does not
+    // multiply. Documented instead of gated: a ~1% cost at the node's own cap is
+    // not a number a ratio test can resolve honestly.
+    let scale = if p.pressure > 0.0 {
+        pressure_scale(
+            &pred,
+            p.rows,
+            p.cols,
+            boundary_area(rest, p.rows, p.cols),
+            p.pressure,
+            p.stiffness,
+        )
+    } else {
+        1.0
+    };
+    let goals = shape_goals(&pred, rest, p.beta, scale);
     let mut out_pos = vec![[0.0f32; 2]; n];
     let mut out_vel = vec![[0.0f32; 2]; n];
     let keep = 1.0 - p.damping;
@@ -325,6 +375,7 @@ impl NodeOp for MotionSoftBody {
             stiffness: ctx.param("stiffness").clamp(0.0, 1.0),
             beta: ctx.param("stretch").clamp(0.0, 1.0),
             damping: ctx.param("damping").clamp(0.0, 0.99),
+            pressure: ctx.param("pressure").max(0.0),
             pin: ctx.param("pin") >= 0.5,
         };
         let playhead = ctx.playhead() as f32;
@@ -365,194 +416,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn params(rows: usize, cols: usize, gravity: f32, stiffness: f32, pin: bool) -> Params {
-        Params {
-            rows,
-            cols,
-            spacing: 0.7,
-            gravity,
-            stiffness,
-            beta: 0.0,
-            damping: 0.0,
-            pin,
-        }
-    }
-
-    fn run(
-        anchor: impl Fn(f32) -> [f32; 2],
-        p: &Params,
-        ticks: usize,
-        dt: f32,
-    ) -> Vec<Vec<[f32; 2]>> {
-        let mut state = Stream::new(0);
-        let mut frames = Vec::new();
-        for k in 0..ticks {
-            let t = k as f32 * dt;
-            let out = simulate(anchor(t), &state, t, p);
-            state = out.clone();
-            frames.push(vec2_col(&out, "P"));
-        }
-        frames
-    }
-
-    /// Tick 0 seeds the rest mesh at the anchor: `rows·cols` particles, the top row
-    /// (indices `0..cols`) sitting at the anchor row.
-    #[test]
-    fn seeds_the_rest_mesh_at_the_anchor() {
-        let p = params(3, 4, 9.0, 0.5, true);
-        let out = simulate([2.0, 1.0], &Stream::new(0), 0.0, &p);
-        let pos = vec2_col(&out, "P");
-        assert_eq!(pos.len(), 12, "3×4 mesh");
-        // Top row is at the top (max y); rows descend. Centre column near anchor x.
-        let top_y = pos[0][1];
-        let bottom_y = pos[11][1];
-        assert!(top_y > bottom_y, "row 0 is the top");
-        // The mesh is centred on the anchor: mean position ≈ anchor.
-        let mean = pos
-            .iter()
-            .fold([0.0f32; 2], |a, q| [a[0] + q[0], a[1] + q[1]]);
-        let mean = [mean[0] / 12.0, mean[1] / 12.0];
-        assert!((mean[0] - 2.0).abs() < 1e-4 && (mean[1] - 1.0).abs() < 1e-4);
-    }
-
-    // (The pure shape-match geometry — rigid invariance, shape recovery, and the
-    // `beta` linear-deformation mode — is falsified in the `shape` module's own
-    // tests. Here we exercise the full sequential simulation.)
-
-    /// Gravity + pin: the pinned top row holds at the anchor while the free body
-    /// sags below it over time. FALSIFIED by a dead body (no gravity) — it stays put.
-    #[test]
-    fn gravity_hangs_the_body_below_the_pinned_top() {
-        let live = params(4, 3, 12.0, 0.5, true);
-        let bottom_y = |p: &Params| {
-            let last = run(|_| [0.0, 0.0], p, 180, 1.0 / 60.0);
-            let pos = last.last().unwrap();
-            // Bottom row's mean y.
-            let (rows, cols) = (p.rows, p.cols);
-            let start = (rows - 1) * cols;
-            pos[start..].iter().map(|q| q[1]).sum::<f32>() / cols as f32
-        };
-        assert!(bottom_y(&live) < -0.5, "the body sags below the pin");
-        // The pinned top row stays at the anchor height (y = +half).
-        let top = run(|_| [0.0, 0.0], &live, 180, 1.0 / 60.0);
-        let top_row = &top.last().unwrap()[0..live.cols];
-        for q in top_row {
-            assert!(q[1].abs() < 0.5 + 1.0, "top row pinned near the anchor row");
-        }
-    }
-
-    /// A moving anchor drags the jelly: sliding the pin carries the whole body along.
-    #[test]
-    fn a_moving_anchor_drags_the_body() {
-        let p = params(4, 3, 9.0, 0.5, true);
-        let moved = run(|t| [3.0 * t, 0.0], &p, 120, 1.0 / 60.0);
-        let still = run(|_| [0.0, 0.0], &p, 120, 1.0 / 60.0);
-        let mean_x = |f: &[[f32; 2]]| f.iter().map(|q| q[0]).sum::<f32>() / f.len() as f32;
-        assert!(
-            mean_x(moved.last().unwrap()) > mean_x(still.last().unwrap()) + 0.5,
-            "the sliding anchor carried the body in +x"
-        );
-    }
-
-    /// Deterministic replay (HR-5: arithmetic + one `sqrt`): two runs match exactly.
-    #[test]
-    fn replay_is_deterministic() {
-        let p = params(4, 4, 9.0, 0.4, true);
-        let a = run(|t| [2.0 * t, 0.0], &p, 90, 1.0 / 60.0);
-        let b = run(|t| [2.0 * t, 0.0], &p, 90, 1.0 / 60.0);
-        assert_eq!(a, b);
-    }
-
-    /// Without the state loop it re-seeds every tick → the rest mesh at the anchor,
-    /// never deforming (the "only simulates with feedback" footnote).
-    #[test]
-    fn without_the_state_loop_it_holds_the_rest_mesh() {
-        let p = params(3, 3, 12.0, 0.5, true);
-        let rest = rest_shape(p.rows, p.cols, p.spacing);
-        for k in 0..20 {
-            let out = simulate([1.0, 0.0], &Stream::new(0), k as f32 / 60.0, &p);
-            let pos = vec2_col(&out, "P");
-            for (q, r) in pos.iter().zip(&rest) {
-                assert!((q[0] - (r[0] + 1.0)).abs() < 1e-5 && (q[1] - r[1]).abs() < 1e-5);
-            }
-        }
-    }
-
-    /// A poisoned (non-finite) state recovers on the rest frame instead of spreading.
-    #[test]
-    fn non_finite_state_recovers() {
-        let p = params(2, 2, 9.0, 0.5, false);
-        let rest = rest_shape(p.rows, p.cols, p.spacing);
-        let state = Stream::new(4)
-            .with(
-                "P",
-                Column::Vec2(vec![
-                    [0.0, 0.0],
-                    [f32::INFINITY, 0.0],
-                    [0.0, 0.0],
-                    [0.0, 0.0],
-                ]),
-            )
-            .with("sb_vel", Column::Vec2(vec![[0.0, 0.0]; 4]))
-            .with("sim_t", Column::Scalar(vec![0.0; 4]));
-        let out = simulate([0.0, 0.0], &state, 1.0 / 60.0, &p);
-        let _ = rest;
-        assert!(
-            vec2_col(&out, "P")
-                .iter()
-                .all(|q| q[0].is_finite() && q[1].is_finite()),
-            "the diverged particle was reset, not propagated"
-        );
-    }
-
-    /// Cooks through the registry with the `pre` self-loop, exactly as the editor
-    /// wires it.
-    #[test]
-    fn registers_and_steps_through_the_cook() {
-        use ph2d_nodegraph::cook::{Cook, OpResolver};
-        use ph2d_nodegraph::graph::{Edge, Graph};
-
-        struct Ops;
-        impl OpResolver for Ops {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                (ty == MANIFEST.id).then_some(&MotionSoftBody as &dyn NodeOp)
-            }
-        }
-        let mut reg = NodeRegistry::new();
-        register(&mut reg).unwrap();
-        assert!(reg.resolve(MANIFEST.id).is_some());
-
-        let mut g = Graph::new();
-        let sb = g.add_node("motion.soft_body");
-        g.set_param(sb, "rows", 4.0);
-        g.set_param(sb, "cols", 3.0);
-        g.set_param(sb, "gravity", 12.0);
-        g.connect(Edge {
-            from: (sb, 0),
-            to: (sb, 2),
-            delayed: true,
-        })
-        .unwrap();
-
-        let mut cook = Cook::new();
-        let out0 = cook.cook(&g, &Ops, sb, 0.0).unwrap();
-        assert!(matches!(out0[0].as_stream().get("P"), Some(Column::Vec2(v)) if v.len() == 12));
-        for k in 0..60 {
-            let t = k as f64 / 60.0;
-            cook.cook(&g, &Ops, sb, t).unwrap();
-            cook.advance_tick(&g, &Ops, t).unwrap();
-        }
-        let out = cook.cook(&g, &Ops, sb, 1.0).unwrap();
-        match out[0].as_stream().get("P").unwrap() {
-            // The free bottom row has sagged below the pinned top.
-            Column::Vec2(v) => assert!(v[11][1] < v[0][1], "the body hangs after a second"),
-            _ => panic!("P"),
-        }
-    }
-}
+#[path = "tests.rs"]
+mod tests;
 
 #[cfg(test)]
 mod cap_gates {
@@ -606,7 +471,7 @@ mod cap_gates {
             let pred: Vec<[f32; 2]> = rest.iter().map(|p| [p[0] * 1.1, p[1] * 0.9]).collect();
             let t0 = std::time::Instant::now();
             for _ in 0..5 {
-                std::hint::black_box(shape_goals(&pred, &rest, 0.3));
+                std::hint::black_box(shape_goals(&pred, &rest, 0.3, 1.0));
             }
             t0.elapsed().as_secs_f64()
         };
@@ -621,64 +486,5 @@ mod cap_gates {
 }
 
 #[cfg(test)]
-mod cost_probe {
-    use super::shape::{rest_shape, shape_goals};
-
-    /// MEASUREMENT (a fila §2 do handoff da linha GPU): o cap do nó ERA
-    /// `MAX_SIDE = 40` (1600 partículas). O custo por tick é o shape-matching —
-    /// DUAS passadas lineares sobre a nuvem (centroide, depois `A_pq`/`A_qq`) —
-    /// então a pergunta do §0.0 é: esse cap é de CUSTO ou é escolha?
-    ///
-    /// Mede as DUAS coisas: o núcleo (`shape_goals`) e o **tick inteiro**
-    /// (`step`, que é o que o orçamento do HR-4 de fato paga — predição,
-    /// projeção ao objetivo e leitura de velocidade, todas lineares por cima).
-    ///
-    ///   cargo test -p ph2d-node-motion-soft-body --release -- --ignored --nocapture
-    #[test]
-    #[ignore = "measurement — run alone with --nocapture"]
-    fn what_does_the_shape_match_cost_per_tick() {
-        const REPS: u32 = 20;
-        for &side in &[40usize, 100, 316, 512, 724, 1000] {
-            let n = side * side;
-            let rest = rest_shape(side, side, 1.0);
-            let pred: Vec<[f32; 2]> = rest.iter().map(|p| [p[0] * 1.1, p[1] * 0.9]).collect();
-            let t0 = std::time::Instant::now();
-            for _ in 0..REPS {
-                std::hint::black_box(shape_goals(&pred, &rest, 0.3));
-            }
-            let core = t0.elapsed().as_secs_f64() * 1e3 / f64::from(REPS);
-
-            let p = super::Params {
-                rows: side,
-                cols: side,
-                spacing: 1.0,
-                gravity: 9.8,
-                stiffness: 0.6,
-                beta: 0.3,
-                damping: 0.02,
-                pin: true,
-            };
-            let vel = vec![[0.0f32; 2]; n];
-            // The zeros the product materialises when no force reaches the body
-            // — `simulate` always hands `step` a full-length slice, so measuring
-            // with one is measuring what ships.
-            let accel = vec![[0.0f32; 2]; n];
-            let t0 = std::time::Instant::now();
-            for _ in 0..REPS {
-                std::hint::black_box(super::step(
-                    &pred,
-                    &vel,
-                    &accel,
-                    [0.0, 0.0],
-                    &rest,
-                    1.0 / 60.0,
-                    &p,
-                ));
-            }
-            let tick = t0.elapsed().as_secs_f64() * 1e3 / f64::from(REPS);
-            eprintln!(
-                "  {side:>4}x{side:<4} = {n:>9} partículas: núcleo {core:>7.3} ms · TICK {tick:>7.3} ms"
-            );
-        }
-    }
-}
+#[path = "probes.rs"]
+mod probes;

@@ -52,7 +52,9 @@ pub mod premultiplied;
 pub mod srgb;
 pub mod value_ramp;
 
-pub use color_ramp::{ColorRamp, MAX_RAMP_STOPS, RampColorMode, RampHue, RampInterp, RampStop};
+pub use color_ramp::{
+    ColorRamp, MAX_RAMP_STOPS, RampColorMode, RampHue, RampInterp, RampStop, rgb_to_hsv,
+};
 pub use color_ramp_text::{parse_gradient, serialize_gradient};
 pub use gradient_preset::{GradientPreset, default_gradient};
 pub use linear::LinearRgba;

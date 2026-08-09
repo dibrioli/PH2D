@@ -2402,6 +2402,106 @@ fn the_bare_emitters_match_the_cpu_and_keep_their_stream_shape() {
     );
 }
 
+/// **Os OITO canais do `motion.luminance` no device** (doc 89, fam. 9).
+///
+/// O nó deixou de ter um canal só, e o corpo do kernel deixou de ser uma soma: ele
+/// ramifica em `params.channel` e, para matiz/saturação/valor, roda um HSV que é o
+/// `ph2d_color::rgb_to_hsv` reescrito em WGSL — a classe de código onde os dois lados
+/// divergem por uma comparação trocada e ninguém vê, porque o resultado *parece* uma
+/// cor.
+///
+/// ⚠️ **A fixture tem de conter o fenômeno em CADA canal**, e é o que a rampa `g2`
+/// entrega: azul→âmbar move matiz, saturação, valor e os três primários, e o alfa
+/// `1 → 0.25` move o oitavo. Sem alfa variando, o canal `Alpha` seria um campo
+/// constante e passaria com o kernel lendo qualquer coisa.
+///
+/// ⚠️ **A barra nasceu BIT-EXATA e a MEDIÇÃO a derrubou** — vale registrar, porque a
+/// afirmação era minha: escrevi que *"as duas rotas fazem as mesmas operações de `f32`
+/// na mesma ordem, sem transcendental e sem FMA a contrair"*, e o gate reprovou no
+/// canal **0** — o `Luma`, o único que esta wave não mudou —, por **1 ulp**
+/// (`0.50570214` contra `0.5057022`, |Δ| 5,96e-8). O mecanismo é exatamente o que eu
+/// excluí: o WGSL PERMITE fundir multiplicação-e-soma, e `WR*r + WG*g + WB*b` com FMA
+/// arredonda diferente de três mul+add separados. É também o que a política do repo já
+/// diz — *bit-a-bit não é a política deste projeto* (o compositor declara o mesmo sobre
+/// backends) — e é por isso que o irmão `the_bare_emitters…` sempre usou `1e-5`.
+///
+/// ⚠️ **E `1e-5` continua pegando o que o gate existe para pegar:** uma comparação
+/// trocada no HSV move o matiz em ~1/3 e uma leitura de canal errada move o valor em
+/// décimos — quatro ordens de grandeza acima do ulp. O épsilon esconderia uma
+/// diferença de ARREDONDAMENTO, nunca uma diferença de LEI.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn every_colour_channel_reads_the_same_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    for ch in 0..8_i32 {
+        let mut g = Graph::new();
+        let grid = grid_node(&mut g, 10.0);
+        let tint = g.add_node("motion.color_ramp");
+        // Azul opaco → âmbar translúcido: os oito canais têm o que variar.
+        g.set_text_param(
+            tint,
+            "ramp",
+            "g2 2 0:0.05,0.11,0.83,1 1:0.91,0.74,0.07,0.25".to_string(),
+        );
+        let lum = g.add_node("motion.luminance");
+        g.set_param(lum, "channel", ch as f32);
+        connect(&mut g, grid, tint);
+        connect(&mut g, tint, lum);
+        g.validate(&reg).expect("well-typed");
+
+        let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, lum);
+        assert!(plan.is_fully_gpu(), "canal {ch}: grid → tint → luminance");
+
+        let mut cook = Cook::new();
+        let cpu = cook.cook(&g, &reg, lum, PLAYHEAD).expect("cpu cook");
+        let cpu_v = match cpu[0].as_stream().get("v") {
+            Some(ph2d_nodegraph::attr::Column::Scalar(v)) => v.clone(),
+            _ => panic!("canal {ch}: a CPU não emitiu `v`"),
+        };
+        assert!(
+            cpu_v.iter().any(|v| (v - cpu_v[0]).abs() > 1e-6),
+            "fixture check do canal {ch}: o campo tem de VARIAR, senão isto não prova nada"
+        );
+
+        let mut gc = ph2d_gpu_cook::GpuCook::new();
+        gc.retain_streams_for_debug(true);
+        gc.cook(
+            &gpu,
+            &g,
+            &reg,
+            &reg,
+            &plan,
+            &[],
+            CookClock::at(PLAYHEAD),
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+        )
+        .expect("gpu cook");
+        let gpu_v = gc.read_column(&gpu, lum, "v").expect("`v` reads back");
+        assert_eq!(gpu_v.len(), cpu_v.len(), "canal {ch}: contagem");
+
+        // O PIOR divergente primeiro: comparação fail-fast reporta o primeiro que o
+        // scan alcança, e perto do começo da rampa isso costuma ser ~épsilon — que se
+        // lê como "a tolerância está apertada" e esconde um canal inteiro constante.
+        let (worst_i, worst) = gpu_v
+            .iter()
+            .zip(&cpu_v)
+            .enumerate()
+            .map(|(i, (a, b))| (i, (a - b).abs()))
+            .fold((0, 0.0_f32), |acc, x| if x.1 > acc.1 { x } else { acc });
+        assert!(
+            worst < 1e-5,
+            "canal {ch}: pior instance {worst_i} tem cpu {} vs gpu {} (|Δ| {worst:e})",
+            cpu_v[worst_i],
+            gpu_v[worst_i]
+        );
+    }
+}
+
 /// **`motion.look_at` — the first kernel with two CONNECTED stream inputs, and
 /// the first that BROADCASTS.**
 ///

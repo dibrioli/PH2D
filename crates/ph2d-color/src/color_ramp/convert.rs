@@ -119,7 +119,13 @@ fn rgb_hue(c: [f32; 4], max: f32, delta: f32) -> f32 {
     h / 6.0
 }
 
-pub(super) fn rgb_to_hsv(c: [f32; 4]) -> (f32, f32, f32) {
+/// Linear RGB → **(hue, saturation, value)**, hue in `[0, 1)`, the HSV family.
+///
+/// ⚠️ **`pub` porque a pergunta ganhou um SEGUNDO consumidor** (o canal do
+/// `motion.luminance`), e as duas respostas TÊM de ser a mesma: um grafo que
+/// interpola uma rampa em HSV e lê o matiz de volta encontraria dois matizes se
+/// cada lado tivesse a sua cópia. Transcendental-free (min/max/div, HR-5).
+pub fn rgb_to_hsv(c: [f32; 4]) -> (f32, f32, f32) {
     let (max, _min, delta) = rgb_range(c);
     let s = if max <= 0.0 { 0.0 } else { delta / max };
     (rgb_hue(c, max, delta), s, max)

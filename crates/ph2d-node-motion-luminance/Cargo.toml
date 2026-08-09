@@ -12,3 +12,8 @@ authors.workspace = true
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
+# O matiz/saturação/valor de uma cor tem UMA definição neste app, e ela mora
+# aqui (é a mesma que o `RampColorMode::Hsv` do `motion.color_ramp` interpola).
+# Uma cópia local seria um segundo matiz, divergindo exatamente no grafo que
+# rampeia em HSV e lê o canal de volta.
+ph2d-color = { path = "../ph2d-color" }

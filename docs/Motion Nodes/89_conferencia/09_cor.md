@@ -49,8 +49,8 @@ color info) é inexprimível por construção — não por falta de um knob.*
 | `motion.color_array` | idem | **máscara por falloff** — mesma citação C4D da linha do `color_ramp` | **NÃO** — mesmo mecanismo (`out.set("tint", …)` incondicional, `lib.rs:116`; e o mixer não blenda por instância) | omissão | ✅ **FEITO** (era P1) | `mask = 1` ⇒ hoje |
 | `motion.color_array` | idem | ⚠️ **sem GPU** (0 `register_gpu_kernel`, contra 1 em cada um dos outros três da família) ⇒ um grafo que o usa perde a aceleração inteira | **N/A.** Mecanismo: a paleta é uma **lista de comprimento variável** e o device só tem uniforme fixo (`params`) e **LUT escalar**. ⚠️ Mas *"a i-ésima cor de uma lista"* **É** uma rampa `Constant` de stops equiespaçados ⇒ o canal de LUT que o `color_ramp` já usa serve, sem infra nova (ver `SUPERAR:` 4) | omissão | **P1** | o kernel é aditivo (side-metadata no registry); a rota CPU segue oráculo |
 | `motion.color_array` | idem | *(não-gap)* interpolar entre slots | ⛔ **recusado por natureza, com mecanismo:** este é o nó **DISCRETO** de propósito (listras duras), e o contínuo já existe — `color_ramp` com `RampInterp::Constant` sobre stops equiespaçados dá o mesmo, e com `Linear` dá a versão interpolada. Um slider "blend" aqui seria a 2ª resposta à pergunta do vizinho ([`palette_text.rs` §"por que uma paleta não é um gradiente"](../../../crates/ph2d-color/src/palette_text.rs)) | natureza | ⛔ | — |
-| `motion.luminance` | **0 `ParamSpec`, 0 text params.** Adapter puro `(in) → out(VALUE)`, Rec.709. GPU sim | **qual canal extrair** — AE **Colorama** *"Get Phase From"* (Lightness · **Hue** · **Saturation** · Red · Green · Blue · Alpha); Cavalry **Color Info** (*"amostra pixels de imagem→valores/cores"*, [cavalry A.3 §107](../referencia_pesquisa_cavalry.md) — marcado *TEMOS (motion.luminance) / **PARCIAL***); Blender **Separate Color** (RGB/HSV/HSL, [blender GN §13](../referencia_pesquisa_blender_gn.md)) | **NÃO — este nó É a única porta de leitura de cor do sistema** (§0). `value.attribute` devolve zeros num `Vec4`; nenhuma outra rota existe. Hoje o sistema sabe responder *"quão claro?"* e **nada mais** sobre a cor de uma instância | **omissão** — um nó de 0 params aqui é **magro por OMISSÃO**, não por natureza: a referência dá 7 canais e nós damos 1 | **P0** | `channel = Luma` ⇒ `0.2126·R + 0.7152·G + 0.0722·B`, bit a bit o de hoje |
-| `motion.luminance` | idem | ⚠️ **DUAS PORTAS latente (correção, não feature):** o `motion.drive` escreve opacidade em **`tint[3]`** (`channel.rs:152-165`) e o picker do `value.attribute` oferece **"Opacity" → coluna `"opacity"`** (`value-attribute/src/lib.rs:117-120`) — **colunas diferentes**. Ler de volta a opacidade que o `drive` escreveu é inexprimível | **NÃO** (e o `luminance` ignora o alfa: `WR·r + WG·g + WB·b`) | omissão | **P0 (correção)** | um canal `Alpha` no luminance lê `c[3]`; o `Luma` de hoje não se move |
+| `motion.luminance` | **0 `ParamSpec`, 0 text params.** Adapter puro `(in) → out(VALUE)`, Rec.709. GPU sim | **qual canal extrair** — AE **Colorama** *"Get Phase From"* (Lightness · **Hue** · **Saturation** · Red · Green · Blue · Alpha); Cavalry **Color Info** (*"amostra pixels de imagem→valores/cores"*, [cavalry A.3 §107](../referencia_pesquisa_cavalry.md) — marcado *TEMOS (motion.luminance) / **PARCIAL***); Blender **Separate Color** (RGB/HSV/HSL, [blender GN §13](../referencia_pesquisa_blender_gn.md)) | **NÃO — este nó É a única porta de leitura de cor do sistema** (§0). `value.attribute` devolve zeros num `Vec4`; nenhuma outra rota existe. Hoje o sistema sabe responder *"quão claro?"* e **nada mais** sobre a cor de uma instância | **omissão** — um nó de 0 params aqui é **magro por OMISSÃO**, não por natureza: a referência dá 7 canais e nós damos 1 | ✅ **FEITO** (era P0) | `channel = Luma` ⇒ `0.2126·R + 0.7152·G + 0.0722·B`, bit a bit o de hoje |
+| `motion.luminance` | idem | ⚠️ **DUAS PORTAS latente (correção, não feature):** o `motion.drive` escreve opacidade em **`tint[3]`** (`channel.rs:152-165`) e o picker do `value.attribute` oferece **"Opacity" → coluna `"opacity"`** (`value-attribute/src/lib.rs:117-120`) — **colunas diferentes**. Ler de volta a opacidade que o `drive` escreveu é inexprimível | ⚠️ **A leitura estava ERRADA e a medição a corrigiu:** não eram duas colunas divergindo — **ninguém escreve `"opacity"`**, e o renderer lê `tint[3]`. Era uma porta e um FANTASMA (ver §3) | omissão | ✅ **FEITO** (era P0-correção) | o picker aponta a lane (`tint`+`MODE_COMPONENT_BASE+3`); e o `luminance` ganhou o canal `Alpha` |
 | `motion.luminance` | idem | *(não-gap)* coeficientes alternativos (Rec.601/2020) | ⛔ **recusado com mecanismo:** a coluna `tint` é **RGB linear** e os pesos Rec.709 são os de **luminância relativa** nesse espaço — trocar por Rec.601 seria pedir a luma de um espaço que não é o nosso. É o único nó da família cujo "0 params" é **natureza** | natureza | ⛔ | — |
 
 ---
@@ -197,10 +197,44 @@ que já existiam passaram sem edição de expectativa, porque usam stream vazio.
   (`value_slope…` falha por 1,05e-4 contra barra 1e-4: barra **absoluta** sobre coordenada
   cuja magnitude a fixture escolhe — outra família, outro oráculo).
 
+### O terceiro P0 — **e ele era um FANTASMA, não duas portas** (2026-08-09)
+
+A tabela catalogava *"DUAS PORTAS latente: o `drive` escreve `tint[3]`, o picker oferece
+`"opacity"`"*. Medido, é pior e mais simples: **nenhum nó da biblioteca escreve uma coluna
+de stream chamada `opacity`** (o `"opacity"` do `fx.rgb_split` é PARAM), e o
+`lower_to_instances` lê o alfa de `tint` lane 3 — o `RenderInstance.opacity` é **cravado em
+1.0**. Não eram duas convenções divergindo: era **uma porta e um nome que não existe**, e a
+entrada caía no MISS ORDINÁRIO do módulo — zeros no comprimento cheio, indistinguíveis de
+um nome digitado errado. A cura é a **lane** (`column: "tint", mode: MODE_COMPONENT_BASE +
+3`), dizível só porque o W0-A a destravou.
+
+### O quarto P0 — **o canal do `motion.luminance`** (2026-08-09)
+
+O único leitor de cor do catálogo passou de **um** canal a **oito**: `Luma` (o default,
+byte-idêntico) · `Hue` · `Saturation` · `Value` · `Red` · `Green` · `Blue` · `Alpha`. É o
+*Get Phase From* do Colorama e o *Separate Color* do Blender, e é o que a `SUPERAR:` 3
+desta família chamava de pré-requisito do loop **aparência → simulação**.
+
+- ⚠️ **HSL ficou de FORA e o motivo NÃO é espaço** (o teto de opções virou 48 na mesma
+  jornada): a *lightness* do HSL é `(max+min)/2`, a MESMA pergunta que o `Luma` responde
+  com os pesos perceptuais — e a saturação do HSL só é definida em termos dela. Duas
+  respostas para *"quão clara é esta cor?"* dentro do mesmo picker, com a nova sendo a
+  pior.
+- ⚠️ **Há UMA definição de matiz:** o canal delega ao `ph2d_color::rgb_to_hsv` (exposto
+  `pub` nesta wave), o MESMO que o `RampColorMode::Hsv` interpola — senão um grafo que
+  rampeia em HSV e lê o matiz de volta encontraria dois matizes.
+- ⚠️ **O kernel é UM corpo com um `if`, não `variant_by_param`:** as variantes existem
+  quando as BINDINGS diferem, e aqui a leitura é sempre `tint` e a escrita sempre `v`.
+- ⚠️ **E uma afirmação minha caiu na medição:** escrevi que a paridade CPU×GPU seria
+  bit-exata (*"sem transcendental, sem FMA a contrair"*) e o gate reprovou **no canal
+  `Luma`, o que esta wave nem tocou**, por **1 ulp** — o WGSL PODE fundir
+  multiplicação-e-soma. A barra virou o `1e-5` da casa, e a mutação mostra que uma
+  diferença de LEI vale **~0,79**: quatro ordens de grandeza acima do arredondamento.
+
 **Segue P0 nesta família:** o espaço de interpolação da rampa (`RampColorMode`, o motor tem
-e o formato não) · o canal do `motion.luminance` · as DUAS PORTAS do alfa
-(`drive` escreve `tint[3]`, o picker oferece `"opacity"`) · hue/sat sobre a cor existente,
-que continua precisando da metade de ESCRITA do loop (o W0-B-genérico).
+e o formato não — a cerca já escolheu o mecanismo: um token `g3`, append-only, **nunca** uma
+reinterpretação de `g1`/`g2`) · hue/sat **sobre a cor existente**, que continua precisando da
+metade de ESCRITA do loop (o W0-B-genérico) — o `luminance` fechou a metade de LEITURA.
 
 ---
 

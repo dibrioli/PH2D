@@ -23,9 +23,10 @@
 //! `None` de propósito (um documento autorado por um build mais novo), e inventar um tipo aqui
 //! seria gerar código para um widget que não existe.
 
-use ph2d_ecs::{Children, Entity, Name, SimWorld, VecWidget};
+use ph2d_ecs::{Children, Entity, Name, SimWorld, VecPathRef, VecWidget};
 use ph2d_editor::widget::WidgetKind;
 use ph2d_ui_codegen::{PanelSpec, RowSpec};
+use ph2d_vec_scene::{VecPathId, VecScene};
 
 /// O rótulo de uma entidade — o `Name` que o artista digitou.
 fn label_of(sim: &SimWorld, e: Entity) -> Option<String> {
@@ -55,16 +56,36 @@ pub(crate) fn key_of(label: &str) -> String {
     k
 }
 
+/// **A cor que uma row mostra**, quando o tipo dela É uma cor.
+///
+/// ⚠️ Ela sai do **preenchimento da forma que veste o widget** — a única resposta que não está no
+/// retângulo nem nos tokens. Uma forma sem preenchimento devolve `None`, e é isso que o xadrez de
+/// transparência da swatch significa: *nenhuma cor escolhida*.
+///
+/// ⚠️ E ela é perguntada **só para os tipos que a consomem** ([`WidgetKind::takes_colour`]): ler o
+/// fill de um `Slider` seria carregar um número que nada mostra, e o dia em que alguém o mostrasse
+/// seria o dia em que o slider mudaria de cor por o artista ter pintado a forma.
+fn colour_of(sim: &SimWorld, scene: &VecScene, e: Entity) -> Option<[u8; 4]> {
+    let id: VecPathId = sim.world().get::<VecPathRef>(e)?.0;
+    let c = scene.path(id)?.fill.as_ref()?.primary_color();
+    Some([c.r, c.g, c.b, c.a])
+}
+
 /// Percorre a sub-árvore de `frame` **na ordem dos filhos**, juntando quem veste.
-fn walk(sim: &SimWorld, e: Entity, out: &mut Vec<RowSpec>) {
+fn walk(sim: &SimWorld, scene: &VecScene, e: Entity, out: &mut Vec<RowSpec>) {
     if let Some(w) = sim.world().get::<VecWidget>(e)
         && let Some(kind) = WidgetKind::from_code(w.kind)
     {
         let label = label_of(sim, e).unwrap_or_default();
+        let rgba = kind
+            .takes_colour()
+            .then(|| colour_of(sim, scene, e))
+            .flatten();
         out.push(RowSpec {
             kind: kind.ident().to_string(),
             key: key_of(&label),
             label,
+            rgba,
         });
     }
     // ⚠️ `Children` preserva a ordem de inserção da hierarquia, que é a ordem que o layout flui e
@@ -75,7 +96,7 @@ fn walk(sim: &SimWorld, e: Entity, out: &mut Vec<RowSpec>) {
         .map(|c| c.iter().copied().collect())
         .unwrap_or_default();
     for k in kids {
-        walk(sim, k, out);
+        walk(sim, scene, k, out);
     }
 }
 
@@ -85,7 +106,7 @@ fn walk(sim: &SimWorld, e: Entity, out: &mut Vec<RowSpec>) {
 /// painel que contivesse a si próprio como primeira linha seria a árvore lida um nível acima do
 /// que ela é.
 #[must_use]
-pub(crate) fn of(sim: &SimWorld, frame: Entity) -> PanelSpec {
+pub(crate) fn of(sim: &SimWorld, scene: &VecScene, frame: Entity) -> PanelSpec {
     let title = label_of(sim, frame).unwrap_or_default();
     let mut rows = Vec::new();
     let kids: Vec<Entity> = sim
@@ -94,7 +115,7 @@ pub(crate) fn of(sim: &SimWorld, frame: Entity) -> PanelSpec {
         .map(|c| c.iter().copied().collect())
         .unwrap_or_default();
     for k in kids {
-        walk(sim, k, &mut rows);
+        walk(sim, scene, k, &mut rows);
     }
     PanelSpec {
         id: key_of(&title),

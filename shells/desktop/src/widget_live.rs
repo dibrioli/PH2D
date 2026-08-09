@@ -37,12 +37,12 @@
 //! mede um pixel"*.
 
 use ph2d_ecs::{Entity, Name, SimWorld, VecWidget};
-use ph2d_editor::widget::{WidgetKind, paint_widget_skin};
+use ph2d_editor::widget::{SkinParam, WidgetKind, paint_widget_skin};
 use ph2d_editor::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vec_render::{LiveGeometry, WidgetSkins};
-use ph2d_vec_scene::{VecPathId, VecScene, VecXforms};
+use ph2d_vec_scene::{Paint, VecPathId, VecScene, VecXforms};
 use ph2d_vector::Affine;
 
 use crate::vec_entities::VecEntityMap;
@@ -88,6 +88,16 @@ pub(crate) fn frame_of(
     (w > 1.0 && h > 1.0).then(|| Rect::new(x0 as f32, y0 as f32, w, h))
 }
 
+/// **A cor que uma swatch mostra** — o preenchimento da forma que a veste.
+///
+/// ⚠️ Um gradiente responde pela **primeira parada** (`primary_color`), que é a porta que o
+/// documento já oferece *"pra swatch de UI"* — inventar aqui uma média ou uma amostra do meio
+/// seria uma segunda resposta a *"que cor é esta pintura?"*.
+fn colour_of(fill: &Paint) -> [u8; 4] {
+    let c = fill.primary_color();
+    [c.r, c.g, c.b, c.a]
+}
+
 /// Pinta as peles deste frame. Vazio = nenhuma forma veste um widget, e o `dispatch` desenha o
 /// que sempre desenhou.
 ///
@@ -119,7 +129,17 @@ pub(crate) fn build(
         };
         let mut skin = ph2d_vector::VectorScene::new();
         let label = label_of(sim, map, path.id);
-        paint_widget_skin(kind, &label, rect, &mut skin, text, theme);
+        // ⚠️ **A cor é VIVA aqui, e é um SNAPSHOT no painel gerado** — a diferença é honesta: no
+        // canvas a moldura relê o documento a cada quadro, então recolorir a forma recolore a
+        // swatch enquanto o artista arrasta; o painel gerado é código escrito uma vez, e mostra a
+        // cor que a forma tinha quando alguém apertou o botão.
+        let param = SkinParam {
+            rgba: kind
+                .takes_colour()
+                .then(|| path.fill.as_ref().map(colour_of))
+                .flatten(),
+        };
+        paint_widget_skin(kind, &label, param, rect, &mut skin, text, theme);
         out.insert(path.id, skin);
     }
     out

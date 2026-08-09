@@ -202,3 +202,48 @@ fn the_label_is_the_entity_name_and_a_nameless_shape_still_draws() {
         "uma forma SEM nome perdeu a pele — ela deveria desenhar a moldura vazia"
     );
 }
+
+/// **A swatch do canvas veste o preenchimento da PRÓPRIA forma** — e ela é VIVA.
+///
+/// ⚠️ Esta é a metade do canal que só a shell pode errar, e o modo de falha dela é mudo: a ponte
+/// podia passar `SkinParam::default()` e a swatch pintaria o xadrez para sempre, com o pintor
+/// correto, o painel gerado correto, e toda a suíte verde. O que se vê é uma screenshot.
+///
+/// ⚠️ E a metade oposta é o que mantém a fronteira escrita: um `Slider` sobre a MESMA forma tem de
+/// pintar igual com as duas tintas — se ele respondesse, recolorir uma forma mudaria a aparência
+/// de um controle que não fala de cor nenhuma.
+#[test]
+fn the_swatch_on_the_canvas_wears_its_own_fill() {
+    use ph2d_vec_scene::{Paint, Rgba8};
+
+    let skin_of = |kind: WidgetKind, rgb: [u8; 3]| {
+        let (mut scene, sim, map, xf, id) = scene_with(Some(kind.code()), Some("Tint"));
+        scene
+            .path_mut(id)
+            .expect("a forma existe")
+            .fill
+            .replace(Paint::Solid(Rgba8::new(rgb[0], rgb[1], rgb[2], 255)));
+        let skins = build_for(&scene, &sim, &map, &xf);
+        let e = skins
+            .get(&id)
+            .expect("a forma marcada tem pele")
+            .inner()
+            .encoding();
+        (e.n_paths, e.path_data.clone(), e.draw_data.clone())
+    };
+
+    let red = skin_of(WidgetKind::ColorSwatch, [200, 40, 40]);
+    let blue = skin_of(WidgetKind::ColorSwatch, [40, 40, 200]);
+    assert_ne!(
+        red, blue,
+        "a swatch do canvas pintou igual com duas tintas — a ponte nao le o preenchimento"
+    );
+
+    let a = skin_of(WidgetKind::Slider, [200, 40, 40]);
+    let b = skin_of(WidgetKind::Slider, [40, 40, 200]);
+    assert_eq!(
+        a, b,
+        "o Slider respondeu ao preenchimento da forma — recolorir a arte mudaria um controle \
+         que nao fala de cor"
+    );
+}

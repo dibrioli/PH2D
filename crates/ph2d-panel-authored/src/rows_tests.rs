@@ -11,10 +11,11 @@ use ph2d_editor_core::ids;
 fn the_rows_are_the_generated_table_in_order() {
     let live = rows();
     assert_eq!(live.len(), crate::generated::ROWS.len());
-    for (r, (kind, label, key)) in live.iter().zip(crate::generated::ROWS) {
+    for (r, (kind, label, key, rgba)) in live.iter().zip(crate::generated::ROWS) {
         assert_eq!(r.kind, *kind);
         assert_eq!(r.label, *label);
         assert_eq!(r.key, *key);
+        assert_eq!(r.rgba, *rgba);
     }
 }
 
@@ -52,6 +53,10 @@ fn the_row_ids_do_not_collide_with_each_other_nor_with_the_chrome() {
 /// ⚠️ Afirmada por TIPO, e não pela lista da cena: a cena pode mudar de desenho, a lei não. Um
 /// `Divider` registado acenderia sob o rato e não faria nada — o item-de-menu-morto com outro
 /// nome; e um `Slider` NÃO registado ficaria desenhado e imóvel sob o dedo.
+///
+/// ⚠️ **E as duas listas TÊM de cobrir o catálogo inteiro** — a última asserção é o que impede
+/// esta enumeração de apodrecer. Sem ela, um tipo novo não aparece em lista nenhuma, ninguém
+/// decide de que lado ele fica, e o gate segue verde afirmando o que já sabia.
 #[test]
 fn only_the_kinds_that_respond_are_controls() {
     let is = |kind| {
@@ -60,10 +65,11 @@ fn only_the_kinds_that_respond_are_controls() {
             label: "x",
             key: "x",
             id: ph2d_a11y::NodeId(1),
+            rgba: None,
         }
         .is_control()
     };
-    for k in [
+    let responds = [
         WidgetKind::Button,
         WidgetKind::Toggle,
         WidgetKind::Checkbox,
@@ -71,18 +77,28 @@ fn only_the_kinds_that_respond_are_controls() {
         WidgetKind::TextInput,
         WidgetKind::Tag,
         WidgetKind::ListItem,
-    ] {
-        assert!(is(k), "{k:?} responde a um gesto e nao e' controle");
-    }
-    for k in [
+        WidgetKind::NumberInput,
+    ];
+    let draws = [
         WidgetKind::ProgressBar,
         WidgetKind::SectionHeader,
         WidgetKind::Card,
         WidgetKind::Spinner,
         WidgetKind::Divider,
-    ] {
+        WidgetKind::LevelMeter,
+        WidgetKind::ColorSwatch,
+    ];
+    for k in responds {
+        assert!(is(k), "{k:?} responde a um gesto e nao e' controle");
+    }
+    for k in draws {
         assert!(!is(k), "{k:?} so' desenha e foi tratado como controle");
     }
+    assert_eq!(
+        responds.len() + draws.len(),
+        WidgetKind::ALL.len(),
+        "um tipo novo entrou no catalogo e ninguem decidiu se ele RESPONDE"
+    );
 }
 
 /// **Rótulos repetidos são CONTADOS, nunca renomeados.**
@@ -104,10 +120,16 @@ fn duplicate_labels_are_counted_not_renamed() {
 /// pintar a meio para sempre. O defeito só aparece numa screenshot, que é o modo de falha mais
 /// caro que este repo conhece.
 ///
-/// A metade complementar mora na porta (`the_live_state_reaches_the_paint`, em `skin/tests.rs`):
-/// lá se prova que o estado MUDA a cena; aqui, que este painel o entrega.
+/// A metade complementar mora na porta (`the_live_state_reaches_the_paint` e
+/// `the_colour_reaches_the_paint`, em `skin/tests.rs`): lá se prova que o estado e a cor MUDAM a
+/// cena; aqui, que este painel os entrega.
+///
+/// ⚠️ **A janela é a CHAMADA, não uma contagem de bytes.** A versão anterior lia 400 bytes depois
+/// do `paint_widget_skin_with(` — um número que envelhece no dia em que um argumento entra, e que
+/// já custou a esta linha dois arch-gates reescritos (23/07). Aqui ela vai até o `);` que fecha,
+/// que é o que a asserção de facto quer dizer.
 #[test]
-fn the_paint_hands_the_store_state_to_the_skin() {
+fn the_paint_hands_what_it_knows_to_the_skin() {
     let src = include_str!("paint.rs");
     // Controle positivo: uma varredura vazia tornaria este gate verde por vácuo.
     assert!(
@@ -117,10 +139,18 @@ fn the_paint_hands_the_store_state_to_the_skin() {
     let call = src
         .find("paint_widget_skin_with(\n")
         .expect("a chamada da pele sumiu do paint");
-    let window = &src[call..(call + 400).min(src.len())];
+    let end = src[call..]
+        .find("\n        );")
+        .expect("a chamada da pele nao fecha");
+    let window = &src[call..call + end];
     assert!(
         window.contains("store.get(row.id)"),
         "a pele recebe um estado que nao e' o do store — os controles pintariam o valor de \
          PREVIA para sempre, com toda a suite verde"
+    );
+    assert!(
+        window.contains("rgba: row.rgba"),
+        "a pele recebe um parametro que nao e' o da row — a swatch pintaria o xadrez para \
+         sempre, com o pintor correto e toda a suite verde"
     );
 }

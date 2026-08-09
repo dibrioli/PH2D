@@ -7,10 +7,12 @@
 pub const PANEL_ID: &str = "color";
 pub const PANEL_TITLE: &str = "Color";
 
-/// `(tipo do catálogo, rótulo, chave)` — a chave vira `NodeId` por hash.
-pub const ROWS: &[(WidgetKind, &str, &str)] = &[
-    (WidgetKind::SectionHeader, "Appearance", "appearance"),
-    (WidgetKind::Slider, "Opacity", "opacity"),
-    (WidgetKind::Toggle, "Visible", "visible"),
-    (WidgetKind::Button, "Reset", "reset"),
+/// `(tipo do catálogo, rótulo, chave, cor)` — a chave vira `NodeId` por hash, e a
+/// cor só é `Some` onde o tipo É uma cor.
+pub const ROWS: &[(WidgetKind, &str, &str, Option<[u8; 4]>)] = &[
+    (WidgetKind::SectionHeader, "Appearance", "appearance", None),
+    (WidgetKind::Slider, "Opacity", "opacity", None),
+    (WidgetKind::Toggle, "Visible", "visible", None),
+    (WidgetKind::Button, "Reset", "reset", None),
+    (WidgetKind::ColorSwatch, "Tint", "tint", Some([214, 92, 64, 255])),
 ];

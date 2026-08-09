@@ -39,6 +39,7 @@ fn the_skin_asks_for_the_whole_frame() {
     paint_widget_skin(
         WidgetKind::Checkbox,
         "Grid",
+        SkinParam::default(),
         tall,
         &mut got,
         &mut ts,
@@ -60,6 +61,7 @@ fn the_skin_asks_for_the_whole_frame() {
     paint_widget_skin(
         WidgetKind::Slider,
         "Opacity",
+        SkinParam::default(),
         tall,
         &mut got,
         &mut ts,
@@ -130,6 +132,7 @@ fn the_checkbox_box_grows_with_the_frame() {
     paint_widget_skin(
         WidgetKind::Checkbox,
         "Snap",
+        SkinParam::default(),
         tall,
         &mut grown,
         &mut ts,
@@ -166,6 +169,7 @@ fn the_slider_track_grows_with_the_frame() {
     paint_widget_skin(
         WidgetKind::Slider,
         "Opacity",
+        SkinParam::default(),
         tall,
         &mut grown,
         &mut ts,

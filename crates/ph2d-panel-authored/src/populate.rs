@@ -74,7 +74,8 @@ fn initial(kind: WidgetKind) -> Option<InteractiveState> {
         | WidgetKind::Card
         | WidgetKind::Spinner
         | WidgetKind::Divider
-        | WidgetKind::LevelMeter => return None,
+        | WidgetKind::LevelMeter
+        | WidgetKind::ColorSwatch => return None,
     })
 }
 

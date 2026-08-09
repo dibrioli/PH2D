@@ -2,15 +2,24 @@
 
 use super::*;
 use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, Transform, VecPathRef, VecWidget};
+use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecScene, rectangle};
 
 /// **O mundo que a tabela autorada descreve** — a mesma fonte que a cena usa para montar a árvore.
 ///
 /// ⚠️ Construir aqui uma segunda lista à mão seria o buraco clássico: ela divergiria da cena no
 /// dia em que uma row entrasse, e o gate de staleness ficaria verde sobre o painel errado.
-pub(crate) fn world_from_authored() -> (SimWorld, Entity) {
+pub(crate) fn world_from_authored() -> (SimWorld, VecScene, Entity) {
     let mut sim = SimWorld::new();
+    let mut scene = VecScene::new();
     let mut frame = None;
-    for (i, (_, name, kind)) in AUTHORED.iter().enumerate() {
+    for (i, (r, name, kind)) in AUTHORED.iter().enumerate() {
+        // ⚠️ A cena é construída da MESMA tabela e com a MESMA tinta que o smoke desenha — a cor
+        // da swatch atravessa o `RowSpec`, então uma segunda paleta aqui faria o golden concordar
+        // com uma cena que ninguém vê.
+        let mut p: VecPath = rectangle([r[0], r[1]], [r[2], r[3]]);
+        let c = super::authored_fill(i, *kind);
+        p.fill = Some(Paint::Solid(Rgba8::new(c[0], c[1], c[2], 255)));
+        scene.push_path(p);
         let e = sim
             .world_mut()
             .spawn((
@@ -30,7 +39,11 @@ pub(crate) fn world_from_authored() -> (SimWorld, Entity) {
                 .insert(VecWidget { kind: k.code() });
         }
     }
-    (sim, frame.expect("a moldura e a primeira linha da tabela"))
+    (
+        sim,
+        scene,
+        frame.expect("a moldura e a primeira linha da tabela"),
+    )
 }
 
 /// **O CONTROLE da cena existe** — e ele não é decoração.
@@ -50,7 +63,7 @@ fn the_scene_keeps_a_child_that_is_only_drawing() {
         .skip(1)
         .filter(|(_, _, k)| k.is_none())
         .count();
-    assert_eq!(dressed, 4, "a cena deixou de ter quatro filhos vestidos");
+    assert_eq!(dressed, 5, "a cena deixou de ter cinco filhos vestidos");
     assert!(
         plain >= 1,
         "a cena perdeu o filho de desenho puro — o CONTROLE"
@@ -70,8 +83,8 @@ fn the_scene_keeps_a_child_that_is_only_drawing() {
 /// possível, e sem a comparação exata um gerador poderia mudar de formato sem ninguém notar.
 #[test]
 fn the_generated_panel_is_not_stale() {
-    let (sim, frame) = world_from_authored();
-    let got = ph2d_ui_codegen::emit(&crate::ui_panel_spec::of(&sim, frame));
+    let (sim, scene, frame) = world_from_authored();
+    let got = ph2d_ui_codegen::emit(&crate::ui_panel_spec::of(&sim, &scene, frame));
     // ⚠️ Do lugar onde o produto o COMPILA. Uma cópia na shell seria um segundo golden, e o gate
     // ficaria verde comparando o gerador consigo mesmo enquanto o painel pinta outra coisa.
     let want = include_str!("../../../crates/ph2d-panel-authored/src/generated/panel.rs");
@@ -94,8 +107,8 @@ fn the_generated_panel_is_not_stale() {
 fn the_compiled_golden_carries_the_same_panel() {
     use ph2d_panel_authored::generated::{PANEL_ID, PANEL_TITLE, ROWS};
 
-    let (sim, frame) = world_from_authored();
-    let spec = crate::ui_panel_spec::of(&sim, frame);
+    let (sim, scene, frame) = world_from_authored();
+    let spec = crate::ui_panel_spec::of(&sim, &scene, frame);
 
     assert_eq!(PANEL_ID, spec.id);
     assert_eq!(PANEL_TITLE, spec.title);
@@ -108,6 +121,7 @@ fn the_compiled_golden_carries_the_same_panel() {
         assert_eq!(got.0.ident(), want.kind, "o tipo da row divergiu");
         assert_eq!(got.1, want.label, "o rotulo da row divergiu");
         assert_eq!(got.2, want.key, "a chave da row divergiu");
+        assert_eq!(got.3, want.rgba, "a cor da row divergiu");
     }
 }
 
@@ -115,9 +129,9 @@ fn the_compiled_golden_carries_the_same_panel() {
 #[test]
 #[ignore = "utilitario — roda a pedido para regenerar o golden"]
 fn print_the_generated_panel() {
-    let (sim, frame) = world_from_authored();
+    let (sim, scene, frame) = world_from_authored();
     print!(
         "{}",
-        ph2d_ui_codegen::emit(&crate::ui_panel_spec::of(&sim, frame))
+        ph2d_ui_codegen::emit(&crate::ui_panel_spec::of(&sim, &scene, frame))
     );
 }

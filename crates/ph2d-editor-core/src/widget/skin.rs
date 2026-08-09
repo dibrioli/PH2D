@@ -22,10 +22,13 @@
 //! novas **e** uma segunda porta para a aparência, no dia seguinte ao da W6.1 ter feito a tabela de
 //! cor autorável.
 //!
-//! ⇒ **O desenho responde ONDE e O QUÊ** (o retângulo e o tipo); **os tokens respondem COMO**. Um
-//! mapeamento por-tipo (*"o preenchimento da forma vira a cor da swatch"*) é uma tabela de 44 casos
-//! especiais e está **deliberadamente NÃO construído**: ele nasce no dia em que um tipo precisar de
-//! um parâmetro que o token não exprime.
+//! ⇒ **O desenho responde ONDE e O QUÊ** (o retângulo e o tipo); **os tokens respondem COMO**.
+//!
+//! ⚠️ **E o dia que esta nota previa CHEGOU** (2026-08-09). Ela dizia que um mapeamento por-tipo
+//! — *"o preenchimento da forma vira a cor da swatch"* — era *"uma tabela de 44 casos especiais,
+//! deliberadamente NÃO construída"*, e que ele nasceria *"no dia em que um tipo precisar de um
+//! parâmetro que o token não exprime"*. Medido: são **2 de 16**, não 44, e eles são [`SkinParam`].
+//! Todo o resto continua respondido pelo retângulo, pelo rótulo, pelos tokens e pelo estado vivo.
 //!
 //! # O RÓTULO é o `Name` da entidade
 //!
@@ -41,11 +44,11 @@
 
 use crate::interaction::InteractiveState;
 use crate::widget::{
-    Button, Card, Checkbox, Divider, LevelMeter, ListItem, NumberInput, ProgressBar, SectionHeader,
-    Slider, Spinner, Tag, TextInput, Toggle, paint_button, paint_card, paint_checkbox,
-    paint_divider, paint_level_meter, paint_list_item, paint_number_input_with_buffer,
-    paint_progress_bar, paint_section_header, paint_slider, paint_spinner, paint_tag,
-    paint_text_input, paint_toggle,
+    Button, Card, Checkbox, ColorSwatch, Divider, LevelMeter, ListItem, NumberInput, ProgressBar,
+    SectionHeader, Slider, Spinner, Tag, TextInput, Toggle, paint_button, paint_card,
+    paint_checkbox, paint_color_swatch, paint_divider, paint_level_meter, paint_list_item,
+    paint_number_input_with_buffer, paint_progress_bar, paint_section_header, paint_slider,
+    paint_spinner, paint_tag, paint_text_input, paint_toggle,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -81,6 +84,38 @@ const PREVIEW_PEAK: f32 = 0.72; // LITERAL-PX-OK: o pico da PRÉVIA, acima do RM
 /// nem uma nem outro. Um id REAL aqui seria pior que inútil: ele colidiria com o widget homônimo
 /// do painel nativo no store que a shell possui.
 const PREVIEW_ID: NodeId = NodeId(0);
+
+/// **O parâmetro que o TIPO pede e que o retângulo, o rótulo, os tokens e o estado vivo não
+/// determinam.**
+///
+/// # Por que ele existe, e a cerca que o previu
+///
+/// O doc deste módulo declarava um mapeamento por-tipo como *"uma tabela de 44 casos especiais,
+/// deliberadamente NÃO construída"*, e dizia quando ele nasceria: **no dia em que um tipo precisar
+/// de um parâmetro que o token não exprime**. Medido, esse dia chegou e o número era outro: de
+/// dezesseis tipos, **dois** — a `rgba` de uma `ColorSwatch` (o valor que ela existe para mostrar)
+/// e o ícone de um `IconButton` (*qual* ícone?). Todo o resto continua determinado.
+///
+/// # A FORMA é side-metadata, e isso não é estilo
+///
+/// Um `Copy` struct de campos **opcionais com default neutro**, ao lado do `kind` — o molde do
+/// `KernelResolver` dos Motion Nodes. Um canal novo é um **campo** novo, nunca um argumento novo
+/// nem uma variante de contrato: assim o dia em que o décimo-sétimo tipo pedir o seu parâmetro
+/// custa uma linha, e nenhum dos quinze chamadores muda.
+///
+/// ⚠️ **`Default` é o caminho SUPORTADO, não um esquecimento:** ele é o que um build que não
+/// conhece o tipo produz, e o que a prévia sem documento tem em mãos. Cada braço decide o que
+/// mostrar sem ele — e a decisão é sempre *o neutro que se LÊ como neutro*, nunca um valor
+/// inventado que o artista tomaria por escolha sua.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct SkinParam {
+    /// A cor de uma [`WidgetKind::ColorSwatch`] — o **preenchimento da forma** que a veste.
+    ///
+    /// ⚠️ Ela não é um campo autorado novo: é o fill que o documento já carrega, lido pela
+    /// `Paint::primary_color`, cujo próprio doc diz *"pra swatch de UI"*. Zero schema, zero
+    /// controle a mais — o artista pinta o retângulo e a swatch é daquela cor.
+    pub rgba: Option<[u8; 4]>,
+}
 
 /// **A PELE PREENCHE A MOLDURA — uma frase, doze tipos** (BUGS_vector #26).
 ///
@@ -122,155 +157,15 @@ fn skin_slider_track_px(rect: Rect) -> f32 {
     rect.h
 }
 
-/// **Que widget do catálogo esta forma veste.**
-///
-/// ⚠️ O código de cada variante é um **literal explícito**, nunca a ordem do enum: o número viaja
-/// no documento, e reordenar o enum re-pintaria em silêncio toda arte já salva. Acrescentar um
-/// tipo é acrescentar um código novo no fim — nunca reciclar um.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum WidgetKind {
-    Button,
-    Toggle,
-    Checkbox,
-    Slider,
-    ProgressBar,
-    Tag,
-    TextInput,
-    Card,
-    SectionHeader,
-    ListItem,
-    Spinner,
-    Divider,
-    NumberInput,
-    LevelMeter,
-}
-
-impl WidgetKind {
-    /// Todos os tipos que uma forma pode vestir hoje, na ordem em que o painel os oferece.
-    ///
-    /// # A fronteira é ESTRUTURAL, não um orçamento — e o teste dela ficou mais FINO
-    ///
-    /// ⚠️ **A primeira formulação desta lei era *"tem um `Vec`?"*, e ela é NECESSÁRIA mas não
-    /// SUFICIENTE.** O levantamento de 2026-08-08 contou os quatro tipos ausentes que não têm
-    /// `Vec` — `ColorSwatch`, `NumberInput`, `IconButton`, `LevelMeter` — e chamou aos quatro
-    /// *omissão de fiação*. Medido campo a campo, dois deles pedem um parâmetro que **nem o
-    /// desenho, nem os tokens, nem o estado vivo determinam**: a `rgba` de uma swatch (o valor que
-    /// ela existe para mostrar) e o `IconGlyph` de um botão de ícone (*qual* ícone?).
-    ///
-    /// A lei, então, é: **todo parâmetro tem de ser determinado pelo retângulo, pelo rótulo, pelos
-    /// tokens ou pelo estado vivo.** Sob ela os ausentes se separam em três, não em dois:
-    ///
-    /// | natureza | tipos | o que falta |
-    /// |---|---|---|
-    /// | vestível **hoje** | os catorze desta lista | nada |
-    /// | pede **parâmetro por-tipo** | `ColorSwatch` · `IconButton` | um canal no `RowSpec` |
-    /// | pede **filhos autorados** | `Tabs` · `Dropdown` · `RadioGroup` · `SegmentedAdaptive` | a LISTA vem dos filhos (degrau 3) |
-    ///
-    /// ⚠️ Pôr um da terceira família aqui obrigaria a inventar a lista, e a prévia mostraria itens
-    /// que o documento não tem.
-    pub const ALL: [WidgetKind; 14] = [
-        WidgetKind::Button,
-        WidgetKind::Toggle,
-        WidgetKind::Checkbox,
-        WidgetKind::Slider,
-        WidgetKind::ProgressBar,
-        WidgetKind::Tag,
-        WidgetKind::TextInput,
-        WidgetKind::Card,
-        WidgetKind::SectionHeader,
-        WidgetKind::ListItem,
-        WidgetKind::Spinner,
-        WidgetKind::Divider,
-        WidgetKind::NumberInput,
-        WidgetKind::LevelMeter,
-    ];
-
-    /// O código que viaja no documento. Estável para sempre.
-    #[must_use]
-    pub const fn code(self) -> u16 {
-        match self {
-            WidgetKind::Button => 1,
-            WidgetKind::Toggle => 2,
-            WidgetKind::Checkbox => 3,
-            WidgetKind::Slider => 4,
-            WidgetKind::ProgressBar => 5,
-            WidgetKind::Tag => 6,
-            WidgetKind::TextInput => 7,
-            WidgetKind::Card => 8,
-            WidgetKind::SectionHeader => 9,
-            WidgetKind::ListItem => 10,
-            WidgetKind::Spinner => 11,
-            WidgetKind::Divider => 12,
-            WidgetKind::NumberInput => 13,
-            WidgetKind::LevelMeter => 14,
-        }
-    }
-
-    /// A tradução de volta. **`None` é o caso que este canal existe para suportar**: um documento
-    /// autorado por um build mais novo carrega um código que este não conhece, e a resposta certa
-    /// é *desenhe a forma* — nunca um retângulo vazio, e nunca recusar o arquivo.
-    #[must_use]
-    pub fn from_code(code: u16) -> Option<Self> {
-        Self::ALL.into_iter().find(|k| k.code() == code)
-    }
-
-    /// **O IDENTIFICADOR do variante, tal como o Rust o escreve** — o que o codegen do W8b põe no
-    /// código gerado (`WidgetKind::Slider`).
-    ///
-    /// ⚠️ **Ela mora aqui porque o dono da lista é quem pode respondê-la.** O gerador
-    /// (`ph2d-ui-codegen`) **não depende** desta crate de propósito: sem alcance ao catálogo ele
-    /// não CONSEGUE ter opinião sobre o que um `Slider` é, e uma tabela `código → nome` do lado
-    /// dele seria uma segunda resposta que driftaria no dia em que um tipo entrasse — em silêncio,
-    /// porque um número desconhecido não falha, ele só não casa.
-    ///
-    /// ⚠️ **É o identificador, NÃO um rótulo:** ele atravessa para dentro de código-fonte, então
-    /// traduzi-lo ou embelezá-lo produziria um arquivo que não compila. O nome que o artista lê é
-    /// o [`Self::i18n_key`].
-    #[must_use]
-    pub const fn ident(self) -> &'static str {
-        match self {
-            WidgetKind::Button => "Button",
-            WidgetKind::Toggle => "Toggle",
-            WidgetKind::Checkbox => "Checkbox",
-            WidgetKind::Slider => "Slider",
-            WidgetKind::ProgressBar => "ProgressBar",
-            WidgetKind::Tag => "Tag",
-            WidgetKind::TextInput => "TextInput",
-            WidgetKind::Card => "Card",
-            WidgetKind::SectionHeader => "SectionHeader",
-            WidgetKind::ListItem => "ListItem",
-            WidgetKind::Spinner => "Spinner",
-            WidgetKind::Divider => "Divider",
-            WidgetKind::NumberInput => "NumberInput",
-            WidgetKind::LevelMeter => "LevelMeter",
-        }
-    }
-
-    /// A chave i18n do nome deste tipo, para o painel.
-    #[must_use]
-    pub const fn i18n_key(self) -> &'static str {
-        match self {
-            WidgetKind::Button => "panel.vector.widget.kind.button",
-            WidgetKind::Toggle => "panel.vector.widget.kind.toggle",
-            WidgetKind::Checkbox => "panel.vector.widget.kind.checkbox",
-            WidgetKind::Slider => "panel.vector.widget.kind.slider",
-            WidgetKind::ProgressBar => "panel.vector.widget.kind.progress",
-            WidgetKind::Tag => "panel.vector.widget.kind.tag",
-            WidgetKind::TextInput => "panel.vector.widget.kind.text_input",
-            WidgetKind::Card => "panel.vector.widget.kind.card",
-            WidgetKind::SectionHeader => "panel.vector.widget.kind.section",
-            WidgetKind::ListItem => "panel.vector.widget.kind.list_item",
-            WidgetKind::Spinner => "panel.vector.widget.kind.spinner",
-            WidgetKind::Divider => "panel.vector.widget.kind.divider",
-            WidgetKind::NumberInput => "panel.vector.widget.kind.number_input",
-            WidgetKind::LevelMeter => "panel.vector.widget.kind.level_meter",
-        }
-    }
-}
+mod kind;
+pub use kind::WidgetKind;
 
 /// **A PORTA ÚNICA**: pinta a pele de `kind` em `rect`, pelo pintor real do catálogo.
 ///
 /// `label` é o `Name` da entidade — o rótulo que o widget mostra.
+///
+/// `param` é o que o retângulo, o rótulo e os tokens **não conseguem** responder — hoje, só a cor
+/// de uma [`WidgetKind::ColorSwatch`] (ver [`SkinParam`]). Todo outro tipo passa o neutro.
 ///
 /// ⚠️ Quem chama isto tem de ser quem chamaria o painel nativo: mesma `VectorScene`, mesmo
 /// `TextSystem`, mesmo `Theme`. É essa igualdade de argumentos que torna o gate de bytes possível
@@ -278,6 +173,7 @@ impl WidgetKind {
 pub fn paint_widget_skin(
     kind: WidgetKind,
     label: &str,
+    param: SkinParam,
     rect: Rect,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -288,6 +184,7 @@ pub fn paint_widget_skin(
         label,
         PREVIEW_ID,
         None,
+        param,
         rect,
         scene,
         text_system,
@@ -316,6 +213,7 @@ pub fn paint_widget_skin_with(
     label: &str,
     id: NodeId,
     live: Option<&InteractiveState>,
+    param: SkinParam,
     rect: Rect,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -434,6 +332,15 @@ pub fn paint_widget_skin_with(
                 anchor = *selection_anchor;
             }
             paint_number_input_with_buffer(&n, buf, caret, anchor, rect, scene, text_system, theme);
+        }
+        WidgetKind::ColorSwatch => {
+            // ⚠️ **Sem parâmetro, a swatch mostra o XADREZ** — e isso não é um fallback de
+            // conveniência: `[0,0,0,0]` é alfa zero, o pintor desenha o tabuleiro de
+            // transparência, e *"nenhuma cor escolhida"* é exactamente o que ele significa em
+            // toda UI de cor que existe. Inventar um cinza aqui seria pintar uma escolha que o
+            // artista não fez.
+            let rgba = param.rgba.unwrap_or([0, 0, 0, 0]);
+            paint_color_swatch(&ColorSwatch::new(id, label, rgba), rect, scene, theme);
         }
         WidgetKind::LevelMeter => {
             // ⚠️ Um medidor é READOUT: ele não tem estado de interação (não há

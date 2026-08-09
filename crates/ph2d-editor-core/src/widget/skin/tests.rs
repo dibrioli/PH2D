@@ -13,6 +13,9 @@ use super::*;
 #[path = "frame_tests.rs"]
 mod frame;
 
+#[path = "kind_tests.rs"]
+mod kind;
+
 /// A impressão digital de uma cena: os caminhos, os bytes de geometria e de tinta, **e os
 /// glifos**.
 ///
@@ -63,7 +66,15 @@ fn every_kind_paints_something() {
     for kind in WidgetKind::ALL {
         let mut scene = ph2d_vector::VectorScene::new();
         let mut ts = text();
-        paint_widget_skin(kind, "Save", rect(), &mut scene, &mut ts, Theme::Forge);
+        paint_widget_skin(
+            kind,
+            "Save",
+            SkinParam::default(),
+            rect(),
+            &mut scene,
+            &mut ts,
+            Theme::Forge,
+        );
         assert!(
             drew_anything(&scene),
             "{kind:?} nao emitiu nem caminho nem glifo — a forma sumiria do canvas"
@@ -90,13 +101,29 @@ fn the_skin_paints_exactly_what_the_native_painter_paints() {
         Theme::Forge,
     );
     let mut b = ph2d_vector::VectorScene::new();
-    paint_widget_skin(WidgetKind::Button, "Save", r, &mut b, &mut ts, Theme::Forge);
+    paint_widget_skin(
+        WidgetKind::Button,
+        "Save",
+        SkinParam::default(),
+        r,
+        &mut b,
+        &mut ts,
+        Theme::Forge,
+    );
     assert_eq!(print(&a), print(&b), "a pele do Button divergiu do pintor");
 
     let mut a = ph2d_vector::VectorScene::new();
     paint_toggle(&Toggle::new(NodeId(0), "On"), r, &mut a, Theme::Forge);
     let mut b = ph2d_vector::VectorScene::new();
-    paint_widget_skin(WidgetKind::Toggle, "On", r, &mut b, &mut ts, Theme::Forge);
+    paint_widget_skin(
+        WidgetKind::Toggle,
+        "On",
+        SkinParam::default(),
+        r,
+        &mut b,
+        &mut ts,
+        Theme::Forge,
+    );
     assert_eq!(print(&a), print(&b), "a pele do Toggle divergiu do pintor");
 
     let mut a = ph2d_vector::VectorScene::new();
@@ -108,7 +135,15 @@ fn the_skin_paints_exactly_what_the_native_painter_paints() {
         Theme::Forge,
     );
     let mut b = ph2d_vector::VectorScene::new();
-    paint_widget_skin(WidgetKind::Tag, "Beta", r, &mut b, &mut ts, Theme::Forge);
+    paint_widget_skin(
+        WidgetKind::Tag,
+        "Beta",
+        SkinParam::default(),
+        r,
+        &mut b,
+        &mut ts,
+        Theme::Forge,
+    );
     assert_eq!(print(&a), print(&b), "a pele do Tag divergiu do pintor");
 }
 
@@ -125,6 +160,7 @@ fn a_token_change_moves_the_canvas_too() {
     paint_widget_skin(
         WidgetKind::Button,
         "Save",
+        SkinParam::default(),
         r,
         &mut forge,
         &mut ts,
@@ -134,6 +170,7 @@ fn a_token_change_moves_the_canvas_too() {
     paint_widget_skin(
         WidgetKind::Button,
         "Save",
+        SkinParam::default(),
         r,
         &mut light,
         &mut ts,
@@ -156,11 +193,20 @@ fn the_label_reaches_the_paint() {
     let r = rect();
     let mut ts = text();
     let mut a = ph2d_vector::VectorScene::new();
-    paint_widget_skin(WidgetKind::Button, "Save", r, &mut a, &mut ts, Theme::Forge);
+    paint_widget_skin(
+        WidgetKind::Button,
+        "Save",
+        SkinParam::default(),
+        r,
+        &mut a,
+        &mut ts,
+        Theme::Forge,
+    );
     let mut b = ph2d_vector::VectorScene::new();
     paint_widget_skin(
         WidgetKind::Button,
         "Cancel",
+        SkinParam::default(),
         r,
         &mut b,
         &mut ts,
@@ -170,66 +216,6 @@ fn the_label_reaches_the_paint() {
     let (ga, gb) = (print(&a).3, print(&b).3);
     assert!(!ga.is_empty(), "o rotulo nao produziu glifo nenhum");
     assert_ne!(ga, gb, "dois rotulos diferentes pintaram os MESMOS glifos");
-}
-
-/// **Os códigos são literais PINADOS.** Reordenar o enum não pode mover um número que já viaja
-/// em arquivos salvos.
-#[test]
-fn the_codes_are_pinned_and_unique() {
-    assert_eq!(WidgetKind::Button.code(), 1);
-    assert_eq!(WidgetKind::Toggle.code(), 2);
-    assert_eq!(WidgetKind::Checkbox.code(), 3);
-    assert_eq!(WidgetKind::Slider.code(), 4);
-    assert_eq!(WidgetKind::ProgressBar.code(), 5);
-    assert_eq!(WidgetKind::Tag.code(), 6);
-    assert_eq!(WidgetKind::TextInput.code(), 7);
-    assert_eq!(WidgetKind::Card.code(), 8);
-    assert_eq!(WidgetKind::SectionHeader.code(), 9);
-    assert_eq!(WidgetKind::ListItem.code(), 10);
-    assert_eq!(WidgetKind::Spinner.code(), 11);
-    assert_eq!(WidgetKind::Divider.code(), 12);
-    assert_eq!(WidgetKind::NumberInput.code(), 13);
-    assert_eq!(WidgetKind::LevelMeter.code(), 14);
-
-    let mut seen = std::collections::BTreeSet::new();
-    for kind in WidgetKind::ALL {
-        assert!(seen.insert(kind.code()), "codigo repetido em {kind:?}");
-    }
-    assert_eq!(seen.len(), WidgetKind::ALL.len(), "a lista perdeu um tipo");
-}
-
-/// **Ida e volta é total**, e um código desconhecido devolve `None`.
-///
-/// ⚠️ O `None` é a metade que o plano pede como gate (*"um `kind` desconhecido degrada para o
-/// desenho, nunca para um painel vazio"*): ele é o que um documento autorado por um build mais
-/// novo produz, e recusá-lo seria recusar o arquivo.
-#[test]
-fn the_round_trip_is_total_and_the_unknown_degrades() {
-    for kind in WidgetKind::ALL {
-        assert_eq!(WidgetKind::from_code(kind.code()), Some(kind));
-    }
-    assert_eq!(WidgetKind::from_code(0), None, "0 nao e' tipo nenhum");
-    assert_eq!(WidgetKind::from_code(9999), None, "um tipo do futuro");
-}
-
-/// **Cada tipo tem chave i18n PRÓPRIA** — duas iguais fariam dois chips com o mesmo nome, e o
-/// artista não teria como distinguir o que está a escolher.
-#[test]
-fn every_kind_has_its_own_i18n_key() {
-    let mut seen = std::collections::BTreeSet::new();
-    for kind in WidgetKind::ALL {
-        let key = kind.i18n_key();
-        assert!(
-            key.starts_with("panel.vector.widget.kind."),
-            "{kind:?} tem chave fora da familia: {key}"
-        );
-        assert!(seen.insert(key), "chave repetida: {key}");
-        assert_ne!(
-            ph2d_i18n::tr(key),
-            key,
-            "a chave {key} nao esta' na tabela de i18n — o chip mostraria a chave crua"
-        );
-    }
 }
 
 /// **O ESTADO VIVO chega à pintura** (plano UI/UX W8b.2) — o mesmo tipo, dois valores, duas cenas.
@@ -255,6 +241,7 @@ fn the_live_state_reaches_the_paint() {
             "Opacity",
             NodeId(7),
             Some(&live),
+            SkinParam::default(),
             rect(),
             scene,
             &mut ts,
@@ -278,13 +265,22 @@ fn the_preview_is_this_function_without_state() {
     let mut ts = text();
     for kind in WidgetKind::ALL {
         let mut a = ph2d_vector::VectorScene::new();
-        paint_widget_skin(kind, "Save", rect(), &mut a, &mut ts, Theme::Forge);
+        paint_widget_skin(
+            kind,
+            "Save",
+            SkinParam::default(),
+            rect(),
+            &mut a,
+            &mut ts,
+            Theme::Forge,
+        );
         let mut b = ph2d_vector::VectorScene::new();
         paint_widget_skin_with(
             kind,
             "Save",
             PREVIEW_ID,
             None,
+            SkinParam::default(),
             rect(),
             &mut b,
             &mut ts,
@@ -327,6 +323,7 @@ fn the_number_input_paints_what_is_being_typed_not_the_committed_value() {
             "Radius",
             NodeId(11),
             Some(&live),
+            SkinParam::default(),
             rect(),
             scene,
             &mut ts,
@@ -356,6 +353,7 @@ fn the_level_meter_preview_shows_its_peak_marker() {
     paint_widget_skin(
         WidgetKind::LevelMeter,
         "Master",
+        SkinParam::default(),
         rect(),
         &mut preview,
         &mut ts,
@@ -372,5 +370,99 @@ fn the_level_meter_preview_shows_its_peak_marker() {
         print(&preview),
         print(&flat),
         "o pico da previa nao esta' acima do RMS — a marca desaparece dentro da barra"
+    );
+}
+
+/// **A COR chega ao pintor** — o gate do canal [`SkinParam`].
+///
+/// ⚠️ Sem ele, o braço da swatch podia ignorar o parâmetro e pintar sempre o xadrez: a lista de
+/// tipos continuaria completa, todo gate de presença ficaria verde, e o defeito seria *a swatch
+/// não mostra a cor que o artista pintou* — visível só numa screenshot.
+///
+/// ⚠️ **Duas asserções, e as duas são precisas.** *Duas cores diferentes pintam diferente* sozinha
+/// ficaria verde num braço que lesse só o CANAL ALFA; *`Some` difere de `None`* sozinha ficaria
+/// verde num braço que só distinguisse "tem cor" de "não tem". Juntas, o parâmetro tem de chegar
+/// inteiro.
+#[test]
+fn the_colour_reaches_the_paint() {
+    let mut ts = text();
+    let paint_with = |rgba, ts: &mut TextSystem| {
+        let mut sc = ph2d_vector::VectorScene::new();
+        paint_widget_skin(
+            WidgetKind::ColorSwatch,
+            "Tint",
+            SkinParam { rgba },
+            rect(),
+            &mut sc,
+            ts,
+            Theme::Forge,
+        );
+        print(&sc)
+    };
+    let red = paint_with(Some([200, 40, 40, 255]), &mut ts);
+    let blue = paint_with(Some([40, 40, 200, 255]), &mut ts);
+    let empty = paint_with(None, &mut ts);
+    assert_ne!(
+        red, blue,
+        "duas cores pintaram a MESMA swatch — o parametro nao chega ao pintor"
+    );
+    assert_ne!(
+        red, empty,
+        "uma swatch com cor pintou como uma sem — o xadrez de transparencia e' o `None`, e ele \
+         tem de ser distinguivel de uma cor escolhida"
+    );
+}
+
+/// **E o parâmetro é INERTE em quem não o consome.**
+///
+/// ⚠️ O irmão do gate acima, e o que mantém a fronteira escrita: um braço que passasse a ler a cor
+/// faria o `Slider` mudar de tinta por o artista ter pintado a forma — sem ninguém ter decidido
+/// isso, e sem um teste falhar.
+///
+/// ⚠️ **A exclusão é LITERAL, e não `takes_colour()`** — escrita assim porque a primeira versão
+/// usava a própria função sob teste para escolher quem varrer: com ela devolvendo `true` para
+/// todos, o laço ficava VAZIO e o gate passava por vácuo (medido). *Um oráculo que se filtra a si
+/// próprio não pode falhar pelo motivo que alega.* Quem pina a lista é o gate irmão.
+#[test]
+fn the_colour_is_inert_in_every_kind_that_does_not_take_it() {
+    let mut ts = text();
+    let mut checked = 0;
+    for kind in WidgetKind::ALL {
+        if matches!(kind, WidgetKind::ColorSwatch) {
+            continue;
+        }
+        checked += 1;
+        let mut a = ph2d_vector::VectorScene::new();
+        let mut b = ph2d_vector::VectorScene::new();
+        paint_widget_skin(
+            kind,
+            "Save",
+            SkinParam::default(),
+            rect(),
+            &mut a,
+            &mut ts,
+            Theme::Forge,
+        );
+        paint_widget_skin(
+            kind,
+            "Save",
+            SkinParam {
+                rgba: Some([200, 40, 40, 255]),
+            },
+            rect(),
+            &mut b,
+            &mut ts,
+            Theme::Forge,
+        );
+        assert_eq!(
+            print(&a),
+            print(&b),
+            "{kind:?} respondeu a uma cor que ele nao declara consumir"
+        );
+    }
+    assert_eq!(
+        checked,
+        WidgetKind::ALL.len() - 1,
+        "a varredura ficou vazia — o gate passaria por vacuo"
     );
 }

@@ -7,6 +7,15 @@ fn row(kind: &str, label: &str, key: &str) -> RowSpec {
         kind: kind.into(),
         label: label.into(),
         key: key.into(),
+        rgba: None,
+    }
+}
+
+/// A mesma row, com a cor que só um tipo de cor carrega.
+fn row_tinted(kind: &str, label: &str, key: &str, rgba: [u8; 4]) -> RowSpec {
+    RowSpec {
+        rgba: Some(rgba),
+        ..row(kind, label, key)
     }
 }
 
@@ -54,7 +63,7 @@ fn the_rows_come_out_in_the_order_they_went_in() {
 fn the_kind_comes_out_as_a_catalogue_path() {
     let src = emit(&demo());
     assert!(
-        src.contains("(WidgetKind::Slider, \"Opacity\", \"opacity\")"),
+        src.contains("(WidgetKind::Slider, \"Opacity\", \"opacity\", None)"),
         "a row nao saiu com o caminho do catalogo:\n{src}"
     );
 }
@@ -102,7 +111,32 @@ fn an_empty_panel_emits_an_empty_table() {
         rows: Vec::new(),
     });
     assert!(
-        src.contains("pub const ROWS: &[(WidgetKind, &str, &str)] = &[\n];"),
+        src.contains("pub const ROWS: &[(WidgetKind, &str, &str, Option<[u8; 4]>)] = &[\n];"),
         "a tabela vazia nao saiu bem formada:\n{src}"
+    );
+}
+
+/// **A cor sai como um literal que o Rust aceita, e só onde ela existe.**
+///
+/// ⚠️ O `None` não é a ausência do campo: a tupla tem sempre quatro posições, porque uma tupla de
+/// aridade variável não é um tipo. E o `Some` sai com os quatro canais — deixar o alfa de fora
+/// faria uma swatch transparente emitir como opaca, em silêncio.
+#[test]
+fn the_colour_comes_out_as_a_literal_only_where_it_exists() {
+    let src = emit(&PanelSpec {
+        id: "demo".into(),
+        title: "Demo".into(),
+        rows: vec![
+            row("Slider", "Opacity", "opacity"),
+            row_tinted("ColorSwatch", "Tint", "tint", [214, 92, 64, 128]),
+        ],
+    });
+    assert!(
+        src.contains("(WidgetKind::Slider, \"Opacity\", \"opacity\", None)"),
+        "quem nao tem cor emitiu alguma coisa:\n{src}"
+    );
+    assert!(
+        src.contains("(WidgetKind::ColorSwatch, \"Tint\", \"tint\", Some([214, 92, 64, 128]))"),
+        "a cor nao saiu com os quatro canais:\n{src}"
     );
 }

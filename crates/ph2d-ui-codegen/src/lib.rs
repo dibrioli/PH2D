@@ -59,6 +59,17 @@ pub struct RowSpec {
     pub label: String,
     /// A chave estável da row. O `NodeId` é `hash(chave)` em runtime — ver o doc da crate.
     pub key: String,
+    /// **A cor que esta row mostra**, quando o tipo dela É uma cor (a `ColorSwatch`).
+    ///
+    /// ⚠️ É o único parâmetro que o retângulo, o rótulo e os tokens **não conseguem** responder:
+    /// *que cor?* é conteúdo, e ele vem do preenchimento da forma que veste o widget. Todo outro
+    /// tipo emite `None`, e o `None` da swatch **é** o xadrez de transparência — ou seja, *nenhuma
+    /// cor escolhida*, que é o que ele significa em toda UI de cor que existe.
+    ///
+    /// ⚠️ E ele é um SNAPSHOT, como o `label` ao lado: o painel gerado mostra a cor que a forma
+    /// tinha quando o código foi escrito. Quem quer a cor VIVA olha a moldura no canvas, que lê o
+    /// documento a cada quadro.
+    pub rgba: Option<[u8; 4]>,
 }
 
 /// **O painel que uma árvore autorada descreve.**
@@ -96,7 +107,9 @@ pub fn emit(spec: &PanelSpec) -> String {
     push_str_literal(&mut out, &spec.id);
     out.push_str(";\npub const PANEL_TITLE: &str = ");
     push_str_literal(&mut out, &spec.title);
-    out.push_str(";\n\n/// `(tipo do catálogo, rótulo, chave)` — a chave vira `NodeId` por hash.\npub const ROWS: &[(WidgetKind, &str, &str)] = &[\n");
+    out.push_str(
+        ";\n\n/// `(tipo do catálogo, rótulo, chave, cor)` — a chave vira `NodeId` por hash, e a\n/// cor só é `Some` onde o tipo É uma cor.\npub const ROWS: &[(WidgetKind, &str, &str, Option<[u8; 4]>)] = &[\n",
+    );
     for r in &spec.rows {
         out.push_str("    (WidgetKind::");
         out.push_str(&r.kind);
@@ -104,6 +117,13 @@ pub fn emit(spec: &PanelSpec) -> String {
         push_str_literal(&mut out, &r.label);
         out.push_str(", ");
         push_str_literal(&mut out, &r.key);
+        out.push_str(", ");
+        match r.rgba {
+            None => out.push_str("None"),
+            Some([r8, g8, b8, a8]) => {
+                out.push_str(&format!("Some([{r8}, {g8}, {b8}, {a8}])"));
+            }
+        }
         out.push_str("),\n");
     }
     out.push_str("];\n");

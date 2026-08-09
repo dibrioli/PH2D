@@ -2,6 +2,7 @@
 
 use super::*;
 use ph2d_ecs::{ChildOf, Transform, VecPathRef};
+use ph2d_vec_scene::VecScene;
 
 /// Uma moldura com quatro filhos: três vestidos e **um que é só desenho**.
 fn frame_with_children() -> (SimWorld, Entity) {
@@ -32,7 +33,7 @@ fn frame_with_children() -> (SimWorld, Entity) {
 #[test]
 fn the_spec_is_the_dressed_children_in_tree_order() {
     let (sim, frame) = frame_with_children();
-    let spec = of(&sim, frame);
+    let spec = of(&sim, &VecScene::new(), frame);
 
     assert_eq!(spec.title, "Painel de Cor");
     assert_eq!(
@@ -66,7 +67,7 @@ fn a_dressed_frame_is_the_panel_not_its_first_row() {
     sim.world_mut().entity_mut(frame).insert(VecWidget {
         kind: WidgetKind::Card.code(),
     });
-    let spec = of(&sim, frame);
+    let spec = of(&sim, &VecScene::new(), frame);
     assert_eq!(spec.rows.len(), 3, "a moldura virou row de si mesma");
 }
 
@@ -86,7 +87,7 @@ fn an_unknown_kind_does_not_become_a_row() {
         .entity_mut(e)
         .insert((ChildOf(frame), VecWidget { kind: 60_000 }));
     assert_eq!(
-        of(&sim, frame).rows.len(),
+        of(&sim, &VecScene::new(), frame).rows.len(),
         3,
         "um tipo desconhecido virou row"
     );
@@ -102,4 +103,101 @@ fn the_key_is_a_slug_of_the_label() {
         "_",
         "um rotulo vazio ainda tem de dar uma chave"
     );
+}
+
+/// **Uma moldura com uma swatch e um slider, cada um sobre a sua forma PINTADA.**
+///
+/// ⚠️ Os dois têm preenchimento de propósito: é o que torna o gate da fronteira capaz de falhar.
+/// Com só a swatch pintada, *"a cor sai do fill"* e *"a cor sai do fill de quem a consome"* seriam
+/// indistinguíveis.
+fn frame_with_a_swatch() -> (SimWorld, VecScene, Entity) {
+    use ph2d_vec_scene::{Paint, Rgba8, VecPath, rectangle};
+    let mut sim = SimWorld::new();
+    let mut scene = VecScene::new();
+    let frame = sim
+        .world_mut()
+        .spawn((Name("Color".into()), Transform::IDENTITY))
+        .id();
+    let mut add = |sim: &mut SimWorld, name: &str, kind: u16, fill: Option<[u8; 3]>| {
+        let mut p: VecPath = rectangle([-1.0, -0.4], [1.0, 0.4]);
+        p.fill = fill.map(|c| Paint::Solid(Rgba8::new(c[0], c[1], c[2], 255)));
+        let id = scene.push_path(p);
+        let e = sim
+            .world_mut()
+            .spawn((
+                Name(name.into()),
+                Transform::IDENTITY,
+                VecPathRef(id),
+                VecWidget { kind },
+            ))
+            .id();
+        sim.world_mut().entity_mut(e).insert(ChildOf(frame));
+    };
+    add(
+        &mut sim,
+        "Tint",
+        WidgetKind::ColorSwatch.code(),
+        Some([214, 92, 64]),
+    );
+    add(
+        &mut sim,
+        "Opacity",
+        WidgetKind::Slider.code(),
+        Some([10, 200, 30]),
+    );
+    (sim, scene, frame)
+}
+
+/// **A swatch carrega o preenchimento da forma que a veste** — e só ela.
+///
+/// ⚠️ As duas metades são perguntas diferentes e o gate falha por qualquer uma: sem a primeira, a
+/// swatch pinta o xadrez para sempre com a suíte verde; sem a segunda, o dia em que alguém tirasse
+/// o guarda do `takes_colour` faria todo widget carregar uma cor que ninguém pediu — e o `Slider`
+/// só mudaria de tinta no dia em que um braço passasse a lê-la.
+#[test]
+fn only_the_swatch_carries_the_shapes_fill() {
+    let (sim, scene, frame) = frame_with_a_swatch();
+    let spec = of(&sim, &scene, frame);
+    let got: Vec<(&str, Option<[u8; 4]>)> = spec
+        .rows
+        .iter()
+        .map(|r| (r.kind.as_str(), r.rgba))
+        .collect();
+    assert_eq!(
+        got,
+        vec![("ColorSwatch", Some([214, 92, 64, 255])), ("Slider", None),],
+        "a cor nao saiu do preenchimento, ou vazou para quem nao a consome"
+    );
+}
+
+/// **Uma forma SEM preenchimento deixa a swatch vazia** — e vazia É a resposta.
+///
+/// ⚠️ `None` não é um erro nem um fallback de conveniência: o pintor desenha o tabuleiro de
+/// transparência, e *nenhuma cor escolhida* é exactamente o que ele significa. Inventar aqui um
+/// preto ou um cinza seria pintar uma escolha que o artista não fez.
+#[test]
+fn a_shape_without_fill_leaves_the_swatch_empty() {
+    use ph2d_vec_scene::rectangle;
+    let mut sim = SimWorld::new();
+    let mut scene = VecScene::new();
+    let frame = sim
+        .world_mut()
+        .spawn((Name("Color".into()), Transform::IDENTITY))
+        .id();
+    let id = scene.push_path(rectangle([-1.0, -0.4], [1.0, 0.4]));
+    let e = sim
+        .world_mut()
+        .spawn((
+            Name("Tint".into()),
+            Transform::IDENTITY,
+            VecPathRef(id),
+            VecWidget {
+                kind: WidgetKind::ColorSwatch.code(),
+            },
+        ))
+        .id();
+    sim.world_mut().entity_mut(e).insert(ChildOf(frame));
+    let spec = of(&sim, &scene, frame);
+    assert_eq!(spec.rows.len(), 1);
+    assert_eq!(spec.rows[0].rgba, None, "uma forma sem tinta inventou uma");
 }

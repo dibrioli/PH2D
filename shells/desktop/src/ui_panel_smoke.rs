@@ -40,8 +40,8 @@ use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecPathId, rectangle};
 /// staleness (`the_generated_panel_is_not_stale`) constrói o mundo a partir dela para emitir o
 /// código e comparar com o arquivo commitado. Uma segunda lista escrita à mão no gate divergiria
 /// desta no dia em que uma row entrasse — e o gate ficaria verde sobre o painel errado.
-pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 6] = [
-    ([-2.0, -2.4, 2.0, 2.4], "Color", None),
+pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 7] = [
+    ([-2.0, -2.8, 2.0, 2.4], "Color", None),
     (
         [-1.8, 1.4, 1.8, 2.2],
         "Appearance",
@@ -50,8 +50,32 @@ pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 6] = [
     ([-1.8, 0.4, 1.8, 1.1], "Opacity", Some(WidgetKind::Slider)),
     ([-1.8, -0.6, 1.8, 0.1], "Visible", Some(WidgetKind::Toggle)),
     ([-1.8, -1.6, 1.8, -0.9], "Reset", Some(WidgetKind::Button)),
-    ([-1.7, -2.2, 1.7, -1.9], "Backdrop", None),
+    (
+        [-1.8, -2.6, 1.8, -1.9],
+        "Tint",
+        Some(WidgetKind::ColorSwatch),
+    ),
+    ([-1.7, 1.25, 1.7, 1.35], "Backdrop", None),
 ];
+
+/// **A tinta de cada forma da tabela** — e para UMA delas ela é o CONTEÚDO, não a decoração.
+///
+/// ⚠️ Ela é `pub(crate)` porque o gate de staleness constrói a MESMA cena para emitir o código: a
+/// cor da swatch atravessa o `RowSpec`, então uma segunda tabela de cores no lado do gate faria o
+/// golden concordar com uma cena que ninguém desenha.
+///
+/// ⚠️ **A swatch tem cor PRÓPRIA de propósito.** Com o azul dos irmãos vestidos, *"a swatch mostra
+/// o preenchimento DELA"* e *"a swatch pinta um azul fixo"* seriam indistinguíveis na foto — e a
+/// pergunta de olho deste smoke é exactamente que os dois lados concordem.
+#[must_use]
+pub(crate) const fn authored_fill(i: usize, kind: Option<WidgetKind>) -> [u8; 3] {
+    match (i == FRAME, kind) {
+        (true, _) => [30, 34, 46],
+        (_, Some(WidgetKind::ColorSwatch)) => [214, 92, 64],
+        (_, Some(_)) => [64, 84, 128],
+        (_, None) => [44, 48, 58],
+    }
+}
 
 /// A moldura é a primeira linha; os filhos são o resto.
 const FRAME: usize = 0;
@@ -82,12 +106,8 @@ fn build(app: &mut crate::App) {
     for (i, (r, _, kind)) in AUTHORED.iter().enumerate() {
         let mut p: VecPath = rectangle([r[0], r[1]], [r[2], r[3]]);
         // A moldura é escura; quem veste fica visível; o desenho puro fica apagado, para a foto
-        // dizer qual é qual.
-        let c = match (i == FRAME, kind) {
-            (true, _) => [30, 34, 46],
-            (_, Some(_)) => [64, 84, 128],
-            (_, None) => [44, 48, 58],
-        };
+        // dizer qual é qual — e a swatch leva a própria (ver [`authored_fill`]).
+        let c = authored_fill(i, *kind);
         p.fill = Some(Paint::Solid(Rgba8::new(c[0], c[1], c[2], 255)));
         gfx.vec_scene.push_path(p);
     }
@@ -192,14 +212,14 @@ fn announce(app: &mut crate::App) {
         eprintln!("[ui-panel] ⚠️ a moldura nao tem entidade — PARE");
         return;
     };
-    let spec = crate::ui_panel_spec::of(&gfx.sim, frame_e);
+    let spec = crate::ui_panel_spec::of(&gfx.sim, &gfx.vec_scene, frame_e);
     eprintln!(
         "[ui-panel] a moldura '{}' descreve um painel de {} row(s).",
         spec.title,
         spec.rows.len()
     );
-    if spec.rows.len() != 4 {
-        eprintln!("[ui-panel] ⚠️ **PARE**: eram para ser 4 rows (o 'Backdrop' e' desenho puro).");
+    if spec.rows.len() != 5 {
+        eprintln!("[ui-panel] ⚠️ **PARE**: eram para ser 5 rows (o 'Backdrop' e' desenho puro).");
         return;
     }
     eprintln!(

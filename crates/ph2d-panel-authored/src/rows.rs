@@ -26,6 +26,8 @@ pub struct Row {
     /// A chave estável, o slug do rótulo. O id sai dela.
     pub key: &'static str,
     pub id: NodeId,
+    /// A cor que esta row mostra, quando o tipo dela É uma cor — ver [`ph2d_editor_core::widget::SkinParam`].
+    pub rgba: Option<[u8; 4]>,
 }
 
 impl Row {
@@ -63,11 +65,12 @@ pub fn rows() -> &'static [Row] {
     ROWS.get_or_init(|| {
         crate::generated::ROWS
             .iter()
-            .map(|&(kind, label, key)| Row {
+            .map(|&(kind, label, key, rgba)| Row {
                 kind,
                 label,
                 key,
                 id: ids::authored_row_id(key),
+                rgba,
             })
             .collect()
     })

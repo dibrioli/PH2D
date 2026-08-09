@@ -52,7 +52,7 @@ fn every_body_has_exactly_one_pose_owner_and_the_support_follows_it() {
     // Cinemático COM o modo: o player.
     assert_eq!(
         pose_owner(w, driven, BodyKind::Kinematic),
-        PoseOwner::Player
+        PoseOwner::Player(PlayerMode::Kinematic)
     );
     assert_eq!(
         pose_owner(w, driven, BodyKind::Kinematic).support(),
@@ -72,7 +72,12 @@ fn every_body_has_exactly_one_pose_owner_and_the_support_follows_it() {
 /// separadas, ele voltaria a poder ser quebrado por um `if` esquecido.
 #[test]
 fn the_two_stages_partition_the_owners() {
-    for owner in [PoseOwner::Solver, PoseOwner::Scene, PoseOwner::Player] {
+    for owner in [
+        PoseOwner::Solver,
+        PoseOwner::Scene,
+        PoseOwner::Player(PlayerMode::Kinematic),
+        PoseOwner::Player(PlayerMode::Pure),
+    ] {
         assert_ne!(
             owner.flows_out(),
             owner.driven_by_scene(),
@@ -81,13 +86,42 @@ fn the_two_stages_partition_the_owners() {
     }
 }
 
+/// **O PURO SANGUE é o MESMO controlador** (W-KinPure) — ele escreve a própria
+/// pose e a perna dele é o corpo, exatamente como o Snap.
+///
+/// ⚠️ Só a pergunta *"o mundo ouve?"* os separa, e ela é a ÚNICA coisa que este
+/// gate exige que difira: se um dia o `Pure` deixasse de escrever a própria
+/// pose, ele teria virado outro personagem, não o mesmo com dois canais
+/// calados.
+#[test]
+fn the_pure_mode_moves_like_snap_and_differs_only_in_what_it_owes() {
+    let mut sim = SimWorld::new();
+    let pure = sim.world_mut().spawn((player_cfg(), PlayerMode::Pure)).id();
+    let owner = pose_owner(sim.world(), pure, BodyKind::Kinematic);
+
+    assert_eq!(owner, PoseOwner::Player(PlayerMode::Pure));
+    assert!(owner.writes_own_pose(), "o puro sangue e' o controlador");
+    assert_eq!(owner.support(), Support::Snap, "e a perna dele e' o corpo");
+    assert!(owner.flows_out());
+
+    assert!(
+        !owner.transmits(),
+        "o mundo e' CENARIO: nada do que ele faz volta"
+    );
+    assert!(
+        pose_owner(sim.world(), pure, BodyKind::Dynamic).transmits(),
+        "⚠️ e num corpo DINAMICO o modo nao cala nada: a ponte esta' a simular \
+         a mola, e o `PlayerMode` nao sobrepoe o corpo"
+    );
+}
+
 /// **`PlayerMode` faz o round-trip pela fronteira da UI** — e um tag que este
 /// build não conhece é RECUSADO, não dobrado num modo qualquer.
 #[test]
 fn the_mode_survives_the_ui_boundary_and_an_unknown_tag_is_refused() {
-    for m in [PlayerMode::Dynamic, PlayerMode::Kinematic] {
+    for m in [PlayerMode::Dynamic, PlayerMode::Kinematic, PlayerMode::Pure] {
         assert_eq!(PlayerMode::from_tag(m.tag()), Some(m));
     }
-    assert_eq!(PlayerMode::from_tag(2), None);
+    assert_eq!(PlayerMode::from_tag(3), None);
     assert_eq!(PlayerMode::default(), PlayerMode::Dynamic);
 }

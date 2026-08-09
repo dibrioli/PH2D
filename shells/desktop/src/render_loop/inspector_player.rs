@@ -63,15 +63,18 @@ pub(crate) fn build_player_info(
     }
     let p = player.unwrap_or_default();
     let min = shape.and_then(|s| min_float_for(s, p.max_slope_deg));
+    let mode = sim
+        .world()
+        .get::<PlayerMode>(entity)
+        .copied()
+        .unwrap_or_default();
     Some(InspectorPlayerInfo {
         entity_bits,
         has_player,
-        mode_tag: sim
-            .world()
-            .get::<PlayerMode>(entity)
-            .copied()
-            .unwrap_or_default()
-            .tag(),
+        mode_tag: mode.tag(),
+        // ⚠️ A pergunta é feita à PORTA do modo, aqui na shell — o painel recebe
+        // a resposta, nunca o mapeamento (W-KinPure).
+        reaction_is_live: mode.transmits(),
         float_height: p.float_height,
         min_float_height: min.unwrap_or(0.0),
         min_float_known: min.is_some(),

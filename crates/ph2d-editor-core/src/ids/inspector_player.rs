@@ -75,11 +75,12 @@ pub const INSP_PLAYER_RESTORE_RUN: NodeId = hash_node_id("insp.player.restore.ru
 /// responde *"que corpo é este?"* para QUALQUER objeto; esta pergunta só existe
 /// para um personagem, e a resposta dela cresce (o *"puro sangue"* é o terceiro).
 pub const INSP_PLAYER_MODE: NodeId = hash_node_id("insp_player_mode");
-/// As duas opções do chip. ⚠️ **Uma fatia, nunca um par** — a `W-KinPure` traz a
-/// terceira, e acrescentá-la tem de ser uma linha na tabela, não uma reescrita.
-pub const INSP_PLAYER_MODE_IDS: [NodeId; 2] = [
+/// As opções do chip. ⚠️ **Uma fatia, nunca um par** — a `W-KinPure` trouxe a
+/// terceira, e ela custou exatamente uma linha nesta tabela, como prometido.
+pub const INSP_PLAYER_MODE_IDS: [NodeId; 3] = [
     hash_node_id("insp_player_mode_dynamic"),
     hash_node_id("insp_player_mode_kinematic"),
+    hash_node_id("insp_player_mode_pure"),
 ];
 
 /// **A altura a que o personagem PAIRA**, metros, medida do centro do corpo.

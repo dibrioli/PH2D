@@ -267,6 +267,14 @@ pub fn spawn(sim: &mut SimWorld) {
         Transform::from_translation(Vec2::new(PUSH_X, 0.6)),
     ));
 
+    // ⚠️ **O PURO SANGUE (W-KinPure) NÃO tem lane aqui, e é a mesma razão que a
+    // fita usa para recusar o arranque:** ele não acrescenta aritmética nenhuma
+    // — ele é a AUSÊNCIA de dois termos que as lanes acima já atravessam. Uma
+    // lane dele moveria o hash sem cobrir um único `f32` novo em três OSes, e
+    // este harness mede DETERMINISMO, não cobertura.
+    //
+    // E a ausência dela é o que torna verificável a promessa de que a wave é
+    // byte-neutra para todo o resto: o hash saiu IDÊNTICO ao da W-KinPush.
     sim.world_mut().spawn((
         Name::new("C9 Corner Player"),
         RigidBody {

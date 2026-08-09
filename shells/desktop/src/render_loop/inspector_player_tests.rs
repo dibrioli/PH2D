@@ -475,3 +475,100 @@ fn a_negative_push_is_refused_not_inverted() {
     let info = build_player_info(&sim, bits, 0.0, 0.0).unwrap();
     assert!((info.reaction_push).abs() < 1.0e-6, "{info:?}");
 }
+
+/// **O TERCEIRO CHIP leva a algum lugar** (W-KinPure) — a quarta condição de UI
+/// deste módulo, pela porta que o artista de facto usa.
+///
+/// ⚠️ O gesto é UM clique, e ele tem de fazer três coisas de uma vez: pôr o
+/// componente, virar o corpo em cinemático e calar a 3ª lei. Um teste por-edit
+/// ficaria verde com qualquer uma das três faltando.
+#[test]
+fn choosing_pure_turns_the_world_into_scenery() {
+    fn crate_travel(mode_tag: u8) -> f32 {
+        let mut sim = SimWorld::new();
+        sim.world_mut().spawn((
+            Name::new("Floor"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 40.0,
+                    half_y: 0.5,
+                },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, -0.5)),
+        ));
+        let boxy = sim
+            .world_mut()
+            .spawn((
+                Name::new("Crate"),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 0.3,
+                        half_y: 0.3,
+                    },
+                    ..Collider::default()
+                },
+                ph2d_physics_ecs::LockRotation,
+                Transform::from_translation(Vec2::new(1.5, 0.3)),
+            ))
+            .id();
+        let hero = sim
+            .world_mut()
+            .spawn((
+                Name::new("Hero"),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: CAPSULE,
+                    ..Collider::default()
+                },
+                ph2d_physics_ecs::LockRotation,
+                Transform::from_translation(Vec2::new(0.0, 0.9)),
+            ))
+            .id();
+        let bits = hero.to_bits();
+        apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+        apply_player_edit(&mut sim, bits, PlayerFieldEdit::FloatHeight(0.9));
+        apply_player_edit(&mut sim, bits, PlayerFieldEdit::Mode(mode_tag));
+
+        let info = build_player_info(&sim, bits, 0.0, 0.0).unwrap();
+        assert_eq!(info.mode_tag, mode_tag, "o chip tem de MOSTRAR o escolhido");
+        assert_eq!(
+            info.reaction_is_live,
+            mode_tag != 2,
+            "e o card REACTION segue quem o mundo ouve"
+        );
+
+        let mut bridge = ph2d_physics_ecs::PhysicsBridge::new();
+        for t in 1..=60u64 {
+            bridge.dispatch(&mut sim, true, t);
+        }
+        let x0 = sim.world().get::<Transform>(boxy).unwrap().translation.x;
+        bridge.set_player_input(
+            hero,
+            ph2d_physics_ecs::PlayerInput {
+                drive: 1.0,
+                ..ph2d_physics_ecs::PlayerInput::default()
+            },
+        );
+        for t in 61..=240u64 {
+            bridge.dispatch(&mut sim, true, t);
+        }
+        sim.world().get::<Transform>(boxy).unwrap().translation.x - x0
+    }
+
+    let snap = crate_travel(1);
+    let pure = crate_travel(2);
+    assert!(snap > 1.0, "o CONTROLE empurra: {snap:.4} m");
+    assert!(
+        pure.abs() < 0.01,
+        "e o puro sangue nao: {pure:.4} m (contra {snap:.4})"
+    );
+}

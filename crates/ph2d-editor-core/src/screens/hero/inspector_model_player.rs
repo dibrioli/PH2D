@@ -27,6 +27,19 @@ pub struct InspectorPlayerInfo {
     /// segundo `match` aqui é o que faz um chip selecionar outra coisa no dia em
     /// que a terceira opção existir (a cicatriz do `BodyKind::tag`).
     pub mode_tag: u8,
+    /// **O mundo OUVE este personagem?** — a resposta de `PlayerMode::transmits`,
+    /// resolvida na shell (W-KinPure).
+    ///
+    /// ⚠️ **Um bool, e não um `mode_tag == 2` no painel**, pela razão exata da
+    /// `mass_is_read` da W-KinWeight: o painel não sabe o que é um `PlayerMode`,
+    /// e um literal aqui seria a **segunda cópia** do mapeamento que o
+    /// `tag()`/`from_tag()` existe para manter única — a que ninguém lembra de
+    /// atualizar quando o quarto modo chegar.
+    ///
+    /// É ele que decide se o card REACTION é PINTADO: sob o *puro sangue* os
+    /// três escalares não são lidos por ninguém, e um card inteiro de controles
+    /// mortos é pior que a ausência dele.
+    pub reaction_is_live: bool,
 
     /// A altura a que ele paira, metros (do centro do corpo para baixo).
     pub float_height: f32,

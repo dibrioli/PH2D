@@ -221,6 +221,11 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         ids::INSP_PLAYER_MODE_IDS[1],
         "The controller: the pose is written, the world only says how much fit.",
     );
+    store.set_tooltip(
+        ids::INSP_PLAYER_MODE_IDS[2],
+        "Classic platformer: the same controller, but the physical world is \
+         scenery. Everything stops him and he moves nothing.",
+    );
     register_button_ids(
         store,
         &[
@@ -318,7 +323,7 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         // único teto desta seção que é de RECURSO e não de gosto.
         (ids::INSP_PLAYER_REACT_SUPPORT, 1.0, 0.0, 1.0, 0.05), // LITERAL-PX-OK: fraction
         (ids::INSP_PLAYER_REACT_MOVEMENT, 0.0, 0.0, 1.0, 0.05), // LITERAL-PX-OK: fraction
-        (ids::INSP_PLAYER_REACT_PUSH, 1.0, 0.0, 1.0, 0.05), // LITERAL-PX-OK: fraction
+        (ids::INSP_PLAYER_REACT_PUSH, 1.0, 0.0, 1.0, 0.05),    // LITERAL-PX-OK: fraction
     ] {
         store.register(
             id,

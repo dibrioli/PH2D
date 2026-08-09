@@ -386,33 +386,21 @@ pub(crate) fn paint_player_section(
         "Body",
         ids::INSP_PLAYER_MODE,
         &ids::INSP_PLAYER_MODE_IDS,
-        &["Dynamic", "Kinematic"],
+        &["Dynamic", "Kinematic", "Pure"],
         info.mode_tag,
     );
 
-    for (title, _card_id, rows) in PLAYER_CARDS {
-        let (ix, iw, mut ry, next_y) =
-            card_frame(scene, text_system, theme, x, w, yy, title, rows.len());
-        for (label, id, _tip) in rows {
-            ry = num_row(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                ix,
-                iw,
-                ry,
-                label,
-                *id,
-            );
-        }
-        // ⚠️ O `ry` é DESCARTADO de propósito: quem manda no fluxo é a moldura
-        // (`next_y`), medida pela MESMA régua com que as rows avançam. Somar as
-        // rows aqui seria a segunda aritmética que discorda da caixa desenhada.
-        let _ = ry;
-        yy = next_y;
-    }
+    yy = paint_cards(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        info.reaction_is_live,
+    );
 
     // ⚠️ **O piso geométrico, dito em voz alta — e pelo controle que o resolve.**
     //
@@ -531,4 +519,60 @@ pub(crate) fn paint_player_section(
     paint_button(&btn, rect, scene, text_system, theme);
     hit_index.register(ids::INSP_PLAYER_REMOVE, rect);
     yy + h + Spacing::Sm.px()
+}
+
+/// **Os oito cards de números**, na ordem da tabela — extraído do `paint` por
+/// TETO DE LOC, e o corte é por responsabilidade: aqui só se pinta a grade de
+/// rows; quem decide o que a seção mostra fica no pai.
+#[allow(clippy::too_many_arguments)]
+fn paint_cards(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    mut yy: f32,
+    reaction_is_live: bool,
+) -> f32 {
+    for (title, card_id, rows) in PLAYER_CARDS {
+        // ⚠️ **O card da 3ª lei some no modo que não a tem** (W-KinPure) — não é
+        // arrumação, é a lei do knob-morto: sob o *puro sangue* NENHUM dos três
+        // escalares é lido, e três sliders inertes ensinariam o artista a
+        // desconfiar dos outros. A pergunta chega resolvida da shell (o painel
+        // não sabe o que é um `PlayerMode`).
+        //
+        // ⚠️ O card é reconhecido pelo **id**, nunca pelo título: o título é o
+        // que o artista lê e pode ser reescrito amanhã sem que ninguém pense
+        // nesta linha.
+        //
+        // ⚠️ Os valores AUTORADOS continuam no componente: esconder não apaga, e
+        // voltar ao Kinematic devolve o card com os números que lá estavam.
+        if !reaction_is_live && card_id == ids::INSP_PLAYER_CARD_REACT {
+            continue;
+        }
+        let (ix, iw, mut ry, next_y) =
+            card_frame(scene, text_system, theme, x, w, yy, title, rows.len());
+        for (label, id, _tip) in rows {
+            ry = num_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                ix,
+                iw,
+                ry,
+                label,
+                *id,
+            );
+        }
+        // ⚠️ O `ry` é DESCARTADO de propósito: quem manda no fluxo é a moldura
+        // (`next_y`), medida pela MESMA régua com que as rows avançam. Somar as
+        // rows aqui seria a segunda aritmética que discorda da caixa desenhada.
+        let _ = ry;
+        yy = next_y;
+    }
+    yy
 }

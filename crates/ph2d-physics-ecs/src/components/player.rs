@@ -346,14 +346,44 @@ pub enum PlayerMode {
     Dynamic,
     /// O **controlador**: a pose é escrita, o mundo só diz quanto coube.
     Kinematic,
+    /// O **puro sangue**: o mesmo controlador, com o mundo físico virando
+    /// CENÁRIO — ele é parado por tudo e não move nada (W-KinPure).
+    Pure,
 }
 
 impl PlayerMode {
     /// **Este modo escreve a própria pose?** — a pergunta que separa os dois
     /// caminhos da ponte.
+    ///
+    /// ⚠️ [`PlayerMode::Pure`] responde SIM: ele é o mesmo controlador. O que o
+    /// distingue não é como ele se move, é o que ele DEVE ao mundo — a
+    /// [`PlayerMode::transmits`].
     #[must_use]
     pub fn drives_itself(self) -> bool {
-        matches!(self, PlayerMode::Kinematic)
+        matches!(self, PlayerMode::Kinematic | PlayerMode::Pure)
+    }
+
+    /// **O que este personagem faz ao mundo volta para o mundo?**
+    ///
+    /// A 3ª lei tem duas metades — o PESO que o chão sente (K6) e o EMPURRÃO
+    /// lateral (`W-KinPush`) — e as duas saem do mesmo [`ReactionConfig`]. Este
+    /// é o interruptor delas.
+    ///
+    /// # ⚠️ Por que o MODO decide, e não os knobs
+    ///
+    /// Zerar os três escalares à mão dá o mesmo resultado numérico — medido,
+    /// `0,0000` na jangada e `0,0000` no caixote. A diferença é de INTENÇÃO: um
+    /// modo é uma declaração que sobrevive a alguém mexer num slider, e é o que
+    /// permite ao painel **não oferecer** controles que não fazem nada. Se as
+    /// duas portas coexistissem, a de baixo seria a que ninguém lembra de
+    /// consultar.
+    ///
+    /// ⚠️ E é por isso que o `Pure` **não zera os knobs autorados**: eles ficam
+    /// guardados, e voltar para [`PlayerMode::Kinematic`] devolve o que o
+    /// artista tinha escrito.
+    #[must_use]
+    pub fn transmits(self) -> bool {
+        !matches!(self, PlayerMode::Pure)
     }
 
     /// O `u8` com que este modo atravessa a fronteira da UI, e volta.
@@ -361,13 +391,13 @@ impl PlayerMode {
     /// Uma porta, as duas direções — o precedente literal do
     /// [`super::BodyKind::tag`], cujo doc explica o preço de duas: *"o momento
     /// em que existe um terceiro, é um chip que o artista clica e que
-    /// silenciosamente seleciona outro"*. E aqui o terceiro **está anunciado**
-    /// (a `W-KinPure`).
+    /// silenciosamente seleciona outro"*. E o terceiro CHEGOU (`W-KinPure`).
     #[must_use]
     pub fn tag(self) -> u8 {
         match self {
             PlayerMode::Dynamic => 0,
             PlayerMode::Kinematic => 1,
+            PlayerMode::Pure => 2,
         }
     }
 
@@ -378,6 +408,7 @@ impl PlayerMode {
         match tag {
             0 => Some(PlayerMode::Dynamic),
             1 => Some(PlayerMode::Kinematic),
+            2 => Some(PlayerMode::Pure),
             _ => None,
         }
     }

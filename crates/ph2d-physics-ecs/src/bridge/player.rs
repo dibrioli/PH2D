@@ -223,6 +223,19 @@ impl PhysicsBridge {
             {
                 cfg.ride.float_height = foot;
             }
+            // ⚠️ **O MUNDO É CENÁRIO** (W-KinPure) — e este é o ÚNICO sítio onde
+            // isso é dito, de propósito. As duas metades da 3ª lei saem daqui: o
+            // PESO (a `reaction`, que lê `cfg.react`) e o EMPURRÃO lateral (o
+            // `KinMove.react`, copiado deste mesmo `cfg`). Silenciar as duas num
+            // ponto é o que impede que uma wave futura acrescente uma terceira
+            // metade e se esqueça de a calar.
+            //
+            // ⚠️ Os escalares AUTORADOS não são tocados: o modo decide se eles
+            // são ouvidos, não o que eles valem. Voltar para `Kinematic` devolve
+            // o que o artista escreveu.
+            if !owner.transmits() {
+                cfg.react = ReactionConfig::OFF;
+            }
             let cfg = cfg;
             // O alcance do sensor é o que a lei considera "no chão", e nem um
             // milímetro além: perguntar mais longe faria o cast achar coisas que

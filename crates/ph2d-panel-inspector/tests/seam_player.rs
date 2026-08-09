@@ -41,6 +41,7 @@ fn player() -> InspectorPlayerInfo {
         // piso deixaria o gate do aviso verde pelo motivo errado.
         min_float_height: 0.58,
         mode_tag: 0,
+        reaction_is_live: true,
         min_float_known: true,
         cling_distance: 0.25,
         spring_strength: 400.0,
@@ -400,6 +401,7 @@ fn the_fit_and_remove_buttons_reach_the_bus() {
 fn a_shape_without_a_known_floor_gets_no_fit_button() {
     let boxed = InspectorPlayerInfo {
         mode_tag: 0,
+        reaction_is_live: true,
         min_float_known: false,
         ..player()
     };
@@ -671,6 +673,7 @@ fn the_crouch_fit_button_appears_only_when_the_crouch_is_armed() {
         crouch_height: 0.30,
         min_float_height: 0.58,
         mode_tag: 0,
+        reaction_is_live: true,
         min_float_known: true,
         ..player()
     };
@@ -685,6 +688,7 @@ fn the_crouch_fit_button_appears_only_when_the_crouch_is_armed() {
         crouch_height: 0.80,
         min_float_height: 0.58,
         mode_tag: 0,
+        reaction_is_live: true,
         min_float_known: true,
         ..player()
     };
@@ -707,6 +711,7 @@ fn a_shape_without_a_known_floor_gets_no_crouch_fit_either() {
     let boxed = InspectorPlayerInfo {
         crouch_height: 0.30,
         mode_tag: 0,
+        reaction_is_live: true,
         min_float_known: false,
         ..player()
     };
@@ -820,9 +825,12 @@ fn the_mode_chip_is_alive_and_each_option_raises_its_own_tag() {
 /// falha de um lado só, e um gate que só testa a ida não a vê.
 #[test]
 fn the_mode_chip_is_painted_in_both_modes() {
-    for tag in [0u8, 1] {
+    for tag in [0u8, 1, 2] {
         let mut info = player();
         info.mode_tag = tag;
+        // O *puro sangue* é o único cujo mundo não o ouve — e o chip que o
+        // desfaz tem de continuar na tela, senão ele é um beco sem saída.
+        info.reaction_is_live = tag != 2;
         let rects = painted(info);
         for &id in &ids::INSP_PLAYER_MODE_IDS {
             assert!(
@@ -831,4 +839,46 @@ fn the_mode_chip_is_painted_in_both_modes() {
             );
         }
     }
+}
+
+/// **O card da 3ª LEI é oferecido a quem a tem, e SÓ a quem a tem** (W-KinPure).
+///
+/// ⚠️ A metade da AUSÊNCIA é a que carrega a wave: sob o *puro sangue* os três
+/// escalares não são lidos por ninguém, e a lei deste módulo é que um controle
+/// que o solver ignora **não existe**. A metade da PRESENÇA é o que impede a
+/// cura de virar *"o card sumiu"*.
+#[test]
+fn the_reaction_card_follows_who_is_heard_by_the_world() {
+    const REACT: [ph2d_a11y::NodeId; 3] = [
+        ids::INSP_PLAYER_REACT_SUPPORT,
+        ids::INSP_PLAYER_REACT_MOVEMENT,
+        ids::INSP_PLAYER_REACT_PUSH,
+    ];
+
+    let mut heard = player();
+    heard.reaction_is_live = true;
+    let rects = painted(heard);
+    for id in REACT {
+        assert!(
+            rects.iter().any(|(n, _)| *n == id),
+            "quem o mundo OUVE tem o card: {id:?} faltou"
+        );
+    }
+
+    let mut scenery = player();
+    scenery.mode_tag = 2;
+    scenery.reaction_is_live = false;
+    let rects = painted(scenery);
+    for id in REACT {
+        assert!(
+            !rects.iter().any(|(n, _)| *n == id),
+            "sob o puro sangue o card nao existe: {id:?} foi pintado e esta' MORTO"
+        );
+    }
+    // ⚠️ E o resto da seção continua lá — esconder UM card não é esconder a
+    // ferramenta (sem esta linha, um `return` no topo do laço passaria).
+    assert!(
+        rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_SPEED),
+        "os outros cards seguem pintados"
+    );
 }

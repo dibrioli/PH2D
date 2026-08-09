@@ -294,15 +294,26 @@ pub(crate) fn build_physics_info(
         // Manual mode = the override is present; its value is shown in the Mass row.
         // In Auto mode the Mass row is not shown, so its value is unused (0.0).
         mass_manual: mass_ov.is_some(),
-        // ⚠️ **Dynamic OU player cinemático** — ver `mass_is_read`. A 3ª lei
-        // transmite o peso de um player Snap ao chão pela massa do corpo, então
-        // ali ela deixou de ser o número que o rapier ignora.
+        // ⚠️ **Dynamic OU player cinemático QUE TRANSMITE** — ver `mass_is_read`.
+        // A 3ª lei transmite o peso de um player Snap ao chão pela massa do
+        // corpo, então ali ela deixou de ser o número que o rapier ignora.
+        //
+        // ⚠️ **E a W-KinPure moveu este número:** sob o *puro sangue* a 3ª lei
+        // está calada, então NADA lê a massa outra vez — a pergunta é *"alguém
+        // a lê?"*, e a resposta mudou quando o terceiro modo chegou. Deixar a
+        // condição de 2026-08-08 de pé teria devolvido o toggle Auto/Manual ao
+        // estado de controle morto que a W-KinWeight existiu para curar.
         mass_is_read: rb.is_some_and(|b| {
             b.kind == ph2d_physics_ecs::BodyKind::Dynamic
                 || (b.kind == ph2d_physics_ecs::BodyKind::Kinematic
                     && world
                         .get::<ph2d_physics_ecs::PlatformPlayer>(entity)
-                        .is_some())
+                        .is_some()
+                    && world
+                        .get::<ph2d_physics_ecs::PlayerMode>(entity)
+                        .copied()
+                        .unwrap_or_default()
+                        .transmits())
         }),
         mass: mass_ov.unwrap_or(0.0),
         dominance,

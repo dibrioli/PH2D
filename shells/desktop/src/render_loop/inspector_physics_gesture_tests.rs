@@ -453,3 +453,47 @@ fn authoring_the_mass_of_a_kinematic_player_reaches_the_ground() {
          (~0,37 kg): auto {auto:+.4} contra autorada {heavy:+.4}"
     );
 }
+
+/// **E a massa deixa de ser oferecida ao PURO SANGUE** (W-KinPure).
+///
+/// ⚠️ Esta é a nota da W-KinWeight RECONFERIDA porque o número dela mudou: ela
+/// abriu a row para *"um player cinemático"*, e naquele dia isso era exactamente
+/// *"alguém lê a massa"* — a 3ª lei atravessava o modo. O terceiro modo a cala,
+/// e sob ele nada volta a ler o número: manter a row seria devolver ao toggle
+/// Auto/Manual o estado de controle morto que aquela wave existiu para curar.
+///
+/// ⚠️ A metade do Kinematic é o CONTROLE, e sem ela este gate não distingue
+/// *"o modo fechou a row"* de *"a row nunca abriu"*.
+#[test]
+fn the_mass_row_follows_who_reads_it_across_the_third_mode() {
+    for (mode, offered) in [
+        (ph2d_physics_ecs::PlayerMode::Kinematic, true),
+        (ph2d_physics_ecs::PlayerMode::Pure, false),
+    ] {
+        let mut sim = SimWorld::new();
+        let who = sim
+            .world_mut()
+            .spawn((
+                Transform::from_translation(Vec2::new(0.0, 0.75)),
+                RigidBody {
+                    kind: BodyKind::Kinematic,
+                },
+                Collider {
+                    shape: ColliderShape::Capsule {
+                        half_height: 0.3,
+                        radius: 0.2,
+                    },
+                    ..Collider::default()
+                },
+                ph2d_physics_ecs::LockRotation,
+                ph2d_physics_ecs::PlatformPlayer::default(),
+                mode,
+            ))
+            .id();
+        assert_eq!(
+            snapshot(&sim, who).mass_is_read,
+            offered,
+            "{mode:?}: a row de massa segue quem LE' o numero, nunca o kind"
+        );
+    }
+}

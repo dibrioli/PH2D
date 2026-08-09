@@ -9335,3 +9335,77 @@ main -- crates/ph2d-mesh` vazio). Re-rode sozinho antes de suspeitar de um merge
 **`env PH2D_PHYSICS_SMOKE=101 cargo run -p ph2d-host-desktop --release`** — a
 cena imprime o que montou e traz os seis passos com os números medidos ao lado.
 ⚠️ **Se a linha do cabeçalho não aparecer, pare.**
+
+---
+
+## W-KinWeight · W-KinPush · W-KinPure — as três caudas do modo novo (2026-08-09)
+
+Todas depois do smoke aprovado da `W-KinMove`, na worktree `line/physics`, e
+**nenhuma delas toca schema, componente novo ou dep**.
+
+### W-KinWeight — a massa deixa de ser oferecida por KIND
+
+O toggle *Mass: Auto | Manual* era Dynamic-only, com a razão escrita no doc
+(*"a Static/Kinematic body has infinite mass"*). Continua verdade para o SOLVER e
+deixou de ser verdade para o PLAYER cinemático — a K6 multiplica a aceleração
+pela massa dele. A pergunta virou **`InspectorPhysicsInfo::mass_is_read`**,
+resolvida UMA vez na shell.
+
+⚠️ **Ela ficou SEM CENA**, contra a política do §6 do plano 07 — e o passo 6 da
+cena `=103` é a dela.
+
+### W-KinPush — o empurrão lateral (cena `=102`)
+
+`transfer = n · (blocked · n)`, projetado na **LINHA** da normal (o SENTIDO da
+normal de um shapecast não é contrato), com o impulso a sair pela **mesma porta**
+da reação vertical. Medido: um caixote solto que o cinemático movia **0,0000**
+passa a viajar **16,54 m**, contra 16,55 do dinâmico.
+
+⚠️ **Três achados, e o terceiro reenquadra os outros dois:** o peso **não** era
+contado duas vezes (a `supported_velocity` já removia a componente vertical);
+não há ressonância (a lei é **auto-limitada** — o que volta é o que foi
+BLOQUEADO, e um caixote que foge deixa de bloquear); e **é essa mesma
+propriedade que torna a CONTAGEM DUPLA invisível** — a lista de contatos vazada
+entrega **16× o impulso** e o caixote viaja **0,9039 m nos dois casos, aos quatro
+decimais**. ⇒ a dedup e o `hits.clear()` são **CUSTO**, não desenho, e os gates
+deles são de UNIDADE. Um gate de mundo com esse nome não poderia falhar pelo
+motivo que alega, e o que eu tinha escrito foi removido em vez de deixado verde.
+
+### W-KinPure — o terceiro modo (cena `=103`)
+
+O detalhe inteiro — a tabela da sonda, o desenho de duas portas, e as duas
+leituras que a medição derrubou (*cenário ≠ fantasma*, *ser levado ≠
+influenciar*) — está no **§6 do plano 07**, na entrada `W-KinPure`.
+
+O que vale repetir aqui:
+
+- ⚠️ **A sonda decidiu o TAMANHO da wave.** Os três escalares a zero já davam o
+  comportamento inteiro ⇒ o modo **não é capacidade nova**, é uma declaração de
+  intenção com uma porta. A wave diz isso.
+- ⚠️ **O modo viaja DENTRO do `PoseOwner`.** Uma segunda leitura de
+  `PlayerMode` não passaria pela reconciliação com o `BodyKind`, e um `Pure` num
+  corpo `Dynamic` calaria a 3ª lei de um player que a ponte simula como
+  dinâmico.
+- ⚠️ **A W-KinWeight foi RECONFERIDA** (CLAUDE.md §0): o `mass_is_read` ganhou a
+  condição do modo, senão o toggle voltaria a ser o controle morto que ela
+  existiu para curar.
+- ⚠️ **Sem lane no c9, com o motivo no próprio harness:** o `Pure` é a AUSÊNCIA
+  de aritmética. O hash saiu **idêntico** ao da W-KinPush, e é isso que torna
+  verificável a byte-neutralidade.
+
+### Números das três
+
+`PROJECT_SCHEMA` **69→70** (a W-KinPush; ⚠️ **PROVISÓRIO — o valor se CONTA
+contra o `main` do dia**) · registro `ph2d-physics-ecs` **fica em 29** · gizmo
+ids **nenhum novo** (próximo livre **974**) · **`physics_ecs_c9`
+`adb72352…`, 111 corpos, debug ≡ release** (a lane da W-KinPush; a W-KinPure não
+o move) · **nenhum ADR** · contrato congelado intacto · **nenhuma dep nova**.
+
+### Smoke
+
+- **`env PH2D_PHYSICS_SMOKE=102 cargo run -p ph2d-host-desktop --release`** — o
+  empurrão, com o dinâmico ao lado como controle.
+- **`env PH2D_PHYSICS_SMOKE=103 …`** — os três modos lado a lado, e é ela que
+  carrega o passo da massa que a W-KinWeight não teve.
+
+⚠️ **Se a linha do cabeçalho de cada cena não aparecer, pare.**

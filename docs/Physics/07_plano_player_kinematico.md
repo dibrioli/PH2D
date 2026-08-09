@@ -213,9 +213,9 @@ desde a W3.
    (a lista `WRITERS`, que já ficou vermelha uma vez por um split — W-AreaFalloff).
 2. **É pintado E registrado** → a row `Body: Dynamic | Kinematic` na §14, um `seg_row`
    como o `Solid | Sensor` e o `Discrete | Continuous`; o `architecture_panel_wiring_parity`
-   cobra o `populate`. ⚠️ **Dois chips agora, TRÊS quando a `W-KinPure` chegar** — e é
-   por isso que o `seg_row` recebe uma fatia, nunca um par: acrescentar o terceiro tem de
-   ser uma linha na tabela, não uma reescrita da row.
+   cobra o `populate`. ⚠️ **TRÊS chips desde a `W-KinPure`** — e a promessa foi paga: o
+   terceiro custou **uma linha** na tabela de ids e uma na lista de rótulos, porque o
+   `seg_row` recebe uma fatia e nunca um par.
 3. **O clique chega ao barramento** → varredura de seam com **`click_real`** (o helper
    que a W-AreaFrame criou porque `seg_row` registra em LAÇO e o `wiring_parity` é cego
    a isso).
@@ -762,13 +762,87 @@ hash `adb72352…` (debug ≡ release). ⚠️ A sensibilidade dela foi **provad
 ablação**: com `reaction_push = 0` o hash muda — sem isso seria uma lane que diz
 cobrir um ramo que ela não atravessa.
 
-### W-KinPure — O TERCEIRO MODO (não construída agora)
+### W-KinPure — O TERCEIRO MODO — **FECHADA** (cena `=103`)
 
 O *"puro sangue"* que o Enio nomeou: nada de reação, nada de empurrão — o platformer
 clássico, em que o mundo físico é cenário. ⚠️ **Ele é BARATO por construção depois das
 duas waves acima** (é o mesmo caminho de movimento com a reação e o empurrão calados) e
 **é por isso que ele não vem primeiro**: construí-lo antes faria a K6 parecer um caso
 especial dele, quando é o contrário — *o pobre é o rico com dois canais desligados*.
+
+#### O que a MEDIÇÃO disse antes de uma linha ser escrita
+
+`measure_kinematic_pure.rs`, com a terceira coluna obtida do jeito que ela era
+alcançável ANTES da wave: o modo Snap com os três escalares da reação a zero.
+
+| modo | jangada | caixote | andou | pulo | levado / plataforma | caixote para em |
+|---|---|---|---|---|---|---|
+| dinâmico | −0,4764 | 16,5537 | 11,8302 | 2,1017 | 3,9527 / 4,0000 | +0,4425 |
+| **CINEMÁTICO** | −0,4205 | 16,5383 | 11,8300 | 2,0421 | 7,9194 / 4,0000 | +0,4990 |
+| cine + zeros | **0,0000** | **0,0000** | 11,8300 | 2,0421 | 7,9194 / 4,0000 | +0,4990 |
+
+⚠️ **E ela decidiu o TAMANHO da wave, que é para o que uma sonda serve:** a terceira
+coluna já dava o comportamento inteiro do platformer clássico ⇒ **o modo NÃO é
+capacidade nova**. Ele é uma declaração de intenção com **uma porta**, e a wave diz isso
+em vez de vender o contrário. O que ele acrescenta de facto é o que os zeros não podem
+dar:
+
+1. **sobrevive a alguém mexer num slider** — um modo é uma decisão, três zeros são uma
+   coincidência;
+2. **o painel pode NÃO OFERECER** o que não é lido (o card REACTION some, e a row de
+   massa da W-KinWeight junto);
+3. **um lugar só** para a pergunta, em vez de três números que teriam de concordar.
+
+⚠️ **Duas coisas que a tabela derrubou, e que teriam virado gates errados:**
+*"cenário quer dizer que o mundo não o vê"* — não: a coluna do caixote lançado é
+**positiva nos três modos**, ele é SÓLIDO, e um platformer clássico não atravessa
+caixas. E *"ser levado é influenciar"* — não: a plataforma o carrega igual, e calar esse
+canal teria sido calar o errado.
+
+#### O desenho
+
+**`PlayerMode::Pure`** (tag 2), e a lei mora em **duas portas, uma pergunta**:
+
+- `PlayerMode::transmits()` — *o que ele faz ao mundo volta para o mundo?*
+- `PoseOwner::Player(PlayerMode)` — o modo **viaja dentro** da resposta de posse.
+
+⚠️ **A segunda é o que impede o defeito silencioso:** perguntar `world.get::<PlayerMode>`
+outra vez seria uma leitura que **não passa pela reconciliação com o `BodyKind`**, e um
+`Pure` num corpo `Dynamic` calaria a 3ª lei de um player que a ponte está a simular como
+dinâmico. É a discordância que o `pose_owner` existe para tornar impossível.
+
+⚠️ **E o silenciamento é UMA linha, no `cfg`** (`cfg.react = ReactionConfig::OFF`), de
+propósito: as duas metades da 3ª lei saem dali — o PESO (a `reaction`) e o EMPURRÃO (o
+`KinMove.react`, copiado do mesmo `cfg`). Calá-las num ponto é o que impede uma wave
+futura de acrescentar uma terceira metade e esquecer-se de a calar.
+
+⚠️ **O modo CALA, não APAGA:** os escalares autorados ficam no componente, e voltar ao
+Kinematic devolve o que o artista escreveu. Zerar os knobs no chip perderia trabalho em
+silêncio.
+
+#### O que a wave moveu fora dela
+
+⚠️ **A nota da W-KinWeight foi RECONFERIDA** (CLAUDE.md §0 — *quem move o número
+reconfere a nota*): ela abriu a row de massa para *"um player cinemático"*, e naquele dia
+isso **era** *"alguém lê a massa"*. Sob o puro sangue nada a lê, então o `mass_is_read`
+ganhou a terceira condição — sem ela, o toggle Auto/Manual voltaria a ser o controle
+morto que aquela wave existiu para curar.
+
+#### Gates
+
+6 no crate (`tests/player_pure.rs`, cada um com CONTROLE) · 1 na porta de posse ·
+2 de painel (presença **e** ausência do card) · 1 de gesto na shell (a quarta condição
+de UI) · 1 do `mass_is_read` através dos três modos · 4 headless na cena.
+**3 mutações, 3 sangram** — silenciar nunca (3 gates), `Pure` transmitir (3), `Pure`
+não dirigir a própria pose (2, e são justamente os que dizem *é o mesmo controlador*).
+
+⚠️ **`physics_ecs_c9` INTOCADO** (`adb72352…`, 111 corpos, debug ≡ release) — e a
+ausência de lane é deliberada, com o motivo escrito no próprio harness: o `Pure` não
+acrescenta aritmética, ele é a **ausência** de dois termos que as lanes de lá já
+atravessam. Uma lane dele moveria o hash sem cobrir um `f32` novo em três OSes, e o
+hash idêntico é o que torna verificável a promessa de byte-neutralidade.
+
+**Zero schema, zero componente novo, zero dep.** Smoke: **`PH2D_PHYSICS_SMOKE=103`**.
 
 ### W-KinTune — O QUE O SMOKE PEDIR
 

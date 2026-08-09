@@ -43,7 +43,14 @@ pub(super) enum PoseOwner {
     Scene,
     /// **O PLAYER.** A lei cinemática escreve a pose, e ela sai por `readback`
     /// como a de um corpo dinâmico: o dono mudou, a direção do fluxo não.
-    Player,
+    ///
+    /// ⚠️ **O modo viaja DENTRO da resposta** (W-KinPure), e não ao lado dela:
+    /// perguntar `world.get::<PlayerMode>` uma segunda vez seria uma leitura
+    /// que **não passa pela reconciliação com o `BodyKind`** — um
+    /// [`PlayerMode::Pure`] num corpo `Dynamic` silenciaria a 3ª lei de um
+    /// player que a ponte está a tratar como dinâmico, que é precisamente a
+    /// discordância que este módulo existe para tornar impossível.
+    Player(PlayerMode),
 }
 
 impl PoseOwner {
@@ -54,7 +61,7 @@ impl PoseOwner {
     /// enquanto o collider anda — a forma exata de *"o personagem não se mexe"*
     /// com todos os números certos.
     pub(super) fn flows_out(self) -> bool {
-        matches!(self, PoseOwner::Solver | PoseOwner::Player)
+        matches!(self, PoseOwner::Solver | PoseOwner::Player(_))
     }
 
     /// A cena aponta este corpo por tique?
@@ -64,14 +71,27 @@ impl PoseOwner {
 
     /// **A LEI escreve a própria pose?** — o caminho cinemático do player.
     pub(super) fn writes_own_pose(self) -> bool {
-        matches!(self, PoseOwner::Player)
+        matches!(self, PoseOwner::Player(_))
     }
 
     /// **O que segura o personagem** — ver o aviso do módulo.
     pub(super) fn support(self) -> Support {
         match self {
-            PoseOwner::Player => Support::Snap,
+            PoseOwner::Player(_) => Support::Snap,
             _ => Support::Spring,
+        }
+    }
+
+    /// **O mundo ouve este personagem?** (W-KinPure)
+    ///
+    /// ⚠️ Um corpo cuja pose sai do SOLVER responde SIM incondicionalmente — o
+    /// player dinâmico transmite pela mola desde a W6, e um `PlayerMode` que o
+    /// contradissesse estaria a descrever um corpo que a ponte não está a
+    /// simular.
+    pub(super) fn transmits(self) -> bool {
+        match self {
+            PoseOwner::Player(mode) => mode.transmits(),
+            _ => true,
         }
     }
 }
@@ -83,15 +103,11 @@ pub(super) fn pose_owner(world: &World, entity: Entity, kind: BodyKind) -> PoseO
     if kind.solver_owns_pose() {
         return PoseOwner::Solver;
     }
-    if kind == BodyKind::Kinematic
-        && world.get::<PlatformPlayer>(entity).is_some()
-        && world
-            .get::<PlayerMode>(entity)
-            .copied()
-            .unwrap_or_default()
-            .drives_itself()
-    {
-        return PoseOwner::Player;
+    if kind == BodyKind::Kinematic && world.get::<PlatformPlayer>(entity).is_some() {
+        let mode = world.get::<PlayerMode>(entity).copied().unwrap_or_default();
+        if mode.drives_itself() {
+            return PoseOwner::Player(mode);
+        }
     }
     PoseOwner::Scene
 }

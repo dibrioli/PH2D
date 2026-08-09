@@ -53,10 +53,16 @@ impl App {
         let size = gfx.surface.size();
         let aspect = size.width as f32 / size.height.max(1) as f32;
         let device = std::sync::Arc::clone(&gfx.surface.gpu().device);
-        // ⚠️ **A MESMA peça que o verbo de acrescentar cria**, e não a esfera densa com que o smoke
-        // abre: `Primitive::Sphere` é a primitiva de BLOCAGEM (grossa de propósito — o `K`
-        // subdivide, e é o artista quem escolhe onde gastar vértices). Uma malha própria aqui seria
-        // a segunda resposta a *com que forma uma escultura começa*.
+        // ⚠️ **A MESMA peça que o verbo de acrescentar cria.** Uma malha própria aqui seria a
+        // segunda resposta a *com que forma uma escultura começa*.
+        //
+        // ⚠️ **E ela já vem ESCULPÍVEL** — o `Primitive::mesh` refina a base pela régua do módulo
+        // (`refine_until_sculptable`). A versão anterior desta linha dizia que a peça era *"a
+        // primitiva de BLOCAGEM, grossa de propósito — o `K` subdivide"*, e a frase custou o
+        // report *"a escultura não funciona"* (Enio, 2026-08-09): na aresta de blocagem um dab do
+        // pincel padrão movia **um** vértice em toda resolução. *Blocagem* pressupõe que as formas
+        // grandes se deixem esculpir, e elas não se deixavam — a densidade é o que o `K` ajusta a
+        // partir de uma peça usável, não o que separa uma peça usável de uma inerte.
         let mesh = crate::sculpt3d::Primitive::Sphere.mesh();
         let scene = Sculpt3dScene::new(&device, mesh, aspect);
         gfx.sculpt3d = Some(scene);

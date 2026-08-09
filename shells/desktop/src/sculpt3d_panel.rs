@@ -90,16 +90,66 @@ impl Sculpt3dScene {
     }
 
     /// **O SPRITE SELECIONADO VIRA O PADRÃO** — a porta única do alpha por
-    /// imagem.
+    /// imagem. Devolve a escala em vigor, que é o número que o readout reporta.
     ///
     /// ⚠️ **Ela SEMEIA a escala, e é a mesma lei do chip:** armar um padrão sem
     /// um tamanho que este modelo comporte é o defeito que um smoke já reprovou
     /// (*"os poros são gigantescos"*). O chip semeia pelo `alpha_seed` que o
     /// retrato publica; aqui a cena pergunta à MESMA `recommended_scale`, e a
     /// diferença é que ela tem a malha na mão em vez de um número que viajou.
-    pub(crate) fn set_alpha_image(&mut self, img: ph2d_sculpt3d::AlphaImage) {
-        self.brush.alpha_scale = ph2d_sculpt3d::recommended_scale(self.mesh());
+    ///
+    /// ⚠️ **SEMEAR não é IMPOR, e a versão anterior impunha.** Ela escrevia a
+    /// escala INCONDICIONALMENTE, então todo aperto do botão descartava o
+    /// `Alpha Scale` que o artista tinha autorado — o report *"as configurações
+    /// da textura não foram obedecidas"* (Enio, 2026-08-09). A porta irmã (o
+    /// chip, em `ph2d-panel-sculpt3d/src/event.rs`) sempre obedeceu ao
+    /// SENTINELA, que é a razão de [`ph2d_sculpt3d::DEFAULT_ALPHA_SCALE`]
+    /// existir — o doc dela diz, com todas as letras, que *"o trabalho real
+    /// desta constante é ser sentinela: é comparando contra ela que o painel
+    /// sabe «o artista ainda não escolheu»"*. Duas portas, uma lei; e o
+    /// doc-comment desta AFIRMAVA a equivalência que não valia, que é o que fez
+    /// a divergência passar.
+    ///
+    /// ⚠️ **E o EIXO é semeado junto, porque UM número respondia DUAS
+    /// perguntas.** Para os nove padrões procedurais o eixo diz *para que lado
+    /// os estratos empilham*, e o `elev = 0` de fábrica é o certo (o doc do
+    /// `Brush::default` explica: com `elev = 90` o artista veria uma camada só).
+    /// Para uma IMAGEM o eixo é a **direção de PROJEÇÃO** — o `Alpha::Image`
+    /// lê `q[0]`/`q[1]`, o plano perpendicular a ele —, então o mesmo `elev = 0`
+    /// projeta o carimbo **de lado**, e ele degenera em listras. Medido, num
+    /// swatch de 32² com bandas diagonais:
+    ///
+    /// | eixo | linhas distintas | colunas distintas |
+    /// |---|---|---|
+    /// | `az 90 · elev 0` (fábrica) | **3** | 13 |
+    /// | `az 90 · elev 90` | 27 | 29 |
+    /// | `az 0 · elev 0` | 8 | **1** |
+    ///
+    /// A transposta (`az 0`) é a prova de que a direção segue o `t` do frame e
+    /// não um acaso. Com o eixo encarando a vista (`+Z`, que é
+    /// [`ph2d_sculpt3d::MAX_AXIS_ELEV_DEG`]) o `t` e o `b` ficam **os dois** no
+    /// plano XY ⇒ o campo é constante ao longo de `z`, e é por isso que a mesma
+    /// linha conserta o **preview do painel** e o **modelo**: a fatia `z = 0`
+    /// que o swatch desenha passa a ser EXATAMENTE o que todo ponto da malha
+    /// recebe. O swatch fica *verdadeiro* em vez de ganhar um caso especial.
+    pub(crate) fn set_alpha_image(&mut self, img: ph2d_sculpt3d::AlphaImage) -> f32 {
+        // ⚠️ **O que é «de fábrica» sai do PRÓPRIO `Brush::default`**, nunca de
+        // literais repetidos aqui: uma segunda cópia dos ângulos passaria a
+        // discordar dele no dia em que ele mudasse, e o sintoma seria uma
+        // semeadura que deixa de disparar — em silêncio.
+        let factory = ph2d_sculpt3d::Brush::default();
+        // O `1e-6` é o do chip (`ph2d-panel-sculpt3d/src/event.rs`): a MESMA
+        // pergunta — *o artista já escolheu?* — feita com a mesma tolerância.
+        if (self.brush.alpha_scale - factory.alpha_scale).abs() < 1e-6 {
+            self.brush.alpha_scale = ph2d_sculpt3d::recommended_scale(self.mesh());
+        }
+        if (self.brush.alpha_az_deg, self.brush.alpha_elev_deg)
+            == (factory.alpha_az_deg, factory.alpha_elev_deg)
+        {
+            self.brush.alpha_elev_deg = ph2d_sculpt3d::MAX_AXIS_ELEV_DEG;
+        }
         self.brush.alpha = Some(ph2d_sculpt3d::Alpha::Image(std::sync::Arc::new(img)));
+        self.brush.alpha_scale
     }
 
     /// **O estado autorado, aplicado.** O painel manda a struct INTEIRA a cada
@@ -352,3 +402,7 @@ fn detail_index(detail: f32) -> u8 {
     }
     u8::try_from(best).unwrap_or(0)
 }
+
+#[cfg(test)]
+#[path = "sculpt3d_panel_tests.rs"]
+mod tests;

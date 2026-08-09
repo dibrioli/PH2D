@@ -154,15 +154,102 @@ impl Primitive {
     /// ⚠️ `pub(crate)` porque o pill SCULPT ENTRA criando uma peça (`sculpt3d_mode`), e ela tem de
     /// ser a MESMA que o verbo de acrescentar cria — duas malhas iniciais seriam duas respostas a
     /// *com que forma uma escultura começa*.
+    ///
+    /// ⚠️ **E ela sai REFINADA** — ver [`refine_until_sculptable`], que é a porta única de *quão
+    /// densa nasce uma peça*. Refinar aqui, e não no pill, é o que mantém uma resposta só: o verbo
+    /// de acrescentar sofria do MESMO defeito, e uma peça acrescentada no meio de uma sessão é tão
+    /// inesculpível quanto a que o modo abre.
     pub(crate) fn mesh(self) -> Mesh {
-        match self {
+        let base = match self {
             Self::Sphere => shapes::uv_sphere(SEGMENTS / 2, SEGMENTS, 1.0),
             // `size` é a ARESTA, então a diagonal de um cubo de aresta 2/√3
             // mede 2 — a mesma esfera envolvente da bola de raio 1.
             Self::Cube => shapes::cube(2.0 / 3.0_f32.sqrt()),
             Self::Cylinder => shapes::cylinder(SEGMENTS, 0.7, 2.0),
             Self::Torus => shapes::torus(SEGMENTS, SEGMENTS / 2, 0.7, 0.3),
-        }
+        };
+        refine_until_sculptable(base)
+    }
+}
+
+/// **Quantas arestas o maior lado de uma peça tem de medir** para um dab do pincel padrão alcançar
+/// uma pegada — a régua de *quão densa nasce uma peça*.
+///
+/// ⚠️ **É uma RAZÃO, e a escolha da grandeza é o que faz a regra funcionar:** a câmera enquadra
+/// cada peça pelo tamanho DELA (`Camera3d::frame` sobre os `bounds`), então o raio de mundo que
+/// 50 px de tela cobrem é proporcional ao span — e a pegada de um dab é
+/// `π · (raio ÷ aresta)²`, ou seja função do span **dividido pela** aresta e de mais nada. Um
+/// número de VÉRTICES seria a régua errada: um cubo e uma esfera com a mesma contagem têm
+/// densidades diferentes, e o cubo mede metade do span.
+///
+/// ⚠️ **O valor é o da CENA DO SMOKE que o artista já aprovou** (`uv_sphere(96,144)`: razão
+/// **61,1**, 13 682 vértices, **15** vértices na pegada a 4K) — nenhuma peça nasce mais grossa do
+/// que a cena que ele julgou usável. Medido, por primitiva, com a câmera REAL a 4K:
+///
+/// | primitiva | base (razão · dab) | para em | verts | razão | dab a 4K |
+/// |---|---|---|---|---|---|
+/// | esfera | 7,7 · **1** | K=3 | 16 898 | 63,6 | **21** |
+/// | cubo | 1,0 · **1** | K=6 | 24 578 | 85,5 | 37 |
+/// | cilindro | 2,9 · **1** | K=5 | 49 154 | 101,7 | 67 |
+/// | toro | 12,9 · **1** | K=3 | 18 432 | 104,4 | 15 |
+///
+/// ⚠️ **A razão é aproximada entre FORMAS diferentes e isso está medido** — a 52,2 o toro dá 3 e a
+/// 52,7 o cilindro dá 13, porque a tesselação é anisotrópica e o *maior lado* de um toro não
+/// descreve a superfície local. Ela é monótona DENTRO de cada forma, que é o que a torna uma regra
+/// de parada; quem prova o resultado é o gate, que mede a pegada REAL pela câmera do produto.
+///
+/// ⚠️ **E a régua do PADRÃO não serve aqui, embora tenha sido a primeira tentativa:** parar quando
+/// `recommended_scale` sai do teto deixa o **cubo** com 1 538 vértices e **UM** vértice na pegada —
+/// a 1ª sonda disse que estava bom porque usava o raio da ESFERA para as quatro, e a câmera dá a
+/// cada peça um raio próprio. *Duas perguntas parecidas — «esta malha carrega um padrão?» e «esta
+/// malha carrega um traço?» — não são a mesma pergunta.*
+const MIN_SPAN_PER_EDGE: f32 = 61.0;
+
+/// Backstop de laço, nunca um teto que se bata: a varredura das QUATRO primitivas para em **6**
+/// (o cubo, o mais grosso deles), e um oitavo nível seria uma malha de milhões vinda de uma
+/// primitiva que mudou de forma sem ninguém reler esta regra.
+const MAX_REFINE_LEVELS: usize = 8;
+
+/// **SUBDIVIDE a base até ela CARREGAR um traço** — a porta única de *quão densa nasce uma peça*.
+///
+/// ⚠️ **O que isto conserta é a ESCULTURA, e a medição é a razão** (report do Enio, 2026-08-09:
+/// *"a escultura não funciona"*). Na densidade de blocagem um dab do pincel padrão alcançava **UM
+/// vértice — o do centro — em TODA resolução, inclusive 720p**: o traço tocava o modelo e não
+/// movia nada, e como o `sculpt_at` devolve `true` no ACERTO do raio o gesto nem caía no fallback
+/// de órbita. Sem erro, sem log, sem nada girando. A régua e a tabela estão em
+/// [`MIN_SPAN_PER_EDGE`]; o raio de 50 px, que o `DEFAULT_RADIUS_PX` documenta como MEDIDO, fica
+/// **inocente** — ele estava certo, a premissa *"a malha é densa"* é que tinha saído de baixo dele.
+///
+/// ⚠️ **A malha BASE, e nunca `Sculpt3dScene::subdivide`.** Aquele empilha um nível de
+/// multiresolução, e a pilha montada faz o **remesh** e o **tapa-buraco** RECUSAREM (a recusa está
+/// escrita nos dois) — entrar no modo com seis níveis desligaria os dois em silêncio, além de
+/// deixar cinco passos de desfazer que ninguém pediu. Aqui a peça nasce com **um** nível cuja base
+/// já é densa, que é exatamente o que a cena do smoke sempre foi.
+fn refine_until_sculptable(mut mesh: Mesh) -> Mesh {
+    let mut levels = 0;
+    while levels < MAX_REFINE_LEVELS && span_per_edge(&mesh) < MIN_SPAN_PER_EDGE {
+        mesh = ph2d_mesh::subdivide(&mesh);
+        levels += 1;
+    }
+    mesh
+}
+
+/// O maior lado da peça medido em ARESTAS — ver [`MIN_SPAN_PER_EDGE`].
+///
+/// ⚠️ **A aresta vem do estimador do módulo de escultura** (`ph2d_sculpt3d::sampled_edge`), nunca
+/// de uma média escrita aqui: ele é o MESMO que a `recommended_scale` consulta, e um segundo
+/// mediria a mesma malha com outro número — a divergência apareceria como *a recomendação diz que
+/// cabe e o refinamento diz que não*.
+fn span_per_edge(mesh: &Mesh) -> f32 {
+    let b = mesh.bounds();
+    let span = (b.max[0] - b.min[0])
+        .max(b.max[1] - b.min[1])
+        .max(b.max[2] - b.min[2]);
+    let edge = ph2d_sculpt3d::sampled_edge(mesh);
+    if edge > 0.0 {
+        span / edge
+    } else {
+        f32::INFINITY
     }
 }
 
@@ -442,3 +529,7 @@ impl Sculpt3dScene {
         true
     }
 }
+
+#[cfg(test)]
+#[path = "sculpt3d_objects_tests.rs"]
+mod tests;

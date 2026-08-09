@@ -1173,9 +1173,17 @@ impl crate::App {
                 };
                 let line = match live.or_else(baked) {
                     Some((a, what)) => {
-                        let (w, h) = (a.width(), a.height());
-                        scene.set_alpha_image(a);
-                        format!("[sculpt3d] padrao: {what} do sprite selecionado ({w}x{h})")
+                        // ⚠️ **O readout diz a ESCALA, não os pixels.** A versão anterior
+                        // reportava `WxH` — e a medição mostra que a resolução da fonte tem efeito
+                        // **ZERO** sobre o tamanho do padrão no modelo (o `AlphaImage::sample`
+                        // mapeia em unidades de LADRILHO: a mesma imagem a 64² e a 4096² dá 80
+                        // transições ao longo das mesmas 2 unidades de objeto). O número que de
+                        // fato governa o que o artista vê é o `Alpha Scale`, e era justamente ele
+                        // que mudava sem aparecer em lugar nenhum.
+                        let scale = scene.set_alpha_image(a);
+                        format!(
+                            "[sculpt3d] padrao: {what} do sprite selecionado (escala {scale:.3})"
+                        )
                     }
                     None if selected.is_some() => {
                         "[sculpt3d] o sprite nao descreve uma imagem".to_string()

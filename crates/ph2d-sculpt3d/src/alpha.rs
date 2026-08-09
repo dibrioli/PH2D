@@ -100,7 +100,9 @@ pub use image::AlphaImage;
 /// **QUE TAMANHO ESTE MODELO COMPORTA** — ver [`scale`].
 #[path = "alpha_scale.rs"]
 mod scale;
-pub use scale::{DEFAULT_ALPHA_SCALE, MAX_ALPHA_SCALE, MIN_ALPHA_SCALE, recommended_scale};
+pub use scale::{
+    DEFAULT_ALPHA_SCALE, MAX_ALPHA_SCALE, MIN_ALPHA_SCALE, recommended_scale, sampled_edge,
+};
 
 /// **OS NOVE PADRÕES**, na ordem em que a UI os lista: seis isotrópicos e três
 /// **direcionais**, que leem o [`AlphaFrame`].

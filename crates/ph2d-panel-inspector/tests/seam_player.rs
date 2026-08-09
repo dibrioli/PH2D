@@ -80,6 +80,10 @@ fn player() -> InspectorPlayerInfo {
         lift_momentum: 1.5,
         reaction_support: 1.0,
         reaction_movement: 0.0,
+        // ⚠️ **O EMPURRÃO (W-KinPush) longe do default**, pela razão declarada
+        // nas paredes e no agachar acima: uma fixture que herdasse o valor de
+        // fábrica varreria uma row cujo número nunca muda.
+        reaction_push: 0.75,
         // ⚠️ **Premissa declarada: NINGUÉM correu neste documento.** O botão de
         // descartar a corrida só existe quando existe corrida, então a fixture
         // base é a que NÃO o oferece — e é ela que dá sentido à metade de
@@ -201,7 +205,7 @@ fn every_number_raises_its_own_edit() {
     // exatamente o arm esquecido que ela existe para pegar.
     assert_eq!(
         ph2d_panel_inspector::PLAYER_ROW_COUNT,
-        32,
+        33,
         "a tabela de rows cresceu; acrescente o numero novo a esta varredura"
     );
     for (id, v, edit) in [
@@ -357,6 +361,11 @@ fn every_number_raises_its_own_edit() {
             PlayerFieldEdit::ReactionMovement(0.35),
         ),
         (
+            ids::INSP_PLAYER_REACT_PUSH,
+            0.45,
+            PlayerFieldEdit::ReactionPush(0.45),
+        ),
+        (
             ids::INSP_PLAYER_CUT_G,
             5.0,
             PlayerFieldEdit::CutGravity(5.0),
@@ -432,6 +441,7 @@ fn the_rows_show_what_was_authored_not_the_seed() {
         cut_gravity: 5.5,
         reaction_support: 0.4,
         reaction_movement: 0.65,
+        reaction_push: 0.85,
         ..player()
     };
     let mut host = MockPanelHost::with_panel::<InspectorPanel>();

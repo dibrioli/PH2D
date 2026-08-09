@@ -356,3 +356,122 @@ fn a_scene_driven_kinematic_body_is_not_offered_the_section() {
     let (sim, bits) = body(BodyKind::Kinematic, CAPSULE);
     assert!(build_player_info(&sim, bits, 0.0, 0.0).is_none());
 }
+
+/// **O EMPURRÃO autorado chega ao caixote** (W-KinPush) — a quarta condição.
+///
+/// ⚠️ **A ponta que nenhum outro gate cobre é o MEIO:** o seam prova que o
+/// clique vira um `ReactionPush`, e o `player_push::a_walking_player_shoves_a_loose_crate`
+/// prova que o componente move o caixote. Entre os dois há a linha que ESCREVE o
+/// componente, e uma escrita no campo errado deixaria os dois verdes com o
+/// slider inerte.
+///
+/// ⚠️ **O modo é CINEMÁTICO de propósito:** sob Spring o solver empurra sozinho e
+/// o gate ficaria verde com o canal inteiro deletado — *um gate que passa no
+/// controle está a medir a coisa errada*.
+#[test]
+fn authoring_the_push_reaches_the_crate() {
+    fn crate_travel(push: f32) -> f32 {
+        let mut sim = SimWorld::new();
+        sim.world_mut().spawn((
+            Name::new("Floor"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 40.0,
+                    half_y: 0.5,
+                },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, -0.5)),
+        ));
+        let boxy = sim
+            .world_mut()
+            .spawn((
+                Name::new("Crate"),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 0.3,
+                        half_y: 0.3,
+                    },
+                    ..Collider::default()
+                },
+                ph2d_physics_ecs::LockRotation,
+                Transform::from_translation(Vec2::new(1.5, 0.3)),
+            ))
+            .id();
+        let hero = sim
+            .world_mut()
+            .spawn((
+                Name::new("Hero"),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: CAPSULE,
+                    ..Collider::default()
+                },
+                ph2d_physics_ecs::LockRotation,
+                Transform::from_translation(Vec2::new(0.0, 0.9)),
+            ))
+            .id();
+        let bits = hero.to_bits();
+        // O gesto do artista, pela porta do Inspector e nada mais.
+        apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+        apply_player_edit(&mut sim, bits, PlayerFieldEdit::FloatHeight(0.9));
+        apply_player_edit(&mut sim, bits, PlayerFieldEdit::Mode(1));
+        apply_player_edit(&mut sim, bits, PlayerFieldEdit::ReactionPush(push));
+        assert!(
+            (build_player_info(&sim, bits, 0.0, 0.0)
+                .unwrap()
+                .reaction_push
+                - push)
+                .abs()
+                < 1.0e-6,
+            "a row tem de MOSTRAR o que foi autorado"
+        );
+
+        let mut bridge = ph2d_physics_ecs::PhysicsBridge::new();
+        for t in 1..=60u64 {
+            bridge.dispatch(&mut sim, true, t);
+        }
+        let x0 = sim.world().get::<Transform>(boxy).unwrap().translation.x;
+        bridge.set_player_input(
+            hero,
+            ph2d_physics_ecs::PlayerInput {
+                drive: 1.0,
+                ..ph2d_physics_ecs::PlayerInput::default()
+            },
+        );
+        for t in 61..=240u64 {
+            bridge.dispatch(&mut sim, true, t);
+        }
+        sim.world().get::<Transform>(boxy).unwrap().translation.x - x0
+    }
+
+    let off = crate_travel(0.0);
+    let on = crate_travel(1.0);
+    assert!(
+        off.abs() < 0.01,
+        "com o slider em zero o caixote fica: {off:.4}"
+    );
+    assert!(
+        on > 1.0,
+        "e com ele em um o gesto do artista move o caixote: {on:.4} (zero deu {off:.4})"
+    );
+}
+
+/// **Negativo vira zero**, nunca um empurrão invertido: o personagem PUXANDO o
+/// caixote em que esbarra seria a lei com o sinal trocado.
+#[test]
+fn a_negative_push_is_refused_not_inverted() {
+    let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::ReactionPush(-2.0));
+    let info = build_player_info(&sim, bits, 0.0, 0.0).unwrap();
+    assert!((info.reaction_push).abs() < 1.0e-6, "{info:?}");
+}

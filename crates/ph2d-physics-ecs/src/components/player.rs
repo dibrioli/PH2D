@@ -112,6 +112,14 @@ pub struct PlatformPlayer {
     /// a plataforma escorrega para trás como um tapete quando o personagem anda
     /// em cima dela — atrito honesto e péssimo de jogar.
     pub reaction_movement: f32,
+    /// **Quanto de um bloqueio LATERAL volta** (W-KinPush). Nasce em `1`.
+    ///
+    /// ⚠️ **Só o modo CINEMÁTICO o lê**, e não é uma limitação: sob Spring o
+    /// personagem é um corpo dinâmico e o solver já empurra o que ele esbarra —
+    /// medido, o dinâmico leva um caixote **16,55 m em 3 s** e o cinemático
+    /// **0,0000**. Este número existe para dar ao segundo modo o que o primeiro
+    /// tem de graça, e a §14 só o oferece a quem o lê.
+    pub reaction_push: f32,
 
     /// **WALL SLIDE** (W13) — a velocidade com que se desce uma parede agarrada,
     /// m/s. `0` desliga.
@@ -251,6 +259,7 @@ impl PlatformPlayer {
             react: ReactionConfig {
                 support: self.reaction_support,
                 movement: self.reaction_movement,
+                push: self.reaction_push,
             },
         }
     }
@@ -283,6 +292,7 @@ impl Default for PlatformPlayer {
             lift_momentum: c.jump.lift_momentum,
             reaction_support: c.react.support,
             reaction_movement: c.react.movement,
+            reaction_push: c.react.push,
             wall_slide_speed: c.wall.slide_speed,
             wall_jump_height: c.wall.jump_height,
             wall_jump_push: c.wall.jump_push,

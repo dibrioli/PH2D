@@ -217,7 +217,7 @@ pub struct InspectorPhysicsInfo {
     /// `kind == Dynamic` com a razão escrita ao lado — *"a Static/Kinematic body
     /// has infinite mass (rapier ignores both)"* — e isso continua verdade para
     /// o SOLVER e deixou de ser verdade para o **player cinemático**: a 3ª lei
-    /// (K6) transmite o peso dele ao chão pela `apply_ground_reaction`, que
+    /// (K6) transmite o peso dele ao chão pela `apply_player_reaction`, que
     /// multiplica a aceleração pela massa do PLAYER. Medido na jangada, um
     /// player Snap pressiona com **100,0% de `m·g`**, exactamente como o
     /// dinâmico, e o `MassOverride` escala os dois de forma idêntica

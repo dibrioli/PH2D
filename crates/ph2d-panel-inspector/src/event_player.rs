@@ -80,6 +80,7 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
                 ids::INSP_PLAYER_CROUCH_SPEED => Some(PlayerFieldEdit::CrouchSpeed(v)),
                 ids::INSP_PLAYER_REACT_SUPPORT => Some(PlayerFieldEdit::ReactionSupport(v)),
                 ids::INSP_PLAYER_REACT_MOVEMENT => Some(PlayerFieldEdit::ReactionMovement(v)),
+                ids::INSP_PLAYER_REACT_PUSH => Some(PlayerFieldEdit::ReactionPush(v)),
                 // Graus na row, cosseno no motor — a conversão acontece UMA vez,
                 // na `WalkConfig::max_slope_cos`.
                 ids::INSP_PLAYER_MAX_SLOPE => Some(PlayerFieldEdit::MaxSlopeDeg(v)),

@@ -157,7 +157,7 @@ const FORGIVE_ROWS: [PlayerRow; 4] = [
 
 /// **A REAÇÃO** (W6) — ⚠️ os defaults são OPOSTOS de propósito: o peso volta
 /// inteiro (é a física) e o tapete nasce desligado (é de produto).
-const REACT_ROWS: [PlayerRow; 2] = [
+const REACT_ROWS: [PlayerRow; 3] = [
     (
         "Weight on Ground",
         ids::INSP_PLAYER_REACT_SUPPORT,
@@ -167,6 +167,11 @@ const REACT_ROWS: [PlayerRow; 2] = [
         "Push on Ground",
         ids::INSP_PLAYER_REACT_MOVEMENT,
         "How much of his walking shoves the ground back.",
+    ),
+    (
+        "Push on Bodies",
+        ids::INSP_PLAYER_REACT_PUSH,
+        "How hard he shoves what he walks into. KINEMATIC only: a dynamic body already pushes.",
     ),
 ];
 

@@ -132,6 +132,9 @@ pub const INSP_PLAYER_REACT_SUPPORT: NodeId = hash_node_id("insp_player_react_su
 
 /// Quanto da CAMINHADA volta para o chao (W6) -- o tapete, que nasce em zero.
 pub const INSP_PLAYER_REACT_MOVEMENT: NodeId = hash_node_id("insp_player_react_movement");
+
+/// Quanto de um bloqueio LATERAL volta (W-KinPush) -- o empurrao, so' sob Snap.
+pub const INSP_PLAYER_REACT_PUSH: NodeId = hash_node_id("insp_player_react_push");
 /// Multiplicador de gravidade na SAÍDA, acima de [`INSP_PLAYER_TAKEOFF_SPEED`].
 pub const INSP_PLAYER_TAKEOFF_G: NodeId = hash_node_id("insp_player_takeoff_g");
 /// A velocidade acima da qual a gravidade de saída age, m/s.

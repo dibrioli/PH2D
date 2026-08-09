@@ -59,6 +59,16 @@
 //!   **escorrega para trás como um tapete** quando o personagem anda em cima
 //!   dela. É atrito honesto e é péssimo de jogar; quem quiser o tapete sobe o
 //!   número.
+//!
+//! # ⚠️ E o terceiro canal é LATERAL, não vertical (W-KinPush)
+//!
+//! Os dois escalares acima descrevem o que passa pelo **pé**. Um personagem
+//! também empurra o que está **ao lado** dele, e sob Snap isso não acontece
+//! sozinho: um corpo cinemático tem massa infinita para o solver, então o
+//! `move_shape` desliza contra um caixote solto sem lhe transmitir nada —
+//! medido, o dinâmico empurra o caixote **16,55 m em 3 s** e o cinemático
+//! **0,0000**. [`ReactionConfig::push`] é esse canal, e a lei dele é a
+//! [`push_transfer`].
 
 use crate::{Motor, Vec2};
 
@@ -69,6 +79,13 @@ pub struct ReactionConfig {
     pub support: f32,
     /// O que a caminhada devolve — o TAPETE. Ver o aviso do módulo.
     pub movement: f32,
+    /// **O que um deslocamento BLOQUEADO devolve** — o EMPURRÃO (W-KinPush).
+    ///
+    /// ⚠️ Nasce em **1,0**, com o `support` e ao contrário do `movement`, e a
+    /// razão é a mesma: empurrar um caixote em que se esbarra é o que um corpo
+    /// faz. Sob Spring o solver já o faz sozinho e este número é inerte; sob
+    /// Snap ele é a única coisa que o faz acontecer.
+    pub push: f32,
 }
 
 impl ReactionConfig {
@@ -76,6 +93,7 @@ impl ReactionConfig {
     pub const STARTING_POINT: Self = Self {
         support: 1.0,
         movement: 0.0,
+        push: 1.0,
     };
 
     /// A reação DESLIGADA — o personagem volta a ser um fantasma.
@@ -85,6 +103,7 @@ impl ReactionConfig {
     pub const OFF: Self = Self {
         support: 0.0,
         movement: 0.0,
+        push: 0.0,
     };
 }
 
@@ -140,6 +159,50 @@ pub fn reaction(cfg: &ReactionConfig, support: Motor, impulse: Motor, movement: 
         // ⚠️ **Só o impulso** — ver o aviso do módulo.
         boost: [-(impulse.boost[0] * s), -(impulse.boost[1] * s)],
     }
+}
+
+/// **O EMPURRÃO** (W-KinPush) — quanto de um deslocamento BLOQUEADO volta para
+/// a superfície que o bloqueou, em METROS de um tique.
+///
+/// `blocked` é *o que o mundo não deixou acontecer* (o pedido menos o efetivo) e
+/// `normal` é a normal da superfície em que se bateu. O resultado é a projeção
+/// de `blocked` na **linha** da normal, escalada — e quem o converte em impulso
+/// é a ponte, com a massa do PLAYER, exatamente como faz com a [`Reaction`].
+///
+/// # ⚠️ A projeção é na LINHA, e é isso que torna o sinal da normal irrelevante
+///
+/// `n · (blocked · n)` é invariante à troca de sinal de `n`, e o resultado
+/// aponta sempre para o mesmo lado que a componente bloqueada — ou seja, **para
+/// dentro do obstáculo**, que é a direção do empurrão. O rapier usa a mesma
+/// forma no `solve_character_collision_impulses`, e não por acaso: qual das
+/// duas testemunhas de um shapecast dá a normal *"de fora"* é convenção de
+/// biblioteca, e uma lei que dependesse dela seria um sinal invertido à espera
+/// de uma atualização de dependência.
+///
+/// ⚠️ **A normal é normalizada aqui**, então uma normal de comprimento ≠ 1 não
+/// escala o resultado — uma segunda escala escondida seria um número que ninguém
+/// autora a multiplicar o que o artista autora.
+///
+/// ⚠️ **Escalar negativo é recusado, não invertido** — a mesma regra da
+/// [`reaction`]: um empurrão com o sinal trocado é o personagem a *puxar* para
+/// si o caixote em que esbarrou.
+#[must_use]
+pub fn push_transfer(cfg: &ReactionConfig, blocked: Vec2, normal: Vec2) -> Vec2 {
+    let s = cfg.push.max(0.0);
+    if s == 0.0 {
+        return [0.0, 0.0];
+    }
+    let len2 = normal[0] * normal[0] + normal[1] * normal[1];
+    // ⚠️ A ordem é NaN-safe: `is_finite` primeiro, porque `NaN <= 0.0` é FALSO
+    // e sozinha a comparação deixaria um `NaN` passar para a divisão.
+    if !len2.is_finite() || len2 <= 0.0 {
+        return [0.0, 0.0];
+    }
+    let k = (blocked[0] * normal[0] + blocked[1] * normal[1]) / len2 * s;
+    if !k.is_finite() {
+        return [0.0, 0.0];
+    }
+    [normal[0] * k, normal[1] * k]
 }
 
 #[cfg(test)]
@@ -241,6 +304,80 @@ mod tests {
         );
     }
 
+    /// ⚠️ **O empurrão vai para DENTRO do obstáculo, aponte a normal para onde
+    /// apontar** — as duas metades num gate só porque são a mesma propriedade:
+    /// a projeção é na LINHA da normal, e é isso que tira a convenção de sinal
+    /// da biblioteca do caminho da lei.
+    #[test]
+    fn the_push_goes_into_the_wall_whichever_way_the_normal_points() {
+        let cfg = ReactionConfig::STARTING_POINT;
+        // O personagem queria andar 0,1 m para a direita e a parede o impediu.
+        let blocked = [0.1, 0.0];
+        let out = push_transfer(&cfg, blocked, [1.0, 0.0]);
+        let inn = push_transfer(&cfg, blocked, [-1.0, 0.0]);
+        assert!(
+            (out[0] - 0.1).abs() < 1.0e-6 && out[1].abs() < 1.0e-6,
+            "para dentro da parede: {out:?}"
+        );
+        assert_eq!(out, inn, "o sinal da normal nao pode importar: {inn:?}");
+    }
+
+    /// **Só a componente que a superfície de facto bloqueou viaja.** Um
+    /// deslocamento bloqueado PARALELO à parede não é empurrão nenhum — se ele
+    /// transferisse, andar ao longo de um muro empurraria o muro.
+    #[test]
+    fn only_the_component_along_the_normal_travels() {
+        let cfg = ReactionConfig::STARTING_POINT;
+        let along = push_transfer(&cfg, [0.0, 0.1], [1.0, 0.0]);
+        assert_eq!(along, [0.0, 0.0], "paralelo nao empurra: {along:?}");
+
+        // Num obstáculo a 45° só metade da diagonal atravessa.
+        let n = [1.0_f32, 1.0];
+        let d = push_transfer(&cfg, [0.1, 0.0], n);
+        assert!(
+            (d[0] - 0.05).abs() < 1.0e-6 && (d[1] - 0.05).abs() < 1.0e-6,
+            "a 45 graus metade atravessa, na direcao da normal: {d:?}"
+        );
+    }
+
+    /// ⚠️ **Uma normal de comprimento ≠ 1 dá o MESMO empurrão** — sem a
+    /// normalização, o comprimento de um vetor que o artista nunca vê
+    /// multiplicaria o número que ele autora.
+    #[test]
+    fn a_non_unit_normal_does_not_scale_the_push() {
+        let cfg = ReactionConfig::STARTING_POINT;
+        let unit = push_transfer(&cfg, [0.1, 0.0], [1.0, 0.0]);
+        let long = push_transfer(&cfg, [0.1, 0.0], [7.0, 0.0]);
+        assert!(
+            (unit[0] - long[0]).abs() < 1.0e-6,
+            "unitaria {unit:?} contra longa {long:?}"
+        );
+        assert_eq!(
+            push_transfer(&cfg, [0.1, 0.0], [0.0, 0.0]),
+            [0.0, 0.0],
+            "normal degenerada nao empurra"
+        );
+    }
+
+    /// **`OFF` e escalar negativo não empurram nada** — o zero é o controle da
+    /// cena de smoke, e o negativo seria o personagem a PUXAR o caixote.
+    #[test]
+    fn the_push_is_off_at_zero_and_refused_below_it() {
+        assert_eq!(
+            push_transfer(&ReactionConfig::OFF, [0.1, 0.0], [1.0, 0.0]),
+            [0.0, 0.0]
+        );
+        let negative = ReactionConfig {
+            push: -3.0,
+            ..ReactionConfig::STARTING_POINT
+        };
+        assert_eq!(
+            push_transfer(&negative, [0.1, 0.0], [1.0, 0.0]),
+            [0.0, 0.0],
+            "negativo e' tratado como zero, nunca invertido"
+        );
+    }
+
     /// Escalar NEGATIVO é recusado — devolver força com o sinal trocado é o
     /// personagem **puxando** a jangada para cima ao pisar nela.
     #[test]
@@ -248,6 +385,7 @@ mod tests {
         let cfg = ReactionConfig {
             support: -3.0,
             movement: -3.0,
+            push: -3.0,
         };
         let r = reaction(
             &cfg,

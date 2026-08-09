@@ -28,7 +28,7 @@ pub mod world;
 
 pub use world::blast::{Attract, blast_falloff};
 pub use world::cast::CastHit;
-pub use world::character::{CharacterMove, CharacterParams};
+pub use world::character::{CharacterHit, CharacterMove, CharacterParams};
 pub use world::checkpoint::{PhysicsCheckpoint, PhysicsCheckpointRing};
 pub use world::contacts::{ContactReport, PeakKey, PeakSample};
 pub use world::defaults::BodyDefaults;

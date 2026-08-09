@@ -100,6 +100,15 @@ pub struct InspectorPlayerInfo {
     pub reaction_support: f32,
     /// Quanto da caminhada volta ao chao (W6).
     pub reaction_movement: f32,
+    /// **Quanto de um bloqueio LATERAL volta** (W-KinPush).
+    ///
+    /// ⚠️ **Inerte sob Spring, e a row o DIZ:** um corpo dinâmico já empurra o
+    /// que esbarra, pelo solver. É a mesma classe do `lift_momentum` (inerte em
+    /// chão estático) e do `crouch_speed` (inerte sem `crouch_height`) — a §14
+    /// escreve o escopo no rótulo em vez de esconder o número, porque um
+    /// controle que APARECE e some é mais difícil de aprender que um que
+    /// explica onde age.
+    pub reaction_push: f32,
 
     /// **Quantos segundos de CORRIDA GRAVADA o documento carrega** (W17).
     ///
@@ -209,4 +218,5 @@ pub enum PlayerFieldEdit {
     ReactionSupport(f32),
     /// Quanto da caminhada volta ao chao (W6).
     ReactionMovement(f32),
+    ReactionPush(f32),
 }

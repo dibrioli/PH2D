@@ -368,7 +368,15 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// uma const que dizia 69 — o buraco que faz o próximo bump nascer mal-numerado, pois
 /// quem conta o próximo degrau lê a escada e não o literal. Escrita na varredura da
 /// §5 do CLAUDE.md, no fim da mesma jornada.
-const PROJECT_SCHEMA: u32 = 69;
+/// v70 (physics, W-KinPush — O EMPURRÃO): o `PlatformPlayer` ganhou
+/// **`reaction_push`**, o terceiro escalar da 3ª lei — quanto de um bloqueio
+/// LATERAL volta para o corpo que o causou. Um campo do componente, pelo mesmo
+/// raciocínio posicional de todos os degraus acima: o postcard grava na ordem de
+/// declaração, então um leitor velho leria os campos seguintes deslocados.
+/// ⚠️ **PROVISÓRIO até a integração** — o valor se CONTA contra o `main` do dia,
+/// e nesta janela há outras linhas vivas
+/// ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+const PROJECT_SCHEMA: u32 = 70;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

@@ -205,6 +205,7 @@ pub(crate) fn sync_player_fields(host: &mut dyn PanelHostInternal) {
         (ids::INSP_PLAYER_CROUCH_SPEED, info.crouch_speed),
         (ids::INSP_PLAYER_REACT_SUPPORT, info.reaction_support),
         (ids::INSP_PLAYER_REACT_MOVEMENT, info.reaction_movement),
+        (ids::INSP_PLAYER_REACT_PUSH, info.reaction_push),
     ] {
         host.store_mut().set_number_value(id, f64::from(v));
     }

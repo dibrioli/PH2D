@@ -318,6 +318,7 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         // único teto desta seção que é de RECURSO e não de gosto.
         (ids::INSP_PLAYER_REACT_SUPPORT, 1.0, 0.0, 1.0, 0.05), // LITERAL-PX-OK: fraction
         (ids::INSP_PLAYER_REACT_MOVEMENT, 0.0, 0.0, 1.0, 0.05), // LITERAL-PX-OK: fraction
+        (ids::INSP_PLAYER_REACT_PUSH, 1.0, 0.0, 1.0, 0.05), // LITERAL-PX-OK: fraction
     ] {
         store.register(
             id,

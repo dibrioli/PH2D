@@ -201,7 +201,7 @@ impl PhysicsWorld {
     ///
     /// ⚠️ **Estático e kinematic absorvem sem se mexer**, e é correto — massa
     /// infinita é o que "o chão do mundo" significa. Não há caso especial aqui.
-    pub fn apply_ground_reaction(
+    pub fn apply_player_reaction(
         &mut self,
         ground: RigidBodyHandle,
         player: RigidBodyHandle,

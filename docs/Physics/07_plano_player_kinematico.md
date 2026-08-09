@@ -177,7 +177,7 @@ mesma escolha, e é isso que o chip diz.
               │                              → translation (escrita no corpo)
               └───────────────┬───────────────────────┘
                               ▼
-              apply_ground_reaction(…)   ⚠️ K6: a MESMA porta nos dois modos
+              apply_player_reaction(…)   ⚠️ K6: a MESMA porta nos dois modos
 ```
 
 **As portas únicas, uma linha cada:**
@@ -187,7 +187,7 @@ mesma escolha, e é isso que o chip diz.
 3. *"o que segura o personagem?"* → **`Support`**, lido uma vez, dentro da lei (K3).
 4. *"quanto o corpo anda?"* → **uma função por modo**, escolhida pelo marcador; nunca
    as duas no mesmo tique.
-5. *"o que volta para o chão?"* → **`apply_ground_reaction`**, os dois modos (K6).
+5. *"o que volta para o chão?"* → **`apply_player_reaction`**, os dois modos (K6).
 
 ---
 
@@ -668,23 +668,99 @@ sangra.
 ⚠️ **A massa é AUTORADA** (o corpo cinemático não tem massa que o rapier calcule) — e é
 por isso que esta é wave própria: um número novo na §14 tem as suas quatro condições.
 
-### W-KinPush — E O QUE ESTÁ AO LADO TAMBÉM (cena `=103`)
+### W-KinPush — E O QUE ESTÁ AO LADO TAMBÉM (cena `=102`) — **FECHADA**
 
-A outra metade da ordem *"influencie tudo"*: o que o `move_shape` **não** conseguiu
-mover, projetado na normal, volta como impulso no ponto de contato.
+A outra metade da ordem *"influencie tudo"*: o que o `move_shape` **não**
+conseguiu mover, projetado na normal, volta como impulso no ponto de contato.
 
-**Gates, red-first:** um caixote solto no caminho **não se move** antes da wave e é
-empurrado depois · a **massa manda** (o caixote leve anda mais que o pesado sob o mesmo
-personagem) · **uma parede estática não absorve nada** (o impulso vai para um corpo de
-massa infinita e o ledger fecha em zero) · e a **mutação que devolve o impulso pelo
-`solve_character_collision_impulses` do rapier** tem de sangrar, porque a wave é sobre
-*qual* lei empurra, não sobre *se* empurra.
+⚠️ **A cena é a `=102` e não a `=103`:** a `W-KinWeight` fechou sem cena (ela
+virou uma wave de UI — ver a §6 dela), e deixar um buraco no roteador para uma
+cena que nunca existiu é como um número de smoke passa a apontar para outra
+coisa em silêncio.
 
-⚠️ **O risco desta wave é ESTABILIDADE, não correção, e o gate tem de o medir:** um
-personagem que empurra por impulso a 60 Hz pode entrar em ressonância com o slide (ele
-empurra, o caixote foge, o slide o segue, ele empurra outra vez). O número que decide é
-a **amplitude em regime** encostado num caixote parado — o mesmo kill-criterion que a W6
-do plano 06 usou para a plataforma dinâmica.
+**Medido, ANTES de uma linha ser escrita** (`measure_kinematic_push.rs`), num
+personagem a andar contra um caixote solto por 3 s:
+
+| modo | caixote (m) | personagem (m) |
+|---|---|---|
+| DINÂMICO (controle) | 16,55 | 17,55 |
+| CINEMÁTICO | **0,0000** | 0,99 |
+
+E depois: **16,54** contra os 16,55 do controle, com a ordem da MASSA preservada
+(densidade 0,25 / 1 / 4 / 16 → 16,96 / 16,54 / 15,08 / 2,90).
+
+#### A lei, e o que a torna imune ao sinal da biblioteca
+
+`transfer = n · (blocked · n)`, com `blocked = pedido − efetivo`. A projeção é na
+**LINHA** da normal, então **o sentido de `n` não importa** — e isso não é
+elegância, é blindagem: qual das duas testemunhas de um shapecast produz a
+normal é convenção do rapier, e uma lei que dependesse dela seria um sinal
+invertido à espera de uma atualização de dependência. (O próprio rapier usa a
+mesma forma no `solve_character_collision_impulses`.)
+
+A conversão para impulso sai pela **porta da reação vertical**
+(`apply_player_reaction`, renomeada de `apply_ground_reaction` porque agora ela
+tem dois chamadores e nem todo corpo empurrado é chão): `m_player · transfer/dt`,
+no ponto de contato — que é o que dá o **torque** e faz um caixote atingido em
+cima tombar.
+
+#### ⚠️ TRÊS achados que mudaram o desenho ou a leitura
+
+1. **O peso NÃO é contado duas vezes, e isso foi MEDIDO em vez de assumido.** A
+   preocupação era o canal lateral entregar ao chão o que a K6 já entrega. Numa
+   jangada sem peso próprio, `push 0` e `push 1` dão a MESMA aceleração
+   (`−0,1196` nas quatro células da tabela, parado e a andar) — porque a
+   `supported_velocity` já removeu a componente que aponta para o chão antes de
+   o deslocamento ser pedido. **Nenhum filtro foi preciso.**
+2. **NÃO HÁ RESSONÂNCIA, e a razão é estrutural.** O risco nomeado era *empurra,
+   o caixote foge, o slide segue, empurra outra vez*. Medida a folga em regime
+   com o caixote SOLTO e com ele **encostado numa parede** (o caso duro, massa
+   efetiva infinita): amplitude **0,0000 m** nas quatro combinações. O que volta
+   é o que foi **BLOQUEADO**, então um caixote que foge deixa de bloquear e o
+   empurrão cai na mesma medida — a lei é auto-limitada por construção.
+3. ⚠️ **E é essa mesma propriedade que torna a CONTAGEM DUPLA invisível.** Duas
+   mutações (somar em vez de dedupar; não limpar a lista de contatos)
+   **sobreviveram a todos os gates de comportamento**. Instrumentada, a segunda
+   mostra o segundo personagem a empurrar o caixote do primeiro com **0,0235
+   m/tique contra os 0,0015 dele** — dezasseis vezes — e o caixote viaja
+   **0,9039 m nos DOIS casos, aos quatro decimais**: o excesso é absorvido pelo
+   bloqueio a menos. ⇒ o preço real de não dedupar é **CUSTO** (`O(N²)` nos
+   players), e os gates disto são os de UNIDADE, nunca um de mundo.
+
+#### O knob
+
+`ReactionConfig.push` (o terceiro escalar da 3ª lei) + `PlatformPlayer.reaction_push`
+→ **`PROJECT_SCHEMA` 69→70** (campo de componente serializado; PROVISÓRIO até a
+integração). Nasce em **1,0**, com o `support` e ao contrário do `movement`:
+empurrar o que se esbarra é o que um corpo faz.
+
+⚠️ **A row é INCONDICIONAL e o rótulo diz o escopo** (*"KINEMATIC only: a dynamic
+body already pushes"*), em vez de aparecer e sumir com o modo. É o precedente que
+a própria §14 já tem em quatro números (`Lift Momentum` é inerte em chão
+estático, `Crouch Speed` sem `crouch_height`, `Wall Reach` sem `Wall Slide`): a
+seção escreve o escopo no rótulo, porque um controle que some é mais difícil de
+aprender que um que explica onde age.
+
+#### Os gates
+
+Comportamento (`player_push.rs`, 8): empurra com o dinâmico ao lado como controle
+· a massa do CAIXOTE manda · a massa do PERSONAGEM manda · o escalar é um **dial,
+não um interruptor** · a parede estática não cede e ele PARA nela · o chão não é
+empurrado duas vezes · não ressoa · um caixote deixado para trás não é puxado de
+volta. Unidade: 4 na lei pura, 5 na dedup, 1 na porta do controlador. Arch-gate
+`the_push_is_our_law.rs`: o solver aproximado da biblioteca **não é chamado**, o
+empurrão sai pela porta da reação, e o que viaja é o bloqueio do **tique
+inteiro**.
+
+**7 mutações, 7 sangram** — e **duas delas só depois de um gate NOVO**: a que
+apaga a escala (o early-out em `push == 0` sobrevive, então o canal ainda liga e
+desliga, e nenhum gate autorava um valor no MEIO) e a que não limpa a lista de
+contatos.
+
+**c9:** lane nova (`C9 Push Player` + caixote pesado + chão), **111 corpos**,
+hash `adb72352…` (debug ≡ release). ⚠️ A sensibilidade dela foi **provada por
+ablação**: com `reaction_push = 0` o hash muda — sem isso seria uma lane que diz
+cobrir um ramo que ela não atravessa.
 
 ### W-KinPure — O TERCEIRO MODO (não construída agora)
 

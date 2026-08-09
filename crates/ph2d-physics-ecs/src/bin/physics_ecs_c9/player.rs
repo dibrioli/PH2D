@@ -30,6 +30,10 @@ use ph2d_physics_ecs::{
 /// até x = 50) — uma lane que empurra outra mediria as duas.
 const GROUND_X: f32 = 90.0;
 
+/// O chão da lane do EMPURRÃO, longe das outras pela mesma razão do `GROUND_X`:
+/// uma lane que esbarra noutra mede as duas.
+const PUSH_X: f32 = 140.0;
+
 /// **A corrida roteirizada.** Anda para a direita, pula no meio, e para no fim —
 /// os três regimes da lei (caminhada, decolagem+arco, freio) num run de 120
 /// tiques.
@@ -200,6 +204,69 @@ pub fn spawn(sim: &mut SimWorld) {
         // lane de determinismo não cobrir o ramo que ela diz cobrir.
         Transform::from_translation(Vec2::new(CORNER_X + 0.22 + 3.0, 2.9 + 0.5)),
     ));
+    // ── O EMPURRÃO CINEMÁTICO (W-KinPush) ───────────────────────────────────
+    //
+    // ⚠️ **Uma lane, porque o canal acrescenta aritmética que nenhuma outra
+    // atravessa:** o `move_shape` do controlador, a projeção do bloqueio na
+    // normal do contato e um `apply_impulse_at_point` derivado dela. As lanes de
+    // player acima são todas DINÂMICAS, então o modo Snap inteiro — e com ele o
+    // empurrão — passava a fronteira sem ninguém olhar em três OSes.
+    //
+    // ⚠️ **O caixote é PESADO** (densidade 16) pela razão medida na wave: um
+    // leve é limitado pela VELOCIDADE do personagem e a trajetória dele deixa de
+    // depender do tamanho do impulso — uma lane assim seria quase insensível ao
+    // número que ela existe para vigiar.
+    sim.world_mut().spawn((
+        Name::new("C9 Push Ground"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 10.0,
+                half_y: 0.1,
+            },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(PUSH_X, 0.0)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Push Crate"),
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 0.3,
+                half_y: 0.3,
+            },
+            density: 16.0,
+            ..Collider::default()
+        },
+        LockRotation,
+        Transform::from_translation(Vec2::new(PUSH_X + 1.5, 0.4)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Push Player"),
+        RigidBody {
+            kind: BodyKind::Kinematic,
+        },
+        Collider {
+            shape: ColliderShape::Capsule {
+                half_height: 0.3,
+                radius: 0.2,
+            },
+            ..Collider::default()
+        },
+        LockRotation,
+        ph2d_physics_ecs::PlayerMode::Kinematic,
+        PlatformPlayer {
+            float_height: 0.9,
+            ..PlatformPlayer::default()
+        },
+        Transform::from_translation(Vec2::new(PUSH_X, 0.6)),
+    ));
+
     sim.world_mut().spawn((
         Name::new("C9 Corner Player"),
         RigidBody {

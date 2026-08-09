@@ -53,6 +53,32 @@ pub struct CharacterMove {
     pub grounded: bool,
 }
 
+/// **Em que o personagem bateu** (W-KinPush) — o fato cru do shapecast, sem lei
+/// nenhuma em cima.
+///
+/// ⚠️ **Fatos, não decisões.** Quanto de um bloqueio volta para o corpo atingido
+/// é a [`ph2d_platformer::push_transfer`], que é pura e não conhece rapier; o que
+/// só o mundo indexado sabe responder é *em quê, onde, e com que normal* — e é
+/// exatamente isso, e nada mais, que atravessa esta fronteira.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct CharacterHit {
+    /// O corpo atingido. `None` para um collider sem corpo — nada a empurrar.
+    pub body: Option<RigidBodyHandle>,
+    /// O ponto de contato, em MUNDO.
+    ///
+    /// ⚠️ É ele que produz o TORQUE (`r × F`) quando o empurrão é aplicado, e é
+    /// a razão de um caixote atingido em cima tombar e um atingido no meio
+    /// deslizar — a mesma lição do `apply_player_reaction`.
+    pub point: [f32; 2],
+    /// A normal da superfície no contato.
+    ///
+    /// ⚠️ **O SENTIDO dela não é contrato**, e nenhuma lei deste repo pode
+    /// depender dele: qual das duas testemunhas de um shapecast a produz é
+    /// convenção da biblioteca. A [`ph2d_platformer::push_transfer`] projeta na
+    /// LINHA dela, que é invariante à troca de sinal.
+    pub normal: [f32; 2],
+}
+
 /// Os parâmetros do controlador que **saem da configuração do player**, para
 /// não existir um segundo número dizendo a mesma coisa.
 ///
@@ -134,6 +160,18 @@ impl PhysicsWorld {
     /// Um handle morto, um corpo sem forma, ou um `wanted` degenerado devolvem
     /// deslocamento zero — o chamador é um laço por-entidade e não deve ter de
     /// perguntar antes.
+    ///
+    /// # ⚠️ `hits` é um buffer do CHAMADOR, e é sempre LIMPO
+    ///
+    /// Ele sai por parâmetro em vez de dentro do [`CharacterMove`] por duas
+    /// razões que apontam para o mesmo lado: o `CharacterMove` é `Copy` (um
+    /// `Vec` lá dentro o tiraria de todo chamador que hoje o guarda de graça) e
+    /// o laço de players da ponte quer **um** buffer reusado por tique, não uma
+    /// alocação por personagem.
+    ///
+    /// ⚠️ Ele é limpo AQUI, e não pelo chamador: uma lista que só é limpa por
+    /// quem lembrar acumula os contatos do tique anterior, e o sintoma seria um
+    /// empurrão fantasma contra um corpo que já não se toca.
     #[must_use]
     pub fn move_character(
         &self,
@@ -142,7 +180,9 @@ impl PhysicsWorld {
         params: CharacterParams,
         exclude_collider: Option<ColliderHandle>,
         layer: u8,
+        hits: &mut Vec<CharacterHit>,
     ) -> CharacterMove {
+        hits.clear();
         let none = CharacterMove {
             translation: [0.0, 0.0],
             grounded: false,
@@ -234,7 +274,19 @@ impl PhysicsWorld {
             shape.as_ref(),
             &pos,
             Vector2::new(wanted[0], wanted[1]),
-            |_| {},
+            |c| {
+                // ⚠️ **A testemunha 1 é a do CORPO QUE SE MOVE**, e a pose dela é
+                // a `character_pos` — é assim que o próprio rapier a leva para o
+                // mundo no `solve_character_collision_impulses`. Levá-la pela pose
+                // de ENTRADA daria o ponto onde o personagem estava antes de
+                // deslizar, que num tique de contato não é onde ele encostou.
+                let p = c.character_pos * c.hit.witness1;
+                hits.push(CharacterHit {
+                    body: self.colliders.get(c.handle).and_then(|col| col.parent()),
+                    point: [p.x, p.y],
+                    normal: [c.hit.normal1.x, c.hit.normal1.y],
+                });
+            },
         );
         CharacterMove {
             translation: [moved.translation.x, moved.translation.y],

@@ -106,6 +106,7 @@ pub(crate) fn build_player_info(
         crouch_speed: p.crouch_speed,
         reaction_support: p.reaction_support,
         reaction_movement: p.reaction_movement,
+        reaction_push: p.reaction_push,
         recorded_run_seconds,
         discarded_run_seconds,
     })
@@ -291,5 +292,6 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         PlayerFieldEdit::CrouchSpeed(v) => p.crouch_speed = v.max(0.0),
         PlayerFieldEdit::ReactionSupport(v) => p.reaction_support = v.max(0.0),
         PlayerFieldEdit::ReactionMovement(v) => p.reaction_movement = v.max(0.0),
+        PlayerFieldEdit::ReactionPush(v) => p.reaction_push = v.max(0.0),
     }
 }

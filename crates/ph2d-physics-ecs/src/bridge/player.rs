@@ -31,11 +31,11 @@
 
 use bevy_ecs::entity::Entity;
 use ph2d_ecs::SimWorld;
-use ph2d_physics::CharacterParams;
+use ph2d_physics::{CharacterHit, CharacterParams};
 use ph2d_platformer::{
     Buoyed, CORNER_LOOKAHEAD, CORNER_SAMPLES, CeilingProbe, GroundSample, HEADROOM_SAMPLES,
-    Headroom, KinematicState, PlayerConfig, PlayerInput, PlayerState, WALL_SAMPLES, WallHit,
-    WallProbe, corner_offsets, corner_probe_wanted, footing, headroom_offsets,
+    Headroom, KinematicState, PlayerConfig, PlayerInput, PlayerState, ReactionConfig, WALL_SAMPLES,
+    WallHit, WallProbe, corner_offsets, corner_probe_wanted, footing, headroom_offsets,
     headroom_probe_wanted, kinematic_advance, kinematic_settle, player_motor, relative_rise,
     wall_offsets, wall_probe_wanted,
 };
@@ -74,6 +74,13 @@ struct KinMove {
     wanted: [f32; 2],
     /// A velocidade depois do avanço e **antes** do assentamento.
     advanced: KinematicState,
+    /// Os escalares da 3ª lei — o EMPURRÃO (W-KinPush) lê o `push` daqui.
+    ///
+    /// ⚠️ Viaja na lista porque a config do player é lida no primeiro laço (com
+    /// `&self`) e o empurrão é aplicado no segundo (com `&mut self`): relê-la
+    /// depois seria uma segunda consulta ao mundo ECS a meio do tique, e as
+    /// duas divergiriam no frame em que o artista arrasta o slider.
+    react: ReactionConfig,
 }
 
 struct GroundPush {
@@ -141,140 +148,6 @@ impl PhysicsBridge {
         self.player_drop.clear();
     }
 
-    /// **As descidas que já cumpriram o seu papel** (W12/W20) — rodada no topo
-    /// de cada tique de player, antes de o sensor perguntar qualquer coisa.
-    ///
-    /// # A lei, numa frase
-    ///
-    /// A descida morre quando **já passei** (a caixa do personagem está
-    /// inteiramente abaixo da caixa da plataforma) **E a prancha já parou de me
-    /// pegar** (o gancho one-way não relatou nada neste tique).
-    ///
-    /// ⚠️ **As duas metades são obrigatórias, e cada uma cura um defeito que a
-    /// outra tem** — as duas foram medidas
-    /// (`ph2d-physics-ecs/tests/measure_drop_retire.rs`).
-    ///
-    /// # ⚠️ Só a geometria EXPULSA o personagem
-    ///
-    /// A caixa estar abaixo **não** garante que a prancha não vá agir: com o
-    /// corpo **0,016 m abaixo** da prancha, sem sobreposição nenhuma, a
-    /// re-solidificação o atirou de volta ao degrau de cima com um pico de
-    /// **0,3267 N·s** entre sub-passos — e o `impulse` de fim de tique lia
-    /// `0,0000`, que é a lição da W-ImpactForce outra vez. Faixa medida: prancha
-    /// de meia-espessura 0,15, vãos **1,75 a 1,85**, onde ele **não descia de
-    /// todo** e o botão parecia não fazer nada. É o livro-razão do gancho
-    /// (`PhysicsWorld::drop_is_catching`) que fecha essa borda, porque ele
-    /// pergunta à normal do manifold em vez de a caixas.
-    ///
-    /// # ⚠️ Só a evidência REGRIDE a descida
-    ///
-    /// Quando a prancha fica inteiramente DENTRO da caixa do personagem (prancha
-    /// fina, corpo alto) não existe *lado*, e a normal do manifold **oscila**
-    /// entre tiques — medido, o ponto de contato saltando de `−0,486` para
-    /// `+0,490` em dois tiques. Uma lei só de evidência aposenta no primeiro
-    /// "não" dessa oscilação e a prancha o empurra para cima: com prancha 0,10 e
-    /// vãos 1,10 a 1,25 ele **deixava de descer**. A geometria não oscila, e é
-    /// ela que segura a evidência até a travessia ter de facto acabado.
-    ///
-    /// # ⚠️ O que AINDA fica fantasma, e a lei disso
-    ///
-    /// Medido célula a célula, **a descida sobrevive exactamente onde a caixa de
-    /// repouso do personagem ainda SOBREPÕE a prancha** — nenhuma exceção nas
-    /// duas espessuras varridas:
-    ///
-    /// | meia-espessura | vão | o que acontece |
-    /// |---|---|---|
-    /// | 0,15 | 1,60 – 1,70 | desce, e a prancha fica **fantasma** |
-    /// | 0,15 | 1,75 + | funciona (era **arremessado** até 1,85) |
-    /// | 0,10 | 1,50 – 1,60 | desce, e a prancha fica **fantasma** |
-    /// | 0,10 | 1,65 + | funciona |
-    ///
-    /// Nessa faixa a prancha **de facto o pegaria** (o cone do gancho devolve
-    /// `+1,000`, medido), então as duas saídas são *fantasma* ou *cuspido* — e
-    /// fantasma é a menos má.
-    ///
-    /// ⛔ **E o ALCANCE disso foi MEDIDO e é MENOR do que esta nota afirmava.**
-    /// A frase que esteve aqui dizia *"o preço continua a ser a cena inteira —
-    /// enquanto essa descida vive, nenhuma prancha é sólida para ele"*, e
-    /// prescrevia a **descida por-PLATAFORMA** como cura. Ela foi construída
-    /// inteira (conjunto de pares no lugar do bit, evidência por par, o gesto a
-    /// levar também as plataformas que o corpo já sobrepõe, o raio a ignorar a
-    /// lista) e **REVERTIDA**: numa cena com a escada apertada e uma prancha
-    /// SOLTA ao lado, a solta **segura o personagem nos DOIS mundos** — pela
-    /// perna, não pelo solver (`measure_whether_a_live_drop_really_dissolves_the_whole_scene`).
-    ///
-    /// O bit global limpa **contatos do solver**; quem segura este personagem é
-    /// a **mola**, e o raio dela só ignora a plataforma da travessia. Então o
-    /// que a descida viva de facto custa é a prancha que ela nomeia, e não a
-    /// cena — e uma cura por-plataforma seria complexidade sem número.
-    ///
-    /// ⚠️ A sonda **falhou o próprio controle duas vezes** antes de decidir (o
-    /// personagem não saía da escada; depois andava 400 tiques e atravessava a
-    /// prancha solta a caminho do outro lado do mundo). *Um A/B em que os dois
-    /// lados dão o mesmo número só vale depois de o controle dar um número
-    /// diferente.*
-    ///
-    /// ⚠️ E a cena 91 deixou de viver dez centímetros acima de um penhasco: com
-    /// `RISE = 2,0` e pranchas de 0,15 a margem passou de 0,10 para **0,25**, e
-    /// a borda que sobrou é a honesta (ali o personagem não cabe).
-    fn retire_drops(&mut self) {
-        // O caso comum é ninguém a descer, e ele não lê um byte.
-        if self.player_drop.is_empty() {
-            return;
-        }
-        let mut done: Vec<Entity> = Vec::new();
-        for (&entity, &platform) in &self.player_drop {
-            let Some(b) = self.bodies.get(&entity) else {
-                // O corpo morreu: não há descida a manter.
-                done.push(entity);
-                continue;
-            };
-            // ── A GEOMETRIA: já passei? ──────────────────────────────────────
-            let past = match (
-                self.world.collider_aabb(platform),
-                self.world.body_aabb(b.handle),
-            ) {
-                (Some((plat_mins, _)), Some((_, body_maxs))) => body_maxs[1] <= plat_mins[1],
-                // A plataforma (ou o corpo) deixou de existir — o mesmo
-                // veredito, pela mesma razão.
-                _ => true,
-            };
-            // ── A INTENÇÃO: já estou a SUBIR? (W27) ──────────────────────────
-            //
-            // ⚠️ **Uma descida travada existe para deixar passar para BAIXO.**
-            // No instante em que o corpo sobe, quem decide já é o **cone** do
-            // one-way (`ALLOWED_COS`), que deixa passar por baixo por conta
-            // própria — manter o bit ali não protege nada, e prende.
-            //
-            // ⚠️ **E o que ele prendia era o PERSONAGEM, não um contorno.**
-            // Medido (`measure_what_an_armed_drop_costs`): no vão em que a
-            // descida nunca se aposentava, ele descia um degrau e **ficava lá
-            // para sempre** — `−0,598 → −0,598` a 1,60, em toda célula da
-            // janela. O item estava registado como *"as pranchas ficam
-            // fantasma"*, que é o sintoma; a armadilha é o preço.
-            //
-            // ⚠️ **Ela não pode reabrir a borda de CIMA**, e a razão é o sinal:
-            // aquele defeito é a prancha voltar a ser sólida **com ele a CAIR
-            // através dela**, e esta cláusula só dispara com a velocidade para
-            // cima. Os gates daquela borda ficam verdes ao lado do desta.
-            let rising = self
-                .world
-                .body_velocity(b.handle)
-                .is_some_and(|v| v[1] > 0.0);
-            // ── A EVIDÊNCIA: e a prancha já parou de me pegar? ───────────────
-            if rising || (past && !self.world.drop_is_catching(b.handle)) {
-                done.push(entity);
-            }
-        }
-        for entity in done {
-            self.player_drop.remove(&entity);
-            if let Some(b) = self.bodies.get(&entity) {
-                let handle = b.handle;
-                self.world.set_body_drop_through(handle, false);
-            }
-        }
-    }
-
     /// **Um tick de todos os players.** Chamado no laço de ticks devidos, antes
     /// do `step` (ver o aviso do módulo).
     ///
@@ -284,7 +157,7 @@ impl PhysicsBridge {
         // ⚠️ **PRIMEIRO, e a ordem é a lei:** uma descida cumprida tem de deixar
         // de valer ANTES de o sensor perguntar, senão o raio deste tique ainda
         // ignoraria uma plataforma que já é sólida outra vez.
-        self.retire_drops();
+        drops::retire_drops(self);
         let world = sim.world();
         let gravity = self.world.gravity();
         let dt = self.world.dt();
@@ -535,6 +408,7 @@ impl PhysicsBridge {
                     },
                     wanted,
                     advanced: next_kin,
+                    react: cfg.react,
                 });
                 // ⚠️ **O estado guardado leva a velocidade ANTES do assentamento**
                 // — a lista de moves a corrige depois de o mundo responder. É a
@@ -639,17 +513,49 @@ impl PhysicsBridge {
         // pode levar as reações que eles devem ao chão junto.
         for r in reactions {
             self.world
-                .apply_ground_reaction(r.ground, r.player, r.accel, r.boost, r.at);
+                .apply_player_reaction(r.ground, r.player, r.accel, r.boost, r.at);
         }
         // ── O MOVIMENTO CINEMÁTICO (W-KinMove) ───────────────────────────────
         // ⚠️ **Por último, e a ordem importa:** a reação já foi enfileirada
         // contra o chão, e o `move_shape` lê o BVH que o `step` ANTERIOR deixou
         // (o mesmo contrato do sensor, ver o topo do módulo) — nada aqui depende
         // dos impulsos deste tique.
+        // ⚠️ **UM buffer para o laço inteiro**, limpo pela porta que o preenche
+        // (ver `move_character`): uma lista por personagem seria uma alocação
+        // por player por tique, para carregar no máximo um punhado de contatos.
+        let mut hits: Vec<CharacterHit> = Vec::new();
+        let mut pushes: Vec<Push> = Vec::new();
         for m in moves {
             let got = self
                 .world
-                .move_character(m.handle, m.wanted, m.params, m.passing, m.layer);
+                .move_character(m.handle, m.wanted, m.params, m.passing, m.layer, &mut hits);
+            // ── O EMPURRÃO (W-KinPush) ───────────────────────────────────────
+            //
+            // ⚠️ **Um corpo cinemático tem massa INFINITA para o solver**, então
+            // o `move_shape` desliza contra um caixote solto sem lhe transmitir
+            // nada — medido, o dinâmico o empurra 16,55 m em 3 s e o cinemático
+            // 0,0000. A 3ª lei já atravessa o modo no eixo VERTICAL (a
+            // `reaction`, K6); isto é a metade lateral dela.
+            //
+            // ⚠️ **UM empurrão por CORPO, e é o que impede a contagem dupla:**
+            // o controlador desliza em iterações e pode relatar o mesmo corpo
+            // várias vezes; somar cada relatório entregaria a mesma quantidade
+            // de movimento duas vezes ao mesmo caixote.
+            push::push_from_hits(&m.react, m.wanted, got.translation, &hits, &mut pushes);
+            for &(body, transfer, at) in &pushes {
+                // ⚠️ **A MESMA porta da reação vertical**, e a conversão é a
+                // dela: um deslocamento de um tique É uma velocidade quando
+                // dividido pelo tique, que é exatamente o que o canal `boost`
+                // significa (`Δv·m`). Uma segunda porta aqui seria uma segunda
+                // resposta para *"o que este player deve àquele corpo?"*.
+                self.world.apply_player_reaction(
+                    body,
+                    m.handle,
+                    [0.0, 0.0],
+                    [transfer[0] / dt, transfer[1] / dt],
+                    at,
+                );
+            }
             if let Some(pose) = self.world.body_pose(m.handle) {
                 // ⚠️ **`set_next_kinematic_pose`, nunca uma escrita direta:** é
                 // ela que faz o solver tratar o corpo como MOVENDO-SE, e é isso
@@ -683,6 +589,13 @@ impl PhysicsBridge {
 #[path = "player_probes.rs"]
 mod probes;
 use probes::{probe_ceiling, probe_headroom, probe_wall};
+
+#[path = "player_drops.rs"]
+mod drops;
+
+#[path = "player_push.rs"]
+mod push;
+use push::Push;
 
 /// O handle do rapier, nomeado sem importar o rapier aqui — esta crate declara-se
 /// *rapier-free* no próprio `Cargo.toml` e só carrega os tipos re-exportados.

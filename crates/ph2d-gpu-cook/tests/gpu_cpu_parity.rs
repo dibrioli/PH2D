@@ -1458,6 +1458,51 @@ fn color_ramp_custom_gradient_matches_the_cpu_on_the_device() {
 
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_field_masks_the_gradient_on_the_device_too() {
+    // The mask that makes `field.*` compose with colour (doc 89 fam. 9). The chain is
+    // ordered so every half of the new law is actually exercised:
+    //
+    //   grid → tint(Solid red) → field.index_range → color_ramp → out
+    //
+    // The tint comes BEFORE the field on purpose — it reads `falloff` too, so putting
+    // it after would mask the very colour this gate wants the ramp to blend ONTO, and
+    // `read_tint` would be exercising its identity (white) instead of a real column.
+    // The band is `soft`, so the mask sits at INTERMEDIATE values across the grid: an
+    // all-or-nothing mask would agree with a boolean implementation on both sides.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 160.0);
+    let base = g.add_node("motion.tint");
+    g.set_param(base, "mode", 0.0); // Solid
+    g.set_param(base, "r", 0.87);
+    g.set_param(base, "g", 0.13);
+    g.set_param(base, "b", 0.29);
+    g.set_param(base, "a", 1.0);
+    let foc = g.add_node("field.index_range");
+    g.set_param(foc, "start", 0.23);
+    g.set_param(foc, "end", 0.71);
+    g.set_param(foc, "soft", 0.31);
+    g.set_param(foc, "curve", 2.0);
+    let cr = g.add_node("motion.color_ramp");
+    g.set_text_param(
+        cr,
+        "ramp",
+        "g2 2 0:0.0625,0.9375,0.5625,1 1:0.5,0.25,0.75,0.4".to_string(),
+    );
+    let out = g.add_node("motion.output");
+    connect(&mut g, grid, base);
+    connect(&mut g, base, foc);
+    connect(&mut g, foc, cr);
+    connect(&mut g, cr, out);
+    assert_gpu_parity(&gpu, &reg, &g, out, 4); // grid + tint + index_range + color_ramp
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
 fn a_translucent_ramp_keeps_its_alpha_on_the_device() {
     // The two gates above compare all four channels and were GREEN over a device that
     // wrote `1.0` into alpha, because neither fixture CONTAINS the phenomenon: the

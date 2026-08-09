@@ -65,13 +65,54 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// Assign palette slot `(i + offset) mod colours` to each of `n` elements.
-fn cycle(n: usize, palette: &[[f32; 4]], colors: usize, offset: i64) -> Vec<[f32; 4]> {
+/// The multiplicative `falloff` weight for instance `i` (absent → `1.0`).
+///
+/// ⚠️ The tenth-and-something copy of this helper in the node library — see the note on
+/// `motion.color_ramp::falloff_at`. The extraction is a wave of its own across nine
+/// crates; this follows the convention the library already chose.
+fn falloff_at(stream: &Stream, i: usize) -> f32 {
+    match stream.get("falloff") {
+        Some(Column::Scalar(v)) => v.get(i).copied().unwrap_or(1.0),
+        _ => 1.0,
+    }
+}
+
+/// The instance's existing colour (absent → opaque white).
+fn existing_tint(stream: &Stream, i: usize) -> [f32; 4] {
+    match stream.get("tint") {
+        Some(Column::Vec4(v)) => v.get(i).copied().unwrap_or([1.0; 4]),
+        _ => [1.0; 4],
+    }
+}
+
+/// `lerp(existing, target, f)` per RGBA channel, endpoint-EXACT: at `f = 1` the first
+/// term is `existing · 0.0` and the second `target · 1.0`, so an absent mask writes the
+/// palette slot **bit for bit** — the substitution this node has always performed.
+fn mixed_tint(existing: [f32; 4], target: [f32; 4], f: f32) -> [f32; 4] {
+    let lerp = |e: f32, t: f32| e * (1.0 - f) + t * f;
+    [
+        lerp(existing[0], target[0]),
+        lerp(existing[1], target[1]),
+        lerp(existing[2], target[2]),
+        lerp(existing[3], target[3]),
+    ]
+}
+
+/// Assign palette slot `(i + offset) mod colours` to each of `n` elements, masked by
+/// `falloff` — the same law `motion.color_ramp` and `motion.tint` apply, so a `field.*`
+/// reaches the DISCRETE colour node and the continuous one identically (doc 89 fam. 9).
+fn cycle(
+    n: usize,
+    palette: &[[f32; 4]],
+    colors: usize,
+    offset: i64,
+    input: &Stream,
+) -> Vec<[f32; 4]> {
     let colors = colors.clamp(1, palette.len());
     (0..n)
         .map(|i| {
             let idx = (i as i64 + offset).rem_euclid(colors as i64) as usize;
-            palette[idx]
+            mixed_tint(existing_tint(input, i), palette[idx], falloff_at(input, i))
         })
         .collect()
 }
@@ -106,7 +147,7 @@ impl NodeOp for MotionColorArray {
             .unwrap_or(0);
         let input = ctx.input(0);
         let n = input.count();
-        let tint = cycle(n, &palette, colors, offset);
+        let tint = cycle(n, &palette, colors, offset, input);
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {
             if name != "tint" {
@@ -163,7 +204,7 @@ mod tests {
     /// `i mod 3`. FALSIFIED if every element got one colour.
     #[test]
     fn the_palette_cycles_by_index() {
-        let c = cycle(7, &PAL, 3, 0);
+        let c = cycle(7, &PAL, 3, 0, &Stream::new(7));
         assert_eq!(c[0], PAL[0]);
         assert_eq!(c[1], PAL[1]);
         assert_eq!(c[2], PAL[2]);
@@ -174,8 +215,8 @@ mod tests {
     /// `offset` marches the palette: offset 1 shifts every element one slot along.
     #[test]
     fn offset_marches_the_palette() {
-        let base = cycle(4, &PAL, 4, 0);
-        let shifted = cycle(4, &PAL, 4, 1);
+        let base = cycle(4, &PAL, 4, 0, &Stream::new(4));
+        let shifted = cycle(4, &PAL, 4, 1, &Stream::new(4));
         assert_eq!(shifted[0], base[1], "element 0 took slot 1");
         assert_eq!(shifted[3], base[0], "element 3 wrapped to slot 0");
     }
@@ -183,13 +224,50 @@ mod tests {
     /// `colors` bounds the active slots: with 2 active, only slots 0 and 1 appear.
     #[test]
     fn the_palette_length_is_the_cycle_length() {
-        let c = cycle(6, &PAL, 2, 0);
+        let c = cycle(6, &PAL, 2, 0, &Stream::new(6));
         for col in &c {
             assert!(
                 *col == PAL[0] || *col == PAL[1],
                 "only two colours: {col:?}"
             );
         }
+    }
+
+    /// **The field masks the palette, and no field is byte-identical** (doc 89 fam. 9, P0).
+    ///
+    /// The DISCRETE colour node gets the same law as the continuous one — a `field.*`
+    /// writes `falloff` and the stripes paint only where it reaches. The two halves are
+    /// asserted with `assert_eq!` on raw bits, not an epsilon: at `f = 1` the lerp is
+    /// `existing·0 + slot·1`, exactly the slot, and at `f = 0` exactly what was there.
+    #[test]
+    fn the_field_masks_the_palette_and_no_field_changes_nothing() {
+        let existing = vec![[1.0, 0.0, 0.0, 1.0]; 3];
+        let masked = Stream::new(3)
+            .with("tint", Column::Vec4(existing.clone()))
+            .with("falloff", Column::Scalar(vec![1.0, 0.5, 0.0]));
+        let got = cycle(3, &PAL, 3, 0, &masked);
+        let bare = cycle(3, &PAL, 3, 0, &Stream::new(3));
+
+        assert_eq!(got[0], bare[0], "full falloff takes the slot EXACTLY");
+        assert_eq!(got[2], existing[2], "zero falloff keeps the colour EXACTLY");
+        // Half must be strictly between — the half a boolean mask would collapse.
+        let (lo, hi) = (
+            existing[1][0].min(bare[1][0]),
+            existing[1][0].max(bare[1][0]),
+        );
+        assert!(
+            hi - lo > 1e-6 && got[1][0] > lo + 1e-6 && got[1][0] < hi - 1e-6,
+            "half falloff must land BETWEEN {lo} and {hi}, got {}",
+            got[1][0]
+        );
+
+        // …and a stream carrying a colour but NO mask is the substitution of before.
+        let no_field = Stream::new(3).with("tint", Column::Vec4(existing));
+        assert_eq!(
+            cycle(3, &PAL, 3, 0, &no_field),
+            bare,
+            "absent falloff must write the palette slot bit for bit"
+        );
     }
 
     /// Deterministic + cooks through the registry: writes the `tint` column at the full

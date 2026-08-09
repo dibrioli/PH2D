@@ -79,9 +79,59 @@ fn ramp_of(custom: Option<&str>) -> ColorRamp {
         .unwrap_or_else(default_gradient)
 }
 
-/// Map every instance's scalar through the ramp. `t_field` is the connected value input
-/// (empty → normalised index).
-fn colorize(n: usize, ramp: &ColorRamp, t_field: &[f32]) -> Vec<[f32; 4]> {
+/// The multiplicative `falloff` weight for instance `i` (absent → `1.0`).
+///
+/// ⚠️ The four lines below are the tenth copy of this helper in the node library
+/// (`motion.tint`, `motion.move`, `motion.rotate`, the three `force.*` accumulators,
+/// `motion.noise`/`stagger`/`step`/`wiggle`'s channel modules …), every one of them
+/// identical. Collapsing them into one door is a real improvement and a real WAVE —
+/// it touches nine crates and none of them is a colour node. Copying it here follows
+/// the convention the library already chose; the census is in the handoff so the
+/// extraction is a decision somebody makes on purpose rather than a surprise.
+fn falloff_at(stream: &Stream, i: usize) -> f32 {
+    match stream.get("falloff") {
+        Some(Column::Scalar(v)) => v.get(i).copied().unwrap_or(1.0),
+        _ => 1.0,
+    }
+}
+
+/// The instance's existing colour (absent → opaque white) — the same base
+/// `motion.tint` starts from, and the same `identity` the GPU binding declares.
+fn existing_tint(stream: &Stream, i: usize) -> [f32; 4] {
+    match stream.get("tint") {
+        Some(Column::Vec4(v)) => v.get(i).copied().unwrap_or([1.0; 4]),
+        _ => [1.0; 4],
+    }
+}
+
+/// `lerp(existing, target, f)` per RGBA channel, in the endpoint-EXACT form
+/// `existing·(1−f) + target·f`.
+///
+/// The exactness is the whole argument for this wave being safe: at `f = 1` the
+/// first term is `existing · 0.0`, which IEEE-754 makes exactly zero for any finite
+/// channel, and the second is `target · 1.0`, which is exactly `target`. So a stream
+/// with no `falloff` column takes the ramp colour **bit for bit** — the substitution
+/// this node has always performed — and only a stream that carries a mask sees
+/// anything new. (The same form, and the same reasoning, as `motion.tint::mixed_tint`.)
+fn mixed_tint(existing: [f32; 4], target: [f32; 4], f: f32) -> [f32; 4] {
+    let lerp = |e: f32, t: f32| e * (1.0 - f) + t * f;
+    [
+        lerp(existing[0], target[0]),
+        lerp(existing[1], target[1]),
+        lerp(existing[2], target[2]),
+        lerp(existing[3], target[3]),
+    ]
+}
+
+/// Map every instance's scalar through the ramp, masked by `falloff`. `t_field` is the
+/// connected value input (empty → normalised index).
+///
+/// **The mask is what makes the `field.*` family compose with colour** (doc 89 fam. 9,
+/// the C4D effector's *Color group → Use Alpha/Strength*): a `field.box` or a
+/// `field.radial_sweep` writes `falloff`, and the ramp now paints only where the field
+/// reaches. Before this the node replaced `tint` unconditionally, so a masked gradient
+/// was inexpressible — the mixer's `blend` is a global scalar, not a field.
+fn colorize(n: usize, ramp: &ColorRamp, t_field: &[f32], input: &Stream) -> Vec<[f32; 4]> {
     (0..n)
         .map(|i| {
             // The value-field convention, `motion.look_at::target_at`'s `0/1/n`
@@ -103,7 +153,7 @@ fn colorize(n: usize, ramp: &ColorRamp, t_field: &[f32]) -> Vec<[f32; 4]> {
                 1 => t_field[0].clamp(0.0, 1.0), // CLAMP-OK: ramp key
                 _ => t_field.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0),
             };
-            ramp.eval(t)
+            mixed_tint(existing_tint(input, i), ramp.eval(t), falloff_at(input, i))
         })
         .collect()
 }
@@ -145,19 +195,42 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         } else if (params.count > 1u) {\n\
         \x20   cr_t = f32(i) / (f32(params.count) - 1.0);\n\
         }\n\
-        write_tint(i, vec4<f32>(\n\
+        let cr_c = vec4<f32>(\n\
         \x20   cr_grad_r_sample(cr_t),\n\
         \x20   cr_grad_g_sample(cr_t),\n\
         \x20   cr_grad_b_sample(cr_t),\n\
-        \x20   cr_grad_a_sample(cr_t)));\n",
+        \x20   cr_grad_a_sample(cr_t));\n\
+        // The mask: `lerp(existing, ramp, falloff)` in the endpoint-exact form,\n\
+        // so an absent `falloff` (identity 1.0) writes the ramp colour bit for bit.\n\
+        // ⚠️ Qualified by PORT: this node has two inputs, so every reader is\n\
+        // `read_<port>_<col>` (`accessor_suffix`) — the same rule `read_t_v` above\n\
+        // follows. Writers are never qualified; a node has one output.\n\
+        let cr_e = read_in_tint(i);\n\
+        let cr_f = read_in_falloff(i);\n\
+        write_tint(i, vec4<f32>(\n\
+        \x20   cr_e.x * (1.0 - cr_f) + cr_c.x * cr_f,\n\
+        \x20   cr_e.y * (1.0 - cr_f) + cr_c.y * cr_f,\n\
+        \x20   cr_e.z * (1.0 - cr_f) + cr_c.z * cr_f,\n\
+        \x20   cr_e.w * (1.0 - cr_f) + cr_c.w * cr_f));\n",
     wgsl_lib: "",
     bindings: &[
         ColumnBinding {
-            // Written, never read: the node REPLACES the tint rather than
-            // blending onto it (`out.set(\"tint\", …)` after copying the rest).
+            // ⚠️ `ReadWrite`, not `Write`: since the falloff mask this node BLENDS
+            // onto whatever colour is already there, so it has to read it. An absent
+            // column reads the identity — opaque white, the same base the CPU's
+            // `existing_tint` starts from — and is always written.
             column: "tint",
             dim: Dim::Vec4,
-            access: ColumnAccess::Write,
+            access: ColumnAccess::ReadWrite,
+            identity: [1.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            // The mask (`field.*` writes it). Identity 1.0 = *no mask*, which is what
+            // makes an unmasked graph byte-identical to the day before this existed.
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
             identity: [1.0; 4],
             port: 0,
         },
@@ -265,7 +338,7 @@ impl NodeOp for MotionColorRamp {
         let t_field = scalar_col(ctx.input(1), VALUE_COL);
         let input = ctx.input(0);
         let n = input.count();
-        let tint = colorize(n, &ramp, &t_field);
+        let tint = colorize(n, &ramp, &t_field, input);
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {
             if name != "tint" {
@@ -312,241 +385,5 @@ static PARAM_HINTS: &[ParamUiHint] = &[
 ];
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_color::GradientPreset;
-
-    /// **A length-1 `t` field is a BROADCAST** — the value convention's `0/1/n`
-    /// ladder (`motion.look_at::target_at` is the canon). This node used to
-    /// take the `_` arm for it: element 0 got the value and every other element
-    /// got `t = 0`, so a `value.lfo` driving the ramp coloured exactly one
-    /// spark (found porting the `t` path to the GPU, ADR-0136).
-    #[test]
-    fn a_length_one_t_field_broadcasts_to_every_element() {
-        let ramp = GradientPreset::Grayscale.ramp();
-        let tinted = colorize(5, &ramp, &[0.75]);
-        for (i, c) in tinted.iter().enumerate() {
-            assert_eq!(
-                c, &tinted[0],
-                "element {i} must wear the SAME broadcast colour"
-            );
-        }
-        // …and the broadcast value is the field's, not the positional key: the
-        // grayscale ramp at t = 0.75 is 0.75 grey, not black.
-        assert!(
-            (tinted[0][0] - 0.75).abs() < 1e-6,
-            "broadcast t = 0.75 on grayscale: got {:?}",
-            tinted[0]
-        );
-    }
-
-    /// Grayscale by normalised index: the first element is black, the last is white, and
-    /// the middle is mid-grey. FALSIFIED if the ramp were a single solid colour.
-    #[test]
-    fn grayscale_spreads_black_to_white_by_index() {
-        let c = colorize(5, &GradientPreset::Grayscale.ramp(), &[]);
-        assert!(c[0][0] < 0.05, "first is black: {:?}", c[0]);
-        assert!(c[4][0] > 0.95, "last is white: {:?}", c[4]);
-        assert!((c[2][0] - 0.5).abs() < 0.1, "middle is grey: {:?}", c[2]);
-    }
-
-    /// The `t` value field overrides the index: two elements both fed `t=1` are both the
-    /// ramp's end colour (white), regardless of their index.
-    #[test]
-    fn the_t_field_overrides_the_index() {
-        let c = colorize(2, &GradientPreset::Grayscale.ramp(), &[1.0, 1.0]);
-        assert!(c[0][0] > 0.95 && c[1][0] > 0.95, "both white: {c:?}");
-    }
-
-    /// **The gradient string colours the set** (doc 85). A red→green→blue gradient laid
-    /// across the set colours the first element red, the middle green, the last blue.
-    /// FALSIFIED if the node ignored the string.
-    #[test]
-    fn a_gradient_string_colours_the_set() {
-        let ramp = ramp_of(Some("g1 2 0:1,0,0 0.5:0,1,0 1:0,0,1"));
-        let c = colorize(3, &ramp, &[]);
-        assert!(c[0][0] > 0.95 && c[0][1] < 0.05, "first red: {:?}", c[0]);
-        assert!(c[1][1] > 0.95 && c[1][0] < 0.05, "middle green: {:?}", c[1]);
-        assert!(c[2][2] > 0.95 && c[2][0] < 0.05, "last blue: {:?}", c[2]);
-    }
-
-    /// An unset / malformed string falls back to the default gradient (Rainbow) — never a
-    /// half-built gradient, never a crash. A fresh node is colourful.
-    #[test]
-    fn unset_falls_back_to_the_rainbow_default() {
-        let none = colorize(7, &ramp_of(None), &[]);
-        let bad = colorize(7, &ramp_of(Some("nonsense")), &[]);
-        assert_eq!(none, bad, "None and malformed both use the default");
-        // Rainbow: first stop is red.
-        assert!(
-            none[0][0] > 0.95 && none[0][2] < 0.05,
-            "first red: {:?}",
-            none[0]
-        );
-        // …and it spans hues (not a flat colour).
-        let (lo, hi) = none.iter().fold((f32::MAX, f32::MIN), |(lo, hi), c| {
-            (lo.min(c[2]), hi.max(c[2]))
-        });
-        assert!(hi - lo > 0.8, "the default rainbow spans (blue {lo}..{hi})");
-    }
-
-    /// **The GPU LUT fill mirrors the CPU `eval`** (doc 85, the device half). Baking the red
-    /// channel of a red→green→blue gradient gives red at t=0 and zero red at t=1 — the same
-    /// colour the CPU `colorize` paints. The malformed string bakes the default (Rainbow),
-    /// matching the CPU fallback, so the two paths agree on "nothing authored".
-    #[test]
-    fn the_lut_fill_samples_each_channel_and_falls_back() {
-        let grad = "g1 2 0:1,0,0 0.5:0,1,0 1:0,0,1";
-        let mut r = [0.0f32; 256];
-        fill_grad_r(grad, &mut r);
-        assert!(r[0] > 0.95, "red LUT starts at 1.0: {}", r[0]);
-        assert!(r[255] < 0.05, "red LUT ends at 0.0: {}", r[255]);
-        let ramp = parse_gradient(grad).unwrap();
-        assert!((r[0] - ramp.eval(0.0)[0]).abs() < 1e-6, "LUT[0] == eval(0)");
-        assert!(
-            (r[255] - ramp.eval(1.0)[0]).abs() < 1e-6,
-            "LUT[255] == eval(1)"
-        );
-        // Malformed → the default gradient (Rainbow): red at t=0 (the first stop is red).
-        let mut bad = [9.0f32; 256];
-        fill_grad_r("nonsense", &mut bad);
-        assert!(
-            bad[0] > 0.95,
-            "fallback rainbow baked (red at 0): {}",
-            bad[0]
-        );
-    }
-
-    /// Deterministic + cooks through the registry: writes the `tint` column at the full
-    /// count and passes the geometry columns through. The ramp comes from the text param.
-    #[test]
-    fn registers_and_colours_through_the_cook() {
-        use ph2d_nodegraph::cook::{Cook, OpResolver};
-        use ph2d_nodegraph::graph::{Edge, Graph};
-
-        static SRC: NodeManifest = NodeManifest {
-            id: NodeTypeId::of("motion.color_ramp.test.src"),
-            name: "motion.color_ramp.test.src",
-            inputs: &[],
-            outputs: &[PortSpec {
-                name: "out",
-                ty: INST_VEC2,
-            }],
-            effect: Effect::Pure,
-            clock: Clock::Frame,
-            params: &[],
-            lowerings: &[LoweringKind::Cpu],
-        };
-        struct Src;
-        impl NodeOp for Src {
-            fn manifest(&self) -> &'static NodeManifest {
-                &SRC
-            }
-            fn eval(&self, ctx: &mut EvalCtx<'_>) {
-                ctx.emit(
-                    Stream::new(3)
-                        .with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]])),
-                );
-            }
-        }
-        struct Ops;
-        impl OpResolver for Ops {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                match ty {
-                    t if t == SRC.id => Some(&Src),
-                    t if t == MANIFEST.id => Some(&MotionColorRamp),
-                    _ => None,
-                }
-            }
-        }
-        let mut reg = NodeRegistry::new();
-        register(&mut reg).unwrap();
-        assert!(reg.resolve(MANIFEST.id).is_some());
-
-        let mut g = Graph::new();
-        let src = g.add_node("motion.color_ramp.test.src");
-        let cr = g.add_node("motion.color_ramp");
-        // A grayscale gradient (black→white) so the index sweep is black to white.
-        g.set_text_param(cr, RAMP_KEY, "g1 2 0:0,0,0 1:1,1,1".to_string());
-        g.connect(Edge {
-            from: (src, 0),
-            to: (cr, 0),
-            delayed: false,
-        })
-        .unwrap();
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, cr, 0.0).unwrap();
-        let s = out[0].as_stream();
-        assert!(s.get("P").is_some(), "geometry passes through");
-        match s.get("tint").unwrap() {
-            Column::Vec4(v) => {
-                assert_eq!(v.len(), 3, "tint at full count");
-                assert!(v[0][0] < 0.05 && v[2][0] > 0.95, "black to white by index");
-            }
-            _ => panic!("tint"),
-        }
-    }
-
-    /// The gradient cooks through the registry from a `set_text_param` — the end-to-end path
-    /// the panel drives. FALSIFIED if the cook ignored the text param.
-    #[test]
-    fn gradient_cooks_through_the_text_param() {
-        use ph2d_nodegraph::cook::{Cook, OpResolver};
-        use ph2d_nodegraph::graph::{Edge, Graph};
-
-        static SRC: NodeManifest = NodeManifest {
-            id: NodeTypeId::of("motion.color_ramp.test.src2"),
-            name: "motion.color_ramp.test.src2",
-            inputs: &[],
-            outputs: &[PortSpec {
-                name: "out",
-                ty: INST_VEC2,
-            }],
-            effect: Effect::Pure,
-            clock: Clock::Frame,
-            params: &[],
-            lowerings: &[LoweringKind::Cpu],
-        };
-        struct Src;
-        impl NodeOp for Src {
-            fn manifest(&self) -> &'static NodeManifest {
-                &SRC
-            }
-            fn eval(&self, ctx: &mut EvalCtx<'_>) {
-                ctx.emit(Stream::new(2).with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0]])));
-            }
-        }
-        struct Ops;
-        impl OpResolver for Ops {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                match ty {
-                    t if t == SRC.id => Some(&Src),
-                    t if t == MANIFEST.id => Some(&MotionColorRamp),
-                    _ => None,
-                }
-            }
-        }
-        let mut reg = NodeRegistry::new();
-        register(&mut reg).unwrap();
-
-        let mut g = Graph::new();
-        let src = g.add_node("motion.color_ramp.test.src2");
-        let cr = g.add_node("motion.color_ramp");
-        g.set_text_param(cr, RAMP_KEY, "g1 2 0:1,0,0 1:0,0,1".to_string());
-        g.connect(Edge {
-            from: (src, 0),
-            to: (cr, 0),
-            delayed: false,
-        })
-        .unwrap();
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, cr, 0.0).unwrap();
-        match out[0].as_stream().get("tint").unwrap() {
-            Column::Vec4(v) => {
-                assert!(v[0][0] > 0.95 && v[0][2] < 0.05, "first red: {:?}", v[0]);
-                assert!(v[1][2] > 0.95 && v[1][0] < 0.05, "last blue: {:?}", v[1]);
-            }
-            _ => panic!("tint"),
-        }
-    }
-}
+#[path = "tests.rs"]
+mod tests;

@@ -251,6 +251,22 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.01,
         widget: ParamWidget::Slider,
     },
+    // ⚠️ Sits HERE, immediately after the number it varies, and that is the whole placement
+    // argument: `speed`/`speed_random` are adjacent inside *Velocity*, and a base separated from
+    // its variance is exactly the wall the sections exist to remove. Since `size` is loose, its
+    // variance is loose too — putting one in a section would paint them at opposite ends.
+    //
+    // A FRACTION of `size`, so `0 .. 1` is the whole meaningful range and the row carries no
+    // ceiling entry: above 1 the multiplier turns negative and the kernel's floor takes it to
+    // zero, i.e. some particles simply vanish, which is a thing to type rather than to drag past.
+    ParamUiHint {
+        param: "size_random",
+        label: "Size Random",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
 ];
 
 /// As SEÇÕES deste nó (doc 88 B3). Dez controles numa lista plana são uma parede; a pergunta
@@ -264,9 +280,16 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
 /// velocidade — é a aleatoriedade do NÓ, e o lugar de um número que não pertence a nenhuma
 /// seção é fora de todas, junto dos essenciais.
 ///
-/// ⚠️ E ficam SOLTOS `rate`, `life`, `size` e `max`: os três primeiros são o que um emissor
-/// É (com que frequência, por quanto tempo, de que tamanho) e o quarto é o orçamento. Param
-/// sem grupo pinta antes de toda seção, e é ali que os essenciais moram.
+/// ⚠️ E ficam SOLTOS `rate`, `life`, `size`, `size_random` e `max`: os três primeiros são o que
+/// um emissor É (com que frequência, por quanto tempo, de que tamanho) e o último é o orçamento.
+/// Param sem grupo pinta antes de toda seção, e é ali que os essenciais moram.
+///
+/// ⚠️ **O `size_random` é a exceção, e ela é sobre ADJACÊNCIA, não sobre ser essencial.** Ele
+/// varia o `size`, e uma variância que não pinta ao lado da própria base é a parede que as seções
+/// existem para remover — `speed`/`speed_random` são vizinhos DENTRO de *Velocity* pela mesma
+/// razão. Com o `size` solto, a única forma de manter o par junto é deixar os dois soltos; pô-lo
+/// numa seção os mandaria para pontas opostas do painel. A regra do conjunto solto passa a ser
+/// *"param que não pertence a nenhuma seção"*, e não *"param essencial"*.
 pub static PARAM_GROUPS: &[ParamGroup] = &[
     // Como a partícula é lançada.
     ParamGroup::new("speed", "Velocity"),

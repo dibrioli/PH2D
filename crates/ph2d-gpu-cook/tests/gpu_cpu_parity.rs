@@ -1720,6 +1720,12 @@ fn emitter_graph(reg: &NodeRegistry, life: f32, max: f32) -> (Graph, NodeId) {
     g.set_param(em, "shape_mode", 1.0);
     g.set_param(em, "shape_w", 1.5);
     g.set_param(em, "shape_h", 0.8);
+    // ⚠️ And a VARIED size, for the same reason and with the opposite outcome to `dir_mode`: the
+    // `size` column lands in `RenderInstance::size`, which `assert_parity` compares field by
+    // field, so this gate can see it — where the launch direction needed the SIM fixture, because
+    // an emitter with no integrator never turns `vel` into a position. Left at the default the
+    // kernel's `em_zj` draw would be a mirror nothing reads.
+    g.set_param(em, "size_random", 0.8);
     let out = g.add_node("motion.output");
     g.connect(Edge {
         from: (em, 0),

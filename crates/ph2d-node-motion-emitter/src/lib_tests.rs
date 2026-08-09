@@ -28,6 +28,9 @@ fn spec() -> Spec {
         seed: 0,
         max: 1024,
         size: 0.2,
+        // The one size every particle had before `size_random` existed — declared, never
+        // inherited, the same reason the three above are.
+        size_random: 0.0,
     }
 }
 
@@ -689,3 +692,6 @@ fn registers_and_resolves() {
 
 #[path = "lib_tests_launch.rs"]
 mod launch;
+
+#[path = "lib_tests_size.rs"]
+mod size;

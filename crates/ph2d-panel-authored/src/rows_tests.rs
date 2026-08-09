@@ -82,6 +82,7 @@ fn only_the_kinds_that_respond_are_controls() {
             rgba: None,
             icon: None,
             icon_id: None,
+            options: Vec::new(),
         }
         .is_control()
     };
@@ -96,6 +97,12 @@ fn only_the_kinds_that_respond_are_controls() {
         WidgetKind::NumberInput,
         // ⚠️ Um botão de ÍCONE é um botão: o que muda é a face, nunca o gesto.
         WidgetKind::IconButton,
+        // ⚠️ **A família de LISTA responde, e a pergunta que ela levanta é a do ALVO:** o gesto
+        // não muda o valor de UM controle, ele escolhe QUAL das N opções. O painel registra a row
+        // e o clique escolhe — o mesmo arranjo que o `seg_row` dos painéis escritos à mão usa.
+        WidgetKind::Tabs,
+        WidgetKind::RadioGroup,
+        WidgetKind::SegmentedAdaptive,
     ];
     let draws = [
         WidgetKind::ProgressBar,
@@ -195,6 +202,7 @@ fn only_the_section_header_folds_and_it_is_never_a_control() {
         rgba: None,
         icon: None,
         icon_id: None,
+        options: Vec::new(),
     };
     for kind in WidgetKind::ALL {
         let r = row(kind);
@@ -237,6 +245,7 @@ fn the_open_document_wins_over_the_pasted_code_and_giving_it_back_restores_it() 
         rgba: None,
         icon: None,
         icon_id: None,
+        options: Vec::new(),
     }];
     set_live_rows(Some(mine));
     with_rows(|t| {

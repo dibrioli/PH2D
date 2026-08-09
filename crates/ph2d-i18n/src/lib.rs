@@ -27,6 +27,8 @@
 //! assert_eq!(tr("tool.unknown.key"), "tool.unknown.key"); // missing-key passthrough
 //! ```
 
+mod vector;
+
 /// Look up a string by Fluent-style key. Missing keys round-trip the
 /// key itself so missing entries are visible in the UI (debugging
 /// aid) rather than silently rendering as empty.
@@ -162,81 +164,29 @@ pub fn tr(key: &str) -> &'static str {
         // shape catalogue. The panel is a 17-section stack; every section title
         // and every chrome word routes through here (the shape NAMES themselves
         // stay in the `ph2d-tool-vector` catalogue, which is their single source).
-        "panel.vector.title" => "Vector",
-        "panel.vector.section.tool" => "Tool",
-        "panel.vector.section.shape" => "Shape",
-        "panel.vector.section.blend" => "Blend",
-        "panel.vector.section.morph" => "Morph",
-        "panel.vector.section.envelope" => "Envelope",
-        "panel.vector.section.textpath" => "Text on Path",
-        "panel.vector.section.patternpath" => "Pattern on Path",
-        "panel.vector.section.contour" => "Contour",
-        "panel.vector.section.effects" => "Effects",
         // O Falloff modula a FORÇA do deformador abaixo dele na pilha; o card diz para onde ele
         // aponta, para que um Falloff sozinho (sem deformador abaixo) não pareça quebrado.
-        "panel.vector.fx.falloff.modulates" => "modulates the effect below",
-        "panel.vector.fx.falloff.inert" => "add a deformer below (Bulge/Warp/Zig Zag)",
-        "panel.vector.section.stroke" => "Stroke",
-        "panel.vector.section.fill" => "Fill",
-        "panel.vector.section.fill_type" => "Fill Type",
-        "panel.vector.section.snap" => "Snap",
-        "panel.vector.section.pencil" => "Pencil",
         // A SIMETRIA de desenho (W6.3). ⚠️ Os rótulos dos TIPOS não estão aqui: eles moram em
         // `ph2d_symmetry::SymmetryKind::label`, ao lado do enum, porque uma segunda lista
         // divergiria da primeira no dia em que o vocabulário ganhasse o quinto tipo.
-        "panel.vector.section.symmetry" => "Symmetry",
         // A MOLDURA (plano UI/UX W0) — o contêiner.
-        "panel.vector.section.frame" => "Frame",
         // **Os TOKENS** (plano UI/UX W4): a row que diz de que token a propriedade segue.
-        "panel.vector.token" => "Token",
         // A linha que SOLTA a propriedade — ela volta ao literal do documento.
-        "panel.vector.token.none" => "None (use literal)",
-        "panel.vector.frame.clip" => "Clip content",
-        "panel.vector.transform.resize_box" => "Resize Box",
-        "panel.vector.frame.clip.off" => "Off",
-        "panel.vector.frame.clip.on" => "On",
         // O interruptor do painel autorado (plano UI/UX W8b.2) — a moldura descreve um painel, e
         // este chip o mostra ao lado, docado.
-        "panel.vector.frame.panel" => "Show as Panel",
-        "panel.vector.frame.panel.off" => "Off",
-        "panel.vector.frame.panel.on" => "On",
         // **AS ÂNCORAS** (plano UI/UX W3) — a regra do filho que NÃO está num fluxo.
         // ⚠️ A vertical é nomeada pelo que se VÊ ("Top"/"Bottom"), e não pelo sinal: o documento é
         // Y-up, então "Top" é a âncora 1. A tradução mora numa tabela só, na shell.
-        "panel.vector.section.anchors" => "Constraints",
-        "panel.vector.anchors.h" => "Horizontal",
-        "panel.vector.anchors.v" => "Vertical",
-        "panel.vector.anchors.left" => "Left",
-        "panel.vector.anchors.right" => "Right",
-        "panel.vector.anchors.top" => "Top",
-        "panel.vector.anchors.bottom" => "Bottom",
-        "panel.vector.anchors.center" => "Center",
-        "panel.vector.anchors.stretch" => "Stretch",
         // **OS COMPONENTES** (plano UI/UX W5) — o prefab: mestre, instância, override.
         // ⚠️ "Main" e não "Master": é a palavra que o Figma passou a usar, e é a que aparece no
         // readout de órfã — os dois lados têm de falar a mesma.
-        "panel.vector.section.component" => "Component",
-        "panel.vector.component.create" => "Create Component",
-        "panel.vector.component.place" => "Place Instance",
-        "panel.vector.component.detach" => "Detach Instance",
-        "panel.vector.component.reset" => "Reset Overrides",
-        "panel.vector.component.missing" => "Main missing",
         // **AS DIFERENÇAS** (W5b) — a lista de peças, o absorver e a troca de mestre.
-        "panel.vector.component.pieces" => "Pieces",
-        "panel.vector.component.piece_colour" => "Colour",
         // ⚠️ Rótulo PRÓPRIO para a cor que esta cópia autorou: sem ele, *"esta peça está
         // diferente"* só se descobre carregando em Reset e vendo o que muda.
-        "panel.vector.component.piece_colour_own" => "Colour (own)",
-        "panel.vector.component.pieces_beyond" => "more pieces (edit them in the main)",
         // **OS VARIANTS** (W5c) — que versão do componente esta cópia é.
         // ⚠️ Este rótulo só é usado no modo de NOMES CRUS: quando os mestres irmãos declaram
         // propriedades no nome (`Size=Small`), o rótulo de cada fileira é a propriedade, que é
         // palavra do ARTISTA e nunca passa por aqui.
-        "panel.vector.component.variant" => "Variant",
-        "panel.vector.component.variants_beyond" => "more variant options (use Swap Main)",
-        "panel.vector.component.update_main" => "Update Main",
-        "panel.vector.component.swap" => "Swap Main",
-        "panel.vector.component.swap_armed" => "Click a component to swap",
         // **A PELE POR-WIDGET** (plano UI/UX W6.2) — a forma veste um widget do catálogo, e o
         // pintor REAL desenha no lugar dela.
         // ⚠️ Os nomes dos tipos são os do catálogo (`ph2d_editor_core::widget`) e passam por aqui
@@ -245,125 +195,33 @@ pub fn tr(key: &str) -> &'static str {
         // **OS ESTADOS de UI** (plano UI/UX W7) — os quatro papéis e os três verbos.
         // ⚠️ Os papéis são NOMES DE PAPEL, não de estado livre: "Hover" descreve o que aconteceu
         // com o rato, e é isso que torna o gatilho derivável em vez de autorado.
-        "panel.vector.section.states" => "States",
-        "panel.vector.states.role.default" => "Default",
-        "panel.vector.states.role.hover" => "Hover",
-        "panel.vector.states.role.pressed" => "Pressed",
-        "panel.vector.states.role.disabled" => "Disabled",
-        "panel.vector.states.rec" => "Rec",
-        "panel.vector.states.show" => "Show",
-        "panel.vector.states.clear" => "Clear",
         // O readout da pré-visualização: sem ele uma cena parada num hover parece o repouso, e a
         // gravação seguinte do Default o sobrescreve com a pose errada.
-        "panel.vector.states.showing" => "Showing",
-        "panel.vector.states.duration" => "Duration",
-        "panel.vector.states.spring" => "Spring",
-        "panel.vector.states.stiffness" => "Stiffness",
-        "panel.vector.states.damping" => "Damping",
         // **O MODO DE PREVIEW** (W7r). O segundo rótulo diz como SAIR, e não é cortesia: um modo
         // que toma o rato e não anuncia a porta de saída é um modo em que o artista fica preso.
-        "panel.vector.states.preview" => "Preview",
-        "panel.vector.states.preview.on" => "Preview on — Esc to exit",
         // ⚠️ O rótulo diz o que ACONTECE, não o que a caixa é: *"Move All States"* descreve o
         // efeito do próximo arrasto, e é isso que o artista precisa de decidir antes de arrastar.
-        "panel.vector.states.move_all" => "Move All States",
         // **O SELETOR DE CURVA** (W7). *"Curve"* e não *"Easing"*: o artista escolhe a FORMA do
         // movimento, e *easing* é o nome que a implementação lhe dá. Os rótulos dos chips não
         // estão aqui — vêm do `EasingFamily::label()`, porque são o vocabulário do catálogo e não
         // texto deste painel; uma segunda lista aqui divergiria do menu da timeline.
-        "panel.vector.states.curve" => "Curve",
-        "panel.vector.states.curve.mode" => "Direction",
-        "panel.vector.section.widget" => "Widget Skin",
-        "panel.vector.widget.wear" => "Wear a Widget",
-        "panel.vector.widget.remove" => "Back to Drawing",
         // ⚠️ O rótulo do widget é o NOME da entidade (a Hierarquia), nunca um campo próprio — esta
         // linha é o que torna essa lei visível ao artista em vez de descoberta por acidente.
-        "panel.vector.widget.label_is_name" => "Label follows the object name",
-        "panel.vector.widget.unknown" => "Unknown widget — drawn as a shape",
-        "panel.vector.widget.drives" => "Drives",
-        "panel.vector.widget.drives_none" => "nothing yet",
-        "panel.vector.widget.bind" => "Bind Shape...",
-        "panel.vector.widget.unbind" => "Unbind",
-        "panel.vector.widget.kind.button" => "Button",
-        "panel.vector.widget.kind.toggle" => "Toggle",
-        "panel.vector.widget.kind.checkbox" => "Checkbox",
-        "panel.vector.widget.kind.slider" => "Slider",
-        "panel.vector.widget.kind.progress" => "Progress",
-        "panel.vector.widget.kind.tag" => "Tag",
-        "panel.vector.widget.kind.text_input" => "Text Input",
-        "panel.vector.widget.kind.card" => "Card",
-        "panel.vector.widget.kind.section" => "Section",
-        "panel.vector.widget.kind.list_item" => "List Item",
-        "panel.vector.widget.kind.spinner" => "Spinner",
-        "panel.vector.widget.kind.divider" => "Divider",
-        "panel.vector.widget.kind.number_input" => "Number",
-        "panel.vector.widget.kind.level_meter" => "Level Meter",
-        "panel.vector.widget.kind.color_swatch" => "Color",
-        "panel.vector.widget.kind.icon_button" => "Icon Button",
         // **O AUTO LAYOUT** (plano UI/UX W2, ADR-0153) — a moldura que empilha os filhos.
         // ⚠️ Os rótulos de direção incluem o "Off" porque *"esta moldura flui?"* e *"em que
         // direção?"* são a MESMA pergunta (o `display` do CSS) — ver `VECTOR_LAYOUT_DIR_OFF`.
-        "panel.vector.section.layout" => "Layout",
-        "panel.vector.layout.dir" => "Direction",
-        "panel.vector.layout.dir.off" => "Off",
-        "panel.vector.layout.dir.row" => "Row",
-        "panel.vector.layout.dir.col" => "Column",
-        "panel.vector.layout.dir.wrap" => "Wrap",
-        "panel.vector.layout.gap" => "Gap",
-        "panel.vector.layout.padding" => "Padding",
-        "panel.vector.layout.padding.all" => "All",
-        "panel.vector.layout.padding.each" => "Each",
-        "panel.vector.layout.align" => "Align",
-        "panel.vector.layout.align.start" => "Start",
-        "panel.vector.layout.align.center" => "Center",
-        "panel.vector.layout.align.end" => "End",
-        "panel.vector.layout.align.stretch" => "Stretch",
-        "panel.vector.layout.justify" => "Distribute",
-        "panel.vector.layout.justify.start" => "Start",
-        "panel.vector.layout.justify.center" => "Center",
-        "panel.vector.layout.justify.end" => "End",
-        "panel.vector.layout.justify.between" => "Between",
-        "panel.vector.layout.justify.around" => "Around",
-        "panel.vector.layout.item" => "In parent",
-        "panel.vector.symmetry.off" => "Off",
-        "panel.vector.symmetry.on" => "On",
-        "panel.vector.symmetry.enable" => "Enable",
-        "panel.vector.symmetry.axis" => "Axis",
-        "panel.vector.symmetry.segments" => "Segments",
-        "panel.vector.symmetry.fuse" => "Fuse",
-        "panel.vector.symmetry.apply" => "Apply Symmetry",
         // A FONTE da largura de um traço de lápis (W1d). "Pen" e não "Pressure": o rótulo diz o
         // DISPOSITIVO, e é ele que hoje não existe nesta shell — o artista escolhe e não vê
         // diferença nenhuma, o que é a resposta honesta enquanto o caminho do tablet não chega.
-        "panel.vector.pencil.width.uniform" => "Uniform",
-        "panel.vector.pencil.width.speed" => "Speed",
-        "panel.vector.pencil.width.pressure" => "Pen",
         // **O catálogo de perfis de largura** (W2b) — os rótulos da tabela
         // `ph2d_stroke_width::PRESETS`, na ordem em que ela os lista. São VERBOS sobre a curva
         // ("afina", "engrossa"), não números: um nome só serve se descrever a forma, e a tabela
         // foi medida para que descreva (o doc dela traz o multiplicador em cinco pontos do arco).
-        "panel.vector.width.preset.uniform" => "Uniform",
-        "panel.vector.width.preset.taper" => "Taper",
-        "panel.vector.width.preset.both" => "Both",
-        "panel.vector.width.preset.bulge" => "Bulge",
-        "panel.vector.section.transform" => "Transform",
-        "panel.vector.section.vertex" => "Vertex",
-        "panel.vector.section.boolean" => "Boolean",
-        "panel.vector.section.expand" => "Expand",
-        "panel.vector.section.align" => "Align",
-        "panel.vector.section.arrange" => "Arrange",
         // **O Z-INDEX** — o lugar da forma na pilha dos IRMÃOS, maior = mais à frente
         // (a convenção do Godot/Unity). Readout: o numero e' derivado da arvore.
-        "panel.vector.arrange.z" => "Z",
-        "panel.vector.section.path" => "Path",
-        "panel.vector.section.text" => "Text",
-        "panel.vector.section.font" => "Font",
-        "panel.vector.section.paragraph" => "Paragraph",
-        "panel.vector.section.axes" => "Axes",
         // A seção do CONECTOR — só aparece com um conector na seleção. Os RÓTULOS dos três
         // campos (Route / Jetty / Spread) vêm do catálogo em `ph2d-tool-vector::connector`,
         // que é a fonte única deles (a mesma regra do catálogo de formas).
-        "panel.vector.section.connector" => "Connector",
 
         // ── Physics world panel (ADR-0131 D8 / W2b) — the WORLD half of physics
         // authoring. The per-BODY half is the Inspector's "Physics Body" section.
@@ -606,55 +464,19 @@ pub fn tr(key: &str) -> &'static str {
         // read in pixels, and deliberately does not own or duplicate it (D4).
         "panel.physics.scale" => "Scale",
         "panel.physics.bodies" => "Bodies",
-        "panel.vector.mode.build" => "Build",
-        "panel.vector.mode.select" => "Select",
-        "panel.vector.mode.node" => "Node",
-        "panel.vector.mode.pen" => "Pen",
-        "panel.vector.mode.shape" => "Shape",
-        "panel.vector.mode.text" => "Text",
-        "panel.vector.mode.connect" => "Connect",
-        "panel.vector.mode.fillet" => "Fillet",
-        "panel.vector.mode.chamfer" => "Chamfer",
-        "panel.vector.mode.width" => "Width",
-        "panel.vector.mode.pencil" => "Pencil",
-        "panel.vector.mode.cut" => "Cut",
-        "panel.vector.mode.frame" => "Frame",
         // As oito operações do Pathfinder. As quatro primeiras eram literais no painel até a W5;
         // passam por aqui agora porque a fileira é UMA e metade dela em i18n seria o pior dos dois.
-        "panel.vector.bool.union" => "Union",
-        "panel.vector.bool.subtract" => "Subtract",
-        "panel.vector.bool.intersect" => "Intersect",
-        "panel.vector.bool.exclude" => "Exclude",
-        "panel.vector.bool.minus_back" => "Minus Back",
-        "panel.vector.bool.trim" => "Trim",
-        "panel.vector.bool.crop" => "Crop",
-        "panel.vector.bool.merge" => "Merge",
         // A BOOLEANA VIVA (plano UI/UX W1): o modo dos oito acima + o commit.
-        "panel.vector.bool.live" => "Live",
-        "panel.vector.bool.live.off" => "Off",
-        "panel.vector.bool.live.on" => "On",
-        "panel.vector.bool.apply" => "Apply Boolean",
-        "panel.vector.cut.apply" => "Cut",
-        "panel.vector.cut.discard" => "Discard Cut Line",
-        "panel.vector.section.cut" => "Cut",
-        "panel.vector.category" => "Category",
-        "panel.vector.shape.no_params" => "No parameters",
         // Stroke markers (arrowheads) — the two selectors in the STROKE section.
         // Only the ROW labels live here: the marker NAMES ("Arrow", "Diamond",
         // "Bar"…) come from `ph2d_vec_scene::Marker::label()`, which is their
         // single source — the same rule the shape catalogue follows.
-        "panel.vector.marker.start" => "Start",
-        "panel.vector.marker.end" => "End",
-        "panel.vector.group.basic" => "Basic",
-        "panel.vector.group.round" => "Round",
-        "panel.vector.group.arrows" => "Arrows",
-        "panel.vector.group.flow" => "Flow",
-        "panel.vector.group.bubbles" => "Bubbles",
-        "panel.vector.group.symbols" => "Symbols",
-        "panel.vector.group.iso" => "3D",
-        // Pass-through for unknown keys so the missing entry is
-        // visible in the UI (the rendered key is intentionally ugly).
-        _ => leak_key(key),
+        // ⚠️ As chaves do painel de VECTOR moram no irmão `vector.rs` — o maior grupo do
+        // arquivo, e foi ele que cruzou o teto de LOC. O corte é de ASSUNTO: aqui ficam as
+        // chaves do APP, lá as de UM painel.
+        //
+        // Pass-through para chave desconhecida, para a entrada que falta ficar visível na UI.
+        _ => vector::tr(key).unwrap_or_else(|| leak_key(key)),
     }
 }
 

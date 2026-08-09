@@ -27,6 +27,7 @@ fn every_kind_agrees_with_itself_about_being_a_control() {
             rgba: None,
             icon: None,
             icon_id: None,
+            options: Vec::new(),
         };
         assert_eq!(
             initial(kind).is_some(),

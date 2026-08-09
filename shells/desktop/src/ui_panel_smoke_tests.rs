@@ -12,6 +12,7 @@ pub(crate) fn world_from_authored() -> (SimWorld, VecScene, Entity) {
     let mut sim = SimWorld::new();
     let mut scene = VecScene::new();
     let mut frame = None;
+    let mut ents: Vec<Entity> = Vec::new();
     for (i, (r, name, kind)) in AUTHORED.iter().enumerate() {
         // ⚠️ A cena é construída da MESMA tabela, com a MESMA tinta e a MESMA geometria que o
         // smoke desenha — a cor da swatch e o SVG do ícone atravessam o `RowSpec`, então uma
@@ -29,10 +30,17 @@ pub(crate) fn world_from_authored() -> (SimWorld, VecScene, Entity) {
                 VecPathRef(i as u64),
             ))
             .id();
+        ents.push(e);
         if i == FRAME {
             frame = Some(e);
-        } else if let Some(f) = frame {
-            sim.world_mut().entity_mut(e).insert(ChildOf(f));
+        }
+        // ⚠️ **O parentesco vem da porta única**, não de um `else` local: a família de LISTA
+        // pendura as opções no CONTROLE, e um harness que parenteia tudo na moldura emite um
+        // golden com a faixa vazia — verde sobre um painel que ninguém desenhou.
+        if let Some(pi) = super::authored_parent(i)
+            && let Some(&pe) = ents.get(pi)
+        {
+            sim.world_mut().entity_mut(e).insert(ChildOf(pe));
         }
         if let Some(k) = kind {
             sim.world_mut()
@@ -59,17 +67,30 @@ pub(crate) fn world_from_authored() -> (SimWorld, VecScene, Entity) {
 /// silêncio: a cena continua bonita e deixa de provar a lei.
 #[test]
 fn the_scene_keeps_a_child_that_is_only_drawing() {
-    let dressed = AUTHORED
-        .iter()
-        .skip(1)
-        .filter(|(_, _, k)| k.is_some())
-        .count();
+    let (sim, scene, frame) = world_from_authored();
     let plain = AUTHORED
         .iter()
         .skip(1)
         .filter(|(_, _, k)| k.is_none())
         .count();
-    assert_eq!(dressed, 7, "a cena deixou de ter sete filhos vestidos");
+    // ⚠️ **A contagem é DERIVADA da tabela, nunca um literal.** Ela já foi `7` cravado, e um
+    // literal aqui só sabe dizer *"o número mudou"* — não *"a lei quebrou"*. O que este gate
+    // afirma é a lei: **todo filho vestido vira row, e nenhum filho de desenho puro vira**.
+    let rows = crate::ui_panel_spec::of(&sim, &scene, frame).rows.len();
+    // Um filho de um controle de LISTA é OPÇÃO, não row — a lei de posse. Ele é vestido ou não
+    // conforme o artista; o que conta é que ele não aparece no painel.
+    let expected = AUTHORED
+        .iter()
+        .enumerate()
+        .skip(1)
+        .filter(|(i, (_, _, k))| {
+            k.is_some() && crate::ui_panel_smoke::authored_parent(*i) == Some(0)
+        })
+        .count();
+    assert_eq!(
+        rows, expected,
+        "o painel não tem uma row por filho VESTIDO da MOLDURA (esperadas {expected}, rows {rows})"
+    );
     assert!(
         plain >= 1,
         "a cena perdeu o filho de desenho puro — o CONTROLE"

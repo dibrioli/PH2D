@@ -33,6 +33,12 @@ pub enum WidgetKind {
     LevelMeter,
     ColorSwatch,
     IconButton,
+    /// Uma faixa de abas — N opções, uma marcada.
+    Tabs,
+    /// Um grupo de rádio — N opções, uma marcada.
+    RadioGroup,
+    /// Uma segmentada que se adapta à largura — N opções, uma marcada.
+    SegmentedAdaptive,
 }
 
 impl WidgetKind {
@@ -62,7 +68,7 @@ impl WidgetKind {
     ///
     /// ⚠️ Pôr um dela aqui obrigaria a inventar a lista, e a prévia mostraria itens que o documento
     /// não tem.
-    pub const ALL: [WidgetKind; 16] = [
+    pub const ALL: [WidgetKind; 19] = [
         WidgetKind::Button,
         WidgetKind::Toggle,
         WidgetKind::Checkbox,
@@ -79,6 +85,9 @@ impl WidgetKind {
         WidgetKind::LevelMeter,
         WidgetKind::ColorSwatch,
         WidgetKind::IconButton,
+        WidgetKind::Tabs,
+        WidgetKind::RadioGroup,
+        WidgetKind::SegmentedAdaptive,
     ];
 
     /// O código que viaja no documento. Estável para sempre.
@@ -101,6 +110,9 @@ impl WidgetKind {
             WidgetKind::LevelMeter => 14,
             WidgetKind::ColorSwatch => 15,
             WidgetKind::IconButton => 16,
+            WidgetKind::Tabs => 17,
+            WidgetKind::RadioGroup => 18,
+            WidgetKind::SegmentedAdaptive => 19,
         }
     }
 
@@ -129,6 +141,25 @@ impl WidgetKind {
     #[must_use]
     pub const fn takes_icon(self) -> bool {
         matches!(self, WidgetKind::IconButton)
+    }
+
+    /// **Este tipo é feito de OPÇÕES?** — a família de LISTA.
+    ///
+    /// ⚠️ **É a pergunta que muda a leitura da ÁRVORE, e não só a da pele.** Um controle de
+    /// opções não tem um valor: ele tem N rótulos e um índice marcado, e o lugar nativo desses
+    /// rótulos num editor vetorial são os **FILHOS que o artista desenhou** — a árvore já
+    /// exprime contenção, e ele já os nomeia na Hierarquia.
+    ///
+    /// A consequência é uma LEI de posse: **um controle que toma opções POSSUI os seus filhos**,
+    /// então a varredura não pode descê-los como rows. Sem ela, desenhar três abas dentro de uma
+    /// faixa daria uma faixa **e mais três linhas soltas** no painel, cada uma um controle que o
+    /// artista não pediu.
+    #[must_use]
+    pub const fn takes_options(self) -> bool {
+        matches!(
+            self,
+            WidgetKind::Tabs | WidgetKind::RadioGroup | WidgetKind::SegmentedAdaptive
+        )
     }
 
     /// A tradução de volta. **`None` é o caso que este canal existe para suportar**: um documento
@@ -170,6 +201,9 @@ impl WidgetKind {
             WidgetKind::LevelMeter => "LevelMeter",
             WidgetKind::ColorSwatch => "ColorSwatch",
             WidgetKind::IconButton => "IconButton",
+            WidgetKind::Tabs => "Tabs",
+            WidgetKind::RadioGroup => "RadioGroup",
+            WidgetKind::SegmentedAdaptive => "SegmentedAdaptive",
         }
     }
 
@@ -193,6 +227,9 @@ impl WidgetKind {
             WidgetKind::LevelMeter => "panel.vector.widget.kind.level_meter",
             WidgetKind::ColorSwatch => "panel.vector.widget.kind.color_swatch",
             WidgetKind::IconButton => "panel.vector.widget.kind.icon_button",
+            WidgetKind::Tabs => "panel.vector.widget.kind.tabs",
+            WidgetKind::RadioGroup => "panel.vector.widget.kind.radio_group",
+            WidgetKind::SegmentedAdaptive => "panel.vector.widget.kind.segmented_adaptive",
         }
     }
 }

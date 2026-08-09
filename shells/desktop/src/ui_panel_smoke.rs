@@ -40,7 +40,7 @@ use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecPathId, rectangle, star};
 /// staleness (`the_generated_panel_is_not_stale`) constrói o mundo a partir dela para emitir o
 /// código e comparar com o arquivo commitado. Uma segunda lista escrita à mão no gate divergiria
 /// desta no dia em que uma row entrasse — e o gate ficaria verde sobre o painel errado.
-pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 9] = [
+pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 13] = [
     ([-2.0, -4.9, 2.0, 2.4], "Color", None),
     (
         [-1.8, 1.4, 1.8, 2.2],
@@ -66,7 +66,46 @@ pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 9] = [
         Some(WidgetKind::IconButton),
     ),
     ([-1.7, 1.25, 1.7, 1.35], "Backdrop", None),
+    // **A FAMÍLIA DE LISTA** — uma faixa de abas e os TRÊS filhos que são as opções dela.
+    //
+    // ⚠️ As três não são rows, e é a lei de posse (`takes_options`): elas vivem DENTRO do
+    // controle, então quem as reclama é ele. A prova está na contagem — treze entidades vestidas
+    // ou nomeadas, **oito** rows.
+    ([-1.8, -5.7, 1.8, -5.0], "View", Some(WidgetKind::Tabs)),
+    ([-1.7, -5.6, -0.7, -5.1], "Design", None),
+    ([-0.6, -5.6, 0.4, -5.1], "Preview", None),
+    ([0.5, -5.6, 1.7, -5.1], "Code", None),
 ];
+
+/// **As opções da faixa `View`** — os filhos que ela POSSUI, por NOME.
+///
+/// ⚠️ **Por nome e não por índice, e a razão é um defeito que este arquivo já produziu:** a versão
+/// por índice contou a tabela à mão, errou por um, e pendurou as opções na entidade errada. O
+/// sintoma foi a faixa sair **sem opção nenhuma** — e a contagem de rows deu **certa por acidente**
+/// (a entidade adotada não vestia widget, então não virou row), o que fez o `PARE` passar sobre o
+/// painel errado. Um índice contado à mão numa tabela que cresce é um erro à espera; o nome não.
+const TAB_OPTIONS: [&str; 3] = ["Design", "Preview", "Code"];
+
+/// O nome da faixa que possui as opções acima.
+const TABS_OWNER: &str = "View";
+
+/// **DE QUEM cada linha da tabela é filha** — a porta única do parentesco.
+///
+/// ⚠️ **Ela existe porque a tabela tem DOIS construtores de mundo** (a cena do smoke e o harness
+/// do gate de staleness), e o doc da `AUTHORED` já avisava que uma segunda derivação diverge no
+/// dia em que a árvore mudasse de forma. Esse dia foi hoje: a família de LISTA pendura as opções
+/// no CONTROLE, e o harness — que parenteava tudo na moldura — emitiu um golden com a faixa sem
+/// opção nenhuma. O gate ficaria verde sobre um painel que o artista não desenhou.
+#[must_use]
+pub(crate) fn authored_parent(i: usize) -> Option<usize> {
+    if i == FRAME {
+        return None;
+    }
+    if TAB_OPTIONS.contains(&AUTHORED[i].1) {
+        return AUTHORED.iter().position(|(_, n, _)| *n == TABS_OWNER);
+    }
+    Some(FRAME)
+}
 
 /// **O ícone ESCOLHIDO de uma row**, quando o artista escolheu um em vez de desenhar.
 ///
@@ -204,8 +243,12 @@ fn name_and_parent(app: &mut crate::App) {
         if let Some(slug) = authored_icon(name) {
             ent.insert(ph2d_ecs::VecWidgetIcon { slug: slug.into() });
         }
-        if i != FRAME {
-            ent.insert(ph2d_ecs::ChildOf(frame_e));
+        // ⚠️ **As opções penduram no CONTROLE, não na moldura** — é o que faz delas opções. Numa
+        // moldura elas seriam três rows soltas, que é exactamente o que a lei de posse impede.
+        if let Some(pi) = authored_parent(i)
+            && let Some(pe) = ents[pi]
+        {
+            ent.insert(ph2d_ecs::ChildOf(pe));
         }
     }
     // A arte ganha nome e NÃO ganha pai — ela vive na cena, não no painel.
@@ -264,8 +307,12 @@ fn announce(app: &mut crate::App) {
         spec.title,
         spec.rows.len()
     );
-    if spec.rows.len() != 7 {
-        eprintln!("[ui-panel] ⚠️ **PARE**: eram para ser 7 rows (o 'Backdrop' e' desenho puro).");
+    if spec.rows.len() != 8 {
+        eprintln!(
+            "[ui-panel] ⚠️ **PARE**: eram para ser 8 rows. O 'Backdrop' e' desenho puro, e as \
+             TRES opcoes da faixa 'View' pertencem a ELA — se aparecerem como linhas soltas, a \
+             lei de posse quebrou."
+        );
         return;
     }
     eprintln!(

@@ -16,6 +16,7 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::ids;
+use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::widget::WidgetKind;
 use ph2d_vector::BezPath;
 use std::cell::RefCell;
@@ -42,6 +43,9 @@ pub struct RowConst {
     pub icon: Option<&'static str>,
     /// O slug do ícone ESCOLHIDO do catálogo — a outra rota, exclusiva com a de cima.
     pub icon_slug: Option<&'static str>,
+    /// Os rótulos das opções, para a família de LISTA — os `Name` dos filhos que o artista
+    /// desenhou dentro do controle. Vazio para todo o resto.
+    pub options: &'static [&'static str],
 }
 
 /// Uma linha do painel, com o id já derivado da chave.
@@ -68,6 +72,12 @@ pub struct Row {
     /// O ícone ESCOLHIDO do catálogo, resolvido do slug. ⚠️ Um slug que este build não conhece
     /// vira `None` e o desenho assume — o mesmo canal de compatibilidade do `kind`.
     pub icon_id: Option<IconId>,
+    /// **Os rótulos das opções** — os `Name` dos filhos que o controle POSSUI.
+    ///
+    /// ⚠️ Uma lista VAZIA num tipo de lista é um estado legítimo, não um erro: é o que um
+    /// controle sem filhos descreve, e a pele desenha a moldura vazia. Inventar uma opção seria
+    /// mostrar ao artista um item que o documento dele não tem.
+    pub options: Vec<String>,
 }
 
 impl Row {
@@ -115,6 +125,9 @@ impl Row {
                 | WidgetKind::ListItem
                 | WidgetKind::NumberInput
                 | WidgetKind::IconButton
+                | WidgetKind::Tabs
+                | WidgetKind::RadioGroup
+                | WidgetKind::SegmentedAdaptive
         )
     }
 }
@@ -133,6 +146,7 @@ fn resolve(kind: WidgetKind, label: &str, key: &str, rgba: Option<[u8; 4]>) -> R
         rgba,
         icon: None,
         icon_id: None,
+        options: Vec::new(),
     }
 }
 
@@ -154,6 +168,7 @@ pub fn baked() -> &'static [Row] {
             .map(|r| Row {
                 icon: r.icon.and_then(|d| BezPath::from_svg(d).ok()),
                 icon_id: r.icon_slug.and_then(IconId::from_slug),
+                options: r.options.iter().map(|o| (*o).to_string()).collect(),
                 ..resolve(r.kind, r.label, r.key, r.rgba)
             })
             .collect()
@@ -202,6 +217,22 @@ pub fn with_rows<R>(f: impl FnOnce(&[Row]) -> R) -> R {
         Some(rows) => f(rows),
         None => f(baked()),
     })
+}
+
+/// **Qual opção este estado vivo diz que está marcada** — a porta única da seleção.
+///
+/// ⚠️ Três variantes do catálogo guardam uma seleção e cada uma a chama de outra coisa
+/// (`Tabs.selected`, `Radio.selected_index`, `Dropdown.selected_index`). Perguntar aqui, uma vez,
+/// é o que impede o `paint` e o `event` de discordarem sobre qual delas ler — e o modo de falha
+/// dessa discordância é o controle desenhar uma opção marcada e devolver outra ao ser clicado.
+#[must_use]
+pub fn selected_of(live: Option<&InteractiveState>) -> usize {
+    match live {
+        Some(InteractiveState::Tabs { selected }) => *selected,
+        Some(InteractiveState::Radio { selected_index, .. }) => *selected_index,
+        Some(InteractiveState::Dropdown { selected_index, .. }) => selected_index.unwrap_or(0),
+        _ => 0,
+    }
 }
 
 /// A CHAVE da row a que `id` pertence, se alguma.

@@ -43,6 +43,7 @@
 //! exactamente o que o §2 recusou.
 
 use crate::interaction::InteractiveState;
+use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::widget::{
     Button, ButtonState, Card, Checkbox, ColorSwatch, Divider, IconButtonStyle, IconGlyph,
     LevelMeter, ListItem, NumberInput, ProgressBar, SectionHeader, Slider, Spinner, Tag, TextInput,
@@ -51,10 +52,14 @@ use crate::widget::{
     paint_progress_bar, paint_section_header, paint_slider, paint_spinner, paint_tag,
     paint_text_input, paint_toggle,
 };
+use crate::widget::{
+    RadioGroup, RadioOption, RadioOrientation, SegmentedAdaptive, SegmentedOption, TabItem, Tabs,
+    paint_radio_group_with_labels, paint_tabs,
+};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::Theme;
+use ph2d_tokens::{ColorToken, Radius, StrokeToken, Theme};
 use ph2d_vector::{BezPath, VectorScene};
 
 /// O valor que um controle contínuo mostra na prévia.
@@ -125,6 +130,16 @@ pub struct SkinParam<'a> {
     /// nova: ela é o outro braço de um enum que existe para isto. Quem escolhe é o CONSTRUTOR; o
     /// pintor recebe um glifo e desenha-o.
     pub icon: Option<IconGlyph<'a>>,
+    /// **Os rótulos das opções**, para a família de LISTA — vazio para todo o resto.
+    ///
+    /// ⚠️ **O terceiro campo do canal, e ele é o que prova que o molde não exige um parâmetro
+    /// PEQUENO.** Foi supor isso que me fez escrever, no levantamento, que a família de lista
+    /// *"não entra pelo mesmo canal"*: nada em *um campo com neutro* diz que o campo tem de caber
+    /// numa palavra. O neutro é a fatia vazia, e sob ela um tipo de lista desenha a moldura sem
+    /// opção nenhuma — que é o que um documento sem filhos de facto descreve.
+    pub options: &'a [String],
+    /// Qual opção está marcada. Fora do alcance ⇒ nenhuma, que é o que um documento vazio diz.
+    pub selected: usize,
 }
 
 /// **A PELE PREENCHE A MOLDURA — uma frase, doze tipos** (BUGS_vector #26).
@@ -352,6 +367,77 @@ pub fn paint_widget_skin_with(
             // artista não fez.
             let rgba = param.rgba.unwrap_or([0, 0, 0, 0]);
             paint_color_swatch(&ColorSwatch::new(id, label, rgba), rect, scene, theme);
+        }
+        // **A FAMÍLIA DE LISTA** — N opções, uma marcada, e os rótulos vêm dos FILHOS que o
+        // artista desenhou (ver `WidgetKind::takes_options`). Os três terminam no pintor real do
+        // catálogo, como todos os irmãos; o que muda entre eles é só o desenho.
+        //
+        // ⚠️ **Os ids das opções são o `PREVIEW_ID`**, e é a mesma razão dos outros braços: os
+        // pintores não leem o próprio id ao pintar, e um id real aqui colidiria com o widget
+        // homónimo do painel nativo no store que a shell possui. Quem precisa de id por opção é o
+        // painel COMPILADO, que os deriva da chave — não a pele do canvas.
+        // ⚠️ **Um controle de lista SEM opções ainda tem de aparecer.** Com zero itens o pintor de
+        // abas não desenha nada — e um controle invisível é pior que um errado: o artista não
+        // consegue nem selecioná-lo para lhe dar os filhos que o tornariam visível. A moldura
+        // vazia é a afordância honesta de *este controle existe e ainda não tem opções*.
+        WidgetKind::Tabs | WidgetKind::RadioGroup | WidgetKind::SegmentedAdaptive
+            if param.options.is_empty() =>
+        {
+            fill_rounded_rect(
+                scene,
+                rect,
+                Radius::Md.px(),
+                resolve(ColorToken::Bg2, theme),
+            );
+            stroke_rounded_rect(
+                scene,
+                rect,
+                Radius::Md.px(),
+                StrokeToken::Default.px(),
+                resolve(ColorToken::Border, theme),
+            );
+        }
+        WidgetKind::Tabs => {
+            let items: Vec<TabItem> = param
+                .options
+                .iter()
+                .map(|o| TabItem::new(PREVIEW_ID, o.clone()))
+                .collect();
+            let t = Tabs::new(id, label, items).selected(param.selected);
+            paint_tabs(&t, rect, scene, text_system, theme);
+        }
+        WidgetKind::RadioGroup => {
+            let opts: Vec<RadioOption<usize>> = param
+                .options
+                .iter()
+                .enumerate()
+                .map(|(i, o)| RadioOption::new(PREVIEW_ID, i, o.clone()))
+                .collect();
+            let g = RadioGroup::new(id, label, opts)
+                .orientation(RadioOrientation::Horizontal)
+                .selected(param.selected);
+            paint_radio_group_with_labels(&g, rect, scene, text_system, theme);
+        }
+        WidgetKind::SegmentedAdaptive => {
+            let opts: Vec<SegmentedOption> = param
+                .options
+                .iter()
+                .map(|o| SegmentedOption::new(PREVIEW_ID, o.clone()))
+                .collect();
+            let seg = SegmentedAdaptive::new(id, label, opts).selected(param.selected);
+            // ⚠️ O pintor adaptativo pede `store` e `hit_index` porque ele REGISTA os segmentos.
+            // A pele do canvas não tem nem um nem outro (e não deve ter: comportamento no canvas
+            // é o que o §2 do plano recusou), então aqui ele é desenhado pelo irmão de abas na
+            // variante segmentada — o MESMO desenho, sem a metade que regista.
+            let items: Vec<TabItem> = seg
+                .options
+                .iter()
+                .map(|o| TabItem::new(PREVIEW_ID, o.label.clone()))
+                .collect();
+            let t = Tabs::new(id, label, items)
+                .variant(crate::widget::TabsVariant::Segmented)
+                .selected(param.selected);
+            paint_tabs(&t, rect, scene, text_system, theme);
         }
         WidgetKind::IconButton => {
             // ⚠️ **`Compact`, e não `Chip`** — o `Chip` é a PÍLULA da TopBar (`Radius::Xl`, *"hero

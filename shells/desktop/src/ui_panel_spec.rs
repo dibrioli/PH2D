@@ -116,6 +116,19 @@ pub(crate) struct Authored {
     rgba: Option<[u8; 4]>,
     drawn: Option<BezPath>,
     chosen: Option<IconId>,
+    options: Vec<String>,
+}
+
+/// **Os rótulos dos filhos diretos** — as opções de um controle de lista, na ordem da árvore.
+///
+/// ⚠️ Um filho SEM nome não vira opção: um item de lista sem rótulo é um item que o artista não
+/// consegue distinguir dos irmãos, e inventar `"Option 3"` seria pôr na tela uma palavra que ele
+/// não escreveu e não encontra na Hierarquia.
+fn child_labels(sim: &SimWorld, e: Entity) -> Vec<String> {
+    sim.world()
+        .get::<Children>(e)
+        .map(|c| c.iter().filter_map(|&k| label_of(sim, k)).collect())
+        .unwrap_or_default()
 }
 
 /// Percorre a sub-árvore de `frame` **na ordem dos filhos**, juntando quem veste.
@@ -133,6 +146,21 @@ fn walk(sim: &SimWorld, scene: &VecScene, e: Entity, out: &mut Vec<Authored>) {
         } else {
             (None, None)
         };
+        // **A LEI DE POSSE** — um controle de LISTA possui os próprios filhos.
+        //
+        // ⚠️ Os rótulos das opções são os `Name` dos filhos que o artista desenhou DENTRO dele:
+        // a árvore já exprime contenção e ele já os nomeia na Hierarquia, então não há campo novo,
+        // não há schema e não há um segundo lugar para digitar o nome de uma coisa.
+        //
+        // ⚠️ E a posse é o que impede o painel de crescer sozinho: sem ela, três abas desenhadas
+        // dentro de uma faixa dariam a faixa **E mais três linhas soltas**, cada uma um controle
+        // que o artista não pediu. Um filho vestido também é opção — quem o reclama é o pai.
+        let options = if kind.takes_options() {
+            child_labels(sim, e)
+        } else {
+            Vec::new()
+        };
+        let owns_children = kind.takes_options();
         out.push(Authored {
             kind,
             key: key_of(&label),
@@ -140,7 +168,11 @@ fn walk(sim: &SimWorld, scene: &VecScene, e: Entity, out: &mut Vec<Authored>) {
             rgba,
             drawn,
             chosen,
+            options,
         });
+        if owns_children {
+            return;
+        }
     }
     // ⚠️ `Children` preserva a ordem de inserção da hierarquia, que é a ordem que o layout flui e
     // a que a Hierarquia mostra. Uma cópia é preciso porque o `walk` empresta o mundo de novo.
@@ -189,6 +221,7 @@ pub(crate) fn of(sim: &SimWorld, scene: &VecScene, frame: Entity) -> PanelSpec {
             // de string por quadro para reconstruir o que já estava na mão.
             icon: a.drawn.as_ref().map(ph2d_vector::BezPath::to_svg),
             icon_slug: a.chosen.map(|i| i.slug().to_string()),
+            options: a.options,
         })
         .collect();
     PanelSpec {
@@ -211,6 +244,7 @@ pub(crate) fn live_rows(sim: &SimWorld, scene: &VecScene, frame: Entity) -> Vec<
             rgba: a.rgba,
             icon: a.drawn,
             icon_id: a.chosen,
+            options: a.options,
         })
         .collect()
 }

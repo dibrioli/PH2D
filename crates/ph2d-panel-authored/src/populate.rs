@@ -30,6 +30,15 @@ fn initial(kind: WidgetKind) -> Option<InteractiveState> {
         WidgetKind::Button | WidgetKind::IconButton => InteractiveState::Button {
             state: ButtonState::Normal,
         },
+        // ⚠️ **A família de LISTA nasce com a PRIMEIRA marcada, não com nenhuma:** um controle de
+        // opções sem seleção desenha N itens e nenhum aceso, que o artista lê como *quebrado* e
+        // não como *vazio*. `Tabs` e `SegmentedAdaptive` partilham o estado pelo mesmo motivo que
+        // os dois botões o partilham — o que muda entre eles é o DESENHO, não o que eles sentem.
+        WidgetKind::Tabs | WidgetKind::SegmentedAdaptive => InteractiveState::Tabs { selected: 0 },
+        WidgetKind::RadioGroup => InteractiveState::Radio {
+            state: ButtonState::Normal,
+            selected_index: 0,
+        },
         WidgetKind::Toggle => InteractiveState::Toggle {
             state: ToggleState::Normal,
             on: false,

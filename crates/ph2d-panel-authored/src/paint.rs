@@ -159,6 +159,11 @@ fn paint_body(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, mut y: f32) -> f
                 store.get(row.id),
                 SkinParam {
                     rgba: row.rgba,
+                    options: &row.options,
+                    // A seleção é estado VIVO, e mora onde a de todo controle do app mora — o
+                    // `WidgetStore`. Um mapa próprio aqui seria um painel gerado que seleciona
+                    // por regras diferentes das dos vinte e três painéis escritos à mão.
+                    selected: crate::rows::selected_of(store.get(row.id)),
                     // ⚠️ A precedência sai da porta única do catálogo — a MESMA que o canvas
                     // percorre. Um `if` aqui seria a terceira cópia da regra.
                     icon: icon_glyph(row.icon_id, row.icon.as_ref()),

@@ -10,6 +10,7 @@ fn row(kind: &str, label: &str, key: &str) -> RowSpec {
         rgba: None,
         icon: None,
         icon_slug: None,
+        options: Vec::new(),
     }
 }
 

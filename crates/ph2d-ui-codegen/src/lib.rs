@@ -100,6 +100,8 @@ pub struct RowSpec {
     /// ⚠️ Ele e o [`Self::icon`] são **mutuamente exclusivos por construção**: quem os preenche
     /// pergunta a precedência à porta única do catálogo, e ela devolve UM dos dois.
     pub icon_slug: Option<String>,
+    /// Os rótulos das opções, para a família de LISTA — os filhos que o controle possui.
+    pub options: Vec<String>,
 }
 
 /// **O painel que uma árvore autorada descreve.**
@@ -158,10 +160,33 @@ pub fn emit(spec: &PanelSpec) -> String {
         push_opt_str(&mut out, r.icon.as_deref());
         out.push_str(",\n        icon_slug: ");
         push_opt_str(&mut out, r.icon_slug.as_deref());
+        // ⚠️ Uma FATIA e não um `Option`: *sem opções* e *lista vazia* são a mesma coisa para um
+        // tipo que não é de lista, e um `Option<&[..]>` daria dois jeitos de dizer o mesmo nada.
+        out.push_str(",\n        options: &[");
+        for (i, o) in r.options.iter().enumerate() {
+            if i > 0 {
+                out.push_str(", ");
+            }
+            push_str_lit(&mut out, o);
+        }
+        out.push(']');
         out.push_str(",\n    },\n");
     }
     out.push_str("];\n");
     out
+}
+
+/// Um literal de texto escapado — a metade que o [`push_opt_str`] embrulha em `Some`.
+fn push_str_lit(out: &mut String, v: &str) {
+    out.push('"');
+    for c in v.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            _ => out.push(c),
+        }
+    }
+    out.push('"');
 }
 
 /// `Some("…")` ou `None` — o campo opcional de texto, escapado.

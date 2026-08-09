@@ -17,6 +17,7 @@ pub const ROWS: &[RowConst] = &[
         rgba: None,
         icon: None,
         icon_slug: None,
+        options: &[],
     },
     RowConst {
         kind: WidgetKind::Slider,
@@ -25,6 +26,7 @@ pub const ROWS: &[RowConst] = &[
         rgba: None,
         icon: None,
         icon_slug: None,
+        options: &[],
     },
     RowConst {
         kind: WidgetKind::Toggle,
@@ -33,6 +35,7 @@ pub const ROWS: &[RowConst] = &[
         rgba: None,
         icon: None,
         icon_slug: None,
+        options: &[],
     },
     RowConst {
         kind: WidgetKind::Button,
@@ -41,6 +44,7 @@ pub const ROWS: &[RowConst] = &[
         rgba: None,
         icon: None,
         icon_slug: None,
+        options: &[],
     },
     RowConst {
         kind: WidgetKind::ColorSwatch,
@@ -49,6 +53,7 @@ pub const ROWS: &[RowConst] = &[
         rgba: Some([214, 92, 64, 255]),
         icon: None,
         icon_slug: None,
+        options: &[],
     },
     RowConst {
         kind: WidgetKind::IconButton,
@@ -57,6 +62,7 @@ pub const ROWS: &[RowConst] = &[
         rgba: None,
         icon: Some("M11.999999999999998,0.5873218044581421 C11.999999999999998,0.5873218044581421 8.662616460750566,8.611354130216355 8.662616460750566,8.611354130216355 C8.662616460750566,8.611354130216355 0,9.305832140522483 0,9.305832140522483 C0,9.305832140522483 6.599999999999998,14.959434854975058 6.599999999999998,14.959434854975058 C6.599999999999998,14.959434854975058 4.583592135001259,23.412678195541844 4.583592135001259,23.412678195541844 C4.583592135001259,23.412678195541844 11.999999999999996,18.882764506204012 11.999999999999996,18.882764506204012 C11.999999999999996,18.882764506204012 19.41640786499873,23.412678195541844 19.41640786499873,23.412678195541844 C19.41640786499873,23.412678195541844 17.4,14.959434854975058 17.4,14.959434854975058 C17.4,14.959434854975058 24,9.305832140522483 24,9.305832140522483 C24,9.305832140522483 15.337383539249432,8.611354130216355 15.337383539249432,8.611354130216355 C15.337383539249432,8.611354130216355 11.999999999999998,0.5873218044581421 11.999999999999998,0.5873218044581421 Z"),
         icon_slug: None,
+        options: &[],
     },
     RowConst {
         kind: WidgetKind::IconButton,
@@ -65,5 +71,15 @@ pub const ROWS: &[RowConst] = &[
         rgba: None,
         icon: None,
         icon_slug: Some("trash"),
+        options: &[],
+    },
+    RowConst {
+        kind: WidgetKind::Tabs,
+        label: "View",
+        key: "view",
+        rgba: None,
+        icon: None,
+        icon_slug: None,
+        options: &["Design", "Preview", "Code"],
     },
 ];

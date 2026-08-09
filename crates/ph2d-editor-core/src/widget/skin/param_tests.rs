@@ -28,7 +28,11 @@ fn the_colour_reaches_the_paint() {
         paint_widget_skin(
             WidgetKind::ColorSwatch,
             "Tint",
-            SkinParam { rgba, icon: None },
+            SkinParam {
+                rgba,
+                icon: None,
+                ..Default::default()
+            },
             rect(),
             &mut sc,
             ts,
@@ -84,6 +88,8 @@ fn the_colour_is_inert_in_every_kind_that_does_not_take_it() {
             kind,
             "Save",
             SkinParam {
+                options: &[],
+                selected: 0,
                 rgba: Some([200, 40, 40, 255]),
                 icon: None,
             },
@@ -130,7 +136,11 @@ fn the_glyph_reaches_the_paint() {
         paint_widget_skin(
             WidgetKind::IconButton,
             "Play",
-            SkinParam { rgba: None, icon },
+            SkinParam {
+                rgba: None,
+                icon,
+                ..Default::default()
+            },
             rect(),
             &mut sc,
             ts,
@@ -181,6 +191,8 @@ fn the_glyph_is_inert_in_every_kind_that_does_not_take_it() {
             kind,
             "Save",
             SkinParam {
+                options: &[],
+                selected: 0,
                 rgba: None,
                 icon: Some(IconGlyph::Path(&g)),
             },

@@ -66,6 +66,25 @@ pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Opti
 /// ⚠️ Um slug que este build não conhece devolve `None` — e o `None` cai no DESENHO pela porta da
 /// precedência, que é o canal de compatibilidade de sempre. Recusar aqui deixaria o botão sem
 /// glifo nenhum num documento que outro build escreveu.
+/// **Os rótulos dos filhos de um controle de LISTA** — a mesma lei de posse do `ui_panel_spec`.
+///
+/// ⚠️ Ela é perguntada à ÁRVORE (o `Children` do ECS), e não à cena: quem contém quem é fato de
+/// hierarquia, e é o mesmo lugar de onde o painel gerado tira a lista. Duas derivações dariam um
+/// canvas e um painel que discordam sobre quantas abas o controle tem.
+fn child_labels(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Vec<String> {
+    let Some(&bits) = map.get(&id) else {
+        return Vec::new();
+    };
+    let w = sim.world();
+    w.get::<ph2d_ecs::Children>(Entity::from_bits(bits))
+        .map(|c| {
+            c.iter()
+                .filter_map(|&k| w.get::<ph2d_ecs::Name>(k).map(|n| n.0.to_string()))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 fn chosen_icon(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<IconId> {
     let &bits = map.get(&id)?;
     let c = sim.world().get::<VecWidgetIcon>(Entity::from_bits(bits))?;
@@ -153,6 +172,14 @@ pub(crate) fn build(
         // ⚠️ **O glifo vive no ESCOPO do laço, e tem de viver.** `IconGlyph::Path` empresta o
         // `BezPath`, então normalizá-lo dentro do construtor do `SkinParam` deixaria o temporário
         // morrer antes da chamada. Uma `Option` nomeada é o que dá ao empréstimo um dono.
+        // ⚠️ **As opções vivem no escopo do laço pelo mesmo motivo do glifo:** a `SkinParam`
+        // EMPRESTA a fatia, então construí-las dentro do construtor deixaria o temporário morrer
+        // antes da chamada.
+        let options: Vec<String> = if kind.takes_options() {
+            child_labels(sim, map, path.id)
+        } else {
+            Vec::new()
+        };
         let face = kind.takes_icon().then(|| icon_face(path)).flatten();
         let chosen = kind
             .takes_icon()
@@ -166,6 +193,11 @@ pub(crate) fn build(
             // ⚠️ A precedência **não é decidida aqui**: ela mora na porta única do catálogo, que
             // o painel gerado percorre também. Um `if` local seria a terceira cópia dela.
             icon: icon_glyph(chosen, face.as_ref()),
+            options: &options,
+            // ⚠️ A prévia do canvas mostra sempre a PRIMEIRA marcada, e é a lei do `PREVIEW_VALUE`
+            // da pele: um controle de opções sem nenhuma acesa lê-se como quebrado, não como
+            // vazio. O valor VIVO é do painel, que tem o store; o canvas é prévia.
+            selected: 0,
         };
         paint_widget_skin(kind, &label, param, rect, &mut skin, text, theme);
         out.insert(path.id, skin);

@@ -27,6 +27,48 @@ use ph2d_vector::VectorScene;
 /// precisa de folga entre os dois. Medido contra o tracejado que este overlay usa (`4 on / 4 off`).
 const MIN_CELL_SCREEN_PX: f64 = 3.0;
 
+/// O comprimento de um traço do tracejado, em px de TELA. Ele é a unidade das DUAS canetas: uma
+/// desenha em `[0, DASH)` e a outra em `[DASH, 2·DASH)`, então o par cobre a linha inteira.
+const DASH_PX: f64 = 4.0; // LITERAL-PX-OK: tracejado em px de tela
+
+/// **As DUAS canetas do guia** — `(cor, traço)` em fases complementares.
+///
+/// ⚠️ **A grade se adapta ao fundo por CONSTRUÇÃO, não por amostragem** (Enio, 2026-08-09: *"a cor do
+/// grid é quase invisível em fundo branco … precisa se adaptar ao fundo"*). O guia era UMA caneta
+/// azul-clara a 42% de alfa: sobre a arte escura ela lia, sobre uma folha branca ela desaparecia — e
+/// uma grade que só se vê em metade dos documentos é uma regra que o artista tem de adivinhar
+/// justamente onde ela governa.
+///
+/// A cura é o tracejado de **dois tons** (o *marching ants* de Photoshop / GIMP / Inkscape): o mesmo
+/// padrão desenhado duas vezes, um escuro onde o outro tem vão. Toda posição da linha é coberta por
+/// EXATAMENTE um dos dois, então existe contraste sobre qualquer fundo — branco, preto ou a arte no
+/// meio — e a resposta não depende de nada que possa estar errado.
+///
+/// ⛔ **A alternativa — ler os pixels sob a linha e escolher o tom — foi recusada com motivo:** ela
+/// decide POR LINHA o que varia AO LONGO dela (uma vertical atravessa céu e sombra), custa uma leitura
+/// do composite por quadro, e **pisca** quando o artista pinta debaixo da grade. Um guia que muda de
+/// cor porque a tinta mudou lê como defeito.
+///
+/// ⚠️ **Preço, em aritmética e não em promessa:** cada linha passa a custar DOIS traços. O pior caso
+/// da varredura do `no_axis_ever_draws_more_lines_than_the_window_can_resolve` é **1281 linhas num
+/// eixo**, logo **2562 traços** — o piso de legibilidade continua sendo o teto, e é ele que impede o
+/// número de crescer com o zoom ou com a célula.
+fn guide_pens() -> [(ph2d_vector::Color, ph2d_vector::Stroke); 2] {
+    use ph2d_vector::{Color, Stroke};
+    [
+        // O tom ESCURO: é ele que aparece na folha branca, o caso reportado.
+        (
+            Color::new([0.10, 0.11, 0.14, 0.55]), // LITERAL-COLOR-OK: guia discreto da grade
+            Stroke::new(1.0).with_dashes(0.0, [DASH_PX, DASH_PX]),
+        ),
+        // O tom CLARO, na fase oposta: o guia que já existia, agora ocupando os vãos do outro.
+        (
+            Color::new([0.88, 0.92, 1.00, 0.55]), // LITERAL-COLOR-OK: guia discreto da grade
+            Stroke::new(1.0).with_dashes(DASH_PX, [DASH_PX, DASH_PX]),
+        ),
+    ]
+}
+
 /// Esta célula ainda se VÊ? `step_px` é o lado da célula em px de imagem, `px_scale` quantos px de
 /// tela vale um px de imagem.
 ///
@@ -83,7 +125,7 @@ pub(super) fn draw_grid_overlay(
         return;
     }
 
-    use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke};
+    use ph2d_vector::{Affine, BezPath, Brush, Point};
     let map = |x: f64, y: f64| affine * Point::new(x, y);
     let scene = vector_scene.inner_mut();
     // A JANELA, em px de imagem — as quatro quinas da tela levadas de volta pelo inverso do afim, e a
@@ -103,9 +145,9 @@ pub(super) fn draw_grid_overlay(
         (lo.max(0.0), hi.min(extent))
     };
     // Guia discreto, tracejado em px de TELA (o caminho já vem mapeado e é traçado sob IDENTITY), então
-    // o tracejado lê igual em qualquer zoom — a convenção do overlay de simetria ao lado.
-    let color = Color::new([0.80, 0.86, 0.95, 0.42]); // LITERAL-COLOR-OK: guia discreto da grade
-    let dash = Stroke::new(1.0).with_dashes(0.0, [4.0, 4.0]); // LITERAL-PX-OK: tracejado em px de tela
+    // o tracejado lê igual em qualquer zoom — a convenção do overlay de simetria ao lado. As DUAS
+    // canetas do par de dois tons vêm da porta única (`guide_pens`), que é quem explica o porquê.
+    let pens = guide_pens();
     let (w, h) = (f64::from(iw), f64::from(ih));
 
     for axis in 0..2 {
@@ -131,7 +173,9 @@ pub(super) fn draw_grid_overlay(
                 path.move_to(map(0.0, t));
                 path.line_to(map(w, t));
             }
-            scene.stroke(&dash, Affine::IDENTITY, &Brush::Solid(color), None, &path);
+            for (color, dash) in &pens {
+                scene.stroke(dash, Affine::IDENTITY, &Brush::Solid(*color), None, &path);
+            }
         }
     }
 }
@@ -256,6 +300,82 @@ mod tests {
         assert!(
             src.contains("if !axis_is_legible(step, px_scale) {"),
             "o laço deixou de perguntar o piso — a grade vira um cinza e cobra milhares de traços"
+        );
+    }
+
+    /// ⚠️ **O guia contrasta com QUALQUER fundo, e a propriedade é o que o gate afirma** — o report do
+    /// Enio de 2026-08-09 (*"a cor do grid é quase invisível em fundo branco"*).
+    ///
+    /// Duas metades, e nenhuma sozinha basta: **(a)** as duas luminâncias ficam em lados OPOSTOS do
+    /// cinza médio, senão as duas somem juntas no mesmo fundo (era literalmente o mundo anterior — uma
+    /// caneta só, clara); **(b)** as fases são COMPLEMENTARES sobre o mesmo padrão, senão o tom escuro
+    /// pinta em cima do claro e a linha volta a ter um tom só, com o segundo traço custando por nada.
+    ///
+    /// **Mutações que devem sangrar:** pôr os dois tons claros (mata (a)); dar a mesma fase às duas
+    /// canetas (mata (b)).
+    #[test]
+    fn the_guide_has_a_tone_for_a_light_ground_and_one_for_a_dark_ground() {
+        let [(dark, sd), (light, sl)] = guide_pens();
+        // Luminância perceptual (Rec.709) — a régua de *"isto se vê sobre o quê?"*.
+        let lum = |c: ph2d_vector::Color| {
+            let [r, g, b, _] = c.components;
+            0.2126 * r + 0.7152 * g + 0.0722 * b
+        };
+        let (ld, ll) = (lum(dark), lum(light));
+        assert!(
+            ld < 0.35 && ll > 0.65,
+            "os dois tons do guia são {ld:.3} e {ll:.3} — eles têm de ficar em lados opostos do \
+             cinza médio, senão existe um fundo que apaga os DOIS"
+        );
+        assert!(
+            dark.components[3] > 0.3 && light.components[3] > 0.3,
+            "um tom quase transparente não contrasta com nada: alfas {} e {}",
+            dark.components[3],
+            light.components[3]
+        );
+        // (b) O mesmo padrão em fases complementares: juntos cobrem o período inteiro, sem sobrepor.
+        assert_eq!(
+            sd.dash_pattern.as_slice(),
+            sl.dash_pattern.as_slice(),
+            "as duas canetas têm de compartilhar o padrão — com padrões diferentes 'complementar' \
+             deixa de querer dizer alguma coisa"
+        );
+        assert_eq!(
+            sd.dash_pattern.as_slice(),
+            [DASH_PX, DASH_PX],
+            "o padrão é meio-a-meio: é o que faz de UMA fase deslocada o complemento da outra"
+        );
+        assert!(
+            (sl.dash_offset - sd.dash_offset - DASH_PX).abs() < 1e-9,
+            "as fases são {} e {} — elas têm de diferir por exatamente um traço, senão os dois tons \
+             pintam em cima um do outro e o segundo traço custa por nada",
+            sd.dash_offset,
+            sl.dash_offset
+        );
+    }
+
+    /// **O laço desenha as DUAS canetas.** As cores certas num par que só é metade usado não
+    /// contrastam com nada — e um gate sobre `guide_pens` sozinho fica verde exatamente aí.
+    ///
+    /// ⚠️ Lê só a metade do PRODUTO do arquivo, pela mesma razão do gate irmão (o arquivo se inclui a
+    /// si mesmo, e um `contains` sobre ele inteiro casaria com a agulha escrita aqui).
+    ///
+    /// **Mutação que deve sangrar:** trocar o laço por um `scene.stroke` de uma caneta só.
+    #[test]
+    fn the_drawing_loop_strokes_both_pens() {
+        const FILE: &str = include_str!("painter_bridge_grid.rs");
+        let src = FILE
+            .split_once("#[cfg(test)]")
+            .expect("controle positivo: o módulo de testes sumiu — o corte deixaria de existir")
+            .0;
+        assert!(
+            src.contains("let pens = guide_pens();"),
+            "controle positivo: o laço deixou de pedir o par à porta — este gate estaria varrendo o nada"
+        );
+        assert!(
+            src.contains("for (color, dash) in &pens {"),
+            "o laço deixou de percorrer as duas canetas: o guia volta a ter um tom só, e some no \
+             fundo que aquele tom não enfrenta"
         );
     }
 

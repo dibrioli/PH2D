@@ -511,3 +511,53 @@ fn the_write_bounds_door_contains_what_both_blit_routes_touch() {
         "o gate exercitou pouco: {checked} pares (rota, dab) de fato escreveram"
     );
 }
+
+/// ⚠️ **Fora do quadrado unitário não há dab** — e o defeito que isto cura é o report do Enio de
+/// 2026-08-09 (*"a imagem não está perfeitamente ajustada à célula do grid e nem centralizada"*).
+///
+/// O `sample_mask` clampa a bilinear às bordas do mask, e o doc dele afirmava que isso era inócuo
+/// *"porque os texels do aro são `0`"*. A frase é verdadeira para um **falloff macio** e FALSA nos
+/// dois casos em que o aro do mask é opaco: uma **imagem de Shape** (cujo aro é a borda do arquivo) e
+/// o **falloff `Constant`** (peso `1` até `t = 1`). Nesses, o clamp estendia a borda para FORA do
+/// footprint, até onde o retângulo do blit fosse — e o retângulo é **assimétrico** (`floor(c − r)` de
+/// um lado, `ceil(c + r) + 1` do outro), então a fuga aparecia só num lado: *o carimbo saía um pixel
+/// mais largo, todo à direita e abaixo*.
+///
+/// Isto é a MESMA afirmação que a rota por-pixel já fazia (`shape_value` devolve `0` para
+/// `|tex| > 1`) — a rota cacheada discordava dela em silêncio, que é a forma exata de duas portas
+/// para uma pergunta.
+///
+/// **Mutação que tem de sangrar:** apagar o `if u.abs() > 1.0 || v.abs() > 1.0`.
+#[test]
+fn a_mask_with_an_opaque_rim_reads_nothing_outside_the_unit_square() {
+    // Aro OPACO: é a fixture que contém o fenômeno. Um mask de falloff macio tem aro `0` e o clamp
+    // devolve `0` de qualquer jeito ⇒ o gate seria verde por vácuo, exatamente como o doc antigo.
+    let mask = StampMask {
+        data: vec![255u8; 8 * 8],
+        size: 8,
+    };
+    assert!(
+        sample_mask(&mask, 0.99, 0.0) > 0.9,
+        "controle: DENTRO do quadrado o mask opaco tem de ler cheio, senão o gate mede outra coisa"
+    );
+    for (u, v) in [
+        (1.001_f32, 0.0_f32),
+        (-1.001, 0.0),
+        (0.0, 1.001),
+        (0.0, -1.001),
+        (1.2, 1.2),
+        (1.001, -1.001),
+    ] {
+        assert_eq!(
+            sample_mask(&mask, u, v),
+            0.0,
+            "({u}, {v}) está fora da ponta e mesmo assim leu tinta — a borda do mask está sendo \
+             estendida para fora do footprint"
+        );
+    }
+    // E a fronteira EXATA pertence ao dab: o `>` é estrito, então `|u| == 1` ainda lê o aro.
+    assert!(
+        sample_mask(&mask, 1.0, 0.0) > 0.9,
+        "a fronteira exata do quadrado unitário é do dab — cortá-la encolheria o carimbo"
+    );
+}

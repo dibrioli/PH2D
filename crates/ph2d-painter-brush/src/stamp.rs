@@ -275,9 +275,31 @@ fn blit_band(ctx: &BlitCtx, dst: &mut [u8], band_y0: i64) -> bool {
 }
 
 /// Bilinear coverage from `mask` at the dab-relative unit coord `(u, v) ∈ [-1, 1]` (centre `(0,0)`),
-/// clamp-to-edge (the rim texels are `0`, so clamping reads no paint). Centre-coord convention.
-/// `pub(crate)` so the sibling [`crate::stamp_ramped`] colour-ramp blit reuses the same sampler.
+/// clamp-to-edge INSIDE the tip. Centre-coord convention. `pub(crate)` so the sibling
+/// [`crate::stamp_ramped`] colour-ramp blit reuses the same sampler.
+///
+/// ⚠️ **Fora do quadrado unitário não há dab, e isso é a MESMA afirmação que a rota por-pixel faz**
+/// ([`crate::texture::shape::shape_value`] devolve `0` para `|tex| > 1`; o Shape é *uma ponta finita*).
+/// O clamp bilinear só governa o interior — a borda da imagem estende-se dentro dela, nunca para fora.
+///
+/// Este doc dizia *"os texels do aro são `0`, então o clamp não lê tinta"*, e a frase era verdadeira
+/// **para um falloff macio** e falsa nos dois casos em que o aro do mask é opaco: uma **imagem de
+/// Shape** (cujo aro é a borda do arquivo) e o **falloff `Constant`** (peso `1` até `t = 1`). Nesses,
+/// o clamp estendia a borda para fora do footprint até onde o retângulo do blit fosse — e como ele é
+/// assimétrico (`floor(c−r)` de um lado, `ceil(c+r) + 1` do outro) a fuga só aparecia num lado.
+/// Medido no Grid Stamp (Enio, 2026-08-09 — *"a imagem não está perfeitamente ajustada à célula do
+/// grid e nem centralizada"*): numa célula de 40 px o carimbo pintava **41** colunas, todas cheias, com
+/// a sobra inteira à direita e abaixo.
+///
+/// ⚠️ **O caso `Constant` foi MEDIDO, não deduzido, e ele exige um segundo slot ativo:** um pincel de
+/// falloff puro nunca chega aqui (o `want_cache` do `stamp_route` só toma a rota cacheada com uma
+/// silhueta de Shape ou um Grain), então `Constant` sozinho pintava simétrico. Com um **Grain** ligado
+/// ele entra, e a fuga aparece: `Constant` + Grain pintava um disco de raio 20 em **41** colunas, e
+/// hoje pinta **40**.
 pub(crate) fn sample_mask(mask: &StampMask, u: f32, v: f32) -> f32 {
+    if u.abs() > 1.0 || v.abs() > 1.0 {
+        return 0.0;
+    }
     let s = mask.size as f32;
     let mx = (u + 1.0) * 0.5 * s - 0.5;
     let my = (v + 1.0) * 0.5 * s - 0.5;

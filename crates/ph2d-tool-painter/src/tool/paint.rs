@@ -152,6 +152,9 @@ pub use grid_stamp_settings::GridAxis;
 mod composite_look;
 #[cfg(test)]
 mod composite_probe;
+/// **Grid Stamp** — o que o carimbo de fato PINTA (o irmão do módulo acima, que mede os controles).
+#[cfg(test)]
+mod grid_stamp_paint_tests;
 pub(crate) use composite::{CompositeLayer, CompositeOp};
 mod clone;
 mod eyedropper;

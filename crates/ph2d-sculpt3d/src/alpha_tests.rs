@@ -471,3 +471,83 @@ fn a_brush_without_an_alpha_weighs_exactly_one() {
         "armado, o alpha ainda é quase constante ({lo}..{hi})"
     );
 }
+
+/// **O DESLOCAMENTO MOVE O CARIMBO, e um `[0, 0]` é byte-idêntico.**
+///
+/// ⚠️ **As duas metades num gate só, porque uma sem a outra mente.** Só a
+/// primeira deixaria passar um deslocamento que também mexe no caso neutro (toda
+/// arte já feita mudaria de lugar); só a segunda deixaria passar um controle que
+/// não faz nada. É o par presença/ausência que este painel já exige de toda row.
+#[test]
+fn the_offset_moves_the_stamp_and_zero_is_byte_identical() {
+    use crate::Brush;
+    let (w, h) = (32usize, 32usize);
+    // Bandas DIAGONAIS: um padrão constante num dos eixos não distinguiria um
+    // deslocamento em X de um em Y, e o gate ficaria verde com os dois trocados.
+    let rgba: Vec<u8> = (0..w * h)
+        .flat_map(|i| {
+            let (x, y) = ((i % w) as f32, (i / w) as f32);
+            let v = (((x * 0.4 + y * 0.17).sin() * 0.5 + 0.5) * 255.0) as u8;
+            [v, v, v, 255]
+        })
+        .collect();
+    let img = AlphaImage::from_rgba(w as u32, h as u32, &rgba).expect("a fixture é uma imagem");
+
+    // O eixo encarando a vista é o que `set_alpha_image` semeia — sem ele o
+    // carimbo é projetado de lado e a fatia degenera, que é outro defeito.
+    let mut brush = Brush {
+        alpha_scale: 0.5,
+        alpha_elev_deg: MAX_AXIS_ELEV_DEG,
+        ..Brush::default()
+    };
+    brush.alpha = Some(Alpha::Image(std::sync::Arc::new(img)));
+
+    let probe = |b: &Brush| -> Vec<f32> {
+        let f = b.alpha_frame();
+        (0..16)
+            .map(|i| {
+                let t = 1.6f32.mul_add(i as f32 / 15.0, -0.8);
+                b.alpha_weight([t, 0.25, 0.0], &f)
+            })
+            .collect()
+    };
+
+    let neutral = probe(&brush);
+
+    // ⚠️ **`[0, 0]` é o mundo de antes AO BIT** — `x - 0.0` é `x` em IEEE-754.
+    let mut zeroed = brush.clone();
+    zeroed.alpha_offset = [0.0, 0.0];
+    assert_eq!(
+        probe(&zeroed),
+        neutral,
+        "um deslocamento nulo mudou o padrão: toda arte já feita anda de lugar"
+    );
+
+    // E um deslocamento de MEIO ladrilho move o carimbo de verdade.
+    let mut moved = brush.clone();
+    moved.alpha_offset = [brush.alpha_scale * 0.5, 0.0];
+    let after = probe(&moved);
+    let worst = neutral
+        .iter()
+        .zip(&after)
+        .map(|(a, b)| (a - b).abs())
+        .fold(0.0f32, f32::max);
+    assert!(
+        worst > 0.05,
+        "o deslocamento não move o carimbo (pior diferença {worst:.4}) — o \
+         controle desenha e não faz nada"
+    );
+
+    // ⚠️ **E ele NÃO alcança um procedural**, porque um campo homogêneo não tem
+    // posição. A neutralidade é do `alpha_frame`, não da row escondida: uma row
+    // escondida com valor autorado agiria em silêncio e sem como desfazer.
+    let mut field = moved.clone();
+    field.alpha = Some(Alpha::Strata);
+    let mut field_neutral = field.clone();
+    field_neutral.alpha_offset = [0.0, 0.0];
+    assert_eq!(
+        probe(&field),
+        probe(&field_neutral),
+        "um deslocamento autorado com uma imagem vazou para um padrão procedural"
+    );
+}

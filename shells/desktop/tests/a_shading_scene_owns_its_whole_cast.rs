@@ -143,8 +143,34 @@ fn predicate_of(src: &str, level: &str) -> String {
 /// esta asserção. O que ele **não** pode é voltar a semear a luz por conta.
 #[test]
 fn the_scene_rig_reaches_the_session() {
-    const SESSION: &str = "src/sculpt3d.rs";
-    let src = fs::read_to_string(SESSION).expect("o módulo da sessão existe");
+    // ⚠️ **A FAMÍLIA, e não um arquivo — e a promessa acima era FALSA até agora.**
+    // O doc deste gate já dizia que *"o construtor pode mudar de arquivo sem
+    // envelhecer esta asserção"*, e ele lia `src/sculpt3d.rs` cravado: quando o
+    // construtor saiu para o irmão `sculpt3d_birth.rs` (o pai cruzou o teto de
+    // LOC), o gate reprovou produto correto. É a mesma cicatriz que o
+    // `project_tokens::install` da `line/Vector` pagou — *afirme a PROPRIEDADE,
+    // nunca o endereço* —, e desta vez ela estava escrita no próprio doc.
+    //
+    // Os `*_tests.rs` ficam de fora: uma fixture que semeia um rig deixaria o
+    // gate verde citando a si mesmo.
+    let mut found: Vec<String> = fs::read_dir("src")
+        .expect("o diretório do shell existe")
+        .filter_map(Result::ok)
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| n.starts_with("sculpt3d") && n.ends_with(".rs") && !n.ends_with("_tests.rs"))
+        .filter_map(|n| fs::read_to_string(format!("src/{n}")).ok())
+        .filter(|c| c.contains("fn new(device: &wgpu::Device"))
+        .collect();
+    // **Controle positivo:** o construtor tem de existir e ser UM. Zero é a
+    // varredura vazia que passa por vácuo; dois é a segunda resposta a *como uma
+    // cena nasce*.
+    assert_eq!(
+        found.len(),
+        1,
+        "achei {} arquivos definindo o construtor da cena",
+        found.len()
+    );
+    let src = found.pop().expect("o controle acima garante um");
 
     // ⚠️ **Um SEED é uma chamada; uma DECLARAÇÃO de campo não é** — e a 1ª
     // versão deste gate ancorou na declaração (`rig: LightRig,`) e reprovou

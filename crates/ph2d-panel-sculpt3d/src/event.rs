@@ -138,26 +138,7 @@ pub(crate) fn apply_event(
         WidgetEvent::Click(id) if index_of(&ids::SCULPT3D_ALPHA, id).is_some() => {
             seam_reset_button(host, id);
             let i = index_of(&ids::SCULPT3D_ALPHA, id).expect("guard casou");
-            let mut ui = snapshot.ui;
-            ui.brush.alpha = i
-                .checked_sub(1)
-                .map(|k| Alpha::ALL[k.min(Alpha::ALL.len() - 1)].clone());
-            // ⚠️ **Armar um padrão SEMEIA a escala do modelo** — e só enquanto o
-            // artista não escolheu a dele. Uma escala é absoluta (um poro tem o
-            // tamanho de um poro), mas *qual número* depende do tamanho e da
-            // densidade da peça, coisas que só o modelo sabe: um literal acerta
-            // uma malha e erra todas as outras, que foi o que o smoke reprovou.
-            //
-            // A mesma lei do `arm_inflate_defaults` do Painter e do default de
-            // força por verbo três braços acima: **arma um default, nunca impõe
-            // política**. O sentinela é a constante de fábrica.
-            if ui.brush.alpha.is_some()
-                && (ui.brush.alpha_scale - ph2d_sculpt3d::DEFAULT_ALPHA_SCALE).abs() < 1e-6
-                && snapshot.alpha_seed > 0.0
-            {
-                ui.brush.alpha_scale = snapshot.alpha_seed;
-            }
-            state::push_intent(Sculpt3dIntent::SetUi(ui));
+            arm_alpha_chip(&snapshot, i);
             true
         }
         // **A LUZ** — a opção `0` é o rig do artista e as seguintes são os
@@ -279,4 +260,42 @@ fn is_section_header(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::SCULPT3D_SEC_SYMMETRY
         || id == ids::SCULPT3D_SEC_TOPOLOGY
         || id == ids::SCULPT3D_SEC_SCENE
+}
+
+/// **O que um clique na fileira de PADRÃO arma** — extraído do `apply_event`.
+///
+/// ⚠️ **Um corte por RESPONSABILIDADE, não por tamanho.** O braço cresceu quando
+/// a fileira ganhou o slot de imagem e cruzou o teto de 200 LOC do `apply_event`,
+/// e o que saiu foi a decisão inteira — *qual chip é este, e o que ele significa*
+/// —, que é uma pergunta com resposta própria. O que fica lá é o DESPACHO: qual
+/// widget foi tocado.
+fn arm_alpha_chip(snapshot: &crate::state::Sculpt3dSnapshot, i: usize) {
+    // ⚠️ **O ÚLTIMO chip é o slot de IMAGEM, e ele sai por OUTRA porta.** O
+    // painel não tem a imagem: quando o artista escolhe um procedural o
+    // `Arc<AlphaImage>` deixa o `Sculpt3dUi`, e só a CENA continua a segurá-lo.
+    // Um `SetUi` aqui não teria o que armar, e o chip seria um controle que só
+    // sabe deixar de estar aceso.
+    if i > Alpha::ALL.len() {
+        state::push_intent(Sculpt3dIntent::ArmStoredImage);
+        return;
+    }
+    let mut ui = snapshot.ui.clone();
+    ui.brush.alpha = i
+        .checked_sub(1)
+        .map(|k| Alpha::ALL[k.min(Alpha::ALL.len() - 1)].clone());
+    // ⚠️ **Armar um padrão SEMEIA a escala do modelo** — e só enquanto o artista
+    // não escolheu a dele. Uma escala é absoluta (um poro tem o tamanho de um
+    // poro), mas *qual número* depende do tamanho e da densidade da peça, coisas
+    // que só o modelo sabe: um literal acerta uma malha e erra todas as outras,
+    // que foi o que o smoke reprovou.
+    //
+    // A mesma lei do `arm_inflate_defaults` do Painter: **arma um default, nunca
+    // impõe política**. O sentinela é a constante de fábrica.
+    if ui.brush.alpha.is_some()
+        && (ui.brush.alpha_scale - ph2d_sculpt3d::DEFAULT_ALPHA_SCALE).abs() < 1e-6
+        && snapshot.alpha_seed > 0.0
+    {
+        ui.brush.alpha_scale = snapshot.alpha_seed;
+    }
+    state::push_intent(Sculpt3dIntent::SetUi(ui));
 }

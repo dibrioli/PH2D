@@ -170,6 +170,18 @@ pub struct Sculpt3dSnapshot {
     /// desenho**: um AO velho não parece velho, parece uma escolha de
     /// iluminação.
     pub ao_stale: bool,
+    /// **O NOME do sprite de onde o padrão de imagem veio** — o rótulo do chip.
+    ///
+    /// ⚠️ **Um FATO, e não um campo do [`Sculpt3dUi`]:** o nome não é um valor
+    /// que o artista edita neste painel, é a proveniência do que ele armou; pô-lo
+    /// no struct que todo arrasto de slider reenvia inteiro faria uma pista de
+    /// escala poder reescrever de onde a imagem veio.
+    ///
+    /// ⚠️ **E ele sobrevive à troca de padrão de propósito**, porque é isso que
+    /// torna o chip um SELETOR em vez de um botão que só sabe desmarcar-se: sem
+    /// a lembrança, escolher `Grain` apagaria a imagem e o chip dela voltaria
+    /// sendo um rótulo para nada.
+    pub alpha_image_name: Option<std::sync::Arc<str>>,
     /// Quantas peças a cena tem, e se uma delas está isolada.
     pub pieces: usize,
     pub isolated: bool,
@@ -237,6 +249,13 @@ pub enum Sculpt3dIntent {
     /// guardasse uma segunda cópia do arm para decidir. Clicar o aceso desarma —
     /// e quem faz essa conta é `Sculpt3dScene::arm_transform`, uma vez.
     ArmTransform(ph2d_sculpt3d::TransformKind),
+    /// **Re-arma a IMAGEM que a cena lembra** — o chip do slot de imagem.
+    ///
+    /// ⚠️ **Um intent e não um `SetUi`**, porque o painel **não tem** a imagem:
+    /// quando o artista escolhe `Grain`, o `Arc<AlphaImage>` sai do
+    /// [`Sculpt3dUi`] e só a cena continua a segurá-lo. Sem esta porta o chip da
+    /// imagem seria um controle que só sabe deixar de estar aceso.
+    ArmStoredImage,
     /// Liga/desliga a topologia dinâmica (e triangula, se ligar).
     ToggleDyntopo,
     /// Desce (`false`) ou sobe (`true`) um nível de multiresolução.
@@ -336,4 +355,27 @@ pub(crate) fn set_last_content_h(v: f32) {
 
 pub(crate) fn set_last_visible_h(v: f32) {
     LAST_VISIBLE_H.with(|c| c.set(v));
+}
+
+/// **Qual chip da fileira de padrão está aceso**, dado o retrato.
+///
+/// `0` é o pincel liso, `1..=9` são os `Alpha::ALL` deslocados de um, e o último
+/// é o slot de IMAGEM.
+///
+/// ⚠️ **Ela é `pub` para o GATE poder perguntar ao produto.** O `event` não a
+/// chama — ele resolve a pergunta INVERSA (*este índice arma o quê?*) —, então
+/// isto não é uma porta compartilhada, é o retrato respondendo *"qual está
+/// aceso?"* em vez de um teste re-derivando a aritmética por conta própria. Um
+/// gate com a sua terceira cópia concordaria consigo mesmo enquanto o painel
+/// pintasse outra coisa, que é o oráculo-espelho que esta casa recusa.
+#[must_use]
+pub fn alpha_chip_index(snap: &Sculpt3dSnapshot) -> usize {
+    match snap.ui.brush.alpha.as_ref() {
+        None => 0,
+        Some(a) if a.is_image() => ph2d_sculpt3d::Alpha::ALL.len() + 1,
+        Some(a) => ph2d_sculpt3d::Alpha::ALL
+            .iter()
+            .position(|x| x == a)
+            .map_or(0, |i| i + 1),
+    }
 }

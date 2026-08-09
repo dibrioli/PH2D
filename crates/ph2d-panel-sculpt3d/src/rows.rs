@@ -235,6 +235,36 @@ static BRUSH: &[Row] = &[
         place: Place::AfterAlpha,
     },
     Row {
+        label: "panel.sculpt3d.alpha_off_x",
+        slider: ids::SCULPT3D_ALPHA_OFF_X,
+        chip: ids::SCULPT3D_ALPHA_OFF_X_NUM,
+        // ⚠️ **A faixa é SIMÉTRICA e mede um LADO do modelo.** Uma primitiva
+        // nasce cabendo na esfera unitária (span 2), então ±1 leva o carimbo de
+        // uma ponta à outra; e o zero tem de cair no MEIO da pista, porque
+        // *nenhum deslocamento* é o estado neutro e não um extremo.
+        min: -1.0,
+        max: 1.0,
+        step: 0.01, // LITERAL-PX-OK: passo em unidades de objeto, não métrica de layout
+        decimals: 2,
+        get: |u| u.brush.alpha_offset[0],
+        set: |u, v| u.brush.alpha_offset[0] = v,
+        show: stamp_alpha,
+        place: Place::AfterAlpha,
+    },
+    Row {
+        label: "panel.sculpt3d.alpha_off_y",
+        slider: ids::SCULPT3D_ALPHA_OFF_Y,
+        chip: ids::SCULPT3D_ALPHA_OFF_Y_NUM,
+        min: -1.0,
+        max: 1.0,
+        step: 0.01, // LITERAL-PX-OK: passo em unidades de objeto, não métrica de layout
+        decimals: 2,
+        get: |u| u.brush.alpha_offset[1],
+        set: |u, v| u.brush.alpha_offset[1] = v,
+        show: stamp_alpha,
+        place: Place::AfterAlpha,
+    },
+    Row {
         label: "panel.sculpt3d.alpha_az",
         slider: ids::SCULPT3D_ALPHA_AZ,
         chip: ids::SCULPT3D_ALPHA_AZ_NUM,
@@ -312,6 +342,26 @@ static BRUSH: &[Row] = &[
         place: Place::AfterExtract,
     },
 ];
+
+/// **Só com um CARIMBO armado** — as duas pistas de colocação.
+///
+/// ⚠️ **A pergunta é `is_image`, e não `is_directional`, e a diferença é o que
+/// separa um carimbo de um campo:** os três procedurais direcionais apontam para
+/// um lado e são HOMOGÊNEOS ao longo dele — um campo infinito não tem posição,
+/// só fase, e uma fase é outro controle (uma semente) que este módulo não tem.
+/// Oferecer o deslocamento ali seriam duas pistas que o Strata ignora por
+/// completo e que o Scratches e o Weave leem como um número sem significado.
+///
+/// ⚠️ E a neutralidade dos outros não depende desta função: quem a garante é o
+/// `Brush::alpha_frame`, que ZERA o deslocamento sem uma imagem armada. Esta
+/// decide o que APARECE; aquele decide o que o motor recebe — e é por isso que
+/// esconder a row aqui não pode deixar um valor autorado agindo em silêncio.
+fn stamp_alpha(u: &Sculpt3dUi) -> bool {
+    u.brush
+        .alpha
+        .as_ref()
+        .is_some_and(ph2d_sculpt3d::Alpha::is_image)
+}
 
 /// **Só com um padrão DIRECIONAL armado.**
 ///

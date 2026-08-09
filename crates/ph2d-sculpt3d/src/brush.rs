@@ -492,6 +492,17 @@ pub struct Brush {
     /// nenhum — o frame é ortonormal por identidade em qualquer elevação —, e um
     /// piso aqui seria um limite copiado de um vizinho em vez de medido.
     pub alpha_elev_deg: u16,
+    /// **ONDE o padrão POUSA**, no plano do frame e em unidades de OBJETO.
+    ///
+    /// ⚠️ **É a terceira metade de COLOCAR um carimbo** — tamanho
+    /// (`alpha_scale`), giro (`alpha_az_deg`, que no zênite ROLA o padrão no
+    /// plano) e posição. As duas primeiras já existiam; esta faltava, e sem ela
+    /// o artista podia dizer *quão grande* e *para que lado*, nunca *onde*.
+    ///
+    /// ⚠️ **Ele só alcança o motor com uma IMAGEM armada** — ver
+    /// [`Brush::alpha_frame`], que é onde a neutralidade é garantida por
+    /// CONSTRUÇÃO em vez de por convenção.
+    pub alpha_offset: [f32; 2],
     /// Raio de influência, em unidades de MUNDO.
     pub radius: f32,
     /// Intensidade em `[0, 1]` — o que multiplica o falloff para virar o peso.
@@ -522,6 +533,7 @@ impl Default for Brush {
             // indistinguível de *"o padrão não funciona"*.
             alpha_az_deg: 90,
             alpha_elev_deg: 0,
+            alpha_offset: [0.0, 0.0],
             radius: 0.25,
             strength: 0.5,
             invert: false,
@@ -566,7 +578,19 @@ impl Brush {
     /// pincel que o carrega — o mesmo desenho do `ShapeFrame` do Painter 2D.
     #[must_use]
     pub fn alpha_frame(&self) -> AlphaFrame {
-        AlphaFrame::from_degrees(self.alpha_az_deg, self.alpha_elev_deg)
+        // ⚠️ **O deslocamento é a colocação de um CARIMBO, e por isso ele só
+        // chega ao motor com uma imagem armada.** Os nove procedurais são
+        // CAMPOS homogêneos e infinitos: eles não têm posição, só fase, e uma
+        // fase é outro controle (uma semente) que este módulo não tem. Zerar
+        // aqui — e não esconder a row e torcer — é o que torna impossível um
+        // padrão herdar em silêncio um deslocamento que ninguém pode ver nem
+        // desfazer, porque a row dele não está na tela.
+        let offset = if self.alpha.as_ref().is_some_and(Alpha::is_image) {
+            self.alpha_offset
+        } else {
+            [0.0, 0.0]
+        };
+        AlphaFrame::placed(self.alpha_az_deg, self.alpha_elev_deg, offset)
     }
 
     /// O deslocamento, com sinal, que um dab deste pincel alcança — em unidades

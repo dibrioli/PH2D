@@ -57,6 +57,7 @@ fn arrange_with(snap: Sculpt3dSnapshot) -> (MockPanelHost, Sculpt3dPanelState) {
 /// desta função ficar torto.
 fn snapshot(ui: Sculpt3dUi, has_bake_target: bool) -> Sculpt3dSnapshot {
     Sculpt3dSnapshot {
+        alpha_image_name: None,
         // ⚠️ **DESARMADO e' o caso comum**, e a fixture o declara em vez de o
         // herdar: um gate que chegasse ao estado armado por toggle inverteria de
         // sentido no dia em que o default se movesse, e seguiria verde testando
@@ -687,20 +688,31 @@ fn every_matcap_chip_arms_its_own_material() {
 /// **Cada chip de padrão arma o SEU padrão, e o primeiro arma o pincel LISO.**
 ///
 /// ⚠️ **A contagem é afirmada aqui, e não em prosa:** a fileira tem
-/// `Alpha::ALL.len() + 1` ids, e o `+ 1` é o *None* — que **não** é um padrão. Um
-/// chip a mais pinta uma opção que o motor não tem (o `event` a prende no
-/// último, e o artista vê o padrão errado ao pedir um que não existe); um a menos
-/// deixa um padrão **inalcançável**. As duas falhas são silenciosas.
+/// `Alpha::ALL.len() + 2` ids, e os DOIS a mais não são padrões — o primeiro é o
+/// *None* (o pincel liso) e o último é o slot de IMAGEM. Um chip a mais pinta
+/// uma opção que o motor não tem (o `event` a prende no último, e o artista vê o
+/// padrão errado ao pedir um que não existe); um a menos deixa um padrão
+/// **inalcançável**. As duas falhas são silenciosas.
+///
+/// ⚠️ **O laço para ANTES do último de propósito, e o irmão abaixo o cobre:** o
+/// chip da imagem não enfileira um `SetUi` — ele não teria o que armar, porque
+/// os pixels vivem na CENA e não no retrato. Varrê-lo aqui exigiria um `if` no
+/// meio do laço, e um laço com uma exceção é como o décimo-segundo chip nasce
+/// sem gate.
 #[test]
 fn every_alpha_chip_arms_its_own_pattern() {
     assert_eq!(
         ids::SCULPT3D_ALPHA.len(),
-        Alpha::ALL.len() + 1,
-        "{} chips para {} padrões + o pincel liso",
+        Alpha::ALL.len() + 2,
+        "{} chips para {} padrões + o pincel liso + o slot de imagem",
         ids::SCULPT3D_ALPHA.len(),
         Alpha::ALL.len()
     );
-    for (i, &id) in ids::SCULPT3D_ALPHA.iter().enumerate() {
+    for (i, &id) in ids::SCULPT3D_ALPHA
+        .iter()
+        .enumerate()
+        .take(Alpha::ALL.len() + 1)
+    {
         let base = Sculpt3dUi::default();
         let (mut host, mut state) = arrange(base.clone());
         let outcome = host.apply_panel_event::<Sculpt3dPanel>(&mut state, WidgetEvent::Click(id));
@@ -1128,4 +1140,61 @@ fn the_pattern_from_sprite_button_needs_a_selected_sprite() {
             assert_eq!(only_intent("alpha"), Sculpt3dIntent::AlphaFromSprite);
         }
     }
+}
+
+/// **O chip do SLOT DE IMAGEM pede à cena que re-arme o que ela lembra.**
+///
+/// ⚠️ **Ele é o único chip da fileira que NÃO enfileira um `SetUi`**, e a razão é
+/// estrutural: o painel só vê o retrato, e no instante em que o artista escolheu
+/// um procedural o `Arc<AlphaImage>` deixou o `Sculpt3dUi`. Sem esta porta o chip
+/// seria um controle que só sabe deixar de estar aceso — pintado, hit-registrado
+/// e incapaz de voltar.
+#[test]
+fn the_image_chip_asks_the_scene_to_re_arm_what_it_remembers() {
+    let id = *ids::SCULPT3D_ALPHA
+        .last()
+        .expect("a fileira de padrão não é vazia");
+    let (mut host, mut state) = arrange(Sculpt3dUi::default());
+    let outcome = host.apply_panel_event::<Sculpt3dPanel>(&mut state, WidgetEvent::Click(id));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "o chip da imagem não despacha"
+    );
+    assert!(
+        matches!(only_intent("imagem"), Sculpt3dIntent::ArmStoredImage),
+        "o chip da imagem enfileirou o tipo errado de intent — um `SetUi` aqui \
+         armaria o padrão de índice errado, ou nada"
+    );
+}
+
+/// **O chip aceso é o do slot quando uma IMAGEM está armada** — o report
+/// *"o painel diz None com um padrão vivo"*.
+///
+/// ⚠️ **O oráculo é a porta que PINTA** (`alpha_chip_index`), e não uma
+/// re-derivação escrita aqui: a aritmética do índice é feita duas vezes no
+/// produto (para pintar e para despachar), e um gate com uma terceira cópia
+/// concordaria com ele mesmo enquanto as duas do produto divergiam.
+#[test]
+fn an_armed_image_lights_its_own_chip_not_none() {
+    let img = std::sync::Arc::new(
+        ph2d_sculpt3d::AlphaImage::from_rgba(2, 2, &[128; 16]).expect("fixture é uma imagem"),
+    );
+    let mut ui = Sculpt3dUi::default();
+    ui.brush.alpha = Some(ph2d_sculpt3d::Alpha::Image(img));
+    let mut snap = snapshot(ui, false);
+    snap.alpha_image_name = Some(std::sync::Arc::from("Post"));
+    assert_eq!(
+        ph2d_panel_sculpt3d::alpha_chip_index(&snap),
+        Alpha::ALL.len() + 1,
+        "uma imagem armada não acende o chip dela — o painel diz «nenhum padrão» \
+         com um padrão vivo e um preview desenhado logo abaixo"
+    );
+
+    // CONTROLE: sem imagem o chip aceso é o *None*, e continua sendo.
+    assert_eq!(
+        ph2d_panel_sculpt3d::alpha_chip_index(&snapshot(Sculpt3dUi::default(), false)),
+        0,
+        "o pincel liso deixou de acender o primeiro chip"
+    );
 }

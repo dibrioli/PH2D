@@ -94,7 +94,7 @@ fn arming_an_image_keeps_the_scale_the_artist_authored() {
     // O artista escolheu um tamanho de poro. Um número que NÃO é o sentinela.
     let chosen = 0.123_45_f32;
     scene.brush.alpha_scale = chosen;
-    let after = scene.set_alpha_image(marble());
+    let after = scene.set_alpha_image(marble(), std::sync::Arc::from("Post"));
     assert!(
         (after - chosen).abs() < 1e-6,
         "armar um padrao descartou a escala autorada ({chosen} -> {after}): o botao IMPOE onde \
@@ -108,7 +108,7 @@ fn arming_an_image_keeps_the_scale_the_artist_authored() {
         (fresh.brush.alpha_scale - ph2d_sculpt3d::DEFAULT_ALPHA_SCALE).abs() < 1e-6,
         "a cena nao nasce no sentinela — o resto deste gate nao afirma nada"
     );
-    let seeded = fresh.set_alpha_image(marble());
+    let seeded = fresh.set_alpha_image(marble(), std::sync::Arc::from("Post"));
     assert!(
         (seeded - ph2d_sculpt3d::DEFAULT_ALPHA_SCALE).abs() > 1e-6,
         "a semeadura nao disparou num pincel intocado: o padrao nasce num tamanho que a malha \
@@ -154,7 +154,7 @@ fn arming_an_image_turns_the_axis_to_face_the_view() {
     );
 
     // E o que o botão arma resolve a imagem inteira.
-    scene.set_alpha_image(marble());
+    scene.set_alpha_image(marble(), std::sync::Arc::from("Post"));
     scene.brush.alpha_scale = 0.5;
     let (rows, cols) = slice_variety(&scene.brush);
     assert!(
@@ -175,7 +175,7 @@ fn an_authored_axis_survives_arming_another_image() {
     let mut scene = Sculpt3dScene::new(&gpu.device, uv_sphere(24, 36, 1.0), 1.0);
     scene.brush.alpha_az_deg = 33;
     scene.brush.alpha_elev_deg = 12;
-    scene.set_alpha_image(marble());
+    scene.set_alpha_image(marble(), std::sync::Arc::from("Post"));
     assert_eq!(
         (scene.brush.alpha_az_deg, scene.brush.alpha_elev_deg),
         (33, 12),

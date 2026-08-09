@@ -172,18 +172,24 @@ fn paint_brush_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     // `checked_sub`; as duas metades vivem uma ao lado da outra de propósito).
     let mut labels: Vec<&str> = vec![tr("panel.sculpt3d.alpha.none")];
     labels.extend(Alpha::ALL.iter().map(|a| a.label()));
-    // ⚠️ **`as_ref` e comparação por REFERÊNCIA:** desde que o alpha pode ser uma
-    // IMAGEM ele carrega um `Arc` e não é `Copy`. Uma imagem nunca está na
-    // `ALL` — a fileira de chips é a lista de NOMES —, então o `position`
-    // devolve `None` para ela e a seleção cai em *nenhum*: o chip aceso não
-    // mente sobre um padrão que aquela fileira não oferece.
-    let selected = snap
-        .ui
-        .brush
-        .alpha
-        .as_ref()
-        .and_then(|a| Alpha::ALL.iter().position(|x| x == a))
-        .map_or(0, |i| i + 1);
+    // ⚠️ **O SLOT DE IMAGEM tem o nome do SPRITE**, e ele é o ÚLTIMO chip.
+    //
+    // ⚠️ **Isto REVOGA a decisão que estava escrita aqui.** A versão anterior
+    // dizia que uma imagem nunca está na `ALL`, que o `position` devolve `None`
+    // para ela e que cair em *nenhum* era honesto — *"o chip aceso não mente
+    // sobre um padrão que aquela fileira não oferece"*. A premissa era que a
+    // fileira não o oferecia; agora ela oferece, e o que sobrava era um painel
+    // dizendo **None** com um padrão vivo e um preview desenhado logo abaixo:
+    // o artista lia o painel como quebrado antes de olhar para a miniatura.
+    //
+    // ⚠️ **O nome vem do RETRATO, não do `Alpha`.** O motor guarda os pixels; de
+    // onde eles vieram é proveniência da CENA. Um `label()` que devolvesse o
+    // nome do sprite obrigaria o enum a carregar uma `String` que kernel nenhum
+    // lê.
+    if let Some(name) = snap.alpha_image_name.as_deref() {
+        labels.push(name);
+    }
+    let selected = crate::state::alpha_chip_index(snap);
     let mut y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.alpha"),

@@ -1180,7 +1180,18 @@ impl crate::App {
                         // transições ao longo das mesmas 2 unidades de objeto). O número que de
                         // fato governa o que o artista vê é o `Alpha Scale`, e era justamente ele
                         // que mudava sem aparecer em lugar nenhum.
-                        let scale = scene.set_alpha_image(a);
+                        // ⚠️ **O nome vem do `Name` do objeto, com o fallback
+                        // dizendo o que ele É.** Um sprite pode não ter nome —
+                        // e um chip em branco seria o mesmo defeito do "None"
+                        // que esta wave conserta, com outra roupa.
+                        let from: std::sync::Arc<str> = selected
+                            .and_then(|bits| {
+                                sim.world()
+                                    .get::<ph2d_ecs::Name>(ph2d_ecs::Entity::from_bits(bits))
+                                    .map(|n| std::sync::Arc::from(n.0.as_str()))
+                            })
+                            .unwrap_or_else(|| std::sync::Arc::from("Sprite"));
+                        let scale = scene.set_alpha_image(a, from);
                         format!(
                             "[sculpt3d] padrao: {what} do sprite selecionado (escala {scale:.3})"
                         )

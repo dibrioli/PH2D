@@ -33,10 +33,30 @@ pub struct AlphaFrame {
     /// dele, as faixas do Scratches são indexadas por ele, e a trama do Weave é
     /// o plano perpendicular a ele.
     n: [f32; 3],
-    /// A tangente, sempre no plano XY do objeto — ver [`AlphaFrame::from_degrees`].
+    /// A tangente, sempre no plano XY do objeto — ver [`AlphaFrame::placed`].
     t: [f32; 3],
     /// `n × t`, completando a base.
     b: [f32; 3],
+    /// **ONDE o padrão POUSA no plano `t`–`b`**, em unidades de OBJETO.
+    ///
+    /// ⚠️ **O frame deixou de ser só ORIENTAÇÃO e virou COLOCAÇÃO** — *para onde
+    /// o padrão aponta* e *onde ele pousa* —, e ele é o lugar certo para a
+    /// segunda porque já é o objeto que atravessa [`crate::Brush::alpha_frame`]
+    /// até o `weight_at`. Um parâmetro NOVO obrigaria todo chamador a passá-lo,
+    /// e é exatamente assim que uma feature chega a algumas rotas e não a outras
+    /// — a lição que a `ShapeFrame` do Painter 2D pagou (lá foram 2 de 7, em
+    /// silêncio).
+    ///
+    /// ⚠️ **Em unidades de OBJETO, e não em LADRILHOS**, porque é a mesma régua
+    /// do `alpha_scale`: mover o padrão de um `alpha_scale` anda exatamente um
+    /// ladrilho, e **redimensionar não faz o padrão escorregar** — a escala
+    /// re-escala em torno do ponto que o artista escolheu. Em ladrilhos o
+    /// oposto seria verdade, e o artista veria o carimbo fugir do lugar cada vez
+    /// que mexesse no tamanho.
+    ///
+    /// ⚠️ **`[0, 0]` é BYTE-IDÊNTICO ao mundo sem deslocamento:** `x - 0.0` é `x`
+    /// ao bit em IEEE-754 para todo finito — inclusive `-0.0`.
+    offset: [f32; 2],
 }
 
 impl AlphaFrame {
@@ -69,7 +89,13 @@ impl AlphaFrame {
     /// que DISCORDE do pincel que ele passa ao lado. Duas portas para *"em que
     /// direção este padrão corre?"* divergiriam no primeiro sítio novo.
     #[must_use]
-    pub(crate) fn from_degrees(az_deg: u16, elev_deg: u16) -> Self {
+    /// ⚠️ **UM construtor, e não dois.** A versão sem deslocamento existiu por
+    /// meia hora e ficou **sem chamador** no instante em que o
+    /// [`crate::Brush::alpha_frame`] passou a pousar o padrão — e um
+    /// `pub(crate)` sem chamador não é código morto silencioso, é uma SEGUNDA
+    /// resposta a *"como se constrói um frame?"* esperando alguém a chamar.
+    /// Quem quer o frame não-deslocado passa `[0, 0]`, que é byte-idêntico.
+    pub(crate) fn placed(az_deg: u16, elev_deg: u16, offset: [f32; 2]) -> Self {
         let az = rotate_by_degrees(az_deg % 360);
         let el = rotate_by_degrees(elev_deg.min(MAX_AXIS_ELEV_DEG));
         let (cos_e, sin_e) = (el[0], el[1]);
@@ -81,7 +107,7 @@ impl AlphaFrame {
             n[2] * t[0] - n[0] * t[2],
             n[0] * t[1] - n[1] * t[0],
         ];
-        Self { n, t, b }
+        Self { n, t, b, offset }
     }
 
     /// O eixo autorado — o que o overlay desenharia e o que o gate mede.
@@ -93,9 +119,14 @@ impl AlphaFrame {
     /// O ponto `p` nas coordenadas do frame: `(ao longo de t, ao longo de b, ao
     /// longo do EIXO)`.
     pub(super) fn project(&self, p: [f32; 3]) -> [f32; 3] {
+        // ⚠️ **O deslocamento sai das DUAS coordenadas do plano e NUNCA do
+        // eixo.** Ele descreve onde o carimbo pousa NA superfície; subtraí-lo do
+        // `q[2]` moveria o padrão ao longo da direção de projeção, que para uma
+        // imagem não significa nada e para o Strata seria um terceiro controle
+        // que ninguém pediu.
         [
-            p[0] * self.t[0] + p[1] * self.t[1] + p[2] * self.t[2],
-            p[0] * self.b[0] + p[1] * self.b[1] + p[2] * self.b[2],
+            (p[0] * self.t[0] + p[1] * self.t[1] + p[2] * self.t[2]) - self.offset[0],
+            (p[0] * self.b[0] + p[1] * self.b[1] + p[2] * self.b[2]) - self.offset[1],
             p[0] * self.n[0] + p[1] * self.n[1] + p[2] * self.n[2],
         ]
     }

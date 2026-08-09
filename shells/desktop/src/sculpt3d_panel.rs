@@ -71,6 +71,7 @@ impl Sculpt3dScene {
             level: self.level(),
             level_count: self.level_count(),
             ao_stale: self.mesh().ao_is_stale(),
+            alpha_image_name: self.alpha_image.as_ref().map(|(_, n)| n.clone()),
             pieces: self.objects.len(),
             isolated: self.isolated.is_some(),
             matcaps: ph2d_mesh_render::MATCAPS.as_slice(),
@@ -132,7 +133,34 @@ impl Sculpt3dScene {
     /// linha conserta o **preview do painel** e o **modelo**: a fatia `z = 0`
     /// que o swatch desenha passa a ser EXATAMENTE o que todo ponto da malha
     /// recebe. O swatch fica *verdadeiro* em vez de ganhar um caso especial.
-    pub(crate) fn set_alpha_image(&mut self, img: ph2d_sculpt3d::AlphaImage) -> f32 {
+    pub(crate) fn set_alpha_image(
+        &mut self,
+        img: ph2d_sculpt3d::AlphaImage,
+        from: std::sync::Arc<str>,
+    ) -> f32 {
+        self.alpha_image = Some((std::sync::Arc::new(img), from));
+        self.arm_stored_image()
+    }
+
+    /// **RE-ARMA a imagem que a cena lembra** — o chip do slot, e a segunda
+    /// metade do [`Sculpt3dScene::set_alpha_image`].
+    ///
+    /// ⚠️ **Uma LEI, dois pedintes.** Trazer um sprite novo e voltar ao slot pelo
+    /// chip têm de semear igual: se cada um tivesse a sua cópia da regra do
+    /// sentinela, um deles ganharia um `if` no dia em que a regra mudasse e o
+    /// outro não — e o sintoma seria *"pelo botão a escala é semeada, pelo chip
+    /// não"*, invisível até alguém comparar os dois gestos.
+    pub(crate) fn arm_stored_image(&mut self) -> f32 {
+        let Some((img, _)) = self.alpha_image.clone() else {
+            return self.brush.alpha_scale;
+        };
+        self.seed_alpha_placement();
+        self.brush.alpha = Some(ph2d_sculpt3d::Alpha::Image(img));
+        self.brush.alpha_scale
+    }
+
+    /// A metade que SEMEIA — ver o doc de [`Sculpt3dScene::set_alpha_image`].
+    fn seed_alpha_placement(&mut self) {
         // ⚠️ **O que é «de fábrica» sai do PRÓPRIO `Brush::default`**, nunca de
         // literais repetidos aqui: uma segunda cópia dos ângulos passaria a
         // discordar dele no dia em que ele mudasse, e o sintoma seria uma
@@ -148,8 +176,6 @@ impl Sculpt3dScene {
         {
             self.brush.alpha_elev_deg = ph2d_sculpt3d::MAX_AXIS_ELEV_DEG;
         }
-        self.brush.alpha = Some(ph2d_sculpt3d::Alpha::Image(std::sync::Arc::new(img)));
-        self.brush.alpha_scale
     }
 
     /// **O estado autorado, aplicado.** O painel manda a struct INTEIRA a cada
@@ -212,6 +238,12 @@ impl Sculpt3dScene {
             // precisa do mundo, do renderizador e do mapa de atlas.
             Sculpt3dIntent::AlphaFromSprite => {
                 return Some(Sculpt3dFrameRequest::AlphaFromSprite);
+            }
+            // ⚠️ **Este NÃO precisa do frame**, ao contrário dos dois acima: a
+            // imagem já está aqui: o artista a trouxe uma vez e a cena a
+            // segurou. Re-armar é escolher de novo o que já foi lido.
+            Sculpt3dIntent::ArmStoredImage => {
+                self.arm_stored_image();
             }
             Sculpt3dIntent::SetUi(ui) => self.apply_ui(&ui),
             // ⚠️ **Quem decide o desligamento é a CENA**, não o painel: o

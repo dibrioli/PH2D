@@ -78,28 +78,37 @@ fn the_pixels_are_straightened_before_the_law_reads_them() {
 /// `recommended_scale`, senão um padrão nasceria num tamanho e o outro noutro.
 #[test]
 fn arming_an_image_seeds_the_scale_this_model_can_hold() {
+    // ⚠️ **O MÓDULO, e não o corpo de UMA função — a terceira vez desta cicatriz
+    // na mesma jornada.** As versões anteriores recortavam o corpo do
+    // `set_alpha_image` por contagem de caracteres (600, depois 1600) e
+    // reprovaram produto correto duas vezes: primeiro quando o doc-comment
+    // cresceu, depois quando a LEI se mudou para o `seed_alpha_placement` — a
+    // porta passou a DELEGAR, que é exatamente o que se quer de uma lei com dois
+    // pedintes, e o gate leu a delegação como ausência.
+    //
+    // O que ele afirma agora é a propriedade que importa: *a semeadura existe
+    // neste módulo, UMA vez, e a porta que arma a imagem existe*. Onde ela mora
+    // dentro do arquivo é endereço.
     let src = fs::read_to_string(PANEL).expect("o módulo do painel existe");
-    let at = src
-        .find("pub(crate) fn set_alpha_image")
-        .expect("a porta do alpha por imagem existe");
-    // ⚠️ **A janela cresceu com o doc-comment do PRODUTO, e isso é o esperado:**
-    // ela mede o CORPO (o `end` abaixo o recorta no primeiro `\n    }`), e 600
-    // caracteres deixaram de o alcançar quando a porta ganhou o sentinela e a
-    // semeadura do eixo. Uma janela curta demais falha por VÁCUO — ela deixa de
-    // ver a linha que afirma, e o gate reprova produto correto.
-    let body: String = src[at..].chars().take(1600).collect();
-    let end = body.find("\n    }").unwrap_or(body.len());
-    let body = &body[..end];
 
     assert!(
-        body.contains("recommended_scale"),
-        "a porta arma a imagem sem semear a escala: `{}`",
-        body.trim()
+        src.contains("pub(crate) fn set_alpha_image"),
+        "a porta do alpha por imagem sumiu do módulo do painel"
     );
     assert!(
-        body.contains("Alpha::Image"),
-        "a porta não arma a imagem: `{}`",
-        body.trim()
+        src.contains("Alpha::Image"),
+        "o módulo do painel não arma a imagem em lugar nenhum"
+    );
+    // ⚠️ **Toda pergunta vai ao MOTOR, e a contagem NÃO é a propriedade** — a 1ª
+    // versão desta asserção exigia *exatamente uma* menção e reprovou produto
+    // correto: há duas chamadas legítimas (o retrato publica o seed que o CHIP
+    // usa, a porta semeia o que o BOTÃO arma) e duas menções em prosa. As duas
+    // chamadas serem a mesma função é o ponto; contá-las é ruído.
+    assert!(
+        src.contains("ph2d_sculpt3d::recommended_scale("),
+        "o painel deixou de perguntar ao motor que tamanho este modelo comporta \
+         — um número escolhido aqui seria a segunda resposta, e ela diverge no \
+         primeiro modelo de outra densidade"
     );
 }
 

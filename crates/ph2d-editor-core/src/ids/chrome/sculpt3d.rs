@@ -92,11 +92,17 @@ pub const SCULPT3D_PINCH_NUM: NodeId = hash_node_id("sculpt3d.pinch_num");
 /// **O PADRÃO que decide onde, dentro da pegada, o verbo age** — a primeira
 /// opção é NENHUM e as outras são os padrões de `ph2d_sculpt3d::Alpha::ALL`.
 ///
-/// ⚠️ O tamanho é `Alpha::ALL.len() + 1`, e o `+ 1` é o pincel liso — que **não**
-/// é um padrão. É a mesma aritmética do [`SCULPT3D_MATCAP`], e pelo mesmo
-/// motivo: um chip a mais pinta uma opção que o motor não tem, um a menos deixa
-/// um padrão inalcançável. Gateado.
-pub const SCULPT3D_ALPHA: [NodeId; 10] = [
+/// ⚠️ O tamanho é `Alpha::ALL.len() + 2`, e os DOIS a mais não são padrões: o
+/// primeiro é o pincel LISO e o último é o slot de IMAGEM, que carrega o nome do
+/// sprite em vez de um nome de fórmula. É a mesma aritmética do
+/// [`SCULPT3D_MATCAP`] com um degrau a mais, e pelo mesmo motivo: um chip
+/// sobrando pinta uma opção que o motor não tem, um faltando deixa um padrão
+/// inalcançável. Gateado.
+///
+/// ⚠️ **O chip da imagem é o ÚLTIMO, e a posição é load-bearing:** os índices
+/// `1..=9` são um deslocamento sobre `Alpha::ALL`, então pôr a imagem no meio
+/// re-numeraria os nove e todo clique passaria a armar o padrão vizinho.
+pub const SCULPT3D_ALPHA: [NodeId; 11] = [
     hash_node_id("sculpt3d.alpha.none"),
     hash_node_id("sculpt3d.alpha.0"),
     hash_node_id("sculpt3d.alpha.1"),
@@ -107,7 +113,23 @@ pub const SCULPT3D_ALPHA: [NodeId; 10] = [
     hash_node_id("sculpt3d.alpha.6"),
     hash_node_id("sculpt3d.alpha.7"),
     hash_node_id("sculpt3d.alpha.8"),
+    hash_node_id("sculpt3d.alpha.image"),
 ];
+/// **ONDE o carimbo POUSA**, ao longo da tangente do frame e em unidades de
+/// objeto — ver `ph2d_sculpt3d::Brush::alpha_offset`.
+///
+/// ⚠️ **Dois ids e não um par XY num controle só**, porque as duas pistas deste
+/// painel são de UM número: um widget de dois eixos seria o primeiro do painel e
+/// pediria hit-test, arrasto e chip próprios — trabalho que não compra nada que
+/// duas pistas irmãs não deem.
+pub const SCULPT3D_ALPHA_OFF_X: NodeId = hash_node_id("sculpt3d.alpha_off_x");
+/// Chip ligado a [`SCULPT3D_ALPHA_OFF_X`].
+pub const SCULPT3D_ALPHA_OFF_X_NUM: NodeId = hash_node_id("sculpt3d.alpha_off_x_num");
+/// A outra metade da colocação — ver [`SCULPT3D_ALPHA_OFF_X`].
+pub const SCULPT3D_ALPHA_OFF_Y: NodeId = hash_node_id("sculpt3d.alpha_off_y");
+/// Chip ligado a [`SCULPT3D_ALPHA_OFF_Y`].
+pub const SCULPT3D_ALPHA_OFF_Y_NUM: NodeId = hash_node_id("sculpt3d.alpha_off_y_num");
+
 /// Tamanho de uma feature do alpha, em unidades de objeto.
 pub const SCULPT3D_ALPHA_SCALE: NodeId = hash_node_id("sculpt3d.alpha_scale");
 /// Chip ligado a [`SCULPT3D_ALPHA_SCALE`].

@@ -219,6 +219,18 @@ impl Alpha {
     /// no frame, e o gate pergunta para provar a byte-identidade dos isotrópicos.
     /// Três cópias divergiriam em dois controles que aparecem e não fazem nada —
     /// o mesmo mecanismo do `Verb::uses_plane`.
+    /// **Este padrão é um CARIMBO?** — a porta única da colocação.
+    ///
+    /// ⚠️ Ela existe porque *ter um eixo* e *ter uma posição* são perguntas
+    /// diferentes: os três procedurais direcionais apontam para um lado e são
+    /// homogêneos ao longo dele, e só a imagem tem um *onde*. Um `matches!` no
+    /// sítio de uso viraria três cópias — o painel (para oferecer as duas rows),
+    /// o `alpha_frame` (para decidir se o deslocamento alcança o motor) e o gate.
+    #[must_use]
+    pub fn is_image(&self) -> bool {
+        matches!(self, Self::Image(_))
+    }
+
     #[must_use]
     pub fn is_directional(&self) -> bool {
         matches!(

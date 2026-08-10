@@ -9672,3 +9672,128 @@ nada (a flutuação neutra sai de graça da razão); quem quiser que ele NADE ba
 lane dele nada) · registros **intocados** · gizmo ids **nenhum novo** · **zero
 `Cargo.toml`** · **nenhum ADR**. A row da §14 mudou de rótulo (`Swim Enter` →
 **`Swim Line`**), mesmo id.
+
+---
+
+## W-ZoneForce — a CORRENTEZA leva um personagem cinemático (2026-08-10, plano 08 §4.2, cena `=106`)
+
+O item do Enio, e o último buraco da família das zonas. **Medido antes de tocar em
+código:** uma correnteza de 4 N leva um caixote solto **21,83 m** em 2 s e leva um
+player **Kinematic** ou **Pure** exatamente **`0,0000 m`** — em qualquer força
+(varrido: 1 · 4 · 16 · 64 · 256 N). As duas metades estavam corretas sozinhas: o
+`effector::apply` recusa corpo não-dinâmico antes de o tocar (massa infinita, o
+solver ignoraria o impulso) e a lei cinemática integrava um `Fluid` sem força.
+
+⚠️ **E a primeira tabela reenquadrou a wave:** o modo **Dynamic** também mal anda
+(**0,2271 m** com o freio de fábrica, 1% do caixote). Ablacionando pelo knob do
+artista — `acceleration`/`air_acceleration` — o número vai a 9,17 · 18,84 · 21,83
+conforme o freio cai a 5 · 1 · 0. *A caminhada resiste à correnteza, e isso é o
+certo*: o oráculo da wave não é uma distância, é a **paridade entre modos**.
+
+### O defeito que a medição achou no caminho, e que teve de ser curado PRIMEIRO
+
+Um corpo **COMPOSTO** recebia a força, o torque e o arrasto **uma vez por FORMA**.
+Com a massa mantida fixa e a área partida em 1/2/4 peças:
+
+| peças | x após 2 s (força 4 N) | razão | x após 2 s (arrasto 2) | razão |
+|---|---|---|---|---|
+| 1 | 7,9834 | 1,00× | 4,9478 | 1,00× |
+| 2 | 15,9667 | **2,00×** | 2,5304 | **0,51×** |
+| 4 | 31,9331 | **4,00×** | 1,2761 | **0,26×** |
+
+⚠️ **É a outra metade da `W-CompoundZone`** (02/08), que curou exatamente isto no
+EMPUXO — com `to_float.sort/dedup` — e deixou os outros três **dentro** do laço de
+pares. O comentário que ainda dizia *"ONE body, ONE collider"* descreve um mundo que
+a `W-Compound` (01/08) encerrou, e este era o último sítio que o assumia.
+
+⚠️ **Alcançável hoje**, não hipotético: a `W-PartSensor` deu ao player um pé-sensor,
+que é a segunda forma dele — um personagem com sensor de pé numa correnteza recebia
+o dobro do vento.
+
+**A cura:** a lista deduplicada passou a servir os **cinco** efeitos da zona (por
+isso deixou de se chamar `to_float`), e um corpo de UMA forma fica **byte-idêntico**
+(7,9834 e 4,9478, os mesmos números). `physics_ecs_c9` **`fb27f676…`, 117 corpos,
+INTOCADO** — a dedup e a extração da porta são *pure code motion*.
+
+### A porta
+
+`effector::zone_push_at(effect, shape, iso, sin, cos, at) -> (Vector2, f32)` — os
+**dois EMPURRÕES** neste ponto, já pesados pelo falloff, compondo as três portas que
+já existiam: o frame (`zone_force_world`, W-AreaFrame + W-AreaMirror) e o
+desvanecimento (`zone_falloff_scale`, W-AreaFalloff).
+
+⚠️ **A cerca de Chesterton que a mantinha fora estava certa sobre o perigo e errada
+sobre a conclusão.** Ela dizia: *"a força precisa do frame, do espelho e do falloff —
+re-derivá-los aqui seria uma segunda resposta"*. O perigo é real e continua sendo; o
+que ele proíbe é **re-derivar**, não **perguntar**. Um caminho, dois consumidores.
+
+### A consulta
+
+`FluidAt` ganhou **`push: [f32; 2]`** — a **ACELERAÇÃO** (m/s²), não a força, porque
+quem pergunta é uma lei que **não tem massa na mão**. A divisão usa a massa REAL do
+solver (inclusive o `MassOverride` do W-Mass), e é ela que preserva a assimetria que
+É a feature: *a folha voa, o caixote não*.
+
+⚠️ **SOMA sobre zonas** (duas correntes sobrepostas empurram juntas) e **UMA vez por
+zona** — a consulta anda pelas FORMAS do corpo, então tem a mesma armadilha do
+solver. A pergunta *"já vi esta zona por outra forma minha?"* é feita às formas
+ANTERIORES, então num corpo de uma forma o laço é vazio e não custa nada.
+
+⚠️ **O TORQUE fica de fora, e não por esquecimento:** a porta o devolve, e o
+consumidor não integra velocidade angular (`LockRotation`). Um número que ninguém
+pode aplicar é um knob morto.
+
+### Duas mudanças de comportamento, nomeadas
+
+1. **A consulta deixou de sair pelo early-out de GRAVIDADE.** Ele existia para o
+   empuxo, e uma correnteza não precisa de peso para empurrar ⇒ num mundo sem
+   gravidade o `drag` passa a ser reportado (antes era `DRY`).
+2. **O filtro `displaces` passou a guardar só o EMPUXO.** Um pé-sensor não desloca
+   fluido — mas o CORPO dele é empurrado na mesma, e o solver o encontra por
+   qualquer forma. Sem isto a consulta discordaria do solver num player meio dentro
+   da corrente.
+
+### A lei
+
+`Fluid.push: Vec2`, somada ao lado do motor: `(gravity·g + motor.accel + push)·dt`.
+⚠️ **NÃO escalada pelo `gravity_share`** — o empuxo pesa a GRAVIDADE porque é uma
+força proporcional ao peso; o empurrão de uma zona não tem relação com o peso, e
+escalá-lo junto faria a correnteza afrouxar exatamente onde a água carrega mais.
+`Fluid::DRY` traz `[0, 0]` ⇒ o mundo de antes desta wave, termo a termo.
+
+### Gates e mutações
+
+**13 gates novos** — 7 no wrapper (`zone_push.rs`: a dedup nas três grandezas · o
+`Δv` de um corpo dinâmico contra o que a consulta DIZ, com zona GIRADA na fixture ·
+o falloff · a consulta num corpo composto · o controle seco), 3 na lei
+(`kinematic_tests`), 5 no produto (`player_zone_force.rs`) e 4 na cena. **8
+mutações, 8 sangram.**
+
+⚠️ **O oráculo do `the_query_says_the_push_the_solver_applies` não olha para dentro:**
+ele compara o que a `fluid_at` DIZ contra o `Δv` que o corpo dinâmico ao lado FAZ.
+Comparar a porta contra ela mesma seria verde por construção.
+
+### As QUATRO condições de UI (plano 00)
+
+O componente **já é autorável** (`AreaEffector`, rows sensor-only da §11), **já é
+pintado e registrado**, e o **clique já chega ao barramento** — esta wave não
+acrescenta controle nenhum. O que faltava era a **quarta**: a sequência *"autore uma
+zona de força → ponha um personagem cinemático nela"* **não levava a lugar nenhum**,
+e é exatamente isso que ela fecha. A metade **VISÍVEL** também já existe (a seta
+laranja do overlay diz para que lado a zona sopra) — e essa é a resposta honesta,
+escrita, em vez de um desenho novo por obrigação.
+
+### Números
+
+`PROJECT_SCHEMA` **fica em 71** (nada disto é serializado: `FluidAt.push` é resposta
+de consulta, `Fluid.push` é lei de runtime) · `physics_ecs_c9` **`fb27f676…`, 117
+corpos, INTOCADO** · registros **intocados** · gizmo ids **nenhum novo** · **zero
+`Cargo.toml`** · **nenhum ADR** (tudo sob o ADR-0131).
+
+### Smoke
+
+**`env PH2D_PHYSICS_SMOKE=106 cargo run -p ph2d-host-desktop --release`** — quatro
+cápsulas idênticas numa correnteza de 16 N, sem gravidade, cada uma na sua raia.
+Medido: caixote **87,33** · dinâmico **20,59** · cinemático **20,999** · puro
+**20,999** em 2 s. ⚠️ **O verde sai de quadro em ~1 s** e é assim que se vê o teto;
+o que se julga é os TRÊS players andarem juntos.

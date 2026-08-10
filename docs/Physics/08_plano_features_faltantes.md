@@ -221,11 +221,45 @@ submerso por completo (o viés de `0,64%` que o `AreaBuoyancy` documenta). Ele
 fica onde está sem fazer nada — a flutuação neutra sai de graça da razão —, e
 quem quiser que ele NADE baixa o `swim_enter` um pouco.
 
-### 4.2 · `W-ZoneForce` — **a força de uma zona leva um personagem cinemático** ⟨o item do Enio⟩
+### 4.2 · ~~`W-ZoneForce`~~ — **FECHADA (2026-08-10)**, e a cura foi maior que o item
 
-Hoje uma correnteza move o modo Dynamic e **não** move o Snap/Push/Pure: o
+Uma correnteza movia o modo Dynamic e **não** movia o Snap/Push/Pure: o
 `effector::apply` recusa corpo não-dinâmico antes de tocar nele, e a lei
-cinemática integra `Fluid { buoyed, drag }` — sem força.
+cinemática integrava `Fluid { buoyed, drag }` — sem força. **Medido antes:
+`0,0000 m` em QUALQUER força**, contra 21,83 m de um caixote solto.
+
+⚠️ **E a medição achou um defeito que o item não previa, no caminho para a
+porta: um corpo COMPOSTO recebia a força, o torque e o arrasto uma vez por
+FORMA.** A `W-CompoundZone` (02/08) curou exatamente isto no EMPUXO e deixou os
+outros três dentro do laço de pares — com a massa mantida fixa e a área partida
+em 1/2/4 peças, o mesmo vento levava o corpo `1,00× · 2,00× · 4,00×`, e o
+arrasto compunha ao contrário (`v·kᴺ`: 4,95 → 2,53 → 1,28 m). **Isto é alcançável
+hoje por um player com pé-sensor** (a `W-PartSensor` deu-lhe a segunda forma), e
+uma porta não pode reproduzir um bug ⇒ curado primeiro. A lista deduplicada
+passou a servir os **cinco** efeitos da zona, e por isso deixou de se chamar
+`to_float`.
+
+**A cura do item foi a que o plano prescreveu:** porta única
+`effector::zone_push_at` (frame ∘ espelho ∘ falloff, os dois EMPURRÕES) chamada
+pelo solver **e** pela `fluid_at`, que ganhou `push: [f32; 2]` — a **ACELERAÇÃO**,
+não a força, porque quem pergunta é uma lei que não tem massa na mão; a divisão
+usa a massa REAL do solver e é ela que preserva *a folha voa, o caixote não*.
+
+⚠️ **Duas mudanças de comportamento, nomeadas:** a consulta deixou de sair pelo
+early-out de **gravidade** (uma correnteza não precisa de peso para empurrar), o
+que faz o `drag` passar a ser reportado num mundo sem gravidade; e o filtro
+`displaces` passou a guardar só o **empuxo**, para que a consulta veja as mesmas
+formas que o solver vê (um pé-sensor não desloca fluido, mas o corpo dele é
+empurrado na mesma).
+
+⚠️ **O TORQUE fica fora da consulta, com motivo:** a porta o devolve, e o
+consumidor é uma lei que não integra velocidade angular — um personagem fica em
+pé por construção (`LockRotation`). Entregá-lo seria um knob morto.
+
+**Medido depois** (freio de fábrica, 16 N, 2 s): caixote 87,3 · dinâmico 21,0 ·
+cinemático 21,4 · puro 21,4. Cena **`=106`**. `physics_ecs_c9` byte-idêntico.
+
+<!-- o texto original do item, para a próxima LLM ver o que foi prescrito: -->
 
 ⚠️ **O motivo escrito é bom e a cura tem de o honrar:** a força de uma zona
 precisa do **frame** (W-AreaFrame), do **espelho** (W-AreaMirror) e do
@@ -383,7 +417,7 @@ pedido** — está aqui para a lista ser honesta, não para ser construído.
 ## §5 — A ordem, numa linha
 
 ```
-~~W-Swim~~ ✅ → W-ZoneForce → W-ShapeCast → W-Probes → W-MultiJump → W-Ledge → (W-Glide?) → o ajuste
+~~W-Swim~~ ✅ → ~~W-ZoneForce~~ ✅ → W-ShapeCast → W-Probes → W-MultiJump → W-Ledge → (W-Glide?) → o ajuste
    1         2             3            4           5            6           7           8
 ```
 

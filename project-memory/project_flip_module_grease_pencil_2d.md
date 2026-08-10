@@ -20,7 +20,7 @@ EIXO da polilinha** (não na silhueta: espessura absoluta em px de TELA × fill 
 âncora derivada de espessura transborda `(w/2)·(zoom−1)` ao dar zoom depois do clique; saga em
 `docs/Flip/BUGS_flip.md` #8–#14, [[feedback_anchor_must_be_invariant_under_user_transforms]];
 smoke aprovado 2026-07-12, Precision default 1,6 saiu dele). **Linha FECHADA aguardando
-integração** — handoff §1.5.9 em `docs/HANDOFF_line_FLIP_integracao_2026-07-12.md` (na
+integração** — handoff §1.5.9 em `docs/Flip/handoffs/HANDOFF_line_FLIP_integracao_2026-07-12.md` (na
 branch `line/FLIP`). Próxima da linha: W5 (Reshape). **A integração com a timeline global (W6) está
 ADIADA** por ordem do Enio (2026-07-12) até a timeline principal ficar pronta — a tira própria do
 Flip (`ph2d-panel-flip-frames`) é a UI de tempo até lá, e o playhead JÁ é o global (`ph2d_core::Playhead`),

@@ -11,7 +11,7 @@ A PINTURA está VIVA e em dev ativo, apesar de CLAUDE.md §5 e [[project_paintin
 
 Ground-truth (2026-06-24): `crates/ph2d-painter-brush` existe — um **reimplemento clean-room do Blender Texture Paint** (engine NOVO, não o que ADR-0099 deletou; o próprio `lib.rs` afirma isso). Dirigido por `ph2d-tool-painter` (host) via `CanvasPaintTool::on_canvas_pointer`. Painel `ph2d-panel-painter-layers` hospeda as seções Brush/Stroke/Texture + a layer stack. Plano vivo: `docs/Painter/`. Ref Blender vendored: `reference/blender-texture-paint/` (GPL → clean-room, só comportamento).
 
-Git confirma: commits recentes `0d316ce6`→`dbfe9848` são todos `feat(painter)` (Texture Layer, Color Ramp, per-dab jitter). Em 2026-06-24 landou per-dab **Randomize Color + Jitter Scale + Jitter Rotate** (módulo `jitter.rs` no brush, splitmix64 + HSV transcendental-free; `docs/HANDOFF_brush_jitter_color.md`).
+Git confirma: commits recentes `0d316ce6`→`dbfe9848` são todos `feat(painter)` (Texture Layer, Color Ramp, per-dab jitter). Em 2026-06-24 landou per-dab **Randomize Color + Jitter Scale + Jitter Rotate** (módulo `jitter.rs` no brush, splitmix64 + HSV transcendental-free; `docs/Painter/handoffs/HANDOFF_brush_jitter_color.md`).
 
 **Why:** a nota "deletada" custou ~10min de investigação no início da sessão (o handoff mandava editar `ph2d-painter-brush`, que a memória dizia removida). O repo é a fonte de verdade, não a memória.
 

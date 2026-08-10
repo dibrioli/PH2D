@@ -7843,7 +7843,7 @@ fn deform_transform_undo_rolls_back_the_whole_transform() {
 
 // ============================================================================
 // FASE A — Per-Layer Color perf-measurement harness.
-// Tracker: docs/HANDOFF_per_layer_color_perf_artifacts.md §1 (owed numbers).
+// Tracker: docs/Painter/handoffs/HANDOFF_per_layer_color_perf_artifacts.md §1 (owed numbers).
 // Ignored by default. Run in RELEASE — dev (opt-0) lies about perf
 // (project_painter_composite_perf):
 //   cargo test -p ph2d-tool-painter --release per_layer_perf -- --ignored --nocapture

@@ -2,7 +2,7 @@
 
 > **Para o AGENTE INTEGRADOR.** Este é o handoff do **tip atual** da `line/FLIP`. A linha traz
 > agora **10 commits** sobre o `main` de hoje (ff-only): o multiplano 2.5D + o polish dos sliders +
-> o Self Overlap (detalhe em [`HANDOFF_INTEGRACAO_line_FLIP_self_overlap_2026-07-25.md`](../../Flip/handoffs/HANDOFF_INTEGRACAO_line_FLIP_self_overlap_2026-07-25.md))
+> o Self Overlap (detalhe em [`HANDOFF_INTEGRACAO_line_FLIP_self_overlap_2026-07-25.md`](HANDOFF_INTEGRACAO_line_FLIP_self_overlap_2026-07-25.md))
 > + o **Airbrush** (`0443f98c2`) + a **reamostragem suave do traço** (`a14335e5f`, §7 abaixo).
 > **Não integrar nem pushar sem ordem EXPLÍCITA do Enio.**
 >

@@ -8,11 +8,12 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**22 handoffs** · **7** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**23 handoffs** · **7** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
+| — |  | [BRIEFING_line_nesting.md](BRIEFING_line_nesting.md) | briefing | linha nesting (a 2ª mensagem, depois de "linha pronta") |
 | 2026-07-11 |  | [HANDOFF_INTEGRACAO_line_anim_2026-07-11.md](HANDOFF_INTEGRACAO_line_anim_2026-07-11.md) | integração | HANDOFF DE INTEGRAÇÃO — linha line/anim (Timeline W4 cauda + W5) |
 | 2026-07-11 | ◆ | [HANDOFF_line_anim_integracao_2026-07-11.md](HANDOFF_line_anim_integracao_2026-07-11.md) | integração | Handoff de integração — linha line/anim (Timeline W4.T5 + fix auto-key/play + speed graph) |
 | 2026-07-11 |  | [HANDOFF_time_remap_bug_e_fila_2026-07-11.md](HANDOFF_time_remap_bug_e_fila_2026-07-11.md) | trabalho | Time remap ainda quebra a animação · fila W5 · protocolo de integração (linha line/anim) |

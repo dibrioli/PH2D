@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**31 handoffs** · **5** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**32 handoffs** · **6** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 | Data | | Arquivo | Papel | Assunto |
@@ -36,6 +36,7 @@
 | 2026-07-21 |  | [HANDOFF_line_FLIP_INTEGRACAO_2026-07-21.md](HANDOFF_line_FLIP_INTEGRACAO_2026-07-21.md) | integração | Handoff de INTEGRAÇÃO — line/FLIP → main (2026-07-21) |
 | 2026-07-22 |  | [HANDOFF_line_FLIP_INTEGRACAO_tween_v2_2026-07-22.md](HANDOFF_line_FLIP_INTEGRACAO_tween_v2_2026-07-22.md) | integração | Handoff de INTEGRAÇÃO — line/FLIP → main (Tween v2, 2026-07-22) |
 | 2026-07-23 | ◆ | [HANDOFF_INTEGRACAO_line_FLIP_strip_hands_2026-07-23.md](HANDOFF_INTEGRACAO_line_FLIP_strip_hands_2026-07-23.md) | integração | Handoff de INTEGRAÇÃO — line/FLIP → main (a tira ganha MÃOS, 2026-07-23) |
+| 2026-07-25 | ◆ | [HANDOFF_INTEGRACAO_line_FLIP_airbrush_2026-07-25.md](HANDOFF_INTEGRACAO_line_FLIP_airbrush_2026-07-25.md) | integração | HANDOFF DE INTEGRAÇÃO — line/FLIP · AIRBRUSH + REAMOSTRAGEM (2026-07-25) |
 | 2026-07-25 | ◆ | [HANDOFF_INTEGRACAO_line_FLIP_multiplane_2026-07-25.md](HANDOFF_INTEGRACAO_line_FLIP_multiplane_2026-07-25.md) | integração | HANDOFF DE INTEGRAÇÃO — line/FLIP · 2.5D MULTIPLANO (2026-07-25) |
 | 2026-07-25 | ◆ | [HANDOFF_INTEGRACAO_line_FLIP_self_overlap_2026-07-25.md](HANDOFF_INTEGRACAO_line_FLIP_self_overlap_2026-07-25.md) | integração | HANDOFF DE INTEGRAÇÃO — line/FLIP · SELF OVERLAP (2026-07-25) |
 | 2026-07-28 |  | [HANDOFF_INTEGRACAO_line_FLIP_crossing_curves_2026-07-28.md](HANDOFF_INTEGRACAO_line_FLIP_crossing_curves_2026-07-28.md) | integração | HANDOFF DE INTEGRAÇÃO — line/FLIP: o cruzamento e a curva (2026-07-28) |

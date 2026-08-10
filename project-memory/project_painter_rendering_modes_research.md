@@ -9,7 +9,7 @@ metadata:
 
 Enio pediu (2026-06-26) levar o Painter a "outro nível" com os Rendering Modes do Procreate: **Uniform/Intense Glaze, Uniform/Intense Blending, Wet Edges, Burnt Edges** + o painel **Wet Mix**. Pesquisa multi-agente + verificação adversarial → **design + handoff** escritos; **NÃO implementado ainda** (aguarda aval).
 
-- **Docs entregues:** [`docs/Painter/07_rendering_modes_wet_mix.md`](design) + [`docs/Painter/HANDOFF_rendering_modes_wet_mix.md`](handoff). Indexados em `docs/Painter/00_INDEX.md`.
+- **Docs entregues:** [`docs/Painter/07_rendering_modes_wet_mix.md`](design) + [`docs/Painter/handoffs/HANDOFF_rendering_modes_wet_mix.md`](handoff). Indexados em `docs/Painter/00_INDEX.md`.
 - **Interdependência (a pergunta central do Enio):** Rendering Mode ⇄ Wet Mix são **acoplados, sem gate liga/desliga duro**. Verbatim Handbook: *Intense Blending* "gives a full flow effect to the paint's Wet Mix". Wet Mix (smudge/mixer state) é **essencial só nos 2 modos Blending**; dispensável p/ Glaze e p/ Wet/Burnt Edges.
 - **Enabler arquitetural:** um **stroke buffer** RGBA premultiplicado-**linear** por traço, composto **1× no pen-up**. Glaze = acumulação MAX (uniforme); Intense = additive; Blending = lê destino + lerp. Wet/Burnt Edges = `blur(α)` separável no finalize (`rim = max(0,α−blur(α))` + ColorBurn). **Sem re-sim de fluido** (ADR-0096).
 - **Seed já no código:** o flag `accumulate` + `stroke_mask` (cap de cobertura por-traço, `dab.rs:532–541` / `paint.rs:201/287`) já é ~"Uniform Glaze" direto na camada — falta generalizar p/ buffer separado + composite-único.

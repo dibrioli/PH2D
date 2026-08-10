@@ -3,7 +3,7 @@
 > ⚠️ **DESATUALIZADO como visão-geral da linha:** a `line/FLIP` recebeu depois o **Airbrush**
 > (`0443f98c2`) e está agora **8 commits** à frente do main. O handoff do TIP atual (contagem de
 > schema `(34,12,13)`, o GO das 8) é
-> [`HANDOFF_INTEGRACAO_line_FLIP_airbrush_2026-07-25.md`](../../Painter/handoffs/HANDOFF_INTEGRACAO_line_FLIP_airbrush_2026-07-25.md).
+> [`HANDOFF_INTEGRACAO_line_FLIP_airbrush_2026-07-25.md`](HANDOFF_INTEGRACAO_line_FLIP_airbrush_2026-07-25.md).
 > Este doc segue válido para os DETALHES do Self Overlap (o commit `ef391420d`).
 
 > **Para o AGENTE INTEGRADOR.** Este é o handoff do **Self Overlap** da `line/FLIP` (o commit

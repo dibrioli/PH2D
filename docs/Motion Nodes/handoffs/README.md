@@ -22,11 +22,11 @@
 | 2026-07-14 |  | [HANDOFF_line_motion_value_continuacao_2026-07-14.md](HANDOFF_line_motion_value_continuacao_2026-07-14.md) | continuação | continuação da linha line/motion-value (Motion Nodes) |
 | 2026-07-15 |  | [HANDOFF_line_cook_parallel_2026-07-15.md](HANDOFF_line_cook_parallel_2026-07-15.md) | trabalho | linha line/cook-parallel (GPU/M5 Fase 0), 2026-07-15 |
 | 2026-07-15 |  | [HANDOFF_line_gpu_nodes_fase1_2026-07-15.md](HANDOFF_line_gpu_nodes_fase1_2026-07-15.md) | trabalho | linha line/gpu-nodes (GPU/M5 Fase 1 / F1.1), 2026-07-15 |
-| 2026-07-15 |  | [HANDOFF_line_gpu_nodes_fase1_briefing_2026-07-15.md](HANDOFF_line_gpu_nodes_fase1_briefing_2026-07-15.md) | briefing | BRIEFING — line/gpu-nodes (GPU/M5 Fase 1): o motor de nós GPU-resident |
+| 2026-07-15 |  | [HANDOFF_line_gpu_nodes_fase1_briefing_2026-07-15.md](HANDOFF_line_gpu_nodes_fase1_briefing_2026-07-15.md) | briefing | line/gpu-nodes (GPU/M5 Fase 1): o motor de nós GPU-resident |
 | 2026-07-15 |  | [HANDOFF_line_gpu_nodes_fase2_2026-07-15.md](HANDOFF_line_gpu_nodes_fase2_2026-07-15.md) | trabalho | linha line/gpu-nodes (GPU/M5 F1.2 + Fase 2), 2026-07-15 |
-| 2026-07-15 |  | [HANDOFF_line_gpu_nodes_fase2_briefing_2026-07-15.md](HANDOFF_line_gpu_nodes_fase2_briefing_2026-07-15.md) | briefing | BRIEFING — continuação de line/gpu-nodes (GPU/M5 F1.2 + Fase 2): portar os nós pro motor |
+| 2026-07-15 |  | [HANDOFF_line_gpu_nodes_fase2_briefing_2026-07-15.md](HANDOFF_line_gpu_nodes_fase2_briefing_2026-07-15.md) | briefing | continuação de line/gpu-nodes (GPU/M5 F1.2 + Fase 2): portar os nós pro motor |
 | 2026-07-16 |  | [HANDOFF_line_gpu_nodes_fase3_2026-07-16.md](HANDOFF_line_gpu_nodes_fase3_2026-07-16.md) | trabalho | linha line/gpu-nodes (GPU/M5 Fase 3: a simulação na GPU), 2026-07-16 |
-| 2026-07-16 |  | [HANDOFF_line_gpu_nodes_fase3_briefing_2026-07-16.md](HANDOFF_line_gpu_nodes_fase3_briefing_2026-07-16.md) | briefing | BRIEFING — continuação de line/gpu-nodes (GPU/M5 Fase 3): a simulação na GPU |
+| 2026-07-16 |  | [HANDOFF_line_gpu_nodes_fase3_briefing_2026-07-16.md](HANDOFF_line_gpu_nodes_fase3_briefing_2026-07-16.md) | briefing | continuação de line/gpu-nodes (GPU/M5 Fase 3): a simulação na GPU |
 | 2026-07-17 |  | [HANDOFF_line_gpu_nodes_emitter_ADR0130_2026-07-17.md](HANDOFF_line_gpu_nodes_emitter_ADR0130_2026-07-17.md) | trabalho | HANDOFF (briefing de continuação) — line/gpu-nodes · ADR-0130 · o emitter na GPU (o gather por i… |
 | 2026-07-18 |  | [HANDOFF_INTEGRACAO_line_gpu_nodes_2026-07-18.md](HANDOFF_INTEGRACAO_line_gpu_nodes_2026-07-18.md) | integração | HANDOFF DE INTEGRAÇÃO — line/gpu-nodes (ADR-0130 + emenda 1) · 2026-07-18 |
 | 2026-07-18 |  | [HANDOFF_line_gpu_nodes_continuacao_2026-07-18.md](HANDOFF_line_gpu_nodes_continuacao_2026-07-18.md) | continuação | HANDOFF (briefing de continuação) — line/gpu-nodes · pós-integração 2026-07-18 |

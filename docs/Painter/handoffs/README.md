@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**69 handoffs** · **25** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**68 handoffs** · **24** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 | Data | | Arquivo | Papel | Assunto |
@@ -62,7 +62,6 @@
 | 2026-07-24 |  | [HANDOFF_INTEGRACAO_line_Painter_gpu_onda5a_paint_nocopy_2026-07-24.md](HANDOFF_INTEGRACAO_line_Painter_gpu_onda5a_paint_nocopy_2026-07-24.md) | integração | Handoff de integração — line/Painter · Onda 5a (a pintura para de copiar o canvas por movimento) |
 | 2026-07-24 |  | [HANDOFF_INTEGRACAO_line_Painter_gpu_onda5b_partial_layer_upload_2026-07-24.md](HANDOFF_INTEGRACAO_line_Painter_gpu_onda5b_partial_layer_upload_2026-07-24.md) | integração | Handoff de integração — line/Painter · Onda 5b (o compositor GPU re-envia só a região suja) |
 | 2026-07-24 |  | [HANDOFF_INTEGRACAO_line_Painter_gpu_onda5c_mask_partial_lane_2026-07-24.md](HANDOFF_INTEGRACAO_line_Painter_gpu_onda5c_mask_partial_lane_2026-07-24.md) | integração | Handoff de integração — line/Painter · Onda 5c (o traço de máscara toma a via parcial) |
-| 2026-07-25 | ◆ | [HANDOFF_INTEGRACAO_line_FLIP_airbrush_2026-07-25.md](HANDOFF_INTEGRACAO_line_FLIP_airbrush_2026-07-25.md) | integração | HANDOFF DE INTEGRAÇÃO — line/FLIP · AIRBRUSH + REAMOSTRAGEM (2026-07-25) |
 | 2026-07-25 | ◆ | [HANDOFF_INTEGRACAO_line_Painter_2026-07-25.md](HANDOFF_INTEGRACAO_line_Painter_2026-07-25.md) | integração | Handoff de INTEGRAÇÃO — line/Painter, a jornada de 2026-07-23..25 |
 | 2026-07-25 |  | [HANDOFF_INTEGRACAO_line_Painter_impasto_fold_2026-07-25.md](HANDOFF_INTEGRACAO_line_Painter_impasto_fold_2026-07-25.md) | integração | Handoff de integração — line/Painter: o fold do impasto anda o retângulo sujo |
 | 2026-07-25 |  | [HANDOFF_line_Painter_gpu_continuacao_2026-07-25.md](HANDOFF_line_Painter_gpu_continuacao_2026-07-25.md) | continuação | line/Painter: levar o Painter para a GPU (continuação) |

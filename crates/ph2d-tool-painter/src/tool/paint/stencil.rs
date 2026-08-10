@@ -372,10 +372,6 @@ impl PainterTool {
                 self.toggle_line_show_dimensions(); // Line CAD dimensions overlay (see `line_dim`)
                 return true;
             }
-            if *id == core_ids::PAINTER_TAPER_LINK {
-                self.toggle_brush_taper_link(); // "Link tip sizes" (see `brush_taper_settings`)
-                return true;
-            }
         }
         let PanelEvent::SetValue(id, v) = event else {
             return false;
@@ -385,9 +381,7 @@ impl PainterTool {
             x if x == core_ids::PAINTER_BRUSH_DAB_FLATTEN => self.set_brush_dab_flatten(v),
             x if x == core_ids::PAINTER_BRUSH_DAB_ANGLE => self.set_brush_dab_angle(v),
             x if x == core_ids::PAINTER_TAPER_START => self.set_brush_taper_start(v),
-            x if x == core_ids::PAINTER_TAPER_END => self.set_brush_taper_end(v),
             x if x == core_ids::PAINTER_TAPER_TIP_START => self.set_brush_taper_tip_start(v),
-            x if x == core_ids::PAINTER_TAPER_TIP_END => self.set_brush_taper_tip_end(v),
             x if x == core_ids::PAINTER_TAPER_OPACITY => self.set_brush_taper_opacity(v),
             _ => return false,
         }

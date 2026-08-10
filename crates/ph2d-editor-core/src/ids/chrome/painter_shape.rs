@@ -166,24 +166,24 @@ pub fn painter_brush_dab_handle_id(channel: u8) -> NodeId {
 // same thing the falloff does (how wide the mark is) along the OTHER axis: the falloff across the dab,
 // the taper along the stroke.
 
-/// The taper **widget**: a stroke-shaped preview with a draggable handle at each end. Both handles are
-/// `CurvePoint`s parented here (channel `0` = the START length, `1` = the END length); the panel decodes
-/// the drag and forwards [`PAINTER_TAPER_START`] / [`PAINTER_TAPER_END`], exactly like the dab gizmo.
+/// The taper **widget**: a stroke-shaped preview with one draggable handle, at the HEAD. It is a
+/// `CurvePoint` parented here (channel `0` = the START length); the panel decodes the drag and forwards
+/// [`PAINTER_TAPER_START`], exactly like the dab gizmo.
+///
+/// ⛔ It carried a **second handle** — channel `1`, the END length, measured in from the right edge —
+/// plus a *Link tip sizes* toggle and a second Tip row. All three went with the far end (Enio
+/// 2026-08-10: *"deixe o ajuste apenas para o início do traço"*); `ph2d_painter_brush::taper` carries
+/// why and what it cost. Their ids are gone rather than kept-and-unpainted, because an id that is
+/// registered and routed but never painted is exactly the rot the Paper Rake/Random ids became.
 pub const PAINTER_TAPER_GIZMO: NodeId = hash_node_id("painter_brush.taper_gizmo");
 /// Taper length at the stroke's **start**, in brush DIAMETERS. `SetValue` → `set_brush_taper_start`.
 pub const PAINTER_TAPER_START: NodeId = hash_node_id("painter_brush.taper_start");
-/// Taper length at the stroke's **end**, in brush DIAMETERS. `SetValue` → `set_brush_taper_end`.
-pub const PAINTER_TAPER_END: NodeId = hash_node_id("painter_brush.taper_end");
-/// **Tip size** at the start, `0..1` (`0` = a sharp point, `1` = blunt). Procreate's "Tip".
+/// **Tip size**, `0..1` (`0` = a sharp point, `1` = blunt). Procreate's "Tip".
 pub const PAINTER_TAPER_TIP_START: NodeId = hash_node_id("painter_brush.taper_tip_start");
-/// **Tip size** at the end, `0..1`. Only painted while [`PAINTER_TAPER_LINK`] is unchecked.
-pub const PAINTER_TAPER_TIP_END: NodeId = hash_node_id("painter_brush.taper_tip_end");
-/// **Link tip sizes**: one tip size drives both ends. Click toggle (`Click` → `toggle_brush_taper_link`).
-pub const PAINTER_TAPER_LINK: NodeId = hash_node_id("painter_brush.taper_link");
 /// Taper **Opacity**, `0..1`: how much the taper fades as well as narrows.
 pub const PAINTER_TAPER_OPACITY: NodeId = hash_node_id("painter_brush.taper_opacity");
 
-/// The taper's three **numeric** rows, as one family.
+/// The taper's two **numeric** rows, as one family.
 ///
 /// ⚠️ This list is what makes them LIVE: a number row is painted and hit-registered by
 /// `paint_num_row`, but its `ValueChanged` only reaches the tool if `is_param_field` claims the id —
@@ -192,15 +192,15 @@ pub const PAINTER_TAPER_OPACITY: NodeId = hash_node_id("painter_brush.taper_opac
 /// Enio reported on 2026-08-08 (*"Tip start, Tip End e Opacity não aceitam ajustes (voltam a zero)"*):
 /// painted, registered, alive under the mouse, and mute — the fourth of the four independent UI
 /// conditions, and the one a paint+populate gate cannot see.
-pub const PAINTER_TAPER_FIELDS: [NodeId; 3] = [
-    PAINTER_TAPER_TIP_START,
-    PAINTER_TAPER_TIP_END,
-    PAINTER_TAPER_OPACITY,
-];
+pub const PAINTER_TAPER_FIELDS: [NodeId; 2] = [PAINTER_TAPER_TIP_START, PAINTER_TAPER_OPACITY];
 
-/// Stable [`NodeId`] for the taper handle on `channel` (`0` = start, `1` = end). A FACTORY id
-/// (paint-time `CurvePoint` registration), the twin of [`painter_brush_dab_handle_id`], so it stays off
-/// the static hit↔populate wiring scan.
+/// Stable [`NodeId`] for the taper handle on `channel` (`0` = the head, and today the only one). A
+/// FACTORY id (paint-time `CurvePoint` registration), the twin of [`painter_brush_dab_handle_id`], so it
+/// stays off the static hit↔populate wiring scan.
+///
+/// ⚠️ Still takes a channel although one value is live: the id is a FORMAT, and re-spelling it as a
+/// plain const would move the hash of handle `0` — the widget's own drag decode keys off the channel it
+/// registered, and a second spelling of "the head handle" is how the two stop agreeing.
 #[must_use]
 pub fn painter_taper_handle_id(channel: u8) -> NodeId {
     fnv_node_id_runtime(&format!("painter_brush.taperhandle.{channel}"))

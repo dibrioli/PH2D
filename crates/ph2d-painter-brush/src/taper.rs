@@ -1,6 +1,6 @@
-//! **Taper** — the stroke thins at its ends because it is near an end, not because a pen pressed
-//! lightly (Procreate's *Touch Taper*; Enio 2026-08-08: *"como Procreate faz com sua ferramenta de
-//! Taper (sem pressão da caneta)"*).
+//! **Taper** — the stroke thins at its START because it is near the beginning, not because a pen
+//! pressed lightly (Procreate's *Touch Taper*; Enio 2026-08-08: *"como Procreate faz com sua ferramenta
+//! de Taper (sem pressão da caneta)"*).
 //!
 //! ## What it is
 //!
@@ -9,23 +9,38 @@
 //! pressure). On a mouse the first does not exist — every sample arrives at pressure `1.0` — so the
 //! second *is* the taper, and it is the only way a mouse draws a calligraphic line at all.
 //!
-//! The Procreate model, and what this ports:
+//! What this ports:
 //!
-//! * two lengths, one per end, authored on a stroke-shaped widget with a handle on each side;
+//! * one length, authored on a stroke-shaped widget with a handle at the head;
 //! * a **Tip** size, "sharp" at the low end and "blunt" at the high end — how thin the very tip gets;
 //! * an **Opacity** amount, so the taper can fade as well as narrow.
 //!
+//! ## ⛔ THE FAR END IS GONE — do not rebuild it (Enio 2026-08-10)
+//!
+//! The reference app tapers both ends and this crate once did too: a second length, a second tip, a
+//! *Link tip sizes* toggle, a `min` of the two windows, and — because a freehand drag does not know
+//! where it will end — a pen-up replay that put the last window's ink back and laid it again, tapered.
+//!
+//! The order that removed it is *"quanto à cauda do taper vamos desativar para todos os modos de
+//! pintura; deixe o ajuste apenas para o início do traço, como já funciona perfeitamente"*. It is a
+//! product decision, not a defect: the head taper is exact, live and free on every method, and the tail
+//! never was — it cost a canvas restore + a full re-stamp at pen-up, it was **structurally out of
+//! impasto** (the restore took the artist's paint and the replay did not put it back — measured: `0`
+//! inked rows with the restore against `20` without), and it was out of watercolor and Wet Paint too
+//! (the wash rebuilds from its own accumulators and the fluid cannot be rewound). What it left behind
+//! was a control that was live in a corner and mute everywhere else.
+//!
+//! ⚠️ **What was lost with it, so nobody discovers it as a bug:** the shape editors (Line / Arc / Curve
+//! / Free Hand) knew their whole path before the first dab, so *their* end taper was exact and cost
+//! nothing. It went with the rest, because a length that only shapes some methods is the half-live
+//! control this codebase refuses. Reviving it is the law here plus a span the fills declare — one wave,
+//! and it needs the order that this one had.
+//!
 //! ## The law
 //!
-//! A dab knows two distances: `s`, the arc travelled from the pen-down, and `e`, the arc still to
-//! come. Each end contributes a width multiplier that is `tip` at the very tip, `1` once past the
-//! taper length, and a **smoothstep** in between — C¹ at both ends, so the taper joins the full-width
-//! body with no crease and the tip lands with no corner. No transcendental (HR-5).
-//!
-//! The two contributions combine by **`min`, never by product**. On a stroke shorter than
-//! `start + end` the two windows overlap, and a product would thin it *twice* — a short flick would
-//! very nearly vanish, which reads as the brush being broken rather than as a taper. `min` says the
-//! honest thing: a dab is as wide as the *tightest* end allows.
+//! A dab knows `s`, the arc travelled from the pen-down. The width multiplier is `tip` at the very tip,
+//! `1` once past the taper length, and a **smoothstep** in between — C¹ at both ends, so the taper joins
+//! the full-width body with no crease and the tip lands with no corner. No transcendental (HR-5).
 //!
 //! ## Why the length is in DIAMETERS
 //!
@@ -37,34 +52,25 @@
 //!
 //! ⚠️ **A fraction of the STROKE would have been the other obvious choice, and it cannot work here:**
 //! a percentage needs the total length, and a freehand stroke does not have one until the pen lifts —
-//! it would make even the *start* taper unknowable while the artist draws. See [`crate::stroke`] for
-//! how the END is resolved for each family of stroke method.
+//! it would make even the start taper unknowable while the artist draws.
 
 /// Taper lengths are authored in **diameters**; this is the top of the slider.
 ///
 /// Eight is where a 40 px brush tapers over 320 px — already longer than anything that reads as "the
 /// brush", and far past any taper in the reference app. It costs no latency at any value: nothing is
-/// ever held back ([`mod@crate::stroke::ends`]).
+/// ever held back, because the head is known from the first dab.
 pub const MAX_TAPER_DIAMETERS: f32 = 8.0;
 
-/// The stroke-end shaping of a brush (Procreate *Touch Taper*). All-zero is off, and an off taper is
-/// byte-identical to no taper at all — the multipliers are exactly `1.0` and the dab is untouched.
+/// The stroke-head shaping of a brush (Procreate *Touch Taper*). All-zero is off, and an off taper is
+/// byte-identical to no taper at all — the multiplier is exactly `1.0` and the dab is untouched.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Taper {
     /// Taper length at the **start** of the stroke, in diameters (`0` = off).
     pub start: f32,
-    /// Taper length at the **end** of the stroke, in diameters (`0` = off).
-    pub end: f32,
     /// Width at the very **start** tip as a fraction of full width: `0` = a sharp point, `1` = blunt
     /// (no narrowing at all, so the taper is only whatever [`Self::opacity`] fades). Procreate's
     /// "Tip", whose own slider runs sharp → blunt.
     pub tip_start: f32,
-    /// Width at the very **end** tip. Ignored while [`Self::link_tips`] is set — then both ends wear
-    /// [`Self::tip_start`].
-    pub tip_end: f32,
-    /// **Link tip sizes**: one tip size drives both ends. On by default — two ends of one stroke
-    /// wanting different points is the special case, not the rule.
-    pub link_tips: bool,
     /// How much the taper also **fades**, `0..1`. `0` = the taper is purely a width (the tip is thin
     /// but as opaque as the body); `1` = coverage narrows exactly like the width, so the tip
     /// dissolves. Procreate's taper Opacity.
@@ -78,12 +84,9 @@ impl Taper {
     /// spelled out there would be the version that quietly stops matching this one.
     pub const NEUTRAL: Self = Self {
         start: 0.0,
-        end: 0.0,
         // A tapered end is a POINT unless the artist asks otherwise: this is the sharp end of
         // Procreate's own Tip slider, and the reason the feature is worth having on a mouse.
         tip_start: 0.0,
-        tip_end: 0.0,
-        link_tips: true,
         opacity: 0.0,
     };
 }
@@ -99,18 +102,7 @@ impl Taper {
     /// enters the taper path at all, which is what keeps a default brush byte-identical.
     #[must_use]
     pub fn is_active(&self) -> bool {
-        self.start > 0.0 || self.end > 0.0
-    }
-
-    /// The tip width of the END, honouring [`Self::link_tips`] — the one door for the question, asked
-    /// by the width law here and by the panel that draws the preview.
-    #[must_use]
-    pub fn effective_tip_end(&self) -> f32 {
-        if self.link_tips {
-            self.tip_start
-        } else {
-            self.tip_end
-        }
+        self.start > 0.0
     }
 
     /// Taper length at the start in **pixels**, for a brush of `diameter_px`.
@@ -119,25 +111,15 @@ impl Taper {
         self.start.clamp(0.0, MAX_TAPER_DIAMETERS) * diameter_px.max(0.0)
     }
 
-    /// Taper length at the end in **pixels**, for a brush of `diameter_px`.
-    #[must_use]
-    pub fn end_px(&self, diameter_px: f32) -> f32 {
-        self.end.clamp(0.0, MAX_TAPER_DIAMETERS) * diameter_px.max(0.0)
-    }
-
-    /// The **width multiplier** for a dab that is `from_start` px along the stroke and `to_end` px from
-    /// its far end, on a brush of `diameter_px`.
+    /// The **width multiplier** for a dab that is `from_start` px along the stroke, on a brush of
+    /// `diameter_px`.
     ///
-    /// Pass `f32::INFINITY` for `to_end` when the end is not yet known — the end term is then exactly
-    /// `1.0` and only the start taper applies, which is the correct answer for a stroke still being
-    /// drawn (see [`crate::stroke`]).
+    /// Every stroke method can answer this from its first dab — [`crate::Dab::arc_len`] carries it
+    /// exactly — so there is no case where a dab has to be held back to find out, and no method where
+    /// the taper is inert.
     #[must_use]
-    pub fn width(&self, from_start: f32, to_end: f32, diameter_px: f32) -> f32 {
-        let a = ramp(from_start, self.start_px(diameter_px), self.tip_start);
-        let b = ramp(to_end, self.end_px(diameter_px), self.effective_tip_end());
-        // `min`, not `a * b` — see the module docs: on a short stroke the two windows overlap and a
-        // product thins it twice.
-        a.min(b)
+    pub fn width(&self, from_start: f32, diameter_px: f32) -> f32 {
+        ramp(from_start, self.start_px(diameter_px), self.tip_start)
     }
 
     /// The **coverage multiplier** that goes with a width multiplier `w`. `opacity = 0` leaves the dab
@@ -149,15 +131,15 @@ impl Taper {
     }
 }
 
-/// One end's width multiplier: `tip` at distance `0`, `1.0` from `len` on, smoothstep between.
+/// The head's width multiplier: `tip` at distance `0`, `1.0` from `len` on, smoothstep between.
 ///
-/// `len <= 0` (that end has no taper) short-circuits to exactly `1.0`, so an off end costs one compare
-/// and cannot perturb a single bit.
+/// `len <= 0` (no taper) short-circuits to exactly `1.0`, so an off taper costs one compare and cannot
+/// perturb a single bit.
 fn ramp(d: f32, len: f32, tip: f32) -> f32 {
     // Written as a POSITIVE pair of comparisons on purpose: everything that is not definitely inside a
-    // real taper window — no window (`len <= 0`), past it, an infinite `to_end` (the far end is not known
-    // yet), a NaN — falls through to full width. Negating the comparisons instead would send NaN down the
-    // ramp, and the one thing worse than a taper that ignores a bad number is a taper that trusts it.
+    // real taper window — no window (`len <= 0`), past it, a NaN — falls through to full width.
+    // Negating the comparisons instead would send NaN down the ramp, and the one thing worse than a
+    // taper that ignores a bad number is a taper that trusts it.
     if len > 0.0 && d < len {
         let t = (d.max(0.0) / len).clamp(0.0, 1.0);
         let s = t * t * (3.0 - 2.0 * t); // smoothstep: C¹ at both ends, no transcendental (HR-5)
@@ -171,9 +153,7 @@ fn ramp(d: f32, len: f32, tip: f32) -> f32 {
 /// Scale a dab in place by a taper width `w`, keeping the radius inside the engine's own bounds.
 ///
 /// The single place a taper ever touches a [`crate::Dab`], and it is applied at EMISSION — the instant
-/// the dab is made, at the position the pointer put it. Nothing is buffered waiting to learn its
-/// distance-to-the-end; what the far end costs is answered by geometry instead
-/// ([`mod@crate::stroke::ends`]).
+/// the dab is made, at the position the pointer put it. Nothing is buffered and nothing is replayed.
 ///
 /// ⚠️ [`crate::Dab::stroke_radius_px`] is deliberately NOT scaled. It is the stroke's *nominal* radius
 /// and it is stroke-constant by contract — the Shape **Flow** mapping divides its along-the-stroke

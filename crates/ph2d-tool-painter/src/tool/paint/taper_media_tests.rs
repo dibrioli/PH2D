@@ -26,7 +26,6 @@ use crate::tool::PaintMedia;
 fn a_taper_authored_in_one_medium_is_the_taper_in_all_four() {
     let mut t = PainterTool::default();
     t.set_brush_taper_start(2.5);
-    t.set_brush_taper_end(1.25);
     t.set_brush_taper_tip_start(0.4);
     t.set_brush_taper_opacity(0.75);
 
@@ -42,8 +41,8 @@ fn a_taper_authored_in_one_medium_is_the_taper_in_all_four() {
         t.set_paint_media(m);
         let k = t.brush_settings().taper;
         assert_eq!(
-            (k.start, k.end, k.tip_start, k.opacity),
-            (2.5, 1.25, 0.4, 0.75),
+            (k.start, k.tip_start, k.opacity),
+            (2.5, 0.4, 0.75),
             "the taper did not survive the switch to {m:?} — it is per-slot, so the artist loses it"
         );
     }
@@ -60,18 +59,22 @@ fn a_taper_authored_in_one_medium_is_the_taper_in_all_four() {
 fn every_taper_knob_clamps_at_its_own_door() {
     let mut t = PainterTool::default();
     t.set_brush_taper_start(-5.0);
-    t.set_brush_taper_end(1e6);
     t.set_brush_taper_tip_start(-1.0);
-    t.set_brush_taper_tip_end(9.0);
     t.set_brush_taper_opacity(4.0);
     let k = t.brush_settings().taper;
     assert_eq!(k.start, 0.0, "a negative start length was accepted");
-    assert_eq!(
-        k.end,
-        ph2d_painter_brush::taper::MAX_TAPER_DIAMETERS,
-        "an end length past the cap was accepted"
-    );
     assert_eq!(k.tip_start, 0.0, "a negative tip was accepted");
-    assert_eq!(k.tip_end, 1.0, "a tip past 1 was accepted");
     assert_eq!(k.opacity, 1.0, "an opacity past 1 was accepted");
+
+    // ...and the other end of each range, on a second tool so the clamps above cannot mask these.
+    let mut t = PainterTool::default();
+    t.set_brush_taper_start(1e6);
+    t.set_brush_taper_tip_start(9.0);
+    let k = t.brush_settings().taper;
+    assert_eq!(
+        k.start,
+        ph2d_painter_brush::taper::MAX_TAPER_DIAMETERS,
+        "a length past the cap was accepted"
+    );
+    assert_eq!(k.tip_start, 1.0, "a tip past 1 was accepted");
 }

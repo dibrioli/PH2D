@@ -317,12 +317,6 @@ pub(crate) struct PaintState {
     /// stroke's dabs (max-blended discs = wet_edges `stampCoverage`), the silhouette the optical composite
     /// reconstructs the wash from ([`super::watercolor_render`]). Empty unless the Watercolor section is
     /// active; sized lazily by the first dab, cleared on down.
-    /// The dabs this stroke has stamped, kept only while the brush wants its far end tapered — see
-    /// [`super::taper_tail`]. Empty (and never even touched) for every other stroke.
-    pub(super) taper_dabs: Vec<super::taper_tail::StampedDab>,
-    /// True while the tail resolve is laying the stroke again, so the recorder does not record its own
-    /// replay — the one piece of state that keeps a re-entrant pass from doubling the list.
-    pub(super) taper_replaying: bool,
     pub(super) stroke_coverage: Vec<u8>,
     /// **Watercolor render-path** per-stroke deposited colour (RGBA, `w*h*4` = wet_edges `colC`): each
     /// dab's colour splatted source-over (recent dab wins), so the composite pigment can vary along the

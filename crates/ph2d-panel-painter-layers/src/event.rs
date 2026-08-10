@@ -396,7 +396,6 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_BRUSH_LINE_DIMENSIONS
                 || id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE
                 || id == core_ids::PAINTER_BRUSH_GRID_SHOW
-                || id == core_ids::PAINTER_TAPER_LINK
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RAKE
                 || id == core_ids::PAINTER_SHAPE_WATERCOLOR_AUTO
                 || id == core_ids::PAINTER_SHAPE_RESET

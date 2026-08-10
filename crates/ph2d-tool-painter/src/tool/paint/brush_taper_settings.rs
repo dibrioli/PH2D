@@ -33,28 +33,10 @@ impl PainterTool {
         self.set_taper_field(|t| t.start = v);
     }
 
-    /// **Taper length at the stroke's end**, in brush diameters (`0` = off).
-    ///
-    /// ⚠️ It is live on every method whose PATH is known when the dabs are laid (Line / Arc / Curve /
-    /// Free Hand); a plain freehand drag has no far end yet and is not tapered there. Nothing is ever
-    /// held back to find out — see `ph2d_painter_brush::stroke::ends`.
-    pub fn set_brush_taper_end(&mut self, v: f32) {
-        let v = v.clamp(0.0, MAX_TAPER_DIAMETERS);
-        self.set_taper_field(|t| t.end = v);
-    }
-
-    /// **Tip size** at the start, `0..1` (`0` = a sharp point, `1` = blunt). While the tips are linked
-    /// this is the tip of BOTH ends — the panel only offers one row, and the engine reads it for both
-    /// through `Taper::effective_tip_end`.
+    /// **Tip size**, `0..1` (`0` = a sharp point, `1` = blunt). Procreate's "Tip".
     pub fn set_brush_taper_tip_start(&mut self, v: f32) {
         let v = v.clamp(0.0, 1.0);
         self.set_taper_field(|t| t.tip_start = v);
-    }
-
-    /// **Tip size** at the end, `0..1`. Ignored by the engine while the tips are linked.
-    pub fn set_brush_taper_tip_end(&mut self, v: f32) {
-        let v = v.clamp(0.0, 1.0);
-        self.set_taper_field(|t| t.tip_end = v);
     }
 
     /// Taper **Opacity**, `0..1`: how much the taper fades as well as narrows.
@@ -62,21 +44,10 @@ impl PainterTool {
         let v = v.clamp(0.0, 1.0);
         self.set_taper_field(|t| t.opacity = v);
     }
-
-    /// Toggle **Link tip sizes**.
-    ///
-    /// ⚠️ Unlinking SEEDS the end tip from the start's, so the two ends do not jump apart at the instant
-    /// the artist unticks the box. Unlinking is a request to start editing them separately, not a request
-    /// to change the mark — and a control that silently reshapes the stroke on the way to letting you
-    /// reshape it is a control the artist learns to distrust.
-    pub fn toggle_brush_taper_link(&mut self) {
-        let on = !self.paint.brush.taper.link_tips;
-        let seed = self.paint.brush.taper.tip_start;
-        self.set_taper_field(|t| {
-            if !on {
-                t.tip_end = seed;
-            }
-            t.link_tips = on;
-        });
-    }
 }
+
+// ⛔ `set_brush_taper_end`, `set_brush_taper_tip_end` and `toggle_brush_taper_link` lived here and went
+// with the far end (Enio 2026-08-10: *"deixe o ajuste apenas para o início do traço"*). They are named
+// here rather than silently absent because each was a LIVE control with a row on screen: a length, a
+// second tip, and the toggle that linked the two. `ph2d_painter_brush::taper` carries why, and what the
+// removal cost.

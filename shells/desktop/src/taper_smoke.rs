@@ -15,39 +15,36 @@
 //!
 //! 1. Click the canvas → the **Painter** pill. Paint one ordinary stroke.
 //!    → It must look exactly as it always has. The taper is off; nothing may have moved.
-//! 2. Scroll the brush panel to **Taper**, directly under the Falloff. Drag the **left handle** in.
+//! 2. Scroll the brush panel to **Taper**, directly under the Falloff. Drag the **handle** in.
 //!    → Strokes now open from a point. The head must reach full width smoothly, with no step.
-//! 3. Drag the **right handle** in (it comes from the right edge — dragging it left LENGTHENS the end
-//!    taper). Now paint again, watching the tip **while you drag** and then **at the moment you lift**.
-//!    → ⚠️ **While you drag, the ink must stay under the cursor: no lag, no catching up, no smoothing.**
-//!    An earlier cut held the tail back to learn where the stroke would end and was rejected on sight.
-//!    → **The tail narrows the instant you lift.** The stroke is put back and laid again, tapered — one
-//!    stroke, one undo step. Press Ctrl+Z once and the whole thing goes.
-//! 4. **Tip** (sharp ↔ blunt) and **Opacity** (how much the taper fades as well as narrows). Untick
-//!    **Link tip sizes** to give the two ends different points — the end tip is seeded from the start's,
-//!    so nothing jumps at the instant you untick it.
+//!    → ⚠️ **Look at the widget itself first:** the stroke shape and the dot must sit INSIDE the panel,
+//!    with nothing crossing the right border. That edge is where a full-width disc used to hang over.
+//! 3. Paint again, watching the ink **while you drag** and **at the moment you lift**.
+//!    → ⚠️ **The ink must stay under the cursor: no lag, no catching up, no smoothing.**
+//!    → ⚠️ **Nothing may change at the instant you lift.** The tail is full width while you draw and it
+//!    stays full width when you let go — a stroke that visibly re-draws itself on pen-up is the resolve
+//!    coming back from the dead.
+//! 4. **Tip** (sharp ↔ blunt) and **Opacity** (how much the taper fades as well as narrows).
 //! 5. **The four media.** Set a taper, then switch the Paint Mode dropdown through Digital →
 //!    Watercolor → Impasto → Wet Paint → back to Digital, painting one stroke in each.
-//!    → The taper must be the SAME in all four, and must still be there when you come back.
-//! 6. **The shape editors — this is where the END taper lives.** Pick Method = **Line** (or Curve, or
-//!    **Free Hand**) and drag one out.
-//!    → Both ends taper, **live and exact**, with no lag at all: the whole path exists before the first
-//!    dab, so the engine measures it instead of guessing. Reshape the curve and watch both ends follow.
+//!    → The taper must be the SAME in all four, must still be there when you come back, and every one
+//!    of them must taper the HEAD — this is the half that used to be Digital-only.
+//! 6. **The shape editors.** Pick Method = **Line** (or Curve, or **Free Hand**) and drag one out.
+//!    → The head tapers, live and exact, and reshaping the path keeps it there. The far end comes out
+//!    **blunt** — it used to taper here, and that went with the rest.
 //! 7. **Ellipse / Polygon.**
 //!    → They must come out with **no taper at all**, uniform all the way round.
 //!
 //! ## What is EXPECTED, and must not be "fixed"
 //!
-//! - **A closed loop is never tapered** (step 7). It has no ends: the only place a taper could land is
+//! - **The far end is never tapered, on any method or any medium** (steps 3, 5, 6). The tail control,
+//!   the *Link tip sizes* toggle and the second Tip row are gone with it — Enio 2026-08-10, *"quanto à
+//!   cauda do taper vamos desativar para todos os modos de pintura; deixe o ajuste apenas para o início
+//!   do traço, como já funciona perfeitamente"*.
+//! - **A closed loop is never tapered** (step 7). It has no head: the only place a taper could land is
 //!   the arbitrary point the fill happened to start at, and a circle with a notch in it is a defect.
-//! - **A stroke shorter than the two windows is a lens**, thinner throughout, never a vanishing act —
-//!   the two ends combine by `min`, not by product.
-//! - **A plain drag's tail narrows at LIFT, not while you draw** (step 3). While the stroke is open its
-//!   far end has not happened yet; withholding dabs to find out is the delay that was rejected, so the
-//!   ink is laid full width and the last window is re-laid at pen-up.
-//! - **Watercolor and Wet Paint keep a blunt tail on a plain drag, deliberately.** The wash rebuilds
-//!   itself from its own accumulators and the fluid cannot be rewound, so putting their pixels back
-//!   would not put their STATE back. Their shape editors (step 6) still taper both ends.
+//! - **Nothing happens at pen-up.** The pen-up used to put the stroke back and lay it again to shape the
+//!   tail; that is gone, so a lift costs exactly what it cost before the taper existed.
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::Vec2;
@@ -91,16 +88,17 @@ pub(crate) fn spawn_if_enabled(
                  armed — the painter opens in DIGITAL, with the shipped default brush and the taper \
                  OFF.\n\
                  PH2D_TAPER_SMOKE: 1) paint one stroke: it must look exactly as it always has  \
-                 2) brush panel -> TAPER (under the Falloff): drag the LEFT handle in — strokes open \
-                 from a point  \
-                 3) drag the RIGHT handle in, then paint: THE INK MUST STAY UNDER THE CURSOR while you \
-                 drag (no lag, no smoothing), and THE TAIL NARROWS WHEN YOU LIFT -- one undo step  \
-                 4) Tip (sharp<->blunt), Opacity, and untick 'Link tip sizes' for two different points  \
-                 5) switch the Paint Mode through all FOUR media — the taper must survive every switch \
-                 and still be there when you come back  \
-                 6) Method = Line / Curve / Free Hand: THIS is where the END taper lives -- both ends, \
-                 live and exact  \
-                 7) Ellipse / Polygon: NO taper at all — a closed loop has no ends."
+                 2) brush panel -> TAPER (under the Falloff): the shape and the dot must sit INSIDE the \
+                 panel (nothing crossing the right border), then drag the handle in — strokes open from \
+                 a point  \
+                 3) paint again: THE INK MUST STAY UNDER THE CURSOR while you drag (no lag, no \
+                 smoothing), and NOTHING MAY CHANGE WHEN YOU LIFT -- the tail is blunt all along  \
+                 4) Tip (sharp<->blunt) and Opacity  \
+                 5) switch the Paint Mode through all FOUR media — the taper must survive every switch, \
+                 still be there when you come back, and taper the HEAD in every one of them  \
+                 6) Method = Line / Curve / Free Hand: the head tapers live and exact; the far end is \
+                 BLUNT (it used to taper here — that went with the tail)  \
+                 7) Ellipse / Polygon: NO taper at all — a closed loop has no head."
             );
             Some(bits)
         }

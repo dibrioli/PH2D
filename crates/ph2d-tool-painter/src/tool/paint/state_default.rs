@@ -66,8 +66,6 @@ impl Default for PaintState {
             dabs: Vec::new(),
             seed: 0,
             tex_rng: 0,
-            taper_dabs: Vec::new(),
-            taper_replaying: false,
             stroke_undo: None,
             eraser: false,
             paint_mode: PaintMode::default(),

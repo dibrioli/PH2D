@@ -37,9 +37,6 @@ mod stroke_outline; // o CONTORNO de uma figura -- produtor unico do que o gizmo
 mod stroke_router; // o que um Down SIGNIFICA com varias figuras: editar / reativar / comecar outra
 #[cfg(test)]
 mod taper_media_tests;
-mod taper_tail;
-#[cfg(test)]
-mod taper_tail_tests;
 pub use self::stroke_multi::StrokeOpBadge;
 pub use self::wetpaint_settings::{WetKnobs, WetTool};
 mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output

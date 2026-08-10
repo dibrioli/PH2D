@@ -122,10 +122,10 @@ pub struct Stroke {
     /// by the Shape **Flow** mapping as the along-the-stroke coordinate. Reset in [`Self::begin`]; the shape
     /// editors build a fresh `Stroke` per re-stamp, so it restarts from `0` there on its own.
     arc_len: f32,
-    /// **What this stroke's [`crate::taper`] measures against** — see [`TaperSpan`]. Set by whoever knows
-    /// the geometry: the whole-path fills declare their own length, the closed-loop fills declare that
-    /// they have no ends at all, and a freehand stroke stays "end unknown" until the pen lifts.
-    taper_span: TaperSpan,
+    /// **Whether this stroke has a head for [`crate::taper`] to shape** — see [`mod@ends`]. Set by
+    /// whoever knows the geometry: the closed-loop fills declare that their first dab lands on an
+    /// arbitrary seam, and everything else keeps what the method started with.
+    taper_head: bool,
 }
 
 /// Smallest lazy-mouse blend factor, reached at stabilizer `1.0` (heaviest smoothing / most lag).
@@ -169,7 +169,7 @@ impl Stroke {
             warm_from: [0.0, 0.0],
             warming: false,
             arc_len: 0.0,
-            taper_span: TaperSpan::for_method(spec.stroke_method),
+            taper_head: ends::method_starts_with_head(spec.stroke_method),
         }
     }
 
@@ -624,21 +624,14 @@ impl Stroke {
     /// **How wide the taper is at `arc`** — the one place that question is answered, for BOTH of the
     /// things that depend on it: how big the dab is, and how far the next one goes.
     ///
-    /// `1.0` when the taper is off, when the contour is closed, or past both windows — exactly `1.0`, so
+    /// `1.0` when the taper is off, when the mark has no head, or past the window — exactly `1.0`, so
     /// every arithmetic that multiplies by it is byte-identical to the arithmetic that shipped before the
     /// taper existed.
     fn taper_width_at(&self, arc: f32) -> f32 {
-        if !self.spec.taper.is_active() {
+        if !self.spec.taper.is_active() || !self.taper_head {
             return 1.0;
         }
-        let to_end = match self.taper_span {
-            TaperSpan::Open(total) => (total - arc).max(0.0),
-            TaperSpan::OpenUnknownEnd => f32::INFINITY,
-            TaperSpan::Closed => return 1.0, // no ends: nothing to measure from
-        };
-        self.spec
-            .taper
-            .width(arc, to_end, 2.0 * self.spec.clamped_radius())
+        self.spec.taper.width(arc, 2.0 * self.spec.clamped_radius())
     }
 
     /// The live **stroke heading** (unit vector; `[0, 0]` = not established yet), i.e. the direction the
@@ -678,11 +671,9 @@ pub use ellipse::ellipse_perimeter;
 /// The Polygon stroke method's regular-N-gon perimeter + fill (same child-module rationale).
 mod polygon;
 pub use polygon::{POLY_MAX_SIDES, POLY_MIN_SIDES, polygon_perimeter};
-/// The texture-Rake **warm-up** (`warmup_gate`/`release_warmup`) deferring a stroke's opening dabs.
+/// Whether a stroke has a **head** for the taper to shape (`method_starts_with_head`), and the record
+/// of the two things that were built there and removed: the withheld tail and the far end itself.
 mod ends;
-/// The lazy-mouse stabilizer (`stabilize`/`settle`/`lazy_mouse_step`) — split out for the LOC-cap reason.
-pub mod stabilize;
-use ends::TaperSpan;
 /// A aritmética de CAMINHO partilhada (`dist` / `lerp` / `hermite`) — três consumidores
 /// (o caminhador, o achatador de Catmull-Rom e o estabilizador) e nenhum deles é o dono do fato.
 mod geom;
@@ -690,7 +681,10 @@ mod geom;
 /// LOC-cap reason, and by SUBJECT: how a stroke that snaps to a lattice emits its dabs is a
 /// different question from how a free stroke walks a path.
 mod grid;
+/// The lazy-mouse stabilizer (`stabilize`/`settle`/`lazy_mouse_step`) — split out for the LOC-cap reason.
+pub mod stabilize;
 use geom::{dist, hermite, lerp};
+/// The texture-Rake **warm-up** (`warmup_gate`/`release_warmup`) deferring a stroke's opening dabs.
 mod warmup;
 
 #[cfg(test)]

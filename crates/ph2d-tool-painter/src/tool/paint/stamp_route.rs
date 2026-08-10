@@ -34,10 +34,6 @@ impl PainterTool {
     /// shows is `lerp(base, free, keep)` ([`Self::stamp_dabs_gated`]). Nothing is made invisible — only the
     /// paint is gated. Engine-agnostic: it wraps ALL the routes in [`Self::stamp_dabs_routed`].
     pub(super) fn stamp_dabs(&mut self, dabs: &[Dab]) {
-        // Record what this stroke lays, so its far end can be resolved at pen-up ([`super::taper_tail`]).
-        // Here rather than in the lifecycle because THIS is the one door every deposit passes through,
-        // and a recorder that enumerated the callers would miss the next one.
-        self.note_taper_dabs(dabs);
         // Watercolor optical render-path: DON'T deposit dabs on the canvas — accumulate the coverage
         // (max-blended discs) + the deposited colour (source-over), and let `apply_watercolor` reconstruct
         // the whole wash over the frozen base ([`super::watercolor_render`]). Short-circuits every route.

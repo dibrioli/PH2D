@@ -73,24 +73,21 @@ fn radii(dabs: &[Dab]) -> Vec<f32> {
 /// `Taper::default()` must be byte-identical to one built by a `BrushSpec` that never heard of a taper.
 /// Compared field by field on the whole dab list, not just the radius — the taper also touches coverage.
 ///
-/// **Mutation that must bleed:** make `ramp` return `tip` when `len <= 0` — an end with no taper window
+/// **Mutation that must bleed:** make `ramp` return `tip` when `len <= 0` — a head with no taper window
 /// still applying its tip, which would let a knob that is supposed to be inert reshape every dab.
 ///
 /// ⚠️ Deliberately NOT "make `is_active` return `true`": that guard is a COST short-circuit, not the
-/// correctness. With both lengths zero the arithmetic already returns exactly `1.0` and `scale_dab`
+/// correctness. With the length zero the arithmetic already returns exactly `1.0` and `scale_dab`
 /// early-returns, so the mutation is semantically neutral and survives — measured, not assumed.
 #[test]
 fn an_off_taper_does_not_move_a_single_dab() {
     let base = freehand(brush(), 400.0, 40);
     let mut spec = brush();
-    // Every knob EXCEPT the two lengths, which are what arms the feature: tip / link / opacity on their
-    // own must be provably inert, or the artist finds a control that does nothing until another does.
+    // Every knob EXCEPT the length, which is what arms the feature: tip / opacity on their own must be
+    // provably inert, or the artist finds a control that does nothing until another does.
     spec.taper = Taper {
         start: 0.0,
-        end: 0.0,
         tip_start: 0.75,
-        tip_end: 0.25,
-        link_tips: false,
         opacity: 1.0,
     };
     let with = freehand(spec, 400.0, 40);
@@ -99,7 +96,7 @@ fn an_off_taper_does_not_move_a_single_dab() {
         assert_eq!(
             (a.radius_px, a.coverage, a.center, a.arc_len),
             (b.radius_px, b.coverage, b.center, b.arc_len),
-            "dab {i} moved under a taper whose lengths are both zero"
+            "dab {i} moved under a taper whose length is zero"
         );
     }
 }
@@ -166,20 +163,24 @@ fn the_stroke_opens_from_a_point_to_full_width() {
     }
 }
 
-/// **An open path whose geometry is already known tapers at BOTH ends, live, with no hold.**
+/// **An open path tapers at its HEAD, live, with no hold — and its tail comes out full width.**
 ///
-/// This is the Line / Arc / Free Hand door: the spine exists before the first dab, so the engine can
-/// measure it and the end taper is exact while the artist is still reshaping the curve.
+/// This is the Line / Arc / Free Hand door. It used to taper BOTH ends here (the spine exists before the
+/// first dab, so the far end was exact); the end went with the rest on 2026-08-10, and the tail half of
+/// this gate is what says so. Keeping both halves in one test is deliberate: *the head still works* and
+/// *the tail no longer does* are the two things a reader needs, and split across two tests one of them
+/// eventually gets deleted for looking redundant.
 ///
-/// **Mutation that must bleed:** drop the `taper_span = Open(polyline_len(spine))` line — the end stays
-/// at full width because `to_end` is `INFINITY`.
+/// **Mutation that must bleed:** make `Stroke::taper_width_at` ignore `self.taper_head` — a whole-path
+/// fill still tapers, so only a CLOSED loop would notice, and this gate would stay green while the
+/// ellipse gate went red. The half that bleeds here instead is dropping `scale_dab` (the head goes
+/// blunt).
 #[test]
-fn a_known_path_tapers_at_both_ends() {
+fn a_known_path_tapers_at_its_head_and_not_at_its_tail() {
     let mut spec = brush();
     spec.stroke_method = StrokeMethod::Line;
     spec.taper = Taper {
         start: 2.0,
-        end: 2.0,
         ..Taper::default()
     };
     let dabs = polyline(spec, 400.0);
@@ -187,8 +188,9 @@ fn a_known_path_tapers_at_both_ends() {
     assert!(r.len() > 20, "fixture: too few dabs ({})", r.len());
     assert!(r[0] <= 1.0, "the head is not a point ({:.2})", r[0]);
     assert!(
-        *r.last().unwrap() <= 2.0,
-        "the tail is not a point ({:.2})",
+        (r.last().unwrap() - 10.0).abs() < 1e-4,
+        "the tail of a known path was tapered ({:.4}) — the far end is gone, so something is measuring \
+         a distance-to-the-end again",
         r.last().unwrap()
     );
     let mid = r[r.len() / 2];
@@ -200,17 +202,16 @@ fn a_known_path_tapers_at_both_ends() {
 
 /// **A closed loop is NOT tapered.**
 ///
-/// An ellipse has no ends — the only place a taper could land is the arbitrary point where the fill
+/// An ellipse has no head — the only place a taper could land is the arbitrary point where the fill
 /// happened to start, which would put a notch in a circle. The oracle is that every dab is full width.
 ///
-/// **Mutation that must bleed:** drop the `taper_span = Closed` line in the ellipse fill.
+/// **Mutation that must bleed:** drop the `taper_head = false` line in the ellipse fill.
 #[test]
-fn a_closed_loop_has_no_ends_to_taper() {
+fn a_closed_loop_has_no_head_to_taper() {
     let mut spec = brush();
     spec.stroke_method = StrokeMethod::Ellipse;
     spec.taper = Taper {
         start: 3.0,
-        end: 3.0,
         ..Taper::default()
     };
     let mut st = Stroke::new(spec, Dynamics::default(), 7);
@@ -251,7 +252,6 @@ fn no_dab_is_ever_withheld_or_moved() {
     let mut spec = brush();
     spec.taper = Taper {
         start: 2.0,
-        end: 3.0,
         ..Taper::default()
     };
     let mut st = Stroke::new(spec, Dynamics::default(), 7);
@@ -299,75 +299,57 @@ fn no_dab_is_ever_withheld_or_moved() {
     }
 }
 
-/// **The freehand far end is left at FULL WIDTH, and that is the design — not an omission.**
+/// **The far end is left at FULL WIDTH — on the freehand drag AND on a path that knows its own length.**
 ///
-/// A stroke the artist is still making has one end so far. The only two ways to taper the other one are
-/// to withhold dabs (the delay that was rejected above) or to re-stamp the tail from a restored base
-/// every batch — a stroke buffer, which is how Procreate affords it and which is a wave with its own
-/// acceptance: it has to restore four planes plus the per-stroke coverage buffer, and the Wet Paint
-/// fluid cannot be rewound at all.
+/// This is the gate for the removal itself (Enio 2026-08-10: *"quanto à cauda do taper vamos desativar
+/// para todos os modos de pintura; deixe o ajuste apenas para o início do traço"*). Both doors are here
+/// on purpose, because they used to answer DIFFERENTLY: a drag left its tail blunt because the end had
+/// not happened yet, while a whole-path fill tapered it exactly. Only one of those is a claim about the
+/// feature being gone; testing the drag alone would stay green with the end term fully alive.
 ///
-/// So this gate pins the honest half of the bargain: the HEAD tapers exactly, live, and the TAIL does
-/// not. It exists so nobody re-introduces a hold to "finish" the feature without reading why it went.
+/// ⛔ It also stands where the two rejected designs stood, so neither comes back by accident: withholding
+/// dabs until the end is known (the delay Enio rejected on 2026-08-08) and re-stamping the tail from a
+/// restored base at pen-up (the resolve that shipped and went with the end — it took the artist's paint
+/// under impasto and could not run at all in watercolor or Wet Paint).
 ///
-/// **Mutation that must bleed:** give `TaperSpan::OpenUnknownEnd` a finite `to_end` — any guess about
-/// where the stroke will end thins the last dabs of a stroke that has not ended.
+/// **Mutation that must bleed:** give [`Taper::width`] a second term measured from any far end.
 #[test]
-fn the_freehand_far_end_is_left_at_full_width() {
+fn the_far_end_is_left_at_full_width_on_every_door() {
     let mut spec = brush();
     spec.taper = Taper {
         start: 2.0,
-        end: 3.0,
         ..Taper::default()
     };
-    let dabs = freehand(spec, 400.0, 40);
     let full = spec.clamped_radius();
-    let first = dabs.first().expect("the stroke laid dabs");
-    assert!(
-        first.radius_px < full * 0.2,
-        "the head did not taper ({:.3} of {full:.3}) — the half that IS live is broken",
-        first.radius_px
-    );
-    let last = dabs.last().expect("the stroke laid dabs");
-    assert!(
-        (last.radius_px - full).abs() < 1e-3,
-        "the last dab of a freehand stroke came out at {:.3} instead of the full {full:.3} — something \
-         is guessing where the stroke ends",
-        last.radius_px
-    );
+    for (door, dabs) in [
+        ("freehand drag", freehand(spec, 400.0, 40)),
+        ("whole-path fill", {
+            let mut s = spec;
+            s.stroke_method = StrokeMethod::Line;
+            polyline(s, 400.0)
+        }),
+    ] {
+        let first = dabs.first().expect("the stroke laid dabs");
+        assert!(
+            first.radius_px < full * 0.2,
+            "{door}: the head did not taper ({:.3} of {full:.3}) — the half that IS live is broken",
+            first.radius_px
+        );
+        let last = dabs.last().expect("the stroke laid dabs");
+        assert!(
+            (last.radius_px - full).abs() < 1e-3,
+            "{door}: the last dab came out at {:.3} instead of the full {full:.3} — something is \
+             tapering a far end again",
+            last.radius_px
+        );
+    }
 }
 
-/// **A stroke shorter than the two taper windows is a lens, not a vanishing act.**
-///
-/// The two ends overlap, and this is the whole reason the law combines them with `min` instead of a
-/// product: a product thins the middle TWICE, so a short flick nearly disappears and reads as the brush
-/// being broken. The oracle is the widest dab in the stroke — under `min` it still reaches a real
-/// fraction of the brush.
-///
-/// ⚠️ Laid through the whole-path door, and the fixture had to be MOVED there: a plain drag has no far
-/// end, so its second window is inert and `a * b` and `a.min(b)` give the same answer everywhere — the
-/// mutation below **survived** while this gate drove a freehand stroke. Two ends can only fight over a
-/// dab where both of them exist.
-///
-/// **Mutation that must bleed:** combine by `a * b` in [`Taper::width`].
-#[test]
-fn a_short_stroke_is_a_lens_not_a_vanishing_act() {
-    let mut spec = brush();
-    spec.stroke_method = StrokeMethod::Line;
-    spec.taper = Taper {
-        start: 4.0, // 80 px each — a 100 px stroke is inside both windows everywhere
-        end: 4.0,
-        ..Taper::default()
-    };
-    let dabs = polyline(spec, 100.0);
-    let widest = radii(&dabs).into_iter().fold(0.0f32, f32::max);
-    // `min` at the midpoint of a 100 px stroke: both ends see 50 of 80 px ⇒ smoothstep(0.625) ≈ 0.68.
-    assert!(
-        widest > 6.0,
-        "a short stroke collapsed (widest dab {widest:.3} of brush radius 10) — the two ends are \
-         being multiplied instead of `min`ed"
-    );
-}
+// ⛔ `a_short_stroke_is_a_lens_not_a_vanishing_act` lived here and died with the far end. It pinned that
+// the two windows combined by `min` and not by a product — on a stroke shorter than both, a product
+// thins the middle TWICE and a short flick nearly vanishes. With one window there is nothing to combine,
+// so the gate has no fact left to assert; the reasoning is kept in `crate::taper` in case a second
+// window is ever authored again.
 
 /// **Opacity fades the tip only when the artist asks it to.**
 ///
@@ -402,43 +384,8 @@ fn the_taper_fades_the_tip_only_when_opacity_asks() {
     );
 }
 
-/// **Link tip sizes is one number driving two ends.**
-///
-/// Linked, the end wears the start's tip; unlinked, it wears its own. Asserted through the ENGINE (the
-/// last dab of a laid path) rather than by calling [`Taper::effective_tip_end`] — that would be the
-/// accessor checking itself.
-///
-/// ⚠️ The fixture is the whole-path door, not a freehand drag, and that is not convenience: a plain
-/// drag has no far end, so its last dab is full width by design and BOTH tips would read the same
-/// there. A gate about the END tip has to be run where the end taper exists.
-///
-/// **Mutation that must bleed:** always return `tip_end` from [`Taper::effective_tip_end`].
-#[test]
-fn linking_the_tips_makes_the_end_wear_the_starts_tip() {
-    let tail_radius = |link: bool| {
-        let mut spec = brush();
-        spec.stroke_method = StrokeMethod::Line;
-        spec.taper = Taper {
-            start: 2.0,
-            end: 2.0,
-            tip_start: 0.8, // blunt
-            tip_end: 0.0,   // sharp
-            link_tips: link,
-            opacity: 0.0,
-        };
-        polyline(spec, 400.0).last().unwrap().radius_px
-    };
-    let linked = tail_radius(true);
-    let free = tail_radius(false);
-    assert!(
-        linked > 6.0,
-        "linked: the end ignored the start's BLUNT tip (radius {linked:.3})"
-    );
-    assert!(
-        free <= 1.0,
-        "unlinked: the end ignored its own SHARP tip (radius {free:.3})"
-    );
-}
+// ⛔ `linking_the_tips_makes_the_end_wear_the_starts_tip` lived here and died with the far end: with one
+// end there is one tip, so *Link tip sizes* had nothing left to link.
 
 /// **The taper length is read in DIAMETERS, so one number means one thing at every brush size.**
 ///
@@ -484,13 +431,13 @@ fn the_taper_length_scales_with_the_brush() {
 /// **Mutation that must bleed:** buffer the trailing dabs again — the lag jumps to the taper window.
 #[test]
 fn the_stroke_reaches_the_cursor_the_instant_the_pointer_does() {
-    for (radius, end_d) in [(25.0f32, 1.0f32), (25.0, 2.0), (25.0, 3.0), (60.0, 2.0)] {
+    for (radius, len_d) in [(25.0f32, 1.0f32), (25.0, 2.0), (25.0, 3.0), (60.0, 2.0)] {
         let mut spec = BrushSpec {
             radius_px: radius,
             ..brush()
         };
         spec.taper = Taper {
-            end: end_d,
+            start: len_d,
             ..Taper::default()
         };
         let mut st = Stroke::new(spec, Dynamics::default(), 1);
@@ -522,7 +469,7 @@ fn the_stroke_reaches_the_cursor_the_instant_the_pointer_does() {
         let spacing = spec.dab_spacing_px();
         assert!(
             lag <= spacing + 1.0,
-            "radius {radius}, end {end_d} diameters: the ink trailed the cursor by {lag:.1} px with a \
+            "radius {radius}, taper {len_d} diameters: the ink trailed the cursor by {lag:.1} px with a \
              dab spacing of {spacing:.1} px — something is holding dabs back"
         );
     }
@@ -555,7 +502,6 @@ fn the_taper_tightens_the_spacing_so_the_point_is_not_a_row_of_dots() {
     spec.spacing = 0.25;
     spec.taper = Taper {
         start: 3.0,
-        end: 3.0,
         ..Taper::default()
     };
     let dabs = polyline(spec, 400.0);

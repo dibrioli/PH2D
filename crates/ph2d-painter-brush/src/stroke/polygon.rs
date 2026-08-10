@@ -68,9 +68,9 @@ impl Stroke {
         self.tot_samples = 0;
         self.heading = [0.0, 0.0]; // fresh fill → the Rake heading re-aims along the perimeter from the start
         self.arc_len = 0.0; // fresh fill → the Flow along-coordinate starts at the perimeter's origin
-        // A closed loop has no ends: tapering one would thin it at the SEAM, an arbitrary point of the
+        // A closed loop has no head: tapering it would thin it at the SEAM, an arbitrary point of the
         // geometry chosen by wherever this fill happened to start. A circle with a notch is a defect.
-        self.taper_span = super::TaperSpan::Closed;
+        self.taper_head = false;
         if self.spec.dash_on(self.tot_samples) {
             let pr = self.method_pressure(1.0);
             let d = self.dab_at(perim[0], pr, self.method_overlap(), self.arc_len);

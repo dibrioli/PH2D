@@ -156,3 +156,29 @@ fn the_other_channels_still_read_their_own_columns() {
     let age = READ_CHANNELS.iter().find(|c| c.label == "Age").unwrap();
     assert_eq!(field(&s, age.column, age.mode), vec![0.1, 0.2, 0.3]);
 }
+
+/// **O peso de um CAMPO é legível** — a entrada que faltava, medida contra a forma que
+/// um `field.*` de fato deixa.
+///
+/// Escrito contra o DADO, como o irmão acima: a fixture é um stream com a coluna
+/// `falloff` que as cinco `field.*` escrevem (`out.set("falloff", Column::Scalar(…))`),
+/// e o gate lê de volta **pela própria entrada do picker**. Comparar `column` com o
+/// literal `"falloff"` seria um espelho da correção em vez de uma checagem dela.
+///
+/// Sem esta linha de tabela a pergunta *"quanta influência este campo tem aqui?"* caía no
+/// MISS ORDINÁRIO do módulo — zeros no comprimento cheio, em silêncio, indistinguível de
+/// um atributo mal digitado.
+#[test]
+fn the_weight_a_field_leaves_is_readable_by_the_picker() {
+    // Um stream como uma `field.*` o deixa: o peso por linha na coluna `falloff`.
+    let shaped = Stream::new(3).with("falloff", Column::Scalar(vec![0.0, 0.5, 1.0]));
+    let ch = READ_CHANNELS
+        .iter()
+        .find(|c| c.label == "Falloff")
+        .expect("o picker oferece o canal Falloff");
+    assert_eq!(
+        field(&shaped, ch.column, ch.mode),
+        vec![0.0, 0.5, 1.0],
+        "escolher `Falloff` tem de devolver o peso que o campo escreveu"
+    );
+}

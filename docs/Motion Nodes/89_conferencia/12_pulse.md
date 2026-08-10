@@ -85,12 +85,22 @@ função pura do playhead com scrub bit-exato*.
    `pulse → pulse.level → value.math(Multiply, condição) → pulse.compare(rise = 0.5)` — e o gate
    `a_pulse_is_gated_by_a_condition_the_value_domain_names` o mede por linha, com um pulso
    **escalonado** (`value.lfo(Saw, phase_stagger) → pulse.compare`, que de passagem confere a
-   resposta ao P2 de *swing por linha*). ⚠️ **O que ainda falta é o CAMPO chegar ao domínio de
-   valor:** a família `field.*` escreve a coluna **`falloff`** no stream de instâncias, e o
-   `READ_CHANNELS` do `value.attribute` não a lista (Speed · Opacity · Rotation · Size · Age · Life
-   · Seed) ⇒ *"dispare só quem está dentro da caixa"* segue **inexprimível**, por uma linha de
-   tabela e não por um nó. A condição por linha que JÁ funciona é a ordinal
-   (`value.instance_field`).
+   resposta ao P2 de *swing por linha*).
+
+   ✅ **E FECHADO no mesmo dia — o campo chegou:** a família `field.*` escreve a coluna
+   **`falloff`** no stream de instâncias (as cinco, mais o `motion.falloff`), ela era consumida
+   por SEIS `motion.*` e **ilegível** no domínio de valor, porque o `READ_CHANNELS` do
+   `value.attribute` não a listava. ⚠️ **Uma linha de tabela, não um nó** — e é a diferença que
+   decidiu a wave: o canal **Falloff** entrou no picker, e
+   `field.box → value.attribute(Falloff) → value.math(Multiply, pulse.level) → pulse.compare`
+   **é** *"dispare só quem está dentro da caixa"*, medido em
+   `a_pulse_fires_only_where_a_spatial_field_says_it_may` (caixa de borda dura cobrindo metade da
+   fileira ⇒ peso `[0, 0, 1, 1]`, e só o par de dentro dispara — em quadros diferentes).
+   ⚠️ **E o doc do `READ_CHANNELS` afirmava um TETO que não existia** (*"sete + Custom = 8 = o
+   teto do seletor segmentado"*): o teto é `MAX_ENUM_OPTIONS = 48`, derivado, e a fileira quebra
+   em quatro colunas crescendo a própria altura. O 8 era um palpite sobre LARGURA vestindo a
+   palavra *teto* — corrigido, com o gate `the_channel_picker_fits_the_panels_ceiling` no shell,
+   onde a tabela e o teto se encontram.
 
 ---
 

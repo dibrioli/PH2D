@@ -497,3 +497,54 @@ fn a_driven_row_names_the_card_that_drives_it() {
     );
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
 }
+
+/// **O picker de canais CABE no teto do painel — e o teto não é o que o doc dizia.**
+///
+/// O doc-comment do `READ_CHANNELS` afirmava *"seven of them + Custom = 8 = the segmented
+/// selector's ceiling"*. O teto real é `MAX_ENUM_OPTIONS = 48` (DERIVADO, com o
+/// `CHANNELS_EXTRA_BASE` começando exatamente onde ele acaba) e a fileira **quebra em quatro
+/// colunas**, crescendo a própria altura — então o 8 era um palpite sobre LARGURA vestindo a
+/// palavra *teto*, e o canal `Falloff` (2026-08-09) o teria "estourado" sem nada acontecer.
+///
+/// ⚠️ **Este gate mora AQUI porque é o único lugar onde as duas metades se encontram:** a
+/// tabela vive na crate do nó (que não conhece painel) e o teto vive na crate do painel (que
+/// não conhece registry). Ele afirma a PROPRIEDADE — *toda opção pintada tem id próprio* —
+/// e não a contagem de hoje, então um canal novo passa e o quadragésimo nono reprova, que é
+/// exatamente onde a decisão volta a ser necessária.
+#[test]
+fn the_channel_picker_fits_the_panels_ceiling() {
+    use ph2d_panel_motion_params::{MAX_ENUM_OPTIONS, ParamRow};
+    let mut motion = MotionState::new();
+    let attr = motion.doc.graph.add_node("value.attribute");
+    ph2d_panel_motion_graph::set_graph_selection(vec![attr.0]);
+
+    let snap =
+        build_params_snapshot(&motion, ProjectSettings::default()).expect("attribute resolvable");
+    let ch = snap
+        .rows
+        .iter()
+        .find_map(|r| match r {
+            ParamRow::Channels(c) => Some(c),
+            _ => None,
+        })
+        .expect("o picker de canais é uma row de Channels");
+
+    // O peso de um campo é OFERECIDO, não só legível se digitado (doc 89, folha 12).
+    assert!(
+        ch.channels
+            .iter()
+            .any(|(l, c, _)| *l == "Falloff" && *c == "falloff"),
+        "o picker oferece o peso que as `field.*` escrevem: {:?}",
+        ch.channels.iter().map(|(l, ..)| *l).collect::<Vec<_>>()
+    );
+    // A propriedade: cada canal + o "Custom…" final ganha um botão com id próprio. Acima do
+    // teto o `.min(MAX_ENUM_OPTIONS)` do painter simplesmente PARA de desenhar — a opção
+    // excedente nasceria invisível e inalcançável, em silêncio.
+    let painted = ch.channels.len() + 1; // os canais curados + o "Custom…" final
+    assert!(
+        painted <= MAX_ENUM_OPTIONS,
+        "{} canais + Custom = {painted} passam do teto de {MAX_ENUM_OPTIONS} — o excedente não é pintado",
+        ch.channels.len()
+    );
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+}

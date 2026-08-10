@@ -306,3 +306,114 @@ fn the_toggle_and_the_latch_are_the_counter() {
     assert_eq!(seen[0], vec![1.0, 0.0, 1.0, 0.0], "Wrap = toggle");
     assert_eq!(seen[1], vec![1.0, 1.0, 1.0, 1.0], "Clamp = latch");
 }
+
+/// **"DISPARE SÓ QUEM ESTÁ DENTRO DA CAIXA"** — o `SUPERAR:` item 3 da folha 12, agora uma
+/// aresta em vez de um script.
+///
+/// A folha nomeava a combinação que **nenhuma referência tem**: o C4D tem Fields e zero
+/// eventos, o Niagara tem eventos e zero campos componíveis, e nós temos os dois — e eles
+/// nunca se encontraram, por **uma linha de tabela**. A família `field.*` escreve a coluna
+/// `falloff` no stream de instâncias e o `READ_CHANNELS` do `value.attribute` não a listava,
+/// então o peso de um campo era consumido por seis `motion.*` e **ilegível** no domínio de
+/// valor.
+///
+/// Este gate é o produto: a caixa cobre metade da fileira, e só essa metade dispara.
+#[test]
+fn a_pulse_fires_only_where_a_spatial_field_says_it_may() {
+    let reg = registry();
+    let mut g = Graph::new();
+    let src = rows(&mut g, 4.0);
+    // O pulso escalonado por linha (a mesma fonte do gate do portão ordinal).
+    let saw = chain(
+        &mut g,
+        "value.lfo",
+        src,
+        &[
+            ("wave", 3.0),
+            ("period", 1.0),
+            ("amplitude", 0.5),
+            ("offset", 0.5),
+            ("phase_stagger", 0.2),
+        ],
+    );
+    let src_pulse = g.add_node("pulse.compare");
+    g.set_param(src_pulse, "rise", 0.5);
+    g.set_param(src_pulse, "fall", 0.25);
+    connect(&mut g, saw, 0, src_pulse, 0);
+    self_loop(&mut g, src_pulse, 1);
+    let lvl = chain(&mut g, "pulse.level", src_pulse, &[]);
+
+    // A CAIXA: borda dura, centrada à direita, larga o bastante para o par da direita.
+    let boxf = chain(
+        &mut g,
+        "field.box",
+        src,
+        &[
+            ("width", 2.5),
+            ("height", 100.0),
+            ("soft", 0.0),
+            ("center_x", 1.5),
+        ],
+    );
+    let mask = g.add_node("value.attribute");
+    g.set_text_param(mask, "attr", "falloff");
+    g.set_param(mask, "mode", 0.0);
+    connect(&mut g, boxf, 0, mask, 0);
+
+    let m = g.add_node("value.math");
+    g.set_param(m, "op", 2.0); // Multiply
+    connect(&mut g, lvl, 0, m, 0);
+    connect(&mut g, mask, 0, m, 1);
+    let cmp = g.add_node("pulse.compare");
+    g.set_param(cmp, "rise", 0.5);
+    g.set_param(cmp, "fall", 0.25);
+    connect(&mut g, m, 0, cmp, 0);
+    self_loop(&mut g, cmp, 1);
+    g.validate(&reg).expect("well-typed");
+
+    let mut cook = Cook::new();
+    let mut when: Vec<Vec<usize>> = vec![Vec::new(); 4];
+    let mut weights: Vec<f32> = Vec::new();
+    for k in 0..60 {
+        let t = k as f64 / 60.0;
+        let s = cook.cook(&g, &reg, cmp, t).expect("cooks")[0]
+            .as_stream()
+            .clone();
+        if k == 0 {
+            let w = cook.cook(&g, &reg, mask, t).expect("cooks")[0]
+                .as_stream()
+                .clone();
+            weights = match w.get("v") {
+                Some(Column::Scalar(v)) => v.clone(),
+                _ => panic!("o attribute tem de emitir `v`"),
+            };
+        }
+        if let Some(Column::Scalar(v)) = s.get("pulse") {
+            for (row, x) in v.iter().enumerate() {
+                if *x > 0.5 {
+                    when[row].push(k);
+                }
+            }
+        }
+        cook.advance_tick(&g, &reg, t).expect("advances");
+    }
+    // A fileira mora em x = -1.5, -0.5, 0.5, 1.5; a caixa de largura 2,5 centrada em 1,5
+    // com borda DURA cobre o par da direita e nada mais.
+    assert_eq!(
+        weights,
+        vec![0.0, 0.0, 1.0, 1.0],
+        "o peso que a caixa deixou, lido pelo canal Falloff do picker"
+    );
+    assert!(
+        when[0].is_empty() && when[1].is_empty(),
+        "quem está FORA da caixa não dispara: {when:?}"
+    );
+    assert!(
+        !when[2].is_empty() && !when[3].is_empty(),
+        "quem está DENTRO dispara: {when:?}"
+    );
+    assert_ne!(
+        when[2], when[3],
+        "e continua sendo por LINHA: um nível colapsado daria os mesmos quadros"
+    );
+}

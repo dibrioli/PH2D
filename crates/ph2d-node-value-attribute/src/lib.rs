@@ -154,9 +154,16 @@ impl NodeOp for ValueAttribute {
 /// The artist-facing channels (plan §1.1): a human word, the column it reads, and HOW —
 /// the scalar itself (`0`), a Vec2's MAGNITUDE (`MODE_LENGTH`, so `vel` reads as *speed*)
 /// or one LANE of a vector column (`MODE_COMPONENT_BASE + k`, which is how "Opacity"
-/// reaches the alpha inside `tint`). Seven of them + the panel's "Custom…" = 8 = the
-/// segmented selector's ceiling. Custom keeps the arbitrary-column reach the node was
+/// reaches the alpha inside `tint`). Custom keeps the arbitrary-column reach the node was
 /// built for.
+///
+/// ⚠️ **This list used to claim *"seven of them + Custom = 8 = the segmented selector's
+/// ceiling"*, and the ceiling was never 8.** The panel's cap is `MAX_ENUM_OPTIONS = 48`
+/// (DERIVED, with `CHANNELS_EXTRA_BASE` starting exactly where it ends) and the row **wraps
+/// at four columns**, growing its own height — so eight + Custom paints as three rows, not
+/// as an overflow. The number in that sentence was a guess about width wearing the word
+/// *ceiling*; a real limit names the resource it is of. The executable form lives in the
+/// shell (`the_channel_picker_fits_the_panels_ceiling`), where the table and the cap meet.
 ///
 /// ⚠️ **Every entry must name a column something WRITES** — an entry is a promise that a
 /// word yields a quantity, and a word that resolves to nothing takes the module's ordinary
@@ -207,6 +214,23 @@ const READ_CHANNELS: &[ReadChannel] = &[
     ReadChannel {
         label: "Seed",
         column: "seed",
+        mode: 0,
+    },
+    // ⚠️ **O peso de um CAMPO** — a coluna que as cinco `field.*` escrevem (`field.box`,
+    // `field.combine`, `field.index_range`, `field.radial_sweep`, `field.remap`) e que o
+    // `motion.falloff` também produz. Ela era consumida por SEIS `motion.*`
+    // (`Consumes("falloff")`: step · delay · slit_scan · spline_wrap · drop_shadow ·
+    // rgb_split) e **por nenhum nó do domínio de valor** — então *"quanta influência este
+    // campo tem AQUI?"* era uma pergunta que a arte podia sentir e o grafo não podia dizer.
+    //
+    // É o que faltava para o portão espacial da folha 12 (`SUPERAR:` item 3): com esta
+    // entrada, `field.box → value.attribute(Falloff) → value.math(Multiply, pulse.level) →
+    // pulse.compare` é *"dispare só quem está dentro da caixa"* — a combinação que nenhuma
+    // referência tem (o C4D tem Fields e zero eventos; o Niagara tem eventos e zero campos
+    // componíveis). O gate da cadeia vive na `ph2d-node-registry-init`.
+    ReadChannel {
+        label: "Falloff",
+        column: "falloff",
         mode: 0,
     },
 ];

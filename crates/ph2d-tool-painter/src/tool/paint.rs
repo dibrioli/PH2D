@@ -259,6 +259,8 @@ mod shape_alpha_tests;
 mod tests;
 #[cfg(test)]
 mod use_as_relief_tests; // sonda: o que os quatro "Use as ..." leem (report do Enio 2026-08-09) // de onde a silhueta do Shape vem (report do Enio 2026-08-09)
+#[cfg(test)]
+mod emboss_probe; // sonda de ESTUDO: que campo o Digital ofereceria a um emboss (Enio 2026-08-10)
 // Each gate family below gets its own file rather than the end of the 21k-line `tests` — a wave's
 // worth of gates appended there is a wave's worth of gates nobody can find again.
 #[cfg(test)]

@@ -232,6 +232,11 @@ pub(super) struct Entry {
 #[path = "sculpt3d_undo.rs"]
 mod undo;
 
+/// **QUANTO a história pode pesar** — ver [`budget`]. Irmão do [`undo`], e o
+/// corte é o mesmo: *o que se guarda* aqui, *quanto disso cabe* lá.
+#[path = "sculpt3d_history_budget.rs"]
+mod budget;
+
 impl Sculpt3dScene {
     /// **A porta única por onde uma edição entra na história.**
     ///
@@ -261,6 +266,7 @@ impl Sculpt3dScene {
     pub(super) fn record_for(&mut self, object: ObjectId, undo: StrokeUndo) {
         self.undo.push(Entry { object, undo });
         self.redo.clear();
+        self.trim_history();
     }
 
     /// **SUBDIVIDE a malha uma vez** — quatro faces onde havia uma.
@@ -359,10 +365,7 @@ impl Sculpt3dScene {
         }
         let (out, report) =
             ph2d_sdf::remesh(self.mesh(), resolution).map_err(RemeshRefusal::Engine)?;
-        let previous = core::mem::replace(
-            self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?,
-            out,
-        );
+        let previous = core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, out);
         self.record(StrokeUndo::Remeshed(Box::new(previous)));
         // A malha é OUTRA: o traço em voo fala de vértices que não existem mais,
         // e os buffers do device mudaram de tamanho.

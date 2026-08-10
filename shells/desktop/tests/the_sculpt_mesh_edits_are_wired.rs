@@ -970,7 +970,10 @@ fn every_primitive_is_born_in_the_same_unit_ball() {
 fn the_authored_resolution_reaches_both_remesh_doors() {
     let src = sculpt_src();
     for (porta, corpo) in [
-        ("o botao do painel", function_body(&src, "apply_panel_intent")),
+        (
+            "o botao do painel",
+            function_body(&src, "apply_panel_intent"),
+        ),
         ("a tecla V", function_body(&src, "sculpt3d_key")),
     ] {
         assert!(
@@ -982,4 +985,28 @@ fn the_authored_resolution_reaches_both_remesh_doors() {
             "{porta}: ainda crava a const, entao o slider nao a alcanca"
         );
     }
+}
+
+/// **A PORTA da história poda, e é ela que faz o teto existir.**
+///
+/// ⚠️ Um gate de unidade é CEGO a isto: a poda é conferível sem device
+/// (`trim_to_budget` é função solta, e há quatro gates sobre ela), mas *o único
+/// ponto de crescimento de fato a chamar* só se afirma sobre a fonte — uma cena
+/// precisa de um `wgpu::Device`, e nenhum teste headless a constrói.
+///
+/// O defeito que ele previne está medido: cada remesh a 512 empilha uma malha
+/// inteira (**146 MB** de residência, `ph2d-sdf/tests/probe_repeat_remesh.rs`)
+/// numa fila que não tinha teto nenhum — *fazer remesh algumas vezes* era uma
+/// escada até o fim da memória, num app cujo orçamento declarado é 3500 MB.
+#[test]
+fn the_one_door_that_grows_the_history_is_the_one_that_trims_it() {
+    let body = function_body(&sculpt_src(), "record_for");
+    assert!(
+        body.contains("self.undo.push("),
+        "controle: `record_for` continua sendo o ponto de crescimento"
+    );
+    assert!(
+        body.contains("self.trim_history()"),
+        "a porta que empurra tem de podar -- sem isso a fila cresce sem teto"
+    );
 }

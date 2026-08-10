@@ -356,6 +356,16 @@ pub(crate) struct PaintState {
     /// Impasto at all. Default on — someone who sculpts wants to see it, and with no relief anywhere
     /// the pass costs a single `is_empty()`.
     pub(super) impasto_show: bool,
+    /// **O RELEVO DO SUBSTRATO — profundidade** (`0` = desligado, o neutro byte-idêntico), canvas-level
+    /// como o [`Self::impasto_show`] e o rig: um papel é a superfície sob TUDO, não uma propriedade de
+    /// um pincel. Multiplica [`super::substrate_relief::MAX_TOOTH_PX`] para dar a amplitude do dente em
+    /// pixels de relevo. O DENTE em si vem do slot `BrushSpec::paper`, que já existia.
+    pub(super) substrate_depth: f32,
+    /// **O RELEVO DO SUBSTRATO — roughness**: quão LARGO é o realce sobre o dente, o mesmo eixo do
+    /// `SpecLut` que a Roughness da tinta usa. `0` = um glint apertado (papel satinado); `1` = um brilho
+    /// largo e macio (papel de algodão). Só tem trabalho porque o papel carrega um
+    /// [`super::substrate_relief::PAPER_SHEEN`] próprio — com `shine = 0` ela seria controle morto.
+    pub(super) substrate_rough: f32,
     /// **Grid Stamp — desenhar a grade.** Exibição, não pintura: com ela ligada ou desligada o carimbo
     /// pousa exatamente nas mesmas células (gate `show_grid_is_display_only`). Mora aqui, e não no
     /// `BrushSpec`, pelo mesmo motivo do `impasto_show` logo acima — é uma ajuda de visão do canvas,

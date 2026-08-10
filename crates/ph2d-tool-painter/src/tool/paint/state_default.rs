@@ -196,6 +196,12 @@ impl Default for PaintState {
             relief: Default::default(),
             // Impasto lighting (canvas-level). Inert until some layer actually has relief.
             impasto_show: true,
+            // O relevo do SUBSTRATO nasce DESLIGADO, e o zero é o neutro byte-idêntico: um papel com
+            // dente muda toda arte já feita, então ele é uma escolha do artista, nunca um default que
+            // reescreve o passado. A Roughness nasce no meio do curso (o mesmo `0.5` do
+            // `Material::NEUTRAL`), que é onde ela não é nem glint nem chapa.
+            substrate_depth: 0.0,
+            substrate_rough: 0.5,
             // Grid Stamp's lattice is drawn by DEFAULT (Enio 2026-08-09: "um checkbox checado por
             // padrão para exibir o grid"). It costs nothing outside that method — both the checkbox
             // and the overlay are gated on Grid Stamp being the selected method — and a stamp that

@@ -368,6 +368,7 @@ impl PainterTool {
         // E sem esta metade a doação seria invisível no caso que ela existe para servir: um documento
         // com uma escultura e NENHUM relevo de tinta não tem `heights`, então o passe nem correria.
         self.donated_form.is_some()
+            || self.substrate().is_some()
             || (self.paint.impasto_show
                 && (!self.heights.is_empty() || !self.paint.relief.stroke_height.is_empty()))
     }
@@ -468,7 +469,13 @@ impl PainterTool {
             .filter(|o| o.len() == n);
         // ⚠️ A segunda camada da mesma pergunta: sem camada de relevo E sem forma não há nada a
         // iluminar. Com forma e nenhum relevo há — é *pintar sobre forma*, o objetivo O1 inteiro.
-        if layers.is_empty() && form.is_none() {
+        // ⚠️ **E o SUBSTRATO é a terceira, pelo mesmo motivo — este guarda é irmão do
+        // [`Self::impasto_visible`] e os dois têm de concordar.** Corrigir só um deixa o passe correr e
+        // desistir aqui: a luz nunca acende, todos os outros gates passam, e o modo de falha é
+        // exatamente *"a feature não faz nada"*. É a lei que esta casa já pagou com o default de mídia
+        // do Painter — *a regra de ENTRADA mascara a de SAÍDA* —, e é por isso que há um gate por
+        // camada (`the_paper_lights_on_a_canvas_with_no_paint_at_all` nasceu VERMELHO aqui).
+        if layers.is_empty() && form.is_none() && self.substrate().is_none() {
             return None;
         }
         Some(ReliefFields {
@@ -551,6 +558,9 @@ impl PainterTool {
         };
         let at = |x: i64, y: i64| fields.height_at(x, y);
         let cover_at = |x: i64, y: i64| fields.cover_at(x, y);
+        // O SUBSTRATO: resolvido UMA vez (a base de rotação e o snap de Size não são baratos por-texel),
+        // e `None` quando desligado — o que deixa cada linha abaixo cair no valor que já era o dela.
+        let substrate = self.substrate();
         // Materials are piecewise-constant across a canvas (one per stroke), so a ONE-entry cache turns
         // the per-material resolve — which now owns the flat divisor, and so is not free — into a few
         // calls per pass instead of one per texel.
@@ -561,8 +571,18 @@ impl PainterTool {
                 let gx = i64::from(region.x + rx);
                 // Central differences — the normal reads across the region's edge into the canvas, so a
                 // dirty-rect update lights its border exactly as a full recompose would.
-                let dhx = (at(gx + 1, gy) - at(gx - 1, gy)) * 0.5;
-                let dhy = (at(gx, gy + 1) - at(gx, gy - 1)) * 0.5;
+                let mut dhx = (at(gx + 1, gy) - at(gx - 1, gy)) * 0.5;
+                let mut dhy = (at(gx, gy + 1) - at(gx, gy - 1)) * 0.5;
+                // ⚠️ **O dente SOMA à inclinação da tinta, e é a soma que está certa.** As duas são
+                // alturas da mesma superfície (o papel embaixo, a tinta em cima), e a normal de uma
+                // soma de alturas é a soma dos gradientes — não há uma segunda passada de luz a
+                // compor, e por isso não há duas respostas para *"de onde vem a luz?"*. O substrato já
+                // entrega a inclinação NA UNIDADE deste passe (ver `Substrate::slope_at`).
+                if let Some(s) = substrate.as_ref() {
+                    let (sx, sy) = s.slope_at(gx, gy);
+                    dhx += sx;
+                    dhy += sy;
+                }
                 let cover = cover_at(gx, gy);
                 let i = ((ry as usize) * (region.w as usize) + rx as usize) * 4;
                 // The pixel's own colour IS a metal's highlight, so it is an INPUT to the shade, not
@@ -581,7 +601,17 @@ impl PainterTool {
                 // desde a primeira pincelada. Sem isto a doação só apareceria onde já houvesse tinta —
                 // e onde já há tinta o artista não precisa dela para saber onde a forma está.
                 let form = fields.form_at(gx, gy);
-                let body = paint_body(cover).max(form[3]);
+                // ⚠️ **A presença do PAPEL é `1` em toda parte, e é a única exceção honesta à regra
+                // *"relevo sob cobertura zero não acende"*.** A regra existe porque relevo de TINTA sem
+                // tinta é relevo de nada; um papel, ao contrário, está lá — a cobertura dele é 1 por
+                // definição (doc 19 §1.3 antecipou exatamente isto). Sem esta linha o dente acenderia
+                // só onde já houvesse tinta, e o Digital — que não tem `covers` nenhum — não veria nada.
+                let paper_body = f32::from(u8::from(substrate.is_some()));
+                let body = paint_body(cover).max(form[3]).max(paper_body);
+                // ⚠️ **O `gloss` NÃO ganha a presença do papel, e isso é medição e não descuido:** um
+                // papel não tem realce especular observável (ver o ⛔ em `substrate_relief` — o realce
+                // plano é subtraído e clampado, e num dente de ~1 px ele é nulo em qualquer expoente).
+                // Dar-lhe presença aqui seria escrever uma linha que a mutação prova inerte.
                 let (mul, add) =
                     light.shade_over(&mat, body, gloss_body(cover), dhx, dhy, form, albedo);
                 // **A OCLUSÃO DE FORMA multiplica o DIFUSO e não o realce**, e é a mesma lei que o

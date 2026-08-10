@@ -150,18 +150,19 @@ impl Substrate {
         t * self.amp_px
     }
 
-    /// A inclinação do dente **na unidade que o [`super::impasto_shade::Rig`] espera**.
+    /// A altura do dente **na unidade do plano de relevo da TINTA** — cargas, não pixels.
     ///
-    /// ⚠️ **A conversão do consumidor entra AQUI, e é o ponto todo.** O `shade_over` faz
-    /// `−dh × DEPTH_UNIT_PX` para chegar a pixels, porque o buffer de altura da TINTA é medido em
-    /// cargas; o dente já é medido em pixels. Entregar a inclinação crua inclinaria o papel
-    /// `DEPTH_UNIT_PX` vezes demais — literalmente
+    /// ⚠️ **A conversão do consumidor entra AQUI, e é o ponto todo.** O buffer de altura da tinta é
+    /// medido em CARGAS e a luz o multiplica por `DEPTH_UNIT_PX` para chegar a pixels; o dente já é
+    /// medido em pixels. Entregá-lo cru inclinaria o papel `DEPTH_UNIT_PX` vezes demais — literalmente
     /// [[feedback_geometry_over_mixed_units_needs_the_consumers_conversion]], que este módulo paga
-    /// dividindo na entrada em vez de esperar que o outro lado adivinhe.
-    pub(super) fn slope_at(&self, x: i64, y: i64) -> (f32, f32) {
-        let dx = (self.tooth_px(x + 1, y) - self.tooth_px(x - 1, y)) * 0.5;
-        let dy = (self.tooth_px(x, y + 1) - self.tooth_px(x, y - 1)) * 0.5;
-        (dx / DEPTH_UNIT_PX, dy / DEPTH_UNIT_PX)
+    /// dividindo na saída em vez de esperar que o outro lado adivinhe.
+    ///
+    /// ⚠️ **É esta a porta que os DOIS produtores atravessam** (o laço da CPU e o fold que sobe para a
+    /// GPU), porque ela é somada dentro do `ReliefFields::height_at`. A versão anterior publicava uma
+    /// INCLINAÇÃO, que só o laço da CPU sabia somar — e o produto compõe na GPU.
+    pub(super) fn tooth_loads(&self, x: i64, y: i64) -> f32 {
+        self.tooth_px(x, y) / DEPTH_UNIT_PX
     }
 }
 

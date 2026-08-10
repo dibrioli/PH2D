@@ -165,6 +165,68 @@ fn the_paper_survives_a_change_of_paint_mode() {
     }
 }
 
+/// ⚠️ **O DENTE CHEGA AO PRODUTOR DA GPU — o gate que faltava, e a razão de o Enio ver o papel morto.**
+///
+/// Este app tem **DOIS produtores** para a mesma tela: o `apply_impasto_light` da CPU (que todo gate
+/// acima dirige) e o `ImpastoLightPass` da GPU, que recebe os planos já dobrados por
+/// [`super::impasto_gpu::…::impasto_gpu_planes_in`] e refaz **só a óptica** no device. Um documento
+/// pintado num canvas que a GPU compõe — o caso normal — nunca passa pelo laço da CPU.
+///
+/// A primeira versão desta wave somava a inclinação do dente **dentro do laço da CPU**, então os sete
+/// gates ficavam verdes sobre um produto em que o papel não acendia. Reportado: *"Paper parece não
+/// funcionar para Digital"*.
+///
+/// O oráculo é o PLANO que sobe ao device, e não um pixel: o shader deriva a normal por diferença
+/// central sobre ele, então um plano chato é uma tela chata, sem exceção.
+///
+/// **Mutação que tem de sangrar:** tirar o dente do `ReliefFields::height_at` e devolvê-lo ao laço da
+/// CPU — o gate volta a `0,000000` de excursão, que é exatamente o que o artista viu.
+#[test]
+fn the_tooth_reaches_the_gpu_producer_too() {
+    let mut t = blank();
+    t.set_substrate_depth(1.0);
+    let planes = t
+        .impasto_gpu_planes_in((0, 0, N, N))
+        .expect("com substrato ligado o passe de luz tem de produzir planos");
+    let (lo, hi) = planes
+        .relief
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(l, h), v| (l.min(*v), h.max(*v)));
+    assert!(
+        hi - lo > 1e-3,
+        "o plano de relevo que sobe para a GPU é CHATO ({lo:.6}..{hi:.6}) — o dente do papel não \
+         atravessa o fold, então na tela que o device compõe o papel não existe"
+    );
+}
+
+/// **E o CORPO do papel também chega** — a outra metade, e ela falha sozinha.
+///
+/// A luz pesa por presença (`body`), e a lei do substrato é a exceção honesta *"a cobertura de um papel
+/// é 1"*. Na CPU isso é um `max` no laço; do lado da GPU tem de viajar no uniform, senão o plano de
+/// relevo sobe cheio de dente e o shader o multiplica por zero — **um plano certo, apagado no device**.
+///
+/// **Mutação que tem de sangrar:** devolver `paper_body` a `0` no uniforme.
+#[test]
+fn the_papers_presence_reaches_the_gpu_producer_too() {
+    let mut t = blank();
+    t.set_substrate_depth(1.0);
+    let planes = t
+        .impasto_gpu_planes_in((0, 0, N, N))
+        .expect("planos com substrato ligado");
+    assert!(
+        planes.paper_body > 0.5,
+        "o uniform não diz ao shader que há papel — o dente sobe e é multiplicado por cobertura zero"
+    );
+    let off = blank()
+        .impasto_gpu_planes_in((0, 0, N, N))
+        .map_or(0.0, |p| p.paper_body);
+    assert!(
+        off < 0.5,
+        "sem substrato o uniform ainda declara papel — a presença deixaria de ser uma exceção e viraria \
+         a regra, acendendo relevo de tinta sobre cobertura zero"
+    );
+}
+
 /// SONDA — a **calibração** de [`super::substrate_relief::MAX_TOOTH_PX`] e a leitura contra o alvo.
 ///
 /// Rodar: `cargo test -p ph2d-tool-painter probe_substrate_depth_ladder -- --ignored --nocapture`

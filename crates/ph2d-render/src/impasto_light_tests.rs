@@ -44,7 +44,7 @@ fn the_wgsl_globals_measures_exactly_the_rust_globals() {
         "rh",
         "has_form",
         "has_form_occ",
-        "pad2",
+        "paper_body",
     ];
     /// Onde o uniform mora — o mesmo par que o `bind_group` do [`ImpastoLightPass::run`] escreve.
     const UNIFORM: naga::ResourceBinding = naga::ResourceBinding {
@@ -174,6 +174,7 @@ fn a_mis_shaped_request_is_refused_without_a_device() {
         spec_lut: &lut,
         lut_width: 4,
         rough_levels: 2,
+        paper_body: 0.0,
         // O mundo sem escultura — e a doação é opcional exatamente para que ele continue existindo.
         form: None,
         form_occlusion: None,

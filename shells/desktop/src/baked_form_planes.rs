@@ -133,6 +133,9 @@ pub(crate) fn build_input<'a>(
         spec_lut: lut.table(),
         lut_width: u32::try_from(SPEC_LUT).unwrap_or(1),
         rough_levels: u32::try_from(ROUGH_LEVELS).unwrap_or(1),
+        // O bake de uma FORMA nao carrega substrato: o papel e do documento vivo, e assar o
+        // dente dele dentro do objeto o faria escurecer de novo a cada re-bake.
+        paper_body: 0.0,
         form: Some(form),
         // ⚠️ **Um plano VAZIO vira `None`, e não um `Some` de nada.** Um documento assado antes desta
         // wave não traz oclusão, e o neutro dela é `1.0` — o `None` é exatamente essa leitura, e

@@ -454,6 +454,7 @@ fn compose_light_premul(
                 spec_lut: planes.spec_lut,
                 lut_width: planes.lut_width,
                 rough_levels: planes.rough_levels,
+                paper_body: planes.paper_body,
             };
             // Falling through UNLIT would composite the layers perfectly and drop the shading on the
             // floor: the artist would sculpt and see nothing, with no error anywhere.

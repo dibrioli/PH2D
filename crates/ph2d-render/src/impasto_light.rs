@@ -113,6 +113,12 @@ pub struct ImpastoLightInput<'a> {
     pub spec_lut: &'a [f32],
     pub lut_width: u32,
     pub rough_levels: u32,
+    /// **A PRESENÇA DO PAPEL** — `1.0` quando o documento tem substrato, `0.0` quando não.
+    ///
+    /// A luz pesa por presença, e a lei do substrato é a exceção honesta *"a cobertura de um papel é
+    /// 1"*: sem ela o dente que o `relief` já carrega seria multiplicado pela cobertura da TINTA, que
+    /// num documento digital é zero. Escalar e não plano porque a presença é uniforme na tela.
+    pub paper_body: f32,
     /// **A FORMA doada** pelo módulo 3D (`docs/3D/05.2`) — `[nx, ny, nz, peso]` por texel de
     /// [`Self::plane_region`], ou `None` num documento sem escultura.
     ///
@@ -231,7 +237,14 @@ struct Globals {
     /// tamanho, nenhum offset se move, e o gate que pina a forma do [`Globals`] continua medindo o
     /// que media.
     has_form_occ: u32,
-    pad2: u32,
+    /// `1` quando há SUBSTRATO (o dente do papel) neste frame.
+    ///
+    /// ⚠️ Ocupa a vaga que era `pad2`, pelo motivo dos dois irmãos: o uniform não muda de tamanho e
+    /// nenhum offset se move. E ele é **necessário, não economia**: o plano de relevo já sobe com o
+    /// dente somado (a CPU o dobra em `ReliefFields::height_at`, porta única dos dois produtores), mas
+    /// a luz pesa por PRESENÇA — sem este bit o shader multiplica o dente pela cobertura da TINTA, que
+    /// num documento digital é zero, e o papel sobe certo para ser apagado no device.
+    paper_body: u32,
 }
 
 /// A canvas-sized plane the shader reads.
@@ -568,7 +581,7 @@ impl ImpastoLightPass {
             rh: input.region.h,
             has_form: u32::from(input.form.is_some()),
             has_form_occ: u32::from(input.form_occlusion.is_some()),
-            pad2: 0,
+            paper_body: u32::from(input.paper_body > 0.5),
         };
         for (slot, l) in g.lamps.iter_mut().zip(input.lamps) {
             slot.dir = [l.dir[0], l.dir[1], l.dir[2], 0.0];

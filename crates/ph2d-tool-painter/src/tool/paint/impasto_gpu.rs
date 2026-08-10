@@ -87,6 +87,14 @@ pub struct ImpastoPlanes {
     /// (`docs/3D/05.2`). O ausente NÃO viaja como um plano de zeros: um `z` zero é uma normal deitada,
     /// e quem põe o neutro `[0, 0, 1]` é o shader, por um bit do uniform.
     pub form: Option<Vec<f32>>,
+    /// **A PRESENÇA DO PAPEL** — `1.0` quando o substrato está ligado, `0.0` quando não.
+    ///
+    /// ⚠️ **Escalar, não plano, e é medição e não economia:** a presença de um papel é uniforme na
+    /// tela (ou há substrato ou não há), então uma textura inteira de `1` diria o que um bit diz. É o
+    /// idioma do `has_form` ao lado — e ele é NECESSÁRIO aqui, não cosmético: o plano de relevo já sobe
+    /// com o dente somado, e sem esta presença o shader o multiplica pela cobertura da TINTA, que num
+    /// documento digital é zero. Plano certo, apagado no device.
+    pub paper_body: f32,
     /// **A OCLUSÃO DE FORMA** doada com ela — um escalar por texel da janela, ou `None`.
     ///
     /// ⚠️ Ao contrário da irmã, a ausência desta é **honesta e não um bit de emergência**: o neutro
@@ -275,6 +283,7 @@ impl PainterTool {
             mat1,
             form,
             form_occ,
+            paper_body: fields.paper_body(),
             lamps,
             spec_lut: lut.table(),
             lut_width: ph2d_painter_brush::material::SPEC_LUT as u32,

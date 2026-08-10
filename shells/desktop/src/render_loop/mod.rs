@@ -159,6 +159,10 @@ pub(crate) mod painter_bridge_wetness;
 /// hardware) — split from the pipeline tests for the HR-18 file-LOC cap.
 #[cfg(test)]
 mod painter_preview_handoff_tests;
+/// Display gates, a metade que MEDE — o preço de cada produtor pelo mesmo traço. Irmão do de cima,
+/// cortado dele pelo teto de LOC da shell e por ASSUNTO (o que se AFIRMA × o que se MEDE).
+#[cfg(test)]
+mod painter_preview_measure;
 /// Ownership gates: the shell's preview buffer is INDEPENDENT of the tool's canvas, so a plain stroke
 /// stays footprint-bound (the tool keeps sole ownership) — split from the pipeline tests (HR-18).
 #[cfg(test)]

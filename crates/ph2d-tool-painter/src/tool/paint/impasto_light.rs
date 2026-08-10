@@ -173,6 +173,18 @@ pub(super) struct ReliefFields<'a> {
     /// a layer with no entry reads as. It is a constant, and it is read per texel; deriving it in the
     /// loop is the kind of thing that costs half a millisecond and looks like nothing.
     neutral: MaterialBytes,
+    /// **O SUBSTRATO** — o dente do papel, ou `None` quando o relevo dele está desligado.
+    ///
+    /// ⚠️ **Ele mora AQUI e não no laço de um consumidor, e é a correção do report do Enio de
+    /// 2026-08-10** (*"Paper parece não funcionar para Digital"*). A primeira versão somava a
+    /// inclinação do dente dentro do `apply_impasto_light`, o produtor de **CPU** — e um documento que
+    /// a **GPU** compõe (o caso normal) nunca passa por aquele laço: ele recebe os planos que o
+    /// `impasto_gpu` dobra a partir DESTES campos. Sete gates verdes sobre um papel morto na tela.
+    ///
+    /// `ReliefFields` é a resposta única a *"que relevo há neste texel?"*, e o doc do próprio tipo já
+    /// dizia por quê: o port de GPU *"re-implementa a ÓPTICA e deliberadamente não re-implementa o
+    /// plumbing"*. Um dente que só existe num dos dois lados é plumbing duplicado.
+    substrate: Option<super::substrate_relief::Substrate>,
     width: usize,
     height: usize,
 }
@@ -212,7 +224,48 @@ impl ReliefFields<'_> {
                 }
             }
         }
-        super::impasto_ceiling::soft_ceiling(h)
+        let h = super::impasto_ceiling::soft_ceiling(h);
+        // ⚠️ **O dente do papel SOMA à altura da tinta, e entra DEPOIS do teto de vidro.** Depois,
+        // porque o teto é uma propriedade de como a TINTA se empilha (`impasto_ceiling`) e um papel não
+        // é tinta — comprimi-lo pelo peso de uma pilha que não é dele seria o dente sumir justamente
+        // onde há mais o que iluminar. E soma, porque as duas são alturas da MESMA superfície (o papel
+        // embaixo, a tinta em cima) e a normal de uma soma de alturas é a soma dos gradientes: não há
+        // segunda passada de luz a compor, logo não há duas respostas para *"de onde vem a luz?"*.
+        //
+        // ⚠️ **É uma APROXIMAÇÃO nomeada, e a doc 19 §1.2 já a nomeava:** tinta espessa *preenche* o
+        // dente em vez de somar a ele (`lerp(h_papel, h_tinta, f(carga))`), e o `f` daquela lei quer
+        // medição própria. A soma é o que a wave shipa; trocá-la é wave com smoke próprio.
+        //
+        // ⚠️ **E o dente é amostrado nas coordenadas CLAMPADAS ao canvas, como o resto do fold** — a
+        // metade que o gate e2e dos dois produtores pegou. O papel é um padrão contínuo, então
+        // amostrá-lo em `x = −1` devolve um número perfeitamente válido; só que o produtor de GPU não
+        // pode fazer isso, porque ele lê um PLANO que acaba na borda do canvas e clampa. Medido: a
+        // divergência era **1149 bytes, começando em (0,0)**, um anel de um texel em volta da tela.
+        // *Um fold cujo domínio é o canvas tem de ser lido no canvas, mesmo quando a fonte sabe
+        // responder fora dele.*
+        match self.substrate.as_ref() {
+            Some(s) => {
+                let cx = x.clamp(0, self.width as i64 - 1);
+                let cy = y.clamp(0, self.height as i64 - 1);
+                h + s.tooth_loads(cx, cy)
+            }
+            None => h,
+        }
+    }
+
+    /// **A PRESENÇA do papel** — `1` quando há substrato, `0` quando não há.
+    ///
+    /// ⚠️ **É a única exceção honesta à regra *"relevo sob cobertura zero não acende"*.** A regra existe
+    /// porque relevo de TINTA sem tinta é relevo de nada; um papel, ao contrário, está lá — a cobertura
+    /// dele é 1 por definição (a doc 19 §1.3 antecipou exatamente isto). Sem ela o dente acenderia só
+    /// onde já houvesse tinta, e o Digital — que não tem plano de `covers` nenhum — não veria nada.
+    ///
+    /// ⚠️ **Escalar e não plano**, e é o que a torna barata dos dois lados: a presença de um papel é
+    /// uniforme na tela, então ela viaja para a GPU num BIT do uniform (o idioma do `has_form`) em vez
+    /// de uma textura inteira dizendo `1`.
+    #[inline]
+    pub(super) fn paper_body(&self) -> f32 {
+        f32::from(u8::from(self.substrate.is_some()))
     }
 
     /// One layer's own paint coverage at `i` (`0..1`) — including the open stroke when it is the active
@@ -479,6 +532,7 @@ impl PainterTool {
             return None;
         }
         Some(ReliefFields {
+            substrate: self.substrate(),
             layers,
             live_h,
             live_c,
@@ -560,7 +614,6 @@ impl PainterTool {
         let cover_at = |x: i64, y: i64| fields.cover_at(x, y);
         // O SUBSTRATO: resolvido UMA vez (a base de rotação e o snap de Size não são baratos por-texel),
         // e `None` quando desligado — o que deixa cada linha abaixo cair no valor que já era o dela.
-        let substrate = self.substrate();
         // Materials are piecewise-constant across a canvas (one per stroke), so a ONE-entry cache turns
         // the per-material resolve — which now owns the flat divisor, and so is not free — into a few
         // calls per pass instead of one per texel.
@@ -571,18 +624,10 @@ impl PainterTool {
                 let gx = i64::from(region.x + rx);
                 // Central differences — the normal reads across the region's edge into the canvas, so a
                 // dirty-rect update lights its border exactly as a full recompose would.
-                let mut dhx = (at(gx + 1, gy) - at(gx - 1, gy)) * 0.5;
-                let mut dhy = (at(gx, gy + 1) - at(gx, gy - 1)) * 0.5;
-                // ⚠️ **O dente SOMA à inclinação da tinta, e é a soma que está certa.** As duas são
-                // alturas da mesma superfície (o papel embaixo, a tinta em cima), e a normal de uma
-                // soma de alturas é a soma dos gradientes — não há uma segunda passada de luz a
-                // compor, e por isso não há duas respostas para *"de onde vem a luz?"*. O substrato já
-                // entrega a inclinação NA UNIDADE deste passe (ver `Substrate::slope_at`).
-                if let Some(s) = substrate.as_ref() {
-                    let (sx, sy) = s.slope_at(gx, gy);
-                    dhx += sx;
-                    dhy += sy;
-                }
+                // ⚠️ O dente do papel JÁ está dentro do `height_at` (porta única), então a diferença
+                // central o pega de graça — e o produtor de GPU, que dobra os MESMOS campos, também.
+                let dhx = (at(gx + 1, gy) - at(gx - 1, gy)) * 0.5;
+                let dhy = (at(gx, gy + 1) - at(gx, gy - 1)) * 0.5;
                 let cover = cover_at(gx, gy);
                 let i = ((ry as usize) * (region.w as usize) + rx as usize) * 4;
                 // The pixel's own colour IS a metal's highlight, so it is an INPUT to the shade, not
@@ -606,7 +651,7 @@ impl PainterTool {
                 // tinta é relevo de nada; um papel, ao contrário, está lá — a cobertura dele é 1 por
                 // definição (doc 19 §1.3 antecipou exatamente isto). Sem esta linha o dente acenderia
                 // só onde já houvesse tinta, e o Digital — que não tem `covers` nenhum — não veria nada.
-                let paper_body = f32::from(u8::from(substrate.is_some()));
+                let paper_body = fields.paper_body();
                 let body = paint_body(cover).max(form[3]).max(paper_body);
                 // ⚠️ **O `gloss` NÃO ganha a presença do papel, e isso é medição e não descuido:** um
                 // papel não tem realce especular observável (ver o ⛔ em `substrate_relief` — o realce

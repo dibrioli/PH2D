@@ -80,12 +80,24 @@ struct Globals {
     // uma normal deitada, que nao e' o neutro); aqui ele e' so' economia, porque
     // o neutro da oclusao E' um numero (`1.0`).
     has_form_occ: u32,
-    // ⚠️ UM padding, nao dois. Ele existia em par com o `pad1` quando os dois
-    // bits acima eram vagas livres; cada bit que nasce COME uma delas, e deixar
-    // a vaga para tras faz o WGSL medir 16 bytes a mais que o `Globals` do Rust
-    // -- o que o wgpu recusa no dispatch, como PANIC. Ver o gate
+    // 1 quando ha SUBSTRATO (o dente do papel) neste frame.
+    //
+    // ⚠️ Necessario, e nao economia. O plano `relief` ja sobe com o dente somado
+    // (a CPU o dobra em `ReliefFields::height_at`, porta unica dos dois
+    // produtores), mas a luz pesa por PRESENCA -- e a presenca de um papel e 1
+    // por definicao, que e a unica excecao honesta a regra "relevo sob cobertura
+    // zero nao acende". Sem este bit o dente sobe certo e e apagado aqui, porque
+    // num documento digital a cobertura da TINTA e zero em toda parte.
+    //
+    // Escalar num BIT e nao uma textura de uns: a presenca e uniforme na tela.
+    //
+    // ⚠️ Ele COMEU a ultima vaga (`pad2`), e nao se somou a ela -- que era o aviso
+    // que aquele campo carregava: cada bit que nasce come um padding, e deixar a
+    // vaga para tras faz o WGSL medir 4 bytes a mais que o `Globals` do Rust, o
+    // que o wgpu recusa no dispatch, como PANIC. O uniform NAO tem mais folga:
+    // o proximo bit paga um bloco de 16 dos DOIS lados, de proposito. Ver o gate
     // `the_wgsl_globals_measures_exactly_the_rust_globals`.
-    pad2: u32,
+    paper_body: u32,
 };
 
 @group(0) @binding(0) var src: texture_2d<f32>;
@@ -204,7 +216,7 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     // mesmo sobre papel nu, e e isso que faz *pintar sobre forma* funcionar desde a
     // primeira pincelada. (O `gloss` segue a TINTA: um realce e do material da
     // tinta, e o barro ainda nao tem material -- docs/3D/05.1, W7.)
-    let body = max(cover_here, f.w);
+    let body = max(max(cover_here, f.w), f32(u.paper_body));
     let gloss = cover_here;
 
     // A OCLUSAO deste texel, lida ANTES do early-out.

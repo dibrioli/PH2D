@@ -6373,6 +6373,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-pulse-level"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-pulse-on-change"
 version = "0.0.0"
 dependencies = [
@@ -6484,6 +6492,7 @@ dependencies = [
  "ph2d-node-pulse-beat",
  "ph2d-node-pulse-compare",
  "ph2d-node-pulse-counter",
+ "ph2d-node-pulse-level",
  "ph2d-node-pulse-on-change",
  "ph2d-node-pulse-sample-hold",
  "ph2d-node-pulse-threshold",

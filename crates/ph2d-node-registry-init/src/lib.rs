@@ -92,6 +92,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_pulse_beat::register(reg)?;
     ph2d_node_pulse_compare::register(reg)?;
     ph2d_node_pulse_counter::register(reg)?;
+    ph2d_node_pulse_level::register(reg)?;
     ph2d_node_pulse_on_change::register(reg)?;
     ph2d_node_pulse_sample_hold::register(reg)?;
     ph2d_node_pulse_threshold::register(reg)?;

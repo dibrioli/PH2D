@@ -201,3 +201,189 @@ fn the_shading_travels_once_the_relief_or_the_gain_never_both() {
          assada nas duas (e vai pousar duas vezes), ou não está em nenhuma"
     );
 }
+
+/// **O carimbo fica como o artista o largou: o pen-up NÃO assenta um relevo que veio de uma IMAGEM.**
+///
+/// Report do Enio (2026-08-09, na cena do Grid Stamp): *"no mouse down fica exatamente como deveria
+/// ficar, mas no mouse UP sofre uma mudança (provavelmente o smooth ou outro algoritmo de ajuste de
+/// mouse up) … a imagem deve ficar como no mouse down"*.
+///
+/// MEDIDO antes da correção, num carimbo de célula: o pen-down deixava **4032 texels, pico 3,162** e o
+/// pen-up devolvia **4624, pico 2,962** — **1264 texels mexidos, pior |Δh| = 2,217** sobre um pico de
+/// 3,16, ou seja **70% da altura**. Com o `impasto_smoothing` em zero o commit já saía byte-idêntico
+/// ao vivo, então o assentamento era a diferença INTEIRA.
+///
+/// ⚠️ **O oráculo é o campo que a LUZ lê**, texel a texel — não uma contagem nem um pico, que um blur
+/// pode preservar por acaso (a soma aqui muda 0,05%: um gate de massa ficaria verde sobre o defeito).
+///
+/// **Mutação que tem de sangrar:** tirar o `!self.stamps_captured_relief()` do settle em
+/// [`super::impasto_live`].
+#[test]
+fn a_travelling_relief_lands_as_authored_and_the_pen_up_does_not_settle_it() {
+    let size = 96u32;
+    let src = sculpted_source(size);
+    let mut t = digital_stamper(&src, size);
+    t.set_brush_stroke_method(ph2d_painter_brush::StrokeMethod::GridStamp.to_u8());
+    t.set_grid_cell_px(super::grid_stamp_settings::GridAxis::X, 48.0);
+    t.set_grid_cell_px(super::grid_stamp_settings::GridAxis::Y, 48.0);
+    let at = |phase| CanvasPointer {
+        pos: [24.0, 24.0],
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    t.on_canvas_pointer(at(PointerPhase::Down));
+    let live = height_field(&t, size);
+    assert!(
+        live.iter().any(|&h| h > 1e-4),
+        "premissa: o pen-down já deixou relevo — sem ele o gate compara dois campos vazios"
+    );
+    t.on_canvas_pointer(at(PointerPhase::Up));
+    let committed = height_field(&t, size);
+    let worst = live
+        .iter()
+        .zip(committed.iter())
+        .map(|(a, b)| (a - b).abs())
+        .fold(0.0f32, f32::max);
+    let moved = live
+        .iter()
+        .zip(committed.iter())
+        .filter(|(a, b)| (*a - *b).abs() > 1e-6)
+        .count();
+    assert_eq!(
+        (moved, worst),
+        (0, 0.0),
+        "o pen-up mexeu em {moved} texels (pior {worst}) — o carimbo tem de ficar como no mouse down"
+    );
+}
+
+/// **E o relevo DEPOSITADO continua assentando** — a metade sem a qual o gate acima passaria com o
+/// settle apagado do produto.
+///
+/// O assentamento é tinta molhada relaxando sob o próprio peso, e um depósito É tinta molhada. O que
+/// a wave remove é aplicá-lo a uma escultura CAPTURADA, que já secou noutro documento.
+///
+/// ⚠️ **O oráculo é o KNOB, e a 1ª versão deste gate estava errada:** ela media *"o pen-up mudou
+/// alguma coisa"*, que é verdade por outros motivos (o commit re-deriva o campo inteiro e soma o
+/// chão de volta) — e por isso **sobreviveu** à mutação que apaga o `settle`. O que prova que o
+/// assentamento rodou é o mesmo traço commitado com Smoothing **0** e com Smoothing **1** dar campos
+/// DIFERENTES.
+///
+/// **Mutação que tem de sangrar:** apagar a chamada ao `settle` (a lei nova ficaria verde sozinha).
+#[test]
+fn a_deposited_relief_still_settles_at_pen_up() {
+    let size = 96u32;
+    let committed = |smoothing: f32| {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        t.toggle_brush_impasto();
+        t.set_brush_size_px(18.0);
+        t.paint.brush.color = [0.7, 0.3, 0.2];
+        t.paint.brush.strength = 1.0;
+        t.paint.brush.impasto_smoothing = smoothing;
+        let mid = size as f32 * 0.5;
+        let at = |x: f32, phase| CanvasPointer {
+            pos: [x, mid],
+            pressure: 1.0,
+            tilt: [0.0, 0.0],
+            phase,
+        };
+        t.on_canvas_pointer(at(size as f32 * 0.3, PointerPhase::Down));
+        t.on_canvas_pointer(at(size as f32 * 0.7, PointerPhase::Move));
+        t.on_canvas_pointer(at(size as f32 * 0.7, PointerPhase::Up));
+        height_field(&t, size)
+    };
+    let smoothed = committed(1.0);
+    let raw = committed(0.0);
+    assert!(
+        raw.iter().any(|&h| h > 1e-4),
+        "premissa: o traço deixou relevo — sem ele o gate compara dois campos vazios"
+    );
+    let moved = smoothed
+        .iter()
+        .zip(raw.iter())
+        .filter(|(a, b)| (*a - *b).abs() > 1e-6)
+        .count();
+    assert!(
+        moved > 100,
+        "o Smoothing não mexeu no relevo commitado ({moved} texels) — o assentamento do DEPÓSITO          deixou de rodar"
+    );
+}
+
+/// **O preview do painel mostra o documento COMO ELE SE VÊ — a viagem do relevo não o achata.**
+///
+/// Report do Enio (2026-08-09): *"o preview do painel mostra a imagem chapada e não com o aspecto do
+/// impasto"*. A causa foi a 1ª versão desta wave: ao mandar a cor pristina para o carimbo ela apagou
+/// o ganho do plano que o preview fotografa, e a face do slot perdeu a sombra da escultura.
+///
+/// ⚠️ **O oráculo é a INVARIÂNCIA:** a aparência do slot não é função de o relevo viajar ou não — é
+/// função do que foi capturado. Um gate que só pedisse *"o preview não é chapado"* teria de nomear um
+/// número de contraste; este compara o produto contra ele mesmo com o interruptor virado.
+///
+/// **Mutação que tem de sangrar:** o preview ler a `rgb_image` (a porta do CARIMBO) em vez da
+/// `rgb_image_shown`.
+#[test]
+fn the_panel_preview_shows_the_captured_document_however_the_relief_travels() {
+    let size = 96u32;
+    let src = sculpted_source(size);
+    let (relief, _) = src.captured_relief().expect("a fonte tem escultura");
+    let gain = src
+        .relief_shade_gain()
+        .expect("a fonte tem relevo, logo tem ganho");
+    let n = (size as usize) * (size as usize);
+    let mut rgba = vec![210u8; n * 4];
+    for p in rgba.chunks_exact_mut(4) {
+        p[3] = 255;
+    }
+    let preview = |travels: bool| {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; n * 4], size, size);
+        t.set_brush_shape_image_rgba(&rgba, size, size, Some(11));
+        t.paint.shape_layers.set_gain(gain.clone());
+        t.paint.shape_layers.set_relief(relief.clone());
+        t.paint.shape_layers.set_relief_from_image(travels);
+        if !t.paint.shape_layers.per_layer_color() {
+            t.toggle_brush_shape_per_layer_color();
+        }
+        assert_eq!(
+            travels,
+            t.paint.shape_layers.relief_travels(),
+            "premissa: o interruptor da viagem do relevo é o que esta chamada diz"
+        );
+        t.refresh_shape_color_preview();
+        t.shape_color_preview()
+            .map(|(px, _, _)| px.to_vec())
+            .unwrap_or_default()
+    };
+    let with_travel = preview(true);
+    let without = preview(false);
+    assert!(
+        !with_travel.is_empty() && with_travel.len() == without.len(),
+        "premissa: os dois previews existem ({} e {} bytes)",
+        with_travel.len(),
+        without.len()
+    );
+    let differing = with_travel
+        .iter()
+        .zip(without.iter())
+        .filter(|(a, b)| a != b)
+        .count();
+    assert_eq!(
+        differing, 0,
+        "o preview mudou em {differing} bytes só porque o relevo passou a viajar — ele fotografa o \
+         que foi CAPTURADO, e o que o carimbo pinta é outra pergunta"
+    );
+}
+
+/// O campo de altura que a LUZ lê, texel a texel — o oráculo dos dois gates de assentamento.
+fn height_field(t: &PainterTool, size: u32) -> Vec<f32> {
+    let mut v = vec![0.0f32; (size as usize) * (size as usize)];
+    if let Some(f) = t.impasto_fields() {
+        for y in 0..i64::from(size) {
+            for x in 0..i64::from(size) {
+                v[(y as usize) * (size as usize) + x as usize] = f.height_at(x, y);
+            }
+        }
+    }
+    v
+}

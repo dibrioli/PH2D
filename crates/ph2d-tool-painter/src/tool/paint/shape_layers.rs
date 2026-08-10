@@ -57,9 +57,12 @@ pub(super) struct ShapeLayers {
     /// dia) chega ao carimbo: o slot pinta a APARÊNCIA do documento, e a aparência de tinta esculpida
     /// inclui a sombra dela.
     ///
-    /// ⚠️ **A luminância lê DAQUI, não do `rgb` cru** — e é isso que mantém a metade que já shipava:
-    /// no modo de silhueta por TOM a sombra continua a valer, porque o tom de tinta esculpida É mais
-    /// escuro. O modo por ALPHA é que deixa de a sentir, que é precisamente o report.
+    /// ⚠️ **É a APARÊNCIA, e ela existe mesmo quando o carimbo NÃO a usa.** Com o relevo viajando
+    /// quem pinta é o [`Self::rgb`] pristino (a luz do destino faz a sombra — [`Self::rgb_image`]),
+    /// mas o **preview do painel** e a **silhueta por TOM** continuam querendo o documento como ele
+    /// SE VÊ: um preview pristino é o *"a imagem chapada, sem o aspecto do impasto"* que o Enio
+    /// reportou em 2026-08-09, e um tom pristino mudaria em silêncio a máscara que o artista já
+    /// autorou. Uma pergunta por porta; o plano é UM.
     lit: Vec<Vec<u8>>,
     /// **A silhueta vem do ALPHA da imagem** (em vez das diferenças de claro e escuro dela).
     ///
@@ -147,23 +150,15 @@ impl ShapeLayers {
     /// sítio onde alguém possa esquecer a escolha do artista (é exatamente o defeito que o ganho do
     /// relevo teve em 2026-08-09, aplicado no flatten e ausente do modo colorido).
     fn rebuild_derived(&mut self) {
-        // (1) A COR sombreada pelo relevo. Ela vem primeiro porque a silhueta por TOM lê dela.
+        // (1) A COR sombreada pelo relevo — a APARÊNCIA do documento capturado. Ela vem primeiro
+        // porque a silhueta por TOM lê dela.
         //
-        // ⚠️ **E ela NÃO é sombreada quando o relevo VIAJA — esta é a espinha da wave, e o erro que
-        // ela evita é aritmético e mudo.** Se o carimbo deposita relevo de verdade, quem sombreia é a
-        // luz do documento de DESTINO; assar a sombra da luz de ORIGEM na cor faria a sombra pousar
-        // DUAS vezes — a mesma sombra escura multiplicada por si mesma, num carimbo que reage à luz e
-        // já vinha reagindo. Uma das duas tem de existir, nunca as duas:
-        //
-        //   - relevo VIAJA  ⇒ cor PRISTINA (`rgb`), a luz do destino faz a sombra, e ela se move
-        //     quando o artista move a lâmpada — que é o pedido;
-        //   - relevo NÃO viaja ⇒ cor SOMBREADA (`rgb × gain`), a aparência assada do documento de
-        //     origem, que é o que shipou de manhã e continua certo para quem só quer a APARÊNCIA.
-        let gain = if self.relief_travels() {
-            &[][..]
-        } else {
-            &self.gain[..]
-        };
+        // ⚠️ **Ela é derivada SEMPRE, e quem escolhe se o carimbo a usa é a [`Self::rgb_image`].** A
+        // 1ª versão desta wave apagava o ganho aqui quando o relevo viajava, e o preço foi medido na
+        // tela: o preview do painel — que é uma FOTOGRAFIA do slot — passou a mostrar a imagem
+        // *chapada*, e a silhueta por TOM passou a ler outra máscara. A lei do duplo-sombreamento é
+        // sobre o que o carimbo PINTA, não sobre o que o documento É.
+        let gain = &self.gain[..];
         self.lit = self
             .rgb
             .iter()
@@ -502,11 +497,46 @@ impl ShapeLayers {
     /// Borrow layer `i`'s captured RGB as an engine [`ImageRgb`] for the default **texture-colour** path —
     /// `Some` only when the layer is NOT custom-coloured (`color_on` off) AND has captured RGB; `None`
     /// otherwise (custom tint, or no RGB captured ⇒ the flat brush-base fallback).
+    ///
+    /// ⚠️ **A pergunta é *o que o CARIMBO pinta*, e é aqui que a lei do duplo-sombreamento mora.** Se
+    /// o carimbo deposita relevo de verdade, quem sombreia é a luz do documento de DESTINO; entregar
+    /// a cor já sombreada pela luz de ORIGEM faria a mesma sombra pousar DUAS vezes — a mesma sombra
+    /// escura multiplicada por si mesma, num carimbo que reage à luz e já vinha reagindo. Uma das
+    /// duas tem de existir, nunca as duas:
+    ///
+    ///   - relevo VIAJA  ⇒ cor PRISTINA ([`Self::rgb`]), a luz do destino faz a sombra, e ela se
+    ///     move quando o artista move a lâmpada — que é o pedido;
+    ///   - relevo NÃO viaja ⇒ cor SOMBREADA ([`Self::lit`]), a aparência assada do documento de
+    ///     origem, que continua certo para quem só quer a APARÊNCIA.
+    ///
+    /// A porta do que o slot **SE VÊ** é a irmã [`Self::rgb_image_shown`], e ela nunca escolhe.
     pub(super) fn rgb_image(&self, i: usize) -> Option<ImageRgb<'_>> {
+        let source = if self.relief_travels() {
+            &self.rgb
+        } else {
+            &self.lit
+        };
+        self.rgb_image_from(source, i)
+    }
+
+    /// Borrow layer `i`'s captured RGB **como o documento SE VÊ** — sempre a cor sombreada pelo
+    /// relevo capturado.
+    ///
+    /// ⚠️ **Existe porque um PREVIEW é uma fotografia, não um carimbo.** A face do slot no painel
+    /// mostra o que foi capturado, e uma escultura capturada se parece com uma escultura; foi a
+    /// ausência desta porta que produziu o *"o preview do painel mostra a imagem chapada e não com o
+    /// aspecto do impasto"* (Enio, 2026-08-09), quando a `rgb_image` passou a devolver o pristino.
+    pub(super) fn rgb_image_shown(&self, i: usize) -> Option<ImageRgb<'_>> {
+        self.rgb_image_from(&self.lit, i)
+    }
+
+    /// O corpo comum das duas portas: o guard de camada custom-colorida, o de plano vazio e o de
+    /// medida. Escrito uma vez para as duas não divergirem sobre *quando não há cor de textura*.
+    fn rgb_image_from<'a>(&'a self, planes: &'a [Vec<u8>], i: usize) -> Option<ImageRgb<'a>> {
         if self.color_on.get(i).copied().unwrap_or(false) {
             return None;
         }
-        let rgb = self.lit.get(i)?;
+        let rgb = planes.get(i)?;
         if rgb.is_empty() {
             return None;
         }

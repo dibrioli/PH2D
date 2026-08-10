@@ -308,5 +308,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::ui_spring_smoke::frame(app, f);
         return true;
     }
+    // A cena do SIZING (=66) — irmã `sizing_smoke`. O vocabulário de tamanho do Figma: o abraço
+    // (Hug), o piso (Min) e o fora-do-fluxo (Absolute), com uma quarta moldura de CONTROLE.
+    if level == 66 {
+        crate::sizing_smoke::frame(app, f);
+        return true;
+    }
     false
 }

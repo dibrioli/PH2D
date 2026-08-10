@@ -344,6 +344,7 @@ mod shape_build;
 mod shape_build_gesture;
 mod signal_smoke;
 mod sim_populate;
+mod sizing_smoke;
 /// As cenas de smoke do Sketch (=31) e do Hatch (=32) — irmão de `build_smoke`, teto de LOC.
 mod sketch_hatch_smoke;
 mod smoke_layout;

@@ -7,6 +7,7 @@
 //! responsabilidade.
 
 use rapier2d::dynamics::RigidBodyHandle;
+use rapier2d::na::Vector2;
 
 use super::PhysicsWorld;
 use super::buoyancy;
@@ -136,12 +137,15 @@ impl PhysicsWorld {
     /// consulta: ele não depende do frame da zona, nem do espelho dela, nem da
     /// posição do corpo dentro dela.
     ///
-    /// ⛔ **A força FICA de fora, e não por escopo:** ela precisa do frame da zona
-    /// (`zone_force_world`), do espelho (`zone_spin_sign`) e do falloff
-    /// (`zone_falloff_scale`) — re-derivá-los aqui seria uma **segunda resposta**
-    /// para *"que empurrão esta zona dá neste ponto?"*, que é o defeito recorrente
-    /// desta linha. Uma corrente não leva um personagem cinemático, e isso está
-    /// medido e nomeado, não esquecido.
+    /// ⚠️ **A FORÇA entrou (W-ZoneForce), e a cerca que a mantinha fora estava certa
+    /// sobre o perigo e errada sobre a conclusão.** Ela dizia: *"a força precisa do
+    /// frame da zona, do espelho e do falloff — re-derivá-los aqui seria uma segunda
+    /// resposta"*. O perigo é real e continua sendo; o que ele proíbe é
+    /// **re-derivar**, não **perguntar**. As três decisões já eram portas, e agora
+    /// há uma que as compõe — [`super::effector::zone_push_at`] —, chamada pelo
+    /// solver E por esta consulta: **um caminho, dois consumidores**, que é o oposto
+    /// de uma segunda resposta. Enquanto a cerca ficou de pé o preço estava medido e
+    /// nomeado: uma corrente não levava um personagem cinemático.
     ///
     /// ⚠️ **O arrasto é o MÁXIMO sobre as zonas, e a escolha apaga uma dedup:** um
     /// corpo COMPOSTO sobrepõe a mesma poça com cada uma das formas dele (a lição
@@ -158,7 +162,7 @@ impl PhysicsWorld {
     #[must_use]
     pub fn fluid_at(&self, handle: RigidBodyHandle) -> FluidAt {
         let g = self.gravity.norm();
-        if g <= 0.0 || self.effectors.is_empty() {
+        if self.effectors.is_empty() {
             return FluidAt::DRY;
         }
         let Some(rb) = self.bodies.get(handle) else {
@@ -176,18 +180,15 @@ impl PhysicsWorld {
         // água existir no modo cinemático. **Era falso e a mutação o provou:**
         // removê-lo deixou tudo verde, porque o zero que eu tinha medido vinha
         // inteiramente do par que não existia no grafo (ver `collider_build`).
-        let weight = rb.mass() * g;
-        if weight <= 0.0 {
-            return FluidAt::DRY;
-        }
+        let mass = rb.mass();
+        let weight = mass * g;
         let mut lift = 0.0f32;
         let mut drag = 0.0f32;
-        for &ch in rb.colliders() {
-            let Some(mine) = self
-                .colliders
-                .get(ch)
-                .filter(|c| super::shapes::displaces(c))
-            else {
+        let mut push = Vector2::new(0.0f32, 0.0);
+        let here = *rb.translation();
+        let cols = rb.colliders();
+        for (i, &ch) in cols.iter().enumerate() {
+            let Some(mine) = self.colliders.get(ch) else {
                 continue;
             };
             for (c1, c2, intersecting) in self.narrow_phase.intersection_pairs_with(ch) {
@@ -203,20 +204,46 @@ impl PhysicsWorld {
                 let Some(zone_body) = zone.parent() else {
                     continue;
                 };
-                let Some(effect) = self
+                let Some(idx) = self
                     .effectors
                     .binary_search_by_key(&zone_body.into_raw_parts(), |(h, _, _)| {
                         h.into_raw_parts()
                     })
                     .ok()
-                    .map(|i| &self.effectors[i].1)
                 else {
                     continue;
                 };
+                let (_, effect, zone_shape) = &self.effectors[idx];
                 // O arrasto é do MEIO: ele conta por ESTAR dentro, mesmo numa zona
                 // que não tem empuxo nenhum (uma corrente de ar viscosa).
                 drag = drag.max(effect.drag);
-                if effect.density <= 0.0 {
+                // ── O EMPURRÃO (W-ZoneForce) ─────────────────────────────────────
+                // ⚠️ **UMA vez por ZONA, nunca por par de colliders** — a mesma lei
+                // que o `effector::apply` obedece do outro lado, e pela mesma razão:
+                // um corpo COMPOSTO sobrepõe a mesma zona com CADA forma dele. O
+                // `drag` acima não precisa disto porque `max` é idempotente e o
+                // `lift` SOMA de propósito (o empuxo é por-forma); só o empurrão é um
+                // fato do CORPO contado uma vez.
+                //
+                // A pergunta *"já vi esta zona por outra forma minha?"* é feita às
+                // formas ANTERIORES, então num corpo de UMA forma o laço é vazio e
+                // não custa nada — que é o caso de todo personagem de hoje.
+                let already = cols[..i]
+                    .iter()
+                    .any(|&prev| self.narrow_phase.intersection_pair(prev, other) == Some(true));
+                if !already && let Some(zb) = self.bodies.get(zone_body) {
+                    let rot = *zb.rotation();
+                    let (f, _) = super::effector::zone_push_at(
+                        effect,
+                        *zone_shape,
+                        Some(zone.position()),
+                        rot.im,
+                        rot.re,
+                        here,
+                    );
+                    push += f;
+                }
+                if effect.density <= 0.0 || !super::shapes::displaces(mine) {
                     continue;
                 }
                 if let Some((force, _)) = buoyancy::buoyant_force(
@@ -235,8 +262,23 @@ impl PhysicsWorld {
             // `max`, não `clamp`: com `NaN` o `clamp` PROPAGA e o `max` devolve o
             // outro operando — um piso que também sanitiza, que é estritamente
             // mais forte que o teto que saiu.
-            buoyed: (lift / weight).max(0.0),
+            buoyed: if weight > 0.0 {
+                (lift / weight).max(0.0)
+            } else {
+                0.0
+            },
             drag,
+            // A ACELERAÇÃO, não a força — e a divisão mora aqui pelo mesmo motivo que
+            // o `buoyed` é uma razão: quem pergunta é uma lei que possui a própria
+            // velocidade e **não tem massa nenhuma na mão**. Dividir na consulta usa a
+            // massa REAL do solver (inclusive o `MassOverride` do W-Mass), e é isso
+            // que preserva a assimetria que É a feature da zona de força: a folha voa,
+            // o caixote não.
+            push: if mass > 0.0 {
+                [push.x / mass, push.y / mass]
+            } else {
+                [0.0, 0.0]
+            },
         }
     }
 }
@@ -255,6 +297,24 @@ pub struct FluidAt {
     /// **O coeficiente de resistência do meio**, por segundo — o `AreaDrag` da zona
     /// mais viscosa que contém este corpo. `0` no ar seco.
     pub drag: f32,
+    /// **A ACELERAÇÃO que os empurrões das zonas dão a este corpo**, m/s², eixos de
+    /// mundo (W-ZoneForce). `[0, 0]` fora de toda zona de força.
+    ///
+    /// Já é `F/m`, e é isso que a torna consumível por uma lei que **não tem massa na
+    /// mão** — o integrador cinemático, cuja velocidade não é do solver. A força é
+    /// resolvida pela porta [`super::effector::zone_push_at`], a MESMA que o solver
+    /// usa, então o frame da zona, o espelho e o falloff chegam aqui sem uma segunda
+    /// derivação.
+    ///
+    /// ⚠️ **SOMA sobre zonas** (duas correntes sobrepostas empurram juntas, como o
+    /// solver as soma) e **UMA vez por zona** (um corpo composto não é empurrado uma
+    /// vez por forma).
+    ///
+    /// ⚠️ **O TORQUE fica de fora, e não por esquecimento:** a porta o devolve, e o
+    /// consumidor desta consulta é uma lei que não integra velocidade angular — um
+    /// personagem de plataforma fica em pé por construção (`LockRotation`). Entregar
+    /// um número que ninguém pode aplicar seria o mesmo que um knob morto.
+    pub push: [f32; 2],
 }
 
 impl FluidAt {
@@ -262,5 +322,6 @@ impl FluidAt {
     pub const DRY: Self = Self {
         buoyed: 0.0,
         drag: 0.0,
+        push: [0.0, 0.0],
     };
 }

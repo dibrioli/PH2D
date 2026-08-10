@@ -162,6 +162,60 @@ pub fn zone_falloff_scale(
     (1.0 - falloff * t).max(0.0)
 }
 
+/// **Os dois EMPURRÕES desta zona neste PONTO** — a força em newtons e eixos de mundo, e
+/// o torque em N·m, os dois já pesados pelo falloff. A porta ÚNICA (W-ZoneForce).
+///
+/// # ⚠️ Por que uma porta, e não a aritmética repetida nos dois sítios
+///
+/// Ela tem **dois consumidores**: o [`apply`] deste módulo — que transforma o resultado
+/// em impulso a cada sub-passo — e a consulta [`super::PhysicsWorld::fluid_at`], que o
+/// entrega à lei do personagem CINEMÁTICO, cuja velocidade não é do solver. Se os dois
+/// re-derivassem, um personagem cinemático sentiria um vento que **não é** o que o corpo
+/// dinâmico ao lado dele sente, e nada num screenshot diria isso.
+///
+/// Ela compõe as três decisões que já eram portas próprias, na ORDEM que cada uma exige:
+/// o frame da zona ([`zone_force_world`] — rotação e espelho), a mão do giro
+/// ([`zone_spin_sign`]) e o desvanecimento ([`zone_falloff_scale`]).
+///
+/// ⚠️ **O falloff pesa os DOIS e mais nada** — o arrasto, o empuxo e o arrasto de forma
+/// descrevem um MEIO, e um meio não fica mais ralo perto da própria margem (há gate nessa
+/// fronteira). É essa mesma distinção que decide o que esta porta devolve e o que a
+/// [`super::FluidAt`] responde sem ela.
+///
+/// `zone_iso` é a pose de MUNDO do **collider** da zona (não a do corpo dela, para que uma
+/// zona com offset meça a partir de onde a forma de fato está); `at` é o ponto perguntado
+/// — o centro do corpo empurrado. `None` na pose faz o falloff valer `1` (a zona existe e
+/// o collider dela não foi encontrado: atenuar por um palpite seria pior que não atenuar).
+#[must_use]
+pub(crate) fn zone_push_at(
+    effect: &AreaEffect,
+    zone_shape: ShapeDesc,
+    zone_iso: Option<&Isometry2<f32>>,
+    sin_r: f32,
+    cos_r: f32,
+    at: Vector2<f32>,
+) -> (Vector2<f32>, f32) {
+    // A força autorada, levada aos eixos de mundo pelo frame da própria zona (ou
+    // deixada em paz, quando o artista a prendeu ao mundo).
+    let f = zone_force_world(effect.force, effect.world_axes, sin_r, cos_r, effect.mirror);
+    // O sentido do giro num frame espelhado (pseudoescalar — ver `AreaEffect::mirror`).
+    let spin = zone_spin_sign(effect.mirror);
+    // **Quanto desta zona chega AQUI** (W-AreaFalloff): 1 sem falloff (e então o
+    // early-out da porta nem calcula nada), menos que 1 conforme o corpo se afasta do
+    // centro.
+    let scale = if effect.falloff > 0.0 {
+        zone_iso.map_or(1.0, |iso| {
+            zone_falloff_scale(zone_shape, iso, at, effect.falloff)
+        })
+    } else {
+        1.0
+    };
+    (
+        Vector2::new(f[0] * scale, f[1] * scale),
+        effect.torque * spin * scale,
+    )
+}
+
 /// **Is this body a force zone, and with what effect?** The single door.
 ///
 /// `None` for a body with no effector, for a zero force, and for a **solid**
@@ -230,12 +284,14 @@ pub(crate) fn apply(
     if zones.is_empty() {
         return;
     }
-    let mut to_float: Vec<RigidBodyHandle> = Vec::new();
+    // **Os corpos que esta zona alcança, UMA vez cada.** Ver o bloco de dedup
+    // abaixo: a lista é o que separa *um corpo* de *uma forma de um corpo*.
+    let mut touched: Vec<RigidBodyHandle> = Vec::new();
     // As formas de um corpo, em ordem estável — reusado por corpo E por zona
     // (a capacidade sobrevive), então uma cena sem empuxo não aloca.
     let mut shapes: Vec<rapier2d::geometry::ColliderHandle> = Vec::new();
     for &(zone_body, effect, zone_shape) in zones {
-        to_float.clear();
+        touched.clear();
         // The zone's own collider handle AND its pose, copied out so the immutable
         // borrow of `bodies` ends before the impulses below need it mutably.
         //
@@ -254,12 +310,10 @@ pub(crate) fn apply(
         }) else {
             continue;
         };
-        // The authored push, turned into world axes by the zone's own frame (or left
-        // alone, when the artist pinned it to the world).
-        let f = zone_force_world(effect.force, effect.world_axes, sin_r, cos_r, effect.mirror);
-        // O sentido do giro num frame espelhado (pseudoescalar — ver `AreaEffect::mirror`).
-        let spin = zone_spin_sign(effect.mirror);
-        let force = Vector2::new(f[0], f[1]);
+        // A pose de MUNDO do collider da zona — onde a forma de fato está quando há
+        // offset. Copiada aqui porque o empréstimo imutável de `colliders` tem de
+        // acabar antes de `bodies` ser tomado mutavelmente lá em baixo.
+        let zone_iso = colliders.get(zone_collider).map(|c| *c.position());
         for (c1, c2, intersecting) in narrow_phase.intersection_pairs_with(zone_collider) {
             // `intersecting` is the real shape overlap; the pair exists as soon as
             // the bounding volumes touch, which is a bigger region than the area.
@@ -276,29 +330,58 @@ pub(crate) fn apply(
             let Some(parent) = colliders.get(other).and_then(|c| c.parent()) else {
                 continue;
             };
-            let Some(b) = bodies.get_mut(parent) else {
-                continue;
-            };
             // Only a dynamic body has a velocity the solver owns. rapier would
             // ignore the impulse on the others anyway, but asking here keeps the
             // wake-up (which is NOT a no-op) off a body that cannot move.
-            if !b.is_dynamic() {
+            if !bodies
+                .get(parent)
+                .is_some_and(rapier2d::dynamics::RigidBody::is_dynamic)
+            {
                 continue;
             }
-            // **Quanto desta zona chega AQUI** (W-AreaFalloff): 1 sem falloff (e então o
-            // early-out da porta nem calcula nada), menos que 1 conforme o corpo se afasta
-            // do centro. Perguntado por corpo porque é uma função da POSIÇÃO dele, e
-            // contra a pose do COLLIDER da zona (não a do corpo dela), que é onde a forma
-            // de fato está quando há offset.
-            let scale = if effect.falloff > 0.0 {
-                let here = *b.translation();
-                colliders.get(zone_collider).map_or(1.0, |c| {
-                    zone_falloff_scale(zone_shape, c.position(), here, effect.falloff)
-                })
-            } else {
-                1.0
+            touched.push(parent);
+        }
+        // ⚠️ **UMA vez por CORPO, não por par de colliders** (W-CompoundZone). O laço
+        // acima anda sobre SOBREPOSIÇÕES, e um corpo composto sobrepõe a zona com
+        // cada uma das formas dele.
+        //
+        // Isto era invisível no EMPUXO enquanto ele lia só a PRIMEIRA forma: uma
+        // jangada de duas metades iguais recebia `2 × meia-força` = a força certa,
+        // **por acidente aritmético**. Medido: com o empuxo somando todas as formas e
+        // sem esta linha, a mesma jangada boia com METADE da submersão (0,0624 contra
+        // os 0,125 do controle) — a força dobra.
+        //
+        // ⚠️ **E a W-CompoundZone curou só o empuxo — a força, o torque e o arrasto
+        // ficaram DENTRO do laço de pares, aplicados N vezes** (W-ZoneForce, medido):
+        // com a massa mantida fixa e a área partida em N peças, o mesmo vento leva o
+        // corpo `1,00× · 2,00× · 4,00×` em 1/2/4 peças, e o arrasto faz o inverso
+        // (`v·kᴺ`: 4,95 → 2,53 → 1,28 m). A frase *"um corpo tem exatamente um
+        // collider"* que o comentário acima descreve morreu na W-Compound, e este era
+        // o último sítio que ainda a assumia. Agora a lista deduplicada serve os
+        // CINCO efeitos, e é por isso que ela deixou de se chamar `to_float`.
+        //
+        // Ordenar antes de deduplicar torna a lista independente da ordem em que o
+        // grafo de interseção reportou os pares, e a ordem de aplicação dos impulsos
+        // é soma de `f32` (HR-5).
+        touched.sort_unstable_by_key(|h| h.into_raw_parts());
+        touched.dedup();
+        for &body in &touched {
+            let Some(b) = bodies.get_mut(body) else {
+                continue;
             };
-            b.apply_impulse(force * dt * scale, true);
+            // **Os dois EMPURRÕES desta zona NESTE corpo**, pela porta única que a
+            // consulta [`super::PhysicsWorld::fluid_at`] também faz — se o solver e a
+            // consulta respondessem por caminhos diferentes, um personagem cinemático
+            // sentiria um vento que não é o que o dinâmico ao lado dele sente.
+            let (force, torque) = zone_push_at(
+                &effect,
+                zone_shape,
+                zone_iso.as_ref(),
+                sin_r,
+                cos_r,
+                *b.translation(),
+            );
+            b.apply_impulse(force * dt, true);
             // The rotational push — a whirlpool, a turntable. `apply_torque_impulse`
             // (NOT set_angular_velocity) so it is resisted by the moment of inertia,
             // the exact mirror of the force above being resisted by mass: a long bar
@@ -306,12 +389,8 @@ pub(crate) fn apply(
             // Guarded on non-zero so a pure-force / pure-drag zone never wakes a body
             // for a torque it does not carry (`zone_effect` already refuses the wholly
             // inert zone; this is the per-body echo of that).
-            // O falloff pesa o giro pelo MESMO fator, e essa é a metade que a nota aberta
-            // do W-AreaTorque pedia: um redemoinho real perde força longe do olho. Os dois
-            // são EMPURRÕES da zona; o arrasto e o empuxo abaixo não são, e por isso não
-            // recebem o fator (há gate nessa fronteira).
-            if effect.torque != 0.0 {
-                b.apply_torque_impulse(effect.torque * spin * dt * scale, true);
+            if torque != 0.0 {
+                b.apply_torque_impulse(torque * dt, true);
             }
             // The medium's resistance. ⚠️ Written as `v /= 1 + d·dt`, which is
             // *exactly* what rapier's own `linear_damping` integrator does — so the
@@ -326,31 +405,11 @@ pub(crate) fn apply(
                 b.set_linvel(v * k, true);
                 b.set_angvel(w * k, true);
             }
-            // Arquimedes é anotado aqui e aplicado FORA deste laço: ele precisa ler o
-            // collider da zona E o do corpo enquanto escreve no corpo, o que não cabe
-            // dentro do empréstimo que este laço já segura. A lista é reusada por zona
-            // (a capacidade sobrevive ao `clear`), então uma cena sem empuxo não aloca.
-            if effect.density > 0.0 || effect.form_drag > 0.0 {
-                to_float.push(parent);
-            }
         }
-        // ⚠️ **UMA vez por CORPO, não por par de colliders** (W-CompoundZone). O laço
-        // acima anda sobre SOBREPOSIÇÕES, e um corpo composto sobrepõe a zona com
-        // cada uma das formas dele — então `to_float` recebia o mesmo corpo N vezes
-        // e o empuxo era aplicado N vezes.
-        //
-        // Isto era invisível enquanto o empuxo lia só a PRIMEIRA forma: uma jangada
-        // de duas metades iguais recebia `2 × meia-força` = a força certa, **por
-        // acidente aritmético**. Medido: com o empuxo somando todas as formas e sem
-        // esta linha, a mesma jangada boia com METADE da submersão (0,0624 contra os
-        // 0,125 do controle) — a força dobra.
-        //
-        // Ordenar antes de deduplicar torna a lista independente da ordem em que o
-        // grafo de interseção reportou os pares, e a ordem de aplicação dos impulsos
-        // é soma de `f32` (HR-5).
-        to_float.sort_unstable_by_key(|h| h.into_raw_parts());
-        to_float.dedup();
-        for &body in &to_float {
+        // Arquimedes corre num passe PRÓPRIO: ele precisa ler o collider da zona E o
+        // do corpo enquanto escreve no corpo, o que não cabe dentro do empréstimo que
+        // o laço acima segura em `b`.
+        for &body in &touched {
             if effect.density > 0.0 {
                 buoyancy::apply(
                     bodies,

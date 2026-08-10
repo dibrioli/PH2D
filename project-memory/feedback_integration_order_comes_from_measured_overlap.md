@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 50723bb0-6f74-4589-81dc-ee242a680d8c
-  modified: 2026-07-31T21:41:44.572Z
+  modified: 2026-08-10T10:01:06.527Z
 ---
 
 Numa jornada Modo L de N linhas, o `--ff-only` serializa: **a 1ª é fast-forward puro (zero conflito,
@@ -55,3 +55,18 @@ git log --diff-filter=AD --name-only --pretty=format: main..HEAD | sort -u | gre
 (arquivos NASCIDOS ou MORTOS em qualquer commit da linha; intersecte com a lista da outra linha).
 A resolução certa é pelo CONSUMIDOR: sobrevive a função cujo chamador sobrevive — apagar o arquivo
 levaria junto o símbolo do outro dono.
+
+⚠️ **Corolário 3 (2026-08-10): a BASE que o handoff declara também se re-mede.** Os dois handoffs
+daquela janela afirmavam estar sobre o `main` do dia — o da `motion-value` com o comando ao lado
+(*"`git log HEAD..main` = 0"*) — e os dois estavam **76 commits atrás**: o número foi medido no
+fechamento da linha e envelheceu entre ele e a ordem de integrar. Não muda a tabela (o `main...HEAD`
+de três pontos é merge-base-relativo, logo imune), mas muda o que você espera do rebase: um handoff
+que se diz *ff puro* pode custar um conflito. Custa uma linha conferir antes de abrir a primeira:
+
+```bash
+for b in <linhas>; do echo "$b ahead=$(git rev-list --count main..$b) behind=$(git rev-list --count $b..main)"; done
+```
+
+**Why:** todo número dentro de um handoff é uma medição *datada*; os que descrevem a LINHA envelhecem
+devagar (o diff dela não muda), e os que descrevem a RELAÇÃO com o `main` envelhecem a cada integração
+alheia. Trate a §1 do handoff como afirmação sobre o passado, nunca sobre a árvore de agora.

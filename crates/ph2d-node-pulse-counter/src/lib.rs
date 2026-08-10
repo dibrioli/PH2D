@@ -25,6 +25,14 @@
 //! `motion.step`: no `channel`/`step` params, no channel write — the displayed
 //! count rides out as the `v` value column (plus `count_tick`/`count_prev` on the
 //! `pre` loop). Positional per-instance (v1), matching the pulse family.
+//!
+//! **A porta `reset`** (folha 12 §P1; o `Reset` do TD Count CHOP) é o que torna o
+//! estado ALCANÇÁVEL — sem ela, uma linha que deixa de receber pulsos (porque um
+//! campo a montante se moveu, ou porque um param mudou em runtime) congela a
+//! contagem para sempre, e nada consegue trazê-la de volta. Semântica de NÍVEL,
+//! `reset_to` como destino, e o reset ganha de uma contagem simultânea (ver
+//! [`tick_after_reset`]). ⚠️ **Desconectada, ela é o mundo anterior BYTE A BYTE** —
+//! não há caso especial: um stream vazio vira zeros no `scalar_col` que já existia.
 
 #![forbid(unsafe_code)]
 
@@ -68,6 +76,14 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "state",
             ty: VALUE,
         },
+        // **A porta que torna o estado ALCANÇÁVEL** (folha 12 §P1; TD Count CHOP
+        // `Reset`). Opcional: desconectada, `EvalCtx::input(2)` é um stream vazio,
+        // `scalar_col` a preenche com `0.0`, e nada nunca passa de `0.5` ⇒ o mundo
+        // de hoje BYTE A BYTE, sem caso especial nenhum.
+        PortSpec {
+            name: "reset",
+            ty: PULSE,
+        },
     ],
     outputs: &[PortSpec {
         name: "out",
@@ -85,6 +101,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         // 0 Wrap · 1 Clamp · 2 Zigzag — the TD Count CHOP limit-mode vocabulary.
         ParamSpec {
             name: "mode",
+            default: 0.0,
+        },
+        // Para onde o `reset` leva o tique (TD Count CHOP `Reset Value`). `0` = o
+        // começo, e é o default ⇒ quem não liga a porta não vê diferença nenhuma.
+        ParamSpec {
+            name: "reset_to",
             default: 0.0,
         },
     ],
@@ -118,6 +140,31 @@ fn advance_tick(pulse: f32, prev_pulse: f32, prev_tick: f32) -> f32 {
     if rising { prev_tick + 1.0 } else { prev_tick }
 }
 
+/// **A PORTA ÚNICA do reset** — o tique DEPOIS de considerar o `reset` desta linha.
+///
+/// Semântica de **NÍVEL**, não de borda (o `Reset` do TD Count CHOP: *enquanto* está alto,
+/// a contagem é segurada no valor de reset). Duas consequências que são o desenho:
+///
+/// - **Nenhuma coluna de estado nova.** Uma borda exigiria lembrar o `reset` do tique
+///   anterior no `pre`; o nível não exige nada — *menos estado para consertar um problema
+///   de estado*. E um pulso dura um tique por contrato, então resetar-no-pulso continua
+///   sendo o que o artista vê.
+/// - **O reset GANHA de uma contagem simultânea.** É a decisão do TD, e é a única que
+///   torna o estado alcançável de forma confiável: se a contagem ganhasse, uma linha que
+///   recebe pulso e reset no mesmo tique ficaria em 1 para sempre, e o artista não teria
+///   como zerá-la sem acertar um vão entre dois pulsos.
+///
+/// ⚠️ **Esta lei é a MESMA do `motion.step::advance_tick`, e isso não é coincidência: é o
+/// ancestral.** O contador saiu dele (*"the count math is `motion.step`'s, verbatim"*) e
+/// **não levou o reset junto** — o `motion.step` já shipava a porta, com o mesmo nível, o
+/// mesmo `reset_to` e a mesma regra de quem ganha o tique. As duas cópias existem porque
+/// cada nó é uma **leaf drop-crate** (o vocabulário compartilhado é a PORTA, nunca um
+/// símbolo — a mesma razão de `PULSE` ser redeclarado aqui); **elas têm de se mover
+/// juntas**, e é por isso que este parágrafo nomeia a outra.
+fn tick_after_reset(reset: f32, reset_to: f32, counted: f32) -> f32 {
+    if reset > 0.5 { reset_to } else { counted }
+}
+
 /// The displayed count for a monotonic `tick`, folded by the limit mode. Integer
 /// arithmetic only (Euclidean modulo) — exact and transcendental-free (HR-5).
 fn displayed(tick: i64, n: i64, mode: LimitMode) -> i64 {
@@ -145,16 +192,27 @@ fn scalar_col(s: &Stream, name: &str, n: usize) -> Vec<f32> {
     v
 }
 
-fn step(pulse: &Stream, state: &Stream, count_max: i64, mode: LimitMode) -> Stream {
+fn step(
+    pulse: &Stream,
+    state: &Stream,
+    reset: &Stream,
+    count_max: i64,
+    mode: LimitMode,
+    reset_to: f32,
+) -> Stream {
     let n = pulse.count();
     let pulses = scalar_col(pulse, PULSE_COL, n);
     let prev_tick = scalar_col(state, TICK_COL, n);
     let prev_pulse = scalar_col(state, PREV_COL, n);
+    // Porta desconectada ⇒ stream vazio ⇒ zeros ⇒ nenhum reset. O neutro cai do
+    // helper que já existia; não há ramo "se conectado".
+    let resets = scalar_col(reset, PULSE_COL, n);
 
     let mut tick = Vec::with_capacity(n);
     let mut value = Vec::with_capacity(n);
     for i in 0..n {
-        let t = advance_tick(pulses[i], prev_pulse[i], prev_tick[i]);
+        let counted = advance_tick(pulses[i], prev_pulse[i], prev_tick[i]);
+        let t = tick_after_reset(resets[i], reset_to, counted);
         tick.push(t);
         value.push(displayed(t as i64, count_max, mode) as f32);
     }
@@ -175,7 +233,17 @@ impl NodeOp for PulseCounter {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let count_max = (ctx.param("count_max").round() as i64).max(1);
         let mode = LimitMode::from_param(ctx.param("mode"));
-        let out = step(ctx.input(0), ctx.input(1), count_max, mode);
+        // Uma contagem é uma contagem: o valor de reset é inteiro e não-negativo
+        // (um `Clamp` sobre tique negativo mostraria uma contagem negativa).
+        let reset_to = ctx.param("reset_to").round().max(0.0);
+        let out = step(
+            ctx.input(0),
+            ctx.input(1),
+            ctx.input(2),
+            count_max,
+            mode,
+            reset_to,
+        );
         ctx.emit(out);
     }
 }
@@ -218,6 +286,14 @@ static PARAM_HINTS: &[ParamUiHint] = &[
             labels: &["Wrap", "Clamp", "Zigzag"],
         },
     },
+    ParamUiHint {
+        param: "reset_to",
+        label: "Reset To",
+        min: 0.0,
+        max: 32.0,
+        step: 1.0,
+        widget: ParamWidget::Slider,
+    },
 ];
 
 #[cfg(test)]
@@ -228,6 +304,12 @@ mod tests {
     fn fire(v: f32) -> Stream {
         Stream::new(1).with(PULSE_COL, Column::Scalar(vec![v]))
     }
+    /// Um tique SEM reset — o que todo gate anterior a esta wave exercita. A porta
+    /// desconectada é um `Stream` vazio, exatamente o que o `EvalCtx` entrega.
+    fn tick(pulse: &Stream, state: &Stream, count_max: i64, mode: LimitMode) -> Stream {
+        step(pulse, state, &Stream::new(0), count_max, mode, 0.0)
+    }
+
     fn value(s: &Stream) -> f32 {
         match s.get(VALUE_COL).unwrap() {
             Column::Scalar(v) => v[0],
@@ -242,12 +324,104 @@ mod tests {
     fn a_held_pulse_counts_once_not_once_per_tick() {
         let mut state = Stream::new(1);
         for _ in 0..5 {
-            state = step(&fire(1.0), &state, 16, LimitMode::Wrap);
+            state = tick(&fire(1.0), &state, 16, LimitMode::Wrap);
         }
         assert_eq!(value(&state), 1.0, "one rising edge = one count, not five");
-        state = step(&fire(0.0), &state, 16, LimitMode::Wrap);
-        state = step(&fire(1.0), &state, 16, LimitMode::Wrap);
+        state = tick(&fire(0.0), &state, 16, LimitMode::Wrap);
+        state = tick(&fire(1.0), &state, 16, LimitMode::Wrap);
         assert_eq!(value(&state), 2.0, "the next rising edge counts once more");
+    }
+
+    /// Um tique COM reset, para os gates da porta nova.
+    fn tick_reset(
+        pulse: &Stream,
+        state: &Stream,
+        reset: f32,
+        count_max: i64,
+        reset_to: f32,
+    ) -> Stream {
+        step(
+            pulse,
+            state,
+            &fire(reset),
+            count_max,
+            LimitMode::Wrap,
+            reset_to,
+        )
+    }
+
+    /// **A porta desconectada é o mundo ANTERIOR, byte a byte.** O neutro não é uma
+    /// promessa em prosa: a sequência com a porta vazia tem de bater, elemento a
+    /// elemento, com a mesma corrida em que o reset nunca sobe.
+    #[test]
+    fn an_unconnected_reset_is_the_world_before_it() {
+        let run = |with_port: bool| {
+            let mut state = Stream::new(1);
+            let mut seq = Vec::new();
+            for k in 0..12 {
+                let p = fire(if k % 2 == 0 { 1.0 } else { 0.0 });
+                state = if with_port {
+                    tick_reset(&p, &state, 0.0, 4, 0.0)
+                } else {
+                    tick(&p, &state, 4, LimitMode::Wrap)
+                };
+                seq.push(value(&state));
+            }
+            seq
+        };
+        assert_eq!(
+            run(true),
+            run(false),
+            "porta desconectada e reset em zero descrevem a MESMA contagem"
+        );
+    }
+
+    /// **O reset traz a contagem para casa** — a capacidade inteira da wave: uma linha
+    /// que acumulou pode voltar ao começo sem que o documento seja reconstruído.
+    #[test]
+    fn the_reset_returns_the_count_home() {
+        let mut state = Stream::new(1);
+        for _ in 0..3 {
+            state = tick_reset(&fire(1.0), &state, 0.0, 16, 0.0);
+            state = tick_reset(&fire(0.0), &state, 0.0, 16, 0.0);
+        }
+        assert_eq!(value(&state), 3.0, "três bordas, três contagens");
+        state = tick_reset(&fire(0.0), &state, 1.0, 16, 0.0);
+        assert_eq!(value(&state), 0.0, "o reset devolve a contagem ao começo");
+        // …e ela volta a contar dali, em vez de ficar presa em zero.
+        state = tick_reset(&fire(1.0), &state, 0.0, 16, 0.0);
+        assert_eq!(
+            value(&state),
+            1.0,
+            "e a contagem segue viva depois do reset"
+        );
+    }
+
+    /// **O reset GANHA de uma contagem simultânea** — a decisão do TD, pinada. Se a
+    /// contagem ganhasse, uma linha que recebe pulso e reset no mesmo tique nunca
+    /// poderia ser zerada por um sinal que chega junto com o metrônomo.
+    #[test]
+    fn the_reset_wins_a_simultaneous_count() {
+        let mut state = Stream::new(1);
+        for _ in 0..4 {
+            state = tick_reset(&fire(1.0), &state, 0.0, 16, 0.0);
+            state = tick_reset(&fire(0.0), &state, 0.0, 16, 0.0);
+        }
+        assert_eq!(value(&state), 4.0);
+        // Pulso E reset no MESMO tique (a borda subiria de 4 para 5).
+        state = tick_reset(&fire(1.0), &state, 1.0, 16, 0.0);
+        assert_eq!(value(&state), 0.0, "o reset ganha da borda simultânea");
+    }
+
+    /// **`reset_to` é para ONDE o reset leva** (TD Count CHOP `Reset Value`), e ele
+    /// atravessa o dobramento do modo como qualquer outro tique.
+    #[test]
+    fn the_reset_lands_on_the_authored_value() {
+        let mut state = Stream::new(1);
+        state = tick_reset(&fire(1.0), &state, 0.0, 6, 3.0);
+        assert_eq!(value(&state), 1.0);
+        state = tick_reset(&fire(0.0), &state, 1.0, 6, 3.0);
+        assert_eq!(value(&state), 3.0, "o reset pousa no valor autorado");
     }
 
     /// The reducer emits a VALUE and NEVER a transform channel — the whole point
@@ -255,7 +429,7 @@ mod tests {
     /// no `P`/`rot`/`size`.
     #[test]
     fn it_emits_a_value_column_and_no_transform_channel() {
-        let s = step(&fire(1.0), &Stream::new(1), 6, LimitMode::Wrap);
+        let s = tick(&fire(1.0), &Stream::new(1), 6, LimitMode::Wrap);
         assert!(s.get(VALUE_COL).is_some(), "emits the value column");
         assert!(s.get("P").is_none(), "no position");
         assert!(
@@ -272,9 +446,9 @@ mod tests {
             let mut state = Stream::new(1);
             let mut seq = Vec::new();
             for _ in 0..8 {
-                state = step(&fire(1.0), &state, count_max, mode);
+                state = tick(&fire(1.0), &state, count_max, mode);
                 seq.push(value(&state));
-                state = step(&fire(0.0), &state, count_max, mode);
+                state = tick(&fire(0.0), &state, count_max, mode);
             }
             seq
         };
@@ -300,8 +474,8 @@ mod tests {
     fn count_max_one_stays_home_without_dividing_by_zero() {
         let mut state = Stream::new(1);
         for _ in 0..5 {
-            state = step(&fire(1.0), &state, 1, LimitMode::Zigzag);
-            state = step(&fire(0.0), &state, 1, LimitMode::Zigzag);
+            state = tick(&fire(1.0), &state, 1, LimitMode::Zigzag);
+            state = tick(&fire(0.0), &state, 1, LimitMode::Zigzag);
         }
         assert_eq!(value(&state), 0.0);
     }

@@ -11,15 +11,15 @@
 
 | # | Bug | Área | Estado | Data |
 |---|---|---|---|---|
-| [1](#bug-1--o-nó-acusado-estava-inocente-o-campo-gateia-o-pulso-e-não-gateia-a-memória) | **"Box inconsistente"** — marcar Invert e desmarcar não devolve o quadro inicial | `field.box` (acusado, **inocente**) + `pulse.counter` (a memória) | ⚠️ Mecanismo FECHADO · cura é decisão de produto | 2026-08-10 |
+| [1](#bug-1--o-nó-acusado-estava-inocente-o-campo-gateia-o-pulso-e-não-gateia-a-memória) | **"Box inconsistente"** — marcar Invert e desmarcar não devolve o quadro inicial | `field.box` (acusado, **inocente**) + `pulse.counter`/`pulse.sample_hold` (a memória) | ✅ Resolvido (porta `reset`; pendente de smoke) | 2026-08-10 |
 
 ---
 
 ## Bug #1 — O nó acusado estava INOCENTE: o campo gateia o pulso, e não gateia a MEMÓRIA
 
-**Estado:** mecanismo fechado e medido em 2026-08-10, com gate executável
-(`the_field_gates_the_pulse_but_not_the_counters_memory`). ⚠️ **A cura não foi construída** —
-ela é uma escolha entre dois P1 abertos da folha 12, e é decisão do Enio.
+**Estado:** ✅ resolvido em 2026-08-10 — mecanismo medido, cura construída (a porta `reset`),
+gate `a_round_trip_of_the_field_leaves_the_scene_where_it_found_it`. ⚠️ **Pendente de smoke**
+(integrar/construir não é aprovar).
 
 ### Sintoma
 
@@ -81,16 +81,66 @@ são estruturalmente cegos ao **gesto**.
    tem o param, tem gate de rotação, e cuja rotação de 45° é o que faz o **losango** desta cena.
 2. **A prosa da cena dizia *"Fora dela nada acontece, NUNCA"***. O "nunca" é falso depois de uma
    edição de campo — corrigido para nomear a condição.
-3. **O gate executável** `the_field_gates_the_pulse_but_not_the_counters_memory`, com as duas
+3. **O gate executável** (nasceu como `the_field_gates_the_pulse_but_not_the_counters_memory`
+   e foi reescrito para a lei nova quando a cura landou, que é o que o doc dele mandava fazer;
+   o retrato invertido sobrevive nele como **CONTROLE**, com o fio do `reset` desligado por
+   ablação), com as duas
    metades: a que **inocenta** o nó (pura, e `invert` morde todas as linhas — sem essa segunda
    metade o gate ficaria verde sobre um memo que ignorasse o param) e a que **mede** a inversão.
    Prova de mutação: um `field.box` impuro (o flip guardado em vez de derivado) faz a metade da
    pureza sangrar em **262.144** linhas.
 
-### O que segue ABERTO (decisão de produto)
+### A CURA (construída em 2026-08-10, ordem do Enio: *"cubra todos os nós similares"*)
 
-Duas curas, as duas já na fila da folha 12 §3.2 — e este report é a **evidência de campo** que as
-ordena:
+**A porta `reset`** — a que torna o estado ALCANÇÁVEL. Nível (o `Reset` do TD Count CHOP),
+`reset_to` como destino, o reset ganha o tique, e **desconectada é o mundo anterior byte a
+byte** (stream vazio ⇒ zeros ⇒ nada passa de `0.5`; nenhum caso especial).
+
+⚠️ **E o "similar" foi MEDIDO pelo mecanismo, não presumido.** Dos 18 nós com porta de
+feedback, o estado que **não se auto-cura** são três: `compare`/`threshold` reescrevem o
+`armed` todo tique, `on_change` guarda o valor DESTE tique e `beat` deriva do TEMPO. Sobram:
+
+| nó | estado | o que ganhou |
+|---|---|---|
+| `pulse.counter` | `count_tick` acumula | porta `reset` + param `reset_to` |
+| `pulse.sample_hold` | o valor segurado sobrevive sem trigger | porta `reset` (⚠️ **RE-PRIMA**, não zera — o nó recusa *"a dead 0"* no boot, e a porta `value` já é o caminho de injetar número) |
+| `motion.step` | o mesmo `count_tick` | ⚠️ **JÁ TINHA** — ver abaixo |
+
+⚠️ **O ancestral já shipava a porta, e a conferência não tinha visto.** O `motion.step` — de
+onde o contador saiu (*"the count math is `motion.step`'s, verbatim"*) — tem `reset` +
+`reset_to` com a **lei idêntica**, derivada de forma independente nesta wave antes de eu a
+encontrar. ⇒ o item da folha 12 não era *omissão do catálogo*, era a **mesma classe da linha
+42 dela**: *"o redutor perdeu a capacidade do ancestral"*. Os nomes foram alinhados
+(`reset_to`, não `reset_value`) e cada cópia da lei nomeia a outra — elas têm de se mover
+juntas, e são cópias porque cada nó é uma leaf drop-crate.
+
+### O que o reset NÃO promete (medido, não suposto)
+
+Ele devolve o **REPOUSO**, não a **história**. E o número que quase virou uma lei falsa:
+
+| janela do ida-e-volta | batidas perdidas | quadro final |
+|---|---|---|
+| `(20, 50)` | 1 | **byte-idêntico** ao controle (0 de 262.144 diferem) |
+| `(20, 80)` | 2 | fora em repouso ✅, mas o DENTRO em fase oposta |
+
+⚠️ **Com UMA janela eu quase escrevi *"volta ao lugar exato"* como a lei** — era coincidência
+de paridade (3 e 5 contagens são ambas ímpares). O gate roda **duas** janelas de propósito, e
+afirma o que é verdade nas duas: *fora do losango, repouso; dentro, todos na mesma fase*.
+
+### E a cura precisou de um segundo achado: UM número, DUAS perguntas
+
+A primeira fiação levou o resíduo de 228.604 para **2.640** — e os 2.640 tinham endereço: a
+**banda macia** do losango. O portão arma em `peso ≥ 0.5` e o reset disparava no `fall`
+default (`0.3`) ⇒ as linhas cujo peso vivia entre 0,3 e 0,5 **contavam e nunca resetavam**.
+*Dois números para uma pergunta é a banda; um número é zero* — o limiar virou o
+`PARTICIPATES_AT` da cena, lido pelos dois nós. **2.640 → 0.**
+
+### O que segue ABERTO (fora do escopo, nomeado)
+
+O `pulse.adsr` (o outro P1 da folha 12) **não** foi construído: um envelope que volta ao
+repouso sozinho é uma capacidade legítima, mas é **nó novo**, não a cura deste defeito — e o
+reset é o que torna o estado alcançável para toda a família, não só para esta cena. A fila
+original dizia:
 
 - **`pulse.counter` ganha entrada de RESET.** O artista liga o complemento do campo ali, e sair
   do campo limpa o contador. Compõe, é explícito, e custa uma porta nova (default desconectado =

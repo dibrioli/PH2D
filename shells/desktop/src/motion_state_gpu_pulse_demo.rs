@@ -55,6 +55,16 @@ const GAP: f32 = 0.024;
 pub(super) const DOT: f32 = 0.018;
 /// Quanto o Size CRESCE com o toggle ligado (`motion.drive` mode Add, valor 0/1 × isto).
 const POP: f32 = 0.03;
+/// **O limiar de PARTICIPAÇÃO — um número, DUAS perguntas.**
+///
+/// Uma linha conta quando o portão arma (`nível × peso ≥ isto`, e o nível é 0/1, logo
+/// *"peso ≥ isto"*); e ela é LIBERADA quando o peso cai abaixo do mesmo número. ⚠️ **Os dois
+/// têm de ser o MESMO valor, e isto está medido:** com o limiar de liberação no default
+/// (`fall = 0.3`) sobrava uma banda — as linhas do gradiente macio do losango cujo peso
+/// cruzava o limiar de contagem mas nunca o de liberação — e **2.640 pontos ficavam acesos
+/// para sempre** depois de um ida-e-volta do `Invert`. Dois números para uma pergunta é a
+/// banda; um número é zero.
+const PARTICIPATES_AT: f32 = 0.5;
 
 /// **O PORTÃO ESPACIAL** (`PH2D_GPU_COOK_DEMO=23`): 262.144 pontos, um metrônomo, e um
 /// losango de pontos que pisca no compasso enquanto o resto da grade fica parado.
@@ -63,14 +73,14 @@ const POP: f32 = 0.03;
 /// da caixa girada** trocam de tamanho. Fora dela nada acontece — o beat chega a todas as
 /// linhas e o campo decide quem o escuta.
 ///
-/// ⚠️ **"Fora dela nada acontece" vale a partir do BOOT, não a partir de sempre**, e a
-/// diferença é medida (BUGS #1, report do Enio em 2026-08-10): EDITAR o campo com a cena
-/// rodando — marcar `Invert` e desmarcar — devolve a máscara e **não** devolve a paridade do
-/// `pulse.counter`, que vive no `pre` self-loop. Quem estava fora recebeu as batidas enquanto
-/// o campo estava invertido, e fica aceso. *O campo gateia o EVENTO; ele não gateia o
-/// ESTADO*, e a informação que faltaria — *"esta linha SAIU do campo"* — é colapsada no mesmo
-/// zero de *"não há pulso agora"* pelo `value.math(Multiply)` do portão. O número está em
-/// `the_field_gates_the_pulse_but_not_the_counters_memory`.
+/// ⚠️ **E vale MEXENDO no campo, não só a partir do boot** — que é o que o report do Enio de
+/// 2026-08-10 cobrou (BUGS #1). Editar o campo com a cena rodando devolve a máscara, mas a
+/// memória do `pulse.counter` não voltava sozinha: quem estava fora recebia as batidas
+/// enquanto o campo estava invertido e ficava aceso para sempre. *O campo gateia o EVENTO; ele
+/// não gateia o ESTADO*, porque o `value.math(Multiply)` do portão colapsa *"não há pulso
+/// agora"* e *"esta linha SAIU do campo"* no mesmo zero. A cura está no ramo do `leave`:
+/// **sair do campo é um evento**, e ele zera o contador pela porta `reset`. Medido em
+/// `a_round_trip_of_the_field_leaves_the_scene_where_it_found_it`.
 pub(super) fn build_gpu_pulse_gate_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
@@ -108,12 +118,25 @@ pub(super) fn build_gpu_pulse_gate_demo_document(
     g.set_param(gate, "op", 2.0); // Multiply
     // De volta ao domínio de pulso — o ida-e-volta é a identidade onde o peso é 1.
     let cmp = g.add_node("pulse.compare");
-    g.set_param(cmp, "rise", 0.5);
+    g.set_param(cmp, "rise", PARTICIPATES_AT);
+    // O `fall` do PORTÃO é sobre o pulso voltar a zero entre as batidas (ele tem de
+    // desarmar para a batida seguinte re-armar) — não é o limiar de participação.
     g.set_param(cmp, "fall", 0.25);
     // O toggle (ver o doc do módulo): `count_max = 2` + Wrap.
     let toggle = g.add_node("pulse.counter");
     g.set_param(toggle, "count_max", 2.0);
     g.set_param(toggle, "mode", 0.0); // Wrap
+    // **SAIR DO CAMPO É UM EVENTO, e é ele que zera a contagem.** O mesmo peso que o
+    // portão multiplica, lido pela BORDA DE DESCIDA: quando uma linha deixa de ser
+    // coberta, este `pulse.compare` dispara e o `reset` do contador a traz para casa.
+    // Sem isto, marcar `Invert` e desmarcar deixa quem está FORA aceso para sempre —
+    // a máscara volta e a memória não (BUGS #1).
+    let leave = g.add_node("pulse.compare");
+    g.set_param(leave, "edge", 1.0); // Fall — o cruzamento de DESARME
+    // Sem histerese, e de propósito: o desarme tem de cair EXATAMENTE onde a contagem
+    // arma, senão a banda entre os dois limiares conta e nunca reseta.
+    g.set_param(leave, "rise", PARTICIPATES_AT);
+    g.set_param(leave, "fall", PARTICIPATES_AT);
 
     let drive = g.add_node("motion.drive");
     g.set_param(drive, "channel", 3.0); // Size
@@ -134,6 +157,13 @@ pub(super) fn build_gpu_pulse_gate_demo_document(
         );
     }
     // O metrônomo e o nível moram acima da fileira: eles são a outra entrada do portão.
+    g.set_pos(
+        leave,
+        Pos {
+            x: 80.0 + 4.0 * 170.0,
+            y: 360.0,
+        },
+    );
     for (i, n) in [beat, level].into_iter().enumerate() {
         g.set_pos(
             n,
@@ -156,6 +186,10 @@ pub(super) fn build_gpu_pulse_gate_demo_document(
         (mask, 0, gate, 1),
         (gate, 0, cmp, 0),
         (cmp, 0, toggle, 0),
+        // O ramo do reset: o peso do campo → a borda de descida → a porta `reset`
+        // (índice 2 do `pulse.counter`).
+        (mask, 0, leave, 0),
+        (leave, 0, toggle, 2),
         // O drive recebe a arte SEM máscara e o valor já gateado.
         (scale, 0, drive, 0),
         (toggle, 0, drive, 1),
@@ -170,7 +204,7 @@ pub(super) fn build_gpu_pulse_gate_demo_document(
     }
     // Os três `pre` self-loops que a família de pulso carrega (memória de borda). O editor os
     // plumba ao SOLTAR um nó; um documento montado por `add_node` os escreve à mão.
-    for (n, port) in [(beat, 1u16), (cmp, 1), (toggle, 1)] {
+    for (n, port) in [(beat, 1u16), (cmp, 1), (toggle, 1), (leave, 1)] {
         g.connect(Edge {
             from: (n, 0),
             to: (n, port),

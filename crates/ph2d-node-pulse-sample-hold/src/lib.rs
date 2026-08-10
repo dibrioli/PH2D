@@ -22,6 +22,13 @@
 //! pulse triggers every instance together; a length-N pulse triggers each on its
 //! own edge). `Effect::Pure` — the tick enters the fingerprint through the
 //! consumed `pre` edge. Transcendental-free (HR-5): comparisons and copies only.
+//!
+//! **A porta `reset`** (irmã da do `pulse.counter`) torna o valor segurado
+//! ALCANÇÁVEL: sem ela, uma linha que para de receber trigger — porque um campo a
+//! montante se moveu, ou um param mudou em runtime — segura o valor de antes para
+//! sempre. ⚠️ Ela **RE-PRIMA** (volta a amostrar), nunca zera: zerar inventaria o
+//! *"dead 0"* que este nó declara recusar no primeiro tique. Desconectada, é o
+//! mundo anterior BYTE A BYTE.
 
 #![forbid(unsafe_code)]
 
@@ -69,6 +76,15 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "state",
             ty: VALUE,
         },
+        // **A porta que torna o valor segurado ALCANÇÁVEL** (irmã da do
+        // `pulse.counter`): sem ela, uma linha que para de receber trigger — porque
+        // um campo a montante se moveu, ou um param mudou em runtime — segura o
+        // valor de antes PARA SEMPRE. Opcional: desconectada é o mundo de hoje byte
+        // a byte (stream vazio ⇒ `pulse_at` devolve `0.0`).
+        PortSpec {
+            name: "reset",
+            ty: PULSE,
+        },
     ],
     outputs: &[PortSpec {
         name: "out",
@@ -106,7 +122,7 @@ fn pulse_at(pulse: &Stream, i: usize) -> f32 {
 /// One tick of sample-and-hold. `N` mirrors the `value` field: each instance
 /// re-samples on its pulse's rising edge (or on the very first tick, to prime),
 /// otherwise holds last tick's value.
-fn step(value: &Stream, pulse: &Stream, state: &Stream) -> Stream {
+fn step(value: &Stream, pulse: &Stream, state: &Stream, reset: &Stream) -> Stream {
     let n = value.count();
     let vals = scalar_col(value, VALUE_COL, n);
     let prev_held = scalar_col(state, VALUE_COL, n);
@@ -118,9 +134,16 @@ fn step(value: &Stream, pulse: &Stream, state: &Stream) -> Stream {
     for i in 0..n {
         let p = pulse_at(pulse, i);
         let rising = p > 0.5 && prev_pulse[i] <= 0.5;
+        // ⚠️ **O reset RE-PRIMA; ele não zera** — e a razão está no comentário
+        // abaixo, escrito antes desta wave: o nó recusa *"a dead 0"* como estado.
+        // Esquecer o valor segurado é voltar a AMOSTRAR, que é exatamente o que
+        // este nó faz no primeiro tique. Zerar seria inventar um estado que o nó
+        // declara não querer — e um `reset_value` seria uma SEGUNDA porta para
+        // injetar um número, quando a porta `value` já é essa.
+        let reset_now = pulse_at(reset, i) > 0.5;
         // Prime on the first tick (nothing sampled yet) so the output is live
         // from the start, not a dead 0.
-        let sample = primed[i] <= 0.5 || rising;
+        let sample = primed[i] <= 0.5 || rising || reset_now;
         held.push(if sample { vals[i] } else { prev_held[i] });
         this_pulse.push(p);
     }
@@ -139,7 +162,7 @@ impl NodeOp for PulseSampleHold {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        let out = step(ctx.input(0), ctx.input(1), ctx.input(2));
+        let out = step(ctx.input(0), ctx.input(1), ctx.input(2), ctx.input(3));
         ctx.emit(out);
     }
 }
@@ -165,6 +188,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 mod tests {
     use super::*;
     use ph2d_nodegraph::cook::OpResolver;
+    /// Um tique SEM reset — o que todo gate anterior a esta wave exercita (porta
+    /// desconectada = `Stream` vazio, exatamente o que o `EvalCtx` entrega).
+    fn hold(value: &Stream, pulse: &Stream, state: &Stream) -> Stream {
+        step(value, pulse, state, &Stream::new(0))
+    }
 
     fn value(v: f32) -> Stream {
         Stream::new(1).with(VALUE_COL, Column::Scalar(vec![v]))
@@ -179,6 +207,50 @@ mod tests {
         }
     }
 
+    /// **A porta desconectada é o mundo ANTERIOR, byte a byte** — a mesma escada,
+    /// elemento a elemento, com a porta vazia e com um reset que nunca sobe.
+    #[test]
+    fn an_unconnected_reset_is_the_world_before_it() {
+        let run = |with_port: bool| {
+            let mut state = Stream::new(1);
+            let mut seq = Vec::new();
+            for k in 0..10 {
+                let v = value(k as f32 * 10.0);
+                let p = fire(if k % 3 == 0 { 1.0 } else { 0.0 });
+                state = if with_port {
+                    step(&v, &p, &state, &fire(0.0))
+                } else {
+                    hold(&v, &p, &state)
+                };
+                seq.push(held(&state));
+            }
+            seq
+        };
+        assert_eq!(run(true), run(false), "a escada é a mesma");
+    }
+
+    /// **O reset RE-PRIMA: ele esquece o valor segurado e volta a AMOSTRAR.**
+    ///
+    /// ⚠️ Ele NÃO zera, e a razão é do próprio nó: o `step` prima no primeiro tique
+    /// *"so the output is live from the start, not a dead 0"*. Um reset que zerasse
+    /// inventaria exatamente o estado que o nó declara não querer — e a porta
+    /// `value` já é o caminho de injetar um número.
+    #[test]
+    fn the_reset_re_primes_instead_of_zeroing() {
+        let mut state = Stream::new(1);
+        state = hold(&value(10.0), &fire(1.0), &state); // prima e amostra 10
+        assert_eq!(held(&state), 10.0);
+        state = hold(&value(99.0), &fire(0.0), &state); // segura, sem trigger
+        assert_eq!(held(&state), 10.0, "segura o 10 enquanto a entrada anda");
+        // O reset, com a entrada viva em 99: re-amostra AGORA.
+        state = step(&value(99.0), &fire(0.0), &state, &fire(1.0));
+        assert_eq!(
+            held(&state),
+            99.0,
+            "o reset re-amostra a entrada viva — nem 10 (o velho) nem 0 (o morto)"
+        );
+    }
+
     /// The core behaviour: the output HOLDS between pulses and only updates to the
     /// input's current value on a pulse's rising edge. A continuous ramp sampled
     /// on sparse pulses becomes a staircase.
@@ -186,16 +258,16 @@ mod tests {
     fn it_holds_between_pulses_and_samples_on_the_rising_edge() {
         let mut state = Stream::new(1);
         // Prime on tick 0: samples the input (10) immediately.
-        state = step(&value(10.0), &fire(0.0), &state);
+        state = hold(&value(10.0), &fire(0.0), &state);
         assert_eq!(held(&state), 10.0, "primed to the first input");
         // Input moves to 20 but NO pulse → still holds 10.
-        state = step(&value(20.0), &fire(0.0), &state);
+        state = hold(&value(20.0), &fire(0.0), &state);
         assert_eq!(held(&state), 10.0, "holds through a moving input");
         // A pulse rises → samples the current input (30).
-        state = step(&value(30.0), &fire(1.0), &state);
+        state = hold(&value(30.0), &fire(1.0), &state);
         assert_eq!(held(&state), 30.0, "the rising edge samples");
         // Input moves to 40, pulse still high (no NEW rising edge) → holds 30.
-        state = step(&value(40.0), &fire(1.0), &state);
+        state = hold(&value(40.0), &fire(1.0), &state);
         assert_eq!(held(&state), 30.0, "a held-high pulse does not re-sample");
     }
 
@@ -204,11 +276,11 @@ mod tests {
     /// tick, the output would track the input while high.
     #[test]
     fn a_held_high_pulse_samples_once_not_every_tick() {
-        let mut state = step(&value(1.0), &fire(0.0), &Stream::new(1)); // prime → 1
+        let mut state = hold(&value(1.0), &fire(0.0), &Stream::new(1)); // prime → 1
         // Pulse rises at the moving input 5, then stays high while input climbs.
         let inputs = [5.0, 6.0, 7.0, 8.0];
         for (k, &v) in inputs.iter().enumerate() {
-            state = step(&value(v), &fire(1.0), &state);
+            state = hold(&value(v), &fire(1.0), &state);
             if k == 0 {
                 assert_eq!(held(&state), 5.0, "samples on the rising edge");
             } else {
@@ -221,10 +293,10 @@ mod tests {
     /// staircase steps.
     #[test]
     fn a_new_rising_edge_re_samples() {
-        let mut state = step(&value(1.0), &fire(1.0), &Stream::new(1)); // prime+fire → 1
-        state = step(&value(2.0), &fire(0.0), &state); // hold 1
+        let mut state = hold(&value(1.0), &fire(1.0), &Stream::new(1)); // prime+fire → 1
+        state = hold(&value(2.0), &fire(0.0), &state); // hold 1
         assert_eq!(held(&state), 1.0);
-        state = step(&value(2.0), &fire(1.0), &state); // new edge → sample 2
+        state = hold(&value(2.0), &fire(1.0), &state); // new edge → sample 2
         assert_eq!(held(&state), 2.0, "the next edge steps the staircase");
     }
 
@@ -235,7 +307,7 @@ mod tests {
     fn a_global_pulse_samples_a_field() {
         let two = Stream::new(2).with(VALUE_COL, Column::Scalar(vec![10.0, 20.0]));
         let global_pulse = Stream::new(1).with(PULSE_COL, Column::Scalar(vec![1.0]));
-        let s = step(&two, &global_pulse, &Stream::new(2));
+        let s = hold(&two, &global_pulse, &Stream::new(2));
         match s.get(VALUE_COL).unwrap() {
             Column::Scalar(v) => assert_eq!(v, &vec![10.0, 20.0], "each holds its own value"),
             _ => panic!(),
@@ -252,7 +324,7 @@ mod tests {
         let mut out = Vec::new();
         for t in 0..9 {
             let p = if t % 3 == 0 { 1.0 } else { 0.0 };
-            state = step(&value(t as f32), &fire(p), &state);
+            state = hold(&value(t as f32), &fire(p), &state);
             out.push(held(&state));
         }
         // Samples at t=0,3,6 (values 0,3,6), holds in between.

@@ -118,6 +118,17 @@ função pura do playhead com scrub bit-exato*.
 
 Grepadas antes de propor. Duas ainda valem, **duas envelheceram**, uma é lei.
 
+- ✅ **O RESET LANDOU (2026-08-10), e a conferência tinha errado o VEREDITO, não o item.**
+  A linha 41 o cataloga como *omissão* citando TD/Max — e **o ancestral já shipava a porta**:
+  o `motion.step`, de onde este nó saiu (*"the count math is `motion.step`'s, verbatim"*),
+  tem `reset` + `reset_to` com a MESMA lei (nível para o reset, borda para a contagem, o
+  reset ganha o tique, desconectada = byte-idêntica). ⇒ era a **mesma classe da linha 42**
+  (*"o redutor perdeu a capacidade do ancestral"*), e não uma capacidade que faltasse ao
+  catálogo. Construído em `pulse.counter` **e** em `pulse.sample_hold` (o outro estado que
+  não se auto-cura — medido: `compare`/`threshold`/`on_change` reescrevem o estado todo
+  tique e `beat` deriva do tempo, então **só três nós** da família tinham o buraco).
+  Gatilho: o report do Enio de 2026-08-10 (BUGS #1) — mudar um param de campo em runtime
+  deixava contagem inalcançável.
 - ⚠️ **A cerca do RESET tem premissa FALSA hoje.** O doc 08 §3.1 defere a entrada de reset assim:
   *"exige tolerar porta opcional desconectada (**validate rejeita input faltante**)"*. **Não rejeita:**
   `Graph::validate` (`graph.rs:596`) itera sobre as **arestas** e nunca exige que um input tenha uma;

@@ -58,10 +58,11 @@ fn nearest(p: &[[f32; 2]], x: f32, y: f32) -> usize {
 /// tamanho de repouso nos dois instantes — é essa metade que torna o gate um portão e não um
 /// pisca-pisca global.
 ///
-/// ⚠️ **Este gate cozinha de `t = 0` com os params FIXOS**, e é por isso que ele é cego ao
-/// report do Enio de 2026-08-10 (BUGS #1): EDITAR o campo no meio da corrida deixa o retrato
-/// invertido, porque a máscara volta e a memória do `pulse.counter` não. Quem mede isso é o
-/// [`the_field_gates_the_pulse_but_not_the_counters_memory`] — o gate do GESTO, não o do boot.
+/// ⚠️ **Este gate cozinha de `t = 0` com os params FIXOS**, e é por isso que ele foi cego ao
+/// report do Enio de 2026-08-10 (BUGS #1): EDITAR o campo no meio da corrida deixava o
+/// retrato invertido, porque a máscara volta e a memória do `pulse.counter` não voltava.
+/// Quem cobre o GESTO — e não o boot — é o
+/// [`a_round_trip_of_the_field_leaves_the_scene_where_it_found_it`].
 #[test]
 fn the_scene_blinks_only_inside_the_box() {
     let (on, p) = sizes_at(15); // t = 0.25 — depois da batida de t = 0
@@ -161,11 +162,11 @@ fn node_of(doc: &MotionDoc, ty: &str) -> ph2d_nodegraph::graph::NodeId {
 /// abertos da folha 12 (a entrada de **reset** no contador · o **`pulse.adsr`**, um
 /// envelope que volta ao repouso sozinho e tornaria a cena auto-curável).
 ///
-/// ⚠️ **Este gate pina um DEFEITO ABERTO, de propósito** — ele é o número dele. Quando a
-/// cura landar, a metade da inversão vira vermelha, e isso é o sinal certo: reescreva-a
-/// para a lei nova em vez de afrouxá-la.
+/// ⚠️ **Este gate NASCEU pinando o defeito** (o report de 2026-08-10) e foi reescrito para a
+/// lei nova quando a cura landou — que é o que o doc dele mandava fazer, em vez de afrouxá-lo.
+/// O retrato invertido sobrevive aqui como **CONTROLE**: é o que acontece sem o fio do reset.
 #[test]
-fn the_field_gates_the_pulse_but_not_the_counters_memory() {
+fn a_round_trip_of_the_field_leaves_the_scene_where_it_found_it() {
     let (pure_moved, pure_diff, n) = invert_round_trip_on_the_node();
     assert_eq!(
         pure_diff, 0,
@@ -177,13 +178,38 @@ fn the_field_gates_the_pulse_but_not_the_counters_memory() {
          sobre um memo que ignorasse o param"
     );
 
-    let (inside_big, inside_tot, outside_big, outside_tot) = scene_after_round_trip();
+    // ⚠️ DUAS janelas: uma com UMA batida dentro, outra com DUAS — e elas medem coisas
+    // diferentes de propósito. Com UMA janela o retrato voltou IDÊNTICO (0 de 262.144
+    // linhas diferentes) e eu quase escrevi isso como a lei; era **coincidência de
+    // paridade** — perder 1 batida deixa o dentro em 3 contagens e o controle em 5, e
+    // 3 e 5 são ambos ímpares. Com 2 batidas perdidas ele conta 2, e o quadro difere.
+    for window in [TOGGLE_WINDOW, (20, 80)] {
+        let (inside_big, inside_tot, outside_big, outside_tot) =
+            classify(&scene_run(Some(window), Reset::Wired));
+        // **A PROMESSA da cena, e é ela que o report cobrava:** fora do losango, repouso.
+        assert_eq!(
+            outside_big, 0,
+            "com o `reset` ligado, quem SAI do campo é liberado (janela {window:?}): \
+             {outside_big} de {outside_tot} ficaram acesos"
+        );
+        // **E o dentro fica COERENTE** — todas as linhas na mesma fase, nunca meio quadro
+        // aceso. A fase em si pode diferir do controle (o dentro perdeu batidas enquanto
+        // estava fora), e isso é honesto: o reset devolve o REPOUSO, não a história.
+        assert!(
+            inside_big == inside_tot || inside_big == 0,
+            "o dentro pisca junto (janela {window:?}): {inside_big} de {inside_tot}"
+        );
+    }
+
+    // O CONTROLE: sem o fio do reset, o mesmo gesto INVERTE o quadro. É o defeito que o
+    // report descreveu, e é ele que prova que quem cura é a fiação e não o acaso.
+    let (inside_big, _, outside_big, outside_tot) =
+        classify(&scene_run(Some(TOGGLE_WINDOW), Reset::Unwired));
     assert_eq!(
         (inside_big, outside_big),
         (0, outside_tot),
-        "depois do ida-e-volta o retrato é o INVERSO EXATO: dentro do losango {inside_tot} \
-         linhas ficam pequenas e FORA dele as {outside_tot} ficam grandes — a máscara voltou, \
-         a paridade do `pulse.counter` não"
+        "sem o `reset` o retrato é o INVERSO EXATO — a máscara volta e a memória do \
+         `pulse.counter` não"
     );
 }
 
@@ -198,8 +224,8 @@ fn probe_invert_round_trip() {
     let (moved, diff, n) = invert_round_trip_on_the_node();
     eprintln!("M1  o NO: {n} linhas | invert MUDOU {moved} | ida-e-volta difere em {diff}");
 
-    let plain = scene_run(None);
-    let toggled = scene_run(Some(TOGGLE_WINDOW));
+    let plain = scene_run(None, Reset::Wired);
+    let toggled = scene_run(Some(TOGGLE_WINDOW), Reset::Wired);
     let diff_m2 = plain
         .iter()
         .zip(&toggled)
@@ -223,6 +249,14 @@ fn probe_invert_round_trip() {
             "M3  {nome:>18}: DENTRO {bi}/{ti} grandes | FORA {bo}/{to} grandes | tamanhos {vals:?}"
         );
     }
+}
+
+/// O fio do `reset` está ligado nesta corrida? A ablação que o gate usa como CONTROLE —
+/// `Unwired` desconecta a aresta e reproduz o mundo do report.
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum Reset {
+    Wired,
+    Unwired,
 }
 
 /// Quantos tiques uma corrida da cena roda (2 s a 60 fps — cinco batidas de 0,5 s).
@@ -262,13 +296,20 @@ fn invert_round_trip_on_the_node() -> (usize, usize, usize) {
 /// **M2 — a CENA.** Cozinha [`RUN_TICKS`] tiques; com `flip`, liga e desliga o `invert` nos
 /// tiques dados (o gesto do artista: um `set_param` no meio de uma corrida viva). Devolve a
 /// coluna `size` do último quadro.
-fn scene_run(flip: Option<(usize, usize)>) -> Vec<[f32; 2]> {
+fn scene_run(flip: Option<(usize, usize)>, reset: Reset) -> Vec<[f32; 2]> {
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry builds");
     let mut d = MotionDoc::new();
     let sinks = build_gpu_pulse_gate_demo_document(&mut d, &reg).expect("cena");
     let out = *sinks.first().expect("um sink");
     let bx = node_of(&d, "field.box");
+    if reset == Reset::Unwired {
+        let toggle = node_of(&d, "pulse.counter");
+        assert!(
+            d.graph.disconnect(toggle, 2).is_some(),
+            "a cena TEM de trazer o fio do reset — sem ele o controle não é ablação de nada"
+        );
+    }
     let mut cook = Cook::new();
     let mut last = ph2d_nodegraph::attr::Stream::new(0);
     for k in 0..=RUN_TICKS {
@@ -321,12 +362,6 @@ fn classify(sizes: &[[f32; 2]]) -> (usize, usize, usize, usize) {
         }
     }
     (bi, ti, bo, to)
-}
-
-/// O retrato da cena DEPOIS do ida-e-volta: `(grandes dentro, total dentro, grandes fora,
-/// total fora)` — a porta única que o gate e a sonda consultam.
-fn scene_after_round_trip() -> (usize, usize, usize, usize) {
-    classify(&scene_run(Some(TOGGLE_WINDOW)))
 }
 
 /// Quanto custa um tique desta cena, e é dele que o `SIDE` sai (§0: meça antes de limitar).

@@ -70,3 +70,25 @@ for b in <linhas>; do echo "$b ahead=$(git rev-list --count main..$b) behind=$(g
 **Why:** todo número dentro de um handoff é uma medição *datada*; os que descrevem a LINHA envelhecem
 devagar (o diff dela não muda), e os que descrevem a RELAÇÃO com o `main` envelhecem a cada integração
 alheia. Trate a §1 do handoff como afirmação sobre o passado, nunca sobre a árvore de agora.
+
+⚠️ **Corolário 4 (2026-08-10): duas linhas podem PARTIR o mesmo arquivo, pelo mesmo motivo — e a
+resolução é CADEIA, nunca escolher um lado.** `ph2d-i18n/src/lib.rs` cruzou o teto de LOC na mesma
+janela para a `line/Vector` (que levou `panel.vector.*` para `mod vector;`) e para a `line/sculpt3d`
+(que levou `panel.sculpt3d.*` para `mod sculpt3d;`). Os dois `mod` fundiram limpos — o que conflitou
+foi o **braço de saída** do `match`, que cada lado reescreveu para encaminhar ao SEU irmão:
+
+```rust
+_ => vector::tr(key).unwrap_or_else(|| leak_key(key)),      // main
+k => sculpt3d::tr(k).unwrap_or_else(|| leak_key(k)),        // linha
+k => vector::tr(k).or_else(|| sculpt3d::tr(k)).unwrap_or_else(|| leak_key(k)),  // o certo
+```
+
+Ficar com um lado **compila e passa na suíte**: as chaves do painel perdido caem no `leak_key`, que
+por desenho devolve o próprio identificador — o painel pinta `panel.vector.marker.start` na tela em
+vez de "Start", e nenhum gate reclama, porque `leak_key` é o caminho *legítimo* de chave desconhecida.
+
+**Why:** o cheiro é *dois lados encolhendo o mesmo arquivo* — cada um move a SUA família para fora e
+reescreve o mesmo ponto de fall-through. Procure-o com `git diff --stat <base>..main -- <arquivo>`
+mostrando **deleções grandes dos dois lados**. A lei que fica no comentário: **um irmão novo entra na
+CADEIA, nunca num segundo `match`** — senão o terceiro painel repete o acidente. Ver também
+[[feedback_clean_text_merge_can_be_semantically_broken]].

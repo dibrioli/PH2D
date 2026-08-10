@@ -23,10 +23,10 @@ era o sizing.
 | | |
 |---|---|
 | Branch | `line/Vector` |
-| HEAD | `ed7d9e36f` |
+| HEAD | `bbed0e99d` |
 | Base | `76788440a` (o `main` de 2026-08-10) |
-| Commits | **5** (1 de estudo + 4 de produto) |
-| Diff | 27 arquivos, +1886/−51 |
+| Commits | **9** (1 de troca + 1 de estudo + 4 de produto + 1 de handoff + **2 de smoke**) |
+| Diff | 29 arquivos, +2309/−58 |
 
 ---
 
@@ -105,18 +105,56 @@ a edição pode colidir.
 
 ---
 
+## §4b — ⚠️ As DUAS rodadas de smoke do Enio, e o que elas acharam
+
+As duas foram sobre o **mesmo controle** (*Absolute position*), por causas **diferentes** — a
+segunda só ficou visível depois de a primeira ser curada.
+
+**(1) *"Não achei Absolute Position no painel do quadrado âmbar"***. O produto estava certo: o
+toggle é escondido quando o pai não empilha, e **escondê-lo em silêncio** deixava o artista a
+olhar para um painel que não dizia o que faltava. `LayoutItem` ganhou `in_flow`, e o painel passou
+a **escrever** *"Set the parent frame to Row or Column first"* (o precedente do Falloff dos Motion
+Nodes: *inerte é dito, não omitido*).
+
+⚠️ **A primeira tentativa de cura REMOVIA um caso que funcionava** — trocar o predicado do sujeito
+de `VecLayout` para `VecFrame` parece a leitura óbvia e está errada: o passe de layout recolhe os
+filhos de **qualquer** entidade com `VecLayout`, tenha ela moldura ou não. Dois gates sangraram na
+hora; o predicado é a **união**.
+
+**(2) *"O checkbox não aceita ser checado, pode não estar linkado na UI"***. O id **estava**
+linkado em todas as seis pontas da costura (id · `populate` · `paint`+hit · `LAYOUT_CHIPS` ·
+`forwards_plain_click` · o roteador da shell), e o gate de seam que o prova estava **verde**. O que
+o matava era uma **ORDEM**: o `apply_layout_edit` abria com *"resolve a moldura, ou desiste"*, e
+`frame_of_selection` **recusa um filho sozinho** por desenho (o doc-comment do `vec_frame_edit`
+di-lo). Todo edit daquela porta é da MOLDURA — **menos este, que é do FILHO** — então o único edit
+que é pedido com o filho selecionado era exatamente o único que o guard matava, e o braço que o
+honrava vinha depois dele.
+
+⚠️ **A função IRMÃ já fazia certo:** o `apply_layout_field` **não tem guard no topo** — cada braço
+resolve o próprio sujeito (`Grow`/`Shrink` pelo filho, `Min`/`Max`/`Gap`/`Pad` pela moldura). Era o
+`apply_layout_edit` que estava fora de linha, e é por isso que a cura é mover **um** caso, não
+afrouxar o guard: abri-lo para todos faria um `Dir` pedido sobre um filho solto ligar fluxo na
+entidade errada (gate irmão `a_frame_edit_asked_with_only_the_child_selected_does_nothing`).
+
+---
+
 ## §5 — Gates e mutações
 
 | onde | gates | mutações |
 |---|---|---|
 | motor | **19** (7 novos) | **5 / 5 sangram** |
-| fatia | **55** (4 novos) | **4 / 4 sangram** |
-| seam do painel | **15** (3 novos) | ponteiro REAL (Down+Up), nunca `Click` sintético |
+| fatia | **57** (6 novos) | **6 / 6 sangram** |
+| seam do painel | **16** (4 novos) | ponteiro REAL (Down+Up), nunca `Click` sintético |
 
 ⚠️ **Uma mutação sobreviveu e a cura foi um gate, não a barra:** trocar `MaxContent` por
 `Definite(0.0)` no espaço da raiz passava por tudo. O gate que faltava
 (`a_hugging_frame_that_wraps_does_not_wrap`) testa uma afirmação **minha** de doc-comment que
 estava escrita sem nada a segurá-la.
+
+⚠️ **E o gate de seam do toggle era VERDE sobre um controle MORTO** (§4b.2), o que nomeia o que
+ele pode e o que ele **não** pode provar: *o clique chega ao barramento* é uma afirmação sobre o
+PAINEL, e ela continua verdadeira quando quem morre é a porta do outro lado. O par que faltava
+mede a outra ponta — **o componente aparece no filho** — e é ele que sangra com a ordem revertida.
 
 ---
 
@@ -142,6 +180,11 @@ com os números **medidos** dela. A quarta moldura é o **CONTROLE** e não pode
 **Aprovar exige ver:** (1) as duas molduras abraçadas ficarem com **larguras diferentes uma da
 outra**; (2) o fundo escuro **encolher junto** (é o que prova que o tamanho novo é desenhado, não
 só calculado); (3) o selo âmbar **ficar onde está** enquanto os três azuis se arrumam.
+
+⚠️ **O passo 5 tem uma PRÉ-CONDIÇÃO, e o roteiro impresso pela cena passou a dizê-la:** o
+*Absolute position* só é oferecido quando o pai **empilha**, então a moldura SELO tem de receber
+`Direction → Row` no passo 1 como as outras duas. Sem isso o painel escreve *"Set the parent frame
+to Row or Column first"* — que é a resposta certa, e é o que a primeira rodada de smoke não tinha.
 
 ---
 

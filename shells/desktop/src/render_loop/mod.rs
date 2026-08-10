@@ -6259,7 +6259,6 @@ impl crate::App {
                 self.last_pointer,
                 toasts,
                 surface.gpu(),
-                self.timeline_signals.jumped,
             );
             // O grafo gritou — o shell é quem publica (ADR-0075: o produtor não chama
             // ninguém). ⚠️ **Este produtor pousa UM QUADRO atrás dos outros dois**, e o
@@ -6269,6 +6268,20 @@ impl crate::App {
             // rede, não a licença. Fechar o vão é MOVER a leitura dos consumidores para
             // baixo deste dispatch, o que reordena uma sequência gateada e é decisão
             // própria (o `toasts` tem de continuar vivo lá).
+            // ⚠️ **A LEITURA acontece AQUI, e não dentro do dispatch, porque este é o ponto
+            // onde TODA rota de cook converge.** Ela morava no laço de tiques da bomba de
+            // CPU — correto, e mudo: a rota da GPU **híbrida** marcha por outra porta e
+            // devolve `Handled`, então aquele laço nem roda. Medido na cena `=26`, que planeja
+            // híbrida (boundaries `[5, 4]`, 4 estágios): o grafo cozinhava, desenhava e não
+            // gritava nada — com a suíte verde, porque todo gate dirigia a porta de sinks.
+            //
+            // ⚠️ **A LEI mora aqui junto com a leitura**, pelo mesmo motivo: perguntá-la
+            // dentro do dispatch obrigaria cada rota a lembrar-se dela. Um scrub re-cozinha o
+            // grafo e não pode gritar — um sinal é travessia de play para a frente.
+            if clock_forward::clock_is_playing_forward(&self.playhead, self.timeline_signals.jumped)
+            {
+                motion_bridge::signals::collect_signals(motion);
+            }
             for sig in motion.signals_out.drain(..) {
                 self.signals.publish(ph2d_runtime::Signal::from_motion(
                     &sig.name, sig.tick, sig.rows,

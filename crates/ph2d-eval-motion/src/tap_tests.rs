@@ -130,17 +130,8 @@ fn a_tomada_cavalga_a_marcha_dos_sinks() {
     let scopes = TimeScopes::new();
     reset_evals();
     let mut pump = MotionCookPump::new();
-    pump.advance_or_scrub_with_taps_scoped(
-        &g,
-        &Ops,
-        &[sink],
-        &[mid],
-        0,
-        |t| t as f64,
-        UV,
-        SIZE,
-        &scopes,
-    );
+    pump.set_taps(&[mid]);
+    pump.advance_or_scrub_scoped(&g, &Ops, &[sink], 0, |t| t as f64, UV, SIZE, &scopes);
     assert_eq!(
         evals(),
         1,
@@ -175,35 +166,77 @@ fn o_scrub_tambem_entrega_as_tomadas() {
     let (g, mid, sink) = chain();
     let scopes = TimeScopes::new();
     let mut pump = MotionCookPump::new();
+    pump.set_taps(&[mid]);
     for t in 0..=4 {
-        pump.advance_or_scrub_with_taps_scoped(
-            &g,
-            &Ops,
-            &[sink],
-            &[mid],
-            t,
-            |t| t as f64,
-            UV,
-            SIZE,
-            &scopes,
-        );
+        pump.advance_or_scrub_scoped(&g, &Ops, &[sink], t, |t| t as f64, UV, SIZE, &scopes);
     }
     // De volta ao tique 1 — o caminho de scrub (restaura o checkpoint e re-simula).
-    pump.advance_or_scrub_with_taps_scoped(
-        &g,
-        &Ops,
-        &[sink],
-        &[mid],
-        1,
-        |t| t as f64,
-        UV,
-        SIZE,
-        &scopes,
-    );
+    pump.advance_or_scrub_scoped(&g, &Ops, &[sink], 1, |t| t as f64, UV, SIZE, &scopes);
     assert_eq!(
         pump.tap_streams().len(),
         1,
         "a tomada volta no scrub, nao so no play"
     );
     assert_eq!(pump.tap_streams()[0].0, mid);
+}
+
+/// **A tomada cavalga a marcha de BOUNDARIES também** — e é o gate que faltava.
+///
+/// Enquanto ela era argumento da porta de *sinks*, a rota da GPU **híbrida** (que marcha por
+/// [`MotionCookPump::advance_or_scrub_to_nodes_scoped`]) ficava muda: o documento cozinhava,
+/// desenhava e não entregava tomada nenhuma. Nenhum gate viu, porque todos dirigiam a outra
+/// porta. A tomada é estado da BOMBA justamente para que a rota deixe de ser uma pergunta.
+#[test]
+fn a_tomada_cavalga_a_marcha_de_boundaries() {
+    let (g, mid, sink) = chain();
+    let scopes = TimeScopes::new();
+    let mut pump = MotionCookPump::new();
+    pump.set_taps(&[mid]);
+    pump.advance_or_scrub_to_nodes_scoped(&g, &Ops, &[sink], 0, |t| t as f64, &scopes);
+    assert_eq!(
+        pump.tap_fires().len(),
+        1,
+        "a marcha de boundaries também carimba o livro-razão"
+    );
+    assert_eq!(pump.tap_fires()[0].0, 0, "e com o tique que foi marchado");
+    assert_eq!(pump.tap_fires()[0].1, mid);
+}
+
+/// **O livro-razão guarda um tique por PEDIDO, não por passo de re-simulação.**
+///
+/// Um scrub re-cozinha o intervalo inteiro por dentro; carimbar cada passo faria um wrap de
+/// loop publicar a volta toda num quadro só — uma rajada onde o artista vê um evento.
+#[test]
+fn o_livro_guarda_o_tique_pedido_e_nao_a_re_simulacao() {
+    let (g, mid, sink) = chain();
+    let scopes = TimeScopes::new();
+    let mut pump = MotionCookPump::new();
+    pump.set_taps(&[mid]);
+    for t in 0..=8 {
+        pump.advance_or_scrub_scoped(&g, &Ops, &[sink], t, |t| t as f64, UV, SIZE, &scopes);
+    }
+    pump.clear_tap_fires();
+    // Um salto para TRÁS: a bomba re-simula 0..=2 por dentro e o livro guarda UMA linha.
+    pump.advance_or_scrub_scoped(&g, &Ops, &[sink], 2, |t| t as f64, UV, SIZE, &scopes);
+    assert_eq!(
+        pump.tap_fires().len(),
+        1,
+        "um pedido, uma linha — medido {:?}",
+        pump.tap_fires()
+            .iter()
+            .map(|(t, ..)| *t)
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(pump.tap_fires()[0].0, 2, "e é o tique PEDIDO");
+}
+
+/// **Sem armar, nada é cozido e nada é guardado** — o mundo anterior às tomadas, byte a byte.
+#[test]
+fn sem_armar_o_livro_fica_vazio() {
+    let (g, _mid, sink) = chain();
+    let scopes = TimeScopes::new();
+    let mut pump = MotionCookPump::new();
+    pump.advance_or_scrub_scoped(&g, &Ops, &[sink], 0, |t| t as f64, UV, SIZE, &scopes);
+    assert!(pump.tap_fires().is_empty());
+    assert!(pump.tap_streams().is_empty());
 }

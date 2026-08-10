@@ -11,7 +11,7 @@ use crate::motion_state::MotionState;
 ///
 /// Irmã do `output_nodes`, e pela mesma razão: o shell endereça tipos de nó pelo NOME
 /// canônico, como faz com o id de ferramenta.
-pub(super) fn signal_nodes(
+pub(crate) fn signal_nodes(
     graph: &ph2d_nodegraph::graph::Graph,
 ) -> Vec<ph2d_nodegraph::graph::NodeId> {
     let mut ids: Vec<_> = graph
@@ -24,19 +24,26 @@ pub(super) fn signal_nodes(
     ids
 }
 
-/// Lê as tomadas do tique recém-cozido e acumula o que gritou.
+/// Lê o LIVRO-RAZÃO do quadro — o que cada tomada disse em cada tique marchado — e acumula o
+/// que gritou.
+///
+/// ⚠️ **Ele lê `tap_fires`, e não `tap_streams`, e é isso que o torna independente da ROTA.**
+/// A versão anterior lia o último cook, o que obrigava quem marcha a chamar isto dentro do
+/// próprio laço; havia DUAS marchas (a bomba de CPU e o prefixo da GPU híbrida) e só uma tinha
+/// a chamada, então um documento híbrido nunca gritava — com a suíte verde.
 ///
 /// ⚠️ **Um nó SEM nome não grita**, e isso não é uma validação: um `pulse.signal` acabado de
 /// soltar no grafo tem o campo vazio, e um sinal anônimo não é endereçável por consumidor
 /// nenhum — publicá-lo seria um evento que ninguém pode escutar de propósito.
 ///
-/// ⚠️ **`any` colapsa a LINHA no QUADRO**, e a contagem viaja junto: uma grade de 576 pontos
-/// que dispara ao mesmo tempo é UM evento com `rows = 576`, não 576 eventos.
-pub(super) fn collect_signals(motion: &mut MotionState, tick: u64) {
+/// ⚠️ **A contagem de linhas COLAPSA no quadro**, e viaja junto: uma grade de 576 pontos que
+/// dispara ao mesmo tempo é UM evento com `rows = 576`, não 576 eventos.
+pub(crate) fn collect_signals(motion: &mut MotionState) {
     if motion.signal_taps.is_empty() {
         return;
     }
-    for (node, stream) in motion.pump.tap_streams() {
+    for (tick, node, stream) in motion.pump.tap_fires() {
+        let tick = *tick;
         let rows = ph2d_node_pulse_signal::fired_rows(stream);
         if rows == 0 {
             continue;

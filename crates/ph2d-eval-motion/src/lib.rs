@@ -99,6 +99,21 @@ pub struct MotionCookPump {
     /// host lê para saber que algo aconteceu no grafo. Um nome, um significado — os
     /// dois numa lista só obrigariam todo leitor a perguntar de qual metade veio.
     tap_streams: Vec<(NodeId, Stream)>,
+    /// **As TOMADAS são estado da BOMBA, não argumento de chamada** — e a diferença é a
+    /// única razão de este campo existir.
+    ///
+    /// ⚠️ Como argumento, elas só existiam na porta que o chamador lembrasse de usar: a rota
+    /// **híbrida** marcha por [`Self::advance_or_scrub_to_nodes_scoped`] e ficava MUDA, com
+    /// os gates verdes (eles dirigem a porta de sinks) e o produto sem gritar nada. Aqui a
+    /// tomada cavalga QUALQUER marcha, e uma rota nova nasce coberta.
+    taps: Vec<NodeId>,
+    /// O que as tomadas disseram em cada tique MARCHADO deste quadro — o livro-razão que o
+    /// host lê UMA vez, depois de qualquer rota.
+    ///
+    /// ⚠️ **Um tique por PEDIDO, não por re-simulação:** um scrub re-cozinha o intervalo
+    /// inteiro por dentro, e registrar cada passo dele faria um wrap de loop gritar a volta
+    /// toda de uma vez.
+    tap_fires: Vec<(u64, NodeId, Stream)>,
 }
 
 /// What one pump cook produces this frame — the two consumers of the SAME
@@ -111,17 +126,6 @@ enum CookTarget<'a> {
         sinks: &'a [NodeId],
         default_uv_rect: [f32; 4],
         default_size: [f32; 2],
-        /// Mid-graph nodes whose raw output stream the caller also wants, left in
-        /// [`MotionCookPump::tap_streams`]. **Empty is the world before taps, byte
-        /// for byte** — the loop does not run and nothing is allocated.
-        ///
-        /// ⚠️ **They ride the SAME march as the sinks, and that is the whole point.**
-        /// The pump's own doc says it: *"one march, N hand-offs"* — a second
-        /// `advance_or_scrub_*` call for the taps would advance the clock twice per
-        /// tick and simulate the shared prefix twice. Cooked here, after the sinks
-        /// and at the same playhead, they hit the memo on everything they share
-        /// (the argument the `Boundaries` arm below spells out).
-        taps: &'a [NodeId],
     },
     /// Each named node's raw output stream, stored in `boundary_streams` (the
     /// CPU→GPU boundary: the lowering is the GPU's job now, so the CPU stops at
@@ -160,6 +164,8 @@ impl MotionCookPump {
             ring: CheckpointRing::new(),
             boundary_streams: Vec::new(),
             tap_streams: Vec::new(),
+            taps: Vec::new(),
+            tap_fires: Vec::new(),
         }
     }
 
@@ -248,10 +254,6 @@ impl MotionCookPump {
                 sinks,
                 default_uv_rect,
                 default_size,
-                // Estas duas portas públicas (pump-only / scrub-only) são para quem
-                // dirige UMA metade da máquina; quem quer tomadas usa a porta que
-                // decide entre as duas.
-                taps: &[],
             },
             tick,
             playhead,
@@ -288,6 +290,7 @@ impl MotionCookPump {
             // snapshotted by the same call).
             let _ = self.cook.advance_tick_scoped(graph, ops, playhead, scopes);
         }
+        self.record_tap_fires(tick);
         self.last_cooked_tick = Some(tick);
         self.dirty = false;
         true
@@ -313,11 +316,9 @@ impl MotionCookPump {
                 sinks,
                 default_uv_rect,
                 default_size,
-                taps,
             } => {
                 self.instances.clear();
                 self.vector_instances.clear();
-                self.tap_streams.clear();
                 for &sink in sinks {
                     // A sink that fails to cook (an unknown type mid-edit, or a
                     // sequential node caught inside a remapped time scope)
@@ -343,19 +344,6 @@ impl MotionCookPump {
                             }
                         }
                         Err(e) => self.last_error = Some(e),
-                    }
-                }
-                // The taps, AFTER the sinks and at the same playhead. A tap that
-                // fails to cook simply does not appear — the caller reads a shorter
-                // list, never a wrong stream (the `boundary_streams` policy).
-                for &node in taps {
-                    if self.tap_streams.iter().any(|(n, _)| *n == node) {
-                        continue;
-                    }
-                    if let Ok(outputs) = self.cook.cook_scoped(graph, ops, node, playhead, scopes)
-                        && let Some(v) = outputs.first()
-                    {
-                        self.tap_streams.push((node, v.as_stream().clone()));
                     }
                 }
             }
@@ -401,6 +389,41 @@ impl MotionCookPump {
                 }
             }
         }
+        // **As TOMADAS, depois do alvo e no MESMO playhead — para os DOIS alvos.**
+        //
+        // ⚠️ Elas ficavam dentro do braço `Sinks`, e o preço foi medido no produto: a rota
+        // HÍBRIDA marcha por `Boundaries`, então um documento com `pulse.signal` cozinhava,
+        // desenhava e **não gritava nada** — com a suíte verde, porque todo gate dirigia a
+        // porta de sinks. A tomada é do pump; ela cavalga a marcha que houver.
+        //
+        // Cozinhar aqui bate no MEMO de tudo o que a tomada compartilha com o alvo (o mesmo
+        // argumento que o braço `Boundaries` acima explica): o `Fingerprint` carrega o tique,
+        // e o tique só anda no `advance_tick_scoped`, que a marcha chama uma vez.
+        self.tap_streams.clear();
+        for i in 0..self.taps.len() {
+            let node = self.taps[i];
+            if self.tap_streams.iter().any(|(n, _)| *n == node) {
+                continue;
+            }
+            // Uma tomada que falha ao cozinhar simplesmente NÃO APARECE — o chamador lê uma
+            // lista mais curta, nunca um stream errado (a política do `boundary_streams`).
+            if let Ok(outputs) = self.cook.cook_scoped(graph, ops, node, playhead, scopes)
+                && let Some(v) = outputs.first()
+            {
+                self.tap_streams.push((node, v.as_stream().clone()));
+            }
+        }
+    }
+
+    /// Carimba no livro-razão o que as tomadas disseram no tique que o chamador PEDIU.
+    ///
+    /// ⚠️ Chamado pelas duas marchas (a de avanço e a de scrub) e **uma vez cada**: o scrub
+    /// re-cozinha o intervalo inteiro por dentro, e registrar cada passo faria um wrap de
+    /// loop gritar a volta toda num quadro só.
+    fn record_tap_fires(&mut self, tick: u64) {
+        for (node, stream) in &self.tap_streams {
+            self.tap_fires.push((tick, *node, stream.clone()));
+        }
     }
 
     /// Scrub to `target_tick`: render the exact simulation state of that frame
@@ -433,10 +456,6 @@ impl MotionCookPump {
                 sinks,
                 default_uv_rect,
                 default_size,
-                // Estas duas portas públicas (pump-only / scrub-only) são para quem
-                // dirige UMA metade da máquina; quem quer tomadas usa a porta que
-                // decide entre as duas.
-                taps: &[],
             },
             target_tick,
             playhead_of,
@@ -479,6 +498,9 @@ impl MotionCookPump {
             }
             t += 1;
         }
+        // ⚠️ Com `t`, não com `target_tick`: depois do laço `t` É o último tique COZIDO, e os
+        // dois só coincidem quando o alvo tem trabalho. Ver [`Self::record_tap_fires`].
+        self.record_tap_fires(t);
         self.last_cooked_tick = Some(target_tick);
         self.dirty = false;
         true
@@ -505,44 +527,6 @@ impl MotionCookPump {
         default_size: [f32; 2],
         scopes: &TimeScopes,
     ) -> bool {
-        self.advance_or_scrub_with_taps_scoped(
-            graph,
-            ops,
-            sinks,
-            &[],
-            tick,
-            playhead_of,
-            default_uv_rect,
-            default_size,
-            scopes,
-        )
-    }
-
-    /// [`Self::advance_or_scrub_scoped`] com TOMADAS: os mesmos sinks, mais os nós
-    /// cujo stream cru o chamador quer ler em [`Self::tap_streams`].
-    ///
-    /// ⚠️ **Uma marcha, dois consumos** — as tomadas cozinham DENTRO desta chamada,
-    /// depois dos sinks e no mesmo playhead, então o prefixo compartilhado é simulado
-    /// uma vez (o memo do `Cook`) e o relógio avança uma vez. Chamar a irmã sem
-    /// tomadas e depois cozinhar os nós à parte é o erro que o `Boundaries` já
-    /// documenta, e ele é SILENCIOSO: o resultado sai plausível e a sim andou duas
-    /// vezes.
-    ///
-    /// ⚠️ **A lista vazia é a irmã, LITERALMENTE** — ela delega para cá com `&[]`, e
-    /// não há um segundo caminho de código para divergir.
-    #[allow(clippy::too_many_arguments)]
-    pub fn advance_or_scrub_with_taps_scoped(
-        &mut self,
-        graph: &Graph,
-        ops: &dyn OpResolver,
-        sinks: &[NodeId],
-        taps: &[NodeId],
-        tick: u64,
-        playhead_of: impl Fn(u64) -> f64,
-        default_uv_rect: [f32; 4],
-        default_size: [f32; 2],
-        scopes: &TimeScopes,
-    ) -> bool {
         self.advance_or_scrub_target_scoped(
             graph,
             ops,
@@ -550,12 +534,43 @@ impl MotionCookPump {
                 sinks,
                 default_uv_rect,
                 default_size,
-                taps,
             },
             tick,
             playhead_of,
             scopes,
         )
+    }
+
+    /// **Arma as TOMADAS deste quadro** — os nós cujo stream cru o host quer ler.
+    ///
+    /// ⚠️ **Elas são estado da BOMBA, e não argumento de uma chamada**, porque a marcha tem
+    /// mais de uma porta: a rota da GPU HÍBRIDA marcha por
+    /// [`Self::advance_or_scrub_to_nodes_scoped`], e enquanto a tomada era argumento da porta
+    /// de sinks um documento híbrido cozinhava, desenhava e **não gritava nada** — medido no
+    /// produto, com a suíte verde. Armada aqui, ela cavalga a marcha que houver, e a rota que
+    /// nascer amanhã nasce coberta.
+    ///
+    /// Lista vazia é o mundo anterior byte a byte: nada é cozido e nada é guardado.
+    pub fn set_taps(&mut self, taps: &[NodeId]) {
+        self.taps.clear();
+        self.taps.extend_from_slice(taps);
+    }
+
+    /// O que as tomadas disseram em cada tique MARCHADO desde a última limpeza — o livro-razão.
+    ///
+    /// ⚠️ **É ele que torna a leitura independente da ROTA:** o host limpa uma vez por quadro,
+    /// as marchas carimbam (uma linha por tique PEDIDO, nunca por passo de re-simulação), e a
+    /// leitura acontece UMA vez, depois de qualquer caminho de cook. Ler `tap_streams` dentro
+    /// de um laço de marcha funcionava — para o laço que o autor lembrasse de instrumentar.
+    #[must_use]
+    pub fn tap_fires(&self) -> &[(u64, NodeId, Stream)] {
+        &self.tap_fires
+    }
+
+    /// Zera o livro-razão — o host o chama uma vez por quadro, onde limpa o resto do que o
+    /// quadro publica.
+    pub fn clear_tap_fires(&mut self) {
+        self.tap_fires.clear();
     }
 
     /// Os streams das TOMADAS da última marcha de sinks, rotulados por nó.

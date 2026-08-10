@@ -25,35 +25,75 @@ const FPS: f64 = 60.0;
 
 type Scene = fn(&mut MotionDoc, &NodeRegistry) -> Option<Vec<NodeId>>;
 
-/// Roda `secs` de cena pela porta do produto e devolve **tudo o que ela gritou**.
+/// **Por qual PORTA a bomba é marchada** — e a fixture tem as duas porque o produto tem as duas.
 ///
-/// ⚠️ **A leitura acontece DENTRO do laço**, como no `dispatch`: o `tap_streams` é limpo a cada
-/// cook, então ler depois dele deixaria só o último tique — e um quadro lento deve dois ou três.
-fn shouts_of(scene: Scene, secs: f64, rename: impl Fn(&mut MotionState)) -> Vec<MotionSignalOut> {
+/// ⚠️ Esta é a metade que faltava, e o preço foi um smoke: a cena `=26` planeja **híbrida**
+/// (medido: `boundaries = [5, 4]`, 4 estágios de despacho), então o quadro real marcha por
+/// [`Rota::Hibrida`] e devolve `Handled` — enquanto TODO gate desta suíte dirigia a
+/// [`Rota::Cpu`]. O grafo cozinhava, desenhava e não gritava nada, com quatro gates verdes.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Rota {
+    /// A bomba renderiza os sinks (GPU off, ou plano que não reivindica trabalho útil).
+    Cpu,
+    /// O prefixo de CPU cozinha até as fronteiras do plano; o sufixo é da GPU.
+    Hibrida,
+}
+
+/// Roda `secs` de cena pela porta indicada e devolve **tudo o que ela gritou**.
+///
+/// ⚠️ **A leitura acontece UMA vez, no fim**, como no shell: o livro-razão (`tap_fires`) é
+/// carimbado por qualquer marcha, então quem lê não precisa saber que rota o quadro tomou.
+fn shouts_of(
+    scene: Scene,
+    secs: f64,
+    rota: Rota,
+    rename: impl Fn(&mut MotionState),
+) -> Vec<MotionSignalOut> {
     let mut motion = MotionState::new();
     motion.sinks = scene(&mut motion.doc, &motion.registry).expect("a cena é bem tipada");
     rename(&mut motion);
     motion.signal_taps = signal_nodes(&motion.doc.graph);
-    let scopes = TimeScopes::new();
-    for tick in 0..=((secs * FPS) as u64) {
-        motion.pump.advance_or_scrub_with_taps_scoped(
+    motion.pump.set_taps(&motion.signal_taps);
+    motion.pump.clear_tap_fires();
+    // As fronteiras do plano — o que a rota híbrida entrega à bomba.
+    let boundaries: Vec<NodeId> = {
+        let plan = ph2d_gpu_cook::plan(
             &motion.doc.graph,
             &motion.registry,
-            &motion.sinks,
-            &motion.signal_taps,
-            tick,
-            |t| t as f64 / FPS,
-            motion.default_uv_rect,
-            motion.default_size,
-            &scopes,
+            &motion.registry,
+            motion.sinks[0],
         );
-        collect_signals(&mut motion, tick);
+        plan.boundaries.iter().map(|(n, _)| *n).collect()
+    };
+    let scopes = TimeScopes::new();
+    for tick in 0..=((secs * FPS) as u64) {
+        match rota {
+            Rota::Cpu => motion.pump.advance_or_scrub_scoped(
+                &motion.doc.graph,
+                &motion.registry,
+                &motion.sinks,
+                tick,
+                |t| t as f64 / FPS,
+                motion.default_uv_rect,
+                motion.default_size,
+                &scopes,
+            ),
+            Rota::Hibrida => motion.pump.advance_or_scrub_to_nodes_scoped(
+                &motion.doc.graph,
+                &motion.registry,
+                &boundaries,
+                tick,
+                |t| t as f64 / FPS,
+                &scopes,
+            ),
+        };
     }
+    collect_signals(&mut motion);
     std::mem::take(&mut motion.signals_out)
 }
 
 fn shouts(secs: f64) -> Vec<MotionSignalOut> {
-    shouts_of(build_gpu_signal_demo_document, secs, |_| {})
+    shouts_of(build_gpu_signal_demo_document, secs, Rota::Cpu, |_| {})
 }
 
 /// **Um grito carrega o NOME, o TIQUE e quantas linhas dispararam.** As três coisas que um
@@ -122,7 +162,7 @@ fn entre_dois_compassos_cabem_quatro_tics() {
 /// um nome não pode emudecer o resto do documento.
 #[test]
 fn uma_tomada_sem_nome_nao_grita_e_a_irma_continua() {
-    let out = shouts_of(build_gpu_signal_demo_document, 6.0, |motion| {
+    let out = shouts_of(build_gpu_signal_demo_document, 6.0, Rota::Cpu, |motion| {
         let tap = signal_nodes(&motion.doc.graph)[0];
         motion
             .doc
@@ -151,5 +191,67 @@ fn a_cena_sem_tomadas_nao_grita_nada() {
         signal_nodes(&motion.doc.graph).is_empty(),
         "a cena do compasso não tem tomada nenhuma"
     );
-    assert!(shouts_of(build_gpu_adsr_demo_document, 2.0, |_| {}).is_empty());
+    assert!(shouts_of(build_gpu_adsr_demo_document, 2.0, Rota::Cpu, |_| {}).is_empty());
+}
+
+/// **AS DUAS ROTAS GRITAM O MESMO — o gate que faltava.**
+///
+/// A cena `=26` planeja **híbrida**, então o quadro real nunca passou pela porta de sinks: o
+/// `pulse.signal` cozinhava, a tela animava e o terminal ficava mudo, com quatro gates verdes
+/// nesta suíte. A causa não era a leitura nem a lei — era a TOMADA ser argumento de UMA das
+/// portas de marcha, e o produto ter duas.
+///
+/// ⚠️ Ele compara as duas listas INTEIRAS (nome e tique), e não uma contagem: a rota híbrida
+/// cozinha até as fronteiras do plano, então nada garante *a priori* que uma tomada a montante
+/// veja o mesmo tique — e é exatamente isso que o gate existe para afirmar.
+#[test]
+fn as_duas_rotas_de_cook_gritam_a_mesma_coisa() {
+    let cpu = shouts_of(build_gpu_signal_demo_document, 4.0, Rota::Cpu, |_| {});
+    let hibrida = shouts_of(build_gpu_signal_demo_document, 4.0, Rota::Hibrida, |_| {});
+    assert!(
+        !hibrida.is_empty(),
+        "a rota HÍBRIDA é a que o quadro real toma nesta cena — se ela cala, o produto cala"
+    );
+    let resumo = |v: &[MotionSignalOut]| -> Vec<(String, u64)> {
+        v.iter().map(|s| (s.name.clone(), s.tick)).collect()
+    };
+    assert_eq!(
+        resumo(&cpu),
+        resumo(&hibrida),
+        "a rota não pode mudar o que o grafo grita"
+    );
+}
+
+/// **A cena `=26` de facto planeja HÍBRIDA** — a premissa do gate acima, medida em vez de
+/// suposta.
+///
+/// ⚠️ Sem ela, o irmão acima vira verde por vácuo no dia em que um kernel novo cobrir a família
+/// `pulse.*`: as duas rotas continuariam concordando, e a que o produto toma teria mudado sem
+/// ninguém saber. E o CONTROLE é o outro lado: um `pulse.signal` **não tem kernel**, então um
+/// documento que o contenha nunca é 100% GPU — é isso que garante que a bomba marcha, e com ela
+/// a tomada.
+#[test]
+fn a_cena_do_grito_planeja_hibrida_e_nunca_e_100_por_cento_gpu() {
+    let mut motion = MotionState::new();
+    motion.sinks = build_gpu_signal_demo_document(&mut motion.doc, &motion.registry)
+        .expect("a cena é bem tipada");
+    let plan = ph2d_gpu_cook::plan(
+        &motion.doc.graph,
+        &motion.registry,
+        &motion.registry,
+        motion.sinks[0],
+    );
+    assert!(
+        !plan.boundaries.is_empty(),
+        "um grafo com `pulse.signal` (sem kernel) SEMPRE deixa fronteira de CPU"
+    );
+    assert!(
+        plan.dispatching_stages(&motion.registry) >= 1,
+        "e o sufixo despacha, o que faz a rota ser Híbrida e não Cpu"
+    );
+    eprintln!(
+        "[rota] boundaries={:?} dispatching={}",
+        plan.boundaries.iter().map(|(n, _)| n.0).collect::<Vec<_>>(),
+        plan.dispatching_stages(&motion.registry)
+    );
 }

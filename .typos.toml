@@ -36,6 +36,17 @@ extend-ignore-identifiers-re = [
     # Ancorada (2026-08-03, W1 do player de plataforma).
     "^toi$",
     "^max_toi$",
+    # `pilar` · `espace` · `continuasse` — PORTUGUÊS correto em doc-comment, lido
+    # pelo `typos` como `pillar`/`escape`/`continues`. O `pilar` é o substantivo
+    # (a coluna do valor numa row de lista), e os outros dois são subjuntivos
+    # (*que o padrão se re-espace* · *que continuasse a avançar o `y`*). Trocá-los
+    # pela palavra inglesa deixaria a prosa ERRADA para consertar um falso
+    # positivo. Ancoradas (2026-08-10, integração motion-value + physics).
+    # ⚠️ Estes três já estavam VERMELHOS no `main` antes desta janela — são
+    # latentes da integração anterior, não das linhas que os drenaram.
+    "^pilar$",
+    "^espace$",
+    "^continuasse$",
     # `inh` — the IN-handle of a Hobby-spline vertex (`ph2d-vec-edit::hobby`),
     # paired with `out`. A deliberate short identifier, not a typo of `in`.
     # Anchored (2026-07-31).

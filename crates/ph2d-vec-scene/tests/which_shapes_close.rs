@@ -2,7 +2,7 @@
 //! FECHADO, e portanto podem ser preenchidas. A cerca do `source.shape` afirma que
 //! "Arc (wedge) e Spiral são follow-ups (precisam de wedge-close / traço)" — este
 //! teste diz o número em vez de o assumir.
-use ph2d_vec_scene::{ALL_SHAPES, ShapeKind, cook};
+use ph2d_vec_scene::{ALL_SHAPES, cook};
 
 #[test]
 #[ignore = "medicao: cargo test -p ph2d-vec-scene --test which_shapes_close -- --ignored --nocapture"]

@@ -201,4 +201,3 @@ fn a_dead_or_absurd_emitter_yields_an_empty_stream_not_a_panic() {
         "the GPU path reaches the same ceiling through the same law"
     );
 }
-

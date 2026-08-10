@@ -401,7 +401,7 @@ pub fn panel_drag_handle_rect(panel: Rect, header_h: f32, right_reserve: f32) ->
     // ⚠️ **A porta PERGUNTA onde o fechar está, em vez de confiar no número que lhe passaram.** O
     // `right_reserve` era uma CÓPIA da geometria do `panel_close_button_rect`, e as duas
     // discordavam por 2 px já na escala de fábrica (a `PANEL_HEADER_CLOSE_RESERVE` somava um
-    // padding de 16 onde o `PANEL_HEAD_PAD` é 18) — num painel que registe a faixa por ÚLTIMO, e
+    // padding de 16 onde o `PANEL_HEAD_PAD` é 18) — num painel que registre a faixa por ÚLTIMO, e
     // há um, esses 2 px arrastavam o painel em vez de fechar. Ver
     // `tests/the_drag_band_never_reaches_the_close_button.rs`.
     //

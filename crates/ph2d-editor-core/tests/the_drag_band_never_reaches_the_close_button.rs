@@ -88,7 +88,7 @@ fn the_drag_band_stops_before_the_close_hit() {
     assert!(
         band_right <= close_left,
         "a faixa de arrasto acaba em {band_right} e o fechar comeca em {close_left} — ela come \
-         {} px do botao, e num painel que registe a faixa por ULTIMO esses pixeis arrastam em vez \
+         {} px do botao, e num painel que registre a faixa por ULTIMO esses pixeis arrastam em vez \
          de fechar",
         band_right - close_left
     );

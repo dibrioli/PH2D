@@ -518,7 +518,7 @@ fn announce(app: &mut crate::App) {
     eprintln!(
         "     ⚠️ O picker e' o do APP, o mesmo do Painter e do Vector — o `pointer_down` diz"
     );
-    eprintln!("     em codigo que qualquer painel que pinte uma ColorSwatch e a registe o ganha.");
+    eprintln!("     em codigo que qualquer painel que pinte uma ColorSwatch e a registre o ganha.");
     eprintln!(" 24. ⚠️ **O ICONE NAO TRANSBORDA MAIS.** Olhe as rows **Play** e **Trash**: a");
     eprintln!("     estrela e o lixo ficam DENTRO da moldura do botao, com folga. A caixa do");
     eprintln!("     glifo media 32 px numa row de 28 — 4 px mais alta que o botao que a contem —,");

@@ -79,6 +79,23 @@ pub struct Fluid {
     pub buoyed: Buoyed,
     /// A resistência do meio, por segundo (o `AreaDrag` da zona).
     pub drag: f32,
+    /// **A ACELERAÇÃO que os empurrões das zonas dão a este corpo**, m/s², em eixos
+    /// de MUNDO (W-ZoneForce) — uma correnteza, uma esteira, uma coluna de vento.
+    ///
+    /// # ⚠️ Por que uma aceleração, e não a força
+    ///
+    /// Esta lei **não tem massa nenhuma**: ela possui uma velocidade e um `dt`. Quem
+    /// tem a massa é o solver, e é ele quem divide — a consulta devolve `F/m` já
+    /// pronto. É essa divisão, feita do outro lado, que preserva a assimetria que É a
+    /// feature de uma zona de força: *a folha voa, o caixote não*.
+    ///
+    /// # ⚠️ E ela NÃO é escalada pelo empuxo
+    ///
+    /// O [`gravity_share`](Fluid::gravity_share) pesa a GRAVIDADE, porque o empuxo é
+    /// uma força para cima proporcional ao peso. O empurrão de uma zona não tem
+    /// relação nenhuma com o peso do corpo — escalá-lo junto faria a correnteza
+    /// afrouxar exatamente onde a água carrega mais, que é o oposto do que a água faz.
+    pub push: Vec2,
 }
 
 impl Default for Fluid {
@@ -94,6 +111,7 @@ impl Fluid {
     pub const DRY: Self = Self {
         buoyed: Buoyed::DRY,
         drag: 0.0,
+        push: [0.0, 0.0],
     };
 
     /// **A fração da gravidade que ainda pesa.** `1` seco · `0` boiando em
@@ -316,10 +334,15 @@ pub fn kinematic_advance(
     // importa:** o motor traz o cancelamento de gravidade que a lei do pulo
     // autorou (a `gravity_hold`), e ele foi calculado contra a gravidade CHEIA —
     // escalar os dois juntos pagaria o empuxo duas vezes num pulo dentro d'água.
+    // ⚠️ **E o EMPURRÃO da zona entra AQUI, ao lado do motor** (W-ZoneForce): ele já
+    // chega como aceleração (a consulta dividiu pela massa REAL do solver), e é uma
+    // aceleração que se SOMA — nunca um fator sobre a gravidade, como o empuxo é. Do
+    // outro lado da cerca o solver faz exatamente isto: `apply_impulse(F·dt)` junto do
+    // peso, no mesmo sub-passo. Fora de zona o termo é `0` e a expressão é a de antes.
     let g = fluid.gravity_share();
     let v = [
-        state.velocity[0] + (gravity[0] * g + motor.accel[0]) * dt + motor.boost[0],
-        state.velocity[1] + (gravity[1] * g + motor.accel[1]) * dt + motor.boost[1],
+        state.velocity[0] + (gravity[0] * g + motor.accel[0] + fluid.push[0]) * dt + motor.boost[0],
+        state.velocity[1] + (gravity[1] * g + motor.accel[1] + fluid.push[1]) * dt + motor.boost[1],
     ];
 
     // ⚠️ **E o MEIO resiste**, com a mesma lei que o `effector::apply` usa —

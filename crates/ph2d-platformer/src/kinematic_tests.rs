@@ -370,6 +370,15 @@ fn water(s: f32, d: f32) -> Fluid {
     Fluid {
         buoyed: Buoyed(s),
         drag: d,
+        push: [0.0, 0.0],
+    }
+}
+
+/// Uma correnteza: o mesmo meio, com um empurrão de `a` m/s² em `+X`.
+fn current(s: f32, d: f32, a: f32) -> Fluid {
+    Fluid {
+        push: [a, 0.0],
+        ..water(s, d)
     }
 }
 
@@ -491,5 +500,107 @@ fn the_buoyancy_scales_gravity_and_leaves_the_motor_alone() {
         (v.velocity[1] - (-G[1]) * DT).abs() < 1.0e-6,
         "o motor tem de sobreviver inteiro ao empuxo ({})",
         v.velocity[1]
+    );
+}
+
+// ── O EMPURRÃO DA ZONA (W-ZoneForce) ─────────────────────────────────────────
+
+/// **A correnteza acelera, e acelera pelo NÚMERO que recebeu.**
+///
+/// Ela chega como aceleração já dividida pela massa (a consulta o fez, com a massa
+/// REAL do solver), então a lei só a soma — e o que ela soma tem de ser exatamente
+/// `push · dt`, sem coeficiente escondido.
+#[test]
+fn a_current_accelerates_by_exactly_what_it_was_told() {
+    let start = KinematicState {
+        velocity: [0.0, 0.0],
+        grounded: false,
+    };
+    let (dry, _) = kinematic_advance(start, Motor::default(), None, G, UP, DT, Fluid::DRY);
+    let (wet, _) = kinematic_advance(
+        start,
+        Motor::default(),
+        None,
+        G,
+        UP,
+        DT,
+        current(0.0, 0.0, 5.0),
+    );
+    assert_eq!(
+        wet.velocity[0] - dry.velocity[0],
+        5.0 * DT,
+        "o empurrao entra como `a · dt` e nada mais"
+    );
+    assert_eq!(
+        wet.velocity[1], dry.velocity[1],
+        "e nao toca no eixo que ele nao empurra"
+    );
+}
+
+/// **O empuxo NÃO escala o empurrão da zona.**
+///
+/// ⚠️ O gate que separa dois números que a mesma struct carrega: o
+/// [`Fluid::gravity_share`] pesa a GRAVIDADE — o empuxo é uma força para cima
+/// proporcional ao PESO —, e o empurrão de uma corrente não tem relação nenhuma com o
+/// peso do corpo. Escalá-lo junto faria a correnteza afrouxar exatamente onde a água
+/// carrega mais, que é o oposto do que a água faz.
+///
+/// A mutação que ele mata (`+ fluid.push[i]` para dentro do parêntese do
+/// `gravity_share`) deixa TODOS os outros gates de fluido verdes.
+#[test]
+fn buoyancy_does_not_weigh_the_zones_push() {
+    let start = KinematicState {
+        velocity: [0.0, 0.0],
+        grounded: false,
+    };
+    let mut seen = Vec::new();
+    for lift in [0.0f32, 1.0, 4.0] {
+        let (next, _) = kinematic_advance(
+            start,
+            Motor::default(),
+            None,
+            G,
+            UP,
+            DT,
+            current(lift, 0.0, 5.0),
+        );
+        seen.push(next.velocity[0]);
+    }
+    assert_eq!(
+        seen[0], seen[1],
+        "o empurrao lateral e o mesmo boiando em equilibrio"
+    );
+    assert_eq!(
+        seen[1], seen[2],
+        "e o mesmo numa agua que o levanta quatro vezes o peso"
+    );
+    assert_eq!(seen[0], 5.0 * DT, "e vale o que a consulta disse");
+}
+
+/// **O MEIO resiste ao que a correnteza acabou de dar** — a ordem, não a soma.
+///
+/// O solver aplica o impulso da zona e o arrasto dela no MESMO passe, nessa ordem
+/// (`effector::apply`), então a lei tem de fazer o mesmo: acelerar e só então frear.
+/// Frear antes deixaria o primeiro tique de correnteza passar sem resistência nenhuma.
+#[test]
+fn the_medium_resists_what_the_current_just_gave() {
+    let start = KinematicState {
+        velocity: [0.0, 0.0],
+        grounded: false,
+    };
+    let (next, _) = kinematic_advance(
+        start,
+        Motor::default(),
+        None,
+        [0.0, 0.0],
+        UP,
+        DT,
+        current(0.0, 3.0, 5.0),
+    );
+    let want = (5.0 * DT) / (1.0 + 3.0 * DT);
+    assert!(
+        (next.velocity[0] - want).abs() < 1e-7,
+        "acelera e SO ENTAO freia: {} contra {want}",
+        next.velocity[0]
     );
 }

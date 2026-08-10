@@ -383,6 +383,12 @@ impl PhysicsBridge {
             let fluid = Fluid {
                 buoyed,
                 drag: at.drag,
+                // ⚠️ **A MESMA varredura devolve as TRÊS grandezas** (W-ZoneForce): o
+                // empurrão entrou na consulta que já andava pelo grafo de interseção,
+                // e não numa segunda pergunta ao lado — perguntá-lo à parte pagaria o
+                // passeio em dobro por tique de player e deixaria dois números para o
+                // mesmo fato, que é a doença que este `at` existe para não ter.
+                push: at.push,
             };
 
             let step = player_motor(

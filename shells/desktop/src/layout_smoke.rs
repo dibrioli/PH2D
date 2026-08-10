@@ -250,10 +250,15 @@ mod tests {
             .slots_of(frame)
             .expect("a moldura armada tem de ter sido disposta");
         assert_eq!(slots.kids.len(), KIDS.len(), "todos os filhos colocados");
-        assert!(slots.main_x, "o Row empilha no eixo X");
+        assert_eq!(
+            slots.reading,
+            crate::layout_live::Reading::RowX,
+            "o Row le-se numa fila ao longo de X"
+        );
         for w in slots.kids.windows(2) {
+            let c = |b: &crate::layout_live::Box2| (b.0[0] + b.1[0]) * 0.5;
             assert!(
-                w[0].1 < w[1].1,
+                c(&w[0].1) < c(&w[1].1),
                 "os centros nao ficaram em ordem crescente: {:?}",
                 slots.kids.iter().map(|k| k.1).collect::<Vec<_>>()
             );

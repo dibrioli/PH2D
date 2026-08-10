@@ -6,6 +6,7 @@
 //! por engano.
 
 use super::*;
+use crate::layout_live::Reading;
 use ph2d_ecs::{LayoutDir, Transform, VecLayout};
 
 /// Uma moldura em LINHA com `n` filhos, o `i`-ésimo em `x = i·10`.
@@ -30,13 +31,18 @@ fn flow(n: usize) -> (SimWorld, Entity, Vec<Entity>, LayoutLive) {
         .collect();
     let layout = LayoutLive::with_slots(
         frame,
-        true,
+        Reading::RowX,
         kids.iter()
             .enumerate()
-            .map(|(i, e)| (*e, i as f64 * 10.0))
+            .map(|(i, e)| (*e, cell(i as f64 * 10.0, 0.0)))
             .collect(),
     );
     (sim, frame, kids, layout)
+}
+
+/// Uma caixa de `10 × 10` cujo CENTRO cai em `(cx, cy)` — a régua publica caixas, não centros.
+fn cell(cx: f64, cy: f64) -> crate::layout_live::Box2 {
+    ([cx - 5.0, cy - 5.0], [cx + 5.0, cy + 5.0])
 }
 
 fn order(sim: &SimWorld, frame: Entity) -> Vec<Entity> {
@@ -121,10 +127,10 @@ fn a_column_reads_the_other_axis() {
     }
     let layout = LayoutLive::with_slots(
         frame,
-        false,
+        Reading::ColumnY,
         k.iter()
             .enumerate()
-            .map(|(i, e)| (*e, i as f64 * 10.0))
+            .map(|(i, e)| (*e, cell(0.0, i as f64 * 10.0)))
             .collect(),
     );
     assert!(drop_at(&mut sim, &layout, k[0], [0.0, 99.0]));
@@ -147,7 +153,7 @@ fn a_shape_outside_a_flow_is_never_reordered() {
     assert!(flow_parent(&sim, kid).is_none(), "o pai nao empilha");
     assert!(flow_parent(&sim, loose).is_none(), "nem sequer tem pai");
 
-    let layout = LayoutLive::with_slots(group, true, vec![(kid, 0.0)]);
+    let layout = LayoutLive::with_slots(group, Reading::RowX, vec![(kid, cell(0.0, 0.0))]);
     assert!(
         !drop_at(&mut sim, &layout, kid, [99.0, 0.0]),
         "sem fluxo no pai o arrasto tem de cair no caminho de MOVER"
@@ -192,4 +198,114 @@ fn a_despawned_sibling_never_reaches_the_order_door() {
     sim.world_mut().entity_mut(k[1]).despawn();
     assert!(drop_at(&mut sim, &layout, k[0], [99.0, 0.0]));
     assert_eq!(order(&sim, frame), vec![k[2], k[0]]);
+}
+
+/// ⭐ **A RÉGUA 1-D É ERRADA NUMA FILA EM LINHAS, e este gate é o defeito medido.**
+///
+/// Numa grade 3×3 de células de 10, as três da coluna 0 partilham o mesmo `x`. A régua antiga —
+/// *"quantos centros estão antes do cursor"* — conta as três mesmo com o cursor na PRIMEIRA:
+/// soltar na célula (0,0) devolvia o **slot 3**, o começo da segunda linha, e soltar na última
+/// devolvia 6 em vez de 8.
+///
+/// ⚠️ O `RowWrap` shipa com este defeito desde que nasceu; ele ficou invisível ali porque uma
+/// faixa de wrap raramente alinha duas linhas. Numa grade ele é visível em TODA a primeira linha.
+#[test]
+fn a_drop_in_a_grid_lands_in_the_cell_it_was_dropped_on() {
+    // Três linhas de três: centros em x = 5/15/25 e y = 25/15/5 (o mundo é Y-up, a 1ª linha em
+    // cima). A caixa mede 10, então a célula (r, c) tem centro (5 + 10c, 25 − 10r).
+    let boxes: Vec<_> = (0..9)
+        .map(|i| {
+            cell(
+                5.0 + 10.0 * f64::from(i % 3),
+                25.0 - 10.0 * f64::from(i / 3),
+            )
+        })
+        .collect();
+    for (name, cursor, want) in [
+        ("a 1a celula", [5.0, 25.0], 0),
+        ("entre a 1a e a 2a", [10.0, 25.0], 1),
+        ("a ultima celula", [25.0, 5.0], 8),
+        ("depois da ultima", [30.0, 5.0], 9),
+        ("a 1a da 2a linha", [5.0, 15.0], 3),
+    ] {
+        assert_eq!(
+            slot_at_rows(&boxes, cursor),
+            want,
+            "soltar em {name} devia pedir o slot {want}"
+        );
+    }
+    // ⚠️ **O CONTROLO que nomeia o defeito:** a régua 1-D no mesmo ponto responde outra coisa.
+    let centres: Vec<f64> = boxes.iter().map(|(lo, hi)| (lo[0] + hi[0]) * 0.5).collect();
+    assert_eq!(
+        slot_at(&centres, 10.0),
+        3,
+        "se a regua 1-D ja' respondesse 1 aqui, este gate nao estaria a medir nada"
+    );
+}
+
+/// **O vão entre duas linhas pertence à linha mais PRÓXIMA** — e não a nenhuma.
+///
+/// ⚠️ É o mesmo argumento que fez a régua 1-D medir centros e não fronteiras: num fluxo com `gap`
+/// o artista passa a maior parte do arrasto exactamente no vão, e uma régua que ali não responda
+/// tem um ponto morto do tamanho do vão.
+#[test]
+fn the_gap_between_two_rows_belongs_to_the_nearer_one() {
+    // Duas linhas de dois, com 10 de vão entre elas: centros em y = 25 e y = 5.
+    let boxes: Vec<_> = (0..4)
+        .map(|i| {
+            cell(
+                5.0 + 10.0 * f64::from(i % 2),
+                25.0 - 20.0 * f64::from(i / 2),
+            )
+        })
+        .collect();
+    assert_eq!(slot_at_rows(&boxes, [5.0, 18.0]), 0, "perto da 1a linha");
+    assert_eq!(slot_at_rows(&boxes, [5.0, 12.0]), 2, "perto da 2a linha");
+}
+
+/// **As duas leituras de UMA fila continuam exactamente como estavam** — a grade é uma ADIÇÃO.
+#[test]
+fn the_one_dimensional_readings_are_untouched() {
+    let (mut sim, frame, k, layout) = flow(3);
+    // `flow` publica `Reading::RowX` com centros em 0/10/20.
+    assert!(drop_at(&mut sim, &layout, k[0], [99.0, 0.0]));
+    assert_eq!(order(&sim, frame), vec![k[1], k[2], k[0]]);
+}
+
+/// ⭐ **O GESTO REAL numa grade** — pela porta do produto (`drop_at`), e não pelo kernel.
+///
+/// ⚠️ Os gates acima afirmam a régua; este afirma que a régua CERTA é a que o gesto escolhe. Um
+/// `Reading` mal atribuído passa nos outros três e cai só aqui — é a diferença entre *a aritmética
+/// está certa* e *o produto usa a aritmética certa*.
+#[test]
+fn dropping_a_child_on_the_first_cell_of_a_grid_moves_it_to_the_front() {
+    let (mut sim, frame, k, _) = flow(6);
+    if let Ok(mut e) = sim.world_mut().get_entity_mut(frame) {
+        e.insert(VecLayout {
+            dir: LayoutDir::Grid,
+            columns: 3,
+            ..VecLayout::default()
+        });
+    }
+    // Duas linhas de três, células de 10: a 1ª linha em y = 25, a 2ª em y = 15.
+    let layout = LayoutLive::with_slots(
+        frame,
+        Reading::Rows,
+        k.iter()
+            .enumerate()
+            .map(|(i, e)| {
+                (
+                    *e,
+                    cell(5.0 + 10.0 * (i % 3) as f64, 25.0 - 10.0 * (i / 3) as f64),
+                )
+            })
+            .collect(),
+    );
+    // O ÚLTIMO filho, solto na primeira célula, tem de ir para a frente da fila.
+    assert!(drop_at(&mut sim, &layout, k[5], [5.0, 25.0]));
+    assert_eq!(
+        order(&sim, frame),
+        vec![k[5], k[0], k[1], k[2], k[3], k[4]],
+        "o filho solto na 1a celula nao foi para o 1o slot"
+    );
 }

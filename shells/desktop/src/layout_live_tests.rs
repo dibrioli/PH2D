@@ -562,3 +562,38 @@ fn selecting_a_child_of_a_frame_that_does_not_flow_publishes_nothing() {
         "sem fluxo no pai nao ha item"
     );
 }
+
+/// ⭐ **QUEM COLOCA É QUEM DIZ COMO A FILA SE LÊ** — e as quatro direções não dão a mesma resposta.
+///
+/// ⚠️ Este gate existe porque o irmão dele em `layout_reorder_tests` **publica à mão** o `Reading`
+/// que quer testar, então ele nunca atravessa o roteamento: a mutação *"a grade volta a ler-se em
+/// 1-D"* SOBREVIVEU a ele. A régua certa e *o produto escolher a régua certa* são duas afirmações,
+/// e só o passe responde a segunda.
+#[test]
+fn the_pass_publishes_how_each_direction_is_read() {
+    for (dir, want) in [
+        (LayoutDir::Row, Reading::RowX),
+        (LayoutDir::Column, Reading::ColumnY),
+        (LayoutDir::RowWrap, Reading::Rows),
+        (LayoutDir::Grid, Reading::Rows),
+    ] {
+        let (mut sim, scene, map, frame, _kids) = frame_with_children(4);
+        arm(
+            &mut sim,
+            frame,
+            VecLayout {
+                dir,
+                columns: 2,
+                ..VecLayout::default()
+            },
+        );
+        let mut live = LiveGeometry::new();
+        let pass = run(&sim, &scene, &map, &mut live);
+        let slots = pass.slots_of(frame).expect("a moldura armada dispoe");
+        assert_eq!(
+            slots.reading, want,
+            "{dir:?} devia publicar {want:?} e publicou {:?}",
+            slots.reading
+        );
+    }
+}

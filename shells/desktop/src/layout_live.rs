@@ -117,18 +117,9 @@ fn fit(from: ([f64; 2], [f64; 2]), to: ([f64; 2], [f64; 2])) -> Xform {
     Xform([sx, 0.0, 0.0, sy, tx - sx * fx, ty - sy * fy])
 }
 
-/// **Onde o último passe PÔS os filhos de uma moldura** — a régua que o gesto de reordenar lê.
-///
-/// ⚠️ Ela é PUBLICADA por quem colocou, e nunca re-derivada por quem arrasta. Um gesto que
-/// recalculasse as posições seria a segunda resposta a *"onde este filho está?"*, e as duas
-/// divergiriam no primeiro `grow` — o artista veria a forma numa posição e o slot ser escolhido
-/// por outra.
-pub(crate) struct FlowSlots {
-    /// O eixo PRINCIPAL do fluxo: `true` = X (linha e quebra-linha), `false` = Y (coluna).
-    pub(crate) main_x: bool,
-    /// Os filhos na ORDEM do fluxo, cada um com o seu centro no eixo principal (mundo).
-    pub(crate) kids: Vec<(Entity, f64)>,
-}
+#[path = "layout_live_slots.rs"]
+mod slots_mod;
+pub(crate) use slots_mod::{Box2, FlowSlots, Reading};
 
 /// **O auto layout de toda a cena.** Roda DEPOIS da booleana (ele coloca *o que os filhos de facto
 /// desenham*) e ANTES do alinhamento (que recorta a faixa do traço na largura AUTORADA — escalar
@@ -225,9 +216,10 @@ impl LayoutLive {
     /// produto nunca a chama, e o `cfg(test)` é o que impede um segundo produtor de posições de
     /// nascer ao lado do passe (a lei do ADR-0153: a régua é publicada por quem coloca).
     #[cfg(test)]
-    pub(crate) fn with_slots(frame: Entity, main_x: bool, kids: Vec<(Entity, f64)>) -> Self {
+    pub(crate) fn with_slots(frame: Entity, reading: Reading, kids: Vec<(Entity, Box2)>) -> Self {
         let mut me = Self::default();
-        me.slots.insert(frame.to_bits(), FlowSlots { main_x, kids });
+        me.slots
+            .insert(frame.to_bits(), FlowSlots { reading, kids });
         me
     }
 
@@ -437,20 +429,24 @@ impl LayoutLive {
             if let Some((kid, parent)) = c.who
                 && let Some(l) = w.get::<VecLayout>(parent)
             {
-                let main_x = !matches!(l.dir, ph2d_ecs::LayoutDir::Column);
-                let centre = if main_x {
-                    (target.0[0] + target.1[0]) * 0.5
-                } else {
-                    (target.0[1] + target.1[1]) * 0.5
+                // ⚠️ **`RowWrap` e `Grid` leem-se em LINHAS**, e o wrap sempre se leu — ele
+                // dispunha em faixas e a régua media só o X desde que nasceu. O defeito ficou
+                // invisível ali porque uma faixa de wrap raramente tem duas linhas alinhadas; numa
+                // grade ele é visível em toda a primeira linha (medido: soltar na célula (0,0) de
+                // uma 3×3 dava o slot 3, o começo da SEGUNDA linha).
+                let reading = match l.dir {
+                    ph2d_ecs::LayoutDir::Column => Reading::ColumnY,
+                    ph2d_ecs::LayoutDir::Row => Reading::RowX,
+                    ph2d_ecs::LayoutDir::RowWrap | ph2d_ecs::LayoutDir::Grid => Reading::Rows,
                 };
                 self.slots
                     .entry(parent.to_bits())
                     .or_insert_with(|| FlowSlots {
-                        main_x,
+                        reading,
                         kids: Vec::new(),
                     })
                     .kids
-                    .push((kid, centre));
+                    .push((kid, target));
             }
             // **Este nó é alvo da roda?** Publicado aqui porque é aqui que a caixa final dele
             // existe — uma moldura que ABRAÇA acabou de mudar de tamanho, e re-medi-la noutro

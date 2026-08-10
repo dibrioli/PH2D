@@ -320,6 +320,11 @@ fn measure_how_the_tick_scales_with_the_brush_radius() {
                     .session
                     .as_mut()
                     .expect("a sessao de agua existe apos o traco");
+                // O `on_tick` do fim deste laco entrega o motor ao worker (`hand_off_sim`), entao da
+                // SEGUNDA volta em diante ele esta fora de casa e o `DerefMut` panica nomeando esta
+                // porta ([`wetpaint::offthread`]). Trazer ANTES do relogio: esperar o worker
+                // devolver nao e custo do passo, e cronometrar a espera mediria o agendador.
+                sess.bring_home();
                 let t0 = Instant::now();
                 sess.engine.step_simulation();
                 sim.push(t0.elapsed().as_secs_f64() * 1e3);
@@ -492,6 +497,11 @@ fn measure_the_two_halves_of_a_wet_tick() {
                     .session
                     .as_mut()
                     .expect("a sessao de agua existe apos o traco");
+                // Hoje este laco nao chama `on_tick`, entao o motor nunca sai de casa e a chamada e
+                // um no-op — mas a regra do [`wetpaint::offthread`] e da PORTA, nao do laco: quem
+                // alcanca a sessao traz o motor. Sem isto o dia em que este probe ganhar um tick ele
+                // panica, e o irmao acima ja pagou exatamente essa conta.
+                sess.bring_home();
                 let t0 = Instant::now();
                 sess.engine.step_simulation();
                 sim.push(t0.elapsed().as_secs_f64() * 1e3);

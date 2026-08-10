@@ -12861,6 +12861,17 @@ fn watercolor_app_params_incremental_vs_full(
     edge_spread: f32,
     probe_at: Option<u32>,
 ) -> (Vec<u8>, Vec<u8>, u32) {
+    watercolor_app_params_incremental_vs_full_ablated(wet_charge, edge_spread, probe_at, |_| {})
+}
+
+/// A MESMA cena, com uma torneira: `tweak` mexe no `BrushSpec` dos DOIS tracos antes do gesto, para
+/// a ablacao por ENTRADA (knob a knob) atribuir o residuo a um termo em vez de a uma teoria.
+fn watercolor_app_params_incremental_vs_full_ablated(
+    wet_charge: f32,
+    edge_spread: f32,
+    probe_at: Option<u32>,
+    tweak: impl Fn(&mut BrushSpec),
+) -> (Vec<u8>, Vec<u8>, u32) {
     use ph2d_painter_brush::{TextureKind, TextureMapping, TextureSettings};
     let size = 512u32;
     let mut t = PainterTool::default();
@@ -12891,6 +12902,7 @@ fn watercolor_app_params_incremental_vs_full(
         wet_charge,
         ..Default::default()
     };
+    tweak(&mut t.paint.brush);
     for slot in &mut t.paint.brush_by_mode {
         *slot = t.paint.brush;
     }
@@ -12904,6 +12916,7 @@ fn watercolor_app_params_incremental_vs_full(
     t.on_tick(16.0);
     // Traço B com ÁGUA, VIVO, cruzando o wash em diagonal (cruza em ~(250,250)).
     t.paint.brush.wet_dilution = 0.6;
+    tweak(&mut t.paint.brush);
     for slot in &mut t.paint.brush_by_mode {
         *slot = t.paint.brush;
     }
@@ -13013,9 +13026,31 @@ fn watercolor_app_params_diff_spatial_map() {
     }
 }
 
+/// ⚠️ **RED conhecido — e o diagnóstico do take 7 foi SUPERSEDIDO pela medição de 2026-08-09.**
+///
+/// O take 7 deixou o resíduo como *"speckle disperso; ou depende dos params exatos do Enio, ou não
+/// está no canvas CPU"*. Está no canvas CPU, e as sondas irmãs deste arquivo o caracterizam:
+///
+/// - **Não é ruído numérico.** `measure_whether_the_window_itself_moves_the_pixels`: MESMO estado,
+///   união contra um retângulo de 64×40 dentro dela ⇒ **Δ0 em 2560 px**. O composite é função pura
+///   do estado sobre a região dele.
+/// - **Não é a soma-prefixo do `box_blur`.** Ela É dependente da janela (`measure_box_blur_window_
+///   invariance`: até **1,98e-4** num sinal fracionário), mas torná-la exata em `f64` deixa os dois
+///   gates em Δ2 — hipótese construída, medida e REFUTADA.
+/// - **Não é o `settled`.** Duas ablações (`owner != cur_o` sozinho · todo dono settled) deixam 139
+///   dos 152 px de pé.
+/// - **É RAIO DE INVALIDAÇÃO.** Varrendo o `pad` do [`super::watercolor_render::window`]:
+///   `+0 → 152 px · +64 → 38 · +128 → 1 · +2·raio → 0`. O resíduo escala com o pincel (**12 px a
+///   r=20 · 152 a r=80 · 361 a r=160**), vive no ARO, e o termo de borda o amplifica 17×
+///   (`edge_gain = 0` ⇒ 9 px) — `measure_which_term_carries_the_incremental_residue`.
+///
+/// ⛔ **O `pad += 2·raio` NÃO é a cura**, e isso é medição, não gosto: a janela é `dirty ⊕ 4·pad` por
+/// eixo, então num pincel de 80 px ela vira o CANVAS INTEIRO todo quadro — exatamente o custo que o
+/// caminho incremental existe para evitar (e que o `measure_the_area_a_watercolor_frame_walks`
+/// vigia). Falta a grandeza NOMEADA de alcance `2·raio`; até ela aparecer, o gate fica `#[ignore]`.
 #[test]
-#[ignore = "RED conhecido (doc 12 take 7): Δ2 de staleness incremental nos params do app (sub-visível; \
-tolerância do gate é ≤1). Vira gate regular quando o residual for corrigido."]
+#[ignore = "RED conhecido: Δ2 de raio de invalidação no wash incremental (sub-visível; a tolerância \
+do gate é ≤1). Vira gate regular quando o residual for corrigido — diagnóstico medido no doc-comment."]
 fn watercolor_app_params_incremental_matches_full_diluted() {
     // Sintoma B do smoke (Charge 1 + Dilution > 0): retângulo no preview que some no mouse-up.
     let (inc, full, size) = watercolor_app_params_incremental_vs_full(1.0, 7.0, None);
@@ -13030,9 +13065,12 @@ fn watercolor_app_params_incremental_matches_full_diluted() {
     );
 }
 
+/// Irmão do gate acima com o mixer ligado — **o mesmo mecanismo medido**, e o diagnóstico completo
+/// (com os números de cada ablação) vive no doc-comment de
+/// [`watercolor_app_params_incremental_matches_full_diluted`].
 #[test]
-#[ignore = "RED conhecido (doc 12 take 7): Δ2 de staleness incremental nos params do app com mixer \
-ligado (sub-visível). Vira gate regular quando o residual for corrigido."]
+#[ignore = "RED conhecido: Δ2 de raio de invalidação no wash incremental, mixer ligado (sub-visível). \
+Vira gate regular quando o residual for corrigido — diagnóstico medido no gate irmao."]
 fn watercolor_app_params_incremental_matches_full_mixer_on() {
     // Sintoma A do smoke (Charge < 1, mixer ligado): borda dura na junção entre traços.
     let (inc, full, size) = watercolor_app_params_incremental_vs_full(0.7, 7.0, None);
@@ -13045,6 +13083,225 @@ fn watercolor_app_params_incremental_matches_full_mixer_on() {
         (worst_i / 4) % size as usize,
         (worst_i / 4) / size as usize
     );
+}
+
+/// Diag (2026-08-09) — **o composite depende da JANELA?** (o teste que separa as duas hipóteses)
+///
+/// MESMO estado, duas janelas: renderiza a união inteira, depois re-renderiza só um retângulo
+/// pequeno DENTRO dela. Se um byte se mexer, o composite não é função apenas do estado — e aí o
+/// resíduo dos dois `#[ignore]` não é *staleness* (estado que mudou sem invalidar), é a janela.
+#[test]
+#[ignore = "diag exploratório: o composite do wash depende da janela em que roda?"]
+fn measure_whether_the_window_itself_moves_the_pixels() {
+    use ph2d_painter_brush::{TextureKind, TextureMapping, TextureSettings};
+    let size = 512u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 80.0,
+        color: [0.24, 0.39, 0.63],
+        spacing: 0.05,
+        watercolor: true,
+        fill: 0.12,
+        depth: 1.2,
+        edge_gain: 3.0,
+        edge_spread: 7.0,
+        warp: 6.0,
+        granulation: 0.30,
+        paper: TextureSettings {
+            kind: TextureKind::PaperCold,
+            mapping: TextureMapping::Tiled,
+            ..TextureSettings::default()
+        },
+        wet_rewet: 0.3,
+        wet_charge: 1.0,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    assert!(t.on_canvas_pointer(cp([60.0, 250.0], PointerPhase::Down)));
+    for i in 1..=40 {
+        t.on_canvas_pointer(cp([60.0 + i as f32 * 10.0, 250.0], PointerPhase::Move));
+        t.on_tick(16.0);
+    }
+    t.on_canvas_pointer(cp([460.0, 250.0], PointerPhase::Up));
+    t.on_tick(16.0);
+
+    // (a0) o que o BAKE deixou (pen-up = `apply_watercolor(true)`).
+    let baked: Vec<u8> = t.canvas_rgba.to_vec();
+    // (a) a união inteira, viva.
+    t.paint.wet_frame_dirty = t.paint.wet_cum_dirty;
+    t.apply_watercolor(false);
+    let full: Vec<u8> = t.canvas_rgba.to_vec();
+    let (bw, bn) = {
+        let (mut w, mut n) = (0i32, 0usize);
+        for (a, b) in baked.chunks_exact(4).zip(full.chunks_exact(4)) {
+            let d = (0..4)
+                .map(|c| (i32::from(a[c]) - i32::from(b[c])).abs())
+                .max()
+                .unwrap_or(0);
+            w = w.max(d);
+            n += usize::from(d > 0);
+        }
+        (w, n)
+    };
+    eprintln!("[bake x vivo] um traco so, MESMO estado: pior Δ{bw} em {bn} px");
+    // (b) o MESMO estado, num retângulo pequeno bem no meio do wash.
+    let (rx, ry, rw, rh) = (200u32, 220u32, 64u32, 40u32);
+    t.paint.wet_frame_dirty = Some(Region {
+        x: rx,
+        y: ry,
+        w: rw,
+        h: rh,
+    });
+    t.apply_watercolor(false);
+    let part: Vec<u8> = t.canvas_rgba.to_vec();
+
+    let (mut worst, mut n) = (0i32, 0usize);
+    for y in ry..ry + rh {
+        for x in rx..rx + rw {
+            let i = ((y * size + x) * 4) as usize;
+            let d = (0..4)
+                .map(|c| (i32::from(full[i + c]) - i32::from(part[i + c])).abs())
+                .max()
+                .unwrap_or(0);
+            worst = worst.max(d);
+            n += usize::from(d > 0);
+        }
+    }
+    eprintln!(
+        "[janela] mesmo estado, uniao x retangulo {rw}x{rh}: pior Δ{worst} em {n} de {} px",
+        rw * rh
+    );
+}
+
+/// Diag (2026-08-09) — **QUAL termo carrega o resíduo Δ2?** Ablação por ENTRADA, um knob de cada vez
+/// (a receita do doc 28 §5.11: knobs do painel, nunca instrumentação — uma sonda com laço próprio
+/// fica cega à porta). Cada linha desliga UM termo do preset do app e mede o pior Δ do
+/// incremental×full; o termo cuja ablação leva o Δ a ≤ 1 é o portador.
+#[test]
+#[ignore = "diag exploratório: ablação por entrada do resíduo Δ2 do wash incremental"]
+fn measure_which_term_carries_the_incremental_residue() {
+    type Ab = (&'static str, fn(&mut BrushSpec));
+    let ablations: &[Ab] = &[
+        ("baseline           ", |_| {}),
+        ("warp = 0           ", |b| b.warp = 0.0),
+        ("granulation = 0    ", |b| b.granulation = 0.0),
+        ("paper = None       ", |b| {
+            b.paper.kind = ph2d_painter_brush::TextureKind::None;
+        }),
+        ("edge_gain = 0      ", |b| b.edge_gain = 0.0),
+        ("wet_rewet = 0      ", |b| b.wet_rewet = 0.0),
+        ("wet_dilution = 0   ", |b| b.wet_dilution = 0.0),
+        ("smooth_edges = off ", |b| b.smooth_edges = false),
+        ("rewet = 0 + dil = 0", |b| {
+            b.wet_rewet = 0.0;
+            b.wet_dilution = 0.0;
+        }),
+        ("raio 20            ", |b| b.radius_px = 20.0),
+        ("raio 160           ", |b| b.radius_px = 160.0),
+    ];
+    for (label, tweak) in ablations {
+        let (inc, full, _) =
+            watercolor_app_params_incremental_vs_full_ablated(1.0, 7.0, None, tweak);
+        let (worst, _) = worst_byte_delta(&inc, &full);
+        let n = inc
+            .chunks_exact(4)
+            .zip(full.chunks_exact(4))
+            .filter(|(a, b)| a.iter().zip(b.iter()).any(|(x, y)| x != y))
+            .count();
+        eprintln!("[ablacao] {label} pior Δ{worst} · {n} px");
+    }
+}
+
+/// Diag (2026-08-09) — **em QUE quadro o incremental começa a divergir, e onde?**
+///
+/// A ablação *"toda composição viva renderiza a UNIÃO"* leva os dois gates `#[ignore]` acima a Δ0,
+/// então o resíduo é STALENESS de janela (o composite É função pura do estado sobre a região dele) —
+/// não ruído numérico. Falta o *quando*: este probe varre o quadro do `probe_at` e imprime o primeiro
+/// em que o pior Δ passa de 1, com a contagem de pixels divergentes ao lado.
+#[test]
+#[ignore = "diag exploratório: em que quadro o incremental do wash começa a divergir do full"]
+fn measure_when_the_incremental_diverges() {
+    for (label, charge, spread) in [("diluted", 1.0f32, 7.0f32), ("mixer", 0.7, 7.0)] {
+        let mut first = None;
+        for i in 1..=40u32 {
+            let (inc, full, size) =
+                watercolor_app_params_incremental_vs_full(charge, spread, Some(i));
+            let (worst, _) = worst_byte_delta(&inc, &full);
+            let s = size as usize;
+            let (mut n, mut x0, mut y0, mut x1, mut y1) = (0usize, usize::MAX, usize::MAX, 0, 0);
+            for (p, (a, b)) in inc.chunks_exact(4).zip(full.chunks_exact(4)).enumerate() {
+                if a.iter().zip(b.iter()).any(|(x, y)| x != y) {
+                    n += 1;
+                    let (x, y) = (p % s, p / s);
+                    x0 = x0.min(x);
+                    y0 = y0.min(y);
+                    x1 = x1.max(x);
+                    y1 = y1.max(y);
+                }
+            }
+            if worst > 1 && first.is_none() {
+                first = Some(i);
+            }
+            if i <= 4 || i % 10 == 0 {
+                eprintln!(
+                    "[diverge {label}] quadro {i:2}: pior Δ{worst} · {n} px · bbox ({x0},{y0})..({x1},{y1})"
+                );
+            }
+        }
+        eprintln!("[diverge {label}] PRIMEIRO quadro com Δ>1: {first:?}");
+    }
+}
+
+/// Diag (2026-08-09) — **o `box_blur` é invariante à JANELA?**
+///
+/// O composite incremental blura sobre a janela do QUADRO; o recompose "full" blura sobre a janela da
+/// UNIÃO. O `pad` garante suporte cheio nas duas, então a MATEMÁTICA concorda — mas o kernel é uma
+/// soma-prefixo (`pref[hi+1] - pref[lo]`) acumulada em `f32` desde o `x = 0` da JANELA: duas janelas
+/// de origens diferentes chegam ao mesmo pixel com prefixos diferentes, e a subtração devolve o
+/// mesmo número MATEMÁTICO com arredondamento diferente. Este probe mede isso no PRIMITIVO, sem a
+/// cadeia óptica no meio — é o candidato do resíduo Δ2 dos dois `#[ignore]` acima.
+#[test]
+#[ignore = "diag exploratório: mede a invariância-à-janela do box_blur (candidato do resíduo Δ2)"]
+fn measure_box_blur_window_invariance() {
+    let (w, h, r) = (512usize, 64usize, 7usize);
+    // Sinal determinístico na ESCALA dos campos de cor do rewet (0..255, presence-premultiplied).
+    // ⚠️ FRACIONÁRIO de propósito: o campo real é `cor · smoothstep(...)`, e uma fixture de
+    // INTEIROS não contém o fenômeno — a soma de 512 inteiros ≤ 255 cabe exata em `f32` (< 2²⁴),
+    // então o prefixo não erra um bit e a sonda mede zero sobre um kernel que pode estar derivando.
+    let big: Vec<f32> = (0..w * h)
+        .map(|i| {
+            let k = (i as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+            f32::from((k >> 33) as u16) / 257.0
+        })
+        .collect();
+    let blur_big = super::watercolor_field::box_blur(&big, w, h, r);
+    for off in [0usize, 1, 64, 129, 256] {
+        let sw = 128usize;
+        if off + sw > w {
+            continue;
+        }
+        let sub: Vec<f32> = (0..h)
+            .flat_map(|y| big[y * w + off..y * w + off + sw].to_vec())
+            .collect();
+        let blur_sub = super::watercolor_field::box_blur(&sub, sw, h, r);
+        // Só os pixels com suporte CHEIO nas duas janelas (o que o `pad` do composite garante).
+        // ⚠️ `seen` é o CONTROLE POSITIVO: a 1ª versão deste probe percorria `r..h - r.min(h/2)`,
+        // que com `h = 8, r = 7` é `7..4` — faixa VAZIA. Ele reportou `0.000000000` sem comparar um
+        // único pixel, que é exatamente a forma de um verde por vácuo.
+        let (mut worst, mut seen) = (0.0f32, 0usize);
+        for y in r..h - r {
+            for x in r..sw - r {
+                let d = (blur_big[y * w + off + x] - blur_sub[y * sw + x]).abs();
+                worst = worst.max(d);
+                seen += 1;
+            }
+        }
+        assert!(seen > 0, "faixa vazia: o probe nao comparou nada");
+        eprintln!("[blur-window off={off:3}] pior |big - sub| = {worst:.9} ({seen} px)");
+    }
 }
 
 /// Granulation **Amount is inert without a settling substrate** (Enio 2026-07-06): with NO Grain image

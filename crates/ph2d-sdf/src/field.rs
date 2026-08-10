@@ -280,8 +280,32 @@ impl VoxelField {
                             if self.crossed[e] == 1 {
                                 continue;
                             }
+                            // ⚠️ **A JANELA É TOLERANTE NOS DOIS EXTREMOS, e é
+                            // isso que fecha o furo.** Uma amostra da grade pode
+                            // cair EM CIMA da superfície (medido: `dist = 0,000000`
+                            // em células reais). Aí a travessia acontece
+                            // exatamente na fronteira entre duas janelas
+                            // consecutivas — o fim de uma é o começo da outra —
+                            // e o arredondamento de `f32` pode jogá-la para fora
+                            // das DUAS. Medido no furo que a sonda do
+                            // enrolamento nomeou: `h = 0,013245051` contra
+                            // `step = 0,013245033`, um excesso de **uma parte em
+                            // um milhão**, e a aresta ficava sem marca.
+                            //
+                            // ⚠️ O `EDGE_TOL` é RELATIVO ao passo, e não um
+                            // comprimento de mundo: o erro que ele cobre é de
+                            // arredondamento, logo escala com a grandeza. Ele é
+                            // ~100× o desvio medido e ainda quatro ordens abaixo
+                            // de uma célula, então não alcança feição
+                            // geométrica nenhuma.
+                            //
+                            // Marcar demais é seguro (a marca só ENGROSSA a
+                            // parede, e continua saindo de um acerto real);
+                            // marcar de menos é o furo por onde o dentro vaza.
+                            const EDGE_TOL: f32 = 1e-4;
+                            let slack = self.step * EDGE_TOL;
                             if let Some(hit) = tri.ray_hit(p, *dir)
-                                && (0.0..=self.step).contains(&hit)
+                                && (-slack..=self.step + slack).contains(&hit)
                             {
                                 self.crossed[e] = 1;
                             }
@@ -389,3 +413,7 @@ impl VoxelField {
 #[cfg(test)]
 #[path = "field_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "field_probes.rs"]
+mod probes;

@@ -255,6 +255,13 @@ const CROUCH_ROWS: [PlayerRow; 2] = [
 /// mesma altura de água significa coisas diferentes em cada poça (depende das
 /// duas densidades), enquanto *"a água sozinha me sustenta"* significa a mesma
 /// coisa em todas. É o único número desta seção cuja UNIDADE não é m, s ou m/s.
+///
+/// ⚠️ **E ela responde a DUAS perguntas de propósito** — a porta (*quando começo
+/// a nadar?*) e o repouso (*onde fico quando solto os controlos?*). Separá-las
+/// em duas rows daria um par cujo valor certo de uma é função da outra
+/// (`feedback_ergonomics_verdict_is_a_design_bug`) e cujo caso degenerado — uma
+/// linha que o fluido não alcança — faria o nadador remar para baixo para
+/// sempre. Com um número só esse estado é **inexprimível**.
 const SWIM_ROWS: [PlayerRow; 3] = [
     (
         "Swim Speed (m/s)",
@@ -267,9 +274,9 @@ const SWIM_ROWS: [PlayerRow; 3] = [
         "Authority against the water. Low: he floats up on his own.",
     ),
     (
-        "Swim Enter (weights)",
+        "Swim Line (weights)",
         ids::INSP_PLAYER_SWIM_ENTER,
-        "Weights the fluid must carry before he swims. 1 = it holds him.",
+        "Buoyancy he swims at, and rests at. 1 = the water holds him.",
     ),
 ];
 

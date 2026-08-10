@@ -70,6 +70,37 @@
 //! - entre um e outro, quem já nada continua a nadar.
 //!
 //! ⇒ armar pede `buoyed >= enter`; continuar pede apenas `buoyed > 0`.
+//!
+//! # ⚠️ E o mesmo número é a LINHA em que ele fica quando solta os controlos
+//!
+//! A primeira versão desta lei mirava **velocidade vertical zero** sem entrada,
+//! com um doc-comment a dizer *"o que sobra é o que a água faz com ele"*. **A
+//! medição desmentiu a própria frase** (`measure_the_float_line`): o servo
+//! CANCELA o empuxo a cada tique, então o nadador parado não boia — ele congela
+//! onde estava e sobe ao ritmo de um tique de empuxo por tique. Vinte segundos
+//! parado, poça `1,25×`, autoridade `44`:
+//!
+//! ```text
+//!   nado 0 (o mundo de ontem)   ->  80,1% submerso   (a linha de flutuação)
+//!   nado 4, alvo velocidade 0   -> 100,0% submerso   (afundado, e lá fica)
+//! ```
+//!
+//! ⇒ **ligar o nado AFUNDAVA quem boiava.** O alvo de repouso passa a ser a
+//! LINHA: sem entrada, o nadador procura `buoyed == enter`.
+//!
+//! ⚠️ **E o número já existia — não há knob novo, de propósito.** Um `ride`
+//! próprio teria de ser co-afinado com o `enter` (o valor certo de um seria
+//! função do outro, que é [[feedback_ergonomics_verdict_is_a_design_bug]]), e o
+//! caso degenerado dele é feio: mirar uma linha que o fluido não alcança faz o
+//! nadador remar para baixo **para sempre**. Com `ride ≡ enter` esse caso é
+//! **inexprimível**: o regime só arma quando `buoyed >= enter` acontece, logo a
+//! linha que ele procura é sempre alcançável, por construção.
+//!
+//! ⚠️ **O ganho é 1 e não é escolhido:** o erro é medido em PESOS e o alvo em
+//! frações da [`SwimConfig::speed`], então *um peso de erro = uma braçada
+//! cheia*. Perto da linha o erro tende a zero e a braçada some com ele — o que
+//! também AMORTECE o bobeio que a água sozinha tem (medido: a amplitude de
+//! repouso a `4×` cai de `0,43 m` para `0,02 m`).
 
 use crate::{Buoyed, GroundSample, Motor, Vec2};
 
@@ -101,10 +132,18 @@ pub struct SwimConfig {
     /// uma rolha não mergulha por querer.* Gate:
     /// `diving_needs_more_authority_than_the_water_has`.
     pub acceleration: f32,
-    /// **Quantos pesos o fluido tem de carregar para ele começar a nadar.**
+    /// **A LINHA** — quantos pesos o fluido carrega onde ele nada.
     ///
-    /// Ver o limiar no topo do módulo: o default `1.0` é *"a água sozinha me
-    /// sustenta"*, que é a definição de nadar.
+    /// Ela responde a duas perguntas com um número só, e as duas são a mesma
+    /// frase (ver o topo do módulo):
+    ///
+    /// 1. **a porta**: ele começa a nadar quando o fluido carrega isto;
+    /// 2. **o repouso**: sem entrada nenhuma, é aqui que ele fica.
+    ///
+    /// O default `1.0` é *"a água sozinha me sustenta"* — a definição de nadar,
+    /// e por construção a linha de flutuação da física: um nadador parado
+    /// assenta onde ele assentaria sem saber nadar (medido, `1/razão` submerso:
+    /// **25% · 50% · 80%** nas poças `4×` · `2×` · `1,25×`).
     pub enter: f32,
 }
 
@@ -188,8 +227,9 @@ pub fn swim_step(
 ///
 /// 1. **dois eixos**, porque o jogador pode dizer *para cima* — e o eixo
 ///    vertical é o `up`, não a tangente de um chão que não existe;
-/// 2. **o alvo é ZERO sem entrada**, e isso é o freio: um nadador que solta os
-///    controlos para de remar, e o que sobra é o que a água faz com ele.
+/// 2. **sem entrada, o eixo vertical não é zero — é a LINHA** (ver
+///    [`swim_rise`]): um nadador que solta os controlos não congela onde estava,
+///    ele procura a altura em que a água o sustenta.
 ///
 /// ⚠️ **`accel`, nunca `boost`, fora da última fração** — a distinção do topo da
 /// crate: nadar é um regime CONTÍNUO, então ele vira força na ponte e o solver o
@@ -238,13 +278,13 @@ pub fn swim_motor(
     motor
 }
 
-/// **O eixo vertical do jogador** — a porta única dos dois botões.
+/// **O que o DEDO diz no eixo vertical** — a porta única dos dois botões.
 ///
-/// ⚠️ Ela existe porque a pergunta tem **dois** consumidores hoje (o motor e o
-/// gate que prova que subir e descer são simétricos) e porque o mapeamento é
-/// uma DECISÃO (ver o topo do módulo), não um detalhe do laço: escrevê-la nos
-/// dois sítios é como o dia em que um deles ganhar um caso especial nasce com o
-/// outro a discordar.
+/// ⚠️ Ela existe porque a pergunta tem **dois** consumidores hoje (a
+/// [`swim_rise`] e o gate que prova que subir e descer são simétricos) e porque
+/// o mapeamento é uma DECISÃO (ver o topo do módulo), não um detalhe do laço:
+/// escrevê-la nos dois sítios é como o dia em que um deles ganhar um caso
+/// especial nasce com o outro a discordar.
 ///
 /// Os dois apertados dão **zero** — pedir para subir e descer ao mesmo tempo é
 /// pedir para ficar onde está, e é o que o eixo horizontal já faz com um
@@ -252,6 +292,30 @@ pub fn swim_motor(
 #[must_use]
 pub fn vertical_drive(up_held: bool, down_held: bool) -> f32 {
     f32::from(up_held) - f32::from(down_held)
+}
+
+/// **O EIXO VERTICAL** — o que o dedo diz, e o que a lei faz quando ele não diz
+/// nada.
+///
+/// ⚠️ **É a porta única do eixo**, e é por isso que ela engole a
+/// [`vertical_drive`] em vez de ficar ao lado dela: com as duas alcançáveis pelo
+/// chamador, o dia em que o repouso ganhar uma cláusula nasce com um sítio a
+/// perguntar a antiga (a cicatriz que o `smears()` do Painter carrega).
+///
+/// - **dedo apertado** ⇒ o dedo manda, e a linha cala. É isto que permite sair
+///   da água (subir acima da linha) e ir ao fundo (descer abaixo dela);
+/// - **nada apertado** ⇒ ele procura a [`SwimConfig::enter`], em braçadas
+///   proporcionais ao erro — *um peso de erro, uma braçada cheia*.
+///
+/// ⚠️ **O sinal:** `buoyed` cresce com a profundidade (mais submerso, mais
+/// empuxo), então estar ABAIXO da linha dá erro positivo, que é subir.
+#[must_use]
+pub fn swim_rise(cfg: &SwimConfig, up_held: bool, down_held: bool, buoyed: Buoyed) -> f32 {
+    let held = vertical_drive(up_held, down_held);
+    if held != 0.0 {
+        return held;
+    }
+    (buoyed.0 - cfg.enter).clamp(-1.0, 1.0)
 }
 
 #[cfg(test)]

@@ -47,6 +47,13 @@ const START: f32 = -1.0;
 
 /// A poça funda: superfície em `y = 0`, nada ao alcance do sensor de chão.
 fn pool(sim: &mut SimWorld) {
+    pool_of(sim, FLUID);
+}
+
+/// A mesma poça com a densidade que se pedir — o que faz da **razão de
+/// densidades** uma variável do gate da linha de flutuação, em vez de um número
+/// fixo da fixture.
+fn pool_of(sim: &mut SimWorld, fluid: f32) {
     sim.world_mut().spawn((
         Name::new("Pool"),
         RigidBody {
@@ -60,7 +67,7 @@ fn pool(sim: &mut SimWorld) {
             },
             ..Collider::default()
         },
-        AreaBuoyancy(FLUID),
+        AreaBuoyancy(fluid),
         AreaDrag(DRAG),
         Transform::from_translation(Vec2::new(0.0, -6.0)),
     ));
@@ -163,6 +170,53 @@ fn swims_with(kinematic: bool, swim: f32, accel: f32, input: PlayerInput) -> Vec
     }
     #[allow(clippy::cast_possible_truncation)]
     Vec2::new(last.x, (sum / f64::from(n)) as f32 - START)
+}
+
+/// **ONDE ELE ASSENTA** — vinte segundos parado numa poça da densidade pedida,
+/// e a altura MÉDIA do último terço.
+///
+/// ⚠️ **Vinte segundos e não seis**: a boia sobe pelo empuxo e depois oscila, e
+/// uma janela curta mede o TRANSIENTE. O que este harness pergunta é o repouso,
+/// que é a única grandeza em que a lei e a água podem ser comparadas.
+///
+/// ⚠️ **A autoridade é DERIVADA da poça, e a fixture não presta sem isso.** Com
+/// o `SWIM_ACCEL` de partida (`12`) o servo não vence o empuxo de uma poça
+/// `1,25×`, então o nadador sobe quase até à linha **sozinho** — e a mutação que
+/// devolve o alvo-zero erra por `0,08 m` em vez de `0,72 m`: o gate ficaria
+/// verde-por-fraqueza no dia em que a tolerância subisse um pouco. A regra é a
+/// do gate do mergulho ao lado: `|g| · (razão − 1)` é o que a água cobra, e a
+/// fixture paga `1,5×` isso.
+///
+/// ⚠️ **E ele é largado FUNDO, o que também não é folclore.** Com o
+/// [`START`] dos outros gates (`−1,0`) a lei defeituosa ainda chega quase à
+/// linha — ela sobe *um tique de empuxo por tique*, e a `0,7 m` de distância os
+/// vinte segundos quase bastam: a mutação erraria `0,08 m` e passaria por
+/// qualquer tolerância honesta. Largado a `−2,5`, onde o artista de facto está
+/// depois de mergulhar, o mesmo defeito erra **`0,56 m`**. *A distância à linha
+/// é parte da fixture.*
+///
+/// ⚠️ **E é por isso que o gate varre TRÊS densidades:** na poça `4×` o empuxo é
+/// tão forte (`29,4 m/s²`) que mesmo a lei defeituosa é empurrada até à linha
+/// dentro da janela — ela passaria sozinha. Quem a denuncia é a poça `2×`, onde
+/// o empuxo é fraco o bastante para o congelamento durar.
+fn settles(kinematic: bool, swim: f32, fluid: f32) -> f32 {
+    const DEEP: f32 = -2.5;
+    let mut sim = SimWorld::new();
+    pool_of(&mut sim, fluid);
+    let authority = 9.81 * (fluid - 1.0) * 1.5;
+    let who = player(&mut sim, kinematic, swim, authority, DEEP);
+    let mut bridge = PhysicsBridge::new();
+    bridge.set_player_input(who, PlayerInput::default());
+    let (mut sum, mut n) = (0.0f64, 0u32);
+    for t in 1..=1200u64 {
+        bridge.dispatch(&mut sim, true, t);
+        if t > 800 {
+            sum += f64::from(pos_of(&sim).y);
+            n += 1;
+        }
+    }
+    #[allow(clippy::cast_possible_truncation)]
+    ((sum / f64::from(n)) as f32)
 }
 
 fn holding(jump: bool, down: bool, drive: f32) -> PlayerInput {
@@ -300,23 +354,53 @@ fn crossing_a_shallow_puddle_is_walking() {
 /// então com o dedo parado o personagem sobe **na mesma direção** que subiria
 /// sem a capacidade.
 ///
-/// ⚠️ Ele sobe MENOS: o servo freia para o alvo zero, e é isso que um nadador
-/// parado faz. O que este gate recusa é a inversão — um nado que cancelasse a
-/// gravidade deixaria o corpo pendurado onde estivesse, e um que a pagasse duas
-/// vezes o atiraria para fora da poça.
+/// ⚠️ **Este gate afirmava a coisa errada, e a medição o corrigiu.** A versão
+/// anterior pedia `idle < off` — *"ele sobe MENOS, porque o servo freia para o
+/// alvo zero"* —, o que era uma descrição fiel de uma lei DEFEITUOSA: o alvo
+/// zero congelava o nadador onde ele estivesse (`measure_the_float_line`: poça
+/// `1,25×`, **100% submerso** com o nado ligado contra **80%** sem ele). Hoje o
+/// repouso procura a LINHA, e a afirmação é de IGUALDADE — ver o gate abaixo, do
+/// qual este é a metade direcional.
 #[test]
 fn an_idle_swimmer_still_answers_to_the_water() {
     for kinematic in [false, true] {
-        let off = swims(kinematic, 0.0, PlayerInput::default()).y;
         let idle = swims(kinematic, SWIM_SPEED, PlayerInput::default()).y;
         assert!(
             idle > 0.0,
             "parado, o empuxo ainda o levanta ({kinematic}): {idle}"
         );
-        assert!(
-            idle < off,
-            "mas menos do que sem o freio da bracada ({kinematic}): {idle} vs {off}"
-        );
+    }
+}
+
+/// ⚠️ **LIGAR O NADO NÃO PODE MOVER A LINHA DE FLUTUAÇÃO** — o gate da pergunta
+/// do Enio (*"não temos parâmetros para o quanto fica submerso quando boia?"*).
+///
+/// **Tem, e são as duas DENSIDADES** — a submersão de repouso é `1/razão`,
+/// exata (`measure_the_float_line`: **24,5% · 50,1% · 80,1%** nas poças `4×` ·
+/// `2×` · `1,25×`, contra `25 · 50 · 80` previstos). O que faltava era a lei do
+/// nado **honrar** essa linha em vez de a substituir por um congelamento.
+///
+/// ⚠️ **O oráculo é o mundo SEM a capacidade**, e é o mais forte que existe
+/// aqui: um literal de altura seria um espelho da fixture, e uma desigualdade
+/// (*"sobe menos"*) foi precisamente o que deixou o defeito passar. A pergunta é
+/// *ligar o nado move onde ele para?* — e a resposta tem de ser **não**.
+///
+/// ⚠️ **A tolerância é `0,05 m` sobre um corpo de `1,0 m`** (5% da altura), e não
+/// é folga escolhida: a boia OSCILA em torno da linha (amplitude medida `0,43 m`
+/// a `4×`) enquanto o nadador **assenta** nela, então as duas médias não podem
+/// coincidir ao dígito. A mutação que importa erra por **mais de um metro**.
+#[test]
+fn turning_the_swimming_on_does_not_move_the_float_line() {
+    for kinematic in [false, true] {
+        for fluid in [4.0f32, 2.0, 1.25] {
+            let off = settles(kinematic, 0.0, fluid);
+            let on = settles(kinematic, SWIM_SPEED, fluid);
+            assert!(
+                (on - off).abs() < 0.05,
+                "com o fluido {fluid}x ({kinematic}) ele tem de boiar onde sempre boiou: \
+                 nado {on:.4} vs boia {off:.4}"
+            );
+        }
     }
 }
 

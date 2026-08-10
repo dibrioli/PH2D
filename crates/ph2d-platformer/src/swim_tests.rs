@@ -137,8 +137,12 @@ fn the_stroke_drives_both_axes() {
     assert!(dive.accel[1] < 0.0, "para baixo: {dive:?}");
 }
 
-/// **Sem entrada o alvo é ZERO, e isso é o freio** — um nadador que solta os
-/// controlos para de remar.
+/// **Um `rise` de zero é o freio** — o motor levado a parar nos dois eixos.
+///
+/// ⚠️ **Isto é sobre o MOTOR, não sobre o repouso da lei:** o que um nadador
+/// parado recebe já não é zero, é a [`swim_rise`] (a linha). O que este gate
+/// pina é a outra metade — *dado um alvo de zero, o servo freia* —, e ela é o
+/// que faz a linha valer alguma coisa: sem freio o corpo passaria por ela.
 #[test]
 fn an_idle_swimmer_brakes_toward_a_stop() {
     let cfg = armed();
@@ -208,6 +212,65 @@ fn the_vertical_axis_is_symmetric_and_cancels() {
         "subir e descer ao mesmo tempo e' ficar onde esta'"
     );
     assert_eq!(vertical_drive(false, false), 0.0);
+}
+
+/// **O DEDO VENCE A LINHA** — sem isto, sair da água e ir ao fundo seriam
+/// gestos que a lei desfaz sozinha no tique seguinte.
+///
+/// ⚠️ A fixture põe um erro de flutuação GRANDE contra o botão, e nos dois
+/// sentidos: um `if` invertido daria a metade certa por acaso.
+#[test]
+fn the_finger_beats_the_line() {
+    let cfg = armed();
+    // Fundo (`buoyed` muito acima da linha, que pede SUBIR) e o dedo em BAIXO.
+    assert_eq!(swim_rise(&cfg, false, true, Buoyed(3.9)), -1.0);
+    // E o inverso: quase fora da água (a linha pede DESCER) com o dedo em CIMA.
+    assert_eq!(swim_rise(&cfg, true, false, Buoyed(0.05)), 1.0);
+}
+
+/// **SEM O DEDO, ELE PROCURA A LINHA** — o repouso desta lei, e o sinal.
+///
+/// ⚠️ **O sinal é a metade que se erra em silêncio:** `buoyed` cresce com a
+/// profundidade, então estar ABAIXO da linha (mais empuxo do que peso) é o caso
+/// que pede SUBIR. Trocá-lo daria um nadador que afunda ao soltar os controlos —
+/// e o gate de produto que o apanha mede mais de meio metro de erro.
+#[test]
+fn an_idle_swimmer_seeks_the_line() {
+    let cfg = armed();
+    assert!(
+        swim_rise(&cfg, false, false, Buoyed(cfg.enter + 0.3)) > 0.0,
+        "abaixo da linha ele SOBE"
+    );
+    assert!(
+        swim_rise(&cfg, false, false, Buoyed(cfg.enter - 0.3)) < 0.0,
+        "acima dela ele DESCE"
+    );
+    assert_eq!(
+        swim_rise(&cfg, false, false, Buoyed(cfg.enter)),
+        0.0,
+        "e na linha nao rema"
+    );
+}
+
+/// **A procura satura numa braçada cheia** — o erro é medido em PESOS e o alvo em
+/// frações da velocidade, então *um peso de erro é uma braçada*, e mais do que
+/// isso continua a ser uma.
+///
+/// ⚠️ Sem o clamp, uma poça `20×` pediria vinte braçadas: o servo mira uma
+/// velocidade que o `speed` não tem, e o nadador sai da água como um foguete.
+#[test]
+fn the_seek_saturates_at_one_stroke() {
+    let cfg = armed();
+    assert_eq!(swim_rise(&cfg, false, false, Buoyed(19.0)), 1.0);
+    assert_eq!(
+        swim_rise(
+            &SwimConfig { enter: 20.0, ..cfg },
+            false,
+            false,
+            Buoyed(0.0)
+        ),
+        -1.0
+    );
 }
 
 /// `dt <= 0` não produz motor — a mesma cautela do resto da crate (um servo com

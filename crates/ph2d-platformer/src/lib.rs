@@ -83,7 +83,7 @@ pub use ride::{
 };
 pub use sense::{Buoyed, GroundSample, PlayerInput};
 pub use slope::{Footing, footing, footing_verdict, is_grounded, no_uphill};
-pub use swim::{SwimConfig, SwimState, swim_motor, swim_step, vertical_drive};
+pub use swim::{SwimConfig, SwimState, swim_motor, swim_rise, swim_step, vertical_drive};
 pub use walk::{WalkConfig, walk};
 pub use wall::{
     GrabState, WALL_SAMPLES, WallConfig, WallHit, WallLaunch, WallProbe, WallSample, cling,
@@ -512,7 +512,10 @@ pub fn player_motor(
         swim::swim_motor(
             &cfg.swim,
             input.drive,
-            swim::vertical_drive(input.jump, input.down),
+            // ⚠️ **A `swim_rise`, nunca a `vertical_drive`**: sem o dedo, o eixo
+            // vertical é a LINHA, e é ela que faz um nadador parado BOIAR em vez
+            // de congelar onde estava (a medição no topo do `swim`).
+            swim::swim_rise(&cfg.swim, input.jump, input.down, buoyed),
             body_velocity,
             up,
             dt,

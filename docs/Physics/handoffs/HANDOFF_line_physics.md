@@ -12,6 +12,17 @@
 > · gizmo ids até **973** (próximo livre **974**) · maior cena de smoke **104** (próxima livre
 > **105**; ⚠️ o `=84` não existe, de propósito).
 >
+> ⚠️ **Jornada de 2026-08-10 FECHADA, aguardando ordem de integração** — handoff
+> [`HANDOFF_INTEGRACAO_line_physics_bobbing_2026-08-10.md`](HANDOFF_INTEGRACAO_line_physics_bobbing_2026-08-10.md).
+> Ela é de **MEDIÇÃO**, e o resultado principal é um **negativo**: o *"bobeio de 1,44 m na água"*
+> que a reabertura listava como aberto **não era um defeito** (com os quatro multiplicadores de
+> gravidade a `1` a amplitude é o controle ao 4.º decimal; largado **submerso** o player é `1,00×`
+> o controle ⇒ a trava do fluido contém, e o excesso é a modelagem do arco a agir **no AR**). Mais
+> a paridade de arrasto entre modos, que era precificada por **analogia** e agora tem o número
+> **desta** paridade: **`1,149%` no pico, a decair**. **3 gates, 3 mutações, todas sangram** ·
+> `PROJECT_SCHEMA` **intocado** · `c9` **byte-idêntico** · zero `Cargo.toml` · nenhum ADR · o único
+> toque em `src/` é **comentário**.
+>
 > **As jornadas que INTEGRARAM e são históricas** (o mecanismo delas continua nos respectivos
 > handoffs, não foi copiado para cá):
 > [kin 2026-08-09](HANDOFF_INTEGRACAO_line_physics_kin_2026-08-09.md) (o modo cinemático) ·

@@ -290,6 +290,11 @@ pub struct PainterTool {
     /// shell. Este bool é essa frase, e é a única forma dela que não pode ser esquecida por
     /// enumeração: **toda** drenagem da CPU o levanta, **toda** drenagem da GPU o consome.
     gpu_lane_stale: bool,
+    /// **O substrato com que a composição vigente foi ACESA** — a testemunha do reconcile.
+    ///
+    /// `None` até a primeira drenagem: um documento que ninguém tocou não pode contar como editado só
+    /// por ter sido olhado. Ver [`PainterTool::reconcile_substrate`], que é quem a lê e a escreve.
+    lit_substrate: Option<crate::tool::paint::SubstrateKey>,
     /// Multi-selection — the set of layer rows highlighted in the panel. Plain
     /// click collapses to one; Cmd/Ctrl-click toggles; Shift-click selects a run.
     selection: BTreeSet<RtLayerId>,
@@ -394,6 +399,7 @@ impl Default for PainterTool {
             marks: Vec::new(),
             preview_dirty_region: None,
             gpu_lane_stale: false,
+            lit_substrate: None,
             selection: BTreeSet::new(),
             compositor_cache: CompositorCache::new(),
             adjustment_cache_pending: false,

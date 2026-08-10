@@ -253,11 +253,16 @@ use region::union_region;
 
 #[cfg(test)]
 mod emboss_probe; // sonda de ESTUDO: que campo o Digital ofereceria a um emboss (Enio 2026-08-10)
+/// O que o RELEVO É — os campos compostos que a luz lê [LOC split de `impasto_light`].
+mod relief_fields;
 /// O **ganho** que o relevo impõe à aparência — a sombra do impasto como grandeza sem cor, para
 /// alcançar o que não é pixel (a silhueta do slot Shape). [LOC split de `impasto_light`].
 #[cfg(test)]
 mod shape_alpha_tests;
 mod substrate_relief; // O SUBSTRATO ACENDE: o dente do papel como superfície, para qualquer meio
+// A chave do reconcile do substrato viaja até o campo que a guarda (`PainterTool::lit_substrate`), e é
+// só ela que sai daqui — o `Substrate` em si segue interno ao passe de luz.
+pub(crate) use substrate_relief::SubstrateKey;
 #[cfg(test)]
 mod substrate_relief_tests;
 #[cfg(test)]

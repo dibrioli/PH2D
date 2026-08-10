@@ -15,15 +15,26 @@
 //!   2. Suba o **Relief**. O papel aparece **sem uma pincelada** — o dente é uma SUPERFÍCIE, não uma
 //!      propriedade da tinta. ⚠️ É a diferença deliberada em relação ao Wet Paint, onde o emboss vive
 //!      DENTRO do pigmento e papel nu fica limpo; aqui é o *Canvas Lighting* do ArtRage.
+//!      ⚠️ **Ele tem de atualizar EM TEMPO REAL, arrastando o slider** — e a tela inteira de uma vez,
+//!      sem retângulos. As duas metades são o mesmo mecanismo e foi o report de 2026-08-10.
 //!   3. Mexa na **Roughness**. `0` é um papel satinado (ondulação larga e rasa); `1` é áspero, com
 //!      paredes íngremes e platôs. Ela é a ÍNGREMEZA do grão — o *Contrast* do Corel Painter —, não a
 //!      largura de um brilho.
 //!   4. Troque o **Paper** (Cold / Rough / Hot) e mexa em **Size** / **Angle** / **Contrast**: o dente é
-//!      amostrado pelo slot inteiro, então tudo isso é a forma do grão.
+//!      amostrado pelo slot inteiro, então tudo isso é a forma do grão — e **todos** eles repintam a
+//!      tela inteira na hora, pela mesma razão do passo 2.
 //!   5. **Agora pinte**, com o pincel digital comum. A tinta chapada assenta sobre um papel que tem
-//!      relevo — que é o que faltava ao Digital.
+//!      relevo — que é o que faltava ao Digital. ⚠️ **Olhe as bordas do rastro:** o papel dentro do que
+//!      o pincel acabou de tocar tem de ser o MESMO de fora. Um degrau retangular ali é o defeito
+//!      voltando (o fold parcial dobrando dente novo só dentro do rect).
 //!   6. E o card **Lighting** (seção Impasto) governa a luz que revela o dente: é o MESMO rig, uma luz
 //!      só para o documento. Gire o Angle e o papel vira junto.
+//!   7. **Ctrl+Z devolve a TINTA** (com o papel ligado, ao byte). ⚠️ Ele **não** desfaz o Relief nem a
+//!      Roughness: nenhum knob de ferramenta deste app entra na fila de undo, e o card **Lighting** —
+//!      que já shipou e você já smokou — se comporta exatamente igual (medido lado a lado na sonda
+//!      `probe_substrate_undo`). Isso é a decisão de *"o undo de painéis é sistema separado"*, e um
+//!      Ctrl+Z depois de mexer num knob desfaz a última PINCELADA — a armadilha vale para os dois
+//!      cards, não só para este.
 //!
 //! ## Os números desta cena (medidos, `probe_substrate_depth_ladder`)
 //!

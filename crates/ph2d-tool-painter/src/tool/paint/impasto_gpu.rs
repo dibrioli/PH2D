@@ -32,7 +32,7 @@
 //! would clamp at the region's edge instead, and every partial update would draw a seam along a rectangle
 //! nobody could explain. Canvas-sized planes make the shader's `clamp` the canvas clamp, by construction.
 
-use super::impasto_light::ReliefFields;
+use super::relief_fields::ReliefFields;
 use crate::tool::PainterTool;
 use rayon::prelude::*;
 

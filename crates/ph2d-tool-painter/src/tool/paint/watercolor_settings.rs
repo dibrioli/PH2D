@@ -323,6 +323,7 @@ impl PainterTool {
         self.paint.brush.paper = TextureSettings::default();
         self.paint.paper_image = None;
         self.paint.paper_image_version = self.paint.paper_image_version.wrapping_add(1);
+        self.sync_paper_across_slots();
     }
 
     /// Set the **Paper** slot kind (`TextureKind` wire u8) + force canvas-anchored mapping, reset the
@@ -350,6 +351,7 @@ impl PainterTool {
             };
             self.paint.brush.paper.size = [s, s];
         }
+        self.sync_paper_across_slots();
     }
 
     /// Reset the Paper slot params to the active kind's `param_specs` defaults (unused slots stay at the
@@ -371,16 +373,19 @@ impl PainterTool {
         if axis < 2 {
             self.paint.brush.paper.size[axis] = v.clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
         }
+        self.sync_paper_across_slots();
     }
 
     /// Set the **Paper** slot Angle (whole degrees, wrapped to `0..360`).
     pub fn set_brush_paper_angle(&mut self, deg: f32) {
         self.paint.brush.paper.angle_deg = deg.rem_euclid(360.0) as u16;
+        self.sync_paper_across_slots();
     }
 
     /// Set the **Paper** slot Mapping (`TextureMapping` wire u8).
     pub fn set_brush_paper_mapping(&mut self, m: u8) {
         self.paint.brush.paper.mapping = TextureMapping::from_u8(m);
+        self.sync_paper_across_slots();
     }
 
     /// Set the **Paper** slot Offset on `axis` (0 = x, 1 = y), clamped to `[-1, 1]`.
@@ -388,6 +393,7 @@ impl PainterTool {
         if axis < 2 {
             self.paint.brush.paper.offset[axis] = v.clamp(TEX_OFFSET_MIN, TEX_OFFSET_MAX);
         }
+        self.sync_paper_across_slots();
     }
 
     /// Set the **Paper Depth** (how strongly the paper tooth textures the wash), clamped to `[0, 1]`.
@@ -400,6 +406,7 @@ impl PainterTool {
         if slot < self.paint.brush.paper.params.len() {
             self.paint.brush.paper.params[slot] = v.clamp(0.0, 1.0);
         }
+        self.sync_paper_across_slots();
     }
 
     /// Toggle **Granulation "Same as Paper"** — on = the granulation settles into the paper's own tooth
@@ -452,6 +459,7 @@ impl PainterTool {
         self.paint.brush.paper.kind = TextureKind::Image;
         self.paint.brush.paper.mapping = TextureMapping::Tiled;
         self.paint.brush.watercolor = true;
+        self.sync_paper_across_slots();
     }
 
     /// The Paper slot's imported image `(luminance, w, h)` for the panel's Paper preview. `None` if unset.
@@ -529,6 +537,11 @@ impl PainterTool {
             },
         };
         // The medium the preset implies, switched by the one door that knows they are exclusive.
+        // ⚠️ **O preset semeia o PINCEL INTEIRO, e o papel vem dentro dele** — logo ele é o oitavo
+        // escritor do slot e atravessa a mesma porta. Sem isto, escolher um preset punha um papel só
+        // no slot vivo e pegar outra ferramenta o trocava debaixo da obra (o mecanismo medido em
+        // [`Self::sync_paper_across_slots`]).
+        self.sync_paper_across_slots();
         self.set_paint_media(if idx == 1 {
             super::PaintMedia::Watercolor
         } else {

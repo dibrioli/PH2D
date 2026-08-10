@@ -54,7 +54,7 @@
 //! ciclo de vida inteiro do §10.4), e **medir antes de limitar** manda não construí-lo antes de um
 //! smoke pedir.
 
-use ph2d_painter_brush::texture::{self, TexDabBasis, TextureSettings};
+use ph2d_painter_brush::texture::{self, ImageMask, TexDabBasis, TextureSettings};
 use ph2d_painter_brush::{TextureKind, TextureMapping};
 
 use super::impasto_light::DEPTH_UNIT_PX;
@@ -85,21 +85,35 @@ pub(super) const MAX_TOOTH_PX: f32 = 1.0;
 ///
 /// Construído uma vez por passe (`resolve`) porque a base de rotação e o *snap* de Size não são
 /// baratos por-texel — o mesmo motivo pelo qual o `watercolor_render` os iça para fora do laço.
-pub(super) struct Substrate {
+pub(super) struct Substrate<'a> {
     tex: TextureSettings,
     basis: TexDabBasis,
     /// A amplitude em PIXELS de relevo (`depth × MAX_TOOTH_PX`).
     amp_px: f32,
     /// A **Roughness** do papel — a largura do realce, o mesmo eixo do `SpecLut` que a tinta usa.
     rough: f32,
+    /// Os PIXELS do papel, quando o slot é uma **imagem** (o gesto *"Use as Brush Paper"*).
+    ///
+    /// ⚠️ **Sem ela o `TextureKind::Image` é INERTE, e isso era um controle morto que eu shipei.** O
+    /// `patterns::sample_kind` responde `None => 1.0` (*"kind is Image but no pixels supplied"*), e um
+    /// dente CONSTANTE tem gradiente zero — logo a luz não desenha nada. O artista escolhia o próprio
+    /// papel digitalizado e o slider Relief não movia um pixel. Os outros dois consumidores do slot (o
+    /// `watercolor_render` e o `dab_route` do Wet Paint) já passavam a imagem; este era o terceiro, e
+    /// nasceu esquecido.
+    image: Option<ImageMask<'a>>,
 }
 
-impl Substrate {
+impl<'a> Substrate<'a> {
     /// Resolve o substrato para este passe, ou `None` quando ele está desligado.
     ///
     /// `None` é o neutro e ele é **byte-idêntico**: quem chama não soma inclinação nenhuma, e o
     /// `shade_over` devolve `([1;3], [0;3])` na primeira linha.
-    pub(super) fn resolve(tex: TextureSettings, depth: f32, rough: f32) -> Option<Self> {
+    pub(super) fn resolve(
+        tex: TextureSettings,
+        depth: f32,
+        rough: f32,
+        image: Option<ImageMask<'a>>,
+    ) -> Option<Self> {
         let amp_px = depth.clamp(0.0, 1.0) * MAX_TOOTH_PX;
         if amp_px <= 0.0 || !tex.is_active() {
             return None;
@@ -123,6 +137,7 @@ impl Substrate {
             basis,
             amp_px,
             rough: rough.clamp(0.0, 1.0),
+            image,
         })
     }
 
@@ -130,7 +145,15 @@ impl Substrate {
     fn tooth_px(&self, x: i64, y: i64) -> f32 {
         // `sample` devolve `0..1` (vale do tooth .. pico). `center`/`radius` são inertes sob `Tiled`
         // (a coordenada é `p / TEX_TILE_BASE_PX`), e é por isso que um substrato não precisa de dab.
-        let t = texture::sample(&self.tex, &self.basis, x, y, [0.0, 0.0], 1.0, None);
+        let t = texture::sample(
+            &self.tex,
+            &self.basis,
+            x,
+            y,
+            [0.0, 0.0],
+            1.0,
+            self.image.as_ref(),
+        );
         // **ROUGHNESS = a ÍNGREMEZA do dente** — um ganho de contraste em torno do meio, recortado.
         //
         // ⚠️ **Esta NÃO foi a primeira leitura, e a medição derrubou a primeira.** Eu a implementei
@@ -166,6 +189,19 @@ impl Substrate {
     }
 }
 
+/// **A chave do substrato** — tudo o que decide o dente, numa forma que se compara.
+///
+/// `TextureSettings` é `Copy + PartialEq` (ela existe para o `BrushSpec` ser `Copy`), então a chave é
+/// um punhado de bytes e compará-la por frame não é um custo que se meça. Ver
+/// [`crate::tool::PainterTool::reconcile_substrate`] para o porquê de ela existir.
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) struct SubstrateKey {
+    tex: TextureSettings,
+    depth: f32,
+    rough: f32,
+    image: u64,
+}
+
 /// O dente default de um papel — o que o artista arma ao ligar o relevo sem ter escolhido um papel.
 /// `PaperCold` (*cold press*) é o papel de aquarela mais comum e o meio-termo dos três assados;
 /// deixar `None` faria o interruptor ligar e não mostrar nada, que é o controle morto que esta casa
@@ -185,12 +221,64 @@ impl crate::tool::PainterTool {
     /// pelo `impasto_show` (aquele bit pergunta *"mostrar o relevo da TINTA?"*, e um papel não é relevo
     /// de tinta) e também precisa correr num documento que não tem `heights` nenhum — que é literalmente
     /// o caso do Digital, o meio para o qual isto foi pedido.
-    pub(super) fn substrate(&self) -> Option<Substrate> {
+    pub(super) fn substrate(&self) -> Option<Substrate<'_>> {
         Substrate::resolve(
             self.paint.brush.paper,
             self.paint.substrate_depth,
             self.paint.substrate_rough,
+            self.paint.paper_image.as_ref().map(|i| i.as_mask()),
         )
+    }
+
+    /// **O que o substrato É, em forma comparável** — a chave do reconcile.
+    ///
+    /// ⚠️ **Ela lê EXATAMENTE o que a [`Self::substrate`] lê, e mora ao lado dela por isso.** Uma
+    /// chave que enumera *alguns* dos ingredientes é a forma exata de o próximo knob nascer sem
+    /// invalidar nada — e o modo de falha disso não é um erro, é um RETÂNGULO na tela do artista.
+    ///
+    /// A imagem entra pela **versão monotônica** e nunca pelo endereço do buffer, o mesmo cuidado que
+    /// o `PaperKey` do Wet Paint já toma (ADR-0124: um `Arc` novo pode nascer no endereço de um morto).
+    fn substrate_key(&self) -> SubstrateKey {
+        SubstrateKey {
+            tex: self.paint.brush.paper,
+            depth: self.paint.substrate_depth,
+            rough: self.paint.substrate_rough,
+            image: self.paint.paper_image_version,
+        }
+    }
+
+    /// **O substrato mudou desde a última composição? Então a composição inteira está velha.**
+    ///
+    /// ⚠️ **É a correção dos dois primeiros reports do smoke de 2026-08-10, e eles são UM mecanismo.**
+    /// O Enio viu *"retângulos que marcam por onde o pincel passou"* e *"ao aumentar o Relief o papel
+    /// não é atualizado em tempo real, só ao usar o pincel"* — as duas metades de a mesma coisa: o
+    /// dente do papel cobre a TELA INTEIRA, e nenhum knob que o produz derrubava o confinamento.
+    ///
+    /// O produto já dizia a lei, no doc do [`crate::tool::PainterTool::preview_gpu_region`]: *"`None`
+    /// significa que a mudança não foi confinada"*, e o do fold de planos a repete como a condição de
+    /// SOLIDEZ de um upload parcial (*"correto exatamente quando o relevo composto FORA da região não
+    /// mudou"*). Um Relief novo muda o relevo composto em todo texel; confiná-lo ao rastro do pincel
+    /// deixa o papel novo dentro do retângulo e o papel velho em volta — que é literalmente a foto.
+    ///
+    /// ⚠️ **Uma TESTEMUNHA, não uma lista de setters.** Os knobs que alimentam o dente são nove hoje
+    /// (os dois do substrato + kind/size/angle/mapping/offset/params/reset do slot Paper) e sete deles
+    /// moram num arquivo sobre a AQUARELA, escrito quando o papel só temperava o pigmento molhado. Uma
+    /// linha por setter é a regra que o décimo nasce sem — e é o mesmo argumento que o
+    /// `gpu_lane_stale` faz sobre si mesmo, duas dúzias de linhas acima na mesma crate.
+    ///
+    /// **Não invalida na PRIMEIRA vez**, e isso não é economia: `invalidate_composite` levanta o
+    /// `edited_since_bind`, então um documento que ninguém tocou contaria como editado só por ter sido
+    /// drenado uma vez.
+    pub(crate) fn reconcile_substrate(&mut self) {
+        let now = self.substrate_key();
+        match self.lit_substrate {
+            Some(was) if was == now => {}
+            Some(_) => {
+                self.lit_substrate = Some(now);
+                self.invalidate_composite();
+            }
+            None => self.lit_substrate = Some(now),
+        }
     }
 
     /// Escreve um campo do PAPEL em todos os slots de pincel.
@@ -199,11 +287,26 @@ impl crate::tool::PainterTool {
     /// trocar de modo de pintura trocaria o papel debaixo da obra, que é a falha de duas-portas na sua
     /// forma mais cara: o substrato mudaria por um gesto que não fala de substrato nenhum. É o mesmo
     /// remédio (e o mesmo precedente) do `set_material_field` e do `toggle_brush_impasto`.
-    fn set_paper_field(&mut self, write: impl Fn(&mut ph2d_painter_brush::BrushSpec)) {
+    pub(super) fn set_paper_field(&mut self, write: impl Fn(&mut ph2d_painter_brush::BrushSpec)) {
         write(&mut self.paint.brush);
         for b in self.paint.brush_by_mode.iter_mut() {
             write(b);
         }
+    }
+
+    /// **Carimba o papel VIVO em todos os slots de pincel** — a porta que os setters do slot atravessam.
+    ///
+    /// ⚠️ **MEDIDO, não suposto (2026-08-10).** Os sete setters do slot Paper escreviam só o pincel
+    /// vivo, e isso era invisível enquanto o papel só temperava o pigmento MOLHADO. Desde que o dente
+    /// virou uma superfície do canvas, ele deixou de ser: com Paper Size em 5, pegar a **Faca** (que
+    /// tem slot próprio) devolvia o Size a 1 e a excursão de luminância caía de **166 para 75 níveis**
+    /// — o papel mudando debaixo da obra porque o artista pegou uma ferramenta.
+    ///
+    /// É a mesma lei que o `set_substrate_depth` já honrava e que o doc do [`Self::set_paper_field`]
+    /// enuncia: **o papel é do CANVAS, o slot é do PINCEL.**
+    pub(super) fn sync_paper_across_slots(&mut self) {
+        let p = self.paint.brush.paper;
+        self.set_paper_field(|b| b.paper = p);
     }
 
     /// **Depth do substrato** (`0` = desligado). Ligar sem papel escolhido arma o [`default_paper`].

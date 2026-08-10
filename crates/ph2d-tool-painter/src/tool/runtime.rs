@@ -297,6 +297,11 @@ impl PainterTool {
     /// bridge stashes this Arc in its `painter_preview` cache.
     #[must_use]
     pub fn take_preview_arc(&mut self) -> Option<(Arc<Vec<u8>>, u32, u32)> {
+        // ⚠️ **ANTES do portão do `preview_dirty`, e a ordem é a metade que o artista vê.** O dente do
+        // papel é canvas-inteiro, e nenhum dos nove knobs que o produzem levanta o `preview_dirty`
+        // sozinho — reconciliar depois do portão deixaria a tela parada até a pincelada seguinte, que é
+        // literalmente o report *"o papel não é atualizado em tempo real"*.
+        self.reconcile_substrate();
         if !std::mem::take(&mut self.preview_dirty) || self.canvas_rgba.is_empty() {
             self.last_drain_branch = crate::tool::DrainBranch::Idle;
             return None;

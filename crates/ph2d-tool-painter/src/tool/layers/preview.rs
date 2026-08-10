@@ -18,10 +18,6 @@ impl PainterTool {
         }
     }
 
-    /// Bump the pixel-content version of EVERY current layer — used after a
-    /// structural undo/redo reinstalls a whole model snapshot, so the GPU
-    /// compositor's per-slice cache (keyed by content version) re-uploads each
-    /// layer rather than serving a stale slice from a prior identity.
     /// O cache de composite está quente? — só para diagnóstico.
     #[cfg(test)]
     pub(crate) const fn composited_is_some(&self) -> bool {
@@ -34,6 +30,10 @@ impl PainterTool {
         self.dirty_rect
     }
 
+    /// Bump the pixel-content version of EVERY current layer — used after a
+    /// structural undo/redo reinstalls a whole model snapshot, so the GPU
+    /// compositor's per-slice cache (keyed by content version) re-uploads each
+    /// layer rather than serving a stale slice from a prior identity.
     pub(crate) fn bump_all_layer_pixels(&mut self) {
         let ids: Vec<RtLayerId> = self.layers.all_ids().collect();
         for id in ids {
@@ -102,6 +102,10 @@ impl PainterTool {
         if self.canvas_rgba.is_empty() {
             return false;
         }
+        // A pista GPU é a que o documento normal atravessa, então é ELA que mostrava os retângulos: um
+        // Relief novo muda o relevo composto em todo texel, e o fold parcial só é sólido quando o de
+        // fora da janela **não** mudou. Ver `PainterTool::reconcile_substrate`.
+        self.reconcile_substrate();
         let dirty = std::mem::take(&mut self.preview_dirty);
         if dirty {
             self.composited = None;

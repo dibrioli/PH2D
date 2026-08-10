@@ -125,3 +125,100 @@ fn the_default_resolution_is_the_references() {
     let (b, _) = remesh(&m, DEFAULT_RESOLUTION).expect("explícito");
     assert_eq!(a.vert_count(), b.vert_count());
 }
+
+/// **A recusa NÃO dispara numa peça sadia** — o controle, e ele é a metade que
+/// impede um teto de proteger recusando tudo.
+///
+/// A régua da [`super::RemeshError::Leaked`] é o volume que a malha encerra, e a
+/// medição diz que o campo o encontra a menos de 1,1% em 361 resoluções de três
+/// formas (`tests/probe_leak.rs`). Este gate pina a consequência: nas
+/// resoluções do produto, uma esfera atravessa.
+#[test]
+fn a_healthy_piece_is_never_refused_for_leaking() {
+    let m = shapes::uv_sphere(64, 96, 1.0);
+    for res in [64u32, 100, DEFAULT_RESOLUTION, 200] {
+        if let Err(super::RemeshError::Leaked {
+            found_per_mille, ..
+        }) = remesh(&m, res)
+        {
+            panic!(
+                "resolução {res}: a recusa de vazamento disparou numa esfera SADIA \
+                 ({found_per_mille}‰) — um teto que recusa o caso bom não protege nada"
+            );
+        }
+    }
+}
+
+/// **E o volume é a régua CERTA porque as duas grandezas concordam.**
+///
+/// ⚠️ Este é o oráculo do limiar, e ele não pergunta ao `remesh`: mede o campo e
+/// a malha separadamente. Sem ele, o gate de cima passaria com o limiar em zero
+/// — *"nunca recusa"* é trivialmente verdade quando a recusa está desligada.
+#[test]
+fn the_field_finds_the_volume_the_mesh_encloses() {
+    use crate::VoxelField;
+    let mut m = shapes::uv_sphere(64, 96, 1.0);
+    let _ = ph2d_mesh::fill_holes(&mut m);
+    let want = ph2d_mesh::signed_volume(&m).abs();
+    for res in [64u32, DEFAULT_RESOLUTION] {
+        let mut f = VoxelField::for_bounds(m.bounds(), res);
+        f.voxelize(&m);
+        let inside = f.flood_fill();
+        let s = f.step();
+        let got = inside as f32 * s * s * s;
+        let frac = got / want;
+        assert!(
+            (0.95..1.05).contains(&frac),
+            "resolução {res}: o campo achou {frac:.4} do volume — a régua da recusa \
+             só vale enquanto as duas grandezas concordam"
+        );
+    }
+}
+
+/// **O CAMPO QUE VAZA É RE-AMOSTRADO, e a peça sai inteira** — a cura, nos dois
+/// casos que reproduzem.
+///
+/// O tubo aberto vaza em 280 e 377 (2 de 361 resoluções varridas). Antes desta
+/// wave o remesh devolvia ali uma malha VAZIA com `Ok`, e o chamador a
+/// instalava; a wave anterior o fez RECUSAR; esta o faz FUNCIONAR.
+///
+/// ⚠️ **A afirmação inclui a testemunha** (`report.nudged`), e sem ela o gate
+/// ficaria verde no dia em que alguém curasse o vazamento por outra via e o
+/// deslocamento virasse código morto — verde sobre uma porta que ninguém usa.
+#[test]
+fn a_leaking_field_is_resampled_and_the_piece_comes_back_whole() {
+    let m = ph2d_mesh::shapes_open::open_tube3();
+    for res in [280u32, 377] {
+        let (out, report) = remesh(&m, res)
+            .unwrap_or_else(|e| panic!("resolução {res}: a segunda fase devia curar -- {e}"));
+        assert!(
+            out.vert_count() > 1000,
+            "resolução {res}: saíram {} vértices -- a peça voltou como caco",
+            out.vert_count()
+        );
+        assert!(
+            report.nudged,
+            "resolução {res}: passou SEM deslocar a grade -- ou o vazamento sumiu \
+             por outra via (e esta fixture parou de conter o fenômeno), ou a \
+             testemunha está mentindo"
+        );
+    }
+}
+
+/// **E a peça SADIA nunca é deslocada** — o controle, e ele é o que impede a
+/// cura de virar política.
+///
+/// ⚠️ Sem este gate, `for_bounds_phased` chamada SEMPRE passaria no gate de cima
+/// e mudaria, em silêncio, cada malha que o remesh já devolvia — uma mudança de
+/// aparência para todo mundo, vendida como conserto para dois casos.
+#[test]
+fn a_healthy_piece_is_never_nudged() {
+    let m = shapes::uv_sphere(64, 96, 1.0);
+    for res in [64u32, DEFAULT_RESOLUTION, 200] {
+        let (_, report) = remesh(&m, res).expect("a esfera não recusa");
+        assert!(
+            !report.nudged,
+            "resolução {res}: a grade foi deslocada numa peça sadia"
+        );
+    }
+}

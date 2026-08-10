@@ -62,6 +62,33 @@ impl VoxelField {
     /// que encosta na caixa faria o *fora* nascer desconectado, e o campo sairia
     /// do avesso onde o artista não olhou.
     pub fn for_bounds(bounds: Aabb, resolution: u32) -> Self {
+        Self::for_bounds_phased(bounds, resolution, 0.0)
+    }
+
+    /// A mesma grade, deslocada por `phase` frações de passo.
+    ///
+    /// ⚠️ **Ela existe por uma DEGENERESCÊNCIA, e a medição é o argumento**
+    /// (`tests/probe_leak.rs::does_nudging_the_grid_cure_the_leak`). Quando uma
+    /// amostra da grade cai EXATAMENTE sobre a superfície, a travessia pousa na
+    /// fronteira compartilhada entre duas janelas de aresta consecutivas e o
+    /// arredondamento a expulsa das duas — o interior vaza para fora. No tubo
+    /// aberto isso acontece em 2 das 361 resoluções, e nas duas:
+    ///
+    /// | fase | 0,0 | 0,1 | 0,25 | 0,382 | 0,5 | 0,618 |
+    /// |---|---|---|---|---|---|---|
+    /// | res 280 | **0,000** | 1,002 | 1,003 | 1,004 | 0,998 | 0,999 |
+    /// | res 377 | **0,000** | 1,001 | 1,002 | 1,003 | 0,999 | 0,999 |
+    ///
+    /// (fração do volume que o campo encontra). **Toda** fase não-nula cura, o
+    /// que diz que a doença é a coincidência EXATA e não uma fase privilegiada
+    /// — deslocar torna a coincidência medida-zero, que é a perturbação
+    /// simbólica de sempre.
+    ///
+    /// ⚠️ **`phase = 0` reduz LITERALMENTE ao que shipava** (`1.51 + 0.0` é
+    /// `1.51` em IEEE-754), então nenhum consumidor existente muda um byte — e é
+    /// isso que torna esta porta aditiva em vez de uma segunda resposta a *"onde
+    /// a grade começa"*.
+    pub fn for_bounds_phased(bounds: Aabb, resolution: u32, phase: f32) -> Self {
         let ext = [
             bounds.max[0] - bounds.min[0],
             bounds.max[1] - bounds.min[1],
@@ -69,7 +96,7 @@ impl VoxelField {
         ];
         let longest = ext[0].max(ext[1]).max(ext[2]).max(f32::MIN_POSITIVE);
         let step = longest / resolution.max(1) as f32;
-        let pad = step * 1.51;
+        let pad = step * (1.51 + phase);
 
         let min = [
             bounds.min[0] - pad,

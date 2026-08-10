@@ -179,3 +179,118 @@ fn the_transform_scene_has_a_soft_band_to_judge() {
     // fique parado, e sem peso 1 não há o que se mova inteiro.
     assert!(band < total, "a esfera nao tem extremo nenhum");
 }
+
+/// **O REMESH REPETIDO COLAPSA A PEÇA** — o report do Enio, com a fixture que
+/// ele tem em mãos.
+///
+/// ```text
+/// cargo test -p ph2d-host-desktop --release --bins does_repeating_the_remesh -- --ignored --nocapture
+/// ```
+///
+/// ⚠️ **Esta sonda existe porque a minha varredura anterior mediu a malha
+/// ERRADA.** Eu varri 480..512 numa `uv_sphere` e numa esfera com bico, achei
+/// zero colapsos e declarei o vazamento parcial descartado. O log do produto diz
+/// `567828 -> 40 vertices ... 62597843 celulas` — nem a contagem de células nem
+/// a linhagem batem com o que varri: o caminho REAL é *o remesh de um remesh*, e
+/// a saída de Surface Nets já nasce alinhada a uma grade, contra uma grade nova
+/// quase-comensurável. A fixture tem de ser a CADEIA, na peça da cena.
+#[test]
+#[ignore = "sonda de medição"]
+fn does_repeating_the_remesh_collapse_the_piece() {
+    let mut mesh = hooked_sphere();
+    eprintln!("entrada: {} v / {} f", mesh.vert_count(), mesh.face_count());
+    for round in 1..=8 {
+        let before = mesh.vert_count();
+        match ph2d_sdf::remesh(&mesh, 512) {
+            Ok((out, r)) => {
+                eprintln!(
+                    "  #{round}: {before} -> {} v ({} celulas)",
+                    out.vert_count(),
+                    r.cells
+                );
+                if out.vert_count() * 100 < before {
+                    eprintln!("  #{round}: >>> COLAPSO <<<");
+                    return;
+                }
+                mesh = out;
+            }
+            Err(e) => {
+                eprintln!("  #{round}: RECUSA -- {e}");
+                return;
+            }
+        }
+    }
+    eprintln!("  8 rodadas sem colapso");
+}
+
+/// **O vazamento é LOTERIA de alinhamento, ou estrutural ao remesh-de-remesh?**
+///
+/// ```text
+/// cargo test -p ph2d-host-desktop --release --bins how_often_a_remeshed_mesh -- --ignored --nocapture
+/// ```
+///
+/// As duas respostas pedem curas OPOSTAS. Se poucas resoluções vazam, o campo
+/// tropeça num alinhamento raro e a cura é perturbar a grade (a saída padrão
+/// para degenerescência em geometria computacional). Se a MAIORIA vaza, a saída
+/// do Surface Nets é hostil ao voxelizador por construção, e perturbar não
+/// salva — a cura teria de estar na marca de travessia.
+#[test]
+#[ignore = "sonda de medição"]
+fn how_often_a_remeshed_mesh_leaks() {
+    // O 1º remesh é o que o produto faz sem reclamar; a peça DELE é a entrada.
+    let (once, _) = ph2d_sdf::remesh(&hooked_sphere(), 512).expect("o 1o remesh passa");
+    eprintln!(
+        "malha remeshada: {} v / {} f",
+        once.vert_count(),
+        once.face_count()
+    );
+    let mut bad = Vec::new();
+    let total = 500u32..=520;
+    let n = total.clone().count();
+    for res in total {
+        match ph2d_sdf::remesh(&once, res) {
+            Ok((out, _)) if out.vert_count() * 100 >= once.vert_count() => {}
+            Ok((out, _)) => bad.push((res, format!("caco {} v", out.vert_count()))),
+            Err(e) => bad.push((res, format!("{e}"))),
+        }
+    }
+    eprintln!("  {} de {n} resolucoes falham: {bad:?}", bad.len());
+}
+
+/// **RECONSTRUIR NUNCA DESTRÓI A PEÇA EM SILÊNCIO** — o report do Enio, virado
+/// gate, na fixture da cena `=6`.
+///
+/// Log do produto (2026-08-10): `567828 -> 40 vertices`. O guard que shipava
+/// perguntava *sobrou alguma coisa?*, e um campo que vaza QUASE todo responde
+/// *sim* — a extração devolve um caco, o chamador o instala, e o log diz
+/// SUCESSO. É a pior forma de errado, porque parece que funcionou.
+///
+/// ⚠️ **A afirmação é a DISJUNÇÃO, não o sucesso.** Este gate não exige que o
+/// remesh funcione em toda resolução: o vazamento é do campo e curá-lo é outra
+/// pergunta. Ele exige que o resultado seja *uma peça de verdade* **ou** *uma
+/// recusa nomeada* — nunca um caco com `Ok`. Um gate que pedisse sucesso ficaria
+/// vermelho sobre um produto que está a proteger o artista corretamente.
+///
+/// ⚠️ E ele encadeia, porque **a cadeia é o fenômeno**: a saída do Surface Nets
+/// nasce alinhada a uma grade, e é contra a grade SEGUINTE que ela degenera. Um
+/// remesh isolado não reproduz.
+#[test]
+fn remeshing_over_and_over_never_installs_a_shard() {
+    let mut mesh = hooked_sphere();
+    for round in 1..=4 {
+        let before = mesh.vert_count();
+        match ph2d_sdf::remesh(&mesh, 512) {
+            Ok((out, _)) => {
+                assert!(
+                    out.vert_count() * 100 >= before,
+                    "rodada {round}: `Ok` com {} vertices contra {before} -- \
+                     o chamador instala isto e a escultura SOME com log de sucesso",
+                    out.vert_count()
+                );
+                mesh = out;
+            }
+            // Uma recusa e' o resultado CERTO aqui: a peca fica como esta'.
+            Err(_) => return,
+        }
+    }
+}

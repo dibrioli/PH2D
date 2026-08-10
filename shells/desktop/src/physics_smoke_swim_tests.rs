@@ -155,6 +155,23 @@ fn down_dives_and_up_rises_in_this_scene() {
     assert!(dive < 0.0, "o passo 4 promete um MERGULHO: {dive}");
 }
 
+/// **O VERDE NADA COMO O AZUL** — a pergunta do Enio, na cena.
+///
+/// ⚠️ **A afirmação é DIRECIONAL e não de igualdade**, e a diferença é real: um
+/// corpo cinemático integra a água ele mesmo (`kinematic_advance`) enquanto o
+/// dinâmico a recebe do solver por sub-passo, então os dois **repousam a alturas
+/// ligeiramente diferentes** — o mesmo motivo pelo qual a cena 101 monta os dois
+/// modos a alturas distintas de propósito. O que a cena promete, e este gate
+/// pina, é que **a espécie do corpo não é uma pergunta que a água faça**.
+#[test]
+fn the_kinematic_swimmer_answers_the_same_buttons() {
+    let dive = swims("KinSwimmer", holding(false, true));
+    let idle = swims("KinSwimmer", PlayerInput::default());
+    let rise = swims("KinSwimmer", holding(true, false));
+    assert!(dive < idle && idle < rise, "{dive} < {idle} < {rise}");
+    assert!(dive < 0.0, "o verde tambem MERGULHA: {dive}");
+}
+
 /// **A BOIA não obedece aos botões** — o controle da cena, e o que faz da
 /// diferença um knob em vez de uma coincidência.
 #[test]
@@ -197,8 +214,12 @@ fn the_shallow_puddle_is_below_the_threshold() {
     );
 }
 
-/// **Os dois corpos são comparáveis** — mesma forma, mesma densidade, e só a
-/// capacidade difere.
+/// **Os três corpos são comparáveis** — mesma forma, mesma densidade, e só a
+/// capacidade (e a espécie) diferem.
+///
+/// ⚠️ **A comparação é contra o PRIMEIRO**, e é o que faz o gate escalar: com
+/// pares escritos à mão, o sujeito número quatro nasce fora da comparação sem
+/// ninguém reclamar.
 #[test]
 fn the_two_subjects_differ_only_in_the_capability() {
     let mut sim = SimWorld::new();
@@ -211,21 +232,25 @@ fn the_two_subjects_differ_only_in_the_capability() {
     for (n, p, c) in q.iter(sim.world()) {
         seen.push((n.as_str().to_string(), *p, c.shape, c.density));
     }
-    assert_eq!(seen.len(), 2, "a cena monta DOIS sujeitos: {seen:?}");
-    let (a, b) = (&seen[0], &seen[1]);
-    assert_eq!(a.2, b.2, "a forma tem de ser a mesma");
-    assert!((a.3 - b.3).abs() < 1.0e-6, "e a densidade tambem");
-    // A única diferença permitida é a velocidade de nado.
-    let mut a_cfg = a.1;
-    a_cfg.swim_speed = b.1.swim_speed;
-    assert_eq!(
-        a_cfg, b.1,
-        "so' a `swim_speed` pode diferir — senao o artista compara outra coisa"
-    );
+    assert_eq!(seen.len(), 3, "a cena monta TRES sujeitos: {seen:?}");
+    let head = &seen[0];
+    for other in &seen[1..] {
+        assert_eq!(head.2, other.2, "a forma tem de ser a mesma: {other:?}");
+        assert!(
+            (head.3 - other.3).abs() < 1.0e-6,
+            "e a densidade tambem: {other:?}"
+        );
+        // A única diferença permitida na LEI é a velocidade de nado.
+        let mut a_cfg = head.1;
+        a_cfg.swim_speed = other.1.swim_speed;
+        assert_eq!(
+            a_cfg, other.1,
+            "so' a `swim_speed` pode diferir — senao o artista compara outra coisa"
+        );
+    }
+    let speeds: Vec<f32> = seen.iter().map(|s| s.1.swim_speed).collect();
     assert!(
-        (a.1.swim_speed - b.1.swim_speed).abs() > 0.5,
-        "e ela TEM de diferir: {:?} vs {:?}",
-        a.1.swim_speed,
-        b.1.swim_speed
+        speeds.iter().any(|s| *s < 0.5) && speeds.iter().any(|s| *s > 0.5),
+        "e ela TEM de diferir, senao nao ha' ablacao: {speeds:?}"
     );
 }

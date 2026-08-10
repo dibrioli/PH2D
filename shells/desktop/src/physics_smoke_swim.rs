@@ -3,18 +3,25 @@
 //! A água já existia como *lugar onde se cai*; esta cena existe para o veredito
 //! de que ela virou *lugar onde se anda, nos dois eixos*.
 //!
-//! # ⚠️ Dois sujeitos, e a diferença é UM knob
+//! # ⚠️ Três sujeitos, e as diferenças são UM knob e UM modo
 //!
-//! Os dois corpos são idênticos em forma, densidade e lei — **só a
-//! `swim_speed` difere**, e ela nasce em zero:
+//! Os três corpos são idênticos em forma, densidade e lei:
 //!
 //! - **âmbar** — `swim_speed = 0`: a boia. É o que a água sempre fez, e é o
 //!   CONTROLE;
-//! - **azul** — o nadador.
+//! - **azul** — o nadador, corpo DINÂMICO;
+//! - **verde** — o mesmo nadador, corpo **CINEMÁTICO**.
 //!
-//! ⚠️ **Os dois recebem a MESMA entrada** (há um teclado, logo um dedo — a lei do
+//! ⚠️ **O verde existe porque a pergunta foi feita** (Enio: *"Kinematic não vai
+//! nadar?"*): vai, e os gates de produto já a respondiam nos dois modos
+//! (`player_swims.rs` varre `[false, true]` em todos). O que faltava era o
+//! artista poder **ver** — e uma capacidade que só os testes conhecem é uma
+//! capacidade que o próximo report vai perguntar de novo.
+//!
+//! ⚠️ **Os três recebem a MESMA entrada** (há um teclado, logo um dedo — a lei do
 //! `hand_input_to_players`), então a cena é uma ablação com a mão do artista: a
-//! mesma tecla, dois resultados, e a única variável é a capacidade.
+//! mesma tecla, três resultados, e as únicas variáveis são a capacidade e a
+//! espécie do corpo.
 //!
 //! # ⚠️ A POÇA RASA é metade da cena, não cenário
 //!
@@ -29,7 +36,7 @@ use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform, World};
 use ph2d_physics_ecs::{
     AreaBuoyancy, AreaDrag, BodyKind, Collider, ColliderShape, LockRotation, PlatformPlayer,
-    RigidBody,
+    PlayerMode, RigidBody,
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
@@ -84,13 +91,25 @@ const SWIM_ACCEL: f32 = 44.0;
 /// ⚠️ **É uma média e não um instante**: o corpo na água OSCILA, e uma amostra
 /// única de um sistema que oscila não é um repouso (a lição que a cena 104 já
 /// carrega, e que o harness desta wave repetiu antes de ser corrigido).
-pub(crate) const DIVE_IDLE_RISE: [f32; 3] = [-3.0873, 1.0409, 1.7589];
+///
+/// ⚠️ **O do meio moveu de `+1,0409` para `+1,2284`, e é a wave da LINHA:** o
+/// repouso do nado deixou de ser *velocidade zero* (congelar onde estava) e
+/// passou a ser *procurar a linha de flutuação*. O número novo é a linha da
+/// física desta poça — `y = 0,228`, **25% submerso** —, o MESMO ponto em que a
+/// boia oscila.
+pub(crate) const DIVE_IDLE_RISE: [f32; 3] = [-3.0873, 1.2284, 1.7589];
 
 /// **MEDIDO**: a mesma tabela para a BOIA — `+1,50` nas TRÊS entradas.
 ///
 /// ⚠️ **Ela é o controle da cena, e é o número que faz da diferença um KNOB em
 /// vez de uma coincidência:** com a capacidade desligada os botões são mudos, e
 /// os três valores coincidem até a quarta decimal.
+///
+/// ⚠️ **E ela é MAIOR que o repouso do nadador sem os dois discordarem:** a boia
+/// SALTA fora da poça e volta (a média de uma parábola que passa mais tempo no
+/// alto), enquanto o nadador ASSENTA na linha. Medido numa poça funda o
+/// bastante para ninguém sair dela, os dois caem no mesmo `y` a menos de `0,01`
+/// (`turning_the_swimming_on_does_not_move_the_float_line`).
 pub(crate) const FLOATER_RISE: f32 = 1.5009;
 
 const DOCK_RGBA: [f32; 4] = [0.55, 0.50, 0.44, 1.0];
@@ -98,16 +117,23 @@ const WATER_RGBA: [f32; 4] = [0.20, 0.34, 0.46, 1.0];
 const PUDDLE_RGBA: [f32; 4] = [0.30, 0.48, 0.60, 1.0];
 const FLOATER_RGBA: [f32; 4] = [0.90, 0.72, 0.32, 1.0];
 const SWIMMER_RGBA: [f32; 4] = [0.42, 0.66, 0.94, 1.0];
+/// O nadador CINEMÁTICO — a pergunta do Enio (*"Kinematic não vai nadar?"*)
+/// respondida na tela, e não só nos gates.
+const KIN_RGBA: [f32; 4] = [0.46, 0.82, 0.55, 1.0];
 
 const CAMERA_CENTRE: [f32; 2] = [0.0, -1.5];
 const CAMERA_HEIGHT: f32 = 14.0;
 
-/// Um dos dois sujeitos — idênticos em tudo menos na capacidade.
-fn subject(world: &mut World, name: &str, y: f32, tint: [f32; 4], swim: f32) {
-    world.spawn((
+/// Um dos três sujeitos — idênticos em tudo menos na capacidade e no MODO.
+fn subject(world: &mut World, name: &str, y: f32, tint: [f32; 4], swim: f32, kinematic: bool) {
+    let mut e = world.spawn((
         Name::new(name.to_string()),
         RigidBody {
-            kind: BodyKind::Dynamic,
+            kind: if kinematic {
+                BodyKind::Kinematic
+            } else {
+                BodyKind::Dynamic
+            },
         },
         Collider {
             shape: ColliderShape::Capsule {
@@ -129,10 +155,13 @@ fn subject(world: &mut World, name: &str, y: f32, tint: [f32; 4], swim: f32) {
             [CAP_RADIUS * 2.0, (CAP_HALF_H + CAP_RADIUS) * 2.0],
             tint,
         ),
-        // ⚠️ Os dois em `x` IGUAL e alturas diferentes: com o mesmo dedo eles
+        // ⚠️ Os três em `x` IGUAL e alturas diferentes: com o mesmo dedo eles
         // andam juntos, e empilhá-los em `x` os faria disputar o mesmo espaço.
         Transform::from_translation(Vec2::new(DOCK_X, y)),
     ));
+    if kinematic {
+        e.insert(PlayerMode::Kinematic);
+    }
 }
 
 pub(crate) fn build_swim_scene(world: &mut World) {
@@ -226,8 +255,16 @@ pub(crate) fn build_swim_scene(world: &mut World) {
         Transform::from_translation(Vec2::new(POOL_X, BED_Y - 0.5)),
     ));
 
-    subject(world, "Floater", FLOAT, FLOATER_RGBA, 0.0);
-    subject(world, "Swimmer", FLOAT + 1.6, SWIMMER_RGBA, SWIM_SPEED);
+    subject(world, "Floater", FLOAT, FLOATER_RGBA, 0.0, false);
+    subject(
+        world,
+        "Swimmer",
+        FLOAT + 1.6,
+        SWIMMER_RGBA,
+        SWIM_SPEED,
+        false,
+    );
+    subject(world, "KinSwimmer", FLOAT + 3.2, KIN_RGBA, SWIM_SPEED, true);
 }
 
 #[cfg(test)]
@@ -246,19 +283,21 @@ impl crate::App {
 
         eprintln!(
             "[physics-smoke 105] NADAR (W-Swim).\n  \
-               Duas capsulas IDENTICAS, e a unica diferenca e' UM knob:\n    \
+               Tres capsulas IDENTICAS; o que muda e' UM knob e UM modo:\n    \
                  AMBAR = swim_speed 0 (a capacidade nasce assim) -- a BOIA, o CONTROLE\n    \
-                 AZUL  = swim_speed {s:.1} m/s -- o NADADOR\n  \
-               Os dois recebem a MESMA entrada: ha' um teclado, logo um dedo.\n\n  \
-               1. ATRAVESSE A POCA RASA (D). Os dois tem de CAMINHAR por ela, sem\n     \
+                 AZUL  = swim_speed {s:.1} m/s -- o NADADOR (corpo dinamico)\n    \
+                 VERDE = o mesmo nadador, corpo CINEMATICO\n  \
+               Os tres recebem a MESMA entrada: ha' um teclado, logo um dedo.\n\n  \
+               1. ATRAVESSE A POCA RASA (D). Os tres tem de CAMINHAR por ela, sem\n     \
                   nadar. E' o LIMIAR: de pe' no cais o corpo le' buoyed = 0,68,\n     \
                   abaixo do 1,0 que arma o regime. Se o azul comecar a nadar\n     \
                   numa poca que da' pela canela, PARE -- e' o arco de todo salto\n     \
                   sobre agua rasa que se perde junto.\n\n  \
-               2. CAIA NA POCA FUNDA (continue D ate' o fim do cais). Os dois\n     \
+               2. CAIA NA POCA FUNDA (continue D ate' o fim do cais). Os tres\n     \
                   entram; a partir dali eles deixam de fazer a mesma coisa.\n\n  \
-               3. SEGURE W (pulo) DENTRO D'AGUA. O azul SOBE -- o botao virou\n     \
-                  BRACADA. O ambar nao faz nada com ele.\n     \
+               3. SEGURE W (pulo) DENTRO D'AGUA. O azul E O VERDE SOBEM -- o botao\n     \
+                  virou BRACADA, e a especie do corpo nao e' uma pergunta que a\n     \
+                  agua faca. O ambar nao faz nada com ele.\n     \
                   (!) E o azul NAO PULA: quem nada nao pula, e o coyote nao e'\n     \
                   gasto por um pulo que nao houve.\n\n  \
                4. SEGURE S (baixo). O azul MERGULHA ate' o fundo; o ambar continua\n     \
@@ -266,6 +305,12 @@ impl crate::App {
                   segundos, largado submerso:\n       \
                     AZUL   baixo {d:+.2} m · parado {i:+.2} · cima {u:+.2}\n       \
                     AMBAR  {f:+.2} nas TRES -- os botoes sao mudos sem a capacidade\n     \
+                  (!) SOLTE TUDO: o azul volta a' SUPERFICIE e FICA la'. O repouso\n     \
+                  do nado e' a LINHA (o Swim Line da §14, em pesos), e o default\n     \
+                  1,0 e' a mesma altura em que o ambar boia -- 25% submerso nesta\n     \
+                  poca. Quanto fica submerso e' a razao entre as DUAS densidades\n     \
+                  (a do fluido na zona, a do corpo no collider): 2x da' 50%,\n     \
+                  1,25x da' 80%. Se o azul afundar e ficar no fundo parado, PARE.\n     \
                   (!) MERGULHAR PEDE AUTORIDADE: nesta poca o empuxo liquido vale\n     \
                   ~29,4 m/s^2, e o ponto de partida da lei e' 12 -- esta cena usa\n     \
                   {a:.0}. Com 12 o azul so' subiria mais devagar, e isso e' a\n     \
@@ -279,8 +324,9 @@ impl crate::App {
                   chao dentro de 0,1 s ele salta. E' o `hop out`, e e' o preco\n     \
                   honesto de um botao com dois significados.\n\n  \
                (!) O card SWIM esta' na §14 do Inspector (selecione o azul).\n      \
-                   Baixe o Swim Enter para 0,3 e atravesse a poca rasa outra vez:\n      \
-                   agora ele NADA nela. E' o limiar a fazer o que promete.\n\n  \
+                   Baixe o Swim Line para 0,3 e atravesse a poca rasa outra vez:\n      \
+                   agora ele NADA nela -- e la' dentro ele fica mais ALTO, porque\n      \
+                   o mesmo numero e' a porta E o repouso.\n\n  \
                (!) Toque B para o contorno: as duas pocas ficam magenta (sensor).\n",
             s = SWIM_SPEED,
             a = SWIM_ACCEL,

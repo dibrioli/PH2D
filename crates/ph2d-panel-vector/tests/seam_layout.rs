@@ -140,6 +140,7 @@ fn a_wider_label_pushes_its_field_further_right() {
     state::set_layout_flow(Some(row_flow()));
     state::set_layout_item(Some(LayoutItem {
         absolute: false,
+        in_flow: true,
         grow: 0.0,
         shrink: 1.0,
     }));
@@ -337,6 +338,7 @@ fn the_item_rows_follow_the_child_and_coexist_with_the_frame_block() {
 
     state::set_layout_item(Some(LayoutItem {
         absolute: false,
+        in_flow: true,
         grow: 0.0,
         shrink: 0.0,
     }));
@@ -373,6 +375,7 @@ fn a_selected_child_alone_still_gets_its_two_rows() {
     clear();
     state::set_layout_item(Some(LayoutItem {
         absolute: false,
+        in_flow: true,
         grow: 1.0,
         shrink: 0.0,
     }));
@@ -455,6 +458,7 @@ fn the_absolute_toggle_is_live_and_hides_grow_and_shrink() {
         grow: 0.0,
         shrink: 0.0,
         absolute: false,
+        in_flow: true,
     }));
     click_reaches_bus(ids::VECTOR_LAYOUT_ITEM_ABSOLUTE, "o toggle Absolute");
     // No fluxo, os dois números existem.
@@ -467,6 +471,7 @@ fn the_absolute_toggle_is_live_and_hides_grow_and_shrink() {
         grow: 0.0,
         shrink: 0.0,
         absolute: true,
+        in_flow: true,
     }));
     assert!(
         !painted(ids::VECTOR_LAYOUT_ITEM_GROW) && !painted(ids::VECTOR_LAYOUT_ITEM_SHRINK),
@@ -493,5 +498,39 @@ fn the_four_bounds_are_painted_when_the_frame_flows() {
     ] {
         assert!(painted(id), "{what} nao foi pintado");
     }
+    clear();
+}
+
+/// **Sem fluxo no pai, o bloco do filho EXPLICA-SE em vez de sumir.**
+///
+/// ⚠️ É a cura do report do Enio no smoke da cena `=66` (*"não achei Absolute Position no painel
+/// do quadrado âmbar"*): o toggle é escondido quando o pai não empilha — e escondê-lo **em
+/// silêncio** deixava o artista a olhar para um painel que não dizia o que faltava.
+///
+/// As duas metades no mesmo gate, porque uma sem a outra é um defeito: **nenhum controlo é
+/// oferecido** (eles não fariam nada) **e alguma coisa é pintada** (senão é o silêncio de volta).
+#[test]
+fn the_item_block_explains_itself_when_the_parent_does_not_flow() {
+    clear();
+    state::set_frame_clip(Some(true));
+    state::set_layout_flow(Some(row_flow()));
+    state::set_layout_item(Some(LayoutItem {
+        grow: 0.0,
+        shrink: 0.0,
+        absolute: false,
+        in_flow: false,
+    }));
+    assert!(
+        !painted(ids::VECTOR_LAYOUT_ITEM_ABSOLUTE)
+            && !painted(ids::VECTOR_LAYOUT_ITEM_GROW)
+            && !painted(ids::VECTOR_LAYOUT_ITEM_SHRINK),
+        "sem fluxo no pai nenhum dos tres faz nada — nenhum pode ser oferecido"
+    );
+    // A outra metade: a seção EXISTE (o cabeçalho foi pintado), que é o que separa *explicar* de
+    // *sumir*. Sem fluxo E sem moldura selecionada, ela seria a única coisa na seção.
+    assert!(
+        painted(ids::VECTOR_SECTION_LAYOUT),
+        "a secao tem de existir para poder explicar"
+    );
     clear();
 }

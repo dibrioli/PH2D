@@ -153,8 +153,11 @@ fn announce(app: &mut crate::App) {
     );
     eprintln!("[sizing] AS MOLDURAS NASCEM SEM FLUXO E SEM TAMANHO — e' voce que os liga.");
     eprintln!("[sizing] o roteiro (pegue a ferramenta VECTOR primeiro):");
-    eprintln!("  1. Clique no fundo escuro da moldura CURTO (a de cima) e ponha Direction -> Row.");
-    eprintln!("     Repita na LONGO e na SELO. As tres viram filas; a caixa nao mudou de tamanho.");
+    eprintln!("  1. Ponha Direction -> Row nas TRES molduras de cima (CURTO, LONGO e SELO):");
+    eprintln!(
+        "     clique no fundo escuro de cada uma e escolha Row. ⚠️ A SELO tambem — o passo 5"
+    );
+    eprintln!("     depende dela, e um filho de moldura PARADA nao tem fluxo de que sair.");
     eprintln!(
         "  2. ⚠️ O ABRACO: em CURTO e em LONGO, ponha **Width -> Hug**. Cada moldura encolhe"
     );
@@ -167,10 +170,67 @@ fn announce(app: &mut crate::App) {
     eprintln!("     enquanto a LONGO continua no tamanho do conteudo dela.");
     eprintln!("  4. Ponha **Height -> Hug** numa delas: a altura desce ate' a dos filhos, e a");
     eprintln!("     largura NAO se mexe — os dois eixos sao independentes.");
-    eprintln!("  5. ⚠️ O FORA-DO-FLUXO: na moldura SELO, clique no quadrado AMBAR (a quina) e");
+    eprintln!("  5. ⚠️ O FORA-DO-FLUXO (exige o Row na SELO, do passo 1 — sem ele o painel diz");
+    eprintln!("     'Set the parent frame to Row or Column first' e nao oferece o toggle):");
+    eprintln!("     na moldura SELO, clique no quadrado AMBAR (a quina) e");
     eprintln!("     marque **Absolute position**. Ele fica onde esta'; os tres azuis arrumam-se");
     eprintln!("     como se ele nao existisse. E as linhas Grow/Shrink DESAPARECEM enquanto ele");
     eprintln!("     esta' marcado — quem saiu do fluxo nao reparte sobra nenhuma.");
     eprintln!("  6. Desmarque: ele volta para a fila. E confira o CONTROLE (a de baixo): ela tem");
     eprintln!("     de estar exactamente como comecou.");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// **A aritmética que o roteiro promete existe na cena.**
+    ///
+    /// ⚠️ Ela nasceu VERMELHA: com cinco filhos a `LONGO` abraçada media 9,0 — exactamente a
+    /// largura da caixa —, e o passo do abraço não mostraria nada nela.
+    #[test]
+    fn every_frame_shrinks_visibly_when_it_hugs() {
+        let width = ROWS[0].1 * 2.0;
+        for &(_, half_w, n, kid_w, name) in ROWS {
+            let hug = (n as f64) * kid_w * 2.0 + (n as f64 - 1.0) * GAP;
+            assert!(
+                hug < width - 1.0,
+                "a {name} abracada mede {hug:.2} contra uma caixa de {:.1}: o abraco seria \
+                 invisivel",
+                half_w * 2.0
+            );
+        }
+    }
+
+    /// **As duas primeiras encolhem para tamanhos DIFERENTES uma da outra.** É a pergunta do passo
+    /// 2 — *o botão cresce com o rótulo* —, e duas molduras que encolhessem para o mesmo número
+    /// não a responderiam.
+    #[test]
+    fn the_two_hugging_frames_end_up_different_widths() {
+        let hug = |i: usize| (ROWS[i].2 as f64) * ROWS[i].3 * 2.0 + (ROWS[i].2 as f64 - 1.0) * GAP;
+        assert!(
+            (hug(0) - hug(1)).abs() > 1.0,
+            "CURTO {:.2} e LONGO {:.2} tem de ficar visivelmente diferentes",
+            hug(0),
+            hug(1)
+        );
+        // E o piso do passo 3 tem de cair ENTRE as duas: acima do abraço da CURTO (senão não
+        // segura nada) e abaixo do da LONGO (senão as duas ficam iguais e o passo não diz nada).
+        const FLOOR: f64 = 6.0;
+        assert!(
+            hug(0) < FLOOR && FLOOR < hug(1),
+            "o Min W = {FLOOR} do roteiro tem de ficar entre {:.2} e {:.2}",
+            hug(0),
+            hug(1)
+        );
+    }
+
+    /// **O selo da fileira 2 é contado como caminho próprio** — se ele não for, o `adopt` pendura
+    /// a moldura errada e o passo 5 manda o artista clicar num quadrado que não é filho de nada.
+    #[test]
+    fn the_seal_is_one_of_the_paths_of_its_row() {
+        assert_eq!(per_row(2), ROWS[2].2 + 2, "3 filhos + o selo + a moldura");
+        let total: usize = (0..ROWS.len()).map(per_row).sum();
+        assert_eq!(total, 17, "o build empurra 17 caminhos");
+    }
 }

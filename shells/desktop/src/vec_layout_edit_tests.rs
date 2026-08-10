@@ -181,9 +181,16 @@ fn the_item_block_is_offered_to_a_child_of_a_flowing_frame() {
     let frame_sel = vec![ids[0]];
     let kid_sel = vec![ids[1]];
 
+    // ⚠️ **Isto afirmava `is_none()` até 2026-08-10, e a mudança é deliberada.** Um filho de
+    // moldura PARADA publicava `None`, a seção Layout não era pintada de todo, e o artista que
+    // procurava o *Absolute position* não tinha como saber que faltava ligar o fluxo no PAI (report
+    // do Enio no smoke da cena `=66`). Agora o bloco existe e traz `in_flow: false`; quem decide
+    // que **nenhum controlo** é oferecido nesse estado é o PAINEL, com gate próprio
+    // (`the_item_block_explains_itself_when_the_parent_does_not_flow`).
+    let parked = selected_item(&sim, &map, &kid_sel).expect("o bloco existe para EXPLICAR");
     assert!(
-        selected_item(&sim, &map, &kid_sel).is_none(),
-        "sem fluxo no pai o bloco nao existe"
+        !parked.in_flow,
+        "sem fluxo no pai, o bloco tem de dizer que nao esta' num fluxo"
     );
     apply_layout_edit(
         &mut sim,
@@ -192,7 +199,7 @@ fn the_item_block_is_offered_to_a_child_of_a_flowing_frame() {
         LayoutEdit::Dir(Some(LayoutDir::Row)),
     );
     assert!(
-        selected_item(&sim, &map, &kid_sel).is_some(),
+        selected_item(&sim, &map, &kid_sel).is_some_and(|i| i.in_flow),
         "o filho de uma moldura que flui TEM os dois campos"
     );
     assert!(

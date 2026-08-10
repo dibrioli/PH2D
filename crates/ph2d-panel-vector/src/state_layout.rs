@@ -59,6 +59,14 @@ pub struct LayoutItem {
     /// Este filho saiu do fluxo (o *Absolute position*). ⚠️ Quando `true`, `grow`/`shrink` **não
     /// são pintados**: quem não está no fluxo não reparte sobra nenhuma.
     pub absolute: bool,
+    /// **O pai DISPÕE os filhos?** ⚠️ `false` ⇒ nenhum destes controlos faz nada — e o painel
+    /// **DIZ isso** em vez de os esconder em silêncio (o precedente do Falloff dos Motion Nodes).
+    ///
+    /// A ausência muda de significado com esta linha: antes, um filho de moldura parada publicava
+    /// `None` e a seção **Layout não era pintada de todo** — o artista clicava na forma, não via
+    /// nada, e não tinha como saber que faltava ligar o fluxo no PAI. Foi o report do Enio no
+    /// smoke da cena `=66`.
+    pub in_flow: bool,
 }
 
 thread_local! {

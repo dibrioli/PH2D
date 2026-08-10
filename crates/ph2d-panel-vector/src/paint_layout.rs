@@ -46,6 +46,13 @@ impl BodyCtx<'_> {
             y = self.layout_frame_rows(y);
         }
         if let Some(it) = item {
+            // ⚠️ **Sem fluxo no pai, nenhum destes controlos faz nada — e o painel DIZ isso.**
+            // Escondê-los era o que fazia o artista clicar na forma, não ver nada, e não ter como
+            // saber que faltava ligar o fluxo no PAI (report do Enio, smoke da cena `=66`). É o
+            // precedente do Falloff dos Motion Nodes: *inerte é dito, não omitido*.
+            if !it.in_flow {
+                return self.label_line(tr("panel.vector.layout.needs_flow"), y);
+            }
             // O fora-do-fluxo vem PRIMEIRO porque é ele que decide se o resto existe.
             y = self.checkbox_row(
                 ids::VECTOR_LAYOUT_ITEM_ABSOLUTE,

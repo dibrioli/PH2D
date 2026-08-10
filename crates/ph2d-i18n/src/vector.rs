@@ -126,6 +126,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.layout.min.h" => "Min H",
         "panel.vector.layout.max.h" => "Max H",
         "panel.vector.layout.absolute" => "Absolute position",
+        "panel.vector.layout.needs_flow" => "Set the parent frame to Row or Column first",
         "panel.vector.layout.padding" => "Padding",
         "panel.vector.layout.padding.all" => "All",
         "panel.vector.layout.padding.each" => "Each",

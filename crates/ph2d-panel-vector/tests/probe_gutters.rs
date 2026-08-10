@@ -54,6 +54,7 @@ fn measure_the_label_gutters() {
     }));
     state::set_layout_item(Some(LayoutItem {
         absolute: false,
+        in_flow: true,
         grow: 0.0,
         shrink: 0.0,
     }));

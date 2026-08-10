@@ -25,8 +25,8 @@
 //!   às duas, e é isso que faz os dois blocos aparecerem juntos nela.
 
 use ph2d_ecs::{
-    ChildOf, Entity, LayoutAlign, LayoutDir, LayoutJustify, LayoutSize, SimWorld, VecLayout,
-    VecLayoutAbsolute, VecLayoutItem, VecLayoutSize,
+    ChildOf, Entity, LayoutAlign, LayoutDir, LayoutJustify, LayoutSize, SimWorld, VecFrame,
+    VecLayout, VecLayoutAbsolute, VecLayoutItem, VecLayoutSize,
 };
 use ph2d_editor::ids;
 use ph2d_panel_vector::state::{LayoutFlow, LayoutItem};
@@ -179,10 +179,16 @@ fn item_of_selection(sim: &SimWorld, map: &VecEntityMap, selected: &[VecPathId])
         sim.world().get_entity(e).ok().map(|_| e)
     })?;
     let parent = sim.world().get::<ChildOf>(subject)?.parent();
-    sim.world()
-        .get::<VecLayout>(parent)
-        .is_some()
-        .then_some(subject)
+    // ⚠️ **A pergunta é *"o pai é uma MOLDURA?"*, e não *"ele flui?"*.** Ela era a segunda, e o
+    // preço foi um report de smoke: um filho de moldura parada publicava `None`, a seção Layout
+    // não era pintada de todo, e o artista que procurava o *Absolute position* não tinha como
+    // saber que faltava ligar o fluxo no PAI. O fluxo passou a ser um CAMPO (`in_flow`), que o
+    // painel usa para explicar em vez de esconder.
+    // ⚠️ **A união, e não `VecFrame` sozinho.** Trocar um predicado pelo outro REMOVERIA um caso
+    // que funcionava: o passe de layout recolhe os filhos de qualquer entidade com `VecLayout`,
+    // tenha ela `VecFrame` ou não. Dois gates sangraram nesta linha exactamente por isso.
+    let w = sim.world();
+    (w.get::<VecFrame>(parent).is_some() || w.get::<VecLayout>(parent).is_some()).then_some(subject)
 }
 
 /// O fluxo da moldura da seleção — `None` = não há moldura, ou ela não empilha.
@@ -224,6 +230,10 @@ pub(crate) fn selected_item(
         grow: f64::from(it.grow),
         shrink: f64::from(it.shrink),
         absolute: sim.world().get::<VecLayoutAbsolute>(e).is_some(),
+        in_flow: sim
+            .world()
+            .get::<ChildOf>(e)
+            .is_some_and(|c| sim.world().get::<VecLayout>(c.parent()).is_some()),
     })
 }
 

@@ -422,7 +422,10 @@ fn the_drag_parity_between_modes_stays_within_its_measured_price() {
     let mut worst = 0.0f32;
     for (a, b) in runs[0].iter().zip(runs[1].iter()) {
         let travelled = (START - a).abs();
-        assert!(travelled > 1.0, "o sujeito tem de ter caído: {travelled:.4}");
+        assert!(
+            travelled > 1.0,
+            "o sujeito tem de ter caído: {travelled:.4}"
+        );
         worst = worst.max((b - a).abs() / travelled);
     }
     // Medido `1,149%` no pico; o teto traz a folga e nada mais.

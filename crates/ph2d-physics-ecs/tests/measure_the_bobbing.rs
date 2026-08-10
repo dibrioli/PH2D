@@ -190,7 +190,11 @@ fn measure_where_the_extra_energy_enters() {
     for start in [1.5f32, 0.5, -0.5, -1.5] {
         let (_, c) = stats_from(None, start);
         let (_, p) = stats_from(Some(base()), start);
-        println!("{start:>10.1} {c:>10.4} {p:>10.4} {:>12.4} {:>12.2}x", p - c, p / c);
+        println!(
+            "{start:>10.1} {c:>10.4} {p:>10.4} {:>12.4} {:>12.2}x",
+            p - c,
+            p / c
+        );
     }
     println!(
         "\nLEITURA: se o excesso SOBREVIVE a uma largada submersa (a trava arma no\n\
@@ -295,7 +299,10 @@ fn measure_what_the_drag_parity_between_modes_is_worth() {
 #[ignore = "sonda de medição"]
 fn measure_the_speed_at_which_each_enters_the_water() {
     println!("\n=== A VELOCIDADE DE ENTRADA (largado de y = 1.5, superficie em y = 0) ===");
-    println!("{:<26} {:>12} {:>12}", "sujeito", "v na entrada", "vs controle");
+    println!(
+        "{:<26} {:>12} {:>12}",
+        "sujeito", "v na entrada", "vs controle"
+    );
     let mut control = 0.0f32;
     for (label, law) in [("capsula solta (CONTROLE)", None), ("player", Some(base()))] {
         let mut sim = SimWorld::new();
@@ -347,7 +354,7 @@ fn measure_the_speed_at_which_each_enters_the_water() {
 #[ignore = "sonda de medição"]
 fn measure_whether_the_bobbing_decays_or_pumps() {
     println!("\n=== DECAI OU ACUMULA? (30 s, amplitude por janela de 3 s) ===");
-    println!("{:<26} {}", "sujeito", "amplitude por janela de 3 s");
+    println!("{:<26} amplitude por janela de 3 s", "sujeito");
 
     for (label, law) in [("capsula solta (CONTROLE)", None), ("player", Some(base()))] {
         let mut sim = SimWorld::new();
@@ -386,7 +393,10 @@ fn measure_what_the_bobbing_is_made_of() {
     println!("{:<34} {:>10} {:>12}", "sujeito", "y medio", "amplitude");
 
     let (c_mean, c_amp) = stats(None, false);
-    println!("{:<34} {c_mean:>10.4} {c_amp:>12.4}", "capsula solta (CONTROLE)");
+    println!(
+        "{:<34} {c_mean:>10.4} {c_amp:>12.4}",
+        "capsula solta (CONTROLE)"
+    );
 
     let cases: [(&str, PlatformPlayer); 6] = [
         ("player default", base()),
@@ -442,7 +452,10 @@ fn measure_what_the_bobbing_is_made_of() {
     }
 
     let (k_mean, k_amp) = stats(Some(base()), true);
-    println!("{:<34} {k_mean:>10.4} {k_amp:>12.4}", "player CINEMATICO (paridade)");
+    println!(
+        "{:<34} {k_mean:>10.4} {k_amp:>12.4}",
+        "player CINEMATICO (paridade)"
+    );
 
     println!(
         "\nLEITURA: a linha cuja amplitude cai para perto do CONTROLE nomeia o termo.\n\

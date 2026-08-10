@@ -1,43 +1,29 @@
 # HANDOFF / Tracker — `line/physics` (o motor de física global)
 
-> ⚠️ **A LINHA ESTÁ FECHADA (2026-08-03) e o handoff de integração é
-> [`HANDOFF_INTEGRACAO_line_physics_2026-08-03.md`](HANDOFF_INTEGRACAO_line_physics_2026-08-03.md)**
-> — **6 commits, quatro waves**: **W-SignalLeave** (a porta que FECHA, e a row de
-> chegada que shipou write-only), **W-PartAdopt** (⚠️ `Make Independent Body`
-> apagava a forma autorada, em silêncio), **W-RopeSays** (o readout de uma corda
-> que não roteia diz `no route`) e **W-RailRope** (o TRILHO como elo de corda).
-> Gate impactado **7239/7239**. `PROJECT_SCHEMA` **intocado por esta linha**,
-> registro **26→27**, c9 `16ba80e8…` **byte-idêntico**, zero `Cargo.toml`, nenhum
-> ADR. Ela **não** integrou e **não** pushou.
->
-> **Pendente de smoke:** as cenas `=76` · `=77` · `=70` · `=58`.
->
-> (A jornada anterior — 2026-08-01, 2ª do dia — **já está no `main`** e é
-> histórica:)
->
-> ⚠️ **~~A LINHA ESTÁ FECHADA (2026-08-01, 2ª jornada do dia)~~ e o handoff dela é
-> [`HANDOFF_INTEGRACAO_line_physics_compound_signal_2026-08-01.md`](HANDOFF_INTEGRACAO_line_physics_compound_signal_2026-08-01.md)**
-> — **24 commits, sete waves**: a varredura dos consumidores que assumiam a premissa que a
-> W-Compound tornou falsa (**W-PartFace · W-PartSensor · W-CompoundZone · W-PartMass ·
-> W-CompoundContact**, cenas `=69`..`=72`) mais as três que o Enio pediu por nome
-> (**W-WorldPinGlyph · W-WorldPinLocal · W-Signal**, cenas `=65` e `=73`). **Todos os smokes
-> aprovados.** ⚠️ **`PROJECT_SCHEMA` INTOCADO em 48** (o único componente novo cunha blob-key
-> própria), registro **24→25**, c9 **99 corpos / `16ba80e8…` byte-idêntico ao `main`**, zero
-> `Cargo.toml`, nenhum ADR. Já **rebasada** sobre o `main` de hoje. Ela **não** integrou e
-> **não** pushou.
->
-> (O [`HANDOFF_INTEGRACAO_line_physics_2026-08-01.md`](HANDOFF_INTEGRACAO_line_physics_2026-08-01.md)
-> — quatro waves, W-JointCopy · W-Rig · W-SoftWeld · W-Compound, cenas `=66`..`=69` — **já está no
-> `main`** e é histórico.)
->
 > ⚠️ **VAI ASSUMIR ESTA LINHA? Comece por
-> [`HANDOFF_REABERTURA_line_physics_2026-07-22.md`](HANDOFF_REABERTURA_line_physics_2026-07-22.md)** —
-> a jornada de 21/07 (mais 21 waves, W6 → W-FormDrag) **INTEGROU** ao `main`, com todos os smokes
-> aprovados. Aquele doc te diz como REABRIR a worktree, o que já existe (para não reconstruir) e o
-> plano. Este tracker é o estado **por-wave**, para consulta pontual — não leitura linear.
+> [`HANDOFF_REABERTURA_line_physics_2026-08-10.md`](HANDOFF_REABERTURA_line_physics_2026-08-10.md)** —
+> a linha foi **REABERTA DO ZERO em 2026-08-10** (worktree nova, HEAD = `main`, **zero commits**,
+> árvore limpa). Aquele doc traz o estado medido, o que **não** reconstruir, o que está **aberto com
+> o preço ao lado** e os gotchas operacionais. Este tracker é o estado **por-wave**, para consulta
+> pontual — não leitura linear.
 >
-> (O `HANDOFF_CONTINUACAO_line_physics_2026-07-19.md` era o equivalente da jornada anterior e está
-> **vencido**: o plano dele foi todo executado.)
+> **Estado no `main` de 2026-08-10** (medido, não auto-relatado): `PROJECT_SCHEMA` **70**, tripla
+> `(70, 13, 14)` · registro `ph2d-physics-ecs` **29** · `physics_ecs_c9` `fb27f676…`, **117 corpos**
+> · gizmo ids até **973** (próximo livre **974**) · maior cena de smoke **104** (próxima livre
+> **105**; ⚠️ o `=84` não existe, de propósito).
+>
+> **As jornadas que INTEGRARAM e são históricas** (o mecanismo delas continua nos respectivos
+> handoffs, não foi copiado para cá):
+> [kin 2026-08-09](HANDOFF_INTEGRACAO_line_physics_kin_2026-08-09.md) (o modo cinemático) ·
+> [MESTRE 2026-08-08](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-08.md) (⚠️ o de 09/08 o
+> supersede **apenas** como *o que integrar agora* — **o detalhe até a W23 está LÁ**) ·
+> [MESTRE 2026-08-04](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-04.md) (o player de
+> plataforma) · [MESTRE 2026-08-02](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-02.md) ·
+> [2026-08-01](HANDOFF_INTEGRACAO_line_physics_2026-08-01.md) ·
+> [world_pin 2026-07-30](HANDOFF_INTEGRACAO_line_physics_world_pin_2026-07-30.md).
+>
+> (Os `HANDOFF_REABERTURA_*_2026-07-22/23.md` e o `HANDOFF_CONTINUACAO_*_2026-07-19.md` estão
+> **vencidos** — os planos deles foram todos executados.)
 >
 > **Tracker VIVO do módulo** (o `docs/HANDOFF_*` da física). Toda jornada futura **atualiza este
 > arquivo**: estado por-wave, decisões, gotchas, ids/consts alocados. LLM nova lê ISTO + a

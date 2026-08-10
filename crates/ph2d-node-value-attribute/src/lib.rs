@@ -158,12 +158,15 @@ impl NodeOp for ValueAttribute {
 /// built for.
 ///
 /// ⚠️ **This list used to claim *"seven of them + Custom = 8 = the segmented selector's
-/// ceiling"*, and the ceiling was never 8.** The panel's cap is `MAX_ENUM_OPTIONS = 48`
-/// (DERIVED, with `CHANNELS_EXTRA_BASE` starting exactly where it ends) and the row **wraps
-/// at four columns**, growing its own height — so eight + Custom paints as three rows, not
-/// as an overflow. The number in that sentence was a guess about width wearing the word
-/// *ceiling*; a real limit names the resource it is of. The executable form lives in the
-/// shell (`the_channel_picker_fits_the_panels_ceiling`), where the table and the cap meet.
+/// ceiling"*, and the sentence was TRUE the day it was written — `MAX_ENUM_OPTIONS` really
+/// was 8.** It stopped being true **inside this same line**, at the shapes wave
+/// (`525946b58`, *"35 das 43 formas do `source.shape` eram INALCANÇÁVEIS"*), which raised the
+/// cap to **48** and made `CHANNELS_EXTRA_BASE` derive from it; the row also **wraps at four
+/// columns**, growing its own height, so eight + Custom paints as three rows rather than
+/// overflowing. Nobody reconciled this sentence with the number its own line had moved —
+/// which is the §0 rule biting at home: *quem move o número que tornava algo inalcançável tem
+/// de reconferir a nota*. The executable form now lives in the shell
+/// (`the_channel_picker_fits_the_panels_ceiling`), where the table and the cap meet.
 ///
 /// ⚠️ **Every entry must name a column something WRITES** — an entry is a promise that a
 /// word yields a quantity, and a word that resolves to nothing takes the module's ordinary

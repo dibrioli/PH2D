@@ -5,6 +5,7 @@
 use super::PaintMedia;
 use crate::tool::PainterTool;
 use crate::tool::paint::PaintMode;
+use ph2d_painter_brush::stroke_method::{MethodOffer, StrokeMethod, offered_methods};
 
 const ALL: [PaintMedia; 4] = [
     PaintMedia::Digital,
@@ -242,4 +243,115 @@ fn the_wire_values_round_trip_and_are_pinned() {
         "an unknown wire must fall back to Digital — the medium that is the absence of the others"
     );
     assert_eq!(PaintMedia::COUNT, 4, "the dropdown paints COUNT options");
+}
+
+/// **Um meio que não oferece o Grid Stamp nunca fica com ele.**
+///
+/// O Grid Stamp é exclusivo do Digital (`offered_methods`), e o dropdown deixa de o mostrar assim que o
+/// artista troca de meio. Sem esta lei a ferramenta seguia carimbando numa grade que nada na tela
+/// nomeava — um estado que a UI não sabia exprimir e que, por isso, ele não sabia desfazer.
+///
+/// O oráculo é `offered_methods` do meio de destino, não um literal: a asserção é *"o que ficou na mão
+/// é algo que este meio OFERECE"*, que continua verdadeira no dia em que a lista mudar.
+///
+/// **Mutação que tem de sangrar:** tirar a chamada a `settle_stroke_method` do fim de `set_paint_media`.
+#[test]
+fn a_medium_that_does_not_offer_grid_stamp_never_keeps_it() {
+    let grid = StrokeMethod::GridStamp.to_u8();
+    for m in [
+        PaintMedia::Watercolor,
+        PaintMedia::Impasto,
+        PaintMedia::WetPaint,
+    ] {
+        let mut t = PainterTool::default();
+        t.set_paint_media(PaintMedia::Digital);
+        t.set_brush_stroke_method(grid);
+        assert_eq!(
+            t.brush_settings().stroke_method,
+            grid,
+            "fixture: o Digital não ficou com o Grid Stamp, então a troca abaixo não prova nada"
+        );
+        t.set_paint_media(m);
+        let now = t.brush_settings().stroke_method;
+        let bs = t.brush_settings();
+        let offered = offered_methods(MethodOffer {
+            is_clone: bs.is_clone,
+            paints_no_color: bs.paints_no_color(),
+            digital: bs.media == PaintMedia::Digital.to_u8(),
+        });
+        assert!(
+            offered.contains(&now),
+            "{m:?} ficou com o método {now}, que ele não oferece ({offered:?})"
+        );
+    }
+}
+
+/// **O destino é o que o artista usava NAQUELE meio — e o padrão do pincel quando ele nunca esteve lá.**
+///
+/// As duas metades, e a segunda é a que prende a correção de 2026-08-10. O assento era
+/// `offered.first()`, que é o **primeiro do DROPDOWN** (`Dots`) e não o padrão de coisa nenhuma:
+/// medido, sair do Grid Stamp para o Watercolor pousava em `Dots`, que não é o padrão (`Space`) nem
+/// nada que o artista tivesse escolhido.
+///
+/// ⚠️ O `Space` esperado é lido de [`ph2d_painter_brush::BrushSpec::default`], nunca escrito à mão: um
+/// literal aqui seria uma segunda opinião sobre onde um pincel começa, e passaria a mentir no dia em
+/// que o default mudasse — exatamente o defeito que este gate existe para pegar.
+///
+/// **Mutação que tem de sangrar:** assentar em `offered.first()` de novo.
+#[test]
+fn the_settled_method_is_the_one_used_there_not_the_first_in_the_menu() {
+    let grid = StrokeMethod::GridStamp.to_u8();
+    let default = ph2d_painter_brush::BrushSpec::default()
+        .stroke_method
+        .to_u8();
+
+    // (a) um meio nunca visitado: o padrão do PINCEL.
+    let mut t = PainterTool::default();
+    t.set_brush_stroke_method(grid);
+    t.set_paint_media(PaintMedia::Watercolor);
+    assert_eq!(
+        t.brush_settings().stroke_method,
+        default,
+        "um meio que o artista nunca visitou não assentou no padrão do pincel"
+    );
+
+    // (b) um meio onde ele JÁ trabalhou volta ao que ele deixou lá.
+    let ellipse = StrokeMethod::Ellipse.to_u8();
+    let mut t = PainterTool::default();
+    t.set_paint_media(PaintMedia::Watercolor);
+    t.set_brush_stroke_method(ellipse);
+    t.set_paint_media(PaintMedia::Digital);
+    t.set_brush_stroke_method(grid);
+    t.set_paint_media(PaintMedia::Watercolor);
+    assert_eq!(
+        t.brush_settings().stroke_method,
+        ellipse,
+        "o meio esqueceu o método que o artista usou nele — assentou num que ninguém escolheu"
+    );
+    assert_ne!(
+        ellipse, default,
+        "fixture: a memória tem de diferir do padrão, senão (b) fica verde pelo motivo de (a)"
+    );
+}
+
+/// **Um método que os dois meios oferecem ATRAVESSA a troca, intocado.**
+///
+/// O controle da lei acima, e ele não é cerimônia: a cura preguiçosa para *"não pode ficar em Grid
+/// Stamp"* é reassentar o método em toda troca de meio, e isso arrancaria o artista do Line que ele
+/// escolheu para pintar a mesma figura noutro meio. A lei dispara no método NÃO-oferecido e em mais
+/// nada.
+///
+/// **Mutação que tem de sangrar:** assentar incondicionalmente (tirar o `if offered.contains(&now)`).
+#[test]
+fn a_method_both_media_offer_survives_the_switch() {
+    for method in [StrokeMethod::Space, StrokeMethod::Ellipse] {
+        let mut t = PainterTool::default();
+        t.set_brush_stroke_method(method.to_u8());
+        t.set_paint_media(PaintMedia::Watercolor);
+        assert_eq!(
+            t.brush_settings().stroke_method,
+            method.to_u8(),
+            "{method:?} não sobreviveu à troca de meio — a lei está reassentando o que já servia"
+        );
+    }
 }

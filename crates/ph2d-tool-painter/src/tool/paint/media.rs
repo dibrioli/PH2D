@@ -192,10 +192,27 @@ impl crate::tool::PainterTool {
     /// mostrá-lo, e a ferramenta seguia carimbando numa grade que nada na tela nomeava — um estado
     /// que a UI não sabia exprimir e, por isso, que ele não sabia desfazer (Enio, 2026-08-09).
     ///
-    /// O destino é o **primeiro** da lista oferecida, e não um método escolhido aqui: um literal
-    /// seria uma segunda opinião sobre qual é o método de partida daquele pincel.
+    /// **O destino é o que o artista usava NAQUELE meio**, e o padrão do pincel quando ele nunca esteve
+    /// lá — Enio, 2026-08-10: *"deve mudar automaticamente para o padrão daquele modo de pintura ou o
+    /// último tipo que estava em uso naquele modo, mas não pode ficar em Grid Stamp"*.
+    ///
+    /// ⚠️ **Era `offered.first()`, e isso estava errado por uma premissa, não por um descuido.** O
+    /// doc-comment anterior defendia a escolha assim: *"um literal seria uma segunda opinião sobre qual é
+    /// o método de partida daquele pincel"* — o raciocínio é bom e a lista é a fonte errada.
+    /// [`offered_methods`] devolve a **ordem do DROPDOWN** (`[0, 4, 3, …]` = Dots, Drag Dot, Space), que
+    /// é uma decisão de apresentação; o primeiro item dela não afirma nada sobre onde um pincel começa.
+    /// Medido em 2026-08-10: sair do Grid Stamp para Watercolor ou Impasto pousava em **Dots**, que não é
+    /// o padrão (`Space`) nem nada que o artista tivesse escolhido.
+    ///
+    /// Quem responde *"onde um pincel começa?"* é o próprio [`ph2d_painter_brush::BrushSpec::default`], e
+    /// é dele que o assento sai — a mesma porta única que o raciocínio antigo procurava.
+    ///
+    /// ⚠️ E o fallback do fallback continua sendo `offered.first()`: as listas são DADOS e podem mudar, e
+    /// um padrão que deixasse de ser oferecido faria esta função assentar num método que o dropdown não
+    /// mostra — exatamente o estado que ela existe para remover.
     fn settle_stroke_method(&mut self) {
         let bs = self.brush_settings();
+        let media = self.paint_media();
         let offered = ph2d_painter_brush::stroke_method::offered_methods(
             ph2d_painter_brush::stroke_method::MethodOffer {
                 is_clone: bs.is_clone,
@@ -204,10 +221,19 @@ impl crate::tool::PainterTool {
             },
         );
         let now = self.paint.brush.stroke_method.to_u8();
-        if !offered.contains(&now)
-            && let Some(&first) = offered.first()
+        if offered.contains(&now) {
+            return;
+        }
+        let remembered = self.paint.method_by_media[media.to_u8() as usize];
+        let default = ph2d_painter_brush::BrushSpec::default()
+            .stroke_method
+            .to_u8();
+        if let Some(&dest) = [remembered, default]
+            .iter()
+            .find(|m| offered.contains(m))
+            .or(offered.first())
         {
-            self.set_brush_stroke_method(first);
+            self.set_brush_stroke_method(dest);
         }
     }
 }

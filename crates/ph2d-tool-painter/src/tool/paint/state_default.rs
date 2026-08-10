@@ -141,6 +141,11 @@ impl Default for PaintState {
             scale_uniform: false,
             curve: None,
             last_non_shape_method: StrokeMethod::Space, // matches the default brush stroke method
+            // Every medium starts at the brush's OWN default rather than a literal — one door for the
+            // question *"what method does a brush start with?"*, so this cannot drift from `BrushSpec`.
+            method_by_media: [ph2d_painter_brush::BrushSpec::default()
+                .stroke_method
+                .to_u8(); crate::tool::PaintMedia::COUNT as usize],
             ellipse: None,
             line: None,
             line_snap: false,

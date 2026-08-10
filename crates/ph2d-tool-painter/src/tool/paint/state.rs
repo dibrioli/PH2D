@@ -213,6 +213,18 @@ pub(crate) struct PaintState {
     pub(super) grid_snap_pos: Option<[f32; 2]>,
     /// Last NON-shape method — the rail's Brush button restores it. See [`PainterTool::restore_non_shape_stroke_method`].
     pub(super) last_non_shape_method: StrokeMethod,
+    /// **The last stroke method the artist used in each medium**, indexed by [`crate::tool::PaintMedia`]'s
+    /// wire value — what a medium goes back to when the method in hand is one it does not offer.
+    ///
+    /// ⚠️ It exists because three of the four media SHARE a brush slot: Watercolor and Impasto are flags
+    /// on `PaintMode::Paint`'s [`ph2d_painter_brush::BrushSpec`], so they and Digital have exactly one
+    /// `stroke_method` between them, and only Wet Paint (its own slot, 11) remembers anything on its own.
+    /// Measured 2026-08-10: from Digital + Grid Stamp, Watercolor and Impasto both landed on `Dots` and
+    /// came back to Digital having FORGOTTEN Grid Stamp, while Wet Paint kept both sides.
+    ///
+    /// The sibling of [`Self::last_non_shape_method`], and the same shape of fact: *what did this artist
+    /// last mean, in this context, so we can put them back there instead of guessing.*
+    pub(super) method_by_media: [u8; crate::tool::PaintMedia::COUNT as usize],
     /// In-progress Curve session (the on-canvas point editor); `None` when idle. [`curve`].
     pub(super) curve: Option<curve::CurveEditor>,
     /// In-progress Ellipse session (the on-canvas ellipse editor); `None` when idle. [`circle`].

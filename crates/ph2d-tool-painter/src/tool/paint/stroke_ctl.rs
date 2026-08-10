@@ -29,6 +29,11 @@ impl PainterTool {
         if !method.is_shape() {
             self.paint.last_non_shape_method = method;
         }
+        // Remember it for the medium in hand, so switching away and back puts the artist where they were
+        // instead of on a method nobody chose. Here rather than in the panel because THIS is the one door
+        // every method change passes through — a recorder that enumerated the callers would miss the next
+        // one, and the settle below is itself a caller.
+        self.paint.method_by_media[self.paint_media().to_u8() as usize] = method.to_u8();
     }
 
     /// Restore the stroke method to the last NON-shape method the user chose — the tool rail's **Brush**

@@ -495,4 +495,11 @@
 /// (`v²/2a` + meia-largura) porque o knob que ele substituiu tinha o valor certo
 /// em funcao de outros dois — medido, a 8 m/s um `0,30` deixava o personagem
 /// CAIR e um `0,60` o segurava, com a fronteira exactamente em `0,533`.
-pub(crate) const PROJECT_SCHEMA: u32 = 82;
+/// v83 (`line/Vector`, item 4 do estudo dos contêineres — A TABELA SINAL → AÇÃO): o
+/// `HostStates` ganhou **`on_signal`**, a lista de ligações *nome de sinal → papel*
+/// (`ph2d_ui_state::SignalBinding`). Ele mora DENTRO do `HostStates` — e não numa
+/// tabela própria — porque o `retain_hosts` já corre por frame: uma forma apagada leva
+/// as ligações dela sem uma linha a mais, no mesmo frame e no mesmo passo de undo. É o
+/// degrau irmão do `spring` (v62), no mesmo struct e pelo mesmo motivo posicional: o
+/// postcard grava na ordem de declaração, então um leitor velho leria lixo bem-formado.
+pub(crate) const PROJECT_SCHEMA: u32 = 83;

@@ -346,6 +346,9 @@ mod sculpt3d;
 mod shape_build;
 mod shape_build_gesture;
 mod signal_smoke;
+/// ⭐ A cena da TABELA SINAL → PAPEL (`PH2D_BUILD_SMOKE=68`) — ⚠️ NÃO é o `signal_smoke`, que é
+/// a cena do R0 (`PH2D_SIGNAL_SMOKE`): ali o assunto é a SAÍDA, aqui é o CONSUMIDOR.
+mod signal_table_smoke;
 mod sim_populate;
 mod sizing_smoke;
 /// As cenas de smoke do Sketch (=31) e do Hatch (=32) — irmão de `build_smoke`, teto de LOC.
@@ -649,6 +652,7 @@ impl App {
             // um cursor a envelhecer sozinho, acumulando `missed` que ninguem le.
             signal_log_reader: std::env::var_os("PH2D_SIGNAL_LOG")
                 .map(|_| ph2d_runtime::SignalReader::new()),
+            ui_signal_reader: ph2d_runtime::SignalReader::new(),
             timeline_insert_key: false,
             autokey: Default::default(),
             last_frame: Instant::now(),

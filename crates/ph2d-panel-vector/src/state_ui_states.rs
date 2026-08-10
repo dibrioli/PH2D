@@ -60,6 +60,18 @@ pub struct UiStatesState {
     /// Este campo **já viajava no arquivo** desde o v56 (`HostStates.easing`) e não tinha porta
     /// nenhuma — o seletor é a porta, e é por isso que a wave não custa schema.
     pub easing: ph2d_anim::Easing,
+    /// ⭐ **A que sinais este hospedeiro responde** — `(nome, índice do papel em `StateRole::ALL`)`,
+    /// na ordem em que o artista as criou (item 4 do estudo dos contêineres).
+    ///
+    /// ⚠️ **O papel viaja como ÍNDICE e o rótulo já está no `role_labels` ao lado** — o painel não
+    /// alcança a `ph2d-ui-state` e não pode nomear um papel sozinho, exactamente como as linhas da
+    /// tabela acima. Uma segunda lista de nomes aqui envelheceria no dia em que um papel nascesse.
+    ///
+    /// ⚠️ **A ordem é a de CRIAÇÃO, não a alfabética nem a de papel:** o índice é a identidade da
+    /// linha (é ele que está no id do campo), e uma lista que se reordenasse debaixo do dedo do
+    /// artista trocaria o texto que ele está a digitar — a mesma falha que o `RootOrder` curou na
+    /// hierarquia.
+    pub bindings: Vec<(String, usize)>,
 }
 
 thread_local! {

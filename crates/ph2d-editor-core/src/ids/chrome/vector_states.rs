@@ -103,3 +103,43 @@ pub fn vector_easing_family_id(i: usize) -> NodeId {
 pub fn vector_easing_mode_id(i: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.state.ease.mode.{i}"))
 }
+
+/// ⭐ **Quantas LIGAÇÕES sinal → papel o painel oferece por hospedeiro.**
+///
+/// ⚠️ **Este número é do PAINEL, não do documento**, e a distinção é o §0: o modelo
+/// (`ph2d_ui_state::HostStates::on_signal`) **não tem teto** — não há recurso, cada linha são uma
+/// `String` e um enum. O que existe aqui é o tamanho do **pool de ids que o `populate` regista de
+/// antemão**, e um arquivo com mais ligações do que ele **funciona na mesma** (o consumidor lê
+/// todas); o painel é que mostra seis.
+///
+/// ⚠️ **Seis, e o número tem uma razão:** é mais que os quatro papéis, então um hospedeiro pode
+/// ouvir mais NOMES do que tem poses — ligar *"abrir"* e *"alternar"* ao mesmo papel é legítimo, e
+/// um teto de quatro tornaria isso inexprimível por acidente de aritmética.
+pub const MAX_SIGNAL_BINDINGS: usize = 6;
+
+/// O **campo de NOME** da ligação `i` — a que sinal este hospedeiro responde.
+///
+/// ⚠️ Um campo de TEXTO livre, e não um picker: o nome de um sinal é autorado nos dois lados
+/// (um marker da timeline, um `SignalOnHit` da física, o `Name` de um botão), e derivar não é
+/// possível — é exactamente a diferença entre isto e o gatilho do rato, cujo papel a
+/// `StateRole` deriva.
+#[must_use]
+pub fn vector_state_signal_name_id(i: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.state.signal.name.{i}"))
+}
+
+/// O chip do papel `r` da ligação `i` — para onde ir quando aquele nome chegar.
+#[must_use]
+pub fn vector_state_signal_role_id(i: usize, r: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.state.signal.role.{i}.{r}"))
+}
+
+/// **Apaga** a ligação `i`.
+#[must_use]
+pub fn vector_state_signal_remove_id(i: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.state.signal.remove.{i}"))
+}
+
+/// **Acrescenta** uma ligação vazia. Não é oferecido no teto — um botão que não faz nada é pior
+/// que um botão que falta, e o teto é visível porque as seis linhas estão na tela.
+pub const VECTOR_STATE_SIGNAL_ADD: NodeId = hash_node_id("vector.state.signal.add");

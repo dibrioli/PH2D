@@ -107,6 +107,38 @@ pub(super) fn component_controls(store: &mut WidgetStore) {
             );
         }
     }
+    // ⭐ **A TABELA SINAL → PAPEL** (item 4 do estudo dos contêineres): por linha do pool, os
+    // quatro chips de papel e a lixeira; mais o botão que acrescenta. Registados para o POOL
+    // inteiro pela mesma razão dos verbos acima — o `populate` corre uma vez, sem seleção, então
+    // registar "as ligações de agora" seria registar nenhuma, e as linhas nasceriam pintadas e
+    // mortas sob o rato assim que o artista apertasse *Add*.
+    //
+    // ⚠️ **O campo de NOME não é registado aqui**, e é a única assimetria: ele é semeado pelo
+    // espelho (`paint_signals::mirror`), que corre por frame com a loja mutável porque o buffer
+    // tem de acompanhar o texto autorado. Registá-lo duas vezes daria duas respostas para *"o
+    // que está escrito neste campo?"*.
+    for i in 0..ids::MAX_SIGNAL_BINDINGS {
+        for r in 0..ids::MAX_STATE_ROLES {
+            store.register(
+                ids::vector_state_signal_role_id(i, r),
+                InteractiveState::Button {
+                    state: ButtonState::Normal,
+                },
+            );
+        }
+        store.register(
+            ids::vector_state_signal_remove_id(i),
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
+    store.register(
+        ids::VECTOR_STATE_SIGNAL_ADD,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
     // **O SELETOR DE CURVA** (W7): as onze famílias e os três modos. Registados TODOS, e não só
     // os da família de agora — o `populate` corre uma vez, sem seleção, e a fileira do modo é
     // pintada ou escondida por frame conforme a família escolhida use o modo ou não. Registar "o

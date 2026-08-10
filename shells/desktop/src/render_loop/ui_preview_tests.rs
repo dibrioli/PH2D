@@ -450,3 +450,132 @@ fn a_host_without_a_default_is_left_where_it_is() {
         x_of(&sim, &map, HOST)
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐ A TABELA SINAL → PAPEL (item 4 do estudo dos contêineres) — a metade de PRODUTOR.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// **Um clique completo sobre o hospedeiro devolve-o** — é ele que a shell converte em sinal.
+///
+/// ⚠️ **A fixture PASSA O RATO por cima antes de apertar**, e sem isso ela não continha o
+/// fenômeno: com o `hot` vazio no instante do `Down`, a guarda *"solta sobre o mesmo alvo"*
+/// devolve `None` sozinha, e a guarda *"só ao SOLTAR"* fica inobservável — as duas são defesas em
+/// camada, e uma fixture sem o hover mede apenas a primeira. Medido: a mutação que dispara no
+/// `Down` sobrevivia.
+#[test]
+fn a_full_click_on_a_host_names_it() {
+    let (_sim, _scene, _map, states) = world();
+    let mut machines = UiMachines::new();
+    let mut pv = UiPreview {
+        on: true,
+        ..UiPreview::default()
+    };
+
+    pv.point(&mut machines, &states, &[HOST], false);
+    assert_eq!(
+        pv.point(&mut machines, &states, &[HOST], true),
+        None,
+        "o pen-DOWN fechou um clique — um botao dispara ao SOLTAR"
+    );
+    assert_eq!(
+        pv.point(&mut machines, &states, &[HOST], false),
+        Some(HOST),
+        "o pen-UP sobre o mesmo hospedeiro tinha de fechar o clique"
+    );
+}
+
+/// ⭐ **ARRASTAR PARA FORA E SOLTAR NÃO DISPARA.**
+///
+/// ⚠️ Sem a segunda metade do clique, o gesto universal de **desistir** viraria o gesto de
+/// confirmar — e é um gesto que o artista faz sem pensar, porque todo botão do mundo o honra.
+///
+/// ⚠️ **E soltar sobre OUTRO hospedeiro, nunca no vazio:** no vazio a cadeia é `[]` e
+/// `chain.first()` já é `None`, então a guarda do alvo fica inobservável e a mutação que a remove
+/// **sobrevive** — medido. O caso que a exercita é aquele em que há um alvo, e ele é o errado.
+#[test]
+fn pressing_and_releasing_elsewhere_fires_nothing() {
+    let (_sim, _scene, _map, states) = world();
+    let mut machines = UiMachines::new();
+    let mut pv = UiPreview {
+        on: true,
+        ..UiPreview::default()
+    };
+
+    pv.point(&mut machines, &states, &[HOST], true);
+    assert_eq!(
+        pv.point(&mut machines, &states, &[CHILD], false),
+        None,
+        "soltar sobre OUTRO alvo depois de apertar no botao disparou"
+    );
+    assert_eq!(
+        pv.point(&mut machines, &states, &[HOST], true),
+        None,
+        "e o pen-DOWN seguinte tambem nao pode fechar clique nenhum"
+    );
+    assert_eq!(
+        pv.point(&mut machines, &states, &[], false),
+        None,
+        "nem soltar no vazio"
+    );
+}
+
+/// **Fora da preview nada dispara** — o modo é a cerca, e ela vale para o produtor também.
+#[test]
+fn a_click_outside_the_preview_fires_nothing() {
+    let (_sim, _scene, _map, states) = world();
+    let mut machines = UiMachines::new();
+    let mut pv = UiPreview::default();
+
+    pv.point(&mut machines, &states, &[HOST], true);
+    assert_eq!(pv.point(&mut machines, &states, &[HOST], false), None);
+}
+
+/// ⭐ **A RESTAURAÇÃO COBRE UM HOSPEDEIRO QUE SÓ UM SINAL MOVEU.**
+///
+/// ⚠️ **É a derivação que escolheu a ação inteira**, e não um detalhe: a preview captura, ao
+/// ligar, a pose de todo id mencionado em qualquer estado autorado — então uma ação que mude
+/// **pose** é restaurável por construção, e qualquer outra não seria. Este gate é o que torna
+/// essa frase executável: o rato nunca toca no hospedeiro, e sair devolve o mundo ao bit.
+#[test]
+fn leaving_restores_a_host_that_only_a_signal_moved() {
+    let (mut sim, mut scene, map, mut states) = world();
+    let mut machines = UiMachines::new();
+    let mut pv = UiPreview::default();
+
+    // O artista deixou a forma longe de qualquer pose gravada.
+    let e = ph2d_ecs::Entity::from_bits(map[&HOST]);
+    sim.world_mut()
+        .get_mut::<Transform>(e)
+        .unwrap()
+        .translation
+        .x = 7.0;
+
+    assert!(pv.enter(&mut machines, &states, &mut sim, &mut scene, &map));
+    // O que um sinal faz: pedir um papel, sem rato nenhum.
+    crate::render_loop::ui_state_bridge::request(&mut machines, &states, HOST, StateRole::Hover);
+    for _ in 0..40 {
+        // ⚠️ A tabela REAL, e não uma vazia: o `dispatch` começa por despejar hospedeiros que
+        // já não têm pose, então uma tabela vazia mataria a máquina antes do primeiro passo — a
+        // fixture não conteria o fenômeno, e o gate falharia por não medir nada.
+        crate::render_loop::ui_state_bridge::dispatch(
+            &mut machines,
+            &mut states,
+            &mut sim,
+            &mut scene,
+            &map,
+            0.05,
+        );
+    }
+    assert!(
+        (x_of(&sim, &map, HOST) - 40.0).abs() < 1e-6,
+        "o sinal nao moveu a cena: x = {}",
+        x_of(&sim, &map, HOST)
+    );
+
+    pv.leave(&mut machines, &mut sim, &mut scene, &map);
+    assert!(
+        (x_of(&sim, &map, HOST) - 7.0).abs() < 1e-9,
+        "sair nao devolveu a pose que o artista deixou: x = {}",
+        x_of(&sim, &map, HOST)
+    );
+}

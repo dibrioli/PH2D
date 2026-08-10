@@ -2536,6 +2536,12 @@ impl crate::App {
             // (é a rigidez?, valor) — só o knob que o artista arrastou.
             let mut pending_ui_spring_knob: Option<(bool, f64)> = None;
             let mut pending_ui_easing: Option<crate::vec_ui_state_edit::EasingPick> = None;
+            // ⭐ **A TABELA SINAL → PAPEL** (item 4 do estudo dos contêineres): os três gestos de
+            // clique e o COMMIT do nome. Duas variáveis porque são dois canais do barramento —
+            // o `Click` e o `SelectOption`, que é o único variante do `PanelEvent` (contrato
+            // CONGELADO) que carrega uma string.
+            let mut pending_ui_signal_edit: Option<crate::vec_ui_state_edit::SignalEdit> = None;
+            let mut pending_ui_signal_name: Option<(usize, String)> = None;
             let mut pending_ui_preview_toggle = false;
             let mut pending_ui_move_all_toggle = false;
             // **A BOOLEANA VIVA** (plano UI/UX W1): o Apply consolida o que o produtor cozinhou
@@ -2940,6 +2946,13 @@ impl crate::App {
                             {
                                 // **O SELETOR DE CURVA** (W7): a forma e a direcao da transicao.
                                 pending_ui_easing = Some(p);
+                            } else if let Some(e) =
+                                crate::vec_ui_state_edit::signal_edit_for_id(*id)
+                            {
+                                // ⭐ **A TABELA SINAL → PAPEL**: a ligação mora no DOCUMENTO
+                                // (`HostStates.on_signal`), então os três gestos atravessam o
+                                // barramento como os verbos ao lado.
+                                pending_ui_signal_edit = Some(e);
                             } else if *id == ph2d_editor::ids::VECTOR_STATE_SPRING {
                                 // **A MOLA** (W7m): ela troca o MOTOR da transição, e o motor mora
                                 // na tabela do documento — então o checkbox atravessa o barramento
@@ -3245,6 +3258,16 @@ impl crate::App {
                                     }
                                 }
                             }
+                        }
+                        // ⭐ **O NOME de uma ligação sinal → papel**: `SelectOption(campo,
+                        // "<texto>")`. O texto é o que o artista digitou, e vem por este canal
+                        // porque o `PanelEvent` é contrato CONGELADO — o `SelectOption` já é o
+                        // canal string-valued deste app (o Painter carrega nele
+                        // `"layer:channel:index:x:y"`, que não é opção de rádio nenhuma).
+                        if let ph2d_editor::tool::PanelEvent::SelectOption(id, val) = &ev
+                            && let Some(row) = crate::vec_ui_state_edit::signal_name_row(*id)
+                        {
+                            pending_ui_signal_name = Some((row, val.clone()));
                         }
                         // Font dropdown pick: `SelectOption(chip, "<index>")` → the
                         // family index into `vec_font::pickable_families()`.
@@ -5110,6 +5133,58 @@ impl crate::App {
                         role,
                     );
                 }
+            }
+            // ⭐ **O SINAL MOVE A CENA** — o consumidor da tabela de ligação (item 4 do estudo dos
+            // contêineres). A saída é a MESMA do R0: a timeline, a física e um controle autorado
+            // publicam nomes, e quem escuta casa numa string sem perguntar a origem (ADR-0143).
+            //
+            // ⚠️ **O cursor anda SEMPRE e a ação só corre na PREVIEW**, e a assimetria não é
+            // gosto — é a lei que a própria preview escreveu, aplicada a um produtor novo:
+            //
+            // - fora dela **não há restauração**, então um sinal que chegasse enquanto o artista
+            //   desenha **moveria o desenho dele** e ficaria assim;
+            // - fora dela **o undo regista**, e um sinal de física a 60 Hz seria um passo de undo
+            //   por quadro.
+            //
+            // ⚠️ **E isto NÃO contradiz o botão Show**, que escreve o mundo fora da preview: a
+            // diferença é *quem pediu*. Uma pose que o artista pediu com um clique custa um passo
+            // de undo e ele sabe porquê; uma pose que **chega sozinha** não pode cobrar nada.
+            //
+            // ⚠️ **Ler fora da preview é o que impede o salto de entrada** — ver o doc do
+            // `ui_signal_reader`. Sem o `let _`, o `read` devolve um iterador preguiçoso e **nada
+            // é consumido**: o cursor não andaria, e o gate que o prova é o da entrada limpa.
+            {
+                let acting = self.ui_preview.is_on();
+                let moves: Vec<(ph2d_vec_scene::VecPathId, ph2d_ui_state::StateRole)> = self
+                    .signals
+                    .read(&mut self.ui_signal_reader)
+                    .filter(|_| acting)
+                    .flat_map(|sig| ui_states.targets(&sig.name).collect::<Vec<_>>())
+                    .collect();
+                for (host, role) in moves {
+                    crate::render_loop::ui_state_bridge::request(
+                        ui_machines,
+                        ui_states,
+                        host,
+                        role,
+                    );
+                }
+            }
+            // ⭐ **Os gestos da TABELA SINAL → PAPEL.** Eles correm DEPOIS do consumidor acima
+            // e é indiferente — a tabela lida por ele é a deste frame, e uma ligação criada agora
+            // responde ao próximo sinal. O que NÃO seria indiferente é o inverso do consumidor
+            // com o `dispatch`, e essa ordem está fixada mais abaixo.
+            if let Some(edit) = pending_ui_signal_edit {
+                crate::vec_ui_state_edit::apply_signal_edit(
+                    ui_states,
+                    self.vec_pen.selected_paths(),
+                    edit,
+                );
+            }
+            if let Some((row, name)) = pending_ui_signal_name
+                && let [host] = self.vec_pen.selected_paths()
+            {
+                ui_states.set_binding_name(*host, row, name);
             }
             if let Some(secs) = pending_ui_state_duration
                 && let [host] = self.vec_pen.selected_paths()

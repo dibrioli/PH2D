@@ -164,6 +164,44 @@ mod tests {
         machines[&host].pose()[0].translation[0]
     }
 
+    /// ⭐ **UM SINAL MOVE A CENA** — a composição que o frame corre: o nome encontra quem
+    /// escuta (`StateSets::targets`), o pedido vira transição (`request`), e o `dispatch` a anda.
+    ///
+    /// ⚠️ **Ela mora aqui pelo mesmo motivo do gate acima**: o defeito vive na COMPOSIÇÃO, e
+    /// nenhuma das três metades sozinha o mostraria. E há um gate irmão sobre o FONTE do frame —
+    /// um gate de unidade é cego à fiação da shell, e esta casa já pagou essa lição com vinte
+    /// testes verdes sobre um `draw` cravado em `true`.
+    #[test]
+    fn a_signal_moves_the_scene_and_an_unbound_name_moves_nothing() {
+        let host: VecPathId = 1;
+        let mut states = table(host);
+        states.push_binding(host);
+        states.set_binding_name(host, 0, "open".into());
+        states.set_binding_role(host, 0, StateRole::Hover);
+        let mut machines = UiMachines::new();
+
+        // O nome que ninguém autorou é o CONTROLE, e ele vem primeiro: sem ele, um gate que
+        // apenas visse a cena mexer não distinguiria *"o sinal certo chegou"* de *"qualquer
+        // coisa move tudo"*.
+        for (host, role) in states.targets("close").collect::<Vec<_>>() {
+            request(&mut machines, &states, host, role);
+        }
+        assert!(
+            machines.is_empty(),
+            "um nome que ninguém ligou criou uma transição"
+        );
+
+        for (h, role) in states.targets("open").collect::<Vec<_>>() {
+            request(&mut machines, &states, h, role);
+        }
+        machines.get_mut(&host).unwrap().advance(1.0);
+        assert!(
+            (x(&machines, host) - 10.0).abs() < 1e-9,
+            "o sinal ligado não levou a cena à pose do papel: x = {}",
+            x(&machines, host)
+        );
+    }
+
     /// **REPRO DO PRODUTO (Enio, 2026-08-05): apertar Show e nada acontecer.**
     ///
     /// A sequência é a que o artista faz — Show Hover, interromper a meio com Show Default — e a

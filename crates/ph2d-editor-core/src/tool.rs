@@ -31,7 +31,16 @@ pub enum PanelEvent {
     SetValue(NodeId, f64),
     /// Toggle flipped to `on`.
     Toggle(NodeId, bool),
-    /// RadioGroup option selected (the option's `value` field).
+    /// **The string-valued channel** — a widget produced text, and this carries it.
+    ///
+    /// It was born as *"RadioGroup option selected"*, and that name stopped describing it long
+    /// ago: the Painter ships structured payloads through it (`"layer:channel:index:x:y"` for a
+    /// curve-point drag, `"layer:output:slot:value"` for the mixer), and the Vector panel commits
+    /// a **typed name** through it (the signal → role table). None of those is a radio option.
+    ///
+    /// ⚠️ **The doc is corrected rather than a variant added, and that is the point:** this enum
+    /// is FROZEN, and a comment that under-describes the channel is exactly what sends the next
+    /// wave to spend an ADR on a variant this one already provides.
     SelectOption(NodeId, String),
 }
 

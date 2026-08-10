@@ -377,9 +377,103 @@ pub(crate) fn publish(
         // (escolho o feel, depois poso). Escondê-las até haver pose seria uma seção que muda de
         // tamanho enquanto o artista trabalha, pelo motivo que ele não vê.
         easing,
+        // ⭐ **AS LIGAÇÕES** — o que faz este hospedeiro mudar de pose sozinho.
+        //
+        // ⚠️ **O papel viaja como ÍNDICE em `StateRole::ALL`**, a mesma régua dos `role_labels`
+        // acima: o painel não alcança a `ph2d-ui-state`, então ele não pode nomear um papel nem
+        // reconhecer um enum — e uma segunda tabela de nomes ali envelheceria no dia em que um
+        // papel nascesse.
+        bindings: states
+            .bindings(h)
+            .iter()
+            .map(|b| {
+                (
+                    b.name.clone(),
+                    StateRole::ALL
+                        .iter()
+                        .position(|&r| r == b.role)
+                        .unwrap_or(0),
+                )
+            })
+            .collect(),
     })
+}
+
+/// **O gesto de tabela que um id de painel endereça**, se ele endereçar algum.
+///
+/// ⚠️ **Uma porta só para os quatro gestos**, e não quatro varreduras espalhadas pelo roteador da
+/// shell: os ids são hashes derivados do índice, então quem os inverte tem de conhecer o mesmo
+/// teto que o `populate` regista e o `paint` percorre. Uma segunda varredura escrita noutro
+/// arquivo é a que esquece o `MAX` quando ele se mover.
+#[must_use]
+pub(crate) fn signal_edit_for_id(id: ph2d_editor::NodeId) -> Option<SignalEdit> {
+    if id == ph2d_editor::ids::VECTOR_STATE_SIGNAL_ADD {
+        return Some(SignalEdit::Add);
+    }
+    for i in 0..ph2d_editor::ids::MAX_SIGNAL_BINDINGS {
+        if id == ph2d_editor::ids::vector_state_signal_remove_id(i) {
+            return Some(SignalEdit::Remove(i));
+        }
+        for (r, role) in StateRole::ALL.iter().enumerate() {
+            if id == ph2d_editor::ids::vector_state_signal_role_id(i, r) {
+                return Some(SignalEdit::Role(i, *role));
+            }
+        }
+    }
+    None
+}
+
+/// O que um gesto da tabela sinal → papel pede.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum SignalEdit {
+    /// Acrescenta uma ligação vazia.
+    Add,
+    /// Apaga a ligação `i`.
+    Remove(usize),
+    /// Re-aponta a ligação `i` para outro papel.
+    Role(usize, StateRole),
+}
+
+/// **Aplica um gesto da tabela** ao hospedeiro selecionado.
+///
+/// ⚠️ **Ele exige hospedeiro ÚNICO**, a mesma guarda da duração e da curva: a tabela é por
+/// hospedeiro, e carimbar a mesma ligação em vários seria um gesto cujo alcance o artista não vê.
+pub(crate) fn apply_signal_edit(
+    states: &mut StateSets,
+    selected: &[VecPathId],
+    edit: SignalEdit,
+) -> bool {
+    let Some(h) = host(selected) else {
+        return false;
+    };
+    match edit {
+        // ⚠️ **O teto é do PAINEL e a guarda mora aqui também**, e não é redundância: o painel
+        // esconde o botão no teto (a metade visível), e a porta o honra (a metade que decide).
+        // Sem esta, um clique que chegasse por outra rota cresceria a lista além do que a UI
+        // sabe mostrar — e as linhas extra ficariam invisíveis no documento.
+        SignalEdit::Add => {
+            if states.bindings(h).len() >= ph2d_editor::ids::MAX_SIGNAL_BINDINGS {
+                return false;
+            }
+            states.push_binding(h);
+        }
+        SignalEdit::Remove(i) => states.remove_binding(h, i),
+        SignalEdit::Role(i, role) => states.set_binding_role(h, i, role),
+    }
+    true
+}
+
+/// **O nome commitado num campo da tabela** — o índice da linha, se o id for de uma.
+#[must_use]
+pub(crate) fn signal_name_row(id: ph2d_editor::NodeId) -> Option<usize> {
+    (0..ph2d_editor::ids::MAX_SIGNAL_BINDINGS)
+        .find(|&i| ph2d_editor::ids::vector_state_signal_name_id(i) == id)
 }
 
 #[cfg(test)]
 #[path = "vec_ui_state_edit_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "vec_ui_state_signal_tests.rs"]
+mod signal_tests;

@@ -49,6 +49,8 @@ fn arm(spring: Option<(f32, f32)>) {
         spring,
         preview: Some(false),
         move_all: Some(true),
+        // A tabela sinal -> papel: vazia por omissao nesta fixture.
+        bindings: Vec::new(),
     }));
 }
 

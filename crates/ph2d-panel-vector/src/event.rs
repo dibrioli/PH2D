@@ -340,6 +340,24 @@ pub(crate) fn apply_event(
         // dispensar à mão. É a mesma cicatriz que a row de família do dropdown de FONTE já
         // carrega, e a razão de este braço vir ANTES do encaminhador genérico.
         WidgetEvent::Click(id) if token_option_chip(id).is_some() => pick_token(host, id),
+        // ⭐ **O COMMIT do nome de um sinal** — Enter (`Submit`) ou o campo a perder o foco
+        // (`Blur`), as duas portas que o dispatch global já emite. ⚠️ **As duas, e não só o
+        // Enter:** um campo abandonado com o nome certo escrito dentro dele lê-se como *"eu
+        // autorei isto"*, e exigir o Enter faria o artista descobrir a regra pelo silêncio.
+        //
+        // ⚠️ **Ele viaja por `SelectOption`, e não por um variante novo:** o `PanelEvent` é
+        // CONTRATO CONGELADO (§6, quatro variantes), e o `SelectOption(NodeId, String)` já é o
+        // canal string-valued deste app — o Painter carrega nele payloads estruturados
+        // (`"layer:channel:index:x:y"`) que não são opção de rádio nenhuma. Um variante novo
+        // custaria ADR + Coord-only para dizer o que este já diz.
+        WidgetEvent::Submit(id) | WidgetEvent::Blur(id) if signal_name_row(id).is_some() => {
+            let text = host.store().text(id).unwrap_or_default().to_string();
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                    id, text,
+                )));
+            true
+        }
         WidgetEvent::Click(id) if forwards_plain_click(id) => {
             seam_reset_button(host, id);
             host.bus_mut()
@@ -363,6 +381,15 @@ pub(crate) fn apply_event(
         }
     };
     EventOutcome::from_bool(consumed)
+}
+
+/// O índice da linha de ligação a que um id de campo de NOME pertence, se ele for de alguma.
+///
+/// ⚠️ A varredura é sobre o MESMO teto que o `populate` regista e que o `paint` percorre
+/// (`MAX_SIGNAL_BINDINGS`): os ids são hashes de nome, então não há aritmética que os inverta, e
+/// um teto que só um dos três conhecesse deixaria as últimas linhas pintadas e mudas.
+fn signal_name_row(id: ph2d_a11y::NodeId) -> Option<usize> {
+    (0..ids::MAX_SIGNAL_BINDINGS).find(|&i| ids::vector_state_signal_name_id(i) == id)
 }
 
 /// O clique num **campo de ESCOLHA** de forma (o ponto de vista de um sólido isométrico, por

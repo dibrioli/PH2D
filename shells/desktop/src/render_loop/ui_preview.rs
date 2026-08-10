@@ -165,16 +165,39 @@ impl UiPreview {
     /// ⚠️ **E só o mais INTERNO responde ao aperto.** Um `Pressed` que subisse a cadeia acenderia
     /// o menu inteiro ao clicar num item; o ancestral segura o `Hover`, que é o que ele de facto
     /// é — o cursor está dentro dele.
+    /// ⭐ **Devolve o hospedeiro que foi CLICADO**, se este evento fechou um clique — é a metade
+    /// de PRODUTOR do laço sinal → ação (item 4 do estudo dos contêineres).
+    ///
+    /// ⚠️ **Um clique é apertar e SOLTAR sobre o mesmo hospedeiro**, e a segunda metade não é
+    /// zelo: sem ela, apertar num botão, arrastar para fora e soltar dispararia — o gesto
+    /// universal de *desistir* viraria o gesto de confirmar. É a mesma lei que todo botão desta
+    /// casa já honra.
+    ///
+    /// ⚠️ **É o mais INTERNO que dispara**, o mesmo da regra do `Pressed`: clicar num item de menu
+    /// não pode disparar também o menu que o contém.
+    ///
+    /// ⚠️ **E quem resolve o NOME é a shell**, não isto: o nome de um hospedeiro é o `Name` da
+    /// entidade dele, e este módulo não alcança o ECS de propósito — foi essa ausência que o
+    /// manteve testável de cabeça para baixo, sem janela e sem mundo.
     pub(crate) fn point(
         &mut self,
         machines: &mut UiMachines,
         states: &StateSets,
         chain: &[VecPathId],
         pressed: bool,
-    ) {
+    ) -> Option<VecPathId> {
         if !self.on || (chain == self.hot && pressed == self.pressed) {
-            return;
+            return None;
         }
+        // O clique fecha AQUI: o botão subiu, ele estava em baixo, e o alvo é o mesmo.
+        let clicked = (self.pressed && !pressed)
+            .then(|| {
+                chain
+                    .first()
+                    .copied()
+                    .filter(|c| self.hot.first() == Some(c))
+            })
+            .flatten();
         let left: Vec<VecPathId> = self
             .hot
             .iter()
@@ -192,6 +215,7 @@ impl UiPreview {
         for &h in chain {
             request(machines, states, h, self.role_for(h));
         }
+        clicked
     }
 
     /// O papel que `host` deve mostrar, dados os dois fatos que o rato conhece.

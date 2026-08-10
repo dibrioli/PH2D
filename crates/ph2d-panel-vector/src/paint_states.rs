@@ -127,7 +127,12 @@ impl BodyCtx<'_> {
             y,
         );
 
-        self.easing_rows(s.easing, y)
+        let y = self.easing_rows(s.easing, y);
+        // ⭐ **A TABELA SINAL → PAPEL** vem por ÚLTIMO, e a ordem é a de leitura: *que poses eu
+        // tenho* (os papéis) → *como eu transito* (mola ou duração+curva) → *o que me faz
+        // transitar*. Ela é a única lista que CRESCE, e uma lista variável no meio empurraria as
+        // linhas fixas para baixo a cada `Add`.
+        self.signal_rows(&s.bindings, &s.role_labels, y)
     }
 
     /// **As duas linhas da mola** — e são só duas, porque uma mola tem só dois números.

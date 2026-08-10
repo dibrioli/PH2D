@@ -116,6 +116,7 @@
 
 #![forbid(unsafe_code)]
 
+mod binding;
 mod machine;
 mod pose;
 mod role;
@@ -123,6 +124,7 @@ mod sets;
 mod spring;
 mod transition;
 
+pub use binding::SignalBinding;
 pub use machine::Machine;
 pub use pose::{ObjectPose, UiState};
 pub use role::StateRole;
@@ -140,3 +142,7 @@ mod tests;
 #[cfg(test)]
 #[path = "machine_tests.rs"]
 mod machine_tests;
+
+#[cfg(test)]
+#[path = "binding_tests.rs"]
+mod binding_tests;

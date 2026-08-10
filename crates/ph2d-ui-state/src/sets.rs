@@ -1,5 +1,6 @@
 //! **ONDE OS ESTADOS MORAM** — a tabela que viaja no documento.
 
+use crate::binding::SignalBinding;
 use crate::pose::UiState;
 use crate::role::StateRole;
 use crate::spring::Spring;
@@ -62,6 +63,21 @@ pub struct HostStates {
     /// ⚠️ **E ela EXCLUI a duração e a curva**, que continuam no struct porque o artista volta a
     /// elas ao desmarcar — desligar a mola não pode apagar o que ele já tinha afinado.
     pub spring: Option<Spring>,
+    /// **A que sinais este hospedeiro responde** ([`SignalBinding`]).
+    ///
+    /// ⚠️ **Aqui e não numa tabela própria**, e a razão é ciclo de vida: [`StateSets::retain_hosts`]
+    /// já corre por frame, então uma forma apagada leva as ligações dela sem uma linha a mais. O
+    /// doc do módulo [`crate::binding`] mede as duas razões.
+    ///
+    /// ⚠️ **Sem teto, e é deliberado:** não há recurso — cada linha são uma `String` e um enum. O
+    /// número que existe (`MAX_SIGNAL_BINDINGS`, no painel) é o tamanho do **pool de ids que o
+    /// `populate` regista de antemão**, e é um fato da UI, não do documento: um arquivo com mais
+    /// ligações do que ele **funciona** (o consumidor lê todas), só não as mostra todas.
+    ///
+    /// ⚠️ **Sem `#[serde(default)]`, de propósito:** o postcard é POSICIONAL e não sinaliza
+    /// ausência — um atributo aqui prometeria uma compatibilidade que o formato não tem. Quem
+    /// separa as duas formas de arquivo é o `PROJECT_SCHEMA`, e ele sobe com este campo.
+    pub on_signal: Vec<SignalBinding>,
 }
 
 impl Default for HostStates {
@@ -71,6 +87,7 @@ impl Default for HostStates {
             duration_s: DEFAULT_DURATION_S,
             easing: DEFAULT_EASING,
             spring: None,
+            on_signal: Vec::new(),
         }
     }
 }
@@ -192,6 +209,80 @@ impl StateSets {
     /// não promete nada disso.
     pub fn set_spring(&mut self, host: VecPathId, spring: Option<Spring>) {
         self.by_host.entry(host).or_default().spring = spring.map(Spring::clamped);
+    }
+
+    /// **A que sinais `host` responde**, ou uma fatia vazia.
+    #[must_use]
+    pub fn bindings(&self, host: VecPathId) -> &[SignalBinding] {
+        self.by_host.get(&host).map_or(&[], |h| &h.on_signal[..])
+    }
+
+    /// **Acrescenta uma ligação vazia** e devolve o índice dela.
+    pub fn push_binding(&mut self, host: VecPathId) -> usize {
+        let h = self.by_host.entry(host).or_default();
+        h.on_signal.push(SignalBinding::empty());
+        h.on_signal.len() - 1
+    }
+
+    /// Renomeia a ligação `index`. Índice fora da lista é ignorado — o painel publica um snapshot
+    /// e o clique chega um frame depois, então a lista pode ter encolhido no meio.
+    pub fn set_binding_name(&mut self, host: VecPathId, index: usize, name: String) {
+        if let Some(b) = self
+            .by_host
+            .get_mut(&host)
+            .and_then(|h| h.on_signal.get_mut(index))
+        {
+            b.name = name;
+        }
+    }
+
+    /// Re-aponta a ligação `index` para outro papel.
+    pub fn set_binding_role(&mut self, host: VecPathId, index: usize, role: StateRole) {
+        if let Some(b) = self
+            .by_host
+            .get_mut(&host)
+            .and_then(|h| h.on_signal.get_mut(index))
+        {
+            b.role = role;
+        }
+    }
+
+    /// **Apaga a ligação `index`.** O hospedeiro que fica sem nada — nem estados, nem ligações,
+    /// nem tempo afinado — sai da tabela, pela MESMA regra do [`Self::clear`].
+    pub fn remove_binding(&mut self, host: VecPathId, index: usize) {
+        let Some(h) = self.by_host.get_mut(&host) else {
+            return;
+        };
+        if index >= h.on_signal.len() {
+            return;
+        }
+        h.on_signal.remove(index);
+        if h.states.is_empty() && *h == HostStates::default() {
+            self.by_host.remove(&host);
+        }
+    }
+
+    /// **Quem responde a `signal`, e para que papel** — a porta que o consumidor de sinais usa.
+    ///
+    /// ⚠️ **A busca é por NOME e ignora quem gritou**, que é o contrato do ADR-0143: um contato de
+    /// física e um botão autorado com o mesmo nome movem a mesma cena, e é isso que torna a
+    /// ligação reusável em vez de um campo escondido dentro do botão.
+    ///
+    /// ⚠️ **Um hospedeiro pode aparecer DUAS vezes** se o artista o ligou duas vezes ao mesmo
+    /// nome — e a porta não deduplica de propósito: escolher uma das duas seria inventar uma
+    /// precedência que ele não autorou. Quem consome pede um papel por vez, e o último ganha; a
+    /// resposta certa para *"liguei o mesmo nome a dois papéis"* é apagar uma das linhas, que ele
+    /// vê na tela.
+    pub fn targets<'a>(
+        &'a self,
+        signal: &'a str,
+    ) -> impl Iterator<Item = (VecPathId, StateRole)> + 'a {
+        self.by_host.iter().flat_map(move |(&host, h)| {
+            h.on_signal
+                .iter()
+                .filter(move |b| b.matches(signal))
+                .map(move |b| (host, b.role))
+        })
     }
 
     /// **Esquece um hospedeiro que já não existe.** Chamado quando uma forma é apagada: sem isto a

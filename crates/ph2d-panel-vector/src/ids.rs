@@ -220,3 +220,10 @@ pub use ph2d_editor_core::ids::{
     VECTOR_STATE_STIFFNESS, VECTOR_STATE_STIFFNESS_NUM, vector_easing_family_id,
     vector_easing_mode_id, vector_state_apply_id, vector_state_clear_id, vector_state_record_id,
 };
+
+/// ⭐ **A TABELA SINAL → PAPEL** (item 4 do estudo dos contêineres): a que sinais este hospedeiro
+/// responde, e para onde ele vai quando cada um chega.
+pub use ph2d_editor_core::ids::{
+    MAX_SIGNAL_BINDINGS, VECTOR_STATE_SIGNAL_ADD, vector_state_signal_name_id,
+    vector_state_signal_remove_id, vector_state_signal_role_id,
+};

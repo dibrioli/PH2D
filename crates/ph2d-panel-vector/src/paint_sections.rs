@@ -54,6 +54,12 @@ pub(crate) struct BodyCtx<'a> {
 #[path = "paint_states.rs"]
 mod ui_states;
 
+/// ⭐ **A TABELA SINAL → PAPEL** — irmã da de States pelo mesmo corte de assunto.
+#[path = "paint_signals.rs"]
+mod ui_signals;
+
+pub(crate) use ui_signals::mirror as mirror_signal_fields;
+
 /// A seção **Blend** — módulo irmão (teto de 600 LOC).
 #[path = "paint_blend.rs"]
 mod blend;

@@ -320,5 +320,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::scroll_smoke::frame(app, f);
         return true;
     }
+    // ⭐ A cena da TABELA SINAL → PAPEL (=68) — irmã `signal_smoke`. Um botão grita um NOME e
+    // OUTRA forma responde; o terceiro retângulo é o CONTROLE que não escuta nada.
+    if level == 68 {
+        crate::signal_table_smoke::frame(app, f);
+        return true;
+    }
     false
 }

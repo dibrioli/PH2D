@@ -497,6 +497,15 @@ pub(crate) struct App {
     /// com instrumento mudo), e **dois cursores lendo a MESMA saída é a propriedade que o
     /// desenho promete** — com um consumidor só ela nunca seria exercida no produto.
     pub(crate) signal_log_reader: Option<ph2d_runtime::SignalReader>,
+    /// ⭐ **O cursor do consumidor que MOVE A CENA** — a tabela sinal → papel
+    /// (`ph2d_ui_state::SignalBinding`), o item 4 do estudo dos contêineres.
+    ///
+    /// ⚠️ **Ele é lido em TODO frame e só AGE dentro da preview**, e as duas metades são
+    /// separadas de propósito: um cursor que só andasse com a preview ligada acumularia
+    /// `missed`, e entrar na preview entregaria de uma vez os dois quadros que a janela do
+    /// outbox ainda guarda — a cena saltaria de pose por causa de um sinal que aconteceu antes
+    /// de o artista ligar o modo.
+    pub(crate) ui_signal_reader: ph2d_runtime::SignalReader,
     /// Set by the `K` key: on the next frame, insert a keyframe at the playhead
     /// on every track bound to the selected sprite (capturing its current pose).
     pub(crate) timeline_insert_key: bool,

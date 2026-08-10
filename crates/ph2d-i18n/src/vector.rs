@@ -81,6 +81,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.states.move_all" => "Move All States",
         "panel.vector.states.curve" => "Curve",
         "panel.vector.states.curve.mode" => "Direction",
+        // ⭐ A TABELA SINAL → PAPEL (item 4 do estudo dos contêineres).
+        "panel.vector.states.signals" => "On Signal",
+        "panel.vector.states.signals.add" => "+ Signal",
+        "panel.vector.states.signals.hint" => "signal name",
+        "panel.vector.states.signals.remove" => "x",
         "panel.vector.section.widget" => "Widget Skin",
         "panel.vector.widget.wear" => "Wear a Widget",
         "panel.vector.widget.remove" => "Back to Drawing",

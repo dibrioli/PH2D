@@ -83,7 +83,43 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        self.ui_preview
+        let clicked = self
+            .ui_preview
             .point(&mut gfx.ui_machines, &gfx.ui_states, &hit, pressed);
+        // ⭐ **UM CLIQUE NA PREVIEW GRITA O NOME DO QUE FOI CLICADO** — a metade de PRODUTOR da
+        // tabela sinal → ação (item 4 do estudo dos contêineres).
+        //
+        // ⚠️ **Nenhum campo autorado novo, e isso é o desenho:** o nome do sinal é o `Name` da
+        // entidade — o mesmo que a Hierarquia mostra e o mesmo que um botão do painel autorado já
+        // publica (`AuthoredIntent::Fired`). Um segundo lugar para digitar o nome de uma coisa é
+        // um segundo lugar que discorda do primeiro, e é literalmente a razão pela qual o
+        // `VecWidget` não guarda `key`.
+        //
+        // ⚠️ **Quem dispara é um HOSPEDEIRO, e é a cerca que impede o ruído:** só uma forma com
+        // poses autoradas está na cadeia, então um desenho comum clicado na preview não grita
+        // nada. *Interativo* já era a condição de existir aqui.
+        //
+        // ⚠️ **E ele publica na MESMA saída da timeline e da física** (R0/ADR-0143): quem escuta
+        // casa num NOME e nunca pergunta a origem, então uma colisão e um botão com o mesmo nome
+        // movem a mesma cena. É o desacoplamento do ADR-0075, e é o que torna a ligação reusável.
+        if let Some(host) = clicked
+            && let Some(name) = host_name(gfx, &self.vec_entities, host)
+        {
+            self.signals
+                .publish(ph2d_runtime::Signal::from_control(&name));
+        }
     }
+}
+
+/// O `Name` da entidade de `host` — o nome com que ele grita.
+fn host_name(
+    gfx: &crate::app_state::AppGfx,
+    map: &crate::vec_entities::VecEntityMap,
+    host: VecPathId,
+) -> Option<String> {
+    let bits = *map.get(&host)?;
+    gfx.sim
+        .world()
+        .get::<ph2d_ecs::Name>(ph2d_ecs::Entity::from_bits(bits))
+        .map(|n| n.0.clone())
 }

@@ -249,6 +249,14 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     // Publish the rect so wheel/click dispatch can route to this panel.
     ctx.host.store_mut().set_panel_rect(ids::VECTOR_PANEL, rect);
 
+    // ⭐ **Semeia e espelha os campos de NOME da tabela sinal → papel** (item 4 do estudo dos
+    // contêineres). Aqui, e não no corpo: o `BodyCtx` tem a loja em `&` de propósito — o passe de
+    // pintura deste painel não escreve estado de widget —, e um campo de texto precisa de um
+    // buffer que sobreviva entre quadros.
+    if let Some(st) = crate::state::ui_states_state() {
+        crate::paint_sections::mirror_signal_fields(ctx.host.store_mut(), &st.bindings);
+    }
+
     // Dark-glass surface + corner accents — identical chrome to the Inspector /
     // Padding panels.
     paint_panel_surface(rect, ctx.scene, theme);

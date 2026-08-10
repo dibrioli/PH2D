@@ -330,7 +330,13 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // FIM. ⚠️ Nascem em `true`, onde a lei devolve o alvo VERBATIM e o
         // sensor nem casta — o degrau e' so' o layout, e nenhum player ja' salvo
         // muda de comportamento.
-        (82, 13, 14),
+        // PROJECT 82→83: `HostStates` ganhou `on_signal` — a tabela SINAL → PAPEL
+        // (`ph2d_ui_state::SignalBinding`), o item 4 do estudo dos conteineres. Um
+        // campo apendado ao mesmo struct que ja' recebeu a `spring` no v62, e pelo
+        // mesmo raciocinio posicional. ⚠️ E o que ele NAO e': uma tabela global
+        // `nome -> acoes`. Dentro do `HostStates` a forma apagada leva as ligacoes
+        // dela pelo `retain_hosts` que ja' corre por frame — sem uma linha a mais.
+        (83, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

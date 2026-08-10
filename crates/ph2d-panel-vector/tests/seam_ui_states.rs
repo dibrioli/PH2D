@@ -68,6 +68,8 @@ fn with_all(recorded: [bool; 4], preview: Option<bool>, move_all: Option<bool>) 
         // pintada (ela ignora o modo), e a fixture varreria o card mais POBRE. A licao do
         // "card superset" — o sweep tem de conter as duas fileiras.
         easing: ph2d_anim::Easing::new(ph2d_anim::EasingFamily::Cubic, ph2d_anim::EasingMode::Out),
+        // A tabela sinal -> papel: vazia por omissao nesta fixture (ela tem gate proprio).
+        bindings: Vec::new(),
     }
 }
 

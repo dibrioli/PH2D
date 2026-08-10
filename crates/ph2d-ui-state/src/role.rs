@@ -17,10 +17,16 @@ use serde::{Deserialize, Serialize};
 ///
 /// ⚠️ **A ordem dos variants é a ordem em que a UI os oferece**, e o [`Default`](StateRole::Default)
 /// é o primeiro porque é o único obrigatório: é para ele que tudo volta.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 pub enum StateRole {
     /// A pose em repouso. **É a única obrigatória** — sem ela não há para onde voltar, e um
     /// hover que não volta é um botão que fica preso.
+    ///
+    /// ⚠️ **E é o `Default` do tipo**, o que uma ligação recém-criada herda: uma linha nova aponta
+    /// para o repouso, que é o único papel que todo hospedeiro tem.
+    #[default]
     Default,
     /// O rato está por cima.
     Hover,

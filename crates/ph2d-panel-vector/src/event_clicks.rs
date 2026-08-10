@@ -345,4 +345,14 @@ fn is_prefab_click(id: ph2d_a11y::NodeId) -> bool {
     // **A MOLA** (W7m): ela troca o motor da transicao, e o motor mora na tabela do DOCUMENTO —
     // entao o checkbox atravessa o barramento como os verbos ao lado.
     || id == ids::VECTOR_STATE_SPRING
+    // ⭐ **A TABELA SINAL → PAPEL** (item 4 do estudo dos conteineres): a ligacao mora no
+    // DOCUMENTO (`HostStates.on_signal`), entao os tres gestos — escolher o papel, apagar a
+    // linha, acrescentar uma — atravessam o barramento como os verbos ao lado. O NOME nao passa
+    // por aqui: ele e' um COMMIT de texto, e vai por `SelectOption` (o unico variante do
+    // `PanelEvent` que carrega uma string).
+    || id == ids::VECTOR_STATE_SIGNAL_ADD
+    || (0..ids::MAX_SIGNAL_BINDINGS).any(|i| {
+        ids::vector_state_signal_remove_id(i) == id
+            || (0..ids::MAX_STATE_ROLES).any(|r| ids::vector_state_signal_role_id(i, r) == id)
+    })
 }

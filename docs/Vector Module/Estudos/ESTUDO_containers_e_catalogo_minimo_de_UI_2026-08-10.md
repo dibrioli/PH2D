@@ -295,7 +295,7 @@ uma lista de saves ou um log são inexprimíveis.
 | ~~1~~ | **Hug + Min/Max** | o auto layout deixa de ser meio-feito | o motor já respondia | ✅ **CONSTRUÍDA** (2026-08-10) |
 | ~~2~~ | **Absolute position** | badge/overlay dentro de auto layout | componente marcador ⇒ zero bump | ✅ **CONSTRUÍDA** (2026-08-10) |
 | ~~3~~ | **Scroll na moldura** | lista longa deixa de ser inexprimível | `clip` já existia; o motor já transbordava | ✅ **CONSTRUÍDA** (2026-08-10) |
-| **4** | a tabela **sinal → ação** | o botão autorado *faz* alguma coisa | conteúdo autorado; o R0 já mede que o canal custa ~0 | |
+| ~~4~~ | a tabela **sinal → ação** | o botão autorado *faz* alguma coisa | conteúdo autorado; o R0 já mede que o canal custa ~0 | ✅ **CONSTRUÍDA** (2026-08-10) |
 | **5** | **Grid** | colunas alinhadas + refluxo | **+11 ms** de build (re-medido) + UI + fatia | |
 
 ### ✅ O que a wave 1+2 entregou (2026-08-10)
@@ -344,6 +344,60 @@ Gap Closure, com a mesma frase: *a roda crua é load-bearing*.
 ⚠️ **A previsão da §5.3 sobreviveu ao contacto:** *"o `clip` já existe — falta o deslocamento e a
 roda"* estava certa, e o que ela não previa é que **o motor também já estivesse pronto**. O trabalho
 foi todo de costura.
+
+---
+
+### ✅ O que a wave 4 entregou (2026-08-10)
+
+**Um sinal move a cena.** A saída do R0 tinha três produtores e **um** consumidor — um toast —,
+então um nome aparecia e nada acontecia. A ligação que faltava é `HostStates.on_signal`:
+*quando `name` chegar, este hospedeiro vai para `role`*.
+
+| onde | o quê |
+|---|---|
+| modelo | `ph2d_ui_state::SignalBinding` + `StateSets::targets(name)` — a busca é por NOME e ignora quem gritou (ADR-0143) |
+| documento | `HostStates.on_signal` (**`PROJECT_SCHEMA` 70→71**, provisório) |
+| UI | a lista *On Signal* no fim da seção States: campo de texto + os quatro papéis + lixeira + `+ Signal` |
+| produtor | na preview, um clique completo sobre um hospedeiro publica o `Name` dele |
+| consumidor | o frame lê a saída **sempre** e **age só na preview** |
+| smoke | **`PH2D_BUILD_SMOKE=68`** (um botão, um menu, e um CONTROLE que não escuta) |
+
+⚠️ **Três decisões foram DERIVADAS, não escolhidas, e valem mais que a feature:**
+
+1. **A tabela mora dentro do `HostStates`.** O `retain_hosts` já corre por frame ⇒ uma forma
+   apagada leva as ligações dela **sem uma linha a mais**. Uma tabela global precisaria da
+   própria varredura de hospedeiros mortos.
+2. **A única ação é *ir para um papel*, e o limite é o que a preview consegue DESFAZER** — ela
+   captura a pose de todo id mencionado em qualquer estado autorado. Uma ação que mudasse
+   qualquer outra coisa não seria restaurada, e o documento mudaria por o artista ter olhado.
+   ⇒ *uma ação nova traz consigo a metade que a desfaz, ou não entra.*
+3. **O cursor anda sempre; só a AÇÃO é gateada na preview.** Fora dela não há restauração e o
+   undo regista. ⚠️ E isto **não** contradiz o botão *Show*, que escreve o mundo: a diferença é
+   *quem pediu* — uma pose que o artista pede com um clique custa um passo de undo e ele sabe
+   porquê; uma pose que **chega sozinha** não pode cobrar nada.
+
+⚠️ **E a metade de produtor não custou campo nenhum:** o nome do sinal é o **`Name` da entidade**
+— o mesmo que a Hierarquia mostra e que o botão do painel autorado já publica. Foi a mesma razão
+que fez o `VecWidget` não guardar `key`.
+
+⚠️ **Nenhum variante novo no `PanelEvent`** (contrato CONGELADO): o nome digitado viaja no
+`SelectOption`, que já é o canal string-valued deste app — o Painter carrega nele
+`"layer:channel:index:x:y"`. O doc dele dizia *"RadioGroup option selected"*, falso há muito, e
+**é o comentário que mandaria a próxima wave gastar um ADR num variante que este já dá**;
+corrigido, com a contagem intacta e o gate a prová-lo.
+
+⚠️ **DUAS mutações sobreviveram na 1ª rodada e as duas eram FIXTURE minha:** soltar no **vazio**
+deixa `chain.first()` em `None` dos dois lados (a guarda do alvo fica inobservável — o caso que a
+exercita é soltar sobre **outro** alvo), e sem o rato **passar por cima antes do aperto** o `hot`
+está vazio no `Down`, então a guarda do alvo devolve `None` sozinha e a do *soltar* fica coberta
+por ela. São defesas em camada, e uma fixture sem o hover mede apenas a primeira.
+
+**Aberto, com o preço ao lado:** o papel é um catálogo de **quatro** (`Default`/`Hover`/`Pressed`/
+`Disabled`), então um menu *aberto* autora-se no slot `Pressed` — o nome fica torto. ⚠️ E a cerca
+que o `role.rs` escreve (*"papéis existem para não precisar de tabela de gatilhos"*) **teve a
+premissa movida por esta wave**: ela continua de pé para o RATO, cujo papel é derivado, e deixou
+de valer para os SINAIS, que agora têm tabela. Estados de nome livre são decisão de produto, e o
+preço é `DOC`/`PROJECT_SCHEMA` mais um seletor que hoje é uma segmentada de quatro.
 
 ---
 

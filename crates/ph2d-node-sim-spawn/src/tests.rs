@@ -441,7 +441,10 @@ fn a_beat_gives_birth_inside_a_zone() {
         "rate 0 and no pulse: nothing is ever born — the control: {control:?}"
     );
     let last = *wired.last().unwrap();
-    assert!(last >= 25, "a quarter-second beat over 1.5 s, 5 each: {last}");
+    assert!(
+        last >= 25,
+        "a quarter-second beat over 1.5 s, 5 each: {last}"
+    );
     assert!(
         wired.windows(2).all(|w| w[1] >= w[0]),
         "a population with no kill never shrinks: {wired:?}"

@@ -441,8 +441,7 @@ impl NodeOp for SimSpawn {
             .map(|k| k % span)
             .collect();
         let mut rows: Vec<usize> = ids.iter().map(|id| slot(*id, n, scatter, seed)).collect();
-        let (pulse_ids, pulse_rows) =
-            pulse_born(ctx.input(1), n, burst, ctx.playhead(), ctx.dt());
+        let (pulse_ids, pulse_rows) = pulse_born(ctx.input(1), n, burst, ctx.playhead(), ctx.dt());
         ids.extend(pulse_ids);
         rows.extend(pulse_rows);
         let out = newborns(ctx.input(0), &ids, &rows);

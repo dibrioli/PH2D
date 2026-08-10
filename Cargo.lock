@@ -6374,6 +6374,7 @@ name = "ph2d-node-pulse-counter"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
+ "ph2d-node-registry-init",
  "ph2d-nodegraph",
 ]
 

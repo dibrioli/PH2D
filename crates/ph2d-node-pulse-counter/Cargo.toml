@@ -12,3 +12,9 @@ authors.workspace = true
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
+
+[dev-dependencies]
+# O gate do DIVISOR DE RELÓGIO cozinha o grafo REAL (`beat → counter → carry → counter`),
+# porque a porta de saída 1 é do MOTOR e um espelho da lei não a exercitaria. Só o
+# `[dev-]`: o `src/` desta folha continua sem alcançar o registry ⇒ machete-safe.
+ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }

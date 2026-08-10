@@ -85,10 +85,20 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             ty: PULSE,
         },
     ],
-    outputs: &[PortSpec {
-        name: "out",
-        ty: VALUE,
-    }],
+    outputs: &[
+        PortSpec {
+            name: "out",
+            ty: VALUE,
+        },
+        // **O CARRY** (folha 12 §P1) — APENDADO, e é a saída que faz contadores
+        // COMPOREM: `beat → counter(4) → carry → counter(4)` é um divisor de
+        // relógio, e sem ela um contador é um beco sem saída. Um pulso, então o
+        // domínio é o mesmo do `pulse`, não o do valor.
+        PortSpec {
+            name: "carry",
+            ty: PULSE,
+        },
+    ],
     // Pure: the tick enters the fingerprint through the consumed `pre` edge.
     effect: Effect::Pure,
     clock: Clock::Frame,
@@ -108,6 +118,15 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         ParamSpec {
             name: "reset_to",
             default: 0.0,
+        },
+        // Quanto uma batida avança a contagem (o `Increment` do TD Count CHOP).
+        // APENDADO, default **1** ⇒ o mundo de hoje byte a byte. ⚠️ **Inteiro, e
+        // pode ser NEGATIVO** — uma contagem de 2,5 não é uma contagem (o doc do
+        // módulo diz *"a persistent INTEGER value"*), e contar PARA TRÁS é a
+        // capacidade de verdade que este param compra.
+        ParamSpec {
+            name: "step",
+            default: 1.0,
         },
     ],
     lowerings: &[LoweringKind::Cpu],
@@ -134,10 +153,22 @@ impl LimitMode {
     }
 }
 
-/// The monotonic tick after this frame: +1 only on the pulse's rising edge.
-fn advance_tick(pulse: f32, prev_pulse: f32, prev_tick: f32) -> f32 {
-    let rising = pulse > 0.5 && prev_pulse <= 0.5;
-    if rising { prev_tick + 1.0 } else { prev_tick }
+/// Did the pulse RISE this tick? The one place the edge is decided — o carry e o
+/// avanço perguntam à mesma função, senão *"a contagem andou"* teria duas respostas.
+fn rising(pulse: f32, prev_pulse: f32) -> bool {
+    pulse > 0.5 && prev_pulse <= 0.5
+}
+
+/// The monotonic tick after this frame: `+step` only on the pulse's rising edge.
+///
+/// ⚠️ `step` é inteiro e pode ser negativo; com o default `1.0` esta é a expressão
+/// que sempre shipou, **ao bit**.
+fn advance_tick(pulse: f32, prev_pulse: f32, prev_tick: f32, step: f32) -> f32 {
+    if rising(pulse, prev_pulse) {
+        prev_tick + step
+    } else {
+        prev_tick
+    }
 }
 
 /// **A PORTA ÚNICA do reset** — o tique DEPOIS de considerar o `reset` desta linha.
@@ -171,7 +202,14 @@ fn displayed(tick: i64, n: i64, mode: LimitMode) -> i64 {
     let n = n.max(1);
     match mode {
         LimitMode::Wrap => tick.rem_euclid(n),
-        LimitMode::Clamp => tick.min(n - 1),
+        // ⚠️ O piso do `Clamp` é NOVO e **byte-idêntico hoje**: antes do `step` o tique
+        // só sabia crescer a partir de zero (o avanço era `+1` e o `reset_to` já era
+        // clampado em `>= 0`), então `clamp(0, n-1)` e `min(n-1)` concordam em TODO
+        // tique alcançável. Ele existe porque um `step` negativo torna o tique negativo
+        // alcançável, e um `Clamp` sem piso mostraria uma contagem NEGATIVA — a mesma
+        // razão que o comentário do `reset_to` já nomeava. A representação apaga o caso
+        // especial em vez de o gatear.
+        LimitMode::Clamp => tick.clamp(0, n - 1),
         LimitMode::Zigzag => {
             if n == 1 {
                 return 0;
@@ -192,6 +230,57 @@ fn scalar_col(s: &Stream, name: &str, n: usize) -> Vec<f32> {
     v
 }
 
+/// O PERÍODO do ciclo deste modo — quantos tiques crus levam a contagem exibida de volta ao
+/// ponto de partida. `None` quando o modo **não tem ciclo**.
+///
+/// ⚠️ **O `Clamp` não tem, e isso é a verdade e não uma lacuna:** ele PARA. Uma contagem que
+/// para nunca completa uma volta, então nunca há o que carregar — e encadear um Clamp como
+/// divisor é justamente o que não funciona. Dizer `None` aqui é o nó recusando um sinal que
+/// mentiria, em vez de inventar um.
+fn cycle_period(n: i64, mode: LimitMode) -> Option<i64> {
+    let n = n.max(1);
+    match mode {
+        LimitMode::Wrap => Some(n),
+        LimitMode::Clamp => None,
+        // A ida E a volta: o zigzag só volta ao ponto de partida depois das duas pernas.
+        LimitMode::Zigzag => (n > 1).then(|| 2 * (n - 1)),
+    }
+}
+
+/// **A LEI DO CARRY, numa frase:** num tique em que a contagem AVANÇOU, o carry dispara se a
+/// trajetória crua **cruzou uma fronteira de CICLO** — `div_euclid` do tique mudou.
+///
+/// É o carry clássico, e é ele que faz `beat → counter(4) → carry → counter(4)` dividir por
+/// dezasseis. Cai certo em cada modo sem um `if` por modo: **Wrap** dispara a cada `n`
+/// batidas · **Zigzag** a cada volta COMPLETA (ida e volta — a dobra do meio é uma dobra, não
+/// um ciclo) · **Clamp** nunca, porque não tem ciclo.
+///
+/// ⚠️ **A primeira versão desta lei era OUTRA e estava ERRADA:** *"o carry dispara se a
+/// contagem exibida não andou os `step`"*. Ela lê bem, dá a resposta certa no Wrap, e no
+/// **Zigzag dispara em TODA batida da perna descendente** — porque descer é a trajetória
+/// legítima daquele modo, não uma intervenção. O gate do zigzag foi escrito com a expectativa
+/// certa e a lei errada, e foi ele que a derrubou. *Uma lei que "cai certo em cada modo" tem
+/// de ser conferida CONTRA cada modo, não deduzida de um.*
+///
+/// ⚠️ **A cláusula do RESET é a única que carrega peso, e a outra foi REMOVIDA por medição.**
+/// A primeira versão também exigia *"a contagem avançou"*, e a mutação que a apaga
+/// **sobreviveu à suíte inteira** — corretamente: sob a lei do ciclo um tique quieto tem
+/// `tick == prev_tick`, logo o `div_euclid` não muda e o carry já sai mudo pela aritmética. Um
+/// guarda que a álgebra torna inalcançável é uma **segunda resposta** a *"a contagem andou?"*,
+/// não uma defesa — e o doc-comment que o chamava de *"não decoração"* estava a afirmar o
+/// contrário do que a mutação media. O **reset** é outra história: ele salta a contagem para
+/// um lugar arbitrário, e um salto ATRAVESSA fronteiras de ciclo — sem esta cláusula um reset
+/// que cruze uma delas acende o carry por acidente.
+fn carry_fired(reset: bool, prev_tick: i64, tick: i64, n: i64, mode: LimitMode) -> bool {
+    !reset && cycle_period(n, mode).is_some_and(|p| tick.div_euclid(p) != prev_tick.div_euclid(p))
+}
+
+/// A saída do nó: o valor exibido e o carry, os dois alinhados linha a linha.
+struct Counted {
+    value: Stream,
+    carry: Stream,
+}
+
 fn step(
     pulse: &Stream,
     state: &Stream,
@@ -199,7 +288,8 @@ fn step(
     count_max: i64,
     mode: LimitMode,
     reset_to: f32,
-) -> Stream {
+    step_by: f32,
+) -> Counted {
     let n = pulse.count();
     let pulses = scalar_col(pulse, PULSE_COL, n);
     let prev_tick = scalar_col(state, TICK_COL, n);
@@ -210,17 +300,30 @@ fn step(
 
     let mut tick = Vec::with_capacity(n);
     let mut value = Vec::with_capacity(n);
+    let mut carry = Vec::with_capacity(n);
     for i in 0..n {
-        let counted = advance_tick(pulses[i], prev_pulse[i], prev_tick[i]);
+        let counted = advance_tick(pulses[i], prev_pulse[i], prev_tick[i], step_by);
+        let did_reset = resets[i] > 0.5;
         let t = tick_after_reset(resets[i], reset_to, counted);
+        let shown = displayed(t as i64, count_max, mode);
         tick.push(t);
-        value.push(displayed(t as i64, count_max, mode) as f32);
+        value.push(shown as f32);
+        carry.push(f32::from(u8::from(carry_fired(
+            did_reset,
+            prev_tick[i] as i64,
+            t as i64,
+            count_max,
+            mode,
+        ))));
     }
-    Stream::new(n)
-        .with(VALUE_COL, Column::Scalar(value))
-        .with(TICK_COL, Column::Scalar(tick))
-        // This tick's pulse becomes next tick's `prev` (the edge memory).
-        .with(PREV_COL, Column::Scalar(pulses))
+    Counted {
+        value: Stream::new(n)
+            .with(VALUE_COL, Column::Scalar(value))
+            .with(TICK_COL, Column::Scalar(tick))
+            // This tick's pulse becomes next tick's `prev` (the edge memory).
+            .with(PREV_COL, Column::Scalar(pulses)),
+        carry: Stream::new(n).with(PULSE_COL, Column::Scalar(carry)),
+    }
 }
 
 struct PulseCounter;
@@ -236,6 +339,9 @@ impl NodeOp for PulseCounter {
         // Uma contagem é uma contagem: o valor de reset é inteiro e não-negativo
         // (um `Clamp` sobre tique negativo mostraria uma contagem negativa).
         let reset_to = ctx.param("reset_to").round().max(0.0);
+        // Inteiro, mas SEM piso: contar para trás é a capacidade, e o `Clamp` ganhou o
+        // piso próprio para que um tique negativo tenha resposta em vez de caso especial.
+        let step_by = ctx.param("step").round();
         let out = step(
             ctx.input(0),
             ctx.input(1),
@@ -243,8 +349,14 @@ impl NodeOp for PulseCounter {
             count_max,
             mode,
             reset_to,
+            step_by,
         );
-        ctx.emit(out);
+        // DUAS saídas, na ordem do manifesto (`EvalCtx::emit`: *"call once per output
+        // port, in order"*). ⚠️ Este é o PRIMEIRO nó do repo com duas — o motor sempre
+        // as suportou (`Cook::cur_output` indexa a porta de origem) e o painel sempre
+        // desenhou `outputs.len()` sockets; o que não existia era um nó a exercitá-las.
+        ctx.emit(out.value);
+        ctx.emit(out.carry);
     }
 }
 
@@ -294,196 +406,18 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Slider,
     },
+    // A faixa confortável do arrasto vai dos dois sentidos: o lado negativo É metade da
+    // capacidade que este param compra, e um slider que só sobe a esconderia.
+    ParamUiHint {
+        param: "step",
+        label: "Increment",
+        min: -8.0,
+        max: 8.0,
+        step: 1.0,
+        widget: ParamWidget::Slider,
+    },
 ];
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_nodegraph::cook::OpResolver;
-
-    fn fire(v: f32) -> Stream {
-        Stream::new(1).with(PULSE_COL, Column::Scalar(vec![v]))
-    }
-    /// Um tique SEM reset — o que todo gate anterior a esta wave exercita. A porta
-    /// desconectada é um `Stream` vazio, exatamente o que o `EvalCtx` entrega.
-    fn tick(pulse: &Stream, state: &Stream, count_max: i64, mode: LimitMode) -> Stream {
-        step(pulse, state, &Stream::new(0), count_max, mode, 0.0)
-    }
-
-    fn value(s: &Stream) -> f32 {
-        match s.get(VALUE_COL).unwrap() {
-            Column::Scalar(v) => v[0],
-            _ => panic!(),
-        }
-    }
-
-    /// FALSIFICATION of edge-safety: a pulse HELD high advances the count ONCE
-    /// (on the rising edge), not once per tick. Counting `pulse > 0.5` every tick
-    /// would reach 5 after a 5-tick hold.
-    #[test]
-    fn a_held_pulse_counts_once_not_once_per_tick() {
-        let mut state = Stream::new(1);
-        for _ in 0..5 {
-            state = tick(&fire(1.0), &state, 16, LimitMode::Wrap);
-        }
-        assert_eq!(value(&state), 1.0, "one rising edge = one count, not five");
-        state = tick(&fire(0.0), &state, 16, LimitMode::Wrap);
-        state = tick(&fire(1.0), &state, 16, LimitMode::Wrap);
-        assert_eq!(value(&state), 2.0, "the next rising edge counts once more");
-    }
-
-    /// Um tique COM reset, para os gates da porta nova.
-    fn tick_reset(
-        pulse: &Stream,
-        state: &Stream,
-        reset: f32,
-        count_max: i64,
-        reset_to: f32,
-    ) -> Stream {
-        step(
-            pulse,
-            state,
-            &fire(reset),
-            count_max,
-            LimitMode::Wrap,
-            reset_to,
-        )
-    }
-
-    /// **A porta desconectada é o mundo ANTERIOR, byte a byte.** O neutro não é uma
-    /// promessa em prosa: a sequência com a porta vazia tem de bater, elemento a
-    /// elemento, com a mesma corrida em que o reset nunca sobe.
-    #[test]
-    fn an_unconnected_reset_is_the_world_before_it() {
-        let run = |with_port: bool| {
-            let mut state = Stream::new(1);
-            let mut seq = Vec::new();
-            for k in 0..12 {
-                let p = fire(if k % 2 == 0 { 1.0 } else { 0.0 });
-                state = if with_port {
-                    tick_reset(&p, &state, 0.0, 4, 0.0)
-                } else {
-                    tick(&p, &state, 4, LimitMode::Wrap)
-                };
-                seq.push(value(&state));
-            }
-            seq
-        };
-        assert_eq!(
-            run(true),
-            run(false),
-            "porta desconectada e reset em zero descrevem a MESMA contagem"
-        );
-    }
-
-    /// **O reset traz a contagem para casa** — a capacidade inteira da wave: uma linha
-    /// que acumulou pode voltar ao começo sem que o documento seja reconstruído.
-    #[test]
-    fn the_reset_returns_the_count_home() {
-        let mut state = Stream::new(1);
-        for _ in 0..3 {
-            state = tick_reset(&fire(1.0), &state, 0.0, 16, 0.0);
-            state = tick_reset(&fire(0.0), &state, 0.0, 16, 0.0);
-        }
-        assert_eq!(value(&state), 3.0, "três bordas, três contagens");
-        state = tick_reset(&fire(0.0), &state, 1.0, 16, 0.0);
-        assert_eq!(value(&state), 0.0, "o reset devolve a contagem ao começo");
-        // …e ela volta a contar dali, em vez de ficar presa em zero.
-        state = tick_reset(&fire(1.0), &state, 0.0, 16, 0.0);
-        assert_eq!(
-            value(&state),
-            1.0,
-            "e a contagem segue viva depois do reset"
-        );
-    }
-
-    /// **O reset GANHA de uma contagem simultânea** — a decisão do TD, pinada. Se a
-    /// contagem ganhasse, uma linha que recebe pulso e reset no mesmo tique nunca
-    /// poderia ser zerada por um sinal que chega junto com o metrônomo.
-    #[test]
-    fn the_reset_wins_a_simultaneous_count() {
-        let mut state = Stream::new(1);
-        for _ in 0..4 {
-            state = tick_reset(&fire(1.0), &state, 0.0, 16, 0.0);
-            state = tick_reset(&fire(0.0), &state, 0.0, 16, 0.0);
-        }
-        assert_eq!(value(&state), 4.0);
-        // Pulso E reset no MESMO tique (a borda subiria de 4 para 5).
-        state = tick_reset(&fire(1.0), &state, 1.0, 16, 0.0);
-        assert_eq!(value(&state), 0.0, "o reset ganha da borda simultânea");
-    }
-
-    /// **`reset_to` é para ONDE o reset leva** (TD Count CHOP `Reset Value`), e ele
-    /// atravessa o dobramento do modo como qualquer outro tique.
-    #[test]
-    fn the_reset_lands_on_the_authored_value() {
-        let mut state = Stream::new(1);
-        state = tick_reset(&fire(1.0), &state, 0.0, 6, 3.0);
-        assert_eq!(value(&state), 1.0);
-        state = tick_reset(&fire(0.0), &state, 1.0, 6, 3.0);
-        assert_eq!(value(&state), 3.0, "o reset pousa no valor autorado");
-    }
-
-    /// The reducer emits a VALUE and NEVER a transform channel — the whole point
-    /// of the pure split. The output stream carries `v` (+ the state columns) and
-    /// no `P`/`rot`/`size`.
-    #[test]
-    fn it_emits_a_value_column_and_no_transform_channel() {
-        let s = tick(&fire(1.0), &Stream::new(1), 6, LimitMode::Wrap);
-        assert!(s.get(VALUE_COL).is_some(), "emits the value column");
-        assert!(s.get("P").is_none(), "no position");
-        assert!(
-            s.get("rot").is_none() && s.get("size").is_none(),
-            "no channel"
-        );
-    }
-
-    /// Wrap / Clamp / Zigzag fold the same monotonic tick three ways (TD Count
-    /// CHOP limit modes), as a VALUE sequence.
-    #[test]
-    fn the_three_limit_modes_fold_the_count() {
-        let run = |count_max, mode| {
-            let mut state = Stream::new(1);
-            let mut seq = Vec::new();
-            for _ in 0..8 {
-                state = tick(&fire(1.0), &state, count_max, mode);
-                seq.push(value(&state));
-                state = tick(&fire(0.0), &state, count_max, mode);
-            }
-            seq
-        };
-        assert_eq!(
-            run(4, LimitMode::Wrap),
-            vec![1.0, 2.0, 3.0, 0.0, 1.0, 2.0, 3.0, 0.0],
-            "wrap returns home"
-        );
-        assert_eq!(
-            run(3, LimitMode::Clamp),
-            vec![1.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0],
-            "clamp plateaus at N-1"
-        );
-        assert_eq!(
-            run(4, LimitMode::Zigzag),
-            vec![1.0, 2.0, 3.0, 2.0, 1.0, 0.0, 1.0, 2.0],
-            "zigzag ping-pongs"
-        );
-    }
-
-    /// `count_max = 1` never divides by zero and stays home (value 0).
-    #[test]
-    fn count_max_one_stays_home_without_dividing_by_zero() {
-        let mut state = Stream::new(1);
-        for _ in 0..5 {
-            state = tick(&fire(1.0), &state, 1, LimitMode::Zigzag);
-            state = tick(&fire(0.0), &state, 1, LimitMode::Zigzag);
-        }
-        assert_eq!(value(&state), 0.0);
-    }
-
-    #[test]
-    fn registers_and_resolves() {
-        let mut reg = NodeRegistry::new();
-        register(&mut reg).unwrap();
-        assert!(reg.resolve(MANIFEST.id).is_some());
-    }
-}
+#[path = "tests.rs"]
+mod tests;

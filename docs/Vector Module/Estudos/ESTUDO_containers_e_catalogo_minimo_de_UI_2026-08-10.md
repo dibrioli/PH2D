@@ -290,13 +290,34 @@ uma lista de saves ou um log são inexprimíveis.
 
 ## §7 — A ordem recomendada, com o preço
 
-| ordem | wave | ganho | custo |
-|---|---|---|---|
-| **1** | **Hug + Min/Max** (o par `Auto \| Fixed` por eixo) | o auto layout deixa de ser meio-feito | o motor **já responde** (medido); é autoria + a fatia |
-| **2** | **Absolute position** | badge/overlay dentro de auto layout | componente marcador ⇒ **zero bump de schema** |
-| **3** | **Scroll na moldura** | lista longa deixa de ser inexprimível | `clip` já existe; falta deslocamento + roda |
-| **4** | a tabela **sinal → ação** | o botão autorado *faz* alguma coisa | conteúdo autorado; o R0 já mede que o canal custa ~0 |
-| **5** | **Grid** | colunas alinhadas + refluxo | **+11 ms** de build (re-medido) + UI + fatia |
+| ordem | wave | ganho | custo | estado |
+|---|---|---|---|---|
+| ~~1~~ | **Hug + Min/Max** | o auto layout deixa de ser meio-feito | o motor já respondia | ✅ **CONSTRUÍDA** (2026-08-10) |
+| ~~2~~ | **Absolute position** | badge/overlay dentro de auto layout | componente marcador ⇒ zero bump | ✅ **CONSTRUÍDA** (2026-08-10) |
+| **3** | **Scroll na moldura** | lista longa deixa de ser inexprimível | `clip` já existe; falta deslocamento + roda | |
+| **4** | a tabela **sinal → ação** | o botão autorado *faz* alguma coisa | conteúdo autorado; o R0 já mede que o canal custa ~0 | |
+| **5** | **Grid** | colunas alinhadas + refluxo | **+11 ms** de build (re-medido) + UI + fatia | |
+
+### ✅ O que a wave 1+2 entregou (2026-08-10)
+
+**O vocabulário de sizing do Figma está completo:** `Fixed` · `Hug` · `Fill` (o `grow`, que já
+existia) · `Min` · `Max` · `Absolute position`.
+
+| onde | o quê |
+|---|---|
+| motor | `Len::{Fixed,Hug}` · `min`/`max` por eixo · `LayoutError::HugWithoutFlow` |
+| documento | `VecLayoutSize` (do NÓ) · `VecLayoutAbsolute` (marcador) — **zero bump de `PROJECT_SCHEMA`** |
+| fatia | `size_of` (porta única, irmã do `frame_style`) · o fora-do-fluxo sai da FATIA · a RAIZ entra no laço de colocação |
+| UI | Width/Height `Fixed \| Hug` · os quatro limites · o toggle Absolute, que **esconde Grow/Shrink** |
+| smoke | **`PH2D_BUILD_SMOKE=66`** |
+
+⚠️ **A previsão da §2.3 foi confirmada pela construção:** o abraço **não precisou de measure
+function nenhuma**, e o `clip` veio de graça (o `frame_clip` já lê a `LiveGeometry`, então uma
+moldura que encolhe leva o recorte junto).
+
+⚠️ **E ela dissolveu uma pergunta do §5.3:** *scroll* continua em aberto, mas `Hug` + `Max` já
+cobrem metade do caso que o motivava — uma lista que cresce com o conteúdo **até** um teto. O que
+falta é o que passa DO teto, e é aí que a rolagem começa.
 
 ⚠️ **A ordem é por RAZÃO ganho/custo, não por tamanho** — e o (1) é o único item onde os dois lados
 já estão medidos.

@@ -1435,7 +1435,7 @@ caches/uploads.
   sincronia = mudança no caminho de display compartilhado, e essa era a única edição local no
   `painter_bridge.rs`. O ganho in-place nunca foi confirmado visualmente e na prática *piorou* — revertido
   por inteiro. **Lição atualizada abaixo (nº 5).** O eixo Per-Layer Color vai pra **GPU** (não mais CPU) —
-  ver [`HANDOFF_per_layer_color_perf_artifacts`](../HANDOFF_per_layer_color_perf_artifacts.md) §4.2.
+  ver [`HANDOFF_per_layer_color_perf_artifacts`](handoffs/HANDOFF_per_layer_color_perf_artifacts.md) §4.2.
 - **Seleção (`a914a772`) — ✅ mantida.** **cache por-shape** da cobertura (chaveado por valor da geometria, auto-validante;
   `Raster` por `Arc::ptr_eq`) → um arraste re-rasteriza **só a shape que moveu** — **medido 34,3 → 5,1 ms/move
   (6,8×)** com 8 shapes em 2048². E **removido o `invalidate_composite()`** da derivação da máscara (o

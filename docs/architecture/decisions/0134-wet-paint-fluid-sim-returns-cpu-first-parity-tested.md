@@ -8,7 +8,7 @@
   (SPEC.md = fonte única · engine DOM-free · testes de aceitação §18) ·
   [ADR-0040-amendment-2](0040-tool-as-isolated-feature-crate.md) (`Tool::on_tick`, criado exatamente para "aquarela live") ·
   o choke point `stamp_dabs_inner` (a lei do impasto/sculpt: UMA lista de dabs) ·
-  handoff [`HANDOFF_line_Painter_wet_paint_2026-07-20.md`](../../HANDOFF_line_Painter_wet_paint_2026-07-20.md)
+  handoff [`HANDOFF_line_Painter_wet_paint_2026-07-20.md`](../../Painter/handoffs/HANDOFF_line_Painter_wet_paint_2026-07-20.md)
 - **Tags:** painter · wet-paint · fluid-sim · determinism · cpu-first · parity · drop-crate
 
 ---

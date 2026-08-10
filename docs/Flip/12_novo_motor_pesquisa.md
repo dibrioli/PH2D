@@ -2,7 +2,7 @@
 
 **Data:** 2026-07-28 · **Linha:** `line/FLIP` · **HEAD:** `9b2e72ee4` · **Status:** PESQUISA —
 **nenhuma linha de motor escrita**, por ordem do handoff
-([`HANDOFF_line_FLIP_NOVO_MOTOR_DE_TRACO_2026-07-28.md`](../HANDOFF_line_FLIP_NOVO_MOTOR_DE_TRACO_2026-07-28.md) §11.4).
+([`HANDOFF_line_FLIP_NOVO_MOTOR_DE_TRACO_2026-07-28.md`](handoffs/HANDOFF_line_FLIP_NOVO_MOTOR_DE_TRACO_2026-07-28.md) §11.4).
 
 > A ordem do Enio: *"encontrar um modo completamente novo de renderização do stroke e descartar
 > completamente o atual … Ele deve pesquisar o estado da arte, o padrão ouro."*

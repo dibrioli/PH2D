@@ -2,7 +2,7 @@
 
 > Wave de 4 frentes, limitada (uma por pergunta, sem recursão), 2026-07-18.
 > Alimenta o [ADR-0133](../architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md).
-> As 3 perguntas vêm do [`BRIEFING_line_nesting.md`](../BRIEFING_line_nesting.md) §2.
+> As 3 perguntas vêm do [`BRIEFING_line_nesting.md`](handoffs/BRIEFING_line_nesting.md) §2.
 
 ---
 

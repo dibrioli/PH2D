@@ -382,7 +382,7 @@
 > caminhar 0,63 · decimação grossa 0,88 — barra 0,5). Perf intacta (4096² = 1,61 s).
 > Suíte: 24 verdes. **Abertas:** a **lente** pelo vão (honesta; knob = `SQUEEZE`/Trap,
 > tabela medida na const) · a **margem externa** pintada a Trap 0 (decisão de produto) —
-> [`HANDOFF_line_FLIP_CONTINUACAO_2026-07-20.md` §3](../HANDOFF_line_FLIP_CONTINUACAO_2026-07-20.md).
+> [`HANDOFF_line_FLIP_CONTINUACAO_2026-07-20.md` §3](handoffs/HANDOFF_line_FLIP_CONTINUACAO_2026-07-20.md).
 >
 > **5º smoke (2026-07-20, manhã): "quase perfeito. vamos tentar melhorar."** A fronteira cai
 > NA linha e cada lobo sai com a sua cor. As três ressalvas viraram o parágrafo acima.

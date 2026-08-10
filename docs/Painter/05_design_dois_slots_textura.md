@@ -1,6 +1,6 @@
 # 05 — Design: dois slots de textura (Shape + Grain), paridade Procreate
 
-> **Fase 2 do** [`HANDOFF_shape_grain_dual_texture.md`](HANDOFF_shape_grain_dual_texture.md).
+> **Fase 2 do** [`HANDOFF_shape_grain_dual_texture.md`](handoffs/HANDOFF_shape_grain_dual_texture.md).
 > Pré-requisito: [`04_pesquisa_shape_grain_procreate.md`](04_pesquisa_shape_grain_procreate.md).
 > **Entregável:** arquitetura dos 2 slots respeitando as 8 restrições reais do código + back-compat
 > **byte-idêntico** + o **ADR-0100** (decisão). **Não implementa** — o código é a rodada seguinte.
@@ -269,7 +269,7 @@ Texture-LAYER é um **grão de cobertura total** (mapeia ao conceito **Grain**, 
 - ⚠️ **LOC:** `paint_texture.rs` tem ~524 linhas (sob 600). Renomear p/ `paint_grain.rs` + extrair
   `paint_shape.rs` mantém cada arquivo sob o cap. **Vigiar `architecture_panel_loc_cap`** na wave do
   painel (não no fim). Cuidado com apóstrofo em comentário (quebra o parser de função do painel —
-  [HANDOFF §2](HANDOFF_shape_grain_dual_texture.md)).
+  [HANDOFF §2](handoffs/HANDOFF_shape_grain_dual_texture.md)).
 
 ### 5c. Ids novos (padrão Jitter Spacing, costura ponta-a-ponta)
 Novos `PAINTER_SHAPE_*` em

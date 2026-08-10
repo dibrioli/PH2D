@@ -760,7 +760,7 @@ ponto mas o `min` deixava **linhas brancas nos cruzamentos** (union em vez de so
 (pesquisa). O serrilhado sob muitas passadas é a doença "product-over-dabs" (o `255·mⁿ` afia a
 cauda do falloff); a cura precisa somar-como-tinta E ser idempotente no mesmo ponto — o candidato é
 o **Wash/opacity mode** (cap por-traço + aditivo entre traços), provavelmente do Krita. Plano e
-armadilhas completos em **[`../HANDOFF_line_Painter_mask_rewrite_2026-07-25.md`](../HANDOFF_line_Painter_mask_rewrite_2026-07-25.md)**.
+armadilhas completos em **[`../HANDOFF_line_Painter_mask_rewrite_2026-07-25.md`](handoffs/HANDOFF_line_Painter_mask_rewrite_2026-07-25.md)**.
 Os §13.6/§13.7 ficam como HISTÓRICO do que já foi tentado e reprovado — não reconstrua.
 
 ## 13.9 ⚠️ REVERTIDA no mesmo dia — leia a §13.10 ANTES desta seção

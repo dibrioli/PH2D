@@ -22,7 +22,7 @@
 
 | Doc | O que tem |
 |---|---|
-| **[HANDOFF_shape_grain_dual_texture.md](HANDOFF_shape_grain_dual_texture.md)** | A missão (research + plano de 2 slots) |
+| **[HANDOFF_shape_grain_dual_texture.md](handoffs/HANDOFF_shape_grain_dual_texture.md)** | A missão (research + plano de 2 slots) |
 | **[04_pesquisa_shape_grain_procreate.md](04_pesquisa_shape_grain_procreate.md)** | Shape/Grain do Procreate (≥2 fontes/claim) + tabela de mapeamento + **decisão Shape substitui o falloff** |
 | **[05_design_dois_slots_textura.md](05_design_dois_slots_textura.md)** | Arquitetura dos 2 slots (8 restrições reais), back-compat byte-idêntico + **ADR-0100** (esboço) |
 | **[06_plano_dois_slots_textura.md](06_plano_dois_slots_textura.md)** | Waves W0→W5, cada uma com teste e2e; caminho crítico + MVP mínimo |
@@ -36,7 +36,7 @@
 | Doc | O que tem |
 |---|---|
 | **[07_rendering_modes_wet_mix.md](07_rendering_modes_wet_mix.md)** | Design completo: §0 status de verificação · §2 as 6 features (math + mapeamento) · §3 stroke buffer · §4 Wet Mix · §5 Wet/Burnt Edges · §7 BrushSpec · §8 UI · §10 plano faseado · §11 testes |
-| **[HANDOFF_rendering_modes_wet_mix.md](HANDOFF_rendering_modes_wet_mix.md)** | Roteiro operacional: checkpoint + rollout não-destrutivo (golden Direct) · ordem faseada · anchors `file:line` verificados · gotchas · aceite e2e |
+| **[HANDOFF_rendering_modes_wet_mix.md](handoffs/HANDOFF_rendering_modes_wet_mix.md)** | Roteiro operacional: checkpoint + rollout não-destrutivo (golden Direct) · ordem faseada · anchors `file:line` verificados · gotchas · aceite e2e |
 
 ## Linha de trabalho: Aquarela — avaliação vs padrão-ouro + plano (SEM física real)
 

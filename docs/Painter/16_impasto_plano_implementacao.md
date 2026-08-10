@@ -207,7 +207,7 @@ modelo era o caminho "Smooth" do PS, o documentadamente ruim); a correção é u
 (platô + ombro) + **inclinação física** (sem gain mágico) + **matar o knob `Amount`**. O §10 abaixo é o
 plano dessa correção.
 
-> Handoff da troca de dono: [`docs/HANDOFF_line_Painter_impasto_2026-07-12.md`](../HANDOFF_line_Painter_impasto_2026-07-12.md).
+> Handoff da troca de dono: [`docs/Painter/handoffs/HANDOFF_line_Painter_impasto_2026-07-12.md`](handoffs/HANDOFF_line_Painter_impasto_2026-07-12.md).
 
 ---
 

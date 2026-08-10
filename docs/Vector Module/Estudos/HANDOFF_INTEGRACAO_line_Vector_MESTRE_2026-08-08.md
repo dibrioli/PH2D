@@ -286,7 +286,7 @@ abertura dele manda fazer, e é por isso que ele proíbe copiá-los (uma cópia 
 
 | # | handoff | wave |
 |---:|---|---|
-| 1 | [`../../HANDOFF_INTEGRACAO_line_Vector_ui_states_2026-08-05.md`](../../HANDOFF_INTEGRACAO_line_Vector_ui_states_2026-08-05.md) | W7 — os estados de UI |
+| 1 | [`../../HANDOFF_INTEGRACAO_line_Vector_ui_states_2026-08-05.md`](../handoffs/HANDOFF_INTEGRACAO_line_Vector_ui_states_2026-08-05.md) | W7 — os estados de UI |
 | 2 | [`HANDOFF_line_Vector_tokens_2026-08-06.md`](HANDOFF_line_Vector_tokens_2026-08-06.md) | a reforma de tokens: o estado, a medição, as 5 waves |
 | 3 | [`HANDOFF_INTEGRACAO_line_Vector_W4c1_2026-08-06.md`](HANDOFF_INTEGRACAO_line_Vector_W4c1_2026-08-06.md) | a camada numérica |
 | 4 | [`HANDOFF_INTEGRACAO_line_Vector_W4c2_2026-08-06.md`](HANDOFF_INTEGRACAO_line_Vector_W4c2_2026-08-06.md) | a escala viva |

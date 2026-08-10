@@ -180,7 +180,7 @@ Leia `crates/ph2d-node-value-lfo/` e `crates/ph2d-node-pulse-sample-hold/` como 
 - **Velocidade:** inner loop = **só `cargo check -p <crate>`**. Teste/clippy/auditoria **1× no
   fechamento**, nunca por task. `bash scripts/hw-profile.sh` primeiro (esta é uma workstation → Modo L).
 - **Fechamento:** feche o módulo, **escreva o handoff de integração (DIRETRIZ §1.5.9)** — um doc
-  novo (modele pelo `docs/HANDOFF_line_MotionNodes_integracao_2026-07-10.md`, seção "BRIEFING DO
+  novo (modele pelo `docs/Motion Nodes/handoffs/HANDOFF_line_MotionNodes_integracao_2026-07-10.md`, seção "BRIEFING DO
   INTEGRADOR"), e **PARE**. Você **NÃO integra nem pusha** — quem funde é o agente integrador
   dedicado, por ordem EXPLÍCITA do Enio. Anote no handoff: crates/símbolos novos, o ponto de merge
   do codegen (`registry-init` → `ph2d-node-sync`), contratos encostados (deve ser nenhum), e o que

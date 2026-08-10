@@ -4,8 +4,18 @@ Tudo aqui é **superado ou concluído**. Está arquivado (não deletado) para
 preservar histórico/raciocínio, mas **não reflete o estado atual** — não use
 para decidir a próxima ação. Os docs canônicos vivos ficam em `docs/` e na raiz
 (`CLAUDE.md`, `SKILL_Stack_PH2D_Definitiva.md`,
-`docs/IntegracaoMultiAgente/DIRETRIZ.md`, `docs/HANDOFF_node_system.md`,
+`docs/IntegracaoMultiAgente/DIRETRIZ.md`,
 `docs/plans/2026-05-node-waves.md`, ADRs em `docs/architecture/decisions/`).
+
+> ⚠️ **Corrigido em 2026-08-10:** esta lista trazia `docs/HANDOFF_node_system.md` como doc
+> canônico VIVO, e ele está **aqui dentro** desde 2026-06-16 (`handoffs-2026-06-16/`) — o
+> CLAUDE.md §5 também o citava como "Tracker" por um caminho que não existia mais. Um índice
+> que promete um arquivo vivo num path morto é pior que índice nenhum: a LLM nova não acha o
+> arquivo e conclui que o assunto não tem dono.
+
+**Onde moram os handoffs VIVOS (regra de 2026-08-10, DIRETRIZ §1.5.9):** em
+`docs/<Módulo>/handoffs/`, um índice por módulo. Este `archive/` guarda só o que é
+**superado**; o registro de sessão de um módulo vivo fica com o módulo.
 
 ## Conteúdo
 

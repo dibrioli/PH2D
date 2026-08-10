@@ -1,7 +1,7 @@
 # 07 — Rendering Modes + Wet Mix (Glaze / Blending / Wet Edges / Burnt Edges)
 
 > **Pré-requisitos:** [`04_pesquisa_shape_grain_procreate.md`](04_pesquisa_shape_grain_procreate.md) (modelo de dab/textura) + [`01_arquitetura_e_decisoes.md`](01_arquitetura_e_decisoes.md).
-> **Entregável:** arquitetura + algoritmos + plano faseado para os modos de renderização **por-traço** estilo Procreate, com back-compat **byte-idêntico** (modo default = pipeline atual intacto). **Não implementa** — o código é a rodada seguinte ([`HANDOFF_rendering_modes_wet_mix.md`](HANDOFF_rendering_modes_wet_mix.md)).
+> **Entregável:** arquitetura + algoritmos + plano faseado para os modos de renderização **por-traço** estilo Procreate, com back-compat **byte-idêntico** (modo default = pipeline atual intacto). **Não implementa** — o código é a rodada seguinte ([`HANDOFF_rendering_modes_wet_mix.md`](handoffs/HANDOFF_rendering_modes_wet_mix.md)).
 > **Origem:** pesquisa multi-agente (Procreate Handbook + Krita Color Smudge + libmypaint + Curtis 1997) com **verificação adversarial** das afirmações algorítmicas (ver §0).
 
 ---

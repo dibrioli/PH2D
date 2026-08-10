@@ -263,7 +263,7 @@ filme são **20,89** de **136** · o `painter-dispatch` mediu 0,01-1,08 ms · os
 aparecem no log. **Nenhuma é a maior.**
 
 **A frente que o log abriu está fechada** por
-[`HANDOFF_INTEGRACAO_line_Painter_bow_wave_2026-08-06.md`](../HANDOFF_INTEGRACAO_line_Painter_bow_wave_2026-08-06.md):
+[`HANDOFF_INTEGRACAO_line_Painter_bow_wave_2026-08-06.md`](handoffs/HANDOFF_INTEGRACAO_line_Painter_bow_wave_2026-08-06.md):
 a caminhada de altura vai de **136,64 → 96,93 ms/traço**, e o §8 daquele handoff carrega o que segue
 aberto, com número.
 

@@ -30,8 +30,8 @@ Depois das duas: **gate COMPLETO da árvore combinada** e **CLAUDE.md §5**.
 
 Os handoffs das linhas (a munição) são os que o Enio listou:
 
-- `docs/HANDOFF_INTEGRACAO_line_Painter_MESTRE_2026-08-08.md`
-- `Worktrees/line-runtime/docs/Runtime/HANDOFF_INTEGRACAO_line_runtime_R0_2026-08-08.md`
+- `docs/Painter/handoffs/HANDOFF_INTEGRACAO_line_Painter_MESTRE_2026-08-08.md`
+- `Worktrees/line-runtime/docs/Runtime/handoffs/HANDOFF_INTEGRACAO_line_runtime_R0_2026-08-08.md`
 
 ---
 

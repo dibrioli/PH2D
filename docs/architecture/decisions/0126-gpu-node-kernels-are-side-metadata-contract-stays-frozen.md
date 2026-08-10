@@ -13,7 +13,7 @@
   sequenciador single-submit, lowering compute → layout `RenderInstance`, zero readback) +
   `SpriteRenderer::render_with_streams` + shell `PH2D_GPU_COOK=1`. Gate de paridade ε verde
   (full 4,4e-4 · híbrido bit-exato); contrato **8/2/1 intacto**; 500k instâncias = 1,0 ms/frame
-  na RTX (CPU Fase 0: 4,93 ms). Handoff: `docs/HANDOFF_line_gpu_nodes_fase1_2026-07-15.md`.
+  na RTX (CPU Fase 0: 4,93 ms). Handoff: `docs/Motion%20Nodes/handoffs/HANDOFF_line_gpu_nodes_fase1_2026-07-15.md`.
 
 ## Contexto
 

@@ -6,7 +6,7 @@
 > diagnóstico pra pista errada. Cada entrada termina em **lições generalizáveis**, para o próximo
 > agente não repetir o erro.
 >
-> Estado por-wave: [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md).
+> Estado por-wave: [`HANDOFF_line_physics.md`](handoffs/HANDOFF_line_physics.md).
 > O *porquê* da arquitetura: [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md).
 
 | # | Bug | Área | Estado | Data |

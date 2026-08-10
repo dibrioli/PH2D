@@ -17,13 +17,13 @@
 > C3 onion fill — [`09_colorize.md`](09_colorize.md) §7). A integração
 > com a **timeline principal** segue **ADIADA** (Enio 2026-07-12) e o **export** é deferido de
 > propósito. Fila e backlog verificado:
-> [`../HANDOFF_line_FLIP_CONTINUACAO_2026-07-19.md`](../HANDOFF_line_FLIP_CONTINUACAO_2026-07-19.md) §3.
+> [`../HANDOFF_line_FLIP_CONTINUACAO_2026-07-19.md`](handoffs/HANDOFF_line_FLIP_CONTINUACAO_2026-07-19.md) §3.
 >
 > **A wave COLORIZE integrou ao main em 2026-07-21.** A jornada seguinte (2026-07-22) é o
 > **Tween v2** — doc [`11`](11_tween_v2.md), **construída, gateada e SMOKE APROVADO pelo Enio
 > (2026-07-22)** (`PH2D_FLIP_TWEEN_SMOKE=1` — o boneco de palito: braço mantém o comprimento no
 > arco, tronco casado não desliza, chapéu órfão desvanece só com Fade); handoff de integração:
-> [`../HANDOFF_line_FLIP_INTEGRACAO_tween_v2_2026-07-22.md`](../HANDOFF_line_FLIP_INTEGRACAO_tween_v2_2026-07-22.md).
+> [`../HANDOFF_line_FLIP_INTEGRACAO_tween_v2_2026-07-22.md`](handoffs/HANDOFF_line_FLIP_INTEGRACAO_tween_v2_2026-07-22.md).
 
 ## O que landou DESDE o snapshot de 2026-07-12 (não reconstruir — tem doc + código)
 

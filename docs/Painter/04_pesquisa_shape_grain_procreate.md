@@ -1,6 +1,6 @@
 # 04 — Pesquisa: Shape + Grain do Procreate → mapeamento para a nossa engine
 
-> **Fase 1 do** [`HANDOFF_shape_grain_dual_texture.md`](HANDOFF_shape_grain_dual_texture.md).
+> **Fase 1 do** [`HANDOFF_shape_grain_dual_texture.md`](handoffs/HANDOFF_shape_grain_dual_texture.md).
 > **Entregável:** entendimento fiel dos painéis **Shape** e **Grain** do Procreate + tabela de
 > mapeamento Procreate→PH2D + decisão **Shape substitui vs multiplica o falloff**.
 > **Status:** pesquisa concluída (2 agentes web, ≥2 fontes por claim). **Não implementa nada.**
@@ -134,7 +134,7 @@ Slider **assinado −100% … 0% (neutro) … +100%** que **acopla o ângulo do 
 - **Texturized:** o grão fica **preso ao canvas** (revela um papel estático registrado); passes
   sobrepostos **NÃO** acumulam além da textura. **= o nosso `TextureMapping::Tiled`** (coords do canvas).
 - ✅ **Hipótese do Enio confirmada** contra [`texture.rs:205-219`](../../crates/ph2d-painter-brush/src/texture.rs)
-  e a doc viva ([`HANDOFF` §3](HANDOFF_shape_grain_dual_texture.md)).
+  e a doc viva ([`HANDOFF` §3](handoffs/HANDOFF_shape_grain_dual_texture.md)).
 
 ### 3.3 Controles do Grain
 | Controle | Efeito | Disponível em | Já temos? |
@@ -168,7 +168,7 @@ cobertura = shape_a · grain_eff · flow/opacity_dynamics
 
 ## §4 — DECISÃO: o Shape **substitui** ou **multiplica** o falloff?
 
-> A pergunta que o [HANDOFF §5](HANDOFF_shape_grain_dual_texture.md) manda decidir com evidência.
+> A pergunta que o [HANDOFF §5](handoffs/HANDOFF_shape_grain_dual_texture.md) manda decidir com evidência.
 
 **Fatos:**
 - No Procreate **não existe** um "falloff radial" separado por baixo do Shape: a silhueta é o **alpha da

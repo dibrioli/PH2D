@@ -2,7 +2,7 @@
 
 > **Por que existe:** após as Fases 1–3 landarem, o Enio olhou o resultado e disse *"Não sei se melhorou
 > ou piorou. Ficou mais difícil de ajustar."* O handoff
-> ([HANDOFF_line_Painter_impasto_2026-07-12](../HANDOFF_line_Painter_impasto_2026-07-12.md)) deixou a
+> ([HANDOFF_line_Painter_impasto_2026-07-12](handoffs/HANDOFF_line_Painter_impasto_2026-07-12.md)) deixou a
 > hipótese: **o modelo está errado na raiz — a altura herda o perfil MACIO da cor, então o relevo é um
 > domo, não um corpo com borda.** Esta pesquisa (2026-07-12, 5 varreduras de fontes primárias com
 > WebFetch — regra [[feedback_no_industrial_claims_without_verification]]) responde às 6 perguntas do

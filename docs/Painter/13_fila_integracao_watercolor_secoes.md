@@ -175,7 +175,7 @@ rota antiga).
 
 **Sintoma:** os mesmos retângulos (bordas retas de janelas/discos no corpo do traço — vide foto
 anexada na sessão de 2026-07-10) no brush normal (não-aquarela) com **Per-Layer Color** ativo.
-Handoff aberto: `docs/HANDOFF_per_layer_color_perf_artifacts.md` ("listras retangulares";
+Handoff aberto: `docs/Painter/handoffs/HANDOFF_per_layer_color_perf_artifacts.md` ("listras retangulares";
 teoria do coverage-map sujo REFUTADA lá — não re-investigar essa rota). BUGS #2 resolveu uma
 família disso em 2026-06-29; a que sobrou nunca passou pelo método do #8.
 

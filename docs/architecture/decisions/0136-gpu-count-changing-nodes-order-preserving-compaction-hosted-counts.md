@@ -3,7 +3,7 @@
 - **Status:** aceito (implementado nesta linha, `line/gpu-nodes`)
 - **Data:** 2026-07-20
 - **Contexto:** continuação de ADR-0126/0127/0130/0140/0135; fila §E do relatório da
-  auditoria (`docs/HANDOFF_line_gpu_nodes_auditoria_RESULTADO_2026-07-20.md`), item 1.
+  auditoria (`docs/Motion%20Nodes/handoffs/HANDOFF_line_gpu_nodes_auditoria_RESULTADO_2026-07-20.md`), item 1.
 
 ## Contexto
 

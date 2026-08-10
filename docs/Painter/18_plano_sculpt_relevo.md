@@ -258,7 +258,7 @@ Com `plane_offset` (subir/descer o plano, o Blender tem) os quatro verbos caem d
 
 ### W1 — SMOOTH ✅ **FECHADA (2026-07-13)** — entregou Smooth **e Sharpen**
 
-> Handoff: [`HANDOFF_line_Painter_sculpt_integracao_2026-07-13.md`](../HANDOFF_line_Painter_sculpt_integracao_2026-07-13.md).
+> Handoff: [`HANDOFF_line_Painter_sculpt_integracao_2026-07-13.md`](handoffs/HANDOFF_line_Painter_sculpt_integracao_2026-07-13.md).
 > Sharpen entrou junto porque é este mesmo kernel com o sinal trocado (W3 já dizia "cai de graça") e um
 > segmented de UM chip é cheiro de design. **Três coisas que este plano previu errado, e o código corrigiu:**
 >

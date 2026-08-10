@@ -3,7 +3,7 @@
 - **IMPLEMENTADO (Fase 3, `line/gpu-nodes`, 2026-07-16):** as 5 fatias fecharam —
   plano DAG + `prev` ping-pong + `motion.integrate` e as 5 forças + os gates + o ring no device.
   17 gates de paridade ε verdes na RTX. Handoff:
-  [`docs/HANDOFF_line_gpu_nodes_fase3_2026-07-16.md`](../../HANDOFF_line_gpu_nodes_fase3_2026-07-16.md).
+  [`docs/Motion%20Nodes/handoffs/HANDOFF_line_gpu_nodes_fase3_2026-07-16.md`](../../Motion%20Nodes/handoffs/HANDOFF_line_gpu_nodes_fase3_2026-07-16.md).
   **Duas emendas que a execução impôs** (detalhe no handoff §3 e §9): (a) o D5 dizia "estourou o cap →
   o sim recua pra CPU" — não recua, porque o pump não estava marchando e responderia com uma simulação
   DIFERENTE, não com um rewind; alvo fora da janela ancora no seed do tick 0 e re-simula (a política do

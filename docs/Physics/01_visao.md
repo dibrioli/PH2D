@@ -2,7 +2,7 @@
 
 > Companheiro do [`00_plano_waves.md`](00_plano_waves.md) e da
 > [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md).
-> Estado por-wave vive no tracker [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md).
+> Estado por-wave vive no tracker [`HANDOFF_line_physics.md`](handoffs/HANDOFF_line_physics.md).
 
 ## O que é
 

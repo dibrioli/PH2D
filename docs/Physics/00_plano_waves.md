@@ -2,7 +2,7 @@
 
 > Normativo. Companheiro da [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md)
 > (decide o *quê* e o *porquê*); este plano decide o *como*, wave a wave. Visão:
-> [`01_visao.md`](01_visao.md). Estado vivo: [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md).
+> [`01_visao.md`](01_visao.md). Estado vivo: [`HANDOFF_line_physics.md`](handoffs/HANDOFF_line_physics.md).
 >
 > **Plano VIVO:** waves seguintes o refinam. Cada wave fecha com o **gate batched** (nextest-impacted +
 > clippy `--all-targets` + auditoria ≥2 lentes) e um **handoff de tracker**. Sequenciais.
@@ -29,7 +29,7 @@
 
 **W1..W5 estão todas ✅, e o módulo continuou muito além delas.** As waves posteriores nasceram do uso (do
 smoke do Enio, de uma falta encontrada, de um bug medido) em vez de um plano escrito de antemão, e por isso
-são **normativas no [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md)**, cada uma com sua própria seção:
+são **normativas no [`HANDOFF_line_physics.md`](handoffs/HANDOFF_line_physics.md)**, cada uma com sua própria seção:
 
 | Wave | Entrega | Smoke |
 |---|---|---|

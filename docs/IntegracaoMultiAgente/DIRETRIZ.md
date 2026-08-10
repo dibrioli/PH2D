@@ -292,6 +292,18 @@ nem faz ship**; entrega este handoff e espera. Conteúdo mínimo (curto, factual
 Modelo de resumo no fim da linha: *"Linha `<módulo>` pronta (HEAD `<sha>`, N commits). Handoff
 de integração: <itens 2–6>. Aguardo ordem de integração."*
 
+**ONDE ele é escrito — `docs/<Módulo>/handoffs/`, nunca a raiz de `docs/`** (regra de
+2026-08-10). O topo da pasta do módulo é o **pensamento** dele (planos, pesquisas, `BUGS_*`);
+`handoffs/` é o **registro cronológico de sessão**. Vale para os três tipos: o handoff de
+integração, o de continuação/troca-de-agente (§1.5.7) e o briefing de abertura.
+
+> ⚠️ **Por que a regra existe:** a raiz de `docs/` acumulou **208** handoffs soltos em ~2 meses
+> — mais do que o resto de `docs/` inteiro —, e o custo não é estético: o roteador do CLAUDE.md
+> §1 manda a LLM nova ler a pasta do módulo, e ela abria numa parede onde plano e registro de
+> sessão eram indistinguíveis. Os 208 foram arrumados nesta data, com os links reescritos e
+> conferidos por um verificador antes/depois (**zero link quebrado novo**). Escrever o próximo
+> na raiz reconstrói a parede um arquivo por vez.
+
 ---
 
 ## 2. TRIAGEM — seu PRIMEIRO output

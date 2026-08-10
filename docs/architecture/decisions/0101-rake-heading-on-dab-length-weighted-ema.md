@@ -1,7 +1,7 @@
 # ADR-0101 — Rake: heading como propriedade do Dab (EMA length-weighted no motor)
 
 **Status:** Accepted (implementado 2026-06-26; aguarda smoke manual do Enio com caneta para fechar como Done).
-**Contexto/decisor:** Enio, 2026-06-26 ("temos um rake que nunca funciona" → rip-out + rewrite limpo, handoff `docs/Painter/HANDOFF_rake_rewrite.md`).
+**Contexto/decisor:** Enio, 2026-06-26 ("temos um rake que nunca funciona" → rip-out + rewrite limpo, handoff `docs/Painter/handoffs/HANDOFF_rake_rewrite.md`).
 **Substitui/relaciona:** revoga as duas tentativas de Rake desta sessão (v1 lerp por-dab `1cba06cc`; v2 `advance_rake` long-baseline `c6f56f56`). Estende o brush clean-room; o brush **não** é contract-gateado ([project-painter-brush-came-back-cleanroom]), então esta ADR registra a **decisão arquitetural**, não um contrato congelado. Reusa, ortogonalmente, o slot Shape do [ADR-0100](0100-dual-texture-slots-shape-grain.md) (o ponto 5 daquela ADR — "Rake reusa `advance_rake`" — é **superado** aqui).
 **Doc de detalhe:** [`docs/Painter/rake_rewrite_design.md`](../../Painter/rake_rewrite_design.md).
 

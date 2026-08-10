@@ -19,7 +19,7 @@
 >
 > ⇒ **O que se descartou foi a implementação da wave menos valiosa.** O plano de reconstrução, a
 > partir do `main` e já com este número em mãos, é o
-> [`00_plano_runtime.md`](00_plano_runtime.md) + o [`HANDOFF_runtime_R0_2026-08-08.md`](HANDOFF_runtime_R0_2026-08-08.md).
+> [`00_plano_runtime.md`](00_plano_runtime.md) + o [`HANDOFF_runtime_R0_2026-08-08.md`](handoffs/HANDOFF_runtime_R0_2026-08-08.md).
 >
 > ⚠️ **Uma nota deste doc já não vale:** o §5 diz *"o crate `ph2d-project-format` … não é trabalho
 > perdido"*. Ele **deixou de existir** com a branch. A frase continua verdadeira sobre o DESENHO

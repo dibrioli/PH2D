@@ -5,7 +5,7 @@
 > (2026-06-22). **Seção Texture COMPLETA:** kinds None/Noise/Checker/Voronoi/Stripes/**Image**;
 > mappings View/Tiled/Random/**Stencil** (com overlay + handles de drag); imagem importada via
 > file-picker. Stencil = adaptação **espaço-de-imagem** (engine puro). Refinamentos abertos (não
-> pedidos): stencil fixo-à-tela, máscara alpha-aware — [`HANDOFF`](../HANDOFF_painter_texture_section.md) §7.2.
+> pedidos): stencil fixo-à-tela, máscara alpha-aware — [`HANDOFF`](handoffs/HANDOFF_painter_texture_section.md) §7.2.
 >
 > Todo file:line aqui foi **verificado no código real** (não é spec aspiracional) — os caminhos de
 > costura batem com Stroke Methods, que é o template canônico.

@@ -1,6 +1,6 @@
 # 06 — Plano de implementação: dois slots de textura (Shape + Grain)
 
-> **Fase 3 do** [`HANDOFF_shape_grain_dual_texture.md`](HANDOFF_shape_grain_dual_texture.md).
+> **Fase 3 do** [`HANDOFF_shape_grain_dual_texture.md`](handoffs/HANDOFF_shape_grain_dual_texture.md).
 > Pré-requisitos: [`04_pesquisa`](04_pesquisa_shape_grain_procreate.md) + [`05_design`](05_design_dois_slots_textura.md).
 > **Waves pequenas, cada uma compilável + testável isolada**, ordenadas para **minimizar risco de
 > regressão** (back-compat byte-idêntico primeiro). Cada wave tem **teste e2e que prova no produto** —
@@ -132,7 +132,7 @@ valor/risco** — fazer só os baratos-e-úteis primeiro; Count/Roundness são o
 
 **Riscos:** LOC (painel 600/arquivo, 200/função) + o reuso da Texture-LAYER. Mitigação: extrair
 `paint_shape.rs` separado; rodar `architecture_panel_loc_cap` na wave; **não usar apóstrofo em
-comentário** (quebra o parser — [HANDOFF §2](HANDOFF_shape_grain_dual_texture.md)).
+comentário** (quebra o parser — [HANDOFF §2](handoffs/HANDOFF_shape_grain_dual_texture.md)).
 
 **Teste e2e (seam, `ph2d-ui-testkit`):**
 - Dirige um id do Shape (ex.: `PAINTER_SHAPE_ANGLE`, `PAINTER_SHAPE_RAKE`) via evento real e afirma o

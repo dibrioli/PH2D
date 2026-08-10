@@ -3,7 +3,7 @@
 > Registro de bugs não-óbvios do módulo de áudio e suas soluções, no espírito de
 > [`docs/Painter/BUGS_painter.md`](../Painter/BUGS_painter.md). Um bug por seção,
 > com sintoma · investigação · causa-raiz · fix · lições. Cross-ref:
-> [`docs/HANDOFF_audio_module.md`](../HANDOFF_audio_module.md) §4.
+> [`docs/Audio/handoffs/HANDOFF_audio_module.md`](handoffs/HANDOFF_audio_module.md) §4.
 
 ---
 

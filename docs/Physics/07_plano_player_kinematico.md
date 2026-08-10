@@ -1434,7 +1434,7 @@ controlar a subida dentro d'água — é produto, não correção.
 
 > ⚠️ **Esta seção foi escrita antes da jornada de 2026-08-09 e envelheceu em dois
 > pontos, corrigidos abaixo.** O documento vivo é o
-> [handoff de integração](HANDOFF_INTEGRACAO_line_physics_kin_2026-08-09.md).
+> [handoff de integração](handoffs/HANDOFF_INTEGRACAO_line_physics_kin_2026-08-09.md).
 
 - ~~**Registro `ph2d-physics-ecs` 28 → 29**~~ — **isso foi a `W-KinMove`, que já
   integrou em 08/08**; o `main` está em 29 e a jornada de 09/08 **não o move**.

@@ -3,7 +3,7 @@
 > Report do Enio, 2026-07-28, com foto. Estado: **W0/W1/W2/W3 fechados e smokados**
 > (o W3 é a cena 61; o smoke aprovou a simulação e achou o **tremor do gizmo**, que
 > fechou — §W3, e era só-desenho).
-> O tracker da linha é [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md); o mapa de
+> O tracker da linha é [`HANDOFF_line_physics.md`](handoffs/HANDOFF_line_physics.md); o mapa de
 > waves é [`00_plano_waves.md`](00_plano_waves.md). Este doc é o **porquê** do redesenho.
 
 ## 1. O que o artista pediu

@@ -1,0 +1,367 @@
+# HANDOFF DE CONTINUAÇÃO — linha `line/audio`
+
+> **Para o próximo agente-de-linha.** **W4 e W6 fecharam** (2026-07-12) e estão
+> **commitados localmente, à espera de integração** — que é ordem exclusiva do Enio.
+> Entregável: [`HANDOFF_audio_w4_integracao.md`](HANDOFF_audio_w4_integracao.md).
+> O worktree está limpo. Você continua daqui (rebase no main primeiro — §1).
+>
+> **O que está na mesa do Enio:** [ADR-0122](../../architecture/decisions/0122-audio-spectral-fft-via-realfft.md)
+> (dep de FFT p/ o W5) e o **Opus** (ADR-0113 §Opus). Sem essas duas palavras, o módulo de
+> áudio está **fechado no que dá pra fechar**.
+>
+> Leia **este doc inteiro** + os obrigatórios do §1 antes de escrever a primeira linha
+> de código.
+
+---
+
+## 1. VOCÊ ESTÁ EM MODO L — as regras (DIRETRIZ §1.5 · [MODELO_ABERTURA_LINHA](../../IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md))
+
+**Sua branch:** `line/audio` · **Sua worktree:** `Worktrees/line-audio/`
+Esta linha é **reaberta** (o worktree já existe — não recrie).
+
+### Setup (rode já, sem pedir confirmação; reporte cada ✗)
+```bash
+bash scripts/hw-profile.sh          # DEVE dizer `workstation`. Disse `constrained`? PARE.
+cd Worktrees/line-audio
+git branch --show-current           # DEVE imprimir line/audio
+git rebase main                     # rota "linha reaberta" — no início de CADA jornada
+cargo check -p ph2d-audio-edit      # warm-up
+```
+
+### Leia INTEIRAS (dentro da worktree), antes de codar
+- `docs/IntegracaoMultiAgente/DIRETRIZ.md` → **§0, §1.5, §2, §6**
+- `docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md` → **tudo**, e **RELEIA a cada
+  passo** (é o antídoto das 4 causas da semana perdida no Painter).
+
+### REGRAS PERMANENTES (valem até o fim, sem exceção)
+
+| | |
+|---|---|
+| **A** | **TODO** read/edit/git/cargo acontece **DENTRO da worktree** (`Worktrees/line-audio/`). A raiz do repo é o checkout primário compartilhado — **o mesmo path relativo existe nas duas árvores**. Editar `crates/...` na raiz = editar a árvore ERRADA. **Na dúvida, `pwd` antes de editar.** (Lição cara: `sed -i` com path relativo escreve no repo errado — **mutação sempre por caminho absoluto**.) |
+| **B** | Edite a pasta do seu módulo à vontade. **Foundational você PODE e DEVE tocar** (com cuidado, ADR-0107). **PARE e reporte ao Enio SÓ se:** (a) for **contrato congelado** (CLAUDE.md §6 — exige ADR), ou (b) o rebase conflitar em código **FORA** dos seus arquivos (colisão de mesmo-símbolo). **Nunca negocie com outra linha.** |
+| **B'** | Ao **CRIAR** foundational novo, projete pra **ISOLAMENTO**: prefira **módulo/arquivo IRMÃO novo** a engordar arquivo compartilhado; ponto de extensão **append-only**. Todo id/const/variant novo → **anote no handoff de integração** (regra H) pro integrador detectar colisão. |
+| **C** | Commits locais frequentes: `git commit --no-verify`. **NUNCA `push`. NUNCA `--force`. NUNCA `git add -A`.** |
+| **D** | `git rebase main` no início de cada jornada. Conflito em `Cargo.lock` ou arquivo GERADO: **NUNCA** resolva na mão — refaça por geração. |
+| **E** | Fechamento = **gate batched** (§7 abaixo). Depois **PARE**. **Você NÃO integra e NÃO roda `foundational-integrate.sh`.** Quem funde é um **agente integrador dedicado**, só por **ordem explícita do Enio**. |
+| **F** | **Ship** (`ship.sh` + push + babysit CI): **NUNCA** por conta própria. Ordem explícita do Enio, feita pelo integrador. **Integrar ou pushar sem ordem = violação do protocolo.** |
+| **G** | **UI canônica:** zero hex, zero `f32` literal de UI, zero string hardcoded — tudo por tokens/i18n. **UI do app em INGLÊS** (labels/toasts). |
+| **H** | **HANDOFF DE INTEGRAÇÃO é entregável obrigatório ao fechar** (DIRETRIZ §1.5.9): branch/HEAD/base · foundational tocado + por quê · **ids/consts novos com valores** · contratos congelados encostados (deve dar nenhum) · **deps novas** · o que só o `ship.sh` pega · o que smoke-testar. Reporte "linha pronta + handoff" e **ESPERE**. |
+
+---
+
+## 2. Onde a linha parou (estado real, verificado)
+
+- **Worktree:** rebaseado no main (`3805f650`), **árvore limpa**. 6 commits à frente.
+- **Gate:** `ph2d-audio-edit` **147** · `ph2d-audio-encode` **21** · painel **19 lib + 31 seam** ·
+  shell **292** · `ph2d-editor-core` **32 arch-gates** — **todos verdes**. clippy 0, fmt/typos limpos.
+- **A jornada W6 entregou:** seção **Delivery** (codec por asset + custo disco/RAM contra o
+  budget de 30 MB) · **um Export só**, dirigido pelo codec · e um **bug de perf**: o
+  `encode_ogg` entregava a take inteira num único `encode_audio_block`, então exportar 5 min
+  de OGG levava **27,5 s** — agora **0,95 s** (blocos de 4096 frames, linear).
+- **A jornada W4 entregou** (handoff de integração: [`HANDOFF_audio_w4_integracao.md`](HANDOFF_audio_w4_integracao.md)):
+  rack **34 → 37 efeitos**, presets **15 → 21**, **zero dep nova**, zero foundational.
+  - **De-Click** (reparo: LPC + interpolação LSAR) · **Formant Shift** (trato vocal sem
+    mexer no pitch) · **Harmonizer** (2 vozes) — os três sobre um núcleo LPC comum (`fx/lpc.rs`).
+  - **BUG CORRIGIDO: o pitch shifter estava desafinado.** O motor granular de grão fixo
+    saía **baixo** (−54 cents numa oitava) porque toda emenda de grão injetava o MESMO erro
+    de fase. Trocado por **WSOLA** (`fx/wsola.rs`; `fx/pitch.rs` **deletado**). O caráter
+    documentado (formantes viajam junto) foi preservado. Detalhe + os 4 pontos medidos: §2.1
+    do handoff de integração.
+- **A jornada anterior entregou:** rack **14 → 34 efeitos**, presets **7 → 15**, containers
+  de variação, import por convenção, export **Ogg Vorbis** (ADR-0113), e 3 bugfixes de
+  auditoria (undo/redo/invert intermitentes).
+
+### ⭐ O PADRÃO DA RACK — leia antes de adicionar qualquer efeito
+
+**Adicionar um efeito NÃO toca o painel.** O painel se auto-popula da tabela `KINDS`
+(`set_fx_kind_names` / `set_fx_kind_defaults`, empurrados todo frame pelo shell).
+São **5 pontos**, sempre os mesmos:
+
+1. **DSP** num módulo de `crates/ph2d-audio-edit/src/fx/` (`tone.rs`, `dynamics.rs`,
+   `modulation.rs`, `space.rs`, `wsola.rs`, `lpc.rs`, `declick.rs`, `formant.rs`, `comb.rs`…).
+2. **Variant** em `Effect` (ou `TailEffect`, se estende a duração) — `fx.rs` / `fx/tail.rs`.
+3. **Braço `apply`** com o **guard do ponto neutro** + **cláusula `is_bypass`** + (se tiver
+   estado) **braço `warmup_frames`**.
+4. **Row** em `shells/desktop/src/audio/fx_params_table.rs` + **specs** em
+   `fx_param_specs.rs` (arquivos irmãos, por causa do teto de LOC).
+5. **Teste de layout** em `fx_params.rs` (a lista de nomes, pinada).
+
+**A INVARIANTE INEGOCIÁVEL:** todo efeito é **no-op byte-idêntico no seu ponto neutro**.
+Não é "quase" — um filtro no topo da faixa ainda desloca fase; um compressor 1:1 ainda
+arredonda. Por isso o neutro é um **bypass explícito** (`is_bypass` → `apply` devolve
+`data.clone()`), nunca emergente.
+
+**Os 5 gates da rack provam isso por-efeito, automaticamente** (em `fx_params.rs`):
+neutro é no-op · o *arm* acorda o efeito · os **outros** knobs são inertes enquanto
+neutro · o layout está pinado · nenhum slider mostra um "0" falso. **Se seu efeito passa
+nos 5, ele está costurado.**
+
+### Gotchas que já custaram tempo (não repita)
+
+- **⚠️ `fx.rs` está em 666/700** — o **próximo** efeito que ganhar variante ali **exige split**
+  antes. O candidato natural é o `warmup_frames` (~70 linhas, sai limpo pra um `fx/warmup.rs`
+  irmão). **`fx/dynamics.rs` está em 662/700** — o **próximo** efeito de dinâmica **exige split**
+  (módulo irmão, como fiz com `deplosive.rs`/`transient.rs`).
+- **Um oráculo com folga esconde um viés sistemático.** O pitch shifter passou o próprio teste
+  por 3 jornadas estando **54 cents baixo** numa oitava: o teste media cruzamentos por zero e
+  aceitava `up > dry * 1.6` para uma oitava (que deveria dar 2.0) — 1.94× passava folgado.
+  **Meça na unidade que o usuário ouve** (cents, Hz) e **fixe o valor exato**, não uma faixa
+  cuja folga é da ordem do próprio efeito.
+- **Ferramenta de reparo precisa de fixture com dano.** A probe compartilhada dos gates da
+  rack (`fx_params.rs::probe()`) agora carrega um clique — sem ele, o gate
+  `turning_an_arming_knob_wakes_the_effect_up` só passaria se o de-clicker **borrasse áudio
+  íntegro**. Se você adicionar outro efeito condicional (só age sob condição X), pergunte se a
+  probe contém X.
+- **Tetos de LOC:** `crates/**` ≤ **700** · `shells/desktop/src` ≤ **600** · painel ≤ 600
+  arquivo / 200 fn. **Split, nunca allowlist.** Meça **DEPOIS** do `fmt` (ele re-expande).
+- **⚠️ O gate de LOC do shell e o `typos` NÃO rodam em `cargo test --bins`.** Eu descobri
+  os dois **só no fechamento**. **Rode no loop:** `cargo test -p <crate> --tests` **e**
+  `typos` **e** `cargo fmt --all -- --check` — não só `--bins`.
+- **`fmt`:** use `rustup run 1.95 rustfmt --edition 2024` (o `cargo fmt` puro dá skew).
+- **`gen` é palavra reservada** na edition 2024 (me pegou no Exciter).
+- **HR-3/HR-5 (no-alloc/no-transcendentais) valem SÓ pra thread de áudio RT.**
+  `ph2d-audio-edit` é **control-thread** — pode alocar e usar `sin`/`exp`/`tanh` à vontade.
+- **O probe dos gates da rack é estéreo, 2400 frames = 50 ms.** Efeito rítmico lento não
+  "acorda" dentro dele (o Trance Gate me pegou — precisei de default ≥ 11 Hz).
+- **Commit message com parêntese/backtick quebra o fish** → use `git commit -F <arquivo>`.
+- **⚠️ Gravar memória suja o checkout PRIMÁRIO, não a sua worktree.** O symlink
+  `~/.claude/projects/<key>/memory` aponta pro `project-memory/` do **primário**. O integrador
+  exige o primário **limpo** (DIRETRIZ §1.5.1), então: escreveu memória → **copie os arquivos
+  pra `project-memory/` da SUA worktree, restaure o primário** (`git -C <primário> checkout --
+  project-memory/` + apague o arquivo novo) e comite na sua linha.
+
+---
+
+## 3. ETAPAS PLANEJADAS — continue daqui
+
+Fonte: [`docs/Audio/02_plano_implementacao_completo.md`](../02_plano_implementacao_completo.md) §7.
+Ordem do plano: W1 → W2 → W3 → (W4 ∥ W5) → W6 → W7.
+
+### ✅ Fechado
+**W1** (esqueleto/transporte/waveform/WAV) · **W2** (edição offline + undo) ·
+**W3** (rack + cadeia editável) · **W4** (voz + reparo — fechado nesta jornada:
+De-Click, Formant Shift, Harmonizer, presets Voice EQ/Whisper/Shout, e o fix do pitch
+shifter desafinado; ver [`HANDOFF_audio_w4_integracao.md`](HANDOFF_audio_w4_integracao.md)).
+
+### 🟡 ETAPA 1 (a próxima grande) — **W5 Espectral (FFT)** — ⚠️ **PRECISA DO OK DO ENIO**
+A wave grande que sobrou. **O ADR já está escrito e à espera de uma palavra:**
+[ADR-0122](../../architecture/decisions/0122-audio-spectral-fft-via-realfft.md) — `realfft 3.5`
+em crate isolada `ph2d-audio-spectral`. Fatos verificados: 8 crates, todas MIT/Apache-2.0,
+**zero C / zero `*-sys`** (mais leve que o `vorbis_rs` que já temos, que compila C), RUSTSEC
+limpa. Traz **conjunto de aceitação concreto + kill-criterion** congelados (§4 do ADR).
+- **Exige dep nova** → **autorização explícita do Enio** antes de adicionar.
+- **Escopo:** spectrogram (STFT, Hann/Blackman-Harris) alternando com a waveform no
+  overlay · seleção tempo-frequência · **spectral repair/inpaint** (heal brush — interpola
+  bins vizinhos, remove tosse/bipe pontual) · **spectral denoise** (subtração espectral /
+  Wiener por bin, aprende profile) · de-clip.
+- **Gate do plano:** métricas de **SNR antes/depois** em fixtures.
+- **Nota:** o pitch shift segue **sem FFT** (WSOLA, tempo-domínio) e o Formant Shift também
+  (LPC + warp da resposta impulsiva) — as duas são as ferramentas *certas* pro trabalho, não
+  atalhos. Mas o W5 **realmente precisa** de FFT: spectrogram e repair por bin não dá pra
+  fingir no tempo. **Escreva o ADR primeiro, mostre ao Enio, espere o OK.**
+
+### 🟢 ETAPA 2 — **W6: FECHADO** (só o Opus sobrou, e é decisão sua)
+Loop points, markers, variação, import, OGG, **force-to-mono** e **batch LUFS** já existiam
+(o handoff anterior estava desatualizado — verifiquei por grep). A **seção Delivery**
+(codec por asset + custo de disco/RAM) landou nesta jornada e fecha o último item.
+
+Sobra só:
+- **Opus** — ADR-0113 §Opus já analisou: recomendação = **crate irmão isolado
+  `ph2d-audio-opus`** (puro-Rust, `unsafe` contido). **Decisão do Enio.**
+
+**🚩 RESIDÊNCIA (streaming) NÃO foi implementada — de propósito.** O plano pedia
+"codec/**residência** por asset", mas **não existe caminho de streaming no mixer**
+(`grep -i stream crates/ph2d-audio/src/` = zero). Um toggle "Streamed" não teria nada na
+engine pra honrá-lo, e botão que não faz nada é pior que botão que falta. **Residência é
+uma wave de ENGINE** (thread produtora + ring buffer + HR-3 no-alloc na thread de áudio),
+não de editor — e ela é o que tornaria o codec relevante pra RAM. Hoje **todo clipe é
+decodificado pra f32 no load**, então Vorbis e WAV custam a MESMA memória; a seção
+Delivery mostra exatamente isso, com a fração do budget de 30 MB (HR-13) do lado.
+
+### ⚪ ETAPA 3 — **W7 AI/ML** (opt-in, feature `audio-ml`)
+DeepFilterNet (denoise) · Demucs via ONNX. **Tudo atrás de feature-flag** (build default
+não puxa deps pesadas). Longe; só depois do W5.
+
+---
+
+## 4. Backlog / dívida conhecida (não bloqueia)
+
+- **`fx/dynamics.rs` em 662/700** — próximo efeito de dinâmica = **split obrigatório**.
+- Variação: toggle *enabled* por-entry na UI (o modelo e o manifesto **já** carregam o
+  campo — é só UI). O manifesto guarda **caminho absoluto** (relativo seria mais portátil).
+- Reverb por **convolução** (o atual é Freeverb algorítmico).
+
+## 5. 🚩 Deferidos a OUTROS DONOS (não são seus — não conserte)
+
+Da auditoria de intermitências da jornada passada:
+1. **Undo global grava passos espúrios** (dono: `undo.rs` / sim) — os sprites da cena
+   default têm `Velocity` e bouncam **todo frame** (sim não-gated em play/pause), então
+   `post_frame_undo` registra diff toda hora. **Fix real:** gatear a sim, ou o
+   `post_frame_undo` ignorar diffs só-de-sim.
+2. **Timeline/motion preemptam o Ctrl+Z do áudio** — os blocos deles rodam **antes** do de
+   áudio em `input_dispatch/keyboard.rs`. **Recomendação:** centralizar a prioridade de undo
+   num ponto só.
+3. **Gap de harness de teclado** — não existe harness headless que dirija `handle_editor_key`
+   num `App` completo. Por isso o fix do Ctrl+Z do áudio **não tem asserção-vermelha**.
+
+---
+
+## 6. Smoke — o arquivo de teste
+
+O Enio testa com um **WAV estéreo sintético** (transientes espaçados + melodia sustentada
+L≠R + zumbido 60 Hz + clicks brilhantes) que exercita a rack inteira. Se precisar
+regerar, o script está no scratchpad da sessão passada — ou refaça: 48 kHz, estéreo,
+16-bit, ~6 s.
+
+**Linha de comando pra rodar (sempre com o `cd` junto):**
+```bash
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-audio && cargo run -p ph2d-host-desktop --features panel-audio-editor
+```
+
+## 7. Gate de fechamento (rode 1× no fim, sobre o diff acumulado)
+
+```bash
+cargo test -p ph2d-audio-edit -p ph2d-panel-audio-editor          # model + painel + seam
+cargo test -p ph2d-host-desktop --tests                            # ⚠️ --tests, NÃO --bins (LOC gate mora aqui)
+cargo test -p ph2d-editor-core --tests                             # 32 suites arch-gate
+cargo clippy --all-targets -p ph2d-audio-edit -p ph2d-host-desktop
+rustup run 1.95 cargo fmt --all -- --check                         # fmt canônico
+typos                                                              # ⚠️ não roda em cargo test
+cargo deny check && cargo machete                                  # só se mexeu em deps
+```
+Depois: **escreva o handoff de integração (regra H) e PARE.**
+
+---
+
+## §N — Cortes, peças, Move/Scale (2026-07-12, commits `971908af` · `6e0e94a5` · `3d1b72df`)
+
+**Pedido do Enio:** *"Split at Markers deveria apenas dividir o clip. Cada parte cortada deve ser
+selecionável e arrastável para ser posicionada em outros locais de corte (entre clips). Precisamos
+de um botão Split para cortar na posição do playhead. Coloque botões no topo da seção Edit para as
+operações básicas: Mover, Escalonar (reduz o tempo sem cortar a faixa), copiar, Cortar, colar."*
+
+### A decisão de modelo
+
+O documento **não** virou uma track multi-clipe (posições livres, gaps, sobreposições). O pedido diz
+que as peças são soltas **"em outros locais de corte"** — os alvos de soltura são as fronteiras que
+já existem. Isso é uma **permutação**, não um arranjo. E uma permutação de um buffer ainda é um
+buffer, então **playback, export, rack de efeitos, delivery e peak cache não mudaram uma linha**.
+
+Modelo: **um buffer + uma lista de cortes** (`ph2d-audio-edit/src/pieces.rs`). `n` cortes = `n+1`
+peças.
+
+### O que a feature obrigou a consertar
+
+`structure.rs` (novo): **cuts + markers + loop viram UM valor** (`Structure`) que viaja no passo de
+undo, e `FrameMap` carrega posições por cima de splice/trim/stretch/permute.
+
+Isso não é arquitetura por gosto — um reorder move áudio *e* fronteiras de uma vez, e um undo que
+restaurasse as amostras mas não os cortes desenharia cada emenda em cima do áudio errado. Ao fazê-lo,
+matou **um bug anterior às peças**: um ripple delete deslocava as amostras e **não** os markers, então
+todo cue depois do corte caía silenciosamente em cima de áudio diferente. Gate:
+`a_ripple_delete_slides_the_markers_it_did_not_delete`.
+
+Semântica de `FrameMap::range`: o que decide o destino de uma faixa cortada ao meio **não** é "cruza
+runs", é se o mapa **preserva a ordem**. Em ordem (delete/trim/stretch) → encolhe (o que todo DAW faz).
+Permutado → não há imagem honesta → é limpa.
+
+### `wsola::stretch` (o "Escalonar")
+
+Time-stretch pitch-preserving. A busca de similaridade roda **UMA vez sobre a soma dos canais** e
+todos os canais são fatiados nos **mesmos offsets** — por canal, cada um se alinha à *sua* forma de
+onda, os dois recebem time-warps diferentes e a imagem estéreo passeia. O pitch-shift mantém seu
+caminho por-canal **intocado** (a rack é byte-idêntica sob gate; isto é operação nova, não mudança
+naquela).
+
+### UI
+
+- Topo do Edit = **toolbar**: `[Select|Move|Scale]` (grupo, exatamente um armado) + `[Cut|Copy|Paste]`
+  + `[Split|Clear Cuts]`. Cut/Copy/Paste subiram das linhas de baixo.
+- **Split at Markers agora SÓ divide.** A escrita de arquivos manteve o comportamento, pegou o nome
+  honesto (**Export Pieces**) e mudou para **Delivery** — onde emitir mora, e onde o codec que ela
+  emite foi precificado. O laço variação (`<stem>_01..NN` → importador por convenção) segue fechado.
+- Overlay: emendas em **branco** (as outras 4 cores já estavam tomadas: seleção azul, loop verde,
+  markers roxo, playhead laranja), caret de inserção no Move, borda-fantasma no Scale.
+- Nada é commitado durante o arrasto (WSOLA de 3 min não roda 60×/s); o **release** faz a edição,
+  1 passo de undo.
+
+### Gates (todos mutation-tested)
+
+`crates/ph2d-audio-edit/tests/pieces_and_structure.rs` (18) — permutação · reorder byte-reversível ·
+undo restaura os cortes · markers colados no áudio (reorder E ripple delete) · stretch muda
+comprimento e não pitch · **canais travados juntos** · split não move amostra.
+
+⚠️ **O gate estéreo nasceu CEGO** — passava com o bug (busca por-canal) reintroduzido, porque um
+canal atrasado tem auto-similaridade idêntica e as duas buscas dão a mesma resposta. Só a mutação
+mostrou. Agora usa **carriers diferentes sob envelope compartilhado**: baseline 0,01 frames de desvio,
+mutante 20,4. Se alguém mexer no sinal de teste, **re-mute**.
+
+`crates/ph2d-panel-audio-editor/tests/seam.rs` (+6) + `no_dead_buttons.rs` (estendido).
+
+### Aberto / não coberto
+
+- **A fiação do gesto no shell não é gateável headless** (`AudioSystem::new()` precisa de device de
+  áudio; nenhum teste em `shells/desktop/tests/` constrói um). Press→grab→drag→release é
+  smoke-verificado, não gateado. Se a linha ganhar um `AudioSystem` mockável, este é o primeiro
+  cliente.
+- Peça arrastada só troca de lugar **entre fronteiras existentes** (é o que foi pedido). Posição
+  livre com gaps exigiria o modelo multi-clipe que foi deliberadamente recusado.
+
+---
+
+## §N+1 — Regiões de loop no runtime ([ADR-0119](../../architecture/decisions/0119-audio-loop-regions-in-the-mixer.md), 2026-07-12)
+
+**Commits:** `1ce60508` (runtime) · `63bf5790` (editor) · ADR + outcome.
+
+### O buraco (achado ao procurar a próxima tarefa, não pedido)
+
+A seção Loop autorava pontos que **nada conseguia tocar**:
+
+1. `PlayParams.looping` era um **bool** — o buffer inteiro, ou nada. Sem "toque `0..N` uma vez,
+   depois repita `A..B`", que é a estrutura de praticamente toda música de jogo.
+2. A audição do loop era uma **fabricação de preview**: construía um buffer separado só com a
+   região, com crossfade, e tocava *aquele* em loop de buffer inteiro. O que o usuário ouvia não era
+   o que um jogo tocaria — porque um jogo **não conseguia** tocar aquilo.
+3. `read_loop_regions`/`read_markers` **existiam**, com round-trip unit-testado no próprio crate, e
+   **nada na aplicação os chamava**. Exporte um WAV com loop, carregue de volta: o loop sumia.
+   Não era feature faltando, era **chamada** faltando — e nenhum teste do `ph2d-audio-encode` jamais
+   pegaria (o crate fica verde de qualquer jeito).
+
+### Decisão
+
+A região é propriedade de uma **voz tocando**. `intro→loop` não é 2ª feature — é o que uma região
+**é**. `looping` sem região continua significando o buffer inteiro, **byte-idêntico** (A1).
+
+- **Stream:** o produtor publica a **região efetiva** (antes só o comprimento) e emite `[0..end)` e
+  depois `[start..end)`. Chega no `start` **rebobinando e descartando**, não buscando — busca é
+  por-formato e grosseira, e um loop alguns frames fora é um loop que estala. **Bit-idêntico** ao
+  residente (A3, padrão do ADR-0118).
+- **Crossfade vira BAKE** (1 undo step). Um loop de runtime **PULA**; não faz crossfade (precisaria
+  de 2ª cabeça de leitura, e num stream de áudio que o produtor já jogou fora). Escreve a emenda
+  **nas amostras**, usando o intro como pre-roll. Recusa (e fica dim) com loop no frame 0.
+
+### Cuidados pro próximo
+
+- **A região vai pra voz SEMPRE**; o `looping` **vivo** decide se usa. Gatear na entrega faria
+  "ligar Loop no meio da reprodução" virar loop de buffer inteiro (a voz nunca soube da região).
+- E o **wrap** também é gateado no `looping` vivo — o toggle Loop vira `looping` numa voz *tocando*,
+  e um `wrap_at` parado no fim da região tornaria todo frame depois dela um frame **SEGURADO** (o
+  outro viraria borrão). Achado durante a implementação, não previsto.
+
+### ⚠️ Três gates nasceram cegos (só a mutação disse)
+
+1. **O produtor não tinha gate NENHUM.** A sequência intro-uma-vez é construída só ali, então
+   quebrá-la deixava todo gate do `ph2d-audio` verde (o mixer toca o que lhe dão). Fix: gate
+   end-to-end com arquivo real.
+2. **Aquele gate sem OUTRO** não distinguia "nunca vira no fim da região" de "vira no EOF" — a
+   região terminava onde o arquivo terminava. O outro alto que o loop nunca pode alcançar é o que
+   torna os dois bugs **um número**.
+3. **Taxa 1:1 esconde frame segurado** — `frac` é sempre 0, o 2º frame da interpolação nunca é lido.
+   **Qualquer coisa sobre emenda tem de ser medida com avanço fracionário.**
+
+### Aberto
+
+- Loop **múltiplo** (`smpl` aceita vários; jogos usam um — o reader pega o primeiro).
+- Crossfade em runtime (2ª cabeça) — **recusado** deliberadamente.
+- Trocar entre dois loops **numa fronteira musical** (remix vertical): precisa de scheduler, não de
+  região.

@@ -3,7 +3,7 @@
 - **Status:** aceito (implementado nesta linha, `line/gpu-nodes`)
 - **Data:** 2026-07-21
 - **Contexto:** C1 da fila §E da auditoria
-  (`docs/HANDOFF_line_gpu_nodes_auditoria_RESULTADO_2026-07-20.md` §A2 + §B2);
+  (`docs/Motion%20Nodes/handoffs/HANDOFF_line_gpu_nodes_auditoria_RESULTADO_2026-07-20.md` §A2 + §B2);
   irmão de ADR-0127 D5 (o ring GPU) e do M2.N2 (o ring CPU).
 
 ## O problema (medido, §A2)

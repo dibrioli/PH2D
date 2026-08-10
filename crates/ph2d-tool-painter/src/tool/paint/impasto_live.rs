@@ -374,8 +374,12 @@ impl PainterTool {
     /// No-op unless that stroke is on the layer the artist is looking at — dialling Depth after
     /// switching layers must not reach back and re-sculpt a stroke on some other one.
     pub(super) fn refresh_live_relief(&mut self) {
+        // ⚠️ **O FILME do substrato entra pela mesma porta, e por isso o gate não é só o `impasto`:** o
+        // Paint da seção Paper é um knob de DEPÓSITO como o Depth, e o contrato deste painel é que
+        // todos eles sejam vivos no último traço. Sem a segunda cláusula o slider parecia morto até a
+        // pincelada seguinte, que é a metade do report de 2026-08-10 que esta linha já pagou uma vez.
         if !self.impasto_live_edit() // "Adjust Last Stroke" — finished paint stays finished
-            || !self.paint.brush.impasto
+            || (!self.paint.brush.impasto && self.paint.brush.effective_film_depth() == 0.0)
             || self.layers.active() != self.paint.relief.live_relief_layer
         {
             return;

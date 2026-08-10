@@ -40,6 +40,67 @@ fn paper_preview_view(brush: &BrushSettings) -> BrushSettings {
     v
 }
 
+/// As três rows do **SUBSTRATO** — Relief · Roughness · Paint. Devolve o próximo `y`.
+///
+/// ⚠️ **Chamadas ANTES do portão de `TextureKind::None`, e a ordem é load-bearing.** Tanto o
+/// `set_substrate_depth` quanto o `set_substrate_paint` ARMAM um papel default quando o artista liga o
+/// relevo sem ter escolhido um — e essa porta só é alcançável se a row existir justamente no estado em
+/// que não há papel. Embaixo do portão, ligar o relevo exigiria já ter um papel, e o armar-um-default
+/// viraria um guard que nenhum gesto alcança.
+///
+/// ⚠️ **Uma função e não um ARQUIVO irmão**, embora o assunto peça um (o `ids/chrome/painter_substrate`
+/// já argumenta que *o papel não é da aquarela, é do substrato*): o cap que a terceira row estourou é o
+/// de **função** (200 LOC), e um arquivo de painel novo que só chame o `paint_num_row` local não
+/// delega a11y por nenhum marcador que o `hr12_widgets_a11y` reconheça — ele exige um primitivo do
+/// `editor-core`. Mover a mudança de casa é a extração com ADR que a doc 19 descreve, não o preço de
+/// um cap.
+fn paint_substrate_rows(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let mut y = y;
+    for (label, id, value) in [
+        (
+            "Relief",
+            core_ids::PAINTER_SUBSTRATE_RELIEF,
+            brush.substrate_relief,
+        ),
+        (
+            "Roughness",
+            core_ids::PAINTER_SUBSTRATE_ROUGHNESS,
+            brush.substrate_roughness,
+        ),
+        // A segunda metade do substrato: o PIGMENTO depositado como relevo. Ela vive ao lado do dente,
+        // e não numa seção própria, porque é a mesma frase que o bloco `paper_on` do Wet Paint faz —
+        // um assunto, duas metades: o grão do papel e o corpo da tinta que assentou nele.
+        (
+            "Paint",
+            core_ids::PAINTER_SUBSTRATE_PAINT,
+            brush.substrate_paint,
+        ),
+    ] {
+        y = number_field::paint_num_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            label,
+            id,
+            value,
+            0.0,
+            1.0,
+            number_field::FINE_STEP,
+            2,
+        );
+    }
+    y
+}
+
 /// Paint the **Paper** section (the substrate everything sits on) — collapsible, ABOVE the Grain
 /// section. Kind picker + preview + Angle + Offset + Size + per-pattern params, and at the bottom the
 /// **Relief** / **Roughness** of the substrate. (The Color Ramp is a follow-up; the substrate is a
@@ -112,40 +173,8 @@ pub(crate) fn paint_paper_section(
     if let Some(r) = open {
         state::set_pending_paper_kind_dd(Some((r, brush.paper_kind)));
     }
-    // ── O SUBSTRATO: quanto o dente sobressai, e quão íngremes são as paredes dele. ──
-    //
-    // ⚠️ **Pintadas ANTES do portão de `None`, e a ordem é load-bearing.** `set_substrate_depth` ARMA um
-    // papel quando o artista liga o relevo sem ter escolhido um — e essa porta só é alcançável se a row
-    // existir justamente no estado em que não há papel. Embaixo do portão, ligar o relevo exigiria já
-    // ter um papel, e o armar-um-default viraria um guard que nenhum gesto alcança.
-    y = number_field::paint_num_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Relief",
-        core_ids::PAINTER_SUBSTRATE_RELIEF,
-        brush.substrate_relief,
-        0.0,
-        1.0,
-        number_field::FINE_STEP,
-        2,
-    );
-    y = number_field::paint_num_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Roughness",
-        core_ids::PAINTER_SUBSTRATE_ROUGHNESS,
-        brush.substrate_roughness,
-        0.0,
-        1.0,
-        number_field::FINE_STEP,
-        2,
-    );
+    // ── O SUBSTRATO: o dente do papel e o filme de pigmento (as três rows abaixo). ──
+    y = paint_substrate_rows(ctx, theme, x, content_w, y, brush);
     if kind == TextureKind::None {
         return y;
     }

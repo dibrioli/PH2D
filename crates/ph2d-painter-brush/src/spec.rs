@@ -330,6 +330,27 @@ pub struct BrushSpec {
     /// Painter "Negative Depth"). `0` = flat (no relief), so the pass is inert even with the master
     /// switch on.
     pub impasto_depth: f32,
+    /// **O FILME de pigmento**, em cargas — a espessura que o depósito deixa *sem* ser corpo de tinta
+    /// (Enio, 2026-08-10: *"criar o Relief para a deposição do pigmento com Shape exatamente como faz
+    /// Wet Paint"*). `0` (o default) = nenhum, e o depósito fica byte-idêntico.
+    ///
+    /// ⚠️ **Ele NÃO é gateado pelo `impasto`, e NÃO escala com o raio** — as duas diferenças em relação
+    /// ao [`Self::impasto_depth`] são o que o tornam um filme em vez de um impasto fino:
+    ///
+    /// * *Não é impasto* porque a tinta pousada no grão do papel não é uma pilha de matéria: ela é do
+    ///   SUBSTRATO, e quem a arma é a seção Paper (`ph2d-tool-painter::substrate_relief`).
+    /// * *Não escala* porque um filme de pigmento não engrossa quando o pincel cresce. O `impasto_depth`
+    ///   escala por `radius / IMPASTO_REFERENCE_RADIUS_PX` de propósito (um domo de altura fixa sobre
+    ///   60 px tem `n_z ≈ 1` e a luz o desenha chato), e herdar aquilo aqui está MEDIDO: o mesmo número
+    ///   rende *pior 9,72* níveis num raio de 10 e *66,92* num de 40 — **sete vezes** (sonda
+    ///   `film_probe`).
+    ///
+    /// ⚠️ **E o campo é o envelope de CARGA, nunca a cobertura** — a primeira versão derivou o filme da
+    /// `HeightFields::film` (a cobertura que a luz já dobra, e que teria deixado o slider vivo sobre a
+    /// tela inteira), e a medição a matou: dentro de um traço a cobertura vale **0,992..1,000** e um
+    /// gradiente sobre um platô é zero. É a mesma frase que o `emboss_probe` já tinha escrito um nível
+    /// acima — *tinta digital opaca satura* —, encontrada de novo um nível abaixo.
+    pub film_depth: f32,
     /// Which part of the dab mask sculpts the relief — see [`DepthSource`]. Default
     /// [`DepthSource::Uniform`] (a smooth plateau); [`DepthSource::Grain`] is the bristle look.
     pub impasto_source: DepthSource,

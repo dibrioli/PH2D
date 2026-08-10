@@ -482,6 +482,9 @@ pub struct BrushSettings {
     /// **Substrate Roughness** (`0..1`) — a ÍNGREMEZA do dente (o *Contrast* do Corel / o *Roughness*
     /// do ArtRage), não a largura de um realce. Tool-global.
     pub substrate_roughness: f32,
+    /// **Substrate Paint** (`0..1`, `0` = off) — quão proeminente o PIGMENTO depositado fica sobre o
+    /// papel, a segunda metade do substrato (o `emb` do bloco `paper_on` do Wet Paint). Tool-global.
+    pub substrate_paint: f32,
 
     // ── Impasto section (paint thickness + relief; `docs/Painter/16_impasto_plano_implementacao.md`) ──
     /// Master enable for the **Impasto** section. Off ⇒ every field below is inert and the brush is

@@ -253,6 +253,11 @@ use region::union_region;
 
 #[cfg(test)]
 mod emboss_probe; // sonda de ESTUDO: que campo o Digital ofereceria a um emboss (Enio 2026-08-10)
+#[cfg(test)]
+mod film_probe; // sonda de ESTUDO: que amplitude o relevo do DEPOSITO quer (Enio 2026-08-10)
+#[cfg(test)]
+#[path = "paint/film_tests.rs"]
+mod film_tests; // o FILME de pigmento: o deposito visto como relevo
 /// O que o RELEVO É — os campos compostos que a luz lê [LOC split de `impasto_light`].
 mod relief_fields;
 /// O **ganho** que o relevo impõe à aparência — a sombra do impasto como grandeza sem cor, para

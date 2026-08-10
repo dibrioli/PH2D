@@ -104,6 +104,9 @@ impl Default for BrushSpec {
             // (Smoothing 1). They are the artist's numbers, not the engine's: the `impasto` gate below
             // is what keeps the brush byte-identical until he ticks the box.
             impasto_depth: 1.0,
+            // O filme do substrato nasce DESLIGADO, como tudo o que este pincel só faz sob pedido — e é
+            // isso que mantém o depósito byte-idêntico até o artista subir o Paint na seção Paper.
+            film_depth: 0.0,
             impasto_source: DepthSource::Uniform,
             impasto_draw_to: DrawTo::ColorAndDepth,
             impasto_smoothing: 1.0,

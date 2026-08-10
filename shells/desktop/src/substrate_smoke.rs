@@ -27,6 +27,19 @@
 //!      relevo — que é o que faltava ao Digital. ⚠️ **Olhe as bordas do rastro:** o papel dentro do que
 //!      o pincel acabou de tocar tem de ser o MESMO de fora. Um degrau retangular ali é o defeito
 //!      voltando (o fold parcial dobrando dente novo só dentro do rect).
+//!   5b. **O DEPÓSITO como relevo** — a row **Paint**, e é o pedido de 2026-08-10 (*"o depósito de
+//!      pigmento com pouca água é visto como relevo, exatamente como faz Wet Paint"*).
+//!      ⚠️ **Escolha uma SHAPE primeiro** (seção Shape → `Stripes`, as cerdas), e é o passo que decide:
+//!      o filme não INVENTA textura, ele revela a que o pincel já deposita — com o pincel redondo
+//!      macio o depósito é um domo, e um domo tem `n_z ≈ 1`, então a luz o desenha chato (medido:
+//!      *0,21* nível contra *14,46* com listras). Depois suba o **Paint** e pinte: a tinta ganha corpo
+//!      onde as cerdas passaram.
+//!      ⚠️ **E o Paint é DEPÓSITO, não superfície** — diferente do Relief, ele arma o PRÓXIMO traço.
+//!      Sobre o último ele só é vivo com **Adjust Last Stroke** marcado (*tinta pronta fica pronta*,
+//!      o default do Enio de 2026-07-19), e sobre traços mais antigos ele não volta atrás.
+//!      ⚠️ **O CONTROLE, e ele é a metade que importa:** com Paint em `0` o traço tem de sair
+//!      **exatamente** como saía antes desta wave — a tinta não pode mudar de silhueta por causa de um
+//!      slider de relevo (a primeira versão mudava, em 61 níveis).
 //!   6. E o card **Lighting** (seção Impasto) governa a luz que revela o dente: é o MESMO rig, uma luz
 //!      só para o documento. Gire o Angle e o papel vira junto.
 //!   7. **Ctrl+Z devolve a TINTA** (com o papel ligado, ao byte). ⚠️ Ele **não** desfaz o Relief nem a
@@ -103,6 +116,13 @@ pub(crate) fn spawn_if_enabled(
                  Suba o Relief: o papel acende SEM uma pincelada. Depois mexa na Roughness (0 = \
                  satinado, 1 = aspero) e so entao PINTE. Medido nesta tela, a excursao de luminancia \
                  no Relief maximo vai de 21 niveis (Roughness 0) a 109 (Roughness 1)."
+            );
+            println!(
+                "PH2D_SUBSTRATE_SMOKE: e a row PAINT e o deposito visto como relevo. Escolha uma \
+                 SHAPE primeiro (secao Shape -> Stripes): o filme revela a textura que o pincel \
+                 deposita, e um pincel redondo macio nao tem nenhuma (medido, 0,21 nivel contra 14,46 \
+                 com listras). Suba o Paint e PINTE -- a tinta ganha corpo onde as cerdas passaram. \
+                 Com Paint em 0 o traco tem de sair EXATAMENTE como saia antes."
             );
             Some(bits)
         }

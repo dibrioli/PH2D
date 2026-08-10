@@ -44,8 +44,13 @@ impl PainterTool {
     /// ⚠️ **Um gesto de figura em voo nem chega aqui** (`super::shape_draft`): o re-carimbo descasca e
     /// volta antes de produzir dab nenhum. Uma 1ª versão desta lei gateava o corpo AQUI, e a medição a
     /// derrubou — na cena do report o depósito é 8% do move e o composite booleano é 92%.
+    /// ⚠️ **O FILME do substrato é a segunda razão para este passe correr, e ele NÃO é impasto** — é a
+    /// espessura do pigmento sobre o papel, armada pela seção Paper (Enio 2026-08-10). Sem esta
+    /// cláusula o Digital nunca chega ao depósito de altura, e o pedido *"o depósito de pigmento com
+    /// Shape visto como relevo"* não tem onde acontecer.
     fn impasto_batch_active(&self) -> bool {
-        matches!(self.paint.paint_mode, PaintMode::Paint) && self.paint.brush.impasto
+        matches!(self.paint.paint_mode, PaintMode::Paint)
+            && (self.paint.brush.impasto || self.paint.brush.effective_film_depth() > 0.0)
     }
 
     /// Deposit (or, for the Eraser, scrub) this dab batch's HEIGHT.
@@ -187,7 +192,11 @@ impl PainterTool {
         // stroke laid at Push 0 has no ingredient, so dragging the slider up afterwards no longer
         // re-derives it. Push became a **before-the-stroke** decision, and that trade is Enio's
         // (2026-08-06), taken with the number on the table.
-        let ground = (!erasing && brush.effective_impasto_push() > 0.0)
+        // ⚠️ **O `impasto` entra AQUI, e hoje ele é byte-idêntico:** o `touches_height` já exigia o
+        // interruptor para o ramo do Push, então nenhum traço chegava a esta linha com `impasto` off e
+        // `push > 0`. Com o FILME um chega — e sem esta cláusula um pincel cujo slot guardou um Push de
+        // outra sessão passaria a arar a tela num meio que nunca pediu deslocamento nenhum.
+        let ground = (!erasing && brush.impasto && brush.effective_impasto_push() > 0.0)
             .then(|| self.heights.get(&active).cloned())
             .flatten();
         let mut push_plane = std::mem::take(&mut self.paint.relief.stroke_push);

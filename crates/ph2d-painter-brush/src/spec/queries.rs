@@ -97,16 +97,33 @@ impl BrushSpec {
         self.impasto && self.impasto_draw_to.writes_depth() && self.impasto_depth != 0.0
     }
 
-    /// Whether this brush's dabs touch the height field **at all** — it lays body down, or it shoves
-    /// existing body around, or both.
+    /// O **FILME** de pigmento em cargas ([`Self::film_depth`]), clampado — e deliberadamente **sem** o
+    /// gate do `impasto`: um filme é do substrato, não do corpo da tinta.
+    #[must_use]
+    pub fn effective_film_depth(&self) -> f32 {
+        self.film_depth.clamp(0.0, 1.0)
+    }
+
+    /// Whether this brush's dabs touch the height field **at all** — it lays thickness down (body or
+    /// the substrate's film), or it shoves existing body around, or both.
     ///
     /// Not the same question as [`Self::deposits_height`], and the difference is a real brush: at
     /// **Depth 0 with Push up** the brush carries no paint and still moves the paint it finds. That is a
     /// dry brush, and it is a palette knife — the tool that does nothing BUT displace. Gating the height
     /// pass on the deposit alone made that brush a no-op, and it is the most physical use of Push there is.
+    ///
+    /// ⚠️ **A terceira razão é o FILME, e ela é DELIBERADAMENTE separada do [`Self::deposits_height`]**
+    /// — a distinção foi medida, não escolhida. Aquele predicado não significa *"escreve no plano de
+    /// altura"*: ele significa **"este pincel deixa um CORPO de tinta"**, e quatro sítios do caminho de
+    /// COR o leem para cortar o pigmento na borda do corpo (`height::film_coverage`). Pôr o filme lá
+    /// dentro mudava a SILHUETA do pigmento no instante em que o artista subia o Paint — medido, *pior
+    /// 61 níveis* de diferença que não tinham nada a ver com relevo. Um filme é tinta fina sobre papel;
+    /// ele não converte o pincel num pincel de corpo.
     #[must_use]
     pub fn touches_height(&self) -> bool {
-        self.deposits_height() || (self.impasto && self.effective_impasto_push() > 0.0)
+        self.deposits_height()
+            || (self.impasto && self.effective_impasto_push() > 0.0)
+            || self.effective_film_depth() != 0.0
     }
 
     /// Whether this brush's dabs deposit **pigment**. Only [`DrawTo::Depth`] — *with the master switch

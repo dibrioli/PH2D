@@ -146,8 +146,9 @@ pub const IMPASTO_REFERENCE_RADIUS_PX: f32 = 10.0;
 #[must_use]
 pub fn derive_height(spec: &crate::BrushSpec, paint: f32, grain: f32) -> f32 {
     let depth = spec.effective_impasto_depth();
+    let film = spec.effective_film_depth();
     let m = paint.clamp(0.0, 1.0);
-    if depth == 0.0 || m <= 0.0 {
+    if (depth == 0.0 && film == 0.0) || m <= 0.0 {
         return 0.0;
     }
     // **The relief's height scales with the brush's SIZE** (Enio, smoke of 2026-07-14: *"a altura do relevo
@@ -178,7 +179,17 @@ pub fn derive_height(spec: &crate::BrushSpec, paint: f32, grain: f32) -> f32 {
         // film, the Painter/ArtRage signature — instead of mushing a dome.
         a *= grain_groove(grain);
     }
-    depth * a * size_scale
+    let body_h = depth * a * size_scale;
+    if film == 0.0 {
+        // ⚠️ **O neutro é a expressão ANTIGA, verbatim** — e não `body_h + 0.0 * a`, porque a
+        // multiplicação em `f32` não é associativa e um `-0.0` somado a `+0.0` já não é o mesmo bit.
+        // O `impasto_off_is_byte_identical` mede isto ao byte.
+        return body_h;
+    }
+    // **O FILME não leva o `size_scale`**, e é a única diferença entre os dois termos: o corpo escala com
+    // o raio para manter a razão de aspecto do domo; o filme é a espessura do pigmento, que não sabe o
+    // tamanho do pincel que o pousou (o ⚠️ em [`crate::BrushSpec::film_depth`], com o número medido).
+    body_h + film * a
 }
 
 /// The grain sample of a pixel that has none: a full, ungrooved body.
@@ -330,7 +341,13 @@ pub fn accumulate_dab_height(
     // the FOOTPRINT is itself an ingredient (it is what the displacement bites with), so a brush that
     // carries no paint and only shoves must still record where it passed. Bailing on depth alone made
     // the dry brush — the most physical use of Push there is — a silent no-op.
-    if spec.effective_impasto_depth() == 0.0 && spec.effective_impasto_push() == 0.0 {
+    //
+    // ⚠️ **E o FILME do substrato é a terceira coisa que um dab pode deixar** ([`BrushSpec::film_depth`]):
+    // espessura de pigmento que não é corpo de tinta, e que por isso não passa pelo `impasto`.
+    if spec.effective_impasto_depth() == 0.0
+        && spec.effective_impasto_push() == 0.0
+        && spec.effective_film_depth() == 0.0
+    {
         return None;
     }
     // The same fold the colour kernel applies: pressure × Flow × Strength. A light, thin stroke is

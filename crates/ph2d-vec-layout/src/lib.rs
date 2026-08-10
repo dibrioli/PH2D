@@ -29,9 +29,15 @@
 //! **0,63 s** (+ a crate `grid`), e nada a jusante honraria um `dir = grid` hoje — seria o `dir`
 //! que o artista escolhe e que não muda um pixel. Ele nasce com a UI que o consumir.
 //!
-//! ⚠️ **Não há *measure function*.** Uma folha entra com o tamanho que ela JÁ tem (a bbox da
-//! geometria cozida, que o texto também tem porque os glifos dele são contornos assados). O que
-//! falta ao texto é REFLUIR a uma largura — outra wave (W2a), e ela traz a measure function junto.
+//! ⚠️ **Não há *measure function*, e isso NÃO impede o `hug`.** Uma folha entra com o tamanho que
+//! ela JÁ tem (a bbox da geometria cozida, que o texto também tem porque os glifos dele são
+//! contornos assados). Uma *measure function* é precisa para uma **FOLHA** cujo tamanho depende do
+//! espaço que lhe oferecem (texto que reflui); um **CONTENTOR** que se ajusta ao conteúdo é
+//! *intrinsic sizing* puro, e o flexbox resolve-o sem perguntar nada a ninguém — ver [`Len::Hug`].
+//!
+//! ⚠️ A frase anterior deste cabeçalho concluía o contrário, e a medição derrubou-a
+//! (`hug_probe.rs`, 2026-08-10): uma moldura `Hug` com três filhos de 10, vão 4 e recuo 2 mede
+//! **42,000 × 10,000** exactos.
 
 use taffy::prelude::*;
 use taffy::{Rect as TaffyRect, Size as TaffySize};
@@ -111,6 +117,61 @@ impl Default for ItemStyle {
     }
 }
 
+/// **O tamanho de um nó num eixo.**
+///
+/// ⚠️ É um enum e não um `f64` com um `bool` ao lado porque as duas respostas são **exclusivas**:
+/// um eixo que abraça não tem um número que alguém escreveu, e guardá-lo deixaria no tipo um campo
+/// que só significa alguma coisa metade das vezes. A representação apaga o caso especial.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Len {
+    /// O número que o nó TRAZ — a bbox da geometria de uma folha, ou o tamanho autorado de uma
+    /// moldura.
+    Fixed(f64),
+    /// **Abraça o conteúdo** (o *Hug contents* do Figma): o tamanho sai do que está DENTRO.
+    ///
+    /// ⚠️ Só faz sentido num nó que FLUI — uma folha não tem conteúdo a abraçar, ela **é** o
+    /// conteúdo, e pedi-lo ali resolveria para **zero** (a forma sumiria da tela, em silêncio).
+    /// Por isso [`solve`] o RECUSA com [`LayoutError::HugWithoutFlow`] em vez de o acomodar.
+    ///
+    /// ⚠️ Num `RowWrap` o abraço **desliga a quebra na prática**, e é o correcto: quebrar é
+    /// responder *"não cabe na largura que me deram"*, e quem abraça não recebeu largura nenhuma.
+    /// É o que o Figma faz.
+    Hug,
+}
+
+impl Default for Len {
+    /// Zero fixo — o neutro de um nó que ainda não foi descrito, nunca um pedido de abraço.
+    fn default() -> Self {
+        Self::Fixed(0.0)
+    }
+}
+
+impl Len {
+    /// O número que este eixo traz, se trouxer algum.
+    #[must_use]
+    pub const fn fixed(self) -> Option<f64> {
+        match self {
+            Len::Fixed(v) => Some(v),
+            Len::Hug => None,
+        }
+    }
+}
+
+impl Default for Node {
+    /// Uma folha de tamanho zero pendurada na raiz. Existe para o `..Default::default()` de quem
+    /// constrói um nó de que só dois campos interessam — nunca como um nó útil por si.
+    fn default() -> Self {
+        Self {
+            parent: None,
+            frame: None,
+            item: ItemStyle::default(),
+            size: [Len::default(); 2],
+            min: [None; 2],
+            max: [None; 2],
+        }
+    }
+}
+
 /// Um nó da árvore a resolver.
 ///
 /// ⚠️ A fatia tem de vir em ordem de **PAI ANTES DOS FILHOS** (o DFS que a hierarquia do editor já
@@ -125,8 +186,17 @@ pub struct Node {
     pub frame: Option<FrameStyle>,
     /// Como ele se comporta dentro do pai.
     pub item: ItemStyle,
-    /// O tamanho autorado (uma moldura) ou intrínseco (uma folha), `[w, h]`.
-    pub size: [f64; 2],
+    /// O tamanho autorado (uma moldura) ou intrínseco (uma folha), `[w, h]` — ou o pedido de
+    /// abraçar o conteúdo. Ver [`Len`].
+    pub size: [Len; 2],
+    /// **Piso** por eixo, `[w, h]`. `None` = sem piso.
+    ///
+    /// ⚠️ Vale com qualquer [`Len`], e o par que ele existe para servir é `Hug` + `min`: *"cresce
+    /// com o rótulo, mas nunca fica mais estreito do que isto"* — o botão que não colapsa quando o
+    /// texto é uma letra só.
+    pub min: [Option<f64>; 2],
+    /// **Teto** por eixo. `None` = sem teto.
+    pub max: [Option<f64>; 2],
 }
 
 /// O retângulo resolvido de um nó, **relativo ao canto superior-esquerdo da raiz**, com `y` para
@@ -149,6 +219,12 @@ pub enum LayoutError {
     /// para um canto. Quem monta a fatia recolhe só sub-árvores que fluem (é o que mantém
     /// byte-intocado todo documento em que ninguém pediu layout).
     ParentDoesNotFlow,
+    /// Um nó que **não flui** pediu [`Len::Hug`].
+    ///
+    /// ⚠️ Recusar em vez de acomodar, e aqui o preço de acomodar é a arte a **desaparecer**: sem
+    /// filhos, o conteúdo a abraçar mede zero, e o motor devolveria um retângulo de tamanho nulo
+    /// sem erro nenhum. Quem monta a fatia só oferece o abraço a uma moldura.
+    HugWithoutFlow,
     /// O motor recusou a árvore (só alcançável com uma árvore que esta função não constrói).
     Engine,
 }
@@ -178,6 +254,12 @@ pub fn solve(nodes: &[Node]) -> Result<Vec<Solved>, LayoutError> {
     }
     if nodes[0].frame.is_none() && nodes.len() > 1 {
         return Err(LayoutError::ParentDoesNotFlow);
+    }
+    // O abraço é uma propriedade de CONTENTOR — ver `LayoutError::HugWithoutFlow`.
+    for n in nodes {
+        if n.frame.is_none() && n.size.contains(&Len::Hug) {
+            return Err(LayoutError::HugWithoutFlow);
+        }
     }
 
     let mut tree: TaffyTree<()> = TaffyTree::with_capacity(nodes.len());
@@ -210,9 +292,18 @@ pub fn solve(nodes: &[Node]) -> Result<Vec<Solved>, LayoutError> {
                 .map_err(|_| LayoutError::Engine)?;
         }
     }
+    // ⚠️ **O espaço oferecido à raiz É a pergunta do abraço.** `Definite` diz *"tens esta
+    // largura"*; `MaxContent` diz *"decide-a tu"*, e é o que faz o `Dimension::AUTO` do estilo
+    // resolver pelo conteúdo em vez de por zero. Os dois eixos são independentes: uma barra que
+    // ocupa a largura toda e tem a altura do que está dentro é `Definite` num e `MaxContent` no
+    // outro.
+    let avail = |l: Len| match l {
+        Len::Fixed(v) => AvailableSpace::Definite(v as f32),
+        Len::Hug => AvailableSpace::MaxContent,
+    };
     let root_size = TaffySize {
-        width: AvailableSpace::Definite(nodes[0].size[0] as f32),
-        height: AvailableSpace::Definite(nodes[0].size[1] as f32),
+        width: avail(nodes[0].size[0]),
+        height: avail(nodes[0].size[1]),
     };
     tree.compute_layout(ids[0], root_size)
         .map_err(|_| LayoutError::Engine)?;
@@ -239,10 +330,25 @@ pub fn solve(nodes: &[Node]) -> Result<Vec<Solved>, LayoutError> {
 /// O estilo de um nó, traduzido para o vocabulário do motor. Porta ÚNICA: se a tradução vivesse em
 /// dois sítios, o que a UI mostra e o que o motor faz divergiriam no primeiro modo novo.
 fn style_of(n: &Node) -> Style {
+    // `Hug` é literalmente o `auto` do CSS: *"o teu tamanho sai do teu conteúdo"*. Não há nada a
+    // calcular aqui — a tradução é o trabalho todo.
+    let dim = |l: Len| match l {
+        Len::Fixed(v) => length(v as f32),
+        Len::Hug => Dimension::AUTO,
+    };
+    let bound = |v: Option<f64>| v.map_or_else(auto, |x| length(x as f32));
     let mut s = Style {
         size: TaffySize {
-            width: length(n.size[0] as f32),
-            height: length(n.size[1] as f32),
+            width: dim(n.size[0]),
+            height: dim(n.size[1]),
+        },
+        min_size: TaffySize {
+            width: bound(n.min[0]),
+            height: bound(n.min[1]),
+        },
+        max_size: TaffySize {
+            width: bound(n.max[0]),
+            height: bound(n.max[1]),
         },
         flex_grow: n.item.grow,
         flex_shrink: n.item.shrink,

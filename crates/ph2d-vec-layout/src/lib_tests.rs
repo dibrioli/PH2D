@@ -10,6 +10,12 @@ fn approx(a: f64, b: f64) -> bool {
     (a - b).abs() < 0.001
 }
 
+/// Os dois eixos com o número que o nó traz — o caso comum, e o que todo gate anterior ao abraço
+/// assumia sem o dizer.
+fn fixed(size: [f64; 2]) -> [Len; 2] {
+    [Len::Fixed(size[0]), Len::Fixed(size[1])]
+}
+
 fn frame(dir: Dir, gap: f64, size: [f64; 2]) -> Node {
     Node {
         parent: None,
@@ -19,7 +25,8 @@ fn frame(dir: Dir, gap: f64, size: [f64; 2]) -> Node {
             ..FrameStyle::default()
         }),
         item: ItemStyle::default(),
-        size,
+        size: fixed(size),
+        ..Node::default()
     }
 }
 
@@ -28,7 +35,8 @@ fn child(size: [f64; 2]) -> Node {
         parent: Some(0),
         frame: None,
         item: ItemStyle::default(),
-        size,
+        size: fixed(size),
+        ..Node::default()
     }
 }
 
@@ -189,7 +197,8 @@ fn a_nested_frame_lays_its_own_children_at_the_size_it_got() {
             ..FrameStyle::default()
         }),
         item: ItemStyle::default(),
-        size: [10.0, 20.0],
+        size: fixed([10.0, 20.0]),
+        ..Node::default()
     };
     inner.item.grow = 1.0;
     let mut grand = child([10.0, 10.0]);
@@ -217,7 +226,8 @@ fn positions_are_absolute_to_the_root() {
         parent: Some(0),
         frame: Some(FrameStyle::default()),
         item: ItemStyle::default(),
-        size: [40.0, 20.0],
+        size: fixed([40.0, 20.0]),
+        ..Node::default()
     };
     let mut grand = child([10.0, 10.0]);
     grand.parent = Some(2);
@@ -282,7 +292,8 @@ fn a_parent_that_does_not_flow_is_refused() {
         parent: None,
         frame: None,
         item: ItemStyle::default(),
-        size: [100.0, 100.0],
+        size: fixed([100.0, 100.0]),
+        ..Node::default()
     };
     assert_eq!(
         solve(&[plain, child([10.0, 10.0])]),
@@ -318,7 +329,8 @@ fn a_fractional_layout_is_not_rounded_to_whole_units() {
         parent: None,
         frame: Some(FrameStyle::default()),
         item: ItemStyle::default(),
-        size: [9.0, 2.6],
+        size: fixed([9.0, 2.6]),
+        ..Node::default()
     }];
     for i in 0..6 {
         nodes.push(Node {
@@ -332,7 +344,8 @@ fn a_fractional_layout_is_not_rounded_to_whole_units() {
             } else {
                 ItemStyle::default()
             },
-            size: [if i == 3 { 0.7 } else { 1.1 }, 0.84],
+            size: fixed([if i == 3 { 0.7 } else { 1.1 }, 0.84]),
+            ..Node::default()
         });
     }
     let s = solve(&nodes).expect("dispoe");
@@ -349,5 +362,139 @@ fn a_fractional_layout_is_not_rounded_to_whole_units() {
         (s[2][0] - 1.1).abs() < 1e-4,
         "o segundo comeca em {:.4}, e nao em 1,1",
         s[2][0]
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// O ABRAÇO e os LIMITES (2026-08-10)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// **Uma moldura que abraça mede o que está DENTRO dela** — e o oráculo é a soma, não o motor.
+///
+/// `2 + 10 + 4 + 10 + 4 + 10 + 2 = 42` de largura; `2 + 6 + 2 = 10` de altura.
+#[test]
+fn a_hugging_frame_measures_what_is_inside_it() {
+    let mut f = frame(Dir::Row, 4.0, [999.0, 999.0]); // o número que ele TRAZ é irrelevante
+    f.size = [Len::Hug, Len::Hug];
+    f.frame = Some(FrameStyle {
+        dir: Dir::Row,
+        gap: [4.0, 4.0],
+        pad: [2.0, 2.0, 2.0, 2.0],
+        ..FrameStyle::default()
+    });
+    let nodes = [
+        f,
+        child([10.0, 6.0]),
+        child([10.0, 6.0]),
+        child([10.0, 6.0]),
+    ];
+    let out = solve(&nodes).expect("resolve");
+    assert!(approx(out[0][2], 42.0), "largura abracada: {:?}", out[0]);
+    assert!(approx(out[0][3], 10.0), "altura abracada: {:?}", out[0]);
+    // E os filhos continuam a pousar na aritmética de sempre, a partir do recuo.
+    assert!(approx(out[1][0], 2.0) && approx(out[2][0], 16.0) && approx(out[3][0], 30.0));
+}
+
+/// **Os dois eixos são independentes:** a barra ocupa a largura que lhe deram e tem a altura do
+/// que está dentro. É o caso de uso que mais aparece numa UI, e o que um `hug` de eixo único serve.
+#[test]
+fn hugging_one_axis_leaves_the_other_alone() {
+    let mut f = frame(Dir::Row, 0.0, [100.0, 999.0]);
+    f.size = [Len::Fixed(100.0), Len::Hug];
+    f.frame = Some(FrameStyle {
+        pad: [3.0, 0.0, 3.0, 0.0],
+        ..FrameStyle::default()
+    });
+    let nodes = [f, child([10.0, 6.0])];
+    let out = solve(&nodes).expect("resolve");
+    assert!(
+        approx(out[0][2], 100.0),
+        "a largura dada manda: {:?}",
+        out[0]
+    );
+    assert!(approx(out[0][3], 12.0), "6 + 3 + 3: {:?}", out[0]);
+}
+
+/// **Uma FOLHA que pede para abraçar é RECUSADA** — e o gate existe porque acomodar seria pior que
+/// falhar: sem filhos, o conteúdo mede zero e a forma **desapareceria** sem erro nenhum.
+#[test]
+fn a_leaf_that_asks_to_hug_is_refused() {
+    let mut kid = child([10.0, 10.0]);
+    kid.size = [Len::Hug, Len::Fixed(10.0)];
+    let nodes = [frame(Dir::Row, 0.0, [100.0, 100.0]), kid];
+    assert_eq!(solve(&nodes), Err(LayoutError::HugWithoutFlow));
+}
+
+/// **O piso segura uma moldura que abraça** — *"cresce com o rótulo, mas nunca mais estreita que
+/// isto"*, o botão que não colapsa quando o texto é uma letra só.
+#[test]
+fn a_minimum_holds_a_hugging_frame_open() {
+    let mut f = frame(Dir::Row, 0.0, [0.0, 0.0]);
+    f.size = [Len::Hug, Len::Fixed(20.0)];
+    f.min = [Some(30.0), None];
+    let nodes = [f, child([10.0, 10.0])];
+    let out = solve(&nodes).expect("resolve");
+    assert!(approx(out[0][2], 30.0), "o piso manda: {:?}", out[0]);
+}
+
+/// **O teto limita quem CRESCE** — o par que o Figma serve com *Fill + max*: o campo estica com a
+/// janela até uma largura de leitura, e para.
+#[test]
+fn a_maximum_caps_a_growing_child() {
+    let f = frame(Dir::Row, 0.0, [200.0, 20.0]);
+    let mut kid = child([10.0, 10.0]);
+    kid.item.grow = 1.0;
+    kid.max = [Some(60.0), None];
+    let out = solve(&[f, kid]).expect("resolve");
+    assert!(
+        approx(out[1][2], 60.0),
+        "sem teto ele tomaria os 200: {:?}",
+        out[1]
+    );
+}
+
+/// **O neutro é byte-idêntico ao mundo de antes desta wave:** sem abraço e sem limites, a árvore
+/// resolve exactamente como resolvia. É o controlo que impede a feature de mexer em quem não a
+/// pediu.
+#[test]
+fn without_hug_or_bounds_nothing_moves() {
+    let nodes = [
+        frame(Dir::Row, 4.0, [100.0, 20.0]),
+        child([10.0, 10.0]),
+        child([20.0, 10.0]),
+    ];
+    let out = solve(&nodes).expect("resolve");
+    assert!(approx(out[0][2], 100.0) && approx(out[1][0], 0.0) && approx(out[2][0], 14.0));
+    assert!(approx(out[1][2], 10.0) && approx(out[2][2], 20.0));
+}
+
+/// **Uma moldura que abraça e QUEBRA não quebra** — e o gate existe porque a afirmação estava
+/// escrita no doc de [`Len::Hug`] sem nada a segurá-la.
+///
+/// ⚠️ É ele que torna o espaço oferecido à raiz **load-bearing**: com `MaxContent` o motor põe os
+/// três numa linha (a largura sai do conteúdo); com um espaço DEFINIDO de zero, cada filho cai
+/// numa linha própria e a moldura fica alta e estreita. A mutação que troca um pelo outro
+/// sobrevive a todos os outros gates desta secção — quebrar é responder *"não cabe na largura que
+/// me deram"*, e quem abraça não recebeu largura nenhuma.
+#[test]
+fn a_hugging_frame_that_wraps_does_not_wrap() {
+    let mut f = frame(Dir::RowWrap, 0.0, [0.0, 0.0]);
+    f.size = [Len::Hug, Len::Hug];
+    let nodes = [
+        f,
+        child([10.0, 6.0]),
+        child([10.0, 6.0]),
+        child([10.0, 6.0]),
+    ];
+    let out = solve(&nodes).expect("resolve");
+    assert!(
+        approx(out[0][2], 30.0),
+        "os tres cabem numa linha so: {:?}",
+        out[0]
+    );
+    assert!(
+        approx(out[0][3], 6.0),
+        "e a altura e a de UMA linha, nao de tres: {:?}",
+        out[0]
     );
 }

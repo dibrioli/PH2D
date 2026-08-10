@@ -23,14 +23,16 @@ fn flat(n: usize) -> Vec<Node> {
             ..FrameStyle::default()
         }),
         item: ItemStyle::default(),
-        size: [1000.0, 1000.0],
+        size: [Len::Fixed(1000.0), Len::Fixed(1000.0)],
+        ..Node::default()
     });
     for _ in 0..n {
         v.push(Node {
             parent: Some(0),
             frame: None,
             item: ItemStyle::default(),
-            size: [20.0, 10.0],
+            size: [Len::Fixed(20.0), Len::Fixed(10.0)],
+            ..Node::default()
         });
     }
     v
@@ -47,7 +49,8 @@ fn nested(depth: usize) -> Vec<Node> {
             ..FrameStyle::default()
         }),
         item: ItemStyle::default(),
-        size: [1000.0, 1000.0],
+        size: [Len::Fixed(1000.0), Len::Fixed(1000.0)],
+        ..Node::default()
     }];
     let mut cur = 0usize;
     for _ in 0..depth {
@@ -56,7 +59,8 @@ fn nested(depth: usize) -> Vec<Node> {
                 parent: Some(cur),
                 frame: None,
                 item: ItemStyle::default(),
-                size: [20.0, 10.0],
+                size: [Len::Fixed(20.0), Len::Fixed(10.0)],
+                ..Node::default()
             });
         }
         v.push(Node {
@@ -70,7 +74,8 @@ fn nested(depth: usize) -> Vec<Node> {
                 grow: 1.0,
                 ..ItemStyle::default()
             },
-            size: [100.0, 100.0],
+            size: [Len::Fixed(100.0), Len::Fixed(100.0)],
+            ..Node::default()
         });
         cur = v.len() - 1;
     }

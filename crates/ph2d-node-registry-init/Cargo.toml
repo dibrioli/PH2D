@@ -89,6 +89,7 @@ ph2d-node-motion-verlet-rope = { path = "../ph2d-node-motion-verlet-rope" }
 ph2d-node-motion-voronoi = { path = "../ph2d-node-motion-voronoi" }
 ph2d-node-motion-wave = { path = "../ph2d-node-motion-wave" }
 ph2d-node-motion-wiggle = { path = "../ph2d-node-motion-wiggle" }
+ph2d-node-pulse-adsr = { path = "../ph2d-node-pulse-adsr" }
 ph2d-node-pulse-beat = { path = "../ph2d-node-pulse-beat" }
 ph2d-node-pulse-compare = { path = "../ph2d-node-pulse-compare" }
 ph2d-node-pulse-counter = { path = "../ph2d-node-pulse-counter" }

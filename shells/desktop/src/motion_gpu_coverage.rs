@@ -34,6 +34,7 @@
 //! thing whose job is to point at the next fix.
 
 use super::build_default_document;
+use super::gpu_adsr_demo::build_gpu_adsr_demo_document;
 use super::gpu_deform_demo::{
     build_gpu_deform_demo_document, build_gpu_four_point_warp_demo_document,
     build_gpu_kaleidoscope_demo_document, build_gpu_spherize_demo_document,
@@ -163,6 +164,14 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     // em que alguém desse um kernel ao nascimento-por-pulso sem tirar a recusa.
     push("demo=24 five fountains (a pulse gives birth)", &|d| {
         build_gpu_spawn_pulse_demo_document(d, reg)
+    });
+    // ⚠️ E O COMPASSO entra porque traz ao corpus a primeira cadeia que LÊ UMA SEGUNDA
+    // SAÍDA (o `carry` do `pulse.counter`, porta 1) e o primeiro nó cujo estado é uma IDADE
+    // em segundos (`pulse.adsr`). Os dois são CPU-only pela mesma razão da `=23` — um pulso é
+    // evento por LINHA, não mapa por texel —, e o censo dizer isso é o que impede a família
+    // de voltar a ser contada como omissão.
+    push("demo=25 the bar (a carry opens an envelope)", &|d| {
+        build_gpu_adsr_demo_document(d, reg)
     });
     push("demo=10 sim.zone snow globe", &|d| {
         build_gpu_zone_demo_document(d, reg)

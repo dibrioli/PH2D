@@ -47,7 +47,7 @@ frames, e o "Modal Event" aparece na lista de *faltantes* dos próprios devs, li
 | `pulse.sample_hold` | **0** | **modo de borda** (TD Hold CHOP *"Off to On"*; doc 14 §2) | — | **NATUREZA, com mecanismo:** o nosso pulso carrega **só "disparou"** (doc 06 §2, decisão contra o `{value,edge,t}` do MiniCavalry) ⇒ um pulso de 1 tick **não tem** borda de descida nem "enquanto alto"; o modo de borda só existe sobre um GATE, e gate é a P0 da linha 1 (se ela nascer, este item nasce com ela) | ⛔ | — |
 | `pulse.sample_hold` | **0** | **slew / portamento** entre amostras (o par clássico S&H + lag do modular) | — | **NATUREZA:** a referência também os separa (TD tem Hold CHOP **e** Lag CHOP como nós distintos), e o `motion.lag` já está catalogado como **P0 no doc 63 §2.3** — pertence à família VALUE, não a este nó | ⛔ | — |
 | `pulse.sample_hold` | **0** | **magro por NATUREZA — o veredito, com mecanismo:** as duas entradas do sampler são PORTAS (o valor e o gatilho, ambos animáveis), e a única escolha que sobraria — *qual borda* — é inexprimível no tipo (linha acima). Zero params está **certo** | — | natureza | ⛔ | — |
-| **(família)** | — | **`pulse.adsr`** — envelope Delay/Attack/Sustain/Release no trigger (TD **Trigger CHOP**: *"starts an audio-style ADSR envelope to all trigger pulses"*, doc 06 §4); o doc 63 §2.4 já o lista como **P1** e continua correto (não há crate `pulse-adsr`) | **PELO HACK, e só** — `motion.strobe` É o envelope, mas escreve **canal de transform**; para usá-lo como VALOR seria `strobe → value.attribute(canal)` = exatamente o "clock hack" que o doc 09 matou | omissão | **P1** | envelope no domínio de valor ⇒ nó novo, nada muda |
+| **(família)** | — | **`pulse.adsr`** — envelope Delay/Attack/Sustain/Release no trigger (TD **Trigger CHOP**: *"starts an audio-style ADSR envelope to all trigger pulses"*, doc 06 §4); o doc 63 §2.4 já o lista como **P1** e continua correto (não há crate `pulse-adsr`) | **PELO HACK, e só** — `motion.strobe` É o envelope, mas escreve **canal de transform**; para usá-lo como VALOR seria `strobe → value.attribute(canal)` = exatamente o "clock hack" que o doc 09 matou | ✅ **CONSTRUÍDO (2026-08-10): a crate `ph2d-node-pulse-adsr`** — e a decisão que desenha o nó é que **um gatilho não tem *note off***. Num sintetizador o envelope é dirigido por um PORTÃO (a tecla desce, a tecla sobe); o nosso pulso é um IMPULSO, e `pulse.level` é **momentâneo e sem estado por decisão** (a P0 desta folha) ⇒ **não existe no catálogo nada que segure um portão aberto**. Logo o envelope é um **one-shot** e o param `hold` é quem o fecha — a única forma que COMPÕE com o que a família produz. Um segundo porto *release* daria o modelo de teclado e seria a **segunda** resposta a *"quando este envelope termina?"*: fica nomeado, não construído. ⚠️ **As rampas são ALGÉBRICAS** (bias de Schlick, HR-5) e em `0.5` reduzem **literalmente** à identidade — linear não é aproximação de linear. **Dois** shapes e não três (o `release_shape` governa as duas QUEDAS), com gate afirmando que cada um dobra exatamente os trechos que promete — sem ele a decisão seria uma frase, porque nos defaults lineares os dois são indistinguíveis. ⚠️ **E o teto NÃO é o do `debounce`, embora a grandeza e o relógio sejam os mesmos:** aquele conta para BAIXO e este para CIMA, e numa potência de dois os vizinhos de baixo estão **duas vezes mais juntos** — copiar o número teria shipado um teto quebrado; medido, **65536 s** | omissão | ✅ | nó novo ⇒ nada existente muda |
 
 ---
 
@@ -190,9 +190,11 @@ Grepadas antes de propor. Duas ainda valem, **duas envelheceram**, uma é lei.
    ⇒ a linha devia ler **PARCIAL**.
 4. **A ref Cavalry linha 93 (`Accumulator` = *"PARCIAL (pulse.counter)"*) está certa e nunca disse o
    que falta:** o nosso conta `+1` por pulso; o Accumulator acumula um **valor**. Nomeado agora.
-5. **A §2.4 (`pulse.adsr` = P1, CHOP Trigger) continua CORRETA** — conferido: não existe crate
-   `pulse-adsr`, e o `motion.strobe` é o envelope sobre **transform**, não sobre valor. Registrado
-   aqui para não ser "descoberto" outra vez.
+5. **A §2.4 (`pulse.adsr` = P1, CHOP Trigger) estava CORRETA e foi FECHADA em 2026-08-10** — a
+   crate existe (`ph2d-node-pulse-adsr`), e o `motion.strobe` segue sendo o envelope sobre
+   **transform**, que é por que ele não servia. ⚠️ O que a conferência **não** tinha visto é a
+   consequência do desenho: um gatilho não tem *note off*, então o envelope é um **one-shot** com
+   `hold`, e não o ADSR dirigido por portão do sintetizador.
 
 ---
 

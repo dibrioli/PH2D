@@ -6354,6 +6354,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-pulse-adsr"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-pulse-beat"
 version = "0.0.0"
 dependencies = [
@@ -6495,6 +6503,7 @@ dependencies = [
  "ph2d-node-motion-voronoi",
  "ph2d-node-motion-wave",
  "ph2d-node-motion-wiggle",
+ "ph2d-node-pulse-adsr",
  "ph2d-node-pulse-beat",
  "ph2d-node-pulse-compare",
  "ph2d-node-pulse-counter",

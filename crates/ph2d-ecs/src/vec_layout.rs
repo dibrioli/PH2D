@@ -132,6 +132,69 @@ impl Default for VecLayoutItem {
     }
 }
 
+/// **Como um nó decide o próprio TAMANHO num eixo.**
+///
+/// ⚠️ Aqui `Fixed` **não carrega número**, e no motor carrega — e a diferença não é descuido: o
+/// número de uma forma é a **geometria dela**, que o documento já guarda. Guardá-lo outra vez aqui
+/// seria a segunda resposta a *"que tamanho tem esta moldura?"*, e as duas divergiriam no primeiro
+/// arrasto da alça de redimensionar.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum LayoutSize {
+    /// O tamanho que a forma TEM — o *Fixed* do Figma, e o default.
+    #[default]
+    Fixed,
+    /// **Abraça o conteúdo** — o *Hug contents* do Figma: o tamanho sai do que está DENTRO.
+    ///
+    /// ⚠️ Só faz sentido num nó que DISPÕE os filhos ([`VecLayout`] presente). Quem monta a fatia
+    /// para o motor não o oferece a mais ninguém, e o motor recusa se alguém tentar.
+    Hug,
+}
+
+/// **O tamanho de um nó, e os limites dele** — o vocabulário completo de *sizing* do Figma.
+///
+/// ⚠️ Componente **próprio** em vez de campos apendados ao [`VecLayout`], e a razão é o preço: um
+/// campo novo num componente existente é postcard **posicional** ⇒ bump de `PROJECT_SCHEMA` ⇒
+/// **todo projeto já salvo é recusado**. Um componente novo cunha `stable_type_id` próprio e não
+/// move número nenhum — o precedente do `VecFrame`, do `VecBindings` e do `PhysicsJoint`.
+///
+/// ⚠️ E ele é do **NÓ**, não do pai nem do filho: *"que tamanho eu tenho"* é uma pergunta sobre
+/// si, enquanto o [`VecLayout`] é *"como disponho os outros"* e o [`VecLayoutItem`] é *"como me
+/// comporto dentro do meu pai"*. As três respondem coisas diferentes e mudam por motivos
+/// diferentes.
+#[derive(Component, Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct VecLayoutSize {
+    /// Por eixo `[w, h]`.
+    pub size: [LayoutSize; 2],
+    /// **Piso** por eixo. O par que ele serve é `Hug` + `min`: *cresce com o rótulo, e nunca
+    /// colapsa quando o texto é uma letra só*.
+    pub min: [Option<f64>; 2],
+    /// **Teto** por eixo. O par que ele serve é `grow` + `max`: *estica com a janela até uma
+    /// largura de leitura, e para*.
+    pub max: [Option<f64>; 2],
+}
+
+impl Default for VecLayoutSize {
+    /// O neutro é o mundo de antes desta feature: os dois eixos no tamanho da forma, sem limites.
+    fn default() -> Self {
+        Self {
+            size: [LayoutSize::Fixed; 2],
+            min: [None; 2],
+            max: [None; 2],
+        }
+    }
+}
+
+/// **Este filho NÃO participa do fluxo do pai** — o *Absolute position* do Figma.
+///
+/// A presença É o booleano (o idioma do `Ccd` e do `LockRotation` da física): um selo sobre a quina
+/// de um card, um badge sobre um botão, um brilho por cima de tudo. Ele mantém a pose **autorada** —
+/// continua a ser filho na hierarquia, logo continua a andar com o pai e a ser recortado por ele.
+///
+/// ⚠️ Sem isto, *todo* filho de uma moldura que flui entra no fluxo, e um overlay é **inexprimível**:
+/// não há como pôr uma coisa por cima de outra dentro de um contentor com auto layout.
+#[derive(Component, Clone, Copy, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct VecLayoutAbsolute;
+
 impl SimComponent for VecLayout {}
 
 impl SimComponent for VecLayoutItem {}
@@ -139,3 +202,7 @@ impl SimComponent for VecLayoutItem {}
 #[cfg(test)]
 #[path = "vec_layout_tests.rs"]
 mod tests;
+
+impl SimComponent for VecLayoutSize {}
+
+impl SimComponent for VecLayoutAbsolute {}

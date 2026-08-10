@@ -327,3 +327,122 @@ fn a_gap_token_spaces_the_flow_and_the_literal_is_ignored_while_it_is_bound() {
         bound.0[0]
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// O SIZING: o abraço, os limites e o fora-do-fluxo (2026-08-10)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// **Uma moldura que ABRAÇA encolhe até o conteúdo, e o desenho dela acompanha.**
+///
+/// A moldura é de 100×40 e os três filhos de 10 numa fila sem vão medem 30. O oráculo é
+/// aritmético — 30, não "o que o motor devolveu" — e é sobre o que a moldura **DESENHA**, que é o
+/// que distingue esta wave de um número calculado que ninguém vê.
+#[test]
+fn a_hugging_frame_shrinks_to_its_contents_and_the_drawing_follows() {
+    let (mut sim, scene, map, frame, _kids) = frame_with_children(3);
+    arm(&mut sim, frame, VecLayout::default());
+    sim.world_mut()
+        .entity_mut(frame)
+        .insert(ph2d_ecs::VecLayoutSize {
+            size: [ph2d_ecs::LayoutSize::Hug, ph2d_ecs::LayoutSize::Fixed],
+            ..Default::default()
+        });
+    let frame_path = scene.paths()[0].id;
+    let mut live = LiveGeometry::new();
+    run(&sim, &scene, &map, &mut live);
+    let (lo, hi) = drawn(&live, &scene, frame_path);
+    assert!(
+        approx(hi[0] - lo[0], 30.0),
+        "a moldura devia abracar os 3x10 e mede {:.3}",
+        hi[0] - lo[0]
+    );
+    // ⚠️ O outro eixo NÃO se mexe: `Fixed` num eixo é o tamanho que a forma tem.
+    assert!(
+        approx(hi[1] - lo[1], 40.0),
+        "a altura era Fixed e mede {:.3}",
+        hi[1] - lo[1]
+    );
+    // E o canto superior-esquerdo é a ÂNCORA: abraçar encolhe para dentro, não desloca a moldura.
+    assert!(
+        approx(lo[0], 0.0) && approx(hi[1], 40.0),
+        "canto: {lo:?} {hi:?}"
+    );
+}
+
+/// **O piso segura a moldura aberta** — o botão que não colapsa quando o rótulo é uma letra só.
+#[test]
+fn a_minimum_holds_a_hugging_frame_open() {
+    let (mut sim, scene, map, frame, _kids) = frame_with_children(1);
+    arm(&mut sim, frame, VecLayout::default());
+    sim.world_mut()
+        .entity_mut(frame)
+        .insert(ph2d_ecs::VecLayoutSize {
+            size: [ph2d_ecs::LayoutSize::Hug, ph2d_ecs::LayoutSize::Fixed],
+            min: [Some(64.0), None],
+            ..Default::default()
+        });
+    let frame_path = scene.paths()[0].id;
+    let mut live = LiveGeometry::new();
+    run(&sim, &scene, &map, &mut live);
+    let (lo, hi) = drawn(&live, &scene, frame_path);
+    assert!(
+        approx(hi[0] - lo[0], 64.0),
+        "o piso manda sobre o abraco de 10: {:.3}",
+        hi[0] - lo[0]
+    );
+}
+
+/// **Um filho marcado como ABSOLUTO fica onde o artista o pôs** — o *Absolute position* do Figma.
+///
+/// ⚠️ O oráculo é o CONTRASTE, e sem ele o gate seria vácuo: os três filhos nascem empilhados na
+/// origem, então *"o absoluto está na origem"* também é verdade para um filho que o fluxo colocou
+/// no slot 0. O que este gate afirma é que o **segundo** filho anda (ele é o primeiro do fluxo
+/// agora) e o marcado **não**.
+#[test]
+fn a_child_marked_absolute_stays_where_the_artist_put_it() {
+    let (mut sim, scene, map, frame, kids) = frame_with_children(2);
+    arm(&mut sim, frame, VecLayout::default());
+    let first = Entity::from_bits(map[&kids[0]]);
+    sim.world_mut()
+        .entity_mut(first)
+        .insert(ph2d_ecs::VecLayoutAbsolute);
+    // O absoluto é deslocado para longe: se o fluxo lhe tocasse, ele voltaria para o canto.
+    let mut xf = VecXforms::default();
+    xf.insert(kids[0], Xform([1.0, 0.0, 0.0, 1.0, 70.0, 20.0]));
+    let mut live = LiveGeometry::new();
+    let mut ll = LayoutLive::default();
+    ll.recook(
+        &scene,
+        &sim,
+        &map,
+        &xf,
+        &mut live,
+        crate::vec_bindings::TokenCtx::factory(),
+    );
+    let items = world_of(&scene, &xf, &live, kids[0]);
+    let (lo, _hi) = bbox_of(&items).expect("desenha");
+    assert!(
+        approx(lo[0], 70.0) && approx(lo[1], 20.0),
+        "o absoluto foi arrastado para o fluxo: {lo:?}"
+    );
+    // O CONTRASTE: o outro filho FOI colocado (e no slot 0, porque o absoluto saiu da fatia).
+    assert_eq!(ll.placed(), 1, "so um filho e colocado pelo fluxo");
+}
+
+/// **O controlo: sem os componentes novos, o mundo é o de antes desta wave.**
+///
+/// ⚠️ Ele mede a MOLDURA de propósito — ela passou a entrar no laço de colocação, e a única coisa
+/// que a mantém intocada é o afim sair identidade. Um gate que só olhasse os filhos ficaria verde
+/// com a moldura a saltar.
+#[test]
+fn without_the_sizing_components_the_frame_does_not_move() {
+    let (mut sim, scene, map, frame, _kids) = frame_with_children(3);
+    arm(&mut sim, frame, VecLayout::default());
+    let frame_path = scene.paths()[0].id;
+    let mut live = LiveGeometry::new();
+    run(&sim, &scene, &map, &mut live);
+    assert!(
+        !live.contains_key(&frame_path),
+        "a moldura que ninguem redimensionou nao devia sequer entrar no mapa"
+    );
+}

@@ -320,6 +320,8 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // de undo).
     reg.register::<crate::VecLayout>("ph2d::ecs::VecLayout");
     reg.register::<crate::VecLayoutItem>("ph2d::ecs::VecLayoutItem");
+    reg.register::<crate::VecLayoutSize>("ph2d::ecs::VecLayoutSize");
+    reg.register::<crate::VecLayoutAbsolute>("ph2d::ecs::VecLayoutAbsolute");
     // AS ÂNCORAS (plano UI/UX W3): a outra metade da responsividade — a regra do filho que NÃO
     // está num fluxo. Sem o registro, um Ctrl+Z (ou reabrir o projeto) devolveria a arte inteira,
     // com todas as formas no lugar certo, e a REGRA evaporada: a moldura voltaria a redimensionar
@@ -422,6 +424,7 @@ mod tests {
         // + 1 moldura (VecFrame, plano UI/UX W0)
         // + 1 tabela de bindings de token (VecBindings, plano UI/UX W4)
         // + 2 auto layout (VecLayout no pai + VecLayoutItem no filho, plano UI/UX W2)
+        // + 2 sizing (VecLayoutSize no no + VecLayoutAbsolute, o fora-do-fluxo)
         // + 1 âncoras (VecAnchors, plano UI/UX W3)
         // + 1 resize-box (VecResizeBox, plano UI/UX W3b)
         // + 1 pele por-widget (VecWidget, plano UI/UX W6.2)
@@ -439,7 +442,7 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 55);
+        assert_eq!(reg.len(), 57);
         assert!(reg.get_by_name("ph2d::ecs::VecAnchors").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecResizeBox").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecWidget").is_some());
@@ -449,6 +452,8 @@ mod tests {
         assert!(reg.get_by_name("ph2d::ecs::VecBindings").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecLayout").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecLayoutItem").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::VecLayoutSize").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::VecLayoutAbsolute").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecCutPath").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecSymmetry").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecPatternPath").is_some());

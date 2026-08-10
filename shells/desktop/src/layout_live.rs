@@ -29,8 +29,8 @@
 //! (ninguém pediu nada) é a identidade: o mapa fica **intocado**, e o mundo pré-layout é
 //! byte-idêntico.
 
-use ph2d_ecs::{Entity, SimWorld, VecLayout, VecLayoutItem};
-use ph2d_vec_layout::{Align, Dir, FrameStyle, ItemStyle, Justify, Node, Solved};
+use ph2d_ecs::{Entity, SimWorld, VecLayout, VecLayoutAbsolute, VecLayoutItem, VecLayoutSize};
+use ph2d_vec_layout::{Align, Dir, FrameStyle, ItemStyle, Justify, Len, Node, Solved};
 use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms, Xform, bake_xform, xform_of};
 
@@ -115,6 +115,35 @@ fn frame_style(l: &VecLayout, gap: [Option<f64>; 2]) -> FrameStyle {
             J::SpaceAround => Justify::SpaceAround,
         },
     }
+}
+
+/// **O tamanho de um nó, traduzido** — porta ÚNICA, irmã exacta do [`frame_style`].
+///
+/// ⚠️ A `bbox` entra porque o `Fixed` do DOCUMENTO não carrega número: ele diz *"o tamanho que a
+/// forma tem"*, e quem sabe qual é esse número é a geometria medida. O motor precisa do número;
+/// o documento não o guarda — e é essa assimetria que impede a segunda resposta a *"que tamanho
+/// tem esta moldura?"*.
+///
+/// ⚠️ **O abraço só é honrado num nó que FLUI.** Um nó sem `VecLayout` que traga um `Hug` autorado
+/// (de quando ele ainda dispunha, e o artista desligou o fluxo) resolveria para zero e a forma
+/// **desapareceria**; aqui ele cai de volta para o tamanho medido, e o motor nunca vê o pedido.
+fn size_of(
+    s: Option<&VecLayoutSize>,
+    flows: bool,
+    bbox: [f64; 2],
+) -> ([Len; 2], [Option<f64>; 2], [Option<f64>; 2]) {
+    let Some(s) = s else {
+        return (
+            [Len::Fixed(bbox[0]), Len::Fixed(bbox[1])],
+            [None; 2],
+            [None; 2],
+        );
+    };
+    let axis = |i: usize| match s.size[i] {
+        ph2d_ecs::LayoutSize::Hug if flows => Len::Hug,
+        _ => Len::Fixed(bbox[i]),
+    };
+    ([axis(0), axis(1)], s.min, s.max)
 }
 
 fn item_style(it: Option<&VecLayoutItem>) -> ItemStyle {
@@ -313,6 +342,12 @@ impl LayoutLive {
         let Some(root_layout) = w.get::<VecLayout>(frame) else {
             return;
         };
+        let root_measured = [
+            root_bbox.1[0] - root_bbox.0[0],
+            root_bbox.1[1] - root_bbox.0[1],
+        ];
+        let (root_size, root_min, root_max) =
+            size_of(w.get::<VecLayoutSize>(frame), true, root_measured);
         nodes.push(Node {
             parent: None,
             frame: Some(frame_style(
@@ -320,13 +355,17 @@ impl LayoutLive {
                 crate::vec_bindings::bound_gap(sim, frame, tok),
             )),
             item: ItemStyle::default(),
-            size: [
-                root_bbox.1[0] - root_bbox.0[0],
-                root_bbox.1[1] - root_bbox.0[1],
-            ],
+            size: root_size,
+            min: root_min,
+            max: root_max,
         });
         collected.push(Collected {
-            paths: Vec::new(), // a raiz não se move: ela é a régua
+            // ⚠️ **A raiz É a régua, e mesmo assim entrega os caminhos dela.** Uma moldura que
+            // ABRAÇA muda de tamanho, e o tamanho novo tem de ser DESENHADO — senão o abraço é um
+            // número que o motor calcula e que ninguém vê. Quando ela não abraça o alvo é a caixa
+            // que ela já ocupa, o afim sai identidade, e o `is_identity` do laço final não paga
+            // sequer a cópia: o caminho de quem nunca pediu abraço fica byte-intocado.
+            paths: root_paths.clone(),
             bbox: root_bbox,
             who: None,
         });
@@ -338,6 +377,14 @@ impl LayoutLive {
                 continue;
             };
             for &kid in kids.iter() {
+                // ⚠️ **O fora-do-fluxo sai da FATIA, e não do motor** — o *Absolute position* do
+                // Figma. Um nó que o motor nunca vê fica exactamente com a pose que o artista lhe
+                // deu, e continua a andar com o pai e a ser recortado por ele (ele não deixou de
+                // ser filho na hierarquia). Dizê-lo ao motor em vez disto pediria um inset — quatro
+                // números derivados que ninguém autorou, para reproduzir a posição que já existe.
+                if w.get::<VecLayoutAbsolute>(kid).is_some() {
+                    continue;
+                }
                 let flows_here = w.get::<VecLayout>(kid).is_some();
                 // ⚠️ **Uma moldura que FLUI mede-se e move-se por SI, nunca pela sub-árvore.**
                 //
@@ -357,13 +404,17 @@ impl LayoutLive {
                 let Some(bbox) = bbox_of(&items) else {
                     continue;
                 };
+                let measured = [bbox.1[0] - bbox.0[0], bbox.1[1] - bbox.0[1]];
+                let (size, min, max) = size_of(w.get::<VecLayoutSize>(kid), flows_here, measured);
                 nodes.push(Node {
                     parent: Some(parent_idx),
                     frame: w
                         .get::<VecLayout>(kid)
                         .map(|l| frame_style(l, crate::vec_bindings::bound_gap(sim, kid, tok))),
                     item: item_style(w.get::<VecLayoutItem>(kid)),
-                    size: [bbox.1[0] - bbox.0[0], bbox.1[1] - bbox.0[1]],
+                    size,
+                    min,
+                    max,
                 });
                 let idx = nodes.len() - 1;
                 collected.push(Collected {
@@ -386,7 +437,16 @@ impl LayoutLive {
             return;
         };
 
-        for (i, c) in collected.iter().enumerate().skip(1) {
+        // ⚠️ **Do ZERO, e o zero é a moldura.** Ela entra no laço porque um `Hug` muda o tamanho
+        // dela, e o tamanho novo precisa de ser desenhado como o de qualquer filho que cresce. Sem
+        // abraço o alvo dela é a caixa que ela já ocupa ⇒ o afim é a identidade ⇒ o `continue`
+        // abaixo salta-a antes de qualquer cópia, e o mundo de quem nunca pediu abraço fica
+        // byte-intocado.
+        //
+        // ⚠️ Os dois blocos que só valem para FILHOS já se guardam sozinhos: a régua de reordenar
+        // pergunta `c.who` (a raiz não é colocada por ninguém, logo `None`), e o `placed` conta
+        // colocações — redimensionar a própria moldura não é uma.
+        for (i, c) in collected.iter().enumerate() {
             let target = world_target(root_bbox, solved[i]);
             // **Publica ONDE este filho ficou**, antes de qualquer early-out: o gesto de reordenar
             // precisa da régua mesmo quando a colocação não moveu nada (uma moldura já arrumada é
@@ -422,7 +482,9 @@ impl LayoutLive {
                 // O MESMO afim, como número: quem não desenha geometria precisa dele.
                 self.add_pose(id, x);
             }
-            self.placed += 1;
+            if c.who.is_some() {
+                self.placed += 1;
+            }
         }
     }
 }

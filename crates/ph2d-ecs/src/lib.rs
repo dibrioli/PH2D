@@ -140,7 +140,10 @@ pub use vec_contour::{MAX_CONTOUR_STEPS, VecContour};
 pub use vec_cut_path::VecCutPath;
 pub use vec_filter::{FxKindSpec, FxOp, VecFilter};
 pub use vec_frame::VecFrame;
-pub use vec_layout::{LayoutAlign, LayoutDir, LayoutJustify, VecLayout, VecLayoutItem};
+pub use vec_layout::{
+    LayoutAlign, LayoutDir, LayoutJustify, LayoutSize, VecLayout, VecLayoutAbsolute, VecLayoutItem,
+    VecLayoutSize,
+};
 pub use vec_offset::VecOffset;
 pub use vec_pattern_path::VecPatternPath;
 pub use vec_pattern_rotation::VecPatternRotation;

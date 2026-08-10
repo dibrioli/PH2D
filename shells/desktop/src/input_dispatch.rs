@@ -3042,6 +3042,20 @@ impl App {
             }
             return;
         }
+        // **A ROLAGEM de uma moldura** (o item 3 do estudo dos contêineres): a roda sobre uma
+        // moldura que RECORTA e cujo conteúdo NÃO CABE rola essa moldura, em vez de dar zoom.
+        //
+        // ⚠️ **Ela não rouba o zoom, e é isso que a torna aceitável sem modo nem modificador:** as
+        // duas condições juntas só valem numa lista que o artista fez deliberadamente transbordar,
+        // e ali rolar é a única coisa que a roda pode querer dizer. Em todo o resto da tela — que é
+        // 99% dela — a roda continua a ser o zoom, que é o gesto do dia inteiro. É o precedente do
+        // Gap Closure, uma dúzia de linhas acima, com a mesma frase: *a roda crua é load-bearing*.
+        //
+        // ⚠️ E ela vem **antes** do zoom pela razão de sempre: quem consome tem de decidir primeiro,
+        // senão a câmera já se mexeu quando a moldura for perguntada.
+        if !over_panel && self.wheel_scrolls_a_frame(dx, dy) {
+            return;
+        }
         if !over_panel && let Some(gfx) = self.gfx.as_mut() {
             // Wheel up (positive dy) zooms IN (smaller height_world).
             let factor = 0.9_f32.powf(dy / 16.0);

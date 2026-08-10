@@ -314,5 +314,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::sizing_smoke::frame(app, f);
         return true;
     }
+    // A cena da ROLAGEM (=67) — irmã `scroll_smoke`. Uma lista que não cabe e um CONTROLE que
+    // cabe, na mesma caixa: a roda rola a primeira e dá zoom sobre a segunda.
+    if level == 67 {
+        crate::scroll_smoke::frame(app, f);
+        return true;
+    }
     false
 }

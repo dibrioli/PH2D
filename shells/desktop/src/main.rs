@@ -205,6 +205,8 @@ mod ktx2_smoke;
 mod label_live;
 mod layout_live;
 mod layout_reorder;
+/// `layout_scroll_gesture`: a roda que rola uma moldura (o motor e' o `layout_live::scroll`).
+mod layout_scroll_gesture;
 mod layout_smoke;
 mod lens_smoke;
 mod line_smoke;
@@ -338,6 +340,7 @@ mod project_settings;
 /// pelo teto de LOC, cortado por assunto.
 mod project_tokens;
 mod render_loop;
+mod scroll_smoke;
 #[cfg(feature = "sculpt3d")]
 mod sculpt3d;
 mod shape_build;

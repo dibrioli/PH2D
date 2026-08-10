@@ -30,7 +30,7 @@
 //! byte-idêntico.
 
 use ph2d_ecs::{Entity, SimWorld, VecLayout, VecLayoutAbsolute, VecLayoutItem, VecLayoutSize};
-use ph2d_vec_layout::{Align, Dir, FrameStyle, ItemStyle, Justify, Len, Node, Solved};
+use ph2d_vec_layout::{ItemStyle, Node, Solved};
 use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms, Xform, bake_xform, xform_of};
 
@@ -79,79 +79,6 @@ fn bbox_of(items: &[VecPath]) -> Option<([f64; 2], [f64; 2])> {
         });
     }
     out
-}
-
-/// **A tradução do vocabulário do DOCUMENTO para o do MOTOR.**
-///
-/// ⚠️ Porta ÚNICA, e os `match` são exaustivos de propósito: uma direção nova no documento sem
-/// tradução aqui **não compila**, em vez de cair num `_ =>` que a desenharia como uma linha.
-///
-/// ⚠️ **O `gap` chega RESOLVIDO** (W4c.4): o número autorado em `VecLayout::gap`, ou o comprimento
-/// que um token de escala dá àquele eixo. Ele entra por aqui, e por mais lugar nenhum — é a mesma
-/// razão de esta função existir: o motor tem de receber UM vocabulário, e um segundo sítio a
-/// escolher entre o literal e o token faria a moldura espaçar por um número e o painel mostrar
-/// outro.
-fn frame_style(l: &VecLayout, gap: [Option<f64>; 2]) -> FrameStyle {
-    use ph2d_ecs::{LayoutAlign as A, LayoutDir as D, LayoutJustify as J};
-    FrameStyle {
-        dir: match l.dir {
-            D::Row => Dir::Row,
-            D::Column => Dir::Column,
-            D::RowWrap => Dir::RowWrap,
-        },
-        gap: [gap[0].unwrap_or(l.gap[0]), gap[1].unwrap_or(l.gap[1])],
-        pad: l.pad,
-        align: match l.align {
-            A::Start => Align::Start,
-            A::Center => Align::Center,
-            A::End => Align::End,
-            A::Stretch => Align::Stretch,
-        },
-        justify: match l.justify {
-            J::Start => Justify::Start,
-            J::Center => Justify::Center,
-            J::End => Justify::End,
-            J::SpaceBetween => Justify::SpaceBetween,
-            J::SpaceAround => Justify::SpaceAround,
-        },
-    }
-}
-
-/// **O tamanho de um nó, traduzido** — porta ÚNICA, irmã exacta do [`frame_style`].
-///
-/// ⚠️ A `bbox` entra porque o `Fixed` do DOCUMENTO não carrega número: ele diz *"o tamanho que a
-/// forma tem"*, e quem sabe qual é esse número é a geometria medida. O motor precisa do número;
-/// o documento não o guarda — e é essa assimetria que impede a segunda resposta a *"que tamanho
-/// tem esta moldura?"*.
-///
-/// ⚠️ **O abraço só é honrado num nó que FLUI.** Um nó sem `VecLayout` que traga um `Hug` autorado
-/// (de quando ele ainda dispunha, e o artista desligou o fluxo) resolveria para zero e a forma
-/// **desapareceria**; aqui ele cai de volta para o tamanho medido, e o motor nunca vê o pedido.
-fn size_of(
-    s: Option<&VecLayoutSize>,
-    flows: bool,
-    bbox: [f64; 2],
-) -> ([Len; 2], [Option<f64>; 2], [Option<f64>; 2]) {
-    let Some(s) = s else {
-        return (
-            [Len::Fixed(bbox[0]), Len::Fixed(bbox[1])],
-            [None; 2],
-            [None; 2],
-        );
-    };
-    let axis = |i: usize| match s.size[i] {
-        ph2d_ecs::LayoutSize::Hug if flows => Len::Hug,
-        _ => Len::Fixed(bbox[i]),
-    };
-    ([axis(0), axis(1)], s.min, s.max)
-}
-
-fn item_style(it: Option<&VecLayoutItem>) -> ItemStyle {
-    it.map_or_else(ItemStyle::default, |i| ItemStyle {
-        grow: i.grow,
-        shrink: i.shrink,
-        basis: i.basis,
-    })
 }
 
 /// Um nó recolhido: o índice na fatia do motor, a entidade, e os caminhos que ele MOVE.
@@ -228,6 +155,26 @@ pub(crate) struct LayoutLive {
     poses: std::collections::BTreeMap<VecPathId, Xform>,
     /// Quantos filhos ANCORADOS o último passe moveu (o braço do W3).
     anchored: usize,
+    /// **Quanto o conteúdo passa da moldura**, por moldura que flui — MEDIDO por este passe, em
+    /// unidades do motor (`y` para baixo). Zero (ou negativo, guardado como zero) = cabe.
+    ///
+    /// ⚠️ Ele é **derivado**, nunca autorado: uma moldura rola porque o conteúdo dela não cabe, e
+    /// não porque alguém marcou uma caixa. Um controlo ao lado seria um segundo lugar a discordar
+    /// do primeiro no instante em que o artista acrescentasse um filho.
+    overflow: std::collections::BTreeMap<u64, [f64; 2]>,
+    /// **O deslocamento do conteúdo**, por moldura — o único campo desta struct que SOBREVIVE ao
+    /// `recook`, porque ele é o gesto e não a medição.
+    ///
+    /// ⚠️ **VISTA, e não documento.** Rolar é olhar, não editar — e a razão é a mesma que fez o
+    /// modo de preview existir (`render_loop::ui_preview`): *o undo deste editor é por DIFF do
+    /// mundo*, então um deslocamento escrito no ECS faria **cada tique de roda virar um passo de
+    /// undo**. Corolário honesto: ele não viaja no arquivo, e reabrir um projeto mostra o topo da
+    /// lista — que é o que o artista espera de uma posição de rolagem.
+    scroll: std::collections::BTreeMap<u64, [f64; 2]>,
+    /// **As molduras que a roda pode rolar**, com a caixa em que ficaram — publicadas por este
+    /// passe (a lei do `FlowSlots`: quem coloca é quem diz onde) e consumidas pelo gesto, que corre
+    /// fora do frame e não tem a geometria viva na mão.
+    scrollables: Vec<scroll::ScrollTarget>,
 }
 
 impl LayoutLive {
@@ -300,6 +247,11 @@ impl LayoutLive {
         self.anchored = 0;
         self.slots.clear();
         self.poses.clear();
+        // ⚠️ **O excedente limpa; o deslocamento NÃO.** O primeiro é a medição deste passe (uma
+        // moldura que deixou de fluir não tem excedente nenhum a reportar); o segundo é o gesto do
+        // artista, e limpá-lo faria a lista saltar de volta ao topo a cada frame.
+        self.overflow.clear();
+        self.scrollables.clear();
         for frame in outermost_flowing_frames(scene, sim, map) {
             self.lay_out(scene, sim, xforms, live, frame, tok);
         }
@@ -446,8 +398,39 @@ impl LayoutLive {
         // ⚠️ Os dois blocos que só valem para FILHOS já se guardam sozinhos: a régua de reordenar
         // pergunta `c.who` (a raiz não é colocada por ninguém, logo `None`), e o `placed` conta
         // colocações — redimensionar a própria moldura não é uma.
+        // **A ROLAGEM**, em duas passadas sobre a árvore que o motor acabou de resolver — e as duas
+        // são `O(nós)` porque a fatia vem com o **pai antes dos filhos** (é o que [`solve`] exige).
+        let ents: Vec<Option<Entity>> = collected
+            .iter()
+            .enumerate()
+            .map(|(i, c)| {
+                if i == 0 {
+                    Some(frame)
+                } else {
+                    c.who.map(|(k, _)| k)
+                }
+            })
+            .collect();
+        // A profundidade na árvore do FLUXO — a régua do *mais interno ganha* do alvo da roda.
+        // Ela sai da fatia (pai antes do filho), e não do ECS: é a mesma árvore que o motor
+        // resolveu, e uma segunda caminhada podia discordar dela.
+        let mut depth = vec![0_usize; nodes.len()];
+        for i in 0..nodes.len() {
+            if let Some(p) = nodes[i].parent {
+                depth[i] = depth[p] + 1;
+            }
+        }
+        self.measure_overflow(&nodes, &solved, &ents);
+        let off = self.scroll_offsets(&nodes, &ents);
+
         for (i, c) in collected.iter().enumerate() {
-            let target = world_target(root_bbox, solved[i]);
+            // ⚠️ O deslocamento entra no espaço do MOTOR, e não no de mundo: a troca de eixo
+            // continua a acontecer **num lugar só** (`world_target`), que é o que impede a
+            // rolagem de descobrir sozinha que o mundo é Y-up e errar o sinal.
+            let mut s = solved[i];
+            s[0] -= off[i][0];
+            s[1] -= off[i][1];
+            let target = world_target(root_bbox, s);
             // **Publica ONDE este filho ficou**, antes de qualquer early-out: o gesto de reordenar
             // precisa da régua mesmo quando a colocação não moveu nada (uma moldura já arrumada é
             // exactamente onde o artista vai arrastar).
@@ -468,6 +451,13 @@ impl LayoutLive {
                     })
                     .kids
                     .push((kid, centre));
+            }
+            // **Este nó é alvo da roda?** Publicado aqui porque é aqui que a caixa final dele
+            // existe — uma moldura que ABRAÇA acabou de mudar de tamanho, e re-medi-la noutro
+            // sítio poria o alvo onde ela estava.
+            if let Some(e) = ents[i] {
+                let clips = w.get::<ph2d_ecs::VecFrame>(e).is_some_and(|f| f.clip);
+                self.offer_scroll_target(e, clips, depth[i], target);
             }
             let x = fit(c.bbox, target);
             if is_identity(&x) {
@@ -571,6 +561,16 @@ fn has_flowing_ancestor(sim: &SimWorld, e: Entity) -> bool {
 /// ser UM.
 #[path = "layout_live_anchors.rs"]
 pub(crate) mod anchors;
+
+/// O braço da ROLAGEM — a terceira metade do passe (o item 3 do estudo dos contêineres). Módulo
+/// FILHO pela MESMA razão do das âncoras: o dono da tabela de poses continua a ser UM.
+#[path = "layout_live_scroll.rs"]
+pub(crate) mod scroll;
+
+/// A TRADUÇÃO documento → motor. Módulo FILHO pelo teto de LOC, com o corte por assunto.
+#[path = "layout_live_style.rs"]
+mod style;
+use style::{frame_style, item_style, size_of};
 
 #[cfg(test)]
 #[path = "layout_live_tests.rs"]

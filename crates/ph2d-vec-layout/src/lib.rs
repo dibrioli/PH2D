@@ -417,3 +417,7 @@ mod tests;
 #[cfg(test)]
 #[path = "hug_probe.rs"]
 mod hug_probe;
+
+#[cfg(test)]
+#[path = "overflow_probe.rs"]
+mod overflow_probe;

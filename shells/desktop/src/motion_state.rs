@@ -52,6 +52,10 @@ mod gpu_neighbour_demos;
 /// why the seam is the QUESTION each scene answers, not the line count.
 #[path = "motion_state_gpu_panel_demo.rs"]
 mod gpu_panel_demo;
+/// A cena do PORTÃO ESPACIAL (doc 89, folha 12), arquivo próprio pela mesma razão: ela
+/// responde *"um CAMPO consegue decidir quem escuta um EVENTO?"*, que nenhuma das outras faz.
+#[path = "motion_state_gpu_pulse_demo.rs"]
+mod gpu_pulse_demo;
 /// The Lloyd/JFA scene (ADR-0139), its own file for the same reason: it answers
 /// "does a node whose cook is a multi-pass ALGORITHM run on the device?".
 #[path = "motion_state_gpu_voronoi_demo.rs"]
@@ -79,6 +83,7 @@ use gpu_neighbour_demos::{
     build_gpu_boids_demo_document, build_gpu_collide_demo_document, build_gpu_sweep_demo_document,
 };
 use gpu_panel_demo::build_gpu_panel_demo_document;
+use gpu_pulse_demo::build_gpu_pulse_gate_demo_document;
 use gpu_voronoi_demo::build_gpu_voronoi_demo_document;
 use gpu_zone_demo::build_gpu_zone_demo_document;
 
@@ -396,6 +401,11 @@ impl MotionState {
             Ok("22") => {
                 build_gpu_field_curve_demo_document(&mut doc, &registry).unwrap_or_default()
             }
+            // O PORTÃO ESPACIAL (doc 89, folha 12): um metrônomo, um losango, e só quem está
+            // DENTRO dele escuta o beat — `pulse.level` (o pulso vira número) + o canal
+            // Falloff do `value.attribute` (o peso do campo vira legível), os dois elos que
+            // faltavam para eventos e campos se encontrarem.
+            Ok("23") => build_gpu_pulse_gate_demo_document(&mut doc, &registry).unwrap_or_default(),
             // **Sem env: a TELA VAZIA** (Enio, 2026-08-07: *"tire a cena da cachoeira"*). O
             // editor abria com a neve caindo no mar — um sistema de partículas inteiro que o
             // artista tinha de apagar antes de começar. Quem quiser um grafo o traz pelo
@@ -545,6 +555,10 @@ mod gpu_field_tests;
 #[cfg(test)]
 #[path = "motion_state_gpu_neighbour_tests.rs"]
 mod gpu_neighbour_tests;
+
+#[cfg(test)]
+#[path = "motion_state_gpu_pulse_demo_tests.rs"]
+mod gpu_pulse_demo_tests;
 
 #[cfg(test)]
 #[path = "motion_state_gpu_voronoi_tests.rs"]

@@ -51,6 +51,7 @@ use super::gpu_neighbour_demos::{
     build_gpu_boids_demo_document, build_gpu_collide_demo_document, build_gpu_sweep_demo_document,
 };
 use super::gpu_panel_demo::build_gpu_panel_demo_document;
+use super::gpu_pulse_demo::build_gpu_pulse_gate_demo_document;
 use super::gpu_voronoi_demo::build_gpu_voronoi_demo_document;
 use super::gpu_zone_demo::build_gpu_zone_demo_document;
 use ph2d_motion_doc::MotionDoc;
@@ -141,6 +142,18 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     // and the census prints it as such (the boundary demo is the sort in `=2`).
     push("demo=22 field.remap curve", &|d| {
         build_gpu_field_curve_demo_document(d, reg)
+    });
+    // ⚠️ **A família do PULSO estava FORA, e a ausência tem a mesma forma que as duas que
+    // este arquivo já pagou** (os deformers e a vizinhança): o corpus se declara *"todo grafo
+    // que o repo constrói"*, e nenhum documento dele continha um `pulse.*` — então o censo
+    // reportava a fronteira sem NUNCA ter planejado a cadeia de evento.
+    //
+    // Ela entra sabendo o que vai dizer: os seis `pulse.*` e os `value.*` desta cadeia **não
+    // têm kernel**, e isso não é omissão a fechar — um pulso é um evento POR LINHA com
+    // memória de borda no `pre`, não um mapa por texel. O censo passa a NOMEAR essa fronteira
+    // em vez de não a ver, que é a diferença entre um limite conhecido e um buraco.
+    push("demo=23 pulse gate (field decides who hears)", &|d| {
+        build_gpu_pulse_gate_demo_document(d, reg)
     });
     push("demo=10 sim.zone snow globe", &|d| {
         build_gpu_zone_demo_document(d, reg)

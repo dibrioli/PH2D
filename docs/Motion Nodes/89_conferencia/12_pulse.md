@@ -102,6 +102,16 @@ função pura do playhead com scrub bit-exato*.
    palavra *teto* — corrigido, com o gate `the_channel_picker_fits_the_panels_ceiling` no shell,
    onde a tabela e o teto se encontram.
 
+   **SMOKE: `env PH2D_GPU_COOK_DEMO=23 cargo run -p ph2d-host-desktop --release`** — 262.144
+   pontos, um metrônomo de meio segundo, e **só os pontos dentro de um losango piscam**. O resto
+   da grade nunca se mexe: o beat chega a todas as linhas e o campo decide quem o escuta.
+   ⚠️ **O campo é um RAMO LATERAL de propósito** — o `motion.drive` lê `falloff` como máscara
+   de força própria, então pô-lo no caminho de instâncias faria a cena mostrar o quadro certo
+   **pelo motivo errado**; MEDIDO: com o portão de pulso deletado *e* o campo no caminho, o gate
+   do pisca-pisca fica **VERDE** e só o `the_gate_is_the_pulse_not_the_drives_own_mask` falha.
+   A cena custa **3,96 ms/tique** (15,1 ns/ponto, `--release`) — a cadeia é CPU-only por
+   natureza, e o censo de cobertura agora **NOMEIA** essa fronteira em vez de não a ver.
+
 ---
 
 ## `CERCAS:`

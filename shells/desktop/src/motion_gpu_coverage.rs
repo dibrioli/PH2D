@@ -52,6 +52,7 @@ use super::gpu_neighbour_demos::{
 };
 use super::gpu_panel_demo::build_gpu_panel_demo_document;
 use super::gpu_pulse_demo::build_gpu_pulse_gate_demo_document;
+use super::gpu_spawn_pulse_demo::build_gpu_spawn_pulse_demo_document;
 use super::gpu_voronoi_demo::build_gpu_voronoi_demo_document;
 use super::gpu_zone_demo::build_gpu_zone_demo_document;
 use ph2d_motion_doc::MotionDoc;
@@ -154,6 +155,14 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     // em vez de não a ver, que é a diferença entre um limite conhecido e um buraco.
     push("demo=23 pulse gate (field decides who hears)", &|d| {
         build_gpu_pulse_gate_demo_document(d, reg)
+    });
+    // ⚠️ E a cena das CINCO FONTES entra pelo mesmo motivo, com uma fronteira que o corpus
+    // ainda não tinha: um `sim.spawn` cuja porta `pulse` está FIADA **recusa o dispositivo por
+    // declaração** (`ColumnAccess::RefuseIfPresent`, ADR-0127 D3), e não por falta de kernel.
+    // O censo nomeia a recusa em vez de a ver como coincidência — e é ele que gritaria no dia
+    // em que alguém desse um kernel ao nascimento-por-pulso sem tirar a recusa.
+    push("demo=24 five fountains (a pulse gives birth)", &|d| {
+        build_gpu_spawn_pulse_demo_document(d, reg)
     });
     push("demo=10 sim.zone snow globe", &|d| {
         build_gpu_zone_demo_document(d, reg)

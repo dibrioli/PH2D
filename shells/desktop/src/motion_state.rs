@@ -56,6 +56,11 @@ mod gpu_panel_demo;
 /// responde *"um CAMPO consegue decidir quem escuta um EVENTO?"*, que nenhuma das outras faz.
 #[path = "motion_state_gpu_pulse_demo.rs"]
 mod gpu_pulse_demo;
+/// A cena das CINCO FONTES (doc 89, folha 12), arquivo próprio pela mesma razão: ela responde
+/// *"um EVENTO consegue decidir o que passa a EXISTIR?"*, que é a outra metade da pergunta —
+/// a `=23` gateia quem escuta, esta gateia quem nasce.
+#[path = "motion_state_gpu_spawn_pulse_demo.rs"]
+mod gpu_spawn_pulse_demo;
 /// The Lloyd/JFA scene (ADR-0139), its own file for the same reason: it answers
 /// "does a node whose cook is a multi-pass ALGORITHM run on the device?".
 #[path = "motion_state_gpu_voronoi_demo.rs"]
@@ -406,6 +411,14 @@ impl MotionState {
             // Falloff do `value.attribute` (o peso do campo vira legível), os dois elos que
             // faltavam para eventos e campos se encontrarem.
             Ok("23") => build_gpu_pulse_gate_demo_document(&mut doc, &registry).unwrap_or_default(),
+            // AS CINCO FONTES (doc 89, folha 12): a `=23` mostra um campo decidindo QUEM escuta
+            // um evento; esta mostra um evento decidindo O QUE passa a existir. `rate = 0`, então
+            // o pulso é o ÚNICO autor da população — se a porta não estivesse ligada a tela
+            // ficaria vazia para sempre, e não meio cheia.
+            Ok("24") => {
+                gpu_spawn_pulse_demo::build_gpu_spawn_pulse_demo_document(&mut doc, &registry)
+                    .unwrap_or_default()
+            }
             // **Sem env: a TELA VAZIA** (Enio, 2026-08-07: *"tire a cena da cachoeira"*). O
             // editor abria com a neve caindo no mar — um sistema de partículas inteiro que o
             // artista tinha de apagar antes de começar. Quem quiser um grafo o traz pelo

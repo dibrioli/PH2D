@@ -220,6 +220,56 @@ fn the_child_sits_where_the_alignment_puts_it_inside_its_own_cell() {
     }
 }
 
+/// ⭐ **O `align` governa ONDE O BLOCO DE LINHAS SENTA, e não só o filho dentro da linha.**
+///
+/// ⚠️ Sem esta metade a grade herdaria o CSS, onde `align-content: normal` numa grade se comporta
+/// como `stretch`: as linhas seriam ESTICADAS para encher a moldura, e a mesma cena que um `Row`
+/// encosta no topo sairia com as faixas espalhadas e o filho a flutuar. O gate vivo da shell
+/// nasceu vermelho exactamente aí.
+///
+/// A moldura mede 40 de altura e o conteúdo **17** (duas linhas de 6 com vão 5), então sobram 23 —
+/// e é sobre eles que os quatro valores respondem coisas diferentes.
+///
+/// ⚠️ Este gate nasceu vermelho por eu ter escrito `10` onde o filho mede `6` (a LARGURA dele, não
+/// a altura) — a terceira aritmética de fixture errada deste arquivo, e as três acusaram o produto
+/// de um erro que era do oráculo.
+#[test]
+fn the_alignment_also_says_where_the_block_of_rows_sits() {
+    for (align, want_top_of_first_row) in [
+        (Align::Start, 0.0),
+        (Align::Center, 11.5),
+        (Align::End, 23.0),
+    ] {
+        let mut tree = grid([Len::Fixed(38.0), Len::Fixed(40.0)], 3, 5, [4.0, 5.0]);
+        tree[0].frame.as_mut().expect("moldura").align = align;
+        let out = solve(&tree).expect("resolve");
+        assert!(
+            (out[1][1] - want_top_of_first_row).abs() < 1e-6,
+            "{align:?}: a 1a linha devia comecar em y={want_top_of_first_row} e comecou em {}",
+            out[1][1]
+        );
+    }
+    // ⚠️ `Stretch` é o único que faz as LINHAS encherem a moldura: `(40 − 5)/2 = 17,5` cada, então
+    // a segunda começa em `17,5 + 5 = 22,5` — contra os 11 que o `Start` dá.
+    let mut tree = grid([Len::Fixed(38.0), Len::Fixed(40.0)], 3, 5, [4.0, 5.0]);
+    tree[0].frame.as_mut().expect("moldura").align = Align::Stretch;
+    let out = solve(&tree).expect("resolve");
+    assert!(
+        (out[4][1] - 22.5).abs() < 1e-6,
+        "com Stretch a 2a linha devia comecar em 22,5 e comecou em {}",
+        out[4][1]
+    );
+    // ⚠️ **E o FILHO não estica**, porque ele traz um tamanho explícito — toda forma deste
+    // documento traz, é a bbox dela. Isto NÃO é uma divergência da grade: medido, um `Row` com
+    // `Stretch` deixa o mesmo filho em 6,0 exactamente igual. O `Stretch` é vivo para um filho
+    // cujo tamanho é `auto`, isto é, uma moldura aninhada que ABRAÇA — e ali ele vale nos dois.
+    assert!(
+        (out[4][3] - 6.0).abs() < 1e-6,
+        "um filho de altura AUTORADA nao pode ser esticado; mediu {}",
+        out[4][3]
+    );
+}
+
 /// ⭐ **O teto de faixas RECUSA em vez de deixar o motor panicar** — e o par é o que o torna um
 /// gate: um filho abaixo do teto resolve, e o seguinte é recusado.
 ///

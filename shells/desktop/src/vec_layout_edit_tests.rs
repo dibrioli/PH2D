@@ -46,10 +46,15 @@ fn ent(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Entity {
 /// a tabela existe para não ter — e o sintoma seria um chip aceso que o clique não resolve.
 #[test]
 fn every_layout_variant_has_a_chip_and_the_chip_names_it_back() {
-    for d in [LayoutDir::Row, LayoutDir::Column, LayoutDir::RowWrap] {
+    for d in [
+        LayoutDir::Row,
+        LayoutDir::Column,
+        LayoutDir::RowWrap,
+        LayoutDir::Grid,
+    ] {
         // Exaustividade: o compilador cobra a variante nova aqui.
         match d {
-            LayoutDir::Row | LayoutDir::Column | LayoutDir::RowWrap => {}
+            LayoutDir::Row | LayoutDir::Column | LayoutDir::RowWrap | LayoutDir::Grid => {}
         }
         let chip = chip_of(DIRS, d);
         assert_eq!(
@@ -327,6 +332,57 @@ fn the_published_flow_mirrors_the_component() {
     assert_eq!(f.dir, ids::VECTOR_LAYOUT_DIR_WRAP);
     assert_eq!(f.justify, ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN);
     assert_eq!(f.gap[1], 6.0);
+}
+
+/// ⭐ **A CONTAGEM DE COLUNAS SOBREVIVE A UMA TROCA DE DIREÇÃO** — a razão inteira de ela ser um
+/// campo do `VecLayout` e não o corpo do variante `Grid`.
+///
+/// ⚠️ Com a contagem dentro do variante, ir a `Row` **destruiria** o número (ele viveria num
+/// variante que deixou de existir) e voltar daria o default. É o mesmo que o vão e o recuo já
+/// fazem, e é o que o artista espera de um valor que ele escreveu.
+#[test]
+fn the_column_count_survives_a_trip_through_another_direction() {
+    let (mut sim, _scene, map, ids) = frame_with(1);
+    let sel = vec![ids[0]];
+    apply_layout_edit(&mut sim, &map, &sel, LayoutEdit::Dir(Some(LayoutDir::Grid)));
+    apply_layout_field(&mut sim, &map, &sel, LayoutField::Columns, 5.0);
+    assert_eq!(selected_flow(&sim, &map, &sel).expect("flui").columns, 5.0);
+
+    apply_layout_edit(&mut sim, &map, &sel, LayoutEdit::Dir(Some(LayoutDir::Row)));
+    apply_layout_edit(&mut sim, &map, &sel, LayoutEdit::Dir(Some(LayoutDir::Grid)));
+    assert_eq!(
+        selected_flow(&sim, &map, &sel).expect("flui").columns,
+        5.0,
+        "a grade voltou com o default em vez do numero que o artista escreveu"
+    );
+}
+
+/// **O piso é UMA coluna e o teto é o do MOTOR**, e os dois são o DOMÍNIO do modelo.
+///
+/// ⚠️ O teto não é gosto: acima dele o `solve` recusa a fatia inteira (o `taffy` PANICA se
+/// alguém o alimentar), então a moldura pararia de dispor em silêncio. E o piso não é gosto
+/// tampouco: zero colunas não é uma grade, é uma divisão por zero.
+#[test]
+fn the_column_count_is_clamped_to_what_the_engine_can_index() {
+    let (mut sim, _scene, map, ids) = frame_with(1);
+    let sel = vec![ids[0]];
+    apply_layout_edit(&mut sim, &map, &sel, LayoutEdit::Dir(Some(LayoutDir::Grid)));
+    for (typed, want) in [
+        (0.0, 1.0),
+        (-9.0, 1.0),
+        (3.0, 3.0),
+        (
+            f64::from(ph2d_vec_layout::MAX_GRID_TRACKS) + 1.0,
+            f64::from(ph2d_vec_layout::MAX_GRID_TRACKS),
+        ),
+    ] {
+        apply_layout_field(&mut sim, &map, &sel, LayoutField::Columns, typed);
+        assert_eq!(
+            selected_flow(&sim, &map, &sel).expect("flui").columns,
+            want,
+            "escrever {typed} devia pousar em {want}"
+        );
+    }
 }
 
 /// **Um id estrangeiro não é nem chip nem campo** — o roteador da shell testa os dois em cadeia,

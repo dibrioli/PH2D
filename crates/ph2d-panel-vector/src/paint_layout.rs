@@ -109,6 +109,11 @@ impl BodyCtx<'_> {
                     tr("panel.vector.layout.dir.wrap"),
                     dir == Some(ids::VECTOR_LAYOUT_DIR_WRAP),
                 ),
+                (
+                    ids::VECTOR_LAYOUT_DIR_GRID,
+                    tr("panel.vector.layout.dir.grid"),
+                    dir == Some(ids::VECTOR_LAYOUT_DIR_GRID),
+                ),
             ],
             y,
         );
@@ -123,6 +128,16 @@ impl BodyCtx<'_> {
         // que ela cobre e para a row do picker logo abaixo.
         let bound = state::token_bindings().unwrap_or_default();
         let wrap = f.dir == ids::VECTOR_LAYOUT_DIR_WRAP;
+        // ⚠️ **A contagem de colunas segue a MESMA cerca do vão transversal:** ela é pintada só na
+        // direção que a lê. Nas outras três o número não move um pixel — e o valor continua lá,
+        // intacto, para quando o artista voltar à grade.
+        if f.dir == ids::VECTOR_LAYOUT_DIR_GRID {
+            y = self.lone_number_row(
+                tr("panel.vector.layout.columns"),
+                ids::VECTOR_LAYOUT_COLUMNS,
+                y,
+            );
+        }
         let cw = self.half_cell_w();
         let main = self.number_cell(
             tr("panel.vector.layout.gap"),
@@ -283,37 +298,47 @@ impl BodyCtx<'_> {
             ],
             y,
         );
-        self.segmented(
-            tr("panel.vector.layout.justify"),
-            &[
-                (
-                    ids::VECTOR_LAYOUT_JUSTIFY_START,
-                    tr("panel.vector.layout.justify.start"),
-                    f.justify == ids::VECTOR_LAYOUT_JUSTIFY_START,
-                ),
-                (
-                    ids::VECTOR_LAYOUT_JUSTIFY_CENTER,
-                    tr("panel.vector.layout.justify.center"),
-                    f.justify == ids::VECTOR_LAYOUT_JUSTIFY_CENTER,
-                ),
-                (
-                    ids::VECTOR_LAYOUT_JUSTIFY_END,
-                    tr("panel.vector.layout.justify.end"),
-                    f.justify == ids::VECTOR_LAYOUT_JUSTIFY_END,
-                ),
-                (
-                    ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN,
-                    tr("panel.vector.layout.justify.between"),
-                    f.justify == ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN,
-                ),
-                (
-                    ids::VECTOR_LAYOUT_JUSTIFY_AROUND,
-                    tr("panel.vector.layout.justify.around"),
-                    f.justify == ids::VECTOR_LAYOUT_JUSTIFY_AROUND,
-                ),
-            ],
-            y,
-        )
+        // ⚠️ **Numa GRADE as duas DISTRIBUIÇÕES não são oferecidas, e a razão é geometria.** Com
+        // colunas iguais não sobra espaço nenhum no eixo horizontal para repartir, então
+        // *Between* e *Around* seriam dois chips que o artista escolhe e que não movem um pixel —
+        // o item-de-menu-morto que este repo mantém *uma tabela por escopo* para prevenir (a lei
+        // do `TimelineInterpScope::menu_table`). Os três que ficam mudam de PERGUNTA junto com o
+        // motor: na grade eles dizem *onde o filho senta dentro da célula dele*.
+        //
+        // ⚠️ E o valor guardado **não é reescrito** quando ele é um dos dois: um documento que
+        // venha de um `Row` com *Between* pinta a fileira sem nada aceso, e é honesto — o número
+        // não é nenhum dos três. Coercê-lo aqui editaria o documento do artista numa troca de
+        // modo, e ele perderia a distribuição ao voltar.
+        let mut chips: Vec<(ph2d_a11y::NodeId, &str, bool)> = vec![
+            (
+                ids::VECTOR_LAYOUT_JUSTIFY_START,
+                tr("panel.vector.layout.justify.start"),
+                f.justify == ids::VECTOR_LAYOUT_JUSTIFY_START,
+            ),
+            (
+                ids::VECTOR_LAYOUT_JUSTIFY_CENTER,
+                tr("panel.vector.layout.justify.center"),
+                f.justify == ids::VECTOR_LAYOUT_JUSTIFY_CENTER,
+            ),
+            (
+                ids::VECTOR_LAYOUT_JUSTIFY_END,
+                tr("panel.vector.layout.justify.end"),
+                f.justify == ids::VECTOR_LAYOUT_JUSTIFY_END,
+            ),
+        ];
+        if f.dir != ids::VECTOR_LAYOUT_DIR_GRID {
+            chips.push((
+                ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN,
+                tr("panel.vector.layout.justify.between"),
+                f.justify == ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN,
+            ));
+            chips.push((
+                ids::VECTOR_LAYOUT_JUSTIFY_AROUND,
+                tr("panel.vector.layout.justify.around"),
+                f.justify == ids::VECTOR_LAYOUT_JUSTIFY_AROUND,
+            ));
+        }
+        self.segmented(tr("panel.vector.layout.justify"), &chips, y)
     }
 }
 

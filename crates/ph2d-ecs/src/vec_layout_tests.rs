@@ -25,17 +25,21 @@ fn a_frame_that_authored_nothing_is_a_tight_row() {
     assert_eq!(l.pad, [0.0; 4]);
     assert_eq!(l.align, LayoutAlign::Start);
     assert_eq!(l.justify, LayoutJustify::Start);
+    // ⚠️ **DUAS colunas, e o default é testado por um teste que não o escolhe.** Uma só tornaria o
+    // chip *Grid* indistinguível do *Column* — clicar nele não moveria um pixel.
+    assert_eq!(l.columns, 2);
 }
 
 /// **Os dois componentes sobrevivem ao round-trip** — é o que o save e o undo fazem com eles.
 #[test]
 fn both_components_survive_the_round_trip() {
     let l = VecLayout {
-        dir: LayoutDir::RowWrap,
+        dir: LayoutDir::Grid,
         gap: [4.0, 2.0],
         pad: [1.0, 2.0, 3.0, 4.0],
         align: LayoutAlign::Center,
         justify: LayoutJustify::SpaceBetween,
+        columns: 5,
     };
     let bytes = postcard::to_allocvec(&l).expect("serializa");
     assert_eq!(postcard::from_bytes::<VecLayout>(&bytes).expect("le"), l);

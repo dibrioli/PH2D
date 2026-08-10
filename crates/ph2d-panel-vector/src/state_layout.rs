@@ -49,6 +49,12 @@ pub struct LayoutFlow {
     pub min: [f64; 2],
     /// Teto por eixo `[w, h]`; `0` = sem teto.
     pub max: [f64; 2],
+    /// **Quantas colunas** a grade tem — pintado só com o chip *Grid* aceso.
+    ///
+    /// ⚠️ Ele viaja SEMPRE (não é `Option`), e o valor sobrevive a uma troca de direção: é o mesmo
+    /// que o vão e o recuo já fazem, e é o que devolve a grade intacta quando o artista vai a
+    /// `Row` e volta. Quem decide se ele é PINTADO é a direção, no `paint_layout`.
+    pub columns: f64,
 }
 
 /// Como o filho selecionado se comporta dentro do fluxo do pai.

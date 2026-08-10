@@ -121,6 +121,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.layout.dir.row" => "Row",
         "panel.vector.layout.dir.col" => "Column",
         "panel.vector.layout.dir.wrap" => "Wrap",
+        "panel.vector.layout.dir.grid" => "Grid",
+        "panel.vector.layout.columns" => "Cols",
         "panel.vector.layout.gap" => "Gap",
         "panel.vector.layout.size.w" => "Width",
         "panel.vector.layout.size.h" => "Height",

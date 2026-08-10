@@ -34,10 +34,6 @@ use serde::{Deserialize, Serialize};
 use crate::SimComponent;
 
 /// Direção do fluxo.
-///
-/// ⚠️ Não há `Grid`: medido, ele triplica o custo de build do motor (0,20 s → 0,63 s) por um modo
-/// que nada honraria hoje — e um `dir` que o artista escolhe e que não muda um pixel é o controlo
-/// morto que a política de UI deste repo existe para impedir (ADR-0153).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum LayoutDir {
     /// Em linha, sem quebra.
@@ -47,6 +43,20 @@ pub enum LayoutDir {
     Column,
     /// Em linha, quebrando quando não cabe.
     RowWrap,
+    /// **Em grade** de [`VecLayout::columns`] colunas iguais; as linhas nascem sozinhas.
+    ///
+    /// ⚠️ **Variante APENDADA**, e é isso que mantém legível todo arquivo já salvo: o postcard
+    /// grava o discriminante, e `Row`/`Column`/`RowWrap` continuam em 0/1/2. O bump de
+    /// `PROJECT_SCHEMA` que a acompanha é pelo caminho **INVERSO** — para um leitor velho recusar
+    /// com um erro de VERSÃO em vez de estourar longe da causa (o raciocínio do `Cap::Square` do
+    /// Flip e do `JointKind::Weld` da física).
+    ///
+    /// ⚠️ **A contagem NÃO vem no variante**, e a razão é o que o artista vê: com ela aqui, trocar
+    /// para `Row` e voltar **destruiria o número** (ele viveria num variante que deixou de
+    /// existir). Como campo do [`VecLayout`] ele sobrevive à ida e à volta, exactamente como o vão
+    /// e o recuo já sobrevivem — e o `DIRS` da shell continua a ser uma tabela de pares que se lê
+    /// nas duas direções por igualdade.
+    Grid,
 }
 
 /// Alinhamento no eixo TRANSVERSAL.
@@ -87,6 +97,16 @@ pub struct VecLayout {
     pub pad: [f64; 4],
     pub align: LayoutAlign,
     pub justify: LayoutJustify,
+    /// **Quantas colunas a grade tem** — lido só pelo [`LayoutDir::Grid`].
+    ///
+    /// ⚠️ Ele é inerte nas outras três direções, e essa forma **já existe neste struct**: o
+    /// `gap[1]` (transversal) só significa alguma coisa no `RowWrap`, e a resposta do repo é a
+    /// mesma nos dois casos — *o painel não o pinta onde ele não move um pixel*. Guardá-lo aqui,
+    /// em vez de dentro do variante, é o que faz o número sobreviver a uma troca de direção.
+    ///
+    /// ⚠️ O teto vive no motor (`ph2d_vec_layout::MAX_GRID_TRACKS`, medido) e o piso é `1`; o
+    /// motor lê `max(1)`, então um zero autorado é uma coluna e não uma divisão por zero.
+    pub columns: u16,
 }
 
 impl Default for VecLayout {
@@ -99,6 +119,10 @@ impl Default for VecLayout {
             pad: [0.0; 4],
             align: LayoutAlign::Start,
             justify: LayoutJustify::Start,
+            // ⚠️ **DUAS colunas, e não uma.** É a menor contagem em que a grade é distinguível de
+            // uma `Column` — com uma só, clicar em *Grid* não mudaria um pixel, e o artista teria
+            // de descobrir por tentativa que ainda faltava escrever um número.
+            columns: 2,
         }
     }
 }

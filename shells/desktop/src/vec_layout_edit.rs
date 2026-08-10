@@ -40,6 +40,7 @@ const DIRS: &[(ph2d_editor::NodeId, LayoutDir)] = &[
     (ids::VECTOR_LAYOUT_DIR_ROW, LayoutDir::Row),
     (ids::VECTOR_LAYOUT_DIR_COL, LayoutDir::Column),
     (ids::VECTOR_LAYOUT_DIR_WRAP, LayoutDir::RowWrap),
+    (ids::VECTOR_LAYOUT_DIR_GRID, LayoutDir::Grid),
 ];
 
 const ALIGNS: &[(ph2d_editor::NodeId, LayoutAlign)] = &[
@@ -132,6 +133,8 @@ pub(crate) enum LayoutField {
     Min(usize),
     /// Teto de um eixo.
     Max(usize),
+    /// **Quantas colunas** a grade tem — só o [`LayoutDir::Grid`] o lê.
+    Columns,
 }
 
 /// Porta única do roteador para os campos numéricos.
@@ -151,6 +154,7 @@ pub(crate) fn layout_field_for_id(id: ph2d_editor::NodeId) -> Option<LayoutField
         _ if id == ids::VECTOR_LAYOUT_MAX_W => LayoutField::Max(0),
         _ if id == ids::VECTOR_LAYOUT_MIN_H => LayoutField::Min(1),
         _ if id == ids::VECTOR_LAYOUT_MAX_H => LayoutField::Max(1),
+        _ if id == ids::VECTOR_LAYOUT_COLUMNS => LayoutField::Columns,
         _ => return None,
     };
     Some(f)
@@ -206,6 +210,7 @@ pub(crate) fn selected_flow(
         pad: l.pad,
         align: chip_of(ALIGNS, l.align),
         justify: chip_of(JUSTIFIES, l.justify),
+        columns: f64::from(l.columns),
         // ⚠️ Ausente = `Fixed` nos dois eixos e sem limites: o mundo de antes desta feature.
         size: [size_chip(sim, e, 0), size_chip(sim, e, 1)],
         min: bounds(sim, e, true),
@@ -431,7 +436,7 @@ pub(crate) fn apply_layout_field(
             }
             write_size(sim, e, cur, next)
         }
-        LayoutField::Gap(_) | LayoutField::Pad(_) | LayoutField::PadAll => {
+        LayoutField::Gap(_) | LayoutField::Pad(_) | LayoutField::PadAll | LayoutField::Columns => {
             let Some(e) = crate::vec_frame_edit::frame_of_selection(sim, map, selected) else {
                 return false;
             };
@@ -445,6 +450,22 @@ pub(crate) fn apply_layout_field(
             match field {
                 LayoutField::Gap(i) => next.gap[i] = v,
                 LayoutField::Pad(i) => next.pad[i] = v,
+                // ⚠️ **O piso é UMA coluna e o teto é o do MOTOR** (medido:
+                // `ph2d_vec_layout::MAX_GRID_TRACKS`), e os dois moram aqui, na porta do
+                // documento, pela mesma razão que o piso do `grow`: é o DOMÍNIO do modelo, não uma
+                // faixa de widget. Acima do teto o motor recusaria a fatia inteira — a moldura
+                // pararia de dispor, em silêncio, por um número que este clamp já impede.
+                // CLAMP-OK: o `v` já passou por `max(0.0)` acima (que devolve `0.0` para NaN) e os
+                // dois limites são constantes — não há o par dinâmico que o `safe_clamp` existe
+                // para defender.
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "o clamp acima garante 1..=MAX_GRID_TRACKS, que cabe em u16"
+                )]
+                LayoutField::Columns => {
+                    next.columns = v.clamp(1.0, f64::from(ph2d_vec_layout::MAX_GRID_TRACKS)) as u16;
+                }
                 _ => next.pad = [v; 4],
             }
             // **Digitar um vão SOLTA o token dele** — o *detach* do Figma (W4c.4), a mesma lei que

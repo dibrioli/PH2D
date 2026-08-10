@@ -63,6 +63,93 @@ fn approx(a: f64, b: f64) -> bool {
     (a - b).abs() < 0.01
 }
 
+/// ⭐ **A GRADE atravessa a costura inteira** — o documento, a tradução, o motor e a troca de eixo.
+///
+/// A moldura mede 100×40 na origem, com 3 colunas, vão 5 e cinco filhos de 10×10. As colunas
+/// medem `(100 − 2·5)/3 = 30`, então os `x` são `0 / 35 / 70`; as linhas medem 10 com vão 5, e o
+/// topo da moldura é `y = 40` (o mundo é Y-up), então a 2ª linha tem o topo em `40 − 15 = 25`.
+///
+/// ⚠️ **O 4º filho é o gate inteiro:** ele é quem prova que a linha NASCEU — e um `x` de volta a
+/// zero com o `y` mais baixo é a assinatura de uma grade, e de mais nada. Um `RowWrap` na mesma
+/// moldura poria os três primeiros noutros `x` (ele encosta-os, não os distribui por pistas).
+#[test]
+fn a_grid_frame_places_its_children_in_cells_and_the_axis_is_flipped_once() {
+    let (mut sim, scene, map, frame, kids) = frame_with_children(5);
+    arm(
+        &mut sim,
+        frame,
+        VecLayout {
+            dir: LayoutDir::Grid,
+            columns: 3,
+            gap: [5.0, 5.0],
+            ..VecLayout::default()
+        },
+    );
+    let mut live = LiveGeometry::new();
+    let _ = run(&sim, &scene, &map, &mut live);
+    let want = [
+        (0.0, 40.0),
+        (35.0, 40.0),
+        (70.0, 40.0),
+        (0.0, 25.0),
+        (35.0, 25.0),
+    ];
+    for (i, (x, top)) in want.into_iter().enumerate() {
+        let (lo, hi) = drawn(&live, &scene, kids[i]);
+        assert!(
+            approx(lo[0], x) && approx(hi[1], top),
+            "o filho {i} devia desenhar com a esquerda em {x} e o topo em {top}, e desenhou em \
+             ({}, {})",
+            lo[0],
+            hi[1]
+        );
+    }
+}
+
+/// **Trocar a contagem de colunas RE-COLOCA os filhos** — a prova de que o número é lido por
+/// frame, e não assado quando a direção foi escolhida.
+#[test]
+fn changing_the_column_count_moves_the_children() {
+    let (mut sim, scene, map, frame, kids) = frame_with_children(4);
+    let mut seen = Vec::new();
+    for columns in [2u16, 4] {
+        arm(
+            &mut sim,
+            frame,
+            VecLayout {
+                dir: LayoutDir::Grid,
+                columns,
+                ..VecLayout::default()
+            },
+        );
+        let mut live = LiveGeometry::new();
+        let _ = run(&sim, &scene, &map, &mut live);
+        seen.push(drawn(&live, &scene, kids[3]).0);
+    }
+    assert!(
+        !approx(seen[0][0], seen[1][0]) || !approx(seen[0][1], seen[1][1]),
+        "o 4o filho ficou no mesmo sitio com 2 e com 4 colunas ({:?} contra {:?}) — a contagem \
+         nao esta' a ser lida",
+        seen[0],
+        seen[1]
+    );
+    // Com QUATRO colunas os quatro filhos cabem numa linha só: todos com o mesmo topo.
+    assert!(
+        approx(
+            seen[1][1],
+            drawn(&live_of(&sim, &scene, &map), &scene, kids[0]).0[1]
+        ),
+        "com 4 colunas os 4 filhos deviam partilhar a linha"
+    );
+}
+
+/// O mapa vivo de uma cena já armada — só para o gate acima poder comparar dois filhos.
+fn live_of(sim: &SimWorld, scene: &VecScene, map: &VecEntityMap) -> LiveGeometry {
+    let mut live = LiveGeometry::new();
+    let _ = run(sim, scene, map, &mut live);
+    live
+}
+
 /// **Três filhos em fila pousam na aritmética exacta — e o eixo foi trocado UMA vez.**
 ///
 /// ⚠️ A segunda metade é a que um gate em coordenadas de CSS não pode ver: o motor mede `y` para

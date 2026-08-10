@@ -474,6 +474,22 @@ fn style_of(n: &Node) -> Style {
         // pararia de dispor, em silêncio, por causa de um número que o painel já impede. O clamp
         // mora aqui, e só aqui, porque este é o sítio que não pode dividir por zero.
         s.grid_template_columns = evenly_sized_tracks(columns.max(1));
+        // ⚠️ **O `align_content` ESPELHA o `align`, e sem esta linha a grade herdaria o CSS.**
+        // Numa grade `align-content: normal` comporta-se como `stretch`, então as linhas seriam
+        // ESTICADAS para encher a moldura — a mesma cena que um `Row` encosta no topo saía com as
+        // faixas espalhadas, e o filho a flutuar no meio de uma linha alta demais. O gate vivo
+        // nasceu vermelho exactamente aí (topo 17,5 onde a aritmética pede 25).
+        //
+        // Espelhá-lo é o que mantém a palavra HONESTA: com uma linha só, `align` numa grade dá o
+        // MESMO resultado que `align` num `Row` (o `Center` centra na moldura, o `Stretch` faz o
+        // filho encher a moldura); com várias, ele diz *onde o bloco de linhas senta*, que é a
+        // leitura que generaliza. Um controlo, duas propriedades do CSS, um significado.
+        s.align_content = Some(match f.align {
+            Align::Start => AlignContent::FLEX_START,
+            Align::Center => AlignContent::CENTER,
+            Align::End => AlignContent::FLEX_END,
+            Align::Stretch => AlignContent::STRETCH,
+        });
         // ⚠️ **`justify_items`, não `justify_content`** — e a diferença é o que o controlo passa a
         // significar. Com colunas `1fr` não sobra espaço nenhum no eixo horizontal, então
         // `justify_content` seria INERTE: cinco chips que não movem um pixel. `justify_items`

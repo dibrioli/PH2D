@@ -51,6 +51,7 @@ fn measure_the_label_gutters() {
         pad: [0.0; 4],
         align: ids::VECTOR_LAYOUT_ALIGN_START,
         justify: ids::VECTOR_LAYOUT_JUSTIFY_START,
+        columns: 2.0,
     }));
     state::set_layout_item(Some(LayoutItem {
         absolute: false,

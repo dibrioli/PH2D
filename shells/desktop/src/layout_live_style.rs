@@ -25,6 +25,12 @@ pub(super) fn frame_style(l: &VecLayout, gap: [Option<f64>; 2]) -> FrameStyle {
             D::Row => Dir::Row,
             D::Column => Dir::Column,
             D::RowWrap => Dir::RowWrap,
+            // ⚠️ **A contagem entra AQUI, e este é o único sítio onde os dois vocabulários se
+            // encontram.** Do lado do documento ela é um campo (para sobreviver a uma troca de
+            // direção); do lado do motor é o corpo do variante (para o `style_of` não perguntar
+            // por um campo que a `FrameStyle` não tem). A assimetria é a mesma — e pelo mesmo
+            // motivo — que a do [`size_of`], onde o `Fixed` do documento não carrega número.
+            D::Grid => Dir::Grid { columns: l.columns },
         },
         gap: [gap[0].unwrap_or(l.gap[0]), gap[1].unwrap_or(l.gap[1])],
         pad: l.pad,

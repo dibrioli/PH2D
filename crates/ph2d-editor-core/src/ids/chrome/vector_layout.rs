@@ -36,11 +36,26 @@ pub const VECTOR_LAYOUT_DIR_ROW: NodeId = hash_node_id("vector.layout.dir.row");
 /// Ver [`VECTOR_LAYOUT_DIR_OFF`] — em coluna.
 pub const VECTOR_LAYOUT_DIR_COL: NodeId = hash_node_id("vector.layout.dir.col");
 /// Ver [`VECTOR_LAYOUT_DIR_OFF`] — em linha, quebrando quando não cabe.
-///
-/// ⚠️ **Não há chip de GRID**, e a ausência é medida: a feature `grid` do motor triplica o custo de
-/// build (0,20 s → 0,63 s, ADR-0153 §M7) por um modo que nada honraria — o controlo que o artista
-/// escolhe e que não muda um pixel.
 pub const VECTOR_LAYOUT_DIR_WRAP: NodeId = hash_node_id("vector.layout.dir.wrap");
+/// Ver [`VECTOR_LAYOUT_DIR_OFF`] — em **grade**, com [`VECTOR_LAYOUT_COLUMNS`] colunas iguais.
+///
+/// ⚠️ Ele é o 5º chip do MESMO rádio, e não um interruptor à parte, pela razão que o
+/// [`VECTOR_LAYOUT_DIR_OFF`] já escreve: *"esta moldura flui, e como?"* é **uma** pergunta.
+///
+/// ⚠️ **A ausência dele era MEDIDA e a medição envelheceu.** Este doc dizia que a feature `grid`
+/// do motor triplica o custo de build *"por um modo que nada honraria"* — a razão de build era um
+/// A/B que nunca reconstruía o `taffy` (são ~0,47 s absolutos, uma vez por build limpo, 0,03% de
+/// uma corrida de CI), e a metade que importava — *nada honraria* — deixou de ser verdade no
+/// momento em que a fatia, o painel e o gesto passaram a honrá-lo.
+pub const VECTOR_LAYOUT_DIR_GRID: NodeId = hash_node_id("vector.layout.dir.grid");
+
+/// **Quantas colunas** — pintado só com a direção em *Grid*, porque só ela o lê.
+///
+/// ⚠️ Ele é a mesma cerca do vão TRANSVERSAL, que só o `Wrap` pinta: um número que o artista edita
+/// e que não move um pixel é o controlo morto que esta política existe para impedir. E o VALOR
+/// sobrevive à troca de direção (ele mora no `VecLayout`, não no variante), então ir a `Row` e
+/// voltar devolve a grade que estava lá.
+pub const VECTOR_LAYOUT_COLUMNS: NodeId = hash_node_id("vector.layout.columns");
 
 /// O vão no eixo PRINCIPAL (entre um filho e o seguinte).
 pub const VECTOR_LAYOUT_GAP_MAIN: NodeId = hash_node_id("vector.layout.gap.main");

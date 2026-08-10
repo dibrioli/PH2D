@@ -49,6 +49,16 @@ fn row_flow() -> LayoutFlow {
         pad: [0.0; 4],
         align: ids::VECTOR_LAYOUT_ALIGN_START,
         justify: ids::VECTOR_LAYOUT_JUSTIFY_START,
+        columns: 2.0,
+    }
+}
+
+/// A MESMA moldura, em grade — o que muda é a direção, e é isso que faz a fileira do Justify
+/// encolher e a de colunas nascer.
+fn grid_flow() -> LayoutFlow {
+    LayoutFlow {
+        dir: ids::VECTOR_LAYOUT_DIR_GRID,
+        ..row_flow()
     }
 }
 
@@ -188,8 +198,91 @@ fn the_four_direction_chips_are_reachable_and_reach_the_bus() {
         (ids::VECTOR_LAYOUT_DIR_ROW, "o chip Row"),
         (ids::VECTOR_LAYOUT_DIR_COL, "o chip Column"),
         (ids::VECTOR_LAYOUT_DIR_WRAP, "o chip Wrap"),
+        (ids::VECTOR_LAYOUT_DIR_GRID, "o chip Grid"),
     ] {
         click_reaches_bus(id, what);
+    }
+    clear();
+}
+
+/// **O COMMIT de um campo numérico chega ao barramento** — e não o clique.
+///
+/// ⚠️ A distinção não é cerimónia: um número mora no COMPONENTE, então o que a shell precisa de
+/// ouvir é o `ValueChanged` do commit, não o `Click` do foco. É a cicatriz do Z-index, escrita no
+/// `event.rs` — *"o campo era pintado, registado e vivo sob o mouse; o artista clicava, digitava,
+/// via o número mudar, e o commit caía no catch-all"*. Um gate que medisse o clique aqui ficaria
+/// **VERDE sobre exactamente esse defeito**.
+fn commit_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+        .unwrap_or_else(|| panic!("{what} nao foi PINTADO com area clicavel"));
+    host.apply_panel_event::<VectorPanel>(&mut panel_state, WidgetEvent::ValueChanged(id));
+    assert!(
+        host.drained_actions().into_iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(c, _)) if c == id
+        )),
+        "o commit de {what} nao chegou ao bus — o campo aceita teclas e nao fala com ninguem          (falta a lista no event.rs)"
+    );
+}
+
+/// **A contagem de colunas nasce com o modo que a lê** — a mesma cerca do vão transversal.
+///
+/// ⚠️ E o campo tem de estar VIVO sob o mouse, não só pintado: um id registado que ninguém pode
+/// clicar é o defeito que este arquivo existe para pegar, e ele já apareceu três vezes neste
+/// painel.
+#[test]
+fn the_column_count_is_born_with_the_grid_and_reaches_the_bus() {
+    clear();
+    state::set_frame_clip(Some(true));
+    state::set_layout_flow(Some(row_flow()));
+    assert!(
+        !painted(ids::VECTOR_LAYOUT_COLUMNS),
+        "a contagem de colunas foi pintada numa LINHA, onde ela nao move um pixel"
+    );
+    state::set_layout_flow(Some(grid_flow()));
+    assert!(
+        painted(ids::VECTOR_LAYOUT_COLUMNS),
+        "a grade sem o numero de colunas e' uma grade que o artista nao consegue descrever"
+    );
+    commit_reaches_bus(ids::VECTOR_LAYOUT_COLUMNS, "o campo de colunas");
+    clear();
+}
+
+/// ⭐ **As duas DISTRIBUIÇÕES não são oferecidas na grade** — com colunas iguais não sobra espaço
+/// para repartir, e dois chips que não movem um pixel são o item-de-menu-morto que esta política
+/// existe para impedir.
+///
+/// ⚠️ O gate afirma as DUAS metades: elas somem na grade **e continuam lá** na linha. Só a
+/// primeira seria satisfeita por as apagar de vez.
+#[test]
+fn the_two_distributions_are_not_offered_in_a_grid_but_survive_in_a_row() {
+    clear();
+    state::set_frame_clip(Some(true));
+    for id in [
+        ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN,
+        ids::VECTOR_LAYOUT_JUSTIFY_AROUND,
+    ] {
+        state::set_layout_flow(Some(row_flow()));
+        assert!(
+            painted(id),
+            "a distribuicao sumiu de uma LINHA, onde ela e' viva"
+        );
+        state::set_layout_flow(Some(grid_flow()));
+        assert!(
+            !painted(id),
+            "a distribuicao foi oferecida numa GRADE, onde ela nao pode fazer nada"
+        );
+    }
+    // Os três que ficam continuam vivos — a fileira encolhe, não desaparece.
+    state::set_layout_flow(Some(grid_flow()));
+    for id in [
+        ids::VECTOR_LAYOUT_JUSTIFY_START,
+        ids::VECTOR_LAYOUT_JUSTIFY_CENTER,
+        ids::VECTOR_LAYOUT_JUSTIFY_END,
+    ] {
+        assert!(painted(id), "a grade perdeu um chip que ela HONRA");
     }
     clear();
 }

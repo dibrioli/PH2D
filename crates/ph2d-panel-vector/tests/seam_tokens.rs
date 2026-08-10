@@ -365,6 +365,7 @@ fn the_gap_chips_follow_the_flow_and_the_cross_one_follows_wrap() {
             pad: [0.0; 4],
             align: ids::VECTOR_LAYOUT_ALIGN_START,
             justify: ids::VECTOR_LAYOUT_JUSTIFY_START,
+            columns: 2.0,
         }));
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut st = VectorPanelState;
@@ -444,6 +445,7 @@ fn every_token_slot_is_alive_and_lists_its_own_table() {
         pad: [0.0; 4],
         align: ids::VECTOR_LAYOUT_ALIGN_START,
         justify: ids::VECTOR_LAYOUT_JUSTIFY_START,
+        columns: 2.0,
     }));
 
     for slot in ids::TOKEN_SLOTS {

@@ -19,6 +19,7 @@ pub(crate) const LAYOUT_CHIPS: &[ph2d_a11y::NodeId] = &[
     ids::VECTOR_LAYOUT_DIR_ROW,
     ids::VECTOR_LAYOUT_DIR_COL,
     ids::VECTOR_LAYOUT_DIR_WRAP,
+    ids::VECTOR_LAYOUT_DIR_GRID,
     ids::VECTOR_LAYOUT_PAD_ALL_MODE,
     ids::VECTOR_LAYOUT_PAD_EACH_MODE,
     ids::VECTOR_LAYOUT_ALIGN_START,
@@ -37,8 +38,8 @@ pub(crate) const LAYOUT_CHIPS: &[ph2d_a11y::NodeId] = &[
     ids::VECTOR_LAYOUT_ITEM_ABSOLUTE,
 ];
 
-/// Os treze campos numéricos: vão (×2), recuo (×5 contando o *All*), Grow, Shrink e os
-/// quatro limites (piso e teto por eixo).
+/// Os catorze campos numéricos: vão (×2), recuo (×5 contando o *All*), Grow, Shrink, os quatro
+/// limites (piso e teto por eixo) e a contagem de COLUNAS da grade.
 pub(crate) const LAYOUT_FIELDS: &[ph2d_a11y::NodeId] = &[
     ids::VECTOR_LAYOUT_GAP_MAIN,
     ids::VECTOR_LAYOUT_GAP_CROSS,
@@ -53,6 +54,7 @@ pub(crate) const LAYOUT_FIELDS: &[ph2d_a11y::NodeId] = &[
     ids::VECTOR_LAYOUT_MAX_W,
     ids::VECTOR_LAYOUT_MIN_H,
     ids::VECTOR_LAYOUT_MAX_H,
+    ids::VECTOR_LAYOUT_COLUMNS,
 ];
 
 pub(super) fn layout_controls(store: &mut WidgetStore) {

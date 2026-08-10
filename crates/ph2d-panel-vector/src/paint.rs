@@ -186,6 +186,9 @@ fn seed_and_publish(
             seed(ids::VECTOR_LAYOUT_MAX_W, f.max[0]);
             seed(ids::VECTOR_LAYOUT_MIN_H, f.min[1]);
             seed(ids::VECTOR_LAYOUT_MAX_H, f.max[1]);
+            // ⚠️ Semeado SEMPRE, mesmo fora da grade: o valor sobrevive a uma troca de direção, e
+            // o campo tem de o trazer de volta intacto quando o artista voltar ao *Grid*.
+            seed(ids::VECTOR_LAYOUT_COLUMNS, f.columns);
         }
         if let Some(it) = state::layout_item() {
             seed(ids::VECTOR_LAYOUT_ITEM_GROW, it.grow);

@@ -336,7 +336,14 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // mesmo raciocinio posicional. ⚠️ E o que ele NAO e': uma tabela global
         // `nome -> acoes`. Dentro do `HostStates` a forma apagada leva as ligacoes
         // dela pelo `retain_hosts` que ja' corre por frame — sem uma linha a mais.
-        (83, 13, 14),
+        // PROJECT 83→84: `LayoutDir` ganhou `Grid` (variante APENDADA — os tres
+        // discriminantes velhos nao se movem) e `VecLayout` ganhou `columns`, o
+        // item 5 do estudo dos conteineres. ⚠️ Quem obriga o bump e' o CAMPO, nao a
+        // variante: o postcard e' posicional, entao um leitor velho leria os bytes
+        // do `columns` como o comeco do que vem a seguir. A contagem mora no
+        // struct e nao dentro da variante, para o numero sobreviver a uma troca de
+        // direcao — ir a `Row` e voltar devolve a grade intacta.
+        (84, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

@@ -502,4 +502,14 @@
 /// as ligações dela sem uma linha a mais, no mesmo frame e no mesmo passo de undo. É o
 /// degrau irmão do `spring` (v62), no mesmo struct e pelo mesmo motivo posicional: o
 /// postcard grava na ordem de declaração, então um leitor velho leria lixo bem-formado.
-pub(crate) const PROJECT_SCHEMA: u32 = 83;
+/// v84 (`line/Vector`, item 5 do estudo dos contêineres — A GRADE): o `LayoutDir` ganhou
+/// **`Grid`** (variante APENDADA, logo `Row`/`Column`/`RowWrap` continuam em 0/1/2 e todo
+/// arquivo já salvo segue legível) e o `VecLayout` ganhou **`columns`**.
+/// ⚠️ O bump é pelo caminho **INVERSO**, e é o campo que o obriga: o postcard é
+/// posicional, então um leitor velho leria os bytes do `columns` como o começo do que
+/// vem a seguir. O número transforma isso num erro de VERSÃO — o raciocínio do
+/// `Cap::Square` do Flip e do `JointKind::Weld` da física.
+/// ⚠️ A contagem mora no `VecLayout` e **não** dentro do variante, para sobreviver a uma
+/// troca de direção: ir a `Row` e voltar devolve a grade intacta, como o vão e o recuo já
+/// fazem.
+pub(crate) const PROJECT_SCHEMA: u32 = 84;

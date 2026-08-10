@@ -25,7 +25,8 @@
 //!   às duas, e é isso que faz os dois blocos aparecerem juntos nela.
 
 use ph2d_ecs::{
-    ChildOf, Entity, LayoutAlign, LayoutDir, LayoutJustify, SimWorld, VecLayout, VecLayoutItem,
+    ChildOf, Entity, LayoutAlign, LayoutDir, LayoutJustify, LayoutSize, SimWorld, VecLayout,
+    VecLayoutAbsolute, VecLayoutItem, VecLayoutSize,
 };
 use ph2d_editor::ids;
 use ph2d_panel_vector::state::{LayoutFlow, LayoutItem};
@@ -70,6 +71,10 @@ pub(crate) enum LayoutEdit {
     Dir(Option<LayoutDir>),
     Align(LayoutAlign),
     Justify(LayoutJustify),
+    /// O tamanho de um EIXO da moldura: `(eixo, abraça?)`.
+    Size(usize, bool),
+    /// O filho selecionado sai (ou volta a entrar) no fluxo do pai.
+    Absolute(bool),
 }
 
 /// Este id é um chip do layout? Porta única do roteador — a mesma varredura das três tabelas.
@@ -84,10 +89,32 @@ pub(crate) fn layout_edit_for_id(id: ph2d_editor::NodeId) -> Option<LayoutEdit> 
     if let Some(&(_, a)) = ALIGNS.iter().find(|(i, _)| *i == id) {
         return Some(LayoutEdit::Align(a));
     }
+    if let Some(e) = size_edit_for_id(id) {
+        return Some(e);
+    }
+    if id == ids::VECTOR_LAYOUT_ITEM_ABSOLUTE {
+        // ⚠️ O toggle é um ALTERNADOR, e o valor a escrever depende do estado de agora — que só a
+        // shell conhece. O `apply` resolve-o lendo o mundo; aqui vai o pedido, não o valor.
+        return Some(LayoutEdit::Absolute(true));
+    }
     JUSTIFIES
         .iter()
         .find(|(i, _)| *i == id)
         .map(|&(_, j)| LayoutEdit::Justify(j))
+}
+
+/// Os quatro chips de tamanho, numa tabela — a mesma forma das outras três.
+fn size_edit_for_id(id: ph2d_editor::NodeId) -> Option<LayoutEdit> {
+    const SIZES: &[(ph2d_editor::NodeId, usize, bool)] = &[
+        (ids::VECTOR_LAYOUT_SIZE_W_FIXED, 0, false),
+        (ids::VECTOR_LAYOUT_SIZE_W_HUG, 0, true),
+        (ids::VECTOR_LAYOUT_SIZE_H_FIXED, 1, false),
+        (ids::VECTOR_LAYOUT_SIZE_H_HUG, 1, true),
+    ];
+    SIZES
+        .iter()
+        .find(|(i, _, _)| *i == id)
+        .map(|&(_, axis, hug)| LayoutEdit::Size(axis, hug))
 }
 
 /// Qual campo numérico do layout este id endereça, e o que ele escreve.
@@ -101,6 +128,10 @@ pub(crate) enum LayoutField {
     PadAll,
     Grow,
     Shrink,
+    /// Piso de um eixo (`0` = índice da largura).
+    Min(usize),
+    /// Teto de um eixo.
+    Max(usize),
 }
 
 /// Porta única do roteador para os campos numéricos.
@@ -116,6 +147,10 @@ pub(crate) fn layout_field_for_id(id: ph2d_editor::NodeId) -> Option<LayoutField
         _ if id == ids::VECTOR_LAYOUT_PAD_L => LayoutField::Pad(3),
         _ if id == ids::VECTOR_LAYOUT_ITEM_GROW => LayoutField::Grow,
         _ if id == ids::VECTOR_LAYOUT_ITEM_SHRINK => LayoutField::Shrink,
+        _ if id == ids::VECTOR_LAYOUT_MIN_W => LayoutField::Min(0),
+        _ if id == ids::VECTOR_LAYOUT_MAX_W => LayoutField::Max(0),
+        _ if id == ids::VECTOR_LAYOUT_MIN_H => LayoutField::Min(1),
+        _ if id == ids::VECTOR_LAYOUT_MAX_H => LayoutField::Max(1),
         _ => return None,
     };
     Some(f)
@@ -165,6 +200,10 @@ pub(crate) fn selected_flow(
         pad: l.pad,
         align: chip_of(ALIGNS, l.align),
         justify: chip_of(JUSTIFIES, l.justify),
+        // ⚠️ Ausente = `Fixed` nos dois eixos e sem limites: o mundo de antes desta feature.
+        size: [size_chip(sim, e, 0), size_chip(sim, e, 1)],
+        min: bounds(sim, e, true),
+        max: bounds(sim, e, false),
     })
 }
 
@@ -184,7 +223,32 @@ pub(crate) fn selected_item(
     Some(LayoutItem {
         grow: f64::from(it.grow),
         shrink: f64::from(it.shrink),
+        absolute: sim.world().get::<VecLayoutAbsolute>(e).is_some(),
     })
+}
+
+/// O chip de tamanho ACESO num eixo — a mesma leitura que o `chip_of` faz para as outras três
+/// tabelas, e a ausência do componente lê `Fixed`, que é o mundo de antes desta feature.
+fn size_chip(sim: &SimWorld, e: Entity, axis: usize) -> ph2d_editor::NodeId {
+    let hug = sim
+        .world()
+        .get::<VecLayoutSize>(e)
+        .is_some_and(|s| s.size[axis] == LayoutSize::Hug);
+    match (axis, hug) {
+        (0, false) => ids::VECTOR_LAYOUT_SIZE_W_FIXED,
+        (0, true) => ids::VECTOR_LAYOUT_SIZE_W_HUG,
+        (_, false) => ids::VECTOR_LAYOUT_SIZE_H_FIXED,
+        (_, true) => ids::VECTOR_LAYOUT_SIZE_H_HUG,
+    }
+}
+
+/// Os dois limites de um lado, com **zero a significar ausência** — ver `VECTOR_LAYOUT_MIN_W`.
+fn bounds(sim: &SimWorld, e: Entity, floor: bool) -> [f64; 2] {
+    let Some(s) = sim.world().get::<VecLayoutSize>(e) else {
+        return [0.0; 2];
+    };
+    let b = if floor { s.min } else { s.max };
+    [b[0].unwrap_or(0.0), b[1].unwrap_or(0.0)]
 }
 
 /// Aplica um clique de chip. Devolve `true` se o mundo mudou — o `post_frame_undo` regista por
@@ -219,8 +283,68 @@ pub(crate) fn apply_layout_edit(
             justify,
             ..cur.unwrap_or_default()
         }),
+        // Os dois seguintes não escrevem no `VecLayout`: eles têm componentes próprios, e o
+        // `write_layout` no fim desta função não é o caminho deles.
+        LayoutEdit::Size(axis, hug) => return apply_size(sim, e, axis, hug),
+        LayoutEdit::Absolute(_) => return apply_absolute(sim, map, selected),
     };
     write_layout(sim, e, cur, next)
+}
+
+/// **O tamanho de um EIXO.** O componente DESTACA quando volta ao neutro — um componente que não
+/// faz nada não viaja no arquivo, a mesma lei do `VecLayoutItem`.
+fn apply_size(sim: &mut SimWorld, e: Entity, axis: usize, hug: bool) -> bool {
+    let cur = sim.world().get::<VecLayoutSize>(e).copied();
+    let mut next = cur.unwrap_or_default();
+    next.size[axis] = if hug {
+        LayoutSize::Hug
+    } else {
+        LayoutSize::Fixed
+    };
+    write_size(sim, e, cur, next)
+}
+
+/// **O filho entra ou sai do fluxo.** ⚠️ O chip é um ALTERNADOR: o valor a escrever é o contrário
+/// do que está lá, e quem sabe o que está lá é o mundo — por isso a decisão mora aqui, e não no
+/// roteador que só viu um id.
+fn apply_absolute(sim: &mut SimWorld, map: &VecEntityMap, selected: &[VecPathId]) -> bool {
+    let Some(e) = item_of_selection(sim, map, selected) else {
+        return false;
+    };
+    let on = sim.world().get::<VecLayoutAbsolute>(e).is_some();
+    let Ok(mut em) = sim.world_mut().get_entity_mut(e) else {
+        return false;
+    };
+    if on {
+        em.remove::<VecLayoutAbsolute>();
+    } else {
+        em.insert(VecLayoutAbsolute);
+    }
+    true
+}
+
+/// A escrita do [`VecLayoutSize`], com o destacar do neutro — irmã do [`write_layout`].
+fn write_size(
+    sim: &mut SimWorld,
+    e: Entity,
+    cur: Option<VecLayoutSize>,
+    next: VecLayoutSize,
+) -> bool {
+    if cur == Some(next) {
+        return false;
+    }
+    let Ok(mut em) = sim.world_mut().get_entity_mut(e) else {
+        return false;
+    };
+    if next == VecLayoutSize::default() {
+        if cur.is_none() {
+            return false;
+        }
+        em.remove::<VecLayoutSize>();
+        return true;
+    }
+    em.insert(next);
+    true
 }
 
 /// Aplica um valor de campo numérico.
@@ -266,6 +390,23 @@ pub(crate) fn apply_layout_field(
                 return true;
             }
             false
+        }
+        LayoutField::Min(axis) | LayoutField::Max(axis) => {
+            // Os limites são da MOLDURA, não do filho: eles descrevem o tamanho dela.
+            let Some(e) = crate::vec_frame_edit::frame_of_selection(sim, map, selected) else {
+                return false;
+            };
+            let cur = sim.world().get::<VecLayoutSize>(e).copied();
+            let mut next = cur.unwrap_or_default();
+            // ⚠️ **Zero é AUSÊNCIA** (ver `VECTOR_LAYOUT_MIN_W`), e o negativo é domínio: um
+            // comprimento não é negativo, e deixá-lo entrar poria o motor a resolver uma caixa
+            // impossível em vez de recusar um número que ninguém quis digitar.
+            let v = (v > 0.0).then_some(v.max(0.0));
+            match field {
+                LayoutField::Min(_) => next.min[axis] = v,
+                _ => next.max[axis] = v,
+            }
+            write_size(sim, e, cur, next)
         }
         LayoutField::Gap(_) | LayoutField::Pad(_) | LayoutField::PadAll => {
             let Some(e) = crate::vec_frame_edit::frame_of_selection(sim, map, selected) else {

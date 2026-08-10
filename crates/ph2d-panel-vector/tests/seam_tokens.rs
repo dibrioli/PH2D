@@ -354,6 +354,12 @@ fn the_gap_chips_follow_the_flow_and_the_cross_one_follows_wrap() {
         (ids::VECTOR_LAYOUT_DIR_WRAP, true),
     ] {
         state::set_layout_flow(Some(state::LayoutFlow {
+            size: [
+                ids::VECTOR_LAYOUT_SIZE_W_FIXED,
+                ids::VECTOR_LAYOUT_SIZE_H_FIXED,
+            ],
+            min: [0.0; 2],
+            max: [0.0; 2],
             dir,
             gap: [0.0, 0.0],
             pad: [0.0; 4],
@@ -427,6 +433,12 @@ fn every_token_slot_is_alive_and_lists_its_own_table() {
     state::set_token_bindings(Some(bound(None, None, true)));
     state::set_frame_clip(Some(true));
     state::set_layout_flow(Some(state::LayoutFlow {
+        size: [
+            ids::VECTOR_LAYOUT_SIZE_W_FIXED,
+            ids::VECTOR_LAYOUT_SIZE_H_FIXED,
+        ],
+        min: [0.0; 2],
+        max: [0.0; 2],
         dir: ids::VECTOR_LAYOUT_DIR_WRAP,
         gap: [0.0, 0.0],
         pad: [0.0; 4],

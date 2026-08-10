@@ -90,3 +90,43 @@ pub const VECTOR_LAYOUT_JUSTIFY_AROUND: NodeId = hash_node_id("vector.layout.jus
 pub const VECTOR_LAYOUT_ITEM_GROW: NodeId = hash_node_id("vector.layout.item.grow");
 /// Quanto o filho selecionado CEDE quando falta espaço.
 pub const VECTOR_LAYOUT_ITEM_SHRINK: NodeId = hash_node_id("vector.layout.item.shrink");
+
+/// **Width: Fixed | Hug** — o par que decide se a moldura tem o tamanho que o artista desenhou ou
+/// o tamanho do que está DENTRO dela (o *Hug contents* do Figma).
+///
+/// ⚠️ **Dois chips, e não três.** O Figma oferece *Fill* no mesmo seletor, mas *Fill* é uma relação
+/// com o PAI (quanto da sobra eu tomo) e vive na linha Grow, que já existe. Juntá-los aqui daria um
+/// seletor cujo terceiro chip não faz nada numa moldura de topo — e o artista descobriria por
+/// tentativa.
+///
+/// ⚠️ Ele é o gémeo do par **Width: Auto | Fixed** que o TEXTO já tem (`vector_text.rs`): o mesmo
+/// vocabulário, a mesma pergunta, dois objectos diferentes.
+pub const VECTOR_LAYOUT_SIZE_W_FIXED: NodeId = hash_node_id("vector.layout.size.w.fixed");
+/// Ver [`VECTOR_LAYOUT_SIZE_W_FIXED`] — a largura sai do conteúdo.
+pub const VECTOR_LAYOUT_SIZE_W_HUG: NodeId = hash_node_id("vector.layout.size.w.hug");
+/// Ver [`VECTOR_LAYOUT_SIZE_W_FIXED`], no outro eixo.
+pub const VECTOR_LAYOUT_SIZE_H_FIXED: NodeId = hash_node_id("vector.layout.size.h.fixed");
+/// Ver [`VECTOR_LAYOUT_SIZE_W_FIXED`], no outro eixo.
+pub const VECTOR_LAYOUT_SIZE_H_HUG: NodeId = hash_node_id("vector.layout.size.h.hug");
+
+/// **Piso da largura.** `0` = sem piso.
+///
+/// ⚠️ Zero significa *ausência*, e não um limite de zero — é o que permite estes quatro campos
+/// serem números simples em vez de quatro pares `Auto | Fixed`. A leitura é honesta nos dois: um
+/// piso de zero não restringe nada (o conteúdo já mede ≥ 0), e um TETO de zero não é um limite, é
+/// um desaparecimento.
+pub const VECTOR_LAYOUT_MIN_W: NodeId = hash_node_id("vector.layout.min.w");
+/// Teto da largura. `0` = sem teto — ver [`VECTOR_LAYOUT_MIN_W`].
+pub const VECTOR_LAYOUT_MAX_W: NodeId = hash_node_id("vector.layout.max.w");
+/// Piso da altura. `0` = sem piso — ver [`VECTOR_LAYOUT_MIN_W`].
+pub const VECTOR_LAYOUT_MIN_H: NodeId = hash_node_id("vector.layout.min.h");
+/// Teto da altura. `0` = sem teto — ver [`VECTOR_LAYOUT_MIN_W`].
+pub const VECTOR_LAYOUT_MAX_H: NodeId = hash_node_id("vector.layout.max.h");
+
+/// **Este filho sai do fluxo** — o *Absolute position* do Figma.
+///
+/// ⚠️ Marcado, ele fica com a pose que o artista lhe deu (continua filho: anda com o pai e é
+/// recortado por ele), e as linhas **Grow/Shrink deixam de ser pintadas** — quem não está no fluxo
+/// não reparte sobra nenhuma, e oferecer os dois números ali seria o controlo morto que a política
+/// de UI deste repo existe para impedir.
+pub const VECTOR_LAYOUT_ITEM_ABSOLUTE: NodeId = hash_node_id("vector.layout.item.absolute");

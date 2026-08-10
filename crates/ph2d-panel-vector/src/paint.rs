@@ -181,6 +181,11 @@ fn seed_and_publish(
             seed(ids::VECTOR_LAYOUT_PAD_R, f.pad[1]);
             seed(ids::VECTOR_LAYOUT_PAD_B, f.pad[2]);
             seed(ids::VECTOR_LAYOUT_PAD_L, f.pad[3]);
+            // Os limites: zero é ausência, e é o que o campo mostra quando não há limite.
+            seed(ids::VECTOR_LAYOUT_MIN_W, f.min[0]);
+            seed(ids::VECTOR_LAYOUT_MAX_W, f.max[0]);
+            seed(ids::VECTOR_LAYOUT_MIN_H, f.min[1]);
+            seed(ids::VECTOR_LAYOUT_MAX_H, f.max[1]);
         }
         if let Some(it) = state::layout_item() {
             seed(ids::VECTOR_LAYOUT_ITEM_GROW, it.grow);

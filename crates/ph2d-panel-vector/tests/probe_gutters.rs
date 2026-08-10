@@ -40,6 +40,12 @@ fn rect(id: ph2d_a11y::NodeId) -> Option<Rect> {
 fn measure_the_label_gutters() {
     state::set_frame_clip(Some(true));
     state::set_layout_flow(Some(LayoutFlow {
+        size: [
+            ids::VECTOR_LAYOUT_SIZE_W_FIXED,
+            ids::VECTOR_LAYOUT_SIZE_H_FIXED,
+        ],
+        min: [0.0; 2],
+        max: [0.0; 2],
         dir: ids::VECTOR_LAYOUT_DIR_ROW,
         gap: [0.0, 0.0],
         pad: [0.0; 4],
@@ -47,6 +53,7 @@ fn measure_the_label_gutters() {
         justify: ids::VECTOR_LAYOUT_JUSTIFY_START,
     }));
     state::set_layout_item(Some(LayoutItem {
+        absolute: false,
         grow: 0.0,
         shrink: 0.0,
     }));

@@ -30,9 +30,15 @@ pub(crate) const LAYOUT_CHIPS: &[ph2d_a11y::NodeId] = &[
     ids::VECTOR_LAYOUT_JUSTIFY_END,
     ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN,
     ids::VECTOR_LAYOUT_JUSTIFY_AROUND,
+    ids::VECTOR_LAYOUT_SIZE_W_FIXED,
+    ids::VECTOR_LAYOUT_SIZE_W_HUG,
+    ids::VECTOR_LAYOUT_SIZE_H_FIXED,
+    ids::VECTOR_LAYOUT_SIZE_H_HUG,
+    ids::VECTOR_LAYOUT_ITEM_ABSOLUTE,
 ];
 
-/// Os nove campos numéricos: vão (×2), recuo (×5 contando o *All*), Grow e Shrink.
+/// Os treze campos numéricos: vão (×2), recuo (×5 contando o *All*), Grow, Shrink e os
+/// quatro limites (piso e teto por eixo).
 pub(crate) const LAYOUT_FIELDS: &[ph2d_a11y::NodeId] = &[
     ids::VECTOR_LAYOUT_GAP_MAIN,
     ids::VECTOR_LAYOUT_GAP_CROSS,
@@ -43,6 +49,10 @@ pub(crate) const LAYOUT_FIELDS: &[ph2d_a11y::NodeId] = &[
     ids::VECTOR_LAYOUT_PAD_L,
     ids::VECTOR_LAYOUT_ITEM_GROW,
     ids::VECTOR_LAYOUT_ITEM_SHRINK,
+    ids::VECTOR_LAYOUT_MIN_W,
+    ids::VECTOR_LAYOUT_MAX_W,
+    ids::VECTOR_LAYOUT_MIN_H,
+    ids::VECTOR_LAYOUT_MAX_H,
 ];
 
 pub(super) fn layout_controls(store: &mut WidgetStore) {

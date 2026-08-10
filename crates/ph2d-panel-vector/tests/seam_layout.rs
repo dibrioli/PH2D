@@ -38,6 +38,12 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 /// Um fluxo em LINHA, tudo no neutro — a publicação que faz a seção existir.
 fn row_flow() -> LayoutFlow {
     LayoutFlow {
+        size: [
+            ids::VECTOR_LAYOUT_SIZE_W_FIXED,
+            ids::VECTOR_LAYOUT_SIZE_H_FIXED,
+        ],
+        min: [0.0; 2],
+        max: [0.0; 2],
         dir: ids::VECTOR_LAYOUT_DIR_ROW,
         gap: [0.0, 0.0],
         pad: [0.0; 4],
@@ -133,6 +139,7 @@ fn a_wider_label_pushes_its_field_further_right() {
     state::set_frame_clip(Some(true));
     state::set_layout_flow(Some(row_flow()));
     state::set_layout_item(Some(LayoutItem {
+        absolute: false,
         grow: 0.0,
         shrink: 1.0,
     }));
@@ -304,6 +311,12 @@ fn the_cross_gap_is_born_with_the_mode_that_uses_it() {
     );
 
     state::set_layout_flow(Some(LayoutFlow {
+        size: [
+            ids::VECTOR_LAYOUT_SIZE_W_FIXED,
+            ids::VECTOR_LAYOUT_SIZE_H_FIXED,
+        ],
+        min: [0.0; 2],
+        max: [0.0; 2],
         dir: ids::VECTOR_LAYOUT_DIR_WRAP,
         ..row_flow()
     }));
@@ -323,6 +336,7 @@ fn the_item_rows_follow_the_child_and_coexist_with_the_frame_block() {
     );
 
     state::set_layout_item(Some(LayoutItem {
+        absolute: false,
         grow: 0.0,
         shrink: 0.0,
     }));
@@ -358,6 +372,7 @@ fn the_layout_section_is_absent_without_a_subject() {
 fn a_selected_child_alone_still_gets_its_two_rows() {
     clear();
     state::set_layout_item(Some(LayoutItem {
+        absolute: false,
         grow: 1.0,
         shrink: 0.0,
     }));
@@ -406,5 +421,77 @@ fn a_row_that_does_not_fit_wraps_and_one_that_fits_does_not() {
         a_first.y,
         a_last.y
     );
+    clear();
+}
+
+/// **Os quatro chips de TAMANHO estão vivos sob o mouse e chegam ao barramento.**
+#[test]
+fn the_size_chips_are_reachable_and_reach_the_bus() {
+    clear();
+    state::set_frame_clip(Some(true));
+    state::set_layout_flow(Some(row_flow()));
+    for (id, what) in [
+        (ids::VECTOR_LAYOUT_SIZE_W_FIXED, "Width: Fixed"),
+        (ids::VECTOR_LAYOUT_SIZE_W_HUG, "Width: Hug"),
+        (ids::VECTOR_LAYOUT_SIZE_H_FIXED, "Height: Fixed"),
+        (ids::VECTOR_LAYOUT_SIZE_H_HUG, "Height: Hug"),
+    ] {
+        click_reaches_bus(id, what);
+    }
+    clear();
+}
+
+/// **O toggle do fora-do-fluxo está vivo, e ESCONDE Grow/Shrink quando marcado.**
+///
+/// ⚠️ As duas metades no mesmo gate de propósito: um filho absoluto não reparte sobra nenhuma, e
+/// oferecer-lhe os dois números seria o controlo morto que esta política existe para impedir. O
+/// gate que só clicasse o toggle ficaria verde com os dois campos pintados ao lado.
+#[test]
+fn the_absolute_toggle_is_live_and_hides_grow_and_shrink() {
+    clear();
+    state::set_frame_clip(Some(true));
+    state::set_layout_flow(Some(row_flow()));
+    state::set_layout_item(Some(LayoutItem {
+        grow: 0.0,
+        shrink: 0.0,
+        absolute: false,
+    }));
+    click_reaches_bus(ids::VECTOR_LAYOUT_ITEM_ABSOLUTE, "o toggle Absolute");
+    // No fluxo, os dois números existem.
+    assert!(
+        painted(ids::VECTOR_LAYOUT_ITEM_GROW),
+        "no fluxo, Grow tem de ser pintado"
+    );
+    // Fora do fluxo, não.
+    state::set_layout_item(Some(LayoutItem {
+        grow: 0.0,
+        shrink: 0.0,
+        absolute: true,
+    }));
+    assert!(
+        !painted(ids::VECTOR_LAYOUT_ITEM_GROW) && !painted(ids::VECTOR_LAYOUT_ITEM_SHRINK),
+        "um filho ABSOLUTO nao reparte sobra: os dois campos nao podem ser pintados"
+    );
+    assert!(
+        painted(ids::VECTOR_LAYOUT_ITEM_ABSOLUTE),
+        "e o proprio toggle TEM de continuar pintado — senao nao ha como desmarcar"
+    );
+    clear();
+}
+
+/// **Os quatro limites existem com a moldura a fluir.**
+#[test]
+fn the_four_bounds_are_painted_when_the_frame_flows() {
+    clear();
+    state::set_frame_clip(Some(true));
+    state::set_layout_flow(Some(row_flow()));
+    for (id, what) in [
+        (ids::VECTOR_LAYOUT_MIN_W, "Min W"),
+        (ids::VECTOR_LAYOUT_MAX_W, "Max W"),
+        (ids::VECTOR_LAYOUT_MIN_H, "Min H"),
+        (ids::VECTOR_LAYOUT_MAX_H, "Max H"),
+    ] {
+        assert!(painted(id), "{what} nao foi pintado");
+    }
     clear();
 }

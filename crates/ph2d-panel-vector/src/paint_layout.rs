@@ -45,18 +45,31 @@ impl BodyCtx<'_> {
         if frame {
             y = self.layout_frame_rows(y);
         }
-        if item.is_some() {
+        if let Some(it) = item {
+            // O fora-do-fluxo vem PRIMEIRO porque é ele que decide se o resto existe.
+            y = self.checkbox_row(
+                ids::VECTOR_LAYOUT_ITEM_ABSOLUTE,
+                tr("panel.vector.layout.absolute"),
+                it.absolute,
+                y,
+            );
             // ⚠️ Os VALORES não são lidos aqui: eles são semeados no store pelo `paint.rs`, como
             // os campos do Transform — o campo numérico é dono do próprio buffer enquanto o
             // artista digita, e pintá-lo a partir do publicado apagaria a tecla que ele acabou de
             // premir. Aqui só se decide se as duas linhas EXISTEM.
-            y = self.number_row(
-                "Grow",
-                ids::VECTOR_LAYOUT_ITEM_GROW,
-                "Shrink",
-                ids::VECTOR_LAYOUT_ITEM_SHRINK,
-                y,
-            );
+            //
+            // ⚠️ E elas NÃO existem para um filho absoluto: ele saiu do fluxo, logo não reparte
+            // sobra nenhuma, e dois números que não movem um pixel são o controlo morto que esta
+            // política existe para impedir.
+            if !it.absolute {
+                y = self.number_row(
+                    "Grow",
+                    ids::VECTOR_LAYOUT_ITEM_GROW,
+                    "Shrink",
+                    ids::VECTOR_LAYOUT_ITEM_SHRINK,
+                    y,
+                );
+            }
         }
         y
     }
@@ -95,6 +108,7 @@ impl BodyCtx<'_> {
         let Some(f) = flow else {
             return y;
         };
+        y = self.layout_size_rows(&f, y);
         // ⚠️ **O vão TRANSVERSAL só é pintado no `Wrap`.** Em linha ou coluna há uma faixa só, e
         // o número entre faixas não tem entre o que ficar: seria um campo que o artista edita e
         // que não move um pixel. Ele nasce com o modo que o usa.
@@ -139,6 +153,62 @@ impl BodyCtx<'_> {
     }
 
     /// O recuo: um campo, ou quatro. O par de modo troca os campos PINTADOS.
+    /// **O TAMANHO da moldura, e os limites** — o vocabulário de *sizing* do Figma.
+    ///
+    /// ⚠️ Um par por EIXO, e não um só: a barra que ocupa a largura toda e tem a altura do
+    /// conteúdo é o caso de uso mais comum de uma UI, e ele precisa de responder diferente nos
+    /// dois. Colapsá-los num controlo tornaria esse caso inexprimível.
+    fn layout_size_rows(&mut self, f: &LayoutFlow, y: f32) -> f32 {
+        let mut y = self.segmented(
+            tr("panel.vector.layout.size.w"),
+            &[
+                (
+                    ids::VECTOR_LAYOUT_SIZE_W_FIXED,
+                    tr("panel.vector.layout.size.fixed"),
+                    f.size[0] == ids::VECTOR_LAYOUT_SIZE_W_FIXED,
+                ),
+                (
+                    ids::VECTOR_LAYOUT_SIZE_W_HUG,
+                    tr("panel.vector.layout.size.hug"),
+                    f.size[0] == ids::VECTOR_LAYOUT_SIZE_W_HUG,
+                ),
+            ],
+            y,
+        );
+        y = self.segmented(
+            tr("panel.vector.layout.size.h"),
+            &[
+                (
+                    ids::VECTOR_LAYOUT_SIZE_H_FIXED,
+                    tr("panel.vector.layout.size.fixed"),
+                    f.size[1] == ids::VECTOR_LAYOUT_SIZE_H_FIXED,
+                ),
+                (
+                    ids::VECTOR_LAYOUT_SIZE_H_HUG,
+                    tr("panel.vector.layout.size.hug"),
+                    f.size[1] == ids::VECTOR_LAYOUT_SIZE_H_HUG,
+                ),
+            ],
+            y,
+        );
+        // ⚠️ Os valores são semeados no store pelo `paint.rs` (a mesma lei dos campos do
+        // Transform); aqui só se decide que as linhas existem.
+        y = self.number_row(
+            tr("panel.vector.layout.min.w"),
+            ids::VECTOR_LAYOUT_MIN_W,
+            tr("panel.vector.layout.max.w"),
+            ids::VECTOR_LAYOUT_MAX_W,
+            y,
+        );
+        self.number_row(
+            tr("panel.vector.layout.min.h"),
+            ids::VECTOR_LAYOUT_MIN_H,
+            tr("panel.vector.layout.max.h"),
+            ids::VECTOR_LAYOUT_MAX_H,
+            y,
+        )
+    }
+
     fn layout_padding_rows(&mut self, y: f32) -> f32 {
         let each = state::layout_pad_each();
         let mut y = self.segmented(

@@ -43,6 +43,12 @@ pub struct LayoutFlow {
     pub align: NodeId,
     /// O chip de distribuição principal ACESO.
     pub justify: NodeId,
+    /// O chip de tamanho ACESO por eixo `[w, h]` (`..._SIZE_W_FIXED` / `_HUG`).
+    pub size: [NodeId; 2],
+    /// Piso por eixo `[w, h]`; `0` = sem piso (ver `VECTOR_LAYOUT_MIN_W`).
+    pub min: [f64; 2],
+    /// Teto por eixo `[w, h]`; `0` = sem teto.
+    pub max: [f64; 2],
 }
 
 /// Como o filho selecionado se comporta dentro do fluxo do pai.
@@ -50,6 +56,9 @@ pub struct LayoutFlow {
 pub struct LayoutItem {
     pub grow: f64,
     pub shrink: f64,
+    /// Este filho saiu do fluxo (o *Absolute position*). ⚠️ Quando `true`, `grow`/`shrink` **não
+    /// são pintados**: quem não está no fluxo não reparte sobra nenhuma.
+    pub absolute: bool,
 }
 
 thread_local! {

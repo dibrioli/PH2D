@@ -27,6 +27,10 @@ use crate::state::Sculpt3dUi;
 /// é honesta; uma que mostra um número que o pincel não usa não é.
 const RADIUS_TRACK_MAX_PX: f32 = 200.0; // LITERAL-PX-OK: extensao da PISTA, nao metrica de design (o teto real e 1/8 da altura do viewport)
 
+#[path = "rows_types.rs"]
+mod types;
+pub use types::{Place, Row, Section};
+
 /// O teto da pista de **Extract Smooth**, em passadas.
 ///
 /// ⚠️ **OITO, e o número é MEDIDO** (`ph2d-mesh/tests/measure_extract.rs`): o
@@ -36,111 +40,6 @@ const RADIUS_TRACK_MAX_PX: f32 = 200.0; // LITERAL-PX-OK: extensao da PISTA, nao
 /// diante cada uma compra **0,4%**. Uma pista mais longa seria uma faixa onde
 /// arrastar não faz nada, que é o controle morto que esta casa varre a cada wave.
 const MAX_EXTRACT_SMOOTH: f32 = 8.0; // LITERAL-PX-OK: contagem de passadas MEDIDA, nao metrica de design
-
-/// Uma row de slider+chip: que número ela edita, sobre que faixa, e **quando ela
-/// existe**.
-pub struct Row {
-    /// Chave i18n do rótulo.
-    pub label: &'static str,
-    /// Id da pista.
-    pub slider: NodeId,
-    /// Id do chip numérico ligado a ela.
-    pub chip: NodeId,
-    /// Mínimo do domínio (o valor em `track = 0`).
-    pub min: f32,
-    /// Máximo do domínio (o valor em `track = 1`).
-    pub max: f32,
-    /// Passo do arrasto do chip. ⚠️ Não é decoração: sem faixa+passo registrados
-    /// o chip deriva o passo do texto do buffer e percorre ~50 unidades por
-    /// PIXEL, o que o transforma num interruptor min↔max (o bug que o painel do
-    /// Flip documentou — digitar sempre funcionou, só arrastar estava quebrado).
-    pub step: f64,
-    /// Quantas casas o readout mostra.
-    pub decimals: usize,
-    /// Lê o valor desta row do estado autorado.
-    pub get: fn(&Sculpt3dUi) -> f32,
-    /// Escreve o valor desta row no estado autorado.
-    pub set: fn(&mut Sculpt3dUi, f32),
-    /// **Esta row existe com este pincel em mãos?**
-    ///
-    /// ⚠️ O `Plane Offset` só é lido pelos quatro verbos de plano e o `Pinch` só
-    /// pelo Crease — pintá-los sempre seriam dois knobs que não fazem nada em
-    /// doze das dezesseis ferramentas, que é o controle morto que esta casa
-    /// varre a cada wave. A pergunta é feita à porta do MOTOR
-    /// (`Verb::uses_plane`), nunca a uma lista paralela de nomes.
-    pub show: fn(&Sculpt3dUi) -> bool,
-    /// **ONDE, na seção, esta row é desenhada.**
-    ///
-    /// ⚠️ Ela existe porque *posição na tela* é uma pergunta que a tabela não
-    /// respondia, e a resposta errada custou um smoke: a pista de `Alpha Scale`
-    /// nasceu no bloco de knobs, ou seja **acima** da fileira de chips que a
-    /// governa e separada dela pelo Falloff — um controle órfão, que aparece do
-    /// nada e não se liga a nada que o artista acabou de tocar.
-    ///
-    /// ⚠️ **A row continua na tabela**, e é isso que importa: `populate`, `event`
-    /// e a varredura de costura seguem a percorrendo, então ela nasce registrada,
-    /// viva e varrida como qualquer outra. O que este campo move é **onde ela é
-    /// desenhada**, e só isso — a alternativa (tirá-la da tabela e pintá-la à
-    /// mão) a tiraria das três listas de uma vez.
-    pub place: Place,
-}
-
-/// Em que ponto da seção a row é pintada.
-///
-/// ⚠️ **Era um `bool`, e o terceiro valor o obrigou a virar isto.** Enquanto
-/// havia só *no bloco* × *na cauda*, dois estados bastavam; os dois números do
-/// extract são argumentos de um BOTÃO que mora no fim da seção, e pintá-los onde
-/// as pistas do alpha moram os separaria do gesto que os lê. Um `bool` com um
-/// `if` por id ao lado seria a enumeração que apodrece na quarta row.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Place {
-    /// O bloco de knobs contínuos, no topo da seção.
-    Knobs,
-    /// Logo abaixo do seletor de padrão, colada aos chips que a governa.
-    AfterAlpha,
-    /// No fim da seção, colada ao botão de extract que a lê.
-    AfterExtract,
-}
-
-impl Row {
-    /// Pista (`0..=1`) → o valor que ela significa.
-    pub fn value_of(&self, track: f32) -> f32 {
-        self.min + track * (self.max - self.min)
-    }
-
-    /// O valor → a pista dele. A inversa de [`Row::value_of`], e as duas têm de
-    /// continuar inversas: o painel publica uma pista a partir do estado a cada
-    /// frame e lê um valor de volta a cada arrasto, então um descasamento é um
-    /// controle que **anda sozinho enquanto você o segura**
-    /// ([[feedback_derived_coordinate_seed_must_match_sample]]).
-    pub fn track_of(&self, value: f32) -> f32 {
-        if self.max <= self.min {
-            return 0.0;
-        }
-        ((value - self.min) / (self.max - self.min)).clamp(0.0, 1.0)
-    }
-
-    /// O `link_slider_number_mapped` exprime o mesmo mapa como
-    /// `display = track * scale + offset`.
-    pub fn scale(&self) -> f32 {
-        self.max - self.min
-    }
-
-    /// Ver [`Row::scale`].
-    pub fn offset(&self) -> f32 {
-        self.min
-    }
-}
-
-/// Um grupo de rows com título. A lista de seções **É** a ordem de pintura.
-pub struct Section {
-    /// Id do cabeçalho dobrável.
-    pub id: NodeId,
-    /// Chave i18n do título.
-    pub title: &'static str,
-    /// As rows dele.
-    pub rows: &'static [Row],
-}
 
 /// Sempre visível.
 fn always(_: &Sculpt3dUi) -> bool {
@@ -562,12 +461,54 @@ static SHADING: &[Row] = &[
 /// O piso da elevação, lido do dono dele.
 const MIN_ELEV_DEG_F32: f32 = ph2d_light::MIN_ELEV_DEG as f32; // CLAMP-OK: piso do resolvedor de luz
 
+/// **A TOPOLOGIA** — hoje uma row só, a resolução do remesh.
+///
+/// ⚠️ **A FAIXA É MEDIDA, e o recurso é a memória do campo TRANSIENTE**
+/// (`ph2d-sdf/tests/measure_remesh.rs`, esfera `uv(96,144)`):
+///
+/// | resolução | células | campo | malha de saída |
+/// |---|---|---|---|
+/// | 16 | 9.261 | 0,1 MB | 1.250 v |
+/// | 150 | 3,7 M | 24,9 MB | 106.052 v |
+/// | **512** | 138 M | **922,5 MB** | 1,23 M v |
+/// | 640 | 268 M | 1791,3 MB | 1,93 M v |
+/// | 768 | 462 M | **3083,4 MB** | 2,78 M v |
+///
+/// O teto **não foi escolhido**: o HR-13 declara **3500 MB para o app inteiro**,
+/// e a 768 o campo *transiente* sozinho come **3083 MB — 88% de tudo**, para um
+/// rascunho que é jogado fora no fim. A 640 já são 51%. **512 é o último degrau
+/// que cabe**, a 26%.
+///
+/// ⚠️ E o piso é 16 porque abaixo dele a saída deixa de ser uma forma (1.250
+/// vértices já é blocagem grossa), não porque algum recurso acabe.
+pub static TOPOLOGY: &[Row] = &[Row {
+    label: "panel.sculpt3d.remesh_res",
+    slider: ids::SCULPT3D_REMESH_RES,
+    chip: ids::SCULPT3D_REMESH_RES_NUM,
+    min: 16.0,  // LITERAL-PX-OK: resolucao de voxel, nao metrica de layout
+    max: 512.0, // LITERAL-PX-OK: idem -- o teto medido, ver a tabela acima
+    step: 1.0,
+    decimals: 0,
+    get: |u| u.remesh_res,
+    set: |u, v| u.remesh_res = v,
+    show: |_| true,
+    place: Place::Knobs,
+}];
+
 /// Toda seção que tem rows de slider, em ordem de pintura.
 ///
-/// ⚠️ **Nem toda seção do painel está aqui** — Tool, Symmetry, Topology e Scene
-/// são botões e rádios, não knobs contínuos, e forçá-las nesta tabela pediria uma
-/// `Row` que soubesse ser um botão. Elas são pintadas pelo `paint/body.rs`, que é
-/// quem conhece a ordem completa.
+/// ⚠️ **Nem toda seção do painel está aqui** — Tool, Symmetry e Scene são botões
+/// e rádios, não knobs contínuos, e forçá-las nesta tabela pediria uma `Row` que
+/// soubesse ser um botão. Elas são pintadas pelo `paint/body.rs`, que é quem
+/// conhece a ordem completa.
+///
+/// ⚠️ **A Topology ENTROU quando ganhou o primeiro knob contínuo** (a resolução
+/// do remesh), e o que a traz para cá não é a pintura — ela continua sendo
+/// desenhada à mão, porque o resto dela são botões — e sim as outras três listas:
+/// `populate`, `event` e a varredura de costura percorrem esta tabela, então uma
+/// row que mora nela nasce registrada, viva sob o mouse e varrida. Uma row
+/// pintada à mão FORA daqui seria o controle morto que esta casa varre a cada
+/// wave.
 pub static SECTIONS: &[Section] = &[
     Section {
         id: ids::SCULPT3D_SEC_BRUSH,
@@ -578,6 +519,11 @@ pub static SECTIONS: &[Section] = &[
         id: ids::SCULPT3D_SEC_SHADING,
         title: "panel.sculpt3d.section.shading",
         rows: SHADING,
+    },
+    Section {
+        id: ids::SCULPT3D_SEC_TOPOLOGY,
+        title: "panel.sculpt3d.section.topology",
+        rows: TOPOLOGY,
     },
 ];
 

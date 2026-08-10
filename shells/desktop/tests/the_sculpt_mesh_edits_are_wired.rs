@@ -955,3 +955,31 @@ fn every_primitive_is_born_in_the_same_unit_ball() {
         "o cubo é normalizado pela DIAGONAL, não pela aresta"
     );
 }
+
+/// **A resolução AUTORADA chega ao motor — nas DUAS portas.**
+///
+/// ⚠️ Este é o gate da quarta condição (*a sequência leva a algum lugar*): a row
+/// pode estar registrada, viva sob o mouse e despachando, e o número ainda
+/// morrer na fronteira do shell. Até esta wave os dois chamadores cravavam
+/// `ph2d_sdf::DEFAULT_RESOLUTION`, então o slider seria um controle morto.
+///
+/// E ele afirma **as duas** portas de propósito: o botão do painel e a tecla
+/// `V`. Duas portas para um número divergem no dia em que só uma aprende o
+/// slider, e o artista fica com dois remeshes diferentes para o mesmo gesto.
+#[test]
+fn the_authored_resolution_reaches_both_remesh_doors() {
+    let src = sculpt_src();
+    for (porta, corpo) in [
+        ("o botao do painel", function_body(&src, "apply_panel_intent")),
+        ("a tecla V", function_body(&src, "sculpt3d_key")),
+    ] {
+        assert!(
+            corpo.contains("remesh(self.remesh_res)") || corpo.contains("remesh(scene.remesh_res)"),
+            "{porta}: o remesh nao le' a resolucao autorada -- o slider seria um controle morto"
+        );
+        assert!(
+            !corpo.contains("remesh(ph2d_sdf::DEFAULT_RESOLUTION)"),
+            "{porta}: ainda crava a const, entao o slider nao a alcanca"
+        );
+    }
+}

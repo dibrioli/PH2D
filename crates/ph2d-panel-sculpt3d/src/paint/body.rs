@@ -440,14 +440,22 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
         w,
         y,
     ) + gap;
-    row_of_two(
+    y = row_of_two(
         ctx,
         (ids::SCULPT3D_REMESH, tr("panel.sculpt3d.remesh")),
         (ids::SCULPT3D_CLOSE_HOLES, tr("panel.sculpt3d.close_holes")),
         x,
         w,
         y,
-    ) + Spacing::Md.px()
+    ) + gap;
+    // ⚠️ **A pista fica LOGO ABAIXO do botão que a lê**, e não no alto da seção:
+    // ela é argumento do Remesh, e separá-los faria dela um número que aparece
+    // do nada e não se liga ao gesto que o artista acabou de dar — a mesma
+    // lição que o `Alpha Scale` custou um smoke (ver `Row::place`).
+    for row in rows::TOPOLOGY {
+        y = paint_one_row(ctx, snap, row, x, w, y);
+    }
+    y + Spacing::Md.px()
 }
 
 /// **A CENA** — a lista de peças e os verbos que a mexem.

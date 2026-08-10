@@ -30,7 +30,7 @@ fn what_a_remesh_costs_by_resolution() {
         m.face_count()
     );
 
-    for res in [32u32, 64, 100, 150, 200, 256, 320, 400, 512] {
+    for res in [16u32, 32, 150, 512, 640, 768] {
         let t0 = Instant::now();
         // ⚠️ A RECUSA é dado, não erro da sonda: uma resolução em que o campo
         // vaza é exatamente o que esta tabela precisa mostrar. Um `expect` aqui

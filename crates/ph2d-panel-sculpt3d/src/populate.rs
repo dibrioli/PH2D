@@ -84,7 +84,6 @@ pub fn populate(store: &mut WidgetStore) {
     for id in [
         ids::SCULPT3D_SEC_TOOL,
         ids::SCULPT3D_SEC_SYMMETRY,
-        ids::SCULPT3D_SEC_TOPOLOGY,
         ids::SCULPT3D_SEC_SCENE,
         ids::SCULPT3D_SEC_BAKE,
     ] {

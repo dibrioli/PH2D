@@ -66,6 +66,9 @@ impl Sculpt3dScene {
                 light_elev_deg: f32::from(light.elev_deg),
                 detail: detail_index(self.dyntopo.detail),
                 extract: self.extract,
+                // Contagem de células vira `f32` só para a pista; a fronteira de
+                // volta (`apply_ui`) arredonda e clampa.
+                remesh_res: self.remesh_res as f32,
             },
             dyntopo: self.dyntopo.armed,
             level: self.level(),
@@ -205,6 +208,12 @@ impl Sculpt3dScene {
             (ui.light_elev_deg.round().max(0.0) as u16).clamp(ph2d_light::MIN_ELEV_DEG, 90);
         self.dyntopo.detail = DETAIL_STEPS[(ui.detail as usize).min(DETAIL_STEPS.len() - 1)].0;
         self.extract = ui.extract;
+        // ⚠️ **Arredondado aqui, na fronteira**, e não guardado como `f32`: a
+        // resolução é uma CONTAGEM de células, e a pista de um slider é contínua
+        // só porque pistas são contínuas. O clamp usa a faixa da tabela de rows,
+        // cujo teto é medido (o campo transiente a 768 come 88% do orçamento do
+        // app inteiro).
+        self.remesh_res = (ui.remesh_res.round().max(0.0) as u32).clamp(16, 512);
     }
 
     /// **Um gesto do painel**, traduzido para a cena — os mesmos desfechos que as
@@ -303,7 +312,7 @@ impl Sculpt3dScene {
                     eprintln!("[sculpt3d] nao' reverte: esta malha nao e' uma subdivisao");
                 }
             }
-            Sculpt3dIntent::Remesh => match self.remesh(ph2d_sdf::DEFAULT_RESOLUTION) {
+            Sculpt3dIntent::Remesh => match self.remesh(self.remesh_res) {
                 Ok(r) => eprintln!(
                     "[sculpt3d] reconstruida: {} -> {} vertices / {} -> {} faces",
                     r.verts.0, r.verts.1, r.faces.0, r.faces.1

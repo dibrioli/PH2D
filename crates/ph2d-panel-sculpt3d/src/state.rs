@@ -92,6 +92,12 @@ pub struct Sculpt3dUi {
     pub wireframe: bool,
     /// Qual degrau de detalhe a topologia dinâmica usa (índice em `DETAIL_STEPS`).
     pub detail: u8,
+    /// **Em que resolução o botão RECONSTRUIR voxeliza.**
+    ///
+    /// ⚠️ Nasce no `ph2d_sdf::DEFAULT_RESOLUTION`, que é o número da referência
+    /// SculptGL — e agora é um ponto de partida, não um teto: até esta wave ele
+    /// era o único valor alcançável, cravado nos dois chamadores.
+    pub remesh_res: f32,
     /// **O que o botão de extract vai fazer** — a espessura da casca e quantas
     /// passadas a costura recebe.
     ///
@@ -137,6 +143,8 @@ impl Default for Sculpt3dUi {
             alpha_preview: true,
             wireframe: false,
             detail: 1,
+            // A fonte é a const do motor, não uma cópia dela.
+            remesh_res: 150.0, // LITERAL-PX-OK: resolucao de voxel, nao metrica de layout
             extract: Extract::default(),
         }
     }

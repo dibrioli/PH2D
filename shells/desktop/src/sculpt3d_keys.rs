@@ -335,7 +335,11 @@ impl App {
         // saber se a tecla fez alguma coisa. O número de células explica o
         // tempo: ele é o cubo da resolução (medido em `measure_remesh`).
         if code == K::KeyV {
-            match scene.remesh(ph2d_sdf::DEFAULT_RESOLUTION) {
+            // ⚠️ A MESMA resolução autorada que o botão do painel usa. Duas
+            // portas para este número divergiriam no dia em que só uma
+            // aprendesse o slider — e o artista teria dois remeshes diferentes
+            // para o mesmo gesto.
+            match scene.remesh(scene.remesh_res) {
                 Ok(r) => eprintln!(
                     "[sculpt3d] reconstruida: {} -> {} vertices / {} -> {} faces ({} celulas, {} buraco(s) tapado(s))",
                     r.verts.0, r.verts.1, r.faces.0, r.faces.1, r.cells, r.holes_filled

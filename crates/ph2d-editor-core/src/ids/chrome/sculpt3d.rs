@@ -343,6 +343,14 @@ pub const SCULPT3D_EXTRACT: NodeId = hash_node_id("sculpt3d.extract");
 pub const SCULPT3D_EXTRACT_THICK: NodeId = hash_node_id("sculpt3d.extract_thick");
 /// Chip ligado a [`SCULPT3D_EXTRACT_THICK`].
 pub const SCULPT3D_EXTRACT_THICK_NUM: NodeId = hash_node_id("sculpt3d.extract_thick_num");
+
+/// A pista da RESOLUÇÃO do remesh.
+///
+/// ⚠️ A faixa dela é MEDIDA e o recurso é a memória do campo TRANSIENTE — ver
+/// [`ph2d_panel_sculpt3d::rows`], onde a tabela mora ao lado do número.
+pub const SCULPT3D_REMESH_RES: NodeId = hash_node_id("sculpt3d.remesh_res");
+/// O chip numérico da resolução do remesh.
+pub const SCULPT3D_REMESH_RES_NUM: NodeId = hash_node_id("sculpt3d.remesh_res_num");
 /// Quantas passadas de relaxamento a costura do extract recebe.
 pub const SCULPT3D_EXTRACT_SMOOTH: NodeId = hash_node_id("sculpt3d.extract_smooth");
 /// Chip ligado a [`SCULPT3D_EXTRACT_SMOOTH`].

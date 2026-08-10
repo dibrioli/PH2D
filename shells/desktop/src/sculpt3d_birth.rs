@@ -74,6 +74,8 @@ impl Sculpt3dScene {
             sss: ph2d_mesh_render::SssParams::default().strength,
             sss_scatter: ph2d_mesh_render::SSS_SCATTER_FRACTION,
             extract: ph2d_mesh::Extract::default(),
+            // A fonte é a const do motor, e não uma cópia dela.
+            remesh_res: ph2d_sdf::DEFAULT_RESOLUTION,
             stroke: SculptStroke::default(),
             undo: Vec::new(),
             redo: Vec::new(),

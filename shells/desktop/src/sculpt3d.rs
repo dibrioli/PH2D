@@ -487,6 +487,13 @@ pub(crate) struct Sculpt3dScene {
     /// artista ajusta a espessura, olha, extrai de novo. O tipo é o do KERNEL —
     /// dois `f32` soltos seriam um segundo lugar para o default morar.
     extract: ph2d_mesh::Extract,
+    /// **Em que resolução o botão RECONSTRUIR voxeliza** — o slider da seção
+    /// Topology.
+    ///
+    /// ⚠️ Guardado como CONTAGEM (`u32`), e não como o `f32` da pista: a pista é
+    /// contínua porque pistas são contínuas, e a grandeza é um número de células.
+    /// O arredondamento e o clamp moram na fronteira (`apply_ui`), não aqui.
+    remesh_res: u32,
     stroke: SculptStroke,
     undo: Vec<Entry>,
     /// **O futuro guardado** — o que um Ctrl+Z tirou e um Ctrl+Shift+Z devolve.

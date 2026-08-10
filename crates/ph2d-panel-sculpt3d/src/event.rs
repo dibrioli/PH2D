@@ -256,12 +256,15 @@ pub(crate) fn apply_event(
     EventOutcome::from_bool(consumed)
 }
 
-/// As seis seções — as duas com tabela de rows mais as quatro de botões.
+/// As seis seções — as TRÊS com tabela de rows mais as três de botões.
+///
+/// ⚠️ A Topology mudou de lado quando ganhou a pista da resolução: ela sai da
+/// lista à mão porque o laço de `SECTIONS` já a cobre, e mantê-la nas duas seria
+/// registrar o mesmo cabeçalho duas vezes.
 fn is_section_header(id: ph2d_a11y::NodeId) -> bool {
     rows::SECTIONS.iter().any(|s| s.id == id)
         || id == ids::SCULPT3D_SEC_TOOL
         || id == ids::SCULPT3D_SEC_SYMMETRY
-        || id == ids::SCULPT3D_SEC_TOPOLOGY
         || id == ids::SCULPT3D_SEC_SCENE
 }
 

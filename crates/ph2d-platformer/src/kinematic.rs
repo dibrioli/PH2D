@@ -328,11 +328,18 @@ pub fn kinematic_advance(
     // e as duas discordariam em `d` grande (um impulso atravessa o zero e empurra
     // o corpo para TRÁS; isto não pode).
     //
-    // ⚠️ **A paridade com o dinâmico é aproximada, e o número está nomeado:** o
-    // solver amortece por SUB-PASSO e esta lei uma vez por TIQUE, então o que ele
-    // aplica é `(1 + d·h)⁻⁴` contra o `(1 + d·4h)⁻¹` daqui — a mesma classe de
-    // diferença que a W-AreaDrag mediu em 1,25% e escolheu nomear em vez de
-    // esconder. Um corpo cinemático não tem sub-passo para dividir.
+    // ⚠️ **A paridade com o dinâmico é aproximada, e o número é DESTA paridade:**
+    // o solver amortece por SUB-PASSO e esta lei uma vez por TIQUE, então o que
+    // ele aplica é `(1 + d·h)⁻⁴` contra o `(1 + d·4h)⁻¹` daqui. Um corpo
+    // cinemático não tem sub-passo para dividir.
+    //
+    // ⚠️ **Isto foi precificado por ANALOGIA (*"a mesma classe que a W-AreaDrag
+    // mediu em 1,25%"*) até 2026-08-10, e uma analogia com outra medição não é a
+    // medição desta.** Medido em arrasto puro: **`1,149%` no pico (1 s)**, e a
+    // decair — `0,257%` · `0,056%` · `0,018%`. A forma não é acidente: a
+    // velocidade terminal é `g/d` nos DOIS por álgebra, então a divergência vive
+    // só no transiente e não pode acumular. Gate:
+    // `the_drag_parity_between_modes_stays_within_its_measured_price`.
     let v = if fluid.drag > 0.0 {
         let k = 1.0 / (1.0 + fluid.drag * dt);
         [v[0] * k, v[1] * k]

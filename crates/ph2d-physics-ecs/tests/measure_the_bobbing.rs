@@ -199,6 +199,86 @@ fn measure_where_the_extra_energy_enters() {
     );
 }
 
+/// **QUANTO VALE, EM NÚMERO, a paridade APROXIMADA de arrasto entre os modos.**
+///
+/// O plano 07 nomeia a divergência pelo mecanismo — o solver amortece por
+/// SUB-PASSO e a lei cinemática uma vez por TIQUE, `(1+d·h)⁻⁴` contra
+/// `(1+d·4h)⁻¹` — e precifica-a por **analogia**: *"a mesma classe que a
+/// W-AreaDrag mediu em 1,25%"*. ⚠️ **Uma analogia com outra medição não é a
+/// medição desta**, e o §0 pede o número com a tabela ao lado.
+///
+/// A cena isola o termo: uma zona de arrasto **PURO** (sem empuxo — o empuxo
+/// oscila e afogaria o sinal), os dois modos largados juntos, e o que se lê é a
+/// diferença de queda ao longo do transiente. ⚠️ **A velocidade terminal NÃO
+/// serve de oráculo:** ela é `g/d` nos dois por álgebra, então a divergência
+/// vive só no caminho até lá — um gate na terminal seria verde por construção.
+#[test]
+#[ignore = "sonda de medição"]
+fn measure_what_the_drag_parity_between_modes_is_worth() {
+    println!("\n=== A PARIDADE DE ARRASTO ENTRE OS MODOS (zona de arrasto PURO) ===");
+    println!(
+        "{:>6} {:>12} {:>12} {:>12} {:>10}",
+        "t (s)", "dinamico y", "cinematico y", "diferenca", "relativa"
+    );
+
+    let mut runs = Vec::new();
+    for kinematic in [false, true] {
+        let mut sim = SimWorld::new();
+        // Arrasto puro: a MESMA poça, sem `AreaBuoyancy`.
+        sim.world_mut().spawn((
+            Name::new("Pool"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                is_sensor: true,
+                shape: ColliderShape::Cuboid {
+                    half_x: 20.0,
+                    half_y: 40.0,
+                },
+                ..Collider::default()
+            },
+            AreaDrag(DRAG),
+            Transform::from_translation(Vec2::new(0.0, -40.0)),
+        ));
+        let who = subject(&mut sim, Some(base()), kinematic);
+        let mut bridge = PhysicsBridge::new();
+        bridge.set_player_input(who, PlayerInput::default());
+        let mut ys = Vec::new();
+        for t in 1..=360u64 {
+            bridge.dispatch(&mut sim, true, t);
+            if t % 60 == 0 {
+                ys.push(y_of(&sim));
+            }
+        }
+        runs.push(ys);
+    }
+
+    let (d, k) = (&runs[0], &runs[1]);
+    let mut worst = 0.0f32;
+    for (i, (a, b)) in d.iter().zip(k.iter()).enumerate() {
+        let travelled = START - a;
+        let rel = if travelled.abs() > 1e-3 {
+            (b - a).abs() / travelled.abs()
+        } else {
+            0.0
+        };
+        worst = worst.max(rel);
+        println!(
+            "{:>6} {a:>12.4} {b:>12.4} {:>12.4} {:>9.3}%",
+            i + 1,
+            b - a,
+            rel * 100.0
+        );
+    }
+    println!(
+        "\nPIOR divergencia relativa: {:.3}%\n\
+         LEITURA: a nota do plano 07 precifica isto por ANALOGIA com os 1,25% que\n\
+         a W-AreaDrag mediu noutro sitio. Este e' o numero DESTA paridade.\n",
+        worst * 100.0
+    );
+}
+
 /// **O ELO QUE FECHA O MECANISMO: com que velocidade cada um ENTRA na água.**
 ///
 /// `fall_gravity` vale `2.0` por default, e a modelagem age no ar — logo o

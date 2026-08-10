@@ -365,6 +365,74 @@ fn the_bobbing_decays_it_does_not_pump() {
     );
 }
 
+/// **A PARIDADE DE ARRASTO ENTRE OS MODOS VALE `1,15%`, E ELA DECAI.**
+///
+/// O solver amortece por SUB-PASSO e a lei cinemática uma vez por TIQUE —
+/// `(1+d·h)⁻⁴` contra `(1+d·4h)⁻¹` —, e o plano 07 precificava isso por
+/// **analogia** (*"a mesma classe que a W-AreaDrag mediu em 1,25%"*). Medido
+/// nesta paridade (`measure_the_bobbing`), numa zona de arrasto **puro**:
+///
+/// | t | divergência relativa |
+/// |---|---|
+/// | 1 s | **1,149%** (o pico) |
+/// | 2 s | 0,257% |
+/// | 3 s | 0,056% |
+/// | 4 s | 0,018% |
+///
+/// ⚠️ **A velocidade terminal não serve de oráculo** — ela é `g/d` nos dois por
+/// álgebra, então um gate nela seria verde por construção e cego à divergência
+/// inteira. O que se afirma é o **PICO**, que é onde ela vive.
+///
+/// ⚠️ **E o arrasto é PURO de propósito:** com empuxo a oscilação é uma ordem de
+/// grandeza maior que este sinal e afogá-lo-ia.
+#[test]
+fn the_drag_parity_between_modes_stays_within_its_measured_price() {
+    let mut runs = Vec::new();
+    for kinematic in [false, true] {
+        let mut sim = SimWorld::new();
+        sim.world_mut().spawn((
+            Name::new("Pool"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                is_sensor: true,
+                shape: ColliderShape::Cuboid {
+                    half_x: 20.0,
+                    half_y: 40.0,
+                },
+                ..Collider::default()
+            },
+            AreaDrag(0.6),
+            Transform::from_translation(Vec2::new(0.0, -40.0)),
+        ));
+        let who = player(&mut sim, kinematic);
+        let mut bridge = PhysicsBridge::new();
+        bridge.set_player_input(who, PlayerInput::default());
+        let mut ys = Vec::new();
+        for t in 1..=240u64 {
+            bridge.dispatch(&mut sim, true, t);
+            if t % 60 == 0 {
+                ys.push(y_of(&sim));
+            }
+        }
+        runs.push(ys);
+    }
+
+    let mut worst = 0.0f32;
+    for (a, b) in runs[0].iter().zip(runs[1].iter()) {
+        let travelled = (START - a).abs();
+        assert!(travelled > 1.0, "o sujeito tem de ter caído: {travelled:.4}");
+        worst = worst.max((b - a).abs() / travelled);
+    }
+    // Medido `1,149%` no pico; o teto traz a folga e nada mais.
+    assert!(
+        worst < 0.02,
+        "a divergência de arrasto entre os modos tem de ficar no preço medido, e foi {:.3}%",
+        worst * 100.0
+    );
+}
+
 /// **O MEIO é o que o freia — e o gate mede a ablação do knob do artista.**
 ///
 /// ⚠️ Sem o arrasto o empuxo é um oscilador conservativo: a amplitude não decai,

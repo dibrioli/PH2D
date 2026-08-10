@@ -1401,10 +1401,22 @@ não é um conserto local, e o número acima é o que se estaria a trocar.
 para **2,90 m** e não decai — empuxo sem resistência é uma mola sem
 amortecimento, a frase que a fixture da poça já carregava.
 
-⚠️ **Paridade APROXIMADA com o dinâmico, nomeada:** o solver amortece por
-SUB-PASSO e esta lei uma vez por TIQUE — `(1+d·h)⁻⁴` contra `(1+d·4h)⁻¹`, a mesma
-classe de diferença que a W-AreaDrag mediu em 1,25%. Um corpo cinemático não tem
-sub-passo para dividir.
+⚠️ **Paridade APROXIMADA com o dinâmico, e agora com o número DESTA paridade:** o
+solver amortece por SUB-PASSO e esta lei uma vez por TIQUE — `(1+d·h)⁻⁴` contra
+`(1+d·4h)⁻¹`; um corpo cinemático não tem sub-passo para dividir. ⚠️ **Até
+2026-08-10 isto era precificado por ANALOGIA** (*"a mesma classe que a W-AreaDrag
+mediu em 1,25%"*), e uma analogia com outra medição não é a medição desta.
+Medido em arrasto **puro** (`measure_the_bobbing`), divergência relativa:
+
+| t | 1 s | 2 s | 3 s | 4 s |
+|---|---|---|---|---|
+| | **1,149%** | 0,257% | 0,056% | 0,018% |
+
+A analogia estava certa em ordem de grandeza — e a **forma** é o que ela não
+dizia: a divergência **decai**, porque a velocidade terminal é `g/d` nos DOIS por
+álgebra e ela vive só no transiente. ⚠️ **Por isso um gate na terminal seria
+verde por construção** e cego à divergência inteira; o que
+`the_drag_parity_between_modes_stays_within_its_measured_price` afirma é o PICO.
 
 **Gates:** 4 na lei (`kinematic_tests.rs`) · 2 na consulta (`buoyed_query.rs`) ·
 3 no produto (`player_in_water.rs`). **6 mutações, 5 sangram** — a 6.ª acusou a

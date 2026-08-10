@@ -456,12 +456,20 @@ do `cling` é inalcançável pela ponte, e quem o mata é o gate de unidade).
 `PROJECT_SCHEMA` **55→56** (5 campos apendados; ⚠️ **provisório**, o valor se
 CONTA). Card **WALLS** próprio na §14.
 
-**Aberto:** o sensor lateral olha só a altura do MEIO do corpo (uma beirada que
-alcance só os pés não é vista — a mesma limitação honesta da folga lateral da
-W10) · ~~não há *wall grab*~~ — ⚠️ **esta nota SOBREVIVEU AO FATO: a W23
-construiu-o** (`PlatformPlayer::wall_grab_stamina`, com o botão próprio que ela
-previa). A previsão estava certa no formato e a nota ficou a dizer que a coisa
-não existia depois de ela existir.
+**Aberto:** ~~o sensor lateral olha só a altura do MEIO do corpo~~ e ~~não há
+*wall grab*~~ — ⚠️ **as DUAS notas sobreviveram ao fato**, e ficam riscadas em
+vez de apagadas porque o que elas previam continua a ensinar:
+
+* o sensor lateral tem **três** alturas (`WALL_SAMPLES = 3`, offsets
+  `[0, −½h, +½h]` — o flanco inteiro, não a cintura), e o preço de não as ter
+  estava **medido antes de elas existirem**: com um raio só, uma fresta de
+  `0,75 m` num corpo de `1,0 m` **recusava o pulo de parede por inteiro**
+  (`0,000` contra `2,162 m` de subida). ⚠️ **A limitação que RESTA é outra e
+  está nomeada no `wall.rs`:** uma fresta mais estreita que meia altura, *entre*
+  duas amostras, segue invisível — e **a cura dos três sensores é a mesma**, um
+  *shape cast* que este wrapper ainda não tem (ver o plano 08);
+* o *wall grab* existe desde a **W23** (`PlatformPlayer::wall_grab_stamina`),
+  com o botão próprio que a nota previa.
 
 ## §4 — O que NÃO entra (nomeado, não esquecido)
 

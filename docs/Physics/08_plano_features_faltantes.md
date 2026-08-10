@@ -101,7 +101,7 @@ do item de infra, e não por gosto de ordem.
 > problema aparecer com tempo; o que é ajuste de aparência vem por último,
 > porque quem o julga é o smoke e não um gate.
 
-### 4.1 · `W-Swim` — **NADAR** ⟨o item do Enio⟩
+### 4.1 · `W-Swim` — **NADAR** ⟨o item do Enio⟩ — ✅ **CONSTRUÍDO (2026-08-10)**
 
 O primeiro porque o contexto está **quente** (a água acabou de ser medida hoje) e
 porque ele não depende de nada novo: o `Buoyed` e o `Fluid` já chegam à lei, e a
@@ -122,6 +122,55 @@ CHÃO desarma**. Um nadador que sai da água por cima precisa que ela desarme se
 chão, ou o arco fica calado no ar depois de sair — e isso é exactamente o
 mecanismo que a medição de hoje provou estar a funcionar. **Mexer nela sem um
 gate de regressão é como o `857 m` volta.**
+
+#### O que de facto foi construído, e onde o plano errou
+
+**A `waterborne` NÃO foi tocada** — e o aviso acima, embora correto sobre o
+risco, apontava para o lugar errado: a trava do arco e a trava do nado são
+**duas perguntas distintas** (*"saí do arco balístico?"* × *"estou a nadar?"*),
+com limiares diferentes e desarmes diferentes. Colapsá-las teria sido a segunda
+resposta que o aviso temia, por outra via.
+
+**O limiar saiu de medição** (`ph2d-physics/tests/measure_the_swim_threshold`),
+e a tabela **mudou a forma do número**: a `Buoyed` mistura densidade e imersão,
+então converter um limiar em ALTURA depende das duas densidades da cena.
+
+```text
+  buoyed >= 0.25  <=>   9,6% submerso
+  buoyed >= 0.50  <=>  15,8%
+  buoyed >= 1.00  <=>  27,2%   <- o default: a LINHA DE FLUTUAÇÃO
+  buoyed >= 1.50  <=>  38,7%
+  submerso 100%    =   3,99    (= densidade do fluido / a do corpo)
+```
+
+⇒ o default é **`1.0`**, e ele é uma frase de física: *a água sozinha me
+sustenta*. É por construção a linha em que o corpo boiaria parado, **em qualquer
+densidade** — enquanto uma altura diria coisas diferentes em cada poça.
+
+**A entrada vertical não custou schema.** O plano dizia *"não tem entrada livre
+— as cinco estão tomadas"*, e a saída não foi uma sexta: **`jump` é subir,
+`down` é descer** (o mapeamento do Mario/Rayman). O preço do alternativo está
+medido: a fita do jogador guarda um quadro como `(f32, u8)`, então um eixo novo
+mudaria a forma do arquivo e **recusaria toda corrida já salva**; um botão é um
+bit que já lá está.
+
+**A saída é uma TRAVA**, não o limiar ao contrário — armar pede `buoyed >=
+enter`, continuar pede só `buoyed > 0`, e o **chão desarma**. Sem a histerese o
+nadador oscilaria em torno do limiar exatamente onde o jogador tenta emergir.
+
+⚠️ **E a medição achou um fato de produto que o plano não previa:** numa poça
+`d` vezes mais densa que o corpo, o empuxo líquido sobre um corpo submerso vale
+`|g|·(d − 1)` — na fixture destas waves, **29,4 m/s²**. Com a autoridade de
+partida do servo (`12`) o personagem **não consegue mergulhar**: ele apenas sobe
+mais devagar. *Não é defeito, é a física da cena* (uma rolha não mergulha por
+querer), e o gate `diving_needs_more_authority_than_the_water_has` a torna
+executável nos dois sentidos.
+
+**Superfície:** `PROJECT_SCHEMA` **70→71** (três campos apendados ao
+`PlatformPlayer`, ⚠️ **provisório** — conta-se contra o `main` do dia) · card
+**SWIM** na §14 (3 rows) · **4 ids** novos, todos `hash_node_id` · registro do
+`ph2d-ecs` e o do `ph2d-physics-ecs` **intocados** (o estado é da lei, não um
+componente) · **zero `Cargo.toml`** · **nenhum ADR** · cena **`=105`**.
 
 ### 4.2 · `W-ZoneForce` — **a força de uma zona leva um personagem cinemático** ⟨o item do Enio⟩
 
@@ -285,7 +334,7 @@ pedido** — está aqui para a lista ser honesta, não para ser construído.
 ## §5 — A ordem, numa linha
 
 ```
-W-Swim → W-ZoneForce → W-ShapeCast → W-Probes → W-MultiJump → W-Ledge → (W-Glide?) → o ajuste
+~~W-Swim~~ ✅ → W-ZoneForce → W-ShapeCast → W-Probes → W-MultiJump → W-Ledge → (W-Glide?) → o ajuste
    1         2             3            4           5            6           7           8
 ```
 

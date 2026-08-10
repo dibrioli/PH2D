@@ -9469,3 +9469,128 @@ cena. A lane não é decorativa — sob a mutação ela dá `3daddcd7…`.
 Sem cena nova: o oráculo é o modo dinâmico ao lado, e ele vive nos gates. A
 `=101` mostra a diferença se você puser um vagão embaixo — mas **o que decide é a
 tabela**, não o olho.
+
+---
+
+## W-Swim — **NADAR** (2026-08-10, plano 08 §4.1, cena `=105`)
+
+O 1.º item da fila do plano 08. A água já existia como *lugar onde se cai*; esta
+wave a torna *lugar onde se anda, nos dois eixos*.
+
+### A lei
+
+Crate `ph2d-platformer`, módulo novo **`swim.rs`** — `SwimConfig` (velocidade ·
+autoridade · limiar), `SwimState` (a trava) e duas funções puras: `swim_step`
+(*isto aqui é nadar?*) e `swim_motor` (o servo de dois eixos).
+
+**É um REGIME, como o arranque**, e a frase é uma só: enquanto ele dura **a
+perna, a caminhada e a parede calam**. Não é higiene — as três apoiam-se num
+CHÃO, e a trava só arma onde não há nenhum ao alcance dos pés.
+
+⚠️ **A `waterborne` NÃO foi tocada.** O plano avisava que mexer nela era como o
+`857 m` volta, e o aviso estava certo sobre o risco e errado sobre o lugar: a
+trava do ARCO e a trava do NADO respondem perguntas distintas, com limiares e
+desarmes distintos. Colapsá-las seria a segunda resposta que o aviso temia.
+
+⚠️ **`&& !swimming` NÃO foi escrito na `standing`, de propósito** — a trava já
+garante `footing.is_none()`, então a camada seria **invisível a toda mutação**
+([[feedback_layered_defenses_need_per_layer_gates]]). Quem sustenta a frase é o
+gate `the_swim_never_runs_with_ground_under_it`, e o comentário no sítio diz
+isso. ⚠️ **Já o termo da CAMINHADA é load-bearing**: sem chão ela não desaparece,
+ela vira **controle aéreo** — dois servos no mesmo eixo, com alvos diferentes.
+
+### O limiar, medido
+
+Sonda nova `ph2d-physics/tests/measure_the_swim_threshold`, na cápsula e na poça
+que as fixtures do player já usam:
+
+```text
+  buoyed >= 0.25  <=>   9,6% submerso
+  buoyed >= 0.50  <=>  15,8%
+  buoyed >= 1.00  <=>  27,2%   <- o default: a LINHA DE FLUTUAÇÃO
+  buoyed >= 1.50  <=>  38,7%
+  submerso 100%    =   3,99    (= densidade do fluido / a do corpo)
+```
+
+⚠️ **A tabela mudou a FORMA do número.** A `Buoyed` mistura densidade e imersão,
+então converter um limiar em ALTURA depende das duas densidades da cena — e é
+isso que torna `1.0` o valor certo para um default: ele diz a mesma coisa em toda
+poça (*mais fundo do que eu boiaria*).
+
+### A entrada vertical não custou schema
+
+O plano dizia *"não tem entrada livre — as cinco estão tomadas"*. A saída não foi
+uma sexta: **`jump` sobe, `down` desce** (Mario, Rayman). O preço do alternativo
+está medido — a fita do jogador guarda um quadro como `(f32, u8)`, então um eixo
+novo muda a forma do arquivo e **recusa toda corrida já salva**; um botão é um
+bit livre no `u8` que já lá está.
+
+⚠️ **Consequência NOMEADA:** quem nada não pula, e o botão é apagado na ENTRADA
+do `jump_step` (não com o motor descartado na saída — um pulo que "sai" e tem o
+motor jogado fora deixa o `airborne` aceso, gasta o coyote e acende o `takeoff`,
+que a 3.ª lei devolveria ao chão como um empurrão que ninguém deu). Sair da água
+com o botão apertado **enche o buffer do pulo** ⇒ com chão dentro de `0,1 s` ele
+salta. É o *hop out*, e é o preço honesto de um botão com dois significados.
+
+### O achado de produto que o plano não previa
+
+Numa poça `d` vezes mais densa que o corpo, o empuxo líquido sobre um corpo
+submerso vale `|g|·(d − 1)` — **29,4 m/s²** na fixture destas waves. Com a
+autoridade de partida do servo (`12`) o personagem **não consegue mergulhar**:
+ele apenas sobe mais devagar. *Não é defeito, é a física da cena* (uma rolha não
+mergulha por querer), e o gate
+`diving_needs_more_authority_than_the_water_has` o torna executável nos dois
+sentidos — com `12` ele sobe, com `1,5 × 29,4` ele desce.
+
+### Duas correções de ORÁCULO, as duas minhas
+
+1. **A vertical medida num INSTANTE** fazia *segurar para baixo* ler **acima** de
+   *não pedir nada*, por 5%, sobre leis que na saturação produzem o MESMO motor.
+   O corpo na água OSCILA — é a lição que o `player_in_water` já carrega, e ela
+   reincide sempre que alguém escreve um harness novo. O oráculo é a MÉDIA da
+   segunda metade.
+2. **A cena sem FUNDO** levava o mergulho a **−26,5 m**: ele saía pela base do
+   sensor e o resto era queda livre, fora de quadro. Uma piscina tem fundo.
+
+E uma de FIXTURE: o controle da capacidade desligada variava o `drive` junto e
+comparava a VERTICAL — e o `drive` move o corpo 17 m de lado pelo controle
+aéreo, o que muda o arrasto e portanto a altura. *Uma ablação que mexe em duas
+entradas não atribui a nenhuma.*
+
+### Os gates
+
+- **lei** (`swim_tests.rs`, 10): a trava (nasce desligada · sem orçamento é
+  desligado · o chão vence · raspar não arma · a histerese) e o servo (dois
+  eixos · o freio · o cruzeiro · a diagonal por EIXO · o relógio parado).
+  ⚠️ O gate da diagonal **nasceu cego**: ele media o empurrão partindo do
+  repouso, onde o servo está **saturado** — normalizar o alvo o deixava VERDE. O
+  que distingue as duas leis é onde ele PARA.
+- **porta única** (`lib_swim_tests.rs`, 6): o desligado é byte-idêntico · a
+  caminhada cala · a gravidade **não** é cancelada · o botão vira braçada · o
+  arranque vence · a parede cala · vadear é andar.
+- **produto** (`ph2d-physics-ecs/tests/player_swims.rs`, 6): nos DOIS modos.
+- **cena** (`physics_smoke_swim_tests.rs`, 5): os números da mensagem são os
+  desta cena, a poça rasa é rasa, e os dois sujeitos são comparáveis.
+
+**11 mutações, 11 sangram.**
+
+### Números
+
+`PROJECT_SCHEMA` **70→71** — três campos apendados ao `PlatformPlayer`
+(`swim_speed` · `swim_acceleration` · `swim_enter`), num degrau só porque são uma
+capacidade só. ⚠️ **PROVISÓRIO**: conta-se contra o `main` do dia da integração.
+Tripla-pin `(71, 13, 14)`.
+
+Registro do `ph2d-ecs` e o do `ph2d-physics-ecs` **INTOCADOS** — o estado do nado
+é da LEI (vive no `PlayerState`, que o ring de tiques âncora já guarda), não um
+componente. Gizmo ids **nenhum novo** (o último segue **973**, próximo livre
+**974**). **4 ids** novos na §14, todos `hash_node_id` ⇒ fora de todo contador.
+**Zero `Cargo.toml`**, nenhuma dep, nenhuma crate. **Nenhum ADR** ⇒ a wave fica
+fora de toda disputa de número.
+
+### Smoke
+
+**`PH2D_PHYSICS_SMOKE=105`** — duas cápsulas idênticas, e a única diferença é a
+`swim_speed` (âmbar `0` = a boia, o CONTROLE; azul = o nadador). Os dois recebem
+a MESMA entrada, então a cena é uma ablação com a mão do artista. A poça RASA em
+cima do cais é metade da cena: atravessá-la a pé é o que o limiar protege.

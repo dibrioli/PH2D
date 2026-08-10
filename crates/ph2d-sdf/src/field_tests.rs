@@ -203,3 +203,150 @@ fn voxelizing_two_meshes_gives_the_union_of_both() {
     // E o vão entre eles continua sendo vão.
     assert!(f.distances()[cell_at(&f, [0.7, 0.0, 0.0])] > 0.0, "o vão");
 }
+
+/// **SONDA — por qual aresta a onda entra no corpo.**
+///
+/// ⚠️ A réplica do flood fill aqui é INSTRUMENTO, não oráculo: o oráculo é
+/// geométrico (`|p| < 0,9` numa esfera de raio 1 está dentro, e ponto). Para o
+/// espelho não me enganar, a sonda **confere que ele concorda com o original**
+/// na contagem antes de acreditar no caminho que ele registrou.
+#[test]
+#[ignore = "sonda"]
+fn by_which_edge_the_flood_enters_the_body() {
+    let m = shapes::uv_sphere(96, 144, 1.0);
+    let mut closed = Mesh::from_parts(m.positions().to_vec(), m.faces().to_vec()).unwrap();
+    let _ = ph2d_mesh::fill_holes(&mut closed);
+
+    let build = |res: u32| {
+        let mut f = VoxelField::for_bounds(closed.bounds(), res);
+        f.voxelize(&closed);
+        f
+    };
+
+    let truth = {
+        let mut f = build(151);
+        f.flood_fill()
+    };
+    assert_eq!(truth, 0, "151 deveria vazar");
+
+    let f = build(151);
+    let (rx, ry, rz) = (f.dims[0], f.dims[1], f.dims[2]);
+    let rxy = rx * ry;
+    let cells = f.dist.len();
+
+    let mut outside = vec![false; cells];
+    let mut parent = vec![usize::MAX; cells];
+    let mut stack: Vec<usize> = vec![0];
+    outside[0] = true;
+    while let Some(cell) = stack.pop() {
+        let z = cell / rxy;
+        let rem = cell - z * rxy;
+        let y = rem / rx;
+        let x = rem - y * rx;
+        let guarded = f.dist[cell] < f.step;
+        for ax in 0..3 {
+            for step in [-1isize, 1] {
+                let (mut nx, mut ny, mut nz) = (x as isize, y as isize, z as isize);
+                match ax {
+                    0 => nx += step,
+                    1 => ny += step,
+                    _ => nz += step,
+                }
+                if nx < 0
+                    || ny < 0
+                    || nz < 0
+                    || nx >= rx as isize
+                    || ny >= ry as isize
+                    || nz >= rz as isize
+                {
+                    continue;
+                }
+                let next = nx as usize + ny as usize * rx + nz as usize * rxy;
+                if outside[next] {
+                    continue;
+                }
+                if guarded {
+                    if f.dist[next] == f32::INFINITY {
+                        continue;
+                    }
+                    let owner = if step > 0 { cell } else { next };
+                    if f.crossed[owner * 3 + ax] == 1 {
+                        continue;
+                    }
+                }
+                outside[next] = true;
+                parent[next] = cell;
+                stack.push(next);
+            }
+        }
+    }
+
+    let reached = outside.iter().filter(|o| **o).count();
+    assert_eq!(
+        cells - reached,
+        truth,
+        "a réplica DIVERGIU do original — o caminho abaixo não descreveria o produto"
+    );
+
+    let pos = |c: usize| {
+        let z = c / rxy;
+        let rem = c - z * rxy;
+        let y = rem / rx;
+        let x = rem - y * rx;
+        [
+            f.min[0] + x as f32 * f.step,
+            f.min[1] + y as f32 * f.step,
+            f.min[2] + z as f32 * f.step,
+        ]
+    };
+    let radius = |c: usize| {
+        let p = pos(c);
+        (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt()
+    };
+
+    let deep = (0..cells)
+        .find(|c| outside[*c] && radius(*c) < 0.9)
+        .expect("nenhuma célula funda foi alcançada");
+
+    let mut chain = vec![deep];
+    let mut c = deep;
+    while parent[c] != usize::MAX {
+        c = parent[c];
+        chain.push(c);
+    }
+    chain.reverse();
+
+    eprintln!(
+        "\nstep = {:.6}, cadeia de {} passos ate' uma celula em r={:.4}",
+        f.step,
+        chain.len(),
+        radius(deep)
+    );
+    for w in chain.windows(2) {
+        let (from, to) = (w[0], w[1]);
+        if radius(from) >= 1.0 && radius(to) < 1.0 {
+            let ax = if to.abs_diff(from) == 1 {
+                0
+            } else if to.abs_diff(from) == rx {
+                1
+            } else {
+                2
+            };
+            let owner = from.min(to);
+            eprintln!("  A TRAVESSIA, no eixo {ax}:");
+            eprintln!(
+                "    de   r={:.5}  dist={:9.6}  guarded={}",
+                radius(from),
+                f.dist[from],
+                f.dist[from] < f.step
+            );
+            eprintln!("    para r={:.5}  dist={:9.6}", radius(to), f.dist[to]);
+            eprintln!(
+                "    bit de travessia do dono = {}",
+                f.crossed[owner * 3 + ax]
+            );
+            return;
+        }
+    }
+    eprintln!("  a cadeia nunca cruza r=1 -- a onda entrou por outro caminho");
+}

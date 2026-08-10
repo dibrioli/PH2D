@@ -32,7 +32,19 @@ fn what_a_remesh_costs_by_resolution() {
 
     for res in [32u32, 64, 100, 150, 200, 256, 320, 400, 512] {
         let t0 = Instant::now();
-        let (out, report) = remesh(&m, res).expect("remesh");
+        // ⚠️ A RECUSA é dado, não erro da sonda: uma resolução em que o campo
+        // vaza é exatamente o que esta tabela precisa mostrar. Um `expect` aqui
+        // mataria a varredura no primeiro vazamento e esconderia o resto dela.
+        let (out, report) = match remesh(&m, res) {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!(
+                    "resolução {res:>4}: {:>8.1} ms | RECUSA -- {e}",
+                    t0.elapsed().as_secs_f64() * 1e3
+                );
+                continue;
+            }
+        };
         let total = t0.elapsed().as_secs_f64() * 1e3;
 
         // A memória do campo: 4 B de distância + 3 B de aresta atravessada.

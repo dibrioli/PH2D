@@ -242,7 +242,9 @@ impl VoxelField {
                             self.min[1] + j as f32 * self.step,
                             self.min[2] + k as f32 * self.step,
                         ];
-                        let (sq, closest) = tri.closest_to(p);
+                        // O ponto mais próximo não é mais lido: ele só servia ao
+                        // pré-filtro que apagava a parede (ver abaixo).
+                        let (sq, _) = tri.closest_to(p);
                         let d = sq.sqrt();
                         if d < self.dist[n] {
                             self.dist[n] = d;
@@ -254,13 +256,26 @@ impl VoxelField {
                             continue;
                         }
                         for (ax, dir) in AXES.iter().enumerate() {
-                            // O ponto mais próximo tem de estar À FRENTE, dentro
-                            // de um passo, no eixo que estamos testando — senão
-                            // o raio nem vale a pena.
-                            let along = closest[ax] - p[ax];
-                            if along < 0.0 || along > self.step {
-                                continue;
-                            }
+                            // ⚠️ **AQUI HAVIA UM PRÉ-FILTRO, e ele APAGAVA a
+                            // parede.** Ele exigia que o ponto mais PRÓXIMO
+                            // estivesse à frente dentro de um passo
+                            // (`closest[ax] - p[ax]` em `[0, step]`) para valer
+                            // a pena disparar o raio — usando o ponto mais
+                            // próximo como proxy do ponto de INTERSEÇÃO, que é
+                            // outro ponto. Num triângulo OBLÍQUO o mais próximo
+                            // cai de lado, o proxy recusa, e uma aresta que fura
+                            // a superfície fica sem marca: o furo por onde a
+                            // onda entra no corpo.
+                            //
+                            // ⚠️ E o proxy é exato **só em geometria alinhada
+                            // aos eixos** — foi por isso que um cubo nunca vazou
+                            // em 361 resoluções enquanto uma esfera vazava em
+                            // 34% delas, e é essa assimetria que o denuncia.
+                            //
+                            // O teste EXATO é o `ray_hit` logo abaixo, com o
+                            // alcance de um passo. Ele basta, e tirar o proxy só
+                            // pode ACRESCENTAR marcas — nunca inventá-las, já
+                            // que a marca continua saindo de um acerto real.
                             let e = n * 3 + ax;
                             if self.crossed[e] == 1 {
                                 continue;

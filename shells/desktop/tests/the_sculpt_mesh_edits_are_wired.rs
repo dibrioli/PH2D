@@ -615,15 +615,38 @@ fn the_remesh_refuses_with_the_stack_built_instead_of_flattening_it() {
     // remesh trocam a topologia da base, e todo nível acima é `subdivide` dela.
     let body = function_body(&sculpt_src(), "remesh");
     assert!(
-        body.contains("level_count() != 1") && body.contains("return None"),
-        "o remesh tem de recusar com a pilha montada, e devolver o `None` que o log lê"
+        body.contains("level_count() != 1") && body.contains("RemeshRefusal::MultiresStack"),
+        "o remesh tem de recusar com a pilha montada, e NOMEAR a recusa que o log lê"
     );
     // E a recusa precisa CHEGAR ao artista, ou ele conclui que a tecla quebrou.
     let key = function_body(&sculpt_src(), "sculpt3d_key");
     let block = braced_block(&key, "code == K::KeyV");
     assert!(
-        block.contains("None =>"),
+        block.contains("RemeshRefusal::MultiresStack"),
         "o braço da recusa tem de existir e dizer por quê"
+    );
+    // ⚠️ **E cada causa precisa do braço DELA.** Este gate ancorava em `return
+    // None` e num braço `None =>`, o que era a GRAFIA de uma recusa, não a
+    // propriedade — e por isso ele ficava verde sobre o defeito real: três
+    // causas (pilha montada · cena vazia · o campo sem interior) entravam num
+    // `Option` só, e o chamador elegia UMA mensagem para as três. Um campo que
+    // vazava mandava o artista reverter níveis que ele não tem.
+    for cause in ["MultiresStack", "EmptyScene", "Engine"] {
+        assert!(
+            block.contains(cause),
+            "a recusa `{cause}` sumiu do despacho: o artista não é informado dela"
+        );
+    }
+    // ⚠️ **E a presença do NOME não basta** — a primeira versão deste laço
+    // afirmava só isso, e a mutação que colapsa duas causas num braço só
+    // (`MultiresStack | EmptyScene =>`) passou por ele: o nome continua no
+    // texto, dentro do braço da outra. O que o artista recebe é uma MENSAGEM, e
+    // a propriedade é que haja uma por causa — então o gate conta BRAÇOS.
+    let arms = block.matches("Err(RemeshRefusal::").count();
+    assert_eq!(
+        arms, 3,
+        "são {arms} braços de recusa para três causas: alguma partilha a mensagem de outra, \
+         que é o defeito de origem — um campo vazado mandando reverter níveis inexistentes"
     );
 }
 

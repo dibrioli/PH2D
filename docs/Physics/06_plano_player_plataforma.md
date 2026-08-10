@@ -458,7 +458,10 @@ CONTA). Card **WALLS** próprio na §14.
 
 **Aberto:** o sensor lateral olha só a altura do MEIO do corpo (uma beirada que
 alcance só os pés não é vista — a mesma limitação honesta da folga lateral da
-W10) · não há *wall grab* (ficar parado é outra mecânica, com botão próprio).
+W10) · ~~não há *wall grab*~~ — ⚠️ **esta nota SOBREVIVEU AO FATO: a W23
+construiu-o** (`PlatformPlayer::wall_grab_stamina`, com o botão próprio que ela
+previa). A previsão estava certa no formato e a nota ficou a dizer que a coisa
+não existia depois de ela existir.
 
 ## §4 — O que NÃO entra (nomeado, não esquecido)
 
@@ -520,9 +523,15 @@ W10) · não há *wall grab* (ficar parado é outra mecânica, com botão própr
   reabrir um projeto e apertar Bake devolve a corrida de ontem — *o bake é o caminho
   "torne durável", a fita persistida é o caminho "mantenha editável"*. **60 s pesam
   28,1 kB**, então não há teto: o que decide o tamanho é quanto o artista jogou.
-- **Player Kinematic** — o Enio disse que virá um dia. Este plano não o proíbe: a lei pura
-  da `ph2d-platformer` é agnóstica de como o motor é aplicado, e é exatamente onde um
-  segundo consumidor entraria.
+- ~~**Player Kinematic**~~ — **CHEGOU: a `W-KinMove`** (2026-08-08, cena `=101`, plano 07),
+  e depois os três modos (`Snap` · `Push` · `Pure`). ⚠️ **E a previsão desta linha estava
+  CERTA no ponto que decidia o desenho** — *"a lei pura é agnóstica de como o motor é
+  aplicado, e é exatamente onde um segundo consumidor entraria"*: foi literalmente isso,
+  o `kinematic.rs` é o segundo consumidor da mesma lei, e é por isso que a paridade entre
+  modos pôde virar oráculo. O que ela **não** previa era o preço: a paridade de arrasto é
+  **aproximada** (`1,149%` no pico, medido em 2026-08-10 — um corpo cinemático não tem
+  sub-passo para dividir), e um SENSOR teve de passar a ver corpos cinemáticos, o que
+  alcança triggers e zonas inteiros e não só a água.
 
 ---
 

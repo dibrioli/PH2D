@@ -7,7 +7,7 @@
 //! be a second answer to *what does an untouched emitter look like?*.
 
 use super::*;
-use crate::{DirMode, MANIFEST, MotionEmitter, Shape, Spec, emit};
+use crate::{DirMode, MANIFEST, MotionEmitter, Shape, Spawn, Spec, emit};
 
 // ── `dir_mode` : Angle | Outwards | Inwards ─────────────────────────────────
 
@@ -113,7 +113,7 @@ fn a_particle_born_at_the_centre_falls_back_to_the_cone() {
     let cone = |dir: DirMode| -> Spec {
         let mut s = spec();
         s.spread = 40.0;
-        s.rate = 100.0;
+        s.spawn = Spawn::Continuous { rate: 100.0 };
         s.dir = dir;
         s
     };

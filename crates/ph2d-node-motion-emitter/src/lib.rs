@@ -312,6 +312,26 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "shape_h",
             default: 1.0,
         },
+        // WHEN particles are born — `0` = Continuous is the steady stream that always shipped,
+        // and the three `burst_*` are inert under it. APPENDED, so a saved graph reads all four
+        // as absent.
+        ParamSpec {
+            name: "emit_mode",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "burst_count",
+            default: 64.0,
+        },
+        ParamSpec {
+            name: "burst_time",
+            default: 0.0,
+        },
+        // `0` = one burst and no more; the artist adds a heartbeat by typing a period.
+        ParamSpec {
+            name: "burst_period",
+            default: 0.0,
+        },
         // APPENDED, and `0` = Angle: a saved graph reads it as absent and launches down the
         // cone it always launched down.
         ParamSpec {
@@ -350,7 +370,13 @@ impl NodeOp for MotionEmitter {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let spec = Spec {
-            rate: ctx.param("rate"),
+            spawn: Spawn::from_params(
+                ctx.param("emit_mode"),
+                ctx.param("rate"),
+                ctx.param("burst_count"),
+                ctx.param("burst_time"),
+                ctx.param("burst_period"),
+            ),
             life: ctx.param("life"),
             speed: ctx.param("speed"),
             speed_random: ctx.param("speed_random"),
@@ -371,7 +397,8 @@ impl NodeOp for MotionEmitter {
 
 /// The emitter's resolved params (a struct so [`emit`] is a testable pure fn).
 struct Spec {
-    rate: f32,
+    /// WHEN particles are born: a steady stream, or bursts.
+    spawn: Spawn,
     life: f32,
     speed: f32,
     /// Per-particle spread of the muzzle velocity, as a fraction of `speed`.
@@ -396,6 +423,72 @@ struct Spec {
     size_random: f32,
 }
 
+/// **WHEN particles are born** — a steady stream, or all at once.
+///
+/// The two are not a flag on one law, they are two closed forms in `t`, and the type is what
+/// keeps them from being mixed: a burst has no rate and a stream has no period, so passing the
+/// wrong number is not expressible.
+#[derive(Copy, Clone, PartialEq, Debug)]
+enum Spawn {
+    /// A steady stream: particle `k` is born at `k / rate`. The emitter that always shipped.
+    Continuous { rate: f32 },
+    /// `count` particles at `time`, and again every `period` after it (`0` = one burst only).
+    Burst { count: u32, time: f32, period: f32 },
+}
+
+impl Spawn {
+    /// The integer the `emit_mode` param carries; anything else reads as continuous, which is
+    /// what every graph that predates the param means.
+    fn from_params(mode: f32, rate: f32, count: f32, time: f32, period: f32) -> Self {
+        if mode.round() as i32 == 1 {
+            Self::Burst {
+                count: count.max(0.0) as u32,
+                time,
+                period: period.max(0.0),
+            }
+        } else {
+            Self::Continuous { rate }
+        }
+    }
+
+    /// **When particle `id` was born** — in `f64`, for the count law, which is the one place that
+    /// can compute `age_first` without cancellation.
+    fn born_at(self, id: f64) -> f64 {
+        match self {
+            Self::Continuous { rate } => id / f64::from(rate),
+            Self::Burst {
+                count,
+                time,
+                period,
+            } => f64::from(time) + (id / f64::from(count)).floor() * f64::from(period),
+        }
+    }
+
+    /// **How much younger particle `first + k` is than particle `first`** — the per-particle step
+    /// the `age` column walks, in `f32`, and the expression the WGSL mirror restates.
+    ///
+    /// ⚠️ **The continuous arm is the expression that always shipped, character for character,
+    /// and that is deliberate.** Deriving it from [`Self::born_at`] instead (`born_at(first+k) −
+    /// born_at(first)`, in `f64`, cast down) is *equivalent* arithmetic and NOT the same bits —
+    /// and byte-identity for a mode that already ships is a thing to construct, never to promise.
+    /// The two-step form is also the one that cancels: `t − first/rate − k/rate` loses the large
+    /// `t` twice, `age_first − k/rate` loses it once.
+    fn age_step(self, first: u32, k: usize) -> f32 {
+        match self {
+            Self::Continuous { rate } => k as f32 / rate,
+            // Within one burst every particle was born together, so the step is ZERO and jumps by
+            // `period` at each burst boundary — which is what `floor(id / count)` counts.
+            Self::Burst { count, period, .. } => {
+                let n = f64::from(count.max(1));
+                ((f64::from(first) + k as f64) / n).floor().mul_add(
+                    f64::from(period),
+                    -(f64::from(first) / n).floor() * f64::from(period),
+                ) as f32
+            }
+        }
+    }
+}
+
 /// **The count law, and the only copy of it** — in `f64`, because the spawn index
 /// is what has to stay exact.
 ///
@@ -405,14 +498,57 @@ struct Spec {
 /// of them wrong at scale: `floor(t·rate)` in `f32` starts skipping integers at
 /// 2²⁴, so a rate in the millions loses the window after four seconds. Now there
 /// is one door, it answers in integers, and the kernel is TOLD the answer.
-fn window(rate: f32, life: f32, max: usize, t: f32) -> SourceWindow {
-    if rate <= 0.0 || life <= 0.0 || t < 0.0 {
+///
+/// ⚠️ **Both modes return ONE CONTIGUOUS id range, and that is the design.** For the burst that
+/// is not a coincidence: numbering burst `k`'s particles `[k·N, (k+1)·N)` makes the alive set the
+/// union of an INTERVAL of `k`, whose ids are contiguous by construction. A representation that
+/// needed two ranges would have forced `SourceWindow` (one `first`, one `count`) and the kernel's
+/// `first = newest + 1 − count` to grow a second population each — for a picture the artist can
+/// already build by composing two emitters through `motion.combine`.
+fn window(spawn: Spawn, life: f32, max: usize, t: f32) -> SourceWindow {
+    if life <= 0.0 || t < 0.0 {
         return SourceWindow::of_count(0);
     }
-    let (t, rate, life) = (f64::from(t), f64::from(rate), f64::from(life));
-    // Particle k is born at k/rate. Alive at t iff `0 ≤ t − k/rate < life`.
-    let newest = (t * rate).floor();
-    let oldest = ((t - life) * rate).ceil().max(0.0);
+    let (t, life) = (f64::from(t), f64::from(life));
+    let (newest, oldest) = match spawn {
+        Spawn::Continuous { rate } => {
+            if rate <= 0.0 {
+                return SourceWindow::of_count(0);
+            }
+            let rate = f64::from(rate);
+            // Particle k is born at k/rate. Alive at t iff `0 ≤ t − k/rate < life`.
+            ((t * rate).floor(), ((t - life) * rate).ceil().max(0.0))
+        }
+        Spawn::Burst {
+            count,
+            time,
+            period,
+        } => {
+            let time = f64::from(time);
+            if count == 0 || t < time {
+                return SourceWindow::of_count(0);
+            }
+            let n = f64::from(count);
+            // Burst `k` fires at `time + k·period` and owns ids `[k·n, (k+1)·n)`. With no period
+            // there is exactly one burst, so the interval of `k` collapses to `0..=0` — the same
+            // expression, not a special case with its own arithmetic.
+            let (k_last, k_first) = if period > 0.0 {
+                let p = f64::from(period);
+                (
+                    ((t - time) / p).floor(),
+                    // The SAME boundary convention the continuous arm uses (`ceil`, so an age of
+                    // exactly `life` is still alive): the two modes must agree about the edge, or
+                    // an artist crossing between them would see a particle blink.
+                    ((t - time - life) / p).ceil().max(0.0),
+                )
+            } else if t - time < life {
+                (0.0, 0.0)
+            } else {
+                return SourceWindow::of_count(0);
+            };
+            ((k_last + 1.0) * n - 1.0, k_first * n)
+        }
+    };
     if newest < oldest {
         return SourceWindow::of_count(0);
     }
@@ -427,14 +563,15 @@ fn window(rate: f32, life: f32, max: usize, t: f32) -> SourceWindow {
         // identity, so every scene that works today is BYTE-identical.
         first: (first % u64::from(ID_WRAP)) as u32,
         // The oldest particle's age, from the one place that can compute it
-        // without cancellation.
-        age_first: (t - first as f64 / rate) as f32,
+        // without cancellation. ⚠️ `first`, not `oldest`: the cap may have dropped the oldest
+        // bursts, and the age reported has to be the age of the particle that SURVIVED.
+        age_first: (t - spawn.born_at(first as f64)) as f32,
     }
 }
 
 /// The alive set at `t`, as a stream. Pure: same `t` → same particles.
 fn emit(spec: &Spec, t: f32) -> Stream {
-    let w = window(spec.rate, spec.life, spec.max, t);
+    let w = window(spec.spawn, spec.life, spec.max, t);
     let n = w.count;
     if n == 0 {
         return Stream::new(0);
@@ -478,10 +615,10 @@ fn emit(spec: &Spec, t: f32) -> Stream {
         });
         vel.push([cx * speed, sy * speed]);
         ids.push(id as f32);
-        // The SAME two-step the kernel runs (`age_first − k/rate`), not
-        // `t − id/rate`: the kernel has to mirror this arithmetic exactly, and
-        // the one-step form is the one that cancels.
-        ages.push(w.age_first - k as f32 / spec.rate);
+        // The SAME two-step the kernel runs (`age_first − step`), not `t − born_at(id)`: the
+        // kernel has to mirror this arithmetic exactly, and the one-step form is the one that
+        // cancels.
+        ages.push(w.age_first - spec.spawn.age_step(w.first, k));
         index.push(k as f32);
         count.push(n as f32);
         // Same law as `speed_random`, same term order as the kernel — with `size_random = 0` the

@@ -7,7 +7,7 @@
 //! untouched emitter look like?*.
 
 use super::*;
-use crate::{LANE_SIZE, MANIFEST, MotionEmitter, emit, rand01};
+use crate::{LANE_SIZE, MANIFEST, MotionEmitter, Spawn, emit, rand01};
 
 fn sizes_of(s: &Stream) -> Vec<[f32; 2]> {
     match s.get("size").unwrap() {
@@ -49,7 +49,7 @@ fn a_size_random_of_zero_is_the_one_size_that_always_shipped() {
 #[test]
 fn size_random_fills_the_band_without_moving_the_mean() {
     let mut s = spec();
-    s.rate = 400.0;
+    s.spawn = Spawn::Continuous { rate: 400.0 };
     s.life = 2.0;
     s.size_random = 1.0;
     let sizes: Vec<f32> = sizes_of(&emit(&s, 3.0)).into_iter().map(|v| v[0]).collect();
@@ -114,7 +114,7 @@ fn a_particle_keeps_its_size_while_the_window_slides() {
 #[test]
 fn how_big_a_particle_is_is_not_how_fast_it_leaves() {
     let mut s = spec();
-    s.rate = 400.0;
+    s.spawn = Spawn::Continuous { rate: 400.0 };
     s.life = 2.0;
     s.size_random = 1.0;
     s.speed_random = 1.0;
@@ -155,7 +155,7 @@ fn how_big_a_particle_is_is_not_how_fast_it_leaves() {
 #[test]
 fn an_oversized_size_random_never_makes_a_negative_size() {
     let mut s = spec();
-    s.rate = 400.0;
+    s.spawn = Spawn::Continuous { rate: 400.0 };
     s.life = 2.0;
     s.size_random = 4.0;
     let sizes: Vec<f32> = sizes_of(&emit(&s, 3.0)).into_iter().map(|v| v[0]).collect();

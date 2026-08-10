@@ -53,7 +53,14 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
             params.shape_h, vec2<f32>(params.x, params.y)));\n\
         write_vel(i, vec2<f32>(em_cs.x * em_spd, em_cs.y * em_spd));\n\
         write_id(i, f32(em_id));\n\
-        write_age(i, params.window_age - f32(i) / params.rate);\n\
+        var em_step = f32(i) / params.rate;\n\
+        if (i32(round(params.emit_mode)) == 1) {\n\
+            let em_n = max(round(params.burst_count), 1.0);\n\
+            let em_f = f32(params.window_first);\n\
+            em_step = (floor((em_f + f32(i)) / em_n) - floor(em_f / em_n))\n\
+                * params.burst_period;\n\
+        }\n\
+        write_age(i, params.window_age - em_step);\n\
         write_life(i, params.life);\n\
         write_Index(i, f32(i));\n\
         write_Count(i, f32(params.count));\n\
@@ -183,6 +190,9 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
         "shape_w",
         "shape_h",
         "dir_mode",
+        "emit_mode",
+        "burst_count",
+        "burst_period",
         "seed",
         "size",
         "size_random",
@@ -190,7 +200,13 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
     // Playhead-dependent (ADR-0130): the alive-window length `n(t)`, mirroring `emit`'s count.
     count_law: Some(|c| {
         window(
-            (c.param)("rate"),
+            super::Spawn::from_params(
+                (c.param)("emit_mode"),
+                (c.param)("rate"),
+                (c.param)("burst_count"),
+                (c.param)("burst_time"),
+                (c.param)("burst_period"),
+            ),
             (c.param)("life"),
             ((c.param)("max").max(0.0) as usize).min(MAX_ALIVE),
             c.playhead as f32,

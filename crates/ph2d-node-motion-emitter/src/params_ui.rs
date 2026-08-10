@@ -52,6 +52,15 @@ pub(crate) static PARAM_UNITS: &[ParamUnitDecl] = &[
         param: "life",
         unit: ParamUnit::Seconds,
     },
+    // The two burst clocks are playhead seconds, by the same trace `life` is.
+    ParamUnitDecl {
+        param: "burst_time",
+        unit: ParamUnit::Seconds,
+    },
+    ParamUnitDecl {
+        param: "burst_period",
+        unit: ParamUnit::Seconds,
+    },
 ];
 
 /// The typed FLOOR — the twin of [`PARAM_HARD_MAX`], and the half that did not
@@ -99,10 +108,30 @@ pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
         param: "max",
         max: MAX_ALIVE as f32,
     },
+    // ⚠️ DERIVED for the same reason `max` is: one burst cannot mint more particles than the
+    // alive set may hold, and re-typing that number is how the two silently drift apart.
+    ParamHardMax {
+        param: "burst_count",
+        max: MAX_ALIVE as f32,
+    },
 ];
 
 /// Param UI hints (M1.P1).
 pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
+    // ⚠️ FIRST, because it is the question that decides which of the two rows below the artist
+    // even sees: `rate` answers *how fast do they arrive?* and the `burst_*` trio answers *how
+    // many, and when?*. They are ALTERNATIVES, never both — which is why they can live apart
+    // (`size`/`size_random` could not: those are a base and its variance).
+    ParamUiHint {
+        param: "emit_mode",
+        label: "Emit",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Continuous", "Burst"],
+        },
+    },
     ParamUiHint {
         param: "rate",
         label: "Rate",
@@ -117,6 +146,34 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         // serves — you type it.
         max: 1_200.0,
         step: 1.0,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "burst_count",
+        label: "Burst Count",
+        min: 1.0,
+        // The SLIDER's range — where a hand works. `MAX_ALIVE` is still the ceiling and is still
+        // DERIVED (`PARAM_HARD_MAX`), never re-typed, exactly as `max`'s is.
+        max: 2_048.0,
+        step: 1.0,
+        widget: ParamWidget::IntSlider,
+    },
+    ParamUiHint {
+        param: "burst_time",
+        label: "Burst At",
+        min: 0.0,
+        max: 20.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    // `0` = a single burst. The slider starts there because "once" is the common case and the
+    // heartbeat is the addition, not the default.
+    ParamUiHint {
+        param: "burst_period",
+        label: "Burst Every",
+        min: 0.0,
+        max: 20.0,
+        step: 0.1,
         widget: ParamWidget::Slider,
     },
     ParamUiHint {
@@ -305,6 +362,12 @@ pub static PARAM_GROUPS: &[ParamGroup] = &[
     // It answers *which way does a particle LEAVE?*, so it lives with the launch and not with
     // the birth place it happens to be derived from.
     ParamGroup::new("dir_mode", "Velocity"),
+    // Quando e quantas. O `emit_mode` fica SOLTO, ao lado do `rate`: ele e o `rate` respondem a
+    // mesma pergunta (*como as particulas chegam?*), e os tres abaixo sao o detalhe de UMA das
+    // duas respostas.
+    ParamGroup::new("burst_count", "Burst"),
+    ParamGroup::new("burst_time", "Burst"),
+    ParamGroup::new("burst_period", "Burst"),
 ];
 
 /// **`Direction` is only offered once a shape gives a particle a radius.**
@@ -313,8 +376,34 @@ pub static PARAM_GROUPS: &[ParamGroup] = &[
 /// EVERY particle — the control would be provably inert, which is the dead knob this
 /// side-channel exists to prevent. `angle`/`spread` stay visible in all three modes: the cone is
 /// still the cone, it just opens around a different axis.
-pub static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[ph2d_node_registry::ParamGate {
-    param: "dir_mode",
-    when: "shape_mode",
-    values: &[1, 2, 3],
-}];
+/// ⚠️ **And `rate` / the `burst_*` trio are shown one set at a time**, because they are two
+/// different laws and not two knobs on one: a `rate` in burst mode would be a number the count
+/// law never reads, and a `burst_count` in continuous mode the same — the dead knob this
+/// side-channel exists to prevent, twice.
+pub static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
+    ph2d_node_registry::ParamGate {
+        param: "dir_mode",
+        when: "shape_mode",
+        values: &[1, 2, 3],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "rate",
+        when: "emit_mode",
+        values: &[0],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "burst_count",
+        when: "emit_mode",
+        values: &[1],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "burst_time",
+        when: "emit_mode",
+        values: &[1],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "burst_period",
+        when: "emit_mode",
+        values: &[1],
+    },
+];

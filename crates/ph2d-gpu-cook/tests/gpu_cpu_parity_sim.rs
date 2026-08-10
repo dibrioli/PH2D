@@ -64,6 +64,9 @@ fn registry() -> NodeRegistry {
     // Render transforms the demo=10 scene uses (lift + shrink).
     ph2d_node_motion_move::register(&mut reg).unwrap();
     ph2d_node_motion_scale::register(&mut reg).unwrap();
+    // A rota que leva a coluna `age` a um campo que a paridade compara — ver `emitter_burst_sim`.
+    ph2d_node_value_attribute::register(&mut reg).unwrap();
+    ph2d_node_motion_drive::register(&mut reg).unwrap();
     reg
 }
 
@@ -1601,6 +1604,122 @@ fn max_from_origin(frame: &[RenderInstance], origin: [f32; 2]) -> f32 {
 }
 
 const EM_ORIGIN: [f32; 2] = [0.5, -0.25];
+
+/// **O modo BURST, cozido nos dois caminhos.**
+///
+/// ⚠️ Tem de ser uma fixture PRÓPRIA, e não um param a mais na `emitter_sim`: aquela é calibrada
+/// para o jato (*"vida enorme, o teto sozinho desliza a janela"*), e um burst substitui a lei de
+/// contagem inteira — ligá-lo lá apagaria exatamente o que ela existe para exercitar.
+///
+/// ⚠️ **E a idade tem de CHEGAR ao `RenderInstance`, o que custou uma mutação para descobrir.**
+/// O primeiro corte desta fixture era emissor → integrador, na suposição de que a idade viraria
+/// deslocamento — e **`motion.integrate` não lê `age`** (ele acumula de um estado atrasado; quem
+/// lê a coluna é o `sim.step`). Duas mutações do kernel sobreviveram inteiras: um espelho que
+/// ignorasse o modo e um que perdesse o degrau de lote passavam despercebidos, porque nada no
+/// grafo olhava para a coluna que eles corrompem. Agora a idade sai por
+/// `value.attribute("age") → motion.drive(Size)`, que é a composição que o doc do nó anuncia,
+/// e pousa em `RenderInstance::size`, que o `assert_parity` compara campo a campo.
+///
+/// Com lotes SOBREPOSTOS — vida maior que o período — as idades diferem entre lotes, e um
+/// espelho que errasse o degrau poria a idade do lote velho no lote novo.
+fn emitter_burst_sim(reg: &NodeRegistry) -> (Graph, NodeId, NodeId) {
+    let mut g = Graph::new();
+    let em = g.add_node("motion.emitter");
+    g.set_param(em, "emit_mode", 1.0);
+    g.set_param(em, "burst_count", 12.0);
+    g.set_param(em, "burst_time", 0.0);
+    g.set_param(em, "burst_period", 0.05);
+    g.set_param(em, "life", 100.0);
+    g.set_param(em, "max", 60.0);
+    g.set_param(em, "speed", 4.0);
+    g.set_param(em, "angle", 90.0);
+    g.set_param(em, "spread", 120.0);
+    g.set_param(em, "speed_random", 0.6);
+    g.set_param(em, "x", EM_ORIGIN[0]);
+    g.set_param(em, "y", EM_ORIGIN[1]);
+    g.set_param(em, "seed", 7.0);
+    let integ = g.add_node("motion.integrate");
+    g.connect(Edge {
+        from: (em, 0),
+        to: (integ, 0),
+        delayed: false,
+    })
+    .unwrap();
+    g.connect(Edge {
+        from: (integ, 0),
+        to: (integ, 1),
+        delayed: true,
+    })
+    .unwrap();
+    // A idade, levada até um campo que a paridade lê.
+    let attr = g.add_node("value.attribute");
+    g.set_text_param(attr, "attr", "age");
+    let drive = g.add_node("motion.drive");
+    g.set_param(drive, "channel", 3.0); // Size
+    g.set_param(drive, "mode", 0.0); // Add
+    g.set_param(drive, "scale", 0.5);
+    g.connect(Edge {
+        from: (integ, 0),
+        to: (attr, 0),
+        delayed: false,
+    })
+    .unwrap();
+    g.connect(Edge {
+        from: (integ, 0),
+        to: (drive, 0),
+        delayed: false,
+    })
+    .unwrap();
+    g.connect(Edge {
+        from: (attr, 0),
+        to: (drive, 1),
+        delayed: false,
+    })
+    .unwrap();
+    let out = g.add_node("motion.output");
+    g.connect(Edge {
+        from: (drive, 0),
+        to: (out, 0),
+        delayed: false,
+    })
+    .unwrap();
+    g.validate(reg).expect("well-typed");
+    (g, em, out)
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_emitter_burst_sim_matches_the_cpu() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    const TICKS: u64 = 6;
+    let (g, _, out) = emitter_burst_sim(&reg);
+    let cpu = cpu_ticks(&g, &reg, out, TICKS);
+    // emissor + integrador + o drive que carrega a idade (o `value.attribute` funde nele).
+    let gpu = emitter_gpu_ticks(&gpu, &g, &reg, out, TICKS, 3);
+
+    // A fixture CONTÉM o fenômeno: a contagem cresce em degraus de 12 (lotes inteiros), nunca de
+    // um em um — se crescesse de um em um o modo não estaria ligado e isto provaria o jato.
+    let counts: Vec<usize> = cpu.iter().map(Vec::len).collect();
+    assert!(
+        counts.last().copied().unwrap_or(0) >= 24,
+        "lotes sobrepostos: {counts:?}"
+    );
+    assert!(
+        counts.iter().all(|c| c % 12 == 0),
+        "toda contagem é um número inteiro de lotes: {counts:?}"
+    );
+    let moved = max_from_origin(&cpu[TICKS as usize], EM_ORIGIN);
+    assert!(moved > MUST_MOVE, "o campo integrou: {moved}");
+    eprintln!("emitter burst sim: counts {counts:?}, drifted {moved}");
+
+    for (t, (c, gp)) in cpu.iter().zip(&gpu).enumerate() {
+        assert_parity(&format!("emitter burst tick {t}"), c, gp);
+    }
+}
 
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]

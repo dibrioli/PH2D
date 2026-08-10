@@ -47,6 +47,38 @@
 //! rate of 7/s at 60 fps emits nothing on most ticks and one particle on some, and over a second
 //! it has emitted exactly 7. Rounding `rate·dt` per tick instead (the obvious way) would round
 //! 0.116 to 0 every single tick and emit **nothing, forever**.
+//!
+//! ## A PULSE gives birth (the `pulse` port)
+//!
+//! Until 2026-08-10 the library had events (`pulse.*`) and a simulation, and **nothing was ever
+//! triggered by a pulse** — the P0 the conference's sheet 12 opened against this family. The
+//! `pulse` port closes it: a template row that FIRES gives birth to `burst` elements, born at
+//! that row, on that tick. The whole Niagara *Event Handler* gesture — *when this happens, make
+//! that* — with one port and one number.
+//!
+//! The port is **APPENDED and its default REDUCES**: unconnected it cooks to an empty stream, so
+//! no row ever fires and not one extra element is born. The world before this port, byte for
+//! byte, with no special case written anywhere.
+//!
+//! **A pulse-born element still has an id that is a pure function of the clock**, which is the
+//! property the whole node is built on (a scrub must not renumber the world). It cannot be the
+//! birth ordinal — *how many pulses have fired so far* is HISTORY, and a counter is exactly what
+//! the section above refuses — so it is the **TICK ordinal** instead: the elements a tick's
+//! pulses give birth to take ids `PULSE_ID_BASE + (tick·PULSE_IDS_PER_TICK + j)`, wrapped. Same
+//! clock, same guarantee, and the two kinds of birth live in **disjoint halves** of the id space
+//! so a rate-born and a pulse-born can never collide.
+//!
+//! ⚠️ **The half is carved only when a pulse is actually wired** (the `pulse` COLUMN is present
+//! on the port). Without one, rate-born ids keep the full `ID_WRAP` period they have always had
+//! — which is what makes "unconnected = the world before it" true of the *ids* too, and not just
+//! of the count.
+//!
+//! ⚠️ **The pulse path is CPU**, and it costs nothing that anybody had: none of the six `pulse.*`
+//! nodes has a GPU kernel (they are events per LINE, not maps per texel), so the chain feeding
+//! this port is already a device boundary. The refusal is declared where the plan can see it —
+//! a `ColumnAccess::RefuseIfPresent` binding on port 1 (ADR-0127 D3) — because a kernel that
+//! quietly ignored the port would answer the artist's graph with every pulse-birth MISSING and
+//! nothing on screen to say so.
 
 mod hash;
 
@@ -61,6 +93,11 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+/// The event type of the `pulse` port (mirror of `ph2d_node_pulse_beat::PULSE`; kept local so
+/// this crate stays a leaf drop-crate — the shared vocabulary is the PORT, never a symbol).
+const PULSE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Event);
+/// The column a pulse travels in (mirror of the pulse family's `PULSE_COL`, same reason).
+const PULSE_COL: &str = "pulse";
 
 /// The most newborns one tick may emit. A rate of 10 000/s on a dropped frame would otherwise
 /// try to build a stream of thousands in a single tick, and the frame that was already late is
@@ -73,13 +110,37 @@ const MAX_PER_TICK: u32 = 256;
 /// The jitter lanes (independent draws off the same id).
 const LANE_SLOT: u32 = 7;
 
+/// Where the **pulse-born** half of the id space starts. The two kinds of birth are numbered by
+/// two different clocks (the birth ordinal and the tick ordinal), so they must not share a range
+/// — a rate-born and a pulse-born wearing the same id would be paired as ONE element by every
+/// state node downstream (`motion.integrate`, `motion.spring`, `motion.delay` all key on `id`).
+const PULSE_ID_BASE: u32 = ID_WRAP / 2;
+
+/// Ids reserved per tick for the pulse-born. It is [`MAX_PER_TICK`] because that is the same
+/// number said once: a tick may not EMIT more than this, so a tick cannot NEED more than this.
+///
+/// ⚠️ **This buys the uniqueness window, and here is its number:** `PULSE_ID_BASE /
+/// PULSE_IDS_PER_TICK` = 32 768 ticks = **546 s at 60 fps**. Two pulse-born elements collide
+/// only if one outlives the other by more than nine minutes — the same argument [`ID_WRAP`]
+/// already makes for the rate-born (identity is read as a DIFFERENCE inside one window, orders
+/// of magnitude narrower than the period), one order tighter, said with the number.
+const PULSE_IDS_PER_TICK: u64 = MAX_PER_TICK as u64;
+
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("sim.spawn"),
     name: "sim.spawn",
-    inputs: &[PortSpec {
-        name: "template",
-        ty: INST_VEC2,
-    }],
+    inputs: &[
+        PortSpec {
+            name: "template",
+            ty: INST_VEC2,
+        },
+        // APPENDED, and the default REDUCES: unconnected cooks to an empty stream, so no row
+        // fires and not one extra element is born — the world before this port, byte for byte.
+        PortSpec {
+            name: "pulse",
+            ty: PULSE,
+        },
+    ],
     outputs: &[PortSpec {
         name: "out",
         ty: INST_VEC2,
@@ -101,6 +162,14 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
         ParamSpec {
             name: "seed",
+            default: 1.0,
+        },
+        // How many elements a PULSING template row gives birth to, on the tick it fires.
+        // APPENDED; inert while the `pulse` port is unconnected, which is what makes a default
+        // of 1 safe: an artist who wires the port and touches nothing gets ONE element per
+        // event, which is the least surprising thing an event can mean.
+        ParamSpec {
+            name: "burst",
             default: 1.0,
         },
     ],
@@ -153,6 +222,55 @@ fn slot(id: u32, n: usize, scatter: bool, seed: u32) -> usize {
     }
 }
 
+/// The tick ordinal — the clock the **pulse-born** are numbered by.
+///
+/// `dt` is the root clock's step, so `t / dt` IS the tick index, and it is a pure function of the
+/// playhead exactly like the birth ordinal is. The `round` is against f64's last ulp, not against
+/// a variable step: a step that varied would be the engine changing frame rate mid-cook, and the
+/// only thing it could cost is two ticks landing in one slot — inside the 546-second window, on
+/// the frame the rate changed.
+fn pulse_tick(t: f64, dt: f64) -> u64 {
+    if dt <= 0.0 || t <= 0.0 {
+        return 0;
+    }
+    (t / dt).round().max(0.0) as u64
+}
+
+/// The ids and template rows of the elements this tick's PULSES give birth to.
+///
+/// A row that fires gives birth to `burst` elements **at that row** — not at a hashed slot, which
+/// is the whole point of an event: the birth happens WHERE the thing happened. Rows are read in
+/// ascending order and the count is capped by [`MAX_PER_TICK`], the same ceiling and for the same
+/// reason as the rate-born (a frame that is already late is the worst moment to build thousands).
+fn pulse_born(pulse: &Stream, n: usize, burst: u32, t: f64, dt: f64) -> (Vec<u32>, Vec<usize>) {
+    let (mut ids, mut rows) = (Vec::new(), Vec::new());
+    if burst == 0 || n == 0 || dt <= 0.0 {
+        return (ids, rows);
+    }
+    let Some(Column::Scalar(fired)) = pulse.get(PULSE_COL) else {
+        return (ids, rows);
+    };
+    let base = pulse_tick(t, dt).wrapping_mul(PULSE_IDS_PER_TICK);
+    let mut j: u64 = 0;
+    for row in 0..n {
+        // A shorter pulse stream than the template reads as "did not fire" — the neutral the
+        // whole family already uses for a missing row, so a mismatched wiring is quiet and
+        // harmless instead of a panic on someone's frame.
+        if fired.get(row).copied().unwrap_or(0.0) <= 0.5 {
+            continue;
+        }
+        for _ in 0..burst {
+            if j >= PULSE_IDS_PER_TICK {
+                return (ids, rows);
+            }
+            ids.push(PULSE_ID_BASE + ((base + j) % u64::from(PULSE_ID_BASE)) as u32);
+            rows.push(row);
+            j += 1;
+        }
+    }
+    (ids, rows)
+}
+
 /// Gather `rows` of `template` into a stream, one newborn per row, stamped with its `id`.
 ///
 /// The newborn takes EVERY column of its template row — position, velocity, size, tint, whatever
@@ -162,15 +280,19 @@ fn slot(id: u32, n: usize, scatter: bool, seed: u32) -> usize {
 /// It is stamped with `id` and with NOTHING else: no clock (`sim_t`), so `sim.step` sees an
 /// element it has never stepped and starts it at `dt = 0` instead of hurling it forward by the
 /// whole life of the sim.
-fn newborns(template: &Stream, ids: &[u32], scatter: bool, seed: u32) -> Stream {
-    let n = template.count();
-    let rows: Vec<usize> = ids.iter().map(|id| slot(*id, n, scatter, seed)).collect();
+///
+/// ⚠️ **The rows arrive already chosen, and that is deliberate:** the rate-born pick theirs from
+/// the birth ordinal ([`slot`]) and the pulse-born from the row that FIRED, and the two answers
+/// meet here at ONE gather. Two gathers would be two places for "what does a newborn inherit?"
+/// to be answered, and the second one is where a column would go missing.
+fn newborns(template: &Stream, ids: &[u32], rows: &[usize]) -> Stream {
+    debug_assert_eq!(ids.len(), rows.len(), "one row per newborn");
     let mut out = Stream::new(ids.len());
     for (name, col) in template.columns() {
         if name == "id" {
             continue; // the newborn's identity is its birth ordinal, not the template's
         }
-        out.set(name.clone(), gather(col, &rows));
+        out.set(name.clone(), gather(col, rows));
     }
     out.set(
         "id",
@@ -251,6 +373,20 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             identity: [0.0; 4],
             port: 0,
         },
+        // **The pulse port's refusal** (ADR-0127 D3). This kernel has no lane for an event
+        // column, and a pulse-born element is born at the row that FIRED — arithmetic the
+        // device cannot reach without a prefix scan it was never given. Absent column ⇒ the
+        // plan claims the node exactly as it always has (the device path this wave ships is
+        // byte-identical); present ⇒ the frame recedes to the CPU, which is where the pulse
+        // family already lives. The alternative is a device answer with every pulse-birth
+        // silently MISSING, and nothing on screen to say so.
+        ColumnBinding {
+            column: PULSE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::RefuseIfPresent,
+            identity: [0.0; 4],
+            port: 1,
+        },
     ],
     params: &["scatter", "seed"],
     // The SAME `born_in` the CPU `eval` runs, in the same `f64` — this is why
@@ -292,10 +428,24 @@ impl NodeOp for SimSpawn {
         // kernel (told a wrapped `window_first`) all see the same number. The wrap
         // is invisible to consumers: identity is only ever read as a DIFFERENCE
         // inside one window, orders of magnitude narrower than the period.
-        let ids: Vec<u32> = born_in(rate, ctx.playhead(), ctx.dt())
-            .map(|k| k % ID_WRAP)
+        //
+        // ⚠️ The period HALVES while a pulse is wired, because the pulse-born take the other
+        // half (`PULSE_ID_BASE`). The question is asked of the `pulse` COLUMN — the same fact
+        // the GPU plan refuses on, so one wiring cannot mean two things to the two cooks.
+        let burst = ctx.param("burst").round().max(0.0) as u32;
+        let template = ctx.input(0);
+        let n = template.count();
+        let pulsing = ctx.input(1).get(PULSE_COL).is_some();
+        let span = if pulsing { PULSE_ID_BASE } else { ID_WRAP };
+        let mut ids: Vec<u32> = born_in(rate, ctx.playhead(), ctx.dt())
+            .map(|k| k % span)
             .collect();
-        let out = newborns(ctx.input(0), &ids, scatter, seed);
+        let mut rows: Vec<usize> = ids.iter().map(|id| slot(*id, n, scatter, seed)).collect();
+        let (pulse_ids, pulse_rows) =
+            pulse_born(ctx.input(1), n, burst, ctx.playhead(), ctx.dt());
+        ids.extend(pulse_ids);
+        rows.extend(pulse_rows);
+        let out = newborns(ctx.input(0), &ids, &rows);
         ctx.emit(out);
     }
 }
@@ -316,6 +466,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     Ok(())
 }
 
@@ -347,7 +498,24 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Seed,
     },
+    // The comfortable drag; the typed ceiling is `MAX_PER_TICK`, because that is what the node
+    // HONOURS — a box that accepted 5 000 over a cap of 256 would accept and lie (doc 88, B2).
+    ParamUiHint {
+        param: "burst",
+        label: "Burst",
+        min: 0.0,
+        max: 32.0,
+        step: 1.0,
+        widget: ParamWidget::Slider,
+    },
 ];
+
+/// The typed ceiling: one tick may not emit more than [`MAX_PER_TICK`] elements, so a burst
+/// larger than that is a number the node cannot honour.
+static PARAM_HARD_MAX: &[ph2d_node_registry::ParamHardMax] = &[ph2d_node_registry::ParamHardMax {
+    param: "burst",
+    max: MAX_PER_TICK as f32,
+}];
 
 #[cfg(test)]
 #[path = "tests.rs"]

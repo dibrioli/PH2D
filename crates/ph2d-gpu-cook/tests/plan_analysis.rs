@@ -259,3 +259,100 @@ fn an_unconnected_transformer_input_is_a_fully_gpu_empty_chain() {
     assert!(plan.is_fully_gpu());
     assert_eq!(plan.stages.len(), 2);
 }
+
+/// The event port of `sim.spawn` (mirror of the pulse family's `PULSE`).
+const PULSE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Event);
+
+/// A stand-in for the `pulse.*` family: it emits the `pulse` column and has **no
+/// kernel**, which is not a shortcut — *none of the six shipping `pulse.*` nodes
+/// has one either* (a pulse is an event per LINE with edge memory, not a map per
+/// texel), so this reproduces the product's wiring exactly.
+struct Pulsar;
+
+static PULSAR: NodeManifest = NodeManifest {
+    id: NodeTypeId::of("test.pulsar"),
+    name: "test.pulsar",
+    inputs: &[PortSpec {
+        name: "in",
+        ty: INST_VEC2,
+    }],
+    outputs: &[PortSpec {
+        name: "out",
+        ty: PULSE,
+    }],
+    effect: Effect::Pure,
+    clock: Clock::Event,
+    params: &[],
+    lowerings: &[LoweringKind::Cpu],
+};
+
+impl NodeOp for Pulsar {
+    fn manifest(&self) -> &'static NodeManifest {
+        &PULSAR
+    }
+    fn eval(&self, ctx: &mut EvalCtx<'_>) {
+        use ph2d_nodegraph::attr::Column;
+        let n = ctx.input(0).count();
+        let out = Stream::new(n).with("pulse", Column::Scalar(vec![1.0; n]));
+        ctx.emit(out);
+    }
+}
+
+/// **A wired `pulse` port takes `sim.spawn` off the device** (ADR-0127 D3).
+///
+/// The kernel mints a newborn per ordinal and hashes it to a template row; a
+/// pulse-born element is born at the row that FIRED, arithmetic the device was
+/// never given. Without the refusal the frame would still cook — and answer the
+/// artist's graph with **every pulse-birth missing**, silently.
+///
+/// The PRESENCE sibling is the whole point: the same graph with the port
+/// unconnected must still be claimed, or this gate would pass just as well for a
+/// node that recedes unconditionally
+/// ([[feedback_absence_gate_needs_a_presence_sibling]]).
+#[test]
+fn a_wired_pulse_takes_the_spawn_off_the_device() {
+    let mut reg = registry();
+    ph2d_node_sim_spawn::register(&mut reg).unwrap();
+    ph2d_node_motion_combine::register(&mut reg).unwrap();
+    reg.register(Box::new(Pulsar)).unwrap();
+
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let spawn = g.add_node("sim.spawn");
+    let out = g.add_node("motion.output");
+    let pulsar = g.add_node("test.pulsar");
+    for (a, b, bp) in [(grid, spawn, 0u16), (spawn, out, 0), (grid, pulsar, 0)] {
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, bp),
+            delayed: false,
+        })
+        .unwrap();
+    }
+    g.validate(&reg).expect("well-typed");
+
+    // CONTROL first: with nothing on port 1 the spawn is claimed, exactly as it
+    // was before this port existed.
+    let claimed = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    let nodes: Vec<NodeId> = claimed.stages.iter().map(|s| s.node).collect();
+    assert!(
+        nodes.contains(&spawn),
+        "an unconnected pulse leaves the device path untouched: {:?}",
+        claimed.boundaries
+    );
+
+    g.connect(Edge {
+        from: (pulsar, 0),
+        to: (spawn, 1),
+        delayed: false,
+    })
+    .unwrap();
+    g.validate(&reg).expect("the pulse port takes a PULSE");
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    let nodes: Vec<NodeId> = plan.stages.iter().map(|s| s.node).collect();
+    assert!(
+        !nodes.contains(&spawn),
+        "a wired pulse must recede to the CPU, not cook a device answer with \
+         the births missing: stages {nodes:?}"
+    );
+}

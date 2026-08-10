@@ -11,15 +11,15 @@
 
 | # | Bug | Área | Estado | Data |
 |---|---|---|---|---|
-| [1](#bug-1--o-nó-acusado-estava-inocente-o-campo-gateia-o-pulso-e-não-gateia-a-memória) | **"Box inconsistente"** — marcar Invert e desmarcar não devolve o quadro inicial | `field.box` (acusado, **inocente**) + `pulse.counter`/`pulse.sample_hold` (a memória) | ✅ Resolvido (porta `reset`; pendente de smoke) | 2026-08-10 |
+| [1](#bug-1--o-nó-acusado-estava-inocente-o-campo-gateia-o-pulso-e-não-gateia-a-memória) | **"Box inconsistente"** — marcar Invert e desmarcar não devolve o quadro inicial | `field.box` (acusado, **inocente**) + `pulse.counter`/`pulse.sample_hold` (a memória) | ✅ **Fechado — smoke aprovado** (porta `reset`) | 2026-08-10 |
 
 ---
 
 ## Bug #1 — O nó acusado estava INOCENTE: o campo gateia o pulso, e não gateia a MEMÓRIA
 
-**Estado:** ✅ resolvido em 2026-08-10 — mecanismo medido, cura construída (a porta `reset`),
-gate `a_round_trip_of_the_field_leaves_the_scene_where_it_found_it`. ⚠️ **Pendente de smoke**
-(integrar/construir não é aprovar).
+**Estado:** ✅ **FECHADO** em 2026-08-10 — mecanismo medido, cura construída (a porta `reset`),
+gate `a_round_trip_of_the_field_leaves_the_scene_where_it_found_it`, e **smoke aprovado pelo
+Enio** na cena `PH2D_GPU_COOK_DEMO=23`.
 
 ### Sintoma
 

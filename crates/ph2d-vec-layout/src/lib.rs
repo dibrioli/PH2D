@@ -307,3 +307,7 @@ fn style_of(n: &Node) -> Style {
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "hug_probe.rs"]
+mod hug_probe;

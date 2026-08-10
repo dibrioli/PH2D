@@ -25,6 +25,28 @@
 //! **Direction** (`edge`): Rise (arm crossing, the default), Fall (disarm
 //! crossing), or Both — the TD "Trigger On" selector, `edge~`'s two outlets.
 //!
+//! **Debounce (`debounce`, seconds):** after a pulse fires, the next `debounce`
+//! seconds are silent. TouchDesigner's Trigger/Count CHOPs call it *Re-Trigger
+//! Delay*; Pd's `threshold~` calls it *debounce ms per edge*. It was deferred
+//! once with the argument *"the hysteresis already kills the chatter"*, and that
+//! argument is **half true and the half matters**: hysteresis is an **AMPLITUDE**
+//! guard — it swallows noise that wiggles across one level — while a debounce is a
+//! **TIME** guard, and the thing it swallows is two *legitimate* crossings that
+//! arrive too fast (a hand bouncing on a gesture). Neither substitutes for the
+//! other: a signal that swings past BOTH levels quickly defeats the band, and a
+//! slow drift inside the band defeats any clock.
+//!
+//! ⚠️ **The debounce silences the OUTPUT, never the state machine.** The Schmitt
+//! keeps tracking the signal through the quiet window — only the pulse is
+//! withheld. Freezing the latch instead would desync it from the signal: the arm
+//! that happened during the window would be lost, the next disarm would look like
+//! nothing, and the trigger would go quiet **for good**.
+//!
+//! The countdown rides the `pre` self-loop as one more sibling column, and its
+//! neutral is `0.0` — which is exactly what an absent column reads — so a graph
+//! that never fired and a graph whose window expired are the same state, and
+//! `debounce = 0` is the world before this param, tick for tick.
+//!
 //! Positional per-instance (v1): the caller pairs `in`/`state` by row order.
 //! The focus-rig demo has a stable count; id-keyed pairing (for particles) is
 //! the same follow-up the other sequential nodes carry.
@@ -56,6 +78,10 @@ pub const PULSE_COL: &str = "pulse";
 /// The latched bistable state carried on the `pre` self-loop (`1.0` = armed).
 /// A sibling column of the pulse stream, like `trail_age` on a trail.
 const ARMED_COL: &str = "armed";
+/// Seconds of silence still owed by the debounce, on the `pre` self-loop.
+/// **Zero is the neutral** — never fired and window expired are the same state,
+/// and an absent column already reads zero.
+const COOL_COL: &str = "thr_cool";
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -101,6 +127,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "edge",
             default: 0.0,
         },
+        // Seconds of silence after a pulse. APPENDED, and `0` is the world
+        // before it: the countdown never gates, tick for tick.
+        ParamSpec {
+            name: "debounce",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -132,6 +164,10 @@ impl EdgeDir {
 
 /// One tick of the Schmitt trigger, per instance. Returns the `(pulse, armed)`
 /// pair for row `i`, given the channel value and last tick's armed state.
+///
+/// This is the **raw** edge: the debounce has no say here, and that is the whole
+/// point — the latch it returns is the truth about the signal whether or not the
+/// output is being withheld ([`debounce_one`]).
 fn step_one(v: f32, prev_armed: bool, rise: f32, fall: f32, edge: EdgeDir) -> (f32, f32) {
     // Hysteresis: once armed, only `fall` disarms; once disarmed, only `rise`
     // arms. `fall` is clamped ≤ `rise` so the band can never invert.
@@ -143,31 +179,66 @@ fn step_one(v: f32, prev_armed: bool, rise: f32, fall: f32, edge: EdgeDir) -> (f
     (pulse, if armed_now { 1.0 } else { 0.0 })
 }
 
-fn step(
-    input: &Stream,
-    state: &Stream,
+/// The debounce, per instance: `(pulse, next_cooldown)` from the raw edge and
+/// last tick's countdown. `debounce = 0` makes the countdown identically zero,
+/// so it can never gate — the pre-debounce world, arithmetically.
+fn debounce_one(raw: f32, prev_cool: f32, debounce: f32, dt: f32) -> (f32, f32) {
+    let cool = prev_cool - dt;
+    if cool > 0.0 {
+        // Still inside the quiet window: withhold, keep counting down.
+        return (0.0, cool);
+    }
+    if raw > 0.5 {
+        (raw, debounce)
+    } else {
+        (raw, 0.0)
+    }
+}
+
+fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
+    match s.get(name) {
+        Some(Column::Scalar(v)) => v.clone(),
+        _ => Vec::new(),
+    }
+}
+
+/// Everything the artist authored, in one place. It exists because the trigger
+/// grew a fifth knob and a positional call stopped being readable — a bundle also
+/// makes the fixtures below DECLARE their premise (`debounce: 0.0`) instead of
+/// leaving it as the sixth number in a row.
+#[derive(Copy, Clone)]
+struct Trigger {
     rise: f32,
     fall: f32,
     edge: EdgeDir,
     channel: i32,
-) -> Stream {
+    /// Seconds of silence after a pulse. `0` = the world before the param.
+    debounce: f32,
+}
+
+fn step(input: &Stream, state: &Stream, cfg: Trigger, dt: f32) -> Stream {
     let n = input.count();
-    let prev_armed = match state.get(ARMED_COL) {
-        Some(Column::Scalar(v)) => v.clone(),
-        _ => Vec::new(),
-    };
+    let prev_armed = scalar_col(state, ARMED_COL);
+    let prev_cool = scalar_col(state, COOL_COL);
     let mut pulses = Vec::with_capacity(n);
     let mut armed = Vec::with_capacity(n);
+    let mut cool = Vec::with_capacity(n);
     for i in 0..n {
-        let v = channel_get(input, channel, i);
+        let v = channel_get(input, cfg.channel, i);
         let was = prev_armed.get(i).copied().unwrap_or(0.0) > 0.5;
-        let (p, a) = step_one(v, was, rise, fall, edge);
+        let (raw, a) = step_one(v, was, cfg.rise, cfg.fall, cfg.edge);
+        let prev = prev_cool.get(i).copied().unwrap_or(0.0);
+        let (p, c) = debounce_one(raw, prev, cfg.debounce, dt);
         pulses.push(p);
+        // The latch is written from the RAW step, always: the debounce owns the
+        // output, never the state machine.
         armed.push(a);
+        cool.push(c);
     }
     Stream::new(n)
         .with(PULSE_COL, Column::Scalar(pulses))
         .with(ARMED_COL, Column::Scalar(armed))
+        .with(COOL_COL, Column::Scalar(cool))
 }
 
 struct PulseThreshold;
@@ -182,7 +253,16 @@ impl NodeOp for PulseThreshold {
         let rise = ctx.param("rise");
         let fall = ctx.param("fall");
         let edge = EdgeDir::from_param(ctx.param("edge"));
-        let out = step(ctx.input(0), ctx.input(1), rise, fall, edge, channel);
+        let debounce = ctx.param("debounce").max(0.0);
+        let dt = ctx.dt() as f32;
+        let cfg = Trigger {
+            rise,
+            fall,
+            edge,
+            channel,
+            debounce,
+        };
+        let out = step(ctx.input(0), ctx.input(1), cfg, dt);
         ctx.emit(out);
     }
 }
@@ -202,10 +282,20 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
+
+/// The debounce is the node's one param with a unit of its own. `rise`/`fall`
+/// are deliberately left undeclared: they are a level on the SELECTED channel,
+/// so their unit is `FromChannel`, and declaring it would move how they display
+/// today — a separate decision, not a rider on this one.
+static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
+    param: "debounce",
+    unit: ParamUnit::Seconds,
+}];
 
 /// O teto que a MÁQUINA (ou o bom senso) impõe, alcançável por DIGITAÇÃO — o slider fica
 /// onde a MÃO trabalha (soft/hard do Blender; doc 88 §11). O curso de antes é este número:
@@ -218,6 +308,23 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
     ParamHardMax {
         param: "fall",
         max: 10.0,
+    },
+    // MEASURED, and the resource is **precisão de representação**: the countdown
+    // lives in `f32` seconds and is decremented by `dt`, so above some magnitude
+    // `cool - dt == cool` and the window would never expire — the node would go
+    // quiet for good, silently. The probe
+    // `the_debounce_ceiling_is_where_the_countdown_stops_expiring` walks the
+    // exponents; measured, the cliff is between **2^19 and 2^20 at 60 fps** and
+    // one octave lower per doubling of the frame rate, because the decrement
+    // shrinks with `dt`. The number below is the last power of two that still
+    // drains at **240 fps** — the fastest clock, hence the harshest test — and it
+    // is 36 hours, orders of magnitude past "fire once in this scene", which is
+    // the longest window anyone authors. ⚠️ It sits ON the cliff by measurement,
+    // not near it: one octave further the countdown stands still, and the gate
+    // asserts both halves.
+    ParamHardMax {
+        param: "debounce",
+        max: 131072.0,
     },
 ];
 
@@ -258,128 +365,22 @@ static PARAM_HINTS: &[ParamUiHint] = &[
             labels: &["Rise", "Fall", "Both"],
         },
     },
+    ParamUiHint {
+        param: "debounce",
+        label: "Debounce",
+        min: 0.0,
+        // The HAND's range: a bouncing gesture settles in tens of milliseconds
+        // and "at most one pulse per second" is the far end of what anyone drags
+        // to. A step of 10 ms is the resolution that band needs; longer windows
+        // are typed (`PARAM_HARD_MAX`).
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
 ];
 
+/// Os gates moram num irmão por teto de LOC — FILHO, para `use super::*` seguir
+/// alcançando o que eles medem (`step_one`, `debounce_one`, `EdgeDir`).
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Feed a ramp up then down through the Schmitt trigger, carrying the output
-    /// back as `state` (what the `pre` self-loop does). It must fire ONCE on the
-    /// way up (crossing `rise`) and, with hysteresis, only re-arm after the
-    /// signal drops below the separate, lower `fall`.
-    #[test]
-    fn it_fires_once_on_the_rising_edge_and_holds_through_the_hysteresis_band() {
-        let (rise, fall) = (0.6, 0.3);
-        // A signal that climbs past `rise`, dips into the band (0.3..0.6) WITHOUT
-        // falling below `fall`, climbs again, then finally drops below `fall`.
-        let signal = [0.0, 0.5, 0.7, 0.9, 0.4, 0.8, 0.2, 0.7];
-        let mut state = Stream::new(1);
-        let mut fired = Vec::new();
-        for &v in &signal {
-            let input = Stream::new(1).with("P", Column::Vec2(vec![[0.0, v]]));
-            state = step(&input, &state, rise, fall, EdgeDir::Rise, 1);
-            let p = match state.get(PULSE_COL).unwrap() {
-                Column::Scalar(s) => s[0],
-                _ => panic!(),
-            };
-            fired.push(p);
-        }
-        // Rises at index 2 (0.5→0.7 crosses 0.6). Index 4 (0.4) stays in the band
-        // → still armed → NO refire at index 5. Index 6 (0.2 < fall) disarms →
-        // index 7 (0.7) re-fires. Exactly two pulses; the band swallowed the dip.
-        assert_eq!(fired, vec![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]);
-    }
-
-    /// FALSIFICATION of the hysteresis: with a SINGLE threshold (fall == rise),
-    /// the same in-band dip re-arms and the signal chatters — the extra pulse
-    /// the two-threshold design exists to suppress.
-    #[test]
-    fn a_single_threshold_chatters_where_the_schmitt_stays_quiet() {
-        let signal = [0.0, 0.7, 0.4, 0.8]; // dip to 0.4 is below a single 0.6...
-        let run = |rise: f32, fall: f32| {
-            let mut state = Stream::new(1);
-            let mut count = 0;
-            for &v in &signal {
-                let input = Stream::new(1).with("P", Column::Vec2(vec![[0.0, v]]));
-                state = step(&input, &state, rise, fall, EdgeDir::Rise, 1);
-                if let Some(Column::Scalar(s)) = state.get(PULSE_COL) {
-                    count += (s[0] > 0.5) as i32;
-                }
-            }
-            count
-        };
-        // Single threshold (fall==rise): 0.4 disarms, 0.8 re-fires → 2 pulses.
-        assert_eq!(run(0.6, 0.6), 2, "single threshold chatters");
-        // Schmitt (fall 0.3 < rise 0.6): 0.4 stays armed → 1 pulse.
-        assert_eq!(run(0.6, 0.3), 1, "hysteresis suppresses the chatter");
-    }
-
-    #[test]
-    fn the_fall_direction_fires_on_the_disarm_crossing() {
-        let signal = [0.0, 0.8, 0.1]; // arm at 0.8, disarm at 0.1.
-        let mut state = Stream::new(1);
-        let mut fired = Vec::new();
-        for &v in &signal {
-            let input = Stream::new(1).with("P", Column::Vec2(vec![[0.0, v]]));
-            state = step(&input, &state, 0.5, 0.3, EdgeDir::Fall, 1);
-            if let Some(Column::Scalar(s)) = state.get(PULSE_COL) {
-                fired.push(s[0]);
-            }
-        }
-        // Rise edge is ignored; the pulse is on the fall (index 2).
-        assert_eq!(fired, vec![0.0, 0.0, 1.0]);
-    }
-
-    /// The `pulse` output is 1.0 only for ONE tick, even while the signal stays
-    /// high — the Rive "true for a short time". A sustained level is NOT a train
-    /// of pulses.
-    #[test]
-    fn a_sustained_high_signal_fires_exactly_one_pulse() {
-        let mut state = Stream::new(1);
-        let mut total = 0.0;
-        for _ in 0..10 {
-            let input = Stream::new(1).with("P", Column::Vec2(vec![[0.0, 1.0]]));
-            state = step(&input, &state, 0.5, 0.3, EdgeDir::Rise, 1);
-            if let Some(Column::Scalar(s)) = state.get(PULSE_COL) {
-                total += s[0];
-            }
-        }
-        assert_eq!(total, 1.0, "one edge, not one-per-tick-held-high");
-    }
-
-    #[test]
-    fn an_inverted_band_is_clamped_not_honoured() {
-        // fall > rise would be a nonsense inverted band; clamp fall down to rise
-        // (degenerates to a single threshold, never a negative-width band).
-        let (p, a) = step_one(0.7, false, 0.5, 0.9, EdgeDir::Rise);
-        assert_eq!(
-            (p, a),
-            (1.0, 1.0),
-            "still arms at rise; the bad fall is ignored"
-        );
-    }
-
-    /// `Both` fires on the arm AND the disarm crossing — one pulse each way
-    /// (audit 2026-07-10: the third `EdgeDir` was untested). Rise-only and
-    /// Fall-only each see exactly one of the two.
-    #[test]
-    fn the_both_direction_fires_on_arm_and_disarm() {
-        let signal = [0.0, 0.8, 0.1]; // arm at 0.8, disarm at 0.1.
-        let run = |edge: EdgeDir| {
-            let mut state = Stream::new(1);
-            let mut fired = Vec::new();
-            for &v in &signal {
-                let input = Stream::new(1).with("P", Column::Vec2(vec![[0.0, v]]));
-                state = step(&input, &state, 0.5, 0.3, edge, 1);
-                if let Some(Column::Scalar(s)) = state.get(PULSE_COL) {
-                    fired.push(s[0]);
-                }
-            }
-            fired
-        };
-        assert_eq!(run(EdgeDir::Both), vec![0.0, 1.0, 1.0], "both crossings");
-        assert_eq!(run(EdgeDir::Rise), vec![0.0, 1.0, 0.0], "arm only");
-        assert_eq!(run(EdgeDir::Fall), vec![0.0, 0.0, 1.0], "disarm only");
-    }
-}
+#[path = "tests.rs"]
+mod tests;

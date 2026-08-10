@@ -102,6 +102,21 @@ use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::format::ParseError;
 use ph2d_nodegraph::graph::NodeId;
 
+/// Um `pulse.signal` que disparou num tique deste quadro.
+///
+/// ⚠️ **Isto NÃO é um `ph2d_runtime::Signal`, e a distância é o desenho:** o grafo não conhece
+/// a outbox e não chama ninguém (ADR-0075) — ele deixa um fato aqui, e quem o transforma em
+/// sinal é o shell, que já é o dono da saída e já drena as outras duas fontes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct MotionSignalOut {
+    /// O nome autorado no text param do nó.
+    pub(crate) name: String,
+    /// O tique fixo do cook em que ele disparou.
+    pub(crate) tick: u64,
+    /// Quantas LINHAS dispararam nesse tique — o que o colapso por-quadro descartaria.
+    pub(crate) rows: usize,
+}
+
 /// Runtime state for the Motion Nodes editor. One instance on `AppGfx`.
 pub(crate) struct MotionState {
     /// The persistable document (the graph is the only part that cooks).
@@ -122,6 +137,16 @@ pub(crate) struct MotionState {
     /// a stream-merging node; the current boot document uses a single scene.
     /// Empty until a well-typed Output node exists.
     pub(crate) sinks: Vec<NodeId>,
+    /// Os nós `pulse.signal` do documento — as TOMADAS que a marcha de tiques lê
+    /// para saber que um pulso nomeado disparou. Recomputadas do grafo a cada
+    /// quadro, ao lado de `sinks`, pelo mesmo motivo (curam-se sozinhas).
+    pub(crate) signal_taps: Vec<NodeId>,
+    /// O que as tomadas gritaram nos tiques deste quadro, drenado pelo shell.
+    ///
+    /// ⚠️ **Acumulado DENTRO do laço de tiques devidos, nunca depois dele.** O
+    /// `tap_streams` do pump é limpo a cada cook, então um quadro que deve dois
+    /// tiques deixa só o último — e a perda seria SILENCIOSA.
+    pub(crate) signals_out: Vec<MotionSignalOut>,
     /// `atlas_uv` fallback for instances whose stream carries no `uv_rect`
     /// column (no framing node yet). Set from the composed atlas at init to a
     /// single opaque tile, so instances render as clean solid quads instead of a
@@ -315,6 +340,8 @@ impl MotionState {
             pump: MotionCookPump::new(),
             registry,
             sinks,
+            signal_taps: Vec::new(),
+            signals_out: Vec::new(),
             // Whole-atlas until the shell wires a real tile (init.rs). Headless
             // callers / tests keep this default.
             default_uv_rect: [0.0, 0.0, 1.0, 1.0],

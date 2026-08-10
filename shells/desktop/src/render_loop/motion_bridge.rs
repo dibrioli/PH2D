@@ -133,6 +133,11 @@ mod clock;
 // all call `super::ticks_owed` / `motion_bridge::ticks_owed`.
 pub(crate) use clock::ticks_owed;
 
+/// O lado de Motion da fronteira de sinais — ver o módulo.
+#[path = "motion_bridge_signals.rs"]
+mod signals;
+use signals::{collect_signals, signal_nodes};
+
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_intents.rs"]
 mod intents;
@@ -231,6 +236,10 @@ pub(super) fn dispatch(
     cursor: (f32, f32),
     toasts: &mut ToastQueue,
     gpu: &ph2d_gpu::GpuContext,
+    // O `jumped` do quadro, vindo da ponte da TIMELINE (que roda antes). Junto com o
+    // playhead ele responde *"o relógio está tocando para a frente?"* — a lei que decide
+    // se um `pulse.signal` chega a virar um sinal, e que é a MESMA do emissor de markers.
+    clock_jumped: bool,
 ) {
     let motion_active = tools
         .active()
@@ -401,6 +410,12 @@ pub(super) fn dispatch(
     // chain into an Output node and it draws). `None` (no Output node) → the pump
     // renders nothing. Recomputed each frame so add/delete/rewire just works.
     motion.sinks = output_nodes(&motion.doc.graph);
+    // As TOMADAS, recomputadas pelo mesmo motivo dos sinks: elas se curam sozinhas depois
+    // de um load, um undo ou uma edição do grafo.
+    motion.signal_taps = signal_nodes(&motion.doc.graph);
+    // O que este quadro gritou. Limpo aqui, não no dreno: um quadro em que o shell não
+    // drena (a ferramenta saiu de foco) não pode deixar o grito de ontem para amanhã.
+    motion.signals_out.clear();
     super::motion_shape_gen::publish(motion); // ADR-0154: post-drain, pre-cook (no flicker)
     // Time scopes (M2.N1): each `motion.time_remap` node rewrites the clock of
     // its upstream subtree. Rebuilt per frame — one pass over the node list, and
@@ -428,17 +443,27 @@ pub(super) fn dispatch(
     // reads the document graph unchanged. `output_nodes`/`time_scopes` above stay on
     // `doc.graph` — a bypass removes no node, so the sinks and scopes are the same.
     let cook = group_bypass::cook_graph(motion);
+    // ⚠️ **A lei mora AQUI, não no nó** (o doc do `pulse.signal` diz porquê): o cook re-roda
+    // ao arrastar a régua, então publicar do lado do grafo soaria N vezes num scrub.
+    let armed = super::clock_forward::clock_is_playing_forward(playhead, clock_jumped);
     for tick in ticks_owed(motion.pump.last_cooked_tick(), target) {
-        motion.pump.advance_or_scrub_scoped(
+        motion.pump.advance_or_scrub_with_taps_scoped(
             cook.as_ref().unwrap_or(&motion.doc.graph),
             &motion.registry,
             &motion.sinks,
+            &motion.signal_taps,
             tick,
             |t| t as f64 * fixed_dt,
             motion.default_uv_rect,
             motion.default_size,
             &scopes,
         );
+        // ⚠️ **DENTRO do laço.** O `tap_streams` é limpo a cada cook, então ler depois dele
+        // deixaria só o último tique — e um quadro lento deve dois ou três. A perda seria
+        // silenciosa, que é a classe de defeito que esta casa mais paga.
+        if armed {
+            collect_signals(motion, tick);
+        }
     }
 
     // LOD — the freeze fix (ADR-0154 follow-up). The cook just filled

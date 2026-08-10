@@ -87,6 +87,19 @@ pub enum SignalOrigin {
     /// A origem fica porque um consumidor pode querer ROTEAR pela fonte (e o log imprime-a), não
     /// porque ela carregue dado.
     Control,
+    /// Um `pulse.signal` do grafo de Motion disparou neste TIQUE do cook.
+    ///
+    /// ⚠️ **`rows` existe porque o colapso é LOSSY e o número é o que ele descarta.** Um pulso é
+    /// por LINHA e um sinal é por QUADRO, então uma grade de 576 pontos que dispara junto vira UM
+    /// evento — 576 sons no mesmo quadro é ruído, não um efeito. Guardar quantas linhas
+    /// dispararam devolve a informação sem multiplicar o sinal, e é o que deixa um consumidor
+    /// futuro escalar um volume pela intensidade em vez de adivinhar.
+    Motion {
+        /// O tique fixo do cook em que o pulso saiu.
+        tick: u64,
+        /// Quantas LINHAS dispararam nesse tique (sempre ≥ 1 — zero não publica).
+        rows: usize,
+    },
 }
 
 /// Um sinal publicado neste quadro.
@@ -135,6 +148,19 @@ impl Signal {
         Self {
             name: Arc::from(name),
             origin: SignalOrigin::Control,
+        }
+    }
+
+    /// Um sinal que um `pulse.signal` do grafo de Motion emitiu.
+    ///
+    /// ⚠️ **Quem decide se ISTO chega a ser chamado é o relógio, não o grafo.** O cook re-roda
+    /// ao arrastar a régua, então o shell só publica quando o playhead está TOCANDO para a
+    /// frente — a mesma lei, pela mesma porta, que o emissor de markers da timeline usa.
+    #[must_use]
+    pub fn from_motion(name: &str, tick: u64, rows: usize) -> Self {
+        Self {
+            name: Arc::from(name),
+            origin: SignalOrigin::Motion { tick, rows },
         }
     }
 

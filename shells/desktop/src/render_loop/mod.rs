@@ -219,6 +219,8 @@ mod run_stash;
 /// `tokens_bridge`: um painel de MUNDO, publicado e drenado na mesma fase.
 #[cfg(feature = "sculpt3d")]
 pub(crate) mod sculpt3d_panel_bridge;
+/// A lei do relógio, perguntada pelos DOIS emissores de sinal — ver o módulo.
+mod clock_forward;
 pub(crate) mod timeline_bridge;
 pub(crate) mod timeline_onion;
 mod timeline_presets;
@@ -2174,6 +2176,12 @@ impl crate::App {
                     }
                     ph2d_runtime::SignalOrigin::Control => {
                         eprintln!("[signal] {} <- controle autorado", sig.name);
+                    }
+                    ph2d_runtime::SignalOrigin::Motion { tick, rows } => {
+                        eprintln!(
+                            "[signal] {} <- grafo motion, tique {tick}, {rows} linha(s)",
+                            sig.name
+                        );
                     }
                 }
             }
@@ -6251,7 +6259,21 @@ impl crate::App {
                 self.last_pointer,
                 toasts,
                 surface.gpu(),
+                self.timeline_signals.jumped,
             );
+            // O grafo gritou — o shell é quem publica (ADR-0075: o produtor não chama
+            // ninguém). ⚠️ **Este produtor pousa UM QUADRO atrás dos outros dois**, e o
+            // fato fica NOMEADO em vez de escondido: o dispatch de Motion roda depois de
+            // os consumidores lerem, então um `pulse.signal` chega ao toast no quadro
+            // seguinte. O duplo-buffer da outbox torna isso *atrasado, nunca perdido* — a
+            // rede, não a licença. Fechar o vão é MOVER a leitura dos consumidores para
+            // baixo deste dispatch, o que reordena uma sequência gateada e é decisão
+            // própria (o `toasts` tem de continuar vivo lá).
+            for sig in motion.signals_out.drain(..) {
+                self.signals.publish(ph2d_runtime::Signal::from_motion(
+                    &sig.name, sig.tick, sig.rows,
+                ));
+            }
             // Mirror the tool's mode + shape params for the input dispatch's
             // pen-vs-shape routing (the downcast lives in the bridge).
             self.vec_draw_config = vec_cfg;

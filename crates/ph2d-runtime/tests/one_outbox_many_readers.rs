@@ -35,6 +35,9 @@ impl Host {
                     format!("{} {}->{}", sig.name, source.0, other.0)
                 }
                 SignalOrigin::Control => format!("{} <controle>", sig.name),
+                SignalOrigin::Motion { tick, rows } => {
+                    format!("{} @tick {tick} x{rows}", sig.name)
+                }
             });
         }
     }

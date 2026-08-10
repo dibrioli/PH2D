@@ -78,6 +78,9 @@ ph2d-node-fx-glow = { path = "../../crates/ph2d-node-fx-glow" }
 # `motion.time_remap` params into `TimeMap`s before each cook (and to refuse a
 # wire that would drag a sequential node under a rewritten clock).
 ph2d-node-motion-time-remap = { path = "../../crates/ph2d-node-motion-time-remap" }
+# A porta `fired_rows`/`NAME_KEY` do `pulse.signal` — a soleira do disparo e a chave do
+# nome moram no NÓ, e a ponte pergunta em vez de re-derivar (o precedente do time-remap).
+ph2d-node-pulse-signal = { path = "../../crates/ph2d-node-pulse-signal" }
 # General timeline data layer (M0): keyframe store + curves. Backs the
 # app-general TimelineDoc (authoring + sampling at the engine Playhead) and the
 # per-component SpriteAnimation apply path.

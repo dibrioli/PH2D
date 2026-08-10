@@ -31,6 +31,11 @@ pub(crate) struct SignalEmitter {
     last_time: f64,
     /// Signals crossed this frame, drained by the shell. Cleared on every `emit`.
     pub out: Vec<TimelineSignal>,
+    /// O `jumped` DESTE quadro — publicado aqui porque um SEGUNDO produtor precisa da
+    /// mesma resposta, e duas cópias divergiriam no dia em que uma ganhasse um caso
+    /// especial. Gravado em `run` (fora do braço Arrange), então ele descreve o quadro
+    /// inteiro e não só a vista em que markers vivem.
+    pub jumped: bool,
 }
 
 impl SignalEmitter {
@@ -49,7 +54,7 @@ impl SignalEmitter {
     fn emit(&mut self, doc: &ph2d_timeline::TimelineDoc, playhead: &Playhead, jumped: bool) {
         self.out.clear();
         let now = playhead.time();
-        if !jumped && playhead.is_advancing_forward() {
+        if super::clock_forward::clock_is_playing_forward(playhead, jumped) {
             for name in ph2d_timeline::signals_crossed(
                 doc.markers(),
                 self.last_time,
@@ -112,6 +117,8 @@ pub(crate) fn run(
         );
         apply_intent(timeline, playhead, intent);
     }
+    // Publicado para o SEGUNDO produtor (a ponte de Motion, mais abaixo no quadro).
+    signals.jumped = jumped;
     // **O PLAYHEAD É LIVRE — não há parede na duração autorada** (Enio, 2026-07-25). O transporte
     // também dirige a FÍSICA dinâmica, e um clamp aqui capava a simulação no fim da timeline; então
     // a duração de composição segue sendo a duração VISÍVEL (o véu) e o alvo de NAVEGAÇÃO (go-to-end,

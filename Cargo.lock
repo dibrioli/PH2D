@@ -5393,6 +5393,7 @@ dependencies = [
  "ph2d-node-fx-glow",
  "ph2d-node-motion-shape",
  "ph2d-node-motion-time-remap",
+ "ph2d-node-pulse-signal",
  "ph2d-node-registry",
  "ph2d-node-registry-init",
  "ph2d-node-util-reroute",
@@ -6411,6 +6412,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-pulse-signal"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-pulse-threshold"
 version = "0.0.0"
 dependencies = [
@@ -6510,6 +6519,7 @@ dependencies = [
  "ph2d-node-pulse-level",
  "ph2d-node-pulse-on-change",
  "ph2d-node-pulse-sample-hold",
+ "ph2d-node-pulse-signal",
  "ph2d-node-pulse-threshold",
  "ph2d-node-registry",
  "ph2d-node-rig-fabrik",

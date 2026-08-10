@@ -91,6 +91,14 @@ pub struct MotionCookPump {
     /// sequencer validates the set it is handed against `plan.boundaries`, so
     /// which stream came from which node is part of the answer, not bookkeeping.
     boundary_streams: Vec<(NodeId, Stream)>,
+    /// The raw output streams of this frame's TAPS — mid-graph nodes the caller
+    /// named on the sink march because it wants to READ them, not draw them.
+    ///
+    /// ⚠️ **Separado do `boundary_streams` de propósito.** Aquele é o hand-off
+    /// CPU→GPU e é validado contra `plan.boundaries`; este é o que um consumidor do
+    /// host lê para saber que algo aconteceu no grafo. Um nome, um significado — os
+    /// dois numa lista só obrigariam todo leitor a perguntar de qual metade veio.
+    tap_streams: Vec<(NodeId, Stream)>,
 }
 
 /// What one pump cook produces this frame — the two consumers of the SAME
@@ -103,6 +111,17 @@ enum CookTarget<'a> {
         sinks: &'a [NodeId],
         default_uv_rect: [f32; 4],
         default_size: [f32; 2],
+        /// Mid-graph nodes whose raw output stream the caller also wants, left in
+        /// [`MotionCookPump::tap_streams`]. **Empty is the world before taps, byte
+        /// for byte** — the loop does not run and nothing is allocated.
+        ///
+        /// ⚠️ **They ride the SAME march as the sinks, and that is the whole point.**
+        /// The pump's own doc says it: *"one march, N hand-offs"* — a second
+        /// `advance_or_scrub_*` call for the taps would advance the clock twice per
+        /// tick and simulate the shared prefix twice. Cooked here, after the sinks
+        /// and at the same playhead, they hit the memo on everything they share
+        /// (the argument the `Boundaries` arm below spells out).
+        taps: &'a [NodeId],
     },
     /// Each named node's raw output stream, stored in `boundary_streams` (the
     /// CPU→GPU boundary: the lowering is the GPU's job now, so the CPU stops at
@@ -140,6 +159,7 @@ impl MotionCookPump {
             last_error: None,
             ring: CheckpointRing::new(),
             boundary_streams: Vec::new(),
+            tap_streams: Vec::new(),
         }
     }
 
@@ -228,6 +248,10 @@ impl MotionCookPump {
                 sinks,
                 default_uv_rect,
                 default_size,
+                // Estas duas portas públicas (pump-only / scrub-only) são para quem
+                // dirige UMA metade da máquina; quem quer tomadas usa a porta que
+                // decide entre as duas.
+                taps: &[],
             },
             tick,
             playhead,
@@ -289,9 +313,11 @@ impl MotionCookPump {
                 sinks,
                 default_uv_rect,
                 default_size,
+                taps,
             } => {
                 self.instances.clear();
                 self.vector_instances.clear();
+                self.tap_streams.clear();
                 for &sink in sinks {
                     // A sink that fails to cook (an unknown type mid-edit, or a
                     // sequential node caught inside a remapped time scope)
@@ -317,6 +343,19 @@ impl MotionCookPump {
                             }
                         }
                         Err(e) => self.last_error = Some(e),
+                    }
+                }
+                // The taps, AFTER the sinks and at the same playhead. A tap that
+                // fails to cook simply does not appear — the caller reads a shorter
+                // list, never a wrong stream (the `boundary_streams` policy).
+                for &node in taps {
+                    if self.tap_streams.iter().any(|(n, _)| *n == node) {
+                        continue;
+                    }
+                    if let Ok(outputs) = self.cook.cook_scoped(graph, ops, node, playhead, scopes)
+                        && let Some(v) = outputs.first()
+                    {
+                        self.tap_streams.push((node, v.as_stream().clone()));
                     }
                 }
             }
@@ -394,6 +433,10 @@ impl MotionCookPump {
                 sinks,
                 default_uv_rect,
                 default_size,
+                // Estas duas portas públicas (pump-only / scrub-only) são para quem
+                // dirige UMA metade da máquina; quem quer tomadas usa a porta que
+                // decide entre as duas.
+                taps: &[],
             },
             target_tick,
             playhead_of,
@@ -462,6 +505,44 @@ impl MotionCookPump {
         default_size: [f32; 2],
         scopes: &TimeScopes,
     ) -> bool {
+        self.advance_or_scrub_with_taps_scoped(
+            graph,
+            ops,
+            sinks,
+            &[],
+            tick,
+            playhead_of,
+            default_uv_rect,
+            default_size,
+            scopes,
+        )
+    }
+
+    /// [`Self::advance_or_scrub_scoped`] com TOMADAS: os mesmos sinks, mais os nós
+    /// cujo stream cru o chamador quer ler em [`Self::tap_streams`].
+    ///
+    /// ⚠️ **Uma marcha, dois consumos** — as tomadas cozinham DENTRO desta chamada,
+    /// depois dos sinks e no mesmo playhead, então o prefixo compartilhado é simulado
+    /// uma vez (o memo do `Cook`) e o relógio avança uma vez. Chamar a irmã sem
+    /// tomadas e depois cozinhar os nós à parte é o erro que o `Boundaries` já
+    /// documenta, e ele é SILENCIOSO: o resultado sai plausível e a sim andou duas
+    /// vezes.
+    ///
+    /// ⚠️ **A lista vazia é a irmã, LITERALMENTE** — ela delega para cá com `&[]`, e
+    /// não há um segundo caminho de código para divergir.
+    #[allow(clippy::too_many_arguments)]
+    pub fn advance_or_scrub_with_taps_scoped(
+        &mut self,
+        graph: &Graph,
+        ops: &dyn OpResolver,
+        sinks: &[NodeId],
+        taps: &[NodeId],
+        tick: u64,
+        playhead_of: impl Fn(u64) -> f64,
+        default_uv_rect: [f32; 4],
+        default_size: [f32; 2],
+        scopes: &TimeScopes,
+    ) -> bool {
         self.advance_or_scrub_target_scoped(
             graph,
             ops,
@@ -469,11 +550,24 @@ impl MotionCookPump {
                 sinks,
                 default_uv_rect,
                 default_size,
+                taps,
             },
             tick,
             playhead_of,
             scopes,
         )
+    }
+
+    /// Os streams das TOMADAS da última marcha de sinks, rotulados por nó.
+    ///
+    /// ⚠️ **Vazio, e não obsoleto, quando o quadro não cozinhou** — o `pump` faz
+    /// early-return num quadro pausado e inalterado, e nesse quadro esta lista guarda
+    /// o que a última marcha deixou. Quem publica EVENTO a partir daqui tem de ler
+    /// **dentro** do laço de tiques devidos, nunca depois dele: dois tiques devidos
+    /// deixam só o último, e a perda é silenciosa.
+    #[must_use]
+    pub fn tap_streams(&self) -> &[(NodeId, Stream)] {
+        &self.tap_streams
     }
 
     /// Render `tick` into `boundary_streams` (NOT `instances`): cook the CPU
@@ -571,6 +665,10 @@ mod tests;
 #[cfg(test)]
 #[path = "scrub_tests.rs"]
 mod scrub_tests;
+
+#[cfg(test)]
+#[path = "tap_tests.rs"]
+mod tap_tests;
 
 #[cfg(test)]
 #[path = "boundary_tests.rs"]

@@ -269,6 +269,18 @@ pub(crate) fn apply_layout_edit(
     selected: &[VecPathId],
     edit: LayoutEdit,
 ) -> bool {
+    // ⚠️ **O fora-do-fluxo é resolvido ANTES de resolver a moldura, e a ordem é a correção
+    // inteira.** Todo edit desta porta é da MOLDURA — menos este, que é do FILHO —, e
+    // `frame_of_selection` recusa *um filho sozinho* por desenho. Com o guard à frente, o único
+    // edit que é pedido com o filho selecionado era o único que o guard matava: o checkbox
+    // pintava, acendia sob o mouse e **não fazia nada** (report do Enio, smoke da cena `=66`).
+    //
+    // O guard FICA para os outros quatro — abri-lo para todos faria um `Dir` pedido sobre um
+    // filho solto ligar fluxo na entidade errada (gate irmão
+    // `a_frame_edit_asked_with_only_the_child_selected_does_nothing`).
+    if let LayoutEdit::Absolute(_) = edit {
+        return apply_absolute(sim, map, selected);
+    }
     let Some(e) = crate::vec_frame_edit::frame_of_selection(sim, map, selected) else {
         return false;
     };
@@ -293,10 +305,11 @@ pub(crate) fn apply_layout_edit(
             justify,
             ..cur.unwrap_or_default()
         }),
-        // Os dois seguintes não escrevem no `VecLayout`: eles têm componentes próprios, e o
-        // `write_layout` no fim desta função não é o caminho deles.
+        // O tamanho não escreve no `VecLayout`: ele tem componente próprio, e o `write_layout`
+        // no fim desta função não é o caminho dele. (O `Absolute` saiu daqui para o topo — ver
+        // a nota na entrada da função.)
         LayoutEdit::Size(axis, hug) => return apply_size(sim, e, axis, hug),
-        LayoutEdit::Absolute(_) => return apply_absolute(sim, map, selected),
+        LayoutEdit::Absolute(_) => unreachable!("resolvido na entrada, antes do guard de moldura"),
     };
     write_layout(sim, e, cur, next)
 }

@@ -240,6 +240,69 @@ fn grow_reaches_the_component_and_the_neutral_detaches() {
     );
 }
 
+/// **O toggle *Absolute position* chega ao componente com SÓ O FILHO selecionado** — que é a
+/// única seleção em que ele é oferecido.
+///
+/// ⚠️ Ele nasceu VERMELHO, e o mecanismo é o que vale registar: o `apply_layout_edit` abria com
+/// *"resolve a moldura, ou desiste"*, e `frame_of_selection` recusa **um filho sozinho** por
+/// desenho (o doc-comment do `vec_frame_edit` diz-no). Todo edit do layout é da MOLDURA — menos
+/// este, que é do FILHO — então o único que era pedido com o filho selecionado era o único que
+/// o guard matava. Sintoma: o checkbox pintado, aceso sob o mouse, e **mudo** (report do Enio no
+/// smoke da cena `=66`).
+///
+/// A segunda metade (alternar de volta) é o que distingue *chegou* de *chegou uma vez*.
+#[test]
+fn the_absolute_toggle_reaches_the_component_with_only_the_child_selected() {
+    let (mut sim, _scene, map, ids) = frame_with(2);
+    let frame_sel = vec![ids[0]];
+    let kid_sel = vec![ids[1]];
+    let kid = ent(&sim, &map, ids[1]);
+    apply_layout_edit(
+        &mut sim,
+        &map,
+        &frame_sel,
+        LayoutEdit::Dir(Some(LayoutDir::Row)),
+    );
+
+    assert!(
+        apply_layout_edit(&mut sim, &map, &kid_sel, LayoutEdit::Absolute(true)),
+        "o clique tem de mudar o mundo"
+    );
+    assert!(
+        sim.world().get::<VecLayoutAbsolute>(kid).is_some(),
+        "o filho tem de sair do fluxo"
+    );
+    assert!(
+        apply_layout_edit(&mut sim, &map, &kid_sel, LayoutEdit::Absolute(true)),
+        "o toggle ALTERNA: o segundo clique tambem muda o mundo"
+    );
+    assert!(
+        sim.world().get::<VecLayoutAbsolute>(kid).is_none(),
+        "o segundo clique tem de o devolver ao fluxo"
+    );
+}
+
+/// **Os edits da MOLDURA continuam a exigir uma moldura** — o controle do gate acima.
+///
+/// Sem ele, mover o *Absolute* para fora do guard poderia ter sido feito abrindo o guard para
+/// todos, e um `Dir` pedido sobre um filho solto passaria a ligar fluxo na entidade errada.
+#[test]
+fn a_frame_edit_asked_with_only_the_child_selected_does_nothing() {
+    let (mut sim, _scene, map, ids) = frame_with(2);
+    let kid_sel = vec![ids[1]];
+    let kid = ent(&sim, &map, ids[1]);
+    assert!(!apply_layout_edit(
+        &mut sim,
+        &map,
+        &kid_sel,
+        LayoutEdit::Dir(Some(LayoutDir::Row))
+    ));
+    assert!(
+        sim.world().get::<VecLayout>(kid).is_none(),
+        "um filho solto nao pode ganhar fluxo por um clique dirigido a' moldura"
+    );
+}
+
 /// **O que a shell PUBLICA é o que a moldura guarda** — e `None` quando ela não flui.
 #[test]
 fn the_published_flow_mirrors_the_component() {

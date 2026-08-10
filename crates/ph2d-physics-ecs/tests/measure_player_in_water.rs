@@ -322,6 +322,14 @@ fn measure_the_kinematic_player_in_water() {
          boiam. AVISO: o y de um INSTANTE nao e' um repouso -- nesta poca o\n\
          player bobeia ~1,44 m de amplitude nos DOIS modos (a capsula solta\n\
          faz 0,81), e quem afirma a cura e' o gate de PARIDADE que vive em\n\
-         `tests/player_in_water.rs`.\n"
+         `tests/player_in_water.rs`.\n\n\
+         E ESSE 1,44 FICOU NOMEADO COMO PENDENCIA -- medido (2026-08-10), NAO\n\
+         e' uma: a sonda `measure_the_bobbing` atribuiu o excesso inteiro aos\n\
+         MULTIPLICADORES do arco, a agir NO AR antes do primeiro contacto (com\n\
+         os quatro a 1 a amplitude e' 0,8097 = o controle ao 4o decimal; e\n\
+         largado JA' SUBMERSO ele e' 1,00x o controle, porque ali a trava arma\n\
+         no tique 1). O personagem entra na agua a 1,299x a velocidade do\n\
+         controle porque `fall_gravity = 2.0`, e o bobeio DECAI junto com o\n\
+         controle (0,001 m aos 30 s). E' transiente, nao bomba.\n"
     );
 }

@@ -1355,6 +1355,48 @@ na água, nos **dois** modos, e é anterior a isto. Por isso o oráculo do gate 
 **PARIDADE ENTRE MODOS** (`tests/player_in_water.rs`), nunca um literal de linha
 d'água: a espécie do corpo deixa de ser uma pergunta que a água faça.
 
+### ⚠️ E o `1,44` ficou nomeado como PENDÊNCIA — medido (2026-08-10), não é uma
+
+O aberto dizia *"o player bobeia ~1,44 m nos dois modos (a cápsula solta faz
+0,81)"*, lido como defeito por fechar. A sonda `measure_the_bobbing` atribuiu o
+excesso por **ablação da entrada**, e ele tem dono:
+
+| ablação (mesma poça, regime = 2.ª metade de 6 s) | amplitude | vs controle |
+|---|---|---|
+| cápsula solta (CONTROLE) | `0,8097` | — |
+| player default, largado de `+1,5` (no ar) | `1,4408` | `1,78×` |
+| **os quatro multiplicadores de gravidade a `1`** | `0,8097` | **`1,00×`** (ao 4.º decimal) |
+| sem perna · sem amortecimento · sem raio de chão · perna inteira fora | `1,4408` | `1,78×` (inertes) |
+| **largado de `−0,5` (já submerso)** | `0,8326` | **`1,00×`** |
+| largado de `−1,5` (submerso fundo) | `3,3214` | `0,99×` |
+
+**A trava FUNCIONA.** O excesso inteiro é a modelagem do arco a agir **no AR**,
+antes do primeiro contacto com a água — que é exactamente onde ela é autorada
+para agir. O personagem cruza a superfície a **`1,299×`** a velocidade do
+controle (`1,687×` de energia) porque `fall_gravity = 2.0`, e a poça devolve isso
+como um mergulho mais fundo e um bobeio maior. ⚠️ *A minha previsão de `√2` para
+essa razão estava errada* — falta na conta o `peak_gravity = 0.5`, que deixa o
+começo da queda mais leve que o mundo; **o número honesto é medido**.
+
+⚠️ **E o que decide que não há defeito é a SEQUÊNCIA, não uma janela** — as duas
+podem medir `1,44` no mesmo instante. Amplitude por janela de 3 s, em 30 s:
+
+* controle `1,927 · 0,810 · 0,329 · 0,139 · 0,059 · 0,021 · 0,009 · 0,004 · 0,002 · 0,001`
+* player&nbsp;&nbsp;`2,172 · 1,441 · 0,594 · 0,221 · 0,093 · 0,039 · 0,017 · 0,006 · 0,003 · 0,001`
+
+As duas decaem monotonicamente e **convergem no mesmo valor**: é um transiente, e
+o meio come-o. Os dois gates novos (`the_water_lock_contains_the_arc_shaping` ·
+`the_bobbing_decays_it_does_not_pump`) pinam as duas metades para ninguém
+re-derivar o item falso — e ⚠️ **os três gates que já viviam ali ficam VERDES nas
+duas mutações** (a trava a não calar ⇒ **857 m**; a fração instantânea em vez da
+trava ⇒ **15,3 m** a crescer), porque a trava é comum aos dois modos e uma razão
+entre dois doentes não a vê.
+
+**Fica como DECISÃO DE PRODUTO, não como dívida:** um personagem que cai com
+`fall_gravity = 2.0` entra na água com o momento que essa queda lhe deu. Querer
+que ele entre como uma pedra é mexer no knob que governa o platformer inteiro —
+não é um conserto local, e o número acima é o que se estaria a trocar.
+
 ⚠️ **O arrasto é load-bearing e tem número:** com `AreaDrag 0` a amplitude sobe
 para **2,90 m** e não decai — empuxo sem resistência é uma mola sem
 amortecimento, a frase que a fixture da poça já carregava.

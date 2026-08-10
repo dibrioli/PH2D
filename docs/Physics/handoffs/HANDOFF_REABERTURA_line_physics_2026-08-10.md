@@ -93,9 +93,17 @@ o pin da tripla) e **escreva o degrau na escada** do `project.rs` no MESMO commi
 
 **A · A cauda do modo cinemático** (o que a jornada de ontem nomeou)
 
-- **O player bobeia ~1,44 m numa poça, nos DOIS modos** (dinâmico **1,4357** × cinemático
-  **1,4394**; a cápsula solta faz **0,81**). ⚠️ **É ANTERIOR à jornada de ontem** e nunca foi
-  atribuído — a sonda que o mede (`measure_player_in_water`) **já existe**.
+- ~~**O player bobeia ~1,44 m numa poça, nos DOIS modos**~~ — **FECHADO POR MEDIÇÃO (2026-08-10):
+  não era um defeito.** A sonda nova `measure_the_bobbing` atribuiu o excesso por ablação da
+  ENTRADA: com os quatro multiplicadores de gravidade a `1` a amplitude é **`0,8097` = o controle
+  ao quarto decimal**, e largado **já submerso** o player é `1,00×` o controle — ou seja, a trava
+  do fluido **contém**, e o excesso inteiro é a modelagem do arco a agir **no AR**, antes do
+  primeiro contacto, que é onde ela é autorada para agir. O personagem cruza a superfície a
+  **`1,299×`** a velocidade do controle porque `fall_gravity = 2.0`, e o bobeio **DECAI** junto com
+  o controle (`0,001 m` aos 30 s) ⇒ transiente, não bomba. Dois gates novos pinam as duas metades
+  (plano 07 §8.4); ⚠️ **os três gates que já existiam ficavam VERDES** nas duas mutações (**857 m**
+  e **15,3 m**), porque a trava é comum aos dois modos. O que sobra é **decisão de produto**
+  (mexer em `fall_gravity` é mexer no platformer inteiro), não dívida.
 - A paridade de arrasto entre os modos é **APROXIMADA** — `(1+d·h)⁻⁴` contra `(1+d·4h)⁻¹`, a mesma
   classe que a W-AreaDrag mediu em **1,25%**; um corpo cinemático não tem sub-passo.
 - `form_drag` e a FORÇA de zona: ver §3 (⛔ os dois têm motivo escrito).

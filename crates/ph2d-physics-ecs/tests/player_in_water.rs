@@ -19,6 +19,13 @@
 //! cápsula solta (sem lei de player nenhuma) faz `0,8097`. O que bobeia é o
 //! *player* na água, nos dois modos, e isso é anterior a esta wave.
 //!
+//! ⚠️ **E esse `1,44` ficou nomeado como PENDÊNCIA — medido, não é uma.** O
+//! excesso inteiro é a modelagem do arco a agir **no AR**, antes do primeiro
+//! contacto: com os quatro multiplicadores a `1` a amplitude é o controle ao
+//! quarto decimal, e largado JÁ SUBMERSO ele é `1,00×` o controle. Os dois gates
+//! do fundo deste arquivo pinam isso; os números e as ablações estão no plano 07
+//! §8.4 e na sonda `measure_the_bobbing`.
+//!
 //! Por isso o oráculo é a **PARIDADE ENTRE MODOS**: a mesma cena, o mesmo tique,
 //! e a espécie do corpo a não ser uma pergunta que a água faça. Um literal de
 //! linha d'água seria um espelho da fórmula; a paridade é uma propriedade.
@@ -186,6 +193,175 @@ fn without_a_pool_the_kinematic_player_still_falls() {
     assert!(
         y < START - 50.0,
         "sem água ele tem de cair, e caiu só até {y:.4}"
+    );
+}
+
+/// Como a [`settle_stats`], mas largando de onde se pedir e podendo tirar a lei
+/// do player do caminho (`law = false` ⇒ o CONTROLE, uma cápsula solta).
+fn stats_from(start: f32, law: bool, kinematic: bool) -> (f32, f32) {
+    let mut sim = SimWorld::new();
+    pool(&mut sim, 0.6);
+    let mut e = sim.world_mut().spawn((
+        Name::new("Subject"),
+        RigidBody {
+            kind: if kinematic {
+                BodyKind::Kinematic
+            } else {
+                BodyKind::Dynamic
+            },
+        },
+        Collider {
+            shape: ColliderShape::Capsule {
+                half_height: HALF_H,
+                radius: RADIUS,
+            },
+            density: 1.0,
+            ..Collider::default()
+        },
+        LockRotation,
+        Transform::from_translation(Vec2::new(0.0, start)),
+    ));
+    if law {
+        e.insert(PlatformPlayer {
+            float_height: FLOAT,
+            ..PlatformPlayer::default()
+        });
+    }
+    if kinematic {
+        e.insert(PlayerMode::Kinematic);
+    }
+    let who = e.id();
+    let mut bridge = PhysicsBridge::new();
+    if law {
+        bridge.set_player_input(who, PlayerInput::default());
+    }
+    let (mut lo, mut hi, mut sum, mut n) = (f32::MAX, f32::MIN, 0.0f64, 0u32);
+    for t in 1..=360u64 {
+        bridge.dispatch(&mut sim, true, t);
+        if t > 180 {
+            let y = y_of(&sim);
+            lo = lo.min(y);
+            hi = hi.max(y);
+            sum += f64::from(y);
+            n += 1;
+        }
+    }
+    #[allow(clippy::cast_possible_truncation)]
+    ((sum / f64::from(n)) as f32, hi - lo)
+}
+
+/// **A TRAVA DO FLUIDO CONTÉM O ARCO — um corpo largado JÁ DENTRO da água é a
+/// cápsula solta, ao dígito.**
+///
+/// # ⚠️ Este gate existe porque a nota aberta era FALSA
+///
+/// A W-KinFluid deixou escrito, como pendência, que *"o player bobeia 1,44 m nos
+/// dois modos e a cápsula solta faz 0,81"* — lido como um defeito por fechar.
+/// Medido (`measure_the_bobbing`), ele é o **transiente de uma entrada mais
+/// rápida**, e as duas ablações independentes dizem a mesma coisa:
+///
+/// | ablação | amplitude | vs controle |
+/// |---|---|---|
+/// | player default, largado de `+1,5` (no ar) | `1,4408` | `1,78×` |
+/// | os quatro multiplicadores a `1` | `0,8097` | **`1,00×`** (o controle ao 4.º decimal) |
+/// | largado de `−0,5` (já submerso) | `0,8326` | **`1,00×`** |
+/// | largado de `−1,5` (submerso fundo) | `3,3214` | **`0,99×`** |
+///
+/// Ou seja: **a modelagem do arco actua no AR, que é onde ela é autorada para
+/// actuar**, e a trava a cala no instante em que o fluido toma o corpo. O
+/// personagem entra na água a `1,299×` a velocidade do controle (`1,687×` de
+/// energia) porque `fall_gravity = 2.0` — e isso não é um defeito, é a queda
+/// pesada que o artista pediu, a chegar à água com o momento que ela dá.
+///
+/// ⚠️ **O gate larga SUBMERSO de propósito:** é a única largada em que a trava
+/// arma no tique 1, logo a única que isola *a trava contém* de *a entrada foi
+/// mais rápida*. Um gate largado no ar mediria a soma das duas e não poderia
+/// falhar pelo motivo que alega.
+///
+/// ⚠️ **E os três gates que já viviam neste arquivo ficam VERDES nas duas
+/// mutações abaixo** — o de paridade entre modos por construção, porque a trava
+/// é comum aos dois e uma razão entre dois doentes não a vê. Era esse o buraco.
+///
+/// | mutação | amplitude aos 30 s |
+/// |---|---|
+/// | a trava não cala (`extra = scale − 1`) | **857 m** — sai de quadro |
+/// | a fração instantânea em vez da trava | **15,3 m**, a crescer |
+///
+/// A segunda é a alternativa que o doc da `waterborne` já REJEITAVA com números
+/// (*"a energia é ganha entre dois mergulhos, onde não há fluido nenhum a
+/// medir"*) — as duas sangram os dois gates desta wave.
+#[test]
+fn the_water_lock_contains_the_arc_shaping() {
+    for start in [-0.5f32, -1.5] {
+        let (c_mean, c_amp) = stats_from(start, false, false);
+        let (p_mean, p_amp) = stats_from(start, true, false);
+        assert!(
+            (p_amp - c_amp).abs() < 0.1 * c_amp,
+            "largado submerso de {start} a lei não pode acrescentar oscilação: \
+             {p_amp:.4} contra {c_amp:.4} do controle"
+        );
+        assert!(
+            (p_mean - c_mean).abs() < 0.1,
+            "nem mudar onde ele vive: {p_mean:.4} contra {c_mean:.4}"
+        );
+    }
+}
+
+/// **E O BOBEIO DECAI — ele não bombeia.**
+///
+/// A modelagem do arco é não-conservativa por construção (o doc de
+/// [`ph2d_platformer::JumpState::waterborne`] tem a aritmética), e é isso que a
+/// trava existe para conter. **Uma janela só não distingue** um transiente de
+/// uma bomba — as duas podem medir `1,44` no mesmo instante; o que as separa é a
+/// SEQUÊNCIA.
+///
+/// Medido em 30 s, amplitude por janela de 3 s:
+///
+/// * controle `1,927 · 0,810 · 0,329 · 0,139 · 0,059 · 0,021 · 0,009 · 0,004 · 0,002 · 0,001`
+/// * player  `2,172 · 1,441 · 0,594 · 0,221 · 0,093 · 0,039 · 0,017 · 0,006 · 0,003 · 0,001`
+///
+/// As duas caem monotonicamente e **convergem no mesmo valor**. O modo de falha
+/// que este gate compra é o que o `Buoyed` documenta com números do produto
+/// (`−1,05 / +4,71 / +12,08 / −20,31`, e o personagem sai de quadro).
+#[test]
+fn the_bobbing_decays_it_does_not_pump() {
+    let mut sim = SimWorld::new();
+    pool(&mut sim, 0.6);
+    let who = player(&mut sim, false);
+    let mut bridge = PhysicsBridge::new();
+    bridge.set_player_input(who, PlayerInput::default());
+
+    let mut windows = Vec::new();
+    let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+    for t in 1..=1800u64 {
+        bridge.dispatch(&mut sim, true, t);
+        let y = y_of(&sim);
+        lo = lo.min(y);
+        hi = hi.max(y);
+        if t % 180 == 0 {
+            windows.push(hi - lo);
+            lo = f32::MAX;
+            hi = f32::MIN;
+        }
+    }
+
+    // ⚠️ A comparação é entre janelas NÃO-ADJACENTES: o transiente da entrada
+    // faz a 1.ª janela ser menor que a 2.ª (ele ainda está a cair no ar durante
+    // parte dela), e exigir monotonia estrita ali afirmaria algo que a física
+    // não promete. O que se afirma é que a energia SAI do sistema.
+    for w in windows.windows(2).skip(1) {
+        assert!(
+            w[1] < w[0],
+            "a amplitude tem de decair depois do transiente, e foi {:.4} → {:.4}: \
+             a modelagem do arco está a bombear energia dentro do fluido. Janelas: {windows:?}",
+            w[0],
+            w[1]
+        );
+    }
+    let last = *windows.last().expect("dez janelas");
+    assert!(
+        last < 0.01,
+        "e ao fim de 30 s ele tem de estar parado, e a última janela mede {last:.4}"
     );
 }
 

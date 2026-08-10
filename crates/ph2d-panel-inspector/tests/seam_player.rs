@@ -79,6 +79,12 @@ fn player() -> InspectorPlayerInfo {
         // zero varreria rows cujo valor nunca muda.
         crouch_height: 0.55,
         crouch_speed: 2.0,
+        // ⚠️ **O NADO (W-Swim) LIGADO na fixture, pela razão exacta dos três
+        // acima:** ele nasce DESLIGADO no produto, e uma fixture que herdasse o
+        // zero varreria rows cujo valor nunca muda.
+        swim_speed: 4.0,
+        swim_acceleration: 12.0,
+        swim_enter: 1.0,
         lift_momentum: 1.5,
         reaction_support: 1.0,
         reaction_movement: 0.0,
@@ -207,7 +213,7 @@ fn every_number_raises_its_own_edit() {
     // exatamente o arm esquecido que ela existe para pegar.
     assert_eq!(
         ph2d_panel_inspector::PLAYER_ROW_COUNT,
-        33,
+        36,
         "a tabela de rows cresceu; acrescente o numero novo a esta varredura"
     );
     for (id, v, edit) in [
@@ -316,6 +322,21 @@ fn every_number_raises_its_own_edit() {
             ids::INSP_PLAYER_CROUCH_SPEED,
             2.5,
             PlayerFieldEdit::CrouchSpeed(2.5),
+        ),
+        (
+            ids::INSP_PLAYER_SWIM_SPEED,
+            5.0,
+            PlayerFieldEdit::SwimSpeed(5.0),
+        ),
+        (
+            ids::INSP_PLAYER_SWIM_ACCEL,
+            18.0,
+            PlayerFieldEdit::SwimAcceleration(18.0),
+        ),
+        (
+            ids::INSP_PLAYER_SWIM_ENTER,
+            0.6,
+            PlayerFieldEdit::SwimEnter(0.6),
         ),
         (
             ids::INSP_PLAYER_MAX_SLOPE,

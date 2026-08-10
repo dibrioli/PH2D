@@ -121,6 +121,17 @@ pub struct InspectorPlayerInfo {
     pub crouch_height: f32,
     /// **Crouch Speed** (W15) — m/s agachado. ⚠️ `0` aqui NÃO desliga nada.
     pub crouch_speed: f32,
+    /// **Swim Speed** (W-Swim) — m/s, em qualquer direção. `0` desliga.
+    pub swim_speed: f32,
+    /// **Swim Accel** (W-Swim) — m/s², a autoridade do servo CONTRA o empuxo.
+    pub swim_acceleration: f32,
+    /// **Swim Enter** (W-Swim) — quantos PESOS o fluido tem de carregar.
+    ///
+    /// ⚠️ **A única row desta seção cuja unidade não é m, s ou m/s**, e é
+    /// deliberado: a mesma altura de água significa coisas diferentes em cada
+    /// poça (depende das duas densidades), enquanto *"a água sozinha me
+    /// sustenta"* significa a mesma coisa em todas.
+    pub swim_enter: f32,
     /// Quanto do peso volta ao chao (W6).
     pub reaction_support: f32,
     /// Quanto da caminhada volta ao chao (W6).
@@ -239,6 +250,10 @@ pub enum PlayerFieldEdit {
     /// O AGACHAR (W15).
     CrouchHeight(f32),
     CrouchSpeed(f32),
+    /// O NADO (W-Swim).
+    SwimSpeed(f32),
+    SwimAcceleration(f32),
+    SwimEnter(f32),
     /// Quanto do peso volta ao chao (W6).
     ReactionSupport(f32),
     /// Quanto da caminhada volta ao chao (W6).

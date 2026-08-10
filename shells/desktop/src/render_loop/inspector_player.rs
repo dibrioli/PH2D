@@ -110,6 +110,9 @@ pub(crate) fn build_player_info(
         dash_cooldown: p.dash_cooldown,
         crouch_height: p.crouch_height,
         crouch_speed: p.crouch_speed,
+        swim_speed: p.swim_speed,
+        swim_acceleration: p.swim_acceleration,
+        swim_enter: p.swim_enter,
         reaction_support: p.reaction_support,
         reaction_movement: p.reaction_movement,
         reaction_push: p.reaction_push,
@@ -296,6 +299,13 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         PlayerFieldEdit::DashCooldown(v) => p.dash_cooldown = v.max(0.0),
         PlayerFieldEdit::CrouchHeight(v) => p.crouch_height = v.max(0.0),
         PlayerFieldEdit::CrouchSpeed(v) => p.crouch_speed = v.max(0.0),
+        PlayerFieldEdit::SwimSpeed(v) => p.swim_speed = v.max(0.0),
+        PlayerFieldEdit::SwimAcceleration(v) => p.swim_acceleration = v.max(0.0),
+        // ⚠️ **Sem teto aqui, e é o §0:** o limiar conta PESOS, e o número em que
+        // ele deixa de ser alcançável depende das duas densidades da CENA — não
+        // há recurso a capar. Quem escolhe a faixa confortável é o slider da §14
+        // (0..4, o valor medido na poça das fixtures); a caixa aceita o resto.
+        PlayerFieldEdit::SwimEnter(v) => p.swim_enter = v.max(0.0),
         PlayerFieldEdit::ReactionSupport(v) => p.reaction_support = v.max(0.0),
         PlayerFieldEdit::ReactionMovement(v) => p.reaction_movement = v.max(0.0),
         PlayerFieldEdit::ReactionPush(v) => p.reaction_push = v.max(0.0),

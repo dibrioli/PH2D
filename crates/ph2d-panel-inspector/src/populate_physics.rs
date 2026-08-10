@@ -317,6 +317,14 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         (ids::INSP_PLAYER_DASH_COOL, 0.2, 0.0, 2.0, 0.02),  // LITERAL-PX-OK: seconds
         (ids::INSP_PLAYER_CROUCH_HEIGHT, 0.0, 0.0, 3.0, 0.05), // LITERAL-PX-OK: metres
         (ids::INSP_PLAYER_CROUCH_SPEED, 2.0, 0.0, 20.0, 0.25), // LITERAL-PX-OK: m/s
+        // O NADO (W-Swim). ⚠️ O teto do LIMIAR é `4`, e ele é MEDIDO: numa poça
+        // quatro vezes mais densa que o corpo — a fixture destas waves — a razão
+        // satura em `3,99` com o corpo todo submerso (`measure_the_swim_threshold`),
+        // então acima disso o número deixaria de ser alcançável e a capacidade
+        // ficaria desligada com o slider a dizer o contrário.
+        (ids::INSP_PLAYER_SWIM_SPEED, 0.0, 0.0, 20.0, 0.25), // LITERAL-PX-OK: m/s
+        (ids::INSP_PLAYER_SWIM_ACCEL, 12.0, 0.0, 60.0, 0.5), // LITERAL-PX-OK: m/s2
+        (ids::INSP_PLAYER_SWIM_ENTER, 1.0, 0.0, 4.0, 0.05),  // LITERAL-PX-OK: weights
         // A REAÇÃO (W6), em FRAÇÃO da força que o personagem faz. ⚠️ O piso é 0
         // (nada volta) e o teto é 1 (volta inteira) porque **acima de 1 o
         // personagem devolveria mais do que recebeu** — inventar energia, e o

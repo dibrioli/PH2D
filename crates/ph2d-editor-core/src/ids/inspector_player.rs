@@ -222,6 +222,23 @@ pub const INSP_PLAYER_CROUCH_HEIGHT: NodeId = hash_node_id("insp.player.crouch.h
 /// A velocidade de cruzeiro agachado, m/s. ⚠️ Zero aqui NÃO desliga nada.
 pub const INSP_PLAYER_CROUCH_SPEED: NodeId = hash_node_id("insp.player.crouch.speed");
 
+/// **O NADO** (W-Swim) — a velocidade, a autoridade e o LIMIAR de entrada.
+///
+/// ⚠️ **O terceiro não é uma altura**, e é a distinção que decide se o artista
+/// entende o card: ele conta **PESOS carregados pelo fluido**, então `1` diz *a
+/// água sozinha me sustenta* em qualquer poça — enquanto uma altura diria coisas
+/// diferentes em cada uma. Ver [`INSP_PLAYER_SWIM_ENTER`].
+pub const INSP_PLAYER_SWIM_SPEED: NodeId = hash_node_id("insp.player.swim.speed");
+/// Quão depressa se chega à velocidade de nado, m/s². ⚠️ É autoridade CONTRA o
+/// empuxo: pouca, e o corpo boia sozinho; muita, e ele treda água parado.
+pub const INSP_PLAYER_SWIM_ACCEL: NodeId = hash_node_id("insp.player.swim.accel");
+/// **Quantos pesos o fluido tem de carregar para ele começar a nadar.**
+///
+/// ⚠️ **Só a ENTRADA usa este número** — sair é uma trava (o chão, ou estar
+/// completamente fora da água), porque um limiar só faria o nadador oscilar em
+/// torno dele exatamente onde o jogador tenta emergir.
+pub const INSP_PLAYER_SWIM_ENTER: NodeId = hash_node_id("insp.player.swim.enter");
+
 pub const INSP_PLAYER_CARD_LEG: NodeId = hash_node_id("insp_player_card_leg");
 pub const INSP_PLAYER_CARD_WALK: NodeId = hash_node_id("insp_player_card_walk");
 pub const INSP_PLAYER_CARD_JUMP: NodeId = hash_node_id("insp_player_card_jump");
@@ -230,3 +247,4 @@ pub const INSP_PLAYER_CARD_REACT: NodeId = hash_node_id("insp_player_card_react"
 pub const INSP_PLAYER_CARD_WALL: NodeId = hash_node_id("insp_player_card_wall");
 pub const INSP_PLAYER_CARD_DASH: NodeId = hash_node_id("insp_player_card_dash");
 pub const INSP_PLAYER_CARD_CROUCH: NodeId = hash_node_id("insp_player_card_crouch");
+pub const INSP_PLAYER_CARD_SWIM: NodeId = hash_node_id("insp_player_card_swim");

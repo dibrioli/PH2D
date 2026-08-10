@@ -376,7 +376,21 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// ⚠️ **PROVISÓRIO até a integração** — o valor se CONTA contra o `main` do dia,
 /// e nesta janela há outras linhas vivas
 /// ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
-const PROJECT_SCHEMA: u32 = 70;
+/// v71 (physics, W-Swim — NADAR): o `PlatformPlayer` ganhou **três** campos
+/// apendados — `swim_speed` (a capacidade; `0` desliga, e é assim que ela
+/// nasce), `swim_acceleration` (a autoridade do servo contra o empuxo) e
+/// `swim_enter` (**quantos PESOS o fluido tem de carregar** para o regime
+/// armar). Os três num degrau só porque são uma capacidade só: quem escreve o
+/// primeiro recebe um nado que funciona.
+/// ⚠️ **O limiar não é uma altura, e não podia ser** — a mesma altura significa
+/// coisas diferentes em cada poça; `1.0` é *a água sozinha me sustenta*, que é
+/// por construção a linha de flutuação em qualquer densidade (a tabela está em
+/// `measure_the_swim_threshold`).
+/// ⚠️ **A FITA não se move**: o eixo vertical do nado sai dos botões `jump`/
+/// `down`, que já viajam no BITMASK — um eixo novo teria mudado a forma de
+/// `(f32, u8)` e recusado toda corrida já salva.
+/// ⚠️ **PROVISÓRIO, como o degrau acima** — contado contra o `main` de hoje (70).
+const PROJECT_SCHEMA: u32 = 71;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

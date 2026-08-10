@@ -17,8 +17,8 @@
 
 use bevy_ecs::component::Component;
 use ph2d_platformer::{
-    CrouchConfig, DashConfig, JumpConfig, PlayerConfig, ReactionConfig, RideConfig, WalkConfig,
-    WallConfig,
+    CrouchConfig, DashConfig, JumpConfig, PlayerConfig, ReactionConfig, RideConfig, SwimConfig,
+    WalkConfig, WallConfig,
 };
 use serde::{Deserialize, Serialize};
 
@@ -203,6 +203,33 @@ pub struct PlatformPlayer {
     /// capacidade desligada põe zero na [`Self::crouch_height`]. São dois
     /// números com dois significados, de propósito.
     pub crouch_speed: f32,
+
+    /// **NADAR** (W-Swim) — a velocidade de nado, m/s. `0` desliga.
+    ///
+    /// ⚠️ **Nasce DESLIGADO**, como o arranque, o agachar e as paredes, e pela
+    /// mesma razão: nadar é uma CAPACIDADE do personagem, não uma correção de
+    /// física. Ligá-la por default mudaria o comportamento de todo player já
+    /// autorado que tenha uma poça na cena.
+    pub swim_speed: f32,
+    /// **Quão depressa se chega à velocidade de nado**, m/s².
+    ///
+    /// ⚠️ **É AUTORIDADE contra a água, não só resposta:** o empuxo empurra
+    /// enquanto este servo corrige, então um número pequeno deixa o corpo boiar
+    /// para a tona sozinho quando ninguém dirige, e um número grande deixa o
+    /// nadador tredar água parado onde quiser.
+    pub swim_acceleration: f32,
+    /// **Quantos PESOS o fluido tem de carregar para ele começar a nadar.**
+    ///
+    /// ⚠️ **Não é uma altura, e não podia ser:** a mesma altura significa coisas
+    /// diferentes em cada poça. O default `1.0` é uma frase de física — *a água
+    /// sozinha me sustenta* —, que é por construção a linha em que ele boiaria
+    /// parado, seja qual for a densidade dela ou a dele. A tabela que converte
+    /// este número em imersão está em [`ph2d_platformer::swim`].
+    ///
+    /// ⚠️ **Só a ENTRADA usa este número.** Sair é uma trava (chão, ou estar
+    /// completamente fora da água), porque um limiar só faria o nadador oscilar
+    /// em torno dele exatamente onde o jogador tenta emergir.
+    pub swim_enter: f32,
 }
 
 impl PlatformPlayer {
@@ -256,6 +283,11 @@ impl PlatformPlayer {
                 height: self.crouch_height,
                 speed: self.crouch_speed,
             },
+            swim: SwimConfig {
+                speed: self.swim_speed,
+                acceleration: self.swim_acceleration,
+                enter: self.swim_enter,
+            },
             react: ReactionConfig {
                 support: self.reaction_support,
                 movement: self.reaction_movement,
@@ -304,6 +336,9 @@ impl Default for PlatformPlayer {
             dash_cooldown: c.dash.cooldown,
             crouch_height: c.crouch.height,
             crouch_speed: c.crouch.speed,
+            swim_speed: c.swim.speed,
+            swim_acceleration: c.swim.acceleration,
+            swim_enter: c.swim.enter,
         }
     }
 }

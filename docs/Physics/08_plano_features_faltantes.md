@@ -172,6 +172,55 @@ executável nos dois sentidos.
 `ph2d-ecs` e o do `ph2d-physics-ecs` **intocados** (o estado é da lei, não um
 componente) · **zero `Cargo.toml`** · **nenhum ADR** · cena **`=105`**.
 
+#### As duas perguntas do Enio, e o defeito que a segunda achou
+
+> *"Kinematic não vai nadar?"* · *"não temos parâmetros para o quanto fica
+> submerso quando boia na superfície?"*
+
+**(1) Vai** — e já ia: os gates de produto varrem `[false, true]` em **todos**,
+porque o `player_motor` é um só e o `kinematic_advance` honra o `motor.accel` e
+o `motor.boost` que a braçada escreve. O que faltava era o artista poder **ver**,
+e a cena `=105` passou a montar um terceiro corpo, **verde**, cinemático. *Uma
+capacidade que só os testes conhecem é uma capacidade que o próximo report
+pergunta de novo.*
+
+**(2) Tem, e são as duas DENSIDADES** — a submersão de repouso é `1/razão`,
+exata. Medido (`measure_the_float_line`), com a capacidade **desligada**:
+
+```text
+  fluido 4,00x  ->  24,5% submerso   (previsto 25%)
+  fluido 2,00x  ->  50,1%            (previsto 50%)
+  fluido 1,25x  ->  80,1%            (previsto 80%)
+```
+
+⚠️ **Mas a pergunta destapou um defeito, e ele era grande:** o repouso do nado
+mirava **velocidade vertical zero**, com um doc-comment meu a dizer *"o que
+sobra é o que a água faz com ele"*. O servo **cancela** o empuxo a cada tique,
+então o nadador parado não boiava — congelava onde estava:
+
+```text
+  fluido 1,25x, nado 0  ->  80,1% submerso   (a linha da física)
+  fluido 1,25x, nado 4  -> 100,0% submerso   (afundado, e lá ficava)
+```
+
+⇒ **ligar o nado AFUNDAVA quem boiava.** O repouso passou a procurar a LINHA.
+
+⚠️ **E não há knob novo, de propósito** — a linha **é** o `swim_enter`. Um
+`ride` próprio teria de ser co-afinado com ele (o valor certo de um seria função
+do outro, [[feedback_ergonomics_verdict_is_a_design_bug]]) e o caso degenerado é
+feio: mirar uma linha que o fluido não alcança faz o nadador remar para baixo
+**para sempre**. Com `ride ≡ enter` esse estado é **inexprimível**, porque o
+regime só arma quando `buoyed >= enter` de facto acontece.
+
+Resultado, nos dois modos: **25,0% · 49,9% · 79,8%** contra `25 · 50 · 80`
+previstos — e a amplitude do bobeio a `4×` cai de **0,43 m para 0,00**.
+
+⚠️ **Fronteira NOMEADA:** um corpo de densidade **neutra** (razão `1,00`) nunca
+arma o nado com o default, porque a tesselação do collider lê `buoyed ≈ 0,996`
+submerso por completo (o viés de `0,64%` que o `AreaBuoyancy` documenta). Ele
+fica onde está sem fazer nada — a flutuação neutra sai de graça da razão —, e
+quem quiser que ele NADE baixa o `swim_enter` um pouco.
+
 ### 4.2 · `W-ZoneForce` — **a força de uma zona leva um personagem cinemático** ⟨o item do Enio⟩
 
 Hoje uma correnteza move o modo Dynamic e **não** move o Snap/Push/Pure: o

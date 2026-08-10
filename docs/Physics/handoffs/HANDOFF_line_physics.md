@@ -9590,7 +9590,85 @@ fora de toda disputa de número.
 
 ### Smoke
 
-**`PH2D_PHYSICS_SMOKE=105`** — duas cápsulas idênticas, e a única diferença é a
-`swim_speed` (âmbar `0` = a boia, o CONTROLE; azul = o nadador). Os dois recebem
-a MESMA entrada, então a cena é uma ablação com a mão do artista. A poça RASA em
-cima do cais é metade da cena: atravessá-la a pé é o que o limiar protege.
+**`PH2D_PHYSICS_SMOKE=105`** — **três** cápsulas idênticas: âmbar `swim_speed 0`
+(a boia, o CONTROLE), azul (o nadador, corpo dinâmico) e **verde** (o mesmo
+nadador, corpo **cinemático**). Os três recebem a MESMA entrada, então a cena é
+uma ablação com a mão do artista. A poça RASA em cima do cais é metade da cena:
+atravessá-la a pé é o que o limiar protege.
+
+## W-SwimLine — o nadador parado BOIA (2026-08-10, mesma cena `=105`)
+
+Duas perguntas do Enio sobre a wave acima, e a segunda achou um defeito.
+
+### (1) *"Kinematic não vai nadar?"* — vai, e já ia
+
+O `player_motor` é **um só** e o `kinematic_advance` já honra o `motor.accel` e o
+`motor.boost` que a braçada escreve; os gates de produto varrem `[false, true]`
+em **todos**. O que faltava era o artista poder **ver** ⇒ a cena ganhou o terceiro
+corpo, verde. *Uma capacidade que só os testes conhecem é uma capacidade que o
+próximo report pergunta de novo.*
+
+### (2) *"não temos parâmetros para o quanto fica submerso?"* — tem, e são as densidades
+
+A submersão de repouso é `1/razão`, **exata** — medido com a capacidade
+desligada: **24,5% · 50,1% · 80,1%** nas poças `4×` · `2×` · `1,25×`, contra
+`25 · 50 · 80` previstos. Os dois números que a decidem já são autorados: a
+`AreaBuoyancy` da zona e a `density`/`MassOverride` do corpo.
+
+⚠️ **Mas a pergunta destapou o defeito:** o repouso do nado mirava **velocidade
+vertical zero**, e o doc-comment que eu escrevi (*"o que sobra é o que a água faz
+com ele"*) **descrevia o oposto do que o código fazia** — o servo cancela o
+empuxo a cada tique, então o nadador parado **congelava** onde estava e subia ao
+ritmo de um tique de empuxo por tique.
+
+```text
+  poça 1,25x, nado 0  ->  80,1% submerso   (a linha da física)
+  poça 1,25x, nado 4  -> 100,0% submerso   (afundado, e lá ficava)
+```
+
+⇒ **ligar o nado AFUNDAVA quem boiava.** Sem entrada, ele agora procura a LINHA.
+
+⚠️ **Zero knobs novos, de propósito** — a linha **é** o `swim_enter`. Um `ride`
+próprio teria de ser co-afinado com ele (o valor certo de um seria função do
+outro, [[feedback_ergonomics_verdict_is_a_design_bug]]), e o caso degenerado é
+feio: mirar uma linha que o fluido não alcança faz o nadador remar para baixo
+para sempre. Com `ride ≡ enter` esse estado é **inexprimível** — o regime só arma
+quando `buoyed >= enter` de facto acontece, logo a linha é sempre alcançável.
+
+⚠️ **O ganho é 1 e não é escolhido:** o erro é medido em PESOS e o alvo em
+frações da `swim_speed` ⇒ *um peso de erro é uma braçada cheia*.
+
+**Resultado, nos dois modos:** **25,0% · 49,9% · 79,8%**, e a amplitude do bobeio
+a `4×` cai de **0,43 m para 0,00** — o servo amortece de graça.
+
+### Gates
+
+`turning_the_swimming_on_does_not_move_the_float_line` — ⚠️ **o oráculo é o mundo
+SEM a capacidade**, e é o mais forte que existe aqui: um literal seria espelho da
+fixture, e uma desigualdade (*"sobe menos"*) foi **exatamente** o que deixou o
+defeito passar (o `an_idle_swimmer_still_answers_to_the_water` afirmava
+`idle < off`, uma descrição fiel da lei defeituosa — reescrito).
+
+⚠️ **DUAS coisas da fixture são medição, não gosto:** o corpo é largado **fundo**
+(`−2,5`) e a autoridade é **derivada da poça** (`|g|·(razão−1)·1,5`). Com o
+`START` dos outros gates e o accel de partida, a lei defeituosa erra **0,08 m** e
+passaria por qualquer tolerância honesta; funda, erra **0,56 m**. E o gate varre
+**três** densidades porque na poça `4×` o empuxo é tão forte que até a lei
+defeituosa chega à linha dentro da janela — quem a denuncia é a `2×`.
+
+Mais 3 de unidade (o dedo vence a linha · o sinal · a saturação) e o
+`the_kinematic_swimmer_answers_the_same_buttons` na cena. **1 mutação, sangra.**
+
+⚠️ **Fronteira NOMEADA:** um corpo de densidade **neutra** (razão `1,00`) nunca
+arma o nado com o default — a tesselação do collider lê `buoyed ≈ 0,996` submerso
+por completo (o viés de `0,64%` do `AreaBuoyancy`). Ele fica onde está sem fazer
+nada (a flutuação neutra sai de graça da razão); quem quiser que ele NADE baixa o
+`swim_enter`.
+
+### Números
+
+`PROJECT_SCHEMA` **fica em 71** (nenhum campo novo — a linha reusa o
+`swim_enter`) · `physics_ecs_c9` **`fb27f676…`, 117 corpos, INTOCADO** (nenhuma
+lane dele nada) · registros **intocados** · gizmo ids **nenhum novo** · **zero
+`Cargo.toml`** · **nenhum ADR**. A row da §14 mudou de rótulo (`Swim Enter` →
+**`Swim Line`**), mesmo id.

@@ -60,8 +60,17 @@ const POP: f32 = 0.03;
 /// losango de pontos que pisca no compasso enquanto o resto da grade fica parado.
 ///
 /// O que o artista vê: um campo denso e imóvel; a cada meio segundo, **só os pontos dentro
-/// da caixa girada** trocam de tamanho. Fora dela nada acontece, nunca — o beat chega a
-/// todas as linhas e o campo decide quem o escuta.
+/// da caixa girada** trocam de tamanho. Fora dela nada acontece — o beat chega a todas as
+/// linhas e o campo decide quem o escuta.
+///
+/// ⚠️ **"Fora dela nada acontece" vale a partir do BOOT, não a partir de sempre**, e a
+/// diferença é medida (BUGS #1, report do Enio em 2026-08-10): EDITAR o campo com a cena
+/// rodando — marcar `Invert` e desmarcar — devolve a máscara e **não** devolve a paridade do
+/// `pulse.counter`, que vive no `pre` self-loop. Quem estava fora recebeu as batidas enquanto
+/// o campo estava invertido, e fica aceso. *O campo gateia o EVENTO; ele não gateia o
+/// ESTADO*, e a informação que faltaria — *"esta linha SAIU do campo"* — é colapsada no mesmo
+/// zero de *"não há pulso agora"* pelo `value.math(Multiply)` do portão. O número está em
+/// `the_field_gates_the_pulse_but_not_the_counters_memory`.
 pub(super) fn build_gpu_pulse_gate_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,

@@ -1,6 +1,10 @@
 #![forbid(unsafe_code)]
-//! `field.box` — a Motion **focus field: an axis-aligned rectangle** keyed by
-//! POSITION. It writes the same multiplicative `falloff` mask `motion.falloff`
+//! `field.box` — a Motion **focus field: a rectangle** keyed by POSITION, and it
+//! **ROTATES** (`rotation`, in degrees: the offset is turned into the box's local
+//! frame, where the test is axis-aligned again). A box at 45° is a **diamond** — a
+//! shape neither an ordinal field nor a radial `motion.falloff` can draw, and what
+//! the `PH2D_GPU_COOK_DEMO=23` scene leans on.
+//! It writes the same multiplicative `falloff` mask `motion.falloff`
 //! and `field.index_range` do (the sister-of-`accel` contract, §1.2), so fields
 //! compose. Unlike `motion.falloff`'s square `Rect` (a single `radius`), the box
 //! has **independent `width`/`height`** and a **soft plateau**: the mask is a flat
@@ -17,7 +21,12 @@
 //!
 //! Params (read via `ctx.param`): `width` (8), `height` (8) — the **FULL** extents,
 //! centred; `soft` (1) — the edge ramp in world-units; `center_x`/`center_y` (0);
-//! `curve` (2 Smooth); `invert` (0/1 — flips to `1 − f`). The default is a soft
+//! `rotation` (0, degrees); `curve` (2 Smooth); `invert` (0/1 — flips to `1 − f`).
+//! ⚠️ **`invert` is a PURE function of the params, not a stored flip** — a round
+//! trip (check, uncheck) re-derives the mask byte-for-byte, measured over 262.144
+//! rows. What a round trip does NOT restore is the state of anything DOWNSTREAM
+//! that accumulates (`pulse.counter`); see `motion_state_gpu_pulse_demo_tests`.
+//! The default is a soft
 //! square in the middle (D12 — a fresh node does something visible). The neutral
 //! is a box larger than the scene with `soft = 0` and `invert = 0` ⇒ mask `1`
 //! everywhere ⇒ the `falloff` column is multiplied by the identity, byte-unchanged.

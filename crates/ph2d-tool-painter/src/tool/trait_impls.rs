@@ -59,6 +59,7 @@ impl Tool for PainterTool {
             || self.route_brush_watercolor_event(&event)
             || self.route_brush_wetpaint_event(&event)
             || self.route_brush_impasto_event(&event)
+            || self.route_substrate_event(&event)
             || self.route_brush_stencil_event(&event)
             || self.route_composite_event(&event)
             || self.route_brush_dab_event(&event)

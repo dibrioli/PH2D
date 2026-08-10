@@ -331,6 +331,7 @@ mod smoke_script;
 mod splice_smoke;
 mod stack_smoke;
 mod stagger_smoke;
+mod substrate_smoke;
 mod symmetry_live;
 /// A cena de smoke da SIMETRIA de desenho (`PH2D_BUILD_SMOKE=46`) — irmã de `build_smoke`.
 mod symmetry_smoke;
@@ -635,6 +636,7 @@ impl App {
             dragging: None,
             title_dirty: true,
             impasto_smoke_done: false,
+            substrate_smoke_done: false,
             sculpt3d_canvas_done: false,
             sculpt3d_bake_request: false,
             sculpt3d_alpha_request: false,

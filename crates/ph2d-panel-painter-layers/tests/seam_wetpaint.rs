@@ -53,16 +53,24 @@ fn the_paint_mode_chip_is_offered_to_arm_and_to_disarm() {
     );
 }
 
-/// W2.7's door: the **Paper** section is offered in wet mode (the slot seeds
-/// the engine's tooth) and stays hidden for the plain brush (no substrate to
-/// read). Mutation that bleeds it: `|| brush.wetpaint` dropped from the
-/// Paper gate in `paint_brush_sections`.
+/// W2.7's door: the **Paper** section is offered in wet mode — the armed slot seeds the fluid
+/// engine's tooth plane at session birth, so without the section the wet artist has no way to arm a
+/// paper by hand. Mutation that bleeds it: `paint_paper_section` dropped from `paint_brush_sections`.
+///
+/// ⚠️ **A metade OPOSTA deste gate morreu com a premissa dela, e a inversão é deliberada** (2026-08-10).
+/// Ele afirmava que o pincel comum *"must NOT offer Paper (deve ser assim mesmo — Enio)"*, e a razão
+/// escrita ao lado era **"no substrate to read"** — verdadeira no dia em que foi escrita e falsa desde
+/// que o dente do papel virou SUPERFÍCIE ILUMINADA (`substrate_relief.rs`): o Digital lê o substrato, e
+/// é justamente o meio para o qual o relevo foi pedido. Um gate cuja premissa caiu não se apaga em
+/// silêncio nem se deixa verde — ele passa a afirmar o que hoje é verdade, e é isto:
+/// **a seção é oferecida nos DOIS**. As rows que continuam sendo só da aguada têm gate de ausência
+/// próprio em `seam_substrate.rs`.
 #[test]
-fn the_paper_section_is_offered_in_wet_mode_and_hidden_for_the_plain_brush() {
+fn the_paper_section_is_offered_in_wet_mode_and_in_the_plain_brush_too() {
     let plain = PainterTool::default();
     assert!(
-        !has(&painted(&plain), core_ids::PAINTER_WATERCOLOR_PAPER_SECTION),
-        "the plain brush must NOT offer Paper (deve ser assim mesmo — Enio)"
+        has(&painted(&plain), core_ids::PAINTER_WATERCOLOR_PAPER_SECTION),
+        "o pincel comum não oferece Paper — o relevo do substrato fica inalcançável no meio que o pediu"
     );
     let mut wet = PainterTool::default();
     wet.set_wetpaint_armed(true);

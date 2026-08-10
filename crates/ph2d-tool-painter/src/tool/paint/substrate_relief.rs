@@ -230,4 +230,25 @@ impl crate::tool::PainterTool {
     pub fn substrate_roughness(&self) -> f32 {
         self.paint.substrate_rough
     }
+
+    /// Roteia as duas rows do substrato do canal genérico do painel para os setters acima. Devolve
+    /// `true` quando consumiu o evento; chamada pelo `handle_panel_event`.
+    pub(crate) fn route_substrate_event(
+        &mut self,
+        event: &ph2d_editor_core::tool::PanelEvent,
+    ) -> bool {
+        use ph2d_editor_core::ids as core_ids;
+        use ph2d_editor_core::tool::PanelEvent;
+        match event {
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SUBSTRATE_RELIEF => {
+                self.set_substrate_depth(*v as f32);
+                true
+            }
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SUBSTRATE_ROUGHNESS => {
+                self.set_substrate_roughness(*v as f32);
+                true
+            }
+            _ => false,
+        }
+    }
 }

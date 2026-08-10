@@ -133,16 +133,15 @@ pub(crate) fn paint_appearance_sections(
             );
         }
 
-        // ── The **Paper** section (the substrate) — ABOVE Grain; watercolor mode AND Wet Paint
-        //    (W2.7: the armed Paper slot seeds the fluid engine's tooth plane at session birth —
-        //    without the section the wet artist has no door to arm a paper). Hidden for the plain
-        //    brush / Impasto, which read no substrate (Enio 2026-07-21: "deve ser assim mesmo"). ──
-        if brush.watercolor || brush.wetpaint {
-            y = sep(ctx.scene, theme, x, content_w, y);
-            y = crate::paint_watercolor_paper::paint_paper_section(
-                ctx, theme, x, content_w, y, brush,
-            );
-        }
+        // ── The **Paper** section (the substrate) — ABOVE Grain, in EVERY medium.
+        //
+        //    ⚠️ Era `watercolor || wetpaint`, sob a nota *"escondida para o brush comum / Impasto, que
+        //    não leem substrato nenhum (Enio 2026-07-21: 'deve ser assim mesmo')"*. A premissa dela
+        //    caiu quando o dente do papel virou SUPERFÍCIE ILUMINADA (`substrate_relief.rs`): hoje o
+        //    Digital lê o substrato, e é justamente o meio para o qual o relevo foi pedido. As rows que
+        //    continuam sendo só da aguada são gateadas DENTRO da seção, por quem as lê. ──
+        y = sep(ctx.scene, theme, x, content_w, y);
+        y = crate::paint_watercolor_paper::paint_paper_section(ctx, theme, x, content_w, y, brush);
 
         // ── Section 8: Grain — the texture inside the silhouette (was "Texture", Enio 2026-06-25);
         //    IS the granulation map in watercolor mode ("Same as Paper" + Amount at its top). ──

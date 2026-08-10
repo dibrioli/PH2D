@@ -522,6 +522,8 @@ pub(crate) struct App {
     /// One-shot latch for the `PH2D_IMPASTO_SMOKE` canvas (spawned on the first frame the atlas
     /// plumbing is in scope, not at init — where `atlas_asset_map` does not exist yet).
     pub(crate) impasto_smoke_done: bool,
+    /// `PH2D_SUBSTRATE_SMOKE` one-shot latch (o dente do papel como superfície, no Digital).
+    pub(crate) substrate_smoke_done: bool,
     /// `PH2D_MASK_SMOKE` one-shot latch (doc 25 §13.9 — the coverage-law scene).
     pub(crate) mask_smoke_done: bool,
     /// `PH2D_TAPER_SMOKE` one-shot latch (the Procreate Touch Taper scene).

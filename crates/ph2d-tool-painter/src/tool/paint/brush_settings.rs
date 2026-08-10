@@ -476,6 +476,12 @@ pub struct BrushSettings {
     /// Document **paper colour** (straight sRGB `0..1`) — the ground the watercolor optics see where
     /// the backdrop under the active layer is transparent. Tool-global (`PaintState`), not per-brush.
     pub paper_color: [f32; 3],
+    /// **Substrate Relief** (`0..1`, `0` = off) — a amplitude do dente do papel como SUPERFÍCIE
+    /// iluminada, em QUALQUER meio (`substrate_relief.rs`). Tool-global, como a cor do papel.
+    pub substrate_relief: f32,
+    /// **Substrate Roughness** (`0..1`) — a ÍNGREMEZA do dente (o *Contrast* do Corel / o *Roughness*
+    /// do ArtRage), não a largura de um realce. Tool-global.
+    pub substrate_roughness: f32,
 
     // ── Impasto section (paint thickness + relief; `docs/Painter/16_impasto_plano_implementacao.md`) ──
     /// Master enable for the **Impasto** section. Off ⇒ every field below is inert and the brush is

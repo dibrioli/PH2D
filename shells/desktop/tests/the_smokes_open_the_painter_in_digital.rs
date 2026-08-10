@@ -23,6 +23,7 @@
 const IMPASTO: &str = include_str!("../src/impasto_smoke.rs");
 const WETPAINT: &str = include_str!("../src/wetpaint_smoke.rs");
 const MASK: &str = include_str!("../src/mask_smoke.rs");
+const SUBSTRATE: &str = include_str!("../src/substrate_smoke.rs");
 
 /// Nenhum smoke chama `set_paint_media(PaintMedia::<não-Digital>)`.
 ///
@@ -31,7 +32,12 @@ const MASK: &str = include_str!("../src/mask_smoke.rs");
 /// dos dois `arm_brush_once`.
 #[test]
 fn no_painter_smoke_forces_a_medium() {
-    for (name, src) in [("impasto", IMPASTO), ("wetpaint", WETPAINT), ("mask", MASK)] {
+    for (name, src) in [
+        ("impasto", IMPASTO),
+        ("wetpaint", WETPAINT),
+        ("mask", MASK),
+        ("substrate", SUBSTRATE),
+    ] {
         for medium in ["Impasto", "Watercolor", "WetPaint"] {
             // A chamada exata que abre num meio; a prosa dos docs cita os meios em texto, nunca nesta
             // forma de chamada, então isto não pega comentário.
@@ -49,7 +55,11 @@ fn no_painter_smoke_forces_a_medium() {
 /// para o gate acima não passar simplesmente porque alguém esvaziou os arquivos.
 #[test]
 fn the_smokes_still_prepare_a_canvas() {
-    for (name, src) in [("impasto", IMPASTO), ("wetpaint", WETPAINT)] {
+    for (name, src) in [
+        ("impasto", IMPASTO),
+        ("wetpaint", WETPAINT),
+        ("substrate", SUBSTRATE),
+    ] {
         assert!(
             src.contains("fn spawn_if_enabled")
                 && src.contains("fn arm_brush_once")
@@ -78,5 +88,19 @@ fn the_smokes_still_prepare_a_canvas() {
     assert!(
         WETPAINT.contains("pick Wet Paint from the Paint Mode dropdown"),
         "o wetpaint_smoke não instrui mais a escolher Wet Paint no dropdown"
+    );
+    // ⚠️ O do SUBSTRATO é o único cuja instrução é a NEGATIVA — o dente do papel acende no Digital,
+    // que já é o meio em que o Painter abre, então mandar escolher um meio ali seria mandar sair da
+    // cena. A metade positiva dele é o CONTROLE (Relief em 0 tem de deixar a tela exatamente como
+    // estava), sem o qual a cena não sabe distinguir "o relevo funciona" de "a tela já era assim".
+    assert!(
+        SUBSTRATE.contains("NAO escolha nada no Paint Mode")
+            || SUBSTRATE.contains("não escolha nada no Paint Mode"),
+        "o substrate_smoke não instrui mais a NÃO escolher meio — a cena é do Digital"
+    );
+    assert!(
+        SUBSTRATE.contains("CONTROLE") && SUBSTRATE.contains("Relief em 0"),
+        "o substrate_smoke perdeu o controle (Relief em 0 = a tela intocada) — sem ele o artista não \
+         consegue dizer que o neutro é byte-idêntico"
     );
 }

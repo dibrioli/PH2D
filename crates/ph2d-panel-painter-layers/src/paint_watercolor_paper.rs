@@ -40,10 +40,22 @@ fn paper_preview_view(brush: &BrushSettings) -> BrushSettings {
     v
 }
 
-/// Paint the **Paper** section (the substrate the wash sits on) — a collapsible section ABOVE the Grain
-/// section, shown only in watercolor mode. Full parity with the Grain section's controls: Kind picker +
-/// Mapping + Rake + Random Angle + Angle + Offset + Size + Depth + per-pattern params. (The live preview
-/// + the Color Ramp are a follow-up; the substrate is a grayscale height-field so a ramp is niche.)
+/// Paint the **Paper** section (the substrate everything sits on) — collapsible, ABOVE the Grain
+/// section. Kind picker + preview + Angle + Offset + Size + per-pattern params, and at the bottom the
+/// **Relief** / **Roughness** of the substrate. (The Color Ramp is a follow-up; the substrate is a
+/// grayscale height-field so a ramp is niche.)
+///
+/// ⚠️ **Cada row é oferecida por quem a LÊ, e é isso que abriu a seção aos outros meios.** Ela era
+/// `watercolor || wetpaint` sob a nota *"escondida para o brush comum / Impasto, que não leem
+/// substrato nenhum (Enio 2026-07-21: 'deve ser assim mesmo')"* — verdadeira no dia em que foi escrita
+/// e **falsa desde que o substrato acende** (`substrate_relief.rs`): o Digital passou a ler o dente.
+/// *Quem move o número que tornava algo inalcançável tem de reconferir a nota* (CLAUDE.md §0).
+///
+/// O que **não** se generalizou junto, porque só a aguada os consome (medido por `grep` nos leitores):
+/// a **Color** do papel (o fundo que a óptica da aquarela vê — `watercolor_backdrop`) e a **Tooth**
+/// (quanto o grão morde o wash — `watercolor_render`/`watercolor_field`), mais o **Mapping**, que o
+/// substrato ignora por construção (ele força `Tiled`: um papel que segue o dab não é um papel). As
+/// três seriam controles mortos no Digital, que é a espécie que esta casa extermina.
 pub(crate) fn paint_paper_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -52,6 +64,8 @@ pub(crate) fn paint_paper_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
+    // Quem consome o papel como META do fluido — o único dono das três rows de aguada.
+    let wash = brush.watercolor || brush.wetpaint;
     let (mut y, collapsed) = crate::paint_brush_top::paint_collapsible_section(
         ctx,
         theme,
@@ -69,15 +83,18 @@ pub(crate) fn paint_paper_section(
     // ── Paper COLOUR — the document ground the watercolor optics see where nothing is painted
     //    below the active layer (Rebelle: canvas colour is a user-pickable document property).
     //    Painted before the Kind gate: the ground matters even with no paper texture set. ──
-    paper_color_readback(ctx, brush);
-    if ctx.host.store().picker_target() != Some(core_ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB) {
-        let c = encode_rgb3(brush.paper_color);
-        ctx.host.store_mut().set_widget_color(
-            core_ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
-            [c[0], c[1], c[2], 255],
-        );
+    if wash {
+        paper_color_readback(ctx, brush);
+        if ctx.host.store().picker_target() != Some(core_ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB)
+        {
+            let c = encode_rgb3(brush.paper_color);
+            ctx.host.store_mut().set_widget_color(
+                core_ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
+                [c[0], c[1], c[2], 255],
+            );
+        }
+        y = paint_paper_color_row(ctx, theme, x, content_w, y, brush);
     }
-    y = paint_paper_color_row(ctx, theme, x, content_w, y, brush);
     let kind = TextureKind::from_u8(brush.paper_kind);
     // ── Kind picker ──
     let (ny, open) = paint_dropdown_row(
@@ -95,6 +112,40 @@ pub(crate) fn paint_paper_section(
     if let Some(r) = open {
         state::set_pending_paper_kind_dd(Some((r, brush.paper_kind)));
     }
+    // ── O SUBSTRATO: quanto o dente sobressai, e quão íngremes são as paredes dele. ──
+    //
+    // ⚠️ **Pintadas ANTES do portão de `None`, e a ordem é load-bearing.** `set_substrate_depth` ARMA um
+    // papel quando o artista liga o relevo sem ter escolhido um — e essa porta só é alcançável se a row
+    // existir justamente no estado em que não há papel. Embaixo do portão, ligar o relevo exigiria já
+    // ter um papel, e o armar-um-default viraria um guard que nenhum gesto alcança.
+    y = number_field::paint_num_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Relief",
+        core_ids::PAINTER_SUBSTRATE_RELIEF,
+        brush.substrate_relief,
+        0.0,
+        1.0,
+        number_field::FINE_STEP,
+        2,
+    );
+    y = number_field::paint_num_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Roughness",
+        core_ids::PAINTER_SUBSTRATE_ROUGHNESS,
+        brush.substrate_roughness,
+        0.0,
+        1.0,
+        number_field::FINE_STEP,
+        2,
+    );
     if kind == TextureKind::None {
         return y;
     }
@@ -110,21 +161,23 @@ pub(crate) fn paint_paper_section(
     );
     // ── Mapping (paper is a static substrate; per-dab Rake / Random-Angle were dropped from the UI —
     //    no reference app rotates paper per-dab; the per-dab rake/random live on the Grain slot). ──
-    let mapping = TextureMapping::from_u8(brush.paper_mapping);
-    let (ny, open) = paint_dropdown_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Mapping",
-        core_ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
-        brush.paper_mapping,
-        mapping.name(),
-    );
-    y = ny;
-    if let Some(r) = open {
-        state::set_pending_paper_mapping_dd(Some((r, brush.paper_mapping)));
+    if wash {
+        let mapping = TextureMapping::from_u8(brush.paper_mapping);
+        let (ny, open) = paint_dropdown_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Mapping",
+            core_ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
+            brush.paper_mapping,
+            mapping.name(),
+        );
+        y = ny;
+        if let Some(r) = open {
+            state::set_pending_paper_mapping_dd(Some((r, brush.paper_mapping)));
+        }
     }
     y = number_field::paint_num_row(
         ctx,
@@ -173,21 +226,23 @@ pub(crate) fn paint_paper_section(
         number_field::SIZE_STEP,
         2,
     );
-    // ── Tooth (how strongly the paper grain bites the wash — ex-"Depth") ──
-    y = number_field::paint_num_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Tooth",
-        core_ids::PAINTER_WATERCOLOR_PAPER_DEPTH,
-        brush.paper_depth.clamp(0.0, 1.0),
-        0.0,
-        1.0,
-        number_field::FINE_STEP,
-        2,
-    );
+    // ── Tooth (how strongly the paper grain bites the WASH — ex-"Depth"; wash-only, see the header) ──
+    if wash {
+        y = number_field::paint_num_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Tooth",
+            core_ids::PAINTER_WATERCOLOR_PAPER_DEPTH,
+            brush.paper_depth.clamp(0.0, 1.0),
+            0.0,
+            1.0,
+            number_field::FINE_STEP,
+            2,
+        );
+    }
     // ── Per-pattern params (Contrast / Brightness / kind knobs) ──
     let pp: Vec<(&str, ph2d_a11y::NodeId, f32)> = param_specs(kind)
         .iter()

@@ -18,6 +18,36 @@
 //! static offset), `speed` (72°/sec — continuous orbit). Degrees is the app's one
 //! authored-angle unit; the cycle-based trig converts at the edge (`deg / 360`,
 //! an exact IEEE division — deterministic, HR-5).
+//!
+//! ## ⚠️ This node IS the layout rotation of the whole distribution family
+//!
+//! `motion.transform` gives a layout its centre (`offset_x`/`offset_y`) and its spread (`scale`);
+//! the third of the affine is here, with `speed = 0`. That is the factorisation, and it is why
+//! neither `motion.transform` nor `motion.rotate` grows a pivot: rotating a LAYOUT moves
+//! positions about a centre (this node), while `motion.rotate` spins each sprite's own basis in
+//! place and stays transcendental-free precisely by never doing trig.
+//!
+//! The factorisation was written down in neither node, and it cost: the doc-89 sheet for the
+//! DISTRIBUTION family listed *"Coordinates: centre + rotation"* as a P1 gap on **all seven**
+//! distributions, calling this exact usage *"abuso semântico"* — while the sheet for the
+//! TRANSFORM family refused the same feature on `motion.transform` for the opposite reason
+//! (*"`motion.orbit(speed = 0)` **é** a rotação de layout"*). Two sheets, opposite verdicts, one
+//! missing paragraph.
+//!
+//! ⚠️ **The honest cost, measured** (`ph2d-gpu-cook::measure_static_orbit`, 120 frames, a grid
+//! whose params never move):
+//!
+//! | elements | `motion.transform` (`Pure`) | this, `speed = 0` (`Temporal`) | ratio |
+//! |----------|-----------------------------|--------------------------------|-------|
+//! | 1.600    | 0,0003 ms                   | 0,0105 ms                      | 37×   |
+//! | 102.400  | 0,0003 ms                   | 0,6477 ms                      | 2294× |
+//!
+//! The memo holds the `Pure` node perfectly and this one not at all, because `Fingerprint` keys a
+//! `Temporal` node on `playhead.to_bits()` (`cook.rs`) — every frame invalidates a result that
+//! could not have changed. **The cure is not a param here**: it is the cook being able to ask
+//! *"is this node temporal at THIS instant?"*, and `NodeManifest` / `OpResolver` are frozen
+//! contract (§6) ⇒ ADR + Enio, never an edit. A second `Pure` sibling that differs only by having
+//! no clock is the other candidate, and it is a second answer to one operation.
 
 use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};

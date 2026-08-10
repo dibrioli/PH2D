@@ -12,6 +12,13 @@
 //! surface.
 //!
 //! Params (read via `ctx.param`): `angle` (0.0). `rot'_i = rot_i + angle * falloff_i`.
+//!
+//! ⚠️ **There is no `pivot` here, and that is the factorisation, not an omission.** This node
+//! only ACCUMULATES a scalar, which is exactly what keeps it transcendental-free (HR-5) — the
+//! trig lives in the lowering, at the render edge. A pivot would need `cos/sin` *inside* the
+//! node, and the node that already pays for them is [`motion.orbit`], which rotates `P` about a
+//! centre. Spinning a sprite in place and moving a layout about a point are two operations;
+//! this is the first one.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};

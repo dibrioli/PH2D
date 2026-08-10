@@ -20,6 +20,22 @@
 //! the only node that scales the layout, and the combined `P·s + o` affine is
 //! one node instead of two. Reach for `move` for a plain offset, `scale` for
 //! sprite size, and this for spreading a layout about the origin.
+//!
+//! ⚠️ **And the missing third of the affine is DELIBERATE: the layout ROTATION is
+//! [`motion.orbit`] with `speed = 0`.** It rotates `P` about a pivot — which is what rotating a
+//! layout means — and it already pays the `cos/sin` this node would otherwise have to pay a
+//! second time. Not writing that here is what made it read as a hole: the doc-89 sheet for the
+//! DISTRIBUTION family independently listed *"Coordinates: centre + rotation"* as a gap on all
+//! seven distributions, citing *"`motion.transform` dá o centro mas não tem rotação"* — a whole
+//! cluster of work proposed because the factorisation lived in neither node's docs. The centre
+//! is `offset_x`/`offset_y` here; the rotation is the orbit; there is nothing to add.
+//!
+//! ⚠️ **What IS open, and it is not this:** using the orbit statically costs the cook memo. Its
+//! `Effect::Temporal` makes the fingerprint key on the playhead, so a rotation that cannot change
+//! re-cooks every frame — measured, `0,0003 ms` here against `0,6477 ms` there over 102.400
+//! elements, **2294×** (`ph2d-gpu-cook::measure_static_orbit`). Curing it means letting the cook
+//! ask *"is this node temporal at THIS instant?"*, and both `NodeManifest` and `OpResolver` are
+//! frozen (§6) — so it is an ADR, not an edit.
 
 use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};

@@ -17,9 +17,10 @@ resumo: "Uma linha por nota do cofre: caminho, tags e o que a nota responde. Lei
 
 ```
 DECISÃO: ADR-0150 (proposto) — malha primária · escrito direto em Rust/wgpu · SculptGL (MIT) de referência
-LINHA:   line/sculpt3d  — NÃO existe hoje (integrada e encerrada em 2026-08-10; a branch e a
-         worktree foram removidas). Abra uma nova pelo MODELO_ABERTURA_LINHA, a partir do main.
-CÓDIGO:  W1..W17 INTEGRADAS — o estado vivo do módulo é o CLAUDE.md §5, não este bloco.
+LINHA:   line/sculpt3d  — ABERTA de novo em 2026-08-10, em Worktrees/line-sculpt3d, a partir
+         do main 76788440a e com ZERO commits proprios. (A anterior integrou e foi encerrada
+         no mesmo dia; esta e outra.) Assumindo-a? HANDOFF_CONTINUACAO_..._2026-08-10.
+CÓDIGO:  W1..W18 INTEGRADAS — o estado vivo do módulo é o CLAUDE.md §5, não este bloco.
 MEDIDO:  a pegada manda (10x a malha = 0,79x o dab). K1/K2 disparam só no pincel gigante,
          e 88% do custo é DESCOBRIR a vizinhança, não as normais. Decisão: HANDOFF_INTEGRACAO
 MUDANÇA: 2026-07-30 — o MVP em TypeScript foi CANCELADO (ver 02.4)
@@ -29,7 +30,7 @@ MUDANÇA: 2026-07-30 — o MVP em TypeScript foi CANCELADO (ver 02.4)
 
 | Se sua tarefa é… | Leia, nesta ordem |
 |---|---|
-| **ASSUMIR A LINHA E IMPLEMENTAR (comece aqui)** | [[HANDOFF_CONTINUACAO_line_sculpt3d_2026-08-06]] — o estado VIVO da linha (o que não entrou no `main` ainda, o que está aberto e em que ordem) → [[03.8-HANDOFF-implementador-W4]] (o protocolo) |
+| **ASSUMIR A LINHA E IMPLEMENTAR (comece aqui)** | [[HANDOFF_CONTINUACAO_line_sculpt3d_2026-08-10]] — onde a linha está e o que está ABERTO com o preço ao lado (⚠️ ele supersede o de 2026-08-06, cuja lista aberta envelheceu em 3 de 4 itens) → [[06.1-Waves-riscos-e-alvos]] (o roteiro) → [[03.8-HANDOFF-implementador-W4]] (o protocolo) |
 | **portar QUALQUER COISA do SculptGL** | [[03.4-Referencia-SculptGL]] (a política + o livro-razão) → [[03.7-Oraculo-de-fidelidade]] (o protocolo) |
 | **saber o que vem agora** | [[06.1-Waves-riscos-e-alvos]] |
 | entender a decisão inteira | `ADR-0150` → [[02.1-Representacao-malha-primaria]] |

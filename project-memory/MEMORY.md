@@ -49,6 +49,7 @@
 - [`str.replace()` sem casar é no-op](feedback_python_replace_silent_noop_after_fmt.md) — `assert old in s`
 - [`sed -i` relativo erra de repo](feedback_sed_relative_path_hits_primary_cwd.md) — caminho absoluto
 - [Rewrite de token = só arquivos MUDADOS](feedback_a_token_rewrite_scopes_to_changed_files_not_the_whole_tree.md) — `git grep` corrompeu .ttf
+- [Mover doc = RESOLVER link, não casar string](feedback_moving_a_doc_means_resolving_links_not_matching_strings.md) — gate antes/depois por path resolvido; `ls-files` pós-`mv` mente
 - [Mais perigos de git (6)](reference_topic_git_hazards.md) — stash · reset alheio · fence · worktree-base · mojibake
 
 ## Ship / CI / cadência

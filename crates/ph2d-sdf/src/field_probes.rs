@@ -41,13 +41,7 @@ fn sphere_tris() -> (Mesh, Vec<[[f32; 3]; 3]>) {
     closed.triangle_indices(&mut idx);
     let tris = idx
         .iter()
-        .map(|t| {
-            [
-                pos[t[0] as usize],
-                pos[t[1] as usize],
-                pos[t[2] as usize],
-            ]
-        })
+        .map(|t| [pos[t[0] as usize], pos[t[1] as usize], pos[t[2] as usize]])
         .collect();
     (closed, tris)
 }
@@ -297,7 +291,10 @@ fn what_the_ray_returns_at_the_puncture() {
         }
     }
     near.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-    eprintln!("  {} triangulos com acerto perto da janela [0, step]:", near.len());
+    eprintln!(
+        "  {} triangulos com acerto perto da janela [0, step]:",
+        near.len()
+    );
     for (i, h) in near.iter().take(8) {
         let inside_window = (0.0..=f.step).contains(h);
         eprintln!(
@@ -314,8 +311,14 @@ fn what_the_ray_returns_at_the_puncture() {
         .map(|t| t.closest_to(from).0)
         .fold(f32::INFINITY, f32::min)
         .sqrt();
-    eprintln!("  distancia real da celula 'from' a' casca = {d:.9} (step = {:.9})", f.step);
-    eprintln!("  d < step? {}  <- se falso, o early-out do voxelizador pula esta celula", d < f.step);
+    eprintln!(
+        "  distancia real da celula 'from' a' casca = {d:.9} (step = {:.9})",
+        f.step
+    );
+    eprintln!(
+        "  d < step? {}  <- se falso, o early-out do voxelizador pula esta celula",
+        d < f.step
+    );
 }
 
 /// **SONDA — o resíduo do TUBO ABERTO (2 de 361).**
@@ -331,7 +334,10 @@ fn what_is_left_in_the_open_tube() {
     let fill = ph2d_mesh::fill_holes(&mut closed);
     let e = closed.edges();
     let borders = (0..e.len() as u32).filter(|x| e.valence(*x) == 1).count();
-    eprintln!("\ntubo: {} buracos tapados, {borders} arestas de beira restantes", fill.filled());
+    eprintln!(
+        "\ntubo: {} buracos tapados, {borders} arestas de beira restantes",
+        fill.filled()
+    );
 
     for res in [280u32, 377, 279, 281] {
         let mut f = VoxelField::for_bounds(closed.bounds(), res);

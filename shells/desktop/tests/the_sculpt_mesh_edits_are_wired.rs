@@ -1010,3 +1010,54 @@ fn the_one_door_that_grows_the_history_is_the_one_that_trims_it() {
         "a porta que empurra tem de podar -- sem isso a fila cresce sem teto"
     );
 }
+
+#[test]
+fn flattening_is_a_verb_the_artist_asks_for_and_it_can_be_undone() {
+    let src = sculpt_src();
+    // O verbo existe, colapsa pela porta da pilha, e GRAVA — sem a entrada, o
+    // gesto que consome todos os níveis não teria inverso.
+    let body = function_body(&src, "flatten");
+    assert!(
+        body.contains("stack.flatten()"),
+        "o achatar tem de passar pela porta da pilha, e não reconstruir a lógica aqui"
+    );
+    assert!(
+        body.contains("StrokeUndo::Flattened"),
+        "achatar consome TODOS os níveis: sem entrada de undo o gesto é destrutivo"
+    );
+    // E o desfazer é a troca da PILHA inteira — não de uma malha.
+    let apply = function_body(&src, "apply_entry");
+    assert!(
+        apply.contains("StrokeUndo::Flattened(previous)") && apply.contains("stack, *previous"),
+        "desfazer um achatar troca a pilha inteira; trocar só a malha deixaria a peça \
+         com um nível e o detalhe de todos os outros perdido"
+    );
+}
+
+#[test]
+fn no_stack_refusal_tells_the_artist_to_reverse_because_reversing_grows_the_stack() {
+    // ⚠️ **O conselho estava INVERTIDO em cinco lugares.** Reconstruir, fundir e
+    // ligar a topologia dinâmica recusam com a pilha montada, e as cinco
+    // mensagens mandavam *"reverta os níveis antes"* — mas a reversão insere um
+    // nível por BAIXO (`multires_reverse.rs`), então segui-la torna a recusa
+    // mais CERTA. O gate de `ph2d-mesh` pina o fato; este pina que o texto que o
+    // artista lê parou de contradizê-lo.
+    let src = sculpt_src();
+    for line in src.lines() {
+        let l = line.to_lowercase();
+        if !l.contains("pilha") || !l.contains("[sculpt3d]") && !l.contains("nao'") {
+            continue;
+        }
+        assert!(
+            !l.contains("reverta"),
+            "uma recusa de pilha manda REVERTER, e reverter deixa a pilha mais alta: {line}"
+        );
+    }
+    // CONTROLE POSITIVO: a varredura não pode passar por vácuo — as mensagens
+    // que ela julga têm de existir, e agora apontam para o achatar.
+    let hits = src.matches("ACHATE").count();
+    assert!(
+        hits >= 4,
+        "esperava as recusas de pilha apontando para o achatar, e achei {hits}"
+    );
+}

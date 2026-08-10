@@ -270,6 +270,8 @@ pub enum Sculpt3dIntent {
     ChangeLevel(bool),
     Subdivide,
     ReverseLevel,
+    /// Achata a pilha de multiresolução numa malha só.
+    Flatten,
     Remesh,
     CloseHoles,
     /// Mede quanto do céu cada vértice enxerga e instala o canal.

@@ -312,13 +312,21 @@ impl Sculpt3dScene {
                     eprintln!("[sculpt3d] nao' reverte: esta malha nao e' uma subdivisao");
                 }
             }
+            Sculpt3dIntent::Flatten => match self.flatten() {
+                Some(n) => eprintln!(
+                    "[sculpt3d] achatada: {n} niveis -- {} vertices / {} faces",
+                    self.mesh().vert_count(),
+                    self.mesh().face_count()
+                ),
+                None => eprintln!("[sculpt3d] nada a achatar: a pilha ja' tem um nivel so'"),
+            },
             Sculpt3dIntent::Remesh => match self.remesh(self.remesh_res) {
                 Ok(r) => eprintln!(
                     "[sculpt3d] reconstruida: {} -> {} vertices / {} -> {} faces",
                     r.verts.0, r.verts.1, r.faces.0, r.faces.1
                 ),
                 Err(RemeshRefusal::MultiresStack) => {
-                    eprintln!("[sculpt3d] nao' reconstroi com a pilha montada: reverta antes")
+                    eprintln!("[sculpt3d] nao' reconstroi com a pilha montada: ACHATE antes")
                 }
                 Err(RemeshRefusal::EmptyScene) => {
                     eprintln!("[sculpt3d] nao' reconstroi: nao ha' peca na cena")
@@ -389,7 +397,7 @@ impl Sculpt3dScene {
                     );
                 }
                 super::Merge::Stack => {
-                    eprintln!("[sculpt3d] nao' funde com a pilha montada: reverta os niveis antes")
+                    eprintln!("[sculpt3d] nao' funde com a pilha montada: ACHATE a pilha antes")
                 }
             },
             // ⚠️ **Os TRÊS desfechos, e não só o bem-sucedido** — a mesma

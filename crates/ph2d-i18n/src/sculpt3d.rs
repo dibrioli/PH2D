@@ -61,6 +61,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.level" => "Level",
         "panel.sculpt3d.subdivide" => "Subdivide",
         "panel.sculpt3d.reverse" => "Reverse",
+        "panel.sculpt3d.flatten" => "Flatten Levels",
         "panel.sculpt3d.remesh" => "Remesh",
         "panel.sculpt3d.remesh_res" => "Remesh Resolution",
         "panel.sculpt3d.close_holes" => "Close Holes",

@@ -164,7 +164,7 @@ impl App {
                     ),
                     Merge::Stack => eprintln!(
                         "[sculpt3d] nao' funde com a pilha montada: a fusao troca a BASE, e todo nivel \
-                         acima e' subdivisao dela -- reverta os niveis antes"
+                         acima e' subdivisao dela -- ACHATE a pilha antes"
                     ),
                 }
                 return true;
@@ -345,7 +345,7 @@ impl App {
                     r.verts.0, r.verts.1, r.faces.0, r.faces.1, r.cells, r.holes_filled
                 ),
                 Err(RemeshRefusal::MultiresStack) => eprintln!(
-                    "[sculpt3d] nao' reconstroi com a pilha montada: o remesh troca a TOPOLOGIA, e todo nivel acima e' subdivisao dela -- reverta os niveis antes"
+                    "[sculpt3d] nao' reconstroi com a pilha montada: o remesh troca a TOPOLOGIA, e todo nivel acima e' subdivisao dela -- ACHATE a pilha antes"
                 ),
                 Err(RemeshRefusal::EmptyScene) => {
                     eprintln!("[sculpt3d] nao' reconstroi: nao ha' peca na cena")
@@ -396,7 +396,7 @@ impl App {
                 eprintln!("[sculpt3d] topologia dinamica DESLIGADA");
             } else if scene.level_count() > 1 {
                 eprintln!(
-                    "[sculpt3d] topologia dinamica ARMADA -- mas a pilha de multires esta' montada                      e ela RECUSA: refinar a base deixaria cada nivel descrevendo outra malha                      (reverta com J)"
+                    "[sculpt3d] topologia dinamica ARMADA -- mas a pilha de multires esta' montada                      e ela RECUSA: refinar a base deixaria cada nivel descrevendo outra malha                      (ACHATE a pilha antes)"
                 );
             } else {
                 let d = scene.detail_label();

@@ -149,6 +149,18 @@ pub(super) enum StrokeUndo {
     /// carregada e devolver a que estava. Sem casos, sem um `Unremeshed` do
     /// outro lado — a mesma forma do `Mask`.
     Remeshed(Box<ph2d_mesh::Mesh>),
+    /// **A PILHA foi ACHATADA** — e a entrada carrega a pilha inteira de antes.
+    ///
+    /// ⚠️ **É a segunda entrada sem representação mais barata, e pela mesma
+    /// razão da [`Self::Remeshed`]:** achatar consome os níveis (o detalhe de
+    /// cada um foi sintetizado dentro de uma malha só) e nada no resultado
+    /// permite reconstruí-los. Guardar a pilha é o custo honesto do gesto, e
+    /// quem o limita é o teto em BYTES.
+    ///
+    /// ⚠️ **E ela é um SWAP simétrico:** desfazer instala a pilha guardada e
+    /// devolve a achatada, refazer faz o inverso — as duas direções são a mesma
+    /// `mem::replace`, um nível acima da malha.
+    Flattened(Box<ph2d_mesh::Multires>),
     /// **Uma PEÇA foi acrescentada à cena** — aplicá-la é tirá-la.
     ///
     /// ⚠️ Irmã exata do [`Self::AddedLevel`] um nível acima da pilha: a peça
@@ -312,6 +324,30 @@ impl Sculpt3dScene {
         self.stroke = SculptStroke::default();
         self.mesh_rebuilt();
         true
+    }
+
+    /// **ACHATA a pilha** numa malha só, com todo o detalhe. Devolve quantos
+    /// níveis existiam, ou `None` se já havia um só.
+    ///
+    /// ⚠️ **É a SAÍDA que faltava.** Três verbos recusam com a pilha montada
+    /// (remesh, tapar buraco, reverter), e até aqui o artista que subdividiu não
+    /// tinha gesto nenhum que o devolvesse a um nível — descartar o topo é jogar
+    /// fora o detalhe, e reverter vai para o lado oposto. As três recusas
+    /// mandavam-no *"reverter antes"*, que é conselho errado.
+    ///
+    /// ⚠️ **E ele é EXPLÍCITO em vez de acontecer dentro do remesh**: o botão
+    /// que diz *reconstruir* não pode colapsar de carona a estrutura que o
+    /// artista autorou. Ver o cabeçalho do `multires_flatten.rs`.
+    pub(super) fn flatten(&mut self) -> Option<usize> {
+        let o = self.obj_mut()?;
+        let levels = o.stack.level_count();
+        let previous = o.stack.flatten()?;
+        self.record(StrokeUndo::Flattened(Box::new(previous)));
+        // O traço em voo fala de índices de OUTRO nível, e a GPU recebe uma
+        // malha de contagem diferente — a mesma lei da subdivisão.
+        self.stroke = SculptStroke::default();
+        self.mesh_rebuilt();
+        Some(levels)
     }
 
     /// **TAPA todo buraco da malha.** Devolve o relatório, ou `None` se não

@@ -359,6 +359,7 @@ fn every_command_reaches_the_shell() {
         (ids::SCULPT3D_LEVEL_UP, Sculpt3dIntent::ChangeLevel(true)),
         (ids::SCULPT3D_SUBDIVIDE, Sculpt3dIntent::Subdivide),
         (ids::SCULPT3D_REVERSE, Sculpt3dIntent::ReverseLevel),
+        (ids::SCULPT3D_FLATTEN, Sculpt3dIntent::Flatten),
         (ids::SCULPT3D_REMESH, Sculpt3dIntent::Remesh),
         (ids::SCULPT3D_CLOSE_HOLES, Sculpt3dIntent::CloseHoles),
         (ids::SCULPT3D_DUPLICATE, Sculpt3dIntent::Duplicate),
@@ -1196,5 +1197,52 @@ fn an_armed_image_lights_its_own_chip_not_none() {
         ph2d_panel_sculpt3d::alpha_chip_index(&snapshot(Sculpt3dUi::default(), false)),
         0,
         "o pincel liso deixou de acender o primeiro chip"
+    );
+}
+
+/// **O ACHATAR só existe com a pilha MONTADA** — presença E ausência.
+///
+/// ⚠️ Com um nível ele é um no-op, e um botão que não faz nada é pior que um
+/// botão que falta — a mesma lei que esconde as rows de um verbo que não as lê.
+/// A metade da AUSÊNCIA é a que carrega o gate: sem ela, um botão morto na
+/// pilha de um nível passaria o sweep de clicabilidade e ninguém veria.
+#[test]
+fn the_flatten_button_exists_only_where_there_is_a_stack() {
+    // Com pilha: pintado e clicável onde é desenhado.
+    let mut snap = snapshot(Sculpt3dUi::default(), true);
+    snap.level_count = 3;
+    snap.level = 1;
+    let (mut host, mut state) = arrange_with(snap);
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    let rect = painted
+        .iter()
+        .find(|(id, _)| *id == ids::SCULPT3D_FLATTEN)
+        .map(|(_, r)| *r)
+        .expect("com a pilha montada o achatar é pintado");
+    // ⚠️ **O clique é dirigido pelo PONTEIRO, no próprio centro** — é a metade
+    // que separa *hit-registrado* de *responde*, e a que pegaria um id fora do
+    // `populate` (o painel de física já pagou esta: 36 células pintadas, com
+    // arm, e mortas sob o mouse).
+    let evs = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+    assert!(
+        evs.iter()
+            .any(|e| matches!(e, WidgetEvent::Click(id) if *id == ids::SCULPT3D_FLATTEN)),
+        "o botão do achatar está pintado e morto sob o mouse"
+    );
+    for e in evs {
+        let _ = host.apply_panel_event::<Sculpt3dPanel>(&mut state, e);
+    }
+    assert_eq!(
+        drain_intents(),
+        vec![Sculpt3dIntent::Flatten],
+        "o clique no achatar não chegou ao shell"
+    );
+
+    // CONTROLE: com um nível só ele não é desenhado.
+    let (mut host, mut state) = arrange(Sculpt3dUi::default());
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    assert!(
+        !painted.iter().any(|(id, _)| *id == ids::SCULPT3D_FLATTEN),
+        "sem pilha o achatar é um no-op, e ele está na tela"
     );
 }

@@ -190,6 +190,9 @@ pub const SCULPT3D_LEVEL_UP: NodeId = hash_node_id("sculpt3d.level_up");
 pub const SCULPT3D_SUBDIVIDE: NodeId = hash_node_id("sculpt3d.subdivide");
 /// Reverte (reconstrói um nível ABAIXO).
 pub const SCULPT3D_REVERSE: NodeId = hash_node_id("sculpt3d.reverse");
+/// **ACHATA a pilha** numa malha só, com todo o detalhe — a saída para os três
+/// verbos que recusam com ela montada.
+pub const SCULPT3D_FLATTEN: NodeId = hash_node_id("sculpt3d.flatten");
 /// Reconstrói a casca (voxel remesh).
 pub const SCULPT3D_REMESH: NodeId = hash_node_id("sculpt3d.remesh");
 /// Tapa os buracos.

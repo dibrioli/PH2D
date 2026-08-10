@@ -680,6 +680,10 @@ mod reverse;
 
 pub use reverse::Reversal;
 
+/// **O ACHATAR** — ver [`flatten`]. Filho pelo motivo do [`reverse`].
+#[path = "multires_flatten.rs"]
+mod flatten;
+
 /// A metade que fala com um DOCUMENTO — filho porque `levels`/`details`/`sel`
 /// são privados, e é assim que se quer (ver o cabeçalho dele).
 #[path = "multires_persist.rs"]

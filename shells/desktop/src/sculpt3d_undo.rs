@@ -122,6 +122,12 @@ impl Sculpt3dScene {
             | StrokeUndo::RemovedObject(_)
             | StrokeUndo::Merged(_)
             | StrokeUndo::Unmerged => {}
+            // ⚠️ **A troca é da PILHA INTEIRA, `sel` incluído** — não há nível a
+            // escolher, e escolher um seria pior que inútil: `select_level`
+            // desce por `lower`, que **carimba na base**, e a pilha que ele
+            // carimbaria é justamente a que vai virar a entrada INVERSA. O
+            // refazer receberia uma pilha que o desfazer editou.
+            StrokeUndo::Flattened(_) => {}
             // ⚠️ Uma troca de nível é aplicada DE ONDE ELA POUSOU — descer se
             // desfaz do nível de baixo, subir do de cima. E com todas as trocas
             // registradas este `select` nunca tem o que fazer: a ordem LIFO já
@@ -247,6 +253,13 @@ impl Sculpt3dScene {
                 self.stroke = SculptStroke::default();
                 self.mesh_rebuilt();
                 StrokeUndo::Remeshed(Box::new(now))
+            }
+            // A MESMA troca, um nível acima: o que viaja é a pilha, não a malha.
+            StrokeUndo::Flattened(previous) => {
+                let now = core::mem::replace(&mut self.piece_mut().stack, *previous);
+                self.stroke = SculptStroke::default();
+                self.mesh_rebuilt();
+                StrokeUndo::Flattened(Box::new(now))
             }
             StrokeUndo::AddedObject => {
                 // Tirar a peça que a entrada acrescentou. Ela sai INTEIRA e vira

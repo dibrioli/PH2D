@@ -440,6 +440,20 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
         w,
         y,
     ) + gap;
+    // ⚠️ **Só com a pilha MONTADA.** Com um nível o achatar é um no-op, e um
+    // botão que não faz nada é pior que um botão que falta — a mesma lei que
+    // esconde as rows de um verbo que não as lê. E ele fica LOGO ABAIXO dos dois
+    // que constroem a pilha, porque é deles que ele é o inverso.
+    if snap.level_count > 1 {
+        y = command(
+            ctx,
+            ids::SCULPT3D_FLATTEN,
+            tr("panel.sculpt3d.flatten"),
+            x,
+            w,
+            y,
+        ) + gap;
+    }
     y = row_of_two(
         ctx,
         (ids::SCULPT3D_REMESH, tr("panel.sculpt3d.remesh")),

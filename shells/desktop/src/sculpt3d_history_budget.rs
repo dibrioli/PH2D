@@ -41,6 +41,7 @@ impl StrokeUndo {
             Self::Descended { stamped, .. } => stamped.bytes(),
             Self::ReversedLevel(r) => r.bytes(),
             Self::Remeshed(mesh) => mesh.footprint_bytes(),
+            Self::Flattened(stack) => stack.footprint_bytes(),
             Self::RemovedObject(o) => o.footprint_bytes(),
             Self::Merged(objects) => objects.iter().map(SceneObject::footprint_bytes).sum(),
             // As entradas que não CARREGAM estado: a inversa delas é uma
@@ -190,6 +191,27 @@ mod tests {
         assert!(
             want > 100_000,
             "uma esfera de 24×48 tem de pesar mais que cem mil bytes, e mediu {want}"
+        );
+    }
+
+    /// **A entrada de ACHATAR pesa a PILHA INTEIRA**, e é a mais cara que
+    /// existe: ela carrega TODOS os níveis, não uma malha.
+    ///
+    /// ⚠️ E ela pesa **mais** que a de remesh sobre a mesma malha — é o número
+    /// que justifica ela passar pelo teto como todas as outras. Um `0` aqui
+    /// deixaria a fila crescer sem limite no gesto que mais carrega.
+    #[test]
+    fn a_flatten_entry_weighs_the_whole_stack() {
+        let mut stack = ph2d_mesh::Multires::new(ph2d_mesh::shapes::uv_sphere(12, 24, 1.0));
+        assert!(stack.add_level());
+        let one_mesh = stack.mesh().footprint_bytes();
+        let want = stack.footprint_bytes();
+        let got = StrokeUndo::Flattened(Box::new(stack)).footprint_bytes();
+        assert_eq!(got, want);
+        assert!(
+            want > one_mesh,
+            "a pilha ({want}) tem de pesar mais que a malha do topo ({one_mesh}) -- \
+             ela carrega os DOIS níveis e o detalhe"
         );
     }
 

@@ -521,3 +521,119 @@ fn undoing_a_descent_gives_the_base_back() {
     let err = worst(&top, m.mesh().positions());
     assert!(err < 1e-5, "o topo se reconstrói, e desviou {err}");
 }
+
+// ── O ACHATAR ───────────────────────────────────────────────────────────────
+
+/// ⚠️ **A malha que fica é a do TOPO, e o gate mede isso DE PÉ NO NÍVEL 0** —
+/// que é o único lugar onde a resposta errada é plausível.
+///
+/// `levels[k]` acima do selecionado está obsoleto (é a `higher` quem o
+/// sintetiza), então a implementação preguiçosa — *ficar com a malha que o
+/// artista está vendo* — devolveria a BASE, com todo o detalhe do topo perdido
+/// em silêncio. O oráculo é a malha que a subida produz, e ele não conhece o
+/// `flatten`: ele é a pilha antiga, subida à mão.
+#[test]
+fn flattening_from_the_bottom_keeps_the_detail_that_lives_on_top() {
+    let mut m = Multires::new(shapes::uv_sphere(10, 14, 1.0));
+    assert!(m.add_level());
+    for v in [3usize, 17, 42, 88] {
+        bump(m.mesh_mut(), v, 0.2);
+    }
+    // O oráculo: a malha do topo, lida ANTES de descer.
+    let top = m.mesh().positions().to_vec();
+
+    // O artista desce para mexer na forma grande, e acha o botão daqui.
+    assert!(m.lower().is_some());
+    assert_eq!(m.level(), 0);
+    let base_len = m.mesh().vert_count();
+    assert!(
+        base_len < top.len(),
+        "a fixture não contém o fenômeno: base e topo têm a mesma contagem"
+    );
+
+    assert!(m.flatten().is_some());
+    assert_eq!(m.level_count(), 1, "sobrou pilha depois de achatar");
+    assert_eq!(m.level(), 0);
+    assert_eq!(
+        m.mesh().vert_count(),
+        top.len(),
+        "ficou com a BASE: o detalhe do topo foi jogado fora"
+    );
+    let err = worst(&top, m.mesh().positions());
+    assert!(
+        err < 1e-5,
+        "o topo não sobreviveu ao achatar: desviou {err}"
+    );
+}
+
+/// **O gesto tem inverso EXATO** — o que ele devolve é a pilha de antes, e
+/// instalá-la de volta reproduz nível, contagem e geometria.
+///
+/// ⚠️ É o que torna a entrada de desfazer honesta: sem esta propriedade o
+/// Ctrl+Z devolveria uma pilha *parecida*, que é a pior forma de errado porque
+/// ninguém vê.
+#[test]
+fn what_the_flatten_hands_back_restores_the_stack_it_took() {
+    let mut m = Multires::new(shapes::uv_sphere(8, 12, 1.0));
+    assert!(m.add_level());
+    for v in [5usize, 21] {
+        bump(m.mesh_mut(), v, 0.1);
+    }
+    assert!(m.lower().is_some());
+    let want_level = m.level();
+    let want_count = m.level_count();
+    let want_mesh = m.mesh().positions().to_vec();
+
+    let previous = m.flatten().expect("havia dois níveis");
+    assert_eq!(m.level_count(), 1);
+
+    // O desfazer: a pilha inteira volta ao lugar.
+    m = previous;
+    assert_eq!(m.level_count(), want_count);
+    assert_eq!(m.level(), want_level);
+    assert_eq!(m.mesh().positions(), &want_mesh[..]);
+}
+
+/// **Com um nível só ele RECUSA**, e não devolve uma pilha igual.
+///
+/// ⚠️ A distinção importa para quem chama: um `Some` aqui gravaria uma entrada
+/// de desfazer que carrega o documento inteiro para não mudar nada — e o teto em
+/// bytes da história pagaria por ela.
+#[test]
+fn a_stack_of_one_has_nothing_to_flatten() {
+    let mut m = Multires::new(shapes::uv_sphere(6, 8, 1.0));
+    assert_eq!(m.level_count(), 1);
+    assert!(m.flatten().is_none());
+    assert_eq!(m.level_count(), 1);
+}
+
+/// **Achatar leva a UM nível, de QUALQUER altura** — e era esta a saída que
+/// faltava.
+///
+/// ⚠️ **Cinco recusas do shell mandavam o artista *"reverter os níveis antes"*
+/// de reconstruir, fundir ou ligar a topologia dinâmica — e seguir o conselho
+/// tornava a recusa mais CERTA.** A reversão insere um nível por BAIXO (o gate
+/// `reversing_inserts_a_level_below_...` do irmão pina isso em `level_count == 2`),
+/// então ela é o oposto de uma saída. Este gate é a metade nova: o verbo que de
+/// fato reduz a pilha reduz a UM, venha o artista do nível que vier.
+#[test]
+fn flattening_lands_on_one_level_from_any_height() {
+    let mut m = Multires::new(shapes::uv_sphere(6, 8, 1.0));
+    for _ in 0..3 {
+        assert!(m.add_level());
+    }
+    assert_eq!(m.level_count(), 4);
+    // Do MEIO da pilha — o caso em que ficar com a malha vista perderia dois
+    // níveis de detalhe.
+    m.select(1);
+    let top_verts = m.level_mesh(3).expect("o topo existe").vert_count();
+
+    assert!(m.flatten().is_some());
+    assert_eq!(m.level_count(), 1);
+    assert_eq!(m.level(), 0);
+    assert_eq!(
+        m.mesh().vert_count(),
+        top_verts,
+        "achatou para a malha VISTA, não para a do topo"
+    );
+}

@@ -12,14 +12,20 @@
 
 ## §1 — REABRA A LINHA (faça isto primeiro, sem pedir confirmação)
 
-A branch e a worktree **já existem**. É a rota "linha reaberta" do
-[`MODELO_ABERTURA_LINHA`](../IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md):
+⚠️ **CORRIGIDO em 2026-08-10:** este §1 dizia *"a branch e a worktree já existem — rota
+'linha reaberta'"*, e isso **deixou de ser verdade**: com todas as linhas integradas ao
+`main`, as 8 worktrees e as 8 branches `line/*` foram removidas (`git worktree remove` +
+`git branch -d`, todas com `frente=0`). A rota agora é a **normal** do
+[`MODELO_ABERTURA_LINHA`](../IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md) — a linha
+nasce no `main` de HOJE, sem dívida de rebase:
 
 ```fish
-cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-physics
+cd /home/enio/Documentos/Projetos/PH2D
+git pull --ff-only origin main
+git worktree add -b line/physics Worktrees/line-physics main
+cd Worktrees/line-physics
 pwd && git branch --show-current      # DEVE dizer .../line-physics e line/physics
-git fetch origin && git rebase main   # a linha entra em cima do main de HOJE
-cargo check -p ph2d-physics-ecs       # o inner loop desta linha
+cargo check -p ph2d-physics-ecs       # o inner loop desta linha (1º build é FRIO)
 ```
 
 ⚠️ **`cd` + `pwd` + `git branch --show-current` ANTES de ler ou editar qualquer arquivo.**

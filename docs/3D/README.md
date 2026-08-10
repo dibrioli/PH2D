@@ -34,8 +34,8 @@ pode ser lida e adaptada ([[03.4-Referencia-SculptGL]]).
 ```
 DECISÃO: ADR-0150 (proposto, aguarda aceite do Enio)
          malha primária · direto em Rust/wgpu · SculptGL (MIT) de referência
-LINHA:   line/sculpt3d  — branch e worktree JÁ existem
-CÓDIGO:  nenhum ainda — a W1 (a malha) é a primeira
+LINHA:   line/sculpt3d  — NÃO existe hoje (integrada e encerrada; abra pelo MODELO_ABERTURA_LINHA)
+CÓDIGO:  o estado vivo do módulo é o CLAUDE.md §5 (integrações até 2026-08-10) — não este bloco
 ```
 
 ⚠️ **Mudança de rumo em 2026-07-30 (Enio):** o plano de 29/07 abria com um **MVP em TypeScript + WebGPU**.

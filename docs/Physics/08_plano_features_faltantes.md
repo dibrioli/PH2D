@@ -185,6 +185,79 @@ controlador já escreve a pose); no **Dynamic** é um teleporte, e este módulo 
 uma regra sobre isso desde o W2a (*`set_body_pose` zera a velocidade*). **Os dois
 modos podem precisar de respostas diferentes, e isso tem de estar escrito antes.**
 
+### 4.55 · `W-Probes` — **OS SENSORES FICAM VISÍVEIS E PLENAMENTE EDITÁVEIS** ⟨pedido do Enio⟩
+
+> *"os Rays (ou outros modos de cast) dos Setups dos Players não estão visíveis e
+> nem são plenamente editáveis através da UI"*
+
+**As duas metades do report foram verificadas, e as duas são reais** — mas por
+motivos DIFERENTES, e a distinção decide o trabalho.
+
+#### (a) VISÍVEIS: não há nada. Zero.
+
+O overlay de física (tecla `B`) desenha collider, joint, glifo de zona, seta de
+força, anel de falloff, linha d'água, cruz de contato e as ferramentas de ponto.
+**Dos cinco sensores do player ele não desenha um pixel** — a única linha que
+menciona player ali é o bit da descida de prancha (W20).
+
+⚠️ **Isto é exactamente a lei que fez o contorno do collider existir**, escrita
+no W2a: *"um collider é invisível e um sprite é um quad, então a resposta é a que
+Unity/Godot/Box2D dão: wireframe sobre a arte"*. Um **raio** é ainda mais
+invisível que um collider — ele nem tem forma —, e hoje o artista afina
+`float_height`, `cling_distance`, `corner_reach` e `wall_reach` **às cegas**,
+inferindo o alcance pelo comportamento.
+
+**Os cinco a desenhar** (todos já existem na ponte):
+
+| sensor | raios | o que governa o alcance |
+|---|---|---|
+| chão | **1** | `float_height + cling_distance` (derivado — ver ⚠️ abaixo) |
+| parede | **3** (`[0, −½h, +½h]`) | `wall_reach` |
+| quina (corner correction) | **65** | `corner_reach` |
+| teto | **65** | `corner_reach` **e** `rel_up · dt · CORNER_LOOKAHEAD` |
+| headroom (levantar do agachado) | **3** | a altura de pé menos a agachada |
+
+#### (b) EDITÁVEIS: os ALCANCES sim, o resto não — e "o resto" tem três espécies
+
+Isto é o que a palavra *"plenamente"* aponta, e o censo separa-o em três coisas
+com **vereditos diferentes**:
+
+1. **A CONTAGEM de amostras é `const` de compilação** — `WALL_SAMPLES = 3` ·
+   `CORNER_SAMPLES = 65` · `HEADROOM_SAMPLES = 3`. Não estão no componente nem no
+   Inspector. ⚠️ **E o §0 manda medir antes de expor:** os 65 do corner são um
+   número de custo, não de gosto, e um slider que os mova mexe no orçamento de
+   raios por tique. **Medir primeiro, expor depois** — e talvez a resposta certa
+   seja um teto medido em vez de um slider.
+2. **O alcance do TETO / headroom não tem row nenhuma** (não existe
+   `INSP_PLAYER_CEILING`). O teto empresta o `corner_reach` do pulo e mistura-o
+   com um termo de velocidade — ou seja, hoje o artista mexe no teto **sem saber
+   que está a mexer**, por um knob que diz outra coisa. ⚠️ **Isto é um achado do
+   censo, não do report**, e é o mais próximo de um defeito nesta lista.
+3. **O alcance do CHÃO é DERIVADO de propósito** (`float_height +
+   cling_distance`) e ⛔ **não deve ganhar knob próprio**: seria a segunda porta
+   para *"até onde a perna alcança"*, e as duas divergiriam. O que ele precisa é
+   de ser **VISÍVEL** — que é a metade (a).
+
+#### O desenho, e o que ele NÃO pode fazer
+
+⚠️ **O overlay LÊ, nunca DERIVA.** Os offsets têm de vir das portas que a ponte
+já usa (`wall_offsets` · `corner_offsets` · `headroom_offsets`) — um segundo
+cálculo no lado do desenho seria uma segunda resposta a *"onde este raio nasce?"*,
+e ela divergiria no primeiro dia em que alguém mexesse numa das duas. É a mesma
+regra que o `scaled_shape` do W6 impôs ao contorno do collider, e que a seta da
+zona do W-AreaFrame impôs à força.
+
+⚠️ **E o raio tem de dizer se ACHOU:** um sensor desenhado sempre da mesma cor
+responde *"onde ele olha"* e não *"o que ele viu"* — e a segunda é a pergunta que
+o artista faz quando o personagem não se agarra à parede. Cor por resultado, como
+o sensor magenta do W7 (apagado/aceso).
+
+**Onde entra na fila:** ⚠️ **antes** do `W-Ledge` e de preferência **junto do
+`W-ShapeCast`** — porque quando o chão deixar de ser um raio (4.3) o desenho tem
+de mostrar a forma nova, e construir o overlay depois seria desenhá-lo duas
+vezes. E porque as waves 4.4/4.5 vão **acrescentar sensores**: um ledge grab sem
+os raios visíveis é afinado às cegas, que é o que este item existe para acabar.
+
 ### 4.6 · `W-Glide` — **PLANAR**
 
 O mais barato do catálogo depois do multi-jump, e provavelmente **um caso do
@@ -212,14 +285,22 @@ pedido** — está aqui para a lista ser honesta, não para ser construído.
 ## §5 — A ordem, numa linha
 
 ```
-W-Swim → W-ZoneForce → W-ShapeCast → W-MultiJump → W-Ledge → (W-Glide?) → o ajuste da entrada
-   1         2             3             4            5          6              7
+W-Swim → W-ZoneForce → W-ShapeCast → W-Probes → W-MultiJump → W-Ledge → (W-Glide?) → o ajuste
+   1         2             3            4           5            6           7           8
 ```
 
 **Porquê esta e não outra:** 1 e 2 são a água, e o contexto está quente hoje · 3
-é infra e **destrava** 5, além de fechar o resto do item 4 do Enio · 4 é
-independente e pode trocar de lugar com 3 se a infra atrasar · 5 é o único com
-dependência dura · 6 pode dissolver-se num campo · 7 é aparência e o smoke julga.
+é infra e **destrava** 6, além de fechar o resto do item 4 do Enio · **4 vem
+COLADO ao 3** — quando o chão deixar de ser um raio o desenho tem de mostrar a
+forma nova, e construí-lo antes seria desenhá-lo duas vezes · 5 é independente e
+pode trocar de lugar com 3 se a infra atrasar · 6 é o único com dependência dura,
+e **precisa do 4 para ser afinado com os olhos** em vez de às cegas · 7 pode
+dissolver-se num campo · 8 é aparência e o smoke julga.
+
+⚠️ **Se a fila tiver de ser cortada, o corte honesto é depois do 4.** Os quatro
+primeiros fecham tudo o que o Enio pediu (a água, a zona, o resto do sensor
+lateral, e os sensores visíveis+editáveis); 5 e 6 são catálogo, e o catálogo
+espera.
 
 ⚠️ **Cada wave desta fila fecha com as QUATRO condições de UI do plano 00** (o
 componente existe · é pintado e registado · o clique chega ao barramento · e a

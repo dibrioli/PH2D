@@ -145,7 +145,6 @@ impl PainterTool {
                         grain: grain_basis.as_ref(),
                         grain_image: grain_image.as_ref(),
                         // O smear TRANSPORTA o relevo que encontra; ele nao deposita uma forma capturada.
-                        relief: None,
                     };
                     if let Some(r) = ph2d_painter_brush::accumulate_dab_smear(
                         ph2d_painter_brush::SmearOut {

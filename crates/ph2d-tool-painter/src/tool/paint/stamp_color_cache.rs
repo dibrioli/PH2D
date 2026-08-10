@@ -517,11 +517,8 @@ impl PainterTool {
         self.paint.shape_color_preview.cache = want.map(|key| {
             let masks = self.paint.shape_layers.masks();
             let colors = self.paint.shape_layers.resolved_colors(brush.color);
-            // ⚠️ A porta do que o slot **SE VÊ**, não a do que o carimbo pinta: com o relevo viajando
-            // o carimbo leva a cor pristina (a luz do destino a sombreia), e uma fotografia dela
-            // seria a imagem CHAPADA — o report do Enio de 2026-08-09.
             let layer_rgb: Vec<Option<ImageRgb>> = (0..masks.len())
-                .map(|i| self.paint.shape_layers.rgb_image_shown(i))
+                .map(|i| self.paint.shape_layers.rgb_image(i))
                 .collect();
             let opac = self.paint.shape_layers.opacities();
             let blends: Vec<u8> = (0..masks.len())

@@ -167,10 +167,7 @@ impl PainterTool {
         // Derived at the radius that MADE each texel (the third ingredient), not at the panel
         // brush's: a drag-sized Anchored ball is as tall committed as it was live, and dialling the
         // Size slider after the stroke does not re-scale relief already on the canvas.
-        // ⚠️ Pela porta única: em Digital o mestre do Impasto está desligado, e sem ela o commit
-        // re-derivaria a altura multiplicando por zero — o depósito da imagem chegaria aqui e
-        // evaporaria, com todos os gates do kernel verdes.
-        let brush = self.relief_spec(self.paint.brush);
+        let brush = self.paint.brush;
         // ⚠️ **Por LINHA, não por `push`** — a derivação é pura por-texel e as linhas de saída são
         // disjuntas (ADR-0109), então cada thread avalia um conjunto de linhas e **nenhuma expressão
         // muda**: byte-idêntica por construção. O `push` sequencial era o que a prendia numa thread.
@@ -198,27 +195,8 @@ impl PainterTool {
         //    edge-clamp replicates the same zero a whole-canvas pass would have read from outside — the
         //    crop is byte-identical, not an approximation. This is the 258 ms that used to run on 16 M
         //    texels at 4096² for a stroke that touched a corner of the canvas.
-        //
-        // ⚠️ **Um relevo que VEIO DE UMA IMAGEM não assenta, e isto é o report do Enio de 2026-08-09**
-        // (*"no mouse down fica exatamente como deveria ficar, mas no mouse UP sofre uma mudança …
-        // a imagem deve ficar como no mouse down"*). MEDIDO num carimbo de grade: o pen-down deixa
-        // **4032 texels, pico 3,162** e o pen-up devolvia **4624, pico 2,962** — **1264 texels
-        // mexidos, pior |Δh| = 2,217 sobre um pico de 3,16**, ou seja 70% da altura; com o
-        // `impasto_smoothing` em zero o commit sai **byte-idêntico ao vivo** (0 texels), então o
-        // assentamento era a diferença INTEIRA.
-        //
-        // A razão não é o gosto, é o que a operação MODELA: o settle é tinta molhada relaxando sob o
-        // próprio peso, e uma escultura capturada é a FORMA de uma tinta que já secou — não há o que
-        // relaxar, só a figura do artista a borrar. E em Digital o knob nem é alcançável: a seção do
-        // Impasto não é pintada ali, então o `1.0` de fábrica é um número que ninguém escolheu, que a
-        // porta do [`super::PainterTool::relief_spec`] passou a acordar junto com o mestre.
-        //
-        // ⚠️ **O preço, nomeado:** enquanto uma Shape com relevo está armada, o slider **Smoothing**
-        // fica inerte — inclusive no Impasto, onde ele É visível. Ele segue governando todo depósito
-        // (que é o que ele descreve); amaciar um carimbo é outra pergunta, e a casa dela é a CAPTURA,
-        // não o assentamento do depósito.
         let smoothing = brush.effective_impasto_smoothing();
-        if smoothing > 0.0 && !self.stamps_captured_relief() {
+        if smoothing > 0.0 {
             settle(&mut field, rect.w, rect.h, smoothing);
         }
 

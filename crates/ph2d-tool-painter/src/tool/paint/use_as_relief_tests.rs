@@ -13,11 +13,17 @@
 //! sombra do relevo (o ramo `read_sprite_source` do shell lê a textura assada) e o documento ATIVO
 //! não. Medido antes do conserto: **523 de 3600 texels diferem, pior delta 68**.
 //!
-//! ⚠️ **E a luz não podia entrar no Shape pela mesma porta**, o que é fato e não escolha: a silhueta
-//! que o documento ativo captura é COBERTURA — alpha —, e o shade escreve COR e nunca alpha. Por
-//! isso o relevo chega ali como um **GANHO** ([`super::impasto_gain`]), que multiplica a cobertura
-//! em vez de a substituir: um desenho a tinta PRETA continua imprimindo a própria cobertura, e é o
-//! relevo que a modula.
+//! ⚠️ **E a luz não entra pela COBERTURA, o que é fato e não escolha:** a silhueta que o documento
+//! ativo captura é alpha, e o shade escreve COR e nunca alpha. Por isso o relevo chega ao slot Shape
+//! pela **cor capturada** — a captura ilumina os pixels de cada camada com o passe canônico
+//! ([`super::shape_settings`]) e guarda a APARÊNCIA. Um desenho a tinta PRETA continua imprimindo a
+//! própria cobertura, e é o relevo que sombreia o que ela imprime.
+//!
+//! ⚠️ **A 1ª versão levava o relevo por um GANHO escalar** (um `rgb × luminância`), e ela foi
+//! substituída porque não era exata: MEDIDO contra o que o artista vê, errava até 96 níveis de 255
+//! (98 com cera âmbar) — um escalar não carrega a COR do especular. Os gates deste arquivo medem a
+//! PROPRIEDADE (o relevo alcança a cor e nunca a cobertura), então sobreviveram à troca de mecanismo
+//! sem uma linha; os que mediam a sonda de albedo do ganho morreram com ela.
 
 use crate::PainterTool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
@@ -112,12 +118,6 @@ fn captured_colour(show_relief: bool) -> Vec<u8> {
     let mut t = ridge(255, true, [0.1, 0.2, 0.3]);
     t.paint.impasto_show = show_relief;
     t.capture_layers_as_brush_shape();
-    // ⚠️ **A PREMISSA destes gates mudou no mesmo dia, e ela é declarada aqui em vez de herdada.**
-    // Eles medem a metade em que o relevo NÃO viaja — a cor traz a sombra assada do documento de
-    // origem, que é a aparência que shipou de manhã. Com a viagem armada (o default de uma captura
-    // com escultura) a cor sai PRISTINA de propósito: quem sombreia passa a ser a luz do destino,
-    // e as duas leis não podem valer juntas sem a sombra pousar duas vezes.
-    t.paint.shape_layers.set_relief_from_image(false);
     t.paint
         .shape_layers
         .rgb_image(0)
@@ -128,12 +128,6 @@ fn captured_colour(show_relief: bool) -> Vec<u8> {
 
 fn silhouette(t: &mut PainterTool) -> Vec<u8> {
     t.capture_layers_as_brush_shape();
-    // ⚠️ **A PREMISSA destes gates mudou no mesmo dia, e ela é declarada aqui em vez de herdada.**
-    // Eles medem a metade em que o relevo NÃO viaja — a cor traz a sombra assada do documento de
-    // origem, que é a aparência que shipou de manhã. Com a viagem armada (o default de uma captura
-    // com escultura) a cor sai PRISTINA de propósito: quem sombreia passa a ser a luz do destino,
-    // e as duas leis não podem valer juntas sem a sombra pousar duas vezes.
-    t.paint.shape_layers.set_relief_from_image(false);
     t.brush_shape_image()
         .map(|(sil, _, _)| sil.to_vec())
         .expect("a captura produz uma silhueta")
@@ -245,64 +239,6 @@ fn without_a_colour_to_shade_the_relief_does_not_reach_the_stamp() {
     );
 }
 
-/// **O ganho é a IDENTIDADE onde não há relevo**, e o número é exato porque os pesos Rec.601 deste
-/// repo somam 256: um cinza neutro lumina para si mesmo. É disso que a byte-identidade do controle
-/// acima depende.
-///
-/// **Mutação que deve sangrar:** `FLAT_PROBE` em qualquer valor que não 128.
-#[test]
-fn the_gain_is_the_identity_away_from_the_relief() {
-    let t = ridge(255, true, [0.1, 0.2, 0.3]);
-    let gain = t.relief_shade_gain().expect("ha relevo, logo ha ganho");
-    // O canto superior esquerdo: o traço desce pela coluna 30 com raio 10, então (0,0) nunca foi
-    // tocado. Um ganho diferente de `FLAT_PROBE` ali significa que a superfície plana deixou de
-    // devolver a si mesma.
-    assert_eq!(
-        gain[0],
-        super::impasto_gain::FLAT_PROBE,
-        "longe do relevo o ganho tem de ser exatamente a resposta plana"
-    );
-    // E que o ganho de fato VARIA onde o relevo está — senão o gate acima é verdade por vácuo.
-    let (min, max) = gain
-        .iter()
-        .fold((255u8, 0u8), |(a, b), &v| (a.min(v), b.max(v)));
-    assert!(
-        max > min,
-        "o ganho e constante ({min}..{max}) — nao ha relevo nesta fixture"
-    );
-}
-
-/// **O ganho resolve os DOIS lados do relevo** — o flanco que escurece e a crista que brilha.
-///
-/// ⚠️ Este gate existe porque o irmão acima **não podia falhar**: ele compara o produto contra a
-/// própria constante que o produto usa, então `FLAT_PROBE = 127` sobreviveu a tudo. A identidade é
-/// grátis (os pesos Rec.601 somam 256, logo *qualquer* cinza lumina para si mesmo); o que a escolha
-/// do valor de fato compra é **faixa**, e é a faixa que se afirma.
-///
-/// Medido na crista de teste: `45..206` contra um plano de 128 — 0,35× de um lado, 1,61× do outro.
-///
-/// **Mutação que deve sangrar:** `FLAT_PROBE` num albedo alto (250), onde o especular da crista bate
-/// no teto de 255 e o lado claro colapsa para ~1,02×.
-#[test]
-fn the_gain_resolves_both_sides_of_the_relief() {
-    let t = ridge(255, true, [0.1, 0.2, 0.3]);
-    let gain = t.relief_shade_gain().expect("ha relevo, logo ha ganho");
-    let flat = f32::from(super::impasto_gain::FLAT_PROBE);
-    let (min, max) = gain
-        .iter()
-        .fold((255u8, 0u8), |(a, b), &v| (a.min(v), b.max(v)));
-    let (dark, bright) = (f32::from(min) / flat, f32::from(max) / flat);
-    assert!(
-        dark < 0.7,
-        "o flanco escurece so ate {dark:.2}x — o albedo da sonda quantizou o lado escuro"
-    );
-    assert!(
-        bright > 1.3,
-        "a crista brilha so ate {bright:.2}x — o albedo da sonda bateu no teto de 255 e o especular \
-         do relevo foi ceifado"
-    );
-}
-
 /// **A silhueta é COR-INDEPENDENTE, e é por isso que ela continua sendo cobertura.**
 ///
 /// Trocar a captura do documento ativo pela LUMINÂNCIA — o que as outras portas do slot Shape leem
@@ -327,12 +263,6 @@ fn the_gain_resolves_both_sides_of_the_relief() {
 fn the_relief_reaches_the_per_layer_colour_route_too() {
     let mut t = ridge(255, true, [0.1, 0.2, 0.3]);
     t.capture_layers_as_brush_shape();
-    // ⚠️ **A PREMISSA destes gates mudou no mesmo dia, e ela é declarada aqui em vez de herdada.**
-    // Eles medem a metade em que o relevo NÃO viaja — a cor traz a sombra assada do documento de
-    // origem, que é a aparência que shipou de manhã. Com a viagem armada (o default de uma captura
-    // com escultura) a cor sai PRISTINA de propósito: quem sombreia passa a ser a luz do destino,
-    // e as duas leis não podem valer juntas sem a sombra pousar duas vezes.
-    t.paint.shape_layers.set_relief_from_image(false);
     let masks = t.paint.shape_layers.masks();
     assert_eq!(masks.len(), 1, "a fixture tem uma camada");
     let (mmin, mmax) = masks[0]
@@ -469,15 +399,5 @@ fn measure_what_the_use_as_paths_read() {
     println!(
         "BAKE   vs GRAIN                    : {:?}",
         spread(&lum(&baked), &grain)
-    );
-    let g = ridge(255, true, [0.1, 0.2, 0.3])
-        .relief_shade_gain()
-        .expect("ganho");
-    let (gmin, gmax) = g
-        .iter()
-        .fold((255u8, 0u8), |(a, b), &v| (a.min(v), b.max(v)));
-    println!(
-        "GANHO  faixa: {gmin}..{gmax}   (plano = {})",
-        super::impasto_gain::FLAT_PROBE
     );
 }

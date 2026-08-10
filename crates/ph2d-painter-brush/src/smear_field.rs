@@ -279,7 +279,6 @@ mod tests {
             shape: None,
             grain: None,
             grain_image: None,
-            relief: None,
         }
     }
 

@@ -130,8 +130,6 @@ fn the_relief_reaches_the_tone_and_the_colour_but_never_the_authored_alpha() {
         let mut t = super::use_as_relief_tests::ridge_for_alpha_gate();
         t.paint.impasto_show = show_relief;
         t.capture_layers_as_brush_shape();
-        // ⚠️ A premissa deste gate é a metade SEM viagem do relevo — ver `use_as_relief_tests`.
-        t.paint.shape_layers.set_relief_from_image(false);
         if t.brush_shape_alpha_from_image() != alpha_law {
             t.toggle_brush_shape_alpha_from_image();
         }

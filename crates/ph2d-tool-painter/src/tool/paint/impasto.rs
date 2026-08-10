@@ -45,42 +45,7 @@ impl PainterTool {
     /// volta antes de produzir dab nenhum. Uma 1ª versão desta lei gateava o corpo AQUI, e a medição a
     /// derrubou — na cena do report o depósito é 8% do move e o composite booleano é 92%.
     fn impasto_batch_active(&self) -> bool {
-        matches!(self.paint.paint_mode, PaintMode::Paint)
-            && (self.paint.brush.impasto || self.stamps_captured_relief())
-    }
-
-    /// **Este carimbo carrega o relevo de uma imagem?** — a metade que o pedido do Enio acrescenta
-    /// (2026-08-09: *"mesmo pintando com o Digital, desde que usando uma imagem em Shape com relevo
-    /// pintada com impasto"*).
-    ///
-    /// ⚠️ **O relevo é propriedade da IMAGEM, não do pincel**, e é por isso que ele não pergunta o
-    /// interruptor mestre do Impasto: quem capturou uma escultura espera carimbá-la, e em Digital a
-    /// seção inteira do Impasto nem é pintada — um interruptor que o artista não alcança seria uma
-    /// capacidade que só existe para quem já sabe que ela existe.
-    /// **O pincel COM que este relevo é derivado** — a porta única.
-    ///
-    /// ⚠️ **Ela existe porque o veto tinha TRÊS portas, e eu corrigi uma.** O `effective_impasto_depth`
-    /// devolve `0` com o mestre do Impasto desligado (é ele o gate do estado *off byte-idêntico*), e a
-    /// altura é derivada em três lugares — o depósito do dab, o COMMIT (que re-deriva do zero, para o
-    /// card Body continuar vivo) e o re-derive do card. Armar só o primeiro deposita relevo que o
-    /// commit multiplica por zero: o carimbo em Digital laid=true e a tela continuava plana, que foi
-    /// exatamente o que a sonda mediu.
-    ///
-    /// A cópia é LOCAL e nunca o pincel do artista — o interruptor dele não se move.
-    pub(super) fn relief_spec(&self, brush: BrushSpec) -> BrushSpec {
-        if brush.impasto || !self.stamps_captured_relief() {
-            return brush;
-        }
-        BrushSpec {
-            impasto: true,
-            ..brush
-        }
-    }
-
-    pub(super) fn stamps_captured_relief(&self) -> bool {
-        self.paint.shape_layers.relief_travels()
-            && self.paint.shape_image.is_some()
-            && !self.paint.eraser
+        matches!(self.paint.paint_mode, PaintMode::Paint) && self.paint.brush.impasto
     }
 
     /// Deposit (or, for the Eraser, scrub) this dab batch's HEIGHT.
@@ -93,9 +58,7 @@ impl PainterTool {
             return;
         }
         let erasing = self.paint.eraser;
-        // ⚠️ O veto do pincel não governa um relevo que vem da IMAGEM: `touches_height` pergunta se
-        // ESTE PINCEL deposita corpo, e aqui quem deposita é a captura.
-        if !erasing && !brush.touches_height() && !self.stamps_captured_relief() {
+        if !erasing && !brush.touches_height() {
             return; // no body laid AND none shoved aside ⇒ pigment only
         }
         let (w, h) = self.source_size;
@@ -255,19 +218,6 @@ impl PainterTool {
         // footprint (Jitter Rotate), same Random draws, same order (Shape before Grain). The RNG is a
         // COPY: this pass must not advance the stream the colour pass is about to read (rule 2).
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
-        // **A FORMA do relevo que a Shape carrega** — presente só quando a captura tem escultura E o
-        // artista a deixou viajar. Ela mede o CANVAS de origem, que é o mesmo tamanho da silhueta
-        // capturada, então cavalga a base do Shape sem geometria própria.
-        let relief_plane = self.paint.shape_layers.relief_plane();
-        let relief_image = relief_plane.and_then(|lum| {
-            let m = shape_image.as_ref()?;
-            let (rw, rh) = (m.width, m.height);
-            (lum.len() == (rw as usize) * (rh as usize)).then_some(ph2d_painter_brush::ImageMask {
-                lum,
-                width: rw,
-                height: rh,
-            })
-        });
         let grain_image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let shape_ramp_lut = (self.paint.shape_color_ramp_enabled
             && self.paint.shape_color_ramp_bw)
@@ -345,7 +295,7 @@ impl PainterTool {
                 // e é uma cópia local, nunca o pincel do artista. Sem isto o `effective_impasto_depth`
                 // devolve `0` com o mestre desligado (é ele o gate único do estado "off byte-idêntico"),
                 // e o depósito sairia mudo: a forma chegaria ao kernel e seria multiplicada por zero.
-                ..self.relief_spec(*brush)
+                ..*brush
             };
             let rotor = spec.dab_rotor(d);
             let fp = spec.dab_footprint(rotor);
@@ -410,7 +360,6 @@ impl PainterTool {
                     }),
                 grain: grain_basis.as_ref(),
                 grain_image: grain_image.as_ref(),
-                relief: relief_image.as_ref(),
             };
             // UN-paint this copy's standing wave lobe FIRST — before the dab's own deposit
             // touches `stroke_paint`, so the `(1 − paint)` weights recompute to the exact numbers
@@ -441,7 +390,6 @@ impl PainterTool {
                     grain_image: None,
                     // O lóbulo da onda é do PRÓPRIO dab (ele desloca massa que já está na tela);
                     // uma forma capturada não tem o que dizer sobre para onde a massa foge.
-                    relief: None,
                 };
                 if let Some(r) = wave_lobe(
                     &mut push_plane,

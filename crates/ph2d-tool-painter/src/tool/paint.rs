@@ -256,7 +256,6 @@ use region::union_region;
 
 /// O **ganho** que o relevo impõe à aparência — a sombra do impasto como grandeza sem cor, para
 /// alcançar o que não é pixel (a silhueta do slot Shape). [LOC split de `impasto_light`].
-mod impasto_gain;
 #[cfg(test)]
 mod shape_alpha_tests;
 #[cfg(test)]

@@ -276,7 +276,6 @@ impl PainterTool {
                 grain: grain_basis.as_ref(),
                 grain_image: grain_image.as_ref(),
                 // O sculpt RESHAPE o relevo que ja esta na tela; ele nao deposita uma forma capturada.
-                relief: None,
             };
             let hit = if plane_family {
                 // The plane is fitted to `pre`, the FROZEN surface — never to the live one. Fitting to the

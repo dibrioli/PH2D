@@ -181,9 +181,33 @@ impl PainterTool {
             return;
         }
         let n = (w as usize) * (h as usize);
-        // O ganho do relevo, UMA vez para a captura inteira: ele é do DOCUMENTO (a luz dobra a
-        // pilha), não de uma camada, e derivá-lo por camada seria N passes de luz pela mesma resposta.
-        let relief_gain = self.relief_shade_gain();
+        // ⚠️ **A captura ILUMINA — é isto que faz do slot um BAKE, e o bake é exato** (ordem do Enio,
+        // 2026-08-09: *"produz em shape uma versão Cozida (Bake Perfeito) mas sem relevo real"*). A
+        // versão anterior guardava a cor CRUA e um ganho de LUMINÂNCIA, multiplicados na derivação;
+        // MEDIDO contra o que o artista vê, aquilo errava até **96 níveis de 255** com material
+        // neutro e **98** com cera âmbar, porque um escalar não carrega a COR do especular nem a da
+        // cera e satura no teto. Aqui roda o passe CANÔNICO (`apply_impasto_light`, o mesmo da tela)
+        // sobre os próprios pixels de cada camada, então o slot guarda o que o documento MOSTRA.
+        //
+        // ⚠️ **Sem relevo o passe é a identidade ao byte** (ele é RELATIVO: divide pela resposta de
+        // uma superfície plana), então toda captura de documento sem escultura fica byte-idêntica ao
+        // que já shipava — a razão de não haver um `if` de relevo aqui.
+        //
+        // ⚠️ **A aproximação, nomeada:** a luz é a do documento (a pilha DOBRADA), e cada camada é
+        // iluminada com ela. Para a camada ativa isso é exatamente a tela; para uma camada de baixo é
+        // a sombra que se vê ATRAVÉS da pilha, que é a mesma escolha que o ganho já fazia. A exata
+        // custaria um passe de luz por camada sobre uma pilha que não é a que se vê.
+        let lit_of = |t: &Self, rgba: &[u8]| -> Vec<u8> {
+            let mut buf = rgba[..n * 4].to_vec();
+            t.apply_impasto_light(&mut buf, super::Region { x: 0, y: 0, w, h });
+            let mut out = Vec::with_capacity(n * 3);
+            for i in 0..n {
+                out.push(buf[i * 4]);
+                out.push(buf[i * 4 + 1]);
+                out.push(buf[i * 4 + 2]);
+            }
+            out
+        };
         let active = self.layers.active();
         // Top-level ids are top-to-bottom; the engine composites bottom-to-top, so reverse.
         let ids: Vec<crate::layers::LayerId> = self.layers.root().iter().copied().rev().collect();
@@ -217,13 +241,8 @@ impl PainterTool {
             // O ganho do relevo e a escolha alpha-vs-luminância entram no `rebuild_masks`, a porta
             // única — aqui a captura só ENTREGA o que leu.
             let alpha: Vec<u8> = (0..n).map(|i| rgba[i * 4 + 3]).collect();
-            // The straight per-pixel RGB — the default paint colour for the layer (Texture Color).
-            let mut rgb = Vec::with_capacity(n * 3);
-            for i in 0..n {
-                rgb.push(rgba[i * 4]);
-                rgb.push(rgba[i * 4 + 1]);
-                rgb.push(rgba[i * 4 + 2]);
-            }
+            // A APARÊNCIA da camada — os pixels dela sob a luz do documento (o bake).
+            let rgb = lit_of(self, rgba);
             layers.push((alpha, w, h));
             rgb_layers.push(rgb);
             opacity.push(layer.opacity.clamp(0.0, 1.0));
@@ -241,24 +260,6 @@ impl PainterTool {
             self.paint
                 .shape_layers
                 .set_layers_meta(rgb_layers, opacity, blend, doc_ids);
-            // ⚠️ **O ganho do relevo é do DOCUMENTO** (a luz dobra a pilha), não de uma camada, e
-            // entra como FONTE em vez de já assado nas máscaras: elas são re-derivadas a cada troca
-            // da silhueta, e um ganho pré-multiplicado seria aplicado de novo em cada re-derivação.
-            //
-            // ⚠️ **Consequência nomeada:** o flatten compõe coberturas JÁ moduladas, então onde duas
-            // camadas se sobrepõem o resultado é `over(a₁g, a₂g)` e não `g·over(a₁, a₂)`. As duas são
-            // leituras defensáveis (o relevo modula a tinta de cada camada × modula o composto), e a
-            // exata custaria um par de buffers do tamanho da tela POR LOTE no caminho que o comentário
-            // do `stamp_color_dynamic` chama de "the live FPS 60→10 wall". Numa camada só — o caso em
-            // que se esculpe — elas são idênticas.
-            if let Some(gain) = relief_gain {
-                self.paint.shape_layers.set_gain(gain);
-            }
-            // E a FORMA do relevo, ao lado do ganho: as duas saem do mesmo documento e do mesmo
-            // passe, e é a viagem dela que decide qual das duas a cor usa (`rebuild_derived`).
-            if let Some((relief, _peak)) = self.captured_relief() {
-                self.paint.shape_layers.set_relief(relief);
-            }
             // The real opacities only land HERE — `set_layers` above reset them to 1.0 and the flatten
             // inside `set_brush_shape_layers` baked that. Re-bake now that the metadata is in.
             self.reflatten_shape_image();

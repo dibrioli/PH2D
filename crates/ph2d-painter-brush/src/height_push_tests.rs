@@ -47,7 +47,6 @@ fn ploughed_plane(share: f32, count: u32) -> (Vec<f32>, f32, f32, f32, f32) {
             shape: None,
             grain: None,
             grain_image: None,
-            relief: None,
         };
         // The tool's order: un-paint the standing lobe FIRST (paint unchanged since it was laid,
         // so the (1 − paint) weights recompute to the exact numbers that laid it).
@@ -268,7 +267,6 @@ fn isolated_bank_plane(spec: &crate::BrushSpec, t0: f32) -> Vec<f32> {
         shape: None,
         grain: None,
         grain_image: None,
-        relief: None,
     };
     let mut plane = vec![0.0f32; (IB_W * IB_W) as usize];
     let paint = vec![0.0f32; (IB_W * IB_W) as usize];
@@ -436,7 +434,6 @@ fn ploughed_at_spacing(falloff: crate::Falloff, step: f32, count: u32) -> (Vec<f
             shape: None,
             grain: None,
             grain_image: None,
-            relief: None,
         };
         if let (Some(tip), true) = (last_tip.take(), wave > 0.0) {
             let _ = wave_lobe(

@@ -25,9 +25,11 @@
 //!
 //! # O que NÃO está aqui, e por quê
 //!
-//! ⚠️ **Grid não entra.** Medido: `flexbox` sozinho custa **0,20 s** de build cold e com `grid`
-//! **0,63 s** (+ a crate `grid`), e nada a jusante honraria um `dir = grid` hoje — seria o `dir`
-//! que o artista escolhe e que não muda um pixel. Ele nasce com a UI que o consumir.
+//! ⚠️ **Não há *track sizing* na grade.** As colunas são iguais (`repeat(N, 1fr)`) e as linhas
+//! nascem do conteúdo, e isso não é modéstia: é o que o único consumidor MEDIDO deste repo faz à
+//! mão (`paint_catalog.rs`, `cell_w = (inner_w − gap·(N−1)) / N`) e é o default do Figma. Uma
+//! coluna de tamanho autorado é um vocabulário próprio (`fr` × `auto` × comprimento) e nasce com o
+//! primeiro consumidor que o peça — hoje seria um controlo que ninguém move.
 //!
 //! ⚠️ **Não há *measure function*, e isso NÃO impede o `hug`.** Uma folha entra com o tamanho que
 //! ela JÁ tem (a bbox da geometria cozida, que o texto também tem porque os glifos dele são
@@ -42,7 +44,7 @@
 use taffy::prelude::*;
 use taffy::{Rect as TaffyRect, Size as TaffySize};
 
-/// Direção do fluxo. ⚠️ São as três que o motor honra — ver o cabeçalho sobre o grid.
+/// Direção do fluxo.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Dir {
     /// Em linha, sem quebra.
@@ -52,7 +54,47 @@ pub enum Dir {
     Column,
     /// Em linha, quebrando quando não cabe.
     RowWrap,
+    /// **Grade de `columns` colunas IGUAIS**; as linhas nascem sozinhas, cada uma com a altura do
+    /// seu conteúdo mais alto.
+    ///
+    /// ⚠️ **O que uma grade dá que o `RowWrap` não dá são duas coisas, e só estas duas:** colunas
+    /// **alinhadas entre linhas** quando os conteúdos têm larguras diferentes (no wrap cada faixa
+    /// se arruma sozinha, então nada fica em coluna), e **refluxo automático** ao inserir ou
+    /// remover um item. Se nenhuma das duas é pedida, o wrap já responde — e é mais barato.
+    ///
+    /// ⚠️ **A contagem vem no variante** porque, do lado do motor, uma direção sem contagem
+    /// deixaria o `style_of` a perguntar por um campo que a `FrameStyle` não tem. Do lado do
+    /// DOCUMENTO ela é um campo (`VecLayout::columns`), e a assimetria é a mesma — e pelo mesmo
+    /// motivo — que a do [`Len::Fixed`]: lá o número sobrevive a uma troca de direção, aqui não há
+    /// troca nenhuma, há uma chamada.
+    Grid { columns: u16 },
 }
+
+/// **Quantas faixas o motor sabe indexar num eixo da grade** — e este limite NÃO é um palpite: é a
+/// largura do inteiro com que o `taffy` numera as linhas da grade (`OriginZeroLine(i16)`), medida
+/// por bisseção contra o motor em três fixtures independentes (`grid_probe.rs`).
+///
+/// | fixture | última contagem que resolve |
+/// |---|---|
+/// | 1 coluna, N filhos | 32767 filhos = **32767 linhas** |
+/// | 2 colunas, N filhos | 65534 filhos = **32767 linhas** |
+/// | 3 colunas, N filhos | 98301 filhos = **32767 linhas** |
+/// | N colunas, N filhos | **32767** |
+///
+/// ⚠️ **O teto morde pelas LINHAS, que ninguém autora** — elas nascem da contagem de filhos. Um cap
+/// só na contagem de COLUNAS teria sido taste E não teria evitado o pânico; por isso a regra é
+/// verificada nos dois eixos, no [`solve`], ao lado das outras recusas.
+///
+/// ⚠️ E ele está longe de qualquer uso: com 12 filhos, **16384 colunas custam 0,33 ms** e 65535
+/// custam 1,43 — o que aperta primeiro é o desenho, não o número.
+///
+/// ⚠️ **No eixo das COLUNAS a guarda é mais estrita do que a falha medida, de propósito.** O motor
+/// só materializa as faixas que os filhos de facto OCUPAM, então 65535 colunas com 12 filhos
+/// resolvem (1,43 ms) — mas isso é um detalhe interno do `taffy`, e o modo de falha do outro lado
+/// dele é um **pânico**, não um erro. Um número derivado da largura do inteiro é seguro por
+/// construção e sobrevive a um upgrade da dep; um que codifique *"só as ocupadas contam"* deixa de
+/// ser verdade em silêncio no dia em que ele mudar.
+pub const MAX_GRID_TRACKS: u16 = i16::MAX as u16;
 
 /// Alinhamento no eixo TRANSVERSAL (o *align-items* do CSS).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -219,6 +261,13 @@ pub enum LayoutError {
     /// para um canto. Quem monta a fatia recolhe só sub-árvores que fluem (é o que mantém
     /// byte-intocado todo documento em que ninguém pediu layout).
     ParentDoesNotFlow,
+    /// Uma **grade** pediu mais faixas do que o motor sabe indexar — ver [`MAX_GRID_TRACKS`].
+    ///
+    /// ⚠️ Recusar em vez de acomodar, e aqui o preço de acomodar não é uma pose errada: é o
+    /// **motor a PANICAR** (`taffy/compute/grid/types/cell_occupancy.rs`, um `unwrap` sobre a
+    /// célula fora da grade), o que derruba o app. A recusa deixa a sub-árvore com a pose autorada,
+    /// que é o que toda outra recusa desta lista já faz.
+    GridTooManyTracks,
     /// Um nó que **não flui** pediu [`Len::Hug`].
     ///
     /// ⚠️ Recusar em vez de acomodar, e aqui o preço de acomodar é a arte a **desaparecer**: sem
@@ -259,6 +308,27 @@ pub fn solve(nodes: &[Node]) -> Result<Vec<Solved>, LayoutError> {
     for n in nodes {
         if n.frame.is_none() && n.size.contains(&Len::Hug) {
             return Err(LayoutError::HugWithoutFlow);
+        }
+    }
+    // ⚠️ **O teto da grade, e ele é medido — ver [`MAX_GRID_TRACKS`].** As COLUNAS o artista
+    // escreve; as LINHAS nascem da contagem de filhos, e é por elas que o motor estoura primeiro.
+    // A pergunta é feita aqui, ao lado das outras recusas, e não no `style_of` — ali um nó não
+    // conhece os filhos dele.
+    for (i, n) in nodes.iter().enumerate() {
+        let Some(FrameStyle {
+            dir: Dir::Grid { columns },
+            ..
+        }) = n.frame
+        else {
+            continue;
+        };
+        let cols = usize::from(columns.max(1));
+        if cols > usize::from(MAX_GRID_TRACKS) {
+            return Err(LayoutError::GridTooManyTracks);
+        }
+        let kids = nodes.iter().filter(|k| k.parent == Some(i)).count();
+        if kids.div_ceil(cols) > usize::from(MAX_GRID_TRACKS) {
+            return Err(LayoutError::GridTooManyTracks);
         }
     }
 
@@ -362,14 +432,6 @@ fn style_of(n: &Node) -> Style {
         // chama não lê o retângulo deles.
         return s;
     };
-    s.display = Display::Flex;
-    let (dirn, wrap) = match f.dir {
-        Dir::Row => (FlexDirection::Row, FlexWrap::NoWrap),
-        Dir::Column => (FlexDirection::Column, FlexWrap::NoWrap),
-        Dir::RowWrap => (FlexDirection::Row, FlexWrap::Wrap),
-    };
-    s.flex_direction = dirn;
-    s.flex_wrap = wrap;
     // ⚠️ **O vão é MAIN e CROSS; quem os traduz para x/y é a DIREÇÃO.** O `taffy` fala em eixos
     // FÍSICOS (`width` = entre colunas, `height` = entre linhas), e escrever `[main, cross]` neles
     // direto está certo em `Row`/`RowWrap` e INVERTIDO em `Column` — onde o principal é vertical.
@@ -377,13 +439,16 @@ fn style_of(n: &Node) -> Style {
     // Foi o report do Enio (2026-08-02), e ele chegou como DOIS: *"Gap não funciona em Column"* e
     // *"Cross, que só aparece para Wrap, afeta Column"*. É um só, visto pelas duas pontas — o
     // número do artista ia para o eixo errado, e o do eixo errado governava o dele.
+    //
+    // ⚠️ Na GRADE o principal é horizontal (entre colunas) e o transversal vertical (entre linhas),
+    // exactamente como no `Row` — é a mesma frase, e por isso é o mesmo braço.
     let (main, cross) = (length(f.gap[0] as f32), length(f.gap[1] as f32));
     s.gap = match f.dir {
         Dir::Column => TaffySize {
             width: cross,
             height: main,
         },
-        Dir::Row | Dir::RowWrap => TaffySize {
+        Dir::Row | Dir::RowWrap | Dir::Grid { .. } => TaffySize {
             width: main,
             height: cross,
         },
@@ -394,12 +459,46 @@ fn style_of(n: &Node) -> Style {
         bottom: length(f.pad[2] as f32),
         left: length(f.pad[3] as f32),
     };
+    // O alinhamento transversal diz a MESMA coisa nos dois motores — *onde o filho senta na
+    // travessa* —, então ele é resolvido uma vez, antes do ramo.
     s.align_items = Some(match f.align {
         Align::Start => AlignItems::FLEX_START,
         Align::Center => AlignItems::CENTER,
         Align::End => AlignItems::FLEX_END,
         Align::Stretch => AlignItems::STRETCH,
     });
+    if let Dir::Grid { columns } = f.dir {
+        s.display = Display::Grid;
+        // ⚠️ **`max(1)` e não uma recusa.** Uma grade de zero colunas é um degenerado com UMA
+        // leitura sã, e recusá-la faria o motor devolver `Err` para a fatia INTEIRA — a moldura
+        // pararia de dispor, em silêncio, por causa de um número que o painel já impede. O clamp
+        // mora aqui, e só aqui, porque este é o sítio que não pode dividir por zero.
+        s.grid_template_columns = evenly_sized_tracks(columns.max(1));
+        // ⚠️ **`justify_items`, não `justify_content`** — e a diferença é o que o controlo passa a
+        // significar. Com colunas `1fr` não sobra espaço nenhum no eixo horizontal, então
+        // `justify_content` seria INERTE: cinco chips que não movem um pixel. `justify_items`
+        // responde *onde o filho senta DENTRO da célula dele*, que é a pergunta que uma grade de
+        // conteúdos de larguras diferentes de facto faz.
+        //
+        // ⚠️ E as duas DISTRIBUIÇÕES não têm resposta aqui (repartir sobra não é posicionar dentro
+        // de uma caixa), então caem em `Start`. O painel **não as oferece** na grade; o que sobra é
+        // o documento que já as trazia de um `Row` anterior, e ele é PRESERVADO de propósito — o
+        // valor volta intacto quando o artista volta ao `Row`, como o vão e o recuo já voltam.
+        s.justify_items = Some(match f.justify {
+            Justify::Center => AlignItems::CENTER,
+            Justify::End => AlignItems::FLEX_END,
+            Justify::Start | Justify::SpaceBetween | Justify::SpaceAround => AlignItems::FLEX_START,
+        });
+        return s;
+    }
+    s.display = Display::Flex;
+    let (dirn, wrap) = match f.dir {
+        Dir::Column => (FlexDirection::Column, FlexWrap::NoWrap),
+        Dir::RowWrap => (FlexDirection::Row, FlexWrap::Wrap),
+        Dir::Row | Dir::Grid { .. } => (FlexDirection::Row, FlexWrap::NoWrap),
+    };
+    s.flex_direction = dirn;
+    s.flex_wrap = wrap;
     s.justify_content = Some(match f.justify {
         Justify::Start => JustifyContent::FLEX_START,
         Justify::Center => JustifyContent::CENTER,
@@ -421,3 +520,11 @@ mod hug_probe;
 #[cfg(test)]
 #[path = "overflow_probe.rs"]
 mod overflow_probe;
+
+#[cfg(test)]
+#[path = "grid_tests.rs"]
+mod grid_tests;
+
+#[cfg(test)]
+#[path = "grid_probe.rs"]
+mod grid_probe;

@@ -195,6 +195,7 @@ impl crate::App {
             "103" => self.physics_smoke_kin_pure(),
             "104" => self.physics_smoke_kin_water(),
             "105" => self.physics_smoke_swim(),
+            "106" => self.physics_smoke_zone_force(),
             _ => self.physics_smoke_drop(),
         }
 

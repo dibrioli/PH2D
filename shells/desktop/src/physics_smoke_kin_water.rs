@@ -229,10 +229,9 @@ impl crate::App {
                    POCA) zere o Fluid Drag. A oscilacao sobe de {bk:.2} para 2,90 m\n      \
                    e NAO decai -- empuxo sem resistencia e' uma mola sem\n      \
                    amortecimento, e o arrasto e' a metade que fecha a lei.\n\n  \
-               (!) NAO ESTA NESTA WAVE, de proposito: a FORCA da zona (uma\n      \
-                   correnteza) nao leva um personagem cinematico. Ela precisa do\n      \
-                   frame da zona, do espelho e do falloff, e re-deriva-los numa\n      \
-                   consulta seria uma segunda resposta -- nomeado, nao esquecido.\n\n  \
+               (!) A FORCA da zona (uma correnteza) NAO estava nesta wave, e a\n      \
+                   W-ZoneForce a fechou: ela chega hoje aos tres modos, pela MESMA\n      \
+                   porta que o solver usa (nao uma re-derivacao). Cena =106.\n\n  \
                (!) Toque B para o contorno: a poca fica magenta (sensor) e acende\n      \
                    quando ha' corpo dentro.\n",
             c = SANK[0],

@@ -290,7 +290,18 @@ impl VoxelField {
     /// 2. A célula-semente é marcada ao ser semeada. No original ela entra na
     ///    pilha sem rótulo, e se nenhum vizinho a re-empurrar ela termina
     ///    contada como **interior** — de novo, invisível só por causa da folga.
-    pub fn flood_fill(&mut self) {
+    ///
+    /// # Devolve quantas células ficaram DENTRO
+    ///
+    /// ⚠️ **Quem cria o interior é quem sabe dizer se há um**, e o número é a
+    /// única testemunha barata de que a onda não vazou: um vazamento marca a
+    /// grade inteira como fora, e a contagem cai a **zero**. Sem ele o vazamento
+    /// só aparece lá na frente, como uma malha vazia que o chamador instala
+    /// achando que é o resultado — foi assim que ele viveu até aqui.
+    ///
+    /// Não é `#[must_use]` de propósito: quem só vai AMOSTRAR o campo (o AO, a
+    /// espessura) tem o direito de ignorá-lo.
+    pub fn flood_fill(&mut self) -> usize {
         let (rx, ry, rz) = (self.dims[0], self.dims[1], self.dims[2]);
         let rxy = rx * ry;
         let cells = self.dist.len();
@@ -349,11 +360,14 @@ impl VoxelField {
             }
         }
 
+        let mut inside = 0usize;
         for (id, out) in outside.iter().enumerate() {
             if !out {
                 self.dist[id] = -self.dist[id];
+                inside += 1;
             }
         }
+        inside
     }
 }
 

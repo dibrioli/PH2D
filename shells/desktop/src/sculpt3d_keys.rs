@@ -8,7 +8,7 @@
 //! ⚠️ A porta é a mesma de sempre: sem cena armada ela devolve `false` no primeiro `if`, e o
 //! teclado do app segue para o `store` como se este módulo não existisse.
 
-use super::{LIGHT_STEP_DEG, MaskOp, Merge, Primitive, RADIUS_STEP, Verb};
+use super::{LIGHT_STEP_DEG, MaskOp, Merge, Primitive, RADIUS_STEP, RemeshRefusal, Verb};
 use crate::app_state::App;
 
 impl App {
@@ -336,12 +336,21 @@ impl App {
         // tempo: ele é o cubo da resolução (medido em `measure_remesh`).
         if code == K::KeyV {
             match scene.remesh(ph2d_sdf::DEFAULT_RESOLUTION) {
-                Some(r) => eprintln!(
+                Ok(r) => eprintln!(
                     "[sculpt3d] reconstruida: {} -> {} vertices / {} -> {} faces ({} celulas, {} buraco(s) tapado(s))",
                     r.verts.0, r.verts.1, r.faces.0, r.faces.1, r.cells, r.holes_filled
                 ),
-                None => eprintln!(
+                Err(RemeshRefusal::MultiresStack) => eprintln!(
                     "[sculpt3d] nao' reconstroi com a pilha montada: o remesh troca a TOPOLOGIA, e todo nivel acima e' subdivisao dela -- reverta os niveis antes"
+                ),
+                Err(RemeshRefusal::EmptyScene) => {
+                    eprintln!("[sculpt3d] nao' reconstroi: nao ha' peca na cena")
+                }
+                // ⚠️ A escultura CONTINUA na tela — é isto que a recusa compra.
+                // Antes daqui o campo vazado devolvia uma malha vazia que o
+                // shell instalava, e a peça sumia com log de sucesso.
+                Err(RemeshRefusal::Engine(e)) => eprintln!(
+                    "[sculpt3d] nao' reconstroi, e a escultura fica como esta': {e} -- tente outra resolucao"
                 ),
             }
             return true;

@@ -17,7 +17,7 @@
 use ph2d_panel_sculpt3d::{Sculpt3dIntent, Sculpt3dSnapshot, Sculpt3dUi};
 
 use super::dyntopo::DETAIL_STEPS;
-use super::{MaskOp, Primitive, Sculpt3dScene};
+use super::{MaskOp, Primitive, RemeshRefusal, Sculpt3dScene};
 
 /// **O que o LAÇO DE FRAME tem de cumprir** por um gesto do painel.
 ///
@@ -304,11 +304,20 @@ impl Sculpt3dScene {
                 }
             }
             Sculpt3dIntent::Remesh => match self.remesh(ph2d_sdf::DEFAULT_RESOLUTION) {
-                Some(r) => eprintln!(
+                Ok(r) => eprintln!(
                     "[sculpt3d] reconstruida: {} -> {} vertices / {} -> {} faces",
                     r.verts.0, r.verts.1, r.faces.0, r.faces.1
                 ),
-                None => eprintln!("[sculpt3d] nao' reconstroi com a pilha montada: reverta antes"),
+                Err(RemeshRefusal::MultiresStack) => {
+                    eprintln!("[sculpt3d] nao' reconstroi com a pilha montada: reverta antes")
+                }
+                Err(RemeshRefusal::EmptyScene) => {
+                    eprintln!("[sculpt3d] nao' reconstroi: nao ha' peca na cena")
+                }
+                // ⚠️ A escultura CONTINUA na tela — ver o irmão no `sculpt3d_keys`.
+                Err(RemeshRefusal::Engine(e)) => eprintln!(
+                    "[sculpt3d] nao' reconstroi, e a escultura fica como esta': {e} -- tente outra resolucao"
+                ),
             },
             Sculpt3dIntent::BakeAo => {
                 let r = self.bake_ao();

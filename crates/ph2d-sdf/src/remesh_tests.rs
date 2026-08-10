@@ -84,6 +84,37 @@ fn two_separate_bodies_stay_separate() {
     assert_eq!(between, 0, "{between} vértices no vão entre os dois cubos");
 }
 
+/// **Um remesh nunca reporta SUCESSO com uma malha vazia.**
+///
+/// ⚠️ **As resoluções são MEDIDAS, não escolhidas.** Entre 100 e 200 há ONZE em
+/// que o flood fill vaza para dentro e o campo sai sem interior — `112, 151,
+/// 160, 161, 168, 180, 181, 193, 194, 196, 197` — e o default que shipa é
+/// **150**, a UMA unidade da primeira. O que decide não é a resolução e sim o
+/// alinhamento da grade contra os triângulos, então outra malha (outra caixa,
+/// outro `step`) vaza noutros números: o 150 não é seguro, é sortudo.
+///
+/// ⚠️ **E o irmão [`an_open_mesh_still_comes_back_as_a_body`] já afirmava esta
+/// mesma propriedade** — na resolução 24 de um tubo aberto, onde ela passa. A
+/// fixture dele não continha o fenômeno; este é o mesmo `assert` com uma que
+/// contém.
+///
+/// A afirmação é sobre o RESULTADO, não sobre o vazamento: curar o flood fill
+/// faz `remesh` devolver uma malha de verdade nestas resoluções e o gate segue
+/// verde — ele não pode ser silenciado pelo conserto, só pela regressão.
+#[test]
+fn a_remesh_never_reports_success_with_an_empty_mesh() {
+    let m = shapes::uv_sphere(96, 144, 1.0);
+    for res in [151u32, 320] {
+        if let Ok((out, report)) = remesh(&m, res) {
+            assert!(
+                out.vert_count() > 0,
+                "resolução {res}: `Ok` com ZERO vértices — o chamador instala isto \
+                 e a escultura do artista SOME da tela com log de sucesso ({report:?})"
+            );
+        }
+    }
+}
+
 #[test]
 fn the_default_resolution_is_the_references() {
     assert_eq!(DEFAULT_RESOLUTION, 150);

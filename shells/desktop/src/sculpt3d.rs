@@ -73,7 +73,7 @@ mod view;
 #[path = "sculpt3d_history.rs"]
 mod history;
 
-use history::{Entry, StrokeUndo};
+use history::{Entry, RemeshRefusal, StrokeUndo};
 
 use donation::FormRole;
 use donation::FormStamp;

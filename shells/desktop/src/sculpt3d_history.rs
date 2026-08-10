@@ -46,6 +46,23 @@ const AO_FIELD_RESOLUTION: u32 = ph2d_sdf::DEFAULT_RESOLUTION;
 /// nomeiam nada no nível 2, então desfazê-lo de pé lá em cima escreveria as
 /// posições certas nos vértices errados — em silêncio. Desfazer VOLTA ao nível
 /// da edição, que é também o que o artista espera de um Ctrl+Z.
+/// Por que o botão de reconstruir RECUSOU.
+///
+/// ⚠️ **Três causas, três nomes.** Elas cabiam num `Option` e o chamador tinha
+/// de eleger UMA mensagem para as três: elegeu a da pilha de multires, então um
+/// campo que vazou mandava o artista reverter níveis inexistentes. O conserto
+/// não é uma mensagem melhor — é o tipo deixar de perder a informação.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum RemeshRefusal {
+    /// A pilha de multires está montada: o remesh troca a topologia, e todo
+    /// nível acima é subdivisão da base.
+    MultiresStack,
+    /// Não há peça na cena para reconstruir.
+    EmptyScene,
+    /// O motor recusou — hoje, o campo sem interior.
+    Engine(ph2d_sdf::RemeshError),
+}
+
 pub(super) enum StrokeUndo {
     /// A janela de um traço. Não há um segundo sistema a construir: a lei do
     /// traço já congela o `pre` por vértice tocado, e `touched` +
@@ -320,24 +337,38 @@ impl Sculpt3dScene {
 
     /// **RECONSTRÓI a malha por voxelização** — o botão do W7.
     ///
-    /// Devolve `None` com a pilha de multires montada, e a recusa é da MESMA
-    /// família da de tapar buraco: um remesh troca a topologia inteira, e todo
-    /// nível acima é `subdivide` da base — o detalhe deles passaria a descrever
-    /// uma malha que não existe mais. ⚠️ **A alternativa seria achatar a pilha
-    /// em silêncio**, e isso é destruir trabalho que o artista autorou sem
-    /// dizer; o log nomeia a recusa e o conserto.
-    pub(super) fn remesh(&mut self, resolution: u32) -> Option<ph2d_sdf::RemeshReport> {
+    /// Recusa com a pilha de multires montada, e essa recusa é da MESMA família
+    /// da de tapar buraco: um remesh troca a topologia inteira, e todo nível
+    /// acima é `subdivide` da base — o detalhe deles passaria a descrever uma
+    /// malha que não existe mais. ⚠️ **A alternativa seria achatar a pilha em
+    /// silêncio**, e isso é destruir trabalho que o artista autorou sem dizer; o
+    /// log nomeia a recusa e o conserto.
+    ///
+    /// ⚠️ **E ela devolve o MOTIVO, não um `None`.** Havia três causas de recusa
+    /// entrando num `Option` só, e o chamador tinha de escolher UMA mensagem
+    /// para todas — escolheu a da pilha, então um campo que vazou mandava o
+    /// artista *"reverter os níveis"* que ele não tem. Uma recusa que nomeia a
+    /// causa errada é pior que uma recusa muda: ela dirige o conserto para o
+    /// lugar errado.
+    pub(super) fn remesh(
+        &mut self,
+        resolution: u32,
+    ) -> Result<ph2d_sdf::RemeshReport, RemeshRefusal> {
         if self.level_count() != 1 {
-            return None;
+            return Err(RemeshRefusal::MultiresStack);
         }
-        let (out, report) = ph2d_sdf::remesh(self.mesh(), resolution).ok()?;
-        let previous = core::mem::replace(self.mesh_mut()?, out);
+        let (out, report) =
+            ph2d_sdf::remesh(self.mesh(), resolution).map_err(RemeshRefusal::Engine)?;
+        let previous = core::mem::replace(
+            self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?,
+            out,
+        );
         self.record(StrokeUndo::Remeshed(Box::new(previous)));
         // A malha é OUTRA: o traço em voo fala de vértices que não existem mais,
         // e os buffers do device mudaram de tamanho.
         self.stroke = SculptStroke::default();
         self.mesh_rebuilt();
-        Some(report)
+        Ok(report)
     }
 
     /// **ASSA O AO** — mede quanto do céu cada vértice enxerga e instala o canal.

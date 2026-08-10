@@ -48,6 +48,6 @@ mod thickness;
 
 pub use ao::{AoParams, bake_ao};
 pub use field::{DEFAULT_RESOLUTION, VoxelField};
-pub use remesh::{RemeshReport, remesh, remesh_default};
+pub use remesh::{RemeshError, RemeshReport, remesh, remesh_default};
 pub use surface_nets::surface_nets;
 pub use thickness::{DEFAULT_THICKNESS, at as thickness_at, bake as bake_thickness};

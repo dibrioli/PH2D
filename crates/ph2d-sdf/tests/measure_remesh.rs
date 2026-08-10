@@ -30,7 +30,7 @@ fn what_a_remesh_costs_by_resolution() {
         m.face_count()
     );
 
-    for res in [32u32, 64, 100, 150, 200] {
+    for res in [32u32, 64, 100, 150, 200, 256, 320, 400, 512] {
         let t0 = Instant::now();
         let (out, report) = remesh(&m, res).expect("remesh");
         let total = t0.elapsed().as_secs_f64() * 1e3;

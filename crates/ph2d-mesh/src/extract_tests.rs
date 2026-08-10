@@ -67,32 +67,13 @@ fn edge_faces(mesh: &Mesh) -> Vec<(u64, usize)> {
     out
 }
 
-/// O volume COM SINAL de uma malha fechada — positivo quando ela é enrolada
-/// para FORA.
+/// O volume COM SINAL de uma malha fechada — DELEGA.
 ///
-/// ⚠️ É o teorema da divergência, e é o único oráculo que separa *"a casca
-/// fechou"* de *"a casca fechou do lado certo"*: inverter a peça inteira mantém
-/// toda aresta com duas faces em sentidos opostos e só troca o sinal disto.
+/// ⚠️ Ele nasceu aqui como cópia privada e subiu para `crate::signed_volume`
+/// quando o remesh passou a precisar dele. O alias fica para os chamadores deste
+/// arquivo não mudarem de nome; a integral é UMA.
 fn signed_volume(mesh: &Mesh) -> f32 {
-    let p = mesh.positions();
-    let mut v = 0.0f32;
-    for f in mesh.faces() {
-        let idx = f.verts();
-        for k in 1..idx.len() - 1 {
-            let (a, b, c) = (
-                p[idx[0] as usize],
-                p[idx[k] as usize],
-                p[idx[k + 1] as usize],
-            );
-            let cr = [
-                b[1] * c[2] - b[2] * c[1],
-                b[2] * c[0] - b[0] * c[2],
-                b[0] * c[1] - b[1] * c[0],
-            ];
-            v += a[0] * cr[0] + a[1] * cr[1] + a[2] * cr[2];
-        }
-    }
-    v / 6.0
+    crate::signed_volume(mesh)
 }
 
 /// As arestas DIRIGIDAS, para a pergunta do enrolamento.

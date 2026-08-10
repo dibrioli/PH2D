@@ -62,6 +62,8 @@ mod smooth;
 mod stl;
 mod subdivide;
 mod tri_geom;
+/// O volume que uma malha FECHADA encerra — ver o módulo.
+mod volume;
 
 pub use aabb::Aabb;
 pub use adjacency::{Adjacency, Csr};
@@ -97,6 +99,7 @@ pub use smooth::ring_average;
 pub use stl::{StlError, import_stl};
 pub use subdivide::{Lerpable, Predicted, predict, subdivide};
 pub use tri_geom::TriEdges;
+pub use volume::signed_volume;
 
 /// Geometria de teste — um cubo e uma esfera UV.
 ///

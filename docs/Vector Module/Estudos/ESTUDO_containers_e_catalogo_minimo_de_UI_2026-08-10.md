@@ -294,7 +294,7 @@ uma lista de saves ou um log são inexprimíveis.
 |---|---|---|---|---|
 | ~~1~~ | **Hug + Min/Max** | o auto layout deixa de ser meio-feito | o motor já respondia | ✅ **CONSTRUÍDA** (2026-08-10) |
 | ~~2~~ | **Absolute position** | badge/overlay dentro de auto layout | componente marcador ⇒ zero bump | ✅ **CONSTRUÍDA** (2026-08-10) |
-| **3** | **Scroll na moldura** | lista longa deixa de ser inexprimível | `clip` já existe; falta deslocamento + roda | |
+| ~~3~~ | **Scroll na moldura** | lista longa deixa de ser inexprimível | `clip` já existia; o motor já transbordava | ✅ **CONSTRUÍDA** (2026-08-10) |
 | **4** | a tabela **sinal → ação** | o botão autorado *faz* alguma coisa | conteúdo autorado; o R0 já mede que o canal custa ~0 | |
 | **5** | **Grid** | colunas alinhadas + refluxo | **+11 ms** de build (re-medido) + UI + fatia | |
 
@@ -318,6 +318,34 @@ moldura que encolhe leva o recorte junto).
 ⚠️ **E ela dissolveu uma pergunta do §5.3:** *scroll* continua em aberto, mas `Hug` + `Max` já
 cobrem metade do caso que o motivava — uma lista que cresce com o conteúdo **até** um teto. O que
 falta é o que passa DO teto, e é aí que a rolagem começa.
+
+### ✅ O que a wave 3 entregou (2026-08-10)
+
+**Uma moldura que recorta e cujo conteúdo não cabe ROLA com a roda.** A sonda decidiu o desenho
+antes de qualquer código (`ph2d-vec-layout::overflow_probe`, pela porta do PRODUTO): os filhos
+**transbordam** em vez de encolher (`y = 0/40/80/120/160` numa moldura de 100), o par `Hug + Max`
+transborda igual, e o **controle** (moldura de 400) reporta −200 — o excedente é derivável.
+
+| onde | o quê |
+|---|---|
+| motor | nada — ele já transbordava, e é esse o achado |
+| fatia | `layout_live::scroll` — o excedente MEDIDO por passe · o deslocamento herdado pelos ancestrais · o alvo da roda PUBLICADO por quem coloca |
+| gesto | `layout_scroll_gesture` — a roda, antes do zoom e depois do painel |
+| smoke | **`PH2D_BUILD_SMOKE=67`** (a LISTA e o CONTROLE, na mesma caixa) |
+
+⚠️ **O deslocamento é VISTA e não documento**, e a razão é a que fez o modo de preview existir: o
+undo deste editor é por DIFF do mundo, então um scroll no ECS faria **cada tique de roda virar um
+passo de undo**. Ele não viaja no arquivo — reabrir um projeto mostra o topo da lista.
+
+⚠️ **E ele não rouba o zoom:** só uma moldura que **recorta** e que **transborda** é alvo, e as duas
+condições juntas só valem numa lista que o artista fez transbordar de propósito. É o precedente do
+Gap Closure, com a mesma frase: *a roda crua é load-bearing*.
+
+⚠️ **A previsão da §5.3 sobreviveu ao contacto:** *"o `clip` já existe — falta o deslocamento e a
+roda"* estava certa, e o que ela não previa é que **o motor também já estivesse pronto**. O trabalho
+foi todo de costura.
+
+---
 
 ⚠️ **A ordem é por RAZÃO ganho/custo, não por tamanho** — e o (1) é o único item onde os dois lados
 já estão medidos.

@@ -487,6 +487,12 @@ mod dash;
 #[path = "lib_crouch_tests.rs"]
 mod crouch;
 
+/// Os gates do NADO na porta única — o terceiro irmão, pelo mesmo corte: aqui
+/// vive *o que o regime faz à porta* (as três coisas que ele cala, o botão que
+/// muda de significado, e a gravidade que ele **não** cancela).
+#[path = "lib_swim_tests.rs"]
+mod swim_gates;
+
 // ═══ W-KinMove — O MODO DE SUPORTE ═══════════════════════════════════════
 
 /// **A LEI DE INTENÇÃO é a MESMA nos dois modos** (K1) — só o que SEGURA muda.

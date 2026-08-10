@@ -58,7 +58,9 @@ pub mod jump;
 pub mod kinematic;
 pub mod react;
 pub mod ride;
+pub mod sense;
 pub mod slope;
+pub mod swim;
 pub mod walk;
 pub mod wall;
 
@@ -79,7 +81,9 @@ pub use react::{Reaction, ReactionConfig, push_transfer};
 pub use ride::{
     RideConfig, Support, damping_axis, ride_hold, ride_spring, ride_support_on_ground, within_reach,
 };
+pub use sense::{Buoyed, GroundSample, PlayerInput};
 pub use slope::{Footing, footing, footing_verdict, is_grounded, no_uphill};
+pub use swim::{SwimConfig, SwimState, swim_motor, swim_step, vertical_drive};
 pub use walk::{WalkConfig, walk};
 pub use wall::{
     GrabState, WALL_SAMPLES, WallConfig, WallHit, WallLaunch, WallProbe, WallSample, cling,
@@ -98,143 +102,6 @@ pub type Vec2 = [f32; 2];
 #[must_use]
 pub fn perp_cw(v: Vec2) -> Vec2 {
     [v[1], -v[0]]
-}
-
-/// **QUANTO DO PESO o fluido está a carregar**, em `[0, 1]` — o sentido que diz
-/// à lei que ela **não está num arco balístico**.
-///
-/// # ⚠️ Por que a lei precisa disto, e por que não é "quanto estou submerso"
-///
-/// A modelagem do arco de um pulo — leve no ápice, pesada na queda — descreve um
-/// corpo em **voo livre**, onde a gravidade é a única força e o arco é o produto
-/// dela. Quando é o **empuxo** quem o segura, os mesmos multiplicadores viram
-/// **amplificação paramétrica**: pesado ao descer injeta mais energia do que
-/// leve ao subir devolve, ciclo após ciclo (medido no produto: largado numa poça
-/// ele oscila `−1,05 / +4,71 / +12,08 / −20,31` e sai da cena).
-///
-/// ⚠️ **A grandeza é a razão empuxo÷peso, e a diferença foi MEDIDA:** à tona, a
-/// cápsula de controle desta linha submerge **26%** da área — uma lei que
-/// desvanecesse por *"quanto está molhado"* deixaria **74% da bomba ligada
-/// exactamente onde o personagem passa a vida**. A razão vale `1` ali por
-/// construção, porque *boiar em repouso* **é** o empuxo igualar o peso.
-///
-/// # ⚠️ A LEI é uma trava, e ela mora no [`crate::JumpState`]
-///
-/// A lei não desvanece com a fração — ela **cala** enquanto o fluido tiver o
-/// corpo, e só re-arma num contato com o CHÃO. O porquê (a energia é ganha no
-/// AR, entre dois mergulhos, onde não há fluido nenhum a medir) está escrito em
-/// [`crate::JumpState::waterborne`], com os números da ablação.
-///
-/// ⚠️ **O valor CONTÍNUO fica mesmo assim**, e não é enfeite: ele é o que a
-/// sonda imprime para verificar a teoria (à tona a razão vale `1,0000` porque
-/// *boiar em repouso* **é** o empuxo igualar o peso, e foi essa leitura que
-/// provou que o personagem passou a assentar na linha do controle). Um `bool`
-/// vindo da ponte teria escondido isso.
-///
-/// ⚠️ **E a MAGNITUDE não é load-bearing na lei — só o sinal é.** Está medido:
-/// uma mutação que troca o denominador (a razão deixa de ser peso e vira outra
-/// coisa) sangra **dois gates da CONSULTA e nenhum do produto**, porque a trava
-/// pergunta `> 0`. Escrito aqui para ninguém a ler como um número que a lei
-/// pesa; quem o pesa é quem lê a sonda, e a wave que trouxer natação.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Buoyed(pub f32);
-
-impl Buoyed {
-    /// Ar seco — o neutro, e o que uma cena sem poça produz.
-    pub const DRY: Self = Self(0.0);
-
-    /// **O fluido carrega ALGUMA parte deste peso?** — a única pergunta que a
-    /// lei faz a este sentido.
-    ///
-    /// ⚠️ **O predicado mora AQUI, e não na ponte**, porque é a lei que depende
-    /// dele: uma ponte que publicasse um `bool` teria decidido o limiar longe do
-    /// único código que sabe o que ele significa.
-    ///
-    /// ⚠️ **`NaN` conta como SECO**, e é a escolha segura: uma zona degenerada
-    /// não pode calar a modelagem que o artista autorou (`NaN > 0.0` é falso, e
-    /// esta linha existe para dizer que isso é intencional, não descuido).
-    #[must_use]
-    pub fn carries_weight(self) -> bool {
-        self.0 > 0.0
-    }
-}
-
-/// **O que o sensor de chão viu.** `None` no chamador significa *"nada ao
-/// alcance"*, e a lei lê isso como estar no ar.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct GroundSample {
-    /// Distância do ponto de origem do raio até a superfície.
-    pub distance: f32,
-    /// A normal da superfície.
-    ///
-    /// ⚠️ Pode vir **degenerada** (`[0, 0]`) quando o raio nasce DENTRO da
-    /// geometria — é o contrato do `cast_ray` do wrapper, que reporta a
-    /// penetração em vez de a esconder. A [`footing`] a trata como chão plano:
-    /// não sabemos a orientação, e a suposição menos daninha é a que deixa a
-    /// mola empurrar o personagem para fora.
-    pub normal: Vec2,
-    /// **A velocidade do CHÃO no ponto de contato.**
-    ///
-    /// ⚠️ É ela que faz a plataforma móvel cair de graça: tudo nesta lei é
-    /// medido *relativo ao chão*, então andar sobre um vagão é andar, e o vagão
-    /// acelerando não derruba ninguém. Um chão estático manda `[0, 0]`.
-    pub ground_velocity: Vec2,
-    /// **Este chão é uma plataforma jump-through?** (W12)
-    ///
-    /// ⚠️ **É o SENSOR quem responde, e é por isso que o campo mora aqui:** a
-    /// lei precisa saber *que tipo de chão* achou para decidir o que o botão de
-    /// pulo significa neste tique (pular, ou DESCER através dele), e a única
-    /// coisa que sabe se um collider é one-way é quem o consultou. Derivá-lo
-    /// noutro lugar seria uma segunda resposta para um fato que a amostra já
-    /// carrega.
-    ///
-    /// Chão comum manda `false`, e é isso que mantém a wave inteira inerte em
-    /// toda cena que nunca autorou uma plataforma jump-through.
-    pub one_way: bool,
-}
-
-/// **A entrada do jogador neste tick.**
-///
-/// ⚠️ Não é config e não é componente: é o que o dedo do jogador estava fazendo.
-/// Hoje a ponte a guarda como estado transiente (set-and-hold); a partir da W7
-/// ela vem de uma **fita por tick**, o que torna o player uma função de
-/// `(tick, fita)` e devolve o scrub bit-exato que o resto do módulo tem.
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
-pub struct PlayerInput {
-    /// O eixo de caminhada em `[-1, 1]`. Positivo é a direita.
-    pub drive: f32,
-    /// O botão de pulo está PRESSIONADO agora.
-    ///
-    /// ⚠️ O estado, não a borda. A borda é derivada pela lei
-    /// ([`JumpState::was_held`]), e tem de ser: quem a derivasse do lado de fora
-    /// precisaria de uma segunda memória do mesmo fato, e as duas divergiriam no
-    /// primeiro tick em que um dispatch devesse mais de um passo.
-    pub jump: bool,
-    /// **O botão de BAIXO está pressionado agora** (W12).
-    ///
-    /// ⚠️ Ele não anda para lugar nenhum sozinho — hoje serve a uma pergunta
-    /// só: *o que o botão de pulo significa em cima de uma plataforma
-    /// jump-through?* Segurado, o pulo vira **descida**
-    /// ([`PlayerStep::drop_through`]).
-    ///
-    /// ⚠️ **É `down + jump`, e não `down` sozinho, de propósito:** um jogador
-    /// que segura baixo enquanto anda não pode cair da plataforma sem ter
-    /// pedido, e o dia em que existir um AGACHAR o botão já estará lá com o
-    /// significado certo. É o idioma de Celeste, Hollow Knight, Ori e Dead
-    /// Cells.
-    pub down: bool,
-    /// **O botão de ARRANQUE está pressionado agora** (W14).
-    ///
-    /// ⚠️ O estado, não a borda — a lei a deriva sozinha
-    /// ([`DashState::was_held`]), pela razão exata do pulo: uma segunda memória
-    /// do mesmo fato do lado de fora divergiria no primeiro dispatch que deve
-    /// mais de um tique.
-    pub dash: bool,
-    /// **O botão de AGARRAR está pressionado agora** (W23).
-    ///
-    /// ⚠️ O estado, como os outros três — e aqui nem sequer há borda a derivar:
-    /// agarrar-se é um regime que dura enquanto o dedo dura.
-    pub grab: bool,
 }
 
 /// **O que fazer com o corpo neste tick.** Ver a distinção accel/boost no topo.
@@ -380,6 +247,16 @@ pub fn player_motor(
     let verdict = footing_verdict(cfg, sample, up);
     let footing = verdict.ground();
 
+    // ── O NADO (W-Swim) ──────────────────────────────────────────────────────
+    // ⚠️ **A trava é resolvida PRIMEIRO, e antes de tudo o que ela silencia** —
+    // ela é uma pergunta sobre o mundo (*há chão? há água?*), não sobre o que as
+    // outras leis decidiram, e responder-lhe aqui é o que permite entregar a
+    // MESMA resposta ao pulo, à perna, à caminhada e à parede. Uma segunda
+    // pergunta em qualquer um deles daria um tique em que o personagem nada e a
+    // mola o segura.
+    let swim = swim::swim_step(&cfg.swim, state.swim, footing, buoyed);
+    let swimming = swim.active;
+
     // ⚠️ **O pulo decide PRIMEIRO, e não é ordem arbitrária:** é ele que
     // responde *"a perna pode agir?"*. No instante da decolagem o raio ainda vê
     // o chão, então uma mola viva puxaria de volta o que o boost acabou de dar
@@ -392,7 +269,16 @@ pub fn player_motor(
     // pulo. Duas perguntas dariam um tique em que o personagem escorrega numa
     // superfície de que ele não consegue pular, e a diferença seria invisível
     // até alguém mexer num dos dois testes.
-    let clinging = wall::cling(cfg, wall, input.drive, rel_up, up);
+    // ⚠️ **A parede cala dentro d'água** (W-Swim): agarrar-se é apoiar-se, e a
+    // lei só arma o nado onde não há em que se apoiar. Deixá-la viva daria um
+    // escorregamento de parede a competir com a braçada pelo eixo vertical —
+    // dois donos do mesmo número, que é a razão pela qual o arranque silencia os
+    // seus três.
+    let clinging = if swimming {
+        None
+    } else {
+        wall::cling(cfg, wall, input.drive, rel_up, up)
+    };
     // ⚠️ **A reserva anda AQUI, uma vez, ao lado da pergunta que ela qualifica.**
     // Agarrar-se cavalga o `clinging` — ele já respondeu *é parede, ele empurra,
     // ele desce* —, então o grip só acrescenta *o botão está apertado* e *ainda
@@ -411,7 +297,15 @@ pub fn player_motor(
         state.jump,
         footing,
         rel_up,
-        input.jump,
+        // ⚠️ **O botão foi GASTO na braçada** (W-Swim): quem nada não pula, e
+        // quem decide isso é a trava — não uma segunda condição aqui dentro.
+        //
+        // ⚠️ E ele é apagado na ENTRADA em vez de o motor ser descartado na
+        // saída, que era a alternativa: um pulo que "sai" e tem o motor jogado
+        // fora deixa o estado a dizer que ele saiu (`airborne`, o coyote gasto)
+        // e — pior — acende o `takeoff`, que a 3.ª lei devolveria ao chão como
+        // um empurrão que ninguém deu.
+        input.jump && !swimming,
         input.down,
         wall::wall_launch(&cfg.wall, clinging.as_ref()),
         gravity,
@@ -473,6 +367,13 @@ pub fn player_motor(
     // ⚠️ **E o arranque cala a perna junto** (W14): enquanto ele dura, o
     // personagem é uma velocidade — a mola disputaria o eixo vertical com o
     // boost e os dois escreveriam o mesmo número. Ver o topo de [`crate::dash`].
+    //
+    // ⚠️ **O NADO não aparece nesta condição, e é deliberado** (W-Swim): a trava
+    // só arma sem chão ao alcance, então aqui a `footing` **já é `None`** e um
+    // `&& !swimming` seria uma camada que nenhuma mutação consegue observar —
+    // exatamente o defensivo que este repo já pagou para aprender a não escrever
+    // ([[feedback_layered_defenses_need_per_layer_gates]]). Quem sustenta a
+    // frase é um gate sobre a LEI (`the_swim_never_runs_with_ground_under_it`).
     let standing = if jump.spring_armed && !dashing {
         footing
     } else {
@@ -506,7 +407,13 @@ pub fn player_motor(
     // ⚠️ **E o arranque cala a caminhada pela mesma razão que o silêncio do pulo
     // de parede a cala** (W14): com o controle aéreo vivo o jogador curvaria o
     // traço, e o desenho deixaria de ser função só do botão.
-    let step = if jump.state.wall_lock > 0.0 || dashing {
+    //
+    // ⚠️ **E o nado a cala, e este termo NÃO é redundante** (W-Swim): sem chão a
+    // caminhada não desaparece — ela vira **controle aéreo**, com orçamento
+    // próprio e no eixo horizontal. Deixá-la viva seria um segundo servo a
+    // escrever o mesmo eixo que a braçada, e os dois discordariam sobre o alvo
+    // (ela mira `speed`, ele mira `swim.speed`).
+    let step = if jump.state.wall_lock > 0.0 || dashing || swimming {
         Motor::default()
     } else {
         no_uphill(
@@ -590,13 +497,43 @@ pub fn player_motor(
         (jump.motor, Motor::default())
     };
 
+    // ── A BRAÇADA (W-Swim) ───────────────────────────────────────────────────
+    // ⚠️ **O ARRANQUE vence o nado**, e é a mesma frase do módulo dele: *durante
+    // o arranque o personagem é uma velocidade*. Somar os dois daria dois donos
+    // do mesmo eixo, e o traço reto que o arranque promete deixaria de ser reto
+    // dentro d'água.
+    //
+    // ⚠️ **A gravidade NÃO é cancelada aqui** (ao contrário do arranque): o que
+    // segura um nadador é o EMPUXO, que o solver já aplica no modo dinâmico e o
+    // `kinematic_advance` já integra no cinemático. Cancelá-la seria a lei a
+    // pagar a água uma segunda vez, e o `gravity_hold` sairia deste tique a
+    // dizer que a perna age — quando ela está calada.
+    let stroke = if swimming && !dashing {
+        swim::swim_motor(
+            &cfg.swim,
+            input.drive,
+            swim::vertical_drive(input.jump, input.down),
+            body_velocity,
+            up,
+            dt,
+        )
+    } else {
+        Motor::default()
+    };
+
     PlayerStep {
-        motor: spring.plus(step).plus(jump_motor).plus(slide).plus(burst),
+        motor: spring
+            .plus(step)
+            .plus(jump_motor)
+            .plus(slide)
+            .plus(burst)
+            .plus(stroke),
         state: PlayerState {
             jump: jump.state,
             dash: dash.state,
             crouch,
             grab,
+            swim,
             // ⚠️ **A LEI DE INTENÇÃO não toca a velocidade cinemática**, e é a
             // divisão inteira: ela diz o que o personagem QUER; quem integra é
             // o `kinematic_advance`, chamado pela ponte com o `was.kin` na mão.

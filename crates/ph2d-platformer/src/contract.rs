@@ -12,7 +12,8 @@
 use crate::{
     Motor, Reaction, Vec2, crouch::CrouchConfig, crouch::CrouchState, dash::DashConfig,
     dash::DashState, jump::JumpConfig, jump::JumpState, kinematic, react::ReactionConfig,
-    ride::RideConfig, walk::WalkConfig, wall::GrabState, wall::WallConfig,
+    ride::RideConfig, swim::SwimConfig, swim::SwimState, walk::WalkConfig, wall::GrabState,
+    wall::WallConfig,
 };
 
 /// A config inteira de um player — as metades que a [`footing`] precisa
@@ -33,6 +34,8 @@ pub struct PlayerConfig {
     pub dash: DashConfig,
     /// O agachar (W15) — ⚠️ nasce DESLIGADO, ver [`CrouchConfig::STARTING_POINT`].
     pub crouch: CrouchConfig,
+    /// O nado (W-Swim) — ⚠️ nasce DESLIGADO, ver [`SwimConfig::STARTING_POINT`].
+    pub swim: SwimConfig,
 }
 
 impl PlayerConfig {
@@ -45,6 +48,7 @@ impl PlayerConfig {
         wall: WallConfig::STARTING_POINT,
         dash: DashConfig::STARTING_POINT,
         crouch: CrouchConfig::STARTING_POINT,
+        swim: SwimConfig::STARTING_POINT,
     };
 }
 
@@ -75,6 +79,9 @@ pub struct PlayerState {
     pub crouch: CrouchState,
     /// O agarrar-se (W23) — quanto já se gastou da reserva de parede.
     pub grab: GrabState,
+    /// O nado (W-Swim) — a TRAVA, e ela existe porque entrar e sair pedem
+    /// limiares diferentes (ver o topo de [`crate::swim`]).
+    pub swim: SwimState,
     /// **A velocidade do modo CINEMÁTICO** (W-KinMove, K5) — o que o solver
     /// possuiria se o corpo fosse dinâmico.
     ///

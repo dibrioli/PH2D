@@ -108,6 +108,8 @@ mod inspector_player_tests;
 // (`crate::joint_rig`, W-Rig) a chama de fora — uma segunda regra lá faria um rig
 // cujos colliders discordam dos que o botão *Add Body* produz. Mesmo alcance do
 // `inspector_joint` logo acima, pelo mesmo motivo.
+/// A lei do relógio, perguntada pelos DOIS emissores de sinal — ver o módulo.
+mod clock_forward;
 pub(crate) mod inspector_physics;
 mod inspector_physics_apply;
 mod inspector_physics_area;
@@ -219,8 +221,6 @@ mod run_stash;
 /// `tokens_bridge`: um painel de MUNDO, publicado e drenado na mesma fase.
 #[cfg(feature = "sculpt3d")]
 pub(crate) mod sculpt3d_panel_bridge;
-/// A lei do relógio, perguntada pelos DOIS emissores de sinal — ver o módulo.
-mod clock_forward;
 pub(crate) mod timeline_bridge;
 pub(crate) mod timeline_onion;
 mod timeline_presets;

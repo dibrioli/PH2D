@@ -34,9 +34,21 @@ struct Frame {
 
 /// Roda a cena por `secs` e devolve as duas grandezas a cada tique.
 fn run(secs: f64) -> Vec<Frame> {
+    run_scene(build_gpu_adsr_demo_document, secs)
+}
+
+/// A MESMA cena com as tomadas (`=26`) — ver [`a_tomada_no_meio_do_fio_nao_muda_um_pixel`].
+fn run_tapped(secs: f64) -> Vec<Frame> {
+    run_scene(build_gpu_signal_demo_document, secs)
+}
+
+fn run_scene(
+    build: fn(&mut MotionDoc, &NodeRegistry) -> Option<Vec<NodeId>>,
+    secs: f64,
+) -> Vec<Frame> {
     let reg = registry();
     let mut doc = MotionDoc::default();
-    let sinks = build_gpu_adsr_demo_document(&mut doc, &reg).expect("cena bem tipada");
+    let sinks = build(&mut doc, &reg).expect("cena bem tipada");
     let sink = sinks[0];
     let mut cook = Cook::new();
     let mut frames = Vec::new();
@@ -78,7 +90,11 @@ fn first_y(s: &ph2d_nodegraph::attr::Stream) -> f32 {
 /// ⚠️ **O repouso é MEDIDO** (o mínimo da corrida), nunca escrito à mão: o Y de repouso vem
 /// da geometria da grade e mudar `SIDE` ou `GAP` moveria um literal daqui sem ninguém notar.
 fn events(vals: &[f32], margin: f32) -> Vec<(usize, usize)> {
-    let rest = vals.iter().cloned().filter(|v| v.is_finite()).fold(f32::MAX, f32::min);
+    let rest = vals
+        .iter()
+        .cloned()
+        .filter(|v| v.is_finite())
+        .fold(f32::MAX, f32::min);
     let live = |v: f32| v.is_finite() && v > rest + margin;
     let mut out = Vec::new();
     let mut start = None;
@@ -208,10 +224,7 @@ fn o_envelope_da_duracao_ao_disparo() {
     }
     // E a FORMA: dentro do crescimento o tamanho sobe até um pico e volta — não é um degrau.
     let (a, b) = bumps[0];
-    let peak = frames[a..b]
-        .iter()
-        .map(|f| f.size)
-        .fold(f32::MIN, f32::max);
+    let peak = frames[a..b].iter().map(|f| f.size).fold(f32::MIN, f32::max);
     assert!(
         peak > DOT_REST + SWELL * 0.8,
         "o pico chega perto do topo: {peak}"
@@ -304,7 +317,10 @@ fn probe_o_compasso() {
         println!("    entre os crescimentos em {a} e {b}: {n} pulos");
     }
     for (a, b) in &grow {
-        let peak = frames[*a..*b].iter().map(|f| f.size).fold(f32::MIN, f32::max);
+        let peak = frames[*a..*b]
+            .iter()
+            .map(|f| f.size)
+            .fold(f32::MIN, f32::max);
         println!(
             "    crescimento {a}..{b} ({} = {:.2}s) pico {peak:.3} contra repouso {DOT_REST}",
             b - a,
@@ -318,6 +334,38 @@ fn probe_o_compasso() {
             "    pulo {a}..{b} ({} tiques) sobe {:.3} (repouso {rest:.3})",
             b - a,
             peak - rest
+        );
+    }
+}
+
+/// **A TOMADA no meio do fio não muda um pixel** — a cena `=26` desenha, tique a tique e bit a
+/// bit, o que a `=25` desenha.
+///
+/// ⚠️ **É por isso que as duas saem da MESMA função** (ver `build_gpu_signal_demo_document`): uma
+/// cópia do documento tornaria toda diferença indistinguível de um erro de digitação meu, e este
+/// gate — o que prova que um medidor em série não altera a corrente — não teria como falhar por
+/// um motivo honesto.
+///
+/// A comparação é por `to_bits`, não por épsilon: um passthrough que fosse *quase* igual já seria
+/// outro nó.
+#[test]
+fn a_tomada_no_meio_do_fio_nao_muda_um_pixel() {
+    let plain = run(4.0);
+    let tapped = run_tapped(4.0);
+    assert_eq!(
+        plain.len(),
+        tapped.len(),
+        "os dois cozinham os mesmos tiques"
+    );
+    for (k, (a, b)) in plain.iter().zip(&tapped).enumerate() {
+        assert_eq!(
+            (a.size.to_bits(), a.y.to_bits()),
+            (b.size.to_bits(), b.y.to_bits()),
+            "tique {k}: a cena com tomadas divergiu ({:?}/{:?} contra {:?}/{:?})",
+            a.size,
+            a.y,
+            b.size,
+            b.y
         );
     }
 }

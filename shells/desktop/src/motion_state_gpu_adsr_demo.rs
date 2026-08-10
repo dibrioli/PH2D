@@ -1,6 +1,7 @@
 //! A cena do **COMPASSO** (`PH2D_GPU_COOK_DEMO=25`) — o `carry` do `pulse.counter` e o
 //! `pulse.adsr`, os dois últimos itens da folha 12 do doc 89, montados como um documento
-//! pronto para smoke.
+//! pronto para smoke — **e a do GRITO (`=26`), que é ela com as tomadas** (ver
+//! [`build_gpu_signal_demo_document`]: as duas saem da MESMA função, de propósito).
 //!
 //! **A cadeia** é um Y a partir do metrônomo — os DOIS relógios saem do mesmo `pulse.beat`:
 //!
@@ -76,11 +77,39 @@ const HOP_DECAY: f32 = 0.10;
 /// como pulo.
 pub const HOP: f32 = 0.30;
 
+/// O nome que o ramo do PULO grita — um por batida.
+pub const TIC: &str = "tic";
+/// O nome que o ramo do CRESCIMENTO grita — um por compasso.
+pub const COMPASSO: &str = "compasso";
+
 /// Monta o documento e devolve os sinks.
 pub fn build_gpu_adsr_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
 ) -> Option<Vec<NodeId>> {
+    build(doc, reg, false)
+}
+
+/// **O GRAFO GRITA** (`PH2D_GPU_COOK_DEMO=26`) — a MESMA cena do compasso com uma `pulse.signal`
+/// em cada relógio: `tic` no cru, `compasso` no dividido.
+///
+/// ⚠️ **Ela é a cena `=25` e não uma prima dela**, e isso é o desenho: as duas saem da mesma
+/// função, então o que muda entre uma e outra é *só* a tomada. Uma cópia do documento tornaria
+/// toda diferença de desenho indistinguível de um defeito do nó — e o gate que diz *"a tomada
+/// não muda um pixel"* não teria como falhar por um motivo honesto.
+///
+/// **O que provar:** com `PH2D_SIGNAL_LOG=1` o terminal imprime `tic` a cada pulo e `compasso`
+/// a cada crescimento, na razão que o OLHO já conta na tela — os dois instrumentos dizendo a
+/// mesma coisa. E **arrastar a régua não imprime nada**: um sinal é travessia de play para a
+/// frente, nunca um efeito de estar num tique.
+pub fn build_gpu_signal_demo_document(
+    doc: &mut MotionDoc,
+    reg: &NodeRegistry,
+) -> Option<Vec<NodeId>> {
+    build(doc, reg, true)
+}
+
+fn build(doc: &mut MotionDoc, reg: &NodeRegistry, taps: bool) -> Option<Vec<NodeId>> {
     use ph2d_nodegraph::graph::{Edge, Pos};
     let g = &mut doc.graph;
 
@@ -127,6 +156,19 @@ pub fn build_gpu_adsr_demo_document(
     g.set_param(drive, "scale", SWELL);
     let out = g.add_node("motion.output");
 
+    // As TOMADAS (`=26`). Cada uma nomeia o relógio em que está: um medidor em SÉRIE, no fio,
+    // e não um ramo pendurado — é por isso que o nó tem porta de saída do mesmo tipo da de
+    // entrada, e é o que deixa nomear um pulso sem deixar de usá-lo.
+    let tap_ids = taps.then(|| {
+        let tic = g.add_node("pulse.signal");
+        g.set_text_param(tic, ph2d_node_pulse_signal::NAME_KEY, TIC);
+        g.set_pos(tic, Pos { x: 460.0, y: 250.0 });
+        let bar = g.add_node("pulse.signal");
+        g.set_text_param(bar, ph2d_node_pulse_signal::NAME_KEY, COMPASSO);
+        g.set_pos(bar, Pos { x: 650.0, y: 150.0 });
+        (tic, bar)
+    });
+
     for (i, n) in [grid, scale, drive_y, drive, out].into_iter().enumerate() {
         g.set_pos(
             n,
@@ -147,25 +189,34 @@ pub fn build_gpu_adsr_demo_document(
     }
     g.set_pos(hop, Pos { x: 460.0, y: 150.0 });
 
-    for (a, ap, b, bp) in [
+    let mut wires: Vec<(NodeId, u16, NodeId, u16)> = vec![
         (grid, 0u16, scale, 0u16),
         // O metrônomo lê o mesmo stream, só pela contagem de linhas.
         (scale, 0, beat, 0),
         (beat, 0, count, 0),
-        // O ramo CRU: o pulo sai do metrônomo, antes do divisor.
-        (beat, 0, hop, 0),
-        // ⚠️ **A porta de saída 1**: o `carry`, não a contagem — e ligar a `0` é
-        // **INEXPRIMÍVEL**, medido: a contagem é um VALOR (relógio `Frame`) e este porto
-        // pede um PULSO (`Event`), então o tipo recusa e o documento nem se monta. O erro
-        // que este fio PODE cometer é outro — um `count_max` errado —, e é esse que o gate
-        // da razão pega.
-        (count, 1, env, 0),
         (scale, 0, drive_y, 0),
         (hop, 0, drive_y, 1),
         (drive_y, 0, drive, 0),
         (env, 0, drive, 1),
         (drive, 0, out, 0),
-    ] {
+    ];
+    // Os dois fios que a tomada ATRAVESSA — o ramo CRU (o pulo sai do metrônomo, antes do
+    // divisor) e o `carry`.
+    //
+    // ⚠️ **A porta de saída 1**: o `carry`, não a contagem — e ligar a `0` é **INEXPRIMÍVEL**,
+    // medido: a contagem é um VALOR (relógio `Frame`) e este porto pede um PULSO (`Event`),
+    // então o tipo recusa e o documento nem se monta. O erro que este fio PODE cometer é outro
+    // — um `count_max` errado —, e é esse que o gate da razão pega.
+    match tap_ids {
+        Some((tic, bar)) => wires.extend([
+            (beat, 0, tic, 0),
+            (tic, 0, hop, 0),
+            (count, 1, bar, 0),
+            (bar, 0, env, 0),
+        ]),
+        None => wires.extend([(beat, 0, hop, 0), (count, 1, env, 0)]),
+    }
+    for (a, ap, b, bp) in wires {
         g.connect(Edge {
             from: (a, ap),
             to: (b, bp),

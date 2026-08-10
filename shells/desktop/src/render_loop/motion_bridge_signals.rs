@@ -11,7 +11,9 @@ use crate::motion_state::MotionState;
 ///
 /// Irmã do `output_nodes`, e pela mesma razão: o shell endereça tipos de nó pelo NOME
 /// canônico, como faz com o id de ferramenta.
-pub(super) fn signal_nodes(graph: &ph2d_nodegraph::graph::Graph) -> Vec<ph2d_nodegraph::graph::NodeId> {
+pub(super) fn signal_nodes(
+    graph: &ph2d_nodegraph::graph::Graph,
+) -> Vec<ph2d_nodegraph::graph::NodeId> {
     let mut ids: Vec<_> = graph
         .nodes()
         .iter()
@@ -49,10 +51,16 @@ pub(super) fn collect_signals(motion: &mut MotionState, tick: u64) {
         else {
             continue;
         };
-        motion.signals_out.push(crate::motion_state::MotionSignalOut {
-            name: name.to_string(),
-            tick,
-            rows,
-        });
+        motion
+            .signals_out
+            .push(crate::motion_state::MotionSignalOut {
+                name: name.to_string(),
+                tick,
+                rows,
+            });
     }
 }
+
+#[cfg(test)]
+#[path = "motion_bridge_signals_tests.rs"]
+mod tests;

@@ -216,3 +216,36 @@ dispara um som) é trivial de escrever e **errado por construção hoje** — o 
 som sairia N vezes ao arrastar a régua —, e a regra que falta **já existe no bridge**
 (`motion_bridge::ticks_owed`: play = todo tick para a frente, scrub = uma chamada), o que faz desta a
 direção certa para abrir primeiro.
+
+### ✅ CONSTRUÍDO (2026-08-10) — a direção `grafo → runtime`
+
+Nó novo **`pulse.signal`** (crate-folha `ph2d-node-pulse-signal`): um pulso ganha um **NOME** e
+atravessa intacto. A crate **não conhece a `ph2d-runtime`** — ela devolve o stream verbatim e conta
+as linhas que dispararam; quem publica é o shell, que já é dono da outbox e já drena as outras duas
+fontes (ADR-0075: o produtor não chama ninguém).
+
+⚠️ **E a folha dizia *"trivial de escrever"*, o que a construção derrubou.** O pump aceita **um
+alvo por marcha** (a doc dele: *one march, N hand-offs*), então cozinhar a tomada numa segunda
+chamada avançaria o relógio **duas vezes por tique** e re-simularia o prefixo compartilhado — em
+silêncio. As tomadas passaram a cozinhar **dentro da mesma marcha**
+(`advance_or_scrub_with_taps_scoped`), batendo no memo do `Cook`; lista vazia é o mundo anterior
+byte a byte.
+
+⚠️ **A lei do relógio NÃO foi derivada do `ticks_owed`, como esta folha previa** — ele não
+distingue *tocar* de *saltar para a frente*, e um seek com o play ligado teria virado exatamente a
+metralhadora que o parágrafo acima descreve. A resposta certa já existia no emissor de markers da
+timeline (`!jumped && is_advancing_forward`), e ela mudou-se para uma casa própria
+(`render_loop::clock_forward`) porque **não é de nenhum dos dois emissores**.
+
+⚠️ **Dois preços NOMEADOS:** o colapso **linha → quadro** (576 pontos que disparam juntos são UM
+evento com `rows = 576`, não 576 sons) e o produtor de Motion pousar **um quadro atrás** dos outros
+dois — o dispatch dele roda depois de os consumidores lerem, e o duplo-buffer da outbox torna isso
+*atrasado, nunca perdido*. Fechar o vão move a leitura dos consumidores para baixo do dispatch, o
+que reordena uma sequência gateada: decisão própria.
+
+**Cena:** `PH2D_GPU_COOK_DEMO=26` (com `PH2D_SIGNAL_LOG=1`) — a MESMA cena do compasso com uma
+tomada em cada relógio, então o terminal conta a razão que o olho conta na tela.
+
+**Segue ABERTA a direção `runtime → grafo`** (colisão vira pulso), pelo motivo acima: ela é
+decisão do Enio, não dívida de engenharia.
+

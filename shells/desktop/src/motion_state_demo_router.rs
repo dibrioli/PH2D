@@ -116,6 +116,28 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
         // `pulse.adsr` transforma esse disparo instantâneo numa curva — as duas
         // features só se veem JUNTAS (ver o doc do módulo).
         Ok("25") => gpu_adsr_demo::build_gpu_adsr_demo_document(doc, registry).unwrap_or_default(),
+        // O GRAFO GRITA: a MESMA cena `=25` com uma `pulse.signal` em cada relógio. Ela é a
+        // fronteira `pulse.* -> ph2d-runtime` na direção grafo→runtime, e o que ela prova só é
+        // visível com `PH2D_SIGNAL_LOG=1` ao lado — o terminal conta a mesma razão que o olho.
+        Ok("26") => {
+            let sinks =
+                gpu_adsr_demo::build_gpu_signal_demo_document(doc, registry).unwrap_or_default();
+            // ⚠️ **A cena se ANUNCIA, e é aqui que ela o faz** — no roteador, que é quem sabe
+            // que o ambiente a pediu, e não no construtor, que os gates chamam às dezenas.
+            // Sem a linha, um smoke sem `PH2D_SIGNAL_LOG=1` mostra a MESMA imagem da `=25` e
+            // nada mais: o artista julgaria uma feature que ele não pode ver.
+            eprintln!(
+                "[signal-demo] O GRAFO GRITA: '{}' a cada batida ({} s) e '{}' a cada {}.\n  \
+                 (!) Rode com PH2D_SIGNAL_LOG=1: os nomes saem no terminal, na MESMA razao que\n  \
+                 o olho conta na tela (4 pulos por crescimento). Arrastar a regua nao imprime\n  \
+                 nada -- um sinal e' travessia de play para a frente, nunca estar num tique.",
+                gpu_adsr_demo::TIC,
+                gpu_adsr_demo::BEAT,
+                gpu_adsr_demo::COMPASSO,
+                gpu_adsr_demo::DIVIDE_BY,
+            );
+            sinks
+        }
         // **Sem env: a TELA VAZIA** (Enio, 2026-08-07: *"tire a cena da cachoeira"*). O
         // editor abria com a neve caindo no mar — um sistema de partículas inteiro que o
         // artista tinha de apagar antes de começar. Quem quiser um grafo o traz pelo

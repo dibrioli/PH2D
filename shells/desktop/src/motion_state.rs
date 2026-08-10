@@ -35,8 +35,11 @@ mod strobe;
 
 #[path = "motion_state_demo_router.rs"]
 mod demo_router;
+/// ⚠️ **`pub(crate)` e não privada como as irmãs**, e por um consumidor real: as cenas do
+/// COMPASSO (`=25`) e do GRITO (`=26`) são a fixture dos gates da fronteira de sinais, que
+/// moram no `render_loop` (é lá que a tomada é lida). Uma cena existe para ser DIRIGIDA.
 #[path = "motion_state_gpu_adsr_demo.rs"]
-mod gpu_adsr_demo;
+pub(crate) mod gpu_adsr_demo;
 /// The DEFORMER scene, its own file for the same reason: it answers "does a node
 /// whose kernel needs one number about the WHOLE stream run on the device?",
 /// which none of the per-element or neighbourhood scenes can.

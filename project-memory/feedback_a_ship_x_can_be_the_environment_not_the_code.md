@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 50723bb0-6f74-4589-81dc-ee242a680d8c
+  modified: 2026-08-10T03:12:00.433Z
 ---
 
 O `target/` do checkout **primário** é um symlink para `/dev/shm/ph2d-target` (tmpfs, DIRETRIZ §6).
@@ -53,6 +54,27 @@ duas — confira as duas coisas, não uma). ⚠️ **Nunca o `~/.cache/sccache`*
 é ele que torna o rebuild barato. E depois de um disco cheio, **`git fsck --connectivity-only` antes
 do próximo commit** — uma escrita de objeto interrompida é a coisa cara; hoje saiu só com *dangling*
 (resíduo normal de rebase), mas isso se confere, não se presume.
+
+## A terceira face, medida em 2026-08-10: a tmpfs VÁLIDA que enche porque você misturou PERFIS
+
+Aqui o symlink existe e o destino existe — o que falta é espaço, e a causa é operacional: **rodar dois
+perfis de build sobre o mesmo `target/` de tmpfs custa DOIS conjuntos inteiros de artefatos**. Medido
+na integração de duas linhas: `cargo nextest run --workspace --cargo-profile ci-test` deixou **14 GB**
+em `target/ci-test`, e a chamada seguinte — um `cargo test -p ...` inocente, que usa o perfil **`dev`**
+por default — cresceu `target/debug` até **28 GB**. Somados, 50 GB de uma tmpfs de 62 GB que ainda
+divide RAM com o app. O erro sai como `Disk quota exceeded (os error 122)` em cada `rustc`.
+
+⚠️ **E ele chegou MUDO, o que é a metade cara:** eu filtrava a saída com `grep -E "test result"`, então
+três comandos seguidos imprimiram **nada**, e nada se lê como *"o filtro casou com zero testes"* — não
+como *"o build falhou"*. É o [[feedback_a_negative_search_needs_a_positive_control]] aplicado a uma
+falha de BUILD em vez de a um filtro de teste: só re-rodar **sem o grep** mostrou os 122.
+
+**How to apply:** num gate de integração, **escolha UM perfil e fique nele** — se a suíte grande rodou
+em `ci-test`, os gates pontuais depois dela vão de `cargo nextest run --cargo-profile ci-test` (reusa
+os artefatos, custa ~0), nunca de `cargo test` puro. Se já encheu: `df -h /dev/shm` + `du -sh
+/dev/shm/ph2d-target/*` e **apague o perfil que não é o do ship** (`rm -rf target/debug` devolveu 27 GB
+e derrubou a RAM usada de 68 para 44 GiB). E **nunca leia silêncio de comando filtrado como resultado**:
+um grep que casa zero linhas e um build que morreu são indistinguíveis pela ausência de saída.
 
 O corolário geral: **um gate que não conseguiu RODAR não é um gate vermelho** — é um gate ausente, e a
 diferença some no resumo, que só mostra ✓/✗. Vale para qualquer runner que reporte por linha-resumo.

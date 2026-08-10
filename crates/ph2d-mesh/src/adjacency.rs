@@ -51,6 +51,15 @@ pub struct Csr {
 }
 
 impl Csr {
+    /// Quantos bytes este CSR segura — a irmã do [`crate::Octree::memory_bytes`],
+    /// somada pelo [`crate::Mesh::footprint_bytes`].
+    ///
+    /// Capacidade e não comprimento: é o que o alocador está segurando.
+    #[must_use]
+    pub fn memory_bytes(&self) -> usize {
+        (self.starts.capacity() + self.lens.capacity() + self.values.capacity()) * size_of::<u32>()
+    }
+
     #[must_use]
     pub fn len(&self) -> usize {
         self.starts.len()
@@ -208,6 +217,13 @@ pub struct Adjacency {
 }
 
 impl Adjacency {
+    /// Quantos bytes os dois CSRs seguram — somado pelo
+    /// [`crate::Mesh::footprint_bytes`].
+    #[must_use]
+    pub fn memory_bytes(&self) -> usize {
+        self.vert_faces.memory_bytes() + self.vert_verts.memory_bytes()
+    }
+
     /// **Este vértice está na BORDA de uma malha aberta?**
     ///
     /// A identidade é a do `Mesh.js` do SculptGL (`vertOnEdge`, dentro do build

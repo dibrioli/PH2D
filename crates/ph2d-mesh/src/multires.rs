@@ -669,6 +669,12 @@ fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
 
 /// A reversão mora num filho porque mexe nos campos privados da pilha — ver o
 /// cabeçalho dele.
+/// **QUANTO um nível pesa** — ver [`bytes`]. Filho (`#[path]`), irmão do
+/// [`reverse`], e o corte é o mesmo do `mesh_memory`: a contabilidade de bytes
+/// é uma MEDIÇÃO da pilha, não parte do que ela É.
+#[path = "multires_bytes.rs"]
+mod bytes;
+
 #[path = "multires_reverse.rs"]
 mod reverse;
 

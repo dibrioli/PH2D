@@ -38,6 +38,10 @@ mod shrink;
 #[path = "mesh_planes.rs"]
 mod planes;
 
+/// A CONTABILIDADE DE BYTES (malha e os dois scratches) — ver o módulo.
+#[path = "mesh_memory.rs"]
+mod memory;
+
 pub use shrink::VertexMerge;
 pub use splice::VertexAppend;
 
@@ -592,15 +596,6 @@ pub struct QueryScratch {
     epoch: u32,
 }
 
-impl QueryScratch {
-    /// Bytes que este scratch segura — a sonda de memória o soma para que o
-    /// custo do gesto não fique fora da conta.
-    #[must_use]
-    pub fn capacity_bytes(&self) -> usize {
-        (self.faces.capacity() + self.seen.capacity()) * size_of::<u32>()
-    }
-}
-
 /// Buffers reutilizados pelo [`Mesh::refresh_region`].
 ///
 /// Os `*_seen` são vetores do TAMANHO da malha, mas o passe só os toca onde
@@ -655,16 +650,6 @@ impl RegionScratch {
     fn reset(&mut self, faces: usize, verts: usize) {
         self.face_seen.resize(faces, false);
         self.vert_seen.resize(verts, false);
-    }
-
-    /// Bytes que este scratch segura.
-    #[must_use]
-    pub fn capacity_bytes(&self) -> usize {
-        (self.faces.capacity() + self.verts.capacity()) * size_of::<u32>()
-            + self.face_seen.capacity()
-            + self.vert_seen.capacity()
-            + self.tmp.capacity() * size_of::<[f32; 3]>()
-            + self.refit.capacity_bytes()
     }
 }
 

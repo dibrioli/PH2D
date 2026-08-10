@@ -86,6 +86,15 @@ pub(crate) struct SceneObject {
 }
 
 impl SceneObject {
+    /// **Quantos bytes esta peça segura** — a pilha inteira, que é tudo o que
+    /// tem tamanho aqui (o resto são dois `bool`, uma pose e a janela suja).
+    ///
+    /// Somado pelo teto em bytes da fila de desfazer — ver
+    /// [`super::history::StrokeUndo::footprint_bytes`].
+    pub(super) fn footprint_bytes(&self) -> usize {
+        self.stack.footprint_bytes() + self.dirty.capacity() * size_of::<u32>()
+    }
+
     pub(super) fn new(id: ObjectId, mesh: Mesh, pose: Pose) -> Self {
         Self {
             id,

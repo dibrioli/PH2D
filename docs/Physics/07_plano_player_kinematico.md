@@ -1432,13 +1432,19 @@ controlar a subida dentro d'água — é produto, não correção.
 
 ## §9 — O que a integração vai cobrar
 
-- **Registro `ph2d-physics-ecs` 28 → 29** (o gate diz existir *"to hurt"*).
-- **`PROJECT_SCHEMA`: NÃO bumpa** (K2) — e se algum campo acabar apendado, o valor se
-  **CONTA** contra o `main` do dia, nunca se escolhe.
+> ⚠️ **Esta seção foi escrita antes da jornada de 2026-08-09 e envelheceu em dois
+> pontos, corrigidos abaixo.** O documento vivo é o
+> [handoff de integração](HANDOFF_INTEGRACAO_line_physics_kin_2026-08-09.md).
+
+- ~~**Registro `ph2d-physics-ecs` 28 → 29**~~ — **isso foi a `W-KinMove`, que já
+  integrou em 08/08**; o `main` está em 29 e a jornada de 09/08 **não o move**.
+- ~~**`PROJECT_SCHEMA`: NÃO bumpa** (K2)~~ — **bumpou**: `69 → 70`, um degrau
+  (`PlatformPlayer.reaction_push`, a `W-KinPush`). A segunda metade da frase é que
+  vale, e vale mais: o valor se **CONTA** contra o `main` do dia, nunca se escolhe.
 - **Ids novos da §14** (os chips do modo + a massa da `W-KinWeight`), anotados no handoff.
-- **Cenas de smoke `=100` · `=101` · `=102` · `=103`** — ⚠️ o roteador é um `match` de strings
+- **Cenas de smoke `=100` · `=101` · `=102` · `=103` · `=104`** (a `=104` é a da ÁGUA) — ⚠️ o roteador é um `match` de strings
   cujo `_` cai na cena 1: um nível inexistente **não avisa**, mostra outra coisa. O `=84`
-  não existe de propósito; **100 é o próximo livre** (o último ocupado é o `=99`).
+  não existe de propósito; **105 é o próximo livre** (o último ocupado é o `=104`).
 - **Contrato congelado: nenhum. Dep externa nova: nenhuma** (o
   `KinematicCharacterController` é do `rapier2d` que já é dep, e não é feature-gated no
   2D).

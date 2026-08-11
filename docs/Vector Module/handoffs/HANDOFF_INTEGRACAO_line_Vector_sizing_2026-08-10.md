@@ -14,11 +14,21 @@ Os **itens 1-4 do estudo dos contêineres**, na ordem em que ele os mediu:
 2. **A ROLAGEM** — uma moldura que recorta e cujo conteúdo não cabe **rola com a roda**.
 3. ⭐ **A TABELA SINAL → PAPEL** — um nome gritado noutro lugar (um marker, um contato, um botão)
    **move a cena**. Era o consumidor que o R0 deixou por fazer.
+4. ⭐ **A GRADE** — o item 5, o último da tabela do estudo. Ela honra os quatro degraus (motor ·
+   documento · fatia · painel), e com isso **mata o argumento vivo do ADR-0153**.
 
 ⚠️ Ela nasce de um **estudo medido** (`docs/Vector Module/Estudos/ESTUDO_containers_e_catalogo_minimo_de_UI_2026-08-10.md`),
 que o Enio pediu para decidir se faltavam `VBoxContainer`/`HBoxContainer`/`Grid`. O veredito:
-**não faltam** (são `LayoutDir::Row`/`Column`/`RowWrap`, já shipados), e o que faltava de verdade
-era o sizing.
+os dois primeiros **não faltam** (são `LayoutDir::Row`/`Column`, já shipados), o que faltava de
+verdade era o sizing — e o Grid, que o estudo classificou como *dispensável mas não descartado*,
+fechou a lista no fim da jornada.
+
+⚠️ **E o estudo tinha um NÚMERO ERRADO que esta jornada corrigiu no próprio estudo:** ele declarava
+o custo de build do `grid` em *"+11 ms, razão 1,07×"* e o argumento do ADR **morto**. Re-medido com
+a máquina calma, o `+11 ms` é impossível — a metade maior (~440 ms) é o módulo de grid do próprio
+`taffy`, então um A/B que limpe só a nossa crate mede a nossa crate duas vezes. O argumento morre
+por outra via, e mais honesta: **~0,47 s absolutos, uma vez por build limpo, 0,03% de uma corrida
+de CI** — o `cargo check -p` do inner loop nunca os paga.
 
 ---
 
@@ -27,11 +37,11 @@ era o sizing.
 | | |
 |---|---|
 | Branch | `line/Vector` |
-| HEAD | `950b51dd4` |
+| HEAD | `590effb20` |
 | Base | `76788440a` (o `main` de 2026-08-10) |
-| Commits | **14** (1 de troca + 4 de docs + 9 de produto) |
-| Diff | **66 arquivos, +5190/−111** |
-| Smokes aprovados | `=66` (sizing) · `=67` (rolagem) — ⚠️ **`=68` (a tabela) PENDENTE** |
+| Commits | **20** |
+| Diff | **76 arquivos, +6964/−219** |
+| Smokes aprovados | `=66` (sizing) · `=67` (rolagem) · `=68` (a tabela) — ⚠️ **`=69` (a grade) PENDENTE** |
 
 ---
 
@@ -39,21 +49,24 @@ era o sizing.
 
 | item | valor nesta linha | nota |
 |---|---|---|
-| **`PROJECT_SCHEMA`** | **70 → 71** ⚠️ **PROVISÓRIO** | o degrau é `HostStates.on_signal` (a tabela sinal → papel). ⚠️ **O valor se CONTA contra o `main` do DIA da integração**, nunca se escolhe: nesta janela há outras linhas vivas, e esta colisão passa **muda** quando as duas escrevem o mesmo literal — confira os DOIS arquivos (`project.rs` **e** `project_schema_tests.rs`, tripla `(71, 13, 14)`). ⚠️ E o degrau v71 **já está escrito na escada**, a lição que o v69 pagou |
+| **`PROJECT_SCHEMA`** | **70 → 72** ⚠️ **PROVISÓRIO** | dois degraus: **v71** `HostStates.on_signal` (a tabela sinal → papel) e **v72** `LayoutDir::Grid` + `VecLayout::columns`. ⚠️ **O valor se CONTA contra o `main` do DIA da integração**, nunca se escolhe: nesta janela há outras linhas vivas, e esta colisão passa **muda** quando as duas escrevem o mesmo literal — confira os DOIS arquivos (`project.rs` **e** `project_schema_tests.rs`, tripla `(72, 13, 14)`). ⚠️ E os dois degraus **já estão escritos na escada**, a lição que o v69 pagou |
 | **`VEC_SCENE_SCHEMA`** | **INTOCADO** (14) | |
-| **Registro do `ph2d-ecs`** | **55 → 57** | ⚠️ **e os DOIS espelhos 56 → 58** (`ph2d-render`, `ph2d-script`) — o contador é **TRÊS casas**, cada uma na suíte da própria crate |
+| **Registro do `ph2d-ecs`** | **55 → 57** | ⚠️ **e os DOIS espelhos 56 → 58** (`ph2d-render`, `ph2d-script`) — o contador é **TRÊS casas**, cada uma na suíte da própria crate. A grade **não** o move (ela não traz componente novo) |
 | Componentes novos | `VecLayoutSize` · `VecLayoutAbsolute` | |
 | **`PanelEvent`** (contrato CONGELADO) | **4 variantes, INTOCADO** | ⚠️ mas o **doc** do `SelectOption` foi corrigido: ele dizia *"RadioGroup option selected"* e isso é falso desde que o Painter carrega `"layer:channel:index:x:y"` nele. É o comentário que mandaria a próxima wave gastar um ADR num variante que este já dá. Contagem intacta, gate verde |
-| **ADR** | **nenhum** | ⇒ a linha fica **fora de toda disputa de número** da janela |
-| **`Cargo.toml` / `Cargo.lock`** | **ZERO** | nenhuma crate nova, nenhuma dep nova |
-| **Cenas de smoke** | `=66` · `=67` · `=68` | ⚠️ **próxima livre: 69**; o gate `no_two_smoke_scenes_claim_the_same_level` a tranca |
+| **Contrato congelado** | **intacto** | `git diff` vazio em `ph2d-nodegraph` e `ph2d-core/src/tool.rs`; os seis arch-gates rodados verdes |
+| **ADR** | **nenhum NOVO** ⇒ a linha fica **FORA de toda disputa de número** | ⚠️ mas o **ADR-0153 é EMENDADO** (Emenda 1): a recusa do grid caiu, e o número novo que entrou no lugar do velho é o teto de faixas do `taffy`. Se outra linha desta janela tocar o 0153, é um merge de PROSA, não de decisão |
+| **`Cargo.toml`** | **UM** (`ph2d-vec-layout`) | a feature `grid` do `taffy`. ⚠️ **`Cargo.lock` INTOCADO** — o lock é agnóstico de feature para deps opcionais de uma dep, então a crate `grid` já lá estava e **nenhum pacote novo entra** |
+| **Cenas de smoke** | `=66` · `=67` · `=68` · `=69` | ⚠️ **próxima livre: 70**; o gate `no_two_smoke_scenes_claim_the_same_level` a tranca |
 | ⚠️ **Módulo de nome parecido** | `signal_table_smoke.rs` | **NÃO** é o `signal_smoke.rs` (o `PH2D_SIGNAL_SMOKE` do R0): ali o assunto é a SAÍDA, aqui é o CONSUMIDOR. Eu escrevi por cima do primeiro por engano e restaurei — o nome curto estava tomado |
-| **Contrato congelado** | **intacto** (`git diff` vazio em `ph2d-nodegraph` e `ph2d-core/src/tool.rs`) | |
-| **ADR** | **nenhum novo** ⇒ a linha fica **FORA de toda disputa de número** | o ADR-0153 é **emendado**, não substituído (§4) |
-| `Cargo.toml` / `Cargo.lock` | **ZERO** | nenhuma crate nova, nenhuma dep nova |
-| Ids novos | **9**, todos `hash_node_id` | fora de todo contador |
-| Cena de smoke | **`=66`** | era a próxima livre; o gate `no_two_smoke_scenes_claim_the_same_level` está verde |
+| Ids novos | **11**, todos `hash_node_id` | fora de todo contador |
 | `MAX_FX_KINDS` · scrollbar id · `WidgetKind` | **intocados** | |
+
+⚠️ **E há um SEGUNDO ponto de merge, este na shell:** `shells/desktop/src/layout_live.rs` bateu
+605 > 600 e foi PARTIDO — `Box2`, `Reading` e `FlowSlots` mudaram-se para o irmão
+`layout_live_slots.rs`. Uma linha que acrescente um campo ao `FlowSlots` **funde limpa contra um
+arquivo de onde a struct saiu** (o modo de falha exacto que o corte do `project.rs` produziu em
+04/08 e o do `ph2d-i18n` em 10/08). Os `pub(crate) use` mantêm todo caminho de chamada.
 
 ⚠️ **O ponto de merge sensível é UM:** `crates/ph2d-vec-layout/src/lib.rs` teve o campo
 `Node::size` **trocado de tipo** (`[f64; 2]` → `[Len; 2]`) e ganhou `min`/`max`. Uma linha que
@@ -133,18 +146,76 @@ hospedeiro publica o **`Name` da entidade**.
 
 ---
 
+### 3.7 ⭐ A GRADE (item 5) — `Dir::Grid` + a régua que lê em LINHAS
+
+**Quatro degraus, e é o quarto que mata o argumento do ADR-0153:** motor
+(`Dir::Grid { columns }` → `Display::Grid` + `repeat(N, 1fr)`) · documento (`LayoutDir::Grid` +
+`VecLayout::columns`) · a fatia (o `match` exaustivo do `layout_live_style`) · o painel (o 5º chip
++ a row **Cols** + o Justify estreitado).
+
+**Três decisões, e as três saíram de medição:**
+
+1. **O teto de faixas é `i16::MAX = 32767`, e ele morde pelas LINHAS.** Bissectado contra o motor:
+   1 coluna → 32767 filhos, 2 → 65534, 3 → 98301 — sempre 32767 linhas, a largura do
+   `OriginZeroLine(i16)` do `taffy`. ⚠️ Um cap na contagem de COLUNAS teria sido *taste* **e não
+   teria evitado o pânico**: as linhas ninguém autora, elas nascem da contagem de filhos. Acima do
+   teto o `solve` **recusa** (`LayoutError::GridTooManyTracks`) — acomodar ali não dá uma pose
+   errada, dá um `unwrap` a estourar dentro do `taffy` e o app a cair.
+2. **A contagem é um CAMPO do `VecLayout`, não o corpo do variante.** Com ela no variante, ir a
+   `Row` e voltar **destruiria** o número; como campo ela sobrevive à ida e à volta, como o vão e o
+   recuo — e o `DIRS` da shell continua a ser **uma** tabela lida nas duas direções por igualdade.
+3. **O `align` governa DUAS propriedades do CSS.** Sem o espelho em `align_content` a grade herda
+   `align-content: normal`, que numa grade **é** `stretch`: as linhas seriam esticadas para encher
+   a moldura, e a mesma cena que um `Row` encosta no topo sairia espalhada. ⚠️ O gate vivo nasceu
+   **VERMELHO** exactamente aí (topo 17,5 onde a aritmética pede 25).
+
+⚠️ **NARROWING, e ele é geometria:** numa grade as duas DISTRIBUIÇÕES não são oferecidas — com
+colunas iguais não sobra espaço horizontal para repartir. O valor guardado **não é reescrito**: um
+documento vindo de um `Row` com *Between* pinta a fileira sem nada aceso, e volta intacto.
+
+⚠️ **E o GESTO de reordenar era ERRADO numa fila em linhas, não impreciso.** Medido antes de uma
+linha ser escrita: numa grade 3×3 as três células da coluna 0 partilham o mesmo `x`, então
+*"quantos centros estão antes do cursor"* devolvia o **slot 3** para uma soltura na célula (0,0), e
+**6** para a última. O `RowWrap` shipa com o mesmo defeito **desde que nasceu**
+(`main_x = !matches!(dir, Column)`); ficou invisível ali porque uma faixa de wrap raramente alinha
+duas linhas. A régua passa a publicar a **CAIXA** de cada filho (o facto cru) e o `FlowSlots` ganha
+`Reading::{RowX, ColumnY, Rows}` — **esta wave conserta os dois**.
+
+⚠️ **MEDIDO e NOMEADO, não escondido:** `Align::Stretch` **não estica** um filho que traz tamanho
+explícito — e isso **não é divergência da grade**, é a mesma lei do `Row` (6,0 nos quatro casos
+medidos). Ele é vivo para um filho `Hug`, e ali vale nos dois.
+
+---
+
 ## §4 — ⚠️ O que o integrador deve levar aos DOCS (não é código)
 
-O **ADR-0153 tem um argumento que a medição de hoje derruba**. Ele recusa a feature `grid` do
-`taffy` dizendo que ela *"triplica o custo de build (0,20 → 0,63 s)"*; re-medido **costas-com-costas
-com `cargo clean` entre corridas, máquina calma (`load 0,44`)**: **173-180 ms → 191-192 ms**, ou
-**+11 ms (1,07×)**.
+**O ADR-0153 JÁ ESTÁ EMENDADO** (Emenda 1), e o integrador não tem nada a escrever — só a
+conferir que o merge da prosa fundiu limpo. O que a emenda diz:
 
-⇒ A recusa **continua defensável pelo OUTRO argumento** (ausência de consumidor), mas quem a ler
-hoje decide com um número que não é mais verdade. *Quem move o número que tornava algo inalcançável
-tem de reconferir a nota* (§0 do `CLAUDE.md`). O estudo já traz a emenda escrita; **o ADR ainda
-não foi editado** — deixado ao integrador de propósito, porque um ADR é documento compartilhado e
-a edição pode colidir.
+⚠️ **Uma versão anterior deste handoff mandava o integrador anotar que o custo de build era
+`+11 ms (1,07×)` e que o argumento do ADR estava MORTO. O número era IMPOSSÍVEL.** Re-medido com a
+máquina calma e **decomposto** — que é o passo que faltava:
+
+| o quê | ms |
+|---|---|
+| sem `grid` (taffy + a crate, cold) | 282-295 |
+| a crate `grid` sozinha | 304 |
+| taffy + a crate, com `grid` **já quente** | 720-748 |
+| tudo cold, com `grid` | 760-1151 |
+
+A metade **MAIOR** (~440 ms) é o **módulo de grid do próprio `taffy`**, logo um A/B que limpe só a
+nossa crate e deixe o `taffy` quente **mede a nossa crate duas vezes e nada mais**. O número do ADR
+(0,20 → 0,63 s) estava **essencialmente certo**; foi a refutação dele que estava errada — e ela
+esteve escrita aqui e no estudo por uma jornada.
+
+⇒ **O argumento morre, mas por outra via:** 3× sobre 0,28 s são **~0,47 s absolutos, uma vez por
+build limpo**, contra ~30 min de CI (**0,03%**) — e o `cargo check -p` do inner loop nunca os paga.
+*Uma razão sobre uma base minúscula não é um custo; o ADR escreveu uma razão e tratou-a como
+orçamento.*
+
+⚠️ **E um número NOVO entrou no lugar do velho**, este medido por bisseção contra o motor: o
+`taffy` **PANICA** acima de **32767 faixas** por eixo. Ele está no ADR, na const
+`MAX_GRID_TRACKS` e num gate.
 
 ---
 
@@ -203,6 +274,35 @@ por ela — **defesas em camada**, e uma fixture sem o hover mede só a primeira
 ⚠️ **Os arch-gates existem porque o consumidor mora dentro do `run_render_frame`**, que precisa de
 janela e GPU: a composição tem gate próprio e ele passa com a feature **inteiramente desligada**.
 
+### 5.0b A wave da GRADE (item 5)
+
+| onde | gates | o que carregam |
+|---|---|---|
+| motor | **8** | a aritmética das células · ⭐ **a grade alinha a coluna 1 e o `RowWrap` NÃO** (o oráculo de *por que a feature existe*, com o wrap como CONTROLE) · o `Hug` sobre `1fr` · os dois vãos · o alinhamento dentro da célula · ⭐ o `align` a governar o BLOCO de linhas · o teto de faixas com o par acima/abaixo · zero colunas · **as três direções flexbox INTOCADAS** |
+| seam | **2** | a row *Cols* nasce com o modo que a lê **e** o COMMIT dela chega ao barramento · as duas distribuições somem na grade **E sobrevivem** na linha |
+| porta | **2** | a contagem atravessa uma troca de direção · o clamp é `1..=MAX_GRID_TRACKS` |
+| vivo | **3** | as células na aritmética exacta com o eixo trocado uma vez · trocar a contagem RE-COLOCA · ⭐ **o passe publica como cada direção se lê** |
+| régua | **5** | a repro medida **com o CONTROLE que nomeia o defeito** · o vão entre linhas · as duas leituras 1-D intocadas · o gesto REAL pela porta do produto |
+| cena | **2** | a premissa do controle (o wrap parte 3+3) · as larguras são desiguais |
+
+**9 mutações, 9 sangram.**
+
+⚠️ **Três fixtures minhas nasceram erradas, e as três acusaram o produto de um erro que era do
+oráculo:** a do vão media entre BORDAS de filhos numa célula maior que eles (18,5 contra 7) · a do
+wrap assumia que ele partiria 3+3 como a grade, quando um wrap parte onde a **LARGURA** acaba
+(partiu 5+1, e o índice 3 nem era o começo da 2ª faixa) · e a do `align` contou `10` onde o filho
+mede `6` (a largura dele, não a altura). As premissas passaram a ser **AFIRMADAS** pelos gates.
+
+⚠️ **E a mutação mais importante SOBREVIVEU à primeira rodada, também por fixture:** o gate do
+gesto real **publica à mão** o `Reading::Rows` que ele queria testar, então nunca atravessa o
+roteamento. *A régua certa* e *o produto escolher a régua certa* são duas afirmações, e só o passe
+responde a segunda — daí o gate novo em `layout_live_tests`.
+
+⚠️ **Uma bisseção minha mentiu por intervalo:** o primeiro teto medido foi **65534** porque o meu
+`hi` era 65535, logo `lo` nunca podia passar dele. Eu quase escrevi esse número como o teto.
+
+---
+
 ### 5.1 As waves anteriores
 
 | onde | gates | mutações |
@@ -238,12 +338,21 @@ mede a outra ponta — **o componente aparece no filho** — e é ele que sangra
 cd Worktrees/line-Vector
 env PH2D_BUILD_SMOKE=66 cargo run -p ph2d-host-desktop --release   # o SIZING     (aprovado)
 env PH2D_BUILD_SMOKE=67 cargo run -p ph2d-host-desktop --release   # a ROLAGEM    (aprovado)
-env PH2D_BUILD_SMOKE=68 cargo run -p ph2d-host-desktop --release   # a TABELA  ⚠️ PENDENTE
+env PH2D_BUILD_SMOKE=68 cargo run -p ph2d-host-desktop --release   # a TABELA     (aprovado)
+env PH2D_BUILD_SMOKE=69 cargo run -p ph2d-host-desktop --release   # a GRADE   ⚠️ PENDENTE
 ```
 
-⚠️ **As três cenas imprimem o que montaram, e a linha é a pré-condição:** se `[sizing]`,
-`[scroll]` ou `[signal-table]` não aparecer, PARE — a autoria não correu e o resto do roteiro não
-diz nada.
+⚠️ **As quatro cenas imprimem o que montaram, e a linha é a pré-condição:** se `[sizing]`,
+`[scroll]`, `[signal-table]` ou `[grid-smoke]` não aparecer, PARE — a autoria não correu e o resto
+do roteiro não diz nada.
+
+**O que a `=69` pede:** armar a moldura de CIMA (`Grid` → `Cols` = 3). ⚠️ **O passo que decide é o
+2** — as três CORES formam colunas na de cima e ficam ESPALHADAS na de baixo, que é o CONTROLE (o
+mesmo conteúdo, já em `Wrap`). Depois: mudar `Cols` para 2 (refluxo), **arrastar o último filho
+para a primeira célula** (ele tem de ir para o começo — antes desta wave ia para o meio), e o
+Justify na grade tem **três** chips, não cinco. ⚠️ A cena imprime `1 moldura(s) ARMADA(s)`; **se
+não for 1, PARE** — a de cima tem de nascer sem layout, senão o smoke pula o passo que ele existe
+para provar.
 
 **O que a `=68` pede (o roteiro está na própria cena):** autorar a ligação à mão (`+ Signal` →
 digitar `Open` → chip `Pressed`), ligar a Preview, e clicar no botão da esquerda. ⚠️ **O passo que
@@ -263,3 +372,12 @@ Preview o mesmo clique **não faz nada**, de propósito.
   falta é o que passa DO teto.
 - **`Fill` continua exposto como número** (`grow`), e não com o nome do Figma. Renomeá-lo é
   decisão de produto: o número diz mais (repartição em razão), o nome diz melhor.
+- **A grade não tem *track sizing* autorado.** As colunas são iguais (`repeat(N, 1fr)`) — o que o
+  único consumidor MEDIDO deste repo faz à mão (`paint_catalog.rs`) e o default do Figma. Um
+  vocabulário de pistas (`fr` × `auto` × comprimento) é wave própria, e hoje seria um controlo que
+  ninguém move. ⚠️ **Corolário:** o `justify_content` de uma grade é **inerte por construção** com
+  colunas iguais (não há sobra horizontal), então distribuir as COLUNAS só faz sentido junto com o
+  track sizing — é por isso que as duas distribuições são escondidas em vez de mapeadas.
+- **`Align::Stretch` não estica um filho de tamanho autorado**, e isto é **anterior a esta wave**:
+  medido, o `Row` faz o mesmo. Ele é vivo para um filho `Hug`. Se algum dia o `Stretch` tiver de
+  esticar artwork, a cura é no `size_of` (o filho entraria como `auto`), não na grade.

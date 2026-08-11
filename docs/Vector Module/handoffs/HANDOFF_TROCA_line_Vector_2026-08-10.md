@@ -124,9 +124,16 @@ Anterior, ainda de pé:
   medido). Ver o estudo §7, *"o que a wave 5b entregou"*.
 - A **caixa do gizmo é aproximada** com filho ROTACIONADO *e* pose de escala NÃO-UNIFORME
   (deixa de ser retângulo orientado — é geometria, não descuido).
-- ⚠️ **O hit-test só recebe o produtor de OFFSET.** Os outros seis produtores de
+- ~~⚠️ **O hit-test só recebe o produtor de OFFSET.** Os outros seis produtores de
   `LiveGeometry` não chegam ao pick; a cura geral é o pick ler o mapa **FUNDIDO** que o
-  renderer desenhou — **wave própria**, não conserto de passagem.
+  renderer desenhou — **wave própria**, não conserto de passagem.~~ ✅ **FECHADO
+  (2026-08-10):** eram **oito** e não seis (a fusão tem nove produtores), e o defeito estava
+  MEDIDO em *3 de 3* pontos de uma metade espelhada desenhada e não-clicável. A cura foi a
+  que o item previa — o frame guarda a fusão tal como o `dispatch` a consumiu
+  (`App::vec_live_drawn`) e o pick lê-a —, e ela **não era arquitetural**: as quatro funções
+  de pick já ACEITAVAM o mapa, só recebiam o parcial. ⚠️ O mapa é do frame **ANTERIOR**, e
+  isso é a semântica certa: o artista clica no que VÊ. Arch-gate
+  `the_pick_reads_the_map_that_was_drawn`, 4 mutações.
 - O **caminho do tablet** (a fonte `Pen` é oferecida e **não chega**: a shell não recebe
   pressão de dispositivo — é INPUT de shell, custa uma função, e afeta o Flip igual) · o
   **lasso** · **X/Y numérico do nó** · **editar nós de VÁRIAS formas** (ausência *por

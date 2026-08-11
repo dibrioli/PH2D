@@ -57,6 +57,62 @@
 //! 2. **Eu media o PRIMEIRO traço**, que paga o *first-touch* dos ~200 MB de planos canvas-shaped que o
 //!    commit aloca uma vez por documento: o pen-up media **29,52 ms**, e o do sétimo traço é **4,62**.
 //!
+//! # A CURA (2026-08-10) — e a metade do mecanismo acima que a medição DERRUBOU
+//!
+//! ⛔ **A fusão que este doc prescreveu NÃO existe, e a frase *"re-avaliando a MESMA silhueta"* está
+//! errada.** O passe de altura de facto percorre a pegada uma segunda vez, mas o `t` que ele avalia é o
+//! da **CÁPSULA** (o corpo varrido até o centro do dab anterior — a lei anti-corrugação de 2026-07-15)
+//! enquanto a cor avalia o do **DISCO**: são dois números diferentes de propósito, e nenhum passe pode
+//! consumir o do outro. O único ingrediente comum é a amostra da **Shape**, que não depende de `t` — e
+//! o depósito de cor não a computa por texel tampouco: ele **BLITA um carimbo em cache**
+//! (`stamp_cache`, a mesma cura, dez meses antes).
+//!
+//! **É essa a assimetria, e ela é de 15× por texel:** a cor faz 3,75 ns/texel (blit de cache) e a
+//! altura 26-58 (re-derivação). Medido pela decomposição (raio 20, ablação por peça):
+//!
+//! | shape | passe | silhueta | filme (AA) | miolo+cauda |
+//! |---|---|---|---|---|
+//! | Stripes | 1,047 | **0,776 (74%)** | −0,014 | 0,270 |
+//! | só falloff | 0,453 | **0,184 (41%)** | −0,001 | 0,269 |
+//!
+//! ⚠️ **A coluna `filme` é o CONTROLE INTERNO e ela tem de dar ~0:** `film_aa_wanted` exige o master do
+//! impasto, que no regime do filme está desligado — as duas rotas do `if` são o mesmo `film_of(w)`.
+//! Foi ela que reprovou a primeira corrida inteira (dizia **4,54 ms**, maior que o passe que a contém)
+//! antes que eu pudesse acreditar nos outros números dela. *Uma tabela cuja coluna impossível não dá
+//! zero é uma tabela que se joga fora, não uma que se interpreta.*
+//!
+//! ## O que decidiu a cura foi o RAIO
+//!
+//! O passe é **linear nos texels** e a cor é **plana** (o cache blita; o espaçamento cresce com o raio):
+//!
+//! | raio | digital | passe de altura |
+//! |---|---|---|
+//! | 20 | 0,38 | 1,02 |
+//! | 60 | 0,36 | 3,40 |
+//! | 100 | 0,30 | **4,67** |
+//!
+//! A 200 px de pincel um único move do mouse custa **4,96 ms, 94% dele o passe de altura** — 30% de um
+//! quadro de 60 fps, dezenas de vezes por segundo. É esse o *"delay em traços rápidos"*.
+//!
+//! ## A cura: BANDAS, pela porta que o depósito de cor já usa
+//!
+//! `accumulate_dab_height` percorria em UMA thread o que a cor percorre em N ([`ph2d_painter_brush::dab::band_count`]).
+//! As linhas são disjuntas, um escritor por texel, nenhum texel lê o vizinho ⇒ **byte-idêntico por
+//! construção**, com gate de identidade contra a rota serial (`ablate::SERIAL`) e o controle que prova
+//! que a fixture CRUZA o piso. Medido costas-com-costas na MESMA corrida (2048², ms por move):
+//!
+//! | shape | raio | serial | banda | ganho |
+//! |---|---|---|---|---|
+//! | Stripes | 20 | 1,307 | 0,880 | 1,49× |
+//! | Stripes | 60 | 3,573 | 0,862 | 4,14× |
+//! | Stripes | 100 | 4,617 | **0,763** | **6,05×** |
+//! | só falloff | 60 | 1,572 | 0,567 | 2,77× |
+//! | só falloff | 100 | 2,122 | 0,579 | 3,66× |
+//!
+//! ⚠️ **O piso é o do kernel de COR e isso é conservador de propósito** (ver o doc do
+//! `walk_dab_rows`); e **a mordida do bow wave fica SERIAL**, porque `displaced` é uma soma em `f32`
+//! cuja ordem o Enio aprovou olhando.
+//!
 //! ## ⚠️ E a máquina
 //!
 //! A primeira tabela do breakdown do papel dizia *"Roughness DOBRA o custo"* (1339 contra 660 ms) sob
@@ -122,14 +178,20 @@ fn fast_stroke(t: &mut PainterTool, side: u32) -> (f64, f64, f64) {
     let y = f32::from(u16::try_from(side / 2).unwrap_or(512));
     let x0 = y * 0.5;
     let x1 = y * 1.5;
-    let down = ms(&mut || { t.on_canvas_pointer(cp([x0, y], PointerPhase::Down)); });
+    let down = ms(&mut || {
+        t.on_canvas_pointer(cp([x0, y], PointerPhase::Down));
+    });
     let mut moves = Vec::new();
     // 16 eventos de 40 px — a assinatura de um traço rápido (um lento entrega ~1 px por evento).
     for i in 1..=16 {
         let x = x0 + (x1 - x0) * (f32::from(u8::try_from(i).unwrap_or(16)) / 16.0);
-        moves.push(ms(&mut || { t.on_canvas_pointer(cp([x, y], PointerPhase::Move)); }));
+        moves.push(ms(&mut || {
+            t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+        }));
     }
-    let up = ms(&mut || { t.on_canvas_pointer(cp([x1, y], PointerPhase::Up)); });
+    let up = ms(&mut || {
+        t.on_canvas_pointer(cp([x1, y], PointerPhase::Up));
+    });
     moves.sort_by(f64::total_cmp);
     (down, moves[moves.len() / 2], up)
 }
@@ -139,15 +201,15 @@ fn fast_stroke(t: &mut PainterTool, side: u32) -> (f64, f64, f64) {
 #[ignore = "sonda de estudo; roda sob demanda"]
 fn measure_relief_stroke_cost() {
     println!("\n=== O QUE UM TRACO RAPIDO CUSTA (ms por evento, mediana dos 16 moves) ===\n");
-    println!("{:<14} {:>6} {:>9} {:>9} {:>9}", "config", "tela", "down", "move", "up");
+    println!(
+        "{:<14} {:>6} {:>9} {:>9} {:>9}",
+        "config", "tela", "down", "move", "up"
+    );
     for side in [2048u32, 4096] {
         for c in CFGS {
             let mut t = tool(side, c);
             let (down, mv, up) = fast_stroke(&mut t, side);
-            println!(
-                "{:<14} {side:>6} {down:>9.2} {mv:>9.2} {up:>9.2}",
-                c.name
-            );
+            println!("{:<14} {side:>6} {down:>9.2} {mv:>9.2} {up:>9.2}", c.name);
         }
     }
     println!();
@@ -325,9 +387,7 @@ fn measure_the_frame_the_gpu_lane_folds() {
                 t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
                 // O QUADRO: drenar (que escolhe a janela) e dobrar (o que a shell faz).
                 if t.take_preview_dirty() {
-                    let win = t
-                        .preview_gpu_region()
-                        .unwrap_or((0, 0, side, side));
+                    let win = t.preview_gpu_region().unwrap_or((0, 0, side, side));
                     if win == (0, 0, side, side) {
                         whole += 1;
                     }
@@ -362,7 +422,10 @@ fn measure_the_frame_the_gpu_lane_folds() {
 #[ignore = "sonda de estudo; roda sob demanda"]
 fn measure_what_the_deposit_costs() {
     println!("\n=== O DEPOSITO: pegada ou plano? (ms) ===\n");
-    println!("{:<10} {:>7} {:>6} {:>9} {:>9}", "config", "raio", "tela", "move", "up");
+    println!(
+        "{:<10} {:>7} {:>6} {:>9} {:>9}",
+        "config", "raio", "tela", "move", "up"
+    );
     for c in [CFGS[0], CFGS[2]] {
         for side in [1024u32, 2048, 4096] {
             for r in [20.0f32, 80.0] {
@@ -450,6 +513,129 @@ fn measure_the_nth_stroke_at_fixed_length() {
                 m(&ups)
             );
         }
+    }
+    println!();
+}
+
+/// **DE QUE O MOVE DO FILME É FEITO** — a decomposição que decide a wave, na regime do REPORT.
+///
+/// A auditoria acima nomeou o alvo (*o depósito custa 3,7× o Digital no MOVE*) e escreveu o mecanismo
+/// lido no código (*a pegada é percorrida uma SEGUNDA vez*). ⚠️ **Ler o código diz o QUE acontece, não
+/// quanto custa** — e o irmão [`super::measure_impasto_cost::what_the_height_walk_is_made_of`] mediu a
+/// mesma decomposição **noutro regime** (`DrawTo::Depth`: impasto ligado, bow wave vivo, AA do filme
+/// ligado), onde a silhueta valia 14%. **No filme nada disso está ligado**, então aquela tabela não
+/// responde por esta: aqui `depth == 0` e `push == 0` (sem mordida) e o
+/// [`ph2d_painter_brush::height_film::FilmAa`] nasce `None` (`film_aa_wanted` exige o master do
+/// impasto), o que faz da coluna `filme` um controle que TEM de dar ~0.
+///
+/// ⚠️ **Duas fixturas, porque a Shape muda o kernel:** com uma Shape ativa o `silhouette_at` é
+/// `compose(sample_shape(px,py), falloff(t))` — uma amostra de textura por texel; sem ela é só o
+/// `falloff_weight(t)`. A razão entre as duas colunas diz se o alvo da fusão é a AMOSTRA DA SHAPE (que
+/// **não depende de `t`**, logo é literalmente o mesmo número nos dois passes) ou a caminhada.
+///
+/// Rodar: `cargo test -p ph2d-tool-painter --release what_a_film_move_is_made_of -- --ignored --nocapture --test-threads=1`
+#[test]
+#[ignore = "sonda de estudo; roda sob demanda"]
+fn what_a_film_move_is_made_of() {
+    use ph2d_painter_brush::ablate;
+
+    /// O move MEDIANO do sétimo traço de 600 px, com a máscara de ablação armada.
+    fn move_at(shape: bool, film: bool, mask: u32, radius: f32) -> f64 {
+        const SIDE: u32 = 2048;
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (SIDE * SIDE * 4) as usize], SIDE, SIDE);
+        t.set_brush_size_px(radius * 2.0);
+        t.set_brush_color_srgb8([200, 30, 30]);
+        if shape {
+            t.set_brush_shape_kind(TextureKind::Stripes as u8);
+        }
+        if film {
+            t.set_shape_relief(1.0);
+        }
+        let cy = 1024.0f32;
+        let mut per_stroke = Vec::new();
+        for k in 0..7u8 {
+            let y = cy + f32::from(k) * 6.0;
+            let x0 = cy - 300.0;
+            let mut mv = Vec::new();
+            ablate::with(mask, || {
+                t.on_canvas_pointer(cp([x0, y], PointerPhase::Down));
+                for i in 1..=15u8 {
+                    let x = x0 + 40.0 * f32::from(i);
+                    mv.push(ms(&mut || {
+                        t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+                    }));
+                }
+                t.on_canvas_pointer(cp([x0 + 600.0, y], PointerPhase::Up));
+            });
+            mv.sort_by(f64::total_cmp);
+            per_stroke.push(mv[mv.len() / 2]);
+        }
+        per_stroke.remove(0); // o 1o traco paga o first-touch dos planos
+        per_stroke.sort_by(f64::total_cmp);
+        per_stroke[per_stroke.len() / 2]
+    }
+
+    let move_ms = |shape: bool, film: bool, mask: u32| move_at(shape, film, mask, 20.0);
+
+    println!("\n=== A BANDA: SERIAL x DIVIDIDO, na MESMA corrida (2048, ms por move) ===\n");
+    println!(
+        "{:<12} {:>6} {:>9} {:>9} {:>8} {:>9}",
+        "shape", "raio", "serial", "banda", "ganho", "digital"
+    );
+    for shape in [true, false] {
+        for r in [20.0f32, 60.0, 100.0] {
+            // ⚠️ Costas-com-costas DENTRO da corrida: esta workstation ja mediu o mesmo passo em 14,5
+            // e 30,2 ms sem uma linha mudar (doc 28 §5.46), e um A/B entre corridas atribuiria a carga
+            // da maquina ao ganho.
+            let ser = move_at(shape, true, ablate::SERIAL, r);
+            let par = move_at(shape, true, 0, r);
+            let dig = move_at(shape, false, 0, r);
+            println!(
+                "{:<12} {r:>6.0} {ser:>9.3} {par:>9.3} {:>7.2}x {dig:>9.3}",
+                if shape { "Stripes" } else { "so falloff" },
+                ser / par.max(1e-9),
+            );
+        }
+    }
+
+    println!("\n=== O PASSE DE ALTURA CONTRA O RAIO (2048, ms por move) ===\n");
+    println!(
+        "{:<12} {:>6} {:>9} {:>9} {:>8} {:>8}",
+        "shape", "raio", "digital", "full", "passe", "razao"
+    );
+    for shape in [true, false] {
+        for r in [20.0f32, 60.0, 100.0, 200.0] {
+            let digital = move_at(shape, false, 0, r);
+            let full = move_at(shape, true, 0, r);
+            println!(
+                "{:<12} {r:>6.0} {digital:>9.3} {full:>9.3} {:>8.3} {:>7.2}x",
+                if shape { "Stripes" } else { "so falloff" },
+                full - digital,
+                full / digital.max(1e-9),
+            );
+        }
+    }
+
+    println!("\n=== DE QUE O MOVE DO FILME E FEITO (2048, raio 20, ms por move) ===\n");
+    println!(
+        "{:<12} {:>8} {:>8} {:>8} {:>9} {:>8} {:>8}",
+        "shape", "digital", "full", "passe", "silhueta", "filme", "miolo+cauda"
+    );
+    for shape in [true, false] {
+        let digital = move_ms(shape, false, 0);
+        let full = move_ms(shape, true, 0);
+        let no_tail = move_ms(shape, true, ablate::TAIL);
+        let no_sil = move_ms(shape, true, ablate::TAIL | ablate::SILHOUETTE);
+        let no_film = move_ms(shape, true, ablate::TAIL | ablate::FILM_AA);
+        println!(
+            "{:<12} {digital:>8.3} {full:>8.3} {:>8.3} {:>9.3} {:>8.3} {:>11.3}",
+            if shape { "Stripes" } else { "so falloff" },
+            full - digital,
+            no_tail - no_sil,
+            no_tail - no_film,
+            full - digital - (no_tail - no_sil),
+        );
     }
     println!();
 }

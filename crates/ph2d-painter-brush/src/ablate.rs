@@ -44,6 +44,15 @@ pub const FILM_AA: u32 = 1 << 1;
 /// Para logo depois do envelope do filme: sem grain, sem a mordida do bow wave, sem as quatro
 /// escritas de plano, sem `derive_height`.
 pub const TAIL: u32 = 1 << 2;
+/// Força a rota **SERIAL** do laço de altura (uma banda só), sem tocar em nenhuma aritmética.
+///
+/// ⚠️ **É ablação de ROTA, não de peça** — as outras três removem trabalho e mudam o resultado; esta
+/// não pode mudar um byte, e é isso que ela existe para provar. Dois consumidores:
+/// * o gate de identidade, que compara os cinco planos da rota em banda contra os da serial;
+/// * o A/B de relógio, que **tem de medir as duas rotas costas-com-costas dentro da MESMA corrida** —
+///   nesta workstation o mesmo passo já mediu 14,5 e 30,2 ms sem uma linha mudar (doc 28 §5.46), e um
+///   A/B entre corridas atribuiria a carga da máquina ao ganho.
+pub const SERIAL: u32 = 1 << 3;
 
 /// Arma a máscara. **Sondas apenas** — todo caminho de produto a deixa em `0`.
 pub fn set(mask: u32) {

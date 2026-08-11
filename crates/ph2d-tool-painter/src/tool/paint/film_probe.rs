@@ -314,12 +314,7 @@ fn probe_the_films_gloss() {
     println!("-- Shine, na Roughness de fabrica --");
     let neutral = ph2d_painter_brush::material::Material::NEUTRAL.roughness;
     for shine in [0.25f32, 0.5, 0.7, 1.0] {
-        let (w, m) = gloss(
-            TextureKind::Stripes,
-            1.0,
-            (shine, neutral),
-            (0.0, neutral),
-        );
+        let (w, m) = gloss(TextureKind::Stripes, 1.0, (shine, neutral), (0.0, neutral));
         println!("Shine {shine:4.2} (rough {neutral:4.2})            pior {w:7.2}  media {m:6.2}");
     }
 
@@ -351,12 +346,7 @@ fn probe_the_films_gloss() {
 
     println!("\n-- e por espessura: onde o realce nasce --");
     for paint in [0.1f32, 0.25, 0.5, 1.0] {
-        let (w, m) = gloss(
-            TextureKind::Stripes,
-            paint,
-            (1.0, neutral),
-            (0.0, neutral),
-        );
+        let (w, m) = gloss(TextureKind::Stripes, paint, (1.0, neutral), (0.0, neutral));
         println!("Paint {paint:4.2}, Shine 1 contra 0        pior {w:7.2}  media {m:6.2}");
     }
     println!();

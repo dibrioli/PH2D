@@ -234,6 +234,12 @@ impl<'a> FilmLutPlan<'a> {
 // que chamou o depósito ⇒ um contador por thread não pode ser poluído por outro teste, e **não há
 // lista de quem precisa travar**. *A representação apaga o caso especial*, e a trava morre com ele.
 //
+// ⚠️ **E a frase acima envelheceu em 2026-08-10**, quando o laço de altura passou a abrir BANDAS de
+// linhas (`std::thread::scope`, não rayon — mas thread é thread): os hits de uma pegada grande
+// passaram a ser contados na thread da banda, e os dois gates de fiação leram **zero** com o produto
+// correto. A cura NÃO é voltar ao contador global — é o [`add_lut_counts`], que faz cada banda
+// entregar o que contou a quem a abriu. A janela de um gate continua sendo só o que ELE depositou.
+//
 // ⚠️ **Um doc-comment não gruda numa invocação de macro** — por isso o bloco acima é `//` e cada
 // `static` leva o seu `///` DENTRO do `thread_local!`.
 #[cfg(test)]
@@ -242,6 +248,19 @@ thread_local! {
     static LUT_HITS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
     /// Irmão do [`LUT_HITS`]: os texels que a fronteira calota↔banda devolveu ao caminho exato.
     static LUT_STRADDLES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// **Credita a esta thread o que uma BANDA contou na dela.**
+///
+/// ⚠️ A premissa da cura por-thread era *"a crate não tem `rayon`, então todo hit acontece na thread
+/// que chamou o depósito"* — e o laço de altura passou a abrir bandas
+/// ([`crate::height::accumulate_dab_height`]), o que a torna falsa em silêncio: os dois gates de
+/// fiação leram **ZERO**. A premissa não morre, ela ganha um degrau — cada banda entrega o que
+/// contou a quem a abriu, e a janela de um gate continua sendo só o que ELE depositou.
+#[cfg(test)]
+pub(crate) fn add_lut_counts((hits, straddles): (usize, usize)) {
+    LUT_HITS.with(|c| c.set(c.get() + hits));
+    LUT_STRADDLES.with(|c| c.set(c.get() + straddles));
 }
 
 /// Zera os dois contadores DESTA THREAD e devolve o par `(hits, straddles)` desde o último reset.

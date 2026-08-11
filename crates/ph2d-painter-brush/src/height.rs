@@ -18,6 +18,9 @@
 pub use crate::height_film::{W_SOLID, W_TAIL, body_profile, film_coverage, solid_paint};
 pub use crate::height_modes::{DepthSource, DrawTo};
 
+#[path = "height_walk.rs"]
+mod walk;
+
 /// How deep the Grain's grooves cut into the body, with [`DepthSource::Grain`].
 ///
 /// The grain must **carve grooves out of a full body**, not scale the body away. The naive
@@ -274,13 +277,6 @@ impl DepositGate<'_> {
 }
 
 impl HeightFields<'_> {
-    /// O fator do gate em `i` — `1.0` EXATO sem gate, e é isso que torna o kernel byte-idêntico onde
-    /// não há máscara nenhuma (`x * 1.0 == x` em IEEE-754).
-    #[inline]
-    fn gate_at(&self, i: usize) -> f32 {
-        self.gate.map_or(1.0, |g| g.factor_at(i))
-    }
-
     /// Whether every plane is at least `n` long — a real early-out, not a `debug_assert` that vanishes
     /// from the build the artist runs (the lesson of the 2026-07-12 SIGSEGV).
     fn fits(&self, n: usize) -> bool {
@@ -331,7 +327,7 @@ pub fn accumulate_dab_height(
     height: u32,
     spec: &crate::BrushSpec,
     dab: &HeightDab<'_>,
-    mut bite: Option<&mut crate::height_push::PushBite<'_>>,
+    bite: Option<&mut crate::height_push::PushBite<'_>>,
 ) -> Option<crate::dab::DirtyRect> {
     let n = (width as usize) * (height as usize);
     if !fields.fits(n) || width == 0 || height == 0 {
@@ -392,134 +388,25 @@ pub fn accumulate_dab_height(
     // A máscara de ablação, lida UMA vez por dab (ao lado do `film_lut_for`, que já é TLS por dab).
     // `0` em todo caminho de produto; ver [`crate::ablate`].
     let ablate = crate::ablate::get();
-    let mut touched = false;
-    for py in y0..y1 {
-        let dy = (py as f32 + 0.5) - cy;
-        for px in x0..x1 {
-            let dx = (px as f32 + 0.5) - cx;
-            let (rx, ry) = sweep_residual(dx, dy, sweep);
-            // `wv` is the DEFORMED residual and `t` its length — byte-identical to `falloff_t`, which
-            // is exactly `apply` then the same `sqrt`. The vector is kept because the LUT's expansion
-            // lives in that space (see [`crate::height_film::FilmAa::film_at_lut`]).
-            let wv = dab.footprint.apply([rx * inv_radius, ry * inv_radius]);
-            let t = (wv[0] * wv[0] + wv[1] * wv[1]).sqrt();
-            let w = if ablate & crate::ablate::SILHOUETTE != 0 {
-                f32::from(t < 1.0) // MESMO suporte, sem falloff/Shape/mascara -- so a sonda arma isto
-            } else {
-                crate::dab::silhouette_at(spec, dab.shape, t, px, py, dab.center, radius)
-            };
-            // The film at this texel: single-sample `film_of` (byte-identical old path), or the
-            // fractional area coverage under Smooth Edges — the SAME fraction `dab.rs` gives the
-            // pigment (same door, same grid, the caller's own swept-silhouette chain).
-            let film = if ablate & crate::ablate::FILM_AA != 0 {
-                crate::height_film::film_of(w) // o ramo `None` do proprio kernel
-            } else {
-                match &film_aa {
-                    Some(aa) => aa.film_at_planned(
-                        lut.as_ref(),
-                        t,
-                        wv,
-                        [dx, dy],
-                        || w,
-                        |ox, oy| {
-                            let (rx2, ry2) = sweep_residual(dx + ox, dy + oy, sweep);
-                            spec.falloff_weight(
-                                dab.footprint.falloff_t(rx2 * inv_radius, ry2 * inv_radius),
-                            )
-                        },
-                    ),
-                    None => crate::height_film::film_of(w),
-                }
-            };
-            // A texel wholly outside silhouette AND film lays nothing (with AA a rim texel can carry
-            // fractional film while its CENTRE silhouette is already 0 — it must not be skipped).
-            if w <= 0.0 && film <= 0.0 {
-                continue;
-            }
-            let i = (py as usize) * (width as usize) + px as usize;
-            // **O gate do depósito** — quanto deste dab pousa AQUI. Sem gate é `1.0` exato, e
-            // `x * 1.0 == x`, então o kernel de um documento sem máscara é byte-idêntico.
-            let k = fields.gate_at(i);
-            if k <= 0.0 {
-                continue; // texel congelado: nem filme, nem carga, nem mordida do Push
-            }
-            // The **film's** envelope, taken FIRST and on its own: the light's coverage is a different
-            // function of the dab than the relief's ingredient is, so it cannot ride the same winner.
-            // `coverage · film` is exactly the old `solid_paint(w, coverage)` when `film = film_of(w)`.
-            let fq = ((coverage * film * k).clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-            if fq > fields.film[i] {
-                fields.film[i] = fq;
-                touched = true;
-            }
-            // The **stroke envelope, taken on the PAINT** — the dab that laid the most paint at this
-            // pixel owns it. One pass of a loaded brush leaves one thickness (a second pass over the
-            // same line does not stack a staircase); separate strokes DO add, at stroke end.
-            //
-            // Enveloping the paint rather than the height is what makes every knob live: the winner is
-            // then chosen by a quantity that no setting can change, so re-deriving the relief at a new
-            // Body / Source / Depth cannot silently re-shuffle which dab shaped which pixel.
-            if ablate & crate::ablate::TAIL != 0 {
-                continue; // sem grain, sem mordida, sem as quatro escritas, sem derive_height
-            }
-            let m = (w * coverage * k).clamp(0.0, 1.0);
-            if m <= fields.paint[i] {
-                continue;
-            }
-            let g = if let Some(b) = dab.grain {
-                crate::dab::grain_at(spec, b, dab.grain_image, px, py, dab.center, radius)
-                    .clamp(0.0, 1.0)
-            } else {
-                1.0
-            };
-            let gq = if grain_active {
-                (g * 255.0 + 0.5) as u8
-            } else {
-                NO_GRAIN
-            };
-            // **Volume conservation, riding along** (`crate::height_push`): the ground this dab's advance
-            // covers is ground it SHOVES, and it is taken here — inside the walk that already knows `m`,
-            // `paint[i]` and the silhouette. Doing it in a kernel of its own meant evaluating
-            // `silhouette_at` twice per texel, and that alone put the impasto cost at 5.0 ms/move, over
-            // budget, on every stroke. Three operations, folded into a loop that was already running.
-            if let Some(b) = bite.as_deref_mut() {
-                // The bite takes from the ground AND from the stroke's own accumulated plane — the
-                // bow wave the previous dab banked ahead is picked up here and shoved on (see
-                // `forward_weight`). `(g + p)` is what actually stands at the texel right now, and
-                // `.max(0)` guards float fuzz.
-                //
-                // **The share is the increment over the REMAINING HEADROOM, not the raw increment** —
-                // and that is what makes the trench a fact of the PATH instead of a fact of the dab
-                // spacing. With the raw `Δm`, `q = g + p` evolves as `q ← q·(1 − Δm)`, so the total
-                // bite is `g·(1 − Π(1 − Δm_k))`: a PRODUCT over the increments, which depends on how
-                // many steps the envelope was reached in and on each texel's phase against the dab
-                // grid. A soft falloff hides it (its `Δm` are small and even); `Sphere`'s silhouette
-                // has a VERTICAL tangent at the rim, so `Δm` jumps hard, the phase term explodes, and
-                // the trench floor comes out RIPPLED at exactly the dab period — the coil Enio's smoke
-                // caught (2026-07-15). Normalising by `(1 − paint)` telescopes the product exactly:
-                // `Π (1 − Δm/(1 − m_{k−1})) = Π (1 − m_k)/(1 − m_{k−1}) = (1 − m_final)`, so the bite
-                // lands on `g·m_final` — a pure function of the envelope, at ANY spacing, in ANY
-                // order. It is also the honest law: the brush shoves the ground in proportion to how
-                // much it ended up covering the texel, and at full coverage it takes all of it and
-                // never more (the self-limiting guarantee the raw form gave, now exact).
-                let head = 1.0 - fields.paint[i];
-                if head > 1e-6 {
-                    let share = ((m - fields.paint[i]) / head).clamp(0.0, 1.0);
-                    let take = (b.ground[i] + b.plane[i]).max(0.0) * share;
-                    if take != 0.0 {
-                        b.plane[i] -= take;
-                        b.displaced += take;
-                    }
-                }
-            }
-            fields.paint[i] = m;
-            fields.grain[i] = gq;
-            fields.radius[i] = spec.radius_px;
-            // Derived from the STORED (quantised) grain, so the buffer and the re-derivation always
-            // agree to the last bit — a live edit can never make the relief jump.
-            fields.height[i] = derive_height(spec, m, f32::from(gq) / 255.0);
-            touched = true;
-        }
-    }
+    let walk = walk::Walk {
+        spec,
+        dab,
+        coverage,
+        radius,
+        inv_radius,
+        cx,
+        cy,
+        sweep,
+        film_aa,
+        lut,
+        ablate,
+        grain_active,
+        x0,
+        x1,
+        gate: fields.gate,
+        width: width as usize,
+    };
+    let touched = walk::walk_dab_rows(&walk, fields, y0, y1, bite);
     if !touched {
         return None;
     }

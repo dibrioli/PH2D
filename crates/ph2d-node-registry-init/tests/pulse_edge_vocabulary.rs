@@ -115,6 +115,9 @@ fn the_numbering_matches_even_where_the_default_does_not() {
         .expect("listado");
     assert_eq!(on_change.1, 2.0, "o neutro do on_change é `Both`");
     for (name, default) in defaults.iter().filter(|(n, _)| *n != "pulse.on_change") {
-        assert_eq!(*default, 0.0, "{name}: o default dos que cruzam limiar é Rise");
+        assert_eq!(
+            *default, 0.0,
+            "{name}: o default dos que cruzam limiar é Rise"
+        );
     }
 }

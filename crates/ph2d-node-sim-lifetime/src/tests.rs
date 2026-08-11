@@ -26,7 +26,7 @@ fn col(s: &Stream, name: &str) -> Vec<f32> {
 /// `age >= life` — a particle at exactly its lifetime is over.
 #[test]
 fn the_outlived_die_and_the_survivors_know_their_fraction() {
-    let out = reap(&aged(&[0.0, 1.0, 1.9, 2.5]), 2.0, 0.0, 1);
+    let out = reap(&aged(&[0.0, 1.0, 1.9, 2.5]), 2.0, 0.0, 1).out;
     assert_eq!(out.count(), 3, "the 2.5s-old one is past its 2s life");
     let life = col(&out, "life");
     assert_eq!(life[0], 0.0, "newborn: 0");
@@ -75,7 +75,7 @@ fn a_lifetime_never_rounds_away_to_nothing() {
 #[test]
 fn without_an_age_column_nothing_dies() {
     let plain = Stream::new(3).with("P", Column::Vec2(vec![[0.0, 0.0]; 3]));
-    let out = reap(&plain, 0.001, 0.0, 1);
+    let out = reap(&plain, 0.001, 0.0, 1).out;
     assert_eq!(out.count(), 3, "no age, no death");
     assert_eq!(col(&out, "life"), vec![0.0; 3], "…and nobody has aged");
 }
@@ -95,7 +95,7 @@ fn the_survivors_keep_their_order_and_their_columns() {
             [0.0, 0.0, 1.0, 1.0],
         ]),
     );
-    let out = reap(&s, 1.0, 0.0, 1);
+    let out = reap(&s, 1.0, 0.0, 1).out;
     assert_eq!(col(&out, "id"), vec![0.0, 2.0, 4.0], "in their own order");
     match out.get("tint") {
         Some(Column::Vec4(v)) => {

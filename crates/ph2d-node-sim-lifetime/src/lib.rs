@@ -43,6 +43,13 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
+/// O tipo do gatilho de morte — espelho do `PULSE` da família `pulse.*` e da porta `pulse` do
+/// `sim.spawn` (mantido local pela mesma razão que eles: cada crate-nó é folha drop-in).
+const PULSE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Event);
+
+/// A coluna em que um pulso viaja (espelho do `PULSE_COL` da família).
+const PULSE_COL: &str = "pulse";
+
 /// The jitter lane for the per-element lifetime (independent of the spawn's own draws).
 const LANE_LIFE: u32 = 11;
 
@@ -58,10 +65,33 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         name: "in",
         ty: INST_VEC2,
     }],
-    outputs: &[PortSpec {
-        name: "out",
-        ty: INST_VEC2,
-    }],
+    outputs: &[
+        PortSpec {
+            name: "out",
+            ty: INST_VEC2,
+        },
+        // **O EVENTO DE MORTE** (folha 12/13 §P0; o `Trigger Event On Die` do VFX Graph, o
+        // *Death Event* do Niagara, o `POP Replicate` do Houdini). APENDADAS — desconectadas,
+        // o nó é byte-idêntico ao de ontem.
+        //
+        // ⚠️ **São DUAS saídas para um evento só, e não é cerimônia: o sistema de tipos
+        // FORÇA a separação.** `PortType::connects_directly` exige domínio+dim+relógio iguais
+        // (`port.rs`), então a CARGA (o cadáver, `Instances/Vec2/Frame`, que vai ao
+        // `template` do `sim.spawn`) e o GATILHO (`Instances/Scalar/Event`, que vai à porta
+        // `pulse` dele) **não cabem no mesmo fio**. É a mesma divisão que a referência faz —
+        // um evento com payload —, aqui tornada verificável pelo compilador.
+        PortSpec {
+            name: "died",
+            ty: INST_VEC2,
+        },
+        // As MESMAS linhas, na MESMA ordem, dizendo só *"esta disparou"*. A ordem é
+        // garantida por construção (as duas saem da mesma lista `gone`), e é dela que
+        // depende o `sim.spawn`, que indexa o pulso contra o template linha a linha.
+        PortSpec {
+            name: "pulse",
+            ty: PULSE,
+        },
+    ],
     effect: Effect::Pure,
     clock: Clock::Frame,
     params: &[
@@ -102,8 +132,19 @@ fn life_of(id: u32, life: f32, variance: f32, seed: u32) -> f32 {
     (life * (1.0 + variance * d)).max(life * MIN_LIFE_FRAC)
 }
 
+/// O que um tique de ceifa produz: os sobreviventes, os cadáveres e o gatilho.
+struct Reaped {
+    /// Os sobreviventes, com `life` reescrito.
+    out: Stream,
+    /// Quem morreu NESTE tique, verbatim — todas as colunas que ele carregava ao morrer.
+    /// É a CARGA do evento (a posição é o que a referência chama de *inherit from event*).
+    died: Stream,
+    /// As MESMAS linhas dos cadáveres, dizendo só *"esta disparou"*. Uma coluna, `k` linhas.
+    pulse: Stream,
+}
+
 /// Kill the outlived, and tell the survivors how far through life they are.
-fn reap(s: &Stream, life: f32, variance: f32, seed: u32) -> Stream {
+fn reap(s: &Stream, life: f32, variance: f32, seed: u32) -> Reaped {
     let n = s.count();
     let age = scalar(s, "age", n);
     let ids = scalar(s, "id", n);
@@ -112,11 +153,16 @@ fn reap(s: &Stream, life: f32, variance: f32, seed: u32) -> Stream {
     // not: reshuffling the set every tick would make every downstream index-based node flicker).
     let mut keep: Vec<usize> = Vec::with_capacity(n);
     let mut lives: Vec<f32> = Vec::with_capacity(n);
+    // ⚠️ Os mortos saem na MESMA ordem do laço, e é isso que torna `died` e `pulse`
+    // alinhados por índice **por construção** em vez de por promessa.
+    let mut gone: Vec<usize> = Vec::new();
     for i in 0..n {
         let span = life_of(ids[i] as u32, life, variance, seed);
         if age[i] < span {
             keep.push(i);
             lives.push((age[i] / span).clamp(0.0, 1.0)); // CLAMP-OK: fraction of a life
+        } else {
+            gone.push(i);
         }
     }
 
@@ -128,7 +174,22 @@ fn reap(s: &Stream, life: f32, variance: f32, seed: u32) -> Stream {
         out.set(name.clone(), gather(col, &keep));
     }
     out.set("life", Column::Scalar(lives));
-    out
+
+    // ⚠️ O cadáver sai VERBATIM, inclusive o `life` que ele trazia: quem morreu chegou ao fim
+    // da própria vida, e reescrever esse número aqui seria inventar um fato sobre um elemento
+    // que já não existe. Quem consome os mortos quer o que eles ERAM.
+    let mut died = Stream::new(gone.len());
+    for (name, col) in s.columns() {
+        died.set(name.clone(), gather(col, &gone));
+    }
+
+    // O gatilho carrega SÓ o que significa. Uma coluna, e não o cadáver re-tipado: a porta
+    // `pulse` do `sim.spawn` lê exatamente esta coluna, e mandar as outras seria dizer duas
+    // vezes a mesma coisa por dois fios.
+    let mut pulse = Stream::new(gone.len());
+    pulse.set(PULSE_COL.to_string(), Column::Scalar(vec![1.0; gone.len()]));
+
+    Reaped { out, died, pulse }
 }
 
 fn gather(col: &Column, keep: &[usize]) -> Column {
@@ -256,8 +317,12 @@ impl NodeOp for SimLifetime {
         let life = ctx.param("life").max(0.0);
         let variance = ctx.param("variance").clamp(0.0, 1.0); // CLAMP-OK: const bounds
         let seed = ctx.param("seed").max(0.0) as u32;
-        let out = reap(ctx.input(0), life, variance, seed);
-        ctx.emit(out);
+        let r = reap(ctx.input(0), life, variance, seed);
+        // TRÊS saídas, na ordem do manifesto (`EvalCtx::emit`: *"call once per output port,
+        // in order"*) — o precedente é o `carry` do `pulse.counter`.
+        ctx.emit(r.out);
+        ctx.emit(r.died);
+        ctx.emit(r.pulse);
     }
 }
 

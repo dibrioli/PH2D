@@ -356,3 +356,133 @@ fn a_wired_pulse_takes_the_spawn_off_the_device() {
          the births missing: stages {nodes:?}"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UM ESTÁGIO DE GPU PRODUZ **UM** BUFFER
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Um nó com kernel e **DUAS saídas** — o sujeito que o repo não tinha até hoje.
+///
+/// ⚠️ SINTÉTICO de propósito, pela mesma razão que o [`HalfCovered`]: o `sim.lifetime` tem
+/// exatamente esta forma desde 2026-08-10 (as saídas `died`/`pulse` do evento de morte), mas
+/// uma wave futura pode dar ao device uma história de cadáveres, e então a fixture dissolveria
+/// **com a cobertura fazendo o trabalho dela**. O que este gate mede é ENGINE: a porta 1 de um
+/// estágio não existe.
+struct TwoOut;
+
+static TWO_OUT: NodeManifest = NodeManifest {
+    id: NodeTypeId::of("test.two_out"),
+    name: "test.two_out",
+    inputs: &[PortSpec {
+        name: "in",
+        ty: INST_VEC2,
+    }],
+    outputs: &[
+        PortSpec {
+            name: "out",
+            ty: INST_VEC2,
+        },
+        PortSpec {
+            name: "side",
+            ty: INST_VEC2,
+        },
+    ],
+    effect: Effect::Pure,
+    clock: Clock::Frame,
+    params: &[],
+    lowerings: &[LoweringKind::Cpu],
+};
+
+impl NodeOp for TwoOut {
+    fn manifest(&self) -> &'static NodeManifest {
+        &TWO_OUT
+    }
+    fn eval(&self, ctx: &mut EvalCtx<'_>) {
+        let a: Stream = ctx.input(0).clone();
+        // A 2ª saída é DIFERENTE da 1ª — é isso que torna o defeito observável em vez de
+        // uma coincidência: um plano que entregasse a porta 0 no lugar da 1 daria um
+        // stream com a contagem errada, não um stream igual.
+        let b = Stream::new(a.count() + 1);
+        ctx.emit(a);
+        ctx.emit(b);
+    }
+}
+
+static TWO_OUT_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "        write_P(i, read_P(i));\n",
+    wgsl_lib: "",
+    bindings: &[ColumnBinding {
+        column: "P",
+        dim: Dim::Vec2,
+        access: ColumnAccess::ReadWrite,
+        identity: [0.0; 4],
+        port: 0,
+    }],
+    params: &[],
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
+};
+
+/// **Um estágio produz UM buffer, então a porta 1 põe a fronteira no nó.**
+///
+/// `GpuStage` guarda um `node`, nunca um `(node, porta)`, e `source_of` resolve uma entrada
+/// para `GpuSource::Stage(src)` — sem porta. Logo, se um consumidor lê a porta 1 de um nó
+/// estagiado, ele recebe o buffer da porta **0**: a resposta errada, em silêncio, que é a
+/// classe de defeito que este planejador existe para não cometer (o doc do módulo: *"uma
+/// decisão errada é um render errado em silêncio"*).
+///
+/// A cura é a recusa: quem tem consumidor numa porta ≠ 0 cozinha na CPU inteiro.
+#[test]
+fn a_consumed_second_output_puts_the_boundary_at_that_node() {
+    let mut reg = registry();
+    reg.register(Box::new(TwoOut)).unwrap();
+    reg.register_gpu_kernel(TWO_OUT.id, TWO_OUT_KERNEL);
+
+    let (mut g, [grid, osc, _, out]) = chain(&reg);
+    let two = g.add_node("test.two_out");
+    // grid → two → osc → move → output, com a 2ª saída do `two` consumida por um ramo.
+    g.disconnect(osc, 0).expect("a cadeia fiou grid → osc");
+    for (a, b) in [(grid, two), (two, osc)] {
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, 0),
+            delayed: false,
+        })
+        .unwrap();
+    }
+    let sink2 = g.add_node("motion.output");
+    g.connect(Edge {
+        from: (two, 1),
+        to: (sink2, 0),
+        delayed: false,
+    })
+    .unwrap();
+
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    let staged: Vec<NodeId> = plan.stages.iter().map(|s| s.node).collect();
+    assert!(
+        !staged.contains(&two),
+        "um nó cuja porta 1 tem consumidor NÃO pode virar estágio — um estágio tem um buffer \
+         só, e o consumidor receberia a porta 0. Estagiados: {staged:?}"
+    );
+    assert_eq!(
+        plan.boundaries,
+        vec![(two, 0)],
+        "a fronteira pousa NELE: o prefixo (e ele) cozinham na CPU, o sufixo segue na GPU"
+    );
+    // E o CONTROLE: sem o consumidor da porta 1, o MESMO nó é estagiado. Sem esta metade o
+    // gate passaria com o planejador recusando todo nó de duas saídas — uma recusa larga
+    // demais, que é o outro jeito de estar errado.
+    g.disconnect(sink2, 0).expect("o ramo da porta 1 existia");
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    let staged: Vec<NodeId> = plan.stages.iter().map(|s| s.node).collect();
+    assert!(
+        staged.contains(&two),
+        "com a porta 1 sem consumidor não há nada a errar, e o nó volta a ser elegível: {staged:?}"
+    );
+    assert!(
+        plan.is_fully_gpu(),
+        "e a cadeia inteira volta a caber no device"
+    );
+}

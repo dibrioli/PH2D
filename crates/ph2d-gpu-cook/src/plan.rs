@@ -304,6 +304,24 @@ fn eligible(
     if graph.param_sources(node).is_some_and(|s| !s.is_empty()) {
         return false;
     }
+    // **A GPU stage produces ONE buffer.** [`GpuStage`] holds a `node`, never a
+    // `(node, port)`, and `source_of` resolves an input to `GpuSource::Stage(src)`
+    // with the port dropped — so a consumer reading port 1 of a staged node would
+    // be handed port **0**: the wrong stream, silently, which is the one thing
+    // this planner exists not to do.
+    //
+    // ⚠️ It never came up before 2026-08-10 because the two facts never met: the
+    // only multi-output node in the repo (`pulse.counter`'s `carry`) has no
+    // kernel. `sim.lifetime`'s death event is the first node that is both, and
+    // the refusal is written HERE rather than in that node because the next one
+    // must be born covered — an enumeration of nodes is what rots.
+    if graph
+        .edges()
+        .iter()
+        .any(|e| e.from.0 == node && e.from.1 != 0)
+    {
+        return false;
+    }
     // A generator must say how many elements it emits (dispatch is host-sized).
     if manifest.inputs.is_empty() && kernel.count_law.is_none() && !kernel.is_passthrough() {
         return false;

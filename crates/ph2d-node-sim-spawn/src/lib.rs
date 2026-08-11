@@ -289,8 +289,18 @@ fn newborns(template: &Stream, ids: &[u32], rows: &[usize]) -> Stream {
     debug_assert_eq!(ids.len(), rows.len(), "one row per newborn");
     let mut out = Stream::new(ids.len());
     for (name, col) in template.columns() {
-        if name == "id" {
-            continue; // the newborn's identity is its birth ordinal, not the template's
+        // The newborn's identity is its birth ordinal, not the template's.
+        // And **a newborn is age 0 BY DEFINITION** — `sim.step` already says so in as many
+        // words (*"A row with no `age` is newborn: identity 0"*), so leaving the column
+        // absent hands it the law that already exists instead of writing a second one.
+        //
+        // ⚠️ **This is inert for every template that has no clock on it** (a `source.*` grid
+        // never carries an `age`), and load-bearing for the one that does: the corpses on
+        // `sim.lifetime.died`. Without it a death-born child inherits an age that is, by
+        // construction, past its own lifetime — it dies on the very next tick, and the whole
+        // replicate chain looks built and does nothing.
+        if name == "id" || name == "age" {
+            continue;
         }
         out.set(name.clone(), gather(col, rows));
     }

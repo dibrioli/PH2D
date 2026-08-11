@@ -80,6 +80,30 @@ impl TriEdges {
     /// só é tirada quando o número vai ser guardado — a referência faz o mesmo,
     /// e é a diferença entre uma raiz por voxel-triângulo e uma por escrita.
     pub fn closest_to(&self, point: [f32; 3]) -> (f32, [f32; 3]) {
+        let (sq, s, t) = self.closest_bary(point);
+        (sq, self.at(s, t))
+    }
+
+    /// O ponto reconstruído a partir das barycêntricas `(s, t)`.
+    fn at(&self, s: f32, t: f32) -> [f32; 3] {
+        [
+            self.v1[0] + s * self.e1[0] + t * self.e2[0],
+            self.v1[1] + s * self.e1[1] + t * self.e2[1],
+            self.v1[2] + s * self.e1[2] + t * self.e2[2],
+        ]
+    }
+
+    /// A MESMA busca, devolvendo as **barycêntricas** `(s, t)` do ponto mais
+    /// próximo em vez do ponto — a distância ao quadrado vem junto.
+    ///
+    /// ⚠️ **Ela é o CORPO, e a [`Self::closest_to`] passou a delegar** — de
+    /// propósito. Quem leva um canal por-vértice de uma malha para outra precisa
+    /// dos PESOS (o valor no ponto mais próximo é `w1·a + s·b + t·c`), e derivá-los
+    /// do ponto devolvido seria resolver de volta um sistema que esta função
+    /// acabou de resolver: uma segunda resposta para a mesma pergunta, com a
+    /// aritmética das sete regiões do Eberly de um lado e um solve 2×2 do outro.
+    /// O peso do vértice `v1` é `1 − s − t`.
+    pub fn closest_bary(&self, point: [f32; 3]) -> (f32, f32, f32) {
         // `diff` aponta do PONTO para o vértice, e é essa orientação que dá os
         // sinais de `b0`/`b1` que o particionamento abaixo espera.
         let diff = sub(self.v1, point);
@@ -200,15 +224,10 @@ impl TriEdges {
             }
         }
 
-        let closest = [
-            self.v1[0] + s * self.e1[0] + t * self.e2[0],
-            self.v1[1] + s * self.e1[1] + t * self.e2[1],
-            self.v1[2] + s * self.e1[2] + t * self.e2[2],
-        ];
         // O arredondamento pode empurrar uma soma de termos que se cancelam para
         // baixo de zero; a distância ao quadrado de um ponto a um triângulo não
         // tem como ser negativa, e quem consome tira a raiz.
-        (sq.max(0.0), closest)
+        (sq.max(0.0), s, t)
     }
 
     /// A distância ao longo de `dir` até o triângulo, ou `None`.

@@ -87,6 +87,21 @@ impl Mesh {
         self.masks = Some(masks);
     }
 
+    /// Devolve o plano tirado por [`Self::take_colors`] — o irmão exato do
+    /// [`Self::put_masks`].
+    ///
+    /// ⚠️ **Ele MOVE em vez de copiar**, e é isso que o separa de escrever pelo
+    /// `colors_mut`: a cor é o maior dos planos opcionais (três `f32` por
+    /// vértice), e quem constrói um novo já tem o `Vec` na mão.
+    pub fn put_colors(&mut self, colors: Vec<[f32; 3]>) {
+        assert_eq!(
+            colors.len(),
+            self.positions.len(),
+            "um plano de cor tem de medir a malha"
+        );
+        self.colors = Some(colors);
+    }
+
     /// O AO assado por vértice, se alguém já assou. `None` = `DEFAULT_AO`
     /// (céu aberto — a leitura honesta de *"ninguém mediu"*, e a que não
     /// escurece a peça por omissão).

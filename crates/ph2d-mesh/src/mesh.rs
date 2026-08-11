@@ -42,6 +42,12 @@ mod planes;
 #[path = "mesh_memory.rs"]
 mod memory;
 
+/// OS CANAIS AUTORADOS ATRAVESSANDO UMA TROCA DE TOPOLOGIA — ver o módulo.
+#[path = "mesh_transfer.rs"]
+mod transfer;
+
+pub use transfer::transfer_authored;
+
 pub use shrink::VertexMerge;
 pub use splice::VertexAppend;
 

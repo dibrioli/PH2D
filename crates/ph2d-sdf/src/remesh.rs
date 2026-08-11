@@ -239,7 +239,16 @@ pub fn remesh(mesh: &Mesh, resolution: u32) -> Result<(Mesh, RemeshReport), Reme
         });
     }
 
-    let out = surface_nets(&field)?;
+    let mut out = surface_nets(&field)?;
+    // 5. **Os canais AUTORADOS atravessam.** A malha que sai é construída do
+    //    zero pelo campo, então sem este passo reconstruir a casca APAGAVA toda
+    //    máscara e toda cor — no gesto que o artista dá justamente depois de já
+    //    ter mascarado. É a lei que o `merge` já carrega, uma operação adiante.
+    //
+    //    ⚠️ **A fonte é o `mesh` do argumento, NÃO o `closed`**: o `closed` é uma
+    //    reconstrução por `from_parts`, que não leva plano nenhum — transferir
+    //    dele seria copiar defaults com todos os gates verdes.
+    ph2d_mesh::transfer_authored(mesh, &mut out);
     let report = RemeshReport {
         verts: (verts_before, out.vert_count()),
         faces: (faces_before, out.face_count()),

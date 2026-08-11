@@ -222,3 +222,67 @@ fn a_healthy_piece_is_never_nudged() {
         );
     }
 }
+
+/// **A MÁSCARA sobrevive à reconstrução** — e é o caso de uso inteiro: mascarar
+/// e depois arrumar a topologia é a ordem em que um escultor trabalha.
+///
+/// ⚠️ **O oráculo é a FORMA do campo, não a média dele.** Uma transferência que
+/// preenchesse tudo com a média passaria em *"existe plano"* e em *"o valor está
+/// na faixa"*; o que ela não reproduz é a rampa — então o gate mede os dois
+/// extremos e o sinal do gradiente.
+#[test]
+fn an_authored_mask_survives_the_rebuild() {
+    let mut mesh = shapes::uv_sphere(20, 30, 1.0);
+    {
+        let xs: Vec<f32> = mesh.positions().iter().map(|p| p[0]).collect();
+        let m = mesh.masks_mut();
+        for (i, x) in xs.iter().enumerate() {
+            // 1 no lado +x, 0 no lado −x, com a fronteira no meio.
+            m[i] = if *x > 0.0 { 1.0 } else { 0.0 };
+        }
+    }
+
+    let (out, _) = remesh(&mesh, 64).expect("a esfera reconstrói");
+    let got = out.masks().expect("a máscara atravessou o remesh");
+    assert_eq!(got.len(), out.vert_count());
+
+    // O lado +x continua mascarado e o −x continua livre.
+    let mut plus = (0.0f32, 0usize);
+    let mut minus = (0.0f32, 0usize);
+    for (i, p) in out.positions().iter().enumerate() {
+        // ⚠️ Longe da fronteira, onde a resposta é inequívoca: perto dela o
+        // ponto mais próximo interpola entre os dois lados, e isso é CERTO.
+        if p[0] > 0.5 {
+            plus.0 += got[i];
+            plus.1 += 1;
+        } else if p[0] < -0.5 {
+            minus.0 += got[i];
+            minus.1 += 1;
+        }
+    }
+    assert!(
+        plus.1 > 10 && minus.1 > 10,
+        "a fixture não tem os dois lados"
+    );
+    let (hi, lo) = (plus.0 / plus.1 as f32, minus.0 / minus.1 as f32);
+    assert!(
+        hi > 0.9 && lo < 0.1,
+        "a máscara chegou chapada: +x médio {hi}, −x médio {lo}"
+    );
+}
+
+/// **E uma malha VIRGEM continua saindo sem plano** — o controle.
+///
+/// ⚠️ Sem ele a travessia poderia materializar um plano de zeros em toda
+/// reconstrução, cobrando 4 B por vértice de quem nunca mascarou e ficando
+/// verde no gate acima.
+#[test]
+fn a_rebuild_of_a_virgin_mesh_carries_no_planes() {
+    let mesh = shapes::uv_sphere(16, 24, 1.0);
+    assert!(mesh.masks().is_none() && mesh.colors().is_none());
+    let (out, _) = remesh(&mesh, 64).expect("a esfera reconstrói");
+    assert!(
+        out.masks().is_none() && out.colors().is_none(),
+        "a reconstrução materializou planos que ninguém autorou"
+    );
+}

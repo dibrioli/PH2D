@@ -42,6 +42,8 @@ pub mod icons;
 pub mod ids;
 pub mod image_edit;
 pub mod interaction;
+/// A porta única de *como este app imprime um comprimento* — veja os docs do módulo.
+pub mod length;
 pub mod math;
 pub mod paint;
 /// Batched paint primitives (many shapes, one draw call) — see the module docs.
@@ -119,6 +121,7 @@ pub use interaction::{
     ContextMenuKind, ContextMenuRequest, HitIndex, InteractiveState, WidgetEvent, WidgetStore,
     dispatch_key, dispatch_pointer, dispatch_text_input, dispatch_tick,
 };
+pub use length::{LengthDisplay, decimals_for, format_value};
 pub use paint::{
     Paint, PaintCtx, fill_rounded_rect, paint_icon, paint_text, paint_text_centered,
     paint_text_title, paint_tool_palette_icons, resolve, stroke_rect, stroke_rounded_rect,

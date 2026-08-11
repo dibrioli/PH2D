@@ -56,10 +56,24 @@ pub enum DisplayUnit {
 impl DisplayUnit {
     /// Convert a sim-stored meter value to the user-visible value in
     /// the active display unit.
+    ///
+    /// Delegates to [`Self::from_meters_f64`] so the RULE lives once.
     pub fn from_meters(self, meters: f32, pixels_per_meter: f32) -> f32 {
+        self.from_meters_f64(f64::from(meters), pixels_per_meter) as f32
+    }
+
+    /// The same conversion at `f64` width — for callers that measure the
+    /// world in `f64` (the ruler, the snap guides).
+    ///
+    /// ⚠️ **Two widths, ONE rule.** The narrow one delegates here rather
+    /// than repeating the `match`: a second copy is what lets pixels and
+    /// meters disagree in the day someone adds a third unit. And the
+    /// width matters — a ruler coordinate of `1e6 m` in pixels is `1e8`,
+    /// which `f32` cannot hold to the digit the label prints.
+    pub fn from_meters_f64(self, meters: f64, pixels_per_meter: f32) -> f64 {
         match self {
             DisplayUnit::Meters => meters,
-            DisplayUnit::Pixels => meters * pixels_per_meter,
+            DisplayUnit::Pixels => meters * f64::from(pixels_per_meter),
         }
     }
 

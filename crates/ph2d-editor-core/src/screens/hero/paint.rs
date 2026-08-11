@@ -168,7 +168,11 @@ pub fn paint_hero_screen(
             ..view
         };
         let origin = hero.grid.snap_state.active_origin();
-        crate::ruler::paint_rulers(scene, &view, origin, text_system, hero.theme);
+        // A régua imprime na unidade que o artista escolheu — a MESMA porta do
+        // Inspector e do painel de Grid Snap (`LengthDisplay`). O `hero.project`
+        // é o dono do fato, e ele já está aqui.
+        let display = crate::length::LengthDisplay::of(&hero.project);
+        crate::ruler::paint_rulers(scene, &view, origin, text_system, hero.theme, display);
     }
     // M14.4c: the legacy mockup selection marquee draws a fixed-size
     // dashed rect at the CANVAS center in screen pixels — it has no

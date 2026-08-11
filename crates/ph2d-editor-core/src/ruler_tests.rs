@@ -161,7 +161,10 @@ fn the_ruler_zero_is_the_origin_not_the_world_zero() {
         (zero.world - 2.0).abs() < 1e-9,
         "o traço rotulado 0 marca o mundo 2 quando a origem é 2, e não o mundo 0"
     );
-    assert_eq!(label_text(zero.world - f64::from(origin[0]), 1.0), "0");
+    // A régua do artista por default (px). O que este gate afirma é o TRAÇO, não a
+    // unidade: com origem 2, o traço rotulado "0" marca o mundo 2.
+    let d = crate::length::LengthDisplay::default();
+    assert_eq!(label_text(zero.world - f64::from(origin[0]), 1.0, d), "0");
 }
 
 /// O canto pertence à régua de CIMA — a regra existe para que a resposta não dependa da ordem
@@ -184,11 +187,7 @@ fn the_top_ruler_spawns_a_horizontal_guide() {
     assert_eq!(RulerAxis::Left.spawns(), GuideAxis::Vertical);
 }
 
-/// O rótulo mostra as casas que o passo exige — senão um passo de 0,2 imprime `0 0 1`.
-#[test]
-fn a_fractional_step_gets_the_decimals_it_needs() {
-    assert_eq!(label_text(0.2, 0.2), "0.2");
-    assert_eq!(label_text(1.0, 1.0), "1");
-    assert_eq!(label_text(0.05, 0.05), "0.05");
-    assert_eq!(label_text(-0.0, 1.0), "0", "o zero negativo lê como erro");
-}
+// ⚠️ O gate das CASAS DECIMAIS mudou-se para `length_tests.rs`, junto com a regra que ele
+// julga: a régua deixou de ter política de formatação própria e delega à porta única. Ele
+// vive lá como `reading_in_metres_prints_exactly_what_the_old_ruler_printed`, com os MESMOS
+// quatro pares, e ganhou o papel de CONTROLE — quem lê em metros não vê diferença nenhuma.

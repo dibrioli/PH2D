@@ -9,11 +9,22 @@
 //! atribui a um bug de projeção, só a "o app está torto". Por isso este módulo **não tem
 //! projeção própria**: ele chama a do [`crate::grid`], que é o dono do [`GridView`].
 //!
-//! # O que a régua mede
+//! # O que a régua mede, e em que UNIDADE ela o imprime
 //!
-//! **World-units**, a mesma régua que o Inspector mostra nos campos X/Y. Deixar a régua falar
-//! outra unidade obrigaria o artista a converter de cabeça entre dois números que descrevem o
-//! mesmo ponto.
+//! Ela mede o **MUNDO** — o espaço contínuo, por oposição à rede da grade. Isso é o que ela
+//! mede; não é a unidade em que ela escreve.
+//!
+//! O número impresso sai da porta única [`crate::length::LengthDisplay`], na unidade que o
+//! artista escolheu no menu Settings. ⚠️ **O doc antigo aqui dizia *"world-units, a mesma
+//! régua que o Inspector mostra nos campos X/Y"* — e isso era FALSO**: o Inspector converte
+//! desde que a fronteira de display existe (`panel-inspector/src/sync.rs`, e o rótulo dele
+//! diz `Position (px)`), o painel de Grid Snap converte, e a régua era a única superfície do
+//! app que não convertia — não por decisão, mas porque `paint_rulers` nem sequer RECEBIA as
+//! settings. Com os defaults (100 px/m, Pixels) um objeto que o Inspector punha em `150`
+//! ficava sob um traço de régua rotulado `1,5`.
+//!
+//! A frase estava certa na INTENÇÃO (*um ponto, um número*) e o código a contradizia; agora
+//! é o código que a cumpre.
 //!
 //! O **zero** é a origem da grade ([`crate::grid_snap::GridSnapState::active_origin`]) — de novo
 //! um número, dois consumidores. Uma origem só da régua faria o "0" da régua e a âncora da rede
@@ -25,6 +36,7 @@
 //! DCC. A grade marca a REDE; a régua mede o MUNDO.
 
 use crate::grid::{GridView, world_bounds};
+use crate::length::LengthDisplay;
 use crate::paint::{fill_rounded_rect, paint_text_centered, resolve, stroke_polyline};
 use crate::zones::Rect;
 use ph2d_guides::GuideAxis;
@@ -141,35 +153,34 @@ pub fn label_step(px_per_world: f64) -> f64 {
     decade
 }
 
-/// Formata um rótulo de régua: inteiro quando o passo é inteiro, senão com as casas que o
-/// passo exige. Sem isto um passo de 0,2 imprime `0`, `0`, `1` — três traços, dois rótulos
-/// iguais e um salto.
+/// Formata um rótulo de régua **na unidade que o artista lê**: inteiro quando o passo é
+/// inteiro, senão com as casas que o passo exige. Sem isto um passo de 0,2 imprime `0`, `0`,
+/// `1` — três traços, dois rótulos iguais e um salto.
+///
+/// ⚠️ **Delega à porta única** ([`crate::length::LengthDisplay::text`]): a régua NÃO tem
+/// política de formatação própria. Antes desta wave ela tinha, e o preço estava na tela —
+/// a mesma linha de grade lia `100` no painel de Grid Snap e `1` aqui.
 #[must_use]
-pub fn label_text(value: f64, step: f64) -> String {
-    let decimals = if step >= 1.0 {
-        0
-    } else if step >= 0.1 {
-        1
-    } else if step >= 0.01 {
-        2
-    } else {
-        3
-    };
-    // `-0` é o mesmo lugar que `0` e lê como um erro.
-    let v = if value == 0.0 { 0.0 } else { value };
-    format!("{v:.decimals$}")
+pub fn label_text(value: f64, step: f64, display: LengthDisplay) -> String {
+    display.text(value, step)
 }
 
 /// Desenha as duas réguas sobre o canvas de `view`.
 ///
 /// `origin` é o zero da régua, em mundo — a origem da grade. Nada aqui deriva projeção: as
 /// coordenadas saem das mesmas funções que a grade usa.
+///
+/// ⚠️ **A GEOMETRIA não depende do `display`.** Os traços caem onde sempre caíram: o passo é
+/// escolhido em MUNDO a partir do zoom, e só o NÚMERO impresso cruza a fronteira de unidade.
+/// É isto que faz de um projeto em metros um caso **byte-idêntico** ao que já shipava
+/// (`from_meters` é a identidade ali) — a conversão não pode mover um pixel de traço.
 pub fn paint_rulers(
     scene: &mut VectorScene,
     view: &GridView,
     origin: [f32; 2],
     text_system: &mut TextSystem,
     theme: Theme,
+    display: LengthDisplay,
 ) {
     let canvas = view.canvas;
     if canvas.w <= RULER_PX || canvas.h <= RULER_PX {
@@ -189,6 +200,7 @@ pub fn paint_rulers(
         origin,
         (line, text),
         text_system,
+        display,
     );
     paint_axis(
         scene,
@@ -197,6 +209,7 @@ pub fn paint_rulers(
         origin,
         (line, text),
         text_system,
+        display,
     );
     // A moldura das duas faixas, por último: ela separa a régua da arte.
     stroke_polyline(
@@ -320,6 +333,7 @@ fn paint_axis(
     origin: [f32; 2],
     (line, text): (ph2d_vector::Color, ph2d_vector::Color),
     text_system: &mut TextSystem,
+    display: LengthDisplay,
 ) {
     let canvas = view.canvas;
     let horizontal = axis == RulerAxis::Top;
@@ -368,7 +382,7 @@ fn paint_axis(
         if !t.major {
             continue;
         }
-        let label = label_text(t.world - o, step);
+        let label = label_text(t.world - o, step, display);
         // O rótulo cabe na parte da faixa que os traços não usam.
         let cell = if horizontal {
             Rect::new(

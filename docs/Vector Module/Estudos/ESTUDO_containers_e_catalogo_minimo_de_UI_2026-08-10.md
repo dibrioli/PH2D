@@ -78,8 +78,28 @@ O ADR-0153 recusa o grid com **dois** argumentos, e eles têm forças muito dife
 
 | argumento do ADR | estado em 2026-08-10 |
 |---|---|
-| *"triplica o custo de build (0,20 → 0,63 s)"* | ⛔ **MORTO por medição.** A/B costas-com-costas: **173-180 ms → 191-192 ms (+11 ms)**. O absoluto sempre foi pequeno; a razão hoje é **1,07×**, não 3,15×. |
+| *"triplica o custo de build (0,20 → 0,63 s)"* | ✅ **A RAZÃO SOBREVIVE e é a pergunta ERRADA** — ver a correção abaixo. |
 | *"nada a jusante honraria um `dir = grid` — seria controlo morto"* | ✅ **VIVO, mas por pouco.** Há **duas** grades de coluna fixa nos 23 painéis, ambas feitas à mão. |
+
+> ⚠️ **CORREÇÃO (a wave do item 5, no mesmo dia) — este quadro trazia `+11 ms` e o número era
+> IMPOSSÍVEL.** Re-medido com a máquina calma e decomposto:
+>
+> | o quê | ms |
+> |---|---|
+> | sem `grid` (taffy + a nossa crate, cold) | 282-295 |
+> | a crate `grid` sozinha | 304 |
+> | taffy + a nossa, com `grid` **já quente** | 720-748 |
+> | tudo cold, com `grid` | 760-1151 |
+>
+> A metade **MAIOR** (~440 ms) é o **módulo de grid do próprio `taffy`**, logo um A/B que limpe só a
+> nossa crate e deixe o `taffy` quente **mede a nossa crate duas vezes e nada mais** — é de onde o
+> `+11 ms` saiu. O número do ADR (0,20 → 0,63 s) estava **essencialmente certo**; foi a refutação
+> dele que estava errada.
+>
+> ⇒ **Mas a RAZÃO é a pergunta errada, e é aí que o argumento de facto morre:** 3× sobre 0,28 s são
+> **~0,47 s absolutos, pagos uma vez por build limpo**, contra uma corrida de CI de ~30 min
+> (**0,03%**) — e o inner loop deste repo (`cargo check -p`) nunca os paga. *O ADR escreveu uma
+> razão e tratou-a como orçamento.*
 
 **O que uma grade dá que o flexbox não dá** (e é só isto):
 
@@ -90,12 +110,19 @@ O ADR-0153 recusa o grid com **dois** argumentos, e eles têm forças muito dife
 `grow = 1`. É como se fazia UI antes do CSS Grid, e é exactamente o que o `paint_catalog.rs` faz à
 mão com `slot % GRID_COLS`.
 
-⇒ **Veredito: DISPENSÁVEL, não descartado.** Ele não entra nesta rodada porque o sizing (§2.3) o
-precede — sem `hug`, uma grade de células que não se ajustam ao conteúdo resolve metade do
-problema. ⚠️ **E quando entrar, entra com a nota do §0 do `CLAUDE.md` ao lado:** o Figma só ganhou
-grid no Config 2025 e a própria comunidade dele reporta a feature **incompleta** (min/max não
-suportado em contentores de grid; `hug` e `fr` chegaram depois) — *tomar o Figma como base* aqui
+⇒ **Veredito ORIGINAL: DISPENSÁVEL, não descartado** — ele não entrava naquela rodada porque o
+sizing (§2.3) o precede: sem `hug`, uma grade de células que não se ajustam ao conteúdo resolve
+metade do problema. ⚠️ **E quando entrar, entra com a nota do §0 do `CLAUDE.md` ao lado:** o Figma
+só ganhou grid no Config 2025 e a própria comunidade dele reporta a feature **incompleta** (min/max
+não suportado em contentores de grid; `hug` e `fr` chegaram depois) — *tomar o Figma como base* aqui
 significa herdar uma feature que o próprio Figma ainda está a assentar.
+
+✅ **CONSTRUÍDO (2026-08-10, a wave do item 5), e a nota acima foi honrada:** o sizing pousou
+primeiro (waves 1+2), então o `Hug` já existia — e **medido**, ele SOBREVIVE a colunas `1fr` (a
+moldura mede 38×22 nos três casos, idêntico ao `Fixed`), o que refuta o medo natural de o `fr`
+colapsar sob `MaxContent` e a forma desaparecer. E o *track sizing* incompleto que o Figma ainda
+está a assentar **não foi copiado**: as colunas são iguais, que é o que o único consumidor MEDIDO
+deste repo faz à mão (`paint_catalog.rs`). Ver o §7.
 
 ### 2.3 ⭐ O achado: o que falta não é um contêiner, é o SIZING
 
@@ -296,7 +323,7 @@ uma lista de saves ou um log são inexprimíveis.
 | ~~2~~ | **Absolute position** | badge/overlay dentro de auto layout | componente marcador ⇒ zero bump | ✅ **CONSTRUÍDA** (2026-08-10) |
 | ~~3~~ | **Scroll na moldura** | lista longa deixa de ser inexprimível | `clip` já existia; o motor já transbordava | ✅ **CONSTRUÍDA** (2026-08-10) |
 | ~~4~~ | a tabela **sinal → ação** | o botão autorado *faz* alguma coisa | conteúdo autorado; o R0 já mede que o canal custa ~0 | ✅ **CONSTRUÍDA** (2026-08-10) |
-| **5** | **Grid** | colunas alinhadas + refluxo | **+11 ms** de build (re-medido) + UI + fatia | |
+| ~~5~~ | **Grid** | colunas alinhadas + refluxo | **~0,47 s** de build, uma vez (o `+11 ms` era falso — §2.2) + UI + fatia | ✅ **CONSTRUÍDA** (2026-08-10) |
 
 ### ✅ O que a wave 1+2 entregou (2026-08-10)
 
@@ -431,3 +458,43 @@ já estão medidos.
   deles *olhando para a tela*, isso é um achado de UI que só o smoke fecha.
 - **Não trata do Inspector** (lista função da seleção) nem da UI dos jogos — as duas fronteiras que
   o levantamento de 08/08 já nomeou.
+
+### ✅ O que a wave 5 entregou (2026-08-10)
+
+**A grade honra os quatro degraus** — o motor (`Dir::Grid { columns }` → `Display::Grid` +
+`repeat(N, 1fr)`), o documento (`LayoutDir::Grid` + `VecLayout::columns`), a fatia viva e o painel.
+O argumento vivo do ADR-0153 (*"nada a jusante honraria"*) morre por construção.
+
+| onde | o quê |
+|---|---|
+| motor | `Dir::Grid` · `MAX_GRID_TRACKS` (medido) · `LayoutError::GridTooManyTracks` · o `align` a governar **`align_content` E `align_items`** |
+| documento | `LayoutDir::Grid` (variante apendada) · `VecLayout::columns` — **`PROJECT_SCHEMA` 71→72** |
+| painel | o 5º chip do rádio · a row **Cols** (só na grade) · o Justify **estreitado a três** |
+| gesto | a régua de reordenar passa a ler em **LINHAS** (e isto conserta o `RowWrap` também) |
+
+**Três coisas que a medição decidiu, e não o gosto:**
+
+1. **O teto de faixas é `i16::MAX`, e ele morde pelas LINHAS.** Bissectado contra o motor: 1 coluna
+   → 32767 filhos; 2 → 65534; 3 → 98301 — sempre **32767 linhas**, que é a largura do
+   `OriginZeroLine(i16)` do `taffy`. Um cap na contagem de COLUNAS teria sido taste **e não teria
+   evitado o pânico**, que vem das linhas — e elas ninguém autora, nascem da contagem de filhos.
+   Acima do teto o `solve` **recusa**; acomodar ali não dá uma pose errada, dá um `unwrap` a
+   estourar dentro do `taffy`.
+2. **A contagem é um CAMPO, não o corpo do variante.** Com ela no variante, ir a `Row` e voltar
+   destruiria o número; como campo ela sobrevive à ida e à volta, como o vão e o recuo já
+   sobrevivem — e o `DIRS` da shell continua a ser **uma** tabela lida nas duas direções.
+3. **O `align` numa grade governa DUAS propriedades do CSS.** Sem isso ela herdaria
+   `align-content: normal`, que numa grade se comporta como `stretch`: as LINHAS seriam esticadas
+   para encher a moldura, e a mesma cena que um `Row` encosta no topo sairia espalhada. O gate vivo
+   nasceu **vermelho** exactamente aí.
+
+⚠️ **E a régua de reordenar era ERRADA, não imprecisa** — medido antes de uma linha ser escrita:
+numa grade 3×3 as três células da coluna 0 partilham o mesmo `x`, então *"quantos centros estão
+antes do cursor"* devolvia o **slot 3** para uma soltura na célula (0,0). O `RowWrap` shipa com o
+mesmo defeito desde que nasceu; ele ficou invisível ali porque uma faixa de wrap raramente alinha
+duas linhas. **Esta wave conserta os dois.**
+
+**Aberto, com o preço ao lado:** *track sizing* autorado (`fr` × `auto` × comprimento) — é um
+vocabulário próprio e hoje seria um controlo que ninguém move; o `justify_content` de uma grade é
+**inerte por construção** com colunas `1fr` (não há sobra horizontal a repartir), então distribuir
+as COLUNAS só faz sentido junto com o track sizing.

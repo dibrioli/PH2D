@@ -39,6 +39,39 @@ já passa — e o `taffy` é o motor do Dioxus, do Zed, do Bevy e do Blitz.
 que o artista escolhe e que não muda um pixel, que é o controlo morto que a política de UI deste
 repo existe para impedir. Ele nasce com a UI que o consumir.
 
+### ✅ Emenda 1 (2026-08-10) — o grid ENTROU, e a última frase da M7 é a razão
+
+*"Ele nasce com a UI que o consumir"* — e foi o que aconteceu: o item 5 do
+[estudo dos contêineres](../../Vector%20Module/Estudos/ESTUDO_containers_e_catalogo_minimo_de_UI_2026-08-10.md)
+construiu o consumidor inteiro (documento · fatia · painel · gesto), então o **segundo** argumento
+— o que de facto decidia — deixou de ser verdade por construção.
+
+⚠️ **E o PRIMEIRO argumento sobrevive como número e morre como orçamento.** Re-medido com a máquina
+calma e **decomposto**, o que a tabela M7 acima não fez:
+
+| o quê | ms |
+|---|---|
+| sem `grid` (taffy + a crate, cold) | 282-295 |
+| a crate `grid` sozinha | 304 |
+| taffy + a crate, com `grid` **já quente** | 720-748 |
+| tudo cold, com `grid` | 760-1151 |
+
+A metade **MAIOR** (~440 ms) é o **módulo de grid do próprio `taffy`** — a razão de ~3× está certa.
+O que estava errado era tratá-la como orçamento: são **~0,47 s absolutos, uma vez por build limpo**,
+contra uma corrida de CI de ~30 min (**0,03%**), e o inner loop deste repo (`cargo check -p`) nunca
+os paga. *Uma razão sobre uma base minúscula não é um custo.*
+
+⚠️ **Um segundo número, este NOVO, entrou no lugar:** o `taffy` **PANICA** acima de **32767 faixas**
+por eixo (`OriginZeroLine(i16)`), e o teto morde pelas **LINHAS**, que ninguém autora — elas nascem
+da contagem de filhos (bissectado: 1 coluna → 32767 filhos, 2 → 65534, 3 → 98301). A crate recusa
+com `LayoutError::GridTooManyTracks` antes de alimentar o motor; acomodar ali não daria uma pose
+errada, daria um `unwrap` a estourar e o app a cair.
+
+⚠️ **O que NÃO entrou, e a Decisão 1 continua a governá-lo:** *track sizing* autorado. As colunas
+são iguais (`repeat(N, 1fr)`) — o que o único consumidor MEDIDO deste repo faz à mão
+(`paint_catalog.rs`) — e um vocabulário de pistas (`fr` × `auto` × comprimento) hoje seria o
+controlo que ninguém move. Ele nasce com o consumidor que o peça, exactamente como o grid nasceu.
+
 ⚠️ **A dep é `deny`-limpa** (crates.io, MIT/Apache-2.0, sem build script, sem lib de sistema) e o
 `machete` é honrado: ela entra no commit que a usa.
 

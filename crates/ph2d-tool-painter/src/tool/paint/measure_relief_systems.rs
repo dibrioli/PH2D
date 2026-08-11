@@ -15,6 +15,15 @@
 //!
 //! **O papel é GRÁTIS num traço; quem custa é o depósito.** Traço de 600 px FIXOS, o sétimo, raio 20:
 //!
+//! ⚠️ **E as colunas `pen-down`/`pen-up` desta tabela são do traço NÚMERO UM** — a correção do sétimo
+//! traço (§2 abaixo) foi aplicada ao [`measure_the_nth_stroke_at_fixed_length`], que é o irmão de onde
+//! saem os números por-traço; o [`measure_relief_stroke_cost`] constrói um `PainterTool` por célula e
+//! mede o primeiro gesto que ele vê. Para o MOVE isso quase não pesa (é a mediana de 16), e é ele que
+//! esta auditoria escolheu como alvo; para os dois EVENTOS de borda pesa muito, porque o primeiro traço
+//! de um documento paga o *first-touch* dos planos: medidos os dois pelo probe honesto, o pen-down do
+//! depósito é **5,62** a 2048² (contra os 4,61 daqui) e o pen-up **2,69** (contra 2,95). *Uma tabela
+//! cujas colunas vêm de fixtures diferentes tem de dizer qual é qual.*
+//!
 //! | config | tela | pen-down | move | pen-up |
 //! |---|---|---|---|---|
 //! | nada | 2048 | 0,63 | **0,37** | 0,44 |
@@ -122,13 +131,31 @@
 //! | só DEPÓSITO (depois) | 4096 | 5,04 | **0,88** | 4,34 |
 //!
 //! **O MOVE era o alvo e foi ele que se moveu** (1,6× no raio do smoke, 6,05× no raio 100). O pen-down
-//! e o pen-up ficam onde estavam, e isso é esperado: eles não são o laço de altura — são a cópia de
-//! canvas do pen-down e o commit de undo do pen-up, os dois já medidos e nomeados (doc 28 §5.14/§5.16),
-//! cuja cura é o journal por região da §7, não uma thread a mais.
+//! e o pen-up ficam onde estavam, e isso é esperado: eles não são o laço de altura.
 //!
-//! ⚠️ **E o pen-down passa a ser o MAIOR evento isolado de um traço (4,83 ms contra 0,87 do move)** —
+//! ⚠️ **E o pen-down passou a ser o MAIOR evento isolado de um traço (4,83 ms contra 0,87 do move)** —
 //! mas ele acontece **uma vez por traço** e o move dezenas de vezes por segundo, então a ordem de
-//! ataque não mudou. O que mudou é que o número agora está no lugar certo da fila.
+//! ataque não mudou. O que mudou é que o número passou para o lugar certo da fila.
+//!
+//! # O PEN-DOWN (2026-08-10) — e a atribuição que este mesmo doc tinha ERRADA
+//!
+//! ⛔ **A frase acima dizia que o pen-down do filme *é a cópia de canvas*, e ela está errada.** Isso é
+//! o que o **digital** paga (plane-bound: 1,10 → 3,66 ms de 2048² para 4096²); o que o **filme**
+//! acrescenta por cima é **plano na tela E plano no raio** — 5,62 contra 5,69 nas duas telas, e razão
+//! **0,62×/1,90×** entre r10 e r100, onde uma pegada preveria 100×. Nem cópia de canvas, nem primeiro
+//! dab: **setup por gesto**.
+//!
+//! ⚠️ **E QUAL setup não se responde com um relógio.** As mesmas cinco alocações medidas em sequência
+//! deram **0,008 · 0,028 · 7,586 ms** — três ordens de grandeza, porque `alloc_zeroed` custa o que o
+//! alocador tiver de fazer para arranjar páginas zeradas. Quem respondeu foi uma **CONTAGEM** (o
+//! `dhat`, `tests/measure_pendown_alloc.rs`): **83,0 MB pedidos por traço**, dos quais **56,0 são os
+//! cinco planos do envelope**. O `reset_stroke_height` faz `clear()` — que preserva a capacidade — e o
+//! primeiro dab do traço seguinte joga-a fora numa linha. Duas linhas discordando sobre o mesmo buffer.
+//!
+//! A cura é fazê-los CIRCULAR, zerados só na janela em que ficaram sujos
+//! (`super::relief_state::SparePlanes`): **pen-down 5,62 → 1,26 ms a 2048² e 5,69 → 3,97 a 4096²**,
+//! alocação **83,0 → 36,4 MB por traço**. O que sobra dos 36,4 é o fork do canvas, a janela do journal
+//! e os buffers por batch — nomeado no gate para ninguém o atribuir aos planos.
 //!
 //! ⚠️ **O piso é o do kernel de COR e isso é conservador de propósito** (ver o doc do
 //! `walk_dab_rows`); e **a mordida do bow wave fica SERIAL**, porque `displaced` é uma soma em `f32`

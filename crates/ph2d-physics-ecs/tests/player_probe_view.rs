@@ -110,6 +110,7 @@ fn as_ray(m: &ProbeMark) -> ([f32; 2], [f32; 2], f32, Option<f32>) {
             dir,
             reach,
             hit,
+            skin: _,
         } => (origin, dir, reach, hit),
         _ => panic!("esperava um raio, veio {:?}", m.shape),
     }
@@ -304,29 +305,80 @@ fn releasing_the_crouch_under_open_sky_reads_clear() {
     );
 }
 
-/// **Sem passo não há sensor** — o `hold` limpa a leitura.
+/// **Sem passo não há RESPOSTA — mas o sensor continua lá** (`W-Probes2`).
 ///
-/// ⚠️ **PAUSADO não é `hold`, e a distinção é deliberada:** um quadro pausado
-/// sobre o mesmo tique não limpa nada, e a leitura descreve o ÚLTIMO TIQUE — a
-/// mesma propriedade que as cruzes de contato, os triggers e a linha d'água já
-/// têm (todas escritas pelo `step`). Consequência nomeada: arrastar um corpo com
-/// o relógio parado move o desenho e deixa os sensores onde o último tique os
-/// leu, até o relógio andar. Limpar aqui seria APAGAR os sensores exatamente no
-/// gesto em que o artista os quer olhar.
+/// ⚠️ **Este gate afirmava o contrário e a decisão era minha:** a `W-Probes`
+/// escreveu que o `hold` *limpa a leitura*, tratando os sensores como o terceiro
+/// canal ao lado dos contatos e dos triggers. São coisas diferentes — um contato
+/// descreve um EVENTO que aconteceu e some com a corrida que o produziu; o
+/// alcance de um sensor é uma propriedade do CORPO, que existe com o solver
+/// desligado. E o gesto de afinar um alcance é **encostar o corpo na parede sem
+/// relógio nenhum**, ou seja exatamente o quadro em que a lei antiga apagava
+/// tudo.
 ///
-/// ⚠️ Marcas de um tique que já não corre descrevem um mundo que o artista pode
-/// desmontar com a mão: a lição que os contatos pagaram, aplicada ao terceiro
-/// canal de leitura antes de ela custar um smoke.
+/// O que sobrevive da frase antiga é a metade verdadeira: nenhum passo correu,
+/// logo **nenhum sensor perguntou nada** — todo estado sai `Idle`. Marcas com
+/// `Hit` aqui descreveriam um mundo que o artista pode desmontar com a mão, que
+/// é a lição que os contatos pagaram.
 #[test]
-fn holding_the_clock_clears_the_reading() {
+fn holding_the_clock_keeps_the_reach_and_drops_the_answers() {
     let mut r = rig(true);
     let t = r.run(0, 30, PlayerInput::default());
     assert!(!r.marks().is_empty(), "andando, ha' leitura");
+    assert!(
+        r.marks().iter().any(|m| m.state != ProbeState::Idle),
+        "andando, algum sensor RESPONDEU"
+    );
+
     // Fisica DESARMADA: a porta que o toggle Physics do transporte usa.
     r.bridge.hold(&mut r.sim, t);
     assert!(
-        r.marks().is_empty(),
-        "com a fisica em hold nao ha' sensor a reportar"
+        !r.marks().is_empty(),
+        "em hold o ALCANCE continua desenhado — e' o que o artista afina"
+    );
+    assert!(
+        r.marks().iter().all(|m| m.state == ProbeState::Idle),
+        "e nenhum deles RESPONDE, porque a lei nao correu: {:?}",
+        r.marks().iter().map(|m| m.state).collect::<Vec<_>>()
+    );
+}
+
+/// **A leitura SEGUE o corpo que o artista arrasta com o relógio parado.**
+///
+/// ⚠️ **RED-first, com o número do report:** corpo movido de `x = 2.000` para
+/// `x = 5.000` no MESMO tique, e a perna publicada continuava em **`x = 2.000`**
+/// — os sensores descreviam o último tique simulado. `drive_players` só corre no
+/// ramo que dá passo, e o ramo `Equal` (pausado) não o alcança.
+#[test]
+fn the_reading_follows_a_body_dragged_while_the_clock_stands_still() {
+    let mut r = rig(true);
+    let t = r.run(0, 30, PlayerInput::default());
+    let leg_x = |r: &Rig| {
+        r.of(ProbeKind::Ground)
+            .first()
+            .map(|m| match m.shape {
+                ProbeShape::Ray { origin, .. } => origin[0],
+                _ => panic!("a perna e' um raio"),
+            })
+            .expect("ha' uma perna")
+    };
+    let before = leg_x(&r);
+
+    // O artista arrasta o corpo 3 m para a direita — o MESMO tique.
+    {
+        let mut tr = r
+            .sim
+            .world_mut()
+            .get_mut::<Transform>(r.player)
+            .expect("o player tem Transform");
+        tr.translation.x += 3.0;
+    }
+    r.bridge.dispatch(&mut r.sim, false, t);
+
+    let after = leg_x(&r);
+    assert!(
+        (after - before - 3.0).abs() < 0.05,
+        "a perna acompanha os 3 m: {before:.3} -> {after:.3}"
     );
 }
 

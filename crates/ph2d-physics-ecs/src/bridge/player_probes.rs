@@ -45,6 +45,19 @@ pub(super) struct ProbeRay {
     /// Unitária.
     pub dir: [f32; 2],
     pub reach: f32,
+    /// **Quanto do alcance está DENTRO do corpo** — a parte que o cast tem de
+    /// percorrer para o `exclude_body` significar alguma coisa, e que o artista
+    /// **não** está a afinar.
+    ///
+    /// ⚠️ **Um fato, DOIS consumidores com necessidades opostas:** o cast precisa
+    /// nascer no CENTRO (senão a origem cai fora do corpo e o `exclude_body` não
+    /// tem o que excluir) e o DESENHO precisa começar na BORDA — medido, um raio
+    /// de parede mede 35 px na tela e **20 deles ficam por baixo do contorno do
+    /// collider**, deixando um toco de 15 px como tudo o que o artista vê do
+    /// número que ele está a mexer. Quem sabe a resposta é esta porta, então ela
+    /// carrega as duas; derivá-la do lado do desenho seria a segunda resposta a
+    /// *"onde acaba este corpo?"*.
+    pub skin: f32,
 }
 
 /// **A PERNA** — um raio para baixo, do centro do corpo.
@@ -62,6 +75,11 @@ pub(super) fn ground_ray(origin: [f32; 2], cfg: &PlayerConfig) -> ProbeRay {
         origin,
         dir: [0.0, -1.0],
         reach: cfg.ride.float_height + cfg.ride.cling_distance,
+        // ⚠️ ZERO, e não a meia-altura do corpo: o `float_height` é medido do
+        // CENTRO (é a altura a que o centro cavalga), então o alcance inteiro
+        // desta perna é o número autorado. Descontar o corpo aqui desenharia
+        // menos do que o artista escreveu.
+        skin: 0.0,
     }
 }
 
@@ -96,6 +114,7 @@ pub(super) fn wall_rays(
         origin: [cx, cy],
         dir: [side, 0.0],
         reach,
+        skin: half_width,
     }; WALL_SAMPLES];
     for (r, off) in out.iter_mut().zip(offs.iter()) {
         r.origin = [cx, cy + off];
@@ -345,7 +364,13 @@ pub(super) fn record_marks(
     cfg: &PlayerConfig,
     origin: [f32; 2],
     drive: f32,
-    ground: Option<f32>,
+    // ⚠️ **DOIS níveis, e o de fora é *a lei perguntou?*** — o mesmo formato dos
+    // três irmãos abaixo (`Option<&T>`), e não uma redundância. `ray()` deriva o
+    // estado do `hit`, então um `None` simples só sabe dizer *"perguntou e não
+    // achou"*: a perna era a única sempre castada e por isso nunca precisou do
+    // terceiro estado. O preview de um quadro PARADO precisa, e um downgrade
+    // depois do facto seria um SEGUNDO lugar a decidir estado.
+    ground: Option<Option<f32>>,
     // O perfil e **a subida que ele usou** — o segundo não é derivável do
     // primeiro, e é ele que dá altura ao leque desenhado.
     corner: Option<(&CeilingProbe, f32)>,
@@ -354,13 +379,10 @@ pub(super) fn record_marks(
 ) {
     // A PERNA — castada em todo tique, então ela nunca fica `Idle`.
     let g = ground_ray(origin, cfg);
-    out.push(ProbeMark::ray(
-        ProbeKind::Ground,
-        g.origin,
-        g.dir,
-        g.reach,
-        ground,
-    ));
+    out.push(match ground {
+        Some(hit) => ProbeMark::ray(ProbeKind::Ground, g.origin, g.dir, g.reach, hit, g.skin),
+        None => ProbeMark::idle_ray(ProbeKind::Ground, g.origin, g.dir, g.reach, g.skin),
+    });
 
     // O FLANCO.
     if cfg.wall.armed() {
@@ -373,6 +395,7 @@ pub(super) fn record_marks(
                         r.dir,
                         r.reach,
                         hit.map(|h| h.distance),
+                        r.skin,
                     ));
                 }
             }
@@ -391,6 +414,7 @@ pub(super) fn record_marks(
                             r.origin,
                             r.dir,
                             r.reach,
+                            r.skin,
                         ));
                     }
                 }
@@ -423,6 +447,7 @@ pub(super) fn record_marks(
                         [*dir, 0.0],
                         span,
                         Some(gm.half_width + p.side_clear[i]),
+                        gm.half_width,
                     )),
                     Some(_) => {
                         out.push(ProbeMark::ray(
@@ -431,6 +456,7 @@ pub(super) fn record_marks(
                             [*dir, 0.0],
                             span,
                             None,
+                            gm.half_width,
                         ));
                     }
                     None => out.push(ProbeMark::idle_ray(
@@ -438,6 +464,7 @@ pub(super) fn record_marks(
                         from,
                         [*dir, 0.0],
                         span,
+                        gm.half_width,
                     )),
                 }
             }
@@ -447,5 +474,60 @@ pub(super) fn record_marks(
     // O AGACHAR — a forma varrida, e não um raio (`W-ShapeCast`).
     if let Some(up) = headroom_offset(cfg) {
         out.push(ProbeMark::sweep(entity, up, headroom.map(|h| h.blocked)));
+    }
+}
+
+impl crate::PhysicsBridge {
+    /// **A leitura de um quadro em que o relógio NÃO anda** (`W-Probes2`).
+    ///
+    /// # ⚠️ O defeito que isto fecha, com o número
+    ///
+    /// `drive_players` só corre no ramo que DÁ PASSO, e é ele que enche a
+    /// leitura. Pausado (`Equal` → `settle`) ou com o toggle **Physics**
+    /// desmarcado (`hold`), o artista arrastava o corpo e **os sensores ficavam
+    /// para trás** — medido: corpo movido de `x = 2.000` para `x = 5.000`, a
+    /// perna publicada continuava em **`x = 2.000`**, descrevendo o último tique
+    /// simulado. E é justamente aí que se afina um alcance: o gesto é encostar o
+    /// corpo na parede **com o relógio parado** e olhar até onde a marca chega.
+    ///
+    /// ⚠️ **Era decisão minha, escrita num gate** (*"um quadro pausado mostra a
+    /// leitura do último tique — a mesma propriedade das cruzes de contato"*), e
+    /// ela estava errada: uma cruz de contato descreve um EVENTO que aconteceu, e
+    /// o alcance de um sensor é uma propriedade do CORPO, que existe parado.
+    ///
+    /// # ⚠️ Ela re-deriva a GEOMETRIA e não CASTA, de propósito
+    ///
+    /// Todo estado sai `Idle`, porque a lei não correu — e é isso que mantém o
+    /// canal com um significado só. Castar aqui seria **responder a uma pergunta
+    /// que ninguém fez**, e faria `Hit` querer dizer *"a lei achou"* com o
+    /// relógio a andar e *"o overlay achou"* com ele parado. O que o artista
+    /// precisa de ver é **até onde o sensor alcança**, e é isso que a marca
+    /// desenha contra a parede.
+    pub(crate) fn preview_player_probes(&mut self, sim: &SimWorld) {
+        self.player_probes.clear();
+        let world = sim.world();
+        for (&entity, b) in self.bodies.iter() {
+            let Some(cfg) = world.get::<PlatformPlayer>(entity) else {
+                continue;
+            };
+            let Some(pose) = self.world.body_pose(b.handle) else {
+                continue;
+            };
+            record_marks(
+                &mut self.player_probes,
+                &self.world,
+                entity,
+                b.handle,
+                &cfg.config(),
+                [pose.translation.x, pose.translation.y],
+                // Sem relógio não há dedo: o flanco é publicado dos DOIS lados,
+                // que é o que `record_marks` já faz sem direção.
+                0.0,
+                None,
+                None,
+                None,
+                None,
+            );
+        }
     }
 }

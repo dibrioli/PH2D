@@ -335,7 +335,9 @@ impl PhysicsBridge {
                 &cfg,
                 origin,
                 input.drive,
-                hit.as_ref().map(|h| h.distance),
+                // A lei PERGUNTOU (a perna e' castada em todo tique) — o `Some`
+                // exterior e' isso, e o interior e' o que ela achou.
+                Some(hit.as_ref().map(|h| h.distance)),
                 ceiling
                     .as_ref()
                     .map(|c| (c, probes::corner_rise(rel_up, dt))),

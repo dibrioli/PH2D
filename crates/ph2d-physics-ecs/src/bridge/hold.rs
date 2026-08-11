@@ -157,11 +157,14 @@ impl PhysicsBridge {
         // a collision (`bridge::contacts::discard_contact_history`).
         self.discard_contact_history();
         self.discard_trigger_history();
-        // ⚠️ E a MESMA frase para os sensores do player (`W-Probes`): nenhum
-        // passo correu, logo nenhum sensor perguntou nada. Marcas de um tique que
-        // já não corre descrevem um mundo que o artista pode desmontar com a mão
-        // — a lição que os contatos acima pagaram, aplicada ao terceiro canal de
-        // leitura antes de ela custar um smoke.
-        self.player_probes.clear();
+        // ⚠️ **Os sensores do player NÃO são a mesma frase** (`W-Probes2`), e a
+        // `W-Probes` errou ao tratá-los como o terceiro canal de leitura: um
+        // contato descreve um EVENTO que aconteceu e some com a corrida que o
+        // produziu; o alcance de um sensor é uma propriedade do CORPO, que existe
+        // com o solver desligado — e o gesto de o afinar é precisamente encostar
+        // o corpo na parede **sem relógio**. Então em vez de apagar, re-derivar:
+        // a geometria segue o corpo e todo estado sai `Idle`, porque a lei não
+        // correu. O `settle` acima já pôs o corpo rapier onde o artista o largou.
+        self.preview_player_probes(sim);
     }
 }

@@ -90,6 +90,11 @@ pub enum ProbeShape {
         dir: [f32; 2],
         reach: f32,
         hit: Option<f32>,
+        /// Quanto do alcance está DENTRO do corpo — ver
+        /// [`super::player_probes::ProbeRay::skin`]. Quem desenha começa em
+        /// `origin + dir·skin`; `hit` e `reach` continuam medidos do `origin`,
+        /// porque é dali que o cast partiu.
+        skin: f32,
     },
     /// O PERFIL do teto — um leque de raios verticais que nascem no topo da
     /// caixa do corpo e sobem `rise`.
@@ -135,6 +140,7 @@ impl ProbeMark {
         dir: [f32; 2],
         reach: f32,
         hit: Option<f32>,
+        skin: f32,
     ) -> Self {
         Self {
             kind,
@@ -148,13 +154,20 @@ impl ProbeMark {
                 dir,
                 reach,
                 hit,
+                skin,
             },
         }
     }
 
     /// Um raio que **não foi lançado** — o alcance está lá, a resposta não.
     #[must_use]
-    pub fn idle_ray(kind: ProbeKind, origin: [f32; 2], dir: [f32; 2], reach: f32) -> Self {
+    pub fn idle_ray(
+        kind: ProbeKind,
+        origin: [f32; 2],
+        dir: [f32; 2],
+        reach: f32,
+        skin: f32,
+    ) -> Self {
         Self {
             kind,
             state: ProbeState::Idle,
@@ -163,6 +176,7 @@ impl ProbeMark {
                 dir,
                 reach,
                 hit: None,
+                skin,
             },
         }
     }

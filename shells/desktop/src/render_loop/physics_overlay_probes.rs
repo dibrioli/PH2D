@@ -70,8 +70,8 @@ const PROBE_RGB: [f32; 3] = [0.60, 0.76, 0.92]; // LITERAL-COLOR-OK: overlay de 
 /// demais"*, dois vereditos opostos que produzem o mesmo nada na tela.
 fn probe_alpha(state: ProbeState) -> f32 {
     match state {
-        ProbeState::Idle => 0.22,  // LITERAL-ALPHA-OK: overlay de sensor
-        ProbeState::Clear => 0.55, // LITERAL-ALPHA-OK: overlay de sensor
+        ProbeState::Idle => 0.45,  // LITERAL-ALPHA-OK: overlay de sensor
+        ProbeState::Clear => 0.72, // LITERAL-ALPHA-OK: overlay de sensor
         ProbeState::Hit => 1.0,    // LITERAL-ALPHA-OK: overlay de sensor
     }
 }
@@ -79,11 +79,19 @@ fn probe_alpha(state: ProbeState) -> f32 {
 /// Meio comprimento do tique que marca ONDE o sensor achou, em px de tela.
 const HIT_TICK_PX: f64 = 5.0; // LITERAL-PX-OK: chrome de overlay
 
+/// Meio comprimento do tique que fecha a PONTA do alcance, em px de tela.
+///
+/// ⚠️ **Menor que o do acerto de propósito, e é o que os mantém distinguíveis:**
+/// a ponta diz *até onde ele olha* (o número autorado) e o tique de acerto diz
+/// *onde ele achou* (a resposta) — se medissem igual, um raio que acha
+/// exactamente no fim do alcance seria indistinguível de um que não achou nada.
+const END_TICK_PX: f64 = 3.0; // LITERAL-PX-OK: chrome de overlay
+
 /// Espessura das marcas de sensor, em px de tela.
 ///
 /// Mais fina que o contorno do collider (1,5): um sensor é uma pergunta, não uma
 /// coisa — e ele cruza a arte, então tem de ceder a leitura para ela.
-pub(super) const PROBE_PX: f64 = 1.0; // LITERAL-PX-OK: chrome de overlay
+pub(super) const PROBE_PX: f64 = 1.25; // LITERAL-PX-OK: chrome de overlay
 
 /// ⚠️ **A ordem entre as duas espessuras é afirmada em tempo de COMPILAÇÃO**, e
 /// não num teste: ela é uma relação entre duas constantes, então um teste de
@@ -125,24 +133,39 @@ pub(super) fn probe_marks(
                 dir,
                 reach,
                 hit,
+                skin,
             } => {
                 let mut p = BezPath::new();
+                // ⚠️ **O desenho começa na BORDA do corpo, não no centro.** O
+                // cast parte do centro porque o `exclude_body` precisa disso;
+                // medido, num raio de parede 20 dos 35 px caíam por baixo do
+                // contorno do collider, e o que sobrava para o artista ver do
+                // número que ele mexe era um toco de 15 px. `skin` vem da MESMA
+                // porta que lançou o raio.
+                let skin = skin.clamp(0.0, reach);
+                let from = [origin[0] + dir[0] * skin, origin[1] + dir[1] * skin];
                 let end = [origin[0] + dir[0] * reach, origin[1] + dir[1] * reach];
-                p.move_to(to_screen(origin[0], origin[1]));
-                p.line_to(to_screen(end[0], end[1]));
-                // ⚠️ O TIQUE é desenhado em px de TELA e não em mundo: ele é
-                // chrome (tem de medir o mesmo em qualquer zoom), enquanto o raio
+                let s = to_screen(from[0], from[1]);
+                let e = to_screen(end[0], end[1]);
+                p.move_to(s);
+                p.line_to(e);
+                // ⚠️ Os TIQUES são desenhados em px de TELA e não em mundo: são
+                // chrome (têm de medir o mesmo em qualquer zoom), enquanto o raio
                 // é geometria (mede o alcance real).
-                if let Some(d) = hit {
-                    let at = to_screen(origin[0] + dir[0] * d, origin[1] + dir[1] * d);
-                    let s = to_screen(origin[0], origin[1]);
-                    let e = to_screen(end[0], end[1]);
-                    let (vx, vy) = (e.x - s.x, e.y - s.y);
-                    let n = (vx * vx + vy * vy).sqrt();
-                    if n > f64::EPSILON {
-                        let (px, py) = (-vy / n * HIT_TICK_PX, vx / n * HIT_TICK_PX);
+                let (vx, vy) = (e.x - s.x, e.y - s.y);
+                let n = (vx * vx + vy * vy).sqrt();
+                if n > f64::EPSILON {
+                    let tick = |p: &mut BezPath, at: Point, half: f64| {
+                        let (px, py) = (-vy / n * half, vx / n * half);
                         p.move_to(Point::new(at.x - px, at.y - py));
                         p.line_to(Point::new(at.x + px, at.y + py));
+                    };
+                    // A PONTA — sem ela um alcance curto é um risco solto, e um
+                    // risco solto de 15 px não lê como uma medida.
+                    tick(&mut p, e, END_TICK_PX);
+                    if let Some(d) = hit {
+                        let at = to_screen(origin[0] + dir[0] * d, origin[1] + dir[1] * d);
+                        tick(&mut p, at, HIT_TICK_PX);
                     }
                 }
                 out.push((p, rgba));
@@ -202,14 +225,33 @@ fn profile_path(
 
     // A barra do vão, na altura que o leque alcança, mais as duas hastes que a
     // ligam ao topo da cabeça (é isso que mostra quanto ele olha para CIMA).
+    //
+    // ⚠️ **E as duas PONTAS em px de tela, sem as quais este sensor é invisível
+    // na esmagadora maioria dos quadros.** O `rise` vale `rel_up · dt ·
+    // CORNER_LOOKAHEAD`, ou seja **ZERO sempre que a cabeça não sobe** — medido,
+    // `rise = 0.0000 m` nos três momentos da cena 108, e a barra saía com
+    // **0,0 px de altura**: as hastes que o roteiro do smoke manda procurar não
+    // estavam fracas, **não existiam**. Um leque parado olha mesmo zero para
+    // cima, então alongá-lo seria mentir; o que a ponta desenha é o **VÃO
+    // lateral**, que é o número autorado (`corner_reach`) e não é zero nunca.
     let mut span = BezPath::new();
     let (lo, hi) = (top[0] + offs[0], top[0] + offs[offs.len() - 1]);
-    span.move_to(to_screen(lo, y));
-    span.line_to(to_screen(hi, y));
+    let (a, b) = (to_screen(lo, y), to_screen(hi, y));
+    span.move_to(a);
+    span.line_to(b);
     span.move_to(to_screen(lo, top[1]));
-    span.line_to(to_screen(lo, y));
+    span.line_to(a);
     span.move_to(to_screen(hi, top[1]));
-    span.line_to(to_screen(hi, y));
+    span.line_to(b);
+    let (vx, vy) = (b.x - a.x, b.y - a.y);
+    let n = (vx * vx + vy * vy).sqrt();
+    if n > f64::EPSILON {
+        let (px, py) = (-vy / n * END_TICK_PX, vx / n * END_TICK_PX);
+        for at in [a, b] {
+            span.move_to(Point::new(at.x - px, at.y - py));
+            span.line_to(Point::new(at.x + px, at.y + py));
+        }
+    }
     out.push((span, rgba));
 
     // As células TAPADAS, como hastes verticais próprias — a resposta do sensor.

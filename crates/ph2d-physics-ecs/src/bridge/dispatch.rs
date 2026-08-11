@@ -212,6 +212,13 @@ impl PhysicsBridge {
             std::cmp::Ordering::Equal => {
                 if !playing {
                     self.settle(sim);
+                    // ⚠️ **E os SENSORES seguem o corpo que o artista arrastou**
+                    // (`W-Probes2`). Sem isto a leitura descreve o último tique
+                    // simulado — medido, corpo movido para `x = 5.000` com a
+                    // perna publicada em `x = 2.000` —, e é justamente com o
+                    // relógio parado que se afina um alcance. DEPOIS do `settle`,
+                    // que é quem põe o corpo rapier onde o `Transform` o pôs.
+                    self.preview_player_probes(sim);
                 }
             }
         }

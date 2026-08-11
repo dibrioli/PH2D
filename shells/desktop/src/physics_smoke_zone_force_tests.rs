@@ -13,7 +13,7 @@
 
 use super::*;
 use ph2d_ecs::SimWorld;
-use ph2d_physics_ecs::{PhysicsBridge, PhysicsSettings};
+use ph2d_physics_ecs::{AreaEffector, PhysicsBridge, PhysicsSettings, PlayerInput};
 
 /// Monta a cena e simula `secs` segundos pela PORTA REAL (a ponte).
 ///
@@ -215,4 +215,104 @@ fn nobody_leaves_the_current_during_the_run() {
             ZONE_HALF[0]
         );
     }
+}
+
+/// **A MENSAGEM É HONESTA SOBRE O GESTO QUE ELA MANDA FAZER.**
+///
+/// ⚠️ **Nasceu porque a primeira versão dela mandava fazer um gesto que eu nunca tinha
+/// rodado:** o passo 3 dizia *"ele tem de conseguir progredir contra a correnteza"* e o
+/// Enio reportou que não progredia. Não progride, e não podia — esta cena não tem chão,
+/// então o player usa a `air_acceleration` (**20 m/s²**) contra os **43,76** desta
+/// correnteza (16 N sobre 0,3657 kg).
+///
+/// A regra que esta cena já carregava — *uma cena cuja mensagem cita NÚMEROS tem de
+/// medir os dela* — vale igual para os **GESTOS** que ela manda fazer. Este gate afirma
+/// as DUAS metades, porque só as duas juntas descrevem o que o artista vê:
+///
+/// 1. com o dedo em `A` ele ainda é levado a favor (o mesmo SINAL de quando está solto),
+///    só mais devagar — se algum dia isto virar negativo, a mensagem passou a mentir ao
+///    contrário;
+/// 2. e a ablação que a mensagem oferece **funciona**: abaixo dos 20 m/s² da caminhada
+///    ele progride CONTRA.
+#[test]
+fn the_message_is_honest_about_walking_against_the_current() {
+    let against = walked_x(-1.0, FORCE);
+    let idle = walked_x(0.0, FORCE);
+    let along = walked_x(1.0, FORCE);
+
+    assert!(
+        against > 0.0,
+        "nesta cena o dedo NAO inverte o lado: com `A` ele ainda foi para {against:.3} m"
+    );
+    assert!(
+        against < idle && idle < along,
+        "mas o dedo tem de MUDAR o quanto ele e' levado: {against:.3} < {idle:.3} < {along:.3}"
+    );
+    for (i, got) in [against, idle, along].iter().enumerate() {
+        assert!(
+            (got - WALKED[i]).abs() < 0.5,
+            "e os numeros publicados tem de ser os medidos: {got:.3} contra {:.3}",
+            WALKED[i]
+        );
+    }
+
+    // A ABLAÇÃO da mensagem: `7 N` põe a correnteza em 19,1 m/s², logo abaixo dos 20 da
+    // caminhada no ar — e aí ele vence. ⚠️ **É esta metade que torna o passo 3b um
+    // experimento em vez de uma frase**: sem ela a mensagem mandaria mexer num slider
+    // sem ninguém ter conferido o outro lado da fronteira.
+    let won = walked_x(-1.0, 7.0);
+    assert!(
+        won < -5.0,
+        "abaixo da autoridade da caminhada ele tem de progredir CONTRA: {won:.3} m"
+    );
+}
+
+/// Dois segundos com o dedo em `drive`, na cena com a força `force`.
+///
+/// ⚠️ **A entrada vai para TODO player**, como a ponte faz — `hand_input_to_players`
+/// entrega a mesma a cada um, porque há um teclado e logo um dedo. Uma fixture que a
+/// desse só a um mediria uma cena que o artista não consegue produzir.
+fn walked_x(drive: f32, force: f32) -> f32 {
+    let mut sim = SimWorld::new();
+    build_zone_force_scene(sim.world_mut());
+    if (force - FORCE).abs() > f32::EPSILON {
+        let zone = {
+            let mut q = sim
+                .world()
+                .try_query::<(ph2d_ecs::Entity, &Name)>()
+                .unwrap();
+            q.iter(sim.world())
+                .find(|(_, n)| n.as_str() == "Current")
+                .map(|(e, _)| e)
+                .expect("a cena tem uma correnteza")
+        };
+        sim.world_mut().entity_mut(zone).insert(AreaEffector {
+            force: [force, 0.0],
+        });
+    }
+    let mut bridge = PhysicsBridge::new();
+    bridge.set_settings(PhysicsSettings {
+        gravity_y: 0.0,
+        ..Default::default()
+    });
+    let players: Vec<_> = {
+        let mut q = sim
+            .world()
+            .try_query::<(ph2d_ecs::Entity, &PlatformPlayer)>()
+            .unwrap();
+        q.iter(sim.world()).map(|(e, _)| e).collect()
+    };
+    for e in players {
+        bridge.set_player_input(
+            e,
+            PlayerInput {
+                drive,
+                ..PlayerInput::default()
+            },
+        );
+    }
+    for t in 0..=120u64 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    x_of(&sim, "Kinematic Player")
 }

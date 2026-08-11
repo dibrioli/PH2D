@@ -69,6 +69,21 @@ const LANE: f32 = 1.6;
 /// por isso que a comparação é direta.
 pub(crate) const CARRIED: [f32; 4] = [87.330, 20.590, 20.999, 20.999];
 
+/// **MEDIDO** (`measure_walking_against_the_current`, na `ph2d-physics-ecs`): para onde
+/// o player CINEMÁTICO vai em 2 s com o dedo a `A` (contra), solto, e a `D` (a favor).
+///
+/// ⚠️ **Estes três números existem porque a primeira versão da mensagem mandava fazer um
+/// GESTO que eu nunca tinha rodado.** Ela dizia *"ele tem de conseguir progredir contra a
+/// correnteza"*, e ele **não pode** — a coluna do meio e a da esquerda têm o mesmo SINAL.
+/// A regra que esta cena já carregava (*uma cena cuja mensagem cita números tem de medir
+/// os dela*) vale igual para os gestos que ela manda fazer.
+pub(crate) const WALKED: [f32; 3] = [12.564, 20.999, 31.395];
+
+/// A massa da cápsula — `área × densidade`, com a área do retângulo do meio mais o disco
+/// das duas calotas. Ela existe para a mensagem poder dizer **a aceleração** que esta
+/// correnteza dá, que é o número que explica por que a caminhada perde: `F/m`.
+const CAPSULE_MASS: f32 = 0.3657;
+
 const CRATE_RGBA: [f32; 4] = [0.45, 0.78, 0.62, 1.0];
 const DYNAMIC_RGBA: [f32; 4] = [0.90, 0.72, 0.32, 1.0];
 const KINEMATIC_RGBA: [f32; 4] = [0.42, 0.66, 0.94, 1.0];
@@ -208,12 +223,25 @@ impl crate::App {
                   O QUE ESTAVA QUEBRADO: o AZUL e o ROXO andavam 0,0 m -- em QUALQUER\n     \
                   forca. Se eles ficarem parados enquanto o ambar viaja, PARE.\n\n  \
                2. ELES ANDAM MENOS QUE O CAIXOTE, e isso e' o certo: a caminhada\n     \
-                  resiste a' correnteza (pode-se andar contra a corrente) -- o VERDE\n     \
-                  some de quadro em ~1 s, e e' assim que se ve' o teto. O que se julga\n     \
-                  aqui e' a CONCORDANCIA entre os tres players, nao a distancia.\n\n  \
-               3. ANDE CONTRA (A com um deles selecionado no Inspector, §14). Ele tem\n     \
-                  de conseguir progredir contra a correnteza nos tres modos -- e ceder\n     \
-                  quando voce solta.\n\n  \
+                  RESISTE a' correnteza -- o VERDE some de quadro em ~1 s, e e' assim\n     \
+                  que se ve' o teto. O que se julga aqui e' a CONCORDANCIA entre os\n     \
+                  tres players, nao a distancia.\n\n  \
+               3. ANDE (A e D). Nao ha' nada a selecionar: ha' UM teclado, logo UM\n     \
+                  dedo, e a ponte entrega a mesma entrada a TODO player da cena --\n     \
+                  os tres andam juntos. Medido, com 2 s de correnteza:\n       \
+                    A (contra) {ag:5.1} m . solto {ng:5.1} m . D (a favor) {dg:5.1} m\n     \
+                  ⚠️ Ele NAO progride contra: a caminhada muda o quanto a correnteza\n     \
+                  o leva, nao o LADO. Isso e' aritmetica, nao defeito -- esta cena\n     \
+                  nao tem chao nenhum, entao o player esta sempre no AR e a\n     \
+                  autoridade dele e' a `air_acceleration` (20 m/s2) contra os\n     \
+                  {acc:5.2} m/s2 desta correnteza ({f:.0} N sobre 0,366 kg).\n\n  \
+               3b. E A ABLACAO QUE INVERTE ISSO: no Inspector da zona baixe a Force\n     \
+                  para 7 N (= 19,1 m/s2, logo ABAIXO dos 20 da caminhada). Segure A e\n     \
+                  ele passa a progredir CONTRA a correnteza -- medido -9,2 m. Volte\n     \
+                  para {f:.0} e ele volta a ser levado. A fronteira e' exatamente a\n     \
+                  autoridade da caminhada, e ver os dois lados dela vale mais que ver\n     \
+                  um so'. (Com chao sob os pes a autoridade seria 60 e ele venceria\n     \
+                  os {acc:5.2} sem baixar nada -- medido -8,6 m.)\n\n  \
                4. GIRE A ZONA (selecione 'Current' e mude a rotacao no Inspector). O\n     \
                   sopro gira com ela e leva os tres para o novo lado -- o frame\n     \
                   (W-AreaFrame) chega ao cinematico pela MESMA porta do solver, sem\n     \
@@ -224,10 +252,14 @@ impl crate::App {
                (!) Toque B para o contorno: a zona fica magenta (sensor), com a SETA\n      \
                    laranja a dizer para que lado ela sopra.\n",
             f = FORCE,
+            acc = FORCE / CAPSULE_MASS,
             c = CARRIED[0],
             d = CARRIED[1],
             k = CARRIED[2],
             p = CARRIED[3],
+            ag = WALKED[0],
+            ng = WALKED[1],
+            dg = WALKED[2],
         );
     }
 }

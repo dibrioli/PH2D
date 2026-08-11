@@ -189,3 +189,108 @@ fn measure_the_current() {
     }
     println!();
 }
+
+// ── ANDAR CONTRA A CORRENTEZA ────────────────────────────────────────────────
+//
+// ⚠️ **A pergunta do Enio, e ela expôs uma promessa FALSA da cena `=106`:** o
+// passo 3 da mensagem dizia *"ele tem de conseguir progredir contra a
+// correnteza"*, e ele **não consegue** — nem podia. A cena não tem CHÃO nenhum
+// (gravidade zero, nada sob os pés), então o player está permanentemente no AR e
+// a caminhada usa a `air_acceleration`, cujo default é **20 m/s²**, contra uma
+// correnteza de **43,76** (16 N sobre uma cápsula de 0,3657 kg).
+//
+// Esta tabela mede as DUAS configurações para a decisão ser de número: no ar e
+// com o chão sob os pés (onde a autoridade é a `acceleration`, **60**).
+
+/// Um piso sólido largo sob a correnteza.
+fn floor(sim: &mut SimWorld) {
+    sim.world_mut().spawn((
+        Name::new("Floor"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 200.0,
+                half_y: 1.0,
+            },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(0.0, -1.0)),
+    ));
+}
+
+/// `drive` em `[-1, 1]`: `-1` anda CONTRA a correnteza, `+1` a favor.
+///
+/// `grounded` põe um piso e liga a gravidade — que é o que troca a autoridade da
+/// caminhada de `air_acceleration` para `acceleration`.
+fn walked(mode: Option<PlayerMode>, force: f32, drive: f32, grounded: bool) -> f32 {
+    let mut sim = SimWorld::new();
+    current(&mut sim, force);
+    if grounded {
+        floor(&mut sim);
+    }
+    let who = subject(&mut sim, mode);
+    if grounded {
+        // Nasce logo acima do piso, para a perna encontrar chão no 1.º tique.
+        if let Some(mut t) = sim.world_mut().get_mut::<Transform>(who) {
+            t.translation.y = 0.9;
+        }
+    }
+    let mut bridge = PhysicsBridge::new();
+    if !grounded {
+        bridge.set_settings(zero_gravity());
+    }
+    bridge.set_player_input(
+        who,
+        PlayerInput {
+            drive,
+            ..PlayerInput::default()
+        },
+    );
+    for t in 1..=120u64 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    x_of(&sim)
+}
+
+#[test]
+#[ignore = "sonda: imprime a tabela, nao afirma nada"]
+fn measure_walking_against_the_current() {
+    println!("\n=== ANDAR CONTRA A CORRENTEZA (2 s, 16 N = 43,76 m/s2) ===");
+    println!("(a caminhada tem 20 m/s2 no AR e 60 m/s2 no CHAO)\n");
+    for grounded in [false, true] {
+        let onde = if grounded { "COM CHAO  " } else { "NO AR     " };
+        println!("| {onde} | modo      | contra (A) | solto | a favor (D) |");
+        println!("|------------|-----------|------------|-------|-------------|");
+        for (name, mode) in [
+            ("Dynamic  ", Some(PlayerMode::Dynamic)),
+            ("Kinematic", Some(PlayerMode::Kinematic)),
+            ("Pure     ", Some(PlayerMode::Pure)),
+        ] {
+            let a = walked(mode, 16.0, -1.0, grounded);
+            let n = walked(mode, 16.0, 0.0, grounded);
+            let d = walked(mode, 16.0, 1.0, grounded);
+            println!("|            | {name} | {a:10.3} | {n:5.2} | {d:11.3} |");
+        }
+        println!();
+    }
+    println!("=== E A ABLACAO QUE O TORNA POSSIVEL NO AR: baixar a FORCA ===\n");
+    println!("| forca (N) | a (m/s2) | contra (A) | solto | a favor (D) |");
+    println!("|-----------|----------|------------|-------|-------------|");
+    for f in [2.0f32, 4.0, 7.0, 16.0] {
+        let a = walked(Some(PlayerMode::Kinematic), f, -1.0, false);
+        let n = walked(Some(PlayerMode::Kinematic), f, 0.0, false);
+        let d = walked(Some(PlayerMode::Kinematic), f, 1.0, false);
+        println!(
+            "| {f:9.1} | {:8.2} | {a:10.3} | {n:5.2} | {d:11.3} |",
+            f / 0.3657
+        );
+    }
+    println!(
+        "\nLEITURA: 'progredir CONTRA' quer dizer x NEGATIVO na coluna da esquerda.\n\
+         No ar a caminhada tem 20 m/s2, entao ela so' vence enquanto a correnteza\n\
+         estiver abaixo disso; com chao a autoridade e' 60 e vence os 43,76.\n"
+    );
+}

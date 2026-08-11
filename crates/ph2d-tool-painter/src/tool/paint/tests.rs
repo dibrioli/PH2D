@@ -13,6 +13,9 @@ mod measure_dirty_overclaim;
 #[path = "measure_gpu_frontier.rs"]
 mod measure_gpu_frontier; // o pool dos cinco planos do traço escreve o que a alocação escrevia
 
+#[path = "measure_penup_cost.rs"]
+mod measure_penup_cost; // o que custa FECHAR um traço — a irmã do `measure_pendown_cost`
+
 #[path = "measure_impasto_cost.rs"]
 mod measure_impasto_cost; // o que o CORPO da tinta custa (plano 26 §9); irmão do input_cost
 #[path = "measure_input_cost.rs"]

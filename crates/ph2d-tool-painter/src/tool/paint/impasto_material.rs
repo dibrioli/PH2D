@@ -77,9 +77,7 @@ impl PainterTool {
                 (w, h),
                 Some(rect),
             );
-            if dst.len() != n {
-                dst.resize(n, neutral);
-            }
+            crate::plane_copy::size_to(dst, n, neutral);
             let mut k = 0usize;
             for_each_in(rect, w, |i| {
                 let a = u32::from(film[k]);

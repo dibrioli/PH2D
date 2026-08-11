@@ -51,6 +51,47 @@ where
     src.par_iter().copied().collect()
 }
 
+/// **Materializa um plano de `n` elementos no valor `value`** — e o caso do ZERO é de graça.
+///
+/// ⚠️ **`Vec::resize` num vetor VAZIO escreve elemento a elemento**, mesmo quando o valor é zero;
+/// `vec![zero; n]` pede ao SO páginas **já zeradas** (a especialização `IsZero` da `std`) e não toca um
+/// byte. A diferença é medida e não é pequena: o primeiro commit de um documento a 4096² paga **2,05 ms**
+/// só para materializar o plano de COBERTURA, que são 16,8 MB de zeros escritos à mão.
+///
+/// ⚠️ **E o valor NÃO-zero continua a ser escrito** (o material começa em `NEUTRAL`, não em zero — zero
+/// é `roughness = 0`, que é ESPELHO): aí não há atalho de alocador, e o número fica NOMEADO em vez de
+/// escondido — **19,50 ms** no mesmo commit, o maior item isolado de um pen-up.
+///
+/// ⛔ **MEDIDO E REJEITADO, não refaça: preencher por DUPLICAÇÃO** (escrever um elemento e copiar o
+/// prefixo sobre o dobro do espaço, fazendo de cada passo um `memcpy`). Foi construída e medida: **17,5
+/// contra 18,7 ms** para os 117 MB do material a 4096², 6% — porque os dois estão no MESMO teto. 117 MB
+/// em 17 ms são **6,9 GB/s**: o custo é o *first-touch* das páginas, não o laço que as escreve, e
+/// nenhuma esperteza sobre COMO escrever muda quantas páginas há para tocar. Quinze linhas por 6% num
+/// custo de uma vez por documento não se pagam.
+///
+/// ⚠️ **O que resta é um piso, e ele tem nome:** a única forma de não pagar os 18 ms é o plano de
+/// material não ser canvas-shaped (esparso/por tile) ou ser pago noutro momento — a mesma decisão de
+/// produto que o `prewarm` da luz já tem em aberto, e pelo mesmo preço (memória em TODO bind, para quem
+/// nunca deposita material).
+pub(crate) fn size_to<T>(dst: &mut Vec<T>, n: usize, value: T)
+where
+    T: Copy + Default + PartialEq,
+{
+    if dst.len() == n {
+        return;
+    }
+    if !dst.is_empty() {
+        dst.resize(n, value); // tela que mudou de tamanho: o conteúdo existente manda
+        return;
+    }
+    if value == T::default() {
+        // `alloc_zeroed`: o SO entrega as páginas prontas e ninguém escreve um byte.
+        *dst = vec![T::default(); n];
+        return;
+    }
+    dst.resize(n, value);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -82,5 +123,32 @@ mod tests {
         // E o tipo mais largo do histórico cruza antes de todos.
         assert!(worth_parallel::<[u8; 7]>(PAR_MIN_BYTES / 7 + 1));
         assert!(!worth_parallel::<[u8; 7]>(PAR_MIN_BYTES / 7 - 1_000));
+    }
+
+    /// **A porta devolve o mesmo plano que o `resize` devolvia** — nos dois ramos, e num vetor que já
+    /// tem conteúdo (o caso da tela que mudou de tamanho, onde o atalho do zero não pode disparar).
+    #[test]
+    fn sizing_a_plane_gives_what_resize_gave() {
+        for n in [4usize, 1_000] {
+            let (mut a, mut b) = (Vec::<u8>::new(), Vec::<u8>::new());
+            size_to(&mut a, n, 0);
+            b.resize(n, 0);
+            assert_eq!(a, b, "o ramo do zero, n = {n}");
+
+            let neutral = [3u8, 1, 4, 1, 5, 9, 2];
+            let (mut c, mut d) = (Vec::<[u8; 7]>::new(), Vec::<[u8; 7]>::new());
+            size_to(&mut c, n, neutral);
+            d.resize(n, neutral);
+            assert_eq!(c, d, "o ramo do valor, n = {n}");
+
+            // Já com conteúdo: o atalho do zero NÃO pode disparar, senão apagaria o que lá está.
+            let mut e = vec![7u8; 3];
+            size_to(&mut e, n.max(3), 0);
+            assert_eq!(
+                &e[..3],
+                &[7, 7, 7],
+                "o atalho do zero apagou conteudo existente"
+            );
+        }
     }
 }

@@ -67,24 +67,41 @@ fn a_film_stroke_no_longer_asks_for_five_canvas_planes() {
     t.set_shape_relief(1.0);
     t.set_brush_size_px(40.0);
 
-    let stroke = |t: &mut PainterTool, k: u8| {
+    // ⚠️ **POR FASE, e não por traço:** um número por traço não distingue quem PEDE. As três fases de
+    // um gesto fazem coisas diferentes (o Down arma, o Move carimba, o Up COMITA), e o total esconde
+    // isso — foi por medir o total que a atribuição do pen-down passou meses a apontar para a cópia do
+    // canvas.
+    let mut phase = [0u64; 3];
+    let stroke = |t: &mut PainterTool, k: u8, phase: &mut [u64; 3]| {
         let y = 300.0 + f32::from(k) * 8.0;
-        t.on_canvas_pointer(cp([400.0, y], PointerPhase::Down));
-        t.on_canvas_pointer(cp([440.0, y], PointerPhase::Move));
-        t.on_canvas_pointer(cp([480.0, y], PointerPhase::Up));
+        let mut at = |t: &mut PainterTool, x: f32, p: PointerPhase, slot: usize| {
+            let a = dhat::HeapStats::get().total_bytes;
+            t.on_canvas_pointer(cp([x, y], p));
+            phase[slot] += dhat::HeapStats::get().total_bytes - a;
+        };
+        at(t, 400.0, PointerPhase::Down, 0);
+        at(t, 440.0, PointerPhase::Move, 1);
+        at(t, 480.0, PointerPhase::Up, 2);
     };
     // Aquece: o 1º traço aloca o que for lazy uma vez por documento e não é o regime.
-    stroke(&mut t, 0);
+    stroke(&mut t, 0, &mut [0; 3]);
     let before = dhat::HeapStats::get();
     const K: u8 = 6;
     for k in 1..=K {
-        stroke(&mut t, k);
+        stroke(&mut t, k, &mut phase);
     }
     let after = dhat::HeapStats::get();
 
     let per_stroke = (after.total_bytes - before.total_bytes) as f64 / f64::from(K) / MB;
+    let mb = |b: u64| b as f64 / f64::from(K) / MB;
     println!(
         "[pendown-alloc] {N}^2 filme: {per_stroke:.1} MB pedidos por traco (os cinco planos medem {planes:.1} MB; eram 83,0 antes do pool)"
+    );
+    println!(
+        "[pendown-alloc] por fase: down {:.1} | move {:.1} | UP {:.1} MB",
+        mb(phase[0]),
+        mb(phase[1]),
+        mb(phase[2])
     );
     drop(profiler);
 

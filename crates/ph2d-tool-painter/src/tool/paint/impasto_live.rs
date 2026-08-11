@@ -5,6 +5,7 @@
 
 use super::Region;
 use super::impasto_settle::{RELIEF_EPS, SETTLE_REACH_PX, par_rows_in, patch_in, settle};
+
 use super::region::grow_region;
 use crate::tool::PainterTool;
 use ph2d_painter_brush::height::derive_height;
@@ -52,6 +53,8 @@ impl PainterTool {
         // "200% paint". (The HEIGHT does add — more paint IS thicker. The two are different quantities,
         // which is the whole reason the light needs both.) Only inside the window: outside it the
         // stroke's paint is zero, and `max(x, 0)` is `x`.
+        #[cfg(test)]
+        let _t0 = std::time::Instant::now();
         {
             let n = (w as usize) * (h as usize);
             let dst = super::plane_fork::fork_covers(
@@ -61,9 +64,7 @@ impl PainterTool {
                 (w, h),
                 Some(rect),
             );
-            if dst.len() != n {
-                dst.resize(n, 0);
-            }
+            crate::plane_copy::size_to(dst, n, 0);
             par_rows_in(dst, rect, w, |i, d| {
                 *d = (*d).max(film.get(i).copied().unwrap_or(0));
             });
@@ -71,6 +72,8 @@ impl PainterTool {
         // A janela deste acesso é EXATAMENTE o `rect` do commit (o bloco acima só escreve por
         // `par_rows_in(rect, …)`, cuja rota serial É o `for_each_in`), então o histórico não precisa
         // varrer o plano para redescobri-la.
+        #[cfg(test)]
+        spans::add(0, _t0.elapsed());
         self.declare_wrote(Some(rect));
         // The MATERIAL rides the same stroke — it is what the paint this stroke laid IS
         // (`ph2d_painter_brush::material`). Deposited from the brush, so Symmetry / Tiling / the shape
@@ -86,6 +89,8 @@ impl PainterTool {
         //
         // The un-painted ground starts at NEUTRAL rather than at zero: zero is `roughness = 0`, which is
         // GLOSSY — so a stroke's translucent rim would fade toward a mirror instead of toward bare paper.
+        #[cfg(test)]
+        let _t1 = std::time::Instant::now();
         {
             let n = (w as usize) * (h as usize);
             let mat = self.paint.brush.material().to_bytes();
@@ -97,9 +102,7 @@ impl PainterTool {
                 (w, h),
                 Some(rect),
             );
-            if dst.len() != n {
-                dst.resize(n, neutral);
-            }
+            crate::plane_copy::size_to(dst, n, neutral);
             // The ground the material sits on, and the film it merges with — kept as patches over the
             // window so the four material knobs stay LIVE on the stroke the artist just laid, exactly
             // like Depth and Body are. (`over` does not compose, so a re-bake must start from the base.)
@@ -118,6 +121,8 @@ impl PainterTool {
                 }
             });
         }
+        #[cfg(test)]
+        spans::add(1, _t1.elapsed());
         self.declare_wrote(Some(rect));
         // Keep the stroke's INGREDIENTS and the layer's relief from BEFORE it. Between them, the whole
         // Body card re-derives this stroke after the fact — the artist lays a stroke and then dials it
@@ -125,6 +130,8 @@ impl PainterTool {
         //
         // The ground is kept as a PATCH: cloning the layer's whole height plane to re-add it was a
         // 64 MB copy per stroke at 4096², for a ground that is only ever read inside the window.
+        #[cfg(test)]
+        let _t2 = std::time::Instant::now();
         self.paint.relief.live_relief_had_entry = self.heights.contains_key(&active);
         self.paint.relief.live_relief_base = match self.heights.get(&active) {
             Some(f) if f.len() == (w as usize) * (h as usize) => patch_in(rect, w, |i| f[i]),
@@ -160,7 +167,13 @@ impl PainterTool {
         // The displacement at Push = 1 — the third ingredient. The whole displacement is LINEAR in Push,
         // so keeping it lets the knob stay live after the stroke without replaying a single dab.
         self.paint.relief.live_push = std::mem::take(&mut self.paint.relief.stroke_push);
+        #[cfg(test)]
+        spans::add(2, _t2.elapsed());
+        #[cfg(test)]
+        let _t3 = std::time::Instant::now();
         self.rebuild_live_layer_relief();
+        #[cfg(test)]
+        spans::add(3, _t3.elapsed());
     }
 
     /// Re-derive the live stroke onto the layer at the CURRENT Depth / Body / Depth Source / Smoothing.
@@ -452,5 +465,36 @@ impl PainterTool {
             }
             (Some(c), Some(_)) => Some(c.as_ref().clone()),
         }
+    }
+}
+
+/// **O RELÓGIO DO COMMIT, medido no código que SHIPA** — o precedente do doc 28 §5.57.
+///
+/// O pen-up do filme custa ~1,8 ms e ele é **plano na tela E plano na janela** (2,23 / 2,13 / 2,30 ms
+/// com a janela a crescer 2,6× do raio 20 ao 80), o que exclui de saída as duas explicações fáceis. Sem
+/// um knob que separe as peças, a atribuição tem de vir de dentro — e uma sonda com laço próprio ficaria
+/// **cega à porta**, que é a lição que este módulo já pagou três vezes.
+///
+/// `cfg(test)`: zero custo no produto, e a fronteira medida é a que os blocos já separavam.
+#[cfg(test)]
+pub(super) mod spans {
+    use std::cell::Cell;
+    thread_local! {
+        static SPANS: Cell<[f64; 4]> = const { Cell::new([0.0; 4]) };
+    }
+    /// `0` cobertura · `1` material · `2` os patches vivos · `3` o re-derive vivo.
+    pub(in crate::tool::paint) fn add(i: usize, d: std::time::Duration) {
+        SPANS.with(|s| {
+            let mut a = s.get();
+            a[i] += d.as_secs_f64() * 1e3;
+            s.set(a);
+        });
+    }
+    pub(in crate::tool::paint) fn take() -> [f64; 4] {
+        SPANS.with(|s| {
+            let a = s.get();
+            s.set([0.0; 4]);
+            a
+        })
     }
 }

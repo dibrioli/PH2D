@@ -344,89 +344,106 @@ controlador já escreve a pose); no **Dynamic** é um teleporte, e este módulo 
 uma regra sobre isso desde o W2a (*`set_body_pose` zera a velocidade*). **Os dois
 modos podem precisar de respostas diferentes, e isso tem de estar escrito antes.**
 
-### 4.55 · `W-Probes` — **OS SENSORES FICAM VISÍVEIS E PLENAMENTE EDITÁVEIS** ⟨pedido do Enio⟩
+### 4.55 · `W-Probes` — **OS SENSORES FICAM VISÍVEIS** ✅ ⟨pedido do Enio⟩
 
-> *"os Rays (ou outros modos de cast) dos Setups dos Players não estão visíveis e
-> nem são plenamente editáveis através da UI"*
+> *"os Rays (ou outros modos de cast) dos Setups dos Players não estão visíveis
+> e nem são plenamente editáveis através da UI"*
 
-**As duas metades do report foram verificadas, e as duas são reais** — mas por
-motivos DIFERENTES, e a distinção decide o trabalho.
+**FECHADO em 2026-08-10** (cena `=108`). ⚠️ **As duas metades do report tiveram
+vereditos OPOSTOS**, e a segunda é o achado: *visíveis* era real e grande;
+*editáveis* estava **refutado pela própria medição** — e a §4.55 anterior
+construía um "defeito" em cima de um censo que contava um sensor duas vezes.
 
-#### (a) VISÍVEIS: não há nada. Zero.
+#### (a) VISÍVEIS: não havia nada. Zero. ✅
 
-O overlay de física (tecla `B`) desenha collider, joint, glifo de zona, seta de
-força, anel de falloff, linha d'água, cruz de contato e as ferramentas de ponto.
-**Dos cinco sensores do player ele não desenha um pixel** — a única linha que
-menciona player ali é o bit da descida de prancha (W20).
+O overlay desenhava collider, joint, glifo de zona, seta de força, anel de
+falloff, linha d'água, cruz de contato e as ferramentas de ponto — **e dos
+sensores do player não desenhava um pixel**. É a mesma lei que fez o contorno do
+collider existir (W2a: *um collider é invisível e um sprite é um quad*), levada a
+uma coisa **ainda mais invisível**: um raio nem forma tem.
 
-⚠️ **Isto é exactamente a lei que fez o contorno do collider existir**, escrita
-no W2a: *"um collider é invisível e um sprite é um quad, então a resposta é a que
-Unity/Godot/Box2D dão: wireframe sobre a arte"*. Um **raio** é ainda mais
-invisível que um collider — ele nem tem forma —, e hoje o artista afina
-`float_height`, `cling_distance`, `corner_reach` e `wall_reach` **às cegas**,
-inferindo o alcance pelo comportamento.
+⚠️ **O CENSO decidiu o desenho, e ele veio antes do código.** Se os sensores
+condicionais fossem lançados na maioria dos tiques, desenhar *só o que foi
+castado* bastaria. Medido (`measure_player_probes`, 600 tiques de um personagem
+a andar / pular / agachar):
 
-**Os cinco a desenhar** (todos já existem na ponte):
+| sensor | perguntado |
+|---|---|
+| chão | 100% |
+| agachar | 50,3% |
+| **parede** | **13,5%** |
+| **quina / lado** | **6,0%** |
 
-| sensor | raios | o que governa o alcance |
-|---|---|---|
-| chão | **1** | `float_height + cling_distance` (derivado — ver ⚠️ abaixo) |
-| parede | **3** (`[0, −½h, +½h]`) | `wall_reach` |
-| quina (corner correction) | **65** | `corner_reach` |
-| teto | **65** | `corner_reach` **e** `rel_up · dt · CORNER_LOOKAHEAD` |
-| headroom (levantar do agachado) | **3** | a altura de pé menos a agachada |
+⇒ desenhar só o castado mostraria a perna e **mais nada em ~90% dos quadros**,
+justamente nos dois sensores cujo alcance o artista afina às cegas. Então o
+**ALCANCE é desenhado sempre** e a **cor diz o que aconteceu**, em três estados:
 
-#### (b) EDITÁVEIS: os ALCANCES sim, o resto não — e "o resto" tem três espécies
+| estado | significa |
+|---|---|
+| `Idle` | armado, e a lei **não perguntou** neste tique |
+| `Clear` | perguntou e **não achou** |
+| `Hit` | perguntou e **achou** (mais um **TIQUE** na distância) |
 
-Isto é o que a palavra *"plenamente"* aponta, e o censo separa-o em três coisas
-com **vereditos diferentes**:
+⚠️ **O `Idle` é a metade nova**: ele separa *"a capacidade está lá, não é a
+hora"* de *"o alcance é curto demais"* — dois vereditos opostos que produziam o
+mesmo nada na tela. E uma capacidade **DESARMADA não publica marca nenhuma**:
+seis raios apagados à volta de todo personagem de toda cena onde o pulo de
+parede nunca foi ligado seria ruído permanente.
 
-1. **A CONTAGEM de amostras é `const` de compilação** — `WALL_SAMPLES = 3` ·
-   `CORNER_SAMPLES = 65` · `HEADROOM_SAMPLES = 3`. Não estão no componente nem no
-   Inspector. ⚠️ **E o §0 manda medir antes de expor:** os 65 do corner são um
-   número de custo, não de gosto, e um slider que os mova mexe no orçamento de
-   raios por tique. **Medir primeiro, expor depois** — e talvez a resposta certa
-   seja um teto medido em vez de um slider.
-2. **O alcance do TETO / headroom não tem row nenhuma** (não existe
-   `INSP_PLAYER_CEILING`). O teto empresta o `corner_reach` do pulo e mistura-o
-   com um termo de velocidade — ou seja, hoje o artista mexe no teto **sem saber
-   que está a mexer**, por um knob que diz outra coisa. ⚠️ **Isto é um achado do
-   censo, não do report**, e é o mais próximo de um defeito nesta lista.
-3. **O alcance do CHÃO é DERIVADO de propósito** (`float_height +
-   cling_distance`) e ⛔ **não deve ganhar knob próprio**: seria a segunda porta
-   para *"até onde a perna alcança"*, e as duas divergiriam. O que ele precisa é
-   de ser **VISÍVEL** — que é a metade (a).
+⚠️ **O estado não gastou um hue novo.** O overlay já tem nove famílias saturadas
+(verde · ciano · violeta · magenta · âmbar · branco · laranja · amarelo ·
+vermelho), e uma décima leria como *mais um sistema*. Ele mora na
+**intensidade** mais o **tique**, que ainda responde *onde*.
 
-#### O desenho, e o que ele NÃO pode fazer
+⚠️ **E o overlay sabe desenhar as DUAS coisas**: o sensor do agachar VARRE o
+corpo (`W-ShapeCast`), então ele é o **contorno real desenhado onde ele quer
+ficar de pé** — pela mesma porta do contorno vivo, todas as formas de um corpo
+composto.
 
-⚠️ **O overlay LÊ, nunca DERIVA.** Os offsets têm de vir das portas que a ponte
-já usa (`wall_offsets` · `corner_offsets` · `headroom_offsets`) — um segundo
-cálculo no lado do desenho seria uma segunda resposta a *"onde este raio nasce?"*,
-e ela divergiria no primeiro dia em que alguém mexesse numa das duas. É a mesma
-regra que o `scaled_shape` do W6 impôs ao contorno do collider, e que a seta da
-zona do W-AreaFrame impôs à força.
+**Custo:** +0,78 µs/tique (**0,005%** de um quadro de 60 fps), medido por ablação
+das capacidades ⇒ always-on, o precedente dos contatos.
 
-⚠️ **E o raio tem de dizer se ACHOU:** um sensor desenhado sempre da mesma cor
-responde *"onde ele olha"* e não *"o que ele viu"* — e a segunda é a pergunta que
-o artista faz quando o personagem não se agarra à parede. Cor por resultado, como
-o sensor magenta do W7 (apagado/aceso).
+#### (b) EDITÁVEIS: ⚠️ **a premissa desta metade estava ERRADA**
 
-**Onde entra na fila:** ⚠️ **antes** do `W-Ledge`, porque as waves 4.4/4.5 vão
-**acrescentar sensores**: um ledge grab sem os raios visíveis é afinado às cegas,
-que é o que este item existe para acabar.
+A §4.55 anterior listava **cinco** sensores — chão, parede, quina, **teto** e
+headroom — e derivava daí um achado: *"o alcance do TETO / headroom não tem row
+nenhuma … o mais próximo de um defeito nesta lista"*. Medido:
 
-⚠️ **E a razão que o prendia ao `W-ShapeCast` MORREU com a medição.** Este
-parágrafo dizia *"quando o chão deixar de ser um raio (4.3) o desenho tem de
-mostrar a forma nova"* — o chão **continua a ser um raio**: a 4.3 converteu só o
-sensor do agachar, e os outros dois ficaram de raios com o motivo escrito em cada
-um. Sobra **um** sensor a desenhar como forma (o do agachar, uma cápsula varrida
-para cima) contra cinco a desenhar como linha, e isso é uma nota no item, não uma
-dependência de ordem.
+1. ⛔ **Não existem cinco sensores, existem QUATRO.** `probe_ceiling` produz um
+   `CeilingProbe` e ele tem **UM consumidor** (`corner_nudge`, a correção de
+   quina) — *"quina"* e *"teto"* eram **o mesmo sensor contado duas vezes**, e o
+   *"alcance do teto sem row"* era essa duplicata a pedir uma row para si mesma.
+2. ⛔ **O alcance do headroom é DERIVADO de dois números autorados**:
+   `rise = float_height − crouch_height`, e os dois têm row
+   (`INSP_PLAYER_FLOAT`, `INSP_PLAYER_CROUCH_HEIGHT`). Ele é o caso (b.3), não um
+   defeito — um knob próprio seria a **segunda porta** para *"quanto ele sobe ao
+   levantar-se"*.
+3. ✅ **Censo completo:** os **36** campos do `PlatformPlayer` têm leitor no
+   Inspector. Nenhum número que a lei lê é inalcançável.
+4. ⛔ **As CONTAGENS de amostra ficam `const`, com motivo medido.** O doc do
+   `CORNER_SAMPLES` já traz o número (*o sensor inteiro custa +0,0002 ms por
+   tique de subida, ~8 ns por raio*) ⇒ **não há recurso a trocar**: mais amostras
+   é só mais precisão (o erro é `passo/2`, hoje 0,5 cm), e um slider sobre um
+   número sem downside é um controle que só pode ser posto no lugar errado. O
+   `CORNER_LOOKAHEAD` é **margem medida** (a mutação `2.0 → 1.0` sobrevive aos
+   cinco gates de comportamento) — expor margem é pior que a esconder.
+5. ✅ **O alcance do CHÃO** (`float_height + cling_distance`) segue **derivado de
+   propósito** e agora é **VISÍVEL**, que era o que lhe faltava.
 
-⚠️ **Corolário para quem construir isto:** o overlay tem de saber desenhar as
-DUAS coisas. Um overlay que só saiba linhas desenha o sensor do agachar como um
-raio que ele não é — e o artista afinaria o `crouch_height` contra um desenho que
-mente sobre o que o produto mede.
+⇒ **A metade (b) fecha sem construir knob nenhum**, e o que ela deixa é a
+correção desta nota. *Quem conta os sensores conta o consumidor, não a tabela.*
+
+#### O que ficou aberto
+
+- ⚠️ **Um quadro PAUSADO mostra a leitura do ÚLTIMO TIQUE** — arrastar um corpo
+  com o relógio parado move o desenho e deixa os sensores onde o último tique os
+  leu. É a **mesma propriedade** das cruzes de contato, dos triggers e da linha
+  d'água (todos escritos pelo `step`); limpar seria APAGAR os sensores no gesto
+  em que o artista os quer olhar. Nomeado, não escondido.
+- O sensor de **quina** desenha o vão e as células tapadas, e **não** a busca de
+  escape (`CORNER_SEARCH_STEPS`) — *para onde ele decidiu empurrar* é outra
+  pergunta, e ela tem resposta visível (o personagem desvia).
+
 
 ### 4.6 · `W-Glide` — **PLANAR**
 
@@ -455,7 +472,7 @@ pedido** — está aqui para a lista ser honesta, não para ser construído.
 ## §5 — A ordem, numa linha
 
 ```
-~~W-Swim~~ ✅ → ~~W-ZoneForce~~ ✅ → ~~W-ShapeCast~~ ✅ → W-Probes → W-MultiJump → W-Ledge → (W-Glide?) → o ajuste
+~~W-Swim~~ ✅ → ~~W-ZoneForce~~ ✅ → ~~W-ShapeCast~~ ✅ → ~~W-Probes~~ ✅ → W-MultiJump → W-Ledge → (W-Glide?) → o ajuste
    1         2             3            4           5            6           7           8
 ```
 
@@ -474,8 +491,14 @@ espera.
 
 ⚠️ **Cada wave desta fila fecha com as QUATRO condições de UI do plano 00** (o
 componente existe · é pintado e registado · o clique chega ao barramento · e a
-SEQUÊNCIA leva a algum lugar) **e com uma cena de smoke de números MEDIDOS** — a
-próxima livre é a **`=105`**.
+SEQUÊNCIA leva a algum lugar) **e com uma cena de smoke de números MEDIDOS**.
+
+⚠️ **O número da cena se CONTA no `physics_smoke.rs`, nunca numa nota.** Esta
+linha dizia *"a próxima livre é a `=105`"* e a `=105` já era o mergulho — quem
+pegou foi o `unreachable_patterns` do compilador, que é o gate estrutural deste
+roteador (ele é um `match`, ao contrário da cadeia de `if` que a `line/Vector`
+teve de gatear à mão). Hoje o máximo é **`=108`**, e o `=84` **não existe de
+propósito**.
 
 ---
 

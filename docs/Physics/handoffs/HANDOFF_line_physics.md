@@ -9921,3 +9921,136 @@ levantar na hora. Os dois gestos correm como gate antes de o artista os ler.
 18 cm) **não é julgável de olho** — não há contrafactual na tela. Fica gateada
 (`the_capsule_corner_is_no_longer_a_ceiling`) em vez de encenada, porque uma
 estação que não se pode julgar é uma que se aprova por cansaço.
+
+---
+
+## W-Probes — os sensores do player ficam VISÍVEIS
+
+**Plano:** 08 §4.55 · **cena:** `=108` · **fechada 2026-08-10.**
+
+O report do Enio: *"os Rays (ou outros modos de cast) dos Setups dos Players não
+estão visíveis e nem são plenamente editáveis através da UI"*. ⚠️ **As duas
+metades tiveram vereditos OPOSTOS**, e a segunda é o achado da wave.
+
+### (a) VISÍVEIS — era real, e grande
+
+O overlay de física desenhava collider, joint, glifo de zona, seta de força, anel
+de falloff, linha d'água, cruz de contato e as ferramentas de ponto — **e dos
+sensores do player não desenhava um pixel**. É a mesma lei que fez o contorno do
+collider existir no W2a (*um collider é invisível e um sprite é um quad*), levada
+a uma coisa **ainda mais invisível**: um raio nem forma tem.
+
+⚠️ **O CENSO decidiu o desenho, e ele veio ANTES do código.** Se os sensores
+condicionais fossem lançados na maioria dos tiques, desenhar *só o que foi
+castado* bastaria — a pergunta tinha resposta medível, e ela é
+(`measure_player_probes`, 600 tiques a andar/pular/agachar):
+
+| sensor | idle | clear | hit | perguntado |
+|---|---|---|---|---|
+| chão | 0 | 81 | 519 | **100%** |
+| agachar | 298 | 1 | 301 | 50,3% |
+| **parede** | 1557 | 60 | 183 | **13,5%** |
+| **quina / lado** | 564/1128 | 9/46 | 27/26 | **6,0%** |
+
+⇒ desenhar só o castado mostraria a perna e **mais nada em ~90% dos quadros**,
+justamente nos dois sensores cujo alcance o artista afina às cegas. Então o
+**ALCANCE é desenhado sempre** e a **cor diz o que aconteceu**, em três estados
+(`Idle` · `Clear` · `Hit`).
+
+⚠️ **O `Idle` é a metade nova, e é a que o report pedia sem saber:** ele separa
+*"a capacidade está armada, não é a hora"* de *"o alcance é curto demais"* —
+dois vereditos **opostos** que produziam exatamente o mesmo nada na tela. E uma
+capacidade **DESARMADA não publica marca nenhuma**: seis raios apagados à volta
+de todo personagem de toda cena onde o pulo de parede nunca foi ligado seria
+ruído permanente, e a linha do painel já diz que ela está off.
+
+⚠️ **O estado não gastou um hue.** O overlay já tem nove famílias saturadas
+(verde estático/mão · ciano dinâmico/água · violeta cinemático/torque · magenta
+sensor · âmbar joint · branco contato · laranja zona · amarelo lançamento ·
+vermelho carga); a décima leria como *mais um sistema*. Ele mora na
+**intensidade** mais um **TIQUE perpendicular na distância do acerto**, que
+ainda por cima responde *onde* — o número que se está a afinar.
+
+⚠️ **E o overlay sabe desenhar as DUAS coisas.** Depois da `W-ShapeCast` o
+sensor do agachar **varre o corpo**, então ele é o **contorno REAL desenhado
+onde ele quer ficar de pé** (pela mesma porta do contorno vivo, `scaled_shape` +
+`collider_outline`, e **todas** as formas de um corpo composto). Um overlay que
+só soubesse linhas o desenharia como um raio que ele não é.
+
+⚠️ **O VÃO do perfil nunca veste o brilho de acerto**, e é isso que o torna
+legível: o estado do perfil é *achou* assim que UMA célula está tapada, e se a
+barra inteira acendesse junto a **resposta** (onde há teto) ficaria
+indistinguível da **pergunta** (onde ele olha) — a informação pela qual este
+sensor existe.
+
+**Nada deriva geometria do lado do desenho:** cada sensor ganhou uma PORTA
+(`ground_ray` · `wall_rays` · `corner_geom` · `corner_rise` · `headroom_offset`)
+e quem **casta** e quem **desenha** chamam a mesma. É a regra que o
+`scaled_shape` (W6) impôs ao contorno e a `zone_force_world_at` (W-AreaFrame)
+impôs à seta.
+
+**Custo:** **+0,78 µs/tique** = **0,005%** de um quadro de 60 fps, medido por
+ablação das capacidades (desarmado grava 1 marca e nenhuma `body_aabb`; armado
+grava 8 e chama até 3) ⇒ always-on, o precedente dos contatos.
+
+### (b) EDITÁVEIS — ⚠️ a premissa desta metade estava ERRADA
+
+A §4.55 listava **cinco** sensores (chão · parede · quina · **teto** · headroom)
+e derivava daí um achado: *"o alcance do TETO / headroom não tem row nenhuma …
+o mais próximo de um defeito nesta lista"*. Medido:
+
+1. ⛔ **Não existem cinco sensores, existem QUATRO.** `probe_ceiling` produz um
+   `CeilingProbe`, e ele tem **UM consumidor** — `corner_nudge`. *Quina* e
+   *teto* eram **o mesmo sensor contado duas vezes**, e o *"alcance do teto sem
+   row"* era essa duplicata a pedir uma row para si mesma.
+2. ⛔ **O alcance do headroom é DERIVADO de dois números autorados**
+   (`rise = float_height − crouch_height`), e os dois têm row. É o caso (b.3), e
+   um knob próprio seria a **segunda porta** para *"quanto ele sobe"*.
+3. ✅ **Censo:** os **36** campos do `PlatformPlayer` têm leitor no Inspector.
+4. ⛔ **As CONTAGENS ficam `const`, com o custo medido ao lado** (o doc do
+   `CORNER_SAMPLES` já traz ~8 ns/raio, +0,0002 ms por tique de subida): não há
+   recurso a trocar — mais amostras é só mais precisão —, e um slider sobre um
+   número sem downside só pode ser posto no lugar errado.
+5. ✅ **O alcance do CHÃO** segue derivado de propósito e agora é **VISÍVEL**.
+
+⇒ **(b) fecha sem construir knob nenhum.** *Quem conta os sensores conta o
+consumidor, não a tabela.*
+
+### Superfície
+
+`PROJECT_SCHEMA` **fica em 71** · `physics_ecs_c9` **intocado** (a leitura é
+read-only; nada dela entra no `step`) · registros **intocados** · gizmo ids
+**nenhum novo** · **zero `Cargo.toml`** — `corner_offsets` e `CORNER_SAMPLES`
+são re-exportados pela `ph2d-physics-ecs` em vez de a shell ganhar uma aresta
+para a `ph2d-platformer`, o que mantém a porta única sem alargar o grafo ·
+**nenhum ADR** (tudo sob o ADR-0131).
+
+**9 gates na leitura + 7 no desenho + 3 de arch-gate + 7 na cena.
+9 mutações, 9 sangram.**
+
+⚠️ **Duas dívidas de clippy fecharam junto**, e as duas são a mesma coisa: uma
+asserção sobre CONSTANTES não pode falhar por nada que não seja alguém tê-las
+trocado ⇒ virou asserção de **COMPILAÇÃO** (uma delas era da wave anterior, a
+cena `=107`).
+
+### Smoke
+
+**`env PH2D_PHYSICS_SMOKE=108 cargo run -p ph2d-host-desktop --release`** — um
+percurso com TÚNEL (face em 1,20), BEIRAL (face em 2,60, quina em x=15) e PAREDE
+(face em x=22), um sensor de cada vez.
+
+⚠️ **O passo que mais importa é o 7, o CONTROLE:** a tecla `B` tem de apagar os
+sensores **junto com** o contorno dos colliders — é a mesma pergunta (*mostre-me
+a física que não se vê*), e um segundo interruptor para ela seria a segunda
+porta.
+
+### Aberto, nomeado
+
+- ⚠️ **Um quadro PAUSADO mostra a leitura do ÚLTIMO TIQUE** — arrastar um corpo
+  com o relógio parado move o desenho e deixa os sensores onde o último tique os
+  leu. É a **mesma propriedade** das cruzes de contato, dos triggers e da linha
+  d'água (todos escritos pelo `step`); limpar seria APAGAR os sensores no gesto
+  em que o artista os quer olhar.
+- O sensor de quina desenha o vão e as células tapadas, e **não** a busca de
+  escape — *para onde ele decidiu empurrar* é outra pergunta, e ela já tem
+  resposta visível: o personagem desvia.

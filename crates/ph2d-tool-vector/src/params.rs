@@ -133,7 +133,7 @@ pub enum TextAlign {
 /// consome não percebe o corte.
 #[path = "params_mode.rs"]
 mod mode;
-pub use mode::DrawMode;
+pub use mode::{DrawMode, MarqueeShape};
 
 /// UI-facing vertex type for the docked panel's Vertex section (mirror of
 /// `ph2d_vec_scene::VertexKind`; the shell maps between them). Lives in the tool
@@ -410,6 +410,12 @@ pub struct VectorDrawConfig {
     /// da forma), e alcançar o tool por downcast para ler quatro campos seria trabalho por frame
     /// para uma pergunta que o espelho já responde.
     pub symmetry: ph2d_symmetry::SymmetryStyle,
+    /// **A forma PEGAJOSA do marquee do modo Node** (o chip do painel). Viaja no config pela MESMA
+    /// razão do estabilizador do lápis: quem a consome é o `input_dispatch` da shell, no PRESS do
+    /// canvas, e alcançar o tool por downcast num handler de ponteiro seria trabalho por evento
+    /// para ler um enum de dois estados. O Ctrl do gesto compõe com ela em
+    /// [`MarqueeShape::for_gesture`].
+    pub marquee: MarqueeShape,
     /// A forma ATIVA do catálogo (só importa no modo [`DrawMode::Shape`]).
     pub shape: ShapeKind,
     /// Os parâmetros dela, na unidade em que o usuário os autora (px para raios). A
@@ -426,6 +432,7 @@ impl Default for VectorDrawConfig {
             pencil_stabilizer: PENCIL_STABILIZER_DEFAULT,
             pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource::default(),
             symmetry: ph2d_symmetry::SymmetryStyle::default(),
+            marquee: MarqueeShape::default(),
         }
     }
 }

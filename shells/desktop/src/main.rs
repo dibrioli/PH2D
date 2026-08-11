@@ -204,6 +204,7 @@ mod keymap;
 mod knot_smoke;
 mod ktx2_smoke;
 mod label_live;
+mod lasso_smoke;
 mod layout_live;
 mod layout_reorder;
 /// `layout_scroll_gesture`: a roda que rola uma moldura (o motor e' o `layout_live::scroll`).
@@ -454,6 +455,7 @@ mod vec_guide;
 /// A CÓPIA segue a âncora do mestre — o corolário da âncora viva, do lado do componente.
 mod vec_instance_follow;
 mod vec_layout_edit;
+mod vec_marquee;
 mod vec_overlay;
 mod vec_overlay_diag;
 mod vec_pencil_input;

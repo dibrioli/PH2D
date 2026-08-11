@@ -77,7 +77,7 @@ mod path_join;
 /// seta é um [`VecPath`] que **não vive na cena**, então o hit-test precisa poder perguntar por
 /// CAMINHO, e não só por id — senão a parte gorda da seta fica invisível para o mouse.
 mod inside;
-pub use inside::contains_point;
+pub use inside::{contains_point, point_in_polygon};
 
 /// Reshape ops (smooth / sharpen / simplify / subdivide), likewise a sibling. Publica também o
 /// [`reshape::dissolve_vertex`] — a porta única de *"apaga este nó e preserva a curva"*, partilhada

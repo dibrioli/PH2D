@@ -1019,10 +1019,10 @@ pub(crate) struct App {
     /// evita refazer o pick (hit-test + cortes) a cada frame com o mouse parado. Ver
     /// `flip_select_segment::hover_refresh`.
     pub(crate) flip_segment_hover_at: Option<(f32, f32)>,
-    /// ADR-0108 Fase 1: node box-select marquee (screen-space `(start, current)`,
-    /// same `(f32, f32)` as `last_pointer`) — Shift+drag on empty canvas while the
-    /// Vector tool is active. `None` when idle; on release drives `box_select`.
-    pub(crate) vec_marquee: Option<((f32, f32), (f32, f32))>,
+    /// ADR-0108 Fase 1: o gesto de REGIÃO do modo Node (px de tela, o mesmo `(f32, f32)` do
+    /// `last_pointer`) — arrastar do vazio com a ferramenta Vector activa. `None` = parado; no
+    /// release dirige `box_select_with` ou `lasso_select_with`, conforme a forma que ele congelou.
+    pub(crate) vec_marquee: Option<crate::vec_marquee::VecMarquee>,
     /// **O conector em construção** (modo `DrawMode::Connect`, Down..Up). O path já está na
     /// cena desde o Down e o componente já está na entidade: o "preview" do arrasto É o
     /// conector de verdade, re-cozido pela MESMA `route` a cada frame — o que se vê é o que

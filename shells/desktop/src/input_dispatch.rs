@@ -43,6 +43,7 @@ use crate::forwarding::{
     cursor_over_hero_panel, forward_text_to_hero, forward_to_hero, forward_wheel_to_hero,
     resolve_live_entry,
 };
+use ph2d_tool_vector::params::MarqueeShape;
 
 // `impl App` is split across sibling modules (see the eyedropper /
 // keyboard handlers) to keep this file under the HR-18 LOC cap.
@@ -2871,10 +2872,10 @@ impl App {
         if self.onion_modal_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
-        // ADR-0108 Fase 1: node box-select marquee — while Shift+dragging, grow
-        // the box. Early-return so it doesn't pan / draw. No-op unless active.
+        // ADR-0108 Fase 1: o gesto de REGIÃO do modo Node — o canto vivo segue, e o LAÇO grava
+        // mais um ponto se andou o bastante. Early-return para não panar / desenhar. No-op parado.
         if let Some(m) = self.vec_marquee.as_mut() {
-            m.1 = self.last_pointer;
+            m.advance(self.last_pointer);
             return;
         }
         // Shape Builder: o realce segue o cursor mesmo SEM botão apertado (é o que
@@ -3801,7 +3802,10 @@ impl App {
                         self.vec_grad_drag = None;
                         return;
                     }
-                    self.vec_marquee = Some((self.last_pointer, self.last_pointer));
+                    self.vec_marquee = Some(crate::vec_marquee::VecMarquee::open(
+                        self.marquee_shape_for_press(),
+                        self.last_pointer,
+                    ));
                     return;
                 }
                 (ph2d_host::PointerButton::Primary, PointerKind::Down) if on_canvas => {
@@ -3837,7 +3841,10 @@ impl App {
                                 .path_at(&gfx.vec_scene, w, HANDLE_HIT_PX * px)
                                 .is_none();
                         if empty {
-                            self.vec_marquee = Some((self.last_pointer, self.last_pointer));
+                            self.vec_marquee = Some(crate::vec_marquee::VecMarquee::open(
+                                self.marquee_shape_for_press(),
+                                self.last_pointer,
+                            ));
                             return;
                         }
                     }
@@ -4250,24 +4257,42 @@ impl App {
                     }
                     // (A alça do texto em caminho é do modo Select — o Up dela mora lá em cima,
                     // ao lado do Up do conector; não aqui, que é o caminho de Node.)
-                    // Marquee release → box-select the anchors inside the box.
-                    if let Some((start, cur)) = self.vec_marquee.take() {
-                        // **Shift SOMA** (o retângulo de todo app); sem ele, substitui. E um
-                        // retângulo de tamanho zero é um CLIQUE no vazio: ele desseleciona, em vez
-                        // de fazer um box-select que não apanha nada e deixa a seleção intacta.
+                    // Fim do gesto de REGIÃO → selecciona as âncoras dentro dela.
+                    if let Some(m) = self.vec_marquee.take() {
+                        // **Shift SOMA** (o retângulo de todo app); sem ele, substitui. E uma
+                        // região de tamanho zero é um CLIQUE no vazio: ela desseleciona, em vez
+                        // de fazer um select que não apanha nada e deixa a seleção intacta.
                         let additive = self.modifiers.shift_key();
+                        let (start, cur) = (m.start, m.cur);
                         let moved = (start.0 - cur.0).abs() > 1.0 || (start.1 - cur.1).abs() > 1.0;
                         if let Some(gfx) = self.gfx.as_mut() {
                             if moved {
                                 let win = gfx.surface.size();
-                                let a = gfx.camera.screen_to_world(start, win);
-                                let b = gfx.camera.screen_to_world(cur, win);
-                                self.vec_pen.box_select_with(
-                                    &gfx.vec_scene,
-                                    [a[0] as f64, a[1] as f64],
-                                    [b[0] as f64, b[1] as f64],
-                                    additive,
-                                );
+                                let to_world = |p: (f32, f32)| {
+                                    let w = gfx.camera.screen_to_world(p, win);
+                                    [w[0] as f64, w[1] as f64]
+                                };
+                                match m.shape {
+                                    MarqueeShape::Box => self.vec_pen.box_select_with(
+                                        &gfx.vec_scene,
+                                        to_world(start),
+                                        to_world(cur),
+                                        additive,
+                                    ),
+                                    // ⚠️ O polígono é convertido a MUNDO ponto a ponto, e é aqui
+                                    // que o LAÇO tem de o ser: as âncoras que ele julga sobem
+                                    // pelo afim de cada forma (ADR-0111), então a pergunta só faz
+                                    // sentido no espaço que as duas partilham.
+                                    MarqueeShape::Lasso => {
+                                        let poly: Vec<[f64; 2]> =
+                                            m.closed_path().into_iter().map(to_world).collect();
+                                        self.vec_pen.lasso_select_with(
+                                            &gfx.vec_scene,
+                                            &poly,
+                                            additive,
+                                        );
+                                    }
+                                }
                             } else if !additive {
                                 self.vec_pen.select(None);
                             }

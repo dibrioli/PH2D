@@ -113,3 +113,49 @@ impl DrawMode {
         self == DrawMode::Chamfer
     }
 }
+
+/// **A FORMA da região que o marquee do modo Node desenha** — o retângulo de sempre, ou o LAÇO.
+///
+/// Não é um [`DrawMode`], e a distinção decide o resto: um modo é *o que a ferramenta na mão faz*,
+/// e o marquee não é uma ferramenta — é o gesto que acontece ao pressionar o vazio DENTRO do modo
+/// Node. Um 15º pill obrigaria a entrar nele, laçar uma vez e sair; a forma da região é uma
+/// propriedade do gesto, não um lugar onde se está.
+///
+/// ⚠️ **Ela é PEGAJOSA e MOMENTÂNEA ao mesmo tempo, por [`Self::for_gesture`]** — o chip diz qual
+/// é a de sempre (é a afordância: um atalho que ninguém descobre é uma feature que não existe), e
+/// o **Ctrl** troca a de UM gesto (é a saída de fluxo: o laço serve a uma seleção em cinco, e
+/// obrigar a ida-e-volta ao painel por causa dela é o que torna um modo pior que um modificador).
+/// **Uma pergunta, uma porta** — o que este repo evita são duas *implementações*, não duas
+/// entradas na mesma função.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum MarqueeShape {
+    /// O retângulo entre os dois cantos do arrasto — cobre o caso comum.
+    #[default]
+    Box,
+    /// O **laço**: a região é o caminho que a mão desenhou, fechado da ponta ao começo. É o que
+    /// alcança nós entremeados com outros, que nenhum retângulo separa.
+    Lasso,
+}
+
+impl MarqueeShape {
+    /// A outra — o que o Ctrl faz.
+    #[must_use]
+    pub fn other(self) -> Self {
+        match self {
+            Self::Box => Self::Lasso,
+            Self::Lasso => Self::Box,
+        }
+    }
+
+    /// **A porta única: que forma tem ESTE gesto?** `sticky` é o chip do painel; `ctrl` é o
+    /// modificador segurado no PRESS.
+    ///
+    /// ⚠️ **Perguntada UMA vez, no press, e o resultado congela até soltar** — a mesma lei da
+    /// régua do gesto de exposição da tira do Flip. Se ela fosse relida por movimento, largar o
+    /// Ctrl no meio do arrasto morfaria a região sob a mão: o artista veria o caminho que desenhou
+    /// virar um retângulo entre dois pontos que ele nunca escolheu.
+    #[must_use]
+    pub fn for_gesture(sticky: Self, ctrl: bool) -> Self {
+        if ctrl { sticky.other() } else { sticky }
+    }
+}

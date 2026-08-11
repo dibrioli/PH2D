@@ -141,6 +141,10 @@ pub struct VectorTool {
     /// ou não. O LUGAR da linha não está aqui: ele pertence ao desenho e viaja no componente dele
     /// (`ph2d_ecs::VecSymmetry`). Um centro guardado na ferramenta seria um campo que nunca se lê.
     symmetry: ph2d_symmetry::SymmetryStyle,
+    /// **A forma PEGAJOSA do marquee do modo Node** (`Box | Lasso`) — estado AUTORADO da
+    /// ferramenta, como o estabilizador do lápis. O documento não a guarda: ela decide o GESTO,
+    /// não o que o gesto produz.
+    marquee: crate::params::MarqueeShape,
     /// Canvas gesture: Pen (draw + edit) vs a drag-to-size shape. The shell
     /// mirrors this each frame to route canvas input (`vector_bridge`).
     mode: DrawMode,
@@ -210,6 +214,7 @@ impl Default for VectorTool {
             pencil_stabilizer: crate::params::PENCIL_STABILIZER_DEFAULT,
             pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource::default(),
             symmetry: ph2d_symmetry::SymmetryStyle::default(),
+            marquee: crate::params::MarqueeShape::default(),
             mode: DrawMode::Select,
             blend_stack_up: true,
             shape: ShapeKind::default(),
@@ -440,6 +445,7 @@ impl VectorTool {
             pencil_stabilizer: self.pencil_stabilizer,
             pencil_width_source: self.pencil_width_source,
             symmetry: self.symmetry,
+            marquee: self.marquee,
         }
     }
 
@@ -471,6 +477,7 @@ impl VectorTool {
             blend_stack_up: self.blend_stack_up,
             pencil_width_source: self.pencil_width_source,
             symmetry: self.symmetry,
+            marquee: self.marquee,
             shape: self.shape,
             values: self.shape_values(self.shape),
             cap: self.cap,

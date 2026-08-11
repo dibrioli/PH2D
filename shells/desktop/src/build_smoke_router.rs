@@ -338,5 +338,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::multi_node_smoke::frame(app, f);
         return true;
     }
+    // ⭐ O LAÇO (=71) — irmã `lasso_smoke`. Uma fileira ALTERNADA: as azuis são o alvo e cada
+    // âmbar fica entre duas delas, então nenhum retângulo separa o conjunto que o pedido nomeia.
+    if level == 71 {
+        crate::lasso_smoke::frame(app, f);
+        return true;
+    }
     false
 }

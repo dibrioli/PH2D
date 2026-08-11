@@ -111,6 +111,10 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // Os dois botões da seção CUT — executar e descartar a linha de corte.
         || id == ids::VECTOR_CUT_APPLY
         || id == ids::VECTOR_CUT_DISCARD
+        // **A FORMA do marquee** (`Box | Lasso`) — a tool é a dona do valor pegajoso, então o
+        // clique atravessa o barramento como o dos pills de modo.
+        || id == ids::VECTOR_MARQUEE_BOX
+        || id == ids::VECTOR_MARQUEE_LASSO
         // **Resize Box** (W3b) — o override mora no COMPONENTE, então o clique atravessa o
         // barramento. Sem esta linha ele pintaria, acenderia sob o rato e o Click morreria aqui.
         || id == ids::VECTOR_TRANSFORM_RESIZE_BOX

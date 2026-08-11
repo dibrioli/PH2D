@@ -89,6 +89,14 @@ impl VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_PENCIL_W_PRESSURE => {
                 self.pencil_width_source = ph2d_vec_edit::pencil_width::WidthSource::Pressure;
             }
+            // **A FORMA do marquee** — o par pegajoso. Escolher um NÃO arma o modo Node: a row só
+            // é pintada nele, então já se está lá (a mesma lei da fonte de largura acima).
+            PanelEvent::Click(id) if id == ids::VECTOR_MARQUEE_BOX => {
+                self.marquee = crate::params::MarqueeShape::Box;
+            }
+            PanelEvent::Click(id) if id == ids::VECTOR_MARQUEE_LASSO => {
+                self.marquee = crate::params::MarqueeShape::Lasso;
+            }
             // **A SIMETRIA de desenho** (W6.3) — o par que arma o modo e os quatro tipos.
             //
             // ⚠️ O `Enable` fica no TOPO e gateia toda a seção (a lei que o Enio estabeleceu no

@@ -7921,13 +7921,26 @@ impl crate::App {
                         vector_scene,
                     );
                 }
-                // Box-select marquee (Shift+drag), in screen-space.
-                if let Some((start, cur)) = self.vec_marquee {
-                    ph2d_vec_render::draw_marquee(
-                        [f64::from(start.0), f64::from(start.1)],
-                        [f64::from(cur.0), f64::from(cur.1)],
-                        vector_scene,
-                    );
+                // O gesto de REGIÃO em curso, em px de tela — retângulo ou LAÇO, conforme a
+                // forma que o press congelou.
+                if let Some(m) = self.vec_marquee.as_ref() {
+                    match m.shape {
+                        ph2d_tool_vector::params::MarqueeShape::Box => {
+                            ph2d_vec_render::draw_marquee(
+                                [f64::from(m.start.0), f64::from(m.start.1)],
+                                [f64::from(m.cur.0), f64::from(m.cur.1)],
+                                vector_scene,
+                            );
+                        }
+                        ph2d_tool_vector::params::MarqueeShape::Lasso => {
+                            let pts: Vec<(f64, f64)> = m
+                                .closed_path()
+                                .into_iter()
+                                .map(|(x, y)| (f64::from(x), f64::from(y)))
+                                .collect();
+                            ph2d_vec_render::draw_lasso(&pts, vector_scene);
+                        }
+                    }
                 }
             }
             // **A LINHA DE CORTE** (W4) — hachurada, com a tesoura na ponta. Ela é a única

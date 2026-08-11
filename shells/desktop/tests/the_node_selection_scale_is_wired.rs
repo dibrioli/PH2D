@@ -67,10 +67,11 @@ fn a_press_on_empty_canvas_opens_the_marquee_before_the_node_press() {
 /// uma forma sem clicar noutra.
 #[test]
 fn the_marquee_release_adds_with_shift_and_deselects_on_a_bare_click() {
-    let take = at(
-        DISPATCH,
-        "if let Some((start, cur)) = self.vec_marquee.take()",
-    );
+    // ⚠️ A âncora é a CHAMADA que fecha o gesto, não o padrão que a desestrutura: este gate já
+    // reprovou uma vez por ancorar em `Some((start, cur))`, que a wave do LAÇO trocou por
+    // `Some(m)` quando o gesto passou a carregar a forma. O `at` panica com a razão — é o
+    // controle positivo, e é o que torna isto uma falha alta em vez de uma varredura vazia.
+    let take = at(DISPATCH, "self.vec_marquee.take()");
     let call = at(&DISPATCH[take..], "box_select_with(") + take;
     let window = &DISPATCH[take..call];
     assert!(

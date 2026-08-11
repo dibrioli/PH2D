@@ -57,3 +57,18 @@ pub const VECTOR_BOOL_CROP: NodeId = hash_node_id("vector.bool.crop");
 
 /// **Merge** — Trim, e depois as de MESMO preenchimento que se tocam viram uma.
 pub const VECTOR_BOOL_MERGE: NodeId = hash_node_id("vector.bool.merge");
+
+// ── A FORMA do marquee (bloco APPEND-ONLY, plano 25 §9, o LAÇO) ──────────────
+// Vive no módulo da topologia por vizinhança de assunto: como o Corte, é um par de chips colado
+// na fileira TOOL que qualifica o gesto que o modo em mãos executa — não um estilo, não uma forma
+// do catálogo.
+
+/// **Marquee: Box** — a região do arrasto no vazio é o retângulo entre os dois cantos.
+pub const VECTOR_MARQUEE_BOX: NodeId = hash_node_id("vector.marquee.box");
+
+/// **Marquee: Lasso** — a região é o caminho que a mão desenhou, fechado da ponta ao começo.
+///
+/// ⚠️ Os dois são a metade PEGAJOSA da resposta; o **Ctrl** troca a de um gesto só
+/// (`MarqueeShape::for_gesture`). O chip existe porque um atalho que ninguém descobre é uma
+/// feature que não existe — a mesma razão pela qual o *Select Subpath* é botão e não tecla.
+pub const VECTOR_MARQUEE_LASSO: NodeId = hash_node_id("vector.marquee.lasso");

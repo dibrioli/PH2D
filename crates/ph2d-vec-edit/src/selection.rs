@@ -296,15 +296,47 @@ impl PenTool {
     ) {
         let (x0, x1) = (min[0].min(max[0]), min[0].max(max[0]));
         let (y0, y1) = (min[1].min(max[1]), min[1].max(max[1]));
-        let inside = |a: [f64; 2]| a[0] >= x0 && a[0] <= x1 && a[1] >= y0 && a[1] <= y1;
-        // A caixa é world; as âncoras são locais (ADR-0111). Captura só `xforms`
-        // (não `self`) para não travar `self.selected` no borrow-check.
+        self.select_verts_where(scene, additive, |a| {
+            a[0] >= x0 && a[0] <= x1 && a[1] >= y0 && a[1] <= y1
+        });
+    }
+
+    /// **O LAÇO**: as âncoras dentro do polígono `poly` (fechado, em MUNDO) — a mesma seleção do
+    /// retângulo, com a região desenhada à mão em vez de dois cantos.
+    ///
+    /// ⚠️ **O laço não é uma segunda seleção, é um segundo PREDICADO.** O corpo (o filtro de
+    /// escondido/travado, o modo aditivo, o primário que segue, o `selected_paths`) é o MESMO do
+    /// [`Self::box_select_with`], pela porta [`Self::select_verts_where`] — dois corpos divergiriam
+    /// no dia em que um deles ganhasse um caso especial, e o artista veria o laço deixar de somar
+    /// (ou de respeitar uma forma travada) sem nada na tela dizer porquê. O gate que prova isto
+    /// não conhece a implementação: um laço cujo polígono É um retângulo tem de apanhar
+    /// **exatamente** o que a caixa apanha.
+    ///
+    /// Polígono com menos de 3 pontos não delimita área: não apanha nada (e, não sendo aditivo,
+    /// limpa a seleção de nós — é um gesto que falhou, como um retângulo de área zero).
+    pub fn lasso_select_with(&mut self, scene: &VecScene, poly: &[[f64; 2]], additive: bool) {
+        self.select_verts_where(scene, additive, |a| {
+            ph2d_vec_scene::point_in_polygon(poly, a)
+        });
+    }
+
+    /// **O corpo ÚNICO da seleção por região** — a caixa e o laço só trazem o predicado.
+    ///
+    /// `inside` decide em MUNDO: as âncoras são LOCAIS (ADR-0111) e sobem pelo afim da forma antes
+    /// da pergunta, porque é o desenho na tela que o artista está a cercar.
+    fn select_verts_where(
+        &mut self,
+        scene: &VecScene,
+        additive: bool,
+        inside: impl Fn([f64; 2]) -> bool,
+    ) {
+        // Captura só `xforms` (não `self`) para não travar `self.selected` no borrow-check.
         let xforms = &self.xforms;
         let in_world =
             |id: VecPathId, a: [f64; 2]| inside(ph2d_vec_scene::xform_of(xforms, id).apply(a));
-        // ⚠️ **A caixa respeita ESCONDIDO e TRAVADO, e a exigência nasceu com esta wave.** Antes
-        // ela elegia um caminho só, e o `is_pickable` faltava sem consequência visível na maioria
-        // dos gestos; agora que ela apanha TODAS as formas cobertas, uma forma invisível entraria
+        // ⚠️ **A região respeita ESCONDIDO e TRAVADO, e a exigência nasceu com a wave do dono.**
+        // Antes a caixa elegia um caminho só, e o `is_pickable` faltava sem consequência visível
+        // na maioria dos gestos; apanhando TODAS as formas cobertas, uma forma invisível entraria
         // na seleção em silêncio e o Delete seguinte apagaria nós que ninguém vê — exatamente o
         // modo de falha que o comentário antigo usava para justificar a eleição.
         let hits: Vec<(VecPathId, usize)> = scene
@@ -326,7 +358,7 @@ impl PenTool {
                 self.selected_verts.push(h);
             }
         }
-        // O objeto acompanha os nós: quem tem nó escolhido está selecionado. Uma caixa VAZIA não
+        // O objeto acompanha os nós: quem tem nó escolhido está selecionado. Uma região VAZIA não
         // desmancha a seleção de objeto (o gesto falhou; desselecionar seria uma segunda coisa que
         // o artista não pediu), e o PRIMÁRIO só se move se o antigo saiu de cena — senão o painel
         // de estilo saltaria de forma a cada retângulo.
@@ -610,3 +642,8 @@ mod multi_probe;
 #[cfg(test)]
 #[path = "multi_path_tests.rs"]
 mod multi_path_tests;
+
+/// Gates do **LAÇO** — a segunda forma da região, e a equivalência que prova o corpo partilhado.
+#[cfg(test)]
+#[path = "lasso_tests.rs"]
+mod lasso_tests;

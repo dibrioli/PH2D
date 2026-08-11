@@ -38,7 +38,14 @@ mod frame_clip;
 
 /// Smart guides (o feedback visual do snap), likewise a sibling.
 mod cut_line;
+
+/// **O que o GESTO desenha** — o retângulo e o laço da região em curso. Irmão pelo teto de 700
+/// LOC, e o corte é por assunto: tudo o mais neste arquivo desenha o que o DOCUMENTO é (ou as
+/// alças que o editam), e estes dois desenham uma coisa que ainda não existe — a região que a mão
+/// está a delimitar, em px de tela, e que some ao soltar.
+mod marquee;
 pub use cut_line::draw_cut_line;
+pub use marquee::{draw_lasso, draw_marquee};
 mod guides;
 pub use guides::{Guide, GuideKind, draw_document_guides, draw_snap_guides, draw_text_caret};
 /// As linhas de SIMETRIA no canvas (plano 25 W6.3) — irmão de `guides` e consumidor do mesmo
@@ -479,35 +486,6 @@ pub use instance::{draw_shape_instance, draw_shared_instances};
 /// é por assunto: aqui o desenho da ARTE, ali o dos controles que a editam.
 mod overlays;
 pub use overlays::{draw_overlays, overlay_transform};
-
-/// Desenha a caixa de **marquee** (box-select) em **screen-space** (o shell
-/// passa cantos de tela): preenchimento translúcido + contorno. Chamada só
-/// enquanto o Shift+arrasto está ativo.
-pub fn draw_marquee(min: [f64; 2], max: [f64; 2], target: &mut VectorScene) {
-    let (x0, x1) = (min[0].min(max[0]), min[0].max(max[0]));
-    let (y0, y1) = (min[1].min(max[1]), min[1].max(max[1]));
-    let rect = Rect::new(x0, y0, x1, y1);
-    target.inner_mut().fill(
-        Fill::NonZero,
-        Affine::IDENTITY,
-        &Brush::Solid(Color::from_rgba8(90, 200, 235, 40)),
-        None,
-        &rect,
-    );
-    let mut outline = BezPath::new();
-    outline.move_to(Point::new(x0, y0));
-    outline.line_to(Point::new(x1, y0));
-    outline.line_to(Point::new(x1, y1));
-    outline.line_to(Point::new(x0, y1));
-    outline.close_path();
-    target.inner_mut().stroke(
-        &Stroke::new(1.0),
-        Affine::IDENTITY,
-        &Brush::Solid(Color::from_rgba8(90, 200, 235, 200)),
-        None,
-        &outline,
-    );
-}
 
 /// `StrokeSpec` → `kurbo::Stroke` (ponta/junção + dash). Larguras/dashes ficam em
 /// world-units; o `transform` do render escala p/ screen.

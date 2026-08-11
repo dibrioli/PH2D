@@ -466,8 +466,8 @@ estado de documento — uma linha na fila que o Ctrl+Z não teria o que desfazer
 10 gates novos (6 de motor + 1 de seam + 4 arch-gates de shell), **6 mutações, 6 sangram**. Nenhum
 schema, nenhum contrato congelado. Smoke: **`PH2D_BUILD_SMOKE=43`**, passos 9-15.
 
-**Aberto, e nomeado:** o **lasso** (a caixa cobre o caso comum; o laço quer captura de polígono +
-overlay próprio — wave dela) · **X/Y numérico do nó** (é *precisão*, e cai naturalmente na **W6**,
+**Aberto, e nomeado:** ~~o **lasso** (a caixa cobre o caso comum; o laço quer captura de polígono +
+overlay próprio — wave dela)~~ ✅ **FECHADO pela W6.5** (no fim desta §6) · **X/Y numérico do nó** (é *precisão*, e cai naturalmente na **W6**,
 que é a wave da precisão) · ~~e **editar nós de várias formas ao mesmo tempo**, que segue **G** e
 por construção~~ ✅ **FECHADO pela W6.4** (abaixo) — e era ele o **pré-requisito do lasso**: um laço
 que varre os nós de duas formas não significa nada enquanto a seleção só souber guardar os de uma.
@@ -540,6 +540,94 @@ mediu a resposta só podia ser 0 ou 1.
 **Nenhum schema, nenhum contrato congelado, nenhum ADR, nenhuma dep.** Smoke:
 **`PH2D_BUILD_SMOKE=70`** — três formas, a do meio **escalada 2×** (a premissa que torna a cena
 capaz de reprovar; a cena IMPRIME a escala que encontrou).
+
+### ✅ W6.5 — ENTREGUE: o LAÇO
+
+A região que o arrasto no vazio desenha deixou de ser só um retângulo. O plano nomeava o laço como
+*"wave dela"*, e a W6.4 era o pré-requisito declarado — um laço que varre os nós de duas formas não
+significa nada enquanto a seleção só souber guardar os de uma.
+
+**⚠️ O laço não é uma segunda seleção; é um segundo PREDICADO.** O corpo — o filtro de
+escondido/travado, o modo aditivo, o primário que segue o último tocado, o `selected_paths` — é o
+MESMO do retângulo, pela porta `select_verts_where`. Duas cópias divergiriam no dia em que uma
+ganhasse um caso especial, e o artista veria o laço deixar de somar (ou de respeitar uma forma
+travada) sem nada na tela dizer porquê.
+
+**⚠️ E o gate que carrega a wave não conhece a implementação:** *um laço cujo polígono É um
+retângulo apanha exatamente o que a caixa apanha* — cinco regiões, comparando `selected_verts`,
+`selected_paths` e o primário entre as duas portas públicas. Se alguém der ao laço uma cópia do
+corpo, ele continua verde no dia da cópia e fica vermelho no primeiro refino de uma só.
+
+**⚠️ O discriminador é o laço CÔNCAVO.** Um laço implementado como a caixa envolvente do próprio
+caminho passa em todo gate de contagem — é a forma mais provável de a feature nascer errada, porque
+*funciona* em toda fixture convexa. O gate usa um "C" cuja caixa cobre as duas formas e cujo
+interior não contém nó nenhum: **0 contra 8**.
+
+**A GEOMETRIA vive uma vez.** O teste de cruzamento (a regra semi-aberta
+`(a.y > p.y) != (b.y > p.y)`, que é o que impede um vértice à altura do raio de contar duas vezes)
+saiu para `ph2d_vec_scene::inside::crossing_counts`, com **dois** consumidores: o `contains_point`
+de uma forma (que soma sobre os contornos e só então aplica a regra de preenchimento) e o
+`point_in_polygon` do laço (um polígono, paridade). ⚠️ **E a mutação óbvia era INVÁLIDA:** trocar
+`>` por `>=` **não** é um defeito — são as duas ancoragens da MESMA regra semi-aberta, e as duas
+contam cada vértice uma vez. A que erra é a **assimétrica** (`>=` de um lado, `>` do outro), que
+conta duas; ela sangra.
+
+**O GESTO: pegajoso E momentâneo, por uma porta.** O chip `Marquee: Box | Lasso` diz qual é a de
+sempre; o **Ctrl** troca a de UM gesto (`MarqueeShape::for_gesture`). Não são duas portas para uma
+pergunta — é uma função com duas entradas; o que este repo evita são duas *implementações*.
+
+- **O chip existe** porque *um atalho que ninguém descobre é uma feature que não existe* — a mesma
+  lei que fez do *Select Subpath* um botão e não uma tecla.
+- **O Ctrl existe** porque a região é um **gesto**, não um lugar onde se está: o laço serve a uma
+  seleção em cinco, e obrigar a ida-e-volta ao painel por causa dela é o que torna um modo pior que
+  um modificador. Um chip pegajoso esquecido também faz o próximo arrasto ser um laço — um
+  retângulo pior.
+- ⚠️ **`Alt` está fora, e é MEDIDO:** este repo já registrou que o KDE o rouba (a nota do
+  `PH2D_STAGGER_SMOKE`). E `Ctrl` estava **livre** no press de canvas em modo Node — os dois usos de
+  `cmd_held` do `input_dispatch` ficam depois do `return` do marquee.
+
+**⚠️ A forma congela no PRESS.** Relê-la por movimento faria largar o Ctrl a meio do arrasto morfar
+a região sob a mão: o artista veria o caminho que desenhou virar um retângulo entre dois pontos que
+ele nunca escolheu. É a lei da régua congelada no `Begin` do arrasto de exposição da tira do Flip.
+
+**⚠️ E a soltura PROMOVE a amostra que o piso recusou.** O laço grava um ponto a cada 2 px (sem
+piso, um rato de 960 Hz descreve com milhares de vértices uma curva que dois píxeis descrevem), e o
+fecho é onde a mão soltou — não no último ponto aceito. É a lição do motor de traço do Flip (*"o
+traço acaba onde a mão soltou"*), e aqui ela decide uma **seleção**: o vão entre o penúltimo ponto e
+o dedo é uma aresta de fecho que passa por onde o artista não desenhou.
+
+**⚠️ O chip mora colado à fileira TOOL, e não na seção VERTEX** — que seria o vizinho temático
+óbvio. Aquela seção só existe **com um vértice já selecionado**, então um controle de *como
+selecionar* moraria lá exatamente onde não se precisa dele: invisível no estado em que o artista o
+procura, que é antes de ter selecionado o que quer que seja. O precedente do lugar é a linha do
+CORTE, uma função acima, com a razão já escrita.
+
+**23 gates, 11 mutações, 11 sangram** (mais uma inválida, registrada acima). **Nenhum schema**
+(`PROJECT_SCHEMA` 72 e `VEC_SCENE_SCHEMA` 14 intocados, por `git diff`), **nenhum contrato
+congelado** (4/4 + 3/3), **zero `Cargo.toml`**, **nenhuma dep**. Ids novos: `VECTOR_MARQUEE_BOX` ·
+`VECTOR_MARQUEE_LASSO` (hash de string ⇒ fora de todo contador).
+
+**LOC — dois cortes por ASSUNTO, os dois pelo gate certo:** `ph2d-vec-render/src/lib.rs` (715 > 700)
+cedeu os dois pintores da região para `marquee.rs` — *tudo o mais na crate desenha o que o documento
+É; estes desenham uma coisa que ainda não existe e some ao soltar*; e `paint_modes.rs` (628 > 600, o
+cap de PAINEL, que é **outro gate**) cedeu a família de TEXTO para `paint_text_sections.rs`, na
+fronteira que o cabeçalho dele **já declarava**.
+
+⚠️ **E um arch-gate existente reprovou — pelo motivo certo.** O
+`the_marquee_release_adds_with_shift_and_deselects_on_a_bare_click` ancorava no padrão
+`Some((start, cur))`, que esta wave trocou por `Some(m)` quando o gesto passou a carregar a forma. A
+**propriedade** que ele afirma continua verdadeira; o **endereço** é que se mudou. Re-ancorado na
+chamada (`self.vec_marquee.take()`) — e foi o `expect` do helper (o controle positivo) que tornou
+isto uma falha alta em vez de uma varredura vazia a passar.
+
+**Smoke: `PH2D_BUILD_SMOKE=71`** — uma fileira ALTERNADA (azul · âmbar · azul · …), e o pedido é
+*"os nós das três azuis e de nenhuma âmbar"*: **nenhum retângulo separa esse conjunto**. Num par de
+formas separadas o retângulo faz tudo o que o laço faz, e um smoke sobre essa cena aprovaria um laço
+que fosse a caixa envolvente do próprio caminho.
+
+**Aberto:** o laço de **TOQUE** (o `Alt+drag` do Inkscape: selecionar tudo o que o *caminho* cruza,
+em vez do que ele cerca) é outra pergunta e outro gesto — não construído, e nomeado aqui para não
+ser confundido com este.
 
 ## §7 — W4: OS CORTES
 

@@ -90,7 +90,7 @@ do item de infra, e não por gosto de ordem.
 | **nadar** | ✅ real — é *feature*, nunca foi correção |
 | **a FORÇA de uma zona não leva um cinemático** | ✅ real — e é **desenho**, não esquecimento (ver §4.2) |
 | **`fall_gravity` na entrada da água** | ⚠️ **é ajuste de APARÊNCIA, não wave** (ver §4.7) |
-| **o sensor lateral só olha o meio do corpo** | ❌ **JÁ FEITO** — `WALL_SAMPLES = 3` cobre o flanco; o que resta é a fresta sub-meia-altura, e a cura dela é o **shape cast** (§4.3) |
+| **o sensor lateral só olha o meio do corpo** | ❌ **JÁ FEITO** — `WALL_SAMPLES = 3` cobre o flanco. ⚠️ E a fresta que restava foi **MEDIDA na §4.3 e é benigna**: para os três raios falharem juntos ela teria de ser mais alta que o corpo. O shape cast existe (`sweep_body`) e a parede **não** o usa, com motivo |
 
 ---
 
@@ -272,21 +272,48 @@ solver** — nunca uma re-derivação no lado do player.
 Vem logo depois do nadar porque **os dois se encontram na mesma cena**: um
 nadador numa correnteza é o teste de que as duas metades falam a mesma língua.
 
-### 4.3 · `W-ShapeCast` — **o wrapper ganha varredura de FORMA** ⟨infra⟩
+### 4.3 · ~~`W-ShapeCast`~~ ✅ **FEITO** — o wrapper varre o CORPO
 
-Não é feature: é o que os **três** sensores pedem por escrito (`wall.rs`), e o
-que o ledge grab exige para existir. Um `cast_shape` responde *"o corpo cabe
-aqui?"* em vez de *"esta linha toca algo?"*, e com ele:
+**A porta é `PhysicsWorld::sweep_body`** (`world/sweep.rs`): varre **todos** os
+colliders do corpo ao longo de uma direção e devolve o impacto mais próximo, com
+o mesmo filtro do `cast_ray` (camadas · `EXCLUDE_SENSORS` · a exclusão do próprio
+corpo, que aqui deixa de ser higiene e passa a ser aritmética — a forma nasce em
+cima do próprio collider).
 
-* a fresta sub-meia-altura deixa de ser invisível (o resto do item 4 do Enio);
-* o chão deixa de ser **um raio** — o problema que o tnua documenta e que nós
-  temos igual;
-* o ledge grab passa a ter como perguntar *onde o chão acaba*.
+**Medido ANTES de uma linha ser escrita** (`measure_the_gap_between_rays`), e o
+defeito estava na direção que um doc declarava impossível: um pilar de **8 cm**
+posto no vão entre duas amostras do sensor do agachar punha a cabeça a **1,267**
+contra uma face de pedra em **1,25**, com o corpo ainda debaixo dela; um de 4 cm
+fazia o solver expulsá-lo **0,155 m** de lado. O doc do `probe_headroom` dizia
+*"o erro possível é ficar agachado onde caberia, nunca levantar-se para dentro da
+pedra"* — verdade sobre a **caixa contra a cápsula**, falsa sobre o vão entre dois
+raios, e a segunda metade é a perigosa.
 
-⚠️ **Toca `ph2d-physics` (o wrapper), que é a crate mais compartilhada desta
-linha** — por isso vem CEDO, com tempo para o problema aparecer, e não véspera de
-integração. O rapier já traz `cast_shape`; o trabalho é a porta, o filtro
-(`EXCLUDE_SENSORS`, a mesma frase do `cast_ray`) e o determinismo.
+**O consumidor é o sensor do AGACHAR**, e ele devolveu duas coisas: o vão cego
+morreu, e a **caixa envolvente** morreu com ele (a varredura usa a cápsula, o que
+vale **18 cm** de altura de teto que a caixa recusava sobre espaço vazio).
+
+⚠️ **Os outros dois sensores NÃO foram convertidos, e o motivo está em cada um:**
+
+| sensor | por que fica de raios |
+|---|---|
+| **quina** (65 amostras) | é um **PERFIL** — a lei precisa de saber *onde* há teto para escolher para que lado escapar, e uma varredura devolve **um** contacto |
+| **parede** (3 alturas) | a lei **reduz** sobre as amostras com a régua da perna (`max_slope`) para decidir *qual* superfície é parede; uma varredura entregaria a rampa aos pés. Trocar seria perder a escolha, não ganhar precisão |
+
+E o vão cego que sobra na parede é o **benigno** (um buraco reportado como
+parede): para os três raios falharem juntos a fresta teria de ser mais alta que o
+corpo, e aí não há parede em frente ao corpo.
+
+⚠️ **A promessa do ledge grab NÃO foi paga aqui, e a §4.5 muda de forma por
+causa disso:** *"onde o chão acaba"* é uma pergunta de **PERFIL** (como a quina),
+não de varredura. O `sweep_body` diz *"o corpo cabe se eu andar para ali?"*, que
+é o que o **mantle** vai querer; achar a beirada continua a ser um segundo par de
+raios ou um perfil. O item fica com a metade certa nomeada em vez de com uma
+dependência que não se realiza.
+
+**Cena `=107`** · `physics_ecs_c9` **byte-idêntico** (o hash não tem lane que
+agache) · 10 gates na porta + 4 no produto + 6 na cena, com a mutação que devolve
+os três raios a sangrar dois deles.
 
 ### 4.4 · `W-MultiJump` — **PULO MÚLTIPLO** ⟨o exemplo do Enio⟩
 
@@ -384,11 +411,22 @@ responde *"onde ele olha"* e não *"o que ele viu"* — e a segunda é a pergunt
 o artista faz quando o personagem não se agarra à parede. Cor por resultado, como
 o sensor magenta do W7 (apagado/aceso).
 
-**Onde entra na fila:** ⚠️ **antes** do `W-Ledge` e de preferência **junto do
-`W-ShapeCast`** — porque quando o chão deixar de ser um raio (4.3) o desenho tem
-de mostrar a forma nova, e construir o overlay depois seria desenhá-lo duas
-vezes. E porque as waves 4.4/4.5 vão **acrescentar sensores**: um ledge grab sem
-os raios visíveis é afinado às cegas, que é o que este item existe para acabar.
+**Onde entra na fila:** ⚠️ **antes** do `W-Ledge`, porque as waves 4.4/4.5 vão
+**acrescentar sensores**: um ledge grab sem os raios visíveis é afinado às cegas,
+que é o que este item existe para acabar.
+
+⚠️ **E a razão que o prendia ao `W-ShapeCast` MORREU com a medição.** Este
+parágrafo dizia *"quando o chão deixar de ser um raio (4.3) o desenho tem de
+mostrar a forma nova"* — o chão **continua a ser um raio**: a 4.3 converteu só o
+sensor do agachar, e os outros dois ficaram de raios com o motivo escrito em cada
+um. Sobra **um** sensor a desenhar como forma (o do agachar, uma cápsula varrida
+para cima) contra cinco a desenhar como linha, e isso é uma nota no item, não uma
+dependência de ordem.
+
+⚠️ **Corolário para quem construir isto:** o overlay tem de saber desenhar as
+DUAS coisas. Um overlay que só saiba linhas desenha o sensor do agachar como um
+raio que ele não é — e o artista afinaria o `crouch_height` contra um desenho que
+mente sobre o que o produto mede.
 
 ### 4.6 · `W-Glide` — **PLANAR**
 
@@ -417,7 +455,7 @@ pedido** — está aqui para a lista ser honesta, não para ser construído.
 ## §5 — A ordem, numa linha
 
 ```
-~~W-Swim~~ ✅ → ~~W-ZoneForce~~ ✅ → W-ShapeCast → W-Probes → W-MultiJump → W-Ledge → (W-Glide?) → o ajuste
+~~W-Swim~~ ✅ → ~~W-ZoneForce~~ ✅ → ~~W-ShapeCast~~ ✅ → W-Probes → W-MultiJump → W-Ledge → (W-Glide?) → o ajuste
    1         2             3            4           5            6           7           8
 ```
 

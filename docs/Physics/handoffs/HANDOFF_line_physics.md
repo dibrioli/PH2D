@@ -9797,3 +9797,127 @@ cápsulas idênticas numa correnteza de 16 N, sem gravidade, cada uma na sua rai
 Medido: caixote **87,33** · dinâmico **20,59** · cinemático **20,999** · puro
 **20,999** em 2 s. ⚠️ **O verde sai de quadro em ~1 s** e é assim que se vê o teto;
 o que se julga é os TRÊS players andarem juntos.
+
+---
+
+## W-ShapeCast — o wrapper varre o CORPO, não só uma linha
+
+**Plano 08 §4.3, o item de INFRA.** Ele estava na fila por dependência (*"o que
+toca o wrapper vem cedo, com tempo para o problema aparecer"*), e o que a
+medição achou foi um defeito de produto na direção que um doc-comment declarava
+impossível.
+
+### O que estava errado, medido antes de uma linha ser escrita
+
+O sensor do agachar (`probe_headroom`) lia o teto com **três raios** nascidos em
+`−0,20 · 0,00 · +0,20` do centro — a caixa envolvente de um corpo de 0,40 m de
+largura. Isso deixa **vãos de 0,20 m**, e a sonda `measure_the_gap_between_rays`
+pôs uma pedra em cada um:
+
+| pilar | cobria um raio? | topo da cabeça | x final | veredito |
+|---|---|---|---|---|
+| 8 cm em `+0,10` | **não** | **1,267** | −0,017 | **NA PEDRA** (face em 1,25) |
+| 4 cm em `+0,10` | **não** | 1,600 | −0,155 | fugiu de lado |
+| 8 cm em `−0,10` | **não** | **1,267** | +0,017 | **NA PEDRA** |
+| sobre um raio | sim | 1,100 | 0,000 | ficou baixo |
+
+⚠️ **E o doc do `probe_headroom` afirmava o contrário:** *"o erro possível é ficar
+agachado onde caberia, **nunca levantar-se para dentro da pedra**"*. A frase é
+**verdadeira** sobre a caixa envolvente contra a cápsula — que é a razão para que
+ela foi escrita — e **falsa** sobre o que cabe entre dois raios. As duas metades
+vivem no mesmo parágrafo, e só uma tinha sido pensada.
+
+### A porta
+
+**`PhysicsWorld::sweep_body(handle, dir, max_dist, layer) -> Option<CastHit>`**
+(`world/sweep.rs`, irmão do `cast.rs` — *o que uma LINHA toca* e *o que o CORPO
+toca ao andar* são perguntas diferentes).
+
+- **Varre TODOS os colliders do corpo** e fica com o mais próximo. É a lição da
+  `W-PartFace`, que já custou quatro sítios: *"um corpo tem exactamente um
+  collider"* morreu com a `W-Compound`.
+- **O mesmo filtro do `cast_ray`** — camadas (`groups_for`), `EXCLUDE_SENSORS`, e
+  a exclusão do próprio corpo, que num raio é higiene e aqui é **aritmética**: a
+  forma nasce em cima do próprio collider.
+- **`dir` é normalizado pela porta**, porque o `max_time_of_impact` do parry é
+  medido em múltiplos da norma — um chamador que passasse `[0,10]` com alcance 1
+  varreria 10 m em silêncio.
+- **Reusa o `CastHit`**: *o que um cast encontrou* é a mesma resposta. ⚠️ E o
+  ponto e a normal saem em **MUNDO**, o que foi **medido** e não herdado: os dois
+  docs do parry discordam entre si (o do `ShapeCastHit` diz *local-space*, o do
+  `QueryPipeline::cast_shape` diz *world space*).
+
+### O consumidor, e as duas notas que ele derruba
+
+O `probe_headroom` virou **uma** varredura para cima por `rise`. O `Headroom`
+perdeu o `[bool; 3]` — a lei só alguma vez perguntou `is_blocked()`, então a
+grade nunca foi informação que alguém usasse: era o preço de o wrapper só saber
+lançar linhas. Com ela saíram o `HEADROOM_SAMPLES` e o `headroom_offsets`, porque
+*um `pub` sem chamador é uma segunda resposta à espera de alguém*.
+
+**Duas limitações escritas morrem juntas:**
+
+1. o vão entre amostras (a tabela acima);
+2. **a caixa envolvente** — a varredura usa a cápsula, e a medição diz quanto
+   isso devolve: com a pedra encostada em `x = +0,20` ele passa a levantar-se a
+   partir de **1,42**, contra os **1,60** que o raio da borda exigia. São **18 cm**
+   de altura de teto recusados sobre espaço vazio.
+
+⚠️ **E paga uma dívida de gate que o doc anterior nomeava:** *"a metade «o laço
+percorre os TRÊS deslocamentos» … trocar o laço por um raio central sobrevive à
+suíte"*. Não há laço a percorrer.
+
+### Os outros dois sensores NÃO foram convertidos
+
+| sensor | por que fica de raios |
+|---|---|
+| **quina** (65 amostras) | é um **PERFIL** — a lei precisa de saber *onde* há teto para escolher para que lado escapar, e uma varredura devolve **um** contacto |
+| **parede** (3 alturas) | a lei **reduz** sobre as amostras com a régua da perna (`max_slope`) para decidir *qual* superfície é parede; uma varredura entregaria a rampa aos pés |
+
+E a fresta cega que sobra na parede é a **benigna** (um buraco reportado como
+parede): para os três raios falharem juntos ela teria de ser **mais alta que o
+corpo**, e aí não há parede em frente ao corpo.
+
+### ⚠️ Duas notas de PLANO que esta wave tornou falsas, e foram reconciliadas
+
+- a **§4.55** prendia o overlay de sensores a esta wave *"porque o chão deixa de
+  ser um raio"* — **ele não deixou**: sobra **um** sensor a desenhar como forma
+  contra cinco a desenhar como linha, e isso é uma nota no item, não uma
+  dependência de ordem (mas o overlay tem de saber desenhar as duas coisas, senão
+  desenha o sensor do agachar como um raio que ele não é);
+- a **§4.5** esperava daqui o *"onde o chão acaba"* do ledge grab — isso é
+  pergunta de **PERFIL**, não de varredura. O `sweep_body` responde *"o corpo cabe
+  se eu andar para ali?"*, que é o que o **mantle** vai querer.
+
+### Números
+
+`PROJECT_SCHEMA` **fica em 71** (nada disto é serializado) · `physics_ecs_c9`
+**`fb27f676…`, 117 corpos, BYTE-IDÊNTICO** — nenhuma lane do hash agacha ·
+registros **intocados** · gizmo ids **nenhum novo** · **zero `Cargo.toml`** ·
+**nenhum ADR** (tudo sob o ADR-0131).
+
+**10 gates na porta + 4 no produto + 6 na cena.** A mutação que devolve os três
+raios sangra **2 dos 4** do produto — os dois que nomeiam a mudança —, deixando
+o CONTROLE (*com o céu limpo ele levanta-se*) e a regressão (*uma laje larga
+continua a recusar*) verdes, que é a forma certa.
+
+⚠️ **Duas lições de fixture, as duas minhas:** o `step()` que indexa o BVH também
+**integra** o corpo (um tique de queda vale `½·g·dt² = 1,4 mm`, o suficiente para
+um gate que compara a varredura com um raio lançado da pose antiga falhar por
+0,0014 e mandar procurar o defeito na porta) — os gates da porta correm com
+gravidade zero; e a minha aritmética da distância esperada usava o **centro** do
+pilar, quando o contacto é na **quina mais próxima** dele, que é exactamente o
+que uma amostra não sabe fazer.
+
+### Smoke
+
+**`env PH2D_PHYSICS_SMOKE=107 cargo run -p ph2d-host-desktop --release`** —
+quatro pedras de 8 cm com a face de baixo em 1,20 m (topo de pé 1,40, agachado
+1,05) e uma laje larga como controle. ⚠️ **O passo 5 é a metade que separa *o
+sensor vê a pedra* de *o sensor recusa sempre*:** entre duas pedras ele tem de se
+levantar na hora. Os dois gestos correm como gate antes de o artista os ler.
+
+⚠️ **O que a cena NÃO mostra, de propósito:** a metade da caixa envolvente (os
+18 cm) **não é julgável de olho** — não há contrafactual na tela. Fica gateada
+(`the_capsule_corner_is_no_longer_a_ceiling`) em vez de encenada, porque uma
+estação que não se pode julgar é uma que se aprova por cansaço.

@@ -107,7 +107,11 @@ fn announce(app: &crate::App) {
         "  2. Arraste o quadrado AMBAR para a esquerda ate' ele alinhar com o AZUL. Sai a linha \
          tracejada de sempre -- e agora uma FICHA com o numero no meio dela."
     );
-    eprintln!("     A ficha tem de dizer **{expect}**, e o traco da regua tem de concordar.");
+    eprintln!(
+        "     A ficha tem de dizer **{expect}**, e o traco da regua tem de concordar. As casas \
+         decimais saem do que UM PIXEL de tela distingue neste zoom -- entao em metros ela traz \
+         os CENTIMETROS."
+    );
     eprintln!(
         "  3. Arraste devagar ate' quase encostar os dois quadrados: quando o segmento fica \
          curto demais para se ver, o numero SOME (ele mede o que se ve, e duas cruzes coladas \
@@ -115,8 +119,13 @@ fn announce(app: &crate::App) {
     );
     eprintln!(
         "  4. O CONTROLE, e e' o passo que prova a wave: menu **Settings > Unit > Meters**. A \
-         REGUA e a FICHA tem de mudar JUNTAS (150 px vira 1.5 m). Se so' uma mudar, sao duas \
+         REGUA e a FICHA tem de mudar JUNTAS (150 px vira 1,5 m). Se so' uma mudar, sao duas \
          portas outra vez."
+    );
+    eprintln!(
+        "     (!) E a FICHA tem de trazer os CENTIMETROS -- **1.50 m**, nunca \"2 m\". As casas \
+         saem de UM PIXEL de tela; o passo dos tracos da regua vale 1 m neste zoom e arredondaria \
+         a medicao para o metro inteiro."
     );
     eprintln!(
         "  5. De volta em Pixels, confira o Inspector: a posicao do quadrado ambar em Y le' o \

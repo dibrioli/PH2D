@@ -1155,9 +1155,37 @@ propósito — a pergunta da wave não é *"aparece um número?"* e sim *"a rég
 MESMO número?"*. O passo **4 é o que prova a wave**: trocar para **Meters** no menu Settings, e
 as duas têm de mudar JUNTAS (`150 px` vira `1.5 m`); se só uma mudar, são duas portas outra vez.
 
-**Aberto, nomeado:** a ficha usa a mesma cadência de casas da régua (`label_step`), então em
-zoom muito baixo ela arredonda tanto quanto os traços — é a política que as mantém coerentes, e
-uma precisão própria seria o começo de uma terceira resposta.
+#### ⚠️ Correção pós-smoke: a ficha NÃO empresta a cadência da régua
+
+O parágrafo que estava aqui dizia que a ficha usar `label_step` era *"a política que as mantém
+coerentes"*. **O smoke refutou:** *"em metros, só mede metros inteiros, mas deveria ser metros e
+cm"* (Enio). E era pior que grosseiro — no zoom de trabalho a ficha imprimia **`2`** para uma
+distância de **1,5 m**.
+
+**As duas cadências respondem perguntas diferentes**, e eu tinha colapsado as duas:
+
+| pergunta | quem responde | o que ela mede |
+|---|---|---|
+| *que números merecem ser IMPRESSOS nesta faixa graduada?* | `ruler::label_step` | **LAYOUT** — dois rótulos não podem colidir, daí os 56 px de `MIN_LABEL_PX` |
+| *quanta resolução este zoom DISTINGUE?* | `length::world_per_pixel` | **UM pixel de tela** |
+
+Medido, a 100 px por metro de mundo: o passo dos traços vale **1 m** e um pixel vale **1 cm**.
+
+**Para a RÉGUA as duas coincidem por construção**, e é por isso que ela fica exatamente como
+está: o rótulo dela senta SOBRE um traço, logo o valor **é múltiplo do passo** e não há nada
+abaixo dele a perder. A ficha flutuante imprime um número **arbitrário** — o que o arrasto do
+artista produziu —, e emprestar o passo joga fora tudo o que está abaixo dele.
+
+⇒ `text(world, resolution_world)` continua **uma regra**, com **dois argumentos**: a régua passa
+o passo dos traços, a ficha passa um pixel. A porta não se duplicou.
+
+**A regra nunca esconde um dígito que o artista possa ver**; nos zooms que caem no meio de uma
+década ela mostra **um a mais** (resolução de 5 mm imprime milímetros), e esse é o lado certo
+para errar — é o que faz cada pixel de arrasto mexer no número em vez de o deixar gaguejar.
+
+⚠️ **E em PIXELS nada muda** — no zoom de trabalho um pixel de tela É um pixel de display, então
+o número segue inteiro. **É por isso que o defeito era invisível na unidade default** e
+atravessou a wave inteira até o smoke; o gate novo carrega essa metade como CONTROLE.
 
 
 **Aberto nesta wave, nomeado com o preço:**

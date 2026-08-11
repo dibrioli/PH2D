@@ -34,8 +34,11 @@ use ph2d_vector::{Affine, VectorScene};
 /// Corpo do número, px. Igual ao rótulo da régua: as duas superfícies dizem
 /// comprimento de mundo, e um corpo diferente as faria parecer dois sistemas.
 const LABEL_PX: f32 = 9.0; // LITERAL-PX-OK: corpo do rótulo (chrome), espelha `ruler::LABEL_PX`
-/// Meia-largura da ficha. Comporta `-1234 px`, o mais longo que um zoom legível
-/// produz (acima disso a régua já mudou de década e o número volta a encurtar).
+/// Meia-largura da ficha. Comporta `-1234.5 px`, e o teto **é uma consequência**,
+/// não um palpite: o valor e a resolução são medidos na MESMA unidade de display,
+/// então a razão entre eles é o comprimento do segmento **em pixels de TELA** —
+/// e uma guia que a tela não mostra não recebe número. Com a tela em ~2000 px,
+/// dígitos antes + depois da vírgula ficam em ~4 mais o sinal e o ponto.
 const CHIP_HALF_W_PX: f32 = 30.0; // LITERAL-PX-OK: ficha do rótulo (chrome)
 /// Meia-altura da ficha — uma linha de texto mais o respiro.
 const CHIP_HALF_H_PX: f32 = 8.0; // LITERAL-PX-OK: ficha do rótulo (chrome)

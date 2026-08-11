@@ -63,13 +63,14 @@ fn reading_in_metres_prints_exactly_what_the_old_ruler_printed() {
     );
 }
 
-/// **As casas vêm do passo CONVERTIDO, não do passo de mundo.**
+/// **As casas vêm da resolução CONVERTIDA, não da resolução de mundo.**
 ///
-/// Um passo de meio metro é `0,5` em metros (uma casa) e `50` em pixels
-/// (nenhuma). Converter só o valor imprimiria `150.0` — uma casa decimal que o
-/// número não tem resolução para honrar.
+/// Meio metro é `0,5` em metros (uma casa) e `50` em pixels (nenhuma).
+/// Converter só o valor imprimiria `150.0` — uma casa decimal que o número não
+/// tem resolução para honrar.
 ///
-/// Mutação que tem de sangrar: `decimals_for(step_world)` em vez do convertido.
+/// Mutação que tem de sangrar: `decimals_for(resolution_world)` em vez do
+/// convertido.
 #[test]
 fn the_decimals_come_from_the_step_the_artist_reads() {
     let px = shipping();
@@ -81,20 +82,78 @@ fn the_decimals_come_from_the_step_the_artist_reads() {
     assert_eq!(m.text(1.5, 0.5), "1.5", "meio metro em metros: uma casa");
 }
 
-/// **A precisão de um rótulo flutuante é a mesma da régua, no mesmo zoom.**
+/// **Uma leitura em metros carrega os CENTÍMETROS** — o repro do smoke.
 ///
-/// As duas perguntam `label_step`, então não há como uma mostrar `12` e a outra
-/// `12,34` para a mesma distância no mesmo instante.
+/// ⚠️ Reprovado pelo Enio: *"em metros, só mede metros inteiros, mas deveria ser
+/// metros e cm"*. E era pior que grosseiro — no zoom de trabalho a ficha
+/// imprimia **`2`** para uma distância de **1,5 m**, porque emprestava a cadência
+/// de rótulos da RÉGUA, que ali vale 1 m inteiro (`MIN_LABEL_PX / 100`, arredondado
+/// para cima na escada 1/2/5).
+///
+/// Um pixel de tela nesse zoom vale 1 cm, e é essa a resolução que o número tem.
+///
+/// Mutação que tem de sangrar: `text_at_zoom` voltar a `ruler::label_step`.
 #[test]
-fn the_floating_label_borrows_the_rulers_cadence() {
+fn a_metre_reading_carries_its_centimetres() {
+    let m = LengthDisplay {
+        unit: DisplayUnit::Meters,
+        pixels_per_meter: DEFAULT_PIXELS_PER_METER,
+    };
+    // O zoom de trabalho: 100 px por metro de mundo.
+    assert_eq!(
+        m.text_at_zoom(1.5, 100.0),
+        "1.50",
+        "um pixel vale 1 cm neste zoom — a distância não pode ser arredondada para o metro"
+    );
+    // E não é um caso isolado do 1,5: qualquer distância traz os centímetros.
+    assert_eq!(m.text_at_zoom(2.37, 100.0), "2.37");
+    assert_eq!(m.text_at_zoom(0.04, 100.0), "0.04");
+}
+
+/// **A precisão é a que UM PIXEL distingue** — e o CONTROLE é que em pixels nada
+/// muda.
+///
+/// Este par é o que separa a lei nova da velha. Em PIXELS, no zoom de trabalho,
+/// um pixel de tela É um pixel de display, então o número segue inteiro — que é
+/// exatamente por que o defeito era invisível na unidade default e sobreviveu à
+/// wave inteira até o smoke.
+///
+/// Mutação que tem de sangrar: `world_per_pixel` devolver `label_step`.
+#[test]
+fn the_precision_is_what_one_pixel_distinguishes() {
+    let px = shipping();
+    let m = LengthDisplay {
+        unit: DisplayUnit::Meters,
+        pixels_per_meter: DEFAULT_PIXELS_PER_METER,
+    };
+    // O CONTROLE: em pixels, no zoom de trabalho, um pixel de tela é um pixel de
+    // display ⇒ zero casas, como sempre.
+    assert_eq!(px.text_at_zoom(1.5, 100.0), "150");
+    // E a precisão SEGUE o zoom, nos dois sentidos: afastar a câmera tira casas,
+    // aproximar acrescenta. Um readout que não degrada ao afastar promete uma
+    // exatidão que a tela não tem.
+    assert_eq!(
+        m.text_at_zoom(1.5, 1.0),
+        "2",
+        "1 px vale 1 m: não há cm a ver"
+    );
+    assert_eq!(m.text_at_zoom(1.5, 10.0), "1.5", "1 px vale 10 cm");
+    assert_eq!(m.text_at_zoom(1.5, 100.0), "1.50", "1 px vale 1 cm");
+    assert_eq!(m.text_at_zoom(1.5, 1000.0), "1.500", "1 px vale 1 mm");
+}
+
+/// **Um zoom degenerado ainda imprime um número.**
+///
+/// O mesmo fallback do [`crate::ruler::label_step`], e pelo mesmo motivo: sem
+/// escala não há resolução a afirmar. ⚠️ Ele importa porque a câmera passa por
+/// zoom zero durante um reset, e um `1/0` viraria `inf` casas — um `panic` no
+/// `format!` a partir de um estado transitório.
+#[test]
+fn a_degenerate_zoom_still_prints_a_number() {
     let d = shipping();
-    for px_per_world in [1.0_f64, 10.0, 100.0, 1000.0] {
-        let step = crate::ruler::label_step(px_per_world);
-        assert_eq!(
-            d.text_at_zoom(1.234_567, px_per_world),
-            d.text(1.234_567, step),
-            "px_per_world {px_per_world}"
-        );
+    for bad in [0.0_f64, -1.0, f64::NAN, f64::INFINITY] {
+        assert_eq!(crate::length::world_per_pixel(bad), 1.0, "zoom {bad}");
+        assert_eq!(d.text_at_zoom(1.5, bad), "150");
     }
 }
 

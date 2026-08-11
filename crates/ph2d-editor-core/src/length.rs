@@ -76,38 +76,79 @@ impl LengthDisplay {
         self.unit.suffix()
     }
 
-    /// O texto de um comprimento, com as casas que o **passo** justifica.
+    /// O texto de um comprimento, com as casas que a sua **RESOLUÇÃO** justifica.
     ///
-    /// ⚠️ **O passo entra em MUNDO e é convertido pela MESMA porta.** Converter
-    /// só o valor imprimiria `100` com as casas de um passo de `0,5` — três
-    /// dígitos e uma casa decimal que o número não tem resolução para honrar.
+    /// `resolution_world` é o menor incremento que este número pode
+    /// significativamente tomar, em metros de mundo — e **cada superfície tem a
+    /// sua**: a régua passa o passo dos traços (o rótulo dela pousa SOBRE um
+    /// traço, logo o valor é sempre um múltiplo do passo) e a ficha flutuante
+    /// passa **um pixel de tela** (o valor dela é o que o arrasto do artista
+    /// produziu, e não é múltiplo de nada). Uma regra, dois argumentos.
+    ///
+    /// ⚠️ **A resolução entra em MUNDO e é convertida pela MESMA porta.**
+    /// Converter só o valor imprimiria `100` com as casas de um passo de `0,5` —
+    /// uma casa decimal que o número não tem resolução para honrar.
     #[must_use]
-    pub fn text(self, world: f64, step_world: f64) -> String {
-        format_value(self.value(world), decimals_for(self.value(step_world)))
+    pub fn text(self, world: f64, resolution_world: f64) -> String {
+        format_value(
+            self.value(world),
+            decimals_for(self.value(resolution_world)),
+        )
     }
 
-    /// O texto com as casas que o **ZOOM** justifica.
+    /// O texto com as casas que **UM PIXEL de tela** justifica — a régua de toda
+    /// leitura que paira sobre a arte, sem faixa graduada ao lado.
     ///
-    /// A cadência de rótulos da régua ([`crate::ruler::label_step`]) é a
-    /// política de precisão deste app: ela responde *quanta resolução este zoom
-    /// distingue*, que é exatamente a pergunta que um rótulo flutuante tem.
-    /// Chamá-la aqui é o que impede a régua e o rótulo de mostrarem casas
-    /// diferentes para a mesma distância no mesmo instante.
+    /// ⚠️ **A 1ª versão desta função emprestava a cadência de rótulos da RÉGUA
+    /// (`ruler::label_step`), e o smoke a reprovou.** As duas respondem perguntas
+    /// diferentes, e a diferença é grande: `label_step` responde *que números
+    /// merecem ser IMPRESSOS numa faixa graduada*, uma pergunta de LAYOUT (dois
+    /// rótulos não podem colidir, daí os 56 px de `ruler::MIN_LABEL_PX`); esta
+    /// responde *quanta resolução este zoom DISTINGUE*, que é uma pergunta sobre
+    /// **um** pixel. No zoom de trabalho (~100 px por metro) aquele passo vale
+    /// **1 m**, então uma distância de 1,5 m era impressa como **`2`** — não
+    /// grosseira, errada. Um pixel ali vale 1 cm, e a mesma distância imprime
+    /// `1.50`.
+    ///
+    /// Para a RÉGUA as duas cadências coincidem por construção, e é por isso que
+    /// ela fica como está: o rótulo dela senta num traço, logo o valor É múltiplo
+    /// do passo e não há nada abaixo dele a perder. Emprestar o passo para um
+    /// número ARBITRÁRIO joga fora tudo o que está abaixo dele.
+    ///
+    /// A regra nunca esconde um dígito que o artista possa ver; nos zooms que
+    /// caem no meio de uma década ela mostra **um a mais** (uma resolução de
+    /// 5 mm imprime milímetros), e isso é o lado certo para errar: é o que faz
+    /// cada pixel de arrasto mexer no número em vez de o deixar gaguejar.
     #[must_use]
     pub fn text_at_zoom(self, world: f64, px_per_world: f64) -> String {
-        self.text(world, crate::ruler::label_step(px_per_world))
+        self.text(world, world_per_pixel(px_per_world))
     }
 }
 
-/// Quantas casas decimais um passo justifica — a regra que morava dentro do
+/// Quanto MUNDO cabe num pixel de tela — a resolução que o olho tem neste zoom.
+///
+/// Zoom degenerado (não-finito ou ≤ 0) cai em `1.0`, o mesmo fallback do
+/// [`crate::ruler::label_step`]: sem escala não há resolução a afirmar, e um
+/// número redondo é a leitura honesta. Duas funções, um fallback — um zoom
+/// degenerado não pode fazer a régua e a ficha discordarem.
+#[must_use]
+pub fn world_per_pixel(px_per_world: f64) -> f64 {
+    if px_per_world.is_finite() && px_per_world > 0.0 {
+        1.0 / px_per_world
+    } else {
+        1.0
+    }
+}
+
+/// Quantas casas decimais uma resolução justifica — a regra que morava dentro do
 /// `ruler::label_text`, agora com dois consumidores.
 ///
-/// O argumento está em unidade de DISPLAY: um passo de meio metro é `0,5` em
-/// metros (uma casa) e `50` em pixels (nenhuma), e o número de casas segue o
-/// que a tela mostra, não o que a memória guarda.
+/// O argumento está em unidade de DISPLAY: meio metro é `0,5` em metros (uma
+/// casa) e `50` em pixels (nenhuma), e o número de casas segue o que a tela
+/// mostra, não o que a memória guarda.
 #[must_use]
-pub fn decimals_for(step_display: f64) -> usize {
-    let s = step_display.abs();
+pub fn decimals_for(resolution_display: f64) -> usize {
+    let s = resolution_display.abs();
     if s >= 1.0 {
         0
     } else if s >= 0.1 {

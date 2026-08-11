@@ -1042,6 +1042,75 @@ fn a_sim_zone_falls_and_collides_on_the_device_matching_the_cpu() {
     }
 }
 
+/// **The particle has a SIZE, and the device agrees about how big it is** (doc 89, folha 13 P0).
+///
+/// `sim.collide` collided a POINT, so a sprite rested with its CENTRE on the floor and sank by
+/// half its height. The cure is the Minkowski inflation, and it lands in TWO places — the CPU
+/// `contact` and the WGSL — so the only thing worth proving on a device is that they still say
+/// the same number.
+///
+/// ⚠️ **The non-vacuity is the FLOOR itself**, not the free-fall baseline the table above uses:
+/// this floor sits below where a point collider ever reaches, so a frame that differs from
+/// free-fall can ONLY be a radius doing the catching. Both radius modes are exercised — `Fixed`
+/// proves the param path, `Sprite Size` proves the `size` binding materialises from
+/// `SIZE_IDENTITY` on the device exactly as `sizes()` does on the CPU (the grid emits no `size`
+/// column at all, so absence is the case under test).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn a_particle_radius_catches_on_the_device_exactly_where_it_catches_on_the_cpu() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    const TICKS: u64 = 40;
+
+    // Free-fall: the same floor, but collided as a POINT. The lattice never reaches it, so this
+    // is what "the radius did nothing" looks like.
+    let (gp, op) = zone_chain(&reg, &[("shape", 0.0), ("height", -6.0)], None);
+    let point = cpu_ticks(&gp, &reg, op, TICKS);
+
+    for (label, params) in [
+        (
+            "fixed",
+            &[
+                ("shape", 0.0),
+                ("height", -6.0),
+                ("radius_from", 1.0),
+                ("particle_radius", 1.7),
+                ("restitution", 0.35),
+                ("friction", 0.15),
+            ][..],
+        ),
+        (
+            "sprite size",
+            &[
+                ("shape", 0.0),
+                ("height", -6.0),
+                ("radius_from", 2.0),
+                // 3.4 x the inscribed radius of the unit quad = 1.7, the same catch as above.
+                ("size_scale", 3.4),
+                ("restitution", 0.35),
+                ("friction", 0.15),
+            ][..],
+        ),
+    ] {
+        let (g, out) = zone_chain(&reg, params, None);
+        let cpu = cpu_ticks(&g, &reg, out, TICKS);
+        let gpu_out = gpu_ticks(&gpu, &g, &reg, out, TICKS, 4);
+        assert_parity(
+            &format!("sim.collide radius / {label}"),
+            &cpu[TICKS as usize],
+            &gpu_out,
+        );
+        assert!(
+            max_move(&cpu[TICKS as usize], &point[TICKS as usize]) > MUST_MOVE,
+            "case `{label}`: the frame equals the POINT collider's, so the radius never \
+             reached the contact test and the parity above proves nothing"
+        );
+    }
+}
+
 /// **The control for the gate above**: the boundary mechanism still WORKS.
 ///
 /// With every channel of the spring claimed, nothing in this suite would notice

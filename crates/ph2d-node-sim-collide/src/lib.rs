@@ -37,6 +37,28 @@
 //!
 //! Transcendental-free (HR-5): the normals are geometry, not angles — a floor's normal is up, a
 //! disc's is the radial direction. Nothing here needs a sine.
+//!
+//! ## The thing that collides has a SIZE (doc 89, folha 13 P0)
+//!
+//! This collider collided a **point**, and a point is the one radius that is always wrong: an
+//! element resting on a floor puts its CENTRE on the floor, so **a sprite sinks by exactly half
+//! its height** (measured: a 1×1 quad on a floor at `y = −2` comes to rest with its bottom edge
+//! at −2.5). Compensating with `height` only works for a UNIFORM size — `size` is a per-element
+//! column and `height` is a param, one number per tick even when driven.
+//!
+//! The cure is the **Minkowski inflation**: collide the point against the same shape *grown
+//! outward by `r`*. One term per shape, and [`respond`] is untouched — the response still has
+//! exactly one implementation.
+//!
+//! ```text
+//!   Floor   p.y − r < height          out is up,   depth = height − (p.y − r)
+//!   Disc    dist    < radius + r      out is radial
+//!   Bowl    dist    > radius − r      in  is radial   (clamped at 0, see `contact`)
+//! ```
+//!
+//! Where `r` comes from is [`particle_radius`] — the ONE door both this eval and the WGSL ask,
+//! because two answers to *"how big is this particle?"* diverge the moment a slider moves.
+//! `radius_from = Point` (the default) makes it `0` ⇒ **byte-identical to the point collider**.
 
 use ph2d_node_registry::{
     NodeRegistry, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget, RegistryError,
@@ -56,6 +78,14 @@ pub const SHAPE_FLOOR: i32 = 0;
 pub const SHAPE_DISC: i32 = 1;
 /// A bowl: the world is everything INSIDE it (a container to rattle around in).
 pub const SHAPE_BOWL: i32 = 2;
+
+/// **A point** — the collider as it was before the radius existed. The default, so a document
+/// that never touches this control collides exactly what it collided yesterday.
+pub const RADIUS_POINT: i32 = 0;
+/// One radius in world units, the same for every element.
+pub const RADIUS_FIXED: i32 = 1;
+/// The element's OWN size: the circle inscribed in the sprite the renderer draws.
+pub const RADIUS_SIZE: i32 = 2;
 
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("sim.collide"),
@@ -104,6 +134,26 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "friction",
             default: 0.2,
         },
+        // ── The particle's OWN radius (doc 89, folha 13 P0) ─────────────────────
+        // APPENDED, never inserted: a param list is read positionally by anything
+        // that stores an index, and the three below must not renumber `shape`.
+        //
+        // 0 Point (what this node always did) · 1 Fixed · 2 Sprite Size.
+        ParamSpec {
+            name: "radius_from",
+            default: 0.0,
+        },
+        // The Fixed radius, in world units.
+        ParamSpec {
+            name: "particle_radius",
+            default: 0.25,
+        },
+        // Sprite Size: how many INSCRIBED radii big the collider is. 1 = exactly the
+        // circle inside the sprite; ≈1.41 is the one around a square one.
+        ParamSpec {
+            name: "size_scale",
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -127,6 +177,15 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let sc_fric = clamp(params.friction, 0.0, 1.0);\n\
         let sc_p = read_P(i);\n\
         let sc_v = read_vel(i);\n\
+        // The particle's own radius — `particle_radius`, term for term and in the\n\
+        // same multiply order, so the two paths cannot answer this differently.\n\
+        let sc_size = read_size(i);\n\
+        var sc_r = 0.0;\n\
+        if (i32(round(params.radius_from)) == SC_R_FIXED) {\n\
+        \x20   sc_r = max(params.particle_radius, 0.0);\n\
+        } else if (i32(round(params.radius_from)) == SC_R_SIZE) {\n\
+        \x20   sc_r = max(min(abs(sc_size.x), abs(sc_size.y)) * 0.5 * params.size_scale, 0.0);\n\
+        }\n\
         var sc_hit = false;\n\
         var sc_n = vec2<f32>(0.0, 1.0);\n\
         var sc_depth = 0.0;\n\
@@ -137,13 +196,17 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20   var sc_dir = vec2<f32>(0.0, 1.0);\n\
         \x20   if (sc_dist > SC_EPS) { sc_dir = sc_d / sc_dist; }\n\
         \x20   if (sc_shape == SC_DISC) {\n\
-        \x20       if (sc_dist < sc_radius) { sc_hit = true; sc_n = sc_dir; sc_depth = sc_radius - sc_dist; }\n\
+        \x20       // The obstacle GROWS by the radius; the container SHRINKS by it.\n\
+        \x20       let sc_grown = sc_radius + sc_r;\n\
+        \x20       if (sc_dist < sc_grown) { sc_hit = true; sc_n = sc_dir; sc_depth = sc_grown - sc_dist; }\n\
         \x20   } else {\n\
-        \x20       if (sc_dist > sc_radius) { sc_hit = true; sc_n = -sc_dir; sc_depth = sc_dist - sc_radius; }\n\
+        \x20       let sc_inner = max(sc_radius - sc_r, 0.0);\n\
+        \x20       if (sc_dist > sc_inner) { sc_hit = true; sc_n = -sc_dir; sc_depth = sc_dist - sc_inner; }\n\
         \x20   }\n\
         } else {\n\
-        \x20   // The floor: the world is everything above `height`, so out is up.\n\
-        \x20   if (sc_p.y < params.height) { sc_hit = true; sc_n = vec2<f32>(0.0, 1.0); sc_depth = params.height - sc_p.y; }\n\
+        \x20   // The floor: the world is everything above `height`, so out is up — and\n\
+        \x20   // what touches it is the element's BOTTOM, `p.y - r`.\n\
+        \x20   if (sc_p.y - sc_r < params.height) { sc_hit = true; sc_n = vec2<f32>(0.0, 1.0); sc_depth = params.height - (sc_p.y - sc_r); }\n\
         }\n\
         var sc_out_p = sc_p;\n\
         var sc_out_v = sc_v;\n\
@@ -169,6 +232,8 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl_lib: "\
         const SC_DISC: i32 = 1;\n\
         const SC_BOWL: i32 = 2;\n\
+        const SC_R_FIXED: i32 = 1;\n\
+        const SC_R_SIZE: i32 = 2;\n\
         const SC_EPS: f32 = 1.1920929e-7;\n\
         const SC_F32_MAX: f32 = 3.4028235e38;\n\
         fn collide_finite(v: vec2<f32>) -> bool {\n\
@@ -189,6 +254,16 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             identity: [0.0; 4],
             port: 0,
         },
+        // READ-ONLY: the collider never resizes anything, it only asks how big the
+        // thing it is catching is. `SIZE_IDENTITY = [1, 1]` — the same absence the
+        // CPU's `sizes()` and the lowering itself fall back to.
+        ColumnBinding {
+            column: "size",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+            port: 0,
+        },
     ],
     params: &[
         "shape",
@@ -198,20 +273,52 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "radius",
         "restitution",
         "friction",
+        "radius_from",
+        "particle_radius",
+        "size_scale",
     ],
     count_law: None,
     variant_by_param: None,
     applicable: None,
 };
 
-/// The contact at `p`: the outward unit normal, and how deep inside the surface it is.
-/// `None` when the point is in the free world.
+/// **How big element `i` is** — the ONE door, asked by [`SimCollide::eval`] and ported term for
+/// term into [`GPU_KERNEL`]. Two answers to this would diverge the first time a slider moved,
+/// and the divergence would be a sprite resting at a different height on the two paths.
+///
+/// **`Sprite Size` reads the INSCRIBED circle**, `min(|w|,|h|)·0.5`, and the halving is not a
+/// convention: `sprite.wgsl` expands a unit quad in `[-0.5, 0.5]` by `size`, so a sprite spans
+/// `±size/2`. The *inscribed* circle rather than the circumscribed one because a circle that
+/// pokes OUT of the sprite makes it hover with a gap the artist can see and cannot fix by
+/// editing the art, while a circle inside it at worst lets a corner clip — which is what a round
+/// collider under a square sprite always does. `size_scale` reaches the circumscribed circle
+/// (√2 for a square) for whoever wants it.
+///
+/// An **absent `size` column is `[1, 1]`** on both paths — `SIZE_IDENTITY`, which is *also* the
+/// shell's `default_size`, so it is literally the quad the renderer draws there (one number, not
+/// two). The `abs` is because a mirrored sprite is the same size, not a negative one.
+pub fn particle_radius(mode: i32, fixed: f32, scale: f32, size: [f32; 2]) -> f32 {
+    match mode {
+        RADIUS_FIXED => fixed.max(0.0),
+        RADIUS_SIZE => (size[0].abs().min(size[1].abs()) * 0.5 * scale).max(0.0),
+        // Point (and any value a hand-edited document invents): no radius at all.
+        _ => 0.0,
+    }
+}
+
+/// The contact at `p` for a disc of radius `r`: the outward unit normal, and how deep inside the
+/// surface it is. `None` when it is clear of the surface.
+///
+/// `r` enters as the **Minkowski inflation** — the same shape grown outward — so there is still
+/// one contact test per shape and one response for all of them. `r = 0` is the point collider,
+/// term for term.
 fn contact(
     shape: i32,
     p: [f32; 2],
     height: f32,
     c: [f32; 2],
     radius: f32,
+    r: f32,
 ) -> Option<([f32; 2], f32)> {
     match shape {
         SHAPE_DISC | SHAPE_BOWL => {
@@ -225,13 +332,21 @@ fn contact(
                 [0.0, 1.0]
             };
             if shape == SHAPE_DISC {
-                (dist < radius).then_some((n, radius - dist))
+                // A solid obstacle GROWS by the particle's radius: the centre of a disc of
+                // radius `r` can never be closer than `r` to the surface.
+                let grown = radius + r;
+                (dist < grown).then_some((n, grown - dist))
             } else {
-                (dist > radius).then_some(([-n[0], -n[1]], dist - radius))
+                // A container SHRINKS by it, for the same reason — and is clamped at 0: a
+                // particle wider than its bowl has nowhere to be, and the honest answer is the
+                // centre, not a push through it and out the other side.
+                let inner = (radius - r).max(0.0);
+                (dist > inner).then_some(([-n[0], -n[1]], dist - inner))
             }
         }
-        // The floor: the world is everything above `height`, so "out" is straight up.
-        _ => (p[1] < height).then_some(([0.0, 1.0], height - p[1])),
+        // The floor: the world is everything above `height`, so "out" is straight up — and what
+        // touches it is the element's BOTTOM, `p.y − r`.
+        _ => (p[1] - r < height).then_some(([0.0, 1.0], height - (p[1] - r))),
     }
 }
 
@@ -274,6 +389,15 @@ fn vec2(s: &Stream, name: &str, n: usize) -> Vec<[f32; 2]> {
     }
 }
 
+/// Every element's `size`, widened to `n`. **Absent reads as `SIZE_IDENTITY`** — the unit quad
+/// the lowering itself falls back to, and the same identity the GPU binding carries.
+fn sizes(s: &Stream, n: usize) -> Vec<[f32; 2]> {
+    match s.get("size") {
+        Some(Column::Vec2(v)) if v.len() == n => v.clone(),
+        _ => vec![ph2d_nodegraph::attr::SIZE_IDENTITY; n],
+    }
+}
+
 /// The whole node: resolve each element's contact, respond, write `P` and `vel` back.
 #[allow(clippy::too_many_arguments)]
 fn collide(
@@ -284,6 +408,7 @@ fn collide(
     radius: f32,
     restitution: f32,
     friction: f32,
+    part: (i32, f32, f32),
 ) -> Stream {
     let n = s.count();
     let mut out = Stream::new(n);
@@ -294,8 +419,13 @@ fn collide(
     }
     let mut p = vec2(s, "P", n);
     let mut v = vec2(s, "vel", n);
+    // Read unconditionally: `Point` ignores it, and a branch here would be a second place that
+    // decides what the radius mode means.
+    let size = sizes(s, n);
+    let (mode, fixed, scale) = part;
     for i in 0..n {
-        if let Some((normal, depth)) = contact(shape, p[i], height, c, radius) {
+        let r = particle_radius(mode, fixed, scale, size[i]);
+        if let Some((normal, depth)) = contact(shape, p[i], height, c, radius, r) {
             let (mut pi, mut vi) = (p[i], v[i]);
             respond(&mut pi, &mut vi, normal, depth, restitution, friction);
             if pi.iter().chain(&vi).all(|x| x.is_finite()) {
@@ -325,6 +455,11 @@ impl NodeOp for SimCollide {
         // scene ends up in orbit. Clamped, not trusted.
         let restitution = ctx.param("restitution").clamp(0.0, 1.0); // CLAMP-OK: const bounds
         let friction = ctx.param("friction").clamp(0.0, 1.0); // CLAMP-OK: const bounds
+        let part = (
+            ctx.param("radius_from").round() as i32,
+            ctx.param("particle_radius"),
+            ctx.param("size_scale"),
+        );
         let out = collide(
             ctx.input(0),
             shape,
@@ -333,6 +468,7 @@ impl NodeOp for SimCollide {
             radius,
             restitution,
             friction,
+            part,
         );
         ctx.emit(out);
     }
@@ -351,6 +487,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
 
@@ -400,6 +537,36 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Slider,
     },
     ParamUiHint {
+        param: "radius_from",
+        label: "Radius From",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            // Reads as a sentence, and "Point" names the default HONESTLY: what the
+            // collider did before it could know how big anything was.
+            labels: &["Point", "Fixed", "Sprite Size"],
+        },
+    },
+    ParamUiHint {
+        param: "particle_radius",
+        label: "Particle Radius",
+        min: 0.0,
+        max: 4.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "size_scale",
+        label: "Size Scale",
+        // 1 = the circle inscribed in the sprite; 1.414… = the one around a square
+        // one. Above ~2 the collider is visibly bigger than the art it catches.
+        min: 0.0,
+        max: 3.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
         param: "restitution",
         label: "Bounce",
         min: 0.0,
@@ -442,6 +609,54 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
     ParamUnitDecl {
         param: "radius",
         unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "particle_radius",
+        unit: ParamUnit::Length,
+    },
+];
+
+/// **Only the controls this shape and this radius mode actually READ.**
+///
+/// Before this, every one of the ten was painted always — so a Disc showed a `Height` the kernel
+/// never looks at, and a Floor showed a `Center X`/`Center Y`/`Radius` it never looks at either:
+/// four dead knobs, which is the thing this codebase refuses (`sim.collide` was one of the nodes
+/// the doc-89 folha flagged for it). The gate is side-metadata — a param with no entry here is
+/// always shown, which is what all ten meant yesterday.
+///
+/// ⚠️ `radius` appears in the **shape** group and `particle_radius` in the **radius** one on
+/// purpose: they are two different lengths (*how big is the WORLD* × *how big is the THING*),
+/// and the labels say so ("Radius" × "Particle Radius").
+static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
+    ph2d_node_registry::ParamGate {
+        param: "height",
+        when: "shape",
+        values: &[SHAPE_FLOOR],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "center_x",
+        when: "shape",
+        values: &[SHAPE_DISC, SHAPE_BOWL],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "center_y",
+        when: "shape",
+        values: &[SHAPE_DISC, SHAPE_BOWL],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "radius",
+        when: "shape",
+        values: &[SHAPE_DISC, SHAPE_BOWL],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "particle_radius",
+        when: "radius_from",
+        values: &[RADIUS_FIXED],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "size_scale",
+        when: "radius_from",
+        values: &[RADIUS_SIZE],
     },
 ];
 

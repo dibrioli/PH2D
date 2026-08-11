@@ -103,16 +103,39 @@ fn a_slow_gesture_carries_its_residue_instead_of_depositing_every_event() {
     assert!(worst_gap(&slow) <= 2.0 * MS);
 }
 
-/// O último dab pousa **no ponteiro**, não perto dele — é o que impede a ponta
-/// do traço de ficar para trás da mão.
+/// O último dab pousa a um número INTEIRO de passos da âncora, e o que sobra
+/// vira a âncora seguinte — é isso que faz o resíduo ser geometria preservada
+/// em vez de um número descartado.
+///
+/// ⚠️ **Este gate afirmava o CONTRÁRIO** (*"o último dab pousa no ponteiro, não
+/// perto dele — é o que impede a ponta do traço de ficar para trás da mão"*), e
+/// a premissa dele estava certa sobre um traço de UM evento e errada sobre o
+/// gesto: pousar no ponteiro é o que DESCARTA o resíduo, e a medição
+/// (`tests/measure_path_invariance.rs`) precificou isso em **6,485 %** de
+/// dependência de amostragem. A ponta não fica para trás da mão — ela fica para
+/// trás por **menos de um passo**, que é `0,15 · raio`, e o dab anterior a
+/// cobre; é o que a segunda metade deste gate afirma.
 #[test]
-fn the_last_dab_lands_exactly_on_the_pointer() {
+fn the_last_dab_is_a_whole_step_from_the_anchor_and_the_rest_carries() {
     let to = [37.5, -12.25];
-    let last = walk([0.0, 0.0], to, 3.0)
-        .expect("anda")
-        .last()
-        .expect("dab");
-    assert_eq!(last, to);
+    let w = walk([0.0, 0.0], to, 3.0).expect("anda");
+    let last = w.last().expect("dab");
+
+    // O último dab está a EXATAMENTE `steps · ms` da âncora.
+    let d = (last[0] * last[0] + last[1] * last[1]).sqrt();
+    let want = 3.0 * w.len() as f32;
+    assert!(
+        (d - want).abs() <= 1e-3,
+        "o último dab tem de estar a {want} da âncora, e está a {d}"
+    );
+
+    // E a âncora seguinte É ele — não o ponteiro.
+    assert_eq!(w.anchor(), last, "a âncora é o último dab");
+
+    // O resíduo que sobra é menor que um passo: é ele que o próximo evento
+    // carrega, e é por isso que a ponta nunca fica mais que um passo atrás.
+    let rest = ((to[0] - last[0]).powi(2) + (to[1] - last[1]).powi(2)).sqrt();
+    assert!(rest < 3.0, "o resíduo é menor que um passo, e veio {rest}");
 }
 
 /// O espaçamento é do PINCEL: dobrar o raio dobra o passo, então a sobreposição
@@ -156,10 +179,100 @@ fn the_walk_deposits_every_step_it_promises() {
         assert_eq!(w.len(), n, "o walk prometeu {n} dabs");
         let dabs: Vec<[f32; 2]> = w.collect();
         assert_eq!(dabs.len(), n as usize, "e tem de ENTREGAR os {n}");
-        assert_eq!(
-            dabs.last().expect("dab")[0],
-            len,
-            "o último dab de {n} passos tem de pousar no ponteiro"
+        // ⚠️ **O ESPAÇAMENTO é o oráculo, não o endpoint.** A versão anterior
+        // exigia que o último dab pousasse no ponteiro, o que era a lei antiga:
+        // ela esticava o passo até `2·ms` para fazer a conta fechar. Agora o
+        // passo é fixo, então o que se afirma é a propriedade que ele tem.
+        for w in dabs.windows(2) {
+            let gap = (w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]);
+            assert!(
+                (gap - MS).abs() <= 1e-3,
+                "dois dabs consecutivos distam EXATAMENTE {MS}, e distaram {gap}"
+            );
+        }
+        assert!(
+            (dabs.last().expect("dab")[0] - MS * n as f32).abs() <= 1e-3,
+            "o último dab de {n} passos pousa a {n}·{MS} da âncora"
         );
+    }
+}
+
+/// ⚠️ **A PROPRIEDADE que a wave do passo exato ganha, e a que teria pego tudo
+/// o que ela consertou:** o MESMO caminho produz a MESMA lista de dabs, em
+/// qualquer granularidade de evento.
+///
+/// Ela não é sobre o `walk` sozinho — é sobre o `walk` **mais** a regra da
+/// âncora, que é a metade que morava numa convenção do chamador. Por isso o
+/// laço abaixo é o driver INTEIRO (andar, carimbar, re-ancorar), e o oráculo é
+/// a lista, não um resumo dela.
+///
+/// ⚠️ **As fronteiras de evento são IRREGULARES, e isso é o controle:** com
+/// eventos do mesmo tamanho a grade dos dabs e a dos eventos se alinham por
+/// construção, e o gate ficaria verde sobre a lei antiga. Com pesos desiguais
+/// ele nasce VERMELHO nela (`26..33` dabs pelo mesmo caminho, medido).
+#[test]
+fn the_dab_list_is_a_function_of_the_path_not_of_the_polling() {
+    const MS: f32 = 6.0;
+    const LEN: f32 = 200.0;
+
+    // Um LCG minúsculo: fronteiras determinísticas e desiguais, sem dep nova.
+    let bounds = |events: usize| -> Vec<f32> {
+        let mut st: u64 = 0x2545_F491_4F6C_DD1D;
+        let mut w: Vec<f32> = (0..events)
+            .map(|_| {
+                st = st
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
+                0.5 + (st >> 40) as f32 / f32::from(1u16 << 12) / 4.0
+            })
+            .collect();
+        let total: f32 = w.iter().sum();
+        let mut acc = 0.0;
+        for x in &mut w {
+            acc += *x / total * LEN;
+            *x = acc;
+        }
+        if let Some(l) = w.last_mut() {
+            *l = LEN;
+        }
+        w
+    };
+
+    // O driver INTEIRO, que é o que está sob teste.
+    let run = |events: usize| -> Vec<[f32; 2]> {
+        let mut out = Vec::new();
+        let mut anchor = [0.0f32, 0.0];
+        for b in bounds(events) {
+            if let Some(w) = walk(anchor, [b, 0.0], MS) {
+                out.extend(w);
+                anchor = w.anchor();
+            }
+        }
+        out
+    };
+
+    let want = run(1);
+    assert!(
+        want.len() > 20,
+        "a fixture tem de conter dabs: {}",
+        want.len()
+    );
+    for events in [2usize, 3, 5, 8, 20, 100] {
+        let got = run(events);
+        assert_eq!(
+            got.len(),
+            want.len(),
+            "{events} eventos deram {} dabs contra {} de um evento — \
+             a lista deixou de ser função do caminho",
+            got.len(),
+            want.len()
+        );
+        for (i, (g, w)) in got.iter().zip(&want).enumerate() {
+            let d = (g[0] - w[0]).hypot(g[1] - w[1]);
+            assert!(
+                d <= 1e-3,
+                "o dab {i} caiu a {d} de onde o mesmo caminho o põe em 1 evento"
+            );
+        }
     }
 }

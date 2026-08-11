@@ -248,7 +248,7 @@ impl App {
                             scene.hook_step(prev, step);
                             prev = step;
                         }
-                        scene.stroke_anchor = [x, y];
+                        scene.stroke_anchor = steps.anchor();
                     }
                 }
                 // ⚠️ **Quem GIRA não percorre o caminho tampouco, e por um
@@ -266,10 +266,18 @@ impl App {
                                 break;
                             }
                         }
-                        // Só aqui: se o `walk` recusou, a âncora FICA e o
-                        // resíduo acumula — é o carry, e movê-la fora deste ramo
-                        // o apaga.
-                        scene.stroke_anchor = [x, y];
+                        // ⚠️ **A âncora é o ÚLTIMO DAB, e o `walk` é quem
+                        // responde isso.** Duas coisas se perdem escrevendo
+                        // `= [x, y]` aqui, e as duas são silenciosas: o resíduo
+                        // ACIMA de um passo evapora (a dependência de amostragem
+                        // que a `measure_path_invariance` mede em 6,485%), e a
+                        // regra vira convenção que o terceiro sítio de chamada
+                        // não conhece.
+                        //
+                        // Se o `walk` RECUSOU (o carry, `None`), a âncora fica
+                        // onde está — o resíduo acumula até valer um passo, e
+                        // movê-la fora deste ramo o apagaria.
+                        scene.stroke_anchor = steps.anchor();
                     }
                 }
             },

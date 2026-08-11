@@ -6,26 +6,42 @@
 //! salta 40 px deixaria um vão de 40 px entre dois dabs, e nenhuma lei de
 //! envelope preenche o que ninguém carimbou.
 //!
-//! A lei é a do SculptGL (`SculptBase.js:126-151`), e as três partes dela são
-//! independentes:
+//! A lei era a do SculptGL (`SculptBase.js:126-151`) e **deixou de ser numa
+//! metade**, por medição:
 //!
 //! ```text
 //! dist = |mouse − âncora|
-//! if dist <= min_spacing { return }          // ⇐ o CARRY: não carimba, e a âncora FICA
-//! n = floor(dist / min_spacing)              // n dabs, espaçados dist/n ∈ [ms, 2·ms)
-//! …carimba…
-//! âncora = mouse                             // o ponteiro REAL, não o último dab
+//! if dist < min_spacing { return }           // ⇐ o CARRY: não carimba, e a âncora FICA
+//! n = floor(dist / min_spacing)
+//! …carimba n dabs, a EXATAMENTE `min_spacing` um do outro…
+//! âncora = ÚLTIMO DAB                        // ⇐ e não o ponteiro
 //! ```
 //!
-//! ⚠️ **O carry é o que torna o gesto lento igual ao rápido.** Sem ele, um
-//! movimento de 2 px carimbaria um dab a 2 px do anterior, e mover o mouse
-//! devagar depositaria dez vezes mais dabs pelo mesmo caminho. Com ele, o
-//! resíduo se ACUMULA até valer um passo — e é por isso que a âncora não pode
-//! andar quando nada foi carimbado.
+//! ⚠️ **A última linha é a mudança, e ela vale 6,485 % → 0,000 %.** O original
+//! espaça os dabs por `dist/n ∈ [ms, 2·ms)` e depois move a âncora para o
+//! **PONTEIRO** — o que descarta o resíduo acima de um passo. Medido
+//! (`tests/measure_path_invariance.rs`), o MESMO caminho entregue em 1..100
+//! eventos irregulares produzia **26..33 dabs**, e o resultado do produto
+//! divergia **6,485 %** da excursão do próprio traço. Com a âncora no último
+//! dab, o resíduo é **geometria preservada** em vez de um número descartado:
+//! **33..33 dabs** e **0,000 %**.
 //!
-//! ⚠️ **Ele está no TIPO, não numa convenção:** [`walk`] devolve `None` para o
-//! caso do carry, então "esqueci de não mover a âncora" não é um erro que se
-//! comete distraído — é um `match` que não compila pela metade.
+//! ⚠️ **Isto corrige uma promessa que o [`crate::SculptStroke`] faz e não
+//! cumpria.** O cabeçalho dele atribui a independência de amostragem ao
+//! ENVELOPE; a medição diz que o envelope a **amortece ~2,7×** e que quem a
+//! entrega é este arquivo. As duas metades continuam necessárias — o envelope
+//! pelo que faz com dabs SOBREPOSTOS, este pelo que faz com a LISTA.
+//!
+//! ⚠️ **A paridade por-TRAÇO com o driver do original cai aqui, e é deliberado**
+//! (a por-DAB fica: o kernel não é tocado). Um driver cuja lista de dabs varia
+//! 1,27× pelo mesmo caminho não é alvo de paridade — é um defeito que a
+//! referência tem, e o `docs/3D/19` §3.2.1 registra a decisão.
+//!
+//! ⚠️ **E o carry está no TIPO, não numa convenção:** [`walk`] devolve `None`
+//! para o caso do carry, então "esqueci de não mover a âncora" não é um erro que
+//! se comete distraído — é um `match` que não compila pela metade. A metade nova
+//! está no tipo pela mesma razão: quem chama pergunta [`Walk::anchor`] em vez de
+//! escrever `= [x, y]`, e o terceiro sítio de chamada nasce certo.
 //!
 //! ⚠️ **A unidade é a do CHAMADOR.** Este módulo não sabe o que é um pixel; ele
 //! recebe dois pontos e uma distância mínima na mesma régua. No nosso shell essa
@@ -77,6 +93,12 @@ pub struct Walk {
     /// Quantos dabs, ≥ 1 por construção.
     steps: u32,
     next: u32,
+    /// A fração do segmento que UM passo vale — `min_spacing / dist`.
+    ///
+    /// ⚠️ **É ela que separa esta lei da do original.** Lá o passo era `1/n`,
+    /// que estica o espaçamento até `2·ms` para o último dab pousar no ponteiro;
+    /// aqui ele é fixo, e o que sobra vira a [`Walk::anchor`].
+    step: f64,
 }
 
 impl Walk {
@@ -92,6 +114,29 @@ impl Walk {
     pub fn is_empty(self) -> bool {
         false
     }
+
+    /// **Onde a âncora do chamador vai parar** — o ÚLTIMO dab, nunca o ponteiro.
+    ///
+    /// ⚠️ **Esta é a metade da lei que mora no tipo, e a razão é o terceiro
+    /// sítio de chamada.** O resíduo entre o último dab e o ponteiro tem de
+    /// sobreviver ao evento; escrito `= [x, y]` em cada chamador, ele é uma
+    /// convenção que o próximo chamador não conhece — e o modo de falha é
+    /// **silencioso** (o traço sai certo, e só a dependência de amostragem
+    /// volta). Perguntado ao `Walk`, ele é a resposta de quem sabe.
+    ///
+    /// ⚠️ **Ele reusa a MESMA aritmética do iterador** (`step · steps` pelo
+    /// mesmo `lerp`), e não uma re-derivação `from + steps·ms`: as duas
+    /// concordam em álgebra e não em ponto flutuante, e a que importa é a que o
+    /// kernel de fato carimbou — senão a âncora deriva do último dab por um ulp
+    /// a cada evento, cumulativamente ao longo do traço.
+    #[must_use]
+    pub fn anchor(self) -> [f32; 2] {
+        let t = self.step * f64::from(self.steps);
+        [
+            lerp(self.from[0], self.to[0], t),
+            lerp(self.from[1], self.to[1], t),
+        ]
+    }
 }
 
 impl Iterator for Walk {
@@ -102,13 +147,15 @@ impl Iterator for Walk {
             return None;
         }
         // ⚠️ **O índice é INTEIRO, e o original acumula em float**
-        // (`for (i = step; i <= 1.0; i += step)`). Com o acúmulo, o último dab
-        // cai perto de `to` em vez de EM `to`, e às vezes some inteiro quando a
-        // soma passa de 1.0 por um ulp — ruído de amostragem, que é justamente
-        // o que a lei do traço existe para eliminar. Aqui `i = steps` dá `t = 1`
-        // exato, logo o último dab pousa no ponteiro. Divergência registrada no
-        // livro-razão.
-        let t = f64::from(self.next) / f64::from(self.steps);
+        // (`for (i = step; i <= 1.0; i += step)`). Com o acúmulo, o dab `k` sai
+        // de `k` somas encadeadas em vez de um produto — ruído que CRESCE ao
+        // longo do gesto, e que é o que a lei do traço existe para eliminar.
+        // `k · step` é o mesmo número em qualquer granularidade.
+        //
+        // ⚠️ **E o último dab NÃO pousa no ponteiro** — ele pousa a
+        // `steps · min_spacing` da âncora, que é o que torna a lista função pura
+        // do caminho. Quem fica com o resíduo é a [`Walk::anchor`].
+        let t = self.step * f64::from(self.next);
         self.next += 1;
         Some([
             lerp(self.from[0], self.to[0], t),
@@ -133,6 +180,14 @@ fn lerp(a: f32, b: f32, t: f64) -> f32 {
 pub fn walk(from: [f32; 2], to: [f32; 2], min_spacing: f32) -> Option<Walk> {
     let dist = ((to[0] - from[0]).powi(2) + (to[1] - from[1]).powi(2)).sqrt();
     let ms = min_spacing.max(f32::MIN_POSITIVE);
+    // ⚠️ **`<=` FICA, e a tentativa de mover para `<` foi revertida.** Eu a
+    // troquei nesta wave argumentando que em `dist == ms` cabe um passo e
+    // recusá-lo atrasa o primeiro dab — verdade, e IRRELEVANTE: com a âncora no
+    // último dab as duas fronteiras produzem a MESMA lista (`ms` recusado
+    // apenas adia o dab para o evento seguinte, que o carimba no mesmo lugar).
+    // O gate ao lado declara a escolha como deliberada há mais tempo do que
+    // esta wave existe, e mover uma cerca por um argumento que não muda o
+    // resultado é como um comportamento se perde.
     if !dist.is_finite() || dist <= ms {
         return None;
     }
@@ -144,6 +199,7 @@ pub fn walk(from: [f32; 2], to: [f32; 2], min_spacing: f32) -> Option<Walk> {
         to,
         steps: steps.max(1),
         next: 1,
+        step: f64::from(ms) / f64::from(dist),
     })
 }
 

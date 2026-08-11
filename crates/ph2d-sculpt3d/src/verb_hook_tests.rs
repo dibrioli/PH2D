@@ -55,7 +55,13 @@ fn drag_hook(
             );
             prev = step;
         }
-        anchor = to;
+        // ⚠️ **A âncora é o ÚLTIMO DAB, e este driver é uma CÓPIA do do shell.**
+        // Ele nasceu escrevendo `= to`, e é por isso que este gate ficou
+        // VERMELHO na wave do passo exato enquanto o produto ficava certo: um
+        // gate com driver próprio mede a re-expressão, não o produto. O que o
+        // mantém honesto é perguntar [`crate::Walk::anchor`] — a mesma porta que
+        // o `sculpt3d_input` pergunta.
+        anchor = steps.anchor();
     }
     (mesh, before)
 }

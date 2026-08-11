@@ -1111,6 +1111,70 @@ fn a_particle_radius_catches_on_the_device_exactly_where_it_catches_on_the_cpu()
     }
 }
 
+/// **A TILTED plane catches on the device exactly where it catches on the CPU** (doc 89, folha 13
+/// P0). The angle is resolved by the corrected parabolic sine, and the kernel carries the SAME
+/// polynomial and the SAME `sqrt` normalisation as `trig.rs` — a WGSL `sin()` would be a second
+/// answer, correct to a different last bit on every driver.
+///
+/// The non-vacuity is the geometry: the free-fall baseline uses a plane so far below the lattice
+/// that a floor never touches it, so an element that MOVED can only have been moved by the tilt.
+/// A wall and a ramp, because they exercise the two halves the flat case cannot — the normal
+/// pointing sideways, and a normal that is neither cardinal (where the polynomial is exact) nor
+/// axis-aligned (where `dot` degenerates to a single term).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn a_tilted_plane_catches_on_the_device_exactly_where_it_catches_on_the_cpu() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    const TICKS: u64 = 40;
+
+    // Free fall: the same shape, untilted and out of reach. This is what "the angle did
+    // nothing" looks like.
+    let (gf, of) = zone_chain(&reg, &[("shape", 0.0), ("height", -6.0)], None);
+    let flat = cpu_ticks(&gf, &reg, of, TICKS);
+
+    for (label, params) in [
+        (
+            "wall at 90",
+            &[
+                ("shape", 0.0),
+                ("angle", 90.0),
+                // n = (-1, 0), so the world is `x <= 0.5`: the lattice piles against it.
+                ("height", -0.5),
+                ("restitution", 0.2),
+                ("friction", 0.1),
+            ][..],
+        ),
+        (
+            "ramp at -25",
+            &[
+                ("shape", 0.0),
+                ("angle", -25.0),
+                ("height", -1.0),
+                ("restitution", 0.0),
+                ("friction", 0.15),
+            ][..],
+        ),
+    ] {
+        let (g, out) = zone_chain(&reg, params, None);
+        let cpu = cpu_ticks(&g, &reg, out, TICKS);
+        let gpu_out = gpu_ticks(&gpu, &g, &reg, out, TICKS, 4);
+        assert_parity(
+            &format!("sim.collide tilt / {label}"),
+            &cpu[TICKS as usize],
+            &gpu_out,
+        );
+        assert!(
+            max_move(&cpu[TICKS as usize], &flat[TICKS as usize]) > MUST_MOVE,
+            "case `{label}`: the frame equals the untouched free fall, so the angle never \
+             reached the contact test and the parity above proves nothing"
+        );
+    }
+}
+
 /// **The control for the gate above**: the boundary mechanism still WORKS.
 ///
 /// With every channel of the spring claimed, nothing in this suite would notice

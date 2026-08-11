@@ -36,8 +36,24 @@ fn collide_pt(
         restitution,
         friction,
         (RADIUS_POINT, 0.0, 0.0),
+        flat(),
     )
 }
+
+/// The normal of an untilted plane — what every fixture below means by "a floor".
+///
+/// It is [`plane_normal(0.0)`](plane_normal) and not a literal `[0, 1]`, so these fixtures cannot
+/// disagree with the door: if the door ever stopped answering `(0, 1)` at angle 0, every gate
+/// here would move with it instead of quietly testing a world the product no longer has.
+fn flat() -> [f32; 2] {
+    plane_normal(0.0)
+}
+
+/// The tilt's own guards live next door — `tests.rs` is the shape/radius file and would cross the
+/// LOC cap with them. This is a CHILD, so the fixture helpers above are the same ones.
+#[cfg(test)]
+#[path = "tests_plane.rs"]
+mod plane;
 
 fn read(s: &Stream) -> ([f32; 2], [f32; 2]) {
     let g = |name| match s.get(name) {
@@ -60,7 +76,7 @@ fn read(s: &Stream) -> ([f32; 2], [f32; 2]) {
 fn a_particle_hitting_the_floor_comes_back_up() {
     let out = collide_pt(
         &one([0.0, -3.0], [1.0, -4.0]),
-        SHAPE_FLOOR,
+        SHAPE_PLANE,
         -2.0,
         [0.0, 0.0],
         0.0,
@@ -79,7 +95,7 @@ fn a_particle_hitting_the_floor_comes_back_up() {
 fn restitution_spans_dead_to_perfectly_elastic() {
     let dead = collide_pt(
         &one([0.0, -3.0], [0.0, -4.0]),
-        SHAPE_FLOOR,
+        SHAPE_PLANE,
         -2.0,
         [0.0, 0.0],
         0.0,
@@ -90,7 +106,7 @@ fn restitution_spans_dead_to_perfectly_elastic() {
 
     let elastic = collide_pt(
         &one([0.0, -3.0], [0.0, -4.0]),
-        SHAPE_FLOOR,
+        SHAPE_PLANE,
         -2.0,
         [0.0, 0.0],
         0.0,
@@ -106,7 +122,7 @@ fn restitution_spans_dead_to_perfectly_elastic() {
 fn friction_bleeds_the_tangential_speed_only() {
     let out = collide_pt(
         &one([0.0, -2.5], [10.0, -4.0]),
-        SHAPE_FLOOR,
+        SHAPE_PLANE,
         -2.0,
         [0.0, 0.0],
         0.0,
@@ -129,7 +145,7 @@ fn a_resting_particle_does_not_jitter() {
     // Exactly on the surface, sliding along it.
     let on = collide_pt(
         &one([0.0, -2.0], [3.0, 0.0]),
-        SHAPE_FLOOR,
+        SHAPE_PLANE,
         -2.0,
         [0.0, 0.0],
         0.0,
@@ -145,7 +161,7 @@ fn a_resting_particle_does_not_jitter() {
     // Barely inside, but moving AWAY (it has already bounced): pushed out, never re-reflected.
     let leaving = collide_pt(
         &one([0.0, -2.01], [0.0, 5.0]),
-        SHAPE_FLOOR,
+        SHAPE_PLANE,
         -2.0,
         [0.0, 0.0],
         0.0,
@@ -163,7 +179,7 @@ fn a_resting_particle_does_not_jitter() {
 fn a_bounce_never_gains_speed() {
     for e in [0.0, 0.25, 0.5, 1.0] {
         for (shape, p) in [
-            (SHAPE_FLOOR, [0.0, -3.0]),
+            (SHAPE_PLANE, [0.0, -3.0]),
             (SHAPE_DISC, [0.3, 0.2]),
             (SHAPE_BOWL, [3.0, 1.0]),
         ] {
@@ -247,7 +263,7 @@ fn a_zone_with_a_floor_stops_its_particles_falling_through() {
     g.set_param(wind, "gust", 0.0);
     let step = g.add_node("sim.step");
     let floor = g.add_node("sim.collide");
-    g.set_param(floor, "shape", SHAPE_FLOOR as f32);
+    g.set_param(floor, "shape", SHAPE_PLANE as f32);
     g.set_param(floor, "height", -2.0);
     g.set_param(floor, "restitution", 0.2);
     for (from, fp, to, tp, delayed) in [
@@ -308,13 +324,14 @@ fn a_point_sinks_by_half_its_height_and_a_disc_rests_on_top() {
         // Deep below the floor and moving down: one call settles it exactly onto the surface.
         let out = collide(
             &sized([0.0, -9.0], [0.0, -4.0], [1.0, 1.0]),
-            SHAPE_FLOOR,
+            SHAPE_PLANE,
             -2.0,
             [0.0, 0.0],
             0.0,
             0.0,
             0.0,
             part,
+            flat(),
         );
         read(&out).0[1]
     };
@@ -370,7 +387,7 @@ fn the_radius_is_the_circle_inscribed_in_the_sprite() {
 #[test]
 fn the_point_mode_is_the_collider_that_shipped_before_it() {
     for (shape, p) in [
-        (SHAPE_FLOOR, [0.4, -3.0]),
+        (SHAPE_PLANE, [0.4, -3.0]),
         (SHAPE_DISC, [0.3, 0.2]),
         (SHAPE_BOWL, [3.0, 1.0]),
     ] {
@@ -386,6 +403,7 @@ fn the_point_mode_is_the_collider_that_shipped_before_it() {
             0.4,
             0.2,
             (RADIUS_POINT, 1.3, 2.5),
+            flat(),
         );
         assert_eq!(read(&want), read(&got), "shape {shape}");
     }
@@ -406,6 +424,7 @@ fn the_disc_grows_by_the_radius_and_the_bowl_shrinks_by_it() {
         0.0,
         0.0,
         (RADIUS_FIXED, 0.5, 1.0),
+        flat(),
     );
     assert!(
         (read(&disc).0[1] - 2.5).abs() < 1e-6,
@@ -423,6 +442,7 @@ fn the_disc_grows_by_the_radius_and_the_bowl_shrinks_by_it() {
         0.0,
         0.0,
         (RADIUS_FIXED, 0.5, 1.0),
+        flat(),
     );
     assert!(
         (read(&bowl).0[1] - 1.5).abs() < 1e-6,
@@ -446,6 +466,7 @@ fn a_particle_too_big_for_its_bowl_collapses_to_the_centre() {
         0.0,
         0.0,
         (RADIUS_FIXED, 4.0, 1.0),
+        flat(),
     );
     let (p, _) = read(&out);
     assert!(
@@ -474,13 +495,14 @@ fn three_sizes_rest_their_bottom_edges_on_the_same_line() {
         .with("size", Column::Vec2(sizes.to_vec()));
     let out = collide(
         &s,
-        SHAPE_FLOOR,
+        SHAPE_PLANE,
         -2.0,
         [0.0, 0.0],
         0.0,
         0.0,
         0.0,
         (RADIUS_SIZE, 0.0, 1.0),
+        flat(),
     );
     let Some(Column::Vec2(p)) = out.get("P") else {
         panic!("no `P`")
@@ -509,13 +531,14 @@ fn three_sizes_rest_their_bottom_edges_on_the_same_line() {
 fn an_absent_size_column_is_the_unit_quad_the_renderer_draws() {
     let out = collide(
         &one([0.0, -9.0], [0.0, -4.0]),
-        SHAPE_FLOOR,
+        SHAPE_PLANE,
         -2.0,
         [0.0, 0.0],
         0.0,
         0.0,
         0.0,
         (RADIUS_SIZE, 0.0, 1.0),
+        flat(),
     );
     assert_eq!(
         read(&out).0[1],
@@ -532,13 +555,14 @@ fn a_resting_sized_particle_does_not_jitter_either() {
     // Exactly at rest on the floor for its size, sliding along it.
     let on = collide(
         &sized([0.0, -1.5], [3.0, 0.0], [1.0, 1.0]),
-        SHAPE_FLOOR,
+        SHAPE_PLANE,
         -2.0,
         [0.0, 0.0],
         0.0,
         0.8,
         0.0,
         (RADIUS_SIZE, 0.0, 1.0),
+        flat(),
     );
     assert_eq!(
         read(&on),

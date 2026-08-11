@@ -59,6 +59,43 @@
 //! Where `r` comes from is [`particle_radius`] — the ONE door both this eval and the WGSL ask,
 //! because two answers to *"how big is this particle?"* diverge the moment a slider moves.
 //! `radius_from = Point` (the default) makes it `0` ⇒ **byte-identical to the point collider**.
+//!
+//! ## The plane TILTS (doc 89, folha 13 P0)
+//!
+//! The floor's normal was the literal `vec2(0, 1)`, and the folha measured both ways around it
+//! and refuted both: `motion.rotate` writes only the `rot` column — it never moves `P`, and
+//! could not move `vel` either, so a rotate-collide-unrotate sandwich reflects against the
+//! wrong frame; and chaining colliders *works* (each is `Pure`) but every floor is horizontal,
+//! so a chain builds a **staircase**, never a ramp.
+//!
+//! So the shape carries its own orientation. The plane is the canonical analytic one — a unit
+//! normal and a signed distance (the Hesse form):
+//!
+//! ```text
+//!   world = { p : dot(p, n) >= offset },   n = the world's up-vector turned by `angle`
+//!
+//!     0°   n = ( 0,  1)   a FLOOR    (the world is above)
+//!    ±θ    a RAMP, and a particle with friction < 1 SLIDES down it
+//!    90°   n = (-1,  0)   a WALL     at x = -offset, world to its left
+//!   180°   n = ( 0, -1)   a CEILING  at y = -offset, world below
+//!   270°   n = ( 1,  0)   a WALL     at x =  offset, world to its right
+//! ```
+//!
+//! ⚠️ **`offset` is the distance from the ORIGIN along the normal, not a Y coordinate** — and
+//! that choice is what makes a wall placeable at all. The obvious alternative (*"the plane
+//! pivots about `(0, height)`"*) reads better for a small ramp tilt, and it pins every wall to
+//! `x = 0` for ever: at 90° the pivot lies **on** the plane, so the knob slides the wall along
+//! itself and does nothing. The Hesse offset is never inert at any angle. The param is still
+//! named `height` (a name is stored in every saved graph and cannot be renamed); its LABEL is
+//! "Offset", because at 90° a height is not what the number is.
+//!
+//! ⚠️ **The tilt does not reach the Disc or the Bowl, and that is geometry**: both are
+//! rotationally symmetric, so an angle on them would be a knob that provably changes nothing.
+//! It is gated to the plane ([`PARAM_GATES`]).
+//!
+//! `angle = 0` gives `(0, 1)` **to the bit** — [`trig`]'s polynomial is exact at the cardinal
+//! phases — and `dot(p, (0,1))` is `p.y`, so the untilted plane is the floor that shipped, term
+//! for term.
 
 use ph2d_node_registry::{
     NodeRegistry, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget, RegistryError,
@@ -70,10 +107,17 @@ use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
+mod trig;
+mod ui;
+
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
 /// The shapes. Each one answers the same question — *how far inside am I, and which way is out?*
-pub const SHAPE_FLOOR: i32 = 0;
+///
+/// A half-plane, oriented by `angle`. **A floor is this plane at angle 0** — the default, and
+/// the overwhelming case; the name is the general one because the same shape is also a wall and
+/// a ceiling, and a "Floor" that can be a ceiling is a label that lies.
+pub const SHAPE_PLANE: i32 = 0;
 /// A solid disc: the world is everything OUTSIDE it (an obstacle to fall around).
 pub const SHAPE_DISC: i32 = 1;
 /// A bowl: the world is everything INSIDE it (a container to rattle around in).
@@ -101,13 +145,14 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     effect: Effect::Pure,
     clock: Clock::Frame,
     params: &[
-        // 0 Floor (a horizontal line, world above it) · 1 Disc (solid obstacle) · 2 Bowl
-        // (container).
+        // 0 Plane (a half-plane, world on the normal's side) · 1 Disc (solid obstacle) ·
+        // 2 Bowl (container).
         ParamSpec {
             name: "shape",
             default: 0.0,
         },
-        // Floor: its height. Disc/Bowl: the centre and the radius.
+        // Plane: the signed distance from the origin along its normal (the Hesse offset —
+        // at angle 0 that IS the floor's height). Disc/Bowl: the centre and the radius.
         ParamSpec {
             name: "height",
             default: -2.0,
@@ -154,6 +199,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "size_scale",
             default: 1.0,
         },
+        // ── The plane's TILT, in degrees (doc 89, folha 13 P0) ──────────────────
+        // Appended for the same reason the three above were. 0 = the horizontal
+        // floor this node always had, bit for bit.
+        ParamSpec {
+            name: "angle",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -180,6 +232,11 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         // The particle's own radius — `particle_radius`, term for term and in the\n\
         // same multiply order, so the two paths cannot answer this differently.\n\
         let sc_size = read_size(i);\n\
+        // The plane's normal — the SAME polynomial as `trig.rs`, the same `sqrt`\n\
+        // normalisation, and `0.0 - s` so `angle = 0` lands on the literal (0, 1).\n\
+        let sc_cs = sc_cos_sin(params.angle / 360.0);\n\
+        let sc_inv = 1.0 / sqrt(sc_cs.x * sc_cs.x + sc_cs.y * sc_cs.y);\n\
+        let sc_pn = vec2<f32>((0.0 - sc_cs.y) * sc_inv, sc_cs.x * sc_inv);\n\
         var sc_r = 0.0;\n\
         if (i32(round(params.radius_from)) == SC_R_FIXED) {\n\
         \x20   sc_r = max(params.particle_radius, 0.0);\n\
@@ -204,9 +261,10 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20       if (sc_dist > sc_inner) { sc_hit = true; sc_n = -sc_dir; sc_depth = sc_dist - sc_inner; }\n\
         \x20   }\n\
         } else {\n\
-        \x20   // The floor: the world is everything above `height`, so out is up — and\n\
-        \x20   // what touches it is the element's BOTTOM, `p.y - r`.\n\
-        \x20   if (sc_p.y - sc_r < params.height) { sc_hit = true; sc_n = vec2<f32>(0.0, 1.0); sc_depth = params.height - (sc_p.y - sc_r); }\n\
+        \x20   // The plane: the world is the side the normal points to, so out IS the\n\
+        \x20   // normal — and what touches it is the element's near face, `sd - r`.\n\
+        \x20   let sc_sd = dot(sc_p, sc_pn);\n\
+        \x20   if (sc_sd - sc_r < params.height) { sc_hit = true; sc_n = sc_pn; sc_depth = params.height - (sc_sd - sc_r); }\n\
         }\n\
         var sc_out_p = sc_p;\n\
         var sc_out_v = sc_v;\n\
@@ -238,6 +296,18 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         const SC_F32_MAX: f32 = 3.4028235e38;\n\
         fn collide_finite(v: vec2<f32>) -> bool {\n\
         \x20   return abs(v.x) <= SC_F32_MAX && abs(v.y) <= SC_F32_MAX;\n\
+        }\n\
+        fn sc_sin_cycles(phase: f32) -> f32 {\n\
+        \x20   // The corrected parabolic sine (see trig.rs) — the SAME polynomial as\n\
+        \x20   // the CPU, so parity holds; phase is in cycles (deg / 360).\n\
+        \x20   let ff = phase - floor(phase);\n\
+        \x20   var p: f32;\n\
+        \x20   if (ff < 0.5) { let u = ff * 2.0; p = 4.0 * u * (1.0 - u); }\n\
+        \x20   else { let u = (ff - 0.5) * 2.0; p = -4.0 * u * (1.0 - u); }\n\
+        \x20   return 0.225 * (p * abs(p) - p) + p;\n\
+        }\n\
+        fn sc_cos_sin(phase: f32) -> vec2<f32> {\n\
+        \x20   return vec2<f32>(sc_sin_cycles(phase + 0.25), sc_sin_cycles(phase));\n\
         }\n",
     bindings: &[
         ColumnBinding {
@@ -276,6 +346,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "radius_from",
         "particle_radius",
         "size_scale",
+        "angle",
     ],
     count_law: None,
     variant_by_param: None,
@@ -306,12 +377,38 @@ pub fn particle_radius(mode: i32, fixed: f32, scale: f32, size: [f32; 2]) -> f32
     }
 }
 
+/// **Which way is up for a plane tilted by `angle`** — the other door, asked once per eval and
+/// ported term for term into [`GPU_KERNEL`]. It is the world's up-vector turned by `angle`.
+///
+/// ⚠️ **The `sqrt` is not decoration.** The parabolic sine is ~0.09% off true trig, so `(c, s)`
+/// is not exactly on the unit circle — and a normal that is not unit-length makes BOTH the
+/// penetration depth and the reflection wrong by that much, because `respond` measures along it.
+/// One `sqrt` fixes it, and `sqrt` is the one operation IEEE-754 pins exactly, so the CPU and
+/// the device agree on it.
+///
+/// ⚠️ **No zero-guard, deliberately**: `trig::tests::stays_near_unit_circle` bounds the radius²
+/// inside `[0.98, 1.02]`, so the divisor cannot approach zero. A branch that can never fire is a
+/// defense no gate could ever prove.
+///
+/// `0.0 - s` rather than `-s` so that `angle = 0` lands on the literal `[0.0, 1.0]` the floor
+/// used to carry, sign of zero and all: the two differ only at `s = +0`, which is precisely the
+/// case the byte-identity claim is about.
+pub fn plane_normal(angle_deg: f32) -> [f32; 2] {
+    let (c, s) = trig::cos_sin_cycles(angle_deg / 360.0);
+    let inv = 1.0 / (c * c + s * s).sqrt();
+    [(0.0 - s) * inv, c * inv]
+}
+
 /// The contact at `p` for a disc of radius `r`: the outward unit normal, and how deep inside the
 /// surface it is. `None` when it is clear of the surface.
 ///
 /// `r` enters as the **Minkowski inflation** — the same shape grown outward — so there is still
 /// one contact test per shape and one response for all of them. `r = 0` is the point collider,
 /// term for term.
+///
+/// `plane_n` is the plane's normal (from [`plane_normal`]); the Disc and the Bowl ignore it,
+/// because a circle turned is the same circle.
+#[allow(clippy::too_many_arguments)]
 fn contact(
     shape: i32,
     p: [f32; 2],
@@ -319,6 +416,7 @@ fn contact(
     c: [f32; 2],
     radius: f32,
     r: f32,
+    plane_n: [f32; 2],
 ) -> Option<([f32; 2], f32)> {
     match shape {
         SHAPE_DISC | SHAPE_BOWL => {
@@ -344,9 +442,13 @@ fn contact(
                 (dist > inner).then_some(([-n[0], -n[1]], dist - inner))
             }
         }
-        // The floor: the world is everything above `height`, so "out" is straight up — and what
-        // touches it is the element's BOTTOM, `p.y − r`.
-        _ => (p[1] - r < height).then_some(([0.0, 1.0], height - (p[1] - r))),
+        // The plane: the world is the side its normal points to, so "out" IS the normal — and
+        // what touches it is the element's near face, `sd − r`. At `angle = 0` the normal is
+        // `(0, 1)` to the bit, `sd` is `p[1]`, and this is the floor test verbatim.
+        _ => {
+            let sd = p[0] * plane_n[0] + p[1] * plane_n[1];
+            (sd - r < height).then_some((plane_n, height - (sd - r)))
+        }
     }
 }
 
@@ -409,6 +511,7 @@ fn collide(
     restitution: f32,
     friction: f32,
     part: (i32, f32, f32),
+    plane_n: [f32; 2],
 ) -> Stream {
     let n = s.count();
     let mut out = Stream::new(n);
@@ -425,7 +528,7 @@ fn collide(
     let (mode, fixed, scale) = part;
     for i in 0..n {
         let r = particle_radius(mode, fixed, scale, size[i]);
-        if let Some((normal, depth)) = contact(shape, p[i], height, c, radius, r) {
+        if let Some((normal, depth)) = contact(shape, p[i], height, c, radius, r, plane_n) {
             let (mut pi, mut vi) = (p[i], v[i]);
             respond(&mut pi, &mut vi, normal, depth, restitution, friction);
             if pi.iter().chain(&vi).all(|x| x.is_finite()) {
@@ -460,6 +563,8 @@ impl NodeOp for SimCollide {
             ctx.param("particle_radius"),
             ctx.param("size_scale"),
         );
+        // Once per eval: it is a param, so every element shares it.
+        let plane_n = plane_normal(ctx.param("angle"));
         let out = collide(
             ctx.input(0),
             shape,
@@ -469,6 +574,7 @@ impl NodeOp for SimCollide {
             restitution,
             friction,
             part,
+            plane_n,
         );
         ctx.emit(out);
     }
@@ -485,180 +591,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,
         },
     );
-    reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
-    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
-    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_ui(MANIFEST.id, ui::PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, ui::PARAM_UNITS);
+    reg.register_param_gates(MANIFEST.id, ui::PARAM_GATES);
     Ok(())
 }
-
-/// Param UI hints. `shape` is a NAMED enum — a float slider would make the artist decode
-/// "2" into Bowl, which is exactly the decode the segmented selector exists to abolish.
-static PARAM_HINTS: &[ParamUiHint] = &[
-    ParamUiHint {
-        param: "shape",
-        label: "Shape",
-        min: 0.0,
-        max: 2.0,
-        step: 1.0,
-        widget: ParamWidget::Enum {
-            labels: &["Floor", "Disc", "Bowl"],
-        },
-    },
-    ParamUiHint {
-        param: "height",
-        label: "Height",
-        min: -10.0,
-        max: 10.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "center_x",
-        label: "Center X",
-        min: -10.0,
-        max: 10.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "center_y",
-        label: "Center Y",
-        min: -10.0,
-        max: 10.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "radius",
-        label: "Radius",
-        min: 0.0,
-        max: 10.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "radius_from",
-        label: "Radius From",
-        min: 0.0,
-        max: 2.0,
-        step: 1.0,
-        widget: ParamWidget::Enum {
-            // Reads as a sentence, and "Point" names the default HONESTLY: what the
-            // collider did before it could know how big anything was.
-            labels: &["Point", "Fixed", "Sprite Size"],
-        },
-    },
-    ParamUiHint {
-        param: "particle_radius",
-        label: "Particle Radius",
-        min: 0.0,
-        max: 4.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "size_scale",
-        label: "Size Scale",
-        // 1 = the circle inscribed in the sprite; 1.414… = the one around a square
-        // one. Above ~2 the collider is visibly bigger than the art it catches.
-        min: 0.0,
-        max: 3.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "restitution",
-        label: "Bounce",
-        min: 0.0,
-        max: 1.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "friction",
-        label: "Friction",
-        min: 0.0,
-        max: 1.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-];
-
-/// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
-/// shown. A `Length` is stored in world METRES and the panel resolves the face
-/// the artist reads (`px` or `m`) from `ProjectSettings::display_unit`; a node
-/// that could pin one would be overriding a setting it does not own.
-///
-/// Only params whose value is a world COORDINATE or a world DISTANCE are declared
-/// here. A weight, a fraction, a rate and a count are left bare on purpose: a unit
-/// that is wrong is worse than a unit that is missing, because the artist can read
-/// a bare number but a mislabelled one teaches them something false.
-static PARAM_UNITS: &[ParamUnitDecl] = &[
-    ParamUnitDecl {
-        param: "height",
-        unit: ParamUnit::Length,
-    },
-    ParamUnitDecl {
-        param: "center_x",
-        unit: ParamUnit::Length,
-    },
-    ParamUnitDecl {
-        param: "center_y",
-        unit: ParamUnit::Length,
-    },
-    ParamUnitDecl {
-        param: "radius",
-        unit: ParamUnit::Length,
-    },
-    ParamUnitDecl {
-        param: "particle_radius",
-        unit: ParamUnit::Length,
-    },
-];
-
-/// **Only the controls this shape and this radius mode actually READ.**
-///
-/// Before this, every one of the ten was painted always — so a Disc showed a `Height` the kernel
-/// never looks at, and a Floor showed a `Center X`/`Center Y`/`Radius` it never looks at either:
-/// four dead knobs, which is the thing this codebase refuses (`sim.collide` was one of the nodes
-/// the doc-89 folha flagged for it). The gate is side-metadata — a param with no entry here is
-/// always shown, which is what all ten meant yesterday.
-///
-/// ⚠️ `radius` appears in the **shape** group and `particle_radius` in the **radius** one on
-/// purpose: they are two different lengths (*how big is the WORLD* × *how big is the THING*),
-/// and the labels say so ("Radius" × "Particle Radius").
-static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
-    ph2d_node_registry::ParamGate {
-        param: "height",
-        when: "shape",
-        values: &[SHAPE_FLOOR],
-    },
-    ph2d_node_registry::ParamGate {
-        param: "center_x",
-        when: "shape",
-        values: &[SHAPE_DISC, SHAPE_BOWL],
-    },
-    ph2d_node_registry::ParamGate {
-        param: "center_y",
-        when: "shape",
-        values: &[SHAPE_DISC, SHAPE_BOWL],
-    },
-    ph2d_node_registry::ParamGate {
-        param: "radius",
-        when: "shape",
-        values: &[SHAPE_DISC, SHAPE_BOWL],
-    },
-    ph2d_node_registry::ParamGate {
-        param: "particle_radius",
-        when: "radius_from",
-        values: &[RADIUS_FIXED],
-    },
-    ph2d_node_registry::ParamGate {
-        param: "size_scale",
-        when: "radius_from",
-        values: &[RADIUS_SIZE],
-    },
-];
 
 #[cfg(test)]
 #[path = "tests.rs"]

@@ -312,7 +312,11 @@ com o walk de hoje, **33..33** com o exato.)*
 que o produto já faz e não cumpre, sem tocar em lei nenhuma, e é smokável
 sozinha (`6,485 % → 0,000 %`).
 
-**Metade 2 — o `Grip::Hold` compõe sobre o vivo** pelo kernel da referência.
+**Metade 2 — o `Grip::Stamp` compõe sobre o vivo** pelo kernel da referência.
+⚠️ *`Stamp`, e não `Hold`* — o rascunho desta seção nomeava o grip errado, e
+`Hold` é o **Grab**. Os onze verbos que carimbam são o `Stamp`; os outros três
+grips já têm lei própria e medida (`Hook` compõe, `Turn` é ancorado no `pre` de
+propósito, `Hold` não percorre caminho nenhum).
 
 ⚠️ **A ordem é load-bearing:** invertida, a metade 2 shipa a 17,3 % e o smoke
 julgaria a lei carregando um defeito que não é dela.
@@ -326,6 +330,62 @@ sobra é a decisão de produto que esta seção achava que teria de tomar.
 por-TRAÇO com o *driver* do SculptGL cai (a por-DAB fica, porque o kernel é o
 mesmo). Um driver cuja lista de dabs varia 1,27× pelo mesmo caminho não é um
 alvo de paridade — é um defeito que a referência tem e nós não precisamos herdar.
+
+### 3.2.2 — A metade 2 tem FORMA, e ela cabe no que já existe
+
+A metade 1 fechou (`6,485 % → 0,000 %`, kill-criterion cumprido). O desenho da
+metade 2 está abaixo porque ele foi **derivado e medido** nesta sessão, e
+re-derivá-lo custaria a próxima a mesma leitura.
+
+**O achado: ela não precisa de máquina nova.** O `dab_core` já resolve a lei numa
+**tabela de quatro colunas sobre o `Grip`**, e a composição sobre o vivo é uma
+combinação que a tabela já sabe exprimir:
+
+```rust
+// hoje
+Grip::Stamp => (frozen: false, from_live: false, unit_accum: false, early_out: true),
+// a metade 2
+Grip::Stamp => (frozen: false, from_live: brush.accumulate, unit_accum: true, early_out: false),
+```
+
+- **`unit_accum: true`** — o peso deixa de entrar pelo `accum` e passa a entrar
+  no INCREMENTO, que é a forma da referência;
+- **`early_out: false`** — não há envelope a superar quando se compõe;
+- **`from_live: brush.accumulate`** — ⚠️ **é literalmente o que o *Accumulate* do
+  original É** (o [`ref_kernels::Origin`] já o modela): ligado, a distância sai
+  da posição VIVA e o pincel não se esgota; desligado, ela sai do proxy
+  congelado e o vértice **sai da pegada** sozinho. O `ACCUM_PER_DAB` e o
+  `piling` somem com ele — e era o `ACCUM_PER_DAB = 0,075` que fazia a primeira
+  passada ser **13,3× mais fraca** que a referência, o defeito que o Enio
+  reportou primeiro.
+
+**E o PRECEDENTE já está na tabela de alvos:** `Verb::SnakeHook => add_vec(live,
+pull, w)` — parte da posição viva, carrega o peso no incremento e recebe
+`accum = 1`. Os onze verbos de carimbo passam a ter a forma que UM deles já tem.
+
+⚠️ **A dúvida que isso levanta foi MEDIDA, e a resposta desbloqueia o resto:** o
+aplicador é `b + (t − b)·a`, e a referência escreve `t` DIRETO — se os dois
+diferissem, a paridade por-dab morreria **no aplicador**, não no kernel. Medido
+em 9 M amostras sobre cinco regimes (do produto até `1e-6`/`1e30`):
+`lerp(b, t, 1.0) == t` **bit a bit, 0 divergências em todos**. ⇒ **o aplicador
+único fica**, sem fast path e sem uma segunda rota de escrita — que é
+exatamente o que o doc-comment dele pede.
+
+**O que sobra de trabalho real**, e é onde a wave vai doer:
+
+1. os onze braços de [`compute_target`] passam a ancorar no VIVO e a escalar o
+   incremento por `w` (a forma do `SnakeHook`);
+2. as constantes por-verbo alinham com a referência — e é aqui que os números da
+   §2 são pagos: `deform = intensidade · raio · 0,1` contra o nosso
+   `raio · 0,2 · strength` **é exatamente o 2,01× do Draw**;
+3. ⚠️ **~90 gates codificam a lei do envelope** e não são afrouxáveis em bloco:
+   cada um diz uma coisa verdadeira sobre a lei antiga, e a wave tem de decidir,
+   um a um, se ele **muda de lei** (a maioria) ou se ele **pina uma propriedade
+   que a lei nova não tem** (e aí ele morre com o motivo escrito, como os dois
+   que a metade 1 reescreveu).
+
+⚠️ **O `Sharpen` não tem kernel na referência** (§3.3) e é o único que a wave
+tem de decidir em vez de portar.
 
 ### 3.3 — O MAPA dos verbos, e o único que a referência não tem
 

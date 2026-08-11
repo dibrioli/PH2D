@@ -277,11 +277,55 @@ path-invariante:** ela emite `floor(dist/minSpacing)` dabs com espaçamento em
 `[ms, 2·ms)`, então a contagem de dabs pelo mesmo caminho varia **até 2×** com a
 velocidade da mão. Adotá-la é adotar essa dependência.
 
-**A decisão que sobra para o Enio, e que a medição não toma por ele:** aceitar a
-dependência de amostragem de até 2× que vem junto com a paridade, ou pedir a
-composição sobre o vivo **com** o passo de espaçamento fixo que já temos (que
-dá o *feel* do SculptGL sem a variação — e deixa de ser bit-idêntico num traço,
-continuando bit-idêntico por dab).
+⚠️ **E ENTÃO A MEDIÇÃO DISSOLVEU O TRADE — mas primeiro derrubou uma promessa
+que o PRODUTO faz.** Sonda: `measure_path_invariance`, o MESMO caminho entregue
+em 1..100 eventos de tamanhos **irregulares** (o controle: com eventos iguais um
+passo exato é trivialmente invariante e a coluna não provaria nada).
+
+| lei | pior divergência de amostragem |
+|---|---|
+| **PRODUTO hoje** (`SculptStroke`, envelope sobre o `pre`) | **6,485 %** |
+| **PRODUTO + walk EXATO** | **0,000 %** |
+| COMPOR (a lei da referência, com o walk de hoje) | **17,327 %** |
+| **COMPOR + walk EXATO** | **0,000 %** |
+
+*(% da excursão do próprio traço; contagem de dabs pelo mesmo caminho: **26..33**
+com o walk de hoje, **33..33** com o exato.)*
+
+**As três coisas que isto diz, e a terceira é a wave:**
+
+1. ⚠️ **A promessa do cabeçalho do `stroke.rs` — *"devagar ou rápido dá o mesmo
+   resultado"* — vale 6,485 %, não 0.** O envelope **amortece** a dependência de
+   amostragem ~2,7×; ele não a remove. Quem a removeria é o **WALK**, e o nosso
+   carrega só o resto **abaixo** de um passo (`dist <= min_spacing`); acima
+   disso a âncora salta para o ponteiro e o resíduo evapora — é a lei do
+   original (`SculptBase.js:126-151`), portada de propósito.
+2. **A independência de amostragem é propriedade do WALK, não da lei de
+   composição.** Com o passo exato as duas leis vão a **0,000 %**.
+3. ⇒ **Não há trade a decidir: há uma ORDEM.** A troca de lei sozinha
+   triplicaria a dependência (6,5 → 17,3 %); com o walk exato **antes** dela,
+   ela some — e o produto fica *melhor que hoje* nessa propriedade.
+
+### 3.2.1 — O conjunto de ACEITAÇÃO da wave, escrito antes do código
+
+**Metade 1 — o walk carrega o resto INTEIRO.** Standalone: fecha uma promessa
+que o produto já faz e não cumpre, sem tocar em lei nenhuma, e é smokável
+sozinha (`6,485 % → 0,000 %`).
+
+**Metade 2 — o `Grip::Hold` compõe sobre o vivo** pelo kernel da referência.
+
+⚠️ **A ordem é load-bearing:** invertida, a metade 2 shipa a 17,3 % e o smoke
+julgaria a lei carregando um defeito que não é dela.
+
+**Kill-criterion, para o alvo não ser irrefutável:** se depois da metade 1 a
+divergência de amostragem do produto **não** for `≤ 0,5 %` na sonda acima, a
+metade 2 **não abre** — porque aí a premissa que a torna segura é falsa, e o que
+sobra é a decisão de produto que esta seção achava que teria de tomar.
+
+**O que NÃO entra em nenhuma das duas, e é o preço nomeado:** a paridade
+por-TRAÇO com o *driver* do SculptGL cai (a por-DAB fica, porque o kernel é o
+mesmo). Um driver cuja lista de dabs varia 1,27× pelo mesmo caminho não é um
+alvo de paridade — é um defeito que a referência tem e nós não precisamos herdar.
 
 ### 3.3 — O MAPA dos verbos, e o único que a referência não tem
 

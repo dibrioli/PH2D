@@ -54,6 +54,7 @@ use super::gpu_neighbour_demos::{
 };
 use super::gpu_panel_demo::build_gpu_panel_demo_document;
 use super::gpu_pulse_demo::build_gpu_pulse_gate_demo_document;
+use super::gpu_radius_demo::build_gpu_radius_demo_document;
 use super::gpu_spawn_pulse_demo::build_gpu_spawn_pulse_demo_document;
 use super::gpu_voronoi_demo::build_gpu_voronoi_demo_document;
 use super::gpu_zone_demo::build_gpu_zone_demo_document;
@@ -188,6 +189,15 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     push(
         "demo=27 the spark that bursts (a death gives birth)",
         &|d| build_gpu_death_demo_document(d, reg),
+    );
+    // ⚠️ **A CENA DO RAIO entra no corpus pela razão que o comentário dos deformers já
+    // enuncia: o censo conta FRONTEIRAS, e um buraco que ninguém fiou num documento não é
+    // fronteira, é AUSÊNCIA.** O `sim.collide` ganhou uma binding de leitura (`size`) e três
+    // params nesta wave; sem um documento que os exercite, o censo seguiria reportando sobre
+    // um colisor que não é o que shipa.
+    push(
+        "demo=28 the paint rests ON the floor (particle radius)",
+        &|d| build_gpu_radius_demo_document(d, reg),
     );
     push("demo=10 sim.zone snow globe", &|d| {
         build_gpu_zone_demo_document(d, reg)

@@ -162,6 +162,24 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
             );
             sinks
         }
+        Ok("28") => {
+            let sinks =
+                gpu_radius_demo::build_gpu_radius_demo_document(doc, registry).unwrap_or_default();
+            // Os números são MEDIDOS (`probe_radius_rest`), não escolhidos.
+            eprintln!(
+                "[radius-demo] A TINTA POUSA SOBRE O CHAO: duas fileiras de {} discos, de {} a                  {} de tamanho,
+  caindo no MESMO chao (y = {}). A ESQUERDA colide um PONTO:                  todo CENTRO pousa na linha,
+  entao cada sprite afunda pela propria metade                  (0,15 a 0,60 unidade). A DIREITA colide o SPRITE:
+  as BORDAS DE BAIXO                  alinham e os centros e' que ficam em cinco alturas.
+                   (!) Os tamanhos VARIAM de proposito: com discos iguais um `height` subido a                  mao daria
+  o mesmo desenho, e a cena nao provaria nada.",
+                gpu_radius_demo::COLS as u32,
+                gpu_radius_demo::SIZE_MIN,
+                gpu_radius_demo::SIZE_MAX,
+                gpu_radius_demo::FLOOR,
+            );
+            sinks
+        }
         // **Sem env: a TELA VAZIA** (Enio, 2026-08-07: *"tire a cena da cachoeira"*). O
         // editor abria com a neve caindo no mar — um sistema de partículas inteiro que o
         // artista tinha de apagar antes de começar. Quem quiser um grafo o traz pelo

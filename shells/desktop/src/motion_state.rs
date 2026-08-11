@@ -68,6 +68,11 @@ mod gpu_panel_demo;
 /// responde *"um CAMPO consegue decidir quem escuta um EVENTO?"*, que nenhuma das outras faz.
 #[path = "motion_state_gpu_pulse_demo.rs"]
 mod gpu_pulse_demo;
+/// A cena do RAIO DA PARTÍCULA (doc 89, folha 13), arquivo próprio pela mesma razão: ela
+/// responde *"o que colide tem TAMANHO?"* mostrando as duas metades lado a lado — o colisor
+/// de PONTO, que afunda cada sprite pela própria metade, e o que POUSA.
+#[path = "motion_state_gpu_radius_demo.rs"]
+mod gpu_radius_demo;
 /// A cena das CINCO FONTES (doc 89, folha 12), arquivo próprio pela mesma razão: ela responde
 /// *"um EVENTO consegue decidir o que passa a EXISTIR?"*, que é a outra metade da pergunta —
 /// a `=23` gateia quem escuta, esta gateia quem nasce.

@@ -61,6 +61,8 @@ fn player() -> InspectorPlayerInfo {
         coyote_time: 0.1,
         jump_buffer: 0.1,
         corner_reach: 0.12,
+        corner_samples: 65.0,
+        corner_lookahead: 2.0,
         // ⚠️ **AS PAREDES (W13) LIGADAS na fixture, e é declaração de premissa:**
         // a capacidade nasce DESLIGADA no produto, e uma fixture que herdasse o
         // zero varreria rows cujo valor nunca muda — verde sobre um controle que
@@ -70,6 +72,8 @@ fn player() -> InspectorPlayerInfo {
         wall_jump_push: 6.0,
         wall_jump_lockout: 0.2,
         wall_reach: 0.08,
+        wall_samples: 3.0,
+        wall_spread: 1.0,
         wall_grab_stamina: 0.0,
         dash_speed: 0.0,
         dash_time: 0.15,
@@ -213,10 +217,31 @@ fn every_number_raises_its_own_edit() {
     // exatamente o arm esquecido que ela existe para pegar.
     assert_eq!(
         ph2d_panel_inspector::PLAYER_ROW_COUNT,
-        36,
+        40,
         "a tabela de rows cresceu; acrescente o numero novo a esta varredura"
     );
     for (id, v, edit) in [
+        // W-Probes2 — a GEOMETRIA das amostras dos sensores.
+        (
+            ids::INSP_PLAYER_CORNER_SAMPLES,
+            129.0,
+            PlayerFieldEdit::CornerSamples(129.0),
+        ),
+        (
+            ids::INSP_PLAYER_CORNER_AHEAD,
+            3.5,
+            PlayerFieldEdit::CornerLookahead(3.5),
+        ),
+        (
+            ids::INSP_PLAYER_WALL_SAMPLES,
+            9.0,
+            PlayerFieldEdit::WallSamples(9.0),
+        ),
+        (
+            ids::INSP_PLAYER_WALL_SPREAD,
+            0.6,
+            PlayerFieldEdit::WallSpread(0.6),
+        ),
         (
             ids::INSP_PLAYER_FLOAT,
             1.25,

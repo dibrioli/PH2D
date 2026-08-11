@@ -119,7 +119,7 @@ const JUMP_ROWS: [PlayerRow; 7] = [
 /// três são segundos e o *Corner Reach* é METROS. Sem `(m)` ali, um artista que
 /// leu as três de cima escreve `0.1` esperando um décimo de segundo e recebe dez
 /// centímetros.
-const FORGIVE_ROWS: [PlayerRow; 4] = [
+const FORGIVE_ROWS: [PlayerRow; 6] = [
     (
         "Coyote Time (s)",
         ids::INSP_PLAYER_COYOTE,
@@ -134,6 +134,16 @@ const FORGIVE_ROWS: [PlayerRow; 4] = [
         "Corner Reach (m)",
         ids::INSP_PLAYER_CORNER,
         "Slide sideways up to this to clear a ledge you clipped. In METRES.",
+    ),
+    (
+        "Corner Rays",
+        ids::INSP_PLAYER_CORNER_SAMPLES,
+        "How MANY rays scan the ceiling profile. More = a finer ledge edge.",
+    ),
+    (
+        "Corner Look-ahead",
+        ids::INSP_PLAYER_CORNER_AHEAD,
+        "How many TICKS ahead the ceiling profile looks. 0 = no anticipation.",
     ),
     (
         "Lift Momentum (s)",
@@ -166,7 +176,7 @@ const REACT_ROWS: [PlayerRow; 3] = [
 /// escorregamento não é um pulo, e o que agrupa estes cinco números é a
 /// superfície, não o gesto. As duas primeiras rows nascem em ZERO porque a
 /// capacidade é opt-in (ver `WallConfig::STARTING_POINT`).
-const WALL_ROWS: [PlayerRow; 6] = [
+const WALL_ROWS: [PlayerRow; 8] = [
     (
         "Wall Slide (m/s)",
         ids::INSP_PLAYER_WALL_SLIDE,
@@ -191,6 +201,16 @@ const WALL_ROWS: [PlayerRow; 6] = [
         "Wall Reach (m)",
         ids::INSP_PLAYER_WALL_REACH,
         "How far past your own width the wall sensor looks.",
+    ),
+    (
+        "Wall Rays",
+        ids::INSP_PLAYER_WALL_SAMPLES,
+        "How MANY rays the flank casts. Odd; the middle one breaks ties.",
+    ),
+    (
+        "Wall Ray Spread",
+        ids::INSP_PLAYER_WALL_SPREAD,
+        "Where the OUTER rays sit, as a fraction of your half-height. 1 = the box edge.",
     ),
     (
         "Wall Grab (s)",

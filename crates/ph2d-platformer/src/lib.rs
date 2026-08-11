@@ -65,8 +65,8 @@ pub mod walk;
 pub mod wall;
 
 pub use corner::{
-    CORNER_LOOKAHEAD, CORNER_SAMPLES, CORNER_SEARCH_STEPS, CeilingProbe, corner_escape,
-    corner_nudge, corner_offsets, corner_probe_wanted,
+    CORNER_LOOKAHEAD, CORNER_SAMPLES, CORNER_SEARCH_STEPS, CeilingProbe, MAX_CORNER_SAMPLES,
+    corner_escape, corner_nudge, corner_offsets, corner_probe_wanted,
 };
 pub use crouch::{
     CrouchConfig, CrouchState, Headroom, crouch_step, effective_crouched, headroom_probe_wanted,
@@ -86,8 +86,9 @@ pub use slope::{Footing, footing, footing_verdict, is_grounded, no_uphill};
 pub use swim::{SwimConfig, SwimState, swim_motor, swim_rise, swim_step, vertical_drive};
 pub use walk::{WalkConfig, walk};
 pub use wall::{
-    GrabState, WALL_SAMPLES, WallConfig, WallHit, WallLaunch, WallProbe, WallSample, cling,
-    grab_step, wall_launch, wall_offsets, wall_probe_wanted, wall_slide,
+    GrabState, MAX_WALL_SAMPLES, WALL_SAMPLES, WallConfig, WallHit, WallLaunch, WallProbe,
+    WallSample, cling, grab_step, odd_samples, wall_launch, wall_offsets, wall_probe_wanted,
+    wall_slide,
 };
 
 /// Um vetor 2D em MUNDO (metros), na convenção do módulo (Y para cima).

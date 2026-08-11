@@ -296,6 +296,17 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         // assistência começa a salvar pulos que visivelmente bateram (a cápsula
         // das cenas tem 0,4 m). 0,3 é folga generosa para um corpo maior.
         (ids::INSP_PLAYER_CORNER, 0.12, 0.0, 0.3, 0.01), // LITERAL-PX-OK: metres
+        // ⚠️ **O teto de 257 é MEDIDO e o recurso NÃO é tempo**
+        // (`measure_player_probes::measure_what_a_sample_costs`): 18 ns por raio,
+        // PLANO em N, então 257 custam 4,55 us = 0,027% de um quadro. O que se
+        // esgota é a PRECISAO — o passo cai a 2,5 mm, e o solver assenta com
+        // ~1,3 mm. O passo 2 é o clamp para ÍMPAR feito visível.
+        (ids::INSP_PLAYER_CORNER_SAMPLES, 65.0, 1.0, 257.0, 2.0), // LITERAL-PX-OK: count
+        // ⚠️ TIQUES, e 8 é folga larga: o default 2 é literalmente *"o boost no
+        // tique ANTERIOR ao contato"*, e o leque se escala sozinho com a
+        // velocidade (`rel_up · dt · N`), então um número grande aqui só antecipa
+        // mais cedo — nunca alonga um sensor parado.
+        (ids::INSP_PLAYER_CORNER_AHEAD, 2.0, 0.0, 8.0, 0.5), // LITERAL-PX-OK: ticks
         // ⚠️ Segundos, e o teto cobre o pulo mais longo da config de partida
         // (1,45 s no ar, medido) com folga para um `jump_height` maior.
         (ids::INSP_PLAYER_LIFT, 1.5, 0.0, 4.0, 0.05), // LITERAL-PX-OK: seconds
@@ -306,6 +317,14 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         (ids::INSP_PLAYER_WALL_PUSH, 6.0, 0.0, 16.0, 0.25),  // LITERAL-PX-OK: m/s
         (ids::INSP_PLAYER_WALL_LOCK, 0.2, 0.0, 0.6, 0.02),   // LITERAL-PX-OK: seconds
         (ids::INSP_PLAYER_WALL_REACH, 0.08, 0.0, 0.4, 0.01), // LITERAL-PX-OK: metres
+        // ⚠️ O MESMO teto do irmão da quina, e pela MESMA medição — um número, um
+        // argumento. O que N compra aqui é COBERTURA DE FRESTA (3 num corpo de
+        // 1 m cegam-se com 0,5 m; 9, com 12,5 cm), não precisão de beirada.
+        (ids::INSP_PLAYER_WALL_SAMPLES, 3.0, 1.0, 257.0, 2.0), // LITERAL-PX-OK: count
+        // ⚠️ FRAÇÃO da meia-altura: 1 põe as amostras de fora na borda exata da
+        // caixa (o mundo de sempre) e baixá-lo afasta-as das PONTAS, onde uma
+        // cápsula é um ponto e um raio rasante vê parede onde o corpo mal encosta.
+        (ids::INSP_PLAYER_WALL_SPREAD, 1.0, 0.0, 1.0, 0.05), // LITERAL-PX-OK: fraction
         // ⚠️ O teto de 10 s NAO e' um limite de recurso — nao ha' recurso, e' um
         // `f32`. E' a FAIXA da UI, e o numero vem da referencia: a reserva do
         // Celeste da' ~11 s de pendura pura. Acima disso o artista nao quer um

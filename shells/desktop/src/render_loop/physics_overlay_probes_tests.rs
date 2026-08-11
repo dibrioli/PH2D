@@ -12,6 +12,9 @@ use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, ProbeKind, ProbeMark, ProbeState, RigidBody,
 };
 
+/// A contagem DEFAULT do perfil — lida da porta, nunca escrita à mão.
+const SAMPLES: usize = ph2d_physics_ecs::CORNER_SAMPLES;
+
 fn no_world() -> SimWorld {
     SimWorld::new()
 }
@@ -91,7 +94,11 @@ fn a_hit_gets_a_tick_where_it_was_found() {
     );
     let (cp, hp) = (points(&clear[0].0), points(&hit[0].0));
     assert_eq!(cp.len(), 4, "sem acerto: a linha mais a PONTA do alcance");
-    assert_eq!(hp.len(), 6, "com acerto: a linha, a ponta, e o tique do acerto");
+    assert_eq!(
+        hp.len(),
+        6,
+        "com acerto: a linha, a ponta, e o tique do acerto"
+    );
 
     // O tique cruza o raio na distancia do acerto: o ponto MEDIO dos dois
     // ultimos pontos e' o ponto de acerto projetado. (Os dois anteriores sao a
@@ -152,16 +159,20 @@ fn the_drawn_ray_starts_at_the_body_edge_not_at_the_cast_origin() {
 #[test]
 fn a_profile_that_never_rises_is_still_visible() {
     let sim = no_world();
-    let m = ProbeMark::profile([0.0, 1.0], 0.2, 0.12, 0.0, None);
+    let m = ProbeMark::profile([0.0, 1.0], 0.2, 0.12, 0.0, None, SAMPLES);
     let drawn = probe_marks(true, &[m], &sim, &camera(), window());
     let p = points(&drawn[0].0);
-    let (y0, y1) = p.iter().fold((f64::MAX, f64::MIN), |(a, b), q| (a.min(q.1), b.max(q.1)));
+    let (y0, y1) = p
+        .iter()
+        .fold((f64::MAX, f64::MIN), |(a, b), q| (a.min(q.1), b.max(q.1)));
     assert!(
         y1 - y0 >= 4.0,
         "com rise = 0 o vao ainda tem de ter CORPO na tela: {:.1} px de altura",
         y1 - y0
     );
-    let (x0, x1) = p.iter().fold((f64::MAX, f64::MIN), |(a, b), q| (a.min(q.0), b.max(q.0)));
+    let (x0, x1) = p
+        .iter()
+        .fold((f64::MAX, f64::MIN), |(a, b), q| (a.min(q.0), b.max(q.0)));
     assert!(
         x1 - x0 >= 60.0,
         "e a largura continua a ser o vao autorado: {:.1} px",
@@ -178,14 +189,18 @@ fn a_profile_that_never_rises_is_still_visible() {
 fn the_ceiling_profile_spans_what_the_law_scans() {
     let sim = no_world();
     let (half_width, reach, rise) = (0.2_f32, 0.12_f32, 0.3_f32);
-    let m = ProbeMark::profile([0.0, 1.0], half_width, reach, rise, None);
+    let m = ProbeMark::profile([0.0, 1.0], half_width, reach, rise, None, SAMPLES);
     let drawn = probe_marks(true, &[m], &sim, &camera(), window());
     assert_eq!(drawn.len(), 1, "sem obstrucao, so' o vao");
 
-    let offs = ph2d_physics_ecs::corner_offsets(half_width, reach);
+    let offs = ph2d_physics_ecs::corner_offsets(half_width, reach, SAMPLES);
     let cam = camera();
     let want_lo = cam.world_to_screen([offs[0], 1.0 + rise], window());
-    let want_hi = cam.world_to_screen([offs[offs.len() - 1], 1.0 + rise], window());
+    // ⚠️ A CONTAGEM, nao o array: desde a W-Probes2 ele e' dimensionado pelo
+    // TETO (257) e a cauda nao usada fica em ZERO — `offs.len() - 1` daria o
+    // CENTRO do vao e o gate reprovaria um desenho correto. Terceira vez desta
+    // classe nesta wave: um oraculo que le o array inteiro mede a cauda.
+    let want_hi = cam.world_to_screen([offs[SAMPLES - 1], 1.0 + rise], window());
     let p = points(&drawn[0].0);
     assert!(
         (p[0].0 - f64::from(want_lo.0)).abs() < 0.5,
@@ -206,9 +221,9 @@ fn the_ceiling_profile_spans_what_the_law_scans() {
 #[test]
 fn a_blocked_cell_is_drawn_at_hit_intensity() {
     let sim = no_world();
-    let mut blocked = [false; ph2d_platformer_samples()];
+    let mut blocked = [false; ph2d_physics_ecs::MAX_CORNER_SAMPLES];
     blocked[10] = true;
-    let m = ProbeMark::profile([0.0, 1.0], 0.2, 0.12, 0.3, Some(blocked));
+    let m = ProbeMark::profile([0.0, 1.0], 0.2, 0.12, 0.3, Some(blocked), SAMPLES);
     let drawn = probe_marks(true, &[m], &sim, &camera(), window());
     assert_eq!(drawn.len(), 2, "o vao e as celulas tapadas");
     assert!(
@@ -222,11 +237,6 @@ fn a_blocked_cell_is_drawn_at_hit_intensity() {
         ProbeState::Hit,
         "com celula tapada, o perfil ACHOU"
     );
-}
-
-/// Quantas amostras o perfil tem — lido da porta, nunca escrito à mão.
-const fn ph2d_platformer_samples() -> usize {
-    ph2d_physics_ecs::CORNER_SAMPLES
 }
 
 /// **A varredura do agachar é o CORPO desenhado onde ele quer ficar de pé.**
@@ -350,20 +360,14 @@ fn measure_what_each_mark_measures_on_screen() {
         "EMPURRANDO a parede, no ar",
         crate::physics_smoke_probes::WALL_FACE_X - 0.25,
         2.5,
-        PlayerInput {
-            drive: 1.0,
-            ..idle
-        },
+        PlayerInput { drive: 1.0, ..idle },
         20,
     );
     run(
         "SUBINDO junto da quina",
         crate::physics_smoke_probes::LEDGE_EDGE_X - 0.1,
         1.4,
-        PlayerInput {
-            jump: true,
-            ..idle
-        },
+        PlayerInput { jump: true, ..idle },
         4,
     );
 }
@@ -396,7 +400,10 @@ fn measure_whether_the_reading_follows_a_dragged_body() {
             .unwrap_or(f32::NAN)
     };
     println!("\n== arrastar o corpo com o relogio PARADO ==");
-    println!("apos 40 ticks: corpo x=2.000  perna x={:.3}", leg_x(&bridge));
+    println!(
+        "apos 40 ticks: corpo x=2.000  perna x={:.3}",
+        leg_x(&bridge)
+    );
 
     // O artista arrasta o corpo 3 m para a direita, com o relogio no mesmo tick.
     {

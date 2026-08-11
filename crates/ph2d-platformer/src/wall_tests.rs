@@ -21,9 +21,9 @@ fn cfg(slide: f32, height: f32) -> PlayerConfig {
 /// Um flanco em que só a CINTURA viu alguma coisa — a forma que o sensor
 /// tinha antes de ele olhar o flanco todo, e a que os gates de sempre usam.
 fn only_mid(normal: Vec2) -> WallProbe {
-    WallProbe {
-        side: 1.0,
-        hits: [
+    WallProbe::from_hits(
+        1.0,
+        &[
             Some(WallHit {
                 distance: 0.05,
                 normal,
@@ -31,7 +31,7 @@ fn only_mid(normal: Vec2) -> WallProbe {
             None,
             None,
         ],
-    }
+    )
 }
 
 /// Uma parede à direita, normal apontando para a esquerda.
@@ -207,10 +207,10 @@ fn the_authored_max_slope_moves_the_wall_boundary() {
 /// Um flanco montado à mão: `(distância, normal)` por altura, na ordem de
 /// [`wall_offsets`] — cintura, pés, ombros.
 fn flank(hits: [Option<(f32, Vec2)>; WALL_SAMPLES]) -> WallProbe {
-    WallProbe {
-        side: 1.0,
-        hits: hits.map(|h| h.map(|(distance, normal)| WallHit { distance, normal })),
-    }
+    WallProbe::from_hits(
+        1.0,
+        &hits.map(|h| h.map(|(distance, normal)| WallHit { distance, normal })),
+    )
 }
 
 /// **O sensor cobre o flanco INTEIRO, e a cintura é a PRIMEIRA.**
@@ -220,7 +220,8 @@ fn flank(hits: [Option<(f32, Vec2)>; WALL_SAMPLES]) -> WallProbe {
 /// resposta continua sendo a da cintura — que é a que sempre foi.
 #[test]
 fn the_flank_is_sampled_from_foot_to_shoulder_with_the_waist_first() {
-    let offs = wall_offsets(0.5);
+    let all = wall_offsets(0.5, WALL_SAMPLES, 1.0);
+    let offs = &all[..WALL_SAMPLES];
     assert_eq!(offs.len(), WALL_SAMPLES);
     assert!(
         (offs[0]).abs() < 1.0e-9,

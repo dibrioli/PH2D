@@ -176,9 +176,10 @@ pub(super) fn probe_marks(
                 reach,
                 rise,
                 ref blocked,
+                samples,
             } => {
                 out.extend(profile_path(
-                    top, half_width, reach, rise, blocked, m.state, &to_screen,
+                    top, half_width, reach, rise, blocked, samples, m.state, &to_screen,
                 ));
             }
             ProbeShape::Sweep { body, offset } => {
@@ -198,12 +199,14 @@ pub(super) fn probe_marks(
 /// assistência de facto leu.
 ///
 /// [`corner_offsets`]: ph2d_physics_ecs::corner_offsets
+#[allow(clippy::too_many_arguments)]
 fn profile_path(
     top: [f32; 2],
     half_width: f32,
     reach: f32,
     rise: f32,
     blocked: &[bool],
+    samples: usize,
     state: ProbeState,
     to_screen: &impl Fn(f32, f32) -> Point,
 ) -> Vec<(BezPath, [f32; 4])> {
@@ -219,7 +222,8 @@ fn profile_path(
         ProbeState::Clear
     });
     let rgba = [PROBE_RGB[0], PROBE_RGB[1], PROBE_RGB[2], span_a];
-    let offs = ph2d_physics_ecs::corner_offsets(half_width, reach);
+    let offs = ph2d_physics_ecs::corner_offsets(half_width, reach, samples);
+    let cells = samples.clamp(1, offs.len());
     let y = top[1] + rise;
     let mut out = Vec::new();
 
@@ -235,7 +239,7 @@ fn profile_path(
     // cima, então alongá-lo seria mentir; o que a ponta desenha é o **VÃO
     // lateral**, que é o número autorado (`corner_reach`) e não é zero nunca.
     let mut span = BezPath::new();
-    let (lo, hi) = (top[0] + offs[0], top[0] + offs[offs.len() - 1]);
+    let (lo, hi) = (top[0] + offs[0], top[0] + offs[cells - 1]);
     let (a, b) = (to_screen(lo, y), to_screen(hi, y));
     span.move_to(a);
     span.line_to(b);
@@ -259,7 +263,7 @@ fn profile_path(
     // não tem nada a dizer além do vão.
     let mut hits = BezPath::new();
     let mut any = false;
-    for (b, off) in blocked.iter().zip(offs.iter()) {
+    for (b, off) in blocked.iter().zip(offs.iter()).take(cells) {
         if !*b {
             continue;
         }

@@ -262,9 +262,9 @@ fn a_wall_jump_out_of_a_dash_also_ends_it() {
     );
     // A meio do arranque encosta numa parede à direita e aperta o pulo. Sem
     // chão: é a PAREDE que oferece o salto.
-    let wall = WallProbe {
-        side: 1.0,
-        hits: [
+    let wall = WallProbe::from_hits(
+        1.0,
+        &[
             Some(WallHit {
                 distance: 0.05,
                 normal: [-1.0, 0.0],
@@ -272,7 +272,7 @@ fn a_wall_jump_out_of_a_dash_also_ends_it() {
             None,
             None,
         ],
-    };
+    );
     let jumped = player_motor(
         &cfg,
         None,

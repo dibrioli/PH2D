@@ -300,10 +300,16 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `swim_acceleration` e `swim_enter` (W-Swim — NADAR). Tres campos
         // apendados num degrau so', porque sao UMA capacidade. ⚠️ A FITA nao se
         // move: o eixo vertical do nado sai dos botoes que ja' viajam no bitmask.
+        // PROJECT 71→72: `PlatformPlayer` ganhou `corner_samples`,
+        // `corner_lookahead`, `wall_samples` e `wall_spread` (W-Probes2 — OS
+        // SENSORES FICAM EDITAVEIS). Quatro campos apendados num degrau so',
+        // porque sao UM assunto: a geometria das amostras dos sensores, que era
+        // `const` e passa a ser autorada. ⚠️ Os defaults sao as consts de sempre,
+        // entao todo player ja' salvo fica byte-identico.
         // ⚠️ **PROVISÓRIO:** o valor se CONTA contra o `main` do dia da
         // integração — três linhas já colidiram neste número por o terem
         // escolhido, e a última vez o certo não estava em nenhum dos dois lados.
-        (71, 13, 14),
+        (72, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

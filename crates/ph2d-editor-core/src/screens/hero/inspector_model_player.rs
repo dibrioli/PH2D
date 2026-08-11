@@ -97,6 +97,10 @@ pub struct InspectorPlayerInfo {
     pub jump_buffer: f32,
     /// **Corner Reach** (W10) — em METROS, ao contrário dos dois acima.
     pub corner_reach: f32,
+    /// Quantas amostras o perfil da quina varre (`W-Probes2`).
+    pub corner_samples: f32,
+    /// Quantos tiques de antecedência o perfil da quina olha.
+    pub corner_lookahead: f32,
     /// **Lift Momentum** (W10) — segundos.
     pub lift_momentum: f32,
     /// **Wall Slide** (W13) — m/s. `0` desliga a capacidade.
@@ -109,6 +113,10 @@ pub struct InspectorPlayerInfo {
     pub wall_jump_lockout: f32,
     /// **Wall Reach** (W13) — metros além da própria largura.
     pub wall_reach: f32,
+    /// Quantos raios o flanco casta (`W-Probes2`).
+    pub wall_samples: f32,
+    /// Onde os raios de fora do flanco se sentam, fração da meia-altura.
+    pub wall_spread: f32,
     /// **WALL GRAB** (W23) — por quantos segundos ele segura a parede de vez.
     pub wall_grab_stamina: f32,
     /// **Dash Speed** (W14) — m/s. `0` desliga a capacidade.
@@ -233,6 +241,14 @@ pub enum PlayerFieldEdit {
     JumpBuffer(f32),
     /// **Corner Reach** (W10) — metros de escape lateral sob uma beirada.
     CornerReach(f32),
+    /// **Corner Rays** (`W-Probes2`) — quantas amostras o perfil do teto varre.
+    CornerSamples(f32),
+    /// **Corner Look-ahead** (`W-Probes2`) — quantos tiques o perfil antecipa.
+    CornerLookahead(f32),
+    /// **Wall Rays** (`W-Probes2`) — quantos raios o flanco casta.
+    WallSamples(f32),
+    /// **Wall Ray Spread** (`W-Probes2`) — onde os raios de fora se sentam.
+    WallSpread(f32),
     /// **Lift Momentum** (W10) — segundos de memória do referencial do chão.
     LiftMomentum(f32),
     /// AS PAREDES (W13).

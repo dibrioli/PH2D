@@ -98,7 +98,7 @@ pub(super) fn wall_rays(
     handle: rapier2d_handle::Handle,
     cfg: &PlayerConfig,
     drive: f32,
-) -> Option<[ProbeRay; WALL_SAMPLES]> {
+) -> Option<([ProbeRay; MAX_WALL_SAMPLES], usize)> {
     let side = if drive > 0.0 { 1.0 } else { -1.0 };
     let (mins, maxs) = world.body_aabb(handle)?;
     let half_width = (maxs[0] - mins[0]) * 0.5;
@@ -109,17 +109,18 @@ pub(super) fn wall_rays(
     let cx = (maxs[0] + mins[0]) * 0.5;
     let cy = (maxs[1] + mins[1]) * 0.5;
     let reach = half_width + cfg.wall.reach.max(0.0);
-    let offs = wall_offsets(half_height.max(0.0));
+    let n = odd_samples(cfg.wall.samples, MAX_WALL_SAMPLES);
+    let offs = wall_offsets(half_height.max(0.0), n, cfg.wall.spread);
     let mut out = [ProbeRay {
         origin: [cx, cy],
         dir: [side, 0.0],
         reach,
         skin: half_width,
-    }; WALL_SAMPLES];
-    for (r, off) in out.iter_mut().zip(offs.iter()) {
+    }; MAX_WALL_SAMPLES];
+    for (r, off) in out.iter_mut().zip(offs.iter()).take(n) {
         r.origin = [cx, cy + off];
     }
-    Some(out)
+    Some((out, n))
 }
 
 /// **Onde o perfil do teto nasce** — a geometria que o leque e as duas laterais
@@ -177,8 +178,8 @@ pub(super) fn corner_geom(
 /// ⚠️ Porta, e não uma multiplicação repetida: quem casta e quem **desenha**
 /// precisam do mesmo número, e um leque desenhado com outra altura mostraria uma
 /// antecipação que a lei não tem.
-pub(super) fn corner_rise(rel_up: f32, dt: f32) -> f32 {
-    rel_up * dt * CORNER_LOOKAHEAD
+pub(super) fn corner_rise(rel_up: f32, dt: f32, cfg: &PlayerConfig) -> f32 {
+    rel_up * dt * cfg.jump.corner_lookahead
 }
 
 /// **O AGACHAR** — para onde o corpo é varrido, e quanto.
@@ -212,12 +213,14 @@ pub(super) fn probe_ceiling(
     rel_up: f32,
     dt: f32,
 ) -> Option<CeilingProbe> {
-    let g = corner_geom(world, handle, cfg, corner_rise(rel_up, dt))?;
+    let g = corner_geom(world, handle, cfg, corner_rise(rel_up, dt, cfg))?;
 
-    let mut blocked = [false; CORNER_SAMPLES];
+    let n = odd_samples(cfg.jump.corner_samples, MAX_CORNER_SAMPLES);
+    let mut blocked = [false; MAX_CORNER_SAMPLES];
     for (slot, off) in blocked
         .iter_mut()
-        .zip(corner_offsets(g.half_width, g.reach).iter())
+        .zip(corner_offsets(g.half_width, g.reach, n).iter())
+        .take(n)
     {
         *slot = world
             .cast_ray(
@@ -246,6 +249,7 @@ pub(super) fn probe_ceiling(
         half_width: g.half_width,
         blocked,
         side_clear: [free(-1.0), free(1.0)],
+        samples: n,
     })
 }
 
@@ -319,9 +323,9 @@ pub(super) fn probe_wall(
     cfg: &PlayerConfig,
     drive: f32,
 ) -> Option<WallProbe> {
-    let rays = wall_rays(world, handle, cfg, drive)?;
-    let mut hits = [None; WALL_SAMPLES];
-    for (slot, r) in hits.iter_mut().zip(rays.iter()) {
+    let (rays, n) = wall_rays(world, handle, cfg, drive)?;
+    let mut hits = [None; MAX_WALL_SAMPLES];
+    for (slot, r) in hits.iter_mut().zip(rays.iter()).take(n) {
         *slot = world
             .cast_ray(r.origin, r.dir, r.reach, Some(handle), layer)
             .map(|hit| WallHit {
@@ -332,6 +336,7 @@ pub(super) fn probe_wall(
     Some(WallProbe {
         side: rays[0].dir[0],
         hits,
+        samples: n,
     })
 }
 
@@ -387,8 +392,8 @@ pub(super) fn record_marks(
     // O FLANCO.
     if cfg.wall.armed() {
         if let Some(w) = wall {
-            if let Some(rays) = wall_rays(world, handle, cfg, w.side) {
-                for (r, hit) in rays.iter().zip(w.hits.iter()) {
+            if let Some((rays, n)) = wall_rays(world, handle, cfg, w.side) {
+                for (r, hit) in rays.iter().zip(w.hits.iter()).take(n) {
                     out.push(ProbeMark::ray(
                         ProbeKind::Wall,
                         r.origin,
@@ -407,8 +412,8 @@ pub(super) fn record_marks(
                 &both
             };
             for side in sides {
-                if let Some(rays) = wall_rays(world, handle, cfg, *side) {
-                    for r in rays {
+                if let Some((rays, n)) = wall_rays(world, handle, cfg, *side) {
+                    for r in rays.into_iter().take(n) {
                         out.push(ProbeMark::idle_ray(
                             ProbeKind::Wall,
                             r.origin,
@@ -432,6 +437,10 @@ pub(super) fn record_marks(
                 gm.reach,
                 gm.rise,
                 corner.map(|(p, _)| p.blocked),
+                corner.map_or_else(
+                    || odd_samples(cfg.jump.corner_samples, MAX_CORNER_SAMPLES),
+                    |(p, _)| p.samples,
+                ),
             ));
             let span = gm.half_width + gm.reach;
             for (i, dir) in [-1.0_f32, 1.0].iter().enumerate() {

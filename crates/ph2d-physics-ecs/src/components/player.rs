@@ -92,6 +92,20 @@ pub struct PlatformPlayer {
     /// ⚠️ Uma DISTÂNCIA, não um tempo: os dois irmãos acima perdoam erros de
     /// *quando*, este perdoa um erro de *onde*. `0` desliga — e desliga também o
     /// sensor, então não custa um raio sequer.
+    /// **Quantas amostras o perfil da quina varre** — ímpar, teto
+    /// [`ph2d_platformer::MAX_CORNER_SAMPLES`].
+    pub corner_samples: u16,
+
+    /// **Quantos tiques de antecedência o perfil da quina olha.**
+    pub corner_lookahead: f32,
+
+    /// **Quantos raios o flanco casta** — ímpar, teto
+    /// [`ph2d_platformer::MAX_WALL_SAMPLES`].
+    pub wall_samples: u16,
+
+    /// **Onde as amostras de fora do flanco se sentam**, fração da meia-altura.
+    pub wall_spread: f32,
+
     pub corner_reach: f32,
     /// **LIFT MOMENTUM** (W10) — segundos em que o controle aéreo continua
     /// medindo no referencial do chão que se deixou.
@@ -264,6 +278,8 @@ impl PlatformPlayer {
                 coyote_time: self.coyote_time,
                 jump_buffer: self.jump_buffer,
                 corner_reach: self.corner_reach,
+                corner_samples: self.corner_samples as usize,
+                corner_lookahead: self.corner_lookahead,
                 lift_momentum: self.lift_momentum,
             },
             wall: WallConfig {
@@ -271,6 +287,8 @@ impl PlatformPlayer {
                 jump_height: self.wall_jump_height,
                 jump_push: self.wall_jump_push,
                 reach: self.wall_reach,
+                samples: self.wall_samples as usize,
+                spread: self.wall_spread,
                 jump_lockout: self.wall_jump_lockout,
                 grab_stamina: self.wall_grab_stamina,
             },
@@ -321,6 +339,8 @@ impl Default for PlatformPlayer {
             coyote_time: c.jump.coyote_time,
             jump_buffer: c.jump.jump_buffer,
             corner_reach: c.jump.corner_reach,
+            corner_samples: u16::try_from(c.jump.corner_samples).unwrap_or(u16::MAX),
+            corner_lookahead: c.jump.corner_lookahead,
             lift_momentum: c.jump.lift_momentum,
             reaction_support: c.react.support,
             reaction_movement: c.react.movement,
@@ -329,6 +349,8 @@ impl Default for PlatformPlayer {
             wall_jump_height: c.wall.jump_height,
             wall_jump_push: c.wall.jump_push,
             wall_reach: c.wall.reach,
+            wall_samples: u16::try_from(c.wall.samples).unwrap_or(u16::MAX),
+            wall_spread: c.wall.spread,
             wall_jump_lockout: c.wall.jump_lockout,
             wall_grab_stamina: c.wall.grab_stamina,
             dash_speed: c.dash.speed,

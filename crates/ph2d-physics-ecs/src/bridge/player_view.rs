@@ -52,7 +52,7 @@
 //! de [`ProbeShape::Ray`].
 
 use ph2d_ecs::Entity;
-use ph2d_platformer::CORNER_SAMPLES;
+use ph2d_platformer::MAX_CORNER_SAMPLES;
 
 /// **De qual sensor esta marca é.** A cor de família sai daqui.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -81,7 +81,14 @@ pub enum ProbeState {
 }
 
 /// **A forma do que o sensor olhou.**
+///
+/// ⚠️ **O `Profile` é MUITO maior que os irmãos, e isso é o preço do zero-alloc:**
+/// ele carrega `[bool; MAX_CORNER_SAMPLES]` porque a contagem é autorada
+/// (`W-Probes2`) e o caminho é o de um tique. Encaixotá-lo trocaria 257 bytes de
+/// pilha por uma alocação **por marca, por tique** — exatamente o que o HR-3
+/// recusa. A lista inteira de um player são ~11 marcas.
 #[derive(Copy, Clone, Debug, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum ProbeShape {
     /// Uma LINHA, em mundo. `hit` é a distância a que ela achou.
     Ray {
@@ -109,7 +116,10 @@ pub enum ProbeShape {
         reach: f32,
         /// Quanto cada raio sobe.
         rise: f32,
-        blocked: [bool; CORNER_SAMPLES],
+        blocked: [bool; MAX_CORNER_SAMPLES],
+        /// Quantas das `blocked` este perfil de facto varreu — a contagem
+        /// AUTORADA (`corner_samples`). Quem desenha corta aqui.
+        samples: usize,
     },
     /// Uma FORMA VARRIDA — o corpo `body` deslocado por `offset`.
     ///
@@ -188,13 +198,16 @@ impl ProbeMark {
         half_width: f32,
         reach: f32,
         rise: f32,
-        blocked: Option<[bool; CORNER_SAMPLES]>,
+        blocked: Option<[bool; MAX_CORNER_SAMPLES]>,
+        samples: usize,
     ) -> Self {
         Self {
             kind: ProbeKind::Corner,
             state: match blocked {
                 None => ProbeState::Idle,
-                Some(b) if b.iter().any(|x| *x) => ProbeState::Hit,
+                Some(b) if b[..samples.min(MAX_CORNER_SAMPLES)].iter().any(|x| *x) => {
+                    ProbeState::Hit
+                }
                 Some(_) => ProbeState::Clear,
             },
             shape: ProbeShape::Profile {
@@ -202,7 +215,8 @@ impl ProbeMark {
                 half_width,
                 reach,
                 rise,
-                blocked: blocked.unwrap_or([false; CORNER_SAMPLES]),
+                blocked: blocked.unwrap_or([false; MAX_CORNER_SAMPLES]),
+                samples,
             },
         }
     }

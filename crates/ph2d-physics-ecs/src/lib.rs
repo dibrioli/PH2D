@@ -90,7 +90,10 @@ pub use ph2d_platformer::PlayerInput;
 // de perguntar os deslocamentos à porta da LEI, e a shell fala com esta crate —
 // não com a `ph2d-platformer`. Re-exportar em vez de acrescentar uma aresta de
 // `Cargo.toml` mantém a porta ÚNICA sem alargar o grafo de dependências.
-pub use ph2d_platformer::{CORNER_SAMPLES, corner_offsets};
+pub use ph2d_platformer::{
+    CORNER_SAMPLES, MAX_CORNER_SAMPLES, MAX_WALL_SAMPLES, WALL_SAMPLES, corner_offsets,
+    odd_samples, wall_offsets,
+};
 /// A config da lei, re-exportada pela MESMA razão do `rope_route` e do
 /// `ShapeDesc`: a shell **não depende da `ph2d-platformer`** (a contenção que
 /// mantém o rapier e a lei confinados), e o Inspector precisa do ponto de

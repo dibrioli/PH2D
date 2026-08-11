@@ -184,3 +184,73 @@ fn measure_what_the_reading_costs() {
         100.0 * (on - off) / 16_666.0
     );
 }
+
+/// **O QUE CUSTA UMA AMOSTRA** — o número que decide o teto dos contadores.
+///
+/// ⚠️ §0: um teto sem medição é palpite. O doc do `CORNER_SAMPLES` já dizia que
+/// o sensor inteiro custa `+0,0002 ms por tique de subida`; aqui a pergunta é a
+/// que falta para tornar a CONTAGEM autorável — *quanto custa cada amostra a
+/// mais, e onde ela deixa de comprar precisão?*
+///
+/// Rodar:
+/// ```text
+/// cargo test -p ph2d-physics-ecs --release --test measure_player_probes -- --ignored --nocapture measure_what_a_sample_costs
+/// ```
+#[test]
+#[ignore = "sonda: mede, nao afirma"]
+fn measure_what_a_sample_costs() {
+    use ph2d_physics::PhysicsWorld;
+
+    let mut w = PhysicsWorld::new();
+    // Um chao, uma parede e um teto -- para os raios de facto descerem no BVH.
+    for (x, y, hx, hy) in [
+        (0.0_f32, -0.5_f32, 40.0_f32, 0.5_f32),
+        (12.0, 2.0, 0.5, 3.0),
+        (6.0, 2.2, 2.0, 0.5),
+    ] {
+        w.add_static_cuboid(x, y, hx, hy);
+    }
+    let (body, _) = w.add_dynamic_circle(6.0, 0.9, 0.2, 1.0);
+    w.step();
+
+    println!("\n== o preco de uma amostra ==");
+    let mut prev: Option<(usize, f64)> = None;
+    for n in [1usize, 3, 9, 17, 33, 65, 129, 257] {
+        let reps = 200;
+        let t = Instant::now();
+        let mut seen = 0usize;
+        for _ in 0..reps {
+            for i in 0..n {
+                let f = if n == 1 {
+                    0.0
+                } else {
+                    -1.0 + 2.0 * (i as f32) / ((n - 1) as f32)
+                };
+                if w.cast_ray([6.0 + f * 0.32, 1.4], [0.0, 1.0], 0.2, Some(body), 0)
+                    .is_some()
+                {
+                    seen += 1;
+                }
+            }
+        }
+        let per_cast =
+            t.elapsed().as_secs_f64() * 1e9 / f64::from(u32::try_from(reps).unwrap()) / n as f64;
+        let per_tick_us = t.elapsed().as_secs_f64() * 1e6 / f64::from(u32::try_from(reps).unwrap());
+        // O PASSO do perfil: a resolucao que estas N amostras compram sobre o vao
+        // de meia-largura + alcance (0,20 + 0,12 = 0,32 m para cada lado).
+        let step_mm = if n > 1 {
+            2.0 * 0.32 * 1000.0 / (n - 1) as f64
+        } else {
+            f64::INFINITY
+        };
+        println!(
+            "  N={n:>4}  {per_cast:6.1} ns/raio  {per_tick_us:7.3} us/perfil  passo {step_mm:7.2} mm  ({seen} acertos)"
+        );
+        prev = Some((n, per_tick_us));
+    }
+    let _ = prev;
+    println!(
+        "\nReferencia: o solver assenta com `normalized_allowed_linear_error` ~= 1,3 mm.\n\
+         Abaixo disso o passo do perfil deixa de comprar precisao que a fisica resolva."
+    );
+}

@@ -258,9 +258,9 @@ fn the_wall_is_silent_under_water() {
         ..swimming_cfg()
     };
     // Uma parede à direita, encostada, com o dedo a empurrar contra ela.
-    let wall = WallProbe {
-        side: 1.0,
-        hits: [
+    let wall = WallProbe::from_hits(
+        1.0,
+        &[
             Some(WallHit {
                 distance: 0.05,
                 normal: [-1.0, 0.0],
@@ -268,7 +268,7 @@ fn the_wall_is_silent_under_water() {
             None,
             None,
         ],
-    };
+    );
     let pushing = PlayerInput {
         drive: 1.0,
         ..PlayerInput::default()

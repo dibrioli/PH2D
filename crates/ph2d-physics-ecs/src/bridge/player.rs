@@ -33,11 +33,10 @@ use bevy_ecs::entity::Entity;
 use ph2d_ecs::SimWorld;
 use ph2d_physics::{CharacterHit, CharacterParams};
 use ph2d_platformer::{
-    Buoyed, CORNER_LOOKAHEAD, CORNER_SAMPLES, CeilingProbe, Fluid, GroundSample, Headroom,
-    KinematicState, PlayerConfig, PlayerInput, PlayerState, ReactionConfig, WALL_SAMPLES, WallHit,
-    WallProbe, corner_offsets, corner_probe_wanted, footing, headroom_probe_wanted,
-    kinematic_advance, kinematic_settle, player_motor, relative_rise, wall_offsets,
-    wall_probe_wanted,
+    Buoyed, CeilingProbe, Fluid, GroundSample, Headroom, KinematicState, MAX_CORNER_SAMPLES,
+    MAX_WALL_SAMPLES, PlayerConfig, PlayerInput, PlayerState, ReactionConfig, WallHit, WallProbe,
+    corner_offsets, corner_probe_wanted, footing, headroom_probe_wanted, kinematic_advance,
+    kinematic_settle, odd_samples, player_motor, relative_rise, wall_offsets, wall_probe_wanted,
 };
 
 use super::player_view::{ProbeKind, ProbeMark};
@@ -340,7 +339,7 @@ impl PhysicsBridge {
                 Some(hit.as_ref().map(|h| h.distance)),
                 ceiling
                     .as_ref()
-                    .map(|c| (c, probes::corner_rise(rel_up, dt))),
+                    .map(|c| (c, probes::corner_rise(rel_up, dt, &cfg))),
                 wall.as_ref(),
                 headroom.as_ref(),
             );

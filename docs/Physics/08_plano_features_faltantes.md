@@ -445,6 +445,103 @@ correção desta nota. *Quem conta os sensores conta o consumidor, não a tabela
   pergunta, e ela tem resposta visível (o personagem desvia).
 
 
+### 4.56 · `W-Probes2` — **O SMOKE REPROVOU AS TRÊS METADES** ✅ ⟨report do Enio⟩
+
+> *"Não percebi claramente as hastes (Beiral) nem os Traços (parede). Ao arrastar
+> o player fora do runtime, os traços não acompanham. não temos inputs para
+> ajustes dos tamanhos e posições dos sensores nem a quantidade de sensores.
+> Para um usuário pro não seria bom ter todos os ajustes disponíveis na UI?"*
+
+**FECHADO em 2026-08-11.** Os três reproduzidos e medidos pela porta do produto
+(cena 108 → ponte → `probe_marks`, câmera 100 px/m) **antes** de qualquer
+hipótese.
+
+#### (1) As hastes não estavam fracas — mediam ZERO ✅
+
+| marca | tamanho na tela | alpha |
+|---|---|---|
+| perna | 10 × **115 px** | 1,00 |
+| **quina (o vão)** | 64 × **0,0 px** | 0,22 |
+| **parede** (cada) | **35 × 0,0 px** | 0,22 |
+| agachar | 40 × 100 px | 0,22 |
+
+⚠️ **`rise = 0.0000 m` nos TRÊS momentos**, inclusive subindo: ele vale
+`rel_up · dt · CORNER_LOOKAHEAD`, e o `record_marks` usa `corner.map_or(0.0, …)`
+— quando a lei não pergunta (94% dos quadros, pelo censo da própria wave
+anterior) a altura do leque é **zero**. O que o passo 5 do smoke mandava procurar
+**não existia**.
+
+⚠️ **E o traço da parede media 35 px dos quais 20 ficavam DENTRO do corpo** — o
+raio nasce no CENTRO (o `exclude_body` precisa disso) e a meia-largura é 0,2 m.
+
+**A cura:** `ProbeRay.skin` (um FATO, dois consumidores com necessidades
+opostas — o cast parte do centro, o desenho começa na BORDA; quem sabe é a porta
+que lançou o raio) · o **TIQUE DE PONTA** (3 px, menor que os 5 do acerto de
+propósito: um diz *até onde ele olha*, o outro *onde achou*) · alpha do `Idle`
+0,22 → 0,45 e espessura 1,0 → 1,25 px.
+
+⚠️ **Alongar o leque teria sido MENTIR** — um sensor parado olha mesmo zero para
+cima. O que a ponta desenha é o **vão lateral**, o número autorado, que nunca é
+zero.
+
+#### (2) A leitura não seguia o corpo arrastado ✅
+
+Medido: corpo movido para `x = 5.000`, perna publicada em **`x = 2.000`**.
+`drive_players` só corre no ramo que DÁ PASSO.
+
+⚠️ **E era decisão minha, escrita num gate** — a §4.55 declarou que *"um quadro
+pausado mostra a leitura do último tique, a mesma propriedade das cruzes de
+contato"*. **Errado:** um contato descreve um EVENTO e some com a corrida que o
+produziu; o alcance de um sensor é uma propriedade do CORPO e existe com o solver
+desligado — e o gesto de o afinar é **encostar o corpo na parede sem relógio**.
+
+`preview_player_probes` re-deriva a geometria no ramo pausado **e no `hold`**, e
+**não casta**: todo estado sai `Idle` porque a lei não correu. Castar responderia
+uma pergunta que ninguém fez.
+
+#### (3) Os ajustes — a §4.55 fechou (b) com a pergunta ERRADA ✅
+
+Ela mediu que **cada NÚMERO tem row** e concluiu *"não há knob a construir"*. A
+pergunta que faltava é a do Enio, e é sobre a **GEOMETRIA das amostras**:
+`WALL_SAMPLES = 3`, `CORNER_SAMPLES = 65` e `CORNER_LOOKAHEAD = 2.0` eram
+`const`, e as alturas do flanco saíam de `wall_offsets(half_height)` sem
+parâmetro.
+
+Quatro números novos, `PROJECT_SCHEMA` **71 → 72** (provisório):
+
+| row | card | default | faixa |
+|---|---|---|---|
+| **Corner Rays** | Forgiveness | 65 | 1..257, passo 2 |
+| **Corner Look-ahead** | Forgiveness | 2 | 0..8 tiques |
+| **Wall Rays** | Walls | 3 | 1..257, passo 2 |
+| **Wall Ray Spread** | Walls | 1,0 | 0..1 |
+
+⚠️ **O TETO é MEDIDO e o recurso NÃO é tempo** (§0): **18 ns por raio, PLANO em
+N** ⇒ 257 custam **4,55 µs = 0,027% de um quadro**. O que se esgota é a
+**precisão de representação** — o passo cai a **2,5 mm**, e o solver assenta com
+`normalized_allowed_linear_error` de ~**1,3 mm**. Um número, um argumento, os
+dois sensores.
+
+⚠️ **ÍMPAR, e não é cerimónia** (`odd_samples`): a amostra do meio é a âncora do
+desempate do `cling` e os dois sensores são simétricos — uma contagem par ou
+deixaria o meio de fora ou enviesaria um lado. Arredonda para cima.
+
+⚠️ **Os defaults SÃO as consts de sempre** ⇒ todo player já salvo fica
+byte-idêntico, e o que muda é só quem pode mexer neles.
+
+⚠️ **`CORNER_SEARCH_STEPS` fica `const`, com motivo:** ele é a resolução da
+**BUSCA de escape**, não a geometria de um sensor — o pedido é sobre *tamanhos,
+posições e quantidade dos sensores*, e ele não é nenhum dos três.
+
+**Gates:** 5 no desenho + 5 na leitura + 4 na varredura de seam; **7 mutações, 7
+sangram**. ⚠️ **Duas "sobreviveram" e o defeito era do meu script de mutação** —
+ele não afirmava que a substituição aplicava: *uma mutação que não entra é um
+verde que não significa nada*.
+
+**Smoke:** `PH2D_PHYSICS_SMOKE=108`, roteiro de **9** passos (o 7 é o arrasto
+parado, o 8 são os quatro números novos, o 9 é o controle da tecla `B`).
+
+
 ### 4.6 · `W-Glide` — **PLANAR**
 
 O mais barato do catálogo depois do multi-jump, e provavelmente **um caso do
@@ -472,7 +569,7 @@ pedido** — está aqui para a lista ser honesta, não para ser construído.
 ## §5 — A ordem, numa linha
 
 ```
-~~W-Swim~~ ✅ → ~~W-ZoneForce~~ ✅ → ~~W-ShapeCast~~ ✅ → ~~W-Probes~~ ✅ → W-MultiJump → W-Ledge → (W-Glide?) → o ajuste
+~~W-Swim~~ ✅ → ~~W-ZoneForce~~ ✅ → ~~W-ShapeCast~~ ✅ → ~~W-Probes~~ ✅ → ~~W-Probes2~~ ✅ → W-MultiJump → W-Ledge → (W-Glide?) → o ajuste
    1         2             3            4           5            6           7           8
 ```
 

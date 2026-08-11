@@ -184,6 +184,19 @@ pub const INSP_PLAYER_WALL_PUSH: NodeId = hash_node_id("insp.player.wall.push");
 pub const INSP_PLAYER_WALL_LOCK: NodeId = hash_node_id("insp.player.wall.lock");
 /// **Wall Reach (m)** (W13).
 pub const INSP_PLAYER_WALL_REACH: NodeId = hash_node_id("insp.player.wall.reach");
+
+/// **Quantos raios o flanco casta** (`W-Probes2`). Ímpar; o teto e o preço estão
+/// em `ph2d_platformer::MAX_WALL_SAMPLES` — 18 ns por raio, plano em N.
+pub const INSP_PLAYER_WALL_SAMPLES: NodeId = hash_node_id("insp.player.wall.samples");
+
+/// **Onde as amostras de fora do flanco se sentam**, fração da meia-altura.
+pub const INSP_PLAYER_WALL_SPREAD: NodeId = hash_node_id("insp.player.wall.spread");
+
+/// **Quantas amostras o perfil da quina varre** (`W-Probes2`). Ímpar.
+pub const INSP_PLAYER_CORNER_SAMPLES: NodeId = hash_node_id("insp.player.corner.samples");
+
+/// **Quantos tiques de antecedência o perfil da quina olha.**
+pub const INSP_PLAYER_CORNER_AHEAD: NodeId = hash_node_id("insp.player.corner.ahead");
 /// **WALL GRAB** (W23) — por quantos segundos ele segura a parede de vez.
 pub const INSP_PLAYER_WALL_GRAB: NodeId = hash_node_id("insp.player.wall.grab");
 

@@ -98,12 +98,16 @@ pub(crate) fn build_player_info(
         coyote_time: p.coyote_time,
         jump_buffer: p.jump_buffer,
         corner_reach: p.corner_reach,
+        corner_samples: f32::from(p.corner_samples),
+        corner_lookahead: p.corner_lookahead,
         lift_momentum: p.lift_momentum,
         wall_slide_speed: p.wall_slide_speed,
         wall_jump_height: p.wall_jump_height,
         wall_jump_push: p.wall_jump_push,
         wall_jump_lockout: p.wall_jump_lockout,
         wall_reach: p.wall_reach,
+        wall_samples: f32::from(p.wall_samples),
+        wall_spread: p.wall_spread,
         wall_grab_stamina: p.wall_grab_stamina,
         dash_speed: p.dash_speed,
         dash_time: p.dash_time,
@@ -146,6 +150,22 @@ fn player_section_applies(kind: BodyKind, has_player: bool) -> bool {
 fn fitted_float(shape: Option<ColliderShape>, max_slope_deg: f32) -> Option<f32> {
     let min = shape.and_then(|s| min_float_for(s, max_slope_deg))?;
     min.is_finite().then_some(min * 1.2)
+}
+
+/// **O número que uma row de CONTAGEM guarda** — recusa lixo e nada mais.
+///
+/// ⚠️ **O clamp para ÍMPAR mora na LEI** (`ph2d_platformer::odd_samples`), e não
+/// aqui: a ponte e o desenho perguntam à mesma porta, e um segundo
+/// arredondamento no caminho de autoria faria o número GUARDADO discordar do
+/// número CASTADO — o artista leria 4 e receberia 5, sem nada na tela a dizê-lo.
+fn clamp_samples(v: f32, max: usize) -> u16 {
+    let max = u16::try_from(max).unwrap_or(u16::MAX);
+    if !v.is_finite() {
+        return 1;
+    }
+    let n = v.round().clamp(1.0, f32::from(max));
+    // Seguro: `n` está clampado a `[1, max]` e `max` cabe num `u16`.
+    n as u16
 }
 
 /// **Aplica uma edição da §14.** Sem fan-out — a seção descreve UM personagem.
@@ -285,6 +305,18 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         PlayerFieldEdit::CoyoteTime(v) => p.coyote_time = v.max(0.0),
         PlayerFieldEdit::JumpBuffer(v) => p.jump_buffer = v.max(0.0),
         PlayerFieldEdit::CornerReach(v) => p.corner_reach = v.max(0.0),
+        // ⚠️ **O clamp para ÍMPAR mora na LEI** (`ph2d_platformer::odd_samples`),
+        // não aqui: a ponte e o desenho perguntam à mesma porta, e um segundo
+        // arredondamento no caminho de autoria faria o número guardado discordar
+        // do número castado. O que este braço faz é só recusar lixo.
+        PlayerFieldEdit::CornerSamples(v) => {
+            p.corner_samples = clamp_samples(v, ph2d_physics_ecs::MAX_CORNER_SAMPLES);
+        }
+        PlayerFieldEdit::CornerLookahead(v) => p.corner_lookahead = v.max(0.0),
+        PlayerFieldEdit::WallSamples(v) => {
+            p.wall_samples = clamp_samples(v, ph2d_physics_ecs::MAX_WALL_SAMPLES);
+        }
+        PlayerFieldEdit::WallSpread(v) => p.wall_spread = v.clamp(0.0, 1.0),
         PlayerFieldEdit::LiftMomentum(v) => p.lift_momentum = v.max(0.0),
         // AS PAREDES (W13) — todos não-negativos: cada um é uma distância, uma
         // velocidade ou um tempo, e nenhum tem sentido negativo.

@@ -250,8 +250,10 @@ fn the_flank_heights_come_from_the_laws_door() {
     let half = HALF_H + RADIUS;
     let mut ys: Vec<f32> = w.iter().map(|m| as_ray(m).0[1] - cy).collect();
     ys.sort_by(f32::total_cmp);
-    let want = ph2d_platformer::wall_offsets(half);
-    let mut want: Vec<f32> = want.to_vec();
+    let want = ph2d_platformer::wall_offsets(half, ph2d_platformer::WALL_SAMPLES, 1.0);
+    // ⚠️ A CONTAGEM, nao o array: desde a W-Probes2 ele e' dimensionado pelo
+    // TETO, e a cauda nao usada fica em zero.
+    let mut want: Vec<f32> = want[..ph2d_platformer::WALL_SAMPLES].to_vec();
     want.sort_by(f32::total_cmp);
     for (got, exp) in ys.iter().zip(want.iter()) {
         assert!(
@@ -404,4 +406,121 @@ fn the_ceiling_profile_publishes_the_span_the_law_scans() {
         }
         other => panic!("esperava um perfil, veio {other:?}"),
     }
+}
+
+/// **A CONTAGEM AUTORADA chega aos raios que a ponte casta** (`W-Probes2`).
+///
+/// ⚠️ Esta é a quarta condição da política desta linha — *a sequência leva a
+/// algum lugar*. As outras três (o componente existe, a row pinta e regista, o
+/// clique chega ao barramento) podem estar todas verdes com o número a morrer
+/// no componente, e o sintoma seria um slider que se mexe e não faz nada.
+///
+/// ⚠️ **Report do Enio:** *"não temos inputs para ajustes dos tamanhos e posições
+/// dos sensores nem a quantidade de sensores"*. A `W-Probes` fechou a metade (b)
+/// da §4.55 medindo que *cada NÚMERO tem row* — e não fez a pergunta que
+/// faltava, que é sobre a GEOMETRIA das amostras.
+#[test]
+fn the_authored_sample_count_reaches_the_rays_the_bridge_casts() {
+    let count = |n: u16| {
+        let mut r = rig(true);
+        {
+            let mut p = r
+                .sim
+                .world_mut()
+                .get_mut::<PlatformPlayer>(r.player)
+                .expect("o player tem config");
+            p.wall_samples = n;
+        }
+        r.run(0, 30, PlayerInput::default());
+        // Sem direcao o flanco e' publicado dos DOIS lados, logo 2x a contagem.
+        r.of(ProbeKind::Wall).len()
+    };
+    assert_eq!(count(3), 6, "o default sao 3 por lado");
+    assert_eq!(count(9), 18, "nove pedidos, nove castados");
+    assert_eq!(
+        count(8),
+        18,
+        "uma contagem PAR sobe para a impar seguinte (o meio e' a ancora do desempate)"
+    );
+}
+
+/// **O ESPALHAMENTO autorado move onde os raios de fora se sentam.**
+#[test]
+fn the_authored_spread_moves_where_the_outer_rays_sit() {
+    let span = |spread: f32| {
+        let mut r = rig(true);
+        {
+            let mut p = r
+                .sim
+                .world_mut()
+                .get_mut::<PlatformPlayer>(r.player)
+                .expect("o player tem config");
+            p.wall_spread = spread;
+        }
+        r.run(0, 30, PlayerInput::default());
+        let ys: Vec<f32> = r
+            .of(ProbeKind::Wall)
+            .iter()
+            .map(|m| as_ray(m).0[1])
+            .collect();
+        let lo = ys.iter().copied().fold(f32::INFINITY, f32::min);
+        let hi = ys.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+        hi - lo
+    };
+    let full = span(1.0);
+    let half = span(0.5);
+    assert!(
+        (half - full * 0.5).abs() < 0.02,
+        "metade do espalhamento, metade do vao: {full:.3} -> {half:.3}"
+    );
+    assert!(
+        span(0.0) < 1.0e-4,
+        "espalhamento zero junta tudo na cintura: {}",
+        span(0.0)
+    );
+}
+
+/// **A ANTECEDÊNCIA autorada muda quanto o leque da quina sobe.**
+///
+/// ⚠️ É ela que dá ALTURA à haste do perfil — o `rise` vale
+/// `rel_up · dt · lookahead`, e era uma `const` até esta wave.
+#[test]
+fn the_authored_lookahead_changes_how_far_the_ceiling_profile_looks() {
+    let rise = |ahead: f32| {
+        let mut r = rig(true);
+        {
+            let mut p = r
+                .sim
+                .world_mut()
+                .get_mut::<PlatformPlayer>(r.player)
+                .expect("o player tem config");
+            p.corner_lookahead = ahead;
+        }
+        // A subir: e' o unico regime em que a lei pergunta a quina.
+        r.run(
+            0,
+            3,
+            PlayerInput {
+                jump: true,
+                ..PlayerInput::default()
+            },
+        );
+        r.of(ProbeKind::Corner)
+            .first()
+            .map(|m| match m.shape {
+                ProbeShape::Profile { rise, .. } => rise,
+                _ => panic!("o perfil e' um Profile"),
+            })
+            .unwrap_or(f32::NAN)
+    };
+    let (two, four) = (rise(2.0), rise(4.0));
+    assert!(
+        two > 0.0 && (four - two * 2.0).abs() < two * 0.05,
+        "o dobro da antecedencia, o dobro da subida: {two:.5} -> {four:.5}"
+    );
+    assert!(
+        rise(0.0).abs() < 1.0e-9,
+        "zero e' *sem antecedencia*, nao um desligar: {}",
+        rise(0.0)
+    );
 }

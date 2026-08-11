@@ -68,6 +68,16 @@ use crate::{JumpConfig, Vec2, perp_cw};
 /// 25 para "economizar" seria pagar precisão por nada.
 pub const CORNER_SAMPLES: usize = 65;
 
+/// **O TETO da contagem de amostras** — o MESMO número e o MESMO argumento do
+/// irmão [`crate::MAX_WALL_SAMPLES`], e um só porque só há uma medição.
+///
+/// ⚠️ **Não é um teto de TEMPO** (`measure_player_probes::measure_what_a_sample_costs`):
+/// **18 ns por raio, PLANO em N** ⇒ 257 raios custam **4,55 µs, 0,027% de um
+/// quadro**, e só nos tiques de subida. O que se esgota é a **precisão de
+/// representação** — o passo do perfil cai a **2,5 mm em 257** contra o
+/// `normalized_allowed_linear_error` de ~**1,3 mm** com que o solver assenta.
+pub const MAX_CORNER_SAMPLES: usize = 257;
+
 /// Em quantos degraus o escape é procurado dentro do alcance.
 ///
 /// ⚠️ **É uma resolução DIFERENTE da do perfil, e separá-las é o ponto:** o
@@ -111,11 +121,12 @@ pub const CORNER_LOOKAHEAD: f32 = 2.0;
 /// essa margem a lei não teria como saber que o DESTINO do deslocamento está
 /// livre, e empurraria o personagem de uma quina para dentro da seguinte.
 #[must_use]
-pub fn corner_offsets(half_width: f32, reach: f32) -> [f32; CORNER_SAMPLES] {
+pub fn corner_offsets(half_width: f32, reach: f32, samples: usize) -> [f32; MAX_CORNER_SAMPLES] {
+    let n = crate::wall::odd_samples(samples, MAX_CORNER_SAMPLES);
     let span = half_width.max(0.0) + reach.max(0.0);
-    let last = (CORNER_SAMPLES - 1) as f32;
-    let mut out = [0.0; CORNER_SAMPLES];
-    for (i, o) in out.iter_mut().enumerate() {
+    let last = (n - 1) as f32;
+    let mut out = [0.0; MAX_CORNER_SAMPLES];
+    for (i, o) in out.iter_mut().take(n).enumerate() {
         *o = -span + 2.0 * span * (i as f32) / last;
     }
     out
@@ -136,13 +147,20 @@ pub struct CeilingProbe {
     /// à jornada passada. A caixa é conservadora e é sempre uma.
     pub half_width: f32,
     /// `blocked[i]` = há teto ao alcance no deslocamento `corner_offsets()[i]`.
-    pub blocked: [bool; CORNER_SAMPLES],
+    ///
+    /// ⚠️ **Dimensionado pelo TETO e não pela contagem autorada** — a cauda não
+    /// usada fica `false`, e é isso que mantém este tipo sem alocação no caminho
+    /// quente com a contagem a variar por personagem. Quem lê corta em
+    /// [`Self::samples`].
+    pub blocked: [bool; MAX_CORNER_SAMPLES],
     /// Metros LIVRES ao lado do corpo, na altura dele — `[esquerda, direita]`.
     ///
     /// ⚠️ Saturado no próprio alcance (nunca infinito): `reach` significa *"livre
     /// até onde esta assistência poderia querer ir"*, e é o que mantém a struct
     /// comparável e o gate legível.
     pub side_clear: [f32; 2],
+    /// Quantas das `blocked` este perfil de facto varreu.
+    pub samples: usize,
 }
 
 impl CeilingProbe {
@@ -151,8 +169,9 @@ impl CeilingProbe {
     pub fn clear(half_width: f32, reach: f32) -> Self {
         Self {
             half_width,
-            blocked: [false; CORNER_SAMPLES],
+            blocked: [false; MAX_CORNER_SAMPLES],
             side_clear: [reach, reach],
+            samples: CORNER_SAMPLES,
         }
     }
 }
@@ -191,7 +210,8 @@ pub fn corner_escape(probe: &CeilingProbe, reach: f32) -> Option<f32> {
     if !w.is_finite() || w <= 0.0 || !reach.is_finite() || reach <= 0.0 {
         return None;
     }
-    let offs = corner_offsets(w, reach);
+    let n = crate::wall::odd_samples(probe.samples, MAX_CORNER_SAMPLES);
+    let offs = corner_offsets(w, reach, n);
     let step = offs[1] - offs[0];
     if !step.is_finite() || step <= 0.0 {
         return None;
@@ -199,9 +219,9 @@ pub fn corner_escape(probe: &CeilingProbe, reach: f32) -> Option<f32> {
     // Uma amostra fala por uma CÉLULA de largura `step` (ver o topo do módulo).
     let half_cell = step * 0.5;
     let clear = |d: f32| {
-        !offs
+        !offs[..n]
             .iter()
-            .zip(probe.blocked.iter())
+            .zip(probe.blocked[..n].iter())
             .any(|(&o, &b)| b && (o - d).abs() <= w + half_cell)
     };
 
@@ -251,22 +271,23 @@ mod tests {
 
     /// Um perfil com tudo à ESQUERDA de `edge` tapado — a beirada canônica.
     fn ledge_on_the_left(edge: f32) -> CeilingProbe {
-        let offs = corner_offsets(W, REACH);
-        let mut blocked = [false; CORNER_SAMPLES];
-        for (i, &o) in offs.iter().enumerate() {
+        let offs = corner_offsets(W, REACH, CORNER_SAMPLES);
+        let mut blocked = [false; MAX_CORNER_SAMPLES];
+        for (i, &o) in offs.iter().enumerate().take(CORNER_SAMPLES) {
             blocked[i] = o <= edge;
         }
         CeilingProbe {
             half_width: W,
             blocked,
             side_clear: [REACH, REACH],
+            samples: CORNER_SAMPLES,
         }
     }
 
     /// A grade é simétrica, cobre o corpo MAIS o alcance, e é monotônica.
     #[test]
     fn the_grid_spans_the_body_plus_the_reach_on_both_sides() {
-        let offs = corner_offsets(W, REACH);
+        let offs = corner_offsets(W, REACH, CORNER_SAMPLES);
         assert!((offs[0] + (W + REACH)).abs() < 1.0e-6, "{:?}", offs[0]);
         assert!(
             (offs[CORNER_SAMPLES - 1] - (W + REACH)).abs() < 1.0e-6,
@@ -277,9 +298,40 @@ mod tests {
             (offs[CORNER_SAMPLES / 2]).abs() < 1.0e-6,
             "o centro e' zero"
         );
-        for pair in offs.windows(2) {
+        // ⚠️ A CONTAGEM, nao o array: ele e' dimensionado pelo TETO desde a
+        // W-Probes2, e a cauda nao usada fica em zero.
+        for pair in offs[..CORNER_SAMPLES].windows(2) {
             assert!(pair[1] > pair[0], "a grade e' crescente");
         }
+    }
+
+    /// **A contagem é AUTORADA, e o default é o mundo de sempre.**
+    ///
+    /// ⚠️ Duas metades: a grade honra o número pedido (o passo encolhe), e o
+    /// default reproduz `CORNER_SAMPLES` — é isso que mantém byte-idêntico todo
+    /// player já autorado.
+    #[test]
+    fn the_profile_honours_the_authored_count() {
+        let d = corner_offsets(W, REACH, CORNER_SAMPLES);
+        let fine = corner_offsets(W, REACH, 129);
+        assert!(
+            (fine[128] - (W + REACH)).abs() < 1.0e-6,
+            "129 amostras cobrem o mesmo vao: {:?}",
+            fine[128]
+        );
+        let step_d = d[1] - d[0];
+        let step_f = fine[1] - fine[0];
+        assert!(
+            step_f < step_d * 0.55,
+            "o dobro das amostras corta o passo pela metade: {step_d} -> {step_f}"
+        );
+        // E o clamp para IMPAR: 128 pedido tem de dar a MESMA grade de 129.
+        let even = corner_offsets(W, REACH, 128);
+        assert_eq!(
+            even[..129],
+            fine[..129],
+            "uma contagem PAR sobe para a impar seguinte (o meio e' a ancora)"
+        );
     }
 
     /// **Céu limpo não move ninguém.** O neutro, e é o que toda cena sem teto é.
@@ -322,8 +374,9 @@ mod tests {
     fn a_real_ceiling_is_not_forgiven() {
         let p = CeilingProbe {
             half_width: W,
-            blocked: [true; CORNER_SAMPLES],
+            blocked: [true; MAX_CORNER_SAMPLES],
             side_clear: [REACH, REACH],
+            samples: CORNER_SAMPLES,
         };
         assert_eq!(corner_escape(&p, REACH), None);
     }

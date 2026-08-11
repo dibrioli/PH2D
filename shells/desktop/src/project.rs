@@ -390,7 +390,21 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// `down`, que já viajam no BITMASK — um eixo novo teria mudado a forma de
 /// `(f32, u8)` e recusado toda corrida já salva.
 /// ⚠️ **PROVISÓRIO, como o degrau acima** — contado contra o `main` de hoje (70).
-const PROJECT_SCHEMA: u32 = 71;
+///
+/// v72 (physics, W-Probes2 — OS SENSORES FICAM EDITÁVEIS): o `PlatformPlayer`
+/// ganhou **quatro** campos apendados — `corner_samples` e `corner_lookahead`
+/// (quantas amostras o perfil da quina varre, e quantos tiques de antecedência
+/// ele olha), `wall_samples` e `wall_spread` (quantos raios o flanco casta, e
+/// onde os de fora se sentam).
+/// ⚠️ **Eram `const` e passam a ser AUTORADOS, com os defaults iguais às consts**
+/// — todo player já salvo fica byte-idêntico, e o que muda é só quem pode mexer
+/// neles. O report do Enio: *"não temos inputs para ajustes dos tamanhos e
+/// posições dos sensores nem a quantidade de sensores"*.
+/// ⚠️ **Um degrau só porque é um assunto só**: a `W-Probes` fechou a metade (b)
+/// da §4.55 medindo que *cada NÚMERO tem row* — e não fez a pergunta que
+/// faltava, que é sobre a GEOMETRIA das amostras.
+/// ⚠️ **PROVISÓRIO** — contado contra o `main` do dia na integração.
+const PROJECT_SCHEMA: u32 = 72;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

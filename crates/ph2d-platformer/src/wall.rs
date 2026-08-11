@@ -57,7 +57,33 @@ pub struct WallProbe {
     /// Para que lado o sensor olhou: `-1` à esquerda, `+1` à direita.
     pub side: f32,
     /// Um `Option` por altura do flanco; `None` = aquele raio não achou nada.
-    pub hits: [Option<WallHit>; WALL_SAMPLES],
+    ///
+    /// ⚠️ **Dimensionado pelo TETO e não pela contagem autorada** — as caudas
+    /// não usadas ficam `None`, e é isso que mantém este tipo sem alocação no
+    /// caminho quente com a contagem a variar por personagem.
+    pub hits: [Option<WallHit>; MAX_WALL_SAMPLES],
+    /// Quantas das `hits` este flanco de facto castou (ver [`odd_samples`]).
+    pub samples: usize,
+}
+
+impl WallProbe {
+    /// **A leitura montada a partir das amostras que de facto existem** — a
+    /// cauda até [`MAX_WALL_SAMPLES`] fica `None`.
+    ///
+    /// ⚠️ Porta única para quem CONSTRÓI uma leitura (a ponte e as fixtures):
+    /// sem ela cada chamador soletraria o array do teto, e o dia em que o teto
+    /// mudasse seria um dia de churn em vez de uma linha.
+    #[must_use]
+    pub fn from_hits(side: f32, hits: &[Option<WallHit>]) -> Self {
+        let mut out = [None; MAX_WALL_SAMPLES];
+        let n = hits.len().min(MAX_WALL_SAMPLES);
+        out[..n].copy_from_slice(&hits[..n]);
+        Self {
+            side,
+            hits: out,
+            samples: n,
+        }
+    }
 }
 
 /// **A parede escolhida** — o que a lei devolve depois de olhar o flanco todo.
@@ -121,6 +147,23 @@ pub struct WallConfig {
     /// tique, desligado no seguinte —, e o sintoma seria um escorregamento que
     /// pisca.
     pub reach: f32,
+
+    /// **QUANTOS raios o flanco casta.** Ímpar (ver [`odd_samples`]).
+    ///
+    /// ⚠️ O que ele compra é COBERTURA DE FRESTA, não precisão: os raios cobrem
+    /// o flanco inteiro, então uma fresta que cegue todos tem de ser mais alta
+    /// que o espaçamento. Com 3 num corpo de 1 m a fresta cega mede 0,5 m; com
+    /// 9, 12,5 cm. O teto e o preço estão em [`MAX_WALL_SAMPLES`] — **18 ns por
+    /// raio, plano em N**, então o custo não é o que decide.
+    pub samples: usize,
+
+    /// **Onde as amostras de FORA se sentam**, como fração da meia-altura do
+    /// corpo. `1.0` põe-nas na borda exata da caixa (o comportamento de sempre).
+    ///
+    /// ⚠️ Baixá-lo afasta o sensor das PONTAS, que é onde uma cápsula é um ponto
+    /// e um raio rasante vê parede onde o corpo mal encosta — o trade está
+    /// nomeado no doc de [`wall_offsets`], e agora ele tem um número.
+    pub spread: f32,
 
     /// **Por quantos segundos o CONTROLE AÉREO fica calado depois de um pulo de
     /// parede.** `0.0` desliga.
@@ -188,6 +231,10 @@ impl WallConfig {
         // acompanha um multiplicador neutro.
         jump_push: 6.0,
         reach: 0.08,
+        // ⚠️ Os defaults SÃO o mundo de sempre — 3 amostras nas bordas exatas —,
+        // e é isso que mantém todo player já autorado byte-idêntico.
+        samples: WALL_SAMPLES,
+        spread: 1.0,
         // ⚠️ **0,2 s, e o número saiu da varredura** (`measure_wall`, tabela no
         // doc do `measure_the_wall_jump_lockout`): é onde a ALTURA para de ser
         // perdida — 81% em zero, 96% em 0,10, 97% em 0,20 e nunca mais.
@@ -229,6 +276,20 @@ pub fn wall_probe_wanted(cfg: &WallConfig, grounded: bool, drive: f32) -> bool {
 
 /// **Quantos raios o sensor lateral casta.**
 pub const WALL_SAMPLES: usize = 3;
+
+/// **O TETO da contagem de amostras** — de que recurso ele é, com a medição.
+///
+/// ⚠️ **Não é de TEMPO.** Medido (`measure_player_probes::measure_what_a_sample_costs`,
+/// mundo com chão, parede e teto): **18 ns por raio, PLANO em N** — o BVH não
+/// encarece por amostra —, então 257 raios custam **4,55 µs, 0,027% de um quadro
+/// de 60 fps**, e só nos tiques em que a lei pergunta.
+///
+/// O que se esgota é a **precisão de representação**: o passo entre amostras cai
+/// para **2,5 mm em 257**, e o solver assenta com um
+/// `normalized_allowed_linear_error` de ~**1,3 mm**. Abaixo disso as amostras
+/// descrevem geometria que a própria física não resolve — é aí que o número
+/// deixa de comprar coisa alguma, e é esse o teto.
+pub const MAX_WALL_SAMPLES: usize = 257;
 
 /// **Onde os raios da parede nascem**, medidos do centro do corpo — o FLANCO
 /// inteiro, não só a cintura.
@@ -275,8 +336,34 @@ pub const WALL_SAMPLES: usize = 3;
 /// parede: ele agarra-se a uma parede que tem um furo). Fica nomeada, com o
 /// motivo de não ter sido curada junto.
 #[must_use]
-pub fn wall_offsets(half_height: f32) -> [f32; WALL_SAMPLES] {
-    [0.0, -half_height, half_height]
+pub fn wall_offsets(half_height: f32, samples: usize, spread: f32) -> [f32; MAX_WALL_SAMPLES] {
+    let n = odd_samples(samples, MAX_WALL_SAMPLES);
+    let reach = half_height * spread.clamp(0.0, 1.0);
+    let mut out = [0.0; MAX_WALL_SAMPLES];
+    // ⚠️ **O MEIO primeiro, e depois os pares para fora** — a ordem é a lei do
+    // desempate do [`cling`] (numa parede plana os raios medem o mesmo, e quem
+    // vence é o primeiro da lista). Preencher de baixo para cima faria a resposta
+    // saltar para a ponta do pé no dia em que a contagem mudasse.
+    let pairs = (n - 1) / 2;
+    for k in 1..=pairs {
+        let d = reach * (k as f32) / (pairs as f32);
+        out[2 * k - 1] = -d;
+        out[2 * k] = d;
+    }
+    out
+}
+
+/// **Quantas amostras este flanco de facto casta** — a porta única do clamp.
+///
+/// ⚠️ **ÍMPAR, e não é cerimónia:** a amostra do meio é a âncora do desempate do
+/// [`cling`] e o flanco é simétrico em torno da cintura, então uma contagem par
+/// ou deixaria o meio de fora (perdendo o desempate) ou enviesaria um lado.
+/// Arredondar para cima mantém *"pedi mais, recebi mais"*.
+#[must_use]
+pub const fn odd_samples(samples: usize, max: usize) -> usize {
+    let n = if samples < 1 { 1 } else { samples };
+    let n = if n > max { max } else { n };
+    if n % 2 == 0 { n + 1 } else { n }
 }
 
 /// **AGARRADO?** — a pergunta feita **UMA vez**, e as duas leis desta wave são

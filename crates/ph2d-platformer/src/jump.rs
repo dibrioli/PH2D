@@ -96,6 +96,28 @@ pub struct JumpConfig {
     /// ([`crate::corner_probe_wanted`]), então não custa um raio sequer.
     pub corner_reach: f32,
 
+    /// **QUANTAS amostras o perfil do teto varre.** Ímpar (ver
+    /// [`crate::odd_samples`]); teto e preço em [`crate::MAX_CORNER_SAMPLES`].
+    ///
+    /// ⚠️ É a RESOLUÇÃO da beirada: o perfil erra por meia célula, e o passo vale
+    /// `2·(meia_largura + alcance)/(N−1)`. O primeiro corte usava 25 e o passo
+    /// saía 2,7 cm num corpo de 40 cm — um encosto de 10 cm **não era salvo** com
+    /// o alcance em 12 cm. Com 65 o passo cai a 1,0 cm.
+    pub corner_samples: usize,
+
+    /// **Quantos tiques de antecedência o perfil olha.**
+    ///
+    /// O leque mede `rel_up · dt · lookahead`, então a quina é vista ANTES do
+    /// tique em que a cabeça a alcançaria — é isto, e só isto, que torna a
+    /// assistência preditiva. Ele **se escala sozinho com a velocidade**: um
+    /// comprimento fixo em metros seria curto num pulo rápido e longo demais
+    /// perto do ápice.
+    ///
+    /// ⚠️ **`0.0` é legítimo e significa *sem antecedência*** — a quina passa a
+    /// ser vista no tique do contato. Não é um desligar: o vão LATERAL continua
+    /// a ser varrido, e é ele que a lei usa para escolher o escape.
+    pub corner_lookahead: f32,
+
     /// **LIFT MOMENTUM** (W10) — por quantos segundos, depois de sair do chão, o
     /// controle aéreo continua medindo a velocidade no referencial do chão que
     /// se DEIXOU.
@@ -168,6 +190,10 @@ impl JumpConfig {
         // ⚠️ **E a linha que importa é a última:** com a cabeça inteira tapada o
         // pico é IDÊNTICO com e sem a assistência. Um teto continua um teto.
         corner_reach: 0.12,
+        // ⚠️ Os defaults SÃO as consts de sempre — o mundo já autorado fica
+        // byte-idêntico, e o que muda é só quem pode mexer neles.
+        corner_samples: crate::CORNER_SAMPLES,
+        corner_lookahead: crate::CORNER_LOOKAHEAD,
         // ⚠️ **1,5 s é MEDIDO contra o pulo, não estimado:** um pulo default de
         // altura cheia fica **1,45 s no ar** (pico 2,101 m,
         // `measure_how_long_a_default_jump_lasts`), então a janela cobre o pulo

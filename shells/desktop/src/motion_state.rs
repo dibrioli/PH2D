@@ -40,6 +40,11 @@ mod demo_router;
 /// moram no `render_loop` (é lá que a tomada é lida). Uma cena existe para ser DIRIGIDA.
 #[path = "motion_state_gpu_adsr_demo.rs"]
 pub(crate) mod gpu_adsr_demo;
+/// A cena da CENTELHA QUE ESTOURA (doc 89, folha 13), arquivo próprio pela mesma razão: ela
+/// responde *"uma MORTE consegue dar à luz?"* — o `sim.replicate` da referência, que aqui é
+/// uma fiação e não um nó.
+#[path = "motion_state_gpu_death_demo.rs"]
+mod gpu_death_demo;
 /// The DEFORMER scene, its own file for the same reason: it answers "does a node
 /// whose kernel needs one number about the WHOLE stream run on the device?",
 /// which none of the per-element or neighbourhood scenes can.

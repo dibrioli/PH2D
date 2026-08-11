@@ -138,6 +138,30 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
             );
             sinks
         }
+        // A CENTELHA QUE ESTOURA: a MESMA pergunta da `=24` com o gatilho sendo a própria
+        // MORTE — o `sim.replicate` da referência, que aqui é uma FIAÇÃO e não um nó.
+        Ok("27") => {
+            let sinks =
+                gpu_death_demo::build_gpu_death_demo_document(doc, registry).unwrap_or_default();
+            // ⚠️ A cena se ANUNCIA, e é aqui que ela o faz — no roteador, que é quem sabe
+            // que o ambiente a pediu. Os números são MEDIDOS (`probe_population`), não
+            // escolhidos.
+            eprintln!(
+                "[death-demo] A CENTELHA QUE ESTOURA: {} sementes, vida {} s, e cada MORTE da a \
+                 luz {} filhos NO LUGAR em que ela aconteceu.\n  \
+                 (!) A taxa de nascimento e' ZERO: se a fiacao da morte nao funcionasse, a tela \
+                 ficaria VAZIA para sempre\n  ao fim da primeira vida. Conte a cascata: {} -> {} \
+                 -> {} -> ... uma geracao a cada {} s.",
+                gpu_death_demo::SEEDS as u32,
+                gpu_death_demo::LIFE,
+                gpu_death_demo::BURST as u32,
+                gpu_death_demo::SEEDS as u32,
+                (gpu_death_demo::SEEDS * gpu_death_demo::BURST) as u32,
+                (gpu_death_demo::SEEDS * gpu_death_demo::BURST * gpu_death_demo::BURST) as u32,
+                gpu_death_demo::LIFE,
+            );
+            sinks
+        }
         // **Sem env: a TELA VAZIA** (Enio, 2026-08-07: *"tire a cena da cachoeira"*). O
         // editor abria com a neve caindo no mar — um sistema de partículas inteiro que o
         // artista tinha de apagar antes de começar. Quem quiser um grafo o traz pelo

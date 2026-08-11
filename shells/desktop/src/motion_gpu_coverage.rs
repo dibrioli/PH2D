@@ -35,6 +35,7 @@
 
 use super::build_default_document;
 use super::gpu_adsr_demo::build_gpu_adsr_demo_document;
+use super::gpu_death_demo::build_gpu_death_demo_document;
 use super::gpu_deform_demo::{
     build_gpu_deform_demo_document, build_gpu_four_point_warp_demo_document,
     build_gpu_kaleidoscope_demo_document, build_gpu_spherize_demo_document,
@@ -173,6 +174,21 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     push("demo=25 the bar (a carry opens an envelope)", &|d| {
         build_gpu_adsr_demo_document(d, reg)
     });
+    // ⚠️ E A CENTELHA QUE ESTOURA entra pela forma de cadeia que ela traz: o primeiro
+    // documento em que um nó ALIMENTA a si próprio pelas saídas 1 e 2 (o evento de morte do
+    // `sim.lifetime` voltando ao laço por um `sim.spawn`).
+    //
+    // ⚠️ **E ela NÃO exercita a recusa nova de 2026-08-10** (*um estágio de GPU produz um
+    // buffer, logo porta ≠ 0 consumida = fronteira*) — eu ia escrever que sim, e a ABLAÇÃO
+    // disse o contrário: com e sem a regra o censo imprime a MESMA linha, porque esta cadeia
+    // já recua na `sim.zone` por outro motivo. O sujeito da regra é o gate sintético
+    // (`plan_analysis::a_consumed_second_output_puts_the_boundary_at_that_node`), e o escopo
+    // honesto dela hoje é *nenhum documento do corpus*: ela existe para o dia em que um deles
+    // deixar de recuar antes.
+    push(
+        "demo=27 the spark that bursts (a death gives birth)",
+        &|d| build_gpu_death_demo_document(d, reg),
+    );
     push("demo=10 sim.zone snow globe", &|d| {
         build_gpu_zone_demo_document(d, reg)
     });

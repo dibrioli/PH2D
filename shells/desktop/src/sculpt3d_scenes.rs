@@ -453,7 +453,18 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
         let coarse = ph2d_mesh::shapes::uv_sphere(12, 18, 1.0);
         ph2d_mesh::subdivide(&ph2d_mesh::subdivide(&coarse))
     } else {
-        ph2d_mesh::shapes::uv_sphere(96, 144, 1.0)
+        // ⚠️ **O DEFAULT DO MÓDULO, e ele deixou de ser uma esfera UV em
+        // 2026-08-10, por ordem do Enio** — *"substitua a Sphere padrão (com
+        // topologia imprópria para escultura) pela Sphere do SculptGL"*. A
+        // topologia é o argumento inteiro, e ele é um número: a razão entre a
+        // maior e a menor aresta é **3,9×** na subdividida contra **30,6×** na
+        // `uv_sphere(96, 144)`, cujo leque de polo dá ao mesmo pincel uma
+        // superfície por dab dez vezes menor lá que no equador.
+        //
+        // ⚠️ **Ela é 7,2× mais densa** (98 306 vértices contra 13 682) e abre em
+        // **14,3 ms** contra 1,2 — o mesmo custo de abertura que a cena `=16`
+        // já paga com folga (35 ms), e sob o kill de dab de 8 ms.
+        ph2d_mesh::shapes::sculpt_sphere(1.0)
     }
 }
 

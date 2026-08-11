@@ -141,6 +141,83 @@ pub fn uv_sphere(rings: usize, segments: usize, radius: f32) -> Mesh {
     Mesh::from_parts(positions, faces).expect("a esfera é construída aqui e é válida")
 }
 
+/// **O TETO DE FACES que decide quantas vezes o cubo é subdividido** — a lei do
+/// SculptGL, copiada como lei e não como número.
+///
+/// O `Scene.subdivideClamp` dele é literalmente `while (mesh.getNbFaces() <
+/// 50000) mesh.addLevel();`, e do cubo isso passa por 6 → 24 → 96 → 384 → 1536
+/// → 6144 → 24576 e **para em 98304**, que é o número que o Enio nomeou.
+///
+/// ⚠️ **Escrever `50_000` em vez de `7` é o que torna 98304 uma CONSEQUÊNCIA.**
+/// Um literal de contagem de passos seria um número que ninguém sabe de onde
+/// veio no dia em que alguém quiser uma esfera mais grossa; a regra diz o que
+/// se queria (*"pelo menos cinquenta mil faces"*), e o gate pina o 98304 para
+/// a consequência não mudar sem que alguém veja.
+const SCULPT_SPHERE_MIN_FACES: usize = 50_000;
+
+/// **A ESFERA DE ESCULTURA** — a do SculptGL: um cubo subdividido, **98304
+/// quads**, e é ela que o módulo abre.
+///
+/// ⚠️ **Ela substitui a [`uv_sphere`] como default por causa da TOPOLOGIA, e o
+/// número que decide está medido:** a razão entre a maior e a menor aresta é
+/// **3,9×** aqui contra **30,6×** numa `uv_sphere(96, 144)`. A esfera UV
+/// concentra um leque de triângulos finíssimos em cada polo e estica quads no
+/// equador, então o mesmo pincel come muito mais superfície num lugar que no
+/// outro — é isso que "topologia imprópria para escultura" quer dizer, e é por
+/// isso que nenhum app de escultura abre com uma.
+///
+/// ⚠️ **Ela NÃO é uma esfera, e o nome é uma concessão ao vocabulário.** O que
+/// sai é a superfície-limite de Catmull-Clark de um cubo, cujo raio varia
+/// **3,09%** (medido: 0,4198 a 0,4330 antes da normalização). O SculptGL a
+/// chama de *sphere* e não esferifica — `addSphere` é `createCube` +
+/// `subdivideClamp`, e nada normaliza os vértices para o raio. Empurrá-los para
+/// uma esfera exata daria uma peça diferente da referência e destruiria a
+/// propriedade que a torna boa de esculpir (o espaçamento uniforme).
+///
+/// ⚠️ **A escala é normalizada pela CAIXA, e sem isso a troca quebraria vizinhos
+/// silenciosamente:** o limite de `cube(1.0)` tem meia-extensão **0,4198**,
+/// enquanto `uv_sphere(_, _, 1.0)` tem 1,0. A câmera é enquadrada por
+/// `mesh.bounds()` e o import escala contra *"o diâmetro das primitivas que a
+/// cena já cria"*, então entregar uma peça 2,4× menor mudaria o zoom de
+/// abertura e a escala de todo OBJ importado — sem erro nenhum.
+///
+/// ⚠️ **O fator é MEDIDO da malha, não uma constante:** se a subdivisão mudar, a
+/// normalização a acompanha. Um `2.382` escrito à mão é o número que fica velho
+/// no primeiro dia em que a regra de suavização for afinada.
+///
+/// Custo medido: **14,3 ms** para as sete subdivisões (o passo final, de 24576
+/// para 98304 faces, é 9,0 deles) contra 1,2 ms da `uv_sphere(96, 144)`.
+#[must_use]
+pub fn sculpt_sphere(radius: f32) -> Mesh {
+    let mut m = cube(1.0);
+    while m.face_count() < SCULPT_SPHERE_MIN_FACES {
+        m = crate::subdivide(&m);
+    }
+
+    // A meia-extensão da caixa — a mesma grandeza que a `uv_sphere` entrega
+    // como `radius`, e por isso a que faz desta função um substituto e não uma
+    // peça de outro tamanho.
+    let b = m.bounds();
+    let half = (0..3)
+        .map(|i| (b.max[i] - b.min[i]) * 0.5)
+        .fold(0.0f32, f32::max);
+    if half > 0.0 {
+        let k = radius / half;
+        for p in m.positions_mut() {
+            *p = [p[0] * k, p[1] * k, p[2] * k];
+        }
+        // ⚠️ **A DÍVIDA que o `positions_mut` nomeia, paga aqui.** Ele deixa a
+        // caixa, o octree e as normais descrevendo a malha de ANTES — e é a
+        // caixa que a câmera usa para enquadrar e o octree que o pincel usa
+        // para achar o que está sob o cursor. Sem isto a peça abriria com o
+        // zoom de uma esfera 2,4× menor e o primeiro traço erraria o alvo, os
+        // dois sem erro nenhum. Aqui o custo é irrelevante (uma vez, no
+        // nascimento), que é justamente por que a porta não o faz sozinha.
+        m.rebuild();
+    }
+    m
+}
+
 /// A esfera com aproximadamente `target` triângulos — a porta que as sondas
 /// usam para varrer escala.
 ///

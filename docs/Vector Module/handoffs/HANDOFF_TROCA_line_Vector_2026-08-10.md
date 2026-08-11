@@ -136,8 +136,17 @@ Anterior, ainda de pé:
   `the_pick_reads_the_map_that_was_drawn`, 4 mutações.
 - O **caminho do tablet** (a fonte `Pen` é oferecida e **não chega**: a shell não recebe
   pressão de dispositivo — é INPUT de shell, custa uma função, e afeta o Flip igual) · o
-  **lasso** · **X/Y numérico do nó** · **editar nós de VÁRIAS formas** (ausência *por
-  construção*: `selected_verts` pertence a um `selected` único).
+  **lasso** · **X/Y numérico do nó** · ~~**editar nós de VÁRIAS formas** (ausência *por
+  construção*: `selected_verts` pertence a um `selected` único)~~ ✅ **FECHADO (2026-08-10):**
+  `selected_verts` virou `Vec<(VecPathId, usize)>` — o dono entrou no par, e com ele morreram os
+  **três** casos especiais que a ausência exigia (a soma que trocava de alvo · o marquee que
+  elegia um caminho · o overlay que só acendia o primário, com *"selected path only"* escrito no
+  próprio comentário). Medido antes: uma caixa sobre duas formas apanhava **4 de 8** nós.
+  ⚠️ **A metade que carrega a wave é o ESPAÇO, não a contagem** — o arrasto em grupo e o Average
+  cruzavam frames locais diferentes, e um único `delta_to_local` deforma **em silêncio** com a
+  contagem certa. ⚠️ E isto era o **pré-requisito do lasso**, que segue aberto: um laço que varre
+  os nós de duas formas não significa nada enquanto a seleção só souber guardar os de uma.
+  Detalhe: plano 25 §6, *"W6.4 — a seleção de nós ganha DONO"*. Smoke `PH2D_BUILD_SMOKE=70`.
 
 ---
 

@@ -354,8 +354,9 @@ E **a escala da seleção**, que é o que faz o app não parecer de fronteira: o
 por tipo, select de sub-caminho, nem **X/Y numérico do nó**. Trabalhar uma forma de 40 nós é
 clique-a-clique.
 
-⚠️ **Editar nós de VÁRIAS formas é ausência POR CONSTRUÇÃO** (o `selected_verts` pertence a um
-`selected` único) ⇒ **G**, fica **fora** desta wave e nomeada aqui.
+~~⚠️ **Editar nós de VÁRIAS formas é ausência POR CONSTRUÇÃO** (o `selected_verts` pertence a um
+`selected` único) ⇒ **G**, fica **fora** desta wave e nomeada aqui.~~ ✅ **FECHADO (2026-08-10)** —
+ver *"W6.4 — a seleção de nós ganha DONO"* no fim desta §6.
 
 **Tamanho: M.** Smoke: apagar o nó do meio de um arco e a curva ficar; arrastar o meio de um segmento
 e a topologia não mudar; marquee sem Shift, aditivo, sobre duas formas.
@@ -445,8 +446,9 @@ e não a uma segunda busca que discordaria da que o press usa.
 ⚠️ **E metade do *"o marquee vê um path só"* fechou:** a preferência pelo caminho selecionado era
 **incondicional**, então arrastar a caixa sobre OUTRA forma mirava a selecionada, apanhava zero nós
 e devolvia seleção vazia — o artista via o retângulo passar por cima dos nós e nada acender. Agora
-a preferência só vale se a caixa de facto apanhar o selecionado. A outra metade (nós de **várias**
-formas ao mesmo tempo) continua ausência **por construção** e segue nomeada acima.
+a preferência só vale se a caixa de facto apanhar o selecionado. ~~A outra metade (nós de
+**várias** formas ao mesmo tempo) continua ausência **por construção**~~ — e ela **FECHOU** na
+W6.4, abaixo: a eleição de um caminho pelo marquee morreu junto com a ausência que a exigia.
 
 **`Tab` / `Shift+Tab`** percorre os nós (e dá a volta nos dois sentidos); **`Ctrl+A`** apanha todos.
 ⚠️ O Tab **substitui** a seleção: percorrer é olhar um de cada vez, e somar ao andar tornaria a tecla
@@ -466,8 +468,78 @@ schema, nenhum contrato congelado. Smoke: **`PH2D_BUILD_SMOKE=43`**, passos 9-15
 
 **Aberto, e nomeado:** o **lasso** (a caixa cobre o caso comum; o laço quer captura de polígono +
 overlay próprio — wave dela) · **X/Y numérico do nó** (é *precisão*, e cai naturalmente na **W6**,
-que é a wave da precisão) · e **editar nós de várias formas ao mesmo tempo**, que segue **G** e por
-construção.
+que é a wave da precisão) · ~~e **editar nós de várias formas ao mesmo tempo**, que segue **G** e
+por construção~~ ✅ **FECHADO pela W6.4** (abaixo) — e era ele o **pré-requisito do lasso**: um laço
+que varre os nós de duas formas não significa nada enquanto a seleção só souber guardar os de uma.
+
+### ✅ W6.4 — ENTREGUE: a seleção de nós ganha DONO
+
+`selected_verts: Vec<usize>` (índices planos dentro de um `selected` único) virou
+**`Vec<(VecPathId, usize)>`**. Não é uma feature a mais: é a **remoção de três casos especiais**
+que existiam só para conter a ausência.
+
+**Medido pela porta do produto ANTES de uma linha ser escrita** (sonda `multi_probe`, duas formas
+lado a lado):
+
+| gesto | apanhava | devia |
+|---|---|---|
+| caixa sobre AS DUAS | **4 de 8** | 8 |
+| somar B a A (aditivo) | **4** (trocava de alvo) | 8 |
+| Shift+clique em A, depois em B | **1** (o 2º substituía) | 2 |
+| nudge depois da caixa | movia **4 de 8** | 8 |
+
+**Os três casos especiais que MORRERAM**, cada um com a frase que o justificava:
+
+- *"somar só vale dentro do MESMO caminho"* — o `box_select_with` elegia UM caminho (o
+  selecionado, ou o de mais nós na caixa) e SUBSTITUÍA. Com o dono no par não há eleição: a caixa
+  apanha os nós de todas as formas que cobre, e as três perguntas que a eleição obrigava a
+  responder (*quem é o alvo? · a caixa apanhou o selecionado? · é o mesmo caminho?*) saíram do
+  corpo da função.
+- *"um vértice de OUTRO path TROCA o alvo"* — o `toggle_vert_at`. Agora soma; o **primário** segue
+  o último tocado (é ele que o painel de estilo edita) e a forma entra na seleção de OBJETO em vez
+  de a substituir.
+- *"a vertex in the multi-selection (**selected path only**)"* — o overlay, que tinha o defeito
+  escrito no próprio comentário: um índice sem dono só podia falar da forma primária, então os nós
+  escolhidos das outras eram desenhados como **não-escolhidos**. O artista via metade da sua
+  seleção apagar-se ao tocar a segunda forma, com o motor a mover as duas corretamente.
+
+⚠️ **A metade que carrega a wave não é a CONTAGEM, é o ESPAÇO.** Somar nós de duas formas falha de
+modo visível. Já mover as duas com um único `delta_to_local` **compila, roda e deforma em
+silêncio**, com a contagem certa o tempo todo: a conversão mundo→local é POR FORMA (ADR-0111), e a
+forma escalada 2× andaria o dobro — a seleção se desmontaria sob o dedo. O `nudge` já convertia por
+forma; o **arrasto** e o **Average** não, e os dois eram correção:
+
+- o arrasto em grupo descia o delta uma vez, ao local da forma agarrada (bastava, porque o grupo
+  não podia sair dela);
+- o **Average** mediava coordenadas **locais**, e a média de frames distintos não significa nada.
+  Agora o centroide é do MUNDO — ⚠️ e com **uma** forma o resultado é o MESMO que sempre foi, não
+  por sorte: um mapa afim comuta com o centroide (`xf⁻¹(média(xf(aᵢ))) = média(aᵢ)`).
+
+⚠️ **E a wave CRIOU uma exigência:** o `box_select` passou a respeitar **escondido/travado**.
+Enquanto ele elegia um caminho, a falta do `is_pickable` quase nunca era observável; apanhando
+todas as formas cobertas, uma invisível entraria na seleção em silêncio — e o Delete seguinte
+apagaria nós que ninguém vê, que é literalmente o modo de falha que o comentário antigo usava para
+justificar a eleição.
+
+**Alcance da mudança:** `Ctrl+A` cobre as formas selecionadas · `Select Subpath`/`Select Same`
+varrem as formas que a seleção toca · Delete apaga nas duas e **uma forma que morre não leva as
+outras** · o `dragging_anchors` devolve pares prontos (a re-montagem à mão que a shell fazia
+SUMIU, e com ela o pressuposto de que todas as âncoras em movimento são da mesma forma). O `Tab`
+segue percorrendo a forma do nó primário, de propósito: atravessar formas em silêncio ao chegar ao
+último nó seria o Tab a mudar de assunto sem ninguém pedir.
+
+**16 gates novos** (12 no motor + 2 no overlay + o invertido + o de controle), **9 mutações, 9
+sangram**. ⚠️ **Duas lições de fixture, as duas minhas:** o gate do Average nasceu sobre uma
+fixture cujos locais **diferiam** — ali a lei errada também move alguma coisa, então ele mediria a
+lei certa contra uma resposta meramente diferente em vez de contra um **no-op**; e uma mutação do
+overlay **sobreviveu** porque eu compus duas mudanças que se cancelam (restaurar o `is_sel &&` *e*
+comparar só o índice acende o nó 0 da forma errada, e a contagem fica igual). ⚠️ E a **sonda**
+passou a mentir no dia em que a ausência fechou: ela contava o primário, porque no mundo que ela
+mediu a resposta só podia ser 0 ou 1.
+
+**Nenhum schema, nenhum contrato congelado, nenhum ADR, nenhuma dep.** Smoke:
+**`PH2D_BUILD_SMOKE=70`** — três formas, a do meio **escalada 2×** (a premissa que torna a cena
+capaz de reprovar; a cena IMPRIME a escala que encontrou).
 
 ## §7 — W4: OS CORTES
 

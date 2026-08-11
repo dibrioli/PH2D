@@ -38,6 +38,10 @@ mod alpha;
 mod brush;
 pub mod mask_ops;
 mod preview;
+/// **OS KERNELS DA REFERÊNCIA** — o porte 1:1 do SculptGL, `f64` na aritmética
+/// e `f32` no armazenamento, gateado bit a bit contra o JS EXECUTANDO
+/// (`tests/sculptgl_parity.rs`). Ver [`ref_kernels`].
+pub mod ref_kernels;
 mod spacing;
 mod stroke;
 mod transform;

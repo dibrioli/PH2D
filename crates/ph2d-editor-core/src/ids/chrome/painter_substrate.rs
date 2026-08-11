@@ -26,26 +26,12 @@ pub const PAINTER_SUBSTRATE_RELIEF: NodeId = hash_node_id("painter_brush.substra
 /// (essa leitura foi medida em zero texels movidos — o ⛔ em `substrate_relief.rs`).
 pub const PAINTER_SUBSTRATE_ROUGHNESS: NodeId = hash_node_id("painter_brush.substrate_roughness");
 
-/// **Paint** — quão proeminente o PIGMENTO DEPOSITADO fica sobre o papel, `0` (o default) a `1`.
+/// ⚠️ **A terceira row NÃO mora aqui, e a ausência é uma decisão do Enio (2026-08-10).** O relevo do
+/// PIGMENTO DEPOSITADO nasceu ao lado destas duas — no Wet Paint as duas metades saem do mesmo
+/// checkbox `paper_on` — e o smoke o mudou de casa: *"deveria ter nome mais adequado, deveria ter sido
+/// colocado na seção de Shape"*. Ele é `PAINTER_SHAPE_RELIEF`, e o que decide é de quem o número é —
+/// o dente é do CANVAS, o relevo do depósito é da SILHUETA que o deposita.
 ///
-/// `SetValue` → `PainterTool::set_substrate_paint`. É a segunda metade do bloco `paper_on` do Wet
-/// Paint (lá, o mesmo checkbox gateia a granulação do papel E o emboss da massa de pigmento) e o
-/// pedido do Enio de 2026-08-10: *"o depósito de pigmento com pouca água é visto como relevo"*.
-///
-/// ⚠️ **O filme não INVENTA textura — ele revela a que o pincel já deposita**, e isso está medido pela
-/// sonda `film_probe`, em níveis de luminância no pior texel (Paint 1, raio 10):
-///
-/// | o que o pincel deposita | o que o filme acrescenta |
-/// |---|---|
-/// | pincel redondo macio, sem papel | **0,21** (um domo tem `n_z ≈ 1`: a luz o desenha chato) |
-/// | pincel redondo macio, sobre papel | 6,30 (a borda do traço — o bisel de silhueta) |
-/// | Grain `Noise` | 2,00 |
-/// | **Shape `Stripes`** (as cerdas) | **14,46** |
-///
-/// Por isso o pedido do Enio diz *"com Shape"*: sem uma silhueta com estrutura não há o que revelar, e
-/// o slider parece morto — o que ele governa é a ESPESSURA, não a textura.
-pub const PAINTER_SUBSTRATE_PAINT: NodeId = hash_node_id("painter_brush.substrate_paint");
-
 /// Os `SetValue` do substrato — uma checagem de pertencimento para o forward do painel
 /// (`is_param_field`) e para o roteador do tool.
 ///
@@ -55,8 +41,5 @@ pub const PAINTER_SUBSTRATE_PAINT: NodeId = hash_node_id("painter_brush.substrat
 /// primeiro quadro em que a row pinta, então o registro antecipado não decide nada — ele só semeia um
 /// buffer vazio que o espelho do quadro seguinte reescreve. Uma linha que nenhuma mutação consegue
 /// derrubar é uma linha que o próximo leitor vai tratar como load-bearing; ela saiu.
-pub const PAINTER_SUBSTRATE_FIELDS: [NodeId; 3] = [
-    PAINTER_SUBSTRATE_RELIEF,
-    PAINTER_SUBSTRATE_ROUGHNESS,
-    PAINTER_SUBSTRATE_PAINT,
-];
+pub const PAINTER_SUBSTRATE_FIELDS: [NodeId; 2] =
+    [PAINTER_SUBSTRATE_RELIEF, PAINTER_SUBSTRATE_ROUGHNESS];

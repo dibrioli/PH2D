@@ -40,20 +40,17 @@ fn paper_preview_view(brush: &BrushSettings) -> BrushSettings {
     v
 }
 
-/// As três rows do **SUBSTRATO** — Relief · Roughness · Paint. Devolve o próximo `y`.
+/// As duas rows do **SUBSTRATO** — Relief · Roughness. Devolve o próximo `y`.
 ///
-/// ⚠️ **Chamadas ANTES do portão de `TextureKind::None`, e a ordem é load-bearing.** Tanto o
-/// `set_substrate_depth` quanto o `set_substrate_paint` ARMAM um papel default quando o artista liga o
-/// relevo sem ter escolhido um — e essa porta só é alcançável se a row existir justamente no estado em
-/// que não há papel. Embaixo do portão, ligar o relevo exigiria já ter um papel, e o armar-um-default
-/// viraria um guard que nenhum gesto alcança.
+/// ⚠️ **Chamadas ANTES do portão de `TextureKind::None`, e a ordem é load-bearing.** O
+/// `set_substrate_depth` ARMA um papel default quando o artista liga o relevo sem ter escolhido um — e
+/// essa porta só é alcançável se a row existir justamente no estado em que não há papel. Embaixo do
+/// portão, ligar o relevo exigiria já ter um papel, e o armar-um-default viraria um guard que nenhum
+/// gesto alcança.
 ///
-/// ⚠️ **Uma função e não um ARQUIVO irmão**, embora o assunto peça um (o `ids/chrome/painter_substrate`
-/// já argumenta que *o papel não é da aquarela, é do substrato*): o cap que a terceira row estourou é o
-/// de **função** (200 LOC), e um arquivo de painel novo que só chame o `paint_num_row` local não
-/// delega a11y por nenhum marcador que o `hr12_widgets_a11y` reconheça — ele exige um primitivo do
-/// `editor-core`. Mover a mudança de casa é a extração com ADR que a doc 19 descreve, não o preço de
-/// um cap.
+/// ⚠️ **A terceira row saiu daqui** (Enio, 2026-08-10, no smoke): o relevo do PIGMENTO DEPOSITADO
+/// nasceu ao lado do dente, porque no Wet Paint as duas metades saem do mesmo checkbox `paper_on`, e
+/// mudou-se para a seção **Shape** — de quem o número é. Ver `paint_shape::paint_shape_deposit_rows`.
 fn paint_substrate_rows(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -73,14 +70,6 @@ fn paint_substrate_rows(
             "Roughness",
             core_ids::PAINTER_SUBSTRATE_ROUGHNESS,
             brush.substrate_roughness,
-        ),
-        // A segunda metade do substrato: o PIGMENTO depositado como relevo. Ela vive ao lado do dente,
-        // e não numa seção própria, porque é a mesma frase que o bloco `paper_on` do Wet Paint faz —
-        // um assunto, duas metades: o grão do papel e o corpo da tinta que assentou nele.
-        (
-            "Paint",
-            core_ids::PAINTER_SUBSTRATE_PAINT,
-            brush.substrate_paint,
         ),
     ] {
         y = number_field::paint_num_row(

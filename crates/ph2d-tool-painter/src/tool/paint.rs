@@ -264,6 +264,7 @@ mod relief_fields;
 /// alcançar o que não é pixel (a silhueta do slot Shape). [LOC split de `impasto_light`].
 #[cfg(test)]
 mod shape_alpha_tests;
+mod shape_relief; // O RELEVO DO DEPÓSITO: a silhueta esculpe a espessura da tinta que ela deposita
 mod substrate_relief; // O SUBSTRATO ACENDE: o dente do papel como superfície, para qualquer meio
 // A chave do reconcile do substrato viaja até o campo que a guarda (`PainterTool::lit_substrate`), e é
 // só ela que sai daqui — o `Substrate` em si segue interno ao passe de luz.

@@ -155,7 +155,70 @@ pub(crate) fn paint_shape_section(
             y = crate::number_field::paint_num_params(ctx, theme, x, content_w, y, &pp);
         }
     }
+    // O DEPÓSITO — sempre, inclusive em `None`: o relevo é da tinta que a silhueta deixa, e o falloff
+    // sozinho já é uma silhueta (mesmo que uma que quase não tem o que revelar — 0,21 nível medido).
+    y = paint_shape_deposit_rows(ctx, theme, x, content_w, y, brush);
     // None ⇒ nothing more: the Falloff dropdown + its curve preview above ARE the silhouette.
+    y
+}
+
+/// As rows do **DEPÓSITO** — o relevo que esta silhueta deixa na tinta, e o material dessa tinta.
+/// Devolve o próximo `y`.
+///
+/// ⚠️ **As duas rows só existem onde o depósito DEIXA CORPO, e o predicado é o que a engine já
+/// publica** (`impasto_applies`). Medido pela sonda `film_probe` — o que o relevo acrescenta, em níveis
+/// de luminância: **Digital 14,46 · Impasto 1,21 · Watercolor 0,00 · Wet Paint 0,00**. Os dois zeros
+/// não são coincidência e o doc daquele predicado já os explicava (*"the wash short-circuits before the
+/// height pass ever runs"*): a aguada e o fluido têm render próprio e nunca cruzam o `derive_height`.
+/// Oferecer as rows ali seriam dois controles mortos.
+///
+/// ⚠️ **O Shine só é oferecido com o Relief acima de zero, e a condição está MEDIDA nos dois lados.**
+/// Um realce especular precisa de uma normal fora do plano: sobre o dente do papel sozinho o Shine move
+/// **0,00** nível (o `⛔` do `substrate_relief.rs`, que já reprovou um realce próprio para o papel pelo
+/// mesmo mecanismo) e sobre o relevo do depósito move até **3,36**. Sem relevo a row seria o knob morto
+/// que aquele `⛔` nomeia; com ele, é a única porta que o Digital tem para o material da tinta — o card
+/// **Material** vive dentro da seção Impasto e some inteiro quando o meio não é Impasto.
+fn paint_shape_deposit_rows(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    if !brush.impasto_applies {
+        return y;
+    }
+    let mut y = crate::number_field::paint_num_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Relief",
+        core_ids::PAINTER_SHAPE_RELIEF,
+        brush.shape_relief,
+        0.0,
+        1.0,
+        crate::number_field::FINE_STEP,
+        2,
+    );
+    if brush.shape_relief > 0.0 {
+        y = crate::number_field::paint_num_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Shine",
+            core_ids::PAINTER_SHAPE_SHINE,
+            brush.impasto_shine,
+            0.0,
+            1.0,
+            crate::number_field::FINE_STEP,
+            2,
+        );
+    }
     y
 }
 

@@ -105,6 +105,65 @@ pub const PAINTER_SHAPE_PER_LAYER_COLOR: NodeId =
 pub const PAINTER_SHAPE_ALPHA_FROM_IMAGE: NodeId =
     hash_node_id("painter_brush.shape_alpha_from_image");
 
+/// **Relief** — quanta ESPESSURA o depósito desta silhueta deixa, `0` (o default) a `1`.
+///
+/// `SetValue` → `PainterTool::set_shape_relief`. É o pedido do Enio de 2026-08-10 (*"criar o Relief
+/// para a deposição do pigmento com Shape … o depósito de pigmento com pouca água é visto como
+/// relevo"*) e a segunda metade do bloco `paper_on` do Wet Paint, onde um checkbox só gateia a
+/// granulação do papel **e** o emboss da massa de pigmento.
+///
+/// ⚠️ **Ele mora na seção SHAPE, e a mudança de casa é o que o nome corrige** (Enio, 2026-08-10, no
+/// smoke: *"o Paint deveria ter nome mais adequado, deveria ter sido colocado na seção de Shape"*). A
+/// primeira versão o chamou "Paint" e o pôs ao lado do dente do papel, porque no Wet Paint as duas
+/// metades nascem do mesmo checkbox. Mas o que ele governa não é o substrato: é o RELEVO que a
+/// silhueta esculpe na tinta que ela deposita — e a silhueta é exatamente o assunto desta seção.
+///
+/// ⚠️ **O relevo não INVENTA textura — ele revela a que o pincel já deposita**, e isso está medido pela
+/// sonda `film_probe`, em níveis de luminância no pior texel (Relief 1, raio 10):
+///
+/// | o que o pincel deposita | o que o relevo acrescenta |
+/// |---|---|
+/// | pincel redondo macio, sem papel | **0,21** (um domo tem `n_z ≈ 1`: a luz o desenha chato) |
+/// | pincel redondo macio, sobre papel | 6,30 (a borda do traço — o bisel de silhueta) |
+/// | Grain `Noise` | 2,00 |
+/// | **Shape `Stripes`** (as cerdas) | **14,46** |
+///
+/// Por isso o pedido do Enio diz *"com Shape"*: sem uma silhueta com estrutura não há o que revelar, e
+/// o slider parece morto — o que ele governa é a ESPESSURA, não a textura.
+///
+/// ⚠️ **A row existe só onde o depósito DEIXA CORPO** (`BrushSettings::impasto_applies`), e a lista foi
+/// medida: **Digital 14,46 · Impasto 1,21 · Watercolor 0,00 · Wet Paint 0,00** — a aguada e o fluido
+/// têm render próprio e nunca cruzam o `derive_height`.
+pub const PAINTER_SHAPE_RELIEF: NodeId = hash_node_id("painter_brush.shape_relief");
+
+/// **Shine** — a tinta depositada é de alto brilho ou fosca (`0` = fosca).
+///
+/// `SetValue` → `PainterTool::set_impasto_shine`, **o setter que já existia**: este é o mesmo campo
+/// (`BrushSpec::impasto_shine`) que a row Shine do card **Material** edita, visto de outra janela. Duas
+/// VISTAS de um valor, nunca dois valores — o precedente é o chip de borracha do rail contra a
+/// ferramenta Erase da lista do Impasto.
+///
+/// ⚠️ **Por que uma segunda vista existe:** o card Material vive dentro da seção **Impasto** e some
+/// inteiro quando o meio não é Impasto (`if !brush.impasto { return y; }`). O relevo do depósito, por
+/// outro lado, é do **Digital** — foi o meio em que o Enio o pediu. Sem esta row o material da tinta
+/// que o Digital agora deposita seria inalcançável, que é literalmente o defeito de 2026-07-19 (*"o
+/// card Lighting era alcançável no Brush e em lugar nenhum mais"*) acontecendo de novo.
+///
+/// ⚠️ **E ele é oferecido só com o Relief acima de zero**, porque sem relevo não há realce: um
+/// especular precisa de uma normal fora do plano. Isso está MEDIDO nos dois lados — sobre o dente do
+/// papel sozinho o Shine move **0,00** nível (o ⛔ do `substrate_relief`), e sobre o filme move até
+/// 3,36. A row aparece no instante em que passa a significar alguma coisa.
+pub const PAINTER_SHAPE_SHINE: NodeId = hash_node_id("painter_brush.shape_shine");
+
+/// As duas rows do DEPÓSITO — a checagem de pertencimento que o forward do painel (`is_param_field`)
+/// e o roteador do tool fazem.
+///
+/// ⚠️ **Esta lista é o que as torna VIVAS:** uma row numérica é pintada e hit-registrada pelo
+/// `paint_num_row`, mas o `ValueChanged` dela só alcança o tool se o `is_param_field` reivindicar o id
+/// — e o painel espelha o valor do tool de volta no campo todo quadro, então uma row não-reivindicada
+/// **volta ao valor antigo no instante em que o artista solta**.
+pub const PAINTER_SHAPE_DEPOSIT_FIELDS: [NodeId; 2] = [PAINTER_SHAPE_RELIEF, PAINTER_SHAPE_SHINE];
+
 /// Stable [`NodeId`] for Shape layer `i`'s **colour checkbox** (the "Layer i+1 Color" row, shown when
 /// Per-Layer Color is on). A FACTORY id (paint-time registration; only `0..layer_count` rows are
 /// painted, so the `format!` is bounded). `Click` → `toggle_brush_shape_layer_color(i)`.

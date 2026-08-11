@@ -1,6 +1,7 @@
-//! Gates do **FILME DE PIGMENTO** — o depósito visto como relevo (Enio 2026-08-10).
+//! Gates do **RELEVO DO DEPÓSITO** — o pigmento que a silhueta pousa, visto como relevo (Enio
+//! 2026-08-10).
 //!
-//! A lei em uma frase: **o pigmento que o pincel pousa tem espessura própria, ela é do SUBSTRATO (não
+//! A lei em uma frase: **o pigmento que o pincel pousa tem espessura própria, ela é da SILHUETA (não
 //! do impasto), e ela não engrossa quando o pincel cresce.**
 //!
 //! Cada uma das três metades pode falhar sozinha, e cada uma tem gate próprio — mais o gate que a
@@ -84,30 +85,30 @@ fn relief_delta(with: &[u8], without: &[u8]) -> (f64, f64) {
 /// Pinta o MESMO traço com e sem o filme, e devolve o que o filme acrescentou.
 fn film(size: f32, paint: f32) -> (f64, f64) {
     let mut with = bristle(size);
-    with.set_substrate_paint(paint);
+    with.set_shape_relief(paint);
     drag(&mut with);
     let mut without = bristle(size);
     drag(&mut without);
     relief_delta(&lit(&with), &lit(&without))
 }
 
-/// ⚠️ **O NEUTRO É BYTE-IDÊNTICO** — `Paint = 0` é o default, e todo documento que ninguém tocou tem
+/// ⚠️ **O NEUTRO É BYTE-IDÊNTICO** — `Relief = 0` é o default, e todo documento que ninguém tocou tem
 /// de sair exatamente como saía. Não "quase": ao BYTE, e no PIXEL, não só na luz.
 #[test]
 fn the_film_is_off_by_default_and_off_is_byte_identical() {
     let mut t = bristle(20.0);
-    assert_eq!(t.substrate_paint(), 0.0, "o default tem de ser DESLIGADO");
+    assert_eq!(t.shape_relief(), 0.0, "o default tem de ser DESLIGADO");
     drag(&mut t);
     let baseline = lit(&t);
 
     let mut t2 = bristle(20.0);
-    t2.set_substrate_paint(0.0); // o gesto explícito de desligar tem de ser igualmente inerte
+    t2.set_shape_relief(0.0); // o gesto explícito de desligar tem de ser igualmente inerte
     drag(&mut t2);
-    assert_eq!(lit(&t2), baseline, "Paint 0 nao pode mover um byte");
+    assert_eq!(lit(&t2), baseline, "Relief 0 nao pode mover um byte");
 }
 
 /// ⚠️ **A ENTREGA: o depósito de pigmento é visto como relevo** (Enio 2026-08-10, com a foto do Wet
-/// Paint ao lado). Sem isto a wave não existe.
+/// Paint ao lado). Sem isto a wave nao existe.
 #[test]
 fn the_pigment_deposit_reads_as_relief() {
     let (worst, mean) = film(20.0, 1.0);
@@ -125,7 +126,7 @@ fn a_thicker_film_reads_thicker() {
         let (worst, _) = film(20.0, step);
         assert!(
             worst > prev + 1.0,
-            "Paint {step} tem de ler mais fundo que o anterior: {worst:.2} contra {prev:.2}"
+            "Relief {step} tem de ler mais fundo que o anterior: {worst:.2} contra {prev:.2}"
         );
         prev = worst;
     }
@@ -154,7 +155,7 @@ fn the_film_does_not_thicken_with_the_brush() {
 ///
 /// A primeira versão pôs o filme dentro do [`BrushSpec::deposits_height`], que parecia o predicado
 /// natural (*"este pincel escreve altura"*). Ele não é: **quatro sítios do caminho de COR o leem** para
-/// cortar o pigmento na borda do corpo (`height::film_coverage`), então subir o Paint mudava a
+/// cortar o pigmento na borda do corpo (`height::film_coverage`), então subir o Relief mudava a
 /// SILHUETA da tinta — *pior 61 níveis* de diferença, insensível ao próprio slider, que é a assinatura
 /// de estar medindo outra coisa.
 ///
@@ -165,7 +166,7 @@ fn the_film_does_not_thicken_with_the_brush() {
 #[test]
 fn the_film_does_not_touch_the_pigment() {
     let mut with = bristle(20.0);
-    with.set_substrate_paint(1.0);
+    with.set_shape_relief(1.0);
     drag(&mut with);
     let mut without = bristle(20.0);
     drag(&mut without);
@@ -189,7 +190,7 @@ fn the_film_does_not_touch_the_pigment() {
 #[test]
 fn the_film_lights_with_no_paper_tooth_at_all() {
     let mut t = bristle(20.0);
-    t.set_substrate_paint(1.0);
+    t.set_shape_relief(1.0);
     assert_eq!(t.substrate_depth(), 0.0, "a fixture nao pode ter dente");
     drag(&mut t);
     assert!(
@@ -209,7 +210,7 @@ fn the_film_lights_with_no_paper_tooth_at_all() {
 /// (`b29cfabb`). O filme herda esse contrato porque é um knob de depósito como o Depth, e um knob de
 /// depósito que fosse vivo sem o toggle seria a exceção que ninguém pediu.
 ///
-/// **Mutação que sangra:** tirar o `refresh_live_relief()` do `set_substrate_paint` (a metade viva) ·
+/// **Mutação que sangra:** tirar o `refresh_live_relief()` do `set_shape_relief` (a metade viva) ·
 /// tirar o gate `impasto_live_edit()` do `refresh_live_relief` (a metade quieta).
 #[test]
 fn the_paint_slider_is_live_on_the_last_stroke_only_under_adjust_last_stroke() {
@@ -218,10 +219,10 @@ fn the_paint_slider_is_live_on_the_last_stroke_only_under_adjust_last_stroke() {
         if live {
             t.toggle_impasto_live_edit();
         }
-        t.set_substrate_paint(0.25);
+        t.set_shape_relief(0.25);
         drag(&mut t);
         let thin = lit(&t);
-        t.set_substrate_paint(1.0); // sem pintar de novo
+        t.set_shape_relief(1.0); // sem pintar de novo
         let thick = lit(&t);
         thin.chunks_exact(4)
             .zip(thick.chunks_exact(4))
@@ -230,7 +231,7 @@ fn the_paint_slider_is_live_on_the_last_stroke_only_under_adjust_last_stroke() {
     };
     assert!(
         moved_with(true) > 50,
-        "com Adjust Last Stroke, subir o Paint tem de re-derivar o ultimo traco; movidos: {}",
+        "com Adjust Last Stroke, subir o Relief tem de re-derivar o ultimo traco; movidos: {}",
         moved_with(true)
     );
     assert_eq!(
@@ -250,7 +251,7 @@ fn the_paint_slider_is_live_on_the_last_stroke_only_under_adjust_last_stroke() {
 #[test]
 fn the_coverage_saturates_inside_a_stroke_and_this_is_its_number() {
     let mut t = bristle(20.0);
-    t.set_substrate_paint(1.0);
+    t.set_shape_relief(1.0);
     drag(&mut t);
     let id = t.layers.active().expect("camada ativa");
     let cov = t.covers.get(&id).cloned().unwrap_or_default();
@@ -261,5 +262,77 @@ fn the_coverage_saturates_inside_a_stroke_and_this_is_its_number() {
     assert!(
         lo >= 0.95,
         "a cobertura dentro do traco tem de SATURAR (o motivo de o filme nao sair dela); min {lo:.3}"
+    );
+}
+
+// ── O MATERIAL do depósito: alto brilho ou fosco (Enio, 2026-08-10, no smoke do relevo) ────────────
+
+/// ⚠️ **UMA PORTA, e é a que já existia.** A row **Shine** da seção Shape e a row Shine do card
+/// **Material** editam o MESMO `BrushSpec::impasto_shine`, pelo MESMO `set_impasto_shine` — que faz o
+/// fan-out pelos slots de relevo e re-assa o material do último traço. Duas VISTAS de um valor.
+///
+/// **Mutação que tem de sangrar:** dar ao Shine da Shape um campo próprio (ou escrever só no pincel
+/// vivo, sem o fan-out) — o segundo braço deste gate morre.
+#[test]
+fn the_deposits_shine_is_the_paints_own_shine() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+    let mut t = bristle(20.0);
+    // A porta do PRODUTO (o que o painel chama), não o roteador interno: se ninguém consumir o evento,
+    // o campo não se move e o primeiro braço sangra.
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_SHAPE_SHINE, 0.31));
+    assert!(
+        (t.brush_settings().impasto_shine - 0.31).abs() < 1e-4,
+        "a row da Shape tem de escrever o MESMO campo que o card Material; leu {}",
+        t.brush_settings().impasto_shine
+    );
+    // O fan-out do `set_material_field`: sem ele, pegar a Faca devolveria o Shine ao valor do slot dela
+    // e o material do depósito mudaria por um gesto que não fala de material nenhum.
+    for slot in [PaintMode::Paint, PaintMode::Knife, PaintMode::Sculpt] {
+        let v = t.paint.brush_by_mode[slot.slot()].impasto_shine;
+        assert!(
+            (v - 0.31).abs() < 1e-4,
+            "o slot {slot:?} ficou fora do fan-out do material; leu {v}"
+        );
+    }
+}
+
+/// ⚠️ **O Shine MOVE o depósito e não move o papel nu — e as duas metades são o gate.**
+///
+/// A segunda é o motivo de a row existir só na Shape: o `⛔` do [`super::substrate_relief`] já mediu
+/// que um realce sobre o dente do papel não move **um texel** (num relevo de ~1 px a normal quase não
+/// sai do plano, e o realce tem a resposta PLANA subtraída). Se o filme sofresse do mesmo mecanismo, a
+/// row seria knob morto — e a leitura barata dizia que sofreria, porque a espessura é a MESMA. O que
+/// difere é a INCLINAÇÃO: o dente é uma onda larga, o depósito com cerdas cai de 1 px a zero em ~1 px.
+///
+/// **Mutação que tem de sangrar:** ignorar `mat.shine` no realce — o primeiro braço vai a zero.
+#[test]
+fn the_shine_moves_the_deposit_and_leaves_the_bare_paper_alone() {
+    let deposit = |shine: f32| {
+        let mut t = bristle(20.0);
+        t.set_shape_relief(1.0);
+        t.set_impasto_shine(shine);
+        drag(&mut t);
+        lit(&t)
+    };
+    let (worst, _) = relief_delta(&deposit(1.0), &deposit(0.0));
+    assert!(
+        worst > 1.5,
+        "o Shine tem de mudar como o deposito le; pior {worst:.2} nivel"
+    );
+
+    // O CONTROLE — a mesma pergunta sobre o papel, que o ⛔ reprovou. Sem esta metade o gate acima
+    // passaria por qualquer relevo e a row poderia migrar de volta para a seção Paper sem ninguém ver.
+    let paper = |shine: f32| {
+        let mut t = bristle(20.0);
+        t.set_substrate_depth(1.0);
+        t.set_substrate_roughness(0.5);
+        t.set_impasto_shine(shine);
+        lit(&t) // sem uma pincelada: é o papel NU
+    };
+    assert_eq!(
+        paper(1.0),
+        paper(0.0),
+        "sobre o papel nu o Shine nao pode mover um byte (o ⛔ do substrate_relief)"
     );
 }

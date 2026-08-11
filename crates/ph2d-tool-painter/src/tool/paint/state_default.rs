@@ -201,7 +201,7 @@ impl Default for PaintState {
             // reescreve o passado. A Roughness nasce no meio do curso (o mesmo `0.5` do
             // `Material::NEUTRAL`), que é onde ela não é nem glint nem chapa.
             substrate_depth: 0.0,
-            substrate_paint: 0.0,
+            shape_relief: 0.0,
             substrate_rough: 0.5,
             // Grid Stamp's lattice is drawn by DEFAULT (Enio 2026-08-09: "um checkbox checado por
             // padrão para exibir o grid"). It costs nothing outside that method — both the checkbox

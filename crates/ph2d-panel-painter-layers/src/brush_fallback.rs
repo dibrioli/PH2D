@@ -245,7 +245,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     paper_color: [1.0, 1.0, 1.0], // white ground (mirrors PaintState default)
     substrate_relief: 0.0,        // OFF — o neutro byte-idêntico (mirrors PaintState default)
     substrate_roughness: 0.5,
-    substrate_paint: 0.0,
+    shape_relief: 0.0,
     // Impasto section — the `impasto` gate (off) guarantees neutrality; the params carry the
     // when-enabled defaults (mirrors BrushSpec::default).
     impasto: false,

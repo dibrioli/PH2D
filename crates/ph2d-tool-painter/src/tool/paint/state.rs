@@ -366,14 +366,15 @@ pub(crate) struct PaintState {
     /// largo e macio (papel de algodão). Só tem trabalho porque o papel carrega um
     /// [`super::substrate_relief::PAPER_SHEEN`] próprio — com `shine = 0` ela seria controle morto.
     pub(super) substrate_rough: f32,
-    /// **O RELEVO DO SUBSTRATO — o FILME de pigmento** (`0` = desligado, o neutro byte-idêntico): quão
-    /// proeminente a tinta DEPOSITADA fica sobre o papel. Multiplica
-    /// [`super::substrate_relief::MAX_FILM_PX`], e o campo que ele escala é a COBERTURA que a luz já
-    /// dobra — não um plano de altura próprio, que é o que o torna vivo sobre a tela inteira.
+    /// **O RELEVO DO DEPÓSITO** (`0` = desligado, o neutro byte-idêntico): quanta ESPESSURA a silhueta
+    /// deixa na tinta que ela deposita. Multiplica [`super::shape_relief::MAX_FILM_PX`] e vira o
+    /// `BrushSpec::film_depth` de todos os slots, que o `derive_height` soma ao corpo do impasto **sem**
+    /// o `size_scale` dele — um filme não engrossa porque o pincel é maior.
     ///
-    /// ⚠️ Ele arma o `BrushSpec::records_film` de todos os slots: o filme precisa que o depósito ANOTE
-    /// onde o pigmento pousou, e no Digital nada anotava.
-    pub(super) substrate_paint: f32,
+    /// ⚠️ Ele mora ao lado dos dois campos do substrato por HISTÓRIA (nasceu como a segunda metade do
+    /// bloco `paper_on` do Wet Paint) e é editado na seção **Shape**, que é de quem o número é: a
+    /// silhueta que deposita. A calibração é que continua ancorada no dente.
+    pub(super) shape_relief: f32,
     /// **Grid Stamp — desenhar a grade.** Exibição, não pintura: com ela ligada ou desligada o carimbo
     /// pousa exatamente nas mesmas células (gate `show_grid_is_display_only`). Mora aqui, e não no
     /// `BrushSpec`, pelo mesmo motivo do `impasto_show` logo acima — é uma ajuda de visão do canvas,

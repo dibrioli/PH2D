@@ -61,7 +61,7 @@ fn tool_in(media: PaintMedia) -> PainterTool {
     t
 }
 
-/// **As TRÊS rows do substrato existem, pintam e estão vivas nos QUATRO meios.**
+/// **As DUAS rows do substrato existem, pintam e estão vivas nos QUATRO meios.**
 ///
 /// O substrato é a superfície sob tudo, então o meio de pintura não pode decidir se ele é autorável —
 /// e o Digital, que era exatamente o meio sem acesso a papel nenhum, é o motivo da wave.
@@ -81,7 +81,6 @@ fn the_substrate_rows_are_alive_in_every_medium() {
         for (id, name) in [
             (core_ids::PAINTER_SUBSTRATE_RELIEF, "Relief"),
             (core_ids::PAINTER_SUBSTRATE_ROUGHNESS, "Roughness"),
-            (core_ids::PAINTER_SUBSTRATE_PAINT, "Paint"),
         ] {
             assert!(
                 rect_of(&rects, id).is_some(),
@@ -96,7 +95,7 @@ fn the_substrate_rows_are_alive_in_every_medium() {
     }
 }
 
-/// **As TRÊS rows POUSAM no tool** — a condição que as outras não enxergam.
+/// **As DUAS rows POUSAM no tool** — a condição que as outras não enxergam.
 ///
 /// Uma row numérica é pintada por `paint_num_row`, que ESPELHA o valor do tool de volta a cada quadro:
 /// uma row que o `is_param_field` não reclama fica pintada, viva, editável — e **reverte no instante em
@@ -117,12 +116,6 @@ fn the_substrate_rows_land_on_the_tool() {
             "Roughness",
             0.19,
             (|t: &PainterTool| t.substrate_roughness()) as fn(&PainterTool) -> f32,
-        ),
-        (
-            core_ids::PAINTER_SUBSTRATE_PAINT,
-            "Paint",
-            0.37,
-            (|t: &PainterTool| t.substrate_paint()) as fn(&PainterTool) -> f32,
         ),
     ] {
         let mut tool = tool_in(PaintMedia::Digital);

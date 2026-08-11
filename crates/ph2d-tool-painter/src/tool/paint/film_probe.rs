@@ -173,7 +173,7 @@ fn probe_what_the_deposit_records() {
     for shape in [TextureKind::None, TextureKind::Stripes, TextureKind::Noise] {
         let mut t = blank();
         t.set_brush_shape_kind(shape as u8);
-        t.set_substrate_paint(1.0);
+        t.set_shape_relief(1.0);
         drag(&mut t, 48.0, 24.0, 72.0);
         let id = t.layers.active().expect("camada ativa");
         let cov = t.covers.get(&id).cloned().unwrap_or_default();
@@ -201,7 +201,7 @@ fn probe_what_the_deposit_records() {
     println!();
 }
 
-/// O filme pela PORTA DO PRODUTO — `set_substrate_paint`, que é o que o artista arrasta.
+/// O filme pela PORTA DO PRODUTO — `set_shape_relief`, que é o que o artista arrasta.
 fn product_film(shape: TextureKind, size: f32, paint: f32, relief: f32) -> (f64, f64) {
     let arm = |t: &mut PainterTool, on: bool| {
         t.set_brush_size_px(size);
@@ -209,7 +209,7 @@ fn product_film(shape: TextureKind, size: f32, paint: f32, relief: f32) -> (f64,
         t.set_substrate_depth(relief);
         t.set_substrate_roughness(0.5);
         if on {
-            t.set_substrate_paint(paint);
+            t.set_shape_relief(paint);
         }
     };
     let mut with = blank();
@@ -224,7 +224,7 @@ fn product_film(shape: TextureKind, size: f32, paint: f32, relief: f32) -> (f64,
 #[test]
 #[ignore = "sonda de estudo; roda sob demanda"]
 fn probe_film_through_the_product_door() {
-    println!("\n=== O FILME PELA PORTA DO ARTISTA (`set_substrate_paint`) ===");
+    println!("\n=== O FILME PELA PORTA DO ARTISTA (`set_shape_relief`) ===");
     println!("(o numero e o que o FILME acrescentou sobre a mesma cena sem ele)\n");
 
     for shape in [TextureKind::None, TextureKind::Stripes, TextureKind::Noise] {
@@ -248,7 +248,7 @@ fn probe_film_through_the_product_door() {
             t.set_brush_size_px(20.0);
             t.set_brush_texture_kind(TextureKind::Noise as u8);
             if on {
-                t.set_substrate_paint(1.0);
+                t.set_shape_relief(1.0);
             }
         };
         let mut with = blank();
@@ -270,6 +270,126 @@ fn probe_film_through_the_product_door() {
             "size {size:6.1} px (raio {:5.1})           pior {w:7.2}  media {m:6.2}",
             size / 2.0
         );
+    }
+    println!();
+}
+
+/// ⚠️ **A TERCEIRA metade do pedido — *"a tinta é de alto brilho ou fosca"* — e a sonda existe porque o
+/// irmão dela JÁ FOI REPROVADO uma vez.**
+///
+/// O `⛔` do [`super::substrate_relief`] mediu que um realce especular no PAPEL não move um texel: num
+/// dente de ~1 px a normal quase não sai do plano, e o realce de cada lâmpada tem a resposta PLANA
+/// subtraída (`the_glint_only_ever_adds_light`), logo `spec − flat_spec` é nulo em qualquer expoente.
+/// **O filme tem a MESMA espessura** (`MAX_FILM_PX == MAX_TOOTH_PX == 1,0`), então a leitura barata é
+/// que um slider de brilho aqui nasceria morto pelo mesmo mecanismo.
+///
+/// A diferença que a sonda tem de decidir é a INCLINAÇÃO, não a espessura: o dente do papel é uma onda
+/// larga (a normal mal se inclina) e o filme com Shape listrada cai de 1 px a zero em ~1 px — 45°.
+///
+/// Rodar: `cargo test -p ph2d-tool-painter probe_the_films_gloss -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda de estudo; roda sob demanda"]
+fn probe_the_films_gloss() {
+    /// O MESMO filme com dois materiais — o número é o que o material acrescentou.
+    fn gloss(shape: TextureKind, paint: f32, a: (f32, f32), b: (f32, f32)) -> (f64, f64) {
+        let arm = |t: &mut PainterTool, (shine, rough): (f32, f32)| {
+            t.set_brush_size_px(20.0);
+            t.set_brush_shape_kind(shape as u8);
+            t.set_shape_relief(paint);
+            t.set_impasto_shine(shine);
+            t.set_impasto_roughness(rough);
+        };
+        let mut x = blank();
+        arm(&mut x, a);
+        drag(&mut x, 48.0, 24.0, 72.0);
+        let mut y = blank();
+        arm(&mut y, b);
+        drag(&mut y, 48.0, 24.0, 72.0);
+        relief_delta(&lit(&x), &lit(&y), 48)
+    }
+
+    println!("\n=== O MATERIAL DO FILME — brilhante ou fosco? (niveis de luminancia) ===");
+    println!("(o numero e o que o MATERIAL acrescentou sobre o MESMO filme fosco)\n");
+
+    println!("-- Shine, na Roughness de fabrica --");
+    let neutral = ph2d_painter_brush::material::Material::NEUTRAL.roughness;
+    for shine in [0.25f32, 0.5, 0.7, 1.0] {
+        let (w, m) = gloss(
+            TextureKind::Stripes,
+            1.0,
+            (shine, neutral),
+            (0.0, neutral),
+        );
+        println!("Shine {shine:4.2} (rough {neutral:4.2})            pior {w:7.2}  media {m:6.2}");
+    }
+
+    println!("\n-- Roughness, no Shine de fabrica (0,7): o realce APERTA ou ESPALHA? --");
+    for rough in [0.0f32, 0.25, 0.5, 0.75, 1.0] {
+        let (w, m) = gloss(TextureKind::Stripes, 1.0, (0.7, rough), (0.0, rough));
+        println!("Rough {rough:4.2} contra fosco             pior {w:7.2}  media {m:6.2}");
+    }
+    for rough in [0.0f32, 1.0] {
+        let (w, m) = gloss(TextureKind::Stripes, 1.0, (0.7, rough), (0.7, neutral));
+        println!("Rough {rough:4.2} contra a de fabrica       pior {w:7.2}  media {m:6.2}");
+    }
+
+    println!("\n-- e o CONTROLE: a mesma pergunta no PAPEL, que o ⛔ ja reprovou --");
+    {
+        let arm = |t: &mut PainterTool, shine: f32| {
+            t.set_brush_size_px(20.0);
+            t.set_substrate_depth(1.0);
+            t.set_substrate_roughness(0.5);
+            t.set_impasto_shine(shine);
+        };
+        let mut x = blank();
+        arm(&mut x, 1.0);
+        let mut y = blank();
+        arm(&mut y, 0.0);
+        let (w, m) = relief_delta(&lit(&x), &lit(&y), 48);
+        println!("papel nu, Shine 1 contra 0        pior {w:7.2}  media {m:6.2}");
+    }
+
+    println!("\n-- e por espessura: onde o realce nasce --");
+    for paint in [0.1f32, 0.25, 0.5, 1.0] {
+        let (w, m) = gloss(
+            TextureKind::Stripes,
+            paint,
+            (1.0, neutral),
+            (0.0, neutral),
+        );
+        println!("Paint {paint:4.2}, Shine 1 contra 0        pior {w:7.2}  media {m:6.2}");
+    }
+    println!();
+}
+
+/// ⚠️ **O filme age nos QUATRO meios?** — a pergunta que decide se a row do Relief pode ficar sob o
+/// portão "Automatic" da aquarela (que esconde o corpo inteiro da seção Shape, doc 13 #1).
+#[test]
+#[ignore = "sonda de estudo; roda sob demanda"]
+fn probe_the_film_across_the_media() {
+    println!("\n=== O FILME EM CADA MEIO (niveis de luminancia que o relevo acrescenta) ===\n");
+    for media in [
+        crate::PaintMedia::Digital,
+        crate::PaintMedia::Watercolor,
+        crate::PaintMedia::Impasto,
+        crate::PaintMedia::WetPaint,
+    ] {
+        let arm = |t: &mut PainterTool, on: bool| {
+            t.set_paint_media(media);
+            t.set_brush_size_px(20.0);
+            t.set_brush_shape_kind(TextureKind::Stripes as u8);
+            if on {
+                t.set_shape_relief(1.0);
+            }
+        };
+        let mut with = blank();
+        arm(&mut with, true);
+        drag(&mut with, 48.0, 24.0, 72.0);
+        let mut without = blank();
+        arm(&mut without, false);
+        drag(&mut without, 48.0, 24.0, 72.0);
+        let (w, m) = relief_delta(&lit(&with), &lit(&without), 48);
+        println!("{:<12}  pior {w:7.2}  media {m:6.2}", format!("{media:?}"));
     }
     println!();
 }

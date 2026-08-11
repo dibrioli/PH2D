@@ -71,28 +71,6 @@ use super::impasto_light::DEPTH_UNIT_PX;
 /// **metade da faixa inteira** — aquilo não é papel, é chapa ondulada.
 pub(super) const MAX_TOOTH_PX: f32 = 1.0;
 
-/// **A espessura do FILME de pigmento, em pixels de relevo, no Paint máximo.**
-///
-/// ⚠️ **Ancorada no dente, e não escolhida:** um filme de pigmento é da mesma ordem que o grão em que
-/// ele assenta — é *tinta sobre o papel*, não corpo de tinta. Medido pela sonda
-/// [`super::film_probe`] com uma Shape listrada (o que o pedido diz: *"a deposição do pigmento com
-/// Shape"*), o que o filme acrescenta é:
-///
-/// | Paint | pior | média |
-/// |---|---|---|
-/// | 0,25 | 3,06 | 1,26 |
-/// | 0,50 | 7,13 | 2,28 |
-/// | 1,00 | **14,46** | 4,58 |
-///
-/// contra os ~23 níveis de excursão do papel sozinho: a mesma ordem, que é o que o pedido *"exatamente
-/// como faz Wet Paint"* quer dizer (lá o emboss é somado À cor do pigmento, nunca uma segunda camada
-/// por cima dele).
-///
-/// ⚠️ **E o número é PLANO no pincel** — 14,04 / 14,46 / 13,68 / 16,13 nos raios 5 / 10 / 20 / 40 —,
-/// que é a propriedade que o `derive_height` do impasto **não** podia dar: pela rota dele o mesmo filme
-/// mede 14,04 e **96,39**, sete vezes.
-pub(super) const MAX_FILM_PX: f32 = 1.0;
-
 /// ⛔ **MEDIDO E REJEITADO — não reconstrua: um realce especular no papel.**
 ///
 /// A primeira versão deu ao papel um `shine` próprio para que a Roughness governasse a LARGURA do
@@ -345,35 +323,6 @@ impl crate::tool::PainterTool {
         self.paint.substrate_rough = v.clamp(0.0, 1.0);
     }
 
-    /// **Paint do substrato** — quão proeminente o pigmento DEPOSITADO fica sobre o papel.
-    ///
-    /// ⚠️ **É o `records_film` que ele arma que faz a feature existir**, e o fan-out é o mesmo do papel
-    /// (*o substrato é do CANVAS, o slot é do PINCEL*): sem ele, pegar a Faca — que tem slot próprio —
-    /// desligaria o filme debaixo da obra por um gesto que não fala de substrato nenhum.
-    ///
-    /// ⚠️ **O bit arma o PRÓXIMO traço; a espessura é VIVA.** Baixar o Paint a zero depois de pintar
-    /// achata o filme na hora (a luz deriva da cobertura), mas a cobertura que já foi anotada FICA na
-    /// camada — subir de novo a devolve sem re-carimbar. É a mesma assimetria do `impasto_depth` e é
-    /// deliberada: o que custa um plano é gravado uma vez, o que é aparência é lido todo frame.
-    pub fn set_substrate_paint(&mut self, v: f32) {
-        let v = v.clamp(0.0, 1.0);
-        self.paint.substrate_paint = v;
-        // A conversão para a unidade do plano de relevo entra AQUI, na fronteira — o buffer é medido em
-        // CARGAS e o número do artista é em pixels de relevo, exatamente como o `tooth_loads` faz para o
-        // dente ([[feedback_geometry_over_mixed_units_needs_the_consumers_conversion]]).
-        let loads = v * MAX_FILM_PX / DEPTH_UNIT_PX;
-        self.set_paper_field(|b| b.film_depth = loads);
-        // Vivo no ÚLTIMO traço, como o Depth do impasto: o artista pinta e depois acerta a espessura
-        // olhando para ela. Sem isto o slider parece morto até a pincelada seguinte.
-        self.refresh_live_relief();
-    }
-
-    /// O Paint vigente do substrato — o painel lê por aqui.
-    #[must_use]
-    pub fn substrate_paint(&self) -> f32 {
-        self.paint.substrate_paint
-    }
-
     /// O Depth vigente do substrato — o painel lê por aqui.
     #[must_use]
     pub fn substrate_depth(&self) -> f32 {
@@ -401,10 +350,6 @@ impl crate::tool::PainterTool {
             }
             PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SUBSTRATE_ROUGHNESS => {
                 self.set_substrate_roughness(*v as f32);
-                true
-            }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SUBSTRATE_PAINT => {
-                self.set_substrate_paint(*v as f32);
                 true
             }
             _ => false,

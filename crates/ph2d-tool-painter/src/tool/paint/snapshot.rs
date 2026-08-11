@@ -364,7 +364,7 @@ impl PainterTool {
             paper_color: self.paint.paper_color,
             substrate_relief: self.paint.substrate_depth,
             substrate_roughness: self.paint.substrate_rough,
-            substrate_paint: self.paint.substrate_paint,
+            shape_relief: self.paint.shape_relief,
             impasto: b.impasto,
             impasto_depth: b.impasto_depth,
             impasto_smooth_edges: b.impasto_smooth_edges,

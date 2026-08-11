@@ -35,6 +35,7 @@ mod kinematic;
 /// A metade PEÇA do reconcile — os colliders extra de um corpo composto.
 pub mod parts;
 mod player;
+pub mod player_view;
 mod pose_owner;
 mod readback;
 mod rewind;
@@ -397,6 +398,22 @@ pub struct PhysicsBridge {
     /// formas, então um cenário pode ser UM corpo estático com dez plataformas.
     /// Guardar o corpo faria descer de uma delas dissolver as outras nove.
     player_drop: BTreeMap<Entity, ph2d_physics::ColliderHandle>,
+
+    /// **O que os sensores de cada player olharam no último tique** (`W-Probes`)
+    /// — a leitura que o overlay desenha.
+    ///
+    /// ⚠️ **Um `Vec`, e reusado**: a lista é reconstruída em todo tique de player
+    /// (`drive_players` limpa e reenche), então o `Vec` guarda a capacidade e o
+    /// caminho quente não aloca. `BTreeMap` seria a estrutura errada aqui — não
+    /// há nada a procurar por entidade, o consumidor desenha a lista inteira, e
+    /// a ORDEM já é determinística porque o laço que a enche itera o
+    /// `BTreeMap<Entity>` dos corpos.
+    ///
+    /// ⚠️ **Ela é LIMPA quando a física fica em `hold`** (o toggle Physics
+    /// desmarcado), pela razão exacta que limpa os contatos: sem passo não há
+    /// sensor, e marcas de um tique que já não corre descreveriam um mundo que o
+    /// artista pode desmontar com a mão.
+    player_probes: Vec<player_view::ProbeMark>,
 }
 
 impl Default for PhysicsBridge {
@@ -409,6 +426,7 @@ impl PhysicsBridge {
     pub fn new() -> Self {
         Self {
             world: PhysicsWorld::new(),
+            player_probes: Vec::new(),
             bodies: BTreeMap::new(),
             last_stepped: 0,
             query: None,

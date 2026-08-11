@@ -44,6 +44,7 @@ pub use bridge::triggers::TriggerEvent;
 pub use bridge::fk::FkSession;
 pub use bridge::ik::{IkPlan, IkSession};
 pub use bridge::joints::joint_desc;
+pub use bridge::player_view::{ProbeKind, ProbeMark, ProbeShape, ProbeState};
 pub use bridge::rope::pulley_rig;
 // A geometria da corda de uma polia. Re-exportada porque a shell **não depende
 // de `ph2d-physics`** — a mesma contenção que mantém o rapier confinado — e o
@@ -85,6 +86,11 @@ pub use ph2d_physics::{IkOptions, JointLoad};
 /// quem a consome (a lei) têm de falar do MESMO tipo — um espelho na ponte
 /// seria a segunda porta que diverge no dia em que o pulo (W4) entra num lado só.
 pub use ph2d_platformer::PlayerInput;
+// ⚠️ Re-exportado para o OVERLAY (`W-Probes`): quem desenha o perfil do teto tem
+// de perguntar os deslocamentos à porta da LEI, e a shell fala com esta crate —
+// não com a `ph2d-platformer`. Re-exportar em vez de acrescentar uma aresta de
+// `Cargo.toml` mantém a porta ÚNICA sem alargar o grafo de dependências.
+pub use ph2d_platformer::{CORNER_SAMPLES, corner_offsets};
 /// A config da lei, re-exportada pela MESMA razão do `rope_route` e do
 /// `ShapeDesc`: a shell **não depende da `ph2d-platformer`** (a contenção que
 /// mantém o rapier e a lei confinados), e o Inspector precisa do ponto de

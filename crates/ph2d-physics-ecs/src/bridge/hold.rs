@@ -157,5 +157,11 @@ impl PhysicsBridge {
         // a collision (`bridge::contacts::discard_contact_history`).
         self.discard_contact_history();
         self.discard_trigger_history();
+        // ⚠️ E a MESMA frase para os sensores do player (`W-Probes`): nenhum
+        // passo correu, logo nenhum sensor perguntou nada. Marcas de um tique que
+        // já não corre descrevem um mundo que o artista pode desmontar com a mão
+        // — a lição que os contatos acima pagaram, aplicada ao terceiro canal de
+        // leitura antes de ela custar um smoke.
+        self.player_probes.clear();
     }
 }

@@ -40,6 +40,7 @@ use ph2d_platformer::{
     wall_probe_wanted,
 };
 
+use super::player_view::{ProbeKind, ProbeMark};
 use crate::components::PlatformPlayer;
 
 use super::PhysicsBridge;
@@ -108,6 +109,19 @@ impl PhysicsBridge {
         self.player_input.get(&entity).copied().unwrap_or_default()
     }
 
+    /// **O que os sensores olharam no último tique** (`W-Probes`) — a leitura
+    /// que o overlay desenha.
+    ///
+    /// Vazia sem player nenhum, e vazia enquanto a física está em `hold` (sem
+    /// passo não há sensor). A ordem é a do `BTreeMap` de corpos, logo
+    /// determinística; para vários players as marcas vêm concatenadas, e nenhum
+    /// consumidor precisa saber de quem é qual — o que se desenha é geometria de
+    /// mundo.
+    #[must_use]
+    pub fn player_probe_marks(&self) -> &[ProbeMark] {
+        &self.player_probes
+    }
+
     /// **Este player está ATRAVESSANDO uma plataforma jump-through agora?** (W20)
     ///
     /// ⚠️ **O bit viaja no CORPO e vale para TODA plataforma one-way da cena**
@@ -158,6 +172,12 @@ impl PhysicsBridge {
         // de valer ANTES de o sensor perguntar, senão o raio deste tique ainda
         // ignoraria uma plataforma que já é sólida outra vez.
         drops::retire_drops(self);
+        // ⚠️ **A leitura dos sensores descreve UM tique**, então ela é
+        // reconstruída aqui e não acumulada: um dispatch que deve vários tiques
+        // desenharia o rasto de todos eles, e o artista leria como *"o sensor
+        // está a tremer"* aquilo que é só a história a somar-se. A capacidade do
+        // `Vec` fica.
+        self.player_probes.clear();
         let world = sim.world();
         let gravity = self.world.gravity();
         let dt = self.world.dt();
@@ -365,6 +385,32 @@ impl PhysicsBridge {
             } else {
                 None
             };
+
+            // ── A LEITURA DOS SENSORES (W-Probes) ────────────────────────────
+            // ⚠️ **Aqui, e não antes de cada cast:** as três consultas acima já
+            // responderam, e o que falta é guardar o par *onde olhou · o que
+            // viu*. A geometria sai das MESMAS portas que castaram — este bloco
+            // não recalcula uma origem.
+            //
+            // ⚠️ **E ela é gravada mesmo quando a lei não perguntou.** O `Idle`
+            // que sai daí é a metade que o artista não consegue ver hoje: sem
+            // ela, *"a capacidade está desligada"* e *"o alcance é curto demais"*
+            // produzem o mesmo nada na tela.
+            probes::record_marks(
+                &mut self.player_probes,
+                &self.world,
+                entity,
+                b.handle,
+                &cfg,
+                origin,
+                input.drive,
+                hit.as_ref().map(|h| h.distance),
+                ceiling
+                    .as_ref()
+                    .map(|c| (c, probes::corner_rise(rel_up, dt))),
+                wall.as_ref(),
+                headroom.as_ref(),
+            );
 
             // ── O FLUIDO (W-Submerged) ───────────────────────────────────────
             // ⚠️ **Não há `*_wanted` aqui, e a assimetria é deliberada:** os três

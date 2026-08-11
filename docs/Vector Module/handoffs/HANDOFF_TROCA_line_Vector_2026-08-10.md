@@ -115,8 +115,13 @@ Da última entrega (§5 do handoff do painel vivo):
 
 Anterior, ainda de pé:
 
-- **`align_content`** não é exposto no auto layout — numa moldura `Wrap` com folga o `taffy`
-  *distribui* as faixas (medido: a 2ª faixa pousou em **54,5** em vez de 19).
+- ~~**`align_content`** não é exposto no auto layout — numa moldura `Wrap` com folga o `taffy`
+  *distribui* as faixas (medido: a 2ª faixa pousou em **54,5** em vez de 19).~~ ✅ **FECHADO
+  pela wave 5b (2026-08-10):** o `align` espelha para o `align_content` nas **quatro** direções,
+  não só na grade. O item não era *"falta expor um controlo"* — era **dois contentores a
+  responder ao contrário sob o mesmo controlo**, e só a grade o tornou observável. Um controlo
+  separado está agora **recusado com motivo** (ele venceria o `align` num wrap de faixa única —
+  medido). Ver o estudo §7, *"o que a wave 5b entregou"*.
 - A **caixa do gizmo é aproximada** com filho ROTACIONADO *e* pose de escala NÃO-UNIFORME
   (deixa de ser retângulo orientado — é geometria, não descuido).
 - ⚠️ **O hit-test só recebe o produtor de OFFSET.** Os outros seis produtores de

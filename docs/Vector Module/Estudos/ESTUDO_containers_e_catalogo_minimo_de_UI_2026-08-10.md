@@ -498,3 +498,53 @@ duas linhas. **Esta wave conserta os dois.**
 vocabulário próprio e hoje seria um controlo que ninguém move; o `justify_content` de uma grade é
 **inerte por construção** com colunas `1fr` (não há sobra horizontal a repartir), então distribuir
 as COLUNAS só faz sentido junto com o track sizing.
+
+---
+
+### ✅ O que a wave 5b entregou (2026-08-10) — o eixo transversal fica honesto
+
+A wave 5 espelhou o `align` para o `align_content` **dentro do ramo da grade**, e a §4 do handoff
+trazia, desde 02/08, o item *"`align_content` não é exposto — numa moldura `Wrap` com folga o
+`taffy` distribui as faixas"*. ⚠️ **Quem move o número que tornava algo inalcançável tem de
+reconferir a nota** (CLAUDE.md §0): a grade acabou de construir metade da cura, e a outra metade
+passou a ser um **desacordo entre dois contentores**, não um defeito isolado.
+
+O espelho **saiu do ramo da grade** e passou a valer para as quatro direções. É uma atribuição
+movida de sítio — três linhas —, e o que ela vale está todo na medição.
+
+| medição | antes | depois |
+|---|---|---|
+| `RowWrap` 100×100, 6 filhos 30×20, `align = Start` — onde pousa a 2ª faixa | **50,0** | **20,0** |
+| a mesma cena em `Center` / `End` | filho no meio de uma faixa inchada | o **BLOCO** centra / encosta |
+| grade 3 col. × wrap, mesmos filhos, mesmo `align` | **discordavam** | idênticos, `Start`/`Center`/`End` |
+| `Row` · `Column` · wrap de uma faixa | — | **byte-idênticos** (gate) |
+
+**Duas afirmações minhas caíram, e as duas foram derrubadas por medição — nenhuma por leitura:**
+
+1. ⚠️ **`Align::Stretch` NÃO é chip morto.** A wave 5 mediu que ele não estica uma folha (6,0 no
+   `Row` e na grade) e eu generalizei. Medido no único caso em que o flexbox PODE esticar — uma
+   **moldura filha** que abraça o eixo transversal — ele leva-a de **12,0 a 60,0**. O que ele
+   alcança é o que é *auto-dimensionado*, e uma folha nunca é: o `size_of` só devolve `Hug` a um
+   nó que FLUI, e o motor recusa `Hug` sem fluxo. É o *Fill container* do Figma.
+2. ⚠️ **Eu ia shipar *"a spec diz que `align-content` não tem efeito em linha única"*.** Uma
+   **mutação** (trocar `Center`/`End` só no `align_content`) derrubou um gate que eu julgava
+   insensível, e a sonda nomeou o mecanismo: depende da FLAG, não da contagem.
+
+   | | `content=Start` | `Center` | `End` |
+   |---|---|---|---|
+   | `NoWrap` (`Row`/`Column`) | 0,0 | 0,0 | 0,0 — inerte |
+   | `Wrap`, **uma** faixa | 0,0 | **40,0** | **80,0** — posiciona, e **vence** o `align_items` |
+
+   A faixa mede exactamente o filho ⇒ não sobra folga para o `align_items` agir. A resposta final
+   não muda **porque as duas propriedades recebem o mesmo valor**, que é precisamente o que o
+   espelho garante. ⚠️ **Corolário:** um controlo SEPARADO de `align_content` faria um wrap de
+   faixa única passar a obedecê-lo e a ignorar o `align` — o controlo que o artista conhece
+   deixaria de responder, sem nada na tela a explicar.
+
+⚠️ **E isto muda a APARÊNCIA de uma cena já aprovada:** a moldura de CONTROLE da `=69` é um
+`RowWrap` com folga, e a 2ª faixa dela sai de **y = 1,425 para 0,950**. O teste que a cena pede é
+horizontal (*as cores formam colunas na grade e ficam espalhadas no wrap*), logo sobrevive — e
+fica mais limpo, porque as duas molduras passam a encostar e só a variável em estudo difere.
+
+**Onde se vê:** o passo **7b** novo do `PH2D_BUILD_SMOKE=50` — em Wrap, suba o Gap até quebrar em
+duas faixas e mexa no Align.

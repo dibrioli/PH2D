@@ -20,6 +20,8 @@ mod measure_journal_cost; // captura por REGIÃO x fork do PLANO — o número q
 mod measure_pendown_cost; // o que COMEÇAR um traço custa (doc 28 §4.5); irmão do impasto_cost
 #[path = "measure_rail_chips.rs"]
 mod measure_rail_chips; // o que cada chip do rail FAZ no meio Digital — a medicao que decide o pill
+#[path = "measure_relief_systems.rs"]
+mod measure_relief_systems; // AUDITORIA: o custo dos DOIS sistemas de relevo (Enio 2026-08-10)
 #[path = "measure_route_cost.rs"]
 mod measure_route_cost; // quem RODA o deposito, e quanto essa escolha custa (doc 28)
 #[path = "measure_shape_cost.rs"]

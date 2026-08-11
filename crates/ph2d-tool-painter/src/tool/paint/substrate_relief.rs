@@ -185,9 +185,21 @@ impl<'a> Substrate<'a> {
     /// GPU), porque ela é somada dentro do `ReliefFields::height_at`. A versão anterior publicava uma
     /// INCLINAÇÃO, que só o laço da CPU sabia somar — e o produto compõe na GPU.
     pub(super) fn tooth_loads(&self, x: i64, y: i64) -> f32 {
+        #[cfg(test)]
+        TOOTH_SAMPLES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         self.tooth_px(x, y) / DEPTH_UNIT_PX
     }
 }
+
+/// **Quantas vezes o dente foi amostrado** — o oráculo da auditoria de custo (Enio, 2026-08-10).
+///
+/// ⚠️ **Uma CONTAGEM, e não um relógio, porque esta máquina é COMPARTILHADA**: a primeira tabela do
+/// breakdown do papel media *"Roughness dobra o custo"* sob `load average 37` (sete `rustc` de outras
+/// linhas), e a segunda corrida a desmentiu — 422 contra 426 ms, ruído. O número de amostragens por
+/// texel é um fato sobre o CÓDIGO, e nenhuma carga o move.
+#[cfg(test)]
+pub(super) static TOOTH_SAMPLES: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(0);
 
 /// **A chave do substrato** — tudo o que decide o dente, numa forma que se compara.
 ///

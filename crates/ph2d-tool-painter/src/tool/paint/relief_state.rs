@@ -109,6 +109,22 @@ pub(super) struct ReliefState {
     /// Curve cavaria mais fundo a cada movimento do ponteiro enquanto o artista apenas OLHAVA*. O eraser
     /// não tinha restauração nenhuma, e a mordida de toda figura por onde a mão passou ficava para sempre.
     pub(super) erase_pre: Option<ErasePre>,
+    /// Os cinco planos que o traço anterior devolveu — ver [`SparePlanes`].
+    pub(super) spare: SparePlanes,
+    /// **Desliga a rota do pool**, e ela existe para o gate de identidade poder fazê-lo.
+    ///
+    /// ⚠️ **O sentido é NEGATIVO de propósito:** o `Default` desta struct é derivado, e um
+    /// `pool: bool` nasceria `false` — a cura desligada em todo caminho de produto, com a suíte verde.
+    /// Um flag cujo valor neutro é o `Default::default()` do tipo não pode ser esquecido; é o molde do
+    /// `ph2d_painter_brush::ablate`, cuja máscara neutra é `0`.
+    ///
+    /// É ablação de **ROTA**, não de peça: as duas rotas TÊM de escrever o mesmo byte, e provar isso é
+    /// a razão de ela existir.
+    pub(super) planes_pool_off: bool,
+    /// **Quantas vezes o pool de facto SERVIU.** É a métrica do ADR-0120 (*o gate que conta quantas
+    /// vezes o caminho rápido dispara*): sem ela, um pool que nunca acerta deixa o gate de identidade
+    /// mais verde do que nunca — as duas rotas seriam a mesma — enquanto o produto segue a alocar.
+    pub(super) planes_pooled: u32,
 }
 
 /// A camada como a borracha do impasto a encontrou, mais a janela que ela mordeu desde então.
@@ -125,4 +141,98 @@ pub(super) struct ErasePre {
     /// A união do que a borracha esfregou desde o congelamento — a janela que a restauração percorre.
     /// `None` ⇒ nada a devolver, e a restauração é um no-op sem tocar num byte.
     pub(super) bbox: Option<Region>,
+}
+
+/// **Os cinco planos que um traço terminado DEVOLVE** — e a janela em que ficaram sujos.
+///
+/// Um traço do relevo pede **83 MB a 2048²** (`tests/measure_pendown_alloc.rs`, contados pelo `dhat`),
+/// dos quais **56 são estes cinco planos**: o `reset_stroke_height` faz `clear()` — que preserva a
+/// capacidade — e o primeiro dab do traço seguinte a joga fora numa linha (`h.len() != n ⇒ h =
+/// vec![0.0; n]`). Duas linhas discordando sobre o mesmo buffer.
+///
+/// ⚠️ **E o preço disso NÃO é o de um memset:** medidas em sequência, as mesmas cinco alocações deram
+/// **0,008 · 0,028 · 7,586 ms** — três ordens de grandeza, porque `alloc_zeroed` custa o que o alocador
+/// tiver de fazer para arranjar páginas zeradas. É por isso que o pen-down do filme media *plano na
+/// tela e plano no raio*: o que ele paga não é trabalho por texel, é o alocador.
+///
+/// A cura é fazê-los **CIRCULAR**, e o que a torna byte-idêntica é a janela: um traço só escreve dentro
+/// do próprio `stroke_relief_bbox` (o walk devolve a janela em que escreve, e é dela que o bbox cresce),
+/// então zerar essa janela devolve exactamente o plano que o `vec![0.0; n]` devolveria. O custo deixa de
+/// ser função do DOCUMENTO e passa a ser função do TRAÇO — o mesmo movimento que o histórico de undo
+/// fez na U1, um plano acima.
+///
+/// ⚠️ **A janela guardada é a UNIÃO, e ela tem de ser** — os cinco não vêm todos do mesmo traço: o
+/// `height` e o `film` são deste (o commit os consome), e o `paint`/`grain`/`radius` são os do traço
+/// ANTERIOR, que o commit acabou de substituir nos `live_*`. Uma janela por buffer seria mais apertada
+/// e mais fácil de errar; a união é um superconjunto, e um superconjunto zera de mais, nunca de menos.
+#[derive(Default)]
+pub(super) struct SparePlanes {
+    pub(super) planes: StrokePlanes,
+    /// Onde os cinco estão sujos. `None` ⇒ não há nada guardado.
+    pub(super) dirty: Option<Region>,
+}
+
+/// **Os cinco planos, NOMEADOS** — e o nome é o que impede a troca silenciosa.
+///
+/// ⚠️ Três deles são `Vec<f32>` (`height`, `paint`, `radius`), então uma tupla posicional aceita a
+/// ordem errada **sem o compilador dizer nada**: trocar dois deles compilaria e corromperia o relevo.
+/// O compilador só pegou a minha primeira versão porque a troca que fiz calhou de ser `f32` com `u8`.
+#[derive(Default)]
+pub(super) struct StrokePlanes {
+    pub(super) height: Vec<f32>,
+    pub(super) paint: Vec<f32>,
+    pub(super) grain: Vec<u8>,
+    pub(super) film: Vec<u8>,
+    pub(super) radius: Vec<f32>,
+}
+
+/// Zera `rect` num plano canvas-shaped de largura `w` — uma `fill` por linha, que é um memset.
+fn zero_rows<T: Copy + Default>(buf: &mut [T], rect: Region, w: u32) {
+    for y in rect.y..rect.y + rect.h {
+        let row = (y as usize) * (w as usize);
+        let (a, b) = (row + rect.x as usize, row + (rect.x + rect.w) as usize);
+        if b <= buf.len() {
+            buf[a..b].fill(T::default());
+        }
+    }
+}
+
+impl ReliefState {
+    /// **Toma os cinco planos do pool, já zerados na janela suja** — ou `None`, e o chamador aloca.
+    ///
+    /// Tudo-ou-nada: cinco buffers do tamanho certo ou nenhum. Uma retomada parcial teria de decidir o
+    /// que fazer com os outros, e a decisão certa é a que o chamador já tem escrita (`vec![0.0; n]`).
+    pub(super) fn take_planes(&mut self, n: usize, w: u32) -> Option<StrokePlanes> {
+        if self.planes_pool_off {
+            return None;
+        }
+        let dirty = self.spare.dirty?;
+        let p = &self.spare.planes;
+        if p.height.len() != n
+            || p.paint.len() != n
+            || p.grain.len() != n
+            || p.film.len() != n
+            || p.radius.len() != n
+        {
+            return None;
+        }
+        let mut p = std::mem::take(&mut self.spare.planes);
+        self.spare.dirty = None;
+        self.planes_pooled += 1;
+        zero_rows(&mut p.height, dirty, w);
+        zero_rows(&mut p.paint, dirty, w);
+        zero_rows(&mut p.grain, dirty, w);
+        zero_rows(&mut p.film, dirty, w);
+        zero_rows(&mut p.radius, dirty, w);
+        Some(p)
+    }
+
+    /// **Guarda os cinco planos que o commit acabou de aposentar**, com a janela em que estão sujos.
+    pub(super) fn retire_planes(&mut self, planes: StrokePlanes, dirty: Option<Region>) {
+        let Some(dirty) = dirty else { return };
+        self.spare = SparePlanes {
+            planes,
+            dirty: Some(dirty),
+        };
+    }
 }

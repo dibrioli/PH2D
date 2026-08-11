@@ -222,3 +222,81 @@ fn where_the_relief_dab_spends_its_time() {
         per_dab[0] - per_dab[2]
     );
 }
+
+/// **O PEN-DOWN DO FILME: os PLANOS ou o DAB?** — a irmã do
+/// [`is_the_relief_pen_down_the_planes_or_the_dab`] no regime que o Enio reportou (Shape relief, sem o
+/// master do impasto).
+///
+/// ⚠️ **A tabela do veredito do `measure_relief_systems` NÃO responde isto, e por um defeito de
+/// fixture:** ela constrói um `PainterTool` por célula e mede o traço **NÚMERO UM**, que paga o
+/// *first-touch* dos planos canvas-shaped que o commit aloca — a armadilha que o doc 28 §5.13 já
+/// documentou e que aquele probe reintroduziu. Medido pela porta do sétimo traço, o pen-down do filme é
+/// **5,6 ms a 2048² e 5,7 a 4096²**: praticamente **PLANO na tela**, o que exclui de saída a cópia
+/// canvas-sized que o digital paga (1,10 → 3,66 no mesmo par).
+///
+/// Sobra separar as duas formas restantes, e o raio é a régua: um custo de SETUP por gesto fica plano
+/// no raio; um custo do PRIMEIRO DAB cresce com **r²**.
+///
+/// ⚠️ **As duas colunas correm PAREADAS no mesmo tool e no mesmo canvas**, alternando o knob traço a
+/// traço — a lição que o [`where_the_relief_dab_spends_its_time`] pagou: dois tools são duas telas,
+/// dois alocadores e duas vizinhanças, e a deriva entre eles já mediu ±40% neste repo.
+#[test]
+#[ignore]
+fn is_the_film_pen_down_the_planes_or_the_dab() {
+    use ph2d_painter_brush::TextureKind;
+    println!("[film-pd] pen-down do FILME por raio — plano = SETUP por gesto, r^2 = o 1o DAB");
+    println!(
+        "{:<8} {:>7} {:>10} {:>10} {:>10}",
+        "tela", "raio", "sem filme", "com filme", "delta"
+    );
+    for size in [2048u32, 4096] {
+        let mut deltas = Vec::new();
+        for radius in [10.0f32, 25.0, 50.0, 100.0] {
+            let mut t = PainterTool::default();
+            t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+            t.set_brush_shape_kind(TextureKind::Stripes as u8);
+            t.set_brush_size_px(radius * 2.0);
+            let c = size as f32 * 0.5;
+            let (mut off, mut on) = (Vec::new(), Vec::new());
+            // 8 traços ALTERNADOS; os dois primeiros aquecem (o 1º de cada grupo aloca).
+            for k in 0..8u8 {
+                let film = k % 2 == 1;
+                t.set_shape_relief(if film { 1.0 } else { 0.0 });
+                let y = c + f32::from(k) * 8.0;
+                let v = ms(&mut || {
+                    t.on_canvas_pointer(cp([c - 300.0, y], PointerPhase::Down));
+                });
+                t.on_canvas_pointer(cp([c - 260.0, y], PointerPhase::Up));
+                if k >= 2 {
+                    if film { &mut on } else { &mut off }.push(v);
+                }
+            }
+            let med = |v: &mut Vec<f64>| {
+                v.sort_by(f64::total_cmp);
+                v[v.len() / 2]
+            };
+            let (a, b) = (med(&mut off), med(&mut on));
+            deltas.push((radius, b - a));
+            println!(
+                "{size:<8} {radius:>7.0} {a:>10.2} {b:>10.2} {:>10.2}",
+                b - a
+            );
+        }
+        // ⚠️ **A razão só significa alguma coisa enquanto houver o que dividir.** Ela nasceu para
+        // separar *setup por gesto* (razão ~1) de *primeiro dab* (razão ~100) sobre um delta de 3-6 ms;
+        // com o pool o delta caiu para ~0,1-0,6 ms e o denominador virou ruído — dividir por ele
+        // imprimiria `1719561000,00x`, que é o oráculo a dissolver-se quando a coisa que ele vigia
+        // melhora (doc 28 §4.8.2). Abaixo do piso, o probe diz o que sabe: que não há custo a atribuir.
+        let (lo, hi) = (deltas[0].1, deltas[3].1);
+        if lo > 0.5 {
+            println!(
+                "[film-pd] {size}^2 => delta r100/r10 = {:.2}x (pegada preveria 100x, setup 1x)",
+                hi / lo
+            );
+        } else {
+            println!(
+                "[film-pd] {size}^2 => delta r10 = {lo:.2} ms: abaixo do ruido, nao ha setup a atribuir"
+            );
+        }
+    }
+}

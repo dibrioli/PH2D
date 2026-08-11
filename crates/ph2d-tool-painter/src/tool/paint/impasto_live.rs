@@ -25,7 +25,11 @@ impl PainterTool {
         let grain = std::mem::take(&mut self.paint.relief.stroke_grain);
         let film = std::mem::take(&mut self.paint.relief.stroke_film);
         let radius = std::mem::take(&mut self.paint.relief.stroke_radius);
-        self.paint.relief.stroke_height.clear(); // it is derived; the ingredients are the truth
+        // Derivado: os ingredientes são a verdade. **Tomado, não `clear()`ado** — o plano sai daqui com
+        // o comprimento intacto para poder voltar pelo pool (`ReliefState::retire_planes`); quem o lê
+        // depois pergunta `is_empty()`/`len() == n`, e um `take` deixa exactamente o vazio que o
+        // `clear()` deixava.
+        let height = std::mem::take(&mut self.paint.relief.stroke_height);
         let (Some(active), Some(bbox)) =
             (self.layers.active(), self.paint.relief.stroke_relief_bbox)
         else {
@@ -126,11 +130,33 @@ impl PainterTool {
             Some(f) if f.len() == (w as usize) * (h as usize) => patch_in(rect, w, |i| f[i]),
             _ => Vec::new(),
         };
+        // A janela do traço ANTERIOR, capturada antes de ser substituída: é nela que os três planos
+        // que o pool vai receber estão sujos.
+        let old_rect = self.paint.relief.live_relief_rect;
         self.paint.relief.live_relief_rect = Some(rect);
         self.paint.relief.live_relief_layer = Some(active);
-        self.paint.relief.live_paint = paint;
-        self.paint.relief.live_grain = grain;
-        self.paint.relief.live_radius = radius;
+        // ⚠️ **`replace`, não `=`:** os três planos que saem daqui são os do traço ANTERIOR, e são eles
+        // (mais o `height` e o `film` deste) que o pool recebe. Atribuir por cima os largaria ao
+        // alocador, que é exactamente o custo que o pool existe para remover.
+        let old_paint = std::mem::replace(&mut self.paint.relief.live_paint, paint);
+        let old_grain = std::mem::replace(&mut self.paint.relief.live_grain, grain);
+        let old_radius = std::mem::replace(&mut self.paint.relief.live_radius, radius);
+        // A janela é a UNIÃO das duas eras (ver [`super::relief_state::SparePlanes`]): `rect` cobre o
+        // `height`/`film` deste traço, `old_rect` cobre os três do anterior.
+        let dirty = match old_rect {
+            Some(o) => Some(super::union_region(o, rect)),
+            None => Some(rect),
+        };
+        self.paint.relief.retire_planes(
+            super::relief_state::StrokePlanes {
+                height,
+                paint: old_paint,
+                grain: old_grain,
+                film,
+                radius: old_radius,
+            },
+            dirty,
+        );
         // The displacement at Push = 1 — the third ingredient. The whole displacement is LINEAR in Push,
         // so keeping it lets the knob stay live after the stroke without replaying a single dab.
         self.paint.relief.live_push = std::mem::take(&mut self.paint.relief.stroke_push);

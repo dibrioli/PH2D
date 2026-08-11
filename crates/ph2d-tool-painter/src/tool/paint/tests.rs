@@ -1,3 +1,5 @@
+#[path = "impasto_pool_tests.rs"]
+mod impasto_pool_tests;
 #[path = "journal_delta_tests.rs"]
 mod journal_delta_tests; // o delta do journal É o de dois snapshots (doc 28 §5.58.2, degrau 2 do S3)
 #[path = "journal_tests.rs"]
@@ -9,7 +11,8 @@ mod measure_commit_cost; // …e de que é feito o CUSTO: fork, pen-up, commit, 
 #[path = "measure_dirty_overclaim.rs"]
 mod measure_dirty_overclaim;
 #[path = "measure_gpu_frontier.rs"]
-mod measure_gpu_frontier;
+mod measure_gpu_frontier; // o pool dos cinco planos do traço escreve o que a alocação escrevia
+
 #[path = "measure_impasto_cost.rs"]
 mod measure_impasto_cost; // o que o CORPO da tinta custa (plano 26 §9); irmão do input_cost
 #[path = "measure_input_cost.rs"]

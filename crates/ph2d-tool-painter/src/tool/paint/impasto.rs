@@ -155,6 +155,17 @@ impl PainterTool {
             // zeradas ao SO e não escreve um byte; reusar a capacidade obriga um **memset explícito**
             // dos mesmos 235 MB. Reusar memória é mais caro que pedir memória nova quando a nova vem
             // zerada de fábrica.
+            //
+            // ⚠️ **E a terceira opção é a que shipa: NÃO pedir.** Os cinco planos que o commit do traço
+            // anterior aposentou voltam pelo pool (`ReliefState::take_planes`) já zerados na janela em
+            // que ficaram sujos — o custo passa a ser função do TRAÇO, e o alocador sai do pen-down.
+            // O `vec![0.0; n]` fica como a rota de quando o pool não tem o que servir (o 1º traço do
+            // documento, uma tela que mudou de tamanho, o gate com a rota desligada).
+            if (h.len() != n || p.len() != n || g.len() != n || f.len() != n || r.len() != n)
+                && let Some(sp) = self.paint.relief.take_planes(n, w)
+            {
+                (h, p, g, f, r) = (sp.height, sp.paint, sp.grain, sp.film, sp.radius);
+            }
             if h.len() != n {
                 h = vec![0.0; n];
             }

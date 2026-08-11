@@ -180,6 +180,24 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
             );
             sinks
         }
+        Ok("29") => {
+            let sinks =
+                gpu_ramp_demo::build_gpu_ramp_demo_document(doc, registry, gpu_ramp_demo::RAMP_DEG)
+                    .unwrap_or_default();
+            // Os números são MEDIDOS (`probe_ramp_chute`), não escolhidos.
+            eprintln!(
+                "[ramp-demo] A CALHA: {} discos caem sobre uma RAMPA de {} graus (a mesma \
+                 `sim.collide`\n  de sempre, com o ANGULO novo), deslizam para a direita e sao \
+                 parados por uma PAREDE\n  em x = {} -- que e' o MESMO no', um quarto de volta. \
+                 Medido: o centroide sai de\n  -1,50 no chao horizontal para +2,27 na rampa,\n  e o disco da frente encosta na parede.\n\
+                   (!) Encadear colisores sempre funcionou; o que nao existia era uma RAMPA para \
+                 encadear.",
+                (gpu_ramp_demo::ROWS * gpu_ramp_demo::COLS) as u32,
+                gpu_ramp_demo::RAMP_DEG,
+                gpu_ramp_demo::WALL_X,
+            );
+            sinks
+        }
         // **Sem env: a TELA VAZIA** (Enio, 2026-08-07: *"tire a cena da cachoeira"*). O
         // editor abria com a neve caindo no mar — um sistema de partículas inteiro que o
         // artista tinha de apagar antes de começar. Quem quiser um grafo o traz pelo

@@ -73,6 +73,11 @@ mod gpu_pulse_demo;
 /// de PONTO, que afunda cada sprite pela própria metade, e o que POUSA.
 #[path = "motion_state_gpu_radius_demo.rs"]
 mod gpu_radius_demo;
+/// A cena da CALHA (doc 89, folha 13), arquivo próprio pela mesma razão: ela responde *"um
+/// plano do colisor consegue ser outra coisa que HORIZONTAL?"* — a rampa TRANSPORTA (o que
+/// uma cadeia de chãos, que só sabe construir uma escada, não alcança) e a parede PARA.
+#[path = "motion_state_gpu_ramp_demo.rs"]
+mod gpu_ramp_demo;
 /// A cena das CINCO FONTES (doc 89, folha 12), arquivo próprio pela mesma razão: ela responde
 /// *"um EVENTO consegue decidir o que passa a EXISTIR?"*, que é a outra metade da pergunta —
 /// a `=23` gateia quem escuta, esta gateia quem nasce.

@@ -55,6 +55,7 @@ use super::gpu_neighbour_demos::{
 use super::gpu_panel_demo::build_gpu_panel_demo_document;
 use super::gpu_pulse_demo::build_gpu_pulse_gate_demo_document;
 use super::gpu_radius_demo::build_gpu_radius_demo_document;
+use super::gpu_ramp_demo::{RAMP_DEG, build_gpu_ramp_demo_document};
 use super::gpu_spawn_pulse_demo::build_gpu_spawn_pulse_demo_document;
 use super::gpu_voronoi_demo::build_gpu_voronoi_demo_document;
 use super::gpu_zone_demo::build_gpu_zone_demo_document;
@@ -198,6 +199,13 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     push(
         "demo=28 the paint rests ON the floor (particle radius)",
         &|d| build_gpu_radius_demo_document(d, reg),
+    );
+    // ⚠️ E a CALHA pela MESMA razão, um param adiante: o `sim.collide` ganhou o `angle`, e um
+    // plano que só é horizontal no corpus é um plano cujo caminho de device o censo nunca
+    // percorre. Esta cena é também a única que ENCADEIA dois colisores.
+    push(
+        "demo=29 the chute (a tilted plane carries, a wall stops)",
+        &|d| build_gpu_ramp_demo_document(d, reg, RAMP_DEG),
     );
     push("demo=10 sim.zone snow globe", &|d| {
         build_gpu_zone_demo_document(d, reg)

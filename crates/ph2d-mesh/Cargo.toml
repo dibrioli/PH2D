@@ -15,12 +15,23 @@ authors.workspace = true
 # painel. Quem fala com o device e a `ph2d-mesh-render`; quem esculpe e a
 # `ph2d-sculpt3d`. Apagar as tres apaga o modulo (docs/3D/02.3).
 [dependencies]
-# rayon: as normais por gather sao por-vertice PURAS com saidas DISJUNTAS — a
-# forma exata do ADR-0109, que este repositorio ja paralelizou cinco vezes
-# (sculpt_offset, sculpt_close, o campo da aquarela, o fold da luz, o scan do
-# undo). O `docs/3D/03.5` previu `rayon` e a sonda do M3 MEDIU que ele e
-# preciso: as normais eram 67% do custo de um dab. O caminho serial FICA, como
-# oraculo de paridade byte-a-byte.
+# rayon: sancionado pelo ADR-0150 ("a malha nasce residente na CPU, com rayon")
+# e pela emenda de 2026-08-10, que somou a travessia de canais autorados.
+#
+# A LEI, e nao a lista: paraleliza-se aqui o que e' GATHER POR-VERTICE — funcao
+# pura de entradas imutaveis, cada tarefa escrevendo so' o proprio slot, sem
+# RNG e sem transcendental no laco quente. E' a forma exata do ADR-0109 §2, que
+# este repositorio ja' paralelizou seis vezes (sculpt_offset, sculpt_close, o
+# campo da aquarela, o fold da luz, o scan do undo) mais o traco de AO da
+# ph2d-sdf (ADR-0156).
+#
+# ⚠️ A frase anterior ENUMERAVA um sitio ("as normais") e ja' tinha apodrecido:
+# `curvature.rs` usa rayon desde que nasceu e nunca esteve nela. Enumeracao
+# apodrece; a lei, nao. Hoje sao tres familias — normals.rs, curvature.rs e
+# mesh_transfer.rs — e a proxima entra se, e so' se, satisfizer a lei acima.
+#
+# O caminho SERIAL fica em cada uma, congelado sob `cfg(test)`, como oraculo de
+# paridade byte-a-byte varrida por numero de threads.
 rayon = "1"
 
 # serde: a crate SERIALIZA A SI MESMA (`src/persist.rs`). A alternativa seria o

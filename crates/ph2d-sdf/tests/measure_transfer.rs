@@ -42,29 +42,47 @@ fn masked_sphere(rings: usize) -> ph2d_mesh::Mesh {
     m
 }
 
+/// ⚠️ **A travessia é cronometrada DIRETAMENTE, não por subtração.**
+///
+/// A primeira versão desta sonda media *remesh com máscara* menos *remesh sem*
+/// — dois números de ~2,4 s para extrair um item de ~0,3 s. Com a máquina
+/// compartilhada isso devolveu **travessia NEGATIVA (−299,7 ms, −55,5%)**: o
+/// ruído do maior engoliu o menor. *Uma diferença entre dois números grandes
+/// não mede um número pequeno.*
+///
+/// A entrada é a MESMA do produto — a malha de origem que o artista esculpiu e
+/// a saída do Surface Nets daquela resolução —, então isto continua a sair pela
+/// porta do produto; o que mudou foi o relógio, que agora cerca só o passo 5.
 #[test]
 #[ignore = "sonda de medição"]
 fn what_the_authored_channels_cost_on_a_rebuild() {
-    println!("\n  res | verts saida |  remesh COM |  remesh SEM |  travessia | fracao");
-    for res in [64u32, 150, 256, 384, 512] {
-        let with_mask = masked_sphere(48);
-        let virgin = ph2d_mesh::shapes::uv_sphere(48, 96, 1.0);
+    let with_mask = masked_sphere(48);
+    let virgin = ph2d_mesh::shapes::uv_sphere(48, 96, 1.0);
 
+    println!("\n  res | verts saida |   remesh |  travessia | fracao |  ns/vertice");
+    for res in [64u32, 150, 256, 384, 512] {
+        // O remesh de uma malha VIRGEM devolve a mesma casca sem pagar a
+        // travessia (o passo 5 sai no primeiro `if`), então ele mede o gesto
+        // sem o item, e a saída dele é exatamente o destino que o item recebe.
         let t = Instant::now();
-        let (out, _) = ph2d_sdf::remesh(&with_mask, res).expect("reconstroi");
-        let ms_with = t.elapsed().as_secs_f64() * 1e3;
+        let (mut out, _) = ph2d_sdf::remesh(&virgin, res).expect("reconstroi");
+        let ms_remesh = t.elapsed().as_secs_f64() * 1e3;
+        assert!(out.masks().is_none(), "a malha virgem nao carrega plano");
+        let n = out.vert_count();
+
+        // Cada amostra faz o mesmo trabalho ⇒ o mínimo é o redutor certo.
+        let mut ms_transfer = f64::MAX;
+        for _ in 0..5 {
+            let t = Instant::now();
+            ph2d_mesh::transfer_authored(&with_mask, &mut out);
+            ms_transfer = ms_transfer.min(t.elapsed().as_secs_f64() * 1e3);
+        }
         assert!(out.masks().is_some(), "a mascara tem de ter atravessado");
 
-        let t = Instant::now();
-        let (out2, _) = ph2d_sdf::remesh(&virgin, res).expect("reconstroi");
-        let ms_without = t.elapsed().as_secs_f64() * 1e3;
-        assert!(out2.masks().is_none());
-
-        let delta = ms_with - ms_without;
         println!(
-            "  {res:3} | {:11} | {ms_with:8.1} ms | {ms_without:8.1} ms | {delta:7.1} ms | {:5.1}%",
-            out.vert_count(),
-            delta / ms_with * 100.0
+            "  {res:3} | {n:11} | {ms_remesh:6.1} ms | {ms_transfer:7.1} ms | {:5.1}% | {:6.1}",
+            ms_transfer / (ms_remesh + ms_transfer) * 100.0,
+            ms_transfer * 1e6 / n as f64,
         );
     }
 }

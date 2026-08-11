@@ -248,6 +248,13 @@ pub fn remesh(mesh: &Mesh, resolution: u32) -> Result<(Mesh, RemeshReport), Reme
     //    ⚠️ **A fonte é o `mesh` do argumento, NÃO o `closed`**: o `closed` é uma
     //    reconstrução por `from_parts`, que não leva plano nenhum — transferir
     //    dele seria copiar defaults com todos os gates verdes.
+    //
+    //    ⚠️ **Este passo roda em PARALELO, e o `rayon` dele é da `ph2d-mesh`,
+    //    não desta crate** (ADR-0150, emenda de 2026-08-10: um gather
+    //    por-vértice, byte-idêntico contra a rota serial varrida por número de
+    //    threads). O `Cargo.toml` daqui continua dizendo a verdade — o
+    //    voxelizador e o flood fill dos passos 1-3 seguem SERIAIS por semântica,
+    //    e o único `rayon` da `ph2d-sdf` é o traço de AO (ADR-0156).
     ph2d_mesh::transfer_authored(mesh, &mut out);
     let report = RemeshReport {
         verts: (verts_before, out.vert_count()),

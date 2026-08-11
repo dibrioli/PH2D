@@ -189,3 +189,100 @@ Fica para a medição, e entra no código **com a tabela ao lado** (§0.0):
 
 Nenhum desses números é escolhido aqui **de propósito**: um limite legítimo diz de que recurso ele é e traz
 a medição; um limite que só diz "por segurança" é um palpite esperando um smoke.
+
+---
+
+## Emenda (2026-08-10) — a TRAVESSIA de canais autorados entra na mesma exceção de `rayon`
+
+- **Status:** ACEITO pelo Enio em 2026-08-10 (*"rayon sim"*), em resposta ao item aberto que a wave da
+  máscara-atravessa-o-remesh deixou nomeado.
+- **Escopo somado:** `ph2d_mesh::transfer_authored` (o passo 5 do [`ph2d_sdf::remesh`]), paralelizado
+  **por VÉRTICE DE SAÍDA**. Segue **não** abrindo `rayon` para o resto do codebase, e em particular **não**
+  para o voxelizador nem para o flood fill da `ph2d-sdf`, cujo mecanismo o `Cargo.toml` dela já nomeia.
+
+**Por que é o mesmo caso, e não um caso novo.** A decisão da parte 3 acima diz *"a malha nasce residente
+na CPU, com `rayon`"*, e as duas famílias que já a exercem nesta crate — as normais (`normals.rs`) e a
+curvatura (`curvature.rs`) — são **gathers por-vértice**. Esta é a terceira da mesma forma, e os três
+invariantes do [ADR-0109](0109-rayon-exception-watercolor-composite.md) §2 valem **verbatim**:
+
+1. **Sem redução ENTRE vértices.** Cada `Sample` é função pura de entradas IMUTÁVEIS — a malha de origem,
+   os triângulos preparados, as esferas envolventes, a régua da semente. ⚠️ **Há uma escolha de vencedor,
+   e ela é imune ao escalonamento:** a comparação é `<` estrito, os empates ficam com o primeiro candidato,
+   e a lista de candidatos vem de uma consulta que só depende do PONTO (`Octree::faces_in_sphere` **limpa**
+   a saída ao entrar). ⚠️ **E há uma soma — as três barycêntricas** — que é o precedente exato do
+   [ADR-0147](0147-wet-paint-order-invariant-solver.md): ela é **privada do vértice** e percorre os três
+   termos na mesma ordem nas duas rotas, então nenhuma soma atravessa thread nenhuma.
+2. **Sem estado mutável compartilhado.** A seção paralela é um **map puro** para um vetor contíguo
+   (`Vec<Sample>`), com o espalhamento nos planos feito **serialmente depois** — a divisão que o
+   `normals::face_normals_of` desta mesma crate já documenta. Cada tarefa escreve só o seu slot, e o
+   rascunho de candidatas é **por-tarefa** (`for_each_init`).
+3. **Sem RNG e sem transcendental no laço quente.** Só `+ − × ÷`, `min`, `max`, `sqrt` e comparação — todos
+   especificados exatamente pelo IEEE-754. A única raiz por candidato foi **removida** pelo rejeito por
+   esfera envolvente, que compara sem raiz.
+
+**A prova é MEDIÇÃO, não raciocínio.** `mesh::transfer::tests::the_parallel_route_is_byte_identical_to_the_serial_one_at_every_thread_count`
+compara a rota que shipa contra a serial **CONGELADA sob `cfg(test)`**, bit a bit nos dois canais, com
+pools de **1, 2, 4, 8, 16 e 32 threads** — e sobre uma fixture cujos dois canais VARIAM por vértice, porque
+um campo constante é invariante sob qualquer permutação e o gate seria verde por vácuo.
+
+⚠️ **O que este gate NÃO cobre, e por isso a wave tem outros seis:** o corpo (`Probe::sample`) é o MESMO
+nas duas rotas, então um defeito nele move os dois lados juntos — a lição
+[[feedback_an_identity_gate_cannot_see_a_defect_in_the_shared_body]], que o ADR-0145 pagou.
+
+**O ganho, medido** (`measure_the_parallel_gain`, pool aquecido, 32 threads, `load 1,89`):
+
+| vértices de saída | serial | paralelo | ganho |
+|---|---|---|---|
+| 26 | 0,013 ms | 0,028 ms | **0,45×** |
+| 114 | 0,039 | 0,028 | 1,38× |
+| 762 | 0,259 | 0,054 | 4,77× |
+| 3 962 | 1,633 | 0,166 | 9,84× |
+| 64 442 | 21,264 | 1,490 | 14,28× |
+| **1 230 882** (a escala do produto) | **371,4** | **24,7** | **15,04×** |
+
+**E pela porta do PRODUTO** (`ph2d-sdf::measure_transfer`, o remesh que o botão dispara), a travessia deixa
+de ser um item do gesto:
+
+| resolução | vértices de saída | remesh | travessia | fração | ns/vértice |
+|---|---|---|---|---|---|
+| 64 | 19 318 | 17,7 ms | 0,9 ms | 5,0% | 48,3 |
+| 256 | 308 584 | 299,5 | 9,0 | 2,9% | 29,2 |
+| **512** | **1 234 306** | **2 114,5** | **33,0** | **1,5%** | **26,7** |
+
+⚠️ O `ns/vértice` **plano** é o controle interno: trabalho linear no destino tem de custar o mesmo por
+vértice em toda escala. A mesma sonda sob `load 16` reportou **92,5 ns/vértice a 512** contra 31,7 a 384 —
+três vezes o vizinho, num código que não muda com o tamanho. Era a máquina.
+
+Contra os **371 ms** que a rota serial custaria naquele destino, a travessia sai de **~15% do gesto para
+1,5%**.
+
+**Sem piso de pool, e a ausência é medida.** O ponto de virada fica em ~60 vértices e abaixo dele a perda é
+de **15 µs**, enquanto o único chamador — o remesh — devolve entre **19 mil e 1,23 milhão** de vértices. O
+piso do `normals::PAR_MIN` existe porque um dab de detalhe toca centenas de vértices e é um caso REAL do
+produto; aqui esse caso não existe, e um limiar sem caso é um número a manter em dia.
+
+⚠️ **Duas armadilhas de sonda, as duas registradas porque custaram medições erradas antes de serem vistas:**
+a primeira corrida deu **0,12× a 114 vértices** porque a primeira chamada do laço paga o **despertar do
+pool** — custo de uma vez caindo inteiro na menor fixture, que é justamente a que a sonda existe para
+julgar; e a sonda do produto media *remesh com máscara* menos *remesh sem*, dois números de ~2,4 s para
+extrair um item de ~0,3 s, o que sob máquina compartilhada devolveu **travessia negativa (−299,7 ms)**.
+*Uma diferença entre dois números grandes não mede um número pequeno.*
+
+⚠️ **E as tabelas acima são a TERCEIRA corrida.** Sob `load 9` o ganho a 64 442 media 14,09× e sob
+`load 16` media 5,67×, com o lado **serial** — código que esta emenda não toca — a mover-se de 21,1 para
+28,7 ms. *Um número que se move sobre código intocado é a máquina, não o código* (a lição do doc 28 §5.49
+do Painter). As duas corridas calmas reproduzem-se a poucos porcento entre si; as carregadas foram
+descartadas.
+
+**Duas mutações, as duas sangram — e a segunda é a que justifica o gate existir:**
+
+| mutação | o que quebra | quem pega |
+|---|---|---|
+| o mapeamento `tarefa → vértice` desloca (`zip(points[1..])`) | todo valor sai do vizinho | a identidade **e** 3 gates de comportamento |
+| `Octree::faces_in_sphere` **deixa de limpar** a saída | o rascunho acumula candidatos de vértices anteriores, e as duas rotas acumulam conjuntos DIFERENTES | **só a identidade** — os seis gates de valor ficam verdes |
+
+⚠️ **A segunda é invisível a todo oráculo de valor**, porque os candidatos velhos estão mais longe e
+perdem: o resultado continua *plausível*. O que ela move é a dependência do resultado quanto a **como o
+`rayon` fatiou o trabalho** — precisamente a propriedade que a exceção do ADR-0109 promete não ter. Ou
+seja: o `out.clear()` daquele octree é **load-bearing para a rota paralela** de um jeito que nunca foi para
+a serial, e sem esta varredura ninguém saberia.

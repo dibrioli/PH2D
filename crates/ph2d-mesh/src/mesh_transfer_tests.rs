@@ -226,3 +226,134 @@ fn the_cheap_reject_never_drops_the_winner() {
         }
     }
 }
+
+/// Uma fonte cujos DOIS canais autorados VARIAM por vértice.
+///
+/// ⚠️ **A variação é o que torna o gate de identidade não-vazio:** sobre uma
+/// máscara constante toda permutação de vértices dá o mesmo buffer, e um erro
+/// de mapeamento passaria despercebido.
+fn source_with_varying_channels() -> Mesh {
+    let mut from = shapes::uv_sphere(16, 24, 1.0);
+    ramp_mask(&mut from);
+    let ys: Vec<f32> = from.positions().iter().map(|p| p[1]).collect();
+    for (c, y) in from.colors_mut().iter_mut().zip(&ys) {
+        let t = (y + 1.0) * 0.5;
+        *c = [t, 1.0 - t, 0.25 + 0.5 * t];
+    }
+    from
+}
+
+/// **A rota que SHIPA é BYTE-IDÊNTICA à serial, em QUALQUER número de threads.**
+///
+/// ⚠️ **A byte-identidade não é argumentada, é MEDIDA** — o precedente exato do
+/// ADR-0156, que varreu 2/4/8/16/32 no traço de AO. O que um gate assim pode
+/// pegar é a rota paralela deixar de ser um *map puro*: rascunho partilhado,
+/// mapeamento `tarefa → vértice` deslocado, ou uma redução cuja ordem dependa
+/// de como o `rayon` fatiou o trabalho.
+///
+/// ⚠️ **O que ele NÃO pode pegar é um defeito no CORPO** — [`Probe::sample`] é
+/// o mesmo nos dois lados, então uma mudança de lei move os dois juntos e a
+/// comparação segue verde ([[feedback_an_identity_gate_cannot_see_a_defect_in_the_shared_body]]).
+/// Quem cobre o corpo são os seis gates acima, cada um com oráculo próprio.
+#[test]
+fn the_parallel_route_is_byte_identical_to_the_serial_one_at_every_thread_count() {
+    let from = source_with_varying_channels();
+    let base = shapes::uv_sphere(22, 30, 1.02);
+
+    let mut want = base.clone();
+    transfer_authored_serial(&from, &mut want);
+    let want_mask = want.masks().expect("a fixture autora máscara").to_vec();
+    let want_color = want.colors().expect("a fixture autora cor").to_vec();
+
+    // A fixture tem de CONTER o fenômeno: campos planos tornam a comparação
+    // verde por vácuo.
+    let (lo, hi) = want_mask
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(a, b), &m| (a.min(m), b.max(m)));
+    assert!(
+        hi - lo > 0.5,
+        "a máscara transferida tem de VARIAR para o gate valer ({lo}..{hi})"
+    );
+
+    for threads in [1usize, 2, 4, 8, 16, 32] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .expect("pool");
+        let mut got = base.clone();
+        pool.install(|| transfer_authored(&from, &mut got));
+
+        let gm = got.masks().expect("máscara");
+        let gc = got.colors().expect("cor");
+        for i in 0..want_mask.len() {
+            assert_eq!(
+                gm[i].to_bits(),
+                want_mask[i].to_bits(),
+                "{threads} threads, vértice {i}: máscara {} contra {} da rota serial",
+                gm[i],
+                want_mask[i]
+            );
+            for k in 0..3 {
+                assert_eq!(
+                    gc[i][k].to_bits(),
+                    want_color[i][k].to_bits(),
+                    "{threads} threads, vértice {i}, canal {k}: cor divergiu"
+                );
+            }
+        }
+    }
+}
+
+/// **Quanto o leque compra, e a partir de que tamanho** — a sonda que decide se
+/// existe piso de pool.
+///
+/// `cargo test -p ph2d-mesh --release mesh_transfer -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda de medição"]
+fn measure_the_parallel_gain() {
+    use std::time::Instant;
+
+    let from = source_with_varying_channels();
+
+    // ⚠️ **O pool ACORDA na primeira chamada**, e sem este aquecimento esse
+    // custo de uma vez cai inteiro na menor fixture — que é justamente a que a
+    // sonda existe para julgar. A primeira medição desta sonda reportou 0,12x
+    // a 114 vértices por esse motivo; era o pool a nascer, não o leque a
+    // perder. *A primeira amostra de um laço é estruturalmente diferente das
+    // outras — ela é parte da fixture, não do resultado.*
+    let mut warm = shapes::uv_sphere(40, 80, 1.02);
+    transfer_authored(&from, &mut warm);
+
+    // Cada amostra faz o MESMO trabalho, então o mínimo é o redutor certo:
+    // uma máquina carregada só sabe deixar mais lento.
+    let best = |f: &mut dyn FnMut()| {
+        (0..7)
+            .map(|_| {
+                let t = Instant::now();
+                f();
+                t.elapsed().as_secs_f64() * 1e3
+            })
+            .fold(f64::MAX, f64::min)
+    };
+
+    println!("\n  verts saida |   serial |  paralelo | ganho");
+    // ⚠️ O último degrau é a ESCALA DO PRODUTO: um remesh a 512 devolve 1,23 M
+    // vértices, e é contra esse tamanho que o ganho tem de ser afirmado — a
+    // tabela existe para decidir se há piso de pool, mas quem paga a conta é o
+    // gesto do artista.
+    for rings in [4usize, 8, 14, 20, 45, 90, 180, 785] {
+        // ⚠️ O clone da malha fica FORA do relógio: ele é do mesmo tamanho da
+        // saída e afogaria a diferença que a sonda mede.
+        let mut a = shapes::uv_sphere(rings, rings * 2, 1.02);
+        let mut b = a.clone();
+        let n = a.vert_count();
+
+        let ms_serial = best(&mut || transfer_authored_serial(&from, &mut a));
+        let ms_par = best(&mut || transfer_authored(&from, &mut b));
+
+        println!(
+            "  {n:11} | {ms_serial:6.3}ms | {ms_par:7.3}ms | {:.2}x",
+            ms_serial / ms_par
+        );
+    }
+}

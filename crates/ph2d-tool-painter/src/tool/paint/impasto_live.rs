@@ -65,6 +65,8 @@ impl PainterTool {
                 Some(rect),
             );
             crate::plane_copy::size_to(dst, n, 0);
+            #[cfg(test)]
+            spans::add(4, _t0.elapsed());
             par_rows_in(dst, rect, w, |i, d| {
                 *d = (*d).max(film.get(i).copied().unwrap_or(0));
             });
@@ -480,9 +482,10 @@ impl PainterTool {
 pub(super) mod spans {
     use std::cell::Cell;
     thread_local! {
-        static SPANS: Cell<[f64; 4]> = const { Cell::new([0.0; 4]) };
+        static SPANS: Cell<[f64; 5]> = const { Cell::new([0.0; 5]) };
     }
-    /// `0` cobertura · `1` material · `2` os patches vivos · `3` o re-derive vivo.
+    /// `0` cobertura · `1` material · `2` os patches vivos · `3` o re-derive vivo · `4` o
+    /// PREFIXO da cobertura (fork + materializacao), para separar alocar de escrever.
     pub(in crate::tool::paint) fn add(i: usize, d: std::time::Duration) {
         SPANS.with(|s| {
             let mut a = s.get();
@@ -490,10 +493,10 @@ pub(super) mod spans {
             s.set(a);
         });
     }
-    pub(in crate::tool::paint) fn take() -> [f64; 4] {
+    pub(in crate::tool::paint) fn take() -> [f64; 5] {
         SPANS.with(|s| {
             let a = s.get();
-            s.set([0.0; 4]);
+            s.set([0.0; 5]);
             a
         })
     }

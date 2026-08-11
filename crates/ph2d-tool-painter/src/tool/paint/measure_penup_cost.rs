@@ -131,19 +131,31 @@ fn is_the_relief_commit_proportional_to_its_window() {
 /// A tabela irmã excluiu a tela (plano) e a janela (plano). Sem knob que separe as peças, a atribuição
 /// vem do split `cfg(test)` que o [`super::impasto_live::spans`] instala nas fronteiras que os blocos
 /// já tinham.
+///
+/// ⚠️ **A coluna `(cob:aloc)` mede o PREFIXO da cobertura — o fork mais a materialização — e ela
+/// existe porque um número inexplicado tem de ser NOMEADO ou refutado.** Nesta ordem de telas ela
+/// reporta **2,0 ms** a 4096² contra 0,01 a 2048², e a razão não é o tamanho: **é o ALOCADOR**. O
+/// `alloc_zeroed` do ramo do zero só é de graça quando o `calloc` devolve páginas **novas** do
+/// `mmap`, e o `mmap_threshold` do glibc é **dinâmico** — a corrida a 2048² liberta blocos de ~29 MB,
+/// o limiar sobe até ao teto de 32 MB, e a alocação de 16,8 MB seguinte passa a vir do heap
+/// reciclado, que o `calloc` tem de **memsetar à mão** (2,02 ms = 8,3 GB/s, a taxa de escrita).
+///
+/// **O controle que o prova:** medindo a 4096² PRIMEIRO, o mesmo prefixo custa **0,01 ms**. É
+/// artefato da SONDA, não do produto — mas o mecanismo é real, e a lição fica: *`alloc_zeroed` é de
+/// graça quando o SO entrega a página, e um memset serial quando o alocador a recicla*.
 #[test]
 #[ignore = "sonda de estudo; roda sob demanda"]
 fn what_the_relief_commit_is_made_of() {
     println!("\n=== O COMMIT DO RELEVO, BLOCO A BLOCO (600 px, raio 20; ms por traco) ===\n");
     println!(
-        "{:<8} {:>10} {:>10} {:>10} {:>12} {:>10}",
-        "tela", "cobertura", "material", "patches", "re-derive", "soma"
+        "{:<8} {:>10} {:>10} {:>10} {:>12} {:>10} {:>11}",
+        "tela", "cobertura", "material", "patches", "re-derive", "soma", "(cob:aloc)"
     );
     for side in [2048u32, 4096] {
         let mut t = tool(side, true);
         let cy = f32::from(u16::try_from(side / 2).unwrap_or(512));
-        let mut per: Vec<Vec<f64>> = vec![Vec::new(); 4];
-        let mut first = [0.0f64; 4];
+        let mut per: Vec<Vec<f64>> = vec![Vec::new(); 5];
+        let mut first = [0.0f64; 5];
         for k in 0..7u8 {
             let y = cy + f32::from(k) * 6.0;
             let x0 = cy - 300.0;
@@ -171,27 +183,29 @@ fn what_the_relief_commit_is_made_of() {
             v.sort_by(f64::total_cmp);
             v[v.len() / 2]
         };
-        let s: Vec<f64> = (0..4).map(|i| m(&mut per[i])).collect();
+        let s: Vec<f64> = (0..5).map(|i| m(&mut per[i])).collect();
         println!(
-            "{side:<8} {:>10.2} {:>10.2} {:>10.2} {:>12.2} {:>10.2}",
+            "{side:<8} {:>10.2} {:>10.2} {:>10.2} {:>12.2} {:>10.2} {:>11.2}",
             s[0],
             s[1],
             s[2],
             s[3],
-            s.iter().sum::<f64>()
+            s[0] + s[1] + s[2] + s[3],
+            s[4]
         );
         // ⚠️ **E o PRIMEIRO traço do documento, que a mediana existe para descartar** — é ele que
         // estreia os planos da camada (o `mats` mede 28 MB a 2048² e 117 a 4096²) e paga o
         // *first-touch* inteiro. Descartá-lo é certo para saber o que um traço custa; ESCONDÊ-LO seria
         // perder um hitch de verdade, que acontece uma vez por documento.
         println!(
-            "{:<8} {:>10.2} {:>10.2} {:>10.2} {:>12.2} {:>10.2}   <- o 1o traco",
+            "{:<8} {:>10.2} {:>10.2} {:>10.2} {:>12.2} {:>10.2} {:>11.2}   <- o 1o traco",
             "",
             first[0],
             first[1],
             first[2],
             first[3],
-            first.iter().sum::<f64>()
+            first[0] + first[1] + first[2] + first[3],
+            first[4]
         );
     }
     println!();

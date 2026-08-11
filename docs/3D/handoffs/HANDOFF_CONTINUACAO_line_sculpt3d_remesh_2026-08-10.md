@@ -260,11 +260,76 @@ mais próximo quase coincidem e a folga nunca é exercitada. O gate que a mata u
 
 ---
 
+## 6f. ⬛ A TRAVESSIA VIRA GATHER PARALELO (`42297c902`) — ordem do Enio: *"rayon sim"*
+
+O item que a §6e deixou aberto. A travessia do passo 5 é um **gather
+por-vértice** — a forma exata que o ADR-0109 §2 pede — e rodava em **um núcleo
+de trinta e dois**.
+
+**Emenda ao ADR-0150, não ADR novo.** Ele já sanciona *"a malha nasce residente
+na CPU, com `rayon`"*, e as duas famílias que já o exercem nesta crate
+(`normals.rs`, `curvature.rs`) são a mesma forma; o precedente de
+*emenda-para-o-mesmo-caso* é do próprio ADR-0109 (o composite do Wet Paint, a
+secagem, o despejo). ⇒ **a linha continua fora de toda disputa de número.**
+
+**O desenho é *um corpo, dois walkers*** (ADR-0145): `Route` escolhe QUEM chama
+o `Probe::sample` e em que ordem, nunca a aritmética, e fora dos testes o enum
+tem **uma** variante. A seção paralela é um **map puro** para um vetor contíguo,
+com o espalhamento nos planos **serial depois** — a divisão que o
+`normals::face_normals_of` desta crate já documenta.
+
+**Medido** (32 threads, pool aquecido, `load 1,89`):
+
+| vértices de saída | serial | paralelo | ganho |
+|---|---|---|---|
+| 26 | 0,013 ms | 0,028 ms | **0,45×** |
+| 3 962 | 1,633 | 0,166 | 9,84× |
+| 64 442 | 21,264 | 1,490 | 14,28× |
+| **1 230 882** (a escala do produto) | **371,4** | **24,7** | **15,04×** |
+
+**Pela porta do produto**, a 512: travessia **33,0 ms** de um gesto de 2 114 ms
+= **1,5%**, contra os ~15% que a rota serial custaria. O `ns/vértice` sai
+**plano** (48,3 → 26,7), que é o controle interno de trabalho linear no destino.
+
+⚠️ **Sem piso de pool, e a ausência é MEDIDA:** a virada está em ~60 vértices e
+abaixo dela a perda é de **15 µs**, enquanto o único chamador devolve entre 19
+mil e 1,23 milhão. *Um limiar sem caso é um número a manter em dia.*
+
+⚠️ **E a mutação que justifica o gate de paridade existir:** tirar o
+`out.clear()` do `Octree::faces_in_sphere` deixa **os SEIS gates de valor
+VERDES** — os candidatos velhos estão mais longe e perdem, então o resultado
+continua *plausível* — e derruba **só** a paridade, porque as duas rotas passam
+a acumular conjuntos diferentes. **Aquele `clear` é load-bearing para a rota
+paralela de um jeito que nunca foi para a serial**, e nenhum oráculo de valor o
+enxerga.
+
+⚠️ **Duas armadilhas de sonda, as duas registradas porque custaram medições
+erradas antes de serem vistas:** a primeira corrida deu **0,12× a 114 vértices**
+porque a primeira chamada do laço paga o **despertar do pool** — custo de uma
+vez caindo inteiro na menor fixture, que é justamente a que a sonda existe para
+julgar; e a sonda do produto media *remesh com máscara* menos *remesh sem*, dois
+números de ~2,4 s para extrair um item de ~0,3 s, o que sob máquina
+compartilhada devolveu **travessia NEGATIVA (−299,7 ms, −55,5%)**. *Uma
+diferença entre dois números grandes não mede um número pequeno.*
+
+⚠️ **E as tabelas são a TERCEIRA corrida:** sob `load 9` o ganho media 14,09× e
+sob `load 16` media 5,67×, com o lado **serial** — código intocado — a mover-se
+de 21,1 para 28,7 ms. *Um número que se move sobre código intocado é a máquina.*
+
+⚠️ **O `Cargo.toml` da `ph2d-mesh` passou a dizer a LEI em vez da lista** — a
+frase antiga enumerava *"as normais"* e **já tinha apodrecido** (`curvature.rs`
+usa `rayon` desde que nasceu e nunca esteve nela). E a **`ph2d-sdf` fica
+intocada quanto a `rayon`**: o voxelizador e o flood fill seguem seriais por
+semântica, e o único `rayon` dela continua sendo o traço de AO (ADR-0156) — o
+passo 5 do `remesh.rs` diz isso no lugar onde alguém procuraria.
+
+---
+
 ## 7. O estado da linha
 
 | | |
 |---|---|
-| Branch | `line/sculpt3d`, **6 commits** sobre `main 76788440a` |
+| Branch | `line/sculpt3d`, **9 commits** sobre `main 76788440a` |
 | Árvore | **limpa** |
 | Suítes | `ph2d-sdf` + `ph2d-mesh` + `ph2d-sculpt3d` verdes · shell verde · clippy limpo · LOC verde |
 | Schema | `PROJECT_SCHEMA` **intocado** · registro do `ph2d-ecs` intocado · contrato congelado intocado |
@@ -278,7 +343,12 @@ mais próximo quase coincidem e a folga nunca é exercitada. O gate que a mata u
 
 **Sondas novas:** `probe_leak.rs` (quantas resoluções vazam, por malha) ·
 `probe_repeat_remesh.rs` (o que repetir um remesh custa em RESIDÊNCIA) ·
-`measure_transfer.rs` + `measure_transfer_probe.rs` (de que a travessia é feita).
+`measure_transfer.rs` + `measure_transfer_probe.rs` (de que a travessia é feita) ·
+`measure_the_parallel_gain` (o A/B serial × paralelo, até a escala do produto).
+
+**ADR tocado:** **emenda ao ADR-0150** (2026-08-10) — a travessia entra na
+exceção de `rayon` da crate. **Nenhum ADR NOVO** ⇒ fora de toda disputa de
+número.
 
 ---
 
@@ -305,9 +375,8 @@ detalhe do topo sobrevive) → reconstruir → Ctrl+Z devolve a pilha.
 - ⚠️ **O gate de regressão da cena `=6` não contém o fenômeno do vazamento** — 8
   rodadas encadeadas não vazam, e a taxa medida (~0,55%) diz que isso é amostra
   pequena, não ausência. Quem prova a cura são os dois casos do tubo aberto.
-- A travessia é **serial**. Ela é um gather por-vértice (leitura pura, saídas
-  disjuntas) — a forma exata que o **ADR-0156** sancionou para o traço de AO
-  nesta mesma crate-família. `rayon` aqui é decisão do Enio (ADR-0109 §cerca).
+- ~~A travessia é **serial**~~ — **FECHADO pela §6f** (ordem do Enio, *"rayon
+  sim"*): 371 → 25 ms, 15,04× na escala do produto, sob emenda ao ADR-0150.
 - O campo **ainda não carrega cor/material**: quem os leva é o
   `transfer_authored`, o que é outra coisa e é o certo (o campo é uma grade de
   62 M células; um plano por canal seriam +250 MB de rascunho por canal).

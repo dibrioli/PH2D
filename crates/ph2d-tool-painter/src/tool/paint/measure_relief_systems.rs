@@ -109,6 +109,27 @@
 //! | só falloff | 60 | 1,572 | 0,567 | 2,77× |
 //! | só falloff | 100 | 2,122 | 0,579 | 3,66× |
 //!
+//! ## O que a cura moveu, e o que ela NÃO moveu
+//!
+//! Os três eventos re-medidos pela mesma fixture da tabela do veredito (600 px fixos, sétimo traço,
+//! raio **20** — o do smoke, onde a banda rende o MENOS):
+//!
+//! | config | tela | down | move | up |
+//! |---|---|---|---|---|
+//! | só DEPÓSITO (antes) | 2048 | 4,61 | **1,39** | 2,95 |
+//! | só DEPÓSITO (depois) | 2048 | 4,83 | **0,87** | 2,53 |
+//! | só DEPÓSITO (antes) | 4096 | 4,98 | **1,42** | 4,62 |
+//! | só DEPÓSITO (depois) | 4096 | 5,04 | **0,88** | 4,34 |
+//!
+//! **O MOVE era o alvo e foi ele que se moveu** (1,6× no raio do smoke, 6,05× no raio 100). O pen-down
+//! e o pen-up ficam onde estavam, e isso é esperado: eles não são o laço de altura — são a cópia de
+//! canvas do pen-down e o commit de undo do pen-up, os dois já medidos e nomeados (doc 28 §5.14/§5.16),
+//! cuja cura é o journal por região da §7, não uma thread a mais.
+//!
+//! ⚠️ **E o pen-down passa a ser o MAIOR evento isolado de um traço (4,83 ms contra 0,87 do move)** —
+//! mas ele acontece **uma vez por traço** e o move dezenas de vezes por segundo, então a ordem de
+//! ataque não mudou. O que mudou é que o número agora está no lugar certo da fila.
+//!
 //! ⚠️ **O piso é o do kernel de COR e isso é conservador de propósito** (ver o doc do
 //! `walk_dab_rows`); e **a mordida do bow wave fica SERIAL**, porque `displaced` é uma soma em `f32`
 //! cuja ordem o Enio aprovou olhando.

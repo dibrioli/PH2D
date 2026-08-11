@@ -41,205 +41,13 @@
 
 use ph2d_sculpt3d::ref_kernels as rk;
 
-// ---------------------------------------------------------------------------
-// O PARSER — bits, nunca decimais.
-// ---------------------------------------------------------------------------
-
-/// Um caso do oráculo: as entradas e a saída que o JS produziu.
-struct Case {
-    name: String,
-    params: std::collections::BTreeMap<String, Vec<f64>>,
-    verts: usize,
-    in_pos: Vec<f32>,
-    in_nrm: Vec<f32>,
-    /// A máscara **na polaridade da REFERÊNCIA**: `1` é livre, `0` é travado.
-    free: Vec<f32>,
-    sel: Vec<u32>,
-    out_pos: Vec<f32>,
-    /// A máscara DEPOIS do kernel, na mesma polaridade. Igual à entrada em todo
-    /// caso menos o `mask` — e é por isso que ela é despejada para TODOS: um
-    /// campo que só existisse no caso que o move não poderia provar que os
-    /// outros onze **não** o tocam.
-    out_free: Vec<f32>,
-    /// O ANEL, só na fixture de grade (o caso `smooth`) — a forma do CSR do
-    /// [`ph2d_mesh::Csr::parts`], vinda do ARQUIVO e não re-derivada aqui.
-    ring_start: Vec<u32>,
-    ring_len: Vec<u32>,
-    ring_values: Vec<u32>,
-    on_edge: Vec<u8>,
-}
-
-struct Oracle {
-    center: [f64; 3],
-    radius2: f64,
-    eye: [f64; 3],
-    cases: Vec<Case>,
-}
-
-fn f32s(rest: &str) -> Vec<f32> {
-    rest.split_whitespace()
-        .map(|t| f32::from_bits(u32::from_str_radix(t, 16).expect("hex f32")))
-        .collect()
-}
-
-fn u32s(rest: &str) -> Vec<u32> {
-    rest.split_whitespace()
-        .map(|t| t.parse().expect("u32 decimal"))
-        .collect()
-}
-
-fn f64s(rest: &str) -> Vec<f64> {
-    rest.split_whitespace()
-        .map(|t| f64::from_bits(u64::from_str_radix(t, 16).expect("hex f64")))
-        .collect()
-}
-
-fn load() -> Oracle {
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../docs/3D/ferramentas/sculptgl_oracle.txt"
-    );
-    let text = std::fs::read_to_string(path).expect("o oráculo do SculptGL tem de estar commitado");
-    let mut o = Oracle {
-        center: [0.0; 3],
-        radius2: 0.0,
-        eye: [0.0; 3],
-        cases: Vec::new(),
-    };
-    for line in text.lines() {
-        let line = line.trim();
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        let (key, rest) = line.split_once(' ').unwrap_or((line, ""));
-        match key {
-            "sphere" => {}
-            "center" => o.center = f64s(rest).try_into().expect("center 3"),
-            "radius2" => o.radius2 = f64s(rest)[0],
-            "eye" => o.eye = f64s(rest).try_into().expect("eye 3"),
-            "case" => o.cases.push(Case {
-                name: rest.to_string(),
-                params: std::collections::BTreeMap::new(),
-                verts: 0,
-                in_pos: Vec::new(),
-                in_nrm: Vec::new(),
-                free: Vec::new(),
-                sel: Vec::new(),
-                out_pos: Vec::new(),
-                out_free: Vec::new(),
-                ring_start: Vec::new(),
-                ring_len: Vec::new(),
-                ring_values: Vec::new(),
-                on_edge: Vec::new(),
-            }),
-            _ => {
-                let c = o.cases.last_mut().expect("um campo antes de `case`");
-                match key {
-                    // ⚠️ **Um `param` BOOLEANO chega como `1`/`0` decimal**, e
-                    // atravessa o mesmo `f64s` — `"1"` vira `f64::from_bits(1)`,
-                    // um subnormal minúsculo, e `"0"` vira `0.0` exato. Os
-                    // consumidores perguntam `!= 0.0`, então a distinção é
-                    // exata; o que NÃO se pode fazer com um desses é
-                    // aritmética, e é por isso que a nota está aqui em vez de
-                    // no sítio de leitura.
-                    "param" => {
-                        let (k, v) = rest.split_once(' ').expect("param <k> <v>");
-                        c.params.insert(k.to_string(), f64s(v));
-                    }
-                    "verts" => c.verts = rest.parse().expect("verts"),
-                    "in.pos" => c.in_pos = f32s(rest),
-                    "in.nrm" => c.in_nrm = f32s(rest),
-                    "in.mask" => c.free = f32s(rest),
-                    "sel" => {
-                        c.sel = rest
-                            .split_whitespace()
-                            .map(|t| t.parse().expect("índice"))
-                            .collect();
-                    }
-                    "out.pos" => c.out_pos = f32s(rest),
-                    "out.mask" => c.out_free = f32s(rest),
-                    "ring.start" => c.ring_start = u32s(rest),
-                    "ring.len" => c.ring_len = u32s(rest),
-                    "ring.values" => c.ring_values = u32s(rest),
-                    "ring.onedge" => {
-                        c.on_edge = rest
-                            .split_whitespace()
-                            .map(|t| t.parse().expect("flag de borda"))
-                            .collect();
-                    }
-                    other => panic!("campo desconhecido no oráculo: {other}"),
-                }
-            }
-        }
-    }
-    assert!(!o.cases.is_empty(), "o oráculo veio vazio");
-    o
-}
-
-// ---------------------------------------------------------------------------
-// A COMPARAÇÃO
-// ---------------------------------------------------------------------------
-
-/// Compara bit a bit e devolve uma frase útil quando diverge.
-///
-/// ⚠️ **Ele conta os DIVERGENTES e mede o PIOR, e as duas perguntas são
-/// diferentes** — a lição que o gate de paridade da luz do impasto pagou: um
-/// limite só de magnitude deixou passar 2375 bytes errados por um nível.
-fn assert_bit_identical(name: &str, got: &[f32], want: &[f32]) {
-    assert_eq!(got.len(), want.len(), "[{name}] comprimentos diferentes");
-    let mut diff = 0usize;
-    let mut worst = 0.0f64;
-    let mut first = None;
-    for (i, (&g, &w)) in got.iter().zip(want).enumerate() {
-        if g.to_bits() != w.to_bits() {
-            diff += 1;
-            let d = (f64::from(g) - f64::from(w)).abs();
-            if d > worst {
-                worst = d;
-            }
-            if first.is_none() {
-                first = Some((i, g, w));
-            }
-        }
-    }
-    assert!(
-        diff == 0,
-        "[{name}] {diff} de {} componentes divergem dos bits do SculptGL \
-         (pior delta absoluto {worst:.3e}); o primeiro é o índice {:?}",
-        got.len(),
-        first
-    );
-}
-
-/// A fixture do caso, pronta para ser mexida.
-fn scratch(c: &Case) -> Vec<f32> {
-    c.in_pos.clone()
-}
-
-fn front_with(c: &Case, eye: [f64; 3]) -> Vec<u32> {
-    let mut out = Vec::new();
-    rk::front_vertices(&c.in_nrm, &c.sel, eye, &mut out);
-    out
-}
-
-fn case<'a>(o: &'a Oracle, name: &str) -> &'a Case {
-    o.cases
-        .iter()
-        .find(|c| c.name == name)
-        .unwrap_or_else(|| panic!("o oráculo não tem o caso `{name}`"))
-}
-
-/// O centro deste caso — o do arquivo, ou o que o caso sobrescreveu.
-fn center_of(o: &Oracle, c: &Case) -> [f64; 3] {
-    c.params
-        .get("center")
-        .map_or(o.center, |v| [v[0], v[1], v[2]])
-}
-
-/// O olho deste caso — idem. Só o caso da terminadora o sobrescreve.
-fn eye_of(o: &Oracle, c: &Case) -> [f64; 3] {
-    c.params.get("eye").map_or(o.eye, |v| [v[0], v[1], v[2]])
-}
+// O leitor do arquivo. ⚠️ **O `#[path]` é obrigatório, não estilo:** para uma
+// raiz `tests/sculptgl_parity.rs` o `mod reader;` nu resolve para
+// `tests/reader.rs` — que o cargo compilaria como **outro binário de
+// teste**. O doc-header do leitor explica o resto.
+#[path = "sculptgl_parity/reader.rs"]
+mod reader;
+use reader::{Case, assert_bit_identical, case, center_of, eye_of, front_with, load, scratch};
 
 // ---------------------------------------------------------------------------
 // OS GATES
@@ -253,7 +61,11 @@ fn eye_of(o: &Oracle, c: &Case) -> [f64; 3] {
 #[test]
 fn the_oracle_describes_a_phenomenon_before_it_judges_anything() {
     let o = load();
-    assert_eq!(o.cases.len(), 12, "onze kernels portados, e a terminadora");
+    assert_eq!(
+        o.cases.len(),
+        14,
+        "doze kernels portados, a terminadora e a zona morta"
+    );
     for c in &o.cases {
         let n = c.sel.len();
         assert!(n >= 200, "[{}] pegada rala demais: {n}", c.name);
@@ -273,29 +85,45 @@ fn the_oracle_describes_a_phenomenon_before_it_judges_anything() {
             .zip(&c.out_free)
             .filter(|(a, b)| a.to_bits() != b.to_bits())
             .count();
-        // ⚠️ **UM canal por kernel, e isto é uma propriedade da referência, não
-        // uma conveniência do arquivo:** nenhum tool do SculptGL escreve posição
-        // E máscara. O `Masking` delega ao `Paint`, que só toca `mAr`; os onze
-        // irmãos só tocam `vAr`. Afirmar aqui é o que faz o caso `mask` — cujo
-        // deslocamento de posição é ZERO — deixar de parecer um caso morto.
-        assert!(
-            (moved > 0) != (masked > 0),
-            "[{}] o caso mexe em {moved} componentes de posição e {masked} de \
-             máscara — todo kernel da referência escreve EXATAMENTE um canal",
-            c.name
-        );
-        if masked > 0 {
-            assert!(
-                masked * 2 > n,
-                "[{}] só {masked} de {n} vértices mudaram de máscara",
+        // ⚠️ **Um caso pode DECLARAR que não mexe em nada, e a declaração viaja
+        // no arquivo (`param noop`), nunca no nome.** É a zona morta do
+        // `Twist`: o fenômeno dela é a AUSÊNCIA de movimento, e o controle não
+        // a isenta — ele inverte a pergunta. Quem prova que o caso não é vácuo
+        // é o gate `the_twist_dead_zone_is_a_threshold_not_a_constant_no`, que
+        // carrega o controle positivo do outro lado do limiar.
+        if c.params.contains_key("noop") {
+            assert_eq!(
+                (moved, masked),
+                (0, 0),
+                "[{}] declara no-op e mexeu em {moved} de posição / {masked} de máscara",
                 c.name
             );
         } else {
+            // ⚠️ **UM canal por kernel, e isto é uma propriedade da referência,
+            // não uma conveniência do arquivo:** nenhum tool do SculptGL escreve
+            // posição E máscara. O `Masking` delega ao `Paint`, que só toca
+            // `mAr`; os doze irmãos só tocam `vAr`. Afirmar aqui é o que faz o
+            // caso `mask` — cujo deslocamento de posição é ZERO — deixar de
+            // parecer um caso morto.
             assert!(
-                moved > n,
-                "[{}] só {moved} componentes mexeram — a fixture não contém o fenômeno",
+                (moved > 0) != (masked > 0),
+                "[{}] o caso mexe em {moved} componentes de posição e {masked} de \
+                 máscara — todo kernel da referência escreve EXATAMENTE um canal",
                 c.name
             );
+            if masked > 0 {
+                assert!(
+                    masked * 2 > n,
+                    "[{}] só {masked} de {n} vértices mudaram de máscara",
+                    c.name
+                );
+            } else {
+                assert!(
+                    moved > n,
+                    "[{}] só {moved} componentes mexeram — a fixture não contém o fenômeno",
+                    c.name
+                );
+            }
         }
         // Os três regimes de máscara, na polaridade da referência.
         assert!(c.free.contains(&1.0), "[{}] sem livre", c.name);
@@ -714,6 +542,105 @@ fn the_mask_kernel_is_bit_identical() {
     // gate aprovaria um kernel que, além da máscara, empurrasse a superfície —
     // e nada mais nesta suíte olha para a posição neste caso.
     assert_bit_identical("mask (posição intocada)", &c.in_pos, &c.out_pos);
+}
+
+/// O gesto de tela deste caso — os quatro números que o `twist` come.
+fn twist_gesture(c: &Case) -> ([f64; 2], [f64; 2], [f64; 2], [f64; 3]) {
+    let g = |k: &str| -> Vec<f64> { c.params[k].clone() };
+    let (m, l, o, a) = (g("mouse"), g("last"), g("origin"), g("axis"));
+    ([m[0], m[1]], [l[0], l[1]], [o[0], o[1]], [a[0], a[1], a[2]])
+}
+
+/// ⚠️ **O TWIST — e este é o gate que decide se um kernel com transcendental
+/// pode ser bit-idêntico.** Os doze irmãos só somam, multiplicam e tiram raiz
+/// (`sqrt` é exata pelo IEEE-754); este chama `sin`, `cos` e `atan2`, que o
+/// ECMAScript declara *implementation-approximated*. A escolha do `libm` em vez
+/// do `std` é MEDIDA (tabela no `ref_twist.rs`), e quem diz se ela bastou é
+/// aqui: se o 1 ulp que resta em `sin`/`cos` sobrevivesse à arredondada para
+/// `f32`, este gate ficaria vermelho sobre 272 vértices.
+///
+/// ⚠️ **Ele exercita as DUAS metades do porte.** O oráculo despeja os PIXELS do
+/// gesto, não o ângulo pronto — então o `twist_angle` (normalização + o
+/// `signedAngle2d`) roda antes do laço, e um erro nele aparece como divergência
+/// de posição em todo vértice de uma vez.
+#[test]
+fn the_twist_kernel_is_bit_identical() {
+    let o = load();
+    let c = case(&o, "twist");
+    let (mouse, last, origin, axis) = twist_gesture(c);
+    let angle =
+        rk::twist_angle(mouse, last, origin).expect("o gesto do caso passa folgado da zona morta");
+    let mut pos = scratch(c);
+    rk::twist(
+        &mut pos,
+        &c.free,
+        &c.sel,
+        center_of(&o, c),
+        o.radius2,
+        angle,
+        axis,
+    );
+    assert_bit_identical("twist", &pos, &c.out_pos);
+}
+
+/// ⚠️ **A ZONA MORTA é um LIMIAR, e este gate existe porque a metade fácil dela
+/// é vácua.** *"O caso não move nada e o nosso também não"* é satisfeito por um
+/// `twist_angle` que devolve `None` sempre — e aí a ferramenta nunca giraria,
+/// com o gate verde. O que se afirma aqui são as duas metades:
+///
+/// 1. a 29 px do centro o gesto do oráculo **não gira** (a guarda existe);
+/// 2. o **MESMO gesto** esticado para 31 px gira, e gira o **mesmo ângulo** — é
+///    isso que prova que a guarda mede DISTÂNCIA e não ângulo, e que ela não é
+///    um `None` constante disfarçado.
+///
+/// O par também é o que dá sentido à declaração `noop` do arquivo: sem ele, o
+/// controle do outro lado estaria a aprovar um caso que não pode falhar.
+#[test]
+fn the_twist_dead_zone_is_a_threshold_not_a_constant_no() {
+    let o = load();
+    let c = case(&o, "twist_deadzone");
+    let (mouse, last, origin, axis) = twist_gesture(c);
+    assert!(
+        rk::twist_angle(mouse, last, origin).is_none(),
+        "a 29 px do centro a referência não gira"
+    );
+
+    // O MESMO gesto, esticado de 29 para 31 px em torno do mesmo centro.
+    let stretch = |p: [f64; 2]| {
+        let (dx, dy) = (p[0] - origin[0], p[1] - origin[1]);
+        let k = 31.0 / dx.hypot(dy);
+        [origin[0] + dx * k, origin[1] + dy * k]
+    };
+    let angle =
+        rk::twist_angle(stretch(mouse), stretch(last), origin).expect("a 31 px do centro ela gira");
+    assert!(
+        angle.abs() > 0.3,
+        "esticar não pode mudar o ângulo — ele é 0,4 rad por construção, veio {angle}"
+    );
+
+    // E o ângulo, aplicado, MEXE — senão o `None` de cima estaria a esconder um
+    // kernel morto em vez de uma guarda.
+    let mut pos = scratch(c);
+    rk::twist(
+        &mut pos,
+        &c.free,
+        &c.sel,
+        center_of(&o, c),
+        o.radius2,
+        angle,
+        axis,
+    );
+    let moved = pos
+        .iter()
+        .zip(&c.in_pos)
+        .filter(|(a, b)| a.to_bits() != b.to_bits())
+        .count();
+    assert!(
+        moved > c.sel.len(),
+        "passada a guarda, o kernel tem de mexer na malha — mexeu em {moved}"
+    );
+    // E a malha do caso continua onde a referência a deixou: intocada.
+    assert_bit_identical("twist_deadzone", &c.in_pos, &c.out_pos);
 }
 
 /// ⚠️ **A CURVA, isolada** — o falloff único da referência, contra os números

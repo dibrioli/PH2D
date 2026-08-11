@@ -25,15 +25,15 @@ stub. O que roda é o código que o SculptGL shipa — a alternativa (transcreve
 kernels a mão para dentro do harness) tem o modo de falha do gate que espelha o
 produto em vez de o interrogar: ela só pode confirmar a minha leitura.
 
-**Onze kernels + a normal/centro de área + o filtro do olho, todos bit-idênticos
+**Doze kernels + a normal/centro de área + o filtro do olho, todos bit-idênticos
 na primeira corrida:** `brush` · `clay` · `flatten` · `inflate` · `crease` ·
 `pinch` · `drag` · `move` · `local scale` · **`smooth`** (com o laplaciano e as
-duas regras de borda) · **`mask`**.
+duas regras de borda) · **`mask`** · **`twist`**.
 
-⚠️ **Os dois últimos chegaram depois e cada um trouxe uma correção a este
-documento** — ver a §1.1. Com eles a família do CARIMBO está **completa**, que é
-o pré-requisito da §3.2: uma migração parcial deixaria duas leis vivas na mesma
-ferramenta.
+⚠️ **Os três últimos chegaram depois e cada um trouxe uma correção a este
+documento** — ver a §1.1 e a §1.2. Com eles o conjunto de verbos que a
+referência cobre está **completo**, que é o pré-requisito da §3.2: uma migração
+parcial deixaria duas leis vivas na mesma ferramenta.
 
 ### §1.1 — As DUAS coisas que o `smooth` e a `mask` corrigiram aqui
 
@@ -41,6 +41,47 @@ ferramenta.
 |---|---|
 | *"A referência tem UMA curva para as dez tools"* (§2.2) | **Falso.** Ela vale para as dez que movem GEOMETRIA. O `Masking` — e o `Paint`, que ele chama — tem curva **PRÓPRIA**, `(1 − d)^softness` com `softness = 2·(1 − hardness)`, e um knob **hardness** que a molda (`Masking.js:14`). ⚠️ Isso **dissolve a contradição aparente** entre *"bit-idêntico"* e o pedido *"cada Tool deve ter seu falloff apropriado"*: a referência **já** dá ao canal de máscara uma curva que não é a da geometria. O que ela não tem é um SELETOR, que é nosso e é um superconjunto |
 | — | ⚠️ **O `Smooth` não tem falloff NENHUM.** O laço dele (`Smooth.js:47-60`) não computa distância; a mesma intensidade cai em toda a pegada, e o resultado tem **degrau na fronteira do pincel**. O nosso pesa pelo falloff escolhido. Portar é reproduzir o degrau — **decisão de LOOK, e o smoke a julga** |
+
+### §1.2 — O `twist`, e o limite do que "bit-idêntico" pode significar
+
+Os doze kernels saem bit-idênticos, e **onze deles só somam, multiplicam e tiram
+raiz** — `sqrt` é exatamente especificada pelo IEEE-754, então dois runtimes dão
+o mesmo bit e a paridade é uma propriedade da *aritmética*. O `twist` chama
+`Math.sin`, `Math.cos`, `Math.atan2` e `Math.hypot`, que o **ECMAScript declara
+`implementation-approximated`**: *não existe resposta exata para espelhar* — a
+mesma frase que o `jsmath` da `ph2d-wet-paint` já carrega sobre o `Math.pow`.
+
+**O que existe é medir qual libm chega mais perto do V8** (20 000 amostras, bit
+a bit contra o Node):
+
+| função | `std` (libm do SISTEMA) | `libm` (o crate, porte do MUSL) |
+|---|---|---|
+| `sin` | 3,300 % a 1 ulp | **1,005 %** |
+| `cos` | 3,280 % | **0,845 %** |
+| `atan2` | 18,645 % | **0,000 % — EXATO** |
+| `hypot` | 36,935 % a 2 ulp | 37,400 % |
+
+⚠️ **E a coluna que decide não é nenhuma dessas — é a arredondada para `f32`.**
+Seis mutações do porte do `twist` **sobrevivem à suíte inteira**, e elas são UM
+fato e não seis buracos: a saída passa por um `f32`, que descarta 29 bits, e
+**toda escolha de nível `f64` deste kernel pousa abaixo dela** (medido em 3 M
+avaliações — trocar `atan2`/`sin`/`cos` pelo `std`, mudar a associação, dividir
+pelo raio em vez do recíproco, e até usar o `transformQuat` do **gl-matrix 2.x**
+dão **0 de 3 000 000** divergências através do store; a tabela completa está no
+cabeçalho de `ref_twist.rs`).
+
+⇒ **A paridade que o gate prova é a que o produto tem** (a saída em `f32`, sobre
+a pegada inteira, contra o JS executando), e as cinco escolhas de `f64` são
+**defesa em camadas documentada em vez de gateada** — o precedente do ADR-0145.
+⚠️ **Cinco afirmações minhas foram CORRIGIDAS por essa medição**, entre elas
+*"escolher a versão errada do gl-matrix falha no gate"*, que é falsa; o que
+**não** se pode escrever ao lado de uma dessas linhas é que um teste a vigia.
+
+⚠️ **E uma delas precisou de fixture própria para ser medida, o que é uma lição
+sobre o oráculo:** a associação `(f·a)·m` × `f·(a·m)` diverge **0,000 %** sobre
+a fixture do gate, porque a máscara vale `{0, 0,5, 1}` e multiplicar por
+potência de dois é **EXATO** — ela é inobservável ali *por construção*, não por
+equivalência (com máscara geral: 2,386 %).
 
 ### A estrutura É a lei — por que um porte e não uma emenda
 
@@ -75,12 +116,14 @@ atravessa a **TERMINADORA** — o único em que o filtro do olho filtra alguma
 coisa. Sem ele, um `front_vertices` que devolvesse a lista inteira ficaria verde
 nos nove irmãos.
 
-**17 mutações: 14 sangram**, 3 são **provadamente neutras** e ficam documentadas
-com o número em vez de gateadas (precedente do ADR-0145).
+**31 mutações: 22 sangram**, 9 são **provadamente neutras ou inalcançáveis** e
+ficam documentadas com o número em vez de gateadas (precedente do ADR-0145) — e
+**seis das nove são o `twist`**, pelo motivo estrutural da §1.2 (a arredondada
+para `f32` engole toda escolha de `f64` deste kernel), não por seis descuidos.
 
 ⚠️ **E as duas sobreviventes da rodada do `smooth`/`mask` acusaram AFIRMAÇÕES
 MINHAS, não buracos de gate** — a terceira e a quarta vez que isto acontece
-nesta linha:
+nesta linha (a §1.2 traz mais cinco, da rodada do `twist`):
 
 - **o fall-through da regra de borda** (vértice de borda com menos de dois
   vizinhos de borda ⇒ média de TODO o anel) é **inalcançável em malha
@@ -108,6 +151,16 @@ passaria verde; e o disco de seleção nasceu no **MEIO** da grade, onde só há
 interior — a fixture **continha** os três ramos do laplaciano e a **SELEÇÃO não
 os alcançava**, que é *a fixture não contém o fenômeno* um nível acima. As duas
 asserções novas contam sobre a `sel`, nunca sobre a malha.
+
+⚠️ **E o controle ganhou uma espécie nova de caso na rodada do `twist`: o que
+declara NÃO mexer em nada** (a zona morta dos 30 px). Ele **não escapa** do
+controle — ele o **INVERTE**: a declaração viaja no arquivo (`param noop`, nunca
+o nome do caso, que apodreceria no segundo), o oráculo falha alto se um caso
+assim mover um componente, e o gate do lado Rust carrega o **controle positivo**
+do outro lado do limiar (o MESMO gesto esticado para 31 px gira, e gira o mesmo
+ângulo). Sem esse par, *"nada se moveu dos dois lados"* é satisfeito por um
+`twist_angle` que devolve `None` sempre — e a ferramenta nunca giraria, com o
+gate verde.
 
 ---
 
@@ -230,9 +283,34 @@ composição sobre o vivo **com** o passo de espaçamento fixo que já temos (qu
 dá o *feel* do SculptGL sem a variação — e deixa de ser bit-idêntico num traço,
 continuando bit-idêntico por dab).
 
-### 3.3 — Os verbos que a referência não tem
+### 3.3 — O MAPA dos verbos, e o único que a referência não tem
 
-`Smooth` · `Sharpen` · `Fill` · `Scrape` · `Magnify` · `Mask` · `Twist` não têm
-kernel correspondente portado (o `Smooth` do original existe e depende do anel;
-os outros são nossos). Uma migração parcial deixaria **duas leis vivas na mesma
-ferramenta**, e o artista sentiria a costura. Isso é escopo, não detalhe.
+⚠️ **Esta seção afirmava que `Smooth` · `Mask` · `Twist` não tinham kernel
+portado — os três têm** (§1.1, §1.2). O que resta é o mapa, e ele é um
+**plano de migração, não código escrito**:
+
+| nosso verbo | kernel da referência |
+|---|---|
+| Draw | `brush` (o `_clay = false`) |
+| Clay | `flatten` contra o plano **deslocado** — é o que o `Brush._clay = true`, o **default de fábrica**, de fato chama |
+| Flatten · Fill · Scrape | `flatten`. ⚠️ **A unilateralidade não é um verbo novo:** `Flatten.js:64` faz `if (distToPlane * comp > 0.0) continue`, com `comp = ±1` saindo do `_negative` — um sinal escolhe *só para baixo* ou *só para cima* |
+| Pinch · Magnify | `pinch`, com o sinal do `_negative` |
+| Inflate | `inflate` |
+| Crease | `crease` |
+| Move | `move` (o proxy EMPACOTADO) |
+| SnakeHook | `drag` |
+| LocalScale | `scale` |
+| Smooth | `smooth` ⚠️ **sem falloff** (§1.1) |
+| Mask | `mask` ⚠️ com a **segunda curva** (§1.1) |
+| Twist | `twist` ⚠️ com os transcendentais (§1.2) |
+
+⚠️ **Sobra UM: o `Sharpen`.** A referência não tem — ele é nosso (o laplaciano
+com o sinal trocado), e a migração da lei tem de decidir o que fazer com ele em
+vez de o descobrir no meio.
+
+⚠️ **E na direção inversa a referência tem o `Paint`** (cor por-vértice), que
+não temos verbo para consumir; o `Masking` já o chama, então o kernel dele
+entrou de carona — quem construir cor de vértice não precisa portá-lo de novo.
+
+Uma migração parcial deixaria **duas leis vivas na mesma ferramenta**, e o
+artista sentiria a costura. Isso é escopo, não detalhe.

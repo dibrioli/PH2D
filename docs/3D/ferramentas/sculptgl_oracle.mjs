@@ -33,6 +33,34 @@ if (!SRC || !OUT) {
 }
 
 // ---------------------------------------------------------------------------
+// O gl-matrix DE VERDADE -- nao uma transliteracao dele.
+// ---------------------------------------------------------------------------
+//
+// O `Twist` e' o unico kernel que chama a biblioteca de algebra por fora
+// (`quat.setAxisAngle`, `vec3.transformQuat`, `vec2.normalize`). Transcrever
+// essas tres para dentro deste arquivo faria o oraculo comparar a MINHA leitura
+// do gl-matrix contra a MINHA traducao dela -- razao entre dois doentes, e o
+// gate ficaria cego a um erro de leitura.
+//
+// ⚠️ **A VERSAO importa:** o `transformQuat` do gl-matrix 2.x expande
+// `q · v · q⁻¹` e o do 3.x usa a forma `uv`/`uuv`. As duas sao a mesma rotacao
+// em algebra e NAO sao os mesmos bits. O `package.json` da referencia declara
+// `^3.1.0` e o `package-lock.json` resolve **3.3.0** -- e' esse que tem de
+// estar em `<dir-do-SculptGL>/node_modules/gl-matrix`.
+const glm = await import(join(SRC, 'node_modules/gl-matrix/esm/index.js')).catch((e) => {
+  console.error(
+    'gl-matrix nao encontrado em ' + SRC + '/node_modules.\n' +
+    'O caso do Twist precisa da biblioteca REAL (3.3.0, a que o lock trava):\n' +
+    '  cd ' + SRC + ' && npm pack gl-matrix@3.3.0 && mkdir -p node_modules &&' +
+    ' tar -xzf gl-matrix-3.3.0.tgz && mv package node_modules/gl-matrix\n'
+  );
+  throw e;
+});
+globalThis.vec2 = glm.vec2;
+globalThis.vec3 = glm.vec3;
+globalThis.quat = glm.quat;
+
+// ---------------------------------------------------------------------------
 // A EXTRACAO -- o corpo de um metodo, tirado do arquivo que shipa.
 // ---------------------------------------------------------------------------
 
@@ -63,6 +91,30 @@ function extractMethod(src, name) {
   }
   if (depth !== 0) throw new Error('chaves desbalanceadas em ' + name);
   return { args, body: src.slice(start, i) };
+}
+
+/// O mesmo casamento de chaves, para a outra forma de declaracao que a
+/// referencia usa: `Geometry.nome = function (args) {`. O `Geometry` nao e' uma
+/// classe, entao o extrator de metodo nao o alcanca -- e transcrever o
+/// `signedAngle2d` a mao teria o mesmo modo de falha de tudo o mais aqui.
+function extractAssigned(src, obj, name) {
+  const re = new RegExp('^' + obj + '\\.' + name + ' = function \\(([^)]*)\\) \\{$', 'm');
+  const m = re.exec(src);
+  if (!m) throw new Error('funcao atribuida nao encontrada: ' + obj + '.' + name);
+  const args = m[1].split(',').map((t) => t.trim()).filter(Boolean);
+  let i = m.index + m[0].length - 1;
+  let depth = 0;
+  const start = i + 1;
+  for (; i < src.length; i++) {
+    if (src[i] === '{') depth++;
+    else if (src[i] === '}') {
+      depth--;
+      if (depth === 0) break;
+    }
+  }
+  if (depth !== 0) throw new Error('chaves desbalanceadas em ' + name);
+  // eslint-disable-next-line no-new-func
+  return new Function(...args, src.slice(start, i));
 }
 
 function compile(src, name) {
@@ -253,6 +305,7 @@ const Pinch = readTool('Pinch');
 const Drag = readTool('Drag');
 const Move = readTool('Move');
 const LocalScale = readTool('LocalScale');
+const Twist = readTool('Twist');
 
 const kernels = {
   brush: compile(Brush, 'brush'),
@@ -262,7 +315,8 @@ const kernels = {
   pinch: compile(Pinch, 'pinch'),
   drag: compile(Drag, 'drag'),
   move: compile(Move, 'move'),
-  scale: compile(LocalScale, 'scale')
+  scale: compile(LocalScale, 'scale'),
+  twist: compile(Twist, 'twist')
 };
 
 const RINGS = 64;
@@ -340,6 +394,16 @@ const getFrontVertices = compile(readTool('SculptBase'), 'getFrontVertices');
 // enxerga o escopo GLOBAL, e e' por isso que o stub mora ali.
 globalThis.Utils = {
   getMemory: (n) => new ArrayBuffer(n)
+};
+
+// O `Twist.twist` chama `Geometry.signedAngle2d` por nome livre -- e uma
+// `Function` so' enxerga o escopo GLOBAL.
+globalThis.Geometry = {
+  signedAngle2d: extractAssigned(
+    readFileSync(join(SRC, 'src/math3d/Geometry.js'), 'utf8'),
+    'Geometry',
+    'signedAngle2d'
+  )
 };
 
 const EYE = (() => {
@@ -425,7 +489,10 @@ function record(name, params, run, over = {}) {
   for (let i = 0; i < fx.count; i++) outMask[i] = mesh._mats[i * 3 + 2];
   cases.push({
     name, params, fx, sel, inPos, outPos: fx.pos.slice(), outMask,
-    over: over.center || over.eye ? { center, eye } : null
+    over: over.center || over.eye ? { center, eye } : null,
+    // ⚠️ Um caso que DECLARA nao mexer em nada. Ver a checagem no despejo: ele
+    // nao afrouxa o controle, ele inverte a pergunta.
+    noop: !!over.noop
   });
 }
 
@@ -592,6 +659,67 @@ record('mask', { intensity: MASK_INTENSITY, hardness: MASK_HARDNESS, negative: t
   kernels.mask.call(self, sel, CENTER, R2, MASK_INTENSITY, MASK_HARDNESS, picking);
 });
 
+// --- TWIST: o unico kernel que GIRA, e o unico que paga transcendentais.
+//
+// ⚠️ **A entrada dele e' de TELA.** O angulo sai de dois vetores 2D de mouse em
+// torno de um centro de rotacao 2D capturado no inicio do traco -- nao de um
+// parametro do pincel. O oraculo alimenta os PIXELS e deixa a referencia
+// computar o angulo: e' o `Geometry.signedAngle2d` real que roda, e o Rust tem
+// de reproduzi-lo pelo `twist_angle`. Despejar o angulo pronto tiraria essa
+// metade do gate.
+//
+// O eixo e' o `twistData.normal` = a direcao do olhar NEGADA (`Twist.js:41`).
+const TWIST_ORIGIN = [640, 360];
+const TWIST_AXIS = [-EYE[0], -EYE[1], -EYE[2]];
+// Um arrasto de ~100 px em torno do centro, girando ~0,4 rad entre os dois
+// quadros: passa folgado da zona morta e produz um angulo grande o bastante
+// para o `sin`/`cos` sairem do regime linear (onde um erro de eixo se esconde).
+const TWIST_LAST = [TWIST_ORIGIN[0] + 100, TWIST_ORIGIN[1]];
+const TWIST_MOUSE = [
+  TWIST_ORIGIN[0] + 100 * Math.cos(0.4),
+  TWIST_ORIGIN[1] + 100 * Math.sin(0.4)
+];
+record(
+  'twist',
+  { mouse: TWIST_MOUSE, last: TWIST_LAST, origin: TWIST_ORIGIN, axis: TWIST_AXIS },
+  (fx, mesh, sel) => {
+    const self = makeSelf(mesh, { intensity: INTENSITY });
+    const twistData = { normal: TWIST_AXIS, center: TWIST_ORIGIN };
+    kernels.twist.call(
+      self, sel, CENTER, R2,
+      TWIST_MOUSE[0], TWIST_MOUSE[1], TWIST_LAST[0], TWIST_LAST[1],
+      twistData, picking
+    );
+  }
+);
+
+// --- TWIST na ZONA MORTA: a 29 px do centro, a referencia NAO GIRA.
+//
+// ⚠️ Ele declara `noop` e o despejo INVERTE o controle sobre ele (ver la'): o
+// que este caso prova e' que a guarda dos 30 px existe dos dois lados. Sem ele,
+// um porte que a apagasse continuaria bit-identico em todo caso que a passa --
+// e a ferramenta ficaria impossivel de mirar perto do eixo, que e' exatamente
+// onde a curva manda o angulo para o maximo.
+const DEAD_LAST = [TWIST_ORIGIN[0] + 29, TWIST_ORIGIN[1]];
+const DEAD_MOUSE = [
+  TWIST_ORIGIN[0] + 29 * Math.cos(0.4),
+  TWIST_ORIGIN[1] + 29 * Math.sin(0.4)
+];
+record(
+  'twist_deadzone',
+  { mouse: DEAD_MOUSE, last: DEAD_LAST, origin: TWIST_ORIGIN, axis: TWIST_AXIS },
+  (fx, mesh, sel) => {
+    const self = makeSelf(mesh, { intensity: INTENSITY });
+    const twistData = { normal: TWIST_AXIS, center: TWIST_ORIGIN };
+    kernels.twist.call(
+      self, sel, CENTER, R2,
+      DEAD_MOUSE[0], DEAD_MOUSE[1], DEAD_LAST[0], DEAD_LAST[1],
+      twistData, picking
+    );
+  },
+  { noop: true }
+);
+
 // ---------------------------------------------------------------------------
 // O DESPEJO -- bits, nunca decimais.
 // ---------------------------------------------------------------------------
@@ -623,6 +751,10 @@ for (const c of cases) {
     else if (typeof v === 'number') lines.push('param ' + k + ' ' + f64bits(v));
     else lines.push('param ' + k + ' ' + (v ? 1 : 0));
   }
+  // ⚠️ A declaracao viaja no ARQUIVO, para o controle do outro lado poder
+  // INVERTER a pergunta em vez de adivinhar pelo nome do caso. Um controle que
+  // enumerasse nomes apodreceria no segundo caso de no-op.
+  if (c.noop) lines.push('param noop 1');
   if (c.over) {
     lines.push('param center ' + c.over.center.map(f64bits).join(' '));
     lines.push('param eye ' + c.over.eye.map(f64bits).join(' '));
@@ -647,7 +779,19 @@ for (const c of cases) {
   for (let i = 0; i < c.inPos.length; i++) if (c.inPos[i] !== c.outPos[i]) moved.push(i);
   for (let i = 0; i < c.fx.count; i++) if (c.fx.mask[i] !== c.outMask[i]) moved.push(i);
   lines.push('# ' + c.name + ': ' + c.sel.length + ' selecionados, ' + moved.length + ' componentes mexidos');
-  if (moved.length === 0) {
+  if (c.noop) {
+    // ⚠️ **O caso que declara ser um no-op nao ESCAPA do controle -- ele o
+    // INVERTE.** A guarda de baixo existe porque um caso que nao move nada
+    // aprovaria um kernel deletado; aqui o que se prova e' o contrario (a zona
+    // morta EXISTE), e um kernel que a apagasse moveria alguma coisa. Falhar
+    // alto nos dois sentidos e' o que impede `noop` de virar a porta por onde
+    // um caso morto entra dizendo que e' de proposito.
+    if (moved.length !== 0) {
+      throw new Error(
+        'caso ' + c.name + ' declara no-op e moveu ' + moved.length + ' componentes'
+      );
+    }
+  } else if (moved.length === 0) {
     // Um caso que nao move nada e' um oraculo que nao pode falhar: ele
     // aprovaria um kernel deletado. Falha ALTO em vez de despejar um zero.
     throw new Error('caso ' + c.name + ' nao moveu nenhum componente -- fixture nao contem o fenomeno');

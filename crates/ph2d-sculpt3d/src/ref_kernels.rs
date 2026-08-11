@@ -603,3 +603,9 @@ pub use smooth_mod::{laplacian, smooth};
 #[path = "ref_mask.rs"]
 mod mask_mod;
 pub use mask_mod::mask;
+
+/// **O TWIST** — o único kernel que GIRA, e o único que paga transcendentais
+/// (com a tabela que mede qual libm concorda com o V8). Ver [`twist_mod`].
+#[path = "ref_twist.rs"]
+mod twist_mod;
+pub use twist_mod::{twist, twist_angle};

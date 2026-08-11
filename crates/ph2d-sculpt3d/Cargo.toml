@@ -31,3 +31,15 @@ ph2d-mesh = { path = "../ph2d-mesh" }
 # É a MESMA aresta, pela MESMA razão, que a `ph2d-light` já paga e escreveu no
 # `Cargo.toml` dela; folha→folha não inverte arquitetura nenhuma.
 ph2d-painter-brush = { path = "../ph2d-painter-brush" }
+
+# libm — os transcendentais do porte do `Twist` (`ref_twist.rs`), e a escolha é
+# MEDIDA contra o V8 em 20 000 amostras, não herdada: `atan2` do `libm` é
+# **exato** contra o Node (0 divergências) enquanto o do sistema erra em 18,6%
+# delas, e `sin`/`cos` do `libm` erram 3× menos. O ECMAScript declara os quatro
+# implementation-approximated, então não há resposta exata a espelhar — há a
+# biblioteca que chega mais perto, e a tabela está no `ref_twist.rs`.
+#
+# Mesmo pin de `ph2d-flip`/`ph2d-physics`/`ph2d-editor-core`/`ph2d-node-motion-strobe`
+# (e da `ph2d-wet-paint`, o outro porte de JS deste repo) ⇒ é ARESTA, não pacote
+# novo no `Cargo.lock`.
+libm = { version = "=0.2.16", default-features = false }

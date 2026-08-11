@@ -81,6 +81,7 @@
 //! nothing on screen to say so.
 
 mod hash;
+mod trig;
 
 use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -115,6 +116,11 @@ const LANE_SLOT: u32 = 7;
 /// — a rate-born and a pulse-born wearing the same id would be paired as ONE element by every
 /// state node downstream (`motion.integrate`, `motion.spring`, `motion.delay` all key on `id`).
 const PULSE_ID_BASE: u32 = ID_WRAP / 2;
+
+/// A pista de hash da direção do ESTOURO — própria, para não correlacionar com o sorteio
+/// de slot do `slot()` (dois sorteios da mesma pista dão o mesmo número, e irmãs que
+/// partilhassem direção com a escolha de template seriam um padrão, não um estouro).
+const LANE_BURST: u32 = 23;
 
 /// Ids reserved per tick for the pulse-born. It is [`MAX_PER_TICK`] because that is the same
 /// number said once: a tick may not EMIT more than this, so a tick cannot NEED more than this.
@@ -171,6 +177,28 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         ParamSpec {
             name: "burst",
             default: 1.0,
+        },
+        // **A velocidade com que as irmãs de um estouro se SEPARAM** (o `Add Velocity in
+        // Cone` do Niagara, o `Initial Speed` da Cavalry). APENDADO; `0` é o mundo de antes,
+        // byte a byte.
+        //
+        // ⚠️ **Sem ele a capacidade não existe, e isso é um FATO medido, não uma questão de
+        // afinação:** `burst` filhas de UMA linha de template nascem com `P` e `vel`
+        // IDÊNTICOS, e toda força deste catálogo é função da posição — `curl(P)` dá a duas
+        // partículas no mesmo `P` exatamente a mesma aceleração. Duas irmãs assim são o
+        // mesmo elemento em tudo o que se observa menos o `id`: **nenhum campo consegue
+        // separá-las, nunca** (medido na cena `=27`: as duas ficaram bit-idênticas em P e
+        // vel por 150 tiques). A simetria tem de ser quebrada no NASCIMENTO, e a única coisa
+        // que difere entre irmãs é o id — que é justamente o que este impulso usa.
+        //
+        // ⚠️ **E isto REFUTA um veredito da folha 13** (*"velocidade inicial: SIM, e o
+        // desenho é melhor — o recém-nascido herda toda coluna do template, então ela é
+        // autorada a montante"*): verdade para o nascimento por TAXA, onde cada filho pega
+        // uma LINHA distinta do template, e falsa para o nascimento por PULSO, onde N filhos
+        // saem da MESMA linha. A folha foi escrita antes de a porta `pulse` existir.
+        ParamSpec {
+            name: "burst_speed",
+            default: 0.0,
         },
     ],
     lowerings: &[LoweringKind::Cpu],
@@ -309,6 +337,43 @@ fn newborns(template: &Stream, ids: &[u32], rows: &[usize]) -> Stream {
         Column::Scalar(ids.iter().map(|k| *k as f32).collect()),
     );
     out
+}
+
+/// **O IMPULSO DE NASCIMENTO das irmãs de um estouro** — some `speed` na velocidade de cada
+/// pulse-born, numa direção sorteada da PRÓPRIA identidade dela.
+///
+/// ⚠️ **É ADITIVO à velocidade herdada, e isso é o modelo:** uma faísca lançada de um foguete
+/// que subia continua subindo *e* se abre. Substituir a herdada apagaria o movimento do pai,
+/// que é justamente o que o `died` foi buscar.
+///
+/// ⚠️ **Só os pulse-born**, que são a cauda da lista (`rate_n..`): um rate-born pega uma LINHA
+/// distinta do template, então ele já nasce separado dos irmãos e não tem simetria a quebrar.
+/// É também o que mantém esta lei fora do caminho de GPU — o nascimento por pulso já recusa o
+/// dispositivo por declaração, então não há um segundo motor para divergir deste.
+///
+/// ⚠️ **E a coluna `vel` pode não existir no template** (uma fonte `motion.grid` não a
+/// carrega). Materializá-la em zeros é o neutro que o `sim.step` já usa (*"a row with no
+/// `vel`"*), e sem isso um estouro a partir de uma fonte parada não faria nada — em silêncio.
+fn burst_kick(out: &mut Stream, pulse_ids: &[u32], rate_n: usize, speed: f32, seed: u32) {
+    if speed == 0.0 || pulse_ids.is_empty() {
+        return;
+    }
+    let n = out.count();
+    let mut vel = match out.get("vel") {
+        Some(Column::Vec2(v)) if v.len() == n => v.clone(),
+        _ => vec![[0.0, 0.0]; n],
+    };
+    for (j, id) in pulse_ids.iter().enumerate() {
+        let Some(slot) = vel.get_mut(rate_n + j) else {
+            break;
+        };
+        // A fase é o sorteio da própria filha: irmãs têm ids distintos por construção
+        // (`PULSE_ID_BASE + base + j`), logo direções distintas.
+        let (cx, sy) = trig::cos_sin_cycles(hash::rand01(seed, *id, LANE_BURST));
+        slot[0] += cx * speed;
+        slot[1] += sy * speed;
+    }
+    out.set("vel".to_string(), Column::Vec2(vel));
 }
 
 fn gather(col: &Column, rows: &[usize]) -> Column {
@@ -451,10 +516,21 @@ impl NodeOp for SimSpawn {
             .map(|k| k % span)
             .collect();
         let mut rows: Vec<usize> = ids.iter().map(|id| slot(*id, n, scatter, seed)).collect();
+        // Onde termina o nascimento por TAXA e começa o por PULSO. O índice, e não uma
+        // faixa de id: o `PULSE_ID_BASE` só carva a metade **quando um pulso está fiado**,
+        // então `id >= base` não distingue os dois no caso geral.
+        let rate_n = ids.len();
         let (pulse_ids, pulse_rows) = pulse_born(ctx.input(1), n, burst, ctx.playhead(), ctx.dt());
         ids.extend(pulse_ids);
         rows.extend(pulse_rows);
-        let out = newborns(ctx.input(0), &ids, &rows);
+        let mut out = newborns(ctx.input(0), &ids, &rows);
+        burst_kick(
+            &mut out,
+            &ids[rate_n..],
+            rate_n,
+            ctx.param("burst_speed"),
+            seed,
+        );
         ctx.emit(out);
     }
 }
@@ -515,6 +591,17 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 32.0,
         step: 1.0,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "burst_speed",
+        label: "Burst Speed",
+        min: 0.0,
+        // A faixa CONFORTÁVEL do arrasto (doc 88 B2), não um teto: acima disto o estouro
+        // ainda é legível, só sai de quadro depressa. Sem `ParamHardMax` de propósito — o
+        // recurso não existe (é uma velocidade somada, e a sim já capa nada).
+        max: 8.0,
+        step: 0.1,
         widget: ParamWidget::Slider,
     },
 ];

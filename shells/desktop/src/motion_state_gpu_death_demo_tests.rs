@@ -109,6 +109,58 @@ fn the_cascade_keeps_multiplying() {
     );
 }
 
+/// **AS IRMÃS SE SEPARAM — o report do Enio, virado gate.**
+///
+/// *"não se dividem, as filhas ficam juntas como uma só"* (2026-08-10), e a medição deu o
+/// mecanismo: as duas nasciam com `P` **e** `vel` bit-idênticos, e **toda força deste
+/// catálogo é função da POSIÇÃO** — `curl(P)` dá a duas partículas no mesmo ponto a mesma
+/// aceleração, para sempre. Não era afinação: era impossibilidade.
+///
+/// O gate mede a única coisa que o olho vê — **quantos pontos distintos há na tela** — meio
+/// segundo depois do 1º estouro. Com o impulso são [`SEEDS`]·[`BURST`]; sem ele, [`SEEDS`],
+/// porque cada par viaja empilhado.
+#[test]
+fn the_siblings_of_a_burst_fly_apart() {
+    let reg = registry();
+    let mut doc = MotionDoc::default();
+    let sinks = build_gpu_death_demo_document(&mut doc, &reg).expect("cena");
+    let mut cook = Cook::new();
+    let mut distinct = 0usize;
+    for k in 0..=100u64 {
+        let t = k as f64 / 60.0;
+        let s = cook.cook(&doc.graph, &reg, sinks[0], t).expect("cozinha")[0]
+            .as_stream()
+            .clone();
+        if k == 100 {
+            // Meio segundo depois do estouro (medido em k = 66).
+            let p = match s.get("P") {
+                Some(ph2d_nodegraph::attr::Column::Vec2(v)) => v.clone(),
+                _ => vec![],
+            };
+            assert_eq!(p.len(), (SEEDS * BURST) as usize, "as seis da 1ª geração");
+            // Distintos a 1 mm — bem abaixo da separação medida e bem acima do ruído.
+            let mut seen: Vec<[f32; 2]> = Vec::new();
+            for q in &p {
+                if !seen
+                    .iter()
+                    .any(|r| (r[0] - q[0]).abs() < 1e-3 && (r[1] - q[1]).abs() < 1e-3)
+                {
+                    seen.push(*q);
+                }
+            }
+            distinct = seen.len();
+        }
+        cook.advance_tick(&doc.graph, &reg, t).expect("avança");
+    }
+    assert_eq!(
+        distinct,
+        (SEEDS * BURST) as usize,
+        "cada irmã é um ponto próprio na tela; com `burst_speed = 0` seriam {} \
+         (cada par empilhado), que é exatamente o que o Enio viu",
+        SEEDS as usize
+    );
+}
+
 /// **A SONDA** — imprime a população quadro a quadro, de onde saem os números do anúncio.
 ///
 /// `cargo test -p ph2d-host-desktop --lib death_demo::tests::probe -- --ignored --nocapture`
@@ -122,4 +174,39 @@ fn probe_population() {
         }
     }
     eprintln!("série completa: {n:?}");
+}
+
+/// **SONDA do report do Enio** (*"não se dividem, as filhas ficam juntas como uma só"*):
+/// imprime a posição e a velocidade de cada elemento nos tiques em torno do 1º estouro.
+#[test]
+#[ignore]
+fn probe_siblings() {
+    let reg = registry();
+    let mut doc = MotionDoc::default();
+    let sinks = build_gpu_death_demo_document(&mut doc, &reg).expect("cena");
+    let mut cook = Cook::new();
+    for k in 0..=150u64 {
+        let t = k as f64 / 60.0;
+        let s = cook.cook(&doc.graph, &reg, sinks[0], t).expect("cozinha")[0]
+            .as_stream()
+            .clone();
+        if (66..=70).contains(&k) || k == 90 || k == 120 || k == 150 {
+            let p = match s.get("P") {
+                Some(ph2d_nodegraph::attr::Column::Vec2(v)) => v.clone(),
+                _ => vec![],
+            };
+            let vel = match s.get("vel") {
+                Some(ph2d_nodegraph::attr::Column::Vec2(v)) => v.clone(),
+                _ => vec![],
+            };
+            eprintln!("k={k} n={}", s.count());
+            for (i, (pp, vv)) in p.iter().zip(vel.iter()).enumerate().take(6) {
+                eprintln!(
+                    "   [{i}] P=({:.4},{:.4})  vel=({:.4},{:.4})",
+                    pp[0], pp[1], vv[0], vv[1]
+                );
+            }
+        }
+        cook.advance_tick(&doc.graph, &reg, t).expect("avança");
+    }
 }

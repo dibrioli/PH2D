@@ -26,10 +26,19 @@
 //! dá à luz"* significa quando quem nasce pode morrer. Com `BURST = 2` ela é **contável a
 //! olho** nas primeiras gerações, que é o que faz dela um oráculo em vez de uma nuvem.
 //!
-//! ⚠️ **E o `force.curl` não é enfeite:** um filho herda **toda** coluna do cadáver, inclusive
-//! a velocidade, então sem um campo que os separe os `BURST` filhos viajariam empilhados como
-//! um ponto só — a lei estaria certa e **invisível**. O curl é divergence-free (Bridson), logo
-//! espalha sem inflar o conjunto.
+//! ⚠️ **AS IRMÃS PRECISAM DE UM IMPULSO DE NASCIMENTO, e um campo de força NÃO SERVE — este
+//! módulo afirmava o contrário e o smoke do Enio o derrubou** (*"não se dividem, as filhas
+//! ficam juntas como uma só"*). Eu tinha posto o `force.curl` aqui como *o espalhador*; a
+//! medição diz que ele é **provadamente incapaz**: um filho herda toda coluna do cadáver, e
+//! `curl(P)` é função da POSIÇÃO — duas partículas no mesmo `P` recebem a MESMA aceleração,
+//! então duas irmãs são o mesmo elemento em tudo o que se observa menos o `id`, para sempre
+//! (medido: bit-idênticas em P e vel por 150 tiques). A simetria só quebra no NASCIMENTO,
+//! pela única coisa que difere entre irmãs — o id —, e é isso que o
+//! [`BURST_SPEED`] (o param `burst_speed` do `sim.spawn`) faz.
+//!
+//! O `force.curl` FICA, e agora com o papel honesto: depois de separadas, ele dá a cada uma
+//! uma deriva própria (`P` já difere ⇒ o campo já difere), o que faz a cascata parecer viva
+//! em vez de simétrica. Ele não é o que as separa.
 
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
@@ -43,6 +52,14 @@ pub(super) const SEEDS: f32 = 3.0;
 /// geração é a anterior VEZES este número, e um artista conta 3 → 6 → 12 sem sonda nenhuma.
 /// Um burst grande faria a mesma lei virar uma nuvem em dois segundos.
 pub(super) const BURST: f32 = 2.0;
+/// A velocidade com que as duas irmãs se SEPARAM ao nascer — o que o report do Enio pedia.
+///
+/// **MEDIDA** (`probe_siblings`): a 1,8 as duas nascem no mesmo ponto com velocidades
+/// distintas e já estão a **0,09 unidade** uma da outra DOIS tiques depois; meio segundo
+/// depois a tela mostra seis pontos distintos onde antes mostrava três (o gate
+/// `the_siblings_of_a_burst_fly_apart`). Abaixo de ~0,5 o par ainda lê como um borrão nesta
+/// escala; muito acima, a geração sai de quadro antes de morrer.
+pub(super) const BURST_SPEED: f32 = 1.8;
 /// A vida nominal de um elemento. **MEDIDA contra o relógio do smoke:** a 1,5 s cabem umas
 /// quatro gerações nos primeiros seis segundos, que é o tempo que alguém olha uma cena antes
 /// de decidir se ela está certa.
@@ -74,7 +91,8 @@ pub(super) fn build_gpu_death_demo_document(
     g.set_param(wind, "angle", 90.0); // para cima: as centelhas SOBEM
     g.set_param(wind, "strength", 1.4);
     g.set_param(wind, "gust", 0.0);
-    // O espalhador — sem ele os filhos de uma morte viajam empilhados (ver o doc do módulo).
+    // A deriva orgânica DEPOIS de as irmãs já estarem separadas — ele não é o que as separa
+    // (ver o doc do módulo: um campo de posição não pode).
     let curl = g.add_node("force.curl");
     g.set_param(curl, "strength", 2.6);
     g.set_param(curl, "scale", 0.7);
@@ -94,6 +112,7 @@ pub(super) fn build_gpu_death_demo_document(
     let spawn = g.add_node("sim.spawn");
     g.set_param(spawn, "rate", 0.0); // SÓ a morte dá à luz
     g.set_param(spawn, "burst", BURST);
+    g.set_param(spawn, "burst_speed", BURST_SPEED);
     let combine = g.add_node("motion.combine");
     let out = g.add_node("motion.output");
 

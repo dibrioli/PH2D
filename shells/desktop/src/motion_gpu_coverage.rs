@@ -58,6 +58,7 @@ use super::gpu_pulse_demo::build_gpu_pulse_gate_demo_document;
 use super::gpu_radius_demo::build_gpu_radius_demo_document;
 use super::gpu_ramp_demo::{RAMP_DEG, build_gpu_ramp_demo_document};
 use super::gpu_spawn_pulse_demo::build_gpu_spawn_pulse_demo_document;
+use super::gpu_speed_demo::{LIMIT, build_gpu_speed_demo_document};
 use super::gpu_voronoi_demo::build_gpu_voronoi_demo_document;
 use super::gpu_zone_demo::build_gpu_zone_demo_document;
 use ph2d_motion_doc::MotionDoc;
@@ -215,6 +216,13 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     push(
         "demo=30 the impact mark (a collision becomes readable)",
         &|d| build_gpu_hit_demo_document(d, reg, MARK),
+    );
+    // ⚠️ E o TETO pelo mesmo motivo: o `sim.step` ganhou um clamp NO MEIO do passo, entre a
+    // velocidade e a posição, e um corpus que nunca o arma é um corpus cujo caminho de device o
+    // censo nunca percorre.
+    push(
+        "demo=31 the speed ceiling (a per-element cap on velocity)",
+        &|d| build_gpu_speed_demo_document(d, reg, LIMIT),
     );
     push("demo=10 sim.zone snow globe", &|d| {
         build_gpu_zone_demo_document(d, reg)

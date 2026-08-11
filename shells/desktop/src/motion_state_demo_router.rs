@@ -210,6 +210,19 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
             );
             sinks
         }
+        Ok("31") => {
+            let sinks =
+                gpu_speed_demo::build_gpu_speed_demo_document(doc, registry, gpu_speed_demo::LIMIT)
+                    .unwrap_or_default();
+            // Os números são MEDIDOS (`probe_speed_ceiling`), não escolhidos.
+            eprintln!(
+                "[speed-demo] O TETO DE VELOCIDADE: um atrator forte puxa {} elementos, e perto\n                   do centro a velocidade explode. O `sim.step` ganhou um teto ({} u/s) que capa a\n                   DISTANCIA que cada um anda no tique -- entre a velocidade e a posicao, nao depois.\n\
+                   (!) O A/B e' o proprio controle: selecione o `Simulation Step` e ponha\n                   Speed Limit em 0 (zero e' DESLIGADO, nao 'congele'). A nuvem volta a se\n                   estilingar para fora de quadro.",
+                (gpu_speed_demo::ROWS * gpu_speed_demo::COLS) as u32,
+                gpu_speed_demo::LIMIT,
+            );
+            sinks
+        }
         // **Sem env: a TELA VAZIA** (Enio, 2026-08-07: *"tire a cena da cachoeira"*). O
         // editor abria com a neve caindo no mar — um sistema de partículas inteiro que o
         // artista tinha de apagar antes de começar. Quem quiser um grafo o traz pelo

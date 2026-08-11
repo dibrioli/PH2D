@@ -88,6 +88,11 @@ mod gpu_ramp_demo;
 /// a `=23` gateia quem escuta, esta gateia quem nasce.
 #[path = "motion_state_gpu_spawn_pulse_demo.rs"]
 mod gpu_spawn_pulse_demo;
+/// A cena do TETO DE VELOCIDADE (doc 89, folha 13), arquivo próprio pela mesma razão: ela
+/// responde *"uma operação por-ELEMENTO sobre a velocidade é exprimível?"* — a folha mediu que
+/// nenhuma cadeia do catálogo escreve `vel` por elemento, e um atrator forte é onde isso dói.
+#[path = "motion_state_gpu_speed_demo.rs"]
+mod gpu_speed_demo;
 /// The Lloyd/JFA scene (ADR-0139), its own file for the same reason: it answers
 /// "does a node whose cook is a multi-pass ALGORITHM run on the device?".
 #[path = "motion_state_gpu_voronoi_demo.rs"]

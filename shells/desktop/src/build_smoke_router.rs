@@ -326,5 +326,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::signal_table_smoke::frame(app, f);
         return true;
     }
+    // ⭐ A cena da GRADE (=69) — irmã `grid_smoke`. As cores formam COLUNAS numa grade e ficam
+    // ESPALHADAS no `RowWrap` que é o controle, com os MESMOS filhos.
+    if level == 69 {
+        crate::grid_smoke::frame(app, f);
+        return true;
+    }
     false
 }

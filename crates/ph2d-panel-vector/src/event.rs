@@ -217,26 +217,11 @@ pub(crate) fn apply_event(
         // e **nunca virava `SetValue`**. Enio: *"Z-index não funcionou"*. Um campo que aceita
         // teclas e não fala com ninguém é a forma mais cara de um controlo nascer morto, porque
         // parece vivo. O gate que existia media o CLIQUE (o foco); o que faltava mede o COMMIT.
-        WidgetEvent::ValueChanged(id)
-            if id == ids::VECTOR_TRANSFORM_X
-                || id == ids::VECTOR_TRANSFORM_Y
-                || id == ids::VECTOR_TRANSFORM_W
-                || id == ids::VECTOR_TRANSFORM_H
-                || id == ids::VECTOR_ARRANGE_Z
-                || crate::populate::layout::LAYOUT_FIELDS.contains(&id) =>
-        {
-            let val = host.store().number_value(id).unwrap_or(0.0);
-            host.bus_mut()
-                .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, val)));
-            true
-        }
+        WidgetEvent::ValueChanged(id) if is_shell_owned_number(id) => forward_number(host, id),
         // **Campo de forma** (genérico): o id carrega o ÍNDICE do parâmetro no catálogo;
         // a forma em foco diz o que ele significa. Encaminha o VALOR (não um track).
         WidgetEvent::ValueChanged(id) if state::shape_field_index(id).is_some() => {
-            let val = host.store().number_value(id).unwrap_or(0.0);
-            host.bus_mut()
-                .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, val)));
-            true
+            forward_number(host, id)
         }
         // **Campo de ESCOLHA** (o ponto de vista de um sólido): o clique CICLA. O botão tem
         // id próprio, mas o valor mora no slot numérico do mesmo índice — então o `SetValue`
@@ -351,12 +336,7 @@ pub(crate) fn apply_event(
         // (`"layer:channel:index:x:y"`) que não são opção de rádio nenhuma. Um variante novo
         // custaria ADR + Coord-only para dizer o que este já diz.
         WidgetEvent::Submit(id) | WidgetEvent::Blur(id) if signal_name_row(id).is_some() => {
-            let text = host.store().text(id).unwrap_or_default().to_string();
-            host.bus_mut()
-                .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                    id, text,
-                )));
-            true
+            signal_name_commit(host, id)
         }
         WidgetEvent::Click(id) if forwards_plain_click(id) => {
             seam_reset_button(host, id);
@@ -553,3 +533,49 @@ mod contour;
 
 #[path = "event_filters.rs"]
 mod filters;
+
+/// **O COMMIT do campo de nome de um sinal** (item 4 do estudo dos contêineres) — extraído do
+/// [`apply_event`] pelo teto de 200 LOC por função.
+///
+/// ⚠️ Ele viaja por `SelectOption`, e não por um variante próprio: o `PanelEvent` é **contrato
+/// congelado** (§6), e o `SelectOption(NodeId, String)` já é o canal string-valued deste app — o
+/// Painter carrega `"layer:channel:index:x:y"` nele.
+///
+/// ⚠️ E o braço nasceu dentro do irmão, empurrando-o de 195 para 213 sem ninguém ver: o gate mora
+/// em `ph2d-editor-core/tests/`, e um fechamento por `cargo test -p ph2d-panel-vector` não o
+/// alcança.
+fn signal_name_commit(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
+    let text = host.store().text(id).unwrap_or_default().to_string();
+    host.bus_mut()
+        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+            id, text,
+        )));
+    true
+}
+
+/// **Os campos numéricos cujo valor mora no DOCUMENTO**, e por isso viajam para a shell.
+///
+/// ⚠️ A lista dos treze do auto layout é a que o `populate` regista — um campo novo entra numa
+/// lista só. E o **Z-INDEX está aqui por um bug de produto**: ele era pintado, registado e vivo sob
+/// o rato, mas o `ValueChanged` do commit caía no catch-all e nunca virava `SetValue` (Enio,
+/// 2026-08-04: *"Z-index não funcionou"*). Um campo que aceita teclas e não fala com ninguém é a
+/// forma mais cara de um controlo nascer morto, porque parece vivo.
+fn is_shell_owned_number(id: ph2d_a11y::NodeId) -> bool {
+    id == ids::VECTOR_TRANSFORM_X
+        || id == ids::VECTOR_TRANSFORM_Y
+        || id == ids::VECTOR_TRANSFORM_W
+        || id == ids::VECTOR_TRANSFORM_H
+        || id == ids::VECTOR_ARRANGE_Z
+        || crate::populate::layout::LAYOUT_FIELDS.contains(&id)
+}
+
+/// **Encaminha o VALOR de um campo numérico** — a porta que os dois braços de commit partilham.
+///
+/// ⚠️ Ela existe porque o corpo estava escrito DUAS vezes, uma em cada braço, e duas cópias do
+/// mesmo encaminhamento é como a terceira nasce com um `unwrap_or` diferente das outras.
+fn forward_number(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
+    let val = host.store().number_value(id).unwrap_or(0.0);
+    host.bus_mut()
+        .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, val)));
+    true
+}

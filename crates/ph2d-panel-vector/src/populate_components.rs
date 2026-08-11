@@ -107,38 +107,14 @@ pub(super) fn component_controls(store: &mut WidgetStore) {
             );
         }
     }
-    // ⭐ **A TABELA SINAL → PAPEL** (item 4 do estudo dos contêineres): por linha do pool, os
-    // quatro chips de papel e a lixeira; mais o botão que acrescenta. Registados para o POOL
-    // inteiro pela mesma razão dos verbos acima — o `populate` corre uma vez, sem seleção, então
-    // registar "as ligações de agora" seria registar nenhuma, e as linhas nasceriam pintadas e
-    // mortas sob o rato assim que o artista apertasse *Add*.
-    //
-    // ⚠️ **O campo de NOME não é registado aqui**, e é a única assimetria: ele é semeado pelo
-    // espelho (`paint_signals::mirror`), que corre por frame com a loja mutável porque o buffer
-    // tem de acompanhar o texto autorado. Registá-lo duas vezes daria duas respostas para *"o
-    // que está escrito neste campo?"*.
-    for i in 0..ids::MAX_SIGNAL_BINDINGS {
-        for r in 0..ids::MAX_STATE_ROLES {
-            store.register(
-                ids::vector_state_signal_role_id(i, r),
-                InteractiveState::Button {
-                    state: ButtonState::Normal,
-                },
-            );
-        }
-        store.register(
-            ids::vector_state_signal_remove_id(i),
-            InteractiveState::Button {
-                state: ButtonState::Normal,
-            },
-        );
-    }
-    store.register(
-        ids::VECTOR_STATE_SIGNAL_ADD,
-        InteractiveState::Button {
-            state: ButtonState::Normal,
-        },
-    );
+    signal_table_controls(store);
+    easing_controls(store);
+}
+
+/// **O SELETOR DE CURVA e os dois trilhos da MOLA** (W7) — extraídos do [`component_controls`] pelo
+/// mesmo teto, e pelo mesmo corte: *que forma tem a transição* é uma pergunta, e *que poses este
+/// hospedeiro tem* é outra.
+fn easing_controls(store: &mut WidgetStore) {
     // **O SELETOR DE CURVA** (W7): as onze famílias e os três modos. Registados TODOS, e não só
     // os da família de agora — o `populate` corre uma vez, sem seleção, e a fileira do modo é
     // pintada ou escondida por frame conforme a família escolhida use o modo ou não. Registar "o
@@ -290,3 +266,47 @@ pub(crate) const WIDGET_BUTTONS: &[ph2d_a11y::NodeId] = &[
     ids::VECTOR_WIDGET_BIND,
     ids::VECTOR_WIDGET_UNBIND,
 ];
+
+/// **A TABELA SINAL → PAPEL** (item 4 do estudo dos contêineres) — extraída do
+/// [`component_controls`] pelo teto de 200 LOC por função, e o corte é por ASSUNTO: aqui mora
+/// *quem escuta um nome*, e o que fica lá responde outra pergunta (*que poses este hospedeiro
+/// tem*).
+///
+/// ⚠️ **Ela nasceu DENTRO do irmão e passou por cima do teto sem ninguém ver:** o gate mora em
+/// `ph2d-editor-core/tests/`, e um fechamento por `cargo test -p ph2d-panel-vector` não o alcança —
+/// a mesma causa estrutural que três linhas deste repo já pagaram. Medido: a função estava em 200
+/// no `main` e saiu da wave anterior em 232.
+fn signal_table_controls(store: &mut WidgetStore) {
+    // ⭐ **A TABELA SINAL → PAPEL** (item 4 do estudo dos contêineres): por linha do pool, os
+    // quatro chips de papel e a lixeira; mais o botão que acrescenta. Registados para o POOL
+    // inteiro pela mesma razão dos verbos acima — o `populate` corre uma vez, sem seleção, então
+    // registar "as ligações de agora" seria registar nenhuma, e as linhas nasceriam pintadas e
+    // mortas sob o rato assim que o artista apertasse *Add*.
+    //
+    // ⚠️ **O campo de NOME não é registado aqui**, e é a única assimetria: ele é semeado pelo
+    // espelho (`paint_signals::mirror`), que corre por frame com a loja mutável porque o buffer
+    // tem de acompanhar o texto autorado. Registá-lo duas vezes daria duas respostas para *"o
+    // que está escrito neste campo?"*.
+    for i in 0..ids::MAX_SIGNAL_BINDINGS {
+        for r in 0..ids::MAX_STATE_ROLES {
+            store.register(
+                ids::vector_state_signal_role_id(i, r),
+                InteractiveState::Button {
+                    state: ButtonState::Normal,
+                },
+            );
+        }
+        store.register(
+            ids::vector_state_signal_remove_id(i),
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
+    store.register(
+        ids::VECTOR_STATE_SIGNAL_ADD,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
+}

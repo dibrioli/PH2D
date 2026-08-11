@@ -358,6 +358,7 @@ mod sizing_smoke;
 mod sketch_hatch_smoke;
 mod smoke_layout;
 mod smoke_script;
+mod snap_label_smoke;
 mod splice_smoke;
 mod stack_smoke;
 mod stagger_smoke;

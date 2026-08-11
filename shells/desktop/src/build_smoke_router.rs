@@ -344,5 +344,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::lasso_smoke::frame(app, f);
         return true;
     }
+    // ⭐ O RÓTULO DE DISTÂNCIA (=72) — irmã `snap_label_smoke`. Duas superfícies na MESMA tela
+    // (a régua e a ficha), porque a pergunta da wave é se elas dizem o mesmo número.
+    if level == 72 {
+        crate::snap_label_smoke::frame(app, f);
+        return true;
+    }
     false
 }

@@ -107,6 +107,63 @@ pub fn draw_snap_guides(guides: &[Guide], transform: Affine, target: &mut Vector
     }
 }
 
+/// **Onde um rótulo de distância pousa, e que distância ele diz** (plano 25 §9, a W6).
+///
+/// Geometria pura: o comprimento sai em MUNDO e a âncora em px de TELA. Este módulo não sabe
+/// o que é uma unidade de display — quem formata é a porta do editor
+/// (`ph2d_editor_core::LengthDisplay`), e é ela que garante que o número aqui e o da régua
+/// sejam a mesma resposta.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct GuideLabel {
+    /// O comprimento do segmento que a guia desenha, em unidades de MUNDO.
+    pub world_len: f64,
+    /// O ponto médio do segmento, em px de tela — onde a ficha do número pousa.
+    pub at: [f64; 2],
+}
+
+/// O comprimento mínimo, em px de tela, de um segmento que merece número.
+///
+/// ⚠️ **DERIVADO, não escolhido:** a guia de alinhamento é capeada por uma cruz em cada ponta,
+/// e cada cruz mede `2 × TICK_PX` de ponta a ponta. Um segmento menor que as DUAS cruzes está
+/// inteiramente coberto pelas próprias marcas — não há segmento visível para rotular, e o
+/// número que ele diria é a distância entre duas coisas que a tela mostra como uma só.
+const MIN_LABEL_SEG_PX: f64 = 4.0 * TICK_PX;
+
+/// Os rótulos que este conjunto de guias merece, em px de tela.
+///
+/// # A lei, em duas frases
+///
+/// **Só a guia de ALINHAMENTO tem o que medir.** As outras quatro espécies são pontos
+/// (`a == b`): a grade, o pouso sobre a curva, o cruzamento e o alfinete de guia dizem *você
+/// está AQUI*, e a distância deles é zero por construção. Um `0` flutuante ao lado de cada
+/// encaixe seria ruído com aparência de informação.
+///
+/// **E o rótulo mede o que se VÊ.** Um alinhamento que pousa exatamente sobre o alvo (os dois
+/// eixos vindos do mesmo ponto — a coincidência que a lei *vértice vence curva* trata como
+/// caso normal) desenha um segmento de comprimento zero; ele não recebe número pela MESMA
+/// regra que dispensa as espécies de ponto, sem caso especial a escrever.
+#[must_use]
+pub fn snap_labels(guides: &[Guide], transform: Affine) -> Vec<GuideLabel> {
+    let mut out = Vec::new();
+    for g in guides {
+        if g.kind != GuideKind::Align {
+            continue;
+        }
+        let a = transform * Point::new(g.a[0], g.a[1]);
+        let b = transform * Point::new(g.b[0], g.b[1]);
+        let (dx, dy) = (b.x - a.x, b.y - a.y);
+        if dx * dx + dy * dy < MIN_LABEL_SEG_PX * MIN_LABEL_SEG_PX {
+            continue;
+        }
+        let (wx, wy) = (g.b[0] - g.a[0], g.b[1] - g.a[1]);
+        out.push(GuideLabel {
+            world_len: (wx * wx + wy * wy).sqrt(),
+            at: [(a.x + b.x) * 0.5, (a.y + b.y) * 0.5],
+        });
+    }
+    out
+}
+
 /// As **guias do DOCUMENTO** — as linhas que o artista arrastou da régua.
 ///
 /// Traço **SÓLIDO e fino**, contra o tracejado das guias de snap: as duas são referências de
@@ -241,3 +298,7 @@ fn ring(p: Point) -> BezPath {
     c.close_path();
     c
 }
+
+#[cfg(test)]
+#[path = "guides_tests.rs"]
+mod tests;

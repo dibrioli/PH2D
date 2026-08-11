@@ -262,6 +262,8 @@ mod upscale_bridge;
 /// **A ponte dos ESTADOS de UI** (plano UI/UX W7) — quem faz a cena ANDAR entre duas poses.
 pub(crate) mod ui_preview;
 pub(crate) mod ui_state_bridge;
+/// O NÚMERO do smart guide — a ficha de distância; veja os docs do módulo.
+mod vec_snap_labels;
 pub(crate) mod vector_bridge;
 
 use crate::*;
@@ -7982,6 +7984,21 @@ impl crate::App {
                     vector_scene,
                 );
                 ph2d_vec_render::draw_snap_guides(&self.vec_snap_guides, cam_affine, vector_scene);
+                // **O NÚMERO da guia** — depois do traço dela, porque a cena tem de estar
+                // livre para o renderizador de texto (a mesma ordem do readout de joint).
+                // O zoom sai do MESMO afim que acabou de desenhar o segmento: a precisão
+                // que a ficha mostra é a que aquele desenho de fato resolve.
+                let c = cam_affine.as_coeffs();
+                let px_per_world = (c[0] * c[0] + c[1] * c[1]).sqrt();
+                super::render_loop::vec_snap_labels::draw(
+                    &self.vec_snap_guides,
+                    cam_affine,
+                    px_per_world,
+                    ph2d_editor::LengthDisplay::of(&hero.project),
+                    hero.theme,
+                    paint_ctx.text,
+                    vector_scene,
+                );
             }
             // **As linhas da SIMETRIA** — *"quando ligada linhas aparecem no canvas"* (Enio).
             //

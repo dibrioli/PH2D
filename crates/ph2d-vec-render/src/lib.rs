@@ -47,7 +47,10 @@ mod marquee;
 pub use cut_line::draw_cut_line;
 pub use marquee::{draw_lasso, draw_marquee};
 mod guides;
-pub use guides::{Guide, GuideKind, draw_document_guides, draw_snap_guides, draw_text_caret};
+pub use guides::{
+    Guide, GuideKind, GuideLabel, draw_document_guides, draw_snap_guides, draw_text_caret,
+    snap_labels,
+};
 /// As linhas de SIMETRIA no canvas (plano 25 W6.3) — irmão de `guides` e consumidor do mesmo
 /// recortador de reta: um eixo e uma guia atravessam a tela pela mesma aritmética.
 mod symmetry_overlay;

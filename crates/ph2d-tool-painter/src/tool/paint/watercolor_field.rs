@@ -1,9 +1,13 @@
 //! Watercolor **field math** — the deterministic building blocks of the optical composite
 //! ([`super::watercolor_render`]): the integer-hash value noise (warp + built-in paper tooth), the
-//! smoothstep / bilinear samplers and the O(n) separable box blur, plus the per-stroke [`WetStrokeStyle`]
-//! + session tables. The optical `s2l`/`ln`/`exp` LUTs live in [`super::watercolor_lut`] (re-exported
-//! below so callers keep using `watercolor_field::{Luts, luts}`). Split from `watercolor_render.rs` for
-//! the workspace LOC cap.
+//! smoothstep / bilinear samplers and the O(n) separable box blur, plus the per-stroke
+//! [`WetStrokeStyle`] + session tables.
+//!
+//! Os vizinhos, todos re-exportados aqui para os chamadores manterem o caminho plano
+//! `watercolor_field::*`: as LUTs ópticas `s2l`/`ln`/`exp` em [`super::watercolor_lut`], o ruído
+//! ancorado no canvas em [`super::watercolor_noise`], e a **reconstrução da silhueta** (o
+//! `aa_coverage` e o vão que decide o que É uma silhueta) em [`super::watercolor_aa`]. Todos os
+//! cortes são do teto de LOC da workspace, e todos por ASSUNTO.
 
 pub(super) use super::watercolor_lut::*;
 use rayon::prelude::*;
@@ -12,6 +16,10 @@ use rayon::prelude::*;
 // seamless across the tile seam live in the sibling `watercolor_noise` (LOC split); re-exported so this
 // module's callers (`paper_h_px`, `water_at`) and the composite keep the flat `watercolor_field::*` path.
 pub(super) use super::watercolor_noise::*;
+
+// A reconstrução da silhueta mora no irmão [`super::watercolor_aa`] (teto de LOC, corte por
+// assunto); re-exportada aqui para os chamadores manterem o caminho plano `watercolor_field::*`.
+pub(super) use super::watercolor_aa::*;
 
 /// Smoothstep from `e0` to `e1` evaluated at `x` (cubic; clamps outside the edges).
 #[inline]
@@ -40,121 +48,6 @@ pub(super) fn sample_bilinear(src: &[f32], w: usize, h: usize, fx: f32, fy: f32)
     let top = a + (b - a) * tx;
     let bot = c + (d - c) * tx;
     top + (bot - top) * ty
-}
-
-/// Bilinear sample **plus** the field's screen-space gradient magnitude at `(fx, fy)`, in field units
-/// per texel — the `fwidth` estimate `|∂/∂x| + |∂/∂y|` of the same bilinear patch (reads the SAME four
-/// texels as [`sample_bilinear`], value bit-identical to it). [`aa_coverage`] uses the gradient to
-/// decide whether the neighbourhood is a transition at all (flat ⇒ single sample, byte-identical).
-#[inline]
-pub(super) fn sample_bilinear_grad(
-    src: &[f32],
-    w: usize,
-    h: usize,
-    fx: f32,
-    fy: f32,
-) -> (f32, f32) {
-    let fx = fx.clamp(0.0, (w - 1) as f32);
-    let fy = fy.clamp(0.0, (h - 1) as f32);
-    let x0 = fx.floor() as usize;
-    let y0 = fy.floor() as usize;
-    let x1 = (x0 + 1).min(w - 1);
-    let y1 = (y0 + 1).min(h - 1);
-    let tx = fx - x0 as f32;
-    let ty = fy - y0 as f32;
-    let a = src[y0 * w + x0];
-    let b = src[y0 * w + x1];
-    let c = src[y1 * w + x0];
-    let d = src[y1 * w + x1];
-    let top = a + (b - a) * tx;
-    let bot = c + (d - c) * tx;
-    let val = top + (bot - top) * ty;
-    // Analytic gradient of the bilinear interpolant, per texel (∂x holds y, ∂y holds x).
-    let dcdx = (b - a) * (1.0 - ty) + (d - c) * ty;
-    let dcdy = (c - a) * (1.0 - tx) + (d - b) * tx;
-    (val, dcdx.abs() + dcdy.abs())
-}
-
-/// Sub-texel offsets of the edge-reconstruction grid (3×3, spanning ±0.667 texel). Wider than the
-/// unit ±0.5 box on purpose: the watercolor silhouette's HARDENED coverage crosses `[e0, e1]` in well
-/// under one texel on a thin stroke (`feather` rim + `smoothstep`), so a unit box barely reaches across
-/// it — a ~1.3-texel footprint reconstructs the sub-texel step as a soft ramp of about the plain
-/// painter's edge width. `LITERAL-PX-OK`: AA reconstruction geometry.
-const AA_SS: [f32; 3] = [-0.667, 0.0, 0.667]; // LITERAL-PX-OK
-
-/// The hardened silhouette coverage `smoothstep(e0, e1, coverage)` at `(sx, sy)` **plus the screen-space
-/// AA alpha the composite must apply to the finished pixel** (Enio 2026-07-20, "borda dura pixelada" em
-/// traço fino). Returns `(cw, aa_alpha)`.
-///
-/// Two findings shaped this (both measured on rendered pixels):
-/// - A thin stroke's silhouette crosses the hardening window `[e0, e1]` in ~a texel, and the OPTICAL
-///   model downstream is exponential — the edge-darkening fringe + Beer–Lambert saturate to full dark
-///   at small `cw`, so even a 2-texel coverage ramp renders as a binary cliff (radius 10: `255, 190, 1`).
-///   Feeding an anti-aliased `cw` into the density is therefore NOT anti-aliasing: the exponential eats
-///   the fraction. The fraction must be applied as **linear alpha on the finished pixel** — shading may
-///   saturate all it wants; the blend against the paper is linear in coverage (the classic rasterizer
-///   split of shape × shading).
-/// - The fraction itself needs sub-texel reconstruction ([`AA_SS`] supersampling): on very thin strokes
-///   the hardened coverage jumps 0→1 inside one texel, so a single sample has no fraction to offer.
-///
-/// The treatment applies to **every transition** (thick strokes included — the second smoke's order:
-/// the saturation steepens the thick rim's perceived edge too, and the AA'd thin strokes came out
-/// "melhores que traços grossos"); only a genuinely FLAT neighbourhood (`grad == 0`: the wash's
-/// interior plateau, open paper) takes the single sample and is byte-identical. It is halo-free:
-/// nothing widens the window, so a fully-outside texel stays exactly `(0, …)` = paper.
-/// `pos(ox, oy)` maps a sub-texel OUTPUT offset to the coverage-space sample position — the caller
-/// routes it through the full Ragged-Edge warp (`pos(0,0)` must be the pixel's own warped centre), so
-/// the supersamples span the output texel's TRUE footprint. Offsetting in warped space instead reads
-/// a footprint far too small under a strong warp (adjacent output texels' warped positions sit up to
-/// `1 + amp·0.19` texels apart — measured over a 300² sweep of `warp_offset`), and the serrated edge
-/// stayed binary: warp 48 posted 226 cliffs, warp 32 posted 75, with the flat fixtures all green.
-/// Routing the taps through the warp took both to zero. (A four-probe "rescue" for centres landing on
-/// flat spots was built alongside and MEASURED DEAD — the feather's plateau scallop keeps `grad > 0`
-/// across virtually the whole wash, so the gradient gate already fires everywhere it matters.)
-#[inline]
-pub(super) fn aa_coverage(
-    src: &[f32],
-    w: usize,
-    h: usize,
-    pos: impl Fn(f32, f32) -> (f32, f32),
-    e0: f32,
-    e1: f32,
-) -> (f32, f32) {
-    let (sx, sy) = pos(0.0, 0.0);
-    let (val, grad) = sample_bilinear_grad(src, w, h, sx, sy);
-    let single = smoothstep(e0, e1, val);
-    // Flat field (the wash interior's plateau, open paper): one sample, no alpha — byte-identical.
-    // Every TRANSITION gets the treatment (Enio 2026-07-20 pós-smoke: os finos ficaram "melhores que
-    // traços grossos" — the optical saturation steepens the thick rim too, so the AA is for every
-    // stroke, not a thin-stroke rescue; the original steepness gate was retired on that order).
-    if grad <= 0.0 {
-        return (single, 1.0);
-    }
-    let mut acc = 0.0;
-    let mut mx = single;
-    for &oy in &AA_SS {
-        for &ox in &AA_SS {
-            let (tx, ty) = pos(ox, oy);
-            let c = smoothstep(e0, e1, sample_bilinear(src, w, h, tx, ty));
-            acc += c;
-            mx = mx.max(c);
-        }
-    }
-    let ss = acc * (1.0 / (AA_SS.len() * AA_SS.len()) as f32);
-    if mx <= 0.0 {
-        // Wholly outside the silhouette: nothing to fade (cw = 0 early-outs downstream anyway).
-        return (single, 1.0);
-    }
-    // The rasterizer split, shape × shading: the SHADING is what the covered fraction of the texel
-    // contains — the wash a little deeper in (the MAX subsample; using the centre sample double-fades:
-    // a rim texel then renders the diluted light wash AND gets alpha-faded, while its inner neighbour
-    // is already optically saturated — the cliff just moves over by one texel). The SHAPE is the
-    // fractional area **relative to the wash level present** (mean ÷ max): a diluted wash's body sits
-    // mid-band, where the feather's plateau scallop keeps a tiny gradient alive — the raw mean would
-    // alpha-fade the whole interior (~0.8) and stair-step the owner junction (the cross gate caught
-    // it); against the local max the interior ratios to ~1 while a true silhouette edge stays the
-    // honest fraction. At a full-strength rim `mx ≈ 1`, so this is the approved thin-stroke fade.
-    (mx, ss / mx)
 }
 
 /// Separable box blur, O(n) via prefix sums (window count clamped at the borders — no darkening

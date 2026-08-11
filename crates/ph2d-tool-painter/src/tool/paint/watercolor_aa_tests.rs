@@ -332,3 +332,109 @@ fn a_high_ragged_edge_stroke_is_antialiased_too() {
         );
     }
 }
+
+/// **O AA não pode DEGRAUAR o interior de uma lavagem DILUÍDA** (Enio 2026-08-11: *"Smooth Edges
+/// marcado com Dilution > 0 empurra pixels duros para além das bordas do traço"*).
+///
+/// ⚠️ **O oráculo é o próprio interruptor, e é isso que o torna incapaz de mentir:** o INTERIOR da
+/// lavagem — o miolo, recuado da silhueta — tem de sair com o mesmo número de degraus com Smooth
+/// Edges ligado e desligado. O AA existe para reconstruir uma FRONTEIRA; se ele muda o miolo, o que
+/// ele está a fazer ali não é anti-aliasing.
+///
+/// A causa e a varredura vivem no [`super::watercolor_field::AA_SPAN_MIN`]; o número que este gate
+/// pina é o do PRODUTO: `Dilution 0,45`, traço vertical r=26, medido **67 degraus com o AA ligado
+/// contra 0 desligado** antes do portão, e **0 contra 0** depois.
+///
+/// **Mutação que tem de sangrar:** `AA_SPAN_MIN = 0.0` (o portão nunca fecha, o mundo pré-cura).
+#[test]
+fn the_aa_does_not_step_the_interior_of_a_diluted_wash() {
+    const SIZE: u32 = 256;
+    let stroke = |smooth: bool| -> Vec<u8> {
+        // ⚠️ **A fixture NÃO é a do `wc_tool`, e a razão é medida:** o pincel PRETO padrão dele
+        // sobre papel branco deixa o miolo modulado pelo dente do papel — 822 degraus **com o AA
+        // desligado**, que afogam os 259 que o AA acrescenta. Uma lavagem clara e plana (o `fill` /
+        // `opacity` do report) tem miolo limpo, então o que sobrar ali é o AA e mais nada.
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
+        t.paint.brush = BrushSpec {
+            radius_px: 26.0,
+            hardness: 1.0,
+            falloff: ph2d_painter_brush::Falloff::Constant,
+            color: [0.90, 0.15, 0.18],
+            space_attenuation: false,
+            watercolor: true,
+            smooth_edges: smooth,
+            wet_dilution: 0.45,
+            fill: 0.45,
+            depth: 2.0,
+            edge_gain: 1.2,
+            edge_spread: 6.0,
+            opacity: 0.4,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        let cx = f32::from(u16::try_from(SIZE / 2).unwrap_or(128));
+        t.on_canvas_pointer(cp([cx, 40.0], PointerPhase::Down));
+        for i in 1..=16u8 {
+            t.on_canvas_pointer(cp([cx, 40.0 + f32::from(i) * 11.0], PointerPhase::Move));
+            // ⚠️ **O tick é PARTE DA FIXTURE, não cerimônia.** A lavagem recompõe uma vez por
+            // QUADRO (`WashCadence`), então sem ele o canvas guarda um composite anterior ao
+            // traço inteiro — e a primeira versão deste gate passou com a MUTAÇÃO instalada
+            // exatamente por isso: ele media uma imagem que o defeito nunca tinha tocado.
+            <PainterTool as ph2d_editor_core::Tool>::on_tick(&mut t, 16.0);
+        }
+        t.on_canvas_pointer(cp([cx, 216.0], PointerPhase::Up));
+        <PainterTool as ph2d_editor_core::Tool>::on_tick(&mut t, 16.0);
+        t.canvas_rgba.to_vec()
+    };
+    // Degraus no MIOLO: a faixa entre o primeiro e o último texel não-papel, recuada de `PAD` para
+    // que a silhueta (que TEM tratamento próprio) fique de fora.
+    const PAD: usize = 6;
+    let interior_steps = |px: &[u8]| -> usize {
+        let mut steps = 0;
+        for y in 70..200usize {
+            // ⚠️ **MÉDIA dos canais, não o `lum()` deste arquivo (que é o MÁXIMO).** Numa lavagem
+            // VERMELHA o canal R fica perto do papel mesmo onde a tinta é densa, então o máximo
+            // nunca cruza o limiar e a faixa interior sai vazia — a segunda razão pela qual a
+            // primeira versão deste gate passou com a mutação instalada.
+            let prof: Vec<f32> = (0..SIZE as usize)
+                .map(|x| {
+                    let i = (y * SIZE as usize + x) * 4;
+                    (f32::from(px[i]) + f32::from(px[i + 1]) + f32::from(px[i + 2])) / 3.0
+                })
+                .collect();
+            let Some(lo) = (0..prof.len()).find(|&x| prof[x] < 250.0) else {
+                continue;
+            };
+            let Some(hi) = (0..prof.len()).rev().find(|&x| prof[x] < 250.0) else {
+                continue;
+            };
+            if hi <= lo + 2 * PAD + 2 {
+                continue;
+            }
+            steps += (lo + PAD..hi - PAD)
+                .filter(|&x| (prof[x + 1] - prof[x]).abs() > 6.0)
+                .count();
+        }
+        steps
+    };
+    let hard = interior_steps(&stroke(false));
+    let smooth = interior_steps(&stroke(true));
+    // CONTROLE: a fixture TEM de conter uma lavagem, senão os dois lados são zero por vácuo.
+    let px = stroke(true);
+    let inked = px
+        .chunks_exact(4)
+        .filter(|c| c[0] < 250 || c[1] < 250)
+        .count();
+    assert!(
+        inked > 3_000,
+        "a fixture nao pintou uma lavagem: {inked} texels"
+    );
+    assert!(
+        smooth <= hard + 2,
+        "o AA degraua o miolo de uma lavagem diluida: {smooth} degraus com Smooth Edges contra \
+         {hard} sem (o defeito de 2026-08-11 media 67 contra 0)"
+    );
+}

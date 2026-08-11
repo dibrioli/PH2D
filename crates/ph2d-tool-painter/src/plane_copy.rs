@@ -230,7 +230,10 @@ mod tests {
             let b: Vec<[u8; 7]> = rayon::iter::repeat_n(neutral, N).collect();
             let par = t1.elapsed().as_secs_f64() * 1e3;
             assert_eq!(a, b, "as duas rotas nao dao o mesmo plano");
-            println!("[fill {k}] serial {ser:>7.2} ms | paralelo {par:>7.2} ms | {:.2}x", ser / par);
+            println!(
+                "[fill {k}] serial {ser:>7.2} ms | paralelo {par:>7.2} ms | {:.2}x",
+                ser / par
+            );
         }
         // E o ramo do ZERO, que já é de graça — para a sonda dizer o piso ao lado do teto.
         let t2 = std::time::Instant::now();
@@ -246,7 +249,10 @@ mod tests {
         // só ESCREVE. A virada não tem por que cair no mesmo byte, e o plano de MATERIAL a 2048²
         // mede 29,4 MB — a um fio dos 32 da irmã, e portanto exatamente onde a herança decide.
         println!("=== ONDE O PREENCHIMENTO PARALELO PASSA A GANHAR ([u8;7]) ===");
-        println!("{:>8} {:>10} {:>11} {:>8}", "MB", "serial", "paralelo", "razao");
+        println!(
+            "{:>8} {:>10} {:>11} {:>8}",
+            "MB", "serial", "paralelo", "razao"
+        );
         // ⚠️ **As alocações são SEGURADAS, e é isso que torna a sonda honesta.** A 1ª versão
         // liberava e re-alocava o mesmo tamanho e tomava o MÍNIMO de três — da 2ª volta em diante o
         // alocador devolve as MESMAS páginas, já mapeadas, e o número medido é o do cache e não o
@@ -325,7 +331,10 @@ mod tests {
         let mut ser = Vec::<[u8; 7]>::new();
         ser.resize(big, neutral);
         assert_eq!(par, ser, "a rota paralela nao da o plano que o resize dava");
-        assert_eq!(fired, 1, "o preenchimento grande NAO foi pela rota paralela");
+        assert_eq!(
+            fired, 1,
+            "o preenchimento grande NAO foi pela rota paralela"
+        );
 
         // E a AUSÊNCIA: abaixo do limiar ela não pode disparar — um fork de rayon por plano pequeno é
         // o que dobrou o custo de um Ctrl+Z a 1024² quando o limiar era em elementos.

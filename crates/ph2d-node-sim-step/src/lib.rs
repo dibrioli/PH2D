@@ -77,9 +77,67 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "damping",
             default: 1.0,
         },
+        // ── O LIMITE DE VELOCIDADE (doc 89, folha 13 P1) ────────────────────────
+        // APENDADOS, nunca inseridos: a lista de params é lida posicionalmente por quem guarda
+        // um índice, e `damping` não pode renumerar.
+        //
+        // **`0` é DESLIGADO nos dois**, não "congele" — é a leitura que a própria folha propôs
+        // (`max_speed = ∞`, ou `0` = desligado) e a do `Force Limit` do Niagara. Um teto de
+        // exatamente zero seria um pedido que o `damping` já atende melhor.
+        ParamSpec {
+            name: "max_speed",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "min_speed",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// **O limite de velocidade** ([`MANIFEST`] `max_speed`/`min_speed`, doc 89 folha 13 P1) — a
+/// PORTA ÚNICA que o `eval` e o [`GPU_KERNEL`] perguntam, termo por termo.
+///
+/// `0` desliga cada metade. Fora isso o vetor é reescalado para o comprimento pedido, o que
+/// preserva a DIREÇÃO — um limite que mexesse na direção não seria um limite, seria uma força.
+///
+/// ⚠️ **O TETO VENCE O PISO**, e a ordem das duas linhas é a lei: um piso capaz de empurrar um
+/// elemento através do teto tornaria o teto uma sugestão. Com `min > max` o resultado é `max`.
+///
+/// ⚠️ **Um elemento PARADO não tem direção**, então o piso não o acorda — `v = 0` é o caso
+/// degenerado e a resposta honesta é deixá-lo onde está, e não escolher um rumo por ele (o mesmo
+/// que o `sim.collide` faz no centro exato de um disco). A consequência que o artista vê: um
+/// piso de velocidade **não** levanta o que já assentou; o que ele faz é impedir que o que se
+/// move pare.
+///
+/// ⚠️ **E ele NÃO é um nó novo, de propósito.** Um `sim.speed_limit` a jusante rodaria DEPOIS de
+/// o passo já ter avançado a posição, então ele capparia o número que o elemento *reporta* e não
+/// a distância que ele *andou* — um tique atrasado, por construção. Só quem tem a velocidade e o
+/// `dt` na mão no meio do passo consegue capar as duas; é por isso que isto é um param do
+/// integrador (a colocação do `Limit Force` do Niagara: depois das forças, antes do solve). E
+/// custa o oitavo escritor de `vel` a menos, num catálogo que tem exatamente sete.
+pub fn limit_speed(v: [f32; 2], min_speed: f32, max_speed: f32) -> [f32; 2] {
+    if min_speed <= 0.0 && max_speed <= 0.0 {
+        return v;
+    }
+    let sp = (v[0] * v[0] + v[1] * v[1]).sqrt();
+    if sp <= f32::EPSILON {
+        return v;
+    }
+    let mut want = sp;
+    if min_speed > 0.0 {
+        want = want.max(min_speed);
+    }
+    if max_speed > 0.0 {
+        want = want.min(max_speed);
+    }
+    if want == sp {
+        return v;
+    }
+    let k = want / sp;
+    [v[0] * k, v[1] * k]
+}
 
 /// The WGSL port of [`step`], element for element (ADR-0135 — the sim-zone
 /// family on the GPU). Unlike `motion.integrate` there is no `rest` chain and no
@@ -110,6 +168,18 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         // Linear damping — first-order equivalent of `damping^dt`, transcendental-free.\n\
         let st_keep = 1.0 - (1.0 - params.damping) * st_dt;\n\
         st_v = st_v * st_keep;\n\
+        // O LIMITE, entre a velocidade e a posicao: ele capa a distancia que o\n\
+        // elemento ANDA neste tique, nao so' o numero que ele reporta depois.\n\
+        // Termo por termo com `limit_speed`; o teto vence o piso pela ORDEM.\n\
+        if (params.min_speed > 0.0 || params.max_speed > 0.0) {\n\
+        \x20   let st_sp = sqrt(dot(st_v, st_v));\n\
+        \x20   if (st_sp > STEP_EPS) {\n\
+        \x20       var st_want = st_sp;\n\
+        \x20       if (params.min_speed > 0.0) { st_want = max(st_want, params.min_speed); }\n\
+        \x20       if (params.max_speed > 0.0) { st_want = min(st_want, params.max_speed); }\n\
+        \x20       if (st_want != st_sp) { st_v = st_v * (st_want / st_sp); }\n\
+        \x20   }\n\
+        }\n\
         st_q = st_q + st_v * st_dt * st_w;\n\
         var st_out_v = read_vel(i);\n\
         var st_out_q = read_P(i);\n\
@@ -124,6 +194,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         write_sim_t(i, params.playhead);\n",
     wgsl_lib: "\
         const STEP_MAX_DT: f32 = 0.05;\n\
+        // `f32::EPSILON`, o mesmo guarda de direcao que o `sim.collide` usa no\n\
+        // centro exato de um disco: sem direcao nao ha' o que reescalar.\n\
+        const STEP_EPS: f32 = 1.1920929e-7;\n\
         // WGSL has no `isFinite`; `abs(x) <= F32_MAX` is exactly \"not NaN and not\n\
         // infinite\" (every compare against NaN is false, an inf exceeds the max),\n\
         // per-lane rather than through `max()` whose NaN behaviour is undefined.\n\
@@ -183,7 +256,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &["damping"],
+    params: &["damping", "max_speed", "min_speed"],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -205,7 +278,7 @@ fn scalar_col(s: &Stream, name: &str, n: usize, default: f32) -> Option<Vec<f32>
 }
 
 /// One step of the whole zone's state, as a pure function — the node.
-fn step(state: &Stream, playhead: f32, damping: f32) -> Stream {
+fn step(state: &Stream, playhead: f32, damping: f32, min_speed: f32, max_speed: f32) -> Stream {
     let n = state.count();
     let mut out = Stream::new(n);
     // Everything the sim does not own rides through untouched — `id` above all, so a kill node
@@ -240,6 +313,8 @@ fn step(state: &Stream, playhead: f32, damping: f32) -> Stream {
         let keep = 1.0 - (1.0 - damping) * dt;
         v[0] *= keep;
         v[1] *= keep;
+        // O LIMITE, aqui e não depois: ele capa a DISTÂNCIA que o elemento anda neste tique.
+        v = limit_speed(v, min_speed, max_speed);
         q[0] += v[0] * dt * wi;
         q[1] += v[1] * dt * wi;
         // A diverged element resets rather than freezing (or NaN-poisoning) the whole zone.
@@ -276,7 +351,15 @@ impl NodeOp for SimStep {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let playhead = ctx.playhead() as f32;
         let damping = ctx.param("damping");
-        let out = step(ctx.input(0), playhead, damping);
+        // Negativo é lido como desligado pela porta única — um limite de velocidade negativo não
+        // é um pedido, e recusá-lo lá vale para os dois caminhos.
+        let out = step(
+            ctx.input(0),
+            playhead,
+            damping,
+            ctx.param("min_speed"),
+            ctx.param("max_speed"),
+        );
         ctx.emit(out);
     }
 }
@@ -302,18 +385,69 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
 /// Param UI hints.
-static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
-    param: "damping",
-    label: "Damping",
-    min: 0.0,
-    max: 1.0,
-    step: 0.01,
-    widget: ParamWidget::Slider,
-}];
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "damping",
+        label: "Damping",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    // ⚠️ **A faixa de arrasto é MEDIDA** (`probe_natural_speeds`, §0): em 4 s de queda livre sob
+    // as gravidades que as cenas do corpus usam (5 / 6 / 8) a velocidade chega a **20 / 24 / 32
+    // u/s**, então 40 cobre todas com folga e ainda deixa o slider útil no meio do curso.
+    //
+    // ⚠️ **E NÃO há `ParamHardMax` aqui, de propósito:** um teto maior é simplesmente MENOS teto —
+    // ele degrada para "desligado", que é o default. O que teria um limite disfuncional é o PISO
+    // (velocidade alta o bastante para atravessar um colisor num tique), e esse número é do
+    // COLISOR (`2·raio / dt`), não deste nó — declará-lo aqui seria inventar um teto de um recurso
+    // que este nó não possui.
+    ParamUiHint {
+        param: "max_speed",
+        label: "Speed Limit",
+        min: 0.0,
+        max: 40.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "min_speed",
+        label: "Min Speed",
+        min: 0.0,
+        max: 40.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+];
+
+/// ⚠️ **`Length` num par que é metros por SEGUNDO, e a escolha é a menos errada das duas.**
+///
+/// A tabela de unidades não tem velocidade, e só `ParamUnit::Length` atravessa o
+/// `pixels_per_meter`. Declarar `None` deixaria o número CRU: o artista que trabalha em pixels
+/// digitaria `500` e o solver guardaria 500 m/s numa cena de 100 px/m — cem vezes o pedido.
+/// Declarando `Length` o número converte exatamente certo (o metro do numerador é o que escala) e
+/// o que fica uma casa grosseira é o RÓTULO, que mostra a unidade de comprimento do artista onde
+/// devia dizer "por segundo".
+///
+/// **O número certo com o rótulo grosso vence o rótulo certo com o número errado** — e o vão fica
+/// NOMEADO: um `ParamUnit::Speed` exigiria um sufixo COMPOSTO (`<unidade>/s`), coisa que nenhuma
+/// unidade desta tabela tem hoje, então ele é uma wave da fronteira de display e não um variant.
+static PARAM_UNITS: &[ph2d_node_registry::ParamUnitDecl] = &[
+    ph2d_node_registry::ParamUnitDecl {
+        param: "max_speed",
+        unit: ph2d_node_registry::ParamUnit::Length,
+    },
+    ph2d_node_registry::ParamUnitDecl {
+        param: "min_speed",
+        unit: ph2d_node_registry::ParamUnit::Length,
+    },
+];
 
 #[cfg(test)]
 #[path = "tests.rs"]

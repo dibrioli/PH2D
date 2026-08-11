@@ -2715,3 +2715,57 @@ fn the_contact_channel_agrees_on_the_device() {
          chegou ao `size`, e a paridade acima compara dois nadas"
     );
 }
+
+/// A chuva de [`zone_chain`] com o LIMITE DE VELOCIDADE armado no `sim.step`.
+fn speed_chain(reg: &NodeRegistry, max_speed: f32) -> (Graph, NodeId) {
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 20.0);
+    g.set_param(grid, "cols", 20.0);
+    g.set_param(grid, "gap_x", 0.35);
+    g.set_param(grid, "gap_y", 0.25);
+    let zone = g.add_node("sim.zone");
+    let wind = g.add_node("force.wind");
+    g.set_param(wind, "angle", 270.0);
+    g.set_param(wind, "strength", 8.0);
+    let step = g.add_node("sim.step");
+    g.set_param(step, "max_speed", max_speed);
+    let out = g.add_node("motion.output");
+    edge(&mut g, grid, zone, 0, false);
+    edge(&mut g, zone, out, 0, false);
+    edge(&mut g, zone, wind, 0, true);
+    edge(&mut g, wind, step, 0, false);
+    edge(&mut g, step, zone, 1, false);
+    g.validate(reg).expect("well-typed");
+    (g, out)
+}
+
+/// **O TETO DE VELOCIDADE CONCORDA NO DISPOSITIVO** (doc 89, folha 13 P1).
+///
+/// A não-vacuidade é a QUEDA: o braço sem teto cai livre, então se os dois pousassem no mesmo
+/// lugar o limite nunca teria chegado ao kernel e a paridade acima compararia duas quedas livres.
+/// O teto é 2 u/s contra os ~5 que 40 tiques de gravidade 8 produzem — ele morde de verdade.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_speed_limit_agrees_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    const TICKS: u64 = 40;
+
+    let (g, out) = speed_chain(&reg, 2.0);
+    let cpu = cpu_ticks(&g, &reg, out, TICKS);
+    // TRÊS estágios: a zona (o passthrough condicional), o vento e o passo.
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, TICKS, 3);
+    assert_parity("sim.step speed limit", &cpu[TICKS as usize], &gpu_out);
+
+    let (gf, of) = speed_chain(&reg, 0.0); // desligado: queda livre
+    let free = cpu_ticks(&gf, &reg, of, TICKS);
+    assert!(
+        max_move(&cpu[TICKS as usize], &free[TICKS as usize]) > MUST_MOVE,
+        "o quadro é igual ao da queda livre: o teto nunca alcançou o passo, e a paridade \
+         acima compara dois nadas"
+    );
+}

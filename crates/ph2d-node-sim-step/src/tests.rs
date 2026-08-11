@@ -11,6 +11,21 @@ fn registry() -> NodeRegistry {
     reg
 }
 
+/// **O passo SEM limite de velocidade** — o que este nó era antes de saber capar uma.
+///
+/// Nomeado em vez de herdado por default, do mesmo jeito que o `collide_pt` do `sim.collide`: uma
+/// premissa herdada em silêncio INVERTE de sentido no dia em que o default se move, e continua
+/// verde testando o oposto. Os gates que de fato MEDEM um limite chamam [`step`] direto.
+fn unlimited(state: &Stream, playhead: f32, damping: f32) -> Stream {
+    step(state, playhead, damping, 0.0, 0.0)
+}
+
+/// O limite de velocidade tem gates próprios — mesmo assunto, arquivo irmão (e `tests.rs` cruzaria
+/// o teto de LOC com eles). É um FILHO, então as fixtures acima são as mesmas.
+#[cfg(test)]
+#[path = "tests_speed.rs"]
+mod speed;
+
 /// One element at the origin with a velocity, and a clock already stamped on it.
 fn moving(p: [f32; 2], v: [f32; 2], t: f32) -> Stream {
     Stream::new(1)
@@ -30,7 +45,7 @@ fn pos(s: &Stream) -> [f32; 2] {
 /// itself carries, not from a frame counter.
 #[test]
 fn a_moving_element_advances_by_v_dt() {
-    let s = step(&moving([0.0, 0.0], [2.0, 0.0], 0.0), 0.02, 1.0);
+    let s = unlimited(&moving([0.0, 0.0], [2.0, 0.0], 0.0), 0.02, 1.0);
     let p = pos(&s);
     assert!((p[0] - 0.04).abs() < 1e-6, "2 u/s for 20 ms = 0.04: {p:?}");
     assert!((p[1]).abs() < 1e-6);
@@ -47,10 +62,10 @@ fn a_brand_new_element_starts_it_does_not_leap() {
     let fresh = Stream::new(1)
         .with("P", Column::Vec2(vec![[0.0, 0.0]]))
         .with("vel", Column::Vec2(vec![[2.0, 0.0]])); // no `sim_t` yet
-    let s = step(&fresh, 8.0, 1.0);
+    let s = unlimited(&fresh, 8.0, 1.0);
     assert_eq!(pos(&s), [0.0, 0.0], "it starts where it is, at t = 8 s");
     // …and now it carries the clock, so the NEXT step is a real one.
-    let s2 = step(&s, 8.02, 1.0);
+    let s2 = unlimited(&s, 8.02, 1.0);
     assert!((pos(&s2)[0] - 0.04).abs() < 1e-6);
 }
 
@@ -58,7 +73,7 @@ fn a_brand_new_element_starts_it_does_not_leap() {
 /// exploding. Same guarantee `motion.integrate` gives, for the same reason.
 #[test]
 fn a_scrub_sized_dt_is_clamped_not_taken() {
-    let s = step(&moving([0.0, 0.0], [2.0, 0.0], 0.0), 5.0, 1.0);
+    let s = unlimited(&moving([0.0, 0.0], [2.0, 0.0], 0.0), 5.0, 1.0);
     assert!(
         pos(&s)[0] <= 2.0 * MAX_DT + 1e-6,
         "a 5-second jump is taken as at most MAX_DT: {:?}",
@@ -73,7 +88,7 @@ fn a_scrub_sized_dt_is_clamped_not_taken() {
 fn the_step_consumes_the_acceleration_it_applied() {
     let falling =
         moving([0.0, 0.0], [0.0, 0.0], 0.0).with("accel", Column::Vec2(vec![[0.0, -10.0]]));
-    let s = step(&falling, 0.02, 1.0);
+    let s = unlimited(&falling, 0.02, 1.0);
     assert!(s.get("accel").is_none(), "the transient is spent");
     // Semi-implicit: velocity took the kick BEFORE the position used it.
     let p = pos(&s);
@@ -90,15 +105,15 @@ fn a_pinned_element_is_immovable() {
     let pinned = moving([1.0, 1.0], [5.0, 5.0], 0.0)
         .with("inv_mass", Column::Scalar(vec![0.0]))
         .with("accel", Column::Vec2(vec![[100.0, 100.0]]));
-    assert_eq!(pos(&step(&pinned, 0.02, 1.0)), [1.0, 1.0]);
+    assert_eq!(pos(&unlimited(&pinned, 0.02, 1.0)), [1.0, 1.0]);
 }
 
 /// Damping bleeds velocity away; the default (1.0) is bit-identical to no damping at all, so an
 /// undamped zone is not paying for a feature it did not ask for.
 #[test]
 fn damping_bleeds_velocity_and_its_default_is_exact() {
-    let free = step(&moving([0.0, 0.0], [2.0, 0.0], 0.0), 0.02, 1.0);
-    let thick = step(&moving([0.0, 0.0], [2.0, 0.0], 0.0), 0.02, 0.0);
+    let free = unlimited(&moving([0.0, 0.0], [2.0, 0.0], 0.0), 0.02, 1.0);
+    let thick = unlimited(&moving([0.0, 0.0], [2.0, 0.0], 0.0), 0.02, 0.0);
     assert!(pos(&thick)[0] < pos(&free)[0], "damped travels less");
     assert_eq!(pos(&free), [0.04, 0.0], "…and undamped is the exact lerp");
 }

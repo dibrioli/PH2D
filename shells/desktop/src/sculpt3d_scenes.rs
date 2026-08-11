@@ -353,8 +353,10 @@ pub(crate) fn directional_alpha_scene() -> bool {
 /// peça ao lado.
 #[path = "sculpt3d_scenes_masked.rs"]
 pub(crate) mod masked;
+pub(crate) use masked::{
+    flatten_scene, flatten_scene_counts, masked_dome_counts, soft_masked_counts, transform_scene,
+};
 use masked::{masked_dome, soft_masked_sphere};
-pub(crate) use masked::{masked_dome_counts, soft_masked_counts, transform_scene};
 
 pub(crate) fn extract_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("22")
@@ -426,6 +428,9 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     }
     if remesh_scene() {
         return hooked_sphere();
+    }
+    if masked::flatten_scene() {
+        return masked::half_masked_sphere();
     }
     if holes_scene() {
         return punctured_sphere();

@@ -1042,19 +1042,37 @@ fn no_stack_refusal_tells_the_artist_to_reverse_because_reversing_grows_the_stac
     // nível por BAIXO (`multires_reverse.rs`), então segui-la torna a recusa
     // mais CERTA. O gate de `ph2d-mesh` pina o fato; este pina que o texto que o
     // artista lê parou de contradizê-lo.
+    // ⚠️ **O ROTEIRO de smoke CITA o conselho errado de propósito** (a cena `=26`
+    // manda o artista conferir que o log diz *achate* e não *reverta*), e a
+    // primeira versão deste gate casou com ele — um oráculo que casa com o texto
+    // que ensina a reconhecer o defeito não está olhando para o produto. É o
+    // irmão exato da exclusão que o `sculpt_src` já faz para os `_tests.rs`.
+    //
+    // A distinção não é o ARQUIVO, é o FORMATO que o log usa e que o artista vê:
+    // uma recusa é `[sculpt3d] <mensagem>`, com um espaço; um passo de roteiro é
+    // `[sculpt3d]    (n) …`, indentado. O gate julga as recusas.
     let src = sculpt_src();
+    let mut judged = 0usize;
     for line in src.lines() {
         let l = line.to_lowercase();
-        if !l.contains("pilha") || !l.contains("[sculpt3d]") && !l.contains("nao'") {
+        let Some(after) = l.split_once("[sculpt3d] ").map(|(_, r)| r) else {
+            continue;
+        };
+        if after.starts_with(' ') || !l.contains("pilha") {
             continue;
         }
+        judged += 1;
         assert!(
-            !l.contains("reverta"),
+            !l.contains("revert"),
             "uma recusa de pilha manda REVERTER, e reverter deixa a pilha mais alta: {line}"
         );
     }
-    // CONTROLE POSITIVO: a varredura não pode passar por vácuo — as mensagens
-    // que ela julga têm de existir, e agora apontam para o achatar.
+    // CONTROLE POSITIVO: a varredura não pode passar por vácuo.
+    assert!(
+        judged >= 4,
+        "esperava julgar as recusas de pilha e julguei {judged} linhas"
+    );
+    // E elas apontam para o achatar.
     let hits = src.matches("ACHATE").count();
     assert!(
         hits >= 4,

@@ -93,3 +93,49 @@ pub(super) fn soft_masked_sphere() -> ph2d_mesh::Mesh {
     }
     m
 }
+
+/// `=26` — a cena do **ACHATAR E DA MÁSCARA QUE ATRAVESSA**.
+///
+/// ⚠️ **Uma cena só, e não duas, porque é UMA história do artista:** ele mascara
+/// para proteger, subdivide para trabalhar o detalhe, e depois quer arrumar a
+/// topologia. Os dois defeitos desta wave estão exatamente nessa sequência — o
+/// remesh recusava com a pilha montada e mandava *reverter* (o que a deixa mais
+/// alta), e quando ele enfim rodava, apagava a máscara.
+pub(crate) fn flatten_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("26")
+}
+
+/// **Quantos vértices a faixa da `=26` mascara, e de quantos.**
+#[must_use]
+pub(crate) fn flatten_scene_counts() -> (usize, usize) {
+    let m = half_masked_sphere();
+    let total = m.vert_count();
+    let masked = m
+        .masks()
+        .map_or(0, |k| k.iter().filter(|&&v| v >= 0.5).count());
+    (masked, total)
+}
+
+/// A peça da `=26`: uma esfera **grossa**, com metade mascarada.
+///
+/// ⚠️ **GROSSA de propósito, e é o que torna o smoke julgável.** A cena pede
+/// duas subdivisões, e sobre a esfera de 96×144 que o resto do módulo abre isso
+/// daria milhões de vértices — o achatar mediria segundos e o remesh a 512
+/// mediria mais. Com 16×24 os três níveis são 384 → 1.536 → 6.144 vértices, e a
+/// pergunta que o artista responde é sobre o que ele VÊ, não sobre esperar.
+///
+/// ⚠️ **E a fronteira da máscara é RETA (`x > 0`), não uma calota:** ela cruza a
+/// esfera inteira, então uma travessia que deslocasse o valor por meia face
+/// seria visível como a linha entortando — que é o defeito que a interpolação
+/// barycêntrica existe para não ter.
+#[must_use]
+pub(super) fn half_masked_sphere() -> ph2d_mesh::Mesh {
+    let mut m = ph2d_mesh::shapes::uv_sphere(16, 24, 1.0);
+    let n = m.vert_count();
+    let side: Vec<bool> = (0..n).map(|i| m.positions()[i][0] > 0.0).collect();
+    let mask = m.masks_mut();
+    for i in 0..n {
+        mask[i] = f32::from(u8::from(side[i]));
+    }
+    m
+}

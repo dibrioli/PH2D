@@ -1,7 +1,7 @@
 # HANDOFF — `line/sculpt3d`, o REMESH (2026-08-10)
 
-> **A linha NÃO está fechada.** Dois commits de pé, uma wave aberta com o
-> mecanismo meio-entendido, e o próximo passo nomeado. Ele **supersede** o
+> **A linha NÃO está fechada.** Seis commits de pé, a wave FECHADA, e o que
+> resta é o smoke do Enio. Ele **supersede** o
 > [`HANDOFF_CONTINUACAO_..._2026-08-10`](HANDOFF_CONTINUACAO_line_sculpt3d_2026-08-10.md)
 > como *"comece aqui"* — aquele descreve a linha limpa, antes desta jornada.
 >
@@ -86,7 +86,7 @@ continua saindo de um `ray_hit` real com alcance de um passo.
 
 ---
 
-## 4. ⚠️ O vazamento NÃO está fechado — e o que já foi ELIMINADO
+## 4. ⚠️ ~~O vazamento NÃO está fechado~~ — SUPERADA pela §6b; o que já foi ELIMINADO
 
 Sobram **82 e 80** resoluções vazando: há pelo menos um segundo mecanismo. A
 recusa da §2 é o que impede que ele destrua trabalho enquanto isso.
@@ -109,6 +109,8 @@ recusa da §2 é o que impede que ele destrua trabalho enquanto isso.
 ---
 
 ## 5. ⚠️ A lição mais cara: TODO oráculo degenera na superfície
+
+> ⚠️ Ela continua válida como método; a CAUSA que ela caçava está na §6b.
 
 Quatro instrumentos, quatro modos de errar **no mesmo lugar** — e cada um me
 custou uma rodada:
@@ -150,47 +152,169 @@ vazamento acima são determinísticas e não dependem disso.
 
 ---
 
+## 6b. ⬛ O VAZAMENTO FECHOU — a grade é RE-AMOSTRADA (`c695d7403`)
+
+⚠️ **A §4 acima está SUPERADA e fica como história.** O que sobrou dos 82/80 era
+uma classe só, e ela não é *"um segundo mecanismo"* no sentido de outro bug: é
+**degenerescência numérica**. Uma amostra da grade cai EXATAMENTE sobre a
+superfície, a travessia pousa na fronteira entre duas janelas de aresta
+consecutivas, o arredondamento a expulsa das duas, e o interior escoa.
+
+⚠️ **E a fixture era o que faltava, não o oráculo.** A varredura da §4 usava
+esferas *lisas*; o caminho do produto é **remesh de um remesh**, cuja entrada já
+nasceu de uma grade — as duas grades ficam quase-comensuráveis, e a coincidência
+exata deixa de ser rara. Foi o log do Enio que a nomeou (`567828 → 40 vértices`,
+62,2 M células contra os 138 M que eu varria).
+
+**A cura é a fase.** Re-amostrar noutra FASE não muda o modelo, muda só onde a
+grade pergunta — e **toda** fase não-nula curou os dois casos que reproduzem:
+
+| fase | 0,000 | 0,100 | 0,250 | 0,382 | 0,500 | 0,618 |
+|---|---|---|---|---|---|---|
+| res 280 | **0,000** | 1,002 | 1,003 | 1,004 | 0,998 | 0,999 |
+| res 377 | **0,000** | 1,001 | 1,002 | 1,003 | 0,999 | 0,999 |
+
+⚠️ **A REDE ficou, e é o volume.** A malha já está FECHADA quando o campo nasce,
+então o teorema da divergência dá exatamente o espaço que ela encerra: banda sã
+**0,9939–1,0111** em 361 resoluções × 3 formas, vazamento em **0,000**. Com um
+fosso de duas ordens de grandeza, `MIN_INTERIOR_FRACTION = 0.5` fica 2× abaixo da
+pior amostra sã. `RemeshError::Leaked` nomeia a recusa; `RemeshReport.nudged` é
+publicado **para a raridade poder ser reconferida** — se ele passar a aparecer
+sempre, a nota que diz *"~0,55%"* precisa de outra medição.
+
+⚠️ **`for_bounds` delega com fase 0, e `1.51 + 0.0` É `1.51`** ⇒ AO e espessura
+ficam byte-idênticos. **Smoke do Enio: aprovado** (*"parou de sumir"*).
+
+---
+
+## 6c. ⬛ A HISTÓRIA GANHOU TETO EM BYTES (`029e475da`, `a18766943`)
+
+Medido pela residência do processo: um remesh a 512 empilha **146 MB** de
+história e o campo transiente pede **922 MB** no pico, contra os 3500 MB que o
+HR-13 declara para o app inteiro. Sem teto, *fazer remesh algumas vezes* é uma
+escada até o fim da memória — o `orcamento 256 MB` do log do Enio é esta wave a
+morder.
+
+O orçamento é **função do documento** (`2 × documento + 256 MB`, o molde da linha
+do Audio Editor no HR-13 e da U1 do Painter), e o `footprint_bytes` é um `match`
+**EXAUSTIVO**: uma entrada nova não compila até dizer quanto pesa.
+
+---
+
+## 6d. ⬛ O VERBO DE ACHATAR (`96133feb2`) — e um conselho INVERTIDO em cinco lugares
+
+O item 4 do plano, metade A. Três verbos recusam com a pilha montada (remesh,
+fundir, topologia dinâmica) e **as cinco mensagens mandavam *"reverta os níveis
+antes"***. Medido: `Multires::reverse` faz `levels.insert(0, coarse)` — ela
+insere um nível por BAIXO e deixa a pilha mais **ALTA**. Seguir o conselho tornava
+a recusa mais certa.
+
+`Multires::flatten` sobe ao TOPO e colapsa. ⚠️ A malha que fica é a de lá porque
+`levels[k]` acima do selecionado está **OBSOLETO** — é a `higher` quem o
+sintetiza —, então ficar com a malha que o artista VÊ jogaria fora todo detalhe
+acima dele, em silêncio.
+
+⚠️ **O gate red-first pegou a subida VAZANDO para fora:** a pilha devolvida
+apontava para o topo, e o Ctrl+Z de quem achatou no nível 0 o teleportava para
+cima. A `sel` é restaurada **escrevendo o campo**, não por `select` — descer
+passa pela `lower`, que re-encoda o detalhe e paga o ulp do round-trip de frame.
+
+Custo NOMEADO: **um clone da malha do topo** (desfazer e refazer precisam dela ao
+mesmo tempo). Entra no teto em bytes pelo `match` exaustivo.
+
+---
+
+## 6e. ⬛ A MÁSCARA ATRAVESSA O REMESH (`270f77fe7`) — o item 4, metade B
+
+O cabeçalho do `merge` já dizia a lei (*"a máscara e a cor viajam junto …
+descartá-los seria destruir trabalho autorado em silêncio"*); a fusão a honra
+porque os vértices dela são uma CONCATENAÇÃO. O remesh não honrava.
+
+`ph2d_mesh::transfer_authored` leva por PROXIMIDADE — o ponto mais próximo da
+superfície de entrada, com as **barycêntricas** (`TriEdges::closest_bary`, que
+virou o CORPO do `closest_to`). Não é o vértice mais próximo: a malha nova pode
+ser muito mais grossa, e aí o vértice dá um degrau por face.
+
+⚠️ **O AO e a espessura NÃO viajam** — são MEDIÇÕES da geometria, e carregá-las
+entrega um número que descreve uma malha que não existe mais, sem sintoma.
+
+⚠️ **A medição mudou o código DUAS vezes.** A primeira versão custava **62-79%
+do remesh** — ela TRIPLICAVA o gesto. A decomposição: a consulta do octree é
+**4%**, e o resto eram as **75 faces por consulta** (ele responde pelas FOLHAS
+tocadas), cada uma com o `TriEdges` reconstruído do zero — o oposto do que o doc
+daquele tipo prescreve.
+
+| | µs/vértice |
+|---|---|
+| como nasceu | 2,82 |
+| triângulos PREPARADOS uma vez | 1,50 |
+| + rejeito por esfera envolvente | **0,49** |
+
+A 512: **3,43 s (62%) → 0,46 s (18%)**. ⚠️ E aumentar a semente do raio **PIORA**
+(893 → 1272 → 2200 ms a 256) — a busca não crescia o raio, testava faces demais.
+
+⚠️ **A mutação que aperta o rejeito sobreviveu a TRÊS fixtures**, inclusive uma
+com o destino flutuando longe da fonte: numa malha fina o centroide e o ponto
+mais próximo quase coincidem e a folga nunca é exercitada. O gate que a mata usa
+**força bruta** como oráculo e uma fonte **GROSSA**.
+
+---
+
 ## 7. O estado da linha
 
 | | |
 |---|---|
-| Branch | `line/sculpt3d`, 2 commits sobre `main 76788440a` |
+| Branch | `line/sculpt3d`, **6 commits** sobre `main 76788440a` |
 | Árvore | **limpa** |
-| Suítes | `ph2d-sdf` + `ph2d-mesh` + `ph2d-sculpt3d` **448 verdes** · shell verde · clippy limpo · LOC verde |
+| Suítes | `ph2d-sdf` + `ph2d-mesh` + `ph2d-sculpt3d` verdes · shell verde · clippy limpo · LOC verde |
 | Schema | `PROJECT_SCHEMA` **intocado** · registro do `ph2d-ecs` intocado · contrato congelado intocado |
 | `Cargo.toml` | **zero** — nenhuma crate nova, nenhuma dep nova |
 
-**Superfície pública nova:** `ph2d_sdf::RemeshError` · `flood_fill` devolve
-`usize` (os dois outros chamadores o ignoram, e o doc diz que podem) ·
-`remesh`/`remesh_default` devolvem `RemeshError` no lugar de `MeshError`.
+**Superfície pública nova:** `ph2d_sdf::RemeshError` (+ `Leaked`) ·
+`RemeshReport.nudged` · `VoxelField::for_bounds_phased` · `flood_fill` devolve
+`usize` · `ph2d_mesh::signed_volume` · `Multires::flatten` ·
+`Multires::footprint_bytes` · `Mesh::footprint_bytes` · `Mesh::put_colors` ·
+`transfer_authored` · `TriEdges::closest_bary`.
 
-**Sonda nova:** `crates/ph2d-sdf/tests/probe_leak.rs` — conta quantas resoluções
-vazam, por malha. É o instrumento desta caçada e o oráculo dele é o único que
-**não** degenera (contagem de interior igual a zero é inequívoca). ⚠️ Roda em
-~400 s: `cargo test -p ph2d-sdf --release --test probe_leak -- --ignored --nocapture --test-threads=1`.
-
-⚠️ **As sondas de diagnóstico foram RETIRADAS da árvore, de propósito** — 855
-linhas com oráculos que esta jornada provou degenerados seriam armadilha para o
-próximo. O que elas ensinaram está na §5. Ficaram parqueadas fora do repo.
+**Sondas novas:** `probe_leak.rs` (quantas resoluções vazam, por malha) ·
+`probe_repeat_remesh.rs` (o que repetir um remesh custa em RESIDÊNCIA) ·
+`measure_transfer.rs` + `measure_transfer_probe.rs` (de que a travessia é feita).
 
 ---
 
-## 8. O que fazer a seguir, em ordem
+## 8. O que fazer a seguir
 
-1. **O oráculo não-degenerado** (*generalized winding number*), sem o qual
-   nenhuma hipótese sobre o furo é verificável. É o gargalo.
-2. **O segundo mecanismo**, com ele em mãos.
-3. **O SLIDER** — a wave original. ⚠️ Ele segue **bloqueado**: hoje o artista
-   alcança um valor e ele calhou de ser bom; o slider lhe dá acesso às 82.
-4. O verbo de **achatar** e a **máscara** no campo.
+⚠️ **Os quatro itens da lista antiga estão FECHADOS** — o oráculo
+não-degenerado deixou de ser o gargalo quando a causa virou degenerescência de
+FASE (§6b), o "segundo mecanismo" era ela, o slider landou (`c43318b74`) e o item
+4 landou nas duas metades (§6d, §6e).
 
-⚠️ **E o `measure_remesh` agora imprime a RECUSA em vez de morrer** — uma
-resolução que vaza é exatamente o que a tabela precisa mostrar, e um `expect`
-ali matava a varredura no primeiro vazamento.
+**O que resta é o SMOKE**, e ele é a cena `=26`:
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d
+env PH2D_SCULPT3D_SMOKE=26 cargo run -p ph2d-host-desktop --release
+```
+
+Ela conta a história inteira numa peça só: mascarar → reconstruir (a máscara
+sobrevive) → subdividir → o remesh RECUSA e manda **ACHATAR** → achatar (o
+detalhe do topo sobrevive) → reconstruir → Ctrl+Z devolve a pilha.
+
+**Aberto, com o preço ao lado:**
+
+- ⚠️ **O gate de regressão da cena `=6` não contém o fenômeno do vazamento** — 8
+  rodadas encadeadas não vazam, e a taxa medida (~0,55%) diz que isso é amostra
+  pequena, não ausência. Quem prova a cura são os dois casos do tubo aberto.
+- A travessia é **serial**. Ela é um gather por-vértice (leitura pura, saídas
+  disjuntas) — a forma exata que o **ADR-0156** sancionou para o traço de AO
+  nesta mesma crate-família. `rayon` aqui é decisão do Enio (ADR-0109 §cerca).
+- O campo **ainda não carrega cor/material**: quem os leva é o
+  `transfer_authored`, o que é outra coisa e é o certo (o campo é uma grade de
+  62 M células; um plano por canal seriam +250 MB de rascunho por canal).
 
 ---
 
-## 9. Duas armadilhas de processo desta jornada
+## 9. Armadilhas de processo desta jornada
 
 ⚠️ **A cwd do Bash escorregou para a árvore PRIMÁRIA duas vezes** — uma me fez
 rodar um gate contra o `main` (o *"0 tests"* não era resultado, era a árvore
@@ -203,3 +327,16 @@ recusa *aparecia* no bloco de despacho; a mutação que colapsa duas num braço 
 (`MultiresStack | EmptyScene`) deixa o nome no texto e **passou**. Agora ele
 **conta braços**. O gate anterior, do `main`, tinha o mesmo vício por outra via:
 ancorava no literal `return None` — uma **grafia**, não a propriedade.
+
+⚠️ **E uma afirmação minha foi DERRUBADA por medição, depois de eu a ter
+escrito neste handoff.** A §4 dizia que o vazamento parcial estava *"descartado
+por medição"* — varri 66 resoluções sobre esferas lisas, não achei colapso e
+declarei a hipótese morta. O log do Enio provou que era real. **A fixture era o
+problema, não o oráculo:** o caminho do produto é *remesh de um remesh*, e uma
+malha que já saiu de uma grade cai quase-comensurável com a seguinte. Uma
+varredura sobre a forma errada é ausência de evidência, e eu a reportei como
+evidência de ausência.
+
+⚠️ **A cwd escorregou para a árvore PRIMÁRIA mais três vezes** (um comando em
+background reseta a cwd rastreada). Duas escritas chegaram ao `main` — uma sonda
+apensada e um arquivo criado —, as duas revertidas, e o `main` conferido limpo.

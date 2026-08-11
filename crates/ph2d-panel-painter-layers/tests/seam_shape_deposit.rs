@@ -135,7 +135,11 @@ fn the_shine_row_appears_with_the_relief_and_not_without_it() {
 
     let bare = digital();
     let (_h, _s, rects) = painted(&bare);
-    assert_eq!(bare.shape_relief(), 0.0, "a fixture tem de nascer sem relevo");
+    assert_eq!(
+        bare.shape_relief(),
+        0.0,
+        "a fixture tem de nascer sem relevo"
+    );
     assert!(
         rect_of(&rects, shine).is_none(),
         "sem relevo o Shine nao tem o que iluminar e nao pode ser oferecido"
@@ -163,7 +167,10 @@ fn the_shine_row_lands_on_the_paints_material() {
     tool.set_shape_relief(0.5);
     let id = core_ids::PAINTER_SHAPE_SHINE;
     let (mut host, mut st, rects) = painted(&tool);
-    assert!(rect_of(&rects, id).is_some(), "a row `Shine` não foi pintada");
+    assert!(
+        rect_of(&rects, id).is_some(),
+        "a row `Shine` não foi pintada"
+    );
     host.store_mut().set_number_value(id, 0.23);
     host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(id));
     pump(&mut host, &mut tool);

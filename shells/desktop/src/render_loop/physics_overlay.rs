@@ -359,6 +359,8 @@ pub(super) fn draw(
     contacts: &[ph2d_physics_ecs::BodyContact],
     flashes: &[ph2d_physics_ecs::ContactFlash],
     waterlines: &[([f32; 2], [f32; 2])],
+    // W-Probes: onde os sensores do player olharam, e o que responderam.
+    probes: &[ph2d_physics_ecs::ProbeMark],
     triggered: &[ph2d_ecs::Entity],
     // W20: algum player está a atravessar uma prancha AGORA? O bit da descida
     // viaja no CORPO e vale para toda plataforma one-way da cena, então a
@@ -389,6 +391,21 @@ pub(super) fn draw(
             &Stroke::new(OUTLINE_PX),
             Affine::IDENTITY,
             &Brush::Solid(Color::new(WATERLINE_RGBA)),
+            None,
+            &path,
+        );
+    }
+    // ⚠️ **Os SENSORES depois dos corpos e ANTES dos contatos** (W-Probes): eles
+    // descrevem para onde o personagem olha, então têm de ficar por cima da arte
+    // que atravessam — e por baixo das cruzes, que marcam um evento e são as
+    // menores marcas da tela.
+    for (path, rgba) in
+        super::physics_overlay_probes::probe_marks(show, probes, sim, camera, window)
+    {
+        vector_scene.inner_mut().stroke(
+            &Stroke::new(super::physics_overlay_probes::PROBE_PX),
+            Affine::IDENTITY,
+            &Brush::Solid(Color::new(rgba)),
             None,
             &path,
         );
@@ -536,9 +553,14 @@ pub(super) fn draw(
 const READOUT_BOX_W_PX: f32 = 110.0; // LITERAL-PX-OK: chrome de overlay
 const READOUT_BOX_H_PX: f32 = 14.0; // LITERAL-PX-OK: chrome de overlay
 
+// ⚠️ `pub(crate)` e não privado: as três funções de fixture (a câmera, a janela
+// e a leitura de pontos) têm agora um QUARTO consumidor — os gates do desenho
+// dos sensores (`W-Probes`), que moram num módulo IRMÃO. Duas câmeras fariam as
+// duas famílias de gate medir projeções diferentes, e o dia em que uma delas
+// mudasse a outra ficaria verde sobre outra premissa.
 #[cfg(test)]
 #[path = "physics_overlay_tests.rs"]
-mod tests;
+pub(crate) mod tests;
 
 #[cfg(test)]
 #[path = "physics_overlay_scene_tests.rs"]

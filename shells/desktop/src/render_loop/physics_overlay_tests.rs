@@ -16,14 +16,14 @@ use ph2d_physics_ecs::ShapeDesc;
 use ph2d_render::Camera2d;
 use ph2d_vector::PathEl;
 
-pub(super) fn window() -> WindowSize {
+pub(crate) fn window() -> WindowSize {
     WindowSize {
         width: 1000,
         height: 1000,
     }
 }
 
-pub(super) fn camera() -> Camera2d {
+pub(crate) fn camera() -> Camera2d {
     Camera2d {
         center: [0.0, 0.0],
         height_world: 10.0,
@@ -32,7 +32,7 @@ pub(super) fn camera() -> Camera2d {
 }
 
 /// Every point the path visits, in screen pixels.
-pub(super) fn points(path: &ph2d_vector::BezPath) -> Vec<(f64, f64)> {
+pub(crate) fn points(path: &ph2d_vector::BezPath) -> Vec<(f64, f64)> {
     path.elements()
         .iter()
         .filter_map(|el| match el {

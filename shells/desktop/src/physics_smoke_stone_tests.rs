@@ -89,10 +89,10 @@ fn the_scene_delivers_the_numbers_its_message_prints() {
         (CROUCHED_TOP - 1.05).abs() < 1.0e-6,
         "a mensagem diz que o topo agachado mede 1.05: {CROUCHED_TOP}"
     );
-    assert!(
-        CROUCHED_TOP < STONE_BOTTOM && STONE_BOTTOM < STANDING_TOP,
-        "a face das pedras ({STONE_BOTTOM}) fica ENTRE os dois topos"
-    );
+    // ⚠️ Em tempo de COMPILAÇÃO: os três são constantes, então um assert de
+    // runtime não pode falhar por nada que não seja alguém tê-las mexido — e o
+    // compilador responde isso melhor, e antes.
+    const _: () = assert!(CROUCHED_TOP < STONE_BOTTOM && STONE_BOTTOM < STANDING_TOP);
     assert!(
         (NARROW_HALF * 2.0 - 0.08).abs() < 1.0e-6,
         "a mensagem diz 'pedras de 8 cm': {}",

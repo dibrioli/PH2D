@@ -188,6 +188,7 @@ mod physics_overlay_joint_ghost;
 mod physics_overlay_joint_glyphs;
 mod physics_overlay_joint_readout;
 mod physics_overlay_joints;
+mod physics_overlay_probes;
 mod physics_overlay_pulley;
 /// A GEOMETRIA do contorno de um collider (docs dele) — irmão pelo cap de LOC.
 pub(crate) mod physics_overlay_shapes;
@@ -6195,6 +6196,10 @@ impl crate::App {
             // Onde a água está. O empuxo calcula essa superfície todo frame e, até
             // isto, nada na tela a mostrava — o artista posicionava o que boia no olho.
             let waterlines = physics.waterlines();
+            // W-Probes: o que os sensores do player olharam no ULTIMO tique, do
+            // UNICO dono do fato (a ponte). Ate isto, nada na tela dizia onde a
+            // perna, o flanco, a quina ou o teto do agachar procuram.
+            let probes = physics.player_probe_marks().to_vec();
             physics_overlay::draw(
                 self.show_colliders,
                 velocity_at_rest,
@@ -6232,6 +6237,7 @@ impl crate::App {
                 &contacts,
                 &flashes,
                 &waterlines,
+                &probes,
                 &triggered,
                 // W20: a descida em curso, do ÚNICO dono do fato (a ponte). Sem
                 // isto uma prancha fantasma é indistinguível de uma sólida, que

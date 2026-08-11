@@ -818,7 +818,7 @@ Figma), a grade universal do editor injetada por closure, ativo no press da cane
 | **Snap a INTERSEÇÕES** | expor os cruzamentos + cachear por gesto | `Arrangement` já os computa | **M** |
 | **Guias e réguas** | **ZERO hoje** (o único "guide" no repo é o caminho-guia do pattern) — guia arrastável, persistida, 3ª classe de alvo, régua nas bordas, origem móvel | `VecLabel` é o molde de componente derivado | **G** |
 | **Mirror / simetria VIVA** | espelho ao desenhar; hoje só há **Flip H/V destrutivo** | o `fx_repeat` já multiplica com `spin`/`orbit` ⇒ um `Mirror` na pilha de LPE. É o que a Illustrator shipou em 2021 como *live symmetry* | **M** |
-| **Rótulo de distância** nos smart guides | a linha-fantasma já existe (e é melhor que a média: segmento **entre** os pontos, não linha infinita) | `VecLabel` | **M** |
+| ~~**Rótulo de distância** nos smart guides~~ ✅ **W6.6** | ⚠️ e ele obrigou a reconciliar a UNIDADE: a régua era a única superfície do app que não convertia — e não convertia por não CONSEGUIR (`paint_rulers` não recebia as settings) | `LengthDisplay` (porta nova), **não** o `VecLabel` — a ficha é chrome de um frame, não um objeto do documento | **M** |
 | **Snap a SPRITES** | nenhum competidor tem, porque nenhum mistura raster e vetor na mesma árvore — **nós misturamos** (ADR-0110) | a bbox já está na shell | **P** |
 
 **Fora desta wave, nomeados:** grade **perspectiva** (**G**) · grade **polar** (10º `GridKind`, **M**) ·
@@ -983,22 +983,6 @@ intacto**, contrato congelado **intacto**, **nenhum ADR**.
 
 **Smoke: `PH2D_BUILD_SMOKE=45`** (a cena imprime o que montou e o roteiro de 7 passos).
 
-**Aberto na W6** (a ordem da tabela §9): **rótulo de distância** nos smart guides.
-
-**Aberto nesta wave, nomeado com o preço:**
-- **A guia INCLINADA não existe**, e é decisão. Uma reta oblíqua é uma restrição 1-D que **não se
-  decompõe em eixos** — encaixar nela move `x` E `y`, e o resultado é uma projeção perpendicular,
-  não um alinhamento. É uma **terceira espécie** de reivindicação (a *linha*), com gesto próprio
-  (criar, girar) e matemática própria; enfiá-la no tipo de hoje obrigaria o `pos: f64` a virar
-  `(origem, direção)` e o laço de snap a ramificar em duas leis onde hoje tem uma.
-- **A ORIGEM MÓVEL** (arrastar o canto para mudar o zero) **não foi construída, e o preço está
-  medido**: a régua já lê a origem da GRADE (porta única), mas `GridSnapState` **não é
-  persistido** — então uma origem movida seria um ajuste que ESQUECE. Fazê-la direito exige levar o
-  estado da grade ao arquivo, que é decisão sobre uma struct foundational com 9 configs, não um
-  gesto de canto.
-- **O consumo é do Vector**: quem encaixa nas guias é o motor de snap vetorial. Levá-las ao gizmo
-  de sprite dos outros modos é wave própria — o gesto já é tool-agnóstico, o ímã ainda não.
-
 ### ✅ W6.3 — ENTREGUE (2026-08-01): o MIRROR, a simetria VIVA
 
 A forma ganha um eixo e o outro lado passa a ser **derivado**: editar um nó move os dois. O repo
@@ -1086,7 +1070,111 @@ espelho neutro; a cena **mede a própria geometria cozida** e imprime os número
 - **A fusão aplica-se ao PRIMEIRO eixo**; com `Axes = 2` o segundo espelha o que saiu do primeiro
   (que é o que compor significa) — não há uma segunda fusão a decidir.
 
-**Aberto na W6** (a ordem da tabela §9): **rótulo de distância** nos smart guides.
+### ✅ W6.6 — ENTREGUE: o RÓTULO DE DISTÂNCIA, e a unidade que ele obrigou a reconciliar
+
+A última linha da tabela §9. A guia de alinhamento já dizia **com o quê** a forma alinhou —
+faltava **quanto**, que é a pergunta que faz de um encaixe uma medição e a razão de esta wave
+se chamar PRECISÃO.
+
+**O que se vê:** ao encaixar, o segmento tracejado ganha uma ficha com o número no meio dele,
+com sufixo (`150 px` / `1.5 m`).
+
+⚠️ **Mas a feature não é o rótulo — é a PERGUNTA que ele forçou.** Um número novo na tela tem
+de dizer *quanto* em ALGUMA unidade, e a resposta já existia em duas versões que discordavam,
+sem nenhuma saber da outra:
+
+| superfície | convertia? | o que ela dizia para a MESMA distância |
+|---|---|---|
+| Inspector (`Position`) | **sim** (`panel-inspector/src/sync.rs`, e o rótulo diz `Position (px)`) | `150` |
+| painel **Grid Snap** | **sim** (`grid_snap/inspect.rs`) | `150` |
+| **RÉGUA do canvas** | **não** | `1.5` |
+
+⚠️ **E a régua não convertia por não CONSEGUIR:** `paint_rulers` nem sequer recebia
+`ProjectSettings` — a divergência era estrutural, não um `if` esquecido. Medido: com os
+defaults (100 px/m, unidade **Pixels**) a linha de grade que o artista digitou como **100**
+era rotulada **1**.
+
+⚠️ **O header da própria régua afirmava o contrário** — *"world-units, a mesma régua que o
+Inspector mostra nos campos X/Y"* —, e era **FALSO**: o Inspector mostra px. A frase estava
+certa na INTENÇÃO (*um ponto, um número*) e o código a contradizia; ela foi reescrita, não
+apagada.
+
+**A cura é uma porta:** `ph2d_editor_core::LengthDisplay` (`length.rs`) — *o que este app
+imprime quando imprime um comprimento*. Ela decide **o número e as casas**; não decide onde o
+texto pousa, com que corpo, nem se há sufixo, que é de quem desenha.
+
+⚠️ **O passo entra em MUNDO e é convertido pela MESMA porta.** Converter só o valor imprimiria
+`150` com as casas de um passo de `0,5` — uma casa decimal que o número não tem resolução para
+honrar.
+
+⚠️ **A GEOMETRIA da régua não muda:** o passo segue escolhido em mundo a partir do zoom, e só o
+NÚMERO cruza a fronteira. É isso que faz de um projeto em **metros** um caso **byte-idêntico**
+ao que já shipava (`from_meters` é a identidade ali) — e é o CONTROLE do gate.
+
+⚠️ **Duas larguras, UMA regra:** `DisplayUnit::from_meters_f64` nasce e a versão `f32` **delega**.
+A largura importa — uma coordenada de régua de `1e6 m` em pixels é `1e8`, que o `f32` não
+carrega até o dígito que o rótulo imprime.
+
+**Três donos, e a divisão é o desenho:**
+
+- **quais guias merecem número e onde ele pousa** — `ph2d_vec_render::snap_labels`, geometria
+  pura, sem noção de unidade;
+- **que número, com que casas** — a porta acima, a mesma da régua;
+- **como uma ficha é desenhada** — `render_loop/vec_snap_labels.rs`, e só ele.
+
+**A lei de quem recebe número, em duas frases.** *Só a guia de ALINHAMENTO tem o que medir* —
+as outras quatro espécies dizem *você está AQUI*, e um `0` flutuante ao lado de cada encaixe
+seria ruído com aparência de informação. *E o rótulo mede o que se VÊ* — um alinhamento que
+pousa exatamente sobre o alvo (a coincidência que a lei *vértice vence curva* trata como caso
+normal) desenha um segmento de comprimento zero e cai pela MESMA regra, sem caso especial.
+
+⚠️ **O piso de visibilidade é DERIVADO, não escolhido:** a guia é capeada por uma cruz em cada
+ponta, cada uma medindo `2 × TICK_PX`; um segmento menor que as DUAS cruzes está inteiramente
+coberto pelas próprias marcas.
+
+⚠️ **A régua imprime o número NU e a ficha imprime COM sufixo**, e não é gosto: uma régua é
+entendida pela faixa graduada em que ela vive, e a ficha **paira sobre a arte** sem eixo nenhum
+ao lado que a explique. É também o que torna a unidade ativa visível sem abrir o menu.
+
+⚠️ **E um gate MEU nasceu incapaz de reprovar.** O `only_the_alignment_guide_gets_a_number`
+construía as quatro espécies de ponto com `a == b` — que é o que os produtores de HOJE fazem —,
+então elas eram filtradas pelo **PISO de comprimento** e a lei do KIND nunca era exercitada: a
+mutação que aceita toda espécie **passou**. A fixture passou a dar `a != b` às espécies de
+ponto, e a mesma mutação sangra. *A lei é sobre o SIGNIFICADO da guia, não sobre um acidente de
+quem a constrói.*
+
+**9 gates novos** (7 na porta + 5 no motor de rótulo + 4 arch-gate, entre unidade e shell),
+**9 mutações, 9 sangram** — a central (`label_text` volta a formatar o valor cru) reprova com
+`régua 0 contra painel 50`, e **só ela**: as outras seis testam o *quê*, não o *acordo*.
+
+**Nenhum schema** (`PROJECT_SCHEMA` **72**, `project.rs` com diff VAZIO) · **nenhum ADR** ·
+contrato congelado intacto · **zero `Cargo.toml`** · nenhum id/token novo.
+
+**Smoke: `PH2D_BUILD_SMOKE=72`.** ⚠️ A cena põe as **DUAS** superfícies na mesma tela de
+propósito — a pergunta da wave não é *"aparece um número?"* e sim *"a régua e a ficha dizem o
+MESMO número?"*. O passo **4 é o que prova a wave**: trocar para **Meters** no menu Settings, e
+as duas têm de mudar JUNTAS (`150 px` vira `1.5 m`); se só uma mudar, são duas portas outra vez.
+
+**Aberto, nomeado:** a ficha usa a mesma cadência de casas da régua (`label_step`), então em
+zoom muito baixo ela arredonda tanto quanto os traços — é a política que as mantém coerentes, e
+uma precisão própria seria o começo de uma terceira resposta.
+
+
+**Aberto nesta wave, nomeado com o preço:**
+- **A guia INCLINADA não existe**, e é decisão. Uma reta oblíqua é uma restrição 1-D que **não se
+  decompõe em eixos** — encaixar nela move `x` E `y`, e o resultado é uma projeção perpendicular,
+  não um alinhamento. É uma **terceira espécie** de reivindicação (a *linha*), com gesto próprio
+  (criar, girar) e matemática própria; enfiá-la no tipo de hoje obrigaria o `pos: f64` a virar
+  `(origem, direção)` e o laço de snap a ramificar em duas leis onde hoje tem uma.
+- **A ORIGEM MÓVEL** (arrastar o canto para mudar o zero) **não foi construída, e o preço está
+  medido**: a régua já lê a origem da GRADE (porta única), mas `GridSnapState` **não é
+  persistido** — então uma origem movida seria um ajuste que ESQUECE. Fazê-la direito exige levar o
+  estado da grade ao arquivo, que é decisão sobre uma struct foundational com 9 configs, não um
+  gesto de canto.
+- **O consumo é do Vector**: quem encaixa nas guias é o motor de snap vetorial. Levá-las ao gizmo
+  de sprite dos outros modos é wave própria — o gesto já é tool-agnóstico, o ímã ainda não.
+
+**A W6 FECHOU** — as seis linhas da tabela §9 estão entregues (W6.1 a reivindicação 2-D · W6.2 as guias e a régua · W6.3 a simetria · W6.4 a seleção de nós com dono · W6.5 o laço · W6.6 o rótulo de distância).
 
 ## §10 — W0: A HIGIENE (defeitos que a auditoria achou, não features)
 

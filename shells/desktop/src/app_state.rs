@@ -1177,6 +1177,23 @@ pub(crate) struct App {
     /// da fonte (`ph2d_ecs::VecOffset`). Runtime-only e memoizado: o documento guarda a curva
     /// autorada, e isto é o que se VÊ.
     pub(crate) offset_live: crate::offset_live::OffsetLive,
+    /// **O MAPA QUE FOI DESENHADO** — a fusão dos nove produtores de `LiveGeometry`, guardada tal
+    /// como o `ph2d_vec_render::dispatch` a consumiu.
+    ///
+    /// ⚠️ Ela existe porque o `vec_gizmo_pick` declara, no próprio doc, que a pergunta *"o que
+    /// está desenhado aqui?"* é feita ao **MESMO mapa** que o `dispatch` recebe — e a fiação
+    /// contradizia-o: os seis sítios de pick passavam só o `offset_live`, então tudo o que os
+    /// outros oito produtores desenham (uma simetria, uma largura viva, um contorno, um padrão,
+    /// uma instância, uma booleana, um alinhamento) era **visível e não-clicável**.
+    ///
+    /// ⚠️ **Ela é do frame ANTERIOR, e isso é a semântica CERTA, não uma concessão:** o artista
+    /// clica no que VÊ, e o que ele vê é o último frame desenhado. O input corre antes do frame,
+    /// então um mapa "deste frame" não existe quando o clique chega.
+    ///
+    /// ⚠️ E ela não introduz classe nova de obsolescência: o `offset_live` que o pick lia até aqui
+    /// é escrito pelo **mesmo bloco por-frame** que monta esta fusão, logo os dois têm exactamente
+    /// a mesma frescura — o que muda é o número de produtores, de um para nove.
+    pub(crate) vec_live_drawn: ph2d_vec_render::LiveGeometry,
     /// O **cozimento da LARGURA VIVA** — a fita de largura variável que o `dispatch` desenha no
     /// lugar da fonte (`ph2d_ecs::VecStrokeProfile`, ADR-0148). Runtime-only e memoizado: o
     /// documento guarda as PARADAS, e isto é o que se VÊ.

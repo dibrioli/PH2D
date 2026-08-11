@@ -7767,6 +7767,21 @@ impl crate::App {
                 cam_affine,
                 vector_scene,
             );
+            // ⚠️ **O mapa que foi DESENHADO fica guardado, e é ele que o PICK lê.**
+            //
+            // O `vec_gizmo_pick` declara no próprio doc que a pergunta *"o que está desenhado
+            // aqui?"* é feita ao MESMO mapa que este `dispatch` consome — e a fiação contradizia-o:
+            // os seis sítios de pick da `input_dispatch` passavam só o `offset_live`, então tudo o
+            // que os outros oito produtores desenham era **visível e não-clicável** (medido: numa
+            // simetria armada, 3 de 3 pontos da metade espelhada estão na tela e o clique
+            // atravessa).
+            //
+            // ⚠️ É um **MOVE**, não um clone: `vec_live` morre aqui, e a fusão é remontada do zero
+            // no frame seguinte. Guardar custa zero; re-derivar no input custaria a segunda porta.
+            //
+            // ⚠️ E é isto que faz um produtor NOVO nascer coberto: quem acrescenta uma linha à
+            // fusão acima ganha o pick de graça, sem saber que este parágrafo existe.
+            self.vec_live_drawn = vec_live;
             // ADR-0154: the live GPU shapes of the Motion scene. Gated on the
             // Motion tool like the Motion sprites (present.rs) — a `source.shape`'s
             // `geometry_id` instances are drawn into the SAME scene the vector

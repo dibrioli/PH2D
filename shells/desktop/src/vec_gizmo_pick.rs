@@ -43,6 +43,15 @@ const STROKE_SAMPLES: u32 = 24;
 /// [`ph2d_vec_render::dispatch`] consome; nada aqui re-deriva um offset. O ponto não volta ao
 /// espaço local porque a derivada não tem um: ela é de mundo por construção.
 ///
+/// ⚠️ **Essa frase foi FALSA por uma janela, e não por descuido de quem a escreveu:** ela descreve
+/// o que esta função faz, e o que a contradizia era a FIAÇÃO — os seis sítios de pick da
+/// `input_dispatch` passavam só o `offset_live` enquanto o `dispatch` recebia a fusão de nove
+/// produtores. Medido em 2026-08-10, com uma simetria armada: **3 de 3** pontos da metade
+/// espelhada estavam na tela com o clique a atravessar. Hoje o que chega aqui é o campo
+/// `App::vec_live_drawn` — literalmente o mapa que o `dispatch` desenhou —, e quem garante que
+/// continua a ser é o arch-gate `the_pick_reads_the_map_that_was_drawn`, não a disciplina de
+/// quem acrescentar o décimo produtor.
+///
 /// ⚠️ Uma entrada **VAZIA** é a aniquilação (o offset comeu a forma) e sai `false` — nada
 /// desenhado, nada pego. É por isso que o `offset_live::recook` insere a entrada mesmo vazia:
 /// ausente significaria *"desenhe/pegue a fonte"*, e a forma voltaria a ser clicável onde a

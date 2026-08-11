@@ -814,6 +814,7 @@ impl App {
             vec_label_pending: None,
             vec_label_poses: crate::label_live::LabelPoses::new(),
             offset_live: crate::offset_live::OffsetLive::default(),
+            vec_live_drawn: ph2d_vec_render::LiveGeometry::new(),
             profile_live: crate::profile_live::ProfileLive::default(),
             contour_live: crate::contour_live::ContourLive::default(),
             instance_live: crate::instance_live::InstanceLive::default(),

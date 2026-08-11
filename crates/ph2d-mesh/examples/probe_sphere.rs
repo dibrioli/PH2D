@@ -60,7 +60,10 @@ fn main() {
             100.0 * (hi - lo) / med,
         );
     }
-    println!("  cru, antes de normalizar: {:.1} ms\n", t0.elapsed().as_secs_f64() * 1e3);
+    println!(
+        "  cru, antes de normalizar: {:.1} ms\n",
+        t0.elapsed().as_secs_f64() * 1e3
+    );
 
     println!("O GESTO INTEIRO, pela porta do produto:");
     for (name, build) in [

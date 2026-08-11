@@ -82,6 +82,24 @@ impl Csr {
         &self.values[s..s + self.lens[i] as usize]
     }
 
+    /// As TRÊS fatias cruas — `(starts, lens, values)`.
+    ///
+    /// ⚠️ **Existe para o PORTE do laplaciano da referência, e essa é a razão
+    /// inteira.** O `SculptBase.laplacianSmooth` do SculptGL lê o anel de um
+    /// CSR (`vrvStartCount` + `vertRingVert`) e um porte 1:1 tem de ler o mesmo
+    /// tipo de coisa; a alternativa — o porte chamar [`Self::neighbours`] por
+    /// vértice — funcionaria, mas então o oráculo executável não teria como
+    /// alimentar os dois lados com os MESMOS bytes de anel, que é o que torna
+    /// aquele gate uma comparação em vez de um espelho.
+    ///
+    /// ⚠️ **Não é um convite a re-implementar `neighbours` fora daqui:** quem
+    /// só quer os vizinhos de um vértice pergunta a ele, que é `O(1)` e não
+    /// pode errar a aritmética de fatia.
+    #[must_use]
+    pub fn parts(&self) -> (&[u32], &[u32], &[u32]) {
+        (&self.starts, &self.lens, &self.values)
+    }
+
     /// Total de entradas ALOCADAS — o que a sonda de memória multiplica por 4
     /// bytes. ⚠️ Inclui o rastro: é a pergunta de MEMÓRIA, não a de conteúdo.
     #[must_use]

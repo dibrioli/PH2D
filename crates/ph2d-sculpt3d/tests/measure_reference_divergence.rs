@@ -63,7 +63,10 @@ fn footprint(mesh: &Mesh, d: &Dab) -> Vec<u32> {
 /// contrário, e este é o único lugar em que a conversão acontece.
 fn free_of(mesh: &Mesh) -> Vec<f32> {
     match mesh.masks() {
-        Some(m) => m.iter().map(|&x| ph2d_sculpt3d::mask_ops::free_weight(x)).collect(),
+        Some(m) => m
+            .iter()
+            .map(|&x| ph2d_sculpt3d::mask_ops::free_weight(x))
+            .collect(),
         None => vec![1.0; mesh.vert_count()],
     }
 }
@@ -135,14 +138,26 @@ fn what_separates_our_kernels_from_the_reference() {
             f64::from(d.center[1]),
             f64::from(d.center[2]),
         ];
-        let eye = [f64::from(d.eye[0]), f64::from(d.eye[1]), f64::from(d.eye[2])];
+        let eye = [
+            f64::from(d.eye[0]),
+            f64::from(d.eye[1]),
+            f64::from(d.eye[2]),
+        ];
         let r2 = f64::from(d.radius) * f64::from(d.radius);
         let mut front = Vec::new();
         rk::front_vertices(&normals, &fp, eye, &mut front);
         let a_normal = rk::area_normal(&normals, &free, &front).expect("normal de área");
         match verb {
             Verb::Draw => rk::brush(
-                &mut theirs, &free, &fp, None, a_normal, center, r2, intensity, negative,
+                &mut theirs,
+                &free,
+                &fp,
+                None,
+                a_normal,
+                center,
+                r2,
+                intensity,
+                negative,
             ),
             Verb::Clay => {
                 let mut ctr = rk::area_center(&base, &free, &front).expect("centro");
@@ -151,13 +166,31 @@ fn what_separates_our_kernels_from_the_reference() {
                     ctr[k] += a_normal[k] * off;
                 }
                 rk::flatten(
-                    &mut theirs, &free, &fp, None, a_normal, ctr, center, r2, intensity, negative,
+                    &mut theirs,
+                    &free,
+                    &fp,
+                    None,
+                    a_normal,
+                    ctr,
+                    center,
+                    r2,
+                    intensity,
+                    negative,
                 );
             }
             Verb::Flatten => {
                 let ctr = rk::area_center(&base, &free, &front).expect("centro");
                 rk::flatten(
-                    &mut theirs, &free, &fp, None, a_normal, ctr, center, r2, intensity, negative,
+                    &mut theirs,
+                    &free,
+                    &fp,
+                    None,
+                    a_normal,
+                    ctr,
+                    center,
+                    r2,
+                    intensity,
+                    negative,
                 );
             }
             Verb::Inflate => rk::inflate(
@@ -194,10 +227,13 @@ fn what_separates_our_kernels_from_the_reference() {
         });
     }
 
-    println!("\n== UM DAB, a MESMA malha e a MESMA pegada ({} vértices) ==", {
-        let m = sphere();
-        footprint(&m, &dab_at(R)).len()
-    });
+    println!(
+        "\n== UM DAB, a MESMA malha e a MESMA pegada ({} vértices) ==",
+        {
+            let m = sphere();
+            footprint(&m, &dab_at(R)).len()
+        }
+    );
     println!(
         "{:<12} {:>12} {:>12} {:>10} {:>12}",
         "verbo", "nosso", "referência", "razão", "|diferença|"
@@ -269,7 +305,11 @@ fn what_separates_our_kernels_from_the_reference() {
             f64::from(d.center[1]),
             f64::from(d.center[2]),
         ];
-        let eye = [f64::from(d.eye[0]), f64::from(d.eye[1]), f64::from(d.eye[2])];
+        let eye = [
+            f64::from(d.eye[0]),
+            f64::from(d.eye[1]),
+            f64::from(d.eye[2]),
+        ];
         let r2 = f64::from(d.radius) * f64::from(d.radius);
         let fp = footprint(&mesh, &d);
         for _ in 0..n {

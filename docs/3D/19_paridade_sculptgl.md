@@ -25,9 +25,22 @@ stub. O que roda é o código que o SculptGL shipa — a alternativa (transcreve
 kernels a mão para dentro do harness) tem o modo de falha do gate que espelha o
 produto em vez de o interrogar: ela só pode confirmar a minha leitura.
 
-**Nove kernels + a normal/centro de área + o filtro do olho, todos bit-idênticos
+**Onze kernels + a normal/centro de área + o filtro do olho, todos bit-idênticos
 na primeira corrida:** `brush` · `clay` · `flatten` · `inflate` · `crease` ·
-`pinch` · `drag` · `move` · `local scale`.
+`pinch` · `drag` · `move` · `local scale` · **`smooth`** (com o laplaciano e as
+duas regras de borda) · **`mask`**.
+
+⚠️ **Os dois últimos chegaram depois e cada um trouxe uma correção a este
+documento** — ver a §1.1. Com eles a família do CARIMBO está **completa**, que é
+o pré-requisito da §3.2: uma migração parcial deixaria duas leis vivas na mesma
+ferramenta.
+
+### §1.1 — As DUAS coisas que o `smooth` e a `mask` corrigiram aqui
+
+| Eu tinha escrito | O que a referência diz |
+|---|---|
+| *"A referência tem UMA curva para as dez tools"* (§2.2) | **Falso.** Ela vale para as dez que movem GEOMETRIA. O `Masking` — e o `Paint`, que ele chama — tem curva **PRÓPRIA**, `(1 − d)^softness` com `softness = 2·(1 − hardness)`, e um knob **hardness** que a molda (`Masking.js:14`). ⚠️ Isso **dissolve a contradição aparente** entre *"bit-idêntico"* e o pedido *"cada Tool deve ter seu falloff apropriado"*: a referência **já** dá ao canal de máscara uma curva que não é a da geometria. O que ela não tem é um SELETOR, que é nosso e é um superconjunto |
+| — | ⚠️ **O `Smooth` não tem falloff NENHUM.** O laço dele (`Smooth.js:47-60`) não computa distância; a mesma intensidade cai em toda a pegada, e o resultado tem **degrau na fronteira do pincel**. O nosso pesa pelo falloff escolhido. Portar é reproduzir o degrau — **decisão de LOOK, e o smoke a julga** |
 
 ### A estrutura É a lei — por que um porte e não uma emenda
 
@@ -62,8 +75,39 @@ atravessa a **TERMINADORA** — o único em que o filtro do olho filtra alguma
 coisa. Sem ele, um `front_vertices` que devolvesse a lista inteira ficaria verde
 nos nove irmãos.
 
-**8 mutações: 5 sangram**, 3 são **provadamente neutras** e ficam documentadas
+**17 mutações: 14 sangram**, 3 são **provadamente neutras** e ficam documentadas
 com o número em vez de gateadas (precedente do ADR-0145).
+
+⚠️ **E as duas sobreviventes da rodada do `smooth`/`mask` acusaram AFIRMAÇÕES
+MINHAS, não buracos de gate** — a terceira e a quarta vez que isto acontece
+nesta linha:
+
+- **o fall-through da regra de borda** (vértice de borda com menos de dois
+  vizinhos de borda ⇒ média de TODO o anel) é **inalcançável em malha
+  manifold**: a curva de borda é um LOOP FECHADO, então todo vértice nela tem
+  exatamente dois. É a MESMA medição que o `ph2d_mesh::smooth` já carregava — do
+  outro lado da divergência. Ele custa zero e mesmo assim as duas funções **não
+  podem ser colapsadas**: elas discordam num ponto que nenhuma entrada de
+  produto alcança, e a que ficasse teria de ser escolhida sem dado;
+- **o clamp do `dist` em 1** na máscara é inalcançável pela própria referência
+  (`pickVerticesInSphere` só admite `d² < r²`). ⚠️ E a minha nota dizia que ele
+  era *o que torna `hardness = 1` exprimível* — **errado**: com `dist < 1`
+  garantido, `(1 − d)^0 == 1` com ou sem clamp. O disco duro sai do EXPOENTE
+  ZERO.
+
+⚠️ **Uma mutação foi INVÁLIDA, não sobrevivente** (perturbar o intermediário do
+laplaciano por `1e-9` fica **abaixo do ulp de `f32`** e é um no-op); a versão
+válida — errar UM ulp — sangra, e é ela que pina *por que o `smoothVerts` é
+`Float32Array` de propósito*.
+
+⚠️ **E o CONTROLE pegou DUAS falhas de fixture minhas, uma delas de classe
+nova:** a grade nasceu **regular**, e num anel simétrico a média devolve o mesmo
+`x` e o mesmo `z` — *exatamente* —, então só o `y` se movia (261 componentes num
+caso de 305 vértices) e um kernel que escrevesse **apenas a componente `y`**
+passaria verde; e o disco de seleção nasceu no **MEIO** da grade, onde só há
+interior — a fixture **continha** os três ramos do laplaciano e a **SELEÇÃO não
+os alcançava**, que é *a fixture não contém o fenômeno* um nível acima. As duas
+asserções novas contam sobre a `sel`, nunca sobre a malha.
 
 ---
 
@@ -111,9 +155,11 @@ há componentes andando em direções opostas.
 Os dois batem no centro e na borda e divergem em **toda a coroa**, crescendo até
 **1,44×**. É o fator que multiplica **todos** os verbos.
 
-⚠️ **A referência tem UMA curva para as dez tools** — ela não tem seletor de
-falloff. O nosso tem cinco, e o default (`Smooth`, `(1−t²)²`) é o mais estreito
-dos dois.
+⚠️ **A referência tem UMA curva para as dez tools de GEOMETRIA** — ela não tem
+seletor de falloff. O nosso tem cinco, e o default (`Smooth`, `(1−t²)²`) é o
+mais estreito dos dois. ⚠️ **A frase original desta linha dizia *"para as dez
+tools"* e estava errada:** o canal de MÁSCARA tem curva própria, com um knob de
+`hardness` — ver a §1.1. E o `Smooth` não tem curva nenhuma.
 
 ### 2.3 — O ACUMULA, que é o que o Enio reportou
 

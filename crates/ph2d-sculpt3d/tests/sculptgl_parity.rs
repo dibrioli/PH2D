@@ -56,6 +56,17 @@ struct Case {
     free: Vec<f32>,
     sel: Vec<u32>,
     out_pos: Vec<f32>,
+    /// A máscara DEPOIS do kernel, na mesma polaridade. Igual à entrada em todo
+    /// caso menos o `mask` — e é por isso que ela é despejada para TODOS: um
+    /// campo que só existisse no caso que o move não poderia provar que os
+    /// outros onze **não** o tocam.
+    out_free: Vec<f32>,
+    /// O ANEL, só na fixture de grade (o caso `smooth`) — a forma do CSR do
+    /// [`ph2d_mesh::Csr::parts`], vinda do ARQUIVO e não re-derivada aqui.
+    ring_start: Vec<u32>,
+    ring_len: Vec<u32>,
+    ring_values: Vec<u32>,
+    on_edge: Vec<u8>,
 }
 
 struct Oracle {
@@ -68,6 +79,12 @@ struct Oracle {
 fn f32s(rest: &str) -> Vec<f32> {
     rest.split_whitespace()
         .map(|t| f32::from_bits(u32::from_str_radix(t, 16).expect("hex f32")))
+        .collect()
+}
+
+fn u32s(rest: &str) -> Vec<u32> {
+    rest.split_whitespace()
+        .map(|t| t.parse().expect("u32 decimal"))
         .collect()
 }
 
@@ -109,10 +126,22 @@ fn load() -> Oracle {
                 free: Vec::new(),
                 sel: Vec::new(),
                 out_pos: Vec::new(),
+                out_free: Vec::new(),
+                ring_start: Vec::new(),
+                ring_len: Vec::new(),
+                ring_values: Vec::new(),
+                on_edge: Vec::new(),
             }),
             _ => {
                 let c = o.cases.last_mut().expect("um campo antes de `case`");
                 match key {
+                    // ⚠️ **Um `param` BOOLEANO chega como `1`/`0` decimal**, e
+                    // atravessa o mesmo `f64s` — `"1"` vira `f64::from_bits(1)`,
+                    // um subnormal minúsculo, e `"0"` vira `0.0` exato. Os
+                    // consumidores perguntam `!= 0.0`, então a distinção é
+                    // exata; o que NÃO se pode fazer com um desses é
+                    // aritmética, e é por isso que a nota está aqui em vez de
+                    // no sítio de leitura.
                     "param" => {
                         let (k, v) = rest.split_once(' ').expect("param <k> <v>");
                         c.params.insert(k.to_string(), f64s(v));
@@ -128,6 +157,16 @@ fn load() -> Oracle {
                             .collect();
                     }
                     "out.pos" => c.out_pos = f32s(rest),
+                    "out.mask" => c.out_free = f32s(rest),
+                    "ring.start" => c.ring_start = u32s(rest),
+                    "ring.len" => c.ring_len = u32s(rest),
+                    "ring.values" => c.ring_values = u32s(rest),
+                    "ring.onedge" => {
+                        c.on_edge = rest
+                            .split_whitespace()
+                            .map(|t| t.parse().expect("flag de borda"))
+                            .collect();
+                    }
                     other => panic!("campo desconhecido no oráculo: {other}"),
                 }
             }
@@ -214,24 +253,50 @@ fn eye_of(o: &Oracle, c: &Case) -> [f64; 3] {
 #[test]
 fn the_oracle_describes_a_phenomenon_before_it_judges_anything() {
     let o = load();
-    assert_eq!(o.cases.len(), 10, "nove kernels portados, e a terminadora");
+    assert_eq!(o.cases.len(), 12, "onze kernels portados, e a terminadora");
     for c in &o.cases {
         let n = c.sel.len();
         assert!(n >= 200, "[{}] pegada rala demais: {n}", c.name);
         assert_eq!(c.in_pos.len(), c.verts * 3, "[{}] posições", c.name);
         assert_eq!(c.in_nrm.len(), c.verts * 3, "[{}] normais", c.name);
         assert_eq!(c.free.len(), c.verts, "[{}] máscaras", c.name);
+        assert_eq!(c.out_free.len(), c.verts, "[{}] máscaras de saída", c.name);
         let moved = c
             .in_pos
             .iter()
             .zip(&c.out_pos)
             .filter(|(a, b)| a.to_bits() != b.to_bits())
             .count();
+        let masked = c
+            .free
+            .iter()
+            .zip(&c.out_free)
+            .filter(|(a, b)| a.to_bits() != b.to_bits())
+            .count();
+        // ⚠️ **UM canal por kernel, e isto é uma propriedade da referência, não
+        // uma conveniência do arquivo:** nenhum tool do SculptGL escreve posição
+        // E máscara. O `Masking` delega ao `Paint`, que só toca `mAr`; os onze
+        // irmãos só tocam `vAr`. Afirmar aqui é o que faz o caso `mask` — cujo
+        // deslocamento de posição é ZERO — deixar de parecer um caso morto.
         assert!(
-            moved > n,
-            "[{}] só {moved} componentes mexeram — a fixture não contém o fenômeno",
+            (moved > 0) != (masked > 0),
+            "[{}] o caso mexe em {moved} componentes de posição e {masked} de \
+             máscara — todo kernel da referência escreve EXATAMENTE um canal",
             c.name
         );
+        if masked > 0 {
+            assert!(
+                masked * 2 > n,
+                "[{}] só {masked} de {n} vértices mudaram de máscara",
+                c.name
+            );
+        } else {
+            assert!(
+                moved > n,
+                "[{}] só {moved} componentes mexeram — a fixture não contém o fenômeno",
+                c.name
+            );
+        }
         // Os três regimes de máscara, na polaridade da referência.
         assert!(c.free.contains(&1.0), "[{}] sem livre", c.name);
         assert!(c.free.contains(&0.5), "[{}] sem meio", c.name);
@@ -259,25 +324,72 @@ fn the_oracle_describes_a_phenomenon_before_it_judges_anything() {
             c.verts
         );
 
-        // ⚠️ **As normais NÃO são unitárias, e a fixture tem de garantir isso.**
-        // O `Mesh.updateVerticesNormal` da referência guarda a MÉDIA das normais
-        // de face, sem normalizar — é por isso que o `Inflate` divide pelo
-        // comprimento na hora de usar. Com normais unitárias essa divisão é um
-        // no-op, e a mutação que a apaga passa verde (foi o que aconteceu).
-        let mut any_short = false;
-        for i in 0..c.verts {
-            let (x, y, z) = (c.in_nrm[i * 3], c.in_nrm[i * 3 + 1], c.in_nrm[i * 3 + 2]);
-            let len = f64::from(x).hypot(f64::from(y)).hypot(f64::from(z));
-            if len < 0.99 {
-                any_short = true;
+        if c.ring_values.is_empty() {
+            // ⚠️ **As normais NÃO são unitárias, e a fixture tem de garantir
+            // isso.** O `Mesh.updateVerticesNormal` da referência guarda a MÉDIA
+            // das normais de face, sem normalizar — é por isso que o `Inflate`
+            // divide pelo comprimento na hora de usar. Com normais unitárias
+            // essa divisão é um no-op, e a mutação que a apaga passa verde (foi
+            // o que aconteceu).
+            //
+            // ⚠️ **A condição é *não ter anel*, e não uma lista de nomes.** É a
+            // fixture da ESFERA que alimenta os kernels que leem normais; a
+            // grade do smooth tem normais planas e nenhum kernel dela as lê.
+            // Enumerar os casos aqui seria a lista que apodrece no dia em que
+            // entrar o décimo terceiro.
+            let mut any_short = false;
+            for i in 0..c.verts {
+                let (x, y, z) = (c.in_nrm[i * 3], c.in_nrm[i * 3 + 1], c.in_nrm[i * 3 + 2]);
+                let len = f64::from(x).hypot(f64::from(y)).hypot(f64::from(z));
+                if len < 0.99 {
+                    any_short = true;
+                }
             }
+            assert!(
+                any_short,
+                "[{}] toda normal é unitária — a divisão pelo comprimento do \
+                 Inflate vira um no-op e ninguém a testa",
+                c.name
+            );
+        } else {
+            // ⚠️ **A fixture do anel tem de conter os TRÊS ramos do laplaciano**,
+            // senão ela aprova um kernel que só implementou o do meio: a beira
+            // (a regra dos vizinhos-de-borda), um vértice de valência ≤ 2 (que
+            // não se move) e o interior comum.
+            assert_eq!(c.on_edge.len(), c.verts, "[{}] flags de borda", c.name);
+            assert_eq!(c.ring_start.len(), c.verts, "[{}] starts do anel", c.name);
+            assert_eq!(c.ring_len.len(), c.verts, "[{}] lens do anel", c.name);
+            // ⚠️ **Contado sobre a SELEÇÃO, e não sobre a grade** — e a
+            // diferença nasceu de uma mutação que ia sobreviver. O laplaciano
+            // só corre nos vértices da lista, então uma grade que *contém* os
+            // três ramos com um disco no MEIO dela deixa a beira e o canto
+            // inalcançáveis: o controle diria "a fixture está completa" e a
+            // mutação que apaga as duas regras de borda passaria verde. É a
+            // mesma classe de *a fixture não contém o fenômeno*, um nível
+            // acima — ela contém, e a selecção não o alcança.
+            let border = c
+                .sel
+                .iter()
+                .filter(|&&v| c.on_edge[v as usize] != 0)
+                .count();
+            let low = c
+                .sel
+                .iter()
+                .filter(|&&v| c.ring_len[v as usize] <= 2)
+                .count();
+            let interior = c
+                .sel
+                .iter()
+                .filter(|&&v| c.on_edge[v as usize] == 0 && c.ring_len[v as usize] > 2)
+                .count();
+            assert!(border > 0, "[{}] a seleção não pega a beira", c.name);
+            assert!(
+                low > 0,
+                "[{}] a seleção não pega vértice de valência ≤ 2",
+                c.name
+            );
+            assert!(interior > 0, "[{}] a seleção não pega interior", c.name);
         }
-        assert!(
-            any_short,
-            "[{}] toda normal é unitária — a divisão pelo comprimento do Inflate \
-             vira um no-op e ninguém a testa",
-            c.name
-        );
     }
     // ⚠️ **O `eye` só é observável onde a pegada atravessa a TERMINADORA**, e
     // esta asserção nasceu VERMELHA sobre um oráculo correto: com o olho
@@ -326,7 +438,8 @@ fn the_brush_kernel_is_bit_identical() {
     let o = load();
     let c = case(&o, "brush");
     let mut pos = scratch(c);
-    let n = rk::area_normal(&c.in_nrm, &c.free, &front_with(c, eye_of(&o, c))).expect("normal de área");
+    let n =
+        rk::area_normal(&c.in_nrm, &c.free, &front_with(c, eye_of(&o, c))).expect("normal de área");
     rk::brush(
         &mut pos,
         &c.free,
@@ -352,8 +465,8 @@ fn the_brush_kernel_is_bit_identical_across_the_terminator() {
     let o = load();
     let c = case(&o, "brush_terminator");
     let mut pos = scratch(c);
-    let n = rk::area_normal(&c.in_nrm, &c.free, &front_with(c, eye_of(&o, c)))
-        .expect("normal de área");
+    let n =
+        rk::area_normal(&c.in_nrm, &c.free, &front_with(c, eye_of(&o, c))).expect("normal de área");
     rk::brush(
         &mut pos,
         &c.free,
@@ -450,7 +563,8 @@ fn the_crease_kernel_is_bit_identical() {
     let o = load();
     let c = case(&o, "crease");
     let mut pos = scratch(c);
-    let n = rk::area_normal(&c.in_nrm, &c.free, &front_with(c, eye_of(&o, c))).expect("normal de área");
+    let n =
+        rk::area_normal(&c.in_nrm, &c.free, &front_with(c, eye_of(&o, c))).expect("normal de área");
     let proxy = c.in_pos.clone();
     rk::crease(
         &mut pos,
@@ -537,6 +651,71 @@ fn the_local_scale_kernel_is_bit_identical() {
     assert_bit_identical("local_scale", &pos, &c.out_pos);
 }
 
+/// ⚠️ **O SMOOTH é o único tool de geometria da referência SEM FALLOFF** — o
+/// laço dele (`Smooth.js:47-60`) não computa distância nenhuma, e a mesma
+/// intensidade cai em toda a pegada. Este gate reproduz isso ao bit, o que
+/// significa que ele também pina a **borda dura** que vem junto.
+///
+/// ⚠️ **E ele é o único que lê o ANEL**, então é o único cuja fixture é a GRADE
+/// (aberta, com um canto de valência 2). O anel vem do arquivo em vez de ser
+/// re-derivado aqui — senão o gate estaria a comparar duas construções de anel
+/// além do kernel, e um desacordo entre elas seria lido como desacordo do
+/// kernel.
+#[test]
+fn the_smooth_kernel_is_bit_identical() {
+    let o = load();
+    let c = case(&o, "smooth");
+    let mut pos = scratch(c);
+    let mut smoothed = Vec::new();
+    rk::laplacian(
+        &pos,
+        &c.sel,
+        &c.ring_start,
+        &c.ring_len,
+        &c.ring_values,
+        &c.on_edge,
+        &mut smoothed,
+    );
+    rk::smooth(
+        &mut pos,
+        &c.free,
+        &c.sel,
+        &smoothed,
+        c.params["intensity"][0],
+    );
+    assert_bit_identical("smooth", &pos, &c.out_pos);
+}
+
+/// ⚠️ **A MÁSCARA tem a SEGUNDA curva da referência** — `(1 − d)^softness`, com
+/// `softness = 2·(1 − hardness)` —, e é o único kernel do porte que escreve o
+/// canal de máscara em vez da posição. Ver [`rk::mask`].
+///
+/// ⚠️ **Ele é também o único que paga um transcendental** (`powf`, o `Math.pow`
+/// do original), e é POR ISSO que este gate importa mais do que os outros: ele
+/// mede se as duas bibliotecas de `pow` concordam ao bit, em vez de eu afirmar
+/// que concordam.
+#[test]
+fn the_mask_kernel_is_bit_identical() {
+    let o = load();
+    let c = case(&o, "mask");
+    let mut free = c.free.clone();
+    rk::mask(
+        &mut free,
+        &c.in_pos,
+        &c.sel,
+        center_of(&o, c),
+        o.radius2,
+        c.params["intensity"][0],
+        c.params["hardness"][0],
+        c.params["negative"][0] != 0.0,
+    );
+    assert_bit_identical("mask", &free, &c.out_free);
+    // ⚠️ **A metade que prova que ele NÃO é um verbo de geometria.** Sem ela o
+    // gate aprovaria um kernel que, além da máscara, empurrasse a superfície —
+    // e nada mais nesta suíte olha para a posição neste caso.
+    assert_bit_identical("mask (posição intocada)", &c.in_pos, &c.out_pos);
+}
+
 /// ⚠️ **A CURVA, isolada** — o falloff único da referência, contra os números
 /// que a álgebra dele dá em pontos escolhidos à mão.
 ///
@@ -569,5 +748,8 @@ fn the_reference_falloff_is_one_curve_and_these_are_its_numbers() {
     // deixa um pouco mais forte, deixa-o divergente — e sem sintoma nenhum
     // perto do centro, que é onde se olha.
     assert!(rk::falloff(1.2) > 0.30 && rk::falloff(1.2) < 0.31, "0,3088");
-    assert!(rk::falloff(2.0) > 16.9, "17,0 — quem contém isto é a PEGADA");
+    assert!(
+        rk::falloff(2.0) > 16.9,
+        "17,0 — quem contém isto é a PEGADA"
+    );
 }

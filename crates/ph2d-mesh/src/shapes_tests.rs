@@ -135,8 +135,8 @@ fn the_sculpt_sphere_has_far_more_even_edges_than_a_uv_sphere() {
             let v = f.verts();
             for i in 0..v.len() {
                 let (a, b) = (p[v[i] as usize], p[v[(i + 1) % v.len()] as usize]);
-                let d = ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2))
-                    .sqrt();
+                let d =
+                    ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt();
                 lo = lo.min(d);
                 hi = hi.max(d);
             }

@@ -134,7 +134,11 @@ pub enum Origin {
 #[inline]
 fn origin(pos: &[f32], proxy: Option<&[f32]>, ind: usize) -> [f64; 3] {
     match proxy {
-        Some(p) => [f64::from(p[ind]), f64::from(p[ind + 1]), f64::from(p[ind + 2])],
+        Some(p) => [
+            f64::from(p[ind]),
+            f64::from(p[ind + 1]),
+            f64::from(p[ind + 2]),
+        ],
         None => [
             f64::from(pos[ind]),
             f64::from(pos[ind + 1]),
@@ -587,3 +591,15 @@ pub fn front_vertices(normals: &[f32], verts: &[u32], eye: [f64; 3], out: &mut V
         }
     }
 }
+
+/// **O SMOOTH** — o único tool de geometria da referência sem falloff, e o
+/// laplaciano com as duas regras de borda. Ver [`smooth_mod`].
+#[path = "ref_smooth.rs"]
+mod smooth_mod;
+pub use smooth_mod::{laplacian, smooth};
+
+/// **A MÁSCARA** — a SEGUNDA curva da referência, e o canal que ela acumula.
+/// Ver [`mask_mod`].
+#[path = "ref_mask.rs"]
+mod mask_mod;
+pub use mask_mod::mask;

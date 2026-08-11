@@ -145,9 +145,99 @@ function makeMesh(fx) {
     getNormals: () => fx.nrm,
     getMaterials: () => mats,
     getVerticesProxy: () => fx.proxy,
+    // O ANEL -- so' a fixture de grade o tem. O `laplacianSmooth` le' os tres
+    // (`SculptBase.js:288-291`), e o ramo do CSR so' roda se `getVerticesRingVert`
+    // NAO for um `Array` -- daqui sai um `Uint32Array` de proposito.
+    getVerticesRingVertStartCount: () => fx.ringStartCount,
+    getVerticesRingVert: () => fx.ringValues,
+    getVerticesOnEdge: () => fx.onEdge,
     isDynamic: false,
     updateGeometry: () => {},
-    getFacesFromVertices: () => []
+    getFacesFromVertices: () => [],
+    // Nao e' do SculptGL: e' como o `record` le' o canal de mascara DEPOIS do
+    // kernel. O `mats` e' construido aqui e o `fx.mask` e' so' a semente.
+    _mats: mats
+  };
+}
+
+/// Uma GRADE `n x n` triangulada -- a fixture do `smooth`, e a unica com anel.
+///
+/// ⚠️ **A esfera compacta NAO serve para o smooth**, e a razao esta' escrita no
+/// doc do `compact`: todo outro kernel indexa a malha *atraves* de `iVerts` e
+/// nunca le' um vizinho, entao compactar e' exato. O `smooth` le' o ANEL, que a
+/// compactacao destroi.
+///
+/// ⚠️ **Ela e' ABERTA de proposito** (tem beira), porque as duas regras de borda
+/// do `laplacianSmooth` sao metade da lei; numa malha fechada elas nunca rodam.
+/// E o corte da diagonal deixa UM canto com valencia 2, que e' o terceiro ramo
+/// (`vcount <= 2` ⇒ o vertice nao se move).
+function gridFixture(n) {
+  const count = (n + 1) * (n + 1);
+  const pos = new Float32Array(count * 3);
+  const nrm = new Float32Array(count * 3);
+  const mask = new Float32Array(count);
+  const id = (i, j) => j * (n + 1) + i;
+  for (let j = 0; j <= n; j++) {
+    for (let i = 0; i <= n; i++) {
+      // ⚠️ **A grade e' TORTA nos tres eixos, e isso nasceu do CONTROLE.** Numa
+      // rede regular o anel de um vertice interior e' simetrico, entao a media
+      // dos vizinhos devolve o MESMO `x` e o MESMO `z` -- exatamente, nao por
+      // pouco. So' o `y` se movia: 261 componentes num caso de 305 vertices, e
+      // um kernel que escrevesse apenas a componente `y` passaria verde. Com a
+      // rede deslocada nenhum eixo e' especial.
+      const jx = 0.11 * Math.sin(i * 1.9 + j * 0.7);
+      const jz = 0.11 * Math.cos(i * 0.6 - j * 2.3);
+      const x = (i / n) * 2 - 1 + jx / n;
+      const z = (j / n) * 2 - 1 + jz / n;
+      // Uma sela irregular: plana, o laplaciano nao teria o que mover.
+      const y = 0.35 * Math.sin(x * 2.7 + 0.4) * Math.cos(z * 3.1 - 0.2) + 0.08 * Math.sin(x * 9.0);
+      const k = id(i, j) * 3;
+      pos[k] = x;
+      pos[k + 1] = y;
+      pos[k + 2] = z;
+      nrm[k] = 0;
+      nrm[k + 1] = 1;
+      nrm[k + 2] = 0;
+      mask[id(i, j)] = (i + j) % 7 === 0 ? 0.0 : (i + j) % 7 === 3 ? 0.5 : 1.0;
+    }
+  }
+  // Faces: dois triangulos por celula, diagonal (i,j)-(i+1,j+1).
+  const faces = [];
+  for (let j = 0; j < n; j++) {
+    for (let i = 0; i < n; i++) {
+      faces.push([id(i, j), id(i + 1, j), id(i + 1, j + 1)]);
+      faces.push([id(i, j), id(i + 1, j + 1), id(i, j + 1)]);
+    }
+  }
+  const ringSet = Array.from({ length: count }, () => new Set());
+  const faceCount = new Uint32Array(count);
+  for (const f of faces) {
+    for (let a = 0; a < 3; a++) {
+      faceCount[f[a]]++;
+      ringSet[f[a]].add(f[(a + 1) % 3]);
+      ringSet[f[a]].add(f[(a + 2) % 3]);
+    }
+  }
+  const ringStartCount = new Uint32Array(count * 2);
+  const flat = [];
+  for (let v = 0; v < count; v++) {
+    const r = Array.from(ringSet[v]).sort((a, b) => a - b);
+    ringStartCount[v * 2] = flat.length;
+    ringStartCount[v * 2 + 1] = r.length;
+    for (const x of r) flat.push(x);
+  }
+  // A identidade do `vertOnEdge`: numero de faces != numero de vizinhos unicos.
+  // E' a MESMA que o nosso `Adjacency::is_border` ja' reproduz.
+  const onEdge = new Uint8Array(count);
+  for (let v = 0; v < count; v++) {
+    onEdge[v] = faceCount[v] !== ringStartCount[v * 2 + 1] ? 1 : 0;
+  }
+  return {
+    pos, nrm, mask, count,
+    proxy: pos.slice(),
+    ringStartCount,
+    ringValues: new Uint32Array(flat),
+    onEdge
   };
 }
 
@@ -297,17 +387,44 @@ function compact(fx, sel) {
 function record(name, params, run, over = {}) {
   const center = over.center || CENTER;
   const eye = over.eye || EYE;
-  const full = freshFixture();
-  // ⚠️ A malha compacta leva uma MARGEM (ate' 1,35x o raio), entao a selecao e'
-  // um subconjunto PROPRIO dela: quem esta' fora tem de sair byte-identico, e um
-  // kernel que escrevesse alem da lista seria pego pela comparacao.
-  const fx = compact(full, selectSphere(full, center, RADIUS * 1.35));
+  let fx;
+  let sel;
+  if (over.fixture) {
+    // A grade do smooth. ⚠️ A selecao e' um DISCO no meio, nao a grade inteira:
+    // (a) quem fica de fora tem de sair byte-identico, e (b) o laplaciano LE'
+    // vizinhos que estao fora da lista -- uma selecao total nao distinguiria
+    // *ler o anel* de *ler a lista*. Embaralhada pelo mesmo motivo de sempre (o
+    // `smoothVerts` e' EMPACOTADO).
+    // ⚠️ **O disco fica no CANTO, e nao no meio da grade.** No meio ele pega
+    // so' interior: nem a beira nem o vertice de valencia 2 entram na lista, e
+    // as duas regras de borda do laplaciano ficam INALCANCAVEIS -- a mutacao
+    // que as apaga passaria verde sobre uma fixture que o controle declara
+    // completa (ela CONTEM os tres ramos; a selecao e' que nao os alcancava).
+    // O canto `(+1, -1)` e' o que a diagonal da triangulacao deixa com dois
+    // vizinhos.
+    fx = over.fixture();
+    const pick = [];
+    for (let i = 0; i < fx.count; i++) {
+      const dx = fx.pos[i * 3] - 1.0;
+      const dz = fx.pos[i * 3 + 2] + 1.0;
+      if (dx * dx + dz * dz < 1.2 * 1.2) pick.push(i);
+    }
+    sel = shuffled(new Uint32Array(pick), 0x5c02);
+  } else {
+    const full = freshFixture();
+    // ⚠️ A malha compacta leva uma MARGEM (ate' 1,35x o raio), entao a selecao e'
+    // um subconjunto PROPRIO dela: quem esta' fora tem de sair byte-identico, e um
+    // kernel que escrevesse alem da lista seria pego pela comparacao.
+    fx = compact(full, selectSphere(full, center, RADIUS * 1.35));
+    sel = shuffled(selectSphere(fx, center, RADIUS), 0x5c01);
+  }
   const mesh = makeMesh(fx);
-  const sel = shuffled(selectSphere(fx, center, RADIUS), 0x5c01);
   const inPos = fx.pos.slice();
   run(fx, mesh, sel, center, eye);
+  const outMask = new Float32Array(fx.count);
+  for (let i = 0; i < fx.count; i++) outMask[i] = mesh._mats[i * 3 + 2];
   cases.push({
-    name, params, fx, sel, inPos, outPos: fx.pos.slice(),
+    name, params, fx, sel, inPos, outPos: fx.pos.slice(), outMask,
     over: over.center || over.eye ? { center, eye } : null
   });
 }
@@ -426,6 +543,55 @@ record('local_scale', { delta: SCALE_DELTA }, (fx, mesh, sel) => {
   kernels.scale.call(self, sel, CENTER, R2, SCALE_DELTA, picking);
 });
 
+// --- SMOOTH: o unico tool de geometria SEM falloff, e o unico que le' o ANEL.
+//
+// ⚠️ Ele roda em DUAS etapas na referencia (`Smooth.js:46-47`): o
+// `laplacianSmooth` do `SculptBase` escreve um `smoothVerts` EMPACOTADO, e o
+// `smooth` o consome. As duas sao extraidas -- nenhuma foi reescrita aqui.
+const SMOOTH_INTENSITY = 0.75;
+const laplacianSmooth = compile(readTool('SculptBase'), 'laplacianSmooth');
+const Smooth = readTool('Smooth');
+kernels.smooth = compile(Smooth, 'smooth');
+record(
+  'smooth',
+  { intensity: SMOOTH_INTENSITY },
+  (fx, mesh, sel) => {
+    const self = makeSelf(mesh, { intensity: SMOOTH_INTENSITY });
+    // Um sanity da FIXTURE, nao do kernel: sem beira as duas regras de borda
+    // nunca correm, e sem um vertice de valencia <= 2 o terceiro ramo tambem
+    // nao. Uma fixture que nao contem o fenomeno aprova um kernel sem eles.
+    let border = 0;
+    let low = 0;
+    for (let v = 0; v < fx.count; v++) {
+      if (fx.onEdge[v]) border++;
+      if (fx.ringStartCount[v * 2 + 1] <= 2) low++;
+    }
+    if (border === 0 || low === 0) {
+      throw new Error('grade sem beira (' + border + ') ou sem valencia<=2 (' + low + ')');
+    }
+    // O `Smooth.smooth` chama `this.laplacianSmooth` ele proprio
+    // (`Smooth.js:47`) e aloca o `smoothVerts` pelo `Utils.getMemory` --
+    // chama-lo aqui por fora seria rodar o laplaciano DUAS vezes e comparar com
+    // a segunda; o stub so' precisa de pendurar o metodo herdado.
+    self.laplacianSmooth = laplacianSmooth;
+    kernels.smooth.call(self, sel, SMOOTH_INTENSITY, picking);
+  },
+  { fixture: () => gridFixture(32) }
+);
+
+// --- MASKING: a SEGUNDA curva da referencia, `(1 - d)^softness`, e o unico
+// kernel que escreve o canal de mascara em vez da posicao.
+//
+// ⚠️ `_negative = true` de fabrica (`Masking.js:16`) e, com `1` = livre, isso
+// significa que o gesto padrao PROTEGE.
+const MASK_INTENSITY = 1.0;
+const MASK_HARDNESS = 0.25;
+kernels.mask = compile(readTool('Masking'), 'paint');
+record('mask', { intensity: MASK_INTENSITY, hardness: MASK_HARDNESS, negative: true }, (fx, mesh, sel) => {
+  const self = makeSelf(mesh, { intensity: MASK_INTENSITY, negative: true });
+  kernels.mask.call(self, sel, CENTER, R2, MASK_INTENSITY, MASK_HARDNESS, picking);
+});
+
 // ---------------------------------------------------------------------------
 // O DESPEJO -- bits, nunca decimais.
 // ---------------------------------------------------------------------------
@@ -467,8 +633,19 @@ for (const c of cases) {
   lines.push('in.mask ' + Array.from(c.fx.mask, f32bits).join(' '));
   lines.push('sel ' + Array.from(c.sel).join(' '));
   lines.push('out.pos ' + Array.from(c.outPos, f32bits).join(' '));
+  lines.push('out.mask ' + Array.from(c.outMask, f32bits).join(' '));
+  if (c.fx.ringValues) {
+    // O ANEL sai no arquivo em vez de ser re-derivado do outro lado: e' o que
+    // faz do gate uma COMPARACAO. Se o Rust construisse o proprio anel, o gate
+    // estaria a medir duas construcoes de anel alem do kernel.
+    lines.push('ring.start ' + Array.from(c.fx.ringStartCount).filter((_, i) => i % 2 === 0).join(' '));
+    lines.push('ring.len ' + Array.from(c.fx.ringStartCount).filter((_, i) => i % 2 === 1).join(' '));
+    lines.push('ring.values ' + Array.from(c.fx.ringValues).join(' '));
+    lines.push('ring.onedge ' + Array.from(c.fx.onEdge).join(' '));
+  }
   const moved = [];
   for (let i = 0; i < c.inPos.length; i++) if (c.inPos[i] !== c.outPos[i]) moved.push(i);
+  for (let i = 0; i < c.fx.count; i++) if (c.fx.mask[i] !== c.outMask[i]) moved.push(i);
   lines.push('# ' + c.name + ': ' + c.sel.length + ' selecionados, ' + moved.length + ' componentes mexidos');
   if (moved.length === 0) {
     // Um caso que nao move nada e' um oraculo que nao pode falhar: ele
@@ -482,8 +659,12 @@ console.log('escrito: ' + OUT);
 for (const c of cases) {
   let maxd = 0;
   for (let i = 0; i < c.inPos.length; i++) maxd = Math.max(maxd, Math.abs(c.inPos[i] - c.outPos[i]));
+  // ⚠️ As DUAS colunas, porque o `mask` move zero de POSICAO -- uma tabela so'
+  // com deslocamento leria o unico caso do canal de mascara como um caso morto.
+  let maxm = 0;
+  for (let i = 0; i < c.fx.count; i++) maxm = Math.max(maxm, Math.abs(c.fx.mask[i] - c.outMask[i]));
   console.log(
-    '  ' + c.name.padEnd(12) + ' sel=' + String(c.sel.length).padStart(4) +
-    '  maior deslocamento por componente = ' + maxd.toFixed(6)
+    '  ' + c.name.padEnd(17) + ' sel=' + String(c.sel.length).padStart(4) +
+    '  pos = ' + maxd.toFixed(6) + '   mascara = ' + maxm.toFixed(6)
   );
 }

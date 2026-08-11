@@ -4198,10 +4198,11 @@ impl App {
                         // alvos (uma âncora não pode encaixar em si mesma; a forma em
                         // desenho não é referência de nada).
                         match (self.vec_pen.dragging_anchors(), self.vec_shape.selected()) {
-                            (Some((pid, verts)), _) => {
-                                let moving: Vec<_> = verts.iter().map(|&v| (pid, v)).collect();
-                                self.vec_rebuild_snap_targets(&[], &moving);
-                            }
+                            // ⚠️ Os pares vêm PRONTOS do pen: ele passou a guardar o dono de cada
+                            // nó, então a re-montagem que morava aqui (`map(|&v| (pid, v))`) some
+                            // — e com ela o pressuposto de que todas as âncoras em movimento
+                            // pertencem à MESMA forma, que um arrasto multi-forma quebra.
+                            (Some(moving), _) => self.vec_rebuild_snap_targets(&[], &moving),
                             (None, Some(sid)) => self.vec_rebuild_snap_targets(&[sid], &[]),
                             (None, None) => {}
                         }

@@ -33,6 +33,22 @@ pub fn overlay_transform(
         * Affine::new(ph2d_vec_scene::xform_of(xforms, id).0)
 }
 
+#[cfg(test)]
+thread_local! {
+    /// **Quantas âncoras este passe desenhou como ESCOLHIDAS** — contador de teste, o oráculo do gate
+    /// `the_overlay_lights_a_picked_node_of_a_non_primary_shape`.
+    ///
+    /// ⚠️ Uma `VectorScene` é um buffer de comandos do Vello: ela não se deixa perguntar *"que
+    /// retângulos há aqui?"*. O precedente da própria crate (`encode_cost_tests`) é **CONTAR** o que a
+    /// função decidiu, que é exato, sem relógio e sem flake — e é literalmente a propriedade em
+    /// questão. Um gate de TEXTO sobre esta linha diria só que ela está escrita, nunca que ela decide.
+    ///
+    /// ⚠️ **Por THREAD, nunca um global com trava ao lado:** um contador global pede uma lista de quem
+    /// precisa travar, e essa lista apodrece — foi o mecanismo exato do flake que a `ph2d-painter-brush`
+    /// pagou (13 sítios acendiam o contador, 2 seguravam a trava).
+    pub(crate) static PICKED_DRAWN: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 /// Desenha os **gizmos de edição** por cima da cena (screen-space, tamanho
 /// constante em px): quadradinho em cada âncora; e — só no path `selected` — as
 /// linhas âncora→handle + bolinhas nos handles dos vértices suaves. Cores
@@ -43,7 +59,7 @@ pub fn draw_overlays(
     view: &VecViewState,
     selected: Option<VecPathId>,
     selected_paths: &[VecPathId],
-    selected_verts: &[usize],
+    selected_verts: &[(VecPathId, usize)],
     xforms: &VecXforms,
     camera: Affine,
     target: &mut VectorScene,
@@ -110,9 +126,19 @@ pub fn draw_overlays(
         // address, so a hole's anchors pick exactly like the outer contour's.
         for (i, v) in path.verts_all().enumerate() {
             let a = transform * Point::new(v.anchor[0], v.anchor[1]);
-            // A vertex in the multi-selection (selected path only) is drawn bigger
-            // + cyan; other anchors of the selected path are orange; other paths gray.
-            let picked = is_sel && selected_verts.contains(&i);
+            // Um vértice ESCOLHIDO desenha maior + ciano; as outras âncoras de uma forma na
+            // seleção de objeto saem laranja; as demais, cinza.
+            //
+            // ⚠️ Era `is_sel && selected_verts.contains(&i)` — *"selected path only"* escrito no
+            // próprio comentário —, porque um índice sem dono só podia falar da forma primária:
+            // os nós escolhidos das OUTRAS formas eram desenhados como não-escolhidos, e o
+            // artista via a metade da sua seleção apagar-se ao tocar a segunda forma. Com o dono
+            // no par, a pergunta é feita direta e o caso especial some.
+            let picked = selected_verts.contains(&(path.id, i));
+            #[cfg(test)]
+            if picked {
+                PICKED_DRAWN.with(|c| c.set(c.get() + 1));
+            }
             let s = if picked { 4.5 } else { 3.5 };
             let col = if picked {
                 Color::from_rgba8(90, 200, 235, 255) // ciano = vértice selecionado (grupo)
@@ -125,3 +151,8 @@ pub fn draw_overlays(
         }
     }
 }
+
+/// Gate do que o overlay ACENDE — irmão pelo assunto.
+#[cfg(test)]
+#[path = "overlays_tests.rs"]
+mod tests;

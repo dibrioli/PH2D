@@ -225,6 +225,7 @@ mod motion_object_smoke;
 mod motion_path_smoke;
 mod motion_shape_smoke;
 mod motion_state;
+mod multi_node_smoke;
 mod name_unique;
 mod nest_smoke;
 mod node_reach_smoke;

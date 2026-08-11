@@ -332,5 +332,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::grid_smoke::frame(app, f);
         return true;
     }
+    // ⭐ Os NÓS DE VÁRIAS FORMAS (=70) — irmã `multi_node_smoke`. Três formas, a do meio ESCALADA:
+    // uma caixa sobre as três apanha os 12 nós, e arrastar um leva todos na mesma distância de tela.
+    if level == 70 {
+        crate::multi_node_smoke::frame(app, f);
+        return true;
+    }
     false
 }

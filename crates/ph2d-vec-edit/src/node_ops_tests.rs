@@ -29,7 +29,7 @@ fn average_collapses_the_selected_nodes_onto_their_centroid() {
     let id = open(&mut scene, &[[0.0, 0.0], [10.0, 0.0], [10.0, 10.0]]);
     let mut pen = PenTool::new();
     pen.select(Some(id));
-    pen.selected_verts = vec![0, 1];
+    pen.selected_verts = vec![(id, 0), (id, 1)];
 
     assert!(pen.average_selected_verts(&mut scene));
 
@@ -48,7 +48,7 @@ fn average_translates_the_whole_vertex_so_the_tangent_survives() {
     let before = scene.paths()[0].verts[0];
     let mut pen = PenTool::new();
     pen.select(Some(id));
-    pen.selected_verts = vec![0, 1];
+    pen.selected_verts = vec![(id, 0), (id, 1)];
 
     pen.average_selected_verts(&mut scene);
 
@@ -74,7 +74,7 @@ fn average_is_refused_when_there_is_nothing_to_average() {
     let mut pen = PenTool::new();
     pen.select(Some(id));
     assert!(!pen.average_selected_verts(&mut scene), "0 selecionados");
-    pen.selected_verts = vec![1];
+    pen.selected_verts = vec![(id, 1)];
     assert!(!pen.average_selected_verts(&mut scene), "1 selecionado");
     // Já coincidentes: nada se move ⇒ nenhum passo de undo espúrio.
     let same = scene.push_path(VecPath {
@@ -83,7 +83,7 @@ fn average_is_refused_when_there_is_nothing_to_average() {
         ..VecPath::default()
     });
     pen.select(Some(same));
-    pen.selected_verts = vec![0, 1];
+    pen.selected_verts = vec![(same, 0), (same, 1)];
     assert!(!pen.average_selected_verts(&mut scene), "já no mesmo ponto");
 }
 
@@ -106,13 +106,16 @@ fn average_then_join_welds_two_ends_into_a_single_vertex() {
     let a = open(&mut scene, &[[-5.0, 0.0], [0.0, 0.0]]);
     let b = open(&mut scene, &[[0.4, 0.0], [5.0, 0.0]]);
     let mut pen = PenTool::new();
-    pen.select(Some(a));
-    pen.selected_verts = vec![1];
-    // O Average é por-caminho (a seleção de nó pertence a UM), então as duas pontas são postas
-    // no ponto médio à mão — que é o que o artista faz hoje com Average em cada metade.
-    scene.path_mut(a).unwrap().vert_mut(1).unwrap().anchor = [0.2, 0.0];
-    scene.path_mut(b).unwrap().vert_mut(0).unwrap().anchor = [0.2, 0.0];
+    // ⚠️ Esta metade escrevia as duas âncoras À MÃO, sob a nota *"o Average é por-caminho (a
+    // seleção de nó pertence a UM)"*: a fixture CONTORNAVA exatamente a ausência que a seleção
+    // com dono removeu. Agora o gesto é o real — escolher a ponta de cada forma e mediar —, que
+    // é o par canônico do Illustrator que este teste sempre alegou exercitar.
     pen.select_many(&[a, b]);
+    pen.selected_verts = vec![(a, 1), (b, 0)];
+    assert!(
+        pen.average_selected_verts(&mut scene),
+        "o Average atravessa as duas formas"
+    );
     assert!(pen.join_selection(&mut scene));
     assert_eq!(scene.paths()[0].verts.len(), 3, "a costura é UM vértice");
 }
@@ -183,7 +186,7 @@ fn a_join_that_welds_nothing_still_drops_the_vertex_selection() {
     });
     let mut pen = PenTool::new();
     pen.select_many(&[a, b]);
-    pen.selected_verts = vec![0, 2];
+    pen.selected_verts = vec![(a, 0), (b, 2)];
 
     assert!(!pen.join_selection(&mut scene), "dois fechados: nada solda");
     assert!(
@@ -209,7 +212,7 @@ fn reverse_turns_every_selected_path_and_drops_the_stale_vertex_selection() {
     let b = open(&mut scene, &[[9.0, 0.0], [8.0, 0.0]]);
     let mut pen = PenTool::new();
     pen.select_many(&[a, b]);
-    pen.selected_verts = vec![0];
+    pen.selected_verts = vec![(a, 0)];
 
     assert!(pen.reverse_selected_paths(&mut scene));
 
@@ -237,7 +240,7 @@ fn average_with_only_stale_indices_never_writes_a_nan() {
     let id = open(&mut scene, &[[1.0, 2.0], [3.0, 4.0]]);
     let mut pen = PenTool::new();
     pen.select(Some(id));
-    pen.selected_verts = vec![50, 51];
+    pen.selected_verts = vec![(id, 50), (id, 51)];
 
     assert!(!pen.average_selected_verts(&mut scene));
 

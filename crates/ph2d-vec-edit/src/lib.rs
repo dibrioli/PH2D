@@ -137,12 +137,27 @@ pub struct PenTool {
     /// simples num path a reduz a `[esse path]`; Shift+clique num path o alterna
     /// (`toggle_path`). O primário ([`Self::selected`]) é sempre o último desta lista.
     selected_paths: Vec<VecPathId>,
-    /// Vértices selecionados no path selecionado — o alvo dos botões de tipo
+    /// Vértices selecionados, **cada um com o seu DONO** — o alvo dos botões de tipo
     /// (Corner/Smooth/Symmetric), do delete e do move em lote. Vazio = nenhum
     /// vértice específico (ex.: path inteiro selecionado por uma booleana). O
-    /// ÚLTIMO é o "primário" (destaque do painel). Populado por clique único ou
-    /// por box-select (Shift+arrastar).
-    selected_verts: Vec<usize>,
+    /// ÚLTIMO é o "primário" (destaque do painel). Populado por clique único, por
+    /// Shift+clique ou por box-select.
+    ///
+    /// ⚠️ **Era `Vec<usize>` — índices planos dentro de um [`Self::selected`] único —, e o
+    /// plano 25 §6 nomeava editar nós de VÁRIAS formas como ausência POR CONSTRUÇÃO:** dois
+    /// índices de formas diferentes eram indistinguíveis, então somar a segunda forma tinha de
+    /// TROCAR de alvo, e o Delete seguinte apagaria nós de uma forma que o artista não estava a
+    /// olhar. Medido antes da troca (`multi_probe`): uma caixa sobre duas formas apanhava **4 de
+    /// 8** nós, o Shift+clique na segunda forma deixava **1**, e o nudge movia **metade** da arte
+    /// que o retângulo cobria.
+    ///
+    /// Com o dono no par, os casos especiais **deixam de existir** em vez de serem tratados: não
+    /// há "somar só vale no mesmo caminho", não há "outro path TROCA o alvo", e o `selected`
+    /// volta a responder só o que sempre foi dele — *qual forma o painel de estilo edita*.
+    ///
+    /// ⚠️ **A ORDEM é semântica** (é por isso que é uma lista e não um mapa): o ÚLTIMO par é o
+    /// primário, e um mapa ordenado por id perderia *quem foi tocado por último*.
+    selected_verts: Vec<(VecPathId, usize)>,
     /// Arrastando o handle do vértice recém-posto (desenho, entre press e release).
     dragging: bool,
     /// Elemento agarrado para edição (entre press e release).
@@ -182,21 +197,25 @@ impl PenTool {
         self.dragging || self.grab.is_some()
     }
 
-    /// As ÂNCORAS que o arrasto atual move: `(path, índices planos)`. `None` quando
+    /// As ÂNCORAS que o arrasto atual move, **cada uma com o seu dono**. `None` quando
     /// não há arrasto de âncora (handle, desenho, ou nada). O snap usa isto para
     /// excluir da lista de alvos as âncoras que estão vindo junto com o cursor.
+    ///
+    /// ⚠️ Devolvia `(VecPathId, Vec<usize>)` — **um** dono para todos —, e o chamador da shell
+    /// já re-montava os pares à mão (`verts.iter().map(|&v| (pid, v))`). Com o arrasto a
+    /// atravessar formas, um dono só excluiria do snap apenas as âncoras de UMA delas, e as
+    /// outras encaixariam em si mesmas.
     #[must_use]
-    pub fn dragging_anchors(&self) -> Option<(VecPathId, Vec<usize>)> {
+    pub fn dragging_anchors(&self) -> Option<Vec<(VecPathId, usize)>> {
         let g = self.grab?;
         if g.part != Part::Anchor {
             return None;
         }
-        let verts = if self.selected_verts.contains(&g.vert) {
+        Some(if self.selected_verts.contains(&(g.path, g.vert)) {
             self.selected_verts.clone()
         } else {
-            vec![g.vert]
-        };
-        Some((g.path, verts))
+            vec![(g.path, g.vert)]
+        })
     }
 
     /// Zera todo o estado (ex.: após apagar o path selecionado), preservando o
@@ -312,7 +331,7 @@ impl PenTool {
                 return PenClick::Ignored;
             };
             path.verts.push(VecVertex::corner(anchor_local));
-            self.selected_verts = vec![path.verts.len() - 1];
+            self.selected_verts = vec![(id, path.verts.len() - 1)];
             self.dragging = true;
             return PenClick::Added;
         }
@@ -345,7 +364,7 @@ impl PenTool {
         self.active = Some(id);
         self.selected = Some(id);
         self.selected_paths = vec![id];
-        self.selected_verts = vec![0];
+        self.selected_verts = vec![(id, 0)];
         self.dragging = true;
         PenClick::Started
     }
@@ -445,7 +464,7 @@ impl PenTool {
         self.active = Some(id);
         self.selected = Some(id);
         self.selected_paths = vec![id];
-        self.selected_verts = vec![last_idx];
+        self.selected_verts = vec![(id, last_idx)];
         true
     }
 
@@ -519,7 +538,7 @@ impl PenTool {
         }
         let last = a.verts.len().saturating_sub(1);
         scene.remove_path(bid);
-        self.selected_verts = vec![last];
+        self.selected_verts = vec![(active, last)];
         self.dragging = false;
         Some(PenClick::Added)
     }
@@ -533,8 +552,8 @@ impl PenTool {
     fn grab_vertex(&mut self, scene: &mut VecScene, g: Grab, alt: bool) {
         self.selected = Some(g.path);
         self.selected_paths = vec![g.path];
-        if !(g.part == Part::Anchor && self.selected_verts.contains(&g.vert)) {
-            self.selected_verts = vec![g.vert];
+        if !(g.part == Part::Anchor && self.selected_verts.contains(&(g.path, g.vert))) {
+            self.selected_verts = vec![(g.path, g.vert)];
         }
         // Alt + agarrar um HANDLE = quebrar a tangente (vira cusp Corner) antes de
         // arrastar → só esse handle se move (regra Corner). Convenção Illustrator;

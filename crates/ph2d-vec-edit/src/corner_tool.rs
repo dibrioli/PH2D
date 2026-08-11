@@ -56,7 +56,7 @@ impl PenTool {
             return false;
         };
         self.selected_paths = vec![id];
-        self.selected_verts = vec![vert];
+        self.selected_verts = vec![(id, vert)];
         // "Primeiro transforma em quina" quando o ponto é suave (sem ângulo a arredondar).
         let is_corner = scene
             .paths()

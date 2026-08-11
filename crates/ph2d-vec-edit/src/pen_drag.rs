@@ -25,32 +25,56 @@ impl PenTool {
             let Some(inv) = xf.inverse() else {
                 return false; // forma colapsada: nada a arrastar
             };
-            let Some(path) = scene.path_mut(g.path) else {
-                return false;
-            };
             // Arrasto de ÂNCORA: se a agarrada está na multi-seleção, TODAS as
-            // âncoras selecionadas transladam pelo mesmo delta (âncora + handles);
+            // âncoras selecionadas transladam pelo mesmo delta de MUNDO (âncora + handles);
             // senão só a agarrada. Handles ficam de fora (são per-vértice).
             if g.part == Part::Anchor {
-                let Some(grabbed) = path.vert(g.vert) else {
+                // A âncora agarrada é LIDA antes de qualquer escrita — o grupo pode atravessar
+                // formas, e cada uma precisa do seu próprio empréstimo mutável.
+                let Some(anchor) = scene
+                    .paths()
+                    .iter()
+                    .find(|pp| pp.id == g.path)
+                    .and_then(|pp| pp.vert(g.vert))
+                    .map(|v| v.anchor)
+                else {
                     return false;
                 };
                 let p = snap(p);
-                // O snap acontece no MUNDO; o delta desce pro espaço local do path.
-                let gw = xf.apply(grabbed.anchor);
-                let d = inv.apply_vec([p[0] - gw[0], p[1] - gw[1]]);
-                let group = self.selected_verts.contains(&g.vert);
-                for i in 0..path.total_verts() {
-                    if i != g.vert && !(group && self.selected_verts.contains(&i)) {
-                        continue;
+                // ⚠️ **O delta nasce no MUNDO e desce ao local de CADA forma.** Antes ele descia
+                // uma vez, ao local da forma agarrada, porque o grupo não podia sair dela; com o
+                // arrasto a atravessar formas, um único `inv` faria as outras andarem a distância
+                // errada — pela razão de escala entre elas — e a seleção se DESMONTARIA sob o
+                // dedo. É a mesma lei do `nudge`, que já convertia por forma.
+                let gw = xf.apply(anchor);
+                let dw = [p[0] - gw[0], p[1] - gw[1]];
+                if !self.selected_verts.contains(&(g.path, g.vert)) {
+                    let d = inv.apply_vec(dw);
+                    let Some(path) = scene.path_mut(g.path) else {
+                        return false;
+                    };
+                    if let Some(v) = path.vert_mut(g.vert) {
+                        crate::selection::shift_vert(v, d);
                     }
-                    let Some(v) = path.vert_mut(i) else { continue };
-                    v.anchor = [v.anchor[0] + d[0], v.anchor[1] + d[1]];
-                    v.in_handle = [v.in_handle[0] + d[0], v.in_handle[1] + d[1]];
-                    v.out_handle = [v.out_handle[0] + d[0], v.out_handle[1] + d[1]];
+                    return true;
+                }
+                for id in self.vert_paths() {
+                    let d = self.delta_to_local(id, dw);
+                    let idxs: Vec<usize> = self.verts_in(id).collect();
+                    let Some(path) = scene.path_mut(id) else {
+                        continue;
+                    };
+                    for i in idxs {
+                        if let Some(v) = path.vert_mut(i) {
+                            crate::selection::shift_vert(v, d);
+                        }
+                    }
                 }
                 return true;
             }
+            let Some(path) = scene.path_mut(g.path) else {
+                return false;
+            };
             // **O SEGMENTO**: o ponto da curva em `seg_t` segue o dedo, e as duas âncoras ficam
             // onde estão — a topologia não muda. Sem snap: encaixar o MEIO de uma curva numa
             // âncora vizinha produziria uma torção que ninguém pediu (a mesma razão do handle).

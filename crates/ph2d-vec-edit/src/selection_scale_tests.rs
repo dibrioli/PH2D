@@ -121,11 +121,15 @@ fn tab_walks_the_nodes_and_wraps() {
     pen.select(Some(a));
     for want in [0, 1, 2, 3, 0] {
         assert!(pen.step_vert_selection(&scene, true));
-        assert_eq!(pen.selected_vert(), Some(want), "o Tab saltou");
+        assert_eq!(pen.selected_vert(), Some((a, want)), "o Tab saltou");
     }
     // E para trás a partir do 0 dá a volta para o último.
     assert!(pen.step_vert_selection(&scene, false));
-    assert_eq!(pen.selected_vert(), Some(3), "o Shift+Tab nao deu a volta");
+    assert_eq!(
+        pen.selected_vert(),
+        Some((a, 3)),
+        "o Shift+Tab nao deu a volta"
+    );
     // ⚠️ O Tab SUBSTITUI: percorrer é olhar um de cada vez, e somar ao andar tornaria a tecla um
     // "select all" lento.
     assert_eq!(pen.selected_verts().len(), 1);
@@ -150,7 +154,7 @@ fn select_subpath_takes_the_touched_contour_and_only_it() {
     pen.box_select(&scene, [0.5, 0.5], [1.5, 1.5]);
     assert_eq!(
         pen.selected_verts(),
-        [6],
+        [(id, 6)],
         "a fixture nao pegou um no' do furo"
     );
     assert!(pen.select_subpath_verts(&scene));
@@ -161,7 +165,7 @@ fn select_subpath_takes_the_touched_contour_and_only_it() {
         pen.selected_verts().len()
     );
     assert!(
-        pen.selected_verts().iter().all(|&i| i >= 4),
+        pen.selected_verts().iter().all(|&(_, i)| i >= 4),
         "apanhou nos do contorno de FORA: {:?}",
         pen.selected_verts()
     );
@@ -183,13 +187,13 @@ fn select_same_takes_every_node_of_the_primarys_kind() {
     pen.box_select(&scene, [-1.5, -1.5], [-0.5, -0.5]); // só o vértice 0 (Smooth)
     assert_eq!(
         pen.selected_verts(),
-        [0],
+        [(id, 0)],
         "a fixture nao pegou um no' Smooth"
     );
     assert!(pen.select_verts_of_same_kind(&scene));
     assert_eq!(
         pen.selected_verts(),
-        [0, 2],
+        [(id, 0), (id, 2)],
         "o Select Same nao apanhou os dois Smooth (e so' eles)"
     );
 }

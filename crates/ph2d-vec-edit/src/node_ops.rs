@@ -45,23 +45,31 @@ impl PenTool {
     /// função com um eixo mascarado, e o caso que compõe com o Join — o único que *tem* de
     /// existir para soldar — é o de ambos. As variantes por-eixo entram quando o smoke as pedir,
     /// e não como um terceiro botão nascido de simetria.
+    /// ⚠️ **O centroide é tomado no MUNDO, e isto é CORREÇÃO, não generalização gratuita:** dois
+    /// nós de formas diferentes vivem em espaços locais diferentes (ADR-0111), e mediar as
+    /// coordenadas locais de frames distintos não significa nada — o "centro" cairia num lugar que
+    /// não é o meio de coisa nenhuma. Com **uma** forma o resultado é o MESMO que sempre foi, e
+    /// não por sorte: um mapa afim comuta com o centroide (`xf⁻¹(média(xf(aᵢ))) = média(aᵢ)`),
+    /// então a rota nova reduz exatamente à antiga onde a antiga era válida.
     pub fn average_selected_verts(&mut self, scene: &mut VecScene) -> bool {
-        let Some(id) = self.selected() else {
-            return false;
-        };
-        let verts: Vec<usize> = self.selected_verts().to_vec();
-        let Some(path) = scene.path_mut(id) else {
-            return false;
-        };
         // ⚠️ A contagem que decide é a dos índices que RESOLVEM, não a dos selecionados: uma
-        // guarda em `verts.len()` aqui em cima seria puro atalho (o `n < 2` abaixo a subsume
-        // inteira), e uma mutação prova isso — dois guards para uma pergunta são um a mais.
+        // guarda em `selected_verts().len()` aqui em cima seria puro atalho (o `n == 0` abaixo a
+        // subsume inteira), e uma mutação prova isso — dois guards para uma pergunta são um a mais.
         let mut sum = [0.0f64; 2];
         let mut n = 0usize;
-        for &i in &verts {
-            let Some(v) = path.vert(i) else { continue };
-            sum[0] += v.anchor[0];
-            sum[1] += v.anchor[1];
+        for &(pid, i) in self.selected_verts() {
+            let Some(a) = scene
+                .paths()
+                .iter()
+                .find(|p| p.id == pid)
+                .and_then(|p| p.vert(i))
+                .map(|v| v.anchor)
+            else {
+                continue;
+            };
+            let w = self.to_world(pid, a);
+            sum[0] += w[0];
+            sum[1] += w[1];
             n += 1;
         }
         // ⚠️ **Esta guarda é HIGIENE, e a mutação prova** (nenhum gate sangra ao trocá-la por
@@ -77,17 +85,23 @@ impl PenTool {
         }
         let c = [sum[0] / n as f64, sum[1] / n as f64];
         let mut moved = false;
-        for &i in &verts {
-            let Some(v) = path.vert_mut(i) else { continue };
-            let d = [c[0] - v.anchor[0], c[1] - v.anchor[1]];
-            if d[0] == 0.0 && d[1] == 0.0 {
+        for id in self.vert_paths() {
+            // O centroide DESCE ao espaço desta forma — um número de mundo escrito num vértice
+            // local poria o nó onde a moldura da forma o levasse, não onde o artista viu.
+            let cl = self.to_local(id, c);
+            let idxs: Vec<usize> = self.verts_in(id).collect();
+            let Some(path) = scene.path_mut(id) else {
                 continue;
+            };
+            for i in idxs {
+                let Some(v) = path.vert_mut(i) else { continue };
+                let d = [cl[0] - v.anchor[0], cl[1] - v.anchor[1]];
+                if d[0] == 0.0 && d[1] == 0.0 {
+                    continue;
+                }
+                crate::selection::shift_vert(v, d);
+                moved = true;
             }
-            for p in [&mut v.anchor, &mut v.in_handle, &mut v.out_handle] {
-                p[0] += d[0];
-                p[1] += d[1];
-            }
-            moved = true;
         }
         moved
     }

@@ -111,7 +111,7 @@ impl PenTool {
         let (sel, seg, t) = self.insert_hit(scene, p, hit_r)?;
         let ni = ph2d_vec_scene::split_segment(scene.path_mut(sel)?, seg, t)?;
         self.selected_paths = vec![sel];
-        self.selected_verts = vec![ni];
+        self.selected_verts = vec![(sel, ni)];
         self.grab = Some(Grab {
             path: sel,
             vert: ni,

@@ -170,7 +170,7 @@ fn deleting_a_selected_node_refits_its_neighbours() {
     pen.on_release();
     assert_eq!(
         pen.selected_verts(),
-        [1],
+        [(id, 1)],
         "o clique nao selecionou o no' do meio"
     );
     assert!(pen.delete_selected_vertex(&mut scene));

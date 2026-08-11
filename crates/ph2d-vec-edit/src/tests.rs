@@ -161,7 +161,7 @@ fn click_on_a_segment_inserts_and_grabs_a_vertex() {
     );
     assert_eq!(scene.paths()[0].verts.len(), 3);
     assert_eq!(scene.paths()[0].verts[1].kind, VertexKind::Smooth);
-    assert_eq!(pen.selected_vert(), Some(1));
+    assert_eq!(pen.selected_vert(), Some((scene.paths()[0].id, 1)));
     pen.on_release();
 }
 
@@ -189,7 +189,7 @@ fn delete_selected_vertex_removes_one_node_and_keeps_the_path() {
     draw_triangle(&mut pen, &mut scene); // closed, 3 verts
     pen.on_press(&mut scene, [4.0, 0.0], PTW, false, &mut nosnap); // select vertex 1
     pen.on_release();
-    assert_eq!(pen.selected_vert(), Some(1));
+    assert_eq!(pen.selected_vert(), Some((scene.paths()[0].id, 1)));
     assert!(pen.delete_selected_vertex(&mut scene));
     assert_eq!(scene.paths()[0].verts.len(), 2, "one node gone, path kept");
 }
@@ -236,7 +236,7 @@ fn box_select_picks_the_anchors_inside_the_box() {
     pen.box_select(&scene, [-1.0, -1.0], [5.0, 1.0]);
     let mut got = pen.selected_verts().to_vec();
     got.sort_unstable();
-    assert_eq!(got, vec![0, 1]);
+    assert_eq!(got, vec![(id, 0), (id, 1)]);
     // With no path pre-selected, box-select auto-picks the path with anchors.
     let mut pen2 = PenTool::new();
     pen2.box_select(&scene, [-1.0, -1.0], [5.0, 5.0]);
@@ -261,7 +261,7 @@ fn shift_click_toggles_a_vertex_and_the_retype_hits_every_summed_point() {
     assert!(pen.toggle_vert_at(&scene, [4.0, 4.0], 0.5));
     let mut got = pen.selected_verts().to_vec();
     got.sort_unstable();
-    assert_eq!(got, vec![0, 2], "Shift summed both points");
+    assert_eq!(got, vec![(id, 0), (id, 2)], "Shift summed both points");
     // The retype reaches every summed point, and only them.
     assert!(pen.set_selected_vertex_kind(&mut scene, VertexKind::Smooth));
     assert_eq!(scene.paths()[0].verts[0].kind, VertexKind::Smooth);
@@ -283,17 +283,24 @@ fn shift_click_toggles_a_vertex_and_the_retype_hits_every_summed_point() {
     assert!(pen.toggle_vert_at(&scene, [0.0, 0.0], 0.5));
     assert_eq!(
         pen.selected_verts(),
-        [2],
+        [(id, 2)],
         "re-click drops only the re-clicked"
     );
 }
 
-/// The point selection indexes ONE path, so Shift+clicking an anchor of a DIFFERENT path retargets
-/// rather than sums — the same answer `box_select` gives. Summing across paths is not representable
-/// here, and pushing the foreign index onto the old path's list would select the wrong vertex (or
-/// one past the end).
+/// **Shift+clique numa âncora de OUTRA forma SOMA — a seleção de nós atravessa formas.**
+///
+/// ⚠️ Este gate afirmava o CONTRÁRIO, e a razão que ele dava era verdadeira sobre a representação
+/// de então: *"a seleção de pontos indexa UM caminho … somar entre formas não é representável
+/// aqui, e empurrar o índice estrangeiro para a lista do caminho antigo selecionaria o vértice
+/// errado (ou um além do fim)"*. Ele estava certo — e por isso era a forma exata de uma cerca de
+/// Chesterton que só cai com a representação, nunca com um `if`.
+///
+/// Com o dono no par (`(VecPathId, usize)`), o índice estrangeiro **não pode** apontar para o
+/// caminho antigo, e o que era um modo de falha vira o gesto normal. Medido antes: dois cliques,
+/// cada um numa forma, deixavam **1** nó selecionado.
 #[test]
-fn shift_click_on_another_paths_anchor_retargets_the_point_selection() {
+fn shift_click_on_another_paths_anchor_sums_across_shapes() {
     let mut scene = VecScene::new();
     let a = square_path(&mut scene);
     let b = scene.push_path(VecPath {
@@ -309,15 +316,27 @@ fn shift_click_on_another_paths_anchor_retargets_the_point_selection() {
     pen.select(Some(a));
     assert!(pen.toggle_vert_at(&scene, [0.0, 0.0], 0.5));
     assert!(pen.toggle_vert_at(&scene, [4.0, 4.0], 0.5)); // verts 0 + 2 of `a`
-    // Cross over to `b`: the target follows the click and ONLY b's anchor stays selected.
+    // Atravessa para `b`: o nó dele ENTRA, e os de `a` ficam.
     assert!(pen.toggle_vert_at(&scene, [12.0, 10.0], 0.5));
-    assert_eq!(pen.selected(), Some(b));
-    assert_eq!(pen.selected_paths(), [b]);
     assert_eq!(
         pen.selected_verts(),
-        [1],
-        "b's own index, not a's leftovers"
+        [(a, 0), (a, 2), (b, 1)],
+        "o no' de b somou, e os de a sobreviveram"
     );
+    // O PRIMÁRIO segue o último tocado (é ele que o painel de estilo edita) e a forma entra na
+    // seleção de objeto SEM expulsar a outra — quem editou nós das duas está a olhar para as duas.
+    assert_eq!(pen.selected(), Some(b));
+    assert_eq!(pen.selected_paths(), [a, b]);
+    // E o retype alcança os três, em ambas as formas — a prova de que o par não é enfeite.
+    assert!(pen.set_selected_vertex_kind(&mut scene, VertexKind::Smooth));
+    let ka = |i: usize| scene.path(a).expect("a").vert(i).expect("v").kind;
+    let kb = |i: usize| scene.path(b).expect("b").vert(i).expect("v").kind;
+    assert_eq!(
+        (ka(0), ka(2), kb(1)),
+        (VertexKind::Smooth, VertexKind::Smooth, VertexKind::Smooth)
+    );
+    assert_eq!(ka(1), VertexKind::Corner, "o nao-escolhido de a fica");
+    assert_eq!(kb(0), VertexKind::Corner, "o nao-escolhido de b fica");
 }
 
 #[test]
@@ -349,7 +368,7 @@ fn grabbing_an_ungrouped_anchor_collapses_to_single_then_moves_alone() {
     pen.box_select(&scene, [-1.0, -1.0], [5.0, 1.0]); // verts 0 + 1
     // Grab anchor 2 (NOT in the group) → single-select it, move alone.
     pen.on_press(&mut scene, [4.0, 4.0], PTW, false, &mut nosnap);
-    assert_eq!(pen.selected_verts(), &[2]);
+    assert_eq!(pen.selected_verts(), &[(id, 2)]);
     pen.on_drag(&mut scene, [6.0, 6.0], &mut nosnap);
     pen.on_release();
     assert_eq!(scene.paths()[0].verts[2].anchor, [6.0, 6.0]);
@@ -392,7 +411,7 @@ fn selected_vertex_kind_tracks_the_last_touched_vertex() {
     // Grab a specific anchor to select that vertex.
     pen.on_press(&mut scene, [4.0, 0.0], PTW, false, &mut nosnap);
     pen.on_release();
-    assert_eq!(pen.selected_vert(), Some(1));
+    assert_eq!(pen.selected_vert(), Some((scene.paths()[0].id, 1)));
     assert_eq!(
         pen.selected_vertex_kind(&scene),
         Some(crate::SelectedKind::Uniform(VertexKind::Corner)) // straight corners from clicks
@@ -589,7 +608,7 @@ fn dragging_anchors_reports_the_moving_vertices_only() {
 
     // Agarra a âncora 1 sozinha.
     pen.on_press(&mut scene, [4.0, 0.0], PTW, false, &mut |p| p);
-    assert_eq!(pen.dragging_anchors(), Some((id, vec![1])));
+    assert_eq!(pen.dragging_anchors(), Some(vec![(id, 1)]));
     pen.on_release();
 
     // Agarra um HANDLE → não é arrasto de âncora.
@@ -624,7 +643,7 @@ fn a_transformed_path_is_grabbed_where_it_is_drawn_not_where_it_is_stored() {
     );
     pen.on_press(&mut scene, [108.0, 50.0], PTW, false, &mut nosnap);
     assert_eq!(pen.selected(), Some(id), "agarrou pela posição de mundo");
-    assert_eq!(pen.selected_verts(), [1], "a âncora certa");
+    assert_eq!(pen.selected_verts(), [(id, 1)], "a âncora certa");
     pen.on_release();
 }
 
@@ -747,7 +766,7 @@ fn node_mode_never_creates_a_path_and_selects_the_shape_under_the_cursor() {
         pen.on_press_node(&mut scene, [10.0, 0.0], PTW, false),
         PenClick::Grabbed
     );
-    assert_eq!(pen.selected_verts(), [1]);
+    assert_eq!(pen.selected_verts(), [(id, 1)]);
     assert_eq!(scene.paths().len(), before);
 }
 

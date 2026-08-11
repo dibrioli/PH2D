@@ -19,6 +19,14 @@ pub enum SelectedKind {
     Mixed,
 }
 
+/// Translada o vértice INTEIRO (âncora e os dois handles) por `d`, no espaço LOCAL do caminho a
+/// que ele pertence — mover a âncora sem os handles mudaria a curva em vez de a deslocar.
+pub(crate) fn shift_vert(v: &mut VecVertex, d: [f64; 2]) {
+    v.anchor = [v.anchor[0] + d[0], v.anchor[1] + d[1]];
+    v.in_handle = [v.in_handle[0] + d[0], v.in_handle[1] + d[1]];
+    v.out_handle = [v.out_handle[0] + d[0], v.out_handle[1] + d[1]];
+}
+
 impl PenTool {
     /// **Shift+clique num vértice: alterna-o na seleção de pontos** (a multi-seleção do modo Node —
     /// Enio 2026-07-15). Hit-testa a ÂNCORA sob `p` (raio `hit_r` em MUNDO, como o resto do pen) e a
@@ -29,8 +37,14 @@ impl PenTool {
     /// objeto nem abre marquee). Só âncora: um HANDLE não entra na seleção de pontos — ele pertence
     /// a uma âncora, e retipar/apagar agem sobre âncoras.
     ///
-    /// Um vértice de OUTRO path TROCA o alvo (a seleção de pontos é de um path só, como o resto do
-    /// pen), começando a multi-seleção nele.
+    /// ⚠️ **Um vértice de OUTRA forma SOMA — ele não troca o alvo.** Era o oposto (*"a seleção de
+    /// pontos é de um path só"*), e não por escolha: sem dono no índice, somar era inexprimível.
+    /// Medido antes da troca: Shift+clique num canto de A e depois num de B deixava **1** nó
+    /// selecionado, não 2.
+    ///
+    /// O PRIMÁRIO segue o último tocado — é ele que o painel de estilo edita —, e a forma entra na
+    /// seleção de OBJETO em vez de a substituir: quem editou um nó de duas formas está a olhar
+    /// para as duas.
     pub fn toggle_vert_at(&mut self, scene: &VecScene, p: [f64; 2], hit_r: f64) -> bool {
         let Some(g) = self.hit_test(scene, p, hit_r) else {
             return false;
@@ -38,16 +52,20 @@ impl PenTool {
         if g.part != Part::Anchor {
             return false;
         }
-        if self.selected != Some(g.path) {
-            self.selected = Some(g.path);
-            self.selected_paths = vec![g.path];
-            self.selected_verts = vec![g.vert];
-            return true;
-        }
-        if let Some(i) = self.selected_verts.iter().position(|&v| v == g.vert) {
+        if let Some(i) = self
+            .selected_verts
+            .iter()
+            .position(|&v| v == (g.path, g.vert))
+        {
             self.selected_verts.remove(i);
         } else {
-            self.selected_verts.push(g.vert);
+            self.selected_verts.push((g.path, g.vert));
+        }
+        // O primário acompanha o último tocado, e a forma entra na seleção de objeto (sem
+        // duplicar) — nunca a substitui, senão somar um nó de B DESSELECIONARIA A.
+        self.selected = Some(g.path);
+        if !self.selected_paths.contains(&g.path) {
+            self.selected_paths.push(g.path);
         }
         true
     }
@@ -152,15 +170,40 @@ impl PenTool {
         self.selected = self.selected_paths.last().copied();
     }
 
-    /// Vértice "primário" (último tocado) — o do destaque do painel; `None` se
+    /// Vértice "primário" (último tocado) **com o dono** — o do destaque do painel; `None` se
     /// nada selecionado.
-    pub fn selected_vert(&self) -> Option<usize> {
+    pub fn selected_vert(&self) -> Option<(VecPathId, usize)> {
         self.selected_verts.last().copied()
     }
 
-    /// Todos os vértices selecionados (para o overlay destacá-los).
-    pub fn selected_verts(&self) -> &[usize] {
+    /// Todos os vértices selecionados, **cada um com o seu dono** (para o overlay destacá-los).
+    /// A ordem é a de toque: o último é o primário.
+    pub fn selected_verts(&self) -> &[(VecPathId, usize)] {
         &self.selected_verts
+    }
+
+    /// Os índices selecionados **de UMA forma** — a pergunta que todo consumidor por-caminho faz
+    /// (o overlay desenha path a path; uma operação de documento edita um `VecPath` de cada vez).
+    ///
+    /// Filtrar na porta em vez de em cada chamador é o que impede o próximo consumidor de nascer
+    /// comparando só o índice e acender o nó certo da forma errada.
+    pub fn verts_in(&self, path: VecPathId) -> impl Iterator<Item = usize> + '_ {
+        self.selected_verts
+            .iter()
+            .filter(move |(p, _)| *p == path)
+            .map(|(_, i)| *i)
+    }
+
+    /// As FORMAS que a seleção de nós toca, na ordem em que foram tocadas — o escopo de toda
+    /// operação que age "sobre a seleção" e precisa editar um `VecPath` por vez.
+    pub(crate) fn vert_paths(&self) -> Vec<VecPathId> {
+        let mut out: Vec<VecPathId> = Vec::new();
+        for &(p, _) in &self.selected_verts {
+            if !out.contains(&p) {
+                out.push(p);
+            }
+        }
+        out
     }
 
     /// Define a seleção de PATH (ex.: selecionar o resultado de uma booleana).
@@ -184,11 +227,30 @@ impl PenTool {
     /// vértices selecionados, translada só eles (âncora + handles); senão, o path
     /// inteiro. Devolve `true` se moveu algo (nada selecionado ⇒ `false`).
     pub fn nudge(&mut self, scene: &mut VecScene, dx: f64, dy: f64) -> bool {
+        // ⚠️ **Nós escolhidos: cada um anda no espaço local do SEU dono.** A seta do teclado é um
+        // delta de MUNDO (move o mesmo tanto na tela, esteja a forma onde estiver) e a geometria é
+        // local (ADR-0111), então a conversão é POR FORMA — duas formas com escalas diferentes
+        // andariam distâncias diferentes se um único `delta_to_local` servisse as duas.
+        if !self.selected_verts.is_empty() {
+            let mut moved = false;
+            for id in self.vert_paths() {
+                let d = self.delta_to_local(id, [dx, dy]);
+                let idxs: Vec<usize> = self.verts_in(id).collect();
+                let Some(path) = scene.path_mut(id) else {
+                    continue;
+                };
+                for i in idxs {
+                    if let Some(v) = path.vert_mut(i) {
+                        shift_vert(v, d);
+                    }
+                }
+                moved = true;
+            }
+            return moved;
+        }
         // Multi-path OBJECT selection (no specific vertices) → move every selected
         // path wholesale (Align/Distribute companion).
-        // `(dx, dy)` é um delta de MUNDO (uma seta do teclado move o mesmo tanto na
-        // tela, esteja o path onde estiver); a geometria é local (ADR-0111).
-        if self.selected_verts.is_empty() && self.selected_paths.len() > 1 {
+        if self.selected_paths.len() > 1 {
             let mut moved = false;
             for &id in &self.selected_paths {
                 let d = self.delta_to_local(id, [dx, dy]);
@@ -199,24 +261,11 @@ impl PenTool {
         let Some(sel) = self.selected else {
             return false;
         };
-        let [dx, dy] = self.delta_to_local(sel, [dx, dy]);
+        let d = self.delta_to_local(sel, [dx, dy]);
         let Some(path) = scene.path_mut(sel) else {
             return false;
         };
-        let shift = |v: &mut VecVertex| {
-            v.anchor = [v.anchor[0] + dx, v.anchor[1] + dy];
-            v.in_handle = [v.in_handle[0] + dx, v.in_handle[1] + dy];
-            v.out_handle = [v.out_handle[0] + dx, v.out_handle[1] + dy];
-        };
-        if self.selected_verts.is_empty() {
-            path.for_each_vert_mut(shift);
-        } else {
-            for &i in &self.selected_verts {
-                if let Some(v) = path.vert_mut(i) {
-                    shift(v);
-                }
-            }
-        }
+        path.for_each_vert_mut(|v| shift_vert(v, d));
         true
     }
 
@@ -229,11 +278,15 @@ impl PenTool {
 
     /// O mesmo, **somando** à seleção quando `additive` (o Shift+retângulo de todo app).
     ///
-    /// ⚠️ **Somar só vale dentro do MESMO caminho**, e não é preguiça: o `selected_verts` pertence
-    /// a um `selected` único (o plano 25 §6 nomeia editar nós de várias formas como ausência **por
-    /// construção**). Um retângulo que caia noutra forma SUBSTITUI — a alternativa seria acumular
-    /// índices que passariam a apontar para o caminho errado, e o Delete seguinte apagaria nós de
-    /// uma forma que o artista não estava a olhar.
+    /// ⚠️ **A caixa apanha os nós de TODAS as formas que ela cobre**, e somar atravessa formas.
+    /// Era o oposto — *"somar só vale dentro do MESMO caminho"* —, e não por preguiça: sem dono no
+    /// índice, acumular pares de formas diferentes era inexprimível, então o retângulo tinha de
+    /// eleger UM caminho e substituir. Medido antes da troca: uma caixa sobre duas formas apanhava
+    /// **4 de 8** nós; somar B a A deixava **4**, não 8.
+    ///
+    /// Com isso morrem as três perguntas que a eleição obrigava a responder — *quem é o alvo?*,
+    /// *a caixa apanhou o selecionado?*, *é o mesmo caminho?* — e o corpo passa a dizer só o que o
+    /// gesto significa.
     pub fn box_select_with(
         &mut self,
         scene: &VecScene,
@@ -249,110 +302,92 @@ impl PenTool {
         let xforms = &self.xforms;
         let in_world =
             |id: VecPathId, a: [f64; 2]| inside(ph2d_vec_scene::xform_of(xforms, id).apply(a));
-        // Quantos nós de `id` a caixa apanha.
-        let caught = |id: VecPathId| {
-            scene.paths().iter().find(|p| p.id == id).map_or(0, |p| {
-                p.verts_all().filter(|v| in_world(id, v.anchor)).count()
-            })
-        };
-        // ⚠️ **O caminho selecionado só tem preferência se a caixa de facto o apanhar.** Antes a
-        // preferência era incondicional, então arrastar o retângulo sobre OUTRA forma mirava a
-        // selecionada, apanhava zero nós e devolvia uma seleção vazia — o artista via o retângulo
-        // passar por cima dos nós e nada acender. É metade do *"o marquee vê um path só"* do
-        // plano 25 §6; a outra metade (nós de VÁRIAS formas ao mesmo tempo) é ausência por
-        // construção e continua nomeada lá.
-        let target = self
-            .selected
-            .filter(|&id| caught(id) > 0)
-            .or_else(|| {
-                scene
-                    .paths()
-                    .iter()
-                    .map(|p| (p.id, caught(p.id)))
-                    .filter(|&(_, c)| c > 0)
-                    .max_by_key(|&(_, c)| c)
-                    .map(|(id, _)| id)
-            })
-            .or(self.selected);
-        let Some(id) = target else {
-            self.selected_verts.clear();
-            return;
-        };
-        // Somar só vale se o retângulo caiu no MESMO caminho que já estava selecionado.
-        let same_path = self.selected == Some(id);
-        self.selected = Some(id);
-        self.selected_paths = vec![id];
-        let hits: Vec<usize> = scene
+        // ⚠️ **A caixa respeita ESCONDIDO e TRAVADO, e a exigência nasceu com esta wave.** Antes
+        // ela elegia um caminho só, e o `is_pickable` faltava sem consequência visível na maioria
+        // dos gestos; agora que ela apanha TODAS as formas cobertas, uma forma invisível entraria
+        // na seleção em silêncio e o Delete seguinte apagaria nós que ninguém vê — exatamente o
+        // modo de falha que o comentário antigo usava para justificar a eleição.
+        let hits: Vec<(VecPathId, usize)> = scene
             .paths()
             .iter()
-            .find(|p| p.id == id)
-            .map(|p| {
+            .filter(|p| self.view.is_pickable(p.id))
+            .flat_map(|p| {
                 p.verts_all()
                     .enumerate()
-                    .filter(|(_, v)| in_world(id, v.anchor))
-                    .map(|(i, _)| i)
-                    .collect()
+                    .filter(|(_, v)| in_world(p.id, v.anchor))
+                    .map(|(i, _)| (p.id, i))
             })
-            .unwrap_or_default();
-        if additive && same_path {
-            for i in hits {
-                if !self.selected_verts.contains(&i) {
-                    self.selected_verts.push(i);
-                }
-            }
-        } else {
-            self.selected_verts = hits;
+            .collect();
+        if !additive {
+            self.selected_verts.clear();
         }
+        for h in hits {
+            if !self.selected_verts.contains(&h) {
+                self.selected_verts.push(h);
+            }
+        }
+        // O objeto acompanha os nós: quem tem nó escolhido está selecionado. Uma caixa VAZIA não
+        // desmancha a seleção de objeto (o gesto falhou; desselecionar seria uma segunda coisa que
+        // o artista não pediu), e o PRIMÁRIO só se move se o antigo saiu de cena — senão o painel
+        // de estilo saltaria de forma a cada retângulo.
+        let touched = self.vert_paths();
+        if touched.is_empty() {
+            return;
+        }
+        if self.selected.is_none_or(|s| !touched.contains(&s)) {
+            self.selected = touched.last().copied();
+        }
+        self.selected_paths = touched;
     }
 
     /// **Todos os nós** do caminho selecionado (o `Ctrl+A` do modo Node). `true` se selecionou
     /// algum — sem caminho selecionado não há o que selecionar, e dizer que sim faria o shell
     /// empurrar um passo de undo por nada.
+    /// ⚠️ Percorre **todas as formas selecionadas**, não só a primária — com uma forma só ele é
+    /// byte-idêntico ao que sempre foi, e com várias é o que o `Ctrl+A` do Inkscape faz no editor
+    /// de nós. Ele deixou de poder mentir no dia em que a seleção passou a guardar donos.
     pub fn select_all_verts(&mut self, scene: &VecScene) -> bool {
-        let Some(id) = self.selected else {
-            return false;
-        };
-        let Some(path) = scene.paths().iter().find(|p| p.id == id) else {
-            return false;
-        };
-        let n = path.total_verts();
-        if n == 0 {
+        let mut out: Vec<(VecPathId, usize)> = Vec::new();
+        for &id in &self.selected_paths {
+            let Some(path) = scene.paths().iter().find(|p| p.id == id) else {
+                continue;
+            };
+            out.extend((0..path.total_verts()).map(|i| (id, i)));
+        }
+        if out.is_empty() {
             return false;
         }
-        self.selected_verts = (0..n).collect();
+        self.selected_verts = out;
         true
     }
 
     /// **Todos os nós dos CONTORNOS que a seleção toca** — o *select subpath*. Num compound (forma
     /// com furos) é o que separa "este buraco" de "a forma inteira", e o `Ctrl+A` não distingue.
     pub fn select_subpath_verts(&mut self, scene: &VecScene) -> bool {
-        let Some(id) = self.selected else {
-            return false;
-        };
-        let Some(path) = scene.paths().iter().find(|p| p.id == id) else {
-            return false;
-        };
-        // Os contornos tocados pela seleção atual. Um `BTreeSet` seria exagero: são unidades.
-        let mut cs: Vec<usize> = Vec::new();
-        for &i in &self.selected_verts {
-            if let Some((c, _)) = path.locate_vert(i)
-                && !cs.contains(&c)
-            {
-                cs.push(c);
-            }
-        }
-        if cs.is_empty() {
-            return false;
-        }
-        let mut out: Vec<usize> = Vec::new();
-        for c in cs {
-            let Some((verts, _)) = path.contour(c) else {
+        let mut out: Vec<(VecPathId, usize)> = Vec::new();
+        for id in self.vert_paths() {
+            let Some(path) = scene.paths().iter().find(|p| p.id == id) else {
                 continue;
             };
-            for local in 0..verts.len() {
-                if let Some(f) = path.flat_vert(c, local) {
-                    out.push(f);
+            // Os contornos tocados pela seleção atual NESTA forma. Um `BTreeSet` seria exagero:
+            // são unidades.
+            let mut cs: Vec<usize> = Vec::new();
+            for i in self.verts_in(id) {
+                if let Some((c, _)) = path.locate_vert(i)
+                    && !cs.contains(&c)
+                {
+                    cs.push(c);
                 }
+            }
+            for c in cs {
+                let Some((verts, _)) = path.contour(c) else {
+                    continue;
+                };
+                out.extend(
+                    (0..verts.len())
+                        .filter_map(|l| path.flat_vert(c, l))
+                        .map(|f| (id, f)),
+                );
             }
         }
         if out.is_empty() {
@@ -367,25 +402,33 @@ impl PenTool {
     ///
     /// O tipo vem do vértice PRIMÁRIO (o último tocado); sem seleção não há tipo a igualar.
     pub fn select_verts_of_same_kind(&mut self, scene: &VecScene) -> bool {
-        let Some(id) = self.selected else {
+        let Some((pid, vi)) = self.selected_vert() else {
             return false;
         };
-        let Some(path) = scene.paths().iter().find(|p| p.id == id) else {
-            return false;
-        };
-        let Some(kind) = self
-            .selected_vert()
-            .and_then(|i| path.vert(i))
+        let Some(kind) = scene
+            .paths()
+            .iter()
+            .find(|p| p.id == pid)
+            .and_then(|p| p.vert(vi))
             .map(|v| v.kind)
         else {
             return false;
         };
-        let out: Vec<usize> = path
-            .verts_all()
-            .enumerate()
-            .filter(|(_, v)| v.kind == kind)
-            .map(|(i, _)| i)
-            .collect();
+        // O TIPO vem do primário; a VARREDURA cobre as formas que a seleção toca. Com uma forma
+        // só é o que sempre foi; com duas, "afiar todas as quinas destas duas estrelas" também
+        // deixa de ser doze cliques.
+        let mut out: Vec<(VecPathId, usize)> = Vec::new();
+        for id in self.vert_paths() {
+            let Some(path) = scene.paths().iter().find(|p| p.id == id) else {
+                continue;
+            };
+            out.extend(
+                path.verts_all()
+                    .enumerate()
+                    .filter(|(_, v)| v.kind == kind)
+                    .map(|(i, _)| (id, i)),
+            );
+        }
         if out.is_empty() {
             return false;
         }
@@ -398,8 +441,12 @@ impl PenTool {
     /// Substitui a seleção por UM nó: percorrer é olhar um de cada vez, e somar ao andar tornaria
     /// o Tab um segundo "select all" lento. Sem seleção nenhuma começa no primeiro (ou no último,
     /// andando para trás) — é o que faz o gesto ter uma porta de entrada.
+    /// ⚠️ **Percorre a forma do nó PRIMÁRIO** (sem nó nenhum, a selecionada). Atravessar formas em
+    /// silêncio ao chegar ao último nó seria o Tab a mudar o assunto sem o artista pedir — e com
+    /// uma forma só ele é byte-idêntico ao que sempre foi.
     pub fn step_vert_selection(&mut self, scene: &VecScene, forward: bool) -> bool {
-        let Some(id) = self.selected else {
+        let cur = self.selected_vert();
+        let Some(id) = cur.map(|(p, _)| p).or(self.selected) else {
             return false;
         };
         let Some(path) = scene.paths().iter().find(|p| p.id == id) else {
@@ -409,13 +456,13 @@ impl PenTool {
         if n == 0 {
             return false;
         }
-        let next = match self.selected_vert() {
+        let next = match cur.map(|(_, i)| i) {
             Some(i) if forward => (i + 1) % n,
             Some(i) => (i + n - 1) % n,
             None if forward => 0,
             None => n - 1,
         };
-        self.selected_verts = vec![next];
+        self.selected_verts = vec![(id, next)];
         true
     }
 
@@ -428,12 +475,16 @@ impl PenTool {
     /// aceso como se descrevesse o todo (auditoria do plano 25, item 5). O `set_selected_vertex_kind`
     /// sempre agiu sobre TODOS — era só a leitura que mentia.
     pub fn selected_vertex_kind(&self, scene: &VecScene) -> Option<SelectedKind> {
-        let sel = self.selected?;
-        let path = scene.paths().iter().find(|p| p.id == sel)?;
         let mut acc: Option<VertexKind> = None;
-        for &i in &self.selected_verts {
+        for &(pid, i) in &self.selected_verts {
             // Índice que não existe mais é ignorado, não é "misto": ele não descreve vértice nenhum.
-            let Some(k) = path.vert(i).map(|v| v.kind) else {
+            let Some(k) = scene
+                .paths()
+                .iter()
+                .find(|p| p.id == pid)
+                .and_then(|p| p.vert(i))
+                .map(|v| v.kind)
+            else {
                 continue;
             };
             match acc {
@@ -448,15 +499,15 @@ impl PenTool {
     /// Retipa TODOS os vértices selecionados (botões Corner/Smooth/Symmetric).
     /// Devolve `true` se algo mudou (o shell empurra um passo de undo nesse caso).
     pub fn set_selected_vertex_kind(&mut self, scene: &mut VecScene, kind: VertexKind) -> bool {
-        let Some(id) = self.selected else {
-            return false;
-        };
-        let Some(path) = scene.path_mut(id) else {
-            return false;
-        };
         let mut changed = false;
-        for &i in &self.selected_verts {
-            changed |= ph2d_vec_scene::retype_vertex(path, i, kind);
+        for id in self.vert_paths() {
+            let idxs: Vec<usize> = self.verts_in(id).collect();
+            let Some(path) = scene.path_mut(id) else {
+                continue;
+            };
+            for i in idxs {
+                changed |= ph2d_vec_scene::retype_vertex(path, i, kind);
+            }
         }
         changed
     }
@@ -466,54 +517,76 @@ impl PenTool {
     /// um compound some; se o path inteiro esvaziar, ele é removido e a seleção
     /// limpa. A seleção segue no vizinho do 1º apagado (delete encadeado de um só).
     /// Devolve `true` se apagou algo.
+    /// ⚠️ **Apaga em TODAS as formas que a seleção toca**, cada uma tratando os próprios contornos
+    /// — e uma forma que morre não leva as outras junto: antes, o caminho único que esvaziava
+    /// zerava a seleção inteira e voltava, porque não havia outras para sobreviver.
     pub fn delete_selected_vertex(&mut self, scene: &mut VecScene) -> bool {
-        let Some(id) = self.selected else {
-            return false;
-        };
         if self.selected_verts.is_empty() {
             return false;
         }
-        let Some(path) = scene.path_mut(id) else {
-            return false;
-        };
-        let mut idxs = self.selected_verts.clone();
-        idxs.sort_unstable();
-        idxs.dedup();
-        let lowest = idxs.first().copied().unwrap_or(0);
-        let single = idxs.len() == 1;
-        // Resolve os índices PLANOS em (contorno, local) ANTES de remover: remover
-        // encurta um contorno e reescreve o mapa plano dos seguintes.
-        let mut located: Vec<(usize, usize)> =
-            idxs.iter().filter_map(|&i| path.locate_vert(i)).collect();
-        // Do maior pro menor: assim nenhum índice local ainda pendente desliza.
-        located.sort_unstable();
-        for &(c, local) in located.iter().rev() {
-            if let Some((verts, closed)) = path.contour_mut(c) {
-                // ⚠️ **PRESERVA A FORMA** (plano 25 §6): os handles dos vizinhos são re-ajustados
-                // para que a cúbica que sobra passe por onde as duas passavam. Antes disto era um
-                // `verts.remove(local)` cru — a curva morria com o ponto, e é a operação de nó
-                // mais usada em qualquer app de desenho. A porta é a MESMA do Simplify
-                // (`dissolve_vertex`): duas cópias divergiriam, e a divergência apareceria como
-                // *"o Simplify preserva a forma e o Delete não"*, que era o estado anterior.
-                ph2d_vec_scene::dissolve_vertex(verts, local, *closed);
-            }
-        }
-        // Descarta contornos degenerados (do último pro primeiro).
-        for c in (0..path.contour_count()).rev() {
-            if path.contour(c).is_some_and(|(v, _)| v.len() < 2) && !path.remove_contour(c) {
-                // `remove_contour` recusa o contorno único ⇒ o path inteiro morre.
+        // O delete ENCADEADO (a seleção segue no vizinho) só faz sentido quando o gesto apagou UM
+        // nó: com vários, não há "o vizinho" — e re-selecionar um deles escolheria por ele.
+        let single = (self.selected_verts.len() == 1).then(|| self.selected_verts[0]);
+        let mut any = false;
+        let mut died: Vec<VecPathId> = Vec::new();
+        for id in self.vert_paths() {
+            let mut idxs: Vec<usize> = self.verts_in(id).collect();
+            idxs.sort_unstable();
+            idxs.dedup();
+            let gone = {
+                let Some(path) = scene.path_mut(id) else {
+                    continue;
+                };
+                any = true;
+                // Resolve os índices PLANOS em (contorno, local) ANTES de remover: remover
+                // encurta um contorno e reescreve o mapa plano dos seguintes.
+                let mut located: Vec<(usize, usize)> =
+                    idxs.iter().filter_map(|&i| path.locate_vert(i)).collect();
+                // Do maior pro menor: assim nenhum índice local ainda pendente desliza.
+                located.sort_unstable();
+                for &(c, local) in located.iter().rev() {
+                    if let Some((verts, closed)) = path.contour_mut(c) {
+                        // ⚠️ **PRESERVA A FORMA** (plano 25 §6): os handles dos vizinhos são
+                        // re-ajustados para que a cúbica que sobra passe por onde as duas
+                        // passavam. Antes disto era um `verts.remove(local)` cru — a curva morria
+                        // com o ponto, e é a operação de nó mais usada em qualquer app de
+                        // desenho. A porta é a MESMA do Simplify (`dissolve_vertex`): duas cópias
+                        // divergiriam, e a divergência apareceria como *"o Simplify preserva a
+                        // forma e o Delete não"*, que era o estado anterior.
+                        ph2d_vec_scene::dissolve_vertex(verts, local, *closed);
+                    }
+                }
+                // Descarta contornos degenerados (do último pro primeiro). `remove_contour` recusa
+                // o contorno ÚNICO ⇒ a forma inteira morre.
+                (0..path.contour_count()).rev().any(|c| {
+                    path.contour(c).is_some_and(|(v, _)| v.len() < 2) && !path.remove_contour(c)
+                })
+            };
+            if gone {
                 scene.remove_path(id);
-                self.selected_verts.clear();
-                self.selected = None;
-                self.active = None;
-                return true;
+                died.push(id);
             }
         }
-        let remaining = path.total_verts();
+        if !any {
+            return false;
+        }
         self.selected_verts.clear();
-        if single && remaining > 0 {
+        if let Some((pid, lowest)) = single
+            && !died.contains(&pid)
+            && let Some(path) = scene.paths().iter().find(|p| p.id == pid)
+            && path.total_verts() > 0
+        {
             // Delete de um só: seleção segue no vizinho (delete encadeado).
-            self.selected_verts = vec![lowest.min(remaining - 1)];
+            self.selected_verts = vec![(pid, lowest.min(path.total_verts() - 1))];
+        }
+        if !died.is_empty() {
+            self.selected_paths.retain(|p| !died.contains(p));
+            if self.selected.is_some_and(|s| died.contains(&s)) {
+                self.selected = self.selected_paths.last().copied();
+            }
+            if self.active.is_some_and(|a| died.contains(&a)) {
+                self.active = None;
+            }
         }
         true
     }
@@ -527,3 +600,13 @@ mod kind_tests;
 #[cfg(test)]
 #[path = "selection_scale_tests.rs"]
 mod scale_tests;
+
+/// Sondas do **alcance** da seleção de nós — o que o gesto apanha, de quantas formas.
+#[cfg(test)]
+#[path = "multi_probe.rs"]
+mod multi_probe;
+
+/// Gates da seleção de nós que **atravessa formas** — o irmão executável das sondas acima.
+#[cfg(test)]
+#[path = "multi_path_tests.rs"]
+mod multi_path_tests;

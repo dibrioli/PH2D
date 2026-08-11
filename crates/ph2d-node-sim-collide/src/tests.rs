@@ -55,6 +55,11 @@ fn flat() -> [f32; 2] {
 #[path = "tests_plane.rs"]
 mod plane;
 
+/// Same reason, same shape: the contact channel's guards are their own subject.
+#[cfg(test)]
+#[path = "tests_hit.rs"]
+mod hit;
+
 fn read(s: &Stream) -> ([f32; 2], [f32; 2]) {
     let g = |name| match s.get(name) {
         Some(Column::Vec2(v)) => v[0],

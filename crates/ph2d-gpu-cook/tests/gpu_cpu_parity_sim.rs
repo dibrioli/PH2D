@@ -2622,3 +2622,96 @@ fn read_head(
     staging.unmap();
     out
 }
+
+/// The zone of [`zone_chain`] with the CONTACT CHANNEL wired to something the render instance
+/// carries: `sim.collide → value.attribute(hit) → motion.drive(Size, Add)`.
+///
+/// Every node here already existed; the only new thing in the graph is the column, which is the
+/// point — a collision became composable without a node being added to the catalogue.
+fn hit_chain(reg: &NodeRegistry, floor: f32) -> (Graph, NodeId) {
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 20.0);
+    g.set_param(grid, "cols", 20.0);
+    g.set_param(grid, "gap_x", 0.35);
+    g.set_param(grid, "gap_y", 0.25);
+    let zone = g.add_node("sim.zone");
+    let wind = g.add_node("force.wind");
+    g.set_param(wind, "angle", 270.0);
+    g.set_param(wind, "strength", 8.0);
+    let step = g.add_node("sim.step");
+    let ground = g.add_node("sim.collide");
+    g.set_param(ground, "shape", 0.0);
+    g.set_param(ground, "height", floor);
+    g.set_param(ground, "restitution", 0.0);
+    g.set_param(ground, "friction", 0.2);
+    let attr = g.add_node("value.attribute");
+    g.set_text_param(attr, "attr", "hit");
+    g.set_param(attr, "mode", 0.0);
+    let drive = g.add_node("motion.drive");
+    g.set_param(drive, "channel", 3.0); // Size
+    g.set_param(drive, "mode", 0.0); // Add
+    g.set_param(drive, "scale", 50.0);
+    let out = g.add_node("motion.output");
+    edge(&mut g, grid, zone, 0, false);
+    edge(&mut g, zone, out, 0, false);
+    edge(&mut g, zone, wind, 0, true);
+    edge(&mut g, wind, step, 0, false);
+    edge(&mut g, step, ground, 0, false);
+    edge(&mut g, ground, drive, 0, false); // the stream…
+    edge(&mut g, ground, attr, 0, false); // …and the same stream read as a value
+    edge(&mut g, attr, drive, 1, false);
+    edge(&mut g, drive, zone, 1, false);
+    g.validate(reg).expect("well-typed");
+    (g, out)
+}
+
+/// **THE CONTACT CHANNEL AGREES ON THE DEVICE** (doc 89, folha 13 P1).
+///
+/// ⚠️ This gate exists because the other parity gates **cannot see it**: they compare
+/// `RenderInstance`s — position, size, tint, basis — and `hit` is none of those, so a kernel that
+/// wrote garbage into the channel (or nothing at all) would leave every one of them green. The
+/// only honest way to compare a column that is not drawn is to WIRE IT TO ONE THAT IS, which is
+/// also the composition the wave delivers: `value.attribute(Hit) → motion.drive(Size)`, so the
+/// depth of every contact lands in the instance's size.
+///
+/// **The non-vacuity is the size itself:** the free-fall run never reaches the floor, so its
+/// elements keep the unit size the grid gave them. If the touching run matched it, the channel
+/// never carried anything and the parity above would be two zeroes agreeing.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_contact_channel_agrees_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    const TICKS: u64 = 40;
+
+    let (g, out) = hit_chain(&reg, -1.0);
+    let cpu = cpu_ticks(&g, &reg, out, TICKS);
+    // FIVE stages: wind · step · collide · attribute · drive. The read of the channel is a
+    // dispatch of its own, which is what "the channel is composable ON THE DEVICE" means.
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, TICKS, 5);
+    // Size is DRIVEN here, so it is priced like a driven position — the reason
+    // `assert_parity_sized` exists.
+    assert_parity_sized(
+        "sim.collide hit / driven size",
+        &cpu[TICKS as usize],
+        &gpu_out,
+        EPS_POS,
+    );
+
+    let (gf, of) = hit_chain(&reg, -60.0); // out of reach: nothing ever touches
+    let free = cpu_ticks(&gf, &reg, of, TICKS);
+    let grew = cpu[TICKS as usize]
+        .iter()
+        .zip(&free[TICKS as usize])
+        .map(|(a, b)| (a.size[0] - b.size[0]).abs())
+        .fold(0.0f32, f32::max);
+    assert!(
+        grew > 0.1,
+        "as instâncias saíram do tamanho da queda livre em {grew}: o canal de contato não \
+         chegou ao `size`, e a paridade acima compara dois nadas"
+    );
+}

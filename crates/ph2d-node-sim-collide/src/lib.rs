@@ -131,6 +131,25 @@ pub const RADIUS_FIXED: i32 = 1;
 /// The element's OWN size: the circle inscribed in the sprite the renderer draws.
 pub const RADIUS_SIZE: i32 = 2;
 
+/// **The contact channel** (doc 89, folha 13 P1) — how deep this tick's collision pushed the
+/// element back out, in world units, and `0` where nothing touched.
+///
+/// Until it existed a collision changed `P` and `vel` and **nothing downstream could tell**: the
+/// step changes those two every tick anyway, so *"did it touch?"* was a question the graph could
+/// not ask. One number answers it and the STRENGTH together, and it does so without two facts
+/// that could disagree — contact is `depth > 0` **by construction**, because each shape's test
+/// returns `Some` exactly when the depth it computes is strictly positive.
+///
+/// ⚠️ **It ACCUMULATES over a tick and the zone STRIPS it** — the exact shape of `accel`, for the
+/// same two reasons. Colliders CHAIN (the ramp and the wall of demo 29 are two of them), so a
+/// plain write would mean *"did the LAST collider touch me"*, which is a fact about graph order
+/// and not about the world; `max` over the tick means *the deepest contact of this tick* and
+/// reads the same however many colliders the artist stacks. And `sim.zone`'s `TRANSIENTS` must
+/// strip it **in the commit that introduces it** — a contact flag that rides the state around
+/// says "touched" on the tick after it stopped touching, and every reader downstream repeats the
+/// lie (the mask that masked its own gravity, `sim.zone`'s own scar).
+pub const HIT_COL: &str = "hit";
+
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("sim.collide"),
     name: "sim.collide",
@@ -268,6 +287,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         }\n\
         var sc_out_p = sc_p;\n\
         var sc_out_v = sc_v;\n\
+        // Accumulates over the tick: a CHAIN of colliders reports the deepest contact,\n\
+        // never just the last one's. The zone strips it, so it never crosses a tick.\n\
+        var sc_out_hit = read_hit(i);\n\
         if (sc_hit) {\n\
         \x20   let sc_rp = sc_p + sc_n * sc_depth;\n\
         \x20   var sc_rv = sc_v;\n\
@@ -283,10 +305,12 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20   if (collide_finite(sc_rp) && collide_finite(sc_rv)) {\n\
         \x20       sc_out_p = sc_rp;\n\
         \x20       sc_out_v = sc_rv;\n\
+        \x20       sc_out_hit = max(sc_out_hit, sc_depth);\n\
         \x20   }\n\
         }\n\
         write_P(i, sc_out_p);\n\
-        write_vel(i, sc_out_v);\n",
+        write_vel(i, sc_out_v);\n\
+        write_hit(i, sc_out_hit);\n",
     wgsl_lib: "\
         const SC_DISC: i32 = 1;\n\
         const SC_BOWL: i32 = 2;\n\
@@ -332,6 +356,17 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             dim: Dim::Vec2,
             access: ColumnAccess::Read,
             identity: [1.0; 4],
+            port: 0,
+        },
+        // The contact channel. `ReadWrite` with identity 0, never `Write`: see [`HIT_COL`] —
+        // a chain of colliders has to report the DEEPEST contact of the tick, not the last
+        // one's, and that is an accumulation, so the kernel must be able to read what the
+        // collider before it left.
+        ColumnBinding {
+            column: HIT_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
             port: 0,
         },
     ],
@@ -491,6 +526,15 @@ fn vec2(s: &Stream, name: &str, n: usize) -> Vec<[f32; 2]> {
     }
 }
 
+/// A scalar column widened to `n`. **Absent reads as `0`** — the same identity the GPU binding
+/// carries, so an incoming `hit` and a missing one mean the same thing on both paths.
+fn scalars(s: &Stream, name: &str, n: usize) -> Vec<f32> {
+    match s.get(name) {
+        Some(Column::Scalar(v)) if v.len() == n => v.clone(),
+        _ => vec![0.0; n],
+    }
+}
+
 /// Every element's `size`, widened to `n`. **Absent reads as `SIZE_IDENTITY`** — the unit quad
 /// the lowering itself falls back to, and the same identity the GPU binding carries.
 fn sizes(s: &Stream, n: usize) -> Vec<[f32; 2]> {
@@ -516,12 +560,13 @@ fn collide(
     let n = s.count();
     let mut out = Stream::new(n);
     for (name, col) in s.columns() {
-        if !matches!(name.as_str(), "P" | "vel") {
+        if !matches!(name.as_str(), "P" | "vel") && name.as_str() != HIT_COL {
             out.set(name.clone(), col.clone());
         }
     }
     let mut p = vec2(s, "P", n);
     let mut v = vec2(s, "vel", n);
+    let mut hit = scalars(s, HIT_COL, n);
     // Read unconditionally: `Point` ignores it, and a branch here would be a second place that
     // decides what the radius mode means.
     let size = sizes(s, n);
@@ -534,11 +579,16 @@ fn collide(
             if pi.iter().chain(&vi).all(|x| x.is_finite()) {
                 p[i] = pi;
                 v[i] = vi;
+                // Written where the response LANDED. A dropped (non-finite) response moved
+                // nothing, so reporting a contact there would say the node did something it
+                // did not — the channel describes what happened, not what was attempted.
+                hit[i] = hit[i].max(depth);
             }
         }
     }
     out.set("P", Column::Vec2(p));
     out.set("vel", Column::Vec2(v));
+    out.set(HIT_COL, Column::Scalar(hit));
     out
 }
 

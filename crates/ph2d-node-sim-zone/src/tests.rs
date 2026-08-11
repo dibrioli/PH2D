@@ -186,3 +186,54 @@ fn the_zone_carries_every_column_through() {
         assert!(s.get(name).is_some(), "`{name}` survived the state loop");
     }
 }
+
+/// **A CONTACT NEVER CROSSES A TICK** — the price [`super::TRANSIENTS`] charges for the
+/// `sim.collide` channel, paid in the commit that introduced it.
+///
+/// The scene is the lie itself, reproduced: a plane far above the whole grid, so **every**
+/// element is inside it on the first tick and the collider pushes each one exactly onto the
+/// surface. On the second tick they are ON it, not under it (`sd < height` is false at equality),
+/// so nothing touches and the channel must read zero everywhere.
+///
+/// FALSIFIED by dropping `"hit"` from the transient list: the first tick's depth rides the state
+/// around, the collider's own `max` keeps it, and the channel says "touched" forever — a colour
+/// flash that never goes out, a kill that removes the whole scene one tick after it lands.
+#[test]
+fn a_contact_never_crosses_a_tick() {
+    let reg = registry();
+    let (g, zone) = scene(|g, zone| {
+        let col = g.add_node("sim.collide");
+        g.set_param(col, "shape", 0.0); // Plane
+        g.set_param(col, "height", 100.0); // …far above every element of the grid
+        g.set_param(col, "restitution", 0.0);
+        g.set_param(col, "friction", 0.0);
+        wire(g, zone, 0, col, 0, true);
+        col
+    });
+    assert!(g.validate(&reg).is_ok(), "the zone is well-typed");
+
+    let hits = |cook: &mut Cook, t: f64| -> Vec<f32> {
+        let out = cook.cook(&g, &reg, zone, t).expect("cooks");
+        let h = match out[0].as_stream().get("hit") {
+            Some(Column::Scalar(v)) => v.clone(),
+            _ => vec![],
+        };
+        cook.advance_tick(&g, &reg, t).expect("tick closes");
+        h
+    };
+
+    let mut cook = Cook::new();
+    // Tick 1 is the SEED (`init`), which never met the collider — the control that keeps the
+    // assertion below from being vacuous about a channel that simply never exists.
+    let _ = hits(&mut cook, 0.0);
+    let touched = hits(&mut cook, 1.0 / 60.0);
+    assert!(
+        touched.iter().all(|&h| h > 0.0),
+        "todos estavam dentro do plano: {touched:?}"
+    );
+    let after = hits(&mut cook, 2.0 / 60.0);
+    assert!(
+        after.iter().all(|&h| h == 0.0),
+        "ninguém tocou neste tique, e o tique passado não fala por ele: {after:?}"
+    );
+}

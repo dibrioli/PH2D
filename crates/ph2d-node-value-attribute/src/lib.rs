@@ -236,6 +236,20 @@ const READ_CHANNELS: &[ReadChannel] = &[
         column: "falloff",
         mode: 0,
     },
+    // ⚠️ **O CONTATO** — a coluna que o `sim.collide` escreve (doc 89, folha 13 P1): quão fundo
+    // a colisão deste tique empurrou o elemento de volta, e `0` onde nada tocou. Sem esta
+    // entrada o canal existiria e **nenhum nó do domínio de VALOR poderia lê-lo**, que é a
+    // mesma metade faltante que o `Falloff` tinha: a arte sentia e o grafo não sabia dizer.
+    //
+    // É ela que torna a colisão COMPONÍVEL, e a cadeia inteira é de nós que já existem —
+    // `sim.collide → value.attribute(Hit) → value.math → motion.drive(<canal>)` marca quem
+    // tocou, e com `motion.drive(Falloff) → motion.cull` **dentro da zona** ele MORRE ao
+    // tocar (o `sim.collision_pulse` da linha 98 do doc 63, sem um nó novo).
+    ReadChannel {
+        label: "Hit",
+        column: "hit",
+        mode: 0,
+    },
 ];
 
 static PARAM_HINTS: &[ParamUiHint] = &[

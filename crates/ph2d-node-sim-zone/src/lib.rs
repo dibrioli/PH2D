@@ -109,7 +109,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 /// **The zone stores state, not scratch.** What the elements ARE (`P`, `vel`, `id`, `size`,
 /// `tint`…) survives; what a tick wrote for its own use does not. Anything downstream that wants
 /// a mask computes one — masks are cheap and a stale one is not a mask, it is a ghost.
-const TRANSIENTS: [&str; 2] = ["accel", "falloff"];
+/// ⚠️ **`hit` is the third for exactly this reason** (`sim.collide`, doc 89 folha 13): it says
+/// *"this tick's collision pushed me out by this much"*, and a tick is precisely how long that
+/// is true. Stored, it would report a contact on the tick AFTER the element stopped touching,
+/// and every reader downstream — a colour flash, a kill, a pulse — would repeat it.
+const TRANSIENTS: [&str; 3] = ["accel", "falloff", "hit"];
 
 /// The state as the zone holds it: every column but the transients.
 fn store(s: &Stream) -> Stream {

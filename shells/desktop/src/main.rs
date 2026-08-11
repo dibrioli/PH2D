@@ -282,6 +282,7 @@ mod physics_smoke_player_run;
 mod physics_smoke_player_slope;
 mod physics_smoke_player_tape;
 mod physics_smoke_player_wall;
+mod physics_smoke_probes;
 mod physics_smoke_props;
 mod physics_smoke_pulley;
 mod physics_smoke_pulley_break;

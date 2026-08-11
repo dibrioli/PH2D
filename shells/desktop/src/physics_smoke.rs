@@ -197,6 +197,11 @@ impl crate::App {
             "105" => self.physics_smoke_swim(),
             "106" => self.physics_smoke_zone_force(),
             "107" => self.physics_smoke_stone(),
+            // ⚠️ **O NUMERO E' CONTADO, nunca escolhido** — a `=105` estava
+            // tomada (o mergulho), e a nota que a dava como livre tinha
+            // envelhecido. Quem pega o proximo LE' este `match`, e o compilador
+            // e' o gate: um segundo braco com o mesmo literal e' `unreachable`.
+            "108" => self.physics_smoke_probes(),
             _ => self.physics_smoke_drop(),
         }
 

@@ -26,7 +26,7 @@ fn at(needle: &str) -> usize {
     SRC.find(needle).unwrap_or_else(|| {
         panic!(
             "`{needle}` sumiu do render_loop — se foi renomeado, atualize este gate (e confira que \
-             os sensores do player continuam na tela: `PH2D_PHYSICS_SMOKE=105`)"
+             os sensores do player continuam na tela: `PH2D_PHYSICS_SMOKE=108`)"
         )
     })
 }

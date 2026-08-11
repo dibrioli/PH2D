@@ -3234,3 +3234,67 @@ fn the_donated_occlusion_follows_the_artists_knobs_without_a_viewport_render() {
         "o knob do artista não chegou à doação: só {moved} texels mudaram entre cavidade 0 e 1"
     );
 }
+
+/// **O TOPO DA IMAGEM DO MATCAP ACENDE O TOPO DA ESFERA** — o oráculo é o
+/// DISPOSITIVO, e ele é o único que responde isto.
+///
+/// ⚠️ **Este gate nasceu de uma mutação que SOBREVIVEU.** Havia um irmão na
+/// `matcap.rs` afirmando esta mesma lei, e o doc dele dizia — em voz alta — que
+/// *"o defeito que ele pega é um flip em `v`"*. Ele não pegava: aquele teste lê
+/// os bytes do PNG **decodificado**, e o topo de um PNG é claro quer o shader o
+/// leia de cabeça para baixo, quer não. Um flip em `matcap_uv` passava nos oito
+/// testes da crate. *Um gate sobre o ASSET é cego ao CONSUMIDOR*, e o consumidor
+/// aqui é uma linha de WGSL que só um render executa.
+///
+/// A lei: o `canvas_normal` entrega o normal em espaço de TELA (`y` para BAIXO)
+/// e a linha 0 de uma textura é o topo, então `uv = n.xy*0.5+0.5` já concorda —
+/// sem flip. Com o flip a escultura acenderia por BAIXO enquanto a tinta ao
+/// lado, no mesmo documento e sob a mesma lâmpada, acenderia por cima.
+///
+/// O `Basic Side` é o oráculo porque a fonte dele é a mais desequilibrada das
+/// nove (branco em cima, preto embaixo): a afirmação sai com fosso, e não com
+/// uma diferença de um nível que o ruído de rasterização cobriria.
+#[test]
+#[ignore = "precisa de adapter"]
+fn the_matcap_lights_the_sculpture_from_the_top_of_its_image() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    let mesh = shapes::uv_sphere(48, 72, 1.0);
+    let camera = camera_for(&mesh);
+    let mut renderer = MeshRenderer::new(&device, FORMAT);
+    renderer.upload_at(&device, &queue, 0, &mesh, &[]);
+
+    let id = ph2d_mesh_render::MATCAPS
+        .iter()
+        .position(|n| *n == "Basic Side")
+        .expect("o `Basic Side` é o oráculo desta lei");
+    let px = render_using_rig_shade(
+        &device,
+        &queue,
+        &mut renderer,
+        &camera,
+        &LightRig::default(),
+        ph2d_mesh_render::Shade {
+            matcap: Some(u8::try_from(id).expect("a tabela cabe num u8")),
+            // ⚠️ Os dois AOs FORA, e não é cosmético: eles escurecem por FORMA e
+            // esta cena é uma esfera, cuja parte de baixo é a que mais oclui —
+            // deixá-los ligados faria o gate passar mesmo com a imagem
+            // invertida, pelo motivo errado.
+            ao: 0.0,
+            ssao: 0.0,
+            ..ph2d_mesh_render::Shade::default()
+        },
+    );
+
+    // A meio raio acima e abaixo do centro da tela, na coluna central: os dois
+    // pontos que um flip em `v` troca de lugar.
+    let (cx, cy) = (W / 2, H / 2);
+    let top = lum(&px, cx, cy - H / 8);
+    let bottom = lum(&px, cx, cy + H / 8);
+    assert!(
+        top > bottom * 2.0,
+        "o topo da escultura ({top:.1}) tinha de ser MUITO mais claro que a base \
+         ({bottom:.1}) — se estão trocados, o `matcap_uv` está de cabeça para baixo"
+    );
+}

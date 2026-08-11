@@ -27,6 +27,23 @@ ph2d-light = { path = "../ph2d-light" }
 glam = "0.30"
 # wgpu 28 em lockstep com ph2d-render/ph2d-gpu/ph2d-flip-render.
 wgpu = "28"
+# O DECODER DOS MATCAPS. Os nove PNGs de `assets/matcaps/` sao `include_bytes!`,
+# e alguem tem de transforma-los em texels -- ver `src/matcap.rs`.
+#
+# ⚠️ **A porta do repo, e nao o `image` cru:** `ph2d-imageio` ja e o dono da
+# pergunta "que formatos este app abre", e um segundo decoder de PNG aqui seria
+# a segunda resposta que diverge no dia em que a politica de perfil de cor mudar.
+#
+# ⚠️ **Nenhum pacote EXTERNO novo entra no `Cargo.lock` por causa disto:** as
+# duas sao crates de caminho que a workspace ja compila, e o `image` que elas
+# usam ja e dep transitiva via `ph2d-asset`. Sao arestas, nao pacotes.
+#
+# ⚠️ E o EXR ficou de fora de proposito: o `ph2d-imageio-exr` recusa os arquivos
+# de origem do Blender por dois motivos escritos no doc dele (layout de canais
+# alem de RGBA -- estes tem `diffuse.*`/`specular.*` -- e compressao DWA/DWB), o
+# que e' precisamente por que a conversao e' offline (`assets/matcaps/LICENSES.md`).
+ph2d-imageio = { path = "../ph2d-imageio" }
+ph2d-imageio-png = { path = "../ph2d-imageio-png" }
 # Pod/Zeroable + cast_slice para o uniform e os vertex buffers — a mesma
 # convencao do `instance_buffer` do ph2d-render.
 bytemuck = { version = "1", features = ["derive"] }

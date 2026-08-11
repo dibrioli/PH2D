@@ -6,10 +6,25 @@ use super::*;
 ///
 /// ⚠️ É o gate do sentinela: o shader lê `matcap > 0` para escolher o caminho,
 /// então um material que empacotasse em zero seria *invisível* — o artista
-/// escolheria a pérola e veria a luz do documento, sem nada dizendo por quê.
+/// escolheria o `Clay Warm` e veria a luz do documento, sem nada dizendo por quê.
+///
+/// ⚠️ **A premissa do rig é DECLARADA, e ela já foi herdada em silêncio uma
+/// vez:** esta linha era `Shade::default()`, o que só dizia *"o rig é zero"*
+/// enquanto o default FOSSE o rig. Quando ele virou o matcap do SculptGL
+/// (2026-08-10) o gate ficou vermelho — a sorte de ele ter sido escrito com um
+/// `assert_eq` e não com um `assert_ne`. Uma fixture que chega ao estado pelo
+/// default inverte de sentido no dia em que o default anda, e continua verde
+/// testando o oposto.
 #[test]
 fn the_rig_is_zero_and_no_matcap_lands_there() {
-    assert_eq!(ShadeRaw::pack(Shade::default()).matcap, 0);
+    assert_eq!(
+        ShadeRaw::pack(Shade {
+            matcap: None,
+            ..Shade::default()
+        })
+        .matcap,
+        0
+    );
     for i in 0..MATCAPS.len() {
         let packed = ShadeRaw::pack(Shade {
             matcap: Some(u8::try_from(i).expect("a tabela cabe num u8")),
@@ -25,10 +40,13 @@ fn the_rig_is_zero_and_no_matcap_lands_there() {
 
 /// **Um índice fora da tabela é PRESO no último, nunca deixado passar.**
 ///
-/// ⚠️ O `switch` do shader tem um braço `default`, e ele é um material legítimo
-/// (a cera). Um índice inválido cairia lá e o artista veria uma resposta
-/// plausível a um pedido impossível — o modo de falha que não se consegue
-/// reportar.
+/// ⚠️ **A razão mudou com a wave da imagem, e o gate FICA.** Antes o `switch` do
+/// shader tinha um braço `default` que era um material legítimo (a cera), e um
+/// índice inválido pousava lá. Hoje quem lê o índice é a CPU, para escolher qual
+/// PNG decodificar — e um índice fora da tabela ali seria um `panic` no meio de
+/// um frame. Prender no último mantém *"pediu o que não existe"* como uma
+/// resposta plausível em vez de uma queda, que é a mesma política do
+/// [`crate::matcap::decode`] (gate irmão: `an_index_past_the_end_is_clamped_not_a_panic`).
 #[test]
 fn an_index_past_the_table_is_pinned_to_the_last_material() {
     let last = ShadeRaw::pack(Shade {
@@ -80,29 +98,39 @@ fn arming_the_wireframe_does_not_move_a_byte_of_the_uniform() {
     assert_eq!(bytemuck::bytes_of(&off), bytemuck::bytes_of(&on));
 }
 
-/// **A contagem de materiais da CPU é a do SHADER.**
+/// **O MATCAP DO SHADER É A IMAGEM, e não sobrou uma segunda lei.**
 ///
-/// ⚠️ Os números de cada material vivem no WGSL (nenhum consumidor de CPU os lê)
-/// e os nomes vivem em [`MATCAPS`]. As duas listas não podem divergir em
-/// TAMANHO: um nome a mais pinta um chip que cai no `default` do `switch`, um a
-/// menos deixa um material inalcançável. O oráculo é o próprio fonte do shader —
-/// contar os braços `case`/`default` do seletor.
+/// ⚠️ **Este gate SUBSTITUI o `the_shader_has_exactly_one_arm_per_named_material`,
+/// que a wave de 2026-08-10 dissolveu.** Ele contava os braços `case`/`default`
+/// de um `fn material(id)` no WGSL contra o tamanho de [`MATCAPS`], porque
+/// enquanto um matcap era um punhado de números havia DUAS listas que podiam
+/// divergir em tamanho. Hoje a identidade de um matcap é a textura residente, o
+/// `id` nem chega ao shader, e aquela contagem não tem objeto — apagar o gate
+/// sem pôr nada no lugar é que teria sido a perda.
+///
+/// O que ele afirma agora são as duas metades que sobraram do mesmo risco:
+///
+/// 1. **o fragment de fato AMOSTRA** a imagem (um shader que voltasse a computar
+///    a cor deixaria os nove PNGs decorativos, com a fileira de chips inteira
+///    fazendo a mesma coisa);
+/// 2. **nenhuma lei analítica sobreviveu** — um `fn material(` de volta seria a
+///    segunda resposta a *"como este material é"*, e ela divergiria da imagem no
+///    único lugar onde ninguém lê um número: uma screenshot.
 #[test]
-fn the_shader_has_exactly_one_arm_per_named_material() {
+fn the_shader_reads_the_matcap_image_and_keeps_no_second_law() {
     let src = crate::pipeline::MESH_WGSL;
-    let body = src
-        .split_once("fn material(id: u32) -> Mat {")
-        .expect("o seletor de material existe")
-        .1
-        .split_once("\n}")
-        .expect("ele fecha")
-        .0;
-    let arms = body.matches("case ").count() + body.matches("default:").count();
-    assert_eq!(
-        arms,
-        MATCAPS.len(),
-        "o shader tem {arms} materiais e a tabela nomeia {}",
-        MATCAPS.len()
+    assert!(
+        src.contains("textureSampleLevel(matcap_tex, sss_samp, matcap_uv(n)"),
+        "o fragment tem de amostrar a imagem do matcap"
+    );
+    assert!(
+        src.contains("@group(3) @binding(2) var matcap_tex: texture_2d<f32>;"),
+        "a imagem tem de estar declarada no grupo do SSS"
+    );
+    assert!(
+        !src.contains("fn material(id: u32)"),
+        "o seletor analítico de material voltou — ele é a segunda resposta que a \
+         imagem substituiu"
     );
 }
 

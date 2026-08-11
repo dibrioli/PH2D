@@ -191,121 +191,44 @@ const PREVIEW_STRENGTH: f32 = 0.45;
 // substituível pelo rig: o rig é do DOCUMENTO (a mesma lâmpada acende a tinta ao
 // lado), o matcap é do OLHO.
 //
-// ⚠️ **ANALÍTICO, e não uma textura.** A forma canônica é uma imagem de esfera
-// amostrada por `n.xy * 0.5 + 0.5`, e ela seria o caminho certo se houvesse
-// matcaps AUTORADOS para carregar. Não há: seriam assets novos, com licença, num
-// repo que não os tem. Uma textura sintetizada na CPU seria a MESMA função
-// avaliada uma vez por texel e depois interpolada — mais bindings, mais VRAM,
-// mais uma resolução a escolher, e uma SEGUNDA cópia da fórmula (a de assar e a
-// de ler). Avaliada aqui ela é exata por pixel, custa cinco produtos escalares e
-// não tem resolução. O dia em que um matcap de imagem chegar, ele entra como uma
-// FONTE a mais — não como a correção desta.
+// ⚠️ **UMA IMAGEM, e não mais a fórmula.** Até 2026-08-10 isto era um punhado de
+// cores e expoentes avaliados aqui, e o doc deste bloco defendia a escolha com
+// uma premissa que era verdade na época: *"seria o caminho certo se houvesse
+// matcaps AUTORADOS para carregar; não há — seriam assets novos, com licença,
+// num repo que não os tem"*. A premissa caiu por MEDIÇÃO e não por gosto: os
+// oito do Blender trazem um `license.txt` dizendo **CC0** e o do SculptGL vem de
+// um repositório **MIT**. Com os assets em mãos, o resto do argumento antigo
+// (*"uma textura sintetizada seria a MESMA função assada e depois interpolada"*)
+// deixou de valer — estas imagens **não são** aquela função, e nenhuma
+// quantidade de lâmpadas analíticas as alcança. Ver `crate::matcap`.
 //
-// ⚠️ O espaço é o do rig (`canvas_normal`): `y` cresce para BAIXO, como na tela.
-// É por isso que a luz principal aponta para `-y` — "em cima, à esquerda" tem de
-// querer dizer a mesma coisa nos dois modos, senão trocar de material vira o
-// modelo de cabeça para baixo.
-struct Mat {
-    base: vec3<f32>,
-    key_dir: vec3<f32>,
-    key: vec3<f32>,
-    fill_dir: vec3<f32>,
-    fill: vec3<f32>,
-    rim: vec3<f32>,
-    rim_pow: f32,
-    spec_pow: f32,
-    spec: f32,
-};
-
-// A principal vem de cima-à-esquerda-frente e o preenchimento do lado oposto,
-// mais fraco e frio: é o estúdio de duas luzes que toda foto de escultura usa, e
-// o que separa "há forma" de "há forma e eu consigo ler a virada dela".
-const KEY_DIR: vec3<f32> = vec3<f32>(-0.40, -0.55, 0.73);
-const FILL_DIR: vec3<f32> = vec3<f32>(0.50, 0.35, 0.79);
-
-fn material(id: u32) -> Mat {
-    var m: Mat;
-    m.key_dir = KEY_DIR;
-    m.fill_dir = FILL_DIR;
-    switch id {
-        // **BARRO** — o mesmo cinza quente do rig, para a troca de modo mostrar
-        // a diferença de LUZ e não a de cor.
-        case 0u: {
-            m.base = vec3<f32>(0.74, 0.70, 0.66);
-            m.key = vec3<f32>(1.00, 0.98, 0.94);
-            m.fill = vec3<f32>(0.30, 0.34, 0.42);
-            m.rim = vec3<f32>(0.10, 0.11, 0.13);
-            m.rim_pow = 3.0; m.spec_pow = 24.0; m.spec = 0.14;
-        }
-        // **PÉROLA** — claro e macio: o material que menos esconde a forma, e o
-        // que o escultor usa para julgar silhueta.
-        case 1u: {
-            m.base = vec3<f32>(0.88, 0.87, 0.90);
-            m.key = vec3<f32>(1.00, 1.00, 1.00);
-            m.fill = vec3<f32>(0.42, 0.46, 0.58);
-            m.rim = vec3<f32>(0.28, 0.30, 0.36);
-            m.rim_pow = 3.0; m.spec_pow = 48.0; m.spec = 0.40;
-        }
-        // **PELE** — a translucidez lida na borda: o `rim` quente é o que a luz
-        // atravessando a orelha faz, e é o teste de uma cabeça.
-        case 2u: {
-            m.base = vec3<f32>(0.90, 0.71, 0.62);
-            m.key = vec3<f32>(1.00, 0.95, 0.88);
-            m.fill = vec3<f32>(0.40, 0.24, 0.22);
-            m.rim = vec3<f32>(0.72, 0.26, 0.20);
-            m.rim_pow = 2.2; m.spec_pow = 20.0; m.spec = 0.12;
-        }
-        // **JADE** — verde translúcido, borda acesa: o material que mais mostra
-        // curvatura fina, porque o `rim` responde ao que vira de perfil.
-        case 3u: {
-            m.base = vec3<f32>(0.32, 0.58, 0.45);
-            m.key = vec3<f32>(0.92, 1.00, 0.95);
-            m.fill = vec3<f32>(0.12, 0.28, 0.24);
-            m.rim = vec3<f32>(0.42, 0.86, 0.66);
-            m.rim_pow = 2.0; m.spec_pow = 64.0; m.spec = 0.55;
-        }
-        // **METAL** — base escura e realce apertado: é o que revela ONDULAÇÃO,
-        // porque um realce estreito varre a superfície e denuncia toda barriga.
-        case 4u: {
-            m.base = vec3<f32>(0.24, 0.26, 0.30);
-            m.key = vec3<f32>(1.00, 1.00, 1.00);
-            m.fill = vec3<f32>(0.16, 0.20, 0.30);
-            m.rim = vec3<f32>(0.55, 0.60, 0.72);
-            m.rim_pow = 4.0; m.spec_pow = 128.0; m.spec = 1.30;
-        }
-        // **CERA VERMELHA** — o barro de escultor clássico; contraste alto e cor
-        // saturada, para ver o volume geral de longe.
-        default: {
-            m.base = vec3<f32>(0.70, 0.20, 0.16);
-            m.key = vec3<f32>(1.00, 0.90, 0.85);
-            m.fill = vec3<f32>(0.30, 0.09, 0.09);
-            m.rim = vec3<f32>(0.85, 0.38, 0.26);
-            m.rim_pow = 2.2; m.spec_pow = 32.0; m.spec = 0.26;
-        }
-    }
-    return m;
+// ⚠️ **A coordenada é `n.xy * 0.5 + 0.5`, SEM flip, e é o que só um render
+// revela.** O `canvas_normal` já devolve o normal em espaço de TELA, onde `y`
+// cresce para BAIXO; a linha 0 de uma textura também é o topo. Os dois eixos já
+// concordam. Com um flip a escultura acenderia por BAIXO enquanto a tinta ao
+// lado, no mesmo documento e sob a mesma lâmpada, acenderia por cima.
+//
+// ⚠️ **Os cantos da imagem nunca são amostrados, e isso é geometria:** `|n.xy|`
+// nunca passa de 1 num vetor unitário, então o domínio é o disco INSCRITO. É por
+// isso que estes arquivos podem ter fundos diferentes entre si (o `Basic Side` é
+// preto, o `Studio` é cinza) sem que a diferença signifique coisa alguma.
+fn matcap_uv(n: vec3<f32>) -> vec2<f32> {
+    return n.xy * 0.5 + vec2<f32>(0.5, 0.5);
 }
 
-// O material aceso, em linear e podendo passar de 1 — o alvo é HDR e o tonemap
-// do shell vem depois, exatamente como no caminho do rig.
-fn matcap_shade(n: vec3<f32>, id: u32) -> vec3<f32> {
-    let m = material(id);
-    // ⚠️ **`abs` e não `max(.., 0)` no preenchimento.** O preenchimento existe
-    // para a face virada para longe da principal não cair no preto; clampá-lo
-    // deixaria uma calota inteira no piso e a forma sumiria ali — que é o
-    // defeito que o piso AMBIENTE resolve no caminho do rig, por outra via.
-    let kd = max(dot(n, normalize(m.key_dir)), 0.0);
-    let fd = max(dot(n, normalize(m.fill_dir)), 0.0);
-    // A borda: quanto a superfície vira de perfil. `n.z` é o cosseno com o olho,
-    // então `1 − n.z` é zero de frente e um na silhueta.
-    let rim = pow(clamp(1.0 - n.z, 0.0, 1.0), m.rim_pow);
-    // O realce das DUAS lâmpadas, cada um pelo próprio meio-vetor com o olho
-    // (`+z`), que é a construção Blinn-Phong que o barro do rig já usa.
-    let hk = normalize(normalize(m.key_dir) + vec3<f32>(0.0, 0.0, 1.0));
-    let hf = normalize(normalize(m.fill_dir) + vec3<f32>(0.0, 0.0, 1.0));
-    let sp = pow(max(dot(n, hk), 0.0), m.spec_pow)
-        + 0.35 * pow(max(dot(n, hf), 0.0), m.spec_pow);
-    return m.base * (m.key * kd + m.fill * fd) + m.rim * rim + m.spec * sp;
+// A esfera autorada, amostrada pela normal — em LINEAR, porque a textura é
+// `Rgba8UnormSrgb` e o hardware desfaz a transferencia de graca na leitura. O
+// alvo do passe e' HDR e o tonemap do shell vem depois, exatamente como no
+// caminho do rig.
+//
+// ⚠️ **`textureSampleLevel` e nao `textureSample`.** Esta funcao e' chamada duas
+// vezes por pixel — uma na normal e outra no CENTRO, para o divisor plano — e a
+// segunda tem coordenada CONSTANTE. Uma amostragem com derivada implicita num
+// uv constante pede mip 0 de qualquer forma, mas so' e' legal fora de fluxo
+// divergente; o nivel explicito torna as duas chamadas validas onde elas estao,
+// dentro do `if (shade.matcap > 0u)`. A textura nao tem mips.
+fn matcap_shade(n: vec3<f32>) -> vec3<f32> {
+    return textureSampleLevel(matcap_tex, sss_samp, matcap_uv(n), 0.0).rgb;
 }
 
 // **A OCLUSÃO DE TELA** (`crate::ssao`) — grupo próprio porque a frequência é
@@ -327,6 +250,21 @@ fn matcap_shade(n: vec3<f32>, id: u32) -> vec3<f32> {
 // interpolar uma medição consigo mesma.
 @group(3) @binding(0) var sss_lut: texture_2d<f32>;
 @group(3) @binding(1) var sss_samp: sampler;
+
+// **A IMAGEM DO MATCAP** — a esfera autorada que o `matcap_shade` amostra.
+//
+// ⚠️ **Mora no grupo 3 e divide o sampler do SSS, e as duas coisas são
+// deliberadas.** Os quatro grupos que o wgpu garante já estavam ocupados (0 =
+// uniforms · 1 = por-objeto · 2 = AO · 3 = SSS), então não havia um quinto para
+// pedir; e o sampler que o SSS precisa — LINEAR com `ClampToEdge` nos dois eixos
+// — é exatamente o que uma imagem de matcap quer. Um segundo sampler idêntico
+// seria uma segunda resposta para *"como se amostra uma tabela deste passe"*.
+//
+// ⚠️ **É UMA textura, não um array de nove.** O artista vê um matcap por vez, e
+// o `ensure_matcap` reescreve ESTA textura quando ele troca — 1 MB de VRAM em
+// vez de 9, e oito PNGs que nunca são decodificados enquanto ninguém os pede.
+// O preço é um upload por clique, que é o gesto mais lento que existe na UI.
+@group(3) @binding(2) var matcap_tex: texture_2d<f32>;
 
 /// **A resposta difusa deste ponto, dado `N·L` e a curvatura de mundo.**
 ///
@@ -650,14 +588,18 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // por rig apagado: ele não usa o rig, então apagar as lâmpadas do card não
     // pode apagá-lo.
     if (shade.matcap > 0u) {
-        let id = shade.matcap - 1u;
-        let lit = matcap_shade(nc, id);
+        // ⚠️ **O `id` não chega mais aqui, e a ausência é a wave inteira:** a
+        // imagem residente É a identidade do matcap. Quem escolhe é o
+        // `MeshRenderer::ensure_matcap`, na CPU, reescrevendo a textura quando o
+        // artista troca de chip — o `shade.matcap` sobrevive só como o *booleano*
+        // que este `if` faz, e o `> 0u` continua sendo a mesma pergunta de antes.
+        let lit = matcap_shade(nc);
         // ⚠️ **O MESMO modelo relativo do caminho do rig**, e não uma segunda
         // regra: a resposta dividida pela de uma superfície PLANA sob a mesma
-        // luz. Lá o divisor é `flat_d`; aqui é o próprio material avaliado na
-        // normal frontal, que é o que "plano" quer dizer neste espaço. É esta
-        // razão que deixa a máscara tingir com a MESMA lei nos dois modos.
-        let flat = max(matcap_shade(vec3<f32>(0.0, 0.0, 1.0), id), vec3<f32>(FLAT_FLOOR));
+        // luz. Lá o divisor é `flat_d`; aqui é a imagem lida na normal frontal —
+        // o **CENTRO** do disco, que é o que "plano" quer dizer neste espaço. É
+        // esta razão que deixa a máscara tingir com a MESMA lei nos dois modos.
+        let flat = max(matcap_shade(vec3<f32>(0.0, 0.0, 1.0)), vec3<f32>(FLAT_FLOOR));
         let ratio = lit / flat;
         var cm = lit * cav_occ;
         cm = mix(cm, PREVIEW_TINT * ratio * cav_occ, clamp(in.preview, 0.0, 1.0) * PREVIEW_STRENGTH);

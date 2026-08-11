@@ -175,6 +175,20 @@ impl MeshRenderer {
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
+                // A IMAGEM DO MATCAP — no grupo do SSS porque os quatro grupos
+                // que o wgpu garante já estavam ocupados, e porque o sampler
+                // deste grupo (linear + `ClampToEdge`) é exatamente o que ela
+                // quer. Ver o doc do binding no `mesh.wgsl`.
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
 
@@ -218,6 +232,29 @@ impl MeshRenderer {
             mipmap_filter: wgpu::MipmapFilterMode::Nearest,
             ..Default::default()
         });
+        // A imagem do matcap nasce VAZIA, e o `ensure_matcap` a preenche no
+        // primeiro `render` — o irmão exato do `ensure_sss_lut`, e pela mesma
+        // restrição (o `new` não tem `queue`).
+        //
+        // ⚠️ **`Rgba8UnormSrgb`, e o `Srgb` é o modelo inteiro:** os PNGs guardam
+        // sRGB e o shader quer LINEAR; este formato faz o hardware desfazer a
+        // transferência na leitura, de graça e com a curva certa (a com joelho,
+        // não um `x^2.2`). Trocar por `Rgba8Unorm` deixaria toda escultura
+        // clara demais, sem erro nenhum.
+        let matcap_tex = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("ph2d-mesh matcap"),
+            size: wgpu::Extent3d {
+                width: crate::matcap::MATCAP_SIDE,
+                height: crate::matcap::MATCAP_SIDE,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
         let sss_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ph2d-mesh sss bind"),
             layout: &sss_bgl,
@@ -231,6 +268,12 @@ impl MeshRenderer {
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: wgpu::BindingResource::Sampler(&sss_sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(
+                        &matcap_tex.create_view(&wgpu::TextureViewDescriptor::default()),
+                    ),
                 },
             ],
         });
@@ -626,6 +669,8 @@ impl MeshRenderer {
             sss_lut,
             sss_bind,
             sss_lut_ready: false,
+            matcap_tex,
+            matcap_ready: None,
             uniform,
             rig_uniform,
             shade_uniform,

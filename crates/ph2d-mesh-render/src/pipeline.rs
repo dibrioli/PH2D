@@ -130,6 +130,10 @@ enum Draw {
 #[path = "pipeline_build.rs"]
 mod build;
 
+/// **O QUE TEM DE ESTAR NO DEVICE** antes de desenhar — ver [`ensure`].
+#[path = "pipeline_ensure.rs"]
+mod ensure;
+
 /// O renderizador da malha.
 pub struct MeshRenderer {
     pipeline: wgpu::RenderPipeline,
@@ -187,10 +191,25 @@ pub struct MeshRenderer {
     ssao_fresh: bool,
     /// **A tabela pré-integrada do SSS** (`crate::sss`), no device.
     sss_lut: wgpu::Texture,
-    /// O bind do grupo 3 — a tabela e o sampler. Construído uma vez.
+    /// O bind do grupo 3 — a tabela, o sampler e a imagem do matcap.
+    ///
+    /// ⚠️ **Construído uma vez, inclusive quando o matcap troca.** Trocar de
+    /// chip reescreve os TEXELS da mesma textura (`ensure_matcap`), e um bind
+    /// aponta para a textura, não para o conteúdo dela — recriá-lo aqui seria
+    /// trabalho que ninguém pediu.
     sss_bind: wgpu::BindGroup,
     /// A tabela já foi ASSADA e subiu? Ver [`Self::ensure_sss_lut`].
     sss_lut_ready: bool,
+    /// **A imagem do matcap**, no device — ver [`crate::matcap`].
+    matcap_tex: wgpu::Texture,
+    /// **QUAL matcap está residente**, no índice de [`crate::matcap::MATCAPS`].
+    ///
+    /// `None` é *"a textura está vazia"* — o estado em que ela nasce, e o que
+    /// faz o primeiro `render` com matcap ligado pagar o upload. Guardar o
+    /// índice (e não um `bool`) é o que torna a troca de chip barata: o
+    /// `ensure_matcap` compara e sai sem tocar no device quando nada mudou, que
+    /// é TODO frame menos aquele em que o artista clicou.
+    matcap_ready: Option<usize>,
 }
 
 /// COMO A MALHA SOBE para o device — ver o módulo.
@@ -312,85 +331,6 @@ impl MeshRenderer {
         }
     }
 
-    /// Garante o depth-buffer do tamanho pedido (recria se mudou).
-    /// **Garante a tabela do SSS no device** — assa e sobe, uma vez.
-    ///
-    /// ⚠️ **Lazy, e só quando alguém de fato pede espalhamento.** A tabela custa
-    /// `128² × 512` avaliações da integral de Penner, ou seja **oito milhões de
-    /// exponenciais**; assá-la no `new` faria toda cena pagar por um canal que
-    /// nasce em zero. E ela não pode ser assada no `new` de qualquer forma: ele
-    /// não tem `queue` (a restrição que fez o canal de AO guardar oclusão em vez
-    /// de visibilidade), e aqui não há inversão que dispense o upload.
-    ///
-    /// ⚠️ **O guard é `strength > 0` e não `strength != 0`**: o valor já chegou
-    /// clampado a `[0,1]` pela porta, então negativo não existe — e escrever a
-    /// desigualdade estrita torna a leitura *"alguém pediu espalhamento"* em vez
-    /// de *"o número não é exatamente zero"*.
-    pub fn ensure_sss_lut(
-        &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        shade: crate::Shade,
-    ) {
-        let _ = device;
-        if self.sss_lut_ready || shade.sss.strength <= 0.0 {
-            return;
-        }
-        let n = crate::sss::LUT_SIZE;
-        queue.write_texture(
-            wgpu::TexelCopyTextureInfo {
-                texture: &self.sss_lut,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            &crate::sss::bake_lut(),
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(n * 4),
-                rows_per_image: Some(n),
-            },
-            wgpu::Extent3d {
-                width: n,
-                height: n,
-                depth_or_array_layers: 1,
-            },
-        );
-        self.sss_lut_ready = true;
-    }
-
-    pub fn ensure_depth(&mut self, device: &wgpu::Device, size: (u32, u32)) {
-        if self.depth.is_some() && self.depth_size == size {
-            return;
-        }
-        let tex = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("ph2d-mesh depth"),
-            size: wgpu::Extent3d {
-                width: size.0.max(1),
-                height: size.1.max(1),
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: Self::DEPTH_FORMAT,
-            // ⚠️ **`TEXTURE_BINDING` além do anexo, e não é folga:** o AO de tela
-            // LÊ esta textura para saber onde cada pixel está. Sem a flag o wgpu
-            // recusa o bind group — e a flag não custa nada a quem não a usa.
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        });
-        self.depth = Some(tex.create_view(&wgpu::TextureViewDescriptor::default()));
-        self.depth_size = size;
-        // ⚠️ **Trocar a profundidade INVALIDA o grupo de entrada do AO de tela**,
-        // que aponta para a view antiga. Derrubar os alvos aqui é o que garante
-        // que os dois sejam sempre do mesmo enquadramento; deixá-los de pé faria
-        // o passe ler uma textura morta — e a validação do wgpu pegaria isso, mas
-        // só na máquina de quem redimensionasse a janela.
-        self.ssao = None;
-        self.ssao_fresh = false;
-    }
-
     /// Desenha a malha em `color_view`, PRESERVANDO o que já está lá
     /// (`LoadOp::Load`) — a cena 2D fica por baixo. No-op sem geometria.
     ///
@@ -423,6 +363,7 @@ impl MeshRenderer {
         }
         self.ensure_depth(device, size);
         self.ensure_sss_lut(device, queue, shade);
+        self.ensure_matcap(device, queue, shade);
         // ⚠️ **A frescura é consumida AQUI**, antes de qualquer empréstimo do
         // passe: quem não renovou a medição nesta vista desenha sem oclusão de
         // tela, nunca com a do frame passado.

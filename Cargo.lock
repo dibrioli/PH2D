@@ -5718,6 +5718,8 @@ dependencies = [
  "bytemuck",
  "glam 0.30.10",
  "half",
+ "ph2d-imageio",
+ "ph2d-imageio-png",
  "ph2d-light",
  "ph2d-mesh",
  "ph2d-sculpt3d",

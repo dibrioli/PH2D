@@ -113,15 +113,28 @@ pub const DEFAULT_SSAO_STRENGTH: f32 = 1.0;
 /// dono daquele módulo, não um apêndice desta.
 pub const DEFAULT_ENV: f32 = 0.0;
 
-/// **OS MATERIAIS DO MATCAP**, na ordem em que o shader os numera.
+/// **OS NOMES DOS MATCAPS** — hoje uma re-exportação de
+/// [`crate::matcap::MATCAP_NAMES`], que por sua vez é derivado da tabela.
 ///
-/// ⚠️ **Os NÚMEROS ficam no WGSL e os NOMES aqui, e não há uma terceira cópia.**
-/// Um material de matcap é um punhado de cores e expoentes que ninguém do lado
-/// da CPU lê: o shader é o único consumidor, então duplicá-los aqui seria uma
-/// segunda resposta a *"como a pérola é"* — a que fica velha na primeira
-/// afinação. O que a CPU precisa saber é **quantos há** e **como se chamam**,
-/// que é o que o painel pinta; a igualdade das duas contagens é gateada.
-pub const MATCAPS: [&str; 6] = ["Clay", "Pearl", "Skin", "Jade", "Metal", "Wax"];
+/// ⚠️ **Até 2026-08-10 esta era a lista, e o doc dela defendia a separação** —
+/// *"os NÚMEROS ficam no WGSL e os NOMES aqui; o shader é o único consumidor"*.
+/// A frase era verdade enquanto um matcap era um punhado de cores e expoentes;
+/// hoje ele é uma IMAGEM, e o nome e os pixels moram no mesmo registro. O alias
+/// fica porque o painel e o gate do shell já o importam por este caminho.
+pub use crate::matcap::MATCAP_NAMES as MATCAPS;
+
+/// **O MATCAP COM QUE O APP ABRE.**
+///
+/// ⚠️ **Ele deixou de ser `None` (o rig) e passou a ser o índice 0**, por ordem
+/// do Enio — *"SculptGL: só tem um tipo; busque e coloque como o padrão do app"*.
+/// O índice `0` da tabela **é** o do SculptGL, e a ordem dela é o que torna isto
+/// um fato só em vez de dois números que precisam concordar.
+///
+/// ⚠️ **É uma mudança de comportamento, e ela é do produto:** o barro passa a
+/// abrir aceso pela luz do OLHO em vez da do documento. O caminho do rig
+/// continua inteiro e alcançável pelo primeiro chip da fileira — o que mudou foi
+/// qual deles nasce marcado.
+pub const DEFAULT_MATCAP: Option<u8> = Some(0);
 
 /// **COMO O BARRO É MOSTRADO** — as opções de vista, num tipo só.
 ///
@@ -193,7 +206,7 @@ impl Default for Shade {
             ao: DEFAULT_AO_STRENGTH,
             ssao: DEFAULT_SSAO_STRENGTH,
             sss: crate::sss::SssParams::default(),
-            matcap: None,
+            matcap: DEFAULT_MATCAP,
             wireframe: false,
         }
     }

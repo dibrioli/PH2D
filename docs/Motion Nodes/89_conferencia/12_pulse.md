@@ -224,12 +224,24 @@ atravessa intacto. A crate **não conhece a `ph2d-runtime`** — ela devolve o s
 as linhas que dispararam; quem publica é o shell, que já é dono da outbox e já drena as outras duas
 fontes (ADR-0075: o produtor não chama ninguém).
 
-⚠️ **E a folha dizia *"trivial de escrever"*, o que a construção derrubou.** O pump aceita **um
-alvo por marcha** (a doc dele: *one march, N hand-offs*), então cozinhar a tomada numa segunda
-chamada avançaria o relógio **duas vezes por tique** e re-simularia o prefixo compartilhado — em
-silêncio. As tomadas passaram a cozinhar **dentro da mesma marcha**
-(`advance_or_scrub_with_taps_scoped`), batendo no memo do `Cook`; lista vazia é o mundo anterior
-byte a byte.
+⚠️ **E a folha dizia *"trivial de escrever"*, o que a construção derrubou DUAS vezes.** Primeiro
+porque o pump aceita **um alvo por marcha** (a doc dele: *one march, N hand-offs*), então cozinhar
+a tomada numa segunda chamada avançaria o relógio **duas vezes por tique** e re-simularia o prefixo
+compartilhado — em silêncio; as tomadas passaram a cozinhar **dentro da mesma marcha**, batendo no
+memo do `Cook`, e lista vazia é o mundo anterior byte a byte.
+
+⚠️ **E depois porque o produto tem DUAS marchas, não uma — o smoke do Enio pegou a cena MUDA.** A
+primeira forma passava as tomadas como **argumento de `advance_or_scrub_scoped`** (a porta dos
+*sinks*), e a cena `=26` planeja **HÍBRIDA** (medido: `boundaries = [5, 4]`, 4 estágios de
+despacho) ⇒ o quadro marcha por `advance_or_scrub_to_nodes_scoped`, devolve `Handled` e **retorna
+antes** do laço onde a leitura morava: o grafo cozinhava, a tela animava e o terminal ficava
+silencioso, com **os seis gates verdes** (todos dirigiam a porta dos sinks). A causa não era a
+leitura nem a lei — era **a tomada ser argumento de UMA porta**. Hoje ela é **estado da bomba**
+(`Pump::set_taps`), cozida depois do alvo nos **dois** braços de `CookTarget`, e o que o host lê é
+um **livro-razão** (`tap_fires`: uma linha por tique PEDIDO — nunca por passo de re-simulação,
+senão um wrap de loop gritaria a volta inteira num quadro), lido **uma vez, onde toda rota
+converge**. O gate que faltava é de ROTA (`as_duas_rotas_de_cook_gritam_a_mesma_coisa`, com o irmão
+que MEDE a premissa de que a cena é híbrida): reinstalando o defeito exato, **só ele sangra**.
 
 ⚠️ **A lei do relógio NÃO foi derivada do `ticks_owed`, como esta folha previa** — ele não
 distingue *tocar* de *saltar para a frente*, e um seek com o play ligado teria virado exatamente a
@@ -244,7 +256,8 @@ dois — o dispatch dele roda depois de os consumidores lerem, e o duplo-buffer 
 que reordena uma sequência gateada: decisão própria.
 
 **Cena:** `PH2D_GPU_COOK_DEMO=26` (com `PH2D_SIGNAL_LOG=1`) — a MESMA cena do compasso com uma
-tomada em cada relógio, então o terminal conta a razão que o olho conta na tela.
+tomada em cada relógio, então o terminal conta a razão que o olho conta na tela. **Smoke aprovado
+pelo Enio em 2026-08-10**, depois do fix de rota acima.
 
 **Segue ABERTA a direção `runtime → grafo`** (colisão vira pulso), pelo motivo acima: ela é
 decisão do Enio, não dívida de engenharia.

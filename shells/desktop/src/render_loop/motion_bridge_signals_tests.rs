@@ -1,10 +1,14 @@
 //! **Gates do lado de Motion da fronteira** — o que a ponte lê das tomadas e o que ela recusa
 //! a publicar.
 //!
-//! Eles dirigem o pump pela MESMA porta que o `dispatch` usa (`advance_or_scrub_with_taps_scoped`
-//! seguido de `collect_signals`, tique a tique), e é isso que os separa de um espelho: o
-//! `MotionState` nasce sem janela, então o caminho de produto inteiro — cook, tomada, nome,
-//! contagem — cabe num teste de unidade.
+//! Eles dirigem o pump pelas MESMAS portas de marcha que o `dispatch` usa — as DUAS, uma por
+//! rota de cook ([`Rota`]) — e leem o livro-razão UMA vez no fim, como o quadro faz. É isso que
+//! os separa de um espelho: o `MotionState` nasce sem janela, então o caminho de produto inteiro
+//! — cook, tomada, nome, contagem — cabe num teste de unidade.
+//!
+//! ⚠️ **A porta única `advance_or_scrub_with_taps_scoped` NÃO existe mais**, e a razão está no
+//! defeito que ela causou: a tomada era argumento de UMA das marchas, e o produto tem duas. Hoje
+//! ela é estado da bomba (`set_taps`) e o resultado é carimbado num livro-razão por TIQUE.
 //!
 //! ⚠️ **O que NÃO cabe aqui é a LEI do relógio** (*só publica tocando para a frente*): ela mora
 //! no `dispatch`, que exige o `HeroScreen` vivo. Quem a afirma é o par

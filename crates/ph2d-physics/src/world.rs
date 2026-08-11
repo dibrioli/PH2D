@@ -42,6 +42,7 @@ pub mod sensors;
 pub mod shape;
 mod shapes;
 mod step;
+pub mod sweep;
 pub mod tuning;
 
 use defaults::BodyDefaults;

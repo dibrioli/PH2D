@@ -69,8 +69,8 @@ pub use corner::{
     corner_nudge, corner_offsets, corner_probe_wanted,
 };
 pub use crouch::{
-    CrouchConfig, CrouchState, HEADROOM_SAMPLES, Headroom, crouch_step, effective_crouched,
-    headroom_offsets, headroom_probe_wanted, ride_for, walk_for,
+    CrouchConfig, CrouchState, Headroom, crouch_step, effective_crouched, headroom_probe_wanted,
+    ride_for, walk_for,
 };
 pub use dash::{DashConfig, DashState, DashStep, dash_burst, dash_step};
 pub use jump::{JumpConfig, JumpState, JumpStep, carried_frame, jump_step};

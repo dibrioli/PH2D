@@ -3,9 +3,21 @@
 //!
 //! ⚠️ **Corte por RESPONSABILIDADE:** o `bridge::player` responde *"o que a lei
 //! decidiu neste tique?"* — o cast do chão, a chamada da lei, o motor, a reação —
-//! e estes três respondem a pergunta anterior: *"o que há à volta?"*. Cada um é
-//! um LEQUE de raios com uma régua própria, e nenhum deles tem política: a
-//! decisão de castar (`*_probe_wanted`) é da LEI, e é ela que os chama.
+//! e estes três respondem a pergunta anterior: *"o que há à volta?"*. Nenhum
+//! deles tem política: a decisão de castar (`*_probe_wanted`) é da LEI, e é ela
+//! que os chama.
+//!
+//! ⚠️ **Dois leem por RAIOS e um VARRE o corpo**, e a diferença não é estilo:
+//!
+//! - o da **quina** é um PERFIL (65 amostras que dizem *onde* há teto, para a
+//!   lei escolher para que lado escapar) — uma varredura devolve um contacto e
+//!   não sabe responder isso;
+//! - o da **parede** entrega o flanco inteiro e a lei reduz com a régua da perna
+//!   (`max_slope`), porque *qual superfície* e *se é parede* são a mesma
+//!   pergunta;
+//! - o do **agachar** só alguma vez foi perguntado *"cabe?"*, e essa é
+//!   literalmente a pergunta que uma varredura responde. Ele foi convertido na
+//!   `W-ShapeCast`; os outros dois não, com o motivo escrito em cada um.
 //!
 //! Módulo FILHO por `#[path]`, então `super::*` continua a alcançar o que o pai
 //! não exporta.
@@ -81,31 +93,34 @@ pub(super) fn probe_ceiling(
     })
 }
 
-/// **O que há sobre a cabeça** (W15) — os raios que decidem se ele pode
+/// **O que há sobre a cabeça** (W15) — a varredura que decide se ele pode
 /// levantar-se de um agachar.
 ///
-/// Eles nascem no TOPO da caixa do corpo e medem exactamente
-/// [`ph2d_platformer::CrouchConfig::rise`] — *quanto o corpo SOBE ao
-/// levantar-se*. Nem um milímetro além: perguntar mais longe recusaria o gesto
-/// por causa de um teto que o personagem, de pé, não alcança.
+/// O corpo é varrido para CIMA por exactamente
+/// [`ph2d_platformer::CrouchConfig::rise`] — *quanto ele SOBE ao levantar-se*.
+/// Nem um milímetro além: perguntar mais longe recusaria o gesto por causa de um
+/// teto que o personagem, de pé, não alcança.
 ///
-/// ⚠️ **A grade vem da lei** ([`headroom_offsets`]), nunca de uma aritmética
-/// local — a mesma regra do sensor de quina, e pelo mesmo motivo: duas
-/// aritméticas deslocariam as amostras em relação ao corpo.
+/// # ⚠️ Eram TRÊS RAIOS, e a `W-ShapeCast` trocou-os por UMA varredura
 ///
-/// ⚠️ **A caixa envolvente é CONSERVADORA, e a direcção do erro é a certa** (ver
-/// o doc de [`headroom_offsets`]): um teto que toque só a quina da caixa recusa
-/// o levantar. Ficar agachado onde caberia é um incómodo; levantar-se para
-/// dentro da pedra é o solver a resolver uma penetração que ninguém autorou.
+/// A pergunta é *"o corpo cabe se subir `rise`?"*, e uma grade de linhas só sabe
+/// respondê-la por amostragem. O preço estava medido
+/// (`measure_the_gap_between_rays`): um pilar de 8 cm entre duas amostras é
+/// invisível, a cabeça chega a **1,267** contra pedra em **1,25** e o solver
+/// segura-a lá dentro.
 ///
-/// ⚠️ **O QUE NÃO ESTÁ GATEADO, e porquê:** a GRADE tem gate na lei
-/// (`the_headroom_grid_spans_the_body`) e o `blocked` tem gate no produto — mas
-/// a metade *"o laço percorre os TRÊS deslocamentos"* só é observável sob um
-/// teto **PARCIAL**, que cubra uma borda do corpo e não o centro. Uma fixture
-/// dessas teria de calibrar a aresta da laje contra a posição MEDIDA de um
-/// personagem a andar, dentro de uma janela de 0,2 m — um gate que falharia por
-/// deriva de fixture em vez de por defeito. Fica NOMEADO: trocar o laço por um
-/// raio central sobrevive à suíte.
+/// ⚠️ **E some com ele a caixa envolvente:** a varredura usa a forma REAL do
+/// collider, então a ressalva *"um teto que toque só a quina da caixa recusa o
+/// levantar"* deixa de existir — não é uma tolerância que alguém afrouxou, é uma
+/// pergunta que passou a ser feita sobre o corpo em vez de sobre a caixa dele.
+///
+/// ⚠️ **A dívida de gate que isto PAGA:** o doc anterior nomeava uma metade sem
+/// gate (*"o laço percorre os TRÊS deslocamentos" só é observável sob um teto
+/// parcial … trocar o laço por um raio central sobrevive à suíte*). Não há laço
+/// a percorrer: a varredura não tem amostras para alguém esquecer.
+///
+/// ⚠️ **`sweep_body` já exclui o próprio corpo**, então não há aqui a aritmética
+/// do "nasce no centro e desconta meia-largura" que os raios precisavam.
 pub(super) fn probe_headroom(
     world: &ph2d_physics::PhysicsWorld,
     handle: rapier2d_handle::Handle,
@@ -116,21 +131,9 @@ pub(super) fn probe_headroom(
     if !rise.is_finite() || rise <= 0.0 {
         return None;
     }
-    let (mins, maxs) = world.body_aabb(handle)?;
-    let half_width = (maxs[0] - mins[0]) * 0.5;
-    if !half_width.is_finite() || half_width <= 0.0 {
-        return None;
-    }
-    let cx = (maxs[0] + mins[0]) * 0.5;
-    let top = maxs[1];
-
-    let mut blocked = [false; HEADROOM_SAMPLES];
-    for (slot, off) in blocked.iter_mut().zip(headroom_offsets(half_width).iter()) {
-        *slot = world
-            .cast_ray([cx + off, top], [0.0, 1.0], rise, Some(handle), layer)
-            .is_some();
-    }
-    Some(Headroom { blocked })
+    Some(Headroom {
+        blocked: world.sweep_body(handle, [0.0, 1.0], rise, layer).is_some(),
+    })
 }
 
 /// **A parede ao lado** (W13) — a metade do sensor que este módulo possui, e

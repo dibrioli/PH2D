@@ -242,9 +242,7 @@ fn a_ceiling_keeps_him_crouched_through_the_one_door() {
     );
     assert!(down.state.crouch.crouched);
 
-    let blocked = Headroom {
-        blocked: [false, true, false],
-    };
+    let blocked = Headroom { blocked: true };
     let stuck = player_motor(
         &cfg,
         Some(&ground),

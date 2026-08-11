@@ -250,15 +250,30 @@ pub const WALL_SAMPLES: usize = 3;
 /// PULO, que não tem cola. Abaixo de ~0,70 m de fresta o **buffer do pulo**
 /// mascarava tudo — ele guarda o aperto até o bloco de baixo reaparecer.
 ///
-/// ⚠️ **As bordas são as da CAIXA envolvente**, como no [`crate::headroom_offsets`],
-/// e a direção do erro é a certa: numa cápsula a ponta é um ponto, então um raio
-/// de pé rasante pode ver parede onde o corpo mal encosta — agarrar-se um triz
-/// cedo demais é o que Celeste faz por sobreposição de hitbox, e a lei ainda
-/// exige empurrar contra ela e estar a descer.
+/// ⚠️ **As bordas são as da CAIXA envolvente**, e a direção do erro é a certa:
+/// numa cápsula a ponta é um ponto, então um raio de pé rasante pode ver parede
+/// onde o corpo mal encosta — agarrar-se um triz cedo demais é o que Celeste faz
+/// por sobreposição de hitbox, e a lei ainda exige empurrar contra ela e estar a
+/// descer.
 ///
-/// ⚠️ **Três raios, e a limitação continua nomeada:** uma fresta mais estreita
-/// que meia altura, entre duas amostras, segue invisível. A cura dos três
-/// sensores é a mesma (um *shape cast*, que este wrapper ainda não tem).
+/// # ⚠️ A varredura de forma EXISTE agora, e este sensor continua de raios
+///
+/// A `W-ShapeCast` deu ao wrapper o `sweep_body`, e o sensor do agachar trocou
+/// os três raios dele por uma varredura. Este **não** trocou, e a razão é
+/// MEDIDA, não inércia:
+///
+/// - o vão cego aqui exigiria uma parede de **RIPAS** — os três raios cobrem o
+///   flanco inteiro, então uma fresta única teria de ser mais alta que o corpo
+///   para os apagar aos três, e nesse caso não há parede à frente do corpo;
+/// - e o [`cling`] **reduz sobre as amostras** com a régua da perna (`max_slope`)
+///   para decidir *qual* superfície é parede. Uma varredura devolve **um**
+///   contacto, o mais próximo — que pode ser a rampa aos pés, que a perna aceita
+///   e que este sensor tem de descartar. Trocar seria perder a escolha, não
+///   ganhar precisão.
+///
+/// A fresta que sobra invisível é a **benigna** (um buraco reportado como
+/// parede: ele agarra-se a uma parede que tem um furo). Fica nomeada, com o
+/// motivo de não ter sido curada junto.
 #[must_use]
 pub fn wall_offsets(half_height: f32) -> [f32; WALL_SAMPLES] {
     [0.0, -half_height, half_height]

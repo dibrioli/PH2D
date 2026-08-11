@@ -48,9 +48,6 @@
 
 use crate::{PlayerConfig, RideConfig, WalkConfig};
 
-/// Quantos raios o sensor de teto do agachar lança — ver [`headroom_offsets`].
-pub const HEADROOM_SAMPLES: usize = 3;
-
 /// **Como o personagem agacha.**
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct CrouchConfig {
@@ -104,44 +101,45 @@ impl CrouchConfig {
 
 /// **O que há sobre a cabeça** — o sensor que decide se ele pode levantar-se.
 ///
-/// ⚠️ **A ponte lança os raios; a GRADE é daqui** ([`headroom_offsets`]), pelo
-/// molde exacto do sensor de quina: duas aritméticas deslocariam as amostras em
-/// relação ao corpo, e o sintoma seria um personagem que se levanta para dentro
-/// de um teto que o sensor mediu ao lado.
+/// # ⚠️ Era uma GRADE DE RAIOS, e passou a ser uma VARREDURA DO CORPO
+///
+/// Até a `W-ShapeCast` isto carregava `[bool; 3]` — o teto visto de três alturas
+/// —, e a ponte reduzia com um *any*. A lei só alguma vez perguntou
+/// [`Headroom::is_blocked`], então a grade nunca foi informação que alguém
+/// usasse: era o **preço de o wrapper só saber lançar linhas**.
+///
+/// Com `PhysicsWorld::sweep_body` a pergunta é feita uma vez, com a forma real
+/// do corpo, e **duas limitações escritas morrem juntas**:
+///
+/// - *"um teto mais estreito que meia largura, entre duas amostras, não é
+///   visto"* — medido, um pilar de 8 cm punha a cabeça **1,267** contra pedra em
+///   **1,25**;
+/// - *"a caixa envolvente é conservadora … um teto que toque só a quina da caixa
+///   recusa o levantar"* — a varredura usa a **cápsula**, então a quina deixa de
+///   ser um obstáculo que não existe.
+///
+/// ⚠️ **E a afirmação sobre a direcção do erro era falsa de um dos dois lados:**
+/// o doc antigo dizia que *"o erro possível é ficar agachado onde caberia, nunca
+/// levantar-se para dentro da pedra"*. Verdade sobre a caixa, falsa sobre o vão
+/// entre dois raios — e a segunda metade é a perigosa. Fica registada aqui em
+/// vez de apagada, porque é o motivo de esta wave existir (CLAUDE.md §0).
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Headroom {
-    /// `blocked[i]` = há teto ao alcance no deslocamento `headroom_offsets()[i]`.
-    pub blocked: [bool; HEADROOM_SAMPLES],
+    /// Há teto ao alcance de `rise` — a resposta da varredura, já reduzida
+    /// porque **não há nada a reduzir**: uma varredura devolve o primeiro
+    /// contacto do corpo INTEIRO.
+    pub blocked: bool,
 }
 
 impl Headroom {
     /// Céu limpo — o neutro, e o que uma cena sem teto produz.
-    pub const CLEAR: Self = Self {
-        blocked: [false; HEADROOM_SAMPLES],
-    };
+    pub const CLEAR: Self = Self { blocked: false };
 
     /// **Há alguma coisa no caminho?**
     #[must_use]
     pub fn is_blocked(&self) -> bool {
-        self.blocked.iter().any(|&b| b)
+        self.blocked
     }
-}
-
-/// **Onde os raios do teto nascem**, medidos do centro do corpo.
-///
-/// As duas bordas da caixa envolvente e o meio. ⚠️ **A caixa é conservadora, e a
-/// direcção do erro é a certa:** um teto que toque só a quina da caixa (onde uma
-/// cápsula não está) recusa o levantar — o erro possível é *ficar agachado onde
-/// caberia*, nunca *levantar-se para dentro da pedra*. É a mesma caixa, pela
-/// mesma razão, que o sensor de quina da W10 usa.
-///
-/// ⚠️ **Três raios, e a limitação está nomeada:** um teto mais estreito que meia
-/// largura, entre duas amostras, não é visto. É a limitação honesta que o sensor
-/// de quina e o de parede já carregam, e a cura para os três seria a mesma (um
-/// *shape cast*, que este wrapper ainda não tem).
-#[must_use]
-pub fn headroom_offsets(half_width: f32) -> [f32; HEADROOM_SAMPLES] {
-    [-half_width, 0.0, half_width]
 }
 
 /// **Vale a pena perguntar ao teto?**

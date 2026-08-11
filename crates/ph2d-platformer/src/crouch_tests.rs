@@ -19,9 +19,7 @@ fn armed() -> CrouchConfig {
 }
 
 fn blocked() -> Headroom {
-    Headroom {
-        blocked: [false, true, false],
-    }
+    Headroom { blocked: true }
 }
 
 /// **O ALCANCE DO SENSOR NÃO SE MOVE** — o invariante de que esta wave inteira
@@ -202,14 +200,15 @@ fn the_probe_is_only_wanted_when_he_is_crouched_and_released() {
     );
 }
 
-/// **A grade cobre o corpo** — as duas bordas e o meio, e nada fora dele.
+/// **O neutro é céu limpo, e o bloqueio bloqueia.**
+///
+/// ⚠️ Isto era `the_headroom_grid_spans_the_body`, e a grade que ele media
+/// **deixou de existir** com a `W-ShapeCast`: o sensor passou de três raios para
+/// uma varredura do corpo, e uma varredura não tem amostras cujo alinhamento
+/// alguém possa errar. O que sobra da pergunta antiga é o neutro — que é
+/// load-bearing na mesma medida, porque é ele que uma cena sem teto produz.
 #[test]
-fn the_headroom_grid_spans_the_body() {
-    let offs = headroom_offsets(0.35);
-    assert_eq!(offs.len(), HEADROOM_SAMPLES);
-    assert!((offs[0] - -0.35).abs() < 1e-6);
-    assert!((offs[1] - 0.0).abs() < 1e-6);
-    assert!((offs[2] - 0.35).abs() < 1e-6);
+fn clear_sky_is_the_neutral_and_a_ceiling_is_not() {
     assert!(!Headroom::CLEAR.is_blocked());
-    assert!(blocked().is_blocked(), "uma amostra basta para bloquear");
+    assert!(blocked().is_blocked());
 }

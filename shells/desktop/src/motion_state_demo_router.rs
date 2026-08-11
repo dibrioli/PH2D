@@ -198,6 +198,18 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
             );
             sinks
         }
+        Ok("30") => {
+            let sinks =
+                gpu_hit_demo::build_gpu_hit_demo_document(doc, registry, gpu_hit_demo::MARK)
+                    .unwrap_or_default();
+            // Os números são MEDIDOS (`probe_hit_mark`), não escolhidos.
+            eprintln!(
+                "[hit-demo] A MARCA DO IMPACTO: {} discos caem sobre um obstaculo e um chao. O \n                   `sim.collide` escreve a coluna `hit` (quao fundo a colisao deste tique empurrou),\n                   o `value.attribute(Hit)` a LE e o `motion.drive(Size)` a marca -- ENGORDA quem\n                   tocou. NENHUM no' novo: a cadeia inteira ja' existia, faltava o que observar.\n\
+                   (!) Sao DOIS colisores: a coluna acumula por `max`, o mais fundo do TIQUE --\n                   nunca 'o ultimo da cadeia'. E a `sim.zone` a TIRA do estado, senao a marca\n                   cresceria para sempre.",
+                (gpu_hit_demo::ROWS * gpu_hit_demo::COLS) as u32,
+            );
+            sinks
+        }
         // **Sem env: a TELA VAZIA** (Enio, 2026-08-07: *"tire a cena da cachoeira"*). O
         // editor abria com a neve caindo no mar — um sistema de partículas inteiro que o
         // artista tinha de apagar antes de começar. Quem quiser um grafo o traz pelo

@@ -49,6 +49,7 @@ use super::gpu_field_demos::{
     build_gpu_field_curve_demo_document, build_gpu_field_index_range_demo_document,
     build_gpu_field_radial_sweep_demo_document, build_gpu_field_remap_demo_document,
 };
+use super::gpu_hit_demo::{MARK, build_gpu_hit_demo_document};
 use super::gpu_neighbour_demos::{
     build_gpu_boids_demo_document, build_gpu_collide_demo_document, build_gpu_sweep_demo_document,
 };
@@ -206,6 +207,14 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     push(
         "demo=29 the chute (a tilted plane carries, a wall stops)",
         &|d| build_gpu_ramp_demo_document(d, reg, RAMP_DEG),
+    );
+    // ⚠️ E a MARCA pelo mesmo motivo, uma COLUNA adiante: o `sim.collide` passou a escrever
+    // `hit`, e um canal que o corpus nunca lê é um canal cujo caminho de device o censo nunca
+    // percorre. Esta cena é também a única que leva uma coluna de SIMULAÇÃO ao domínio de VALOR
+    // e de volta (`value.attribute` -> `motion.drive`) DENTRO do laço.
+    push(
+        "demo=30 the impact mark (a collision becomes readable)",
+        &|d| build_gpu_hit_demo_document(d, reg, MARK),
     );
     push("demo=10 sim.zone snow globe", &|d| {
         build_gpu_zone_demo_document(d, reg)

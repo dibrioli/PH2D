@@ -56,6 +56,11 @@ mod gpu_demos;
 /// out at the HR-18 cap — a cohesive family like the deformers next door.
 #[path = "motion_state_gpu_field_demos.rs"]
 mod gpu_field_demos;
+/// A cena da MARCA DO IMPACTO (doc 89, folha 13), arquivo próprio pela mesma razão: ela
+/// responde *"um nó a jusante consegue saber que houve uma COLISÃO?"* — o passo mexe em `P` e
+/// `vel` a cada tique, então até existir a coluna `hit` a pergunta não era exprimível.
+#[path = "motion_state_gpu_hit_demo.rs"]
+mod gpu_hit_demo;
 /// The NEIGHBOURHOOD scenes (ADR-0140), split out for the same reason: they
 /// answer the interacting-sim question none of the throughput scenes can.
 #[path = "motion_state_gpu_neighbour_demos.rs"]

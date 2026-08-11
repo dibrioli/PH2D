@@ -151,6 +151,11 @@ fn announce(app: &mut crate::App) {
     eprintln!("  7. Direction -> **Column** e depois **Wrap**. Na coluna a fila empilha para");
     eprintln!("     BAIXO a partir do topo; no Wrap aparece o segundo campo de vao ('Cross'),");
     eprintln!("     que nao existe nos outros dois — la' nao ha entre o que ele ficar.");
+    eprintln!("  7b. ⚠️ **AINDA EM WRAP, faca-o QUEBRAR**: suba o **Gap** ate' os seis nao");
+    eprintln!("      caberem numa faixa (por volta de 0,6) — nascem DUAS. Agora mexa no");
+    eprintln!("      **Align**: o BLOCO das duas faixas encosta em cima (Start), centra");
+    eprintln!("      (Center) ou desce (End). Antes desta wave elas ficavam sempre ESPALHADAS");
+    eprintln!("      pela moldura, e 'Start' nao significava comeco.");
     eprintln!("  8. Direction -> **Off**. Os filhos VOLTAM para a desordem em que nasceram: a");
     eprintln!("     posicao deles nunca foi escrita, so' derivada.");
     eprintln!("  9. ⚠️ **O CONTROLE**: a moldura de BAIXO tem de estar exactamente como comecou,");

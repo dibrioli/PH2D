@@ -103,7 +103,15 @@ pub enum Align {
     Start,
     Center,
     End,
-    /// Estica o filho para preencher a travessa.
+    /// Estica o filho para preencher a travessa — **onde há o que esticar**.
+    ///
+    /// ⚠️ Ele alcança exactamente o que é **auto-dimensionado** no eixo transversal, e uma FOLHA
+    /// nunca é: a fatia só devolve [`Len::Hug`] para um nó que FLUI, e o motor recusa um `Hug` sem
+    /// fluxo ([`LayoutError::HugWithoutFlow`]). Logo o único filho que ele estica é uma **moldura
+    /// filha** que abraça naquele eixo — que é o *Fill container* do Figma.
+    ///
+    /// Medido (`cross_probe`): folha `Fixed(20)` mede 20,0 com `Start` **e** com `Stretch`;
+    /// moldura filha `Hug` sobre um neto de 12 mede **12,0 com `Start` e 60,0 com `Stretch`**.
     Stretch,
 }
 
@@ -467,6 +475,45 @@ fn style_of(n: &Node) -> Style {
         Align::End => AlignItems::FLEX_END,
         Align::Stretch => AlignItems::STRETCH,
     });
+    // ⚠️ **O `align_content` ESPELHA o `align`, e sem esta linha o CSS governa por omissão.**
+    //
+    // As duas propriedades respondem perguntas diferentes — `align_items` diz *onde o filho senta
+    // DENTRO da faixa dele*, `align_content` diz *onde o BLOCO de faixas senta na moldura* — e o
+    // artista tem **UM** controlo, que por isso tem de significar UMA coisa. Deixá-la por
+    // preencher entrega a resposta ao default do CSS, que é `stretch` nos dois contentores que
+    // têm mais de uma faixa: as faixas são INFLADAS para encher a moldura e o filho flutua no
+    // meio de uma linha alta demais, com `Start` a deixar de significar começo.
+    //
+    // Medido (`cross_probe`, `RowWrap` 100×100, seis filhos 30×20 ⇒ duas faixas, 60 de folga):
+    // com `align = Start` a segunda faixa pousava em **50**, onde encostar pede **20**.
+    //
+    // ⚠️ E é isto que faz a GRADE e o WRAP concordarem. Antes, os mesmos filhos sob o mesmo
+    // controlo respondiam ao contrário num contentor e no outro — o defeito só ficou visível
+    // quando a grade nasceu ao lado do wrap e alguém pôde comparar.
+    //
+    // ⚠️ **E as direções de UMA faixa ficam byte-idênticas por um motivo que NÃO é *"ele é inerte
+    // ali"*.** Medido (`cross_probe` §3, um filho 30×20 numa moldura 100×100, com as duas
+    // propriedades em DESACORDO):
+    //
+    // | | `content=Start` | `Center` | `End` |
+    // |---|---|---|---|
+    // | `NoWrap` (`Row`/`Column`) | 0,0 | 0,0 | 0,0 — inerte, quem posiciona é o `align_items` |
+    // | `Wrap`, uma faixa só | 0,0 | **40,0** | **80,0** — o `content` posiciona, e VENCE |
+    //
+    // Num contentor `wrap` o `align_content` age mesmo com uma faixa (a spec chama-o multi-linha
+    // pela FLAG, não pela contagem), e a faixa mede exactamente o filho ⇒ não sobra folga para o
+    // `align_items` agir. A resposta final não muda **porque as duas propriedades recebem o mesmo
+    // valor** — e é precisamente isso que o espelho garante.
+    //
+    // ⚠️ Corolário, para quem for tentado a expor as duas: **um controlo separado de
+    // `align_content` faria um wrap de faixa única passar a obedecê-lo e a ignorar o `align`** —
+    // o artista veria o controlo que ele conhece deixar de responder, sem nada na tela a explicar.
+    s.align_content = Some(match f.align {
+        Align::Start => AlignContent::FLEX_START,
+        Align::Center => AlignContent::CENTER,
+        Align::End => AlignContent::FLEX_END,
+        Align::Stretch => AlignContent::STRETCH,
+    });
     if let Dir::Grid { columns } = f.dir {
         s.display = Display::Grid;
         // ⚠️ **`max(1)` e não uma recusa.** Uma grade de zero colunas é um degenerado com UMA
@@ -474,22 +521,6 @@ fn style_of(n: &Node) -> Style {
         // pararia de dispor, em silêncio, por causa de um número que o painel já impede. O clamp
         // mora aqui, e só aqui, porque este é o sítio que não pode dividir por zero.
         s.grid_template_columns = evenly_sized_tracks(columns.max(1));
-        // ⚠️ **O `align_content` ESPELHA o `align`, e sem esta linha a grade herdaria o CSS.**
-        // Numa grade `align-content: normal` comporta-se como `stretch`, então as linhas seriam
-        // ESTICADAS para encher a moldura — a mesma cena que um `Row` encosta no topo saía com as
-        // faixas espalhadas, e o filho a flutuar no meio de uma linha alta demais. O gate vivo
-        // nasceu vermelho exactamente aí (topo 17,5 onde a aritmética pede 25).
-        //
-        // Espelhá-lo é o que mantém a palavra HONESTA: com uma linha só, `align` numa grade dá o
-        // MESMO resultado que `align` num `Row` (o `Center` centra na moldura, o `Stretch` faz o
-        // filho encher a moldura); com várias, ele diz *onde o bloco de linhas senta*, que é a
-        // leitura que generaliza. Um controlo, duas propriedades do CSS, um significado.
-        s.align_content = Some(match f.align {
-            Align::Start => AlignContent::FLEX_START,
-            Align::Center => AlignContent::CENTER,
-            Align::End => AlignContent::FLEX_END,
-            Align::Stretch => AlignContent::STRETCH,
-        });
         // ⚠️ **`justify_items`, não `justify_content`** — e a diferença é o que o controlo passa a
         // significar. Com colunas `1fr` não sobra espaço nenhum no eixo horizontal, então
         // `justify_content` seria INERTE: cinco chips que não movem um pixel. `justify_items`
@@ -544,3 +575,11 @@ mod grid_tests;
 #[cfg(test)]
 #[path = "grid_probe.rs"]
 mod grid_probe;
+
+#[cfg(test)]
+#[path = "cross_probe.rs"]
+mod cross_probe;
+
+#[cfg(test)]
+#[path = "cross_tests.rs"]
+mod cross_tests;

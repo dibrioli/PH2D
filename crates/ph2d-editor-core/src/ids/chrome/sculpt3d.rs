@@ -281,7 +281,7 @@ pub const SCULPT3D_ALPHA_SPRITE: NodeId = hash_node_id("sculpt3d.alpha_sprite");
 /// ⚠️ O tamanho é `MATCAPS.len() + 1`, e o `+ 1` é o rig — que **não** é um
 /// matcap. A igualdade das duas contagens é gateada: um chip a mais pinta uma
 /// opção que o shader não tem, um a menos deixa um material inalcançável.
-pub const SCULPT3D_MATCAP: [NodeId; 10] = [
+pub const SCULPT3D_MATCAP: [NodeId; 11] = [
     hash_node_id("sculpt3d.matcap.rig"),
     hash_node_id("sculpt3d.matcap.0"),
     hash_node_id("sculpt3d.matcap.1"),
@@ -292,6 +292,7 @@ pub const SCULPT3D_MATCAP: [NodeId; 10] = [
     hash_node_id("sculpt3d.matcap.6"),
     hash_node_id("sculpt3d.matcap.7"),
     hash_node_id("sculpt3d.matcap.8"),
+    hash_node_id("sculpt3d.matcap.9"),
 ];
 
 /// **ACUMULAR na mesma pincelada** — o `BRUSH_ACCUMULATE` do Blender.

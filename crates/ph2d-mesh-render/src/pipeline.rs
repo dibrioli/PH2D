@@ -210,6 +210,39 @@ pub struct MeshRenderer {
     /// `ensure_matcap` compara e sai sem tocar no device quando nada mudou, que
     /// é TODO frame menos aquele em que o artista clicou.
     matcap_ready: Option<usize>,
+    /// O layout e o sampler do grupo 3, guardados para o bind poder ser
+    /// RECONSTRUÍDO quando a imagem do matcap muda de lado.
+    ///
+    /// ⚠️ **Só o LADO obriga a reconstruir**, não a troca de matcap: reescrever
+    /// os texels de uma textura não move o bind, e é por isso que trocar entre
+    /// dois matcaps do mesmo tamanho continua custando um `write_texture` e mais
+    /// nada.
+    sss_bgl: wgpu::BindGroupLayout,
+    sss_sampler: wgpu::Sampler,
+}
+
+/// **A textura de um matcap de lado `side`** — a porta ÚNICA, para o `new` e o
+/// `ensure_matcap` não descreverem a mesma textura de dois jeitos.
+///
+/// ⚠️ **`Rgba16Float`, e o formato é a wave inteira:** os matcaps do Blender são
+/// meio-float na fonte, e guardá-los em 8 bits erra ~1 nível de 255 de volta em
+/// linear (medido — ver [`crate::matcap`]). Como o conteúdo é LINEAR, não há
+/// `…Srgb` a pedir: a conversão dos que nascem sRGB acontece na decodificação.
+pub(crate) fn matcap_texture(device: &wgpu::Device, side: u32) -> wgpu::Texture {
+    device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("ph2d-mesh matcap"),
+        size: wgpu::Extent3d {
+            width: side,
+            height: side,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba16Float,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    })
 }
 
 /// COMO A MALHA SOBE para o device — ver o módulo.

@@ -1,6 +1,6 @@
 //! Os gates da tabela de matcaps — ver [`super`].
 
-use super::{Credit, MATCAP_NAMES, MATCAP_SIDE, MATCAPS, decode};
+use super::{Credit, Encoding, MATCAP_NAMES, MATCAPS, decode};
 
 /// **Todo matcap decodifica, e sai no tamanho que a textura tem.**
 ///
@@ -10,8 +10,9 @@ use super::{Credit, MATCAP_NAMES, MATCAP_SIDE, MATCAPS, decode};
 /// um JPEG com extensão errada, um 256² — passa pelo compilador e morre aqui.
 #[test]
 fn every_matcap_decodes_to_the_texture_size() {
-    let want = (MATCAP_SIDE * MATCAP_SIDE * 4) as usize;
     for (i, m) in MATCAPS.iter().enumerate() {
+        // RGBA de meio-float = 8 bytes por texel.
+        let want = (m.side as usize) * (m.side as usize) * 8;
         let px = decode(i);
         assert_eq!(px.len(), want, "o matcap `{}` decodificou {} bytes", m.name, px.len());
     }
@@ -80,8 +81,8 @@ fn the_names_are_the_table_read_in_order() {
 #[test]
 fn the_default_is_the_sculptgl_matcap_and_it_leads_the_table() {
     assert_eq!(crate::DEFAULT_MATCAP, Some(0));
-    assert_eq!(MATCAPS[0].credit, Credit::SculptGl);
-    assert_eq!(MATCAPS[0].name, "Studio");
+    assert_eq!(MATCAPS[0].credit, Credit::HazardousArts);
+    assert_eq!(MATCAPS[0].name, "Skin Haz 2");
     assert_eq!(
         crate::Shade::default().matcap,
         crate::DEFAULT_MATCAP,
@@ -98,11 +99,23 @@ fn the_default_is_the_sculptgl_matcap_and_it_leads_the_table() {
 /// Blender (CC0).
 #[test]
 fn every_matcap_declares_where_it_came_from() {
-    let sculptgl = MATCAPS.iter().filter(|m| m.credit == Credit::SculptGl).count();
+    let haz = MATCAPS.iter().filter(|m| m.credit == Credit::HazardousArts).count();
     let blender = MATCAPS.iter().filter(|m| m.credit == Credit::Blender).count();
-    assert_eq!(sculptgl, 1, "o LICENSES.md declara UM do SculptGL");
+    assert_eq!(haz, 2, "o LICENSES.md declara DOIS do HazardousArts");
     assert_eq!(blender, 8, "o LICENSES.md declara OITO do Blender");
-    assert_eq!(sculptgl + blender, MATCAPS.len());
+    assert_eq!(haz + blender, MATCAPS.len());
+
+    // ⚠️ **A precisão segue a FONTE, e este é o gate que o afirma.** Um do
+    // Blender guardado como PNG seria a quantização de ~1 nível de 255 que esta
+    // wave mediu e removeu; um do SculptGL guardado como EXR seria um arquivo
+    // maior dizendo exatamente a mesma coisa que o JPEG já dizia.
+    for m in &MATCAPS {
+        let want = match m.credit {
+            Credit::Blender => Encoding::ExrHalfLinear,
+            Credit::HazardousArts => Encoding::PngSrgb8,
+        };
+        assert_eq!(m.encoding, want, "o matcap `{}` mudou de precisão", m.name);
+    }
 }
 
 /// **A IMAGEM cozida está com o topo para cima** — a metade da lei de espaço que
@@ -132,19 +145,23 @@ fn the_cooked_image_has_its_lit_side_up() {
         .position(|m| m.name == "Basic Side")
         .expect("o `Basic Side` é o oráculo desta lei");
     let px = decode(id);
-    let side = MATCAP_SIDE as usize;
+    let side = MATCAPS[id].side as usize;
     // A luminância de uma faixa a meio raio ACIMA e ABAIXO do centro, na
     // coluna central — os dois pontos que um flip em `v` troca de lugar.
-    let lum = |x: usize, y: usize| -> u32 {
-        let i = (y * side + x) * 4;
-        u32::from(px[i]) + u32::from(px[i + 1]) + u32::from(px[i + 2])
+    // ⚠️ Meio-float agora: 8 bytes por texel, e cada canal são dois.
+    let lum = |x: usize, y: usize| -> f32 {
+        let i = (y * side + x) * 8;
+        let ch = |k: usize| {
+            half::f16::from_le_bytes([px[i + k * 2], px[i + k * 2 + 1]]).to_f32()
+        };
+        ch(0) + ch(1) + ch(2)
     };
     let cx = side / 2;
     let top = lum(cx, side / 4);
     let bottom = lum(cx, side * 3 / 4);
     assert!(
-        top > bottom * 2,
-        "o topo ({top}) tinha de ser MUITO mais claro que a base ({bottom}) — \
+        top > bottom * 2.0,
+        "o topo ({top:.4}) tinha de ser MUITO mais claro que a base ({bottom:.4}) — \
          se estão trocados, a imagem (ou o `v` do shader) está de cabeça para baixo"
     );
 }

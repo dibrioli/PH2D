@@ -38,12 +38,19 @@ wgpu = "28"
 # duas sao crates de caminho que a workspace ja compila, e o `image` que elas
 # usam ja e dep transitiva via `ph2d-asset`. Sao arestas, nao pacotes.
 #
-# ⚠️ E o EXR ficou de fora de proposito: o `ph2d-imageio-exr` recusa os arquivos
-# de origem do Blender por dois motivos escritos no doc dele (layout de canais
-# alem de RGBA -- estes tem `diffuse.*`/`specular.*` -- e compressao DWA/DWB), o
-# que e' precisamente por que a conversao e' offline (`assets/matcaps/LICENSES.md`).
+# ⚠️ O EXR entra porque os matcaps do Blender sao meio-float na FONTE, e guarda-los
+# em 8 bits erra ~1 nivel de 255 de volta em linear (medido -- ver `src/matcap.rs`).
+# Ele NAO le os arquivos originais do Blender: aqueles sao recusados por dois
+# motivos escritos no doc dele (layout de canais alem de RGBA -- `diffuse.*` e
+# `specular.*` -- e compressao DWA/DWB), e nenhum dos dois e' sobre precisao. E'
+# por isso que o cozimento re-embala em RGB/ZIP (`assets/matcaps/LICENSES.md`).
 ph2d-imageio = { path = "../ph2d-imageio" }
 ph2d-imageio-png = { path = "../ph2d-imageio-png" }
+ph2d-imageio-exr = { path = "../ph2d-imageio-exr" }
+# A porta sRGB->linear do repo (`srgb_to_linear_byte`). Escrever a curva aqui
+# seria a segunda resposta: a sRGB tem JOELHO, e um `x^2.2` a mao erra no
+# escuro, que e' metade de um matcap de pele.
+ph2d-color = { path = "../ph2d-color" }
 # Pod/Zeroable + cast_slice para o uniform e os vertex buffers — a mesma
 # convencao do `instance_buffer` do ph2d-render.
 bytemuck = { version = "1", features = ["derive"] }

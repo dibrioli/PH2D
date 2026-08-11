@@ -43,7 +43,7 @@ pub use camera::Camera3d;
 pub use form::FormPlanes;
 pub use lighting::{LampRaw, RigRaw};
 pub use pipeline::{MeshRenderer, camera_uniform_bytes, view_proj_from_bytes};
-pub use matcap::{Credit, MATCAP_SIDE, Matcap};
+pub use matcap::{Credit, Encoding, Matcap};
 pub use shade::{
     CAVITY_GAIN, DEFAULT_AO_STRENGTH, DEFAULT_CAVITY, DEFAULT_ENV, DEFAULT_MATCAP,
     DEFAULT_SSAO_STRENGTH, MATCAPS, Shade, ShadeRaw,

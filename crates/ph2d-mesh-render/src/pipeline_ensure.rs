@@ -90,7 +90,6 @@ impl MeshRenderer {
         queue: &wgpu::Queue,
         shade: crate::Shade,
     ) {
-        let _ = device;
         let Some(id) = shade.matcap.map(usize::from) else {
             return;
         };
@@ -98,7 +97,43 @@ impl MeshRenderer {
         if self.matcap_ready == Some(id) {
             return;
         }
-        let n = crate::matcap::MATCAP_SIDE;
+        let side = crate::matcap::MATCAPS[id].side;
+
+        // ⚠️ **O LADO muda entre FONTES** (512 do Blender, 749 do SculptGL), e
+        // uma textura não é redimensionável: quando ele muda, ela é recriada e o
+        // bind group que aponta para ela vai junto. Trocar entre dois matcaps do
+        // MESMO lado — o caso comum, oito dos dez — não passa por aqui e custa
+        // só o `write_texture`.
+        if self.matcap_tex.width() != side {
+            self.matcap_tex = crate::pipeline::matcap_texture(device, side);
+            self.sss_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("ph2d-mesh sss bind"),
+                layout: &self.sss_bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(
+                            &self
+                                .sss_lut
+                                .create_view(&wgpu::TextureViewDescriptor::default()),
+                        ),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&self.sss_sampler),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: wgpu::BindingResource::TextureView(
+                            &self
+                                .matcap_tex
+                                .create_view(&wgpu::TextureViewDescriptor::default()),
+                        ),
+                    },
+                ],
+            });
+        }
+
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: &self.matcap_tex,
@@ -109,12 +144,13 @@ impl MeshRenderer {
             &crate::matcap::decode(id),
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some(n * 4),
-                rows_per_image: Some(n),
+                // RGBA de meio-float = 8 bytes por texel.
+                bytes_per_row: Some(side * 8),
+                rows_per_image: Some(side),
             },
             wgpu::Extent3d {
-                width: n,
-                height: n,
+                width: side,
+                height: side,
                 depth_or_array_layers: 1,
             },
         );

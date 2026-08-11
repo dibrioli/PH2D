@@ -1,10 +1,9 @@
-# Os matcaps: de onde vieram e sob que licença
+# Os matcaps: de onde vieram, sob que licença, e em que precisão
 
-As nove imagens deste diretório são **redistribuíveis**, e este arquivo é a
-prova disso — não uma lembrança de que alguém conferiu um dia.
-
-Todas foram **cozidas** a partir das fontes originais (ver §3): 512×512, RGB,
-**sRGB de 8 bits**. Nenhuma é o arquivo original byte a byte.
+Este arquivo é a prova de que as dez imagens são redistribuíveis — não uma
+lembrança de que alguém conferiu um dia. Ele também registra **uma procedência
+que não é limpa** (§2), em vez de escondê-la atrás da licença do repositório que
+a distribui.
 
 ---
 
@@ -16,8 +15,8 @@ Todas foram **cozidas** a partir das fontes originais (ver §3): 512×512, RGB,
 Fonte: <https://projects.blender.org/blender/blender>, tag **`v5.2.0`**,
 `release/datafiles/studiolights/matcap/*.exr`.
 
-O diretório de origem carrega o próprio `license.txt`, e ele é curto o bastante
-para caber aqui inteiro:
+O diretório de origem carrega o próprio `license.txt`, curto o bastante para
+caber aqui inteiro:
 
 > These matcap images are licensed as CC0 or public domain.
 >
@@ -45,16 +44,15 @@ momento do download, então o que foi cozido é o que o Blender publica:
 que o artista lê aqui é `Basic Gray`. Os dois estão certos: o stem preserva a
 procedência e o rótulo segue o inglês do resto da UI.
 
-## 2. O do SculptGL — MIT
+## 2. Os dois de pele — **HazardousArts**, e a procedência NÃO é limpa
 
-`sculptgl_fv` (o chip **Studio**, e o **default do app**)
+`skinHazardousarts` (chip **Skin Haz**) ·
+`skinHazardousarts2` (chip **Skin Haz 2**, e o **default do app**)
 
-Fonte: <https://github.com/stephaneginier/sculptgl>,
-`app/resources/matcaps/matcapFV.jpg`.
+Chegaram até nós pelo SculptGL (<https://github.com/stephaneginier/sculptgl>,
+`app/resources/matcaps/`), que é **MIT**:
 
-    MIT License
-
-    Copyright (c) 2019 Stéphane GINIER
+    MIT License · Copyright (c) 2019 Stéphane GINIER
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -74,36 +72,80 @@ Fonte: <https://github.com/stephaneginier/sculptgl>,
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 
-⚠️ **A seção *Credits* do SculptGL atribui a terceiros apenas os
-*environments*** (de `hdrihaven.com`) — os matcaps não são creditados a
-ninguém de fora, então caem sob a licença do repositório. É por isso que o
-`environments/` **não** foi tocado: aquele sim tem outro dono.
+⚠️ **Mas o autor original é um TERCEIRO, e ele está no nome do arquivo.** São do
+**HazardousArts**, publicados no DeviantArt em 2014 como *"Haz Skin Matcap"*
+(<https://www.deviantart.com/hazardousarts/art/Haz-Skin-Matcap-495671758>) e
+divulgados como gratuitos. **Os termos exatos do autor não estão documentados**,
+e a seção *Credits* do SculptGL atribui a terceiros apenas os *environments* —
+não estes.
 
-## 3. Como foram cozidos
+O que isso significa, dito sem eufemismo:
 
-⚠️ **Duas fontes, UMA lei de saída:** o que entra no repositório é sempre sRGB de
-8 bits, porque a GPU devolve linear de graça num formato `…UnormSrgb` e o shader
-quer linear.
+- **não** é o CC0 explícito dos oito da §1;
+- o que temos é a licença de quem os **redistribui** há mais de uma década, mais
+  a publicação gratuita do autor;
+- se algum dia isto tiver de ser defendido, é **este parágrafo** que descreve a
+  situação — não um campo escrito "MIT".
 
-- **Blender (`.exr`)** — cena-referida **LINEAR**, meio-float, compressão DWAA,
-  com as camadas `diffuse` e `specular` **separadas**. O matcap é a **soma das
-  duas**, e a soma é fiel porque o nosso caminho de matcap não multiplica nada
-  por cor de vértice (a separação existe no Blender para tingir a difusa pela cor
-  do objeto). Depois: transferência sRGB e quantização para 8 bits.
-  ⚠️ **MEDIDO antes de escolher 8 bits:** o máximo dos oito, já somado, é
-  **0,941** — `0,00%` dos texels passam de 1,0 —, então nada é cortado pelo
-  clamp e não há faixa HDR a preservar.
-- **SculptGL (`.jpg`)** — já é sRGB autorado. Ele é apenas **re-embalado** em
-  PNG; nenhuma transferência é aplicada, porque aplicá-la o clarearia duas vezes.
+É por isso que o [`Credit`](../../src/matcap.rs) deles se chama `HazardousArts` e
+não `SculptGl`: o tipo obriga quem lê o código a encontrar esta seção.
 
-⚠️ **Por que não ler os `.exr` em tempo de execução:** o nosso decoder
-(`ph2d-imageio-exr`) recusa estes arquivos por **dois** motivos independentes,
-os dois escritos no doc dele — *"custom channel layouts beyond RGBA"* (estes têm
-`diffuse.*` e `specular.*`) e *"tile-based + DWA/DWB compression"*. A conversão é
-offline por medição, não por gosto.
+O `environments/` do SculptGL **não** foi tocado — aquele tem outro dono
+(hdrihaven), e é declarado.
+
+| arquivo | sha256 do `.jpg` de origem | bytes |
+|---|---|---|
+| `skinHazardousarts`  | `0cb2a4c7a8cd9c443357b368edbdb588aa9cd62c7538f1dd536a575d039a72cf` | 41 866 |
+| `skinHazardousarts2` | `ba0c5c776878b828272121102ce0fe8770c8a8f9e418db6f715ee3a231df3982` | 40 672 |
+
+## 3. Como foram cozidos — **nada é quantizado abaixo da FONTE**
+
+⚠️ **O primeiro corte desta wave guardava tudo em PNG de 8 bits, e era uma perda
+que não estava marcada como tal.** A medição feita então respondia *"algum valor
+passa de 1,0?"* (a faixa HDR) e a conclusão foi *"8 bits bastam"* — mas *"cabe em
+[0,1]"* e *"8 bits chegam"* são perguntas diferentes. Medido de volta em
+**linear**, que é o que o shader recebe:
+
+| matcap | erro em 8 bits | erro em 16 bits | razão |
+|---|---|---|---|
+| `basic_bright` | **0,93** nível de 255 | 0,0036 | 259× |
+| `basic_side`   | **1,09** | 0,121 | 9× |
+| `clay_warm`    | **0,73** | 0,0029 | 253× |
+| `red_wax`      | **0,78** | 0,0030 | 257× |
+| `basic_dark`   | **0,40** | 0,0016 | 259× |
+
+Um matcap é um gradiente liso sobre uma esfera — o caso clássico de banda
+visível. Hoje cada fonte é guardada **na precisão em que foi autorada**:
+
+- **Blender (`.exr`)** — cena-referida LINEAR, meio-float, DWAA, com `diffuse` e
+  `specular` em camadas separadas. O matcap é a **soma** das duas (fiel porque o
+  nosso caminho de matcap não multiplica nada por cor de vértice — a separação
+  existe no Blender para tingir a difusa pela cor do objeto). A saída é um EXR
+  **RGB simples, meio-float, ZIP**: a mesma informação, por uma porta que o nosso
+  `ph2d-imageio-exr` lê.
+  ⚠️ **Ele recusa o arquivo ORIGINAL por dois motivos escritos no doc dele** —
+  *"custom channel layouts beyond RGBA"* e *"tile-based + DWA/DWB compression"* —
+  e **nenhum dos dois é sobre precisão**. É exatamente por isso que re-embalar
+  resolve em vez de degradar.
+- **SculptGL (`.jpg`)** — 8 bits sRGB autorados. A saída é **PNG**, que guarda os
+  MESMOS bytes que o JPEG decodifica: **bit-idêntico à fonte**. Promovê-los a
+  float daria um arquivo maior dizendo a mesma coisa.
+
+A decodificação entrega **meio-float linear** nos dois casos, para uma textura
+`Rgba16Float`; a conversão sRGB→linear dos dois de pele usa a porta do repo
+(`ph2d_color::srgb::srgb_to_linear_byte`), porque a curva sRGB tem **joelho** e
+um `x^2,2` escrito à mão erra no escuro — que é metade de um matcap de pele.
+
+**Preço**: 3,9 MB no repositório contra 724 KB do primeiro corte, por 259× de
+precisão.
 
 ## 4. Reproduzir
 
-O script que cozinhou está em `docs/3D/ferramentas/cook_matcaps.py`, com os
-comandos de download (LFS) no cabeçalho. Ele imprime os hashes de origem, que é
-como a tabela da §1 é conferida em vez de copiada.
+```
+bash docs/3D/ferramentas/cook_matcaps.sh <dir-com-as-fontes> <dir-de-saida>
+```
+
+Ele imprime os hashes de origem, que é como as tabelas das §1 e §2 são
+**conferidas** em vez de copiadas. O cabeçalho dele traz os comandos de download
+(os `.exr` do Blender vivem em git-lfs, e o mirror do GitHub **não** hospeda os
+objetos — eles saem do servidor LFS do próprio Blender).

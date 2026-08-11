@@ -35,17 +35,21 @@ fn what_a_matcap_switch_costs() {
         println!(
             "  {:<14} {ms:5.2}  {:8}  {:10.2}",
             ph2d_mesh_render::MATCAPS[i],
-            ph2d_mesh_render::matcap::MATCAPS[i].png.len() / 1024,
+            ph2d_mesh_render::matcap::MATCAPS[i].bytes.len() / 1024,
             px.len() as f64 / (1024.0 * 1024.0),
         );
     }
-    let side = f64::from(ph2d_mesh_render::MATCAP_SIDE);
+    // RGBA de meio-float = 8 bytes por texel, e o lado é POR-MATCAP.
+    let mib = |m: &ph2d_mesh_render::Matcap| f64::from(m.side) * f64::from(m.side) * 8.0 / (1024.0 * 1024.0);
+    let todos: f64 = ph2d_mesh_render::matcap::MATCAPS.iter().map(mib).sum();
+    let maior = ph2d_mesh_render::matcap::MATCAPS
+        .iter()
+        .map(mib)
+        .fold(0.0f64, f64::max);
     println!(
-        "\n  por CLIQUE: {worst:.2} ms no PIOR dos nove (media {:.2})\n  \
-         se os nove fossem residentes: {total:.2} ms no boot e {:.1} MiB de VRAM\n  \
-         como está: {:.1} MiB de VRAM\n",
+        "\n  por CLIQUE: {worst:.2} ms no PIOR dos dez (media {:.2})\n  \
+         se os dez fossem residentes: {total:.2} ms no boot e {todos:.1} MiB de VRAM\n  \
+         como está: {maior:.1} MiB de VRAM (o maior lado)\n",
         total / n as f64,
-        9.0 * side * side * 4.0 / (1024.0 * 1024.0),
-        side * side * 4.0 / (1024.0 * 1024.0),
     );
 }

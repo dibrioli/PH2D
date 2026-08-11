@@ -55,11 +55,11 @@ pub(crate) fn announce(mesh: &ph2d_mesh::Mesh) {
          [sculpt3d] TOOL (os 16 verbos) · BRUSH (raio, forca, falloff, mascara) · SYMMETRY\n\
          [sculpt3d] TOPOLOGY (dyntopo, detalhe, niveis, remesh, tapar) · SHADING · SCENE\n\
          [sculpt3d] a CAVIDADE e' o slider da secao SHADING: 0 e' o barro liso, 1 o teto\n\
-         [sculpt3d] MATERIAL (SHADING): 'Rig' e' a luz do DOCUMENTO; os outros NOVE sao MATCAPS --\n\
+         [sculpt3d] MATERIAL (SHADING): 'Rig' e' a luz do DOCUMENTO; os outros DEZ sao MATCAPS --\n\
          [sculpt3d]     luz do OLHO, que nao gira com o modelo. Sob um matcap as duas pistas de\n\
          [sculpt3d]     lampada SOMEM, porque ele nao le o rig -- e isso e' o certo, nao um bug\n\
-         [sculpt3d]     eles sao IMAGENS autoradas: 'Studio' vem do SculptGL (MIT) e os oito\n\
-         [sculpt3d]     'Basic'/'Clay'/'Red Wax' do Blender (CC0). O app abre no 'Studio'\n\
+         [sculpt3d]     eles sao IMAGENS autoradas: os dois 'Skin Haz' vem do SculptGL e os oito\n\
+         [sculpt3d]     'Basic'/'Clay'/'Red Wax' do Blender (CC0). O app abre no 'Skin Haz 2'\n\
          [sculpt3d] ACCUMULATE (BRUSH): desarmado, cruzar o proprio traco NAO intensifica --\n\
          [sculpt3d]     e' a lei do envelope, e uma pincelada deposita no maximo a forca do\n\
          [sculpt3d]     pincel. Armado, passar duas vezes soma duas vezes. Ele so' aparece nos\n\

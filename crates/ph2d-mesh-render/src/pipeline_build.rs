@@ -241,20 +241,7 @@ impl MeshRenderer {
         // transferência na leitura, de graça e com a curva certa (a com joelho,
         // não um `x^2.2`). Trocar por `Rgba8Unorm` deixaria toda escultura
         // clara demais, sem erro nenhum.
-        let matcap_tex = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("ph2d-mesh matcap"),
-            size: wgpu::Extent3d {
-                width: crate::matcap::MATCAP_SIDE,
-                height: crate::matcap::MATCAP_SIDE,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[],
-        });
+        let matcap_tex = crate::pipeline::matcap_texture(device, crate::matcap::MATCAPS[0].side);
         let sss_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ph2d-mesh sss bind"),
             layout: &sss_bgl,
@@ -671,6 +658,11 @@ impl MeshRenderer {
             sss_lut_ready: false,
             matcap_tex,
             matcap_ready: None,
+            // Guardados porque a imagem do matcap muda de LADO entre fontes
+            // (512 do Blender, 749 do SculptGL), e trocar o tamanho de uma
+            // textura exige recriá-la — e o bind group que aponta para ela.
+            sss_bgl,
+            sss_sampler,
             uniform,
             rig_uniform,
             shade_uniform,

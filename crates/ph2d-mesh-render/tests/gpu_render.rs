@@ -42,6 +42,30 @@ fn device() -> Option<(wgpu::Device, wgpu::Queue)> {
 }
 
 /// Rasteriza `mesh` com `camera` e devolve os pixels RGBA (sem padding).
+/// **O `Shade` DO CAMINHO DO RIG** — o default do app com o matcap DESARMADO.
+///
+/// ⚠️ **Ela existe porque uma premissa foi herdada em silêncio por dezoito
+/// sítios.** Esta suíte julga *a luz do DOCUMENTO*: as lâmpadas, o ambiente, o
+/// SSS, o AO. O fragment escolhe o caminho do matcap ANTES de tudo isso
+/// (`if shade.matcap > 0u`), então um `Shade::default()` cujo matcap esteja
+/// armado faz cada um desses gates medir uma IMAGEM — e foi o que aconteceu
+/// quando o default do app virou o `Studio` (2026-08-10): doze vermelhos de uma
+/// vez, nenhum deles sobre um defeito do produto.
+///
+/// ⚠️ **Espalhar disto em vez de do `Shade::default()` é o que impede o próximo
+/// gate de nascer sem a premissa.** Um campo escrito explicitamente ainda vence
+/// (é a regra do `..`), então o gate do matcap continua podendo pedir
+/// `matcap: Some(id)` por esta mesma porta.
+///
+/// *Uma fixture que chega ao estado pelo DEFAULT inverte de sentido no dia em
+/// que o default anda, e segue verde testando o oposto.*
+fn rig_shade() -> ph2d_mesh_render::Shade {
+    ph2d_mesh_render::Shade {
+        matcap: None,
+        ..ph2d_mesh_render::Shade::default()
+    }
+}
+
 fn render(device: &wgpu::Device, queue: &wgpu::Queue, mesh: &Mesh, camera: &Camera3d) -> Vec<u8> {
     render_with_rig(device, queue, mesh, camera, &LightRig::default())
 }
@@ -101,7 +125,22 @@ fn render_using_rig_cavity(
         rig,
         ph2d_mesh_render::Shade {
             cavity,
-            ..ph2d_mesh_render::Shade::default()
+            // ⚠️ **A PREMISSA DESTE CAMINHO, DECLARADA — e ela já foi herdada em
+            // silêncio.** Tudo abaixo desta porta julga *a luz do DOCUMENTO*: as
+            // lâmpadas, o ambiente, o SSS, o AO. O fragment escolhe o caminho do
+            // matcap ANTES de tudo isso (`if shade.matcap > 0u`), então um
+            // default que seja matcap faz os doze gates de rig medirem uma
+            // IMAGEM — e foi exatamente o que aconteceu quando o default do app
+            // virou o `Studio` em 2026-08-10: doze vermelhos de uma vez, nenhum
+            // deles sobre um defeito.
+            //
+            // ⚠️ Ela mora AQUI e não em cada gate porque este é o choke point de
+            // todo o caminho do rig — declarar doze vezes é a forma de o décimo
+            // terceiro nascer sem. *Uma fixture que chega ao estado pelo default
+            // inverte de sentido no dia em que o default anda, e segue verde
+            // testando o oposto.*
+            matcap: None,
+            ..rig_shade()
         },
     )
 }
@@ -388,7 +427,7 @@ fn the_ambient_comes_from_the_sky_above_and_the_ground_below() {
             &rig,
             ph2d_mesh_render::Shade {
                 env,
-                ..ph2d_mesh_render::Shade::default()
+                ..rig_shade()
             },
         )
     };
@@ -746,7 +785,7 @@ fn gbuffer(
         &view,
         &occ_view,
         camera,
-        ph2d_mesh_render::Shade::default(),
+        rig_shade(),
         (W, H),
     );
 
@@ -1076,7 +1115,7 @@ fn the_plane_the_painter_gets_is_the_gbuffer_the_device_wrote() {
             &queue,
             &camera,
             (W, H),
-            ph2d_mesh_render::Shade::default(),
+            rig_shade(),
             None,
         )
         .expect("com malha, o plano existe");
@@ -1132,7 +1171,7 @@ fn a_renderer_with_no_mesh_donates_nothing() {
                 &queue,
                 &camera,
                 (W, H),
-                ph2d_mesh_render::Shade::default(),
+                rig_shade(),
                 None
             )
             .is_none(),
@@ -1147,7 +1186,7 @@ fn a_renderer_with_no_mesh_donates_nothing() {
                 &queue,
                 &camera,
                 (0, H),
-                ph2d_mesh_render::Shade::default(),
+                rig_shade(),
                 None
             )
             .is_none(),
@@ -1201,7 +1240,7 @@ fn measure_a_donation() {
                 &queue,
                 &camera,
                 (edge, edge),
-                ph2d_mesh_render::Shade::default(),
+                rig_shade(),
                 params,
             );
         }
@@ -1214,7 +1253,7 @@ fn measure_a_donation() {
                     &queue,
                     &camera,
                     (edge, edge),
-                    ph2d_mesh_render::Shade::default(),
+                    rig_shade(),
                     params,
                 );
                 best = best.min(t0.elapsed().as_secs_f64() * 1000.0);
@@ -1835,7 +1874,7 @@ fn o_ao_assado_chega_ao_shader_e_so_escurece_onde_foi_assado() {
         &mut renderer,
         &cam,
         &rig,
-        ph2d_mesh_render::Shade::default(),
+        rig_shade(),
     );
     let ligado = render_using_rig_shade(
         &device,
@@ -1845,7 +1884,7 @@ fn o_ao_assado_chega_ao_shader_e_so_escurece_onde_foi_assado() {
         &rig,
         ph2d_mesh_render::Shade {
             ao: 1.0,
-            ..ph2d_mesh_render::Shade::default()
+            ..rig_shade()
         },
     );
 
@@ -1911,7 +1950,7 @@ fn sem_bake_o_controle_de_ao_nao_muda_um_pixel() {
         &mut renderer,
         &cam,
         &rig,
-        ph2d_mesh_render::Shade::default(),
+        rig_shade(),
     );
     let cheio = render_using_rig_shade(
         &device,
@@ -1921,7 +1960,7 @@ fn sem_bake_o_controle_de_ao_nao_muda_um_pixel() {
         &rig,
         ph2d_mesh_render::Shade {
             ao: 1.0,
-            ..ph2d_mesh_render::Shade::default()
+            ..rig_shade()
         },
     );
     assert_eq!(
@@ -2071,7 +2110,7 @@ fn a_fresta_entre_dois_corpos_escurece_e_o_flanco_aberto_nao() {
         &cam,
         ph2d_mesh_render::Shade {
             ssao: 0.0,
-            ..ph2d_mesh_render::Shade::default()
+            ..rig_shade()
         },
         params,
     );
@@ -2080,7 +2119,7 @@ fn a_fresta_entre_dois_corpos_escurece_e_o_flanco_aberto_nao() {
         &queue,
         &mut r,
         &cam,
-        ph2d_mesh_render::Shade::default(),
+        rig_shade(),
         params,
     );
 
@@ -2147,7 +2186,7 @@ fn com_a_forca_em_zero_o_passe_nao_muda_um_pixel() {
         &cam,
         ph2d_mesh_render::Shade {
             ssao: 0.0,
-            ..ph2d_mesh_render::Shade::default()
+            ..rig_shade()
         },
         ph2d_mesh_render::SsaoParams::default(),
     );
@@ -2178,7 +2217,7 @@ fn uma_medicao_serve_um_desenho_so() {
         &queue,
         &mut r,
         &cam,
-        ph2d_mesh_render::Shade::default(),
+        rig_shade(),
         ph2d_mesh_render::SsaoParams::default(),
     );
     assert!(!r.ssao_is_fresh(), "o desenho tem de consumir a medicao");
@@ -2232,7 +2271,7 @@ fn measure_the_screen_ao() {
         max: [2.02, 1.0, 1.0],
     };
     let cam = Camera3d::framing(bounds, core::f32::consts::FRAC_PI_4, PW as f32 / PH as f32);
-    let shade = ph2d_mesh_render::Shade::default();
+    let shade = rig_shade();
     let params = ph2d_mesh_render::SsaoParams::for_bounds(bounds);
 
     let target = device.create_texture(&wgpu::TextureDescriptor {
@@ -2344,7 +2383,7 @@ fn probe_what_each_knob_does_to_the_crevice() {
         &cam,
         ph2d_mesh_render::Shade {
             ssao: 0.0,
-            ..ph2d_mesh_render::Shade::default()
+            ..rig_shade()
         },
         ph2d_mesh_render::SsaoParams::for_bounds(SPHERES_BOUNDS),
     );
@@ -2383,7 +2422,7 @@ fn probe_what_each_knob_does_to_the_crevice() {
             &queue,
             &mut r,
             &cam,
-            ph2d_mesh_render::Shade::default(),
+            rig_shade(),
             p,
         );
         let g = 1.0 - window_mean(&on, gx0, gx1, gy0, gy1) / gap0;
@@ -2483,7 +2522,7 @@ fn um_plano_chato_nao_oclui_nada_visto_de_qualquer_angulo() {
             &queue,
             &mut r,
             &cam,
-            ph2d_mesh_render::Shade::default(),
+            rig_shade(),
             params,
         );
         // ⚠️ **O QUARTO central, e não a metade.** A parede tem uma BORDA, e em
@@ -2552,7 +2591,7 @@ fn as_duas_fontes_de_ao_compoem_pelo_menos_ocluido() {
     let shade = |ao: f32, ssao: f32| ph2d_mesh_render::Shade {
         ao,
         ssao,
-        ..ph2d_mesh_render::Shade::default()
+        ..rig_shade()
     };
     let so_assado = render_with_ssao(&device, &queue, &mut r, &cam, shade(1.0, 0.0), params);
     let so_tela = render_with_ssao(&device, &queue, &mut r, &cam, shade(0.0, 1.0), params);
@@ -2655,7 +2694,7 @@ fn the_light_bleeds_past_the_terminator_on_screen() {
             // default, e o default tem gate próprio na crate.
             scatter: 2.0,
         },
-        ..ph2d_mesh_render::Shade::default()
+        ..rig_shade()
     };
     let off = render_using_rig_shade(&device, &queue, &mut r, &cam, &rig, shade(0.0));
     let on = render_using_rig_shade(&device, &queue, &mut r, &cam, &rig, shade(1.0));
@@ -2734,7 +2773,7 @@ fn the_terminator_goes_red_not_grey() {
             strength: sss,
             scatter: 0.5,
         },
-        ..ph2d_mesh_render::Shade::default()
+        ..rig_shade()
     };
     let off = render_using_rig_shade(&device, &queue, &mut r, &cam, &rig, shade(0.0));
     let on = render_using_rig_shade(&device, &queue, &mut r, &cam, &rig, shade(1.0));
@@ -2785,7 +2824,7 @@ fn a_zero_strength_leaves_the_clay_byte_identical() {
         &mut r,
         &cam,
         &rig,
-        ph2d_mesh_render::Shade::default(),
+        rig_shade(),
     );
     // O canal DECLARADO mas em zero, e com um `scatter` grande — se o `mix`
     // vazasse, seria aqui.
@@ -2800,7 +2839,7 @@ fn a_zero_strength_leaves_the_clay_byte_identical() {
                 strength: 0.0,
                 scatter: 4.0,
             },
-            ..ph2d_mesh_render::Shade::default()
+            ..rig_shade()
         },
     );
     let diff = sem.iter().zip(&com).filter(|(a, b)| a != b).count();
@@ -2863,7 +2902,7 @@ fn the_light_comes_through_the_thin_piece_and_not_the_thick_one() {
                     strength: 1.0,
                     ..ph2d_mesh_render::SssParams::for_bounds(scene)
                 },
-                ..ph2d_mesh_render::Shade::default()
+                ..rig_shade()
             };
             render_using_rig_shade(&device, &queue, &mut rr, &cam, &rig, shade)
         };
@@ -2936,7 +2975,7 @@ fn nothing_is_transmitted_where_the_light_is_in_front() {
                 strength: 1.0,
                 ..ph2d_mesh_render::SssParams::for_bounds(scene)
             },
-            ..ph2d_mesh_render::Shade::default()
+            ..rig_shade()
         };
         render_using_rig_shade(&device, &queue, &mut rr, &cam, &rig, shade)
     };
@@ -2986,7 +3025,7 @@ fn an_unbaked_mesh_transmits_nothing() {
             strength: sss,
             scatter: 2.0,
         },
-        ..ph2d_mesh_render::Shade::default()
+        ..rig_shade()
     };
     // ⚠️ A esfera do `lit_sphere` NUNCA foi assada, e o oráculo é a peça sob a
     // MESMA força com a espessura assada como opaca à mão: se o canal respeitasse
@@ -3053,7 +3092,7 @@ fn more_scatter_lets_more_light_through() {
                 strength: 1.0,
                 scatter,
             },
-            ..ph2d_mesh_render::Shade::default()
+            ..rig_shade()
         };
         let px = render_using_rig_shade(&device, &queue, &mut rr, &cam, &rig, shade);
         let y = H / 2;
@@ -3121,7 +3160,7 @@ fn the_donation_carries_the_form_occlusion() {
     renderer.upload_at(&device, &queue, 0, &mesh, &[]);
     let shade = ph2d_mesh_render::Shade {
         cavity: 1.0,
-        ..ph2d_mesh_render::Shade::default()
+        ..rig_shade()
     };
     let planes = renderer
         .form_plane(&device, &queue, &camera, (W, H), shade, None)
@@ -3210,7 +3249,7 @@ fn the_donated_occlusion_follows_the_artists_knobs_without_a_viewport_render() {
             (W, H),
             ph2d_mesh_render::Shade {
                 cavity,
-                ..ph2d_mesh_render::Shade::default()
+                ..rig_shade()
             },
             None,
         )
@@ -3283,7 +3322,7 @@ fn the_matcap_lights_the_sculpture_from_the_top_of_its_image() {
             // invertida, pelo motivo errado.
             ao: 0.0,
             ssao: 0.0,
-            ..ph2d_mesh_render::Shade::default()
+            ..rig_shade()
         },
     );
 

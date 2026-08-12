@@ -73,6 +73,16 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         // Velocity retained per second: 1 = frictionless (the default, and bit-identical to no
         // damping at all), 0.1 = molasses. Applied linearly per step (`1 - (1-damping)·dt`)
         // rather than as `damping^dt`: same thing to first order, and transcendental-free (HR-5).
+        //
+        // ⚠️ **1,0 é o teto do que o kernel HONRA, e a razão é o sinal de `keep`:** acima dele
+        // `keep = 1 - (1-damping)·dt` passa de 1 e o passo **INJETA** energia em vez de tirar.
+        // Medido na cena `=31` com `damping = 5` (`keep` = 1,0667): pico 348 u/s a 1 s, 16.744
+        // a 2 s, 2,06e14 a 8 s e **`inf`** aos 12 s. **A UI já o impede** — o `max` do hint é
+        // 1,0 e um param sem `ParamHardMax` tem a caixa de texto capada nele —, então o valor
+        // disfuncional só é alcançável por CÓDIGO (um documento montado por `set_param`, que é
+        // o que toda cena de demo é). Não há teto novo a declarar: `ParamHardMax` só ALARGA a
+        // faixa digitável (`must be >= the hint's max`), e usá-lo aqui seria um no-op vestindo
+        // a palavra "teto".
         ParamSpec {
             name: "damping",
             default: 1.0,

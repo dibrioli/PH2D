@@ -209,6 +209,41 @@ gate** se move.
 
 ## §4 — E1: o SCRUB NUMÉRICO (o maior ganho de eficiência, e não é animado)
 
+> ⚠️ **CORRIGIDO NA CONSTRUÇÃO (wave 4), e a correcção é da medição, não de gosto: esta secção
+> prometia construir o que já shipava.** O scrub numérico existe completo desde a M14.A —
+> `NUMBER_INPUT_DRAG_THRESHOLD_PX = 4.0` (o mesmo 4 que a §4.1 propunha *«a medir no smoke»*), o
+> `crossed_threshold` que resolve no Down a ambiguidade caret-contra-scrub (a parte que a §4.1
+> chamava *«a que todos erram»*), o bloqueio de eixo, o delta incremental e o `DRAG_SHIFT_MUL` na
+> tecla que a §4.2 propunha. **Escrever a wave sem `git grep` teria sido reconstruir por cima de
+> código shipado** — a §0 do `CLAUDE.md` a morder em casa: *«fora de escopo porque não existe» é uma
+> afirmação sobre código que outra pessoa pode ter escrito*, e desta vez a outra pessoa era este repo.
+>
+> **A §4.2 acertou pelo motivo certo e é lá que estava o buraco real.** *«A sensibilidade tem de sair
+> da FAIXA do campo»* estava implementado — para **duas** das **quatro** fontes de intervalo que o
+> app tem. O clamp do `dispatch::pointer_move` conhecia as quatro (taxa registada · `number_range` ·
+> a projeção afim do **slider ligado** · o `(0,1)` de um chip de canal do picker); a **taxa**
+> conhecia duas e caía no atalho histórico para as outras. Uma caixa **clampada num intervalo
+> conhecido** era arrastada a `DRAG_RATE_X · step`, que não sabe nada sobre esse intervalo.
+>
+> **Medido pela sonda `census_of_how_many_pixels_cross_a_whole_field`** (que pergunta *quantos
+> pixels atravessam o campo INTEIRO*, e não *quem registou faixa*): **295** campos com intervalo
+> conhecido, **43 a cruzarem-se inteiros em menos de 20 px** — o pior em **0,01 px**, um único pixel
+> a saturar o campo cem vezes — e um a 510 px, lento pela mesma causa. Todos os servidos pelo
+> `number_range` cruzavam em **250,00**, o alvo. *A lei funcionava; só era consultada da lista curta.*
+>
+> ⇒ A cura é a **porta única** `WidgetStore::number_scrub_law`, que devolve a taxa **e** os limites
+> da mesma travessia. **Depois: 295 campos, todos a 250,00 px. 43 → 0.** E ela **não inventa número
+> nenhum** — faz a taxa ler a fronteira que o clamp ao lado dela já lia, que é o que separa esta
+> wave do *«inventar um tecto por campo»* que a sonda anterior proibiu.
+>
+> ⚠️ **Fica ABERTO, com o número:** **146** campos não têm intervalo nenhum (posição em px,
+> contagens sem tecto) e continuam no atalho histórico. Um tecto para eles tem de ser **MEDIDO**,
+> nunca escolhido; o primitivo para *«tem mínimo e não tem máximo»* é o `set_number_drag_rate`, que
+> já existe e não inventa fronteira.
+>
+> ⚠️ **E a §4.3 continua por decidir**, intocada por esta wave: o cursor **viaja** (v1), e o
+> `set_cursor_grab` segue sem sonda de plataforma.
+
 ### 4.1 O algoritmo — e a parte que todos erram
 
 O difícil não é mudar o valor: é que **o mesmo campo é também um campo de texto**.
@@ -342,7 +377,7 @@ _a_straight_line_and_simulates_nothing` (mutação: simular e desenhar reto ⇒ 
 | **1** | **F0 substrato** + o toast em segundos | — | **tudo** o eixo 1 | **M** |
 | **2** | **F1+F2+R1 juntos** — a mola chega ao chrome, os 49 widgets ganham vida, e o interruptor que a desliga nasce no MESMO commit | 1 | A · B · E · F | **M** |
 | ~~**3**~~ ✅ | **Preferências de utilizador** + a row do pill Settings — **FEITA** (`~/.ph2d/prefs.txt`, irmão do `palette_persist`; ver a correcção na §3) | 2 | o carácter deixa de ser constante | **P** |
-| **4** | ⭐ **E1 scrub numérico** | — (independente!) | eficiência | **M** |
+| ~~**4**~~ ✅ | ⭐ **E1 scrub numérico** — **FEITO, e diferente do que esta linha dizia**: o gesto já shipava desde a M14.A; o buraco real era a taxa a consultar **duas** das **quatro** fontes de intervalo que o clamp já conhecia (43 campos cruzavam-se inteiros em < 20 px). Cura = a porta única `number_scrub_law`; 43 → 0. Ver a correcção na §4 | — (independente!) | eficiência | **M** |
 | ~~**5**~~ ✅ | ⭐ **C1 o TETHER** — **FEITA**, com a lei do relógio CORRIGIDA por medição (ver a nota na §5.2) e o card de Fill como primeiro consumidor | 1 | a família C2·C3·C4 | **M** |
 | **6** | o resto do catálogo, por gosto | 1-3 | — | — |
 
@@ -371,8 +406,13 @@ eficiência antes de encanto.
 1. **`measure_ui_motion`** — o custo real da F0 pela porta do produto (§1.4). *Nenhum número de custo
    deste plano vale antes dela.*
 2. **A sonda de `set_cursor_grab`** por plataforma (§4.3) — decide se o scrub promete arrasto infinito
-   ou 600 px.
-3. **A varredura de colisão de modificadores** (§4.2) — `Shift` já significa *restringir* neste app.
+   ou 600 px. **Segue por correr.**
+3. ~~**A varredura de colisão de modificadores** (§4.2)~~ — **MOOT**: o `Shift` já é o multiplicador de
+   precisão do scrub (`DRAG_SHIFT_MUL`) desde a M14.A, e a wave 4 não acrescentou modificador nenhum.
+   O `Ctrl = encaixa no step` que a §4.2 propunha **não foi construído** e continua por decidir.
+5. **O tecto dos 146 campos SEM intervalo** (§4, correcção da wave 4) — a sonda
+   `census_of_how_many_pixels_cross_a_whole_field` lista-os; o número de cada um tem de sair de uma
+   medição, e o primitivo é o `set_number_drag_rate`, que não inventa fronteira.
 4. **O `n` e a folga do tether** (§5.2) — são números de **aparência**, e o oráculo deles é o
    RENDER, não um teste. Saem do smoke, como o `RESAMPLE_STEP_FRACTION` do Flip saiu.
 5. **Nada aqui bumpa `PROJECT_SCHEMA`, toca contrato congelado ou acrescenta dep externa** — e isso

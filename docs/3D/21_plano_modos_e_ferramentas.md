@@ -343,7 +343,8 @@ Toda wave fecha com smoke próprio e não deixa knob morto atrás.
 | # | wave | entrega | depende de |
 |---|---|---|---|
 | **W0** | ✅ **A espinha — LANDOU** (`8b207e505` + `f4677c8cd`) | `RefMode` · `VerbProfile` · a tabela `S` lida das fontes · `default_strength`/`_accumulate`/`_falloff`/`_radius_px` **delegam** · a porta única `arm_verb_defaults` arma os **quatro**. 11 gates, 4 mutações provadas | — |
-| **W1** | **A UI e o perfil `B`** | o dropdown · o *apply to all* · o chip Basic/Pro · o perfil `B` (o que dele não pede kernel novo) | W0 |
+| ~~**W1**~~ | ⛔ **BLOQUEADA — trocou de lugar com a W3** (ver §7.1) | o perfil `B` de DEFAULTS não é construível: o arquivo que os declara não está no clone | — |
+| **W1'** | **A UI, sobre o `B` de KERNEL** | o dropdown · o *apply to all* · o chip Basic/Pro — depois que a W3 der ao `B` o que declarar | W3 |
 | **W2** | **Os knobs de Pro** | as rows condicionais por tool (`show:` já existe): Hardness · Normal Radius · Plane Trim · Auto-Smooth · Front-Face · Strength Curve | W1 |
 | **W3** | **Os kernels divergentes baratos** | E5 lado do plano · E11 `normal_radius_factor` · E12 front-face contínuo · E13 `strength²` · E14 hardness · E8 direção · E9 espaço do pinch · E10 normal viva | W2 |
 | **W4** | **O Smooth que não encolhe** | l-mode **HC** · Taubin λ\|μ · **Surface Smooth** · **Slide Relax** · o laplaciano por **cotangentes** | W1 |
@@ -382,6 +383,37 @@ gosto:** metade do b-mode (front-face contínuo, `strength²`, hardness,
 `normal_radius_factor`) é **kernel**, e ele só existe na W3. Mover o default para
 `B` é uma **decisão de produto com smoke próprio**, depois da W3 — e o §0 já diz
 por que ela é segura: `S` é o contrato, o default é produto.
+
+### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
+
+**Os defaults de fábrica do Blender não estão no clone.** Eles vivem em
+`BKE_brush_sculpt_reset`, no `blenkernel/intern/brush.cc`, e o nosso clone é um
+**trim de escultura**: `source/blender/blenkernel/intern/` traz `paint.cc`,
+`pbvh.cc` e a família `multires_*`, e **não traz `brush.cc`** — `grep -rl
+"BKE_brush_sculpt_reset\|brush->alpha ="` sobre `source/` devolve **vazio**.
+
+⚠️ **Escrever esses números de memória seria exatamente o que a §4 proíbe** —
+*inventar um número e shipá-lo com a autoridade de uma referência que não o
+declara* —, e aqui seria pior que num l-mode: o chip diria **`B`**, um nome
+próprio, sobre uma tabela que o Blender nunca escreveu.
+
+✅ **Mas a metade ALGORÍTMICA do `B` é toda legível** e não estava bloqueada —
+`editors/sculpt_paint/mesh/sculpt.cc` e `mesh/brushes/*.cc` estão inteiros. O
+`alpha = root_alpha * root_alpha` do `brush_strength` (**`sculpt.cc:2338-2339`**,
+o E13) é lido literalmente, e sozinho ele é uma divergência **enorme e
+declarativa**: num slider a meio curso o `B` deposita **0,25 contra 0,50** — o
+dobro de diferença, muito acima do piso de paridade, então o chip nasce vivo
+pelo critério do §3 sem depender de default nenhum.
+
+⇒ **A ordem certa é: a W3 dá ao `B` o que ele DECLARA, e só então a UI o
+oferece.** Um dropdown que ship antes disso teria um chip `B` idêntico ao `S`,
+que é precisamente o controle morto que a §3 existe para impedir.
+
+**As duas saídas para os defaults, quando o Enio quiser:** trazer o
+`blenkernel/intern/brush.cc` para o trim (uma decisão sobre o clone, não sobre o
+código) · ou aceitar que o `B` **não declara defaults** e que trocar para ele
+muda só o que o kernel faz — o que é honesto e já é a maior parte do que
+distingue os dois.
 
 **Se for para escolher onde parar:** W0-W3 já entregam o pedido inteiro do Enio
 (os três modos, o Basic/Pro, e o app deixa de esculpir mal). W4-W6 são as três

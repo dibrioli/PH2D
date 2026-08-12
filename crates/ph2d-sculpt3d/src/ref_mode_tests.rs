@@ -114,7 +114,7 @@ fn the_s_column_is_what_the_sculptgl_sources_declare() {
         // ⚠️ Toda tool de geometria do original compartilha a quártica.
         assert_eq!(
             p.falloff,
-            Falloff::Plateau,
+            Some(Falloff::Plateau),
             "{} usa a curva da referência",
             r.verb.label()
         );
@@ -136,32 +136,51 @@ fn the_reference_has_no_sharpen_and_the_table_says_so() {
 /// **Um chip existe se e somente se o perfil existe** — a lei anti-chip-morto do
 /// plano §3, afirmada sobre a ÚNICA lista que a decide.
 ///
-/// ⚠️ Enquanto `B` e `L` forem `None` para todo verbo, **nenhum chip deles é
-/// oferecido**: a lei vale por construção, não por disciplina. Quando uma wave
-/// preencher uma célula, é este gate que exige que ela venha com o consumidor.
+/// ⚠️ **O corpo dele era o RETRATO da W0 e não a lei** (*"`B` e `L` são `None`
+/// em todo verbo"*), então a W3 o derrubou ao dar ao `B` o que declarar — que é
+/// o gate a funcionar, não a falhar. O que sobrevive é a propriedade; o CENSO
+/// abaixo é que se move por wave, e move de propósito.
 #[test]
-fn no_mode_can_offer_a_chip_it_has_no_profile_for() {
+fn every_offered_chip_has_a_profile_behind_it() {
     for verb in Verb::ALL {
         for mode in RefMode::ALL {
-            let has = verb.profile(mode).is_some();
-            if mode == RefMode::S {
-                assert_eq!(
-                    has,
-                    verb != Verb::Sharpen,
-                    "{} × S: só o Sharpen fica de fora",
-                    verb.label()
-                );
-            } else {
+            // A porta é UMA: quem oferece e quem honra perguntam a mesma coisa.
+            let p = verb.profile(mode);
+            if let Some(p) = p {
+                // Um perfil que não afirma NADA seria um chip morto com outro
+                // nome — ele tem de declarar ao menos um campo.
+                let says_something = p.falloff.is_some()
+                    || p.strength.is_some()
+                    || p.radius_factor.is_some()
+                    || p.accumulate.is_some()
+                    || p.strength_curve != StrengthCurve::Linear;
                 assert!(
-                    !has,
-                    "{} × {}: um perfil novo chega COM o consumidor dele, e este \
-                     gate é onde a wave declara isso",
+                    says_something,
+                    "{} × {}: perfil que não declara nada é um chip morto",
                     verb.label(),
                     mode.label()
                 );
             }
         }
     }
+}
+
+/// ⚠️ **O CENSO — quantos chips cada modo oferece HOJE.**
+///
+/// Ele existe para uma wave que preencha uma célula ter de vir aqui dizer o
+/// número novo: um perfil que aparece sem passar por esta linha é um chip que
+/// nasceu sem ninguém decidir que ele devia nascer.
+#[test]
+fn the_census_of_offered_chips() {
+    let count = |m: RefMode| Verb::ALL.iter().filter(|v| v.profile(m).is_some()).count();
+    // O SculptGL tem tudo menos o Sharpen (`Verb::ALL` tem 16).
+    assert_eq!(count(RefMode::S), 15, "S: todos menos o Sharpen");
+    // ⚠️ O `B` alcança TODO verbo com uma coisa só — o `alpha = root_alpha²` do
+    // `brush_strength`, que é o funil de todas as tools. Os DEFAULTS dele
+    // seguem bloqueados (§7.1 do plano): o `brush.cc` não está no clone.
+    assert_eq!(count(RefMode::B), 16, "B: a lei da força vale para todos");
+    // A literatura chega paper a paper, nas waves W4/W5/W7.
+    assert_eq!(count(RefMode::L), 0, "L: nenhum paper portado ainda");
 }
 
 /// **Não há segunda porta para a força de fábrica.**
@@ -233,5 +252,79 @@ fn the_wave_moves_the_factory_strength_of_nine_verbs_and_only_these() {
             "Move / Grab",
         ],
         "a lista do que a referência move; o Draw e a Mask já batiam"
+    );
+}
+
+/// **O E13 — o slider é a RAIZ do peso no `B`, e o próprio número no `S`.**
+///
+/// ⚠️ A afirmação vale no PRODUTO, não na tabela: um gate que só perguntasse
+/// `strength_curve` seria a tabela conferindo a si mesma. Ele passa pela porta
+/// [`Brush::weight`], que é o que o `stroke.rs` consome.
+#[test]
+fn the_blender_slider_is_the_square_root_of_the_weight() {
+    let mut b = crate::Brush {
+        strength: 0.5,
+        ..Default::default()
+    };
+    assert!(
+        (b.weight() - 0.5).abs() < 1e-6,
+        "S: o slider É o peso; veio {}",
+        b.weight()
+    );
+    b.mode = RefMode::B;
+    assert!(
+        (b.weight() - 0.25).abs() < 1e-6,
+        "B: `sculpt.cc:2339` eleva ao quadrado; veio {}",
+        b.weight()
+    );
+    // ⚠️ E as pontas COINCIDEM (`0²=0`, `1²=1`) — é por isso que a fixture usa
+    // meio curso: nos extremos os dois modos são indistinguíveis e o gate seria
+    // verde por vácuo.
+    for s in [0.0, 1.0] {
+        b.strength = s;
+        b.mode = RefMode::S;
+        let lin = b.weight();
+        b.mode = RefMode::B;
+        assert!(
+            (b.weight() - lin).abs() < 1e-6,
+            "as pontas coincidem em {s}"
+        );
+    }
+}
+
+/// **E o traço de fato deposita menos** — o `weight()` chega ao barro.
+///
+/// ⚠️ Sem isto o gate acima prova só aritmética: a porta poderia existir, estar
+/// certa, e o `stroke.rs` seguir lendo `strength` cru.
+#[test]
+fn the_mode_reaches_the_clay() {
+    let travel = |mode: RefMode| {
+        let mut mesh = ph2d_mesh::shapes::uv_sphere(24, 32, 1.0);
+        let brush = crate::Brush {
+            verb: Verb::Draw,
+            mode,
+            strength: 0.5,
+            radius: 0.5,
+            ..Default::default()
+        };
+        let before: Vec<[f32; 3]> = mesh.positions().to_vec();
+        let mut st = crate::SculptStroke::default();
+        st.begin(&mesh);
+        let dab = crate::Dab::at([0.0, 0.0, 1.0], 0.5, [0.0, 0.0, -1.0]);
+        st.dab(&mut mesh, &brush, &dab, crate::Symmetry::default());
+        before
+            .iter()
+            .zip(mesh.positions())
+            .map(|(a, b)| {
+                ((b[0] - a[0]).powi(2) + (b[1] - a[1]).powi(2) + (b[2] - a[2]).powi(2)).sqrt()
+            })
+            .fold(0.0f32, f32::max)
+    };
+    let s = travel(RefMode::S);
+    let b = travel(RefMode::B);
+    assert!(s > 1e-6, "o controle tem de mover barro; veio {s}");
+    assert!(
+        b < s * 0.75,
+        "o B deposita MENOS a meio curso: S={s} contra B={b}"
     );
 }

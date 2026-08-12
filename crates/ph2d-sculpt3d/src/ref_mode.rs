@@ -88,6 +88,36 @@ impl RefMode {
     }
 }
 
+/// **COMO o número do slider de força vira o peso do dab.**
+///
+/// ⚠️ **É o E13 do estudo, e a razão está escrita na FONTE:** o
+/// `brush_strength` do Blender (`sculpt.cc:2337-2339`) traz o comentário
+/// *"Primary strength input; square it to make lower values more sensitive"* —
+/// o slider é a RAIZ, não o peso.
+///
+/// ⚠️ **Sozinho isto já torna o chip `B` legítimo pelo §3 do plano:** a meio
+/// curso ele deposita `0,25` contra `0,50` — o dobro de diferença, muito acima
+/// do piso de paridade de 1 ULP.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum StrengthCurve {
+    /// O número do slider **É** o peso. O SculptGL e o que nós shipávamos.
+    #[default]
+    Linear,
+    /// O peso é o **quadrado** do slider — a faixa baixa ganha resolução.
+    Squared,
+}
+
+impl StrengthCurve {
+    /// O peso que este slider significa.
+    #[must_use]
+    pub fn resolve(self, slider: f32) -> f32 {
+        match self {
+            Self::Linear => slider,
+            Self::Squared => slider * slider,
+        }
+    }
+}
+
 /// **O que uma referência DECLARA sobre um verbo.**
 ///
 /// ⚠️ **A struct CRESCE wave a wave, e um campo só entra com o consumidor
@@ -102,7 +132,12 @@ impl RefMode {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct VerbProfile {
     /// A curva do pincel — D1/E1, o maior número do estudo.
-    pub falloff: Falloff,
+    ///
+    /// ⚠️ **`None` é uma AFIRMAÇÃO, e o `B` é quem a produziu:** os defaults de
+    /// fábrica do Blender vivem no `BKE_brush_sculpt_reset`, que **não está no
+    /// clone** (§7.1 do plano) — declarar uma curva ali seria inventar um número
+    /// e vesti-lo com o nome de outro produto.
+    pub falloff: Option<Falloff>,
     /// A força de fábrica — D3/E2. `None` = a fonte não declara.
     pub strength: Option<f32>,
     /// O raio de fábrica como **fração do raio-base da fonte** — D4/E3.
@@ -116,16 +151,23 @@ pub struct VerbProfile {
     pub radius_factor: Option<f32>,
     /// O Accumulate de fábrica. `None` = a fonte não declara o campo.
     pub accumulate: Option<bool>,
+    /// **Como o slider de força vira peso** — o E13.
+    ///
+    /// ⚠️ Não é `Option`: toda referência responde a esta pergunta, porque toda
+    /// referência transforma o slider de ALGUMA maneira — e *"linearmente"* é
+    /// uma resposta, não uma omissão.
+    pub strength_curve: StrengthCurve,
 }
 
 impl VerbProfile {
     /// O perfil que **não afirma nada** — a base sobre a qual as entradas da
     /// tabela são escritas, para uma linha nova nascer explícita no que declara.
     const SILENT: Self = Self {
-        falloff: Falloff::Plateau,
+        falloff: None,
         strength: None,
         radius_factor: None,
         accumulate: None,
+        strength_curve: StrengthCurve::Linear,
     };
 }
 
@@ -150,6 +192,7 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // divergências do D3 são as outras: 0,75 em quatro tools e 0,30 no
         // Inflate.
         Verb::Draw | Verb::Clay => VerbProfile {
+            falloff: Some(Falloff::Plateau),
             strength: Some(0.5),
             radius_factor: Some(1.0),
             accumulate: Some(true),
@@ -158,6 +201,7 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // `Inflate.js:9-11` — o mais fraco do catálogo, e por um motivo: inflar
         // é a operação que estoura mais rápido.
         Verb::Inflate => VerbProfile {
+            falloff: Some(Falloff::Plateau),
             strength: Some(0.3),
             radius_factor: Some(1.0),
             accumulate: Some(false),
@@ -167,6 +211,7 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // `smoothTangent`, **código vivo que nenhuma UI do original alcança**;
         // é o E7 do estudo e a wave W4 daqui.
         Verb::Smooth => VerbProfile {
+            falloff: Some(Falloff::Plateau),
             strength: Some(0.75),
             radius_factor: Some(1.0),
             accumulate: Some(false),
@@ -178,6 +223,7 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // ele lê o vivo **sempre**, sem checkbox. Nós temos o interruptor, então
         // o honesto é nascer armado.
         Verb::Flatten | Verb::Fill | Verb::Scrape => VerbProfile {
+            falloff: Some(Falloff::Plateau),
             strength: Some(0.75),
             radius_factor: Some(1.0),
             accumulate: Some(true),
@@ -185,6 +231,7 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         },
         // `Pinch.js:9-11`.
         Verb::Pinch | Verb::Magnify => VerbProfile {
+            falloff: Some(Falloff::Plateau),
             strength: Some(0.75),
             radius_factor: Some(1.0),
             accumulate: Some(false),
@@ -193,6 +240,7 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // `Crease.js:9-11` — ⚠️ **raio 25, metade do resto**: um vinco é fino
         // por definição, e é a divergência D4 mais visível do catálogo.
         Verb::Crease => VerbProfile {
+            falloff: Some(Falloff::Plateau),
             strength: Some(0.75),
             radius_factor: Some(25.0 / S_BASE_RADIUS_PX),
             accumulate: Some(false),
@@ -200,6 +248,7 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         },
         // `Masking.js:13-16` — força CHEIA, e o nosso default já concorda.
         Verb::Mask => VerbProfile {
+            falloff: Some(Falloff::Plateau),
             strength: Some(1.0),
             radius_factor: Some(1.0),
             accumulate: Some(false),
@@ -209,6 +258,7 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // gesto de região, e um Move com raio de pincel de detalhe é o que faz
         // um artista concluir que a ferramenta não funciona.
         Verb::Move => VerbProfile {
+            falloff: Some(Falloff::Plateau),
             strength: Some(1.0),
             radius_factor: Some(150.0 / S_BASE_RADIUS_PX),
             ..VerbProfile::SILENT
@@ -216,16 +266,19 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // `Drag.js:10` — mesmo raio do Move e ⚠️ **sem `_intensity` declarada**:
         // o `None` é a fonte sendo silenciosa, não um número esquecido.
         Verb::SnakeHook => VerbProfile {
+            falloff: Some(Falloff::Plateau),
             radius_factor: Some(150.0 / S_BASE_RADIUS_PX),
             ..VerbProfile::SILENT
         },
         // `Twist.js:10` — raio 75, e também sem força declarada.
         Verb::Twist => VerbProfile {
+            falloff: Some(Falloff::Plateau),
             radius_factor: Some(75.0 / S_BASE_RADIUS_PX),
             ..VerbProfile::SILENT
         },
         // `LocalScale.js:8` — raio-base, sem força.
         Verb::LocalScale => VerbProfile {
+            falloff: Some(Falloff::Plateau),
             radius_factor: Some(1.0),
             ..VerbProfile::SILENT
         },
@@ -248,13 +301,33 @@ impl Verb {
     pub const fn profile(self, mode: RefMode) -> Option<VerbProfile> {
         match mode {
             RefMode::S => profile_s(self),
-            // ⚠️ Chegam nas waves W1 (o `B` declarativo) e W4/W5/W7 (o `L`, um
-            // paper por vez). Enquanto forem `None` **nenhum chip é oferecido**,
-            // que é a lei anti-chip-morto valendo por construção em vez de por
-            // disciplina.
-            RefMode::B | RefMode::L => None,
+            RefMode::B => profile_b(self),
+            // ⚠️ Chega nas waves W4/W5/W7, um paper por vez. Enquanto for `None`
+            // **nenhum chip é oferecido**, que é a lei anti-chip-morto valendo
+            // por construção em vez de por disciplina.
+            RefMode::L => None,
         }
     }
+}
+
+/// **A coluna `B`** — o que o Blender DECLARA, e só isso.
+///
+/// ⛔ **Ela não traz DEFAULTS, e a ausência é medida, não preguiça** (§7.1 do
+/// plano): o `BKE_brush_sculpt_reset` — onde a força, o raio e a curva de
+/// fábrica de cada tool vivem — está no `blenkernel/intern/brush.cc`, que **não
+/// está no clone** (um trim de escultura). Escrever esses números de memória
+/// seria vestir uma tabela inventada com o nome de outro produto.
+///
+/// ✅ **O que ela traz é LIDO literalmente** (`sculpt.cc:2337-2339`): o slider é
+/// a RAIZ do peso, com o comentário do próprio Blender ao lado — *"square it to
+/// make lower values more sensitive"*. Vale para TODA tool: ele mora no
+/// `brush_strength`, que é o funil de todas elas — e é por isso que este `match`
+/// não tem braços por verbo.
+const fn profile_b(_verb: Verb) -> Option<VerbProfile> {
+    Some(VerbProfile {
+        strength_curve: StrengthCurve::Squared,
+        ..VerbProfile::SILENT
+    })
 }
 
 #[cfg(test)]

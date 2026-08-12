@@ -360,7 +360,9 @@ impl SculptStroke {
         let alpha_frame = brush.alpha_frame();
         let reach = brush.reach(dab.radius);
         let inv_r = 1.0 / dab.radius;
-        let intensity = brush.strength * dab.pressure.clamp(0.0, 1.0);
+        // ⚠️ `weight()`, nunca `strength` cru: o slider e o PESO deixaram
+        // de ser a mesma coisa quando o `B` entrou (o E13).
+        let intensity = brush.weight() * dab.pressure.clamp(0.0, 1.0);
         // ⚠️ **O verbo de MÁSCARA não é freado pela máscara**, e o gate pegou
         // isto: com `w = falloff·(1 − mask)`, uma região totalmente mascarada
         // zerava o peso de qualquer dab — inclusive o que a limparia. A máscara

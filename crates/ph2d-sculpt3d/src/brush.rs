@@ -326,7 +326,26 @@ impl Verb {
             .and_then(|p| p.accumulate)
             .unwrap_or(false)
     }
+}
 
+impl Brush {
+    /// **O PESO que este pincel deposita** — a porta única entre o número do
+    /// slider e o que um dab de fato faz.
+    ///
+    /// ⚠️ **Ela existe porque o slider e o peso deixaram de ser a mesma coisa.**
+    /// O Blender eleva ao quadrado (`sculpt.cc:2339`, *"square it to make lower
+    /// values more sensitive"*) e o SculptGL não; um `brush.strength` cru no
+    /// sítio de uso seria a segunda resposta que ignora o modo **em silêncio**,
+    /// e o `stroke.rs` tem UM consumidor — é ele que pergunta aqui.
+    #[must_use]
+    pub fn weight(&self) -> f32 {
+        self.verb
+            .profile(self.mode)
+            .map_or(self.strength, |p| p.strength_curve.resolve(self.strength))
+    }
+}
+
+impl Verb {
     /// A **CURVA** com que um pincel deste verbo nasce — o D1 do estudo, e o
     /// único achado dele que o artista encontra sem tocar em nada.
     ///
@@ -335,7 +354,8 @@ impl Verb {
     #[must_use]
     pub fn default_falloff(self) -> Falloff {
         self.profile(crate::RefMode::S)
-            .map_or(Falloff::Smooth, |p| p.falloff)
+            .and_then(|p| p.falloff)
+            .unwrap_or(Falloff::Smooth)
     }
 
     /// O **RAIO** de fábrica em pixels de tela — o D4/E3.
@@ -398,6 +418,13 @@ pub const CLAY_PLANE_FRACTION: f32 = 0.1;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Brush {
     pub verb: Verb,
+    /// **De qual REFERÊNCIA este pincel herda o que ele é** — [`crate::RefMode`].
+    ///
+    /// ⚠️ Ele só existe porque agora há um consumidor ([`Brush::weight`]); a W0
+    /// deliberadamente não o adicionou, porque campo que ninguém lê é estado
+    /// morto. Nasce em `S`, e o `ref_mode` diz por quê: o `S` é o **contrato de
+    /// paridade**, e mover o default é decisão de PRODUTO.
+    pub mode: crate::RefMode,
     /// **ACUMULAR na mesma pincelada** — o `BRUSH_ACCUMULATE` do Blender, e o
     /// irmão exato do campo de mesmo nome do pincel 2D.
     ///
@@ -529,6 +556,7 @@ impl Default for Brush {
     fn default() -> Self {
         Self {
             verb: Verb::Draw,
+            mode: crate::RefMode::S,
             // ⚠️ **DERIVADO do verbo, nunca um literal ao lado dele.** O
             // `Brush.js:16` da referência ship `_accumulate = true`, e a tool
             // `Brush` dele é a nossa Draw+Clay — nós shipávamos os dois

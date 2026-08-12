@@ -106,6 +106,8 @@ pub(crate) fn build_player_info(
         wall_jump_push: p.wall_jump_push,
         wall_jump_lockout: p.wall_jump_lockout,
         wall_reach: p.wall_reach,
+        foot_samples: f32::from(p.foot_samples),
+        foot_spread: p.foot_spread,
         wall_samples: f32::from(p.wall_samples),
         wall_spread: p.wall_spread,
         wall_grab_stamina: p.wall_grab_stamina,
@@ -313,6 +315,13 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
             p.corner_samples = clamp_samples(v, ph2d_physics_ecs::MAX_CORNER_SAMPLES);
         }
         PlayerFieldEdit::CornerLookahead(v) => p.corner_lookahead = v.max(0.0),
+        // ⚠️ A perna cai no MESMO clamp de contagem do flanco e da quina — o
+        // arredondamento para ímpar mora na LEI (`odd_samples`), nunca aqui: um
+        // segundo arredondamento faria o número guardado discordar do castado.
+        PlayerFieldEdit::FootSamples(v) => {
+            p.foot_samples = clamp_samples(v, ph2d_physics_ecs::MAX_WALL_SAMPLES);
+        }
+        PlayerFieldEdit::FootSpread(v) => p.foot_spread = v.clamp(0.0, 1.0),
         PlayerFieldEdit::WallSamples(v) => {
             p.wall_samples = clamp_samples(v, ph2d_physics_ecs::MAX_WALL_SAMPLES);
         }

@@ -68,6 +68,8 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
                 ids::INSP_PLAYER_CORNER => Some(PlayerFieldEdit::CornerReach(v)),
                 ids::INSP_PLAYER_CORNER_SAMPLES => Some(PlayerFieldEdit::CornerSamples(v)),
                 ids::INSP_PLAYER_CORNER_AHEAD => Some(PlayerFieldEdit::CornerLookahead(v)),
+                ids::INSP_PLAYER_FOOT_SAMPLES => Some(PlayerFieldEdit::FootSamples(v)),
+                ids::INSP_PLAYER_FOOT_SPREAD => Some(PlayerFieldEdit::FootSpread(v)),
                 ids::INSP_PLAYER_WALL_SAMPLES => Some(PlayerFieldEdit::WallSamples(v)),
                 ids::INSP_PLAYER_WALL_SPREAD => Some(PlayerFieldEdit::WallSpread(v)),
                 ids::INSP_PLAYER_LIFT => Some(PlayerFieldEdit::LiftMomentum(v)),

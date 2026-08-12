@@ -404,7 +404,16 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// da §4.55 medindo que *cada NÚMERO tem row* — e não fez a pergunta que
 /// faltava, que é sobre a GEOMETRIA das amostras.
 /// ⚠️ **PROVISÓRIO** — contado contra o `main` do dia na integração.
-const PROJECT_SCHEMA: u32 = 72;
+///
+/// v73 (physics, W-Probes2 — A PERNA VIRA UM LEQUE): o `PlatformPlayer` ganhou
+/// `foot_samples` + `foot_spread`. ⚠️ **Este degrau MOVE FÍSICA**, ao contrário
+/// do v72: o default de `foot_samples` é **3, não 1**, porque uma perna de um
+/// raio só afunda **0,411 m — 46% do `float_height`** parada sobre uma fenda de
+/// 10 cm num corpo de 40 cm que as bordas suportam
+/// (`measure_what_a_single_ground_ray_costs_over_a_gap`). Um projeto salvo em
+/// v72 reabre com a perna em leque, que é a correção.
+///
+const PROJECT_SCHEMA: u32 = 73;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

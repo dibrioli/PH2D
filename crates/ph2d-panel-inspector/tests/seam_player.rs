@@ -72,6 +72,8 @@ fn player() -> InspectorPlayerInfo {
         wall_jump_push: 6.0,
         wall_jump_lockout: 0.2,
         wall_reach: 0.08,
+        foot_samples: 3.0,
+        foot_spread: 1.0,
         wall_samples: 3.0,
         wall_spread: 1.0,
         wall_grab_stamina: 0.0,
@@ -217,11 +219,21 @@ fn every_number_raises_its_own_edit() {
     // exatamente o arm esquecido que ela existe para pegar.
     assert_eq!(
         ph2d_panel_inspector::PLAYER_ROW_COUNT,
-        40,
+        42,
         "a tabela de rows cresceu; acrescente o numero novo a esta varredura"
     );
     for (id, v, edit) in [
         // W-Probes2 — a GEOMETRIA das amostras dos sensores.
+        (
+            ids::INSP_PLAYER_FOOT_SAMPLES,
+            5.0,
+            PlayerFieldEdit::FootSamples(5.0),
+        ),
+        (
+            ids::INSP_PLAYER_FOOT_SPREAD,
+            0.4,
+            PlayerFieldEdit::FootSpread(0.4),
+        ),
         (
             ids::INSP_PLAYER_CORNER_SAMPLES,
             129.0,

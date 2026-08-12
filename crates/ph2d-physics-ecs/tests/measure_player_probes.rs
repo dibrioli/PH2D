@@ -254,3 +254,116 @@ fn measure_what_a_sample_costs() {
          Abaixo disso o passo do perfil deixa de comprar precisao que a fisica resolva."
     );
 }
+
+/// **A PERNA É UM RAIO SÓ — o que isso custa** (pergunta do Enio, 2026-08-11:
+/// *"Por que a perna não poderia ter mais de um?"*).
+///
+/// ⚠️ **É a MESMA pergunta que o `measure_wall_flank` fez ao flanco na W13**, e
+/// lá a resposta foi um defeito medido: com um raio só, uma fresta de 0,75 m num
+/// corpo de 1,0 m **recusava o pulo de parede por inteiro**. O flanco ganhou três
+/// amostras por causa disso; a perna nunca foi medida.
+///
+/// A cena: um chão com uma FENDA de largura `g`, e o personagem a atravessá-la a
+/// caminhar. O corpo mede 0,4 m de largura, então toda fenda abaixo disso é uma
+/// que ele deveria **atravessar sem sentir**.
+#[test]
+#[ignore = "sonda: mede, nao afirma"]
+fn measure_what_a_single_ground_ray_costs_over_a_gap() {
+    println!("\n== a perna sobre uma FENDA (corpo de 0,40 m de largura) ==");
+    println!(
+        "{:>7}  {:>8}  {:>5}  {:>9}  {:>10}  {:>9}",
+        "fenda", "regime", "raios", "queda max", "% do float", "achou chao"
+    );
+    // ⚠️ DOIS regimes, e o 1o corte desta sonda so' tinha o rapido -- a
+    // `drive = 1.0` atravessa a fenda em poucos tiques e a gravidade mal age, o
+    // que deu 0,000 m em TODA fenda e teria fechado a pergunta com um numero que
+    // media a velocidade, nao o sensor.
+    for (label, drive, park) in [("rapido", 1.0_f32, false), ("PARADO", 0.0, true)] {
+        // ⚠️ A coluna `raios` e' a ABLACAO por ENTRADA: 1 e' a perna de antes da
+        // `W-Probes2`, 3 e' o default de hoje. Sem o 1 ao lado o numero nao diz
+        // se a cura curou -- ele so' diz onde estamos.
+        for samples in [1u16, 3, 5] {
+        for gap_mm in [0u32, 100, 200, 300, 400, 600] {
+            let gap = f64::from(gap_mm) / 1000.0;
+            let mut sim = SimWorld::new();
+            let mut slab = |name: &str, at: Vec2, half: [f32; 2]| {
+                sim.world_mut().spawn((
+                    Name::new(name),
+                    RigidBody {
+                        kind: BodyKind::Static,
+                    },
+                    Collider {
+                        shape: ColliderShape::Cuboid {
+                            half_x: half[0],
+                            half_y: half[1],
+                        },
+                        ..Collider::default()
+                    },
+                    Transform::from_translation(at),
+                ));
+            };
+            let g = gap as f32;
+            slab("Left", Vec2::new(-10.0, -0.5), [10.0, 0.5]);
+            slab("Right", Vec2::new(g + 10.0, -0.5), [10.0, 0.5]);
+
+            // Parado: nasce com o CENTRO exatamente sobre o meio da fenda.
+            let x0 = if park { g * 0.5 } else { -2.0 };
+            let player = sim
+                .world_mut()
+                .spawn((
+                    Name::new("Player"),
+                    RigidBody {
+                        kind: BodyKind::Dynamic,
+                    },
+                    Collider {
+                        shape: ColliderShape::Capsule {
+                            half_height: 0.3,
+                            radius: 0.2,
+                        },
+                        ..Collider::default()
+                    },
+                    LockRotation,
+                    PlatformPlayer {
+                        float_height: FLOAT,
+                        foot_samples: samples,
+                        ..PlatformPlayer::default()
+                    },
+                    Transform::from_translation(Vec2::new(x0, FLOAT)),
+                ))
+                .id();
+
+            let mut bridge = PhysicsBridge::new();
+            let mut lowest = f32::INFINITY;
+            let mut ever_lost = false;
+            for i in 1..=240u64 {
+                bridge.set_player_input(
+                    player,
+                    PlayerInput {
+                        drive,
+                        ..PlayerInput::default()
+                    },
+                );
+                bridge.dispatch(&mut sim, true, i);
+                let t = sim.world().get::<Transform>(player).expect("transform");
+                if t.translation.x > -0.05 && t.translation.x < g + 0.05 {
+                    lowest = lowest.min(t.translation.y);
+                    ever_lost |= bridge
+                        .player_probe_marks()
+                        .iter()
+                        .any(|m| m.kind == ProbeKind::Ground && m.state == ProbeState::Clear);
+                }
+            }
+            let dip = if lowest.is_finite() { FLOAT - lowest } else { 0.0 };
+            println!(
+                "{gap:>6.2}m  {label:>8}  {samples:>5}  {dip:>8.3}m  {:>9.1}%  {:>9}",
+                100.0 * dip / FLOAT,
+                if ever_lost { "PERDEU" } else { "sempre" }
+            );
+        }
+        }
+    }
+    println!(
+        "\n⚠️ O corpo mede 0,40 m: toda fenda ABAIXO disso e' uma que ele deveria\n\
+         atravessar sem sentir, porque as bordas ainda o suportam fisicamente."
+    );
+}

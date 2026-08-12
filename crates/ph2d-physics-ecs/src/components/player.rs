@@ -94,6 +94,14 @@ pub struct PlatformPlayer {
     /// sensor, então não custa um raio sequer.
     /// **Quantas amostras o perfil da quina varre** — ímpar, teto
     /// [`ph2d_platformer::MAX_CORNER_SAMPLES`].
+    /// **Quantos raios a perna casta** — ímpar. Um raio só afundava 46% do
+    /// `float_height` numa fenda de 10 cm (`W-Probes2`).
+    pub foot_samples: u16,
+
+    /// **Onde os raios de fora da perna se sentam**, fração da meia-largura.
+    /// `0` junta tudo no centro e reproduz o raio único.
+    pub foot_spread: f32,
+
     pub corner_samples: u16,
 
     /// **Quantos tiques de antecedência o perfil da quina olha.**
@@ -260,6 +268,8 @@ impl PlatformPlayer {
                 cling_distance: self.cling_distance,
                 spring_strength: self.spring_strength,
                 spring_damping: self.spring_damping,
+                samples: self.foot_samples as usize,
+                spread: self.foot_spread,
             },
             walk: WalkConfig {
                 speed: self.speed,
@@ -325,6 +335,8 @@ impl Default for PlatformPlayer {
             cling_distance: c.ride.cling_distance,
             spring_strength: c.ride.spring_strength,
             spring_damping: c.ride.spring_damping,
+            foot_samples: u16::try_from(c.ride.samples).unwrap_or(u16::MAX),
+            foot_spread: c.ride.spread,
             speed: c.walk.speed,
             acceleration: c.walk.acceleration,
             air_acceleration: c.walk.air_acceleration,

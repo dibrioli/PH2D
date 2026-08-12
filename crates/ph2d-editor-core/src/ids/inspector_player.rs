@@ -185,6 +185,16 @@ pub const INSP_PLAYER_WALL_LOCK: NodeId = hash_node_id("insp.player.wall.lock");
 /// **Wall Reach (m)** (W13).
 pub const INSP_PLAYER_WALL_REACH: NodeId = hash_node_id("insp.player.wall.reach");
 
+/// **Quantos raios a PERNA casta** (`W-Probes2`). Ímpar; o do meio desempata.
+///
+/// ⚠️ O default é **3, não 1** — a perna de um raio só afunda 46% do
+/// `float_height` parado sobre uma fenda que o corpo atravessa (medido em
+/// `measure_what_a_single_ground_ray_costs_over_a_gap`).
+pub const INSP_PLAYER_FOOT_SAMPLES: NodeId = hash_node_id("insp.player.foot.samples");
+
+/// **Onde os pés de fora se sentam**, fração da meia-LARGURA do corpo.
+pub const INSP_PLAYER_FOOT_SPREAD: NodeId = hash_node_id("insp.player.foot.spread");
+
 /// **Quantos raios o flanco casta** (`W-Probes2`). Ímpar; o teto e o preço estão
 /// em `ph2d_platformer::MAX_WALL_SAMPLES` — 18 ns por raio, plano em N.
 pub const INSP_PLAYER_WALL_SAMPLES: NodeId = hash_node_id("insp.player.wall.samples");

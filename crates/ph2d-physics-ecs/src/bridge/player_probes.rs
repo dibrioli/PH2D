@@ -83,6 +83,41 @@ pub(super) fn ground_ray(origin: [f32; 2], cfg: &PlayerConfig) -> ProbeRay {
     }
 }
 
+/// **A PERNA INTEIRA** — os N raios que ela casta, lado a lado (`W-Probes2`).
+///
+/// ⚠️ **A perna era UM raio no centro, e o preço está medido**
+/// (`measure_what_a_single_ground_ray_costs_over_a_gap`): parado sobre uma fenda
+/// de 10 cm, num corpo de 40 cm que as bordas suportam fisicamente, ele afunda
+/// **0,411 m — 46% do `float_height`**. É a mesma doença que o flanco teve na
+/// W13, e a mesma cura.
+///
+/// As posições saem de [`wall_offsets`] — a MESMA porta do flanco, aplicada ao
+/// outro eixo. Uma segunda função com a mesma aritmética divergiria no dia em
+/// que a lei do meio-primeiro mudasse num dos dois.
+pub(super) fn ground_rays(
+    world: &ph2d_physics::PhysicsWorld,
+    handle: rapier2d_handle::Handle,
+    cfg: &PlayerConfig,
+    origin: [f32; 2],
+) -> ([ProbeRay; MAX_WALL_SAMPLES], usize) {
+    let base = ground_ray(origin, cfg);
+    let n = odd_samples(cfg.ride.samples, MAX_WALL_SAMPLES);
+    let mut out = [base; MAX_WALL_SAMPLES];
+    // Sem caixa (corpo recém-nascido) só há o do centro — e é o que sempre houve.
+    let Some((mins, maxs)) = world.body_aabb(handle) else {
+        return (out, 1);
+    };
+    let half_width = (maxs[0] - mins[0]) * 0.5;
+    if !half_width.is_finite() || half_width <= 0.0 {
+        return (out, 1);
+    }
+    let offs = wall_offsets(half_width, n, cfg.ride.spread);
+    for (r, off) in out.iter_mut().zip(offs.iter()).take(n) {
+        r.origin = [origin[0] + off, origin[1]];
+    }
+    (out, n)
+}
+
 /// **O FLANCO** — os três raios do sensor lateral, na direção em que o jogador
 /// empurra.
 ///
@@ -375,7 +410,7 @@ pub(super) fn record_marks(
     // achou"*: a perna era a única sempre castada e por isso nunca precisou do
     // terceiro estado. O preview de um quadro PARADO precisa, e um downgrade
     // depois do facto seria um SEGUNDO lugar a decidir estado.
-    ground: Option<Option<f32>>,
+    ground: Option<[Option<f32>; MAX_WALL_SAMPLES]>,
     // O perfil e **a subida que ele usou** — o segundo não é derivável do
     // primeiro, e é ele que dá altura ao leque desenhado.
     corner: Option<(&CeilingProbe, f32)>,
@@ -383,11 +418,25 @@ pub(super) fn record_marks(
     headroom: Option<&Headroom>,
 ) {
     // A PERNA — castada em todo tique, então ela nunca fica `Idle`.
-    let g = ground_ray(origin, cfg);
-    out.push(match ground {
-        Some(hit) => ProbeMark::ray(ProbeKind::Ground, g.origin, g.dir, g.reach, hit, g.skin),
-        None => ProbeMark::idle_ray(ProbeKind::Ground, g.origin, g.dir, g.reach, g.skin),
-    });
+    let (legs, ln) = ground_rays(world, handle, cfg, origin);
+    for (i, g) in legs.iter().enumerate().take(ln) {
+        out.push(match ground {
+            // ⚠️ **Cada raio mostra o que ELE achou** — as distâncias vêm dos
+            // casts que a lei fez, nunca de uma segunda consulta, e é isso que
+            // torna o desenho um relato do que aconteceu: ver o pé da borda
+            // aceso sobre uma fenda com o do meio apagado É o diagnóstico que a
+            // perna em leque existe para dar.
+            Some(hits) => ProbeMark::ray(
+                ProbeKind::Ground,
+                g.origin,
+                g.dir,
+                g.reach,
+                hits[i],
+                g.skin,
+            ),
+            None => ProbeMark::idle_ray(ProbeKind::Ground, g.origin, g.dir, g.reach, g.skin),
+        });
+    }
 
     // O FLANCO.
     if cfg.wall.armed() {

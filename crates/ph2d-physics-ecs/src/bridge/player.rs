@@ -197,14 +197,45 @@ impl PhysicsBridge {
             // passar e a perna seguraria em cima — o personagem pairaria sobre
             // exactamente aquilo que pediu para atravessar.
             let passing = self.player_drop.get(&entity).copied();
-            let hit = self.world.cast_ray_skipping(
-                origin,
-                [0.0, -1.0],
-                reach,
-                Some(b.handle),
-                passing,
-                b.rest.layer,
-            );
+            // ⚠️ **A perna é um LEQUE, não um raio** (`W-Probes2`). Um raio só no
+            // centro afunda **0,411 m — 46% do `float_height`** parado sobre uma
+            // fenda de 10 cm que as bordas do corpo suportam fisicamente
+            // (`measure_what_a_single_ground_ray_costs_over_a_gap`); é a mesma
+            // doença que o flanco teve na W13, e a mesma cura.
+            //
+            // ⚠️ **A redução é o MAIS PRÓXIMO, e não é uma regra nova** — é a que
+            // o `cling` já ship a no flanco: o chão é o degrau mais alto que
+            // qualquer parte do pé alcança, e o `<` estrito faz o raio do MEIO
+            // ganhar todo empate (ele é o índice 0 do `wall_offsets`), o que
+            // mantém um corpo sobre chão plano byte-idêntico ao que era.
+            let (legs, leg_n) = probes::ground_rays(&self.world, b.handle, &cfg, origin);
+            // ⚠️ **As respostas POR RAIO viajam para o overlay** (o padrão do
+            // flanco, `WallProbe.hits`): quem desenha mostra o que a lei de
+            // facto viu, e não uma segunda consulta. Sem isto o desenho carimba
+            // o veredito reduzido no raio do MEIO, que depois desta wave nem
+            // sempre é o vencedor — o overlay diria que o pé do meio achou chão
+            // num tique em que quem achou foi o da borda.
+            let mut leg_hits = [None; ph2d_platformer::MAX_WALL_SAMPLES];
+            let mut hit = None;
+            for (leg, slot) in legs.iter().zip(leg_hits.iter_mut()).take(leg_n) {
+                let Some(h) = self.world.cast_ray_skipping(
+                    leg.origin,
+                    leg.dir,
+                    reach,
+                    Some(b.handle),
+                    passing,
+                    b.rest.layer,
+                ) else {
+                    continue;
+                };
+                *slot = Some(h.distance);
+                let nearer = hit
+                    .as_ref()
+                    .is_none_or(|best: &ph2d_physics::CastHit| h.distance < best.distance);
+                if nearer {
+                    hit = Some(h);
+                }
+            }
 
             let sample = hit.as_ref().map(|h| GroundSample {
                 distance: h.distance,
@@ -335,8 +366,8 @@ impl PhysicsBridge {
                 origin,
                 input.drive,
                 // A lei PERGUNTOU (a perna e' castada em todo tique) — o `Some`
-                // exterior e' isso, e o interior e' o que ela achou.
-                Some(hit.as_ref().map(|h| h.distance)),
+                // exterior e' isso, e o interior e' o que CADA raio achou.
+                Some(leg_hits),
                 ceiling
                     .as_ref()
                     .map(|c| (c, probes::corner_rise(rel_up, dt, &cfg))),

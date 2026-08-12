@@ -24,6 +24,36 @@ pub struct RideConfig {
     /// ⚠️ `1.0` mata a velocidade relativa por completo num tick; acima disso
     /// ela é invertida. Ver o aviso no topo do `lib.rs` e o gate do teto.
     pub spring_damping: f32,
+
+    /// **QUANTOS raios a perna casta.** Ímpar (ver [`crate::odd_samples`]); teto
+    /// e preço em [`crate::MAX_WALL_SAMPLES`], que é o mesmo dos irmãos.
+    ///
+    /// # ⚠️ Um raio só custa 46% da altura de flutuação, e está MEDIDO
+    ///
+    /// A perna era **um** raio no centro até 2026-08-11
+    /// (`measure_what_a_single_ground_ray_costs_over_a_gap`). Parado sobre uma
+    /// FENDA de **10 cm**, num corpo de **40 cm** que as bordas suportam
+    /// fisicamente, o raio não vê chão, a mola desliga e o personagem **afunda
+    /// 0,411 m — 46% do `float_height`**. De 30 cm são 52%; a partir da largura
+    /// do corpo ele cai de vez, e isso é **correto**.
+    ///
+    /// ⚠️ **É a MESMA doença que o flanco teve na W13** — lá um raio na cintura
+    /// recusava o pulo de parede por inteiro numa fresta de 0,75 m, e foi por
+    /// isso que ele ganhou três amostras. A perna nunca tinha sido medida.
+    ///
+    /// ⚠️ **A REDUÇÃO não é uma decisão nova:** fica o hit mais PRÓXIMO (o chão
+    /// mais alto), e o meio desempata por ser o primeiro da lista — literalmente
+    /// a regra que o [`crate::cling`] já shipa. É também o que a referência faz:
+    /// um personagem sobre uma rachadura é suportado pela borda mais alta.
+    pub samples: usize,
+
+    /// **Onde os raios de FORA se sentam**, como fração da meia-largura do
+    /// corpo. `1.0` põe-nos na borda exata da caixa.
+    ///
+    /// ⚠️ Baixá-lo aproxima-os do eixo, o que reduz a fenda que a perna
+    /// atravessa; `0.0` junta tudo no centro e **reproduz o raio único** — é
+    /// isso que torna o comportamento antigo alcançável sem um flag.
+    pub spread: f32,
 }
 
 impl RideConfig {
@@ -204,6 +234,12 @@ impl RideConfig {
         cling_distance: 0.25,
         spring_strength: 2000.0,
         spring_damping: 1.0,
+        // ⚠️ **TRÊS, e não um** — o número saiu da medição acima, e é o mesmo do
+        // flanco pela mesma razão: cobrir a LARGURA do corpo com a amostra do
+        // meio a desempatar. ⚠️ Isto MUDA o comportamento de todo player já
+        // autorado, e é a correção: um raio só afundava 46% numa fenda de 10 cm.
+        samples: 3,
+        spread: 1.0,
     };
 
     /// ⚠️ **A `float_height` MÍNIMA de uma cápsula, e ela é GEOMETRIA, não

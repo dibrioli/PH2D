@@ -113,6 +113,10 @@ pub struct InspectorPlayerInfo {
     pub wall_jump_lockout: f32,
     /// **Wall Reach** (W13) — metros além da própria largura.
     pub wall_reach: f32,
+    /// Quantos raios a PERNA casta (`W-Probes2`).
+    pub foot_samples: f32,
+    /// Onde os pés de fora se sentam, fração da meia-LARGURA do corpo.
+    pub foot_spread: f32,
     /// Quantos raios o flanco casta (`W-Probes2`).
     pub wall_samples: f32,
     /// Onde os raios de fora do flanco se sentam, fração da meia-altura.
@@ -245,6 +249,10 @@ pub enum PlayerFieldEdit {
     CornerSamples(f32),
     /// **Corner Look-ahead** (`W-Probes2`) — quantos tiques o perfil antecipa.
     CornerLookahead(f32),
+    /// **Foot Rays** (`W-Probes2`) — quantos raios a perna casta.
+    FootSamples(f32),
+    /// **Foot Ray Spread** (`W-Probes2`) — onde os pés de fora se sentam.
+    FootSpread(f32),
     /// **Wall Rays** (`W-Probes2`) — quantos raios o flanco casta.
     WallSamples(f32),
     /// **Wall Ray Spread** (`W-Probes2`) — onde os raios de fora se sentam.

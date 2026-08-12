@@ -16,7 +16,7 @@ use super::player::PlayerRow;
 use ph2d_editor_core::ids;
 
 /// **A PERNA** — o que faz o personagem pairar em vez de encostar.
-const LEG_ROWS: [PlayerRow; 4] = [
+const LEG_ROWS: [PlayerRow; 6] = [
     (
         "Float Height (m)",
         ids::INSP_PLAYER_FLOAT,
@@ -42,6 +42,22 @@ const LEG_ROWS: [PlayerRow; 4] = [
         ids::INSP_PLAYER_DAMPING,
         "How fast the bounce dies out. Above 1 he pops. Lower it for a bouncier \
          landing, then raise World > Sub-steps to stop him creeping up ramps.",
+    ),
+    // ⚠️ **Os dois de baixo são o SENSOR, não a mola** — e ficam neste card
+    // porque a pergunta que respondem é *onde a perna procura chão*, que é o que
+    // os quatro de cima consomem. Um card próprio separaria a geometria do
+    // efeito dela, e o artista teria de saber que os dois se falam.
+    (
+        "Foot Rays",
+        ids::INSP_PLAYER_FOOT_SAMPLES,
+        "How MANY rays the leg casts. Odd; the middle one breaks ties. \
+         1 sinks over gaps your body could span.",
+    ),
+    (
+        "Foot Ray Spread",
+        ids::INSP_PLAYER_FOOT_SPREAD,
+        "Where the OUTER feet sit, as a fraction of your half-width. 1 = the box edge, \
+         0 collapses back to a single ray.",
     ),
 ];
 

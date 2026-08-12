@@ -7,14 +7,14 @@
 //! animação. O que ela dá é **continuidade de VELOCIDADE sob interrupção**.
 //!
 //! Revertendo a 30% do caminho, a volta arranca a **1,34×** a velocidade com que a ida chegava sob
-//! o [`crate::DEFAULT_EASING`] — o olho não separa isso de 1,00×. Mas o seletor de curva existe
+//! o `ph2d_ui_state::DEFAULT_EASING` — o olho não separa isso de 1,00×. Mas o seletor de curva existe
 //! desde a W7c, e há dois regimes a um clique onde ele morde: **`Cubic InOut` a 0,00×** (a cena
 //! **para e recomeça**) e **`Elastic Out` a 7,02×** (estalo). Uma mola não tem esse degrau: ela
 //! carrega a velocidade que tinha para dentro do movimento novo.
 //!
 //! # ⚠️ Ela é uma OPÇÃO, e o sistema de easing fica INTACTO
 //!
-//! Nada aqui toca [`crate::Transition`] nem o catálogo de curvas. Um hospedeiro sem mola é
+//! Nada aqui toca `ph2d_ui_state::Transition` nem o catálogo de curvas. Um hospedeiro sem mola é
 //! **byte-idêntico** ao que já shipava — a `Option` ausente nem sequer entra no caminho.
 //!
 //! ⚠️ **E ela não tem duração nem curva**, o que é a razão de o painel trocar as duas linhas em
@@ -38,7 +38,7 @@ pub const DEFAULT_STIFFNESS: f64 = 12.0;
 /// Amortecimento por omissão (`ζ`, adimensional).
 ///
 /// ⚠️ **`1.0` é o CRÍTICO — chega ao alvo sem passar.** É o default porque o overshoot da pose
-/// afim é **clampado** hoje (ver [`crate::Transition::at`]), então uma mola sub-amortecida por
+/// afim é **clampado** hoje (ver `ph2d_ui_state::Transition::at`), então uma mola sub-amortecida por
 /// omissão pareceria *parar* no alvo antes de assentar. Quem quiser o salto baixa o valor e vê o
 /// que o sistema de easing hoje mostra para `Back`/`Elastic` — que é a mesma coisa, pelo mesmo
 /// clamp.
@@ -118,7 +118,7 @@ impl SpringState {
     /// **A mola que RETOMA**: o caminho é novo, mas a velocidade é a que a cena já tinha.
     ///
     /// `x` volta a 0 porque o caminho foi re-medido a partir da pose viva (a lei (a) da
-    /// [`crate::Machine`]); `v` é reescalada para as unidades do caminho novo pelo chamador, que
+    /// `ph2d_ui_state::Machine`); `v` é reescalada para as unidades do caminho novo pelo chamador, que
     /// é quem sabe quanto ele mede.
     #[must_use]
     pub fn resuming(v: f64) -> Self {
@@ -126,7 +126,7 @@ impl SpringState {
     }
 
     /// Anda `dt` segundos. Devolve `true` quando assentou — e é o chamador que decide o que
-    /// *assentar* significa para a pose (a [`crate::Machine`] chama o `arrive`, que põe a pose
+    /// *assentar* significa para a pose (a `ph2d_ui_state::Machine` chama o `arrive`, que põe a pose
     /// EXATA).
     pub fn advance(&mut self, dt: f64, spring: Spring) -> bool {
         let s = spring.clamped();
@@ -145,5 +145,5 @@ impl SpringState {
 }
 
 #[cfg(test)]
-#[path = "spring_tests.rs"]
-mod spring_tests;
+#[path = "lib_tests.rs"]
+mod lib_tests;

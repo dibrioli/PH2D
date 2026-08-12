@@ -1025,9 +1025,19 @@ impl crate::App {
 
         // M12 per-frame ticks: ZenMode debounce cooldown + ToastQueue
         // TTL decay. Both are pure data-layer (no Vello paint here).
+        // ⚠️ **O `wall_dt` é calculado AQUI, uma vez, e tem UM dono.** Ele vivia 400 linhas abaixo,
+        // junto do acumulador da sim, e o `ToastQueue` — o único relógio do chrome — contava
+        // QUADROS por não o alcançar (um toast de "3 s" durava 6 a 30 fps). Subi-lo é mais barato
+        // que dar ao chrome um segundo `Instant::now()`: duas respostas a *"quanto durou o último
+        // quadro?"* divergiriam, e a que o artista vê seria a errada.
+        let now = Instant::now();
+        let wall_dt = now.duration_since(self.last_frame).as_secs_f64();
+        self.last_frame = now;
+
         zen.tick();
         let prev_toasts = toasts.len();
-        toasts.tick();
+        #[allow(clippy::cast_possible_truncation)]
+        toasts.tick(wall_dt as f32);
         if toasts.len() != prev_toasts {
             self.title_dirty = true;
         }
@@ -1496,9 +1506,6 @@ impl crate::App {
         }
 
         // Drive fixed-step accumulator.
-        let now = Instant::now();
-        let wall_dt = now.duration_since(self.last_frame).as_secs_f64();
-        self.last_frame = now;
         // M14.4g: feed EWMA frame-time using the same `wall_dt` —
         // single source of truth for "how long did the last frame
         // take". α=0.1 smooths over jitter while still tracking

@@ -19,6 +19,10 @@ build = "build.rs"
 [build-dependencies]
 
 [dependencies]
+# **A MOLA do substrato de UI viva** (`motion.rs`). Folha pura (só serde), partilhada com a
+# `ph2d-ui-state` — copiá-la daria uma SEGUNDA resposta a "como uma mola integra", e depender da
+# `ph2d-ui-state` arrastaria `ph2d-vec-scene` + `ph2d-vec-blend` para dentro de todo painel.
+ph2d-spring = { path = "../ph2d-spring" }
 # libm — HR-5 cross-OS bit-identical sincosf used in `gizmo/transform.rs`
 # (`compose_snapshot` mirrors `ph2d_ecs::Transform::compose`). Same
 # exact-version contract as ph2d-ecs (T1.3.5 spec carry-over).

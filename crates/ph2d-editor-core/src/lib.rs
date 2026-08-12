@@ -45,6 +45,10 @@ pub mod interaction;
 /// A porta única de *como este app imprime um comprimento* — veja os docs do módulo.
 pub mod length;
 pub mod math;
+/// **O SUBSTRATO DA UI VIVA** — o `t` que o chrome deste app nunca teve. Veja os docs do módulo:
+/// o carácter é uma PORTA, o chamador declara o `Role` e nunca uma duração, e um mapa vazio pinta
+/// exactamente o que o app pintava antes desta wave.
+pub mod motion;
 pub mod paint;
 /// Batched paint primitives (many shapes, one draw call) — see the module docs.
 pub mod paint_batch;

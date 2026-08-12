@@ -5138,6 +5138,7 @@ dependencies = [
  "ph2d-guides",
  "ph2d-host",
  "ph2d-i18n",
+ "ph2d-spring",
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-make-square",
@@ -7342,6 +7343,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-spring"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "ph2d-stroke-width"
 version = "0.0.0"
 dependencies = [
@@ -7669,6 +7677,7 @@ name = "ph2d-ui-state"
 version = "0.0.0"
 dependencies = [
  "ph2d-anim",
+ "ph2d-spring",
  "ph2d-stroke-width",
  "ph2d-vec-blend",
  "ph2d-vec-scene",

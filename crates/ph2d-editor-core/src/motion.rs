@@ -1,0 +1,322 @@
+//! **O SUBSTRATO DA UI VIVA** — onde mora o `t` que o chrome deste app nunca teve.
+//!
+//! # O achado que fez esta wave existir
+//!
+//! O app corre `ControlFlow::Poll` (redesenha **sempre**), o `render_loop` calcula `wall_dt` todo
+//! quadro, e a `ph2d-spring` resolve molas com continuidade de velocidade sob interrupção — e a
+//! interface do próprio app era uma **função escada**: nenhum `t` chegava à camada de widgets, e
+//! toda mudança de estado era instantânea. *Animação já estava paga; faltava quem a consumisse.*
+//!
+//! # A regra que o chamador segue
+//!
+//! ⚠️ **O chamador diz o que a coisa É (`Role`), nunca como ela se move.** Um chamador que passasse
+//! uma duração teria **re-implementado o carácter** no sítio dele, e no dia seguinte metade do app
+//! estaria em Expressivo e metade não. Quem decide a lei é [`UiMotion::law`], e ela é perguntada
+//! pelo pintor E pelo dispatch — duas cópias divergem no primeiro caso especial (a cicatriz do
+//! `TimelineInterpScope::menu_table` e a do `stroke_cover_wanted`).
+//!
+//! # ⚠️ Onde este módulo DIVERGE do plano que o encomendou, e porquê
+//!
+//! O [`PLANO_UI_viva_2026-08-12.md`] previa **mola em Expressivo e uma CURVA (120 ms) em
+//! Discreto**. A construção mostrou que isso custaria um **segundo catálogo de curvas** dentro da
+//! `ph2d-editor-core` — exactamente o que o repo recusa em toda parte (*"um segundo catálogo faria
+//! ease-out significar coisas diferentes em dois lugares do app"*, `ph2d-ui-state/Cargo.toml`).
+//!
+//! O que shipa é **UM mecanismo, dois pontos de operação**: uma mola **criticamente amortecida**
+//! (`ζ = 1`) é, por construção, uma que **nunca ultrapassa** — que é literalmente o contrato do
+//! carácter Discreto. Assim o contrato é **estrutural em vez de prometido**, e a herança de
+//! velocidade (que o estudo chamou de *o* diferenciador) vale nos **dois** caracteres em vez de ser
+//! luxo de um só.
+//!
+//! ⚠️ E a rigidez do Discreto **não foi escolhida, foi medida** — e a primeira medição
+//! **refutou o número que eu tinha cravado**. Ver a tabela em [`DISCRETE`].
+//!
+//! # As duas grandezas de custo, que são diferentes
+//!
+//! - **integrar** é `O(em voo)` — tipicamente 0-3, e é o número que importa por quadro;
+//! - **lembrar** é `O(widgets tocados recentemente)` — um `f32` por id, podado quando o widget
+//!   deixa de ser pintado.
+//!
+//! ⚠️ Um app que nunca foi tocado tem o mapa **vazio**, e com o mapa vazio [`UiMotion::animate`]
+//! devolve o alvo: **a tela é byte-idêntica à de antes desta wave**. É essa neutralidade que torna
+//! a wave segura de landar sozinha.
+
+use std::collections::BTreeMap;
+
+use ph2d_spring::{Spring, SpringState};
+
+use ph2d_a11y::NodeId;
+
+/// **O CARÁCTER** — a escolha do Enio (2026-08-12): as duas, e quem escolhe é o utilizador.
+///
+/// ⚠️ **Discreto NÃO é Expressivo com os números baixos.** Se fosse, seria um multiplicador global
+/// e o resultado seria uma UI expressiva a mexer-se depressa demais, que é a pior das três. São
+/// duas respostas à mesma pergunta: *o objecto é físico* contra *a mudança aconteceu, e onde*.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum UiCharacter {
+    /// Chega e assenta. **Nunca ultrapassa** — e isso é estrutural (`ζ = 1`), não uma promessa.
+    #[default]
+    Discrete,
+    /// O objecto tem peso: ultrapassa e volta.
+    Expressive,
+}
+
+/// **O QUE a coisa é** — e é só isto que o chamador declara.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Role {
+    /// Posição, tamanho, percurso. É o que o *reduced motion* mata.
+    Travel,
+    /// Opacidade, cor. ⚠️ **Sobrevive ao reduced motion**: o gatilho vestibular é a área grande a
+    /// deslocar-se, não a tinta a mudar.
+    Fade,
+    /// Um número que alguém LÊ.
+    ///
+    /// ⚠️ **Instantâneo nos três regimes, e é uma cerca.** Uma posição pode balançar; um valor
+    /// lido que balança está **errado durante 200 ms**, e alguém vai lê-lo.
+    Number,
+    /// Enfeite (rasto, partícula, corda). **Ausente em Discreto** — ausente, não atenuado.
+    Decoration,
+}
+
+/// Rigidez do Expressivo. `ζ < 1` ⇒ ultrapassa e volta: é o carácter inteiro num número.
+const EXPRESSIVE: Spring = Spring {
+    stiffness: 18.0,
+    damping: 0.72,
+};
+
+/// Rigidez do Discreto. ⚠️ `ζ = 1` é **criticamente amortecido**: a solução não tem termo
+/// oscilatório, logo **não pode** ultrapassar. O contrato do carácter é a matemática, não o gosto.
+///
+/// ⚠️ **O número saiu da sonda `measure_ui_motion`, e a primeira versão desta constante estava
+/// ERRADA porque eu media a grandeza errada.** Eu tinha cravado `28.0` afirmando no doc que ele
+/// batia os ~120 ms que o plano pedia; a sonda mediu **0,517 s de assentamento** e desmentiu-me.
+///
+/// A causa não era a rigidez, era a RÉGUA: `SpringState::advance` devolve `true` no critério
+/// **assintótico** (`|x-1| < 1e-3`), que é a **CAUDA** — e o olho não julga a cauda, julga o
+/// **JOELHO**. Medindo `t95`/`t99`, a tabela decide sozinha:
+///
+/// | rigidez | t95 | t99 | assenta |
+/// |---|---|---|---|
+/// | 28,0 | 0,183 s | 0,267 s | 0,517 s |
+/// | **40,0** | **0,133 s** | **0,183 s** | 0,383 s |
+/// | 60,0 | 0,083 s | 0,133 s | 0,283 s |
+///
+/// ⚠️ E a sonda **satura**: a 60 Hz ela não resolve abaixo de um quadro, então 60 e 90 imprimem os
+/// mesmos números — *porque a régua acabou, não porque as molas sejam iguais*.
+const DISCRETE: Spring = Spring {
+    stiffness: 40.0,
+    damping: 1.0,
+};
+
+/// Quantos **SEGUNDOS** uma entrada sobrevive sem ser pintada antes de ser podada.
+///
+/// ⚠️ **Segundos, não quadros — e isto foi um defeito MEU, apanhado pelo gate do relógio de
+/// parede.** A primeira versão contava quadros (`PRUNE_FRAMES: u32 = 8`), que é *exactamente* a
+/// doença que o estudo desta wave diagnosticou no `ToastQueue`: a 120 fps a memória durava 66 ms e
+/// a 30 fps durava 266 ms, e o gate `the_motion_is_a_fact_of_the_wall_clock_not_of_the_frame_rate`
+/// nasceu VERMELHO por causa disso (0,847 contra 1,0). *Escrever a lição num documento não impede
+/// ninguém de a repetir no arquivo seguinte; o gate impede.*
+///
+/// ⚠️ E não é ~zero: um widget que pisca fora da tela por um quadro (uma secção a re-medir, um
+/// painel a re-pintar noutra ordem) perderia a memória e re-animaria do zero ao voltar.
+const PRUNE_AFTER_S: f32 = 0.25;
+
+/// Uma coisa que se move — ou que **já se moveu** e é lembrada só pelo valor onde parou.
+#[derive(Clone, Copy, Debug)]
+struct Track {
+    /// Onde o percurso actual começou.
+    from: f32,
+    /// Onde ele termina — e, quando assentado, **é** o valor.
+    to: f32,
+    /// `None` = assentado. Só quem tem `Some` custa integração.
+    flight: Option<SpringState>,
+    role: Role,
+    /// **Segundos** desde a última vez que alguém a pintou.
+    idle_s: f32,
+}
+
+impl Track {
+    fn value(&self) -> f32 {
+        match self.flight {
+            None => self.to,
+            #[allow(clippy::cast_possible_truncation)]
+            Some(s) => self.from + (self.to - self.from) * s.x as f32,
+        }
+    }
+
+    /// A velocidade em unidades de **VALOR** por segundo (a `SpringState` fala em fracções do
+    /// percurso, e o percurso muda a cada interrupção).
+    #[allow(clippy::cast_possible_truncation)]
+    fn velocity(&self) -> f32 {
+        match self.flight {
+            None => 0.0,
+            Some(s) => s.v as f32 * (self.to - self.from),
+        }
+    }
+}
+
+/// **O substrato.** Um por tela; vive ao lado do store de interacção, nunca dentro dele.
+///
+/// ⚠️ **Fora do `InteractiveState` de propósito:** aquele é o estado **semântico**, e dezenas de
+/// gates o comparam — misturar animação faria cada um passar a ver ruído, e um `assert_eq!` de
+/// estado passaria a depender de *quando* foi lido. Mapa paralelo é o idioma que este repo já usa
+/// três vezes para estender sem colidir (`bypassed_subgraphs`, `node_text_params`).
+#[derive(Clone, Debug, Default)]
+pub struct UiMotion {
+    tracks: BTreeMap<NodeId, Track>,
+    character: UiCharacter,
+    reduced: bool,
+}
+
+impl UiMotion {
+    /// O carácter escolhido pelo utilizador (pill Settings).
+    #[must_use]
+    pub fn character(&self) -> UiCharacter {
+        self.character
+    }
+
+    pub fn set_character(&mut self, c: UiCharacter) {
+        self.character = c;
+    }
+
+    /// **Reduced motion — um eixo INDEPENDENTE do carácter**, não uma terceira posição dele.
+    ///
+    /// ⚠️ *Expressivo + reduced* é uma combinação legítima e tem de funcionar: alguém que gosta do
+    /// material e do som, mas a quem a paralaxe faz mal. Um seletor de três posições tornaria essa
+    /// pessoa incapaz de pedir o que precisa sem desistir do que gosta.
+    #[must_use]
+    pub fn reduced_motion(&self) -> bool {
+        self.reduced
+    }
+
+    pub fn set_reduced_motion(&mut self, on: bool) {
+        self.reduced = on;
+    }
+
+    /// **A PORTA.** A única função que sabe o que cada carácter faz.
+    ///
+    /// `None` = instantâneo, e o chamador não ganha entrada nenhuma — é o que faz do reduced motion
+    /// também o modo mais **barato**.
+    #[must_use]
+    pub fn law(&self, role: Role) -> Option<Spring> {
+        match role {
+            Role::Number => None,
+            Role::Travel if self.reduced => None,
+            Role::Decoration if self.reduced || self.character == UiCharacter::Discrete => None,
+            Role::Travel | Role::Fade | Role::Decoration => Some(match self.character {
+                UiCharacter::Discrete => DISCRETE,
+                UiCharacter::Expressive => EXPRESSIVE,
+            }),
+        }
+    }
+
+    /// **Um enfeite deve sequer ser desenhado?** O par da [`Self::law`] para quem emite partículas
+    /// ou simula uma corda: em Discreto a decoração é **ausente**, e ausente significa *não gastar
+    /// o trabalho*, não *desenhar com opacidade zero*.
+    #[must_use]
+    pub fn decorates(&self) -> bool {
+        !self.reduced && self.character == UiCharacter::Expressive
+    }
+
+    /// **A chamada única do pintor:** diz o alvo, recebe o valor de agora.
+    ///
+    /// ⚠️ **A primeira vez que um id é visto NÃO anima** — ele chega ao alvo. Um widget que acaba
+    /// de aparecer não tem de onde vir, e animá-lo do zero seria inventar uma história que não
+    /// aconteceu.
+    pub fn animate(&mut self, id: NodeId, target: f32, role: Role) -> f32 {
+        let Some(spring) = self.law(role) else {
+            // Instantâneo: nem sequer lembra. Um `Role::Number` nunca ocupa memória.
+            self.tracks.remove(&id);
+            return target;
+        };
+        let _ = spring;
+        match self.tracks.get_mut(&id) {
+            None => {
+                self.tracks.insert(
+                    id,
+                    Track {
+                        from: target,
+                        to: target,
+                        flight: None,
+                        role,
+                        idle_s: 0.0,
+                    },
+                );
+                target
+            }
+            Some(t) => {
+                t.idle_s = 0.0;
+                t.role = role;
+                if (t.to - target).abs() > f32::EPSILON {
+                    // ⚠️ INTERRUPÇÃO — a lei do `Machine::go_to`: o caminho começa no valor VIVO,
+                    // nunca no autorado. Partir do alvo antigo faria a UI SALTAR antes de voltar.
+                    let (from, v) = (t.value(), t.velocity());
+                    let span = target - from;
+                    t.from = from;
+                    t.to = target;
+                    // ⚠️ A re-normalização `v / span` é a linha que faz a interrupção funcionar: a
+                    // `SpringState` mede o caminho em [0,1], então uma velocidade em unidades de
+                    // VALOR tem de ser dividida pelo comprimento NOVO. Sem isto um alvo próximo
+                    // herda uma velocidade enorme e estala.
+                    t.flight = Some(if span.abs() > f32::EPSILON {
+                        SpringState::resuming(f64::from(v / span))
+                    } else {
+                        SpringState::at_rest()
+                    });
+                }
+                t.value()
+            }
+        }
+    }
+
+    /// Anda o relógio. **Uma vez por quadro, com o `dt` de PAREDE** — nunca uma contagem de
+    /// quadros (a lição que o `wall_dt` do `render_loop` já traz escrita, e que o `ToastQueue`
+    /// passou anos sem aprender).
+    pub fn advance(&mut self, dt: f64) {
+        let laws: Vec<(NodeId, Option<Spring>)> = self
+            .tracks
+            .iter()
+            .map(|(id, t)| (*id, self.law(t.role)))
+            .collect();
+        for (id, law) in laws {
+            let Some(t) = self.tracks.get_mut(&id) else {
+                continue;
+            };
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                t.idle_s += dt as f32;
+            }
+            if let (Some(s), Some(spring)) = (t.flight.as_mut(), law)
+                && s.advance(dt, spring)
+            {
+                // ⚠️ Assentar põe o valor EXACTO e larga o voo — a lei do `arrive`. Sem ela a mola
+                // converge assintoticamente e o app integra para sempre.
+                t.flight = None;
+            }
+        }
+        // ⚠️ A PODA é o que torna verdadeira a alegação de custo: sem ela o mapa cresce
+        // monotonamente com ids transientes e o `O(...)` vira falso em silêncio.
+        self.tracks.retain(|_, t| t.idle_s < PRUNE_AFTER_S);
+    }
+
+    /// Quantas coisas estão **em voo** — o número que custa integração por quadro.
+    #[must_use]
+    pub fn in_flight(&self) -> usize {
+        self.tracks.values().filter(|t| t.flight.is_some()).count()
+    }
+
+    /// Quantos ids são **lembrados** (em voo ou assentados). Grandeza diferente da de cima.
+    #[must_use]
+    pub fn remembered(&self) -> usize {
+        self.tracks.len()
+    }
+
+    /// Esquece tudo — troca de documento, de tela, ou o fim de um smoke.
+    pub fn forget(&mut self) {
+        self.tracks.clear();
+    }
+}
+
+#[cfg(test)]
+#[path = "motion_tests.rs"]
+mod motion_tests;

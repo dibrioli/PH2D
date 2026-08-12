@@ -121,7 +121,6 @@ mod machine;
 mod pose;
 mod role;
 mod sets;
-mod spring;
 mod transition;
 
 pub use binding::SignalBinding;
@@ -129,7 +128,12 @@ pub use machine::Machine;
 pub use pose::{ObjectPose, UiState};
 pub use role::StateRole;
 pub use sets::{DEFAULT_DURATION_S, DEFAULT_EASING, HostStates, MAX_DURATION_S, StateSets};
-pub use spring::{
+// ⚠️ **A mola mudou-se para uma crate-folha** (`ph2d-spring`, 2026-08-12) e é **re-exportada
+// daqui** — todo consumidor desta crate continua a escrever `ph2d_ui_state::Spring` e não muda um
+// byte. A mudança de casa foi o chrome do próprio app passar a precisar dela: copiá-la daria uma
+// segunda resposta a *"como uma mola integra"*, e pôr a `ph2d-editor-core` a depender desta crate
+// arrastaria `ph2d-vec-scene` + `ph2d-vec-blend` para dentro de todo painel.
+pub use ph2d_spring::{
     DEFAULT_DAMPING, DEFAULT_STIFFNESS, MAX_DAMPING, MAX_STIFFNESS, MIN_DAMPING, MIN_STIFFNESS,
     Spring, SpringState,
 };

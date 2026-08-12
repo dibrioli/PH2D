@@ -10,9 +10,9 @@
 
 use crate::pose::{ObjectPose, UiState};
 use crate::role::StateRole;
-use crate::spring::{Spring, SpringState};
 use crate::transition::Transition;
 use ph2d_anim::Easing;
+use ph2d_spring::{Spring, SpringState};
 
 /// **O que faz o `t` andar.** Ou o relógio deformado por uma curva, ou uma mola.
 ///

@@ -3,8 +3,8 @@
 use crate::binding::SignalBinding;
 use crate::pose::UiState;
 use crate::role::StateRole;
-use crate::spring::Spring;
 use ph2d_anim::{Easing, EasingFamily, EasingMode};
+use ph2d_spring::Spring;
 use ph2d_vec_scene::VecPathId;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

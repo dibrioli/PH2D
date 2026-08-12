@@ -30,6 +30,9 @@ ph2d-vec-blend = { path = "../ph2d-vec-blend" }
 # das ferramentas de desenho cuja edição não animaria. A casa do tipo é esta folha, e é dela que
 # vem a mistura (`WidthStops::mix`): quem define `at` é quem pode garantir as pontas.
 ph2d-stroke-width = { path = "../ph2d-stroke-width" }
+# A MOLA. Vive numa folha própria desde 2026-08-12 (o chrome do app também a usa) e é
+# RE-EXPORTADA daqui, para nenhum consumidor desta crate mudar.
+ph2d-spring = { path = "../ph2d-spring" }
 serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]

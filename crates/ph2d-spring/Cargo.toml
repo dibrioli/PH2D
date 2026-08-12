@@ -1,0 +1,19 @@
+[package]
+name = "ph2d-spring"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# **A MOLA, e ela é uma FOLHA de propósito.**
+#
+# Ela nasceu dentro da `ph2d-ui-state` (a UI que o ARTISTA autora) e mudou-se para aqui quando o
+# chrome do próprio app passou a precisar dela — e a alternativa era pior nas duas direções:
+# copiá-la daria uma SEGUNDA resposta a *"como uma mola integra"* (a divergência só apareceria
+# numa screenshot), e pôr a `ph2d-editor-core` a depender da `ph2d-ui-state` arrastaria
+# `ph2d-vec-scene` + `ph2d-vec-blend` para dentro de TODO painel — o chrome a depender do modelo
+# de documento, que é a camada ao contrário.
+#
+# ⚠️ Zero dependência além do `serde` (os parâmetros são autorados e viajam no arquivo). Se um dia
+# ela precisar de mais alguma coisa, essa coisa está no sítio errado.
+[dependencies]
+serde = { version = "1", features = ["derive"] }

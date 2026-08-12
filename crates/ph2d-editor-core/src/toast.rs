@@ -5,7 +5,7 @@
 //! interromper."
 //!
 //! - **Stack** at the top-center of the canvas (above all panels).
-//! - **Auto-dismiss** after `Toast::ttl_frames` (default ~3 s @ 60 Hz).
+//! - **Auto-dismiss** after `Toast::ttl_s` (default 3 s, de relógio de PAREDE).
 //! - **Live region** in the a11y tree (per ADR-0023 §10) so screen
 //!   readers announce the latest toast without stealing focus.
 //! - **Bounded queue** (32 entries) — runaway notifications get
@@ -38,21 +38,29 @@ impl ToastSeverity {
 pub struct Toast {
     pub message: String,
     pub severity: ToastSeverity,
-    pub ttl_frames: u32,
-    /// Frames since the toast was pushed. Caller calls `tick` once
-    /// per frame; toast removes itself when `age >= ttl_frames`.
-    pub age: u32,
+    /// Quanto tempo, em **SEGUNDOS**, este toast vive.
+    pub ttl_s: f32,
+    /// **Segundos** desde que o toast foi empurrado. O chamador chama `tick(dt)` uma vez por
+    /// quadro com o `dt` de PAREDE; o toast remove-se quando `age_s >= ttl_s`.
+    pub age_s: f32,
 }
 
 impl Toast {
-    pub const DEFAULT_TTL_FRAMES: u32 = 180; // 3 s @ 60 Hz
+    /// ⚠️ **Três segundos, e agora eles são mesmo três segundos.**
+    ///
+    /// Isto era `DEFAULT_TTL_FRAMES: u32 = 180 // 3 s @ 60 Hz` — uma contagem de QUADROS, que a
+    /// 30 fps dava **6 s** e a 120 dava **1,5 s**. O mesmo repositório já tinha aprendido a lição
+    /// um arquivo adiante, com o motivo escrito no comentário do `wall_dt`
+    /// (`render_loop/mod.rs`: *"…which made the sprites race + jitter"*) — *o conhecimento existia
+    /// no prédio e não tinha atravessado a porta*.
+    pub const DEFAULT_TTL_S: f32 = 3.0;
 
     pub fn new(message: impl Into<String>, severity: ToastSeverity) -> Self {
         Self {
             message: message.into(),
             severity,
-            ttl_frames: Self::DEFAULT_TTL_FRAMES,
-            age: 0,
+            ttl_s: Self::DEFAULT_TTL_S,
+            age_s: 0.0,
         }
     }
 
@@ -69,8 +77,8 @@ impl Toast {
         Self::new(message, ToastSeverity::ErrorState)
     }
 
-    pub fn ttl_frames(mut self, n: u32) -> Self {
-        self.ttl_frames = n;
+    pub fn ttl_seconds(mut self, s: f32) -> Self {
+        self.ttl_s = s;
         self
     }
 
@@ -127,12 +135,14 @@ impl ToastQueue {
         true
     }
 
-    /// Tick every toast by 1 frame; drop expired ones.
-    pub fn tick(&mut self) {
+    /// Anda `dt` **segundos de parede**; larga os expirados.
+    ///
+    /// ⚠️ **Segundos, nunca quadros** — ver [`Toast::DEFAULT_TTL_S`].
+    pub fn tick(&mut self, dt: f32) {
         for t in &mut self.inner {
-            t.age = t.age.saturating_add(1);
+            t.age_s += dt;
         }
-        while self.inner.front().is_some_and(|t| t.age >= t.ttl_frames) {
+        while self.inner.front().is_some_and(|t| t.age_s >= t.ttl_s) {
             self.inner.pop_front();
         }
     }
@@ -175,9 +185,9 @@ mod tests {
     #[test]
     fn tick_expires_old_toasts() {
         let mut q = ToastQueue::new();
-        q.push(Toast::info("ephemeral").ttl_frames(2));
+        q.push(Toast::info("ephemeral").ttl_seconds(2.0 / 60.0));
         for _ in 0..3 {
-            q.tick();
+            q.tick(1.0 / 60.0);
         }
         assert!(q.is_empty());
     }
@@ -185,9 +195,9 @@ mod tests {
     #[test]
     fn tick_keeps_fresh_toasts() {
         let mut q = ToastQueue::new();
-        q.push(Toast::info("fresh").ttl_frames(60));
+        q.push(Toast::info("fresh").ttl_seconds(1.0));
         for _ in 0..30 {
-            q.tick();
+            q.tick(1.0 / 60.0);
         }
         assert_eq!(q.len(), 1);
     }
@@ -240,5 +250,37 @@ mod tests {
         assert_eq!(d.len(), n.len());
         assert!(!d.push(Toast::info("x")), "a default enche depois da new");
         assert!(!n.push(Toast::info("x")));
+    }
+}
+
+#[cfg(test)]
+mod wall_clock_tests {
+    use super::*;
+
+    /// ⭐ **TRÊS SEGUNDOS SÃO TRÊS SEGUNDOS A QUALQUER TAXA DE QUADROS.**
+    ///
+    /// Este era o único relógio do chrome, e ele contava QUADROS: a 30 fps um toast de "3 s" durava
+    /// **6**, a 120 durava **1,5**. *Mutação: voltar a `age += 1` e comparar com 180 ⇒ as duas
+    /// taxas divergem e o gate diz quanto.*
+    #[test]
+    fn a_toast_lives_three_seconds_at_any_frame_rate() {
+        for fps in [30.0_f32, 60.0, 120.0] {
+            let mut q = ToastQueue::default();
+            q.push(Toast::info("oi"));
+            let dt = 1.0 / fps;
+            let mut t = 0.0_f32;
+            // Um pouco antes dos 3 s ele ainda está lá.
+            while t < 2.9 {
+                q.tick(dt);
+                t += dt;
+            }
+            assert_eq!(q.len(), 1, "morreu cedo a {fps} fps (t = {t})");
+            // E um pouco depois, não está.
+            while t < 3.1 {
+                q.tick(dt);
+                t += dt;
+            }
+            assert_eq!(q.len(), 0, "sobreviveu aos 3 s a {fps} fps (t = {t})");
+        }
     }
 }

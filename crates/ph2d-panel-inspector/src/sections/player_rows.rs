@@ -352,7 +352,22 @@ const LEDGE_ROWS: [PlayerRow; 2] = [
     ),
 ];
 
-/// **A TABELA da §14** — dez cards, e os números dentro deles.
+/// **O PLANEIO** (`W-Glide`) — uma row, e a razão de ser uma só.
+///
+/// ⚠️ **Um TETO, e nenhum knob de "quanto tempo"**: o planeio dura enquanto o
+/// dedo dura (é um regime, como o agarrar-se), então um segundo número que o
+/// limitasse seria uma resposta a uma pergunta que o botão já responde.
+///
+/// ⚠️ **E não há knob de BOTÃO**: é o pulo, segurado na queda, que é o idioma de
+/// Kirby e Yoshi — e ele COMPÕE com o pulo do ar em vez de brigar, porque um é
+/// borda e o outro é nível.
+const GLIDE_ROWS: [PlayerRow; 1] = [(
+    "Glide Fall (m/s)",
+    ids::INSP_PLAYER_GLIDE_FALL,
+    "Top descent speed while holding jump in a fall. 0 = off.",
+)];
+
+/// **A TABELA da §14** — onze cards, e os números dentro deles.
 ///
 /// ⚠️ **A contagem NÃO está escrita aqui**, e é uma correção: o doc dizia *"oito
 /// cards, e os vinte e quatro números"* enquanto a tabela já pintava **33** — um
@@ -370,7 +385,7 @@ const LEDGE_ROWS: [PlayerRow; 2] = [
 /// pergunta ele pertence"*, e ela passou a estar escrita na tela (Enio,
 /// 2026-08-04: *"esse tanto de parâmetros juntos não fica bem; organize-os em
 /// cards com um título que facilite o entendimento"*).
-pub(crate) const PLAYER_CARDS: [(&str, ph2d_a11y::NodeId, &[PlayerRow]); 10] = [
+pub(crate) const PLAYER_CARDS: [(&str, ph2d_a11y::NodeId, &[PlayerRow]); 11] = [
     ("LEG", ids::INSP_PLAYER_CARD_LEG, &LEG_ROWS),
     ("WALK", ids::INSP_PLAYER_CARD_WALK, &WALK_ROWS),
     ("JUMP", ids::INSP_PLAYER_CARD_JUMP, &JUMP_ROWS),
@@ -381,6 +396,7 @@ pub(crate) const PLAYER_CARDS: [(&str, ph2d_a11y::NodeId, &[PlayerRow]); 10] = [
     ("CROUCH", ids::INSP_PLAYER_CARD_CROUCH, &CROUCH_ROWS),
     ("SWIM", ids::INSP_PLAYER_CARD_SWIM, &SWIM_ROWS),
     ("LEDGE", ids::INSP_PLAYER_CARD_LEDGE, &LEDGE_ROWS),
+    ("GLIDE", ids::INSP_PLAYER_CARD_GLIDE, &GLIDE_ROWS),
 ];
 
 /// Quantas rows numéricas a seção pinta — **contadas da tabela**, nunca escritas

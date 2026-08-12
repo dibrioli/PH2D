@@ -281,6 +281,15 @@ pub const INSP_PLAYER_LEDGE_GRAB: NodeId = hash_node_id("insp.player.ledge.grab"
 /// manter de acordo para o movimento não mudar de ritmo a meio.
 pub const INSP_PLAYER_LEDGE_SPEED: NodeId = hash_node_id("insp.player.ledge.speed");
 
+/// **O TETO da descida enquanto se plana**, m/s (`W-Glide`). `0` desliga.
+///
+/// ⚠️ **Um teto, não a velocidade do planeio** — ele só age sobre quem já cai
+/// mais depressa, então segurar o botão a subir ou no ápice não faz nada. As
+/// três formas candidatas e a medição que escolheu esta estão no topo do
+/// `ph2d_platformer::glide`.
+pub const INSP_PLAYER_GLIDE_FALL: NodeId = hash_node_id("insp.player.glide.fall");
+
+pub const INSP_PLAYER_CARD_GLIDE: NodeId = hash_node_id("insp_player_card_glide");
 pub const INSP_PLAYER_CARD_LEDGE: NodeId = hash_node_id("insp_player_card_ledge");
 pub const INSP_PLAYER_CARD_LEG: NodeId = hash_node_id("insp_player_card_leg");
 pub const INSP_PLAYER_CARD_WALK: NodeId = hash_node_id("insp_player_card_walk");

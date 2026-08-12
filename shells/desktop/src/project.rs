@@ -427,7 +427,14 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// então um projeto salvo em v74 reabre exatamente como estava — e o sensor
 /// novo nem sequer é castado.
 ///
-const PROJECT_SCHEMA: u32 = 75;
+/// v76 (physics, W-Glide — PLANAR): o `PlatformPlayer` ganhou
+/// `glide_fall_speed`, apendado ao FIM, e o postcard é posicional ⇒ quebra
+/// dura. ⚠️ **Este degrau também NÃO move física:** o teto nasce em `0`, que é
+/// a capacidade DESLIGADA, então um projeto salvo em v75 reabre a cair
+/// exatamente como caía — e o `physics_ecs_c9` sai byte-idêntico, que é a prova
+/// executável.
+///
+const PROJECT_SCHEMA: u32 = 76;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

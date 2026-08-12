@@ -359,6 +359,7 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         // acompanha o do arranque — é o mesmo tipo de gesto.
         (ids::INSP_PLAYER_LEDGE_GRAB, 0.0, 0.0, 2.0, 0.05), // LITERAL-PX-OK: m
         (ids::INSP_PLAYER_LEDGE_SPEED, 3.0, 0.0, 20.0, 0.25), // LITERAL-PX-OK: m/s
+        (ids::INSP_PLAYER_GLIDE_FALL, 0.0, 0.0, 20.0, 0.25), // LITERAL-PX-OK: m/s
         // A REAÇÃO (W6), em FRAÇÃO da força que o personagem faz. ⚠️ O piso é 0
         // (nada volta) e o teto é 1 (volta inteira) porque **acima de 1 o
         // personagem devolveria mais do que recebeu** — inventar energia, e o

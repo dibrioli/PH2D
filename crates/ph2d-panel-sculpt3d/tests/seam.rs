@@ -18,8 +18,8 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_sculpt3d::{
-    Sculpt3dIntent, Sculpt3dPanel, Sculpt3dPanelState, Sculpt3dSnapshot, Sculpt3dUi, drain_intents,
-    ids, rows, set_current_sculpt3d,
+    Sculpt3dIntent, Sculpt3dPanel, Sculpt3dPanelState, Sculpt3dSnapshot, Sculpt3dUi, UiLevel,
+    drain_intents, ids, rows, set_current_sculpt3d,
 };
 use ph2d_sculpt3d::{Alpha, Falloff, RefMode, TransformKind, Verb};
 use ph2d_ui_testkit::MockPanelHost;
@@ -486,6 +486,12 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
     // vez que este arquivo escreve a mesma frase — *a fixture tem de conter o
     // fenômeno*.
     ui.brush.alpha = Some(Alpha::Strata);
+    // ⚠️ **E em PRO, pela MESMA frase, uma wave depois.** As rows de Pro são
+    // puladas em Basic — que é o default —, então a varredura passaria por cima
+    // do Falloff, do Plane Offset, do Pinch e da Dureza e ficaria verde sobre
+    // quatro controles que nunca foram clicados. *A fixture tem de conter o
+    // fenômeno* — a quarta vez que este arquivo escreve isto.
+    ui.ui_level = UiLevel::Pro;
     let (mut host, mut state) = arrange(ui.clone());
     let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
 
@@ -499,7 +505,11 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
         // tinha o `!` invertido: ela exigia as rows que o Crease NÃO pinta e
         // passava sobre um conjunto quase vazio — verde sobre nada, a forma exata
         // de gate que este arquivo existe para não ter.
-        if (row.show)(&ui) {
+        // ⚠️ **`visible` e não `show`:** as duas perguntas são independentes
+        // (*este pincel a lê?* × *este nível a oferece?*) e o pintor faz as duas
+        // por uma porta só. Perguntar só a primeira aqui exigiria em PRO rows
+        // que o painel não desenha, e em BASIC deixaria as de Pro fora da conta.
+        if row.visible(&ui) {
             want.push((row.label.to_string(), row.slider));
             want.push((row.label.to_string(), row.chip));
         }
@@ -645,6 +655,11 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
 fn a_conditional_row_is_absent_with_the_wrong_tool() {
     let mut ui = Sculpt3dUi::default();
     ui.brush.verb = Verb::Smooth; // nem plano nem crease
+    // ⚠️ **PRO nas DUAS metades, e é o que torna o gate honesto.** As duas rows
+    // são de Pro, então em Basic a metade negativa passaria pelo motivo ERRADO
+    // (escondidas pelo NÍVEL, não pelo verbo) — um gate que não pode falhar pela
+    // razão que alega. Fixando o nível, o que sobra a variar é o verbo.
+    ui.ui_level = UiLevel::Pro;
     let (mut host, mut state) = arrange(ui.clone());
     let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
     for id in [ids::SCULPT3D_PLANE_OFFSET, ids::SCULPT3D_PINCH] {
@@ -655,6 +670,7 @@ fn a_conditional_row_is_absent_with_the_wrong_tool() {
     }
     // E o controle: com o verbo que os lê, eles aparecem.
     ui.brush.verb = Verb::Clay;
+    ui.ui_level = UiLevel::Pro;
     let (mut host, mut state) = arrange(ui.clone());
     let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
     assert!(
@@ -1322,5 +1338,201 @@ fn apply_to_all_stamps_the_current_reference_onto_every_verb() {
         got.mode_by_verb.iter().all(|&m| m == RefMode::B),
         "o carimbo tinha de alcançar os dezasseis: {:?}",
         got.mode_by_verb
+    );
+}
+
+// ── Basic × Pro (§2 do plano) ───────────────────────────────────────────────
+
+/// **Cada nível tem um chip que o escolhe.**
+#[test]
+fn every_ui_level_has_a_chip_that_selects_it() {
+    for (i, &want) in UiLevel::ALL.iter().enumerate() {
+        // Parte-se sempre do OUTRO, senão o chip do default passaria sem fazer
+        // nada e o gate ficaria verde sobre um clique inerte.
+        let ui = Sculpt3dUi {
+            ui_level: if want == UiLevel::Basic {
+                UiLevel::Pro
+            } else {
+                UiLevel::Basic
+            },
+            ..Sculpt3dUi::default()
+        };
+        let (mut host, mut state) = arrange(ui);
+        let outcome = host.apply_panel_event::<Sculpt3dPanel>(
+            &mut state,
+            WidgetEvent::Click(ids::SCULPT3D_UI_LEVEL[i]),
+        );
+        assert_eq!(outcome, EventOutcome::Consumed, "o chip {i} não despacha");
+        let Sculpt3dIntent::SetUi(got) = only_intent("nível") else {
+            panic!("intent errado")
+        };
+        assert_eq!(got.ui_level, want, "o chip {i} armou o nível errado");
+    }
+}
+
+/// **O chip DIVULGA e nunca DECIDE** — trocar de nível deixa todo o resto do
+/// estado autorado byte a byte onde estava.
+///
+/// ⚠️ **É a propriedade que separa divulgação progressiva de política.** No dia
+/// em que alguém fizer o Basic *zerar* um knob que ele esconde (o reflexo
+/// natural: *"se não se vê, não deveria agir"*), o artista perderia trabalho
+/// autorado ao mudar com que profundidade OLHA — e nenhum outro gate desta
+/// suíte veria isso, porque todos fixam o nível.
+#[test]
+fn the_detail_chip_discloses_and_never_decides() {
+    // Um estado com os quatro knobs de Pro LONGE dos defaults: se o nível
+    // decidisse alguma coisa, é aqui que apareceria.
+    let mut before = Sculpt3dUi::default();
+    before.brush.verb = Verb::Crease;
+    before.brush.plane_offset = -0.4;
+    before.brush.pinch = 0.9;
+    before.brush.hardness = 0.6;
+    before.brush.falloff = Falloff::Pow4;
+    before.ui_level = UiLevel::Basic;
+
+    // ⚠️ **As DUAS direções, e a primeira mutação provou que uma só não basta:**
+    // *esconder* é o gesto em que o reflexo de zerar aparece, então um gate que
+    // só sobe de Basic para Pro passa sobre um Basic que apaga o que esconde
+    // ([[feedback_layered_defenses_need_per_layer_gates]]).
+    for (from, to, chip) in [
+        (UiLevel::Basic, UiLevel::Pro, 1usize),
+        (UiLevel::Pro, UiLevel::Basic, 0usize),
+    ] {
+        before.ui_level = from;
+        let (mut host, mut state) = arrange(before.clone());
+        host.apply_panel_event::<Sculpt3dPanel>(
+            &mut state,
+            WidgetEvent::Click(ids::SCULPT3D_UI_LEVEL[chip]),
+        );
+        let Sculpt3dIntent::SetUi(after) = only_intent("nível") else {
+            panic!("intent errado")
+        };
+        assert_eq!(
+            after.ui_level, to,
+            "o nível não mudou de {from:?} para {to:?}"
+        );
+        // O oráculo é a IGUALDADE do resto: reescrever `after` com o nível de
+        // volta tem de devolver exatamente o estado de partida.
+        let mut rolled_back = after.clone();
+        rolled_back.ui_level = before.ui_level;
+        assert_eq!(
+            rolled_back, before,
+            "ir de {from:?} para {to:?} mexeu em algo que não é o nível"
+        );
+    }
+}
+
+/// **Uma row de Pro é alcançável em Pro e ausente em Basic.**
+///
+/// ⚠️ **As duas metades, e nenhuma basta:** só a primeira deixaria passar um
+/// Basic que não esconde nada (o chip vira decoração); só a segunda deixaria
+/// passar uma row que *nunca* é pintada — a affordance morta que esta casa varre
+/// a cada wave. E o laço percorre a TABELA, então uma row de Pro nova nasce
+/// coberta pelas duas.
+#[test]
+fn a_pro_row_is_reachable_in_pro_and_absent_in_basic() {
+    // ⚠️ **DUAS fixtures, porque as duas rows condicionais de Pro se EXCLUEM
+    // por desenho:** o `plane_offset` é dos verbos de plano e o `pinch` é do
+    // Crease, então nenhum verbo as tem juntas — uma fixture só varreria duas
+    // das três e o `>= 3` seria impossível de satisfazer honestamente.
+    let mut seen: Vec<&'static str> = Vec::new();
+    for verb in [Verb::Crease, Verb::Clay] {
+        let mut ui = Sculpt3dUi::default();
+        ui.brush.verb = verb;
+
+        ui.ui_level = UiLevel::Pro;
+        let (mut host, mut state) = arrange(ui.clone());
+        let in_pro = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        ui.ui_level = UiLevel::Basic;
+        let (mut host, mut state) = arrange(ui.clone());
+        let in_basic = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+
+        for row in rows::rows().filter(|r| r.level == UiLevel::Pro && (r.show)(&ui)) {
+            if !seen.contains(&row.label) {
+                seen.push(row.label);
+            }
+            assert!(
+                in_pro.iter().any(|(id, _)| *id == row.slider),
+                "`{}` é de Pro e o Pro não a pintou com o {} em mãos",
+                row.label,
+                verb.label()
+            );
+            assert!(
+                !in_basic.iter().any(|(id, _)| *id == row.slider),
+                "`{}` é de Pro e o Basic a pintou assim mesmo",
+                row.label
+            );
+        }
+        // E o seletor de curva, que não é uma row da tabela mas segue a mesma lei.
+        assert!(
+            in_pro.iter().any(|(id, _)| *id == ids::SCULPT3D_FALLOFF[0]),
+            "o Falloff é de Pro e o Pro não o pintou"
+        );
+        assert!(
+            !in_basic
+                .iter()
+                .any(|(id, _)| *id == ids::SCULPT3D_FALLOFF[0]),
+            "o Falloff é de Pro e o Basic o pintou assim mesmo"
+        );
+    }
+    assert!(
+        seen.len() >= 3,
+        "a fixture tem de conter o fenômeno: só {:?} row(s) de Pro varridas",
+        seen
+    );
+}
+
+/// **O Basic nunca esconde Raio nem Força** — sejam quais forem o verbo e o
+/// padrão.
+///
+/// ⚠️ É a metade da regra que o §2 chama de *amputação*: esconder um knob que
+/// alguém armou é divulgação progressiva; esconder os dois que TODO pincel tem
+/// deixaria o artista sem ferramenta e sem nada na tela explicando por quê.
+#[test]
+fn the_basic_level_never_hides_the_two_knobs_every_brush_has() {
+    for v in Verb::ALL {
+        let mut ui = Sculpt3dUi::default();
+        ui.brush.verb = v;
+        ui.ui_level = UiLevel::Basic;
+        for id in [ids::SCULPT3D_RADIUS, ids::SCULPT3D_STRENGTH] {
+            let row = rows::rows().find(|r| r.slider == id).expect("na tabela");
+            assert!(
+                row.visible(&ui),
+                "`{}` sumiu em Basic com o {} em mãos",
+                row.label,
+                v.label()
+            );
+        }
+    }
+}
+
+/// **A DUREZA tem uma row, e ela escreve o campo que o kernel lê.**
+///
+/// ⚠️ O gate existe porque o knob nasceu no kernel numa wave e ficou **sem
+/// porta** — gateado dos dois lados, medido, e inalcançável por qualquer gesto.
+/// Um campo sem controle é uma capacidade que ninguém tem.
+#[test]
+fn the_hardness_row_writes_the_field_the_kernel_reads() {
+    let row = rows::rows()
+        .find(|r| r.slider == ids::SCULPT3D_HARDNESS)
+        .expect("a dureza está na tabela");
+    assert_eq!(row.level, UiLevel::Pro, "a dureza é um knob de Pro");
+    let mut ui = Sculpt3dUi::default();
+    (row.set)(&mut ui, 0.75);
+    assert!(
+        (ui.brush.hardness - 0.75).abs() < 1e-6,
+        "a row da dureza não escreveu `brush.hardness`: {}",
+        ui.brush.hardness
+    );
+    assert!(
+        (row.get)(&ui) - 0.75 < 1e-6,
+        "e o retrato dela tem de ler o mesmo número"
+    );
+    // ⚠️ E o TETO é alcançável de propósito: `1` é o disco duro, que o
+    // `shaped_distance` trata num braço PRÓPRIO (a fórmula geral divide por
+    // `1 − h`). Uma pista que parasse antes o tornaria inexprimível.
+    assert!(
+        (row.max - 1.0).abs() < 1e-6,
+        "a pista da dureza tem de alcançar o disco duro"
     );
 }

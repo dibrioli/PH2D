@@ -13,14 +13,12 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
-use ph2d_sculpt3d::{Alpha, Falloff};
 use ph2d_tokens::{ROW_H_PX, Spacing};
 
-use super::mask_tools::paint_mask_tools;
+use super::brush::{paint_brush_tail, paint_level_row};
 use super::tool::paint_tool;
 use super::widgets::{command, header, labelled_seg, readout, row_of_two, toggle};
 
-use crate::preview;
 use crate::rows;
 use crate::state::Sculpt3dSnapshot;
 
@@ -61,178 +59,35 @@ pub(super) fn paint_sections(
     y_in: f32,
 ) -> f32 {
     let mut y = paint_tool(ctx, snap, x, w, y_in);
-    y = knob_section(ctx, snap, &rows::SECTIONS[0], x, w, y, paint_brush_tail);
+    y = knob_section(
+        ctx,
+        snap,
+        &rows::SECTIONS[0],
+        x,
+        w,
+        y,
+        paint_level_row,
+        paint_brush_tail,
+    );
     y = paint_symmetry(ctx, snap, x, w, y);
     y = paint_topology(ctx, snap, x, w, y);
-    y = knob_section(ctx, snap, &rows::SECTIONS[1], x, w, y, paint_shading_tail);
+    y = knob_section(
+        ctx,
+        snap,
+        &rows::SECTIONS[1],
+        x,
+        w,
+        y,
+        no_head,
+        paint_shading_tail,
+    );
     y = paint_scene(ctx, snap, x, w, y);
     paint_bake(ctx, snap, x, w, y)
 }
 
-/// **A ENTREGA** — a forma escrita num objeto da cena 2D (`docs/3D/02.2`, o
-/// objetivo 2 do módulo).
-///
-/// ⚠️ **Seção própria, e por último.** As cinco de cima descrevem *como a
-/// escultura é*; esta descreve *o que sai dela*, e é o gesto mais raro do painel
-/// — que é exatamente a lei de ordenação que o doc do topo declara. Uma linha na
-/// cauda do sombreamento a colaria no *Bake Occlusion*, e os dois carregam a
-/// palavra **bake** significando coisas diferentes: aquele mede um canal e o
-/// escreve na MALHA, este escreve a forma inteira num SPRITE.
-///
-/// ⚠️ **O botão é SEMPRE pintado, e a dica é que some.** Esconder o botão sem
-/// alvo tornaria a única entrega do módulo invisível justamente para quem ainda
-/// não sabe que ela existe — que é a queixa que ele veio resolver (até aqui o
-/// gesto tinha uma porta só, o `Shift+B`, e nada na tela a mencionava). A
-/// condição é DITA, no molde do `ao_stale`: a linha só existe quando há o que
-/// avisar, porque um aviso permanente vira moldura.
-fn paint_bake(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
-    let (open, mut y) = header(
-        ctx,
-        ids::SCULPT3D_SEC_BAKE,
-        tr("panel.sculpt3d.section.bake"),
-        x,
-        w,
-        y,
-    );
-    if !open {
-        return y;
-    }
-    y = command(
-        ctx,
-        ids::SCULPT3D_BAKE_SPRITE,
-        tr("panel.sculpt3d.bake_sprite"),
-        x,
-        w,
-        y,
-    );
-    if !snap.has_bake_target {
-        y = readout(ctx, tr("panel.sculpt3d.bake_sprite.hint"), x, w, y);
-    }
-    y + Spacing::Md.px()
-}
-
-/// O que vem DEPOIS dos knobs do pincel: a curva e as operações de máscara.
-fn paint_brush_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
-    // O falloff logo abaixo dos knobs: ele é a FORMA do peso, e a força é
-    // quanto dele se aplica.
-    let selected = Falloff::ALL
-        .iter()
-        .position(|&f| f == snap.ui.brush.falloff)
-        .unwrap_or(0);
-    let labels: Vec<&str> = Falloff::ALL.iter().map(|f| f.label()).collect();
-    let y = labelled_seg(
-        ctx,
-        tr("panel.sculpt3d.falloff"),
-        ids::SCULPT3D_SEC_BRUSH,
-        &ids::SCULPT3D_FALLOFF,
-        &labels,
-        selected,
-        x,
-        w,
-        y,
-    );
-    // **O PADRÃO**, logo abaixo do falloff — os dois moldam o MESMO peso: o
-    // falloff diz como ele cai do centro à borda, o alpha diz onde ele age
-    // dentro disso. A primeira opção é NENHUM, e o deslocamento de um é a mesma
-    // aritmética que o seletor de matcap usa (o `event` a desfaz com
-    // `checked_sub`; as duas metades vivem uma ao lado da outra de propósito).
-    let mut labels: Vec<&str> = vec![tr("panel.sculpt3d.alpha.none")];
-    labels.extend(Alpha::ALL.iter().map(|a| a.label()));
-    // ⚠️ **O SLOT DE IMAGEM tem o nome do SPRITE**, e ele é o ÚLTIMO chip.
-    //
-    // ⚠️ **Isto REVOGA a decisão que estava escrita aqui.** A versão anterior
-    // dizia que uma imagem nunca está na `ALL`, que o `position` devolve `None`
-    // para ela e que cair em *nenhum* era honesto — *"o chip aceso não mente
-    // sobre um padrão que aquela fileira não oferece"*. A premissa era que a
-    // fileira não o oferecia; agora ela oferece, e o que sobrava era um painel
-    // dizendo **None** com um padrão vivo e um preview desenhado logo abaixo:
-    // o artista lia o painel como quebrado antes de olhar para a miniatura.
-    //
-    // ⚠️ **O nome vem do RETRATO, não do `Alpha`.** O motor guarda os pixels; de
-    // onde eles vieram é proveniência da CENA. Um `label()` que devolvesse o
-    // nome do sprite obrigaria o enum a carregar uma `String` que kernel nenhum
-    // lê.
-    if let Some(name) = snap.alpha_image_name.as_deref() {
-        labels.push(name);
-    }
-    let selected = crate::state::alpha_chip_index(snap);
-    let mut y = labelled_seg(
-        ctx,
-        tr("panel.sculpt3d.alpha"),
-        ids::SCULPT3D_SEC_BRUSH,
-        &ids::SCULPT3D_ALPHA,
-        &labels,
-        selected,
-        x,
-        w,
-        y,
-    );
-    // **O ALPHA POR IMAGEM**, logo abaixo da fileira de nomes — e ele é um
-    // BOTÃO, não um décimo chip. A fileira lista NOMES (as nove fórmulas); uma
-    // imagem não é um nome, é uma coisa para a qual se aponta. Um chip "Image"
-    // teria de existir antes de haver pixels, e é justamente esse estado que o
-    // `Alpha::Image` torna inexprimível ao carregar a imagem dentro de si.
-    //
-    // ⚠️ **Sem sprite selecionado ele NÃO é pintado**, e não é dimming: um botão
-    // que só pode falhar é como o artista aprende que ele não funciona. É a
-    // mesma decisão do "Bake to Sprite" logo acima, que mostra uma dica no lugar.
-    if snap.has_bake_target {
-        y = command(
-            ctx,
-            ids::SCULPT3D_ALPHA_SPRITE,
-            tr("panel.sculpt3d.alpha_sprite"),
-            x,
-            w,
-            y,
-        );
-    }
-    // ⚠️ **A pista de escala vem AQUI, colada nos chips que a governam** — e não
-    // no bloco de knobs acima, que é onde ela nasceu e onde o smoke a perdeu:
-    // lá ela aparecia do nada, separada do seletor pela fileira do Falloff, e o
-    // artista lia um número sem saber de que ele era. A row continua na tabela
-    // (ver `Row::place`); o que mudou é onde ela é desenhada.
-    for row in rows::rows().filter(|r| r.place == rows::Place::AfterAlpha && (r.show)(&snap.ui)) {
-        y = paint_one_row(ctx, snap, row, x, w, y);
-    }
-    // **O PREVIEW**, logo ABAIXO das pistas que o mudam — e a posição é a mesma
-    // decisão que moveu a pista de escala para cá: um controle e o que ele
-    // governa têm de estar no campo de visão um do outro, senão o artista arrasta
-    // um número olhando para outro lugar.
-    // **O interruptor do preview NO BARRO**, entre as pistas e o quadro — os
-    // dois mostram o mesmo padrão e a caixa governa o de FORA, então ela fica
-    // onde o olho já está. ⚠️ Só com padrão armado, pela mesma razão da pista de
-    // escala: sem padrão ele é um interruptor de coisa nenhuma.
-    if snap.ui.brush.alpha.is_some() {
-        y = toggle(
-            ctx,
-            ids::SCULPT3D_ALPHA_PREVIEW,
-            tr("panel.sculpt3d.alpha_preview"),
-            snap.ui.alpha_preview,
-            x,
-            w,
-            y,
-        );
-    }
-    y = preview::paint(ctx, snap, x, w, y);
-    // **ACUMULAR**, e só onde ele faz alguma coisa. ⚠️ A pergunta é feita à
-    // PORTA do motor (`Verb::accumulates`) e não a uma lista de nomes aqui: o
-    // aplicador pergunta à mesma para honrar o clique, e duas cópias divergiriam
-    // num interruptor que aparece e não muda nada — quem tem âncora carrega o
-    // gesto TOTAL desde o pen-down, e somar totais não significa nada.
-    let y = if snap.ui.brush.verb.accumulates() {
-        toggle(
-            ctx,
-            ids::SCULPT3D_ACCUMULATE,
-            tr("panel.sculpt3d.accumulate"),
-            snap.ui.brush.accumulate,
-            x,
-            w,
-            y,
-        ) + Spacing::Sm.px()
-    } else {
-        y
-    };
-    paint_mask_tools(ctx, snap, x, w, y)
+/// A seção não tem cabeça própria.
+fn no_head(_: &mut PaintCtx, _: &Sculpt3dSnapshot, _: f32, _: f32, y: f32) -> f32 {
+    y
 }
 
 /// **O ESPELHO** — três botões INDEPENDENTES.
@@ -526,6 +381,11 @@ pub(super) fn paint_one_row(
     y + used + Spacing::Sm.px()
 }
 
+// ⚠️ **Oito, e o oitavo é o irmão simétrico do `tail`.** A alternativa era
+// perguntar `section.id == SCULPT3D_SEC_BRUSH` aqui dentro — uma ENUMERAÇÃO
+// dentro da função genérica, que é precisamente a forma que apodrece quando a
+// segunda seção ganha cabeça. Precedente do `body_desc` da física.
+#[allow(clippy::too_many_arguments)]
 fn knob_section(
     ctx: &mut PaintCtx,
     snap: &Sculpt3dSnapshot,
@@ -533,19 +393,21 @@ fn knob_section(
     x: f32,
     w: f32,
     y_in: f32,
+    head: impl Fn(&mut PaintCtx, &Sculpt3dSnapshot, f32, f32, f32) -> f32,
     tail: impl Fn(&mut PaintCtx, &Sculpt3dSnapshot, f32, f32, f32) -> f32,
 ) -> f32 {
     let (open, mut y) = header(ctx, section.id, tr(section.title), x, w, y_in);
     if !open {
         return y;
     }
+    y = head(ctx, snap, x, w, y);
     for row in section.rows {
         // ⚠️ A row condicional é PULADA, não desenhada apagada: um controle
         // apagado que ainda despacha mente, e um que não despacha é a affordance
         // morta que esta casa varre.
         // E a row de CAUDA é pulada aqui porque quem a desenha é o `tail`, ao
         // lado do controle que a governa — ver `Row::place`.
-        if row.place != rows::Place::Knobs || !(row.show)(&snap.ui) {
+        if row.place != rows::Place::Knobs || !row.visible(&snap.ui) {
             continue;
         }
         y = paint_one_row(ctx, snap, row, x, w, y);
@@ -557,4 +419,46 @@ fn knob_section(
 /// Ver [`crate::paint::readout_at`] — a porta única do readout para o preview.
 pub(super) fn readout_for(ctx: &mut PaintCtx, text: &str, x: f32, w: f32, y: f32) -> f32 {
     readout(ctx, text, x, w, y)
+}
+
+/// **A ENTREGA** — a forma escrita num objeto da cena 2D (`docs/3D/02.2`, o
+/// objetivo 2 do módulo).
+///
+/// ⚠️ **Seção própria, e por último.** As cinco de cima descrevem *como a
+/// escultura é*; esta descreve *o que sai dela*, e é o gesto mais raro do painel
+/// — que é exatamente a lei de ordenação que o doc do topo declara. Uma linha na
+/// cauda do sombreamento a colaria no *Bake Occlusion*, e os dois carregam a
+/// palavra **bake** significando coisas diferentes: aquele mede um canal e o
+/// escreve na MALHA, este escreve a forma inteira num SPRITE.
+///
+/// ⚠️ **O botão é SEMPRE pintado, e a dica é que some.** Esconder o botão sem
+/// alvo tornaria a única entrega do módulo invisível justamente para quem ainda
+/// não sabe que ela existe — que é a queixa que ele veio resolver (até aqui o
+/// gesto tinha uma porta só, o `Shift+B`, e nada na tela a mencionava). A
+/// condição é DITA, no molde do `ao_stale`: a linha só existe quando há o que
+/// avisar, porque um aviso permanente vira moldura.
+fn paint_bake(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
+    let (open, mut y) = header(
+        ctx,
+        ids::SCULPT3D_SEC_BAKE,
+        tr("panel.sculpt3d.section.bake"),
+        x,
+        w,
+        y,
+    );
+    if !open {
+        return y;
+    }
+    y = command(
+        ctx,
+        ids::SCULPT3D_BAKE_SPRITE,
+        tr("panel.sculpt3d.bake_sprite"),
+        x,
+        w,
+        y,
+    );
+    if !snap.has_bake_target {
+        y = readout(ctx, tr("panel.sculpt3d.bake_sprite.hint"), x, w, y);
+    }
+    y + Spacing::Md.px()
 }

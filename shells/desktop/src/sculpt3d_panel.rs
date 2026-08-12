@@ -46,6 +46,7 @@ impl Sculpt3dScene {
             ui: Sculpt3dUi {
                 brush: self.brush.clone(),
                 mode_by_verb: self.mode_by_verb,
+                ui_level: self.ui_level,
                 // ⚠️ **O raio publicado é o CLAMPADO**, e não o `radius_px` cru:
                 // o teto real é 1/8 da altura do viewport, então numa janela
                 // baixa o número que a pista mostraria seria um que o dab não
@@ -187,6 +188,7 @@ impl Sculpt3dScene {
     fn apply_ui(&mut self, ui: &Sculpt3dUi) {
         self.brush = ui.brush.clone();
         self.mode_by_verb = ui.mode_by_verb;
+        self.ui_level = ui.ui_level;
         // O raio autorado é o número cru; o clamp mora na porta `radius_px()`,
         // que é quem o dab e o retrato perguntam. Guardar o clampado aqui faria
         // o valor ENCOLHER de vez ao passar por uma janela baixa, e ele nunca

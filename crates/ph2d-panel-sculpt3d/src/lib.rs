@@ -37,7 +37,7 @@ pub mod state;
 mod event;
 
 pub use state::{
-    Sculpt3dIntent, Sculpt3dPanelState, Sculpt3dSnapshot, Sculpt3dUi, alpha_chip_index,
+    Sculpt3dIntent, Sculpt3dPanelState, Sculpt3dSnapshot, Sculpt3dUi, UiLevel, alpha_chip_index,
     drain_intents, last_content_h, last_visible_h, set_current_sculpt3d,
 };
 

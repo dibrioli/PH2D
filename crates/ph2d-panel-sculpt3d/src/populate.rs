@@ -66,6 +66,7 @@ pub fn populate(store: &mut WidgetStore) {
         // só os pintados faria o registro depender do verbo corrente, e um chip
         // que nasce vivo num verbo e morto noutro é a forma mais cara deste bug.
         &ids::SCULPT3D_REF_MODE[..],
+        &ids::SCULPT3D_UI_LEVEL[..],
         &ids::SCULPT3D_FALLOFF[..],
         &ids::SCULPT3D_ALPHA[..],
         &ids::SCULPT3D_DETAIL[..],

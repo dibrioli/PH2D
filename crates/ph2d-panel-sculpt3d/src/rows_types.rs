@@ -9,7 +9,7 @@
 
 use ph2d_a11y::NodeId;
 
-use crate::state::Sculpt3dUi;
+use crate::state::{Sculpt3dUi, UiLevel};
 
 /// Uma row de slider+chip: que número ela edita, sobre que faixa, e **quando ela
 /// existe**.
@@ -43,6 +43,15 @@ pub struct Row {
     /// varre a cada wave. A pergunta é feita à porta do MOTOR
     /// (`Verb::uses_plane`), nunca a uma lista paralela de nomes.
     pub show: fn(&Sculpt3dUi) -> bool,
+    /// **A PARTIR DE QUE PROFUNDIDADE esta row é oferecida** (§2 do plano).
+    ///
+    /// ⚠️ **Um campo e não um `&&` dentro do [`Row::show`]**, e a diferença é o
+    /// que torna a regra auditável: enfiado na closure, *qual é o nível desta
+    /// row* deixaria de ser uma pergunta que alguém pode fazer à tabela — e é
+    /// exatamente a pergunta que o gate de costura faz para varrer o conjunto de
+    /// Pro, e que o `no_pro_row_is_unarmed` faz para provar que esconder uma não
+    /// deixa o artista sem a ferramenta.
+    pub level: UiLevel,
     /// **ONDE, na seção, esta row é desenhada.**
     ///
     /// ⚠️ Ela existe porque *posição na tela* é uma pergunta que a tabela não
@@ -77,6 +86,17 @@ pub enum Place {
 }
 
 impl Row {
+    /// **ESTA ROW EXISTE AGORA?** — a porta única das duas perguntas.
+    ///
+    /// ⚠️ *Este pincel a lê?* e *este nível a oferece?* são independentes, e
+    /// juntá-las aqui é o que impede um sítio de pintura de perguntar uma e
+    /// esquecer a outra. O `paint`, a cauda do pincel e a varredura de costura
+    /// chamam ESTA função — três cópias do `&&` divergiriam no dia em que
+    /// nascesse a terceira pergunta.
+    pub fn visible(&self, ui: &Sculpt3dUi) -> bool {
+        ui.ui_level.shows(self.level) && (self.show)(ui)
+    }
+
     /// Pista (`0..=1`) → o valor que ela significa.
     pub fn value_of(&self, track: f32) -> f32 {
         self.min + track * (self.max - self.min)

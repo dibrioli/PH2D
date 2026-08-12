@@ -710,6 +710,91 @@ função nova pousou **entre** a const e o marcador — que foi parar no `}` del
 gate pegou. *O marcador tem de estar NA linha*, e uma âncora que ignora o que vem
 depois dela move o que vem depois dela.
 
+### §7.5 — ✅ W2 LANDOU: `Basic` × `Pro`, e a DUREZA ganha porta (2026-08-12)
+
+O interruptor da §2, mais os quatro controles que ele revela.
+
+**O que o artista vê.** Um par `Basic` · `Pro` no TOPO da seção do pincel, sob o
+rótulo **Detail**. Em Basic ele vê **Radius · Strength** (mais a Hardness da
+máscara, as pistas do padrão e os dois números do extract); em Pro aparecem
+**Falloff · Plane Offset · Pinch · Hardness**.
+
+**A regra de quem pode ser Pro, e ela é a §2.1 lida ao pé da letra.** Só uma row
+cujo valor **alguém ARMOU**:
+
+| row | por que é Pro | por que não amputa |
+|---|---|---|
+| **Falloff** | o `arm_verb_defaults` o escolhe por verbo (`VerbProfile::falloff`) | em Basic o artista está com a curva da REFERÊNCIA, não com um vazio |
+| **Plane Offset** | — | os quatro verbos de plano rodam na referência EXATA com ele em zero; o Clay levanta o plano dele no KERNEL |
+| **Pinch** | `Brush::default().pinch = 0.5` | o Crease aperta desde o primeiro traço |
+| **Hardness** | `0` é o NEUTRO do próprio original | esconder um neutro não tira capacidade nenhuma |
+
+⚠️ **E o que NÃO pode ser Pro tem gate:** `the_basic_level_never_hides_the_two_knobs_every_brush_has`
+varre os dezasseis verbos exigindo Raio e Força. Esconder um knob que alguém
+armou é divulgação progressiva; esconder os dois que todo pincel tem é
+amputação, e a diferença é testável.
+
+**O default é `Basic`, e a razão é a mesma do `RefMode::default() == S`:** a tese
+deste módulo é que a referência do SculptGL é a linha de base sã, e um painel que
+abre mostrando mais knobs do que a referência que o kernel roda é o painel
+discordando do motor. O chip está no topo da própria seção, a um clique e
+nomeando-se.
+
+⚠️ **O interruptor governa a seção do PINCEL e nada mais** (§2.3): sombreamento e
+topologia descrevem *como a forma é lida* e *quão fino é o barro*, e nenhum dos
+dois é um knob que o verbo armou.
+
+**A DUREZA ganhou porta.** O `Brush::hardness` nasceu no kernel na W3b, gateado
+dos dois lados e medido — e **sem nenhum controle**. Um campo sem porta é uma
+capacidade que ninguém tem.
+
+**Gates: 5 novos, 6 mutações, 6 sangram.**
+
+- `the_detail_chip_discloses_and_never_decides` — a propriedade load-bearing:
+  trocar de nível deixa todo o resto do estado autorado byte a byte onde estava.
+  ⚠️ **Ele nasceu testando UMA direção e a mutação passou:** *esconder* é o gesto
+  em que o reflexo de zerar aparece, então subir de Basic para Pro não o vê
+  ([[feedback_layered_defenses_need_per_layer_gates]]).
+- `a_pro_row_is_reachable_in_pro_and_absent_in_basic` — as duas metades, e
+  ⚠️ **DUAS fixtures**, porque `plane_offset` e `pinch` **se excluem por
+  desenho** (verbo de plano × Crease): uma fixture só nunca varreria as três.
+- `the_basic_level_never_hides_the_two_knobs_every_brush_has` · `every_ui_level_has_a_chip_that_selects_it` · `the_hardness_row_writes_the_field_the_kernel_reads`.
+
+⚠️ **E DOIS gates existentes tiveram de declarar a premissa nova**, senão ficavam
+verdes pelo motivo errado: a varredura anti-widget-morto passa a rodar em **Pro**
+(em Basic ela pularia quatro controles que nunca seriam clicados — *a fixture tem
+de conter o fenômeno*, a quarta vez neste arquivo) e o
+`a_conditional_row_is_absent_with_the_wrong_tool` fixa **Pro nas DUAS metades**,
+porque em Basic a metade negativa passaria pelo NÍVEL em vez de pelo verbo — um
+gate que não pode falhar pela razão que alega.
+
+⚠️ **A chave i18n `panel.sculpt3d.level` JÁ EXISTIA** (é o readout da multires) e
+o compilador a pegou como braço inalcançável — a terceira coisa deste painel
+disputando a palavra *nível*, exatamente o que o doc do id `SCULPT3D_UI_LEVEL` já
+prevenia. Ficou `panel.sculpt3d.ui_level`.
+
+⚠️ **E uma substituição por âncora foi RECUSADA pelo próprio `assert count == 1`:**
+`tr("panel.sculpt3d.level")` aparece **duas** vezes no `body.rs`, e a outra é o
+readout de multires que eu teria renomeado por engano.
+
+**Três tetos de LOC, três cortes por ASSUNTO** — `paint/brush.rs` (*a cabeça e a
+cauda da seção do pincel*, irmão do `mask_tools.rs`) · `rows_shading.rs` (*os
+knobs da LEITURA da forma*) · e o `group_chip_ui` extraído do `apply_event`
+(**seis grupos, uma porta** — o irmão exato do `table_intent` e do
+`arm_alpha_chip`). ⚠️ O primeiro corte por INTERVALO levou junto o `paint_bake`,
+que é outra seção e só estava no meio do arquivo.
+
+**Fora desta wave, com o preço:** `Normal Radius` (E11) precisa de uma **segunda
+consulta ao octree** quando o fator passa de 1 — o plano teria de recolher
+vértices FORA da pegada do dab, mudança estrutural, não um multiplicador · `Plane
+Trim` foi lido no clone e **o Blender o APOSENTOU** no pincel `PLANE` unificado
+(`properties_paint_common.py:887`: `if sculpt_brush_type != 'PLANE'`), que o
+trocou por **`height`/`depth`** — dois números que são a versão CONTÍNUA do nosso
+`PlaneReach` binário, e por isso a próxima wave é essa, não o trim · `Front-Face`
+e `Strength Curve` **não ganham row de propósito**: o MODO já os responde, e um
+segundo controle para a mesma pergunta é a falha de duas-portas que este módulo
+varre a cada wave.
+
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 
 **Os defaults de fábrica do Blender não estão no clone.** Eles vivem em

@@ -23,11 +23,13 @@ use crate::state::{self, Sculpt3dPanelState, set_last_content_h, set_last_visibl
 use crate::{Sculpt3dPanel, rows};
 
 mod body;
-/// A ferramenta e a referência que ela segue — ver o cabeçalho dele.
-mod tool;
+/// A cabeça e a cauda da seção do PINCEL — ver o doc do módulo.
+mod brush;
 /// **O QUE SE FAZ COM UMA MÁSCARA PINTADA** — irmão do [`body`], cortado por
 /// assunto quando o transform cruzou o teto de LOC dele.
 mod mask_tools;
+/// A ferramenta e a referência que ela segue — ver o cabeçalho dele.
+mod tool;
 /// **OS WIDGETS** do painel. ⚠️ Ele subiu de dentro do [`body`] para cá quando
 /// ganhou um SEGUNDO consumidor: o arquivo sempre morou em `paint/`, e a
 /// declaração é que estava um nível abaixo do lugar dele.

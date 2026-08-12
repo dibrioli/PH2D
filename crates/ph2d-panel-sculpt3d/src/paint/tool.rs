@@ -22,7 +22,13 @@ use crate::state::Sculpt3dSnapshot;
 /// É a mesma decisão que a lista de dez ferramentas do Impasto tomou: um grupo
 /// segmentado com muitas opções quebra em linhas, e a alternativa (um dropdown)
 /// esconde quinze ferramentas atrás de um clique para mostrar uma.
-pub(super) fn paint_tool(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
+pub(super) fn paint_tool(
+    ctx: &mut PaintCtx,
+    snap: &Sculpt3dSnapshot,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
     let (open, mut y) = header(
         ctx,
         ids::SCULPT3D_SEC_TOOL,

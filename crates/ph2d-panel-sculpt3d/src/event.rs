@@ -105,47 +105,12 @@ pub(crate) fn apply_event(
                 false
             }
         }
-        // A ferramenta. A lista É `Verb::ALL`, então a ordem dos chips e a do
-        // modelo não podem derivar.
-        WidgetEvent::Click(id) if index_of(&ids::SCULPT3D_VERB, id).is_some() => {
-            seam_reset_button(host, id);
-            let i = index_of(&ids::SCULPT3D_VERB, id).expect("guard casou");
-            let mut ui = snapshot.ui;
-            let verb = Verb::ALL[i];
-            crate::state::arm_verb_defaults(&mut ui, verb);
-            state::push_intent(Sculpt3dIntent::SetUi(ui));
-            true
-        }
-        // **A REFERÊNCIA do verbo corrente.** O índice é a posição no
-        // `RefMode::ALL`, não a da fileira — ver o doc do id.
-        WidgetEvent::Click(id) if index_of(&ids::SCULPT3D_REF_MODE, id).is_some() => {
-            seam_reset_button(host, id);
-            let i = index_of(&ids::SCULPT3D_REF_MODE, id).expect("guard casou");
-            let mut ui = snapshot.ui;
-            let mode = RefMode::ALL[i];
-            ui.mode_by_verb[crate::state::verb_index(ui.brush.verb)] = mode;
-            // ⚠️ **O pincel é RE-RESOLVIDO da tabela**, não escrito direto: um
-            // `ui.brush.mode = mode` aqui seria a segunda porta, e ela diverge no
-            // dia em que resolver passar a fazer mais alguma coisa.
-            let verb = ui.brush.verb;
-            crate::state::arm_verb_defaults(&mut ui, verb);
-            state::push_intent(Sculpt3dIntent::SetUi(ui));
-            true
-        }
         // **Carimba a referência corrente em TODAS as ferramentas** — um GESTO
         // sobre o estado por-verbo, nunca um segundo seletor global.
         WidgetEvent::Click(id) if id == ids::SCULPT3D_REF_MODE_ALL => {
             seam_reset_button(host, id);
             let mut ui = snapshot.ui;
             ui.mode_by_verb = [ui.brush.mode; Verb::ALL.len()];
-            state::push_intent(Sculpt3dIntent::SetUi(ui));
-            true
-        }
-        WidgetEvent::Click(id) if index_of(&ids::SCULPT3D_FALLOFF, id).is_some() => {
-            seam_reset_button(host, id);
-            let i = index_of(&ids::SCULPT3D_FALLOFF, id).expect("guard casou");
-            let mut ui = snapshot.ui;
-            ui.brush.falloff = Falloff::ALL[i];
             state::push_intent(Sculpt3dIntent::SetUi(ui));
             true
         }
@@ -157,17 +122,6 @@ pub(crate) fn apply_event(
             seam_reset_button(host, id);
             let i = index_of(&ids::SCULPT3D_ALPHA, id).expect("guard casou");
             arm_alpha_chip(&snapshot, i);
-            true
-        }
-        // **A LUZ** — a opção `0` é o rig do artista e as seguintes são os
-        // matcaps, o mesmo deslocamento que o pintor usa. `checked_sub` e não
-        // `- 1`: a opção zero não é o material `-1`, é a AUSÊNCIA de matcap.
-        WidgetEvent::Click(id) if index_of(&ids::SCULPT3D_MATCAP, id).is_some() => {
-            seam_reset_button(host, id);
-            let i = index_of(&ids::SCULPT3D_MATCAP, id).expect("guard casou");
-            let mut ui = snapshot.ui;
-            ui.matcap = i.checked_sub(1).map(|k| u8::try_from(k).unwrap_or(u8::MAX));
-            state::push_intent(Sculpt3dIntent::SetUi(ui));
             true
         }
         // ⚠️ **Recusa fora dos verbos de carimbo.** O pintor já não o oferece
@@ -204,14 +158,6 @@ pub(crate) fn apply_event(
             state::push_intent(Sculpt3dIntent::SetUi(ui));
             true
         }
-        WidgetEvent::Click(id) if index_of(&ids::SCULPT3D_DETAIL, id).is_some() => {
-            seam_reset_button(host, id);
-            let i = index_of(&ids::SCULPT3D_DETAIL, id).expect("guard casou");
-            let mut ui = snapshot.ui;
-            ui.detail = u8::try_from(i).unwrap_or(0);
-            state::push_intent(Sculpt3dIntent::SetUi(ui));
-            true
-        }
         // Os três eixos do espelho. Botões independentes e não um rádio: um
         // segmented é *um de N* por construção, e o ZBrush espelha em dois eixos
         // ao mesmo tempo.
@@ -238,6 +184,18 @@ pub(crate) fn apply_event(
         // idênticos a menos do nome da tabela. O quarto teria nascido copiando o
         // terceiro, e é assim que um deles ganha um `seam_reset_button` a menos
         // sem ninguém ver.
+        // ⚠️ **SEIS grupos, UMA porta** — o irmão do `table_intent` logo abaixo,
+        // e o corte é a mesma frase: os seis respondem *achou o índice `i`, que
+        // ESTADO AUTORADO isso significa?*, e escritos como seis braços eles
+        // divergiam num `seam_reset_button` a menos sem ninguém ver. O que fica
+        // aqui é o DESPACHO; o que saiu é a DECISÃO.
+        WidgetEvent::Click(id) if group_chip_ui(&snapshot, id).is_some() => {
+            seam_reset_button(host, id);
+            state::push_intent(Sculpt3dIntent::SetUi(
+                group_chip_ui(&snapshot, id).expect("guard casou"),
+            ));
+            true
+        }
         WidgetEvent::Click(id) if table_intent(id).is_some() => {
             seam_reset_button(host, id);
             state::push_intent(table_intent(id).expect("guard casou"));
@@ -322,4 +280,45 @@ fn arm_alpha_chip(snapshot: &crate::state::Sculpt3dSnapshot, i: usize) {
         ui.brush.alpha_scale = snapshot.alpha_seed;
     }
     state::push_intent(Sculpt3dIntent::SetUi(ui));
+}
+
+/// **O que um chip de GRUPO significa como estado autorado** — extraído do
+/// `apply_event`, no molde do [`arm_alpha_chip`].
+///
+/// ⚠️ **Ele COMPÕE em vez de empurrar uma constante**, e é por isso que não cabe
+/// no [`table_intent`]: aquele devolve uma entrada de tabela, este lê o retrato
+/// vivo e devolve o estado inteiro com um campo trocado. Juntá-los obrigaria a
+/// tabela a receber o snapshot, e aí ela deixaria de ser uma tabela.
+fn group_chip_ui(
+    snapshot: &crate::state::Sculpt3dSnapshot,
+    id: ph2d_a11y::NodeId,
+) -> Option<crate::state::Sculpt3dUi> {
+    let mut ui = snapshot.ui.clone();
+    if let Some(i) = index_of(&ids::SCULPT3D_VERB, id) {
+        crate::state::arm_verb_defaults(&mut ui, Verb::ALL[i]);
+    } else if let Some(i) = index_of(&ids::SCULPT3D_REF_MODE, id) {
+        ui.mode_by_verb[crate::state::verb_index(ui.brush.verb)] = RefMode::ALL[i];
+        // ⚠️ **O pincel é RE-RESOLVIDO da tabela**, não escrito direto: um
+        // `ui.brush.mode = …` aqui seria a segunda porta, e ela diverge no dia em
+        // que resolver passar a fazer mais alguma coisa.
+        let verb = ui.brush.verb;
+        crate::state::arm_verb_defaults(&mut ui, verb);
+    } else if let Some(i) = index_of(&ids::SCULPT3D_UI_LEVEL, id) {
+        // ⚠️ **Sem `arm_verb_defaults`:** mudar o nível não é escolher uma
+        // ferramenta, é escolher quanto dela ver — re-armar jogaria fora os
+        // quatro knobs que o artista ajustou, no gesto que ele fez só para OLHAR.
+        ui.ui_level = state::UiLevel::ALL[i];
+    } else if let Some(i) = index_of(&ids::SCULPT3D_FALLOFF, id) {
+        ui.brush.falloff = Falloff::ALL[i];
+    } else if let Some(i) = index_of(&ids::SCULPT3D_MATCAP, id) {
+        // A opção `0` é o rig do artista e as seguintes são os matcaps, o mesmo
+        // deslocamento que o pintor usa. `checked_sub` e não `- 1`: a opção zero
+        // não é o material `-1`, é a AUSÊNCIA de matcap.
+        ui.matcap = i.checked_sub(1).map(|k| u8::try_from(k).unwrap_or(u8::MAX));
+    } else if let Some(i) = index_of(&ids::SCULPT3D_DETAIL, id) {
+        ui.detail = u8::try_from(i).unwrap_or(0);
+    } else {
+        return None;
+    }
+    Some(ui)
 }

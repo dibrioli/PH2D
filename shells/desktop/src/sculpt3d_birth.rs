@@ -49,6 +49,7 @@ impl Sculpt3dScene {
             wireframe: false,
             brush: Brush::default(),
             mode_by_verb: [ph2d_sculpt3d::RefMode::default(); 16],
+            ui_level: ph2d_panel_sculpt3d::UiLevel::default(),
             alpha_preview: true,
             alpha_image: None,
             radius_px: DEFAULT_RADIUS_PX,

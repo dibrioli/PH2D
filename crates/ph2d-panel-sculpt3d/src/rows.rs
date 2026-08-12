@@ -14,7 +14,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_sculpt3d::Verb;
 
-use crate::state::Sculpt3dUi;
+use crate::state::{Sculpt3dUi, UiLevel};
 
 /// O teto do raio que o SLIDER oferece, em pixels de tela.
 ///
@@ -29,6 +29,10 @@ const RADIUS_TRACK_MAX_PX: f32 = 200.0; // LITERAL-PX-OK: extensao da PISTA, nao
 
 #[path = "rows_types.rs"]
 mod types;
+
+/// Os knobs da LEITURA da forma — ver o doc do módulo.
+#[path = "rows_shading.rs"]
+mod shading;
 pub use types::{Place, Row, Section};
 
 /// O teto da pista de **Extract Smooth**, em passadas.
@@ -41,20 +45,11 @@ pub use types::{Place, Row, Section};
 /// arrastar não faz nada, que é o controle morto que esta casa varre a cada wave.
 const MAX_EXTRACT_SMOOTH: f32 = 8.0; // LITERAL-PX-OK: contagem de passadas MEDIDA, nao metrica de design
 
-/// Sempre visível.
-fn always(_: &Sculpt3dUi) -> bool {
+/// Sempre visível. ⚠️ `pub(super)` porque a tabela do sombreamento é um
+/// módulo FILHO e as duas a partilham — duas cópias divergiriam no dia em que
+/// *sempre* ganhasse uma exceção.
+pub(super) fn always(_: &Sculpt3dUi) -> bool {
     true
-}
-
-/// **Só com a luz do DOCUMENTO em uso.**
-///
-/// ⚠️ Um matcap é sombreamento função apenas da normal de VISTA: ele não lê o
-/// rig, por definição. Deixar as duas pistas de lâmpada pintadas sob um matcap
-/// seriam **dois controles que não fazem nada** — e não um pouco: o artista
-/// arrastaria o ângulo da luz olhando uma escultura que não se move, que é a
-/// forma mais cara de descobrir o que um modo significa.
-fn under_the_rig(u: &Sculpt3dUi) -> bool {
-    u.matcap.is_none()
 }
 
 /// O pincel: o que se ajusta antes de encostar no barro.
@@ -70,6 +65,7 @@ static BRUSH: &[Row] = &[
         get: |u| u.radius_px,
         set: |u, v| u.radius_px = v,
         show: always,
+        level: UiLevel::Basic,
         place: Place::Knobs,
     },
     Row {
@@ -83,6 +79,40 @@ static BRUSH: &[Row] = &[
         get: |u| u.brush.strength,
         set: |u, v| u.brush.strength = v,
         show: always,
+        level: UiLevel::Basic,
+        place: Place::Knobs,
+    },
+    // **A DUREZA** — logo abaixo da força, que é onde o Blender a põe, e não por
+    // costume: as duas moldam o MESMO peso em eixos ortogonais (a força diz
+    // *quanto*, a dureza diz *até onde o cheio vai antes de a curva começar*), e
+    // lê-las juntas é o que faz a segunda ser aprendida.
+    //
+    // ⚠️ **Ela NÃO é a `mask_hardness` logo abaixo**, embora os nomes se
+    // pareçam: aquela é o expoente da curva PRÓPRIA do canal de máscara
+    // (`Masking.js:66`), esta remapeia a DISTÂNCIA que qualquer falloff consome
+    // (`apply_hardness_to_distances`, `sculpt.cc:7549`). Um verbo pode oferecer
+    // as duas ao mesmo tempo, e é por isso que elas não podem compartilhar um
+    // controle.
+    Row {
+        label: "panel.sculpt3d.hardness",
+        slider: ids::SCULPT3D_HARDNESS,
+        chip: ids::SCULPT3D_HARDNESS_NUM,
+        min: 0.0,
+        // ⚠️ **UM é o disco duro, e ele é alcançável de propósito** — o
+        // `shaped_distance` tem braço próprio para ele justamente porque a
+        // fórmula geral divide por `1 − h`. O teto do Blender é o mesmo.
+        max: 1.0,
+        step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
+        decimals: 2,
+        get: |u| u.brush.hardness,
+        set: |u, v| u.brush.hardness = v,
+        show: always,
+        // ⚠️ **O caso mais limpo de Pro que esta tabela tem:** o valor de fábrica
+        // é `0`, que é o NEUTRO do próprio original (o
+        // `apply_hardness_to_distances` abre com `if (hardness == 0.0f) return;`),
+        // então escondê-la não tira capacidade nenhuma de ninguém — ela só some
+        // de vista com o pincel exatamente como estava.
+        level: UiLevel::Pro,
         place: Place::Knobs,
     },
     Row {
@@ -98,6 +128,13 @@ static BRUSH: &[Row] = &[
         get: |u| u.brush.plane_offset,
         set: |u, v| u.brush.plane_offset = v,
         show: |u| u.brush.verb.uses_plane(),
+        // ⚠️ **Pro, e o teste é *"esconder deixa a ferramenta sem o que o nome
+        // dela promete?"*.** Não: os quatro verbos de plano rodam na referência
+        // EXATA com o knob em zero (o Clay levanta o plano dele pelo
+        // `CLAY_PLANE_FRACTION`, no kernel, e este número SOMA àquele), e quem
+        // quer o outro lado tem o Fill e o Scrape como chips. É afinação sobre
+        // um default que a referência escolheu, que é a definição de Pro.
+        level: UiLevel::Pro,
         place: Place::Knobs,
     },
     Row {
@@ -111,6 +148,10 @@ static BRUSH: &[Row] = &[
         get: |u| u.brush.pinch,
         set: |u, v| u.brush.pinch = v,
         show: |u| u.brush.verb == Verb::Crease,
+        // ⚠️ **Pro sobre um valor ARMADO**: o `Brush::default().pinch` nasce em
+        // `0,5` e o Crease aperta desde o primeiro traço. Um knob que nascesse
+        // em zero seria amputação — o verbo se chamaria *vincar* e só cavaria.
+        level: UiLevel::Pro,
         place: Place::Knobs,
     },
     // ⚠️ **Ela NÃO é um seletor de falloff, e a distinção é da REFERÊNCIA.** O
@@ -134,6 +175,7 @@ static BRUSH: &[Row] = &[
         get: |u| u.brush.mask_hardness,
         set: |u, v| u.brush.mask_hardness = v,
         show: |u| u.brush.verb.paints_mask(),
+        level: UiLevel::Basic,
         place: Place::Knobs,
     },
     Row {
@@ -159,6 +201,7 @@ static BRUSH: &[Row] = &[
         // por ele é a row seguinte. Reusar este número com duas unidades faria
         // ele trocar de significado em silêncio ao trocar de padrão.
         show: |u| u.brush.alpha.is_some() && !stamp_alpha(u),
+        level: UiLevel::Basic,
         place: Place::AfterAlpha,
     },
     Row {
@@ -178,6 +221,7 @@ static BRUSH: &[Row] = &[
         get: |u| u.brush.alpha_stencil_scale,
         set: |u, v| u.brush.alpha_stencil_scale = v,
         show: stamp_alpha,
+        level: UiLevel::Basic,
         place: Place::AfterAlpha,
     },
     Row {
@@ -195,6 +239,7 @@ static BRUSH: &[Row] = &[
         get: |u| u.brush.alpha_offset[0],
         set: |u, v| u.brush.alpha_offset[0] = v,
         show: stamp_alpha,
+        level: UiLevel::Basic,
         place: Place::AfterAlpha,
     },
     Row {
@@ -208,6 +253,7 @@ static BRUSH: &[Row] = &[
         get: |u| u.brush.alpha_offset[1],
         set: |u, v| u.brush.alpha_offset[1] = v,
         show: stamp_alpha,
+        level: UiLevel::Basic,
         place: Place::AfterAlpha,
     },
     Row {
@@ -225,6 +271,7 @@ static BRUSH: &[Row] = &[
         get: |u| f32::from(u.brush.alpha_az_deg),
         set: |u, v| u.brush.alpha_az_deg = degrees(v),
         show: directional_alpha,
+        level: UiLevel::Basic,
         place: Place::AfterAlpha,
     },
     Row {
@@ -251,6 +298,7 @@ static BRUSH: &[Row] = &[
         // impedir —, então ele não é oferecido em vez de ser oferecido e
         // ignorado.
         show: |u| directional_alpha(u) && !stamp_alpha(u),
+        level: UiLevel::Basic,
         place: Place::AfterAlpha,
     },
     // ── Os dois números do EXTRACT ──────────────────────────────────────────
@@ -275,6 +323,7 @@ static BRUSH: &[Row] = &[
         get: |u| u.extract.thickness,
         set: |u, v| u.extract.thickness = v,
         show: |_| true,
+        level: UiLevel::Basic,
         place: Place::AfterExtract,
     },
     Row {
@@ -290,6 +339,7 @@ static BRUSH: &[Row] = &[
         // row desta tabela, e o que o kernel conta é uma passada inteira.
         set: |u, v| u.extract.smooth = v.round().max(0.0) as u32,
         show: |_| true,
+        level: UiLevel::Basic,
         place: Place::AfterExtract,
     },
 ];
@@ -353,137 +403,6 @@ fn degrees(v: f32) -> u16 {
 /// O zênite do eixo, lido do dono dele.
 const MAX_AXIS_ELEV_F32: f32 = ph2d_sculpt3d::MAX_AXIS_ELEV_DEG as f32; // CLAMP-OK: teto do motor
 
-/// Como a forma é LIDA — a cavidade e a lâmpada.
-static SHADING: &[Row] = &[
-    Row {
-        label: "panel.sculpt3d.cavity",
-        slider: ids::SCULPT3D_CAVITY,
-        chip: ids::SCULPT3D_CAVITY_NUM,
-        min: 0.0,
-        max: 1.0,
-        step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
-        decimals: 2,
-        get: |u| u.cavity,
-        set: |u, v| u.cavity = v,
-        show: always,
-        place: Place::Knobs,
-    },
-    Row {
-        label: "panel.sculpt3d.light_az",
-        slider: ids::SCULPT3D_LIGHT_AZ,
-        chip: ids::SCULPT3D_LIGHT_AZ_NUM,
-        min: 0.0,
-        // 359 e não 360: os dois extremos seriam o MESMO azimute, e uma pista
-        // cujas duas pontas significam a mesma coisa tem um degrau invisível.
-        max: 359.0, // LITERAL-PX-OK: graus de azimute, nao metrica de design
-        step: 5.0,  // LITERAL-PX-OK: passo em graus
-        decimals: 0,
-        get: |u| u.light_az_deg,
-        set: |u, v| u.light_az_deg = v,
-        show: under_the_rig,
-        place: Place::Knobs,
-    },
-    Row {
-        label: "panel.sculpt3d.light_elev",
-        slider: ids::SCULPT3D_LIGHT_ELEV,
-        chip: ids::SCULPT3D_LIGHT_ELEV_NUM,
-        // ⚠️ O piso é o do RESOLVEDOR de luz, não um número escolhido aqui:
-        // abaixo dele a resposta plana vai a zero e o modelo relativo dividiria
-        // por ~0. Um literal aqui seria a segunda cópia dele.
-        min: MIN_ELEV_DEG_F32,
-        max: 90.0, // LITERAL-PX-OK: graus de elevacao (o zenite), nao metrica de design
-        step: 5.0, // LITERAL-PX-OK: passo em graus
-        decimals: 0,
-        get: |u| u.light_elev_deg,
-        set: |u, v| u.light_elev_deg = v,
-        show: under_the_rig,
-        place: Place::Knobs,
-    },
-    Row {
-        label: "panel.sculpt3d.env",
-        slider: ids::SCULPT3D_ENV,
-        chip: ids::SCULPT3D_ENV_NUM,
-        min: 0.0,
-        max: 1.0,
-        step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
-        decimals: 2,
-        get: |u| u.env,
-        set: |u, v| u.env = v,
-        // ⚠️ **Só sob o rig, e pela razão mais forte desta tabela: um matcap JÁ
-        // É um ambiente.** Ele é uma esfera de iluminação capturada — o piso, o
-        // céu e o realce dele vêm todos da mesma imagem —, então o termo do
-        // estúdio não entra naquele caminho (o `mesh.wgsl` nem chega ao piso) e
-        // o slider seria um controle que não faz nada. É a mesma lei das duas
-        // pistas de lâmpada logo abaixo.
-        show: under_the_rig,
-        place: Place::Knobs,
-    },
-    Row {
-        label: "panel.sculpt3d.ao",
-        slider: ids::SCULPT3D_AO,
-        chip: ids::SCULPT3D_AO_NUM,
-        min: 0.0,
-        max: 1.0,
-        step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
-        decimals: 2,
-        get: |u| u.ao,
-        set: |u, v| u.ao = v,
-        show: always,
-        place: Place::Knobs,
-    },
-    Row {
-        label: "panel.sculpt3d.ssao",
-        slider: ids::SCULPT3D_SSAO,
-        chip: ids::SCULPT3D_SSAO_NUM,
-        min: 0.0,
-        max: 1.0,
-        step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
-        decimals: 2,
-        get: |u| u.ssao,
-        set: |u, v| u.ssao = v,
-        show: always,
-        place: Place::Knobs,
-    },
-    Row {
-        label: "panel.sculpt3d.sss",
-        slider: ids::SCULPT3D_SSS,
-        chip: ids::SCULPT3D_SSS_NUM,
-        min: 0.0,
-        max: 1.0,
-        step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
-        decimals: 2,
-        get: |u| u.sss,
-        set: |u, v| u.sss = v,
-        show: always,
-        place: Place::Knobs,
-    },
-    Row {
-        label: "panel.sculpt3d.sss_scatter",
-        slider: ids::SCULPT3D_SSS_SCATTER,
-        chip: ids::SCULPT3D_SSS_SCATTER_NUM,
-        min: 0.0,
-        // ⚠️ **O teto é 1,0 = "a luz atravessa a peça inteira"**, e ele não é um
-        // limite de recurso: é onde a grandeza deixa de descrever um sólido. O
-        // default MEDIDO é 0,25 (`sss::SCATTER_FRACTION`), e a faixa existe para
-        // o artista decidir o LOOK — que é a única pergunta que a medição não
-        // responde.
-        max: 1.0,
-        step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
-        decimals: 2,
-        get: |u| u.sss_scatter,
-        set: |u, v| u.sss_scatter = v,
-        // ⚠️ **Só com o espalhamento LIGADO.** Com a força em zero a tabela nem é
-        // consultada, então este slider não moveria um pixel — e um controle que
-        // não faz nada é o que esta casa varre a cada wave. É a mesma lei do
-        // `Plane Offset`, que só existe nos verbos que leem um plano.
-        show: |u| u.sss > 0.0,
-        place: Place::Knobs,
-    },
-];
-
-/// O piso da elevação, lido do dono dele.
-const MIN_ELEV_DEG_F32: f32 = ph2d_light::MIN_ELEV_DEG as f32; // CLAMP-OK: piso do resolvedor de luz
-
 /// **A TOPOLOGIA** — hoje uma row só, a resolução do remesh.
 ///
 /// ⚠️ **A FAIXA É MEDIDA, e o recurso é a memória do campo TRANSIENTE**
@@ -515,6 +434,7 @@ pub static TOPOLOGY: &[Row] = &[Row {
     get: |u| u.remesh_res,
     set: |u, v| u.remesh_res = v,
     show: |_| true,
+    level: UiLevel::Basic,
     place: Place::Knobs,
 }];
 
@@ -541,7 +461,7 @@ pub static SECTIONS: &[Section] = &[
     Section {
         id: ids::SCULPT3D_SEC_SHADING,
         title: "panel.sculpt3d.section.shading",
-        rows: SHADING,
+        rows: shading::SHADING,
     },
     Section {
         id: ids::SCULPT3D_SEC_TOPOLOGY,

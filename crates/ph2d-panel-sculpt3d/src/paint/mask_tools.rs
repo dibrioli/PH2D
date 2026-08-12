@@ -63,7 +63,8 @@ pub(super) fn paint_mask_tools(
         w,
         y,
     ) + Spacing::Sm.px();
-    for row in rows::rows().filter(|r| r.place == rows::Place::AfterExtract && (r.show)(&snap.ui)) {
+    for row in rows::rows().filter(|r| r.place == rows::Place::AfterExtract && r.visible(&snap.ui))
+    {
         y = paint_one_row(ctx, snap, row, x, w, y);
     }
     // **O TRANSFORM** — a SEXTA coisa que se faz com uma máscara pintada, e a

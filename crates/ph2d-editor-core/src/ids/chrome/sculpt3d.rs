@@ -81,6 +81,17 @@ pub const SCULPT3D_REF_MODE: [NodeId; 3] = [
 /// verbo, e um seletor global ao lado dele seriam duas portas para o mesmo fato.
 pub const SCULPT3D_REF_MODE_ALL: NodeId = hash_node_id("sculpt3d.ref_mode.all");
 
+/// **COM QUE PROFUNDIDADE OLHAR** — os chips `Basic` · `Pro` (§2 do plano).
+///
+/// ⚠️ **O nome não é `DETAIL` de propósito:** [`SCULPT3D_DETAIL`] já existe e é
+/// o degrau da topologia dinâmica, e [`SCULPT3D_LEVEL_UP`] é o da multires. Três
+/// coisas diferentes disputando a palavra *nível* num painel só é como o próximo
+/// leitor abre o array errado.
+pub const SCULPT3D_UI_LEVEL: [NodeId; 2] = [
+    hash_node_id("sculpt3d.ui_level.0"),
+    hash_node_id("sculpt3d.ui_level.1"),
+];
+
 // ── O pincel ────────────────────────────────────────────────────────────────
 /// As curvas de `ph2d_sculpt3d::Falloff::ALL`.
 ///
@@ -119,6 +130,16 @@ pub const SCULPT3D_PLANE_OFFSET_NUM: NodeId = hash_node_id("sculpt3d.plane_offse
 pub const SCULPT3D_PINCH: NodeId = hash_node_id("sculpt3d.pinch");
 /// Chip ligado a [`SCULPT3D_PINCH`].
 pub const SCULPT3D_PINCH_NUM: NodeId = hash_node_id("sculpt3d.pinch_num");
+/// **A DUREZA DO DAB** — o platô de peso cheio no miolo da pegada.
+///
+/// ⚠️ Ele NÃO é o [`SCULPT3D_MASK_HARDNESS`], embora os nomes se pareçam: aquele
+/// é o expoente da curva PRÓPRIA do canal de máscara, este remapeia a DISTÂNCIA
+/// que qualquer falloff consome (`apply_hardness_to_distances` do Blender). Dois
+/// controles, duas perguntas, e o gate de costura pinta os dois para o mesmo
+/// verbo nunca oferecer um pelo outro.
+pub const SCULPT3D_HARDNESS: NodeId = hash_node_id("sculpt3d.hardness");
+/// Chip ligado a [`SCULPT3D_HARDNESS`].
+pub const SCULPT3D_HARDNESS_NUM: NodeId = hash_node_id("sculpt3d.hardness_num");
 /// A dureza da borda do canal de MÁSCARA — o `_hardness` da tool `Masking` do
 /// SculptGL. ⚠️ Ele NÃO é um falloff: o canal tem curva própria
 /// (`(1 − d)^{2(1 − hardness)}`), e o seletor de [`Falloff`] governa a

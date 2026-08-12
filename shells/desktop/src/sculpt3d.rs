@@ -381,6 +381,16 @@ pub(crate) struct Sculpt3dScene {
     /// na primeira troca de ferramenta — e a troca é justamente o gesto que a
     /// re-resolve.
     mode_by_verb: [ph2d_sculpt3d::RefMode; 16],
+    /// **COM QUE PROFUNDIDADE O PAINEL SE MOSTRA** — ver
+    /// [`ph2d_panel_sculpt3d::UiLevel`].
+    ///
+    /// ⚠️ **A cena o guarda e NUNCA o lê**, e isso é o desenho e não descuido:
+    /// o painel não guarda estado entre quadros (ele recebe um retrato novo a
+    /// cada um), então a escolha tem de morar em algum lugar que sobreviva — e
+    /// esse lugar é o mesmo que já guarda os outros valores autorados. Renderizar
+    /// nada a partir dele é o que o mantém honesto: com que profundidade olhar
+    /// não muda a escultura, e por isso ele também não é salvo.
+    ui_level: ph2d_panel_sculpt3d::UiLevel,
     /// **O padrão do pincel é mostrado no barro?** — ver
     /// [`sculpt3d_preview::PreviewState`]. Nasce ligado.
     alpha_preview: bool,

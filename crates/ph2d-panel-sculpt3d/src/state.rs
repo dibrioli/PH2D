@@ -36,6 +36,50 @@ thread_local! {
     static LAST_VISIBLE_H: Cell<f32> = const { Cell::new(0.0) };
 }
 
+/// **COM QUE PROFUNDIDADE O PAINEL SE MOSTRA** (§2 do plano).
+///
+/// ⚠️ **Isto não são dois conjuntos de features — é divulgação progressiva do
+/// MESMO estado**, e essa escolha é o que impede duas fontes de verdade. Em
+/// `Pro` o artista não ganha números novos: ele ganha *acesso* aos números que o
+/// verbo e o modo já haviam armado por ele.
+///
+/// ⚠️ **A regra de quem pode ser `Pro`, e ela é testável:** só uma row cujo
+/// valor alguém ARMOU. Esconder um número que o `arm_verb_defaults` escolheu bem
+/// é divulgação progressiva; esconder um que nasce neutro e tem de ser fornecido
+/// é amputação — o artista ficaria com uma ferramenta que não faz o que o nome
+/// dela diz e sem nada na tela explicando por quê.
+///
+/// ⚠️ **`Ord` é a lei inteira:** uma row aparece quando `nível do painel >=
+/// nível da row`. Escrito como dois `if`s (um por lado) o terceiro degrau nasce
+/// fora da regra.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub enum UiLevel {
+    /// O vocabulário do SculptGL: o que TODO pincel tem.
+    #[default]
+    Basic,
+    /// Mais os knobs que o modo tinha armado.
+    Pro,
+}
+
+impl UiLevel {
+    /// A ordem em que os chips são pintados. **É** a ordem do enum.
+    pub const ALL: [Self; 2] = [Self::Basic, Self::Pro];
+
+    /// Chave i18n do rótulo.
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Basic => ph2d_i18n::tr("panel.sculpt3d.ui_level.basic"),
+            Self::Pro => ph2d_i18n::tr("panel.sculpt3d.ui_level.pro"),
+        }
+    }
+
+    /// **Uma coisa que exige `needs` aparece neste nível?** A porta única — o
+    /// pintor a consulta para desenhar e o gate de costura para varrer.
+    pub fn shows(self, needs: Self) -> bool {
+        needs <= self
+    }
+}
+
 /// **O estado AUTORADO da cena 3D** — tudo o que um controle contínuo ou um
 /// rádio deste painel escreve.
 #[derive(Clone, Debug, PartialEq)]
@@ -55,6 +99,17 @@ pub struct Sculpt3dUi {
     /// verbo o re-resolve pela porta única [`arm_verb_defaults`]. Guardar a
     /// escolha só no pincel a perderia na primeira troca de ferramenta.
     pub mode_by_verb: [RefMode; Verb::ALL.len()],
+    /// **COM QUE PROFUNDIDADE O PAINEL SE MOSTRA** — ver [`UiLevel`].
+    ///
+    /// ⚠️ **Ele mora aqui, e não numa célula do painel, pela razão do `matcap`
+    /// logo abaixo:** o painel recebe um retrato NOVO a cada frame e não guarda
+    /// nada entre eles, então a escolha tem de viajar no mesmo struct que o resto
+    /// — uma célula `thread_local` seria um segundo lugar onde o estado do painel
+    /// vive, com um ciclo de vida próprio para divergir.
+    ///
+    /// ⚠️ **E ele NÃO é salvo**, também como o `matcap`: com que profundidade
+    /// olhar não muda a escultura.
+    pub ui_level: UiLevel,
     /// O raio autorado, em **pixels de tela**.
     pub radius_px: f32,
     pub symmetry: Symmetry,
@@ -121,6 +176,14 @@ impl Default for Sculpt3dUi {
         Self {
             brush: Brush::default(),
             mode_by_verb: [RefMode::default(); Verb::ALL.len()],
+            // ⚠️ **BASIC, e a razão é a mesma do `RefMode::default() == S`:** a
+            // tese deste módulo é que a referência do SculptGL é a linha de base
+            // sã, e um painel que abre mostrando mais knobs do que a referência
+            // que o kernel roda é o painel discordando do motor. O que o Basic
+            // esconde é exatamente o conjunto de rows cujo valor o
+            // `arm_verb_defaults` escolheu — e o chip que as revela fica no topo
+            // da própria seção, a um clique e nomeando-se.
+            ui_level: UiLevel::default(),
             radius_px: 50.0, // LITERAL-PX-OK: espelha o DEFAULT_RADIUS_PX do shell (raio de pincel, medido)
             symmetry: Symmetry::default(),
             cavity: 0.0,

@@ -308,6 +308,12 @@ impl CookCheckpoint {
     }
 }
 
+/// O sub-tique — [`Cook::substep`] e o que ele tem de saber sobre o relogio. FILHO de
+/// proposito: ele mexe nos campos privados do `Cook` (`tick`, `prev_playhead`,
+/// `prev_outputs`, `cache`), que um modulo IRMAO nao enxergaria.
+#[path = "cook_substep.rs"]
+mod substep;
+
 /// Incremental cook engine. Holds the memo cache and the previous-tick snapshot
 /// across cooks; reusing the same `Cook` across frames is what makes
 /// re-evaluation cheap and `pre` feedback work.

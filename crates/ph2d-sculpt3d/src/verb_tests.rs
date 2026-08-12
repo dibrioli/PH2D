@@ -561,16 +561,15 @@ fn the_mask_verb_writes_its_channel_and_moves_no_geometry() {
     let peak = masks.iter().copied().fold(0.0f32, f32::max);
     assert!(peak > 0.9, "a máscara mal pintou: pico {peak}");
 
-    // Limpar desfaz pela MESMA aritmética (`lerp(base, alvo, accum)`), e é o
-    // `invert` que troca o alvo de 1 para 0.
-    let clear = |m: &mut Mesh, falloff| {
+    // Limpar desfaz pela MESMA aritmética (`clamp(base ± Σ)`), e é o `invert`
+    // que troca o SINAL da soma.
+    let clear = |m: &mut Mesh| {
         let mut s2 = SculptStroke::default();
         s2.begin(m);
         s2.dab(
             m,
             &Brush {
                 invert: true,
-                falloff,
                 ..b.clone()
             },
             &dab_at([0.0, 0.0, 1.0], b.radius),
@@ -579,20 +578,29 @@ fn the_mask_verb_writes_its_channel_and_moves_no_geometry() {
         m.masks().unwrap().iter().copied().fold(0.0f32, f32::max)
     };
 
-    // ⚠️ Uma limpeza MACIA sobre uma pintura macia deixa resto, e o número não é
-    // aproximado: um vértice de peso `w` foi pintado em `w` e limpo para
-    // `w(1 − w)`, cujo máximo em `[0,1]` é **exatamente 0,25**. Isto não é
-    // defeito — é a aritmética do lerp, e é também o que o Blender faz (por isso
-    // ele tem um "Clear Mask" global além do pincel). Pinar o valor é o que
-    // impede a próxima pessoa de "consertar" a lei achando que 0,25 é sujeira.
+    // ⚠️ **UMA LIMPEZA MACIA DESFAZ POR INTEIRO, e esta nota media o
+    // contrário** (2026-08-12). Ela pinava um resto de **exatamente 0,25** —
+    // `w(1 − w)`, o máximo do lerp em `[0,1]` — e declarava, com razão sob
+    // aquela lei, que *"isto não é defeito, é a aritmética do lerp"*. A lei
+    // aditiva não tem essa aritmética: pintar `+w` e limpar `−w` no MESMO
+    // vértice devolve o canal ao ponto de partida, que é o que
+    // `clamp(m + f, 0, 1)` faz abaixo da saturação (`Masking.js:70`).
+    //
+    // ⚠️ **A curva do canal não participa do argumento**, e é por isso que o
+    // `falloff` do `clear` deixou de ser um parâmetro: sob a lei aditiva quem
+    // decide o peso do canal é a [`Brush::mask_weight`], que o [`Falloff`] não
+    // alcança. Passar `Falloff::Smooth` aqui pediria a uma curva que este verbo
+    // não lê para explicar um resto que ele não tem.
     let mut soft = mesh.clone();
-    let residue = clear(&mut soft, Falloff::Smooth);
-    assert!(
-        (residue - 0.25).abs() < 0.01,
-        "o resto de uma limpeza macia é w(1−w) ≤ 0,25; deu {residue}"
+    let residue = clear(&mut soft);
+    assert_eq!(
+        residue, 0.0,
+        "pintar e limpar com o MESMO pincel tem de devolver o canal a zero"
     );
 
-    // E com peso cheio na pegada inteira ela limpa ao valor exato.
-    let hard = clear(&mut mesh, Falloff::Constant);
+    // E o teto SATURA em vez de estourar: o `clamp` é o que impede uma
+    // esfregada a mais de deixar o canal acima de 1 e a limpeza de precisar de
+    // mais toques do que a pintura.
+    let hard = clear(&mut mesh);
     assert_eq!(hard, 0.0, "limpar com peso cheio deixou {hard}");
 }

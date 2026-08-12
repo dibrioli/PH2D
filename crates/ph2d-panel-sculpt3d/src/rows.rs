@@ -113,6 +113,29 @@ static BRUSH: &[Row] = &[
         show: |u| u.brush.verb == Verb::Crease,
         place: Place::Knobs,
     },
+    // ⚠️ **Ela NÃO é um seletor de falloff, e a distinção é da REFERÊNCIA.** O
+    // canal de máscara do original tem curva PRÓPRIA — `(1 − d)^{2(1 − hardness)}`
+    // (`Masking.js:66`) — enquanto as dez tools de geometria multiplicam pela
+    // quártica que o nosso `Falloff` estende. É o *"cada tool deve ter seu
+    // falloff apropriado"* onde ele não é escolha de produto: `hardness` é uma
+    // família CONTÍNUA (expoente `2` a `0`, o topo sendo um disco duro), e o
+    // seletor discreto ao lado governa outra pergunta.
+    Row {
+        label: "panel.sculpt3d.mask_hardness",
+        slider: ids::SCULPT3D_MASK_HARDNESS,
+        chip: ids::SCULPT3D_MASK_HARDNESS_NUM,
+        min: 0.0,
+        // ⚠️ O teto sai do MOTOR (`ph2d_sculpt3d::MAX_MASK_HARDNESS`), onde a
+        // lei que o torna um disco duro está escrita; um literal aqui seria a
+        // segunda cópia dele.
+        max: ph2d_sculpt3d::MAX_MASK_HARDNESS,
+        step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
+        decimals: 2,
+        get: |u| u.brush.mask_hardness,
+        set: |u, v| u.brush.mask_hardness = v,
+        show: |u| u.brush.verb.paints_mask(),
+        place: Place::Knobs,
+    },
     Row {
         label: "panel.sculpt3d.alpha_scale",
         slider: ids::SCULPT3D_ALPHA_SCALE,

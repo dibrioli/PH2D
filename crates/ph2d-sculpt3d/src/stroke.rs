@@ -383,7 +383,7 @@ impl SculptStroke {
             frozen,
             from_live,
             unit_accum,
-            early_out,
+            additive,
         } = brush.verb.grip().law(brush.accumulate);
         // ⚠️ **Quem SEGURA trabalha sobre o que já TOCOU, não sobre a consulta
         // deste dab — e sem isto o Grab PERDE barro.** A consulta sai das
@@ -479,7 +479,19 @@ impl SculptStroke {
             // todos os dabs concordam sobre aquele vértice, e o `max` de valores
             // iguais é o valor. É a mesma frase que a distância já obedece três
             // parágrafos acima.
-            let fall = brush.falloff.weight(dist * inv_r) * brush.alpha_weight(base, &alpha_frame);
+            // ⚠️ **O CANAL TEM CURVA PRÓPRIA, e ela é da referência.** As dez
+            // tools de geometria do original multiplicam pela quártica; o
+            // `Masking.paint` usa `(1 − d)^{2(1 − hardness)}`
+            // (`Masking.js:66-69`), que é uma família CONTÍNUA com um knob —
+            // ver [`Brush::mask_weight`]. Perguntar ao [`Falloff`] aqui media
+            // uma tool contra a curva de outra, e é literalmente o *"cada tool
+            // deve ter seu falloff apropriado"* que o pedido nomeia.
+            let curve = if brush.verb.paints_mask() {
+                brush.mask_weight(dist * inv_r)
+            } else {
+                brush.falloff.weight(dist * inv_r)
+            };
+            let fall = curve * brush.alpha_weight(base, &alpha_frame);
             // ⚠️ **O `w` fica VERBATIM — mesma ordem, mesmos bits.** A forma
             // "natural" seria derivar um do outro (`w = shape * intensity`), e
             // ela **re-associa** o produto de `(falloff × intensity) × keep`
@@ -512,9 +524,12 @@ impl SculptStroke {
             if w <= 0.0 {
                 continue;
             }
-            // **O ENVELOPE, onde ele ainda é a lei:** um dab que não supera o
-            // que já está lá é descartado — mesmo resultado, e sem mandar a
-            // pegada inteira ao refit do octree e ao upload por nada.
+            // **O CANAL SATURADO não tem o que receber.** É a última coisa que
+            // sobrou do early-out do envelope, e ela mudou de pergunta junto com
+            // a lei: não é mais *"este dab supera o que já está lá?"* (que numa
+            // lei aditiva é sempre sim), é *"ainda cabe alguma coisa?"*. Um
+            // vértice em `1.0` receberia `clamp(1 + w) == 1` e seria mandado ao
+            // upload por nada.
             //
             // ⚠️ **O `piling` MORREU com a troca de lei do carimbo.** Ele somava
             // `w · ACCUM_PER_DAB` sobre o envelope para exprimir o Accumulate, e
@@ -523,7 +538,7 @@ impl SculptStroke {
             // controle que promete acumular e começa enfraquecendo. Hoje o
             // Accumulate é `from_live`, que é o que ele é no original, e esta
             // linha não tem mais braço que o consulte.
-            if early_out && w <= self.accum[s] {
+            if additive && self.accum[s] >= 1.0 {
                 continue;
             }
             // ⚠️ **Quem carrega o peso no ALVO carimba `accum = 1`**, e é isso
@@ -533,7 +548,19 @@ impl SculptStroke {
             // parar"* divergem no dia em que uma delas ganhar um caso especial.
             // O `base` continua guardado e intocado, que é o que mantém o undo
             // trivial nas três leis.
-            self.accum[s] = if unit_accum { 1.0 } else { w };
+            // ⚠️ **A lei ADITIVA satura AQUI e não no aplicador**, e a diferença
+            // é observável: o `accum` é o que o dab seguinte lê para decidir se
+            // ainda cabe alguma coisa, então deixá-lo crescer sem teto faria o
+            // early-out acima disparar cedo demais em dois dabs e tarde demais
+            // em vinte. Guardar o valor SATURADO é o que mantém as duas leituras
+            // — *quanto foi pintado* e *ainda cabe?* — respondendo o mesmo.
+            self.accum[s] = if unit_accum {
+                1.0
+            } else if additive {
+                (self.accum[s] + w).min(1.0)
+            } else {
+                w
+            };
             self.target[s] = self.compute_target(mesh, brush, dab, &plane, reach, shape, w, v, s);
             self.moved.push(v);
         }
@@ -586,73 +613,6 @@ impl SculptStroke {
         }
     }
 
-    fn apply_positions(&self, mesh: &mut Mesh) {
-        let out = mesh.positions_mut();
-        for &v in &self.moved {
-            let vi = v as usize;
-            let s = self.slot[vi] as usize;
-            let (b, t, a) = (self.base_pos[s], self.target[s], self.accum[s]);
-            out[vi] = [
-                toward(b[0], t[0], a),
-                toward(b[1], t[1], a),
-                toward(b[2], t[2], a),
-            ];
-        }
-    }
-
-    /// A MESMA lei, no canal da máscara: [`toward`] entre o `base` e o alvo, onde
-    /// o alvo é `1` (mascarar) ou `0` (limpar). Um verbo, uma aritmética.
-    fn apply_mask(&self, mesh: &mut Mesh, brush: &Brush) {
-        let goal = if brush.invert { 0.0 } else { 1.0 };
-        let out = mesh.masks_mut();
-        for &v in &self.moved {
-            let vi = v as usize;
-            let s = self.slot[vi] as usize;
-            out[vi] = toward(self.base_mask[s], goal, self.accum[s]);
-        }
-    }
-}
-
-/// **O APLICADOR** — de `b` para `t`, andando a fração `a`.
-///
-/// ⚠️ **Ele é ancorado no ALVO, e não no `base`.** A forma óbvia — `b + (t−b)·a`,
-/// que esteve aqui até 2026-08-11 — e esta são a mesma coisa em aritmética
-/// exata, e **nenhuma das três formas possíveis é exata nas três pontas que
-/// importam**. Medido em 400 mil pares, contando divergências:
-///
-/// | forma | `a = 1` → `t` | `a = 0` → `b` | `t = b` → parado |
-/// |---|---|---|---|
-/// | `b + (t−b)·a` | **139 522** | 0 | 0 |
-/// | `b·(1−a) + t·a` | 0 | 0 | **53 315** |
-/// | `t − (t−b)·(1−a)` | 0 | **139 697** | 0 |
-///
-/// A escolha não é de gosto: é de **quais promessas o produto faz**.
-///
-/// - **`a = 1` devolve `t`** — o [`Grip::Hook`] e o [`Grip::Turn`] põem o peso
-///   DENTRO do alvo e carimbam `accum = 1`, então para eles o alvo **é** a
-///   posição final. Sem esta exatidão a paridade bit-a-bit com o kernel da
-///   referência morre **no aplicador**, e nenhum gate de verbo saberia dizer:
-///   todos medem deslocamento com tolerância. Um gate do produto pegou um Twist
-///   escrevendo `1,3164502e-8` onde o alvo dizia `1,3164501e-8`.
-/// - **`t = b` não move nada** — o `Fill` e o `Scrape` devolvem o próprio `base`
-///   para o lado errado do plano, e o `Move` sem gesto devolve `base` para toda
-///   a pegada. É uma promessa que o artista vê: *este verbo não toca aquele
-///   lado*. A segunda forma a quebra, e o gate `a_dab_with_no_gesture_moves_
-///   nothing` ficou VERMELHO nela.
-/// - **`a = 0` devolve `b`** — é a que sobra, e é a que o produto **não usa**:
-///   `apply_positions` percorre `moved`, e um vértice só entra ali com `w > 0`.
-///
-/// ⚠️ **E a medição de projeto que dizia que a forma antiga bastava era do
-/// REGIME ERRADO.** Eu havia medido `b + (t−b)·1 == t` em 9 M pares gerados como
-/// `t = fl(b + d)`, onde a subtração é uma transformação livre de erro e a
-/// identidade é **garantida por construção**. O alvo do produto não nasce assim:
-/// ele é uma expressão inteira (uma rotação de Rodrigues, uma projeção em plano)
-/// arredondada **uma vez** ao `f32`, e contra o `base` ele é um float
-/// independente. *Uma fixture que fabrica o valor pela mesma aritmética que vai
-/// testar não contém o fenômeno.*
-#[inline]
-fn toward(b: f32, t: f32, a: f32) -> f32 {
-    t - (t - b) * (1.0 - a)
 }
 
 /// **A MALHA CRESCEU DEBAIXO DO TRAÇO** — o refino e a lei do `pre`.
@@ -668,6 +628,12 @@ mod growth;
 /// onde cada verbo aponta* (lá).
 #[path = "stroke_target.rs"]
 mod target;
+
+/// **O QUE O TRAÇO ESCREVE** — os dois aplicadores. Filho pela mesma razão do
+/// [`target`]: eles leem os planos congelados. O corte é *a LEI* (aqui) contra
+/// *a ESCRITA* (lá).
+#[path = "stroke_apply.rs"]
+mod apply;
 
 #[cfg(test)]
 #[path = "stroke_tests.rs"]

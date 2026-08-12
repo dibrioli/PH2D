@@ -127,10 +127,20 @@ pub enum Grip {
     /// curva própria, acumula e satura (`clamp(m + f, 0, 1)`), e **não tem
     /// `accumulate`** (ver [`crate::ref_kernels::mask`]).
     ///
-    /// ⚠️ **Hoje ele carrega a lei do ENVELOPE, verbatim** — é o que a máscara
-    /// já fazia, e mantê-la aqui é o que torna a troca do Stamp uma mudança de
-    /// uma família só. Portar o `clamp(m + f)` da referência é wave própria, e
-    /// o grip é onde ela vai morar.
+    /// ⚠️ **E ele DEIXOU o envelope em 2026-08-12, que é a wave que o doc
+    /// acima prometia.** A lei era `max` sobre a lista de dabs, e o preço
+    /// estava medido pela porta do produto: esfregar o MESMO lugar **dezesseis
+    /// vezes** deixava o canal exatamente onde uma esfregada o deixava
+    /// (`0,500045` nas duas pontas), enquanto a referência chega à proteção
+    /// total em **quatro**. Um envelope de dabs idênticos no mesmo lugar é
+    /// constante por construção — *a máscara não acumulava, ela SATURAVA no
+    /// primeiro toque*, e era isso que fazia dela um canal que não se
+    /// constrói esfregando.
+    ///
+    /// Hoje ele é **ADITIVO e satura em 1** (`clamp(m + f, 0, 1)`,
+    /// `Masking.js:70`), com a curva PRÓPRIA do canal
+    /// ([`crate::Brush::mask_weight`]) em vez do [`crate::Falloff`] da
+    /// geometria.
     Paint,
 }
 
@@ -157,8 +167,15 @@ pub struct GripLaw {
     pub from_live: bool,
     /// O alvo já traz o peso, então o `accum` vale 1.
     pub unit_accum: bool,
-    /// Um dab que não supera o envelope é descartado.
-    pub early_out: bool,
+    /// Cada dab **SOMA** o próprio peso ao que já está acumulado, saturando em
+    /// `1`, em vez de escrever um valor.
+    ///
+    /// ⚠️ **Esta coluna era o `early_out` do ENVELOPE, e a troca de significado
+    /// é a wave da máscara** (2026-08-12): com o [`Grip::Paint`] aditivo,
+    /// **nenhum grip é mais um envelope**, e uma coluna que respondesse `false`
+    /// para os cinco seria uma coluna morta. O que sobrou dela é o oposto — a
+    /// única lei que ainda acumula ao longo da lista de dabs.
+    pub additive: bool,
 }
 
 impl Grip {
@@ -170,7 +187,7 @@ impl Grip {
     /// *quase* a resposta, com o chamador colando o resto por fora.
     #[must_use]
     pub fn law(self, accumulate: bool) -> GripLaw {
-        let (frozen, from_live, unit_accum, early_out) = match self {
+        let (frozen, from_live, unit_accum, additive) = match self {
             // ⚠️ **O CARIMBO COMPÕE** (2026-08-11) — a metade 2 do plano de
             // paridade. Cada dab soma o próprio incremento sobre o que o
             // anterior deixou, que é a estrutura do kernel da referência
@@ -196,14 +213,14 @@ impl Grip {
             Self::Hold => (true, false, false, false),
             Self::Hook => (false, true, true, false),
             Self::Turn(_) => (true, false, true, false),
-            // O canal, e a lei do ENVELOPE verbatim — ver [`Grip::Paint`].
+            // O canal: ADITIVO e saturante, o `clamp(m + f)` da referência.
             Self::Paint => (false, false, false, true),
         };
         GripLaw {
             frozen,
             from_live,
             unit_accum,
-            early_out,
+            additive,
         }
     }
 }

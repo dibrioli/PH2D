@@ -86,10 +86,17 @@ fn smoothing_is_a_fact_of_the_path_too_because_the_ring_is_read_frozen() {
 }
 
 #[test]
-fn the_envelope_is_order_free_where_the_footprint_cannot_move() {
-    // O `max` é comutativo e todo alvo sai do estado congelado, então a máquina
-    // do envelope **não tem histórico**: a mesma lista de dabs em qualquer ordem
-    // dá o mesmo resultado, ao bit.
+fn the_channel_is_order_free_up_to_the_rounding_of_its_own_sum() {
+    // A soma é comutativa e todo peso sai do estado CONGELADO, então a máquina
+    // do canal **não tem histórico**: a mesma lista de dabs em qualquer ordem dá
+    // o mesmo resultado.
+    //
+    // ⚠️ **"Ao bit" era verdade sob o ENVELOPE e deixou de ser** (2026-08-12):
+    // o `max` é exato em qualquer ordem, a SOMA em `f32` não é associativa. O
+    // que se perdeu é uma arredondada por dab; o que se mantém — e é o que este
+    // gate existe para pegar — é que a ordem não muda a LEI. Uma dependência
+    // real (ler o estado vivo, por exemplo) não chega perto desta barra: ela
+    // move o canal em fração, não em ULP.
     //
     // ⚠️ **Medido no verbo de MÁSCARA, e a escolha é a coisa importante deste
     // gate.** Os verbos de geometria não podem prometer isto e não é defeito da
@@ -131,8 +138,24 @@ fn the_envelope_is_order_free_where_the_footprint_cannot_move() {
         }
         results.push(mesh.masks().expect("o canal foi pintado").to_vec());
     }
+    // ⚠️ **A BARRA É DERIVADA DA FIXTURE, não escolhida.** O canal vive em
+    // `[0, 1]`, então UMA arredondada de `f32` custa no máximo
+    // `f32::EPSILON`, e uma lista de `N` dabs arredonda no máximo `N` vezes.
+    // Medido: a ordem invertida sai **EXATA** (`0,0`) e a embaralhada a **um
+    // ULP** (`5,960e-8`) — a soma reordenada, e nada mais. Uma barra escolhida
+    // à mão aqui seria um número que não sabe dizer quando está errado.
+    let bar = path.len() as f32 * f32::EPSILON;
     for (k, r) in results.iter().enumerate().skip(1) {
-        assert_eq!(r, &results[0], "a ordem {k} deu outro resultado");
+        let gap = r
+            .iter()
+            .zip(&results[0])
+            .map(|(a, b)| (a - b).abs())
+            .fold(0.0f32, f32::max);
+        assert!(
+            gap <= bar,
+            "a ordem {k} deu outro resultado: {gap:.3e} > {bar:.3e} — isso é \
+             LEI, não arredondada"
+        );
     }
     // E o traço fez algo: sem isto três máscaras vazias seriam "iguais".
     assert!(results[0].iter().copied().fold(0.0f32, f32::max) > 0.5);
@@ -233,44 +256,88 @@ fn the_smooth_target_is_the_live_neighbourhood_not_the_frozen_one() {
     );
 }
 
+/// **ESFREGAR CONSTRÓI, e depois PARA** — as duas metades da lei aditiva do
+/// canal, e o gate que este substitui afirmava a primeira ao contrário.
+///
+/// ⚠️ **Ele chamava-se `..._where_the_envelope_is_still_the_law` e media
+/// exatamente o defeito que o Enio reportou** (2026-08-12): sob o envelope,
+/// repetir o MESMO dab doze vezes deixava o canal onde um dab o deixara, e o
+/// gate exigia essa igualdade. Um `max` sobre dabs idênticos no mesmo lugar é
+/// constante *por construção* — a máscara não acumulava, e o gate pinava isso
+/// como se fosse a entrega.
+///
+/// ⚠️ **O que se PERDE com a troca está aqui em vez de na prosa:** re-carimbar
+/// a mesma lista de dabs deixou de ser no-op, exatamente como na família do
+/// carimbo (o gate irmão logo abaixo). Nenhuma rota deste módulo re-carimba um
+/// traço, e o `base_mask` congelado mantém o undo trivial.
+///
+/// ⚠️ **E o TRABALHO continua limitado**, que era a segunda metade do gate
+/// antigo: um vértice saturado não recebe mais nada, então o early-out
+/// devolve-o à quietude e a pegada para de ir ao refit do octree e ao upload —
+/// só que agora por SATURAÇÃO, não por empate.
 #[test]
-fn re_stamping_the_same_dab_list_changes_nothing_where_the_envelope_is_still_the_law() {
+fn rubbing_the_channel_builds_it_and_then_stops() {
     let brush = Brush {
         verb: Verb::Mask,
         radius: 0.3,
-        strength: 0.7,
+        strength: 0.2,
         ..Brush::default()
     };
     assert_eq!(
         brush.verb.grip(),
         crate::Grip::Paint,
-        "este gate mede a lei do envelope, e o verbo escolhido saiu dela"
+        "este gate mede a lei ADITIVA do canal, e o verbo escolhido saiu dela"
     );
     let mut mesh = sphere();
     let mut stroke = SculptStroke::default();
     stroke.begin(&mesh);
     let dab = dab_at([0.0, 0.0, 1.0], brush.radius);
+    let peak = |m: &Mesh| {
+        m.masks()
+            .expect("a máscara não foi escrita")
+            .iter()
+            .copied()
+            .fold(0.0f32, f32::max)
+    };
+
     stroke.dab(&mut mesh, &brush, &dab, Symmetry::default());
-    let once = mesh.masks().expect("a máscara não foi escrita").to_vec();
+    let once = peak(&mesh);
     assert!(
-        once.iter().any(|&m| m > 0.01),
-        "a fixture não mascarou nada"
+        (once - 0.2).abs() < 1e-5,
+        "um dab a 0,2 tem de pintar 0,2 no miolo, e pintou {once}"
     );
-    for _ in 0..12 {
+
+    // ESFREGAR CONSTRÓI — a metade que o gate antigo negava.
+    stroke.dab(&mut mesh, &brush, &dab, Symmetry::default());
+    let twice = peak(&mesh);
+    assert!(
+        (twice - 0.4).abs() < 1e-5,
+        "duas esfregadas a 0,2 têm de dar 0,4, e deram {twice}"
+    );
+
+    // E CHEGA AO TETO — o que a lei do envelope tornava inalcançável por
+    // qualquer número de esfregadas.
+    for _ in 0..8 {
         stroke.dab(&mut mesh, &brush, &dab, Symmetry::default());
     }
-    assert_eq!(
-        once,
-        mesh.masks().expect("a máscara sumiu"),
-        "o mesmo dab repetido intensificou"
-    );
-    // E ele não faz TRABALHO: `last_moved` é o que alimenta o refit do octree e
-    // o upload incremental, então um empate que "vencesse" mandaria a pegada
-    // inteira para a GPU a cada frame sem um pixel mudar.
+    let full = peak(&mesh);
     assert!(
-        stroke.last_moved().is_empty(),
-        "o dab repetido re-escreveu {} vértices",
-        stroke.last_moved().len()
+        full >= 1.0,
+        "dez esfregadas a 0,2 têm de saturar, e pararam em {full}"
+    );
+
+    // E DEPOIS PARA: o miolo saturado não é mais re-escrito.
+    let saturated = mesh.masks().expect("a máscara sumiu").to_vec();
+    stroke.dab(&mut mesh, &brush, &dab, Symmetry::default());
+    let centre = saturated
+        .iter()
+        .enumerate()
+        .max_by(|a, b| a.1.partial_cmp(b.1).expect("sem NaN no canal"))
+        .expect("o canal não está vazio")
+        .0 as u32;
+    assert!(
+        !stroke.last_moved().contains(&centre),
+        "o vértice saturado voltou ao upload sem ter o que receber"
     );
 }
 

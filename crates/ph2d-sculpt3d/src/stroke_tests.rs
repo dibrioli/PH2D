@@ -317,12 +317,22 @@ mod verb_hook;
 #[path = "verb_turn_tests.rs"]
 mod verb_turn;
 
-/// O APLICADOR ÚNICO, e a identidade em que o peso-no-alvo se apoia — ver o
 /// **A LEI DE UM CARIMBO** — ver [`stroke_law`].
+///
+/// ⚠️ O doc desta declaração estava PARTIDO AO MEIO: uma inserção anterior
+/// meteu `stroke_law` dentro da frase que descrevia o `stroke_apply`, deixando
+/// um com a primeira linha de outro e o outro com um *"cabeçalho dele."* órfão.
+/// *Um comentário que descreve o vizinho é pior que comentário nenhum.*
 #[path = "stroke_law_tests.rs"]
 mod stroke_law;
 
+/// **O APLICADOR ÚNICO**, e a identidade em que o peso-no-alvo se apoia — ver o
 /// cabeçalho dele.
+///
+/// ⚠️ **Ele fica AQUI e não sob [`super::apply`]**, embora seja o gate daquele
+/// módulo: as fixtures (`sphere`, `dab_for`) moram neste arquivo, e pendurá-lo
+/// no sujeito custaria uma SEGUNDA cópia delas — o preço errado para ganhar uma
+/// indireção de leitura.
 #[path = "stroke_apply_tests.rs"]
 mod stroke_apply;
 

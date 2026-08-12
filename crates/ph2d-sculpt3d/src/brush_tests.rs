@@ -201,10 +201,14 @@ fn the_families_that_the_ui_asks_about_agree_with_the_verb_list() {
     assert_eq!(labels.len(), n);
 }
 
-/// ⚠️ **A máscara nasce em força CHEIA, e o número que justifica isso está
-/// medido.** Com a força de geometria (0,5), o envelope faz um traço parar em
-/// 0,5000 por mais que se esfregue — e `keep = 1 − mask` deixa metade de todo
-/// dab seguinte atravessar a proteção.
+/// ⚠️ **A máscara nasce em força CHEIA, e a razão MUDOU sob os pés desta nota**
+/// (2026-08-12). Ela dizia que a força de geometria fazia o traço *parar* em
+/// 0,5000 por mais que se esfregasse — verdade sob o ENVELOPE, e o defeito que
+/// a lei aditiva removeu: hoje 0,5 satura em duas esfregadas. O que sustenta o
+/// default é outra coisa, e é a referência: o `Masking` do original ship
+/// **`_intensity = 1.0`** (`Masking.js:15`), enquanto as tools de geometria
+/// nascem em 0,5 e 0,75. *Um default defendido por um defeito fica órfão no dia
+/// em que o defeito é corrigido.*
 #[test]
 fn the_mask_is_born_at_full_strength_and_geometry_is_not() {
     assert_eq!(Verb::Mask.default_strength(), 1.0);
@@ -250,29 +254,40 @@ fn one_full_strength_stroke_protects_completely() {
         "um traço tem de chegar ao teto, e chegou a {peak}"
     );
 
-    // O CONTROLE, que é o defeito medido: com a força de geometria ele para na
-    // metade — e esfregar não ajuda, porque o envelope é um `max`.
-    let mut half = ph2d_mesh::shapes::uv_sphere(48, 72, 1.0);
-    let mut st2 = crate::SculptStroke::default();
-    st2.begin(&half);
-    for _ in 0..8 {
-        st2.dab(
-            &mut half,
-            &Brush {
-                strength: 0.5,
-                ..brush.clone()
-            },
-            &crate::Dab::at([0.0, 0.0, 1.0], 0.5, [0.0, 0.0, -1.0]),
-            Symmetry::default(),
-        );
-    }
-    let weak = half
-        .masks()
-        .expect("mascarou")
-        .iter()
-        .fold(0.0f32, |a, &b| a.max(b));
+    // ⚠️ **E o par que torna isto uma afirmação sobre ACUMULAÇÃO, não sobre
+    // força.** Este bloco media o DEFEITO — *"oito dabs a meia força param em
+    // 0,5, porque o envelope é um `max`"* —, e o afirmava. Sob a lei aditiva
+    // ele diz o oposto, e é a diferença entre um canal que se constrói e um que
+    // satura no primeiro toque: **um** dab a meia força pinta meio, e **oito**
+    // chegam ao teto.
+    let rub = |n: usize| {
+        let mut m = ph2d_mesh::shapes::uv_sphere(48, 72, 1.0);
+        let mut st = crate::SculptStroke::default();
+        st.begin(&m);
+        for _ in 0..n {
+            st.dab(
+                &mut m,
+                &Brush {
+                    strength: 0.5,
+                    ..brush.clone()
+                },
+                &crate::Dab::at([0.0, 0.0, 1.0], 0.5, [0.0, 0.0, -1.0]),
+                Symmetry::default(),
+            );
+        }
+        m.masks()
+            .expect("mascarou")
+            .iter()
+            .fold(0.0f32, |a, &b| a.max(b))
+    };
+    let one = rub(1);
     assert!(
-        (weak - 0.5).abs() < 1e-6,
-        "oito dabs a meia força param em 0,5 (o envelope), e deram {weak}"
+        (one - 0.5).abs() < 1e-6,
+        "um dab a meia força pinta meio, e pintou {one}"
+    );
+    let many = rub(8);
+    assert!(
+        many > 0.999,
+        "esfregar a meia força tem de chegar ao teto, e parou em {many}"
     );
 }

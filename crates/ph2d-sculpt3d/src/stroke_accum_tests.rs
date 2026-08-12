@@ -300,3 +300,138 @@ fn the_disarmed_brush_saturates_at_one_radius_and_the_armed_one_passes_it() {
         "o ARMADO parou em {on:.2} raios: a origem viva não está sendo lida"
     );
 }
+
+/// **O CANAL DE MÁSCARA REPRODUZ O PORTE, PELA PORTA DO PRODUTO.**
+///
+/// ⚠️ **Este gate não existia, e é essa ausência que deixou a máscara derivar.**
+/// Os treze kernels do [`crate::ref_kernels`] são gateados bit a bit contra o
+/// JS EXECUTANDO (`tests/sculptgl_parity.rs`), mas *nada* afirmava que o
+/// PRODUTO os reproduz — a paridade era MEDIDA por uma sonda `#[ignore]`, e uma
+/// sonda que ninguém corre não impede regressão nenhuma. Foi exatamente a
+/// pergunta do Enio sobre o carimbo (*"nada está idêntico! as mudanças já foram
+/// linkadas?"*), e no canal a resposta era **não**: sob o envelope, dezesseis
+/// esfregadas deixavam o canal onde uma o deixava.
+///
+/// ⚠️ **A POLARIDADE é convertida numa ponta só.** O nosso `1` é *protegido*, o
+/// `free` da referência é *livre*, e `free = 1 − mask` é EXATO em `f32` (o
+/// expoente não muda entre `m` e `1 − m` para `m ∈ [0,1]` a menos de um ULP no
+/// próprio subtraendo). Comparar os dois crus mediria uma máscara contra o
+/// complemento da outra.
+///
+/// ⚠️ **A BARRA É DERIVADA e cresce com as esfregadas**, porque a divergência
+/// que resta é estrutural e conhecida: nós somamos o traço inteiro em `f32`
+/// (`accum`) e escrevemos UMA vez; a referência escreve o canal a cada dab,
+/// arredondando `N` vezes. São duas ordens de arredondada sobre a mesma soma —
+/// medido, `5,96e-8` num dab e `8,3e-7` em dezesseis, ou seja **uma arredondada
+/// por esfregada** e nunca mais que isso. Um nível de máscara visível é
+/// `1/255 = 3,9e-3`; o pior caso aqui é **4700× menor**.
+#[test]
+fn the_mask_channel_reproduces_the_reference_kernel() {
+    // Os defaults DE FÁBRICA da tool `Masking` do original (`Masking.js:13-16`)
+    // — nenhum deles é escolhido aqui.
+    const INTENSITY: f32 = 1.0;
+    let radius = 0.45f32;
+    let centre = [0.7f32.cos(), 0.0, 0.7f32.sin()];
+    let len = (centre[0] * centre[0] + centre[2] * centre[2]).sqrt();
+    let eye = [-centre[0] / len, 0.0, -centre[2] / len];
+    let dab = Dab::at(centre, radius, eye);
+
+    for n in [1usize, 2, 4, 16] {
+        // --- O NOSSO, pela porta do produto.
+        let mut mesh = sphere();
+        let brush = Brush {
+            verb: Verb::Mask,
+            radius,
+            strength: INTENSITY,
+            ..Brush::default()
+        };
+        let mut st = SculptStroke::default();
+        st.begin(&mesh);
+        for _ in 0..n {
+            st.dab(&mut mesh, &brush, &dab, Symmetry::default());
+        }
+
+        // --- O DELES, sobre a MESMA malha e a MESMA pegada.
+        let clean = sphere();
+        let pos: Vec<f32> = clean.positions().iter().flat_map(|p| *p).collect();
+        let fp: Vec<u32> = (0..clean.vert_count() as u32)
+            .filter(|&v| {
+                let p = clean.positions()[v as usize];
+                let d = [
+                    p[0] - centre[0],
+                    p[1] - centre[1],
+                    p[2] - centre[2],
+                ];
+                d[0] * d[0] + d[1] * d[1] + d[2] * d[2] < radius * radius
+            })
+            .collect();
+        assert!(!fp.is_empty(), "a fixture não tem pegada");
+        let mut free = vec![1.0f32; clean.vert_count()];
+        let c = [
+            f64::from(centre[0]),
+            f64::from(centre[1]),
+            f64::from(centre[2]),
+        ];
+        for _ in 0..n {
+            crate::ref_kernels::mask(
+                &mut free,
+                &pos,
+                &fp,
+                c,
+                f64::from(radius) * f64::from(radius),
+                f64::from(INTENSITY),
+                f64::from(Brush::default().mask_hardness),
+                true,
+            );
+        }
+
+        // Uma arredondada de `f32` por esfregada, e nada além disso.
+        let bar = n as f32 * f32::EPSILON;
+        let ours = mesh.masks().expect("o canal foi pintado");
+        let gap = fp
+            .iter()
+            .map(|&v| {
+                let mine = crate::mask_ops::free_weight(ours[v as usize]);
+                (mine - free[v as usize]).abs()
+            })
+            .fold(0.0f32, f32::max);
+        assert!(
+            gap <= bar,
+            "{n} esfregada(s): o canal divergiu {gap:.3e} do porte (barra {bar:.3e})"
+        );
+    }
+}
+
+/// **E o CONTROLE: a curva do canal NÃO é a da geometria.**
+///
+/// ⚠️ Sem ele o gate acima é satisfeito por um produto que peça a curva errada
+/// e por acaso concorde — e não concordaria, mas *"não concordaria"* é uma
+/// afirmação minha, não um teste. A quártica da geometria vale `0,6875` a meio
+/// raio e a do canal vale `0,3536`: quase o DOBRO, e é o que separa uma borda
+/// de máscara apertada de uma borrada.
+#[test]
+fn the_channel_curve_is_not_the_geometry_curve() {
+    let b = Brush::default();
+    let mid = b.mask_weight(0.5);
+    let geo = crate::Falloff::Plateau.weight(0.5);
+    assert!(
+        (mid - 0.353_553).abs() < 1e-5,
+        "a curva do canal a meio raio é (1−0,5)^1,5 = 0,353553, e deu {mid}"
+    );
+    assert!(
+        geo / mid > 1.8,
+        "a curva da geometria tem de ser quase o dobro da do canal a meio raio, \
+         e a razão deu {:.3}",
+        geo / mid
+    );
+    // ⚠️ **E o topo da faixa é um DISCO DURO, não *"quase duro"*:** em
+    // `hardness = 1` o expoente é ZERO e `x^0 == 1` em toda a pegada. É o que
+    // torna o knob uma família contínua em vez de uma escolha entre curvas.
+    let hard = Brush {
+        mask_hardness: crate::MAX_MASK_HARDNESS,
+        ..Brush::default()
+    };
+    for t in [0.0f32, 0.25, 0.5, 0.99] {
+        assert_eq!(hard.mask_weight(t), 1.0, "o disco duro cedeu em t={t}");
+    }
+}

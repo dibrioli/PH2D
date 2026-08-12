@@ -21,6 +21,8 @@
 //! mesma aritmética que vai testar não contém o fenômeno.
 
 use super::*;
+// O sujeito deste gate mudou de módulo no corte de 2026-08-12.
+use crate::stroke::apply::toward;
 
 /// Os verbos cujo alvo já é a posição final.
 ///

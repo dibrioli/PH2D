@@ -758,3 +758,97 @@ entrou de carona — quem construir cor de vértice não precisa portá-lo de no
 
 Uma migração parcial deixaria **duas leis vivas na mesma ferramenta**, e o
 artista sentiria a costura. Isso é escopo, não detalhe.
+
+### 3.2.8 — O GRAB já estava no piso, e o CANAL não acumulava
+
+A §3.2.7 fechou o censo do **carimbo**. Faltavam duas famílias, e a medição as
+separou de um jeito que a leitura de código não teria: uma estava pronta e a
+outra tinha o defeito que o Enio reportou no primeiro dia.
+
+**As quatro tools que PUXAM** — `Move` · `SnakeHook` · `Twist` · `LocalScale` —
+foram medidas contra os kernels portados (sonda
+`what_separates_our_grab_family_from_the_reference`), com o gesto tangente à
+esfera e `strength = 1.0`:
+
+| verbo | razão | \|diferença\| |
+|---|---|---|
+| Move/grab · SnakeHook | 1,00× | **2,980e-8** |
+| Twist · LocalScale | 1,00× | **5,960e-8** |
+
+Um ULP do `f32` armazenado, nas quatro. ⚠️ **E elas nunca chamaram os kernels
+portados** — o que as pôs no piso foi a `GripLaw` da metade 2, cujas colunas
+*saíram* destes quatro kernels; a concordância é aritmética, não delegação. É a
+resposta oposta à do carimbo em 11/08, e é por isso que a pergunta *"o produto
+reproduz o porte?"* tem de ser **medida** por família em vez de deduzida de
+quem chama quem.
+
+**O CANAL DE MÁSCARA era a outra história.** Medido pela porta do produto,
+esfregando o MESMO lugar (`what_separates_our_mask_from_the_reference`):
+
+| esfregadas | nosso (antes) | referência |
+|---|---|---|
+| 1 | 0,500045 | 0,521142 |
+| 2 | 0,500045 | 0,042284 |
+| 4 | 0,500045 | **0,000000** |
+| 16 | **0,500045** | 0,000000 |
+
+⚠️ **A coluna da esquerda não é *"lento"*, é INERTE**: dezesseis esfregadas
+deixam o canal exatamente onde uma o deixa. O `Grip::Paint` carregava a lei do
+ENVELOPE (`max` sobre a lista de dabs), e um `max` sobre dabs idênticos no mesmo
+lugar é constante **por construção** — *a máscara saturava no primeiro toque em
+vez de acumular*. É o *"nosso accumulate está completamente bugado"* do pedido
+original, na família que a metade 2 não tocou.
+
+**Duas coisas mudaram, e as duas são da referência:**
+
+1. **A LEI é aditiva e satura** — `clamp(m + f, 0, 1)` (`Masking.js:70`), no
+   lugar de `toward(base, goal, envelope)`. A `GripLaw.early_out` virou
+   `GripLaw.additive`: com o canal aditivo **nenhum grip é mais um envelope**, e
+   uma coluna `false` para os cinco seria coluna morta.
+2. **A CURVA é PRÓPRIA do canal** — `(1 − d)^{2(1 − hardness)}`
+   (`Masking.js:66`), com `hardness = 0,25` de fábrica, exposta como row no
+   painel ao lado do `pinch`. ⚠️ Ela vale **0,3536** a meio raio contra os
+   **0,6875** da quártica da geometria: quase o dobro, e é o que separa uma
+   borda de máscara apertada de uma borrada. *Isto não é uma escolha de produto
+   — é o que o modelo já fazia, e é o "cada tool deve ter seu falloff
+   apropriado" onde a resposta estava na referência.*
+
+Depois: **0,521142 · 0,042284 · 0,000000 · 0,000000** — as duas colunas
+coincidem a seis casas, com `|diferença|` de **5,96e-8 num dab** e **8,3e-7 em
+dezesseis**. ⚠️ **A deriva é ESTRUTURAL e conhecida:** nós somamos o traço em
+`f32` e escrevemos UMA vez; a referência escreve o canal a cada dab,
+arredondando `N` vezes. Uma arredondada por esfregada, nunca mais — e um nível
+de máscara visível (`1/255`) é **4700× maior** que o pior caso.
+
+#### O que a wave derrubou, e que estava PINADO como se fosse a lei
+
+Quatro gates caíram, e **três deles afirmavam consequências da lei velha como se
+fossem inevitáveis**:
+
+- `one_full_strength_stroke_protects_completely` tinha um bloco comentado como
+  *"O CONTROLE, que é o **defeito medido**"* — e o **assertava**. ⚠️ *Um gate
+  que chama algo de defeito na prosa e o pina numa asserção garante que o
+  defeito sobreviva.*
+- O default `Verb::Mask.default_strength() == 1.0` era justificado por ele
+  (*"com 0,5 o envelope faz o traço parar em 0,5000"*). O default está certo —
+  a tool do original ship `_intensity = 1.0` — mas *um default defendido por um
+  defeito fica órfão no dia em que o defeito é corrigido*.
+- `the_mask_verb_writes_its_channel_and_moves_no_geometry` pinava um resto de
+  **exatamente 0,25** depois de pintar e limpar com o mesmo pincel (`w(1 − w)`,
+  o máximo do lerp), com a nota *"isto não é defeito, é a aritmética do lerp"*.
+  Correto sob aquela lei; sob a aditiva o resto é **zero**, e pintar-e-limpar
+  devolve o canal ao ponto de partida.
+- `the_envelope_is_order_free_where_the_footprint_cannot_move` afirmava
+  ordem-livre **ao bit**. Sob soma em `f32` isso deixa de ser exato: medido, a
+  ordem invertida sai **exata** e a embaralhada a **um ULP**. O gate virou
+  `the_channel_is_order_free_up_to_the_rounding_of_its_own_sum`, com a barra
+  **derivada** (`N · f32::EPSILON`, uma arredondada por dab) em vez de escolhida.
+
+#### O gate que faltava, e que é a razão de a máscara ter derivado
+
+⚠️ **Nada afirmava que o PRODUTO reproduz o porte.** Os treze kernels são
+gateados bit a bit contra o JS executando, e a paridade do produto era **medida
+por uma sonda `#[ignore]`** — uma sonda que ninguém corre não impede regressão
+nenhuma. Nasceu `the_mask_channel_reproduces_the_reference_kernel` (porta do
+produto, 1/2/4/16 esfregadas, barra derivada) mais o **controle** que impede o
+gate de ser satisfeito por acaso: `the_channel_curve_is_not_the_geometry_curve`.

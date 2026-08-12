@@ -495,6 +495,50 @@ pub struct Brush {
     pub plane_offset: f32,
     /// Quanto o `Crease` aperta lateralmente, em `[0, 1]`.
     pub pinch: f32,
+    /// **A dureza da borda do canal de MÁSCARA**, em `[0, 1]` — o `_hardness`
+    /// da tool `Masking` do original (`Masking.js:14`).
+    ///
+    /// ⚠️ **Ele existe porque a máscara tem CURVA PRÓPRIA, e isso é da
+    /// referência, não nosso.** A afirmação *"o SculptGL tem uma curva para
+    /// tudo"* vale para as dez tools que movem GEOMETRIA; o canal usa
+    /// `(1 − d)^{2(1 − hardness)}` (ver [`Brush::mask_weight`]), e é por isso
+    /// que o [`Falloff`] — o nosso seletor, que é um superconjunto do que a
+    /// referência oferece à geometria — **não** o alcança. Foi exatamente o
+    /// pedido *"cada tool deve ter seu falloff apropriado"*: aqui ele não é uma
+    /// escolha de produto, é o que o modelo já fazia.
+    ///
+    /// ⚠️ **`0.25` é o valor DE FÁBRICA da tool**, não um número escolhido —
+    /// ele dá expoente `1.5`, uma borda visivelmente mais apertada que a
+    /// quártica da geometria (a `Plateau` vale `0,6875` a meio raio, esta vale
+    /// `0,3536`). Em `1.0` o expoente é ZERO e o canal vira um disco duro.
+    pub mask_hardness: f32,
+}
+
+/// A dureza do canal em `1.0` dá expoente **zero**, e `x^0 == 1` em toda a
+/// pegada — o disco duro. É o topo da faixa da tool do original, e o nome existe
+/// para o painel não repetir o literal.
+pub const MAX_MASK_HARDNESS: f32 = 1.0;
+
+impl Brush {
+    /// **A CURVA DO CANAL DE MÁSCARA** — `(1 − t)^{2(1 − hardness)}`, o
+    /// `Masking.paint` do original (`Masking.js:66-69`).
+    ///
+    /// ⚠️ **A aritmética é `f64` e a arredondada é UMA**, como em todo o porte
+    /// (`ref_kernels`): o `Math.pow` do JS trabalha em duplo e o
+    /// `Float32Array` guarda uma vez. Computá-la em `f32` acumularia uma
+    /// segunda arredondada e a paridade sairia do piso do formato.
+    ///
+    /// ⚠️ **`t` chega JÁ normalizado pelo raio** e não é clampado aqui: o
+    /// original clampa (`if dist > 1 dist = 1`) e a nota do
+    /// [`crate::ref_kernels`] mede que esse ramo é **inalcançável** — quem monta
+    /// a pegada só admite `d² < r²`. A guarda contra `t > 1` mora onde o
+    /// consumo mora, e duplicá-la aqui seria a segunda resposta à mesma
+    /// pergunta.
+    #[must_use]
+    pub fn mask_weight(&self, t: f32) -> f32 {
+        let softness = 2.0 * (1.0 - f64::from(self.mask_hardness));
+        (1.0 - f64::from(t)).powf(softness) as f32
+    }
 }
 
 impl Default for Brush {
@@ -525,6 +569,8 @@ impl Default for Brush {
             invert: false,
             plane_offset: 0.0,
             pinch: 0.5,
+            // O `_hardness` de fábrica da `Masking` do original.
+            mask_hardness: 0.25,
         }
     }
 }

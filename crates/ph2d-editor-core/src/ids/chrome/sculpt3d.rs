@@ -95,6 +95,13 @@ pub const SCULPT3D_PLANE_OFFSET_NUM: NodeId = hash_node_id("sculpt3d.plane_offse
 pub const SCULPT3D_PINCH: NodeId = hash_node_id("sculpt3d.pinch");
 /// Chip ligado a [`SCULPT3D_PINCH`].
 pub const SCULPT3D_PINCH_NUM: NodeId = hash_node_id("sculpt3d.pinch_num");
+/// A dureza da borda do canal de MÁSCARA — o `_hardness` da tool `Masking` do
+/// SculptGL. ⚠️ Ele NÃO é um falloff: o canal tem curva própria
+/// (`(1 − d)^{2(1 − hardness)}`), e o seletor de [`Falloff`] governa a
+/// geometria.
+pub const SCULPT3D_MASK_HARDNESS: NodeId = hash_node_id("sculpt3d.mask_hardness");
+/// Chip ligado a [`SCULPT3D_MASK_HARDNESS`].
+pub const SCULPT3D_MASK_HARDNESS_NUM: NodeId = hash_node_id("sculpt3d.mask_hardness_num");
 
 /// **O PADRÃO que decide onde, dentro da pegada, o verbo age** — a primeira
 /// opção é NENHUM e as outras são os padrões de `ph2d_sculpt3d::Alpha::ALL`.

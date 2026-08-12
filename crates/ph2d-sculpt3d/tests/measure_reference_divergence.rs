@@ -494,3 +494,276 @@ fn whose_divergence_is_left_the_law_or_the_plane() {
     );
     println!("  ^ o `signed_distance` do Flatten/Clay só enxerga a componente ao longo");
 }
+
+/// **O GRAB — as quatro tools que PUXAM, medidas contra o porte.**
+///
+/// A família do carimbo fechou em 2026-08-11 (§3.2.5-§3.2.7) e esta é a outra
+/// metade do catálogo: `Move` · `SnakeHook` · `Twist` · `LocalScale`, os quatro
+/// [`ph2d_sculpt3d::Grip`] que não carimbam. Os kernels da referência para os
+/// quatro **já existem e já são bit-idênticos contra o JS executando**
+/// (`tests/sculptgl_parity.rs`) — o que esta sonda mede é se o **PRODUTO** os
+/// reproduz, que é exatamente a pergunta que o Enio fez sobre o carimbo
+/// (*"nada está idêntico! as mudanças já foram linkadas?"*) e que ali a resposta
+/// era **não**.
+///
+/// ⚠️ **Todos com `strength = 1.0`, e não é conveniência.** Nas quatro tools do
+/// original a intensidade **não** é um fator do falloff:
+///
+/// - `Move.js:10` tem `_intensity = 1.0` e o dobra DENTRO do `dir`;
+/// - `Drag.js` **não tem intensidade nenhuma** — o `dir` é o delta do rato;
+/// - `Twist.js` multiplica pelo **ÂNGULO**, que é o gesto;
+/// - `LocalScale.js:69` multiplica pelo `delta * 0.01`, que também é o gesto.
+///
+/// Os nossos quatro dobram o gesto no `Dab` e a intensidade no `w`, então
+/// `strength = 1.0` é o que põe as duas leis na mesma unidade. Medir com `0.5`
+/// somaria um FATOR conhecido à divergência que a tabela existe para achar.
+#[test]
+#[ignore = "sonda: imprime a tabela, não afirma nada"]
+fn what_separates_our_grab_family_from_the_reference() {
+    const R: f32 = 0.45;
+    // O gesto: uma puxada TANGENTE à esfera no ponto do dab. O `dab_at` pousa em
+    // `(cos 0.7, 0, sin 0.7)`, então `+Y` é exatamente tangente ali — um gesto
+    // radial misturaria *puxar* com *inflar* e o número diria as duas coisas.
+    const PULL: [f32; 3] = [0.0, 0.2, 0.0];
+    // O giro e a escala, na unidade que cada verbo declara.
+    const RADIANS: f32 = 0.35;
+    const FRACTION: f32 = 0.25;
+
+    let mut rows: Vec<Row> = Vec::new();
+
+    for name in ["Move/grab", "SnakeHook", "Twist", "LocalScale"] {
+        let mut mesh = sphere();
+        let base = flat(&mesh);
+        let d0 = dab_at(R);
+        let fp = footprint(&mesh, &d0);
+        let free = free_of(&mesh);
+
+        // O gesto, construído pela porta que NOMEIA a leitura — um `Dab { pull,
+        // .. }` à mão carregaria um total onde se espera um incremento sem o
+        // compilador piscar (o doc do `Dab::pull` é explícito sobre isso).
+        let (verb, d) = match name {
+            "Move/grab" => (
+                Verb::Move,
+                Dab::pulling(d0.center, d0.radius, d0.eye, PULL),
+            ),
+            "SnakeHook" => (
+                Verb::SnakeHook,
+                Dab::hooking(d0.center, d0.radius, d0.eye, PULL),
+            ),
+            "Twist" => (
+                Verb::Twist,
+                Dab::turning(d0.center, d0.radius, d0.eye, RADIANS),
+            ),
+            _ => (
+                Verb::LocalScale,
+                Dab::scaling(d0.center, d0.radius, d0.eye, FRACTION),
+            ),
+        };
+
+        // --- O NOSSO, pela porta do produto.
+        let brush = Brush {
+            verb,
+            strength: 1.0,
+            falloff: Falloff::Plateau,
+            ..Brush::default()
+        };
+        let mut stroke = SculptStroke::default();
+        stroke.begin(&mesh);
+        stroke.dab(&mut mesh, &brush, &d, Symmetry::default());
+        let ours = flat(&mesh);
+
+        // --- O DELES, sobre a MESMA malha e a MESMA pegada.
+        let mut theirs = base.clone();
+        let center = [
+            f64::from(d.center[0]),
+            f64::from(d.center[1]),
+            f64::from(d.center[2]),
+        ];
+        let r2 = f64::from(d.radius) * f64::from(d.radius);
+        let pull = [
+            f64::from(PULL[0]),
+            f64::from(PULL[1]),
+            f64::from(PULL[2]),
+        ];
+        match verb {
+            // ⚠️ **O proxy é indexado pela POSIÇÃO NA LISTA**, não pelo id do
+            // vértice — o doc do `rk::move` avisa, e trocar os dois lê a
+            // vizinhança errada em silêncio.
+            Verb::Move => {
+                let proxy: Vec<f32> = fp
+                    .iter()
+                    .flat_map(|&v| {
+                        let i = v as usize * 3;
+                        [base[i], base[i + 1], base[i + 2]]
+                    })
+                    .collect();
+                rk::r#move(&mut theirs, &free, &fp, &proxy, pull, center, r2);
+            }
+            Verb::SnakeHook => rk::drag(&mut theirs, &free, &fp, pull, center, r2),
+            // ⚠️ **O eixo é MENOS o olho** (`Twist.js:41`), e o nosso
+            // `compute_target` o nega no mesmo lugar — passar `d.eye` aqui
+            // mediria os dois a girar para lados opostos.
+            Verb::Twist => {
+                let axis = [
+                    -f64::from(d.eye[0]),
+                    -f64::from(d.eye[1]),
+                    -f64::from(d.eye[2]),
+                ];
+                ph2d_sculpt3d::ref_kernels::twist(
+                    &mut theirs,
+                    &free,
+                    &fp,
+                    center,
+                    r2,
+                    f64::from(RADIANS),
+                    axis,
+                );
+            }
+            // ⚠️ **A `intensity` do `scale` é o DELTA EM PIXELS**, e o `0.01`
+            // de dentro do kernel é o que a converte em fração: a nossa fração
+                // entra multiplicada por 100 para as duas falarem a mesma coisa.
+            _ => rk::scale(
+                &mut theirs,
+                &free,
+                &fp,
+                center,
+                r2,
+                f64::from(FRACTION) * 100.0,
+            ),
+        }
+
+        rows.push(Row {
+            verb: name,
+            ours: reach_of(&ours, &base),
+            theirs: reach_of(&theirs, &base),
+            gap: reach_of(&ours, &theirs),
+        });
+    }
+
+    println!("\n== O GRAB: um gesto, a MESMA malha e a MESMA pegada ==");
+    println!(
+        "{:<12} {:>12} {:>12} {:>10} {:>12}",
+        "verbo", "nosso", "referência", "razão", "|diferença|"
+    );
+    for r in &rows {
+        let ratio = if r.theirs > 0.0 {
+            format!("{:.2}x", r.ours / r.theirs)
+        } else {
+            "-".into()
+        };
+        println!(
+            "{:<12} {:>12.6} {:>12.6} {:>10} {:>12.3e}",
+            r.verb, r.ours, r.theirs, ratio, r.gap
+        );
+    }
+    println!();
+}
+
+/// **A MÁSCARA — o último membro do catálogo com divergência NOMEADA.**
+///
+/// O `Grip::Paint` declara, no próprio doc, que carrega *"a lei do ENVELOPE,
+/// verbatim"* e que portar o `clamp(m + f)` da referência é wave própria. Esta
+/// sonda mede as DUAS metades dessa frase antes de qualquer linha ser escrita:
+///
+/// 1. **A CURVA.** A referência dá ao canal uma curva PRÓPRIA —
+///    `(1 − d)^{2(1 − hardness)}`, `hardness = 0.25` de fábrica ⇒ expoente
+///    `1.5` — que não é a quártica da geometria. Nenhum membro do nosso
+///    [`Falloff`] é essa curva.
+/// 2. **A LEI.** A nossa é `toward(base, goal, envelope)`: assintótica, e
+///    idempotente sob re-carimbo. A dela é `clamp(m + f, 0, 1)`: ADITIVA, e é
+///    ela que faz **esfregar construir máscara** — exatamente o gesto que o
+///    smoke da máscara do Painter 2D já ensinou a este repo a testar.
+///
+/// ⚠️ **A polaridade é convertida numa ponta só.** O nosso `DEFAULT_MASK = 0` é
+/// *totalmente esculpível*; o `mAr[ind+2]` da referência é o oposto. A tabela
+/// compara `free_weight(nosso)` contra o `free` dela — comparar os dois crus
+/// mediria uma máscara contra o complemento da outra.
+#[test]
+#[ignore = "sonda: imprime a tabela, não afirma nada"]
+fn what_separates_our_mask_from_the_reference() {
+    const R: f32 = 0.45;
+    // Os defaults DE FÁBRICA da tool `Masking` do original (`Masking.js:13-16`).
+    const INTENSITY: f64 = 0.5;
+    const HARDNESS: f64 = 0.25;
+
+    println!("\n== A MÁSCARA: N esfregadas no MESMO lugar (o `free`, 1 = livre) ==");
+    println!(
+        "{:>5} {:>16} {:>16} {:>14}",
+        "dabs", "nosso", "referência", "|diferença|"
+    );
+
+    for n in [1usize, 2, 4, 8, 16] {
+        let d = dab_at(R);
+
+        // --- O NOSSO, pela porta do produto.
+        let mut mesh = sphere();
+        let fp = footprint(&mesh, &d);
+        let brush = Brush {
+            verb: Verb::Mask,
+            strength: INTENSITY as f32,
+            falloff: Falloff::Plateau,
+            ..Brush::default()
+        };
+        let mut s = SculptStroke::default();
+        s.begin(&mesh);
+        for _ in 0..n {
+            s.dab(&mut mesh, &brush, &d, Symmetry::default());
+        }
+        let ours: Vec<f32> = free_of(&mesh);
+
+        // --- O DELES: N aplicações do kernel sobre o canal VIVO, que é o que a
+        // referência faz (a máscara não tem proxy — o doc do `ref_mask` é
+        // explícito: ela lê `vAr`, e o acúmulo é o produto da ferramenta).
+        let clean = sphere();
+        let pos = flat(&clean);
+        let mut theirs = vec![1.0f32; clean.vert_count()];
+        for _ in 0..n {
+            ph2d_sculpt3d::ref_kernels::mask(
+                &mut theirs, &pos, &fp, {
+                    [
+                        f64::from(d.center[0]),
+                        f64::from(d.center[1]),
+                        f64::from(d.center[2]),
+                    ]
+                },
+                f64::from(d.radius) * f64::from(d.radius),
+                INTENSITY,
+                HARDNESS,
+                true,
+            );
+        }
+
+        // O canal mais PROTEGIDO da pegada — o miolo, que é onde as duas leis
+        // divergem primeiro (a assintótica nunca chega a 0, a aditiva satura).
+        let low = |v: &[f32]| fp.iter().map(|&i| v[i as usize]).fold(1.0f32, f32::min);
+        let gap = fp
+            .iter()
+            .map(|&i| f64::from(ours[i as usize]) - f64::from(theirs[i as usize]))
+            .fold(0.0f64, |a, b| a.max(b.abs()));
+        println!(
+            "{n:>5} {:>16.6} {:>16.6} {:>14.3e}",
+            low(&ours),
+            low(&theirs),
+            gap
+        );
+    }
+
+    // A CURVA do canal, isolada — a segunda curva do SculptGL, que a nossa
+    // família de falloff não contém.
+    println!("\n== A CURVA DO CANAL (hardness 0.25 => expoente 1.5) ==");
+    println!(
+        "{:>6} {:>14} {:>12} {:>12} {:>12}",
+        "t", "referência", "Plateau", "Smooth", "Sphere"
+    );
+    for i in 0..=8 {
+        let t = f64::from(i) / 8.0;
+        let r = (1.0 - t).powf(2.0 * (1.0 - HARDNESS));
+        println!(
+            "{t:>6.3} {r:>14.6} {:>12.6} {:>12.6} {:>12.6}",
+            f64::from(Falloff::Plateau.weight(t as f32)),
+            f64::from(Falloff::Smooth.weight(t as f32)),
+            f64::from(Falloff::Sphere.weight(t as f32)),
+        );
+    }
+    println!();
+}

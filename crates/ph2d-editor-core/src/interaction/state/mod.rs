@@ -20,6 +20,7 @@
 mod blender_ops;
 mod chrome_ops;
 mod graph_ops;
+mod number_scrub;
 mod panel_ops;
 mod store_core;
 mod store_hierarchy;

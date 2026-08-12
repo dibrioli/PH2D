@@ -142,6 +142,27 @@ pub const DRAG_SHIFT_MUL: f64 = 0.001;
 pub const DRAG_RANGE_PX_H: f64 = 250.0;
 pub const DRAG_RANGE_PX_V: f64 = 2500.0;
 
+/// **A lei completa do arrasto de uma caixa numérica: a taxa e os limites saem da MESMA
+/// travessia** — produzida por [`crate::interaction::WidgetStore::number_scrub_law`], cujo
+/// doc-header tem a tabela das quatro fontes de intervalo e a medição que a motivou.
+///
+/// ⚠️ É um struct e não duas funções de propósito. Duas funções podiam ser chamadas em sítios
+/// diferentes, com uma delas a envelhecer quando uma quinta fonte de intervalo nascesse — que é
+/// exactamente como a taxa e o clamp divergiram (a lista do clamp tinha quatro arms, a da taxa
+/// dois, e 43 campos atravessavam-se inteiros em menos de 20 px por causa disso).
+///
+/// Mora aqui, ao lado de [`DRAG_RANGE_PX_H`] e [`DRAG_RATE_X`], porque é a unidade que os
+/// consome — este é o módulo do ARRASTO.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct ScrubLaw {
+    /// Unidades de valor por pixel de cursor no eixo **horizontal** (o rápido).
+    pub rate_x: f64,
+    /// Unidades de valor por pixel no eixo **vertical** (o preciso, ~10× mais fino).
+    pub rate_y: f64,
+    /// O intervalo em que o valor é preso, já normalizado (`lo <= hi`). `None` = sem limites.
+    pub bounds: Option<(f64, f64)>,
+}
+
 /// Internal state of an in-progress hierarchy drag.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct HierarchyDragState {

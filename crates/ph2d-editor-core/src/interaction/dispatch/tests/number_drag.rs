@@ -1007,3 +1007,87 @@ fn an_integer_chip_still_travels_on_the_precise_vertical_axis() {
         "a caixa mostrou {end}, que não é uma contagem"
     );
 }
+
+/// ⭐ **O `pointer_move` PERGUNTA à porta única — a metade que um gate de modelo não vê.**
+///
+/// A lei do scrub vive em `WidgetStore::number_scrub_law` e tem gates próprios; eles ficariam
+/// todos VERDES com um dispatch que continuasse a calcular a taxa por conta própria. Este
+/// exercita o produto: um chip ligado a um slider mapeado `(15, 1)` — o factor `[1, 16]` do
+/// `upscale`, medido pela sonda como um dos piores do app.
+///
+/// **RED-first, e o número é a wave inteira:** pela lei antiga o campo cruzava `[1,16]` em
+/// **0,30 px** (`DRAG_RATE_X · step` = 50 unidades por pixel, com o intervalo conhecido pelo
+/// clamp e ignorado pela taxa), então 10 px de arrasto **saturavam** a caixa em 16. Pela lei da
+/// porta o mesmo arrasto vale `10 · (15/250) = 0,6`.
+///
+/// *Mutação que sangra:* devolver `(drag::DRAG_RATE_X * d.step, ...)` no `pointer_move` em vez de
+/// perguntar ao `number_scrub_law` ⇒ o valor salta para 16,0 (saturado).
+#[test]
+fn the_dispatch_scrubs_a_slider_linked_chip_by_its_interval_not_by_the_shortcut() {
+    let (mut store, hits, rect) = number_input_setup(2.0);
+    // O par do `upscale`: slider `0..1`, chip em factor, `display = track·15 + 1` ⇒ [1, 16].
+    store.link_slider_number_mapped(NodeId(78), NodeId(77), 15.0, 1.0);
+    let arena = Bump::new();
+    let (cx, cy) = (rect.x + 10.0, rect.y + rect.h * 0.5);
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, cx, cy),
+        &arena,
+    );
+    // Move 1: cruza o limiar de 4 px (re-ancora, não soma valor).
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, cx + 5.0, cy),
+        &arena,
+    );
+    // Move 2: 10 px para a direita.
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, cx + 15.0, cy),
+        &arena,
+    );
+    let v = read_value(&store, NodeId(77));
+    assert!(
+        (v - 2.6).abs() < 1e-6,
+        "10 px num campo [1,16] valem 0,6 (a faixa inteira em 250 px); esperava 2,6 e veio {v}. \
+         16,0 significa que a taxa voltou ao atalho e saturou o campo num piscar."
+    );
+}
+
+/// O CONTROLE do gate acima: uma caixa **sem intervalo nenhum** continua no atalho histórico.
+///
+/// São 146 campos no app (posição em px, contagens sem tecto) e a wave promete não os tocar — sem
+/// este par, *"estendi a lei a quem já era clampado"* seria indistinguível de *"mudei a lei do
+/// arrasto"*.
+#[test]
+fn a_chip_with_no_interval_at_all_still_uses_the_legacy_shortcut() {
+    let (mut store, hits, rect) = number_input_setup(5.0);
+    let arena = Bump::new();
+    let (cx, cy) = (rect.x + 10.0, rect.y + rect.h * 0.5);
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, cx, cy),
+        &arena,
+    );
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, cx + 5.0, cy),
+        &arena,
+    );
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, cx + 15.0, cy),
+        &arena,
+    );
+    let v = read_value(&store, NodeId(77));
+    assert!(
+        (v - 505.0).abs() < 1e-6,
+        "sem intervalo, 10 px continuam a valer 10·50·1 = 500; veio {v}"
+    );
+}

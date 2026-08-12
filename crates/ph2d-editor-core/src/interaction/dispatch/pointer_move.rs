@@ -167,24 +167,17 @@ pub(super) fn dispatch_move<'frame>(
             } else {
                 1.0
             };
-            // Range-proportional scrub when the box registered a `number_range`: a fixed drag spans the
-            // WHOLE `[min,max]` range (horizontal fast, vertical precise) regardless of magnitude — else
-            // the legacy step-based rate for unbounded boxes (e.g. pixel position). Enio 2026-06-25.
-            let range = store.number_range(d.id);
-            let (rate_x, rate_y) = if let Some(rate) = store.number_drag_rate(d.id) {
-                // Calibrated UNBOUNDED scrub: `rate` value-units per horizontal
-                // cursor pixel, 10× finer on the vertical (precise) axis. No range
-                // ⇒ no clamp (see the `bounds` computation below).
-                (rate, rate / 10.0)
-            } else {
-                match range {
-                    Some((min, max, _)) => {
-                        let r = (max - min).abs();
-                        (r / drag::DRAG_RANGE_PX_H, r / drag::DRAG_RANGE_PX_V)
-                    }
-                    None => (drag::DRAG_RATE_X * d.step, drag::DRAG_RATE_Y * d.step),
-                }
-            };
+            // ⚠️ A TAXA E O CLAMP SAEM DA MESMA TRAVESSIA — `WidgetStore::number_scrub_law`.
+            //
+            // Eram dois blocos com listas de fontes de tamanhos diferentes: o clamp conhecia
+            // quatro (taxa registada · `number_range` · a projeção do slider ligado · o canal do
+            // picker) e a taxa duas, então uma caixa clampada num intervalo conhecido era
+            // arrastada pelo atalho histórico que ignora esse intervalo. Medido: 43 campos
+            // atravessavam-se INTEIROS em menos de 20 px, o pior em 0,01 px. Ver o doc-header de
+            // `interaction::state::number_scrub` para a tabela e o porquê de nenhum número novo
+            // ser inventado aqui.
+            let law = store.number_scrub_law(d.id, d.step);
+            let (rate_x, rate_y) = (law.rate_x, law.rate_y);
             let delta = (dom_dx as f64 * rate_x - dom_dy as f64 * rate_y) * shift_mul;
             // Apply the per-Move delta on top of the chip's
             // CURRENT value (not `start_value`). Read it back
@@ -214,23 +207,7 @@ pub(super) fn dispatch_move<'frame>(
             // when `scale` is negative). Without this, dragging
             // Grow (display ±1) silently clamped at 0..1 and
             // never reached the negative half.
-            let bounds = if store.number_drag_rate(d.id).is_some() {
-                // A registered drag rate means "unbounded scrub" (Vector transform
-                // chips): the rate calibrates px→value directly, no clamp — world
-                // coords span any magnitude. Wins over any range/slider mapping.
-                None
-            } else if let Some((min, max, _)) = range {
-                Some((min.min(max), min.max(max)))
-            } else if store.linked_slider(d.id).is_some() {
-                let (scale, offset) = store.linked_slider_mapping(d.id);
-                let a = offset as f64;
-                let b = (scale + offset) as f64;
-                Some((a.min(b), a.max(b)))
-            } else if store.blender_channel_chip(d.id).is_some() {
-                Some((0.0_f64, 1.0_f64))
-            } else {
-                None
-            };
+            let bounds = law.bounds;
             let new_value = if let Some((lo, hi)) = bounds {
                 raw_value.clamp(lo, hi) // CLAMP-OK: (lo,hi) pre-swapped via a.min/a.max above; (scale,offset) registered via link_slider_number_mapped (debug_assert scale!=0).
             } else {

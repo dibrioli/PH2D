@@ -97,3 +97,100 @@ fn census_of_number_fields_that_know_their_own_range() {
          viva) não aparecem aqui"
     );
 }
+
+/// **SONDA: quantos PIXELS de arrasto atravessam o campo inteiro?**
+///
+/// O censo acima conta *quem registou faixa*. Esta pergunta é outra, e é a do produto: um campo cuja
+/// faixa inteira cabe em dois pixels é inutilizável, e o número que diz isso não é *"tem faixa?"* —
+/// é `largura_do_intervalo ÷ unidades_por_pixel`.
+///
+/// ⚠️ **Ela nasceu porque o intervalo tinha QUATRO fontes e a taxa só consultava DUAS.** O clamp do
+/// `dispatch::pointer_move` perguntava, por esta ordem: uma taxa registada (⇒ sem limites) · o
+/// `number_range` · a projeção afim do **slider ligado** (`[offset, scale+offset]`) · e o `(0,1)` de
+/// um chip de canal do picker. A **taxa** parava nas duas primeiras e caía no atalho histórico para
+/// as outras duas — então uma caixa que ERA clampada num intervalo conhecido era arrastada a
+/// `DRAG_RATE_X × step`, ignorando o intervalo que o clamp ao lado dela já sabia.
+///
+/// Medido em 2026-08-12, ANTES da porta única: **295** campos com intervalo conhecido, **43** a
+/// atravessarem-se inteiros em **menos de 20 px** (o pior em **0,01 px**) e um a 510. Todos os
+/// servidos pelo `number_range` cruzavam em **250,00** — o alvo. Hoje a lei mora em
+/// [`WidgetStore::number_scrub_law`] e a coluna `fonte` diz de onde o intervalo veio.
+///
+/// ⚠️ **Ela pergunta ao PRODUTO, e não repete a lei.** Uma sonda com o laço próprio fica cega à
+/// porta: continuaria a imprimir os números de ontem depois de a cura landar, e é exactamente a
+/// armadilha que o `measure_the_fold_the_product_runs` do Painter existe para nomear.
+///
+/// Rode: `cargo test -p ph2d-panel-registry-init --test scrub_range_census -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda: rode com -- --ignored --nocapture"]
+fn census_of_how_many_pixels_cross_a_whole_field() {
+    use ph2d_editor_core::interaction::drag::DRAG_RANGE_PX_H;
+
+    let _ = ph2d_panel_registry_init::register_all_panels();
+
+    // (painel, fonte-do-intervalo, lo, hi, px_para_atravessar) por campo com intervalo CONHECIDO.
+    let mut rows: Vec<(String, &'static str, f64, f64, f64)> = Vec::new();
+    let mut unbounded = 0usize;
+    with_registry_ref(|reg| {
+        for panel in reg.panels() {
+            let mut store = WidgetStore::default();
+            panel.populate(&mut store);
+            let ids: Vec<_> = store.number_fields().map(|(id, _)| id).collect();
+            for id in ids {
+                // O `step` que o Down escolheria — do BUFFER que o `populate` escreveu, que é o que
+                // o artista de facto encontra ao abrir o painel.
+                let step = match store.get(id) {
+                    Some(ph2d_editor_core::interaction::InteractiveState::NumberInput {
+                        buffer,
+                        ..
+                    }) if buffer.contains('.') => 0.01,
+                    _ => 1.0,
+                };
+                // A LEI DO PRODUTO, pela porta dele.
+                let law = store.number_scrub_law(id, step);
+                let Some((lo, hi)) = law.bounds else {
+                    unbounded += 1;
+                    continue;
+                };
+                // A fonte é só para LER a tabela — a lei já foi respondida acima.
+                let source = if store.number_range(id).is_some() {
+                    "range"
+                } else if store.linked_slider(id).is_some() {
+                    "slider"
+                } else if store.blender_channel_chip(id).is_some() {
+                    "channel"
+                } else {
+                    "?"
+                };
+                let px = if law.rate_x > 0.0 {
+                    (hi - lo) / law.rate_x
+                } else {
+                    f64::NAN
+                };
+                rows.push((panel.manifest.id.to_string(), source, lo, hi, px));
+            }
+        }
+    });
+
+    rows.sort_by(|a, b| a.4.partial_cmp(&b.4).unwrap_or(std::cmp::Ordering::Equal));
+    println!("[scrub-px] quantos pixels de arrasto atravessam o campo INTEIRO");
+    println!(
+        "[scrub-px] {:<26} {:>8} {:>22} {:>12}",
+        "painel", "fonte", "intervalo", "px p/ cruzar"
+    );
+    for (id, source, lo, hi, px) in &rows {
+        let iv = format!("[{lo:.4}, {hi:.4}]");
+        println!("[scrub-px] {id:<26} {source:>8} {iv:>22} {px:>12.2}");
+    }
+    let bad = rows.iter().filter(|r| r.4 < 20.0).count();
+    println!(
+        "[scrub-px] {} campos com intervalo conhecido · {bad} cruzam em MENOS de 20 px · {unbounded} \
+         sem intervalo nenhum",
+        rows.len()
+    );
+    println!("[scrub-px] ⚠️ o alvo de desenho é {DRAG_RANGE_PX_H:.0} px (DRAG_RANGE_PX_H)");
+    println!(
+        "[scrub-px] ⚠️ os {unbounded} sem intervalo continuam no atalho histórico, e são a pergunta \
+         SEGUINTE: um tecto por campo tem de ser MEDIDO, nunca inventado"
+    );
+}

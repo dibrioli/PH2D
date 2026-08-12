@@ -14,8 +14,15 @@
 //! node; headless just zeroes). `Effect::Temporal` (the formula may read `t`).
 //!
 //! **Variables:** `i` (index), `n` (count), `t` (playhead seconds), `f` (`i/(n-1)`,
-//! normalised), any **scalar column** of the input stream by name (e.g. `v`), and the
+//! normalised), any **scalar column** of the input stream by name (e.g. `v`),
+//! **`x`/`y`** (the element's position — the `P` column's two lanes), and the
 //! params `a`/`b`/`c`/`d`.
+//!
+//! ⚠️ `x`/`y` resolve AFTER the named-column lookup, so a stream that really does
+//! carry a scalar column called `x` means that column; `P.x` is the fallback. And
+//! they are not a convenience: `P` is the one column the port type GUARANTEES,
+//! and until they existed a formula about WHERE an element is — the first
+//! predicate anyone reaches for — evaluated silently to zero.
 
 mod parse;
 
@@ -30,6 +37,8 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 /// The value-field output type (mirror of `value.instance_field`).
 const VALUE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
 const VALUE_COL: &str = "v";
+/// The position column every Instances stream carries, read as `x`/`y`.
+const POS_COL: &str = "P";
 /// The name of the formula text param (read via `EvalCtx::text_param`).
 const EXPR_KEY: &str = "expr";
 
@@ -96,6 +105,26 @@ impl ph2d_expr::Bindings for ElemBindings<'_> {
             _ => {
                 if let Some(Column::Scalar(v)) = self.stream.get(name) {
                     return v.get(self.i).copied().unwrap_or(0.0);
+                }
+                // ⚠️ **`P` is the one column an Instances stream is GUARANTEED to
+                // carry** (the port type says `Dim::Vec2`) and it was the one thing
+                // this escape-hatch could not see: the lookup above reads `Scalar`
+                // columns only, so a formula about WHERE an element is — the first
+                // predicate anyone reaches for — silently evaluated to zero.
+                //
+                // ⚠️ It sits AFTER the column lookup on purpose: a stream that
+                // literally carries a scalar column named `x` means that column,
+                // and the more specific answer has to win. `P.x` is the fallback,
+                // in the same seat the `param` fallback already occupies.
+                if let Some(Column::Vec2(p)) = self.stream.get(POS_COL) {
+                    let lane = match name {
+                        "x" => Some(0),
+                        "y" => Some(1),
+                        _ => None,
+                    };
+                    if let Some(k) = lane {
+                        return p.get(self.i).map_or(0.0, |q| q[k]);
+                    }
                 }
                 self.param(name)
             }
@@ -230,15 +259,89 @@ mod tests {
             );
         }
     }
+    /// A source whose `P` is a real spread AND which carries a scalar column
+    /// literally called `x` — the only fixture that can tell the two lookups apart.
+    static SHADOW: NodeManifest = NodeManifest {
+        id: NodeTypeId::of("motion.expression.test.shadow"),
+        name: "motion.expression.test.shadow",
+        inputs: &[],
+        outputs: &[PortSpec {
+            name: "out",
+            ty: INST_VEC2,
+        }],
+        effect: Effect::Pure,
+        clock: Clock::Frame,
+        params: &[],
+        lowerings: &[LoweringKind::Cpu],
+    };
+    struct Shadow;
+    impl NodeOp for Shadow {
+        fn manifest(&self) -> &'static NodeManifest {
+            &SHADOW
+        }
+        fn eval(&self, ctx: &mut EvalCtx<'_>) {
+            ctx.emit(
+                Stream::new(3)
+                    .with(
+                        "P",
+                        Column::Vec2(vec![[1.0, -1.0], [2.0, -2.0], [3.0, -3.0]]),
+                    )
+                    .with("x", Column::Scalar(vec![70.0, 80.0, 90.0])),
+            );
+        }
+    }
     struct Ops;
     impl OpResolver for Ops {
         fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
             match ty {
                 t if t == SRC.id => Some(&Src),
+                t if t == SHADOW.id => Some(&Shadow),
                 t if t == MANIFEST.id => Some(&MotionExpression),
                 _ => None,
             }
         }
+    }
+
+    /// **A named column WINS over the position lane, and only this fixture can
+    /// see it.**
+    ///
+    /// ⚠️ The lanes sit after the column lookup on purpose — a stream that really
+    /// carries a scalar `x` means that column, and the more specific answer has to
+    /// win. Swapping the two blocks is a mutation that **survives every other gate
+    /// in this crate**, because no other fixture carries both, and it would
+    /// silently reinterpret a formula the day someone names a column `x`.
+    #[test]
+    fn a_real_column_named_x_beats_the_position_lane() {
+        let mut g = Graph::new();
+        let src = g.add_node("motion.expression.test.shadow");
+        let ex = g.add_node("motion.expression");
+        g.set_text_param(ex, EXPR_KEY, "x");
+        g.connect(Edge {
+            from: (src, 0),
+            to: (ex, 0),
+            delayed: false,
+        })
+        .unwrap();
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &Ops, ex, 0.0).unwrap();
+        let Some(Column::Scalar(v)) = out[0].as_stream().get("v") else {
+            panic!("v")
+        };
+        assert_eq!(
+            v,
+            &vec![70.0, 80.0, 90.0],
+            "the column named `x` answers, not P.x ({:?})",
+            vec![1.0, 2.0, 3.0]
+        );
+        // And `y`, which no column shadows, still reads the position lane — so the
+        // gate above is about PRECEDENCE and not about the lanes being off.
+        g.set_text_param(ex, EXPR_KEY, "y");
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &Ops, ex, 0.0).unwrap();
+        let Some(Column::Scalar(v)) = out[0].as_stream().get("v") else {
+            panic!("v")
+        };
+        assert_eq!(v, &vec![-1.0, -2.0, -3.0], "`y` is still P.y");
     }
 
     /// Cook the expression with a `expr` text param, returning its `v` field.

@@ -258,7 +258,7 @@ fn measure_the_edge_over_dry_pigment() {
 
 /// O canvas DEPOIS do 1o traco e o canvas depois do 2o, com a MESMA semente — para perguntar o que
 /// o 2o traco de fato mudou, e a que distancia do proprio eixo.
-fn wash_two_stages(dilution: f32, smooth_edges: bool) -> (Vec<u8>, Vec<u8>) {
+pub(super) fn wash_two_stages(dilution: f32, smooth_edges: bool) -> (Vec<u8>, Vec<u8>) {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (SIDE * SIDE * 4) as usize], SIDE, SIDE);
     t.paint.brush = BrushSpec {

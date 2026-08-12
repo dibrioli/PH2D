@@ -174,3 +174,256 @@ fn probe_watercolor_arc() {
         eprintln!("probe_watercolor_arc: Dilution {dilution:.2} escrito em {dir}");
     }
 }
+
+/// O MIOLO e a BANDA DE BORDA da lavagem, por dilucao.
+///
+/// # Por que um escalar e honesto AQUI
+///
+/// As sondas escalares desta sessao falharam por medirem janelas que continham uma borda **e**
+/// papel nu, sem saber qual das duas coisas o numero descrevia. Esta mede duas grandezas de
+/// significado unico ao longo de UMA coluna que atravessa UM flanco: o alfa do **centro** da
+/// faixa (a dezenas de texels de qualquer contorno) e a **largura** da transicao 10%-90% desse
+/// flanco. Nao ha quina, nao ha vao, nao ha segunda borda dentro da amostra.
+///
+/// ⚠️ **E a previsao aritmetica que eu escrevi aqui foi DERRUBADA pela primeira corrida.** Eu
+/// previa que a dilucao empurrasse o miolo para o pe do `smoothstep(SS0, SS1, coverage x flow)`
+/// e que o alfa interior caisse de 0,62 para 0,11; medido, ele fica em **0,912 em toda a faixa
+/// ate D0,45** e so cede em 0,60. O modelo estava errado (a cobertura de um texel interior nao e
+/// a opacidade do pincel — o envelope `max` sobre dabs sobrepostos satura muito acima dela), e o
+/// que sobra e a coluna que ele nao previa: **a largura da BANDA**.
+#[test]
+#[ignore = "sonda de diagnostico"]
+fn measure_the_edge_band_across_dilutions() {
+    eprintln!("\n=== O MIOLO E A BANDA DE BORDA (pincel real, coluna x=40) ===\n");
+    eprintln!("dilution   flow   alfa MIOLO   y10%   y90%   BANDA (px)");
+    for dilution in [0.00f32, 0.15, 0.30, 0.45, 0.60] {
+        let px = wash_over_dry(dilution, true);
+        // A faixa horizontal corre em y=90 com raio 72. ⚠️ A primeira corrida desta sonda usou a
+        // coluna x=64, que esta DENTRO do alcance do traco vertical (cx=128, raio 72 => 56..200):
+        // o flanco medido ali carregava um piso da vertical e nao era limpo. x=40 fica fora dele
+        // (|40-128| = 88 > 72) e longe das pontas da faixa, entao a coluna cruza UM flanco so.
+        let mut y10 = None;
+        let mut y90 = None;
+        for y in 0..90 {
+            let a = alpha_at(&px, 40, y);
+            if y10.is_none() && a >= 0.10 {
+                y10 = Some(y);
+            }
+            if y90.is_none() && a >= 0.90 {
+                y90 = Some(y);
+            }
+        }
+        let banda = match (y10, y90) {
+            (Some(a), Some(b)) => format!("{}", b.saturating_sub(a)),
+            _ => "—".to_string(),
+        };
+        eprintln!(
+            "{dilution:8.2} {:6.2} {:12.3} {:6} {:6} {banda:>11}",
+            1.0 - dilution,
+            alpha_at(&px, 40, 90),
+            y10.map_or("—".to_string(), |v| v.to_string()),
+            y90.map_or("—".to_string(), |v| v.to_string()),
+        );
+    }
+    eprintln!(
+        "\nA janela de endurecimento `smoothstep(SS0=0,12 · SS1=0,60, cobertura)` e ABSOLUTA e a\n\
+         dilucao ESCALA a cobertura que entra nela — entao o que ela move e ONDE o flanco cruza a\n\
+         janela, nao o valor do miolo saturado.\n"
+    );
+}
+
+/// O papel e branco e a tinta e `[0.90, 0.15, 0.18]`: o canal VERDE mede a cobertura
+/// (`255` = papel nu, `38` = tinta cheia), entao `alfa = (255 - g) / (255 - 38)`.
+fn alpha_at(px: &[u8], x: usize, y: usize) -> f32 {
+    let i = (y * SIDE + x) * 4;
+    f32::from(255 - px[i + 1]) / (255.0 - 38.0)
+}
+
+/// **A RETRACAO DA QUINA CONCAVA** — a sonda que mede o *arco palido* que o Enio fotografou, com
+/// DOIS controles dentro da mesma imagem.
+///
+/// # O oraculo, e por que ele nao depende de eu adivinhar nada
+///
+/// A fixture e um sinal de MAIS: a faixa horizontal (dabs em `y=90`, raio 72 => a borda de cima
+/// mora em `y=18`) e a vertical que a atravessa (dabs em `x=128` => a borda da direita mora em
+/// `x=200`). O vertice REFLEXO — a concavidade — fica perto de `(200, 18)`, e a bissetriz dele
+/// aponta para dentro do corpo, na direcao `(-1, +1)`.
+///
+/// Ao longo dessa bissetriz, no ponto `(200 - k, 18 + k)`, as DUAS coberturas valem exatamente a
+/// mesma coisa: a distancia radial ate a linha de dabs horizontal e `72 - k`, e ate a vertical
+/// tambem e `72 - k`. Sob o envelope `max` que o deposito de fato usa, isso obriga o perfil da
+/// bissetriz a ser **identico ao perfil de um flanco RETO** na mesma profundidade `k` — ou seja,
+/// o contorno de uma quina concava e um angulo RETO, sem arredondamento e sem palidez.
+///
+/// **Toda diferenca entre as tres colunas abaixo e o defeito**, e ela e medida contra dois
+/// controles tirados da MESMA imagem, no MESMO instante, com a MESMA tinta:
+///
+/// - `flanco H` em `(40, 18 + k)` — o 1o traco sobre papel. `|40 - 128| = 88 > 72`, entao a
+///   vertical nao alcanca a coluna: e um flanco de um dono so.
+/// - `flanco V` em `(200 - k, 200)` — o 2o traco sobre papel. `|200 - 90| = 110 > 72`, entao a
+///   faixa horizontal nao alcanca a linha.
+/// - `QUINA` em `(200 - k, 18 + k)` — a bissetriz, onde o 2o traco pinta sobre o pigmento SECO do
+///   1o.
+///
+/// ⚠️ **Perto de `k = 0` a quina nao e um vertice exato**: a vertical comeca em `y=30`, entao a
+/// borda dela ali e o ARCO da tampa, e as duas bordas se cruzam por volta de `(199, 18)`. O erro
+/// e sub-pixel e nao decide nada — o que se le e a coluna inteira, nao um texel.
+#[test]
+#[ignore = "sonda de diagnostico"]
+fn measure_the_concave_corner_retreat() {
+    for dilution in [0.00f32, 0.45] {
+        let px = wash_over_dry(dilution, true);
+        eprintln!("\n=== A QUINA CONCAVA vs DOIS FLANCOS RETOS — Dilution {dilution:.2} ===\n");
+        eprintln!("  k   flanco H   flanco V   max(H,V)     QUINA   quina-max");
+        for k in 0..26usize {
+            let h = alpha_at(&px, 40, 18 + k);
+            let v = alpha_at(&px, 200 - k, 200);
+            let q = alpha_at(&px, 200 - k, 18 + k);
+            let m = h.max(v);
+            eprintln!("{k:3} {h:10.3} {v:10.3} {m:10.3} {q:9.3} {:11.3}", q - m);
+        }
+    }
+
+    eprintln!("\n=== ONDE CADA CONTORNO CRUZA (profundidade k em px) ===\n");
+    eprintln!("dilution   sitio      k@10%   k@50%   k@90%");
+    for dilution in [0.00f32, 0.15, 0.30, 0.45, 0.60] {
+        let px = wash_over_dry(dilution, true);
+        for (name, probe) in [("flanco H", 0u8), ("flanco V", 1), ("QUINA   ", 2)] {
+            let at = |k: usize| -> f32 {
+                match probe {
+                    0 => alpha_at(&px, 40, 18 + k),
+                    1 => alpha_at(&px, 200 - k, 200),
+                    _ => alpha_at(&px, 200 - k, 18 + k),
+                }
+            };
+            let cross = |thr: f32| -> String {
+                (0..60)
+                    .find(|&k| at(k) >= thr)
+                    .map_or_else(|| "—".to_string(), |k| k.to_string())
+            };
+            eprintln!(
+                "{dilution:8.2}   {name}  {:>6}  {:>6}  {:>6}",
+                cross(0.10),
+                cross(0.50),
+                cross(0.90),
+            );
+        }
+    }
+    eprintln!(
+        "\nSob o envelope `max` as tres colunas TEM de coincidir. Se a QUINA precisar de mais\n\
+         profundidade para alcancar o mesmo alfa, o contorno dela RECUOU para dentro — e o recuo\n\
+         em px, por limiar, e o tamanho do arco palido.\n"
+    );
+}
+
+/// **O 2o TRACO CLAREIA O QUE O 1o JA TINHA DEIXADO?** — a pergunta que a sonda da quina
+/// obrigou, e que e a frase do proprio report do Enio (*"pintando sobre o pigmento ja seco"*).
+///
+/// # Por que esta pergunta, e por que ela nao e mais uma hipotese
+///
+/// A [`measure_the_concave_corner_retreat`] mediu a bissetriz da concavidade contra dois flancos
+/// retos da MESMA imagem. Sob o envelope `max` que o deposito usa, os tres TEM de coincidir na
+/// mesma profundidade — e a quina lia **0,000 onde o flanco lia 0,152**, dez texels adentro.
+/// Um envelope `max` nao consegue produzir isso: `max` nunca DEVOLVE menos do que um dos lados
+/// ja tinha. Entao a diferenca nao esta no deposito — ela esta em alguma coisa que **retira**.
+///
+/// A fixture e a MESMA cruz, agora com o canvas capturado nos DOIS instantes
+/// ([`wash_two_stages`]): a faixa horizontal sozinha, e depois dela com a vertical por cima.
+/// Um texel que **perde** alfa entre as duas capturas e tinta que o 2o traco APAGOU — e o
+/// conjunto desses texels e a forma do defeito.
+///
+/// ⚠️ **O CONTROLE mora na propria imagem:** longe da vertical (`|x - 128| > 72`) o 2o traco nao
+/// alcanca nada, entao ali a diferenca TEM de ser zero. Se nao for, o que a sonda mede nao e o
+/// cruzamento — e outra coisa, e o numero nao serve para nada.
+#[test]
+#[ignore = "sonda de diagnostico"]
+fn measure_what_the_second_stroke_takes_away() {
+    eprintln!("\n=== O QUE O 2o TRACO RETIRA DO 1o (cruz, canvas inteiro) ===\n");
+    eprintln!("dilution   texels que PERDERAM   pior perda   |   fora do alcance (controle)");
+    for dilution in [0.00f32, 0.15, 0.30, 0.45, 0.60] {
+        let (one, two) = wash_over_dry_two_stages(dilution);
+        let (mut lost, mut worst, mut outside) = (0usize, 0.0f32, 0usize);
+        for y in 0..SIDE {
+            for x in 0..SIDE {
+                let d = alpha_at(&one, x, y) - alpha_at(&two, x, y);
+                if d > 0.01 {
+                    lost += 1;
+                    worst = worst.max(d);
+                    // O 2o traco corre em x=128 com raio 72: fora disso ele nao alcanca.
+                    if x < 56 || x > 200 {
+                        outside += 1;
+                    }
+                }
+            }
+        }
+        eprintln!("{dilution:8.2} {lost:21} {worst:12.3}   |   {outside}");
+    }
+
+    eprintln!("\n=== O PERFIL DA PERDA (linha y=90, o MIOLO saturado da faixa seca) ===\n");
+    eprintln!(
+        "Colunas 176..=216: a vertical acaba em x=200, entao a metade direita e o controle.\n"
+    );
+    for dilution in [0.00f32, 0.45] {
+        let (one, two) = wash_over_dry_two_stages(dilution);
+        eprintln!("  Dilution {dilution:.2}");
+        eprintln!("    x    antes   depois   perda");
+        for x in (176..=216).step_by(4) {
+            let a = alpha_at(&one, x, 90);
+            let b = alpha_at(&two, x, 90);
+            eprintln!("  {x:3} {a:8.3} {b:8.3} {:7.3}", a - b);
+        }
+        eprintln!();
+    }
+}
+
+/// A cruz nos DOIS instantes, pela porta da fixture irma — nunca uma 2a montagem da cena.
+fn wash_over_dry_two_stages(dilution: f32) -> (Vec<u8>, Vec<u8>) {
+    super::measure_watercolor_water_edge::wash_two_stages(dilution, true)
+}
+
+/// **ONDE a perda mora, e ela e a QUINA?** — a sonda que amarra as duas anteriores.
+///
+/// A [`measure_what_the_second_stroke_takes_away`] achou ~1300 texels que PERDEM tinta quando o
+/// 2o traco passa, com contagem **plana na dilucao** e pior perda a CAIR (0,452 -> 0,341). Isso
+/// ja diz que a remocao nao e o que o Enio reportou (que e dirigido pela Dilution) — mas nao diz
+/// **onde** ela esta, e a [`measure_the_concave_corner_retreat`] deixou uma leitura de 0,000 na
+/// bissetriz que so uma remocao explica.
+///
+/// Esta pergunta as duas coisas de uma vez: a caixa que contem os texels perdidos, e o perfil da
+/// bissetriz **antes e depois** do 2o traco. Se a quina lia zero porque o 1o traco nunca pintou
+/// ali, o `antes` tambem le zero e a remocao e inocente; se o `antes` tem tinta e o `depois` nao,
+/// a quina E a remocao.
+#[test]
+#[ignore = "sonda de diagnostico"]
+fn measure_where_the_loss_lives() {
+    for dilution in [0.00f32, 0.45] {
+        let (one, two) = wash_over_dry_two_stages(dilution);
+        let (mut x0, mut y0, mut x1, mut y1) = (usize::MAX, usize::MAX, 0usize, 0usize);
+        let mut n = 0usize;
+        for y in 0..SIDE {
+            for x in 0..SIDE {
+                if alpha_at(&one, x, y) - alpha_at(&two, x, y) > 0.01 {
+                    n += 1;
+                    x0 = x0.min(x);
+                    y0 = y0.min(y);
+                    x1 = x1.max(x);
+                    y1 = y1.max(y);
+                }
+            }
+        }
+        eprintln!(
+            "\n=== Dilution {dilution:.2}: {n} texels perdidos, caixa x[{x0}..{x1}] y[{y0}..{y1}] ==="
+        );
+
+        eprintln!("\n  A BISSETRIZ DA QUINA (200-k, 18+k), antes e depois do 2o traco:");
+        eprintln!("    k    antes   depois   flanco H");
+        for k in 0..20usize {
+            eprintln!(
+                "  {k:3} {:8.3} {:8.3} {:10.3}",
+                alpha_at(&one, 200 - k, 18 + k),
+                alpha_at(&two, 200 - k, 18 + k),
+                alpha_at(&two, 40, 18 + k),
+            );
+        }
+    }
+}

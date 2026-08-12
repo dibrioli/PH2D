@@ -404,19 +404,45 @@ não são verificáveis"* e por isso **nunca as afirmou**. Elas estão em
 | `SHARP` | `u²` | ❌ (o nosso `Sharper` é `(1−t²)⁴`, outra curva) |
 | `POW4` | `u⁴` | ❌ |
 | `ROOT` | `√u` | ✅ o nosso `Root`, **idêntico** |
-| `SPHERE` | `√(2u − u²)` | ❌ (o nosso `Sphere` é `√(1−t²)`) |
+| `SPHERE` | `√(2u − u²)` | ✅ o nosso `Sphere` — ver a correção abaixo |
 | `INVSQUARE` | `u(2 − u)` | ❌ |
 | `SMOOTH` | `3u² − 2u³` — o **smoothstep** | ❌ |
 | `SMOOTHER` | `u³(6u² − 15u + 10)` — o **smootherstep** de Perlin | ❌ |
 | `CUSTOM` | a curva editável (`BKE_curvemapping_evaluateF`) | ❌ (o `ph2d-curve` existe) |
 
-⚠️ **Dois dos nossos seis JÁ SÃO do Blender ao bit** e ninguém sabia — o `Root`
-e o `Constant`. E os outros quatro **não** são: o `Sphere` dele é a esfera em
-`u`, o nosso é em `t`; o `Sharper` dele (`SHARP`, `u²`) não é o nosso.
+⚠️ **CORREÇÃO da linha do `SPHERE`, feita ao implementar.** Este parágrafo dizia
+*"o `Sphere` dele é a esfera em `u`, o nosso é em `t`"* — e a álgebra desmente:
+`2u − u² = u(2 − u)`, e com `u = 1 − t` isso é `(1 − t)(1 + t) = 1 − t²`. **São
+a mesma curva.** Uma diferença de FORMA não é uma diferença de CURVA, e eu
+comparei duas expressões sem reduzir nenhuma. ⇒ **TRÊS das nossas seis já eram
+do Blender** (`Constant`, `Root`, `Sphere`) e **SEIS faltavam**, não sete.
 
-⇒ **O `B` pode declarar curva.** As sete que faltam são aritmética de uma linha
-cada, sem transcendental além do `sqrt` (HR-5) — e o `SMOOTHER` é a curva que um
-escultor reconhece como *o pincel do Blender*.
+**FEITO (mesma sessão):** as seis entraram em `Falloff` —
+`Linear` · `Sharp` · `Pow4` · `InvSquare` · `Smoothstep` · `Smoother` —, o
+`ALL` foi de 6 para **12** e o `SCULPT3D_FALLOFF` junto. O catálogo do painel é
+agora a **UNIÃO** das duas referências: as nove analíticas do Blender + as três
+nossas (`Smooth`, `Sharper`, `Plateau`, a última sendo a quártica do SculptGL).
+Gate `every_blender_preset_is_the_formula_the_reference_writes` — o oráculo é a
+transcrição **literal** do C em `u`, porque um expoente trocado **não** falha
+nenhum gate de forma (uma `u³` no lugar de `u⁴` continua valendo 1 no centro, 0
+na borda e descendo o caminho todo).
+
+⚠️ **DUAS armadilhas de NOME, e as duas mordem calado.** O Blender rotula o
+`POW4` de **"Sharper"** e o nosso `Sharper` é `(1 − t²)⁴` — a nova veste o
+identificador (`Pow4`), não o rótulo. E ele rotula o `SMOOTH` de **"Smooth"**,
+que aqui já é `(1 − t²)²` — daí `Smoothstep`, o nome matemático. *Duas entradas
+com o mesmo rótulo são dois botões que o painel pinta lado a lado.*
+
+⛔ **E a frase *"o `B` pode declarar curva"* estava ERRADA — ler o arquivo a
+matou.** As nove são o que o artista pode **ESCOLHER**, não o que um pincel
+**VESTE**: o `curve_preset` de um `Brush` zero-inicializado é
+`BRUSH_CURVE_CUSTOM = 0` (`DNA_brush_enums.h:148`), e o `brush_init_data`
+(`brush.cc:66`) semeia a *curvemapping* dele com `CURVE_PRESET_SMOOTH` — uma
+**bézier editável, nenhuma das nove**. ⚠️ E os dois nomes se parecem de
+propósito para enganar: `curve_preset` (o enum das nove) e
+`BKE_brush_curve_preset()` (que escreve a `CurveMapping` e toma um
+`eCurveMappingPreset`) são **famílias diferentes**. ⇒ `VerbProfile::falloff`
+do modo `B` continua **`None`**, e agora por um motivo lido em vez de suposto.
 
 #### ⛔ NÃO desbloqueado, e a razão é ESTRUTURAL — não é o trim
 
@@ -425,6 +451,13 @@ inteira: **zero**). Desde o **Blender 4.3 os pincéis são ASSETS** — o tree t
 `assets/brushes/essentials_brushes-*.blend`, arquivos **binários**. O
 `brush_defaults()` que sobrou (`brush.cc:597`) copia de `Brush brush_def = {}`,
 os defaults de DNA: **um** conjunto para todos, não uma tabela por tool.
+
+⚠️ **E nem os defaults de DNA existem como arquivo:** `git ls-files
+'source/blender/makesdna/DNA_brush*'` devolve só `DNA_brush_enums.h` e
+`DNA_brush_types.h` — **não há `DNA_brush_defaults.h`**, ao contrário de dezenas
+de outros tipos. `Brush brush_def = {}` é literalmente **zero-inicialização**, e
+é por isso que o `curve_preset` de fábrica é `0` = `CUSTOM`. A ausência do
+arquivo é a mesma medição por outro ângulo.
 
 ⇒ *"a força de fábrica do Clay Strips"* **não é lida de fonte nenhuma** — ela
 está dentro de um `.blend`. Isto **não é uma lacuna do nosso clone**: é onde o

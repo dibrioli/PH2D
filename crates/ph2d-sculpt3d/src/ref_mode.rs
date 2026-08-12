@@ -133,10 +133,18 @@ impl StrengthCurve {
 pub struct VerbProfile {
     /// A curva do pincel — D1/E1, o maior número do estudo.
     ///
-    /// ⚠️ **`None` é uma AFIRMAÇÃO, e o `B` é quem a produziu:** os defaults de
-    /// fábrica do Blender vivem no `BKE_brush_sculpt_reset`, que **não está no
-    /// clone** (§7.1 do plano) — declarar uma curva ali seria inventar um número
-    /// e vesti-lo com o nome de outro produto.
+    /// ⚠️ **`None` é uma AFIRMAÇÃO, e ela ficou mais forte quando o `brush.cc`
+    /// foi lido** (§7.0 do plano). As nove fórmulas do `BRUSH_CURVE_*` são
+    /// legíveis e **já estão todas em [`Falloff`]** — mas elas são o que o
+    /// artista pode ESCOLHER, não o que um pincel VESTE: o `curve_preset` de um
+    /// `Brush` zero-inicializado é `BRUSH_CURVE_CUSTOM = 0`, e o
+    /// `brush_init_data` semeia a *curvemapping* dele com `CURVE_PRESET_SMOOTH`
+    /// — uma bézier editável, **nenhuma das nove**.
+    ///
+    /// ⇒ Declarar aqui *"o Blender usa a Smooth"* seria inventar um número e
+    /// vesti-lo com o nome de outro produto. E a tabela por-TOOL (a força e o
+    /// raio de fábrica do Clay Strips) não é lida de fonte nenhuma: desde o 4.3
+    /// ela vive dentro de um `.blend` binário de assets.
     pub falloff: Option<Falloff>,
     /// A força de fábrica — D3/E2. `None` = a fonte não declara.
     pub strength: Option<f32>,
@@ -312,11 +320,17 @@ impl Verb {
 
 /// **A coluna `B`** — o que o Blender DECLARA, e só isso.
 ///
-/// ⛔ **Ela não traz DEFAULTS, e a ausência é medida, não preguiça** (§7.1 do
-/// plano): o `BKE_brush_sculpt_reset` — onde a força, o raio e a curva de
-/// fábrica de cada tool vivem — está no `blenkernel/intern/brush.cc`, que **não
-/// está no clone** (um trim de escultura). Escrever esses números de memória
-/// seria vestir uma tabela inventada com o nome de outro produto.
+/// ⛔ **Ela não traz DEFAULTS, e a ausência é MEDIDA — o arquivo foi trazido e
+/// respondeu que a resposta não está nele** (§7.0 do plano). O
+/// `BKE_brush_sculpt_reset`, onde a força, o raio e a curva de fábrica de cada
+/// tool viviam, **não existe mais em C** (`git grep` sobre a árvore: zero):
+/// desde o Blender 4.3 os pincéis são ASSETS, num `.blend` binário. O que
+/// sobrou, o `brush_defaults()` (`brush.cc:597`), copia de um `Brush def = {}`
+/// — **um** conjunto para todas as tools, não uma tabela por ferramenta.
+///
+/// ⇒ *"a força de fábrica do Clay Strips"* não é lida de fonte nenhuma. Isto
+/// **não é uma lacuna do nosso clone**: é onde o Blender passou a guardar a
+/// resposta, e trazer mais arquivos não muda.
 ///
 /// ✅ **O que ela traz é LIDO literalmente** (`sculpt.cc:2337-2339`): o slider é
 /// a RAIZ do peso, com o comentário do próprio Blender ao lado — *"square it to

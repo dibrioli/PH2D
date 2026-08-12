@@ -45,6 +45,13 @@ fn the_smooth_falloff_lands_on_the_rim_with_zero_slope() {
     // `Plateau` também pousa plana. A frase virou a asserção abaixo, que exige
     // as DUAS — porque uma nota que enumera quem tem uma propriedade é a que
     // envelhece calada.
+    //
+    // ⚠️ E ela envelheceu OUTRA VEZ, agora com as seis do Blender: `Sharp`,
+    // `Pow4`, `Smoothstep` e `Smoother` também aterrissam planas. **A lista
+    // abaixo não é o conjunto de quem pousa plano — é o conjunto de quem
+    // PRECISA pousar plano**: a curva de FÁBRICA (nada de degrau no default) e
+    // a da referência (a paridade se apoia nela). Quem mais tiver a
+    // propriedade a tem de graça.
     let h = 1e-3;
     for f in [Falloff::Smooth, Falloff::Plateau] {
         let slope = (f.weight(1.0) - f.weight(1.0 - h)) / h;
@@ -86,6 +93,61 @@ fn the_reference_curve_is_fuller_than_the_smooth_and_by_how_much() {
             Falloff::Plateau.weight(t),
             Falloff::Smooth.weight(t)
         );
+    }
+}
+
+/// **AS NOVE DO BLENDER ESTÃO NA FAMÍLIA, E CADA UMA É A FÓRMULA DELE.**
+///
+/// O oráculo é a transcrição **literal** do `blenkernel/intern/brush.cc`
+/// (linhas 1499-1601), escrita aqui em `u = 1 − t` exatamente como o C a
+/// escreve. Ele existe porque a maneira barata de errar um port destes é um
+/// expoente trocado, que **não** falha nenhum dos gates de forma acima: uma
+/// `u³` no lugar de uma `u⁴` continua valendo 1 no centro, 0 na borda e
+/// descendo o caminho todo.
+///
+/// ⚠️ **A linha da `Sphere` é a que carrega afirmação, não transcrição:** o
+/// Blender escreve `√(2u − u²)` e nós escrevemos `√(1 − t²)`. O gate pede que
+/// as DUAS expressões concordem — é a álgebra `u(2 − u) = (1−t)(1+t) = 1 − t²`
+/// virando teste, e é o que refuta a nota que eu tinha escrito dizendo que eram
+/// curvas diferentes.
+#[test]
+fn every_blender_preset_is_the_formula_the_reference_writes() {
+    // Cada linha: o preset, a nossa curva, e a expressão do C em `u`.
+    #[allow(clippy::type_complexity)]
+    let table: [(&str, Falloff, fn(f32) -> f32); 9] = [
+        ("BRUSH_CURVE_CONSTANT", Falloff::Constant, |_u| 1.0),
+        ("BRUSH_CURVE_LIN", Falloff::Linear, |u| u),
+        ("BRUSH_CURVE_SHARP", Falloff::Sharp, |u| u * u),
+        ("BRUSH_CURVE_POW4", Falloff::Pow4, |u| u * u * u * u),
+        ("BRUSH_CURVE_ROOT", Falloff::Root, f32::sqrt),
+        // ⚠️ A transcrição do C, NÃO a nossa forma reduzida.
+        ("BRUSH_CURVE_SPHERE", Falloff::Sphere, |u| {
+            (2.0 * u - u * u).sqrt()
+        }),
+        ("BRUSH_CURVE_INVSQUARE", Falloff::InvSquare, |u| {
+            u * (2.0 - u)
+        }),
+        ("BRUSH_CURVE_SMOOTH", Falloff::Smoothstep, |u| {
+            3.0 * u * u - 2.0 * u * u * u
+        }),
+        ("BRUSH_CURVE_SMOOTHER", Falloff::Smoother, |u| {
+            u * u * u * (u * (u * 6.0 - 15.0) + 10.0)
+        }),
+    ];
+    for (preset, ours, theirs) in table {
+        for k in 0..=200 {
+            let t = k as f32 / 200.0;
+            // O `t = 1` é a borda, onde o nosso early-out devolve 0 e o deles
+            // também (`distance >= brush_radius`): a comparação vale no aberto.
+            if t >= 1.0 {
+                continue;
+            }
+            let (got, want) = (ours.weight(t), theirs(1.0 - t));
+            assert!(
+                (got - want).abs() < 1e-6,
+                "{preset} em t={t}: nosso {got} vs a fórmula {want}"
+            );
+        }
     }
 }
 

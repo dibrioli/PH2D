@@ -10,12 +10,12 @@
 | | |
 |---|---|
 | branch | `line/physics` |
-| HEAD | `621422674b067590f2540d5774db2cb85bd410fc` |
+| HEAD | `dbb2c05a2a2d156301ef9af825e9d829f7fd1364` |
 | merge-base com `main` | `76788440adbabb0e5b12f8fdafecc6f1e1183e1a` |
-| commits | **37** |
-| diff | 87 arquivos, +13.431 / −837 |
+| commits | **40** |
+| diff | 89 arquivos, +13.709 / −833 |
 
-⚠️ **Todos os 37 são pós-integração de 2026-08-10** (a jornada `W-KinMove` /
+⚠️ **Todos os 40 são pós-integração de 2026-08-10** (a jornada `W-KinMove` /
 modo cinemático, que já está no `main`). Nada aqui foi entregue antes.
 
 **O assunto é o PLAYER, em duas metades.** A primeira é o **catálogo** (o plano
@@ -72,6 +72,12 @@ Fora de `crates/ph2d-phys*`, `crates/ph2d-platformer` e `docs/Physics/`:
 | `shells/desktop/src/render_loop/mod.rs` | a leitura dos sensores no frame | **sim** |
 | `shells/desktop/src/{project,project_schema_tests}.rs` | **o schema** | ⚠️ **não** |
 | `shells/desktop/tests/the_overlay_reads_the_sensors_the_bridge_published.rs` | arch-gate novo | **sim** |
+
+⚠️ **E `bridge/player.rs` foi PARTIDO** (734 > 700): a PERNA saiu para o irmão
+`bridge/player_leg.rs` — *o que o tique FAZ com a resposta* × *como a resposta é
+obtida*. **Pure code motion, provado**: o `c9` sai byte-idêntico ao commit
+anterior. Uma linha que tenha tocado o bloco do cast de chão funde limpo contra
+um arquivo de onde ele saiu.
 
 ---
 

@@ -14,6 +14,24 @@
 //! wrapped), so a `value.lfo` flattens and re-wraps it. Falloff-masked. Self-contained:
 //! the curve is in the params (not the vector document). Transcendental-free (HR-5):
 //! polynomial curve + `sqrt` normalisation, no trig. `Effect::Pure`.
+//!
+//! ## `follow_rotation` (doc 89 folha 04 — o P0, e o mais VISÍVEL da família)
+//!
+//! Sem ele um sprite embrulhado num S **mantinha a rotação original**, e texto
+//! numa curva que não gira lê como quebrado. Ligado, cada elemento soma o ângulo
+//! da tangente unitária do frame — o mesmo frame que este nó já computava e
+//! **jogava fora** (`frame_at` devolve a tangente; o wrap ligava-a a `_t`).
+//!
+//! ⚠️ **SOMA, não atribui**, e é onde diverge do irmão de propósito: o
+//! `motion.distribute_curve` faz `set` porque é uma FONTE e não há nada com que
+//! compor; este é um modificador sobre um layout que já pode estar orientado. As
+//! duas são a mesma regra — *a rotação da curva entra no que já existe* — vista
+//! dos dois lados.
+//!
+//! ⚠️ **E a volta honra a MESMA máscara que a posição.** Um elemento
+//! meio-embrulhado tem de estar meio-virado: mascarar um e não o outro deixaria
+//! um sprite em pé numa curva que ele só monta em parte, e o falloff leria como
+//! quebrado exactamente onde está a funcionar.
 
 use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -23,6 +41,7 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod curve;
+mod trig;
 use curve::{ArcLut, EPS, P2, arc_lut, frame_at};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -61,6 +80,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         // Slides the whole layout along the arc (wraps 0..1).
         ParamSpec {
             name: "offset",
+            default: 0.0,
+        },
+        // Whether the wrapped element TURNS with the curve. `0` ⇒ `rot` is passed
+        // through untouched, which is the node that shipped.
+        ParamSpec {
+            name: "follow_rotation",
             default: 0.0,
         },
         // The four control points (world units). Default: a gentle S-curve.
@@ -124,6 +149,12 @@ fn falloff_at(vals: &[f32], i: usize) -> f32 {
 /// Wrap `p` onto the curve `cp`: map each element's x (normalised over the bbox, slid by
 /// `offset`) to an arc position, offset by y along the normal, blended by `amount` ·
 /// `falloff`. A pure function — the whole node.
+/// ⚠️ `#[cfg(test)]`: since the frame started being reported this is a pure
+/// PROJECTION of [`wrap_with_frame`], not a second law — and a projection with no
+/// production caller is exactly the shape that becomes a second answer the day
+/// someone reaches for the shorter name. The gates keep it because a test that
+/// only wants positions reads better without a `.0`.
+#[cfg(test)]
 fn wrap(
     p: &[P2],
     cp: &[P2; 4],
@@ -132,9 +163,31 @@ fn wrap(
     amount: f32,
     falloff: &[f32],
 ) -> Vec<P2> {
+    wrap_with_frame(p, cp, height_scale, offset, amount, falloff).0
+}
+
+/// The same wrap, also returning **how much each element turned** — the angle of
+/// the curve's unit tangent, in degrees, under the SAME mask as the position.
+///
+/// ⚠️ The mask is the load-bearing half. An element that is half-wrapped has to be
+/// **half-turned**: masking the position and not the rotation would leave a sprite
+/// standing straight up on a curve it is only partly riding, and the falloff — the
+/// whole point of the mask — would read as broken exactly where it is working.
+///
+/// ⚠️ And the tangent was **already computed and thrown away** (`frame_at` returns
+/// it; the wrap bound it to `_t`). Nothing about this is new geometry: the node
+/// always knew which way the curve was going, and simply never said.
+fn wrap_with_frame(
+    p: &[P2],
+    cp: &[P2; 4],
+    height_scale: f32,
+    offset: f32,
+    amount: f32,
+    falloff: &[f32],
+) -> (Vec<P2>, Vec<f32>) {
     let n = p.len();
     if n == 0 {
-        return Vec::new();
+        return (Vec::new(), Vec::new());
     }
     let (mut xmin, mut xmax) = (f32::MAX, f32::MIN);
     for q in p {
@@ -149,18 +202,21 @@ fn wrap(
             // Clamp (not wrap): the layout spans the curve [0,1]; `offset` slides it and
             // clamps at the ends, so the endpoint (u=1) stays on the curve end.
             let s = (u + offset).clamp(0.0, 1.0);
-            let (b, _t, un) = frame_at(cp, &lut, s);
+            let (b, ut, un) = frame_at(cp, &lut, s);
             let wrapped = [
                 b[0] + un[0] * p[i][1] * height_scale,
                 b[1] + un[1] * p[i][1] * height_scale,
             ];
             let a = (amount * falloff_at(falloff, i)).clamp(0.0, 1.0);
-            [
-                p[i][0] + (wrapped[0] - p[i][0]) * a,
-                p[i][1] + (wrapped[1] - p[i][1]) * a,
-            ]
+            (
+                [
+                    p[i][0] + (wrapped[0] - p[i][0]) * a,
+                    p[i][1] + (wrapped[1] - p[i][1]) * a,
+                ],
+                trig::deg(trig::atan2_approx(ut[1], ut[0])) * a,
+            )
         })
-        .collect()
+        .unzip()
 }
 
 struct MotionSplineWrap;
@@ -171,6 +227,7 @@ impl NodeOp for MotionSplineWrap {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
+        let follow = ctx.param("follow_rotation") >= 0.5;
         let height_scale = ctx.param("height_scale");
         let offset = ctx.param("offset");
         let cp = [
@@ -187,14 +244,29 @@ impl NodeOp for MotionSplineWrap {
             _ => vec![[0.0, 0.0]; n],
         };
         let falloff = scalar_col(input, "falloff");
-        let out_p = wrap(&p, &cp, height_scale, offset, amount, &falloff);
+        let (out_p, turn) = wrap_with_frame(&p, &cp, height_scale, offset, amount, &falloff);
+        // The element's OWN rotation composes with the curve's frame — this is a
+        // modifier on a layout that may already be oriented, not a source that
+        // mints one (its sibling `motion.distribute_curve` SETS `rot` because
+        // there is nothing there to compose with).
+        let base = scalar_col(input, "rot");
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {
-            if name != "P" {
+            // ⚠️ With `follow_rotation` off, `rot` is copied through like every
+            // other column — not written with an unchanged value, COPIED. So a
+            // stream that never had one still does not, and the default is the
+            // node that shipped by STRUCTURE rather than by arithmetic.
+            if name != "P" && !(follow && name == "rot") {
                 out.set(name.clone(), col.clone());
             }
         }
         out.set("P", Column::Vec2(out_p));
+        if follow {
+            let rot: Vec<f32> = (0..n)
+                .map(|i| base.get(i).copied().unwrap_or(0.0) + turn[i])
+                .collect();
+            out.set("rot", Column::Scalar(rot));
+        }
         ctx.emit(out);
     }
 }
@@ -240,6 +312,14 @@ static PARAM_GROUPS: &[ParamGroup] = &[
 ];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "follow_rotation",
+        label: "Follow Curve",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
+    },
     ParamUiHint {
         param: "height_scale",
         label: "Height",
@@ -446,3 +526,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "follow_tests.rs"]
+mod follow_tests;

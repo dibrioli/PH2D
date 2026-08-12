@@ -35,9 +35,19 @@ fn geometry_behind_the_silhouette_does_not_steer_the_brush() {
     let centre = [0.99, 0.0, 0.141];
     let radius = 0.9;
 
-    let push = |bump: bool| -> [f32; 3] {
+    // `None` = a esfera limpa · `Behind` = a mancha invisível · `Front` = a MESMA
+    // mancha, do lado que se vê. O terceiro é o CONTROLE, e sem ele o gate
+    // precisaria de uma barra escolhida à mão entre dois números.
+    #[derive(Clone, Copy, PartialEq)]
+    enum Bump {
+        None,
+        Behind,
+        Front,
+    }
+
+    let push = |bump: Bump| -> [f32; 3] {
         let mut mesh = ph2d_mesh::shapes::uv_sphere(96, 144, 1.0);
-        if bump {
+        if bump != Bump::None {
             // Só o que está BEM de costas, e só de um lado em `y`: a assimetria
             // é o fenômeno. A faixa perto da silhueta fica intocada para o
             // conjunto FRONTAL não mudar junto — se ele mudasse, o gate mediria
@@ -48,8 +58,13 @@ fn geometry_behind_the_silhouette_does_not_steer_the_brush() {
                 let n = mesh.normals()[v];
                 let d = [p[0] - centre[0], p[1] - centre[1], p[2] - centre[2]];
                 let inside = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt() <= radius;
-                let behind = n[0] * eye[0] + n[1] * eye[1] + n[2] * eye[2] > 0.35;
-                if inside && behind && p[1] > 0.0 {
+                let facing = n[0] * eye[0] + n[1] * eye[1] + n[2] * eye[2];
+                let chosen = if bump == Bump::Behind {
+                    facing > 0.35
+                } else {
+                    facing < -0.35
+                };
+                if inside && chosen && p[1] > 0.0 {
                     moved.push(v as u32);
                 }
             }
@@ -97,15 +112,36 @@ fn geometry_behind_the_silhouette_does_not_steer_the_brush() {
         [dir[0] / len, dir[1] / len, dir[2] / len]
     };
 
-    let plain = push(false);
-    let bumped = push(true);
-    let agree = plain[0] * bumped[0] + plain[1] * bumped[1] + plain[2] * bumped[2];
-    let tilt = agree.clamp(-1.0, 1.0).acos().to_degrees();
-    println!("o bojo invisível inclinou o Draw em {tilt:.3} graus");
+    let tilt_of = |a: [f32; 3], b: [f32; 3]| {
+        let agree = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+        agree.clamp(-1.0, 1.0).acos().to_degrees()
+    };
+    let plain = push(Bump::None);
+    let behind = tilt_of(plain, push(Bump::Behind));
+    let front = tilt_of(plain, push(Bump::Front));
+    println!("o bojo INVISÍVEL inclinou o Draw em {behind:.3}° · o VISÍVEL em {front:.3}°");
     assert!(
-        tilt < 0.5,
-        "a geometria de costas girou a direção do pincel em {tilt:.3} graus — \
-         ela está pesando num ajuste que devia ser só do que se vê"
+        front > 1.0,
+        "a mancha VISÍVEL não inclinou nada ({front:.3}°) — o controle não \
+         contém o fenômeno, e o gate mediria vácuo"
+    );
+    // ⚠️ **O oráculo é o CONTROLE, e não uma barra.** A mesma mancha, do lado
+    // que se vê, é o que o pincel DEVE seguir; do lado que não se vê, o filtro
+    // frontal a recusa. Uma barra absoluta aqui envelhece com a ponderação do
+    // plano — ela envelheceu: era `< 0,5°` e a troca para o `area_normal` da
+    // referência (que pesa por MÁSCARA, uniforme, e não por falloff) levou o
+    // resíduo a `0,664°`.
+    //
+    // ⚠️ **E o resíduo tem MECANISMO:** bumpar a geometria de costas move as
+    // faces que ela COMPARTILHA com a faixa da frente, então as normais dos
+    // vértices frontais vizinhos giram um pouco — não é o filtro vazando, é a
+    // malha sendo uma malha. Com o filtro derrotado o mesmo bump inclina
+    // `3,232°`, ou seja ele compra **4,9×**.
+    assert!(
+        behind < front * 0.25,
+        "a geometria de costas girou o pincel em {behind:.3}° contra {front:.3}° \
+         da mesma mancha visível — ela está pesando num ajuste que devia ser só \
+         do que se vê"
     );
 }
 

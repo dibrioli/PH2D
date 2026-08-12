@@ -128,7 +128,25 @@ fn what_separates_our_kernels_from_the_reference() {
             // em 2026-08-11, `1,000×` em toda a linha) com a de MAGNITUDE, e um
             // número que soma duas causas não aponta para nenhuma.
             falloff: Falloff::Plateau,
-            invert: negative,
+            // ⚠️ **O Crease parqueia o default no OUTRO lado do flag.** A tool
+            // da referência nasce com `_negative = true` (`Crease.js:11`) e cava
+            // por ali; o nosso kernel cava com o sinal e `invert = false`. O
+            // PRODUTO se comporta igual — os dois cavam sem Ctrl e criam crista
+            // com ele —, e comparar `invert = negative` põe um a cavar e o outro
+            // a levantar: o `|diferença|` sai `0,0358`, quase **2×** o próprio
+            // deslocamento (`0,019`), que é a assinatura de um sinal e não de
+            // uma lei.
+            invert: if verb == Verb::Crease {
+                !negative
+            } else {
+                negative
+            },
+            // ⚠️ **O `pinch` é NOSSO e a referência não o tem** — lá o termo
+            // lateral do Crease entra inteiro (`dx * fallOff`). O default de
+            // fábrica é `0,5`, então medi-lo aqui somaria a divergência de um
+            // KNOB à da lei, que é o que esta tabela existe para separar. O
+            // custo dele está na linha `pinch` da varredura abaixo.
+            pinch: 1.0,
             ..Brush::default()
         };
         let mut stroke = SculptStroke::default();
@@ -349,4 +367,79 @@ fn what_separates_our_kernels_from_the_reference() {
         );
     }
     println!();
+}
+
+/// **DE QUEM É A DIVERGÊNCIA QUE SOBRA: da LEI ou do PLANO?**
+///
+/// O Clay e o Flatten são os dois verbos que ainda não batem depois de a família
+/// do carimbo trocar de lei (doc 19 §3.2.5), e os dois são os que consomem o
+/// **PONTO** do plano — o Draw usa só a normal e mede `1,01×`. Esta sonda separa
+/// as duas perguntas: quanto o nosso `fit_plane` difere do
+/// `area_center`/`area_normal` da referência, e quanto dessa diferença chega ao
+/// deslocamento.
+///
+/// ⚠️ **Ela NÃO afirma nada.** Se o plano explicar o resto, o trabalho é um; se
+/// não explicar, é outro — e escolher sem medir é como se conserta o verbo
+/// errado primeiro.
+#[test]
+#[ignore = "sonda"]
+fn whose_divergence_is_left_the_law_or_the_plane() {
+    let radius = 0.5f32;
+    let d = dab_at(radius);
+    let mesh = sphere();
+    let verts = footprint(&mesh, &d);
+    let base: Vec<f32> = mesh.positions().iter().flatten().copied().collect();
+    let normals: Vec<f32> = mesh.normals().iter().flatten().copied().collect();
+    // A máscara da referência: `1` é livre, e a nossa é o oposto.
+    let free = vec![1.0f32; mesh.vert_count()];
+    let eye = [
+        f64::from(d.eye[0]),
+        f64::from(d.eye[1]),
+        f64::from(d.eye[2]),
+    ];
+    let mut front = Vec::new();
+    rk::front_vertices(&normals, &verts, eye, &mut front);
+
+    let their_n = rk::area_normal(&normals, &free, &front).expect("normal de área");
+    let their_c = rk::area_center(&base, &free, &front).expect("centro de área");
+
+    // O NOSSO plano, pela porta do produto: um traço que começa e pergunta.
+    let mut ours = sphere();
+    let brush = Brush {
+        verb: Verb::Flatten,
+        radius,
+        strength: 1.0,
+        falloff: Falloff::Plateau,
+        ..Brush::default()
+    };
+    let mut s = SculptStroke::default();
+    s.begin(&ours);
+    let (our_c, our_n) = s.probe_plane(&mut ours, &brush, &d);
+
+    let dot = f64::from(our_n[0]) * their_n[0]
+        + f64::from(our_n[1]) * their_n[1]
+        + f64::from(our_n[2]) * their_n[2];
+    let dc = [
+        f64::from(our_c[0]) - their_c[0],
+        f64::from(our_c[1]) - their_c[1],
+        f64::from(our_c[2]) - their_c[2],
+    ];
+    let dist = (dc[0] * dc[0] + dc[1] * dc[1] + dc[2] * dc[2]).sqrt();
+    // A componente que IMPORTA: o deslocamento do centro AO LONGO da normal é o
+    // que entra em `signed_distance`, e é ele que move o resultado. O resto
+    // desliza dentro do próprio plano e não muda nada.
+    let along = dc[0] * their_n[0] + dc[1] * their_n[1] + dc[2] * their_n[2];
+
+    println!("== O PLANO: nosso `fit_plane` contra o `area_*` da referência ==");
+    println!(
+        "  pegada {} vértices, frontais {}",
+        verts.len(),
+        front.len()
+    );
+    println!("  normal: cos {dot:.6}  (1 = mesma direção)");
+    println!(
+        "  centro: distância {dist:.6} · AO LONGO da normal {along:.6} ({:.1}% do raio)",
+        100.0 * along.abs() / f64::from(radius)
+    );
+    println!("  ^ o `signed_distance` do Flatten/Clay só enxerga a componente ao longo");
 }

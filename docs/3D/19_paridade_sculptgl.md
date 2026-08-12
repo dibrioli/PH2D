@@ -606,6 +606,71 @@ de peso em `f64` (o nosso `w` é `f32` desde o falloff; a referência arredonda 
 vez no fim — **nomeado, não medido**) · e as divergências deliberadas da `§3.3`,
 que só fecham se o Enio abrir mão delas.
 
+### 3.2.6 — O PLANO era a divergência que sobrava, e a medição o disse em uma linha
+
+Fechada a lei, sobravam `Clay 1,74×` e `Flatten 0,54×`. A sonda
+`whose_divergence_is_left_the_law_or_the_plane` separou as duas perguntas:
+
+```
+  pegada 335 vértices, frontais 335
+  normal: cos 1.000000  (1 = mesma direção)
+  centro: distância 0.029080 · AO LONGO da normal 0.029080 (5.8% do raio)
+```
+
+⚠️ **A NORMAL era idêntica e só o CENTRO divergia — e inteiramente ao longo
+dela.** É por isso que o `Draw` media `1,01×` (ele consome só a direção) e os
+verbos de plano não: quem consome o PONTO entra pelo `signed_distance`, que
+enxerga exatamente a componente ao longo da normal.
+
+**A causa:** o `fit_plane_over` tinha uma soma PRÓPRIA, ponderada pelo
+**falloff**, com o racional escrito ao lado (*"o plano descreve a superfície sob
+o pincel; força/pressão/máscara dizem o quanto agir sobre ela, não que forma ela
+tem"*). O `areaCenter`/`areaNormal` da referência pondera pela **MÁSCARA**
+(`mAr[ind + 2]`), uniforme. O racional é defensável e o preço era `5,8 %` do
+raio.
+
+**A cura:** o produto passou a **CHAMAR os kernels portados**. Eles indexam
+arrays planos por `v * 3` e o `SculptStroke` guarda `[[f32; 3]]` por SLOT, então
+`area_center`/`area_normal` ganharam o irmão `_with` (a leitura em closure): **uma
+soma, duas vistas** — converter por dab seria uma cópia da pegada no caminho
+quente, e re-escrever a soma seria a segunda resposta que produziu esta
+divergência.
+
+**E o Crease era CONVENÇÃO DE SINAL, não lei.** O `|diferença|` dele valia
+`0,036` contra um deslocamento próprio de `0,019` — quase **2×**, que é a
+assinatura de um sinal. A tool da referência nasce com **`_negative = true`**
+(`Crease.js:11`) e cava por ali; o nosso kernel cava pelo sinal com
+`invert = false`. **O produto se comporta igual** (os dois cavam sem Ctrl e
+criam crista com ele) e a sonda comparava um a cavar contra o outro a levantar.
+
+**O quadro final, um dab, a mesma malha e a mesma pegada:**
+
+| verbo | razão | \|diferença\| |
+|---|---|---|
+| Draw/brush | **1,00×** | **0,000000** |
+| Clay | **1,00×** | **0,000000** |
+| Inflate | **1,00×** | **0,000000** |
+| Pinch | 1,00× | 0,000578 |
+| Crease | 1,01× | 0,000809 |
+| Flatten | 1,00× | 0,001717 |
+
+⚠️ **Os três resíduos que sobram são as divergências DECLARADAS da §3.3, não
+trabalho aberto:** o `Flatten` bilateral (o deles escolhe um lado com
+`comp = ±1` + `continue`) e a **projeção TANGENCIAL** do Pinch e do Crease — a
+referência puxa em 3-D (`dx = cx − v` cru) e nós removemos a componente normal,
+com um gate que defende essa posição
+(`pinch_pulls_along_the_surface_and_does_not_secretly_flatten`). O `pinch` do
+Crease é knob NOSSO e a referência não o tem; ele custa `0,036 → 0,0358`, ou
+seja praticamente nada.
+
+⚠️ **E a troca do plano moveu um gate de CULLING, que ganhou o controle que lhe
+faltava.** O `geometry_behind_the_silhouette_does_not_steer_the_brush` afirmava
+`tilt < 0,5°` e mediu `0,664°` — não porque o filtro vazou, mas porque bumpar a
+geometria de costas move as faces que ela COMPARTILHA com a faixa da frente, e a
+ponderação uniforme deixa de amortecer isso. O oráculo virou um CONTROLE
+executável (a MESMA mancha, do lado que se vê): `0,664°` contra `5,766°`, e a
+mutação que derrota o filtro sangra (`3,232°` contra `4,417°`).
+
 ### 3.3 — O MAPA dos verbos, e o único que a referência não tem
 
 ⚠️ **Esta seção afirmava que `Smooth` · `Mask` · `Twist` não tinham kernel

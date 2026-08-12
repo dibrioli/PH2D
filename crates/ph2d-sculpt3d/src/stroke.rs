@@ -122,6 +122,34 @@ impl SculptStroke {
         self.target.clear();
     }
 
+    /// **DIAGNÓSTICO: que plano este dab ajustaria?** Devolve `(ponto, normal)`.
+    ///
+    /// ⚠️ **Ele existe para uma sonda não escrever a SEGUNDA resposta.** O
+    /// atlas de divergência precisa comparar o nosso plano com o
+    /// `area_center`/`area_normal` da referência, e a alternativa — re-derivar
+    /// o ajuste do lado da sonda — é exatamente a forma que este módulo
+    /// documenta como a que apodrece: duas leituras da mesma pergunta, e a
+    /// medição passa a falar sobre a cópia. Aqui a rota é a MESMA
+    /// (`verts_in_sphere` → `capture` → `fit_plane`), então o que a sonda mede
+    /// é o que o dab usaria.
+    ///
+    /// ⚠️ **Ele CAPTURA** (é `&mut self`): sem a captura o `fit_plane` leria
+    /// `base_pos` de vértices que este traço nunca viu.
+    pub fn probe_plane(
+        &mut self,
+        mesh: &mut Mesh,
+        brush: &Brush,
+        dab: &Dab,
+    ) -> ([f32; 3], [f32; 3]) {
+        mesh.verts_in_sphere(dab.center, dab.radius, &mut self.query, &mut self.footprint);
+        for i in 0..self.footprint.len() {
+            let v = self.footprint[i];
+            self.capture(mesh, v);
+        }
+        let fit = self.fit_plane(brush, dab);
+        (fit.point, fit.normal)
+    }
+
     /// Os vértices que este traço tocou — **a janela do undo**.
     #[must_use]
     pub fn touched(&self) -> &[u32] {

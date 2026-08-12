@@ -533,13 +533,37 @@ pub fn scale(
 /// `return;`, e o `Brush.stroke` **sai do dab inteiro** nesse caso.
 #[must_use]
 pub fn area_normal(normals: &[f32], free: &[f32], verts: &[u32]) -> Option<[f64; 3]> {
+    area_normal_with(verts, |v| {
+        let ind = v as usize * 3;
+        (
+            [
+                f64::from(normals[ind]),
+                f64::from(normals[ind + 1]),
+                f64::from(normals[ind + 2]),
+            ],
+            f64::from(free[v as usize]),
+        )
+    })
+}
+
+/// [`area_normal`] com a leitura em CLOSURE — o corpo, e o que o produto chama.
+///
+/// ⚠️ **Ela existe porque o produto não guarda a malha na forma do original.**
+/// A referência indexa arrays planos por `v * 3` e o `SculptStroke` guarda
+/// `[[f32; 3]]` por SLOT; converter por dab seria uma cópia da pegada no
+/// caminho quente, e re-escrever a soma do lado do produto seria a **segunda
+/// resposta** — que é exatamente o que fez o plano dele divergir do original
+/// por `5,8 %` do raio sem ninguém ver. Uma soma, duas vistas.
+///
+/// A closure devolve `(normal, peso)`; um peso `0` é um vértice travado.
+#[must_use]
+pub fn area_normal_with(verts: &[u32], read: impl Fn(u32) -> ([f64; 3], f64)) -> Option<[f64; 3]> {
     let (mut anx, mut any, mut anz) = (0.0f64, 0.0f64, 0.0f64);
     for &v in verts {
-        let ind = v as usize * 3;
-        let f = f64::from(free[v as usize]);
-        anx += f64::from(normals[ind]) * f;
-        any += f64::from(normals[ind + 1]) * f;
-        anz += f64::from(normals[ind + 2]) * f;
+        let (n, f) = read(v);
+        anx += n[0] * f;
+        any += n[1] * f;
+        anz += n[2] * f;
     }
     let len = (anx * anx + any * any + anz * anz).sqrt();
     if len == 0.0 {
@@ -558,15 +582,31 @@ pub fn area_normal(normals: &[f32], free: &[f32], verts: &[u32]) -> Option<[f64;
 /// porque um `NaN` aqui envenena a malha inteira pelo plano.
 #[must_use]
 pub fn area_center(pos: &[f32], free: &[f32], verts: &[u32]) -> Option<[f64; 3]> {
+    area_center_with(verts, |v| {
+        let ind = v as usize * 3;
+        (
+            [
+                f64::from(pos[ind]),
+                f64::from(pos[ind + 1]),
+                f64::from(pos[ind + 2]),
+            ],
+            f64::from(free[v as usize]),
+        )
+    })
+}
+
+/// [`area_center`] com a leitura em CLOSURE — o corpo, e o que o produto chama.
+/// Ver [`area_normal_with`] para o porquê.
+#[must_use]
+pub fn area_center_with(verts: &[u32], read: impl Fn(u32) -> ([f64; 3], f64)) -> Option<[f64; 3]> {
     let (mut ax, mut ay, mut az) = (0.0f64, 0.0f64, 0.0f64);
     let mut acc = 0.0f64;
     for &v in verts {
-        let ind = v as usize * 3;
-        let f = f64::from(free[v as usize]);
+        let (p, f) = read(v);
         acc += f;
-        ax += f64::from(pos[ind]) * f;
-        ay += f64::from(pos[ind + 1]) * f;
-        az += f64::from(pos[ind + 2]) * f;
+        ax += p[0] * f;
+        ay += p[1] * f;
+        az += p[2] * f;
     }
     if acc == 0.0 {
         return None;

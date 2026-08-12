@@ -30,8 +30,8 @@ use super::*;
 /// registrada aqui em vez de escondida.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct PlaneFit {
-    point: [f32; 3],
-    normal: [f32; 3],
+    pub(super) point: [f32; 3],
+    pub(super) normal: [f32; 3],
 }
 
 impl SculptStroke {
@@ -67,61 +67,58 @@ impl SculptStroke {
     /// O ajuste sobre a pegada, opcionalmente só nos vértices que olham para o
     /// olho. `None` = ninguém pesou (conjunto vazio, ou todo peso zero).
     fn fit_plane_over(&self, brush: &Brush, dab: &Dab, front_only: bool) -> Option<PlaneFit> {
-        let inv_r = 1.0 / dab.radius;
-        let mut acc_p = [0.0f64; 3];
-        let mut acc_n = [0.0f64; 3];
-        let mut sum = 0.0f64;
-        for &v in &self.footprint {
-            let s = self.slot[v as usize] as usize;
-            let p = self.base_pos[s];
-            let n = self.base_nrm[s];
-            if front_only && n[0] * dab.eye[0] + n[1] * dab.eye[1] + n[2] * dab.eye[2] > 0.0 {
-                continue;
+        // ⚠️ **O PLANO É O DA REFERÊNCIA, e o produto CHAMA os kernels
+        // portados** (`SculptBase.js:224-261`) em vez de os re-derivar. Até
+        // 2026-08-11 esta função tinha uma soma própria, ponderada pelo
+        // **FALLOFF** e lida do `pre` congelado, com o racional escrito ao lado:
+        // *"o plano descreve a superfície sob o pincel, e força/pressão/máscara
+        // dizem o quanto agir sobre ela, não que forma ela tem"*. O racional é
+        // defensável e o **preço estava medido**: a NORMAL saía idêntica
+        // (`cos 1,000000`) e o CENTRO ficava **0,029 fora, inteiramente ao
+        // longo da normal** — `5,8 %` do raio.
+        //
+        // ⚠️ **E é por isso que o Draw não sentia e o Flatten sentia.** O Draw
+        // consome só a direção (media `1,01×`); quem consome o PONTO entra pelo
+        // `signed_distance`, que enxerga exatamente a componente ao longo da
+        // normal — o Flatten media `0,54×` e o Clay `1,74×`.
+        //
+        // ⚠️ **A ponderação é a MÁSCARA, não o falloff** (`mAr[ind + 2]`), e a
+        // leitura é a do estado congelado deste traço. A referência lê a malha
+        // viva; nós lemos o `pre`, e a divergência é a mesma que o
+        // [`crate::Grip::Stamp`] já carrega — o peso de um dab é função do
+        // estado congelado, e um plano que subisse com a própria tinta faria o
+        // Flatten perseguir a superfície que ele está achatando.
+        let front = |v: u32| {
+            let n = self.base_nrm[self.slot[v as usize] as usize];
+            !front_only || n[0] * dab.eye[0] + n[1] * dab.eye[1] + n[2] * dab.eye[2] <= 0.0
+        };
+        // O peso da referência: `1` é livre. O nosso `DEFAULT_MASK` é o oposto,
+        // e o `free_weight` é a porta única dessa conversão.
+        let free = |v: u32| {
+            if front(v) {
+                f64::from(crate::mask_ops::free_weight(
+                    self.base_mask[self.slot[v as usize] as usize],
+                ))
+            } else {
+                0.0
             }
-            let d = [
-                p[0] - dab.center[0],
-                p[1] - dab.center[1],
-                p[2] - dab.center[2],
-            ];
-            let dist = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
-            // A ponderação é só o FALLOFF: o plano descreve a superfície sob o
-            // pincel, e força/pressão/máscara dizem o quanto agir sobre ela, não
-            // que forma ela tem.
-            let w = f64::from(brush.falloff.weight(dist * inv_r));
-            if w <= 0.0 {
-                continue;
-            }
-            sum += w;
-            for k in 0..3 {
-                acc_p[k] += f64::from(p[k]) * w;
-                acc_n[k] += f64::from(n[k]) * w;
-            }
-        }
-        if sum <= 0.0 {
-            // Pegada inteira na borda do falloff (Sharper com raio grande, por
-            // exemplo) — ou, com o filtro ligado, nenhum vértice frontal. Quem
-            // chama decide o que fazer com o `None`.
-            return None;
-        }
-        let inv = 1.0 / sum;
-        let mut point = [0.0f32; 3];
-        let mut normal = [0.0f32; 3];
-        for k in 0..3 {
-            point[k] = (acc_p[k] * inv) as f32;
-            normal[k] = (acc_n[k] * inv) as f32;
-        }
-        let len = (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
-        if len > 1e-12 {
-            for n in &mut normal {
-                *n /= len;
-            }
-        } else {
-            // Normais que se cancelam (uma dobra fechada sob o pincel): sem
-            // direção defensável, o plano vira o do próprio dab.
-            normal = [0.0, 1.0, 0.0];
-        }
+        };
+        let normal = crate::ref_kernels::area_normal_with(&self.footprint, |v| {
+            let n = self.base_nrm[self.slot[v as usize] as usize];
+            ([f64::from(n[0]), f64::from(n[1]), f64::from(n[2])], free(v))
+        })?;
+        let point = crate::ref_kernels::area_center_with(&self.footprint, |v| {
+            let p = self.base_pos[self.slot[v as usize] as usize];
+            ([f64::from(p[0]), f64::from(p[1]), f64::from(p[2])], free(v))
+        })?;
+        let mut point = [point[0] as f32, point[1] as f32, point[2] as f32];
+        let normal = [normal[0] as f32, normal[1] as f32, normal[2] as f32];
         // O offset move o PLANO, não os vértices — é o knob que faz do Flatten
         // um Clay sem um segundo verbo.
+        //
+        // ⚠️ **Ele fica DEPOIS do kernel de propósito:** o `areaCenter` da
+        // referência não o conhece (é nosso), e aplicá-lo por dentro faria a
+        // soma que os gates de paridade comparam deixar de ser a dela.
         let off = brush.plane_offset * dab.radius;
         for k in 0..3 {
             point[k] += normal[k] * off;

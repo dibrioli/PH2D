@@ -333,38 +333,40 @@ fn a_high_ragged_edge_stroke_is_antialiased_too() {
     }
 }
 
-/// **O AA não pode DEGRAUAR o interior de uma lavagem DILUÍDA** (Enio 2026-08-11: *"Smooth Edges
-/// marcado com Dilution > 0 empurra pixels duros para além das bordas do traço"*).
+/// **O CHECKBOX NÃO PODE SER UM CONTROLE MORTO** — o gate que substitui dois meus, e a razão pela
+/// qual eles saíram (Enio 2026-08-11, 2ª rodada: *"parece ter diminuído a qualidade do AA e não
+/// resolveu o problema. Smooth edges + dilution > 0"*).
 ///
-/// ⚠️ **O oráculo é o próprio interruptor, e é isso que o torna incapaz de mentir:** o INTERIOR da
-/// lavagem — o miolo, recuado da silhueta — tem de sair com o mesmo número de degraus com Smooth
-/// Edges ligado e desligado. O AA existe para reconstruir uma FRONTEIRA; se ele muda o miolo, o que
-/// ele está a fazer ali não é anti-aliasing.
+/// ⚠️ **Os dois gates que este arquivo trazia aqui mediam `Falloff::Constant` — um disco duro que o
+/// modo watercolor NÃO consegue produzir** (o falloff é fixo e é o [`Falloff::Watercolor`]; o Enio
+/// teve de dizê-lo). Quatro rodadas de medição correram sobre um pincel que o produto não faz, e
+/// sobre o pincel REAL os efeitos que elas "curavam" ou somem ou invertem — então eles foram
+/// REMOVIDOS em vez de recalibrados, porque o que eles mediam não existe.
 ///
-/// A causa e a varredura vivem no [`super::watercolor_field::AA_SPAN_MIN`]; o número que este gate
-/// pina é o do PRODUTO: `Dilution 0,45`, traço vertical r=26, medido **67 degraus com o AA ligado
-/// contra 0 desligado** antes do portão, e **0 contra 0** depois.
+/// **O que sobra é um fato que não pode ser vácuo:** com o pincel do artista (o `Falloff::Watercolor`
+/// fixo, raio 72 = o Size 0,14 do slider), *Smooth Edges* ligado **não pode renderizar byte-idêntico
+/// a desligado**. Com o portão DURO da 1ª rodada ele rendia — `929937a4cb8c423e` dos dois lados a
+/// Dilution 0,45 — porque o planalto `1,0 → 0,92` do falloff real deixa o vão abaixo do limiar em
+/// TODO texel, inclusive no aro, assim que a Dilution baixa a cobertura. O checkbox morria
+/// exatamente em *"smooth edges + dilution > 0"*, e ficava vivo em Dilution 0: o discriminante do
+/// report, ao bit.
 ///
-/// **Mutação que tem de sangrar:** `AA_SPAN_MIN = 0.0` (o portão nunca fecha, o mundo pré-cura).
+/// **Mutação que tem de sangrar:** trocar a interpolação de [`super::watercolor_field::AA_SPAN_MIN`]
+/// por um `if` (a 1ª rodada) ⇒ a metade `Dilution 0,45` fica byte-idêntica e o gate vai a vermelho.
 #[test]
-fn the_aa_does_not_step_the_interior_of_a_diluted_wash() {
+fn the_smooth_edges_checkbox_is_not_dead_under_dilution() {
     const SIZE: u32 = 256;
-    let stroke = |smooth: bool| -> Vec<u8> {
-        // ⚠️ **A fixture NÃO é a do `wc_tool`, e a razão é medida:** o pincel PRETO padrão dele
-        // sobre papel branco deixa o miolo modulado pelo dente do papel — 822 degraus **com o AA
-        // desligado**, que afogam os 259 que o AA acrescenta. Uma lavagem clara e plana (o `fill` /
-        // `opacity` do report) tem miolo limpo, então o que sobrar ali é o AA e mais nada.
+    // O pincel do REPORT: falloff fixo do modo + o raio que o Size 0,14 dá sobre `BRUSH_SIZE_MAX_PX`.
+    let wash = |dilution: f32, smooth_edges: bool| -> Vec<u8> {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
         t.paint.brush = BrushSpec {
-            radius_px: 26.0,
-            hardness: 1.0,
-            falloff: ph2d_painter_brush::Falloff::Constant,
+            radius_px: 72.0,
+            falloff: ph2d_painter_brush::Falloff::Watercolor,
             color: [0.90, 0.15, 0.18],
-            space_attenuation: false,
             watercolor: true,
-            smooth_edges: smooth,
-            wet_dilution: 0.45,
+            smooth_edges,
+            wet_dilution: dilution,
             fill: 0.45,
             depth: 2.0,
             edge_gain: 1.2,
@@ -379,162 +381,29 @@ fn the_aa_does_not_step_the_interior_of_a_diluted_wash() {
         t.on_canvas_pointer(cp([cx, 40.0], PointerPhase::Down));
         for i in 1..=16u8 {
             t.on_canvas_pointer(cp([cx, 40.0 + f32::from(i) * 11.0], PointerPhase::Move));
-            // ⚠️ **O tick é PARTE DA FIXTURE, não cerimônia.** A lavagem recompõe uma vez por
-            // QUADRO (`WashCadence`), então sem ele o canvas guarda um composite anterior ao
-            // traço inteiro — e a primeira versão deste gate passou com a MUTAÇÃO instalada
-            // exatamente por isso: ele media uma imagem que o defeito nunca tinha tocado.
+            // ⚠️ O tick é PARTE DA FIXTURE: a lavagem recompõe uma vez por QUADRO (`WashCadence`),
+            // e sem ele o canvas guarda um composite anterior ao traço inteiro.
             <PainterTool as ph2d_editor_core::Tool>::on_tick(&mut t, 16.0);
         }
         t.on_canvas_pointer(cp([cx, 216.0], PointerPhase::Up));
         <PainterTool as ph2d_editor_core::Tool>::on_tick(&mut t, 16.0);
         t.canvas_rgba.to_vec()
     };
-    // Degraus no MIOLO: a faixa entre o primeiro e o último texel não-papel, recuada de `PAD` para
-    // que a silhueta (que TEM tratamento próprio) fique de fora.
-    const PAD: usize = 6;
-    let interior_steps = |px: &[u8]| -> usize {
-        let mut steps = 0;
-        for y in 70..200usize {
-            // ⚠️ **MÉDIA dos canais, não o `lum()` deste arquivo (que é o MÁXIMO).** Numa lavagem
-            // VERMELHA o canal R fica perto do papel mesmo onde a tinta é densa, então o máximo
-            // nunca cruza o limiar e a faixa interior sai vazia — a segunda razão pela qual a
-            // primeira versão deste gate passou com a mutação instalada.
-            let prof: Vec<f32> = (0..SIZE as usize)
-                .map(|x| {
-                    let i = (y * SIZE as usize + x) * 4;
-                    (f32::from(px[i]) + f32::from(px[i + 1]) + f32::from(px[i + 2])) / 3.0
-                })
-                .collect();
-            let Some(lo) = (0..prof.len()).find(|&x| prof[x] < 250.0) else {
-                continue;
-            };
-            let Some(hi) = (0..prof.len()).rev().find(|&x| prof[x] < 250.0) else {
-                continue;
-            };
-            if hi <= lo + 2 * PAD + 2 {
-                continue;
-            }
-            steps += (lo + PAD..hi - PAD)
-                .filter(|&x| (prof[x + 1] - prof[x]).abs() > 6.0)
-                .count();
-        }
-        steps
-    };
-    let hard = interior_steps(&stroke(false));
-    let smooth = interior_steps(&stroke(true));
-    // CONTROLE: a fixture TEM de conter uma lavagem, senão os dois lados são zero por vácuo.
-    let px = stroke(true);
-    let inked = px
-        .chunks_exact(4)
-        .filter(|c| c[0] < 250 || c[1] < 250)
-        .count();
-    assert!(
-        inked > 3_000,
-        "a fixture nao pintou uma lavagem: {inked} texels"
-    );
-    // ⚠️ **A barra NÃO é zero, e o porquê vale mais que o número.** Zero era alcançável — a 1ª
-    // rodada o alcançou com um portão DURO — e custava o dobro do pico na cena do report seguinte
-    // (pintar sobre pigmento seco: 32,7 sem portão contra 81,7 com o duro). Um zero pago com a
-    // outra metade da tela não é um zero, e a metade que ele paga tem gate próprio logo abaixo.
-    // O que esta barra defende é o DEFEITO ORIGINAL — 67 degraus contra 0 —, não a perfeição.
-    assert!(
-        smooth <= hard + 25,
-        "o AA degraua o miolo de uma lavagem diluida: {smooth} degraus com Smooth Edges contra \
-         {hard} sem (o defeito de 2026-08-11 media 67 contra 0; a lei contínua mede 17)"
-    );
-}
-
-/// **A OUTRA METADE: pintar sobre pigmento já SECO** (Enio 2026-08-11, 2ª rodada — *"parece ter
-/// diminuído a qualidade do AA e não resolveu o problema"*).
-///
-/// ⚠️ **Este gate existe porque a ausência dele deixou uma regressão passar.** O irmão acima mede o
-/// miolo de UM traço sobre papel branco, e a cura que ele aprovou — um portão DURO sobre o vão —
-/// **dobrou o pico** desta cena: um `if` sobre uma grandeza contínua faz dois texels vizinhos serem
-/// calculados por LEIS diferentes, e o salto entre elas é um degrau que o portão fabrica. Medido
-/// aqui, Dilution 0,45: **32,7 sem portão · 81,7 com o portão duro · 32,7 com a lei contínua ·
-/// 112,7 com o AA desligado**.
-///
-/// ⚠️ **A barra não pode ser satisfeita desligando o AA** — desligado é o PIOR dos quatro (112,7),
-/// que é o que torna este gate uma afirmação sobre a LEI e não sobre a existência do AA.
-#[test]
-fn the_aa_does_not_harden_a_stroke_laid_over_dry_pigment() {
-    const SIZE: u32 = 256;
-    let stroke_over_dry = |smooth_edges: bool| -> Vec<u8> {
-        let mut t = PainterTool::default();
-        t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
-        t.paint.brush = BrushSpec {
-            radius_px: 26.0,
-            hardness: 1.0,
-            falloff: ph2d_painter_brush::Falloff::Constant,
-            color: [0.90, 0.15, 0.18],
-            space_attenuation: false,
-            watercolor: true,
-            smooth_edges,
-            wet_dilution: 0.45,
-            fill: 0.45,
-            depth: 2.0,
-            edge_gain: 1.2,
-            edge_spread: 6.0,
-            opacity: 0.4,
-            ..Default::default()
-        };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
-        // Traço 1 — a faixa HORIZONTAL que SECA: ao soltar ela commita, e os texels dela passam a
-        // ter dono próprio (o composite do traço seguinte os re-renderiza como `settled`).
-        t.on_canvas_pointer(cp([24.0, 90.0], PointerPhase::Down));
-        for i in 1..=16u8 {
-            t.on_canvas_pointer(cp([24.0 + f32::from(i) * 13.0, 90.0], PointerPhase::Move));
-            <PainterTool as ph2d_editor_core::Tool>::on_tick(&mut t, 16.0);
-        }
-        t.on_canvas_pointer(cp([232.0, 90.0], PointerPhase::Up));
-        for _ in 0..8 {
-            <PainterTool as ph2d_editor_core::Tool>::on_tick(&mut t, 16.0);
-        }
-        // Traço 2 — a VERTICAL que a atravessa. É este que pinta sobre pigmento seco.
-        let cx = f32::from(u16::try_from(SIZE / 2).unwrap_or(128));
-        t.on_canvas_pointer(cp([cx, 30.0], PointerPhase::Down));
-        for i in 1..=16u8 {
-            t.on_canvas_pointer(cp([cx, 30.0 + f32::from(i) * 12.0], PointerPhase::Move));
-            <PainterTool as ph2d_editor_core::Tool>::on_tick(&mut t, 16.0);
-        }
-        t.on_canvas_pointer(cp([cx, 222.0], PointerPhase::Up));
-        <PainterTool as ph2d_editor_core::Tool>::on_tick(&mut t, 16.0);
-        t.canvas_rgba.to_vec()
-    };
-    // O pico do gradiente horizontal na janela que cobre o 2º traço, nas linhas sobre a faixa seca.
-    // MÉDIA dos canais pela mesma razão do irmão (o `lum()` deste arquivo é o MÁXIMO, e numa
-    // lavagem VERMELHA ele nunca cruza o limiar de papel).
-    let peak = |px: &[u8]| -> f32 {
-        let mut mx = 0.0f32;
-        for y in 72..=108usize {
-            let prof: Vec<f32> = (0..SIZE as usize)
-                .map(|x| {
-                    let i = (y * SIZE as usize + x) * 4;
-                    (f32::from(px[i]) + f32::from(px[i + 1]) + f32::from(px[i + 2])) / 3.0
-                })
-                .collect();
-            for x in 80..176usize {
-                mx = mx.max((prof[x + 1] - prof[x]).abs());
-            }
-        }
-        mx
-    };
-    let smooth = stroke_over_dry(true);
-    // CONTROLE: a fixture TEM de conter as duas pinceladas, senão o pico é baixo por vácuo.
-    let inked_band = (72..=108usize)
-        .flat_map(|y| (20..236usize).map(move |x| (y * SIZE as usize + x) * 4))
-        .filter(|&i| smooth[i + 1] < 200)
-        .count();
-    assert!(
-        inked_band > 4_000,
-        "a fixture nao pintou a faixa seca: {inked_band} texels"
-    );
-    let p = peak(&smooth);
-    assert!(
-        p <= 45.0,
-        "o AA endurece um traco sobre pigmento seco: pico {p:.1} (a lei continua mede 32,7; o \
-         portao DURO de 2026-08-11 media 81,7 e foi o que o Enio reprovou)"
-    );
+    for dilution in [0.0f32, 0.45] {
+        let on = wash(dilution, true);
+        let off = wash(dilution, false);
+        // CONTROLE: a fixture TEM de pintar, senão dois canvases em branco também "diferem" em nada.
+        let inked = on.chunks_exact(4).filter(|c| c[1] < 200).count();
+        assert!(
+            inked > 10_000,
+            "Dilution {dilution}: a fixture nao pintou a lavagem ({inked} texels)"
+        );
+        assert_ne!(
+            canvas_hash(&on),
+            canvas_hash(&off),
+            "Dilution {dilution}: Smooth Edges ligado renderiza IGUAL a desligado — o checkbox e um \
+             controle morto (foi exatamente isto que o portao DURO de 2026-08-11 causou em \
+             Dilution > 0)"
+        );
+    }
 }

@@ -1,49 +1,34 @@
-//! **A BORDA DURA DENTRO DA LAVAGEM** — a sonda do report do Enio de 2026-08-11: em WATERCOLOR, com
-//! *Smooth Edges* marcado e `Dilution > 0`, pixels DUROS aparecem para além da borda do traço.
+//! **A BORDA DURA DENTRO DA LAVAGEM** — as sondas dos dois reports do Enio de 2026-08-11.
 //!
-//! ⚠️ **O interruptor do AA é a CAUSA, não a cura que falta** — e é isso que a tabela diz. Medido no
-//! interior da lavagem (a foto do report não tem papel nenhum: é toda vermelha, com um contorno
-//! serrilhado dentro dela):
+//! ⚠️ **LEIA ISTO ANTES DOS NÚMEROS: as quatro primeiras rodadas destas sondas usavam
+//! `Falloff::Constant` — um disco duro que o modo watercolor NÃO consegue produzir.** O falloff
+//! deste modo é FIXO e é o [`ph2d_painter_brush::Falloff::Watercolor`] (planalto `1,0 → 0,92` até
+//! `t ≤ 0,62`, depois rampa), e o Enio teve de dizê-lo depois de dois smokes gastos. Sobre o pincel
+//! REAL (raio 72 = o Size 0,14 do slider) os efeitos que aquelas rodadas mediam **somem ou
+//! invertem**: sobre pigmento seco o AA sai byte-idêntico ligado e desligado, e os "degraus" do
+//! interior viram centenas nos DOIS modos (é o dente do papel, por desenho).
+//!
+//! **Os números que sobrevivem, e que decidiram a lei, são as impressões digitais** — o pincel real,
+//! canvas inteiro, `Dilution 0,00` e `0,45`:
 //!
 //! ```text
-//!   config                  largura   cliff max   n cliffs
-//!   Dilution 0,45 - AA on      30,6        19,7         67
-//!   Dilution 0,45 - AA off     28,2         5,7          0
+//!   lei              Dilution 0,00        Dilution 0,45
+//!   contínua         a6e16b9928c32f50     b4aca42f7e766705
+//!   DURA (1ª rodada) 67a90771ef5720b0     929937a4cb8c423e  <- IDÊNTICO ao AA desligado
+//!   sem portão       edefd4842174c3bb     f73c383eacbdc733
+//!   AA DESLIGADO     2561a882650ff260     929937a4cb8c423e
 //! ```
 //!
-//! **São DOIS fatos, e separá-los é o diagnóstico:**
+//! Um portão DURO sobre o vão fecha em TODO texel — inclusive no aro — assim que a Dilution baixa a
+//! cobertura, e o checkbox *Smooth Edges* vira **controle morto** exatamente em *"smooth edges +
+//! dilution > 0"*. O gate que pina isso é
+//! `watercolor_aa_tests::the_smooth_edges_checkbox_is_not_dead_under_dilution`.
 //!
-//! 1. **A DILATAÇÃO, e ela independe da Dilution.** O [`super::watercolor_field::aa_coverage`]
-//!    devolve `cw = mx`, o **MÁXIMO** dos 3×3 supersamples sobre ±0,667 texel — isto é uma
-//!    **dilatação morfológica** da silhueta. A lavagem sai **~2 px mais larga em TODA a faixa de
-//!    Dilution** (34,8 contra 32,8 · 30,6 contra 28,2 · 25,4 contra 23,8), e o contorno de uma
-//!    dilatação **segue a grade discreta**, logo é escadinha por construção. É literalmente
-//!    *"empurra pixels para além das bordas do traço"*.
-//! 2. **A Dilution decide se ela é VISÍVEL.** A janela de endurecimento é
-//!    `smoothstep(SS0 = 0,12 · SS1 = 0,60)`, e `flow = 1 − dilution`: a 0,45 o CORPO da lavagem
-//!    pousa em ~0,55, **dentro** da janela em vez de saturado acima dela. Aí as duas estatísticas
-//!    3×3 (`mx` e `ss/mx`) passam a variar no interior em vez de darem 1, e cada degrau delas vira
-//!    um degrau de tinta.
-//!
-//! **A previsão que a mecânica faz, e a varredura confirma:** os degraus formam um ARCO em Dilution
-//! — poucos em 0 (corpo saturado ACIMA da janela), pico em 0,45-0,60 (corpo DENTRO), zero em 0,90
-//! (corpo ABAIXO de `SS0`, nada renderiza).
-//!
-//! **Atribuição por ablação** (Dilution 0,45, `n cliffs` · `cliff max`): AA completo **67 · 19,7** ·
-//! trocando só `cw = mx` por `cw = single` **39 · 9,0** · sem AA nenhum **0 · 5,7**. As duas metades
-//! contribuem, e nenhuma sozinha explica o defeito.
-//!
-//! ⚠️ **CORREÇÃO da 2ª rodada (2026-08-11): a frase *"empurra pixels PARA ALÉM das bordas"* é falsa
-//! no sentido literal, e [`measure_how_far_the_second_stroke_reaches`] a mede.** Um 2º traço de raio
-//! 26 não muda **um único byte** além de 30 px do próprio eixo, em nenhuma das quatro configurações
-//! — a dilatação 3×3 alarga a lavagem em ~2 px, e é só isso. O que o Enio vê é o **contorno dentro
-//! do campo**, e a cena que o produz é [`measure_the_edge_over_dry_pigment`], não esta.
-//!
-//! ⚠️ **E os gates de AA estavam VERDES por DUAS razões independentes** (`watercolor_aa_tests.rs`):
-//! o `count_cliffs` deles conta **só adjacências papel↔sólido** (`≥ 230` tocando `≤ 60`), e um degrau
-//! entre dois vermelhos de meio-tom não é nenhum dos dois — o oráculo é **estruturalmente cego ao
-//! interior**; e **nenhum** daqueles gates arma `wet_dilution` (zero ocorrências no arquivo), então a
-//! fixture nunca conteve o fenômeno. As duas falhas são as da família que este módulo já pagou.
+//! ⚠️ **Duas hipóteses minhas foram REFUTADAS por ablação e não devem voltar:** *"empurra pixels
+//! PARA ALÉM das bordas"* é falsa no sentido literal (um 2º traço não muda um byte além de 30 px do
+//! eixo — [`measure_how_far_the_second_stroke_reaches`]), e a metade **ÁGUA/backrun** da `Dilution`
+//! (`water = dilution`, EDGE-2) é **inerte** aqui: ablacioná-la deixa os números byte-idênticos.
+//! `WET_RAGGED`/`WET_EDGE_BOOST` também são inertes — respondem ao knob **Wet**, não ao Dilution.
 //!
 //! Rodar:
 //! ```text
@@ -63,9 +48,9 @@ fn wash(dilution: f32, smooth_edges: bool) -> Vec<u8> {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (SIDE * SIDE * 4) as usize], SIDE, SIDE);
     t.paint.brush = BrushSpec {
-        radius_px: 26.0,
+        radius_px: 72.0,
         hardness: 1.0,
-        falloff: Falloff::Constant,
+        falloff: Falloff::Watercolor,
         color: [0.90, 0.15, 0.18],
         space_attenuation: false,
         watercolor: true,
@@ -180,9 +165,9 @@ fn wash_over_dry(dilution: f32, smooth_edges: bool) -> Vec<u8> {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (SIDE * SIDE * 4) as usize], SIDE, SIDE);
     t.paint.brush = BrushSpec {
-        radius_px: 26.0,
+        radius_px: 72.0,
         hardness: 1.0,
-        falloff: Falloff::Constant,
+        falloff: Falloff::Watercolor,
         color: [0.90, 0.15, 0.18],
         space_attenuation: false,
         watercolor: true,
@@ -277,9 +262,9 @@ fn wash_two_stages(dilution: f32, smooth_edges: bool) -> (Vec<u8>, Vec<u8>) {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (SIDE * SIDE * 4) as usize], SIDE, SIDE);
     t.paint.brush = BrushSpec {
-        radius_px: 26.0,
+        radius_px: 72.0,
         hardness: 1.0,
-        falloff: Falloff::Constant,
+        falloff: Falloff::Watercolor,
         color: [0.90, 0.15, 0.18],
         space_attenuation: false,
         watercolor: true,
@@ -368,4 +353,125 @@ fn measure_how_far_the_second_stroke_reaches() {
         "\n    Um traco de raio 26 tem o direito de mudar pixels ate ~30 px do eixo.\n    \
          Tudo alem disso e o 2o traco reescrevendo tinta que ele nao tocou.\n"
     );
+}
+
+// ---------------------------------------------------------------------------------------------
+// A FRANJA PALIDA ADIANTE DA PONTA (a foto do Enio: "pigmento empurrado formando bordas pixeladas")
+// ---------------------------------------------------------------------------------------------
+
+/// Uma lavagem larga e, sobre ela, um traco CURTO que TERMINA dentro dela — a ponta e onde
+/// `inner > cw` e o unsharp ASSINADO produz o lobo NEGATIVO (a franja palida: o pigmento migrou do
+/// interior para a borda). E ela que a foto do Enio mostra, com contorno em blocos.
+fn wash_with_a_tip(dilution: f32, smooth_edges: bool) -> Vec<u8> {
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (SIDE * SIDE * 4) as usize], SIDE, SIDE);
+    t.paint.brush = BrushSpec {
+        radius_px: 72.0,
+        hardness: 1.0,
+        falloff: Falloff::Watercolor,
+        color: [0.90, 0.15, 0.18],
+        space_attenuation: false,
+        watercolor: true,
+        smooth_edges,
+        wet_dilution: dilution,
+        fill: 0.45,
+        depth: 2.0,
+        edge_gain: 1.2,
+        edge_spread: 6.0,
+        opacity: 0.4,
+        ..Default::default()
+    };
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    // A lavagem de fundo: uma faixa larga e baixa, que seca.
+    t.on_canvas_pointer(cp([30.0, 170.0], PointerPhase::Down));
+    for i in 1..=14u8 {
+        t.on_canvas_pointer(cp([30.0 + f32::from(i) * 14.0, 170.0], PointerPhase::Move));
+        t.on_tick(16.0);
+    }
+    t.on_canvas_pointer(cp([226.0, 170.0], PointerPhase::Up));
+    for _ in 0..8 {
+        t.on_tick(16.0);
+    }
+    // O traco CURTO que sobe e PARA dentro dela — a ponta fica em y=70.
+    t.on_canvas_pointer(cp([128.0, 168.0], PointerPhase::Down));
+    for i in 1..=8u8 {
+        t.on_canvas_pointer(cp([128.0, 168.0 - f32::from(i) * 12.0], PointerPhase::Move));
+        t.on_tick(16.0);
+    }
+    t.on_canvas_pointer(cp([128.0, 72.0], PointerPhase::Up));
+    t.on_tick(16.0);
+    t.canvas_rgba.as_ref().clone()
+}
+
+#[test]
+#[ignore = "sonda de estudo; roda sob demanda"]
+fn measure_the_pale_fringe_at_a_stroke_tip() {
+    println!("\n=== A FRANJA PALIDA ADIANTE DA PONTA (as setas pretas da foto) ===\n");
+    println!(
+        "{:<30} {:>12} {:>12} {:>12}",
+        "config", "franja pico", "grad max", "n degraus"
+    );
+    // A janela ao redor da PONTA do traco curto (que para em y=72).
+    let rows: Vec<usize> = (40..=110).collect();
+    let (wx0, wx1) = (80usize, 176usize);
+    for dil in [0.0f32, 0.45] {
+        for aa in [true, false] {
+            let px = wash_with_a_tip(dil, aa);
+            // A franja e PALIDA: mais clara que o corpo. O "pico" e o quanto ela clareia acima do
+            // nivel do corpo da lavagem naquela linha; os degraus sao a aspereza do contorno dela.
+            let (mut peak, mut gmax, mut steps) = (0.0f32, 0.0f32, 0usize);
+            for &y in &rows {
+                let prof = profile(&px, y);
+                // Nivel do corpo: a mediana da faixa entintada da linha (o vermelho de fundo).
+                let mut body: Vec<f32> =
+                    (wx0..wx1).map(|x| prof[x]).filter(|&v| v < 250.0).collect();
+                if body.len() < 16 {
+                    continue;
+                }
+                body.sort_by(f32::total_cmp);
+                let med = body[body.len() / 2];
+                for x in wx0..wx1 {
+                    if prof[x] >= 250.0 {
+                        continue;
+                    }
+                    peak = peak.max(prof[x] - med);
+                    let g = (prof[x + 1] - prof[x]).abs();
+                    gmax = gmax.max(g);
+                    if g > 6.0 {
+                        steps += 1;
+                    }
+                }
+            }
+            let label = format!("Dilution {dil:.2} - AA {}", if aa { "on " } else { "off" });
+            println!("{label:<30} {peak:>12.1} {gmax:>12.1} {steps:>12}");
+        }
+    }
+    println!(
+        "\n    'franja pico' = quanto a franja CLAREIA acima do corpo (o lobo negativo do unsharp).\n    \
+         'grad max' = quao DURA e a borda dela. A foto mostra pico ALTO com borda DURA.\n"
+    );
+}
+
+#[test]
+#[ignore = "sonda de estudo; roda sob demanda"]
+fn measure_the_law_fingerprint() {
+    // FNV-1a do canvas inteiro: com o pincel REAL, a lei do vão é observável ou não?
+    let h = |px: &[u8]| {
+        let mut h = 0xcbf2_9ce4_8422_2325u64;
+        for &b in px {
+            h ^= u64::from(b);
+            h = h.wrapping_mul(0x0100_0000_01b3);
+        }
+        h
+    };
+    println!("\n=== IMPRESSAO DIGITAL DA LEI (pincel REAL: Falloff::Watercolor, r=72) ===");
+    for dil in [0.0f32, 0.45] {
+        println!(
+            "  Dilution {dil:.2}  AA on {:016x}   AA off {:016x}",
+            h(&wash(dil, true)),
+            h(&wash(dil, false))
+        );
+    }
 }

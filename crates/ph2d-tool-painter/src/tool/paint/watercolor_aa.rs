@@ -71,30 +71,31 @@ const AA_SS: [f32; 3] = [-0.667, 0.0, 0.667]; // LITERAL-PX-OK
 /// mesmo assim — porque quem endurece a borda grossa é o modelo ÓPTICO, não a cobertura (o doc acima
 /// já dizia isto). Com aquele portão os dois modos rendiam **byte-idênticos** e quatro gates caíam.
 ///
-/// ⚠️ **O número NÃO é escolhido pelo interior sozinho — isso foi a 1ª rodada, e ela regrediu a
-/// cena do Enio.** Com a transição CONTÍNUA (ver [`aa_coverage`]) o limiar é uma **curva de troca**
-/// entre duas cenas que querem coisas opostas, e as duas estão medidas (traço vertical r=26,
-/// Dilution 0,45; *seco* = um 2º traço atravessando uma faixa já commitada, *interior* = degraus no
-/// miolo sobre papel):
+/// ⚠️ **O NÚMERO SOZINHO NÃO É A LEI, E A 1ª RODADA PROVOU ISSO DA PIOR FORMA.** Com um portão
+/// DURO neste mesmo 0,20, o falloff REAL do modo (`Falloff::Watercolor`, um planalto `1,0 → 0,92`
+/// seguido de rampa) faz o vão ficar abaixo do limiar **em TODO texel, inclusive no aro** assim que
+/// a `Dilution` baixa a cobertura — então o portão fechava em toda parte e `aa_coverage` devolvia o
+/// render de *Smooth Edges OFF*. **Byte a byte**, medido com o pincel do artista (raio 72, o Size
+/// 0,14 do slider):
 ///
 /// ```text
-///     lei                 seco (pico)   interior (degraus)   gates de AA
-///   sem portão                32,7            42              todos verdes
-///   suave 0,20                32,7            17              9 de 10
-///   suave 0,35                60,7             0              todos verdes
-///   suave 0,50                83,7             0              todos verdes
-///   DURO  0,20 (1ª rodada)    81,7             0              todos verdes
-///   AA desligado             112,7             0              (o pior dos dois)
+///   lei              Dilution 0,00        Dilution 0,45
+///   contínua         a6e16b9928c32f50     b4aca42f7e766705
+///   DURA (1ª rodada) 67a90771ef5720b0     929937a4cb8c423e  <- IDÊNTICO ao AA desligado
+///   sem portão       edefd4842174c3bb     f73c383eacbdc733
+///   AA DESLIGADO     2561a882650ff260     929937a4cb8c423e
 /// ```
 ///
-/// **Nenhum limiar entrega as duas colunas** — é o que prova que o VÃO não é a variável que separa
-/// os dois casos (sobre tinta seca o AA é preciso no mesmo vão em que sobre papel ele é nocivo; o
-/// que difere é a BASE contra a qual o composite mistura, não a vizinhança de cobertura).
+/// **O checkbox virava um CONTROLE MORTO exatamente em *"Smooth Edges + Dilution > 0"*** — que é,
+/// palavra por palavra, o report que a reprovou; em Dilution 0 ele seguia vivo, que é o
+/// discriminante que o Enio nomeou. A transição contínua o traz de volta (`b4ac…` difere do
+/// desligado **e** do pré-cura), porque no aro `t` fica PARCIAL em vez de zero.
 ///
-/// **0,20 é escolhido por ser a única linha que não é PIOR que o mundo pré-cura em nenhum dos dois
-/// eixos** (seco empata em 32,7 · interior cai de 42 para 17). O `0` do interior que a 1ª rodada
-/// comprava custava exatamente o pico de 81,7 na cena reportada, e *um zero pago com a outra metade
-/// da tela não é um zero*. `LITERAL-PX-OK`: fração de cobertura endurecida, não um comprimento.
+/// ⚠️ **E a tabela de troca que esta linha trazia antes era sobre `Falloff::Constant`** — um disco
+/// duro que **este modo não consegue produzir** (o falloff é fixo e é o `Watercolor`). Quatro
+/// rodadas de medição minhas correram sobre um pincel que o produto não faz, e os números delas
+/// (81,7 · 32,7 · 67 degraus) **não descrevem o produto**; ficam removidos em vez de corrigidos,
+/// porque o que eles mediam não existe. `LITERAL-PX-OK`: fração de cobertura endurecida.
 pub(super) const AA_SPAN_MIN: f32 = 0.20; // LITERAL-PX-OK
 
 /// The hardened silhouette coverage `smoothstep(e0, e1, coverage)` at `(sx, sy)` **plus the screen-space

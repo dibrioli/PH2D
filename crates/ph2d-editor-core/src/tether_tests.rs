@@ -296,3 +296,36 @@ fn measure_how_the_sag_depends_on_nodes_and_iterations() {
         );
     }
 }
+
+/// **O reduced motion PARA o crescimento e deixa a tinta em paz.**
+///
+/// Os dois eixos vivem no MESMO escalar (uma track por chip), então a separação não pode vir da
+/// [`ph2d_editor_core::motion::UiMotion::law`] — ela é por `Role`. Vem do consumidor: a geometria
+/// pergunta, a cor não.
+#[test]
+fn reduced_motion_stops_the_growth_and_leaves_the_tint_alone() {
+    use crate::motion::{UiCharacter, UiMotion, hover_lift};
+    use crate::zones::Rect;
+    let r = Rect::new(10.0, 10.0, 36.0, 36.0);
+    let mut m = UiMotion::default();
+    m.set_character(UiCharacter::Expressive);
+    assert!(m.travels(), "sem reduced, um chip pode mexer-se");
+    let grown = hover_lift(r, 1.0, m.travels());
+    assert!(grown.w > r.w, "o chip devia ter crescido e não cresceu");
+
+    m.set_reduced_motion(true);
+    assert!(!m.travels(), "com reduced, nada se mexe");
+    let still = hover_lift(r, 1.0, m.travels());
+    assert!(
+        (still.w - r.w).abs() < 1e-6 && (still.x - r.x).abs() < 1e-6,
+        "com reduced motion o chip ainda cresce {:.2} px",
+        still.w - r.w
+    );
+    // ⚠️ E a TINTA sobrevive: `Fade` não é morta pelo reduced, então o par
+    // *Expressivo + reduced* continua a ter uma transição — só não tem percurso.
+    assert!(
+        m.law(crate::motion::Role::Fade).is_some(),
+        "o reduced motion matou o fade, e não devia: o gatilho vestibular é a ÁREA a \
+         deslocar-se, não a tinta a mudar"
+    );
+}

@@ -139,9 +139,14 @@ fn print_character_script() {
               matematica, nao uma promessa). O Expressivo passa 15,5% do tamanho e volta\n     \
               -- o chip POPA. Medido; se nao vir o pop, o numero volta a' mesa.\n\
          \n  4. Settings > Motion > REDUCED MOTION (e' um TOGGLE, nao uma terceira opcao).\n     \
-              Com ele ligado, escolha EXPRESSIVE: o fade FICA e o percurso SAI. Sao dois\n     \
-              eixos, e 'Expressivo + reduced' e' uma combinacao legitima -- um seletor de\n     \
-              tres posicoes tornaria-a inexprimivel.\n\
+              Deixe EXPRESSIVE e passe o rato pelos chips outra vez. O que tem de\n     \
+              acontecer: o chip PARA de crescer (nada se mexe) e o TINT continua a\n     \
+              chegar e a sair. Sao dois eixos, e 'Expressivo + reduced' e' combinacao\n     \
+              legitima -- um seletor de tres posicoes tornaria-a inexprimivel.\n     \
+              O gatilho vestibular e' a AREA a deslocar-se, nao a tinta a mudar; por isso\n     \
+              o fade sobrevive de proposito, e nao por esquecimento.\n\
+         \n     Na cena 2 o mesmo toggle faz a CORDA desaparecer inteira -- decoracao em\n     \
+              reduced e' AUSENTE, nao atenuada.\n\
          \n  5. ⭐ FECHE O APP e rode este smoke outra vez. A primeira linha do terminal tem\n     \
               de dizer o carater que voce escolheu. Se disser Discreto, a wave 3 falhou.\n"
     );

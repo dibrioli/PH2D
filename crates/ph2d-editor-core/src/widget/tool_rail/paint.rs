@@ -54,7 +54,16 @@ pub fn paint_tool_rail(
     theme: Theme,
     store: &WidgetStore,
 ) {
-    paint_tool_rail_t(rail, rect, scene, text_system, theme, store, &|_| None);
+    paint_tool_rail_t(
+        rail,
+        rect,
+        scene,
+        text_system,
+        theme,
+        store,
+        &|_| None,
+        false,
+    );
 }
 
 /// [`paint_tool_rail`] **com o eixo do hover**: `hover_t(id)` é *quanto do hover está presente*
@@ -70,9 +79,14 @@ pub fn paint_tool_rail(
 /// resposta a uma pergunta que o artista precisa de ler de relance. Mesma lei do `Pressed` no
 /// [`super::button::Button::bg_color`].
 ///
+/// ⚠️ **`travels` é a permissão de MEXER, e é um `bool` de propósito.** O widget não conhece a
+/// `UiMotion` (a closure existe exactamente para o desacoplar dela); o que ele precisa de saber é
+/// o facto mínimo — *este chip pode crescer?* — e quem o responde é o chrome, que tem o relógio.
+///
 /// ⚠️ **A closure é `&dyn`, não genérica**, porque o chamador varre uma lista e o custo de uma
 /// chamada indirecta por chip é ruído ao lado de desenhar o chip — e genérico aqui monomorfizaria
 /// o corpo inteiro por cada sítio de pintura.
+#[allow(clippy::too_many_arguments)] // o 8o e a permissao de mexer; ver o doc acima
 pub fn paint_tool_rail_t(
     rail: &ToolRail,
     rect: Rect,
@@ -81,6 +95,7 @@ pub fn paint_tool_rail_t(
     theme: Theme,
     store: &WidgetStore,
     hover_t: &dyn Fn(NodeId) -> Option<f32>,
+    travels: bool,
 ) {
     // Chip x is computed from the label column budget so the
     // label-to-chip gap is exactly `LABEL_TO_CHIP_GAP_PX`, regardless
@@ -111,7 +126,7 @@ pub fn paint_tool_rail_t(
                 let t = rail_hover_t(state, is_active, hover_t(*id));
                 // ⚠️ O chip CRESCE com o hover, e o hit fica no retangulo de repouso (quem o
                 // regista e' o `left_rail`, com o `chip_rect` de antes deste `hover_lift`).
-                let chip_rect = crate::motion::hover_lift(chip_rect, t.unwrap_or(0.0));
+                let chip_rect = crate::motion::hover_lift(chip_rect, t.unwrap_or(0.0), travels);
                 let bg = match state {
                     ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,
                     ButtonState::Pressed => ColorToken::AccentSoft,

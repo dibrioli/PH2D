@@ -446,9 +446,16 @@ fn paint_rail(
         Radius::Md.px(),
         resolve(ColorToken::RailBg, theme),
     );
-    paint_tool_rail_t(&rail, rail_rect, scene, text_system, theme, store, &|id| {
-        Some(motion.get(id).unwrap_or(0.0))
-    });
+    paint_tool_rail_t(
+        &rail,
+        rail_rect,
+        scene,
+        text_system,
+        theme,
+        store,
+        &|id| Some(motion.get(id).unwrap_or(0.0)),
+        motion.travels(),
+    );
 
     // Hit-rects MUST mirror exactly what `paint_tool_rail` paints — same
     // `chip_px` and `CHIP_X_OFFSET_PX`. Capture the Shapes chip rect so the
@@ -572,6 +579,7 @@ fn paint_rail_flyout(
         theme,
         store,
         &|id| Some(motion.get(id).unwrap_or(0.0)),
+        motion.travels(),
     );
     let chip_px = size.chip_px();
     let gap = Spacing::Xs.px();

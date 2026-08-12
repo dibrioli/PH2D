@@ -230,8 +230,14 @@ pub const HOVER_LIFT_PX: f32 = 3.0;
 /// sítio da fronteira de entrada, que é como nasce o hover a piscar em cima da borda.
 ///
 /// `t = 0` devolve o retângulo **intacto**: um chip em repouso desenha hoje o que sempre desenhou.
+/// ⚠️ **A permissão entra por ARGUMENTO, não por um `if` no chamador.** São dois sítios que
+/// crescem um chip (o rail e a barra) e um terceiro nasceria sem a guarda — é a mesma razão pela
+/// qual a reposição do plano livre do Painter mora dentro da porta e não nos cinco chamadores.
 #[must_use]
-pub fn hover_lift(rect: crate::zones::Rect, t: f32) -> crate::zones::Rect {
+pub fn hover_lift(rect: crate::zones::Rect, t: f32, travels: bool) -> crate::zones::Rect {
+    if !travels {
+        return rect;
+    }
     let d = HOVER_LIFT_PX * t.max(0.0);
     if d <= 0.0 {
         return rect;
@@ -294,6 +300,23 @@ impl UiMotion {
     #[must_use]
     pub fn decorates(&self) -> bool {
         !self.reduced && self.character == UiCharacter::Expressive
+    }
+
+    /// **Uma coisa pode MEXER-SE?** O par do [`Self::decorates`] para o eixo de percurso.
+    ///
+    /// ⚠️ **Existe porque o escalar do hover é UM e os consumidores dele são DOIS.** O chip lê o
+    /// mesmo número para a cor e para o tamanho, e a [`Self::law`] não os pode separar — a lei é
+    /// por `Role`, e a track tem um só. Então quem separa é o CONSUMIDOR: a tinta pergunta nada
+    /// (Fade sobrevive ao reduced por desenho), a geometria pergunta isto.
+    ///
+    /// ⚠️ **E isto foi um defeito MEU, apanhado pelo Enio no smoke** (*«o reduce motion faz o quê?
+    /// Pois não fez nada»*): eu pendurei o crescimento do chip numa track `Fade` e o *reduced
+    /// motion* não o alcançava — o chip continuava a popar sob a definição que existe precisamente
+    /// para o impedir. O doc do [`Role::Fade`] já dizia porquê ele sobrevive (*o gatilho vestibular
+    /// é a ÁREA a deslocar-se, não a tinta a mudar*), e o que eu tinha acrescentado era área.
+    #[must_use]
+    pub fn travels(&self) -> bool {
+        !self.reduced
     }
 
     /// **A chamada única do pintor:** diz o alvo, recebe o valor de agora.

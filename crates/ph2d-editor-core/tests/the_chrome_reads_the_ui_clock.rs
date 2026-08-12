@@ -84,3 +84,25 @@ fn the_top_bar_pill_asks_the_clock_for_its_own_chip() {
         "a pill da barra não lê o relógio pelo próprio `chip_id`"
     );
 }
+
+/// **As duas superfícies perguntam se podem MEXER-SE, e não só quanto do hover há.**
+///
+/// ⚠️ Este gate nasceu de um report do Enio no smoke — *«o reduce motion faz o quê? Pois não fez
+/// nada»* — sobre um defeito que era meu: o crescimento do chip foi pendurado numa track `Fade`,
+/// e `Fade` **sobrevive ao reduced motion por desenho** (o gatilho vestibular é a área a
+/// deslocar-se, não a tinta a mudar). O resultado é que a definição que existe para parar o
+/// movimento não parava o único movimento que o chrome tinha.
+///
+/// **Mutação que deve sangrar:** trocar `motion.travels()` por `true` em qualquer das duas — o
+/// reduced motion volta a ser inerte no chrome, e nenhum gate de unidade repara, porque a
+/// `hover_lift` continua perfeitamente testada com o argumento que ninguém lhe passa certo.
+#[test]
+fn both_surfaces_ask_whether_they_may_move() {
+    for (name, src) in [("left_rail.rs", LEFT_RAIL), ("cluster_painter.rs", CLUSTER)] {
+        assert!(
+            src.contains("motion.travels()"),
+            "o `{name}` cresce o chip sem perguntar `motion.travels()`: o reduced motion fica \
+             inerte exactamente no canal que ele existe para parar"
+        );
+    }
+}

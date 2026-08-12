@@ -109,7 +109,7 @@ pub(super) fn paint_topbar_rail_chip(
     // este id (um chip desconhecido está em REPOUSO, não crescido).
     let lift_t = motion.get(chip_id).unwrap_or(0.0);
     let hover = Some(lift_t);
-    let chip_rect = crate::motion::hover_lift(chip_rect, lift_t);
+    let chip_rect = crate::motion::hover_lift(chip_rect, lift_t, motion.travels());
     let state = store.button_state(chip_id).unwrap_or(ButtonState::Normal);
     // Matriz EXATA do rail (tool_rail.rs:248-280). With the narrower
     // 44 px column, the chip's 1 px Border now sits within 4 px of the

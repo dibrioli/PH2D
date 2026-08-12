@@ -122,7 +122,12 @@ fn what_separates_our_kernels_from_the_reference() {
         let brush = Brush {
             verb,
             strength: intensity as f32,
-            falloff: Falloff::Smooth,
+            // ⚠️ **A curva da REFERÊNCIA, e não o default do pincel.** Esta
+            // tabela existe para isolar *a lei e as constantes*; medi-la com a
+            // `Smooth` misturaria a diferença de FORMA (que a `Plateau` fechou
+            // em 2026-08-11, `1,000×` em toda a linha) com a de MAGNITUDE, e um
+            // número que soma duas causas não aponta para nenhuma.
+            falloff: Falloff::Plateau,
             invert: negative,
             ..Brush::default()
         };

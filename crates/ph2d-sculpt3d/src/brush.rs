@@ -111,13 +111,31 @@ impl Falloff {
 
 /// O que o pincel FAZ. Ver `docs/3D/04.1` para a família de cada um.
 ///
-/// ⚠️ **`Layer` não está aqui, e a ausência é uma decisão medida.** Sob a lei do
-/// traço (`accum` é um ENVELOPE em `[0,1]`, nunca uma soma) o Draw já é limitado
-/// a um `reach` por traço, por mais que o artista demore — que é exatamente o
-/// que o Layer do ZBrush existe para garantir. Os dois colapsam, e o Painter 2D
-/// registrou o mesmo colapso pelo mesmo motivo (`docs/Painter/18` §"Draw Sharp
-/// colapsa no Layer"). Quem quiser empilhar solta e desenha de novo — o
-/// `pre` se re-congela e o traço seguinte soma.
+/// ⚠️ **`Layer` não está aqui, e a PREMISSA que o mantinha fora MORREU**
+/// (conferido em 2026-08-12). A nota antiga dizia, e estava certa no dia em que
+/// foi escrita: *"sob a lei do traço (`accum` é um ENVELOPE em `[0,1]`, nunca
+/// uma soma) o Draw já é limitado a um `reach` por traço — que é exatamente o
+/// que o Layer do ZBrush existe para garantir; os dois colapsam"*.
+///
+/// **Não há mais envelope.** A wave da paridade (2026-08-11) fez o
+/// [`crate::Grip::Stamp`] **COMPOR** — cada dab soma o próprio incremento sobre
+/// o que o anterior deixou, que é a estrutura do kernel da referência —, e o
+/// doc da [`crate::GripLaw::additive`] diz a frase inteira: *"nenhum grip é mais
+/// um envelope"*. Com isso o Draw deixou de saturar num `reach`:
+///
+/// - **Accumulate ON** (`from_live`) — o vértice e o centro sobem juntos, o
+///   pincel **não se esgota**, e um traço demorado empilha sem teto.
+/// - **Accumulate OFF** — o vértice atravessa `dist >= 1` e **sai da pegada
+///   sozinho**, o que auto-limita por GEOMETRIA. ⚠️ E isso não é a mesma coisa
+///   que o Layer: o teto dele é uma **ALTURA escolhida**, o deste é *"o vértice
+///   andou mais que o raio"* — um número que muda quando o artista muda o raio.
+///
+/// ⇒ **os dois deixaram de colapsar, e o Layer é hoje uma ferramenta distinta**
+/// (altura constante, saturante, persistente por vértice e **apagável**). Ele é
+/// a wave W8 do [`plano dos modos`](../../../docs/3D/21_plano_modos_e_ferramentas.md),
+/// e o que ele traz de novo é a ideia 3 do doc 20 §10: **estado persistente por
+/// vértice** — que é também o que obriga um plano novo a entrar no
+/// `ModelSnapshot` do undo **no mesmo commit** que o cria.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Verb {
     /// Empurra ao longo da normal **da ÁREA** (uma direção para o dab inteiro) —

@@ -252,6 +252,22 @@ exclusivas do Blender **não são 20 features — são quatro ideias**. A lista 
    para isso está escrita: *ao adicionar um plano, adicione-o ao snapshot de undo
    no MESMO commit* — o buraco que custou um bug no impasto do Painter.
 
+   ⚠️ **E o Layer estava BARRADO por uma cerca cuja premissa morreu** — achado
+   ao escrever este plano, corrigido no `brush.rs` no mesmo commit. O
+   doc-comment do `Verb` dizia, e estava certo no dia em que foi escrito, que
+   *"sob a lei do traço (`accum` é um ENVELOPE em `[0,1]`) o Draw já é limitado
+   a um `reach` por traço… os dois colapsam"*. **Não há mais envelope:** a wave
+   da paridade (2026-08-11) fez o `Grip::Stamp` **COMPOR**, e o doc da
+   `GripLaw::additive` diz a frase inteira — *"nenhum grip é mais um envelope"*.
+   Hoje o Draw com Accumulate **ON** empilha sem teto, e com **OFF** ele se
+   auto-limita por GEOMETRIA (*"o vértice andou mais que o raio"*), que **não é**
+   o teto do Layer — o dele é uma **ALTURA escolhida**, um número que não muda
+   quando o artista muda o raio. ⇒ os dois deixaram de colapsar.
+
+   *É a regra do CLAUDE.md §0 mordendo em casa: quem move o número que tornava
+   algo inalcançável tem de reconferir a nota. A wave do accumulate moveu, e a
+   nota sobreviveu ao fato por um dia.*
+
 **Ideia 4 — um modelo FÍSICO em vez de um deslocamento**
 7. **Elastic Deform** — **Kelvinlets** (grab · scale · twist · pinch).
    ⚠️ Aqui **b-mode ≡ l-mode** (o Blender *é* o paper) ⇒ **um chip, sem dropdown**,

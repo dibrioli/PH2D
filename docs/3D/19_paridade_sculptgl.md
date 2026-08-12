@@ -852,3 +852,52 @@ por uma sonda `#[ignore]`** — uma sonda que ninguém corre não impede regress
 nenhuma. Nasceu `the_mask_channel_reproduces_the_reference_kernel` (porta do
 produto, 1/2/4/16 esfregadas, barra derivada) mais o **controle** que impede o
 gate de ser satisfeito por acaso: `the_channel_curve_is_not_the_geometry_curve`.
+
+### 3.2.9 — O `Sharpen`, o último item do mapa, DECIDIDO em vez de descoberto
+
+A §3.3 fecha com *"sobra UM: o `Sharpen`. A referência não tem — e a migração da
+lei tem de **decidir o que fazer com ele em vez de o descobrir no meio**"*. A
+decisão, agora que a migração acabou:
+
+**Ele FICA nosso, e não há alvo de paridade a perseguir.** Ele é o laplaciano do
+`Smooth` com o sinal trocado, carrega o mesmo [`Grip::Stamp`] do irmão, lê a
+vizinhança **VIVA** pela mesma porta e compõe pela mesma lei — então a migração
+já o alcançou por dentro: *ele herdou a lei da referência sem ter um kernel da
+referência*. O que não existe é uma coluna para ele no atlas, e isso é correto
+em vez de faltante.
+
+⚠️ **E a consequência prática, escrita para não ser descoberta duas vezes:**
+ninguém deve "consertar" o `Sharpen` na direção de um kernel do SculptGL, porque
+não há um. O oráculo dele é o **irmão** — se o `Smooth` está no piso (e está:
+`1,00×`, `1,192e-7`), o `Sharpen` está na mesma lei com o sinal invertido, e é
+disso que os gates dele falam.
+
+### 3.2.10 — O placar, e o que sobra NÃO é engenharia
+
+Dos **dezesseis** verbos, **quinze** têm kernel na referência e **os quinze estão
+no piso do `f32`** — dez no atlas do carimbo, quatro no do grab, e o canal de
+máscara gateado contra o porte pela porta do produto. O décimo sexto é o
+`Sharpen`, decidido acima.
+
+O conjunto de aceitação da §3.2.1 está fechado: metade 1 (`6,485 % → 0,000 %`),
+metade 2 (a lei que compõe), o plano, o censo, o grab e o canal. **Não há item de
+engenharia aberto neste plano.**
+
+O que resta é do Enio, e é decisão de PRODUTO — cada uma já devolvida com o
+número ao lado, nenhuma delas um defeito:
+
+1. **O `Flatten` bilateral.** O da referência escolhe um lado (`comp = ±1` +
+   `continue`), então o dele **é** o nosso `Fill` ou o nosso `Scrape`; o
+   bilateral é a leitura do Blender e é o que o artista espera de um verbo
+   chamado *achatar*. O `|diferença|` dele **É**, ao dígito, o deslocamento do
+   lado que a referência não move.
+2. **A projeção TANGENCIAL do `Pinch`/`Crease`** (`5,8e-4` / `8,1e-4`). O
+   Blender move para o centro em 3D, o que faz o Pinch dele **achatar** um
+   pouco — dois efeitos num knob. Apertar é apertar; quem quer achatar tem
+   quatro verbos.
+3. **O `Paint` da referência** (cor por-vértice) — o kernel entrou de carona com
+   o `Masking`, e não temos verbo que o consuma. É **feature**, não paridade.
+
+⚠️ **E o que falta não é do plano, é do processo: o SMOKE.** A cena `=27` existe
+e é julgável; integrar não é aprovar, e nenhuma destas waves foi vista na tela
+por quem decide.

@@ -42,11 +42,10 @@ fn the_recusals_run_in_the_right_place_relative_to_the_plan() {
     let live_geo = body.find("cook_publishes_live_geometry(").expect(
         "cook_gpu consults cook_publishes_live_geometry — the content-aware object recusal was removed",
     );
-    // ⚠️ O RITMO do device (doc 89, folha 13): ele decide de quantas sub-passadas o plano
-    // marcha, e recusa quando as ilhas discordam. Como as irmãs de vetor vivo, roda ANTES do
-    // plano — o `sub` que ele devolve é consumido na marcha, logo abaixo.
-    let substeps = body.find("device_substeps(").expect(
-        "cook_gpu consulta device_substeps — sem ele o device marcharia um documento substepado \
+    // ⚠️ O RITMO do grafo (doc 89, folha 13): NÃO é uma recusa — é de quantas sub-passadas o
+    // plano marcha. Roda antes do plano porque o `sub` que ele devolve é consumido na marcha.
+    let substeps = body.find("cook::graph_substeps(").expect(
+        "cook_gpu consulta graph_substeps — sem ele o device marcharia um documento substepado \
          no ritmo errado, e os dois produtores mostrariam quadros diferentes",
     );
     let plan = body
@@ -62,7 +61,7 @@ fn the_recusals_run_in_the_right_place_relative_to_the_plan() {
     // um prefixo sequencial, e a GPU nunca tenta desenhar um `geometry_id`.
     assert!(
         substeps < plan,
-        "o ritmo do device tem de ser decidido ANTES do plano (substeps@{substeps} vs plan@{plan})"
+        "o ritmo do grafo tem de ser lido ANTES do plano (substeps@{substeps} vs plan@{plan})"
     );
     assert!(
         live_vector < plan && live_geo < plan,

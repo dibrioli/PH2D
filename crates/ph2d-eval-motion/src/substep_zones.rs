@@ -12,8 +12,9 @@ impl MotionCookPump {
     /// ⚠️ **Substepa ILHAS, nunca declarantes soltos** — e isso é correção, não afinação:
     /// substepar cada zona por conta OVER-STEPA qualquer uma que viva no cone de outra, porque o
     /// laço de baixo re-cozinha o cone inteiro. Medido num par acoplado, a de cima ia de `4,876`
-    /// para `15,094`. Quem parte em ilhas é [`substep_islands`], a MESMA porta que o sequenciador
-    /// de device pergunta — duas cópias divergiriam justamente aqui.
+    /// para `15,094`. Quem parte em ilhas é [`substep_islands`], e o RITMO que ela devolve é o do
+    /// GRAFO — a mesma porta que o sequenciador de device pergunta, e é isso que faz os dois
+    /// produtores concordarem sem que nenhum precise recusar.
     ///
     /// ⚠️ **`frame_start` sai do relógio do PRÓPRIO cook**, e `None` (o primeiro tique de todos)
     /// **pula**: ali a zona ainda emite o `init` e não há span a subdividir. Adivinhar um começo

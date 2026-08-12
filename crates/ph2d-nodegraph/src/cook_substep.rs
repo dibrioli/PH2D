@@ -149,24 +149,29 @@ pub struct SubstepIsland {
     pub substeps: u32,
 }
 
-/// **Partition the declaring nodes into coupled ISLANDS** — the door the pump and the device
-/// sequencer both ask, so the two producers cannot disagree about what a frame contains.
+/// **Partition the declaring nodes into ISLANDS, all on the graph's ONE clock.**
 ///
-/// ⚠️ **This is correctness, not tuning, and the measurement is why.** Substepping each declarer
-/// on its own OVER-STEPS any of them that lies inside another's cone: the downstream loop
-/// re-cooks the whole cone, so an upstream zone advances again. Measured on a coupled pair —
-/// A alone lands at `4,876`, A and B together at **`15,094`**, roughly three times as far.
+/// ⚠️ **As ilhas existem por CORREÇÃO, e a medição é que o disse.** Substepar cada declarante por
+/// conta OVER-STEPA qualquer um que viva no cone de outro: o laço de baixo re-cozinha o cone
+/// inteiro, então o de cima avança outra vez. Medido num par acoplado, o de cima ia de `4,876`
+/// para **`15,094`**, quase o triplo. Uma raiz por ilha — a de baixo, cujo cone cobre o resto —
+/// é o que dá a cada estado exactamente um avanço por sub-passada.
 ///
-/// ⚠️ **An island runs at the MAX its members ask for, and that is the references' answer, not a
-/// compromise:** a coupled simulation is one world, and no engine offers to run half a world at
-/// a finer `dt` (Box2D counts substeps per `b2World_Step`, Rapier per pipeline, Niagara per
-/// System). Members that disagree have asked for two things that cannot both be true — an
-/// AUTHORING condition to surface, never a number to invent. INDEPENDENT islands keep their own
-/// rate, which is the other half of the same reading (Houdini per DOP network, Cavalry per
-/// dynamics system).
+/// ⚠️ **E o RITMO é do GRAFO, não da ilha:** todas correm no maior que qualquer declarante pede.
+/// Isso é a leitura das referências no nível do contêiner, e é o que o nosso contêiner passou a
+/// ser — **cada objeto Motion tem o seu próprio grafo**, então um grafo é uma DOP Network do
+/// Houdini / um System do Niagara, e os dois põem o substep exactamente aí (e o device já exige
+/// um sink por documento, o que fecha a mesma fronteira do outro lado).
 ///
-/// The declaration is a **manifest convention**: a node offering a param named `substeps` says
-/// *"my interior sub-ticks"*. It is the same param the artist edits — one fact, one place.
+/// O que isso compra, e é o ponto: **os dois produtores concordam por CONSTRUÇÃO** e o device
+/// nunca precisa recusar. Marchar o plano inteiro `n` vezes dá a cada ilha os mesmos `n`
+/// sub-tiques que este bracket lhe daria — idêntico, não aproximado. Um ritmo por ilha exigiria
+/// relógios por-ilha dentro do sequenciador de device (uma chamada de `cook` carrega UM playhead),
+/// e compraria só o caso de duas simulações independentes **no mesmo objeto** em ritmos
+/// diferentes — que com um grafo por objeto se autora como dois objetos.
+///
+/// A declaração é uma **convenção de manifesto**: um nó que oferece um param `substeps` diz *"o
+/// meu interior sub-tica"*. É o mesmo param que o artista edita — um fato, um lugar.
 pub fn substep_islands(graph: &Graph, ops: &dyn OpResolver) -> Vec<SubstepIsland> {
     let declarers: Vec<(NodeId, u32)> = graph
         .nodes()
@@ -184,6 +189,7 @@ pub fn substep_islands(graph: &Graph, ops: &dyn OpResolver) -> Vec<SubstepIsland
         })
         .collect();
 
+    let rate = graph_substeps_of(&declarers);
     let cones: Vec<_> = declarers
         .iter()
         .map(|(id, _)| upstream_cone(graph, *id))
@@ -200,17 +206,38 @@ pub fn substep_islands(graph: &Graph, ops: &dyn OpResolver) -> Vec<SubstepIsland
                 .enumerate()
                 .any(|(j, _)| j != *i && cones[j].contains(id))
         })
-        .map(|(i, (root, _))| SubstepIsland {
+        .map(|(_, (root, _))| SubstepIsland {
             root: *root,
-            // O MAX da ilha: quem está no cone da raiz corre com ela.
-            substeps: declarers
-                .iter()
-                .filter(|(id, _)| cones[i].contains(id))
-                .map(|(_, n)| *n)
-                .max()
-                .unwrap_or(1),
+            substeps: rate,
         })
         .collect()
+}
+
+/// **O ritmo deste grafo** — o maior que qualquer declarante pede, `1` se ninguém pede.
+///
+/// É a MESMA porta que o sequenciador de device pergunta para saber de quantas sub-passadas
+/// marchar o plano; uma segunda cópia divergiria exactamente no documento em que as duas metades
+/// têm de concordar.
+pub fn graph_substeps(graph: &Graph, ops: &dyn OpResolver) -> u32 {
+    let declarers: Vec<(NodeId, u32)> = graph
+        .nodes()
+        .iter()
+        .filter_map(|inst| {
+            let manifest = ops.resolve(inst.type_id())?.manifest();
+            manifest.param_default(SUBSTEPS_PARAM)?;
+            let n = graph
+                .node_param_overrides(inst.id)
+                .and_then(|m| m.get(SUBSTEPS_PARAM).copied())
+                .or_else(|| manifest.param_default(SUBSTEPS_PARAM))
+                .unwrap_or(1.0);
+            Some((inst.id, n.round().clamp(1.0, f32::from(u16::MAX)) as u32))
+        })
+        .collect();
+    graph_substeps_of(&declarers)
+}
+
+fn graph_substeps_of(declarers: &[(NodeId, u32)]) -> u32 {
+    declarers.iter().map(|(_, n)| *n).max().unwrap_or(1)
 }
 
 /// O nome do param que declara *"o meu interior sub-tica"*.

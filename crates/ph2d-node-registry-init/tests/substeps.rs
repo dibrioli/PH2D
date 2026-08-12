@@ -365,11 +365,15 @@ fn a_coupled_pair_is_one_island_with_one_clock() {
     }
 }
 
-/// **Ilhas INDEPENDENTES mantêm relógios próprios** — a outra metade da leitura das referências
-/// (Houdini por DOP network, Cavalry por dynamics system). Sem esta, um achador que colapsasse
-/// tudo numa ilha só passaria no gate acima.
+/// **Ilhas independentes são DUAS ilhas — e correm no relógio do GRAFO.**
+///
+/// ⚠️ As duas metades são separadas de propósito. **Duas ilhas** é correção: substepá-las por uma
+/// raiz só deixaria a outra parada. **Um relógio** é a leitura das referências no nível do
+/// contêiner — e o contêiner passou a ser o grafo, porque cada objeto Motion tem o seu (Houdini
+/// põe `Substeps` na DOP Network, Niagara o Fixed Tick no System). É isso que faz o device nunca
+/// precisar recusar: marchar o plano inteiro `n` vezes dá a cada ilha os mesmos `n` sub-tiques.
 #[test]
-fn independent_islands_keep_their_own_clocks() {
+fn independent_islands_are_two_islands_on_the_graphs_one_clock() {
     use ph2d_nodegraph::cook::substep_islands;
     let reg = registry();
     let mut g = Graph::new();
@@ -384,8 +388,13 @@ fn independent_islands_keep_their_own_clocks() {
     assert_eq!(islands.len(), 2, "duas zonas desacopladas sao DUAS ilhas");
     assert_eq!(
         (islands[0].substeps, islands[1].substeps),
-        (4, 8),
-        "cada uma corre no proprio ritmo: {islands:?}"
+        (8, 8),
+        "um grafo, um relogio -- o mais fino que qualquer uma pediu: {islands:?}"
+    );
+    assert_eq!(
+        ph2d_nodegraph::cook::graph_substeps(&g, &reg),
+        8,
+        "e a porta que o device pergunta devolve o MESMO numero"
     );
 }
 
@@ -415,6 +424,7 @@ fn an_island_runs_at_the_finest_rate_any_member_asked_for() {
         islands[0].substeps, 4,
         "o membro que pediu 4 nao o perde por a raiz pedir 1"
     );
+    assert_eq!(ph2d_nodegraph::cook::graph_substeps(&g, &reg), 4);
 }
 
 /// **Ler a outra zona por um `pre` NÃO acopla as duas** — a aresta `pre` diz *"o valor do tique
@@ -453,7 +463,7 @@ fn reading_another_zone_through_a_pre_does_not_couple_them() {
     );
     assert_eq!(
         (islands[0].substeps, islands[1].substeps),
-        (4, 8),
-        "e cada uma guarda o proprio ritmo: {islands:?}"
+        (8, 8),
+        "duas ilhas, um relogio de grafo: {islands:?}"
     );
 }

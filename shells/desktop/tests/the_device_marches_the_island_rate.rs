@@ -1,10 +1,11 @@
 //! **O device marcha no ritmo da ILHA** (doc 89, folha 13 — o último P1).
 //!
-//! A recusa em bloco anterior custava a aceleração a 100% dos documentos reais (medido: toda cena
-//! de demo deste repo tem exactamente UMA zona) para proteger um caso que o corpus não tem. Agora
-//! o device marcha quando toda ilha pede o mesmo ritmo — aí a marcha do plano inteiro dá a cada
-//! zona os mesmos sub-tiques que o bracket por-ilha da CPU daria — e recusa só quando elas
-//! discordam, que é o que uma marcha só não sabe servir.
+//! ⚠️ **Não há recusa aqui, e é por construção.** O ritmo é do GRAFO — cada objeto Motion tem o
+//! seu, então um grafo é a DOP Network do Houdini / o System do Niagara, que é exactamente onde
+//! as duas põem o substep (e o device já exige um sink por documento, fechando a mesma fronteira
+//! do outro lado). Marchar o plano inteiro `n` vezes dá a cada ilha os mesmos `n` sub-tiques que
+//! o bracket da CPU lhe daria: **idêntico, não aproximado**, e nenhum dos dois produtores precisa
+//! escolher entre acelerar e estar certo.
 
 use std::fs;
 
@@ -87,25 +88,26 @@ fn the_substeps_share_the_frames_tick_so_the_scrub_ring_is_untouched() {
     }
 }
 
-/// **A recusa sobrevive só para ilhas que DISCORDAM** — e o gate le a fonte, porque a decisao
-/// mora dentro de `cook_gpu`, que exige uma janela e nenhum teste de unidade alcanca.
+/// **O device NUNCA recusa por substep, e pergunta a MESMA porta que o pump da CPU.**
+///
+/// O gate le a fonte porque a decisao mora dentro de `cook_gpu`, que exige uma janela e nenhum
+/// teste de unidade alcanca. As duas metades sao independentes: uma porta PROPRIA no shell
+/// divergiria do pump sem nenhum teste de nenhuma das metades notar, e uma recusa de volta
+/// custaria o device a todo documento substepado.
 #[test]
-fn the_device_only_recuses_when_the_islands_disagree() {
+fn the_device_never_recuses_for_a_substep_and_asks_the_one_door() {
     let src =
         fs::read_to_string("src/render_loop/motion_bridge_gpu.rs").expect("motion_bridge_gpu.rs");
     assert!(
-        src.contains("fn device_substeps("),
-        "a porta do ritmo do device sumiu"
+        src.contains("cook::graph_substeps(&motion.doc.graph"),
+        "o device tem de perguntar `graph_substeps` -- a MESMA porta do pump da CPU; uma segunda \
+         copia divergiria justamente no documento em que as duas metades tem de concordar"
     );
-    assert!(
-        src.contains("Some(_) => return None"),
-        "a recusa por DISCORDANCIA sumiu -- sem ela duas ilhas em ritmos diferentes \
-         seriam servidas por uma marcha so, e o device mostraria um quadro que a CPU nao mostra"
-    );
-    // ⚠️ O controle: a recusa em BLOCO nao pode voltar. Um `graph_asks_for_substeps` de volta
-    // custaria o device a todo documento substepado -- 100% dos reais.
-    assert!(
-        !src.contains("graph_asks_for_substeps"),
-        "a recusa em bloco voltou; ela custa o device a todo documento substepado"
-    );
+    for gone in ["graph_asks_for_substeps", "fn device_substeps("] {
+        assert!(
+            !src.contains(gone),
+            "`{gone}` voltou: e uma recusa (ou uma 2a porta) que custa o device a um documento \
+             que a CPU sabe cozinhar igual"
+        );
+    }
 }

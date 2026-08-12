@@ -125,29 +125,6 @@ fn substep_clocks(
         .collect()
 }
 
-/// **Em que ritmo o device pode marchar este documento?** (doc 89, folha 13.)
-///
-/// `Some(n)` quando toda ilha de simulação pede o mesmo `n` — aí marchar o PLANO INTEIRO `n`
-/// vezes dá a cada zona exactamente os `n` sub-tiques que o bracket por-ilha da CPU lhe daria:
-/// **idêntico, não aproximado**. `None` quando as ilhas discordam, e só então o device recusa.
-///
-/// ⚠️ **A recusa em bloco anterior custava o device a 100% dos documentos reais** para proteger
-/// um caso que o corpus não tem: medido, TODA cena de demo deste repo tem exactamente uma zona.
-/// O que sobra recusado é duas ilhas independentes em ritmos diferentes — que o device não sabe
-/// marchar (`drives_a_loop` é um booleano sobre todos os estágios) e que a CPU sabe.
-pub(super) fn device_substeps(graph: &Graph, reg: &NodeRegistry) -> Option<u32> {
-    let islands = ph2d_nodegraph::cook::substep_islands(graph, reg);
-    let mut rate = None;
-    for isl in islands {
-        match rate {
-            None => rate = Some(isl.substeps),
-            Some(n) if n == isl.substeps => {}
-            Some(_) => return None, // ilhas em ritmos diferentes: uma marcha só não as serve
-        }
-    }
-    Some(rate.unwrap_or(1))
-}
-
 /// Does this document bring in an engine OBJECT (`source.object`, `texture_id`)?
 /// Read together with [`ph2d_gpu_cook::GpuPlan::suffix_changes_count`] for the
 /// count-changing cerca: an object graph whose GPU suffix reorders / changes
@@ -224,14 +201,12 @@ pub(super) fn cook_gpu(
     {
         return GpuOutcome::FellThrough;
     }
-    // **O ritmo do device** (doc 89, folha 13): o plano marcha `n` vezes quando toda ilha pede o
-    // mesmo `n` — a marcha inteira dá a cada zona os mesmos `n` sub-tiques que o bracket por-ilha
-    // da CPU daria. Ilhas em ritmos DIFERENTES não cabem numa marcha só (`drives_a_loop` é um
-    // booleano sobre todos os estágios), e aí o device recusa em vez de mostrar um quadro que a
-    // CPU não mostraria — a armadilha que o ADR-0155 já pagou aqui.
-    let Some(sub) = device_substeps(&motion.doc.graph, &motion.registry) else {
-        return GpuOutcome::FellThrough;
-    };
+    // **O ritmo deste grafo** (doc 89, folha 13): de quantas sub-passadas o plano marcha. ⚠️ NÃO
+    // há recusa aqui, e é por construção: o ritmo é do GRAFO — a mesma porta que o pump da CPU
+    // pergunta —, então marchar o plano inteiro `n` vezes dá a cada ilha exactamente os `n`
+    // sub-tiques que o bracket da CPU lhe daria. Os dois produtores concordam sem ninguém ter de
+    // escolher entre acelerar e estar certo.
+    let sub = ph2d_nodegraph::cook::graph_substeps(&motion.doc.graph, &motion.registry);
     let plan = ph2d_gpu_cook::plan(
         &motion.doc.graph,
         &motion.registry,

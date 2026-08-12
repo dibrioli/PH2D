@@ -8,7 +8,7 @@
 > apenas como *o que integrar agora*** — o **detalhe de mecanismo** das sete
 > waves de sensores (`W-Swim` · `W-SwimLine` · `W-ZoneForce` · `W-ShapeCast` ·
 > `W-Probes` · `W-Probes2` · `W-FootFan`) continua LÁ e **não foi copiado**. Leia
-> os dois: este para a superfície de colisão e para as DUAS waves novas, aquele
+> os dois: este para a superfície de colisão e para as TRÊS waves novas, aquele
 > para o porquê de cada número das anteriores.
 
 ---
@@ -20,8 +20,8 @@
 | branch | `line/physics` |
 | HEAD | **o tip de `line/physics`** ⚠️ ver abaixo |
 | merge-base com `main` | `76788440adbabb0e5b12f8fdafecc6f1e1183e1a` |
-| commits | **51** |
-| diff | 103 arquivos, +18.174 / −999 |
+| commits | **58** |
+| diff | 112 arquivos, +20.077 / −1.011 |
 
 ⚠️ **Todos são pós-integração de 2026-08-10** (a jornada `W-KinMove` / modo
 cinemático, que já está no `main`). Nada aqui foi entregue antes.
@@ -31,9 +31,9 @@ que o escreve MUDA o HEAD, então um sha nesta tabela é falso no instante em qu
 commitado. O que identifica esta entrega é o **merge-base** acima mais *"o tip da
 branch"* — que é o que um integrador usa de qualquer forma.
 
-**O assunto é o PLAYER, em quatro metades.** As duas primeiras estão no handoff
-de 08-11 (o catálogo do plano 08, e os SENSORES). As duas novas aqui são o **PULO
-DO AR** (§2) e a **BEIRADA** (§2b).
+**O assunto é o PLAYER, em cinco metades.** As duas primeiras estão no handoff
+de 08-11 (o catálogo do plano 08, e os SENSORES). As três novas aqui são o **PULO
+DO AR** (§2), a **BEIRADA** (§2b) e o **PLANEIO** (§2c).
 
 ---
 
@@ -175,28 +175,109 @@ que a capacidade muda não é *cair ou não*, é **onde ele pára**.
 
 ---
 
+## 2c. A terceira wave nova — `W-Glide`, o planeio
+
+**O último item mensurável da fila do plano 08**, e a wave em que a **medição
+refutou o que o plano supunha**.
+
+### ⚠️ O plano previa um campo; a medição escolheu outra forma
+
+O §4.6 escreveu a suspeita — *"planar é um multiplicador de gravidade sob botão;
+se for isso, não é uma wave, é um campo"* — e mandou conferi-la. As três formas
+candidatas, cada uma sendo uma que **este módulo já usa algures**:
+
+| forma | onde vive | no ápice | a subir 8 m/s | a cair 12 m/s |
+|---|---|---|---|---|
+| **escala** | as fases do pulo | 0 | 0 | 0 — mas **nunca assenta** |
+| **alvo** | o `wall_slide` | −2,0 | **−10,0** ⚠️ | +10,0 |
+| **TETO** | ⚠️ em lugar nenhum | 0 | 0 | +10,0 |
+
+**A escala nunca ASSENTA:** até `0,05` — 5% da gravidade do mundo — a descida
+continua a crescer (**−1,71 / −2,21 / −2,80** a 1 / 3 / 6 m). *Quão depressa se
+desce* passa a ser função de *quanto já se caiu*, e um planeio existe para se
+saber onde se vai aterrar.
+
+**O alvo INVERTE quem sobe** (`Δv = −10` apertado a subir): não é planar, é um
+botão de *descer agora*.
+
+⚠️ **E o motivo de o TETO não estar escrito está no doc do `wall_slide`:** a
+versão-teto **dele** foi morta por medição — *"com o atrito default o personagem
+não cai, e um teto nunca dispararia"*. Isso é verdade **da PAREDE**. **No ar não
+há atrito**, então a objeção não viaja, e a forma que ela matou lá é a certa
+aqui.
+
+### A lei
+
+`glide.rs`, sem estado (o molde do `wall_slide`). ⚠️ **O guard é UMA linha a
+responder DUAS perguntas:** `rel_up >= −fall_speed` é o teto **e** é o que
+garante `delta > 0` — ou seja, que este módulo **nunca consiga acelerar uma
+queda**.
+
+⚠️ **Lê o NÍVEL do botão de pulo, não a borda**, e é seguro precisamente por ser
+o nível (a advertência do `wall_launch` é sobre a BORDA). Isso o faz **COMPOR**
+com o pulo do ar: um toque dá o pulo, um segurar dá o pulo **e depois** o
+planeio — Kirby e Yoshi.
+
+### ⚠️ E uma mutação sobreviveu; o gate que a mataria achou OUTRO defeito
+
+Tirar o `standing.is_none()` deixava lei, produto e cena **VERDES**. O gate
+nasceu vermelho por um motivo diferente do esperado: **no tique da decolagem a
+`standing` já é `None` de propósito** (a perna cala-se para não disputar o eixo
+com o `boost` do pulo), então o planeio passava exatamente ali — medido, o motor
+levava **`+18,26` do pulo e mais `+10,00`** do planeio. Sexta guarda:
+`!jump.takeoff`.
+
+⚠️ **E duas mutações anteriores foram NO-OPS SILENCIOSOS que eu li como
+achados** — o `cargo fmt` colapsara a guarda numa linha e o `str.replace` não
+casou ([[feedback_python_replace_silent_noop_after_fmt]], que está na memória do
+repo). Toda mutação desta wave passou a **asserir a âncora antes de escrever**.
+
+### ⚠️ Três fixtures nasceram a medir outra coisa
+
+- **o vão da cena, 7,00 m**, veio da sonda que larga o personagem **parado**
+  (4,18 m). Quem corre de um patamar **e pula** leva a velocidade toda: os DOIS
+  atravessavam, e a cena não mostrava falha nenhuma. O número final (**12,00**)
+  sai de `where_each_one_crosses_the_landing_level`, que mede **esta geometria**:
+  sem planeio **7,18 m**, planando **18,47 m**;
+- **o gate da cena media *"onde ele está depois de 360 tiques"*** — o planador
+  atravessava, aterrava, e **continuava a andar** até sair pela outra ponta e
+  cair; o gate reportava *"ele caiu"* sobre uma travessia bem-sucedida;
+- **e *"aterrou"* era um teste de POSIÇÃO**, que um corpo a cair para o poço
+  **atravessa** a caminho do fundo.
+
+---
+
 ## 3. Superfície de colisão
 
 | item | valor | nota |
 |---|---|---|
-| `PROJECT_SCHEMA` | **70 → 75** | ⚠️ **cinco degraus**, ver §4 |
-| tripla do pin | `(75, 13, 14)` | `project_schema_tests.rs` |
+| `PROJECT_SCHEMA` | **70 → 76** | ⚠️ **seis degraus**, ver §4 |
+| tripla do pin | `(76, 13, 14)` | `project_schema_tests.rs` |
 | `physics_ecs_c9` | **`1699123f9ed2844f…`, 117 corpos** | debug ≡ release, medido no tip. ⚠️ **NÃO se move com NENHUMA das duas waves novas** |
 | registro `ph2d-physics-ecs` | **29, INTOCADO** | nenhum componente novo |
 | registro `ph2d-ecs` + os 2 espelhos | **INTOCADOS** | |
 | gizmo ids | **nenhum novo** (o último segue **973**, próximo livre **974**) | |
-| ids novos | **15, todos `hash_node_id`** | ⇒ fora de todo gate de contagem |
+| ids novos | **17, todos `hash_node_id`** | ⇒ fora de todo gate de contagem |
 | ADR | **nenhum** | ⇒ a linha fica **fora de toda disputa de número** |
 | `Cargo.toml` / `Cargo.lock` | **ZERO** | nenhuma crate nova, nenhuma dep nova |
 | `.typos.toml` | **+1 entrada** (`^PILAR$`) | ⚠️ lista COMPARTILHADA — ver abaixo |
 | contrato congelado | **4/4** | rodado, não auto-relatado |
-| `PLAYER_ROW_COUNT` | **42 → 46** | duas rows do pulo do ar + duas da beirada |
-| cenas de smoke | maior **111** (próxima livre **112**) | ⚠️ o `=84` não existe, de propósito |
+| `PLAYER_ROW_COUNT` | **42 → 47** | +2 do pulo do ar, +2 da beirada, +1 do planeio |
+| `PLAYER_CARDS` | **9 → 11** | ⚠️ o card `GLIDE` é o primeiro de UMA row |
+| cenas de smoke | maior **112** (próxima livre **113**) | ⚠️ o `=84` não existe, de propósito |
 
-⚠️ **O `c9` intocado é a PROVA de que os degraus v74 e v75 não movem física.** As
-duas capacidades nascem DESLIGADAS (`air_jumps = 0` · `ledge_grab = 0`), então
-nenhuma lane do hash as exercita — e o hash é o único oráculo que não depende de
+⚠️ **O `c9` intocado é a PROVA de que os degraus v74, v75 e v76 não movem
+física.** As três capacidades nascem DESLIGADAS (`air_jumps = 0` ·
+`ledge_grab = 0` · `glide_fall_speed = 0`), então nenhuma lane do hash as
+exercita — e o hash é o único oráculo que não depende de
 eu afirmar coisa alguma.
+
+⚠️ **E um GATE COMPARTILHADO mudou de afirmação:** o
+`every_card_holds_its_own_rows_and_they_do_not_overlap` (§14) afirmava `hi > lo`
+sobre os `y` das rows de um card — **impossível de satisfazer por um card de UMA
+row**, e o `GLIDE` é o primeiro deste painel. A troca por **DISTINÇÃO** não é
+concessão: o `hi > lo` também passava com três rows das quais **duas**
+partilhassem o `y` (só apanhava o colapso total).
 
 ⚠️ **O único arquivo COMPARTILHADO que a linha toca é o `.typos.toml`**, e o
 toque é **puramente ADITIVO**: uma entrada (`"^PILAR$"`) logo abaixo da
@@ -237,6 +318,9 @@ também no MEIO do struct ⇒ **quebra dura**.
 ⚠️ **Este degrau também NÃO move física:** o alcance nasce em `0`, que é a
 capacidade desligada, então um projeto salvo em v74 reabre exatamente como
 estava — e o `c9` intocado é quem o prova.
+
+**v76 (`W-Glide`):** o `PlatformPlayer` ganhou `glide_fall_speed`, apendado ao
+FIM ⇒ **quebra dura**. ⚠️ **Também NÃO move física** — o teto nasce em `0`.
 
 ⚠️ **PROVISÓRIO — o valor se CONTA contra o `main` do dia.** Três linhas já
 colidiram neste número por o terem *escolhido*, e da última vez o certo não
@@ -339,6 +423,23 @@ a trepidação que o colapso introduz cabe dentro da tolerância de 2 cm com que
 oráculo de POSE mede o assentamento. O oráculo está certo (o que o jogador vê é
 onde ele pára), e a lei tem os seus próprios gates.
 
+### Da `W-Glide`
+
+- `ph2d-platformer/src/glide_tests.rs` (7) — a lei.
+- `ph2d-platformer/src/lib_glide_tests.rs` (5) — as guardas de **COMPOSIÇÃO**,
+  e ⚠️ **é este o nível certo para as testar**: duas fixtures de água inteiras
+  foram construídas e as duas mediram outra coisa (uma deixava o nadador SAIR da
+  água, a outra media a velocidade de CHEGADA ao mergulho — as duas legítimas).
+  Uma guarda de composição pergunta *quem escreve o eixo*, e quem responde é a
+  porta que compõe.
+- `ph2d-physics-ecs/tests/player_glide.rs` (5) — pela porta do produto.
+- `ph2d-physics-ecs/tests/player_swims.rs` (+1) — o planeio na água de verdade.
+- `shells/desktop/src/physics_smoke_glide_tests.rs` (4) + a sonda que dimensiona
+  o vão.
+
+**7 mutações, 7 sangram:** o teto vira alvo · o teto cravado · ignorar o botão ·
+a guarda do nado · a da perna · a da decolagem · nunca compor.
+
 ### ⚠️ Duas coisas que as mutações acharam em MIM, e ficam escritas
 
 **(a) O gate novo do arranque nasceu SEM DENTES.** A fixture punha o personagem
@@ -379,7 +480,8 @@ esconde o resto, e na jornada de 08-11 a diferença foi entre *"um gate caiu"* e
 | `=108` | **o que ele vê** — os cinco sensores |
 | `=109` | **A FENDA** — o leque, com o controle DENTRO do quadro ✅ **aprovado 2026-08-12** |
 | `=110` | **A PRATELEIRA ALTA** — o pulo do ar |
-| **`=111`** | **O PARAPEITO** — a beirada |
+| `=111` | **O PARAPEITO** — a beirada |
+| **`=112`** | **O VÃO** — o planeio |
 
 ⚠️ **A cena 110 em uma frase:** duas raias iguais, dois personagens iguais, e o
 teclado dirige **os dois ao mesmo tempo** (`hand_input_to_players` entrega a
@@ -399,7 +501,17 @@ direita o alcança — e ele fica **pendurado**, não em cima.
 patamar BAIXO **no chão**, sem pular, **não** deve pendurar — um degrau que se
 sobe a pé não é beirada.
 
-**Próxima cena livre: `112`** (o `=84` não existe, de propósito).
+⚠️ **A cena 112 em uma frase:** a mesma forma das duas anteriores — duas raias
+iguais, dois personagens iguais, um teclado — e a única diferença é o **teto de
+descida** (0 à esquerda, 2,00 m/s à direita). O vão de **12,00 m** fica entre os
+**7,18** que o sem-planeio atravessa e os **18,47** do planador, então um cai no
+poço e o outro aterra, **com o mesmo gesto**.
+
+⚠️ **O passo 5 é o que fecha a lei:** no chão, segurar o pulo e pular tem de dar
+a **MESMA altura** nas duas raias — o planeio nunca empurra para baixo, então não
+pode encolher uma subida. *Se o da direita pular mais baixo, PARE.*
+
+**Próxima cena livre: `113`** (o `=84` não existe, de propósito).
 
 ---
 
@@ -435,4 +547,15 @@ Da `W-Ledge`:
   sensor é re-lançado em todo tique, então a lei deve seguir — mas *deve* não é
   *foi medido*.
 
-- **A fila do plano 08 continua:** ~~`W-Ledge`~~ ✅ → `(W-Glide?)` → *o ajuste*.
+Da `W-Glide`:
+
+- **Não há knob de DURAÇÃO**, e é decisão: um regime dura enquanto o dedo dura, e
+  um segundo número responderia o que o botão já responde.
+- **O planeio não muda o controle aéreo**, então o alcance vem só do tempo a mais
+  no ar. Se o smoke pedir mais travessia, o lugar é o controle aéreo — não um
+  segundo número no planeio.
+- **Um planador não é travado por uma parede** (`clinging.is_none()` cala-o ali,
+  e quem manda é o `wall_slide`). Não foi medido se incomoda.
+
+- **A fila do plano 08 acabou:** ~~`W-Ledge`~~ ✅ → ~~`W-Glide`~~ ✅ → *o ajuste*
+  (§4.7, que é **decisão de aparência e o instrumento é o smoke**, não uma wave).

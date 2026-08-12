@@ -12,8 +12,27 @@
 > · gizmo ids até **973** (próximo livre **974**) · maior cena de smoke **104** (próxima livre
 > **105**; ⚠️ o `=84` não existe, de propósito).
 >
-> ⚠️ **Jornada de 2026-08-12 (`W-MultiJump` + `W-Ledge`) FECHADA, aguardando ordem de
-> integração** — handoff
+> ⚠️ **Jornada de 2026-08-12 (`W-MultiJump` + `W-Ledge` + `W-Glide`) FECHADA, aguardando
+> ordem de integração** — handoff
+> [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md).
+> A **terceira** wave é o **PLANEIO** (`W-Glide`, cena `=112`), e é a que **a medição REFUTOU o
+> plano**: o §4.6 supunha *"um multiplicador de gravidade sob botão"* e uma escala **nunca
+> ASSENTA** — até 5% da gravidade do mundo a descida continua a crescer (−1,71 / −2,21 / −2,80 a
+> 1/3/6 m), então *quão depressa se desce* é função de *quanto já se caiu*. Um **alvo** (a lei do
+> `wall_slide`) assenta mas **inverte quem sobe** (Δv = −10 apertado a subir). Ficou o **TETO**,
+> que assenta e só desacelera. ⚠️ **Ele não estava escrito em lugar nenhum porque o doc do
+> `wall_slide` registra que a versão-teto DELE foi morta por medição** — *"com o atrito default o
+> personagem não cai"* —, o que é verdade da PAREDE; **no ar não há atrito**, e a objeção não
+> viaja. ⚠️ **E uma mutação sobreviveu a tudo; o gate que a mataria achou OUTRO defeito:** no
+> tique da decolagem a `standing` já é `None` de propósito, então o planeio somava **+10,00 m/s
+> por cima dos +18,26 do pulo** — sexta guarda, `!jump.takeoff`. ⚠️ **E duas mutações anteriores
+> foram NO-OPS SILENCIOSOS que eu li como achados** (o `cargo fmt` colapsara a guarda e o
+> `str.replace` não casou): toda mutação passou a **asserir a âncora antes de escrever**.
+> **`PROJECT_SCHEMA` 75 → 76** (o teto nasce em `0` ⇒ **`c9` `1699123f…` segue INTOCADO**) ·
+> **7 mutações, 7 sangram** · `PLAYER_ROW_COUNT` 47, `PLAYER_CARDS` 11. **Cena `=112`; próxima
+> livre 113.**
+>
+> ⚠️ **As duas primeiras waves da mesma jornada (`W-MultiJump` + `W-Ledge`)** — handoff
 > [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md).
 > A **segunda** wave é a **BEIRADA** (`W-Ledge`, cena `=111`, o exemplo que o Enio deu no plano 08
 > §4.5): o personagem que erra o pulo **agarra o parapeito** e sobe dali.

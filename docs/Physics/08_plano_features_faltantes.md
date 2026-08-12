@@ -766,13 +766,82 @@ quadro:** a cura é *nada acontecer*, então o vizinho de um raio só — que af
 engole os dois (a perna não é levitação).
 
 
-### 4.6 · `W-Glide` — **PLANAR**
+### 4.6 · `W-Glide` — **PLANAR** ✅
 
 O mais barato do catálogo depois do multi-jump, e provavelmente **um caso do
 mesmo mecanismo**: planar é um multiplicador de gravidade sob botão, na queda —
 `fall_gravity` reduzido enquanto o dedo segura. ⚠️ **Se for isso, ele não é uma
 wave: é um campo**, e o honesto é descobrir isso ao escrever a W-MultiJump em vez
 de reservar-lhe uma linha na fila. Fica aqui **nomeado, com a suspeita escrita**.
+
+---
+
+**FEITO (2026-08-12).** ⚠️ **A suspeita acima foi CONFERIDA e está REFUTADA**, e
+a forma que sobrou não estava escrita em lugar nenhum.
+
+#### As três candidatas, medidas lado a lado
+
+`measure_glide.rs` põe as três formas na mesma tabela — cada uma sendo uma forma
+que este módulo **já usa algures**:
+
+| forma | onde vive | o que faz |
+|---|---|---|
+| **escala** de gravidade | as fases do pulo (`extra = escala − 1`) | acelera menos |
+| **alvo** de velocidade | o `wall_slide` | **põe** a velocidade |
+| **TETO** de velocidade | ⚠️ em lugar nenhum | põe **só se for mais rápida** |
+
+**A escala NUNCA ASSENTA.** Em toda escala até `0,05` — 5% da gravidade do mundo
+— a descida continua a crescer: **−1,71 / −2,21 / −2,80 m/s** a 1 / 3 / 6 metros
+de queda. Então *quão depressa se está a descer* é função de **quanto já se
+caiu**, e um planeio existe para se saber **onde se vai aterrar**. Ela entrega o
+alcance (6,78 → 21,88 m de travessia), e não a previsibilidade.
+
+**O alvo assenta e INVERTE quem sobe:** apertado a subir a 8 m/s ele impõe
+`Δv = −10,0 m/s`. Isso não é planar; é um botão de *descer agora*.
+
+**O teto assenta e só desacelera** — `Δv = 0` no ápice, `0` a subir, `+10` numa
+queda rápida.
+
+⚠️ **E o motivo de a terceira não estar escrita está no doc do `wall_slide`:** a
+versão-teto **dele** foi morta por medição — *"com o atrito default o personagem
+não cai, e um teto nunca dispararia"*. Isso é verdade **da PAREDE**, onde há
+atrito a segurar o corpo. **No ar livre não há**, então a objeção não viaja, e a
+forma que ela matou lá é a candidata certa aqui.
+
+#### O que ficou
+
+`glide.rs` (a lei, sem estado — o molde do `wall_slide`) + `GlideConfig`
+(um número, `0` desliga) + a row `Glide Fall (m/s)` no card **GLIDE**.
+
+⚠️ **O guard é UMA linha a responder DUAS perguntas:** `rel_up >= −fall_speed`
+é o teto **e** é o que garante `delta > 0` — ou seja, que este módulo nunca
+consiga acelerar uma queda.
+
+⚠️ **Ele lê o NÍVEL do botão de pulo, não a borda**, e é seguro precisamente por
+ser o nível (a advertência do `wall_launch` é sobre a BORDA, que exigiria uma
+segunda memória do `was_held`). Isso o faz **COMPOR** com o pulo do ar em vez de
+brigar: um toque dá o pulo, um segurar dá o pulo **e depois** o planeio — Kirby e
+Yoshi.
+
+#### ⚠️ E uma mutação sobreviveu, e o gate que a mataria achou outro defeito
+
+Tirar o `standing.is_none()` da guarda deixava a lei, o produto e a cena
+**VERDES**. Ao escrever o gate, ele nasceu vermelho por um motivo diferente do
+esperado: **no tique da decolagem a `standing` já é `None` de propósito** (a
+perna cala-se para não disputar o eixo com o `boost` do pulo), então o planeio
+passava exatamente ali — medido, `+18,26` do pulo **mais `+10,00`** do planeio.
+Sexta guarda: `!jump.takeoff`.
+
+**Cena `=112`** · `PROJECT_SCHEMA` **75→76** (⚠️ o degrau **não move física** — o
+teto nasce em `0`, e o `c9` intocado é a prova) · **7 gates de lei + 5 de
+composição + 5 de produto + 4 de cena** · **7 mutações, 7 sangram** ·
+`PLAYER_ROW_COUNT` 46→47, `PLAYER_CARDS` 10→11.
+
+**Aberto, com o preço ao lado:** não há knob de *duração* do planeio (um regime
+dura enquanto o dedo dura — um segundo número responderia o que o botão já
+responde) · o planeio **não muda o controle aéreo**, então o alcance vem só do
+tempo a mais no ar · e um planador **não é travado por uma parede** (o
+`clinging.is_none()` cala-o ali, e quem manda é o `wall_slide`).
 
 ### 4.7 · A entrada na água ⟨o item do Enio⟩ — **ajuste, não wave**
 
@@ -793,7 +862,7 @@ pedido** — está aqui para a lista ser honesta, não para ser construído.
 ## §5 — A ordem, numa linha
 
 ```
-~~W-Swim~~ ✅ → ~~W-ZoneForce~~ ✅ → ~~W-ShapeCast~~ ✅ → ~~W-Probes~~ ✅ → ~~W-Probes2~~ ✅ → ~~W-FootFan~~ ✅ → ~~W-MultiJump~~ ✅ → ~~W-Ledge~~ ✅ → (W-Glide?) → o ajuste
+~~W-Swim~~ ✅ → ~~W-ZoneForce~~ ✅ → ~~W-ShapeCast~~ ✅ → ~~W-Probes~~ ✅ → ~~W-Probes2~~ ✅ → ~~W-FootFan~~ ✅ → ~~W-MultiJump~~ ✅ → ~~W-Ledge~~ ✅ → ~~W-Glide~~ ✅ → o ajuste
    1         2             3            4           5            6              7           8          9
 ```
 

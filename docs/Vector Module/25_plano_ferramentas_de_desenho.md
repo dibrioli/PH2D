@@ -1404,12 +1404,43 @@ cozimentos (contadores `#[cfg(test)]`), que é exato e é literalmente a proprie
 
 - **A linha de RUNTIME** (*"agora não"*): a shell é **`[[bin]]` sem `[lib]`** e todo produtor vivo é
   módulo **privado do binário** ⇒ um jogo que embarque o PH2D **não alcança** o cozimento
-  não-destrutivo. E **todo memo de geometria é chaveado no MUNDO**, que é o que a animação muda:
-  medido pelas sondas do repo, em release, um **Contour de 16 anéis animando custa 12,25 ms/frame**
-  (74% do quadro, sozinho) e 32 anéis **23,58** (não cabe); offset 0,40–1,07 ms/forma/frame; silhueta
-  até 1,78; **pattern não tem memo**. A cura é local (memoizar em espaço **LOCAL** e assar o afim na
-  saída — para similaridade offset e silhueta **comutam** com o afim) mais o **dirty-tracking** que o
-  ADR-0108 D3 chama de *a* alavanca e que nunca foi construído.
+  não-destrutivo.
+- **⚠️ E o memo chaveado no MUNDO foi RE-MEDIDO pela porta do PRODUTO — a nota anterior estava
+  300× errada no item mais caro dela** (2026-08-12, sonda `live_memo_probe` na shell,
+  `cargo test -p ph2d-host-desktop --release live_memo -- --ignored --nocapture`). A premissa
+  continua verdadeira — todo produtor bake a pose DENTRO da chave, então uma forma que anda
+  **re-cozinha em todo quadro** —, mas o preço não é o que estava escrito. Medido, `--release`,
+  máquina calma (`load 0,87`), estrela de 5 pontas, 60 quadros por coluna, **mediana**:
+
+  | produtor | PARADO | ANIMADO | razão | saída |
+  |---|---|---|---|---|
+  | contour (16 anéis, Round) | 0,004 | **0,039** | 10× | 17 caminhos |
+  | offset (`d = 0,12`) | 0,000 | **0,686** | 5273× | 1 |
+  | profile (0,2/1,8/0,2) | 0,000 | **1,655** | 7522× | 1 |
+  | symmetry (1 eixo) | 0,000 | 0,000 | 3,7× | 2 |
+
+  ⚠️ **O `12,25 ms` do contour vinha do `probe_contour_cost`, que chama `offset_path` — a
+  BOOLEANA.** O produto não a chama no caso comum: `contour_live::cook_piece` tenta primeiro o
+  **`offset_ring`** (o offset DIRETO, *~668× mais barato*, que o próprio header do módulo declara
+  como *a cura de verdade*) e só cai na booleana no fallback (compound · Inner · Both). Quem moveu
+  o número foi a wave do offset direto; a nota nunca foi reconciliada, e declarava *"não cabe num
+  quadro"* uma feature que cabe **400× dentro** dele. *O número que vira decisão de produto tem de
+  sair da porta do produto* — a mesma lição que o Painter pagou três vezes (doc 28 §5.40).
+  ⚠️ **A sonda tem CONTROLE, e ele mordeu na 1ª corrida:** o `require` recusa uma coluna cujo
+  produtor não produziu geometria — a fixture do profile armava `VecStrokeProfile::default()`,
+  cujo `stops` é **VAZIO** (o neutro que a shell REMOVE), então ela media o custo de um `continue`
+  e teria reportado *"o perfil é grátis"*. E a coluna **saída** existe pela mesma razão: `0,04 ms`
+  sobre dezasseis anéis e `0,04 ms` sobre um caminho degenerado são leituras opostas.
+  **O que sobra ABERTO, com o número certo:** o **profile a 1,655 ms/forma/quadro** (10% de um
+  quadro de 60 Hz por forma animada — o maior da tabela, e um número que ninguém tinha) e o
+  **offset a 0,686**. A **simetria erra o memo e não custa nada** (`xform` está na chave e o cook
+  dela nem o consome — ela coze em LOCAL e assa a pose na SAÍDA; tirar o `xform` da chave é exato
+  e **compra zero medido**, então fica nomeado e não construído). A cura dos dois caros é a mesma
+  que a nota antiga já apontava — memoizar em espaço **LOCAL** e assar o afim na saída, exato para
+  **similaridade** (`d_local = d / s`; uma translação é `s = 1`, que é o caso que paga hoje) com
+  fallback ao mundo sob escala não-uniforme ou skew — mais o **dirty-tracking** que o ADR-0108 D3
+  chama de *a* alavanca e que nunca foi construído. ⚠️ **É wave própria e muda o DESENHO na
+  fronteira da aproximação**, então não entra de carona numa medição.
 - **Boolean vivo** (D4 mantida) — a rota por regra de preenchimento está descrita na §2 para não ser
   re-descoberta como novidade.
 - **Divide · Outline · edição de nós multi-forma · autotrace · grade perspectiva** — todos **G**, todos

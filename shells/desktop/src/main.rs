@@ -212,6 +212,11 @@ mod layout_scroll_gesture;
 mod layout_smoke;
 mod lens_smoke;
 mod line_smoke;
+/// SONDA (`--ignored`): quanto custa MOVER uma forma que tem geometria viva. A §11 do plano 25
+/// afirma que todo memo de geometria e' chaveado no MUNDO — esta sonda pergunta ao produto.
+#[cfg(test)]
+#[path = "live_memo_probe.rs"]
+mod live_memo_probe;
 mod mask_smoke;
 mod morph_fade_smoke;
 mod morph_live;

@@ -525,3 +525,88 @@ geram quase todas —
 4. **um modelo físico em vez de um deslocamento** (Elastic Deform/Kelvinlets, Cloth, Pose, Boundary).
 
 *Escolher uma das quatro rende mais do que escolher cinco ferramentas da lista.*
+
+---
+
+# PARTE III — O CLAY, nos três, linha a linha
+
+*(pergunta do Enio: nosso Clay é idêntico ao do SculptGL? o SculptGL e o Blender
+são idênticos? os resultados são idênticos?)*
+
+## §11 — As quatro perguntas
+
+### 11.1 — Nosso Clay × SculptGL: **o kernel é idêntico ao ULP; o produto não**
+
+O Clay do original **não é um verbo**: o `Brush.js:46-53` computa a normal e o
+centro de área, empurra o centro por `sqrt(r2)·0,1` ao longo da normal, e chama
+**o `Flatten.prototype.flatten`**. O nosso `Verb::Clay` faz a mesma coisa por
+outra álgebra — em vez de mover o ponto do plano, **subtrai o mesmo comprimento
+da distância assinada** (`d = signed_distance − sign·raio·0,1`), o que é a mesma
+translação de plano.
+
+| item | nós | SculptGL | igual? |
+|---|---|---|---|
+| deslocamento do plano | `raio · 0,1` | `sqrt(r2) · 0,1` | ✅ (o `sqrt(r2)` **é** o raio) |
+| lateralidade | `if d·sign < 0 { move } else { fica }` | `if (distToPlane·comp > 0) continue` | ✅ o mesmo lado |
+| a lei | `p += n · (−d · w)` | `vAr -= aNormal · (falloff·distToPlane·intensidade·máscara·alpha)` | ✅ termo a termo |
+| ponto do plano | `area_center` ponderado pela máscara | `areaCenter` idem | ✅ |
+| normal | `area_normal` sobre o conjunto **frontal** | idem | ✅ |
+| origem da distância | viva / `pre` conforme o Accumulate | `vAr` / `vProxy` idem | ✅ |
+| Ctrl | desce o plano **e** inverte o lado | `_negative ? -off : off` + o `comp` | ✅ |
+
+**Medido** (atlas, um dab, 272 vértices, `Falloff::Plateau`, intensidade 0,5):
+nosso **0,006490** · referência **0,006490** · razão **1,00×** · `|diferença|`
+**5,960e-8** = **um ULP do `f32`**.
+
+⚠️ **Mas o atlas mede com a curva da REFERÊNCIA, e o produto ship outra** (D1).
+E aqui a divergência é **exatamente calculável, sem sonda**: o deslocamento é
+`d · w` com `w = curva · alpha · intensidade · máscara`, ou seja **LINEAR na
+curva** — então a razão por-vértice **é** a tabela do D1: `1,000×` no centro,
+`1,222×` a meio raio, `1,436×` a `7/8`. *Com `Falloff::Plateau` no painel o Clay
+do produto é o do original ao ULP; com o default de fábrica ele é o mesmo Clay
+com um pincel mais magro.*
+
+⚠️ **UMA divergência de comportamento, e ela é nossa:** com a pegada
+**inteiramente de costas** (um dab que só pegou o outro lado da silhueta) o
+`areaNormal` do original devolve `undefined` e o `stroke()` faz `return` — *ele
+não esculpe*. Nós caímos num **fallback** que ajusta o plano sobre a pegada
+inteira e esculpimos. Está documentado no `fit_plane`, e é deliberado.
+
+⚠️ **E o multi-dab não é linear:** o plano é re-ajustado a cada dab sobre a malha
+VIVA, então o barro que o dab `k` deposita levanta o plano do `k+1`. A razão
+acima vale **por dab**; ao longo de um traço ela compõe.
+
+### 11.2 — SculptGL × Blender: **não, e a diferença é estrutural**
+
+Não é afinação de constante: são **cinco** decisões diferentes.
+
+| | SculptGL (`Brush` + `Flatten.flatten`) | Blender (`clay.cc::do_clay_brush`) |
+|---|---|---|
+| **o PONTO do plano** | `areaCenter` — o **centroide** ponderado da pegada frontal | ⚠️ **`cache->location_symm`, o ponto do CURSOR.** O `area_co` é computado (`clay.cc:167`) e **nunca lido** |
+| **lateralidade** | **um lado** (`distToPlane·comp > 0 → continue`) — o Clay dele só **ENCHE** | **os dois** — `calc_closest_to_plane` não filtra: o Clay dele **corta a crista E enche o vale** |
+| **o deslocamento** | `sqrt(r2)·0,1`, constante embutida, sobre o raio **VIVO** | `\|initial_radius · plane_offset\|` — knob do usuário, sobre o raio do **PEN-DOWN**, opcionalmente × pressão |
+| **a força** | `intensity`, **linear** | `0,25 · alpha² · flip · pressão⁴ · overlap · feather` |
+| **os fatores** | curva × máscara × alpha | curva × máscara × **auto-máscara** × front-face **contínuo** × hardness × textura |
+
+⚠️ **E há uma divergência DENTRO do próprio Blender que quase escrevi errado:**
+o **Clay** ancora no cursor, e o **`PLANE`** (o Flatten/Fill/Scrape unificado)
+ancora no **centroide** (`plane.cc:502` + `:383`) — e re-varre os nós em volta do
+centro do plano com o comentário *"its effective center often deviates from the
+cursor location"*. Os dois pincéis de plano do Blender **não usam a mesma
+âncora**. (E o `PLANE` tem outra: `if (is_zero(grab_delta_symm)) return;` — ele
+**não faz nada no primeiro dab**, porque o frame local dele é orientado pela
+DIREÇÃO do traço.)
+
+### 11.3 — Os resultados são idênticos?
+
+| par | veredito | número |
+|---|---|---|
+| **nós × SculptGL**, kernel, fixture da paridade | ✅ **sim, ao ULP** | `\|diff\| 5,960e-8` |
+| **nós × SculptGL**, produto de fábrica | ❌ não — a **curva** | razão por-vértice `1,000×` → `1,436×` (exata, por linearidade) |
+| **nós × SculptGL**, pegada 100% de costas | ❌ não — eles não esculpem, nós sim | — |
+| **SculptGL × Blender** | ❌ **não, nem estruturalmente** | 5 decisões diferentes; três delas mudam o desenho, não o número: **onde o plano ancora**, **se ele corta ou só enche**, e **a lei da força** |
+
+⚠️ **A leitura que importa:** *"Clay"* nomeia **três ferramentas diferentes**. A
+do SculptGL é *encher até um plano levantado sobre o centroide*. A do Blender é
+*achatar contra um plano levantado sobre o cursor, com pressão à quarta*. A nossa
+é a do SculptGL — de propósito, e ao ULP.

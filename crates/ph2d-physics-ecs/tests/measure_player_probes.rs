@@ -283,83 +283,87 @@ fn measure_what_a_single_ground_ray_costs_over_a_gap() {
         // `W-Probes2`, 3 e' o default de hoje. Sem o 1 ao lado o numero nao diz
         // se a cura curou -- ele so' diz onde estamos.
         for samples in [1u16, 3, 5] {
-        for gap_mm in [0u32, 100, 200, 300, 400, 600] {
-            let gap = f64::from(gap_mm) / 1000.0;
-            let mut sim = SimWorld::new();
-            let mut slab = |name: &str, at: Vec2, half: [f32; 2]| {
-                sim.world_mut().spawn((
-                    Name::new(name),
-                    RigidBody {
-                        kind: BodyKind::Static,
-                    },
-                    Collider {
-                        shape: ColliderShape::Cuboid {
-                            half_x: half[0],
-                            half_y: half[1],
+            for gap_mm in [0u32, 100, 200, 300, 400, 600] {
+                let gap = f64::from(gap_mm) / 1000.0;
+                let mut sim = SimWorld::new();
+                let mut slab = |name: &str, at: Vec2, half: [f32; 2]| {
+                    sim.world_mut().spawn((
+                        Name::new(name),
+                        RigidBody {
+                            kind: BodyKind::Static,
                         },
-                        ..Collider::default()
-                    },
-                    Transform::from_translation(at),
-                ));
-            };
-            let g = gap as f32;
-            slab("Left", Vec2::new(-10.0, -0.5), [10.0, 0.5]);
-            slab("Right", Vec2::new(g + 10.0, -0.5), [10.0, 0.5]);
-
-            // Parado: nasce com o CENTRO exatamente sobre o meio da fenda.
-            let x0 = if park { g * 0.5 } else { -2.0 };
-            let player = sim
-                .world_mut()
-                .spawn((
-                    Name::new("Player"),
-                    RigidBody {
-                        kind: BodyKind::Dynamic,
-                    },
-                    Collider {
-                        shape: ColliderShape::Capsule {
-                            half_height: 0.3,
-                            radius: 0.2,
+                        Collider {
+                            shape: ColliderShape::Cuboid {
+                                half_x: half[0],
+                                half_y: half[1],
+                            },
+                            ..Collider::default()
                         },
-                        ..Collider::default()
-                    },
-                    LockRotation,
-                    PlatformPlayer {
-                        float_height: FLOAT,
-                        foot_samples: samples,
-                        ..PlatformPlayer::default()
-                    },
-                    Transform::from_translation(Vec2::new(x0, FLOAT)),
-                ))
-                .id();
+                        Transform::from_translation(at),
+                    ));
+                };
+                let g = gap as f32;
+                slab("Left", Vec2::new(-10.0, -0.5), [10.0, 0.5]);
+                slab("Right", Vec2::new(g + 10.0, -0.5), [10.0, 0.5]);
 
-            let mut bridge = PhysicsBridge::new();
-            let mut lowest = f32::INFINITY;
-            let mut ever_lost = false;
-            for i in 1..=240u64 {
-                bridge.set_player_input(
-                    player,
-                    PlayerInput {
-                        drive,
-                        ..PlayerInput::default()
-                    },
-                );
-                bridge.dispatch(&mut sim, true, i);
-                let t = sim.world().get::<Transform>(player).expect("transform");
-                if t.translation.x > -0.05 && t.translation.x < g + 0.05 {
-                    lowest = lowest.min(t.translation.y);
-                    ever_lost |= bridge
-                        .player_probe_marks()
-                        .iter()
-                        .any(|m| m.kind == ProbeKind::Ground && m.state == ProbeState::Clear);
+                // Parado: nasce com o CENTRO exatamente sobre o meio da fenda.
+                let x0 = if park { g * 0.5 } else { -2.0 };
+                let player = sim
+                    .world_mut()
+                    .spawn((
+                        Name::new("Player"),
+                        RigidBody {
+                            kind: BodyKind::Dynamic,
+                        },
+                        Collider {
+                            shape: ColliderShape::Capsule {
+                                half_height: 0.3,
+                                radius: 0.2,
+                            },
+                            ..Collider::default()
+                        },
+                        LockRotation,
+                        PlatformPlayer {
+                            float_height: FLOAT,
+                            foot_samples: samples,
+                            ..PlatformPlayer::default()
+                        },
+                        Transform::from_translation(Vec2::new(x0, FLOAT)),
+                    ))
+                    .id();
+
+                let mut bridge = PhysicsBridge::new();
+                let mut lowest = f32::INFINITY;
+                let mut ever_lost = false;
+                for i in 1..=240u64 {
+                    bridge.set_player_input(
+                        player,
+                        PlayerInput {
+                            drive,
+                            ..PlayerInput::default()
+                        },
+                    );
+                    bridge.dispatch(&mut sim, true, i);
+                    let t = sim.world().get::<Transform>(player).expect("transform");
+                    if t.translation.x > -0.05 && t.translation.x < g + 0.05 {
+                        lowest = lowest.min(t.translation.y);
+                        ever_lost |= bridge
+                            .player_probe_marks()
+                            .iter()
+                            .any(|m| m.kind == ProbeKind::Ground && m.state == ProbeState::Clear);
+                    }
                 }
+                let dip = if lowest.is_finite() {
+                    FLOAT - lowest
+                } else {
+                    0.0
+                };
+                println!(
+                    "{gap:>6.2}m  {label:>8}  {samples:>5}  {dip:>8.3}m  {:>9.1}%  {:>9}",
+                    100.0 * dip / FLOAT,
+                    if ever_lost { "PERDEU" } else { "sempre" }
+                );
             }
-            let dip = if lowest.is_finite() { FLOAT - lowest } else { 0.0 };
-            println!(
-                "{gap:>6.2}m  {label:>8}  {samples:>5}  {dip:>8.3}m  {:>9.1}%  {:>9}",
-                100.0 * dip / FLOAT,
-                if ever_lost { "PERDEU" } else { "sempre" }
-            );
-        }
         }
     }
     println!(

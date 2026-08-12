@@ -426,14 +426,9 @@ pub(super) fn record_marks(
             // torna o desenho um relato do que aconteceu: ver o pé da borda
             // aceso sobre uma fenda com o do meio apagado É o diagnóstico que a
             // perna em leque existe para dar.
-            Some(hits) => ProbeMark::ray(
-                ProbeKind::Ground,
-                g.origin,
-                g.dir,
-                g.reach,
-                hits[i],
-                g.skin,
-            ),
+            Some(hits) => {
+                ProbeMark::ray(ProbeKind::Ground, g.origin, g.dir, g.reach, hits[i], g.skin)
+            }
             None => ProbeMark::idle_ray(ProbeKind::Ground, g.origin, g.dir, g.reach, g.skin),
         });
     }

@@ -43,10 +43,7 @@ fn the_scene_delivers_the_numbers_its_message_prints() {
     // ⚠️ E os dois personagens ficam em fendas SEPARADAS — se as posições se
     // aproximassem, os trechos de chão entre elas desapareceriam e a cena
     // deixaria de conter o contraste que ela existe para mostrar.
-    assert!(
-        FAN_X - ONE_RAY_X > GAP_NARROW * 2.0,
-        "as duas fendas tem de ter chao entre elas: {ONE_RAY_X} .. {FAN_X}"
-    );
+    const _: () = assert!(FAN_X - ONE_RAY_X > GAP_NARROW * 2.0);
 }
 
 /// **O da direita fica de pé; o da esquerda afunda** — o contraste que a cena É.

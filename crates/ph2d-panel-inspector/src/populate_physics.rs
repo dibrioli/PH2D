@@ -321,7 +321,7 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         // argumento. O que N compra aqui é COBERTURA DE FRESTA (3 num corpo de
         // 1 m cegam-se com 0,5 m; 9, com 12,5 cm), não precisão de beirada.
         (ids::INSP_PLAYER_FOOT_SAMPLES, 3.0, 1.0, 257.0, 2.0), // LITERAL-PX-OK: count
-        (ids::INSP_PLAYER_FOOT_SPREAD, 1.0, 0.0, 1.0, 0.05), // LITERAL-PX-OK: fraction
+        (ids::INSP_PLAYER_FOOT_SPREAD, 1.0, 0.0, 1.0, 0.05),   // LITERAL-PX-OK: fraction
         (ids::INSP_PLAYER_WALL_SAMPLES, 3.0, 1.0, 257.0, 2.0), // LITERAL-PX-OK: count
         // ⚠️ FRAÇÃO da meia-altura: 1 põe as amostras de fora na borda exata da
         // caixa (o mundo de sempre) e baixá-lo afasta-as das PONTAS, onde uma

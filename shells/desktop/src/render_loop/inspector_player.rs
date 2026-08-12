@@ -126,6 +126,8 @@ pub(crate) fn build_player_info(
         swim_speed: p.swim_speed,
         swim_acceleration: p.swim_acceleration,
         swim_enter: p.swim_enter,
+        ledge_grab: p.ledge_grab,
+        ledge_speed: p.ledge_speed,
         reaction_support: p.reaction_support,
         reaction_movement: p.reaction_movement,
         reaction_push: p.reaction_push,
@@ -375,6 +377,8 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         // há recurso a capar. Quem escolhe a faixa confortável é o slider da §14
         // (0..4, o valor medido na poça das fixtures); a caixa aceita o resto.
         PlayerFieldEdit::SwimEnter(v) => p.swim_enter = v.max(0.0),
+        PlayerFieldEdit::LedgeGrab(v) => p.ledge_grab = v.max(0.0),
+        PlayerFieldEdit::LedgeSpeed(v) => p.ledge_speed = v.max(0.0),
         PlayerFieldEdit::ReactionSupport(v) => p.reaction_support = v.max(0.0),
         PlayerFieldEdit::ReactionMovement(v) => p.reaction_movement = v.max(0.0),
         PlayerFieldEdit::ReactionPush(v) => p.reaction_push = v.max(0.0),

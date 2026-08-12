@@ -420,7 +420,14 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// capacidade DESLIGADA — o precedente do wall slide e do wall jump —, então um
 /// projeto salvo em v73 reabre com o pulo exatamente como estava.
 ///
-const PROJECT_SCHEMA: u32 = 74;
+/// v75 (physics, W-Ledge — A BEIRADA): o `PlatformPlayer` ganhou `ledge_grab` +
+/// `ledge_speed`, apendados ao FIM, e o postcard é posicional ⇒ quebra dura.
+/// ⚠️ **Este degrau NÃO move física:** o alcance nasce em `0`, que é a
+/// capacidade DESLIGADA (o idioma de `coyote_time`/`corner_reach`/`air_jumps`),
+/// então um projeto salvo em v74 reabre exatamente como estava — e o sensor
+/// novo nem sequer é castado.
+///
+const PROJECT_SCHEMA: u32 = 75;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

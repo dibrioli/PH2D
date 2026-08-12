@@ -268,6 +268,20 @@ pub const INSP_PLAYER_SWIM_ACCEL: NodeId = hash_node_id("insp.player.swim.accel"
 /// torno dele exatamente onde o jogador tenta emergir.
 pub const INSP_PLAYER_SWIM_ENTER: NodeId = hash_node_id("insp.player.swim.enter");
 
+/// **O ALCANCE do braço numa beirada**, metros (`W-Ledge`). `0` desliga.
+///
+/// ⚠️ **Um número para os DOIS eixos** — a janela acima da cabeça e a distância
+/// à frente. *Até onde ele alcança* é uma grandeza só, e separá-la daria um
+/// personagem que chega ao lábio para cima e não para o lado.
+pub const INSP_PLAYER_LEDGE_GRAB: NodeId = hash_node_id("insp.player.ledge.grab");
+/// **A velocidade com que ele se acomoda no pendurar e sobe no mantle**, m/s.
+///
+/// ⚠️ **Um número para os dois momentos**, e é deliberado: eles são o mesmo
+/// gesto de braço, e dois knobs seriam dois números que o artista teria de
+/// manter de acordo para o movimento não mudar de ritmo a meio.
+pub const INSP_PLAYER_LEDGE_SPEED: NodeId = hash_node_id("insp.player.ledge.speed");
+
+pub const INSP_PLAYER_CARD_LEDGE: NodeId = hash_node_id("insp_player_card_ledge");
 pub const INSP_PLAYER_CARD_LEG: NodeId = hash_node_id("insp_player_card_leg");
 pub const INSP_PLAYER_CARD_WALK: NodeId = hash_node_id("insp_player_card_walk");
 pub const INSP_PLAYER_CARD_JUMP: NodeId = hash_node_id("insp_player_card_jump");

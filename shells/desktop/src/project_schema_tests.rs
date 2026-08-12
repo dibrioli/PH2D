@@ -310,10 +310,14 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // (W-MultiJump — O PULO MULTIPLO), no MEIO do struct. ⚠️ A contagem
         // nasce em 0 (capacidade DESLIGADA), entao nenhum player ja' salvo muda
         // de comportamento — o degrau e' so' o layout.
+        // PROJECT 74→75: `PlatformPlayer` ganhou `ledge_grab` + `ledge_speed`
+        // (W-Ledge — A BEIRADA), apendados ao FIM. ⚠️ O alcance nasce em 0
+        // (capacidade DESLIGADA), entao o degrau e' so' o layout — e o sensor
+        // novo nem sequer e' castado num player ja' salvo.
         // ⚠️ **PROVISÓRIO:** o valor se CONTA contra o `main` do dia da
         // integração — três linhas já colidiram neste número por o terem
         // escolhido, e a última vez o certo não estava em nenhum dos dois lados.
-        (74, 13, 14),
+        (75, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

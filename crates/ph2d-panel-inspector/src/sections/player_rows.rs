@@ -331,7 +331,28 @@ const SWIM_ROWS: [PlayerRow; 3] = [
     ),
 ];
 
-/// **A TABELA da §14** — nove cards, e os números dentro deles.
+/// **A BEIRADA** (W-Ledge) — ⚠️ card próprio, e a primeira row nasce em ZERO
+/// porque a capacidade é opt-in, como o nado e o arranque ao lado.
+///
+/// ⚠️ **Duas rows, e não quatro:** *o alcance* é uma grandeza só (a janela
+/// acima da cabeça E a distância à frente) e *a velocidade* é uma só (acomodar
+/// e subir são o mesmo gesto de braço). Cada separação daria um par cujo valor
+/// certo de um é função do outro — o defeito de ergonomia que este módulo já
+/// nomeou no `swim_enter`.
+const LEDGE_ROWS: [PlayerRow; 2] = [
+    (
+        "Ledge Grab (m)",
+        ids::INSP_PLAYER_LEDGE_GRAB,
+        "How far he reaches for a lip, up and ahead. 0 = off.",
+    ),
+    (
+        "Ledge Speed (m/s)",
+        ids::INSP_PLAYER_LEDGE_SPEED,
+        "How fast he settles into the hang, and climbs over.",
+    ),
+];
+
+/// **A TABELA da §14** — dez cards, e os números dentro deles.
 ///
 /// ⚠️ **A contagem NÃO está escrita aqui**, e é uma correção: o doc dizia *"oito
 /// cards, e os vinte e quatro números"* enquanto a tabela já pintava **33** — um
@@ -349,7 +370,7 @@ const SWIM_ROWS: [PlayerRow; 3] = [
 /// pergunta ele pertence"*, e ela passou a estar escrita na tela (Enio,
 /// 2026-08-04: *"esse tanto de parâmetros juntos não fica bem; organize-os em
 /// cards com um título que facilite o entendimento"*).
-pub(crate) const PLAYER_CARDS: [(&str, ph2d_a11y::NodeId, &[PlayerRow]); 9] = [
+pub(crate) const PLAYER_CARDS: [(&str, ph2d_a11y::NodeId, &[PlayerRow]); 10] = [
     ("LEG", ids::INSP_PLAYER_CARD_LEG, &LEG_ROWS),
     ("WALK", ids::INSP_PLAYER_CARD_WALK, &WALK_ROWS),
     ("JUMP", ids::INSP_PLAYER_CARD_JUMP, &JUMP_ROWS),
@@ -359,6 +380,7 @@ pub(crate) const PLAYER_CARDS: [(&str, ph2d_a11y::NodeId, &[PlayerRow]); 9] = [
     ("DASH", ids::INSP_PLAYER_CARD_DASH, &DASH_ROWS),
     ("CROUCH", ids::INSP_PLAYER_CARD_CROUCH, &CROUCH_ROWS),
     ("SWIM", ids::INSP_PLAYER_CARD_SWIM, &SWIM_ROWS),
+    ("LEDGE", ids::INSP_PLAYER_CARD_LEDGE, &LEDGE_ROWS),
 ];
 
 /// Quantas rows numéricas a seção pinta — **contadas da tabela**, nunca escritas

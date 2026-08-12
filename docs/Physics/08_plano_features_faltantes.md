@@ -381,7 +381,7 @@ de seam (`PLAYER_ROW_COUNT` 42→44) · **7 mutações, 7 sangram**.
 LOC: `jump.rs` cruzou 700 ⇒ corte por RESPONSABILIDADE em `jump_config.rs` (*o
 que o artista AUTORA*) contra o que sobrou (*o que acontece num TIQUE*).
 
-### 4.5 · `W-Ledge` — **LEDGE GRAB + MANTLE** ⟨o exemplo do Enio⟩
+### 4.5 · `W-Ledge` — **LEDGE GRAB + MANTLE** ✅ ⟨o exemplo do Enio⟩
 
 **Depende do 4.3.** São duas metades que a literatura trata como uma:
 
@@ -394,6 +394,60 @@ para um lugar que a física não escolheu. No modo cinemático isso é natural (
 controlador já escreve a pose); no **Dynamic** é um teleporte, e este módulo tem
 uma regra sobre isso desde o W2a (*`set_body_pose` zera a velocidade*). **Os dois
 modos podem precisar de respostas diferentes, e isso tem de estar escrito antes.**
+
+---
+
+**FEITO (2026-08-12).** ⚠️ **A bifurcação acima DISSOLVEU-SE, e a resposta é que
+nenhuma das duas metades escreve pose.** O pendurar e a subida são
+**velocidade** — um `boost` que substitui o que havia, mais o cancelamento da
+gravidade pelo canal que já existe (`PlayerStep::gravity_hold`) —, exatamente
+como o arranque. Não há teleporte a discutir, o solver continua a resolver
+contatos, e a lei é **a mesma nos dois modos**: o `kinematic_advance` integra o
+motor e a ponte dinâmica aplica o impulso.
+
+**As medições que decidiram** (`tests/measure_ledge.rs`):
+
+| pergunta | número |
+|---|---|
+| janela de 0,1 m em QUEDA LIVRE | **0 a 1 tique** a partir de meio metro de queda |
+| a mesma janela AGARRADO à parede | **8 tiques** (desce a 0,755 m/s) |
+| empurrar a parede com o slide **off** | **fica preso pelo atrito** — desce 0,14 m em 1,5 s |
+| raio para baixo com o corpo fundo demais | **`distance == 0`** → lábio falso onde não há superfície |
+
+⚠️ **É a primeira linha que decide o desenho:** apanhar um lábio *no instante
+certo* é uma moeda ao ar, então o gatilho é breve e o que dura é a **TRAVA** — o
+idioma do *jump buffer*. E a terceira linha proíbe exigir a parede: um agarre
+gateado em `wall_slide_speed` seria inalcançável em quem não a autorou.
+
+**O SENSOR é UM raio para baixo, à frente** — nasce `grab` acima da cabeça e
+`meia-largura + grab` adiante, e desce `2·grab`. Daí saem três coisas de graça:
+o `x` em que ele bate **é** o alvo da subida (o destino é *provado*, não
+suposto); a recusa de *"a parede continua acima da cabeça"* é o `distance == 0`
+do contrato de penetração; e as **duas soleiras** (agarrar pede o lábio acima,
+continuar agarrado não) saem do mesmo número, o idioma da trava do nado.
+
+⚠️ **O mantle é EDGE-triggered, e a cena é que o provou:** chega-se a uma
+beirada a pular contra ela, com o dedo já em baixo — com um gatilho de NÍVEL o
+mesmo aperto mandava subir no tique seguinte e o regime de pendurar **nunca
+aparecia na tela** (medido: ele acabava de pé no patamar num roteiro que só
+pedia para se pendurar).
+
+⚠️ **E a cena 111 teve de ser dimensionada por um número que ninguém tinha
+medido: pular COLADO À PAREDE alcança 0,745 m contra 1,903 do ar livre** — o
+atrito come **61%**, e os pés só chegam a 1,145 m. As duas primeiras versões da
+cena usaram o número do ar livre e ficaram intransponíveis: o patamar baixo em
+1,5 m não podia ser subido por quem chega encostado nele.
+
+**Cena `=111`** · `PROJECT_SCHEMA` **74→75** (dois campos apendados; ⚠️ o degrau
+**não move física** — o alcance nasce em `0`) · **13 gates de lei + 6 de produto
++ 5 de cena** · duas rows novas no Inspector (card **LEDGE**), com
+`PLAYER_ROW_COUNT` 44→46.
+
+**Aberto, com o preço ao lado:** a subida não pergunta ao mundo se o corpo CABE
+lá em cima (`sweep_body` existe e a sonda mede que ele responde) — hoje quem
+recusa é o solver, que simplesmente não deixa o corpo atravessar, e o custo é um
+gesto que não termina onde promete sob um teto baixo; pré-checá-lo é uma decisão
+de produto (*recusar a começar* contra *tentar e falhar*), não uma correção.
 
 ### 4.55 · `W-Probes` — **OS SENSORES FICAM VISÍVEIS** ✅ ⟨pedido do Enio⟩
 
@@ -727,7 +781,7 @@ pedido** — está aqui para a lista ser honesta, não para ser construído.
 ## §5 — A ordem, numa linha
 
 ```
-~~W-Swim~~ ✅ → ~~W-ZoneForce~~ ✅ → ~~W-ShapeCast~~ ✅ → ~~W-Probes~~ ✅ → ~~W-Probes2~~ ✅ → ~~W-FootFan~~ ✅ → ~~W-MultiJump~~ ✅ → W-Ledge → (W-Glide?) → o ajuste
+~~W-Swim~~ ✅ → ~~W-ZoneForce~~ ✅ → ~~W-ShapeCast~~ ✅ → ~~W-Probes~~ ✅ → ~~W-Probes2~~ ✅ → ~~W-FootFan~~ ✅ → ~~W-MultiJump~~ ✅ → ~~W-Ledge~~ ✅ → (W-Glide?) → o ajuste
    1         2             3            4           5            6              7           8          9
 ```
 

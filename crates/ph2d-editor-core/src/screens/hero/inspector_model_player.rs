@@ -149,6 +149,10 @@ pub struct InspectorPlayerInfo {
     /// poça (depende das duas densidades), enquanto *"a água sozinha me
     /// sustenta"* significa a mesma coisa em todas.
     pub swim_enter: f32,
+    /// O ALCANCE do braço numa beirada, metros (`W-Ledge`). `0` = desligada.
+    pub ledge_grab: f32,
+    /// A velocidade do pendurar e da subida, m/s.
+    pub ledge_speed: f32,
     /// Quanto do peso volta ao chao (W6).
     pub reaction_support: f32,
     /// Quanto da caminhada volta ao chao (W6).
@@ -287,6 +291,10 @@ pub enum PlayerFieldEdit {
     SwimSpeed(f32),
     SwimAcceleration(f32),
     SwimEnter(f32),
+    /// **O ALCANCE do braço numa beirada**, metros (`W-Ledge`). `0` desliga.
+    LedgeGrab(f32),
+    /// **A velocidade do pendurar e da subida**, m/s.
+    LedgeSpeed(f32),
     /// Quanto do peso volta ao chao (W6).
     ReactionSupport(f32),
     /// Quanto da caminhada volta ao chao (W6).

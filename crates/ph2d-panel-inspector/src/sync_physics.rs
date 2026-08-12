@@ -214,6 +214,8 @@ pub(crate) fn sync_player_fields(host: &mut dyn PanelHostInternal) {
         (ids::INSP_PLAYER_SWIM_SPEED, info.swim_speed),
         (ids::INSP_PLAYER_SWIM_ACCEL, info.swim_acceleration),
         (ids::INSP_PLAYER_SWIM_ENTER, info.swim_enter),
+        (ids::INSP_PLAYER_LEDGE_GRAB, info.ledge_grab),
+        (ids::INSP_PLAYER_LEDGE_SPEED, info.ledge_speed),
         (ids::INSP_PLAYER_REACT_SUPPORT, info.reaction_support),
         (ids::INSP_PLAYER_REACT_MOVEMENT, info.reaction_movement),
         (ids::INSP_PLAYER_REACT_PUSH, info.reaction_push),

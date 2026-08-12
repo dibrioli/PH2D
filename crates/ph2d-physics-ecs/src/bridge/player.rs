@@ -357,7 +357,7 @@ impl PhysicsBridge {
             // que sai daí é a metade que o artista não consegue ver hoje: sem
             // ela, *"a capacidade está desligada"* e *"o alcance é curto demais"*
             // produzem o mesmo nada na tela.
-            probes::record_marks(
+            marks::record_marks(
                 &mut self.player_probes,
                 &self.world,
                 entity,
@@ -672,6 +672,11 @@ impl PhysicsBridge {
 mod player_leg;
 #[path = "player_probes.rs"]
 mod probes;
+
+/// O RELATO dos sensores para quem desenha — irmão por RESPONSABILIDADE (ver o
+/// cabeçalho dele).
+#[path = "player_marks.rs"]
+mod marks;
 use probes::{probe_ceiling, probe_headroom, probe_ledge, probe_wall};
 
 /// O canal com o mundo de fora — ver o cabeçalho do módulo filho.

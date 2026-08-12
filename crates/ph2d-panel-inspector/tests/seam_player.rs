@@ -93,6 +93,11 @@ fn player() -> InspectorPlayerInfo {
         swim_speed: 4.0,
         swim_acceleration: 12.0,
         swim_enter: 1.0,
+        // ⚠️ Valores DISTINTOS de todos os outros — o gate dos valores autorados
+        // compara o que o store mostra com o que a fixture escreveu, e um número
+        // repetido casaria por acidente.
+        ledge_grab: 0.45,
+        ledge_speed: 3.5,
         lift_momentum: 1.5,
         reaction_support: 1.0,
         reaction_movement: 0.0,
@@ -221,7 +226,7 @@ fn every_number_raises_its_own_edit() {
     // exatamente o arm esquecido que ela existe para pegar.
     assert_eq!(
         ph2d_panel_inspector::PLAYER_ROW_COUNT,
-        44,
+        46,
         "a tabela de rows cresceu; acrescente o numero novo a esta varredura"
     );
     for (id, v, edit) in [
@@ -376,6 +381,17 @@ fn every_number_raises_its_own_edit() {
             ids::INSP_PLAYER_SWIM_ENTER,
             0.6,
             PlayerFieldEdit::SwimEnter(0.6),
+        ),
+        // W-Ledge — a BEIRADA.
+        (
+            ids::INSP_PLAYER_LEDGE_GRAB,
+            0.55,
+            PlayerFieldEdit::LedgeGrab(0.55),
+        ),
+        (
+            ids::INSP_PLAYER_LEDGE_SPEED,
+            4.5,
+            PlayerFieldEdit::LedgeSpeed(4.5),
         ),
         (
             ids::INSP_PLAYER_MAX_SLOPE,

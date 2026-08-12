@@ -156,6 +156,21 @@ pub struct LedgeProbe {
 pub struct LedgeState {
     /// **Agarrado** — a TRAVA que faz de uma janela de dois tiques um gesto.
     pub hanging: bool,
+    /// **O botão de pulo estava apertado no tique anterior** — a BORDA sai daqui.
+    ///
+    /// # ⚠️ Sem ela o pendurar é INVISÍVEL, e está medido
+    ///
+    /// Chega-se a uma beirada a **pular contra ela**, ou seja com o botão já
+    /// preso. Um gatilho de NÍVEL faria o mesmo aperto que levou o personagem lá
+    /// mandá-lo subir no tique seguinte — medido na cena 111, ele acabava **de
+    /// pé no patamar** (topo 3,79) num roteiro que só pedia para se pendurar, e o
+    /// regime que esta wave existe para dar nunca aparecia na tela.
+    ///
+    /// ⚠️ É a MESMA razão do [`crate::JumpState::was_held`] e do
+    /// [`crate::DashState::was_held`], e o dono da borda tem de ser **esta** lei:
+    /// ela consome o botão antes do pulo, então uma borda derivada do lado de
+    /// fora leria um botão que já foi mascarado.
+    pub was_jump: bool,
     /// **O que falta do mantle:** `[atravessar (com sinal), subir]`, metros.
     ///
     /// ⚠️ **Uma sobra, e não um alvo em coordenadas de mundo:** o que o
@@ -251,9 +266,16 @@ pub fn ledge_step(
     up: Vec2,
     dt: f32,
 ) -> LedgeStep {
+    // ⚠️ **O botão é registado SEMPRE, mesmo no ramo inerte**, e é isso que faz
+    // da borda uma borda: quem chega à beirada a pular já tem o dedo em baixo, e
+    // um `was_jump` que só começasse a existir depois de agarrar leria esse
+    // mesmo aperto como um pedido de subir.
     let idle = LedgeStep {
         motor: Motor::default(),
-        state: LedgeState::default(),
+        state: LedgeState {
+            was_jump: jump,
+            ..LedgeState::default()
+        },
         active: false,
     };
     if !cfg.armed() {
@@ -265,6 +287,7 @@ pub fn ledge_step(
     if state.climbing() {
         let step = speed * dt.max(0.0);
         let mut next = state;
+        next.was_jump = jump;
         next.hanging = false;
         // ⚠️ **SUBIR primeiro, ATRAVESSAR depois** — a diagonal corta a quina.
         let dir = if next.climb[1] > 0.0 {
@@ -310,7 +333,8 @@ pub fn ledge_step(
         return idle;
     }
 
-    if jump {
+    // ⚠️ **A BORDA, e não o nível** — ver [`LedgeState::was_jump`].
+    if jump && !state.was_jump {
         // ⚠️ **A sobra é medida AGORA**, do que o sensor vê neste tique, e não
         // do que ele via quando o personagem se agarrou: o servo do pendurar
         // move o corpo, então a distância mudou.
@@ -318,6 +342,7 @@ pub fn ledge_step(
             motor: hold_at(body_velocity, [0.0, 0.0]),
             state: LedgeState {
                 hanging: false,
+                was_jump: jump,
                 climb: [p.across * p.side, p.rise],
             },
             active: true,
@@ -330,6 +355,7 @@ pub fn ledge_step(
         motor: hold_at(body_velocity, [up[0] * want, up[1] * want]),
         state: LedgeState {
             hanging: true,
+            was_jump: jump,
             climb: [0.0, 0.0],
         },
         active: true,

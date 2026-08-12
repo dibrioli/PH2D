@@ -80,6 +80,7 @@ fn the_servo_drives_the_top_of_the_body_to_the_lip() {
         &c,
         LedgeState {
             hanging: true,
+            was_jump: false,
             climb: [0.0; 2],
         },
         Some(&lip(0.0)),
@@ -93,6 +94,7 @@ fn the_servo_drives_the_top_of_the_body_to_the_lip() {
         &c,
         LedgeState {
             hanging: true,
+            was_jump: false,
             climb: [0.0; 2],
         },
         Some(&lip(0.1)),
@@ -103,6 +105,7 @@ fn the_servo_drives_the_top_of_the_body_to_the_lip() {
         &c,
         LedgeState {
             hanging: true,
+            was_jump: false,
             climb: [0.0; 2],
         },
         Some(&lip(-0.1)),
@@ -124,6 +127,7 @@ fn the_grab_needs_the_lip_overhead_but_the_hold_does_not() {
     let fresh = LedgeState::default();
     let held = LedgeState {
         hanging: true,
+        was_jump: false,
         climb: [0.0; 2],
     };
     assert!(
@@ -150,6 +154,7 @@ fn letting_go_is_the_absence_of_the_gesture() {
     let c = cfg();
     let held = LedgeState {
         hanging: true,
+        was_jump: false,
         climb: [0.0; 2],
     };
     let p = lip(0.1);
@@ -322,10 +327,90 @@ fn the_probe_is_only_wanted_where_the_law_can_act() {
     );
     let climbing = LedgeState {
         hanging: false,
+        was_jump: false,
         climb: [0.5, 0.5],
     };
     assert!(
         !ledge_probe_wanted(&c, false, 1.0, climbing),
         "a subida ja' sabe o que falta — o mundo nao lhe diz nada"
+    );
+}
+
+/// **O aperto que o levou ali NÃO o faz subir** — a borda.
+///
+/// ⚠️ **É o gate do defeito que a cena 111 expôs:** chega-se a uma beirada a
+/// pular contra ela, com o dedo já em baixo. Com um gatilho de NÍVEL o mesmo
+/// aperto mandava subir no tique seguinte, e o regime de pendurar — a metade
+/// que esta wave existe para dar — **nunca aparecia na tela** (medido: ele
+/// acabava de pé no patamar num roteiro que só pedia para se pendurar).
+#[test]
+fn holding_the_jump_that_brought_him_there_does_not_climb() {
+    let c = cfg();
+    let p = lip(0.2);
+    // O tique em que ele chega, com o botão JÁ preso desde o pulo.
+    let arrive = ledge_step(
+        &c,
+        LedgeState {
+            was_jump: true,
+            ..LedgeState::default()
+        },
+        Some(&p),
+        1.0,
+        true,
+        false,
+        false,
+        [0.0, -6.0],
+        UP,
+        DT,
+    );
+    assert!(
+        arrive.state.hanging && !arrive.state.climbing(),
+        "o aperto que o trouxe aqui pendura, nao sobe"
+    );
+    // Segurar mais não muda nada.
+    let holding = ledge_step(
+        &c,
+        arrive.state,
+        Some(&p),
+        1.0,
+        true,
+        false,
+        false,
+        [0.0; 2],
+        UP,
+        DT,
+    );
+    assert!(
+        holding.state.hanging && !holding.state.climbing(),
+        "e segurar tambem nao"
+    );
+    // Soltar e apertar DE NOVO sobe.
+    let released = ledge_step(
+        &c,
+        holding.state,
+        Some(&p),
+        1.0,
+        false,
+        false,
+        false,
+        [0.0; 2],
+        UP,
+        DT,
+    );
+    let pressed = ledge_step(
+        &c,
+        released.state,
+        Some(&p),
+        1.0,
+        true,
+        false,
+        false,
+        [0.0; 2],
+        UP,
+        DT,
+    );
+    assert!(
+        pressed.state.climbing(),
+        "um aperto NOVO e' o pedido de subir"
     );
 }

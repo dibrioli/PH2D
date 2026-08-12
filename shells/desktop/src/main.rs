@@ -395,6 +395,8 @@ mod transform_family_smoke;
 mod transport;
 /// A cena de smoke do Twist (o remoinho + o Falloff a modulá-lo) — irmão de `build_smoke`.
 mod twist_smoke;
+/// ⭐ O smoke da UI VIVA (`PH2D_UI_MOTION_SMOKE`) — o carácter e a corda.
+mod ui_motion_smoke;
 /// A cena de smoke da **HIERARQUIA** de estados (`PH2D_BUILD_SMOKE=64`) — irmã de `build_smoke`.
 mod ui_nested_smoke;
 /// A cena de smoke do **PAINEL GERADO** (`PH2D_BUILD_SMOKE=62`) — irmã de `build_smoke`.
@@ -693,6 +695,7 @@ impl App {
             timeline_onion_smoke_done: false,
             harmony_smoke_done: false,
             signal_smoke_done: false,
+            ui_motion_smoke_done: false,
             timescale_smoke_done: false,
             stagger_smoke_done: false,
             buffer_smoke_done: false,

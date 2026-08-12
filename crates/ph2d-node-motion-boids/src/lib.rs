@@ -437,6 +437,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // ADR-0155: this flock CONSUMES `accel`, so a `force.*` in its state chain
     // is live instead of inert — and the diagnose stops offering to splice a
     // `motion.integrate`, which is `Temporal` and would stamp `sim_t = playhead`
@@ -448,7 +449,25 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{ParamGroup, ParamHardMax, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{
+    ParamGroup, ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
+};
+
+/// **O que os números deste nó SÃO** (doc 88 Wave A) — nunca como se mostram.
+///
+/// A convenção da família está escrita no irmão `motion.collide`: só se declara o que é
+/// **coordenada ou distância de MUNDO**; peso, fração, taxa e contagem ficam nus de propósito,
+/// porque *uma unidade errada é pior que uma ausente* — o artista lê um número pelado, e um
+/// rotulado errado ensina-lhe algo falso.
+///
+/// ⚠️ **E é por isso que `max_speed` e `max_force` NÃO são declarados:** eles são uma
+/// velocidade (mundo por segundo) e uma aceleração (mundo por segundo²), e o `ParamUnit` **não
+/// tem variante para nenhuma das duas**. Marcá-los `Length` seria exactamente a mentira que a
+/// regra acima proíbe; o vão fica visível, que é o que o próprio enum prescreve.
+static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
+    param: "radius",
+    unit: ParamUnit::Length,
+}];
 /// **O teto DURO de `count` — MEDIDO NO DEVICE** (doc 88 A1 · doc 89 W1 · §0), enquanto o slider
 /// fica nos 500 que cobrem a autoria confortável por arrasto.
 ///
@@ -492,10 +511,49 @@ use ph2d_node_registry::{ParamGroup, ParamHardMax, ParamUiHint, ParamWidget};
 /// quadro): 1..500 dá ~2,5 agentes por pixel de arrasto contra um default de 48, e uma pista até
 /// 8.000 tornaria a contagem comum imprecisa de autorar. Quem quer a escala DIGITA — o par
 /// slider/chip do doc 88 B2.
-static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
-    param: "count",
-    max: 1_048_576.0,
-}];
+/// ⚠️ **E os outros dois tetos desta lista têm mecanismos DIFERENTES do `count`** (sonda
+/// `measure_boids_ceiling`, doc 89 folha 03 linha 44).
+///
+/// **`max_speed` = 1e20 — a parede de REPRESENTAÇÃO**, a mesma que o `motion.verlet_rope`
+/// encontrou em `gravity` e `length`: o que estoura não é o param, é a POSIÇÃO em `f32`.
+/// Medido, o espalhamento do bando contra o raio de percepção: vivo em `1e20` (7,93e17) e
+/// **`inf` em `1e21`**.
+///
+/// ⚠️ **Mas a fronteira ÚTIL é muito antes, e ela é uma RAZÃO, não um número:** um bando
+/// sobrevive enquanto o passo por tique não passa do próprio raio de percepção — acima disso
+/// cada agente chega onde já não vê ninguém. Medido com `radius = 2` e o pior `dt`:
+///
+/// | max_speed | passo/raio | espalhamento/raio | ainda bando? |
+/// |---|---|---|---|
+/// | 20 | **1,0** | 2,62 | sim |
+/// | 1.000 | 50 | 307,6 | não |
+/// | 1e6 | 5e4 | 1,6e5 | não |
+///
+/// O teto **não** é esse ponto, e de propósito: ele é `radius / dt`, ou seja **função de outro
+/// param**, e o pior caso (o menor raio autorável) daria um número perto de zero, roubando a
+/// faixa inteira. Um bando espalhado é **visível e reversível**; o que o teto tem de tornar
+/// inalcançável é o `inf`.
+///
+/// **`max_force` = 90 — o teto é a INÉRCIA**, a mesma lei do `iterations` do `motion.collide`:
+/// ele é um CLAMP, então acima da maior magnitude que o steering pode ter ele **não faz mais
+/// nada**. Medido com os quatro pesos no MÁXIMO do slider (o pior caso honesto, porque são eles
+/// que decidem essa magnitude): `90` ainda morde, e **`95`, `100`, `1e4` e `1e21` saem byte a
+/// byte iguais entre si — e iguais a `max_force = 0`, que é o DESLIGADO**. Um número que o
+/// artista digita e que devolve o mesmo mundo que desligar o controle é um controle que mente.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "count",
+        max: 1_048_576.0,
+    },
+    ParamHardMax {
+        param: "max_speed",
+        max: 1e20,
+    },
+    ParamHardMax {
+        param: "max_force",
+        max: 90.0,
+    },
+];
 
 /// As SEÇÕES deste nó (doc 88 B3). Nove sliders numa lista plana escondem que eles respondem
 /// a três perguntas diferentes — e as três pesos clássicos do boids (separação, alinhamento,

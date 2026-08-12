@@ -538,6 +538,11 @@ mod verb_hook;
 #[path = "verb_turn_tests.rs"]
 mod verb_turn;
 
+/// O APLICADOR ÚNICO, e a identidade em que o peso-no-alvo se apoia — ver o
+/// cabeçalho dele.
+#[path = "stroke_apply_tests.rs"]
+mod stroke_apply;
+
 /// ⚠️ **RED-FIRST da W4.2, e o defeito é de COSTURA e não de kernel.** Um traço
 /// de máscara escreve um canal por vértice e **não move geometria**, então ele
 /// esquece a região refrescada de propósito (não há normal nova a subir). Quem

@@ -586,25 +586,66 @@ impl SculptStroke {
             let s = self.slot[vi] as usize;
             let (b, t, a) = (self.base_pos[s], self.target[s], self.accum[s]);
             out[vi] = [
-                b[0] + (t[0] - b[0]) * a,
-                b[1] + (t[1] - b[1]) * a,
-                b[2] + (t[2] - b[2]) * a,
+                toward(b[0], t[0], a),
+                toward(b[1], t[1], a),
+                toward(b[2], t[2], a),
             ];
         }
     }
 
-    /// A MESMA lei, no canal da máscara: `lerp(base, alvo, accum)`, onde o alvo
-    /// é `1` (mascarar) ou `0` (limpar). Um verbo, uma aritmética.
+    /// A MESMA lei, no canal da máscara: [`toward`] entre o `base` e o alvo, onde
+    /// o alvo é `1` (mascarar) ou `0` (limpar). Um verbo, uma aritmética.
     fn apply_mask(&self, mesh: &mut Mesh, brush: &Brush) {
         let goal = if brush.invert { 0.0 } else { 1.0 };
         let out = mesh.masks_mut();
         for &v in &self.moved {
             let vi = v as usize;
             let s = self.slot[vi] as usize;
-            let (b, a) = (self.base_mask[s], self.accum[s]);
-            out[vi] = b + (goal - b) * a;
+            out[vi] = toward(self.base_mask[s], goal, self.accum[s]);
         }
     }
+}
+
+/// **O APLICADOR** — de `b` para `t`, andando a fração `a`.
+///
+/// ⚠️ **Ele é ancorado no ALVO, e não no `base`.** A forma óbvia — `b + (t−b)·a`,
+/// que esteve aqui até 2026-08-11 — e esta são a mesma coisa em aritmética
+/// exata, e **nenhuma das três formas possíveis é exata nas três pontas que
+/// importam**. Medido em 400 mil pares, contando divergências:
+///
+/// | forma | `a = 1` → `t` | `a = 0` → `b` | `t = b` → parado |
+/// |---|---|---|---|
+/// | `b + (t−b)·a` | **139 522** | 0 | 0 |
+/// | `b·(1−a) + t·a` | 0 | 0 | **53 315** |
+/// | `t − (t−b)·(1−a)` | 0 | **139 697** | 0 |
+///
+/// A escolha não é de gosto: é de **quais promessas o produto faz**.
+///
+/// - **`a = 1` devolve `t`** — o [`Grip::Hook`] e o [`Grip::Turn`] põem o peso
+///   DENTRO do alvo e carimbam `accum = 1`, então para eles o alvo **é** a
+///   posição final. Sem esta exatidão a paridade bit-a-bit com o kernel da
+///   referência morre **no aplicador**, e nenhum gate de verbo saberia dizer:
+///   todos medem deslocamento com tolerância. Um gate do produto pegou um Twist
+///   escrevendo `1,3164502e-8` onde o alvo dizia `1,3164501e-8`.
+/// - **`t = b` não move nada** — o `Fill` e o `Scrape` devolvem o próprio `base`
+///   para o lado errado do plano, e o `Move` sem gesto devolve `base` para toda
+///   a pegada. É uma promessa que o artista vê: *este verbo não toca aquele
+///   lado*. A segunda forma a quebra, e o gate `a_dab_with_no_gesture_moves_
+///   nothing` ficou VERMELHO nela.
+/// - **`a = 0` devolve `b`** — é a que sobra, e é a que o produto **não usa**:
+///   `apply_positions` percorre `moved`, e um vértice só entra ali com `w > 0`.
+///
+/// ⚠️ **E a medição de projeto que dizia que a forma antiga bastava era do
+/// REGIME ERRADO.** Eu havia medido `b + (t−b)·1 == t` em 9 M pares gerados como
+/// `t = fl(b + d)`, onde a subtração é uma transformação livre de erro e a
+/// identidade é **garantida por construção**. O alvo do produto não nasce assim:
+/// ele é uma expressão inteira (uma rotação de Rodrigues, uma projeção em plano)
+/// arredondada **uma vez** ao `f32`, e contra o `base` ele é um float
+/// independente. *Uma fixture que fabrica o valor pela mesma aritmética que vai
+/// testar não contém o fenômeno.*
+#[inline]
+fn toward(b: f32, t: f32, a: f32) -> f32 {
+    t - (t - b) * (1.0 - a)
 }
 
 /// **A MALHA CRESCEU DEBAIXO DO TRAÇO** — o refino e a lei do `pre`.

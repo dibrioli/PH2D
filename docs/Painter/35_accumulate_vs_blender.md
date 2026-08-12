@@ -247,10 +247,54 @@ medido no perfil perpendicular: **as quatro linhas de `strength 1.0` não movera
 não existe porque o defeito não existe (§1). O que fica é o gate
 `at_full_strength_the_two_laws_are_the_same_law`, que afirma a coincidência.
 
-### ⏳ D3 — é o que sobra, e é a wave do doc 20
+### ⏳ D3 — é o que sobra, e ela ficou MUITO mais barata
 
-O desenho está completo no [doc 20 §9.1/§12/§13](20_accumulate_na_mesma_pincelada.md): acumular a
-**CARGA** (não a altura, que assaria o Depth) num plano próprio, com o ciclo de vida no mesmo commit.
+O desenho está no [doc 20 §9.1/§12/§13](20_accumulate_na_mesma_pincelada.md): acumular a **CARGA**
+(não a altura, que assaria o Depth).
+
+⚠️ **E a metade CARA daquele plano dissolveu na varredura de consumidores (2026-08-12).** O §12 do
+doc 20 diz *"acumular dentro de `fields.paint` não funciona (clampado)"* e conclui que a feature
+precisa de um **plano novo**, cujo custo *"não é a alocação, é o CICLO DE VIDA"* (snapshot, restore,
+commit, undo — a cicatriz do `mats`). Medido: **o clamp mora dentro do `derive_height`, que é o
+FUNIL ÚNICO do plano.** A varredura de todos os leitores de `paint[i]` na árvore dá:
+
+| leitor | o que faz com `paint[i]` |
+|---|---|
+| `impasto.rs:527` · `impasto_live.rs:230` | `derive_height(spec, paint[i], grain)` |
+| `height_walk.rs:257/296/298` | o próprio envelope + a mordida do Push |
+| `height_push.rs` (4 sítios) | **já `.clamp(0.0, 1.0)`** |
+| a fusão em `covers` (`impasto_live.rs:65`) | lê o **`film`**, nunca o `paint` |
+
+⇒ Um `paint > 1` **não alcança nada que não o clampe**, exceto o `derive_height` — e é exatamente
+lá que a extensão tem de estar. Isso troca *"plano novo + ciclo de vida em 8 sítios"* por
+**uma função estendida + um ramo no walk**, e — de graça — o card Body continua **VIVO** no modo
+acumulativo, porque os ingredientes armazenados seguem sendo `paint`/`grain`/`radius`.
+
+A extensão é: `m ≤ 1` **inalterado** (byte-idêntico, e é o que torna o OFF gratuito); `m > 1` cresce
+**linearmente** (`a = a(1) + (m − 1)`), que é o platô continuar engordando.
+
+⚠️ **O que FALTA é uma decisão de produto, e ela é a mesma que o doc 20 §6 previu.** A lei do arco
+é `L = Σ (perfil · Δs) / NORM`, com `NORM = 2∫₀^ρ perfil` (assim UMA passada reta tem exatamente o
+pico de hoje — o gate que torna o toggle honesto). Ela satisfaz I1 e I2. Mas `Δs` é **distância
+percorrida**, então:
+
+- **um TAP deposita ZERO** (`Δs = 0`), e um pincel que não carimba parado é uma ferramenta quebrada;
+- **o AIRBRUSH parado deposita ZERO** pelo mesmo motivo (ele emite dabs no tempo, não no espaço).
+
+Duas saídas, e **a escolha é do Enio**: **(i)** o 1º dab de um traço recebe `Δs = espaçamento
+nominal` (um tap deposita "uma unidade de espaçamento" — fino, mas não nulo); **(ii)** a integral é
+de **relógio de parede**, que resolve os dois casos e **viola I2** (o tempo não é propriedade do
+caminho ⇒ um shape editor que re-carimba a figura a cada quadro não reproduz o mesmo relevo).
+
+**Minha recomendação é (i)**, com a consequência NOMEADA: sob Accumulate um toque é mais fino que
+sob o envelope, e quem quer o toque grosso desliga o flag.
+
+⚠️ **E há um segundo detalhe do kernel que a lei do arco exige:** em modo acumulativo o corpo **não
+pode ser varrido** (a cápsula). A cápsula existe para tornar o *envelope* independente do
+espaçamento; sob a integral quem faz isso é o `Δs`, e manter as duas **conta duas vezes** (o texel
+somaria `perfil(d) · comprimento_do_traço`, que cresce sem limite com um traço reto longo). No ramo
+acumulativo o `sweep` é `None` — o perfil volta a ser a distância ao CENTRO, que é o que a integral
+de linha pede.
 
 ⚠️ **A bifurcação do doc 20 §6 pode ser RESOLVIDA pelos invariantes, e eu recomendo resolvê-la
 assim:** *arco puro* satisfaz I1 **e** I2 (a integral é função do caminho, logo idempotente sob

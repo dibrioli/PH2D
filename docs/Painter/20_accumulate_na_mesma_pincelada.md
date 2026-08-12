@@ -200,6 +200,18 @@ alguém a "conserta".
 
 ## 12. Onde o acumulador mora — a última peça, e ela custa
 
+> ⚠️ **CORRIGIDO em 2026-08-12 por VARREDURA DE CONSUMIDORES — a "última peça" custa muito menos do
+> que esta seção afirma.** O parágrafo abaixo conclui que a feature precisa de um **plano novo**, e
+> que o caro nele é o CICLO DE VIDA (snapshot, restore, commit, undo). A premissa era *"acumular
+> dentro de `fields.paint` não funciona (clampado)"* — e o clamp mora **dentro do `derive_height`**,
+> que é o **funil único** daquele plano. Varridos TODOS os leitores de `paint[i]` na árvore: os dois
+> de produto passam pelo `derive_height`; os quatro do `height_push` **já clampam**; e a fusão em
+> `covers` lê o `film`, não o `paint`. ⇒ um `paint > 1` não alcança nada que não o clampe, então
+> **não há plano novo e não há ciclo de vida** — há uma função estendida (`m ≤ 1` inalterado,
+> `m > 1` linear) e um ramo no walk. E o card Body continua VIVO de graça, porque os ingredientes
+> armazenados seguem sendo `paint`/`grain`/`radius`. Detalhe e a tabela dos leitores no
+> [doc 35 §6/D3](35_accumulate_vs_blender.md).
+
 `derive_height` abre com `let m = paint.clamp(0.0, 1.0)` — **satura em 1 e não é linear em `m`**. Então:
 
 * ❌ acumular dentro de `fields.paint` **não funciona** (clampado);

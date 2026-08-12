@@ -87,11 +87,26 @@ const WALK_ROWS: [PlayerRow; 4] = [
 
 /// **PULAR** (W4) — ⚠️ o primeiro é o único que o artista pensa; os seis
 /// multiplicadores são o TATO, e o `1.0` de cada um é a gravidade do mundo.
-const JUMP_ROWS: [PlayerRow; 7] = [
+const JUMP_ROWS: [PlayerRow; 9] = [
     (
         "Jump Height (m)",
         ids::INSP_PLAYER_JUMP_HEIGHT,
         "How high a full jump reaches, in metres.",
+    ),
+    // ⚠️ **Os dois do ar ficam LOGO ABAIXO do primeiro pulo, e não no fim do
+    // card:** a pergunta que eles respondem é *quantos pulos, e de que altura*,
+    // que é a mesma pergunta da linha de cima. Enterrá-los depois dos seis
+    // multiplicadores de tato faria o artista procurá-los no card do perdão.
+    (
+        "Air Jumps",
+        ids::INSP_PLAYER_AIR_JUMPS,
+        "Extra jumps after leaving the ground. 0 turns it off; they refill on landing.",
+    ),
+    (
+        "Air Jump Height (m)",
+        ids::INSP_PLAYER_AIR_JUMP_H,
+        "How high an AIR jump reaches, in metres. Same as above is the Celeste feel; \
+         lower is Hollow Knight.",
     ),
     (
         "Takeoff Gravity",

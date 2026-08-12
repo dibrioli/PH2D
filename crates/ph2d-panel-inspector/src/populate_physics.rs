@@ -275,6 +275,13 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         // O PULO (W4). A altura em METROS, que é o que o artista pensa; os seis
         // multiplicadores em fração de gravidade, onde `1.0` é a do mundo.
         (ids::INSP_PLAYER_JUMP_HEIGHT, 2.0, 0.0, 1000.0, 0.1), // LITERAL-PX-OK: metres
+        // ⚠️ **O teto de 8 NÃO é limite de recurso, e o §0 exige que isso esteja
+        // escrito:** um contador de pulos custa uma comparação por tique e mora
+        // num `u32` — nada se esgota. 8 é folga larga sobre o catálogo inteiro
+        // (Celeste 1, Hollow Knight 1, Rayman 1, os "infinitos" são cheat), e a
+        // caixa de texto continua aceitando o que o artista digitar.
+        (ids::INSP_PLAYER_AIR_JUMPS, 0.0, 0.0, 8.0, 1.0), // LITERAL-PX-OK: count
+        (ids::INSP_PLAYER_AIR_JUMP_H, 2.0, 0.0, 1000.0, 0.1), // LITERAL-PX-OK: metres
         // ⚠️ Os multiplicadores NÃO têm teto de recurso: o piso é 0 (gravidade
         // nenhuma naquela fase) e o topo é onde o desenho deixa de ser um pulo,
         // que é decisão de LOOK e não um limite físico. 20 é folga de sobra

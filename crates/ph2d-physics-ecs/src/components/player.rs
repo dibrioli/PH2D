@@ -68,6 +68,13 @@ pub struct PlatformPlayer {
 
     /// A altura de um pulo COMPLETO, metros — **com gravidade neutra** (W4).
     pub jump_height: f32,
+
+    /// **Quantos pulos DEPOIS de sair do chão** (`W-MultiJump`) — `0` desliga, e
+    /// desligado é byte-idêntico ao mundo anterior. Recarrega no chão.
+    pub air_jumps: u32,
+    /// **A altura de um pulo do AR**, metros — a mesma régua do
+    /// [`Self::jump_height`], e um fato AUTORADO separado dele.
+    pub air_jump_height: f32,
     /// Multiplicador de gravidade na saída, acima de [`Self::takeoff_speed`].
     pub takeoff_gravity: f32,
     /// A velocidade acima da qual a gravidade de saída age, m/s.
@@ -279,6 +286,8 @@ impl PlatformPlayer {
             },
             jump: JumpConfig {
                 jump_height: self.jump_height,
+                air_jumps: self.air_jumps,
+                air_jump_height: self.air_jump_height,
                 takeoff_gravity: self.takeoff_gravity,
                 takeoff_speed: self.takeoff_speed,
                 peak_gravity: self.peak_gravity,
@@ -345,6 +354,8 @@ impl Default for PlatformPlayer {
             takeoff_gravity: c.jump.takeoff_gravity,
             takeoff_speed: c.jump.takeoff_speed,
             peak_gravity: c.jump.peak_gravity,
+            air_jumps: c.jump.air_jumps,
+            air_jump_height: c.jump.air_jump_height,
             peak_speed: c.jump.peak_speed,
             fall_gravity: c.jump.fall_gravity,
             cut_gravity: c.jump.cut_gravity,

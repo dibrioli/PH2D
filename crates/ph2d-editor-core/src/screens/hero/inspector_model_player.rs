@@ -91,6 +91,11 @@ pub struct InspectorPlayerInfo {
     pub fall_gravity: f32,
     /// Multiplicador enquanto sobe com o botão solto — a altura variável.
     pub cut_gravity: f32,
+    /// **Air Jumps** (`W-MultiJump`) — a CONTAGEM, como float porque a row é um
+    /// campo numérico como todos os irmãos.
+    pub air_jumps: f32,
+    /// **Air Jump Height** (`W-MultiJump`), metros.
+    pub air_jump_height: f32,
     /// **Coyote Time** (W8), segundos.
     pub coyote_time: f32,
     /// **Jump Buffer** (W8), segundos.
@@ -227,6 +232,10 @@ pub enum PlayerFieldEdit {
 
     /// A altura de um pulo COMPLETO, metros (W4).
     JumpHeight(f32),
+    /// **Quantos pulos DEPOIS do chão** (`W-MultiJump`) — `0` desliga.
+    AirJumps(f32),
+    /// **A altura de um pulo do AR**, metros (`W-MultiJump`).
+    AirJumpHeight(f32),
     /// Multiplicador de gravidade na saída.
     TakeoffGravity(f32),
     /// A velocidade acima da qual a gravidade de saída age.

@@ -413,7 +413,14 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// (`measure_what_a_single_ground_ray_costs_over_a_gap`). Um projeto salvo em
 /// v72 reabre com a perna em leque, que é a correção.
 ///
-const PROJECT_SCHEMA: u32 = 73;
+/// v74 (physics, W-MultiJump — O PULO MÚLTIPLO): o `PlatformPlayer` ganhou
+/// `air_jumps` + `air_jump_height`, no MEIO do struct (logo depois do
+/// `jump_height`, que é onde eles se leem), e o postcard é posicional ⇒ quebra
+/// dura. ⚠️ **Este degrau NÃO move física:** a contagem nasce em `0`, que é a
+/// capacidade DESLIGADA — o precedente do wall slide e do wall jump —, então um
+/// projeto salvo em v73 reabre com o pulo exatamente como estava.
+///
+const PROJECT_SCHEMA: u32 = 74;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

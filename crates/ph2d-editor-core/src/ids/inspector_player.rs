@@ -156,6 +156,12 @@ pub const INSP_PLAYER_FALL_G: NodeId = hash_node_id("insp_player_fall_g");
 /// comentário nenhum*.
 pub const INSP_PLAYER_CUT_G: NodeId = hash_node_id("insp_player_cut_g");
 
+/// **Air Jumps** (`W-MultiJump`) — quantos pulos o personagem tem depois de
+/// sair do chão. `0` desliga a capacidade.
+pub const INSP_PLAYER_AIR_JUMPS: NodeId = hash_node_id("insp.player.air.jumps");
+/// **Air Jump Height** (`W-MultiJump`) — METROS, a mesma régua do primeiro pulo.
+pub const INSP_PLAYER_AIR_JUMP_H: NodeId = hash_node_id("insp.player.air.jump.h");
+
 /// **Coyote Time** (W8) — segundos de perdão depois de sair do chão.
 pub const INSP_PLAYER_COYOTE: NodeId = hash_node_id("insp.player.coyote");
 /// **Jump Buffer** (W8) — segundos que um aperto cedo demais sobrevive.

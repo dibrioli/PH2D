@@ -89,6 +89,13 @@ pub(crate) fn build_player_info(
         air_acceleration: p.air_acceleration,
         max_slope_deg: p.max_slope_deg,
         jump_height: p.jump_height,
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "a contagem de pulos do ar cabe num f32 exato muito além de \
+                      qualquer valor autorável"
+        )]
+        air_jumps: p.air_jumps as f32,
+        air_jump_height: p.air_jump_height,
         takeoff_gravity: p.takeoff_gravity,
         takeoff_speed: p.takeoff_speed,
         peak_gravity: p.peak_gravity,
@@ -168,6 +175,22 @@ fn clamp_samples(v: f32, max: usize) -> u16 {
     let n = v.round().clamp(1.0, f32::from(max));
     // Seguro: `n` está clampado a `[1, max]` e `max` cabe num `u16`.
     n as u16
+}
+
+/// **Uma CONTAGEM autorada por um campo numérico** — arredonda, recusa não-finito
+/// e nunca é negativa.
+///
+/// ⚠️ **Sem teto, e é o §0:** ao contrário do [`clamp_samples`], aqui não há
+/// recurso que se esgote — um contador de pulos do ar custa uma comparação por
+/// tique. A faixa do slider é conforto de arrasto; a caixa de texto aceita o que
+/// o artista escrever.
+fn round_count(v: f32) -> u32 {
+    if !v.is_finite() {
+        return 0;
+    }
+    let n = v.round().clamp(0.0, f32::from(u16::MAX));
+    // Seguro: `n` está clampado a `[0, 65535]`.
+    n as u32
 }
 
 /// **Aplica uma edição da §14.** Sem fan-out — a seção descreve UM personagem.
@@ -294,6 +317,11 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         PlayerFieldEdit::AirAcceleration(v) => p.air_acceleration = v.max(0.0),
         PlayerFieldEdit::MaxSlopeDeg(v) => p.max_slope_deg = v.clamp(0.0, 90.0),
         PlayerFieldEdit::JumpHeight(v) => p.jump_height = v.max(0.0),
+        // ⚠️ **Arredonda, não trunca:** a row é um campo numérico e o artista
+        // que arrasta pousa em `0,999…`; truncar daria zero — a capacidade
+        // desligada com o slider visivelmente em 1.
+        PlayerFieldEdit::AirJumps(v) => p.air_jumps = round_count(v),
+        PlayerFieldEdit::AirJumpHeight(v) => p.air_jump_height = v.max(0.0),
         // ⚠️ Os multiplicadores só têm PISO. Um teto aqui seria um número que
         // eu escolheria sem medir nada — o topo é onde o desenho deixa de ser
         // um pulo, e isso é decisão de LOOK; o range do slider já é a resposta

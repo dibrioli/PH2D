@@ -306,10 +306,14 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // porque sao UM assunto: a geometria das amostras dos sensores, que era
         // `const` e passa a ser autorada. ⚠️ Os defaults sao as consts de sempre,
         // entao todo player ja' salvo fica byte-identico.
+        // PROJECT 73→74: `PlatformPlayer` ganhou `air_jumps` + `air_jump_height`
+        // (W-MultiJump — O PULO MULTIPLO), no MEIO do struct. ⚠️ A contagem
+        // nasce em 0 (capacidade DESLIGADA), entao nenhum player ja' salvo muda
+        // de comportamento — o degrau e' so' o layout.
         // ⚠️ **PROVISÓRIO:** o valor se CONTA contra o `main` do dia da
         // integração — três linhas já colidiram neste número por o terem
         // escolhido, e a última vez o certo não estava em nenhum dos dois lados.
-        (73, 13, 14),
+        (74, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

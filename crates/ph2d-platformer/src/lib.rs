@@ -321,11 +321,14 @@ pub fn player_motor(
     // o que o `jump_step` também consulta. Duas cópias do predicado dariam um
     // tique em que o pulo recarrega o coyote e o arranque não recarrega a carga.
     let grounded = state.jump.on_ground(footing);
-    // ⚠️ **Um pulo de QUALQUER tipo cancela o arranque**, e a pergunta é a
-    // TRANSIÇÃO para o ar — não o `jump.takeoff`, que é só a decolagem do chão e
-    // deixaria de fora precisamente o pulo de parede, o gesto que mais se
-    // encadeia com um arranque.
-    let jumped = !state.jump.airborne && jump.state.airborne;
+    // ⚠️ **Um pulo de QUALQUER tipo cancela o arranque**, e quem responde é o
+    // PRÓPRIO passo do pulo — não o `jump.takeoff` (que é só a decolagem do
+    // chão, e deixaria de fora o pulo de parede) e **não mais** a transição
+    // `!antes.airborne && depois.airborne`: essa era exata enquanto todo pulo
+    // começava com o pé em algo, e um pulo do AR acontece com `airborne` já
+    // verdadeiro ⇒ o proxy dizia *não* justamente no gesto que mais se encadeia
+    // com um arranque (`W-MultiJump`).
+    let jumped = jump.jumped;
     let dash = dash::dash_step(
         &cfg.dash,
         state.dash,

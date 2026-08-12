@@ -57,6 +57,8 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
                 ids::INSP_PLAYER_ACCEL => Some(PlayerFieldEdit::Acceleration(v)),
                 ids::INSP_PLAYER_AIR_ACCEL => Some(PlayerFieldEdit::AirAcceleration(v)),
                 ids::INSP_PLAYER_JUMP_HEIGHT => Some(PlayerFieldEdit::JumpHeight(v)),
+                ids::INSP_PLAYER_AIR_JUMPS => Some(PlayerFieldEdit::AirJumps(v)),
+                ids::INSP_PLAYER_AIR_JUMP_H => Some(PlayerFieldEdit::AirJumpHeight(v)),
                 ids::INSP_PLAYER_TAKEOFF_G => Some(PlayerFieldEdit::TakeoffGravity(v)),
                 ids::INSP_PLAYER_TAKEOFF_SPEED => Some(PlayerFieldEdit::TakeoffSpeed(v)),
                 ids::INSP_PLAYER_PEAK_G => Some(PlayerFieldEdit::PeakGravity(v)),

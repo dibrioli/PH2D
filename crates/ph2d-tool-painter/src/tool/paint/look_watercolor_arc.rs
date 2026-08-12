@@ -185,6 +185,24 @@ fn probe_watercolor_arc() {
 /// faixa (a dezenas de texels de qualquer contorno) e a **largura** da transicao 10%-90% desse
 /// flanco. Nao ha quina, nao ha vao, nao ha segunda borda dentro da amostra.
 ///
+/// # A TABELA, medida na coluna limpa e com o motor INTEIRO
+///
+/// ```text
+///   dilution   flow   alfa MIOLO   y10%   y90%   BANDA (px)
+///       0,00   1,00        0,880     23     31            8
+///       0,15   0,85        0,880     24     33            9
+///       0,30   0,70        0,880     26     37           11
+///       0,45   0,55        0,876     28     42           14
+///       0,60   0,40        0,733     31      -   nunca fecha
+/// ```
+///
+/// O miolo fica PLANO ate D0,45 e so cede em 0,60; o que a dilucao move e a BANDA, monotonica,
+/// ate o flanco deixar de alcancar 90% em lugar nenhum. ⚠️ Uma versao anterior desta tabela
+/// dizia `6 / 7 / 13` e *"de D0,45 em diante nunca alcanca 90%"*: aqueles numeros sairam da
+/// coluna `x = 64`, que esta DENTRO do alcance do traco vertical. A troca para `x = 40` e a
+/// unica diferenca — o backrun e inerte aqui, e a prova e a linha D0,00, onde `water = dilution`
+/// vale zero nos dois casos e o numero ainda assim se move.
+///
 /// ⚠️ **E a previsao aritmetica que eu escrevi aqui foi DERRUBADA pela primeira corrida.** Eu
 /// previa que a dilucao empurrasse o miolo para o pe do `smoothstep(SS0, SS1, coverage x flow)`
 /// e que o alfa interior caisse de 0,62 para 0,11; medido, ele fica em **0,912 em toda a faixa

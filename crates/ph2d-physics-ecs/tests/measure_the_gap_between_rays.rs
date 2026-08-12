@@ -45,8 +45,8 @@ fn measure_the_ceiling_that_fits_between_the_rays() {
     const BOTTOM: f32 = 1.25;
     eprintln!("\n== O TETO ENTRE OS RAIOS (os raios nasciam em -0.20, 0.00, +0.20) ==");
     eprintln!("(pilar com a face de baixo em {BOTTOM:.2}; de pe' a cabeca chegaria a 1.60)\n");
-    eprintln!("| pilar x | meia-larg | cobria um raio? | topo da cabeca | x final | veredito |");
-    eprintln!("|---------|-----------|-----------------|----------------|---------|----------|");
+    eprintln!("| pilar x | meia-largura | cobria um raio? | topo da cabeca | x final | veredito |");
+    eprintln!("|---------|--------------|-----------------|----------------|---------|----------|");
     for (x, half) in [
         (0.0_f32, 0.05_f32), // sobre o raio do MEIO
         (0.20, 0.05),        // sobre o raio da BORDA

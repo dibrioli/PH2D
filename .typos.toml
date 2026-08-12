@@ -45,6 +45,14 @@ extend-ignore-identifiers-re = [
     # ⚠️ Estes três já estavam VERMELHOS no `main` antes desta janela — são
     # latentes da integração anterior, não das linhas que os drenaram.
     "^pilar$",
+    # `PILAR` — a MESMA palavra do `^pilar$` acima, em CAIXA ALTA. As entradas
+    # desta lista são regexes **sensíveis a maiúsculas**, e este codebase usa
+    # caixa alta para ênfase em doc-comment (*"a cena do PILAR ESTREITO"*), então
+    # a entrada minúscula não a cobria. ⚠️ Entrada NOVA em vez de reescrever a de
+    # cima: esta é uma lista COMPARTILHADA, e um `(?i)` na linha existente
+    # arriscaria perder, num merge, o que outra linha lhe tenha acrescentado.
+    # (2026-08-12, `W-ShapeCast` da `line/physics`.)
+    "^PILAR$",
     "^espace$",
     "^continuasse$",
     # `inh` — the IN-handle of a Hobby-spline vertex (`ph2d-vec-edit::hobby`),

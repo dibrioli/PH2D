@@ -785,10 +785,8 @@ fn does_the_accumulate_switch_do_anything_verb_by_verb() {
     use ph2d_sculpt3d::Grip;
     const R: f32 = 0.45;
     const PASSES: usize = 4;
-    // O mesmo raio do gate que já mede este mecanismo.
-    #[allow(clippy::items_after_statements)]
 
-    println!("\n== O ACCUMULATE, verbo a verbo ({PASSES} esfregadas no MESMO lugar) ==");
+    println!("\n== O ACCUMULATE, verbo a verbo ({PASSES} passadas pelo MESMO caminho) ==");
     println!(
         "{:<12} {:>8} {:>14} {:>14} {:>10}",
         "verbo", "grip", "desarmado", "armado", "razão"

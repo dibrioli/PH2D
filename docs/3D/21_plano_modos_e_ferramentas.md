@@ -342,8 +342,8 @@ Toda wave fecha com smoke próprio e não deixa knob morto atrás.
 
 | # | wave | entrega | depende de |
 |---|---|---|---|
-| **W0** | **A espinha** | `RefMode` · `VerbProfile` · a tabela · o dropdown · o botão *apply to all* · o chip Basic/Pro. **Zero mudança de comportamento: `S` ≡ hoje, ao bit** | — |
-| **W1** | **Os defaults (D1-D4)** | os perfis `S` e `B` completos: curva · força · raio · sinal · accumulate. **Nenhum kernel novo, e é o maior ganho visível do estudo** | W0 |
+| **W0** | ✅ **A espinha — LANDOU** (`8b207e505` + `f4677c8cd`) | `RefMode` · `VerbProfile` · a tabela `S` lida das fontes · `default_strength`/`_accumulate`/`_falloff`/`_radius_px` **delegam** · a porta única `arm_verb_defaults` arma os **quatro**. 11 gates, 4 mutações provadas | — |
+| **W1** | **A UI e o perfil `B`** | o dropdown · o *apply to all* · o chip Basic/Pro · o perfil `B` (o que dele não pede kernel novo) | W0 |
 | **W2** | **Os knobs de Pro** | as rows condicionais por tool (`show:` já existe): Hardness · Normal Radius · Plane Trim · Auto-Smooth · Front-Face · Strength Curve | W1 |
 | **W3** | **Os kernels divergentes baratos** | E5 lado do plano · E11 `normal_radius_factor` · E12 front-face contínuo · E13 `strength²` · E14 hardness · E8 direção · E9 espaço do pinch · E10 normal viva | W2 |
 | **W4** | **O Smooth que não encolhe** | l-mode **HC** · Taubin λ\|μ · **Surface Smooth** · **Slide Relax** · o laplaciano por **cotangentes** | W1 |
@@ -355,6 +355,33 @@ Toda wave fecha com smoke próprio e não deixa knob morto atrás.
 | **W10** | **A FÍSICA** | **Cloth** (XPBD) + **Cloth Filter** (5) | W9 |
 | **W11** | **Handles** | **Pose** · **Boundary** · Nudge · Thumb | W5 |
 | **W12** | **A GEODÉSICA** | Heat Method na PEGADA → l-mode de falloff para a família inteira | W6 |
+
+⚠️ **A W0 MUDA o desenho, e a frase que eu ia escrever — *"zero mudança, `S` ≡
+hoje ao bit"* — era FALSA.** Hoje o app roda o **kernel** do SculptGL (medido:
+1,00× a `5,960e-8` em Draw/Clay/Fill/Scrape/Inflate — doc 20 §11.1, *"o kernel é
+idêntico ao ULP; o produto não"*) com **defaults NOSSOS** (curva `Smooth`, força
+0,5 em tudo). Isso não é o s-mode nem o b-mode: é um **terceiro** que ninguém
+escolheu, e é a causa raiz do D1-D4.
+
+⇒ O que a W0 entrega não é *"nada muda"*, é algo mais forte e testável: **o
+default do app deixa de ser um terceiro sem nome e passa a ser uma REFERÊNCIA
+nomeada.** Pela primeira vez a frase *"estamos em s-mode"* fica literalmente
+verdadeira.
+
+⚠️ **E a W0 achou uma coisa que a W1 precisa saber:** o arming da **CURVA** é
+hoje **inobservável em quinze dos dezasseis verbos** — todas as tools de
+geometria do SculptGL compartilham a MESMA quártica, então trocar entre duas
+delas arma um valor idêntico ao que já estava. O único par que a distingue é o
+`Sharpen` (perfil `None` ⇒ cai no nosso `Smooth`), e é ele que o gate usa. **No
+dia em que o perfil `B` declarar a curva editável do Blender, esse arming passa
+a mover a curva em toda troca de ferramenta** — o gate já existe e passa a
+morder em todo verbo.
+
+⚠️ **E o default nasce em `S`, não em `B`, por uma razão de dependência e não de
+gosto:** metade do b-mode (front-face contínuo, `strength²`, hardness,
+`normal_radius_factor`) é **kernel**, e ele só existe na W3. Mover o default para
+`B` é uma **decisão de produto com smoke próprio**, depois da W3 — e o §0 já diz
+por que ela é segura: `S` é o contrato, o default é produto.
 
 **Se for para escolher onde parar:** W0-W3 já entregam o pedido inteiro do Enio
 (os três modos, o Basic/Pro, e o app deixa de esculpir mal). W4-W6 são as três

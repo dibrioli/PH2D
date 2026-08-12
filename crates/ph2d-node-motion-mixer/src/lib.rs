@@ -10,8 +10,16 @@
 //! **minimum** across the contributing inputs (the extra tail of a longer input is
 //! dropped — the Sequence-Blend convention). Every column present in **all** contributing
 //! inputs is reduced: **Avg** = mean, **Add** = sum (both over all non-empty inputs);
-//! **Blend** = `lerp(in0, in1, blend)` with the `blend` value input (0..1, unconnected →
-//! 0.5). Transcendental-free (HR-5): component arithmetic. `Effect::Pure`.
+//! **Blend** = `lerp(in0, in1, blend)` with the `blend` value input (unconnected → 0.5).
+//! Transcendental-free (HR-5): component arithmetic. `Effect::Pure`.
+//!
+//! ⚠️ **The `blend` is a FIELD, one weight per element** (doc 12's broadcast rule,
+//! the same one `motion.drive` and `motion.morph` read): absent → the midpoint,
+//! length-1 HELD across the stream, length-N per-element. It used to be
+//! `v.first()` — a length-N field handed **element zero's number to everybody**, so
+//! the one thing a per-element blend could express was an accident, and every
+//! reference disagreed (Blender's *Mix* `Factor` is a field; C4D gives each field
+//! layer its own Mask; our own `motion.morph` was already per-element).
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -30,6 +38,9 @@ const VALUE_COL: &str = "v";
 const MODE_ADD: i64 = 1;
 /// Blend mode: `lerp(in0, in1, blend)`.
 const MODE_BLEND: i64 = 2;
+/// What an UNCONNECTED `blend` input means: the midpoint, which is the number
+/// the node has always used and the one an artist reads off the word "Blend".
+const DEFAULT_BLEND: f32 = 0.5;
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -153,6 +164,73 @@ fn scale(c: &Column, k: f32) -> Column {
     }
 }
 
+/// The `blend` for element `i` — **the one broadcast rule** (doc 12), the same one
+/// `motion.drive` and `motion.morph` already read: **unconnected (empty) → the
+/// midpoint**, length-1 is HELD across every instance, length-N is per-element.
+///
+/// ⚠️ This is the P0 of doc 89 folha 08, and what it replaced was `v.first()` — a
+/// length-N field handed **element zero's number to the whole stream**, so the
+/// only thing a per-element blend could express was an accident. Blender's *Mix*
+/// makes `Factor` a field (the diamond socket), C4D gives every field layer its
+/// own Mask, and **our own `motion.morph` was already per-element** — the mixer
+/// was the one place in the family where the answer collapsed to one scalar.
+///
+/// ⚠️ **Not clamped, deliberately.** `motion.morph` clamps to `[0, 1]` and this
+/// does not, and the two are right for different reasons: morph interpolates a
+/// SHAPE toward another and promises `1` is `b`, while a mixer lerp past `1` is an
+/// overshoot **that has a picture** — a layout thrown past the target one, which is
+/// a thing an artist asks for. Clamping here would be a silent behaviour change on
+/// top of the fix, so the range stays exactly what it was.
+fn blend_at(vals: &[f32], i: usize) -> f32 {
+    match vals.len() {
+        0 => DEFAULT_BLEND,
+        1 => vals[0],
+        _ => vals.get(i).copied().unwrap_or(DEFAULT_BLEND),
+    }
+}
+
+/// `a·(1−t) + b·t` per lane, with `t` read per element.
+///
+/// ⚠️ The two-term form is not stylistic: at `t = 1` the first term is `a·0.0`,
+/// which IEEE-754 makes exactly zero for any finite `a`, and the second is `b·1.0`
+/// — so `blend = 1` is `in1` **to the bit**, which is what the node's own doc
+/// promises. `a + (b − a)·t` lands *near* `b` and is not the same number.
+fn lerp_col(a: &Column, b: &Column, blend: &[f32], n: usize) -> Column {
+    macro_rules! z {
+        ($va:expr, $vb:expr, $w:literal, $ctor:path) => {{
+            $ctor(
+                (0..n)
+                    .map(|i| {
+                        let t = blend_at(blend, i);
+                        let (x, y) = ($va[i], $vb[i]);
+                        let mut r = x;
+                        for c in 0..$w {
+                            r[c] = x[c] * (1.0 - t) + y[c] * t;
+                        }
+                        r
+                    })
+                    .collect(),
+            )
+        }};
+    }
+    match (a, b) {
+        (Column::Scalar(x), Column::Scalar(y)) => Column::Scalar(
+            (0..n)
+                .map(|i| {
+                    let t = blend_at(blend, i);
+                    x[i] * (1.0 - t) + y[i] * t
+                })
+                .collect(),
+        ),
+        (Column::Vec2(x), Column::Vec2(y)) => z!(x, y, 2, Column::Vec2),
+        (Column::Vec3(x), Column::Vec3(y)) => z!(x, y, 3, Column::Vec3),
+        (Column::Vec4(x), Column::Vec4(y)) => z!(x, y, 4, Column::Vec4),
+        // Variants disagree: summing a Vec2 into a Vec4 means nothing, so the
+        // first input wins — the same arm `add_scaled` already takes.
+        _ => a.clone(),
+    }
+}
+
 /// Column names present in every contributing snapshot, in the first input's order.
 fn common_columns(snaps: &[&Snap]) -> Vec<String> {
     let Some(first) = snaps.first() else {
@@ -167,7 +245,7 @@ fn common_columns(snaps: &[&Snap]) -> Vec<String> {
 }
 
 /// Reduce the contributing inputs into one stream. `blend` is only used in Blend mode.
-fn mix(mode: i64, contributing: &[&Snap], blend: f32) -> Stream {
+fn mix(mode: i64, contributing: &[&Snap], blend: &[f32]) -> Stream {
     if contributing.is_empty() {
         return Stream::new(0);
     }
@@ -182,9 +260,7 @@ fn mix(mode: i64, contributing: &[&Snap], blend: f32) -> Stream {
             .map(|s| trunc(s.column(&name).unwrap(), count))
             .collect();
         let mixed = match mode {
-            MODE_BLEND if cols.len() >= 2 => {
-                add_scaled(&scale(&cols[0], 1.0 - blend), &cols[1], blend)
-            }
+            MODE_BLEND if cols.len() >= 2 => lerp_col(&cols[0], &cols[1], blend, count),
             MODE_ADD => cols
                 .iter()
                 .skip(1)
@@ -212,9 +288,11 @@ impl NodeOp for MotionMixer {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let mode = ctx.param("mode").round() as i64;
-        let blend = match ctx.input(4).get(VALUE_COL) {
-            Some(Column::Scalar(v)) => v.first().copied().unwrap_or(0.5),
-            _ => 0.5,
+        // ⚠️ The WHOLE column, not `v.first()`: the field is a per-element answer
+        // and reading one row of it was the P0 of doc 89 folha 08.
+        let blend: Vec<f32> = match ctx.input(4).get(VALUE_COL) {
+            Some(Column::Scalar(v)) => v.clone(),
+            _ => Vec::new(),
         };
         // Snapshot the four stream inputs, one at a time.
         let snaps: Vec<Snap> = (0..4u16)
@@ -227,7 +305,7 @@ impl NodeOp for MotionMixer {
         } else {
             snaps.iter().collect()
         };
-        ctx.emit(mix(mode, &contributing, blend));
+        ctx.emit(mix(mode, &contributing, &blend));
     }
 }
 
@@ -286,7 +364,7 @@ mod tests {
     fn avg_is_the_midpoint() {
         let a = snap_p(vec![[0.0, 0.0], [2.0, 0.0]]);
         let b = snap_p(vec![[4.0, 0.0], [2.0, 4.0]]);
-        let out = mix(MODE_AVG, &[&a, &b], 0.5);
+        let out = mix(MODE_AVG, &[&a, &b], &[0.5]);
         assert_eq!(p_of(&out), vec![[2.0, 0.0], [2.0, 2.0]]);
     }
 
@@ -295,7 +373,7 @@ mod tests {
     fn add_sums_the_inputs() {
         let a = snap_p(vec![[1.0, 1.0]]);
         let b = snap_p(vec![[2.0, 3.0]]);
-        let out = mix(MODE_ADD, &[&a, &b], 0.5);
+        let out = mix(MODE_ADD, &[&a, &b], &[0.5]);
         assert_eq!(p_of(&out), vec![[3.0, 4.0]]);
     }
 
@@ -305,9 +383,9 @@ mod tests {
     fn blend_lerps_in0_to_in1() {
         let a = snap_p(vec![[0.0, 0.0]]);
         let b = snap_p(vec![[4.0, 8.0]]);
-        assert_eq!(p_of(&mix(MODE_BLEND, &[&a, &b], 0.0)), vec![[0.0, 0.0]]);
-        assert_eq!(p_of(&mix(MODE_BLEND, &[&a, &b], 1.0)), vec![[4.0, 8.0]]);
-        assert_eq!(p_of(&mix(MODE_BLEND, &[&a, &b], 0.25)), vec![[1.0, 2.0]]);
+        assert_eq!(p_of(&mix(MODE_BLEND, &[&a, &b], &[0.0])), vec![[0.0, 0.0]]);
+        assert_eq!(p_of(&mix(MODE_BLEND, &[&a, &b], &[1.0])), vec![[4.0, 8.0]]);
+        assert_eq!(p_of(&mix(MODE_BLEND, &[&a, &b], &[0.25])), vec![[1.0, 2.0]]);
     }
 
     /// Mismatched counts blend the common prefix (the minimum count).
@@ -315,7 +393,7 @@ mod tests {
     fn count_is_the_minimum() {
         let a = snap_p(vec![[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]);
         let b = snap_p(vec![[2.0, 2.0]]);
-        let out = mix(MODE_AVG, &[&a, &b], 0.5);
+        let out = mix(MODE_AVG, &[&a, &b], &[0.5]);
         assert_eq!(out.count(), 1, "truncated to the shorter input");
     }
 
@@ -400,3 +478,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "blend_field_tests.rs"]
+mod blend_field_tests;

@@ -11,9 +11,9 @@
 
 use crate::{
     Motor, Reaction, Vec2, crouch::CrouchConfig, crouch::CrouchState, dash::DashConfig,
-    dash::DashState, jump::JumpConfig, jump::JumpState, kinematic, ledge::LedgeConfig,
-    ledge::LedgeState, react::ReactionConfig, ride::RideConfig, swim::SwimConfig, swim::SwimState,
-    walk::WalkConfig, wall::GrabState, wall::WallConfig,
+    dash::DashState, glide::GlideConfig, jump::JumpConfig, jump::JumpState, kinematic,
+    ledge::LedgeConfig, ledge::LedgeState, react::ReactionConfig, ride::RideConfig,
+    swim::SwimConfig, swim::SwimState, walk::WalkConfig, wall::GrabState, wall::WallConfig,
 };
 
 /// A config inteira de um player — as metades que a [`footing`] precisa
@@ -38,6 +38,8 @@ pub struct PlayerConfig {
     pub swim: SwimConfig,
     /// A beirada (W-Ledge) — ⚠️ nasce DESLIGADA, ver [`LedgeConfig::STARTING_POINT`].
     pub ledge: LedgeConfig,
+    /// O planeio (W-Glide) — ⚠️ nasce DESLIGADO, ver [`GlideConfig::STARTING_POINT`].
+    pub glide: GlideConfig,
 }
 
 impl PlayerConfig {
@@ -52,6 +54,7 @@ impl PlayerConfig {
         crouch: CrouchConfig::STARTING_POINT,
         swim: SwimConfig::STARTING_POINT,
         ledge: LedgeConfig::STARTING_POINT,
+        glide: GlideConfig::STARTING_POINT,
     };
 }
 

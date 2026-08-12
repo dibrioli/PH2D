@@ -241,3 +241,59 @@ fn measure_what_each_candidate_does_at_the_moment_the_finger_presses() {
     println!("\n(Δv = o salto de velocidade que a lei impoe NO TIQUE do aperto)");
     println!("(um planeio assiste a QUEDA -- inverter quem sobe seria outro botao)");
 }
+
+/// **A CENA: quanto se atravessa por queda, com e sem o planeio.**
+///
+/// ⚠️ **Esta sonda existe para DIMENSIONAR a cena de smoke**, e o precedente é a
+/// da beirada: a primeira versão daquela cena pôs o patamar numa altura que o
+/// corpo nunca alcançava, porque foi calculada com o número do ar livre em vez
+/// do medido. Um vão escolhido a olho é um vão que ou os dois atravessam ou
+/// nenhum atravessa — e nos dois casos a cena não mostra a feature.
+#[test]
+#[ignore = "sonda de medicao"]
+fn measure_the_gap_a_glide_crosses() {
+    println!("\n== o VAO que se atravessa, por queda (correndo, dedo no pulo) ==");
+    println!("  queda   sem planeio   com planeio 2 m/s   com 1 m/s");
+    for queda in [1.0_f32, 1.5, 2.0, 3.0] {
+        let mut col = [0.0_f32; 3];
+        for (i, teto) in [0.0_f32, 2.0, 1.0].into_iter().enumerate() {
+            let (mut sim, mut bridge, player) = scene(0.0, 0.0);
+            if let Some(mut p) = sim.world_mut().get_mut::<PlatformPlayer>(player) {
+                p.glide_fall_speed = teto;
+            }
+            // ⚠️ **A altura é escrita ANTES do primeiro dispatch, e é a regra do
+            // W2a:** *a pose de repouso é a pose AUTORADA no tique 0*, então um
+            // `Transform` escrito com o relógio já a andar **não chega ao
+            // solver**. A primeira versão desta sonda assentava primeiro e
+            // levantava depois — e reportou o MESMO número para quedas de 1 e de
+            // 3 metros, que é a assinatura de uma queda que nunca aconteceu.
+            let (x0, y_rest) = pose(&sim);
+            if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(player) {
+                t.translation.y = y_rest + queda;
+            }
+            let mut tick = 0_u64;
+            for _ in 0..900 {
+                bridge.set_player_input(
+                    player,
+                    PlayerInput {
+                        drive: 1.0,
+                        jump: true,
+                        ..PlayerInput::default()
+                    },
+                );
+                tick += 1;
+                bridge.dispatch(&mut sim, true, tick);
+                if pose(&sim).1 <= y_rest + 0.02 {
+                    break;
+                }
+            }
+            col[i] = pose(&sim).0 - x0;
+        }
+        println!(
+            "  {queda:>5.1}   {:>10.2}   {:>17.2}   {:>9.2}",
+            col[0], col[1], col[2]
+        );
+    }
+    println!("\n(o vao da cena tem de cair ENTRE a 1a coluna e a 2a -- so' assim");
+    println!(" um atravessa e o outro nao, com o mesmo gesto)");
+}

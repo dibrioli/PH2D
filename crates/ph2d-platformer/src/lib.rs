@@ -54,6 +54,7 @@ pub use contract::{PlayerConfig, PlayerState, PlayerStep};
 pub mod corner;
 pub mod crouch;
 pub mod dash;
+pub mod glide;
 pub mod jump;
 pub mod kinematic;
 pub mod ledge;
@@ -74,6 +75,7 @@ pub use crouch::{
     ride_for, walk_for,
 };
 pub use dash::{DashConfig, DashState, DashStep, dash_burst, dash_step};
+pub use glide::{GlideConfig, glide_motor};
 pub use jump::{JumpConfig, JumpState, JumpStep, carried_frame, jump_step};
 pub use kinematic::{
     Fluid, KinematicState, kinematic_advance, kinematic_settle, supported_velocity, surface_descent,
@@ -515,6 +517,27 @@ pub fn player_motor(
         Motor::default()
     };
 
+    // ── O PLANEIO (W-Glide) ──────────────────────────────────────────────────
+    // ⚠️ **As cinco guardas são todas *quem é dono do eixo vertical agora***, e
+    // nenhuma é higiene: a perna (`standing`), o arranque, a beirada e a parede
+    // já ESCREVEM esse eixo, e um segundo termo a escrevê-lo no mesmo tique
+    // seria a falha de dois-donos que este módulo documenta em cada regime.
+    //
+    // ⚠️ **E o nado é a guarda que não se vê:** dentro d'água o botão de pulo já
+    // significa *subir* (`swim_rise` lê o MESMO `input.jump`), então sem o
+    // `!swimming` o dedo pediria as duas coisas ao mesmo tempo e o nadador
+    // ganharia um freio que ninguém autorou.
+    //
+    // ⚠️ **Não há guarda de "está a cair"**, e é de propósito: a própria lei é um
+    // TETO, então subir, o ápice e uma queda lenta já a deixam calada. Uma
+    // segunda pergunta aqui seria uma segunda resposta à mesma.
+    let float_down =
+        if standing.is_none() && !dashing && !ledging && !swimming && clinging.is_none() {
+            glide::glide_motor(&cfg.glide, input.jump, rel_up, up)
+        } else {
+            Motor::default()
+        };
+
     // ⚠️ **O arranque SUBSTITUI o termo do pulo, em vez de somar a ele:** o que
     // o `jump.motor` carrega fora da decolagem é a **gravidade de FASE**
     // (`(escala − 1)·g`), e somá-la a um tique que cancela a gravidade daria
@@ -581,6 +604,7 @@ pub fn player_motor(
             .plus(step)
             .plus(jump_motor)
             .plus(slide)
+            .plus(float_down)
             .plus(burst)
             .plus(stroke)
             .plus(hold.motor),

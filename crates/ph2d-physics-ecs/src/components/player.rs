@@ -17,8 +17,8 @@
 
 use bevy_ecs::component::Component;
 use ph2d_platformer::{
-    CrouchConfig, DashConfig, JumpConfig, LedgeConfig, PlayerConfig, ReactionConfig, RideConfig,
-    SwimConfig, WalkConfig, WallConfig,
+    CrouchConfig, DashConfig, GlideConfig, JumpConfig, LedgeConfig, PlayerConfig, ReactionConfig,
+    RideConfig, SwimConfig, WalkConfig, WallConfig,
 };
 use serde::{Deserialize, Serialize};
 
@@ -266,6 +266,15 @@ pub struct PlatformPlayer {
     /// **A velocidade com que ele se acomoda e sobe**, m/s — ver
     /// [`LedgeConfig::speed`].
     pub ledge_speed: f32,
+
+    /// **O TETO da descida enquanto se plana**, m/s (`W-Glide`). `0.0`
+    /// **desliga** — ver [`GlideConfig::fall_speed`].
+    ///
+    /// ⚠️ **Um teto, e não a velocidade do planeio:** ele só age sobre quem já
+    /// cai mais depressa, então segurar o botão a subir ou no ápice não faz
+    /// nada. A medição que descartou as outras duas formas está no topo do
+    /// [`ph2d_platformer::glide`].
+    pub glide_fall_speed: f32,
 }
 
 impl PlatformPlayer {
@@ -336,6 +345,9 @@ impl PlatformPlayer {
                 grab: self.ledge_grab,
                 speed: self.ledge_speed,
             },
+            glide: GlideConfig {
+                fall_speed: self.glide_fall_speed,
+            },
             react: ReactionConfig {
                 support: self.reaction_support,
                 movement: self.reaction_movement,
@@ -397,6 +409,7 @@ impl Default for PlatformPlayer {
             swim_enter: c.swim.enter,
             ledge_grab: c.ledge.grab,
             ledge_speed: c.ledge.speed,
+            glide_fall_speed: c.glide.fall_speed,
         }
     }
 }

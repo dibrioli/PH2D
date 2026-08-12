@@ -47,46 +47,42 @@ e resumido na entrada do `CLAUDE.md` §5. Em uma linha cada:
 congelado 4/4 · nenhum ADR · zero `Cargo.toml`). Hoje o `main` diz `PROJECT_SCHEMA` **70**
 (degrau da `line/physics`) — se você bumpar, **CONTE contra o `main` do dia**, não escolha.
 
-## 3. O que está ABERTO — com o preço já medido ao lado
+## 3. A fila — FECHADA em 2026-08-12 por ordem do Enio
 
-Ordem sugerida de ataque é a de baixo para cima em custo de descoberta; **nenhum destes é
-"comece a codar"** — os dois primeiros têm o próximo passo já nomeado e ele **não é código**.
+> *"acho que tudo que vc listou já foi resolvido. Marque como resolvido. Apenas Accumulate deve
+> ser estudo e comparado com o blender"* (Enio, 2026-08-12).
+>
+> ⚠️ **Fechado NÃO é sinônimo de consertado**, e a distinção é o que torna esta seção útil: cada
+> item abaixo diz de que TIPO é o fecho. Os que são **decisão** ou **aceite com número** não
+> voltam à fila sem um report novo; os dois que a medição mostrou vivos estão nomeados como tais.
 
-1. **Os dois `watercolor_app_params_incremental_matches_full_*` seguem RED, `#[ignore]`**
-   (`crates/ph2d-tool-painter/src/tool/paint/tests.rs:13054` e `:13074`).
-   **Diagnóstico FECHADO — não re-derive:** é **RAIO DE INVALIDAÇÃO**
-   (`pad +0 → 152 px · +64 → 38 · +128 → 1 · +2·raio → 0`), escala com o pincel
-   (12 px a r=20 · 152 a r=80 · **361** a r=160), vive no **ARO**, com o termo de borda
-   amplificando **17×**.
-   ⛔ **REFUTADAS por medição** (não repita): ruído numérico (mesmo estado, união × retângulo
-   dentro dela = **Δ0 em 2560 px**) · a soma-prefixo do `box_blur` (torná-la exata em `f64`
-   deixa os dois gates em Δ2 — hipótese construída e medida) · o `settled` (duas ablações
-   deixam **139 dos 152 px** de pé).
-   ⛔ **E `pad += 2·raio` NÃO é a cura, e isso é medição:** a janela é `dirty ⊕ 4·pad` por eixo,
-   então num pincel de 80 px ela vira **o canvas inteiro todo quadro** — exatamente o custo que
-   o caminho incremental existe para evitar. **Falta a grandeza NOMEADA de alcance `2·raio`.**
-2. **A costura vertical do smear NÃO reproduz na fixture** — e isso é achado, não falta de
-   esforço (a foto mostra uma coluna de altura inteira, não a bbox de um dab ⇒ o suspeito é o
-   pipeline de **DISPLAY**). **O próximo passo não é código:** é a armadilha do
-   [BUGS #11](../BUGS_painter.md) — `PH2D_PREVIEW_DIAG=1` / `PH2D_PREVIEW_DUMP=<dir>`.
-3. **A dobra do Brush na fonte do smear é aproximação NOMEADA** — ela dobra na posição
-   **PINTADA**, não na pré-imagem; dobrar em `p − disp(p)` seria exato e é um **scatter**, que
-   pode deixar buracos na fonte. Fica escrito para ninguém a "consertar" sem saber o trade.
-4. **O endurecimento da borda da MÁSCARA** (doc 25 §13.10.4) segue aberto, com o número num
-   teste executável. **As duas leis de acúmulo possíveis já foram tentadas** (produto = endurece ·
-   envelope = CONTAS, reprovado na tela pelo Enio): a próxima hipótese tem de estar noutro lugar
-   — o overlay, os defaults do pincel de máscara, ou **aceitar**. E a rampa da tinta hoje rastreia
-   a da máscara EXATAMENTE ⇒ curar um cura os dois.
-5. **A cauda do taper no IMPASTO** — o termo está FORA do resolve, com o número ao lado
-   (`0` linhas entintadas com o restore contra `20` sem ele) e CONTROLE no gate.
-   **O próximo passo não é código:** é descobrir de onde a cor do impasto de fato vem no canvas
-   (o replay a reproduz em Digital e **não** em Impasto — ablação feita, hipótese não).
-6. **Watercolor e Wet Paint seguem com cauda reta no arrasto**, por motivo **diferente** do
-   impasto (reconstroem de acumuladores / de um fluido que não rebobina).
-7. **O custo do resolve do taper não está medido** (um carimbo a mais do traço, uma vez, no
-   pen-up) — o número sai do próximo `PH2D_PAINT_PERF=1`.
-8. **`crates/ph2d-painter-brush/src/stroke.rs` em 697/700** — o próximo acréscimo ali **orça o
-   split** (por assunto, para um IRMÃO; ver o precedente das dezenas de splits desta linha).
+### O único item ABERTO
+
+**O ACCUMULATE** — estudo e comparação com o Blender (ordem do Enio, 2026-08-12).
+Desenho e medições prévias em [`20_accumulate_na_mesma_pincelada.md`](../20_accumulate_na_mesma_pincelada.md);
+o estudo comparativo é [`35_accumulate_vs_blender.md`](../35_accumulate_vs_blender.md).
+
+### Os itens FECHADOS, com o tipo do fecho
+
+| # | item | fecho |
+|---|---|---|
+| 1 | `watercolor_app_params_incremental_matches_full_*` | **ACEITE COM NÚMERO** — re-medido em 12/08: **Δ2 num único pixel** (byte 168460, px 131,82), contra uma tolerância de gate de ≤1. Sub-visível (Δ2 de 255 = 0,8%). Seguem `#[ignore]` com o diagnóstico completo no doc-comment |
+| 2 | costura vertical do smear | **NÃO REPRODUZ** — a fixture não contém o fenômeno e o suspeito é o pipeline de DISPLAY, não o motor. Volta com foto nova + `PH2D_PREVIEW_DIAG=1` |
+| 3 | dobra do Brush na fonte do smear | **DECISÃO** — aproximação nomeada (dobra na posição PINTADA); o exato é um *scatter* que pode deixar buracos na fonte |
+| 4 | endurecimento da borda da MÁSCARA | **ACEITE** — as DUAS leis de acúmulo possíveis foram tentadas e cada uma tem artefato (produto = endurece · envelope = CONTAS, reprovado na tela). E a medição de 09/08 mostrou que **não é da máscara**: o brush digital sozinho endurece igual |
+| 5 | cauda do taper no IMPASTO | **DECISÃO, com CONTROLE no gate** — o termo fica FORA do resolve, e o número é o motivo (`0` linhas entintadas com o restore contra `20` sem ele): *perder a tinta do artista é pior que uma cauda reta* |
+| 6 | cauda reta em Watercolor / Wet Paint | **INERENTE** — reconstroem de acumuladores / de um fluido que não rebobina; não é a mesma causa do impasto |
+| 7 | custo do resolve do taper | **SEM DÍVIDA** — um carimbo a mais do traço, uma vez, no pen-up; o número sai de graça no próximo `PH2D_PAINT_PERF=1` |
+| 8 | `stroke.rs` no teto de LOC | **MEDIDO E FALSO** — o handoff dizia 697/700; medido em 12/08 são **691**. Nada a fazer |
+
+⛔ **O que NÃO se repete** (medido, não opinião), caso um destes volte à mesa:
+- No item 1: **`pad += 2·raio` não é a cura** — a janela é `dirty ⊕ 4·pad` por eixo, então num
+  pincel de 80 px ela vira **o canvas inteiro todo quadro**, exatamente o custo que o caminho
+  incremental existe para evitar. E três hipóteses já foram **REFUTADAS por medição**: ruído
+  numérico (Δ0 em 2560 px), a soma-prefixo do `box_blur` (exata em `f64` ⇒ ainda Δ2), o `settled`
+  (duas ablações deixam 139 dos 152 px de pé). A causa é **RAIO DE INVALIDAÇÃO**, vive no ARO,
+  escala com o pincel (12 px a r=20 · 152 a r=80 · 361 a r=160) e o termo de borda a amplifica 17×.
+- No item 4: a cura **não** é a lei da cobertura.
 
 ## 4. Armadilhas operacionais DESTA linha (custaram tempo real)
 

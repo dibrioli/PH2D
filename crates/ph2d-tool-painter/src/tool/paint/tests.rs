@@ -16,6 +16,8 @@ mod measure_gpu_frontier; // o pool dos cinco planos do traço escreve o que a a
 #[path = "measure_penup_cost.rs"]
 mod measure_penup_cost; // o que custa FECHAR um traço — a irmã do `measure_pendown_cost`
 
+#[path = "look_watercolor_arc.rs"]
+mod look_watercolor_arc; // o arco palido na concavidade: o oraculo e o RENDER, nao um escalar
 #[path = "measure_impasto_cost.rs"]
 mod measure_impasto_cost; // o que o CORPO da tinta custa (plano 26 §9); irmão do input_cost
 #[path = "measure_input_cost.rs"]
@@ -42,8 +44,6 @@ mod measure_stroke_owners; // QUEM segura os planos quando um traço começa (do
 mod measure_undo_cost; // o que VOLTAR na história custa, e em qual metade (doc 28 §5.62)
 #[path = "measure_watercolor_cost.rs"]
 mod measure_watercolor_cost; // de que é feito um MOVE de aquarela (doc 28 §7); irmão do impasto_cost
-#[path = "look_watercolor_arc.rs"]
-mod look_watercolor_arc; // o arco palido na concavidade: o oraculo e o RENDER, nao um escalar
 #[path = "measure_watercolor_pour.rs"]
 mod measure_watercolor_pour; // o que o pour cobra e o que a rota do quadro muda (doc 28 §5.72)
 #[path = "measure_watercolor_stamp.rs"]

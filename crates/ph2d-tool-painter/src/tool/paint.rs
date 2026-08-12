@@ -146,6 +146,9 @@ mod composite;
 /// **Grid Stamp** — os controles do método (célula, deslocamento, Show Grid) e a régua norm↔px.
 mod grid_stamp_settings;
 pub use grid_stamp_settings::GridAxis;
+/// **Accumulate** — a sonda que MEDE a lei que shipa, para o estudo comparativo com o Blender.
+#[cfg(test)]
+mod accumulate_probe;
 #[cfg(test)]
 mod composite_look;
 #[cfg(test)]

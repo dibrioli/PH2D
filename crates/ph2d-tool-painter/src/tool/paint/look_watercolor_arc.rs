@@ -458,7 +458,7 @@ fn measure_what_the_second_stroke_takes_away() {
                     lost += 1;
                     worst = worst.max(d);
                     // O 2o traco corre em x=128 com raio 72: fora disso ele nao alcanca.
-                    if x < 56 || x > 200 {
+                    if !(56..=200).contains(&x) {
                         outside += 1;
                     }
                 }

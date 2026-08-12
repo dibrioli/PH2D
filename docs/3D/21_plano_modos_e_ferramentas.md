@@ -795,6 +795,72 @@ e `Strength Curve` **não ganham row de propósito**: o MODO já os responde, e 
 segundo controle para a mesma pergunta é a falha de duas-portas que este módulo
 varre a cada wave.
 
+### §7.6 — 📐 A W4 tem alvo, e o PAPER mudou: **Taubin, não HC** (medido em 2026-08-12)
+
+A W4 abriu pela §0 — medir antes de construir —, e as duas medições estão em
+`tests/measure_smooth_shrinkage.rs` (`--ignored --nocapture`).
+
+**O DEFEITO, pela porta do produto** (esfera unitária, dab cobrindo a malha
+inteira, `Falloff::Constant`, força 1 — o *Filter Layer*, que é onde o
+encolhimento é o efeito e não um detalhe de borda):
+
+| passadas | raio médio | encolhimento |
+|---|---|---|
+| 0 | 1,000000 | 0,00% |
+| 1 | 0,999092 | **0,09%** |
+| 10 | 0,990924 | 0,91% |
+| 20 | 0,981938 | 1,81% |
+| 40 | 0,964246 | **3,58%** |
+
+⚠️ **O número não é o achado — a FORMA é.** É **linear e não satura**: o
+laplaciano umbrella (`lerp(p, média do anel, w)`, `stroke_target.rs:225`) contrai
+o volume a cada aplicação, para sempre. *Alisar até ficar liso é alisar até
+sumir* — a objeção com que o Vollmer/Mencl/Müller 1999 abre.
+
+**A CURA, medida ANTES de ser construída** — 20 pares λ|μ, ou seja os MESMOS 40
+passos laplacianos:
+
+| λ / μ | raio final | desvio | pior |
+|---|---|---|---|
+| **0,33 / 0,34** | 1,000183 | **−0,018%** | 0,018% |
+| 0,50 / 0,53 | 1,000546 | −0,055% | 0,055% |
+| 0,60 / 0,64 | 1,000727 | −0,073% | 0,073% |
+
+**200× menos, e LIMITADO** — o sinal até inverte (sobre-correção clássica da
+banda de passagem), que é o oposto de uma deriva monotônica.
+
+⚠️ **E a escolha do paper muda em relação ao §3, com motivo.** A tabela do §3
+dava ao Smooth o **HC** (Vollmer/Mencl/Müller 1999) e listava o Taubin no §4
+como alternativa. O que a medição e a leitura do nosso kernel dizem:
+
+- **as duas metades do Taubin JÁ SÃO verbos deste motor** — o passo `λ` é o
+  Smooth e o passo `μ` é o Sharpen (*"o laplaciano com o sinal trocado"*,
+  `stroke_target.rs:234`). É *uma lei, dois consumidores*, a doutrina desta casa,
+  e o l-mode do Sharpen sai no mesmo movimento (o §4 já lista Taubin para os
+  dois);
+- **o HC pede estado que este motor não tem**: um vetor `b` POR VÉRTICE e uma
+  SEGUNDA passada sobre o anel para a média dele. O `compute_target` é uma função
+  pura por-vértice, então o HC exige um buffer de pegada no molde do
+  `render_inflate` do Painter — estrutural, não um kernel a mais;
+- **o Taubin não precisa do ORIGINAL.** O `o` do HC teria de ser a pose do
+  pen-down, e num traço longo ele puxaria de volta para ela — brigando com o
+  artista que QUER que o alisamento acumule.
+
+⇒ **O l-mode do Smooth é Taubin λ|μ**, e o HC fica nomeado como a alternativa que
+foi medida contra ele em vez de esquecida.
+
+**O que a implementação pede, e é a única parte estrutural:** *um dab = um PAR
+λ|μ*, senão um traço de N dabs são N passos `λ` sem nenhum `μ` — e aí o l-mode
+encolhe igual. A porta é uma só (`Brush::passes()`, quantos passes este pincel
+faz e com que peso), e ⚠️ **todo pincel que não é o l-mode do Smooth devolve
+EXATAMENTE um passe — ele próprio**, o que torna o resto do motor byte-idêntico
+por construção e é o que o gate afirma.
+
+⚠️ **E é isto que dá ao chip `L` o primeiro conteúdo dele.** O §7.4 o retém com
+a razão escrita (*"o `L` é `B` sem o `strength²` — um acidente da tabela vazia"*);
+com o Taubin ele passa a declarar uma lei com paper, ano e critério, e o
+`RefMode::declares` deixa de ser universal para ser **por verbo**.
+
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 
 **Os defaults de fábrica do Blender não estão no clone.** Eles vivem em

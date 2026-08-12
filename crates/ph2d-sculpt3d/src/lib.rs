@@ -36,6 +36,7 @@
 
 mod alpha;
 mod brush;
+mod grip;
 pub mod mask_ops;
 mod preview;
 /// **OS KERNELS DA REFERÊNCIA** — o porte 1:1 do SculptGL, `f64` na aritmética
@@ -50,8 +51,12 @@ pub use alpha::{
     Alpha, AlphaFrame, AlphaImage, AlphaStencil, DEFAULT_ALPHA_SCALE, MAX_ALPHA_SCALE,
     MAX_AXIS_ELEV_DEG, MIN_ALPHA_SCALE, recommended_scale, sampled_edge,
 };
-pub use brush::{Amount, Brush, Falloff, Grip, REACH_FRACTION, Symmetry, Verb};
+pub use brush::{
+    Brush, CLAY_PLANE_FRACTION, CREASE_FRACTION, Falloff, PINCH_GAIN, REACH_FRACTION, Symmetry,
+    Verb,
+};
+pub use grip::{Amount, Grip, GripLaw};
 pub use preview::{NO_PREVIEW, preview_into, preview_verts};
-pub use spacing::{ACCUM_PER_DAB, MIN_SPACING_FRACTION, Walk, min_spacing, walk};
+pub use spacing::{MIN_SPACING_FRACTION, Walk, min_spacing, walk};
 pub use stroke::{Dab, SculptStroke};
 pub use transform::{Gesture, MIN_SCALE_FACTOR, MaskTransform, TransformKind};

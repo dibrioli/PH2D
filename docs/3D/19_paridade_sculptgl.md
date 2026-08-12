@@ -503,6 +503,109 @@ um parâmetro que já viaja dentro do `w`.
 ⚠️ **O `Sharpen` não tem kernel na referência** (§3.3) e é o único que a wave
 tem de decidir em vez de portar.
 
+### 3.2.5 — A LEI LANDOU, e a medição mudou de categoria
+
+O passo 2 e o passo 3 fecharam em 2026-08-11, na sessão seguinte à reversão. A
+`§3.2.4` fica como está — o que ela mediu continua verdadeiro —, e o que segue é
+o resultado.
+
+**Os números, pela mesma sonda, com a curva `Plateau` dos dois lados:**
+
+| verbo | antes (§3.2.3) | **depois** | \|diferença\| |
+|---|---|---|---|
+| Draw/brush | 2,01× | **1,01×** | 0,000149 |
+| Inflate | 2,00× | **1,00×** | **0,000000** |
+| Pinch | 20,00× | **1,00×** | 0,000549 |
+| Crease | 3,45× | **0,97×** | 0,036203 |
+| Clay | 3,88× | 1,74× | 0,008790 |
+| Flatten | 0,54× | 0,54× | 0,013635 |
+
+⚠️ **O `Flatten` NÃO se move e não deve:** ele é a divergência declarada da
+`§3.3` — o nosso é bilateral e o da referência escolhe um lado (`comp = ±1` +
+`continue`), então o `Flatten` deles é o nosso `Fill` ou o nosso `Scrape`. O
+0,54× é o preço dessa escolha, não um defeito a fechar.
+
+⚠️ **O `Clay` a 1,74× é o que SOBRA**, e é o único item de paridade ainda aberto
+na família do carimbo.
+
+**As doze triagens da `§3.2.4`, uma a uma — e cinco delas eram fixture, não
+código:**
+
+1. **A ordem do sweep** (`the_pattern_does_not_depend_on_which_way…`) — a causa
+   **não era o alpha**: medido, `3,68 %` com padrão e `3,67 %` sem,
+   indistinguíveis. Quem produz o desacordo é a **superfície MOVIDA** (a pegada
+   sai das posições vivas), e ela escala com a força: `0,8 → 3,68 %` ·
+   `0,08 → 0,01 %` · `0,008 → 0,01 %`. O gate ganhou o CONTROLE que o irmão da
+   densidade já tinha — um limiar absoluto ali mede a superfície e chama-a de
+   alpha.
+2. **A idempotência sob re-stamp** mudou de FAMÍLIA, não se perdeu: ela vive no
+   `Grip::Paint`, e o carimbo ganhou o gate OPOSTO, para a troca custar dois
+   vermelhos a quem a desfizer em silêncio.
+3. **O anel do Smooth** era lido congelado e a referência o lê vivo; o oráculo
+   analítico foi invertido e ganhou uma segunda metade (*as duas leis têm de se
+   SEPARAR na fixture*), sem a qual ele seria verde por coincidência.
+4. **O `stroke_accum_tests` inteiro media a coisa errada, e a fixture media o
+   OPOSTO do produto.** Ela fixava o centro do dab na esfera ORIGINAL, e o
+   mecanismo depende de o centro subir com a tinta (no produto ele é
+   `hit.point`, o acerto do raycast contra a malha **viva**):
+
+   | passadas | centro fixo (armado ÷ desarmado) | centro na superfície viva |
+   |---|---|---|
+   | 1 | 0,900× | 0,995× |
+   | 2 | 0,759× | **1,225×** |
+   | 4 | 0,691× | **1,495×** |
+
+   ⚠️ **E o limite por traço tem forma FECHADA:** furando o mesmo ponto, o
+   desarmado converge a **0,99 raios de pincel** e para (a distância ao proxy É
+   o quanto o vértice subiu, então o peso zera quando ela alcança o raio); o
+   armado passa de **2,55 raios** e segue. Um gate que esperasse
+   `last_moved().is_empty()` rodaria para sempre — o peso tende a zero sem
+   chegar lá.
+5. **O `Pinch`** tinha o piso anti-vácuo calibrado no erro de 20×; ele passou a
+   ser DERIVADO do `PINCH_GAIN`.
+6. **O `Crease`** tinha uma barra sobre o PRODUTO de duas propriedades
+   (`estreitamento × profundidade = 2,073 × 0,700 = 1,451`); as duas foram
+   separadas, e a profundidade virou a razão das constantes da referência
+   (`CREASE_FRACTION / REACH_FRACTION`), que mede **0,700× exato**.
+7. **O `Clay` invertido ficou INERTE** — o Ctrl entrava pelo `reach`, que o verbo
+   novo não consome. Curado como a referência o faz: o plano DESCE `radius·0,1`
+   e o lado inverte (`Brush.js:47` + `Flatten.js:63`), ou seja o Clay invertido é
+   um Scrape contra um plano rebaixado.
+8. **O `growth`** pedia idempotência; o oráculo virou o INCREMENTO (o segundo
+   dab move pelo mesmo tanto que o primeiro, porque o `pre` sobreviveu ao
+   `grow_with`) — e ele pega o defeito que o gate existe para pegar, que é o
+   `pre` ser RE-CAPTURADO.
+9. ⚠️ **O risco de PRODUTO da `§3.2.4` foi MEDIDO e não existe como descrito.**
+   A boca do tubo **não** é sugada: a altura fica em `2,0000` exatos nos seis
+   passes, e a regra de borda funciona. O que muda é o RAIO da beira, numa
+   progressão geométrica exata — `1,0000 → 0,5000 → 0,2500 → … → 0,0156` —, com
+   fator `cos(60°) = 0,5`, o anel de três vértices da `open_tube3` à força
+   cheia. **É o encolhimento do laplaciano, e a referência tem o mesmo por
+   escolha:** o `Smooth.js` dela roda `laplacianSmooth` puro por default
+   (`this._tangent = false`) e a cura — projetar no plano tangente
+   (`smoothTangent`) — existe lá e está DESLIGADA. O gate passou a afirmar a
+   progressão, que recusa de uma vez as duas leituras erradas (um Smooth que
+   virasse no-op ficaria em `1,0`; um que não compusesse ficaria em `0,5`).
+10. **O meu controle de uma linha** deixou de enumerar `Verb::Draw` à mão.
+
+**A tabela de grips virou [`Grip::law`], e é a razão de o `GripLaw` ser
+público.** Enquanto ela morava dentro do `dab_core`, quem precisava saber *quais
+verbos carregam o peso no alvo* mantinha a resposta à mão — e a lista de dois
+grips do `stroke_apply_tests` ficou **INCOMPLETA no instante em que o
+`Grip::Stamp` trocou de lei**, com o `assert` de não-vácuo satisfeito pelos dois
+que sobraram, sem sangrar nada. *Uma lista escrita à mão só sabe reclamar quando
+fica vazia.*
+
+⚠️ **E o `match` exaustivo pagou-se no shell:** o `Grip::Paint` novo não compilou
+até o `sculpt3d_input` dizer o que ele significa lá — que é percorrer o caminho
+como o carimbo, porque a troca de lei é sobre *o que um dab faz com o que já
+está lá*, nunca sobre *como um gesto vira uma lista de dabs*.
+
+**O que continua ABERTO na paridade, com o preço:** o `Clay` (1,74×) · a cadeia
+de peso em `f64` (o nosso `w` é `f32` desde o falloff; a referência arredonda uma
+vez no fim — **nomeado, não medido**) · e as divergências deliberadas da `§3.3`,
+que só fecham se o Enio abrir mão delas.
+
 ### 3.3 — O MAPA dos verbos, e o único que a referência não tem
 
 ⚠️ **Esta seção afirmava que `Smooth` · `Mask` · `Twist` não tinham kernel

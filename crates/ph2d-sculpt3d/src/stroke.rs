@@ -37,7 +37,8 @@
 //! capturado é escrito. É isso que deixa o Smooth ler a vizinhança sem capturar
 //! o anel inteiro, e é por isso que `base_pos_of` cai na malha viva sem mentir.
 
-use crate::brush::{Amount, Brush, Grip, Symmetry, Verb};
+use crate::brush::{Brush, Symmetry, Verb};
+use crate::grip::{Amount, Grip};
 
 /// **O QUE UM TOQUE É** — ver [`dab`].
 #[path = "dab.rs"]
@@ -339,29 +340,23 @@ impl SculptStroke {
         // *parece* funcionar em toda região parcial. Ela gateia quem MOVE
         // GEOMETRIA; quem edita o próprio canal a lê como dado, não como freio.
         let gated_by_mask = !brush.verb.paints_mask();
-        // ⚠️ **A LEI deste verbo, resolvida UMA vez, numa TABELA onde os quatro
-        // grips aparecem lado a lado.** Ela muda exatamente quatro coisas neste
-        // laço, e nada mais — a captura, a máscara, a simetria, o refit e o undo
-        // são os mesmos para todos:
+        // ⚠️ **A LEI deste verbo, resolvida UMA vez, numa TABELA** — e a tabela
+        // mora no [`Grip`], não aqui. Ela muda exatamente quatro coisas neste
+        // laço, e nada mais: a captura, a máscara, a simetria, o refit e o undo
+        // são os mesmos para todos. As quatro colunas e o porquê de serem uma
+        // tabela estão no doc da [`crate::GripLaw`].
         //
-        // - `frozen` — trabalha sobre a pegada CONGELADA no pen-down (`touched`)
-        //   em vez da consulta deste dab;
-        // - `from_live` — a distância sai da posição VIVA em vez do `pre`;
-        // - `unit_accum` — o alvo já traz o peso, então o `accum` vale 1;
-        // - `early_out` — um dab que não supera o envelope é descartado.
-        //
-        // ⚠️ **Uma tabela e não três predicados soltos:** as quatro colunas são
-        // *facetas* de uma escolha só, e os quatro grips têm combinações que se
-        // cruzam (o `Turn` congela como o `Hold` e carimba `accum = 1` como o
-        // `Hook`). Escritas como predicados independentes, um grip novo nasceria
-        // com a combinação de quem alguém lembrou de atualizar; escritas aqui,
-        // ele **não compila** até a linha dele existir.
-        let (frozen, from_live, unit_accum, early_out) = match brush.verb.grip() {
-            Grip::Stamp => (false, false, false, true),
-            Grip::Hold => (true, false, false, false),
-            Grip::Hook => (false, true, true, false),
-            Grip::Turn(_) => (true, false, true, false),
-        };
+        // ⚠️ **Ela saiu daqui para ser CONSULTÁVEL por um gate.** Enquanto
+        // morava neste laço, quem precisava saber *"quais verbos carregam o peso
+        // no alvo?"* mantinha a resposta à mão — e a lista de dois grips que o
+        // `stroke_apply_tests` guardava ficou INCOMPLETA no instante em que o
+        // [`Grip::Stamp`] trocou de lei, sem sangrar nada.
+        let crate::GripLaw {
+            frozen,
+            from_live,
+            unit_accum,
+            early_out,
+        } = brush.verb.grip().law(brush.accumulate);
         // ⚠️ **Quem SEGURA trabalha sobre o que já TOCOU, não sobre a consulta
         // deste dab — e sem isto o Grab PERDE barro.** A consulta sai das
         // posições vivas, então um vértice arrastado para além do raio SAI da
@@ -489,23 +484,18 @@ impl SculptStroke {
             if w <= 0.0 {
                 continue;
             }
-            // **A LEI, e o interruptor que a troca.** Desarmado, o envelope: um
-            // dab que não supera o que já está lá é descartado — mesmo
-            // resultado, e sem mandar a pegada inteira ao refit do octree e ao
-            // upload por nada. Armado, a SOMA — e ela é normalizada pelo passo
-            // do espaçamento (`ACCUM_PER_DAB`), senão o efeito passaria a
-            // depender de quantos dabs o motor emitiu.
+            // **O ENVELOPE, onde ele ainda é a lei:** um dab que não supera o
+            // que já está lá é descartado — mesmo resultado, e sem mandar a
+            // pegada inteira ao refit do octree e ao upload por nada.
             //
-            // ⚠️ **Quem responde *"este verbo acumula?"* é a PORTA, e não a
-            // tabela de grips ao lado.** As duas dizem a mesma coisa hoje — a
-            // família do carimbo —, e é exatamente por isso que uma delas tem de
-            // ser a resposta: escrito `early_out && brush.accumulate`, o
-            // predicado público vira uma segunda cópia que o motor não consulta,
-            // e uma mutação que o inverte não sangra (medido: ela sobreviveu aos
-            // 90 gates). O `early_out` continua sendo o que ele é — o descarte
-            // do envelope —, e a pergunta sobre o interruptor é feita ao verbo.
-            let piling = brush.accumulate && brush.verb.accumulates();
-            if early_out && !piling && w <= self.accum[s] {
+            // ⚠️ **O `piling` MORREU com a troca de lei do carimbo.** Ele somava
+            // `w · ACCUM_PER_DAB` sobre o envelope para exprimir o Accumulate, e
+            // o preço estava medido: a primeira passada saía **13,3× mais
+            // fraca** que a mesma pincelada com o interruptor desarmado — um
+            // controle que promete acumular e começa enfraquecendo. Hoje o
+            // Accumulate é `from_live`, que é o que ele é no original, e esta
+            // linha não tem mais braço que o consulte.
+            if early_out && w <= self.accum[s] {
                 continue;
             }
             // ⚠️ **Quem carrega o peso no ALVO carimba `accum = 1`**, e é isso
@@ -515,18 +505,7 @@ impl SculptStroke {
             // parar"* divergem no dia em que uma delas ganhar um caso especial.
             // O `base` continua guardado e intocado, que é o que mantém o undo
             // trivial nas três leis.
-            self.accum[s] = if unit_accum {
-                1.0
-            } else if piling {
-                // ⚠️ **Sem TETO, e é decisão.** `lerp(base, target, accum)` com
-                // `accum > 1` passa do alvo — que é precisamente o que o
-                // Accumulate significa: o Blender não capa, e capar faria a
-                // segunda passada ser um no-op silencioso, que é a forma de "o
-                // pincel parou de funcionar". Quem limita é a mão do artista.
-                self.accum[s] + w * crate::ACCUM_PER_DAB
-            } else {
-                w
-            };
+            self.accum[s] = if unit_accum { 1.0 } else { w };
             self.target[s] = self.compute_target(mesh, brush, dab, &plane, reach, shape, w, v, s);
             self.moved.push(v);
         }

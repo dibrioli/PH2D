@@ -76,17 +76,39 @@ fn the_crease_cuts_a_narrower_groove_than_an_inverted_draw_of_the_same_reach() {
 
     let (pc, wc) = profile(Verb::Crease, false);
     let (pd, wd) = profile(Verb::Draw, true);
-    let sharp = (pc / wc) / (pd / wd);
     println!(
-        "crease pico {pc:.5} largura {wc:.3} R · draw pico {pd:.5} largura {wd:.3} R · razão {sharp:.3}"
+        "crease pico {pc:.5} largura {wc:.3} R · draw pico {pd:.5} largura {wd:.3} R · \
+         estreitamento {:.3}x · profundidade {:.3}x",
+        wd / wc,
+        pc / pd
     );
     assert!(
         wc > 0.0 && wd > 0.0,
         "a fixture não resolve a largura — anéis de menos"
     );
+    // **A LARGURA é a propriedade do verbo**, e é o `f⁵` que a produz.
     assert!(
-        sharp > 1.5,
-        "o Crease tinha de ser mais afiado que o Draw invertido, e mediu {sharp:.3}"
+        wd > wc * 1.5,
+        "o sulco do Crease ({wc:.3} R) tinha de ser mais estreito que o do Draw \
+         invertido ({wd:.3} R)"
+    );
+    // ⚠️ **E a PROFUNDIDADE é uma razão de CONSTANTES, não uma barra.** O
+    // `Crease.js:48` usa `intensidade · 0,07 · raio` e o `Brush.js:60` usa
+    // `intensidade · raio · 0,1`: o vinco é **0,70× mais raso que o Draw, de
+    // propósito**, e afirmá-lo assim é o que impede este gate de precisar de
+    // recalibração toda vez que um dos dois números se mexer.
+    //
+    // ⚠️ **Ele era uma barra ÚNICA** (`(pico ÷ largura) do crease sobre a do
+    // draw > 1,5`) e ficou vermelha em **1,451** quando as duas constantes da
+    // referência entraram — porque aquele número é o PRODUTO das duas
+    // propriedades (2,08 × 0,70), e uma barra sobre um produto não diz qual das
+    // metades se moveu.
+    let want = crate::CREASE_FRACTION / crate::REACH_FRACTION;
+    let got = pc / pd;
+    assert!(
+        (got / want - 1.0).abs() < 0.05,
+        "a profundidade do Crease é {got:.3}x a do Draw, e as constantes da \
+         referência pedem {want:.3}x"
     );
 }
 

@@ -258,7 +258,14 @@ impl App {
                 // idêntico repetido, porque o alvo do [`Grip::Turn`] é função do
                 // `pre` congelado e do gesto TOTAL.
                 Grip::Turn(kind) => scene.turn_at(kind, x, y),
-                Grip::Stamp => {
+                // ⚠️ **O canal PERCORRE o caminho como o carimbo**, e o ramo é
+                // partilhado de propósito: o [`Grip::Paint`] nasceu para o
+                // carimbo poder trocar de lei sem levar a máscara junto (ver o
+                // doc dele), e essa troca é sobre o que um dab FAZ com o que já
+                // está lá — não sobre como o gesto vira uma lista de dabs.
+                // Esfregar uma máscara é esfregar, e o `walk` é o que impede a
+                // taxa de polling de decidir a densidade dela.
+                Grip::Stamp | Grip::Paint => {
                     let spacing = ph2d_sculpt3d::min_spacing(scene.radius_px());
                     if let Some(steps) = ph2d_sculpt3d::walk(scene.stroke_anchor, [x, y], spacing) {
                         for [sx, sy] in steps {

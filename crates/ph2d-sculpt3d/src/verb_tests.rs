@@ -516,7 +516,20 @@ fn pinch_pulls_along_the_surface_and_does_not_secretly_flatten() {
         worst_ratio = worst_ratio.max(d[2].abs() / len);
         lateral = lateral.max((d[0] * d[0] + d[1] * d[1]).sqrt());
     }
-    assert!(lateral > 0.02, "o Pinch não apertou nada ({lateral})");
+    // ⚠️ **O piso é DERIVADO do ganho, e não escolhido** — ele é anti-vácuo, e
+    // um literal aqui envelhece com a constante. O maior deslocamento possível
+    // num dab é `ganho · força · raio` (peso 1 na distância cheia, que o
+    // falloff nunca entrega junto); medido, o produto pousa em 28 % disso.
+    //
+    // ⚠️ **Ele era `0.02` e o número mudou porque o PRODUTO mudou:** o
+    // [`crate::PINCH_GAIN`] não existia, o alvo era a tangente inteira atenuada
+    // pelo peso, e o verbo era **20× mais forte que a referência**. O piso
+    // antigo estava calibrado nesse erro.
+    let floor = crate::PINCH_GAIN * b.strength * b.radius * 0.2;
+    assert!(
+        lateral > floor,
+        "o Pinch não apertou nada ({lateral} contra o piso {floor})"
+    );
     assert!(
         worst_ratio < 0.05,
         "o deslocamento do Pinch tem {:.1}% ao longo da normal — ele está \

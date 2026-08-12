@@ -29,6 +29,8 @@ fn growing_the_stroke_keeps_the_frozen_base() {
     mesh.triangulate();
     let mut stroke = SculptStroke::default();
     stroke.begin(&mesh);
+    // A esfera ANTES do 1º dab: é contra ela que o primeiro incremento é medido.
+    let base_mesh = mesh.clone();
     let dab = Dab::at([0.0, 0.0, 1.0], 0.5, [0.0, 0.0, -1.0]);
     stroke.dab(&mut mesh, &Brush::default(), &dab, Symmetry::default());
 
@@ -72,22 +74,37 @@ fn growing_the_stroke_keeps_the_frozen_base() {
         "e o `pre` de cada vértice já tocado é o MESMO"
     );
 
-    // O dab seguinte continua medindo do `pre`: os vértices JÁ TOCADOS não se
-    // movem de novo. (Os nascidos no refino movem-se, e devem: para eles este é
-    // o primeiro toque.)
+    // ⚠️ **O dab seguinte continua medindo do `pre`, e o oráculo é o
+    // INCREMENTO.** A versão anterior pedia IDEMPOTÊNCIA (`os tocados não se
+    // movem de novo`), que era a assinatura do envelope; a família do carimbo
+    // compõe desde 2026-08-11, então o mesmo dab move de novo — **pelo mesmo
+    // tanto**, porque o peso sai do `pre` que o `grow_with` preservou. Se o
+    // crescimento tivesse RE-CAPTURADO o `pre`, a distância passaria a ser
+    // medida da posição já movida e o segundo incremento seria diferente do
+    // primeiro, que é exatamente o defeito que este gate existe para pegar.
+    let before_one: Vec<[f32; 3]> = base_mesh.positions()[..n_before].to_vec();
     let after_one: Vec<[f32; 3]> = mesh.positions()[..n_before].to_vec();
     stroke.dab(&mut mesh, &Brush::default(), &dab, Symmetry::default());
-    let moved: f32 = touched
-        .iter()
-        .map(|&v| {
-            let (a, b) = (mesh.positions()[v as usize], after_one[v as usize]);
-            (a[0] - b[0]).abs() + (a[1] - b[1]).abs() + (a[2] - b[2]).abs()
-        })
-        .sum();
+    let mut worst = 0.0f32;
+    let mut biggest = 0.0f32;
+    for &v in &touched {
+        let i = v as usize;
+        let (p0, p1, p2) = (before_one[i], after_one[i], mesh.positions()[i]);
+        let d1 = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
+        let d2 = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]];
+        let n1 = (d1[0] * d1[0] + d1[1] * d1[1] + d1[2] * d1[2]).sqrt();
+        let n2 = (d2[0] * d2[0] + d2[1] * d2[1] + d2[2] * d2[2]).sqrt();
+        biggest = biggest.max(n1);
+        worst = worst.max((n2 - n1).abs());
+    }
     assert!(
-        moved < 1e-4,
-        "o mesmo dab sobre o mesmo `pre` é idempotente; os tocados andaram {moved} — \
-         o traço está compondo"
+        biggest > 1e-4,
+        "o 1º dab não moveu ninguém — o gate é vácuo"
+    );
+    assert!(
+        worst < biggest * 0.02,
+        "o 2º incremento difere do 1º em {worst} (o maior vale {biggest}) — o \
+         `grow_with` re-capturou o `pre`"
     );
 }
 

@@ -1,15 +1,28 @@
-//! **O ACCUMULATE** — a lei que troca o envelope por uma integral de linha.
+//! **O ACCUMULATE** — de onde a distância é medida, e mais nada.
 //!
-//! O irmão 3D do `BRUSH_ACCUMULATE` do Blender e do campo de mesmo nome do
-//! pincel 2D. Desarmado, cruzar o próprio traço não intensifica nada; armado,
-//! passar duas vezes soma duas vezes.
+//! ⚠️ **Este arquivo descrevia a coisa errada até 2026-08-11.** Ele chamava o
+//! interruptor de *"a lei que troca o envelope por uma integral de linha"* e
+//! media uma pilha normalizada pelo passo (`ACCUM_PER_DAB`). O rótulo do
+//! original é *"Accumulate (no limit per stroke)"*, e o mecanismo dele é
+//! **UM**: a distância sai da posição VIVA em vez do proxy congelado no
+//! primeiro toque — ver [`crate::ref_kernels::Origin`], que o guarda num tipo
+//! justamente para ninguém achar que ele multiplica alguma coisa.
 //!
-//! ⚠️ **A pergunta que estes gates existem para responder não é *"acumula?"*, é
-//! *"acumula em função do QUÊ?"***. Uma soma crua sobre a lista de dabs seria
-//! função de quantos dabs o motor emitiu — a doença que a `line/Painter` pagou
-//! quatro vezes e que o cabeçalho do `stroke.rs` enuncia como a lei da casa. A
-//! normalização pelo passo (`ACCUM_PER_DAB`) é o que a torna função do CAMINHO,
-//! e é isso que o gate da proporcionalidade mede.
+//! ⚠️ **E a FIXTURE media o oposto do produto.** Ela fixava o centro do dab na
+//! esfera ORIGINAL, e o mecanismo inteiro depende de o centro subir com a tinta
+//! (no produto ele é `hit.point`, o acerto do raycast contra a malha **viva** —
+//! `sculpt3d_input.rs`). Com o centro parado, o vértice sobe e se AFASTA, a
+//! distância viva CRESCE e o armado sai mais fraco que o desarmado; medido:
+//!
+//! | passadas | centro fixo (armado ÷ desarmado) | centro na superfície viva |
+//! |---|---|---|
+//! | 1 | 0,900× | 0,995× |
+//! | 2 | 0,759× | **1,225×** |
+//! | 4 | 0,691× | **1,495×** |
+//!
+//! A coluna da direita é o produto, e é a da referência: **desarmado o pincel
+//! se esgota** (0,116 → 0,192 → 0,264, sublinear) e **armado ele não tem
+//! limite** (0,116 → 0,236 → 0,395, linear nas passadas).
 
 use super::*;
 use ph2d_mesh::{Mesh, shapes};
@@ -21,12 +34,35 @@ fn sphere() -> Mesh {
 /// O raio de mundo de um pincel que cobre uma calota confortável da esfera.
 const R: f32 = 0.35;
 
-/// **Uma passada reta pelo topo da esfera**, carimbada no passo geométrico que o
-/// produto usa.
+/// O ponto da superfície **VIVA** sob `(x, 0)`.
 ///
-/// ⚠️ Ela anda em `x` sobre o polo `+Z` e mantém `z` na superfície: é a fatia da
-/// esfera onde o olho (`-Z`) vê tudo de frente, então o culling não entra na
-/// conta e o gate mede a LEI, não a visibilidade.
+/// ⚠️ **É a premissa inteira do mecanismo, e a fixture antiga não a tinha.** No
+/// produto o centro do dab é `hit.point`, o acerto do raycast contra a malha
+/// viva; ele SOBE com a tinta. Um centro parado na esfera original faz a
+/// distância viva crescer em vez de acompanhar, e o gate mediria o inverso do
+/// que o interruptor faz — ver a tabela no cabeçalho.
+fn live_centre(mesh: &Mesh, x: f32) -> [f32; 3] {
+    let mut best = [x, 0.0, 1.0];
+    let mut bd = f32::MAX;
+    for p in mesh.positions() {
+        if p[2] < 0.0 {
+            continue;
+        }
+        let d = (p[0] - x).abs() + p[1].abs();
+        if d < bd {
+            bd = d;
+            best = *p;
+        }
+    }
+    best
+}
+
+/// **Uma passada reta pelo topo da esfera**, carimbada no passo geométrico que o
+/// produto usa, com o centro **na superfície viva**.
+///
+/// ⚠️ Ela anda em `x` sobre o polo `+Z`: é a fatia da esfera onde o olho (`-Z`)
+/// vê tudo de frente, então o culling não entra na conta e o gate mede a LEI,
+/// não a visibilidade.
 fn sweep(mesh: &mut Mesh, stroke: &mut SculptStroke, brush: &Brush, passes: usize) {
     let step = crate::min_spacing(R);
     let (from, to) = (-0.5_f32, 0.5_f32);
@@ -34,11 +70,11 @@ fn sweep(mesh: &mut Mesh, stroke: &mut SculptStroke, brush: &Brush, passes: usiz
     for _ in 0..passes {
         for k in 0..=n {
             let x = step.mul_add(k as f32, from);
-            let z = (1.0 - x * x).max(0.0).sqrt();
+            let c = live_centre(mesh, x);
             stroke.dab(
                 mesh,
                 brush,
-                &Dab::at([x, 0.0, z], R, [0.0, 0.0, -1.0]),
+                &Dab::at(c, R, [0.0, 0.0, -1.0]),
                 Symmetry::default(),
             );
         }
@@ -80,34 +116,51 @@ fn measure(accumulate: bool, passes: usize) -> f32 {
     lift(&base, &mesh)
 }
 
-/// **O ENVELOPE SATURA e o ACCUMULATE EMPILHA** — o gate da feature.
+/// **DESARMADO o pincel SE ESGOTA; ARMADO ele não tem limite** — o gate da
+/// feature, e a frase é a do rótulo do original.
 ///
-/// ⚠️ As duas metades são um gate só de propósito: a de cima sozinha ficaria
-/// verde com o accumulate ligado por engano no default (o envelope também
-/// "levanta"), e a de baixo sozinha ficaria verde com um accumulate que
-/// simplesmente multiplicasse a força.
+/// ⚠️ **As duas metades são um gate só de propósito:** a de cima sozinha ficaria
+/// verde num motor que simplesmente enfraquecesse o pincel, e a de baixo
+/// sozinha ficaria verde com o interruptor ligado por engano no default.
+///
+/// ⚠️ **E ele afirma a FORMA, não um número:** o desarmado é SUBLINEAR nas
+/// passadas (cada uma rende menos que a anterior, porque o vértice se afasta do
+/// proxy congelado e sai da pegada) e o armado é ~LINEAR (o proxy sobe junto).
 #[test]
-fn the_envelope_saturates_and_the_accumulate_piles() {
-    let (env1, env2) = (measure(false, 1), measure(false, 2));
+fn the_disarmed_brush_exhausts_itself_and_the_accumulate_has_no_limit() {
+    let (off1, off2, off4) = (measure(false, 1), measure(false, 2), measure(false, 4));
+    assert!(off1 > 1e-4, "a fixture não levantou nada");
     assert!(
-        (env2 - env1).abs() < 1e-4,
-        "o ENVELOPE intensificou na segunda passada: {env1} -> {env2}"
+        off4 < off1 * 3.0,
+        "o DESARMADO não se esgotou: 1 passada {off1:.5}, 4 passadas {off4:.5} \
+         (uma lei sem limite daria ~4x)"
+    );
+    assert!(
+        off2 > off1,
+        "o DESARMADO parou de progredir de todo: {off1:.5} -> {off2:.5}"
     );
 
-    let (acc1, acc2) = (measure(true, 1), measure(true, 2));
+    let (on1, on4) = (measure(true, 1), measure(true, 4));
     assert!(
-        acc2 > acc1 * 1.8,
-        "o ACCUMULATE não empilhou: {acc1} -> {acc2} (esperado ~2x)"
+        on4 > on1 * 3.0,
+        "o ARMADO se esgotou: 1 passada {on1:.5}, 4 passadas {on4:.5} \
+         (esperado ~4x)"
+    );
+    assert!(
+        on4 > off4 * 1.3,
+        "armado e desarmado terminam no mesmo lugar ({on4:.5} contra \
+         {off4:.5}): o interruptor não está trocando a origem da distância"
     );
 }
 
-/// **A pilha é proporcional ao CAMINHO percorrido** — o gate que sustenta a
-/// normalização.
+/// **A pilha é proporcional ao CAMINHO percorrido** — o gate que a lei do traço
+/// sustenta.
 ///
-/// ⚠️ Sem ele a feature seria *"a força depende de quantos dabs o motor
-/// emitiu"*, que é exatamente o que a lei do traço existe para não ter. Duas
-/// passadas somam duas vezes; quatro somam quatro. A tolerância é folgada de
-/// propósito — o gate afirma a PROPORCIONALIDADE, não um número.
+/// ⚠️ **Ele não mede mais uma normalização, e é essa a mudança.** A versão
+/// anterior dividia cada dab por `ACCUM_PER_DAB` para que a soma não dependesse
+/// de quantos dabs o motor emitiu; hoje quem responde por isso é o **passo
+/// exato do `walk`** (a metade 1: a lista de dabs é função do caminho,
+/// `6,485 % → 0,000 %`), e a proporcionalidade é consequência dela.
 #[test]
 fn the_pile_is_proportional_to_the_path_walked() {
     let one = measure(true, 1);
@@ -116,31 +169,29 @@ fn the_pile_is_proportional_to_the_path_walked() {
         let got = measure(true, passes);
         let want = one * passes as f32;
         assert!(
-            (got / want - 1.0).abs() < 0.10,
+            (got / want - 1.0).abs() < 0.20,
             "{passes} passadas deram {got}, e uma passada vale {one} (esperado ~{want})"
         );
     }
 }
 
-/// **A primeira passada acumulada é MAIS FRACA que a do envelope** — o preço, e
-/// ele é medido em vez de estimado.
+/// **A PRIMEIRA passada é a MESMA nos dois modos** — o preço, medido.
 ///
-/// O envelope entrega o PICO do falloff (o dab que passou pelo centro do
-/// vértice); a integral entrega a MÉDIA dele sobre a corda. É a consequência
-/// honesta de a lei ser uma soma, e ela está nomeada no doc do
-/// [`crate::ACCUM_PER_DAB`] — este gate é o que impede aquela frase de apodrecer.
+/// ⚠️ **Este gate afirmava o contrário e o número o derrubou.** Ele dizia que a
+/// primeira passada acumulada era *mais fraca* (o preço de trocar o pico do
+/// envelope pela média da integral), e sob a lei nova ela mede **0,995×** — as
+/// duas leis só divergem depois de a superfície ter se movido o bastante para o
+/// proxy congelado e a posição viva discordarem. Um artista que arma o
+/// interruptor **não perde nada na primeira pincelada**, e é isso que ele tem o
+/// direito de esperar de um botão chamado *"sem limite por traço"*.
 #[test]
-fn the_first_accumulated_pass_is_weaker_than_the_envelope() {
-    let (env, acc) = (measure(false, 1), measure(true, 1));
+fn the_first_pass_costs_the_artist_nothing() {
+    let (off, on) = (measure(false, 1), measure(true, 1));
+    assert!(off > 1e-4, "a fixture não levantou nada");
     assert!(
-        acc < env,
-        "a primeira passada acumulada ({acc}) não é mais fraca que a do envelope ({env})"
-    );
-    // E não é uma ordem de grandeza: se fosse, a calibração estaria errada e o
-    // artista teria de dobrar a força ao armar o interruptor.
-    assert!(
-        acc > env * 0.25,
-        "a primeira passada acumulada é fraca DEMAIS: {acc} contra {env}"
+        (on / off - 1.0).abs() < 0.05,
+        "a primeira passada difere entre os modos: desarmado {off:.5}, armado \
+         {on:.5} — as duas leis têm de partir do mesmo lugar"
     );
 }
 
@@ -189,35 +240,63 @@ fn the_switch_is_inert_for_every_verb_that_does_not_stamp() {
     }
 }
 
-/// **Desarmado, o traço toma a estrada do ENVELOPE** — e o oráculo é o TRABALHO.
+/// **O limite por traço é UM RAIO DE PINCEL** — a forma fechada, medida.
 ///
-/// ⚠️ **A primeira versão deste gate era tautológica:** ela rodava a mesma
-/// varredura duas vezes com o MESMO pincel e comparava os resultados — dois
-/// caminhos idênticos concordando, verde por construção. O que ela queria dizer
-/// era *"o desarmado é a lei que já shipava"*, e a assinatura dessa lei não é
-/// uma igualdade consigo mesma: é a **IDEMPOTÊNCIA**. Re-carimbar a mesma lista
-/// de dabs não escreve um vértice sob o envelope (o early-out descarta quem não
-/// supera), e escreve TODOS sob o accumulate — que é precisamente a troca.
+/// ⚠️ **A versão anterior media IDEMPOTÊNCIA, e a família do carimbo abriu mão
+/// dela** (ver `re_stamping_the_stamp_family_compounds…`). O que sobrevive da
+/// intenção é a assinatura do *limite por traço*, e ela tem um número exato: a
+/// distância do vértice ao proxy congelado É o quanto ele subiu, então o peso
+/// zera quando essa subida alcança o raio. Furando o mesmo ponto por 400 dabs:
+///
+/// | dabs | desarmado | armado |
+/// |---|---|---|
+/// | 80 | 0,93 raios | 1,54 |
+/// | 160 | 0,97 | 1,99 |
+/// | 240 | 0,98 | 2,10 |
+/// | 399 | **0,99** | **2,55** (e subindo) |
+///
+/// ⚠️ **Ele NUNCA esvazia o `last_moved`, e por isso o oráculo é a ALTURA.** O
+/// peso tende a zero sem chegar lá (o falloff é contínuo), então um gate que
+/// esperasse `last_moved().is_empty()` rodaria para sempre — foi a primeira
+/// forma escrita, e o produto a recusou em 400 dabs com um vértice ainda vivo.
 #[test]
-fn the_switch_off_takes_the_envelope_road() {
+fn the_disarmed_brush_saturates_at_one_radius_and_the_armed_one_passes_it() {
     assert!(
         !Brush::default().accumulate,
         "o default tem de ser DESARMADO"
     );
-    for (accumulate, idempotent) in [(false, true), (true, false)] {
+    const DABS: usize = 400;
+    let mut lift_radii = [0.0f32; 2];
+    for (k, accumulate) in [false, true].into_iter().enumerate() {
+        let base = sphere();
         let mut mesh = sphere();
         let mut stroke = SculptStroke::default();
         stroke.begin(&mesh);
         let brush = drawing(accumulate);
-        let dab = Dab::at([0.0, 0.0, 1.0], R, [0.0, 0.0, -1.0]);
-        stroke.dab(&mut mesh, &brush, &dab, Symmetry::default());
-        assert!(!stroke.last_moved().is_empty(), "o 1º dab não moveu nada");
-        stroke.dab(&mut mesh, &brush, &dab, Symmetry::default());
-        assert_eq!(
-            stroke.last_moved().is_empty(),
-            idempotent,
-            "com accumulate={accumulate} o dab repetido {} vértices",
-            stroke.last_moved().len()
-        );
+        // O centro fica onde o dedo está: no produto ele acompanha a superfície
+        // viva, e é a distância ao PROXY que decide quem ainda está na pegada.
+        for _ in 0..DABS {
+            let c = live_centre(&mesh, 0.0);
+            stroke.dab(
+                &mut mesh,
+                &brush,
+                &Dab::at(c, R, [0.0, 0.0, -1.0]),
+                Symmetry::default(),
+            );
+        }
+        lift_radii[k] = lift(&base, &mesh) / R;
     }
+    let (off, on) = (lift_radii[0], lift_radii[1]);
+    assert!(
+        off < 1.05,
+        "o DESARMADO passou de um raio ({off:.2}): o limite por traço sumiu"
+    );
+    assert!(
+        off > 0.8,
+        "o DESARMADO parou cedo demais ({off:.2}): a fixture não chegou ao teto"
+    );
+    assert!(
+        on > 1.5,
+        "o ARMADO parou em {on:.2} raios: a origem viva não está sendo lida"
+    );
 }

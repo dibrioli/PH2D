@@ -22,13 +22,20 @@
 
 use super::*;
 
-/// Os verbos cujo alvo já é a posição final — a tabela de grips do `dab_core` é
-/// quem os define, e este `assert` recusa que a lista aqui envelheça.
+/// Os verbos cujo alvo já é a posição final.
+///
+/// ⚠️ **A resposta é PERGUNTADA à [`crate::GripLaw`], não enumerada aqui — e a
+/// diferença já custou uma vez.** Enquanto esta função casava à mão em
+/// `Hook | Turn`, ela estava certa; no dia em que o [`crate::Grip::Stamp`]
+/// trocou de lei e passou a carregar o peso no alvo, a lista ficou
+/// **INCOMPLETA** e o gate seguiu VERDE — medindo dez verbos a menos, com o
+/// `assert` de não-vácuo satisfeito pelos dois que sobraram. Uma lista escrita
+/// à mão só sabe reclamar quando fica VAZIA.
 fn unit_accum_verbs() -> Vec<Verb> {
     let list: Vec<Verb> = Verb::ALL
         .iter()
         .copied()
-        .filter(|v| matches!(v.grip(), crate::Grip::Hook | crate::Grip::Turn(_)))
+        .filter(|v| v.grip().law(false).unit_accum)
         .collect();
     assert!(
         !list.is_empty(),
@@ -36,6 +43,25 @@ fn unit_accum_verbs() -> Vec<Verb> {
          passou a medir vácuo"
     );
     list
+}
+
+/// Um verbo que **atenua** — o controle do gate irmão.
+///
+/// ⚠️ Ele também sai da tabela, e pelo mesmo motivo: era o `Verb::Draw` escrito
+/// à mão, e o Draw passou para o lado do peso-no-alvo sem que este arquivo
+/// soubesse.
+fn attenuating_verb() -> Verb {
+    Verb::ALL
+        .iter()
+        .copied()
+        .find(|v| {
+            let law = v.grip().law(false);
+            // A máscara atenua e o alvo dela é o PRÓPRIO lugar do vértice, então
+            // `toward(b, b, a) == b == alvo` e ela não serve de controle: ela
+            // pousa no alvo por coincidência, não por peso.
+            !law.unit_accum && !v.paints_mask()
+        })
+        .expect("nenhum verbo atenua: a tabela de grips colapsou numa lei só")
 }
 
 /// **A ENTREGA:** quem põe o peso no alvo recebe o alvo de volta, ao BIT.
@@ -103,16 +129,22 @@ fn the_applicator_writes_the_target_verbatim_when_the_weight_lives_in_it() {
 fn a_stamp_verb_lands_short_of_its_target_and_that_is_what_gives_the_gate_teeth() {
     let c = [0.0, 0.0, 1.0];
     let radius = 0.4;
+    let verb = attenuating_verb();
     let mut mesh = sphere();
     let brush = Brush {
-        verb: Verb::Draw,
+        verb,
         radius,
         strength: 0.5,
         ..Brush::default()
     };
     let mut s = SculptStroke::default();
     s.begin(&mesh);
-    s.dab(&mut mesh, &brush, &dab_at(c, radius), Symmetry::default());
+    s.dab(
+        &mut mesh,
+        &brush,
+        &dab_for(verb, c, radius),
+        Symmetry::default(),
+    );
     let short = s
         .last_moved()
         .iter()

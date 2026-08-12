@@ -4,6 +4,7 @@
 //! resto: **o `Dab` é onde e com que força a mão apertou; o `Brush` é que
 //! ferramenta está na mão.** Um traço é uma lista de dabs contra UM brush.
 
+use crate::grip::{Amount, Grip};
 use crate::{Alpha, AlphaStencil};
 
 /// A curva de peso do pincel, do centro (`t = 0`) à borda (`t = 1`).
@@ -168,103 +169,6 @@ pub enum Verb {
     LocalScale,
 }
 
-/// **A grandeza escalar que um gesto de [`Grip::Turn`] entrega**, e o que um
-/// espelho faz com ela.
-///
-/// ⚠️ **Ela mora DENTRO do grip, e não num predicado ao lado, porque as duas
-/// perguntas têm sempre a mesma resposta**: um verbo que gira em torno de uma
-/// âncora *tem* de dizer em que unidade o gesto chega, e um verbo sem unidade
-/// não pode ser um `Turn`. Carregada aqui, a contradição é **inexprimível** —
-/// e os dois consumidores (o espelho no kernel, o gesto no shell) casam
-/// exaustivamente sobre o mesmo dado.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Amount {
-    /// Um **ÂNGULO** em radianos, com sinal.
-    ///
-    /// ⚠️ **É um PSEUDOESCALAR: um espelho troca o sinal dele.** Um redemoinho
-    /// visto no espelho gira ao contrário — a mesma geometria que separa força
-    /// de torque no módulo de física, e a razão de o espelho da simetria não
-    /// poder tratar as duas grandezas igual.
-    Angle,
-    /// Uma **FRAÇÃO** de escala (`0` não mexe, `+1` dobra, `−1` colapsa).
-    ///
-    /// É um escalar comum: um espelho não a toca. Uma esfera que dobra de
-    /// tamanho dobra de tamanho no espelho também.
-    Fraction,
-}
-
-/// **Como um verbo consome o GESTO** — a pergunta que separa o Draw do Grab e o
-/// Grab do Snake Hook, feita **uma vez**.
-///
-/// As três perguntas que pareciam independentes são facetas desta: *o pincel
-/// carimba ao longo do caminho ou segura uma pegada?* · *o verbo lê
-/// [`crate::Dab::pull`]?* · *o alvo é função do `pre` congelado ou um
-/// revezamento sobre o que já está lá?* Respondê-las em três predicados soltos
-/// seria a falha de três portas — a `line/Painter` a pagou em 2D quando uma
-/// condição **enumerava seus leitores** e o terceiro nasceu morto.
-///
-/// Um `match` exaustivo sobre isto é o que faz um verbo NOVO ser impossível de
-/// esquecer: quem acrescentar um quarto grip não compila até dizer, em cada
-/// consumidor, o que ele significa.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Grip {
-    /// **CARIMBA.** O caminho é percorrido a passos de
-    /// [`crate::min_spacing`], cada dab é um toque, e o alvo é função do `pre`
-    /// congelado. Onze verbos, e é a lei do envelope na forma pura.
-    Stamp,
-    /// **SEGURA.** A pegada é presa no pen-down e o [`crate::Dab::pull`] é o
-    /// deslocamento **TOTAL** desde então. O alvo continua sendo função do
-    /// `pre` (`base + pull`, atenuado pelo `accum`), então puxar de volta
-    /// devolve o barro ao lugar.
-    ///
-    /// ⚠️ **Não percorre o caminho**: o espaçamento existe para não deixar vão
-    /// entre dois carimbos, e isto não carimba — rodar o walk daria N dabs
-    /// idênticos no mesmo lugar.
-    Hold,
-    /// **ARRASTA.** A pegada anda com o cursor, o [`crate::Dab::pull`] é o
-    /// **INCREMENTO** entre dois dabs, e cada um entrega ao seguinte.
-    ///
-    /// ⚠️ **É a outra lei, e a diferença é visível na primeira pincelada:** o
-    /// alvo é `posição VIVA + incremento·peso`, não `base + algo`. Puxar para
-    /// fora e voltar deixa um espinho (a matéria foi transportada), onde o
-    /// [`Grip::Hold`] devolveria o barro. Isso não é um descuido — **é o que
-    /// esticar significa**, e nenhum app entrega um Snake Hook idempotente.
-    ///
-    /// ⚠️ **O que a lei do traço perde e o que ela mantém, com nome:** a
-    /// independência de amostragem vira uma **INTEGRAL DE LINHA** (`Σ dir·peso`
-    /// converge com o espaçamento, e o walk fixa o espaçamento no caminho, não
-    /// no polling) · a idempotência sob re-stamp **cai**, e nada a consome hoje
-    /// (nenhuma rota deste módulo re-carimba um traço) · **o undo continua
-    /// trivial**, porque `base` segue sendo o `pre` congelado de todo vértice
-    /// que a pegada tocou em qualquer momento do gesto.
-    Hook,
-    /// **GIRA (ou ESCALA) em torno de uma ÂNCORA.** A pegada é congelada no
-    /// pen-down como no [`Grip::Hold`], a distância sai do `pre` congelado, e o
-    /// gesto que chega é o **TOTAL** desde então — o ângulo varrido, ou a fração
-    /// de escala acumulada.
-    ///
-    /// ⚠️ **A lei do traço fica INTEIRA, e é por isso que este grip existe em
-    /// vez de o Twist ser um [`Grip::Hook`].** O original aplica o incremento de
-    /// cada evento sobre o resultado do anterior (`Twist.js:47` lê
-    /// `_lastMouseX`), que é o **produto sobre a lista de dabs** que este módulo
-    /// existe para não ter — e no Local Scale ele morde de verdade, porque
-    /// `Π(1 + sᵢ·wᵢ) ≠ 1 + Σsᵢ·wᵢ`: arrastar devagar cresceria mais que arrastar
-    /// rápido pelo mesmo caminho. Ancorado no `pre` com o gesto TOTAL, o alvo é
-    /// função do estado congelado ⇒ independência de amostragem, idempotência
-    /// sob re-stamp e *varrer de volta devolve o barro ao lugar*, as três
-    /// propriedades que o cabeçalho do `stroke` promete.
-    ///
-    /// ⚠️ **O alvo já traz o PESO (`accum = 1`), e isso NÃO é cosmética.**
-    /// Interpolar entre o `base` e a posição girada cortaria pela **CORDA** do
-    /// arco: o vértice andaria por dentro da circunferência e o barro
-    /// **encolheria** na direção da âncora quanto maior o giro — o mesmo defeito
-    /// que o tween do Flip pagou antes de trocar o lerp pela espiral. O peso
-    /// entra no ÂNGULO (`θ·w`), onde ele pertence.
-    ///
-    /// ⚠️ **O [`Amount`] viaja aqui dentro** — ver o doc dele.
-    Turn(Amount),
-}
-
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
     pub const ALL: [Self; 16] = [
@@ -411,6 +315,7 @@ impl Verb {
             Self::SnakeHook => Grip::Hook,
             Self::Twist => Grip::Turn(Amount::Angle),
             Self::LocalScale => Grip::Turn(Amount::Fraction),
+            Self::Mask => Grip::Paint,
             _ => Grip::Stamp,
         }
     }
@@ -427,9 +332,15 @@ impl Verb {
     /// [`Grip::Turn`] chegou** — um redemoinho não puxa nada. O que a pergunta
     /// sempre quis dizer é *este verbo tem âncora?*, e é essa a palavra que
     /// sobrevive a um quinto grip.
+    ///
+    /// ⚠️ **Ela era `!matches!(grip, Stamp)`, e o quinto grip a tornou FALSA:**
+    /// o [`Grip::Paint`] também não carimba geometria, e um verbo de máscara
+    /// não tem âncora nenhuma. A pergunta passou a ser feita pelo lado
+    /// POSITIVO — quem de fato pega um ponto no pen-down —, que é a forma que
+    /// sobrevive ao sexto grip em vez de o adotar em silêncio.
     #[must_use]
     pub fn anchors(self) -> bool {
-        !matches!(self.grip(), Grip::Stamp)
+        matches!(self.grip(), Grip::Hold | Grip::Hook | Grip::Turn(_))
     }
 
     /// A força com que um pincel deste verbo **nasce**.
@@ -470,7 +381,30 @@ impl Verb {
 ///
 /// O NÚMERO é decisão de **smoke**, como o `ORBIT_RAD_PER_PX` da câmera: ele não
 /// é teto de recurso nenhum, é o quanto de barro uma pincelada move.
-pub const REACH_FRACTION: f32 = 0.2;
+pub const REACH_FRACTION: f32 = 0.1;
+
+/// O ganho do **Crease**, e o do vinco é MENOR que o do Draw.
+///
+/// ⚠️ **Os três números desta família saem da referência, não de afinação:**
+/// `Brush.js` e `Inflate.js` usam `intensidade · raio · 0,1`, o `Crease.js` usa
+/// `intensidade · 0,07` e o `Pinch.js` usa `intensidade · 0,05`. Eles são o que
+/// separa *"a lei está certa"* de *"a ferramenta responde como a referência"* —
+/// e a sonda `measure_reference_divergence` é quem os cobra.
+pub const CREASE_FRACTION: f32 = 0.07;
+
+/// O ganho do **Pinch** e do **Magnify** — ver [`CREASE_FRACTION`].
+///
+/// ⚠️ **Ele não existia, e a ausência valia 20×:** o alvo era `base + tangente`
+/// atenuado pelo peso, ou seja o vértice caminhava até `w` da distância inteira
+/// ao centro **num dab**. Medido contra a referência, `16,88×`.
+pub const PINCH_GAIN: f32 = 0.05;
+
+/// Quanto o plano do **Clay** sobe acima da superfície, em fração do raio.
+///
+/// ⚠️ **É o literal `0.1` do `Brush.js:52`, e ele não é um knob no original.** O
+/// nosso `plane_offset` é um controle do artista e SOMA a este — o default dele
+/// (`0`) devolve a referência exata, e girá-lo levanta o plano a mais.
+pub const CLAY_PLANE_FRACTION: f32 = 0.1;
 
 /// A ferramenta na mão. Um traço inteiro corre contra um destes.
 /// ⚠️ **`Copy` MORREU quando o alpha ganhou IMAGEM** — ver [`crate::Alpha`], onde

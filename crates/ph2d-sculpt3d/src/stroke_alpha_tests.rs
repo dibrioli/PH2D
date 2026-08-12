@@ -134,17 +134,29 @@ fn the_pattern_does_not_depend_on_how_finely_the_path_was_sampled() {
     );
 }
 
-/// **E não depende da ORDEM em que o caminho foi percorrido.**
+/// O desacordo entre percorrer o MESMO caminho de ida e de volta.
 ///
-/// O irmão do gate acima no outro eixo. Ele sozinho ficaria verde num motor que
-/// simplesmente ignorasse o alpha, e o de cima ficaria verde num motor que o
-/// aplicasse por índice de dab — juntos, eles só passam se o padrão for função
-/// da POSIÇÃO.
-#[test]
-fn the_pattern_does_not_depend_on_which_way_the_stroke_was_walked() {
+/// ⚠️ **O CONTROLE não é opcional aqui, e ele nasceu de uma medição que
+/// derrubou a versão anterior deste gate.** Ele afirmava um número ABSOLUTO
+/// (`< 2 % do pico`) e ficou vermelho em 3,68 % quando a família do carimbo
+/// trocou de lei — e a causa **não era o padrão**: medido, com alpha 3,68 % e
+/// **sem alpha 3,67 %**, indistinguíveis. Quem produz o desacordo é a
+/// **SUPERFÍCIE MOVIDA** — a pegada (`verts_in_sphere`) sai das posições vivas,
+/// então um depósito que vale uma fração grande do raio muda *quem está sob o
+/// pincel* e o segundo dab de uma direção não vê o mesmo conjunto que o da
+/// outra. Ela escala com a força, que é a assinatura: `0,8 → 3,68 %` ·
+/// `0,08 → 0,01 %` · `0,008 → 0,01 %`.
+///
+/// ⚠️ **Isso é inerente a uma lei que COMPÕE, e a referência tem o mesmo** (o
+/// `sculptStroke` dela também consulta a malha viva por dab). Sob o envelope
+/// não aparecia porque o `max` é idempotente: um vértice que saía da esfera já
+/// tinha o valor dele carimbado.
+fn order_disagreement(armed: bool) -> f32 {
     let base = sphere();
-    let brush = textured(Verb::Draw);
-
+    let mut brush = textured(Verb::Draw);
+    if !armed {
+        brush.alpha = None;
+    }
     let mut forward = sphere();
     sweep(&mut forward, &brush, 24, false);
     let mut backward = sphere();
@@ -153,9 +165,30 @@ fn the_pattern_does_not_depend_on_which_way_the_stroke_was_walked() {
     let (a, b) = (moves(&base, &forward), moves(&base, &backward));
     let (worst, peak) = worst(&a, &b);
     assert!(peak > 0.01, "a fixture não esculpiu nada (pico {peak})");
+    worst / peak
+}
+
+/// **E o PADRÃO não depende da ORDEM em que o caminho foi percorrido.**
+///
+/// O irmão do gate acima no outro eixo. Ele sozinho ficaria verde num motor que
+/// simplesmente ignorasse o alpha, e o de cima ficaria verde num motor que o
+/// aplicasse por índice de dab — juntos, eles só passam se o padrão for função
+/// da POSIÇÃO.
+///
+/// ⚠️ **O oráculo é o CONTROLE, não um limiar** — ver [`order_disagreement`]:
+/// um número absoluto aqui mede a superfície movida e chama-a de alpha, que é
+/// literalmente a crítica que o doc do gate da densidade já fazia ao irmão
+/// dele. Um motor que aplicasse o padrão por ÍNDICE DE DAB faria a metade
+/// armada disparar contra a desarmada, que é o que este gate existe para pegar.
+#[test]
+fn the_pattern_does_not_depend_on_which_way_the_stroke_was_walked() {
+    let plain = order_disagreement(false);
+    let armed = order_disagreement(true);
     assert!(
-        worst < peak * 0.02,
-        "ida e volta pelo mesmo caminho discordam em {worst:.6} (pico {peak:.6})"
+        armed < plain.max(0.005) * 2.0,
+        "sem alpha, ida e volta discordam em {plain:.4} do pico; com alpha, em \
+         {armed:.4} — o padrão está sendo aplicado por índice de dab, não por \
+         posição"
     );
 }
 

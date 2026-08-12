@@ -68,40 +68,80 @@ fn a_vertex_is_on_the_border_when_its_ring_does_not_close() {
 /// **2 para 1,3597** em seis passes — a peça encolhe pelas duas pontas, e nada na
 /// ferramenta diz por quê. Com a regra, ela fica em **2 exatos**: os vizinhos de
 /// borda de um vértice de boca estão no MESMO anel, logo na mesma altura.
+///
+/// ⚠️ **E o ENCOLHIMENTO DE RAIO é o laplaciano, não um defeito — mas o número
+/// dele mudou de forma quando a lei do carimbo passou a COMPOR** (2026-08-11).
+/// Sob o envelope, seis dabs idênticos valiam um; hoje valem seis ITERAÇÕES, e
+/// a medição é uma progressão geométrica exata:
+///
+/// | passe | raio | altura |
+/// |---|---|---|
+/// | 0 | 1,0000 | 2,0000 |
+/// | 1 | 0,5000 | 2,0000 |
+/// | 2 | 0,2500 | 2,0000 |
+/// | 6 | **0,0156** | **2,0000** |
+///
+/// O fator é `cos(60°) = 0,5` — o anel da `open_tube3` tem TRÊS vértices, então
+/// o ponto médio da corda entre os dois vizinhos está a meio raio, e à força
+/// cheia o vértice vai o caminho inteiro até ele.
+///
+/// ⚠️ **A referência encolhe igual, e por escolha:** o `Smooth.js` dela roda
+/// `laplacianSmooth` puro por default (`this._tangent = false`), e a cura —
+/// projetar o deslocamento no plano tangente (`smoothTangent`) — existe lá e
+/// está **desligada**. Um Smooth que preserva volume é outra ferramenta, não o
+/// conserto desta.
 #[test]
 fn smoothing_the_lip_of_an_open_mesh_does_not_suck_it_inward() {
     let mut mesh = shapes_open::open_tube3();
     let before = tube_height(&mesh);
+    let lip_radius = |m: &ph2d_mesh::Mesh| {
+        let adj = m.adjacency();
+        (0..m.vert_count())
+            .filter(|&v| adj.is_border(v))
+            .map(|v| m.positions()[v][0].hypot(m.positions()[v][2]))
+            .sum::<f32>()
+            / 12.0
+    };
+    let r0 = lip_radius(&mesh);
 
+    // ⚠️ **`Falloff::Constant`, e é o que torna a forma fechada EXATA.** Com a
+    // curva default o peso na beira é ~1 mas não 1 (o dab tem raio 10 e a beira
+    // está a `t` pequeno, não a zero), e o fator sai `0,5198` em vez de `0,5000`
+    // — 4 % que não dizem nada sobre a lei. O gate mede o LAPLACIANO e a regra
+    // de borda; a curva do pincel tem gates próprios.
+    let brush = Brush {
+        falloff: Falloff::Constant,
+        ..smooth()
+    };
     let mut stroke = SculptStroke::default();
     stroke.begin(&mesh);
-    for _ in 0..6 {
+    for pass in 1..=6 {
         stroke.dab(
             &mut mesh,
-            &smooth(),
+            &brush,
             // Um dab que cobre o tubo inteiro: as duas bocas e o miolo.
             &Dab::at([0.0, 0.0, 0.0], 10.0, [0.0, 0.0, -1.0]),
             Symmetry::default(),
         );
+        // ⚠️ **O ORÁCULO É A PROGRESSÃO, e é ele que impede as duas leituras
+        // erradas de uma vez:** um Smooth que virasse no-op ficaria em `1.0`
+        // para sempre, e um que NÃO compusesse ficaria em `0.5` a partir do
+        // primeiro passe. Uma faixa (`0,45..0,6`) aceitava as duas.
+        let want = r0 * 0.5f32.powi(pass);
+        let got = lip_radius(&mesh);
+        assert!(
+            (got / want - 1.0).abs() < 0.02,
+            "passe {pass}: a beira mediu {got:.4} e o laplaciano de um anel de \
+             três pede {want:.4} (cos 60° por iteração)"
+        );
     }
+
+    // **A regra de borda**, e é ela que este gate existe para defender: a boca
+    // não é sugada ao longo do eixo, por mais que se alise.
     let after = tube_height(&mesh);
     assert!(
         (after - before).abs() < 1e-4,
         "as bocas foram sugadas para dentro ({before} -> {after}) — a média está ouvindo o miolo"
-    );
-
-    // ⚠️ E a beira ENCOLHE de raio, o que é correto e não é o defeito: alisar um
-    // hexágono o leva ao círculo inscrito. O gate afirma isso para ninguém
-    // "consertar" o Smooth de volta para uma média que não suaviza nada.
-    let adj = mesh.adjacency();
-    let radius: f32 = (0..mesh.vert_count())
-        .filter(|&v| adj.is_border(v))
-        .map(|v| mesh.positions()[v][0].hypot(mesh.positions()[v][2]))
-        .sum::<f32>()
-        / 12.0;
-    assert!(
-        (0.45..0.6).contains(&radius),
-        "a beira tem de alisar AO LONGO DELA MESMA (cos 60° ≈ 0,52), e mediu {radius}"
     );
 }
 

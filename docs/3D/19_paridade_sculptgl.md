@@ -363,13 +363,41 @@ Grip::Stamp => (frozen: false, from_live: brush.accumulate, unit_accum: true, ea
 pull, w)` — parte da posição viva, carrega o peso no incremento e recebe
 `accum = 1`. Os onze verbos de carimbo passam a ter a forma que UM deles já tem.
 
-⚠️ **A dúvida que isso levanta foi MEDIDA, e a resposta desbloqueia o resto:** o
-aplicador é `b + (t − b)·a`, e a referência escreve `t` DIRETO — se os dois
-diferissem, a paridade por-dab morreria **no aplicador**, não no kernel. Medido
-em 9 M amostras sobre cinco regimes (do produto até `1e-6`/`1e30`):
-`lerp(b, t, 1.0) == t` **bit a bit, 0 divergências em todos**. ⇒ **o aplicador
-único fica**, sem fast path e sem uma segunda rota de escrita — que é
-exatamente o que o doc-comment dele pede.
+⚠️ **A dúvida que isso levanta foi medida DUAS vezes, e a primeira medição
+estava errada — o parágrafo fica com as duas porque a lição vale mais que a
+conclusão.** O aplicador escrevia `b + (t − b)·a` e a referência escreve `t`
+DIRETO: se os dois diferissem, a paridade por-dab morreria **no aplicador**, não
+no kernel.
+
+- **A 1ª medição disse que a forma antiga bastava** — 9 M amostras, cinco
+  regimes, `lerp(b, t, 1.0) == t` bit a bit, zero divergências. ⚠️ **Ela era do
+  REGIME ERRADO:** os pares eram gerados como `t = fl(b + d)`, e nesse caso a
+  subtração é uma transformação livre de erro, logo a identidade é **garantida
+  por construção**. *Uma fixture que fabrica o valor pela mesma aritmética que
+  vai testar não contém o fenômeno.*
+- **O gate do PRODUTO nasceu vermelho** (`stroke_apply_tests`, 2026-08-11): o
+  alvo real é uma expressão inteira — uma rotação de Rodrigues, uma projeção em
+  plano — arredondada **uma vez** ao `f32`, e contra o `base` ele é um float
+  independente. Um Twist escrevia `1,3164502e-8` onde o alvo dizia
+  `1,3164501e-8`: **um ulp**, e a paridade morria ali.
+
+**E não há forma que sirva às três pontas** — medido em 400 mil pares:
+
+| forma | `a = 1` → `t` | `a = 0` → `b` | `t = b` → parado |
+|---|---|---|---|
+| `b + (t−b)·a` | **139 522** | 0 | 0 |
+| `b·(1−a) + t·a` | 0 | 0 | **53 315** |
+| `t − (t−b)·(1−a)` | 0 | **139 697** | 0 |
+
+⇒ o aplicador passou a ser **ancorado no ALVO** (`t − (t−b)·(1−a)`), porque as
+duas pontas que ele acerta são as duas que o produto **promete**: `a = 1` pousa
+no alvo (o que o `Hook`, o `Turn` e os onze de carimbo exigem) e `t = b` não
+move nada (o que o `Fill` e o `Scrape` prometem para o lado errado do plano — a
+forma do meio quebra isso, e um gate existente ficou vermelho nela). A ponta que
+sobra é a única que o produto nunca pede, e há gate provando isso sobre TODO
+verbo: `apply_positions` só percorre `moved`, e um vértice só entra ali com
+`w > 0`. ⇒ **o aplicador único fica**, sem fast path e sem uma segunda rota de
+escrita — que é exatamente o que o doc-comment dele pede.
 
 **O que sobra de trabalho real**, e é onde a wave vai doer:
 

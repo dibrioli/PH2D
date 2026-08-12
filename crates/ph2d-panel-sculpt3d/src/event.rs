@@ -112,20 +112,7 @@ pub(crate) fn apply_event(
             let i = index_of(&ids::SCULPT3D_VERB, id).expect("guard casou");
             let mut ui = snapshot.ui;
             let verb = Verb::ALL[i];
-            // ⚠️ **Arma o default do verbo, e só se o artista ainda não mexeu.**
-            // A MESMA lei do teclado (`sculpt3d_keys.rs`) e o mesmo precedente do
-            // `arm_inflate_defaults` do Painter: a máscara nasce em força cheia,
-            // senão ela protege pela metade e o barro se move por baixo — e
-            // nenhum verbo pode APAGAR uma escolha deliberada.
-            if (ui.brush.strength - ui.brush.verb.default_strength()).abs() < 1e-6 {
-                ui.brush.strength = verb.default_strength();
-            }
-            // O mesmo para o Accumulate: *"não mexeu"* é o interruptor estar
-            // exatamente no default do verbo que está SAINDO.
-            if ui.brush.accumulate == ui.brush.verb.default_accumulate() {
-                ui.brush.accumulate = verb.default_accumulate();
-            }
-            ui.brush.verb = verb;
+            crate::state::arm_verb_defaults(&mut ui, verb);
             state::push_intent(Sculpt3dIntent::SetUi(ui));
             true
         }

@@ -23,7 +23,7 @@
 //! de decidir se o remesh já rodou.
 
 use ph2d_mesh::Extract;
-use ph2d_sculpt3d::{Brush, Symmetry};
+use ph2d_sculpt3d::{Brush, Symmetry, Verb};
 use std::cell::{Cell, RefCell};
 
 thread_local! {
@@ -388,4 +388,50 @@ pub fn alpha_chip_index(snap: &Sculpt3dSnapshot) -> usize {
             .position(|x| x == a)
             .map_or(0, |i| i + 1),
     }
+}
+
+/// **O RAIO DE FÁBRICA, em pixels de tela** — a base contra a qual as frações
+/// de raio da referência são resolvidas.
+///
+/// ⚠️ Ele espelha o `Sculpt3dUi::default().radius_px` e o `DEFAULT_RADIUS_PX`
+/// do shell **de propósito**: é o mesmo número, e ele existe aqui como *nome*
+/// porque o arming precisa perguntar *"o artista ainda está no raio de fábrica
+/// deste verbo?"*, e um literal `50.0` no meio dessa comparação seria a segunda
+/// resposta que a próxima wave esquece de mover.
+pub const BASE_RADIUS_PX: f32 = 50.0; // LITERAL-PX-OK: raio de pincel, espelha o default do shell
+
+/// **ARMA os defaults do verbo que está ENTRANDO — a porta única.**
+///
+/// A lei é a mesma de sempre e vale para os quatro campos: *arma se, e só se, o
+/// artista ainda não mexeu*, onde **"não mexeu" é o valor estar exatamente no
+/// default do verbo que está SAINDO**. Nenhum verbo pode APAGAR uma escolha
+/// deliberada — é o precedente do `arm_inflate_defaults` do Painter.
+///
+/// ⚠️ **Ela existe porque a lista estava INCOMPLETA, e a ausência era o achado
+/// mais caro do estudo.** Este seam armava dois campos (força e accumulate) e
+/// **não armava a CURVA** — o D1 do `docs/3D/20_divergencias_tools.md`, que
+/// muda o pincel em `1,08× a 1,44×` ao longo do raio — nem o **RAIO**, cuja
+/// fração é o que faz um vinco ser fino (o Crease do original é metade) e um
+/// puxão alcançar (o Move é o triplo). Quatro `if` copiados no sítio de uso é
+/// como o quinto campo nasce esquecido; uma porta é onde ele nasce coberto.
+///
+/// ⚠️ **A ordem importa:** os quatro comparam contra `ui.brush.verb`, o verbo
+/// que sai, então a troca de `verb` acontece **por último**.
+pub fn arm_verb_defaults(ui: &mut Sculpt3dUi, verb: Verb) {
+    let from = ui.brush.verb;
+    // A máscara nasce em força cheia; sem isto ela protege pela metade e o
+    // barro se move por baixo dela.
+    if (ui.brush.strength - from.default_strength()).abs() < 1e-6 {
+        ui.brush.strength = verb.default_strength();
+    }
+    if ui.brush.accumulate == from.default_accumulate() {
+        ui.brush.accumulate = verb.default_accumulate();
+    }
+    if ui.brush.falloff == from.default_falloff() {
+        ui.brush.falloff = verb.default_falloff();
+    }
+    if (ui.radius_px - from.default_radius_px(BASE_RADIUS_PX)).abs() < 1e-6 {
+        ui.radius_px = verb.default_radius_px(BASE_RADIUS_PX);
+    }
+    ui.brush.verb = verb;
 }

@@ -226,7 +226,13 @@ fn the_smooth_target_is_the_live_neighbourhood_not_the_frozen_one() {
         // A distância sai do `pre`: o peso é frozen mesmo com a posição viva.
         let d = [bv[0] - c2[0], bv[1] - c2[1], bv[2] - c2[2]];
         let dist = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
-        let w = Falloff::Smooth.weight(dist / r) * brush.strength;
+        // ⚠️ **A curva sai do PINCEL sob teste, nunca de um literal.** Ela dizia
+        // `Falloff::Smooth` — o default de fábrica no dia em que o gate nasceu —
+        // e a wave dos modos (plano 21 W0) mudou esse default para o que a
+        // REFERÊNCIA declara: o oráculo passou a discordar do produto por um
+        // número que ele não controla. O que este gate afirma é o anel VIVO
+        // contra o CONGELADO, e isso é verdade em qualquer curva.
+        let w = brush.falloff.weight(dist / r) * brush.strength;
         for k in 0..3 {
             let want = lv[k] + (avg_live[k] * inv - lv[k]) * w;
             let stale = bv[k] + (avg_frozen[k] * inv - bv[k]) * w;

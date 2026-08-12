@@ -326,6 +326,33 @@ impl Verb {
             .and_then(|p| p.accumulate)
             .unwrap_or(false)
     }
+
+    /// A **CURVA** com que um pincel deste verbo nasce — o D1 do estudo, e o
+    /// único achado dele que o artista encontra sem tocar em nada.
+    ///
+    /// ⚠️ **Onde a fonte não tem resposta o nosso default fica** (o Sharpen, que
+    /// o SculptGL não tem) — a mesma lei do `unwrap_or` da força.
+    #[must_use]
+    pub fn default_falloff(self) -> Falloff {
+        self.profile(crate::RefMode::S)
+            .map_or(Falloff::Smooth, |p| p.falloff)
+    }
+
+    /// O **RAIO** de fábrica em pixels de tela — o D4/E3.
+    ///
+    /// ⚠️ **A fração é da REFERÊNCIA e a base é NOSSA:** o perfil guarda
+    /// `_radius / 50` (o Crease do original é `25`, metade; o Move é `150`,
+    /// três vezes) e a base é o raio que o app oferece de fábrica. Guardar
+    /// pixels no perfil congelaria a escolha do artista no dia em que a base
+    /// mudasse — a mesma lei do `sss_scatter` e do próprio falloff.
+    #[must_use]
+    pub fn default_radius_px(self, base_px: f32) -> f32 {
+        base_px
+            * self
+                .profile(crate::RefMode::S)
+                .and_then(|p| p.radius_factor)
+                .unwrap_or(1.0)
+    }
 }
 
 /// Quanto do RAIO do pincel um dab de força cheia desloca.
@@ -510,7 +537,20 @@ impl Default for Brush {
             // lugares, e o dia em que a tabela do verbo mudasse este literal
             // ficaria a contradizê-la em silêncio.
             accumulate: Verb::Draw.default_accumulate(),
-            falloff: Falloff::Smooth,
+            // ⚠️ **E a CURVA delega pela mesma razão, que o comentário logo
+            // acima já enunciava e que este literal contradizia** (corrigido em
+            // 2026-08-12, plano 21 W0). Ele dizia `Falloff::Smooth`, uma curva
+            // que **nenhuma referência declara** — o D1 do
+            // `docs/3D/20_divergencias_tools.md`, e o achado que o artista
+            // encontra sem tocar em nada: a quártica da referência é `1,08× a
+            // 1,44×` mais cheia ao longo do raio.
+            //
+            // ⚠️ **E o literal aqui não era só *um* default errado — ele
+            // TRAVAVA o arming:** a lei *"arma se o artista não mexeu"* compara
+            // com o que o verbo que SAI declara, então um pincel de fábrica em
+            // `Smooth` contra uma tabela que diz `Plateau` parece *mexido* e
+            // nunca mais seria armado por ninguém.
+            falloff: Verb::Draw.default_falloff(),
             alpha: None,
             alpha_scale: crate::DEFAULT_ALPHA_SCALE,
             // ⚠️ **O eixo nasce em +Y — as camadas saem HORIZONTAIS**, que é a

@@ -188,6 +188,7 @@ que a capacidade muda não é *cair ou não*, é **onde ele pára**.
 | ids novos | **15, todos `hash_node_id`** | ⇒ fora de todo gate de contagem |
 | ADR | **nenhum** | ⇒ a linha fica **fora de toda disputa de número** |
 | `Cargo.toml` / `Cargo.lock` | **ZERO** | nenhuma crate nova, nenhuma dep nova |
+| `.typos.toml` | **+1 entrada** (`^PILAR$`) | ⚠️ lista COMPARTILHADA — ver abaixo |
 | contrato congelado | **4/4** | rodado, não auto-relatado |
 | `PLAYER_ROW_COUNT` | **42 → 46** | duas rows do pulo do ar + duas da beirada |
 | cenas de smoke | maior **111** (próxima livre **112**) | ⚠️ o `=84` não existe, de propósito |
@@ -196,6 +197,19 @@ que a capacidade muda não é *cair ou não*, é **onde ele pára**.
 duas capacidades nascem DESLIGADAS (`air_jumps = 0` · `ledge_grab = 0`), então
 nenhuma lane do hash as exercita — e o hash é o único oráculo que não depende de
 eu afirmar coisa alguma.
+
+⚠️ **O único arquivo COMPARTILHADO que a linha toca é o `.typos.toml`**, e o
+toque é **puramente ADITIVO**: uma entrada (`"^PILAR$"`) logo abaixo da
+`"^pilar$"` que já existia. As entradas são regexes **sensíveis a maiúsculas**, e
+este codebase usa caixa alta para ênfase em doc-comment, então a minúscula não a
+cobria. ⚠️ **Entrada nova em vez de um `(?i)` na linha de cima**, de propósito:
+reescrever uma linha de lista compartilhada é como um merge perde, em silêncio, o
+que outra linha lhe acrescentou.
+
+⚠️ **Os dois vermelhos de `typos` que isto drena eram MEUS** (o `main` está
+verde, e os dois arquivos que disparavam são novos desta linha, da wave
+`W-ShapeCast`) — achados só no gate de fechamento, porque o `typos` é
+project-wide e um `cargo test -p` não o alcança.
 
 ⚠️ **E a linha cria ZERO ADR** (`git diff --name-only main...HEAD -- docs/architecture/decisions/`
 é **vazio**) ⇒ ela fica fora de toda disputa de número desta janela.

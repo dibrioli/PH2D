@@ -30,6 +30,29 @@
 //! cluster of work proposed because the factorisation lived in neither node's docs. The centre
 //! is `offset_x`/`offset_y` here; the rotation is the orbit; there is nothing to add.
 //!
+//! ## The PIVOT (doc 89 folha 05 — the P0)
+//!
+//! The scale used to be about the **world origin** and nothing else, so a layout
+//! centred at `(5, 0)` scaled by 2 also **translated** to `(10, 0)` — the artist
+//! sees it in the first scene. `pivot_mode` chooses what it scales about: the
+//! origin (the default, and byte-identical to before), a typed `Point`, or the
+//! layout's own `Centroid` — Blender's `Center` socket on *Scale Instances*, its
+//! *Transform Geometry* acting on the geometry's own origin, C4D's Transform
+//! Space Node/Object.
+//!
+//! ⚠️ **The pivot FOLDS INTO THE OFFSET and the per-element law does not change.**
+//! `(p − c)·s + c + o` is `p·s + (o + c(1−s))`, so there is one affine, computed
+//! the way it always was; a second per-element expression would be a second place
+//! for the falloff mask and the GPU port to disagree. The fold is hoisted out of
+//! the loop on the CPU and inline in the kernel — same operations, same order.
+//!
+//! ⚠️ **And the centroid only became POSSIBLE to ask for on 2026-08-12.** The
+//! sheet's cell measured it as *inexpressible* — *"`P` não chega ao domínio de
+//! valor por rota nenhuma"* — and that was true until `motion.expression` grew
+//! its `x`/`y` lanes; today `expression("x") → value.reduce(Mean)` measures it.
+//! It is a MODE here rather than a wire because that chain is four nodes to say
+//! *"the centre of this thing"*, twice over for two axes.
+//!
 //! ⚠️ **What IS open, and it is not this:** using the orbit statically costs the cook memo. Its
 //! `Effect::Temporal` makes the fingerprint key on the playhead, so a rotation that cannot change
 //! re-cooks every frame — measured, `0,0003 ms` here against `0,6477 ms` there over 102.400
@@ -37,7 +60,7 @@
 //! ask *"is this node temporal at THIS instant?"*, and both `NodeManifest` and `OpResolver` are
 //! frozen (§6) — so it is an ADR, not an edit.
 
-use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamGate, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -74,6 +97,21 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "offset_y",
             default: 0.0,
         },
+        // WHAT the scale happens about: 0 the world origin (what this node always
+        // did), 1 the typed point, 2 the layout's own centroid. Default 0 ⇒ every
+        // document written before this reads exactly what it read before.
+        ParamSpec {
+            name: "pivot_mode",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "pivot_x",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "pivot_y",
+            default: 0.0,
+        },
     ],
     // `lowerings` stays `Cpu`: the `LoweringKind::Wgsl` path is the scalar
     // `eval_column` route (`ph2d-expr`), and `P` is a `Vec2` column, so that
@@ -100,6 +138,66 @@ fn falloff_at(stream: &Stream, i: usize) -> f32 {
     }
 }
 
+/// **What the scale happens about** (doc 89 folha 05 — the P0).
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum Pivot {
+    /// The world origin — what this node always did, and the default.
+    WorldOrigin,
+    /// The `pivot_x`/`pivot_y` the artist typed.
+    Point,
+    /// The mean of the input's own `P` — Blender's *Transform Geometry* acting
+    /// on the geometry's origin, C4D's Object transform space.
+    Centroid,
+}
+
+impl Pivot {
+    /// From the `pivot_mode` param. Out of range falls back to `WorldOrigin` —
+    /// the behaviour that was always there beats a mode nobody asked for.
+    #[must_use]
+    pub fn of(v: f32) -> Self {
+        match v.round() as i32 {
+            1 => Self::Point,
+            2 => Self::Centroid,
+            _ => Self::WorldOrigin,
+        }
+    }
+}
+
+/// The mean of a `P` column — *"the centre of this layout"*, and `None` for a
+/// stream with no positions to average (an empty mean is not zero, it is absent,
+/// and the caller then has nothing to pivot about).
+fn centroid(s: &Stream) -> Option<[f32; 2]> {
+    let Some(Column::Vec2(p)) = s.get("P") else {
+        return None;
+    };
+    if p.is_empty() {
+        return None;
+    }
+    #[expect(clippy::cast_precision_loss, reason = "an element count")]
+    let n = p.len() as f32;
+    let sum = p
+        .iter()
+        .fold([0.0f32, 0.0], |a, q| [a[0] + q[0], a[1] + q[1]]);
+    Some([sum[0] / n, sum[1] / n])
+}
+
+/// **The offset the affine actually uses, with the pivot folded in.**
+///
+/// `(p − c)·s + c + o` is `p·s + (o + c(1−s))`, so a pivot never becomes a second
+/// per-element expression — there is one affine, and the falloff mask and the GPU
+/// port keep having exactly one thing to agree about.
+///
+/// ⚠️ The zero pivot returns the offset **verbatim** rather than computing
+/// `o + 0·(1−s)`: the two differ only in the sign of a zero, which nothing can
+/// see — and that is the point. Byte-identity for every document written before
+/// the pivot existed is then a fact of STRUCTURE, not an argument about IEEE.
+fn folded_offset(scale: f32, ox: f32, oy: f32, c: [f32; 2]) -> (f32, f32) {
+    if c[0] == 0.0 && c[1] == 0.0 {
+        return (ox, oy);
+    }
+    (ox + c[0] * (1.0 - scale), oy + c[1] * (1.0 - scale))
+}
+
 /// Apply the affine map to `p`, then blend from the original toward the
 /// transformed position by `f` (the falloff): `f = 0` keeps `p`, `f = 1` takes
 /// the full transform. Mirrors `motion.orbit`'s focus blend.
@@ -120,9 +218,18 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let xf_f = read_falloff(i);\n\
         let xf_p = read_P(i);\n\
+        // The pivot folded into the offset, the same expression and the same\n\
+        // order as the CPU's `folded_offset` -- including its zero shortcut, so\n\
+        // the neutral is structural on both paths and not an IEEE argument.\n\
+        var xf_ox = params.offset_x;\n\
+        var xf_oy = params.offset_y;\n\
+        if (params.pivot_x != 0.0 || params.pivot_y != 0.0) {\n\
+            xf_ox = params.offset_x + params.pivot_x * (1.0 - params.scale);\n\
+            xf_oy = params.offset_y + params.pivot_y * (1.0 - params.scale);\n\
+        }\n\
         let xf_full = vec2<f32>(\n\
-            xf_p.x * params.scale + params.offset_x,\n\
-            xf_p.y * params.scale + params.offset_y);\n\
+            xf_p.x * params.scale + xf_ox,\n\
+            xf_p.y * params.scale + xf_oy);\n\
         write_P(i, vec2<f32>(\n\
             xf_p.x + (xf_full.x - xf_p.x) * xf_f,\n\
             xf_p.y + (xf_full.y - xf_p.y) * xf_f));\n",
@@ -143,10 +250,17 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &["scale", "offset_x", "offset_y"],
+    params: &["scale", "offset_x", "offset_y", "pivot_x", "pivot_y"],
     count_law: None,
     variant_by_param: None,
-    applicable: None,
+    // ⚠️ The device handles the origin and the typed point -- both are just
+    // numbers -- and RECUSES the centroid, which is a REDUCTION over the whole
+    // stream and not a per-element map. Refusing is the honest answer (the
+    // ADR-0155 precedent, and `motion.look_at` does the same for its Object and
+    // Cursor modes): the named cost is that a layout pivoting on its own centre
+    // loses GPU residency for this node. The `reduce -> broadcast -> map` channel
+    // the deformers use is what would lift it, and that is a wave, not a line.
+    applicable: Some(|p| Pivot::of(p("pivot_mode")) != Pivot::Centroid),
 };
 
 struct MotionTransform;
@@ -159,8 +273,20 @@ impl NodeOp for MotionTransform {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let scale = ctx.param("scale");
         let (ox, oy) = (ctx.param("offset_x"), ctx.param("offset_y"));
+        let mode = Pivot::of(ctx.param("pivot_mode"));
+        let typed = [ctx.param("pivot_x"), ctx.param("pivot_y")];
         let out = {
             let input = ctx.input(0);
+            // Resolved ONCE, outside the loop: a pivot is a property of the
+            // layout, not of an element. A centroid a stream cannot supply
+            // (no `P`, or empty) falls back to the origin — the transform an
+            // artist can still see, rather than a NaN that removes the art.
+            let pivot = match mode {
+                Pivot::WorldOrigin => [0.0, 0.0],
+                Pivot::Point => typed,
+                Pivot::Centroid => centroid(input).unwrap_or([0.0, 0.0]),
+            };
+            let (ox, oy) = folded_offset(scale, ox, oy, pivot);
             // The port type guarantees `P` is `Vec2`; a `P` of any other dim is
             // an upstream node-author bug. Assert it loudly in debug/test rather
             // than silently passing it through untransformed (which would emit
@@ -207,6 +333,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     // M1.P1 — param rows: uniform scale + signed offsets.
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5 Fase 2 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
@@ -217,6 +344,32 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
 /// Param UI hints (M1.P1) for the transform rows.
 static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "pivot_mode",
+        label: "Scale About",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["World Origin", "Point", "Centroid"],
+        },
+    },
+    ParamUiHint {
+        param: "pivot_x",
+        label: "Pivot X",
+        min: -10.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "pivot_y",
+        label: "Pivot Y",
+        min: -10.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
     ParamUiHint {
         param: "scale",
         label: "Scale",
@@ -443,3 +596,23 @@ mod tests {
         }
     }
 }
+
+/// The two coordinates belong to the mode that reads them: at the origin they are
+/// zero by definition, and on a centroid the layout answers — so a pair of number
+/// rows in either would be two knobs the cook never opens.
+static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: "pivot_x",
+        when: "pivot_mode",
+        values: &[1],
+    },
+    ParamGate {
+        param: "pivot_y",
+        when: "pivot_mode",
+        values: &[1],
+    },
+];
+
+#[cfg(test)]
+#[path = "pivot_tests.rs"]
+mod pivot_tests;

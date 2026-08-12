@@ -485,6 +485,38 @@ fn transform_kernel_matches_the_cpu_within_epsilon() {
     assert_gpu_parity(&gpu, &reg, &g, out, 2);
 }
 
+/// **O PIVÔ chega ao device, e o kernel dobra-o como a CPU** (doc 89 folha 05).
+///
+/// ⚠️ O irmão acima roda com o pivô no default (`0`), onde o atalho do neutro
+/// devolve o offset intacto — ele ficaria **verde com a dobra inteira ausente do
+/// kernel**. Este põe um pivô fora da origem, que é o único regime em que os dois
+/// caminhos têm o que discordar.
+///
+/// ⚠️ E o modo **Centroid** não está aqui de propósito: ele é uma REDUÇÃO sobre o
+/// stream e o kernel o RECUSA (`applicable`), então a cena correspondente é a CPU
+/// contra ela mesma. O que garante que a recusa existe é o gate na crate do nó.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn transform_kernel_folds_the_pivot_the_same_way_the_cpu_does() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let (node, out) = deformer_chain(&mut g, 160.0, "motion.transform");
+    // Escala != 1 (senao `1 - s` e zero e o pivo nao move nada), pivo fora da
+    // origem nos DOIS eixos e nao-redondo, e um offset por cima — para uma troca
+    // de sinal ou de eixo na dobra nao poder sobreviver.
+    g.set_param(node, "scale", 0.63);
+    g.set_param(node, "offset_x", 2.9);
+    g.set_param(node, "offset_y", -1.4);
+    g.set_param(node, "pivot_mode", 1.0);
+    g.set_param(node, "pivot_x", 3.7);
+    g.set_param(node, "pivot_y", -2.1);
+    assert_gpu_parity(&gpu, &reg, &g, out, 2);
+}
+
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
 fn rotate_kernel_matches_the_cpu_within_epsilon() {

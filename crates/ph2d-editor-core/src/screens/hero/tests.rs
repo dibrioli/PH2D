@@ -1863,3 +1863,125 @@ fn the_rulers_are_live_only_with_the_vector_tool_and_the_toggle_on() {
         "o interruptor do artista continua mandando — é ele o *lock* das guias"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Settings → Motion: o carácter da UI viva alcançável pelo artista.
+//
+// ⚠️ Os gates do `motion.rs` provam a LEI (a mola, a interrupção, os dois eixos); estes provam a
+// PORTA — que existe um gesto que chega àquela lei. Sem eles o `set_character` era uma função sem
+// chamador de produto: viva na suíte, inalcançável na tela.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn settings_motion_cascade_opens_the_motion_submenu() {
+    crate::test_support::ensure_panel_registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.store
+        .open_context_menu(crate::interaction::ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: crate::interaction::ContextMenuKind::SettingsMenu,
+        });
+    let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_SETTINGS_MOTION));
+    assert!(consumed);
+    assert!(matches!(
+        hero.store.context_menu().map(|r| r.kind),
+        Some(crate::interaction::ContextMenuKind::SettingsMotionSubmenu)
+    ));
+}
+
+/// Escolher o carácter escreve no DONO do facto (`hero.motion`) e fecha o menu.
+///
+/// ⚠️ A fixture pica a opção NÃO-default de propósito: com Discreto dos dois lados, *escreveu* e
+/// *não fez nada* são indistinguíveis.
+#[test]
+fn picking_a_character_writes_it_and_closes_the_menu() {
+    crate::test_support::ensure_panel_registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    assert_eq!(
+        hero.motion.character(),
+        crate::motion::UiCharacter::Discrete,
+        "o default do produto"
+    );
+    hero.store
+        .open_context_menu(crate::interaction::ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: crate::interaction::ContextMenuKind::SettingsMotionSubmenu,
+        });
+    assert!(hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_MOTION_EXPRESSIVE)));
+    assert_eq!(
+        hero.motion.character(),
+        crate::motion::UiCharacter::Expressive
+    );
+    assert!(
+        hero.store.context_menu().is_none(),
+        "a escolha fecha o menu"
+    );
+
+    hero.store
+        .open_context_menu(crate::interaction::ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: crate::interaction::ContextMenuKind::SettingsMotionSubmenu,
+        });
+    assert!(hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_MOTION_DISCRETE)));
+    assert_eq!(
+        hero.motion.character(),
+        crate::motion::UiCharacter::Discrete,
+        "e volta — um rádio anda nos dois sentidos"
+    );
+}
+
+/// **A row do reduced motion é um TOGGLE, não uma escolha.**
+///
+/// ⚠️ Um `set(true)` passaria no gate ingénuo (*"clicar liga"*) e seria uma porta de sentido único:
+/// o artista liga e nunca desliga, com o bullet a dizer a verdade sobre um interruptor que ele não
+/// consegue mexer. É por isso que o gate clica DUAS vezes.
+#[test]
+fn the_reduced_motion_row_toggles_it_does_not_only_turn_it_on() {
+    crate::test_support::ensure_panel_registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    assert!(!hero.motion.reduced_motion());
+    for expected in [true, false] {
+        hero.store
+            .open_context_menu(crate::interaction::ContextMenuRequest {
+                x: 0.0,
+                y: 0.0,
+                kind: crate::interaction::ContextMenuKind::SettingsMotionSubmenu,
+            });
+        assert!(hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_MOTION_REDUCED)));
+        assert_eq!(hero.motion.reduced_motion(), expected);
+    }
+}
+
+/// **Os dois eixos continuam independentes DEPOIS de passarem pelo menu** — *Expressivo + reduced*
+/// tem de ser alcançável por gestos reais, não só construível na memória.
+///
+/// ⚠️ É este gate que morre se alguém colapsar a submenu num selector de três posições.
+#[test]
+fn the_menu_can_reach_expressive_with_reduced_motion_on() {
+    crate::test_support::ensure_panel_registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    for id in [
+        ids::CTX_MENU_MOTION_EXPRESSIVE,
+        ids::CTX_MENU_MOTION_REDUCED,
+    ] {
+        hero.store
+            .open_context_menu(crate::interaction::ContextMenuRequest {
+                x: 0.0,
+                y: 0.0,
+                kind: crate::interaction::ContextMenuKind::SettingsMotionSubmenu,
+            });
+        assert!(hero.apply_event(WidgetEvent::Click(id)));
+    }
+    assert_eq!(
+        hero.motion.character(),
+        crate::motion::UiCharacter::Expressive
+    );
+    assert!(hero.motion.reduced_motion());
+    assert!(
+        hero.motion.law(crate::motion::Role::Travel).is_none(),
+        "e a combinação FAZ alguma coisa: reduced mata o percurso mesmo no Expressivo"
+    );
+}

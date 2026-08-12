@@ -75,6 +75,7 @@ mod rail_tools;
 mod scene_picker;
 mod sculpt3d_toggle;
 mod settings_filter;
+mod settings_motion;
 mod settings_ppm;
 mod settings_present;
 mod settings_text;
@@ -137,6 +138,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || settings_unit::apply(hero, event)
         || settings_filter::apply(hero, event)
         || settings_present::apply(hero, event)
+        || settings_motion::apply(hero, event)
         || settings_text::apply(hero, event)
         || palette_rename::apply(hero, event)
         || new_image::apply(hero, event)

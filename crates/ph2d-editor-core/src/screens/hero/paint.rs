@@ -546,6 +546,7 @@ pub fn paint_hero_screen(
         &mut hero.hit_index,
         &hero.store,
         &hero.project,
+        &hero.motion,
         viewport,
     );
     // Fill (Bucket) "Fill adjust" modal — a floating, draggable card at the ColorDrop release point

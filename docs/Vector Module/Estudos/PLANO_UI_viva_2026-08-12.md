@@ -176,9 +176,28 @@ Medido (estudo §10.3): **não existe**. As `SavedSettings` (v69) viajam dentro 
 | B | ficheiro próprio no config dir, **schema próprio** | ~60 linhas + IO | ✅ **SIM** |
 | C | dep `directories`/`dirs` | dep externa nova | ⛔ desnecessário: `XDG_CONFIG_HOME` → `HOME/.config` → `APPDATA` resolve-se com `std::env`, **zero deps** |
 
-**Forma:** `~/.config/ph2d/prefs.postcard`, `PREFS_SCHEMA` **próprio** (⚠️ **nunca** o
-`PROJECT_SCHEMA` — são coisas com donos e ciclos de vida diferentes). Ausente ou ilegível ⇒
-**defaults**, sem erro: uma preferência que recusa arrancar é pior que uma preferência perdida.
+**Forma:** ~~`~/.config/ph2d/prefs.postcard`, `PREFS_SCHEMA` **próprio**~~ → **`~/.ph2d/prefs.txt`,
+texto, sem número de versão.** Ausente ou ilegível ⇒ **defaults**, sem erro: uma preferência que
+recusa arrancar é pior que uma preferência perdida.
+
+> ⚠️ **CORRIGIDO NA CONSTRUÇÃO (wave 3), e as duas correcções são do repo, não de gosto.**
+>
+> **(a) O lar já existia.** Este plano mandava abrir `~/.config/ph2d/` — e a shell **já tem** um
+> ficheiro de preferências de utilizador: o `palette_persist`, em **`~/.ph2d/palettes.txt`**. Abrir
+> uma segunda pasta ao lado seriam **duas casas para a mesma categoria de facto**, que é a falha que
+> este repo paga em ciclos. O módulo novo é **irmão** daquele: mesma pasta, mesmo estilo (texto,
+> std-only, best-effort, sem serde) e o **mesmo detector de mudança** (derivar → comparar → gravar),
+> que o `persist_palettes_if_changed` já shipava.
+>
+> **(b) O número de versão era ceremónia, e o trade estava invertido.** Num formato **posicional**
+> (postcard, o `ProjectFile`) a versão é obrigatória e recusar é a leitura honesta. Num
+> `chave=valor` a compatibilidade é grátis nos **dois** sentidos: um build antigo lê as chaves que
+> conhece e salta as que não conhece. Um `PREFS_SCHEMA` aqui faria o build antigo **recusar** o
+> ficheiro inteiro que o novo escreveu — exactamente o oposto do que se quer de uma preferência.
+> A propriedade que ele substituiria é agora **executável**
+> (`a_key_from_a_newer_build_is_skipped_and_the_rest_survives`).
+>
+> O veredito de (C) — *zero deps externas* — sobreviveu, e ficou mais barato: `$HOME` e nada mais.
 
 **Primeiros inquilinos:** carácter · reduced motion · volume do som de UI (§11 G do estudo).
 
@@ -307,7 +326,7 @@ _a_straight_line_and_simulates_nothing` (mutação: simular e desenhar reto ⇒ 
 |---|---|---|---|---|
 | **1** | **F0 substrato** + o toast em segundos | — | **tudo** o eixo 1 | **M** |
 | **2** | **F1+F2+R1 juntos** — a mola chega ao chrome, os 49 widgets ganham vida, e o interruptor que a desliga nasce no MESMO commit | 1 | A · B · E · F | **M** |
-| **3** | **Preferências de utilizador** + a row do pill Settings | 2 | o carácter deixa de ser constante | **P** |
+| ~~**3**~~ ✅ | **Preferências de utilizador** + a row do pill Settings — **FEITA** (`~/.ph2d/prefs.txt`, irmão do `palette_persist`; ver a correcção na §3) | 2 | o carácter deixa de ser constante | **P** |
 | **4** | ⭐ **E1 scrub numérico** | — (independente!) | eficiência | **M** |
 | **5** | ⭐ **C1 o TETHER** | 1 | a família C2·C3·C4 | **M** |
 | **6** | o resto do catálogo, por gosto | 1-3 | — | — |

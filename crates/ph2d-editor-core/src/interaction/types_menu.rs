@@ -109,6 +109,11 @@ pub enum ContextMenuKind {
     /// writes `HeroScreen.text_rendering`; the next frame's
     /// `set_text_rendering` publishes the choice to `paint_text*`.
     SettingsTextSubmenu,
+    /// Submenu opened when the user picks "Motion" — os DOIS eixos da UI viva
+    /// (`crate::motion`): o **carácter** (Expressivo / Discreto, um rádio) e o **reduced motion**
+    /// (um toggle que se sobrepõe aos dois). Escolher escreve em `HeroScreen.motion`; a shell
+    /// persiste ao notar a diferença (ver `shells/desktop/src/prefs.rs`).
+    SettingsMotionSubmenu,
     /// Color-picker palette rename: a centered modal with the shared name `TextInput`
     /// (`BLENDER_PALETTE_NAME`) + a Rename button (`CTX_MENU_PALETTE_RENAME`). Opened by the
     /// picker's "R" button; Rename / Enter commit `blender_rename_active_palette`, outside-click

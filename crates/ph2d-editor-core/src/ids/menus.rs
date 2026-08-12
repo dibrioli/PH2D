@@ -93,6 +93,19 @@ pub const CTX_MENU_TEXT_DEFAULT: NodeId = hash_node_id("ctx_menu_text_default");
 pub const CTX_MENU_TEXT_CRISP_HEAVY: NodeId = hash_node_id("ctx_menu_text_crisp_heavy");
 pub const CTX_MENU_TEXT_CRISP_HEAVY_PLUS: NodeId = hash_node_id("ctx_menu_text_crisp_heavy_plus");
 
+/// Top-level Settings entry that opens the **Motion** submenu — o carácter da UI viva
+/// (`crate::motion::UiCharacter`) e o interruptor de *reduced motion*.
+///
+/// ⚠️ **São DOIS eixos numa submenu só, e a distinção é o que a torna correcta:** as duas primeiras
+/// linhas são um **rádio** (o GOSTO — Expressivo ou Discreto, nunca os dois), a terceira é um
+/// **toggle** (a GARANTIA — reduced motion, que se sobrepõe a qualquer carácter). Colapsá-las num
+/// selector de três posições entregaria uma garantia de acessibilidade disfarçada de gosto, e
+/// tornaria *Expressivo + reduced* — uma combinação legítima — inexprimível.
+pub const CTX_MENU_SETTINGS_MOTION: NodeId = hash_node_id("ctx_menu_settings_motion");
+pub const CTX_MENU_MOTION_EXPRESSIVE: NodeId = hash_node_id("ctx_menu_motion_expressive");
+pub const CTX_MENU_MOTION_DISCRETE: NodeId = hash_node_id("ctx_menu_motion_discrete");
+pub const CTX_MENU_MOTION_REDUCED: NodeId = hash_node_id("ctx_menu_motion_reduced");
+
 /// Color-picker palette rename modal: the "Rename" button that commits the shared
 /// `BLENDER_PALETTE_NAME` field to the active palette (the field doubles as the dialog input).
 pub const CTX_MENU_PALETTE_RENAME: NodeId = hash_node_id("ctx_menu_palette_rename");

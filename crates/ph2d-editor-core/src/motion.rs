@@ -61,6 +61,38 @@ pub enum UiCharacter {
     Expressive,
 }
 
+impl UiCharacter {
+    /// O nome durável que um ficheiro de preferências guarda.
+    ///
+    /// ⚠️ **O mapeamento nome↔variante mora AQUI, e só aqui.** Escrito duas vezes — uma no leitor,
+    /// outra no escritor — passa a ser duas respostas a *"como se chama o Expressivo em disco?"*, e
+    /// com duas variantes a divergência é invisível: troque as duas e o ficheiro continua a
+    /// desserializar, com o carácter errado. É a cicatriz do `BodyKind::tag`/`from_tag` da física.
+    ///
+    /// ⚠️ **Uma PALAVRA e não um número, porque o ficheiro é TEXTO** (`shells/desktop/src/prefs.rs`,
+    /// irmão do `palette_persist.rs` que já vive em `~/.ph2d/`). Um número num ficheiro que o artista
+    /// pode abrir é um número que ele não sabe corrigir.
+    #[must_use]
+    pub fn wire(self) -> &'static str {
+        match self {
+            Self::Discrete => "discrete",
+            Self::Expressive => "expressive",
+        }
+    }
+
+    /// A volta. **`None` para um nome que este build não conhece** — quem chama decide, e a decisão
+    /// honesta num ficheiro de preferências é *usa o default*: uma preferência que se recusa a
+    /// arrancar é pior que uma preferência perdida.
+    #[must_use]
+    pub fn from_wire(s: &str) -> Option<Self> {
+        match s {
+            "discrete" => Some(Self::Discrete),
+            "expressive" => Some(Self::Expressive),
+            _ => None,
+        }
+    }
+}
+
 /// **O QUE a coisa é** — e é só isto que o chamador declara.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Role {

@@ -59,11 +59,12 @@ pub use crate::widget::panel_chrome::HIGHLIGHTER_RGBA;
 /// menu kinds — checking `id == active_theme_id || id == active_radius
 /// _id || ...` is unambiguous and avoids threading `kind` through the
 /// row loop.
-fn id_is_currently_selected(
+pub(super) fn id_is_currently_selected(
     id: NodeId,
     theme: Theme,
     store: &WidgetStore,
     project: &crate::project::ProjectSettings,
+    motion: &crate::motion::UiMotion,
 ) -> bool {
     use crate::project::{DisplayUnit, ImageFilterMode};
     use crate::widget::RailButtonSize;
@@ -142,12 +143,30 @@ fn id_is_currently_selected(
     if id == display_id {
         return true;
     }
+    // Motion — o carácter é um RÁDIO (uma linha acesa das duas) e o reduced motion é um TOGGLE
+    // (aceso quando ligado). ⚠️ São perguntas independentes, então são dois `if` e não um `match`:
+    // *Expressivo + reduced* tem de conseguir acender as duas linhas ao mesmo tempo.
+    let character_id = match motion.character() {
+        crate::motion::UiCharacter::Discrete => ids::CTX_MENU_MOTION_DISCRETE,
+        crate::motion::UiCharacter::Expressive => ids::CTX_MENU_MOTION_EXPRESSIVE,
+    };
+    if id == character_id {
+        return true;
+    }
+    if id == ids::CTX_MENU_MOTION_REDUCED && motion.reduced_motion() {
+        return true;
+    }
     false
 }
 
 /// Paint the open context menu (if any) and register hit rects for each item. Called last in the hero
 /// paint pipeline so the menu always sits on top. `viewport` clamps the menu rect so a cascade submenu
 /// anchored near the right/bottom edge (e.g. Settings → PPM from the topbar gear) stays on-screen.
+// ⚠️ O `motion` é o 8º argumento, e passá-lo é deliberado: `UiMotion` é o DONO do carácter, e
+// espelhá-lo no `WidgetStore` (como o `present_vsync` faz) daria uma terceira cópia do mesmo facto
+// — a viva, o espelho e o ficheiro de preferências. Precedente do argumento extra: `body_desc` na
+// física. E o painter recebe `&UiMotion`, nunca `&mut`: quem pinta lê, nunca alveja.
+#[allow(clippy::too_many_arguments)]
 pub fn paint_context_menu_overlay(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -155,6 +174,7 @@ pub fn paint_context_menu_overlay(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     project: &crate::project::ProjectSettings,
+    motion: &crate::motion::UiMotion,
     viewport: Rect,
 ) {
     let Some(req) = store.context_menu() else {
@@ -244,6 +264,7 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_SETTINGS_FILTER, "Image filter", None),
             (ids::CTX_MENU_SETTINGS_DISPLAY, "Display", None),
             (ids::CTX_MENU_SETTINGS_TEXT, "Text rendering", None),
+            (ids::CTX_MENU_SETTINGS_MOTION, "Motion", None),
         ],
         // Pixels-per-meter submenu — 5 presets (retro 16 · Unity 32 · Godot 100 · HD 256 · 4K 1024).
         ContextMenuKind::SettingsPpmSubmenu => &[
@@ -280,6 +301,16 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_TEXT_DEFAULT, "Default", None),
             (ids::CTX_MENU_TEXT_CRISP_HEAVY, "Crisp Heavy", None),
             (ids::CTX_MENU_TEXT_CRISP_HEAVY_PLUS, "Crisp Heavy +", None),
+        ],
+        // Motion submenu — o carácter da UI viva + o reduced motion.
+        //
+        // ⚠️ As duas primeiras linhas são um RÁDIO (o gosto) e a terceira é um TOGGLE (a garantia).
+        // O bullet significa a mesma coisa nas três — *este é o estado corrente* — que é a
+        // convenção de menu de plataforma, e é por isso que as três cabem numa tabela só.
+        ContextMenuKind::SettingsMotionSubmenu => &[
+            (ids::CTX_MENU_MOTION_EXPRESSIVE, "Expressive", None),
+            (ids::CTX_MENU_MOTION_DISCRETE, "Discrete", None),
+            (ids::CTX_MENU_MOTION_REDUCED, "Reduced motion", None),
         ],
         // The SceneList kind is rendered by its dedicated branch
         // below — `items` stays empty so the simple-row loop is
@@ -410,7 +441,7 @@ pub fn paint_context_menu_overlay(
         let icon_y = r.y + (r.h - icon_size) * 0.5;
         // Bullet for currently-selected item (SceneList parity,
         // 2026-05-24 menu standardization).
-        let is_current = id_is_currently_selected(*id, theme, store, project);
+        let is_current = id_is_currently_selected(*id, theme, store, project, motion);
         let bullet_x = r.x + pad_x;
         if is_current {
             let dot = ph2d_vector::Circle::new(

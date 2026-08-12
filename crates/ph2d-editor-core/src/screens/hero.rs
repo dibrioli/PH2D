@@ -674,3 +674,9 @@ fn canonical_panel_id(id: &str) -> Option<&'static str> {
 
 #[cfg(test)]
 mod tests;
+
+// ⚠️ Irmão e não `mod tests` dentro do `context_menu_overlay.rs`: aquele arquivo está em 659 LOC
+// contra o teto de 700, e um módulo de teste inline levá-lo-ia por cima.
+#[cfg(test)]
+#[path = "hero/context_menu_overlay_tests.rs"]
+mod context_menu_overlay_tests;

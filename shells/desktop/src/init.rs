@@ -322,6 +322,13 @@ pub(crate) fn build_initial_state(
             hero.store
                 .sync_blender_palette_name_buffer(ph2d_editor::ids::INSP_BLENDER_PICKER);
         }
+        // Preferências de utilizador (`~/.ph2d/prefs.txt`): o carácter da UI viva + o reduced
+        // motion, escolhidos no pill Settings → Motion. ⚠️ Instaladas ANTES do primeiro quadro —
+        // instalar depois deixaria a primeira animação correr no carácter errado, e é justamente o
+        // primeiro quadro que o artista vê. Ficheiro ausente ⇒ os defaults, que são os de hoje.
+        let prefs = crate::prefs::load();
+        hero.motion.set_character(prefs.character);
+        hero.motion.set_reduced_motion(prefs.reduced_motion);
         Some(hero)
     } else {
         None

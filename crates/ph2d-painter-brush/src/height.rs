@@ -151,7 +151,24 @@ pub fn derive_height(spec: &crate::BrushSpec, paint: f32, grain: f32) -> f32 {
     let depth = spec.effective_impasto_depth();
     let film = spec.effective_film_depth();
     let m = paint.clamp(0.0, 1.0);
-    if (depth == 0.0 && film == 0.0) || m <= 0.0 {
+    // ⚠️ **A CARGA pode passar de 1, e é isso que dá o Accumulate ao RELEVO** (doc 35 §6/D3).
+    //
+    // Todo caminho que já shipava clampa `m` no próprio walk (`accumulate_dab_height`, ramo do
+    // envelope), então ali `over == 0.0` **exatamente** e as expressões abaixo reduzem, termo a
+    // termo, às que estavam aqui: byte-idêntico por construção, não por re-derivação que por acaso
+    // concorda. Só o ramo acumulativo produz `paint > 1`.
+    //
+    // Acima de uma unidade a carga cresce **LINEARMENTE**: a primeira unidade constrói a curva de
+    // Body (platô + parede) como sempre, e cada unidade seguinte é um degrau reto. Mais tinta é mais
+    // espesso, e a FORMA que o Body esculpiu não se re-arredonda a cada passada.
+    //
+    // ⚠️ E é AQUI que a extensão mora, não num plano novo, porque este é o **funil único** do plano
+    // de carga — a varredura de consumidores (doc 35 §6/D3) mostra que os dois leitores de produto
+    // passam por esta função, os quatro do `height_push` já clampam, e a fusão em `covers` lê o
+    // `film`. É isso que mantém o card Body **VIVO** no modo acumulativo: os ingredientes guardados
+    // seguem sendo `paint`/`grain`/`radius`, e nenhum ciclo de vida novo entra no módulo.
+    let over = (paint - 1.0).max(0.0);
+    if (depth == 0.0 && film == 0.0) || (m <= 0.0 && over <= 0.0) {
         return 0.0;
     }
     // **The relief's height scales with the brush's SIZE** (Enio, smoke of 2026-07-14: *"a altura do relevo
@@ -175,6 +192,11 @@ pub fn derive_height(spec: &crate::BrushSpec, paint: f32, grain: f32) -> f32 {
     // stroke envelope be taken on the paint alone.
     let body = spec.effective_impasto_body();
     let mut a = m + (body_profile(m) - m) * body;
+    if over > 0.0 {
+        // O degrau reto das unidades seguintes. Fora do modo acumulativo isto **não roda** (`over`
+        // é zero exato), então a expressão de `a` acima segue sendo a que shipa, ao bit.
+        a += over;
+    }
     if matches!(spec.impasto_source, DepthSource::Grain) {
         // Grooves cut out of a FULL body — never `a *= g`. A grain's samples average well under half,
         // so multiplying by it does not texture the paint, it removes two thirds of it. See
@@ -193,6 +215,58 @@ pub fn derive_height(spec: &crate::BrushSpec, paint: f32, grain: f32) -> f32 {
     // o raio para manter a razão de aspecto do domo; o filme é a espessura do pigmento, que não sabe o
     // tamanho do pincel que o pousou (o ⚠️ em [`crate::BrushSpec::film_depth`], com o número medido).
     body_h + film * a
+}
+
+/// Quantas amostras o normalizador do arco toma no perfil. Dezasseis: o integrando é monótono e
+/// suave, o erro do ponto-médio cai com `1/M²`, e ele é avaliado **uma vez por dab** contra um laço
+/// que percorre `O(ρ²)` texels — medir mais fino seria pagar precisão onde ela não aparece. // CLAMP-OK
+const ACCUM_NORM_SAMPLES: usize = 16;
+
+/// **O normalizador da lei do arco** — `2·∫₀^ρ perfil(t) dt`, em pixels.
+///
+/// A lei acumulativa é `L = Σ (perfil · Δs) / NORM`, e este é o número que a torna **honesta**: com
+/// ele, UMA passada reta deposita, no eixo, exatamente o pico que o envelope deposita hoje
+/// (`L = coverage`), porque um texel no eixo vê o centro do pincel aproximar-se de `ρ` até `0` e
+/// afastar-se de volta — o dobro da meia-integral. É o gate mais forte que esta feature pode ter:
+/// ligar o toggle não pode mudar o traço simples.
+///
+/// ⚠️ **Lê o FALLOFF, não a silhueta completa.** Uma Shape image é um carimbo com borda própria e
+/// não tem por que integrar como um disco; normalizar por ela faria o número depender da imagem
+/// carregada. A aproximação está nomeada aqui em vez de descoberta depois.
+#[must_use]
+pub fn accum_norm(spec: &crate::BrushSpec, radius: f32) -> f32 {
+    let m = ACCUM_NORM_SAMPLES;
+    let mut sum = 0.0;
+    for j in 0..m {
+        let u = (j as f32 + 0.5) / m as f32;
+        sum += spec.falloff_weight(u);
+    }
+    // `2ρ · média`, que é `2·∫₀^ρ` pela regra do ponto médio.
+    (2.0 * radius * sum / m as f32).max(1e-6)
+}
+
+/// **O passo do arco deste dab**, já dividido pelo normalizador — `None` fora do modo acumulativo.
+///
+/// ⚠️ **O 1º dab de um traço recebe o espaçamento NOMINAL** (decisão do Enio, 2026-08-12): a lei
+/// pura do arco daria `Δs = 0` para ele, e então um **TAP não depositaria nada** — um pincel que não
+/// carimba parado é uma ferramenta quebrada, não uma escolha de design. Com o nominal um toque
+/// deposita *uma unidade de espaçamento*: mais fino que sob o envelope, e o preço está nomeado.
+///
+/// ⚠️ **Consequência irmã, e ela é real:** um **Airbrush parado** também deposita zero enquanto a
+/// mão não anda, porque ele emite dabs no TEMPO e a integral é de ESPAÇO. A alternativa (integrar
+/// relógio de parede) resolve os dois e **viola a idempotência sob re-stamp** — o tempo não é
+/// propriedade do caminho, então um shape editor que re-carimba a figura a cada quadro não
+/// reproduziria o mesmo relevo (doc 20 §6).
+#[must_use]
+pub(crate) fn accum_step(spec: &crate::BrushSpec, dab: &HeightDab<'_>, radius: f32) -> Option<f32> {
+    if !spec.accumulate {
+        return None;
+    }
+    let ds = match sweep_axis(dab) {
+        Some((_, len)) => len,
+        None => spec.dab_spacing_px(),
+    };
+    Some(ds / accum_norm(spec, radius))
 }
 
 /// The grain sample of a pixel that has none: a full, ungrooved body.
@@ -359,9 +433,22 @@ pub fn accumulate_dab_height(
     // the SAME fraction the pigment funnel does (`dab.rs`), or the two halves of the film disagree
     // about where the paint ends. Hoisted per dab; `None` = single-sample, byte-identical.
     let film_aa = crate::height_film::FilmAa::for_dab(spec, dab.shape.is_some(), radius);
+    // **O passo do arco**, `None` fora do modo acumulativo ([`accum_step`]).
+    let step = accum_step(spec, dab, radius);
+    // ⚠️ **Em modo acumulativo o corpo NÃO é varrido, e isso não é uma omissão** (doc 35 §6/D3): a
+    // cápsula existe para tornar o **envelope** independente do espaçamento, e sob a integral quem
+    // faz isso é o `Δs`. Manter as duas conta DUAS VEZES — o texel somaria `perfil(d) × comprimento
+    // do traço`, que cresce sem limite num traço reto longo. Sob a integral o perfil volta a ser a
+    // distância ao CENTRO, que é o que uma integral de linha pede.
+    let sweep = if step.is_some() {
+        None
+    } else {
+        sweep_axis(dab)
+    };
     // The bbox has to cover the whole SWEPT body, not just the disc at the centre (+ the AA's
     // one-texel fractional ring so it is not clipped at small radii).
-    let reach = radius + sweep_len(dab) + crate::height_film::FilmAa::pad_px(&film_aa);
+    let reach =
+        radius + sweep.map_or(0.0, |(_, l)| l) + crate::height_film::FilmAa::pad_px(&film_aa);
     let x0 = (cx - reach).floor().max(0.0) as i64;
     let y0 = (cy - reach).floor().max(0.0) as i64;
     let x1 = ((cx + reach).ceil() as i64 + 1).min(width as i64);
@@ -374,7 +461,6 @@ pub fn accumulate_dab_height(
     // as an ingredient, so flipping the source after the stroke re-carves the same grooves this dab
     // would have left. A brush with no grain pays nothing.
     let grain_active = dab.grain.is_some();
-    let sweep = sweep_axis(dab);
     // The film's pre-convolved table (plano 26 §9.6), when this brush and radius admit it. Built
     // AFTER the sweep because the capsule's axis is half the plan: the BAND has its own deformed
     // basis (`B = A·P/radius`), and a texel that straddles the cap↔band boundary is handed back to
@@ -397,6 +483,7 @@ pub fn accumulate_dab_height(
         cx,
         cy,
         sweep,
+        step,
         film_aa,
         lut,
         ablate,

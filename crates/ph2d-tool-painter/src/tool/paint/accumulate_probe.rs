@@ -234,3 +234,92 @@ fn measure_accumulate_reaches_colour_but_not_relief() {
         }
     }
 }
+
+/// O relevo no ponto de sonda (0 se a camada não tem plano de altura).
+pub(in crate::tool::paint) fn relief(t: &PainterTool) -> f32 {
+    let i = (Y as usize * SIZE as usize) + PROBE_X as usize;
+    t.layers
+        .active()
+        .and_then(|a| t.heights.get(&a))
+        .and_then(|hs| hs.get(i).copied())
+        .unwrap_or(0.0)
+}
+
+/// Um tool de impasto: o pincel macio + o corpo ligado nos três slots de relevo.
+pub(in crate::tool::paint) fn impasto_tool(accumulate: bool) -> PainterTool {
+    let mut t = soft_tool(1.0, accumulate);
+    t.paint.brush.impasto = true;
+    let seed = t.paint.brush;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = seed;
+    }
+    t
+}
+
+/// **Sonda 6 — o ACCUMULATE do RELEVO (a D3).** É o gesto que o Enio reportou, medido no corpo da
+/// tinta em vez de na cor.
+#[test]
+#[ignore = "sonda de medicao (estudo do Accumulate); roda com --ignored --nocapture"]
+fn measure_relief_accumulates_along_the_arc() {
+    println!("\n=== o RELEVO sob ida-e-volta na MESMA pincelada ===\n");
+    for &acc in &[false, true] {
+        let mut row = format!("accumulate {:<3}  ", if acc { "ON" } else { "off" });
+        for &n in &[1usize, 2, 5, 15] {
+            let mut t = impasto_tool(acc);
+            one_stroke(&mut t, n);
+            row.push_str(&format!("n={n:<3}{:.4}  ", relief(&t)));
+        }
+        println!("{row}");
+    }
+
+    println!("\n=== e a INDEPENDENCIA DE ESPACAMENTO (uma passada) ===");
+    println!("mesmo CAMINHO; so muda quantos dabs o motor emite\n");
+    for &acc in &[false, true] {
+        let mut row = format!("accumulate {:<3}  ", if acc { "ON" } else { "off" });
+        let mut vals = Vec::new();
+        for &sp in &[0.05f32, 0.10, 0.20] {
+            let mut t = impasto_tool(acc);
+            t.handle_panel_event(PanelEvent::SetValue(
+                core_ids::PAINTER_BRUSH_SPACING,
+                f64::from(sp),
+            ));
+            one_stroke(&mut t, 1);
+            let h = relief(&t);
+            vals.push(h);
+            row.push_str(&format!("sp={sp:.2} {h:.4}  "));
+        }
+        let (lo, hi) = vals
+            .iter()
+            .fold((f32::MAX, 0.0f32), |(l, h), &v| (l.min(v), h.max(v)));
+        row.push_str(&format!(
+            "| razao {:.2}x",
+            if lo > 0.0 { hi / lo } else { 0.0 }
+        ));
+        println!("{row}");
+    }
+
+    println!("\n=== UMA passada RETA (o gate que torna o toggle honesto) ===\n");
+    for &acc in &[false, true] {
+        let mut t = impasto_tool(acc);
+        t.on_canvas_pointer(cp([X0, Y], PointerPhase::Down));
+        t.on_canvas_pointer(cp([X1, Y], PointerPhase::Move));
+        t.on_canvas_pointer(cp([X1, Y], PointerPhase::Up));
+        println!(
+            "accumulate {:<3}  h={:.4}",
+            if acc { "ON" } else { "off" },
+            relief(&t)
+        );
+    }
+
+    println!("\n=== o TAP (decisao (i): 1o dab recebe o espacamento nominal) ===\n");
+    for &acc in &[false, true] {
+        let mut t = impasto_tool(acc);
+        t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
+        println!(
+            "accumulate {:<3}  tap h={:.4}",
+            if acc { "ON" } else { "off" },
+            relief(&t)
+        );
+    }
+}

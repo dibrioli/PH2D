@@ -148,7 +148,7 @@ As duas linhas centrais dizem a mesma coisa pelo lado positivo: **o par certo é
 `accumulate ON + space_atten ON`** (razão 1,25×) ou **`accumulate OFF + space_atten OFF`**
 (razão 1,02×). As duas combinações cruzadas são as que erram.
 
-### 3.4 A COR acumula, o RELEVO não — no MESMO traço
+### 3.4 A COR acumula, o RELEVO não — no MESMO traço ⚠️ *(medição PRÉ-D3; a §6 a superou)*
 
 | modo | n | COR (alpha) | RELEVO (h) |
 |---|---|---|---|
@@ -194,17 +194,21 @@ contraditória — e é isso que a D2 conserta.
 |---|---|---|---|
 | **D1** | *o flag é inerte em `strength = 1` ⇒ defeito* | **não é defeito: as duas leis COINCIDEM ali** (`cap = 1` ⇒ o teto reduz a source-over por dab). A cura proposta foi construída e mediu **byte-idêntica**. E o Blender tem a mesma inércia em alpha 1 | ⛔ **REFUTADO** — vira gate de coincidência |
 | **D2** | *`space_atten` sobre `accumulate OFF` inverte a própria promessa* | **1,02× → 8,17×**, com mecanismo: o fator entra em `coverage`, que **é** o teto (§3.3) | ✅ **CORRIGIDO** — o knob passa a valer só com Accumulate ON; **1,02×** de volta |
-| **D3** | *o relevo não vê o flag* | cor acumula, `h` não (§3.4) — a assimetria é real e deliberada hoje | ⏳ **ABERTO** — é a wave do doc 20, e é o que sobra da pergunta original |
+| **D3** | *o relevo não vê o flag* | cor acumula, `h` não (§3.4) — a assimetria era real | ✅ **FECHADA** (§6): a lei do arco alcança o corpo; `n=15` vai de **0,6153 para 11,9602**, com a passada simples a **3,0%** e o espaçamento a **1,02×** |
 
 ⚠️ **E a D1 tinha uma consequência que também cai:** eu escrevi que curá-la curaria o endurecimento
 da borda do [doc 25 §13.10.4](25_avaliacao_gpu.md). Cai junto — se as duas leis coincidem em
 `strength = 1`, **nenhum ajuste do teto muda o ombro ali**, e o §13.10.4 continua exatamente onde
 estava, pelo motivo que ele mesmo já mede.
 
-⇒ **Sobra a D3.** Depois de medir tudo, *a única coisa que o PH2D faz diferente do Blender no
-Accumulate é o RELEVO* — e essa era, desde o começo, a pergunta que o Enio fez
-([doc 20](20_accumulate_na_mesma_pincelada.md), abertura: *"a possibilidade de accumulate na mesma
-pincelada em todo o sistema Impasto"*).
+⇒ **A D3 era a única divergência real, e era a pergunta original** ([doc 20](20_accumulate_na_mesma_pincelada.md),
+abertura: *"a possibilidade de accumulate na mesma pincelada em todo o sistema Impasto"*). Ela está
+construída — §6.
+
+⚠️ **E o PH2D passa o Blender aqui, não o iguala:** o Accumulate do Blender é **por dab**, logo
+função do Spacing; o nosso é uma **integral de arco**, logo função do CAMINHO (razão medida 1,02×
+contra os 2,95× que a lei por-dab dá na cor). Um artista que baixe o Spacing não engrossa a tinta
+por acidente.
 
 ---
 
@@ -247,7 +251,44 @@ medido no perfil perpendicular: **as quatro linhas de `strength 1.0` não movera
 não existe porque o defeito não existe (§1). O que fica é o gate
 `at_full_strength_the_two_laws_are_the_same_law`, que afirma a coincidência.
 
-### ⏳ D3 — é o que sobra, e ela ficou MUITO mais barata
+### ✅ D3 — FEITA (2026-08-12, decisão **(i)** do Enio)
+
+**O relevo vê o flag.** Medido pela porta do artista (pincel macio r=8, impasto, ida-e-volta na MESMA
+pincelada, altura no meio do traço):
+
+| modo | n=1 | n=2 | n=5 | n=15 |
+|---|---|---|---|---|
+| off (envelope `max`) | 0,5554 | 0,6083 | 0,6143 | **0,6153** |
+| **ON (integral de arco)** | 0,6323 | 1,4195 | 3,8523 | **11,9602** |
+
+E os três números que dizem que a lei está certa, não só que ela cresce:
+
+- **UMA passada reta**: `off 0,6153` contra `ON 0,5968` — **3,0%**. É o que a norma
+  `2·∫₀^ρ perfil` compra: ligar o toggle **não repinta** a arte de quem passa o pincel uma vez.
+- **Independência de espaçamento (I1)**: razão **1,02×** sobre `sp = 0,05 / 0,10 / 0,20`, contra
+  1,01× do envelope. A doença que esta linha curou três vezes não volta.
+- **Idempotência sob re-stamp (I2)**: por construção (a integral é função do caminho) + o
+  `reset_stroke_height`, que zera a carga antes de cada re-carimbo dos shape editors.
+
+⚠️ **O preço da decisão (i), medido:** um **TAP** deposita `h = 0,0936` contra `0,4679` sob o
+envelope — *uma unidade de espaçamento*, ~5× mais fino. A lei pura do arco daria **zero** (um toque
+não percorre nada), e um pincel que não carimba parado é ferramenta quebrada. Quem quer o toque
+grosso desliga o flag.
+
+⚠️ **Consequência irmã, NÃO resolvida por (i):** um **Airbrush parado** também não engrossa — ele
+emite dabs no TEMPO e a integral é de ESPAÇO. É a metade que só o relógio de parede resolveria, e
+ele viola I2 (doc 20 §6).
+
+**Gates:** 5 no motor (`ph2d-painter-brush::height_tests`) + 5 de comportamento
+(`accumulate_tests`). **Mutações: 5 rodadas, 4 sangram** — o piso nominal (`TAP = 0`), a norma
+(`passada reta 0,6153 → 4,7743`), o passo de arco (`razão 3,21×`), o `accum_step` sempre `None`
+(`0,5554 → 0,6153`), e a cápsula mantida sob a integral (`0,7175`, a contagem dupla). ⚠️ A 5ª é
+**inválida e está registrada como tal** no gate.
+
+**Custo estrutural: ZERO.** Nenhum plano novo, nenhum ciclo de vida, nenhum `PROJECT_SCHEMA`,
+nenhuma superfície pública além de `accum_norm`/`accum_step`. E o card **Body continua vivo**.
+
+### O que a D3 CUSTOU descobrir — e por que o doc 20 a orçou tão maior
 
 O desenho está no [doc 20 §9.1/§12/§13](20_accumulate_na_mesma_pincelada.md): acumular a **CARGA**
 (não a altura, que assaria o Depth).

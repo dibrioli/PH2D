@@ -22,6 +22,9 @@ pub(super) struct Walk<'a, 'b> {
     pub(super) cx: f32,
     pub(super) cy: f32,
     pub(super) sweep: Option<([f32; 2], f32)>,
+    /// **O passo do arco** deste dab, já dividido pelo normalizador — `Some` só no modo acumulativo
+    /// ([`crate::height::accum_step`]). `None` é o envelope `max` que sempre shipou.
+    pub(super) step: Option<f32>,
     pub(super) film_aa: Option<crate::height_film::FilmAa>,
     pub(super) lut: Option<crate::height_film::FilmLutPlan<'a>>,
     pub(super) ablate: u32,
@@ -253,10 +256,35 @@ fn walk_band(
             if ablate & crate::ablate::TAIL != 0 {
                 continue; // sem grain, sem mordida, sem as quatro escritas, sem derive_height
             }
-            let m = (w * coverage * k).clamp(0.0, 1.0);
-            if m <= planes.paint[i] {
-                continue;
-            }
+            // **As DUAS leis de depósito**, e a de cima é a que sempre shipou.
+            //
+            // * `None` — o **ENVELOPE**: o dab que pousou mais tinta é dono do texel. Uma passada de
+            //   um pincel carregado deixa UMA espessura; passar de novo no mesmo traço não empilha.
+            // * `Some(step)` — a **INTEGRAL DE LINHA** do Accumulate (doc 35 §6/D3): a carga é
+            //   `Σ perfil·Δs / NORM`, então esfregar constrói. Ela é função do **CAMINHO**, não de
+            //   quão fino o motor amostrou o caminho — dobrar a densidade de dabs dobra a contagem e
+            //   divide `Δs` por dois, e a soma converge para a mesma integral (o invariante I1 que
+            //   esta linha pagou três vezes). E, por ser função do caminho, um re-carimbo do shape
+            //   editor devolve o mesmo número (I2).
+            let m = match wk.step {
+                None => {
+                    let m = (w * coverage * k).clamp(0.0, 1.0);
+                    if m <= planes.paint[i] {
+                        continue;
+                    }
+                    m
+                }
+                Some(step) => {
+                    let add = (w * coverage * k).max(0.0) * step;
+                    if add <= 0.0 {
+                        continue;
+                    }
+                    // Sem clamp: é a carga passar de 1 que dá a espessura, e o único leitor que a vê
+                    // crua é o `derive_height`, que a estende linearmente (varredura de consumidores
+                    // no doc 35 §6/D3).
+                    planes.paint[i] + add
+                }
+            };
             let g = if let Some(b) = dab.grain {
                 crate::dab::grain_at(spec, b, dab.grain_image, px, py, dab.center, radius)
                     .clamp(0.0, 1.0)

@@ -203,6 +203,7 @@ impl crate::App {
             // e' o gate: um segundo braco com o mesmo literal e' `unreachable`.
             "108" => self.physics_smoke_probes(),
             "109" => self.physics_smoke_foot_fan(),
+            "110" => self.physics_smoke_multi_jump(),
             _ => self.physics_smoke_drop(),
         }
 

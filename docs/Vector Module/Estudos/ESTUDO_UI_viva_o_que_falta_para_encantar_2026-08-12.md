@@ -246,8 +246,183 @@ melhora a **fidelidade do traço**, não a da interface.
 
 - **Não mediu o custo por quadro** de nenhum item. A F0 é `O(widgets vivos)` e o tether é
   `O(16 pontos)`, mas *o número sai da sonda, não daqui*.
-- **Não decide o carácter** — se a UI deste app deve ser discreta e rápida ou expressiva e física. As
-  duas são coerentes; a escolha é do Enio, e ela decide as doses do eixo 1.
+- ~~**Não decide o carácter**~~ — ⚠️ **DECIDIDO pelo Enio no mesmo dia: as DUAS, e quem escolhe é o
+  utilizador, no pill Settings.** Ver **§10**, que é agora a restrição mais forte do estudo: nenhum
+  efeito entra sem resposta definida nos dois caracteres.
 - **Não afirma o detalhe do produto do exemplo.** A corda descrita é a do Enio; o estudo trata o
   **padrão** (o tether) como arquétipo, e não depende de qual app a shipou.
 - **Não abre wave nenhuma.** Nada aqui começa sem ordem explícita.
+
+---
+
+## §10 — A DECISÃO do carácter (Enio, 2026-08-12)
+
+> *"Discreta e rápida **ou** expressiva e física, com escolha para o utilizador no pill Settings."*
+
+Isto fecha a pergunta aberta da §9 e **passa a ser a restrição mais forte deste estudo**: nenhum
+efeito da §11 entra sem uma resposta definida **nos dois caracteres**.
+
+### 10.1 A lei: uma PORTA, perguntada uma vez
+
+⚠️ **Discreto NÃO é Expressivo com os números baixos.** Se fosse, seria um multiplicador global e
+qualquer um o escreveria em dez minutos — e o resultado seria uma UI expressiva a mexer-se depressa
+demais, que é a pior das três. São **duas respostas diferentes à mesma pergunta**:
+
+| | Expressivo | Discreto |
+|---|---|---|
+| o que governa o movimento | **mola** (rigidez/amortecimento) | **duração curta + curva** |
+| o que o movimento comunica | *o objecto é físico* | *a mudança aconteceu, e onde* |
+| percurso | pode ultrapassar e voltar | nunca ultrapassa |
+| tempo típico | 200-450 ms, assentando | 80-140 ms, chegando |
+| decoração (§11 D·F·G) | ligada | **ausente**, não atenuada |
+
+E a lei estrutural, no molde que este repo já usa em toda parte: **a pergunta *"qual carácter?"* é
+feita UMA vez** (`UiCharacter::of()`), e quem pinta consulta **a mesma porta** que quem despacha.
+Duas cópias divergem no dia em que um efeito ganha um caso especial — é a cicatriz do
+`TimelineInterpScope::menu_table()` e a do `stroke_cover_wanted`.
+
+### 10.2 ⚠️ Discreto ≠ Reduced Motion — e colapsá-los seria shipar acessibilidade disfarçada de gosto
+
+São **dois eixos independentes**, não três pontos de um:
+
+- **Carácter** é *gosto*. Um utilizador em Discreto ainda quer os seus 100 ms de transição; ele só
+  não quer que a interface tenha peso.
+- **Reduced motion** é uma *garantia*: mata os gatilhos **vestibulares** — percurso de área grande,
+  paralaxe, rotação, zoom — **independentemente do carácter escolhido**.
+
+⇒ *Expressivo + reduced motion* é uma combinação legítima e tem de funcionar: alguém que gosta do
+material, do som e da mola, mas a quem a paralaxe faz mal. Um único seletor de três posições
+tornaria essa pessoa incapaz de pedir o que precisa sem desistir do que gosta.
+
+### 10.3 ⚠️ E a decisão expôs uma peça em falta, medida
+
+**Não existe preferência de APP neste repo.** Medido: `grep -rln "prefs\|preferences\|config_dir"
+shells/desktop/src/` devolve **vazio**, e as `SavedSettings` (v69 — escala do mundo, unidade, snaps,
+filtragem) **viajam dentro do `ProjectFile`**.
+
+Pôr o carácter ali seria dizer que **o gosto viaja com o documento**: abrir o ficheiro de um colega
+mudaria como o *seu* app se mexe. Isso está errado do mesmo modo que uma binding de timeline apontar
+para bits de entidade.
+
+⇒ o carácter (e o reduced motion, e o volume do som da §11 G) pedem um **armazém de preferências de
+utilizador** — ficheiro pequeno no config dir, fora do `PROJECT_SCHEMA`. Não existe, é barato, e o
+carácter seria o **primeiro inquilino**. *Nomeado, não contrabandeado dentro da F0.*
+
+### 10.4 O que isto faz à lista da §6
+
+Cada linha ganha uma coluna implícita — *o que ela faz em Discreto* — e a **R1** deixa de ser um
+item: ela vira **parte da F2**, porque a porta de carácter e a garantia de reduced motion são o
+mesmo sítio no código, e um efeito que nasce sem as duas nasce dívida.
+
+---
+
+## §11 — O CATÁLOGO: os efeitos, além da corda
+
+Quarenta e um, por **mecanismo** — não por app que os shipou. A coluna **Discreto** é o que a §10
+obriga: onde diz *"ausente"*, o efeito simplesmente **não existe** naquele carácter, e isso é uma
+resposta, não uma falha.
+
+### A — MASSA E MOLA (o objecto tem inércia)
+
+| # | efeito | o mecanismo | onde cairia aqui | em Discreto |
+|---|---|---|---|---|
+| A1 | **Overshoot / settle** | o alvo é ultrapassado e a mola devolve | painéis, chips, o card de onion | ausente |
+| A2 | **Squash & stretch** | o corpo deforma na direcção do movimento | thumbnails a voar, o chip arrastado | ausente |
+| A3 | **Rubber-band de fim de curso** | arrastar além do limite **resiste** e devolve | fim de lista, limite de slider, borda do canvas | ausente (encosta seco) |
+| A4 | **Inércia / fling** | o conteúdo continua depois de o dedo sair | pan de canvas, listas roláveis, a tira do Flip | ausente |
+| A5 | **Sag / catenária** | algo longo cede sob o próprio peso | divisor de painel arrastado, a própria corda | ausente |
+| A6 | **Pêndulo** | o que está pendurado balança ao aparecer/mover | dropdown, popover, painel flutuante | ausente |
+| A7 | **Massa diferencial** | elementos distintos têm massas distintas; o pesado atrasa | hierarquia de leitura **feita com movimento**, não com cor | ausente |
+| A8 | **Recoil** | o botão empurra de volta e recupera | todo botão, todo chip | *press* instantâneo |
+| A9 | **Aproximação magnética** | o ímã **puxa visivelmente** antes de agarrar | o snap (que hoje só marca **depois**) | só a marca |
+| A10 | **Detent** | o valor "estala" nos pontos notáveis, com resistência | sliders de ângulo, opacidade, zoom | ⚠️ **fica** — é função, não enfeite |
+
+### B — MATERIAL E DEFORMAÇÃO (a superfície tem propriedades)
+
+| # | efeito | o mecanismo | onde cairia aqui | em Discreto |
+|---|---|---|---|---|
+| B1 | **Gooey / metaball** | dois corpos que se aproximam fundem-se por um istmo (soma de campos) | o indicador de aba a mudar; chips a agrupar | ausente |
+| B2 | **Ripple do ponto de toque** | a onda nasce **onde o dedo tocou**, não no centro | botões grandes, o canvas ao confirmar | ausente |
+| B3 | **Vidro / refracção** | o painel refracta o que está por trás | painéis flutuantes sobre a arte | ausente (opaco) |
+| B4 | **Tilt paralaxe** | o card inclina para o cursor; camadas a taxas diferentes | cards da paleta de comandos, thumbnails | ausente ⚠️ **e é gatilho vestibular** |
+| B5 | **Specular sweep** | um brilho atravessa a superfície quando ela fica disponível | um botão que acabou de ficar activo | ausente |
+| B6 | **Membrana elástica** | a borda do contentor cede quando um filho é arrastado contra ela | auto layout, moldura, a tira | ausente |
+| B7 | **Sombra que responde à altura** | a sombra conta *quão acima* o objecto está, e muda ao levantar | arrastar um objecto na hierarquia | sombra fixa |
+
+### C — CONEXÃO (a relação é geometria)
+
+| # | efeito | o mecanismo | onde cairia aqui | em Discreto |
+|---|---|---|---|---|
+| C1 | ⭐ **TETHER / corda** | pontos de massa + restrição de distância, entre controlo e efeito | o gizmo ↔ o botão que o armou (o pedido) | **linha reta** |
+| C2 | **Fio elástico** | o fio estica-se e assenta ao ligar dois sockets | grafo de nós, o picker de caminho-guia | linha reta |
+| C3 | **Magic move / elemento partilhado** | o que existe dos dois lados **move-se**; não desaparece | painel → modal, thumbnail → canvas | *cross-fade* curto |
+| C4 | **Morph de FORMA** | o botão **vira** o painel; a silhueta transita | ⚠️ temos motor de blend de formas (`ph2d-vec-blend`) | ausente |
+| C5 | **Voo / portal** | o item voa da origem para o destino, com arco | shape nova → linha da hierarquia; cor → swatch | ausente |
+| C6 | **Fio de dependência** | *hover* num socket **apaga** o que não é a jusante | grafo de Motion, pilha de LPE | ⚠️ **fica** — é legibilidade |
+| C7 | **Realce de proveniência** | passar sobre o valor acende o objecto — **e o inverso** | inspector de ~1.600 ids | ⚠️ **fica** |
+
+### D — PARTÍCULAS (o gesto deixa rasto)
+
+⚠️ Família inteira **ausente em Discreto**. E temos o motor: 119 nós, milhões de instâncias na GPU.
+
+| # | efeito | o mecanismo | onde cairia aqui |
+|---|---|---|---|
+| D1 | **Dissolver em vez de sumir** | o apagado **emite as próprias partículas** | DELETE — torna legível *o quê* e *onde* |
+| D2 | **Poeira de impacto** | faísca no ponto EXACTO do encaixe | snap, join de nós, o pouso de um strip |
+| D3 | **Rasto do cursor** | trail que segue o ponteiro | ⚠️ dose mínima; num app de pintura pode ser **pigmento** |
+| D4 | **Sopro do pincel** | pressão forte solta um puff | temos quatro meios de pintura a justificá-lo |
+| D5 | **Confirmação por emissão** | o commit emite uma vez, do ponto de acção | Apply, bake, export |
+
+### E — TEMPO E CADÊNCIA (o ritmo comunica)
+
+| # | efeito | o mecanismo | onde cairia aqui | em Discreto |
+|---|---|---|---|---|
+| E1 | **Cascata / stagger** | `atraso = índice × ε` faz N itens lerem-se como **um** gesto | paleta, hierarquia, rows do inspector | ⚠️ **fica**, com ε menor |
+| E2 | **Antecipação** | o recuo antes do avanço | abrir um painel grande | ausente |
+| E3 | **Follow-through** | o corpo chega e as **partes** continuam | o rótulo assenta depois do card | ausente |
+| E4 | **Ease assimétrico** | entrar e sair **não são a mesma curva** | tudo | ⚠️ **fica** — é regra, não dose |
+| E5 | **Máscara temporal** | a animação preenche **exactamente** o trabalho real | load, bake, cook — em vez de spinner | ⚠️ **fica** |
+| E6 | **Interrupção com herança de velocidade** | o alvo novo parte da velocidade actual | **todos** | ⚠️ **fica** — é a lei, não um efeito |
+
+### F — VIDA OCIOSA (a UI respira)
+
+| # | efeito | o mecanismo | onde cairia aqui | em Discreto |
+|---|---|---|---|---|
+| F1 | **Breathing** | pulso lento no que espera acção | o botão primário de um estado vazio | ausente |
+| F2 | **Shimmer de atenção** | o que mudou **por baixo** do utilizador brilha **uma** vez | render acabou, ficheiro recarregou, colega editou | ⚠️ **fica** |
+| F3 | **Cursor com peso** | o anel segue com atraso mínimo | ⚠️ **já temos o anel** (`the_brush_ring_wears_the_live_dab_rotor`) | sem atraso |
+| F4 | **Consciência de proximidade** | reage à **distância** do cursor, não só ao contacto | o rail de ferramentas (o dock do macOS) | ausente |
+| F5 | **Progresso SEM spinner** | o elemento **é** a barra: a borda enche | o botão que dispara o trabalho | ⚠️ **fica** |
+
+### G — SOM (o motor existe e não toca a UI)
+
+⚠️ **Opt-in sempre; nunca por omissão.** Temos 42 efeitos, mixer e vozes por streaming.
+
+| # | efeito | mecanismo | em Discreto |
+|---|---|---|---|
+| G1 | **Click / detent** | o valor notável tem um som distinto do valor comum | ⚠️ independente do carácter — é o **seu** interruptor |
+| G2 | **Whoosh de transição** | curto, ligado ao percurso; **cala-se** sem percurso | ausente |
+| G3 | **Confirmação / recusa** | dois timbres; a recusa nunca é um "erro" agressivo | fica |
+| G4 | **Textura da ferramenta** | a caneta tem um som; a faca tem outro | ⚠️ decisão de produto, dose alta |
+
+### H — ESPAÇO E FOCO (o que se vê muda com a intenção)
+
+| # | efeito | mecanismo | onde cairia aqui | em Discreto |
+|---|---|---|---|---|
+| H1 | **Zoom semântico** | o conteúdo muda de **representação**, não de tamanho | tira do Flip, timeline, hierarquia funda | ⚠️ **fica** |
+| H2 | **Focus + context / fisheye** | a vizinhança do cursor expande | listas longas, a tira, o dope-sheet | ausente |
+| H3 | **Peek mola-carregado** | segurar mostra, largar **desfaz** | pré-visualizar uma camada, um clip, um preset | ⚠️ **fica** — é agência |
+| H4 | **Dim do irrelevante** | a acção corrente **apaga** o que não participa | modo de corte, pick de caminho, box-select | ⚠️ **fica** |
+
+### ⚠️ O que o catálogo revela quando se lê a coluna Discreto
+
+**Dezassete dos 41 ficam em Discreto** — e não são os decorativos: são o **detent**, o **ease
+assimétrico**, a **interrupção**, o **fio de dependência**, a **proveniência**, o **zoom semântico**,
+o **peek**, o **dim**, a **máscara temporal**. Ou seja:
+
+> a maior parte do que faz uma UI parecer *inteligente* não é do eixo expressivo — é **legibilidade
+> e agência**, e sobrevive intacta no carácter discreto. O que Discreto remove é **peso, percurso e
+> rasto**; o que ele **não** pode remover é a UI dizer *porquê*.
+
+⇒ E isso reordena a §6: **C6 · C7 · H3 · H4 · E4 · A10** valem em **ambos** os caracteres, logo o seu
+retorno é o dobro do de qualquer efeito da família D ou F.

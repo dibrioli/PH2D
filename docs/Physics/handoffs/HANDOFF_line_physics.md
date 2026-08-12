@@ -12,7 +12,30 @@
 > · gizmo ids até **973** (próximo livre **974**) · maior cena de smoke **104** (próxima livre
 > **105**; ⚠️ o `=84` não existe, de propósito).
 >
-> ⚠️ **Jornada de 2026-08-12 (`W-MultiJump`) FECHADA, aguardando ordem de integração** — handoff
+> ⚠️ **Jornada de 2026-08-12 (`W-MultiJump` + `W-Ledge`) FECHADA, aguardando ordem de
+> integração** — handoff
+> [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md).
+> A **segunda** wave é a **BEIRADA** (`W-Ledge`, cena `=111`, o exemplo que o Enio deu no plano 08
+> §4.5): o personagem que erra o pulo **agarra o parapeito** e sobe dali.
+> ⚠️ **A bifurcação que o plano tratava como decisão DISSOLVEU** — nem o pendurar nem a subida
+> escrevem POSE: os dois são **velocidade** (um `boost` mais o `gravity_hold` que o arranque já
+> usava), então **a lei é a MESMA nos dois modos** e o solver continua a resolver contatos.
+> ⚠️ **O sensor é UM raio para baixo, à frente**, e `distance == 0` é a recusa de *"a parede
+> continua acima da minha cabeça"* **de graça** (o contrato de penetração do `cast_ray`); o **`x`
+> dele É o alvo da subida** ⇒ a beirada **não depende do sensor de parede**.
+> ⚠️ **Dois limiares de UM número** (agarrar exige o lábio acima da cabeça, segurar aceita a banda
+> inteira) — com um só, o sucesso do servo seria a condição de largar. ⚠️ **E a subida é disparada
+> por BORDA**: com disparo por nível o pendurar era **invisível**, porque se chega a uma beirada
+> *a pular contra ela*, com o dedo já em baixo. **Medido:** pendurado assenta a **2,5 mm** do
+> lábio, e depois da subida fica de pé em `lábio + float_height` nos **seis** pares
+> `(grab, speed)`. ⚠️ **E um pulo COLADO À PAREDE alcança 0,745 m contra 1,903 do ar livre** (o
+> atrito come 61%) — a primeira versão da cena usou o número do ar livre e **o corpo nunca chegava
+> à janela**. **`PROJECT_SCHEMA` 74 → 75** (a capacidade nasce em `0` ⇒ **`c9` `1699123f…` segue
+> INTOCADO**) · **11 mutações, 11 sangram**, e a do `gravity_hold` **sobreviveu até um gate NOVO
+> nascer** (o pendurar não consegue medir esse termo — 0,1 mm; a SUBIDA consegue — 1,011× o
+> autorado com ele contra 1,048× sem). **Cena `=111`; próxima livre 112.**
+>
+> ⚠️ **A primeira wave da mesma jornada (`W-MultiJump`)** — handoff
 > [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md),
 > que **supersede** o de 08-11 apenas como *o que integrar agora* (o detalhe de mecanismo das sete
 > waves de sensores continua LÁ). O assunto é o **PULO DO AR**
@@ -25,7 +48,7 @@
 > `1699123f…` INTOCADO** (a capacidade nasce em `0` ⇒ byte-idêntico, e o hash é a prova
 > executável) · registro **29 intocado** · **zero `Cargo.toml`** · nenhum ADR. LOC:
 > `jump.rs` cruzou 700 ⇒ `jump_config.rs` (*o que se AUTORA* × *o que acontece num
-> TIQUE*). **Cena `=110`; próxima livre 111.**
+> TIQUE*). **Cena `=110`.**
 >
 > ⚠️ **Jornada de 2026-08-11 FECHADA (smoke da cena `=109` APROVADO pelo Enio em 2026-08-12)** — handoff
 > [`HANDOFF_INTEGRACAO_line_physics_sensores_2026-08-11.md`](HANDOFF_INTEGRACAO_line_physics_sensores_2026-08-11.md),

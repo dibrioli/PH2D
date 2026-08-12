@@ -439,9 +439,21 @@ cena usaram o número do ar livre e ficaram intransponíveis: o patamar baixo em
 1,5 m não podia ser subido por quem chega encostado nele.
 
 **Cena `=111`** · `PROJECT_SCHEMA` **74→75** (dois campos apendados; ⚠️ o degrau
-**não move física** — o alcance nasce em `0`) · **13 gates de lei + 6 de produto
-+ 5 de cena** · duas rows novas no Inspector (card **LEDGE**), com
-`PLAYER_ROW_COUNT` 44→46.
+**não move física** — o alcance nasce em `0`, e o **`c9` intocado é a prova**) ·
+**13 gates de lei + 7 de produto + 5 de cena** · **11 mutações, 11 sangram** ·
+duas rows novas no Inspector (card **LEDGE**), com `PLAYER_ROW_COUNT` 44→46.
+
+⚠️ **O 7.º gate de produto nasceu de uma mutação que sobreviveu, e o achado vale
+mais que o gate:** tirar a beirada do canal de cancelamento de gravidade
+(`PlayerStep::gravity_hold`) deixava **treze gates da lei e cinco dos seis do
+produto VERDES**. O motivo é que **o PENDURAR não consegue medir esse termo** —
+o servo re-mira em todo tique a partir da velocidade VIVA (o alvo é
+`lip_rise / dt`), então a gravidade de um tique é absorvida pelo seguinte e o
+assentamento move **0,1 mm**. A **SUBIDA** é o outro regime: o alvo dela é uma
+**CONSTANTE**, então o que a gravidade faz sai do número autorado e **fica** lá —
+**1,011× o autorado com o termo, 1,048× sem ele** (`ledge_speed = 2,0`, dez
+tiques). *Uma mutação que não sangra é um regime que nenhum gate visita, não um
+termo inútil.*
 
 **Aberto, com o preço ao lado:** a subida não pergunta ao mundo se o corpo CABE
 lá em cima (`sweep_body` existe e a sonda mede que ele responde) — hoje quem

@@ -202,6 +202,7 @@ impl crate::App {
             // envelhecido. Quem pega o proximo LE' este `match`, e o compilador
             // e' o gate: um segundo braco com o mesmo literal e' `unreachable`.
             "108" => self.physics_smoke_probes(),
+            "109" => self.physics_smoke_foot_fan(),
             _ => self.physics_smoke_drop(),
         }
 

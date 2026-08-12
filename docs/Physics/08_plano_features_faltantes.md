@@ -542,6 +542,79 @@ verde que não significa nada*.
 parado, o 8 são os quatro números novos, o 9 é o controle da tecla `B`).
 
 
+### 4.57 · `W-FootFan` — **A PERNA É UM LEQUE** ✅ ⟨pergunta do Enio⟩
+
+> *"teremos ajustes para os demais sensores? Por que a perna não poderia ter mais
+> de um?"*
+
+**FECHADO em 2026-08-11.** Duas perguntas, e a segunda **virou um bug com
+número** — a resposta não saiu de opinião, saiu de uma sonda.
+
+⚠️ **Os commits carregam o prefixo `W-Probes2`** porque este trabalho nasceu do
+mesmo fio de report; a wave é distinta e mora aqui.
+
+#### (a) O inventário — os outros sensores ✅
+
+| sensor | tamanho | posição | quantidade |
+|---|---|---|---|
+| perna | `float_height` + `cling_distance` | — | ⛔ era **1**, fixo |
+| flanco | `wall_reach` | `Wall Ray Spread` | `Wall Rays` |
+| quina | `corner_reach` | `Corner Look-ahead` | `Corner Rays` |
+| teto (agachar) | `crouch_height` | — | é uma **VARREDURA**, não um leque |
+
+⇒ dos cinco, **um** estava fora: a perna. O teto não tem contagem por
+**natureza** (a `W-ShapeCast` trocou o leque dele por um sweep do corpo, que é
+uma forma e não N linhas) — e dizer *"complete-o"* seria pedir de volta a
+aproximação que aquela wave removeu.
+
+#### (b) A perna — o defeito, medido antes de qualquer linha ✅
+
+Parado sobre uma fenda que o **corpo atravessa**:
+
+| fenda | corpo | queda | fração do `float_height` |
+|---|---|---|---|
+| 0,10 m | 0,40 m | **0,411 m** | **46%** |
+| 0,20 m | 0,40 m | 0,436 m | 48% |
+| 0,40 m | 0,40 m | **113 m** | sai do mundo |
+
+É a mesma doença que o **flanco** teve na W13 (um raio no meio não vê o que as
+bordas do corpo veem) e a mesma cura. `RideConfig` ganha `samples` (default
+**3**) + `spread`, e o `PlatformPlayer` os dois campos — `PROJECT_SCHEMA`
+**72 → 73** (provisório).
+
+⚠️ **O default MUDA a física, de propósito** — e é a única wave desta família em
+que isso acontece: os quatro números da §4.56 nasceram nas consts de sempre. Aqui
+o valor antigo *é* o defeito, então shipá-lo seria shipar o bug com um knob ao
+lado. O `physics_ecs_c9` move-se por isso, e a atribuição é por **ablação**: com
+`samples = 1` o hash volta **exatamente** ao do `main`.
+
+⚠️ **A redução é o MAIS PRÓXIMO** (`<` estrito ⇒ o raio do meio, índice 0 do
+`wall_offsets`, ganha todo empate) ⇒ **chão plano é byte-idêntico**. Não é regra
+nova: é a que o `cling` já ship a no flanco — *o chão é o degrau mais alto que
+qualquer parte do pé alcança*.
+
+⚠️ **O clamp para ÍMPAR mora na LEI** (`odd_samples`), nunca no caminho de
+autoria — um segundo arredondamento faria o número guardado discordar do número
+castado.
+
+⚠️ **O overlay mostra o que a lei CONSUMIU:** as respostas **por raio** viajam
+dos casts da própria lei (o padrão do `WallProbe.hits`). Carimbar o veredito
+reduzido no raio do meio desenharia, depois da redução, uma resposta que ninguém
+usou — o vencedor pode ser um pé de fora.
+
+**Gates:** 5. ⚠️ **O quinto nasceu de uma mutação SOBREVIVENTE:** trocar *"fica o
+mais próximo"* por *"fica o último"* passava nos quatro primeiros, porque sobre
+uma **FENDA** os dois pés de fora acham chão à MESMA distância — a propriedade só
+é observável sobre chão **DESIGUAL**, e a fixture que a contém é um **degrau**.
+6 mutações, 6 sangram.
+
+**Smoke:** `PH2D_PHYSICS_SMOKE=109` — dois personagens iguais sobre fendas
+iguais, e a única diferença é a contagem. ⚠️ **O controle está DENTRO do
+quadro:** a cura é *nada acontecer*, então o vizinho de um raio só — que afunda —
+é a fotografia do mundo de antes; e a terceira fenda, mais larga que o corpo,
+engole os dois (a perna não é levitação).
+
+
 ### 4.6 · `W-Glide` — **PLANAR**
 
 O mais barato do catálogo depois do multi-jump, e provavelmente **um caso do
@@ -569,8 +642,8 @@ pedido** — está aqui para a lista ser honesta, não para ser construído.
 ## §5 — A ordem, numa linha
 
 ```
-~~W-Swim~~ ✅ → ~~W-ZoneForce~~ ✅ → ~~W-ShapeCast~~ ✅ → ~~W-Probes~~ ✅ → ~~W-Probes2~~ ✅ → W-MultiJump → W-Ledge → (W-Glide?) → o ajuste
-   1         2             3            4           5            6           7           8
+~~W-Swim~~ ✅ → ~~W-ZoneForce~~ ✅ → ~~W-ShapeCast~~ ✅ → ~~W-Probes~~ ✅ → ~~W-Probes2~~ ✅ → ~~W-FootFan~~ ✅ → W-MultiJump → W-Ledge → (W-Glide?) → o ajuste
+   1         2             3            4           5            6              7           8          9
 ```
 
 **Porquê esta e não outra:** 1 e 2 são a água, e o contexto está quente hoje · 3

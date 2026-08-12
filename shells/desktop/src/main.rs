@@ -247,6 +247,8 @@ mod physics_smoke_events;
 mod physics_smoke_fk;
 /// W-PartFace: a chave e a fenda -- editar uma PECA muda o resultado.
 mod physics_smoke_foot;
+/// W-Probes2: a perna e um LEQUE -- a fenda que o corpo atravessa.
+mod physics_smoke_foot_fan;
 mod physics_smoke_grab;
 mod physics_smoke_ik;
 mod physics_smoke_interact;

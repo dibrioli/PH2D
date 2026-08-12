@@ -239,6 +239,21 @@ fn alpha_at(px: &[u8], x: usize, y: usize) -> f32 {
     f32::from(255 - px[i + 1]) / (255.0 - 38.0)
 }
 
+/// ⚠️ **REFUTADA PELA [`measure_the_depletion_along_the_stroke`] — o oraculo desta sonda NAO
+/// vale, e o numero dela nao sustenta a conclusao que eu tirei dele.** Ela compara dois pontos
+/// a mesma PROFUNDIDADE na banda de borda, um perto do comeco do traco e outro perto do fim, e
+/// assume que a unica diferenca entre eles e a quina. Medido: ao longo de um traco RETO, sem
+/// quina em lugar nenhum, o alfa a profundidade constante varia de **0,710 a 0,000** (o miolo,
+/// no mesmo traco, fica plano em 0,866-0,917). A banda de borda oscila de posicao ao longo do
+/// traco — dente do papel, granulacao — e uma amostra a meio de uma rampa ingreme amplifica
+/// esse deslocamento ate a escala inteira. O controle `x = 40` calhou de ser um pico e a quina
+/// `x ~ 191` um vale.
+///
+/// A sonda FICA, com este aviso, porque o que ela mediu e real (a banda oscila) e porque a
+/// conclusao errada que eu tirei dela — *"o 2o traco APAGA a tinta seca na quina"* — chegou a
+/// entrar numa mensagem de commit. Para medir quina de verdade o controle tem de estar no MESMO
+/// comprimento de arco, e o oraculo nao pode ser um ponto no meio da rampa.
+///
 /// **A RETRACAO DA QUINA CONCAVA** — a sonda que mede o *arco palido* que o Enio fotografou, com
 /// DOIS controles dentro da mesma imagem.
 ///
@@ -426,4 +441,141 @@ fn measure_where_the_loss_lives() {
             );
         }
     }
+}
+
+/// ⚠️ **REFUTADA PELA [`measure_the_depletion_along_the_stroke`] — o oraculo desta sonda NAO
+/// vale, e o numero dela nao sustenta a conclusao que eu tirei dele.** Ela compara dois pontos
+/// a mesma PROFUNDIDADE na banda de borda, um perto do comeco do traco e outro perto do fim, e
+/// assume que a unica diferenca entre eles e a quina. Medido: ao longo de um traco RETO, sem
+/// quina em lugar nenhum, o alfa a profundidade constante varia de **0,710 a 0,000** (o miolo,
+/// no mesmo traco, fica plano em 0,866-0,917). A banda de borda oscila de posicao ao longo do
+/// traco — dente do papel, granulacao — e uma amostra a meio de uma rampa ingreme amplifica
+/// esse deslocamento ate a escala inteira. O controle `x = 40` calhou de ser um pico e a quina
+/// `x ~ 191` um vale.
+///
+/// A sonda FICA, com este aviso, porque o que ela mediu e real (a banda oscila) e porque a
+/// conclusao errada que eu tirei dela — *"o 2o traco APAGA a tinta seca na quina"* — chegou a
+/// entrar numa mensagem de commit. Para medir quina de verdade o controle tem de estar no MESMO
+/// comprimento de arco, e o oraculo nao pode ser um ponto no meio da rampa.
+///
+/// **A QUINA PALIDA PRECISA DE DOIS TRACOS?** — o discriminador que separa as duas rotas
+/// que sobraram depois de ler a escrita.
+///
+/// # Por que esta e a pergunta certa
+///
+/// A escrita final do render composita a tinta SOBRE a base em transmitancia
+/// (`optical = sb*t + pigmento*(1-t)`): com densidade baixa `t -> 1` e o resultado tende a
+/// `sb`, a base. **Uma composicao assim nao consegue clarear o que ja estava la** — ela so
+/// escurece. Entao a perda medida pela [`measure_where_the_loss_lives`] tem de vir de uma de
+/// duas rotas, e as duas SO existem com dois tracos:
+///
+/// - o `apply_wet_lift`, que caminha o pigmento da base de volta ao papel (o re-wet do doc 23);
+/// - a troca de DONO — o 2o traco reivindica o texel, e a aparencia dele passa a ser
+///   RE-DERIVADA da cobertura do 2o traco, que perto do proprio aro e fraca.
+///
+/// A cena aqui e um **L desenhado num traco so**: um braco horizontal em `y=90` (x 24..200) e
+/// um vertical em `x=200` (y 90..222). Eles formam um vertice REFLEXO em `(128, 18)`, a mesma
+/// concavidade da cruz — com **um dono so, e nenhum pigmento seco por baixo**.
+///
+/// ⚠️ **O CONTROLE e o flanco reto do MESMO traco** (`x=40`, onde o braco vertical nao alcanca:
+/// `|40 - 200| = 160 > 72`). Se a quina de um traco unico ler igual ao flanco, a palidez precisa
+/// de dois tracos e a causa esta numa das duas rotas acima. Se ela ler palida sozinha, as duas
+/// rotas estao inocentes e o defeito e do proprio deposito na concavidade.
+#[test]
+#[ignore = "sonda de diagnostico"]
+fn measure_whether_the_pale_corner_needs_two_strokes() {
+    use super::measure_impasto_cost::cp;
+    use crate::tool::PainterTool;
+    use ph2d_editor_core::Tool;
+    use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase, RasterEditTool};
+    use ph2d_painter_brush::{BrushSpec, Falloff};
+
+    let elbow = |dilution: f32| -> Vec<u8> {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; SIDE * SIDE * 4], SIDE as u32, SIDE as u32);
+        t.paint.brush = BrushSpec {
+            radius_px: 72.0,
+            hardness: 1.0,
+            falloff: Falloff::Watercolor,
+            color: [0.90, 0.15, 0.18],
+            space_attenuation: false,
+            watercolor: true,
+            smooth_edges: true,
+            wet_dilution: dilution,
+            fill: 0.45,
+            depth: 2.0,
+            edge_gain: 1.2,
+            edge_spread: 6.0,
+            opacity: 0.4,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        // UM traco: o braco horizontal ate a dobra, e dali o vertical para baixo.
+        t.on_canvas_pointer(cp([24.0, 90.0], PointerPhase::Down));
+        for i in 1..=11u8 {
+            t.on_canvas_pointer(cp([24.0 + f32::from(i) * 16.0, 90.0], PointerPhase::Move));
+            t.on_tick(16.0);
+        }
+        for i in 1..=11u8 {
+            t.on_canvas_pointer(cp([200.0, 90.0 + f32::from(i) * 12.0], PointerPhase::Move));
+            t.on_tick(16.0);
+        }
+        t.on_canvas_pointer(cp([200.0, 222.0], PointerPhase::Up));
+        for _ in 0..8 {
+            t.on_tick(16.0);
+        }
+        t.canvas_rgba.as_ref().clone()
+    };
+
+    eprintln!("\n=== A QUINA DE UM TRACO SO (cotovelo, vertice reflexo em 128,18) ===\n");
+    eprintln!("Bissetriz (128+k, 18+k) contra o flanco reto do MESMO traco em x=40.\n");
+    for dilution in [0.00f32, 0.45] {
+        let px = elbow(dilution);
+        eprintln!("  Dilution {dilution:.2}");
+        eprintln!("    k    QUINA   flanco   quina-flanco");
+        for k in 0..22usize {
+            let q = alpha_at(&px, 128 + k, 18 + k);
+            let f = alpha_at(&px, 40, 18 + k);
+            eprintln!("  {k:3} {q:8.3} {f:8.3} {:14.3}", q - f);
+        }
+        eprintln!();
+    }
+}
+
+/// **O CONTROLE DAS TRES SONDAS ANTERIORES ESTAVA CONFUNDIDO** — esta mede o confundidor.
+///
+/// A [`measure_the_concave_corner_retreat`] e a [`measure_whether_the_pale_corner_needs_two_strokes`]
+/// comparam a bissetriz da quina (que cai perto do FIM do braco horizontal, `x ~ 191`) contra um
+/// flanco reto em `x = 40` (o COMECO do mesmo traco). As duas afirmam medir geometria — mas o
+/// render tem um termo que varia ao longo do traco e que nenhuma delas neutraliza: a reserva de
+/// pigmento do pincel (`depl_buf`, MIX-1), que ESVAZIA conforme a mao anda.
+///
+/// Esta sonda percorre a MESMA profundidade (`y = 27`, nove texels dentro da borda de cima) ao
+/// longo de `x`, com **um traco horizontal so e nenhuma quina em lugar nenhum**. Se o alfa cair
+/// com `x`, as duas sondas acima estavam a medir a deplecao e a chamar-lhe quina.
+#[test]
+#[ignore = "sonda de diagnostico"]
+fn measure_the_depletion_along_the_stroke() {
+    let (one, _) = wash_over_dry_two_stages(0.00);
+    eprintln!(
+        "\n=== O ALFA AO LONGO DO TRACO, A PROFUNDIDADE CONSTANTE (1 traco, sem quina) ===\n"
+    );
+    eprintln!("O traco corre em y=90 de x=24 a x=232. Amostras em y=27 (nove texels da borda)");
+    eprintln!(
+        "e em y=90 (o miolo saturado), para separar 'a borda empalidece' de 'tudo empalidece'.\n"
+    );
+    eprintln!("    x    y=27     y=90");
+    for x in (32..=224).step_by(16) {
+        eprintln!(
+            "  {x:3} {:8.3} {:8.3}",
+            alpha_at(&one, x, 27),
+            alpha_at(&one, x, 90)
+        );
+    }
+    eprintln!(
+        "\nSe a coluna y=27 cair com x, o 'deficit da quina' das sondas anteriores e DEPLECAO:\n\
+         elas punham o controle no comeco do traco e a quina perto do fim.\n"
+    );
 }

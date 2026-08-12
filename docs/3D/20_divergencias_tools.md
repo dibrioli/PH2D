@@ -610,3 +610,103 @@ DIREÇÃO do traço.)
 do SculptGL é *encher até um plano levantado sobre o centroide*. A do Blender é
 *achatar contra um plano levantado sobre o cursor, com pressão à quarta*. A nossa
 é a do SculptGL — de propósito, e ao ULP.
+
+---
+
+# PARTE IV — O padrão-ouro
+
+## §12 — A pergunta tem TRÊS respostas, e confundi-las é o erro caro
+
+⚠️ **Limite epistêmico, primeiro.** O **ZBrush** é fechado: eu **não posso lê-lo**
+e este repo não afirma o que não mede. Tudo o que aparece abaixo sobre ele é
+**posição de mercado e documentação de produto** (nomes de features), nunca
+implementação.
+
+### 12.1 — O padrão-ouro de PRODUTO: ZBrush
+
+É o padrão da indústria por adoção e por posição de pipeline, não por um
+algoritmo. O que ele estabeleceu como *vocabulário* que todo mundo copiou:
+**Alpha + Stencil**, o menu **Stroke** (DragRect · Spray · Freehand · Dots), o
+**falloff como CURVA editável**, **Dynamesh** / **Sculptris Pro** (remalha
+durante o gesto), **Layers**, **vector displacement**.
+
+### 12.2 — O padrão-ouro AUDITÁVEL: Blender
+
+É o estado da arte que se pode **ler**. Quando eu digo *"o Blender faz X"* neste
+doc, isso é verificável; quando digo *"o ZBrush faz X"*, não é.
+
+### 12.3 — O padrão-ouro de MECANISMO: a literatura publicada
+
+⚠️ **É aqui que "padrão-ouro" vira acionável**, porque cada item tem paper, tem
+critério de aceitação e **não depende de ler código GPL**:
+
+| mecanismo | o padrão | quem já implementa | nós |
+|---|---|---|---|
+| deformação elástica (grab · twist · scale) | **Regularized Kelvinlets** — de Goes & James, SIGGRAPH 2017 (Pixar) | Blender (`BKE_kelvinlet_*`) | ❌ |
+| alisar **sem encolher** | **HC-Laplacian** (Vollmer–Mencl–Müller 1999) e **Taubin λ\|μ** (1995) | Blender (`surface_smooth`, dois passes) | ❌ |
+| subdivisão + displacement | **Catmull-Clark** / OpenSubdiv | Blender (multires) | ✅ |
+| remalha por campo | **OpenVDB** / campo de distância | Blender | ✅ |
+| malha a partir do campo | **Surface Nets** (Gibson 1998) | — | ✅ **e escolhemos antes do marching cubes com o motivo escrito** |
+| espaçamento por arco | universal | os dois | ✅ |
+
+## §13 — O INVARIANTE: o que as duas fontes legíveis fazem IGUAL
+
+Onde um motor de ~2 mil linhas e um DCC de produção **concordam**, a concordância
+é evidência, não gosto. São **nove**, e ⚠️ **nós temos os nove**:
+
+1. um dab é **peso × direção**, com `peso = curva(d/r) × máscara × alpha`;
+2. a família do plano ajusta um **plano à PEGADA** (normal de área + um centro),
+   nunca a normal do ponto de impacto;
+3. a amostra do plano é filtrada pelas faces **FRONTAIS**;
+4. o deslocamento até o plano é **proporcional à distância ao plano** ⇒ o verbo
+   **converge** em vez de empurrar para sempre;
+5. o espaçamento é **fração do raio**, medido em **tela**;
+6. o pincel mede **PIXELS DE TELA**, não unidades de objeto;
+7. a **máscara** é um escalar por-vértice que multiplica todo peso;
+8. a família do GRAB lê o estado **congelado**; a do carimbo **compõe** sobre o vivo;
+9. **Accumulate desarmado ⇒ ler o proxy congelado ⇒ o traço se auto-limita.**
+
+## §14 — ⚠️ Onde o nosso ALVO não é o padrão-ouro — e por que isso não é um erro
+
+**O SculptGL é o nosso ORÁCULO DE PARIDADE, não o nosso alvo de QUALIDADE.** A
+escolha do [ADR-0150](architecture/decisions/0150-3d-sculpt-is-a-mesh-that-donates-shading-sculptgl-referenced.md)
+foi por ele ser **MIT, pequeno e executável** — o que comprou uma coisa que nem o
+ZBrush nem o Blender têm: **um oráculo que roda e prova, ao ULP, que o nosso
+kernel é o que dizemos que é.** Confundir *o que provamos contra* com *o que
+queremos ser* é o erro caro.
+
+Os eixos em que o oráculo **demonstravelmente não** é o estado da arte:
+
+| eixo | SculptGL (nosso alvo) | o padrão-ouro | nós hoje |
+|---|---|---|---|
+| **falloff** | uma quártica fixa | **curva editável** (ZBrush e Blender) | enum de 6 |
+| **smooth** | encolhe (a cura existe e está OFF) | **HC / Taubin**, publicado | encolhe |
+| **método de traço** | 3 (space · lock · contínuo) | **6** no Blender (Space·Anchored·DragDot·Airbrush·Line·Curve) + spacing como knob, com pressão | ⚠️ **UM** |
+| **espaçamento** | `0,15·raio` fixo | knob (`brush->spacing`, com `1,5 − pressão`) e opção em **unidades de cena** | fixo |
+| **deformação** | deslocamento | **modelo elástico** (Kelvinlets) | deslocamento |
+| **forma do dab** | disco | retangular (Clay Strips) · dois planos (Multiplane) | disco |
+| **estado por-vértice** | nenhum | **Layer** (deslocamento persistente, saturante, apagável) | nenhum |
+| **auto-máscara** | nenhuma | topologia · face set · cavidade · normal de vista | nenhuma |
+
+⚠️ **O método de traço é o achado desta parte, e ele não estava em nenhuma lista
+anterior:** nós temos **UM**. É o eixo em que ficamos atrás **dos dois**.
+
+## §15 — O que eu chamaria de padrão-ouro alcançável
+
+Não é "virar ZBrush". É **seis** coisas, e três delas têm paper em vez de código
+alheio:
+
+1. **O falloff vira CURVA** (o `ph2d-curve` já existe no repo, com editor
+   arrastável — foi construído para o `field.remap` dos Motion Nodes).
+2. **HC-Laplacian** como um segundo Smooth (📄 publicado).
+3. **Kelvinlets** como a família de grab elástico (📄 publicado).
+4. **Os métodos de traço** (Anchored · Drag Dot · Airbrush · Line), que é o eixo
+   onde estamos atrás dos dois.
+5. **Um dab que não é um disco** (Clay Strips retangular).
+6. **Estado persistente por-vértice** (Layer).
+
+⚠️ **E o padrão-ouro que JÁ é nosso, e que nenhum dos três tem:** o ZBrush não
+pode ser auditado e o Blender **não se testa contra ninguém**. Um oráculo
+executável com paridade ao ULP é raro — e é ele que torna seguro **trocar de
+alvo**: dá para adotar a curva do Blender, o HC e os Kelvinlets *sabendo
+exatamente* o que deixou de ser bit-idêntico e o que não foi tocado.

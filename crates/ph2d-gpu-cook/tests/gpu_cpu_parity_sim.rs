@@ -2769,3 +2769,128 @@ fn the_speed_limit_agrees_on_the_device() {
          acima compara dois nadas"
     );
 }
+
+/// **SONDA — O DISPOSITIVO REPETE A SI MESMO?** (report do Enio no smoke de 2026-08-11:
+/// *"cada Play um resultado diferente. sem consistencia"*.)
+///
+/// Uma sim deste catalogo e' determinista POR CONSTRUCAO: o `dt` e' fixo (o pump cozinha em
+/// `tick as f64 * fixed_dt`, nunca no relogio de parede) e nada aqui sorteia. Entao *"cada Play
+/// da outro resultado"* so' pode vir de UMA de duas classes, e elas pedem curas OPOSTAS:
+///
+/// - **o dispositivo nao repete** (memoria nao-inicializada, corrida entre invocacoes, ping-pong
+///   errado) — bug de KERNEL, e esta sonda o reproduz aqui;
+/// - **o Play nao COMECA no mesmo lugar** (o estado da zona sobrevive ao rewind) — bug de CICLO
+///   DE VIDA na shell, e esta sonda sai LIMPA.
+///
+/// ⚠️ A 1a linha e' o CONTROLE: uma cadeia `sim.zone` que PRECEDE as duas waves de hoje. Se ela
+/// tambem variar, o defeito nao e' do canal `hit` nem do teto de velocidade.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn probe_the_device_repeats_itself() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    const TICKS: u64 = 40;
+
+    let (gc0, oc0) = zone_chain(
+        &reg,
+        &[
+            ("shape", 0.0),
+            ("height", -1.0),
+            ("restitution", 0.0),
+            ("friction", 0.2),
+        ],
+        None,
+    );
+    let (gh, oh) = hit_chain(&reg, -1.0);
+    let (gs, os) = speed_chain(&reg, 2.0);
+
+    for (name, g, out, stages) in [
+        ("CONTROLE zone+collide", &gc0, oc0, 4usize),
+        ("hit  (cena =30)", &gh, oh, 5),
+        ("speed (cena =31)", &gs, os, 3),
+    ] {
+        let runs: Vec<Vec<RenderInstance>> = (0..3)
+            .map(|_| gpu_ticks(&gpu, g, &reg, out, TICKS, stages))
+            .collect();
+        let dp = [max_move(&runs[0], &runs[1]), max_move(&runs[0], &runs[2])];
+        let ds: Vec<f32> = (1..3)
+            .map(|k| {
+                runs[0]
+                    .iter()
+                    .zip(&runs[k])
+                    .map(|(a, b)| (a.size[0] - b.size[0]).abs())
+                    .fold(0.0f32, f32::max)
+            })
+            .collect();
+        eprintln!(
+            "{name}: pos delta {:.9} / {:.9}   size delta {:.9} / {:.9}",
+            dp[0], dp[1], ds[0], ds[1]
+        );
+    }
+}
+
+/// **SONDA — UM REWIND AO TIQUE 0 DEVOLVE O TIQUE 0?** (a 2a classe do report de 2026-08-11.)
+///
+/// A sonda irma provou que o dispositivo REPETE (delta 0,000000000 em tres corridas). Sobra a
+/// outra leitura de *"cada Play um resultado diferente"*: o Play nao COMECA no mesmo lugar. O
+/// oraculo nao e' um limiar — e' a igualdade contra uma cozida FRESCA do tique 0, que e' onde o
+/// artista acredita estar quando rebobina.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn probe_a_rewind_lands_on_the_seed() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+
+    let run = |g: &Graph, out: NodeId, ticks: &[u64]| -> Vec<RenderInstance> {
+        let plan = plan(g, &reg, &reg, out);
+        let mut gc = GpuCook::new();
+        for &t in ticks {
+            // A porta do produto para um salto: rebobina (se preciso) e devolve o 1o tique a
+            // re-simular — e' ela que a shell chama em `motion_bridge_gpu`.
+            let first = gc.rewind_for(t);
+            for k in first..=t {
+                gc.cook(
+                    &gpu,
+                    g,
+                    &reg,
+                    &reg,
+                    &plan,
+                    &[],
+                    CookClock {
+                        playhead: k as f64 * FIXED_DT,
+                        tick: Some(k),
+                    },
+                    DEFAULT_UV,
+                    DEFAULT_SIZE,
+                )
+                .expect("gpu cook");
+            }
+        }
+        read_instances(&gpu, gc.instances().expect("cooked"))
+    };
+
+    let (gh, oh) = hit_chain(&reg, -1.0);
+    let (gs, os) = speed_chain(&reg, 2.0);
+    for (name, g, out) in [("hit (=30)", &gh, oh), ("speed (=31)", &gs, os)] {
+        let fresh = run(g, out, &[0]);
+        let played: Vec<u64> = (0..=40).collect();
+        let mut seq = played.clone();
+        seq.push(0); // …e o artista rebobina.
+        let rewound = run(g, out, &seq);
+        eprintln!(
+            "{name}: fresco vs rebobinado -> pos {:.9}  size {:.9}",
+            max_move(&fresh, &rewound),
+            fresh
+                .iter()
+                .zip(&rewound)
+                .map(|(a, b)| (a.size[0] - b.size[0]).abs())
+                .fold(0.0f32, f32::max)
+        );
+    }
+}

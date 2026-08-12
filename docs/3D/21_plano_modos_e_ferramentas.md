@@ -384,6 +384,62 @@ gosto:** metade do b-mode (front-face contínuo, `strength²`, hardness,
 `B` é uma **decisão de produto com smoke próprio**, depois da W3 — e o §0 já diz
 por que ela é segura: `S` é o contrato, o default é produto.
 
+### §7.0 — ⚠️ O `brush.cc` FOI TRAZIDO, e ele responde METADE (2026-08-12)
+
+*Ordem do Enio: "trazer o `blenkernel/intern/brush.cc` para o clone".* Feito —
+o clone é um **partial clone** (`blob:none`) com sparse-checkout, então bastou
+`git sparse-checkout add` das quatro famílias (`intern/brush*`, `BKE_brush*`,
+`makesdna/DNA_brush*`, `makesrna/intern/rna_brush*`). O que ele mudou:
+
+#### ✅ DESBLOQUEADO — as nove curvas, que o doc 20 declarava INVERIFICÁVEIS
+
+O estudo escreveu, com honestidade, que *"as fórmulas dos presets `BRUSH_CURVE_*`
+não são verificáveis"* e por isso **nunca as afirmou**. Elas estão em
+`brush.cc:1489-1610`, e são estas — com `u = 1 − t`, `t = d/r`:
+
+| preset | fórmula | temos? |
+|---|---|---|
+| `CONSTANT` | `1` | ✅ o nosso `Constant`, **idêntico** |
+| `LIN` | `u` | ❌ |
+| `SHARP` | `u²` | ❌ (o nosso `Sharper` é `(1−t²)⁴`, outra curva) |
+| `POW4` | `u⁴` | ❌ |
+| `ROOT` | `√u` | ✅ o nosso `Root`, **idêntico** |
+| `SPHERE` | `√(2u − u²)` | ❌ (o nosso `Sphere` é `√(1−t²)`) |
+| `INVSQUARE` | `u(2 − u)` | ❌ |
+| `SMOOTH` | `3u² − 2u³` — o **smoothstep** | ❌ |
+| `SMOOTHER` | `u³(6u² − 15u + 10)` — o **smootherstep** de Perlin | ❌ |
+| `CUSTOM` | a curva editável (`BKE_curvemapping_evaluateF`) | ❌ (o `ph2d-curve` existe) |
+
+⚠️ **Dois dos nossos seis JÁ SÃO do Blender ao bit** e ninguém sabia — o `Root`
+e o `Constant`. E os outros quatro **não** são: o `Sphere` dele é a esfera em
+`u`, o nosso é em `t`; o `Sharper` dele (`SHARP`, `u²`) não é o nosso.
+
+⇒ **O `B` pode declarar curva.** As sete que faltam são aritmética de uma linha
+cada, sem transcendental além do `sqrt` (HR-5) — e o `SMOOTHER` é a curva que um
+escultor reconhece como *o pincel do Blender*.
+
+#### ⛔ NÃO desbloqueado, e a razão é ESTRUTURAL — não é o trim
+
+**`BKE_brush_sculpt_reset` não existe mais em C** (`git grep` sobre a árvore
+inteira: **zero**). Desde o **Blender 4.3 os pincéis são ASSETS** — o tree traz
+`assets/brushes/essentials_brushes-*.blend`, arquivos **binários**. O
+`brush_defaults()` que sobrou (`brush.cc:597`) copia de `Brush brush_def = {}`,
+os defaults de DNA: **um** conjunto para todos, não uma tabela por tool.
+
+⇒ *"a força de fábrica do Clay Strips"* **não é lida de fonte nenhuma** — ela
+está dentro de um `.blend`. Isto **não é uma lacuna do nosso clone**: é onde o
+Blender passou a guardar a resposta, e trazer mais arquivos não muda.
+
+**As três saídas, agora que a pergunta está certa:** parsear o `.blend` de
+assets (projeto próprio, formato DNA-tagged) · ler os **defaults de RNA**
+(`rna_brush.cc`, legível: faixas e `RNA_def_property_float_default` por
+propriedade — é o default do CAMPO, não do TOOL) · ou **aceitar que o `B` não
+declara defaults por tool**, que é o que ele faz hoje e é honesto.
+
+⚠️ **E a §7.1 abaixo continua VÁLIDA na conclusão e ERRADA no motivo** — ela
+dizia *"o arquivo não está no clone"*, e o arquivo agora está: o que falta é
+outra coisa, e está escrito acima.
+
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 
 **Os defaults de fábrica do Blender não estão no clone.** Eles vivem em

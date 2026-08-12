@@ -767,3 +767,109 @@ fn what_separates_our_mask_from_the_reference() {
     }
     println!();
 }
+
+/// **O INTERRUPTOR FAZ ALGUMA COISA? Verbo a verbo, pela porta do produto.**
+///
+/// ⚠️ **A pergunta não é sobre a LEI — é sobre o EFEITO.** A metade 2 pôs o
+/// Accumulate no mecanismo da referência (`from_live`), e um gate afirma que
+/// ele muda o comportamento **no `Draw`**. Isso não diz nada sobre os outros
+/// quinze, e *"o accumulate não funciona"* é um relato sobre uma ferramenta que
+/// o artista tinha na mão — que pode não ser aquela.
+///
+/// A sonda esfrega o MESMO lugar quatro vezes com cada verbo, armado e
+/// desarmado, e imprime a razão. **`1,00×` é um interruptor INERTE naquele
+/// verbo**, e a lista dos inertes é o resultado.
+#[test]
+#[ignore = "sonda: imprime a tabela, não afirma nada"]
+fn does_the_accumulate_switch_do_anything_verb_by_verb() {
+    use ph2d_sculpt3d::Grip;
+    const R: f32 = 0.45;
+    const PASSES: usize = 4;
+    // O mesmo raio do gate que já mede este mecanismo.
+    #[allow(clippy::items_after_statements)]
+
+    println!("\n== O ACCUMULATE, verbo a verbo ({PASSES} esfregadas no MESMO lugar) ==");
+    println!(
+        "{:<12} {:>8} {:>14} {:>14} {:>10}",
+        "verbo", "grip", "desarmado", "armado", "razão"
+    );
+
+    for verb in Verb::ALL {
+        let reach = |accumulate: bool| -> f64 {
+            let mut mesh = sphere();
+            let base = flat(&mesh);
+            let brush = Brush {
+                verb,
+                strength: 0.5,
+                accumulate,
+                falloff: Falloff::Plateau,
+                ..Brush::default()
+            };
+            let mut st = SculptStroke::default();
+            st.begin(&mesh);
+            // ⚠️ **VARREDURA, e não N dabs no mesmo ponto — a primeira versão
+            // desta sonda mediu `1,01×` em toda a linha e eu quase reportei que
+            // o interruptor era inerte.** O mecanismo é o vértice AFASTAR-SE do
+            // proxy congelado, e quatro dabs levantam ~0,07 sobre um raio de
+            // 0,45: a distância normalizada anda 0,16 e a quártica mal cai. A
+            // fixture tem de conter o fenômeno, e quem o contém é o CAMINHO —
+            // é o que o gate `the_disarmed_brush_exhausts_itself` já fazia.
+            let step = ph2d_sculpt3d::min_spacing(R);
+            let n = (1.0 / step).floor() as usize;
+            for _ in 0..PASSES {
+                for k in 0..=n {
+                    let x = step.mul_add(k as f32, -0.5);
+                    let c = live_dab_centre(&mesh, R, x);
+                    st.dab(&mut mesh, &brush, &c, Symmetry::default());
+                }
+            }
+            // A máscara não move geometria: para ela a grandeza é o canal.
+            if verb.paints_mask() {
+                return mesh
+                    .masks()
+                    .map_or(0.0, |m| f64::from(m.iter().copied().fold(0.0f32, f32::max)));
+            }
+            reach_of(&flat(&mesh), &base)
+        };
+        let (off, on) = (reach(false), reach(true));
+        let ratio = if off > 1e-12 {
+            format!("{:.2}x", on / off)
+        } else {
+            "-".into()
+        };
+        let grip = match verb.grip() {
+            Grip::Stamp => "Stamp",
+            Grip::Hold => "Hold",
+            Grip::Hook => "Hook",
+            Grip::Turn(_) => "Turn",
+            Grip::Paint => "Paint",
+        };
+        println!(
+            "{:<12} {grip:>8} {off:>14.6} {on:>14.6} {ratio:>10}",
+            verb.label()
+        );
+    }
+    println!();
+}
+
+/// O dab do passo seguinte, com o centro na superfície VIVA — o `hit.point` que
+/// o produto entrega.
+fn live_dab_centre(mesh: &Mesh, radius: f32, x: f32) -> Dab {
+    // O ponto da superfície VIVA mais perto de `(x, 0)` no hemisfério `+Z` — o
+    // `hit.point` do raycast, sem precisar de um raycaster na sonda. O caminho
+    // anda pelo polo, onde o olho `-Z` vê tudo de frente e o culling não entra
+    // na conta.
+    let mut best = [x, 0.0, 1.0];
+    let mut bd = f32::MAX;
+    for p in mesh.positions() {
+        if p[2] < 0.0 {
+            continue;
+        }
+        let d = (p[0] - x).abs() + p[1].abs();
+        if d < bd {
+            bd = d;
+            best = *p;
+        }
+    }
+    Dab::at(best, radius, [0.0, 0.0, -1.0])
+}

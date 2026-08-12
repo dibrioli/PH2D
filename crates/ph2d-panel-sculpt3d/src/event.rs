@@ -120,6 +120,11 @@ pub(crate) fn apply_event(
             if (ui.brush.strength - ui.brush.verb.default_strength()).abs() < 1e-6 {
                 ui.brush.strength = verb.default_strength();
             }
+            // O mesmo para o Accumulate: *"não mexeu"* é o interruptor estar
+            // exatamente no default do verbo que está SAINDO.
+            if ui.brush.accumulate == ui.brush.verb.default_accumulate() {
+                ui.brush.accumulate = verb.default_accumulate();
+            }
             ui.brush.verb = verb;
             state::push_intent(Sculpt3dIntent::SetUi(ui));
             true

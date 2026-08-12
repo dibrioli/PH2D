@@ -369,6 +369,34 @@ impl Verb {
             _ => 0.5,
         }
     }
+
+    /// **O Accumulate nasce ARMADO neste verbo?** — e a resposta é da
+    /// referência, tool a tool, não uma afinação.
+    ///
+    /// ⚠️ **O pedido original do Enio dizia isto e eu li como descrição de UI:**
+    /// *"Brush:Checkbox:Clay com accumulate **checado por padrão**"*. É o
+    /// `Brush.js:16` — `this._accumulate = true` —, e a tool `Brush` do original
+    /// é a nossa **Draw E Clay** (o `_clay` é um checkbox dela, ligado de
+    /// fábrica). Nós shipávamos os dois **desarmados**, então o artista pegava o
+    /// Clay e tinha outra ferramenta na mão.
+    ///
+    /// ⚠️ **E a família do PLANO é mais forte que um default:** o `Flatten.js`
+    /// **não declara `_accumulate`**, e o kernel dele pergunta
+    /// `this._accumulate === false` — que em `undefined` é FALSO. Ou seja
+    /// `Flatten`/`Fill`/`Scrape` leem o vivo **sempre**, sem checkbox. Nós temos
+    /// o interruptor, então o honesto é nascerem armados: é o comportamento
+    /// que a referência não deixa desligar.
+    ///
+    /// Os que ficam DESARMADOS não são omissão — são os que a referência não
+    /// arma: o `Smooth` e o `Mask` não têm o campo e não o leem, o `Pinch`, o
+    /// `Crease` e os quatro grips de gesto tampouco.
+    #[must_use]
+    pub fn default_accumulate(self) -> bool {
+        matches!(
+            self,
+            Self::Draw | Self::Clay | Self::Flatten | Self::Fill | Self::Scrape
+        )
+    }
 }
 
 /// Quanto do RAIO do pincel um dab de força cheia desloca.
@@ -545,7 +573,14 @@ impl Default for Brush {
     fn default() -> Self {
         Self {
             verb: Verb::Draw,
-            accumulate: false,
+            // ⚠️ **DERIVADO do verbo, nunca um literal ao lado dele.** O
+            // `Brush.js:16` da referência ship `_accumulate = true`, e a tool
+            // `Brush` dele é a nossa Draw+Clay — nós shipávamos os dois
+            // desarmados, que é o *"com accumulate checado por padrão"* do
+            // pedido original. Escrever `true` aqui poria o MESMO fato em dois
+            // lugares, e o dia em que a tabela do verbo mudasse este literal
+            // ficaria a contradizê-la em silêncio.
+            accumulate: Verb::Draw.default_accumulate(),
             falloff: Falloff::Smooth,
             alpha: None,
             alpha_scale: crate::DEFAULT_ALPHA_SCALE,

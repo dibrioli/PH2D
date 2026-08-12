@@ -146,7 +146,7 @@ impl SculptStroke {
             let v = self.footprint[i];
             self.capture(mesh, v);
         }
-        let fit = self.fit_plane(brush, dab);
+        let fit = self.fit_plane(mesh, brush, dab);
         (fit.point, fit.normal)
     }
 
@@ -352,7 +352,7 @@ impl SculptStroke {
             self.capture(mesh, v);
         }
 
-        let plane = self.fit_plane(brush, dab);
+        let plane = self.fit_plane(mesh, brush, dab);
         // ⚠️ **UMA vez por dab, e a assinatura é o que garante isso.** O frame do
         // padrão sai do rotor de um grau ACUMULADO deste app, que é `O(graus)`:
         // derivado por vértice ele custaria mais que o padrão inteiro que

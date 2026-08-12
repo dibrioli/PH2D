@@ -261,9 +261,17 @@ fn the_switch_is_inert_for_every_verb_that_does_not_stamp() {
 /// forma escrita, e o produto a recusou em 400 dabs com um vértice ainda vivo.
 #[test]
 fn the_disarmed_brush_saturates_at_one_radius_and_the_armed_one_passes_it() {
-    assert!(
-        !Brush::default().accumulate,
-        "o default tem de ser DESARMADO"
+    // ⚠️ **A premissa aqui era *"o default tem de ser DESARMADO"*, e ela nunca
+    // descreveu esta fixture** — o `drawing()` arma o interruptor
+    // EXPLICITAMENTE nas duas pernas, então o default não entra no que este
+    // gate mede. Ela ficou FALSA quando o default passou a sair da referência
+    // (`Brush.js:16`), e derrubou um gate que estava certo. A premissa
+    // verdadeira é a que está escrita agora: as duas pernas têm de diferir no
+    // interruptor, senão o gate compara uma perna consigo mesma.
+    assert_ne!(
+        drawing(false).accumulate,
+        drawing(true).accumulate,
+        "as duas pernas têm de diferir no interruptor"
     );
     const DABS: usize = 400;
     let mut lift_radii = [0.0f32; 2];
@@ -434,4 +442,53 @@ fn the_channel_curve_is_not_the_geometry_curve() {
     for t in [0.0f32, 0.25, 0.5, 0.99] {
         assert_eq!(hard.mask_weight(t), 1.0, "o disco duro cedeu em t={t}");
     }
+}
+
+/// **O DEFAULT DO INTERRUPTOR SAI DA REFERÊNCIA, tool a tool.**
+///
+/// ⚠️ **Ele era `false` para os dezesseis, e isso era o pedido original do Enio
+/// por responder:** *"Brush:Checkbox:Clay com accumulate **checado por
+/// padrão**"*. O `Brush.js:16` do original ship `this._accumulate = true`, e a
+/// tool `Brush` dele é a nossa **Draw E Clay** — o artista pegava o Clay e
+/// tinha na mão uma ferramenta que a referência não tem.
+///
+/// ⚠️ **E a família do PLANO é mais forte que um default:** o `Flatten.js` não
+/// declara `_accumulate`, e o kernel pergunta `this._accumulate === false` —
+/// que em `undefined` é FALSO. `Flatten`/`Fill`/`Scrape` leem o vivo SEMPRE, e
+/// nascer armado é o mais perto disso que um interruptor chega.
+///
+/// ⚠️ **O `Brush::default()` DERIVA do verbo dele em vez de repetir um
+/// literal** — é isso que o segundo `assert` afirma, e sem ele os dois fatos
+/// viveriam em dois lugares e o dia da divergência não teria testemunha.
+#[test]
+fn the_accumulate_default_is_the_references_tool_by_tool() {
+    for verb in Verb::ALL {
+        let armed = verb.default_accumulate();
+        let expected = matches!(
+            verb,
+            Verb::Draw | Verb::Clay | Verb::Flatten | Verb::Fill | Verb::Scrape
+        );
+        assert_eq!(armed, expected, "{} nasceu errado", verb.label());
+    }
+    // Os que a referência NÃO arma: os dois que não têm o campo (Smooth/Mask),
+    // os dois ganhos próprios (Pinch/Crease) e os quatro grips de gesto.
+    for verb in [
+        Verb::Smooth,
+        Verb::Sharpen,
+        Verb::Pinch,
+        Verb::Magnify,
+        Verb::Crease,
+        Verb::Mask,
+        Verb::Move,
+        Verb::SnakeHook,
+        Verb::Twist,
+        Verb::LocalScale,
+    ] {
+        assert!(!verb.default_accumulate(), "{} nasceu armado", verb.label());
+    }
+    assert_eq!(
+        Brush::default().accumulate,
+        Verb::default().default_accumulate(),
+        "o Brush default e o verbo default discordam sobre o interruptor"
+    );
 }

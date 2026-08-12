@@ -35,7 +35,7 @@ pub(super) struct PlaneFit {
 }
 
 impl SculptStroke {
-    pub(super) fn fit_plane(&self, brush: &Brush, dab: &Dab) -> PlaneFit {
+    pub(super) fn fit_plane(&self, mesh: &Mesh, brush: &Brush, dab: &Dab) -> PlaneFit {
         // ⚠️ **O conjunto FRONTAL, e é a metade que o original faz
         // INCONDICIONALMENTE.** O `getFrontVertices` (`SculptBase.js:206-221`)
         // filtra por `n · eyeDir <= 0`, e o `Brush.js:32-34` / `Flatten.js:25-27`
@@ -50,13 +50,13 @@ impl SculptStroke {
         // Sem isto, um dab perto da silhueta ajusta o plano com vértices que
         // olham para o OUTRO lado, e o Draw empurra numa direção que o artista
         // não vê.
-        let mut fit = self.fit_plane_over(brush, dab, true);
+        let mut fit = self.fit_plane_over(mesh, brush, dab, true);
         if fit.is_none() {
             // Pegada inteiramente de costas (um dab que pegou só o outro lado da
             // silhueta): sem frontais não há o que cullar, e recusar aqui seria
             // devolver um plano NaN. A pegada inteira é a melhor resposta que
             // existe, e é a que havia antes desta fatia.
-            fit = self.fit_plane_over(brush, dab, false);
+            fit = self.fit_plane_over(mesh, brush, dab, false);
         }
         fit.unwrap_or(PlaneFit {
             point: dab.center,
@@ -66,7 +66,13 @@ impl SculptStroke {
 
     /// O ajuste sobre a pegada, opcionalmente só nos vértices que olham para o
     /// olho. `None` = ninguém pesou (conjunto vazio, ou todo peso zero).
-    fn fit_plane_over(&self, brush: &Brush, dab: &Dab, front_only: bool) -> Option<PlaneFit> {
+    fn fit_plane_over(
+        &self,
+        mesh: &Mesh,
+        brush: &Brush,
+        dab: &Dab,
+        front_only: bool,
+    ) -> Option<PlaneFit> {
         // ⚠️ **O PLANO É O DA REFERÊNCIA, e o produto CHAMA os kernels
         // portados** (`SculptBase.js:224-261`) em vez de os re-derivar. Até
         // 2026-08-11 esta função tinha uma soma própria, ponderada pelo
@@ -82,14 +88,32 @@ impl SculptStroke {
         // `signed_distance`, que enxerga exatamente a componente ao longo da
         // normal — o Flatten media `0,54×` e o Clay `1,74×`.
         //
-        // ⚠️ **A ponderação é a MÁSCARA, não o falloff** (`mAr[ind + 2]`), e a
-        // leitura é a do estado congelado deste traço. A referência lê a malha
-        // viva; nós lemos o `pre`, e a divergência é a mesma que o
-        // [`crate::Grip::Stamp`] já carrega — o peso de um dab é função do
-        // estado congelado, e um plano que subisse com a própria tinta faria o
-        // Flatten perseguir a superfície que ele está achatando.
+        // ⚠️ **A ponderação é a MÁSCARA, não o falloff** (`mAr[ind + 2]`).
+        //
+        // ⚠️ **E a leitura é a VIVA, desde 2026-08-12 — ela era do `pre`
+        // CONGELADO, e essa era a razão de o Accumulate ser INERTE nos quatro
+        // verbos de plano.** A nota que defendia o congelamento dizia *"a
+        // divergência é a mesma que o `Grip::Stamp` já carrega"*, e isso
+        // **deixou de ser verdade** quando a metade 2 pôs o carimbo a compor
+        // sobre o vivo: a premissa mudou sob os pés da nota, que sobreviveu ao
+        // fato. Medido pela porta do produto, com o plano congelado o
+        // interruptor valia **1,04× no Clay** (0,99× no Flatten, 1,00× no
+        // Scrape) contra 1,74× no Draw — *o barro subia até o plano do pen-down
+        // e PARAVA*, e nenhum valor do checkbox mudava isso.
+        //
+        // A referência recomputa os dois por dab sobre a malha VIVA
+        // (`SculptBase.areaNormal` lê `getNormals()`, `areaCenter` lê
+        // `getVertices()`, e `Flatten.stroke` os chama a cada `stroke`), e é
+        // isso que faz um Clay CONSTRUIR: o plano sobe com a tinta.
+        //
+        // ⚠️ **O medo que a nota antiga registrava — *"o Flatten perseguindo a
+        // superfície que ele achata"* — não se realiza, e é geometria:** o
+        // Flatten PROJETA em direção ao plano, e uma projeção preserva o
+        // centroide, então o plano ajustado sobre a pegada não corre. Quem sobe
+        // é o Clay, cujo plano é deslocado `raio · 0,1` — e subir é o que ele
+        // existe para fazer.
         let front = |v: u32| {
-            let n = self.base_nrm[self.slot[v as usize] as usize];
+            let n = mesh.normals()[v as usize];
             !front_only || n[0] * dab.eye[0] + n[1] * dab.eye[1] + n[2] * dab.eye[2] <= 0.0
         };
         // O peso da referência: `1` é livre. O nosso `DEFAULT_MASK` é o oposto,
@@ -104,11 +128,11 @@ impl SculptStroke {
             }
         };
         let normal = crate::ref_kernels::area_normal_with(&self.footprint, |v| {
-            let n = self.base_nrm[self.slot[v as usize] as usize];
+            let n = mesh.normals()[v as usize];
             ([f64::from(n[0]), f64::from(n[1]), f64::from(n[2])], free(v))
         })?;
         let point = crate::ref_kernels::area_center_with(&self.footprint, |v| {
-            let p = self.base_pos[self.slot[v as usize] as usize];
+            let p = mesh.positions()[v as usize];
             ([f64::from(p[0]), f64::from(p[1]), f64::from(p[2])], free(v))
         })?;
         let mut point = [point[0] as f32, point[1] as f32, point[2] as f32];

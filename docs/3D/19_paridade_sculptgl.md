@@ -901,3 +901,90 @@ número ao lado, nenhuma delas um defeito:
 ⚠️ **E o que falta não é do plano, é do processo: o SMOKE.** A cena `=27` existe
 e é julgável; integrar não é aprovar, e nenhuma destas waves foi vista na tela
 por quem decide.
+
+### 3.2.11 — O ACCUMULATE ainda não funcionava, e o inerte era a família do PLANO
+
+Report do Enio depois da wave do canal: *"corrija accumulate pois ele ainda não
+funciona"*. A sonda `does_the_accumulate_switch_do_anything_verb_by_verb` mede o
+EFEITO — não a lei — esfregando o MESMO caminho quatro vezes com cada verbo,
+armado e desarmado. **`1,00×` é um interruptor inerte naquele verbo:**
+
+| verbo | razão | |
+|---|---|---|
+| Sharpen · Inflate · Draw · Crease · Pinch | 2,30× · 1,83× · 1,74× · 1,60× · 1,24× | o interruptor funciona |
+| **Clay · Fill · Scrape · Flatten** | **1,04× · 1,01× · 1,00× · 0,99×** | **inerte** |
+| Magnify | 0,76× | vai para o lado errado |
+
+⚠️ **A minha PRIMEIRA versão desta sonda mediu `1,01×` em TODA a linha, e eu
+quase reportei que o interruptor era inerte em toda parte.** Ela dava quatro
+dabs no mesmo ponto; o mecanismo é o vértice **afastar-se** do proxy congelado,
+e quatro dabs levantam `~0,07` sobre um raio de `0,45` — a distância normalizada
+anda `0,16` e a quártica mal cai. *A fixture tem de conter o fenômeno, e quem o
+contém é o CAMINHO* — foi o que o gate `the_disarmed_brush_exhausts_itself` já
+fazia, e o que a minha sonda não copiou.
+
+**A causa dos quatro inertes é o PLANO, e ele estava congelado.** O nosso
+`fit_plane` lia `base_pos`/`base_nrm` — o estado do pen-down. O
+`SculptBase.areaNormal` lê `getNormals()` e o `areaCenter` lê `getVertices()`,
+os dois **VIVOS**, e o `Flatten.stroke` os recomputa **a cada dab**. Com o plano
+congelado o barro sobe até o plano do pen-down e **PARA**: o verbo se esgota
+sozinho, e nenhum valor do checkbox muda isso.
+
+⚠️ **E a nota que defendia o congelamento SOBREVIVEU AO FATO.** Ela dizia *"a
+divergência é a mesma que o `Grip::Stamp` já carrega — o peso de um dab é função
+do estado congelado"*, o que era verdade sob o ENVELOPE e deixou de ser quando a
+metade 2 pôs o carimbo a compor sobre o vivo. A premissa mudou sob os pés da
+nota, exatamente o padrão que o §0 nomeia.
+
+⚠️ **O medo que ela registrava não se realiza, e é geometria:** *"um plano que
+subisse com a própria tinta faria o Flatten perseguir a superfície que ele
+achata"* — uma projeção em direção ao plano **preserva o centroide**, então o
+ajuste não corre. Quem sobe é o Clay, cujo plano é deslocado `raio · 0,1`, e
+subir é o que ele existe para fazer.
+
+**Medido pela porta do produto, o alcance de quatro passadas:**
+
+| verbo | plano congelado | plano vivo |
+|---|---|---|
+| Clay | 0,054247 | **0,156399** (2,9×) |
+| Scrape | 0,054571 | 0,144455 |
+| Flatten | 0,044326 | 0,130377 |
+
+⚠️ **O que mudou não é a razão do interruptor — é a FERRAMENTA.** O Clay
+deposita quase três vezes mais barro na mesma pincelada, porque antes ele
+parava. A razão do Accumulate nele sobe de `1,04×` para `1,12×`, e continua
+modesta **por desenho**: no `Flatten.js:47` o `_accumulate` escolhe o proxy só
+para a **distância do falloff**; o `distToPlane` é sempre lido do vivo, e o
+auto-limite dele domina. *Um efeito de segunda ordem medindo como segunda ordem
+é o certo.*
+
+#### E o DEFAULT era o pedido original, ainda por responder
+
+O `Brush.js:16` ship **`this._accumulate = true`**, e a tool `Brush` do original
+é a nossa **Draw E Clay** (o `_clay` é um checkbox dela, ligado de fábrica).
+Nós shipávamos os dezesseis verbos **desarmados** — o artista pegava o Clay e
+tinha na mão uma ferramenta que a referência não tem. É literalmente o
+*"Brush:Checkbox:Clay com accumulate **checado por padrão**"* do primeiro dia.
+
+`Verb::default_accumulate()` nasce da referência tool a tool (irmã da
+`default_strength`), armada em **Draw · Clay · Flatten · Fill · Scrape** —
+⚠️ e a família do plano entra porque ali a referência é mais forte que um
+default: o `Flatten.js` **não declara `_accumulate`**, e `undefined === false` é
+FALSO, então ela lê o vivo **sempre**. Os dois sítios de troca de verbo a armam
+pela MESMA regra do `strength` (*"só se o artista ainda não mexeu"*), e o
+`Brush::default()` **DERIVA** dela em vez de repetir o literal.
+
+⚠️ **E uma premissa de fixture caiu com isso, sem ser dela o assunto:** o gate
+`the_disarmed_brush_saturates_…` abria com `assert!(!Brush::default().accumulate)`
+— e ele arma o interruptor **explicitamente** nas duas pernas, então o default
+nunca entrou no que ele mede. *Uma premissa que a fixture não usa é uma premissa
+que ninguém reconfere*, e ela derrubou um gate correto. Virou a premissa
+verdadeira (as duas pernas diferem) e o default ganhou gate próprio.
+
+⚠️ **ABERTO, medido e NÃO consertado: o `Magnify` vai para o lado errado**
+(`0,76×` — armado ele move MENOS). O `Pinch` do original lê `vAr` sempre e não
+tem `_accumulate`, então a referência não tem opinião aqui; o que a razão < 1
+descreve é o nosso `from_live` a encolher o peso num verbo que empurra para
+FORA — o vértice afasta-se do centro, e a distância viva cresce. É **decisão de
+produto** (o interruptor não devia alcançar este verbo, como não alcança na
+referência), não um defeito de lei.

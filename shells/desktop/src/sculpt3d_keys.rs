@@ -448,6 +448,9 @@ impl App {
             if (scene.brush.strength - old.default_strength()).abs() < 1e-6 {
                 scene.brush.strength = v.default_strength();
             }
+            if scene.brush.accumulate == old.default_accumulate() {
+                scene.brush.accumulate = v.default_accumulate();
+            }
             scene.brush.verb = v;
             eprintln!(
                 "[sculpt3d] verbo: {} (forca {:.2})",

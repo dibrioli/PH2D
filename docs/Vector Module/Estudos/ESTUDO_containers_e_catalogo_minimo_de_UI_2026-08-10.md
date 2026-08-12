@@ -261,13 +261,18 @@ nada a portar.
 |---|---|---|
 | 5 | **Fixed** | ✅ **temos** |
 | 6 | **Fill** (`grow`/`shrink`) | ✅ **temos** |
-| 7 | **Hug contents** | ❌ **falta** — sai de graça do motor (§2.3) |
-| 8 | **Min / Max** | ❌ **falta** — idem |
-| 9 | **Absolute position** (sair do fluxo) | ❌ **falta** (§2.4) |
+| 7 | **Hug contents** | ✅ **CONSTRUÍDO** (wave 1, 2026-08-10) — saiu de graça do motor (§2.3) |
+| 8 | **Min / Max** | ✅ **CONSTRUÍDO** (wave 1) — idem |
+| 9 | **Absolute position** (sair do fluxo) | ✅ **CONSTRUÍDO** (wave 2, §2.4) |
 
 **Widgets — o catálogo dos 20 já cobre ~100% da UI real deste app.** Nada obrigatório falta.
 
-⇒ **A lista de obrigatórios que NÃO temos tem exactamente três itens: 7, 8 e 9.**
+⇒ ⚠️ **A lista de obrigatórios que NÃO temos está VAZIA** (2026-08-12). Ela dizia *"exactamente
+três itens: 7, 8 e 9"*, e as waves 1 e 2 da §7 os construíram **no mesmo dia em que este documento
+nasceu** — a tabela ficou a descrever o mundo de antes das próprias waves que ela encomendou.
+*A fonte é o `Len::Hug` da `ph2d-vec-layout` e o marcador do `ph2d-ecs::vec_layout`; esta tabela é
+o espelho, e espelho enverga* — a mesma classe de doc mentiroso que o levantamento irmão já
+registou sobre si próprio.
 
 ---
 
@@ -287,9 +292,12 @@ literal é o do texto), dois números de limite, e um marcador para o absoluto.
 
 Já existe muito mais do que parece: `ph2d-ui-state::StateSets` viaja no arquivo (`PROJECT_SCHEMA`
 v56), há painel de estados, Smart Animate e a mola; e o **R0 do runtime** integrou a saída de sinais.
-O que falta é o **consumidor**: um botão autorado emite `SignalOrigin::Control`, e nada ainda
-**liga** *nome do sinal → ação*. É a tabela de ligação que o handoff do R0 nomeia — conteúdo
+O que faltava era o **consumidor**: um botão autorado emite `SignalOrigin::Control`, e nada ainda
+**ligava** *nome do sinal → ação*. É a tabela de ligação que o handoff do R0 nomeia — conteúdo
 autorado, não motor.
+
+⚠️ **CONSTRUÍDO pela wave 4 da §7** (2026-08-10) — este parágrafo descreve o mundo de antes dela, e
+fica pelo mecanismo, não pelo veredito. *O que sobra deste eixo é o horizonte da §5, não o item 4.*
 
 ### 5.3 O **scroll** numa moldura autorada
 

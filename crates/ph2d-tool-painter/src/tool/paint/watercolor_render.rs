@@ -132,9 +132,10 @@ impl PainterTool {
         });
         let cur_o = self.paint.wet_styles.current_owner();
 
-        let fill = brush.fill.clamp(0.0, 1.0);
+        let wash_flow = watercolor_field::wash_flow(brush);
+        let fill = brush.fill.clamp(0.0, 1.0) * wash_flow;
         let depth = brush.depth.max(0.0);
-        let edge_gain = brush.edge_gain.max(0.0);
+        let edge_gain = brush.edge_gain.max(0.0) * wash_flow;
         // "Smooth Edges" (BUGS #16): the AA mode is read ONCE per composite from the live brush —
         // the whole union renders consistently (a per-owner mix would seam at the rim where two
         // strokes' silhouettes meet); committed washes keep the bytes they baked with.

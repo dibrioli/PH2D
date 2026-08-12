@@ -220,14 +220,19 @@ fn measure_the_edge_band_across_dilutions() {
         // coluna x=64, que esta DENTRO do alcance do traco vertical (cx=128, raio 72 => 56..200):
         // o flanco medido ali carregava um piso da vertical e nao era limpo. x=40 fica fora dele
         // (|40-128| = 88 > 72) e longe das pontas da faixa, entao a coluna cruza UM flanco so.
+        // ⚠️ Os limiares sao RELATIVOS ao miolo, nunca absolutos. Uma lavagem diluida e mais
+        // PALIDA por desenho: com o miolo em 0,69 um limiar fixo de 0,90 nunca e cruzado, e a
+        // sonda reportaria "a borda nunca fecha" sobre uma borda perfeitamente nitida. A
+        // pergunta e a LARGURA DA TRANSICAO, e ela so tem sentido na escala do proprio miolo.
+        let core = alpha_at(&px, 40, 90);
         let mut y10 = None;
         let mut y90 = None;
         for y in 0..90 {
             let a = alpha_at(&px, 40, y);
-            if y10.is_none() && a >= 0.10 {
+            if y10.is_none() && a >= 0.10 * core {
                 y10 = Some(y);
             }
-            if y90.is_none() && a >= 0.90 {
+            if y90.is_none() && a >= 0.90 * core {
                 y90 = Some(y);
             }
         }
@@ -238,7 +243,7 @@ fn measure_the_edge_band_across_dilutions() {
         eprintln!(
             "{dilution:8.2} {:6.2} {:12.3} {:6} {:6} {banda:>11}",
             1.0 - dilution,
-            alpha_at(&px, 40, 90),
+            core,
             y10.map_or("—".to_string(), |v| v.to_string()),
             y90.map_or("—".to_string(), |v| v.to_string()),
         );

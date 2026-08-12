@@ -363,7 +363,7 @@ mod tests {
 
 mod style;
 
-pub(super) use style::{WetSessionStyles, WetStrokeStyle};
+pub(super) use style::{WetSessionStyles, WetStrokeStyle, wash_flow};
 
 // ── Granulation settling (doc 12 GRAN-1 — Curtis §4.5 valley deposition, Tier-2) ────────────────────
 // Drying model (Enio 2026-07-08, take 3): the BAKE settles FULLY (the wash "sets" on pen-up);

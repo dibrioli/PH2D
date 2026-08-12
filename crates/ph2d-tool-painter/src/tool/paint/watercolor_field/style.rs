@@ -42,6 +42,50 @@ pub(in crate::tool::paint) struct WetStrokeStyle {
     pub(in crate::tool::paint) texture: ph2d_painter_brush::TextureSettings,
 }
 
+/// **A DILUICAO E QUANTA TINTA, NUNCA ONDE A LAVAGEM ESTA** (o arco palido, Enio 2026-08-11).
+///
+/// Ela valia `flow = 1 - dilution` MULTIPLICANDO a cobertura no deposito — e a cobertura entra
+/// numa janela de endurecimento ABSOLUTA (`smoothstep(SS0, SS1, ...)` no composite). Escalar o
+/// campo antes de um limiar fixo nao dilui o miolo (que satura de qualquer jeito): move ONDE o
+/// flanco cruza a janela, e a borda ABRE.
+///
+/// A/B medido na cruz, MESMA regua nos dois lados (10%-90% do MIOLO, coluna x=40; um limiar
+/// absoluto nao serve aqui — uma lavagem diluida e mais palida por desenho, entao 0,90 nunca e
+/// cruzado e a sonda reportaria "a borda nunca fecha" sobre uma borda nitida):
+///
+/// ```text
+///   dilution        0,00   0,15   0,30   0,45   0,60
+///   ANTES  y10%       23     24     26     28     30    <- a silhueta ANDA para dentro
+///          banda       7      7      7     10     11
+///   DEPOIS y10%       23     23     23     23     23    <- presa
+///          banda       7      6      6      6      5
+///          miolo    0,880  0,834  0,770  0,687  0,576   <- e o knob finalmente dilui
+/// ```
+///
+/// Agora a `flow` pousa no `fill` e no `edge_gain` — os DOIS knobs que dizem *quanta tinta ESTE
+/// PINCEL poe*. A silhueta passa a sair da cobertura **cheia** (a pegada, nao a tinta) e o miolo
+/// dilui de facto, porque `fill` multiplica a densidade DIRETO em vez de atravessar um limiar que
+/// satura em `SS1 = 0,60` (era por isso que a lei antiga nao diluia nada ate `dilution` 0,4).
+///
+/// ⚠️ **O `depth` seria o lugar ERRADO, e o `watercolor_render` ja escrevia o porque** — o
+/// multiplicador de depleção (MIX-1) e aplicado ANTES do `density += pool` justamente porque
+/// *"pigmento dissolvido da TELA nao e a reserva do pincel e nao pode desvanecer com ela"*. O
+/// `st_depth` multiplica DEPOIS do `pool`, entao a `flow` ali escalaria tambem o pigmento que a
+/// agua LEVANTOU do canvas: medido, a gota de agua pura (`dilution = 1`) apagava o proprio anel de
+/// backrun que ela cria (o anel em `r = 18` caia de **G 26-30 para 164-183**, e o miolo do pool ia
+/// a 200 por APAGAMENTO em vez de por empurrao). `fill`/`edge_gain` entram antes do `pool` por
+/// construcao — a agua pura poe zero tinta e continua levantando a que ja estava la.
+///
+/// ⚠️ **`dilution = 0` da `flow = 1` e o caminho e BYTE-IDENTICO** — o default nao se move.
+///
+/// ⚠️ **E ha uma 2a consequencia, deliberada:** a cobertura tambem despeja a UMIDADE do canvas
+/// ([`super::super::watercolor_backdrop`]). Enquanto a dilucao a encolhia, mais agua deixava o
+/// papel MENOS molhado — o inverso do que agua significa. Com a `flow` fora do campo, a umidade
+/// passa a seguir a pegada.
+pub(in crate::tool::paint) fn wash_flow(spec: &ph2d_painter_brush::BrushSpec) -> f32 {
+    (1.0 - spec.wet_dilution).clamp(0.0, 1.0)
+}
+
 impl WetStrokeStyle {
     /// Capture the current brush's wash params — the composite's exact clamps, verbatim. `forced_wet`
     /// is the **Wet the layer** floor (#3): the captured Rewet is `max(brush Rewet, forced)`, so strokes
@@ -52,10 +96,10 @@ impl WetStrokeStyle {
     ) -> Self {
         let spread_px = spec.edge_spread.round().clamp(0.0, 48.0) as usize;
         Self {
-            fill: spec.fill.clamp(0.0, 1.0),
+            fill: spec.fill.clamp(0.0, 1.0) * wash_flow(spec),
             depth: spec.depth.max(0.0),
             opacity: spec.opacity.clamp(0.0, 1.0),
-            edge_gain: spec.edge_gain.max(0.0),
+            edge_gain: spec.edge_gain.max(0.0) * wash_flow(spec),
             wet: spec.wet_rewet.max(forced_wet).clamp(0.0, 1.0),
             granulation: spec.granulation.clamp(0.0, 1.0),
             warp: spec.warp.max(0.0),

@@ -286,9 +286,9 @@ impl PainterTool {
         if let Some(d) = dabs.last() {
             self.paint.wet_soak_pos = Some((d.center, d.radius_px.max(0.0)));
         }
-        // Dilution (Wet Mix, `docs/Painter/07` §4): more water lays down LESS coverage → a thinner,
-        // paler wash. `flow = 1 − dilution`; default `0` → `flow = 1` (byte-identical).
-        let flow = (1.0 - self.paint.brush.wet_dilution).clamp(0.0, 1.0);
+        // Dilution (Wet Mix, `docs/Painter/07` §4): more water lays down a THINNER wash — e o
+        // "thinner" mora no PIGMENTO, não na silhueta. A `flow` é aplicada ao `depth` do estilo
+        // ([`super::watercolor_field::style::wash_flow`]); a cobertura aqui é só a FORMA, cheia.
         // EDGE-2 (backrun): the WATER the stroke CARRIES pours into the session soak per dab —
         // pure water (Dilution 1 → flow 0, zero pigment coverage) still lands a wet pool the
         // composite rewets/blooms against (the canonical gesture was unreachable: `peak = 0` ⇒
@@ -380,7 +380,7 @@ impl PainterTool {
             // stroke still splats FULL reserve (its paint must not read the 0-initialised map).
             let depl_v =
                 map_live.then(|| depletion.as_ref().map_or(1.0, |v| v[di].clamp(0.0, 1.0)));
-            let peak = (d.coverage * flow).clamp(0.0, 1.0);
+            let peak = d.coverage.clamp(0.0, 1.0);
             // Water-only dabs (peak 0, Dilution high) still walk the disc to pour the soak.
             if r <= 0.0 || (peak <= 0.0 && water <= 0.0) {
                 continue;

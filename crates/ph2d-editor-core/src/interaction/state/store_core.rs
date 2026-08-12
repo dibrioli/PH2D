@@ -634,6 +634,25 @@ impl WidgetStore {
     ///
     /// `Focused` conta: um botão focado por teclado deve acender como um sob o rato, senão a
     /// navegação por Tab fica invisível para quem depende dela.
+    /// **Que campos numéricos existem, e qual deles sabe a própria faixa?**
+    ///
+    /// O `Some(..)` é a faixa registada por [`Self::set_number_range`] — a que torna o scrub
+    /// **proporcional ao intervalo do campo**. O `None` é o campo que caiu no atalho histórico
+    /// (`DRAG_RATE_X`, 50 unidades de passo por pixel), e é a pergunta que esta função existe para
+    /// responder: *quantos campos ainda arrastam pela constante?*
+    ///
+    /// ⚠️ Mora aqui pela razão do [`Self::hover_targets`]: quem sabe o que está registado é o
+    /// store, e uma segunda lista noutro sítio envelheceria no dia em que um campo novo nascesse.
+    pub fn number_fields(&self) -> impl Iterator<Item = (NodeId, Option<(f64, f64, f64)>)> + '_ {
+        self.states.iter().filter_map(|(id, st)| {
+            if matches!(st, InteractiveState::NumberInput { .. }) {
+                Some((*id, self.number_range(*id)))
+            } else {
+                None
+            }
+        })
+    }
+
     pub fn hover_targets(&self) -> impl Iterator<Item = (NodeId, f32)> + '_ {
         self.states.iter().filter_map(|(id, st)| {
             let lit = match st {

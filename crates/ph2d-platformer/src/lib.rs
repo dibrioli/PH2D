@@ -528,15 +528,27 @@ pub fn player_motor(
     // `!swimming` o dedo pediria as duas coisas ao mesmo tempo e o nadador
     // ganharia um freio que ninguém autorou.
     //
+    // ⚠️ **E a DECOLAGEM é a sexta, achada por um gate que nasceu vermelho:** no
+    // tique em que um pulo sai, a `standing` já é `None` **de propósito** (a
+    // perna cala-se para não disputar o eixo com o `boost` do pulo), então as
+    // cinco guardas acima deixavam passar. Medido: com o pé no chão e o botão
+    // apertado, o motor levava `+18,26` do pulo **e mais `+10,00` do planeio` —
+    // dez metros por segundo que o jogador não pediu.
+    //
     // ⚠️ **Não há guarda de "está a cair"**, e é de propósito: a própria lei é um
     // TETO, então subir, o ápice e uma queda lenta já a deixam calada. Uma
     // segunda pergunta aqui seria uma segunda resposta à mesma.
-    let float_down =
-        if standing.is_none() && !dashing && !ledging && !swimming && clinging.is_none() {
-            glide::glide_motor(&cfg.glide, input.jump, rel_up, up)
-        } else {
-            Motor::default()
-        };
+    let float_down = if standing.is_none()
+        && !jump.takeoff
+        && !dashing
+        && !ledging
+        && !swimming
+        && clinging.is_none()
+    {
+        glide::glide_motor(&cfg.glide, input.jump, rel_up, up)
+    } else {
+        Motor::default()
+    };
 
     // ⚠️ **O arranque SUBSTITUI o termo do pulo, em vez de somar a ele:** o que
     // o `jump.motor` carrega fora da decolagem é a **gravidade de FASE**

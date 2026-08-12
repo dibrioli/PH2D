@@ -503,6 +503,12 @@ mod crouch;
 #[path = "lib_swim_tests.rs"]
 mod swim_gates;
 
+/// As guardas de COMPOSIÇÃO do planeio — o quarto irmão, e o único que nasceu
+/// de mutações que sobreviveram a tudo o resto (a lei do planeio está certa; o
+/// que se perdia era *quem escreve o eixo vertical neste tique*).
+#[path = "lib_glide_tests.rs"]
+mod glide_gates;
+
 // ═══ W-KinMove — O MODO DE SUPORTE ═══════════════════════════════════════
 
 /// **A LEI DE INTENÇÃO é a MESMA nos dois modos** (K1) — só o que SEGURA muda.

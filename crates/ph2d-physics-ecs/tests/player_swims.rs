@@ -440,3 +440,114 @@ fn diving_needs_more_authority_than_the_water_has() {
         );
     }
 }
+
+/// **⚠️ O PLANEIO NÃO EXISTE DENTRO D'ÁGUA** (`W-Glide`).
+///
+/// ⚠️ **Este gate nasceu de uma MUTAÇÃO QUE SOBREVIVEU:** tirar o `!swimming` da
+/// guarda do planeio no `player_motor` deixava os 194 gates da lei e os 5 do
+/// produto **VERDES** — nenhum deles põe um nadador com o dedo no pulo.
+///
+/// ⚠️ **E o defeito é dois-donos, não uma sobreposição inofensiva:** dentro
+/// d'água o botão de pulo **já significa subir** (o `swim_rise` lê o MESMO
+/// `input.jump`), então sem a guarda o mesmo dedo pede as duas coisas e o
+/// eixo vertical ganha um freio que ninguém autorou.
+///
+/// O oráculo é a subida: com o teto de planeio armado, pedir para SUBIR tem de
+/// dar exatamente o que dá sem ele.
+///
+/// ⚠️ **E a fixture tem de o manter SUBMERSO, o que a primeira versão não
+/// fazia:** com 180 tiques ele nada 1,78 m, **sai da água** (a superfície está
+/// em `y = 0` e ele parte de `−1`), e fora dela o planeio age — legitimamente. O
+/// gate media 1,7851 contra 1,8094 e reprovava o produto CORRETO. A premissa
+/// *"ele continua dentro"* é agora afirmada, e não suposta.
+///
+/// ⚠️ **E encurtar a janela não bastava** — a `SWIM_SPEED` é 4 m/s, então de
+/// `−1` ele cruza a superfície em ~15 tiques. Quem tinha de mudar era a
+/// PROFUNDIDADE de partida: a poça tem 12 m de fundo e a fixture usava um metro
+/// dela.
+#[test]
+fn a_glide_ceiling_never_reaches_a_swimmer() {
+    let rise = |glide: f32| {
+        let mut sim = SimWorld::new();
+        pool(&mut sim);
+        // ⚠️ FUNDO, e não o `START` raso dos irmãos — ver acima.
+        let subject = player(&mut sim, false, SWIM_SPEED, SWIM_ACCEL, -8.0);
+        if let Some(mut p) = sim.world_mut().get_mut::<PlatformPlayer>(subject) {
+            p.glide_fall_speed = glide;
+        }
+        let mut bridge = PhysicsBridge::new();
+        let y0 = pos_of(&sim).y;
+        for tick in 1..=45_u64 {
+            bridge.set_player_input(
+                subject,
+                PlayerInput {
+                    jump: true,
+                    ..PlayerInput::default()
+                },
+            );
+            bridge.dispatch(&mut sim, true, tick);
+        }
+        let y = pos_of(&sim).y;
+        assert!(
+            y < -1.0,
+            "a fixture tem de o manter SUBMERSO (a superficie esta' em 0): y = {y:.4}"
+        );
+        y - y0
+    };
+    let (off, on) = (rise(0.0), rise(2.0));
+    assert!(
+        (on - off).abs() < 0.02,
+        "o planeio nao pode alcancar um nadador: ele subiu {off:.4} m sem o teto \
+         armado e {on:.4} m com ele -- o mesmo dedo estaria a pedir duas coisas"
+    );
+}
+
+/// **SONDA: a guarda `!swimming` do planeio é OBSERVÁVEL?**
+///
+/// ⚠️ Ela existe porque o teto já cala o planeio para quem sobe, então a guarda
+/// só pode morder num regime muito estreito: **já submerso** e **a descer mais
+/// depressa que o teto**, com o dedo no pulo.
+///
+/// ⚠️ **E medir isso pela ENTRADA não funciona, o que já está medido:** com o
+/// planeio armado ele chega à água a **2,00 m/s em vez de 2,83** e por isso
+/// **não mergulha** (`0,000` contra `−2,209` de profundidade). Essa diferença é
+/// **legítima** — é o planeio a fazer o seu trabalho *acima* da água —, e usá-la
+/// como oráculo da guarda seria atribuir ao guard um efeito que não é dele.
+///
+/// A fixture certa larga-o **dentro** da água já a descer depressa.
+#[test]
+#[ignore = "sonda de medicao"]
+fn measure_whether_the_swim_guard_is_observable() {
+    println!("\n== o planeio DENTRO da agua (submerso, a descer a 8 m/s) ==");
+    println!("  teto de planeio   profundidade maxima");
+    for glide in [0.0_f32, 2.0] {
+        let mut sim = SimWorld::new();
+        pool(&mut sim);
+        let subject = player(&mut sim, false, SWIM_SPEED, SWIM_ACCEL, -1.0);
+        sim.world_mut()
+            .entity_mut(subject)
+            .insert(ph2d_physics_ecs::InitialVelocity {
+                linvel: [0.0, -8.0],
+                angvel: 0.0,
+            });
+        if let Some(mut p) = sim.world_mut().get_mut::<PlatformPlayer>(subject) {
+            p.glide_fall_speed = glide;
+        }
+        let mut bridge = PhysicsBridge::new();
+        let mut deepest = 0.0_f32;
+        for tick in 1..=180_u64 {
+            bridge.set_player_input(
+                subject,
+                PlayerInput {
+                    jump: true,
+                    ..PlayerInput::default()
+                },
+            );
+            bridge.dispatch(&mut sim, true, tick);
+            deepest = deepest.min(pos_of(&sim).y);
+        }
+        println!("  {glide:>15.2}   {deepest:>19.3}");
+    }
+    println!("\n(se as duas linhas forem iguais, a guarda e' INOBSERVAVEL e quem");
+    println!(" a cobre e' o proprio teto -- documente, nao invente um gate)");
+}

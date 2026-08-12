@@ -133,7 +133,12 @@ fn the_glide_carries_him_across_a_gap() {
 /// segura como um que segura de mais.
 #[test]
 fn the_descent_settles_on_the_authored_ceiling() {
-    const CEILING: f32 = 2.0;
+    // ⚠️ **3,0 e não 2,0, de propósito:** 2,0 é o número que a cena de smoke
+    // autora, e um gate que usasse o mesmo valor não distinguiria *"a lei lê o
+    // número"* de *"a lei tem esse número escrito dentro"*. Medido: com o teto
+    // cravado em 2,0 na lei, este gate fica **VERDE** com `CEILING = 2.0` e
+    // **sangra** com 3,0.
+    const CEILING: f32 = 3.0;
     /// O que a gravidade acrescenta entre duas passagens da lei, m/s.
     const TICK_OF_GRAVITY: f32 = 9.81 / 60.0 * 2.0;
     let (mut sim, mut bridge, player) = dropped(CEILING);

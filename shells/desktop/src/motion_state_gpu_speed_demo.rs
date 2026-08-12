@@ -35,8 +35,10 @@ pub(super) const LIMIT: f32 = 6.0;
 /// A força do atrator. Alta de propósito: é a vizinhança do centro que produz a velocidade
 /// absurda, e um atrator manso não teria o que capar.
 pub(super) const PULL: f32 = 60.0;
-/// A força do vórtice — a componente tangencial que faz disto um rodamoinho em vez de um poço.
+/// A força do vórtice — a componente tangencial, e a razão de o teto ter consequência VISÍVEL.
 pub(super) const SWIRL: f32 = 40.0;
+/// O raio do núcleo em que a nuvem repousa — é ele que dá à cena um FIM.
+pub(super) const CORE_R: f32 = 1.2;
 pub(super) const ROWS: f32 = 12.0;
 pub(super) const COLS: f32 = 12.0;
 
@@ -70,21 +72,35 @@ pub(super) fn build_gpu_speed_demo_document(
     g.set_param(pull, "strength", PULL);
     g.set_param(pull, "radius", 6.0);
 
-    // O VÓRTICE, no mesmo centro: ele dá a componente TANGENCIAL que transforma a queda num
-    // rodamoinho. Sem ele o atrator sozinho só junta tudo num ponto, e "um ponto" não é uma
-    // leitura de nada — o que se quer ver é a nuvem RODANDO contida contra a nuvem que escapa.
+    // O NÚCLEO, no mesmo centro — e ele é o que faz a cena TERMINAR. Um atrator sozinho junta
+    // tudo num ponto e um vórtice a mantém orbitando PARA SEMPRE: as duas leituras nunca
+    // repousam, e um quadro que nunca repousa é diferente a cada Play (report do Enio,
+    // 2026-08-11). Com um obstáculo os elementos caem, ENCOSTAM e ficam — o quadro converge, e
+    // dois Plays mostram a mesma coisa.
+    // O VÓRTICE dá a componente TANGENCIAL: é ele que, SEM teto, estilinga a nuvem para fora do
+    // alcance do atrator — medido, sem ele o teto não muda posição NENHUMA (o atrator só puxa
+    // para dentro, e alcance com e sem teto medem 5,4447 iguais). Ele é a metade que torna o
+    // teto visível; o núcleo abaixo é a metade que faz a cena PARAR.
     let swirl = g.add_node("force.vortex");
     g.set_param(swirl, "center_x", 0.0);
     g.set_param(swirl, "center_y", 0.0);
     g.set_param(swirl, "strength", SWIRL);
     g.set_param(swirl, "radius", 6.0);
 
+    let core = g.add_node("sim.collide");
+    g.set_param(core, "shape", 1.0); // Disc: o mundo é tudo FORA dele
+    g.set_param(core, "center_x", 0.0);
+    g.set_param(core, "center_y", 0.0);
+    g.set_param(core, "radius", CORE_R);
+    g.set_param(core, "restitution", 0.0);
+    g.set_param(core, "friction", 1.0);
+
     let step = g.add_node("sim.step");
     g.set_param(step, "max_speed", limit);
 
     let out = g.add_node("motion.output");
 
-    for (i, n) in [grid, size, zone, pull, swirl, step, out]
+    for (i, n) in [grid, size, zone, pull, swirl, step, core, out]
         .into_iter()
         .enumerate()
     {
@@ -103,7 +119,8 @@ pub(super) fn build_gpu_speed_demo_document(
         (zone, 0, pull, 0, true),
         (pull, 0, swirl, 0, false),
         (swirl, 0, step, 0, false),
-        (step, 0, zone, 1, false),
+        (step, 0, core, 0, false),
+        (core, 0, zone, 1, false),
         (zone, 0, out, 0, false),
     ] {
         g.connect(Edge {

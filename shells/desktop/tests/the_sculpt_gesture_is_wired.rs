@@ -8,7 +8,7 @@
 //!
 //! Cada asserção abaixo tem uma mutação que a derruba, listada no handoff.
 mod sculpt_source;
-use sculpt_source::{braced_block, function_body, match_arm, sculpt_src, source};
+use sculpt_source::{braced_block, function_body, grip_arm, match_arm, sculpt_src, source};
 
 #[test]
 fn the_left_button_sculpts_where_it_hits_and_orbits_where_it_misses() {
@@ -239,9 +239,9 @@ fn a_pointer_event_is_walked_at_the_brushes_spacing_and_stops_where_the_ray_miss
     // o `Drag::Sculpt` é um `match` sobre o `Grip` com três braços, e dois deles
     // percorrem o caminho — a asserção de ausência abaixo (*a âncora não avança
     // fora do ramo que carimbou*) lia os TRÊS e falhava sobre produto correto.
-    let arm = braced_block(
+    let arm = grip_arm(
         &function_body(&sculpt_src(), "sculpt3d_pointer_move"),
-        "Grip::Stamp =>",
+        "Grip::Stamp",
     );
     assert!(
         arm.contains("ph2d_sculpt3d::walk(") && arm.contains("min_spacing("),
@@ -257,9 +257,19 @@ fn a_pointer_event_is_walked_at_the_brushes_spacing_and_stops_where_the_ray_miss
     // depositar dez vezes mais dabs pelo mesmo caminho — e nada na tela diria
     // por quê. A afirmação é sobre em que BLOCO a atribuição mora.
     let deposited = braced_block(&arm, "if let Some(steps)");
+    // ⚠️ **E ela avança para o ÚLTIMO DAB, não para o ponteiro.** Esta linha
+    // dizia `stroke_anchor = [x, y]` e ficou **VERMELHO-LATENTE desde a metade
+    // 1** (`e05174b98`, *"o traço passa a ser função do CAMINHO"*), que trocou o
+    // produto para `steps.anchor()`: com `[x, y]` o resíduo ACIMA de um passo
+    // evapora, e é ele que a `measure_path_invariance` media em `6,485 %`.
+    //
+    // ⚠️ **Ninguém viu porque este gate mora em `shells/desktop/tests/`**, e
+    // esses só correm na varredura IMPACTADA — um fechamento por
+    // `cargo test -p ph2d-sculpt3d` não os alcança. É a mesma causa estrutural
+    // que a `line/Vector` e a `line/physics` já registaram.
     assert!(
-        deposited.contains("stroke_anchor = [x, y]"),
-        "a âncora avança dentro do ramo que carimbou"
+        deposited.contains("stroke_anchor = steps.anchor()"),
+        "a âncora avança para o último DAB dentro do ramo que carimbou"
     );
     assert!(
         !arm.replace(&deposited, "").contains("stroke_anchor ="),
@@ -308,7 +318,7 @@ fn the_grab_holds_its_footprint_instead_of_re_picking() {
     // não carimba, então percorrer o caminho daria N dabs idênticos no mesmo
     // lugar.
     let mv = function_body(&src, "sculpt3d_pointer_move");
-    let holding = match_arm(&mv, "Grip::Hold =>");
+    let holding = grip_arm(&mv, "Grip::Hold");
     assert!(
         holding.contains("grab_at(") && !holding.contains("walk("),
         "quem segura arrasta a pegada, não percorre um caminho"
@@ -325,7 +335,7 @@ fn the_grab_holds_its_footprint_instead_of_re_picking() {
 fn the_hook_walks_the_path_and_hands_each_step_its_own_increment() {
     let src = sculpt_src();
     let mv = function_body(&src, "sculpt3d_pointer_move");
-    let hooking = match_arm(&mv, "Grip::Hook =>");
+    let hooking = grip_arm(&mv, "Grip::Hook");
     assert!(
         hooking.contains("walk(") && hooking.contains("hook_step("),
         "quem arrasta percorre o caminho, um passo de cada vez"
@@ -339,9 +349,10 @@ fn the_hook_walks_the_path_and_hands_each_step_its_own_increment() {
     );
     // O CARRY vale igual aqui: a âncora só anda quando o walk de fato carimbou.
     let deposited = braced_block(&hooking, "if let Some(steps)");
+    // O mesmo `steps.anchor()` do carimbo, e o mesmo vermelho-latente.
     assert!(
-        deposited.contains("stroke_anchor = [x, y]"),
-        "a âncora avança dentro do ramo que carimbou"
+        deposited.contains("stroke_anchor = steps.anchor()"),
+        "a âncora avança para o último DAB dentro do ramo que carimbou"
     );
     assert!(
         !hooking.replace(&deposited, "").contains("stroke_anchor ="),
@@ -399,7 +410,7 @@ fn the_drag_asks_the_grip_and_answers_every_one_of_them() {
 fn the_turn_takes_its_axis_from_the_ray_that_grabbed_the_clay() {
     let src = sculpt_src();
     let mv = function_body(&src, "sculpt3d_pointer_move");
-    let turning = match_arm(&mv, "Grip::Turn(kind) =>");
+    let turning = grip_arm(&mv, "Grip::Turn(kind)");
     assert!(
         turning.contains("turn_at(kind"),
         "o arrasto tem de entregar o Amount que o grip carrega, e não re-derivá-lo do verbo"

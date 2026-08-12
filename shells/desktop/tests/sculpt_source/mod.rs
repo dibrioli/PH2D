@@ -174,7 +174,51 @@ pub fn branch_containing(src: &str, needle: &str) -> String {
     panic!("o ramo de `{needle}` não fecha");
 }
 
-/// O bloco `{...}` que começa logo depois de `anchor`, balanceado.
+/// **O braço de `match` que TRATA um grip**, seja ele qual for o resto do padrão.
+///
+/// ⚠️ **Ela existe porque a âncora literal EXPIROU, e expirou por um `|`.** Os
+/// gates procuravam `"Grip::Stamp =>"`; no dia em que o `Grip::Paint` nasceu e
+/// passou a partilhar o ramo (`Grip::Stamp | Grip::Paint =>`), dois deles
+/// ficaram vermelhos sobre produto CORRETO — a mesma família de defeito que a
+/// `line/Vector` pagou duas vezes: *afirme a PROPRIEDADE, nunca o endereço*.
+///
+/// A pergunta que o gate faz é *"o que o motor faz com um carimbo?"*, e a
+/// resposta é o braço que casa `Grip::Stamp` — com quem quer que ele o divida.
+pub fn grip_arm(src: &str, grip: &str) -> String {
+    // ⚠️ **A primeira ocorrência do NOME não serve: os docs citam o grip.** O
+    // `sculpt3d_input` explica cada braço num comentário que escreve
+    // `[`Grip::Hold`]` antes de o braço existir, e ancorar na primeira devolvia
+    // o bloco errado — dois gates ficaram vermelhos sobre produto correto na
+    // primeira versão desta função.
+    //
+    // O que distingue um PADRÃO de uma citação é o que vem depois dele: só
+    // alternativas (`| Grip::Outro`) e espaço, e então a seta.
+    let mut from = 0usize;
+    while let Some(rel) = src[from..].find(grip) {
+        let at = from + rel;
+        from = at + grip.len();
+        let Some(fat) = src[at..].find("=>") else {
+            continue;
+        };
+        let between = &src[at + grip.len()..at + fat];
+        let is_pattern = between
+            .chars()
+            .all(|c| c.is_whitespace() || c == '|' || c == ':' || c.is_alphanumeric() || c == '_');
+        if is_pattern {
+            // ⚠️ **`match_arm` e não [`braced_block`]:** os braços
+            // `Grip::Hold => scene.grab_at(x, y),` e
+            // `Grip::Turn(kind) => scene.turn_at(...)` **não têm chaves**, e o
+            // `braced_block` atravessaria para o bloco do braço SEGUINTE — uma
+            // asserção de ausência sairia lendo o braço que faz o que ela
+            // proíbe. Foi o segundo vermelho-sobre-produto-correto desta
+            // função, e é o caso que o `match_arm` existe para tratar.
+            return match_arm(src, &src[at..at + fat + 2]);
+        }
+    }
+    panic!("não achei o padrão `{grip}` em `match` nenhum (só citações)")
+}
+
+/// O bloco `{...}` que começa logo depois de `anchor`, balanceado./// O bloco `{...}` que começa logo depois de `anchor`, balanceado.
 ///
 /// ⚠️ Existe para afirmar **em que bloco** uma linha mora — que é uma pergunta
 /// estrutural — em vez de *a quantos bytes* ela está de outra. A segunda forma é

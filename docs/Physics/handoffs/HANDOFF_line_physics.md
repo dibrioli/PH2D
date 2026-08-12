@@ -12,7 +12,19 @@
 > · gizmo ids até **973** (próximo livre **974**) · maior cena de smoke **104** (próxima livre
 > **105**; ⚠️ o `=84` não existe, de propósito).
 >
-> ⚠️ **Jornada de 2026-08-10 FECHADA, aguardando ordem de integração** — handoff
+> ⚠️ **Jornada de 2026-08-11 FECHADA, aguardando ordem de integração** — handoff
+> [`HANDOFF_INTEGRACAO_line_physics_sensores_2026-08-11.md`](HANDOFF_INTEGRACAO_line_physics_sensores_2026-08-11.md),
+> que **inclui** a de 08-10 (as duas estão nos mesmos 37 commits). O assunto são os **SENSORES**:
+> eles ficaram **visíveis** (`W-Probes`, cena `=108`), ficaram **editáveis** (`W-Probes2`) e **a
+> perna deixou de ser um raio** (`W-FootFan`, cena `=109`) — um raio só afundava **46% do
+> `float_height`** parado sobre uma fenda de 10 cm que o corpo atravessa. Mais o catálogo do plano
+> 08 (`W-Swim` · `W-ZoneForce` · `W-ShapeCast`). ⚠️ **`PROJECT_SCHEMA` 70 → 73** (três degraus,
+> §4 do handoff) · **`c9` `1699123f…`** (move, e a atribuição é por **ablação**: com `samples = 1`
+> ele volta exatamente ao do `main`) · registro **29 intocado** · **zero `Cargo.toml`** · nenhum
+> ADR. ⚠️ **Rode a suíte com `--no-fail-fast`** — sem ele o primeiro binário vermelho esconde o
+> resto, e nesta jornada a diferença foi entre *"um gate caiu"* e *"dez caíram"*.
+>
+> ⚠️ **A jornada de 2026-08-10 (MEDIÇÃO) está DENTRO da acima** — handoff
 > [`HANDOFF_INTEGRACAO_line_physics_bobbing_2026-08-10.md`](HANDOFF_INTEGRACAO_line_physics_bobbing_2026-08-10.md).
 > Ela é de **MEDIÇÃO**, e o resultado principal é um **negativo**: o *"bobeio de 1,44 m na água"*
 > que a reabertura listava como aberto **não era um defeito** (com os quatro multiplicadores de

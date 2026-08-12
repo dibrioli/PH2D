@@ -12,6 +12,15 @@
 //! target field gives each element its own aim. An `offset` param (degrees) rotates
 //! the result — `+90` makes them point *across* the target, `180` *away*.
 //!
+//! **How much of the aim lands is the family's weight** — the multiplicative
+//! `falloff` column times a `strength` param, exactly as `move`/`rotate`/`scale`/
+//! `noise`/`wiggle`/`stagger`/`drive` read it (MOPs: *every* effect is modulated
+//! by `f@mops_falloff`; C4D: every effector carries Strength + Fields). At weight 1
+//! — no field, default strength — the answer is the aim verbatim, so nothing
+//! already authored moves. Below it each element turns **part of the way** toward
+//! the target along the SHORT arc: a heading is not a coordinate, and a naive lerp
+//! sends an element two degrees from its target the long way round.
+//!
 //! Transcendental-free (HR-5): the heading is `atan2` via a **Rajan rational
 //! approximation** (`atan(a) ≈ ¼π·a − a·(a−1)·(0.2447 + 0.0663·a)` for `a ∈ [0,1]`,
 //! quadrant-folded), ~0.0015 rad (0.09°) off true `atan2` using only multiply/add —
@@ -90,6 +99,14 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         ParamSpec {
             name: "mode",
             default: 0.0,
+        },
+        // How much of the aim lands — the family's `Strength`, multiplied into the
+        // same weight the `falloff` column carries (they scale the SAME turn, so
+        // they are one number by the time the blend sees them). `1` is the whole
+        // aim, which is what this node did before the weight existed.
+        ParamSpec {
+            name: "strength",
+            default: 1.0,
         },
     ],
     lowerings: &[LoweringKind::Cpu],
@@ -177,6 +194,58 @@ fn atan2_approx(y: f32, x: f32) -> f32 {
     r
 }
 
+/// The multiplicative `falloff` weight for instance `i` (absent → `1.0`) — the
+/// family's channel, read exactly as `motion.rotate` reads it (doc 89 folha 08).
+fn falloff_at(stream: &Stream, i: usize) -> f32 {
+    match stream.get("falloff") {
+        Some(Column::Scalar(v)) => v.get(i).copied().unwrap_or(1.0),
+        _ => 1.0,
+    }
+}
+
+/// Fold a degree difference into `(-180, 180]` — **the shortest way round**.
+///
+/// ⚠️ Without this the weight is worse than useless on the exact elements it is
+/// meant to spare: an element already pointing at `-179°` that should aim at
+/// `179°` is **2° away**, and a plain lerp at half weight sends it to `0°` — the
+/// long way, through pointing at nothing. An angle is not a position.
+///
+/// ⚠️ **`floor`, never `round`.** The closed form wants a nearest-integer, and
+/// Rust's `round` breaks ties away from zero while WGSL's breaks them to even —
+/// so at exactly a half-turn (`d = ±180`, the one input a reader would call a
+/// corner case) the two languages would disagree by a whole 360, and the blend at
+/// half weight would turn the element to opposite sides on CPU and GPU. `floor`
+/// has no ties, so the two agree by construction, and the half-turn resolves
+/// clockwise on both.
+fn wrap180(d: f32) -> f32 {
+    d - 360.0 * (d / 360.0 + 0.5).floor()
+}
+
+/// **The one place the weight is applied**, and the reason it has three arms.
+///
+/// * `w >= 1` returns the aim **VERBATIM**. Not "the lerp happens to land there":
+///   full weight reproducing today byte for byte is what keeps every document ever
+///   written unmoved, and `orig + (aimed − orig)` is not `aimed` in `f32` for every
+///   pair. It also keeps `offset` free to push the aim past ±180 the way it does
+///   today — [`wrap180`] would fold that number, same angle, different number, and
+///   anything reading `rot` as a value would see the change.
+/// * `w <= 0` returns the original **VERBATIM** — the promise a falloff makes is
+///   that outside it nothing happens, and `orig ± 360` is not nothing.
+/// * Between them, turn along the short arc.
+///
+/// The two ends are also the clamp: a `strength` above 1 would mean *turn past the
+/// thing you are looking at*, and because an angle wraps, extrapolating it is
+/// unbounded and unreadable — unlike a position, where overshoot has a picture.
+fn blend_aim(orig: f32, aimed: f32, w: f32) -> f32 {
+    if w >= 1.0 {
+        return aimed;
+    }
+    if w <= 0.0 {
+        return orig;
+    }
+    orig + wrap180(aimed - orig) * w
+}
+
 /// GPU compute kernel (ADR-0126) — the WGSL port of [`atan2_approx`] plus the
 /// broadcast rule, element for element.
 ///
@@ -200,8 +269,21 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let la_p = read_in_P(i);\n\
         let la_dx = read_target_x_v(i) - la_p.x;\n\
         let la_dy = read_target_y_v(i) - la_p.y;\n\
-        write_rot(i, la_atan2(la_dy, la_dx) * 57.29578 + params.offset);\n",
+        let la_aim = la_atan2(la_dy, la_dx) * 57.29578 + params.offset;\n\
+        let la_w = read_in_falloff(i) * params.strength;\n\
+        write_rot(i, la_blend(read_in_rot(i), la_aim, la_w));\n",
     wgsl_lib: "\
+        // The three arms of the CPU `blend_aim`, in the same order and for the\n\
+        // same reasons: full weight is the aim verbatim, no weight is the original\n\
+        // verbatim, and between them the turn takes the SHORT arc.\n\
+        fn la_blend(orig: f32, aimed: f32, w: f32) -> f32 {\n\
+            if (w >= 1.0) { return aimed; }\n\
+            if (w <= 0.0) { return orig; }\n\
+            let d = aimed - orig;\n\
+            // `floor`, never `round`: WGSL rounds ties to even and Rust away from\n\
+            // zero, which would split the exact half-turn between the two.\n\
+            return orig + (d - 360.0 * floor(d / 360.0 + 0.5)) * w;\n\
+        }\n\
         fn la_atan2(y: f32, x: f32) -> f32 {\n\
             let ax = abs(x);\n\
             let ay = abs(y);\n\
@@ -238,6 +320,19 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             identity: [0.0; 4],
             port: 2,
         },
+        // The family's weight. Identity `1.0` is the whole point: a stream that
+        // never met a field is aimed in full, which is what this node did before.
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+            port: 0,
+        },
+        // `ReadWrite`, and now the READ side carries weight too: at partial weight
+        // the answer is a turn FROM where the element already points, so the prior
+        // `rot` is an input, not just a slot. Absent ⇒ the `0.0` identity, which is
+        // the same starting angle the CPU uses.
         ColumnBinding {
             column: "rot",
             dim: Dim::Scalar,
@@ -246,7 +341,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &["offset"],
+    params: &["offset", "strength"],
     count_law: None,
     variant_by_param: None,
     // ⚠️ The kernel reads the target from the two value PORTS, and the Object /
@@ -294,6 +389,7 @@ impl NodeOp for MotionLookAt {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let offset = ctx.param("offset");
+        let strength = ctx.param("strength");
         let mode = TargetMode::of(ctx.param("mode"));
         // ⚠️ The named target is read BEFORE `ctx.input(0)`: `external` takes `&mut
         // self` and `input` hands out a borrow that outlives the call, so resolving
@@ -341,12 +437,20 @@ impl NodeOp for MotionLookAt {
             Some(Column::Vec2(v)) => v.clone(),
             _ => vec![[0.0, 0.0]; n],
         };
+        // Where each element ALREADY points — the far end of the blend. Absent is
+        // `0.0`, the same identity the kernel declares for the column.
+        let base: Vec<f32> = match input.get("rot") {
+            Some(Column::Scalar(v)) => v.clone(),
+            _ => Vec::new(),
+        };
         // Pure per-instance map → parallel above the threshold
         // (bit-identical, no reduction). GPU/M5 Fase 0.
         let rot: Vec<f32> = par_build(n, |i| {
             let dx = target_at(&tx, i) - p[i][0];
             let dy = target_at(&ty, i) - p[i][1];
-            atan2_approx(dy, dx) * RAD_TO_DEG + offset
+            let aimed = atan2_approx(dy, dx) * RAD_TO_DEG + offset;
+            let w = falloff_at(input, i) * strength;
+            blend_aim(base.get(i).copied().unwrap_or(0.0), aimed, w)
         });
         // Copy every column through, then set the freshly-aimed rotation.
         let mut out = Stream::new(n);
@@ -419,6 +523,16 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.05,
         widget: ParamWidget::Slider,
     },
+    // ⚠️ The track starts at `0` because `0` is the OFF: at zero weight the node
+    // is a pass-through, and a floor here would hide the neutral.
+    ParamUiHint {
+        param: "strength",
+        label: "Strength",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
     ParamUiHint {
         param: "offset",
         label: "Offset",
@@ -469,158 +583,13 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
 ];
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Aim `input`'s `rot` at a target field `(tx, ty)` with `offset`, directly via
-    /// the op (no cook needed — a target field is just two scalar columns).
-    fn aim(input: Stream, tx: &[f32], ty: &[f32], offset: f32) -> Vec<f32> {
-        let n = input.count();
-        let p: Vec<[f32; 2]> = match input.get("P") {
-            Some(Column::Vec2(v)) => v.clone(),
-            _ => vec![[0.0, 0.0]; n],
-        };
-        (0..n)
-            .map(|i| {
-                let dx = target_at(tx, i) - p[i][0];
-                let dy = target_at(ty, i) - p[i][1];
-                atan2_approx(dy, dx) * RAD_TO_DEG + offset
-            })
-            .collect()
-    }
-
-    /// The `atan2` approximation matches true `atan2` at the cardinals and a few
-    /// obliques, well within 0.003 rad — checked against KNOWN constants (no std
-    /// `atan2` call, so the test stays transcendental-free too).
-    #[test]
-    fn atan2_approx_matches_true_atan2() {
-        let cases = [
-            (0.0, 1.0, 0.0),                // +x → 0
-            (1.0, 1.0, FRAC_PI_4),          // 45°
-            (1.0, 0.0, FRAC_PI_2),          // +y → 90°
-            (1.0, -1.0, 3.0 * FRAC_PI_4),   // 135°
-            (0.0, -1.0, PI),                // -x → 180°
-            (-1.0, -1.0, -3.0 * FRAC_PI_4), // -135°
-            (-1.0, 0.0, -FRAC_PI_2),        // -90°
-            (-1.0, 1.0, -FRAC_PI_4),        // -45°
-            (1.0, 2.0, 0.4636476),          // atan(0.5)
-            (2.0, 1.0, 1.1071488),          // atan(2)
-        ];
-        for (y, x, want) in cases {
-            let got = atan2_approx(y, x);
-            assert!(
-                (got - want).abs() < 0.003,
-                "atan2({y},{x}) = {got}, want {want}"
-            );
-        }
-    }
-
-    /// The origin (target on the element) is safe — no NaN, aim stays 0.
-    #[test]
-    fn a_coincident_target_is_zero_not_nan() {
-        assert_eq!(atan2_approx(0.0, 0.0), 0.0);
-    }
-
-    /// Each element aims its `rot` (degrees) at the target. Two elements either
-    /// side of a target at the origin (unconnected) point in opposite ±x directions.
-    #[test]
-    fn each_element_aims_its_rotation_at_the_target() {
-        let two = Stream::new(2).with("P", Column::Vec2(vec![[-1.0, 0.0], [1.0, 0.0]]));
-        let rot = aim(two, &[], &[], 0.0); // empty target → origin
-        assert!(rot[0].abs() < 0.2, "left (at -1) aims +x (0°): {}", rot[0]);
-        assert!(
-            (rot[1].abs() - 180.0).abs() < 0.2,
-            "right (at +1) aims -x (180°): {}",
-            rot[1]
-        );
-    }
-
-    /// `offset` rotates the aim: +90 makes an element face across the target.
-    #[test]
-    fn offset_rotates_the_aim() {
-        let one = Stream::new(1).with("P", Column::Vec2(vec![[-1.0, 0.0]])); // faces +x (0°)
-        let rot = aim(one, &[], &[], 90.0);
-        assert!(
-            (rot[0] - 90.0).abs() < 0.2,
-            "0° + offset 90 = 90°: {}",
-            rot[0]
-        );
-    }
-
-    /// An animated target (a value field) turns the aim: the same element faces
-    /// +x, then +y, as the target moves from the right to above it.
-    #[test]
-    fn a_moving_target_turns_the_aim() {
-        let p = || Stream::new(1).with("P", Column::Vec2(vec![[0.0, 0.0]]));
-        let right = aim(p(), &[5.0], &[0.0], 0.0); // target to the right → 0°
-        let up = aim(p(), &[0.0], &[5.0], 0.0); // target above → 90°
-        assert!(right[0].abs() < 0.2, "target right → 0°: {}", right[0]);
-        assert!((up[0] - 90.0).abs() < 0.2, "target up → 90°: {}", up[0]);
-    }
-
-    /// End to end through the cook: the op copies P through and writes `rot`.
-    #[test]
-    fn registers_and_writes_the_rotation_through_the_cook() {
-        use ph2d_nodegraph::cook::{Cook, OpResolver};
-        use ph2d_nodegraph::graph::{Edge, Graph};
-
-        static SRC: NodeManifest = NodeManifest {
-            id: NodeTypeId::of("motion.look_at.test.src"),
-            name: "motion.look_at.test.src",
-            inputs: &[],
-            outputs: &[PortSpec {
-                name: "out",
-                ty: INST_VEC2,
-            }],
-            effect: Effect::Pure,
-            clock: Clock::Frame,
-            params: &[],
-            lowerings: &[LoweringKind::Cpu],
-        };
-        struct Src;
-        impl NodeOp for Src {
-            fn manifest(&self) -> &'static NodeManifest {
-                &SRC
-            }
-            fn eval(&self, ctx: &mut EvalCtx<'_>) {
-                // One element at (-2, 0): aims +x (0°) at the unconnected origin.
-                ctx.emit(Stream::new(1).with("P", Column::Vec2(vec![[-2.0, 0.0]])));
-            }
-        }
-        struct Ops;
-        impl OpResolver for Ops {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                match ty {
-                    t if t == SRC.id => Some(&Src),
-                    t if t == MANIFEST.id => Some(&MotionLookAt),
-                    _ => None,
-                }
-            }
-        }
-        let mut reg = NodeRegistry::new();
-        register(&mut reg).unwrap();
-        assert!(reg.resolve(MANIFEST.id).is_some());
-
-        let mut g = Graph::new();
-        let src = g.add_node("motion.look_at.test.src");
-        let la = g.add_node("motion.look_at");
-        g.connect(Edge {
-            from: (src, 0),
-            to: (la, 0),
-            delayed: false,
-        })
-        .unwrap();
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, la, 0.0).unwrap();
-        let s = out[0].as_stream();
-        match s.get("rot").unwrap() {
-            Column::Scalar(v) => assert!(v[0].abs() < 0.2, "aims +x at the origin: {}", v[0]),
-            _ => panic!("rot"),
-        }
-        assert!(s.get("P").is_some(), "P passes through");
-    }
-}
+#[path = "aim_tests.rs"]
+mod tests;
 
 #[cfg(test)]
 #[path = "target_mode_tests.rs"]
 mod target_mode_tests;
+
+#[cfg(test)]
+#[path = "falloff_tests.rs"]
+mod falloff_tests;

@@ -2755,6 +2755,122 @@ fn look_at_broadcasts_a_single_target_and_reads_a_field_per_element() {
     }
 }
 
+/// **`motion.look_at` HONOURS THE FAMILY'S WEIGHT, and the device agrees** (doc 89
+/// folha 08 — the P0 and the P1 that ship together).
+///
+/// The sibling above runs at full weight, where the blend collapses to the aim by
+/// construction — it would stay green with the weight law completely absent from
+/// the kernel. So this one puts a real `motion.falloff` upstream (a spatial field,
+/// so the weight VARIES across the grid) and a partial `strength` alongside it:
+/// the two multiply into one number, and the device has to reproduce a PARTIAL
+/// turn, not just the endpoint.
+///
+/// ⚠️ And it is the half-turn that makes the port non-trivial. The fold uses
+/// `floor`, never `round`, because WGSL rounds ties to EVEN and Rust rounds them
+/// AWAY FROM ZERO — at exactly `+-180` those two disagree by a whole revolution,
+/// and at half weight the element would turn to opposite sides on the two paths.
+/// A grid aimed at an off-centre pivot produces headings all round the circle, so
+/// some element lands near that tie on every run.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn look_at_takes_the_partial_turn_the_falloff_asks_for() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 12.0);
+
+    // A spatial field: the weight is a real per-element number, not a constant.
+    let fal = g.add_node("motion.falloff");
+    g.set_param(fal, "center_x", 0.7);
+    g.set_param(fal, "center_y", -0.4);
+    g.set_param(fal, "radius", 2.1);
+    connect(&mut g, grid, fal);
+
+    // A prior rotation the blend has to turn AWAY from — without it the "from"
+    // end of every lerp is the `rot` identity and a kernel that ignored the old
+    // value would still land in the right place.
+    let rot = g.add_node("motion.rotate");
+    g.set_param(rot, "angle", 143.0);
+    connect(&mut g, fal, rot);
+
+    let la = g.add_node("motion.look_at");
+    g.set_param(la, "offset", 23.0);
+    g.set_param(la, "strength", 0.6);
+    // ⚠️ The target stays on the PORTS (the origin, unconnected). Typing a
+    // coordinate makes the kernel recuse to the CPU on purpose — the lowering
+    // reads the two value ports and knows nothing about a typed point — and a
+    // fixture that typed one would be measuring the CPU against itself.
+    connect(&mut g, rot, la);
+    g.validate(&reg).expect("well-typed");
+
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, la);
+    assert!(plan.is_fully_gpu(), "the whole weighted chain is covered");
+
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, la, PLAYHEAD).expect("cpu cook");
+    let cpu_rot = match cpu[0].as_stream().get("rot") {
+        Some(ph2d_nodegraph::attr::Column::Scalar(v)) => v.clone(),
+        _ => panic!("the CPU emitted no `rot`"),
+    };
+    // The same chain at FULL weight, on the CPU only — the control that proves
+    // the fixture is actually exercising a partial turn rather than measuring
+    // two paths that both collapse to the aim.
+    let mut g_full = g.clone();
+    g_full.set_param(la, "strength", 1.0);
+    let mut cook_full = Cook::new();
+    let full = cook_full
+        .cook(&g_full, &reg, la, PLAYHEAD)
+        .expect("cpu cook");
+    let full_rot = match full[0].as_stream().get("rot") {
+        Some(ph2d_nodegraph::attr::Column::Scalar(v)) => v.clone(),
+        _ => panic!("no `rot`"),
+    };
+    let moved = cpu_rot
+        .iter()
+        .zip(&full_rot)
+        .filter(|(a, b)| (*a - *b).abs() > 1.0)
+        .count();
+    assert!(
+        moved > cpu_rot.len() / 4,
+        "fixture check: the weight has to bite on a real share of the field, \
+         {moved} of {} elements differ from full weight",
+        cpu_rot.len()
+    );
+
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true);
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+
+    let gpu_rot = gc
+        .read_column(&gpu, la, "rot")
+        .expect("the `rot` column reads back");
+    assert_eq!(gpu_rot.len(), cpu_rot.len(), "same element count");
+    let worst = gpu_rot
+        .iter()
+        .zip(&cpu_rot)
+        .map(|(a, b)| (a - b).abs())
+        .fold(0.0_f32, f32::max);
+    eprintln!(
+        "look_at weighted: {} elements, {moved} turned partially, max |drot| = {worst:e} deg",
+        cpu_rot.len()
+    );
+    assert!(worst < 1e-3, "max |drot| = {worst:e} deg");
+}
+
 /// A VALUE producer the GPU **cannot** claim, for the fixtures that need a CPU
 /// seam to exist at all.
 ///

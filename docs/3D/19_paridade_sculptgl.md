@@ -440,6 +440,66 @@ ele mede `0,002577` no primeiro dab — **13,3× mais fraco** — e só alcança
 desarmado no décimo sexto. A referência sai de `0,017081` e chega a `0,220645`.
 *O interruptor que promete acumular é hoje o que enfraquece.*
 
+### 3.2.4 — A LEI foi construída, medida e REVERTIDA; o que ela mediu fica
+
+O passo 2 foi escrito por inteiro em 2026-08-11 (tabela de grips, os onze braços
+ancorados no vivo, as constantes da referência) e **revertido no mesmo dia**, com
+**12 gates vermelhos** e sem orçamento para os decidir um a um com o cuidado que
+cada um pede. Uma lei meio trocada é o pior dos estados: o artista sente a
+costura e a suíte deixa de dizer a verdade sobre as duas metades. O diff está
+parqueado no `git stash` da linha (*"metade2-lei-do-carimbo"*) — mas o que vale é
+o que ele **mediu**, e é isto:
+
+**1. ⚠️ A LEI DO CAMINHO SOBREVIVE À TROCA — e isso não era óbvio.** Compor
+sobre a lista de dabs é literalmente a doença que o `04.1` proíbe, e os dois
+gates centrais (`the_stroke_is_a_fact_of_the_path_not_of_how_finely_it_was_
+sampled` e o irmão do Smooth) ficaram **VERDES** com a lei composta assim que a
+fixture parou de pular o walk. *A invariância mudou de mecanismo, não deixou de
+existir:* sob o envelope ela vinha da idempotência, sob a composição ela vem de
+a **LISTA** ser função do caminho — que é exatamente o que a metade 1 comprou.
+
+**2. ⚠️ A fixture `sweep` dirigia `stroke.dab` direto, e sob a lei nova isso
+mede aritmética, não a lei.** Ela tem de ser o laço do `sculpt3d_input`
+(`walk` + [`Walk::anchor`]), como o `verb_hook_tests::drag_hook` já é. *Um gate
+com driver próprio mede a re-expressão, não o produto* — a mesma lição, agora
+paga por um segundo arquivo.
+
+**3. ⚠️ A MÁSCARA não pode viajar na lei nova, e o remédio é um quinto grip.**
+Com `accum = 1` um canal seria mascarado por inteiro **num dab**, o oposto de
+esfregar para construir. A referência concorda que são duas leis: o
+`Masking.paint` tem curva própria, acumula e satura (`clamp(m + f, 0, 1)`) e
+**não tem `accumulate`**. ⇒ `Grip::Paint`, carregando a lei do envelope verbatim
+até alguém portar o `clamp`. E ele obriga a corrigir `Verb::anchors()`, que era
+`!matches!(grip, Stamp)` e passaria a chamar a máscara de ancorada.
+
+**4. O mapa por verbo, com as constantes, já derivado:**
+
+| verbo | a forma, com o peso no incremento |
+|---|---|
+| Draw · Inflate | `vivo + n · (raio · 0,1 · w)` — a MESMA constante nos dois |
+| Flatten | `vivo − n · (d · w)`, os dois lados (o nosso; o da referência é unilateral) |
+| Fill · Scrape | idem, com o `continue` do lado errado — é ele que torna o verbo auto-limitado |
+| **Clay** | é o **`Fill` contra um plano LEVANTADO** de `raio · 0,1`, e não um verbo próprio |
+| Pinch · Magnify | `vivo + tangente · (w · 0,05)` — ⚠️ o `0,05` **não existia**, e é o `16,88×` |
+| Crease | lateral `t · (w · 0,07)` + normal `n · (shape⁴ · w · 0,07 · raio)` |
+| Smooth | `vivo·(1 − w) + média·w`, com a média lida **VIVA** |
+
+⚠️ **O `shape⁴ · w` é o `f⁵ · intensidade` da referência** — porque
+`w = shape · intensidade` —, e escrevê-lo assim evita passar a intensidade por
+um parâmetro que já viaja dentro do `w`.
+
+**5. A TRIAGEM dos 12, por classe** (o item 4 da lista acima, com nome):
+
+- **fixture pula o walk** — `the_pattern_does_not_depend_on_which_way_the_stroke_was_walked` (o `sweep` do `alpha_tests`);
+- **pinam o ENVELOPE, que deixa de ser a lei do carimbo** — `re_stamping_the_same_dab_list_changes_nothing` · `the_smooth_target_is_the_frozen_neighbourhood_not_the_moved_one` · e o arquivo `stroke_accum_tests.rs` inteiro (três gates), que tem de ser reescrito em torno de `Origin::Live` × `Proxy`;
+- **magnitude** — `pinch_pulls_along_the_surface…` · `the_crease_cuts_a_narrower_groove…` · `invert_changes_the_result_of_exactly_the_verbs…` (o Clay/Fill/Scrape mudou quem honra o sinal) · `growing_the_stroke_keeps_the_frozen_base`;
+- **o meu, de uma linha** — `a_stamp_verb_lands_short_of_its_target`: o controle tem de mudar para um grip que ainda atenua;
+- ⚠️ **e UM que é risco de PRODUTO, não de fixture** —
+  `smoothing_the_lip_of_an_open_mesh_does_not_suck_it_inward`. Com o anel lido
+  VIVO, suavizar repetidamente uma borda pode sugá-la, que é o número que o
+  `ph2d_mesh::ring_average` já pagou uma vez (a boca do `open_tube3` de 2 para
+  1,3597 em seis passes). **Este não se resolve editando o gate: ele se mede.**
+
 ⚠️ **O `Sharpen` não tem kernel na referência** (§3.3) e é o único que a wave
 tem de decidir em vez de portar.
 

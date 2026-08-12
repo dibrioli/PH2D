@@ -432,9 +432,109 @@ fn the_aa_does_not_step_the_interior_of_a_diluted_wash() {
         inked > 3_000,
         "a fixture nao pintou uma lavagem: {inked} texels"
     );
+    // ⚠️ **A barra NÃO é zero, e o porquê vale mais que o número.** Zero era alcançável — a 1ª
+    // rodada o alcançou com um portão DURO — e custava o dobro do pico na cena do report seguinte
+    // (pintar sobre pigmento seco: 32,7 sem portão contra 81,7 com o duro). Um zero pago com a
+    // outra metade da tela não é um zero, e a metade que ele paga tem gate próprio logo abaixo.
+    // O que esta barra defende é o DEFEITO ORIGINAL — 67 degraus contra 0 —, não a perfeição.
     assert!(
-        smooth <= hard + 2,
+        smooth <= hard + 25,
         "o AA degraua o miolo de uma lavagem diluida: {smooth} degraus com Smooth Edges contra \
-         {hard} sem (o defeito de 2026-08-11 media 67 contra 0)"
+         {hard} sem (o defeito de 2026-08-11 media 67 contra 0; a lei contínua mede 17)"
+    );
+}
+
+/// **A OUTRA METADE: pintar sobre pigmento já SECO** (Enio 2026-08-11, 2ª rodada — *"parece ter
+/// diminuído a qualidade do AA e não resolveu o problema"*).
+///
+/// ⚠️ **Este gate existe porque a ausência dele deixou uma regressão passar.** O irmão acima mede o
+/// miolo de UM traço sobre papel branco, e a cura que ele aprovou — um portão DURO sobre o vão —
+/// **dobrou o pico** desta cena: um `if` sobre uma grandeza contínua faz dois texels vizinhos serem
+/// calculados por LEIS diferentes, e o salto entre elas é um degrau que o portão fabrica. Medido
+/// aqui, Dilution 0,45: **32,7 sem portão · 81,7 com o portão duro · 32,7 com a lei contínua ·
+/// 112,7 com o AA desligado**.
+///
+/// ⚠️ **A barra não pode ser satisfeita desligando o AA** — desligado é o PIOR dos quatro (112,7),
+/// que é o que torna este gate uma afirmação sobre a LEI e não sobre a existência do AA.
+#[test]
+fn the_aa_does_not_harden_a_stroke_laid_over_dry_pigment() {
+    const SIZE: u32 = 256;
+    let stroke_over_dry = |smooth_edges: bool| -> Vec<u8> {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
+        t.paint.brush = BrushSpec {
+            radius_px: 26.0,
+            hardness: 1.0,
+            falloff: ph2d_painter_brush::Falloff::Constant,
+            color: [0.90, 0.15, 0.18],
+            space_attenuation: false,
+            watercolor: true,
+            smooth_edges,
+            wet_dilution: 0.45,
+            fill: 0.45,
+            depth: 2.0,
+            edge_gain: 1.2,
+            edge_spread: 6.0,
+            opacity: 0.4,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        // Traço 1 — a faixa HORIZONTAL que SECA: ao soltar ela commita, e os texels dela passam a
+        // ter dono próprio (o composite do traço seguinte os re-renderiza como `settled`).
+        t.on_canvas_pointer(cp([24.0, 90.0], PointerPhase::Down));
+        for i in 1..=16u8 {
+            t.on_canvas_pointer(cp([24.0 + f32::from(i) * 13.0, 90.0], PointerPhase::Move));
+            <PainterTool as ph2d_editor_core::Tool>::on_tick(&mut t, 16.0);
+        }
+        t.on_canvas_pointer(cp([232.0, 90.0], PointerPhase::Up));
+        for _ in 0..8 {
+            <PainterTool as ph2d_editor_core::Tool>::on_tick(&mut t, 16.0);
+        }
+        // Traço 2 — a VERTICAL que a atravessa. É este que pinta sobre pigmento seco.
+        let cx = f32::from(u16::try_from(SIZE / 2).unwrap_or(128));
+        t.on_canvas_pointer(cp([cx, 30.0], PointerPhase::Down));
+        for i in 1..=16u8 {
+            t.on_canvas_pointer(cp([cx, 30.0 + f32::from(i) * 12.0], PointerPhase::Move));
+            <PainterTool as ph2d_editor_core::Tool>::on_tick(&mut t, 16.0);
+        }
+        t.on_canvas_pointer(cp([cx, 222.0], PointerPhase::Up));
+        <PainterTool as ph2d_editor_core::Tool>::on_tick(&mut t, 16.0);
+        t.canvas_rgba.to_vec()
+    };
+    // O pico do gradiente horizontal na janela que cobre o 2º traço, nas linhas sobre a faixa seca.
+    // MÉDIA dos canais pela mesma razão do irmão (o `lum()` deste arquivo é o MÁXIMO, e numa
+    // lavagem VERMELHA ele nunca cruza o limiar de papel).
+    let peak = |px: &[u8]| -> f32 {
+        let mut mx = 0.0f32;
+        for y in 72..=108usize {
+            let prof: Vec<f32> = (0..SIZE as usize)
+                .map(|x| {
+                    let i = (y * SIZE as usize + x) * 4;
+                    (f32::from(px[i]) + f32::from(px[i + 1]) + f32::from(px[i + 2])) / 3.0
+                })
+                .collect();
+            for x in 80..176usize {
+                mx = mx.max((prof[x + 1] - prof[x]).abs());
+            }
+        }
+        mx
+    };
+    let smooth = stroke_over_dry(true);
+    // CONTROLE: a fixture TEM de conter as duas pinceladas, senão o pico é baixo por vácuo.
+    let inked_band = (72..=108usize)
+        .flat_map(|y| (20..236usize).map(move |x| (y * SIZE as usize + x) * 4))
+        .filter(|&i| smooth[i + 1] < 200)
+        .count();
+    assert!(
+        inked_band > 4_000,
+        "a fixture nao pintou a faixa seca: {inked_band} texels"
+    );
+    let p = peak(&smooth);
+    assert!(
+        p <= 45.0,
+        "o AA endurece um traco sobre pigmento seco: pico {p:.1} (a lei continua mede 32,7; o \
+         portao DURO de 2026-08-11 media 81,7 e foi o que o Enio reprovou)"
     );
 }

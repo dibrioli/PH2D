@@ -71,22 +71,30 @@ const AA_SS: [f32; 3] = [-0.667, 0.0, 0.667]; // LITERAL-PX-OK
 /// mesmo assim — porque quem endurece a borda grossa é o modelo ÓPTICO, não a cobertura (o doc acima
 /// já dizia isto). Com aquele portão os dois modos rendiam **byte-idênticos** e quatro gates caíam.
 ///
-/// **O número é o joelho MEDIDO das duas restrições** (cliffs no INTERIOR de uma lavagem, traço
-/// vertical r=26; o AA-off é `D0: 5` e `D0,45: 0`):
+/// ⚠️ **O número NÃO é escolhido pelo interior sozinho — isso foi a 1ª rodada, e ela regrediu a
+/// cena do Enio.** Com a transição CONTÍNUA (ver [`aa_coverage`]) o limiar é uma **curva de troca**
+/// entre duas cenas que querem coisas opostas, e as duas estão medidas (traço vertical r=26,
+/// Dilution 0,45; *seco* = um 2º traço atravessando uma faixa já commitada, *interior* = degraus no
+/// miolo sobre papel):
 ///
 /// ```text
-///     T      gates de AA      D 0,00      D 0,45
-///   0,02      9 verdes        13           42
-///   0,08      9 verdes        11           25
-///   0,12      9 verdes        10            7
-///   0,16      9 verdes         9            1
-///   0,20      9 verdes         6            0     <- o interior iguala o AA-off
-///   0,30      1 VERMELHO       -            -
-///   0,45      2 VERMELHOS      -            -
+///     lei                 seco (pico)   interior (degraus)   gates de AA
+///   sem portão                32,7            42              todos verdes
+///   suave 0,20                32,7            17              9 de 10
+///   suave 0,35                60,7             0              todos verdes
+///   suave 0,50                83,7             0              todos verdes
+///   DURO  0,20 (1ª rodada)    81,7             0              todos verdes
+///   AA desligado             112,7             0              (o pior dos dois)
 /// ```
 ///
-/// Abaixo de 0,20 o corpo ainda degraus; a partir de 0,30 o portão começa a comer rim de verdade.
-/// `LITERAL-PX-OK`: fração de cobertura endurecida, não um comprimento.
+/// **Nenhum limiar entrega as duas colunas** — é o que prova que o VÃO não é a variável que separa
+/// os dois casos (sobre tinta seca o AA é preciso no mesmo vão em que sobre papel ele é nocivo; o
+/// que difere é a BASE contra a qual o composite mistura, não a vizinhança de cobertura).
+///
+/// **0,20 é escolhido por ser a única linha que não é PIOR que o mundo pré-cura em nenhum dos dois
+/// eixos** (seco empata em 32,7 · interior cai de 42 para 17). O `0` do interior que a 1ª rodada
+/// comprava custava exatamente o pico de 81,7 na cena reportada, e *um zero pago com a outra metade
+/// da tela não é um zero*. `LITERAL-PX-OK`: fração de cobertura endurecida, não um comprimento.
 pub(super) const AA_SPAN_MIN: f32 = 0.20; // LITERAL-PX-OK
 
 /// The hardened silhouette coverage `smoothstep(e0, e1, coverage)` at `(sx, sy)` **plus the screen-space
@@ -107,13 +115,17 @@ pub(super) const AA_SPAN_MIN: f32 = 0.20; // LITERAL-PX-OK
 /// The treatment applies to **every transition** (thick strokes included — the second smoke's order:
 /// the saturation steepens the thick rim's perceived edge too, and the AA'd thin strokes came out
 /// "melhores que traços grossos"); a neighbourhood that carries no SILHOUETTE — a flat field
-/// (`grad == 0`: open paper) or one whose hardened coverage varies by less than [`AA_SPAN_MIN`]
-/// across the footprint (the wash's own body) — takes the single sample and is byte-identical.
+/// (`grad == 0`: open paper) or one whose hardened coverage does not vary at all across the
+/// footprint (the wash's own body) — takes the single sample and is byte-identical, and **entre os
+/// dois a resposta é INTERPOLADA** pelo vão medido em [`AA_SPAN_MIN`].
 /// ⚠️ **Esta segunda metade chegou em 2026-08-11 e a frase anterior era o defeito:** ela dizia
 /// *"only a genuinely FLAT neighbourhood"*, e o parêntese no fim deste doc admite que o *scallop*
 /// mantém `grad > 0` **em toda a lavagem** — ou seja o portão nunca fechava, e sobre uma lavagem
 /// DILUÍDA (cujo corpo pousa dentro de `[e0, e1]` em vez de saturado) as duas estatísticas abaixo
-/// degrauavam o miolo. Ver [`AA_SPAN_MIN`] para o mecanismo, a varredura e a tentativa que morreu.
+/// degrauavam o miolo. ⚠️ **E a PRIMEIRA tentativa de fechá-lo era um `if`, que o Enio reprovou no
+/// mesmo dia** (*"diminuiu a qualidade do AA e não resolveu"*): um limiar duro sobre uma grandeza
+/// contínua faz dois texels vizinhos serem calculados por leis diferentes e **fabrica** o contorno
+/// que deveria remover. Ver [`AA_SPAN_MIN`] para a curva de troca medida e as tentativas mortas.
 /// It is halo-free: nothing widens the window, so a fully-outside texel stays exactly `(0, …)` = paper.
 /// `pos(ox, oy)` maps a sub-texel OUTPUT offset to the coverage-space sample position — the caller
 /// routes it through the full Ragged-Edge warp (`pos(0,0)` must be the pixel's own warped centre), so
@@ -163,8 +175,22 @@ pub(super) fn aa_coverage(
     // ⚠️ **Uma vizinhança sem VÃO não é uma silhueta** — e sobre o corpo de uma lavagem DILUÍDA as
     // duas estatísticas abaixo (uma dilatação 3×3 e a razão de duas estatísticas dela) viram degraus
     // de tinta. O porquê, a varredura e a tentativa que morreu medida estão no [`AA_SPAN_MIN`].
-    if mx - mn < AA_SPAN_MIN {
+    //
+    // ⚠️ **A transição é CONTÍNUA, e a versão binária disto era o próprio defeito** (Enio
+    // 2026-08-11, 2ª rodada: *"diminuiu a qualidade do AA e não resolveu"*, pintando sobre pigmento
+    // já seco). Um `if` sobre uma grandeza contínua faz dois texels vizinhos serem calculados por
+    // LEIS diferentes, e o salto entre elas é um degrau que o portão **fabrica** — medido sobre
+    // tinta seca a Dilution 0,45, o pico saltava de 32,7 (sem portão) para **81,7** (portão duro),
+    // com a contagem de degraus praticamente igual: o que o portão duro movia era a ALTURA deles.
+    // Interpolar as duas respostas remove a lei-fronteira: em vão zero é `single` exato (o interior
+    // da lavagem, byte-idêntico), em vão cheio é a reconstrução inteira (o rim), e no meio nenhum
+    // par de vizinhos discorda sobre qual lei os governa.
+    let t = smoothstep(0.0, AA_SPAN_MIN, mx - mn);
+    if t <= 0.0 {
         return (single, 1.0);
+    }
+    if t < 1.0 {
+        return (single + (mx - single) * t, 1.0 + (ss / mx - 1.0) * t);
     }
     // The rasterizer split, shape × shading: the SHADING is what the covered fraction of the texel
     // contains — the wash a little deeper in (the MAX subsample; using the centre sample double-fades:

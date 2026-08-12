@@ -128,16 +128,6 @@ fn rig(slope_deg: f32, float_height: f32, feet: u16) -> (SimWorld, PhysicsBridge
     (sim, bridge, who)
 }
 
-/// Devolve `(deriva ao longo da rampa, amplitude de `y` na janela assentada)`.
-fn idle(slope_deg: f32, float_height: f32) -> (f32, f32) {
-    let (drift, amp, _) = idle_with(
-        slope_deg,
-        float_height,
-        PlatformPlayer::default().foot_samples,
-    );
-    (drift, amp)
-}
-
 /// O mesmo, com a contagem de raios da perna dita — é ela que move o piso —,
 /// e com a FOLGA PERPENDICULAR assentada, que é o que separa *flutuar* de
 /// *estar deitado na rampa*.

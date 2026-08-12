@@ -170,6 +170,122 @@ fn map(label: &str, t: &PainterTool) {
     }
 }
 
+/// **O GATE da wave — o aro VIRA a quina côncava, e a tinta não some na axila.**
+///
+/// Não afirma um número de aparência: afirma a PROPRIEDADE que o teto de flanco reto estabelece —
+/// na faixa que corre pela bissetriz saindo da quina, a lavagem **não pode ter um vão** onde os
+/// dois lados têm tinta. É a cunha branca da foto, escrita como asserção.
+///
+/// ⚠️ **O oráculo é DERIVADO, não escolhido: uma cunha é um lugar mais CLARO que a tinta em volta.**
+/// A 1ª versão deste gate levou uma barra tirada do mapa (`pit > 0.20`) e **a mutação sobreviveu** —
+/// sem a cura o vão mede 0,247, que passava. Medidos os dois estados (sem cura **0,247**, com cura
+/// **0,322**), o que os separa não é um número a escolher: é o **miolo do braço** (0,278), que está
+/// entre eles. Então o gate afirma a propriedade que a foto mostra — *a axila não pode ser mais
+/// clara que a lavagem lisa ao lado dela* — e o número vem da mesma corrida.
+///
+/// ⚠️ **Com CONTROLE**, senão ele passa por vácuo: a cena tem de conter os dois aros (é o contraste
+/// entre eles e o vão que faz a cunha ser vista), e o vão é medido *entre* eles.
+///
+/// **Mutação que tem de sangrar:** devolver `1.0` de [`super::watercolor_rim::straight_edge_cap`]
+/// (o teto inerte) ⇒ o vão reabre para 0,247, abaixo do miolo.
+#[test]
+fn the_rim_turns_the_concave_corner_instead_of_leaving_a_wedge() {
+    let t = cross_two_strokes(wash_brush());
+    // A linha y = C + 21 atravessa: miolo · aro vertical · a AXILA · aro horizontal.
+    let y = C + 21.0;
+    let rim_v = (14..=20)
+        .map(|x| alpha_at(&t, C + x as f32, y))
+        .fold(0.0f32, f32::max);
+    let rim_h = (26..=34)
+        .map(|x| alpha_at(&t, C + x as f32, y))
+        .fold(0.0f32, f32::max);
+    let pit = (21..=25)
+        .map(|x| alpha_at(&t, C + x as f32, y))
+        .fold(1.0f32, f32::min);
+    // O miolo LISO de um braco, longe do cruzamento: a regua da propriedade, medida na mesma cena.
+    let interior = alpha_at(&t, LONE_X, C);
+    // CONTROLE: os dois aros existem e sao mais escuros que o miolo. Sem esta metade um `pit` alto
+    // passaria numa cena sem aro nenhum, e o gate estaria verde sobre uma lavagem sem o fenomeno.
+    assert!(
+        rim_v > interior + 0.15 && rim_h > interior + 0.15,
+        "a fixture tem de conter os DOIS aros (vertical {rim_v:.3}, horizontal {rim_h:.3}, \
+         miolo {interior:.3})"
+    );
+    // A PROPRIEDADE: uma cunha e' um lugar mais CLARO que a tinta em volta.
+    assert!(
+        pit > interior,
+        "a axila e' mais clara que a lavagem lisa: minimo {pit:.3} contra miolo {interior:.3} \
+         (aros {rim_v:.3}/{rim_h:.3}) — o aro parou de virar a quina"
+    );
+}
+
+/// **O MESMO, com a lavagem ainda VIVA** — um traço que cruza a si mesmo e que o artista **não
+/// soltou**.
+///
+/// ⚠️ **Este gate existe porque a mutação do irmão SOBREVIVEU.** O campo de distância só é computado
+/// se algum dono tem aro, e a pergunta tem dois lados: a **tabela** de estilos (donos já commitados)
+/// e o pincel **VIVO**. Numa cruz de dois traços a tabela já responde `true`, então tirar o lado
+/// vivo do gate não muda um pixel ali — é a defesa em camadas escondendo o buraco. O único caso que
+/// isola o lado vivo é **a primeira lavagem da sessão, ainda aberta**, e é esta.
+///
+/// **Mutação que tem de sangrar:** tirar `|| self.paint.brush.edge_gain > 0.0` do `wants_rim`.
+#[test]
+fn the_first_stroke_of_the_session_turns_the_corner_too() {
+    let t = cross_one_stroke(wash_brush());
+    let y = C + 21.0;
+    let interior = alpha_at(&t, LONE_X, C);
+    let rim_v = (14..=20)
+        .map(|x| alpha_at(&t, C + x as f32, y))
+        .fold(0.0f32, f32::max);
+    let rim_h = (26..=34)
+        .map(|x| alpha_at(&t, C + x as f32, y))
+        .fold(0.0f32, f32::max);
+    let pit = (21..=25)
+        .map(|x| alpha_at(&t, C + x as f32, y))
+        .fold(1.0f32, f32::min);
+    assert!(
+        rim_v > interior + 0.15 && rim_h > interior + 0.15,
+        "a fixture de UM traco tem de conter os DOIS aros ({rim_v:.3}/{rim_h:.3}, miolo {interior:.3})"
+    );
+    assert!(
+        pit > interior,
+        "a axila do PRIMEIRO traco e' mais clara que a lavagem lisa: {pit:.3} contra {interior:.3}"
+    );
+}
+
+/// **QUANTO a cura move um traço RETO** — o número que o pino de fingerprint não dá.
+///
+/// O `smooth_edges_off_is_the_pre_aa_render_byte_for_byte` pina um hash de canvas inteiro, e um hash
+/// move com UM byte: ele diz *que* mudou e nunca *quanto*. Esta sonda escreve o canvas da MESMA
+/// fixture dele num arquivo, para o A/B ser um diff de bytes entre duas corridas (com a cura e com
+/// [`super::watercolor_rim::straight_edge_cap`] devolvendo `1.0`).
+///
+/// `env PH2D_RIM_DUMP=<arquivo> cargo test -p ph2d-tool-painter --release rim_dump -- --ignored`
+#[test]
+#[ignore = "sonda; roda com --ignored e PH2D_RIM_DUMP"]
+fn rim_dump_the_straight_stroke_the_pin_watches() {
+    let Ok(path) = std::env::var("PH2D_RIM_DUMP") else {
+        println!("defina PH2D_RIM_DUMP=<arquivo>");
+        return;
+    };
+    // A fixture EXATA do pino: traço reto, raio 40, warp 6, Smooth Edges OFF.
+    let mut t = PainterTool::default();
+    t.set_source(white(256), 256, 256);
+    let spec = BrushSpec {
+        radius_px: 40.0,
+        color: [0.85, 0.15, 0.15],
+        space_attenuation: false,
+        watercolor: true,
+        warp: 6.0,
+        smooth_edges: false,
+        ..Default::default()
+    };
+    arm(&mut t, spec);
+    stroke(&mut t, [70.0, 128.0], [186.0, 128.0]);
+    std::fs::write(&path, &*t.canvas_rgba).expect("dump");
+    println!("escrito: {path} ({} bytes)", t.canvas_rgba.len());
+}
+
 /// A medição. Imprime as duas cenas (dois traços · um traço que se cruza) para a aquarela e o
 /// controle DIGITAL, que é a lei que ninguém reportou como quebrada.
 #[test]
@@ -204,4 +320,62 @@ fn measure_the_crossing_notch() {
         "DIGITAL (controle) — dois tracos",
         &cross_two_strokes(digital),
     );
+
+    // ABLAÇÃO PELA ENTRADA (nunca por instrumentação): o `edge` e' um UNSHARP `cw − blur(hard)`, com
+    // um lobo positivo (o aro, dentro) e um negativo (a franja pálida, fora). `edge_gain = 0` mata os
+    // DOIS de uma vez pelo knob que o artista tem. Se a cunha some aqui, ela e' do unsharp; se fica,
+    // ela e' da UNIÃO da cobertura, e o alvo seria outro.
+    println!("\n=== ABLAÇÃO: edge_gain = 0 (sem aro e sem franja) ===");
+    let no_edge = BrushSpec {
+        edge_gain: 0.0,
+        ..wash
+    };
+    report(
+        "AQUARELA sem aro — dois tracos",
+        &cross_two_strokes(no_edge),
+    );
+    map(
+        "AQUARELA sem aro — dois tracos",
+        &cross_two_strokes(no_edge),
+    );
+
+    franja_sobre_tinta();
+}
+
+/// **O PREÇO do teto de dois lados, medido no lugar onde ele pode custar.**
+///
+/// O lobo pálido do unsharp vive FORA da lavagem. Sobre papel branco ele é invisível (branco sobre
+/// branco), então limitá-lo não muda nada ali. Onde ele é visível é sobre TINTA QUE JÁ EXISTE — a
+/// franja clara que uma lavagem nova abre na tinta vizinha. Esta sonda mede exatamente isso, num
+/// flanco **RETO** (longe de qualquer quina), que é onde a lei antiga estava CERTA e onde o teto não
+/// deveria agir.
+fn franja_sobre_tinta() {
+    println!("\n=== A FRANJA SOBRE TINTA EXISTENTE (flanco RETO — o preço do teto) ===");
+    let size = SIZE;
+    // Uma faixa de tinta no SOURCE (o vizinho que a franja pode empalidecer).
+    let mut src = vec![255u8; (size * size * 4) as usize];
+    for y in 0..size {
+        for x in 0..size {
+            if (100..156).contains(&y) {
+                let i = ((y * size + x) * 4) as usize;
+                src[i..i + 4].copy_from_slice(&[40u8, 90, 200, 255]);
+            }
+        }
+    }
+    let mut t = PainterTool::default();
+    t.set_source(src, size, size);
+    arm(&mut t, wash_brush());
+    // Lavagem VERTICAL cruzando a faixa: o flanco reto dela fica em x = C ± R.
+    stroke(&mut t, [C, 40.0], [C, 216.0]);
+    println!("      x-C   R    G    B      (o flanco reto da lavagem, atravessando o ombro)");
+    for dx in 12..28u32 {
+        let x = C as u32 + dx;
+        let i = ((128 * size + x) * 4) as usize;
+        println!(
+            "   {dx:5}   {:3}  {:3}  {:3}",
+            t.canvas_rgba[i],
+            t.canvas_rgba[i + 1],
+            t.canvas_rgba[i + 2]
+        );
+    }
 }

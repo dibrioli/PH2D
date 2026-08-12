@@ -148,15 +148,74 @@ Medido lá: o desvio entre as duas rotas caiu de **48/255** (hardness 0,4) e 35/
   compor também o `edge` (o que faz o aro contornar a quina porque cada passagem contorna a sua), ou
   trocar o borrão por uma medida de distância com regra explícita de quina côncava.
 
-## 5. Recomendação
+## 5. Recomendação — e o que foi CONSTRUÍDO (ordem do Enio: *"faça como sugere"*)
 
 **(b) primeiro, e sozinho.** É ele que produz a cunha da foto — **87/255** contra os 46/255 de (a) —,
 é o único dos dois que é visível numa lavagem de opacidade normal, e não toca a lei do `max` que
 sustenta *"sem build-up dentro de um traço"*. Fazer (a) antes moveria o desenho de toda arte de
 aquarela já feita por um número menor que o defeito reportado.
 
-⚠️ **E (a) tem um preço de produto que precisa de decisão sua, não de engenharia:** compor entre
-passagens faz o cruzamento **escurecer**, e hoje ele é 0,255 contra 0,278 do braço. Escurecer é o que
-tinta faz; mas é mudança de aparência em toda cruz, laço e hachura já pintados.
+⚠️ **(a) NÃO foi construído, e tem um preço de produto que é decisão sua:** compor entre passagens faz
+o cruzamento **escurecer**, e hoje ele é 0,255 contra 0,278 do braço. Escurecer é o que tinta faz; mas
+é mudança de aparência em toda cruz, laço e hachura já pintados.
 
-**Nada disto foi construído.** A sonda fica no repo porque o número tem de ser reproduzível.
+---
+
+## 6. A cura de (b), como ela ficou
+
+Crate-módulo novo [`watercolor_rim.rs`](../../crates/ph2d-tool-painter/src/tool/paint/watercolor_rim.rs):
+
+```text
+inner := min(blur(hard), P(sd, r))
+P(sd, r) = clamp((sd + r + 0.5) / (2r + 1), 0, 1)      // a resposta do box blur a um DEGRAU
+```
+
+`sd` é a distância **assinada** à fronteira `hard = 0.5`, e o teto é *o `inner` que um flanco RETO
+daria à mesma distância*. Quatro propriedades, cada uma medida:
+
+1. **É TETO, não substituição.** A correção que a quina côncava precisa só tem um sinal — mais aro e
+   menos franja, as duas saem de um `inner` menor. Um `min` nunca enfraquece o aro em lugar nenhum.
+2. **Nos DOIS lados.** A versão só-por-dentro foi construída e é metade da cura: ela engrossa o aro
+   ao aproximar-se da quina (`44543` → `66542` no mapa) e **deixa o vão onde estava**, porque o vão
+   está FORA — e aro mais forte ao lado de um vão intocado *aumenta* o contraste que faz a cunha ser
+   vista. Nos dois lados o vão fecha (`2222` → `333333`, buraco de 5 px → 2).
+3. **UMA EDT, não duas.** A 1ª versão pedia a distância de dentro e a do complemento e custava **3,67
+   borrões** no caminho quente. A pergunta certa é a distância ao **conjunto-fronteira** — uma
+   transformada, com o sinal vindo da máscara de graça: **1,69 borrões**, medido costas-com-costas na
+   mesma corrida (razão, nunca wall-clock: esta máquina oscila).
+4. **A EDT é a que já existe** — `sculpt_close::distance_inside`, cujo doc diz que um segundo
+   consumidor sempre foi a intenção. Este é o terceiro; zero kernel novo.
+
+**Gates:** `the_rim_turns_the_concave_corner_instead_of_leaving_a_wedge` (cruz de dois traços) ·
+`the_first_stroke_of_the_session_turns_the_corner_too` · os três de unidade do módulo.
+
+⚠️ **O oráculo é DERIVADO:** *uma cunha é um lugar mais claro que a tinta em volta*. A 1ª versão do
+gate levou uma barra tirada do mapa (`pit > 0.20`) e **a mutação sobreviveu** — sem a cura o vão mede
+0,247, que passava. Medidos os dois estados (**0,247** sem cura, **0,322** com), o que os separa não é
+um número a escolher: é o **miolo do braço** (0,278), que está entre eles e sai da mesma corrida.
+
+## 7. ⚠️ O PREÇO, e é ele que o smoke julga
+
+**Todo aro de aquarela muda um pouco.** Medido byte a byte na fixture do pino de fingerprint (traço
+RETO, raio 40, warp 6), com e sem a cura:
+
+| | |
+|---|---|
+| bytes que diferem | **6247 de 262144 (2,4%)** |
+| pixels tocados | **2486 de 65536 (3,8%)** |
+| pior delta | **18/255** |
+| onde | **só na banda do ARO** — miolo e papel não se movem |
+
+E ele move num traço **reto de propósito, não por acidente**: aquela fixture tem `warp = 6`, e um
+contorno ondulado é localmente **côncavo em metade das ondas**. É a mesma correção da quina, na escala
+da ondulação — *a lei antiga errava em toda concavidade, e não só no cruzamento que a foto mostrou*.
+
+⚠️ **O pino `smooth_edges_off_is_the_pre_aa_render_byte_for_byte` MOVEU** (`0xc5ebf8cf645fb6f6` →
+`0xe59f2fb788ce5874`), re-escrito **com a justificação e os números ao lado**, nunca em silêncio — o
+protocolo do doc 23.
+
+## 8. O que sobra, com o número
+
+O vão **encolhe de 5 px para 2**, não para zero. Os 2 px que ficam são **(a)**, a união da cobertura —
+que segue não construída de propósito. Se o smoke disser que ainda se vê, é (a) que decide, e ela é a
+pergunta de produto do §5.

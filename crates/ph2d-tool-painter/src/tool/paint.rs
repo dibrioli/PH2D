@@ -93,6 +93,8 @@ mod watercolor_noise;
 mod watercolor_render;
 /// Watercolor per-pixel rewet terms (lift/dissolve/pool/backrun); split from `watercolor_render`.
 mod watercolor_rewet_px;
+/// O ARO vira a QUINA: a distância à fronteira que limita o unsharp do `edge` (doc 36).
+mod watercolor_rim;
 /// Watercolor section setters + router (edge darkening / granulation / pigment); no fluid sim.
 mod watercolor_settings;
 /// Watercolor Wet Mix reservoir (Smudge/Pickup): lift the pre-stroke paint, mix into the dab colour.

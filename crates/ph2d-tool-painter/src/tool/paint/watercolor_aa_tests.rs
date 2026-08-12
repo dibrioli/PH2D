@@ -90,9 +90,24 @@ fn the_smooth_edges_click_flips_the_mode() {
 }
 
 /// The two edge modes coexist behind the Wash card's "Smooth Edges" checkbox (Enio 2026-07-20 — the
-/// smooth look is the DEFAULT). OFF must reproduce the pre-AA render **byte-for-byte**: this is the
-/// exact whole-canvas fingerprint the original `a_thick_watercolor_stroke_is_byte_identical` gate
+/// smooth look is the DEFAULT). OFF must reproduce the hard-mode render **byte-for-byte**: this is
+/// the whole-canvas fingerprint the original `a_thick_watercolor_stroke_is_byte_identical` gate
 /// pinned before the AA existed, resurrected as the hard-mode oracle.
+///
+/// ⚠️ **O pino MOVEU em 2026-08-12** (`0xc5ebf8cf645fb6f6` → `0xe59f2fb788ce5874`), e o protocolo é o
+/// do doc 23: um hash pinado não se re-escreve em silêncio. O que o moveu foi **o aro virar a quina**
+/// ([`super::watercolor_rim`], doc 36) — o `inner` passou a ser limitado pelo que um flanco RETO
+/// daria à mesma distância, e um `min` só pode DAR aro.
+///
+/// **Quanto ele moveu, medido byte a byte nesta MESMA fixture** (sonda
+/// `crossing_probe::rim_dump_the_straight_stroke_the_pin_watches`, com e sem a cura):
+/// **6247 bytes de 262144 (2,4%) · 2486 px de 65536 (3,8%) · pior delta 18/255**, e a cauda do
+/// histograma é toda ≤ 12. Tudo na banda do ARO — o miolo e o papel não se movem.
+///
+/// ⚠️ **E ele move num traço RETO de propósito, não por acidente:** esta fixture tem `warp = 6`, e um
+/// contorno ondulado é localmente **côncavo** em metade das ondas. É a mesma correção da quina, na
+/// escala da ondulação — o que confirma que a lei antiga errava em toda concavidade, e não só no
+/// cruzamento que a foto mostrou.
 #[test]
 fn smooth_edges_off_is_the_pre_aa_render_byte_for_byte() {
     assert!(
@@ -103,8 +118,8 @@ fn smooth_edges_off_is_the_pre_aa_render_byte_for_byte() {
     let hard = wc_stroke_hard(256, 40.0, 6.0, &pts);
     assert_eq!(
         canvas_hash(&hard),
-        0xc5ebf8cf645fb6f6,
-        "Smooth Edges OFF must render the pre-AA composite byte-for-byte"
+        0xe59f2fb788ce5874,
+        "Smooth Edges OFF must render the hard-mode composite byte-for-byte"
     );
     // And the two modes genuinely differ where the AA lives (the rim) — the checkbox is not dead.
     let smooth = wc_stroke(256, 40.0, true, 6.0, &pts);

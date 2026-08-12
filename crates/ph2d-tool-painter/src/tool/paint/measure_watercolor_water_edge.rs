@@ -161,7 +161,7 @@ fn measure_the_carried_waters_edge() {
 /// Duas pinceladas: uma faixa HORIZONTAL (que seca, virando dona daqueles texels) e depois uma
 /// VERTICAL que a atravessa. E a cena que o Enio reporta, e a que a sonda acima **nao continha**:
 /// ela pintava um traco so, sobre papel branco.
-fn wash_over_dry(dilution: f32, smooth_edges: bool) -> Vec<u8> {
+pub(super) fn wash_over_dry(dilution: f32, smooth_edges: bool) -> Vec<u8> {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (SIDE * SIDE * 4) as usize], SIDE, SIDE);
     t.paint.brush = BrushSpec {
@@ -474,4 +474,58 @@ fn measure_the_law_fingerprint() {
             h(&wash(dil, false))
         );
     }
+}
+
+/// **O ARCO PÁLIDO NUMA CONCAVIDADE** (a 3ª foto do Enio: *"diminuiu mas não curou"*).
+///
+/// Numa reentrância o campo BORRADO `inner` excede a cobertura local `cw`, então o unsharp ASSINADO
+/// `edge = gain·(cw − inner)` fica NEGATIVO e EMPALIDECE — é o termo EDGE-3, deliberado. A pergunta
+/// desta sonda não é se ele existe, é se a BORDA dele é dura: `cw` é o `mx` (a dilatação 3×3), cujo
+/// contorno segue a grade discreta.
+#[test]
+#[ignore = "sonda de estudo; roda sob demanda"]
+fn measure_the_pale_arc_at_a_concavity() {
+    println!("\n=== O ARCO PALIDO NA CONCAVIDADE (pincel REAL, cruz = 4 cantos concavos) ===\n");
+    println!(
+        "{:<30} {:>12} {:>12} {:>12}",
+        "config", "arco pico", "grad max", "n degraus"
+    );
+    // A cruz de `wash_over_dry` (faixa horizontal em y=90 + vertical em x=128, raio 72) tem quatro
+    // quinas CÔNCAVAS. A janela cobre a de baixo-direita, onde o arco palido se forma.
+    let rows: Vec<usize> = (150..=215).collect();
+    let (wx0, wx1) = (196usize, 250usize);
+    for dil in [0.0f32, 0.45] {
+        for aa in [true, false] {
+            let px = wash_over_dry(dil, aa);
+            let (mut peak, mut gmax, mut steps) = (0.0f32, 0.0f32, 0usize);
+            for &y in &rows {
+                let prof = profile(&px, y);
+                let mut body: Vec<f32> =
+                    (wx0..wx1).map(|x| prof[x]).filter(|&v| v < 240.0).collect();
+                if body.len() < 12 {
+                    continue;
+                }
+                body.sort_by(f32::total_cmp);
+                let med = body[body.len() / 2];
+                for x in wx0..wx1 {
+                    // Só o INTERIOR entintado — a transição para o papel tem tratamento próprio.
+                    if prof[x] >= 240.0 || prof[x + 1] >= 240.0 {
+                        continue;
+                    }
+                    peak = peak.max(prof[x] - med);
+                    let g = (prof[x + 1] - prof[x]).abs();
+                    gmax = gmax.max(g);
+                    if g > 6.0 {
+                        steps += 1;
+                    }
+                }
+            }
+            let label = format!("Dilution {dil:.2} - AA {}", if aa { "on " } else { "off" });
+            println!("{label:<30} {peak:>12.1} {gmax:>12.1} {steps:>12}");
+        }
+    }
+    println!(
+        "\n    'arco pico' = quanto o arco CLAREIA acima do corpo local (o lobo negativo).\n    \
+         'grad max' = quao DURA e a borda dele.\n"
+    );
 }

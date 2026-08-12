@@ -206,7 +206,7 @@ descartável por construção; um corpo do mundo nunca é.*
 | C2 | **realce de proveniência** nos dois sentidos (valor ↔ objecto) | 2 | — | **M** |
 | C3 | o **readout que segue a mão** vira REGRA (hoje é 1 instância) | 2 | — | **M** |
 | R1 | **reduced motion** — um interruptor, e nasce **com** a F2 | 4 | F2 | **P** |
-| ⭐ **X1** | **a pressão da caneta chega à shell** (custa *uma função*; afecta Flip **e** Painter) | 3 | — | **P** |
+| ~~⭐~~ **X1** | **a pressão da caneta chega à shell** (afecta Flip **e** Painter) — ⚠️ o ⭐ e o **P** foram **REFUTADOS por medição**: winit 0.30.13 crava `force: None` nos três backends de desktop, então não há função a escrever. Ver a §8 | 3 | **winit** | **M/G** |
 | D1 | **som de UI** opt-in, do motor que já temos | 4 | F0 | **M** |
 | D2 | **partículas de feedback** do motor que já temos (dissolver em vez de sumir) | 4 | F0 | **G** |
 
@@ -237,8 +237,31 @@ chega ao chrome, os 49 widgets ganham vida, e o interruptor que a desliga nasce 
 **E1 scrub numérico** (o ganho de eficiência, independente de tudo) → **C1 o TETHER** (o pedido, e
 com a F0 ele é barato) → o resto por gosto.
 
-⚠️ **X1 (a pressão da caneta) não depende de nada e está parada há waves** — é a única da lista que
-melhora a **fidelidade do traço**, não a da interface.
+⚠️ ~~**X1 (a pressão da caneta) não depende de nada e está parada há waves — custa *uma função*.**~~
+**MEDIDO E REFUTADO (2026-08-12): não custa uma função, custa uma DEPENDÊNCIA.** Ela é a única da
+lista que melhora a **fidelidade do traço** e não a da interface, e por isso vale ter o preço certo:
+
+- os **dois** sítios que constroem um `PointerEvent` (`input_dispatch.rs`) cravam `pressure: 1.0` e
+  `source: PointerSource::Mouse` — isso é o que a frase *«custa uma função»* via, e está certo;
+- mas **winit 0.30.13 não tem caminho de caneta em desktop nenhum.** O único evento que carrega
+  pressão é o `WindowEvent::Touch { force: Option<Force> }`, e nos **três backends de desktop** o
+  `force` é literalmente uma constante: `x11/event_processor.rs` escreve `force: None, // TODO`,
+  o `wayland/seat/touch/mod.rs` escreve `force: None`, e o `windows/event_loop.rs` escreve
+  `force: None, // WM_TOUCH doesn't support pressure information`. **Só `android`, `ios` e `web`
+  o preenchem.**
+
+⇒ **Ligar o `Touch` hoje seria uma função que mede `None` na máquina onde o smoke corre** — uma
+feature que ninguém consegue julgar, que é a forma de dívida que este repo nomeia. O que move o
+número é o **winit** (a API unificada de ponteiro, que esta medição **não** verificou — não há
+versão mais recente na cache local para ler) ou um caminho por plataforma. É **decisão do Enio**, e
+o tamanho honesto é **M/G com bump de dependência da shell**, não **P**.
+
+⚠️ **E a consequência que já shipa: TRÊS controlos vivem a pretender que a pressão chega.** O
+`WidthSource::Pressure` do lápis do Vector e os dois knobs `pressure_min_width` / `pressure_response`
+do Flip são **provavelmente correctos e provadamente inertes** — os motores funcionam (há gates), a
+entrada é que é constante. Não se removem (funcionam no dia em que a pressão existir); o que faltava
+era o número estar escrito ao lado da promessa. E `PointerSource::Pencil` é um **variant que ninguém
+constrói** (medido por grep) — ele nasce vivo no mesmo dia.
 
 ---
 

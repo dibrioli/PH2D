@@ -113,6 +113,16 @@ impl crate::App {
     /// a shell escuta, não tem pressão no protocolo. Logo, hoje, nenhum dispositivo entrega
     /// pressão a este app.
     ///
+    /// ⚠️ **E ligar o `Touch` NÃO seria a cura — medido em 2026-08-12, e é a metade que faltava
+    /// a esta nota.** Em `winit 0.30.13` o `force` é uma constante nos **três** backends de
+    /// desktop: `x11/event_processor.rs` escreve `force: None, // TODO`, o
+    /// `wayland/seat/touch/mod.rs` escreve `force: None`, e o `windows/event_loop.rs` escreve
+    /// `force: None, // WM_TOUCH doesn't support pressure information`. Só `android`, `ios` e
+    /// `web` o preenchem. **Não há função a escrever: o que falta é a dependência** (a API
+    /// unificada de ponteiro de um winit mais recente, ou um caminho por plataforma) — e isso é
+    /// decisão do Enio, não uma wave a começar. O estudo da UI viva tinha isto marcado como ⭐ de
+    /// tamanho **P** (*«custa uma função»*) e a §8 dele carrega hoje a refutação.
+    ///
     /// Ela mora aqui numa função só **exatamente por isso**: quando o caminho do tablet existir,
     /// é ESTA linha que muda, e a fonte `Pressure` do lápis passa a funcionar sem que nada mais
     /// se mexa. Repetir o literal no press e no move seria a terceira cópia de um número que já

@@ -136,3 +136,74 @@ fn measure_which_stiffness_a_discrete_character_wants() {
         );
     }
 }
+
+/// **A trajectória que o ARTISTA vê no eixo do hover, os dois carácteres lado a lado.**
+///
+/// O report do Enio de 2026-08-12 — *«Discrete pode estar inativado ou não há diferença entre
+/// discrete e expressive»* — é sobre APARÊNCIA, e a sonda que já existe mede `t95`/`t99` de cada
+/// mola isolada. Isso não responde à pergunta dele: o que se vê é o **PAR**, no canal em que ele
+/// de facto corre (uma fracção que vai de 0 a 1 e é depois CLAMPADA).
+#[test]
+#[ignore = "sonda"]
+fn measure_what_the_eye_sees_between_the_two_characters() {
+    const DT: f64 = 1.0 / 60.0;
+    let id = NodeId(1);
+    for ch in [UiCharacter::Discrete, UiCharacter::Expressive] {
+        let mut m = UiMotion::default();
+        m.set_character(ch);
+        // Entrada: o hover ACENDE (a primeira vez que um id é visto ele NÃO anima, então
+        // semeamos com o alvo 0 antes de pedir 1 — é o caminho real do `tick`).
+        m.animate(id, 0.0, Role::Fade);
+        let mut traj = Vec::new();
+        for f in 0..60 {
+            m.advance(DT);
+            let v = m.animate(id, 1.0, Role::Fade);
+            if f < 30 {
+                traj.push(v);
+            }
+        }
+        let peak = traj.iter().cloned().fold(0.0_f32, f32::max);
+        let t90 = traj.iter().position(|v| *v >= 0.90).map(|i| i as f64 * DT);
+        let t99 = traj.iter().position(|v| *v >= 0.99).map(|i| i as f64 * DT);
+        println!(
+            "{ch:?}: pico={peak:.4} t90={:?} t99={:?}",
+            t90.map(|t| format!("{t:.3}s")),
+            t99.map(|t| format!("{t:.3}s"))
+        );
+        let sample: Vec<String> = traj.iter().take(20).map(|v| format!("{v:.2}")).collect();
+        println!("  quadros 1..20: {}", sample.join(" "));
+    }
+}
+
+/// **Quanto ultrapassa cada amortecimento, e quanto custa em tempo** — a tabela que escolhe o `ζ`
+/// do Expressivo em vez de o palpitar.
+#[test]
+#[ignore = "sonda"]
+fn measure_the_overshoot_each_damping_buys() {
+    const DT: f64 = 1.0 / 60.0;
+    println!("  zeta | pico  | ultrapassa | t90    | assenta(<1%)");
+    for zeta in [0.40_f32, 0.45, 0.50, 0.55, 0.60, 0.65, 0.72, 0.80] {
+        let mut s = ph2d_spring::SpringState::at_rest();
+        let spring = ph2d_spring::Spring {
+            stiffness: 18.0,
+            damping: f64::from(zeta),
+        };
+        let mut traj = Vec::new();
+        for _ in 0..180 {
+            s.advance(DT, spring);
+            traj.push(s.x as f32);
+        }
+        let peak = traj.iter().cloned().fold(0.0_f32, f32::max);
+        let t90 = traj.iter().position(|v| *v >= 0.90).map(|i| i as f64 * DT);
+        let settle = traj
+            .iter()
+            .rposition(|v| (v - 1.0).abs() > 0.01)
+            .map(|i| (i + 1) as f64 * DT);
+        println!(
+            "  {zeta:.2} | {peak:.3} |   {:5.1}%   | {:5.3}s | {:5.3}s",
+            (peak - 1.0) * 100.0,
+            t90.unwrap_or(f64::NAN),
+            settle.unwrap_or(f64::NAN)
+        );
+    }
+}

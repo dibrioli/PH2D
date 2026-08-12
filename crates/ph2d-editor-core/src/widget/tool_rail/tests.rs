@@ -173,12 +173,20 @@ fn paint_smoke_minimal_rail() {
 #[test]
 fn only_a_resting_or_hovered_chip_lives_on_the_hover_axis() {
     use super::paint::rail_hover_t;
-    assert!((rail_hover_t(ButtonState::Normal, false, 0.4) - 0.4).abs() < 1e-6);
-    assert!((rail_hover_t(ButtonState::Hovered, false, 0.4) - 0.4).abs() < 1e-6);
-    // Activo, premido e desactivado NÃO são quantidades.
-    assert!((rail_hover_t(ButtonState::Normal, true, 0.4) - 1.0).abs() < 1e-6);
-    assert!((rail_hover_t(ButtonState::Pressed, false, 0.4) - 1.0).abs() < 1e-6);
-    assert!((rail_hover_t(ButtonState::Disabled, false, 0.4) - 1.0).abs() < 1e-6);
+    assert_eq!(
+        rail_hover_t(ButtonState::Normal, false, Some(0.4)),
+        Some(0.4)
+    );
+    assert_eq!(
+        rail_hover_t(ButtonState::Hovered, false, Some(0.4)),
+        Some(0.4)
+    );
+    // Activo, premido e desactivado NÃO são quantidades: saem do eixo.
+    assert_eq!(rail_hover_t(ButtonState::Normal, true, Some(0.4)), None);
+    assert_eq!(rail_hover_t(ButtonState::Pressed, false, Some(0.4)), None);
+    assert_eq!(rail_hover_t(ButtonState::Disabled, false, Some(0.4)), None);
+    // E um pintor SEM relógio não tem eixo nenhum.
+    assert_eq!(rail_hover_t(ButtonState::Hovered, false, None), None);
 }
 
 /// **Meio caminho é uma cor NOVA, não uma das duas pontas.**
@@ -194,7 +202,7 @@ fn half_a_hover_is_a_colour_between_the_two_ends() {
     let rest = resolve(ColorToken::Text2, theme);
     let hot = resolve(ColorToken::Text1, theme);
     let mid = blend_or(
-        0.5,
+        Some(0.5),
         ColorToken::Text2,
         ColorToken::Text1,
         ColorToken::Text2,
@@ -218,7 +226,7 @@ fn half_a_hover_is_a_colour_between_the_two_ends() {
     // E o NEUTRO devolve a cor dura, exactamente — é o que mantém byte-idêntico todo chamador
     // que não passa relógio nenhum.
     let neutral = blend_or(
-        1.0,
+        None,
         ColorToken::Text2,
         ColorToken::Text1,
         ColorToken::Accent,

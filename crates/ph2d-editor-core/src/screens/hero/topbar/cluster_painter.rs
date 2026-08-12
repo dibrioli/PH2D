@@ -101,7 +101,15 @@ pub(super) fn paint_topbar_rail_chip(
     let chip_x = chip_col.x + (chip_col.w - chip_px) * 0.5;
     let chip_y = stack_y + label_band_h + label_to_chip_gap;
     let chip_rect = Rect::new(chip_x, chip_y, chip_px, chip_px);
+    // ⚠️ O HIT e' registado no retangulo de REPOUSO, antes de qualquer crescimento — ver a lei
+    // no `motion::hover_lift`: um alvo que se move debaixo do dedo e' um alvo que foge.
     hit_index.register(chip_id, chip_rect);
+    // ⚠️ O escalar cru serve DOIS consumidores com neutros diferentes: a COR quer `None` quando
+    // não há relógio (pinta as cores duras) e a GEOMETRIA quer `0` quando o relógio ainda não viu
+    // este id (um chip desconhecido está em REPOUSO, não crescido).
+    let lift_t = motion.get(chip_id).unwrap_or(0.0);
+    let hover = Some(lift_t);
+    let chip_rect = crate::motion::hover_lift(chip_rect, lift_t);
     let state = store.button_state(chip_id).unwrap_or(ButtonState::Normal);
     // Matriz EXATA do rail (tool_rail.rs:248-280). With the narrower
     // 44 px column, the chip's 1 px Border now sits within 4 px of the
@@ -134,7 +142,7 @@ pub(super) fn paint_topbar_rail_chip(
         glyph,
         IconButtonStyle::Plain,
         state,
-        motion.get(chip_id).unwrap_or(1.0),
+        hover,
         scene,
         theme,
     );

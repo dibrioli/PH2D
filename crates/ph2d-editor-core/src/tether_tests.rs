@@ -211,3 +211,88 @@ fn measure_the_shape_across_frame_rates() {
         max_dev(&drive(30.0, 1.5), &drive(120.0, 1.5))
     );
 }
+
+/// **As duas PONTAS da curva são exactas.**
+///
+/// O truque da polilinha suave passa pelos pontos MÉDIOS, então é fácil escrever uma versão em que
+/// a curva começa e acaba a meio caminho do primeiro e do último elo — e aí a corda descola da
+/// âncora e do card, desenhando uma relação que não existe.
+///
+/// **Mutação que deve sangrar:** trocar o `quad_to(p[n-2], p[n-1])` final por
+/// `quad_to(p[n-2], mid(p[n-2], p[n-1]))`.
+#[test]
+fn the_curve_starts_at_the_control_and_ends_at_the_effect() {
+    let mut t = Tether::new(NODES);
+    t.advance([10.0, 10.0], [210.0, 60.0], 0.5, true);
+    let pts = t.points().to_vec();
+    let path = t.path();
+    let els: Vec<_> = path.elements().to_vec();
+    let first = match els.first() {
+        Some(ph2d_vector::PathEl::MoveTo(p)) => *p,
+        other => panic!("a curva não começa por um MoveTo: {other:?}"),
+    };
+    let last = match els.last() {
+        Some(ph2d_vector::PathEl::QuadTo(_, p)) => *p,
+        other => panic!("a curva não acaba por um QuadTo: {other:?}"),
+    };
+    let d0 = (first.x - f64::from(pts[0][0])).hypot(first.y - f64::from(pts[0][1]));
+    let dn = (last.x - f64::from(pts[NODES - 1][0])).hypot(last.y - f64::from(pts[NODES - 1][1]));
+    assert!(d0 < 1e-6, "a ponta do CONTROLO descolou {d0:.4} px");
+    assert!(dn < 1e-6, "a ponta do EFEITO descolou {dn:.4} px");
+}
+
+/// **Subir a contagem de nós resolve a MESMA curva, não outra.**
+///
+/// O comprimento de repouso de um elo é `SLACK · distância / (n − 1)`, então o comprimento TOTAL
+/// da corda não depende de `n` — o que muda é a finura. Sem esta propriedade, mexer na resolução
+/// (que é número de aparência, decidido no smoke) mudaria a silhueta que o Enio aprovou, e o
+/// próximo a subir a contagem descobria-o na tela.
+///
+/// O oráculo é a FLECHA: quanto a corda pendura abaixo da recta entre as pontas.
+///
+/// **Mutação que deve sangrar:** fazer o comprimento de repouso do elo constante em vez de
+/// dividido por `n − 1`.
+#[test]
+fn more_nodes_resolve_the_same_hang_not_a_different_one() {
+    let sag = |n: usize| {
+        let mut t = Tether::new(n);
+        // Assenta: a flecha é o estado de repouso, não o primeiro quadro.
+        for _ in 0..240 {
+            t.advance([0.0, 0.0], [200.0, 0.0], 1.0 / 60.0, true);
+        }
+        t.points().iter().map(|p| p[1]).fold(f32::MIN, f32::max)
+    };
+    let (a, b) = (sag(12), sag(28));
+    let rel = (a - b).abs() / a.max(1.0);
+    assert!(
+        rel < 0.12,
+        "a flecha mudou {:.1}% ao dobrar os nós (12 nós: {a:.2} px, 28 nós: {b:.2} px): a resolução \
+         está a mudar a SILHUETA, e aí o número de nós deixa de ser livre",
+        rel * 100.0
+    );
+}
+
+/// **Quanto o número de nós e o número de iterações mexem na FLECHA** — a tabela que decide se a
+/// resolução é livre ou se está acoplada ao solver.
+#[test]
+#[ignore = "sonda"]
+fn measure_how_the_sag_depends_on_nodes_and_iterations() {
+    println!("  nós | flecha (px)");
+    for n in [8_usize, 12, 16, 20, 24, 28, 36, 48] {
+        let mut t = Tether::new(n);
+        for _ in 0..240 {
+            t.advance([0.0, 0.0], [200.0, 0.0], 1.0 / 60.0, true);
+        }
+        let sag = t.points().iter().map(|p| p[1]).fold(f32::MIN, f32::max);
+        // O comprimento REAL da corda, para separar "estica" de "resolve melhor".
+        let len: f32 = t
+            .points()
+            .windows(2)
+            .map(|w| ((w[1][0] - w[0][0]).powi(2) + (w[1][1] - w[0][1]).powi(2)).sqrt())
+            .sum();
+        println!(
+            "  {n:3} | {sag:6.2}  (comprimento {len:6.2}, folga pedida {:.2})",
+            200.0 * super::SLACK
+        );
+    }
+}

@@ -71,12 +71,9 @@ pub fn paint_fill_adjust_modal(
     if let Some((ax, ay)) = store.fill_modal_anchor() {
         let head = [rect_x + MODAL_W * 0.5, rect_y];
         if crate::tether::Tether::is_drawable([ax, ay], head) {
-            let pts = tether.points();
-            let mut path = ph2d_vector::BezPath::new();
-            path.move_to((f64::from(pts[0][0]), f64::from(pts[0][1])));
-            for p in &pts[1..] {
-                path.line_to((f64::from(p[0]), f64::from(p[1])));
-            }
+            // ⚠️ A curva vem da PORTA do motor, não daqui: o card desenha a corda e o gate
+            // mede-a, e uma segunda construção de caminho divergiria da que é testada.
+            let path = tether.path();
             scene.inner_mut().stroke(
                 &ph2d_vector::Stroke::new(f64::from(ph2d_tokens::StrokeToken::Default.px())),
                 ph2d_vector::Affine::IDENTITY,

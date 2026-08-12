@@ -126,7 +126,7 @@ fn icon_tint(state: ButtonState) -> ColorToken {
 ///
 /// ⚠️ `Pressed`, `Focused` e `Disabled` continuam **estados duros**: não são uma *quantidade* de
 /// nada, e tratá-los como fracção faria um botão desactivado ter meia-desactivação.
-fn icon_tint_t(state: ButtonState, t: f32, theme: Theme) -> ph2d_vector::Color {
+fn icon_tint_t(state: ButtonState, t: Option<f32>, theme: Theme) -> ph2d_vector::Color {
     blend_on_hover_axis(state, t, ColorToken::Text2, ColorToken::Text1, theme)
         .unwrap_or_else(|| resolve(icon_tint(state), theme))
 }
@@ -142,12 +142,13 @@ fn icon_tint_t(state: ButtonState, t: f32, theme: Theme) -> ph2d_vector::Color {
 /// aritmética de cor a divergir da primeira.
 fn blend_on_hover_axis(
     state: ButtonState,
-    t: f32,
+    t: Option<f32>,
     rest: ColorToken,
     hot: ColorToken,
     theme: Theme,
 ) -> Option<ph2d_vector::Color> {
-    if t >= 1.0 || !matches!(state, ButtonState::Normal | ButtonState::Hovered) {
+    let t = t?;
+    if !matches!(state, ButtonState::Normal | ButtonState::Hovered) {
         return None;
     }
     crate::motion::blend_token_color(Some(rest.resolve(theme)), Some(hot.resolve(theme)), t)
@@ -170,25 +171,25 @@ pub fn paint_icon_button(
     scene: &mut VectorScene,
     theme: Theme,
 ) {
-    paint_icon_button_t(rect, glyph, style, state, 1.0, scene, theme);
+    paint_icon_button_t(rect, glyph, style, state, None, scene, theme);
 }
 
-/// [`paint_icon_button`] **com o eixo do hover**: `hover_t` é *quanto do hover está presente*,
-/// `0..1`, e o neutro é **`1.0`**.
+/// [`paint_icon_button`] **com o eixo do hover**: `hover_t` é *quanto do hover está presente*.
 ///
-/// ⚠️ O escalar vem do relógio (`UiMotion::get(id)`), e um id que o relógio ainda não viu devolve
-/// `None` ⇒ o chamador passa `1.0` ⇒ o botão pinta o que sempre pintou. *Um widget que acaba de
-/// aparecer não tem de onde vir.*
+/// ⚠️ **O neutro é `None`, e não um número.** `None` significa *este pintor não tem relógio* — e
+/// aí o botão pinta as cores DURAS de sempre, byte a byte. Um `1.0` como neutro seria ambíguo:
+/// para a COR ele quer dizer *«já chegou ao hover»* e para uma GEOMETRIA quer dizer *«totalmente
+/// crescido»*, então um botão de painel sem relógio nasceria permanentemente hovered. Uma
+/// pergunta, uma resposta, sem um número a significar duas coisas.
 pub fn paint_icon_button_t(
     rect: Rect,
     glyph: IconGlyph,
     style: IconButtonStyle,
     state: ButtonState,
-    hover_t: f32,
+    hover_t: Option<f32>,
     scene: &mut VectorScene,
     theme: Theme,
 ) {
-    let hover_t = hover_t.clamp(0.0, 1.0);
     let (icon_rect, icon_color) = match style {
         IconButtonStyle::Chip | IconButtonStyle::Compact => {
             let radius = if matches!(style, IconButtonStyle::Compact) {
@@ -270,7 +271,7 @@ mod tests {
         let theme = Theme::Forge;
         let rest = resolve(ColorToken::Text2, theme).to_rgba8().to_u8_array();
         let hot = resolve(ColorToken::Text1, theme).to_rgba8().to_u8_array();
-        let mid = icon_tint_t(ButtonState::Hovered, 0.5, theme)
+        let mid = icon_tint_t(ButtonState::Hovered, Some(0.5), theme)
             .to_rgba8()
             .to_u8_array();
         assert_ne!(mid, rest);
@@ -282,14 +283,22 @@ mod tests {
         // O neutro pinta EXACTAMENTE o que sempre pintou — o que mantém os dezanove
         // chamadores de `paint_icon_button` byte-idênticos.
         assert_eq!(
-            icon_tint_t(ButtonState::Hovered, 1.0, theme)
+            icon_tint_t(ButtonState::Hovered, Some(1.0), theme)
+                .to_rgba8()
+                .to_u8_array(),
+            hot
+        );
+        // Sem relógio (`None`) o botão pinta o que sempre pintou — o neutro que mantém os
+        // dezanove chamadores de painel byte-idênticos.
+        assert_eq!(
+            icon_tint_t(ButtonState::Hovered, None, theme)
                 .to_rgba8()
                 .to_u8_array(),
             hot
         );
         // `Pressed` é estado DURO: o escalar não o toca.
         assert_eq!(
-            icon_tint_t(ButtonState::Pressed, 0.5, theme)
+            icon_tint_t(ButtonState::Pressed, Some(0.5), theme)
                 .to_rgba8()
                 .to_u8_array(),
             resolve(ColorToken::Accent, theme).to_rgba8().to_u8_array()

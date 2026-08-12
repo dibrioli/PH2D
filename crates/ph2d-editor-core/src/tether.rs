@@ -42,13 +42,43 @@
 //! passos sem tecto (`MAX_STEPS`), senão ele fica ainda mais lento e a realimentação em `dt` que a
 //! sim do Wet Paint documentou reaparece — aqui, num enfeite.
 
-/// Nós da corda, pontas incluídas. Doze é o que dá a curva a leitura de *pendurado* sem que o passo
-/// entre nós se veja; é número de APARÊNCIA, e o oráculo dele é o smoke.
-pub const NODES: usize = 12;
+/// Nós da corda, pontas incluídas. Número de APARÊNCIA, e o oráculo dele é o smoke.
+///
+/// ⚠️ **Doze eram poucos, e o report do Enio foi *«tem poucos segmentos e fica poligonal»*.** Duas
+/// causas somavam-se e só uma era a contagem: o desenho ligava nó a nó com RECTAS (ver
+/// [`Tether::path`], que agora é uma curva) e a resolução era baixa. As duas foram corrigidas —
+/// mas a curva sozinha já mata o polígono, então isto é o segundo dos dois.
+///
+/// ⚠️ **E a primeira versão desta nota afirmava que subir a contagem não mudava a silhueta — o
+/// gate desmentiu-a na hora** (`more_nodes_resolve_the_same_hang_not_a_different_one` nasceu
+/// VERMELHO com 17,9%). O comprimento de repouso do elo divide por `n − 1`, então a corda *pedida*
+/// tem sempre o mesmo comprimento; o que não se conservava era a corda **entregue**, porque o
+/// solver esticava — ver [`iters_for`], que é onde isso foi corrigido. Com as iterações derivadas
+/// dos elos, a flecha anda **3,7% de doze para vinte e oito nós** e o gate afirma-o.
+pub const NODES: usize = 28;
 
-/// Iterações da restrição de distância **por passo interno**. Verlet relaxa; três passagens tiram o
-/// elástico visível sem prender a corda.
-const ITERS: usize = 3;
+/// Iterações da restrição de distância **por passo interno**, em função do número de ELOS.
+///
+/// ⚠️ **Um número fixo era um defeito calado, e a sonda mostrou-o:** a relaxação de Gauss-Seidel
+/// propaga informação **um elo por iteração**, então três passagens não seguram vinte e sete elos.
+/// Medido, com `ITERS = 3` fixo e a folga pedida de 244 px, a corda ENTREGAVA:
+///
+/// | nós | comprimento | flecha |
+/// |---|---|---|
+/// | 8 | 245,4 | 61,8 px |
+/// | 12 | 247,5 | 64,0 px |
+/// | 28 | 262,4 | 75,5 px |
+/// | 48 | 292,3 | 95,9 px |
+///
+/// Ou seja: **subir a resolução esticava a corda**, e o `SLACK` — que é o número que o artista
+/// afina — passava a significar coisas diferentes conforme uma constante que ele não vê. Isso não
+/// é aparência, é a promessa do knob a não ser cumprida.
+///
+/// ⚠️ **O custo não é o argumento contra:** `n · iters` a 120 Hz dá algumas centenas de operações
+/// escalares por passo, ruído ao lado de desenhar o card.
+fn iters_for(nodes: usize) -> usize {
+    (nodes / 2).max(3)
+}
 
 /// O passo INTERNO, fixo. É ele que torna a forma um facto do relógio de parede e não da taxa de
 /// quadros — ver o doc do módulo.
@@ -92,6 +122,8 @@ pub struct Tether {
     /// Ainda não foi colocada: o próximo `advance` põe todos os nós na recta em vez de os deixar
     /// cair de onde estavam. Sem isto, uma corda que reaparece noutro sítio **voa** até lá.
     fresh: bool,
+    /// Passagens da restrição por passo, derivadas do número de elos — ver [`iters_for`].
+    iters: usize,
 }
 
 impl Default for Tether {
@@ -109,6 +141,7 @@ impl Tether {
             q: vec![[0.0, 0.0]; n],
             acc: 0.0,
             fresh: true,
+            iters: iters_for(n),
         }
     }
 
@@ -121,6 +154,34 @@ impl Tether {
     #[must_use]
     pub fn points(&self) -> &[[f32; 2]] {
         &self.p
+    }
+
+    /// **A corda como CURVA** — a porta única do desenho.
+    ///
+    /// ⚠️ **Ligar nó a nó com rectas é o que a fazia parecer um polígono**, e nenhuma contagem de
+    /// nós cura isso sozinha: com rectas, mais nós dão mais lados, não menos quinas. A curva usa
+    /// os nós como pontos de CONTROLO e os pontos MÉDIOS como pontos por onde passa — o truque
+    /// clássico da polilinha suave, que sai `C¹` com uma quadrática por elo e sem ajuste nenhum.
+    ///
+    /// ⚠️ **As duas PONTAS são exactas.** A curva começa em `p[0]` e acaba em `p[n−1]`, não num
+    /// ponto médio: uma corda que não toca a âncora nem o card desenha uma relação que não existe.
+    /// Há gate a pinar as duas pontas.
+    #[must_use]
+    pub fn path(&self) -> ph2d_vector::BezPath {
+        let p = &self.p;
+        let mut path = ph2d_vector::BezPath::new();
+        if p.len() < 2 {
+            return path;
+        }
+        let pt = |q: [f32; 2]| (f64::from(q[0]), f64::from(q[1]));
+        let mid =
+            |a: [f32; 2], b: [f32; 2]| (f64::from(a[0] + b[0]) * 0.5, f64::from(a[1] + b[1]) * 0.5);
+        path.move_to(pt(p[0]));
+        for i in 1..p.len() - 1 {
+            path.quad_to(pt(p[i]), mid(p[i], p[i + 1]));
+        }
+        path.quad_to(pt(p[p.len() - 2]), pt(p[p.len() - 1]));
+        path
     }
 
     /// Existe corda para desenhar? `false` quando controlo e efeito são o mesmo ponto.
@@ -196,7 +257,7 @@ impl Tether {
         // nos dois), e foi assim que a mutação que o removia sobreviveu aos gates: ela não era um
         // buraco, era um no-op. *Uma defesa que mede zero e diz no comentário que é load-bearing é
         // pior que defesa nenhuma — ela impede a próxima pessoa de procurar a verdadeira.*
-        for _ in 0..ITERS {
+        for _ in 0..self.iters {
             for a in 0..n - 1 {
                 let b = a + 1;
                 let d = [self.p[b][0] - self.p[a][0], self.p[b][1] - self.p[a][1]];

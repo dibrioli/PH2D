@@ -15,11 +15,11 @@ use super::*;
 ///
 /// ⚠️ Um chip **activo** ou **premido** sai do eixo por decisão, não por omissão: *activo* responde
 /// *"esta é a ferramenta na tua mão"*, e uma resposta que desvanece é uma resposta que se lê mal.
-pub(super) fn rail_hover_t(state: ButtonState, is_active: bool, t: f32) -> f32 {
+pub(super) fn rail_hover_t(state: ButtonState, is_active: bool, t: Option<f32>) -> Option<f32> {
     if is_active || !matches!(state, ButtonState::Normal | ButtonState::Hovered) {
-        return 1.0;
+        return None;
     }
-    t.clamp(0.0, 1.0)
+    t
 }
 
 /// A mistura `repouso → hover` em espaço de TOKEN, ou a cor dura quando `t` já é o neutro.
@@ -28,13 +28,13 @@ pub(super) fn rail_hover_t(state: ButtonState, is_active: bool, t: f32) -> f32 {
 /// ÚNICO deste eixo (o mesmo do `Button` e do `IconButton`) — uma segunda aritmética de cor aqui
 /// divergiria da dele no dia em que um dos dois ganhasse gama.
 pub(super) fn blend_or(
-    t: f32,
+    t: Option<f32>,
     rest: ColorToken,
     hot: ColorToken,
     hard: ColorToken,
     theme: Theme,
 ) -> ph2d_vector::Color {
-    if t < 1.0
+    if let Some(t) = t
         && let Some(c) =
             crate::motion::blend_token_color(Some(rest.resolve(theme)), Some(hot.resolve(theme)), t)
     {
@@ -54,7 +54,7 @@ pub fn paint_tool_rail(
     theme: Theme,
     store: &WidgetStore,
 ) {
-    paint_tool_rail_t(rail, rect, scene, text_system, theme, store, &|_| 1.0);
+    paint_tool_rail_t(rail, rect, scene, text_system, theme, store, &|_| None);
 }
 
 /// [`paint_tool_rail`] **com o eixo do hover**: `hover_t(id)` é *quanto do hover está presente*
@@ -80,7 +80,7 @@ pub fn paint_tool_rail_t(
     text_system: &mut TextSystem,
     theme: Theme,
     store: &WidgetStore,
-    hover_t: &dyn Fn(NodeId) -> f32,
+    hover_t: &dyn Fn(NodeId) -> Option<f32>,
 ) {
     // Chip x is computed from the label column budget so the
     // label-to-chip gap is exactly `LABEL_TO_CHIP_GAP_PX`, regardless
@@ -109,6 +109,9 @@ pub fn paint_tool_rail_t(
                 let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
                 let is_active = *active || state == ButtonState::Pressed;
                 let t = rail_hover_t(state, is_active, hover_t(*id));
+                // ⚠️ O chip CRESCE com o hover, e o hit fica no retangulo de repouso (quem o
+                // regista e' o `left_rail`, com o `chip_rect` de antes deste `hover_lift`).
+                let chip_rect = crate::motion::hover_lift(chip_rect, t.unwrap_or(0.0));
                 let bg = match state {
                     ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,
                     ButtonState::Pressed => ColorToken::AccentSoft,

@@ -127,16 +127,17 @@ fn print_character_script() {
         "\n[ui-motion-smoke 1] O CARATER — o chrome ganhou um relogio, e ele tem duas vozes.\n\
          \n  ONDE OLHAR (e so' aqui, por enquanto): os CHIPS DO RAIL, na coluna da esquerda,\n  \
            e as PILLS DA BARRA DE TOPO. Sao as duas superficies ligadas ao relogio.\n\
-         \n  1. Passe o rato POR CIMA de um chip do rail e SAIA, devagar. Repare no que\n     \
-              muda: a BORDA e o TINT do glifo (o fundo do chip e' BgElev nos dois estados,\n     \
-              entao nao ha' fundo a que agarrar -- e' o tema, nao um bug). Guarde a\n     \
-              sensacao: hoje isso acende e apaga de GOLPE.\n\
+         \n  1. Passe o rato POR CIMA de um chip do rail e SAIA, devagar. Duas coisas\n     \
+              mudam: o chip CRESCE 3 px e o tint do glifo aquece. E' o crescimento que\n     \
+              carrega o carater -- uma fracao de tinta e' clampada em 1,0, entao a\n     \
+              ultrapassagem do Expressivo nao teria onde aparecer numa cor.\n\
          \n  2. Abra Settings (a engrenagem) > Motion > EXPRESSIVE. Repita o passo 1:\n     \
               o realce agora CHEGA e SAI. A saida tambem e' suave -- se so' a entrada\n     \
               fosse, seria meia feature (e foi o defeito que a wave 2 curou).\n\
          \n  3. Settings > Motion > DISCRETE. Repita. A diferenca NAO e' 'o mesmo mais\n     \
-              devagar': o Discreto CHEGA E ASSENTA sem nunca ultrapassar, e isso e'\n     \
-              estrutural (zeta = 1), nao uma promessa. O Expressivo ultrapassa e volta.\n\
+              devagar': o Discreto CHEGA E ASSENTA sem nunca ultrapassar (zeta = 1, e' a\n     \
+              matematica, nao uma promessa). O Expressivo passa 15,5% do tamanho e volta\n     \
+              -- o chip POPA. Medido; se nao vir o pop, o numero volta a' mesa.\n\
          \n  4. Settings > Motion > REDUCED MOTION (e' um TOGGLE, nao uma terceira opcao).\n     \
               Com ele ligado, escolha EXPRESSIVE: o fade FICA e o percurso SAI. Sao dois\n     \
               eixos, e 'Expressivo + reduced' e' uma combinacao legitima -- um seletor de\n     \
@@ -165,6 +166,7 @@ fn print_tether_script() {
          \n  1. Settings > Motion > EXPRESSIVE (ela so' simula com decoracao ligada).\n\
          \n  2. Agarre a FAIXA DO TITULO do card ('Fill') e arraste-o pelo ecra. Julgue:\n       \
               - ela PENDURA (nao e' uma linha reta a seguir o card);\n       \
+              - e e' uma CURVA LISA, sem lados nem quinas;\n       \
               - ela SEGUE com atraso, como um cordao com peso;\n       \
               - e NAO ESTALA quando voce sacode o card depressa.\n\
          \n  3. Largue e espere: ela assenta e PARA. Uma corda que continua a tremer\n       \
@@ -176,7 +178,7 @@ fn print_tether_script() {
     );
     eprintln!(
         "[ui-motion-smoke 2] (!) OS NUMEROS DE APARENCIA SAO SEUS, e e' para isto que o smoke\n  \
-         existe: 12 nos · folga 1,22 (quanto ela e' mais longa que a recta) · gravidade de\n  \
+         existe: 28 nos · folga 1,22 (quanto ela e' mais longa que a recta) · gravidade de\n  \
          2600 px/s². Se ela pendurar de menos, a folga sobe; se abanar como gelatina, a\n  \
          gravidade desce. Diga o que ve' e eu mexo -- nenhum destes tres sai de um teste.\n"
     );

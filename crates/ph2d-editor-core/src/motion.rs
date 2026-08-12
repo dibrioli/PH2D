@@ -111,9 +111,26 @@ pub enum Role {
 }
 
 /// Rigidez do Expressivo. `ζ < 1` ⇒ ultrapassa e volta: é o carácter inteiro num número.
+///
+/// ⚠️ **E o número que shipou primeiro NÃO entregava o carácter — a sonda desmentiu-o.** O report
+/// do Enio em 2026-08-12 foi *«Discrete pode estar inativado ou não há diferença entre discrete e
+/// expressive»*, e o `measure_the_overshoot_each_damping_buys` mostra porquê: a `ζ = 0,72`
+/// ultrapassa **3,1%**, que não é uma diferença que um olho veja em canal nenhum. A tabela escolhe
+/// sozinha, e o critério é *quanto se VÊ por quanto tempo se espera*:
+///
+/// | ζ | ultrapassa | assenta (<1%) |
+/// |---|---|---|
+/// | 0,45 | 19,7% | 0,467 s |
+/// | **0,50** | **15,5%** | **0,467 s** |
+/// | 0,55 | 11,8% | 0,450 s |
+/// | 0,72 | 3,1% | 0,350 s |
+///
+/// `0,50` porque de 0,55 para 0,50 a ultrapassagem cresce um terço **pelo mesmo tempo de
+/// assentamento** — é ganho de graça —, e abaixo disso a cauda começa a cobrar sem o olho ganhar
+/// muito mais.
 const EXPRESSIVE: Spring = Spring {
     stiffness: 18.0,
-    damping: 0.72,
+    damping: 0.50,
 };
 
 /// Rigidez do Discreto. ⚠️ `ζ = 1` é **criticamente amortecido**: a solução não tem termo
@@ -193,6 +210,35 @@ impl Track {
 /// gates o comparam — misturar animação faria cada um passar a ver ruído, e um `assert_eq!` de
 /// estado passaria a depender de *quando* foi lido. Mapa paralelo é o idioma que este repo já usa
 /// três vezes para estender sem colidir (`bypassed_subgraphs`, `node_text_params`).
+/// **Quanto um chip CRESCE quando o rato pousa nele**, no pico do hover.
+///
+/// ⚠️ **Número de APARÊNCIA: sai do smoke, não de um teste.** Três px sobre um chip de 36 lê como
+/// *«ele reagiu»* sem mover o vizinho (o retângulo de HIT não cresce — ver [`hover_lift`]).
+pub const HOVER_LIFT_PX: f32 = 3.0;
+
+/// O retângulo que um chip DESENHA quando o hover está `t` presente.
+///
+/// ⚠️ **Este canal existe porque o outro não podia ter o carácter.** Uma fracção de fade é
+/// clampada em `[0, 1]` — pela `blend_token_color` e pela própria noção de mistura —, e a
+/// ultrapassagem do Expressivo vive **acima de 1**. Medido: com a `ζ` que shipava primeiro os dois
+/// carácteres diferiam por 3,1% de ultrapassagem (clampada, logo invisível) e 50 ms de duração, e
+/// o report do Enio foi exactamente *«não há diferença entre discrete e expressive»*. Numa
+/// GEOMETRIA a ultrapassagem tem onde pousar: o chip passa do tamanho e volta.
+///
+/// ⚠️ **O hit NÃO cresce com o desenho, e isto é lei.** Um alvo que se move debaixo do dedo
+/// enquanto reage ao dedo é um alvo que foge — e a fronteira de saída passaria a estar noutro
+/// sítio da fronteira de entrada, que é como nasce o hover a piscar em cima da borda.
+///
+/// `t = 0` devolve o retângulo **intacto**: um chip em repouso desenha hoje o que sempre desenhou.
+#[must_use]
+pub fn hover_lift(rect: crate::zones::Rect, t: f32) -> crate::zones::Rect {
+    let d = HOVER_LIFT_PX * t.max(0.0);
+    if d <= 0.0 {
+        return rect;
+    }
+    crate::zones::Rect::new(rect.x - d, rect.y - d, rect.w + d * 2.0, rect.h + d * 2.0)
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct UiMotion {
     tracks: BTreeMap<NodeId, Track>,

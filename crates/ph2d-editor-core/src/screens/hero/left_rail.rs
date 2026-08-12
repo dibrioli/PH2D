@@ -447,7 +447,7 @@ fn paint_rail(
         resolve(ColorToken::RailBg, theme),
     );
     paint_tool_rail_t(&rail, rail_rect, scene, text_system, theme, store, &|id| {
-        motion.get(id).unwrap_or(1.0)
+        Some(motion.get(id).unwrap_or(0.0))
     });
 
     // Hit-rects MUST mirror exactly what `paint_tool_rail` paints — same
@@ -571,7 +571,7 @@ fn paint_rail_flyout(
         text_system,
         theme,
         store,
-        &|id| motion.get(id).unwrap_or(1.0),
+        &|id| Some(motion.get(id).unwrap_or(0.0)),
     );
     let chip_px = size.chip_px();
     let gap = Spacing::Xs.px();

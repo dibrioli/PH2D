@@ -1439,8 +1439,39 @@ cozimentos (contadores `#[cfg(test)]`), que é exato e é literalmente a proprie
   que a nota antiga já apontava — memoizar em espaço **LOCAL** e assar o afim na saída, exato para
   **similaridade** (`d_local = d / s`; uma translação é `s = 1`, que é o caso que paga hoje) com
   fallback ao mundo sob escala não-uniforme ou skew — mais o **dirty-tracking** que o ADR-0108 D3
-  chama de *a* alavanca e que nunca foi construído. ⚠️ **É wave própria e muda o DESENHO na
-  fronteira da aproximação**, então não entra de carona numa medição.
+  chama de *a* alavanca e que nunca foi construído. ⚠️ **É wave própria**, então não entra de
+  carona numa medição.
+- **⚠️ E a PREMISSA dessa cura foi MEDIDA no mesmo dia — ela não é aproximação, e a frase
+  *"muda o DESENHO na fronteira da aproximação"* que estava aqui foi CORRIGIDA por isto**
+  (sonda `live_memo_commutation_probe` + `..._profile_probe`,
+  `cargo test -p ph2d-host-desktop --release live_memo_commutation -- --ignored --nocapture`).
+  A rota local e a rota de mundo dão o **MESMO** resultado sob qualquer similaridade, e o
+  controle não-uniforme bate maior que o próprio offset:
+
+  | pose | offset, desvio máx. de vértice | perfil, largura crua | perfil, largura / s |
+  |---|---|---|---|
+  | translação | 0,000000 | 0,000000 | 0,000000 |
+  | rotação | 0,000000 | 0,000000 | 0,000000 |
+  | escala uniforme 1,6 | 0,000000 | **0,043200** | 0,000000 |
+  | similaridade completa | 0,000000 | **0,043200** | 0,000000 |
+  | não-uniforme (**CONTROLE**) | **0,140290** | 0,088193 | 0,078133 |
+
+  ⚠️ **O perfil responde a pergunta de ESCOPO da wave**, e a aritmética confere à mão: o
+  `bake_xform` escala *todo comprimento escalar do path* (o raio do gradiente, o `corner_radius`)
+  e **não** escala o `StrokeSpec.width` — então a rota local INGÊNUA erra por exactamente a
+  meia-largura no stop do meio, `(s − 1) · (W/2) · mid = 0,6 · 0,04 · 1,8 = 0,043200`. Dividir a
+  largura pela escala antes de cozer restaura a exactidão: é o **gêmeo do `d_local = d / s`**, e
+  não uma segunda regra. ⇒ **a wave não muda desenho nenhum**; o que ela custa é o ramo de
+  fallback (não-similaridade) mais o bake na saída.
+  ⚠️ **E o ORÁCULO estava errado antes de o produto estar:** a 1ª versão comparava os dois
+  contornos **índice a índice** e reportava a rotação a **1,25 unidades numa forma de raio 1** —
+  grande demais para ser aritmética, e o offset é equivariante por rotação por construção. Um
+  contorno fechado é uma sequência **CÍCLICA** e o `linesweeper` elege o vértice inicial pelas
+  **coordenadas**; só translação e escala uniforme preservam a ordem lexicográfica, que é
+  exactamente por que só essas duas liam zero. *A rotação da LISTA estava a ser lida como desvio
+  geométrico*, e a conclusão pronta seria **"a cura não comuta sob rotação"** — falsa. O oráculo
+  passou a ser a **distância de Hausdorff discreta dos dois lados**, que não conhece ordem
+  nenhuma.
 - **Boolean vivo** (D4 mantida) — a rota por regra de preenchimento está descrita na §2 para não ser
   re-descoberta como novidade.
 - **Divide · Outline · edição de nós multi-forma · autotrace · grade perspectiva** — todos **G**, todos

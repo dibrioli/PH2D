@@ -485,6 +485,11 @@ fn populate_transform_fields(store: &mut WidgetStore) {
         ids::VECTOR_TRANSFORM_W,
         ids::VECTOR_TRANSFORM_H,
         ids::VECTOR_TRANSFORM_R,
+        // As duas do NÓ: mesmo widget, mesma rota, mesma vida sob o mouse. Elas entram nesta
+        // lista e não numa nova porque a pergunta é a mesma — *este id é um campo numérico que a
+        // shell possui?* —, e uma segunda lista é como a terceira nasce sem o `register`.
+        ids::VECTOR_VERT_X,
+        ids::VECTOR_VERT_Y,
     ] {
         store.register(
             id,

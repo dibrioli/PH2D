@@ -2685,6 +2685,10 @@ impl crate::App {
             // Numeric Transform field edit (X/Y/W/H) — a SetValue document command.
             let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
                 None;
+            // **ONDE o NÓ vai** — `(eixo_y?, alvo)` na unidade do artista. Um por frame: os dois
+            // campos são commitados por gestos distintos, e mandar os dois no mesmo quadro
+            // significaria dois deslocamentos, que é o que o `nudge` já faz num.
+            let mut pending_vec_vert: Option<(bool, f64)> = None;
             // Transform Angle field (R) — a relative rotation delta (degrees).
             let mut pending_vec_rotate_by: Option<f64> = None;
             // Slider de parâmetro de forma (Sides/Points/Inner/Radius/Turns/Degrees):
@@ -3117,6 +3121,10 @@ impl crate::App {
                                 crate::input_dispatch::vec_transform_field_for_id(*id)
                             {
                                 pending_vec_transform = Some((field, *v));
+                            } else if *id == ph2d_editor::ids::VECTOR_VERT_X {
+                                pending_vec_vert = Some((false, *v));
+                            } else if *id == ph2d_editor::ids::VECTOR_VERT_Y {
+                                pending_vec_vert = Some((true, *v));
                             } else if *id == ph2d_editor::ids::VECTOR_STATE_DURATION {
                                 // W7: o track `0..1` vira SEGUNDOS pela régua do modelo. A
                                 // conversão mora aqui e não no painel porque o número autorado é
@@ -5738,6 +5746,28 @@ impl crate::App {
                     field,
                     target,
                 );
+            }
+            // **O NÓ ANDA PELA PORTA DAS SETAS.**
+            //
+            // ⚠️ O que o dreno aplica é um **DESLOCAMENTO**, nunca uma posição: `PenTool::nudge`
+            // é a porta que o teclado já usa, e ela move âncora **e handles** e converte
+            // mundo→local **por FORMA** (`delta_to_local`) — duas formas de escalas diferentes
+            // andariam distâncias diferentes sob uma conversão só. Um `set_vertex_position` seria
+            // a segunda resposta a *"como um nó se move?"*, e as duas divergiriam no dia em que
+            // uma delas ganhasse um caso especial (o `nudge` já tem um).
+            //
+            // ⚠️ E o número digitado atravessa a MESMA fronteira de display do Transform: ele sai
+            // da face do artista e volta pela mesma porta.
+            if let Some((is_y, target)) = pending_vec_vert {
+                let target = ph2d_editor::LengthDisplay::of(&hero.project).to_world(target);
+                if let Some(now) = self.vec_pen.selected_anchor_world(vec_scene) {
+                    let (dx, dy) = if is_y {
+                        (0.0, target - now[1])
+                    } else {
+                        (target - now[0], 0.0)
+                    };
+                    self.vec_pen.nudge(vec_scene, dx, dy);
+                }
             }
             // **O preset de dispositivo da MOLDURA** (plano UI/UX W0) — dois números pela porta
             // que os campos W/H já usam. Um preset não é um caminho novo: é o mesmo pedido feito

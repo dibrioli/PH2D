@@ -19,6 +19,20 @@ const LOOP_SRC: &str = include_str!("../src/render_loop/mod.rs");
 const DISPATCH: &str = include_str!("../src/input_dispatch.rs");
 
 /// A posição da 1ª ocorrência de `needle` em `src`, ou pânico com a razão.
+/// A PONTE do vetor, INTEIRA — o pai mais os irmãos que o teto de 600 LOC (HR-18) obriga a
+/// nascer. As duas publicações abaixo já viveram no pai e hoje moram no `_publish`.
+///
+/// ⚠️ **Ler UM arquivo aqui seria ler um ENDEREÇO** — quando o dono se muda, o gate falha por um
+/// motivo que não é o dele, ou pior, fica verde por vácuo. O `concat!` de `include_str!` é a
+/// pergunta certa em tempo de COMPILAÇÃO: apagar ou renomear um irmão não deixa o gate varrer o
+/// vazio, quebra o build do teste; e uma publicação que se mude para um irmão ainda não listado
+/// derruba o `expect` ao lado, alto.
+const BRIDGE: &str = concat!(
+    include_str!("../src/render_loop/vector_bridge.rs"),
+    "\n",
+    include_str!("../src/render_loop/vector_bridge_publish.rs"),
+);
+
 fn at(src: &str, needle: &str) -> usize {
     src.find(needle).unwrap_or_else(|| {
         panic!(
@@ -189,7 +203,6 @@ fn the_two_cut_buttons_are_drained_by_the_shell() {
 /// corte nunca aparecem — a feature ficaria completa e inalcançável.
 #[test]
 fn the_shell_publishes_whether_a_cut_line_exists() {
-    const BRIDGE: &str = include_str!("../src/render_loop/vector_bridge.rs");
     let pos = at(BRIDGE, "set_cut_line_exists(");
     let window = &BRIDGE[pos..pos + 220];
     assert!(
@@ -205,7 +218,6 @@ fn the_shell_publishes_whether_a_cut_line_exists() {
 /// prova que o botão aparece *dada a contagem*, e só este prova que a contagem CHEGA.
 #[test]
 fn the_shell_publishes_how_many_nodes_are_selected() {
-    const BRIDGE: &str = include_str!("../src/render_loop/vector_bridge.rs");
     let f = BRIDGE
         .find("set_current_vertex_count(")
         .expect("a contagem de nós não é publicada -- o Average nunca aparece");

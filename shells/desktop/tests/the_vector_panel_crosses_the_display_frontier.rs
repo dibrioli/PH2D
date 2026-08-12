@@ -35,12 +35,47 @@ fn read(rel: &str) -> String {
     std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("nao consegui ler {}: {e}", p.display()))
 }
 
+/// A PONTE do vetor, inteira — o `vector_bridge.rs` **mais** os irmãos que o teto de 600 LOC
+/// (HR-18) obriga a nascer (`_style` · `_vocab` · `_publish`).
+///
+/// ⚠️ **Ler um ARQUIVO aqui seria ler um ENDEREÇO.** Este repo já pagou essa lição três vezes
+/// (o `project_tokens::install` que fundiu para o lado errado de um corte; os dois arch-gates
+/// que esta linha reapontou em 23/07; a cadeia de teclas que o `main` mudou de arquivo): quando
+/// o dono se muda, o gate ou fica **verde por vácuo** ou falha por um motivo que não é o dele. A
+/// família responde a pergunta certa — *alguém na ponte faz isto?* — e um irmão novo nasce
+/// coberto.
+fn bridge_family() -> String {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop");
+    let mut names: Vec<String> = std::fs::read_dir(&dir)
+        .unwrap_or_else(|e| panic!("nao consegui listar {}: {e}", dir.display()))
+        .filter_map(|e| e.ok())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| {
+            (n == "vector_bridge.rs" || n.starts_with("vector_bridge_"))
+                && n.ends_with(".rs")
+                && !n.ends_with("_tests.rs")
+        })
+        .collect();
+    names.sort();
+    // Controle positivo: um rename que esvazie a varredura tem de falhar ALTO, nunca passar
+    // afirmando o vazio.
+    assert!(
+        names.len() >= 2,
+        "a familia do vector_bridge encolheu para {names:?} — o gate estaria a varrer quase nada"
+    );
+    names
+        .iter()
+        .map(|n| read(&format!("src/render_loop/{n}")))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// A ponte publica os quatro números **convertidos**.
 ///
 /// Mutação que tem de sangrar: publicar `lo[0]` cru.
 #[test]
 fn the_bridge_publishes_the_bbox_in_the_artists_unit() {
-    let src = read("src/render_loop/vector_bridge.rs");
+    let src = bridge_family();
     let at = src
         .find("set_current_transform(")
         .expect("a ponte tem de publicar a bbox — se este `expect` disparar, o publisher mudou-se");
@@ -66,7 +101,7 @@ fn the_bridge_publishes_the_bbox_in_the_artists_unit() {
 /// Mutação que tem de sangrar: `set_number_drag_rate(id, px_to_world)` com o `px_to_world` cru.
 #[test]
 fn the_drag_rate_crosses_the_same_frontier_as_the_value() {
-    let src = read("src/render_loop/vector_bridge.rs");
+    let src = bridge_family();
     assert!(
         src.contains("LengthDisplay::of(&hero.project).value(px_to_world)"),
         "a taxa é comprimento POR PIXEL de cursor, logo é um comprimento: ela passa pela porta"
@@ -123,6 +158,67 @@ fn the_layout_drain_asks_the_type_before_converting() {
     assert!(
         block.contains("to_world(v)"),
         "e o comprimento digitado volta pela mesma porta do Transform. Bloco:\n{block}"
+    );
+}
+
+/// **ONDE o nó está sai na unidade do artista** — as duas coordenadas pela mesma porta.
+///
+/// Mutação que tem de sangrar: publicar `p` cru.
+#[test]
+fn the_node_position_is_published_in_the_artists_unit() {
+    let src = bridge_family();
+    let at = src
+        .find("set_current_vertex_pos(")
+        .expect("a ponte tem de publicar a posição do nó — controle positivo");
+    let win = &src[at..(at + 400).min(src.len())];
+    assert_eq!(
+        win.matches("d.value(").count(),
+        2,
+        "as DUAS coordenadas cruzam a fronteira — um X em pixels ao lado de um Y em metros seria \
+         pior que os dois errados. Janela:\n{win}"
+    );
+}
+
+/// **Digitar uma coordenada de nó DESLOCA o conjunto — nunca escreve o alvo em cada nó.**
+///
+/// É o modelo do Blender (mediana + delta), e a razão não é gosto: com N > 1 escrever o alvo em
+/// cada nó **junta todos no mesmo X** — um *alinhar* disfarçado de coordenada, que é a queixa
+/// conhecida do Inkscape. Com UM nó os dois modelos coincidem, então o defeito é invisível no caso
+/// comum e destrói a forma no caso que a multi-seleção existe para servir.
+///
+/// ⚠️ **Este gate é o único guarda do modelo:** o dreno mora no `render_frame`, que exige janela +
+/// GPU, e a porta de escrita (`PenTool::nudge`) está correta por construção — ela só sabe deslocar.
+/// O que pode apodrecer é o SÍTIO, e é o sítio que se lê aqui.
+///
+/// Mutações que têm de sangrar: (a) `(target, 0.0)` — o alvo tratado como deslocamento; (b) o
+/// dreno passar o número digitado sem `to_world`.
+#[test]
+fn typing_a_node_coordinate_displaces_the_set_it_does_not_write_each_node() {
+    let src = read("src/render_loop/mod.rs");
+    let at = src
+        .find("if let Some((is_y, target)) = pending_vec_vert {")
+        .expect("o dreno do campo X/Y do nó tem de existir — controle positivo");
+    let block = &src[at..(at + 600).min(src.len())];
+    assert!(
+        block.contains("to_world(target)"),
+        "o número DIGITADO está na unidade do artista e volta pela mesma porta. Bloco:\n{block}"
+    );
+    // ⚠️ **Os DOIS eixos, e a razão é uma mutação que sobreviveu:** o bloco tem um braço por eixo,
+    // então `contains("target - now[")` é satisfeito por UM deles — trocar o braço do X pelo alvo
+    // cru deixava o gate verde sobre exatamente o defeito que ele nomeia.
+    assert!(
+        block.contains("selected_anchor_world("),
+        "o deslocamento é medido contra a MEDIANA. Bloco:\n{block}"
+    );
+    assert!(
+        block.contains("target - now[0]") && block.contains("target - now[1]"),
+        "o que se aplica é a DIFERENÇA entre o alvo e a mediana, NOS DOIS EIXOS — escrever o alvo \
+         em cada nó colapsaria a seleção num ponto. Bloco:\n{block}"
+    );
+    assert!(
+        block.contains(".nudge("),
+        "e ela vai pela porta que já é a das setas do teclado: um `set_vertex_position` seria a \
+         segunda resposta a *como um nó se move*. Bloco:\n{block}"
     );
 }
 

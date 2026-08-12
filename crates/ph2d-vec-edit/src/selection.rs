@@ -528,6 +528,45 @@ impl PenTool {
         acc.map(SelectedKind::Uniform)
     }
 
+    /// **Onde a seleção de nós ESTÁ, em MUNDO** — a mediana das âncoras escolhidas.
+    ///
+    /// ⚠️ **Mundo, e não a coordenada guardada.** O documento guarda geometria LOCAL e a pose vive
+    /// no `Transform` (ADR-0111); ler o vértice cru mostraria um número que **discorda da régua
+    /// sob ele** em toda forma que já foi movida ou escalada. A lei do módulo é a mesma do pen:
+    /// *o que se vê é MUNDO, o que o documento guarda é LOCAL*.
+    ///
+    /// ⚠️ **A MEDIANA, e não o primário** — é a lição que o irmão [`Self::selected_vertex_kind`]
+    /// pagou: ele devolvia o tipo do vértice primário e, com três nós selecionados, afirmava sobre
+    /// o todo uma verdade de um só. Uma mediana é uma afirmação verdadeira sobre o conjunto
+    /// inteiro, e é ela que torna o campo utilizável com N > 1 sem colapsar a forma (o modelo do
+    /// Blender; o do Inkscape põe todos os nós no mesmo X e destrói o desenho).
+    ///
+    /// Índice que não existe mais é ignorado, não conta para a mediana — o mesmo tratamento do
+    /// irmão, e pela mesma razão: ele não descreve vértice nenhum.
+    #[must_use]
+    pub fn selected_anchor_world(&self, scene: &VecScene) -> Option<[f64; 2]> {
+        let mut acc = [0.0f64; 2];
+        let mut n = 0u32;
+        for &(pid, i) in &self.selected_verts {
+            let Some(a) = scene
+                .paths()
+                .iter()
+                .find(|p| p.id == pid)
+                .and_then(|p| p.vert(i))
+                .map(|v| self.to_world(pid, v.anchor))
+            else {
+                continue;
+            };
+            acc[0] += a[0];
+            acc[1] += a[1];
+            n += 1;
+        }
+        (n > 0).then(|| {
+            let k = f64::from(n);
+            [acc[0] / k, acc[1] / k]
+        })
+    }
+
     /// Retipa TODOS os vértices selecionados (botões Corner/Smooth/Symmetric).
     /// Devolve `true` se algo mudou (o shell empurra um passo de undo nesse caso).
     pub fn set_selected_vertex_kind(&mut self, scene: &mut VecScene, kind: VertexKind) -> bool {
@@ -647,3 +686,8 @@ mod multi_path_tests;
 #[cfg(test)]
 #[path = "lasso_tests.rs"]
 mod lasso_tests;
+
+/// Gates de **ONDE a seleção de nós está** — a leitura em MUNDO que o campo X/Y do painel mostra.
+#[cfg(test)]
+#[path = "anchor_world_tests.rs"]
+mod anchor_world_tests;

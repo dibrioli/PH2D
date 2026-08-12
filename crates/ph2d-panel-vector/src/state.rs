@@ -143,6 +143,13 @@ thread_local! {
     /// Type of the currently-selected vertex (published by the shell each frame
     /// from the Pen). `None` = no vertex selected → the Vertex section hides.
     static CURRENT_VERTEX_TYPE: RefCell<Option<VertexSel>> = const { RefCell::new(None) };
+    /// **Onde a seleção de nós está** — a MEDIANA das âncoras, em MUNDO e **já na unidade do
+    /// artista** (a shell converte na fronteira, como faz para a bbox do Transform).
+    ///
+    /// ⚠️ `None` ⇒ as duas fileiras somem. Ele é separado do `CURRENT_VERTEX_TYPE` porque
+    /// responde outra pergunta: um índice que já não existe não descreve vértice nenhum e sai da
+    /// mediana, mas a seleção pode continuar a ter tipo.
+    static CURRENT_VERTEX_POS: Cell<Option<[f64; 2]>> = const { Cell::new(None) };
     /// Selected path's anchor bbox `[x, y, w, h]` **na unidade do ARTISTA**, published each
     /// frame. `None` = no path selected → the Transform section hides.
     ///
@@ -255,6 +262,16 @@ pub fn set_current_vector_style(snapshot: Option<VectorStyleSnapshot>) {
 /// [`VectorStyleSnapshot::default`] when none was pushed.
 pub(crate) fn current_snapshot() -> VectorStyleSnapshot {
     CURRENT_SNAPSHOT.with(|c| c.borrow().unwrap_or_default())
+}
+
+/// Publish **a MEDIANA das âncoras selecionadas**, em mundo e na unidade do artista.
+pub fn set_current_vertex_pos(pos: Option<[f64; 2]>) {
+    CURRENT_VERTEX_POS.with(|c| c.set(pos));
+}
+
+/// A mediana deste frame (`None` ⇒ as duas fileiras X/Y somem).
+pub(crate) fn current_vertex_pos() -> Option<[f64; 2]> {
+    CURRENT_VERTEX_POS.with(Cell::get)
 }
 
 /// Publish **o que a seleção de vértices tem em comum** (ou `None` quando não há vértice

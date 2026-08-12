@@ -350,5 +350,12 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::snap_label_smoke::frame(app, f);
         return true;
     }
+    // ⭐ O X/Y DO NÓ (=73) — irmã `node_xy_smoke`. A cena é uma VIGA LARGA de propósito: com um
+    // nó só, o modelo da mediana e o de escrever-o-alvo dão o mesmo resultado, e o defeito que a
+    // wave recusa (colapsar a seleção numa coluna) só existe no plural.
+    if level == 73 {
+        crate::node_xy_smoke::frame(app, f);
+        return true;
+    }
     false
 }

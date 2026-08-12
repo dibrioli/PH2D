@@ -230,6 +230,7 @@ mod multi_node_smoke;
 mod name_unique;
 mod nest_smoke;
 mod node_reach_smoke;
+mod node_xy_smoke;
 /// **Expand** — os cliques de Offset Path / Outline Stroke (o motor é
 /// `ph2d_vec_boolean::expand`; aqui mora o que é de documento: z, pose e undo).
 mod offset_live;

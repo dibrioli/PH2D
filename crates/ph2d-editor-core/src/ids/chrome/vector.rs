@@ -280,6 +280,18 @@ pub const VECTOR_VERT_SEL_SUBPATH: NodeId = hash_node_id("vector.vert.sel.subpat
 /// transforma *"afiar as 12 quinas desta estrela"* de doze cliques em dois.
 pub const VECTOR_VERT_SEL_SAME: NodeId = hash_node_id("vector.vert.sel.same");
 
+/// **X do nó**, em MUNDO e na unidade do artista — o último buraco da W6 PRECISÃO: dava para
+/// arrastar e encaixar um nó, não para **dizer** onde ele vai.
+///
+/// ⚠️ **O par é a MEDIANA da seleção, e o que ele aplica é um DESLOCAMENTO** (o modelo do
+/// Blender). Com um nó selecionado a mediana É o nó e "delta até o alvo" É "posição absoluta",
+/// então o caso simples lê como o Illustrator; com vários, o conjunto anda junto em vez de
+/// colapsar num X só — que é o que o campo do Inkscape faz, e é um *alinhar* disfarçado de
+/// coordenada.
+pub const VECTOR_VERT_X: NodeId = hash_node_id("vector.vert.x");
+/// **Y do nó** — o irmão do [`VECTOR_VERT_X`], mesma lei.
+pub const VECTOR_VERT_Y: NodeId = hash_node_id("vector.vert.y");
+
 // ── Arrange (ADR-0108 — path ops: duplicate + z-order) ───────────────────────
 // Act on the SELECTED path (shell-side PenTool selection); document commands
 // routed through the shell drain (mirror of Boolean/Vertex). Duplicate clones

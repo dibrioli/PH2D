@@ -34,7 +34,6 @@ use ph2d_vec_scene::{Paint, VecScene};
 mod style;
 use style::{
     RECOLOR_PRE, rgba, seed_style_from_selection, selected_grad_color, set_selected_grad_color,
-    sync_opacity_slider,
 };
 /// ⚠️ `StrokeStyle` sai junto porque o gate de CONSEQUÊNCIA do [`crate::vec_selection`]
 /// **restiliza de verdade** em vez de contar caminhos — o artista vê cores, não listas.
@@ -362,222 +361,34 @@ pub(super) fn dispatch(
         });
     }
 
-    // ── 5. Sync swatch colours (seeds the picker on open) + Opacity sliders
-    //    (so a picker alpha shows on the panel) + publish. ──────────────────
-    hero.store
-        .set_widget_color(ph2d_editor::ids::VECTOR_STROKE_SWATCH, stroke);
-    // The Fill swatch shows the selected gradient point's colour (so the picker
-    // opens seeded on it) when a MultiPoint point is selected, else the tool fill.
-    let fill_swatch_col = active_handle
-        .and_then(|h| {
-            pen.selected()
-                .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
-                .and_then(|p| p.fill.as_ref())
-                .and_then(|f| selected_grad_color(f, h))
-                .map(|c| [c.r, c.g, c.b, c.a])
-        })
-        .unwrap_or(fill);
-    hero.store
-        .set_widget_color(ph2d_editor::ids::VECTOR_FILL_SWATCH, fill_swatch_col);
-    // Push the tool's alpha onto the Opacity sliders (unless being dragged) so
-    // an alpha set in the colour picker reflects on the panel, and vice-versa.
-    sync_opacity_slider(
-        &mut hero.store,
-        ph2d_editor::ids::VECTOR_STROKE_OPACITY,
-        stroke[3],
-    );
-    sync_opacity_slider(
-        &mut hero.store,
-        ph2d_editor::ids::VECTOR_FILL_OPACITY,
-        fill[3],
-    );
+    // ── 5. **Publicar** — o que o painel mostra sobre a cena e a seleção.
+    //
+    // ⚠️ Esta primeira publicação fica AQUI porque é a única que lê a TOOL (`ui_snapshot`),
+    // que é um empréstimo mútuo do registry; o resto do passo 5 mora no módulo irmão.
     #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_vector_style(if vector_active {
         Some(tool.ui_snapshot())
     } else {
         None
     });
-    // Publish the selected vertex's type so the panel shows the Vertex section
-    // (Corner/Smooth/Symmetric) + highlights the active one. `None` hides it.
-    #[cfg(feature = "panel-vector")]
-    ph2d_panel_vector::set_selected_vertex_type(if vector_active {
-        pen.selected_vertex_kind(scene).map(vertex_sel_of)
-    } else {
-        None
-    });
-    // **Quantos** nós estão selecionados — o tipo acima diz *uniforme ou misto*, não a contagem, e
-    // o Average precisa exactamente dela (com um nó só não há o que mediar).
-    #[cfg(feature = "panel-vector")]
-    ph2d_panel_vector::set_current_vertex_count(if vector_active {
-        pen.selected_verts().len()
-    } else {
-        0
-    });
-    // **Existe LÂMINA?** — o fato que decide se os dois botões do corte são oferecidos. A verdade
-    // mora no ECS (`VecCutPath`); isto é a projeção, como toda a fronteira deste painel.
-    #[cfg(feature = "panel-vector")]
-    ph2d_panel_vector::set_cut_line_exists(
-        vector_active && crate::vec_cut_line::cut_line(sim, vec_entities).is_some(),
-    );
-    // NOTA: o estilo de quina não é mais publicado para um toggle na seção Vertex — ele virou o
-    // par de ferramentas Fillet / Chamfer (o SINAL do `corner_radius` é escrito pelo arrasto).
-
-    // Publish the selected path's anchor bbox `[x, y, w, h]` so the panel shows + seeds the
-    // numeric Transform fields. `None` hides the section.
-    //
-    // ⚠️ **Os quatro números cruzam a fronteira de DISPLAY aqui**, e a razão é que este painel
-    // era a QUARTA superfície a responder *onde está esta coisa?* — a régua, o Inspector e o
-    // painel de Grid Snap já convertiam, e este publicava metros de mundo: com os defaults
-    // (100 px/m, Pixels) os três diziam `150` e este dizia `1.5`.
-    //
-    // Posição e tamanho atravessam pela MESMA porta porque a conversão é uma escala pura (sem
-    // deslocamento) — `x` e `w` não precisam de leis diferentes.
-    #[cfg(feature = "panel-vector")]
-    {
-        let display = ph2d_editor::LengthDisplay::of(&hero.project);
-        ph2d_panel_vector::set_length_suffix(display.suffix());
-        ph2d_panel_vector::set_current_transform(if vector_active {
-            pen.selected()
-                .and_then(|sel| scene.path_world_curve_bbox(xforms, sel))
-                .map(|(lo, hi)| {
-                    [
-                        display.value(lo[0]),
-                        display.value(lo[1]),
-                        display.value(hi[0] - lo[0]),
-                        display.value(hi[1] - lo[1]),
-                    ]
-                })
-        } else {
-            None
-        });
-    }
-
-    // **O CONECTOR selecionado** — a seção Connector do painel (Route / Jetty / Spread).
-    // Publica os valores **EFETIVOS** (o automático, quando o usuário não fixou nada);
-    // `None` ⇒ nenhum conector na seleção ⇒ a seção inteira some. O corpo mora no módulo
-    // dono do assunto (teto de 600 LOC por arquivo da shell, HR-18).
-    crate::vec_connector_panel::publish(
+    // O resto do passo 5 (as fileiras, o Transform, o snap, o preenchimento e a régua do
+    // arrasto) mora no irmão — teto de 600 LOC da shell (HR-18), cortado pela linha que o
+    // doc-header já enumerava: *o que o frame FAZ* × *o que o painel é TOLD*.
+    publish::publish(
+        hero,
+        scene,
+        pen,
+        xforms,
         sim,
         vec_entities,
-        scene,
-        xforms,
-        pen.selected_paths(),
         vector_active,
+        active_handle,
+        stroke,
+        fill,
+        px_to_world,
+        pivot_edit,
+        snap,
     );
-
-    // Publish the object-selection path count so the panel shows Align (≥2) /
-    // Distribute (≥3).
-    #[cfg(feature = "panel-vector")]
-    ph2d_panel_vector::set_current_selection_count(if vector_active {
-        pen.selected_paths().len()
-    } else {
-        0
-    });
-    // Publish the pivot-edit ("Set Center") armed state for the button label.
-    #[cfg(feature = "panel-vector")]
-    ph2d_panel_vector::set_current_pivot_edit(vector_active && pivot_edit);
-    // Publish shape-snapping so the Snap section reflects (and drives) it.
-    #[cfg(feature = "panel-vector")]
-    ph2d_panel_vector::set_current_snap(snap.on);
-    #[cfg(feature = "panel-vector")]
-    ph2d_panel_vector::set_current_snap_position(snap.path, snap.crossings);
-    // ⚠️ A régua vem do HERO, não do `snap`: ela é chrome de canvas (aparece com qualquer
-    // ferramenta) e o seu dono é a vista, não a ferramenta vetorial. O painel só a alcança.
-    ph2d_panel_vector::set_current_guides(snap.guides, hero.view.rulers_visible);
-
-    // Publish the selected path's fill rule — `Some` ONLY when it is a compound
-    // path, since with a single contour both rules paint identically and the row
-    // would be a no-op control.
-    #[cfg(feature = "panel-vector")]
-    ph2d_panel_vector::set_current_fill_rule(
-        vector_active
-            .then(|| pen.selected())
-            .flatten()
-            .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
-            .filter(|p| p.is_compound())
-            .map(|p| match p.fill_rule {
-                ph2d_vec_scene::FillRule::NonZero => ph2d_panel_vector::PathFillRule::NonZero,
-                ph2d_vec_scene::FillRule::EvenOdd => ph2d_panel_vector::PathFillRule::EvenOdd,
-            }),
-    );
-
-    // Publish the selected path's closed flag so the panel labels the toggle
-    // "Close Path" / "Open Path" correctly.
-    #[cfg(feature = "panel-vector")]
-    ph2d_panel_vector::set_current_path_closed(if vector_active {
-        pen.selected()
-            .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
-            .map(|p| p.closed)
-    } else {
-        None
-    });
-
-    // Publish the selected path's fill kind (+ linear angle) so the Fill-type
-    // selector reflects + drives it.
-    #[cfg(feature = "panel-vector")]
-    {
-        use ph2d_panel_vector::FillKind;
-        use ph2d_vec_scene::Paint;
-        let (kind, angle) = if vector_active {
-            match pen
-                .selected()
-                .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
-                .and_then(|p| p.fill.as_ref())
-            {
-                Some(Paint::Solid(_)) => (Some(FillKind::Solid), None),
-                Some(Paint::Linear { start, end, .. }) => {
-                    // Angle of the ramp direction, normalized to [0, 360).
-                    let mut deg = (end[1] - start[1]).atan2(end[0] - start[0]).to_degrees();
-                    if deg < 0.0 {
-                        deg += 360.0;
-                    }
-                    (Some(FillKind::Linear), Some(deg))
-                }
-                Some(Paint::Radial { .. }) => (Some(FillKind::Radial), None),
-                Some(Paint::MultiPoint { .. }) => (Some(FillKind::MultiPoint), None),
-                None => (None, None),
-            }
-        } else {
-            (None, None)
-        };
-        ph2d_panel_vector::set_current_fill(kind, angle);
-        // Publish the selected multi-point point's influence + jitter (drive the sliders).
-        let sel_point = active_handle.and_then(GradHandle::point).and_then(|i| {
-            pen.selected()
-                .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
-                .and_then(|p| match &p.fill {
-                    Some(Paint::MultiPoint { points }) => points.get(i).copied(),
-                    _ => None,
-                })
-        });
-        ph2d_panel_vector::set_current_grad_influence(sel_point.map(|gp| gp.influence));
-        ph2d_panel_vector::set_current_grad_jitter(sel_point.map(|gp| gp.jitter));
-    }
-
-    // Calibrate the Transform fields' drag scrub to the camera: value-units per cursor pixel ⇒
-    // dragging a chip N px moves the shape N px on screen at any zoom (unbounded — no clamp).
-    // Live each frame so zoom in/out keeps the 1:1 feel.
-    //
-    // ⚠️ **A TAXA cruza a MESMA fronteira que o valor, e esquecê-la é o defeito que compila.**
-    // Ela é *comprimento por pixel de cursor*, logo é um comprimento — com o valor em pixels de
-    // display e a taxa em metros de mundo, arrastar um chip um pixel moveria o número em `0,01`
-    // enquanto ele mostra centenas: o chip pareceria travado. Uma porta, os dois lados.
-    if vector_active {
-        let px_to_world = ph2d_editor::LengthDisplay::of(&hero.project).value(px_to_world);
-        for id in [
-            ph2d_editor::ids::VECTOR_TRANSFORM_X,
-            ph2d_editor::ids::VECTOR_TRANSFORM_Y,
-            ph2d_editor::ids::VECTOR_TRANSFORM_W,
-            ph2d_editor::ids::VECTOR_TRANSFORM_H,
-        ] {
-            hero.store.set_number_drag_rate(id, px_to_world);
-        }
-        // The Angle (R) field is in DEGREES, not world units — a fixed, gentle
-        // scrub (a full drag across the screen ≈ a couple turns), zoom-independent.
-        const ROT_DRAG_DEG_PER_PX: f64 = 0.5;
-        hero.store
-            .set_number_drag_rate(ph2d_editor::ids::VECTOR_TRANSFORM_R, ROT_DRAG_DEG_PER_PX);
-    }
 
     // Mirror the tool's mode + shape params so the input dispatch can route
     // canvas gestures (pen vs shape) + size the shapes without a downcast.
@@ -591,4 +402,9 @@ mod tests;
 /// A TRADUÇÃO do vocabulário tool ⟷ documento — módulo irmão pelo teto de 600 LOC (HR-18).
 #[path = "vector_bridge_vocab.rs"]
 mod vocab;
-use vocab::{line_cap, line_join, vertex_sel_of};
+use vocab::{line_cap, line_join};
+
+/// **O que o painel é TOLD** (passo 5) — irmão pelo mesmo teto, cortado pela linha que o
+/// doc-header acima já enumerava: os passos 1-4 mexem no documento, o 5 só o descreve.
+#[path = "vector_bridge_publish.rs"]
+mod publish;

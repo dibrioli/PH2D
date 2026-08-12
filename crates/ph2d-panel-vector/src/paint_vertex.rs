@@ -48,6 +48,18 @@ impl BodyCtx<'_> {
             self.hit_index.register(*id, rect);
         }
         y += self.row_h + Spacing::Xs.px();
+        // **ONDE o nó está** — o último buraco de uma wave chamada PRECISÃO: dava para arrastar e
+        // encaixar um nó, não para DIZER onde ele vai.
+        //
+        // ⚠️ Os dois números são a **MEDIANA** da seleção, em MUNDO, e o que o dreno aplica é um
+        // **DESLOCAMENTO** (o modelo do Blender). Com um nó a mediana É o nó, então o caso simples
+        // lê como o Illustrator; com vários, o conjunto anda junto em vez de colapsar num X só.
+        //
+        // ⚠️ E eles só existem quando há mediana: um índice que já não descreve vértice nenhum
+        // sai da conta, e sem conta não há número a mostrar.
+        if state::current_vertex_pos().is_some() {
+            y = self.number_row("X", ids::VECTOR_VERT_X, "Y", ids::VECTOR_VERT_Y, y);
+        }
         // **A ESCALA da seleção** (plano 25 §6, W3b): dois alcances que o retângulo não dá.
         // São BOTÕES e não atalhos porque um atalho que ninguém descobre é uma feature que não
         // existe — e estes dois são exatamente os que tornam uma forma de 40 nós trabalhável.

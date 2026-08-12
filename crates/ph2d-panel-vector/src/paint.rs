@@ -131,6 +131,17 @@ fn seed_and_publish(
             }
         }
     }
+    // Seed the NODE fields from the published median. Mesmo padrão dos irmãos do Transform,
+    // incluindo o guard de FOCO: re-semear o campo que está a ser digitado apagaria o dígito
+    // debaixo do dedo.
+    if let Some([vx, vy]) = state::current_vertex_pos() {
+        let focus = store.focus_id();
+        for (id, v) in [(ids::VECTOR_VERT_X, vx), (ids::VECTOR_VERT_Y, vy)] {
+            if focus != Some(id) {
+                store.set_number_value(id, v);
+            }
+        }
+    }
     // Seed the Transform fields from the published bbox. 1-frame post-commit lag, ok.
     if let Some([tx, ty, tw, th]) = state::current_transform() {
         let focus = store.focus_id();

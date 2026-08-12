@@ -352,7 +352,8 @@ Duas ausências que **compartilham um motor que já está no repo** (`merged_seg
 E **a escala da seleção**, que é o que faz o app não parecer de fronteira: o marquee **exige Shift**,
 **substitui** em vez de somar, e vê **um path só**; não há **lasso**, `Tab`, select-all de nós, select
 por tipo, select de sub-caminho, nem **X/Y numérico do nó**. Trabalhar uma forma de 40 nós é
-clique-a-clique.
+clique-a-clique. *(Os seis fecharam: `Tab`/Ctrl+A/Subpath/Same e a escala nesta §6, o laço na W6.5,
+o X/Y do nó na **W6.9**.)*
 
 ~~⚠️ **Editar nós de VÁRIAS formas é ausência POR CONSTRUÇÃO** (o `selected_verts` pertence a um
 `selected` único) ⇒ **G**, fica **fora** desta wave e nomeada aqui.~~ ✅ **FECHADO (2026-08-10)** —
@@ -467,8 +468,9 @@ estado de documento — uma linha na fila que o Ctrl+Z não teria o que desfazer
 schema, nenhum contrato congelado. Smoke: **`PH2D_BUILD_SMOKE=43`**, passos 9-15.
 
 **Aberto, e nomeado:** ~~o **lasso** (a caixa cobre o caso comum; o laço quer captura de polígono +
-overlay próprio — wave dela)~~ ✅ **FECHADO pela W6.5** (no fim desta §6) · **X/Y numérico do nó** (é *precisão*, e cai naturalmente na **W6**,
-que é a wave da precisão) · ~~e **editar nós de várias formas ao mesmo tempo**, que segue **G** e
+overlay próprio — wave dela)~~ ✅ **FECHADO pela W6.5** (no fim desta §6) · ~~**X/Y numérico do nó**
+(é *precisão*, e cai naturalmente na **W6**, que é a wave da precisão)~~ ✅ **FECHADO pela W6.9**
+(no fim da §9) · ~~e **editar nós de várias formas ao mesmo tempo**, que segue **G** e
 por construção~~ ✅ **FECHADO pela W6.4** (abaixo) — e era ele o **pré-requisito do lasso**: um laço
 que varre os nós de duas formas não significa nada enquanto a seleção só souber guardar os de uma.
 
@@ -1308,6 +1310,54 @@ reivindicaria também a rotação, que é em graus. *Um campo que se auto-rotula
 exceção escrita num doc-comment que o artista não lê.*
 
 **O censo fecha: 14 de 14** — os quatro do Transform (W6.7) e os dez do layout.
+
+### ✅ W6.9 — O X/Y NUMÉRICO DO NÓ (o último item da lista da §6)
+
+A §6 nomeava-o desde a wave do alcance do nó: *"trabalhar uma forma de 40 nós é lento porque não há
+X/Y numérico do nó"*. Havia como **arrastar** um nó e como **encaixá-lo**; não havia como **DIZER
+onde ele vai**. As duas fileiras entram na seção Vertex, ao lado dos chips Corner/Smooth/Symm.
+
+#### O modelo é o do BLENDER, e a escolha não é gosto
+
+| ferramenta | com 1 nó | com N nós |
+|---|---|---|
+| Illustrator · Rive · Figma | escreve o alvo | **campo não existe** (só seleção única) |
+| Inkscape | escreve o alvo | **escreve o alvo em CADA nó** ⇒ todos colapsam num X |
+| Blender (*Median*) | escreve o alvo | mostra a **mediana**, aplica o **deslocamento** |
+
+⚠️ **Com um nó os três modelos dão o MESMO resultado** — a mediana de um conjunto de um é o
+elemento —, então o defeito do Inkscape é invisível no caso comum e destrói a forma exatamente no
+caso que a multi-seleção existe para servir (a W6.4 deu dono à seleção de nós, e ela atravessa
+formas). O de Illustrator/Figma não é errado, é **ausente**: eles simplesmente não oferecem o campo
+com mais de um nó, o que devolve o artista ao arrasto.
+
+#### A escrita passa pela porta que já existia
+
+`PenTool::nudge` é a porta das setas do teclado: recebe um delta de **MUNDO**, converte para local
+**por forma** e move a âncora **e os handles**. O dreno subtrai a mediana do alvo e chama-a — um
+`set_vertex_position` seria a segunda resposta a *como um nó se move*, e as duas divergiriam no dia
+em que uma delas ganhasse um caso especial (a lição que o ADR-0128 pagou cinco vezes).
+
+#### A LEITURA é em MUNDO, e é a metade que pode mentir em silêncio
+
+`selected_anchor_world` é nova, e a regra-mãe do módulo decide o corpo dela (ADR-0111): *o que se
+vê/aponta/encaixa é MUNDO; o que o documento guarda é LOCAL*. Sob a pose de uma forma escalada, ler
+`v.anchor` cru dá um número que **discorda da régua sob o próprio nó** — e compila.
+
+⚠️ **E ela é uma MEDIANA, não o primário.** O irmão `selected_vertex_kind` já pagou isto: ele
+reportava o tipo do vértice primário, o que faz o painel afirmar sobre três nós uma verdade de um
+só. Uma mediana é uma afirmação sobre o conjunto inteiro.
+
+#### O que o gate mediu, e a mutação que sobreviveu
+
+Sete mutações, sete sangram — mas a do dreno **sobreviveu à primeira versão do arch-gate**, e o
+buraco era meu: o bloco tem um braço por eixo, então `contains("target - now[")` era satisfeito por
+**um** deles. Trocar só o braço do X pelo alvo cru deixava o gate verde sobre exatamente o defeito
+que ele nomeia. A asserção passou a pedir os **dois** eixos.
+
+**Números da cena de smoke, medidos:** viga de `4,0` de mundo ⇒ os dois nós de baixo distam
+**400 px**, a mediana deles está em **X = 0 px, Y = −50 px**, e o alvo do passo 3 é **150 px**
+(escala de default, 100 px/m). Cena: **`PH2D_BUILD_SMOKE=73`**.
 
 ## §10 — W0: A HIGIENE (defeitos que a auditoria achou, não features)
 

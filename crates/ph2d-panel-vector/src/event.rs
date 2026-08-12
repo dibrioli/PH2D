@@ -566,6 +566,8 @@ fn is_shell_owned_number(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_TRANSFORM_W
         || id == ids::VECTOR_TRANSFORM_H
         || id == ids::VECTOR_ARRANGE_Z
+        || id == ids::VECTOR_VERT_X
+        || id == ids::VECTOR_VERT_Y
         || crate::populate::layout::LAYOUT_FIELDS.contains(&id)
 }
 

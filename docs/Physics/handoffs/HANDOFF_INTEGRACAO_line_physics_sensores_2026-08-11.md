@@ -10,12 +10,12 @@
 | | |
 |---|---|
 | branch | `line/physics` |
-| HEAD | `dbb2c05a2a2d156301ef9af825e9d829f7fd1364` |
+| HEAD | `6ad087caa9722b8f37b2c41f9dd584f6ab87ca46` |
 | merge-base com `main` | `76788440adbabb0e5b12f8fdafecc6f1e1183e1a` |
-| commits | **40** |
+| commits | **41** |
 | diff | 89 arquivos, +13.709 / −833 |
 
-⚠️ **Todos os 40 são pós-integração de 2026-08-10** (a jornada `W-KinMove` /
+⚠️ **Todos os 41 são pós-integração de 2026-08-10** (a jornada `W-KinMove` /
 modo cinemático, que já está no `main`). Nada aqui foi entregue antes.
 
 **O assunto é o PLAYER, em duas metades.** A primeira é o **catálogo** (o plano

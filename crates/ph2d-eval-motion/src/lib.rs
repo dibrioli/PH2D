@@ -37,6 +37,10 @@
 //! lowering already reads them.
 
 use ph2d_nodegraph::attr::{Column, PAR_THRESHOLD, Stream};
+/// O achador de substeps — a convenção de manifesto que o pump lê antes de cada cook.
+#[path = "substep_zones.rs"]
+mod substep_zones;
+
 use ph2d_nodegraph::cook::{Cook, CookError, OpResolver, TimeScopes};
 use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_render::RenderInstance;
@@ -283,6 +287,7 @@ impl MotionCookPump {
         if self.last_cooked_tick != Some(tick) {
             self.ring.record(tick, self.cook.checkpoint());
         }
+        self.substep_declared_zones(graph, ops, playhead);
         self.cook_target_into(graph, ops, target, playhead, scopes);
         if target.has_work() {
             // Advance the 1-tick `pre` feedback once per cooked frame — ONCE for
@@ -485,6 +490,7 @@ impl MotionCookPump {
             if self.ring.should_record(t) {
                 self.ring.record(t, self.cook.checkpoint());
             }
+            self.substep_declared_zones(graph, ops, playhead);
             self.cook_target_into(graph, ops, target, playhead, scopes);
             if !target.has_work() {
                 break;

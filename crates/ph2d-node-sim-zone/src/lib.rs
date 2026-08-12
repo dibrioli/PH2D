@@ -49,12 +49,12 @@
 //! 2. **An empty sim is not an unstarted one.** See `eval` below: this is what
 //!    `EvalCtx::started` exists for, and getting it wrong resurrects the dead.
 
-use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamHardMax, ParamUiHint, ParamWidget, RegistryError};
 use ph2d_nodegraph::attr::Stream;
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::gpu::{GpuKernel, StateSelect};
-use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
+use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -88,9 +88,34 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     // what integrate/spring declare for the same reason.
     effect: Effect::Temporal,
     clock: Clock::Frame,
-    params: &[],
+    // ⚠️ **Este param não é lido pelo `eval` — ele é lido pelo SEQUENCIADOR**, e isso é o
+    // desenho, não um descuido: um substep não é uma conta que a zona faz, é quantas vezes o
+    // relógio pede que o interior dela corra ([`ph2d_nodegraph::cook::Cook::substep`]). O param
+    // mora aqui porque é aqui que o artista o procura e porque o painel se auto-popula da lista;
+    // ele entra no fingerprint do cook pela porta de sempre, então mudá-lo re-cozinha.
+    params: &[ParamSpec {
+        name: "substeps",
+        default: 1.0,
+    }],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// **O teto é do RELÓGIO DE PAREDE, e a tabela é esta** (§0: meça antes de limitar). Custo por
+/// QUADRO de uma zona substepada, contra o orçamento de 60 fps (16,67 ms) —
+/// `measure_substeps::measure_what_a_substep_costs_per_frame`:
+///
+/// | partículas | sub=1 | sub=8 | sub=16 | sub=32 | sub=64 |
+/// |---|---|---|---|---|---|
+/// | 256 | 0,007 | 0,060 | 0,119 | 0,239 | 0,461 |
+/// | 4.096 | 0,086 | 0,668 | 1,371 | 2,695 | 5,404 |
+/// | 16.384 | 0,219 | 1,967 | 3,914 | 7,903 | **15,910** |
+///
+/// O custo é **linear em `n`** (e em partículas), então o número que decide é onde uma zona
+/// pesada come o quadro: a 16.384 partículas `sub = 64` custa **95% de um quadro**. Daí o par do
+/// slider dual (doc 88): a faixa CONFORTÁVEL do arrasto para em **16** — o erro cai pela metade a
+/// cada dobra e já está em 0,6% ali, então acima disso o retorno não se vê — e o teto DIGITÁVEL
+/// para em **64**, onde o disfuncional começa a ser medível em vez de opinável.
+const MAX_SUBSTEPS: f32 = 64.0;
 
 /// **The transients: scratch a tick writes for itself, and the zone must NOT hold.**
 ///
@@ -174,6 +199,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
             transients: &TRANSIENTS,
         },
     );
+    reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
@@ -184,6 +211,23 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     Ok(())
 }
+
+/// O `IntSlider` é o que faz a unidade cair em `ParamUnit::Count` sem uma 2ª declaração —
+/// um substep é uma CONTAGEM, e meio substep não quer dizer nada.
+static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
+    param: "substeps",
+    label: "Substeps",
+    min: 1.0,
+    max: 16.0,
+    step: 1.0,
+    widget: ParamWidget::IntSlider,
+}];
+
+/// O teto digitável, MEDIDO — a tabela está no doc-comment de [`MAX_SUBSTEPS`].
+static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
+    param: "substeps",
+    max: MAX_SUBSTEPS,
+}];
 
 #[cfg(test)]
 #[path = "tests.rs"]

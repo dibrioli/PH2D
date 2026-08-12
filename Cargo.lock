@@ -5154,12 +5154,15 @@ name = "ph2d-eval-motion"
 version = "0.0.0"
 dependencies = [
  "dhat",
+ "ph2d-node-force-wind",
  "ph2d-node-motion-clone",
  "ph2d-node-motion-grid",
  "ph2d-node-motion-move",
  "ph2d-node-motion-oscillator",
  "ph2d-node-motion-transform",
  "ph2d-node-registry",
+ "ph2d-node-sim-step",
+ "ph2d-node-sim-zone",
  "ph2d-nodegraph",
  "ph2d-render",
  "rayon",

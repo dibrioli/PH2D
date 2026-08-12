@@ -367,6 +367,7 @@ impl Cook {
     pub fn externals(&self) -> &crate::external::All {
         &self.externals
     }
+
     pub fn new() -> Self {
         Self::default()
     }

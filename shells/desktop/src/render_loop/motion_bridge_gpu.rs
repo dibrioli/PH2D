@@ -94,6 +94,26 @@ pub(super) fn graph_has_live_vector_source(graph: &Graph, reg: &NodeRegistry) ->
         .any(|n| reg.is_live_vector_source(NodeTypeId::of(n.type_name.as_str())))
 }
 
+/// **Alguma zona deste documento pede SUBSTEPS?** (doc 89, folha 13.)
+///
+/// A declaração é a mesma convenção que o pump da CPU lê — um param de manifesto chamado
+/// `substeps` —, então não há tabela paralela para as duas metades divergirem.
+pub(super) fn graph_asks_for_substeps(graph: &Graph, reg: &NodeRegistry) -> bool {
+    graph.nodes().iter().any(|n| {
+        let id = NodeTypeId::of(n.type_name.as_str());
+        let Some(op) = ph2d_nodegraph::cook::OpResolver::resolve(reg, id) else {
+            return false;
+        };
+        if op.manifest().param_default("substeps").is_none() {
+            return false;
+        }
+        graph
+            .node_param_overrides(n.id)
+            .and_then(|m| m.get("substeps").copied())
+            .is_some_and(|v| v.round() > 1.0)
+    })
+}
+
 /// Does this document bring in an engine OBJECT (`source.object`, `texture_id`)?
 /// Read together with [`ph2d_gpu_cook::GpuPlan::suffix_changes_count`] for the
 /// count-changing cerca: an object graph whose GPU suffix reorders / changes
@@ -168,6 +188,15 @@ pub(super) fn cook_gpu(
     if graph_has_object_source(&motion.doc.graph, &motion.registry)
         && cook_publishes_live_geometry(&motion.pump.cook)
     {
+        return GpuOutcome::FellThrough;
+    }
+    // **Uma zona com SUBSTEPS recusa o cook de device** (doc 89, folha 13), e o motivo não é
+    // o motor: é que o device marcha o PLANO INTEIRO (`drives_a_loop` é um booleano sobre todos
+    // os estágios), enquanto o substep da CPU é POR-ZONA. Num documento com duas zonas e
+    // contagens diferentes os dois produtores mostrariam quadros diferentes — a armadilha que o
+    // ADR-0155 já pagou aqui. Recusar mantém uma resposta só; **o trade está NOMEADO**: um grafo
+    // substepado perde a aceleração até o device saber marchar por-zona.
+    if graph_asks_for_substeps(&motion.doc.graph, &motion.registry) {
         return GpuOutcome::FellThrough;
     }
     let plan = ph2d_gpu_cook::plan(

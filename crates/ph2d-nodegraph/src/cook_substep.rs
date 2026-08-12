@@ -7,6 +7,15 @@ use super::{Cook, CookError, OpResolver, SCOPE_ROOT, TimeScopes};
 use crate::graph::{Graph, NodeId};
 
 impl Cook {
+    /// The clock the last tick closed on, `None` before the first ever closed.
+    ///
+    /// It is the honest `frame_start` for a driver that marches from tick 0 — and the reason
+    /// [`Self::substep`] takes that argument instead of reading this itself: the ENGINE cannot
+    /// know where a frame began (there is no default for `None` that is not a guess), while a
+    /// pump that owns the march does.
+    pub fn prev_playhead(&self) -> Option<f64> {
+        self.prev_playhead
+    }
     /// Run `n` sub-passes of `target` inside one tick — the **substep**.
     ///
     /// A substep is a property of the **clock**, not a parameter of the step: a

@@ -33,3 +33,9 @@ ph2d-node-motion-move = { path = "../ph2d-node-motion-move" }
 # heap allocations across a warm, paused re-cook of the sink into a reused
 # buffer (mirror of editor-core's interaction_no_alloc bench).
 dhat = "0.3"
+# O gate do SUBSTEP (folha 13): ele prova que o PUMP substepa uma zona que declara,
+# entao precisa da zona, do passo e de uma forca reais -- um espelho deles seria um
+# espelho do fato sob teste.
+ph2d-node-sim-zone = { path = "../ph2d-node-sim-zone" }
+ph2d-node-sim-step = { path = "../ph2d-node-sim-step" }
+ph2d-node-force-wind = { path = "../ph2d-node-force-wind" }

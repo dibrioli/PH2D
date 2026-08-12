@@ -169,3 +169,55 @@ fn measure_what_n_global_passes_cost() {
         println!("{sub:3}   {ms:9.3}    {:11.2}x    {rows:6}", ms / base);
     }
 }
+
+/// **O TETO do `substeps` é do RELÓGIO DE PAREDE, e sai daqui** (§0: meça antes de limitar).
+/// Uma zona com N partículas, custo por QUADRO contra o orçamento de 60 fps (16,7 ms).
+#[test]
+#[ignore = "measurement probe; run with --ignored --nocapture"]
+fn measure_what_a_substep_costs_per_frame() {
+    use std::time::Instant;
+    let reg = registry();
+    println!("\n=== CUSTO por QUADRO de uma zona substepada (orcamento 60fps = 16,67 ms) ===");
+    println!("particulas   sub=1     sub=4     sub=8     sub=16    sub=32    sub=64");
+    for side in [16u32, 64, 128] {
+        let mut g = Graph::new();
+        let seed = g.add_node("motion.grid");
+        g.set_param(seed, "rows", side as f32);
+        g.set_param(seed, "cols", side as f32);
+        let zone = g.add_node("sim.zone");
+        let wind = g.add_node("force.wind");
+        g.set_param(wind, "strength", 40.0);
+        g.set_param(wind, "gust", 0.0);
+        let step = g.add_node("sim.step");
+        wire(&mut g, seed, 0, zone, 0, false);
+        wire(&mut g, zone, 0, wind, 0, true);
+        wire(&mut g, wind, 0, step, 0, false);
+        wire(&mut g, step, 0, zone, 1, false);
+        g.validate(&reg).expect("bem-tipado");
+
+        print!("{:>8}     ", side * side);
+        for sub in [1u32, 4, 8, 16, 32, 64] {
+            let mut cook = Cook::new();
+            // aquece: o 1o quadro aloca as colunas
+            for k in 0..5u64 {
+                let t = (k + 1) as f64 / 60.0;
+                cook.substep(&g, &reg, zone, k as f64 / 60.0, t, sub).ok();
+                cook.cook(&g, &reg, zone, t).ok();
+                cook.advance_tick(&g, &reg, t).ok();
+            }
+            let t0 = Instant::now();
+            const FRAMES: u64 = 20;
+            for k in 5..5 + FRAMES {
+                let t = (k + 1) as f64 / 60.0;
+                cook.substep(&g, &reg, zone, k as f64 / 60.0, t, sub).ok();
+                cook.cook(&g, &reg, zone, t).ok();
+                cook.advance_tick(&g, &reg, t).ok();
+            }
+            print!(
+                "{:>7.3}   ",
+                t0.elapsed().as_secs_f64() * 1e3 / FRAMES as f64
+            );
+        }
+        println!();
+    }
+}

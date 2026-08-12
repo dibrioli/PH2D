@@ -241,10 +241,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 
 /// Param UI hints (M1.P1) — ranges mirror the reference's sliders.
 static PARAM_HINTS: &[ParamUiHint] = &[
@@ -273,6 +274,76 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 20.0,
         step: 0.1,
         widget: ParamWidget::Slider,
+    },
+];
+
+/// **OS TETOS DIGITÁVEIS, MEDIDOS** (doc 88 B2 · doc 89 folha 03 linha 69 · CLAUDE.md §0).
+///
+/// Este nó não tinha nenhum, e a const [`MAX_STEPS`] já nomeava o vão em prosa (*"64 só guarda
+/// overrides absurdos escritos à mão"*) sem dizer onde o absurdo começa. A sonda
+/// `measure_spring_ceiling` varre os dois params pela porta do produto (o `Cook` do registry),
+/// nos DOIS relógios, e o veredito tem três regimes: **sadia · EXPLODE · SALTA**.
+///
+/// ⚠️ **O relógio do PIOR caso é que decide, e não é o de 60 fps.** O `eval` clampa `dt` em
+/// `MAX_DT = 0,1`, então um quadro perdido ou um salto de régua entrega legitimamente `0,1` ao
+/// integrador. Um teto que só vale a 60 fps é um teto que depende da MÁQUINA — a mola do artista
+/// explodiria na primeira engasgada, e nada na tela diria por quê.
+///
+/// **`friction` — o teto é 20, e ele COINCIDE com o slider.** O termo de amortecimento é
+/// explícito, logo estável enquanto `friction · sub_dt < 2`; no pior caso `sub_dt = MAX_DT`
+/// (tensão baixa ⇒ um sub-passo só) ⇒ **`2 / 0,1 = 20`**. Medido a `MAX_DT`, com o valor de
+/// fronteira já explodindo:
+///
+/// | tension | sub-passos | teto previsto | último sadio | primeiro a explodir |
+/// |---|---|---|---|---|
+/// | 0,1 | 1 | 20 | **20** | 21 |
+/// | 8 (default) | 2 | 40 | 21 | **40** |
+/// | 60 (slider) | 4 | 80 | 40 | **80** |
+/// | 20.480 | 64 | 1.280 | 200 | **1.280** |
+///
+/// ⚠️ **Isto é o achado, e ele é sobre o slider:** o `20,0` do `ParamUiHint` **não era um número
+/// de gosto** — é `2 / MAX_DT`, o limite de estabilidade do amortecimento explícito no pior
+/// passo que o kernel admite. O slider já estava SENTADO no teto, e ninguém sabia. ⚠️ E o preço
+/// fica NOMEADO: entre 20 e ~120 a mola funciona a 60 fps e explode no primeiro `dt` grande —
+/// *o valor certo seria função de OUTRO knob* (`20 · sub-passos`, ou seja da tensão), e a lei
+/// desta casa é que isso é bug de desenho ([[feedback_ergonomics_verdict_is_a_design_bug]]).
+/// Escolher o pior caso é o único número que **nunca mente**.
+///
+/// **`tension` — 1.600.000**, quatro ordens de grandeza acima do slider, e o teto existe pelo
+/// que acontece ACIMA dele, não abaixo. Medido com o `friction` no teto DELE (20) e a `MAX_DT`:
+///
+/// | tension | pico \|Y\| | veredito |
+/// |---|---|---|
+/// | 800.000 | 100,204 | sadia |
+/// | **1.600.000** | 461,368 | **sadia (o último)** |
+/// | 1.638.400 | 7,6e28 | EXPLODE |
+/// | 2.000.000 | 1,1e28 | EXPLODE |
+/// | 4.000.000 | 100,000 | **SALTA** |
+///
+/// ⚠️ **A linha de 4 M é a razão de o oráculo ter três braços e não dois.** Ela reporta pico
+/// exactamente `100,000` — *sadia*, para quem só olha a magnitude —, e não é: numa tensão
+/// absurda o passo estoura DENTRO do primeiro sub-passo, o guard de NaN do `eval` repõe a
+/// posição no alvo e a velocidade em zero, e isso se repete a cada tique. A mola fica **pregada
+/// no alvo, finita e imóvel** — um controle que parece não fazer nada. É exactamente o que o
+/// artista vê hoje, sem teto nenhum, ao digitar um número grande. O discriminante é o TEMPO:
+/// uma mola de verdade leva tiques para chegar; uma pregada pelo guard já está lá no tique
+/// seguinte ao degrau.
+///
+/// ⚠️ **E a saturação do passo adaptativo NÃO é o teto** — a derivação óbvia diz que `steps`
+/// satura em 64 a partir de `tension = 20.480` (`MAX_DT · √(T/STABLE) > 64`) e que dali o
+/// `sub_dt` para de encolher; medido, **nada quebra ali**. A razão é que `STABLE = 0,05` é
+/// **80× mais conservador** que o limite real deste integrador: o passo é semi-implícito
+/// (`v` antes de `x`), cuja fronteira é `sub_dt² · tension < 4`. O teto verdadeiro é
+/// `4 / (MAX_DT / MAX_STEPS)² = 4 · 640² = 1.638.400` — que é **o número que a medição achou**,
+/// ao dígito. Derivação e relógio como duas testemunhas; o teto fica no último SADIO.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "tension",
+        max: 1_600_000.0,
+    },
+    ParamHardMax {
+        param: "friction",
+        max: 20.0,
     },
 ];
 

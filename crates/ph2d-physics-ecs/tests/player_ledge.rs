@@ -80,6 +80,16 @@ fn scene(centre_y: f32, gap: f32, grab: f32) -> (SimWorld, PhysicsBridge, Entity
             PlatformPlayer {
                 float_height: FLOAT_HEIGHT,
                 ledge_grab: grab,
+                // ⚠️ **A janela DECLARADA, e igual ao `grab`** — é o mundo de
+                // antes da `W-LedgeSensor`, quando um número fazia os dois
+                // eixos. Herdar o default (0,60) faria estes gates medirem uma
+                // janela que nenhum deles nomeia, e um deles ficaria verde por
+                // um alcance que a fixture não escolheu.
+                ledge_reach_y: grab,
+                // ⚠️ **Um raio, como antes.** Os gates do LEQUE armam o `span`
+                // eles próprios; aqui ele é o neutro que torna o resto desta
+                // suíte a regressão-guarda da wave.
+                ledge_span: 0.0,
                 ledge_speed: 3.0,
                 ..PlatformPlayer::default()
             },

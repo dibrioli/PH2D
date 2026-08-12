@@ -461,6 +461,60 @@ recusa é o solver, que simplesmente não deixa o corpo atravessar, e o custo é
 gesto que não termina onde promete sob um teto baixo; pré-checá-lo é uma decisão
 de produto (*recusar a começar* contra *tentar e falhar*), não uma correção.
 
+### 4.51 · `W-LedgeSensor` — **O SENSOR GANHA POSIÇÃO E EXTENSÃO** ✅ ⟨pedido do Enio⟩
+
+*"Em Ledge Grab precisamos de mais ajuste: pelo menos 3 controles — posições x e
+y e scale do sensor. Mas antes de construir faça uma pesquisa melhor sobre o
+assunto."*
+
+**A pesquisa REFUTOU a frase que o `grab` carregava.** Ela dizia *"um número para
+os dois eixos — até onde ele alcança é uma grandeza só"*, e os motores que
+shipam separam-nos:
+
+| referência | o que expõe |
+|---|---|
+| **GDevelop** (2D) | `Grab tolerance` (o X) **e** `Grab offset` (o Y, *"to match character animation"*) |
+| **Corgi Engine** (Unity 2D) | *"a detecção é um raycast, cuja **origem e comprimento** se configuram no inspector"* |
+| **Unreal** (mantle) | **três** traços com papéis distintos + **5** line traces *"ajustável para mais ou menos precisão"* + uma cápsula de folga |
+| *hotspots* estilo Sonic | o sensor de beirada é um **SEGMENTO** com extensão autorada |
+
+⇒ **Três controles**, e a razão de cada um é da referência, não de gosto:
+**`Ledge Grab`** é só o X · **`Grab Height`** é o Y, independente **pela ARTE**
+(a mão agarra onde a mão é DESENHADA, e o nosso pendurar é derivado do topo do
+collider — o caso exacto que o `Grab offset` existe para consertar) ·
+**`Grab Span`** dá extensão, e há um defeito real por trás: **um raio acha o
+lábio num único `x`**, então ele erra um patamar estreito e não distingue *"o
+lábio está dois centímetros adiante"* de *"não há lábio"*.
+
+⚠️ **A minha recomendação inicial estava ERRADA e a construção a corrigiu:** eu
+escrevi que a banda de histerese seria derivada do `span`. O `span` é uma
+extensão **horizontal** e não dá banda vertical nenhuma; quem a dá é o
+`reach_y`, e é assim que os controles continuam **três** em vez de quatro.
+
+⚠️ **E a rejeição de *"a parede continua acima da cabeça"* deixou de ser
+grátis.** Ela era de graça porque o sensor era um PONTO (a origem cai dentro da
+geometria e o cast devolve `distance == 0`). Num leque é feita à mão: **uma
+amostra dentro recusa o leque INTEIRO** — é o traço de folga que o mantle do
+Unreal paga em separado.
+
+**A lei do vencedor:** ganha o acerto mais **PERTO** do corpo (aproximando-se de
+um patamar, as amostras de dentro caem no vazio e as de fora batem no topo, logo
+a mais próxima **é a beirada**), e é ele que define o alvo do mantle.
+
+**`span = 0` reduz LITERALMENTE ao raio único** — uma amostra, na posição exacta
+de antes —, e é isso que mantém o mundo aprovado byte-idêntico e o degrau de
+schema barato.
+
+**5 gates, 4 mutações, 4 sangram.** ⚠️ **E dois deles nasceram sem poder falhar
+pelo motivo que alegavam:** o do leque tinha a aritmética da fixture errada (o
+raio nu ainda pousava dentro do bloco, e o **CONTROLE** reprovou); e o da recusa
+punha o corpo onde **todas** as amostras nascem dentro da parede — ali
+`return None` e `continue` dão o mesmo resultado, e a mutação sobreviveu. Depois
+de corrigido, ele ainda **não continha o fenômeno** numa segunda versão, porque
+o corpo estava apoiado no chão e `ledge_probe_wanted` nem casta o sensor de quem
+está no chão. A fixture que morde é: parede FINA que sobe acima da cabeça +
+prateleira mais baixa **atrás** dela, com o corpo no AR.
+
 ### 4.55 · `W-Probes` — **OS SENSORES FICAM VISÍVEIS** ✅ ⟨pedido do Enio⟩
 
 > *"os Rays (ou outros modos de cast) dos Setups dos Players não estão visíveis

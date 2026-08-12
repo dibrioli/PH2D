@@ -80,7 +80,10 @@ pub use jump::{JumpConfig, JumpState, JumpStep, carried_frame, jump_step};
 pub use kinematic::{
     Fluid, KinematicState, kinematic_advance, kinematic_settle, supported_velocity, surface_descent,
 };
-pub use ledge::{LedgeConfig, LedgeProbe, LedgeState, LedgeStep, ledge_probe_wanted, ledge_step};
+pub use ledge::{
+    LEDGE_SPAN_SAMPLES, LedgeConfig, LedgeProbe, LedgeState, LedgeStep, ledge_probe_wanted,
+    ledge_step,
+};
 pub use react::{Reaction, ReactionConfig, push_transfer};
 pub use ride::{
     RideConfig, Support, damping_axis, ride_hold, ride_spring, ride_support_on_ground, within_reach,

@@ -8,6 +8,12 @@ const DT: f32 = 1.0 / 60.0;
 fn cfg() -> LedgeConfig {
     LedgeConfig {
         grab: 0.4,
+        // ⚠️ **A janela DECLARADA, e igual ao `grab`** — é o mundo de antes da
+        // `W-LedgeSensor`, quando um número fazia os dois eixos. Uma fixture que
+        // herdasse o default do `STARTING_POINT` mediria outra janela sem que
+        // nenhum destes gates o dissesse.
+        reach_y: 0.4,
+        span: 0.0,
         speed: 3.0,
     }
 }

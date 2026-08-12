@@ -151,6 +151,10 @@ pub struct InspectorPlayerInfo {
     pub swim_enter: f32,
     /// O ALCANCE do braço numa beirada, metros (`W-Ledge`). `0` = desligada.
     pub ledge_grab: f32,
+    /// A ALTURA da janela, metros (`W-LedgeSensor`).
+    pub ledge_reach_y: f32,
+    /// A EXTENSAO do sensor, metros (`W-LedgeSensor`). `0` = raio unico.
+    pub ledge_span: f32,
     /// A velocidade do pendurar e da subida, m/s.
     pub ledge_speed: f32,
     /// O TETO da descida enquanto se plana, m/s (`W-Glide`). `0` = desligado.
@@ -295,6 +299,10 @@ pub enum PlayerFieldEdit {
     SwimEnter(f32),
     /// **O ALCANCE do braço numa beirada**, metros (`W-Ledge`). `0` desliga.
     LedgeGrab(f32),
+    /// **A ALTURA da janela**, metros (`W-LedgeSensor`).
+    LedgeReachY(f32),
+    /// **A EXTENSAO do sensor**, metros (`W-LedgeSensor`).
+    LedgeSpan(f32),
     /// **A velocidade do pendurar e da subida**, m/s.
     LedgeSpeed(f32),
     /// **O TETO da descida enquanto se plana**, m/s (`W-Glide`). `0` desliga.

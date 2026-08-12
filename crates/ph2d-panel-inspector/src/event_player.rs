@@ -90,6 +90,8 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
                 ids::INSP_PLAYER_SWIM_ACCEL => Some(PlayerFieldEdit::SwimAcceleration(v)),
                 ids::INSP_PLAYER_SWIM_ENTER => Some(PlayerFieldEdit::SwimEnter(v)),
                 ids::INSP_PLAYER_LEDGE_GRAB => Some(PlayerFieldEdit::LedgeGrab(v)),
+                ids::INSP_PLAYER_LEDGE_REACH_Y => Some(PlayerFieldEdit::LedgeReachY(v)),
+                ids::INSP_PLAYER_LEDGE_SPAN => Some(PlayerFieldEdit::LedgeSpan(v)),
                 ids::INSP_PLAYER_LEDGE_SPEED => Some(PlayerFieldEdit::LedgeSpeed(v)),
                 ids::INSP_PLAYER_GLIDE_FALL => Some(PlayerFieldEdit::GlideFallSpeed(v)),
                 ids::INSP_PLAYER_REACT_SUPPORT => Some(PlayerFieldEdit::ReactionSupport(v)),

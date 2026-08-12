@@ -321,6 +321,7 @@ mod project;
 /// **Os canais assados dentro do arquivo** (ADR-0150 W8.7) — gemeo do `project_painter`.
 mod project_baked_form;
 mod project_painter;
+mod project_schema;
 /// **As settings do PROJETO viajam no arquivo** (doc 88, D3) — a escala do mundo e a
 /// unidade que o artista lê; irmão de `project` pelo teto de LOC.
 mod project_settings;

@@ -358,6 +358,8 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         // teletransporte para patamares que o personagem não vê. O da velocidade
         // acompanha o do arranque — é o mesmo tipo de gesto.
         (ids::INSP_PLAYER_LEDGE_GRAB, 0.0, 0.0, 2.0, 0.05), // LITERAL-PX-OK: m
+        (ids::INSP_PLAYER_LEDGE_REACH_Y, 0.6, 0.0, 2.0, 0.05), // LITERAL-PX-OK: m
+        (ids::INSP_PLAYER_LEDGE_SPAN, 0.0, 0.0, 2.0, 0.05), // LITERAL-PX-OK: m
         (ids::INSP_PLAYER_LEDGE_SPEED, 3.0, 0.0, 20.0, 0.25), // LITERAL-PX-OK: m/s
         (ids::INSP_PLAYER_GLIDE_FALL, 0.0, 0.0, 20.0, 0.25), // LITERAL-PX-OK: m/s
         // A REAÇÃO (W6), em FRAÇÃO da força que o personagem faz. ⚠️ O piso é 0

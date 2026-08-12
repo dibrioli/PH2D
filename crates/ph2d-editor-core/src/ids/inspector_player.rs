@@ -268,12 +268,22 @@ pub const INSP_PLAYER_SWIM_ACCEL: NodeId = hash_node_id("insp.player.swim.accel"
 /// torno dele exatamente onde o jogador tenta emergir.
 pub const INSP_PLAYER_SWIM_ENTER: NodeId = hash_node_id("insp.player.swim.enter");
 
-/// **O ALCANCE do braço numa beirada**, metros (`W-Ledge`). `0` desliga.
+/// **O ALCANCE do braço numa beirada**, metros — o **X** (`W-Ledge`). `0`
+/// desliga.
 ///
-/// ⚠️ **Um número para os DOIS eixos** — a janela acima da cabeça e a distância
-/// à frente. *Até onde ele alcança* é uma grandeza só, e separá-la daria um
-/// personagem que chega ao lábio para cima e não para o lado.
+/// ⚠️ **A nota que estava aqui foi REFUTADA pela referência** (`W-LedgeSensor`):
+/// ela dizia *"um número para os DOIS eixos — até onde ele alcança é uma
+/// grandeza só"*, e os motores 2D que shipam separam-nos, com o motivo do Y
+/// nomeado (a ARTE). Ver [`ph2d_platformer::LedgeConfig::grab`].
 pub const INSP_PLAYER_LEDGE_GRAB: NodeId = hash_node_id("insp.player.ledge.grab");
+/// **A ALTURA da janela**, metros — o **Y** (`W-LedgeSensor`).
+///
+/// ⚠️ É ele que possui a **histerese** do pendurar (a janela é simétrica em
+/// torno do topo do corpo); ver [`ph2d_platformer::LedgeConfig::reach_y`].
+pub const INSP_PLAYER_LEDGE_REACH_Y: NodeId = hash_node_id("insp.player.ledge.reach_y");
+/// **A EXTENSÃO do sensor**, metros — o *scale* (`W-LedgeSensor`). `0` é o raio
+/// único de antes da wave, ao bit; ver [`ph2d_platformer::LedgeConfig::span`].
+pub const INSP_PLAYER_LEDGE_SPAN: NodeId = hash_node_id("insp.player.ledge.span");
 /// **A velocidade com que ele se acomoda no pendurar e sobe no mantle**, m/s.
 ///
 /// ⚠️ **Um número para os dois momentos**, e é deliberado: eles são o mesmo

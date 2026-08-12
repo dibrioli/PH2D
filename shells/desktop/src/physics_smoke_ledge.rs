@@ -94,11 +94,18 @@ fn lane(world: &mut bevy_ecs::world::World, x0: f32, tag: &str, grab: f32) -> En
     // eles. Só o NOME e o alcance são escritos por cima.
     let p = spawn_player(world, Vec2::new(x0 + 1.0, FLOAT + 0.3));
     world.entity_mut(p).insert(Name::new(tag.to_string()));
-    world
-        .entity_mut(p)
-        .get_mut::<PlatformPlayer>()
-        .expect("player")
-        .ledge_grab = grab;
+    {
+        let mut e = world.entity_mut(p);
+        let mut cfg = e.get_mut::<PlatformPlayer>().expect("player");
+        cfg.ledge_grab = grab;
+        // ⚠️ **Os dois DECLARADOS, e não herdados** (`W-LedgeSensor`): a janela
+        // igual ao alcance é o mundo de antes da wave, quando um número fazia os
+        // dois eixos, e é ela que o roteiro do passo 3 mede. Uma cena que
+        // herdasse o default mediria outra janela sem que nada o dissesse.
+        cfg.ledge_reach_y = GRAB;
+        // ⚠️ **Um raio, como antes** — a extensão é o que o passo 9 liga.
+        cfg.ledge_span = 0.0;
+    }
     p
 }
 
@@ -151,6 +158,13 @@ pub(crate) const LEDGE_SMOKE_MESSAGE: &str = concat!(
     "    Suba para 8: ele salta por cima. Devolva para 3.\n",
     " 8. Com a beirada armada, ande contra o patamar BAIXO no chao, sem pular:\n",
     "    ele NAO se pendura nele -- um degrau que se sobe a pe' nao e' beirada.\n",
+    " 9. OS TRES CONTROLES DO SENSOR (W-LedgeSensor). No card LEDGE:\n",
+    "    * 'Grab Height (m)' e' a JANELA acima da cabeca. Baixe para 0.20: ele\n",
+    "      passa a raspar o labio sem o apanhar. Devolva para 0.60.\n",
+    "    * 'Ledge Grab (m)' e' so' o X agora -- quao a' FRENTE ele procura.\n",
+    "    * 'Grab Span (m)' da' EXTENSAO ao sensor: em 0 e' um raio so' (o mundo\n",
+    "      de antes, ao bit); suba para 0.60 e o sensor vira um leque de cinco.\n",
+    "      Aperte B: as cinco marcas aparecem, e SO' A QUE ACHOU acende.\n",
     "\n",
     "O QUE ISTO ACRESCENTA: o labio e' achado por UM raio para baixo, a' frente\n",
     "da cabeca, e o `x` em que ele bate E' o alvo da subida. Nem o pendurar nem a\n",

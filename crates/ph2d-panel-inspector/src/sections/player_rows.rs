@@ -334,16 +334,33 @@ const SWIM_ROWS: [PlayerRow; 3] = [
 /// **A BEIRADA** (W-Ledge) — ⚠️ card próprio, e a primeira row nasce em ZERO
 /// porque a capacidade é opt-in, como o nado e o arranque ao lado.
 ///
-/// ⚠️ **Duas rows, e não quatro:** *o alcance* é uma grandeza só (a janela
-/// acima da cabeça E a distância à frente) e *a velocidade* é uma só (acomodar
-/// e subir são o mesmo gesto de braço). Cada separação daria um par cujo valor
-/// certo de um é função do outro — o defeito de ergonomia que este módulo já
-/// nomeou no `swim_enter`.
-const LEDGE_ROWS: [PlayerRow; 2] = [
+/// ⚠️ **Eram DUAS, e a metade sobre o alcance foi REFUTADA** (`W-LedgeSensor`).
+/// Ela dizia *"o alcance é uma grandeza só — a janela acima da cabeça E a
+/// distância à frente"*, e os motores 2D que shipam separam-nos: o **GDevelop**
+/// expõe `Grab tolerance` (X) **e** `Grab offset` (Y, *"to match character
+/// animation"*), o **Corgi Engine** expõe *origem e comprimento* do raycast. O
+/// eixo Y é independente **pela ARTE**, e o `Span` existe porque um raio único
+/// acha o lábio num `x` só.
+///
+/// ⚠️ **A metade sobre a VELOCIDADE continua de pé, e por isso são três e não
+/// quatro:** acomodar e subir são o mesmo gesto de braço, e dois números
+/// seriam um par cujo valor certo de um é função do outro — o defeito de
+/// ergonomia que este módulo já nomeou no `swim_enter`.
+const LEDGE_ROWS: [PlayerRow; 4] = [
     (
         "Ledge Grab (m)",
         ids::INSP_PLAYER_LEDGE_GRAB,
-        "How far he reaches for a lip, up and ahead. 0 = off.",
+        "How far ahead the sensor looks for a lip. 0 = off.",
+    ),
+    (
+        "Grab Height (m)",
+        ids::INSP_PLAYER_LEDGE_REACH_Y,
+        "How far above his head a lip is still caught.",
+    ),
+    (
+        "Grab Span (m)",
+        ids::INSP_PLAYER_LEDGE_SPAN,
+        "How wide the sensor is. 0 = a single ray.",
     ),
     (
         "Ledge Speed (m/s)",

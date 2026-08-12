@@ -15,7 +15,9 @@
 //! Módulo FILHO por `#[path]`, então `super::*` continua a alcançar o que o pai
 //! não exporta.
 
-use super::probes::{corner_geom, ground_rays, headroom_offset, ledge_ray, wall_rays};
+use super::probes::{
+    corner_geom, ground_rays, headroom_offset, ledge_offset, ledge_rays, wall_rays,
+};
 use super::*;
 
 /// **A LEITURA** (`W-Probes`) — o que cada sensor olhou e o que respondeu, para
@@ -190,27 +192,50 @@ pub(super) fn record_marks(
             if !both && seen.map_or(drive.signum(), |l| l.side) != side {
                 continue;
             }
-            let Some(r) = ledge_ray(world, handle, cfg, side) else {
+            let Some((rays, n)) = ledge_rays(world, handle, cfg, side) else {
                 continue;
             };
-            out.push(match (ledge, seen) {
-                // ⚠️ **A distância vem do que a lei mediu**, re-derivada da
-                // grandeza que ela consome: `grab − lip_rise` é o `distance` do
-                // cast, e desenhá-lo de outra forma seria uma segunda resposta.
-                (Some(_), Some(l)) => ProbeMark::ray(
-                    ProbeKind::Ledge,
-                    r.origin,
-                    r.dir,
-                    r.reach,
-                    Some(cfg.ledge.grab - l.lip_rise),
-                    r.skin,
-                ),
-                // Perguntou e não achou: `Clear`, e não `Idle`.
-                (Some(_), None) => {
-                    ProbeMark::ray(ProbeKind::Ledge, r.origin, r.dir, r.reach, None, r.skin)
-                }
-                _ => ProbeMark::idle_ray(ProbeKind::Ledge, r.origin, r.dir, r.reach, r.skin),
+            // ⚠️ **QUAL amostra achou**, e não *"o leque achou"*: é o mesmo
+            // diagnóstico que o doc da perna em leque defende (o pé da borda
+            // aceso sobre uma fenda com o do meio apagado). O afastamento
+            // vencedor é recuperado do `across` que a lei publicou — a inversa
+            // exacta da linha que o construiu —, então nada aqui re-decide o
+            // que ela decidiu.
+            let won_off = seen.and_then(|l| {
+                let (mins, maxs) = world.body_aabb(handle)?;
+                Some(l.across - (maxs[0] - mins[0]))
             });
+            let span = if cfg.ledge.span.is_finite() {
+                cfg.ledge.span.max(0.0)
+            } else {
+                0.0
+            };
+            for (i, r) in rays.iter().enumerate().take(n) {
+                let hit = seen.filter(|_| {
+                    won_off.is_some_and(|w| {
+                        (ledge_offset(cfg.ledge.grab, span, n, i) - w).abs() <= 1.0e-4
+                    })
+                });
+                out.push(match (ledge, hit) {
+                    // ⚠️ **A distância vem do que a lei mediu**, re-derivada da
+                    // grandeza que ela consome: `reach_y − lip_rise` é o
+                    // `distance` do cast, e desenhá-lo de outra forma seria uma
+                    // segunda resposta.
+                    (Some(_), Some(l)) => ProbeMark::ray(
+                        ProbeKind::Ledge,
+                        r.origin,
+                        r.dir,
+                        r.reach,
+                        Some(cfg.ledge.reach_y - l.lip_rise),
+                        r.skin,
+                    ),
+                    // Perguntou e não achou: `Clear`, e não `Idle`.
+                    (Some(_), None) => {
+                        ProbeMark::ray(ProbeKind::Ledge, r.origin, r.dir, r.reach, None, r.skin)
+                    }
+                    _ => ProbeMark::idle_ray(ProbeKind::Ledge, r.origin, r.dir, r.reach, r.skin),
+                });
+            }
         }
     }
 }

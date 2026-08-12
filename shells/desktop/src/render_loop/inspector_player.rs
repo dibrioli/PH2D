@@ -127,6 +127,8 @@ pub(crate) fn build_player_info(
         swim_acceleration: p.swim_acceleration,
         swim_enter: p.swim_enter,
         ledge_grab: p.ledge_grab,
+        ledge_reach_y: p.ledge_reach_y,
+        ledge_span: p.ledge_span,
         glide_fall_speed: p.glide_fall_speed,
         ledge_speed: p.ledge_speed,
         reaction_support: p.reaction_support,
@@ -379,6 +381,8 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         // (0..4, o valor medido na poça das fixtures); a caixa aceita o resto.
         PlayerFieldEdit::SwimEnter(v) => p.swim_enter = v.max(0.0),
         PlayerFieldEdit::LedgeGrab(v) => p.ledge_grab = v.max(0.0),
+        PlayerFieldEdit::LedgeReachY(v) => p.ledge_reach_y = v.max(0.0),
+        PlayerFieldEdit::LedgeSpan(v) => p.ledge_span = v.max(0.0),
         PlayerFieldEdit::GlideFallSpeed(v) => p.glide_fall_speed = v.max(0.0),
         PlayerFieldEdit::LedgeSpeed(v) => p.ledge_speed = v.max(0.0),
         PlayerFieldEdit::ReactionSupport(v) => p.reaction_support = v.max(0.0),

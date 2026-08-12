@@ -46,6 +46,21 @@
 
 use crate::{Motor, Vec2};
 
+/// **Quantos raios um sensor com EXTENSÃO gasta** (`W-LedgeSensor`).
+///
+/// ⚠️ **Cinco, e o número é do Unreal** — o mantle dele varre *"um total de 5
+/// traços (este número pode ser mudado para mais ou menos precisão)"*, e o
+/// irmão deste módulo (`WALL_SAMPLES`) usa 3 pela mesma razão de custo.
+///
+/// ⚠️ **E o que N controla é a PRECISÃO do pouso, não se o lábio é achado:** um
+/// patamar plano é encontrado por qualquer amostra que caia depois da beirada,
+/// e o que mais amostras compram é o `x` do pouso medido mais fino — a
+/// resolução é `span / (N − 1)`.
+///
+/// ⚠️ Com [`LedgeConfig::span`] em zero o leque tem **uma** amostra e o custo é
+/// exactamente o de antes desta wave: um raycast.
+pub const LEDGE_SPAN_SAMPLES: usize = 5;
+
 /// **A beirada, como o artista a autora.**
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct LedgeConfig {
@@ -53,10 +68,17 @@ pub struct LedgeConfig {
     /// é apanhado, e a distância à frente em que ele é procurado. `0.0`
     /// **desliga** a capacidade.
     ///
-    /// ⚠️ **Um número para os dois eixos, e não é economia:** *até onde ele
-    /// alcança* é uma grandeza só. Separá-la em dois daria um personagem que
-    /// chega ao lábio para cima e não para o lado (ou o contrário), e a
-    /// diferença seria invisível até alguém autorar os dois diferentes.
+    /// ⚠️ **ELE É SÓ O X, e a frase que estava aqui foi REFUTADA pela
+    /// referência** (`W-LedgeSensor`, 2026-08-12). Ela dizia *"um número para os
+    /// dois eixos, e não é economia: até onde ele alcança é uma grandeza só"* —
+    /// e o que a varredura dos motores que shipam devolve é o oposto, com o
+    /// motivo do eixo Y nomeado: o **GDevelop** expõe `Grab tolerance` (o X,
+    /// *quão perto ele tem de estar*) **e** `Grab offset` (o Y, e o doc diz para
+    /// quê: *"to match character animation"*); o **Corgi Engine** expõe *origem e
+    /// comprimento* do raycast no inspector. O Y é independente **pela ARTE** —
+    /// a mão agarra onde a mão é DESENHADA, não na quina do collider —, e o
+    /// nosso pendurar é derivado (`topo do corpo = lábio`), que é exactamente o
+    /// caso que aquele offset existe para consertar.
     ///
     /// ⚠️ **E é ele que torna o alvo do mantle PROVADO em vez de suposto:** o
     /// raio nasce a `meia-largura + grab` à frente, então o `x` em que ele bate
@@ -74,6 +96,57 @@ pub struct LedgeConfig {
     /// olhasse para baixo faria o personagem pendurar-se em vez de subir um
     /// degrau que ele alcança a pé.
     pub grab: f32,
+
+    /// **A ALTURA da janela**, metros — quão acima do topo do corpo o sensor
+    /// nasce, e portanto a que altura um lábio ainda é apanhado.
+    ///
+    /// ⚠️ **É ele que possui a HISTERESE**, e por isso a janela é simétrica:
+    /// `[topo − reach_y, topo + reach_y]`. **Agarrar** exige um lábio acima da
+    /// cabeça (`lip_rise > 0`, que é o que *alcançar para cima* significa) e
+    /// **continuar agarrado** aceita a faixa inteira — o servo mira
+    /// `lip_rise = 0`, que ficaria na **borda** do alcance se o sensor só
+    /// olhasse para cima, e um sensor que pisca na pose que a lei procura é um
+    /// pendurar que **treme**.
+    ///
+    /// ⚠️ **A recomendação inicial desta wave estava ERRADA e a construção a
+    /// corrigiu:** eu escrevi que a banda seria derivada do [`Self::span`]. O
+    /// `span` é uma extensão **HORIZONTAL** e não tem como dar uma banda
+    /// vertical; quem a dá é este número, e é assim que os três controlos
+    /// continuam três em vez de quatro.
+    ///
+    /// ⚠️ **Não nasce em zero**, pela razão do `jump_push` da parede e da
+    /// [`Self::speed`] aqui ao lado: é o que a capacidade vale quando alguém a
+    /// liga, e uma janela de altura zero entregaria um `Ledge Grab` que nunca
+    /// apanha nada. **0,60 é MEDIDO** — a cena 111 mediu o arco COLADO À PAREDE
+    /// pondo o topo do corpo a **2,145** contra um lábio em **2,400**, logo a
+    /// janela tem de passar de **0,255** para o corpo sequer a atravessar; 0,60
+    /// é o valor com que o smoke foi aprovado.
+    pub reach_y: f32,
+
+    /// **A EXTENSÃO do sensor**, metros — `0` é um raio único (o mundo de antes
+    /// desta wave, **ao bit**), e acima disso ele vira um **SEGMENTO** centrado
+    /// no [`Self::grab`], amostrado por [`crate::LEDGE_SPAN_SAMPLES`] raios.
+    ///
+    /// ⚠️ **Há um defeito real por trás deste controlo, e não é conforto:** um
+    /// raio acha o lábio num **único `x`**. Funciona nos blocos alinhados das
+    /// cenas de smoke e erra uma quina chanfrada — e, pior, não distingue *"o
+    /// lábio está dois centímetros adiante"* de *"não há lábio nenhum"*. É a
+    /// mesma pergunta que o **Unreal** responde com **cinco** traços (*"este
+    /// número pode ser mudado para mais ou menos precisão"*), que o **Corgi**
+    /// expõe como o `length` do raycast, e que o padrão de *hotspots* do Sonic
+    /// resolve com um **segmento** de extensão autorada.
+    ///
+    /// ⚠️ **Quem VENCE é o acerto mais PERTO do corpo** — aproximando-se de um
+    /// patamar as amostras de dentro caem no vazio e as de fora batem no topo,
+    /// então o acerto mais próximo **é a beirada**. E é ele que define o
+    /// [`LedgeProbe::across`]: com `span > 0` o alvo do mantle deixa de ser uma
+    /// função do `grab` e passa a ser o `x` que a amostra vencedora **provou**
+    /// ser patamar.
+    ///
+    /// ⚠️ **E o zero não é só o default — é o que mantém esta wave byte-idêntica
+    /// ao mundo aprovado:** com `span = 0` a leque tem uma amostra só, na
+    /// posição exacta do raio de antes.
+    pub span: f32,
 
     /// **A velocidade com que ele se acomoda no pendurar e sobe no mantle**,
     /// m/s.
@@ -94,6 +167,8 @@ impl LedgeConfig {
     /// personagem que se agarra e **nunca sobe**.
     pub const STARTING_POINT: Self = Self {
         grab: 0.0,
+        reach_y: 0.6,
+        span: 0.0,
         speed: 3.0,
     };
 
@@ -107,17 +182,22 @@ impl LedgeConfig {
 
 /// **O que o raio para baixo viu** — já reduzido: se este tipo existe, há lábio.
 ///
-/// # ⚠️ DUAS soleiras, e elas saem de UM número
+/// # ⚠️ DUAS soleiras, e elas saem do `reach_y`
 ///
-/// O raio nasce `grab` acima da cabeça e desce `2·grab`, então ele enxerga
-/// lábios em `[topo − grab, topo + grab]` e o [`Self::lip_rise`] pode ser
-/// **negativo**. Isso não é folga de sobra: **agarrar** exige um lábio acima da
-/// cabeça (`lip_rise > 0`, que é o que *alcançar para cima* significa), e
-/// **continuar agarrado** aceita a faixa inteira — o servo mira `lip_rise = 0`,
-/// que ficaria exactamente na **borda** do alcance se o sensor só olhasse para
-/// cima, e um sensor que pisca na pose que a lei procura é um pendurar que
-/// treme. É o idioma da trava do nado (`swim_enter`): *entrar e sair pedem
-/// limiares diferentes*, e aqui os dois são derivados do mesmo `grab`.
+/// O sensor nasce `reach_y` acima da cabeça e desce `2·reach_y`, então ele
+/// enxerga lábios em `[topo − reach_y, topo + reach_y]` e o [`Self::lip_rise`]
+/// pode ser **negativo**. Isso não é folga de sobra: **agarrar** exige um lábio
+/// acima da cabeça (`lip_rise > 0`, que é o que *alcançar para cima* significa),
+/// e **continuar agarrado** aceita a faixa inteira — o servo mira
+/// `lip_rise = 0`, que ficaria exactamente na **borda** do alcance se o sensor
+/// só olhasse para cima, e um sensor que pisca na pose que a lei procura é um
+/// pendurar que treme. É o idioma da trava do nado (`swim_enter`): *entrar e
+/// sair pedem limiares diferentes*, e aqui os dois são derivados do mesmo
+/// [`LedgeConfig::reach_y`].
+///
+/// ⚠️ **Antes da `W-LedgeSensor` os dois saíam do `grab`**, que era também o
+/// alcance para a FRENTE — mexer no braço mexia na histerese sem que nada o
+/// dissesse. Hoje cada eixo tem o seu número.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct LedgeProbe {
     /// **Quanto o lábio está ACIMA do topo do corpo**, metros — em

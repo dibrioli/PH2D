@@ -165,18 +165,32 @@ pub(super) fn wall_rays(
 /// contacto sem saber a que altura ele está. O que a beirada precisa é
 /// exactamente a altura.
 ///
-/// ⚠️ **A origem nasce `grab` ACIMA da cabeça e `meia-largura + grab` à FRENTE**,
-/// e o alcance é `2·grab` — as duas soleiras do
+/// ⚠️ **A origem nasce `reach_y` ACIMA da cabeça e `meia-largura + grab` à
+/// FRENTE**, e o alcance é `2·reach_y` — as duas soleiras do
 /// [`ph2d_platformer::LedgeProbe`] saem daí, e o `x` em que ele bate **é** o
 /// ponto do patamar em que o corpo vai pousar.
-pub(super) fn ledge_ray(
+///
+/// # ⚠️ Um LEQUE, e o molde é o [`wall_rays`] logo acima
+///
+/// Com [`ph2d_platformer::LedgeConfig::span`] em zero são **uma** amostra, na
+/// posição exacta do raio de antes da `W-LedgeSensor` — é isso que mantém o
+/// mundo aprovado byte-idêntico. Acima disso o sensor é um SEGMENTO centrado no
+/// `grab`, e as amostras saem em ordem **CRESCENTE de afastamento**, porque o
+/// consumidor quer a beirada mais PERTO do corpo e um laço que percorre por
+/// ordem responde isso sem ordenar nada.
+///
+/// ⚠️ **O offset é aparado em zero**, não em algum épsilon: `off = 0` põe o raio
+/// rente à face do corpo, que é uma pergunta legítima (um patamar encostado
+/// nele) — e o cast já exclui o próprio corpo.
+pub(super) fn ledge_rays(
     world: &ph2d_physics::PhysicsWorld,
     handle: rapier2d_handle::Handle,
     cfg: &PlayerConfig,
     side: f32,
-) -> Option<ProbeRay> {
+) -> Option<([ProbeRay; ph2d_platformer::LEDGE_SPAN_SAMPLES], usize)> {
     let grab = cfg.ledge.grab;
-    if !grab.is_finite() || grab <= 0.0 {
+    let reach_y = cfg.ledge.reach_y;
+    if !grab.is_finite() || grab <= 0.0 || !reach_y.is_finite() || reach_y <= 0.0 {
         return None;
     }
     let (mins, maxs) = world.body_aabb(handle)?;
@@ -185,14 +199,41 @@ pub(super) fn ledge_ray(
         return None;
     }
     let cx = (maxs[0] + mins[0]) * 0.5;
-    Some(ProbeRay {
-        origin: [cx + side * (half_width + grab), maxs[1] + grab],
+    let span = if cfg.ledge.span.is_finite() {
+        cfg.ledge.span.max(0.0)
+    } else {
+        0.0
+    };
+    let n = if span > 0.0 {
+        ph2d_platformer::LEDGE_SPAN_SAMPLES
+    } else {
+        1
+    };
+    let base = ProbeRay {
+        origin: [cx + side * half_width, maxs[1] + reach_y],
         dir: [0.0, -1.0],
-        reach: 2.0 * grab,
+        reach: 2.0 * reach_y,
         // ⚠️ **ZERO, e não a meia-altura:** este raio nasce FORA do corpo, à
         // frente dele — não há nada dele a descontar do desenho.
         skin: 0.0,
-    })
+    };
+    let mut out = [base; ph2d_platformer::LEDGE_SPAN_SAMPLES];
+    for (i, r) in out.iter_mut().enumerate().take(n) {
+        r.origin[0] = cx + side * (half_width + ledge_offset(grab, span, n, i));
+    }
+    Some((out, n))
+}
+
+/// **O afastamento da amostra `i`**, medido a partir da face do corpo.
+///
+/// ⚠️ Com `n == 1` devolve o `grab` NU — a redução literal que torna o mundo de
+/// antes desta wave byte-idêntico, sem um caso especial escrito à mão.
+pub(super) fn ledge_offset(grab: f32, span: f32, n: usize, i: usize) -> f32 {
+    if n <= 1 {
+        return grab.max(0.0);
+    }
+    let t = i as f32 / (n - 1) as f32;
+    (grab - span * 0.5 + span * t).max(0.0)
 }
 
 /// **O que há por cima da beirada** (`W-Ledge`) — a metade do sensor que este
@@ -206,6 +247,19 @@ pub(super) fn ledge_ray(
 /// 0,2 m ele reportava um patamar em `y = 3,3`, **onde não há superfície
 /// nenhuma**. É esta a metade *"livre acima da cabeça"* que os motores de
 /// referência pagam com um segundo raio; aqui ela sai do mesmo.
+///
+/// ⚠️ **E com EXTENSÃO ela deixa de ser grátis, então é feita à mão** — era
+/// grátis porque o sensor era um PONTO. Num leque, **uma amostra dentro da
+/// geometria recusa o leque INTEIRO**: se a parede continua acima da cabeça
+/// junto ao corpo, não há beirada a apanhar por mais livre que esteja uma
+/// amostra lá à frente. É o traço de folga que o mantle do Unreal paga em
+/// separado, aqui devolvido à mesma varredura.
+///
+/// ⚠️ **Vence o acerto mais PERTO do corpo** — aproximando-se de um patamar as
+/// amostras de dentro caem no vazio e as de fora batem no topo, logo o acerto
+/// mais próximo **é a beirada**. A varredura tem de ver TODAS as amostras
+/// (a recusa acima é sobre qualquer uma), então o vencedor é o primeiro acerto
+/// em ordem de afastamento, e não um `?` no meio do laço.
 pub(super) fn probe_ledge(
     world: &ph2d_physics::PhysicsWorld,
     handle: rapier2d_handle::Handle,
@@ -214,24 +268,37 @@ pub(super) fn probe_ledge(
     drive: f32,
 ) -> Option<ph2d_platformer::LedgeProbe> {
     let side = if drive > 0.0 { 1.0 } else { -1.0 };
-    let r = ledge_ray(world, handle, cfg, side)?;
-    let hit = world.cast_ray(r.origin, r.dir, r.reach, Some(handle), layer)?;
-    if hit.distance <= 0.0 {
-        return None;
-    }
+    let (rays, n) = ledge_rays(world, handle, cfg, side)?;
     let (mins, maxs) = world.body_aabb(handle)?;
     let half_width = (maxs[0] - mins[0]) * 0.5;
     let half_height = (maxs[1] - mins[1]) * 0.5;
-    let grab = cfg.ledge.grab;
-    let lip_rise = grab - hit.distance;
+    let span = if cfg.ledge.span.is_finite() {
+        cfg.ledge.span.max(0.0)
+    } else {
+        0.0
+    };
+    let mut won: Option<(f32, f32)> = None;
+    for (i, r) in rays.iter().enumerate().take(n) {
+        let Some(hit) = world.cast_ray(r.origin, r.dir, r.reach, Some(handle), layer) else {
+            continue;
+        };
+        if hit.distance <= 0.0 {
+            return None;
+        }
+        if won.is_none() {
+            won = Some((hit.distance, ledge_offset(cfg.ledge.grab, span, n, i)));
+        }
+    }
+    let (distance, off) = won?;
+    let lip_rise = cfg.ledge.reach_y - distance;
     Some(ph2d_platformer::LedgeProbe {
         lip_rise,
         side,
         // ⚠️ **A borda de DENTRO do corpo aterra no `x` que o raio provou ser
         // patamar** — é isso que torna o alvo do mantle medido em vez de
         // suposto, e é por isso que ele não precisa de saber onde está a face
-        // da parede.
-        across: 2.0 * half_width + grab,
+        // da parede. Com extensão, o `x` é o da amostra VENCEDORA.
+        across: 2.0 * half_width + off,
         // ⚠️ **A MESMA medição, projetada para o outro consumidor** — ver o doc
         // de [`ph2d_platformer::LedgeProbe::rise`].
         rise: lip_rise + half_height + cfg.ride.float_height,

@@ -622,3 +622,38 @@ impl WidgetStore {
         self.cmd_held = held;
     }
 }
+
+impl WidgetStore {
+    /// **Quanto de "aceso" cada widget quer estar**, `0..1` — a derivação do estado SEMÂNTICO para
+    /// o eixo contínuo do hover.
+    ///
+    /// ⚠️ **Ela mora aqui, e não no substrato de movimento, de propósito.** Quem sabe *em que
+    /// estado um widget está* é este store; se o `UiMotion` respondesse a esta pergunta ele teria
+    /// de aprender o vocabulário de todos os tipos de widget, e passaria a haver **duas** tabelas
+    /// a dizer o que conta como aceso — a segunda a envelhecer no dia em que um tipo novo nascer.
+    ///
+    /// `Focused` conta: um botão focado por teclado deve acender como um sob o rato, senão a
+    /// navegação por Tab fica invisível para quem depende dela.
+    pub fn hover_targets(&self) -> impl Iterator<Item = (NodeId, f32)> + '_ {
+        self.states.iter().filter_map(|(id, st)| {
+            let lit = match st {
+                InteractiveState::Button { state } | InteractiveState::Radio { state, .. } => {
+                    matches!(
+                        state,
+                        ButtonState::Hovered | ButtonState::Pressed | ButtonState::Focused
+                    )
+                }
+                InteractiveState::Toggle { state, .. } => {
+                    matches!(state, ToggleState::Hovered | ToggleState::Pressed)
+                }
+                InteractiveState::Checkbox { state, .. } => {
+                    matches!(state, CheckboxState::Hovered | CheckboxState::Pressed)
+                }
+                // Os restantes tipos não têm eixo de hover HOJE. ⚠️ Um tipo que não aparece aqui
+                // não ganha entrada nenhuma — é o que mantém o mapa do tamanho do que se move.
+                _ => return None,
+            };
+            Some((*id, if lit { 1.0 } else { 0.0 }))
+        })
+    }
+}

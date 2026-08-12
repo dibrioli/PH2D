@@ -37,6 +37,10 @@ pub fn paint_fill_adjust_modal(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    // ⚠️ **Leitura pura.** O pintor NUNCA alveja — quem o faz é `HeroScreen::tick_motion`, uma vez
+    // por quadro. Um pintor que alvejasse tornaria a animação função de *quantas vezes* algo foi
+    // pintado, que é a doença que este repo já pagou quatro vezes no relevo do Painter.
+    motion: &crate::motion::UiMotion,
     viewport: Rect,
 ) {
     let Some((x, y)) = store.fill_modal_pos() else {
@@ -99,14 +103,18 @@ pub fn paint_fill_adjust_modal(
     let cancel_rect = Rect::new(inner_x, cy, bw, row_h);
     hit_index.register(ids::PAINTER_FILL_MODAL_CANCEL, cancel_rect);
     let cancel = Button::new(ids::PAINTER_FILL_MODAL_CANCEL, "Cancel")
-        .state(button_state(store, ids::PAINTER_FILL_MODAL_CANCEL));
+        .state(button_state(store, ids::PAINTER_FILL_MODAL_CANCEL))
+        // ⚠️ O `hover_t` é NEUTRO (1.0) quando ausente; quem o define recebe a fade.
+        .hover_t(motion.get(ids::PAINTER_FILL_MODAL_CANCEL).unwrap_or(1.0));
     paint_button(&cancel, cancel_rect, scene, text_system, theme);
 
     let done_rect = Rect::new(inner_x + bw + gap, cy, bw, row_h);
     hit_index.register(ids::PAINTER_FILL_MODAL_DONE, done_rect);
     let done = Button::new(ids::PAINTER_FILL_MODAL_DONE, "Done")
         .accent()
-        .state(button_state(store, ids::PAINTER_FILL_MODAL_DONE));
+        .state(button_state(store, ids::PAINTER_FILL_MODAL_DONE))
+        // ⚠️ O `hover_t` é NEUTRO (1.0) quando ausente; quem o define recebe a fade.
+        .hover_t(motion.get(ids::PAINTER_FILL_MODAL_DONE).unwrap_or(1.0));
     paint_button(&done, done_rect, scene, text_system, theme);
 }
 
@@ -186,6 +194,7 @@ mod tests {
             hero.theme,
             &mut hero.hit_index,
             &hero.store,
+            &hero.motion,
             viewport,
         );
         assert!(
@@ -214,6 +223,7 @@ mod tests {
             hero.theme,
             &mut hero.hit_index,
             &hero.store,
+            &hero.motion,
             viewport,
         );
         assert!(

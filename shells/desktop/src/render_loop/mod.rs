@@ -1035,6 +1035,12 @@ impl crate::App {
         self.last_frame = now;
 
         zen.tick();
+        // ⚠️ **A UI VIVA anda aqui, com o MESMO `wall_dt`** — um segundo relógio para o chrome seria
+        // a segunda resposta a *"quanto durou o último quadro?"*, e a que o artista vê seria a
+        // errada. Sem consumidor de `hover_t` a chamada é neutra: o mapa fica vazio.
+        if let Some(hero) = hero_screen.as_mut() {
+            hero.tick_motion(wall_dt);
+        }
         let prev_toasts = toasts.len();
         #[allow(clippy::cast_possible_truncation)]
         toasts.tick(wall_dt as f32);

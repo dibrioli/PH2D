@@ -556,6 +556,7 @@ pub fn paint_hero_screen(
         hero.theme,
         &mut hero.hit_index,
         &hero.store,
+        &hero.motion,
         viewport,
     );
     // Onion settings modal (ADR-0142 W3b) — a floating, draggable card opened from the timeline's

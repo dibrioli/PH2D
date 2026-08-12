@@ -490,6 +490,8 @@ pub(crate) fn paint_voronoi_cfg(
         label: "Reseed (next RNG)".to_string(),
         state: button_state(store, ids::GS_CFG_VORONOI_RESEED),
         kind: ButtonKind::Default,
+        // Neutro: este sítio ainda não adere ao eixo do hover (ver `ph2d_editor_core::motion`).
+        hover_t: 1.0,
     };
     paint_button(&btn, reseed_rect, scene, text_system, theme);
     hit_index.register(ids::GS_CFG_VORONOI_RESEED, reseed_rect);

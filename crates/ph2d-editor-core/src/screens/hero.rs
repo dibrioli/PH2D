@@ -107,6 +107,11 @@ pub struct HeroScreen {
     /// Per-widget interactive state (hover/press/focus). Pre-populated
     /// at construction; mutated in-place by [`HeroScreen::handle_pointer`].
     pub store: WidgetStore,
+    /// **O substrato da UI viva** — o `t` por widget. Ver [`crate::motion`].
+    ///
+    /// ⚠️ Ao lado do store, nunca DENTRO dele: aquele é o estado semântico que dezenas de gates
+    /// comparam, e animação misturada ali faria cada um passar a ver ruído.
+    pub motion: crate::motion::UiMotion,
     /// Per-frame hit-test index. Cleared at the start of each
     /// `paint_hero_screen` call and re-populated as painters emit
     /// geometry.
@@ -235,6 +240,21 @@ pub struct HeroScreen {
 }
 
 impl HeroScreen {
+    /// **Anda o relógio da UI viva e re-alveja a partir do estado semântico.**
+    ///
+    /// Uma chamada por quadro, com o `dt` de **PAREDE** — nunca uma contagem de quadros.
+    ///
+    /// ⚠️ **A ordem é load-bearing:** avançar PRIMEIRO (o tempo que passou desde o último quadro
+    /// aplica-se ao alvo que estava em vigor) e só então ler os alvos novos do store, que os
+    /// eventos de ponteiro deste quadro acabaram de mexer. Ao contrário, o primeiro quadro de um
+    /// hover andaria com o alvo novo por um `dt` que decorreu **antes** de o rato lá chegar.
+    pub fn tick_motion(&mut self, dt: f64) {
+        self.motion.advance(dt);
+        for (id, target) in self.store.hover_targets().collect::<Vec<_>>() {
+            self.motion.animate(id, target, crate::motion::Role::Fade);
+        }
+    }
+
     pub fn new(id: NodeId) -> Self {
         // Wave 8 Phase 1: `HeroScreen::new` is a pure constructor. The
         // host (or the test harness) installs `PANEL_REGISTRY` BEFORE
@@ -247,6 +267,7 @@ impl HeroScreen {
         let mut store = WidgetStore::with_capacity(64);
         Self::pre_populate_store(&mut store);
         Self {
+            motion: crate::motion::UiMotion::default(),
             id,
             theme: Theme::Forge,
             text_rendering: ph2d_tokens::TextRendering::CrispHeavyPlus, // app default (Enio 2026-06-24)

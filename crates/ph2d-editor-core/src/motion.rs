@@ -299,6 +299,12 @@ impl UiMotion {
         self.tracks.retain(|_, t| t.idle_s < PRUNE_AFTER_S);
     }
 
+    /// **Leitura pura** — o pintor pergunta sem alvejar. Ausente = nunca animou.
+    #[must_use]
+    pub fn get(&self, id: NodeId) -> Option<f32> {
+        self.tracks.get(&id).map(Track::value)
+    }
+
     /// Quantas coisas estão **em voo** — o número que custa integração por quadro.
     #[must_use]
     pub fn in_flight(&self) -> usize {
@@ -320,3 +326,48 @@ impl UiMotion {
 #[cfg(test)]
 #[path = "motion_tests.rs"]
 mod motion_tests;
+
+/// **A PORTA ÚNICA da mistura de cor de token.** Um `t` fora de `[0,1]` é clampado aqui, e não em
+/// cada chamador — a segunda cópia de um clamp é a que alguém esquece.
+///
+/// ⚠️ Mistura em **sRGB directo**, de propósito: estas são duas tintas de UI vizinhas na mesma
+/// família de token (repouso → hover), e uma travessia OKLab entre elas custaria a dependência do
+/// espaço de cor num caminho que corre por widget, por quadro, para uma diferença que ninguém
+/// distingue em dois tons adjacentes. *Se um dia a mistura for entre tons distantes, esta é a
+/// linha que muda — e é uma linha só.*
+#[must_use]
+pub fn blend_token_color(
+    rest: Option<ph2d_tokens::Color>,
+    hot: Option<ph2d_tokens::Color>,
+    t: f32,
+) -> Option<ph2d_tokens::Color> {
+    let t = t.clamp(0.0, 1.0);
+    match (rest, hot) {
+        (None, None) => None,
+        // ⚠️ Um lado ausente é **transparente**, não "a outra cor": um botão Default em repouso
+        // não tem fundo, e o hover dele tem de EMERGIR do nada em vez de aparecer de repente.
+        (Some(a), None) => Some(fade(a, 1.0 - t)),
+        (None, Some(b)) => Some(fade(b, t)),
+        (Some(a), Some(b)) => Some(ph2d_tokens::Color {
+            r: mix(a.r, b.r, t),
+            g: mix(a.g, b.g, t),
+            b: mix(a.b, b.b, t),
+            a: mix(a.a, b.a, t),
+        }),
+    }
+}
+
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn mix(a: u8, b: u8, t: f32) -> u8 {
+    (f32::from(a) + (f32::from(b) - f32::from(a)) * t)
+        .round()
+        .clamp(0.0, 255.0) as u8
+}
+
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn fade(c: ph2d_tokens::Color, t: f32) -> ph2d_tokens::Color {
+    ph2d_tokens::Color {
+        a: (f32::from(c.a) * t).round().clamp(0.0, 255.0) as u8,
+        ..c
+    }
+}

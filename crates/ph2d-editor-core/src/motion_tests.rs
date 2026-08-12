@@ -248,3 +248,113 @@ fn the_motion_is_a_fact_of_the_wall_clock_not_of_the_frame_rate() {
         "0,12 s são 0,12 s a qualquer taxa: 30 fps deu {a}, 120 fps deu {b}"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// F2 — a mistura chega ao widget
+// ─────────────────────────────────────────────────────────────────────────────
+
+use ph2d_tokens::Color as TokenColor;
+
+const A: TokenColor = TokenColor {
+    r: 0,
+    g: 0,
+    b: 0,
+    a: 255,
+};
+const B: TokenColor = TokenColor {
+    r: 100,
+    g: 200,
+    b: 40,
+    a: 255,
+};
+
+/// ⭐ **A NEUTRALIDADE do campo.** `t = 1` devolve o lado quente EXACTO — logo toda construção que
+/// não define `hover_t` pinta o que pintava antes desta wave.
+///
+/// *Mutação: `blend_token_color` a devolver o `rest` em `t = 1` ⇒ todo widget do app muda de cor.*
+#[test]
+fn the_neutral_t_paints_exactly_what_the_app_painted_before() {
+    assert_eq!(blend_token_color(Some(A), Some(B), 1.0), Some(B));
+    assert_eq!(blend_token_color(Some(A), Some(B), 0.0), Some(A));
+}
+
+/// A meio é o meio — e o `t` é clampado **na porta**, não em cada chamador.
+#[test]
+fn the_blend_is_a_blend_and_the_door_clamps() {
+    let m = blend_token_color(Some(A), Some(B), 0.5).unwrap();
+    assert_eq!((m.r, m.g, m.b), (50, 100, 20));
+    assert_eq!(
+        blend_token_color(Some(A), Some(B), 9.0),
+        Some(B),
+        "clampa em cima"
+    );
+    assert_eq!(
+        blend_token_color(Some(A), Some(B), -9.0),
+        Some(A),
+        "clampa em baixo"
+    );
+}
+
+/// ⚠️ **Um lado AUSENTE é transparente, não "a outra cor".** Um botão `Default` em repouso não tem
+/// fundo nenhum, e o hover dele tem de EMERGIR do nada — pintar a cor cheia com alfa cheia faria
+/// o fundo aparecer de repente no primeiro pixel de movimento.
+///
+/// *Mutação: `(None, Some(b)) => Some(b)` ⇒ o fundo pisca em vez de emergir.*
+#[test]
+fn an_absent_side_fades_through_transparency() {
+    let half = blend_token_color(None, Some(B), 0.5).unwrap();
+    assert_eq!(
+        (half.r, half.g, half.b),
+        (B.r, B.g, B.b),
+        "a tinta é a mesma"
+    );
+    assert_eq!(half.a, 128, "o que anda é o ALFA");
+    assert_eq!(blend_token_color(None, Some(B), 0.0).unwrap().a, 0);
+    assert_eq!(blend_token_color(None, None, 0.5), None);
+}
+
+/// ⭐ **O botão MISTURA no eixo do hover, e a SAÍDA funciona** — que é a metade que se perde quando
+/// quem escolhe a cor é o estado em vez do escalar.
+///
+/// *Mutação: `bg_color` a ignorar o `hover_t` ⇒ entrada e saída voltam a ser um degrau.*
+#[test]
+fn a_button_leaving_the_hover_fades_out_even_though_its_state_is_already_normal() {
+    use crate::widget::{Button, ButtonKind, ButtonState};
+    let theme = ph2d_tokens::Theme::Forge;
+    let hot = Button::new(NodeId(9), "x")
+        .kind(ButtonKind::Accent)
+        .state(ButtonState::Hovered)
+        .bg_color(theme);
+    let rest = Button::new(NodeId(9), "x")
+        .kind(ButtonKind::Accent)
+        .state(ButtonState::Normal)
+        .bg_color(theme);
+    assert_ne!(rest, hot, "a fixture precisa de dois tons distintos");
+    // O rato SAIU: o estado já é Normal, e é o `t` que ainda segura a cor a meio caminho.
+    let a_sair = Button::new(NodeId(9), "x")
+        .kind(ButtonKind::Accent)
+        .state(ButtonState::Normal)
+        .hover_t(0.5)
+        .bg_color(theme);
+    assert_ne!(
+        a_sair, rest,
+        "com t = 0,5 a saída NÃO pode já estar em repouso"
+    );
+    assert_ne!(a_sair, hot);
+}
+
+/// ⭐ **O REDUCED MOTION nasce no MESMO commit que a animação.** Com ele, o alvo é atingido no
+/// quadro em que muda — e o widget pinta o estado duro, sem meio-caminho nenhum.
+#[test]
+fn reduced_motion_makes_a_hover_arrive_in_the_frame_it_changes() {
+    let mut m = UiMotion::default();
+    m.set_character(UiCharacter::Expressive);
+    m.set_reduced_motion(true);
+    let a = id(7);
+    m.animate(a, 0.0, Role::Fade);
+    // ⚠️ `Fade` SOBREVIVE ao reduced (o gatilho vestibular é percurso, não tinta) — então o que se
+    // afirma aqui é o `Travel`, que é o que ele mata.
+    assert!(m.law(Role::Fade).is_some());
+    m.animate(a, 0.0, Role::Travel);
+    assert!((m.animate(a, 1.0, Role::Travel) - 1.0).abs() < 1e-6);
+}

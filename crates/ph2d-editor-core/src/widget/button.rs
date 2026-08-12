@@ -72,6 +72,9 @@ pub struct Button {
     pub label: String,
     pub state: ButtonState,
     pub kind: ButtonKind,
+    /// ⚠️ **Campo com NEUTRO** (`1.0`), o molde do `SkinParam` e dos canais do `KernelResolver`:
+    /// quem não o define não sabe que ele existe, e pinta o que pintava antes.
+    pub hover_t: f32,
 }
 
 impl Button {
@@ -81,6 +84,7 @@ impl Button {
             label: label.into(),
             state: ButtonState::Normal,
             kind: ButtonKind::Default,
+            hover_t: 1.0,
         }
     }
 
@@ -128,8 +132,38 @@ impl Button {
     /// Resolve the background token. Returns `None` for ghost
     /// (Default + IconOnly Normal); the rect stays transparent and
     /// the label/icon paint over the panel surface beneath.
+    /// **Quanto do hover está presente**, `0..1`. Neutro = `1.0` ⇒ toda construção que não o
+    /// define pinta **exactamente** o que pintava antes da wave da UI viva.
+    #[must_use]
+    pub fn hover_t(mut self, t: f32) -> Self {
+        self.hover_t = t.clamp(0.0, 1.0);
+        self
+    }
+
+    /// A cor de fundo, **misturada no eixo do hover**.
+    ///
+    /// ⚠️ **Quem escolhe a cor neste eixo é o ESCALAR, não o estado — e é isso que faz a saída
+    /// funcionar.** Se o estado escolhesse, sair do hover seria instantâneo: no quadro em que o
+    /// rato sai, `state` volta a `Normal` e `bg_color(Normal)` já é a cor de repouso, então não
+    /// haveria nada entre onde a cor está e onde ela vai. Misturando *repouso → hover* por `t`, a
+    /// entrada e a **saída** são a mesma expressão.
+    ///
+    /// ⚠️ `Pressed`, `Focused` e `Disabled` continuam a ser **estados duros**: eles não são uma
+    /// *quantidade* de nada, e tratá-los como fracção faria um botão desactivado ter meia-desactivação.
+    #[must_use]
     pub fn bg_color(&self, theme: Theme) -> Option<TokenColor> {
-        let token = match (self.kind, self.state) {
+        if self.hover_t < 1.0 && matches!(self.state, ButtonState::Normal | ButtonState::Hovered) {
+            let rest = self.bg_token(ButtonState::Normal).map(|t| t.resolve(theme));
+            let hot = self
+                .bg_token(ButtonState::Hovered)
+                .map(|t| t.resolve(theme));
+            return crate::motion::blend_token_color(rest, hot, self.hover_t);
+        }
+        self.bg_token(self.state).map(|t| t.resolve(theme))
+    }
+
+    fn bg_token(&self, state: ButtonState) -> Option<ColorToken> {
+        let token = match (self.kind, state) {
             (_, ButtonState::Disabled) => match self.kind {
                 ButtonKind::Default | ButtonKind::IconOnly { .. } => return None,
                 _ => ColorToken::Border,
@@ -155,7 +189,7 @@ impl Button {
             }
             (ButtonKind::Danger, _) => ColorToken::Danger,
         };
-        Some(token.resolve(theme))
+        Some(token)
     }
 
     /// Resolve the discrete outline token. Secondary / ghost

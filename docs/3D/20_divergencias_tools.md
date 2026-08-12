@@ -363,3 +363,165 @@ Depois deles, **D13/D15** (o Smooth que encolhe · dyntopo no traço) são os do
 que mudam o que o app *consegue fazer*, não o quanto ele erra.
 
 O resto é decisão de produto (D5-D9) ou catálogo (§1, D16-D27).
+
+---
+
+# PARTE II — O CATÁLOGO COMPLETO, ferramenta a ferramenta
+
+⚠️ **O que cada linha desta parte pode afirmar.** As colunas *nós* e *SculptGL*
+são código **lido e executado**. A coluna *Blender* é código **lido**, e onde eu
+li só o cabeçalho do arquivo a linha diz **[cabeçalho]** — a descrição é a que o
+próprio comentário dá, não uma leitura minha do kernel.
+
+## §8 — Por FAMÍLIA, que é como um escultor pensa
+
+### A — DEPOSITAR massa
+
+| ferramenta | nós | SculptGL | Blender |
+|---|---|---|---|
+| **Draw** | ✅ `Verb::Draw` — `pos += n_área · (falloff·força·máscara) · raio·0,1` | ✅ `Brush` com `_clay=false` — idem, mas pela normal do **ponto de impacto** | ✅ `DRAW` — `offset = normal_área · raio · escala · força`, com `tilt` de caneta |
+| **Draw Sharp** | ❌ | ❌ | ✅ `DRAW_SHARP` — **o mesmo offset, computado das posições e normais ORIGINAIS** (`orig_data`), congeladas no pen-down. É o que dá o vinco duro em vez do domo |
+| **Clay** | ✅ `Verb::Clay` — `Fill` contra o plano deslocado por `raio·0,1` | ✅ `Brush` com `_clay=true`, **o default de fábrica** | ✅ `CLAY` — projeta no plano mais próximo; força `0,25·alpha·pressão⁴` |
+| **Clay Strips** | ❌ | ❌ | ✅ `CLAY_STRIPS` — plano + falloff **CÚBICO/quadrado** (dab retangular) e um segundo falloff **parabólico no eixo Z do plano**; força `alpha·pressão^1,5·0,3` |
+| **Clay Thumb** | ❌ | ❌ | ✅ `CLAY_THUMB` — dois planos, um deles **INCLINADO**, e o ângulo **cresce com a acumulação do traço** (*"simulate the clay accumulation by increasing the plane angle"*) |
+| **Blob** | ❌ | ❌ | ✅ `BLOB` — o Crease com o sinal do pinch invertido (empurra para fora em vez de juntar) |
+| **Layer** | ❌ | ❌ | ✅ `LAYER` — carrega um **deslocamento PERSISTENTE por vértice** que satura (`d += f·s·(1,05 − \|d\|)`, clamp ±1) e sabe **APAGAR** camadas anteriores (`reset_displacement_factors`). É uma demão de altura constante |
+| **Crease** | ✅ `Verb::Crease` — tangencial linear + normal **quíntica**, ganho `0,07` | ✅ `Crease` — idem, pela normal do **ponto de impacto**; `raio 25`, `intensidade 0,75`, `_negative=true` | ✅ `CREASE` — pinch com `crease_pinch_factor` + offset pela normal de área |
+| **Draw Vector Displacement** | ❌ | ❌ | ✅ — a **cor RGB de uma textura** vira o vetor de deslocamento (mapa de displacement vetorial) |
+
+### B — NIVELAR contra um plano
+
+| ferramenta | nós | SculptGL | Blender |
+|---|---|---|---|
+| **Flatten** | ✅ **bilateral** | ✅ `Flatten` **unilateral** (`_negative`) | ✅ dentro do `PLANE` |
+| **Fill** | ✅ (o lado que sobe) | = o `Flatten` com `_negative=false` | ✅ dentro do `PLANE` |
+| **Scrape** | ✅ (o lado que desce) | = o `Flatten` com `_negative=true` | ✅ dentro do `PLANE` |
+| **Plane** (unificado) | ❌ | ❌ | ✅ `PLANE` — **os três num só**, com `height` e `depth`: a distância local é dividida por eles, o que faz a pegada virar um **cilindro achatado** em vez de uma esfera. `height=0` desliga o lado de cima; `depth=0` o de baixo |
+| **Multiplane Scrape** | ❌ | ❌ | ✅ `MULTIPLANE_SCRAPE` — **DOIS planos** com um ângulo entre eles, amostrados dos dois lados do eixo X local do pincel. É o que faz uma quina em V numa passada |
+| **Scene Project** | ❌ | ❌ | ✅ **[cabeçalho]** — projeta os vértices contra a superfície de **OUTROS objetos da cena** por raycast, com direção (vista ou normal do plano) e modo bidirecional |
+
+### C — INFLAR e APERTAR
+
+| ferramenta | nós | SculptGL | Blender |
+|---|---|---|---|
+| **Inflate** | ✅ normal **congelada** no pen-down | ✅ normal **viva**, `intensidade 0,3` | ✅ força **assimétrica**: `0,250` inflando × `0,125` murchando |
+| **Pinch** | ✅ tangencial **projetada** | ✅ puxa em **3D**, sem projetar | ✅ decompõe em `x_disp` + `z_disp` (projeta no eixo do traço e na normal) |
+| **Magnify** | ✅ (o Pinch com o sinal trocado) | = `Pinch` com `_negative` | = `PINCH` invertido |
+
+### D — ALISAR
+
+| ferramenta | nós | SculptGL | Blender |
+|---|---|---|---|
+| **Smooth** | ✅ laplaciano + falloff | ✅ laplaciano **sem falloff** | ✅ `SMOOTH` — laplaciano com regra de borda (`interior`) e caso `loose` |
+| **Smooth tangencial** | ❌ | ✅ `smoothTangent` — **existe e está DESLIGADA** (`_tangent=false`) | ✅ `SURFACE_SMOOTH` — laplaciano **de dois passes** (HC), guardando o `laplacian_disp` por vértice |
+| **Smooth ao longo da normal** | ❌ | ✅ `smoothAlongNormals` — existe, e **nenhuma UI a alcança** | — |
+| **Relax / Slide Relax** | ❌ | ❌ | ✅ `SLIDE_RELAX` — redistribui os vértices **sobre a superfície** sem mudar a forma; sabe **respeitar face sets** (`relax_face_sets`) e traz um *"strength tweak"* próprio |
+| **Topology Slide** | ❌ | ❌ | ✅ — desliza os vértices ao longo das arestas, com `slide_deform_type` escolhendo a direção |
+| **Enhance Details** | ❌ | ❌ | ✅ — **o Smooth com o sinal trocado**, aplicado ao deslocamento em relação à média: é o nosso `Sharpen`, mas o Blender o computa como *"o que o smooth removeria, devolvido"* |
+| **Sharpen** | ✅ `Verb::Sharpen` (nosso) | ❌ | = `ENHANCE_DETAILS` |
+| **Topology Rake** | ❌ | ❌ | ✅ `bmesh_topology_rake` — alinha o **fluxo das arestas** com a direção do traço (só dyntopo) |
+
+### E — PUXAR e AGARRAR
+
+| ferramenta | nós | SculptGL | Blender |
+|---|---|---|---|
+| **Grab / Move** | ✅ `Verb::Move` — pegada congelada, `pos = pre + gesto·falloff` | ✅ `Move`, `raio 150`, `intensidade 1,0` | ✅ `GRAB` — lê `orig_data`, com **silhueta opcional** (`calc_silhouette_factors`) e a normal do traço **congelada** de propósito |
+| **Snake Hook / Drag** | ✅ `Verb::SnakeHook` | ✅ `Drag`, `raio 150` | ✅ `SNAKE_HOOK` — mais **pinch** ao longo do caminho e **rake rotation** (a ponta gira com a curva do traço) |
+| **Nudge** | ❌ | ❌ | ✅ `NUDGE` — empurra **tangencialmente** na direção do traço (`cross(cross(normal, delta), normal)`) |
+| **Thumb** | ❌ | ❌ | ✅ `THUMB` — o Grab **projetado no plano da vista**; a normal não é recomputada |
+| **Rotate / Twist** | ✅ `Verb::Twist` | ✅ `Twist`, `raio 75` | ✅ `ROTATE` — gira os `orig_data` em torno do eixo da vista |
+| **Local Scale** | ✅ `Verb::LocalScale` | ✅ `LocalScale` | ❌ (é o gizmo de transform, não um pincel) |
+| **Elastic Deform** | ❌ | ❌ | ✅ — **KELVINLETS** (`BKE_kelvinlet_*`): grab · grab bi/tri-escala · scale · twist. É deformação elástica com solução analítica, e é o que dá o puxão que "puxa o modelo inteiro" de forma contínua |
+| **Pose** | ❌ | ❌ | ✅ **[cabeçalho]** — pose por cadeia de segmentos, com IK |
+| **Boundary** | ❌ | ❌ | ✅ **[cabeçalho]** — deforma a partir de um **contorno aberto**, propagando pela topologia |
+| **Cloth** | ❌ | ❌ | ✅ — simulação de tecido local, com modos `GRAB`/`SNAKE_HOOK`/`EXPAND` e força própria (`10×` por default) |
+
+### F — PINTAR CANAIS (não movem geometria)
+
+| ferramenta | nós | SculptGL | Blender |
+|---|---|---|---|
+| **Mask** | ✅ `Verb::Mask` — aditivo saturante, curva `(1−d)^{2(1−hardness)}` | ✅ `Masking`, `hardness 0,25`, `_negative=true` | ✅ `MASK` — com `mask_tool` = `DRAW` ou `SMOOTH` |
+| **Mask Smooth** | ⚠️ temos botões `Blur`/`Sharpen` de máscara no painel | ✅ (dentro do `Masking`) | ✅ `smooth_mask.cc`, um brush-mode do Mask |
+| **Paint (cor por-vértice)** | ❌ | ✅ `Paint` — o kernel dele **já está portado de carona** (o `Masking` o chama) | ✅ `PAINT` |
+| **Smear (cor)** | ❌ | ❌ | ✅ `SMEAR` — arrasta a COR pela superfície |
+| **Blur (cor)** | ❌ | ❌ | ✅ `BLUR` |
+| **Draw Face Sets** | ❌ | ❌ | ✅ — pinta **conjuntos de faces**, que outras ferramentas leem (relax, automask) |
+
+### G — TOPOLOGIA e MULTIRES
+
+| ferramenta | nós | SculptGL | Blender |
+|---|---|---|---|
+| **Dyntopo no traço** | ✅ `refine_for_dab`, **antes** de carimbar | ✅ `dynamicTopology` (subdivide **e decima**) | ✅ `sculpt_dyntopo.cc` |
+| **Decimar no traço** | ❌ (só refinamos) | ✅ `decimate` com `decFactor` | ✅ (colapso de aresta) |
+| **Simplify** | ❌ | ❌ | ✅ `SIMPLIFY` — um pincel cujo único efeito é **rodar o dyntopo**, sem deformar |
+| **Subdividir / níveis** | ✅ (`K`, `,`/`.`, `J`) | ✅ (multires) | ✅ (multires) |
+| **Remesh por voxel** | ✅ (`V`) | ✅ | ✅ |
+| **Displacement Eraser** | ❌ | ❌ | ✅ — **apaga o displacement de multires** de volta à base |
+| **Displacement Smear** | ❌ | ❌ | ✅ — arrasta o displacement de multires pela superfície |
+
+---
+
+## §9 — ⚠️ A LISTA PEDIDA: o que o Blender tem e o SculptGL **NÃO** tem
+
+**Vinte** ferramentas. Marquei com **★** as que nós também não temos (todas menos
+uma) e com **◆** as que eu leria primeiro se fôssemos escolher.
+
+### Deposição
+1. ★◆ **Draw Sharp** — o Draw que lê as posições/normais **ORIGINAIS**. Vinco duro em vez de domo.
+2. ★◆ **Clay Strips** — dab **retangular** com falloff parabólico no eixo do plano. É a ferramenta de blocagem por excelência do Blender.
+3. ★ **Clay Thumb** — plano inclinado cujo ângulo **cresce ao longo do traço**.
+4. ★ **Blob** — o Crease com o pinch para fora.
+5. ★◆ **Layer** — demão de **altura constante** com deslocamento persistente por vértice, saturante e **apagável**.
+6. ★ **Draw Vector Displacement** — a cor RGB de uma textura vira o vetor de deslocamento.
+
+### Plano
+7. ★◆ **Multiplane Scrape** — **dois planos** com um ângulo: faz a quina em V numa passada.
+8. ★ **Scene Project** — projeta contra **outros objetos** da cena por raycast.
+
+### Alisamento
+9. ★◆ **Surface Smooth** — laplaciano de **dois passes** (HC) que **não encolhe**. É a resposta do Blender ao E7.
+10. ★◆ **Slide Relax** — redistribui vértices **sobre** a superfície sem mudar a forma; respeita face sets.
+11. ★ **Topology Slide** — desliza ao longo das arestas com direção autorada.
+12. **Enhance Details** — ⚠️ **nós TEMOS o equivalente** (`Verb::Sharpen`); o SculptGL não.
+13. ★ **Topology Rake** — alinha o fluxo das arestas com o traço (dyntopo).
+
+### Puxar
+14. ★ **Nudge** — empurra tangencialmente na direção do traço.
+15. ★ **Thumb** — o Grab projetado no plano da vista.
+16. ★◆ **Elastic Deform** — **Kelvinlets** (grab · bi/tri-escala · scale · twist): deformação elástica analítica.
+17. ★ **Pose** — pose por cadeia com IK.
+18. ★ **Boundary** — deforma a partir de um contorno aberto.
+19. ★ **Cloth** — simulação de tecido local.
+
+### Canais e topologia
+20. ★ **Smear** e **Blur** de cor · **Draw Face Sets** · **Simplify** · **Displacement Eraser/Smear** — a cauda de multires e de face sets, que só existe porque o Blender tem multires e face sets.
+
+### E na direção INVERSA — o que o SculptGL tem e o Blender não
+
+Só **um**, e é pequeno: o **Local Scale** como *pincel* (no Blender inflar/encolher
+uma região é o gizmo de transform ou o Elastic Deform em modo `scale`). ⚠️ E há
+duas capacidades que o SculptGL **tem e não expõe**: o `smoothTangent` e o
+`smoothAlongNormals` — código vivo que nenhuma UI dele alcança.
+
+---
+
+## §10 — O placar do catálogo
+
+| | ferramentas | delas, que os outros dois não têm |
+|---|---|---|
+| **nós** | **16 verbos** | 1 (`Sharpen`, e o Blender tem o equivalente) |
+| **SculptGL** | **13 tools** | 1 (`LocalScale` como pincel) |
+| **Blender** | **33 tipos** | **20** |
+
+⚠️ **A leitura honesta do placar:** nós cobrimos o SculptGL quase inteiro — falta
+o `Paint` (cor por-vértice, cujo kernel **já está portado**), o `Transform`
+(gizmo) e o **decimar** do dyntopo. Contra o Blender falta uma classe inteira de
+ferramentas, e ela **não é uma lista de 20 features**: são **quatro ideias** que
+geram quase todas —
+
+1. **ler o estado ORIGINAL** (Draw Sharp, Grab, Rotate, Thumb, e o `!accum` do plano),
+2. **um dab que não é um disco** (Clay Strips retangular, Multiplane com dois planos),
+3. **estado PERSISTENTE por vértice** (Layer, Displacement Eraser),
+4. **um modelo físico em vez de um deslocamento** (Elastic Deform/Kelvinlets, Cloth, Pose, Boundary).
+
+*Escolher uma das quatro rende mais do que escolher cinco ferramentas da lista.*

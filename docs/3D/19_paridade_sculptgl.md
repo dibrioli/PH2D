@@ -401,16 +401,44 @@ escrita — que é exatamente o que o doc-comment dele pede.
 
 **O que sobra de trabalho real**, e é onde a wave vai doer:
 
-1. os onze braços de [`compute_target`] passam a ancorar no VIVO e a escalar o
-   incremento por `w` (a forma do `SnakeHook`);
-2. as constantes por-verbo alinham com a referência — e é aqui que os números da
+0. ✅ **o APLICADOR** — feito (2026-08-11): ancorado no alvo, exato nas duas
+   pontas que o produto promete. Era pré-requisito silencioso: sem ele a
+   paridade morreria depois do kernel, num ulp que nenhum gate de verbo vê.
+1. ✅ **a CURVA** — feita (2026-08-11): `Falloff::Plateau` é a quártica da
+   referência, por delegação à porta única, e a sonda mede `1,000×` em toda a
+   linha. Era pré-requisito pelo mesmo motivo: todo verbo sairia com a lei certa
+   e a **silhueta** errada.
+2. os doze braços de [`compute_target`] passam a ancorar no VIVO e a escalar o
+   incremento por `w` (a forma do `SnakeHook`), com a tabela de grips virando
+   `Grip::Stamp => (false, brush.accumulate, true, false)`;
+3. as constantes por-verbo alinham com a referência — e é aqui que os números da
    §2 são pagos: `deform = intensidade · raio · 0,1` contra o nosso
    `raio · 0,2 · strength` **é exatamente o 2,01× do Draw**;
-3. ⚠️ **~90 gates codificam a lei do envelope** e não são afrouxáveis em bloco:
+4. ⚠️ **~90 gates codificam a lei do envelope** e não são afrouxáveis em bloco:
    cada um diz uma coisa verdadeira sobre a lei antiga, e a wave tem de decidir,
    um a um, se ele **muda de lei** (a maioria) ou se ele **pina uma propriedade
    que a lei nova não tem** (e aí ele morre com o motivo escrito, como os dois
    que a metade 1 reescreveu).
+
+**A LINHA DE BASE dos passos 2-3, medida no dia em que eles abriram** (`cargo
+test -p ph2d-sculpt3d --release --test measure_reference_divergence -- --ignored
+--nocapture`, um dab, a mesma malha e a mesma pegada, 272 vértices):
+
+| verbo | nosso | referência | razão |
+|---|---|---|---|
+| Draw | 0,034363 | 0,017081 | **2,01×** |
+| Clay | 0,024655 | 0,006490 | 3,80× |
+| Flatten | 0,014562 | 0,029042 | **0,50×** |
+| Inflate | 0,020875 | 0,010742 | 1,94× |
+| Crease | 0,057020 | 0,019112 | 2,98× |
+| Pinch | 0,095865 | 0,005679 | **16,88×** |
+
+⚠️ **E o defeito que o Enio reportou primeiro está na segunda tabela da mesma
+sonda:** com o Accumulate DESARMADO o nosso traço mede `0,034363` para 1, 2, 4,
+8 e 16 dabs no mesmo lugar (o envelope, que é idempotente por desenho); ARMADO
+ele mede `0,002577` no primeiro dab — **13,3× mais fraco** — e só alcança o
+desarmado no décimo sexto. A referência sai de `0,017081` e chega a `0,220645`.
+*O interruptor que promete acumular é hoje o que enfraquece.*
 
 ⚠️ **O `Sharpen` não tem kernel na referência** (§3.3) e é o único que a wave
 tem de decidir em vez de portar.

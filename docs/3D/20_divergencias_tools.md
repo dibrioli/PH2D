@@ -223,7 +223,19 @@ Os dois comentários estão no mesmo arquivo e se contradizem; o segundo é o ce
 | **D12** | `_lockPosition` | `updateSculptLock` — a pegada trava e o arrasto vira DIREÇÃO do alpha | é o gesto de carimbo direcional |
 | **D13** | `smoothTangent` | `Smooth.js:67-105` projeta o deslocamento no plano da normal | **é a cura do ENCOLHIMENTO** — ver abaixo |
 | **D14** | `smoothAlongNormals` | `Smooth.js:107-134` — só a componente normal | alisa relevo sem mexer no contorno |
-| **D15** | dyntopo DENTRO do traço | `SculptBase.dynamicTopology` subdivide/decima por dab | sem ele, pincel pequeno em malha grossa **não produz detalhe** |
+| ~~**D15**~~ | ~~dyntopo DENTRO do traço~~ | — | ⚠️ **RETIRADO — ele EXISTE.** Ver abaixo |
+
+⚠️ **D15 estava ERRADO e a correção é minha.** Eu greppei `dyntopo` no
+`stroke.rs`, não achei, e escrevi que a capacidade faltava. Ela existe e roda
+**por dab**: `sculpt3d_input.rs:128` abre a sessão no pen-down
+(`open_dyntopo_stroke`) e a linha `:355` chama **`refine_for_dab(hit.point,
+brush.radius)` ANTES de carimbar**, com o comentário ao lado dizendo exatamente
+isso (*"REFINA E DEPOIS CARIMBA"*). O motor é o `ph2d_mesh::refine_in_sphere`, e
+há toggle + slider de Detail na seção TOPOLOGY do painel.
+
+*Ausência procurada no arquivo errado vira capacidade faltando num doc.* O
+mecanismo mora no SHELL (é decisão do editor, não do kernel de traço), que é
+onde eu não olhei.
 
 ⚠️ **O D13 é o mais caro, e ele já está MEDIDO no nosso próprio repo.** O
 `verb_border_tests.rs:75-93` mede a boca de um tubo aberto encolhendo em
@@ -280,7 +292,62 @@ plano ao mesmo interruptor que nós acabamos de amarrar*. A correção de 12/08
 
 ---
 
-## §5 — O placar, e o que ele diz
+## §5 — A TABELA DE ESCOLHAS, e o que cada uma muda no olho
+
+⚠️ **Só entram aqui as divergências que são ESCOLHA.** As que são defeito puro
+(D2 — o Inflate a 1,67×) não pedem gosto, pedem a tabela da referência.
+
+| # | a escolha | nós hoje | SculptGL | Blender | testável **HOJE**? | o que o olho vê |
+|---|---|---|---|---|---|---|
+| **E1** | a **CURVA** do pincel | `Smooth` `(1−t²)²` | quártica `3t⁴−4t³+1` | curva editável, 9 presets | ✅ painel BRUSH → Falloff → `Plateau` | ombro do pincel: magro e morrendo cedo × cheio com pouso plano |
+| **E2** | a **FORÇA** de fábrica por tool | 0,5 em tudo | 0,75 (Flatten/Crease/Pinch/Smooth) · 0,30 (Inflate) | tabela por tool + `pressão^k` | ✅ slider Strength | quanto um toque entrega |
+| **E3** | o **RAIO** de fábrica por tool | um só | Crease **½** · Move/Drag **3×** | por tool | ✅ `[` e `]` | largura do sulco, alcance do puxão |
+| **E4** | o **SINAL** de fábrica | tudo levanta | Flatten/Crease/Mask **cavam** | por tool | ✅ Ctrl | o Crease de fábrica cava ou levanta |
+| **E5** | o **Flatten** é bilateral? | bilateral | unilateral (é o nosso Fill **ou** Scrape) | `height`/`depth`, dois números | ✅ compare Flatten × Fill × Scrape | achatar corta a crista **e** enche o vale, ou só um |
+| **E6** | o **Smooth** tem falloff? | tem | **não tem** (uniforme) | tem | ✅ Falloff → `Constant` | borda do alisado: degrau × transição |
+| **E7** | o Smooth **encolhe**? | encolhe (laplaciano cru) | encolhe (`smoothTangent` **existe e está OFF**) | tem `SURFACE_SMOOTH` e `SLIDE_RELAX` | ⛔ build | o volume some sob o dedo × a forma fica e só o ruído sai |
+| **E8** | a **direção** do Draw/Crease | normal de **ÁREA** | normal do **PONTO de impacto** | normal de área | ⛔ build | numa crista: o dab sobe pelo *lugar* ou pela *região* |
+| **E9** | o **Pinch** projeta na tangente? | projeta | puxa em **3D** | projeta (`x_disp` + `z_disp`) | ⛔ build | apertar afunda junto, ou só junta |
+| **E10** | a **normal do Inflate** | congelada no pen-down | **viva** | viva | ⛔ build | traço parado: infla reto × a direção gira sozinha |
+| **E11** | o plano é amostrado no raio do dab? | sim | sim | **não** (`normal_radius_factor`) | ⛔ build | Clay/Flatten tremendo × plano firme |
+| **E12** | o front-face é binário? | binário | binário | **contínuo** (`max(dot,0)`) | ⛔ build | degrau na silhueta × pouso macio |
+| **E13** | o slider de força é linear? | linear | linear | **`strength²`** | ⛔ build | sensibilidade da faixa baixa |
+| **E14** | `hardness` que reshapeia a distância | só na máscara | não tem | **tem, por pincel** | ⛔ build | um platô duro no miolo do dab |
+
+## §6 — O ROTEIRO: o que testar, em que ordem, e o que perguntar
+
+**As seis primeiras não custam build nenhum** — são controles que já estão na
+tela. Cena: `env PH2D_SCULPT3D_SMOKE=1 cargo run -p ph2d-host-desktop --release`
+(esfera limpa), painel na CRASE (`` ` ``).
+
+⚠️ **A regra do A/B:** faça **o mesmo traço** nos dois lados da esfera, mude
+**uma** coisa, e compare **lado a lado na mesma tela**. Trocar e re-desenhar por
+cima mede a soma, não a diferença.
+
+| # | teste | gesto | a pergunta que ele responde |
+|---|---|---|---|
+| **T1** | **A CURVA** — o maior número do estudo | Draw, Strength 0,5. Um traço com Falloff `Smooth`; troque para `Plateau`; o mesmo traço ao lado | *o pincel de fábrica é magro demais?* Se `Plateau` parecer "o pincel certo", ele vira o default e a paridade ganha de graça |
+| **T2** | **A FORÇA por tool** | Inflate a 0,5 (fábrica) × a **0,30** (referência). Depois Flatten a 0,5 × **0,75** | *o Inflate estoura? o Flatten não chega?* — é a tabela que o oráculo já tem |
+| **T3** | **O CREASE inteiro** (três divergências de uma vez) | Crease de fábrica × Crease com raio **pela metade** (`[`), força **0,75** e **Ctrl** | *é assim que um vinco se faz?* Se sim, E2+E3+E4 fecham juntos |
+| **T4** | **ACHATAR** | uma crista. Flatten × Fill × Scrape, no mesmo relevo | *"achatar" para você corta a crista, enche o vale, ou os dois?* Decide E5 |
+| **T5** | **O SMOOTH** | Shift-arraste sobre um relevo com Falloff `Smooth` × `Constant` | *a borda do alisado precisa de transição?* Decide E6 |
+| **T6** | **O SMOOTH que ENCOLHE** (só medir, ainda não escolher) | alise um dedo/ponta fina por uns segundos, sem soltar | *quanto de forma some?* É o E7, e **o número já existe**: raio `1,0 → 0,5 → 0,25 → … → 0,0156` em seis passes |
+
+**Depois destes seis, o que você sentir decide qual build vale.** Os candidatos,
+por ordem do que eu esperaria render:
+
+1. **E7 (o Smooth que não encolhe)** — é a única da lista que muda o que o app
+   *consegue* fazer. O `smoothTangent` já existe na referência, desligado.
+2. **E11 (`normal_radius_factor`)** — se o T4 mostrar o plano tremendo.
+3. **E8 (a normal do Draw)** — se o T1 deixar o Draw "escorregando" numa crista.
+4. **E12/E14** (silhueta e hardness) — refinamento, depois dos três acima.
+
+⚠️ **E há um par que eu recomendo NÃO testar por gosto:** o **E9** e o **E10**
+têm resposta técnica (o Blender concorda com o nosso Pinch projetado; a normal
+congelada do Inflate evita uma direção que gira sozinha num traço parado). Se o
+olho não reclamar deles no T2, deixe-os quietos.
+
+## §7 — O placar, e o que ele diz
 
 **Onze** divergências de comportamento (D1-D10 + D15), **cinco** capacidades que
 a referência tem e nós não (D11-D15), **doze** que só o Blender tem (D16-D27).

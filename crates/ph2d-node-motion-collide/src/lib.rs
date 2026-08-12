@@ -298,10 +298,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
@@ -327,6 +328,64 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 0.01,
         widget: ParamWidget::Slider,
+    },
+];
+
+/// **OS TETOS DIGITÁVEIS, MEDIDOS** (doc 88 B2 · doc 89 folha 03 linha 63 · CLAUDE.md §0).
+///
+/// Sonda: `measure_collide_ceiling`. Os três params deste nó quebram por mecanismos
+/// **diferentes**, e um deles não quebra — o que também é um resultado.
+///
+/// **`iterations` = 64, e o teto É o clamp.** O `eval` já faz
+/// `.clamp(0, MAX_ITERATIONS)`, então hoje a caixa de texto **aceita e mente**: a cicatriz do
+/// `lattice` 400 e do `kaleidoscope` 256. Medido — folga mínima da nuvem apertada:
+///
+/// | iterations | 8 | 32 | **64** | 65 | 200 | 100.000 |
+/// |---|---|---|---|---|---|---|
+/// | folga | 0,2900 | 0,4346 | **0,5183** | 0,5183 | 0,5183 | 0,5183 |
+///
+/// ⚠️ As três últimas colunas não são *parecidas* com a de 64: são **byte a byte** a de 64.
+/// Um número que o artista digita e o kernel joga fora é um controle que mente em silêncio.
+///
+/// **`strength` = 3,0 — e aqui a faixa confortável tem MESMO folga**, ao contrário dos irmãos
+/// acima (`iterations`) e do `friction` do `motion.spring`, onde o slider já sentava no teto. O
+/// slider para em `1,0` (*"1 = correção inteira"*), e a sobre-relaxação acima disso **compra
+/// empacotamento de verdade**: a 64 varreduras a folga vai de `0,5183` para `0,5995`, **+16%
+/// mais apertado pelo mesmo custo**. Medido:
+///
+/// | strength | 1,0 | 2,0 | 3,0 | 3,4 | 3,6 | **3,8** | 4,5 | 6,0 | 16,0 |
+/// |---|---|---|---|---|---|---|---|---|---|
+/// | folga | 0,5183 | 0,5883 | 0,5995 | 0,6004 | 0,6000 | 0,6052 | 0,6008 | 0,6039 | 0,6922 |
+/// | raio/semeadura | 2,38 | 2,44 | 2,47 | 2,49 | 2,47 | **3,54** | 2,73 | **6,17** | **12,28** |
+///
+/// Duas coisas acontecem, e o teto fica onde as duas ainda são boas: **o ganho ESTAGNA em 3,0**
+/// (3,2 e 3,4 acrescentam 0,0002 e 0,0009 — nada) e a partir de **3,8 a nuvem começa a ser
+/// ATIRADA** (a extensão salta da banda estável 2,4-2,5 para 3,54, depois 6,17 e 12,28).
+///
+/// ⚠️ **E a derivação óbvia estava ERRADA — o par isolado a refutou.** O raciocínio natural é
+/// *"sobre-relaxação acima de 2 faz o par atravessar um pelo outro e oscilar"*, o limite
+/// clássico do SOR. Medido em DOIS discos sozinhos, a folga é monotônica em `strength`
+/// (0,6000 · 0,9500 · 3,0500 em 1,0 · 2,0 · 8,0): **não há oscilação nenhuma**, porque a
+/// restrição é de **um lado só** — o laço só empurra quando há penetração, então depois do
+/// overshoot não sobra sobreposição e a varredura seguinte não faz nada. O que degrada é o
+/// caso DENSO, onde cada disco recebe correção de vários vizinhos no mesmo sweep.
+///
+/// ⚠️ **`radius` NÃO GANHA TETO, e isso é uma medição, não um esquecimento.** Este nó só sabe
+/// afastar discos, então dobrar o raio dobra tudo — a fração adimensional `folga / 2·raio` é
+/// **0,3317 constante de `r = 1` a `r = 1e15`**, quinze ordens de grandeza sem uma casa
+/// decimal se mover. Não existe ponto em que o kernel deixe de honrar o número, e escrever um
+/// teto aqui seria o palpite que o §0 proíbe. O custo tem um cliff no DEVICE (a célula da
+/// grade **é** o raio — `GridSpec { cell_param: "radius" }` —, então um raio grande demais
+/// para a nuvem colapsa toda gente numa célula e a varredura 3×3 vira `O(N²)`, o mecanismo que
+/// o `spread` do `motion.boids` documenta), e esse número quer a sonda de device, não esta.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "iterations",
+        max: MAX_ITERATIONS as f32,
+    },
+    ParamHardMax {
+        param: "strength",
+        max: 3.0,
     },
 ];
 

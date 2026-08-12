@@ -622,10 +622,37 @@ contínuo"*. Lendo os dois lados, os **consumidores são diferentes**:
 - **o do SculptGL** é o `_culling`, um **checkbox do usuário desligado de
   fábrica** em dez tools.
 
-⇒ Portar *"contínuo"* sem escolher o consumidor mudaria QUAL coisa é pesada. O
-`FrontFace::Continuous` do `B` é a lei do fator (uma multiplicação por vértice no
-laço, uma capacidade que hoje **não temos**), e a metade do plano é outra
-pergunta com outra resposta. Fica nomeado, não construído.
+⇒ Portar *"contínuo"* sem escolher o consumidor mudaria QUAL coisa é pesada.
+
+**✅ CONSTRUÍDO (mesma sessão), com o consumidor certo:** `FrontFace::Ignored`
+(nós e o SculptGL) × `FrontFace::Continuous` (o Blender) é o **terceiro eixo** da
+`KernelLaw`, e ele pesa **o FATOR de cada vértice** — a metade do plano fica onde
+está, e é dela que o `S` depende.
+
+⚠️ **É o único dos três eixos em que o `B` ACRESCENTA** em vez de guardar o que o
+app já fazia: os outros dois nasceram preservando o produto, este liga uma lei
+que ninguém tinha. Em `S` o `facing` é `1.0` e `x * 1.0` é a identidade em
+IEEE-754 ⇒ **byte-idêntico**, e o gate do piso o prova (a mutação que liga o
+front-face no `S` derruba a paridade junto com dez gates de unidade).
+
+⚠️ **O SINAL, e o gate que o mede:** o `Dab::eye` aponta *do olho para a
+superfície*, então um vértice de frente tem `n · eye` **NEGATIVO** — o
+`max(dot, 0)` do original vira `max(−dot, 0)` aqui. Inverter o sinal dá um pincel
+que só pega o que está de costas, e no MIOLO isso é indistinguível: por isso o
+gate mede a **SILHUETA**.
+
+⚠️ **E a fixture teve de ser MEDIDA para conter o fenômeno.** A pegada é uma
+consulta por esfera, então uma corda `r` numa esfera unitária varre `2·asin(r/2)`
+— com `r = 0,8` o pior vértice ainda olha a **47°** (cosseno `0,683`) e a lei mal
+se distingue de não existir; com `1,2` são **74°** (cosseno `0,28`), e a pegada
+de fato atravessa o terminador. *Um gate cujo fixture não atravessa a fronteira
+que ele afirma mede o vácuo.*
+
+**O oráculo é uma RAZÃO, não um piso:** em `B`, `deslocamento / cosseno` tem de
+ser o MESMO em toda a pegada — que é a lei `factors *= max(dot, 0)` escrita como
+propriedade —, e em `S` a `Constant` tem de sair constante. **3 mutações, 3
+sangram** (o sinal invertido · o `B` voltando a ignorar · o `S` passando a pesar,
+que derruba também o gate do piso).
 
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 

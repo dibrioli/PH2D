@@ -499,7 +499,25 @@ impl SculptStroke {
             } else {
                 brush.falloff.weight(t)
             };
-            let fall = curve * brush.alpha_weight(base, &alpha_frame);
+            // ⚠️ **O FRONT-FACE entra no FATOR, e é aqui que ele pertence** —
+            // o `sculpt.cc:7283-7295` faz `factors[i] *= max(dot, 0)`, e o
+            // `fall` é o nosso `factors` (ele alimenta o `w` E o `shape`). O
+            // filtro BINÁRIO do `fit_plane_over` é outro consumidor e continua
+            // onde está: um pesa o dab, o outro pesa a ESTIMATIVA DO PLANO.
+            //
+            // ⚠️ **O sinal:** o [`Dab::eye`] aponta *do olho para a superfície*,
+            // então um vértice de frente tem `n · eye` NEGATIVO — o `max(dot,0)`
+            // do original vira `max(−dot, 0)` aqui. Trocar o sinal daria um
+            // pincel que só pega o que está de costas, e o gate mede a
+            // SILHUETA justamente porque no miolo os dois são indistinguíveis.
+            let facing = match brush.mode.kernel().front_face {
+                crate::FrontFace::Ignored => 1.0,
+                crate::FrontFace::Continuous => {
+                    let n = mesh.normals()[vi];
+                    (-(n[0] * dab.eye[0] + n[1] * dab.eye[1] + n[2] * dab.eye[2])).max(0.0)
+                }
+            };
+            let fall = curve * brush.alpha_weight(base, &alpha_frame) * facing;
             // ⚠️ **O `w` fica VERBATIM — mesma ordem, mesmos bits.** A forma
             // "natural" seria derivar um do outro (`w = shape * intensity`), e
             // ela **re-associa** o produto de `(falloff × intensity) × keep`

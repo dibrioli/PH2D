@@ -160,6 +160,40 @@ pub enum PlaneReach {
     OneSided,
 }
 
+/// **COMO um vértice de PERFIL entra no dab** — o terceiro eixo, e o único que
+/// acrescenta uma capacidade em vez de restaurar paridade.
+///
+/// ⚠️ **A linha E12 do doc 20 conflita DOIS consumidores, e o gate depende de
+/// distingui-los.** *"O front-face é binário?"* tem três respostas, e elas não
+/// falam da mesma coisa:
+///
+/// - **nós**: um filtro **binário** na ESTIMATIVA DO PLANO (o `front` do
+///   `fit_plane_over` — um vértice de costas entra com peso zero na normal e no
+///   centro de área). O **dab não filtra nada**;
+/// - **o Blender** (`sculpt.cc:7283-7295`): `factors[i] *= max(dot, 0)`, ou seja
+///   pesa **o FATOR DE CADA VÉRTICE** do dab;
+/// - **o SculptGL**: o `_culling`, um **checkbox do usuário desligado de
+///   fábrica** em dez tools.
+///
+/// ⇒ Este eixo é o **do FATOR**. A metade do plano é outra pergunta, fica onde
+/// está, e é o `S` quem depende dela.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FrontFace {
+    /// O dab não pesa por orientação — todo vértice da pegada entra inteiro.
+    ///
+    /// É o que nós e o SculptGL fazem (lá o `_culling` existe e nasce
+    /// **desligado**), e portá-lo ligado seria divergir com a ferramenta em
+    /// silêncio.
+    Ignored,
+    /// O fator de cada vértice é escalado por `max(n · olho, 0)` — **o
+    /// Blender**.
+    ///
+    /// Um vértice de perfil pesa zero e um de frente pesa cheio, com a
+    /// transição CONTÍNUA: é o *pouso macio* na silhueta, contra o degrau de um
+    /// filtro binário.
+    Continuous,
+}
+
 /// **A metade IMPERATIVA de um modo** — onde a LEI do kernel difere, e não só
 /// um número de tabela.
 ///
@@ -172,6 +206,8 @@ pub struct KernelLaw {
     pub lateral: LateralPull,
     /// Flatten.
     pub plane: PlaneReach,
+    /// TODO verbo de carimbo — é um fator por vértice.
+    pub front_face: FrontFace,
 }
 
 impl RefMode {
@@ -188,10 +224,15 @@ impl RefMode {
             Self::S => KernelLaw {
                 lateral: LateralPull::Direct,
                 plane: PlaneReach::OneSided,
+                front_face: FrontFace::Ignored,
             },
             Self::B | Self::L => KernelLaw {
                 lateral: LateralPull::Tangential,
                 plane: PlaneReach::Bilateral,
+                // ⚠️ **É o único dos três eixos em que o `B` ACRESCENTA** em vez
+                // de guardar o que o app já fazia — os outros dois nasceram
+                // preservando o produto, este liga uma lei que ninguém tinha.
+                front_face: FrontFace::Continuous,
             },
         }
     }

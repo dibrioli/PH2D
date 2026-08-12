@@ -27,7 +27,7 @@ fn the_duplicator_stamps_each_shape_at_each_point() {
     // RED) and sits at its point's position.
     let s = shapes(&[7.0, 3.0]);
     let p = points(&[[10.0, 0.0], [20.0, 0.0], [30.0, 0.0]]);
-    let out = duplicate(&s, &p, 3);
+    let out = duplicate(&s, &p, 3, Pick::Off, 0);
     assert_eq!(out.count(), 6);
     let Column::Scalar(ids) = out.get("texture_id").unwrap() else {
         panic!("texture_id")
@@ -60,7 +60,7 @@ fn p_and_rot_sum_both_inputs() {
     let p = Stream::new(2)
         .with("P", Column::Vec2(vec![[0.0, 5.0], [0.0, 9.0]]))
         .with("rot", Column::Scalar(vec![1.0, 2.0]));
-    let out = duplicate(&s, &p, 2);
+    let out = duplicate(&s, &p, 2, Pick::Off, 0);
     let Column::Vec2(pp) = out.get("P").unwrap() else {
         panic!("P")
     };
@@ -75,7 +75,7 @@ fn p_and_rot_sum_both_inputs() {
 fn no_rot_column_when_neither_input_has_one() {
     // A pure position stamp emits no `rot` column — the lowering's default 0 is
     // the answer, and an empty column would be noise a downstream node reads.
-    let out = duplicate(&shapes(&[7.0]), &points(&[[1.0, 1.0]]), 1);
+    let out = duplicate(&shapes(&[7.0]), &points(&[[1.0, 1.0]]), 1, Pick::Off, 0);
     assert!(out.get("rot").is_none());
 }
 
@@ -83,7 +83,13 @@ fn no_rot_column_when_neither_input_has_one() {
 fn index_and_count_are_continuous_across_the_product() {
     // 2 × 3 → one uninterrupted Index 0..6 and Count 6 everywhere, so a ramp
     // spans the whole stamped set instead of restarting per shape.
-    let out = duplicate(&shapes(&[7.0, 3.0]), &points(&[[0.0, 0.0]; 3]), 3);
+    let out = duplicate(
+        &shapes(&[7.0, 3.0]),
+        &points(&[[0.0, 0.0]; 3]),
+        3,
+        Pick::Off,
+        0,
+    );
     let Column::Scalar(idx) = out.get("Index").unwrap() else {
         panic!("Index")
     };
@@ -98,7 +104,7 @@ fn index_and_count_are_continuous_across_the_product() {
 fn no_points_passes_the_shapes_through() {
     // A duplicator with nowhere to stamp is a passthrough of its shapes.
     let s = shapes(&[7.0, 3.0]);
-    let out = duplicate(&s, &Stream::new(0), 0);
+    let out = duplicate(&s, &Stream::new(0), 0, Pick::Off, 0);
     assert_eq!(out.count(), 2);
     let Column::Scalar(ids) = out.get("texture_id").unwrap() else {
         panic!("texture_id")
@@ -109,9 +115,9 @@ fn no_points_passes_the_shapes_through() {
 #[test]
 fn points_within_budget_caps_the_product() {
     // 3 shapes, max 25 → at most 8 points (3·8 = 24 ≤ 25). No shapes → 0.
-    assert_eq!(points_within_budget(3, 99, 25), 8);
-    assert_eq!(points_within_budget(3, 5, 25), 5); // honoured when it fits
-    assert_eq!(points_within_budget(0, 5, 25), 0); // nothing to stamp
+    assert_eq!(points_within_budget(Pick::Off, 3, 99, 25), 8);
+    assert_eq!(points_within_budget(Pick::Off, 3, 5, 25), 5); // honoured when it fits
+    assert_eq!(points_within_budget(Pick::Off, 0, 5, 25), 0); // nothing to stamp
 }
 
 // ── End-to-end: prove `eval` wires input 0 = shape, input 1 = points ─────────
@@ -223,11 +229,17 @@ fn measure_duplicate_is_flat_in_n() {
     for &n in &[16usize, 256, 4096, 65536] {
         let pts = points(&vec![[0.0, 0.0]; n]);
         // Warm, then take the median of a few runs (shared machine, doc 28 §5.49).
-        let _ = duplicate(&shape, &pts, n);
+        let _ = duplicate(&shape, &pts, n, Pick::Off, 0);
         let mut best = f64::INFINITY;
         for _ in 0..5 {
             let t = Instant::now();
-            let out = std::hint::black_box(duplicate(&shape, std::hint::black_box(&pts), n));
+            let out = std::hint::black_box(duplicate(
+                &shape,
+                std::hint::black_box(&pts),
+                n,
+                Pick::Off,
+                0,
+            ));
             best = best.min(t.elapsed().as_secs_f64());
             assert_eq!(out.count(), n);
         }

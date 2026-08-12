@@ -29,16 +29,34 @@ pub enum Falloff {
     Constant,
     /// `√(1 − t)` — sobe rápido na borda e achata no miolo, o oposto do Sharper.
     Root,
+    /// `3t⁴ − 4t³ + 1` — **a curva da REFERÊNCIA**, e a única desta família que
+    /// não foi escolhida por desenho: ela é a que as dez tools de geometria do
+    /// SculptGL usam, e é o que a paridade bit-a-bit exige que exista aqui.
+    ///
+    /// ⚠️ **Ela é mais CHEIA que a `Smooth`, e a diferença é visível:** a meio
+    /// raio dá `0,6875` contra `0,5625` — **1,22×** —, e a razão cresce até
+    /// `1,44×` a `7/8` do raio. Um artista que trocar de uma para a outra vê o
+    /// pincel engordar, não um detalhe numérico.
+    ///
+    /// ⚠️ **Ela é `C¹` nas DUAS pontas** (derivada `12t²(t − 1)`, que zera em
+    /// `t = 0` e em `t = 1`) — daí o nome: um platô no miolo e um pouso sem
+    /// degrau na borda. A `Smooth` só é plana na borda.
+    ///
+    /// ⚠️ **E o valor sai da PORTA ÚNICA** [`crate::ref_kernels::falloff`], em
+    /// `f64`, arredondado uma vez: uma segunda cópia da quártica aqui seria a
+    /// forma exata de a paridade divergir do porte que ela mede.
+    Plateau,
 }
 
 impl Falloff {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::Smooth,
         Self::Sphere,
         Self::Sharper,
         Self::Constant,
         Self::Root,
+        Self::Plateau,
     ];
 
     /// O peso a uma distância normalizada `t`. **Porta única** — todo verbo, a
@@ -68,6 +86,11 @@ impl Falloff {
             }
             Self::Constant => 1.0,
             Self::Root => (1.0 - t).sqrt(),
+            // ⚠️ **Em `f64`, e não uma quártica escrita aqui em `f32`.** É a
+            // aritmética do original (um `Float32Array` do JS lê `f32 → f64`,
+            // calcula em `f64` e arredonda UMA vez), e é o que faz esta curva
+            // servir de peça de paridade em vez de parecer com ela.
+            Self::Plateau => crate::ref_kernels::falloff(f64::from(t)) as f32,
         }
     }
 
@@ -80,6 +103,7 @@ impl Falloff {
             Self::Sharper => "Sharper",
             Self::Constant => "Constant",
             Self::Root => "Root",
+            Self::Plateau => "Plateau",
         }
     }
 }

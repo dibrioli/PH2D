@@ -64,13 +64,20 @@ pub const SCULPT3D_VERB: [NodeId; 16] = [
 ];
 
 // ── O pincel ────────────────────────────────────────────────────────────────
-/// As 5 curvas de `ph2d_sculpt3d::Falloff::ALL`.
-pub const SCULPT3D_FALLOFF: [NodeId; 5] = [
+/// As curvas de `ph2d_sculpt3d::Falloff::ALL`.
+///
+/// ⚠️ **O tamanho se CONTA, não se escolhe** — o seam
+/// `the_panel_offers_every_falloff_the_engine_has` compara este array com o
+/// `ALL` do motor, então uma curva nova que não passe por aqui nasce
+/// inalcançável no painel e o gate fica vermelho em vez de o botão sumir em
+/// silêncio.
+pub const SCULPT3D_FALLOFF: [NodeId; 6] = [
     hash_node_id("sculpt3d.falloff.0"),
     hash_node_id("sculpt3d.falloff.1"),
     hash_node_id("sculpt3d.falloff.2"),
     hash_node_id("sculpt3d.falloff.3"),
     hash_node_id("sculpt3d.falloff.4"),
+    hash_node_id("sculpt3d.falloff.5"),
 ];
 /// Raio do pincel, em **pixels de tela**.
 pub const SCULPT3D_RADIUS: NodeId = hash_node_id("sculpt3d.radius");

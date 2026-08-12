@@ -38,13 +38,75 @@ fn every_falloff_is_one_at_the_centre_zero_at_the_rim_and_never_climbs() {
 fn the_smooth_falloff_lands_on_the_rim_with_zero_slope() {
     // C¹ na borda: sem isto o traço deixa um DEGRAU na fronteira do pincel, que
     // é o artefato que se vê antes de se saber o nome dele. É a propriedade que
-    // torna o Smooth o default, e nenhum dos outros a tem.
+    // torna o Smooth o default.
+    //
+    // ⚠️ **Este comentário dizia "e nenhum dos outros a tem", e isso deixou de
+    // ser verdade** no dia em que a curva da referência entrou na família: a
+    // `Plateau` também pousa plana. A frase virou a asserção abaixo, que exige
+    // as DUAS — porque uma nota que enumera quem tem uma propriedade é a que
+    // envelhece calada.
     let h = 1e-3;
-    let slope = (Falloff::Smooth.weight(1.0) - Falloff::Smooth.weight(1.0 - h)) / h;
-    assert!(slope.abs() < 1e-2, "inclinação na borda = {slope}");
+    for f in [Falloff::Smooth, Falloff::Plateau] {
+        let slope = (f.weight(1.0) - f.weight(1.0 - h)) / h;
+        assert!(
+            slope.abs() < 1e-2,
+            "{}: inclinação na borda = {slope}",
+            f.label()
+        );
+    }
     // O contraste que dá sentido ao gate: a esfera chega com tangente vertical.
     let sphere = (Falloff::Sphere.weight(1.0) - Falloff::Sphere.weight(1.0 - h)) / h;
     assert!(sphere.abs() > 1.0, "a Sphere devia ser abrupta: {sphere}");
+}
+
+/// **A CURVA DA REFERÊNCIA entrou na família, e ela é MAIS CHEIA** — o número
+/// que o artista vai ver antes de saber o nome dele.
+///
+/// ⚠️ A `Plateau` não é uma sexta opção de gosto: ela é a quártica que as dez
+/// tools de geometria do SculptGL usam, e sem ela a paridade bit-a-bit não tem
+/// como ser pedida ao produto — todo verbo sairia com a forma certa e a
+/// *silhueta* errada.
+#[test]
+fn the_reference_curve_is_fuller_than_the_smooth_and_by_how_much() {
+    // A meio raio: `3/16 − 4/8 + 1` contra `(1 − 1/4)²`.
+    let (plateau, smooth) = (Falloff::Plateau.weight(0.5), Falloff::Smooth.weight(0.5));
+    assert!((plateau - 0.687_5).abs() < 1e-6, "meio raio = {plateau}");
+    assert!((smooth - 0.562_5).abs() < 1e-6, "meio raio = {smooth}");
+    assert!(
+        (plateau / smooth - 1.222_2).abs() < 1e-3,
+        "a razão a meio raio é o número da tabela: {}",
+        plateau / smooth
+    );
+    // E ela é mais cheia em TODO o interior, não só no ponto que eu escolhi.
+    for k in 1..100 {
+        let t = k as f32 / 100.0;
+        assert!(
+            Falloff::Plateau.weight(t) > Falloff::Smooth.weight(t),
+            "t = {t}: {} vs {}",
+            Falloff::Plateau.weight(t),
+            Falloff::Smooth.weight(t)
+        );
+    }
+}
+
+/// **NENHUMA CURVA DA FAMÍLIA É CÓPIA DE OUTRA.**
+///
+/// ⚠️ O gate existe porque a `Plateau` chegou de FORA (ela é a da referência, e
+/// não um desenho nosso), e a maneira barata de a próxima curva entrar é alguém
+/// escrever à mão uma quártica que *parece* com ela. Duas entradas com o mesmo
+/// número são dois botões que fazem a mesma coisa — e o painel os pinta lado a
+/// lado.
+#[test]
+fn no_two_falloffs_in_the_family_are_the_same_curve() {
+    for (i, a) in Falloff::ALL.into_iter().enumerate() {
+        for b in Falloff::ALL.into_iter().skip(i + 1) {
+            let apart = (0..=64).any(|k| {
+                let t = k as f32 / 64.0;
+                (a.weight(t) - b.weight(t)).abs() > 1e-4
+            });
+            assert!(apart, "{} e {} são a mesma curva", a.label(), b.label());
+        }
+    }
 }
 
 #[test]

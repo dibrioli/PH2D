@@ -251,21 +251,34 @@ fn what_separates_our_kernels_from_the_reference() {
     }
 
     // A curva, isolada — o fator que multiplica TODOS os verbos.
+    //
+    // ⚠️ **Duas colunas, e é a segunda que diz onde a paridade está:** a
+    // `Plateau` É a quártica da referência (entrou na família em 2026-08-11), e
+    // a razão dela tem de ser `1,000` em toda a linha. A `Smooth` fica ao lado
+    // porque é o DEFAULT do pincel, e a distância dela é o que o artista vê ao
+    // trocar de curva.
     println!("\n== A CURVA, ponto a ponto ==");
     println!(
-        "{:>6} {:>12} {:>12} {:>10}",
-        "t", "referência", "Smooth", "razão"
+        "{:>6} {:>12} {:>12} {:>8} {:>12} {:>8}",
+        "t", "referência", "Smooth", "razão", "Plateau", "razão"
     );
     for i in 0..=8 {
         let t = f64::from(i) / 8.0;
         let r = rk::falloff(t);
-        let s = f64::from(Falloff::Smooth.weight(t as f32));
-        let ratio = if s > 0.0 {
-            format!("{:.3}x", r / s)
-        } else {
-            "-".into()
+        let ratio = |x: f64| {
+            if x > 0.0 {
+                format!("{:.3}x", r / x)
+            } else {
+                "-".into()
+            }
         };
-        println!("{t:>6.3} {r:>12.6} {s:>12.6} {ratio:>10}");
+        let s = f64::from(Falloff::Smooth.weight(t as f32));
+        let p = f64::from(Falloff::Plateau.weight(t as f32));
+        println!(
+            "{t:>6.3} {r:>12.6} {s:>12.6} {:>8} {p:>12.6} {:>8}",
+            ratio(s),
+            ratio(p)
+        );
     }
 
     // O ACÚMULO — o checkbox que o Enio reportou como quebrado. Um traço reto

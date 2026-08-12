@@ -95,8 +95,16 @@ fn the_leg_is_always_there_and_it_found_the_floor() {
         0,
     );
     let g = of(&m, ProbeKind::Ground);
-    assert_eq!(g.len(), 1, "uma perna");
-    assert_eq!(g[0].state, ProbeState::Hit, "sobre o chao, ela ACHA");
+    // ⚠️ **Um por PÉ** (`W-FootFan`): a perna virou um LEQUE, e a contagem sai
+    // da porta do produto — a mensagem da cena diz "tres linhas", e é este
+    // número que a torna verdadeira.
+    let feet = usize::from(ph2d_physics_ecs::PlatformPlayer::default().foot_samples);
+    assert_eq!(g.len(), feet, "uma marca por pe' da perna");
+    assert!(
+        g.iter().all(|x| x.state == ProbeState::Hit),
+        "sobre chao PLANO todos os pes ACHAM: {:?}",
+        g.iter().map(|x| x.state).collect::<Vec<_>>()
+    );
 }
 
 /// **O PASSO 3: parado no chão, flanco e quina estão ARMADOS e apagados.**

@@ -83,6 +83,29 @@ struct KinMove {
     react: ReactionConfig,
 }
 
+/// A folga que faz de uma rampa exatamente no `max_slope` uma rampa, e não um
+/// degrau: um milímetro, a mesma ordem do `normalized_allowed_linear_error` com
+/// que o solver assenta.
+const STEP_EPS: f32 = 1.0e-3;
+
+/// **Quanto um pé de fora pode estar ACIMA do pé do meio, por metro de
+/// afastamento** — a tangente do limite de rampa.
+///
+/// ⚠️ **Por `max_slope_cos()` e uma raiz, nunca por uma tangente do `std`:** este
+/// número entra no `physics_ecs_c9`, e a lei do módulo é que 1 ulp entre dois
+/// sistemas operacionais é um bug. A porta do cosseno já passa por `libm`; o
+/// resto é `sqrt`, que o IEEE-754 especifica exatamente.
+///
+/// `max_slope` de 90° dá cosseno 0 ⇒ tudo é caminhável ⇒ limite infinito, que é
+/// o que aquele número significa.
+fn leg_step_limit(cfg: &ph2d_platformer::PlayerConfig) -> f32 {
+    let c = cfg.walk.max_slope_cos();
+    if c <= 0.0 {
+        return f32::INFINITY;
+    }
+    (1.0 - c * c).max(0.0).sqrt() / c
+}
+
 struct GroundPush {
     ground: rapier2d_handle::Handle,
     player: rapier2d_handle::Handle,
@@ -205,9 +228,11 @@ impl PhysicsBridge {
             //
             // ⚠️ **A redução é o MAIS PRÓXIMO, e não é uma regra nova** — é a que
             // o `cling` já ship a no flanco: o chão é o degrau mais alto que
-            // qualquer parte do pé alcança, e o `<` estrito faz o raio do MEIO
-            // ganhar todo empate (ele é o índice 0 do `wall_offsets`), o que
-            // mantém um corpo sobre chão plano byte-idêntico ao que era.
+            // qualquer parte do pé alcança **e que seja CAMINHÁVEL** (a segunda
+            // metade nasceu de uma medição, logo abaixo). O `<` estrito faz o
+            // raio do MEIO ganhar todo empate (ele é o índice 0 do
+            // `wall_offsets`), o que mantém um corpo sobre chão plano
+            // byte-idêntico ao que era.
             let (legs, leg_n) = probes::ground_rays(&self.world, b.handle, &cfg, origin);
             // ⚠️ **As respostas POR RAIO viajam para o overlay** (o padrão do
             // flanco, `WallProbe.hits`): quem desenha mostra o que a lei de
@@ -217,7 +242,19 @@ impl PhysicsBridge {
             // num tique em que quem achou foi o da borda.
             let mut leg_hits = [None; ph2d_platformer::MAX_WALL_SAMPLES];
             let mut hit = None;
-            for (leg, slot) in legs.iter().zip(leg_hits.iter_mut()).take(leg_n) {
+            // ⚠️ **E um pé de fora só conta se o chão dele for CAMINHÁVEL a
+            // partir do pé do meio** — a lei que separa uma RAMPA de um DEGRAU.
+            // Sem ela o leque transforma em chão tudo o que o corpo encosta:
+            // medido, um personagem que empurrava um caixote de 0,6 m passava a
+            // SUBIR nele (deslocamento do caixote 7,27 → −0,02 m), porque o pé
+            // da frente pousava no topo dele e a perna tomava aquilo como o
+            // chão. O número não é escolhido: é o `max_slope` que o artista já
+            // autorou, e a mesma pergunta que produz o `Footing::Steep`.
+            let step = leg_step_limit(&cfg);
+            // A referência é o pé do MEIO, o índice 0 do `wall_offsets` — e é
+            // por isso que ele é castado primeiro.
+            let mut centre: Option<f32> = None;
+            for (i, (leg, slot)) in legs.iter().zip(leg_hits.iter_mut()).enumerate().take(leg_n) {
                 let Some(h) = self.world.cast_ray_skipping(
                     leg.origin,
                     leg.dir,
@@ -228,7 +265,21 @@ impl PhysicsBridge {
                 ) else {
                     continue;
                 };
+                // ⚠️ **O que o raio ACHOU viaja sempre** — inclusive quando a lei
+                // o recusa: ver o pé da frente pousado no caixote e a perna a
+                // ignorá-lo É o diagnóstico, e escondê-lo faria o desenho contar
+                // meia história.
                 *slot = Some(h.distance);
+                if i == 0 {
+                    centre = Some(h.distance);
+                } else if let Some(c) = centre {
+                    // Só o degrau para CIMA importa: um pé sobre um buraco acha
+                    // chão mais LONGE, e mais longe nunca ganha a redução.
+                    let dx = (leg.origin[0] - origin[0]).abs();
+                    if c - h.distance > dx * step + STEP_EPS {
+                        continue;
+                    }
+                }
                 let nearer = hit
                     .as_ref()
                     .is_none_or(|best: &ph2d_physics::CastHit| h.distance < best.distance);

@@ -66,6 +66,9 @@ use scene_fixture::pose;
 /// A cápsula do player em toda cena e todo gate deste módulo.
 const HALF_HEIGHT: f32 = 0.3;
 const RADIUS: f32 = 0.2;
+/// O afastamento dos pés de fora, em fração da meia-largura — o default do
+/// produto, lido da porta e não copiado.
+const FOOT_SPREAD: f32 = ph2d_platformer::RideConfig::STARTING_POINT.spread;
 
 /// O piso geométrico previsto: onde o PÉ da cápsula toca a superfície inclinada.
 ///
@@ -197,8 +200,8 @@ fn measure_where_the_leg_runs_short() {
         let one = onset(slope, 1);
         let fan = onset(slope, 3);
         // A previsao do quanto o leque baixa o piso: o pe' de CIMA acha chao
-        // `meia-largura * tan(theta)` mais perto.
-        let lift = RADIUS * slope.to_radians().tan();
+        // `meia-largura * spread * tan(theta)` mais perto.
+        let lift = RADIUS * FOOT_SPREAD * slope.to_radians().tan();
         println!(
             "   {slope:>4.0}°   {pred:>8.4}   |   {one:>8.4}    {fan:>8.4}   | \
              {:>7.4} |  {lift:>7.4}",
@@ -301,8 +304,10 @@ fn the_fan_lowers_the_floor_by_exactly_the_uphill_foots_rise() {
             "a fixture tem de CONTER o fenomeno a {slope}°: {one} / {fan}"
         );
         // O pé de fora nasce em `meia-largura × spread`, e para esta cápsula a
-        // meia-largura É o raio.
-        let lift = RADIUS * slope.to_radians().tan();
+        // meia-largura É o raio. ⚠️ O `spread` entra: com o default de 0,9 o pé
+        // fica DENTRO da pegada (ver `RideConfig::spread`), e usar o raio nu
+        // aqui seria prever um pé que o produto não casta.
+        let lift = RADIUS * FOOT_SPREAD * slope.to_radians().tan();
         assert!(
             (one - fan - lift).abs() <= TOL,
             "a {slope}° o leque tinha de baixar o piso {lift:.4} m (o pe' de cima \

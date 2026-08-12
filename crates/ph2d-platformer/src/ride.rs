@@ -50,7 +50,19 @@ pub struct RideConfig {
     /// **Onde os raios de FORA se sentam**, como fração da meia-largura do
     /// corpo. `1.0` põe-nos na borda exata da caixa.
     ///
-    /// ⚠️ Baixá-lo aproxima-os do eixo, o que reduz a fenda que a perna
+    /// ⚠️ **E é por isso que o default é `0,9` e não `1,0`:** um raio na borda
+    /// EXATA é tangente a tudo o que o corpo encosta. O solver para a cápsula a
+    /// um contato da parede, então a borda dela coincide com a face — e o pé de
+    /// fora, sentado nessa borda, acha a parede e chama-lhe chão. Medido: com
+    /// `1,0` **seis** gates do pulo de parede caem de uma vez (o personagem
+    /// deixa de deslizar e passa a cair 7,55 m em 1 s), e com `0,9` voltam
+    /// todos. Um pé pertence DENTRO da pegada do corpo.
+    ///
+    /// ⚠️ **A margem é 20 mm contra os ~1,3 mm** com que o solver assenta
+    /// (`normalized_allowed_linear_error`), ou seja 15× — e é a mesma ideia do
+    /// `skinWidth` de um character controller, que existe pela mesma razão.
+    ///
+    /// ⚠️ Baixá-lo mais aproxima-os do eixo, o que reduz a fenda que a perna
     /// atravessa; `0.0` junta tudo no centro e **reproduz o raio único** — é
     /// isso que torna o comportamento antigo alcançável sem um flag.
     pub spread: f32,
@@ -239,7 +251,9 @@ impl RideConfig {
         // meio a desempatar. ⚠️ Isto MUDA o comportamento de todo player já
         // autorado, e é a correção: um raio só afundava 46% numa fenda de 10 cm.
         samples: 3,
-        spread: 1.0,
+        // ⚠️ **DENTRO da pegada, nunca na borda** — ver o doc do campo: um raio
+        // na borda exata é tangente à parede que o solver o encosta.
+        spread: 0.9,
     };
 
     /// ⚠️ **A `float_height` MÍNIMA de uma cápsula, e ela é GEOMETRIA, não

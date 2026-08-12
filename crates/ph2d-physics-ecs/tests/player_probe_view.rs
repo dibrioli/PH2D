@@ -127,7 +127,11 @@ fn the_leg_is_read_every_tick_and_publishes_the_reach_the_law_uses() {
     let mut r = rig(true);
     r.run(0, 30, PlayerInput::default());
     let g = r.of(ProbeKind::Ground);
-    assert_eq!(g.len(), 1, "uma perna, um raio");
+    // ⚠️ **Um por PÉ** (`W-FootFan`): a perna é um leque, e a contagem sai da
+    // porta do produto em vez de um literal — senão o dia em que o default
+    // mudar deixa este gate a afirmar um número que ninguém escolheu.
+    let feet = usize::from(PlatformPlayer::default().foot_samples);
+    assert_eq!(g.len(), feet, "uma marca por pe' da perna");
     let (_, dir, reach, hit) = as_ray(&g[0]);
     assert_eq!(dir, [0.0, -1.0], "a perna olha para BAIXO");
     assert!(
@@ -159,8 +163,8 @@ fn a_disarmed_capability_draws_nothing_at_all() {
     assert!(r.of(ProbeKind::Headroom).is_empty(), "agachar desarmado");
     assert_eq!(
         r.of(ProbeKind::Ground).len(),
-        1,
-        "a perna nao e' condicional e continua la'"
+        usize::from(PlatformPlayer::default().foot_samples),
+        "a perna nao e' condicional e continua la', com todos os pes"
     );
 }
 

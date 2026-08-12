@@ -287,17 +287,28 @@ fn the_flat_ground_control_is_still_perfectly_still() {
 /// acima do pedido, e o número é o preço medido do amortecimento (a tabela do
 /// [`ph2d_platformer::RideConfig::STARTING_POINT`]). O bar de 20 mm existe para
 /// pinar a ordem de grandeza, não para esconder o erro.
+///
+/// ⚠️ **E a altura é medida sob o PÉ DE CIMA, não sob o centro** (`W-FootFan`,
+/// 2026-08-11): a perna é um leque, e quem vence a redução numa rampa é o pé
+/// mais próximo do chão, que é o de cima. O gate media sob o centro e passou a
+/// ler `0,9733` numa rampa de 20° — os `0,2 × 0,9 × tan 20°` do afastamento do
+/// pé, e não um erro. A frase do gate não muda (*a perna segura a altura
+/// pedida*); o que muda é **acima de quê**, e a resposta é a mesma que o raio
+/// vencedor dá.
 #[test]
 fn the_leg_still_holds_the_height_it_was_asked_for() {
+    // O afastamento do pé de fora, pela porta do produto.
+    let foot = 0.2 * RideConfig::STARTING_POINT.spread;
     for &slope in &[0.0_f32, 20.0, 30.0] {
         let (mut sim, mut bridge) = rig(slope, MAX_DAMPING);
         for t in 1..=600 {
             bridge.dispatch(&mut sim, true, t);
         }
         let (x, y) = pose(&sim);
-        // A folga VERTICAL até o topo do chão sob o personagem — a mesma que o
-        // raio do sensor mede.
-        let held = y - (0.5 / slope.to_radians().cos() + x * slope.to_radians().tan());
+        // A folga VERTICAL até o topo do chão sob o PÉ DE CIMA — a mesma que o
+        // raio vencedor do sensor mede. (Em rampa 0 os pés empatam e o do meio
+        // desempata; o chão é o mesmo, então a conta não muda.)
+        let held = y - (0.5 / slope.to_radians().cos() + (x + foot) * slope.to_radians().tan());
         assert!(
             (held - FLOAT).abs() < 0.02,
             "rampa {slope:.0}°: a perna segurou {held:.4} em vez de {FLOAT}"

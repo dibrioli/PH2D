@@ -128,10 +128,7 @@ fn a_single_ray_leg_sinks_over_a_gap_the_body_spans_and_this_is_its_number() {
         one > 0.3,
         "a perna de UM raio afundava 0,411 m sobre esta fenda; medido {one:.3} m"
     );
-    assert!(
-        fan < 0.01,
-        "e a de tres nao afunda; medido {fan:.3} m"
-    );
+    assert!(fan < 0.01, "e a de tres nao afunda; medido {fan:.3} m");
 }
 
 /// **A contagem autorada chega aos raios que a ponte casta** — a quarta condição
@@ -285,8 +282,8 @@ fn each_foot_draws_the_answer_it_got_not_the_reduced_verdict() {
     );
 }
 
-/// **O leque cavalga o chão MAIS ALTO que qualquer pé alcança** — a regra de
-/// redução, no único sítio onde ela é observável.
+/// **O leque cavalga o chão mais alto que um pé alcança — desde que ele seja
+/// CAMINHÁVEL** — a regra de redução, no único sítio onde ela é observável.
 ///
 /// ⚠️ **Este gate nasceu de uma mutação SOBREVIVENTE.** Trocar *"fica o mais
 /// próximo"* por *"fica o último"* passava nos quatro gates de cima, porque
@@ -298,8 +295,18 @@ fn each_foot_draws_the_answer_it_got_not_the_reduced_verdict() {
 /// no índice 1 e o positivo no 2, então um *"fica o último"* escolheria o pé
 /// direito — o do chão BAIXO — e o personagem afundaria no degrau em vez de o
 /// subir. Pôr o degrau à direita deixaria as duas regras concordar.
+///
+/// ⚠️ **E o degrau de 0,15 m é CAMINHÁVEL, o que é metade da lei:** sobre um pé
+/// afastado 0,2 m ele é uma rampa de 36,9°, dentro do `max_slope` de 45°. A
+/// outra metade — *um degrau mais íngreme que o limite NÃO é chão* — **não tem
+/// fixture de unidade, e a ausência é honesta:** um degrau de 0,6 m ao lado do
+/// corpo é uma parede em que a cápsula não cabe, então o único jeito de a
+/// encostar é o solver a parar contra ela. Quem segura essa metade é o
+/// `measure_push_spin`, que foi onde ela foi DESCOBERTA: sem o limite, um
+/// personagem que empurrava um caixote de 0,6 m passa a SUBIR nele e o
+/// deslocamento do caixote cai de 7,27 para −0,02 m.
 #[test]
-fn the_leg_rides_the_highest_ground_any_foot_reaches() {
+fn the_leg_rides_the_highest_walkable_ground_any_foot_reaches() {
     let step_top = 0.15_f32;
     let mut sim = SimWorld::new();
     let mut slab = |name: &str, at: Vec2, half: [f32; 2]| {

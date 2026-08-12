@@ -13,11 +13,12 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
-use ph2d_sculpt3d::{Alpha, Falloff, Verb};
+use ph2d_sculpt3d::{Alpha, Falloff};
 use ph2d_tokens::{ROW_H_PX, Spacing};
 
 use super::mask_tools::paint_mask_tools;
-use super::widgets::{command, header, labelled_seg, readout, row_of_two, seg, toggle};
+use super::tool::paint_tool;
+use super::widgets::{command, header, labelled_seg, readout, row_of_two, toggle};
 
 use crate::preview;
 use crate::rows;
@@ -107,41 +108,6 @@ fn paint_bake(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f3
     if !snap.has_bake_target {
         y = readout(ctx, tr("panel.sculpt3d.bake_sprite.hint"), x, w, y);
     }
-    y + Spacing::Md.px()
-}
-
-/// **A FERRAMENTA** — os dezesseis verbos numa faixa que REFLUI.
-///
-/// É a mesma decisão que a lista de dez ferramentas do Impasto tomou: um grupo
-/// segmentado com muitas opções quebra em linhas, e a alternativa (um dropdown)
-/// esconde quinze ferramentas atrás de um clique para mostrar uma.
-fn paint_tool(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
-    let (open, mut y) = header(
-        ctx,
-        ids::SCULPT3D_SEC_TOOL,
-        tr("panel.sculpt3d.section.tool"),
-        x,
-        w,
-        y,
-    );
-    if !open {
-        return y;
-    }
-    let selected = Verb::ALL
-        .iter()
-        .position(|&v| v == snap.ui.brush.verb)
-        .unwrap_or(0);
-    let labels: Vec<&str> = Verb::ALL.iter().map(|v| v.label()).collect();
-    y = seg(
-        ctx,
-        ids::SCULPT3D_SEC_TOOL,
-        &ids::SCULPT3D_VERB,
-        &labels,
-        selected,
-        x,
-        w,
-        y,
-    );
     y + Spacing::Md.px()
 }
 

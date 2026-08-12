@@ -169,9 +169,9 @@ pub(crate) use scenes::shading::env_scene;
 pub(crate) use scenes::{
     alpha_image_scene, alpha_scene, bake_scene, cavity_scene, directional_alpha_scene,
     donation_scene, dyntopo_scene, extract_scene, flatten_scene, flatten_scene_counts, fuse_scene,
-    mask_channel_numbers, mask_channel_scene,
-    holes_scene, masked_dome_counts, remesh_scene, reopen_scene, reversion_scene, scene_objects,
-    smoke_armed, smoke_mesh, soft_masked_counts, transform_scene, turn_scene, wants_canvas,
+    holes_scene, mask_channel_numbers, mask_channel_scene, masked_dome_counts, remesh_scene,
+    reopen_scene, reversion_scene, scene_objects, smoke_armed, smoke_mesh, soft_masked_counts,
+    transform_scene, turn_scene, wants_canvas,
 };
 
 /// O que o arrasto está fazendo.
@@ -373,6 +373,14 @@ pub(crate) struct Sculpt3dScene {
     wireframe: bool,
 
     brush: Brush,
+    /// **A REFERÊNCIA de cada verbo** (`RefMode`), na ordem do `Verb::ALL`.
+    ///
+    /// ⚠️ **Ela mora aqui e não só no pincel** porque o `Brush::mode` é o
+    /// DERIVADO: o painel reconstrói o `Sculpt3dUi` a cada quadro a partir
+    /// destes campos, então uma escolha que vivesse só no pincel seria perdida
+    /// na primeira troca de ferramenta — e a troca é justamente o gesto que a
+    /// re-resolve.
+    mode_by_verb: [ph2d_sculpt3d::RefMode; 16],
     /// **O padrão do pincel é mostrado no barro?** — ver
     /// [`sculpt3d_preview::PreviewState`]. Nasce ligado.
     alpha_preview: bool,

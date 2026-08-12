@@ -654,6 +654,62 @@ propriedade —, e em `S` a `Constant` tem de sair constante. **3 mutações, 3
 sangram** (o sinal invertido · o `B` voltando a ignorar · o `S` passando a pesar,
 que derruba também o gate do piso).
 
+### §7.4 — ✅ W1' LANDOU: o chip `Reference` está na tela (2026-08-12)
+
+A row **`Reference`** vive logo abaixo da lista de ferramentas, no **Basic**
+(§2.1: a escolha muda o pincel em `1,08×-1,44×` e a lei em `1,7e-3` — é o achado
+mais consequente do estudo, e escondê-lo num interruptor Pro seria esconder a
+decisão que mais importa). Ao lado dela, o botão **Apply to all tools**.
+
+**A escolha é POR VERBO** (`Sculpt3dUi::mode_by_verb`, espelhada na cena), e o
+`Brush::mode` é o **derivado** — como o `Brush::radius` é derivado do
+`radius_px`. Trocar de ferramenta **re-resolve** pela porta única
+`arm_verb_defaults`, que é onde os outros quatro campos já eram armados. ⚠️ E a
+referência **não** passa pelo teste de *"o artista mexeu?"* dos quatro knobs: ali
+não há um número a proteger, há uma tabela a consultar.
+
+⚠️ **O chip NÃO re-arma a tabela de defaults, e isso é decisão com motivo:** os
+quatro `Verb::default_*` continuam lendo `RefMode::S` explicitamente. O `B` não
+declara defaults (§7.0: eles vivem num `.blend` binário), então *"armar os
+defaults do B"* seria armar os NOSSOS fallbacks — trocar de referência jogaria a
+força do artista para `0,5` e a curva para `Smooth` sem nada disso ser do
+Blender. O chip governa **a lei do kernel e a curva de força**; os sliders ficam
+onde o artista os deixou.
+
+#### ⚠️ E o `L` NÃO é oferecido — a razão mudou durante a implementação
+
+A primeira `declares()` era derivada (*"este modo duplica um anterior?"*) e ela
+**oferecia** o `L`. O motivo é o achado: **o `L` não é uma duplicata do `B`, ele
+é `B` sem o `strength²`** — o `profile_l` devolve `None`, então a `StrengthCurve`
+dele cai no `Linear` do `SILENT`. Ou seja, hoje o `L` já significa alguma coisa,
+e essa coisa **não é literatura**: é um acidente da tabela vazia. *Um chip que
+funciona e mente sobre o próprio nome é pior que um chip ausente.*
+
+⇒ A resposta do `L` virou uma **afirmação sobre o que foi construído**, e a
+direção de falha é a segura (esquecer de virá-la deixa a feature **invisível**,
+nunca errada). Dois gates a cobram: *dois modos oferecidos nunca são o mesmo* e
+*o `L` não tem perfil próprio nem lei própria* — o segundo cai no dia em que
+qualquer uma das duas coisas deixar de valer, e cobra a decisão.
+
+**Seam.** Quatro gates novos: cada modo oferecido tem chip que o pega **e escreve
+na tabela do verbo** · a escolha **sobrevive à troca de ferramenta** (o gate que
+separa *"o modo é do pincel"* de *"o modo é da ferramenta"*) · o carimbo alcança
+os dezasseis · e os chips entram na **varredura anti-widget-morto**, que pergunta
+ao motor exatamente como o pintor pergunta (`offered_for`) — senão ela exigiria
+um chip do `L` que o painel não desenha e ficaria vermelha sobre produto correto.
+**3 mutações, 3 sangram** (os chips fora do `populate` · o evento escrevendo no
+pincel em vez da tabela · a row não pintada).
+
+⚠️ **LOC: dois cortes por assunto** — `paint/tool.rs` (*que ferramenta está na
+mão, e que referência ela segue*: as duas rows respondem à MESMA pergunta em dois
+níveis) tira o `body.rs` de 645 para 560.
+
+⚠️ **E o `LITERAL-PX-OK` do `BASE_RADIUS_PX` foi ÓRFÃO por uma inserção minha:**
+eu ancorei no `pub const … = 50.0;` sem o comentário de fim de linha, então a
+função nova pousou **entre** a const e o marcador — que foi parar no `}` dela. O
+gate pegou. *O marcador tem de estar NA linha*, e uma âncora que ignora o que vem
+depois dela move o que vem depois dela.
+
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 
 **Os defaults de fábrica do Blender não estão no clone.** Eles vivem em

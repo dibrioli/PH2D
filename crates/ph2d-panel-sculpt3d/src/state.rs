@@ -23,7 +23,7 @@
 //! de decidir se o remesh já rodou.
 
 use ph2d_mesh::Extract;
-use ph2d_sculpt3d::{Brush, Symmetry, Verb};
+use ph2d_sculpt3d::{Brush, RefMode, Symmetry, Verb};
 use std::cell::{Cell, RefCell};
 
 thread_local! {
@@ -47,6 +47,14 @@ pub struct Sculpt3dUi {
     /// ajusta é o [`Sculpt3dUi::radius_px`] logo abaixo. Guardar os dois num
     /// campo só seria a segunda resposta a *"que tamanho tem o pincel?"*.
     pub brush: Brush,
+    /// **A REFERÊNCIA de cada verbo** — o artista quer o Clay do Blender e o
+    /// Smooth do SculptGL, então a escolha é por ferramenta (§1.3 do plano).
+    ///
+    /// ⚠️ **O `Brush::mode` é o DERIVADO**, como o `Brush::radius` é derivado do
+    /// [`Sculpt3dUi::radius_px`]: quem o artista edita é esta tabela, e trocar de
+    /// verbo o re-resolve pela porta única [`arm_verb_defaults`]. Guardar a
+    /// escolha só no pincel a perderia na primeira troca de ferramenta.
+    pub mode_by_verb: [RefMode; Verb::ALL.len()],
     /// O raio autorado, em **pixels de tela**.
     pub radius_px: f32,
     pub symmetry: Symmetry,
@@ -112,6 +120,7 @@ impl Default for Sculpt3dUi {
     fn default() -> Self {
         Self {
             brush: Brush::default(),
+            mode_by_verb: [RefMode::default(); Verb::ALL.len()],
             radius_px: 50.0, // LITERAL-PX-OK: espelha o DEFAULT_RADIUS_PX do shell (raio de pincel, medido)
             symmetry: Symmetry::default(),
             cavity: 0.0,
@@ -400,6 +409,16 @@ pub fn alpha_chip_index(snap: &Sculpt3dSnapshot) -> usize {
 /// resposta que a próxima wave esquece de mover.
 pub const BASE_RADIUS_PX: f32 = 50.0; // LITERAL-PX-OK: raio de pincel, espelha o default do shell
 
+/// A posição de um verbo no [`Verb::ALL`] — o índice da tabela
+/// [`Sculpt3dUi::mode_by_verb`].
+///
+/// ⚠️ **`Verb` não é `usize`**, e uma segunda tabela `verbo -> índice` seria a
+/// cópia que diverge no dia em que a lista crescer no meio.
+#[must_use]
+pub fn verb_index(verb: Verb) -> usize {
+    Verb::ALL.iter().position(|&v| v == verb).unwrap_or(0)
+}
+
 /// **ARMA os defaults do verbo que está ENTRANDO — a porta única.**
 ///
 /// A lei é a mesma de sempre e vale para os quatro campos: *arma se, e só se, o
@@ -419,6 +438,12 @@ pub const BASE_RADIUS_PX: f32 = 50.0; // LITERAL-PX-OK: raio de pincel, espelha 
 /// que sai, então a troca de `verb` acontece **por último**.
 pub fn arm_verb_defaults(ui: &mut Sculpt3dUi, verb: Verb) {
     let from = ui.brush.verb;
+    // ⚠️ **A REFERÊNCIA é RESOLVIDA, nunca preservada.** Ela é por verbo, então
+    // trocar de ferramenta tem de trazer a escolha DAQUELA ferramenta — e é por
+    // isso que ela não passa pelo teste de *"o artista mexeu?"* que os quatro
+    // knobs abaixo fazem: aqui não há um número a proteger, há uma tabela a
+    // consultar.
+    ui.brush.mode = ui.mode_by_verb[verb_index(verb)];
     // A máscara nasce em força cheia; sem isto ela protege pela metade e o
     // barro se move por baixo dela.
     if (ui.brush.strength - from.default_strength()).abs() < 1e-6 {

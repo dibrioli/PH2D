@@ -23,6 +23,8 @@ use crate::state::{self, Sculpt3dPanelState, set_last_content_h, set_last_visibl
 use crate::{Sculpt3dPanel, rows};
 
 mod body;
+/// A ferramenta e a referência que ela segue — ver o cabeçalho dele.
+mod tool;
 /// **O QUE SE FAZ COM UMA MÁSCARA PINTADA** — irmão do [`body`], cortado por
 /// assunto quando o transform cruzou o teto de LOC dele.
 mod mask_tools;

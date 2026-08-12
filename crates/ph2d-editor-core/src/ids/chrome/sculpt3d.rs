@@ -63,6 +63,24 @@ pub const SCULPT3D_VERB: [NodeId; 16] = [
     hash_node_id("sculpt3d.verb.15"),
 ];
 
+/// **A REFERÊNCIA que o verbo corrente segue** — os chips `S` · `B` · `L`.
+///
+/// ⚠️ **O array tem os TRÊS e o painel pinta só os OFERECIDOS**
+/// (`RefMode::offered_for`), e o índice é a posição no `RefMode::ALL` — nunca a
+/// posição na fileira desenhada. Indexar pela fileira faria o id de um chip
+/// mudar de significado no dia em que um modo passasse a ser oferecido, e o
+/// clique do artista pousaria noutro modo sem nada reclamar.
+pub const SCULPT3D_REF_MODE: [NodeId; 3] = [
+    hash_node_id("sculpt3d.ref_mode.0"),
+    hash_node_id("sculpt3d.ref_mode.1"),
+    hash_node_id("sculpt3d.ref_mode.2"),
+];
+/// Carimba a referência do verbo corrente em TODAS as ferramentas.
+///
+/// ⚠️ **Um gesto, não uma segunda verdade** (§1.3 do plano): o estado é por
+/// verbo, e um seletor global ao lado dele seriam duas portas para o mesmo fato.
+pub const SCULPT3D_REF_MODE_ALL: NodeId = hash_node_id("sculpt3d.ref_mode.all");
+
 // ── O pincel ────────────────────────────────────────────────────────────────
 /// As curvas de `ph2d_sculpt3d::Falloff::ALL`.
 ///

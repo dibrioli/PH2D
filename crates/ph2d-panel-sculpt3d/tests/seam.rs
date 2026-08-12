@@ -21,7 +21,7 @@ use ph2d_panel_sculpt3d::{
     Sculpt3dIntent, Sculpt3dPanel, Sculpt3dPanelState, Sculpt3dSnapshot, Sculpt3dUi, drain_intents,
     ids, rows, set_current_sculpt3d,
 };
-use ph2d_sculpt3d::{Alpha, Falloff, TransformKind, Verb};
+use ph2d_sculpt3d::{Alpha, Falloff, RefMode, TransformKind, Verb};
 use ph2d_ui_testkit::MockPanelHost;
 
 /// A escala que a fixture finge que o modelo comporta.
@@ -512,6 +512,17 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
     for (i, f) in Falloff::ALL.into_iter().enumerate() {
         want.push((format!("falloff {}", f.label()), ids::SCULPT3D_FALLOFF[i]));
     }
+    // ⚠️ **Só os OFERECIDOS**, e o id vem da posição no `RefMode::ALL` — a
+    // varredura pergunta ao motor exatamente como o pintor pergunta, senão ela
+    // exigiria um chip do `L` que o painel não desenha (e o gate ficaria
+    // vermelho sobre um produto correto).
+    for m in RefMode::offered_for(ui.brush.verb) {
+        want.push((
+            format!("ref {}", m.label()),
+            ids::SCULPT3D_REF_MODE[m as usize],
+        ));
+    }
+    want.push(("ref apply to all".to_string(), ids::SCULPT3D_REF_MODE_ALL));
     // ⚠️ **A opção `0` é o pincel LISO e não um padrão**, então o laço é sobre
     // `Alpha::ALL` deslocado de um — a mesma aritmética do pintor e do roteador.
     want.push(("alpha none".to_string(), ids::SCULPT3D_ALPHA[0]));
@@ -1244,5 +1255,72 @@ fn the_flatten_button_exists_only_where_there_is_a_stack() {
     assert!(
         !painted.iter().any(|(id, _)| *id == ids::SCULPT3D_FLATTEN),
         "sem pilha o achatar é um no-op, e ele está na tela"
+    );
+}
+
+/// **CADA MODO OFERECIDO TEM UM CHIP QUE O PEGA — e o chip escreve na tabela do
+/// VERBO, não no pincel.**
+#[test]
+fn every_offered_reference_has_a_chip_that_selects_it_for_that_verb() {
+    for verb in [Verb::Draw, Verb::Smooth, Verb::Crease] {
+        for want in RefMode::offered_for(verb) {
+            let mut ui = Sculpt3dUi::default();
+            ph2d_panel_sculpt3d::state::arm_verb_defaults(&mut ui, verb);
+            let (mut host, mut state) = arrange(ui);
+            host.apply_panel_event::<Sculpt3dPanel>(
+                &mut state,
+                WidgetEvent::Click(ids::SCULPT3D_REF_MODE[want as usize]),
+            );
+            let Sculpt3dIntent::SetUi(got) = only_intent(want.label()) else {
+                panic!("intent errado")
+            };
+            assert_eq!(got.brush.mode, want, "{} em {}", want.label(), verb.label());
+            let i = ph2d_panel_sculpt3d::state::verb_index(verb);
+            assert_eq!(got.mode_by_verb[i], want, "a tabela do verbo");
+        }
+    }
+}
+
+/// **A ESCOLHA É POR VERBO, e trocar de ferramenta a TRAZ DE VOLTA.**
+///
+/// ⚠️ É o gate que separa *"o modo é do pincel"* de *"o modo é da ferramenta"* —
+/// sem ele, guardar a escolha só no `Brush` passaria, e o artista a perderia na
+/// primeira troca de tool sem nada reclamar.
+#[test]
+fn the_reference_is_remembered_per_verb_across_a_tool_switch() {
+    let mut ui = Sculpt3dUi::default();
+    // O Draw vai para `B`; o Smooth fica no default.
+    ui.mode_by_verb[ph2d_panel_sculpt3d::state::verb_index(Verb::Draw)] = RefMode::B;
+    ph2d_panel_sculpt3d::state::arm_verb_defaults(&mut ui, Verb::Draw);
+    assert_eq!(ui.brush.mode, RefMode::B, "o Draw veste o que a tabela diz");
+    ph2d_panel_sculpt3d::state::arm_verb_defaults(&mut ui, Verb::Smooth);
+    assert_eq!(
+        ui.brush.mode,
+        RefMode::default(),
+        "o Smooth tem escolha PRÓPRIA"
+    );
+    ph2d_panel_sculpt3d::state::arm_verb_defaults(&mut ui, Verb::Draw);
+    assert_eq!(ui.brush.mode, RefMode::B, "e a do Draw volta");
+}
+
+/// **O CARIMBO leva a referência corrente a TODAS as ferramentas** — um gesto
+/// sobre o estado por-verbo, e não um segundo seletor global.
+#[test]
+fn apply_to_all_stamps_the_current_reference_onto_every_verb() {
+    let mut ui = Sculpt3dUi::default();
+    ui.mode_by_verb[ph2d_panel_sculpt3d::state::verb_index(Verb::Draw)] = RefMode::B;
+    ph2d_panel_sculpt3d::state::arm_verb_defaults(&mut ui, Verb::Draw);
+    let (mut host, mut state) = arrange(ui);
+    host.apply_panel_event::<Sculpt3dPanel>(
+        &mut state,
+        WidgetEvent::Click(ids::SCULPT3D_REF_MODE_ALL),
+    );
+    let Sculpt3dIntent::SetUi(got) = only_intent("apply to all") else {
+        panic!("intent errado")
+    };
+    assert!(
+        got.mode_by_verb.iter().all(|&m| m == RefMode::B),
+        "o carimbo tinha de alcançar os dezasseis: {:?}",
+        got.mode_by_verb
     );
 }

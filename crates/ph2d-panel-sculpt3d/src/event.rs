@@ -4,7 +4,7 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal, seam_reset_button};
-use ph2d_sculpt3d::{Alpha, Falloff, TransformKind, Verb};
+use ph2d_sculpt3d::{Alpha, Falloff, RefMode, TransformKind, Verb};
 
 use crate::rows;
 use crate::state::{self, Sculpt3dIntent};
@@ -113,6 +113,31 @@ pub(crate) fn apply_event(
             let mut ui = snapshot.ui;
             let verb = Verb::ALL[i];
             crate::state::arm_verb_defaults(&mut ui, verb);
+            state::push_intent(Sculpt3dIntent::SetUi(ui));
+            true
+        }
+        // **A REFERÊNCIA do verbo corrente.** O índice é a posição no
+        // `RefMode::ALL`, não a da fileira — ver o doc do id.
+        WidgetEvent::Click(id) if index_of(&ids::SCULPT3D_REF_MODE, id).is_some() => {
+            seam_reset_button(host, id);
+            let i = index_of(&ids::SCULPT3D_REF_MODE, id).expect("guard casou");
+            let mut ui = snapshot.ui;
+            let mode = RefMode::ALL[i];
+            ui.mode_by_verb[crate::state::verb_index(ui.brush.verb)] = mode;
+            // ⚠️ **O pincel é RE-RESOLVIDO da tabela**, não escrito direto: um
+            // `ui.brush.mode = mode` aqui seria a segunda porta, e ela diverge no
+            // dia em que resolver passar a fazer mais alguma coisa.
+            let verb = ui.brush.verb;
+            crate::state::arm_verb_defaults(&mut ui, verb);
+            state::push_intent(Sculpt3dIntent::SetUi(ui));
+            true
+        }
+        // **Carimba a referência corrente em TODAS as ferramentas** — um GESTO
+        // sobre o estado por-verbo, nunca um segundo seletor global.
+        WidgetEvent::Click(id) if id == ids::SCULPT3D_REF_MODE_ALL => {
+            seam_reset_button(host, id);
+            let mut ui = snapshot.ui;
+            ui.mode_by_verb = [ui.brush.mode; Verb::ALL.len()];
             state::push_intent(Sculpt3dIntent::SetUi(ui));
             true
         }

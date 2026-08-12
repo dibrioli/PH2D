@@ -211,6 +211,46 @@ pub struct KernelLaw {
 }
 
 impl RefMode {
+    /// **ESTE MODO DIZ ALGUMA COISA SOBRE ESTE VERBO?** — a porta única da lei
+    /// anti-chip-morto do §3 do plano: *um chip existe se e somente se o modo
+    /// existe*.
+    ///
+    /// ⚠️ **A PRIMEIRA versão desta função era derivada — *"este modo duplica um
+    /// anterior?"* — e ela OFERECIA o `L`.** O motivo é o achado: o `L` não é
+    /// uma duplicata do `B`, ele é **`B` sem o `strength²`** (o `profile_l`
+    /// devolve `None`, então a `StrengthCurve` cai no `Linear` do
+    /// [`VerbProfile::SILENT`]). Ou seja: hoje o `L` já significa alguma coisa,
+    /// e essa coisa **não é literatura** — é um acidente da tabela vazia. Um
+    /// chip que funciona e mente sobre o próprio nome é pior que um chip
+    /// ausente.
+    ///
+    /// ⇒ A resposta do `L` é uma **AFIRMAÇÃO SOBRE O QUE FOI CONSTRUÍDO**, e a
+    /// direção de falha é a segura: esquecer de virá-la deixa a feature
+    /// **invisível**, nunca errada. O gate
+    /// `a_mode_is_offered_only_where_it_is_not_a_duplicate_of_an_earlier_one`
+    /// cobra a metade perigosa — *dois modos oferecidos nunca são o mesmo* — e
+    /// o irmão dele fixa a razão do `L` em vez de a deixar como prosa.
+    #[must_use]
+    pub fn declares(self, _verb: Verb) -> bool {
+        match self {
+            // A tabela lida das fontes (§7 do plano) e a lei de kernel.
+            Self::S => true,
+            // A lei de kernel (bilateral · tangencial · front-face contínuo) e
+            // a `StrengthCurve::Squared` do E13.
+            Self::B => true,
+            // ⚠️ **NADA foi construído** — nem perfil por verbo nem lei de
+            // kernel própria (a `kernel()` dele é um FALLBACK à do `B`, não uma
+            // declaração). Ele aparece com a primeira wave que lhe der conteúdo:
+            // W4 (HC/Taubin/cotangentes), W5 (Kelvinlets), W7 (MLS).
+            Self::L => false,
+        }
+    }
+
+    /// Os modos que o painel deve pintar para este verbo, na ordem do `ALL`.
+    pub fn offered_for(verb: Verb) -> impl Iterator<Item = Self> {
+        Self::ALL.into_iter().filter(move |m| m.declares(verb))
+    }
+
     /// A lei de kernel que este modo manda.
     ///
     /// ⚠️ **O `B` e o `L` devolvem o que o app JÁ shipava**, de propósito: esta
@@ -226,6 +266,12 @@ impl RefMode {
                 plane: PlaneReach::OneSided,
                 front_face: FrontFace::Ignored,
             },
+            // ⚠️ **O `L` está aqui por FALLBACK, não por declaração** — ele
+            // ainda não tem lei própria, e um `match` precisa de um braço. É
+            // exatamente por isso que ele não é oferecido ([`RefMode::declares`]):
+            // herdar em silêncio a lei do vizinho e pintar um chip com o nome de
+            // outra coisa é o erro que esta linha já cometeu duas vezes (a curva
+            // do `B`, o `Tangential` do pinch).
             Self::B | Self::L => KernelLaw {
                 lateral: LateralPull::Tangential,
                 plane: PlaneReach::Bilateral,

@@ -48,6 +48,7 @@ impl Sculpt3dScene {
             matcap: None,
             wireframe: false,
             brush: Brush::default(),
+            mode_by_verb: [ph2d_sculpt3d::RefMode::default(); 16],
             alpha_preview: true,
             alpha_image: None,
             radius_px: DEFAULT_RADIUS_PX,

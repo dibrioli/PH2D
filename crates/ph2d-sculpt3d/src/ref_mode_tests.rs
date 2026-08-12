@@ -328,3 +328,76 @@ fn the_mode_reaches_the_clay() {
         "o B deposita MENOS a meio curso: S={s} contra B={b}"
     );
 }
+
+/// **UM CHIP EXISTE SE E SOMENTE SE O MODO EXISTE** — a lei §3 do plano, agora
+/// com a porta que o painel pergunta.
+///
+/// ⚠️ O `L` **não** é oferecido, e a razão não é *"ainda não implementamos"*:
+/// é que ele é uma **DUPLICATA observável** do `B` (mesmo perfil — nenhum — e
+/// mesma [`KernelLaw`] ao campo). Um chip que produz exatamente o que o vizinho
+/// produz é um botão que não faz nada, e o artista descobre isso clicando.
+#[test]
+fn a_mode_is_offered_only_where_it_is_not_a_duplicate_of_an_earlier_one() {
+    for verb in Verb::ALL {
+        let offered: Vec<RefMode> = RefMode::offered_for(verb).collect();
+        assert_eq!(
+            offered,
+            vec![RefMode::S, RefMode::B],
+            "{}: hoje o L duplica o B",
+            verb.label()
+        );
+        // A propriedade que o `L` VIOLA hoje, escrita em vez de enumerada: dois
+        // modos oferecidos nunca produzem o mesmo par (perfil, lei).
+        for (i, a) in offered.iter().enumerate() {
+            for b in offered.iter().skip(i + 1) {
+                assert!(
+                    a.kernel() != b.kernel() || verb.profile(*a) != verb.profile(*b),
+                    "{}: {} e {} são o mesmo modo",
+                    verb.label(),
+                    a.label(),
+                    b.label()
+                );
+            }
+        }
+    }
+}
+
+/// **A RAZÃO DE O `L` NÃO SER OFERECIDO, escrita como asserção.**
+///
+/// ⚠️ Ela não é *"ele duplicaria o `B`"* — e eu escrevi isso primeiro. Medido:
+/// o `profile_l` devolve `None`, então a [`StrengthCurve`] dele cai no `Linear`
+/// do `SILENT` enquanto a do `B` é `Squared` ⇒ **o `L` já significa alguma
+/// coisa hoje: `B` sem o `strength²`.** E essa coisa **não é literatura** — é um
+/// acidente da tabela vazia.
+///
+/// ⇒ O que este gate pina são os DOIS fatos que tornam o chip prematuro: ele
+/// não tem perfil de verbo nenhum, e a `kernel()` dele é um FALLBACK à do `B`.
+/// No dia em que qualquer um dos dois deixar de valer, este gate cai e cobra a
+/// decisão em vez de deixar o chip aparecer sozinho — ou não aparecer.
+#[test]
+fn the_l_mode_is_withheld_because_nothing_of_its_own_was_built_yet() {
+    // 1. Nenhum perfil por verbo.
+    for verb in Verb::ALL {
+        assert!(
+            verb.profile(RefMode::L).is_none(),
+            "{}: o L ganhou perfil — o chip precisa de decisão",
+            verb.label()
+        );
+    }
+    // 2. Nenhuma lei de kernel própria: a dele é a do `B`, ao campo.
+    assert_eq!(
+        RefMode::L.kernel(),
+        RefMode::B.kernel(),
+        "o L ganhou lei própria — o chip precisa de decisão"
+    );
+    // 3. E o acidente que o tornaria um chip MENTIROSO se fosse oferecido: sem
+    //    perfil, a curva de força dele difere da do `B`.
+    assert_ne!(
+        RefMode::L.kernel(),
+        RefMode::S.kernel(),
+        "o L herda o kernel do B, não o do S"
+    );
+    for verb in Verb::ALL {
+        assert!(!RefMode::L.declares(verb), "{}", verb.label());
+    }
+}

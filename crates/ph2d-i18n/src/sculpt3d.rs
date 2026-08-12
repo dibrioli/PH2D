@@ -29,6 +29,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.radius" => "Radius",
         "panel.sculpt3d.strength" => "Strength",
         "panel.sculpt3d.falloff" => "Falloff",
+        // ⚠️ **A row lê `Reference`, e os chips leem `S` · `B` · `L`** (§1.4 do
+        // plano): o artista não sabe o que é o SculptGL, e o nome de um produto
+        // de terceiro num botão é ruído que envelhece. Trocar para os nomes por
+        // extenso é uma linha aqui, se o Enio preferir.
+        "panel.sculpt3d.reference" => "Reference",
+        "panel.sculpt3d.reference_all" => "Apply to all tools",
         "panel.sculpt3d.plane_offset" => "Plane Offset",
         "panel.sculpt3d.pinch" => "Pinch",
         "panel.sculpt3d.mask_hardness" => "Hardness",

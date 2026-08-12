@@ -62,6 +62,10 @@ pub fn populate(store: &mut WidgetStore) {
 
     for group in [
         &ids::SCULPT3D_VERB[..],
+        // ⚠️ **Os TRÊS entram, e o painel pinta só os oferecidos** — registrar
+        // só os pintados faria o registro depender do verbo corrente, e um chip
+        // que nasce vivo num verbo e morto noutro é a forma mais cara deste bug.
+        &ids::SCULPT3D_REF_MODE[..],
         &ids::SCULPT3D_FALLOFF[..],
         &ids::SCULPT3D_ALPHA[..],
         &ids::SCULPT3D_DETAIL[..],
@@ -107,6 +111,7 @@ pub fn populate(store: &mut WidgetStore) {
     // um grupo), os dois toggles que o `event` resolve por outra rota, e o fechar
     // do painel.
     for id in [
+        ids::SCULPT3D_REF_MODE_ALL,
         ids::SCULPT3D_SYM_X,
         ids::SCULPT3D_SYM_Y,
         ids::SCULPT3D_SYM_Z,

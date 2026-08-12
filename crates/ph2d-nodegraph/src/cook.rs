@@ -313,6 +313,7 @@ impl CookCheckpoint {
 /// `prev_outputs`, `cache`), que um modulo IRMAO nao enxergaria.
 #[path = "cook_substep.rs"]
 mod substep;
+pub use substep::{SUBSTEPS_PARAM, SubstepIsland, substep_islands, upstream_cone};
 
 /// Incremental cook engine. Holds the memo cache and the previous-tick snapshot
 /// across cooks; reusing the same `Cook` across frames is what makes

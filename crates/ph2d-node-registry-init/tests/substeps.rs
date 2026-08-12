@@ -303,3 +303,157 @@ fn a_substep_is_a_sub_tick_for_a_pure_pre_consumer_too() {
         "quatro sub-tiques acumulam quatro vezes: {four} contra {one} em passada unica"
     );
 }
+
+/// **UMA ILHA, UM RELÓGIO — o defeito que a pergunta acoplada expôs.**
+///
+/// Duas zonas onde B lê a saída de A: A vive no CONE de B. Substepar as duas por conta
+/// OVER-STEPA A, porque o laço de B re-cozinha o cone de B, que contém A — medido, A ia de
+/// `4,876` para `15,094`, quase o triplo. [`substep_islands`] devolve UMA raiz (a de baixo,
+/// cujo cone cobre a de cima), e substepar essa raiz dá a MESMA trajetória de A que substepá-la
+/// sozinha.
+///
+/// FALSIFICADO se o achador devolvesse os dois declarantes: A andaria o triplo.
+#[test]
+fn a_coupled_pair_is_one_island_with_one_clock() {
+    use ph2d_nodegraph::cook::substep_islands;
+    let reg = registry();
+    let mut g = Graph::new();
+    let a = falling_zone(&mut g, 40.0);
+    let seedb = g.add_node("motion.grid");
+    g.set_param(seedb, "rows", 1.0);
+    g.set_param(seedb, "cols", 1.0);
+    let b = g.add_node("sim.zone");
+    let merge = g.add_node("motion.combine");
+    wire(&mut g, seedb, 0, b, 0, false);
+    wire(&mut g, b, 0, merge, 0, true);
+    wire(&mut g, a, 0, merge, 1, false); // o ACOPLAMENTO: A entra no interior de B
+    wire(&mut g, merge, 0, b, 1, false);
+    g.set_param(a, "substeps", 4.0);
+    g.set_param(b, "substeps", 4.0);
+    g.validate(&reg).expect("bem-tipado");
+
+    let islands = substep_islands(&g, &reg);
+    assert_eq!(
+        islands.len(),
+        1,
+        "o par acoplado e UMA ilha, e a raiz e a de baixo: {islands:?}"
+    );
+    assert_eq!(
+        islands[0].root, b,
+        "a raiz cobre o cone, entao e a de BAIXO"
+    );
+
+    // E a trajetoria de A tem de ser a mesma que substepa-la sozinha.
+    let mut solo = Cook::new();
+    let mut pair = Cook::new();
+    for k in 0..30u64 {
+        let t = (k + 1) as f64 / 60.0;
+        let fs = k as f64 / 60.0;
+        solo.substep(&g, &reg, a, fs, t, 4).expect("s");
+        for isl in substep_islands(&g, &reg) {
+            pair.substep(&g, &reg, isl.root, fs, t, isl.substeps)
+                .expect("s");
+        }
+        let pa = px(solo.cook(&g, &reg, a, t).expect("c")[0].as_stream());
+        let pb = px(pair.cook(&g, &reg, a, t).expect("c")[0].as_stream());
+        assert!(
+            (pa - pb).abs() < 1e-4,
+            "quadro {k}: substepar a ilha nao pode adiantar A ({pa} contra {pb})"
+        );
+        solo.advance_tick(&g, &reg, t).expect("t");
+        pair.advance_tick(&g, &reg, t).expect("t");
+    }
+}
+
+/// **Ilhas INDEPENDENTES mantêm relógios próprios** — a outra metade da leitura das referências
+/// (Houdini por DOP network, Cavalry por dynamics system). Sem esta, um achador que colapsasse
+/// tudo numa ilha só passaria no gate acima.
+#[test]
+fn independent_islands_keep_their_own_clocks() {
+    use ph2d_nodegraph::cook::substep_islands;
+    let reg = registry();
+    let mut g = Graph::new();
+    let a = falling_zone(&mut g, 40.0);
+    let b = falling_zone(&mut g, 25.0);
+    g.set_param(a, "substeps", 4.0);
+    g.set_param(b, "substeps", 8.0);
+    g.validate(&reg).expect("bem-tipado");
+
+    let mut islands = substep_islands(&g, &reg);
+    islands.sort_by_key(|i| i.root.0);
+    assert_eq!(islands.len(), 2, "duas zonas desacopladas sao DUAS ilhas");
+    assert_eq!(
+        (islands[0].substeps, islands[1].substeps),
+        (4, 8),
+        "cada uma corre no proprio ritmo: {islands:?}"
+    );
+}
+
+/// **Uma ilha corre no MAIOR ritmo que os seus membros pedem** — um mundo, um relógio (Box2D
+/// conta substeps por `b2World_Step`, Rapier por pipeline, Niagara por System). Quem pediu 4 não
+/// o perde por estar acoplado a quem pediu 1.
+#[test]
+fn an_island_runs_at_the_finest_rate_any_member_asked_for() {
+    use ph2d_nodegraph::cook::substep_islands;
+    let reg = registry();
+    let mut g = Graph::new();
+    let a = falling_zone(&mut g, 40.0);
+    let seedb = g.add_node("motion.grid");
+    let b = g.add_node("sim.zone");
+    let merge = g.add_node("motion.combine");
+    wire(&mut g, seedb, 0, b, 0, false);
+    wire(&mut g, b, 0, merge, 0, true);
+    wire(&mut g, a, 0, merge, 1, false);
+    wire(&mut g, merge, 0, b, 1, false);
+    g.set_param(a, "substeps", 4.0);
+    g.set_param(b, "substeps", 1.0); // a raiz pede 1, o membro pede 4
+    g.validate(&reg).expect("bem-tipado");
+
+    let islands = substep_islands(&g, &reg);
+    assert_eq!(islands.len(), 1);
+    assert_eq!(
+        islands[0].substeps, 4,
+        "o membro que pediu 4 nao o perde por a raiz pedir 1"
+    );
+}
+
+/// **Ler a outra zona por um `pre` NÃO acopla as duas** — a aresta `pre` diz *"o valor do tique
+/// ANTERIOR"*, e um valor do tique anterior não é deste alvo para avançar. É a fronteira que o
+/// cone existe para desenhar, e ela é o que separa *acoplado* de *apenas observado*.
+///
+/// FALSIFICADO se o cone atravessasse arestas `delayed`: B engoliria A numa ilha só, e A perderia
+/// o próprio ritmo por ser OLHADO.
+#[test]
+fn reading_another_zone_through_a_pre_does_not_couple_them() {
+    use ph2d_nodegraph::cook::substep_islands;
+    let reg = registry();
+    let mut g = Graph::new();
+    let a = falling_zone(&mut g, 40.0);
+    let seedb = g.add_node("motion.grid");
+    g.set_param(seedb, "rows", 1.0);
+    g.set_param(seedb, "cols", 1.0);
+    let b = g.add_node("sim.zone");
+    let merge = g.add_node("motion.combine");
+    wire(&mut g, seedb, 0, b, 0, false);
+    wire(&mut g, b, 0, merge, 0, true);
+    // ⚠️ A diferenca com `a_coupled_pair_is_one_island_with_one_clock`: aqui a leitura de A e
+    // DELAYED. Uma linha, e as duas zonas passam de uma ilha para duas.
+    wire(&mut g, a, 0, merge, 1, true);
+    wire(&mut g, merge, 0, b, 1, false);
+    g.set_param(a, "substeps", 4.0);
+    g.set_param(b, "substeps", 8.0);
+    g.validate(&reg).expect("bem-tipado");
+
+    let mut islands = substep_islands(&g, &reg);
+    islands.sort_by_key(|i| i.root.0);
+    assert_eq!(
+        islands.len(),
+        2,
+        "quem so OLHA o tique anterior da outra nao esta acoplado a ela: {islands:?}"
+    );
+    assert_eq!(
+        (islands[0].substeps, islands[1].substeps),
+        (4, 8),
+        "e cada uma guarda o proprio ritmo: {islands:?}"
+    );
+}

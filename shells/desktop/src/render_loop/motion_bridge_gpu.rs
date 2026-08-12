@@ -94,24 +94,58 @@ pub(super) fn graph_has_live_vector_source(graph: &Graph, reg: &NodeRegistry) ->
         .any(|n| reg.is_live_vector_source(NodeTypeId::of(n.type_name.as_str())))
 }
 
-/// **Alguma zona deste documento pede SUBSTEPS?** (doc 89, folha 13.)
+/// Os relógios que o device marcha: um tique vira `sub` sub-passadas.
 ///
-/// A declaração é a mesma convenção que o pump da CPU lê — um param de manifesto chamado
-/// `substeps` —, então não há tabela paralela para as duas metades divergirem.
-pub(super) fn graph_asks_for_substeps(graph: &Graph, reg: &NodeRegistry) -> bool {
-    graph.nodes().iter().any(|n| {
-        let id = NodeTypeId::of(n.type_name.as_str());
-        let Some(op) = ph2d_nodegraph::cook::OpResolver::resolve(reg, id) else {
-            return false;
-        };
-        if op.manifest().param_default("substeps").is_none() {
-            return false;
+/// ⚠️ **O TIQUE não se subdivide, só o PLAYHEAD** — e as duas metades disso são load-bearing.
+/// O device avança o ping-pong do `pre` a cada CHAMADA de `cook` (o `self.prev` é reatribuído no
+/// fim dela), então `sub` chamadas são `sub` sub-tiques sem renumerar nada; e o ring de scrub
+/// chaveia pelo tique, com `should_record` a deduplicar — então a 1ª sub-passada grava o estado
+/// de ENTRADA do quadro e as seguintes não o sobrescrevem com um estado do meio.
+///
+/// O `dt` que as leis de contagem leem sai de `playhead − last_playhead` no próprio device, então
+/// ele subdivide sozinho e os nascimentos telescopam, exactamente como na CPU.
+///
+/// `sub <= 1` devolve o que este código sempre devolveu, termo a termo.
+fn substep_clocks(
+    ticks: &[u64],
+    sub: u32,
+    fixed_dt: f64,
+    drives_loop: bool,
+) -> Vec<(f64, Option<u64>)> {
+    ticks
+        .iter()
+        .flat_map(|&t| {
+            let clock = drives_loop.then_some(t);
+            (1..=sub.max(1)).map(move |k| {
+                let frac = f64::from(k) / f64::from(sub.max(1));
+                // O quadro `t` cobre `((t-1)·dt, t·dt]`; a última sub-passada cai em `t·dt`.
+                ((t as f64 - 1.0 + frac) * fixed_dt, clock)
+            })
+        })
+        .collect()
+}
+
+/// **Em que ritmo o device pode marchar este documento?** (doc 89, folha 13.)
+///
+/// `Some(n)` quando toda ilha de simulação pede o mesmo `n` — aí marchar o PLANO INTEIRO `n`
+/// vezes dá a cada zona exactamente os `n` sub-tiques que o bracket por-ilha da CPU lhe daria:
+/// **idêntico, não aproximado**. `None` quando as ilhas discordam, e só então o device recusa.
+///
+/// ⚠️ **A recusa em bloco anterior custava o device a 100% dos documentos reais** para proteger
+/// um caso que o corpus não tem: medido, TODA cena de demo deste repo tem exactamente uma zona.
+/// O que sobra recusado é duas ilhas independentes em ritmos diferentes — que o device não sabe
+/// marchar (`drives_a_loop` é um booleano sobre todos os estágios) e que a CPU sabe.
+pub(super) fn device_substeps(graph: &Graph, reg: &NodeRegistry) -> Option<u32> {
+    let islands = ph2d_nodegraph::cook::substep_islands(graph, reg);
+    let mut rate = None;
+    for isl in islands {
+        match rate {
+            None => rate = Some(isl.substeps),
+            Some(n) if n == isl.substeps => {}
+            Some(_) => return None, // ilhas em ritmos diferentes: uma marcha só não as serve
         }
-        graph
-            .node_param_overrides(n.id)
-            .and_then(|m| m.get("substeps").copied())
-            .is_some_and(|v| v.round() > 1.0)
-    })
+    }
+    Some(rate.unwrap_or(1))
 }
 
 /// Does this document bring in an engine OBJECT (`source.object`, `texture_id`)?
@@ -190,15 +224,14 @@ pub(super) fn cook_gpu(
     {
         return GpuOutcome::FellThrough;
     }
-    // **Uma zona com SUBSTEPS recusa o cook de device** (doc 89, folha 13), e o motivo não é
-    // o motor: é que o device marcha o PLANO INTEIRO (`drives_a_loop` é um booleano sobre todos
-    // os estágios), enquanto o substep da CPU é POR-ZONA. Num documento com duas zonas e
-    // contagens diferentes os dois produtores mostrariam quadros diferentes — a armadilha que o
-    // ADR-0155 já pagou aqui. Recusar mantém uma resposta só; **o trade está NOMEADO**: um grafo
-    // substepado perde a aceleração até o device saber marchar por-zona.
-    if graph_asks_for_substeps(&motion.doc.graph, &motion.registry) {
+    // **O ritmo do device** (doc 89, folha 13): o plano marcha `n` vezes quando toda ilha pede o
+    // mesmo `n` — a marcha inteira dá a cada zona os mesmos `n` sub-tiques que o bracket por-ilha
+    // da CPU daria. Ilhas em ritmos DIFERENTES não cabem numa marcha só (`drives_a_loop` é um
+    // booleano sobre todos os estágios), e aí o device recusa em vez de mostrar um quadro que a
+    // CPU não mostraria — a armadilha que o ADR-0155 já pagou aqui.
+    let Some(sub) = device_substeps(&motion.doc.graph, &motion.registry) else {
         return GpuOutcome::FellThrough;
-    }
+    };
     let plan = ph2d_gpu_cook::plan(
         &motion.doc.graph,
         &motion.registry,
@@ -242,7 +275,8 @@ pub(super) fn cook_gpu(
                 true => (motion.gpu_cook.rewind_for(target)..=target).collect(),
                 false => vec![target],
             };
-            motion.gpu_live = ticks.iter().all(|&tick| {
+            let ticks = substep_clocks(&ticks, sub, fixed_dt, plan.drives_a_loop());
+            motion.gpu_live = ticks.iter().all(|&(playhead, tick)| {
                 motion
                     .gpu_cook
                     .cook(
@@ -252,10 +286,7 @@ pub(super) fn cook_gpu(
                         &motion.registry,
                         &plan,
                         &[],
-                        ph2d_gpu_cook::CookClock {
-                            playhead: tick as f64 * fixed_dt,
-                            tick: plan.drives_a_loop().then_some(tick),
-                        },
+                        ph2d_gpu_cook::CookClock { playhead, tick },
                         motion.default_uv_rect,
                         motion.default_size,
                     )
@@ -312,7 +343,8 @@ pub(super) fn cook_gpu(
                     // every marched tick, and the loop keeps its sequence exactly
                     // like the FullyGpu arm: rewind if owed, then march.
                     let ticks: Vec<u64> = (motion.gpu_cook.rewind_for(target)..=target).collect();
-                    motion.gpu_live = ticks.iter().all(|&tick| {
+                    let ticks = substep_clocks(&ticks, sub, fixed_dt, true);
+                    motion.gpu_live = ticks.iter().all(|&(playhead, tick)| {
                         motion
                             .gpu_cook
                             .cook(
@@ -322,10 +354,7 @@ pub(super) fn cook_gpu(
                                 &motion.registry,
                                 &plan,
                                 &handed,
-                                ph2d_gpu_cook::CookClock {
-                                    playhead: tick as f64 * fixed_dt,
-                                    tick: Some(tick),
-                                },
+                                ph2d_gpu_cook::CookClock { playhead, tick },
                                 motion.default_uv_rect,
                                 motion.default_size,
                             )

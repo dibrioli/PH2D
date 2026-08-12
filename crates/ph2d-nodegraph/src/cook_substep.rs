@@ -102,31 +102,14 @@ impl Cook {
         Ok(())
     }
 
-    /// The `pre` sources whose state belongs to `target`'s own circuit: a node
-    /// that feeds a delayed edge **and** sits in `target`'s upstream cone (or is
-    /// `target` itself — a simulation zone is the source of its own feedback).
-    ///
-    /// The walk crosses ordinary edges only. Not crossing delayed ones is what
-    /// keeps a neighbouring circuit out: its state reaches here through a `pre`,
-    /// which is precisely the edge that says *"last tick's value"*, and last
-    /// tick's value is not this target's to advance.
+    /// The `pre` sources whose state belongs to `target`'s own circuit — [`upstream_cone`]
+    /// intersected with the delayed-edge sources.
     fn pre_sources_feeding(
         &self,
         graph: &Graph,
         target: NodeId,
     ) -> std::collections::BTreeSet<NodeId> {
-        let mut cone: std::collections::BTreeSet<NodeId> = Default::default();
-        let mut stack = vec![target];
-        while let Some(n) = stack.pop() {
-            if !cone.insert(n) {
-                continue;
-            }
-            for e in graph.edges() {
-                if e.to.0 == n && !e.delayed {
-                    stack.push(e.from.0);
-                }
-            }
-        }
+        let cone = upstream_cone(graph, target);
         graph
             .edges()
             .iter()
@@ -135,3 +118,100 @@ impl Cook {
             .collect()
     }
 }
+
+/// Everything `target` pulls, crossing ordinary edges only — `target` included.
+///
+/// Not crossing delayed ones is the whole boundary: state arriving through a `pre` is *last
+/// tick's*, and last tick's value is not this target's to advance.
+pub fn upstream_cone(graph: &Graph, target: NodeId) -> std::collections::BTreeSet<NodeId> {
+    let mut cone: std::collections::BTreeSet<NodeId> = Default::default();
+    let mut stack = vec![target];
+    while let Some(n) = stack.pop() {
+        if !cone.insert(n) {
+            continue;
+        }
+        for e in graph.edges() {
+            if e.to.0 == n && !e.delayed {
+                stack.push(e.from.0);
+            }
+        }
+    }
+    cone
+}
+
+/// One coupled simulation and the rate it runs at.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SubstepIsland {
+    /// The node to hand [`Cook::substep`] — the island's downstream-most declarer, whose cone
+    /// covers the rest of it.
+    pub root: NodeId,
+    /// The rate the whole island runs at.
+    pub substeps: u32,
+}
+
+/// **Partition the declaring nodes into coupled ISLANDS** — the door the pump and the device
+/// sequencer both ask, so the two producers cannot disagree about what a frame contains.
+///
+/// ⚠️ **This is correctness, not tuning, and the measurement is why.** Substepping each declarer
+/// on its own OVER-STEPS any of them that lies inside another's cone: the downstream loop
+/// re-cooks the whole cone, so an upstream zone advances again. Measured on a coupled pair —
+/// A alone lands at `4,876`, A and B together at **`15,094`**, roughly three times as far.
+///
+/// ⚠️ **An island runs at the MAX its members ask for, and that is the references' answer, not a
+/// compromise:** a coupled simulation is one world, and no engine offers to run half a world at
+/// a finer `dt` (Box2D counts substeps per `b2World_Step`, Rapier per pipeline, Niagara per
+/// System). Members that disagree have asked for two things that cannot both be true — an
+/// AUTHORING condition to surface, never a number to invent. INDEPENDENT islands keep their own
+/// rate, which is the other half of the same reading (Houdini per DOP network, Cavalry per
+/// dynamics system).
+///
+/// The declaration is a **manifest convention**: a node offering a param named `substeps` says
+/// *"my interior sub-ticks"*. It is the same param the artist edits — one fact, one place.
+pub fn substep_islands(graph: &Graph, ops: &dyn OpResolver) -> Vec<SubstepIsland> {
+    let declarers: Vec<(NodeId, u32)> = graph
+        .nodes()
+        .iter()
+        .filter_map(|inst| {
+            let manifest = ops.resolve(inst.type_id())?.manifest();
+            manifest.param_default(SUBSTEPS_PARAM)?;
+            let n = graph
+                .node_param_overrides(inst.id)
+                .and_then(|m| m.get(SUBSTEPS_PARAM).copied())
+                .or_else(|| manifest.param_default(SUBSTEPS_PARAM))
+                .unwrap_or(1.0);
+            // Um substep é uma CONTAGEM: arredonda, e o `<= 1` do bracket é o piso.
+            Some((inst.id, n.round().clamp(1.0, f32::from(u16::MAX)) as u32))
+        })
+        .collect();
+
+    let cones: Vec<_> = declarers
+        .iter()
+        .map(|(id, _)| upstream_cone(graph, *id))
+        .collect();
+
+    declarers
+        .iter()
+        .enumerate()
+        .filter(|(i, (id, _))| {
+            // Um declarante que vive no cone de OUTRO não é raiz: substepar a raiz já o cobre,
+            // e substepá-lo à parte é exatamente o over-step medido acima.
+            !declarers
+                .iter()
+                .enumerate()
+                .any(|(j, _)| j != *i && cones[j].contains(id))
+        })
+        .map(|(i, (root, _))| SubstepIsland {
+            root: *root,
+            // O MAX da ilha: quem está no cone da raiz corre com ela.
+            substeps: declarers
+                .iter()
+                .filter(|(id, _)| cones[i].contains(id))
+                .map(|(_, n)| *n)
+                .max()
+                .unwrap_or(1),
+        })
+        .collect()
+}
+
+/// O nome do param que declara *"o meu interior sub-tica"*.
+pub const SUBSTEPS_PARAM: &str = "substeps";

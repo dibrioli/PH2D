@@ -4,110 +4,9 @@
 //! resto: **o `Dab` é onde e com que força a mão apertou; o `Brush` é que
 //! ferramenta está na mão.** Um traço é uma lista de dabs contra UM brush.
 
+use crate::falloff::Falloff;
 use crate::grip::{Amount, Grip};
 use crate::{Alpha, AlphaStencil};
-
-/// A curva de peso do pincel, do centro (`t = 0`) à borda (`t = 1`).
-///
-/// A MESMA família que o Painter 2D já expõe, e de propósito: um artista que
-/// aprendeu *Sharper* pintando não devia reaprendê-la esculpindo. A curva
-/// **customizada** (o `ParamWidget::Curve` que o repo já possui) é a 6ª e entra
-/// quando houver painel — construir aqui um segundo editor de curva seria a
-/// segunda resposta que o `04.1` proíbe em letra.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub enum Falloff {
-    /// `(1 − t²)²` — **C¹ na borda** (valor e derivada zeram em `t = 1`), e é
-    /// isso que faz um traço não deixar degrau na fronteira do pincel.
-    #[default]
-    Smooth,
-    /// `√(1 − t²)` — o perfil de uma esfera: cheio no miolo, tangente vertical
-    /// na borda. Deposita mais massa que o Smooth com o mesmo raio.
-    Sphere,
-    /// `(1 − t²)⁴` — pico estreito, ombro que morre cedo. É o falloff de quem
-    /// quer detalhe pequeno com pincel grande.
-    Sharper,
-    /// `1` até a borda, e nada além. Um disco duro; o degrau é a feature.
-    Constant,
-    /// `√(1 − t)` — sobe rápido na borda e achata no miolo, o oposto do Sharper.
-    Root,
-    /// `3t⁴ − 4t³ + 1` — **a curva da REFERÊNCIA**, e a única desta família que
-    /// não foi escolhida por desenho: ela é a que as dez tools de geometria do
-    /// SculptGL usam, e é o que a paridade bit-a-bit exige que exista aqui.
-    ///
-    /// ⚠️ **Ela é mais CHEIA que a `Smooth`, e a diferença é visível:** a meio
-    /// raio dá `0,6875` contra `0,5625` — **1,22×** —, e a razão cresce até
-    /// `1,44×` a `7/8` do raio. Um artista que trocar de uma para a outra vê o
-    /// pincel engordar, não um detalhe numérico.
-    ///
-    /// ⚠️ **Ela é `C¹` nas DUAS pontas** (derivada `12t²(t − 1)`, que zera em
-    /// `t = 0` e em `t = 1`) — daí o nome: um platô no miolo e um pouso sem
-    /// degrau na borda. A `Smooth` só é plana na borda.
-    ///
-    /// ⚠️ **E o valor sai da PORTA ÚNICA** [`crate::ref_kernels::falloff`], em
-    /// `f64`, arredondado uma vez: uma segunda cópia da quártica aqui seria a
-    /// forma exata de a paridade divergir do porte que ela mede.
-    Plateau,
-}
-
-impl Falloff {
-    /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 6] = [
-        Self::Smooth,
-        Self::Sphere,
-        Self::Sharper,
-        Self::Constant,
-        Self::Root,
-        Self::Plateau,
-    ];
-
-    /// O peso a uma distância normalizada `t`. **Porta única** — todo verbo, a
-    /// simetria e o cursor perguntam a esta função.
-    ///
-    /// Sem transcendental exceto a raiz (HR-5): `sqrt` é instrução de hardware,
-    /// não chamada de libm.
-    #[must_use]
-    pub fn weight(self, t: f32) -> f32 {
-        // O NaN é peneirado explicitamente: sem isso ele escorre pelas fórmulas
-        // e sai como peso NaN num vértice, que é como uma malha inteira vira
-        // `NaN` a partir de um dab com raio zero em algum lugar.
-        if !t.is_finite() || t >= 1.0 {
-            return 0.0;
-        }
-        let t = t.max(0.0);
-        match self {
-            Self::Smooth => {
-                let u = 1.0 - t * t;
-                u * u
-            }
-            Self::Sphere => (1.0 - t * t).sqrt(),
-            Self::Sharper => {
-                let u = 1.0 - t * t;
-                let u2 = u * u;
-                u2 * u2
-            }
-            Self::Constant => 1.0,
-            Self::Root => (1.0 - t).sqrt(),
-            // ⚠️ **Em `f64`, e não uma quártica escrita aqui em `f32`.** É a
-            // aritmética do original (um `Float32Array` do JS lê `f32 → f64`,
-            // calcula em `f64` e arredonda UMA vez), e é o que faz esta curva
-            // servir de peça de paridade em vez de parecer com ela.
-            Self::Plateau => crate::ref_kernels::falloff(f64::from(t)) as f32,
-        }
-    }
-
-    /// O nome que a UI mostra.
-    #[must_use]
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Smooth => "Smooth",
-            Self::Sphere => "Sphere",
-            Self::Sharper => "Sharper",
-            Self::Constant => "Constant",
-            Self::Root => "Root",
-            Self::Plateau => "Plateau",
-        }
-    }
-}
 
 /// O que o pincel FAZ. Ver `docs/3D/04.1` para a família de cada um.
 ///
@@ -380,12 +279,21 @@ impl Verb {
     /// lei devolveria a dependência de espaçamento que o módulo inteiro existe
     /// para não ter; trocar o DEFAULT entrega o gesto sem tocar em nada.
     /// A proteção parcial continua exprimível — é o slider.
+    /// ⚠️ **E ela DELEGA à tabela dos modos** (`ref_mode`, 2026-08-12): a força
+    /// de fábrica é o que a referência `S` declara, tool a tool, e não uma
+    /// segunda cópia dela aqui. Antes disto o app shipava `0,5` em tudo — o
+    /// **D3** do doc 20 —, e o número que sobrevive à delegação é o do Draw
+    /// (`Brush.js:12`), o único que já batia.
+    ///
+    /// ⚠️ **Onde a fonte é SILENCIOSA o nosso número fica** (`0,5`): o
+    /// `Drag`/`Twist`/`LocalScale` não declaram `_intensity` e o SculptGL não
+    /// tem Sharpen. Um `unwrap_or` aqui é *"a referência não respondeu"*, nunca
+    /// um valor inventado com a autoridade dela.
     #[must_use]
     pub fn default_strength(self) -> f32 {
-        match self {
-            Self::Mask => 1.0,
-            _ => 0.5,
-        }
+        self.profile(crate::RefMode::S)
+            .and_then(|p| p.strength)
+            .unwrap_or(0.5)
     }
 
     /// **O Accumulate nasce ARMADO neste verbo?** — e a resposta é da
@@ -408,12 +316,15 @@ impl Verb {
     /// Os que ficam DESARMADOS não são omissão — são os que a referência não
     /// arma: o `Smooth` e o `Mask` não têm o campo e não o leem, o `Pinch`, o
     /// `Crease` e os quatro grips de gesto tampouco.
+    /// ⚠️ **E ela DELEGA à mesma tabela** que a força (`ref_mode`, 2026-08-12) —
+    /// duas portas para *"o que a referência arma neste verbo?"* divergiriam na
+    /// primeira wave que mexesse numa delas. O resultado é **byte-idêntico** ao
+    /// `matches!` que ela substituiu, e há gate afirmando isso.
     #[must_use]
     pub fn default_accumulate(self) -> bool {
-        matches!(
-            self,
-            Self::Draw | Self::Clay | Self::Flatten | Self::Fill | Self::Scrape
-        )
+        self.profile(crate::RefMode::S)
+            .and_then(|p| p.accumulate)
+            .unwrap_or(false)
     }
 }
 

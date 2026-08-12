@@ -36,6 +36,8 @@
 
 mod alpha;
 mod brush;
+/// **A CURVA DO PINCEL** — o falloff, irmão do [`brush`]. Ver [`falloff`].
+mod falloff;
 mod grip;
 pub mod mask_ops;
 mod preview;
@@ -43,6 +45,10 @@ mod preview;
 /// e `f32` no armazenamento, gateado bit a bit contra o JS EXECUTANDO
 /// (`tests/sculptgl_parity.rs`). Ver [`ref_kernels`].
 pub mod ref_kernels;
+/// **OS TRÊS MODOS DE REFERÊNCIA** — de qual fonte (SculptGL · Blender ·
+/// literatura) um verbo herda o que ele é. Ver [`ref_mode`] e o plano
+/// `docs/3D/21_plano_modos_e_ferramentas.md`.
+mod ref_mode;
 mod spacing;
 mod stroke;
 mod transform;
@@ -52,11 +58,13 @@ pub use alpha::{
     MAX_AXIS_ELEV_DEG, MIN_ALPHA_SCALE, recommended_scale, sampled_edge,
 };
 pub use brush::{
-    Brush, CLAY_PLANE_FRACTION, CREASE_FRACTION, Falloff, MAX_MASK_HARDNESS, PINCH_GAIN,
-    REACH_FRACTION, Symmetry, Verb,
+    Brush, CLAY_PLANE_FRACTION, CREASE_FRACTION, MAX_MASK_HARDNESS, PINCH_GAIN, REACH_FRACTION,
+    Symmetry, Verb,
 };
+pub use falloff::Falloff;
 pub use grip::{Amount, Grip, GripLaw};
 pub use preview::{NO_PREVIEW, preview_into, preview_verts};
+pub use ref_mode::{RefMode, VerbProfile};
 pub use spacing::{MIN_SPACING_FRACTION, Walk, min_spacing, walk};
 pub use stroke::{Dab, SculptStroke};
 pub use transform::{Gesture, MIN_SCALE_FACTOR, MaskTransform, TransformKind};

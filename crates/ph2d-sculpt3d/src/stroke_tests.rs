@@ -6,7 +6,7 @@
 //! `line/Painter` escreveu depois de pagar a mesma doença quatro vezes.
 
 use super::*;
-use crate::brush::Falloff;
+use crate::Falloff;
 use ph2d_mesh::{Mesh, shapes};
 
 fn sphere() -> Mesh {

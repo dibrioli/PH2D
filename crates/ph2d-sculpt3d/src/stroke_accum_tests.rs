@@ -365,11 +365,7 @@ fn the_mask_channel_reproduces_the_reference_kernel() {
         let fp: Vec<u32> = (0..clean.vert_count() as u32)
             .filter(|&v| {
                 let p = clean.positions()[v as usize];
-                let d = [
-                    p[0] - centre[0],
-                    p[1] - centre[1],
-                    p[2] - centre[2],
-                ];
+                let d = [p[0] - centre[0], p[1] - centre[1], p[2] - centre[2]];
                 d[0] * d[0] + d[1] * d[1] + d[2] * d[2] < radius * radius
             })
             .collect();

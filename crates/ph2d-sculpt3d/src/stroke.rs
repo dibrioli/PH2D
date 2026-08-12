@@ -612,7 +612,6 @@ impl SculptStroke {
             mesh.positions()[vi]
         }
     }
-
 }
 
 /// **A MALHA CRESCEU DEBAIXO DO TRAÇO** — o refino e a lei do `pre`.

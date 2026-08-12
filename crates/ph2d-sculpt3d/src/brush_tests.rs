@@ -209,19 +209,36 @@ fn the_families_that_the_ui_asks_about_agree_with_the_verb_list() {
 /// **`_intensity = 1.0`** (`Masking.js:15`), enquanto as tools de geometria
 /// nascem em 0,5 e 0,75. *Um default defendido por um defeito fica órfão no dia
 /// em que o defeito é corrigido.*
+/// ⚠️ **E a ASSERÇÃO mudou junto, porque ela pinava o mundo antigo** — a nota
+/// acima já dizia *"as tools de geometria nascem em 0,5 e 0,75"* enquanto o
+/// corpo exigia `0,5` em todas: **o comentário sabia e o teste não**. Com a
+/// tabela dos modos (`ref_mode`) a força de fábrica passou a ser a que a fonte
+/// declara, e o que sobrevive desta afirmação é o que ela sempre quis dizer —
+/// *a máscara é a mais forte do catálogo, e quem DEPOSITA material fica abaixo
+/// dela*.
+///
+/// ⚠️ Os quatro **grips de gesto** são isentos, e não por conveniência: o
+/// `Move` do original ship `_intensity = 1.0` (`Move.js:11`) porque agarrar é
+/// *seguir o cursor*, não depositar meia-medida — a força ali quer dizer outra
+/// coisa. A porta que separa os dois já existe (`Verb::anchors`).
 #[test]
-fn the_mask_is_born_at_full_strength_and_geometry_is_not() {
+fn the_mask_is_born_at_full_strength_and_the_depositing_verbs_are_not() {
     assert_eq!(Verb::Mask.default_strength(), 1.0);
-    for v in Verb::ALL.iter().filter(|v| !v.paints_mask()) {
-        assert_eq!(
-            v.default_strength(),
-            0.5,
-            "{} não é máscara: a força é *quão longe ao longo do trajeto*",
+    for v in Verb::ALL
+        .iter()
+        .filter(|v| !v.paints_mask() && !v.anchors())
+    {
+        assert!(
+            v.default_strength() < 1.0,
+            "{} deposita material: a força é *quão longe ao longo do trajeto*, e \
+             fábrica cheia é o que faz um toque estourar",
             v.label()
         );
     }
-    // E o default do `Brush` continua sendo o de geometria — quem arma o do
-    // verbo é quem ESCOLHE o verbo.
+    // E o default do `Brush` continua sendo o do verbo com que ele nasce — que
+    // é o Draw, e cuja força de referência é `0,5` (`Brush.js:12`), o único
+    // número da tabela que já batia com o nosso.
+    assert_eq!(Brush::default().strength, Verb::Draw.default_strength());
     assert_eq!(Brush::default().strength, 0.5);
 }
 

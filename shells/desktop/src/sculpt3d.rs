@@ -169,6 +169,7 @@ pub(crate) use scenes::shading::env_scene;
 pub(crate) use scenes::{
     alpha_image_scene, alpha_scene, bake_scene, cavity_scene, directional_alpha_scene,
     donation_scene, dyntopo_scene, extract_scene, flatten_scene, flatten_scene_counts, fuse_scene,
+    mask_channel_numbers, mask_channel_scene,
     holes_scene, masked_dome_counts, remesh_scene, reopen_scene, reversion_scene, scene_objects,
     smoke_armed, smoke_mesh, soft_masked_counts, transform_scene, turn_scene, wants_canvas,
 };

@@ -139,3 +139,42 @@ pub(super) fn half_masked_sphere() -> ph2d_mesh::Mesh {
     }
     m
 }
+
+/// `=27` — a cena do **CANAL QUE SE CONSTRÓI ESFREGANDO**.
+///
+/// ⚠️ **Ela não arma pincel nenhum, e isso é a metade do smoke.** O canal era
+/// INERTE — dezesseis esfregadas deixavam a máscara onde uma a deixava —, e o
+/// gesto que expõe isso é o artista *escolhendo o Mask e esfregando*. Uma cena
+/// que armasse o verbo e a força por baixo pularia exatamente a costura que ela
+/// existe para provar (a cicatriz que o `impasto_smoke` do Painter 2D já
+/// prega).
+///
+/// A peça é a esfera padrão, de propósito: o oráculo desta wave não é a
+/// geometria, é o **fantasma** — pintar e limpar com o MESMO pincel tem de
+/// devolver o barro limpo, e a lei antiga deixava `w(1 − w) ≤ 0,25` de máscara
+/// cinzenta onde o artista já tinha desfeito.
+pub(crate) fn mask_channel_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("27")
+}
+
+/// **Os dois números que tornam a `=27` julgável**, e os dois saem do MOTOR.
+///
+/// Devolve `(esfregadas para saturar a 0,20 · o peso do CANAL a meio raio · o
+/// peso da GEOMETRIA a meio raio)`.
+///
+/// ⚠️ **Nenhum deles é escrito à mão no roteiro.** O primeiro é a lei aditiva
+/// (`⌈1 / força⌉`) e os outros dois são as duas curvas perguntadas às portas
+/// que o produto usa — um roteiro que anunciasse números que o motor não tem
+/// faria o artista procurar um defeito que não existe, e um que os escrevesse
+/// como literal deixaria de dizer a verdade no dia em que o default mudasse.
+#[must_use]
+pub(crate) fn mask_channel_numbers() -> (u32, f32, f32) {
+    const RUB: f32 = 0.20;
+    let brush = ph2d_sculpt3d::Brush::default();
+    let rubs = (1.0 / RUB).ceil() as u32;
+    (
+        rubs,
+        brush.mask_weight(0.5),
+        ph2d_sculpt3d::Falloff::Plateau.weight(0.5),
+    )
+}

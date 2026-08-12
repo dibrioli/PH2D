@@ -354,7 +354,8 @@ pub(crate) fn directional_alpha_scene() -> bool {
 #[path = "sculpt3d_scenes_masked.rs"]
 pub(crate) mod masked;
 pub(crate) use masked::{
-    flatten_scene, flatten_scene_counts, masked_dome_counts, soft_masked_counts, transform_scene,
+    flatten_scene, flatten_scene_counts, mask_channel_numbers, mask_channel_scene,
+    masked_dome_counts, soft_masked_counts, transform_scene,
 };
 use masked::{masked_dome, soft_masked_sphere};
 

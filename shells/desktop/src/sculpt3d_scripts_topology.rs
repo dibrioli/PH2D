@@ -125,6 +125,36 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
         );
     }
 
+    if crate::sculpt3d::mask_channel_scene() {
+        // ⚠️ Os três números saem do MOTOR (a lei aditiva e as duas curvas), não
+        // deste texto: um roteiro com o número escrito à mão deixa de dizer a
+        // verdade no dia em que o default se move, e ninguém fica sabendo.
+        let (rubs, chan, geo) = crate::sculpt3d::mask_channel_numbers();
+        eprintln!(
+            "[sculpt3d] =27 O CANAL QUE SE CONSTROI ESFREGANDO.\n\
+             [sculpt3d]    A mascara era INERTE: dezesseis esfregadas deixavam o canal onde UMA\n\
+             [sculpt3d]    o deixava. Agora ela SOMA e satura, como o SculptGL.\n\
+             [sculpt3d]    Abra o painel com a CRASE (`) e escolha o verbo Mask.\n\
+             [sculpt3d]    (1) Ponha Strength em 0,20. A lei diz que {rubs} esfregadas no MESMO\n\
+             [sculpt3d]        lugar saturam. Esfregue devagar e conte: a segunda passada TEM de\n\
+             [sculpt3d]        escurecer mais que a primeira. Se as duas ficarem iguais, PARE --\n\
+             [sculpt3d]        a lei voltou ao envelope, e e' o defeito que esta wave fechou.\n\
+             [sculpt3d]    (2) O FANTASMA, que e' o oraculo desta cena. Volte a Strength cheia,\n\
+             [sculpt3d]        pinte uma mancha e depois pinte a MESMA mancha com Ctrl (limpar).\n\
+             [sculpt3d]        O barro tem de ficar LIMPO. Um halo cinzento sobrando e' a lei\n\
+             [sculpt3d]        antiga: ela deixava w(1-w), ate' 0,25 de mascara onde voce ja'\n\
+             [sculpt3d]        tinha desfeito.\n\
+             [sculpt3d]    (3) A CURVA e' PROPRIA do canal, e nao a da geometria: a meio raio ela\n\
+             [sculpt3d]        vale {chan:.3} contra {geo:.3}. A borda da mascara tem de ler mais\n\
+             [sculpt3d]        APERTADA que a de um Draw do mesmo tamanho -- compare os dois.\n\
+             [sculpt3d]    (4) O KNOB novo: com o Mask em maos aparece 'Hardness' entre os knobs\n\
+             [sculpt3d]        (ele NAO aparece nos verbos de geometria). Em 1,00 a borda vira um\n\
+             [sculpt3d]        DISCO DURO; em 0,00 ela e' a mais macia da faixa.\n\
+             [sculpt3d]    (5) O CONTROLE: escolha um verbo de geometria e confira que o falloff\n\
+             [sculpt3d]        dele nao mudou -- esta wave nao toca a geometria."
+        );
+    }
+
     if crate::sculpt3d::flatten_scene() {
         // ⚠️ A cena DECLARA quantos vértices a máscara cobre, e o número sai da
         // MESMA peça que ela monta: um roteiro que anuncia um número que a peça

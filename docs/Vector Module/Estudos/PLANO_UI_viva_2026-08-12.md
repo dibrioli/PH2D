@@ -286,7 +286,22 @@ for _ in 0..ITERS:
     p[0] = controlo;  p[n-1] = efeito        // re-pinar DEPOIS de cada iteração
 ```
 
-⚠️ **O factor `dt / dt_prev` é a wave inteira numa linha.** Verlet clássico assume passo **fixo**;
+> ⚠️ **CORRIGIDO NA CONSTRUÇÃO (wave 5): o `dt/dt_prev` foi construído, MEDIDO e é insuficiente.**
+> O mesmo gesto a 30 e a 120 fps diverge **29,7 px** com ele. O TCV cura **uma** das três
+> dependências do relógio e deixa duas de pé: o **amortecimento** por-quadro (`DAMP^120` contra
+> `DAMP^30` num segundo) e — a maior, e a que ninguém vê — a **RIGIDEZ**, porque a restrição relaxa
+> `ITERS` vezes por QUADRO e portanto puxa quatro vezes mais por segundo a 120 fps. *Um solver
+> iterativo é tão rígido quanto o número de passagens que o relógio lhe paga.*
+>
+> ⇒ O que shipa é um **passo interno FIXO** com acumulador: as três morrem de uma vez, e a
+> igualdade deixa de ser aproximada — **0,0000 px** entre 30 e 120 fps com as pontas paradas. O
+> `dt/dt_prev` sai junto (com passo fixo ele é `1.0` por construção). O resíduo de **1,68 px** com
+> as pontas a mover-se é da **amostragem da ENTRADA**, não do solver, e tem gate próprio a dizê-lo.
+>
+> ⚠️ E o acumulador traz a lição que a água já pagou: um quadro lento **não** compra passos sem
+> tecto, e o resto é deitado fora em vez de guardado como dívida.
+
+⚠️ ~~**O factor `dt / dt_prev` é a wave inteira numa linha.**~~ Verlet clássico assume passo **fixo**;
 com passo variável, um engasgo de quadro faz a corda **saltar**. É literalmente a lei que este
 repositório já pagou quatro vezes no relevo do Painter — *o desenho é fato do relógio, nunca de quão
 depressa a máquina amostrou* —, aqui pela primeira vez no chrome.
@@ -328,7 +343,7 @@ _a_straight_line_and_simulates_nothing` (mutação: simular e desenhar reto ⇒ 
 | **2** | **F1+F2+R1 juntos** — a mola chega ao chrome, os 49 widgets ganham vida, e o interruptor que a desliga nasce no MESMO commit | 1 | A · B · E · F | **M** |
 | ~~**3**~~ ✅ | **Preferências de utilizador** + a row do pill Settings — **FEITA** (`~/.ph2d/prefs.txt`, irmão do `palette_persist`; ver a correcção na §3) | 2 | o carácter deixa de ser constante | **P** |
 | **4** | ⭐ **E1 scrub numérico** | — (independente!) | eficiência | **M** |
-| **5** | ⭐ **C1 o TETHER** | 1 | a família C2·C3·C4 | **M** |
+| ~~**5**~~ ✅ | ⭐ **C1 o TETHER** — **FEITA**, com a lei do relógio CORRIGIDA por medição (ver a nota na §5.2) e o card de Fill como primeiro consumidor | 1 | a família C2·C3·C4 | **M** |
 | **6** | o resto do catálogo, por gosto | 1-3 | — | — |
 
 ⚠️ **A wave 2 tem de trazer a R1 dentro dela.** Um efeito que nasce sem o interruptor nasce dívida —

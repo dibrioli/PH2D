@@ -1985,3 +1985,126 @@ fn the_menu_can_reach_expressive_with_reduced_motion_on() {
         "e a combinação FAZ alguma coisa: reduced mata o percurso mesmo no Expressivo"
     );
 }
+
+// ---------------------------------------------------------------------------
+// A CORDA do card de Fill (`crate::tether`).
+//
+// ⚠️ Os gates do `tether.rs` provam a FÍSICA (o relógio, as pontas, o carácter); estes provam a
+// LIGAÇÃO — que ela está atada a duas coisas que de facto existem e que se movem.
+// ---------------------------------------------------------------------------
+
+/// A âncora é onde o card NASCEU, e arrastá-lo não a leva junto — senão a corda descreve uma
+/// relação que já não existe (as duas pontas no mesmo sítio, comprimento zero, nada desenhado).
+#[test]
+fn dragging_the_fill_card_moves_it_and_leaves_the_anchor_where_it_was_born() {
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.store.open_fill_modal(300.0, 200.0, 0.5);
+    assert_eq!(hero.store.fill_modal_anchor(), Some((300.0, 200.0)));
+    hero.store.move_fill_modal(120.0, -40.0);
+    assert_eq!(hero.store.fill_modal_pos(), Some((420.0, 160.0)));
+    assert_eq!(
+        hero.store.fill_modal_anchor(),
+        Some((300.0, 200.0)),
+        "a âncora não se move: ela é o ponto de largada do ColorDrop"
+    );
+}
+
+/// Fechar leva as DUAS metades. ⚠️ Elas vivem no mesmo campo, então isto é estrutural — o gate
+/// existe para que uma refactorização que as separe tenha de o partir primeiro.
+#[test]
+fn closing_the_fill_card_takes_the_anchor_with_it() {
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.store.open_fill_modal(300.0, 200.0, 0.5);
+    hero.store.close_fill_modal();
+    assert_eq!(hero.store.fill_modal_pos(), None);
+    assert_eq!(hero.store.fill_modal_anchor(), None);
+}
+
+/// A corda é avançada pelo `tick_motion` — a MESMA porta do resto da UI viva — e **esquece a pose
+/// quando o card fecha**.
+///
+/// ⚠️ Sem o esquecimento, a largada seguinte noutro canto do ecrã faria a corda **voar** do sítio
+/// onde a anterior morreu: um rasto que descreve um gesto que já acabou.
+#[test]
+fn the_tether_follows_the_card_and_forgets_when_it_closes() {
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.motion
+        .set_character(crate::motion::UiCharacter::Expressive);
+    hero.store.open_fill_modal(300.0, 200.0, 0.5);
+    hero.store.move_fill_modal(200.0, 0.0);
+    for _ in 0..40 {
+        hero.tick_motion(1.0 / 60.0);
+    }
+    let hanging = hero.tether.points()[crate::tether::NODES / 2];
+    assert!(
+        hanging[1] > 200.0,
+        "a meio, a corda tem de estar ABAIXO das pontas (y={}) — senão não pendura",
+        hanging[1]
+    );
+
+    // Fecha e reabre longe: o primeiro quadro tem de ser a recta NOVA, não um voo do sítio antigo.
+    hero.store.close_fill_modal();
+    hero.tick_motion(1.0 / 60.0);
+    hero.store.open_fill_modal(900.0, 700.0, 0.5);
+    hero.store.move_fill_modal(200.0, 0.0);
+    hero.tick_motion(1.0 / 60.0);
+    for p in hero.tether.points() {
+        assert!(
+            (p[1] - 700.0).abs() < 1e-3,
+            "a corda re-nasceu na recta da largada nova; encontrei y={}",
+            p[1]
+        );
+    }
+}
+
+/// **A COSTURA pergunta ao carácter** — e este gate nasceu de uma mutação que sobreviveu a todos os
+/// outros: cravar `true` no lugar de `motion.decorates()` dentro do `tick_motion` deixava a corda a
+/// simular em Discreto com a suíte inteira verde.
+///
+/// ⚠️ É a lição que este repo já nomeou: *um gate de unidade é CEGO à fiação*. O `tether.rs` prova
+/// que o MÓDULO honra o `simulate` que lhe dão; só um gate no hero prova que quem lho dá é o
+/// carácter, e não uma constante.
+#[test]
+fn the_seam_asks_the_character_it_does_not_hardcode_the_rope() {
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.store.open_fill_modal(300.0, 200.0, 0.5);
+    hero.store.move_fill_modal(300.0, 0.0);
+
+    hero.motion
+        .set_character(crate::motion::UiCharacter::Expressive);
+    for _ in 0..60 {
+        hero.tick_motion(1.0 / 60.0);
+    }
+    assert!(
+        hero.tether.points()[crate::tether::NODES / 2][1] > 210.0,
+        "premissa: em Expressivo ela pendura — sem isto o resto do gate não distingue nada"
+    );
+
+    hero.motion
+        .set_character(crate::motion::UiCharacter::Discrete);
+    for _ in 0..60 {
+        hero.tick_motion(1.0 / 60.0);
+    }
+    for p in hero.tether.points() {
+        assert!(
+            (p[1] - 200.0).abs() < 1e-3,
+            "em Discreto a costura tem de passar `simulate = false`; a corda caiu para y={}",
+            p[1]
+        );
+    }
+
+    // E o reduced motion mata-a pelo MESMO caminho, sem uma segunda pergunta.
+    hero.motion
+        .set_character(crate::motion::UiCharacter::Expressive);
+    hero.motion.set_reduced_motion(true);
+    for _ in 0..60 {
+        hero.tick_motion(1.0 / 60.0);
+    }
+    for p in hero.tether.points() {
+        assert!(
+            (p[1] - 200.0).abs() < 1e-3,
+            "reduced motion mata a decoração mesmo em Expressivo; y={}",
+            p[1]
+        );
+    }
+}

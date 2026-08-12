@@ -51,6 +51,9 @@ mod inspector_model_physics;
 /// §14 Platform Player — irmão dos dois acima: a §11 diz que CORPO é este, a
 /// §14 diz que COMPORTAMENTO ele tem.
 mod inspector_model_player;
+/// O tique da UI viva (o `motion` + a corda) — irmão, e não corpo do `HeroScreen`: aquele diz o
+/// que uma tela É, este diz o que ela FAZ a cada quadro.
+mod live;
 mod paint;
 
 pub use inspector_model::*;
@@ -107,6 +110,9 @@ pub struct HeroScreen {
     /// Per-widget interactive state (hover/press/focus). Pre-populated
     /// at construction; mutated in-place by [`HeroScreen::handle_pointer`].
     pub store: WidgetStore,
+    /// **A CORDA** do card de Fill — ver [`crate::tether`]. Ao lado do `motion` pela mesma razão:
+    /// é estado de APARÊNCIA por-quadro, e o store é o estado semântico que dezenas de gates leem.
+    pub tether: crate::tether::Tether,
     /// **O substrato da UI viva** — o `t` por widget. Ver [`crate::motion`].
     ///
     /// ⚠️ Ao lado do store, nunca DENTRO dele: aquele é o estado semântico que dezenas de gates
@@ -247,12 +253,10 @@ impl HeroScreen {
     /// ⚠️ **A ordem é load-bearing:** avançar PRIMEIRO (o tempo que passou desde o último quadro
     /// aplica-se ao alvo que estava em vigor) e só então ler os alvos novos do store, que os
     /// eventos de ponteiro deste quadro acabaram de mexer. Ao contrário, o primeiro quadro de um
-    /// hover andaria com o alvo novo por um `dt` que decorreu **antes** de o rato lá chegar.
+    /// **O tique da UI VIVA** — uma chamada por quadro, com o `dt` de PAREDE. O corpo mora no
+    /// irmão [`live`]; este método é a porta que o shell conhece.
     pub fn tick_motion(&mut self, dt: f64) {
-        self.motion.advance(dt);
-        for (id, target) in self.store.hover_targets().collect::<Vec<_>>() {
-            self.motion.animate(id, target, crate::motion::Role::Fade);
-        }
+        live::tick(self, dt);
     }
 
     pub fn new(id: NodeId) -> Self {
@@ -268,6 +272,7 @@ impl HeroScreen {
         Self::pre_populate_store(&mut store);
         Self {
             motion: crate::motion::UiMotion::default(),
+            tether: crate::tether::Tether::default(),
             id,
             theme: Theme::Forge,
             text_rendering: ph2d_tokens::TextRendering::CrispHeavyPlus, // app default (Enio 2026-06-24)

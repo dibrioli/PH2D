@@ -31,6 +31,9 @@ const MODAL_W: f32 = 200.0; // LITERAL-PX-OK: compact Fill-adjust card width
 /// No-op when the modal is closed. Rows: a title band ("Fill") that doubles as the drag handle, a
 /// threshold slider, and a Cancel / Done button row (Done accent). Mirrors the New-image dialog's
 /// `fill_rounded_rect(BgElev)` + `stroke_rounded_rect(Border)` card + `Radius::Md` styling.
+// ⚠️ 8 argumentos: o `motion` e o `tether` são os dois donos vivos que o card LÊ, e espelhá-los no
+// `WidgetStore` daria uma terceira cópia do mesmo facto (precedente: o `paint_context_menu_overlay`).
+#[allow(clippy::too_many_arguments)]
 pub fn paint_fill_adjust_modal(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -41,6 +44,7 @@ pub fn paint_fill_adjust_modal(
     // por quadro. Um pintor que alvejasse tornaria a animação função de *quantas vezes* algo foi
     // pintado, que é a doença que este repo já pagou quatro vezes no relevo do Painter.
     motion: &crate::motion::UiMotion,
+    tether: &crate::tether::Tether,
     viewport: Rect,
 ) {
     let Some((x, y)) = store.fill_modal_pos() else {
@@ -59,6 +63,29 @@ pub fn paint_fill_adjust_modal(
     let rect_x = x.clamp(viewport.x, max_x); // CLAMP-OK: bounds ordered (max_x ≥ viewport.x) + non-NaN
     let rect_y = y.clamp(viewport.y, max_y); // CLAMP-OK: bounds ordered (max_y ≥ viewport.y) + non-NaN
     let rect = Rect::new(rect_x, rect_y, MODAL_W, total_h);
+
+    // ── A CORDA, ANTES do card: ela sai de trás dele, não por cima. ──
+    //
+    // ⚠️ Desenhada com o `Text3` do chrome e um traço fino: a corda é uma RELAÇÃO, não um controlo.
+    // Se competisse com o card, o artista lia-a como algo que se pode agarrar.
+    if let Some((ax, ay)) = store.fill_modal_anchor() {
+        let head = [rect_x + MODAL_W * 0.5, rect_y];
+        if crate::tether::Tether::is_drawable([ax, ay], head) {
+            let pts = tether.points();
+            let mut path = ph2d_vector::BezPath::new();
+            path.move_to((f64::from(pts[0][0]), f64::from(pts[0][1])));
+            for p in &pts[1..] {
+                path.line_to((f64::from(p[0]), f64::from(p[1])));
+            }
+            scene.inner_mut().stroke(
+                &ph2d_vector::Stroke::new(f64::from(ph2d_tokens::StrokeToken::Default.px())),
+                ph2d_vector::Affine::IDENTITY,
+                &ph2d_vector::Brush::Solid(resolve(ColorToken::Text3, theme)),
+                None,
+                &path,
+            );
+        }
+    }
 
     // Floating panel surface.
     let radius = Radius::Md.px();
@@ -195,6 +222,7 @@ mod tests {
             &mut hero.hit_index,
             &hero.store,
             &hero.motion,
+            &hero.tether,
             viewport,
         );
         assert!(
@@ -224,6 +252,7 @@ mod tests {
             &mut hero.hit_index,
             &hero.store,
             &hero.motion,
+            &hero.tether,
             viewport,
         );
         assert!(

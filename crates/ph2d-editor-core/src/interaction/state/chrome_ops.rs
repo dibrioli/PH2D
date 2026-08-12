@@ -180,7 +180,10 @@ impl WidgetStore {
     /// on every open so it mirrors the tool's current threshold). The shell calls this on the ColorDrop
     /// release; the painter then re-fills live as the slider moves.
     pub fn open_fill_modal(&mut self, x: f32, y: f32, threshold: f32) {
-        self.fill_modal = Some((x, y));
+        // ⚠️ A âncora viaja NO MESMO campo que a posição, e não ao lado dela: assim é
+        // estruturalmente impossível ter uma sem a outra, ou fechar o modal e deixar a âncora viva.
+        // O `move_fill_modal` toca só a posição — a âncora é onde a coisa NASCEU e não se move.
+        self.fill_modal = Some(((x, y), (x, y)));
         self.register(
             crate::ids::PAINTER_FILL_MODAL_SLIDER,
             InteractiveState::Slider {
@@ -371,14 +374,21 @@ impl WidgetStore {
     /// gates the modal's render + hit registration on this being `Some`.
     #[must_use]
     pub fn fill_modal_pos(&self) -> Option<(f32, f32)> {
-        self.fill_modal
+        self.fill_modal.map(|(pos, _)| pos)
+    }
+
+    /// Onde o modal NASCEU (o ponto de largada do ColorDrop) — a outra ponta da corda. `None` com o
+    /// modal fechado, pela mesma `Option`: as duas metades vivem no mesmo campo.
+    #[must_use]
+    pub fn fill_modal_anchor(&self) -> Option<(f32, f32)> {
+        self.fill_modal.map(|(_, anchor)| anchor)
     }
 
     /// Offset the Fill modal's position by `(dx, dy)` screen px (the title-band drag). No-op when the
     /// modal is closed. Not clamped here — the painter clamps the position to the viewport when it draws
     /// (so the accumulated delta always equals `cursor − grab_offset` and the drag never dead-zones).
     pub fn move_fill_modal(&mut self, dx: f32, dy: f32) {
-        if let Some((x, y)) = self.fill_modal.as_mut() {
+        if let Some(((x, y), _)) = self.fill_modal.as_mut() {
             *x += dx;
             *y += dy;
         }

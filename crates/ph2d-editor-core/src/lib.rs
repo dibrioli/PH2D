@@ -60,6 +60,7 @@ pub mod progress;
 pub mod project;
 pub mod ruler;
 pub mod screens;
+pub mod tether;
 pub mod text_elide;
 pub mod toast;
 

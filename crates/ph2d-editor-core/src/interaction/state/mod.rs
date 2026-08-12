@@ -466,7 +466,8 @@ pub struct WidgetStore {
     /// Fill (Bucket) "Fill adjust" floating modal: `Some((x, y))` = the card's top-left in screen px
     /// (open); `None` = closed. Opened at the ColorDrop release point by the shell; dragging the title
     /// band offsets it. Its threshold slider's value lives in the `PAINTER_FILL_MODAL_SLIDER` widget.
-    pub(super) fill_modal: Option<(f32, f32)>,
+    /// `(posição, âncora)` — as duas no MESMO campo, ver `open_fill_modal`.
+    pub(super) fill_modal: Option<((f32, f32), (f32, f32))>,
     /// Onion settings floating modal (ADR-0142 W3b): `Some((x, y))` = the card's top-left in screen
     /// px (open); `None` = closed. Opened by the timeline's Onion-settings button (shell-side, so it
     /// can seed the widgets from `TimelineState::onion`); dragging the title band offsets it. Its

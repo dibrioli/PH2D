@@ -1,0 +1,213 @@
+use super::*;
+
+fn max_dev(a: &[[f32; 2]], b: &[[f32; 2]]) -> f32 {
+    a.iter()
+        .zip(b)
+        .map(|(p, q)| ((p[0] - q[0]).powi(2) + (p[1] - q[1]).powi(2)).sqrt())
+        .fold(0.0, f32::max)
+}
+
+/// Deixa a corda cair de uma pose recta com as pontas PARADAS, durante `seconds`, a `fps`.
+fn settle(fps: f32, seconds: f32) -> Vec<[f32; 2]> {
+    let dt = 1.0 / fps;
+    let mut t = Tether::new(NODES);
+    let (control, effect) = ([100.0, 100.0], [400.0, 180.0]);
+    t.advance(control, effect, dt, true); // o 1.º põe na recta (`fresh`)
+    for _ in 0..(seconds * fps).round() as usize {
+        t.advance(control, effect, dt, true);
+    }
+    t.points().to_vec()
+}
+
+/// O mesmo, com o efeito a andar em função do TEMPO.
+fn drive(fps: f32, seconds: f32) -> Vec<[f32; 2]> {
+    let dt = 1.0 / fps;
+    let mut t = Tether::new(NODES);
+    let control = [100.0, 100.0];
+    for s in 0..(seconds * fps).round() as usize {
+        let time = s as f32 * dt;
+        t.advance(
+            control,
+            [300.0 + 60.0 * time, 140.0 + 30.0 * time],
+            dt,
+            true,
+        );
+    }
+    t.points().to_vec()
+}
+
+/// ⭐ **A forma é facto do relógio de parede, não da taxa de quadros.**
+///
+/// Com as pontas PARADAS a entrada é idêntica nas duas taxas, então o que sobra mede só o solver —
+/// e ele tem de dar a MESMA forma. É o gate que impede a corda de ser bonita na máquina de quem a
+/// escreveu.
+///
+/// **Mutação que deve sangrar:** trocar o passo interno fixo por `dt` do quadro (com ou sem o
+/// `dt/dt_prev` do plano). Medido: o TCV sozinho erra **29,7 px** num gesto de 1,5 s, porque cura a
+/// integração e deixa de pé o amortecimento por-quadro e — a maior — a RIGIDEZ, que é `ITERS`
+/// passagens por QUADRO e portanto quatro vezes mais forte a 120 fps.
+#[test]
+fn the_rope_is_a_fact_of_the_wall_clock_not_of_the_frame_rate() {
+    let dev = max_dev(&settle(30.0, 1.5), &settle(120.0, 1.5));
+    assert!(
+        dev < 0.05,
+        "pontas paradas: 30 e 120 fps têm de dar a MESMA forma; desvio {dev:.4} px"
+    );
+}
+
+/// E com as pontas a MOVER-SE o resíduo é da ENTRADA, não do solver — nomeado com o número em vez
+/// de escondido: a 30 fps a corda persegue um alvo amostrado 4× mais raramente.
+///
+/// ⚠️ A barra é o que a medição deu (1,68 px) com folga, e o gate diz de que é o resíduo. Sem esta
+/// distinção, alguém apertaria a barra do gate acima até ela mentir.
+#[test]
+fn a_moving_endpoint_leaves_a_residue_and_it_is_the_input_sampling() {
+    let dev = max_dev(&drive(30.0, 1.5), &drive(120.0, 1.5));
+    assert!(
+        dev < 4.0,
+        "resíduo de amostragem da entrada, esperado ~1,7 px; medido {dev:.4} px"
+    );
+    assert!(
+        dev > 0.05,
+        "e ele EXISTE — se fosse zero, a fixture não continha o fenómeno que este gate nomeia"
+    );
+}
+
+/// As pontas são exactamente o controlo e o efeito. **Uma corda que derive das pontas deixa de
+/// descrever a relação que ela existe para mostrar.**
+#[test]
+fn a_pinned_end_is_exactly_the_control() {
+    let mut t = Tether::new(NODES);
+    let (control, effect) = ([100.0, 100.0], [400.0, 180.0]);
+    for _ in 0..200 {
+        t.advance(control, effect, 1.0 / 60.0, true);
+    }
+    let p = t.points();
+    assert_eq!(p[0], control, "a ponta do controlo não deriva");
+    assert_eq!(p[p.len() - 1], effect, "nem a do efeito");
+}
+
+/// **Em Discreto ela é uma RECTA e não simula nada** (plano §5.3): o significado sobrevive, o peso
+/// é que sai. Simular e desenhar recto seria custo sem efeito.
+///
+/// ⚠️ **A fixture SIMULA PRIMEIRO, e é isso que a torna um gate.** A primeira versão começava em
+/// Discreto e a mutação — tirar o `!simulate` do early-return — **sobreviveu**: com a corda ainda
+/// `fresh`, o outro braço da mesma condição devolvia-a à recta na mesma, e o teste não distinguia
+/// *não simulou* de *simulou e foi reposto*. É preciso GASTAR o `fresh` em Expressivo antes de
+/// perguntar o que Discreto faz.
+#[test]
+fn the_discrete_character_draws_a_straight_line_and_simulates_nothing() {
+    let mut t = Tether::new(NODES);
+    let (control, effect) = ([100.0, 100.0], [400.0, 100.0]);
+    // Gasta o `fresh`: a partir daqui a corda TEM pose e uma simulação a mais seria visível.
+    for _ in 0..60 {
+        t.advance(control, effect, 1.0 / 60.0, true);
+    }
+    assert!(
+        t.points()[NODES / 2][1] > 110.0,
+        "a fixture não contém o fenómeno: a corda tinha de estar pendurada antes de trocar de carácter"
+    );
+    for _ in 0..200 {
+        t.advance(control, effect, 1.0 / 60.0, false);
+    }
+    for (i, p) in t.points().iter().enumerate() {
+        let x = i as f32 / (NODES - 1) as f32;
+        assert!(
+            (p[1] - 100.0).abs() < 1e-3,
+            "nó {i} caiu {:.3} px — em Discreto a corda é a recta",
+            p[1] - 100.0
+        );
+        assert!((p[0] - (100.0 + 300.0 * x)).abs() < 1e-3);
+    }
+}
+
+/// **A corda PENDURA, e os elos ficam do tamanho de repouso.**
+///
+/// ⚠️ Nasceu porque a mutação que desliga metade da correcção de distância **sobreviveu** ao gate
+/// das pontas: aquele mede só `p[0]` e `p[n-1]`, que continuam pinados enquanto o meio se desfaz.
+/// *Pinar as pontas e resolver a corda são duas perguntas, e precisavam de dois gates.*
+#[test]
+fn the_rope_hangs_and_its_links_keep_their_rest_length() {
+    let mut t = Tether::new(NODES);
+    let (control, effect) = ([100.0, 100.0], [400.0, 100.0]);
+    for _ in 0..240 {
+        t.advance(control, effect, 1.0 / 60.0, true);
+    }
+    let p = t.points();
+    let span = 300.0_f32;
+    let rest = span * 1.22 / (NODES - 1) as f32;
+    for a in 0..NODES - 1 {
+        let d = [p[a + 1][0] - p[a][0], p[a + 1][1] - p[a][1]];
+        let l = (d[0] * d[0] + d[1] * d[1]).sqrt();
+        assert!(
+            (l - rest).abs() < rest * 0.35,
+            "elo {a} mede {l:.2} px contra um repouso de {rest:.2} — a restrição não está a resolver"
+        );
+    }
+    // E o conjunto pendura: o ponto mais baixo fica bem abaixo da linha das pontas.
+    let lowest = p.iter().map(|q| q[1]).fold(f32::MIN, f32::max);
+    assert!(
+        lowest > 140.0,
+        "o ponto mais baixo está em {lowest:.1} — uma corda com folga 1,22 tem de cair bem mais"
+    );
+}
+
+/// O carácter pode mudar A MEIO, e a corda tem de cair **da recta nova** — nunca voar da pose que
+/// tinha antes de o artista escolher Expressivo.
+#[test]
+fn switching_to_expressive_starts_from_the_line_not_from_the_old_pose() {
+    let mut t = Tether::new(NODES);
+    for _ in 0..30 {
+        t.advance([100.0, 100.0], [400.0, 100.0], 1.0 / 60.0, false);
+    }
+    // Muda de sítio E de carácter no mesmo quadro.
+    t.advance([600.0, 500.0], [900.0, 500.0], 1.0 / 60.0, true);
+    for p in t.points() {
+        assert!(
+            (p[1] - 500.0).abs() < 1e-3,
+            "o 1.º quadro a simular ainda é a recta NOVA: sem isso a corda voa do sítio antigo"
+        );
+    }
+}
+
+/// Controlo e efeito no mesmo ponto: não há corda para desenhar, e quem pergunta é a porta.
+#[test]
+fn a_zero_length_tether_is_not_drawable() {
+    assert!(!Tether::is_drawable([10.0, 10.0], [10.0, 10.4]));
+    assert!(Tether::is_drawable([10.0, 10.0], [40.0, 10.0]));
+}
+
+/// **Um quadro lento não compra passos sem tecto.** Com um engasgo de meio segundo, o `MAX_STEPS`
+/// corta e o resto é DEITADO FORA — se fosse dívida, o quadro seguinte pagaria os passos deste e a
+/// realimentação em `dt` que a sim do Wet Paint mediu reapareceria aqui.
+#[test]
+fn a_stalled_frame_does_not_buy_unbounded_steps() {
+    let mut t = Tether::new(NODES);
+    let (control, effect) = ([100.0, 100.0], [400.0, 180.0]);
+    t.advance(control, effect, 1.0 / 60.0, true);
+    t.advance(control, effect, 0.5, true); // engasgo: 60 passos pedidos, 8 permitidos
+    let after_stall = t.points().to_vec();
+    t.advance(control, effect, 1.0 / 60.0, true);
+    let next = t.points().to_vec();
+    // Um quadro normal a seguir ao engasgo anda o que um quadro normal anda — não os 52 passos
+    // que teriam ficado em dívida.
+    let moved = max_dev(&after_stall, &next);
+    assert!(
+        moved < 8.0,
+        "o quadro seguinte ao engasgo andou {moved:.2} px — está a pagar dívida acumulada"
+    );
+}
+
+/// SONDA: os números que decidem a wave, impressos em vez de afirmados.
+#[test]
+#[ignore = "sonda: rode com -- --ignored --nocapture"]
+fn measure_the_shape_across_frame_rates() {
+    println!(
+        "[tether] pontas PARADAS, 30 vs 120 fps: {:.4} px (o solver)",
+        max_dev(&settle(30.0, 1.5), &settle(120.0, 1.5))
+    );
+    println!(
+        "[tether] pontas a MOVER, 30 vs 120 fps: {:.4} px (a amostragem da entrada)",
+        max_dev(&drive(30.0, 1.5), &drive(120.0, 1.5))
+    );
+}

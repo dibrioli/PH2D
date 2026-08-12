@@ -59,7 +59,7 @@ discordando": aqui o `falloff` promete "quanto deste deformer", e para os rotaci
 | `motion.spline_wrap` | idem | **A curva como ENTRADA** (o documento vetorial), em vez de 8 params | ⛔ **CERCA DE CHESTERTON — [doc 28](../28_distribute_curve_spline_wrap_nota_adr.md):** *"a curva do documento vetorial (deferido) vs uma curva authored no nó (self-contained). Esta fatia faz a segunda"*, e o deferimento tem motivo escrito (*"cross-module; crate satélite que só LÊ o contrato vetor"*) | decisão registrada | ⛔ *(não re-propor)* | — |
 | `motion.spline_wrap` | idem | **Axis** (±X/±Y/±Z — qual eixo do layout mapeia na curva) | **SIM**, pela mesma conjugação do `bend` (`motion.orbit` ±θ), com o mesmo preço (3 nós + `Temporal`) | omissão | **P2** | `axis = X` ⇒ hoje |
 
-**Contagem:** **P0 2** · **P1 6** · **P2 8** · **⛔ 6** (5 recusados com referência/cerca + 1 "não é gap").
+**Contagem:** **P0 1** · **P1 6** · **P2 8** · **⛔ 6** (5 recusados com referência/cerca + 1 "não é gap").
 **Refutados por composição:** **4** — o *taper* do spherize · a *wedge* do kaleidoscope · a *direção* do bend · o *axis* do spline_wrap (os dois últimos exprimíveis **mas caros**, P1/P2 pela régua da §7).
 
 ---

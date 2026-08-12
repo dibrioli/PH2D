@@ -315,7 +315,7 @@ dependência que não se realiza.
 agache) · 10 gates na porta + 4 no produto + 6 na cena, com a mutação que devolve
 os três raios a sangrar dois deles.
 
-### 4.4 · `W-MultiJump` — **PULO MÚLTIPLO** ⟨o exemplo do Enio⟩
+### 4.4 · `W-MultiJump` — **PULO MÚLTIPLO** ✅ ⟨o exemplo do Enio⟩
 
 O `air actions counter` do tnua, e o item mais pedido do catálogo. É **estado no
 `JumpState` + um número no `JumpConfig`**, e encaixa onde coyote e buffer já
@@ -329,6 +329,57 @@ recarrega"* — o sintoma exacto que aquele doc-comment já descreve para o dash
 
 ⚠️ **E a segunda pergunta é de produto:** o pulo do ar tem a **mesma altura** do
 primeiro (Celeste) ou menor (Hollow Knight)? Um número, e ele muda o jogo.
+
+---
+
+**FEITO (2026-08-12).** `JumpConfig` ganhou **`air_jumps`** (a contagem, `0`
+desliga) + **`air_jump_height`** (metros). A recarga entra no MESMO braço
+`if grounded` do coyote — o terceiro consumidor da porta única, sem uma 2ª cópia
+do predicado, exatamente como o plano exigia.
+
+⚠️ **A altura é em METROS e não uma fração do primeiro pulo**, e o motivo é que
+este módulo tem **três** pulos: o da parede já é altura absoluta
+(`WallConfig::jump_height`), então uma escala aqui faria dois falarem metros e um
+falar multiplicador, na mesma seção do painel.
+
+⚠️ **A precedência é a força do APOIO — chão > parede > ar** (o ar é o último a
+ser perguntado, e um pulo de parede não gasta carga). O bloco do ar **não tem
+guard de *"não estou no chão"***: os dois ramos acima já retornaram em todo caso
+com apoio, então chegar ali **é** estar no ar, e um `!grounded` seria a 2ª cópia
+de uma condição já decidida.
+
+⚠️ **E o item que o plano NÃO previu: o proxy do ARRANQUE apodreceu.** O `lib.rs`
+perguntava *"a TRANSIÇÃO para o ar"* (`!antes.airborne && depois.airborne`) —
+exato enquanto todo pulo começava com o pé em algo, e **falso para um pulo do
+AR**, que acontece com `airborne` já verdadeiro. Ele dizia *não* justamente no
+gesto que mais se encadeia com um arranque, contra o que o próprio comentário de
+lá promete. Nasceu `JumpStep::jumped`, e com ele o **terceiro** gate de
+cancelamento (`an_air_jump_out_of_a_dash_also_ends_it`) — que o comentário do
+irmão da parede já previa sem o saber.
+
+**Medido** (`measure_multi_jump`, pela porta do produto):
+
+| gesto | pico acima do repouso |
+|---|---|
+| um toque | **0,6176 m** |
+| dois toques (o 2º no ar) | **1,2326 m** |
+| um toque com 0 / 1 / 3 cargas | **0,6176 nos três** |
+| aperto SEGURADO, um pulo | **1,903 m** |
+| aperto SEGURADO, dois pulos | **4,028 m** |
+
+⚠️ **`next.buffer = 0.0` no ramo do ar é load-bearing:** sem ele o mesmo aperto
+re-dispara em tiques consecutivos e queima as três cargas em ~6 tiques.
+
+`PROJECT_SCHEMA` **73→74** (dois campos no MEIO do `PlatformPlayer`) — ⚠️ o
+degrau **não move física**: a contagem nasce em `0`, e o `physics_ecs_c9` saiu
+**byte-idêntico** (`1699123f…`, 117 corpos, debug ≡ release), que é a prova
+executável disso.
+
+**Cena `=110`** · 10 gates de lei/produto + 4 de cena + as duas rows na varredura
+de seam (`PLAYER_ROW_COUNT` 42→44) · **7 mutações, 7 sangram**.
+
+LOC: `jump.rs` cruzou 700 ⇒ corte por RESPONSABILIDADE em `jump_config.rs` (*o
+que o artista AUTORA*) contra o que sobrou (*o que acontece num TIQUE*).
 
 ### 4.5 · `W-Ledge` — **LEDGE GRAB + MANTLE** ⟨o exemplo do Enio⟩
 
@@ -676,7 +727,7 @@ pedido** — está aqui para a lista ser honesta, não para ser construído.
 ## §5 — A ordem, numa linha
 
 ```
-~~W-Swim~~ ✅ → ~~W-ZoneForce~~ ✅ → ~~W-ShapeCast~~ ✅ → ~~W-Probes~~ ✅ → ~~W-Probes2~~ ✅ → ~~W-FootFan~~ ✅ → W-MultiJump → W-Ledge → (W-Glide?) → o ajuste
+~~W-Swim~~ ✅ → ~~W-ZoneForce~~ ✅ → ~~W-ShapeCast~~ ✅ → ~~W-Probes~~ ✅ → ~~W-Probes2~~ ✅ → ~~W-FootFan~~ ✅ → ~~W-MultiJump~~ ✅ → W-Ledge → (W-Glide?) → o ajuste
    1         2             3            4           5            6              7           8          9
 ```
 

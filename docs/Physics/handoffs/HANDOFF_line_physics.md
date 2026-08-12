@@ -12,7 +12,22 @@
 > · gizmo ids até **973** (próximo livre **974**) · maior cena de smoke **104** (próxima livre
 > **105**; ⚠️ o `=84` não existe, de propósito).
 >
-> ⚠️ **Jornada de 2026-08-11 FECHADA, aguardando ordem de integração** — handoff
+> ⚠️ **Jornada de 2026-08-12 (`W-MultiJump`) FECHADA, aguardando ordem de integração** — handoff
+> [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md),
+> que **supersede** o de 08-11 apenas como *o que integrar agora* (o detalhe de mecanismo das sete
+> waves de sensores continua LÁ). O assunto é o **PULO DO AR**
+> (cena `=110`, o *air actions counter* do tnua): `air_jumps` + `air_jump_height`, a carga
+> recarregando no CHÃO pela porta única `on_ground` — o **terceiro** consumidor dela.
+> ⚠️ **E o proxy do ARRANQUE apodreceu com o terceiro pulo:** o `lib.rs` perguntava a
+> *transição para o ar*, e um pulo do AR acontece com `airborne` já verdadeiro ⇒ ele
+> dizia *não* no gesto que mais se encadeia com um arranque; nasceu `JumpStep::jumped`
+> e o **terceiro** gate de cancelamento. **`PROJECT_SCHEMA` 73 → 74** · **`c9`
+> `1699123f…` INTOCADO** (a capacidade nasce em `0` ⇒ byte-idêntico, e o hash é a prova
+> executável) · registro **29 intocado** · **zero `Cargo.toml`** · nenhum ADR. LOC:
+> `jump.rs` cruzou 700 ⇒ `jump_config.rs` (*o que se AUTORA* × *o que acontece num
+> TIQUE*). **Cena `=110`; próxima livre 111.**
+>
+> ⚠️ **Jornada de 2026-08-11 FECHADA (smoke da cena `=109` APROVADO pelo Enio em 2026-08-12)** — handoff
 > [`HANDOFF_INTEGRACAO_line_physics_sensores_2026-08-11.md`](HANDOFF_INTEGRACAO_line_physics_sensores_2026-08-11.md),
 > que **inclui** a de 08-10 (as duas estão nos mesmos 37 commits). O assunto são os **SENSORES**:
 > eles ficaram **visíveis** (`W-Probes`, cena `=108`), ficaram **editáveis** (`W-Probes2`) e **a

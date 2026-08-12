@@ -32,10 +32,6 @@ fn with_air(n: u32, h: f32) -> JumpConfig {
 }
 
 /// Um tique da lei, com o chão e o botão que se pedir.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "e' a assinatura da lei; agrupar seria inventar um tipo com um chamador"
-)]
 fn step(
     cfg: &JumpConfig,
     state: JumpState,

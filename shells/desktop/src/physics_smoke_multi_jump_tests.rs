@@ -43,7 +43,7 @@ fn drive(script: &[(bool, bool)]) -> (f32, f32) {
     let mut sim = SimWorld::new();
     let (one, two) = build_multi_jump_scene(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
-    let mut peak = |sim: &SimWorld, e: Entity| {
+    let peak = |sim: &SimWorld, e: Entity| {
         sim.world()
             .get::<Transform>(e)
             .expect("transform")

@@ -538,6 +538,95 @@ alega, não removê-la) · E11 `normal_radius_factor` · E12 front-face contínu
 E14 hardness — os três últimos **acrescentam** ao `B` em vez de restaurar
 paridade, e são o que dá conteúdo ao chip na W1'.
 
+### §7.3 — ✅ W3b: a DUREZA entra, e a cerca do Inflate ganha NÚMERO (2026-08-12)
+
+**`Brush::hardness`** — porte literal do `apply_hardness_to_distances`
+(`sculpt.cc:7549-7575`), em distância normalizada:
+
+```text
+t' = 0                          se t < hardness
+t' = (t − hardness)/(1 − h)     caso contrário
+```
+
+Um **platô de peso cheio** de raio `h · r`, com o falloff inteiro espremido na
+casca que sobra; em `h = 1` o dab vira **disco duro** (braço próprio no original,
+porque a fórmula geral dividiria por zero).
+
+⚠️ **Ele remapeia a distância de TODOS os consumidores da curva**, o canal de
+máscara incluído — é a ordem do original (o remap roda **antes** do
+`BKE_brush_calc_curve_factors`, e nenhuma curva sabe que ele existe). Aplicá-lo
+só na geometria faria a máscara ler uma distância diferente da que o pincel usa
+no mesmo dab.
+
+⚠️ **`hardness` NÃO é `mask_hardness`, e os dois nomes se trocam em silêncio.**
+Aquele é a forma da CURVA do canal (`(1 − t)^{2(1−h)}`, do `Masking.js`); este
+reescreve a **DISTÂNCIA** que qualquer curva depois lê. Curva e distância são
+perguntas diferentes; os dois coexistem.
+
+⚠️ **O default é `0.0` e ele é o NEUTRO DO PRÓPRIO ORIGINAL** — o
+`apply_hardness_to_distances` abre com `if (hardness == 0.0f) return;`. Não é um
+número escolhido: é o early-out deles, e é ele que faz esta metade da wave ser
+**byte-idêntica no produto de hoje**. E o valor de FÁBRICA de um pincel do
+Blender **não é legível** (§7.0), então o knob nasce no neutro e o número passa
+a ser do ARTISTA — nunca uma tabela inventada com o nome de outro produto.
+
+**Gates.** Três de unidade (identidade ao bit em zero · a fórmula contra a
+transcrição do C · o disco duro) + **um de PRODUTO** que mede o deslocamento na
+MALHA, e é ele que carrega a wave: ⚠️ *os três de unidade passariam com a
+chamada REMOVIDA do laço*. **2 mutações, 2 sangram**, cada uma no gate certo — e
+a que apaga a chamada sangra **só** o de produto, que é a prova de que ele não é
+redundante.
+
+---
+
+#### ⚠️ E10 — a cerca do Inflate foi MEDIDA, e ela está CERTA
+
+O `stroke_target.rs` congela a normal no pen-down enquanto **as duas
+referências** leem a viva, com o motivo escrito ao lado: *"um traço parado
+passaria a inflar numa direção que gira sozinha"*. Isso é uma **afirmação sobre
+um número que ninguém tinha medido** — o §0 manda medir antes de decidir.
+
+`tests/measure_inflate_normal_drift.rs` (traço PARADO, raio 0,45, pior caso):
+
+| força | 1 dab | 4 | 16 | 64 |
+|---|---|---|---|---|
+| 0,3 | 2,8° | 10,9° | 33,4° | **53,4°** |
+| 0,6 | 5,6° | 20,3° | 45,9° | **57,4°** |
+| 1,0 | 9,2° | 30,2° | 52,2° | **58,4°** |
+
+⇒ **Meio ângulo reto.** A cerca fica, agora com o preço nomeado: ela custa
+paridade, e quem quiser a lei da referência ganha um ramo de MODO — não uma
+troca de default. *O miolo gira menos* (15-18°), porque ali a superfície sobe
+sem inclinar tanto.
+
+⚠️ **E a sonda nasceu com a régua errada:** ela media a distância ao centro na
+posição **VIVA**, e o Inflate empurra os vértices para FORA — o conjunto
+`dist < r/4` esvaziava, o `max` sobre o vazio devolvia o inicializador, e a
+coluna do miolo imprimia **`0,000°`**, que se lê como *"o miolo não gira"* e
+significava *"não sobrou miolo pela minha régua"*. A pegada é ancorada no
+pen-down; a régua tem de ser também — e a **CONTAGEM** entrou ao lado da coluna
+para um conjunto vazio nunca mais poder se disfarçar de zero.
+
+---
+
+#### ⚠️ E12 — a linha do doc 20 conflita DOIS consumidores (corrigido aqui)
+
+A tabela E1-E14 diz *"o front-face é binário? nós binário · S binário · B
+contínuo"*. Lendo os dois lados, os **consumidores são diferentes**:
+
+- **o nosso** binário pesa a **ESTIMATIVA DO PLANO** (o `front` do
+  `fit_plane_over`: um vértice de costas entra com peso zero na normal e no
+  centro de área) — e o dab **não filtra nada**;
+- **o do Blender** (`sculpt.cc:7283-7295`) faz `factors[i] *= max(dot, 0)`, ou
+  seja pesa **o FATOR DE CADA VÉRTICE** do dab;
+- **o do SculptGL** é o `_culling`, um **checkbox do usuário desligado de
+  fábrica** em dez tools.
+
+⇒ Portar *"contínuo"* sem escolher o consumidor mudaria QUAL coisa é pesada. O
+`FrontFace::Continuous` do `B` é a lei do fator (uma multiplicação por vértice no
+laço, uma capacidade que hoje **não temos**), e a metade do plano é outra
+pergunta com outra resposta. Fica nomeado, não construído.
+
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 
 **Os defaults de fábrica do Blender não estão no clone.** Eles vivem em

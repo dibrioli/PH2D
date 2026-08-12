@@ -488,10 +488,16 @@ impl SculptStroke {
             // ver [`Brush::mask_weight`]. Perguntar ao [`Falloff`] aqui media
             // uma tool contra a curva de outra, e é literalmente o *"cada tool
             // deve ter seu falloff apropriado"* que o pedido nomeia.
+            // ⚠️ **A DUREZA entra AQUI, antes de qualquer curva** — é a ordem
+            // do original (`apply_hardness_to_distances` roda antes do
+            // `BKE_brush_calc_curve_factors`), e é o que faz as duas curvas
+            // abaixo lerem a MESMA distância. Com `hardness = 0`, o default,
+            // ela devolve o argumento sem tocar num bit.
+            let t = brush.shaped_distance(dist * inv_r);
             let curve = if brush.verb.paints_mask() {
-                brush.mask_weight(dist * inv_r)
+                brush.mask_weight(t)
             } else {
-                brush.falloff.weight(dist * inv_r)
+                brush.falloff.weight(t)
             };
             let fall = curve * brush.alpha_weight(base, &alpha_frame);
             // ⚠️ **O `w` fica VERBATIM — mesma ordem, mesmos bits.** A forma

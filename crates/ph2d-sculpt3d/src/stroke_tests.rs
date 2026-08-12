@@ -291,6 +291,10 @@ fn the_normals_after_a_stroke_are_what_a_full_rebuild_would_give() {
 #[path = "verb_tests.rs"]
 mod verbs;
 
+/// A FORMA do peso no barro — ver o cabeçalho dele.
+#[path = "verb_shape_tests.rs"]
+mod verb_shape;
+
 /// A LEI DE KERNEL que o MODO escolhe — ver o cabeçalho dele.
 #[path = "verb_mode_tests.rs"]
 mod verb_mode;

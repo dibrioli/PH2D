@@ -171,6 +171,77 @@ fn no_two_falloffs_in_the_family_are_the_same_curve() {
     }
 }
 
+/// **A DUREZA É A IDENTIDADE EM ZERO, AO BIT** — e é isso que torna o campo
+/// invisível no produto de hoje.
+///
+/// O early-out não é uma otimização: é o que faz esta wave não mover um pixel
+/// enquanto o knob não é autorado. Um `(t - 0)/(1 - 0)` "equivalente" seria uma
+/// divisão a mais em todo vértice de todo dab, com resultado igual **quase**
+/// sempre.
+#[test]
+fn the_hardness_is_the_identity_at_zero_bit_for_bit() {
+    let b = Brush::default();
+    assert_eq!(b.hardness, 0.0, "o default é o neutro do próprio original");
+    for k in 0..=256 {
+        let t = k as f32 / 256.0;
+        assert_eq!(b.shaped_distance(t), t, "t = {t}");
+    }
+}
+
+/// **A DUREZA É A FÓRMULA QUE O ORIGINAL ESCREVE.**
+///
+/// O oráculo é a transcrição literal do `apply_hardness_to_distances`
+/// (`sculpt.cc:7549-7575`), em unidades de raio — lá ele multiplica e divide por
+/// `radius` nos dois lados, e aqui a distância já chega normalizada.
+#[test]
+fn the_hardness_remaps_the_distance_the_way_the_reference_does() {
+    for &h in &[0.1f32, 0.25, 0.5, 0.75, 0.9] {
+        let b = Brush {
+            hardness: h,
+            ..Brush::default()
+        };
+        for k in 0..=256 {
+            let t = k as f32 / 256.0;
+            let want = if t < h { 0.0 } else { (t - h) / (1.0 - h) };
+            assert!(
+                (b.shaped_distance(t) - want).abs() < 1e-6,
+                "h = {h}, t = {t}: {} vs {want}",
+                b.shaped_distance(t)
+            );
+        }
+        // A propriedade que dá NOME ao knob, e que a fórmula sozinha não diz:
+        // um platô de peso CHEIO até `h`, e a borda continua chegando a zero.
+        assert_eq!(b.shaped_distance(h * 0.999), 0.0, "h = {h}: o platô");
+        assert!(
+            (b.shaped_distance(1.0) - 1.0).abs() < 1e-6,
+            "h = {h}: a borda continua sendo a borda"
+        );
+    }
+}
+
+/// **EM DUREZA CHEIA O DAB É UM DISCO** — e o braço existe porque a fórmula
+/// geral divide por `1 − h`.
+#[test]
+fn at_full_hardness_the_dab_is_a_hard_disc() {
+    let b = Brush {
+        hardness: 1.0,
+        ..Brush::default()
+    };
+    for k in 0..256 {
+        let t = k as f32 / 256.0;
+        assert_eq!(b.shaped_distance(t), 0.0, "dentro do raio nada decai ({t})");
+        assert!(
+            (b.falloff.weight(b.shaped_distance(t)) - 1.0).abs() < 1e-6,
+            "t = {t} devia pesar 1"
+        );
+    }
+    assert_eq!(
+        b.falloff.weight(b.shaped_distance(1.0)),
+        0.0,
+        "e a borda é 0"
+    );
+}
+
 #[test]
 fn a_nan_distance_weighs_nothing_instead_of_poisoning_a_vertex() {
     for f in Falloff::ALL {

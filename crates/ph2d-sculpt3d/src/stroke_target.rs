@@ -194,10 +194,29 @@ impl SculptStroke {
             // `Inflate.js:36-76` — a MESMA constante do Draw, pela normal de
             // cada vértice em vez da de área.
             //
-            // ⚠️ **A normal é a CONGELADA no pen-down, e a referência lê a
-            // viva.** É divergência nossa e ela é deliberada: a normal viva sobe
-            // junto com a tinta, e um traço parado passaria a inflar numa
-            // direção que gira sozinha. Fica nomeada em vez de descoberta.
+            // ⚠️ **A normal é a CONGELADA no pen-down, e as DUAS referências
+            // leem a viva** (`Inflate.js:64-66` e o `inflate.cc`). É divergência
+            // nossa, ela é deliberada — a normal viva sobe junto com a tinta, e
+            // um traço parado passaria a inflar numa direção que gira sozinha —
+            // e desde 2026-08-12 ela tem **NÚMERO**, porque a frase acima era uma
+            // afirmação sobre uma grandeza que ninguém tinha medido.
+            //
+            // ⚠️ **MEDIDO** (`tests/measure_inflate_normal_drift.rs`, traço
+            // parado, raio 0,45): a normal de um vértice da pegada gira
+            //
+            // | força | 1 dab | 4 | 16 | 64 |
+            // |---|---|---|---|---|
+            // | 0,3 | 2,8° | 10,9° | 33,4° | **53,4°** |
+            // | 1,0 | 9,2° | 30,2° | 52,2° | **58,4°** |
+            //
+            // (pior caso; a média da pegada acompanha, e o MIOLO gira menos —
+            // 15-18° — porque ali a superfície sobe sem inclinar tanto).
+            //
+            // ⇒ **A cerca está CERTA, e o preço dela é paridade.** Meio ângulo
+            // reto não é um detalhe numérico: um traço parado com a normal viva
+            // arrastaria a direção do empurrão para longe do que o artista
+            // apontou. Quem quiser a lei da referência ganha o ramo de MODO
+            // (a `KernelLaw`), não uma troca do default.
             Verb::Inflate => add(live, self.base_nrm[s], reach * w),
             // `Smooth.js` — o único tool de geometria da referência **sem
             // falloff** no kernel; aqui ele chega pelo `w`, que é o superconjunto

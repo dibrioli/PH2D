@@ -328,23 +328,6 @@ impl Verb {
     }
 }
 
-impl Brush {
-    /// **O PESO que este pincel deposita** — a porta única entre o número do
-    /// slider e o que um dab de fato faz.
-    ///
-    /// ⚠️ **Ela existe porque o slider e o peso deixaram de ser a mesma coisa.**
-    /// O Blender eleva ao quadrado (`sculpt.cc:2339`, *"square it to make lower
-    /// values more sensitive"*) e o SculptGL não; um `brush.strength` cru no
-    /// sítio de uso seria a segunda resposta que ignora o modo **em silêncio**,
-    /// e o `stroke.rs` tem UM consumidor — é ele que pergunta aqui.
-    #[must_use]
-    pub fn weight(&self) -> f32 {
-        self.verb
-            .profile(self.mode)
-            .map_or(self.strength, |p| p.strength_curve.resolve(self.strength))
-    }
-}
-
 impl Verb {
     /// A **CURVA** com que um pincel deste verbo nasce — o D1 do estudo, e o
     /// único achado dele que o artista encontra sem tocar em nada.
@@ -523,33 +506,26 @@ pub struct Brush {
     /// quártica da geometria (a `Plateau` vale `0,6875` a meio raio, esta vale
     /// `0,3536`). Em `1.0` o expoente é ZERO e o canal vira um disco duro.
     pub mask_hardness: f32,
-}
-
-/// A dureza do canal em `1.0` dá expoente **zero**, e `x^0 == 1` em toda a
-/// pegada — o disco duro. É o topo da faixa da tool do original, e o nome existe
-/// para o painel não repetir o literal.
-pub const MAX_MASK_HARDNESS: f32 = 1.0;
-
-impl Brush {
-    /// **A CURVA DO CANAL DE MÁSCARA** — `(1 − t)^{2(1 − hardness)}`, o
-    /// `Masking.paint` do original (`Masking.js:66-69`).
+    /// **A DUREZA DO DAB** em `[0, 1]` — o `hardness` do Blender, e **`0` é a
+    /// identidade**.
     ///
-    /// ⚠️ **A aritmética é `f64` e a arredondada é UMA**, como em todo o porte
-    /// (`ref_kernels`): o `Math.pow` do JS trabalha em duplo e o
-    /// `Float32Array` guarda uma vez. Computá-la em `f32` acumularia uma
-    /// segunda arredondada e a paridade sairia do piso do formato.
+    /// ⚠️ **Ele NÃO é o [`Brush::mask_hardness`], e os dois nomes se parecem o
+    /// bastante para se trocarem em silêncio.** Aquele é a forma da CURVA do
+    /// canal de máscara (`(1 − t)^{2(1 − h)}`, do `Masking.js`); este reescreve
+    /// a **DISTÂNCIA** que qualquer curva depois lê — o
+    /// `apply_hardness_to_distances` do `sculpt.cc:7549-7575`, portado em
+    /// [`Brush::shaped_distance`]. Curva e distância são perguntas diferentes, e
+    /// é por isso que os dois coexistem em vez de um vencer o outro.
     ///
-    /// ⚠️ **`t` chega JÁ normalizado pelo raio** e não é clampado aqui: o
-    /// original clampa (`if dist > 1 dist = 1`) e a nota do
-    /// [`crate::ref_kernels`] mede que esse ramo é **inalcançável** — quem monta
-    /// a pegada só admite `d² < r²`. A guarda contra `t > 1` mora onde o
-    /// consumo mora, e duplicá-la aqui seria a segunda resposta à mesma
-    /// pergunta.
-    #[must_use]
-    pub fn mask_weight(&self, t: f32) -> f32 {
-        let softness = 2.0 * (1.0 - f64::from(self.mask_hardness));
-        (1.0 - f64::from(t)).powf(softness) as f32
-    }
+    /// ⚠️ **O default é `0.0` e ele é o NEUTRO do próprio código de origem** —
+    /// o `apply_hardness_to_distances` abre com `if (hardness == 0.0f) return;`.
+    /// Não é um número que eu escolhi: é o early-out deles.
+    ///
+    /// ⚠️ **E o valor de FÁBRICA de um pincel do Blender não é legível** (§7.0
+    /// do plano: desde o 4.3 ele vive num `.blend` binário), então este knob
+    /// nasce no neutro e o número passa a ser do ARTISTA — nunca uma tabela
+    /// inventada com o nome de outro produto.
+    pub hardness: f32,
 }
 
 impl Default for Brush {
@@ -603,38 +579,19 @@ impl Default for Brush {
             pinch: 0.5,
             // O `_hardness` de fábrica da `Masking` do original.
             mask_hardness: 0.25,
+            // O neutro do `apply_hardness_to_distances` — ver o campo.
+            hardness: 0.0,
         }
     }
 }
 
-impl Brush {
-    /// O deslocamento, com sinal, que um dab deste pincel alcança — em unidades
-    /// de mundo. Porta única: Draw, Inflate, Clay e Crease perguntam aqui.
-    ///
-    /// ⚠️ **O termo `honours_invert()` aqui é INERTE hoje, e fica assim mesmo.**
-    /// Depois que o predicado passou a dizer a verdade, *todo* verbo que lê
-    /// `reach` está na whitelist ⇒ trocá-lo por um `if self.invert` puro daria o
-    /// mesmo número em todos os doze, e uma mutação que o remova **não sangra**.
-    /// Ele fica porque é aqui que a pergunta pertence — *o sinal é assunto do
-    /// VERBO, não do checkbox* —, e porque o dia em que entrar um verbo que
-    /// consome `reach` sem ter oposto é o dia em que ele deixa de ser inerte, sem
-    /// ninguém precisar lembrar. Defesa em camadas documentada em vez de gateada,
-    /// pelo precedente do ADR-0145.
-    ///
-    /// ⚠️ **Este bloco estava ÓRFÃO** — colado acima do `alpha_weight`, descrevendo
-    /// uma função que não é esta, com o `reach` sem doc nenhum. É a classe que
-    /// este módulo já registrou duas vezes (*"minhas linhas `mod` orfanaram
-    /// doc-comments"*), e ela não levanta erro: só uma leitura pega.
-    #[must_use]
-    pub fn reach(&self, radius: f32) -> f32 {
-        let s = if self.invert && self.verb.honours_invert() {
-            -1.0
-        } else {
-            1.0
-        };
-        radius * REACH_FRACTION * s
-    }
-}
+/// As portas entre o número do artista e o que o kernel consome — ver o
+/// cabeçalho dele.
+#[path = "brush_scale.rs"]
+mod brush_scale;
+// ⚠️ O teto do knob viaja com a porta que o consome, e o caminho público do
+// chamador não muda: quem escreve `brush::MAX_MASK_HARDNESS` continua certo.
+pub use brush_scale::MAX_MASK_HARDNESS;
 
 /// **AS PORTAS DO ALPHA** — ver [`alpha_doors`].
 #[path = "brush_alpha.rs"]

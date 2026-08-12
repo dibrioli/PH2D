@@ -220,6 +220,40 @@ fn the_cull_survivors_match_the_cpu_in_every_mode() {
     }
 }
 
+/// `motion.cull` in **Max Count**: the cap keeps the TAIL, and the device has to
+/// agree on WHICH rows survive, not merely on how many.
+///
+/// The tint parity is what makes that an oracle here: prefix and tail both keep
+/// `cap` rows, so a count-only check would pass with the branch inverted. The
+/// grid + falloff give every row a distinct position, so keeping the wrong half
+/// moves the instances and the comparison bleeds.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_count_cap_keeps_the_same_tail_on_both_sides() {
+    let reg = registry();
+    let mut g = Graph::new();
+    let gr = grid(&mut g, 48.0, 48.0);
+    let fall = g.add_node("motion.falloff");
+    g.set_param(fall, "radius", 6.0);
+    let cull = g.add_node("motion.cull");
+    g.set_param(cull, "mode", 2.0); // Max Count
+    g.set_param(cull, "max", 700.0); // < 48×48, so the cap actually bites
+    let out = g.add_node("motion.output");
+    connect(&mut g, gr, fall, 0, false);
+    connect(&mut g, fall, cull, 0, false);
+    connect(&mut g, cull, out, 0, false);
+    g.validate(&reg).expect("well-typed");
+
+    let mut cook = Cook::new();
+    let cpu = cpu_frame(&mut cook, &g, &reg, out, 0.4);
+    assert_eq!(
+        cpu.len(),
+        700,
+        "the fixture must be capped by the number, not by the grid"
+    );
+    parity_over_ticks("max-count", &g, &reg, out, 0, 1e-5);
+}
+
 /// `sim.lifetime` on an aged population: the emitter's window carries a spread
 /// of ages, the hashed per-id variance kills a strict subset, and the
 /// survivors' `life` drives the ramp so the number is VISIBLE in the compared

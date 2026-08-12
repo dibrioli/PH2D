@@ -31,6 +31,10 @@ const VALUE_COL: &str = "v";
 /// Prune modes (the `mode` param).
 const MODE_FRACTION: i64 = 0;
 // MODE_FALLOFF (1) = keep where the `falloff` column ≥ amount.
+/// **O TETO DE POPULAÇÃO** (doc 89, folha 13): mantém no máximo `max` elementos, e **os mais
+/// NOVOS**. Abaixo do teto é um NO-OP, que é a diferença inteira para o Fraction — uma fração
+/// rala a população o tempo todo, um teto só morde quando é atingido.
+const MODE_COUNT: i64 = 2;
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -70,6 +74,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "invert",
             default: 0.0,
         },
+        // **O teto de população** (modo Count). APENDADO; inerte nos dois modos que já existiam,
+        // então todo grafo salvo é byte-idêntico. O default é o **512 do `motion.emitter`** — o
+        // número do irmão, não um inventado: escolher Count tem de dar um teto que já funciona.
+        ParamSpec {
+            name: "max",
+            default: 512.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -94,6 +105,18 @@ fn keep_indices(n: usize, mode: i64, amount: f32, invert: bool, falloff: &[f32])
             let keep =
                 ((amount.clamp(0.0, 1.0) * n as f32).round() as i64).clamp(0, n as i64) as usize;
             Box::new(move |i: usize| i < keep)
+        }
+        MODE_COUNT => {
+            // ⚠️ **O teto mantém a CAUDA, e a razão está escrita no irmão** (`motion.emitter`,
+            // que a folha 13 cita como *"o irmão já tem"*): *"the cap keeps the NEWEST
+            // particles: an emitter whose rate outruns the cap should look like a dense young
+            // jet, not a frozen ancient cloud"*. Numa zona a ordem é o `motion.combine`
+            // apendando os recém-nascidos ao estado ⇒ o PREFIXO é o mais velho, então um teto
+            // escrito como o Fraction (*"os primeiros N"*) seria exatamente a nuvem congelada
+            // que aquele comentário recusa: a população enche, e nada novo aparece nunca mais.
+            let cap = (amount.max(0.0).round() as i64).clamp(0, n as i64) as usize;
+            let first = n - cap;
+            Box::new(move |i: usize| i >= first)
         }
         _ => {
             // Falloff: keep where the mask (absent → 1) is at or above the threshold.
@@ -120,6 +143,9 @@ fn gather_col(col: &Column, keep: &[usize]) -> Column {
 /// The GPU predicate (ADR-0136): one flag per element, exactly
 /// [`keep_indices`]'s `pass(i) != invert`, in the same expressions.
 ///
+/// - **Count** keeps the LAST `round(max)` — a teto, então `i >= n − cap`. A cauda e não o
+///   prefixo, pela razão que o `motion.emitter` escreveu: um teto que mantivesse o prefixo
+///   congelaria a população numa nuvem antiga.
 /// - **Fraction** keeps the first `round(amount·n)` — `floor(x + 0.5)` because
 ///   WGSL's `round` is half-to-even while Rust's is half-away (the value is
 ///   non-negative here, where the two agree on `floor(x+0.5)`). The count and
@@ -136,9 +162,14 @@ fn gather_col(col: &Column, keep: &[usize]) -> Column {
 /// node.
 const GPU_PREDICATE: GpuKernel = GpuKernel {
     wgsl: "\
-        let cl_amount = select(params.amount, read_amount_v(0u), HAS_amount_v);\n\
+        let cl_is_count = abs(params.mode - 2.0) < 0.5;\n\
+        let cl_param = select(params.amount, params.max, cl_is_count);\n\
+        let cl_amount = select(cl_param, read_amount_v(0u), HAS_amount_v);\n\
         var cl_pass: bool;\n\
-        if (abs(params.mode) < 0.5) {\n\
+        if (cl_is_count) {\n\
+        \x20   let cl_cap = clamp(floor(max(cl_amount, 0.0) + 0.5), 0.0, f32(params.count));\n\
+        \x20   cl_pass = f32(i) >= f32(params.count) - cl_cap;\n\
+        } else if (abs(params.mode) < 0.5) {\n\
         \x20   let cl_frac = clamp(cl_amount, 0.0, 1.0);\n\
         \x20   let cl_keep = clamp(floor(cl_frac * f32(params.count) + 0.5), 0.0, f32(params.count));\n\
         \x20   cl_pass = f32(i) < cl_keep;\n\
@@ -175,7 +206,7 @@ const GPU_PREDICATE: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &["mode", "amount", "invert"],
+    params: &["mode", "amount", "invert", "max"],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -191,7 +222,15 @@ impl NodeOp for MotionCull {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let mode = ctx.param("mode").round() as i64;
         let invert = ctx.param("invert").round() as i64 != 0;
-        let amount = amount_of(&scalar_col(ctx.input(1), VALUE_COL), ctx.param("amount"));
+        // ⚠️ **A porta `amount` alimenta o número que o MODO usa** — a fração, o limiar ou o
+        // teto. Uma 2ª porta seria um socket morto em dois dos três modos; assim um `value.lfo`
+        // anima o teto pelo mesmo fio que já animava a fração.
+        let number = if mode == MODE_COUNT {
+            ctx.param("max")
+        } else {
+            ctx.param("amount")
+        };
+        let amount = amount_of(&scalar_col(ctx.input(1), VALUE_COL), number);
         let input = ctx.input(0);
         let n = input.count();
         let falloff = scalar_col(input, "falloff");
@@ -228,20 +267,46 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
+
+/// **Um número por modo, e só o do modo aparece.** Sem isto o painel ofereceria a `Amount` (uma
+/// fração 0..1) ao lado do `Max Count` (uma contagem), e o artista teria de saber qual dos dois
+/// o modo escolhido lê — dois controles vivos para uma pergunta é como nasce um knob morto.
+static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
+    ph2d_node_registry::ParamGate {
+        param: "amount",
+        when: "mode",
+        values: &[0, 1],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "max",
+        when: "mode",
+        values: &[2],
+    },
+];
+
+/// O que o número É (doc 88): um teto de população é uma CONTAGEM de coisas. A `amount` fica
+/// bare — ela é uma fração num modo e um limiar de máscara noutro, e **uma unidade errada é
+/// pior que uma ausente**.
+static PARAM_UNITS: &[ph2d_node_registry::ParamUnitDecl] = &[ph2d_node_registry::ParamUnitDecl {
+    param: "max",
+    unit: ph2d_node_registry::ParamUnit::Count,
+}];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "mode",
         label: "Mode",
         min: 0.0,
-        max: 1.0,
+        max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Fraction", "Falloff"],
+            labels: &["Fraction", "Falloff", "Max Count"],
         },
     },
     ParamUiHint {
@@ -250,6 +315,14 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 1.0,
         step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "max",
+        label: "Max Count",
+        min: 0.0,
+        max: 4096.0,
+        step: 1.0,
         widget: ParamWidget::Slider,
     },
     ParamUiHint {
@@ -379,5 +452,152 @@ mod tests {
             }
             _ => panic!("columns"),
         }
+    }
+
+    /// **O teto mantém os mais NOVOS** — a decisão da wave, e ela NÃO é gosto: o
+    /// `motion.emitter`, o irmão que a folha 13 cita, já a tem escrita com o motivo (*"a dense
+    /// young jet, not a frozen ancient cloud"*), e numa zona o prefixo é o mais VELHO porque o
+    /// `motion.combine` apende os recém-nascidos ao estado. FALSIFICADO se guardasse o prefixo.
+    #[test]
+    fn the_count_mode_keeps_the_newest_not_the_oldest() {
+        let keep = keep_indices(10, MODE_COUNT, 3.0, false, &[]);
+        assert_eq!(keep, vec![7, 8, 9], "a CAUDA, nunca o prefixo");
+    }
+
+    /// **Abaixo do teto o modo é um NO-OP, e é isso que o separa do Fraction.** Uma fração rala
+    /// a população o tempo todo (0,5 de 4 mantém 2); um teto de 100 sobre 4 não toca em nada.
+    #[test]
+    fn below_the_cap_the_count_mode_touches_nothing() {
+        assert_eq!(
+            keep_indices(4, MODE_COUNT, 100.0, false, &[]),
+            vec![0, 1, 2, 3],
+            "um teto que ninguém atingiu não corta"
+        );
+        // O CONTROLE, ao lado: o mesmo número lido como FRAÇÃO rala metade.
+        assert_eq!(
+            keep_indices(4, MODE_FRACTION, 0.5, false, &[]).len(),
+            2,
+            "o controle: uma fração corta mesmo com folga"
+        );
+    }
+
+    /// O teto é uma contagem, então ele **satura** em vez de estourar: `max` maior que a
+    /// população mantém tudo, `0` mantém nada, e nenhum dos dois indexa fora do stream.
+    #[test]
+    fn the_cap_saturates_at_both_ends() {
+        assert!(keep_indices(6, MODE_COUNT, 0.0, false, &[]).is_empty());
+        assert_eq!(keep_indices(6, MODE_COUNT, 6.0, false, &[]).len(), 6);
+        assert_eq!(keep_indices(0, MODE_COUNT, 9.0, false, &[]).len(), 0);
+        assert_eq!(keep_indices(6, MODE_COUNT, -4.0, false, &[]).len(), 0);
+    }
+
+    /// **A porta `amount` alimenta o número que o MODO usa.** Sem isto o teto seria o único
+    /// número do nó que um `value.*` não alcança — e o socket já está lá, vivo, animando a
+    /// fração; deixá-lo mudo num modo é a metade de um controle.
+    #[test]
+    fn the_value_port_feeds_whichever_number_the_mode_reads() {
+        use ph2d_nodegraph::cook::{Cook, OpResolver};
+        use ph2d_nodegraph::graph::{Edge, Graph};
+
+        static SRC: NodeManifest = NodeManifest {
+            id: NodeTypeId::of("motion.cull.test.port.src"),
+            name: "motion.cull.test.port.src",
+            inputs: &[],
+            outputs: &[PortSpec {
+                name: "out",
+                ty: INST_VEC2,
+            }],
+            effect: Effect::Pure,
+            clock: Clock::Frame,
+            params: &[],
+            lowerings: &[LoweringKind::Cpu],
+        };
+        struct Src;
+        impl NodeOp for Src {
+            fn manifest(&self) -> &'static NodeManifest {
+                &SRC
+            }
+            fn eval(&self, ctx: &mut EvalCtx<'_>) {
+                let p: Vec<[f32; 2]> = (0..10).map(|i| [i as f32, 0.0]).collect();
+                ctx.emit(Stream::new(10).with("P", Column::Vec2(p)));
+            }
+        }
+        static VAL: NodeManifest = NodeManifest {
+            id: NodeTypeId::of("motion.cull.test.port.value"),
+            name: "motion.cull.test.port.value",
+            inputs: &[],
+            outputs: &[PortSpec {
+                name: "out",
+                ty: VALUE,
+            }],
+            effect: Effect::Pure,
+            clock: Clock::Frame,
+            params: &[],
+            lowerings: &[LoweringKind::Cpu],
+        };
+        struct Val;
+        impl NodeOp for Val {
+            fn manifest(&self) -> &'static NodeManifest {
+                &VAL
+            }
+            fn eval(&self, ctx: &mut EvalCtx<'_>) {
+                ctx.emit(Stream::new(1).with(VALUE_COL, Column::Scalar(vec![2.0])));
+            }
+        }
+        struct Ops;
+        impl OpResolver for Ops {
+            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+                match ty {
+                    t if t == SRC.id => Some(&Src),
+                    t if t == VAL.id => Some(&Val),
+                    t if t == MANIFEST.id => Some(&MotionCull),
+                    _ => None,
+                }
+            }
+        }
+
+        let mut g = Graph::new();
+        let src = g.add_node("motion.cull.test.port.src");
+        let val = g.add_node("motion.cull.test.port.value");
+        let c = g.add_node("motion.cull");
+        g.set_param(c, "mode", MODE_COUNT as f32);
+        g.set_param(c, "max", 9.0); // o param diz 9...
+        for (from, to, port) in [(src, c, 0u16), (val, c, 1)] {
+            g.connect(Edge {
+                from: (from, 0),
+                to: (to, port),
+                delayed: false,
+            })
+            .unwrap();
+        }
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &Ops, c, 0.0).unwrap();
+        // ...e a porta diz 2, então sobram 2 — o fio vence o param, no modo Count como já
+        // vencia no Fraction.
+        assert_eq!(out[0].as_stream().count(), 2);
+
+        // ⚠️ E a METADE que o nome deste gate promete e a de cima NÃO testa: **sem** fio, qual
+        // param o modo lê. Com a porta ligada os dois ramos leem o mesmo número, então uma
+        // mutação que faça o Count ler `amount` passa aqui em cima — medido. Sem fio, `max` e
+        // `amount` discordam de propósito, e só um dos dois pode estar certo.
+        let mut g2 = Graph::new();
+        let src2 = g2.add_node("motion.cull.test.port.src");
+        let c2 = g2.add_node("motion.cull");
+        g2.set_param(c2, "mode", MODE_COUNT as f32);
+        g2.set_param(c2, "max", 2.0);
+        g2.set_param(c2, "amount", 9.0);
+        g2.connect(Edge {
+            from: (src2, 0),
+            to: (c2, 0),
+            delayed: false,
+        })
+        .unwrap();
+        let mut cook2 = Cook::new();
+        let out2 = cook2.cook(&g2, &Ops, c2, 0.0).unwrap();
+        assert_eq!(
+            out2[0].as_stream().count(),
+            2,
+            "o modo Count lê `max`; ler `amount` daria 9"
+        );
     }
 }

@@ -422,16 +422,35 @@ pub(super) fn dispatch(
     // NOTA: o estilo de quina não é mais publicado para um toggle na seção Vertex — ele virou o
     // par de ferramentas Fillet / Chamfer (o SINAL do `corner_radius` é escrito pelo arrasto).
 
-    // Publish the selected path's anchor bbox `[x, y, w, h]` (world) so the panel
-    // shows + seeds the numeric Transform fields. `None` hides the section.
+    // Publish the selected path's anchor bbox `[x, y, w, h]` so the panel shows + seeds the
+    // numeric Transform fields. `None` hides the section.
+    //
+    // ⚠️ **Os quatro números cruzam a fronteira de DISPLAY aqui**, e a razão é que este painel
+    // era a QUARTA superfície a responder *onde está esta coisa?* — a régua, o Inspector e o
+    // painel de Grid Snap já convertiam, e este publicava metros de mundo: com os defaults
+    // (100 px/m, Pixels) os três diziam `150` e este dizia `1.5`.
+    //
+    // Posição e tamanho atravessam pela MESMA porta porque a conversão é uma escala pura (sem
+    // deslocamento) — `x` e `w` não precisam de leis diferentes.
     #[cfg(feature = "panel-vector")]
-    ph2d_panel_vector::set_current_transform(if vector_active {
-        pen.selected()
-            .and_then(|sel| scene.path_world_curve_bbox(xforms, sel))
-            .map(|(lo, hi)| [lo[0], lo[1], hi[0] - lo[0], hi[1] - lo[1]])
-    } else {
-        None
-    });
+    {
+        let display = ph2d_editor::LengthDisplay::of(&hero.project);
+        ph2d_panel_vector::set_length_suffix(display.suffix());
+        ph2d_panel_vector::set_current_transform(if vector_active {
+            pen.selected()
+                .and_then(|sel| scene.path_world_curve_bbox(xforms, sel))
+                .map(|(lo, hi)| {
+                    [
+                        display.value(lo[0]),
+                        display.value(lo[1]),
+                        display.value(hi[0] - lo[0]),
+                        display.value(hi[1] - lo[1]),
+                    ]
+                })
+        } else {
+            None
+        });
+    }
 
     // **O CONECTOR selecionado** — a seção Connector do painel (Route / Jetty / Spread).
     // Publica os valores **EFETIVOS** (o automático, quando o usuário não fixou nada);
@@ -535,11 +554,16 @@ pub(super) fn dispatch(
         ph2d_panel_vector::set_current_grad_jitter(sel_point.map(|gp| gp.jitter));
     }
 
-    // Calibrate the Transform fields' drag scrub to the camera: `px_to_world`
-    // value-units per cursor pixel ⇒ dragging a chip N px moves the shape N px
-    // on screen at any zoom (unbounded — no clamp). Live each frame so zoom in/out
-    // keeps the 1:1 feel.
+    // Calibrate the Transform fields' drag scrub to the camera: value-units per cursor pixel ⇒
+    // dragging a chip N px moves the shape N px on screen at any zoom (unbounded — no clamp).
+    // Live each frame so zoom in/out keeps the 1:1 feel.
+    //
+    // ⚠️ **A TAXA cruza a MESMA fronteira que o valor, e esquecê-la é o defeito que compila.**
+    // Ela é *comprimento por pixel de cursor*, logo é um comprimento — com o valor em pixels de
+    // display e a taxa em metros de mundo, arrastar um chip um pixel moveria o número em `0,01`
+    // enquanto ele mostra centenas: o chip pareceria travado. Uma porta, os dois lados.
     if vector_active {
+        let px_to_world = ph2d_editor::LengthDisplay::of(&hero.project).value(px_to_world);
         for id in [
             ph2d_editor::ids::VECTOR_TRANSFORM_X,
             ph2d_editor::ids::VECTOR_TRANSFORM_Y,

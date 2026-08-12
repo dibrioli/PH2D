@@ -80,12 +80,25 @@ impl DisplayUnit {
     /// Inverse of [`Self::from_meters`] — convert a value the user
     /// typed (in display unit) back to sim-space meters before
     /// writing into ECS.
+    ///
+    /// Delegates to [`Self::to_meters_f64`] so the RULE lives once.
     pub fn to_meters(self, value: f32, pixels_per_meter: f32) -> f32 {
+        self.to_meters_f64(f64::from(value), pixels_per_meter) as f32
+    }
+
+    /// The same inverse at `f64` width — the mirror of [`Self::from_meters_f64`],
+    /// and it exists for the same reason: a coordinate the artist types far from
+    /// the origin (`1e8` px) does not survive a round trip through `f32`.
+    ///
+    /// ⚠️ **A guarda de `pixels_per_meter > 0.0` é a que impede um `inf` de entrar
+    /// no documento** — a escala tem piso na UI (`MIN_PIXELS_PER_METER`), mas um
+    /// arquivo de outra máquina não é obrigado a honrá-lo.
+    pub fn to_meters_f64(self, value: f64, pixels_per_meter: f32) -> f64 {
         match self {
             DisplayUnit::Meters => value,
             DisplayUnit::Pixels => {
                 if pixels_per_meter > 0.0 {
-                    value / pixels_per_meter
+                    value / f64::from(pixels_per_meter)
                 } else {
                     value
                 }

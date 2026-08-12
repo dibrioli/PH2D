@@ -5720,7 +5720,14 @@ impl crate::App {
             // campos X/Y/W/H). O mapa é o do frame passado — os paths envolvidos já
             // existem, então basta.
             let vec_xf_ops = crate::vec_transform::build(sim, &self.vec_entities);
+            // ⚠️ **A VOLTA da fronteira de display, e ela mora AQUI e não dentro do
+            // `apply_vec_transform`.** O `target` é o número que o artista DIGITOU, logo está na
+            // unidade dele; a operação fala mundo. Converter dentro dela quebraria o outro
+            // chamador logo abaixo — o preset de dispositivo devolve **unidades de DOCUMENTO**
+            // (`DevicePreset::size`, o aspecto do aparelho normalizado ao `LONG_SIDE`), que é dado
+            // AUTORADO e não um número da face do artista: ele tem de atravessar intocado.
             if let Some((field, target)) = pending_vec_transform {
+                let target = ph2d_editor::LengthDisplay::of(&hero.project).to_world(target);
                 crate::input_dispatch::apply_vec_transform(
                     sim,
                     &self.vec_entities,

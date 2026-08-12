@@ -70,6 +70,18 @@ impl LengthDisplay {
         self.unit.from_meters_f64(world, self.pixels_per_meter)
     }
 
+    /// A VOLTA: o comprimento de mundo que o número digitado significa.
+    ///
+    /// ⚠️ **Uma porta com dois sentidos, e é isso que a torna uma porta.** Um campo
+    /// que MOSTRA por aqui e LÊ por outro caminho é a forma exata de o número voltar
+    /// noutra unidade — o artista digita o mesmo `150` que o campo lhe mostrou e a
+    /// forma salta cem vezes de tamanho. `to_world(value(w)) == w` é a lei, e há
+    /// gate.
+    #[must_use]
+    pub fn to_world(self, display: f64) -> f64 {
+        self.unit.to_meters_f64(display, self.pixels_per_meter)
+    }
+
     /// `"m"` ou `"px"` — o sufixo, para quem o desenha.
     #[must_use]
     pub fn suffix(self) -> &'static str {

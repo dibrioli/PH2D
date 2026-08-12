@@ -107,6 +107,19 @@ mod ui_states_state;
 pub(crate) use ui_states_state::ui_states_state;
 pub use ui_states_state::{UiStatesState, set_ui_states_state};
 
+/// **COM QUE TINTA a forma aparece** — o tipo de preenchimento, o ângulo do gradiente, os dois
+/// números do ponto selecionado e a regra do caminho composto. Irmão pelo teto de 600 LOC, e o
+/// corte é o mesmo que a `ph2d-vec-scene` fez no `lib.rs` desta linha: *com que tinta a forma
+/// aparece* × *o que a forma É*.
+#[path = "state_fill.rs"]
+mod fill_state;
+pub use fill_state::set_current_grad_jitter;
+pub(crate) use fill_state::{
+    current_fill_kind, current_fill_rule, current_grad_angle, current_grad_influence,
+    current_grad_jitter,
+};
+pub use fill_state::{set_current_fill, set_current_fill_rule, set_current_grad_influence};
+
 /// **OS TOKENS da seleção** (plano UI/UX W4) — que propriedade dela segue um token, e qual.
 #[path = "state_tokens.rs"]
 mod token_state;
@@ -130,26 +143,22 @@ thread_local! {
     /// Type of the currently-selected vertex (published by the shell each frame
     /// from the Pen). `None` = no vertex selected → the Vertex section hides.
     static CURRENT_VERTEX_TYPE: RefCell<Option<VertexSel>> = const { RefCell::new(None) };
-    /// Selected path's anchor bbox `[x, y, w, h]` (world), published each frame.
-    /// `None` = no path selected → the Transform section hides.
+    /// Selected path's anchor bbox `[x, y, w, h]` **na unidade do ARTISTA**, published each
+    /// frame. `None` = no path selected → the Transform section hides.
+    ///
+    /// ⚠️ Dizia *(world)* e passou a mentir com a fronteira de display: a shell converte na
+    /// publicação e na volta, e o painel nunca vê metros.
     static CURRENT_TRANSFORM: Cell<Option<[f64; 4]>> = const { Cell::new(None) };
+    /// O SUFIXO da unidade que o artista escolheu (`"px"` / `"m"`), publicado pela shell.
+    ///
+    /// ⚠️ **É o sufixo, não a REGRA.** A conversão mora inteira na fronteira da shell
+    /// (`LengthDisplay`), e o painel recebe números já na face do artista — este `&'static str`
+    /// existe só para o cabeçalho poder DIZER em que unidade eles estão, que é o precedente do
+    /// Inspector (`Position (px)`). Guardar aqui a escala seria a segunda cópia da regra.
+    static LENGTH_SUFFIX: Cell<&'static str> = const { Cell::new("m") };
     /// Selected path's `closed` flag, published each frame (`None` = no selection).
     /// Drives the Close/Open toggle button's label.
     static CURRENT_PATH_CLOSED: Cell<Option<bool>> = const { Cell::new(None) };
-    /// Selected path's fill kind (`None` = no path selected / no fill). Drives the
-    /// Fill-type selector highlight + whether the gradient controls show.
-    static CURRENT_FILL_KIND: Cell<Option<FillKind>> = const { Cell::new(None) };
-    /// Selected path's linear-gradient angle in degrees (`None` unless Linear).
-    static CURRENT_GRAD_ANGLE: Cell<Option<f64>> = const { Cell::new(None) };
-    /// Selected multi-point gradient point's influence (`None` unless a point is
-    /// selected) — drives the Influence slider's visibility + value.
-    static CURRENT_GRAD_INFLUENCE: Cell<Option<f64>> = const { Cell::new(None) };
-    /// Selected multi-point gradient point's jitter (`None` unless a point is
-    /// selected) — drives the Jitter slider's visibility + value.
-    static CURRENT_GRAD_JITTER: Cell<Option<f64>> = const { Cell::new(None) };
-    /// Fill rule of the selected path, `Some` only when it is a COMPOUND path —
-    /// the two rules agree on a single contour, so the row would be a no-op there.
-    static CURRENT_FILL_RULE: Cell<Option<PathFillRule>> = const { Cell::new(None) };
     /// "Set Center" armado: a próxima pressão no canvas reposiciona a origem.
     static CURRENT_PIVOT_EDIT: Cell<bool> = const { Cell::new(false) };
     /// A seleção tem alguma forma VIVA (paramétrica/texto, com `VecShape`) —
@@ -259,8 +268,16 @@ pub(crate) fn current_vertex_type() -> Option<VertexSel> {
     CURRENT_VERTEX_TYPE.with(|c| *c.borrow())
 }
 
-/// Publish the selected path's anchor bbox `[x, y, w, h]` (world), or `None`.
-/// Called by the shell each frame while the `vector` tool is active.
+/// Publica a bbox de âncoras do caminho selecionado `[x, y, w, h]` **já na unidade do artista**,
+/// ou `None`. Chamada pela shell a cada frame com a ferramenta `vector` em mãos.
+///
+/// ⚠️ **Os quatro números chegam CONVERTIDOS, e é isso que mantém o painel unit-agnóstico.** A
+/// régua do canvas, o Inspector e o painel de Grid Snap respondem à MESMA pergunta — *onde está
+/// esta coisa?* — e antes desta wave este painel era o único que respondia em metros de mundo:
+/// com os defaults (100 px/m, Pixels) os três diziam `150` e este dizia `1.5`.
+///
+/// A conversão vive inteira na fronteira da shell (`ph2d_editor::LengthDisplay`), nos dois
+/// sentidos: o número sai UMA vez na face do artista e volta pela mesma porta.
 pub fn set_current_transform(bbox: Option<[f64; 4]>) {
     CURRENT_TRANSFORM.with(|c| c.set(bbox));
 }
@@ -268,6 +285,17 @@ pub fn set_current_transform(bbox: Option<[f64; 4]>) {
 /// The selected path's bbox this frame (`None` ⇒ hide the Transform section).
 pub(crate) fn current_transform() -> Option<[f64; 4]> {
     CURRENT_TRANSFORM.with(|c| c.get())
+}
+
+/// Publica o sufixo da unidade que o artista lê (`"px"` / `"m"`) — o que o cabeçalho da seção
+/// Transform mostra entre parênteses.
+pub fn set_length_suffix(suffix: &'static str) {
+    LENGTH_SUFFIX.with(|c| c.set(suffix));
+}
+
+/// O sufixo da unidade corrente.
+pub(crate) fn length_suffix() -> &'static str {
+    LENGTH_SUFFIX.with(Cell::get)
 }
 
 /// Publish the selected path's `closed` flag (or `None` when no path is selected).
@@ -278,54 +306,6 @@ pub fn set_current_path_closed(closed: Option<bool>) {
 /// The selected path's `closed` flag this frame (drives the toggle button label).
 pub(crate) fn current_path_closed() -> Option<bool> {
     CURRENT_PATH_CLOSED.with(|c| c.get())
-}
-
-/// Publish the selected path's fill kind + linear angle (both `None` when no path
-/// is selected or it has no fill / isn't linear).
-pub fn set_current_fill(kind: Option<FillKind>, angle_deg: Option<f64>) {
-    CURRENT_FILL_KIND.with(|c| c.set(kind));
-    CURRENT_GRAD_ANGLE.with(|c| c.set(angle_deg));
-}
-
-/// The selected path's fill kind this frame (`None` ⇒ hide the Fill-type selector).
-pub(crate) fn current_fill_kind() -> Option<FillKind> {
-    CURRENT_FILL_KIND.with(|c| c.get())
-}
-
-/// The selected path's linear-gradient angle this frame (`None` unless Linear).
-pub(crate) fn current_grad_angle() -> Option<f64> {
-    CURRENT_GRAD_ANGLE.with(|c| c.get())
-}
-
-/// Publish the selected multi-point gradient point's influence (`None` = no point).
-pub fn set_current_grad_influence(v: Option<f64>) {
-    CURRENT_GRAD_INFLUENCE.with(|c| c.set(v));
-}
-
-/// The selected multi-point point's influence this frame (drives the slider).
-pub(crate) fn current_grad_influence() -> Option<f64> {
-    CURRENT_GRAD_INFLUENCE.with(|c| c.get())
-}
-
-/// Publish the selected multi-point gradient point's jitter (`None` = no point).
-pub fn set_current_grad_jitter(v: Option<f64>) {
-    CURRENT_GRAD_JITTER.with(|c| c.set(v));
-}
-
-/// The selected multi-point point's jitter this frame (drives the slider).
-pub(crate) fn current_grad_jitter() -> Option<f64> {
-    CURRENT_GRAD_JITTER.with(|c| c.get())
-}
-
-/// Publish the selected path's fill rule — `None` unless it is a compound path
-/// (the Fill Rule row hides otherwise, since both rules would paint the same).
-pub fn set_current_fill_rule(rule: Option<PathFillRule>) {
-    CURRENT_FILL_RULE.with(|c| c.set(rule));
-}
-
-/// The selected compound path's fill rule this frame (`None` = not compound).
-pub(crate) fn current_fill_rule() -> Option<PathFillRule> {
-    CURRENT_FILL_RULE.with(|c| c.get())
 }
 
 /// The angle the Angle chip last reported this gesture (for the delta emit).

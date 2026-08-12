@@ -8,6 +8,20 @@ use crate::paint_sections::BodyCtx;
 use crate::state;
 use ph2d_i18n::tr;
 
+/// O rótulo da seção **com a unidade entre parênteses** — o precedente do Inspector
+/// (`Position (px)`).
+///
+/// ⚠️ **Os quatro números chegam já na face do artista** (a shell converte na fronteira), então
+/// sem esta palavra ele não tem como saber se `150` é pixel ou metro. Um sufixo por ROW seriam
+/// quatro cópias da mesma palavra, e o `R` ficaria a mentir junto — ele é em GRAUS, não é
+/// comprimento, e por isso mora na mesma seção sem herdar o sufixo dela.
+///
+/// Função pura porque o harness de painel deste repo lê retângulos, nunca texto: é aqui que a
+/// afirmação *"o cabeçalho diz a unidade"* pode ser feita de todo.
+fn transform_header(suffix: &str) -> String {
+    format!("{} ({suffix})", tr("panel.vector.section.transform"))
+}
+
 impl BodyCtx<'_> {
     /// Numeric Transform — X/Y (position) + W/H (size) of the selected path's
     /// anchor bbox, two 2-column rows. Hidden when no path is selected.
@@ -15,11 +29,8 @@ impl BodyCtx<'_> {
         if state::current_transform().is_none() {
             return y;
         }
-        let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_TRANSFORM,
-            tr("panel.vector.section.transform"),
-            y,
-        );
+        let head = transform_header(state::length_suffix());
+        let (mut y, collapsed) = self.section_header(ids::VECTOR_SECTION_TRANSFORM, &head, y);
         if collapsed {
             return y;
         }
@@ -66,5 +77,27 @@ impl BodyCtx<'_> {
             "Set Center"
         };
         self.action_button(ids::VECTOR_PIVOT_EDIT, label, y)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::transform_header;
+
+    /// **O cabeçalho carrega a unidade que a shell publicou** — e o gate mede as DUAS, porque um
+    /// rótulo que dissesse sempre a mesma palavra seria pior que rótulo nenhum: ele afirmaria uma
+    /// unidade enquanto os números falam a outra.
+    ///
+    /// Mutação que tem de sangrar: o `format!` voltar a devolver só o `tr(...)`.
+    #[test]
+    fn the_transform_header_says_which_unit_the_numbers_are_in() {
+        let px = transform_header("px");
+        let m = transform_header("m");
+        assert!(px.ends_with("(px)"), "o cabeçalho em pixels: {px}");
+        assert!(m.ends_with("(m)"), "o cabeçalho em metros: {m}");
+        assert_ne!(px, m, "duas unidades, dois rótulos");
+        // E o nome da seção sobrevive — o sufixo ACRESCENTA, não substitui.
+        let base = ph2d_i18n::tr("panel.vector.section.transform");
+        assert!(px.starts_with(base), "{px} tem de começar por {base}");
     }
 }

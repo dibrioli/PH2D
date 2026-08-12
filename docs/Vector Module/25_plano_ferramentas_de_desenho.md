@@ -1204,6 +1204,71 @@ atravessou a wave inteira até o smoke; o gate novo carrega essa metade como CON
 
 **A W6 FECHOU** — as seis linhas da tabela §9 estão entregues (W6.1 a reivindicação 2-D · W6.2 as guias e a régua · W6.3 a simetria · W6.4 a seleção de nós com dono · W6.5 o laço · W6.6 o rótulo de distância).
 
+---
+
+### ✅ W6.7 — O PAINEL DO VETOR FALA A UNIDADE DO ARTISTA (e a lista aberta é RE-MEDIDA)
+
+A wave nasceu de uma varredura da lista de pendências, e **duas das três candidatas já estavam
+fechadas** — as notas é que tinham envelhecido. Fica o registo, porque uma lista velha faz a
+próxima LLM propor construir o que existe:
+
+| item que a lista dava como ABERTO | medido |
+|---|---|
+| *"o hit-test só recebe o produtor de OFFSET"* | **FECHADO.** `App::vec_live_drawn` guarda o mapa FUNDIDO que o `dispatch` desenhou e os **seis** sítios de pick da `input_dispatch` leem-no. Dez produtores falam `LiveGeometry`; nove entram na fusão (o `fx_live` CONSOME o mapa e produz pixels, não geometria) |
+| *"editar nós de VÁRIAS formas — ausência POR CONSTRUÇÃO"* | **FECHADO.** `selected_verts` é `Vec<(VecPathId, usize)>` — o dono viaja no par, e o `multi_probe` já foi reconferido (*"uma sonda escrita contra a ausência tem de ser reconferida no dia em que a ausência fecha"*) |
+| *"o caminho do TABLET custa **uma função**"* | ⚠️ **MAL PRECIFICADO.** `winit 0.30.13` emite `force: None` nos **quatro** sítios de toque do Wayland e no do X11 (`// TODO`), e **não tem `zwp_tablet_v2`**. Não é fiação: é integração de plataforma ou upgrade do winit |
+
+#### O que ficou aberto e foi construído: a QUARTA superfície
+
+A régua, o Inspector e o painel de Grid Snap respondem à mesma pergunta — *onde está esta coisa,
+e que tamanho tem?* A W6.6 pôs a régua de acordo com os outros dois. **O painel do VETOR era a
+quarta**, e a única ainda a responder em metros de mundo:
+
+| superfície | para a mesma forma |
+|---|---|
+| Inspector `Position` | **150** |
+| régua do canvas (W6.6) | **150** |
+| painel de Grid Snap | **150** |
+| **painel do VETOR, X** | **`1.5`** |
+
+E é o painel que o artista tem aberto **enquanto desenha**.
+
+#### A fronteira tem TRÊS lados, e esquecer um deles compila
+
+1. **A publicação** — os quatro números saem por `LengthDisplay::value`. Posição e tamanho pela
+   mesma porta, porque a conversão é escala pura (sem deslocamento): `x` e `w` não precisam de
+   leis diferentes.
+2. **A volta** — o número DIGITADO entra por `LengthDisplay::to_world`, a porta nova. ⚠️ Uma porta
+   que MOSTRA por um caminho e LÊ por outro é como o artista digita de volta o mesmo `150` que o
+   campo lhe mostrou e a forma salta cem vezes; `to_world(value(w)) == w` é gate.
+3. **A TAXA DE ARRASTO** — ela é *comprimento por pixel de cursor*, logo é um comprimento.
+   Esquecê-la é o defeito que **compila e parece funcionar**: o chip mostraria centenas e andaria
+   `0,01` por pixel, parecendo travado.
+
+#### ⚠️ E o que NÃO atravessa é o que carrega o gate
+
+`apply_vec_transform` tem **dois** chamadores e só um carrega um número do artista. O outro é o
+**preset de dispositivo**, e `DevicePreset::size` devolve *unidades de DOCUMENTO* (o aspecto do
+aparelho normalizado ao `LONG_SIDE`) — dado **AUTORADO**, não a face de nada. Converter dentro da
+operação seria o corte errado e **compila**: toda moldura de aparelho encolheria cem vezes sem que
+nada dissesse uma palavra.
+
+⇒ A conversão mora no sítio do **DRENO**, e o gate afirma a **ausência** dela no bloco vizinho,
+com `expect` como controlo positivo (se o bloco se mudar, o gate falha alto em vez de varrer o
+vazio).
+
+#### O cabeçalho DIZ a unidade
+
+`Transform (px)` — o precedente do Inspector. Os números chegam já na face do artista, então sem
+esta palavra ele não sabe se `150` é pixel ou metro. Um sufixo por ROW seriam quatro cópias, e o
+**`R` ficaria a mentir junto** (é em GRAUS — não é comprimento, e por isso não herda o sufixo da
+seção). ⚠️ O painel recebe o **sufixo, nunca a regra**: guardar a escala ali seria a segunda cópia.
+
+**Aberto, com o número ao lado:** o censo achou **oito** comprimentos no painel; esta wave fecha os
+**quatro** do Transform (os que respondem a mesma pergunta das outras três superfícies). Os outros
+quatro são do **auto layout** (`gap`, `min.w`, `min.h`, recuo) e têm caminho de publicação próprio
+— mesma lei, outra fronteira.
+
 ## §10 — W0: A HIGIENE (defeitos que a auditoria achou, não features)
 
 Barata, e paga-se sozinha dentro da W1:

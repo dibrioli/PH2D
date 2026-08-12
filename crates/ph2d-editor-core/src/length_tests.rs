@@ -192,3 +192,47 @@ fn the_narrow_conversion_agrees_with_the_wide_one() {
 fn the_default_ruler_is_the_projects_ruler() {
     assert_eq!(LengthDisplay::default(), shipping());
 }
+
+/// **A porta tem DOIS sentidos, e eles fecham** — `to_world(value(w)) == w`.
+///
+/// É a lei que impede o defeito mais caro que um campo numérico pode ter: MOSTRAR por uma porta
+/// e LER por outra. O artista digitaria de volta o mesmo `150` que o campo lhe mostrou e a forma
+/// saltaria cem vezes de tamanho — e nada no compilador diria uma palavra, porque os dois lados
+/// são `f64`.
+///
+/// Mutação que tem de sangrar: `to_world` devolver o valor cru.
+#[test]
+fn the_door_closes_in_both_directions() {
+    for d in [
+        shipping(),
+        LengthDisplay {
+            unit: DisplayUnit::Meters,
+            pixels_per_meter: DEFAULT_PIXELS_PER_METER,
+        },
+        LengthDisplay {
+            unit: DisplayUnit::Pixels,
+            pixels_per_meter: 37.5,
+        },
+    ] {
+        for world in [0.0_f64, 0.16, 1.5, -2.75, 4096.0] {
+            let round = d.to_world(d.value(world));
+            assert!(
+                (round - world).abs() < 1e-9,
+                "{d:?} @ {world}: voltou {round}"
+            );
+        }
+    }
+}
+
+/// **Uma escala degenerada não devolve `inf` ao documento.**
+///
+/// A UI tem piso (`MIN_PIXELS_PER_METER`), mas um arquivo de outra máquina não é obrigado a
+/// honrá-lo — e `x / 0.0` é `inf`, que envenena um `Transform` inteiro em silêncio.
+#[test]
+fn a_degenerate_scale_does_not_poison_the_document() {
+    let d = LengthDisplay {
+        unit: DisplayUnit::Pixels,
+        pixels_per_meter: 0.0,
+    };
+    assert!(d.to_world(150.0).is_finite());
+}

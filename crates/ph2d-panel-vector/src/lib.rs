@@ -126,7 +126,8 @@ pub use state::{
     set_current_text_visible, set_current_text_wrap, set_current_textpath,
     set_current_textpath_can_link, set_current_transform, set_current_vector_style,
     set_current_vertex_count, set_cut_line_exists, set_expand_join, set_expand_side,
-    set_filter_blend_names, set_filter_kinds, set_selected_vertex_type, take_want_font_previews,
+    set_filter_blend_names, set_filter_kinds, set_length_suffix, set_selected_vertex_type,
+    take_want_font_previews,
 };
 
 use ph2d_a11y::NodeId;

@@ -16,7 +16,7 @@ use super::ids;
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, resolve};
-use crate::widget::{ButtonState, CHIP_X_OFFSET_PX, ToolRail, ToolRailEntry, paint_tool_rail};
+use crate::widget::{ButtonState, CHIP_X_OFFSET_PX, ToolRail, ToolRailEntry, paint_tool_rail_t};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
@@ -281,6 +281,7 @@ fn active_mask_sub(store: &WidgetStore) -> Option<(&'static str, IconId, &'stati
     })
 }
 
+#[allow(clippy::too_many_arguments)] // o relogio e' o 8o; ver a nota do `paint_rail`
 pub fn paint_left_rail(
     layout: &HeroLayout,
     scene: &mut VectorScene,
@@ -289,6 +290,7 @@ pub fn paint_left_rail(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     painter_active: bool,
+    motion: &crate::motion::UiMotion,
 ) {
     let rail = ToolRail::new(
         NodeId(200),
@@ -304,6 +306,7 @@ pub fn paint_left_rail(
         store,
         rail,
         painter_active,
+        motion,
     );
 }
 
@@ -407,6 +410,8 @@ pub(crate) fn rail_entries(store: &WidgetStore, painter_active: bool) -> Vec<Too
 
 /// O desenho propriamente dito (o rail já montado).
 #[allow(clippy::too_many_arguments)]
+// ⚠️ O relogio e' o 9o argumento. O corte natural seria um struct de contexto de pintura, que
+// e' refactor do chrome inteiro e nao desta wave — o `allow` acima ja' cobre a contagem.
 fn paint_rail(
     layout: &HeroLayout,
     scene: &mut VectorScene,
@@ -416,6 +421,7 @@ fn paint_rail(
     store: &WidgetStore,
     rail: ToolRail,
     painter_active: bool,
+    motion: &crate::motion::UiMotion,
 ) {
     let rail_rect = Rect::new(
         layout.left_rail.x,
@@ -440,7 +446,9 @@ fn paint_rail(
         Radius::Md.px(),
         resolve(ColorToken::RailBg, theme),
     );
-    paint_tool_rail(&rail, rail_rect, scene, text_system, theme, store);
+    paint_tool_rail_t(&rail, rail_rect, scene, text_system, theme, store, &|id| {
+        motion.get(id).unwrap_or(1.0)
+    });
 
     // Hit-rects MUST mirror exactly what `paint_tool_rail` paints — same
     // `chip_px` and `CHIP_X_OFFSET_PX`. Capture the Shapes chip rect so the
@@ -495,6 +503,7 @@ fn paint_rail(
             &PAINTER_SHAPES,
             NodeId(201),
             "Shape options",
+            motion,
         );
     }
     if painter_active
@@ -512,6 +521,7 @@ fn paint_rail(
             &PAINTER_MASK_SUBS,
             NodeId(202),
             "Mask options",
+            motion,
         );
     }
 }
@@ -531,6 +541,7 @@ fn paint_rail_flyout(
     subs: &[(NodeId, &str, IconId, &str)],
     rail_id: NodeId,
     a11y: &str,
+    motion: &crate::motion::UiMotion,
 ) {
     let entries: Vec<ToolRailEntry> = subs.iter().map(|t| tool_entry(store, *t)).collect();
     let rail = ToolRail::new(rail_id, a11y, entries);
@@ -553,7 +564,15 @@ fn paint_rail_flyout(
         Radius::Md.px(),
         resolve(ColorToken::RailBg, theme),
     );
-    paint_tool_rail(&rail, flyout_rect, scene, text_system, theme, store);
+    paint_tool_rail_t(
+        &rail,
+        flyout_rect,
+        scene,
+        text_system,
+        theme,
+        store,
+        &|id| motion.get(id).unwrap_or(1.0),
+    );
     let chip_px = size.chip_px();
     let gap = Spacing::Xs.px();
     let chip_x = flyout_rect.x + CHIP_X_OFFSET_PX;

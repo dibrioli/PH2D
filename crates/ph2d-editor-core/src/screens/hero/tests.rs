@@ -849,6 +849,7 @@ fn paint_top_bar_smoke() {
         &mut hits,
         &store,
         false,
+        &crate::motion::UiMotion::default(),
     );
 }
 
@@ -870,6 +871,7 @@ fn paint_top_bar_image_tools_mode_swaps_right_side() {
         &mut hits,
         &store,
         true,
+        &crate::motion::UiMotion::default(),
     );
     assert!(
         hits.rect_for(ids::IMAGE_ACTION_TRIM).is_some(),
@@ -1423,6 +1425,7 @@ fn paint_left_rail_smoke() {
         &mut hits,
         &store,
         false,
+        &crate::motion::UiMotion::default(),
     );
 }
 
@@ -1445,6 +1448,7 @@ fn paint_left_rail_painter_mode_smoke() {
         &mut hits,
         &store,
         true,
+        &crate::motion::UiMotion::default(),
     );
     // The flyout's shape chips are hit-registered while open.
     assert!(

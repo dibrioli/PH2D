@@ -34,6 +34,14 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     // Unit tests for `command_palette` (moved into the widget folder so the mod-sync scan stops
     // seeing them as a widget of their own) — no user-facing widget.
     ("command_palette/tests.rs", "test module; parent owns a11y"),
+    // A metade que DESENHA o rail. O corte é por responsabilidade (o teto de 500 LOC dos
+    // primitivos forçou-o na wave da UI viva): o PAI carrega o modelo — as entradas, o preset de
+    // tamanho e a árvore `Role::Toolbar` — e este filho só põe tinta. Mover o a11y para cá seria
+    // dar duas casas à mesma pergunta.
+    (
+        "tool_rail/paint.rs",
+        "paint only; parent owns the Toolbar a11y tree",
+    ),
     // Unit tests for `skin` (na pasta pelo MESMO motivo do `command_palette`: um `*_tests.rs`
     // solto vira um "widget" para o gerador de `mod`) — o pai delega ao pintor real do catálogo,
     // que é quem tem a11y.

@@ -16,7 +16,10 @@ use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
-use crate::widget::{ButtonState, IconButtonStyle, IconGlyph, PILL_PADDING_PX, paint_icon_button};
+use crate::widget::{
+    ButtonState, IconButtonStyle, IconGlyph, PILL_PADDING_PX, paint_icon_button,
+    paint_icon_button_t,
+};
 use crate::zones::Rect;
 
 use super::super::fixture;
@@ -79,6 +82,7 @@ pub(super) fn paint_topbar_rail_chip(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    motion: &crate::motion::UiMotion,
 ) {
     // Chip size mirrors the rail. Read from store so the Themes-menu
     // RailButtonSize preset (Small/Medium/Large) affects the topbar
@@ -125,11 +129,12 @@ pub(super) fn paint_topbar_rail_chip(
     // gate doesn't fire here. `icon_tint(state)` inside `paint_icon_button`
     // produces the same Text2/Text1/Accent/TextDisabled mapping the
     // hand-rolled `fg` branch did.
-    paint_icon_button(
+    paint_icon_button_t(
         chip_rect,
         glyph,
         IconButtonStyle::Plain,
         state,
+        motion.get(chip_id).unwrap_or(1.0),
         scene,
         theme,
     );
@@ -176,6 +181,7 @@ pub(super) fn paint_top_bar_cluster(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    motion: &crate::motion::UiMotion,
 ) {
     use fixture::TopBarCluster;
     let pad_x = Spacing::Md.px();
@@ -274,6 +280,7 @@ pub(super) fn paint_top_bar_cluster(
                 theme,
                 hit_index,
                 store,
+                motion,
             );
         }
         TopBarCluster::Project { name } => {
@@ -356,6 +363,7 @@ pub(super) fn paint_top_bar_cluster(
                     theme,
                     hit_index,
                     store,
+                    motion,
                 );
             }
         }
@@ -382,6 +390,7 @@ pub(super) fn paint_top_bar_cluster(
                     theme,
                     hit_index,
                     store,
+                    motion,
                 );
             }
         }

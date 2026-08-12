@@ -319,6 +319,7 @@ pub fn paint_hero_screen(
         &mut hero.hit_index,
         &hero.store,
         hero.image_edit.mode_on,
+        &hero.motion,
     );
     // Publish Inspector + Hierarchy panel rects so wheel-event
     // dispatch can route to them. Both are static (no drag offset).
@@ -510,6 +511,7 @@ pub fn paint_hero_screen(
         &mut hero.hit_index,
         &hero.store,
         painter_active,
+        &hero.motion,
     );
     if hero.view.stats_visible {
         paint_bottom_hud(&layout, scene, text_system, hero.theme, hero.stats);

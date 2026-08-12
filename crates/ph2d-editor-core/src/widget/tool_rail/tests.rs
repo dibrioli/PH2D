@@ -158,3 +158,74 @@ fn paint_smoke_minimal_rail() {
         &store,
     );
 }
+
+// ---------------------------------------------------------------------------
+// O eixo do hover (wave da UI viva)
+// ---------------------------------------------------------------------------
+
+/// **Um chip ACTIVO fica fora do eixo, e é decisão — não omissão.**
+///
+/// *Activo* responde *«esta é a ferramenta na tua mão»*, e uma resposta que desvanece entre dois
+/// valores é uma resposta que se lê mal de relance. Mesma lei do `Pressed` no `Button::bg_color`.
+///
+/// **Mutação que deve sangrar:** tirar o `is_active ||` da guarda — um chip seleccionado passaria
+/// a piscar de Accent para Text2 e de volta enquanto o rato passa por cima.
+#[test]
+fn only_a_resting_or_hovered_chip_lives_on_the_hover_axis() {
+    use super::paint::rail_hover_t;
+    assert!((rail_hover_t(ButtonState::Normal, false, 0.4) - 0.4).abs() < 1e-6);
+    assert!((rail_hover_t(ButtonState::Hovered, false, 0.4) - 0.4).abs() < 1e-6);
+    // Activo, premido e desactivado NÃO são quantidades.
+    assert!((rail_hover_t(ButtonState::Normal, true, 0.4) - 1.0).abs() < 1e-6);
+    assert!((rail_hover_t(ButtonState::Pressed, false, 0.4) - 1.0).abs() < 1e-6);
+    assert!((rail_hover_t(ButtonState::Disabled, false, 0.4) - 1.0).abs() < 1e-6);
+}
+
+/// **Meio caminho é uma cor NOVA, não uma das duas pontas.**
+///
+/// ⚠️ O oráculo não é *«é diferente de uma delas»*: um `blend` partido que devolvesse sempre a
+/// ponta HOT passaria nesse teste. Tem de estar **entre** as duas em cada canal, e diferir das
+/// duas — é isso que distingue misturar de escolher.
+#[test]
+fn half_a_hover_is_a_colour_between_the_two_ends() {
+    use super::paint::blend_or;
+    use crate::paint::resolve;
+    let theme = Theme::Forge;
+    let rest = resolve(ColorToken::Text2, theme);
+    let hot = resolve(ColorToken::Text1, theme);
+    let mid = blend_or(
+        0.5,
+        ColorToken::Text2,
+        ColorToken::Text1,
+        ColorToken::Text2,
+        theme,
+    );
+    assert_ne!(mid.to_rgba8().to_u8_array(), rest.to_rgba8().to_u8_array());
+    assert_ne!(mid.to_rgba8().to_u8_array(), hot.to_rgba8().to_u8_array());
+    let (a, b, m) = (
+        rest.to_rgba8().to_u8_array(),
+        hot.to_rgba8().to_u8_array(),
+        mid.to_rgba8().to_u8_array(),
+    );
+    for i in 0..3 {
+        let (lo, hi) = (a[i].min(b[i]), a[i].max(b[i]));
+        assert!(
+            m[i] >= lo && m[i] <= hi,
+            "canal {i}: {} não está entre {lo} e {hi}",
+            m[i]
+        );
+    }
+    // E o NEUTRO devolve a cor dura, exactamente — é o que mantém byte-idêntico todo chamador
+    // que não passa relógio nenhum.
+    let neutral = blend_or(
+        1.0,
+        ColorToken::Text2,
+        ColorToken::Text1,
+        ColorToken::Accent,
+        theme,
+    );
+    assert_eq!(
+        neutral.to_rgba8().to_u8_array(),
+        resolve(ColorToken::Accent, theme).to_rgba8().to_u8_array()
+    );
+}

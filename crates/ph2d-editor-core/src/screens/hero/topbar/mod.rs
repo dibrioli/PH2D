@@ -259,6 +259,7 @@ pub fn paint_top_bar(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     image_tools_mode: bool,
+    motion: &crate::motion::UiMotion,
 ) {
     let clusters = fixture::topbar_clusters();
     let row_h = layout.top_bar.h;
@@ -312,6 +313,7 @@ pub fn paint_top_bar(
             theme,
             hit_index,
             store,
+            motion,
         );
         // Active-state ring on the ImageTools chip when the mode is
         // on. Must mirror `paint_topbar_rail_chip` chip_rect exactly:
@@ -346,7 +348,7 @@ pub fn paint_top_bar(
 
     if image_tools_mode {
         // Mode on — replace the right half with the image-action row.
-        paint_image_action_row(layout, scene, text_system, theme, hit_index, store);
+        paint_image_action_row(layout, scene, text_system, theme, hit_index, store, motion);
         return;
     }
 
@@ -394,6 +396,7 @@ pub fn paint_top_bar(
             theme,
             hit_index,
             store,
+            motion,
         );
         rx = rect.x + rect.w + gap;
     }
@@ -441,6 +444,7 @@ fn paint_topbar_group_backdrop(
 /// [`crate::installed_registry`] when present (one entry per manifest
 /// in the `image_tools` cluster); falls back to the legacy hardcoded
 /// list for tests that don't install a registry.
+#[allow(clippy::too_many_arguments)] // o relogio e' o 7o; ver a nota do `paint_rail`
 fn paint_image_action_row(
     layout: &HeroLayout,
     scene: &mut VectorScene,
@@ -448,6 +452,7 @@ fn paint_image_action_row(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    motion: &crate::motion::UiMotion,
 ) {
     let _ = (paint_icon_button, IconButtonStyle::Plain, PILL_PADDING_PX); // keep imports alive
     let row_h = layout.top_bar.h;
@@ -495,6 +500,7 @@ fn paint_image_action_row(
             theme,
             hit_index,
             store,
+            motion,
         );
     }
 }

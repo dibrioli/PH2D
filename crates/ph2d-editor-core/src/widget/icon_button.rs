@@ -116,8 +116,52 @@ fn icon_tint(state: ButtonState) -> ColorToken {
     }
 }
 
+/// O tint do glifo **misturado no eixo do hover**, `Text2 → Text1`.
+///
+/// ⚠️ **Quem escolhe a cor neste eixo é o ESCALAR, não o estado — e é isso que faz a SAÍDA
+/// funcionar.** Se o estado escolhesse, sair do hover seria instantâneo: no quadro em que o rato
+/// sai, `state` já voltou a `Normal` e `icon_tint(Normal)` já É a cor de repouso, então não haveria
+/// nada entre onde a cor está e onde ela vai. É a mesma lei — e a mesma frase — do
+/// [`super::button::Button::bg_color`], porque é a mesma pergunta.
+///
+/// ⚠️ `Pressed`, `Focused` e `Disabled` continuam **estados duros**: não são uma *quantidade* de
+/// nada, e tratá-los como fracção faria um botão desactivado ter meia-desactivação.
+fn icon_tint_t(state: ButtonState, t: f32, theme: Theme) -> ph2d_vector::Color {
+    blend_on_hover_axis(state, t, ColorToken::Text2, ColorToken::Text1, theme)
+        .unwrap_or_else(|| resolve(icon_tint(state), theme))
+}
+
+/// A mistura `repouso → hover`, **ou `None` quando este estado não é uma quantidade**.
+///
+/// ⚠️ **Uma porta, dois canais.** O `Chip`/`Plain` anima o GLIFO (`Text2 → Text1`) e o `Primary`
+/// anima o FUNDO (`Danger → AccentSoft`) — perguntas idênticas em canais diferentes, e escrever a
+/// mesma guarda duas vezes é como uma delas deixa de valer no dia em que a lei mudar.
+///
+/// ⚠️ **A mistura acontece em espaço de TOKEN**, não na cor já convertida: `blend_token_color` é o
+/// motor único do eixo (o mesmo do `Button`), e converter antes de misturar daria uma segunda
+/// aritmética de cor a divergir da primeira.
+fn blend_on_hover_axis(
+    state: ButtonState,
+    t: f32,
+    rest: ColorToken,
+    hot: ColorToken,
+    theme: Theme,
+) -> Option<ph2d_vector::Color> {
+    if t >= 1.0 || !matches!(state, ButtonState::Normal | ButtonState::Hovered) {
+        return None;
+    }
+    crate::motion::blend_token_color(Some(rest.resolve(theme)), Some(hot.resolve(theme)), t)
+        .map(crate::paint::token_to_vello)
+}
+
 /// Paint a canonical icon button at `rect`. Caller still registers the
 /// hit-rect + AccessKit node (chrome owns those); this draws only.
+///
+/// ⚠️ **Delega com o NEUTRO.** O eixo do hover vive em [`paint_icon_button_t`]; esta assinatura é
+/// a de sempre e pinta **exactamente** o que pintava antes da wave da UI viva — é o que mantém os
+/// dezanove chamadores (painéis, que não têm relógio) intocados, em vez de os obrigar a passar um
+/// `1.0` que não lhes diz nada. Um caminho de código, duas portas de conveniência: o molde do
+/// `denoise_ml` / `denoise_ml_with_progress`.
 pub fn paint_icon_button(
     rect: Rect,
     glyph: IconGlyph,
@@ -126,6 +170,25 @@ pub fn paint_icon_button(
     scene: &mut VectorScene,
     theme: Theme,
 ) {
+    paint_icon_button_t(rect, glyph, style, state, 1.0, scene, theme);
+}
+
+/// [`paint_icon_button`] **com o eixo do hover**: `hover_t` é *quanto do hover está presente*,
+/// `0..1`, e o neutro é **`1.0`**.
+///
+/// ⚠️ O escalar vem do relógio (`UiMotion::get(id)`), e um id que o relógio ainda não viu devolve
+/// `None` ⇒ o chamador passa `1.0` ⇒ o botão pinta o que sempre pintou. *Um widget que acaba de
+/// aparecer não tem de onde vir.*
+pub fn paint_icon_button_t(
+    rect: Rect,
+    glyph: IconGlyph,
+    style: IconButtonStyle,
+    state: ButtonState,
+    hover_t: f32,
+    scene: &mut VectorScene,
+    theme: Theme,
+) {
+    let hover_t = hover_t.clamp(0.0, 1.0);
     let (icon_rect, icon_color) = match style {
         IconButtonStyle::Chip | IconButtonStyle::Compact => {
             let radius = if matches!(style, IconButtonStyle::Compact) {
@@ -158,18 +221,28 @@ pub fn paint_icon_button(
             // chip de 56×40 dá `min(32, 48, 32) = 32`), então nenhum botão que hoje está certo se
             // move — a lei dos estilos é *"no visual change on migration"*. Só encolhe quem estava
             // a transbordar, e o mínimo do padding é o do próprio tema.
-            (glyph_box(rect), resolve(icon_tint(state), theme))
+            (glyph_box(rect), icon_tint_t(state, hover_t, theme))
         }
         IconButtonStyle::Primary => {
+            // ⚠️ Aqui o eixo do hover vive no FUNDO (`Danger → AccentSoft`), não no glifo, que é
+            // `AccentFg` em todo estado. Mesma lei, outro canal: `Pressed` fica duro.
             let bg = match state {
                 ButtonState::Pressed => ColorToken::AccentPress,
                 ButtonState::Hovered => ColorToken::AccentSoft,
                 _ => ColorToken::Danger,
             };
-            fill_rounded_rect(scene, rect, Radius::Lg.px(), resolve(bg, theme));
+            let bg = blend_on_hover_axis(
+                state,
+                hover_t,
+                ColorToken::Danger,
+                ColorToken::AccentSoft,
+                theme,
+            )
+            .unwrap_or_else(|| resolve(bg, theme));
+            fill_rounded_rect(scene, rect, Radius::Lg.px(), bg);
             (rect, resolve(ColorToken::AccentFg, theme))
         }
-        IconButtonStyle::Plain => (rect, resolve(icon_tint(state), theme)),
+        IconButtonStyle::Plain => (rect, icon_tint_t(state, hover_t, theme)),
     };
     match glyph {
         IconGlyph::Builtin(id) => {
@@ -184,6 +257,44 @@ pub fn paint_icon_button(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **O eixo do hover mistura o TINT do glifo, e os estados duros ficam de fora.**
+    ///
+    /// ⚠️ O oráculo é *entre as duas pontas E diferente das duas* — um blend partido que
+    /// devolvesse sempre a ponta HOT passaria num `assert_ne!` contra o repouso apenas.
+    ///
+    /// **Mutação que deve sangrar:** deixar `Pressed` entrar no eixo — um botão premido passaria
+    /// a ter meia-pressão, que não é uma quantidade de nada.
+    #[test]
+    fn half_a_hover_tints_the_glyph_between_the_two_ends() {
+        let theme = Theme::Forge;
+        let rest = resolve(ColorToken::Text2, theme).to_rgba8().to_u8_array();
+        let hot = resolve(ColorToken::Text1, theme).to_rgba8().to_u8_array();
+        let mid = icon_tint_t(ButtonState::Hovered, 0.5, theme)
+            .to_rgba8()
+            .to_u8_array();
+        assert_ne!(mid, rest);
+        assert_ne!(mid, hot);
+        for i in 0..3 {
+            let (lo, hi) = (rest[i].min(hot[i]), rest[i].max(hot[i]));
+            assert!(mid[i] >= lo && mid[i] <= hi, "canal {i} fora do intervalo");
+        }
+        // O neutro pinta EXACTAMENTE o que sempre pintou — o que mantém os dezanove
+        // chamadores de `paint_icon_button` byte-idênticos.
+        assert_eq!(
+            icon_tint_t(ButtonState::Hovered, 1.0, theme)
+                .to_rgba8()
+                .to_u8_array(),
+            hot
+        );
+        // `Pressed` é estado DURO: o escalar não o toca.
+        assert_eq!(
+            icon_tint_t(ButtonState::Pressed, 0.5, theme)
+                .to_rgba8()
+                .to_u8_array(),
+            resolve(ColorToken::Accent, theme).to_rgba8().to_u8_array()
+        );
+    }
 
     fn smoke(style: IconButtonStyle, state: ButtonState) {
         let mut scene = VectorScene::new();

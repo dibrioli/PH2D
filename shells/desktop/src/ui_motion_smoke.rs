@@ -54,6 +54,17 @@ impl crate::App {
             return; // ainda não há mundo; tenta no quadro seguinte
         }
         let level = smoke_level(&raw);
+
+        // ⚠️ **A cena 2 espera o LAYOUT existir, e este `return` é a wave inteira num sítio.**
+        // O `hero.last_viewport` é escrito no TOPO do `paint`, e o smoke corre no PRÓLOGO do
+        // quadro — no primeiro quadro em que há `gfx` ele ainda mede `0 x 0`. Abrir o card ali
+        // punha-o em `(0, 0)` com a âncora no mesmo ponto: comprimento zero, `is_drawable` a
+        // recusar, e o card escondido atrás da barra. **O smoke não ficava vermelho — ele
+        // montava a cena que não tem o fenómeno**, que é a doença de fixture que este repo já
+        // pagou seis vezes. Não marcar `done` é o que o faz tentar de novo no quadro seguinte.
+        if level >= 2 && !self.viewport_is_measured() {
+            return;
+        }
         self.ui_motion_smoke_done = true;
 
         // O estado ACTUAL, lido do produto — é ele que prova que a wave 3 devolveu a escolha do
@@ -83,6 +94,14 @@ impl crate::App {
         }
     }
 
+    /// O layout já foi medido pelo menos uma vez? (Ver o `return` acima.)
+    fn viewport_is_measured(&self) -> bool {
+        self.gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .is_some_and(|h| h.last_viewport.w > 1.0 && h.last_viewport.h > 1.0)
+    }
+
     /// Abre o card **Fill adjust** longe da sua âncora, para a corda nascer com comprimento.
     ///
     /// ⚠️ **A posição é ARRASTADA, não escolhida:** o card abre na âncora (é o que um ColorDrop
@@ -106,12 +125,15 @@ impl crate::App {
 fn print_character_script() {
     eprintln!(
         "\n[ui-motion-smoke 1] O CARATER — o chrome ganhou um relogio, e ele tem duas vozes.\n\
-         \n  1. Passe o rato POR CIMA dos botoes da barra e do rail, e SAIA. Hoje o realce\n     \
-              acende e apaga de golpe: e' uma funcao ESCADA num app que ja' paga 60 quadros\n     \
-              por segundo. Guarde essa sensacao -- ela e' o controle.\n\
-         \n  2. Abra o pill Settings (a engrenagem) > Motion > EXPRESSIVE. Repita o passo 1:\n     \
-              o realce agora CHEGA e SAI. Repare que a saida tambem e' suave -- se so' a\n     \
-              entrada fosse, seria meia feature (e foi o defeito que a wave 2 curou).\n\
+         \n  ONDE OLHAR (e so' aqui, por enquanto): os CHIPS DO RAIL, na coluna da esquerda,\n  \
+           e as PILLS DA BARRA DE TOPO. Sao as duas superficies ligadas ao relogio.\n\
+         \n  1. Passe o rato POR CIMA de um chip do rail e SAIA, devagar. Repare no que\n     \
+              muda: a BORDA e o TINT do glifo (o fundo do chip e' BgElev nos dois estados,\n     \
+              entao nao ha' fundo a que agarrar -- e' o tema, nao um bug). Guarde a\n     \
+              sensacao: hoje isso acende e apaga de GOLPE.\n\
+         \n  2. Abra Settings (a engrenagem) > Motion > EXPRESSIVE. Repita o passo 1:\n     \
+              o realce agora CHEGA e SAI. A saida tambem e' suave -- se so' a entrada\n     \
+              fosse, seria meia feature (e foi o defeito que a wave 2 curou).\n\
          \n  3. Settings > Motion > DISCRETE. Repita. A diferenca NAO e' 'o mesmo mais\n     \
               devagar': o Discreto CHEGA E ASSENTA sem nunca ultrapassar, e isso e'\n     \
               estrutural (zeta = 1), nao uma promessa. O Expressivo ultrapassa e volta.\n\
@@ -121,6 +143,12 @@ fn print_character_script() {
               tres posicoes tornaria-a inexprimivel.\n\
          \n  5. ⭐ FECHE O APP e rode este smoke outra vez. A primeira linha do terminal tem\n     \
               de dizer o carater que voce escolheu. Se disser Discreto, a wave 3 falhou.\n"
+    );
+    eprintln!(
+        "[ui-motion-smoke 1] (!) O QUE AINDA NAO SE MOVE, e e' esperado: os widgets DENTRO\n  \
+         dos paineis (sliders, checkboxes, dropdowns, rows de lista). Catorze tipos de\n  \
+         widget tem eixo de hover e tres o leem hoje -- a varredura dos restantes e' a\n  \
+         proxima wave, nao um defeito desta. Se o rail e a barra respondem, ela funciona.\n"
     );
     eprintln!(
         "[ui-motion-smoke 1] (!) O que NAO tem de mudar: um clique durante uma transicao e'\n  \

@@ -86,7 +86,9 @@ pub use dropdown::{
     paint_dropdown, paint_dropdown_chip, paint_dropdown_popover,
     paint_dropdown_popover_in_viewport, paint_dropdown_popover_scrolled,
 };
-pub use icon_button::{IconButtonStyle, IconGlyph, icon_glyph, paint_icon_button};
+pub use icon_button::{
+    IconButtonStyle, IconGlyph, icon_glyph, paint_icon_button, paint_icon_button_t,
+};
 pub use key_value_list::{KeyValueEntry, KeyValueList, paint_key_value_list};
 pub use level_meter::{LevelMeter, paint_level_meter};
 pub use list_item::{ListItem, ListItemState, paint_list_item};
@@ -144,7 +146,7 @@ pub use text_input::{TextInput, TextInputState, paint_text_input, paint_text_inp
 pub use toggle::{Toggle, ToggleState, paint_toggle};
 pub use tool_rail::{
     CHIP_X_OFFSET_PX, COMPOUND_TOTAL_H_PX, DIVIDER_GAP_PX, RailButtonSize, TOOL_CHIP_PX, ToolRail,
-    ToolRailEntry, paint_tool_rail, tool_rail_width_px,
+    ToolRailEntry, paint_tool_rail, paint_tool_rail_t, tool_rail_width_px,
 };
 pub use tooltip::{Tooltip, paint_tooltip};
 pub use tree_view::{TreeNode, TreeView, paint_tree_view};

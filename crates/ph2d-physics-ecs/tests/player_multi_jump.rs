@@ -102,9 +102,16 @@ fn a_second_tap_in_the_air_buys_a_second_jump() {
 
 /// **UM aperto é UM pulo, com quantas cargas houver.**
 ///
-/// Medido: `0`, `1` e `3` cargas dão **0,6176 m** — o MESMO pico. É o gate que o
-/// consumo do buffer protege: sem ele o aperto re-dispara em tiques
-/// consecutivos e as três cargas viram três boosts empilhados.
+/// Medido: `0`, `1` e `3` cargas dão **0,6176 m** — o MESMO pico.
+///
+/// ⚠️ **Este gate NÃO é o guardião do consumo do buffer, e a primeira versão
+/// deste doc dizia que era:** a mutação que apaga o `next.buffer = 0.0` do pulo
+/// do ar deixa-o VERDE, porque neste caminho a decolagem do CHÃO já zerou o
+/// buffer antes de o personagem chegar ao ar — o aperto guardado nunca alcança o
+/// ramo do ar. Quem apanha aquela mutação é o irmão de unidade
+/// (`one_press_burns_exactly_one_charge`), cuja fixture entra JÁ no ar com uma
+/// borda fresca. O que este mede é a propriedade de PRODUTO — *um aperto, um
+/// pulo* — pelo caminho que o jogador percorre.
 #[test]
 fn one_press_is_one_jump_no_matter_how_many_charges() {
     let (mut sim, mut bridge, player) = rig(0);

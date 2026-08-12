@@ -312,3 +312,91 @@ fn a_wall_jump_out_of_a_dash_also_ends_it() {
         "o arranque tinha de acabar no mesmo tique"
     );
 }
+
+/// **E um pulo do AR dado a partir de um arranque também o acaba** (`W-MultiJump`).
+///
+/// ⚠️ **É este o gate que a wave do pulo múltiplo tornou necessário, e o
+/// comentário do irmão de cima o previu sem o saber:** os dois gates acima
+/// exercitam pulos que começam com o pé em ALGO (chão, parede), e os dois
+/// produzem a transição `!airborne → airborne` que o `lib.rs` usava como proxy.
+/// Um pulo do AR acontece com `airborne` **já verdadeiro** ⇒ com o proxy antigo
+/// ele não cancelaria o arranque, os dois escreveriam a mesma velocidade no
+/// mesmo tique, e o último ganharia — em silêncio.
+///
+/// ⚠️ **A premissa da fixture é a mesma do irmão da parede** (arrancar NO AR,
+/// para que o coyote esteja vazio): com coyote cheio o aperto vira um pulo de
+/// CHÃO, que é o caso que o primeiro gate já cobre, e este mediria o ramo
+/// errado sem nada a dizê-lo.
+#[test]
+fn an_air_jump_out_of_a_dash_also_ends_it() {
+    let mut cfg = dashing_cfg();
+    cfg.jump.air_jumps = 1;
+    cfg.jump.air_jump_height = 2.0;
+    let started = player_motor(
+        &cfg,
+        None,
+        None,
+        None,
+        None,
+        dash_input(),
+        PlayerState::default(),
+        [0.0, -1.0],
+        G,
+        UP,
+        DT,
+        DRY,
+        SPRING,
+    );
+    assert!(
+        started.state.dash.left > 0.0,
+        "o arranque tem de ter comecado"
+    );
+    assert_eq!(
+        started.state.jump.coyote, 0.0,
+        "a premissa: sem coyote, para que quem responda ao aperto seja o AR"
+    );
+    // ⚠️ **E a segunda premissa: há carga.** Ela nasce do `on_ground`, e este
+    // arranque comecou no ar — entao a fixture a semeia, senao o aperto nao
+    // encontra pulo nenhum e o gate ficaria verde por vacuo.
+    let mut state = started.state;
+    state.jump.air_jumps_left = 1;
+    // ⚠️ **E a TERCEIRA premissa é a que dá dentes ao gate:** ele tem de estar
+    // no ar *por ter PULADO*, não apenas a cair. O proxy antigo era
+    // `!antes.airborne && depois.airborne`, e um personagem que nunca pulou
+    // entra com `airborne` FALSO — ali o proxy acerta por acidente e a mutação
+    // que o reinstala passa despercebida. Medido: sem esta linha M7 não sangra.
+    state.jump.airborne = true;
+    let jumped = player_motor(
+        &cfg,
+        None,
+        None,
+        None,
+        None,
+        PlayerInput {
+            drive: 1.0,
+            jump: true,
+            dash: true,
+            ..PlayerInput::default()
+        },
+        state,
+        [0.0, -1.0],
+        G,
+        UP,
+        DT,
+        DRY,
+        SPRING,
+    );
+    assert!(
+        jumped.motor.boost[1] > 0.0,
+        "o pulo do AR tem de sair: {:?}",
+        jumped.motor.boost
+    );
+    assert_eq!(
+        jumped.state.jump.air_jumps_left, 0,
+        "e tem de gastar a carga"
+    );
+    assert!(
+        jumped.state.dash.left <= 0.0,
+        "o arranque tinha de acabar no mesmo tique"
+    );
+}

@@ -241,3 +241,181 @@ fn probe_symmetry() {
     let produced = require("symmetry", live.live().values().map(Vec::len).sum());
     report("symmetry", still, moving, produced);
 }
+
+// ---------------------------------------------------------------------------------------------
+// SONDA 2 — a PREMISSA da cura, medida antes de qualquer wave.
+// ---------------------------------------------------------------------------------------------
+
+/// SONDA (`--ignored`): **o cozimento COMUTA com uma similaridade?**
+///
+/// A cura que a §11 do plano 25 nomeia — *memoizar em espaço LOCAL e assar o afim na saída* —
+/// vale a pena exactamente na medida em que `offset(assar(P, X), d)` e `assar(offset(P, d/s), X)`
+/// desenham a MESMA curva. Se comutarem, o memo passa a acertar sob animação (a geometria local
+/// não muda; só o afim muda) e o preço medido pela sonda irmã (0,686 ms no offset · 1,655 no
+/// perfil, por forma e por quadro) vai a zero mais o custo de assar.
+///
+/// ⚠️ **A premissa é MEDIDA, nunca deduzida.** Escrever a wave e descobrir a não-comutação no
+/// smoke seria pagar o preço inteiro para aprender um fato que uma sonda de trinta linhas dá.
+///
+/// ⚠️ **E ela tem CONTROLE:** a última linha é uma pose de escala NÃO-UNIFORME, que **não pode**
+/// comutar — um offset é uma distância euclidiana, e sob `diag(2, 0.5)` a distância deixa de ter
+/// um único fator. Se o controle também sair `0,000`, a sonda não está a medir comutação nenhuma
+/// e o verde é vácuo.
+///
+/// Rode: `cargo test -p ph2d-host-desktop --release live_memo_commutation -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda: rode com --release -- --ignored"]
+fn live_memo_commutation_probe() {
+    use ph2d_vec_scene::bake_xform;
+
+    const D: f64 = 0.12;
+    let join = crate::vec_expand::join_of_code(1);
+    let side = crate::vec_expand::side_of_code(0);
+
+    println!("[comuta] offset d = {D}; desvio maximo de vertice entre as duas rotas");
+    println!("[comuta] {:<22} {:>12} {:>8}", "pose", "desvio", "escala");
+
+    for (label, x) in poses() {
+        let s = x.mean_scale();
+
+        // A rota de HOJE: assa a pose na fonte e coze em MUNDO.
+        let mut world = star();
+        bake_xform(&mut world, &x);
+        let by_world = ph2d_vec_boolean::offset_path(&world, D, join, side);
+
+        // A rota da CURA: coze em LOCAL com a distância dividida pela escala, e assa a saída.
+        let mut by_local = ph2d_vec_boolean::offset_path(&star(), D / s, join, side);
+        for p in &mut by_local {
+            bake_xform(p, &x);
+        }
+
+        let dev = max_vertex_deviation(&by_world, &by_local);
+        println!("[comuta] {label:<22} {dev:>12.6} {s:>8.3}");
+    }
+}
+
+/// SONDA (`--ignored`): **e o PERFIL comuta?** — a metade CARA da tabela (1,655 ms/forma/quadro).
+///
+/// ⚠️ **A pergunta não é a mesma do offset, e a diferença decide o escopo da wave:** o `bake_xform`
+/// escala *todo comprimento escalar do path* (o raio do gradiente, o `corner_radius`) e **não**
+/// escala o `StrokeSpec.width`. Então uma forma com pose de escala 2× desenha o traço com a
+/// **mesma** largura de mundo — e a rota local, que assa DEPOIS, escalaria a fita junto. A
+/// pergunta medida é se dividir a largura pela escala antes de cozer devolve a comutação, que é
+/// o gêmeo exato do `d_local = d / s` do offset.
+#[test]
+#[ignore = "sonda: rode com --release -- --ignored"]
+fn live_memo_commutation_profile_probe() {
+    use ph2d_vec_scene::{Rgba8, StrokeSpec, bake_xform};
+
+    const W: f64 = 0.08;
+    let stops = ph2d_vec_scene::WidthProfile {
+        start: 0.2,
+        mid: 1.8,
+        end: 0.2,
+        position: 0.5,
+    }
+    .to_stops();
+
+    let stroked = || {
+        let mut p = star();
+        p.stroke = Some(StrokeSpec::new(Rgba8::new(0, 0, 0, 255), W));
+        p
+    };
+
+    println!("[comuta] perfil (0,2/1,8/0,2), largura base {W}");
+    println!(
+        "[comuta] {:<22} {:>12} {:>12} {:>8}",
+        "pose", "largura crua", "largura / s", "escala"
+    );
+
+    for (label, x) in poses() {
+        let s = x.mean_scale();
+
+        let mut world = stroked();
+        bake_xform(&mut world, &x);
+        let by_world = crate::vec_expand::power_stroke_layers(&world, &stops);
+
+        // (a) a rota local INGENUA: coze com a largura autorada e assa a saida.
+        let naive = {
+            let mut out = crate::vec_expand::power_stroke_layers(&stroked(), &stops);
+            for p in &mut out {
+                bake_xform(p, &x);
+            }
+            max_vertex_deviation(&by_world, &out)
+        };
+
+        // (b) a rota local com a largura DIVIDIDA pela escala -- o gemeo do `d / s`.
+        let scaled = {
+            let mut local = stroked();
+            if let Some(sp) = local.stroke.as_mut() {
+                sp.width = W / s;
+            }
+            let mut out = crate::vec_expand::power_stroke_layers(&local, &stops);
+            for p in &mut out {
+                bake_xform(p, &x);
+            }
+            max_vertex_deviation(&by_world, &out)
+        };
+
+        println!("[comuta] {label:<22} {naive:>12.6} {scaled:>12.6} {s:>8.3}");
+    }
+}
+
+/// As poses da sonda — quatro similaridades e **um controle** que não é uma.
+fn poses() -> Vec<(&'static str, ph2d_vec_scene::Xform)> {
+    use ph2d_vec_scene::Xform;
+    let (sin, cos) = 0.7_f64.sin_cos();
+    let s = 1.6;
+    vec![
+        ("translacao", Xform([1.0, 0.0, 0.0, 1.0, 3.0, -1.5])),
+        ("rotacao", Xform([cos, sin, -sin, cos, 0.0, 0.0])),
+        ("escala uniforme 1,6", Xform([s, 0.0, 0.0, s, 0.0, 0.0])),
+        (
+            "similaridade completa",
+            Xform([s * cos, s * sin, -s * sin, s * cos, 3.0, -1.5]),
+        ),
+        // O CONTROLE: escala NAO-uniforme. Aqui a comutacao tem de FALHAR.
+        (
+            "nao-uniforme (controle)",
+            Xform([2.0, 0.0, 0.0, 0.5, 0.0, 0.0]),
+        ),
+    ]
+}
+
+/// A distância de Hausdorff (discreta, sobre âncoras) entre as duas saídas — **quão longe uma
+/// curva está da outra**, e não quão longe o vértice `i` está do vértice `i`.
+///
+/// ⚠️ **A 1ª versão desta função comparava ÍNDICE a ÍNDICE, e mediu a coisa errada com confiança.**
+/// Um contorno fechado é uma sequência **CÍCLICA**, e o `linesweeper` escolhe onde começar a
+/// partir das COORDENADAS — então uma pose que gira a forma re-elege o primeiro vértice e o
+/// alinhamento por índice reporta o deslocamento da LISTA como desvio geométrico. Medido, ela
+/// dizia `1,25` numa forma de raio 1 sob rotação pura, e `0,000` sob translação e sob escala
+/// uniforme — exactamente as duas poses que **preservam** a ordem lexicográfica. Eu quase concluí
+/// *"a cura não comuta sob rotação"* a partir de um defeito do meu oráculo.
+///
+/// *Um oráculo tem de modelar a APARÊNCIA — a curva —, nunca a representação que a carrega.*
+fn max_vertex_deviation(a: &[VecPath], b: &[VecPath]) -> f64 {
+    if a.len() != b.len() {
+        return f64::INFINITY;
+    }
+    a.iter()
+        .zip(b)
+        .map(|(pa, pb)| one_sided(pa, pb).max(one_sided(pb, pa)))
+        .fold(0.0_f64, f64::max)
+}
+
+/// Para cada âncora de `from`, a distância à âncora MAIS PRÓXIMA de `to`; devolve a pior.
+fn one_sided(from: &VecPath, to: &VecPath) -> f64 {
+    if to.verts.is_empty() {
+        return f64::INFINITY;
+    }
+    from.verts
+        .iter()
+        .map(|v| {
+            to.verts
+                .iter()
+                .map(|w| (v.anchor[0] - w.anchor[0]).hypot(v.anchor[1] - w.anchor[1]))
+                .fold(f64::INFINITY, f64::min)
+        })
+        .fold(0.0_f64, f64::max)
+}

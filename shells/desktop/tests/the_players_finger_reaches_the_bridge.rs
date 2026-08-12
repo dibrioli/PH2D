@@ -18,20 +18,69 @@ fn read(path: &str) -> String {
 /// **(1) A tecla é OBSERVADA, e o bloco que a observa não CONSOME.**
 ///
 /// A seta já tem dono (o nudge de nó do Vector), então roubá-la aqui regrediria
-/// uma ferramenta que ninguém pediu para mexer. O gate afirma o corpo exato do
-/// bloco — três linhas, sem `return` dentro —, porque *"observa"* e *"observa e
-/// engole"* são indistinguíveis em qualquer teste que não tenha uma janela.
+/// uma ferramenta que ninguém pediu para mexer. *"Observa"* e *"observa e
+/// engole"* são indistinguíveis em qualquer teste que não tenha uma janela, então
+/// o oráculo é a **ausência de `return`** dentro do bloco.
+///
+/// ⚠️ **A versão original pinava as TRÊS LINHAS do bloco, verbatim**, e nasceu
+/// vermelha no dia em que a observação ganhou a guarda de acorde do gate
+/// seguinte — o fio estava intacto e o gate reprovava uma correção. *Uma cópia
+/// literal do corpo é um proxy que expira*; o que este gate afirma é a
+/// PROPRIEDADE.
 #[test]
 fn the_walk_keys_are_observed_without_being_consumed() {
     let src = read("src/input_dispatch/keyboard.rs");
-    let block = "if let PhysicalKey::Code(code) = physical_key {\n\
-         \x20           self.player_keys.key(code, state == ElementState::Pressed);\n\
-         \x20       }";
+    let (open, call) = observation_block(&src);
     assert!(
-        src.contains(block),
-        "o bloco que observa as teclas de caminhada tem de ser exatamente estas tres \
-         linhas — um `return` ali dentro rouba a seta do nudge do Vector"
+        !src[open..call].contains("return"),
+        "o bloco que observa as teclas de caminhada NAO pode consumir a tecla — \
+         um `return` ali dentro rouba a seta do nudge do Vector"
     );
+}
+
+/// **⚠️ (1b) Um ACORDE nunca é entrada de jogo.**
+///
+/// Report do Enio (cena 112): *"os players pulam e se movem sozinhos"*. As seis
+/// teclas que o dedo do jogador reclama moram debaixo de atalhos que o artista
+/// aperta o tempo todo — **Ctrl+Z** punha `jump`, **Ctrl+A** `left`, **Ctrl+D**
+/// `right`, **Ctrl+S** `down`.
+///
+/// ⚠️ **A varredura de conflito do `player_input` foi feita e ainda assim
+/// errou**, porque mediu a tecla NUA: o doc do `KeyS` afirma que *"um botão de
+/// player nunca vê aquele caminho"* porque o Ctrl+S corre dentro de um braço
+/// guardado por modificador. Ele vê — esta observação corre **antes** de toda
+/// guarda de modificador do arquivo.
+///
+/// ⚠️ **E o RELEASE tem de passar SEMPRE.** Um guard simétrico troca um pulo
+/// espúrio por um personagem que **anda sozinho para sempre**: a tecla apertada
+/// sem modificador e solta com o Ctrl preso nunca seria desarmada.
+#[test]
+fn a_modifier_chord_never_reaches_the_player() {
+    let src = read("src/input_dispatch/keyboard.rs");
+    let (open, call) = observation_block(&src);
+    let block = &src[open..call];
+    for probe in ["control_key()", "alt_key()", "super_key()"] {
+        assert!(
+            block.contains(probe),
+            "a observacao tem de recusar um acorde: falta `{probe}` no bloco"
+        );
+    }
+    assert!(
+        block.contains("if !pressed || !chord {"),
+        "o RELEASE tem de passar SEMPRE (`!pressed ||`), senao um Ctrl preso na hora \
+         de soltar deixa a tecla armada para sempre"
+    );
+}
+
+/// O bloco que observa a tecla física: `(início do `if let`, a chamada)`.
+fn observation_block(src: &str) -> (usize, usize) {
+    let call = src
+        .find("self.player_keys.key(code, pressed);")
+        .expect("o dedo do jogador tem de OBSERVAR a tecla fisica");
+    let open = src[..call]
+        .rfind("if let PhysicalKey::Code(code) = physical_key {")
+        .expect("a observacao mora dentro de um `if let` sobre a tecla fisica");
+    (open, call)
 }
 
 /// **(2) O dedo INTEIRO chega ao dispatch da física.**

@@ -125,8 +125,31 @@ impl App {
         // o caminho de sempre, e o que muda é um par de bools que ninguém lê
         // numa cena sem player. A política é pura (`crate::player_input`),
         // porque um `winit::KeyEvent` não pode ser construído num teste.
+        // ⚠️ **E um ACORDE nunca é entrada de jogo** (report do Enio, cena 112:
+        // *"os players pulam e se movem sozinhos"*). O dedo do jogador observa a
+        // tecla FÍSICA, e as seis que ele reclama moram todas debaixo de atalhos
+        // que o artista aperta o tempo todo: **Ctrl+Z** punha `jump`, **Ctrl+A**
+        // punha `left`, **Ctrl+D** `right`, **Ctrl+S** `down`.
+        //
+        // ⚠️ **A varredura de conflito do `player_input` foi feita e ainda assim
+        // errou**, porque mediu a tecla NUA: o doc do `KeyS` afirma que *"o único
+        // `KeyS` do repo é o Ctrl+S de salvar projeto, que corre dentro do braço
+        // guardado por modificador — um botão de player nunca vê aquele
+        // caminho"*. Ele vê: esta observação corre ANTES de toda guarda de
+        // modificador do arquivo.
+        //
+        // ⚠️ **O RELEASE passa sempre, e a assimetria é a mesma do peek do Flip
+        // logo acima:** soltar uma tecla que foi apertada sem modificador,
+        // enquanto o Ctrl está preso, tem de chegar — senão o guard troca um
+        // pulo espúrio por um personagem que anda sozinho para sempre.
         if let PhysicalKey::Code(code) = physical_key {
-            self.player_keys.key(code, state == ElementState::Pressed);
+            let pressed = state == ElementState::Pressed;
+            let chord = self.modifiers.control_key()
+                || self.modifiers.alt_key()
+                || self.modifiers.super_key();
+            if !pressed || !chord {
+                self.player_keys.key(code, pressed);
+            }
         }
 
         if let PhysicalKey::Code(code) = physical_key {

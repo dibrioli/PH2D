@@ -31,7 +31,10 @@ fn off_is_off_to_the_bit() {
         assert_eq!(limit_speed(v, -1.0, -1.0), v, "{v:?}");
     }
     let s = moving([0.0, 0.0], [2.0, -3.0], 0.0);
-    assert_eq!(vel(&step(&s, 0.02, 1.0, 0.0, 0.0)), vel(&unlimited(&s, 0.02, 1.0)));
+    assert_eq!(
+        vel(&step(&s, 0.02, 1.0, 0.0, 0.0)),
+        vel(&unlimited(&s, 0.02, 1.0))
+    );
 }
 
 /// **O TETO CAPA A VELOCIDADE E PRESERVA A DIREÇÃO.**

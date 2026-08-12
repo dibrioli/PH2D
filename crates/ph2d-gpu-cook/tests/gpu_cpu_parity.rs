@@ -4355,6 +4355,14 @@ fn value_slope_kernel_matches_the_cpu_on_the_device() {
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
     eprintln!("value.slope → drive(Y): col P, max |d| = {worst:e}");
+    // ⚠️ **VERMELHO NESTA MÁQUINA, e NÃO é da linha que o encontrou** (`line/motion-value`,
+    // 2026-08-11): mede **1,05023384e-4** contra a barra de 1e-4 — 5% acima, no fio da navalha.
+    // Atribuído por ABLAÇÃO, não por suspeita: a única mudança daquela linha no motor de cook é
+    // uma RECUSA no `eligible` (nó com aresta saindo de porta ≠ 0 sai do device), e removê-la
+    // deixa este teste falhando no MESMO número. `value.slope`, o kernel e este arquivo não são
+    // tocados por ela. A política do repo é explícita (o compositor declara que runtime não é
+    // bit-idêntico entre backends — FMA), então uma barra de 1e-4 num kernel de derivada é
+    // sensível a driver/hardware: quem for calibrá-la precisa do número em mais de uma máquina.
     assert!(worst < 1e-4, "col P, max |d| = {worst:e}");
     assert!(
         column_is_nonzero(cpu[0].as_stream(), "P"),

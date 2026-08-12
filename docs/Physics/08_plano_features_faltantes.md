@@ -593,6 +593,40 @@ lado. O `physics_ecs_c9` move-se por isso, e a atribuição é por **ablação**
 nova: é a que o `cling` já ship a no flanco — *o chão é o degrau mais alto que
 qualquer parte do pé alcança*.
 
+#### (c) E a suíte COMPLETA achou as duas metades que faltavam ✅
+
+⚠️ **A corrida anterior parava no primeiro binário vermelho** e escondia o resto
+— `--no-fail-fast` é o que separa *"um gate caiu"* de *"dez caíram"*. As dez são
+DUAS causas, cada uma atribuída por ablação:
+
+**Um pé na BORDA é tangente a tudo o que o corpo encosta.** Com `spread = 1.0` o
+raio de fora senta na borda EXATA da cápsula, e o solver a para a um contato da
+parede — a borda coincide com a face, o pé acha a parede e chama-lhe chão.
+Medido: **seis** gates do pulo de parede caem de uma vez (o personagem deixa de
+deslizar e passa a cair **7,55 m em 1 s**) e voltam todos com `0,9`. O default é
+**0,9**, com margem de 20 mm contra os ~1,3 mm em que o solver assenta (15×) — a
+mesma ideia do `skinWidth` de um character controller.
+
+**Um DEGRAU não é uma RAMPA.** Mesmo com o pé recuado, o leque transformava em
+chão tudo o que estivesse ao alcance: um personagem que empurrava um caixote de
+0,6 m passou a **SUBIR nele**, e o deslocamento do caixote caiu de **7,27 para
+−0,02 m**. Um pé de fora só conta se o chão dele for **caminhável** a partir do
+pé do meio, e o número não é escolhido: é o **`max_slope`** que o artista já
+autorou, pela mesma porta que produz o `Footing::Steep` (por `max_slope_cos()`
+do `libm` e uma raiz — nunca uma tangente do `std`, que não é pinada cross-OS e
+este número entra no `c9`).
+
+⚠️ **A/B: com o recuo E sem o limite o caixote volta a −0,02** ⇒ as duas metades
+são load-bearing e nenhuma subsume a outra.
+
+⚠️ **E TRÊS gates alheios diziam a verdade sobre a perna de ANTES** — o preço de
+mover um default: o `platform_idle` media a folga sob o **CENTRO** e leu `0,9733`
+numa rampa de 20° (que são os `0,2 × 0,9 × tan 20°` do afastamento do pé, não um
+erro: a frase do gate não muda, muda *acima de quê*), e os dois de contagem de
+marca afirmavam *"uma perna, um raio"* — passam a ler a contagem da **porta** do
+produto. **A MENSAGEM da cena 108 também**: ela dizia *"uma linha para BAIXO com
+um TIQUE"*, descrevendo um produto que deixou de existir nesta wave.
+
 ⚠️ **O clamp para ÍMPAR mora na LEI** (`odd_samples`), nunca no caminho de
 autoria — um segundo arredondamento faria o número guardado discordar do número
 castado.

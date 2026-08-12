@@ -210,7 +210,7 @@ pub(super) fn ledge_rays(
         1
     };
     let base = ProbeRay {
-        origin: [cx + side * half_width, maxs[1] + reach_y],
+        origin: [cx + side * half_width, maxs[1] + ledge_origin_rise(cfg)],
         dir: [0.0, -1.0],
         reach: 2.0 * reach_y,
         // ⚠️ **ZERO, e não a meia-altura:** este raio nasce FORA do corpo, à
@@ -222,6 +222,25 @@ pub(super) fn ledge_rays(
         r.origin[0] = cx + side * (half_width + ledge_offset(grab, span, n, i));
     }
     Some((out, n))
+}
+
+/// **Quanto acima do topo do corpo a origem do leque nasce**, metros —
+/// `reach_y + offset_y`, a PORTA ÚNICA da geometria vertical.
+///
+/// ⚠️ **Três consumidores** (a origem do raio · o `lip_rise` que a lei lê · a
+/// distância que o overlay desenha), e uma cópia a mais divergiria no primeiro
+/// dia em que alguém mexesse num dos dois números: o desenho mostraria um
+/// alcance e o solver usaria outro.
+///
+/// ⚠️ **Com `offset_y = 0` reduz LITERALMENTE ao `reach_y`** — o mundo de antes
+/// do quarto controlo, ao bit.
+pub(super) fn ledge_origin_rise(cfg: &PlayerConfig) -> f32 {
+    let off = if cfg.ledge.offset_y.is_finite() {
+        cfg.ledge.offset_y
+    } else {
+        0.0
+    };
+    cfg.ledge.reach_y + off
 }
 
 /// **O afastamento da amostra `i`**, medido a partir da face do corpo.
@@ -290,7 +309,7 @@ pub(super) fn probe_ledge(
         }
     }
     let (distance, off) = won?;
-    let lip_rise = cfg.ledge.reach_y - distance;
+    let lip_rise = ledge_origin_rise(cfg) - distance;
     Some(ph2d_platformer::LedgeProbe {
         lip_rise,
         side,

@@ -269,6 +269,10 @@ pub struct PlatformPlayer {
     /// **A EXTENSÃO do sensor**, metros — o *scale* (`W-LedgeSensor`). `0.0` é o
     /// raio único de antes da wave, **ao bit**; ver [`LedgeConfig::span`].
     pub ledge_span: f32,
+    /// **O DESLOCAMENTO vertical do sensor**, metros (`W-LedgeSensor`). `0` e' a
+    /// janela centrada no topo do corpo, o mundo de antes ao bit; ver
+    /// [`LedgeConfig::offset_y`].
+    pub ledge_offset_y: f32,
     /// **A velocidade com que ele se acomoda e sobe**, m/s — ver
     /// [`LedgeConfig::speed`].
     pub ledge_speed: f32,
@@ -351,6 +355,7 @@ impl PlatformPlayer {
                 grab: self.ledge_grab,
                 reach_y: self.ledge_reach_y,
                 span: self.ledge_span,
+                offset_y: self.ledge_offset_y,
                 speed: self.ledge_speed,
             },
             glide: GlideConfig {
@@ -418,6 +423,7 @@ impl Default for PlatformPlayer {
             ledge_grab: c.ledge.grab,
             ledge_reach_y: c.ledge.reach_y,
             ledge_span: c.ledge.span,
+            ledge_offset_y: c.ledge.offset_y,
             ledge_speed: c.ledge.speed,
             glide_fall_speed: c.glide.fall_speed,
         }

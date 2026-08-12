@@ -346,21 +346,26 @@ const SWIM_ROWS: [PlayerRow; 3] = [
 /// quatro:** acomodar e subir são o mesmo gesto de braço, e dois números
 /// seriam um par cujo valor certo de um é função do outro — o defeito de
 /// ergonomia que este módulo já nomeou no `swim_enter`.
-const LEDGE_ROWS: [PlayerRow; 4] = [
+const LEDGE_ROWS: [PlayerRow; 5] = [
     (
         "Ledge Grab (m)",
         ids::INSP_PLAYER_LEDGE_GRAB,
         "How far ahead the sensor looks for a lip. 0 = off.",
     ),
     (
-        "Grab Height (m)",
+        "Grab Window (m)",
         ids::INSP_PLAYER_LEDGE_REACH_Y,
-        "How far above his head a lip is still caught.",
+        "How TALL the catch window is, above and below.",
     ),
     (
         "Grab Span (m)",
         ids::INSP_PLAYER_LEDGE_SPAN,
         "How wide the sensor is. 0 = a single ray.",
+    ),
+    (
+        "Grab Offset Y (m)",
+        ids::INSP_PLAYER_LEDGE_OFFSET_Y,
+        "Slides the sensor up or down without resizing it.",
     ),
     (
         "Ledge Speed (m/s)",

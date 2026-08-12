@@ -99,6 +99,7 @@ fn player() -> InspectorPlayerInfo {
         ledge_grab: 0.45,
         ledge_reach_y: 0.55,
         ledge_span: 0.12,
+        ledge_offset_y: -0.08,
         ledge_speed: 3.5,
         glide_fall_speed: 2.5,
         lift_momentum: 1.5,
@@ -229,7 +230,7 @@ fn every_number_raises_its_own_edit() {
     // exatamente o arm esquecido que ela existe para pegar.
     assert_eq!(
         ph2d_panel_inspector::PLAYER_ROW_COUNT,
-        49,
+        50,
         "a tabela de rows cresceu; acrescente o numero novo a esta varredura"
     );
     for (id, v, edit) in [
@@ -401,6 +402,11 @@ fn every_number_raises_its_own_edit() {
             ids::INSP_PLAYER_LEDGE_SPAN,
             0.2,
             PlayerFieldEdit::LedgeSpan(0.2),
+        ),
+        (
+            ids::INSP_PLAYER_LEDGE_OFFSET_Y,
+            -0.3,
+            PlayerFieldEdit::LedgeOffsetY(-0.3),
         ),
         (
             ids::INSP_PLAYER_LEDGE_SPEED,

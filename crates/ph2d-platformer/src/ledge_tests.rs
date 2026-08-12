@@ -14,6 +14,7 @@ fn cfg() -> LedgeConfig {
         // nenhum destes gates o dissesse.
         reach_y: 0.4,
         span: 0.0,
+        offset_y: 0.0,
         speed: 3.0,
     }
 }

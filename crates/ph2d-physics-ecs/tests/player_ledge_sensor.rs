@@ -33,6 +33,7 @@ struct Sensor {
     grab: f32,
     reach_y: f32,
     span: f32,
+    offset_y: f32,
 }
 
 /// Chão, um bloco de meia-largura `half_x`, e o personagem ao lado dele.
@@ -88,6 +89,7 @@ fn scene(centre_y: f32, gap: f32, s: Sensor, half_x: f32) -> (SimWorld, PhysicsB
                 ledge_grab: s.grab,
                 ledge_reach_y: s.reach_y,
                 ledge_span: s.span,
+                ledge_offset_y: s.offset_y,
                 ledge_speed: 3.0,
                 ..PlatformPlayer::default()
             },
@@ -144,6 +146,7 @@ fn the_window_is_the_height_the_artist_wrote() {
         grab: 0.6,
         reach_y: 0.6,
         span: 0.0,
+        offset_y: 0.0,
     };
     let (mut sim, mut bridge, player) = scene(drop, 0.05, wide, 1.0);
     let _ = press(&mut sim, &mut bridge, player, 60);
@@ -192,6 +195,7 @@ fn a_span_catches_the_lip_a_single_ray_misses() {
         grab: 0.6,
         reach_y: 0.6,
         span: 0.0,
+        offset_y: 0.0,
     };
     let drop = LIP_Y - HALF_H - 0.45;
     let (mut sim, mut bridge, player) = scene(drop, 0.05, single, narrow);
@@ -240,6 +244,7 @@ fn a_sample_inside_the_wall_refuses_the_whole_fan() {
         grab: 0.6,
         reach_y: 0.6,
         span: 0.6,
+        offset_y: 0.0,
     };
     // ⚠️ **E a SEGUNDA versão também não o continha**, por outro motivo: com o
     // corpo àquela altura ele estava sobre o CHÃO, e `ledge_probe_wanted` nem
@@ -342,6 +347,7 @@ fn a_zero_span_is_the_single_ray_of_before() {
         grab: 0.6,
         reach_y: 0.6,
         span: 0.0,
+        offset_y: 0.0,
     };
     let drop = LIP_Y - HALF_H - 0.45;
     let (mut sim, mut bridge, player) = scene(drop, 0.05, base, 1.0);
@@ -373,6 +379,7 @@ fn the_nearest_hit_wins_and_that_is_where_he_lands() {
         grab: 0.6,
         reach_y: 0.6,
         span: 0.6,
+        offset_y: 0.0,
     };
     let (mut sim, mut bridge, player) = scene(LIP_Y - HALF_H - 0.15, 0.30, fanned, 1.0);
     let mut tick = 0_u64;
@@ -417,5 +424,52 @@ fn the_nearest_hit_wins_and_that_is_where_he_lands() {
         "a borda de dentro tem de pousar entre a face ({WALL_FACE:.2}) e um span \
          adiante ({:.2}) — o acerto mais LONGE poria {inner:.4} para la' disso",
         WALL_FACE + fanned.span
+    );
+}
+
+/// **⚠️ O OFFSET DESLIZA a janela — sem a redimensionar.**
+///
+/// Report do Enio: *"não temos como mover os sensores na vertical"*. Ele estava
+/// certo, e o defeito era de MAPEAMENTO: o `reach_y` é o **tamanho** da janela
+/// (ela é sempre centrada no topo do corpo), então alcançar um lábio mais alto
+/// custava **alargar a histerese junto** — uma decisão sobre *quando ele SOLTA*
+/// pagando por uma sobre *onde ele OLHA*.
+///
+/// ⚠️ **Três fixtures, e é a terceira que separa *deslizar* de *crescer*:** com
+/// o offset em 0,40 o teto sobe **exactamente** 0,40, então um lábio 1,20 acima
+/// continua fora. Um gate com as duas primeiras ficaria verde sobre um `reach_y`
+/// disfarçado.
+#[test]
+fn the_offset_slides_the_window_without_resizing_it() {
+    let base = Sensor {
+        grab: 0.6,
+        reach_y: 0.6,
+        span: 0.0,
+        offset_y: 0.0,
+    };
+    let at = |rise: f32, offset_y: f32| {
+        let (mut sim, mut bridge, player) = scene(
+            LIP_Y - HALF_H - rise,
+            0.05,
+            Sensor { offset_y, ..base },
+            1.0,
+        );
+        let _ = press(&mut sim, &mut bridge, player, 60);
+        hanging(&sim)
+    };
+    assert!(
+        !at(0.9, 0.0),
+        "CONTROLE: com a janela de 0,60 centrada na cabeca, um labio 0,90 acima \
+         esta' FORA — se ele agarrar, a fixture nao contem o fenomeno"
+    );
+    assert!(
+        at(0.9, 0.4),
+        "e com o sensor deslizado 0,40 para cima o teto passa a 1,00: o MESMO \
+         labio tem de ser apanhado"
+    );
+    assert!(
+        !at(1.2, 0.4),
+        "mas o teto subiu 0,40, nao cresceu: um labio 1,20 acima continua fora — \
+         e' isto que separa DESLIZAR de aumentar a janela"
     );
 }

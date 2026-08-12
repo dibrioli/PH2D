@@ -148,6 +148,27 @@ pub struct LedgeConfig {
     /// posição exacta do raio de antes.
     pub span: f32,
 
+    /// **O DESLOCAMENTO vertical do sensor**, metros — para cima é positivo.
+    /// `0` é a janela centrada no topo do corpo, o mundo de antes **ao bit**.
+    ///
+    /// ⚠️ **Ele existe porque o [`Self::reach_y`] é TAMANHO e não POSIÇÃO**, e
+    /// eu tinha mapeado os dois no mesmo número (report do Enio: *"não temos
+    /// como mover os sensores na vertical"*). O `Grab offset` do GDevelop, que
+    /// esta wave citou como precedente do eixo Y, é uma **posição** — existe
+    /// para casar o agarre com a ANIMAÇÃO —, e o que eu construí com aquele
+    /// argumento foi a metade do tamanho. O conjunto honesto é **posição ×
+    /// tamanho nos dois eixos**, e este é o quarto.
+    ///
+    /// ⚠️ **Ele desliza a janela sem a redimensionar**, e é essa a diferença
+    /// que importa: mexer no `reach_y` para alcançar um lábio mais alto **alarga
+    /// a histerese junto** (a janela é simétrica em torno do centro), e alargar
+    /// a histerese é uma decisão sobre *quando ele SOLTA*, não sobre *onde ele
+    /// olha*.
+    ///
+    /// Em termos do que o sensor enxerga: a janela é
+    /// `[topo + offset_y − reach_y, topo + offset_y + reach_y]`.
+    pub offset_y: f32,
+
     /// **A velocidade com que ele se acomoda no pendurar e sobe no mantle**,
     /// m/s.
     ///
@@ -169,6 +190,7 @@ impl LedgeConfig {
         grab: 0.0,
         reach_y: 0.6,
         span: 0.0,
+        offset_y: 0.0,
         speed: 3.0,
     };
 

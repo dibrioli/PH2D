@@ -284,6 +284,12 @@ pub const INSP_PLAYER_LEDGE_REACH_Y: NodeId = hash_node_id("insp.player.ledge.re
 /// **A EXTENSÃO do sensor**, metros — o *scale* (`W-LedgeSensor`). `0` é o raio
 /// único de antes da wave, ao bit; ver [`ph2d_platformer::LedgeConfig::span`].
 pub const INSP_PLAYER_LEDGE_SPAN: NodeId = hash_node_id("insp.player.ledge.span");
+/// **O DESLOCAMENTO vertical do sensor**, metros (`W-LedgeSensor`).
+///
+/// ⚠️ Ele desliza a janela sem a REDIMENSIONAR — mexer no `reach_y` para
+/// alcançar um lábio mais alto alargaria a histerese junto; ver
+/// [`ph2d_platformer::LedgeConfig::offset_y`].
+pub const INSP_PLAYER_LEDGE_OFFSET_Y: NodeId = hash_node_id("insp.player.ledge.offset_y");
 /// **A velocidade com que ele se acomoda no pendurar e sobe no mantle**, m/s.
 ///
 /// ⚠️ **Um número para os dois momentos**, e é deliberado: eles são o mesmo

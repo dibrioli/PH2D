@@ -155,6 +155,8 @@ pub struct InspectorPlayerInfo {
     pub ledge_reach_y: f32,
     /// A EXTENSAO do sensor, metros (`W-LedgeSensor`). `0` = raio unico.
     pub ledge_span: f32,
+    /// O DESLOCAMENTO vertical do sensor, metros (`W-LedgeSensor`).
+    pub ledge_offset_y: f32,
     /// A velocidade do pendurar e da subida, m/s.
     pub ledge_speed: f32,
     /// O TETO da descida enquanto se plana, m/s (`W-Glide`). `0` = desligado.
@@ -303,6 +305,8 @@ pub enum PlayerFieldEdit {
     LedgeReachY(f32),
     /// **A EXTENSAO do sensor**, metros (`W-LedgeSensor`).
     LedgeSpan(f32),
+    /// **O DESLOCAMENTO vertical do sensor**, metros (`W-LedgeSensor`).
+    LedgeOffsetY(f32),
     /// **A velocidade do pendurar e da subida**, m/s.
     LedgeSpeed(f32),
     /// **O TETO da descida enquanto se plana**, m/s (`W-Glide`). `0` desliga.

@@ -16,7 +16,8 @@
 //! não exporta.
 
 use super::probes::{
-    corner_geom, ground_rays, headroom_offset, ledge_offset, ledge_rays, wall_rays,
+    corner_geom, ground_rays, headroom_offset, ledge_offset, ledge_origin_rise, ledge_rays,
+    wall_rays,
 };
 use super::*;
 
@@ -226,7 +227,7 @@ pub(super) fn record_marks(
                         r.origin,
                         r.dir,
                         r.reach,
-                        Some(cfg.ledge.reach_y - l.lip_rise),
+                        Some(ledge_origin_rise(cfg) - l.lip_rise),
                         r.skin,
                     ),
                     // Perguntou e não achou: `Clear`, e não `Idle`.

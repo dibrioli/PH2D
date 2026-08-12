@@ -450,4 +450,10 @@
 /// varredura da referência (GDevelop `Grab tolerance` + `Grab offset`, Corgi
 /// *origem e comprimento*, os 5 traços do Unreal) refutou a frase *"o alcance é
 /// uma grandeza só"* que o `grab` carregava.
-pub(crate) const PROJECT_SCHEMA: u32 = 77;
+/// v78 (physics, W-LedgeSensor — O OFFSET VERTICAL): o `PlatformPlayer` ganhou
+/// `ledge_offset_y`, apendado ao FIM ⇒ quebra dura. ⚠️ **Ele existe porque o
+/// `reach_y` é TAMANHO e não POSIÇÃO**, e o degrau v77 tinha mapeado os dois no
+/// mesmo número (report do Enio: *"não temos como mover os sensores na
+/// vertical"*). ⚠️ **Também NÃO move física:** nasce em `0`, onde a janela fica
+/// centrada no topo do corpo como antes, e o `physics_ecs_c9` sai byte-idêntico.
+pub(crate) const PROJECT_SCHEMA: u32 = 78;

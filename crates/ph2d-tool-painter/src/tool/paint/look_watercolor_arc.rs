@@ -255,6 +255,76 @@ fn measure_the_edge_band_across_dilutions() {
     );
 }
 
+/// O flanco de uma lavagem, medido na coluna LIMPA `x = 40` (fora do alcance do traco vertical) —
+/// devolve `(miolo, inicio do flanco, largura da banda 10%-90%)`. Os limiares sao RELATIVOS ao
+/// miolo: veja o aviso em [`measure_the_edge_band_across_dilutions`].
+fn wash_flank(dilution: f32) -> (f32, usize, usize) {
+    let px = wash_over_dry(dilution, true);
+    let core = alpha_at(&px, 40, 90);
+    let (mut y10, mut y90) = (None, None);
+    for y in 0..90 {
+        let a = alpha_at(&px, 40, y);
+        if y10.is_none() && a >= 0.10 * core {
+            y10 = Some(y);
+        }
+        if y90.is_none() && a >= 0.90 * core {
+            y90 = Some(y);
+        }
+    }
+    let (a, b) = (
+        y10.expect("o flanco tem de cruzar 10% do miolo"),
+        y90.expect("o flanco tem de cruzar 90% do miolo"),
+    );
+    (core, a, b.saturating_sub(a))
+}
+
+/// **A DILUICAO E QUANTA TINTA, NUNCA ONDE A LAVAGEM ESTA** — a lei que o arco palido do Enio
+/// (2026-08-11) pagou, e a razao de a `flow` viver em
+/// [`super::watercolor_field::style::wash_flow`] em vez de multiplicar a cobertura.
+///
+/// Tres afirmacoes, e nenhuma delas basta sozinha:
+///
+/// - **(a)** o inicio do flanco NAO anda com a dilucao. Este e o arco: a lei antiga escalava a
+///   cobertura antes de um `smoothstep(SS0, SS1, ..)` de limiares ABSOLUTOS, entao a dilucao movia
+///   ONDE o flanco cruza a janela em vez de quanto pigmento ha ali — a silhueta encolhia para
+///   dentro (medido, `y10%` 23 -> 30 na faixa toda).
+/// - **(b)** a banda de transicao nao CRESCE. A mesma causa a abria (7 -> 11 px); uma silhueta que
+///   so encolhesse rigidamente passaria em (a) e falharia aqui.
+/// - **(c)** o knob de facto DILUI. Sem esta metade, "nao mover a borda" seria satisfeito por uma
+///   `flow` inerte — e era quase o caso na lei antiga, cujo miolo ficava plano ate `dilution` 0,4
+///   porque o `smoothstep` satura em `SS1 = 0,60`.
+///
+/// ⚠️ **`dilution = 0` e o CONTROLE** — ele mede o mundo que ja shipava, e as tres asserções sao
+/// comparacoes CONTRA ele, nunca numeros absolutos: uma barra literal aqui pinaria o desenho da
+/// lavagem, que nao e o assunto deste gate.
+///
+/// ⚠️ **E este gate NAO basta sozinho — o irmao dele e o
+/// `watercolor_clean_water_backrun_blooms_on_wet_wash`.** Medido: pondo a `flow` no `depth` em vez
+/// do `fill`, as tres asserções daqui passam VERDES e o do backrun sangra (a agua pura apagava o
+/// proprio anel). Um mede *onde a lavagem esta*, o outro *de quem e o pigmento* — nenhum dos dois
+/// enxerga a metade do outro.
+#[test]
+fn dilution_thins_the_wash_without_moving_its_edge() {
+    let (core_dry, start_dry, band_dry) = wash_flank(0.00);
+    let (core_wet, start_wet, band_wet) = wash_flank(0.60);
+    // (a) ±1 px, nao igualdade estrita: a coluna e amostrada por texel, entao a fronteira pode
+    // pousar de um lado ou do outro de um pixel sem que a silhueta tenha se movido.
+    assert!(
+        start_wet.abs_diff(start_dry) <= 1,
+        "a dilucao moveu a SILHUETA: o flanco comeca em y={start_dry} seco e y={start_wet} \
+         diluido (o arco palido). A `flow` voltou para a cobertura?"
+    );
+    assert!(
+        band_wet <= band_dry,
+        "a dilucao ABRIU a borda: banda {band_dry} px seca contra {band_wet} px diluida"
+    );
+    assert!(
+        core_wet < core_dry * 0.80,
+        "a dilucao nao diluiu o miolo: {core_dry:.3} seco contra {core_wet:.3} diluido \
+         (a `flow` precisa entrar na densidade, onde nada satura)"
+    );
+}
+
 /// O papel e branco e a tinta e `[0.90, 0.15, 0.18]`: o canal VERDE mede a cobertura
 /// (`255` = papel nu, `38` = tinta cheia), entao `alfa = (255 - g) / (255 - 38)`.
 fn alpha_at(px: &[u8], x: usize, y: usize) -> f32 {

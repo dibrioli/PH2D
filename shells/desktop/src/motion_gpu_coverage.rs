@@ -214,7 +214,7 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     // percorre. Esta cena é também a única que leva uma coluna de SIMULAÇÃO ao domínio de VALOR
     // e de volta (`value.attribute` -> `motion.drive`) DENTRO do laço.
     push(
-        "demo=30 the impact mark (a collision becomes readable)",
+        "demo=30 who is touching (a collision becomes readable)",
         &|d| build_gpu_hit_demo_document(d, reg, MARK),
     );
     // ⚠️ E o TETO pelo mesmo motivo: o `sim.step` ganhou um clamp NO MEIO do passo, entre a

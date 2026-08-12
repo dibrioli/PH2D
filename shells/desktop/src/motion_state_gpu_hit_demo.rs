@@ -1,4 +1,4 @@
-//! **A MARCA DO IMPACTO** (`PH2D_GPU_COOK_DEMO=30`) — o P1 do evento de contato da folha 13 do
+//! **QUEM ESTA ENCOSTADO** (`PH2D_GPU_COOK_DEMO=30`) — o P1 do evento de contato da folha 13 do
 //! doc 89 montado como documento pronto para smoke: *uma colisão mudava `P` e `vel` e **nada a
 //! jusante conseguia saber que ela aconteceu***.
 //!
@@ -19,8 +19,16 @@
 //! *"o último colisor da cadeia"*, que seria um fato sobre a ordem em que o artista ligou os fios.
 //!
 //! ⚠️ **E ela é TRANSIENTE:** a `sim.zone` a tira do estado, como faz com `accel`. Guardada, ela
-//! diria "tocou" no tique seguinte ao que parou de tocar — e a marca cresceria para sempre. O que
-//! se vê na tela é o `size`, que **não** é transiente: a marca fica, o contato não.
+//! diria "tocou" no tique seguinte ao que parou de tocar.
+//!
+//! ⚠️ **E o canal e' um INSTANTE, nao uma historia** — a versao de 2026-08-10 desta cena somava
+//! `hit` no `size` com `motion.drive(Add)` e chamava isso de "marca". Um elemento em REPOUSO
+//! continua em contato, entao a soma nunca tinha ponto fixo: medido, o maior `size` ia a 0,455 ·
+//! 0,892 · 1,197 · 1,963 · **3,021** aos 8 s com a chuva ja' parada. Quanto mais tempo o artista
+//! deixasse tocar, maiores as bolas — *"cada Play um resultado diferente"* (report do Enio,
+//! 2026-08-11). O anuncio da cena ate' NOMEAVA o risco (*"a `sim.zone` a tira do estado, senao a
+//! marca cresceria para sempre"*) e atribuia a cura ao lugar errado: o strip zera o CANAL, nunca
+//! o `size` que o `Add` ja' empilhou.
 
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
@@ -33,16 +41,24 @@ pub(super) const DISC_R: f32 = 1.6;
 /// A altura do chão. O `sim.collide` a lê como a forma de Hesse (distância à origem ao longo da
 /// normal), e num plano sem inclinação isso É a altura.
 pub(super) const FLOOR: f32 = -2.5;
-/// Quanto cada unidade de profundidade engorda o elemento. **MEDIDO**, não escolhido
-/// (`probe_hit_mark`, varrendo 2 / 4 / 8 sobre a cena inteira): aos 3 s a chuva assentada mede
-/// `[0,573, 1,197]` contra os `0,220` de quem nunca tocou — **2,6× a 5,4×**, uma marca que se lê
-/// de longe e ainda é um disco. Com 8 ela chega a 10× e vira bolha; com 2 a diferença desaparece
-/// no primeiro segundo, que é justamente o instante em que o smoke a julga.
-pub(super) const MARK: f32 = 4.0;
+/// Quanto um contato engorda o elemento — o DELTA sobre [`BASE`], nao mais uma escala de
+/// acumulacao. **MEDIDO**, nao escolhido (`probe_hit_mark`): aos 3 s a chuva assentada mede
+/// `0,720` contra os `0,220` de quem nao toca — **3,3x**, e o numero PARA (0,720 aos 3, 5 e 8 s).
+pub(super) const MARK: f32 = 0.5;
+/// O tamanho de nascimento — a porta ÚNICA: o `motion.scale` o dá e o `map_range` o devolve a
+/// quem não tocou em nada. Dois números aqui seriam duas respostas para *"de que tamanho nasce?"*.
+pub(super) const BASE: f32 = 0.22;
+/// A profundidade de contato que ja' vale a marca CHEIA — o ponto onde o `clamp` do `map_range`
+/// SATURA, e e' ele que mata a cintilacao. **MEDIDA, e o 1o valor estava errado:** com 0,004 o
+/// tamanho de um elemento assentado oscilava **0,101** entre 5 s e 8 s com a posicao PARADA,
+/// porque a profundidade por tique de um corpo em repouso e' um CICLO-LIMITE (ele afunda um
+/// pouco e e' empurrado de volta), nao uma constante. Saturado, a leitura vira binaria — no ar
+/// ou encostado — e o quadro fica IMOVEL.
+pub(super) const HIT_FULL: f32 = 0.0008;
 pub(super) const ROWS: f32 = 4.0;
 pub(super) const COLS: f32 = 14.0;
 
-/// **A MARCA DO IMPACTO** (`PH2D_GPU_COOK_DEMO=30`).
+/// **QUEM ESTA ENCOSTADO** (`PH2D_GPU_COOK_DEMO=30`).
 ///
 /// `mark` existe para o GATE: com `0.0` a cadeia inteira continua lá — o canal é lido, o valor
 /// viaja, o drive roda — e **nada** engorda, que é o controle de que o tamanho na tela veio do
@@ -66,7 +82,7 @@ pub(super) fn build_gpu_hit_demo_document(
     g.set_param(lift, "offset_y", 4.5);
 
     let size = g.add_node("motion.scale");
-    g.set_param(size, "amount", 0.22);
+    g.set_param(size, "amount", BASE);
 
     let zone = g.add_node("sim.zone");
     let wind = g.add_node("force.wind");
@@ -96,12 +112,27 @@ pub(super) fn build_gpu_hit_demo_document(
     g.set_text_param(attr, "attr", "hit");
     g.set_param(attr, "mode", 0.0);
 
-    // …e a marca que ela deixa. `Add` sobre `Size`: o elemento cresce ENQUANTO toca, então quem
-    // pousou é gordo e quem está no ar continua pequeno.
+    // …e o TAMANHO que ela decide. ⚠️ **`Set`, nunca `Add`** — o canal `hit` é um INSTANTE (a
+    // profundidade que este tique empurrou para fora), e um elemento em repouso continua em
+    // contato para sempre. Somar um instantâneo a cada tique é integrar sem teto: medido, o
+    // maior `size` ia a 0,455 · 0,892 · 1,197 · 1,963 · **3,021** aos 8 s com a chuva já
+    // PARADA — quanto mais tempo o artista deixasse tocar, maiores as bolas, e o quadro nunca
+    // era o mesmo duas vezes (report do Enio, 2026-08-11).
+    //
+    // O `Set` sozinho zeraria quem não toca (o elemento SUMIRIA), então quem carrega a base é o
+    // próprio valor: o `map_range` leva `hit` de [0, HIT_FULL] para [BASE, BASE + mark], com
+    // clamp. Contato nenhum ⇒ o tamanho de nascimento, ao bit; contato ⇒ gordo, e nunca além.
+    let mapped = g.add_node("value.map_range");
+    g.set_param(mapped, "in_lo", 0.0);
+    g.set_param(mapped, "in_hi", HIT_FULL);
+    g.set_param(mapped, "out_lo", BASE);
+    g.set_param(mapped, "out_hi", BASE + mark);
+    g.set_param(mapped, "clamp", 1.0);
+
     let drive = g.add_node("motion.drive");
     g.set_param(drive, "channel", 3.0); // Size
-    g.set_param(drive, "mode", 0.0); // Add
-    g.set_param(drive, "scale", mark);
+    g.set_param(drive, "mode", 1.0); // Set
+    g.set_param(drive, "scale", 1.0);
 
     let out = g.add_node("motion.output");
 
@@ -114,7 +145,7 @@ pub(super) fn build_gpu_hit_demo_document(
             },
         );
     }
-    for (i, n) in [wind, step, disc, floor, drive, out]
+    for (i, n) in [wind, step, disc, floor, mapped, drive, out]
         .into_iter()
         .enumerate()
     {
@@ -145,7 +176,8 @@ pub(super) fn build_gpu_hit_demo_document(
         // O MESMO stream por duas portas: o fio grosso (as instâncias) e a leitura do canal.
         (floor, 0, drive, 0, false),
         (floor, 0, attr, 0, false),
-        (attr, 0, drive, 1, false),
+        (attr, 0, mapped, 0, false),
+        (mapped, 0, drive, 1, false),
         (drive, 0, zone, 1, false),
         (zone, 0, out, 0, false),
     ] {

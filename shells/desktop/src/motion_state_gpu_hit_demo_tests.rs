@@ -69,53 +69,56 @@ fn what_touched_is_marked_and_what_did_not_is_not() {
     assert_eq!(control.len(), (ROWS * COLS) as usize);
 }
 
-/// **A MARCA NÃO É GLOBAL: quem não tocou continua EXATAMENTE do tamanho com que nasceu.**
+/// **O TAMANHO É O CONTATO DE AGORA — E O QUADRO CONVERGE.**
 ///
-/// Medido em 1,0 s, o instante em que a chuva está partida ao meio (23 dos 56 já alcançaram o
-/// obstáculo). O oráculo não é uma razão entre dois grupos que eu escolhi por uma linha de `y` —
-/// é a **igualdade exata** com o braço de controle: um elemento que nunca tocou tem de sair da
-/// cena com o tamanho que o `motion.scale` lhe deu, ao bit. É o que separa *"o canal descreve os
-/// contatos"* de *"o canal descreve o tempo"*.
+/// ⚠️ Este gate substitui o `the_mark_is_not_global_and_the_front_advances`, que afirmava uma
+/// **frente monotônica** — propriedade de uma marca HISTÓRICA, e o canal `hit` não é história: é
+/// a profundidade que ESTE tique empurrou para fora. A cena somava esse instantâneo com
+/// `motion.drive(Add)` e crescia para sempre (medido: maior `size` 0,455 · 0,892 · 1,197 · 1,963
+/// · **3,021** aos 8 s, com a chuva já PARADA) — *"cada Play um resultado diferente"*, o report
+/// do Enio de 2026-08-11. Um valor instantâneo consumido como acumulador não tem ponto fixo.
 ///
-/// E a segunda metade amarra a marca ao TEMPO em vez do lugar: a conta de marcados só CRESCE, e
-/// no fim da cena é a chuva inteira. Um canal que descrevesse qualquer outra coisa não teria
-/// como produzir uma frente que avança elemento a elemento.
+/// As duas metades que sobrevivem, e que são o que a cena de fato diz:
 ///
-/// ⚠️ **A correlação com a ALTURA foi tentada e é FALSA, e a cena diz por quê:** o topo do disco
-/// está em `DISC_Y + DISC_R = 2,1`, e com `restitution` um elemento marcado QUICA de volta para
-/// cima — medido, um deles está em `y = 2,08` carregando `0,4545` de marca. *"Marcado ⇒ está
-/// embaixo"* é uma afirmação sobre a POSIÇÃO num instante, e uma marca é sobre a HISTÓRIA; a
-/// linha de `y` que eu tinha escolhido nem era da cena, era um número meu.
-///
-/// FALSIFICADO por um canal escrito fora do ramo de contato: todo mundo cresceria junto, o
-/// mínimo sairia do tamanho de nascimento e a frente apareceria completa no primeiro tique.
+/// - **quem não toca fica EXATAMENTE no tamanho de nascimento** (igualdade ao bit contra o braço
+///   de controle — é isto que separa *"o canal descreve contatos"* de *"o canal descreve tempo"*);
+/// - **e a foto PARA**: o conjunto de tamanhos aos 5 s e aos 8 s é o mesmo, então dois Plays
+///   mostram a mesma coisa. Sem esta metade o gate voltaria a ser verde sobre o defeito.
 #[test]
-fn the_mark_is_not_global_and_the_front_advances() {
+fn the_size_is_the_contact_now_and_the_frame_converges() {
     let (_, control) = settled(0.0, 1.0);
     let born = control[0][0];
-    let count = |secs: f64| -> (usize, usize) {
-        let (_, sz) = settled(MARK, secs);
-        (
-            sz.iter().filter(|s| s[0] == born).count(),
-            sz.iter().filter(|s| s[0] > born).count(),
-        )
-    };
-
-    let (untouched, marked) = count(1.0);
-    assert!(untouched > 0, "alguém tem de continuar intocado");
-    assert!(marked > 0, "e alguém tem de estar marcado");
-    assert_eq!(
-        untouched + marked,
-        (ROWS * COLS) as usize,
-        "ninguém ENCOLHEU"
+    let (_, early) = settled(MARK, 1.0);
+    let untouched = early.iter().filter(|s| s[0] == born).count();
+    assert!(untouched > 0, "alguém tem de continuar intocado, ao bit");
+    assert!(
+        early.iter().all(|s| s[0] >= born - 1e-6),
+        "ninguém pode ENCOLHER abaixo do tamanho de nascimento"
     );
 
-    // A frente avança e nunca recua: a marca é um registro, não uma leitura do instante.
-    let (_, early) = count(0.6);
-    let (rest, late) = count(3.0);
-    assert!(early < marked, "a frente avança: {early} então {marked}");
-    assert!(marked < late, "…e continua: {marked} então {late}");
-    assert_eq!(rest, 0, "no fim a chuva inteira encostou em alguma coisa");
+    // A foto para: o mesmo quadro aos 5 s e aos 8 s.
+    let (p5, s5) = settled(MARK, 5.0);
+    let (p8, s8) = settled(MARK, 8.0);
+    let dp = p5
+        .iter()
+        .zip(&p8)
+        .flat_map(|(a, b)| (0..2).map(move |k| (a[k] - b[k]).abs()))
+        .fold(0.0f32, f32::max);
+    let ds = s5
+        .iter()
+        .zip(&s8)
+        .map(|(a, b)| (a[0] - b[0]).abs())
+        .fold(0.0f32, f32::max);
+    assert!(dp < 0.01, "a chuva tem de estar parada: {dp}");
+    assert!(
+        ds < 0.02,
+        "o tamanho tem de PARAR de crescer: {ds} entre 5 s e 8 s"
+    );
+    // E o contato tem de estar de fato marcando alguém no quadro final.
+    assert!(
+        s8.iter().fold(0.0f32, |m, s| m.max(s[0])) > born * 1.5,
+        "no fim alguém tem de estar visivelmente encostado"
+    );
 }
 
 /// **A SONDA** — de onde saem os números do anúncio e do doc.
@@ -125,22 +128,40 @@ fn the_mark_is_not_global_and_the_front_advances() {
 #[ignore]
 fn probe_hit_mark() {
     for (mark, secs) in [
-        (2.0f32, 3.0f64),
+        (0.2f32, 3.0f64),
         (MARK, 3.0),
-        (8.0, 3.0),
+        (1.0, 3.0),
         (MARK, 1.0),
         (MARK, 5.0),
+        (MARK, 8.0),
     ] {
         let (p, sz) = settled(mark, secs);
         let (_, ctl) = settled(0.0, secs);
         let big = sz.iter().fold(0.0f32, |m, s| m.max(s[0]));
         let small = sz.iter().fold(f32::MAX, |m, s| m.min(s[0]));
-        let landed = p.iter().filter(|q| q[1] < 2.0).count();
+        let touching = sz.iter().filter(|s| s[0] > ctl[0][0] + 1e-4).count();
         eprintln!(
-            "mark {mark} @ {secs:.1}s: size [{small:.3}, {big:.3}]  controle {:.3}  \
-             {landed}/{} abaixo de y=2",
+            "mark {mark} @ {secs:.1}s: size [{small:.3}, {big:.3}]  base {:.3}  \
+             {touching}/{} encostados",
             ctl[0][0],
             p.len()
         );
+    }
+}
+
+/// **SONDA — A CHUVA ASSENTA?** (o irmao do `probe_does_the_scene_settle` do `=31`.)
+#[test]
+#[ignore]
+fn probe_does_the_shower_settle() {
+    for secs in [1.0f64, 2.0, 3.0, 5.0, 8.0] {
+        let (p, sz) = settled(MARK, secs);
+        let (q, _) = settled(MARK, secs + 1.0 / 60.0);
+        let mov = p
+            .iter()
+            .zip(&q)
+            .flat_map(|(a, b)| (0..2).map(move |k| (a[k] - b[k]).abs()))
+            .fold(0.0f32, f32::max);
+        let big = sz.iter().fold(0.0f32, |m, s| m.max(s[0]));
+        eprintln!("t={secs:>5.2}s  maior size {big:.3}  movimento no tique seguinte {mov:.6}");
     }
 }

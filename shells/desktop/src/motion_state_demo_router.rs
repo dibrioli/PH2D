@@ -204,8 +204,8 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
                     .unwrap_or_default();
             // Os números são MEDIDOS (`probe_hit_mark`), não escolhidos.
             eprintln!(
-                "[hit-demo] A MARCA DO IMPACTO: {} discos caem sobre um obstaculo e um chao. O \n                   `sim.collide` escreve a coluna `hit` (quao fundo a colisao deste tique empurrou),\n                   o `value.attribute(Hit)` a LE e o `motion.drive(Size)` a marca -- ENGORDA quem\n                   tocou. NENHUM no' novo: a cadeia inteira ja' existia, faltava o que observar.\n\
-                   (!) Sao DOIS colisores: a coluna acumula por `max`, o mais fundo do TIQUE --\n                   nunca 'o ultimo da cadeia'. E a `sim.zone` a TIRA do estado, senao a marca\n                   cresceria para sempre.",
+                "[hit-demo] QUEM ESTA ENCOSTADO: {} discos caem sobre um obstaculo e um chao. O \n                   `sim.collide` escreve a coluna `hit` (quao fundo a colisao deste tique empurrou),\n                   o `value.attribute(Hit)` a LE, o `value.map_range` a satura e o\n                   `motion.drive(Size, Set)` a mostra -- quem esta' encostado e' 3,3x maior.\n\
+                   (!) `Set`, nunca `Add`: `hit` e' um INSTANTE, e um corpo em repouso continua em\n                   contato -- somar isso a cada tique crescia para sempre (0,455 -> 3,021 aos 8 s\n                   com a chuva ja' parada). Agora o quadro PARA: size 0,720 aos 3, 5 e 8 s.",
                 (gpu_hit_demo::ROWS * gpu_hit_demo::COLS) as u32,
             );
             sinks

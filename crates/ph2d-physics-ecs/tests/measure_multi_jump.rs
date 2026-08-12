@@ -146,3 +146,52 @@ fn measure_how_many_charges_one_press_burns() {
     }
     println!("  (as tres linhas TEM de ser iguais: um aperto e' UM pulo)");
 }
+
+/// **A altura ALCANÇÁVEL, para a cena de smoke escolher a beirada.**
+///
+/// ⚠️ **O toque e o aperto SEGURADO dão alturas diferentes** (o `cut_gravity`
+/// corta um toque curto), então a beirada de uma cena tem de sair do gesto que
+/// o artista vai de facto fazer: segurar.
+#[test]
+#[ignore = "sonda de medicao"]
+fn measure_the_reachable_height() {
+    println!("\n== altura alcancavel (aperto SEGURADO), acima do repouso ==");
+    println!("  cargas   1 pulo   2 pulos");
+    for air in [0_u32, 1] {
+        let (mut sim, mut bridge, player) = rig(air, 2.0);
+        let mut tick = 0_u64;
+        let rest = settle(&mut sim, &mut bridge, &mut tick);
+        // Segura por 30 tiques: altura CHEIA do primeiro pulo.
+        let mut peak = f32::NEG_INFINITY;
+        for _ in 0..30 {
+            bridge.set_player_input(
+                player,
+                PlayerInput {
+                    jump: true,
+                    ..PlayerInput::default()
+                },
+            );
+            tick += 1;
+            bridge.dispatch(&mut sim, true, tick);
+            peak = peak.max(pose(&sim).1);
+        }
+        let single = peak - rest;
+        // Solta, e no ápice aperta de novo (segurando).
+        bridge.set_player_input(player, PlayerInput::default());
+        tick += 1;
+        bridge.dispatch(&mut sim, true, tick);
+        for _ in 0..120 {
+            bridge.set_player_input(
+                player,
+                PlayerInput {
+                    jump: true,
+                    ..PlayerInput::default()
+                },
+            );
+            tick += 1;
+            bridge.dispatch(&mut sim, true, tick);
+            peak = peak.max(pose(&sim).1);
+        }
+        println!("  {air:>6}  {single:>6.3}   {:>7.3}", peak - rest);
+    }
+}

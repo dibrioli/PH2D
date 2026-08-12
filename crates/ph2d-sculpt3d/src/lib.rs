@@ -64,7 +64,7 @@ pub use brush::{
 pub use falloff::Falloff;
 pub use grip::{Amount, Grip, GripLaw};
 pub use preview::{NO_PREVIEW, preview_into, preview_verts};
-pub use ref_mode::{RefMode, VerbProfile};
+pub use ref_mode::{KernelLaw, LateralPull, PlaneReach, RefMode, VerbProfile};
 pub use spacing::{MIN_SPACING_FRACTION, Walk, min_spacing, walk};
 pub use stroke::{Dab, SculptStroke};
 pub use transform::{Gesture, MIN_SCALE_FACTOR, MaskTransform, TransformKind};

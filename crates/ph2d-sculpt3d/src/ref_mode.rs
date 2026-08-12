@@ -118,6 +118,85 @@ impl StrengthCurve {
     }
 }
 
+/// **COMO um verbo que APERTA puxa o vértice** — a primeira metade imperativa
+/// de um modo, e a que o atlas de divergência media em `5,776e-4`.
+///
+/// O `Pinch.js:52-58` soma `(centro − v) · f` **cru**, em 3D. Nós projetamos na
+/// tangente antes de somar, e a projeção é o que separa *apertar* de *apertar e
+/// afundar junto*.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LateralPull {
+    /// Projeta na tangente do plano de área antes de puxar — **o nosso**.
+    ///
+    /// ⚠️ **Isto NÃO é a lei do Blender, e chamá-la de `B` seria o erro que
+    /// esta wave acabou de corrigir noutro lugar.** O `pinch.cc:39-60` monta um
+    /// frame `(X ao longo do TRAÇO, Z na normal)` e devolve `x_disp + z_disp`,
+    /// *"the Y component is removed"* — ele descarta a tangente PERPENDICULAR
+    /// ao traço e **guarda** a componente normal, que é quase o oposto do que a
+    /// nossa projeção faz. São **três** leis, não duas. Fechar a dele pede o
+    /// frame do traço dentro do [`crate::Dab`] — wave própria, nomeada aqui em
+    /// vez de contrabandeada num `match` que diria `B` sem ser.
+    Tangential,
+    /// Puxa em 3D, sem projetar — **a da referência**.
+    Direct,
+}
+
+/// **Quantos lados do plano um achatamento morde** — a segunda metade
+/// imperativa, e a maior do atlas (`1,717e-3` no Flatten).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PlaneReach {
+    /// Corta a crista **e** enche o vale.
+    ///
+    /// É a leitura do Blender, lida no cabeçalho do `plane.cc`: *"The Plane
+    /// brush translates the vertices towards the brush plane"*, com **Height**
+    /// para o que está acima e **Depth** para o que está abaixo — dois lados,
+    /// um knob cada. O nosso é este com os dois knobs no máximo.
+    Bilateral,
+    /// Um lado só, e o outro é `continue` — **a da referência**.
+    ///
+    /// O `Flatten.js:64` faz `if (distToPlane * comp > 0.0) continue`, então o
+    /// *Flatten* do SculptGL **é** o nosso `Fill` (ou o nosso `Scrape`, sob
+    /// Ctrl). É o `continue` que torna o verbo auto-limitado.
+    OneSided,
+}
+
+/// **A metade IMPERATIVA de um modo** — onde a LEI do kernel difere, e não só
+/// um número de tabela.
+///
+/// ⚠️ **Ela é derivada UMA vez do modo e perguntada onde o verbo decide**, e não
+/// um `match mode` espalhado por três braços do `compute_target`: três cópias da
+/// mesma pergunta são três lugares onde o quarto verbo nasce sem a resposta.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct KernelLaw {
+    /// Pinch · Magnify · o termo lateral do Crease.
+    pub lateral: LateralPull,
+    /// Flatten.
+    pub plane: PlaneReach,
+}
+
+impl RefMode {
+    /// A lei de kernel que este modo manda.
+    ///
+    /// ⚠️ **O `B` e o `L` devolvem o que o app JÁ shipava**, de propósito: esta
+    /// wave não muda o produto, ela torna o `S` verdadeiro. Antes dela o app
+    /// rodava um kernel que não era o de referência nenhuma em três verbos, com
+    /// um chip que dizia `S` — o mesmo defeito que a W0 curou nos DEFAULTS,
+    /// aqui na LEI.
+    #[must_use]
+    pub const fn kernel(self) -> KernelLaw {
+        match self {
+            Self::S => KernelLaw {
+                lateral: LateralPull::Direct,
+                plane: PlaneReach::OneSided,
+            },
+            Self::B | Self::L => KernelLaw {
+                lateral: LateralPull::Tangential,
+                plane: PlaneReach::Bilateral,
+            },
+        }
+    }
+}
+
 /// **O que uma referência DECLARA sobre um verbo.**
 ///
 /// ⚠️ **A struct CRESCE wave a wave, e um campo só entra com o consumidor

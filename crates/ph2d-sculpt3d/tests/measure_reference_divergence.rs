@@ -13,6 +13,16 @@
 //! a alternativa é eu escolher a ordem pela minha leitura do código, que é
 //! exatamente como se conserta o verbo errado primeiro.
 //!
+//! # ⚠️ E UM GATE mora aqui, contra a regra acima
+//!
+//! O [`in_s_mode_the_three_stragglers_reach_the_floor`] **afirma**, e ele está
+//! neste arquivo por um motivo: ele precisa EXATAMENTE deste harness — a mesma
+//! malha, a mesma pegada, a mesma polaridade de máscara, os mesmos flags de
+//! fábrica por tool (o `_negative` do Flatten, o do Crease, o `pinch = 1`). Uma
+//! segunda cópia disso num arquivo vizinho é como as duas passariam a medir
+//! coisas diferentes com o mesmo nome, e a lição está escrita no próprio doc
+//! deste arquivo: *ele alimenta os dois lados com a MESMA malha, de propósito*.
+//!
 //! # ⚠️ Ela alimenta os DOIS lados com a MESMA malha, de propósito
 //!
 //! A referência recebe as posições, as normais e a máscara da **nossa** malha,
@@ -29,6 +39,13 @@
 
 use ph2d_mesh::Mesh;
 use ph2d_sculpt3d::{Brush, Dab, Falloff, SculptStroke, Symmetry, Verb, ref_kernels as rk};
+
+/// O raio do dab de TODA medição deste arquivo.
+///
+/// ⚠️ Ele era `const R` dentro de cada teste; a extração da [`divergence`] o
+/// obrigou a subir, e um segundo raio noutro sítio faria duas tabelas com o
+/// mesmo cabeçalho falarem de pincéis diferentes.
+const R: f32 = 0.45;
 
 /// A malha das duas medições — a nossa, com as nossas normais.
 fn sphere() -> Mesh {
@@ -92,10 +109,197 @@ struct Row {
     gap: f64,
 }
 
+/// **UMA MEDIÇÃO, DOIS CONSUMIDORES** — a sonda que IMPRIME e o gate que
+/// AFIRMA chamam esta função.
+///
+/// ⚠️ Ela existe porque os flags de fábrica por tool (o `_negative = true` do
+/// `Flatten.js:11` e do `Crease.js:11`, o `pinch = 1` que isola o knob nosso) e
+/// a polaridade da máscara são fáceis de escrever quase-certos. Duas cópias
+/// disso mediriam coisas diferentes com o mesmo nome — que é o defeito que o
+/// cabeçalho deste arquivo já descreve para os DOIS LADOS da comparação.
+fn divergence(
+    name: &'static str,
+    verb: Verb,
+    intensity: f64,
+    negative: bool,
+    mode: ph2d_sculpt3d::RefMode,
+) -> Row {
+    let mut mesh = sphere();
+    let base = flat(&mesh);
+    let d = dab_at(R);
+    let fp = footprint(&mesh, &d);
+    let free = free_of(&mesh);
+    let normals: Vec<f32> = mesh.normals().iter().flat_map(|n| *n).collect();
+
+    // --- O NOSSO, pela porta do produto.
+    let brush = Brush {
+        verb,
+        strength: intensity as f32,
+        // ⚠️ **A curva da REFERÊNCIA, e não o default do pincel.** Esta
+        // tabela existe para isolar *a lei e as constantes*; medi-la com a
+        // `Smooth` misturaria a diferença de FORMA (que a `Plateau` fechou
+        // em 2026-08-11, `1,000×` em toda a linha) com a de MAGNITUDE, e um
+        // número que soma duas causas não aponta para nenhuma.
+        falloff: if verb == Verb::Smooth {
+            Falloff::Constant
+        } else {
+            Falloff::Plateau
+        },
+        // ⚠️ **O Crease parqueia o default no OUTRO lado do flag.** A tool
+        // da referência nasce com `_negative = true` (`Crease.js:11`) e cava
+        // por ali; o nosso kernel cava com o sinal e `invert = false`. O
+        // PRODUTO se comporta igual — os dois cavam sem Ctrl e criam crista
+        // com ele —, e comparar `invert = negative` põe um a cavar e o outro
+        // a levantar: o `|diferença|` sai `0,0358`, quase **2×** o próprio
+        // deslocamento (`0,019`), que é a assinatura de um sinal e não de
+        // uma lei.
+        invert: if verb == Verb::Crease {
+            !negative
+        } else {
+            negative
+        },
+        // ⚠️ **O `pinch` é NOSSO e a referência não o tem** — lá o termo
+        // lateral do Crease entra inteiro (`dx * fallOff`). O default de
+        // fábrica é `0,5`, então medi-lo aqui somaria a divergência de um
+        // KNOB à da lei, que é o que esta tabela existe para separar. O
+        // custo dele está na linha `pinch` da varredura abaixo.
+        pinch: 1.0,
+        // ⚠️ **O MODO é o parâmetro que faz desta tabela um oráculo.** Em `S`
+        // ela mede a paridade; em `B`, o quanto a nossa leitura se afasta dela.
+        mode,
+        ..Brush::default()
+    };
+    let mut stroke = SculptStroke::default();
+    stroke.begin(&mesh);
+    stroke.dab(&mut mesh, &brush, &d, Symmetry::default());
+    let ours = flat(&mesh);
+
+    // --- O DELES, sobre a MESMA malha e a MESMA pegada.
+    let mut theirs = base.clone();
+    let center = [
+        f64::from(d.center[0]),
+        f64::from(d.center[1]),
+        f64::from(d.center[2]),
+    ];
+    let eye = [
+        f64::from(d.eye[0]),
+        f64::from(d.eye[1]),
+        f64::from(d.eye[2]),
+    ];
+    let r2 = f64::from(d.radius) * f64::from(d.radius);
+    let mut front = Vec::new();
+    rk::front_vertices(&normals, &fp, eye, &mut front);
+    let a_normal = rk::area_normal(&normals, &free, &front).expect("normal de área");
+    match verb {
+        Verb::Draw => rk::brush(
+            &mut theirs,
+            &free,
+            &fp,
+            None,
+            a_normal,
+            center,
+            r2,
+            intensity,
+            negative,
+        ),
+        Verb::Clay => {
+            let mut ctr = rk::area_center(&base, &free, &front).expect("centro");
+            let off = rk::clay_plane_offset(r2.sqrt());
+            for k in 0..3 {
+                ctr[k] += a_normal[k] * off;
+            }
+            rk::flatten(
+                &mut theirs,
+                &free,
+                &fp,
+                None,
+                a_normal,
+                ctr,
+                center,
+                r2,
+                intensity,
+                negative,
+            );
+        }
+        Verb::Flatten => {
+            let ctr = rk::area_center(&base, &free, &front).expect("centro");
+            rk::flatten(
+                &mut theirs,
+                &free,
+                &fp,
+                None,
+                a_normal,
+                ctr,
+                center,
+                r2,
+                intensity,
+                negative,
+            );
+        }
+        Verb::Inflate => rk::inflate(
+            &mut theirs,
+            &normals,
+            &free,
+            &fp,
+            Some(&base),
+            center,
+            r2,
+            intensity,
+            negative,
+        ),
+        Verb::Crease => rk::crease(
+            &mut theirs,
+            &free,
+            &fp,
+            Some(&base),
+            a_normal,
+            center,
+            r2,
+            intensity,
+            negative,
+        ),
+        Verb::Pinch | Verb::Magnify => {
+            rk::pinch(&mut theirs, &free, &fp, center, r2, intensity, negative);
+        }
+        // Os dois lados do `Flatten` da referência, contra o mesmo kernel.
+        Verb::Fill | Verb::Scrape => {
+            let ctr = rk::area_center(&base, &free, &front).expect("centro");
+            rk::flatten(
+                &mut theirs,
+                &free,
+                &fp,
+                None,
+                a_normal,
+                ctr,
+                center,
+                r2,
+                intensity,
+                negative,
+            );
+        }
+        Verb::Smooth => {
+            let adj = mesh.adjacency();
+            let (starts, lens, values) = adj.vert_verts.parts();
+            let on_edge: Vec<u8> = (0..mesh.vert_count())
+                .map(|v| u8::from(adj.is_border(v)))
+                .collect();
+            let mut smoothed = Vec::new();
+            rk::laplacian(&base, &fp, starts, lens, values, &on_edge, &mut smoothed);
+            rk::smooth(&mut theirs, &free, &fp, &smoothed, intensity);
+        }
+        _ => unreachable!("a tabela só tem verbos de carimbo"),
+    }
+
+    Row {
+        verb: name,
+        ours: reach_of(&ours, &base),
+        theirs: reach_of(&theirs, &base),
+        gap: reach_of(&ours, &theirs),
+    }
+}
 #[test]
 #[ignore = "sonda: imprime a tabela, não afirma nada"]
 fn what_separates_our_kernels_from_the_reference() {
-    const R: f32 = 0.45;
     let mut rows: Vec<Row> = Vec::new();
 
     // Cada linha é `(verbo, a intensidade DE FÁBRICA da tool correspondente no
@@ -124,175 +328,13 @@ fn what_separates_our_kernels_from_the_reference() {
     ];
 
     for &(name, verb, intensity, negative) in cases {
-        let mut mesh = sphere();
-        let base = flat(&mesh);
-        let d = dab_at(R);
-        let fp = footprint(&mesh, &d);
-        let free = free_of(&mesh);
-        let normals: Vec<f32> = mesh.normals().iter().flat_map(|n| *n).collect();
-
-        // --- O NOSSO, pela porta do produto.
-        let brush = Brush {
+        rows.push(divergence(
+            name,
             verb,
-            strength: intensity as f32,
-            // ⚠️ **A curva da REFERÊNCIA, e não o default do pincel.** Esta
-            // tabela existe para isolar *a lei e as constantes*; medi-la com a
-            // `Smooth` misturaria a diferença de FORMA (que a `Plateau` fechou
-            // em 2026-08-11, `1,000×` em toda a linha) com a de MAGNITUDE, e um
-            // número que soma duas causas não aponta para nenhuma.
-            falloff: if verb == Verb::Smooth {
-                Falloff::Constant
-            } else {
-                Falloff::Plateau
-            },
-            // ⚠️ **O Crease parqueia o default no OUTRO lado do flag.** A tool
-            // da referência nasce com `_negative = true` (`Crease.js:11`) e cava
-            // por ali; o nosso kernel cava com o sinal e `invert = false`. O
-            // PRODUTO se comporta igual — os dois cavam sem Ctrl e criam crista
-            // com ele —, e comparar `invert = negative` põe um a cavar e o outro
-            // a levantar: o `|diferença|` sai `0,0358`, quase **2×** o próprio
-            // deslocamento (`0,019`), que é a assinatura de um sinal e não de
-            // uma lei.
-            invert: if verb == Verb::Crease {
-                !negative
-            } else {
-                negative
-            },
-            // ⚠️ **O `pinch` é NOSSO e a referência não o tem** — lá o termo
-            // lateral do Crease entra inteiro (`dx * fallOff`). O default de
-            // fábrica é `0,5`, então medi-lo aqui somaria a divergência de um
-            // KNOB à da lei, que é o que esta tabela existe para separar. O
-            // custo dele está na linha `pinch` da varredura abaixo.
-            pinch: 1.0,
-            ..Brush::default()
-        };
-        let mut stroke = SculptStroke::default();
-        stroke.begin(&mesh);
-        stroke.dab(&mut mesh, &brush, &d, Symmetry::default());
-        let ours = flat(&mesh);
-
-        // --- O DELES, sobre a MESMA malha e a MESMA pegada.
-        let mut theirs = base.clone();
-        let center = [
-            f64::from(d.center[0]),
-            f64::from(d.center[1]),
-            f64::from(d.center[2]),
-        ];
-        let eye = [
-            f64::from(d.eye[0]),
-            f64::from(d.eye[1]),
-            f64::from(d.eye[2]),
-        ];
-        let r2 = f64::from(d.radius) * f64::from(d.radius);
-        let mut front = Vec::new();
-        rk::front_vertices(&normals, &fp, eye, &mut front);
-        let a_normal = rk::area_normal(&normals, &free, &front).expect("normal de área");
-        match verb {
-            Verb::Draw => rk::brush(
-                &mut theirs,
-                &free,
-                &fp,
-                None,
-                a_normal,
-                center,
-                r2,
-                intensity,
-                negative,
-            ),
-            Verb::Clay => {
-                let mut ctr = rk::area_center(&base, &free, &front).expect("centro");
-                let off = rk::clay_plane_offset(r2.sqrt());
-                for k in 0..3 {
-                    ctr[k] += a_normal[k] * off;
-                }
-                rk::flatten(
-                    &mut theirs,
-                    &free,
-                    &fp,
-                    None,
-                    a_normal,
-                    ctr,
-                    center,
-                    r2,
-                    intensity,
-                    negative,
-                );
-            }
-            Verb::Flatten => {
-                let ctr = rk::area_center(&base, &free, &front).expect("centro");
-                rk::flatten(
-                    &mut theirs,
-                    &free,
-                    &fp,
-                    None,
-                    a_normal,
-                    ctr,
-                    center,
-                    r2,
-                    intensity,
-                    negative,
-                );
-            }
-            Verb::Inflate => rk::inflate(
-                &mut theirs,
-                &normals,
-                &free,
-                &fp,
-                Some(&base),
-                center,
-                r2,
-                intensity,
-                negative,
-            ),
-            Verb::Crease => rk::crease(
-                &mut theirs,
-                &free,
-                &fp,
-                Some(&base),
-                a_normal,
-                center,
-                r2,
-                intensity,
-                negative,
-            ),
-            Verb::Pinch | Verb::Magnify => {
-                rk::pinch(&mut theirs, &free, &fp, center, r2, intensity, negative);
-            }
-            // Os dois lados do `Flatten` da referência, contra o mesmo kernel.
-            Verb::Fill | Verb::Scrape => {
-                let ctr = rk::area_center(&base, &free, &front).expect("centro");
-                rk::flatten(
-                    &mut theirs,
-                    &free,
-                    &fp,
-                    None,
-                    a_normal,
-                    ctr,
-                    center,
-                    r2,
-                    intensity,
-                    negative,
-                );
-            }
-            Verb::Smooth => {
-                let adj = mesh.adjacency();
-                let (starts, lens, values) = adj.vert_verts.parts();
-                let on_edge: Vec<u8> = (0..mesh.vert_count())
-                    .map(|v| u8::from(adj.is_border(v)))
-                    .collect();
-                let mut smoothed = Vec::new();
-                rk::laplacian(&base, &fp, starts, lens, values, &on_edge, &mut smoothed);
-                rk::smooth(&mut theirs, &free, &fp, &smoothed, intensity);
-            }
-            _ => unreachable!("a tabela só tem verbos de carimbo"),
-        }
-
-        rows.push(Row {
-            verb: name,
-            ours: reach_of(&ours, &base),
-            theirs: reach_of(&theirs, &base),
-            gap: reach_of(&ours, &theirs),
-        });
+            intensity,
+            negative,
+            ph2d_sculpt3d::RefMode::S,
+        ));
     }
 
     println!(
@@ -520,7 +562,6 @@ fn whose_divergence_is_left_the_law_or_the_plane() {
 #[test]
 #[ignore = "sonda: imprime a tabela, não afirma nada"]
 fn what_separates_our_grab_family_from_the_reference() {
-    const R: f32 = 0.45;
     // O gesto: uma puxada TANGENTE à esfera no ponto do dab. O `dab_at` pousa em
     // `(cos 0.7, 0, sin 0.7)`, então `+Y` é exatamente tangente ali — um gesto
     // radial misturaria *puxar* com *inflar* e o número diria as duas coisas.
@@ -542,10 +583,7 @@ fn what_separates_our_grab_family_from_the_reference() {
         // .. }` à mão carregaria um total onde se espera um incremento sem o
         // compilador piscar (o doc do `Dab::pull` é explícito sobre isso).
         let (verb, d) = match name {
-            "Move/grab" => (
-                Verb::Move,
-                Dab::pulling(d0.center, d0.radius, d0.eye, PULL),
-            ),
+            "Move/grab" => (Verb::Move, Dab::pulling(d0.center, d0.radius, d0.eye, PULL)),
             "SnakeHook" => (
                 Verb::SnakeHook,
                 Dab::hooking(d0.center, d0.radius, d0.eye, PULL),
@@ -580,11 +618,7 @@ fn what_separates_our_grab_family_from_the_reference() {
             f64::from(d.center[2]),
         ];
         let r2 = f64::from(d.radius) * f64::from(d.radius);
-        let pull = [
-            f64::from(PULL[0]),
-            f64::from(PULL[1]),
-            f64::from(PULL[2]),
-        ];
+        let pull = [f64::from(PULL[0]), f64::from(PULL[1]), f64::from(PULL[2])];
         match verb {
             // ⚠️ **O proxy é indexado pela POSIÇÃO NA LISTA**, não pelo id do
             // vértice — o doc do `rk::move` avisa, e trocar os dois lê a
@@ -621,7 +655,7 @@ fn what_separates_our_grab_family_from_the_reference() {
             }
             // ⚠️ **A `intensity` do `scale` é o DELTA EM PIXELS**, e o `0.01`
             // de dentro do kernel é o que a converte em fração: a nossa fração
-                // entra multiplicada por 100 para as duas falarem a mesma coisa.
+            // entra multiplicada por 100 para as duas falarem a mesma coisa.
             _ => rk::scale(
                 &mut theirs,
                 &free,
@@ -681,7 +715,6 @@ fn what_separates_our_grab_family_from_the_reference() {
 #[test]
 #[ignore = "sonda: imprime a tabela, não afirma nada"]
 fn what_separates_our_mask_from_the_reference() {
-    const R: f32 = 0.45;
     // Os defaults DE FÁBRICA da tool `Masking` do original (`Masking.js:13-16`).
     const INTENSITY: f64 = 0.5;
     const HARDNESS: f64 = 0.25;
@@ -719,7 +752,10 @@ fn what_separates_our_mask_from_the_reference() {
         let mut theirs = vec![1.0f32; clean.vert_count()];
         for _ in 0..n {
             ph2d_sculpt3d::ref_kernels::mask(
-                &mut theirs, &pos, &fp, {
+                &mut theirs,
+                &pos,
+                &fp,
+                {
                     [
                         f64::from(d.center[0]),
                         f64::from(d.center[1]),
@@ -783,7 +819,6 @@ fn what_separates_our_mask_from_the_reference() {
 #[ignore = "sonda: imprime a tabela, não afirma nada"]
 fn does_the_accumulate_switch_do_anything_verb_by_verb() {
     use ph2d_sculpt3d::Grip;
-    const R: f32 = 0.45;
     const PASSES: usize = 4;
 
     println!("\n== O ACCUMULATE, verbo a verbo ({PASSES} passadas pelo MESMO caminho) ==");
@@ -870,4 +905,65 @@ fn live_dab_centre(mesh: &Mesh, radius: f32, x: f32) -> Dab {
         }
     }
     Dab::at(best, radius, [0.0, 0.0, -1.0])
+}
+
+/// **EM `S`, OS DEZ VERBOS DE CARIMBO CHEGAM AO PISO DO `f32`.**
+///
+/// Este é o gate que a wave dos modos existe para tornar possível, e ele afirma
+/// o número que o Enio pediu por escrito: *"paridade bit-idêntica"*.
+///
+/// ⚠️ **Antes desta wave três verbos NÃO chegavam**, e o atlas os media: Flatten
+/// `1,717e-3`, Crease `8,087e-4`, Pinch/Magnify `5,776e-4` — contra um piso de
+/// `5,96e-8` nos outros sete. Não era ruído numérico: era **lei diferente**
+/// (bilateralidade e projeção tangencial), rodando sob um chip que dizia `S`.
+///
+/// ⚠️ **E ele NÃO carrega o controle *"em `B` os quatro divergem"*, embora eu o
+/// tenha escrito primeiro — a mutação mostrou que ele passava pelo motivo
+/// errado.** O modo `B` também declara `strength²` (o E13), então um dab em `B`
+/// difere da referência **pela força** mesmo com a lei de kernel idêntica:
+/// medido, colapsar o `B` sobre o `S` deixava o Flatten em `7,26e-3` e o
+/// controle verde. Um controle que não isola a grandeza que ele afirma isolar é
+/// pior que nenhum. Quem prova que o chip ESCOLHE são os gates de
+/// `verb_mode_tests.rs`, que comparam geometria contra geometria com a força
+/// fora da conta — e a mesma mutação sangra cinco deles.
+#[test]
+fn in_s_mode_the_stamp_verbs_reach_the_floor() {
+    use ph2d_sculpt3d::RefMode;
+
+    // O epsilon do `f32` perto de 1 é `1,19e-7`; o piso medido das dez linhas
+    // fica em `5,96e-8` (meio ulp) e este teto é folgado o bastante para não
+    // flakar e apertado o bastante para que `1,7e-3` — o número que esta wave
+    // fechou — fique **três ordens de grandeza** fora.
+    const FLOOR: f64 = 5.0e-7;
+
+    // ⚠️ **A mesma tabela da sonda, e os flags são de FÁBRICA por tool** (o
+    // `_negative` do `Flatten.js:11` e do `Crease.js:11`). Ela é repetida aqui
+    // em vez de partilhada porque a sonda a usa para ESCOLHER a ordem do
+    // trabalho e o gate para AFIRMAR: quem quiser medir um verbo novo mexe numa;
+    // quem quiser exigir paridade dele mexe na outra, e a diferença entre as
+    // duas listas é uma pergunta legítima.
+    let cases: &[(&'static str, Verb, f64, bool)] = &[
+        ("Draw/brush", Verb::Draw, 0.5, false),
+        ("Clay", Verb::Clay, 0.5, false),
+        ("Flatten", Verb::Flatten, 0.75, true),
+        ("Fill", Verb::Fill, 0.75, false),
+        ("Scrape", Verb::Scrape, 0.75, true),
+        ("Inflate", Verb::Inflate, 0.3, false),
+        ("Crease", Verb::Crease, 0.75, true),
+        ("Pinch", Verb::Pinch, 0.75, false),
+        ("Magnify", Verb::Magnify, 0.75, true),
+        ("Smooth", Verb::Smooth, 0.75, false),
+    ];
+    for &(name, verb, intensity, negative) in cases {
+        let s = divergence(name, verb, intensity, negative, RefMode::S);
+        assert!(
+            s.gap < FLOOR,
+            "{name} em `S` diverge {:.3e} da referência (piso {FLOOR:.0e})",
+            s.gap
+        );
+        // ⚠️ O verbo tem de MOVER alguma coisa, senão comparar dois campos
+        // parados dá `0,0` e a asserção acima passa sobre um dab que não
+        // aconteceu.
+        assert!(s.ours > 1e-4, "{name}: o dab não moveu nada ({})", s.ours);
+    }
 }

@@ -326,6 +326,13 @@ fn flatten_brings_the_footprint_onto_one_plane() {
         radius: 0.5,
         strength: 1.0,
         falloff: Falloff::Constant,
+        // ⚠️ **A bilateralidade é a LEI DO MODO `B`, e passou a precisar ser
+        // pedida.** Ela era o comportamento único do verbo; hoje é o
+        // `PlaneReach::Bilateral` (o `plane.cc`: Height acima, Depth abaixo), e
+        // o `S` morde um lado só. *Achatar dos dois lados* é o que este gate
+        // afirma, então ele nomeia o modo em que isso é verdade — a metade `S`
+        // vive no gate irmão logo abaixo.
+        mode: crate::RefMode::B,
         ..Brush::default()
     };
     let mut s = SculptStroke::default();
@@ -396,6 +403,10 @@ fn fill_only_raises_and_scrape_only_lowers() {
         radius: 0.5,
         strength: 1.0,
         falloff: Falloff::Constant,
+        // ⚠️ A identidade `fill + scrape == flatten` **É** a bilateralidade, e
+        // ela deixou de ser a única lei do verbo: hoje é o
+        // `PlaneReach::Bilateral`, e o `S` morde um lado só (gate irmão).
+        mode: crate::RefMode::B,
         ..Brush::default()
     };
     let mut counts = [0usize; 3];
@@ -431,6 +442,9 @@ fn fill_only_raises_and_scrape_only_lowers() {
         }
     }
     let (fill, scrape, flatten) = (counts[0], counts[1], counts[2]);
+    // ⚠️ O `b` deste gate carrega `mode: RefMode::B` pela mesma razão do gate
+    // acima: a identidade abaixo **é** a bilateralidade, e ela é uma das duas
+    // leis que o modo escolhe.
     // O oráculo ESTRUTURAL, que é mais forte que um piso escolhido a dedo: todo
     // vértice está de um lado do plano ou do outro, então o Flatten move
     // exatamente a união dos dois — e cada metade tem de ser não-vazia, senão o
@@ -485,8 +499,16 @@ fn clay_adds_material_where_flatten_conserves_it() {
 
 #[test]
 fn pinch_pulls_along_the_surface_and_does_not_secretly_flatten() {
-    // A divergência deliberada do Blender (ver `tangential`): o deslocamento do
-    // Pinch é perpendicular à normal da área, então apertar é apertar.
+    // O deslocamento do Pinch é perpendicular à normal da área, então apertar é
+    // apertar.
+    //
+    // ⚠️ **Isto é a LEI DO MODO `B` e passou a precisar ser pedida** — o
+    // `LateralPull::Tangential`. E ⚠️ **o comentário que estava aqui chamava-a
+    // de "a divergência deliberada do Blender", o que é falso nos dois
+    // sentidos:** o `pinch.cc:39-60` monta `x_disp + z_disp` (a tangente ao
+    // longo do TRAÇO mais a NORMAL, *"the Y component is removed"*), e o
+    // `Pinch.js:52-58` puxa em 3D cru. **Nenhum dos dois projeta como nós** —
+    // a nossa tangencial é uma terceira lei, e é ela que este gate afirma.
     let mut mesh = sphere();
     let base = snapshot(&mesh);
     let c = [0.0, 0.0, 1.0];
@@ -494,6 +516,7 @@ fn pinch_pulls_along_the_surface_and_does_not_secretly_flatten() {
         verb: Verb::Pinch,
         radius: 0.5,
         strength: 1.0,
+        mode: crate::RefMode::B,
         ..Brush::default()
     };
     let mut s = SculptStroke::default();

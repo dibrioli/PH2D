@@ -473,6 +473,71 @@ declara defaults por tool**, que é o que ele faz hoje e é honesto.
 dizia *"o arquivo não está no clone"*, e o arquivo agora está: o que falta é
 outra coisa, e está escrito acima.
 
+### §7.2 — ✅ W3a LANDOU: o `S` deixa de ser um rótulo (2026-08-12)
+
+O modo passou a governar a metade **IMPERATIVA** — a LEI do kernel — e não só a
+tabela de defaults. `RefMode::kernel() -> KernelLaw { lateral, plane }`, derivada
+**uma vez** e perguntada onde o verbo decide (três `match mode` espalhados são
+três lugares onde o quarto verbo nasce sem a resposta).
+
+| eixo | `S` | `B`/`L` | quem lê |
+|---|---|---|---|
+| `LateralPull` | `Direct` — o delta CRU até o centro (`Pinch.js:52-58`) | `Tangential` — projeta na tangente da área | Pinch · Magnify · o termo lateral do Crease |
+| `PlaneReach` | `OneSided` — o `comp = −1` de fábrica (`Flatten.js:11,57,64`) | `Bilateral` — o `plane.cc` (Height acima, Depth abaixo) | Flatten |
+
+**O NÚMERO, medido pelo atlas** (`measure_reference_divergence`): em `S` os
+**dez** verbos de carimbo chegam ao piso do `f32`. Antes da wave, três não
+chegavam — **Flatten `1,717e-3` · Crease `8,087e-4` · Pinch/Magnify `5,776e-4`**
+contra `5,96e-8` nos outros sete. Não era ruído numérico: era **lei diferente**,
+rodando sob um chip que dizia `S`. É a mesma doença que a W0 curou nos
+DEFAULTS, agora na LEI — e é o que o Enio pediu por escrito (*"paridade
+bit-idêntica"*).
+
+⚠️ **CORREÇÃO — o `Tangential` é NOSSO, não do Blender**, e chamá-lo de `B`
+seria repetir o erro que a §7.0 acabou de consertar na curva. O `pinch.cc:39-60`
+monta um frame `(X ao longo do TRAÇO, Z na normal)` e devolve `x_disp + z_disp`,
+com o comentário *"the Y component is removed"*: ele descarta a tangente
+**perpendicular ao traço** e **guarda** a componente normal — quase o oposto do
+que a nossa projeção faz. São **três** leis, não duas. Fechar a dele pede o
+frame do traço dentro do `Dab`; fica **nomeada** em vez de contrabandeada num
+`match` que diria `B` sem ser.
+
+⚠️ **MUDANÇA DE PRODUTO, e ela é o ponto — não um efeito colateral.** O default
+é `RefMode::S`, então **o Flatten passa a raspar** (um lado) e **o Pinch a puxar
+em 3D**. Quem quiser o bilateral tem `Fill`+`Scrape` hoje e o chip `B` na W1'. A
+§7 já previa esta decisão (*"mover o default é decisão de produto com smoke
+próprio, depois da W3"*) — o que a wave faz é **tornar as duas posições
+verdadeiras**, e o smoke julga qual delas o app deve abrir.
+
+**Gates.** O `in_s_mode_the_stamp_verbs_reach_the_floor` (no arquivo do atlas,
+porque precisa EXATAMENTE daquele harness: mesma malha, mesma pegada, mesma
+polaridade de máscara, os flags de fábrica por tool) + os dois de
+`verb_mode_tests.rs`, irmão novo cortado por ASSUNTO (*o que o verbo faz* × *qual
+referência ele está seguindo*), cada um com o outro modo de CONTROLE.
+**3 mutações, 3 sangram.**
+
+⚠️ **E uma delas achou um gate meu que passava pelo motivo errado:** eu havia
+escrito o controle *"em `B` os quatro divergem"* dentro do gate do piso, e
+colapsar o `B` sobre o `S` **não o derrubava** — porque o `B` também declara
+`strength²` (o E13), então o dab difere da referência **pela força** mesmo com a
+lei idêntica (Flatten `7,26e-3` com a lei colapsada). *Um controle que não isola
+a grandeza que diz isolar é pior que nenhum*; ele saiu, e quem prova que o chip
+escolhe são os gates de geometria, onde a força está fora da conta.
+
+⚠️ **E uma lição de EDIÇÃO, que custou um gate silenciosamente errado:** um
+`str.replace(old, new, 1)` cujo `old` aparecia **duas vezes idênticas** no
+arquivo pousou o `mode: RefMode::B` no gate ERRADO — que passou de qualquer
+forma, porque o `plane_offset` é mode-agnóstico. *Afirmar a PRESENÇA da âncora
+não basta; afirme a CONTAGEM.*
+
+**Aberto na W3** (o resto da linha da tabela): E8 direção do Draw/Crease (a
+normal do PONTO — pede um campo novo no `Dab`, vindo do shell) · E10 normal viva
+do Inflate (⚠️ **as DUAS referências dizem viva e nós congelamos** — é cerca de
+Chesterton COM motivo escrito, e o passo seguinte é MEDIR a deriva que ela
+alega, não removê-la) · E11 `normal_radius_factor` · E12 front-face contínuo ·
+E14 hardness — os três últimos **acrescentam** ao `B` em vez de restaurar
+paridade, e são o que dá conteúdo ao chip na W1'.
+
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 
 **Os defaults de fábrica do Blender não estão no clone.** Eles vivem em

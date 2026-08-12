@@ -233,7 +233,20 @@ impl SculptStroke {
             // `Flatten` deles é o nosso `Fill` ou o nosso `Scrape`. Os dois lados
             // ao mesmo tempo é a leitura do Blender, e é a que o artista espera
             // de um verbo chamado *achatar*.
-            Verb::Flatten => to_plane(live, n_area, signed_distance(live, plane), w),
+            //
+            // ⚠️ **E é aqui que o modo entra.** Em `S` o verbo morde UM lado —
+            // o `comp = −1` que o `Flatten.js:11` traz de fábrica, ou seja o
+            // lado que RASPA; quem quer o outro escolhe o `Fill`, que é o mesmo
+            // kernel com o flag virado. Em `B` ele morde os dois, que é o
+            // `plane.cc` (Height acima, Depth abaixo).
+            Verb::Flatten => {
+                let d = signed_distance(live, plane);
+                match brush.mode.kernel().plane {
+                    crate::PlaneReach::Bilateral => to_plane(live, n_area, d, w),
+                    crate::PlaneReach::OneSided if d > 0.0 => to_plane(live, n_area, d, w),
+                    crate::PlaneReach::OneSided => live,
+                }
+            }
             // A metade que SOBE (o `comp = +1` da referência): quem já passou do
             // plano **não é tocado**, e é esse `continue` que torna o verbo
             // auto-limitado.
@@ -296,12 +309,12 @@ impl SculptStroke {
             // até `w` da distância ao centro **num dab**. Medido: `16,88×`.
             Verb::Pinch => add_vec(
                 live,
-                tangential(live, dab.center, n_area),
+                lateral_pull(brush.mode.kernel(), live, dab.center, n_area),
                 w * crate::PINCH_GAIN,
             ),
             Verb::Magnify => add_vec(
                 live,
-                tangential(live, dab.center, n_area),
+                lateral_pull(brush.mode.kernel(), live, dab.center, n_area),
                 -w * crate::PINCH_GAIN,
             ),
             // `Crease.js:38-76` — aperta lateralmente **e** cava, com ganho
@@ -318,7 +331,7 @@ impl SculptStroke {
             // antes do `:68`): um vértice meio-mascarado leva `0,5⁵ = 3%` do
             // empurrão normal e `0,5` do lateral. A assimetria é da referência.
             Verb::Crease => {
-                let t = tangential(live, dab.center, n_area);
+                let t = lateral_pull(brush.mode.kernel(), live, dab.center, n_area);
                 let gain = w * crate::CREASE_FRACTION;
                 add(
                     add_vec(live, t, gain * brush.pinch),
@@ -489,6 +502,25 @@ fn signed_distance(p: [f32; 3], plane: &PlaneFit) -> f32 {
 /// normal, então o Pinch dele também ACHATA um pouco — dois efeitos num knob. Ao
 /// remover a componente normal, apertar é apertar; quem quer achatar tem quatro
 /// verbos para isso.
+/// **O PUXÃO LATERAL, por uma porta só** — Pinch, Magnify e o termo lateral do
+/// Crease perguntam aqui, e o modo responde.
+///
+/// ⚠️ Três braços com um `match mode` cada seriam três lugares onde o quarto
+/// verbo que aperta nasce sem a resposta; e a divergência que isto fecha vale
+/// `5,776e-4` no atlas, contra um piso de `5,96e-8`.
+fn lateral_pull(
+    law: crate::KernelLaw,
+    p: [f32; 3],
+    center: [f32; 3],
+    normal: [f32; 3],
+) -> [f32; 3] {
+    match law.lateral {
+        crate::LateralPull::Tangential => tangential(p, center, normal),
+        // `Pinch.js:52-58` / `Crease.js:59-61`: o delta CRU até o centro, em 3D.
+        crate::LateralPull::Direct => [center[0] - p[0], center[1] - p[1], center[2] - p[2]],
+    }
+}
+
 fn tangential(p: [f32; 3], center: [f32; 3], normal: [f32; 3]) -> [f32; 3] {
     let d = [center[0] - p[0], center[1] - p[1], center[2] - p[2]];
     let along = d[0] * normal[0] + d[1] * normal[1] + d[2] * normal[2];

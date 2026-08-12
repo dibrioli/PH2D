@@ -333,3 +333,76 @@ fn a_step_you_can_walk_up_is_not_a_ledge() {
     );
     assert!(x > WALL_FACE - HALF_W - 0.30, "e andou para a frente");
 }
+
+/// **A subida ANDA à velocidade que o artista escreveu.**
+///
+/// ⚠️ **Este gate existe por causa de uma mutação que não sangrou em mais nada:**
+/// tirar a beirada do canal de cancelamento de gravidade
+/// (`PlayerStep::gravity_hold`) deixa os treze gates da lei e cinco dos seis do
+/// produto **VERDES** — porque o PENDURAR não consegue medir esse termo. O servo
+/// re-mira em todo tique a partir da velocidade VIVA (o alvo é `lip_rise / dt`),
+/// então a gravidade de um tique é absorvida pelo tique seguinte, e o
+/// assentamento move **0,1 mm** com o termo removido.
+///
+/// ⚠️ **A SUBIDA é o outro regime, e é onde o termo se paga:** o alvo dela é uma
+/// **CONSTANTE** (`ledge_speed`), então o que a gravidade faz sai do número
+/// autorado e **fica** lá. Medido em `ledge_speed = 2,0`, dez tiques de subida:
+/// **1,011× o autorado com o termo, 1,048× sem ele** — a diferença entre *o
+/// slider diz o que faz* e *o slider erra por 5%*.
+///
+/// ⚠️ **A régua é a velocidade BAIXA de propósito:** o mesmo par a 4,0 mede
+/// 1,056 contra 1,074 (1,8 ponto), porque a janela de doze tiques inclui os dois
+/// que ainda PEDEM e, no fim, um alvo rápido ultrapassa o lábio dentro dela — é
+/// ruído de fixture, não física. A 2,0 a separação é de 3,7 pontos e a barra
+/// cabe entre as duas com folga dos dois lados.
+#[test]
+fn the_climb_walks_at_the_speed_the_artist_wrote() {
+    const SPEED: f32 = 2.0;
+    let (mut sim, mut bridge, player) = scene(LIP_Y - HALF_H - 0.15, 0.30, 0.4);
+    if let Some(mut p) = sim.world_mut().get_mut::<PlatformPlayer>(player) {
+        p.ledge_speed = SPEED;
+    }
+    let mut tick = 0;
+    run(
+        &mut sim,
+        &mut bridge,
+        player,
+        &mut tick,
+        90,
+        PlayerInput {
+            drive: 1.0,
+            ..PlayerInput::default()
+        },
+    );
+    let before = pose(&sim).1;
+    // Dois tiques a PEDIR (o toque), e mais dez a subir.
+    for i in 0..12 {
+        run(
+            &mut sim,
+            &mut bridge,
+            player,
+            &mut tick,
+            1,
+            PlayerInput {
+                drive: if i < 2 { 1.0 } else { 0.0 },
+                jump: i < 2,
+                ..PlayerInput::default()
+            },
+        );
+    }
+    let rose = pose(&sim).1 - before;
+    let want = SPEED * 10.0 / 60.0;
+    let ratio = rose / want;
+    assert!(
+        ratio < 1.03,
+        "a subida tem de andar ao numero autorado: subiu {rose:.4} contra {want:.4} \
+         esperados (razao {ratio:.3}) -- sem o cancelamento de gravidade da beirada \
+         isto mede 1.048"
+    );
+    // ⚠️ **E a metade de BAIXO importa tanto quanto:** um termo que empurrasse
+    // para CIMA de mais tornaria o gate acima verde pelo motivo errado.
+    assert!(
+        ratio > 0.9,
+        "e nao pode ficar aquem dele tambem: razao {ratio:.3}"
+    );
+}

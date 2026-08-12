@@ -301,6 +301,62 @@ fn measure_the_ledge_armed() {
     }
 }
 
+/// **A subida ANDA à velocidade AUTORADA** — a régua do cancelamento de
+/// gravidade.
+///
+/// ⚠️ **Esta sonda existe porque o pendurar NÃO consegue medir esse termo:** o
+/// servo re-corrige em todo tique (o alvo é `lip_rise / dt`), então a gravidade
+/// de um tique é absorvida pelo tique seguinte e o assentamento move
+/// **0,1 mm** com o termo removido — abaixo de qualquer oráculo honesto. A
+/// subida é outra coisa: o alvo dela é uma **CONSTANTE** (`speed`), então a
+/// gravidade não cancelada sai do número que o artista escreveu e **fica** lá.
+#[test]
+#[ignore = "sonda de medicao"]
+fn measure_whether_the_climb_walks_at_the_authored_speed() {
+    println!("\n== a subida contra o numero autorado ==");
+    println!("  speed   subiu em 10 tiques   esperado   razao");
+    for speed in [2.0_f32, 3.0, 4.0] {
+        let (mut sim, mut bridge, player) = ledge_scene_at(LIP_Y - HALF_H - 0.15, 0.30, false);
+        if let Some(mut p) = sim.world_mut().get_mut::<PlatformPlayer>(player) {
+            p.ledge_grab = 0.4;
+            p.ledge_speed = speed;
+        }
+        let mut tick = 0_u64;
+        for _ in 0..90 {
+            bridge.set_player_input(
+                player,
+                PlayerInput {
+                    drive: 1.0,
+                    ..PlayerInput::default()
+                },
+            );
+            tick += 1;
+            bridge.dispatch(&mut sim, true, tick);
+        }
+        let before = pose(&sim).1;
+        // O toque que pede a subida, e depois DEZ tiques a subir.
+        for i in 0..12 {
+            bridge.set_player_input(
+                player,
+                PlayerInput {
+                    drive: if i < 2 { 1.0 } else { 0.0 },
+                    jump: i < 2,
+                    ..PlayerInput::default()
+                },
+            );
+            tick += 1;
+            bridge.dispatch(&mut sim, true, tick);
+        }
+        let rose = pose(&sim).1 - before;
+        // 10 dos 12 tiques sobem (os dois primeiros ainda pedem).
+        let want = speed * 10.0 / 60.0;
+        println!(
+            "  {speed:>5.1}   {rose:>17.4}   {want:>8.4}   {:>5.3}",
+            rose / want
+        );
+    }
+}
+
 // ── O MUNDO CRU, para as perguntas de SENSOR ─────────────────────────────────
 
 /// O mesmo bloco, num mundo sem ECS — para castar os raios à mão.

@@ -313,6 +313,91 @@ fn the_spawn_births_the_same_ids_from_the_same_template_rows() {
     }
 }
 
+/// A **probabilidade** de nascimento (doc 89, folha 13): com `probability < 1` a janela vira
+/// ESPARSA, e a identidade `saída[i] == window_first + i` — de que este kernel vivia — deixa de
+/// valer. O dispositivo tem de achar o `i`-ésimo SOBREVIVENTE varrendo a partir de
+/// `window_first` com o mesmo hash, mesma pista e mesmo limiar `f32` que a CPU; e a lei de
+/// contagem tem de dizer quantos são, ou a janela pede ao kernel elementos que ele não sabe
+/// preencher.
+///
+/// ⚠️ **A `rate` é 600 e não 37, e isso é o gate inteiro:** a varredura só tem trabalho quando o
+/// tique carrega MAIS DE UM candidato, e `born_in` dá no máximo um enquanto `rate <= 60`. Com um
+/// candidato só, o `i`-ésimo sobrevivente É `window_first` e o kernel mutilado — o que ignora a
+/// probabilidade — devolve exatamente o mesmo id: **a mutação sobreviveu a este gate escrito a
+/// rate 37**, com os dois lados concordando sobre uma janela que nunca foi esparsa.
+///
+/// ⚠️ **E o controle está DENTRO do laço:** a fixture afirma que o filtro de fato cortou (menos
+/// nascimentos que a corrida `probability = 1`), que não cortou tudo, e que algum tique teve
+/// candidatos de sobra — sem isso, dois lados vazios são parity perfeita.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_spawn_births_the_same_survivors_on_both_sides() {
+    let reg = registry();
+    let build = |probability: f32| {
+        let mut g = Graph::new();
+        let tpl = grid(&mut g, 1.0, 14.0);
+        let sp = g.add_node("sim.spawn");
+        // 10 candidatos por tique a 60 fps: a janela esparsa que a varredura de posto exige.
+        g.set_param(sp, "rate", 600.0);
+        g.set_param(sp, "scatter", 1.0);
+        g.set_param(sp, "seed", 5.0);
+        g.set_param(sp, "probability", probability);
+        let out = g.add_node("motion.output");
+        connect(&mut g, tpl, sp, 0, false);
+        connect(&mut g, sp, out, 0, false);
+        g.validate(&reg).expect("well-typed");
+        (g, out)
+    };
+
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+
+    let mut totals = Vec::new();
+    for probability in [1.0f32, 0.4] {
+        let (g, out) = build(probability);
+        let p = plan(&g, &reg, &reg, out);
+        assert!(
+            p.is_fully_gpu(),
+            "p={probability}: boundaries {:?}",
+            p.boundaries
+        );
+        let mut cook = Cook::new();
+        let mut gc = GpuCook::new();
+        let mut born = 0usize;
+        for t in 0..=90u64 {
+            let playhead = t as f64 * FIXED_DT;
+            let cpu = cpu_frame(&mut cook, &g, &reg, out, playhead);
+            gc.cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &p,
+                &[],
+                CookClock::at(playhead),
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+            )
+            .expect("gpu cook");
+            let gpu_out = read_instances(&gpu, gc.instances().expect("cooked"));
+            assert_parity(&format!("spawn p={probability} tick {t}"), &cpu, &gpu_out);
+            born += cpu.len();
+        }
+        totals.push(born);
+    }
+    let (whole, thinned) = (totals[0], totals[1]);
+    assert!(
+        whole > 500,
+        "o controle: a janela tem de ser LARGA (varios candidatos por tique), e deu {whole}"
+    );
+    assert!(
+        thinned > 0 && thinned < whole,
+        "o filtro tem de ter cortado ALGO e nao TUDO: {thinned} de {whole}"
+    );
+}
+
 /// `motion.combine`: two streams with ASYMMETRIC column sets — the emitter
 /// carries tint/size the grid does not — so the zero-fill convention is in the
 /// compared bytes, not just the count.

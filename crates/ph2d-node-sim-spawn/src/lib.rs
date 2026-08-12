@@ -81,15 +81,15 @@
 //! nothing on screen to say so.
 
 mod hash;
+mod kernel;
 mod trig;
 
+use kernel::GPU_KERNEL;
 use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{
-    ColumnAccess, ColumnBinding, GpuKernel, ID_WRAP, ROWS_COL, SourceWindow, StreamOp,
-};
+use ph2d_nodegraph::gpu::{ID_WRAP, StreamOp};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -121,6 +121,11 @@ const PULSE_ID_BASE: u32 = ID_WRAP / 2;
 /// de slot do `slot()` (dois sorteios da mesma pista dão o mesmo número, e irmãs que
 /// partilhassem direção com a escolha de template seriam um padrão, não um estouro).
 const LANE_BURST: u32 = 23;
+
+/// A pista do sorteio de SOBREVIVÊNCIA, pelo mesmo motivo que a do estouro é própria: dois
+/// sorteios da mesma pista devolvem o MESMO número, então partilhá-la com o `slot()` faria
+/// todo sobrevivente sair da mesma faixa do template — um padrão, não um filtro.
+const LANE_PROB: u32 = 11;
 
 /// Ids reserved per tick for the pulse-born. It is [`MAX_PER_TICK`] because that is the same
 /// number said once: a tick may not EMIT more than this, so a tick cannot NEED more than this.
@@ -200,6 +205,29 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "burst_speed",
             default: 0.0,
         },
+        // **A chance de um nascimento DEVIDO de fato acontecer** (o `Probability` do Spawn Rate
+        // e do Spawn Burst do Niagara, o `Probability` do Particle Emitter da Cavalry).
+        // APENDADO; `1` é o mundo de antes, byte a byte — e sem sequer avaliar o hash.
+        //
+        // ⚠️ **Ele é um FILTRO sobre a lista de devidos, nunca um multiplicador do `rate`, e a
+        // diferença é medida:** `born_in` calcula `floor(rate·t) − floor(rate·(t−dt))` com o
+        // `rate` de AGORA nos DOIS termos, então mexer no `rate` não deixa de emitir — ele
+        // **re-deriva a história** (subir pula ids; descer faz `last < first` e o `.max(first)`
+        // emite zero em silêncio até o relógio alcançar).
+        //
+        // ⚠️ **E a cadeia que o catálogo oferecia é TUDO-OU-NADA** (sonda
+        // `measure_spawn_probability`): `sim.spawn → value.instance_field(Random) →
+        // motion.drive(Falloff) → motion.cull` mede **0,000 · 0,000 · 0,000 · 1,000** em quatro
+        // seeds onde o alvo era 0,5, porque todo sorteio por-elemento do domínio de VALOR é
+        // chaveado no **ÍNDICE DA LINHA** (`value.instance_field`: `rand01(seed, i)`) e **nenhum
+        // tique emite mais de um nascimento** enquanto `rate ≤ 60`, que é o próprio teto do
+        // slider (medido: 481 tiques com 0 e 119 com 1, a rate 12; 201 e 399, a rate 40) ⇒ o
+        // índice é sempre 0 e o sorteio é uma CONSTANTE por seed. Filtrado pelo **id**, o mesmo
+        // corte dá 0,437-0,555.
+        ParamSpec {
+            name: "probability",
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -236,6 +264,21 @@ fn born_in(rate: f64, t: f64, dt: f64) -> std::ops::Range<u32> {
     let first = births_upto(rate, t - dt);
     let last = births_upto(rate, t);
     first..last.max(first).min(first.saturating_add(MAX_PER_TICK))
+}
+
+/// **Este nascimento devido acontece?** — a porta ÚNICA da probabilidade, perguntada pelo
+/// `eval` (que constrói a lista) e pela lei de contagem da GPU (que a conta antes de o kernel
+/// existir). Duas cópias divergiriam num número que ninguém lê: a contagem da janela.
+///
+/// ⚠️ **O sorteio é do `id`, e do id JÁ ENVOLVIDO** (pós-`% span`) — é o número que o `slot` e o
+/// carimbo veem, então os três concordam sobre quem este elemento é. Sortear pelo ordinal cru
+/// faria o filtro discordar do slot na volta do `ID_WRAP`.
+///
+/// ⚠️ **`>= 1.0` não avalia o hash**, e é isso que torna o default byte-idêntico ao mundo antes
+/// deste param em vez de meramente equivalente. Do outro lado, `<= 0.0` cai sozinho: `rand01`
+/// devolve `[0,1)` e nada é `< 0`, então nenhum nascimento acontece — sem caso especial.
+fn survives(id: u32, seed: u32, probability: f32) -> bool {
+    probability >= 1.0 || hash::rand01(seed, id, LANE_PROB) < probability
 }
 
 /// The template row a newborn is born from.
@@ -390,97 +433,6 @@ fn gather(col: &Column, rows: &[usize]) -> Column {
     }
 }
 
-/// The GPU kernel (ADR-0136, `StreamOp::SourceRows`): output element `i` IS
-/// newborn `window_first + i`. The kernel writes the newborn's identity and the
-/// TEMPLATE ROW it is born from ([`ROWS_COL`]); the sequencer then gathers every
-/// other template column at those rows — the newborn inherits the whole
-/// vocabulary without this kernel enumerating a single column, exactly like the
-/// CPU's [`newborns`].
-///
-/// The id wraps at [`ID_WRAP`] — and so does the CPU's, at the SAME single
-/// point (`eval` wraps the ordinal before slotting and stamping), so both sides
-/// hash and write the same number. `window_first` arrives already wrapped (the
-/// count law's `f64` arithmetic, the emitter's pattern — ADR-0130).
-///
-/// [`slot`]'s expressions, verbatim: the scatter draw is the same avalanche
-/// hash (`sp_hash3`, bit-exact in u32), `u32(draw · n) % n` is Rust's
-/// `as usize % n`, round-robin is `id % n`. `rate` is NOT a kernel param — only
-/// the count law (host-side, `f64`) reads it.
-const GPU_KERNEL: GpuKernel = GpuKernel {
-    wgsl: "\
-        let sp_id = (params.window_first + i) % 16777216u;\n\
-        var sp_row: u32 = 0u;\n\
-        if (params.window_src_n > 0u) {\n\
-        \x20   if (params.scatter >= 0.5) {\n\
-        \x20       let sp_draw = sp_rand01(u32(max(params.seed, 0.0)), sp_id, 7u);\n\
-        \x20       sp_row = u32(sp_draw * f32(params.window_src_n)) % params.window_src_n;\n\
-        \x20   } else {\n\
-        \x20       sp_row = sp_id % params.window_src_n;\n\
-        \x20   }\n\
-        }\n\
-        write_cp_rows(i, f32(sp_row));\n\
-        write_id(i, f32(sp_id));\n",
-    wgsl_lib: "\
-        fn sp_hash3(a: u32, b: u32, lane: u32) -> f32 {\n\
-            var h: u32 = a * 0x9e3779b9u + b * 0x85ebca6bu + lane * 0xc2b2ae35u;\n\
-            h = h ^ (h >> 16u);\n\
-            h = h * 0x7feb352du;\n\
-            h = h ^ (h >> 15u);\n\
-            h = h * 0x846ca68bu;\n\
-            h = h ^ (h >> 16u);\n\
-            return f32(h >> 8u) / f32(16777216u);\n\
-        }\n\
-        fn sp_rand01(seed: u32, id: u32, lane: u32) -> f32 {\n\
-            return sp_hash3(seed, id, lane);\n\
-        }\n",
-    bindings: &[
-        ColumnBinding {
-            column: ROWS_COL,
-            dim: Dim::Scalar,
-            access: ColumnAccess::Write,
-            identity: [0.0; 4],
-            port: 0,
-        },
-        ColumnBinding {
-            column: "id",
-            dim: Dim::Scalar,
-            access: ColumnAccess::Write,
-            identity: [0.0; 4],
-            port: 0,
-        },
-        // **The pulse port's refusal** (ADR-0127 D3). This kernel has no lane for an event
-        // column, and a pulse-born element is born at the row that FIRED — arithmetic the
-        // device cannot reach without a prefix scan it was never given. Absent column ⇒ the
-        // plan claims the node exactly as it always has (the device path this wave ships is
-        // byte-identical); present ⇒ the frame recedes to the CPU, which is where the pulse
-        // family already lives. The alternative is a device answer with every pulse-birth
-        // silently MISSING, and nothing on screen to say so.
-        ColumnBinding {
-            column: PULSE_COL,
-            dim: Dim::Scalar,
-            access: ColumnAccess::RefuseIfPresent,
-            identity: [0.0; 4],
-            port: 1,
-        },
-    ],
-    params: &["scatter", "seed"],
-    // The SAME `born_in` the CPU `eval` runs, in the same `f64` — this is why
-    // `CountLawCtx` carries `dt` (ADR-0136). The window's `first` is wrapped
-    // here, once, in integer arithmetic (the emitter's rule: the kernel is TOLD
-    // the window, never re-derives it).
-    count_law: Some(|c| {
-        let rate = (c.param)("rate") as f64;
-        let born = born_in(rate, c.playhead, c.dt);
-        SourceWindow {
-            count: born.len(),
-            first: born.start % ID_WRAP,
-            age_first: 0.0,
-        }
-    }),
-    variant_by_param: None,
-    applicable: None,
-};
-
 struct SimSpawn;
 
 impl NodeOp for SimSpawn {
@@ -512,8 +464,10 @@ impl NodeOp for SimSpawn {
         let n = template.count();
         let pulsing = ctx.input(1).get(PULSE_COL).is_some();
         let span = if pulsing { PULSE_ID_BASE } else { ID_WRAP };
+        let probability = ctx.param("probability");
         let mut ids: Vec<u32> = born_in(rate, ctx.playhead(), ctx.dt())
             .map(|k| k % span)
+            .filter(|id| survives(*id, seed, probability))
             .collect();
         let mut rows: Vec<usize> = ids.iter().map(|id| slot(*id, n, scatter, seed)).collect();
         // Onde termina o nascimento por TAXA e começa o por PULSO. O índice, e não uma
@@ -521,8 +475,18 @@ impl NodeOp for SimSpawn {
         // então `id >= base` não distingue os dois no caso geral.
         let rate_n = ids.len();
         let (pulse_ids, pulse_rows) = pulse_born(ctx.input(1), n, burst, ctx.playhead(), ctx.dt());
-        ids.extend(pulse_ids);
-        rows.extend(pulse_rows);
+        // ⚠️ **A probabilidade alcança as irmãs de um estouro também**, e não é generosidade: a
+        // referência a põe na tríade do burst (`Spawn Count`·`Spawn Time`·`Probability`, Niagara
+        // §C.11), e é o que faz *"de cada dez faíscas, três pegam"*. Cada irmã tem id próprio por
+        // construção (`PULSE_ID_BASE + base + j`), então o sorteio as separa em vez de decidir o
+        // estouro inteiro de uma vez. Filtrado AQUI, e não dentro do `pulse_born`, para aquela
+        // função seguir respondendo só *quem pulsou* — uma lei, um lugar.
+        for (id, row) in pulse_ids.into_iter().zip(pulse_rows) {
+            if survives(id, seed, probability) {
+                ids.push(id);
+                rows.push(row);
+            }
+        }
         let mut out = newborns(ctx.input(0), &ids, &rows);
         burst_kick(
             &mut out,
@@ -552,6 +516,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
+    reg.register_param_hard_min(MANIFEST.id, PARAM_HARD_MIN);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
@@ -604,13 +570,48 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.1,
         widget: ParamWidget::Slider,
     },
+    ParamUiHint {
+        param: "probability",
+        label: "Probability",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
 ];
 
 /// The typed ceiling: one tick may not emit more than [`MAX_PER_TICK`] elements, so a burst
 /// larger than that is a number the node cannot honour.
-static PARAM_HARD_MAX: &[ph2d_node_registry::ParamHardMax] = &[ph2d_node_registry::ParamHardMax {
-    param: "burst",
-    max: MAX_PER_TICK as f32,
+static PARAM_HARD_MAX: &[ph2d_node_registry::ParamHardMax] = &[
+    ph2d_node_registry::ParamHardMax {
+        param: "burst",
+        max: MAX_PER_TICK as f32,
+    },
+    // ⚠️ **Este teto não é de recurso, é de SIGNIFICADO** — e é por isso que ele existe: acima de
+    // 1 a [`survives`] devolve `true` para tudo, então uma caixa que aceitasse `5` **aceitaria e
+    // mentiria** (o teto digitável não pode passar do que a lei HONRA — a lição da varredura do
+    // doc 88, onde `lattice` aceitava 5.000 sobre um clamp de 400).
+    ph2d_node_registry::ParamHardMax {
+        param: "probability",
+        max: 1.0,
+    },
+];
+
+/// **O que o número É** (doc 88): uma probabilidade é a `Ratio` do vocabulário — *"uma fração
+/// 0..1 ou um multiplicador simples"* —, e é o que a distingue, para quem lê a declaração, de um
+/// `seed` ou de um `burst`. `rate` e `burst_speed` ficam bares de propósito: o vocabulário não
+/// tem *por segundo* nem *distância por segundo*, e **uma unidade errada é pior que uma ausente**.
+static PARAM_UNITS: &[ph2d_node_registry::ParamUnitDecl] = &[ph2d_node_registry::ParamUnitDecl {
+    param: "probability",
+    unit: ph2d_node_registry::ParamUnit::Ratio,
+}];
+
+/// O piso, pela MESMA razão do teto: abaixo de zero nada mais deixa de nascer — `rand01` devolve
+/// `[0,1)` e nada é `< 0`, então `-3` e `0` são o mesmo mundo, e uma caixa que os distinguisse
+/// estaria oferecendo uma escolha que não existe.
+static PARAM_HARD_MIN: &[ph2d_node_registry::ParamHardMin] = &[ph2d_node_registry::ParamHardMin {
+    param: "probability",
+    min: 0.0,
 }];
 
 #[cfg(test)]

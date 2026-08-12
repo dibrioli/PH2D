@@ -457,3 +457,240 @@ fn a_beat_gives_birth_inside_a_zone() {
         wired.len() - 1
     );
 }
+
+// ---------------------------------------------------------------------------
+// A PROBABILIDADE (doc 89, folha 13 — o P1 `Spawn Probability`)
+// ---------------------------------------------------------------------------
+
+/// Corre `ticks` quadros e devolve os ids emitidos, na ordem.
+fn ids_over(g: &Graph, reg: &NodeRegistry, out: NodeId, ticks: u64) -> Vec<u32> {
+    let mut cook = Cook::new();
+    let mut ids = Vec::new();
+    for k in 0..ticks {
+        let t = k as f64 / FPS;
+        let s = cook.cook(g, reg, out, t).expect("cooks")[0]
+            .as_stream()
+            .clone();
+        if let Some(Column::Scalar(v)) = s.get("id") {
+            ids.extend(v.iter().map(|x| *x as u32));
+        }
+        cook.advance_tick(g, reg, t).expect("tick closes");
+    }
+    ids
+}
+
+/// Uma fonte de `n` linhas ligada a um `sim.spawn` com `rate`/`probability`/`seed`.
+fn spawn_graph(rows: f32, rate: f32, probability: f32, seed: f32) -> (Graph, NodeId) {
+    let mut g = Graph::new();
+    let tpl = g.add_node("motion.grid");
+    g.set_param(tpl, "rows", 1.0);
+    g.set_param(tpl, "cols", rows);
+    g.set_param(tpl, "gap_x", 1.0);
+    g.set_param(tpl, "gap_y", 1.0);
+    let sp = g.add_node("sim.spawn");
+    g.set_param(sp, "rate", rate);
+    g.set_param(sp, "scatter", 1.0);
+    g.set_param(sp, "seed", seed);
+    g.set_param(sp, "probability", probability);
+    g.connect(Edge {
+        from: (tpl, 0),
+        to: (sp, 0),
+        delayed: false,
+    })
+    .expect("wire");
+    (g, sp)
+}
+
+/// **`probability = 1` é o mundo de antes deste param, e o oráculo não é "o default":** os ids
+/// emitidos têm de ser EXATAMENTE os ordinais que o `born_in` devia, um a um. Um gate que
+/// comparasse o default contra si mesmo passaria com o filtro escrito ao contrário.
+#[test]
+fn probability_one_births_every_ordinal_that_was_due() {
+    let reg = registry();
+    let (g, sp) = spawn_graph(6.0, 37.0, 1.0, 3.0);
+    let got = ids_over(&g, &reg, sp, 60);
+
+    let mut want = Vec::new();
+    for k in 0..60u64 {
+        let t = k as f64 / FPS;
+        // O 1º cook não tem histórico (`dt = 0`), exatamente como o produto.
+        let dt = if k == 0 { 0.0 } else { 1.0 / FPS };
+        want.extend(born_in(37.0, t, dt).map(|x| x % ID_WRAP_LOCAL));
+    }
+    assert!(!want.is_empty(), "a fixture tem de conter nascimentos");
+    assert_eq!(got, want, "com probability 1 nenhum devido é filtrado");
+}
+
+/// `ID_WRAP` re-declarado para o gate poder afirmar o número sem importar o caminho que o
+/// produto usa — o oráculo não deve chamar a mesma constante pela mesma porta que testa.
+const ID_WRAP_LOCAL: u32 = 16_777_216;
+
+/// **A fração que nasce É a probabilidade.** Sem isto o param podia ser um booleano disfarçado
+/// (a doença medida da cadeia composta: 0,000 ou 1,000, nunca 0,5).
+#[test]
+fn the_kept_fraction_is_the_probability() {
+    let reg = registry();
+    for &p in &[0.25f32, 0.5, 0.75] {
+        let (gd, spd) = spawn_graph(6.0, 40.0, 1.0, 5.0);
+        let due = ids_over(&gd, &reg, spd, 600).len();
+        let (g, sp) = spawn_graph(6.0, 40.0, p, 5.0);
+        let kept = ids_over(&g, &reg, sp, 600).len();
+        assert!(due > 300, "a fixture precisa de nascimentos: {due}");
+        let frac = kept as f32 / due as f32;
+        assert!(
+            (frac - p).abs() < 0.07,
+            "probability {p}: nasceram {kept} de {due} = {frac:.3}"
+        );
+    }
+}
+
+/// **O filtro é função do ID e de mais nada** — nem do tique, nem da ordem, nem de quantos
+/// nasceram junto. É isso que faz um scrub reproduzir a mesma população: o `sim.spawn` não tem
+/// estado, e um filtro que olhasse o índice-na-linha (o que TODO sorteio do domínio de valor
+/// faz) renumeraria o mundo a cada rebobinada.
+#[test]
+fn survival_is_a_function_of_the_id_alone() {
+    let reg = registry();
+    let (gd, spd) = spawn_graph(6.0, 40.0, 1.0, 5.0);
+    let due = ids_over(&gd, &reg, spd, 600);
+    let (g, sp) = spawn_graph(6.0, 40.0, 0.5, 5.0);
+    let kept = ids_over(&g, &reg, sp, 600);
+
+    let want: Vec<u32> = due
+        .iter()
+        .copied()
+        .filter(|id| survives(*id, 5, 0.5))
+        .collect();
+    assert_eq!(
+        kept, want,
+        "os sobreviventes são exatamente os que o id elege"
+    );
+    assert!(
+        kept.len() < due.len() && !kept.is_empty(),
+        "o controle: o filtro tem de ter cortado ALGO e não TUDO ({} de {})",
+        kept.len(),
+        due.len()
+    );
+}
+
+/// **A lei de contagem da GPU conta o que o `eval` emite.** Esta divergência não daria erro:
+/// daria uma janela com elementos que o kernel não sabe preencher, e o dispositivo desenharia
+/// lixo bem-formado.
+#[test]
+fn the_count_law_counts_exactly_what_the_eval_emits() {
+    let reg = registry();
+    let law = GPU_KERNEL.count_law.expect("o nó tem lei de contagem");
+    for &p in &[1.0f32, 0.6, 0.3, 0.0] {
+        let (g, sp) = spawn_graph(6.0, 40.0, p, 5.0);
+        let mut cook = Cook::new();
+        for k in 0..120u64 {
+            let t = k as f64 / FPS;
+            let n = cook.cook(&g, &reg, sp, t).expect("cooks")[0]
+                .as_stream()
+                .count();
+            let dt = if k == 0 { 0.0 } else { 1.0 / FPS };
+            let param = |name: &str| match name {
+                "rate" => 40.0,
+                "seed" => 5.0,
+                "probability" => p,
+                _ => 0.0,
+            };
+            let w = law(&ph2d_nodegraph::gpu::CountLawCtx {
+                inputs: &[6],
+                param: &param,
+                playhead: t,
+                dt,
+            });
+            assert_eq!(
+                w.count, n,
+                "p={p} tique {k}: a janela mente sobre a contagem"
+            );
+            cook.advance_tick(&g, &reg, t).expect("tick closes");
+        }
+    }
+}
+
+/// **A pista do sorteio de sobrevivência é PRÓPRIA.** Partilhada com a do `slot`, os dois
+/// sorteios devolvem o MESMO número, e `slot` é `(draw · n) as usize % n` ⇒ **todo sobrevivente
+/// cairia nas primeiras `p·n` linhas do template**. Com `p = 0.25` e 8 linhas, isso são as duas
+/// primeiras — e o mundo certo usa as oito.
+#[test]
+fn the_survival_draw_does_not_pick_the_template_row() {
+    let reg = registry();
+    let (g, sp) = spawn_graph(8.0, 40.0, 0.25, 5.0);
+    let ids = ids_over(&g, &reg, sp, 900);
+    assert!(
+        ids.len() > 40,
+        "a fixture precisa de sobreviventes: {}",
+        ids.len()
+    );
+    let rows: std::collections::BTreeSet<usize> =
+        ids.iter().map(|id| slot(*id, 8, true, 5)).collect();
+    assert!(
+        rows.len() >= 7,
+        "os sobreviventes têm de usar o template inteiro, e usaram {rows:?}"
+    );
+}
+
+/// **O `256u` do kernel É o [`MAX_PER_TICK`]** — o teto que o `born_in` já impõe ao span do
+/// tique, e é ele que torna a varredura de posto provadamente suficiente. Dois números que
+/// deviam ser um, escritos em dois lugares, é como o kernel passa a procurar num alcance que a
+/// janela excede: o elemento da cauda ficaria com o id do começo, em silêncio.
+#[test]
+fn the_kernels_scan_bound_is_the_tick_cap() {
+    let needle = format!("sp_k >= {MAX_PER_TICK}u");
+    assert!(
+        GPU_KERNEL.wgsl.contains(&needle),
+        "o WGSL tem de varrer até {MAX_PER_TICK}, e diz: {}",
+        GPU_KERNEL.wgsl
+    );
+}
+
+/// **A probabilidade alcança as irmãs de um ESTOURO.** A referência a põe na tríade do burst
+/// (`Spawn Count`·`Spawn Time`·`Probability`, Niagara §C.11), e é o que faz *"de cada dez
+/// faíscas, três pegam"* — sem ela o param decidiria só a chuva e o estouro sairia sempre
+/// inteiro, uma metade viva e outra morta sob o mesmo knob.
+#[test]
+fn the_probability_reaches_the_siblings_of_a_burst() {
+    let reg = registry();
+    fn run(reg: &NodeRegistry, probability: f32) -> usize {
+        let mut g = Graph::new();
+        let tpl = g.add_node("motion.grid");
+        g.set_param(tpl, "rows", 1.0);
+        g.set_param(tpl, "cols", 1.0);
+        g.set_param(tpl, "gap_x", 1.0);
+        g.set_param(tpl, "gap_y", 1.0);
+        let beat = g.add_node("pulse.beat");
+        g.set_param(beat, "period", 0.25);
+        let sp = g.add_node("sim.spawn");
+        g.set_param(sp, "rate", 0.0); // só o estouro, para o número ser só dele
+        g.set_param(sp, "burst", 64.0);
+        g.set_param(sp, "seed", 5.0);
+        g.set_param(sp, "probability", probability);
+        for (from, fp, to, tp, delayed) in [
+            (tpl, 0, sp, 0, false),
+            (tpl, 0, beat, 0, false),
+            (beat, 0, beat, 1, true), // a memória de borda da família
+            (beat, 0, sp, 1, false),
+        ] {
+            g.connect(Edge {
+                from: (from, fp),
+                to: (to, tp),
+                delayed,
+            })
+            .expect("wire");
+        }
+        ids_over(&g, reg, sp, 240).len()
+    }
+    let whole = run(&reg, 1.0);
+    let half = run(&reg, 0.5);
+    assert!(
+        whole >= 200,
+        "o controle: o estouro inteiro nasce ({whole})"
+    );
+    let frac = half as f32 / whole as f32;
+    assert!(
+        (frac - 0.5).abs() < 0.1,
+        "metade das irmãs: {half} de {whole} = {frac:.3}"
+    );
+}

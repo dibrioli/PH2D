@@ -105,9 +105,22 @@ fn what_separates_our_kernels_from_the_reference() {
         ("Draw/brush", Verb::Draw, 0.5, false),
         ("Clay", Verb::Clay, 0.5, false),
         ("Flatten", Verb::Flatten, 0.75, true),
+        // ⚠️ **O `Flatten` da referência É o nosso `Fill` ou o nosso `Scrape`**
+        // (`comp = ±1` + `continue`, §3.3): as duas linhas abaixo medem os dois
+        // lados dele contra o mesmo kernel, e são o que torna a nossa
+        // bilateralidade uma escolha MEDIDA em vez de uma afirmação.
+        ("Fill", Verb::Fill, 0.75, false),
+        ("Scrape", Verb::Scrape, 0.75, true),
         ("Inflate", Verb::Inflate, 0.3, false),
         ("Crease", Verb::Crease, 0.75, true),
         ("Pinch", Verb::Pinch, 0.75, false),
+        // O `Magnify` é o `Pinch` com o sinal trocado — o mesmo kernel.
+        ("Magnify", Verb::Magnify, 0.75, true),
+        // ⚠️ **O `Smooth` da referência NÃO tem falloff** (§3.3), então a nossa
+        // curva é isolada com a `Constant` — que é exatamente o valor em que a
+        // nossa família reproduz a dela. Medi-lo com a `Plateau` somaria a
+        // divergência declarada da CURVA à da lei.
+        ("Smooth", Verb::Smooth, 0.75, false),
     ];
 
     for &(name, verb, intensity, negative) in cases {
@@ -127,7 +140,11 @@ fn what_separates_our_kernels_from_the_reference() {
             // `Smooth` misturaria a diferença de FORMA (que a `Plateau` fechou
             // em 2026-08-11, `1,000×` em toda a linha) com a de MAGNITUDE, e um
             // número que soma duas causas não aponta para nenhuma.
-            falloff: Falloff::Plateau,
+            falloff: if verb == Verb::Smooth {
+                Falloff::Constant
+            } else {
+                Falloff::Plateau
+            },
             // ⚠️ **O Crease parqueia o default no OUTRO lado do flag.** A tool
             // da referência nasce com `_negative = true` (`Crease.js:11`) e cava
             // por ali; o nosso kernel cava com o sinal e `invert = false`. O
@@ -238,7 +255,35 @@ fn what_separates_our_kernels_from_the_reference() {
                 intensity,
                 negative,
             ),
-            Verb::Pinch => rk::pinch(&mut theirs, &free, &fp, center, r2, intensity, negative),
+            Verb::Pinch | Verb::Magnify => {
+                rk::pinch(&mut theirs, &free, &fp, center, r2, intensity, negative);
+            }
+            // Os dois lados do `Flatten` da referência, contra o mesmo kernel.
+            Verb::Fill | Verb::Scrape => {
+                let ctr = rk::area_center(&base, &free, &front).expect("centro");
+                rk::flatten(
+                    &mut theirs,
+                    &free,
+                    &fp,
+                    None,
+                    a_normal,
+                    ctr,
+                    center,
+                    r2,
+                    intensity,
+                    negative,
+                );
+            }
+            Verb::Smooth => {
+                let adj = mesh.adjacency();
+                let (starts, lens, values) = adj.vert_verts.parts();
+                let on_edge: Vec<u8> = (0..mesh.vert_count())
+                    .map(|v| u8::from(adj.is_border(v)))
+                    .collect();
+                let mut smoothed = Vec::new();
+                rk::laplacian(&base, &fp, starts, lens, values, &on_edge, &mut smoothed);
+                rk::smooth(&mut theirs, &free, &fp, &smoothed, intensity);
+            }
             _ => unreachable!("a tabela só tem verbos de carimbo"),
         }
 
@@ -267,8 +312,14 @@ fn what_separates_our_kernels_from_the_reference() {
         } else {
             "-".into()
         };
+        // ⚠️ **A diferença sai em NOTAÇÃO CIENTÍFICA de propósito.** Com seis
+        // casas ela imprime `0,000000` em três verbos, e `0,000000` responde
+        // *"abaixo do que eu mostro"* — não *"zero"*. A pergunta aberta que
+        // sobra na §3.2.5 é a cadeia de peso em `f64` (o nosso `w` é `f32`
+        // desde o falloff, a referência arredonda uma vez), e ela só é
+        // respondida por um número que chega ao epsilon do `f32`.
         println!(
-            "{:<12} {:>12.6} {:>12.6} {:>10} {:>12.6}",
+            "{:<12} {:>12.6} {:>12.6} {:>10} {:>12.3e}",
             r.verb, r.ours, r.theirs, ratio, r.gap
         );
     }

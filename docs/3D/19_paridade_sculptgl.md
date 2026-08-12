@@ -671,6 +671,62 @@ ponderação uniforme deixa de amortecer isso. O oráculo virou um CONTROLE
 executável (a MESMA mancha, do lado que se vê): `0,664°` contra `5,766°`, e a
 mutação que derrota o filtro sangra (`3,232°` contra `4,417°`).
 
+### 3.2.7 — O CENSO fecha, e a tabela se auto-confirma
+
+O atlas media **6 dos 12 verbos**, e um censo cego a uma família reporta uma
+fronteira que não a conta — a lição que este repo já pagou três vezes noutros
+módulos. Entraram os quatro que têm kernel portado e cabem no mesmo harness:
+**Fill · Scrape · Magnify · Smooth**.
+
+⚠️ **O `|diferença|` passou a sair em notação CIENTÍFICA, e foi essa linha que
+fechou o último item aberto.** Com seis casas ele imprimia `0,000000`, que
+responde *"abaixo do que eu mostro"* e não *"zero"*. Em notação científica ele
+diz **`5,960e-8`** — exatamente `2⁻²⁴`, **um ULP de `f32`** na magnitude 1.
+
+⇒ **A cadeia de peso em `f64` está RESPONDIDA e não há nada a construir.** A
+`§3.2.5` a listava como aberta (*"o nosso `w` é `f32` desde o falloff; a
+referência arredonda uma vez no fim — nomeado, não medido"*): ela custa **um
+ULP**, que é o limite da representação, não uma divergência.
+
+| verbo | razão | \|diferença\| |
+|---|---|---|
+| Draw/brush | 1,00× | **5,960e-8** |
+| Clay | 1,00× | **5,960e-8** |
+| **Fill** | 1,00× | **5,960e-8** |
+| **Scrape** | 1,00× | **5,960e-8** |
+| Inflate | 1,00× | **5,960e-8** |
+| **Smooth** | 1,00× | 1,192e-7 |
+| Pinch | 1,00× | 5,776e-4 |
+| **Magnify** | 1,00× | 5,776e-4 |
+| Crease | 1,01× | 8,087e-4 |
+| Flatten | 1,00× | 1,717e-3 |
+
+⚠️ **E a tabela PROVA a divergência declarada do Flatten sozinha, em vez de a
+afirmar:** o `|diferença|` dele (`1,717e-3`) é **exatamente o deslocamento máximo
+do Fill** (`0,001717`) — e o Fill e o Scrape, que são os dois lados unilaterais
+do mesmo kernel, saem **bit-idênticos**. Logo a discordância do nosso Flatten com
+a referência *é*, ao dígito, o lado que ela não move. A §3.3 deixou de precisar
+de prosa.
+
+⚠️ **O `Smooth` entra com `Falloff::Constant` de propósito** — o `Smooth.js` da
+referência não tem falloff (§3.3), e a nossa família reproduz exatamente esse
+valor com a curva constante. Medi-lo com a `Plateau` somaria a divergência
+declarada da CURVA à da lei, e um número que soma duas causas não aponta para
+nenhuma.
+
+**O que continua FORA da tabela, e por quê:** o `Sharpen` (a referência não tem
+kernel — é nosso, §3.3) · o `Mask` (escreve um CANAL, e o oráculo desta tabela é
+posição) · e os quatro grips que não carimbam — `Move` · `SnakeHook` · `Twist` ·
+`LocalScale` —, que precisam de um gesto com âncora e têm arquivos de gate
+próprios (`verb_move_tests` · `verb_hook_tests` · `verb_turn_tests`).
+
+**O que resta de verdade, e nada disto é dívida de engenharia:** as três
+divergências DECLARADAS da §3.3 — o `Flatten` bilateral (agora medido ao dígito)
+e a **projeção tangencial** do `Pinch`/`Crease`, que vale `5,8e-4`/`8,1e-4` e
+tem gate próprio defendendo a nossa posição
+(`pinch_pulls_along_the_surface_and_does_not_secretly_flatten`). Elas só fecham
+se o Enio abrir mão delas.
+
 ### 3.3 — O MAPA dos verbos, e o único que a referência não tem
 
 ⚠️ **Esta seção afirmava que `Smooth` · `Mask` · `Twist` não tinham kernel

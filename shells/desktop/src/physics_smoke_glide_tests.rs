@@ -169,8 +169,11 @@ fn without_the_finger_both_of_them_fall_in() {
 /// outra.
 #[test]
 fn the_two_lanes_do_not_reach_each_other() {
+    // ⚠️ Em tempo de COMPILAÇÃO, e uma vez só: a segunda asserção que esta
+    // função tinha repetia a primeira em runtime sobre os mesmos dois `const`,
+    // e o clippy tinha razão em a chamar de constante.
     const _: () = assert!(LANE_SPAN > LANDING_END);
-    assert!(LANE_B - LANE_A > LANDING_END);
+    const _: () = assert!(LANE_B - LANE_A > LANDING_END);
 }
 
 /// **A aritmética que a mensagem imprime está certa** — em tempo de compilação.

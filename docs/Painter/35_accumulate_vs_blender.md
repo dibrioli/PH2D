@@ -251,7 +251,41 @@ medido no perfil perpendicular: **as quatro linhas de `strength 1.0` não movera
 não existe porque o defeito não existe (§1). O que fica é o gate
 `at_full_strength_the_two_laws_are_the_same_law`, que afirma a coincidência.
 
-### ✅ D3 — FEITA (2026-08-12, decisão **(i)** do Enio)
+### ⛔ D3 — CONSTRUÍDA e REPROVADA NO SMOKE, pela **SEGUNDA** vez (2026-08-12)
+
+> **Enio, pós-smoke:** *"Accumulate para Impasto não ficou bom. Vamos desativar para o modo de
+> Impasto."* ⇒ **o motor foi revertido inteiro**; o que fica é o guarda
+> `accumulate_tests::the_body_of_the_paint_never_sees_the_accumulate_flag`.
+
+⚠️ **É a segunda vez que esta mesma feature é construída e reprovada.** A primeira foi em
+**2026-07-18** (integral de arco num acumulador próprio, `stroke_accum`/`live_accum`, 3 mutações;
+*"não gostei, vamos desfazer"*), e foi ela que fez o checkbox **deixar de ser oferecido** sob
+impasto. **Antes de a construir uma terceira vez, leia isto inteiro.**
+
+⚠️ **E a 2ª tentativa tinha um defeito que o smoke nem precisou ver: a capacidade era INALCANÇÁVEL
+pelo produto.** A row do Accumulate está escondida sob impasto desde 07-18 (gate
+`impasto_hides_the_accumulate_row_but_it_is_alive_without_it`), então o motor novo respondia a um
+controle que o painel não pinta — a sonda só chegou lá porque arma o flag por baixo do pano. Pior:
+ele **era** alcançável pelo caminho torto (marcar Accumulate em **Digital** e depois trocar para
+Impasto — o flag sobrevive nos slots e a row some), o que faria um checkbox **invisível** mudar o
+relevo. *Um controle escondido que age é pior que um controle que falta.*
+
+**O que a tentativa mediu antes de morrer** (fica porque o número é bom e a próxima pessoa merece
+saber que a lei funcionava — o que reprovou foi o RESULTADO na tela, não a matemática):
+
+| modo | n=1 | n=2 | n=5 | n=15 |
+|---|---|---|---|---|
+| off (envelope `max`) | 0,5554 | 0,6083 | 0,6143 | **0,6153** |
+| ON (integral de arco) | 0,6323 | 1,4195 | 3,8523 | **11,9602** |
+
+Uma passada reta saía a **3,0%** do envelope (a norma `2·∫₀^ρ perfil` funcionava), o espaçamento a
+**1,02×** (I1 honrado), e o re-carimbo recomeçava do zero (I2). O TAP custava `0,0936` contra
+`0,4679` — o preço da decisão (i), e um candidato ao que "não ficou bom".
+
+<details>
+<summary>O desenho que funcionava, para não ser re-derivado do zero numa terceira tentativa</summary>
+
+### O desenho (revertido — descrição, não código vivo)
 
 **O relevo vê o flag.** Medido pela porta do artista (pincel macio r=8, impasto, ida-e-volta na MESMA
 pincelada, altura no meio do traço):
@@ -287,6 +321,8 @@ ele viola I2 (doc 20 §6).
 
 **Custo estrutural: ZERO.** Nenhum plano novo, nenhum ciclo de vida, nenhum `PROJECT_SCHEMA`,
 nenhuma superfície pública além de `accum_norm`/`accum_step`. E o card **Body continua vivo**.
+
+</details>
 
 ### O que a D3 CUSTOU descobrir — e por que o doc 20 a orçou tão maior
 

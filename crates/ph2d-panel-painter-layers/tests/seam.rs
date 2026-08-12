@@ -696,3 +696,59 @@ fn wetpaint_reset_click_forwards_through_the_panel() {
         "wet click {clicked:?} never reached the bus. drained = {actions:?}"
     );
 }
+
+/// **O Strength some no WET PAINT e FICA na aquarela** — e a assimetria é medição, não gosto.
+///
+/// Enio, 2026-08-12: *"Para o modo Watercolor o slider Strength deve ficar oculto pois não se
+/// aplica. Creio que o mesmo acontece para o modo wet paint. Confira lá"*. Conferido, e o par se
+/// separa (`ph2d-tool-painter::accumulate_probe::measure_whether_strength_is_inert_per_medium`,
+/// mesmo traço com `strength 0,25` contra `0,95`):
+///
+/// ```text
+///   digital     1188 bytes diferem   pior delta 214   vivo
+///   watercolor  1029 bytes diferem   pior delta 202   vivo
+///   impasto      654 bytes diferem   pior delta 214   vivo
+///   wetpaint       0 bytes diferem   pior delta   0   INERTE  (e pintou 474 bytes — o controle)
+/// ```
+///
+/// ⚠️ **O controle é o que torna o zero legível:** um traço que não pintasse nada também daria
+/// "0 bytes diferem". O do Wet Paint pintou.
+///
+/// ⚠️ **E a aquarela FICA**, porque ali a Strength é o pico do depósito (`coverage × (1 − Dilution)`)
+/// — o `ph2d-tool-painter` já tem o gate que decidiu isto quando a mesma pergunta foi feita em
+/// 2026-07-12 (`under_the_wash_accumulate_is_inert_but_strength_is_not`).
+///
+/// Presença E ausência, porque só o par tem sentido.
+#[test]
+fn wet_paint_hides_the_strength_slider_but_watercolor_keeps_it() {
+    let viewport = || ph2d_editor_core::zones::Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    let id = core_ids::PAINTER_BRUSH_STRENGTH_SLIDER;
+    let painted_in = |media: ph2d_tool_painter::PaintMedia| {
+        let mut tool = ph2d_tool_painter::PainterTool::default();
+        tool.set_paint_tool_mode("brush");
+        tool.set_paint_media(media);
+        set_current_brush(Some(tool.brush_settings()));
+        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut st = PainterLayersPanelState;
+        host.paint::<PainterLayersPanel>(&mut st, viewport())
+            .iter()
+            .any(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0)
+    };
+    assert!(
+        painted_in(ph2d_tool_painter::PaintMedia::Digital),
+        "no Digital o Strength tem de estar na tela — sem esta metade a ausência abaixo não prova nada"
+    );
+    assert!(
+        painted_in(ph2d_tool_painter::PaintMedia::Watercolor),
+        "na AQUARELA o Strength e' o pico do deposito e tem de FICAR (1029 bytes diferem, medido)"
+    );
+    assert!(
+        !painted_in(ph2d_tool_painter::PaintMedia::WetPaint),
+        "no WET PAINT o Strength e' provadamente inerte (0 bytes diferem) — a row nao pode ser pintada"
+    );
+}

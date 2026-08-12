@@ -153,7 +153,20 @@ pub(crate) fn paint_brush_body(
     // Strength sliders (in the card below) replace it. Also hidden in Inpaint (the heal has no opacity).
     // In WATERCOLOR mode the Composite card itself hides (the optical path bypasses it), so a
     // composite_enabled flag left on must NOT hide Strength there.
-    if (!brush.composite_enabled || brush.watercolor) && !brush.is_inpaint {
+    //
+    // ⚠️ **E em WET PAINT ele some, porque ali está provadamente MORTO** (Enio, 2026-08-12; medido
+    // pela sonda `accumulate_probe::measure_whether_strength_is_inert_per_medium`): mesmo traço,
+    // `strength 0,25` contra `0,95`, **0 bytes diferem** — e o CONTROLE diz que o traço de fato
+    // pintou (474 bytes saíram do branco), senão o zero não significaria nada. O motor do fluido
+    // recebe a carga do reservatório e dos knobs do Tuning; a opacidade do dab não entra.
+    //
+    // ⚠️ **A AQUARELA fica na lista dos que MOSTRAM, e a premissa do pedido era o contrário.** Medido
+    // no mesmo par: **1029 bytes diferem, pior delta 202** — ali a Strength é o *pico do depósito*
+    // (`coverage × (1 − Dilution)`). O `ph2d-tool-painter` já carrega o gate que decidiu isto quando
+    // o Enio fez a mesma pergunta em 2026-07-12
+    // (`under_the_wash_accumulate_is_inert_but_strength_is_not`: *"the slider must STAY"*). Escondê-la
+    // ali seria o controle **FALTANDO** em vez do morto — o outro lado da mesma mentira de painel.
+    if (!brush.composite_enabled || brush.watercolor) && !brush.is_inpaint && !brush.wetpaint {
         y = paint_slider_chip_row(
             ctx,
             theme,

@@ -1,5 +1,15 @@
 # 20 — Accumulate na mesma pincelada: avaliação (2026-07-18)
 
+> ⛔ **CONSTRUÍDA E REPROVADA DUAS VEZES — 2026-07-18 e 2026-08-12.** Este documento desenha o
+> Accumulate do RELEVO. Ele foi implementado nas duas datas (a 2ª sem plano novo, com 10 gates e
+> 5 mutações) e **reprovado no smoke do Enio** nas duas: *"não gostei, vamos desfazer"* e
+> *"Accumulate para Impasto não ficou bom. Vamos desativar para o modo de Impasto."* O checkbox
+> **não é oferecido** sob impasto, e o guarda executável da decisão é
+> `ph2d-tool-painter::accumulate_tests::the_body_of_the_paint_never_sees_the_accumulate_flag`.
+> **O que segue abaixo é o DESENHO, não uma pendência.** Antes de uma terceira tentativa, leia o
+> [doc 35 §6/D3](35_accumulate_vs_blender.md), que traz os números das duas e o defeito de
+> alcançabilidade que a 2ª tinha.
+
 > **Pergunta do Enio:** *"Avalie a possibilidade de accumulate na mesma pincelada (sem mouse up) em todo o
 > sistema Impasto."*
 >

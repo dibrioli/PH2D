@@ -323,3 +323,56 @@ fn measure_relief_accumulates_along_the_arc() {
         );
     }
 }
+
+/// **Sonda 7 — o Strength é INERTE nos meios que o Enio suspeita?** (2026-08-12:
+/// *"Para o modo Watercolor o slider Strength deve ficar oculto pois não se aplica. Creio que o
+/// mesmo acontece para o modo wet paint. Confira lá"*.)
+///
+/// ⚠️ Esconder um knob exige PROVA de que ele está morto — senão o painel passa a mentir do outro
+/// lado (o controle FALTANDO em vez do morto, a cicatriz que a row da máscara já pagou).
+#[test]
+#[ignore = "sonda de medicao (o Strength por meio); roda com --ignored --nocapture"]
+fn measure_whether_strength_is_inert_per_medium() {
+    println!("\n=== o STRENGTH muda o pixel, por MEIO? ===");
+    println!("mesmo traco, strength 0.25 contra 0.95; 'bytes diff' = 0 significa INERTE\n");
+
+    let run = |medium: &str, strength: f32| -> Vec<u8> {
+        let mut t = soft_tool(strength, false);
+        match medium {
+            "watercolor" => t.paint.brush.watercolor = true,
+            "impasto" => t.paint.brush.impasto = true,
+            _ => {}
+        }
+        let seed = t.paint.brush;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = seed;
+        }
+        // A Strength é re-aplicada DEPOIS dos slots: o `set_brush_strength` escreve no slot vivo.
+        t.set_brush_strength(strength);
+        if medium == "wetpaint" {
+            t.set_paint_media(super::media::PaintMedia::WetPaint);
+            t.set_brush_strength(strength);
+        }
+        one_stroke(&mut t, 1);
+        t.canvas_rgba.to_vec()
+    };
+
+    for medium in ["digital", "watercolor", "impasto", "wetpaint"] {
+        let a = run(medium, 0.25);
+        let b = run(medium, 0.95);
+        let diff = a.iter().zip(b.iter()).filter(|(x, y)| x != y).count();
+        let worst = a
+            .iter()
+            .zip(b.iter())
+            .map(|(x, y)| x.abs_diff(*y))
+            .max()
+            .unwrap_or(0);
+        // ⚠️ **O CONTROLE, sem o qual o zero nao significa nada:** um traco que nao pintou coisa
+        // alguma tambem da "0 bytes diff". Conta-se o que o traco MUDOU na tela branca.
+        let painted = b.iter().filter(|&&v| v != 255).count();
+        println!(
+            "{medium:<11} bytes diff = {diff:>7}   pior delta = {worst:>3}   pintou {painted:>6} bytes   {}",
+            if diff == 0 { "<- INERTE" } else { "vivo" }
+        );
+    }
+}

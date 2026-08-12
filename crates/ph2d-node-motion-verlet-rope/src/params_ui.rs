@@ -20,6 +20,43 @@ use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, Pa
 ///
 /// Cem mil já passa de um quadro de 60 fps; cinquenta mil fica em ~60% dele — 250× o que o slider
 /// alcança. O teto é onde a medição parou de caber.
+/// **OS TRÊS QUE FALTAVAM, MEDIDOS** (doc 89 folha 03 linha 52 · sonda `measure_rope_ceiling`).
+///
+/// **`iterations` = 128, e o teto É o clamp** (`.clamp(1, 128)` no `eval`). Acima dele a caixa
+/// de texto **aceita e mente** — a cicatriz do `lattice` 400 e do `kaleidoscope` 256. Medido, a
+/// queda da ponta ao fim de 60 tiques no pior passo:
+///
+/// | iterations | 8 | 64 | **128** | 129 | 512 | 100.000 |
+/// |---|---|---|---|---|---|---|
+/// | queda | 9,6001 | 6,2695 | **6,0885** | 6,0885 | 6,0885 | 6,0885 |
+///
+/// As três últimas não são *parecidas* com a de 128: são **byte a byte** a de 128.
+///
+/// **`gravity` e `length` = 1e20 — e é a MESMA parede, alcançada por dois caminhos.** Os dois
+/// morrem exactamente em `1e21`, e isso não é coincidência: o que estoura não é o parâmetro, é a
+/// **POSIÇÃO** da corda em `f32` (uma gravidade grande e um comprimento grande levam ambos as
+/// coordenadas ao mesmo lugar). É o recurso que o §0 admite nomear — *precisão de representação*.
+///
+/// | gravity | 9 | 40 | 1e3 | 1e12 | 1e18 | **1e20** | 1e21 |
+/// |---|---|---|---|---|---|---|---|
+/// | queda | 6,78 | 9,49 | 95,6 | 8,97e10 | 8,97e16 | **8,97e18** | **0** |
+///
+/// | length | 6 | 1e8 | 1e16 | **1e20** | 1e21 |
+/// |---|---|---|---|---|---|
+/// | queda/repouso | 1,129 | 1,0000 | 1,0000 | **1,0000** | **0** |
+///
+/// ⚠️ **O modo de falha é o SILENCIOSO, e é por isso que o teto se paga apesar de ficar 19
+/// ordens de grandeza acima do slider:** em `1e21` a queda é **exactamente zero** — a corda não
+/// explode à vista, ela **desaparece**, sem erro e sem aviso. É o mesmo desenho do `SALTA` do
+/// `motion.spring`.
+///
+/// ⚠️ **E o `length` é escala-invariante até morrer** (`queda/repouso` = `1,0000` de `1e8` a
+/// `1e20`), tal como o `radius` do `motion.collide` — a diferença é que ali a invariância ia até
+/// onde a medição alcançava e **não havia teto a escrever**, e aqui existe uma parede.
+///
+/// ⚠️ **Uma armadilha da SONDA, não do produto:** medir a queda com `powi(2)` em `f32` estoura
+/// em ~1e19 e reporta `0`/`inf` — a 1ª varredura acusou a corda de morrer em `1e24` por culpa
+/// da própria régua. A queda é computada em `f64`.
 pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
     ParamHardMax {
         param: "damping",
@@ -28,6 +65,18 @@ pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
     ParamHardMax {
         param: "count",
         max: 50_000.0,
+    },
+    ParamHardMax {
+        param: "iterations",
+        max: 128.0,
+    },
+    ParamHardMax {
+        param: "gravity",
+        max: 1e20,
+    },
+    ParamHardMax {
+        param: "length",
+        max: 1e20,
     },
 ];
 

@@ -10,13 +10,18 @@
 | | |
 |---|---|
 | branch | `line/physics` |
-| HEAD | `6ad087caa9722b8f37b2c41f9dd584f6ab87ca46` |
+| HEAD | **o tip de `line/physics`** ⚠️ ver abaixo |
 | merge-base com `main` | `76788440adbabb0e5b12f8fdafecc6f1e1183e1a` |
-| commits | **41** |
+| commits | **~42** |
 | diff | 89 arquivos, +13.709 / −833 |
 
-⚠️ **Todos os 41 são pós-integração de 2026-08-10** (a jornada `W-KinMove` /
+⚠️ **Todos são pós-integração de 2026-08-10** (a jornada `W-KinMove` /
 modo cinemático, que já está no `main`). Nada aqui foi entregue antes.
+
+⚠️ **O HEAD não é escrito aqui de propósito, e a razão é aritmética:** o commit
+que o escreve MUDA o HEAD, então um sha nesta tabela é falso no instante em que
+é commitado. O que identifica esta entrega é o **merge-base** acima mais *"o tip
+da branch"* — que é o que um integrador usa de qualquer forma.
 
 **O assunto é o PLAYER, em duas metades.** A primeira é o **catálogo** (o plano
 08: nadar · a força de zona no cinemático · o sensor que varre o corpo). A

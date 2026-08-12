@@ -156,6 +156,10 @@ mod accumulate_tests;
 mod composite_look;
 #[cfg(test)]
 mod composite_probe;
+/// **O entalhe no cruzamento** — a sonda que decide se a aquarela usa a UNIÃO (o vinco que o FLIP
+/// curou) ou a COMPOSIÇÃO na axila de dois traços que se cruzam.
+#[cfg(test)]
+mod crossing_probe;
 /// **Grid Stamp** — o que o carimbo de fato PINTA (o irmão do módulo acima, que mede os controles).
 #[cfg(test)]
 mod grid_stamp_paint_tests;

@@ -356,3 +356,144 @@ fn measure_where_the_lane_takes_him() {
         }
     }
 }
+
+/// **SONDA de diagnóstico: quão perto da parede ele chega.**
+///
+/// Report do smoke: *"o objeto não encosta na parede"*. A pergunta é um número —
+/// a face do patamar está num `x` conhecido, e a meia-largura do corpo também.
+#[test]
+#[ignore = "sonda de diagnostico"]
+fn how_close_to_the_wall_he_gets() {
+    /// A meia-largura da cápsula do `spawn_player` (o `radius`).
+    const HALF_W: f32 = 0.2;
+    let mut sim = SimWorld::new();
+    let (_, ledge) = build_ledge_scene(sim.world_mut());
+    let mut bridge = PhysicsBridge::new();
+    // A face ESQUERDA do patamar baixo, na raia da direita.
+    let face = LANE_B + 3.0;
+    println!("\n== quao perto da parede ele chega (face em x = {face:.2}) ==");
+    let mut best = f32::INFINITY;
+    for t in 1..=420_u64 {
+        bridge.set_player_input(
+            ledge,
+            PlayerInput {
+                drive: 1.0,
+                ..PlayerInput::default()
+            },
+        );
+        bridge.dispatch(&mut sim, true, t);
+        let tr = sim.world().get::<Transform>(ledge).expect("t").translation;
+        let gap = (face - HALF_W) - tr.x;
+        best = best.min(gap.abs());
+        if t % 30 == 0 {
+            println!(
+                "  t={t:>3}  x={:>7.3}  y={:>6.3}  vao ate' a face = {:>7.4} m",
+                tr.x, tr.y, gap
+            );
+        }
+    }
+    println!("  MENOR vao alcancado: {best:.4} m  (0 = encostado)");
+}
+
+/// **SONDA de diagnóstico: PENDURADO, quão longe da parede ele fica.**
+///
+/// Report do smoke (com foto): *"o objeto não encosta na parede"* — e na foto a
+/// cabeça está à altura do lábio, que é a pose do pendurar. A pergunta é o `x`.
+#[test]
+#[ignore = "sonda de diagnostico"]
+fn how_far_from_the_wall_he_hangs() {
+    /// A meia-largura da cápsula do `spawn_player` (o `radius`).
+    const HALF_W: f32 = 0.2;
+    let mut sim = SimWorld::new();
+    let (_, ledge) = build_ledge_scene(sim.world_mut());
+    let face = LANE_B + 8.5;
+    {
+        let mut t = sim.world_mut().get_mut::<Transform>(ledge).expect("t");
+        t.translation.x = face - 0.25;
+        t.translation.y = FLOAT;
+    }
+    let mut bridge = PhysicsBridge::new();
+    let mut tick = 0_u64;
+    let mut step = |sim: &mut SimWorld, bridge: &mut PhysicsBridge, jump: bool, drive: f32| {
+        bridge.set_player_input(
+            ledge,
+            PlayerInput {
+                jump,
+                drive,
+                ..PlayerInput::default()
+            },
+        );
+        tick += 1;
+        bridge.dispatch(sim, true, tick);
+    };
+    println!("\n== pendurado: onde ele fica (face do patamar em x = {face:.2}) ==");
+    for _ in 0..30 {
+        step(&mut sim, &mut bridge, false, 0.0);
+    }
+    for _ in 0..30 {
+        step(&mut sim, &mut bridge, false, 1.0);
+    }
+    for i in 0..140 {
+        step(&mut sim, &mut bridge, i < 40, 1.0);
+        if i % 20 == 0 || i == 139 {
+            let tr = sim.world().get::<Transform>(ledge).expect("t").translation;
+            println!(
+                "  i={i:>3}  x={:>7.3}  y={:>6.3}  topo={:>6.3}  vao ate' a face = {:>7.4} m",
+                tr.x,
+                tr.y,
+                tr.y + HALF_H,
+                (face - HALF_W) - tr.x
+            );
+        }
+    }
+}
+
+/// **SONDA de diagnóstico: encostar no patamar BAIXO vindo da DIREITA.**
+///
+/// ⚠️ **É o lado que os gates não visitam.** O passo 8 do roteiro afirma que um
+/// degrau que se sobe a pé **não** é beirada, e a fixture dele aproxima-se pela
+/// ESQUERDA. Vindo da direita a cabeça também passa o lábio, e se a lei engatar
+/// o servo segura o corpo a uma distância fixa da face — que é exactamente o que
+/// *"o objeto não encosta na parede"* descreve.
+#[test]
+#[ignore = "sonda de diagnostico"]
+fn how_close_he_gets_walking_left_into_the_low_step() {
+    /// A meia-largura da cápsula do `spawn_player` (o `radius`).
+    const HALF_W: f32 = 0.2;
+    for (tag, grab) in [("sem beirada", 0.0_f32), ("com beirada 0.60", 0.6)] {
+        let mut sim = SimWorld::new();
+        let (_, ledge) = build_ledge_scene(sim.world_mut());
+        {
+            let mut p = sim
+                .world_mut()
+                .get_mut::<ph2d_physics_ecs::PlatformPlayer>(ledge)
+                .expect("player");
+            p.ledge_grab = grab;
+        }
+        {
+            let mut t = sim.world_mut().get_mut::<Transform>(ledge).expect("t");
+            // No chão, à DIREITA do patamar baixo (face direita em `+5.0`).
+            t.translation.x = LANE_B + 6.5;
+            t.translation.y = FLOAT;
+        }
+        let mut bridge = PhysicsBridge::new();
+        for t in 1..=300_u64 {
+            bridge.set_player_input(
+                ledge,
+                PlayerInput {
+                    drive: -1.0,
+                    ..PlayerInput::default()
+                },
+            );
+            bridge.dispatch(&mut sim, true, t);
+        }
+        let tr = sim.world().get::<Transform>(ledge).expect("t").translation;
+        let face = LANE_B + 5.0;
+        println!(
+            "  {tag:<18}  x={:>7.3}  y={:>6.3}  vao ate' a face = {:>7.4} m",
+            tr.x,
+            tr.y,
+            tr.x - (face + HALF_W)
+        );
+    }
+}

@@ -266,3 +266,134 @@ fn where_each_one_crosses_the_landing_level() {
     }
     println!("\n(o GAP da cena tem de ficar ENTRE os dois vaos atravessados)");
 }
+
+/// **SONDA de diagnóstico: onde é que ele fica, PARADO e sem dedo nenhum.**
+///
+/// Report do smoke: *"os players ficam dando pulinhos discretos sozinhos (sem
+/// input)"*. A pergunta que separa as duas curas opostas é a AMPLITUDE — um pulo
+/// de verdade sobe metros, uma mola a oscilar sobe milímetros.
+#[test]
+#[ignore = "sonda de diagnostico"]
+fn where_the_idle_player_stands() {
+    let (mut sim, mut bridge) = rig();
+    let mut lo = f32::INFINITY;
+    let mut hi = f32::NEG_INFINITY;
+    println!("\n== o personagem PARADO, sem input nenhum (cena 112) ==");
+    // ⚠️ **A CADÊNCIA do produto, e não um tique por quadro:** o app calcula
+    // `target = round(tempo / dt)` a cada QUADRO, e um monitor a 144 Hz produz
+    // dois ou três quadros para o mesmo tique. É a única variável que o probe
+    // anterior não tinha.
+    let mut time = 0.0_f64;
+    for f in 1..=720_u64 {
+        time += 1.0 / 144.0;
+        let t = (time * 60.0).round() as u64;
+        bridge.dispatch(&mut sim, true, t);
+        let (_, y) = at(&sim, "Glide");
+        lo = lo.min(y);
+        hi = hi.max(y);
+        if f % 48 == 0 {
+            println!("  quadro={f:>3} tique={t:>3}  y={y:>8.4}");
+        }
+    }
+    println!("  amplitude ao longo de 300 tiques: {:.4} m", hi - lo);
+    println!(
+        "  (o topo do patamar esta' em {TAKEOFF_TOP:.2}; o repouso e' {:.2})",
+        TAKEOFF_TOP + super::FLOAT
+    );
+}
+
+/// **SONDA de diagnóstico: o personagem PARADO perto da BEIRA.**
+///
+/// ⚠️ **É a hipótese que a fixture do probe irmão não continha:** ele mede o
+/// corpo no MEIO do patamar, onde os três raios do leque de pés vêem o mesmo
+/// chão. Na beira eles vêem chãos diferentes, e uma perna cuja força salta entre
+/// dois valores é exactamente o que *"pulinhos discretos sozinhos"* descreve.
+#[test]
+#[ignore = "sonda de diagnostico"]
+fn how_still_he_stands_near_the_edge() {
+    println!("\n== o personagem PARADO, sem input, a VARIAS distancias da beira ==");
+    println!("   (a beira do patamar de saida esta' em x = {TAKEOFF_END:.2})");
+    for back in [1.50_f32, 0.50, 0.30, 0.20, 0.15, 0.10, 0.05, 0.00] {
+        let (mut sim, mut bridge) = rig();
+        {
+            let e = {
+                let mut q = sim
+                    .world_mut()
+                    .try_query::<(ph2d_ecs::Entity, &Name)>()
+                    .unwrap();
+                q.iter(sim.world())
+                    .find(|(_, n)| n.as_str() == "Glide")
+                    .map(|(e, _)| e)
+                    .expect("player")
+            };
+            let mut t = sim.world_mut().get_mut::<Transform>(e).expect("t");
+            t.translation.x = LANE_B + TAKEOFF_END - back;
+        }
+        let mut lo = f32::INFINITY;
+        let mut hi = f32::NEG_INFINITY;
+        let mut last = 0.0_f32;
+        for t in 1..=240_u64 {
+            bridge.dispatch(&mut sim, true, t);
+            let (_, y) = at(&sim, "Glide");
+            // Ignora o assentar inicial: só os últimos 180 tiques.
+            if t > 60 {
+                lo = lo.min(y);
+                hi = hi.max(y);
+            }
+            last = y;
+        }
+        println!(
+            "  recuado {back:>4.2} m da beira  ->  amplitude {:>7.4} m   (y final {last:>7.3})",
+            hi - lo
+        );
+    }
+}
+
+/// **SONDA de diagnóstico: o dedo PRESO no pulo, em chão firme.**
+///
+/// ⚠️ **É o gesto que o próprio roteiro manda fazer** (passo 3: *"corra e SEGURE
+/// o pulo"*), e quem falha o vão aterra no poço com o dedo ainda preso. Se um
+/// botão SEGURADO re-dispara o pulo, o que se vê é o personagem a saltitar no
+/// fundo do poço — *"pulinhos discretos"*.
+#[test]
+#[ignore = "sonda de diagnostico"]
+fn how_many_times_a_held_button_jumps() {
+    let (mut sim, mut bridge) = rig();
+    let e = {
+        let mut q = sim
+            .world_mut()
+            .try_query::<(ph2d_ecs::Entity, &Name)>()
+            .unwrap();
+        q.iter(sim.world())
+            .find(|(_, n)| n.as_str() == "Glide")
+            .map(|(e, _)| e)
+            .expect("player")
+    };
+    println!("\n== o dedo PRESO no pulo, em chao firme (300 tiques) ==");
+    let mut prev = at(&sim, "Glide").1;
+    let mut rises = 0_u32;
+    let mut was_rising = false;
+    let mut lo = f32::INFINITY;
+    let mut hi = f32::NEG_INFINITY;
+    for t in 1..=300_u64 {
+        bridge.set_player_input(
+            e,
+            PlayerInput {
+                jump: true,
+                ..PlayerInput::default()
+            },
+        );
+        bridge.dispatch(&mut sim, true, t);
+        let y = at(&sim, "Glide").1;
+        let rising = y > prev + 1.0e-4;
+        if rising && !was_rising {
+            rises += 1;
+            println!("  t={t:>3}  SUBIDA #{rises} comeca em y={y:.4}");
+        }
+        was_rising = rising;
+        prev = y;
+        lo = lo.min(y);
+        hi = hi.max(y);
+    }
+    println!("  subidas contadas: {rises}   amplitude: {:.4} m", hi - lo);
+}

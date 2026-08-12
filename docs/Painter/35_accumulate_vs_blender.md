@@ -19,7 +19,13 @@
 
 ## 1. O veredito curto
 
-**O checkbox Accumulate do PH2D está INERTE na configuração que o app abre.**
+> ⚠️ **CORRIGIDO em 2026-08-12, no mesmo dia, por MEDIR A PRÓPRIA CURA.** A 1ª escrita deste
+> documento chamou a inércia de **defeito** e recomendou tirar a cláusula `strength < 1.0` do
+> `stroke_cover_wanted`. Construí essa cura e medi: **byte-idêntica**. A §1 e a §5/D1 abaixo estão
+> reescritas com o que a medição diz; a receita refutada está pinada na §7 para ninguém a refazer.
+
+**O checkbox Accumulate do PH2D está INERTE na configuração que o app abre — e isso é ARITMÉTICA,
+não um defeito.**
 
 O default do pincel é `strength: 1.0` ([`spec_default.rs:27`](../../crates/ph2d-painter-brush/src/spec_default.rs)),
 e a porta que decide se um traço rastreia a própria cobertura é
@@ -39,10 +45,23 @@ strength 1.0  n=15  accumulate off  d0=1.000 d2=1.000 d4=0.996 d6=0.980 d8=0.000
 strength 1.0  n=15  accumulate ON   d0=1.000 d2=1.000 d4=0.996 d6=0.980 d8=0.000
 ```
 
-**Idêntico casa a casa.** O artista marca o checkbox, esfrega, e nada muda — porque o modo que ele
-está desligando já estava desligado. E o que o pincel FAZ nesse regime é o comportamento do
-**Accumulate ON** (o ombro endurece de `0,294` para `0,980` em quinze passadas), então o produto
-default oferece só a metade acumulativa da escolha.
+**Idêntico casa a casa.** O artista marca o checkbox, esfrega, e nada muda.
+
+⚠️ **E o motivo não é a cláusula — é que em `strength = 1` as duas leis SÃO a mesma lei.** Com
+`cap = 1` o passo do teto é `m ← m + w·(1 − m)`, e o chamador compõe em
+`a = add/(1 − m) = w` ⇒ **source-over por dab**, que é literalmente a lei do Accumulate ON. A
+cláusula `strength < 1.0` é portanto uma **OTIMIZAÇÃO** — pular o buffer de cobertura onde ele
+provadamente não faz nada — e não a causa. Removê-la é byte-idêntico (medido: as quatro linhas
+acima não movem um bit). O gate `at_full_strength_the_two_laws_are_the_same_law` pina a
+coincidência.
+
+⚠️ **E o Blender é igual nisto:** lá o Accumulate OFF capa a opacidade do traço na *alpha* do
+pincel; com alpha 1 o teto é 1, e o flag também não tem o que fazer. A inércia em força máxima é
+**paridade**, não divergência.
+
+O que sobra de verdadeiro na tabela é o outro fato: **o ombro endurece** de `0,294` para `0,980` em
+quinze passadas, nos dois modos — e isso é o item aberto do [doc 25 §13.10.4](25_avaliacao_gpu.md),
+não deste documento.
 
 ⚠️ **Medi isto no OMBRO de propósito.** No eixo (`d0`) tudo satura em `1.000` em qualquer lei, e uma
 tabela medida só ali diria *"1.0000 contra 1.0000, o flag é inerte"* pelo motivo errado — é a lição
@@ -161,26 +180,31 @@ Três fatos de comportamento, e o que cada um implica:
    **OFF + OFF** (`space_attenuation: false`, *"Enio 2026-06-24"*).
 
 ⚠️ **A leitura honesta do par de defaults:** se o Blender de fato aplicasse a atenuação sobre o teto
-como nós aplicamos, o par default dele produziria traços ~10× mais claros em espaçamento fino —
+como nós aplicávamos, o par default dele produziria traços ~10× mais claros em espaçamento fino —
 o que seria uma queixa famosa, e não é. Então **ou** ele não aplica a atenuação no caminho capado,
 **ou** o cap dele mora num ponto do pipeline que a atenuação não alcança. **Não posso decidir qual
-sem a fonte, e não vou afirmar**; o que a medição autoriza a dizer é que *no PH2D* a combinação é
-contraditória, e o §5 trata isso como defeito nosso, não como divergência de gosto.
+sem a fonte, e não vou afirmar**; o que a medição autoriza a dizer é que *no PH2D* a combinação era
+contraditória — e é isso que a D2 conserta.
 
 ---
 
-## 5. As três divergências, cada uma com número
+## 5. O que de fato difere, depois de medir as curas
 
-| # | o que difere | número | natureza |
+| # | o que se pensou | o que a MEDIÇÃO diz | estado |
 |---|---|---|---|
-| **D1** | **O flag é inerte em `strength = 1.0`** — que é o default | perfil inteiro idêntico (§1) | **defeito de produto**: o controle não faz nada onde o artista o encontra |
-| **D2** | **`space_atten` sobre `accumulate OFF` inverte a própria promessa** | 1,02× → **8,17×** | **defeito**, com mecanismo medido (§3.3) |
-| **D3** | **O relevo não vê o flag** | cor acumula, `h` não (§3.4) | **lacuna conhecida**, desenhada no doc 20, não construída |
+| **D1** | *o flag é inerte em `strength = 1` ⇒ defeito* | **não é defeito: as duas leis COINCIDEM ali** (`cap = 1` ⇒ o teto reduz a source-over por dab). A cura proposta foi construída e mediu **byte-idêntica**. E o Blender tem a mesma inércia em alpha 1 | ⛔ **REFUTADO** — vira gate de coincidência |
+| **D2** | *`space_atten` sobre `accumulate OFF` inverte a própria promessa* | **1,02× → 8,17×**, com mecanismo: o fator entra em `coverage`, que **é** o teto (§3.3) | ✅ **CORRIGIDO** — o knob passa a valer só com Accumulate ON; **1,02×** de volta |
+| **D3** | *o relevo não vê o flag* | cor acumula, `h` não (§3.4) — a assimetria é real e deliberada hoje | ⏳ **ABERTO** — é a wave do doc 20, e é o que sobra da pergunta original |
 
-⚠️ **E a D1 é o MESMO mecanismo do endurecimento da borda** que o [doc 25 §13.10.4](25_avaliacao_gpu.md)
-mede como item aberto — visto do outro lado. A borda endurece sob muitas passadas *porque em
-`strength = 1` não existe teto*; as duas leis de acúmulo que foram tentadas lá (produto vs envelope)
-atacavam a forma do dab, e o que decide é **se o traço tem teto**. Uma cura da D1 é uma cura dos dois.
+⚠️ **E a D1 tinha uma consequência que também cai:** eu escrevi que curá-la curaria o endurecimento
+da borda do [doc 25 §13.10.4](25_avaliacao_gpu.md). Cai junto — se as duas leis coincidem em
+`strength = 1`, **nenhum ajuste do teto muda o ombro ali**, e o §13.10.4 continua exatamente onde
+estava, pelo motivo que ele mesmo já mede.
+
+⇒ **Sobra a D3.** Depois de medir tudo, *a única coisa que o PH2D faz diferente do Blender no
+Accumulate é o RELEVO* — e essa era, desde o começo, a pergunta que o Enio fez
+([doc 20](20_accumulate_na_mesma_pincelada.md), abertura: *"a possibilidade de accumulate na mesma
+pincelada em todo o sistema Impasto"*).
 
 ---
 
@@ -188,9 +212,9 @@ atacavam a forma do dab, e o que decide é **se o traço tem teto**. Uma cura da
 
 **Ordem de ataque, do que é correção para o que é feature.**
 
-### D2 primeiro — é a mais barata e é estritamente uma correção
+### ✅ D2 — FEITO (2026-08-12)
 
-A atenuação é o compensador da lei acumulativa; ela deve **valer só quando essa lei está ligada**:
+A atenuação é o compensador da lei acumulativa; ela passou a **valer só quando essa lei está ligada**:
 
 ```rust
 // space_overlap_factor: o gate ganha a condição que o mecanismo já implica
@@ -198,36 +222,46 @@ if !(self.space_attenuation && self.accumulate && spacing_pct < 100.0) { return 
 ```
 
 Custo: uma linha, e **byte-idêntico no default de hoje** (`space_attenuation: false` ⇒ o ramo já
-retornava `1.0`). Gate: a razão da §3.3 na linha 3 volta de 8,17× para 1,02×.
+retornava `1.0`). Medido depois: a linha 3 da §3.3 vai de **8,17× para 1,02×**, e a linha 4 (o modo
+em que o knob serve) fica em **1,25×**, intocada.
+
+Gates, com as duas metades (senão *"desligar a atenuação em todo lugar"* passaria e mataria a
+feature): `the_spacing_knob_never_makes_a_capped_stroke_spacing_dependent` ·
+`the_spacing_knob_still_flattens_the_law_that_piles_up` ·
+`spec_tests::the_spacing_attenuation_only_applies_to_the_law_that_piles_up`. **Mutação** (tirar o
+`&& self.accumulate`): sangra os dois primeiros, deixa o controle verde.
+
+⚠️ **Um gate PRÉ-EXISTENTE mudou de premissa junto**, e isso é parte da correção:
+`space_attenuation_reduces_coverage_below_full_spacing` afirmava a atenuação sobre a fixture default
+(`accumulate: false`) — ou seja, sobre exatamente a combinação que estava errada. Ele passou a
+**declarar a premissa** (`accumulate: true`, com o porquê ao lado); a metade *"e é neutra sob o
+teto"* é o gate novo em `spec_tests`.
 
 ⚠️ A alternativa — deixar como está e **esconder** o checkbox quando `accumulate` está off — é pior:
-o knob passa a existir e sumir sem o artista saber por quê, e ele é legítimo no modo ON.
+o knob passaria a existir e sumir sem o artista saber por quê, e ele é legítimo no modo ON.
 
-### D1 depois — e ela é uma pergunta de PRODUTO, não de engenharia
+### ⛔ D1 — construída, MEDIDA e REFUTADA (2026-08-12)
 
-O teto existe hoje só abaixo de `strength 1`. Três saídas, e **a escolha é do Enio**:
+Tirar a cláusula `strength < 1.0` do `stroke_cover_wanted` foi implementado como experimento e
+medido no perfil perpendicular: **as quatro linhas de `strength 1.0` não moveram um bit**. A cura
+não existe porque o defeito não existe (§1). O que fica é o gate
+`at_full_strength_the_two_laws_are_the_same_law`, que afirma a coincidência.
 
-- **(a) O teto vale sempre.** `stroke_cover_wanted` perde a cláusula `strength < 1.0`. Em
-  `strength = 1` o teto é 1, então o *centro* não muda um bit — o que muda é o **OMBRO**, que para
-  de endurecer (`d6`: 0,980 → ~0,294 em quinze passadas). **É a cura da D1 e do §13.10 de uma vez**,
-  e é uma mudança de aparência de todo traço macio esfregado. ⚠️ Custo medido a nomear: o buffer de
-  cobertura passa a existir em todo traço (hoje ele é pulado em `strength 1`), e com ele a rota
-  cacheada de orientação constante **não** é elegível — o `measure_route_cost` já vigia essa razão.
-- **(b) O default de `strength` desce.** Blender-like em espírito (o artista escolhe a opacidade),
-  mas muda a primeira pincelada de todo mundo e não cura o §13.10 em `strength 1`.
-- **(c) Aceitar e DIZER.** O checkbox fica desabilitado com um motivo visível em `strength = 1`
-  (*"sem efeito na força máxima"*). Honesto e barato; não entrega o que o Blender entrega.
-
-**Minha recomendação é (a)**, porque é a única que responde ao report *e* fecha o item da borda —
-e porque um teto de 1 é exatamente o que "sem cap" significa hoje, então a metade cara da mudança
-já está escrita.
-
-### D3 por último — é a wave do doc 20, e ela tem uma bifurcação sua
+### ⏳ D3 — é o que sobra, e é a wave do doc 20
 
 O desenho está completo no [doc 20 §9.1/§12/§13](20_accumulate_na_mesma_pincelada.md): acumular a
 **CARGA** (não a altura, que assaria o Depth) num plano próprio, com o ciclo de vida no mesmo commit.
-A bifurcação do §6 continua de pé: **arco puro** (parar o pincel não deposita nada) contra **relógio
-de parede** (demorar constrói, que é o que tinta faz).
+
+⚠️ **A bifurcação do doc 20 §6 pode ser RESOLVIDA pelos invariantes, e eu recomendo resolvê-la
+assim:** *arco puro* satisfaz I1 **e** I2 (a integral é função do caminho, logo idempotente sob
+re-stamp); *relógio de parede* **viola I2 por construção** — quanto tempo o artista demorou não é
+propriedade do caminho, então um shape editor que re-carimba a figura a cada quadro não tem como
+reproduzir o mesmo relevo. Como os shape editors são um caminho de primeira classe deste Painter, a
+variante por tempo é **inexprimível** aqui, não meramente indesejada.
+
+⇒ **arco**, com a consequência honesta e já-verdadeira-hoje: *parar o pincel não deposita mais nada*
+(é o que o envelope `max` faz agora), então nenhuma regressão. **Veto do Enio pendente**, e é a
+única coisa que falta para a D3 começar.
 
 ---
 
@@ -242,3 +276,10 @@ de parede** (demorar constrói, que é o que tinta faz).
   exatamente como o brush digital normal"*.
 - ⛔ **Medir esta feature no EIXO do traço.** Em `strength = 1` tudo satura em `d0`; o discriminante
   é o perfil perpendicular (§1).
+- ⛔ **Tirar a cláusula `strength < 1.0` do `stroke_cover_wanted`** esperando que o ombro pare de
+  endurecer. **Foi construída e medida: byte-idêntica** (§5/D1). Ela é uma otimização, não a causa —
+  e o gate `at_full_strength_the_two_laws_are_the_same_law` existe para que a próxima pessoa leia o
+  fato em vez de repetir o experimento.
+- ⛔ **Ligar `space_atten` "porque é o default do Blender"** sem olhar a §3.3: o par
+  `space_atten ON + accumulate OFF` era o que abaixava o teto por um fator do espaçamento. Hoje ele
+  é neutro por construção, mas o raciocínio de *"copiar o default"* é o que reintroduz a classe.

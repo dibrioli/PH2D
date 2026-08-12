@@ -161,3 +161,61 @@ fn hardness_plateau_then_falls() {
     // At t=0.75, remapped = (0.75-0.5)/0.5 = 0.5 → linear weight 0.5.
     assert!((b.falloff_weight(0.75) - 0.5).abs() < 1e-6);
 }
+
+/// **A atenuação de espaçamento é o compensador da lei que EMPILHA** — logo ela só vale com
+/// Accumulate ligado. Sob o teto por texto (Accumulate off) nada empilha, e o fator entrava em
+/// `coverage`, que É o teto: atenuar só o abaixava, por um número que depende do espaçamento
+/// (doc 35 §3.3 — razão medida 1,02× → **8,17×**, o inverso do que o knob promete).
+///
+/// **Mutação que tem de sangrar:** tirar o `&& self.accumulate` do gate.
+#[test]
+fn the_spacing_attenuation_only_applies_to_the_law_that_piles_up() {
+    let base = BrushSpec {
+        space_attenuation: true,
+        spacing: 0.05, // denso: é onde a atenuação é mais forte
+        ..Default::default()
+    };
+
+    // Accumulate OFF ⇒ o traço TEM teto ⇒ nada a normalizar ⇒ neutro exato.
+    let capped = BrushSpec {
+        accumulate: false,
+        ..base
+    };
+    assert_eq!(
+        capped.space_overlap_factor(),
+        1.0,
+        "sob o teto por texel a atenuacao tem de ser NEUTRA (senao ela abaixa o teto)"
+    );
+
+    // Accumulate ON ⇒ os dabs empilham ⇒ o fator existe e é < 1 num espaçamento denso.
+    let piling = BrushSpec {
+        accumulate: true,
+        ..base
+    };
+    let f = piling.space_overlap_factor();
+    assert!(
+        f < 0.5,
+        "com a lei que empilha a atenuacao tem de MORDER num espacamento de 5%: {f}"
+    );
+
+    // E o gate do Blender (spacing >= 100%) continua de pé mesmo com a lei que empilha.
+    let sparse = BrushSpec {
+        accumulate: true,
+        spacing: 1.0,
+        ..base
+    };
+    assert_eq!(
+        sparse.space_overlap_factor(),
+        1.0,
+        "spacing >= 100% nao tem sobreposicao para normalizar"
+    );
+}
+
+/// O **default do produto é byte-idêntico** a antes da cláusula: `space_attenuation: false` já
+/// devolvia `1.0` pelo primeiro termo, então nenhuma arte existente se move.
+#[test]
+fn the_product_default_is_untouched_by_the_accumulate_clause() {
+    let d = BrushSpec::default();
+    assert!(!d.space_attenuation, "o default do knob e OFF");
+    assert_eq!(d.space_overlap_factor(), 1.0);
+}

@@ -25,7 +25,7 @@ const X1: f32 = 44.0;
 /// Onde se mede: o MEIO do segmento, que todo dab do caminho atravessa.
 const PROBE_X: u32 = 32;
 
-fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
+pub(in crate::tool::paint) fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
     CanvasPointer {
         pos,
         pressure: 1.0,
@@ -36,7 +36,7 @@ fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
 
 /// Tela BRANCA opaca + pincel PRETO macio (o do produto). `strength` é o único knob que o chamador
 /// escolhe além dos que a sonda varre.
-fn soft_tool(strength: f32, accumulate: bool) -> PainterTool {
+pub(in crate::tool::paint) fn soft_tool(strength: f32, accumulate: bool) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
     t.paint.brush.radius_px = 8.0;
@@ -55,13 +55,13 @@ fn soft_tool(strength: f32, accumulate: bool) -> PainterTool {
 }
 
 /// Opacidade da tinta no ponto de sonda: preto sobre branco ⇒ `alpha = (255 − r) / 255`.
-fn alpha(t: &PainterTool) -> f32 {
+pub(in crate::tool::paint) fn alpha(t: &PainterTool) -> f32 {
     let i = ((Y as u32 * SIZE) + PROBE_X) as usize * 4;
     (255.0 - f32::from(t.canvas_rgba[i])) / 255.0
 }
 
 /// `n` passadas de ida-e-volta **DENTRO de uma pincelada** (um Down, um Up).
-fn one_stroke(t: &mut PainterTool, n: usize) {
+pub(in crate::tool::paint) fn one_stroke(t: &mut PainterTool, n: usize) {
     t.on_canvas_pointer(cp([X0, Y], PointerPhase::Down));
     for _ in 0..n {
         t.on_canvas_pointer(cp([X1, Y], PointerPhase::Move));

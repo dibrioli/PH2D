@@ -637,12 +637,19 @@ fn stabilizer_catches_up_to_release_on_finish() {
 #[test]
 fn space_attenuation_reduces_coverage_below_full_spacing() {
     // spacing 0.1 (10%) with attenuation on ⇒ overlap factor < 1 ⇒ coverage < strength.
+    //
+    // ⚠️ **`accumulate: true` não é enfeite de fixture — é a premissa da lei que o knob compensa**
+    // (doc 35 §3.3). A atenuação normaliza dabs que EMPILHAM; sob o teto por texel (Accumulate off)
+    // ela é neutra de propósito, porque ali não há pilha nenhuma e o fator só abaixaria o teto. A
+    // outra metade — que ela é NEUTRA com o teto — é o
+    // `spec_tests::the_spacing_attenuation_only_applies_to_the_law_that_piles_up`.
     let spec = BrushSpec {
         radius_px: 10.0,
         spacing: 0.1,
         strength: 1.0,
         falloff: Falloff::Smooth,
         space_attenuation: true,
+        accumulate: true,
         ..Default::default()
     };
     let mut s = Stroke::new(spec, no_dynamics(), 1);
@@ -658,7 +665,7 @@ fn space_attenuation_reduces_coverage_below_full_spacing() {
     let mut s2 = Stroke::new(
         BrushSpec {
             space_attenuation: false,
-            ..spec
+            ..spec // herda o `accumulate: true` — o controle isola o KNOB, não a lei
         },
         no_dynamics(),
         1,

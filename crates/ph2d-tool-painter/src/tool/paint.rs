@@ -149,6 +149,9 @@ pub use grid_stamp_settings::GridAxis;
 /// **Accumulate** — a sonda que MEDE a lei que shipa, para o estudo comparativo com o Blender.
 #[cfg(test)]
 mod accumulate_probe;
+/// **Accumulate** — a metade que AFIRMA; a sonda irmã é dona da fixture.
+#[cfg(test)]
+mod accumulate_tests;
 #[cfg(test)]
 mod composite_look;
 #[cfg(test)]

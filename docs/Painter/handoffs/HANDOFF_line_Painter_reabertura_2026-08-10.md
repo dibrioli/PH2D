@@ -58,9 +58,17 @@ congelado 4/4 · nenhum ADR · zero `Cargo.toml`). Hoje o `main` diz `PROJECT_SC
 
 ### O único item ABERTO
 
-**O ACCUMULATE** — estudo e comparação com o Blender (ordem do Enio, 2026-08-12).
-Desenho e medições prévias em [`20_accumulate_na_mesma_pincelada.md`](../20_accumulate_na_mesma_pincelada.md);
-o estudo comparativo é [`35_accumulate_vs_blender.md`](../35_accumulate_vs_blender.md).
+**O ACCUMULATE do RELEVO** (a D3 do [doc 35](../35_accumulate_vs_blender.md)) — e ele está **a um
+veto de distância**, não a um projeto.
+
+O estudo foi feito e mediu as três divergências candidatas: a **D1** (o flag inerte em força máxima)
+foi **construída e REFUTADA** — as duas leis coincidem ali, e o Blender tem a mesma inércia; a **D2**
+(o knob de espaçamento invertendo a própria promessa, 1,02× → 8,17×) foi **corrigida e gateada**.
+Sobra a D3: *o relevo não vê o flag*, que era a pergunta original do Enio.
+
+A receita está pronta no [doc 20 §9.1/§12/§13](../20_accumulate_na_mesma_pincelada.md) e a
+bifurcação do §6 tem recomendação com argumento de invariante (**arco**, porque *relógio de parede*
+viola I2 e é inexprimível sob os shape editors). **Falta só o veto do Enio.**
 
 ### Os itens FECHADOS, com o tipo do fecho
 

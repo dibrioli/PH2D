@@ -272,11 +272,36 @@ impl BrushSpec {
     /// given phase and returns `1 / max_phase(Σ kernels)` so a densely-spaced stroke is normalised to
     /// unit opacity instead of piling up. Returns `1.0` (no attenuation) when the flag is off or
     /// spacing ≥ 100% (Blender's exact gate). Uses this brush's own falloff, like Blender.
+    ///
+    /// ## ⚠️ Ele só vale com **Accumulate LIGADO**, e isso é o mecanismo, não uma preferência
+    ///
+    /// *"normaliza em vez de EMPILHAR"* nomeia a lei que ele compensa: **empilhar é o que o modo
+    /// Accumulate faz** (cada dab compõe por conta, `1 − A = Π(1 − a_k)`, então mais dabs = mais
+    /// opacidade). Com Accumulate DESLIGADO o traço tem um **TETO por texel**
+    /// ([`crate::stroke_cover::cover_add`]: `m += w·(cap − m)`) e nada empilha — mais dabs só
+    /// aproximam o mesmo teto.
+    ///
+    /// E o fator entra em `coverage = strength × pressão × overlap` ([`crate::Stroke::dab_at`]),
+    /// que **É o teto**. Sob a lei capada ele portanto não normaliza coisa alguma: só **abaixa o
+    /// teto** por um número que depende do espaçamento — o inverso exato do que o nome promete.
+    ///
+    /// **Medido** (doc 35 §3.3; mesmo caminho, `strength 0.5`, só muda quantos dabs o motor emite;
+    /// a razão é entre o espaçamento 5 % e o 40 %):
+    ///
+    /// ```text
+    ///   space_atten off  accumulate off   1,02x   <- ja era independente do espacamento
+    ///   space_atten off  accumulate ON    2,95x
+    ///   space_atten ON   accumulate off   8,17x   <- o knob PIORAVA o que promete consertar
+    ///   space_atten ON   accumulate ON    1,25x   <- e aqui ele faz o trabalho dele
+    /// ```
+    ///
+    /// ⚠️ **Byte-idêntico no default de hoje** (`space_attenuation: false` ⇒ este ramo já devolvia
+    /// `1.0`); a cláusula só muda a combinação que estava errada.
     #[must_use]
     pub fn space_overlap_factor(&self) -> f32 {
         // Blender stores spacing as an integer percent; this engine stores a 0..1 fraction.
         let spacing_pct = (self.spacing * 100.0).max(0.0);
-        if !(self.space_attenuation && spacing_pct < 100.0) {
+        if !(self.space_attenuation && self.accumulate && spacing_pct < 100.0) {
             return 1.0;
         }
         // Sample the overlap sum at M phases across one period; the factor cancels the peak.

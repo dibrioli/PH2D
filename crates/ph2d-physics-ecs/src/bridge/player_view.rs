@@ -67,6 +67,8 @@ pub enum ProbeKind {
     Side,
     /// O teto do agachar: o corpo varrido para cima por `rise`.
     Headroom,
+    /// A beirada: um raio para baixo, `grab` acima da cabeça e à frente dela.
+    Ledge,
 }
 
 /// **O que o sensor respondeu** — e *"não foi perguntado"* é uma resposta.

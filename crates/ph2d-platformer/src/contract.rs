@@ -11,9 +11,9 @@
 
 use crate::{
     Motor, Reaction, Vec2, crouch::CrouchConfig, crouch::CrouchState, dash::DashConfig,
-    dash::DashState, jump::JumpConfig, jump::JumpState, kinematic, react::ReactionConfig,
-    ride::RideConfig, swim::SwimConfig, swim::SwimState, walk::WalkConfig, wall::GrabState,
-    wall::WallConfig,
+    dash::DashState, jump::JumpConfig, jump::JumpState, kinematic, ledge::LedgeConfig,
+    ledge::LedgeState, react::ReactionConfig, ride::RideConfig, swim::SwimConfig, swim::SwimState,
+    walk::WalkConfig, wall::GrabState, wall::WallConfig,
 };
 
 /// A config inteira de um player — as metades que a [`footing`] precisa
@@ -36,6 +36,8 @@ pub struct PlayerConfig {
     pub crouch: CrouchConfig,
     /// O nado (W-Swim) — ⚠️ nasce DESLIGADO, ver [`SwimConfig::STARTING_POINT`].
     pub swim: SwimConfig,
+    /// A beirada (W-Ledge) — ⚠️ nasce DESLIGADA, ver [`LedgeConfig::STARTING_POINT`].
+    pub ledge: LedgeConfig,
 }
 
 impl PlayerConfig {
@@ -49,6 +51,7 @@ impl PlayerConfig {
         dash: DashConfig::STARTING_POINT,
         crouch: CrouchConfig::STARTING_POINT,
         swim: SwimConfig::STARTING_POINT,
+        ledge: LedgeConfig::STARTING_POINT,
     };
 }
 
@@ -82,6 +85,13 @@ pub struct PlayerState {
     /// O nado (W-Swim) — a TRAVA, e ela existe porque entrar e sair pedem
     /// limiares diferentes (ver o topo de [`crate::swim`]).
     pub swim: SwimState,
+    /// A beirada (W-Ledge) — a trava do pendurar e o que falta da subida.
+    ///
+    /// ⚠️ A **trava** é o que faz de uma janela de dois tiques um gesto (o
+    /// número está no topo de [`crate::ledge`]), e ela só serve para alguma
+    /// coisa por estar aqui: um gatilho sem estado seria um agarre que depende
+    /// de o sensor calhar de responder no tique certo.
+    pub ledge: LedgeState,
     /// **A velocidade do modo CINEMÁTICO** (W-KinMove, K5) — o que o solver
     /// possuiria se o corpo fosse dinâmico.
     ///

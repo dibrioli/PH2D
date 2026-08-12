@@ -41,7 +41,7 @@ fn step(
     buoyed: Buoyed,
 ) -> PlayerStep {
     player_motor(
-        cfg, ground, None, None, None, input, state, velocity, G, UP, DT, buoyed, SPRING,
+        cfg, ground, None, None, None, None, input, state, velocity, G, UP, DT, buoyed, SPRING,
     )
 }
 
@@ -279,6 +279,7 @@ fn the_wall_is_silent_under_water() {
             None,
             None,
             Some(&wall),
+            None,
             None,
             pushing,
             PlayerState::default(),

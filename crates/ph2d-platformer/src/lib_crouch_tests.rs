@@ -81,6 +81,7 @@ fn a_crouched_leg_pulls_him_down_to_the_lower_rest() {
         None,
         None,
         None,
+        None,
         PlayerInput::default(),
         PlayerState::default(),
         [0.0, 0.0],
@@ -93,6 +94,7 @@ fn a_crouched_leg_pulls_him_down_to_the_lower_rest() {
     let down = player_motor(
         &cfg,
         Some(&ground),
+        None,
         None,
         None,
         None,
@@ -130,6 +132,7 @@ fn a_crouched_walk_targets_the_crouch_speed() {
         None,
         None,
         None,
+        None,
         PlayerInput {
             drive: 1.0,
             ..PlayerInput::default()
@@ -145,6 +148,7 @@ fn a_crouched_walk_targets_the_crouch_speed() {
     let low = player_motor(
         &cfg,
         Some(&ground),
+        None,
         None,
         None,
         None,
@@ -188,6 +192,7 @@ fn a_down_button_with_the_capability_off_changes_nothing() {
         None,
         None,
         None,
+        None,
         PlayerInput {
             drive: 1.0,
             ..PlayerInput::default()
@@ -203,6 +208,7 @@ fn a_down_button_with_the_capability_off_changes_nothing() {
     let held = player_motor(
         &cfg,
         Some(&ground),
+        None,
         None,
         None,
         None,
@@ -231,6 +237,7 @@ fn a_ceiling_keeps_him_crouched_through_the_one_door() {
         None,
         None,
         None,
+        None,
         down_input(),
         PlayerState::default(),
         [0.0, 0.0],
@@ -249,6 +256,7 @@ fn a_ceiling_keeps_him_crouched_through_the_one_door() {
         None,
         None,
         Some(&blocked),
+        None,
         PlayerInput {
             drive: 1.0,
             ..PlayerInput::default()
@@ -272,6 +280,7 @@ fn a_ceiling_keeps_him_crouched_through_the_one_door() {
         None,
         None,
         Some(&Headroom::CLEAR),
+        None,
         PlayerInput {
             drive: 1.0,
             ..PlayerInput::default()

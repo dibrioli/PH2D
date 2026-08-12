@@ -63,6 +63,7 @@ fn while_dashing_the_leg_the_walk_and_gravity_are_all_silent() {
         None,
         None,
         None,
+        None,
         dash_input(),
         PlayerState::default(),
         vel,
@@ -113,6 +114,7 @@ fn a_jump_out_of_a_dash_is_a_jump() {
         None,
         None,
         None,
+        None,
         dash_input(),
         PlayerState::default(),
         [0.0, 0.0],
@@ -129,6 +131,7 @@ fn a_jump_out_of_a_dash_is_a_jump() {
     let jumped = player_motor(
         &cfg,
         Some(&ground),
+        None,
         None,
         None,
         None,
@@ -176,6 +179,7 @@ fn a_dash_button_with_the_capability_off_changes_nothing() {
         None,
         None,
         None,
+        None,
         PlayerInput {
             drive: 1.0,
             ..PlayerInput::default()
@@ -191,6 +195,7 @@ fn a_dash_button_with_the_capability_off_changes_nothing() {
     let pressed = player_motor(
         &cfg,
         Some(&ground),
+        None,
         None,
         None,
         None,
@@ -243,6 +248,7 @@ fn a_wall_jump_out_of_a_dash_also_ends_it() {
         None,
         None,
         None,
+        None,
         dash_input(),
         PlayerState::default(),
         [0.0, -1.0],
@@ -278,6 +284,7 @@ fn a_wall_jump_out_of_a_dash_also_ends_it() {
         None,
         None,
         Some(&wall),
+        None,
         None,
         PlayerInput {
             drive: 1.0,
@@ -338,6 +345,7 @@ fn an_air_jump_out_of_a_dash_also_ends_it() {
         None,
         None,
         None,
+        None,
         dash_input(),
         PlayerState::default(),
         [0.0, -1.0],
@@ -368,6 +376,7 @@ fn an_air_jump_out_of_a_dash_also_ends_it() {
     state.jump.airborne = true;
     let jumped = player_motor(
         &cfg,
+        None,
         None,
         None,
         None,

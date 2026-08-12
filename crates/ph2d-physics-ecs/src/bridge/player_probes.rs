@@ -158,6 +158,86 @@ pub(super) fn wall_rays(
     Some((out, n))
 }
 
+/// **A BEIRADA** — um raio para BAIXO, à frente da cabeça (`W-Ledge`).
+///
+/// ⚠️ **Um raio, e não uma varredura**, e a §4.3 do plano 08 já o dizia: *onde o
+/// chão acaba* é uma pergunta de **perfil**, e uma varredura devolve **um**
+/// contacto sem saber a que altura ele está. O que a beirada precisa é
+/// exactamente a altura.
+///
+/// ⚠️ **A origem nasce `grab` ACIMA da cabeça e `meia-largura + grab` à FRENTE**,
+/// e o alcance é `2·grab` — as duas soleiras do
+/// [`ph2d_platformer::LedgeProbe`] saem daí, e o `x` em que ele bate **é** o
+/// ponto do patamar em que o corpo vai pousar.
+pub(super) fn ledge_ray(
+    world: &ph2d_physics::PhysicsWorld,
+    handle: rapier2d_handle::Handle,
+    cfg: &PlayerConfig,
+    side: f32,
+) -> Option<ProbeRay> {
+    let grab = cfg.ledge.grab;
+    if !grab.is_finite() || grab <= 0.0 {
+        return None;
+    }
+    let (mins, maxs) = world.body_aabb(handle)?;
+    let half_width = (maxs[0] - mins[0]) * 0.5;
+    if !half_width.is_finite() || half_width <= 0.0 {
+        return None;
+    }
+    let cx = (maxs[0] + mins[0]) * 0.5;
+    Some(ProbeRay {
+        origin: [cx + side * (half_width + grab), maxs[1] + grab],
+        dir: [0.0, -1.0],
+        reach: 2.0 * grab,
+        // ⚠️ **ZERO, e não a meia-altura:** este raio nasce FORA do corpo, à
+        // frente dele — não há nada dele a descontar do desenho.
+        skin: 0.0,
+    })
+}
+
+/// **O que há por cima da beirada** (`W-Ledge`) — a metade do sensor que este
+/// módulo possui, e nada de política.
+///
+/// ⚠️ **`distance == 0` é uma RECUSA, e é o achado que a medição deu:** a origem
+/// caiu **dentro** da geometria, ou seja a parede continua acima da cabeça e não
+/// há beirada nenhuma. Sem esta linha o cast devolve o contrato de penetração
+/// (`distance == 0`, publicado pelo `cast_ray`) e a lei leria um lábio à altura
+/// exacta da origem — medido, com o corpo 0,4 m abaixo do lábio e uma janela de
+/// 0,2 m ele reportava um patamar em `y = 3,3`, **onde não há superfície
+/// nenhuma**. É esta a metade *"livre acima da cabeça"* que os motores de
+/// referência pagam com um segundo raio; aqui ela sai do mesmo.
+pub(super) fn probe_ledge(
+    world: &ph2d_physics::PhysicsWorld,
+    handle: rapier2d_handle::Handle,
+    layer: u8,
+    cfg: &PlayerConfig,
+    drive: f32,
+) -> Option<ph2d_platformer::LedgeProbe> {
+    let side = if drive > 0.0 { 1.0 } else { -1.0 };
+    let r = ledge_ray(world, handle, cfg, side)?;
+    let hit = world.cast_ray(r.origin, r.dir, r.reach, Some(handle), layer)?;
+    if hit.distance <= 0.0 {
+        return None;
+    }
+    let (mins, maxs) = world.body_aabb(handle)?;
+    let half_width = (maxs[0] - mins[0]) * 0.5;
+    let half_height = (maxs[1] - mins[1]) * 0.5;
+    let grab = cfg.ledge.grab;
+    let lip_rise = grab - hit.distance;
+    Some(ph2d_platformer::LedgeProbe {
+        lip_rise,
+        side,
+        // ⚠️ **A borda de DENTRO do corpo aterra no `x` que o raio provou ser
+        // patamar** — é isso que torna o alvo do mantle medido em vez de
+        // suposto, e é por isso que ele não precisa de saber onde está a face
+        // da parede.
+        across: 2.0 * half_width + grab,
+        // ⚠️ **A MESMA medição, projetada para o outro consumidor** — ver o doc
+        // de [`ph2d_platformer::LedgeProbe::rise`].
+        rise: lip_rise + half_height + cfg.ride.float_height,
+    })
+}
+
 /// **Onde o perfil do teto nasce** — a geometria que o leque e as duas laterais
 /// partilham.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -416,6 +496,13 @@ pub(super) fn record_marks(
     corner: Option<(&CeilingProbe, f32)>,
     wall: Option<&WallProbe>,
     headroom: Option<&Headroom>,
+    // ⚠️ **DOIS níveis, e o de fora é *a lei perguntou?*** — o mesmo formato da
+    // perna, e pela mesma razão: este sensor devolve `None` quando **não há
+    // beirada**, então um `Option` simples colapsaria *"não perguntei"* com
+    // *"perguntei e não achei"* — que é exactamente a distinção que o `Idle`
+    // existe para dar (*a capacidade está desligada* contra *o alcance é curto
+    // demais*), e os dois vereditos são opostos.
+    ledge: Option<Option<&ph2d_platformer::LedgeProbe>>,
 ) {
     // A PERNA — castada em todo tique, então ela nunca fica `Idle`.
     let (legs, ln) = ground_rays(world, handle, cfg, origin);
@@ -528,6 +615,41 @@ pub(super) fn record_marks(
     if let Some(up) = headroom_offset(cfg) {
         out.push(ProbeMark::sweep(entity, up, headroom.map(|h| h.blocked)));
     }
+
+    // A BEIRADA (`W-Ledge`) — e ela segue a MESMA regra do flanco: sem direção
+    // é desenhada dos DOIS lados, porque escolher um seria mostrar um alcance no
+    // sítio errado.
+    if cfg.ledge.armed() {
+        let seen = ledge.flatten();
+        let sides: [f32; 2] = [-1.0, 1.0];
+        let both = ledge.is_none() && drive == 0.0;
+        for side in sides {
+            if !both && seen.map_or(drive.signum(), |l| l.side) != side {
+                continue;
+            }
+            let Some(r) = ledge_ray(world, handle, cfg, side) else {
+                continue;
+            };
+            out.push(match (ledge, seen) {
+                // ⚠️ **A distância vem do que a lei mediu**, re-derivada da
+                // grandeza que ela consome: `grab − lip_rise` é o `distance` do
+                // cast, e desenhá-lo de outra forma seria uma segunda resposta.
+                (Some(_), Some(l)) => ProbeMark::ray(
+                    ProbeKind::Ledge,
+                    r.origin,
+                    r.dir,
+                    r.reach,
+                    Some(cfg.ledge.grab - l.lip_rise),
+                    r.skin,
+                ),
+                // Perguntou e não achou: `Clear`, e não `Idle`.
+                (Some(_), None) => {
+                    ProbeMark::ray(ProbeKind::Ledge, r.origin, r.dir, r.reach, None, r.skin)
+                }
+                _ => ProbeMark::idle_ray(ProbeKind::Ledge, r.origin, r.dir, r.reach, r.skin),
+            });
+        }
+    }
 }
 
 impl crate::PhysicsBridge {
@@ -576,6 +698,7 @@ impl crate::PhysicsBridge {
                 // Sem relógio não há dedo: o flanco é publicado dos DOIS lados,
                 // que é o que `record_marks` já faz sem direção.
                 0.0,
+                None,
                 None,
                 None,
                 None,

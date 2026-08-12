@@ -17,8 +17,8 @@
 
 use bevy_ecs::component::Component;
 use ph2d_platformer::{
-    CrouchConfig, DashConfig, JumpConfig, PlayerConfig, ReactionConfig, RideConfig, SwimConfig,
-    WalkConfig, WallConfig,
+    CrouchConfig, DashConfig, JumpConfig, LedgeConfig, PlayerConfig, ReactionConfig, RideConfig,
+    SwimConfig, WalkConfig, WallConfig,
 };
 use serde::{Deserialize, Serialize};
 
@@ -259,6 +259,13 @@ pub struct PlatformPlayer {
     /// completamente fora da água), porque um limiar só faria o nadador oscilar
     /// em torno dele exatamente onde o jogador tenta emergir.
     pub swim_enter: f32,
+
+    /// **O ALCANCE do braço numa beirada**, metros (`W-Ledge`). `0.0`
+    /// **desliga** — ver [`LedgeConfig::grab`].
+    pub ledge_grab: f32,
+    /// **A velocidade com que ele se acomoda e sobe**, m/s — ver
+    /// [`LedgeConfig::speed`].
+    pub ledge_speed: f32,
 }
 
 impl PlatformPlayer {
@@ -325,6 +332,10 @@ impl PlatformPlayer {
                 acceleration: self.swim_acceleration,
                 enter: self.swim_enter,
             },
+            ledge: LedgeConfig {
+                grab: self.ledge_grab,
+                speed: self.ledge_speed,
+            },
             react: ReactionConfig {
                 support: self.reaction_support,
                 movement: self.reaction_movement,
@@ -384,6 +395,8 @@ impl Default for PlatformPlayer {
             swim_speed: c.swim.speed,
             swim_acceleration: c.swim.acceleration,
             swim_enter: c.swim.enter,
+            ledge_grab: c.ledge.grab,
+            ledge_speed: c.ledge.speed,
         }
     }
 }

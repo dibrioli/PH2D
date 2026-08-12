@@ -99,7 +99,7 @@ fn script(i: u64) -> PlayerInput {
 fn measure_how_often_each_sensor_is_actually_cast() {
     let (mut sim, mut bridge, player) = scene(true);
     let ticks = 600u64;
-    let mut seen = [[0usize; 3]; 5]; // [kind][state]
+    let mut seen = [[0usize; 3]; 6]; // [kind][state]
 
     for i in 1..=ticks {
         bridge.set_player_input(player, script(i));
@@ -111,6 +111,7 @@ fn measure_how_often_each_sensor_is_actually_cast() {
                 ProbeKind::Corner => 2,
                 ProbeKind::Side => 3,
                 ProbeKind::Headroom => 4,
+                ProbeKind::Ledge => 5,
             };
             let s = match m.state {
                 ProbeState::Idle => 0,
@@ -126,7 +127,7 @@ fn measure_how_often_each_sensor_is_actually_cast() {
         "{:<10} {:>8} {:>8} {:>8}   perguntado",
         "sensor", "idle", "clear", "hit"
     );
-    for (k, name) in ["chao", "parede", "quina", "lado", "agachar"]
+    for (k, name) in ["chao", "parede", "quina", "lado", "agachar", "beirada"]
         .iter()
         .enumerate()
     {

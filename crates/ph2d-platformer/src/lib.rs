@@ -56,6 +56,7 @@ pub mod crouch;
 pub mod dash;
 pub mod jump;
 pub mod kinematic;
+pub mod ledge;
 pub mod react;
 pub mod ride;
 pub mod sense;
@@ -77,6 +78,7 @@ pub use jump::{JumpConfig, JumpState, JumpStep, carried_frame, jump_step};
 pub use kinematic::{
     Fluid, KinematicState, kinematic_advance, kinematic_settle, supported_velocity, surface_descent,
 };
+pub use ledge::{LedgeConfig, LedgeProbe, LedgeState, LedgeStep, ledge_probe_wanted, ledge_step};
 pub use react::{Reaction, ReactionConfig, push_transfer};
 pub use ride::{
     RideConfig, Support, damping_axis, ride_hold, ride_spring, ride_support_on_ground, within_reach,
@@ -236,6 +238,7 @@ pub fn player_motor(
     ceiling: Option<&CeilingProbe>,
     wall: Option<&WallProbe>,
     headroom: Option<&Headroom>,
+    ledge: Option<&LedgeProbe>,
     input: PlayerInput,
     state: PlayerState,
     body_velocity: Vec2,
@@ -293,6 +296,34 @@ pub fn player_motor(
         footing.is_some(),
         dt,
     );
+    // ⚠️ **A pergunta *"o pé está no chão?"* sobe para AQUI** (`W-Ledge`) — ela
+    // é a MESMA porta ([`JumpState::on_ground`]) sobre o MESMO estado de
+    // entrada, e passa a ter três consumidores: o pulo, o arranque e a beirada.
+    // Uma segunda cópia daria um tique em que o pulo recarrega o coyote e a
+    // beirada ainda se julga no ar.
+    let grounded = state.jump.on_ground(footing);
+
+    // ── A BEIRADA (W-Ledge) ──────────────────────────────────────────────────
+    // ⚠️ **ANTES do pulo, e a ordem é a lei:** apertar o pulo pendurado é o
+    // pedido de SUBIR, e ele é consumido aqui — quem está numa beirada não dá
+    // um pulo de parede com o mesmo aperto.
+    let hold = ledge::ledge_step(
+        &cfg.ledge,
+        state.ledge,
+        ledge,
+        input.drive,
+        input.jump,
+        input.down,
+        grounded,
+        body_velocity,
+        up,
+        dt,
+    );
+    // ⚠️ **Enquanto ela age, ela é a DONA da velocidade** — o desenho do
+    // arranque, e pela mesma razão: dois termos a escrever o mesmo eixo somam-se
+    // e o gesto deixa de ser o que a lei prometeu.
+    let ledging = hold.active;
+
     let jump = jump_step(
         &cfg.jump,
         state.jump,
@@ -306,7 +337,12 @@ pub fn player_motor(
         // fora deixa o estado a dizer que ele saiu (`airborne`, o coyote gasto)
         // e — pior — acende o `takeoff`, que a 3.ª lei devolveria ao chão como
         // um empurrão que ninguém deu.
-        input.jump && !swimming,
+        // ⚠️ **E o botão foi GASTO na beirada** (`W-Ledge`) pela razão exata do
+        // nado, um argumento acima: apagá-lo na ENTRADA em vez de descartar o
+        // motor na saída é o que impede o estado de dizer que um pulo saiu — e
+        // com ele o `takeoff`, que a 3.ª lei devolveria ao chão como um empurrão
+        // que ninguém deu.
+        input.jump && !swimming && !ledging,
         input.down,
         wall::wall_launch(&cfg.wall, clinging.as_ref()),
         gravity,
@@ -316,11 +352,8 @@ pub fn player_motor(
     );
 
     // ── O ARRANQUE (W14) ─────────────────────────────────────────────────────
-    // ⚠️ **A pergunta *"o pé está no chão?"* é a MESMA que o pulo faz**, pela
-    // MESMA porta ([`JumpState::on_ground`]) e sobre o estado de ENTRADA — que é
-    // o que o `jump_step` também consulta. Duas cópias do predicado dariam um
-    // tique em que o pulo recarrega o coyote e o arranque não recarrega a carga.
-    let grounded = state.jump.on_ground(footing);
+    // ⚠️ **O `grounded` é o que a beirada e o pulo já consumiram**, pela MESMA
+    // porta e sobre o MESMO estado de entrada — ver onde ele nasce, acima.
     // ⚠️ **Um pulo de QUALQUER tipo cancela o arranque**, e quem responde é o
     // PRÓPRIO passo do pulo — não o `jump.takeoff` (que é só a decolagem do
     // chão, e deixaria de fora o pulo de parede) e **não mais** a transição
@@ -378,7 +411,11 @@ pub fn player_motor(
     // exatamente o defensivo que este repo já pagou para aprender a não escrever
     // ([[feedback_layered_defenses_need_per_layer_gates]]). Quem sustenta a
     // frase é um gate sobre a LEI (`the_swim_never_runs_with_ground_under_it`).
-    let standing = if jump.spring_armed && !dashing {
+    // ⚠️ **E a BEIRADA cala a perna junto** (`W-Ledge`): pendurado não há chão
+    // ao alcance de qualquer forma, mas a SUBIDA passa por cima do patamar — e
+    // no tique em que a perna o vê ela puxaria o corpo para a altura de repouso
+    // no meio do gesto, disputando o eixo com o motor da subida.
+    let standing = if jump.spring_armed && !dashing && !ledging {
         footing
     } else {
         None
@@ -417,7 +454,7 @@ pub fn player_motor(
     // próprio e no eixo horizontal. Deixá-la viva seria um segundo servo a
     // escrever o mesmo eixo que a braçada, e os dois discordariam sobre o alvo
     // (ela mira `speed`, ele mira `swim.speed`).
-    let step = if jump.state.wall_lock > 0.0 || dashing || swimming {
+    let step = if jump.state.wall_lock > 0.0 || dashing || swimming || ledging {
         Motor::default()
     } else {
         no_uphill(
@@ -472,7 +509,7 @@ pub fn player_motor(
     // o pé no chão a mola já governa o eixo vertical, e um segundo termo a
     // escrever velocidade ali seria dois donos do mesmo número. A `standing` é a
     // mesma resposta que a mola consumiu.
-    let slide = if standing.is_none() && !dashing {
+    let slide = if standing.is_none() && !dashing && !ledging {
         wall::wall_slide(&cfg.wall, clinging.is_some(), gripping, rel_up, up)
     } else {
         Motor::default()
@@ -485,7 +522,18 @@ pub fn player_motor(
     // personagem estava quando o botão foi apertado. E no tique em que um pulo
     // sai, `dashing` já é falso (o arranque foi cancelado), então o boost da
     // decolagem nunca é perdido.
-    let (jump_motor, burst) = if dashing {
+    // ⚠️ **A BEIRADA substitui os dois** (`W-Ledge`), pela razão que o arranque
+    // já documenta: o que o `jump.motor` carrega fora da decolagem é a gravidade
+    // de FASE, e somá-la a um tique que a cancela daria um pendurar que sobe ou
+    // desce conforme a fase em que o personagem estava.
+    //
+    // ⚠️ **O relógio do arranque continua a correr**, e é deliberado: cancelá-lo
+    // daqui seria uma segunda porta para dentro do `dash_step` — ele acaba
+    // sozinho em `dash_time`, e enquanto isso quem escreve a velocidade é a
+    // beirada.
+    let (jump_motor, burst) = if ledging {
+        (Motor::default(), Motor::default())
+    } else if dashing {
         (
             Motor::default(),
             dash::dash_burst(
@@ -512,7 +560,7 @@ pub fn player_motor(
     // `kinematic_advance` já integra no cinemático. Cancelá-la seria a lei a
     // pagar a água uma segunda vez, e o `gravity_hold` sairia deste tique a
     // dizer que a perna age — quando ela está calada.
-    let stroke = if swimming && !dashing {
+    let stroke = if swimming && !dashing && !ledging {
         swim::swim_motor(
             &cfg.swim,
             input.drive,
@@ -534,13 +582,15 @@ pub fn player_motor(
             .plus(jump_motor)
             .plus(slide)
             .plus(burst)
-            .plus(stroke),
+            .plus(stroke)
+            .plus(hold.motor),
         state: PlayerState {
             jump: jump.state,
             dash: dash.state,
             crouch,
             grab,
             swim,
+            ledge: hold.state,
             // ⚠️ **A LEI DE INTENÇÃO não toca a velocidade cinemática**, e é a
             // divisão inteira: ela diz o que o personagem QUER; quem integra é
             // o `kinematic_advance`, chamado pela ponte com o `was.kin` na mão.
@@ -559,7 +609,12 @@ pub fn player_motor(
         // por sub-passo. Os dois nunca coincidem — a `standing` é `None` sempre
         // que `dashing`, pela linha que cala a perna acima —, então isto continua
         // a ser **um** `−g`, e não dois.
-        gravity_hold: if spring_holds || dashing {
+        // ⚠️ **E a BEIRADA é o terceiro dono deste canal** (`W-Ledge`): quem
+        // está pendurado não cai, e quem sobe não é puxado para trás — o
+        // cancelamento tem de ser integrado como a gravidade que ele cancela,
+        // por sub-passo. Os três nunca coincidem (a `standing` é `None` sempre
+        // que `dashing` ou `ledging`), então continua a ser **um** `−g`.
+        gravity_hold: if spring_holds || dashing || ledging {
             [-gravity[0], -gravity[1]]
         } else {
             [0.0, 0.0]

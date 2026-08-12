@@ -48,6 +48,7 @@ fn the_leg_declares_which_half_of_its_push_cancels_gravity() {
         None,
         None,
         None,
+        None,
         PlayerInput::default(),
         PlayerState::default(),
         [0.0, 0.0],
@@ -89,6 +90,7 @@ fn nothing_is_held_in_the_air() {
         None,
         None,
         None,
+        None,
         PlayerInput::default(),
         PlayerState::default(),
         [0.0, 0.0],
@@ -110,6 +112,7 @@ fn nothing_is_held_in_the_air() {
     let takeoff = player_motor(
         &cfg,
         Some(&ground),
+        None,
         None,
         None,
         None,
@@ -158,6 +161,7 @@ fn the_spring_lets_go_of_a_wall() {
         None,
         None,
         None,
+        None,
         PlayerInput::default(),
         PlayerState::default(),
         [0.0, 0.0],
@@ -176,6 +180,7 @@ fn the_spring_lets_go_of_a_wall() {
     // estar ao lado de uma parede íngreme é o MESMO que estar no ar.
     let in_the_air = player_motor(
         &cfg,
+        None,
         None,
         None,
         None,
@@ -218,6 +223,7 @@ fn a_degenerate_normal_counts_as_flat() {
         None,
         None,
         None,
+        None,
         PlayerInput::default(),
         PlayerState::default(),
         [0.0, 0.0],
@@ -246,6 +252,7 @@ fn the_door_sums_both_laws() {
     let whole = player_motor(
         &cfg,
         Some(&ground),
+        None,
         None,
         None,
         None,
@@ -407,6 +414,7 @@ fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
         None,
         None,
         None,
+        None,
         pushing,
         PlayerState::default(),
         [0.0, 0.0],
@@ -419,6 +427,7 @@ fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
     let idle = player_motor(
         &cfg,
         Some(&steep),
+        None,
         None,
         None,
         None,
@@ -446,6 +455,7 @@ fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
     let jumping = player_motor(
         &cfg,
         Some(&steep),
+        None,
         None,
         None,
         None,
@@ -517,6 +527,7 @@ fn the_walk_is_identical_in_both_modes_and_only_the_leg_differs() {
             None,
             None,
             None,
+            None,
             input,
             PlayerState::default(),
             [0.0, 0.0],
@@ -582,6 +593,7 @@ fn under_snap_the_ground_feels_the_weight_and_nothing_claims_a_cancel() {
             None,
             None,
             None,
+            None,
             PlayerInput::default(),
             PlayerState::default(),
             [0.0, 0.0],
@@ -640,6 +652,7 @@ fn in_the_air_the_two_modes_are_indistinguishable() {
     let call = |support| {
         player_motor(
             &cfg,
+            None,
             None,
             None,
             None,

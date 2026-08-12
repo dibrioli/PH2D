@@ -332,6 +332,21 @@ impl PhysicsBridge {
                 None
             };
 
+            // ── O SENSOR DA BEIRADA (W-Ledge) ────────────────────────────────
+            // ⚠️ A pergunta *"vale a pena castar?"* é a MESMA que a lei faz, o
+            // molde exato dos três sensores acima — e ela é falsa em quase todo
+            // tique: só quem está no AR, a empurrar para um lado, e que não está
+            // já a subir tem alguma coisa a perguntar.
+            let ledge_asked = ph2d_platformer::ledge_probe_wanted(
+                &cfg.ledge,
+                stand.is_some(),
+                input.drive,
+                was.ledge,
+            );
+            let ledge = ledge_asked
+                .then(|| probe_ledge(&self.world, b.handle, b.rest.layer, &cfg, input.drive))
+                .flatten();
+
             // ── A LEITURA DOS SENSORES (W-Probes) ────────────────────────────
             // ⚠️ **Aqui, e não antes de cada cast:** as três consultas acima já
             // responderam, e o que falta é guardar o par *onde olhou · o que
@@ -358,6 +373,9 @@ impl PhysicsBridge {
                     .map(|c| (c, probes::corner_rise(rel_up, dt, &cfg))),
                 wall.as_ref(),
                 headroom.as_ref(),
+                // ⚠️ O de fora é *a lei perguntou?* — ver o argumento em
+                // `record_marks`.
+                ledge_asked.then_some(ledge.as_ref()),
             );
 
             // ── O FLUIDO (W-Submerged) ───────────────────────────────────────
@@ -391,6 +409,7 @@ impl PhysicsBridge {
                 ceiling.as_ref(),
                 wall.as_ref(),
                 headroom.as_ref(),
+                ledge.as_ref(),
                 input,
                 was,
                 vel,
@@ -653,7 +672,7 @@ impl PhysicsBridge {
 mod player_leg;
 #[path = "player_probes.rs"]
 mod probes;
-use probes::{probe_ceiling, probe_headroom, probe_wall};
+use probes::{probe_ceiling, probe_headroom, probe_ledge, probe_wall};
 
 /// O canal com o mundo de fora — ver o cabeçalho do módulo filho.
 #[path = "player_channel.rs"]

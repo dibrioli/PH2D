@@ -443,3 +443,100 @@ fn typing_a_gap_detaches_that_axis_token_and_only_that_one() {
         "editar o RECUO nao pode soltar o token de um VAO"
     );
 }
+
+// ============================================================================
+// A FRONTEIRA DE DISPLAY do layout — três naturezas de número num painel só.
+// ============================================================================
+
+/// A régua do artista por default: 100 px por metro, lendo em PIXELS.
+fn px_display() -> ph2d_editor::LengthDisplay {
+    ph2d_editor::LengthDisplay::of(&ph2d_editor::project::ProjectSettings::default())
+}
+
+/// Um fluxo com valor DISTINTO em cada número — um campo trocado por outro é visível.
+fn distinct_flow() -> LayoutFlow {
+    let chip = ids::VECTOR_LAYOUT_DIR_ROW;
+    LayoutFlow {
+        dir: chip,
+        gap: [1.0, 2.0],
+        pad: [3.0, 4.0, 5.0, 6.0],
+        align: chip,
+        justify: chip,
+        size: [chip, chip],
+        min: [7.0, 8.0],
+        max: [9.0, 10.0],
+        columns: 3.0,
+    }
+}
+
+/// **As três naturezas, nomeadas pelo TIPO.**
+///
+/// O vão, o recuo e os quatro limites têm unidade; `Columns` é uma CONTAGEM e `Grow`/`Shrink` são
+/// razões do flexbox. Converter os três dividiria *"três colunas"* por cem, e **nada no
+/// compilador diria uma palavra** — os três são `f64`.
+///
+/// ⚠️ A pergunta mora no tipo porque o `match` é exaustivo: uma variante nova é **cobrada pelo
+/// compilador**. Uma lista de ids ao lado da conversão é a que apodrece.
+///
+/// Mutação que tem de sangrar: `Columns` (ou `Grow`) responder `true`.
+#[test]
+fn only_the_layout_lengths_claim_a_unit() {
+    for f in [
+        LayoutField::Gap(0),
+        LayoutField::Gap(1),
+        LayoutField::Pad(0),
+        LayoutField::PadAll,
+        LayoutField::Min(0),
+        LayoutField::Max(1),
+    ] {
+        assert!(f.is_length(), "{f:?} é um comprimento");
+    }
+    for f in [LayoutField::Grow, LayoutField::Shrink, LayoutField::Columns] {
+        assert!(
+            !f.is_length(),
+            "{f:?} NÃO é comprimento — uma contagem dividida por cem vira zero"
+        );
+    }
+}
+
+/// **Os dez comprimentos do fluxo cruzam, e `columns` NÃO.**
+///
+/// Eles viajam no MESMO struct, então mapear em bloco faria a grade nascer com zero colunas.
+///
+/// Mutações que têm de sangrar: (a) tirar qualquer um dos quatro `map` do `flow_in_display`;
+/// (b) acrescentar `columns: d.value(flow.columns)`.
+#[test]
+fn the_flow_crosses_its_ten_lengths_and_leaves_the_count_alone() {
+    let out = flow_in_display(distinct_flow(), px_display());
+    let src = distinct_flow();
+    for (label, got, want) in [
+        ("vão", &out.gap[..], &src.gap[..]),
+        ("recuo", &out.pad[..], &src.pad[..]),
+        ("piso", &out.min[..], &src.min[..]),
+        ("teto", &out.max[..], &src.max[..]),
+    ] {
+        for (g, w) in got.iter().zip(want.iter()) {
+            assert!((g - w * 100.0).abs() < 1e-9, "{label}: {g} de {w}");
+        }
+    }
+    assert!(
+        (out.columns - 3.0).abs() < 1e-12,
+        "TRÊS colunas continuam três, não trezentas: {}",
+        out.columns
+    );
+    assert_eq!(out.dir, src.dir, "os chips não são números do artista");
+    assert_eq!(out.size, src.size);
+}
+
+/// **Um projeto em METROS é byte-idêntico** — o CONTROLE.
+///
+/// Sem ele a wave poderia estar a mudar o mundo para toda gente em vez de só para quem escolheu
+/// pixels; e como a conversão é a identidade nessa unidade, a comparação pode ser EXATA.
+#[test]
+fn reading_the_flow_in_metres_leaves_it_untouched() {
+    let d = ph2d_editor::LengthDisplay {
+        unit: ph2d_editor::project::DisplayUnit::Meters,
+        pixels_per_meter: 100.0,
+    };
+    assert_eq!(flow_in_display(distinct_flow(), d), distinct_flow());
+}

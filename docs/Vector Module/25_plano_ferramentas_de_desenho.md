@@ -1264,10 +1264,50 @@ esta palavra ele não sabe se `150` é pixel ou metro. Um sufixo por ROW seriam 
 **`R` ficaria a mentir junto** (é em GRAUS — não é comprimento, e por isso não herda o sufixo da
 seção). ⚠️ O painel recebe o **sufixo, nunca a regra**: guardar a escala ali seria a segunda cópia.
 
-**Aberto, com o número ao lado:** o censo achou **oito** comprimentos no painel; esta wave fecha os
-**quatro** do Transform (os que respondem a mesma pergunta das outras três superfícies). Os outros
-quatro são do **auto layout** (`gap`, `min.w`, `min.h`, recuo) e têm caminho de publicação próprio
-— mesma lei, outra fronteira.
+---
+
+### ✅ W6.8 — A SEGUNDA FRONTEIRA: o auto layout, e as TRÊS naturezas de número
+
+⚠️ **O censo da W6.7 dizia "outros quatro" e estava CURTO: são DEZ.** Ele contou as *rows* que se
+veem (`gap`, `min.w`, `min.h`, recuo) e o que atravessa a fronteira são os CAMPOS —
+`gap[2]` + `pad[4]` + `min[2]` + `max[2]`. *Um censo por linha de tela conta o que se vê, não o
+que viaja.*
+
+E a diferença que faz desta uma fronteira própria, não um copiar-colar da anterior:
+
+| natureza | campos | atravessa? |
+|---|---|---|
+| **comprimento** | vão, recuo, piso, teto (10) | **sim** |
+| **contagem** | `Columns` | **não** — dividida por cem, a grade nasce com zero |
+| **razão** (flexbox) | `Grow`, `Shrink` | **não** — quem não é comprimento não tem unidade |
+
+Os três partilham o mesmo `f64` e o mesmo dreno, então a conversão tem de ser **CONDICIONAL** — e
+⚠️ **converter os três compila**, sem uma palavra de ninguém.
+
+#### A pergunta mora no TIPO, e não numa lista ao lado
+
+`LayoutField::is_length()` é um `match` **exaustivo** sobre o enum: uma variante nova é *cobrada
+pelo compilador*. Uma lista de ids ao lado da conversão é a que apodrece — o 15º campo nasce fora
+dela e converte (ou não) em silêncio.
+
+Do outro lado, `flow_in_display` é a porta: os dez comprimentos do `LayoutFlow` cruzam e o
+`columns` — que mora no **mesmo struct** — atravessa cru. Mapear o struct em bloco seria dividir
+*"três colunas"* por cem.
+
+#### ⚠️ E o cabeçalho do Layout NÃO ganha sufixo, de propósito
+
+A seção Transform é toda de comprimentos e por isso pode dizer `(px)` uma vez. A do Layout é
+**genuinamente mista** — um `(px)` ali reivindicaria a unidade também para `Grow 1` e
+`Columns 3`, que não a têm. O rótulo da seção é o lugar errado para uma verdade que só vale em
+parte dela; rotular as rows de comprimento uma a uma é mudança de UI que o smoke deve julgar.
+
+#### E o `R` passou a carregar o próprio símbolo
+
+`R°`. É ele que torna o `(px)` do cabeçalho do Transform **honesto**: sem isto o sufixo da seção
+reivindicaria também a rotação, que é em graus. *Um campo que se auto-rotula é mais barato que uma
+exceção escrita num doc-comment que o artista não lê.*
+
+**O censo fecha: 14 de 14** — os quatro do Transform (W6.7) e os dez do layout.
 
 ## §10 — W0: A HIGIENE (defeitos que a auditoria achou, não features)
 

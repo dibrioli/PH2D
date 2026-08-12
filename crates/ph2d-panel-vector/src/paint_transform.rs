@@ -50,7 +50,11 @@ impl BodyCtx<'_> {
         );
         // Rotation — a full-width relative scrub (° per gesture about the bbox
         // center). Standalone row (no paired field).
-        self.number_cell("R", ids::VECTOR_TRANSFORM_R, self.inner_x, self.inner_w, y);
+        // ⚠️ **O `R` carrega o próprio símbolo**, e é ele que torna o `(px)` do cabeçalho
+        // honesto: sem isto o sufixo da seção reivindicaria também a rotação, que é em GRAUS.
+        // Um campo que se auto-rotula é mais barato que uma exceção escrita num doc-comment que
+        // o artista não lê.
+        self.number_cell("R°", ids::VECTOR_TRANSFORM_R, self.inner_x, self.inner_w, y);
         y += self.row_h + self.row_gap;
         // **Resize Box** (plano UI/UX W3b) — o que a ALÇA do gizmo faz a este objeto: reescrever
         // a caixa, ou escalar a pose (que é herdada pelos filhos — o certo para objeto de game).

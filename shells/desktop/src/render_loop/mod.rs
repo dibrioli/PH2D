@@ -7431,6 +7431,17 @@ impl crate::App {
                     crate::vec_layout_edit::apply_layout_edit(sim, &self.vec_entities, &sel, e);
                 }
                 if let Some((f, v)) = pending_layout_field {
+                    // ⚠️ **A VOLTA da fronteira de display, e ela pergunta ao TIPO.** No mesmo
+                    // painel viajam três naturezas de número: o vão / o recuo / os limites são
+                    // comprimentos, `Columns` é uma CONTAGEM e `Grow`/`Shrink` são razões do
+                    // flexbox. Converter os três dividiria "três colunas" por cem, em silêncio —
+                    // todos são `f64`. Quem responde é `LayoutField::is_length`, cujo `match` o
+                    // compilador cobra quando uma variante nova entra.
+                    let v = if f.is_length() {
+                        ph2d_editor::LengthDisplay::of(&hero.project).to_world(v)
+                    } else {
+                        v
+                    };
                     crate::vec_layout_edit::apply_layout_field(sim, &self.vec_entities, &sel, f, v);
                 }
                 // **O Z-INDEX**, honrado ANTES de publicar (a ordem dos vizinhos): publicar
@@ -7564,11 +7575,17 @@ impl crate::App {
                 ph2d_panel_vector::state::set_resize_box(
                     crate::vec_resize_box_edit::selected_resize_box(sim, &self.vec_entities, &sel),
                 );
-                ph2d_panel_vector::state::set_layout_flow(crate::vec_layout_edit::selected_flow(
-                    sim,
-                    &self.vec_entities,
-                    &sel,
-                ));
+                // ⚠️ **Os DEZ comprimentos do fluxo cruzam a fronteira; `columns` NÃO.** O
+                // `flow_in_display` é a porta, e o `selected_flow` continua a falar mundo — o
+                // nome dele descreve o que a cena TEM, e converter lá dentro o faria mentir.
+                ph2d_panel_vector::state::set_layout_flow(
+                    crate::vec_layout_edit::selected_flow(sim, &self.vec_entities, &sel).map(|f| {
+                        crate::vec_layout_edit::flow_in_display(
+                            f,
+                            ph2d_editor::LengthDisplay::of(&hero.project),
+                        )
+                    }),
+                );
                 ph2d_panel_vector::state::set_layout_item(crate::vec_layout_edit::selected_item(
                     sim,
                     &self.vec_entities,

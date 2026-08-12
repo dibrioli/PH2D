@@ -137,6 +137,48 @@ pub(crate) enum LayoutField {
     Columns,
 }
 
+impl LayoutField {
+    /// **Este campo é um COMPRIMENTO?** — a porta única da fronteira de display do layout.
+    ///
+    /// ⚠️ Num mesmo painel, e num mesmo struct, viajam números de três naturezas: o vão, o recuo
+    /// e os limites são **comprimentos** (têm unidade, e o artista os lê em px ou m); `Columns` é
+    /// uma **CONTAGEM**; `Grow`/`Shrink` são **razões** do flexbox. Converter os três seria
+    /// dividir a contagem de colunas por cem — e nada no compilador diria uma palavra, porque
+    /// todos são `f64`.
+    ///
+    /// O `match` é exaustivo sobre o enum, então uma variante NOVA não pode ser esquecida aqui: o
+    /// compilador a cobra. É por isso que a pergunta mora no tipo e não numa lista de ids ao lado
+    /// da conversão.
+    #[must_use]
+    pub(crate) fn is_length(self) -> bool {
+        match self {
+            LayoutField::Gap(_)
+            | LayoutField::Pad(_)
+            | LayoutField::PadAll
+            | LayoutField::Min(_)
+            | LayoutField::Max(_) => true,
+            LayoutField::Grow | LayoutField::Shrink | LayoutField::Columns => false,
+        }
+    }
+}
+
+/// A mesma travessia do outro lado: o [`LayoutFlow`] que a shell publica ao painel, com os **dez**
+/// comprimentos na unidade do artista e o resto intocado.
+///
+/// ⚠️ **`columns` atravessa CRU, e é o ponto inteiro desta função.** Ele mora no mesmo struct que
+/// os dez comprimentos — mapear o struct em bloco dividiria *"três colunas"* por cem e a grade
+/// nasceria com zero. Os chips (`NodeId`) e os modos de tamanho também não são números do artista.
+#[must_use]
+pub(crate) fn flow_in_display(flow: LayoutFlow, d: ph2d_editor::LengthDisplay) -> LayoutFlow {
+    LayoutFlow {
+        gap: flow.gap.map(|v| d.value(v)),
+        pad: flow.pad.map(|v| d.value(v)),
+        min: flow.min.map(|v| d.value(v)),
+        max: flow.max.map(|v| d.value(v)),
+        ..flow
+    }
+}
+
 /// Porta única do roteador para os campos numéricos.
 #[must_use]
 pub(crate) fn layout_field_for_id(id: ph2d_editor::NodeId) -> Option<LayoutField> {

@@ -97,3 +97,44 @@ fn the_typed_number_comes_back_through_the_door_and_the_preset_does_not() {
          convertê-lo encolheria toda moldura de aparelho cem vezes. Bloco:\n{block}"
     );
 }
+
+/// **O dreno do AUTO LAYOUT pergunta ao TIPO antes de converter.**
+///
+/// A outra fronteira do mesmo painel, e a diferença que a torna sua: no Transform **todo** campo
+/// numérico do dreno é comprimento (o `R` tem caminho próprio); aqui os três tipos partilham o
+/// mesmo `f64` e o mesmo dreno, então a conversão tem de ser CONDICIONAL — e a condição mora no
+/// `LayoutField::is_length`, cujo `match` o compilador cobra.
+///
+/// ⚠️ Sem isto o defeito **compila**: `Columns` dividido por cem faz a grade nascer com zero
+/// colunas, e `Grow` deixa de repartir sobra nenhuma.
+///
+/// Mutações que têm de sangrar: (a) tirar a conversão; (b) convertê-la incondicionalmente.
+#[test]
+fn the_layout_drain_asks_the_type_before_converting() {
+    let src = read("src/render_loop/mod.rs");
+    let at = src
+        .find("if let Some((f, v)) = pending_layout_field {")
+        .expect("o dreno do campo de layout tem de existir — controle positivo");
+    let block = &src[at..(at + 900).min(src.len())];
+    assert!(
+        block.contains("f.is_length()"),
+        "a conversão é CONDICIONAL, e quem responde é o tipo. Bloco:\n{block}"
+    );
+    assert!(
+        block.contains("to_world(v)"),
+        "e o comprimento digitado volta pela mesma porta do Transform. Bloco:\n{block}"
+    );
+}
+
+/// **A publicação do fluxo passa pela porta que sabe quais campos são comprimento.**
+///
+/// Mutação que tem de sangrar: publicar `selected_flow(..)` cru.
+#[test]
+fn the_published_flow_goes_through_the_length_aware_door() {
+    let src = read("src/render_loop/mod.rs");
+    assert!(
+        src.contains("vec_layout_edit::flow_in_display("),
+        "os dez comprimentos do fluxo cruzam a fronteira por UMA porta — mapear o struct em bloco \
+         levaria a contagem de colunas junto"
+    );
+}

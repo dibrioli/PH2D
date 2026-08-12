@@ -813,8 +813,13 @@ nunca limpou nenhum. *Mesmo seam, duas portas, uma trancada.*
    armada** — quem chegar depois vai acreditar. Se removeu a UI, remova o encanamento.
 7. **"Está morto" e "está vivo" são AMBOS afirmações que exigem teste.** Esconder um knob morto exige provar
    que ele é inerte (byte-identidade); manter um knob exige provar que ele muda a saída. O gate
-   `under_the_wash_accumulate_is_inert_but_strength_is_not` pina os dois lados — senão o painel mente numa
-   direção ou na outra.
+   `under_the_wash_neither_accumulate_nor_strength_reaches_the_paint` pina os dois lados — senão o painel
+   mente numa direção ou na outra. ⚠️ **E o nome dele mudou em 2026-08-12 porque a RESPOSTA mudou:** ele
+   nascera `..._accumulate_is_inert_but_strength_is_not`, com um `assert_ne!` afirmando *"the slider must
+   STAY"*. A afirmação estava **certa sobre o mundo** e respondia *"a Strength faz alguma coisa aqui?"*; a
+   pergunta que o Enio fez depois é outra — *"ela DEVE fazer?"* — e é de produto. A cerca caiu **junto com
+   o corte da ligação**, nunca deixada verde por acidente: *um gate que afirma o mundo tem de ser reescrito
+   quando o mundo é decidido de outro jeito, e no MESMO commit.*
 
 ### ⚠️ ABERTOS na varredura (nenhum é crash) — precisam de decisão ou fila
 

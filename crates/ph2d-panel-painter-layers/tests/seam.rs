@@ -611,7 +611,8 @@ fn impasto_sliders_forward_setvalue() {
 /// **Com IMPASTO ligado o Accumulate não é oferecido** (Enio 2026-07-18, depois do smoke).
 ///
 /// ⚠️ **E ele NÃO está morto — esta é a diferença que importa.** O irmão da aquarela
-/// (`under_the_wash_accumulate_is_inert_but_strength_is_not`) esconde um controle *provadamente inerte*;
+/// (`under_the_wash_neither_accumulate_nor_strength_reaches_the_paint`) esconde um controle
+/// *provadamente inerte*;
 /// aqui o Accumulate segue governando a **cor** normalmente. O que ele não governa é o **corpo**: o
 /// relevo é um envelope por traço, então marcá-lo acumularia opacidade e deixaria a espessura onde
 /// estava — as duas metades da mesma tinta discordando sobre o que uma segunda passada significa.
@@ -697,30 +698,35 @@ fn wetpaint_reset_click_forwards_through_the_panel() {
     );
 }
 
-/// **O Strength some no WET PAINT e FICA na aquarela** — e a assimetria é medição, não gosto.
+/// **O Strength some no WET PAINT e na AQUARELA — e os dois chegaram aqui por caminhos opostos.**
 ///
 /// Enio, 2026-08-12: *"Para o modo Watercolor o slider Strength deve ficar oculto pois não se
 /// aplica. Creio que o mesmo acontece para o modo wet paint. Confira lá"*. Conferido, e o par se
-/// separa (`ph2d-tool-painter::accumulate_probe::measure_whether_strength_is_inert_per_medium`,
+/// separava (`ph2d-tool-painter::accumulate_probe::measure_whether_strength_is_inert_per_medium`,
 /// mesmo traço com `strength 0,25` contra `0,95`):
 ///
 /// ```text
 ///   digital     1188 bytes diferem   pior delta 214   vivo
-///   watercolor  1029 bytes diferem   pior delta 202   vivo
+///   watercolor  1029 bytes diferem   pior delta 202   vivo   <- VIVO, e escondido depois
 ///   impasto      654 bytes diferem   pior delta 214   vivo
 ///   wetpaint       0 bytes diferem   pior delta   0   INERTE  (e pintou 474 bytes — o controle)
 /// ```
 ///
-/// ⚠️ **O controle é o que torna o zero legível:** um traço que não pintasse nada também daria
-/// "0 bytes diferem". O do Wet Paint pintou.
+/// * **Wet Paint** — some porque está **provadamente MORTO**. ⚠️ O controle é o que torna o zero
+///   legível: um traço que não pintasse nada também daria "0 bytes diferem". O do Wet Paint pintou.
+/// * **Aquarela** — some por **DECISÃO** (*"Strength não é adequado para watercolor. Tire essa
+///   ligação e esconda o slider"*, Enio, na rodada seguinte). ⚠️ Ali ele estava **VIVO**, então
+///   esconder sozinho teria deixado um knob invisível governando a lavagem — a forma exata do
+///   defeito que o Accumulate do relevo tinha. **A ligação foi cortada primeiro**
+///   (`watercolor_accum::WASH_DEPOSIT_PEAK`, e eram TRÊS consumidores: cobertura, cor e o `amount`
+///   do smudge); só por isso esconder a row é remover um controle morto.
 ///
-/// ⚠️ **E a aquarela FICA**, porque ali a Strength é o pico do depósito (`coverage × (1 − Dilution)`)
-/// — o `ph2d-tool-painter` já tem o gate que decidiu isto quando a mesma pergunta foi feita em
-/// 2026-07-12 (`under_the_wash_accumulate_is_inert_but_strength_is_not`).
+/// ⚠️ **A chave é `watercolor_active`, não o checkbox** — em Eraser / Mask / Smear / Blur / Clone o
+/// depósito plano volta a correr com o checkbox ligado, e ali a Strength é o que sempre foi.
 ///
 /// Presença E ausência, porque só o par tem sentido.
 #[test]
-fn wet_paint_hides_the_strength_slider_but_watercolor_keeps_it() {
+fn the_strength_slider_hides_in_wet_paint_and_in_the_wash() {
     let viewport = || ph2d_editor_core::zones::Rect {
         x: 0.0,
         y: 0.0,
@@ -728,9 +734,9 @@ fn wet_paint_hides_the_strength_slider_but_watercolor_keeps_it() {
         h: 2400.0,
     };
     let id = core_ids::PAINTER_BRUSH_STRENGTH_SLIDER;
-    let painted_in = |media: ph2d_tool_painter::PaintMedia| {
+    let painted_with = |media: ph2d_tool_painter::PaintMedia, mode: &str| {
         let mut tool = ph2d_tool_painter::PainterTool::default();
-        tool.set_paint_tool_mode("brush");
+        tool.set_paint_tool_mode(mode);
         tool.set_paint_media(media);
         set_current_brush(Some(tool.brush_settings()));
         let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
@@ -739,16 +745,24 @@ fn wet_paint_hides_the_strength_slider_but_watercolor_keeps_it() {
             .iter()
             .any(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0)
     };
+    use ph2d_tool_painter::PaintMedia::{Digital, Watercolor, WetPaint};
     assert!(
-        painted_in(ph2d_tool_painter::PaintMedia::Digital),
+        painted_with(Digital, "brush"),
         "no Digital o Strength tem de estar na tela — sem esta metade a ausência abaixo não prova nada"
     );
     assert!(
-        painted_in(ph2d_tool_painter::PaintMedia::Watercolor),
-        "na AQUARELA o Strength e' o pico do deposito e tem de FICAR (1029 bytes diferem, medido)"
+        !painted_with(Watercolor, "brush"),
+        "na AQUARELA a ligacao foi CORTADA (WASH_DEPOSIT_PEAK) — a row nao pode ser pintada"
     );
     assert!(
-        !painted_in(ph2d_tool_painter::PaintMedia::WetPaint),
+        !painted_with(WetPaint, "brush"),
         "no WET PAINT o Strength e' provadamente inerte (0 bytes diferem) — a row nao pode ser pintada"
+    );
+    // A 3a metade: com o checkbox da aquarela LIGADO mas a BORRACHA em mãos, `watercolor_render_active`
+    // e' falso e o deposito PLANO volta a correr — a Strength e' o que sempre foi, e some-la seria o
+    // controle FALTANDO. E' esta linha que separa `watercolor_active` do checkbox `watercolor`.
+    assert!(
+        painted_with(Watercolor, "eraser"),
+        "com a BORRACHA o deposito plano volta e a Strength tem de VOLTAR com ele"
     );
 }

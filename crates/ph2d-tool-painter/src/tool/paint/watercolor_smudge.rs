@@ -92,7 +92,11 @@ impl PainterTool {
         let mut touched: Option<Region> = None;
         for d in dabs {
             if let Some(prev) = from {
-                let amount = smudge * d.coverage;
+                // O 3º consumidor do pico da lavagem — e o mais fácil de esquecer, porque não
+                // deposita: ele diz **quanto a água ARRASTA**. Lia `d.coverage`, ou seja a Strength,
+                // que a partir de 2026-08-12 não alcança a lavagem
+                // ([`super::watercolor_accum::WASH_DEPOSIT_PEAK`]).
+                let amount = smudge * super::watercolor_accum::WASH_DEPOSIT_PEAK;
                 // One wrap offset applied to BOTH the lift (`prev`) and the stamp (`d.center`) — the wrapped
                 // copy keeps the same displacement, so an edge-crossing drag also smears the base on the
                 // opposite edge (mirror of the plain-brush Smear route, `stamp_route::smear_dabs`). The lift

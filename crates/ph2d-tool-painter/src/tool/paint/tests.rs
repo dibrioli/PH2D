@@ -3582,20 +3582,34 @@ fn per_layer_color_grain_random_offset_takes_the_per_dab_route() {
     );
 }
 
+/// **Sob a lavagem, NEM o Accumulate NEM a Strength alcançam a tinta** — e as duas metades chegaram
+/// aqui por caminhos diferentes, que é a razão de o gate dizer as duas.
+///
+/// * **Accumulate — INERTE por construção** (Enio, 2026-07-12: *"no modo aquarela, faz sentido ter
+///   Strength e Accumulate no painel?"*). Ele é lido só pelo `accumulate_cap`, dentro do roteamento
+///   do stamp, e a lavagem desvia ANTES disso (`stamp_dabs`). É redundante de qualquer forma: a
+///   cobertura da lavagem é **max-blended** (um envelope), que já É *"sem build-up dentro de um
+///   traço"*.
+/// * **Strength — inerte por DECISÃO** (Enio, 2026-08-12: *"Strength não é adequado para watercolor.
+///   Tire essa ligação e esconda o slider"*). ⚠️ **Este gate afirmava o CONTRÁRIO até hoje** — o nome
+///   dele era `under_the_wash_accumulate_is_inert_but_strength_is_not` e a asserção era um
+///   `assert_ne!` com o texto *"the slider must STAY"*. Ela estava **certa sobre o mundo** (a
+///   Strength era o pico do depósito, e a medição de 12/08 confirma: 1029 bytes diferiam, pior delta
+///   202) e respondia à pergunta *"ela faz alguma coisa?"*. A pergunta desta vez é outra — *"ela DEVE
+///   fazer?"* — e é de produto. A cerca caiu **junto com o corte**
+///   ([`super::watercolor_accum::WASH_DEPOSIT_PEAK`]), nunca deixada verde por acidente.
+///
+/// ⚠️ **Eram TRÊS consumidores e o gate cobre os três**, senão a metade esquecida seria um knob
+/// invisível ainda governando a lavagem: o splat da COBERTURA · o splat da COR · e o `amount` do
+/// SMUDGE, que não deposita nada — ele diz *quanto a água arrasta*.
+///
+/// ⚠️ E o **CONTROLE** é o que torna os `assert_eq!` legíveis: um traço que não pintasse nada
+/// satisfaria os três por vácuo.
+///
+/// Isto também resolve que TODO método de traço lava: os shape editors correm a óptica pelo
+/// `stamp_drag_preview_watercolor` (doc 13 #3), então não há método onde o Accumulate volte.
 #[test]
-fn under_the_wash_accumulate_is_inert_but_strength_is_not() {
-    // Enio (2026-07-12): "no modo aquarela, faz sentido ter Strength e Accumulate no painel?"
-    // The answer differs for the two, and this pins BOTH — a hidden knob must be provably dead, and a
-    // kept knob must be provably alive, or the panel is lying either way.
-    //
-    // ACCUMULATE is dead: it is read ONLY by `accumulate_cap` inside the stamp routing, and the wash
-    // short-circuits before that (`stamp_dabs`). It is also redundant by construction — the wash's
-    // coverage is MAX-blended (an envelope), which already IS "no build-up within one stroke".
-    // STRENGTH is alive: the stroke engine bakes it into `Dab.coverage`, and the wash reads it as the
-    // deposit peak (`coverage × (1 − Dilution)`).
-    //
-    // This also settles that EVERY stroke method washes: the shape editors run the optics through
-    // `stamp_drag_preview_watercolor` (doc 13 #3), so there is no method where Accumulate comes back.
+fn under_the_wash_neither_accumulate_nor_strength_reaches_the_paint() {
     let wash = |strength: f32, accumulate: bool| -> Vec<u8> {
         let mut t = white_canvas(64, 10.0);
         t.paint.brush = BrushSpec {
@@ -3619,15 +3633,90 @@ fn under_the_wash_accumulate_is_inert_but_strength_is_not() {
         t.on_canvas_pointer(cp([36.0, 36.0], PointerPhase::Up));
         (*t.canvas_rgba).clone()
     };
+    // CONTROLE: o traço tem de PINTAR, senão os três `assert_eq!` abaixo passam por vácuo.
+    let painted = wash(0.9, true)
+        .chunks_exact(4)
+        .filter(|p| p[0] != 255 || p[1] != 255 || p[2] != 255)
+        .count();
+    assert!(
+        painted > 100,
+        "a fixture tem de conter uma lavagem de verdade (so {painted} px sairam do branco)"
+    );
     assert_eq!(
         wash(0.6, true),
         wash(0.6, false),
         "Accumulate is INERT under the wash — hiding the checkbox removes nothing"
     );
-    assert_ne!(
+    assert_eq!(
         wash(0.35, true),
         wash(0.9, true),
-        "Strength is ALIVE under the wash (it is the deposit peak) — the slider must STAY"
+        "a Strength nao pode alcancar a lavagem (WASH_DEPOSIT_PEAK) — 2026-08-12, ordem do Enio"
+    );
+
+    // E a 3a metade, a que se esquece: o SMUDGE. Ele nao deposita — diz quanto a agua ARRASTA.
+    //
+    // ⚠️ A fixture e a do `watercolor_smudge_true_smears_the_painted_paint`, VERBATIM na forma, e as
+    // tres escolhas dela sao load-bearing — duas versoes minhas passaram por VACUO antes disto:
+    //   * a tinta a arrastar vem do SOURCE (papel branco nao tem o que arrastar);
+    //   * o falloff e o MACIO do motor (com `Constant` em forca cheia a esfregada degenera numa
+    //     translacao rigida — o disco sobrescreve tudo o que cruza);
+    //   * a lavagem e LEVE (`fill 0.3`), senao o wash cobre a base esfregada e nada se ve.
+    // A 2a versao ainda errava numa 4a: os dois tracos tinham a MESMA cor, e arrastar vermelho para
+    // dentro de vermelho e invisivel.
+    let smear = |strength: f32, smudge: f32| -> Vec<u8> {
+        let size = 128u32;
+        let mut src = vec![0u8; (size * size * 4) as usize];
+        for y in 0..size {
+            for x in 0..size {
+                let i = ((y * size + x) * 4) as usize;
+                let p = if (40..70).contains(&x) {
+                    [217u8, 13, 13, 255] // banda vermelha no meio
+                } else {
+                    [255u8, 255, 255, 255]
+                };
+                src[i..i + 4].copy_from_slice(&p);
+            }
+        }
+        let mut t = PainterTool::default();
+        t.set_source(src, size, size);
+        t.paint.brush = BrushSpec {
+            radius_px: 6.0,
+            color: [0.1, 0.2, 0.85],
+            space_attenuation: false,
+            watercolor: true,
+            edge_gain: 0.0,
+            granulation: 0.0,
+            warp: 0.0,
+            fill: 0.3,
+            depth: 1.0,
+            wet_smudge: smudge,
+            wet_rewet: 0.0,
+            strength,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        t.on_canvas_pointer(cp([16.0, 64.0], PointerPhase::Down));
+        let mut x = 16.0f32;
+        while x < 96.0 {
+            x += 3.0;
+            t.on_canvas_pointer(cp([x, 64.0], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([x, 64.0], PointerPhase::Up));
+        (*t.canvas_rgba).clone()
+    };
+    // CONTROLE do smudge: a esfregada tem de ser VISIVEL nesta fixture, senao o `assert_eq!` abaixo
+    // passa por vacuo — foi assim que as duas primeiras versoes deste gate deixaram a mutacao viver.
+    assert_ne!(
+        smear(1.0, 0.0),
+        smear(1.0, 0.9),
+        "a fixture tem de conter a esfregada (com e sem Smudge tem de DIFERIR)"
+    );
+    assert_eq!(
+        smear(0.35, 0.9),
+        smear(0.9, 0.9),
+        "a Strength ainda governava quanto o SMUDGE arrasta — a metade que nao deposita e a que se esquece"
     );
 }
 

@@ -151,8 +151,6 @@ pub(crate) fn paint_brush_body(
     );
     // Strength — the single opacity slider. Hidden when the Composite Brush is on: its per-layer
     // Strength sliders (in the card below) replace it. Also hidden in Inpaint (the heal has no opacity).
-    // In WATERCOLOR mode the Composite card itself hides (the optical path bypasses it), so a
-    // composite_enabled flag left on must NOT hide Strength there.
     //
     // ⚠️ **E em WET PAINT ele some, porque ali está provadamente MORTO** (Enio, 2026-08-12; medido
     // pela sonda `accumulate_probe::measure_whether_strength_is_inert_per_medium`): mesmo traço,
@@ -160,13 +158,26 @@ pub(crate) fn paint_brush_body(
     // pintou (474 bytes saíram do branco), senão o zero não significaria nada. O motor do fluido
     // recebe a carga do reservatório e dos knobs do Tuning; a opacidade do dab não entra.
     //
-    // ⚠️ **A AQUARELA fica na lista dos que MOSTRAM, e a premissa do pedido era o contrário.** Medido
-    // no mesmo par: **1029 bytes diferem, pior delta 202** — ali a Strength é o *pico do depósito*
-    // (`coverage × (1 − Dilution)`). O `ph2d-tool-painter` já carrega o gate que decidiu isto quando
-    // o Enio fez a mesma pergunta em 2026-07-12
-    // (`under_the_wash_accumulate_is_inert_but_strength_is_not`: *"the slider must STAY"*). Escondê-la
-    // ali seria o controle **FALTANDO** em vez do morto — o outro lado da mesma mentira de painel.
-    if (!brush.composite_enabled || brush.watercolor) && !brush.is_inpaint && !brush.wetpaint {
+    // ⚠️ **E na AQUARELA ele some por DECISÃO, que é outra coisa e não se confunde com a de cima**
+    // (Enio, 2026-08-12: *"Strength não é adequado para watercolor. Tire essa ligação e esconda o
+    // slider"*). Ali ele estava **vivo** — 1029 bytes diferiam, pior delta 202 —, então esconder
+    // sozinho teria deixado um knob invisível governando a lavagem. A ligação foi **cortada primeiro**
+    // (`watercolor_accum::WASH_DEPOSIT_PEAK`, os três consumidores), e só por isso esconder a row é
+    // remover um controle morto em vez de esconder um vivo.
+    //
+    // ⚠️ **Isto DERRUBA a cerca de 2026-07-12** (`under_the_wash_accumulate_is_inert_but_strength_is_not`,
+    // que dizia *"the slider must STAY"*): ela respondia à pergunta *"a Strength faz alguma coisa aqui?"*
+    // e a resposta era sim. A pergunta desta vez é outra — *"ela DEVE fazer?"* —, e quem a responde é
+    // o Enio. O gate foi reescrito junto com o corte, não deixado verde por acidente.
+    //
+    // ⚠️ **E a chave é `watercolor_active`, NUNCA o checkbox `watercolor`** — a row do Accumulate logo
+    // abaixo já carrega esta lição: `watercolor_active` = `watercolor && PaintMode::Paint && !eraser`,
+    // e em Eraser / Mask / Smear / Blur / Clone o depósito PLANO volta a correr com o checkbox ligado.
+    // Ali a Strength é o que sempre foi, e escondê-la seria o controle **FALTANDO**. É o mesmo
+    // predicado que o motor usa para desviar para a lavagem (`watercolor_render_active`), de propósito:
+    // o painel e o depósito têm de responder *"esta pincelada lava?"* com a mesma função.
+    if !brush.composite_enabled && !brush.is_inpaint && !brush.wetpaint && !brush.watercolor_active
+    {
         y = paint_slider_chip_row(
             ctx,
             theme,

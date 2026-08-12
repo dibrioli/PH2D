@@ -5,6 +5,35 @@
 
 use super::*;
 
+/// **O pico do depósito de um dab sob a LAVAGEM — a Strength NÃO entra, e este é o único lugar que
+/// responde isso.**
+///
+/// Enio, 2026-08-12: *"Strength não é adequado para watercolor. Tire essa ligação e esconda o
+/// slider"*. A ligação era `Dab.coverage`, que o motor de traço assa como
+/// `strength × coverage_scale(pressão) × overlap` — e a lavagem a lia como o pico do depósito.
+///
+/// ⚠️ **Eram TRÊS consumidores, não um** (`git grep '\.coverage' nos módulos `watercolor_*`): o splat
+/// da COBERTURA, o splat da COR e o `amount` do SMUDGE (`watercolor_smudge`, a esfregada de verdade).
+/// Meia correção deixaria a Strength governando *quanto a água arrasta* enquanto o painel já não a
+/// oferece — um controle invisível que age, que é a forma exata do defeito que o Accumulate do relevo
+/// tinha (ver `accumulate_tests::the_body_of_the_paint_never_sees_the_accumulate_flag`).
+///
+/// ⚠️ **O corte é aqui e não no motor de traço, e a razão é o PREDICADO.** A lavagem roda sob
+/// `watercolor_render_active()` = `watercolor && paint_mode == Paint && !eraser` — em Eraser / Mask /
+/// Smear / Blur / Clone / Inpaint o depósito PLANO volta a correr com o checkbox ligado, e ali a
+/// Strength significa o que sempre significou. Neutralizá-la no `Stroke`, que só enxerga
+/// `spec.watercolor`, quebraria esses seis. Estes três sítios já estão *dentro* do ramo certo.
+///
+/// ⚠️ **E o valor é `1,0` — não `coverage / strength`.** A cobertura da lavagem é **max-blended** (um
+/// envelope), e sob um envelope uma atenuação por-dab não significa nada: é literalmente o defeito
+/// que a D2 mediu no knob de espaçamento (`space_overlap_factor`, 8,17× → 1,02×, doc 35 §3.3), aqui
+/// no outro fator do mesmo produto. Pressão vai junto porque `coverage_scale` é a rampa da
+/// **Strength** (`Dynamics::strength_pressure`), não um canal próprio.
+///
+/// Quem decide *quanta tinta esta lavagem põe* são os knobs dela: Fill, Dilution
+/// ([`super::watercolor_field::style::wash_flow`]), Depth e Edge.
+pub(in crate::tool::paint) const WASH_DEPOSIT_PEAK: f32 = 1.0;
+
 /// The soft-disc weight at normalised radius `dn ∈ [0, 1]`: `1.0` at the centre, `0.92` at `0.62`,
 /// `0` at the rim (the two-segment linear gradient of `stampCoverage` / `stampColor`). Shared with
 /// [`super::watercolor_mixer`], whose disc pickup uses the same weighting as the deposit.
@@ -380,7 +409,7 @@ impl PainterTool {
             // stroke still splats FULL reserve (its paint must not read the 0-initialised map).
             let depl_v =
                 map_live.then(|| depletion.as_ref().map_or(1.0, |v| v[di].clamp(0.0, 1.0)));
-            let peak = d.coverage.clamp(0.0, 1.0);
+            let peak = WASH_DEPOSIT_PEAK; // NUNCA `d.coverage` — a Strength não alcança a lavagem
             // Water-only dabs (peak 0, Dilution high) still walk the disc to pour the soak.
             if r <= 0.0 || (peak <= 0.0 && water <= 0.0) {
                 continue;
@@ -511,7 +540,7 @@ impl PainterTool {
             let rng = rng.enter(&groups, di);
             let frame = stamp.as_ref().map(|s| s.dab_frame(d, &mut *rng, canvas));
             let r = d.radius_px;
-            let peak = d.coverage.clamp(0.0, 1.0);
+            let peak = WASH_DEPOSIT_PEAK; // NUNCA `d.coverage` — ver a const
             if r <= 0.0 || peak <= 0.0 {
                 continue;
             }

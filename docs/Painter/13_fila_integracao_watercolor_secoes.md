@@ -220,8 +220,13 @@ não fechava — as cópias wrapped sorteavam ângulos diferentes) · encanament
   Publicado ao painel como `BrushSettings::watercolor_active` (fonte única — o painel não re-deriva).
 - **Accumulate:** morto sob o wash (lido só pelo `accumulate_cap`, depois do short-circuit) **e** redundante
   (a cobertura do wash é max-blend = envelope). **Escondido.**
-- **Strength:** **VIVO** sob o wash — o engine o assa no `Dab.coverage`, e o wash lê
-  `peak = coverage × (1 − Dilution)`. **Fica.** Gate: `under_the_wash_accumulate_is_inert_but_strength_is_not`.
+- **Strength:** era **VIVO** sob o wash — o engine o assava no `Dab.coverage`, e o wash lia
+  `peak = coverage × (1 − Dilution)`. ⚠️ **REVOGADO em 2026-08-12 por ordem do Enio** (*"Strength não é
+  adequado para watercolor. Tire essa ligação e esconda o slider"*): a ligação foi **cortada** —
+  `watercolor_accum::WASH_DEPOSIT_PEAK` é hoje a porta única do pico, vale `1,0`, e os **três**
+  consumidores (cobertura · cor · o `amount` do SMUDGE) a leem. Só então a row foi escondida, porque
+  esconder um knob **vivo** seria pior que mostrá-lo. Gate:
+  `under_the_wash_neither_accumulate_nor_strength_reaches_the_paint`.
 
 ### #16 — PESQUISA: traço de aspecto 3D sem N camadas (o objetivo do Per-Layer Color)
 

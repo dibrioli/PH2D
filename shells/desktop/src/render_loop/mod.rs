@@ -89,6 +89,8 @@ mod inspector_ordering;
 mod inspector_part_tests;
 pub(crate) mod inspector_player;
 #[cfg(test)]
+mod inspector_player_brake_tests;
+#[cfg(test)]
 mod inspector_player_out_tests;
 #[cfg(test)]
 mod inspector_player_tests;

@@ -36,7 +36,9 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
             // ⚠️ O índice É a resposta: `0` = Off, `1` = On. A tabela de rótulos
             // do pintor e esta posição são as duas metades da mesma escolha, e é
             // por isso que a lista vive nos `ids` e não em nenhuma das duas.
-            Some(PlayerFieldEdit::EmitSignals(id == ids::INSP_PLAYER_EMIT_IDS[1]))
+            Some(PlayerFieldEdit::EmitSignals(
+                id == ids::INSP_PLAYER_EMIT_IDS[1],
+            ))
         }
         WidgetEvent::Click(id) if id == ids::INSP_PLAYER_ADD => Some(PlayerFieldEdit::Add),
         WidgetEvent::Click(id) if id == ids::INSP_PLAYER_REMOVE => Some(PlayerFieldEdit::Remove),
@@ -62,6 +64,7 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
                 ids::INSP_PLAYER_SPEED => Some(PlayerFieldEdit::Speed(v)),
                 ids::INSP_PLAYER_ACCEL => Some(PlayerFieldEdit::Acceleration(v)),
                 ids::INSP_PLAYER_AIR_ACCEL => Some(PlayerFieldEdit::AirAcceleration(v)),
+                ids::INSP_PLAYER_BRAKE => Some(PlayerFieldEdit::BrakeScale(v)),
                 ids::INSP_PLAYER_JUMP_HEIGHT => Some(PlayerFieldEdit::JumpHeight(v)),
                 ids::INSP_PLAYER_AIR_JUMPS => Some(PlayerFieldEdit::AirJumps(v)),
                 ids::INSP_PLAYER_AIR_JUMP_H => Some(PlayerFieldEdit::AirJumpHeight(v)),

@@ -62,7 +62,7 @@ const LEG_ROWS: [PlayerRow; 6] = [
 ];
 
 /// **ANDAR** — a velocidade, e o que conta como chão.
-const WALK_ROWS: [PlayerRow; 4] = [
+const WALK_ROWS: [PlayerRow; 5] = [
     (
         "Speed (m/s)",
         ids::INSP_PLAYER_SPEED,
@@ -77,6 +77,13 @@ const WALK_ROWS: [PlayerRow; 4] = [
         "Air Acceleration",
         ids::INSP_PLAYER_AIR_ACCEL,
         "Steering while airborne. 0 keeps the jump arc intact.",
+    ),
+    (
+        "Brake",
+        ids::INSP_PLAYER_BRAKE,
+        "How much of that acceleration he spends STOPPING, once you let go of the \
+         stick. 1 stops as hard as he starts. 0 is ice: he keeps the speed. \
+         Airborne is unaffected -- Air Acceleration already answers that.",
     ),
     (
         "Max Slope (deg)",

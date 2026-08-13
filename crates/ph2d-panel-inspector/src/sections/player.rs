@@ -162,6 +162,44 @@ pub(crate) fn paint_player_section(
         info.push_is_live,
     );
 
+    // **OS VERBOS da seção** — extraídos do `paint` por TETO DE LOC (o `Brake`
+    // da W-Brake foi a row que o cruzou), e o corte é por responsabilidade: o pai
+    // decide o que a seção MOSTRA, o filho pinta o que ela FAZ.
+    paint_verbs(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        h,
+        info,
+    )
+}
+
+/// **Os quatro botões da §14** — os dois `Fit`, o da corrida gravada e o
+/// `Remove`.
+///
+/// ⚠️ Eles viajam juntos porque respondem à mesma pergunta (*que verbos esta
+/// seção oferece?*) e porque três dos quatro são CONDICIONAIS: cada um só é
+/// pintado onde tem o que fazer, que é a lei do knob morto desta seção. Separá-los
+/// espalharia essa decisão por dois arquivos.
+#[allow(clippy::too_many_arguments)]
+fn paint_verbs(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    h: f32,
+    info: &InspectorPlayerInfo,
+) -> f32 {
+    let mut yy = y;
     // ⚠️ **O piso geométrico, dito em voz alta — e pelo controle que o resolve.**
     //
     // O sensor mede na VERTICAL e quem encosta na rampa é a cápsula ao longo da
@@ -411,4 +449,3 @@ fn paint_live_readout(
     line("Speed", &speed, scene, text_system);
     yy
 }
-

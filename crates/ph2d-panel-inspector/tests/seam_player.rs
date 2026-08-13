@@ -58,6 +58,8 @@ fn player() -> InspectorPlayerInfo {
         speed: 6.0,
         acceleration: 60.0,
         air_acceleration: 20.0,
+        // ⚠️ Premissa declarada: o NEUTRO, que é o mundo de antes da W-Brake.
+        brake_scale: 1.0,
         max_slope_deg: 45.0,
         jump_height: 2.0,
         air_jumps: 2.0,
@@ -251,7 +253,7 @@ fn every_number_raises_its_own_edit() {
     // exatamente o arm esquecido que ela existe para pegar.
     assert_eq!(
         ph2d_panel_inspector::PLAYER_ROW_COUNT,
-        50,
+        51,
         "a tabela de rows cresceu; acrescente o numero novo a esta varredura"
     );
     for (id, v, edit) in [
@@ -316,6 +318,11 @@ fn every_number_raises_its_own_edit() {
             ids::INSP_PLAYER_AIR_ACCEL,
             15.0,
             PlayerFieldEdit::AirAcceleration(15.0),
+        ),
+        (
+            ids::INSP_PLAYER_BRAKE,
+            0.25,
+            PlayerFieldEdit::BrakeScale(0.25),
         ),
         (
             ids::INSP_PLAYER_COYOTE,
@@ -568,6 +575,7 @@ fn the_rows_show_what_was_authored_not_the_seed() {
         speed: 7.5,
         acceleration: 44.0,
         air_acceleration: 12.0,
+        brake_scale: 0.42,
         max_slope_deg: 61.0,
         jump_height: 3.75,
         air_jumps: 3.0,
@@ -604,6 +612,7 @@ fn the_rows_show_what_was_authored_not_the_seed() {
         ids::INSP_PLAYER_SPEED,
         ids::INSP_PLAYER_ACCEL,
         ids::INSP_PLAYER_AIR_ACCEL,
+        ids::INSP_PLAYER_BRAKE,
         ids::INSP_PLAYER_MAX_SLOPE,
         ids::INSP_PLAYER_JUMP_HEIGHT,
         ids::INSP_PLAYER_AIR_JUMPS,
@@ -621,8 +630,8 @@ fn the_rows_show_what_was_authored_not_the_seed() {
     set_current_inspector_player(None);
     set_current_inspector_name(None);
     let want = [
-        1.11, 0.33, 321.0, 0.77, 7.5, 44.0, 12.0, 61.0, 3.75, 3.0, 0.8, 1.6, 2.25, 0.35, 2.75,
-        2.25, 5.5,
+        1.11, 0.33, 321.0, 0.77, 7.5, 44.0, 12.0, 0.42, 61.0, 3.75, 3.0, 0.8, 1.6, 2.25, 0.35,
+        2.75, 2.25, 5.5,
     ];
     for (g, w) in got.iter().zip(want) {
         assert!(
@@ -1144,4 +1153,3 @@ fn the_live_readout_takes_room_only_where_there_is_a_player() {
         "o chip da saída ({emit_y}) tem de vir antes das rows de afinação ({float_y})"
     );
 }
-

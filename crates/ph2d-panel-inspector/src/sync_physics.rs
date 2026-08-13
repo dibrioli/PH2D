@@ -180,6 +180,7 @@ pub(crate) fn sync_player_fields(host: &mut dyn PanelHostInternal) {
         (ids::INSP_PLAYER_SPEED, info.speed),
         (ids::INSP_PLAYER_ACCEL, info.acceleration),
         (ids::INSP_PLAYER_AIR_ACCEL, info.air_acceleration),
+        (ids::INSP_PLAYER_BRAKE, info.brake_scale),
         (ids::INSP_PLAYER_MAX_SLOPE, info.max_slope_deg),
         (ids::INSP_PLAYER_JUMP_HEIGHT, info.jump_height),
         (ids::INSP_PLAYER_AIR_JUMPS, info.air_jumps),

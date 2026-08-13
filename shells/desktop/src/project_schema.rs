@@ -456,4 +456,12 @@
 /// mesmo número (report do Enio: *"não temos como mover os sensores na
 /// vertical"*). ⚠️ **Também NÃO move física:** nasce em `0`, onde a janela fica
 /// centrada no topo do corpo como antes, e o `physics_ecs_c9` sai byte-idêntico.
-pub(crate) const PROJECT_SCHEMA: u32 = 78;
+/// v79 (physics, W-Brake — FREAR NÃO É ACELERAR): o `PlatformPlayer` ganhou
+/// `brake_scale`, apendado ao FIM ⇒ quebra dura. ⚠️ **Ele existe porque a lei
+/// gastava `acceleration` nos DOIS sentidos** — o fator de viragem cobre
+/// *inverter* e não cobre *largar o direcional*, então um personagem que arranca
+/// rápido era obrigado a parar rápido. ⚠️ **E o degrau é o ÚNICO preço da wave:**
+/// o campo nasce em `1`, onde a lei reduz LITERALMENTE (`x * 1.0` é `x` em
+/// IEEE-754) ⇒ todo projeto salvo em v78 reabre a andar e a parar exactamente
+/// como estava, e o `physics_ecs_c9` sai byte-idêntico.
+pub(crate) const PROJECT_SCHEMA: u32 = 79;

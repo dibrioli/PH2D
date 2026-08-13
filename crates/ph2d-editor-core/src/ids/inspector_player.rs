@@ -131,6 +131,9 @@ pub const INSP_PLAYER_SPEED: NodeId = hash_node_id("insp_player_speed");
 pub const INSP_PLAYER_ACCEL: NodeId = hash_node_id("insp_player_accel");
 /// Aceleração no ar — o controle aéreo. `0` conserva o arco do salto.
 pub const INSP_PLAYER_AIR_ACCEL: NodeId = hash_node_id("insp_player_air_accel");
+/// **Quanto do orçamento ele gasta a FREAR** (`W-Brake`) — a fração usada no
+/// chão com o eixo solto. `1` é o mundo de antes daquela wave, `0` é gelo.
+pub const INSP_PLAYER_BRAKE: NodeId = hash_node_id("insp_player_brake");
 /// A inclinação máxima em que o personagem fica de pé, em GRAUS.
 ///
 /// Graus na fronteira, cosseno no motor — a convenção do ângulo de joint.

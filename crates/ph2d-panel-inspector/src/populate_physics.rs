@@ -279,6 +279,12 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         (ids::INSP_PLAYER_SPEED, 6.0, 0.0, 1000.0, 0.1), // LITERAL-PX-OK: m/s
         (ids::INSP_PLAYER_ACCEL, 60.0, 0.0, 10_000.0, 1.0), // LITERAL-PX-OK: m/s^2
         (ids::INSP_PLAYER_AIR_ACCEL, 20.0, 0.0, 10_000.0, 1.0), // LITERAL-PX-OK: m/s^2
+        // ⚠️ **O teto de 100 é CONVENIÊNCIA, e o §0 exige que isto esteja escrito:**
+        // a lei é auto-limitada (a sobra que cabe num tique é escrita EXATA), então
+        // não há limite de recurso nenhum — o que existe é um ponto de SATURAÇÃO,
+        // `speed / (turn·accel·dt)`, que vale **4,0** no perfil de partida e é
+        // FUNÇÃO DA CONFIG. Um `MAX_*` não caberia; 100 dá folga de 25x sobre ele.
+        (ids::INSP_PLAYER_BRAKE, 1.0, 0.0, 100.0, 0.1), // LITERAL-PX-OK: fraction of the budget
         // Graus. O teto é 90 porque acima disso a superfície aponta para BAIXO
         // e a pergunta deixa de ter sentido — recurso, não conveniência.
         (ids::INSP_PLAYER_MAX_SLOPE, 45.0, 0.0, 90.0, 1.0), // LITERAL-PX-OK: degrees

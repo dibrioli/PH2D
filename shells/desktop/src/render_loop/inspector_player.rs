@@ -91,6 +91,7 @@ pub(crate) fn build_player_info(
         speed: p.speed,
         acceleration: p.acceleration,
         air_acceleration: p.air_acceleration,
+        brake_scale: p.brake_scale,
         max_slope_deg: p.max_slope_deg,
         jump_height: p.jump_height,
         #[expect(
@@ -348,6 +349,9 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         }
         PlayerFieldEdit::Speed(v) => p.speed = v.max(0.0),
         PlayerFieldEdit::Acceleration(v) => p.acceleration = v.max(0.0),
+        // ⚠️ O piso aqui é a FRONTEIRA, e o que garante a lei é o piso do
+        // consumidor (`walk::brake_scale`) — ver o gate do freio negativo.
+        PlayerFieldEdit::BrakeScale(v) => p.brake_scale = v.max(0.0),
         PlayerFieldEdit::AirAcceleration(v) => p.air_acceleration = v.max(0.0),
         PlayerFieldEdit::MaxSlopeDeg(v) => p.max_slope_deg = v.clamp(0.0, 90.0),
         PlayerFieldEdit::JumpHeight(v) => p.jump_height = v.max(0.0),

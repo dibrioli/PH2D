@@ -75,6 +75,8 @@ pub struct InspectorPlayerInfo {
     pub speed: f32,
     pub acceleration: f32,
     pub air_acceleration: f32,
+    /// **A fração do orçamento gasta a FREAR** (`W-Brake`) — chão, eixo solto.
+    pub brake_scale: f32,
     pub max_slope_deg: f32,
 
     /// A altura de um pulo COMPLETO, metros — com gravidade neutra (W4).
@@ -292,6 +294,8 @@ pub enum PlayerFieldEdit {
     Speed(f32),
     Acceleration(f32),
     AirAcceleration(f32),
+    /// **O FREIO** (`W-Brake`) — fração do orçamento com o eixo solto no chão.
+    BrakeScale(f32),
     MaxSlopeDeg(f32),
 
     /// A altura de um pulo COMPLETO, metros (W4).

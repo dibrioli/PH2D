@@ -71,6 +71,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "mode",
             default: 1.0,
         },
+        // ⚠️ **Apendado**: `0` = Index, o nó que sempre shipou. Ver [`KeyBy`].
+        ParamSpec {
+            name: "key",
+            default: 0.0,
+        },
         // Random seed (Random mode only). Integer-valued; rounded at eval.
         ParamSpec {
             name: "seed",
@@ -81,7 +86,7 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 };
 
 /// How the per-instance value is minted from the instance's ordinal.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum FieldMode {
     /// `0, 1, 2, … N−1` — the raw ordinal.
     Index,
@@ -101,11 +106,69 @@ impl FieldMode {
     }
 }
 
-/// Mint the length-`n` value field for `mode`/`seed`.
-fn field(n: usize, mode: FieldMode, seed: u32) -> Vec<f32> {
+/// **Que número identifica um elemento** (doc 89 folha 15, o P0).
+///
+/// ⚠️ **A chave era o ÍNDICE, e o índice é POSIÇÃO NA LISTA, não identidade.** Um
+/// `motion.sort` ou um `motion.cull` a montante reordena o conjunto e **todo
+/// valor aleatório troca de dono** — em silêncio, porque nada na tela diz que a
+/// variação mudou de elemento. O Blender separa **ID** de **Seed** pelo mesmo
+/// motivo, e a doc do *Distribute Points on Faces* escreve a consequência: *"when
+/// the mesh is deformed or the density changes the values will be consistent for
+/// each remaining point"*.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum KeyBy {
+    /// A posição na lista — o nó que sempre shipou, e o default.
+    Index,
+    /// A coluna `id`, quando ela existe. ⚠️ **Sem coluna `id` a chave CAI no
+    /// índice**, e não em zero: um conjunto sem identidade tem a identidade que
+    /// tem. É a semântica do Blender (*"ID: default o atributo `id` se existir,
+    /// senão o índice"*), e é o que impede uma grade — que não carrega `id` — de
+    /// ficar com todos os elementos a partilhar o MESMO valor aleatório.
+    Id,
+}
+
+impl KeyBy {
+    fn from_param(v: f32) -> Self {
+        if v.round() as i32 == 1 {
+            Self::Id
+        } else {
+            Self::Index
+        }
+    }
+}
+
+/// Mint the length-`n` value field for `mode`/`seed`, keyed by index or by `id`.
+///
+/// ⚠️ **O `Ramp` ignora a chave, com motivo:** uma rampa é *onde você está na
+/// lista*, que é posicional por definição — e `id / (n − 1)` sobre ids esparsos
+/// nem fica em `[0, 1]` nem é uma rampa. O `ParamGate` esconde o seletor nesse
+/// modo, então não há knob morto a explicar.
+fn field(n: usize, mode: FieldMode, seed: u32, key: KeyBy, ids: Option<&[f32]>) -> Vec<f32> {
+    // Com a chave no ÍNDICE nada disto é lido, e a expressão abaixo reduz
+    // LITERALMENTE ao nó que shipava — `i as f32` e `i as u32`, sem passar por
+    // um `f32` intermediário que arredondaria acima de 2²⁴.
+    let key_f = |i: usize| -> f32 {
+        match key {
+            KeyBy::Index => i as f32,
+            KeyBy::Id => ids.and_then(|v| v.get(i)).copied().unwrap_or(i as f32),
+        }
+    };
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "um id é um inteiro pequeno carregado num f32 (a convenção de coluna);                   o `max(0)` cobre um id negativo autorado à mão"
+    )]
+    let key_u = |i: usize| -> u32 {
+        match key {
+            KeyBy::Index => i as u32,
+            KeyBy::Id => ids
+                .and_then(|v| v.get(i))
+                .map_or(i as u32, |v| v.max(0.0) as u32),
+        }
+    };
     (0..n)
         .map(|i| match mode {
-            FieldMode::Index => i as f32,
+            FieldMode::Index => key_f(i),
             // `N == 1` has no span → the low end (0.0), never a divide by zero.
             FieldMode::Ramp => {
                 if n > 1 {
@@ -114,7 +177,7 @@ fn field(n: usize, mode: FieldMode, seed: u32) -> Vec<f32> {
                     0.0
                 }
             }
-            FieldMode::Random => rand01(seed, i as u32),
+            FieldMode::Random => rand01(seed, key_u(i)),
         })
         .collect()
 }
@@ -140,12 +203,22 @@ fn field(n: usize, mode: FieldMode, seed: u32) -> Vec<f32> {
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let if_mode = i32(if_round(params.mode));\n\
+        // A chave: o indice, ou a coluna `id` quando ela existe. ⚠️ `HAS_id`\n\
+        // e o que impede a coluna AUSENTE de ler zero para todo elemento (a\n\
+        // identidade do binding), o que daria a TODOS o mesmo valor aleatorio.\n\
+        let if_by_id = i32(if_round(params.key)) == 1 && HAS_id;\n\
+        var if_kf = f32(i);\n\
+        var if_ku = i;\n\
+        if (if_by_id) {\n\
+        \x20   if_kf = read_id(i);\n\
+        \x20   if_ku = u32(max(if_kf, 0.0));\n\
+        }\n\
         var if_v: f32;\n\
         if (if_mode == 0) {\n\
-        \x20   if_v = f32(i);\n\
+        \x20   if_v = if_kf;\n\
         } else if (if_mode == 2) {\n\
         \x20   let if_seed = u32(max(if_round(params.seed), 0.0));\n\
-        \x20   if_v = if_rand01(if_seed, i);\n\
+        \x20   if_v = if_rand01(if_seed, if_ku);\n\
         } else {\n\
         \x20   // N == 1 has no span: the low end, never a divide by zero.\n\
         \x20   if (params.count > 1u) {\n\
@@ -169,14 +242,27 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             h = h ^ (h >> 16u);\n\
             return f32(h >> 8u) / 16777216.0;\n\
         }\n",
-    bindings: &[ColumnBinding {
-        column: VALUE_COL,
-        dim: Dim::Scalar,
-        access: ColumnAccess::Write,
-        identity: [0.0; 4],
-        port: 0,
-    }],
-    params: &["mode", "seed"],
+    bindings: &[
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        // ⚠️ A `identity` de uma coluna `id` AUSENTE e zero, e zero nao e o
+        // indice — e por isso o corpo ramifica no `HAS_id` em vez de confiar
+        // nela. Sem essa ramificacao um conjunto sem `id` daria a todo elemento
+        // a MESMA chave, e o modo Random pintaria tudo do mesmo valor.
+        ColumnBinding {
+            column: "id",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: &["mode", "key", "seed"],
     // Same law as `value.lfo`, and the same expression `eval` uses: connected it
     // is one value per instance, unconnected it is ONE degenerate value. The
     // engine's default ("as wide as port 0") would size an unconnected one at 0
@@ -200,9 +286,15 @@ impl NodeOp for ValueInstanceField {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let mode = FieldMode::from_param(ctx.param("mode"));
         let seed = ctx.param("seed").round().max(0.0) as u32;
+        let key = KeyBy::from_param(ctx.param("key"));
         // Cardinality follows the geometry; unconnected → one degenerate value.
-        let n = ctx.input(0).count().max(1);
-        let v = field(n, mode, seed);
+        let input = ctx.input(0);
+        let n = input.count().max(1);
+        let ids = match input.get("id") {
+            Some(Column::Scalar(v)) => Some(v.clone()),
+            _ => None,
+        };
+        let v = field(n, mode, seed, key, ids.as_deref());
         ctx.emit(Stream::new(n).with(VALUE_COL, Column::Scalar(v)));
     }
 }
@@ -222,12 +314,33 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // ⚠️ O `Ramp` é POSICIONAL por definição (*onde você está na lista*), e
+    // `id / (n − 1)` sobre ids esparsos nem fica em `[0, 1]`. O seletor some
+    // nesse modo em vez de ficar lá sem fazer nada.
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
+/// O seletor de chave só aparece nos modos que a LEEM (`0` Index · `2` Random).
+static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[ph2d_node_registry::ParamGate {
+    param: "key",
+    when: "mode",
+    values: &[0, 2],
+}];
+
 static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "key",
+        label: "Key By",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Index", "Id"],
+        },
+    },
     ParamUiHint {
         param: "mode",
         label: "Mode",
@@ -247,6 +360,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Seed,
     },
 ];
+
+#[cfg(test)]
+#[path = "key_tests.rs"]
+mod key_tests;
 
 #[cfg(test)]
 mod tests {
@@ -281,25 +398,28 @@ mod tests {
     // Direct unit tests of the core (no cook needed for the field math).
     #[test]
     fn index_mode_is_the_raw_ordinal() {
-        assert_eq!(field(4, FieldMode::Index, 0), vec![0.0, 1.0, 2.0, 3.0]);
+        assert_eq!(
+            field(4, FieldMode::Index, 0, KeyBy::Index, None),
+            vec![0.0, 1.0, 2.0, 3.0]
+        );
     }
 
     #[test]
     fn ramp_mode_is_the_normalized_gradient() {
         assert_eq!(
-            field(5, FieldMode::Ramp, 0),
+            field(5, FieldMode::Ramp, 0, KeyBy::Index, None),
             vec![0.0, 0.25, 0.5, 0.75, 1.0]
         );
         // N == 1 has no span → 0, never a divide by zero.
-        assert_eq!(field(1, FieldMode::Ramp, 0), vec![0.0]);
+        assert_eq!(field(1, FieldMode::Ramp, 0, KeyBy::Index, None), vec![0.0]);
     }
 
     /// Random is a per-instance field in `[0,1)` — NOT all-equal (the whole point
     /// vs a broadcast constant) and reproducible for a fixed seed.
     #[test]
     fn random_mode_varies_per_instance_and_reproduces() {
-        let a = field(8, FieldMode::Random, 42);
-        let b = field(8, FieldMode::Random, 42);
+        let a = field(8, FieldMode::Random, 42, KeyBy::Index, None);
+        let b = field(8, FieldMode::Random, 42, KeyBy::Index, None);
         assert_eq!(a, b, "a fixed seed reproduces the field bit-for-bit");
         assert!(a.iter().all(|&v| (0.0..1.0).contains(&v)), "in [0,1)");
         assert!(
@@ -307,7 +427,11 @@ mod tests {
             "the field varies per instance (not a broadcast constant)"
         );
         // A different seed decorrelates.
-        assert_ne!(a, field(8, FieldMode::Random, 43), "seed changes the field");
+        assert_ne!(
+            a,
+            field(8, FieldMode::Random, 43, KeyBy::Index, None),
+            "seed changes the field"
+        );
     }
 
     /// End-to-end through the cook: the field's length follows the connected

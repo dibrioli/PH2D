@@ -5709,3 +5709,55 @@ fn the_projection_modes_agree_across_the_dev_dependency_fence() {
         );
     }
 }
+
+/// **A chave do `value.instance_field` — e a QUEDA quando não há `id`** (doc 89
+/// folha 15).
+///
+/// ⚠️ **Esta é a metade perigosa do caminho de GPU.** A `identity` de um binding
+/// ausente é ZERO, e zero como chave daria a TODO elemento o mesmo valor
+/// aleatório — um campo de variação que não varia, num grafo que não tem `id`,
+/// que é o caso mais comum que existe (uma grade não carrega um). O kernel
+/// ramifica no `HAS_id` por isso, e este gate é o que prova que o device concorda
+/// com a CPU nessa queda.
+///
+/// O valor sai pelo `motion.color_ramp` para alcançar o `tint` de uma instância —
+/// `assert_gpu_parity` compara instâncias, e um campo que só existisse na coluna
+/// `v` não seria comparado por nada.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_instance_field_key_falls_back_to_the_index_on_the_device_too() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    // Os dois valores da chave, sobre um stream SEM `id`: os dois têm de dar o
+    // mesmo campo (a queda para o índice), e o device tem de concordar com a CPU
+    // nos dois.
+    for key in [0.0, 1.0] {
+        let mut g = Graph::new();
+        let grid = grid_node(&mut g, 8.0);
+        let field = g.add_node("value.instance_field");
+        g.set_param(field, "mode", 2.0); // Random — o modo que a chave governa
+        g.set_param(field, "key", key);
+        g.set_param(field, "seed", 11.0);
+        let cr = g.add_node("motion.color_ramp");
+        let out = g.add_node("motion.output");
+        for (from, to, port) in [
+            (grid, field, 0),
+            (grid, cr, 0),
+            (field, cr, 1),
+            (cr, out, 0),
+        ] {
+            g.connect(Edge {
+                from: (from, 0),
+                to: (to, port),
+                delayed: false,
+            })
+            .unwrap();
+        }
+        eprintln!("  instance_field key = {key}");
+        // 3 estágios: a grade, o campo e a rampa (a saída é pass-through).
+        assert_gpu_parity(&gpu, &reg, &g, out, 3);
+    }
+}

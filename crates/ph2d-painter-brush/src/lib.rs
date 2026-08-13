@@ -68,6 +68,9 @@ pub mod sampler;
 pub mod sculpt;
 pub mod smear;
 pub mod smear_field;
+/// **A FORMA SÓLIDA** — o caminho fechado do gesto vira região preenchida, com cobertura exata
+/// por área (o `Style: Solid` do plano 38 §5.2).
+pub mod solid;
 pub mod spec;
 mod spec_default;
 mod spec_frame;

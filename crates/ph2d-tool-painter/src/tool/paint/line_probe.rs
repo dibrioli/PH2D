@@ -219,5 +219,41 @@ fn measure_how_many_levels_a_solid_edge_needs() {
             100.0 * f64::from(over) / f64::from(edge.max(1)),
         );
     }
+    // ── E a lei que SHIPOU, na MESMA tabela ────────────────────────────────────────────────────
+    // ⚠️ A acumulação de área com sinal não amostra: ela integra a área EXATA do pixel coberto. Ela
+    // entra aqui para o número dela ser comparável com os do supersample, e não citado à parte.
+    {
+        let disc: Vec<[f32; 2]> = (0..2048)
+            .map(|i| {
+                #[allow(clippy::cast_precision_loss)]
+                let a = i as f32 / 2048.0 * std::f32::consts::TAU;
+                #[allow(clippy::cast_precision_loss)]
+                let (cx, cy) = (W as f32 * 0.5, W as f32 * 0.5);
+                [cx + 300.0 * a.cos(), cy + 300.0 * a.sin()]
+            })
+            .collect();
+        let t0 = std::time::Instant::now();
+        let cov = ph2d_painter_brush::solid::fill_coverage(&[disc], W, W, [0.0, 0.0]);
+        let ms = t0.elapsed().as_secs_f64() * 1e3;
+        let (mut sum, mut worst, mut over, mut edge) = (0.0f64, 0.0f64, 0u32, 0u32);
+        for i in 0..W * W {
+            let r = f64::from(reference[i]);
+            if r <= 0.0 || r >= 1.0 {
+                continue;
+            }
+            edge += 1;
+            let e = (f64::from(cov[i]) / 255.0 - r).abs() * 255.0;
+            sum += e;
+            worst = worst.max(e);
+            over += u32::from(e > 8.0);
+        }
+        println!(
+            "{:>5} {:>8}  {:>10.2} {worst:>10.2} {:>10.1} {ms:>10.1}",
+            "area",
+            256,
+            sum / f64::from(edge.max(1)),
+            100.0 * f64::from(over) / f64::from(edge.max(1)),
+        );
+    }
     println!("[line] (referencia SS=32 custou {ref_ms:.1} ms; a coluna `px>8/255` e' a fracao da BORDA que erra mais que um degrau visivel)");
 }

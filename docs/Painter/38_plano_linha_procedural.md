@@ -355,21 +355,23 @@ Gate: `every_kind_with_a_base_path_offers_solid`.
 Então é **borda da FORMA**, e *"o melhor possível"* virou uma medição em vez de uma opinião (W0.3 do
 `line_probe` do tool): erro de cobertura contra a referência `SS = 32`, num disco de raio 300 —
 
-| SS | níveis | erro médio | erro máx | **px > 8/255** | custo rel. |
-|---:|---:|---:|---:|---:|---:|
-| **3** (o de hoje) | 10 | 9,47 | 38,43 | **51,1%** | 1,0× |
-| 4 | 17 | 5,96 | 26,15 | 22,7% | 1,8× |
-| 8 | 65 | 1,92 | 13,45 | 1,4% | 6,8× |
-| 16 | 257 | 0,57 | 7,47 | 0,0% | 26,4× |
+| lei | níveis | erro médio | erro máx | **px > 8/255** | custo |
+|---|---:|---:|---:|---:|---:|
+| **`SS = 3`** (o de hoje) | 10 | 9,47 | 38,43 | **51,1%** | 11,3 ms |
+| `SS = 4` | 17 | 5,96 | 26,15 | 22,7% | 19,9 |
+| `SS = 8` | 65 | 1,92 | 13,45 | 1,4% | 72,5 |
+| `SS = 16` | 257 | 0,57 | 7,47 | 0,0% | 284,0 |
+| **ÁREA EXATA** (o que shipou) | 256 | **0,31** | **2,47** | **0,0%** | **0,8** |
 
 ⚠️ **O `SS = 3` que o composite usa hoje erra mais de um degrau visível em METADE da borda** — ele
-foi calibrado para ser *traçado*, e um traçado joga a cobertura fora. Subir o SS globalmente é caro
-(a 4096 o raster de 1,55 ms vira ~11 ms a `SS=8`).
+foi calibrado para ser *traçado*, e um traçado joga a cobertura fora.
 
-⇒ **O desenho que a medição escolhe: cobertura exata por ÁREA na banda de borda, `SS = 3` no
-miolo.** A borda é `O(perímetro)` — ~3 400 px contra 160 000 do destino, **2%** dos pixels —, então o
-cálculo exato ali é praticamente de graça, e é a lei que o motor novo do Flip já shipou. É isto que
-*"o melhor possível"* significa com o número ao lado.
+⚠️ **E a última linha decide sozinha: a acumulação de área com sinal é MAIS precisa que `SS = 16` e
+catorze vezes mais BARATA que o `SS = 3`.** Ela não amostra — integra a área exata do pixel coberto
+numa passada `O(arestas + área)`, sem buffer supersampleado. Não há trade a ponderar: *"o melhor
+possível"* e *"o mais barato"* são a mesma escolha, e é ela que shipou
+(`ph2d-painter-brush::solid`). O resíduo de 0,31 nível é o polígono de 2048 lados que aproxima o
+círculo da fixture mais o erro da própria referência, não o rasterizador.
 
 ### 5.3 O que `Solid` faz com um gesto que não fecha? — ✅ **"fechar sozinho"**
 

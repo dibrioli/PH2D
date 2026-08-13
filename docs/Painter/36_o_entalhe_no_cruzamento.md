@@ -219,3 +219,95 @@ protocolo do doc 23.
 O vão **encolhe de 5 px para 2**, não para zero. Os 2 px que ficam são **(a)**, a união da cobertura —
 que segue não construída de propósito. Se o smoke disser que ainda se vê, é (a) que decide, e ela é a
 pergunta de produto do §5.
+
+## 9. ⛔ O SMOKE DISSE QUE AINDA SE VÊ — e a medição REFUTOU (a)
+
+Enio, 2026-08-12, com a mesma foto: *"melhor mas ainda com o alpha errado"*.
+
+A recomendação do §5 mandava, se isto acontecesse, ir para **(a)** — a união da cobertura. A varredura
+abaixo diz que **(a) não é a causa**, e que a causa é outra coisa, com uma tabela.
+
+### 9.1 O que foi ablacionado, e o que cada célula disse
+
+Tudo pela ENTRADA (knobs do pincel), um termo por vez, no **regime do produto** (`fill` 0,12 —
+ver 9.2). Sonda `measure_the_crossing_notch`:
+
+| cena | a quina côncava |
+|---|---|
+| só a SILHUETA (aro 0 · gran 0 · warp 0) | **quina RETA, limpa** — nenhum vão |
+| silhueta + aro | limpa |
+| silhueta + granulação | limpa |
+| silhueta + **warp** | **o entalhe aparece** |
+| silhueta + warp, **sem aro** | **o entalhe continua** |
+
+E a medida que fecha **(a)**: o alcance ao longo da bissetriz. A união de duas faixas de meia-largura
+`w` tem quina reta em `(w, w)`, logo a bissetriz alcança `w·√2` — **exatamente, sem constante
+escolhida**. Medido nos QUATRO cantos, em três escalas de pincel: o alcance real é `w·√2` **ou mais**
+(30,0–36,0 contra 28,3 esperados a raio 24), e o perfil ao longo da bissetriz é **monótono** — não há
+buraco. ⇒ **a cobertura não deixa cunha nenhuma; compor a união não tinha o que consertar.**
+
+### 9.2 ⚠️ Duas fixtures desta sonda nasceram CEGAS, e as duas eram minhas
+
+* **A ESCALA do mapa.** Com o `fill` de fábrica (0,12) a lavagem inteira vive em alpha ≈ 0,28, então
+  `alpha*9` colapsava a cena toda em `2` — um mapa que só sabe dizer 1, 2 e 3 **não pode responder
+  onde a tinta acaba**, e foi ele que me fez ler ruído de granulação como cunha. Subir o `fill` para 1
+  resolve o dígito e **troca o regime** (o interior satura e o aro deixa de dominar, o oposto do
+  produto) ⇒ quem sobe é a **escala do dígito**, nunca o pincel.
+* **O ponto do flanco reto** era `c − 4·raio`, que num pincel de 75 cai **fora da tela** (o `as u32`
+  satura em 0) e a sonda passou a medir a **calota do começo do traço** em vez do flanco: `w = 48`
+  para um braço de 65.
+
+### 9.3 A CAUSA, com a tabela
+
+O aro é `gain·(cw − blur(hard))` e o borrão tem raio `core_r = min(edge_spread, raio/2)` — um número
+em **px ABSOLUTOS**, enquanto o ombro da silhueta **escala com o pincel**. Num pincel grande o ombro
+fica muito mais largo que o borrão, `blur(hard) → hard`, e **o aro enfraquece**; na quina côncava ele
+**se rompe**, porque ali o borrão enxerga a tinta do OUTRO braço (a quina é geometricamente mais
+funda: a distância à fronteira vale `t·√2` onde cada frente está a `t`).
+
+Sonda `measure_the_rim_deficit_against_spread_over_radius` — pico do aro no flanco reto contra o
+**pior dos quatro cantos**:
+
+| raio | spread | spread/raio | flanco | quina | défice |
+|---:|---:|---:|---:|---:|---:|
+| 24 | 7 | 0,29 | 0,72 | 0,71 | −1% |
+| 24 | 16 | 0,67 | 0,74 | 0,74 | +1% |
+| 48 | 7 | **0,15** | 0,60 | 0,54 | **−9%** |
+| 48 | 16 | 0,33 | 0,70 | 0,70 | −1% |
+| 48 | 32 | 0,67 | 0,72 | 0,73 | +2% |
+| 75 | 7 | **0,09** | 0,53 | 0,36 | **−33%** |
+| 75 | 16 | 0,21 | 0,69 | 0,61 | −11% |
+| 75 | 32 | 0,43 | 0,74 | 0,70 | −5% |
+| 110 | 7 | **0,06** | 0,44 | 0,36 | **−19%** |
+| 110 | 32 | 0,29 | 0,72 | 0,70 | −3% |
+| 110 | 48 | 0,44 | 0,75 | 0,73 | −2% |
+
+**O défice colapsa num número só: `edge_spread / raio`.** Acima de ~0,3 ele é ≤ 3% (invisível);
+em 0,09 o aro da quina vale **dois terços** do aro do flanco, e a 110 px o perfil da quina chega a
+**zerar no meio** (buraco de 2,5 px cercado de tinta, medido) — que é a cunha branca da foto.
+
+⚠️ **E a coluna do FLANCO diz a mesma coisa sobre o produto inteiro:** com `spread` fixo em 7 o aro
+do flanco cai de 0,72 (raio 24) para **0,44** (raio 110). O aro não é invariante de escala; a quina é
+só onde a perda vira **ruptura**.
+
+### 9.4 O que fazer, e por que a decisão é do Enio
+
+**Hoje, sem tocar em código:** o slider **Spread** vai até 48 e a tabela diz que a partir de
+`spread ≈ 0,3 × raio` a cunha some. Num pincel de 75 px isso é **Spread ≈ 24**; o default é 7.
+
+As duas curas possíveis, com o que cada uma custa:
+
+1. **Piso relativo no `core_r`** (`max(edge_spread, 0,3·raio)`) — uma linha, e a tabela já mediu que
+   funciona. ⚠️ **Mas o clamp de cima já é `raio/2`**, então a faixa útil do knob viraria
+   `0,3·R .. 0,5·R`: o Spread deixa de obedecer o artista em pincel grande. *Um knob que para de
+   obedecer é pior que o defeito que ele cura.*
+2. **Régua corner-safe para o aro** — o `inner` é inflado na quina porque o borrão é isotrópico; a
+   grandeza certa é a distância à **frente mais próxima**, e ela **está na COBERTURA** (a cobertura é
+   um `max` de falloffs, logo `cov = f(min_i dᵢ)`), não na geometria do nível dela. A cura seria
+   `sd_usado = min(sd_geométrico, t(cov))`, com `t` vindo de uma LUT da inversa do falloff por estilo:
+   flanco **inalterado por construção**, interior inerte, quina igualada ao flanco. É **wave própria**
+   (LUT por estilo no `WetStrokeStyle`, gate de identidade no flanco, orçamento no caminho quente).
+
+⚠️ **A (1) muda o LOOK de toda lavagem de pincel grande** (aro mais largo e mais forte) e mexe na
+semântica de um knob shipado; a (2) não muda nada fora da quina. **Recomendação: (2)** — e o
+Spread continua sendo do artista.

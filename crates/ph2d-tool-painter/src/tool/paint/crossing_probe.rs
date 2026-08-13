@@ -150,16 +150,22 @@ fn report(label: &str, t: &PainterTool) {
 /// **RENDER-AND-LOOK headless** — o mapa do alfa em volta da quina côncava. A tabela acima diz
 /// NÚMEROS; isto diz FORMA, que é o que a foto mostra: se há uma cunha clara entrando pela
 /// bissetriz, ela aparece aqui como uma faixa de dígitos baixos entre dois aros escuros.
-fn map(label: &str, t: &PainterTool) {
+///
+/// ⚠️ **A ESCALA é parte da sonda, e a primeira versão dela era CEGA:** com o `fill` de fábrica
+/// (0,12) a lavagem inteira vive em alpha ≈ 0,28, então `alpha*9` colapsa a cena toda em `2` e um mapa
+/// que só sabe dizer 1, 2 e 3 **não pode responder onde a tinta acaba**. Subir o `fill` para 1 resolve
+/// o dígito e **muda o regime** (o interior satura e o aro deixa de dominar a aparência, que é o
+/// oposto do produto) — então quem sobe é a ESCALA do dígito, nunca o pincel.
+fn map_scaled(label: &str, t: &PainterTool, scale: f32) {
     println!(
-        "\n  {label}  (x,y de {C:.0} a {:.0}; digito = alpha*9)",
+        "\n  {label}  (x,y de {C:.0} a {:.0}; digito = alpha*{scale:.0})",
         C + 40.0
     );
     for y in 0..40u32 {
         let mut row = String::new();
         for x in 0..40u32 {
             let a = alpha_at(t, C + x as f32, C + y as f32);
-            let d = (a * 9.0).round().clamp(0.0, 9.0) as u32;
+            let d = (a * scale).round().clamp(0.0, 9.0) as u32;
             row.push(if d == 0 {
                 '.'
             } else {
@@ -315,31 +321,353 @@ fn measure_the_crossing_notch() {
     );
 
     println!("\n=== A FORMA (o quadrante inferior-direito da quina) ===");
-    map("AQUARELA — dois tracos", &cross_two_strokes(wash));
-    map(
+    // ⚠️ ESCALA 30, não 9: no regime do PRODUTO (`fill` 0,12) o alfa da lavagem vive em ~0,28 e o do
+    // aro em ~0,78 — `alpha*9` daria `2` para a lavagem inteira e a sonda ficaria cega. Ver `map_scaled`.
+    map_scaled("AQUARELA — dois tracos", &cross_two_strokes(wash), 30.0);
+    map_scaled(
         "DIGITAL (controle) — dois tracos",
         &cross_two_strokes(digital),
+        9.0,
     );
 
-    // ABLAÇÃO PELA ENTRADA (nunca por instrumentação): o `edge` e' um UNSHARP `cw − blur(hard)`, com
-    // um lobo positivo (o aro, dentro) e um negativo (a franja pálida, fora). `edge_gain = 0` mata os
-    // DOIS de uma vez pelo knob que o artista tem. Se a cunha some aqui, ela e' do unsharp; se fica,
-    // ela e' da UNIÃO da cobertura, e o alvo seria outro.
-    println!("\n=== ABLAÇÃO: edge_gain = 0 (sem aro e sem franja) ===");
-    let no_edge = BrushSpec {
-        edge_gain: 0.0,
+    // ── ABLAÇÃO PELA ENTRADA, um knob por vez, no REGIME DO PRODUTO ────────────────────────────────
+    //
+    // Os quatro mapas abaixo são o MESMO pincel com um termo a menos cada, o `fill` **intocado** (subir
+    // o fill resolveria o dígito e trocaria o regime: o interior satura e o aro deixa de dominar, que é
+    // o oposto do que a foto mostra). A ordem responde a pergunta em degraus:
+    //
+    //   1. `granulacao 0 · warp 0`      — a cena LISA: sobra a silhueta + o unsharp.
+    //   2. + `edge_gain 0`              — a SILHUETA sozinha: é a UNIÃO da cobertura.
+    //   3. a lisa com warp de volta      — o warp desloca a AMOSTRA da cobertura.
+    //   4. a lisa com granulacao de volta.
+    //
+    // A cunha aparece no 1º mapa em que ela existe, e o knob que a devolve é a causa.
+    println!("\n=== ABLAÇÃO (regime do produto, fill 0.12): um knob por vez ===");
+    let smooth = BrushSpec {
+        granulation: 0.0,
+        warp: 0.0,
         ..wash
     };
-    report(
-        "AQUARELA sem aro — dois tracos",
-        &cross_two_strokes(no_edge),
+    map_scaled(
+        "1. LISA (gran 0 · warp 0) — silhueta + aro",
+        &cross_two_strokes(smooth),
+        30.0,
     );
-    map(
-        "AQUARELA sem aro — dois tracos",
-        &cross_two_strokes(no_edge),
+    let smooth_no_edge = BrushSpec {
+        edge_gain: 0.0,
+        ..smooth
+    };
+    map_scaled(
+        "2. LISA sem aro — so a SILHUETA (a uniao da cobertura)",
+        &cross_two_strokes(smooth_no_edge),
+        30.0,
+    );
+    map_scaled(
+        "3. LISA + warp 6 (a amostra da cobertura e' deslocada)",
+        &cross_two_strokes(BrushSpec {
+            warp: 6.0,
+            ..smooth
+        }),
+        30.0,
+    );
+    map_scaled(
+        "4. LISA + granulacao 0.3",
+        &cross_two_strokes(BrushSpec {
+            granulation: 0.3,
+            ..smooth
+        }),
+        30.0,
+    );
+    // A célula que FECHA o 2×2: warp SEM aro. Se a cunha vive aqui, ela é da SILHUETA deslocada; se
+    // ela some, é o unsharp (o lobo pálido) amplificado pela borda esfarrapada.
+    map_scaled(
+        "5. LISA + warp 6, SEM aro",
+        &cross_two_strokes(BrushSpec {
+            warp: 6.0,
+            ..smooth_no_edge
+        }),
+        30.0,
     );
 
+    corner_reach_table(&wash, &smooth);
+
     franja_sobre_tinta();
+}
+
+/// Limiar de "há tinta aqui" para as medidas de ALCANCE (o alfa de fundo é exatamente 0).
+const INK: f32 = 0.02;
+
+/// **A ESCALA DA FOTO** — a cena acima usa raio 24 e o `warp` de fábrica é **6 px ABSOLUTOS**, então
+/// ali a borda esfarrapada mede um quarto da largura do braço; na foto do Enio o braço tem ~150 px e
+/// a mesma raggedness mede 4% dele. Uma cunha que só existe numa das duas escalas é um fato sobre a
+/// RAZÃO `warp / raio`, e a fixture pequena não a contém.
+///
+/// Esta sonda re-mede o alcance da quina e o perfil da bissetriz com o pincel GRANDE, na sua própria
+/// tela — as consts do módulo são da cena pequena e não servem aqui.
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_the_notch_at_the_photos_scale() {
+    for (radius, spread) in [(24.0f32, 7.0f32), (48.0, 7.0), (75.0, 7.0), (110.0, 7.0)] {
+        let size: u32 = 512;
+        let c = 256.0f32;
+        let mut t = PainterTool::default();
+        t.set_source(white(size), size, size);
+        let spec = BrushSpec {
+            radius_px: radius,
+            color: [0.85, 0.15, 0.15],
+            space_attenuation: false,
+            watercolor: true,
+            edge_spread: spread,
+            ..Default::default()
+        };
+        arm(&mut t, spec);
+        let mut draw = |from: [f32; 2], to: [f32; 2]| {
+            t.on_canvas_pointer(cp(from, PointerPhase::Down));
+            let (dx, dy) = (to[0] - from[0], to[1] - from[1]);
+            for i in 1..=48 {
+                let f = i as f32 / 48.0;
+                t.on_canvas_pointer(cp([from[0] + dx * f, from[1] + dy * f], PointerPhase::Move));
+            }
+            t.on_canvas_pointer(cp(to, PointerPhase::Up));
+        };
+        draw([40.0, c], [472.0, c]);
+        draw([c, 40.0], [c, 472.0]);
+
+        let a = |x: f32, y: f32| -> f32 {
+            let (xi, yi) = (x.round() as u32, y.round() as u32);
+            let i = ((yi * size) + xi) as usize * 4;
+            (255.0 - f32::from(t.canvas_rgba[i + 1])) / 255.0
+        };
+        // `w`: meia-largura do braço, longe do cruzamento — e ⚠️ **longe da PONTA também**: a 1ª
+        // versão media em `c − 4·raio`, que num pincel de 75 cai FORA da tela (o `as u32` satura em 0)
+        // e a sonda passou a medir a calota do começo do traço em vez do flanco (`w = 48` para um
+        // braço de ~65). O ponto tem de ficar entre a ponta e o braço vertical.
+        let lone_x = c - radius * 1.8;
+        let mut w = 0.0f32;
+        let mut y = 0.0f32;
+        while y < radius * 2.0 {
+            if a(lone_x, c + y) > INK {
+                w = y;
+            }
+            y += 0.5;
+        }
+        let s = std::f32::consts::FRAC_1_SQRT_2;
+        println!(
+            "\n=== raio {radius:.0} · spread {spread:.0} · warp 6 (warp/raio = {:.2}) ===",
+            6.0 / radius
+        );
+        println!(
+            "   w = {w:.1}   bissetriz esperada = {:.1}",
+            w * std::f32::consts::SQRT_2
+        );
+        for (label, sx, sy) in [("++", s, s), ("+-", s, -s), ("-+", -s, s), ("--", -s, -s)] {
+            let mut last = 0.0f32;
+            let mut gap_from = 0.0f32;
+            let mut gap_len = 0.0f32;
+            let mut run = 0.0f32;
+            let mut d = 0.0f32;
+            while d < radius * 3.0 {
+                if a(c + sx * d, c + sy * d) > INK {
+                    if run > gap_len && last > 0.0 {
+                        gap_len = run;
+                        gap_from = d - run;
+                    }
+                    last = d;
+                    run = 0.0;
+                } else {
+                    run += 0.5;
+                }
+                d += 0.5;
+            }
+            println!(
+                "   {label}  alcance {last:5.1}   maior BURACO cercado de tinta: {gap_len:4.1} px \
+                 (a partir de {gap_from:5.1})"
+            );
+        }
+        // O perfil, do miolo à borda, ao longo da bissetriz e ao longo do eixo (o controle).
+        // Os dois perfis são comparados na MESMA régua: a distância PERPENDICULAR ao eixo de uma
+        // faixa. Na bissetriz o ponto `(c+k, c+k)` está a `k` de CADA eixo, então o eixo é amostrado
+        // em `k` também — é isso que torna "a quina tem o mesmo aro que o flanco" uma afirmação.
+        // O ARO, de 1 em 1 px, na faixa onde ele vive (as últimas 24 px do braço) — os QUATRO cantos
+        // contra o flanco reto. Uma cunha aparece como um aro mais fraco ou NÃO-MONÓTONO num canto.
+        let lo = (w - 22.0).max(0.0);
+        let prof = |f: &dyn Fn(f32) -> f32| {
+            let mut s2 = String::new();
+            let mut k = lo;
+            while k <= w + 4.0 {
+                s2.push_str(&format!("{:4.0}", f(k) * 100.0));
+                k += 1.0;
+            }
+            s2
+        };
+        println!("   aro por s = {lo:.0}..{:.0} px do eixo", w + 4.0);
+        println!("     flanco reto {}", prof(&|k| a(lone_x, c + k)));
+        println!("     quina ++    {}", prof(&|k| a(c + k, c + k)));
+        println!("     quina +-    {}", prof(&|k| a(c + k, c - k)));
+        println!("     quina -+    {}", prof(&|k| a(c - k, c + k)));
+        println!("     quina --    {}", prof(&|k| a(c - k, c - k)));
+    }
+}
+
+/// **O DÉFICE DO ARO NA QUINA, contra `spread / raio`** — a tabela que nomeia a causa.
+///
+/// O aro é derivado de `cw − blur(hard)`, e o borrão tem raio `core_r = min(edge_spread, raio/2)` —
+/// um número em **px ABSOLUTOS** enquanto o ombro da silhueta escala com o PINCEL. Num pincel grande
+/// o ombro fica muito mais largo que o borrão, o aro enfraquece, e **na quina côncava ele se rompe**:
+/// ali o borrão enxerga a tinta do OUTRO braço (a quina é genuinamente mais funda) e o `inner` sobe.
+///
+/// A tabela mede o pico do aro no flanco RETO e o pior dos QUATRO cantos, para cada `(raio, spread)`.
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_the_rim_deficit_against_spread_over_radius() {
+    println!("\n=== O DEFICE DO ARO NA QUINA (pior dos 4 cantos contra o flanco reto) ===");
+    println!("   raio  spread  spread/raio   flanco   quina   defice");
+    for radius in [24.0f32, 48.0, 75.0, 110.0] {
+        for spread in [7.0f32, 16.0, 32.0, 48.0] {
+            let size: u32 = 512;
+            let c = 256.0f32;
+            let mut t = PainterTool::default();
+            t.set_source(white(size), size, size);
+            let spec = BrushSpec {
+                radius_px: radius,
+                color: [0.85, 0.15, 0.15],
+                space_attenuation: false,
+                watercolor: true,
+                edge_spread: spread,
+                ..Default::default()
+            };
+            arm(&mut t, spec);
+            let mut draw = |from: [f32; 2], to: [f32; 2]| {
+                t.on_canvas_pointer(cp(from, PointerPhase::Down));
+                let (dx, dy) = (to[0] - from[0], to[1] - from[1]);
+                for i in 1..=48 {
+                    let f = i as f32 / 48.0;
+                    t.on_canvas_pointer(cp(
+                        [from[0] + dx * f, from[1] + dy * f],
+                        PointerPhase::Move,
+                    ));
+                }
+                t.on_canvas_pointer(cp(to, PointerPhase::Up));
+            };
+            draw([40.0, c], [472.0, c]);
+            draw([c, 40.0], [c, 472.0]);
+            let a = |x: f32, y: f32| -> f32 {
+                let (xi, yi) = (x.round() as u32, y.round() as u32);
+                let i = ((yi * size) + xi) as usize * 4;
+                (255.0 - f32::from(t.canvas_rgba[i + 1])) / 255.0
+            };
+            let lone_x = c - radius * 1.8;
+            // O pico do aro é procurado na MESMA faixa de `s` nos cinco lugares — o aro da quina mora
+            // um pouco mais fundo (a quina é geometricamente mais funda), então a faixa é generosa.
+            let peak = |f: &dyn Fn(f32) -> f32| {
+                let mut m = 0.0f32;
+                let mut k = 0.0f32;
+                while k < radius * 1.2 {
+                    m = m.max(f(k));
+                    k += 0.5;
+                }
+                m
+            };
+            let flank = peak(&|k| a(lone_x, c + k));
+            let corner = [
+                peak(&|k| a(c + k, c + k)),
+                peak(&|k| a(c + k, c - k)),
+                peak(&|k| a(c - k, c + k)),
+                peak(&|k| a(c - k, c - k)),
+            ]
+            .into_iter()
+            .fold(1.0f32, f32::min);
+            println!(
+                "   {radius:4.0}  {spread:6.0}   {:9.2}   {flank:6.2}  {corner:6.2}  {:+6.0}%",
+                spread / radius,
+                (corner / flank - 1.0) * 100.0
+            );
+        }
+    }
+}
+
+/// O último `d` ao longo de um raio saindo do centro do cruzamento em que ainda há tinta.
+/// `dir` é unitário; a varredura vai até bem além do raio do pincel.
+fn ray_reach(t: &PainterTool, dir: [f32; 2]) -> f32 {
+    let mut last = 0.0f32;
+    let mut d = 0.0f32;
+    while d < 60.0 {
+        if alpha_at(t, C + dir[0] * d, C + dir[1] * d) > INK {
+            last = d;
+        }
+        d += 0.5;
+    }
+    last
+}
+
+/// **A CUNHA, como número e nos QUATRO cantos.**
+///
+/// A união de duas faixas de meia-largura `w` tem quina RETA em `(w, w)`, então o alcance ao longo da
+/// bissetriz vale `w·√2` — **exatamente**, e sem escolher constante nenhuma. Uma cunha é esse alcance
+/// FALTANDO, e um mapa de um quadrante não distingue *ruído da borda esfarrapada* de *lei*: a foto
+/// mostra a cunha nos QUATRO cantos, e é isso que esta tabela mede.
+fn corner_reach_table(wash: &BrushSpec, smooth: &BrushSpec) {
+    println!("\n=== O ALCANCE DA QUINA (uniao de duas faixas ⇒ bissetriz = w·raiz(2)) ===");
+    println!("      cena                 w      esperado   ++     +-     -+     --");
+    let s = std::f32::consts::FRAC_1_SQRT_2;
+    for (label, spec) in [
+        ("LISA (warp 0)", *smooth),
+        (
+            "LISA + warp 6",
+            BrushSpec {
+                warp: 6.0,
+                ..*smooth
+            },
+        ),
+        ("PRODUTO (warp 6 + gran)", *wash),
+    ] {
+        let t = cross_two_strokes(spec);
+        // `w`: a meia-largura do braço, medida LONGE do cruzamento (o mesmo ombro solitário da tabela).
+        let mut w = 0.0f32;
+        let mut y = 0.0f32;
+        while y < 60.0 {
+            if alpha_at(&t, LONE_X, C + y) > INK {
+                w = y;
+            }
+            y += 0.5;
+        }
+        let expected = w * std::f32::consts::SQRT_2;
+        let r = [
+            ray_reach(&t, [s, s]),
+            ray_reach(&t, [s, -s]),
+            ray_reach(&t, [-s, s]),
+            ray_reach(&t, [-s, -s]),
+        ];
+        println!(
+            "   {label:22} {w:4.1}    {expected:6.1}   {:5.1}  {:5.1}  {:5.1}  {:5.1}",
+            r[0], r[1], r[2], r[3]
+        );
+    }
+
+    // O PERFIL ao longo da bissetriz: `ray_reach` devolve o ÚLTIMO ponto com tinta e por isso é CEGO
+    // a um buraco no meio — e um buraco cercado de tinta é exatamente a forma da cunha da foto.
+    println!("\n   perfil ao longo da bissetriz (d = 20..40, alpha*100)");
+    for (label, spec) in [
+        ("LISA (warp 0)", *smooth),
+        (
+            "LISA + warp 6",
+            BrushSpec {
+                warp: 6.0,
+                ..*smooth
+            },
+        ),
+        ("PRODUTO", *wash),
+    ] {
+        let t = cross_two_strokes(spec);
+        let mut line = String::new();
+        let mut d = 20.0f32;
+        while d <= 40.0 {
+            let a = alpha_at(&t, C + d * s, C + d * s);
+            line.push_str(&format!("{:4.0}", a * 100.0));
+            d += 1.0;
+        }
+        println!("   {label:16}{line}");
+    }
 }
 
 /// **O PREÇO do teto de dois lados, medido no lugar onde ele pode custar.**

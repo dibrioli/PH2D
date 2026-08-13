@@ -82,6 +82,17 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "offset",
             default: 0.0,
         },
+        // The REGION of the curve the layout is laid onto, as fractions of arc
+        // (the C4D Spline Wrap `From`/`To`). `0, 1` is the whole curve, which is
+        // the node that shipped.
+        ParamSpec {
+            name: "from",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "to",
+            default: 1.0,
+        },
         // Whether the wrapped element TURNS with the curve. `0` ⇒ `rot` is passed
         // through untouched, which is the node that shipped.
         ParamSpec {
@@ -137,6 +148,35 @@ fn amount_of(vals: &[f32]) -> f32 {
     vals.first().copied().unwrap_or(1.0)
 }
 
+/// **Onde na curva pousa a posição `u` do layout** — a pergunta é feita UMA vez.
+///
+/// `from`/`to` deitam o layout num TRECHO da curva (o *From/To* do C4D Spline
+/// Wrap: *"define the spline region where deformations occur, expressed as
+/// percentages"*) e `offset` desliza o resultado ao longo do arco. Animar o `to`
+/// de `from` até 1 é a REVELAÇÃO (write-on): os elementos saem todos empilhados
+/// no começo do trecho e se abrem ao longo da curva.
+///
+/// ⚠️ `from > to` é LEGÍTIMO e sai de graça: o layout percorre a curva ao
+/// contrário. Não há caso degenerado a guardar — `from == to` colapsa tudo num
+/// ponto, que é exatamente o quadro inicial de um write-on, e o `clamp` final
+/// cobre qualquer valor fora de `[0, 1]`.
+#[derive(Clone, Copy)]
+struct ArcMap {
+    from: f32,
+    to: f32,
+    offset: f32,
+}
+
+impl ArcMap {
+    /// ⚠️ Com `from = 0, to = 1` isto reduz LITERALMENTE ao `(u + offset)` que
+    /// shipava — `u * 1.0` é `u` e `0.0 + u` é `u` em IEEE-754 para todo `u` não
+    /// negativo, e `u` é `(x − xmin) / w`, que nunca é negativo por construção.
+    /// A identidade é MEDIDA por gate, não afirmada aqui.
+    fn s_at(self, u: f32) -> f32 {
+        (self.from + u * (self.to - self.from) + self.offset).clamp(0.0, 1.0)
+    }
+}
+
 /// The multiplicative falloff for element `i` (empty → 1.0).
 fn falloff_at(vals: &[f32], i: usize) -> f32 {
     match vals.len() {
@@ -159,11 +199,11 @@ fn wrap(
     p: &[P2],
     cp: &[P2; 4],
     height_scale: f32,
-    offset: f32,
+    map: ArcMap,
     amount: f32,
     falloff: &[f32],
 ) -> Vec<P2> {
-    wrap_with_frame(p, cp, height_scale, offset, amount, falloff).0
+    wrap_with_frame(p, cp, height_scale, map, amount, falloff).0
 }
 
 /// The same wrap, also returning **how much each element turned** — the angle of
@@ -181,7 +221,7 @@ fn wrap_with_frame(
     p: &[P2],
     cp: &[P2; 4],
     height_scale: f32,
-    offset: f32,
+    map: ArcMap,
     amount: f32,
     falloff: &[f32],
 ) -> (Vec<P2>, Vec<f32>) {
@@ -201,7 +241,7 @@ fn wrap_with_frame(
             let u = if w < EPS { 0.5 } else { (p[i][0] - xmin) / w };
             // Clamp (not wrap): the layout spans the curve [0,1]; `offset` slides it and
             // clamps at the ends, so the endpoint (u=1) stays on the curve end.
-            let s = (u + offset).clamp(0.0, 1.0);
+            let s = map.s_at(u);
             let (b, ut, un) = frame_at(cp, &lut, s);
             let wrapped = [
                 b[0] + un[0] * p[i][1] * height_scale,
@@ -229,7 +269,11 @@ impl NodeOp for MotionSplineWrap {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let follow = ctx.param("follow_rotation") >= 0.5;
         let height_scale = ctx.param("height_scale");
-        let offset = ctx.param("offset");
+        let map = ArcMap {
+            from: ctx.param("from"),
+            to: ctx.param("to"),
+            offset: ctx.param("offset"),
+        };
         let cp = [
             [ctx.param("p0x"), ctx.param("p0y")],
             [ctx.param("p1x"), ctx.param("p1y")],
@@ -244,7 +288,7 @@ impl NodeOp for MotionSplineWrap {
             _ => vec![[0.0, 0.0]; n],
         };
         let falloff = scalar_col(input, "falloff");
-        let (out_p, turn) = wrap_with_frame(&p, &cp, height_scale, offset, amount, &falloff);
+        let (out_p, turn) = wrap_with_frame(&p, &cp, height_scale, map, amount, &falloff);
         // The element's OWN rotation composes with the curve's frame — this is a
         // modifier on a layout that may already be oriented, not a source that
         // mints one (its sibling `motion.distribute_curve` SETS `rot` because
@@ -336,6 +380,26 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.01,
         widget: ParamWidget::Slider,
     },
+    // ⚠️ A faixa `0..1` do hint É a faixa que o motor honra (fora dela o `s_at`
+    // satura), então a caixa de texto não precisa de `ParamHardMin`/`Max` — os
+    // dois só sabem ALARGAR a caixa para fora do slider, e alargá-la aqui seria
+    // aceitar um número que o `clamp` desmente em silêncio.
+    ParamUiHint {
+        param: "from",
+        label: "From",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "to",
+        label: "To",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
     pt("p0x", "P0 X"),
     pt("p0y", "P0 Y"),
     pt("p1x", "P1 X"),
@@ -405,6 +469,12 @@ const fn pt(param: &'static str, label: &'static str) -> ParamUiHint {
 mod tests {
     use super::*;
 
+    /// A curva INTEIRA sem deslize -- o mapeamento que shipava.
+    const WHOLE: ArcMap = ArcMap {
+        from: 0.0,
+        to: 1.0,
+        offset: 0.0,
+    };
     const S_CURVE: [P2; 4] = [[-3.0, -1.5], [-1.0, 2.0], [1.0, -2.0], [3.0, 1.5]];
     const LINE: [P2; 4] = [[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]];
     // A symmetric arch (hump) — its arc-midpoint lifts clearly off the endpoint chord,
@@ -415,7 +485,7 @@ mod tests {
     #[test]
     fn amount_zero_is_the_identity() {
         let p = vec![[-2.0, 0.5], [0.0, -0.3], [2.0, 0.1]];
-        let out = wrap(&p, &S_CURVE, 1.0, 0.0, 0.0, &[]);
+        let out = wrap(&p, &S_CURVE, 1.0, WHOLE, 0.0, &[]);
         for (o, q) in out.iter().zip(&p) {
             assert!(
                 (o[0] - q[0]).abs() < 1e-5 && (o[1] - q[1]).abs() < 1e-5,
@@ -429,7 +499,7 @@ mod tests {
     #[test]
     fn a_row_on_a_straight_curve_stays_straight() {
         let p = vec![[-2.0, 0.4], [0.0, 0.4], [2.0, 0.4]];
-        let out = wrap(&p, &LINE, 1.0, 0.0, 1.0, &[]);
+        let out = wrap(&p, &LINE, 1.0, WHOLE, 1.0, &[]);
         // Constant normal (+y) ⇒ all share the same y; collinear.
         assert!((out[0][1] - out[1][1]).abs() < 1e-3 && (out[1][1] - out[2][1]).abs() < 1e-3);
     }
@@ -439,7 +509,7 @@ mod tests {
     #[test]
     fn a_row_on_a_curved_spline_bends() {
         let p = vec![[-3.0, 0.0], [0.0, 0.0], [3.0, 0.0]]; // a straight row along x
-        let out = wrap(&p, &ARCH, 1.0, 0.0, 1.0, &[]);
+        let out = wrap(&p, &ARCH, 1.0, WHOLE, 1.0, &[]);
         // Cross product of (mid−a) and (b−a): non-zero ⇒ the midpoint bent off the line.
         let (a, mid, b) = (out[0], out[1], out[2]);
         let cross = (mid[0] - a[0]) * (b[1] - a[1]) - (mid[1] - a[1]) * (b[0] - a[0]);
@@ -451,7 +521,7 @@ mod tests {
     fn falloff_masks_the_wrap() {
         let p = vec![[-3.0, 0.0], [0.0, 0.0], [3.0, 0.0]];
         let falloff = vec![1.0, 0.0, 1.0]; // middle element pinned
-        let out = wrap(&p, &S_CURVE, 1.0, 0.0, 1.0, &falloff);
+        let out = wrap(&p, &S_CURVE, 1.0, WHOLE, 1.0, &falloff);
         assert_eq!(out[1], p[1], "falloff 0 -> unchanged");
     }
 
@@ -530,3 +600,7 @@ mod tests {
 #[cfg(test)]
 #[path = "follow_tests.rs"]
 mod follow_tests;
+
+#[cfg(test)]
+#[path = "range_tests.rs"]
+mod range_tests;

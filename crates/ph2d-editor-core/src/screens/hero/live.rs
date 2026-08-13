@@ -19,7 +19,43 @@ pub(super) fn tick(hero: &mut HeroScreen, dt: f64) {
     for (id, target) in hero.store.hover_targets().collect::<Vec<_>>() {
         hero.motion.animate(id, target, crate::motion::Role::Fade);
     }
+    tick_palette_cascade(hero, dt);
     tick_fill_tether(hero, dt);
+}
+
+/// A CASCATA da paleta de comandos: os cartões chegam **um a seguir ao outro**, para que `N` deles
+/// se leiam como um gesto só em vez de um bloco que pisca.
+///
+/// ⚠️ **`Role::Travel` — e este é o PRIMEIRO consumidor dele no produto.** Até aqui o substrato
+/// tinha quatro papéis e o eixo que o *reduced motion* existe para matar **não era usado por
+/// ninguém**: o interruptor estava ligado a um cabo sem lâmpada. A subida dos cartões é a lâmpada.
+///
+/// ⚠️ **O alvo é escalonado; a MOLA não sabe disso.** Ver [`crate::motion::cascade_target`].
+///
+/// ⚠️ **Fechada, o horário ZERA e nenhum alvo é escrito.** Os tracks são podados sozinhos quando
+/// param de ser pintados (`ids_that_stop_being_painted_are_pruned`), então a reabertura encontra o
+/// mapa limpo e a primeira vista de cada cartão chega a `0` — que é o que a torna uma entrada.
+fn tick_palette_cascade(hero: &mut HeroScreen, dt: f64) {
+    let Some(model) = hero.store.command_palette_model() else {
+        hero.palette_open_secs = 0.0;
+        return;
+    };
+    let n = model.groups.len();
+    // ⚠️ **ALVEJA com o horário de AGORA e só então anda o relógio — e a sonda provou que a ordem
+    //    inversa apaga a wave inteira.** Somando primeiro, o quadro da abertura já traz `secs = dt`,
+    //    logo `dt > 0` e o cartão 0 nasce com alvo `1.0`; pela lei do substrato a **primeira vista
+    //    CHEGA ao alvo**, então ele apareceria assente e a cascata começaria no segundo cartão. Com
+    //    esta ordem todo cartão nasce em `0` no quadro da abertura, que é a interrupção que a mola
+    //    sabe integrar. Medido: `n=1` dava **0,02 s** (um quadro — o salto) e dá 0,37 s.
+    let secs = hero.palette_open_secs;
+    hero.palette_open_secs += dt;
+    for i in 0..n {
+        hero.motion.animate(
+            crate::widget::command_palette::cascade_id(i),
+            crate::motion::cascade_target(secs, i),
+            crate::motion::Role::Travel,
+        );
+    }
 }
 
 /// A CORDA do card de Fill: liga o sítio onde ele nasceu (a largada do ColorDrop) ao sítio para

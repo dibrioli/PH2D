@@ -598,6 +598,7 @@ pub fn paint_hero_screen(
         &mut hero.hit_index,
         &hero.store,
         viewport,
+        &hero.motion,
     );
     // M14.4e: file-drop overlay sits above EVERY layer (chrome,
     // tooltips, context menus) so the user always sees the "Drop to

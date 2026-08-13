@@ -358,3 +358,140 @@ fn reduced_motion_makes_a_hover_arrive_in_the_frame_it_changes() {
     m.animate(a, 0.0, Role::Travel);
     assert!((m.animate(a, 1.0, Role::Travel) - 1.0).abs() < 1e-6);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A CASCATA (F5) — o horário de alvos que faz N cartões lerem-se como UM gesto.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// **Quanto demora a entrada inteira**, medida pela porta do produto: `n` tracks alvejadas pelo
+/// MESMO horário que o `tick` usa, andadas a 60 Hz até a última assentar a 1% do alvo.
+///
+/// ⚠️ Isto NÃO é aritmética `(n−1)·ε + assentamento`: é o substrato a integrar, com a `ζ` que o
+/// carácter escolheu. O `#[ignore]` é a política das sondas — ela imprime, não afirma.
+#[test]
+#[ignore = "sonda: imprime a tabela que escolhe o CASCADE_STAGGER_SECS"]
+fn measure_the_cascade_total() {
+    fn total_secs(stagger: f64, n: usize, ch: UiCharacter) -> f64 {
+        let mut m = UiMotion::default();
+        m.set_character(ch);
+        let dt = 1.0 / 60.0;
+        let mut t = 0.0;
+        loop {
+            m.advance(dt);
+            // A MESMA ordem do `tick_palette_cascade`: alveja com o horário de agora, anda depois.
+            for i in 0..n {
+                #[allow(clippy::cast_precision_loss)]
+                let due = i as f64 * stagger;
+                m.animate(id(i as u64), f32::from(u8::from(t > due)), Role::Travel);
+            }
+            t += dt;
+            let settled =
+                (0..n).all(|i| m.get(id(i as u64)).is_some_and(|v| (v - 1.0).abs() < 0.01));
+            if settled || t > 5.0 {
+                return t;
+            }
+        }
+    }
+    for ch in [UiCharacter::Discrete, UiCharacter::Expressive] {
+        println!(
+            "\n=== {ch:?} (n=1, so o assentamento: {:.2} s) ===",
+            total_secs(0.0, 1, ch)
+        );
+        println!("  eps  |  n=3   |  n=7");
+        println!("-------|--------|-------");
+        for eps in [0.010, 0.015, 0.020, 0.040] {
+            println!(
+                " {eps:.3} | {:.2} s | {:.2} s",
+                total_secs(eps, 3, ch),
+                total_secs(eps, 7, ch)
+            );
+        }
+    }
+}
+
+/// ⭐ **A CASCATA lê-se como UM gesto — e isto é uma condição, não um gosto.**
+///
+/// O último cartão tem de COMEÇAR antes de o primeiro assentar; passando disso o que se vê é uma
+/// sequência. O carácter que aperta é o **Discreto**, por ser o default e o de assentamento mais
+/// curto. *Mutação: `CASCADE_STAGGER_SECS = 0.040` ⇒ espalhamento 0,24 s > 0,22 s ⇒ sangra.*
+#[test]
+fn the_cascade_still_reads_as_one_gesture() {
+    /// A maior paleta REAL: uma categoria por token `NodeCat*` (a global tem 3).
+    const N_MAX: usize = 7;
+    let mut m = UiMotion::default();
+    // ⚠️ SEMEIA em 0. A lei do substrato é que a primeira vista CHEGA ao alvo, então alvejar `1.0`
+    //    de entrada mede **um quadro** de assentamento e o gate passa a comparar contra nada — foi
+    //    a terceira vez que esta lei mordeu nesta wave (a sonda e o próprio produto foram as duas
+    //    primeiras). Uma fixture que não contém o fenómeno é verde sobre coisa nenhuma.
+    m.animate(id(0), 0.0, Role::Travel);
+    let mut settle = 0.0;
+    let dt = 1.0 / 60.0;
+    while settle < 5.0 {
+        m.advance(dt);
+        m.animate(id(0), 1.0, Role::Travel);
+        settle += dt;
+        if m.get(id(0)).is_some_and(|v| (v - 1.0).abs() < 0.01) {
+            break;
+        }
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let spread = (N_MAX - 1) as f64 * CASCADE_STAGGER_SECS;
+    assert!(
+        spread < settle,
+        "a cascata virou SEQUENCIA: espalhamento {spread:.3} s >= assentamento {settle:.3} s"
+    );
+}
+
+/// ⚠️ **E ela é VISÍVEL — o outro lado do intervalo.** Abaixo de um quadro dois cartões viram o
+/// alvo no mesmo tique e o escalonamento degrada para *dois a dois*.
+///
+/// ⚠️ **Pin de COMPILAÇÃO e não teste**, porque os dois lados são constantes: o `clippy` apontou-o
+/// (*«this assertion has a constant value»*) e tem razão — uma pergunta cuja resposta o compilador
+/// já sabe deve falhar no compilador. *Mutação: `0.015`, o valor que esta wave shipou primeiro
+/// ⇒ o crate deixa de compilar.*
+const _: () = assert!(
+    CASCADE_STAGGER_SECS >= 1.0 / 60.0,
+    "CASCADE_STAGGER_SECS abaixo de um quadro a 60 Hz: cartoes vizinhos viram o alvo juntos"
+);
+
+/// ⭐ **O quadro da ABERTURA alveja ZERO — sem isto não há cascata, e a suíte ficaria verde.**
+///
+/// A lei do substrato é que a **primeira vista CHEGA ao alvo**; se o cartão 0 nascer alvejado em
+/// `1.0` ele aparece assente e o gesto perde a cabeça. *Mutação: `>=` em vez de `>` ⇒ sangra.*
+#[test]
+fn every_card_is_targeted_at_zero_on_the_frame_the_palette_opens() {
+    for i in 0..7 {
+        assert_eq!(
+            cascade_target(0.0, i),
+            0.0,
+            "o cartao {i} nasce ja alvejado — a entrada dele nao acontece"
+        );
+    }
+    assert_eq!(cascade_target(0.001, 0), 1.0, "e o quadro seguinte parte");
+}
+
+/// A ordem CHEGA: o cartão `i` não parte antes da vez dele, e parte quando ela chega.
+#[test]
+fn a_later_card_leaves_later() {
+    assert_eq!(cascade_target(CASCADE_STAGGER_SECS * 2.5, 0), 1.0);
+    assert_eq!(cascade_target(CASCADE_STAGGER_SECS * 2.5, 2), 1.0);
+    assert_eq!(cascade_target(CASCADE_STAGGER_SECS * 2.5, 3), 0.0);
+}
+
+/// ⚠️ **A subida é `Role::Travel`, logo o *reduced motion* MATA-A — e o fade sobrevive.**
+///
+/// Este é o PRIMEIRO consumidor de `Travel` no produto: até aqui o interruptor de acessibilidade
+/// estava ligado a um cabo sem lâmpada. *Mutação: `cascade_rise` a ignorar `travels` ⇒ sangra.*
+#[test]
+fn reduced_motion_takes_the_rise_and_leaves_the_arrival() {
+    assert!(
+        cascade_rise(0.0, true) > 0.0,
+        "com movimento, o cartao sobe"
+    );
+    assert_eq!(
+        cascade_rise(0.0, false),
+        0.0,
+        "sem movimento, ele CHEGA sem viajar"
+    );
+    assert_eq!(cascade_rise(1.0, true), 0.0, "assente e assente");
+}

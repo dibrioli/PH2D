@@ -245,6 +245,74 @@ pub fn hover_lift(rect: crate::zones::Rect, t: f32, travels: bool) -> crate::zon
     crate::zones::Rect::new(rect.x - d, rect.y - d, rect.w + d * 2.0, rect.h + d * 2.0)
 }
 
+/// O atraso entre dois cartões consecutivos na CASCATA de entrada.
+///
+/// ⚠️ **O intervalo é apertado dos DOIS lados, e nenhum dos limites é gosto.**
+///
+/// **Em baixo, o QUADRO.** O horário é de relógio de parede, mas quem o amostra é o tique: com
+/// `ε` abaixo de um período (16,7 ms a 60 Hz) dois cartões vizinhos viram o alvo **no mesmo
+/// quadro**, e a cascata degrada para *dois a dois* — mais grossa do que a que se pediu, e
+/// invisível como escalonamento.
+///
+/// **Em cima, a SOBREPOSIÇÃO.** Uma cascata existe para que `N` coisas se leiam como **um** gesto,
+/// e isso tem uma condição verificável: *o último cartão tem de começar antes de o primeiro
+/// assentar* — `(n − 1)·ε < assentamento`. Passando disso, o que se vê é uma **sequência**.
+///
+/// Medido pela `measure_the_cascade_total` (o substrato a integrar, não aritmética), com
+/// `n = 7` — a maior paleta REAL, uma categoria por token `NodeCat*`; a global tem 3:
+///
+/// | ε | Discreto n=7 | Expressivo n=7 |
+/// |---|---|---|
+/// | 0,010 | 0,27 s | 0,57 s |
+/// | 0,015 | 0,30 s | 0,60 s |
+/// | **0,020** | **0,33 s** | **0,63 s** |
+/// | 0,040 | 0,45 s | 0,75 s |
+///
+/// O assentamento sozinho (`n = 1`) é **0,22 s** em Discreto e **0,37 s** em Expressivo, e o
+/// **Discreto é o que aperta** por ser o default E o mais rápido: `6·ε < 0,22` ⇒ `ε < 0,037`.
+/// `0,020` é o valor que fica **acima de um quadro** e ainda deixa a sobreposição com folga
+/// (0,12 s de espalhamento contra 0,22 s de assentamento).
+///
+/// ⚠️ **E a primeira versão desta constante era 0,015, escolhida sobre uma tabela que eu tinha
+/// calculado em vez de medido, e com `n = 17` INVENTADO.** Os dois erros apontavam para o mesmo
+/// lado: 0,015 fica **abaixo** de um quadro a 60 Hz.
+pub const CASCADE_STAGGER_SECS: f64 = 0.020;
+
+/// Quanto um cartão SOBE ao entrar. ⚠️ **Número de APARÊNCIA**, irmão do [`HOVER_LIFT_PX`], e maior
+/// que ele pelo mesmo motivo que um cartão é maior que um chip: 3 px sobre 300 não se vê.
+pub const CASCADE_RISE_PX: f32 = 12.0;
+
+/// O ALVO do cartão `index` quando a superfície está aberta há `open_secs`.
+///
+/// ⚠️ **A comparação é ESTRITA, e é ela que faz a cascata existir.** Com `>=`, o cartão 0 tem alvo
+/// `1.0` no próprio quadro da abertura — e a lei do substrato é que a **primeira vista CHEGA ao
+/// alvo** (`a_first_sight_arrives_at_the_target…`), logo ele apareceria já assente e o gesto
+/// perderia a cabeça. Com `>`, todo cartão nasce em `0` no quadro da abertura e só então recebe um
+/// alvo novo — que é exactamente a interrupção que o substrato sabe integrar.
+///
+/// ⚠️ **O escalonamento é um HORÁRIO de alvos, não uma lei nova.** O substrato não sabe o que é um
+/// atraso, e não precisa: quem chega tarde é o *alvo*, não a mola. Um `delay` dentro do `Track`
+/// seria um segundo relógio ao lado do que já existe.
+#[must_use]
+pub fn cascade_target(open_secs: f64, index: usize) -> f32 {
+    #[allow(clippy::cast_precision_loss)]
+    let due = index as f64 * CASCADE_STAGGER_SECS;
+    f32::from(u8::from(open_secs > due))
+}
+
+/// O deslocamento vertical que um cartão DESENHA com a entrada `t` presente.
+///
+/// ⚠️ **O hit NÃO acompanha, e é a MESMA lei do [`hover_lift`]** — o alvo que o dedo procura não
+/// pode estar noutro sítio do que o alvo que o olho vê. Aqui ela morde mais forte: durante a
+/// entrada o cartão anda **12 px**, e um clique apressado cairia numa row vizinha.
+#[must_use]
+pub fn cascade_rise(t: f32, travels: bool) -> f32 {
+    if !travels {
+        return 0.0;
+    }
+    CASCADE_RISE_PX * (1.0 - t.clamp(0.0, 1.0))
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct UiMotion {
     tracks: BTreeMap<NodeId, Track>,

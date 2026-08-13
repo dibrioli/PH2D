@@ -80,3 +80,82 @@ fn enter_is_a_noop_on_empty_or_no_match() {
     assert_eq!(top_match(&model(), ""), None, "empty search adds nothing");
     assert_eq!(top_match(&model(), "zzz"), None, "no match adds nothing");
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A CASCATA de entrada (F5)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Pinta a paleta e devolve o retângulo REGISTADO do item `label`, com a cascata em `t`.
+fn hit_rect_with_cascade(t: f32) -> crate::zones::Rect {
+    let mut scene = ph2d_vector::VectorScene::new();
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let mut hit = crate::interaction::HitIndex::new();
+    let mut motion = crate::motion::UiMotion::default();
+    // A primeira vista CHEGA ao alvo ⇒ isto crava o track em `t` exactamente.
+    for i in 0..8 {
+        motion.animate(cascade_id(i), t, crate::motion::Role::Travel);
+    }
+    paint(
+        &mut scene,
+        &mut ts,
+        ph2d_tokens::Theme::Forge,
+        &mut hit,
+        &model(),
+        "",
+        crate::zones::Rect::new(0.0, 0.0, 1600.0, 900.0),
+        &motion,
+    );
+    hit.rect_for(hash_node_id("Grid"))
+        .expect("o pill Grid regista")
+}
+
+/// ⭐ **O DESENHO anda, o ALVO não — a lei da wave.**
+///
+/// Durante a entrada o cartão está 12 px abaixo do sítio onde vai assentar. Se o `hit_index`
+/// registasse aí, um clique apressado cairia na row de cima — e um alvo que foge debaixo do dedo é
+/// pior que uma entrada que não existe. É a mesma lei que o `hover_lift` já carrega.
+///
+/// *Mutação: registar em `dy` em vez de `oy` ⇒ sangra (o retângulo desce 12 px).*
+#[test]
+fn the_entrance_moves_the_drawing_and_never_the_target() {
+    let flying = hit_rect_with_cascade(0.0);
+    let settled = hit_rect_with_cascade(1.0);
+    assert!(
+        (flying.y - settled.y).abs() < 0.001,
+        "o alvo FUGIU durante a entrada: y {} em voo contra {} assente",
+        flying.y,
+        settled.y
+    );
+    assert!((flying.x - settled.x).abs() < 0.001, "nem de lado");
+}
+
+/// ⚠️ E ela **DESENHA** mesmo diferente — senão o gate acima é verde por vácuo, sobre uma cascata
+/// que não existe. O oráculo é `encoding().n_paths`-vizinho: os dados de caminho REAIS.
+#[test]
+fn the_entrance_actually_moves_the_drawing() {
+    fn drawn(t: f32) -> Vec<u32> {
+        let mut scene = ph2d_vector::VectorScene::new();
+        let mut ts = ph2d_text::TextSystem::without_system_fonts();
+        let mut hit = crate::interaction::HitIndex::new();
+        let mut motion = crate::motion::UiMotion::default();
+        for i in 0..8 {
+            motion.animate(cascade_id(i), t, crate::motion::Role::Travel);
+        }
+        paint(
+            &mut scene,
+            &mut ts,
+            ph2d_tokens::Theme::Forge,
+            &mut hit,
+            &model(),
+            "",
+            crate::zones::Rect::new(0.0, 0.0, 1600.0, 900.0),
+            &motion,
+        );
+        scene.inner().encoding().path_data.clone()
+    }
+    assert_ne!(
+        drawn(0.0),
+        drawn(1.0),
+        "a cascata nao desenha nada de diferente — a wave inteira e um no-op"
+    );
+}

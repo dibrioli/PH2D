@@ -30,6 +30,10 @@ use ph2d_vector::{Color, VectorScene};
 mod layout;
 use layout::arrange;
 
+/// **QUANDO cada cartão chega** — a 3ª responsabilidade (desenha · mede · entra).
+mod cascade;
+pub use cascade::cascade_id;
+
 /// The close-X in the header.
 pub const CMD_PALETTE_CLOSE: NodeId = hash_node_id("command_palette.close");
 /// The full-viewport scrim barrier — a click here (outside the card) closes the palette.
@@ -204,6 +208,7 @@ struct CardLayout {
 /// Paint the palette over the whole `viewport` (a no-op decision is the chrome handler's; by the time we
 /// are called the palette is open). Registers hit rects for the scrim (first, so it loses), the card
 /// (next), and the close-X + every item pill (last, so they win inside the card).
+#[allow(clippy::too_many_arguments)]
 pub fn paint(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
@@ -212,6 +217,7 @@ pub fn paint(
     model: &PaletteModel,
     query: &str,
     viewport: Rect,
+    motion: &crate::motion::UiMotion,
 ) {
     // ── The live search text filters the model (empty = show everything). Filtering keeps only the
     //    matching items and drops emptied sub-clusters / categories; `Enter` adds the same top match. ──
@@ -367,8 +373,25 @@ pub fn paint(
             resolve(ColorToken::Text2, theme),
         );
     } else {
-        for (cl, ox, oy, w) in &placed {
-            paint_card(scene, ts, theme, hit_index, cl, *ox, content_y + *oy, *w);
+        // ⚠️ A CASCATA: o cartão `i` desenha-se subido por `cascade_rise(t)` e o hit regista na
+        //    posição ASSENTE. É a mesma lei do `hover_lift` — o alvo que o dedo procura não pode
+        //    estar noutro sítio do que o alvo que o olho vê —, e aqui ela morde mais forte, porque
+        //    12 px de deslocamento poriam um clique apressado na row de cima.
+        let travels = motion.travels();
+        for (i, (cl, ox, oy, w)) in placed.iter().enumerate() {
+            let t = motion.get(cascade_id(i)).unwrap_or(1.0);
+            let settled_y = content_y + *oy;
+            paint_card(
+                scene,
+                ts,
+                theme,
+                hit_index,
+                cl,
+                *ox,
+                settled_y,
+                *w,
+                crate::motion::cascade_rise(t, travels),
+            );
         }
     }
 
@@ -388,9 +411,13 @@ fn paint_card(
     ox: f32,
     oy: f32,
     card_w: f32,
+    rise: f32,
 ) {
+    // ⚠️ `oy` é a posição ASSENTE — a que o dedo procura — e `dy` a que o olho vê durante a
+    //    entrada. Tudo o que DESENHA lê `dy`; o único `register` deste corpo lê `oy`.
+    let dy = oy + rise;
     let radius = Radius::Md.px();
-    let card = Rect::new(ox, oy, card_w, cl.height);
+    let card = Rect::new(ox, dy, card_w, cl.height);
     fill_rounded_rect(scene, card, radius, resolve(ColorToken::Bg2, theme));
     stroke_rounded_rect(scene, card, radius, 1.0, resolve(ColorToken::Border, theme));
 
@@ -402,7 +429,7 @@ fn paint_card(
         match p {
             Placed::Header { title, count, y } => {
                 let hx = ox + CARD_PAD;
-                let hy = oy + *y;
+                let hy = dy + *y;
                 dot(scene, hx + DOT_R, hy + sm * 0.5, cat_color);
                 let label = format!("{title} \u{00b7} {count}");
                 paint_text(
@@ -429,14 +456,14 @@ fn paint_card(
                     scene,
                     title,
                     ox + *x,
-                    oy + *y,
+                    dy + *y,
                     xs,
                     content_w,
                     resolve(ColorToken::Text2, theme),
                 );
             }
             Placed::Pill { rect, id, label } => {
-                let r = Rect::new(ox + rect.x, oy + rect.y, rect.w, rect.h);
+                let r = Rect::new(ox + rect.x, dy + rect.y, rect.w, rect.h);
                 fill_rounded_rect(scene, r, Radius::Sm.px(), resolve(ColorToken::Bg3, theme));
                 dot(scene, r.x + PILL_PAD_X + DOT_R, r.y + r.h * 0.5, cat_color);
                 paint_text(
@@ -449,7 +476,9 @@ fn paint_card(
                     r.w - PILL_PAD_X * 2.0 - DOT_R * 2.0,
                     resolve(ColorToken::Text1, theme),
                 );
-                hit_index.register(*id, r);
+                // ⚠️ ASSENTE, nunca `r`: durante a entrada o cartão está 12 px abaixo, e um
+                //    clique apressado cairia na row de cima.
+                hit_index.register(*id, Rect::new(ox + rect.x, oy + rect.y, rect.w, rect.h));
             }
         }
     }

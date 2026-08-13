@@ -123,6 +123,13 @@ pub struct HeroScreen {
     /// ⚠️ Ao lado do store, nunca DENTRO dele: aquele é o estado semântico que dezenas de gates
     /// comparam, e animação misturada ali faria cada um passar a ver ruído.
     pub motion: crate::motion::UiMotion,
+    /// Há quanto tempo a paleta de comandos está ABERTA, em segundos de relógio de parede.
+    ///
+    /// ⚠️ **É o horário da cascata, e não um segundo relógio.** Os alvos de
+    /// [`crate::motion::cascade_target`] são função disto; quem integra continua a ser o substrato.
+    /// Zera ao FECHAR — senão a segunda abertura nasce com o horário já vencido e os cartões
+    /// aparecem todos de uma vez, que é a cascata a existir só na primeira vez.
+    pub palette_open_secs: f64,
     /// Per-frame hit-test index. Cleared at the start of each
     /// `paint_hero_screen` call and re-populated as painters emit
     /// geometry.
@@ -277,6 +284,7 @@ impl HeroScreen {
         Self::pre_populate_store(&mut store);
         Self {
             motion: crate::motion::UiMotion::default(),
+            palette_open_secs: 0.0,
             tether: crate::tether::Tether::default(),
             id,
             theme: Theme::Forge,

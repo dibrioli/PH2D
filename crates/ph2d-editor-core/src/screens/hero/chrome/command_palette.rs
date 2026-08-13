@@ -29,6 +29,7 @@ pub fn paint_command_palette(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     viewport: Rect,
+    motion: &crate::motion::UiMotion,
 ) {
     let Some(model) = store.command_palette_model() else {
         return;
@@ -41,6 +42,7 @@ pub fn paint_command_palette(
         model,
         store.command_palette_query(),
         viewport,
+        motion,
     );
 }
 
@@ -205,5 +207,30 @@ mod tests {
         hero.store.close_command_palette();
         hero.store.command_palette_push_char('z');
         assert_eq!(hero.store.command_palette_query(), "");
+    }
+
+    /// ⭐ **O QUADRO da abertura alveja ZERO — e sem este gate a ordem no tique pode inverter-se
+    /// em silêncio.**
+    ///
+    /// O `every_card_is_targeted_at_zero_on_the_frame_the_palette_opens` prova a LEI (a função
+    /// pura); este prova o **CHAMADOR**. Somando `dt` antes de alvejar, o quadro da abertura já
+    /// traz `secs = dt`, o cartão 0 nasce alvejado em `1.0`, e pela lei do substrato a primeira
+    /// vista CHEGA — ele aparece assente e a cascata começa no segundo cartão. A sonda apanhou-o
+    /// (media 0,02 s de entrada, um quadro), e a suíte inteira estava VERDE sobre isso.
+    ///
+    /// *Mutação: `hero.palette_open_secs += dt;` antes do `let secs` ⇒ sangra.*
+    #[test]
+    fn the_first_frame_of_the_cascade_targets_zero() {
+        let mut hero = HeroScreen::new(ph2d_a11y::NodeId(1));
+        hero.store.open_command_palette(model());
+        hero.tick_motion(1.0 / 60.0);
+        let t0 = hero
+            .motion
+            .get(crate::widget::command_palette::cascade_id(0))
+            .expect("o cartao 0 tem track no primeiro tique");
+        assert!(
+            t0.abs() < 0.001,
+            "o cartao 0 nasceu em {t0} — ele nao ENTRA, ele aparece"
+        );
     }
 }

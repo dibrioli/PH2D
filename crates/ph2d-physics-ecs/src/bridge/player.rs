@@ -108,6 +108,8 @@ impl PhysicsBridge {
         // está a tremer"* aquilo que é só a história a somar-se. A capacidade do
         // `Vec` fica.
         self.player_probes.clear();
+        // As faixas descrevem a lista, então vivem e morrem com ela.
+        self.player_probe_anchors.clear();
         let world = sim.world();
         let gravity = self.world.gravity();
         let dt = self.world.dt();
@@ -357,6 +359,13 @@ impl PhysicsBridge {
             // que sai daí é a metade que o artista não consegue ver hoje: sem
             // ela, *"a capacidade está desligada"* e *"o alcance é curto demais"*
             // produzem o mesmo nada na tela.
+            //
+            // ⚠️ **E de que CORPO é este pedaço da lista** — a âncora que o
+            // `readback` usa para o pousar onde o corpo ESTÁ, e não onde ele
+            // estava quando o cast partiu (`reanchor_player_probes`). A faixa é
+            // gravada aqui, ao lado das marcas, porque este é o único ponto que
+            // conhece as duas coisas ao mesmo tempo.
+            let from = self.player_probes.len();
             marks::record_marks(
                 &mut self.player_probes,
                 &self.world,
@@ -377,6 +386,8 @@ impl PhysicsBridge {
                 // `record_marks`.
                 ledge_asked.then_some(ledge.as_ref()),
             );
+            self.player_probe_anchors
+                .push((b.handle, from, self.player_probes.len(), origin));
 
             // ── O FLUIDO (W-Submerged) ───────────────────────────────────────
             // ⚠️ **Não há `*_wanted` aqui, e a assimetria é deliberada:** os três
@@ -589,79 +600,9 @@ impl PhysicsBridge {
                 .apply_player_reaction(r.ground, r.player, r.accel, r.boost, r.at);
         }
         // ── O MOVIMENTO CINEMÁTICO (W-KinMove) ───────────────────────────────
-        // ⚠️ **Por último, e a ordem importa:** a reação já foi enfileirada
-        // contra o chão, e o `move_shape` lê o BVH que o `step` ANTERIOR deixou
-        // (o mesmo contrato do sensor, ver o topo do módulo) — nada aqui depende
-        // dos impulsos deste tique.
-        // ⚠️ **UM buffer para o laço inteiro**, limpo pela porta que o preenche
-        // (ver `move_character`): uma lista por personagem seria uma alocação
-        // por player por tique, para carregar no máximo um punhado de contatos.
-        let mut hits: Vec<CharacterHit> = Vec::new();
-        let mut pushes: Vec<Push> = Vec::new();
-        for m in moves {
-            let got = self
-                .world
-                .move_character(m.handle, m.wanted, m.params, m.passing, m.layer, &mut hits);
-            // ── O EMPURRÃO (W-KinPush) ───────────────────────────────────────
-            //
-            // ⚠️ **Um corpo cinemático tem massa INFINITA para o solver**, então
-            // o `move_shape` desliza contra um caixote solto sem lhe transmitir
-            // nada — medido, o dinâmico o empurra 16,55 m em 3 s e o cinemático
-            // 0,0000. A 3ª lei já atravessa o modo no eixo VERTICAL (a
-            // `reaction`, K6); isto é a metade lateral dela.
-            //
-            // ⚠️ **UM empurrão por CORPO, e é o que impede a contagem dupla:**
-            // o controlador desliza em iterações e pode relatar o mesmo corpo
-            // várias vezes; somar cada relatório entregaria a mesma quantidade
-            // de movimento duas vezes ao mesmo caixote.
-            push::push_from_hits(&m.react, m.wanted, got.translation, &hits, &mut pushes);
-            for &(body, transfer, at) in &pushes {
-                // ⚠️ **A conversão é a da reação vertical**: um deslocamento de
-                // um tique É uma velocidade quando dividido pelo tique, que é
-                // exatamente o que o canal `boost` significa (`Δv·m`).
-                //
-                // ⚠️ **Mas a ENTREGA é por SUB-PASSO** (§8.2, escolha do Enio),
-                // e é o que separa esta metade da vertical. Entregue de uma vez,
-                // o bloqueio inteiro do tique entrava como UMA martelada num
-                // ponto alto do caixote e `r × F` fazia o resto — medido, um
-                // caixote pequeno dava **12 voltas em 3 s** (74,29 rad) contra
-                // 0,3175 do corpo dinâmico, e o giro seguia a ALAVANCA (some
-                // quando o contato desce até o centro de massa).
-                //
-                // O dinâmico empurra com força SUSTENTADA por sub-passo, e essa
-                // é literalmente a diferença medida — então a cura é entregar
-                // pelo mesmo mecanismo, não capar o torque com um número novo.
-                let _ = at;
-                self.world
-                    .apply_player_push(body, m.handle, [transfer[0] / dt, transfer[1] / dt]);
-            }
-            if let Some(pose) = self.world.body_pose(m.handle) {
-                // ⚠️ **`set_next_kinematic_pose`, nunca uma escrita direta:** é
-                // ela que faz o solver tratar o corpo como MOVENDO-SE, e é isso
-                // que o faz empurrar o que toca em vez de o atravessar.
-                self.world.set_next_kinematic_pose(
-                    m.handle,
-                    pose.translation.x + got.translation[0],
-                    pose.translation.y + got.translation[1],
-                    pose.rotation.angle(),
-                );
-            }
-            // ⚠️ **E o que o mundo NÃO deixou acontecer volta como velocidade**
-            // — sem isto o personagem acelera contra uma parede para sempre e
-            // sai disparado quando ela acaba (ver `kinematic_settle`).
-            if let Some(st) = self.player_state.get_mut(&m.entity) {
-                st.kin = kinematic_settle(
-                    m.advanced,
-                    m.wanted,
-                    got.translation,
-                    // ⚠️ **A pergunta do INTEGRADOR** (ver `KinematicState::grounded`)
-                    // — quem responde é quem TOCOU no mundo. A resposta da LEI
-                    // sobre chão continua a `footing`, nos dois modos (K4).
-                    got.grounded,
-                    dt,
-                );
-            }
-        }
+        // O laço COLHEU; quem APLICA é o irmão `player_kinmove` — ver
+        // `Self::apply_kin_moves` para a ordem e o porquê dela.
+        self.apply_kin_moves(moves, dt);
     }
 }
 
@@ -688,6 +629,11 @@ mod drops;
 
 #[path = "player_push.rs"]
 mod push;
+
+/// **O MOVIMENTO CINEMÁTICO** — irmão por RESPONSABILIDADE: aqui o laço COLHE
+/// (o cast toma `&self`), lá a ponte APLICA (a pose toma `&mut self`).
+#[path = "player_kinmove.rs"]
+mod kinmove;
 use push::Push;
 
 /// O handle do rapier, nomeado sem importar o rapier aqui — esta crate declara-se

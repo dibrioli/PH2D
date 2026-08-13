@@ -61,6 +61,13 @@ impl PhysicsBridge {
     /// *"raízes primeiro"* consertaria um nível e deixaria o neto com o mesmo
     /// defeito (gate `the_order_holds_for_a_chain_three_levels_deep`).
     pub(super) fn readback(&mut self, sim: &mut SimWorld) {
+        // ⚠️ **E os SENSORES saem daqui junto com as poses** — a leitura foi
+        // gravada antes do `step` e a pose sai depois, então publicá-las de
+        // estados do mundo diferentes é o que punha o leque um tique atrás da
+        // cápsula ([`Self::reanchor_player_probes`], que traz o número). Aqui, e
+        // não em cada ramo: este é o ponto por onde as DUAS rotas que dão passo
+        // passam (o laço de tiques e o replay do rewind).
+        self.reanchor_player_probes();
         // O scratch sai de `self` para o laço de escrita poder emprestar `chain`.
         let mut order = std::mem::take(&mut self.readback_order);
         order.clear();

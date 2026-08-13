@@ -20,6 +20,7 @@ use super::probes::{
     wall_rays,
 };
 use super::*;
+use crate::ProbeShape;
 
 /// **A LEITURA** (`W-Probes`) — o que cada sensor olhou e o que respondeu, para
 /// quem desenha.
@@ -267,8 +268,77 @@ impl crate::PhysicsBridge {
     /// relógio a andar e *"o overlay achou"* com ele parado. O que o artista
     /// precisa de ver é **até onde o sensor alcança**, e é isso que a marca
     /// desenha contra a parede.
+    /// **A marca é do CORPO: ela pousa onde o corpo ESTÁ, não onde ele estava**
+    /// (`W-ProbeAnchor`).
+    ///
+    /// # ⚠️ O defeito que isto fecha, com o número
+    ///
+    /// A leitura é gravada **antes** do `step` — tem de ser, porque é ela que a
+    /// lei consome para decidir o tique — e o `readback` publica a pose **depois**.
+    /// Então o overlay desenhava a cápsula no fim do tique e o leque de sensores
+    /// no começo dele: medido pela porta do produto, um personagem a andar deixa
+    /// os sensores **0,1000 m atrás** em regime (a distância que ele percorre num
+    /// tique a 6 m/s), constante e para sempre — o *"drift dos gizmos"* que o
+    /// Enio reportou com foto. Num arranque a 18 m/s são 0,3 m; parado é zero, e
+    /// é por isso que nenhuma cena de repouso o mostrava.
+    ///
+    /// # ⚠️ Traduzir, e não re-castar
+    ///
+    /// Re-perguntar ao mundo depois do passo seria uma **segunda resposta** a
+    /// *"o que este sensor viu neste tique?"* — e ela discordaria da que a lei
+    /// usou, que é a única que produziu movimento. O que muda aqui é só a
+    /// ÂNCORA: o leque inteiro é rígido em relação ao corpo, então deslocá-lo
+    /// pelo que o corpo andou mantém `hit`, `reach` e `skin` exatamente como
+    /// foram medidos, e põe o desenho no corpo a que ele pertence.
+    ///
+    /// ⚠️ **O `Sweep` não é tocado, e a assimetria é a prova:** ele já viaja
+    /// como `(corpo, deslocamento)` e o overlay o resolve contra a pose viva —
+    /// por isso ele **nunca** driftou. Deslocá-lo aqui somaria o movimento do
+    /// corpo a um número que já é relativo a ele. Os irmãos `Ray`/`Profile`
+    /// viajam em mundo e são estes que precisam da âncora.
+    ///
+    /// ⚠️ **DRENA as faixas**, então é idempotente e um caminho que não gravou
+    /// nenhuma (o `preview`, que já deriva da pose viva) é um no-op.
+    pub(crate) fn reanchor_player_probes(&mut self) {
+        for (handle, from, to, cast_at) in self.player_probe_anchors.drain(..) {
+            let Some(pose) = self.world.body_pose(handle) else {
+                continue;
+            };
+            let d = [
+                pose.translation.x - cast_at[0],
+                pose.translation.y - cast_at[1],
+            ];
+            if d[0] == 0.0 && d[1] == 0.0 {
+                continue;
+            }
+            for m in &mut self.player_probes[from..to] {
+                match &mut m.shape {
+                    ProbeShape::Ray { origin, .. } => {
+                        origin[0] += d[0];
+                        origin[1] += d[1];
+                    }
+                    ProbeShape::Profile { top, .. } => {
+                        top[0] += d[0];
+                        top[1] += d[1];
+                    }
+                    // Já é relativo ao corpo — ver o aviso acima.
+                    ProbeShape::Sweep { .. } => {}
+                }
+            }
+        }
+    }
+
     pub(crate) fn preview_player_probes(&mut self, sim: &SimWorld) {
         self.player_probes.clear();
+        // Ela deriva da pose VIVA, então não há âncora a resolver — e faixas de
+        // um dispatch anterior descreveriam índices desta lista nova.
+        //
+        // ⚠️ **Higiene, e não uma defesa que carrega peso — medido:** a mutação
+        // que apaga esta linha **sobrevive à suíte inteira**, porque as faixas
+        // já não podem estar cheias aqui (o `reanchor` as DRENA e o
+        // `drive_players` as limpa antes de as reencher). Ela fica pelo dia em
+        // que uma rota nova publique marcas sem passar por nenhum dos dois.
+        self.player_probe_anchors.clear();
         let world = sim.world();
         for (&entity, b) in self.bodies.iter() {
             let Some(cfg) = world.get::<PlatformPlayer>(entity) else {

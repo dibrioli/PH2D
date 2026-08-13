@@ -12,24 +12,20 @@
 //! suíte inteira fica verde — o personagem só passa a pular meio segundo cedo
 //! demais numa rampa, e ninguém liga isso a este arquivo.
 
-use std::fs;
+/// **O TEXTO da ponte** — a porta única do assunto, partilhada com o
+/// `the_push_is_our_law` por `#[path]`.
+#[path = "player_bridge_source.rs"]
+mod src_of;
+use src_of::{player_family, player_loop};
 
-fn bridge_player() -> String {
-    fs::read_to_string(format!(
-        "{}/src/bridge/player.rs",
-        env!("CARGO_MANIFEST_DIR")
-    ))
-    .expect("o arquivo da ponte do player tem de existir")
-}
-
-/// **O CONTROLE:** o scanner encontra o arquivo e ele tem o que se espera.
+/// **O CONTROLE:** o scanner encontra a família e ela tem o que se espera.
 ///
 /// ⚠️ Sem isto um caminho errado deixa as duas afirmações abaixo verdes por
 /// vácuo (`0 ocorrências` satisfaz *"no máximo uma"*), que é a forma de gate que
 /// não pode falhar pelo motivo que alega.
 #[test]
 fn the_scanner_reads_the_bridge_it_claims_to_scan() {
-    let src = bridge_player();
+    let src = player_family();
     assert!(
         src.contains("player_motor("),
         "o scanner tem de achar a chamada da lei"
@@ -43,7 +39,7 @@ fn the_scanner_reads_the_bridge_it_claims_to_scan() {
 /// **A LEI recebe a `footing`, e o `grounded` do controlador não a alcança.**
 #[test]
 fn the_controllers_grounded_only_reaches_the_integrator() {
-    let src = bridge_player();
+    let src = player_family();
 
     // Um só sítio lê o `grounded` do `CharacterMove`, e ele está DENTRO da
     // chamada do assentamento.
@@ -114,7 +110,7 @@ fn the_controllers_grounded_only_reaches_the_integrator() {
 /// esta é a que diz **onde** a resposta tem de ser tomada.
 #[test]
 fn the_law_is_handed_the_velocity_the_ground_already_holds() {
-    let src = bridge_player();
+    let src = player_loop();
     let stand = src
         .find("let stand = footing(")
         .expect("a resposta da lei sobre chao tem de existir");

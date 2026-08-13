@@ -414,6 +414,21 @@ pub struct PhysicsBridge {
     /// sensor, e marcas de um tique que já não corre descreveriam um mundo que o
     /// artista pode desmontar com a mão.
     player_probes: Vec<player_view::ProbeMark>,
+
+    /// **De que CORPO é cada pedaço dessa lista, e de onde ele foi lançado** —
+    /// o que [`PhysicsBridge::reanchor_player_probes`] precisa para pousar as
+    /// marcas onde o corpo ESTÁ.
+    ///
+    /// ⚠️ **Não é atribuição por gosto: é a âncora.** A leitura é gravada
+    /// ANTES do `step` (é ela que a lei consome para decidir o tique), e o
+    /// `readback` publica a pose DEPOIS — então a marca descreve a origem de um
+    /// tique atrás do corpo que o artista vê. Sem esta faixa não há como
+    /// perguntar *"quanto este corpo andou desde que o sensor olhou?"*, porque
+    /// a lista publicada é plana e uma cena pode ter vários players.
+    ///
+    /// `(corpo, início, fim, origem do cast)`. Reusado como o `player_probes`,
+    /// e pela mesma razão.
+    player_probe_anchors: Vec<(RigidBodyHandle, usize, usize, [f32; 2])>,
 }
 
 impl Default for PhysicsBridge {
@@ -427,6 +442,7 @@ impl PhysicsBridge {
         Self {
             world: PhysicsWorld::new(),
             player_probes: Vec::new(),
+            player_probe_anchors: Vec::new(),
             bodies: BTreeMap::new(),
             last_stepped: 0,
             query: None,

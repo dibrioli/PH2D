@@ -528,3 +528,131 @@ fn the_authored_lookahead_changes_how_far_the_ceiling_profile_looks() {
         rise(0.0)
     );
 }
+
+// ─── A ÂNCORA (`W-ProbeAnchor`) ──────────────────────────────────────────────
+
+/// Onde o corpo está AGORA, pela pose que o `readback` publicou.
+fn body_xy(r: &Rig) -> [f32; 2] {
+    let t = r
+        .sim
+        .world()
+        .get::<Transform>(r.player)
+        .expect("o player tem Transform");
+    [t.translation.x, t.translation.y]
+}
+
+/// A origem do raio da perna **relativa ao corpo** — o número que tem de ser o
+/// mesmo parado e em movimento.
+fn leg_offset(r: &Rig) -> [f32; 2] {
+    let b = body_xy(r);
+    let (o, ..) = as_ray(
+        r.of(ProbeKind::Ground)
+            .first()
+            .expect("a perna e' castada em todo tique"),
+    );
+    [o[0] - b[0], o[1] - b[1]]
+}
+
+/// Um tique, e o que ele mediu: *quanto o corpo andou* e *onde o leque pousou*.
+fn one_tick(r: &mut Rig, t: &mut u64, input: PlayerInput) -> ([f32; 2], [f32; 2]) {
+    let before = body_xy(r);
+    *t = r.run(*t, 1, input);
+    let after = body_xy(r);
+    ([after[0] - before[0], after[1] - before[1]], leg_offset(r))
+}
+
+/// **O leque de sensores é RÍGIDO em relação ao corpo** — ele pousa onde o
+/// corpo ESTÁ, não onde ele estava quando o cast partiu.
+///
+/// ⚠️ **O oráculo é a RELAÇÃO, e não uma coordenada:** a leitura é gravada antes
+/// do `step` (é ela que a lei consome) e a pose sai depois, então o defeito é um
+/// atraso — medido em **0,1000 m em regime** a andar, a distância exata que o
+/// corpo percorre num tique. Um gate que cravasse a origem em mundo teria de
+/// saber onde a perna nasce; este só afirma que a distância dela ao corpo não
+/// muda por o corpo estar em movimento.
+///
+/// ⚠️ **Parado é o CONTROLE**, e é ele que torna o resto legível: sem
+/// deslocamento não há atraso possível, então a relação medida ali é a
+/// verdadeira. E cada amostra em movimento afirma primeiro que o corpo de facto
+/// ANDOU naquele tique — uma fixture parada passaria neste gate sem conter o
+/// fenômeno.
+#[test]
+fn the_published_fan_rides_the_body_it_belongs_to() {
+    let mut r = rig(true);
+    let mut t = 0u64;
+    // Assentar, e medir a relação verdadeira com o corpo em repouso.
+    t = r.run(t, 30, PlayerInput::default());
+    let rest = leg_offset(&r);
+    let sweep_at_rest = sweep_offset(&r);
+
+    // ── ANDANDO: o eixo X ────────────────────────────────────────────────────
+    t = r.run(
+        t,
+        30,
+        PlayerInput {
+            drive: 1.0,
+            ..PlayerInput::default()
+        },
+    );
+    let (travel, walking) = one_tick(
+        &mut r,
+        &mut t,
+        PlayerInput {
+            drive: 1.0,
+            ..PlayerInput::default()
+        },
+    );
+    assert!(
+        travel[0] > 0.05,
+        "a fixture tem de CONTER o fenomeno: o corpo andou {:.4} m neste tique",
+        travel[0]
+    );
+    assert!(
+        (walking[0] - rest[0]).abs() < 1.0e-4 && (walking[1] - rest[1]).abs() < 1.0e-4,
+        "andando, o leque desgarrou do corpo: repouso {rest:?} -> {walking:?} \
+         (o corpo andou {:.4} m no tique)",
+        travel[0]
+    );
+
+    // ── SUBINDO: o outro eixo ────────────────────────────────────────────────
+    let jump = PlayerInput {
+        drive: 1.0,
+        jump: true,
+        ..PlayerInput::default()
+    };
+    t = r.run(t, 3, jump);
+    let (rise, rising) = one_tick(&mut r, &mut t, jump);
+    assert!(
+        rise[1] > 0.02,
+        "a fixture tem de CONTER o fenomeno no eixo Y: o corpo subiu {:.4} m",
+        rise[1]
+    );
+    assert!(
+        (rising[0] - rest[0]).abs() < 1.0e-4 && (rising[1] - rest[1]).abs() < 1.0e-4,
+        "subindo, o leque desgarrou do corpo: repouso {rest:?} -> {rising:?} \
+         (o corpo subiu {:.4} m no tique)",
+        rise[1]
+    );
+
+    // ── E o SWEEP não é tocado ───────────────────────────────────────────────
+    // ⚠️ Ele já viaja como `(corpo, deslocamento)` e o overlay o resolve contra
+    // a pose viva — por isso ele nunca driftou. Deslocá-lo com os irmãos somaria
+    // o movimento do corpo a um número que já é relativo a ele.
+    let moving = sweep_offset(&r);
+    assert!(
+        (moving[0] - sweep_at_rest[0]).abs() < 1.0e-9
+            && (moving[1] - sweep_at_rest[1]).abs() < 1.0e-9,
+        "o sweep e' relativo ao corpo: {sweep_at_rest:?} -> {moving:?}"
+    );
+}
+
+/// O deslocamento do corpo varrido do agachar — relativo por construção.
+fn sweep_offset(r: &Rig) -> [f32; 2] {
+    r.of(ProbeKind::Headroom)
+        .first()
+        .map(|m| match m.shape {
+            ProbeShape::Sweep { offset, .. } => offset,
+            _ => panic!("o teto do agachar e' um Sweep"),
+        })
+        .expect("o agachar esta' armado nesta rig")
+}

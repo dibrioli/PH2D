@@ -15,12 +15,11 @@
 //! ⚠️ **Arch-gate, e não gate de unidade**, pela razão de sempre neste módulo: a
 //! troca compila, roda e deixa a suíte verde.
 
-use std::fs;
-
-fn read(rel: &str) -> String {
-    let path = format!("{}/{rel}", env!("CARGO_MANIFEST_DIR"));
-    fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"))
-}
+/// **O TEXTO da ponte** — a porta única do assunto, partilhada com o
+/// `the_law_asks_footing_not_the_controller` por `#[path]`.
+#[path = "player_bridge_source.rs"]
+mod src_of;
+use src_of::{player_family, read};
 
 fn character() -> String {
     read("../ph2d-physics/src/world/character.rs")
@@ -41,7 +40,7 @@ fn the_scanner_reads_the_files_it_claims_to_scan() {
         c.contains("struct CharacterHit"),
         "e o fato cru que ele publica"
     );
-    let b = read("src/bridge/player.rs");
+    let b = player_family();
     assert!(
         b.contains("push::push_from_hits("),
         "a ponte tem de chamar a dedup"
@@ -62,6 +61,7 @@ fn the_libraries_approximate_solver_is_not_the_law() {
         "../ph2d-physics/src/world/character.rs",
         "../ph2d-physics/src/world/player.rs",
         "src/bridge/player.rs",
+        "src/bridge/player_kinmove.rs",
         "src/bridge/player_push.rs",
     ] {
         assert!(
@@ -98,7 +98,7 @@ fn the_push_goes_through_the_central_door_with_the_pure_law() {
         push.contains("push_transfer(react, blocked, h.normal)"),
         "quanto atravessa e' decidido pela lei PURA, com a normal do contato"
     );
-    let bridge = read("src/bridge/player.rs");
+    let bridge = player_family();
     let call = bridge
         .find("push::push_from_hits(")
         .expect("a dedup tem de ser chamada");

@@ -193,19 +193,19 @@ descartável por construção; um corpo do mundo nunca é.*
 | # | item | eixo | pré-req | tam. |
 |---|---|---|---|---|
 | **F0** | **`wall_dt` chega ao chrome + estado contínuo por widget** (`UiMotion`: um mapa `id → (valor, velocidade)`) — e o toast passa a contar **segundos** | 1 | — | **M** |
-| F1 | a **mola** sai da UI autorada e passa a servir o chrome (mesma crate, `pub`) | 1 | F0 | **P** |
+| ~~F1~~ ✅ | a **mola** serve o chrome — **FEITA pelo F0** (o `motion.rs` resolve com `ph2d_spring::SpringState`). ⚠️ Esta linha ficou a mentir uma jornada inteira | 1 | F0 | **P** |
 | ⭐ **F2** | **hover/press/focus interpolam** — ⚠️ **MEDIDA em 2026-08-13, e ela NÃO está feita: o `.hover_t()` é passado em DOIS sítios do app inteiro contra 161 que pintam um Button/Toggle/Checkbox/IconButton.** O `hover_targets` publica alvos para todos eles e o `tick` integra as molas; a **pintura deita o resultado fora** (o default `hover_t = 1.0` cai no estado duro). Ver a §6.2 | 1 | F0+F1 | ~~P~~ **G** |
-| F3 | **interruptibilidade** como lei: todo alvo novo herda a velocidade actual | 1 | F1 | **P** |
+| ~~F3~~ ✅ | **interruptibilidade** — **FEITA pelo F0** (`SpringState::resuming` + a re-normalizacao `v / span`), com gate proprio. ⚠️ Tambem mentia | 1 | F1 | **P** |
 | F4 | **secções e painéis** abrem/fecham com movimento e **direcção coerente** | 1 | F1 | **M** |
 | ~~F5~~ ✅ | **cascata** — **FEITA na PALETA** (`ε = 0,020 s`, MEDIDO; ver a §6.3). ⚠️ E ela é o **primeiro consumidor de `Role::Travel` do produto** — até aqui o eixo que o *reduced motion* existe para matar não era usado por ninguém. Hierarquia e rows do inspector ficam para quando a F2 abrir a porta | 1 | F0 | **P** |
-| ⭐ **E1** | **SCRUB numérico** em todo campo de número (o maior ganho de eficiência do estudo) | 3 | — | **M** |
+| ~~⭐ E1~~ ✅ | **SCRUB numerico** — **FEITO** (`interaction/state/number_scrub.rs` + a familia `number_drag_*`), e afinado depois (*a taxa do scrub e o clamp dele leem o MESMO intervalo* — 43 campos sairam de 20 px para 250). ⚠️ A linha mentia | 3 | — | **M** |
 | ~~E2~~ ✅ | **rolagem SUAVE** nas listas — **FEITA**, e a forma é o que a fez caber: `panel_scroll` passa a devolver o **VIVO** e ganha o irmão `panel_scroll_target`, então os **~130 leitores** e os **36 escritores** herdaram sem uma linha. ⚠️ A roda acumula no ALVO — no vivo, cinco voltas de 100 px somam **230,56** em vez de 500. O **pan de canvas** fica de fora (outro gesto, outro dono). ⚠️ **Reprovada no 1º smoke e curada pelo `Role::Surface`** — §6.4 | 3 | F0 | **P** |
 | ~~E3~~ ✅ | **paleta de comandos GLOBAL** (o widget já existe) — **FEITA** (`Ctrl+K`, **62 comandos**: 10 do rail + 19 painéis + **33 rows de menu**). ⚠️ Ela é uma **projecção** das listas que o app já mantém, nunca uma tabela. ⚠️ **E a 1ª conclusão desta linha era LARGA DEMAIS** — ela mediu que o **PILL** não é servível (abre um menu ancorado a um rectângulo, e uma paleta não tem rectângulo) e escreveu *"a barra de topo fica de fora"*; a **ROW de dentro dele** é tipo 1, e entrou na wave seguinte (ver a §6.1 abaixo) | 3 | — | **M** |
 | E4 | **menu radial** sob a caneta / botão do meio | 3 | — | **M** |
-| C1 | **TETHER** (§5) + as três irmãs da família | 2 | F0 | **M** |
+| ~~C1~~ ✅ | **TETHER** (§5) — **FEITO** (`tether.rs`, o card de Fill; o `simulate` PERGUNTA o caracter, nunca o crava). As tres irmas da familia seguem por fazer | 2 | F0 | **M** |
 | C2 | **realce de proveniência** nos dois sentidos (valor ↔ objecto) | 2 | — | **M** |
 | ~~C3~~ ✅ | o **readout que segue a mão** vira REGRA — **FEITA**. ⚠️ E a medição corrigiu a linha: eram **três** superfícies (o rótulo do smart guide · a carga de um joint · as dimensões do Line), cada uma com o próprio corpo e caixa, e **nenhuma segue a mão** — as três ancoram em GEOMETRIA. O buraco real era o gesto mais usado do app (arrastar o gizmo), que **não tinha número nenhum** sobre a tela | 2 | — | **M** |
-| R1 | **reduced motion** — um interruptor, e nasce **com** a F2 | 4 | F2 | **P** |
+| ~~R1~~ ✅ | **reduced motion** — **FEITO e persistido** (`~/.ph2d/prefs.txt`), eixo INDEPENDENTE do caracter (§10.2). ⚠️ Nao esperou a F2, e a linha mentia | 4 | ~~F2~~ | **P** |
 | ~~⭐~~ **X1** | **a pressão da caneta chega à shell** (afecta Flip **e** Painter) — ⚠️ o ⭐ e o **P** foram **REFUTADOS por medição**: winit 0.30.13 crava `force: None` nos três backends de desktop, então não há função a escrever. Ver a §8 | 3 | **winit** | **M/G** |
 | D1 | **som de UI** opt-in, do motor que já temos | 4 | F0 | **M** |
 | D2 | **partículas de feedback** do motor que já temos (dissolver em vez de sumir) | 4 | F0 | **G** |
@@ -384,6 +384,44 @@ largura de QUEBRA do texto mudava quando o rato pousava (e no Expressivo mudaria
 Corrigido para o rect em repouso. ⚠️ **A posição nunca esteve errada** (o centro é invariante sob o
 `hover_lift`), e **não foi medido se algum rótulo de hoje chega a re-fluir** — entra por ser a mesma
 lei, não por um sintoma.
+
+---
+
+### 6.5 — A AUDITORIA da própria tabela (2026-08-13): cinco linhas mentiam
+
+Antes de escolher o item seguinte, a tabela da §6 foi conferida **contra o código**. ⚠️ **Cinco
+linhas descreviam um mundo anterior** — apareciam como pendentes e estavam construídas:
+
+| linha | o que a mediu |
+|---|---|
+| **F1** a mola serve o chrome | o `motion.rs` resolve com `ph2d_spring::SpringState` — **o F0 trouxe-a** |
+| **F3** interruptibilidade | `SpringState::resuming` + `v / span`, com gate próprio — **idem** |
+| **R1** reduced motion | eixo independente, persistido em `~/.ph2d/prefs.txt` — **não esperou a F2** |
+| **C1** tether | `tether.rs` + `tether_tests.rs`, vivo no card de Fill |
+| **E1** scrub numérico | `interaction/state/number_scrub.rs`, um módulo inteiro |
+
+⚠️ **É a doença que a §5 do Áudio já pagou**, e com a mesma consequência: *uma lista de pendências
+velha não é ruído — ela faz a próxima LLM propor construir o que existe.* Ela quase me fez.
+
+**E os três itens que SOBRAM foram medidos, para deixarem de ser adjectivos:**
+
+| item | tamanho REAL | a forma |
+|---|---|---|
+| ⭐ **F2** hover interpola | **102** `paint_button` · **102** `Button::new` · **139** `button_state` em **68 arquivos** | não há punhado de helpers a interceptar: a informação tem de cruzar do store para um `Button` que **não conhece o próprio id**, e é por isso que o custo é por-sítio |
+| **F4** secções com movimento | **36** `is_collapsed` em **32** arquivos | ⚠️ e é mudança de **LAYOUT**, não de cor — cada painel interpola a própria altura e empurra o que vem abaixo. Mais cara que a contagem sugere |
+| **canvas: zoom suave** | — | ⚠️ **o dono não é a `editor-core`** (só a motion-graph tem `zoom` aqui); pede fiação própria no shell |
+
+⚠️ **A F2 não cabe numa cauda de sessão.** Ela é mecânica mas de ~100 sítios, e meia-migração
+deixa a árvore num estado em que metade do app amacia e metade salta — precisamente o sintoma que
+ela existe para curar. **É a wave seguinte, sozinha.**
+
+⛔ **E o «segundo buraco, mais barato» da §6.2 encolheu ao ser medido — e uma metade dele NÃO deve
+ser construída.** Os pintores REAIS de `ListItem` são **dois** (`context_menu.rs` e o `skin.rs` do
+painel autorado), não uma multidão. Mas uma **row de menu que amacia deixa rasto**: a descer oito
+rows em 200 ms com um assentamento de 0,22 s, todas ficam meio-acesas ao mesmo tempo. Nenhum
+sistema operativo o faz, e pela mesma razão. *O realce de menu obedece ao cursor — é a lei do
+`Role::Surface` noutra roupa.* Ficam por avaliar `TextInput`/`Dropdown`/`Tag`, que não têm esse
+risco (ninguém varre dropdowns).
 
 ---
 

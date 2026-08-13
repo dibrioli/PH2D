@@ -127,7 +127,11 @@ fn every_simulation_generator_declares_that_it_consumes_accel() {
             .couplings(NodeTypeId::of(ty))
             .unwrap_or_else(|| panic!("{ty} tem de declarar couplings"));
         assert!(
-            cs.contains(&Coupling::Consumes("accel")),
+            // ⚠️ Casa por PADRÃO: um `Coupling` pode carregar um ponteiro de
+            // função (o `ProducesWhen`), então ele não tem `==` — e esta é a
+            // pergunta que o diagnosticador de facto faz.
+            cs.iter()
+                .any(|c| matches!(c, Coupling::Consumes(x) if *x == "accel")),
             "{ty} tem de CONSUMIR accel — sem isso a familia force.* nao o alcanca, \
              e o diagnose oferece um integrador que o congela: {cs:?}"
         );

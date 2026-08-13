@@ -176,8 +176,9 @@ pub fn diagnose(graph: &Graph, reg: &NodeRegistry) -> Vec<Diagnostic> {
             });
             continue;
         }
+        let param = param_reader(graph, reg, inst.id, ty);
         for &col in TRANSIENT_COLUMNS {
-            if !produces(reg, ty, col) {
+            if !produces(reg, ty, col, &param) {
                 continue;
             }
             if consumer_reachable(graph, reg, inst.id, col) {
@@ -221,8 +222,40 @@ pub fn canonical_consumer(col: &str, particle: bool) -> Option<&'static str> {
 /// Does the node type `ty` **produce** `col` — write it to its output? United from
 /// the two static, registry-queryable sources: a GPU `ColumnBinding` that writes
 /// it, or a `Coupling::Produces`.
-fn produces(reg: &NodeRegistry, ty: NodeTypeId, col: &str) -> bool {
-    coupling_produces(reg, ty, col) || gpu_binding(reg, ty, col, is_producer)
+fn produces(
+    reg: &NodeRegistry,
+    ty: NodeTypeId,
+    col: &str,
+    param: &dyn Fn(&str) -> f32,
+) -> bool {
+    coupling_produces(reg, ty, col, param) || gpu_binding(reg, ty, col, is_producer)
+}
+
+/// **Como se lê um param de uma instância, com o default do manifesto por baixo.**
+///
+/// ⚠️ Sem o fallback ao default, um nó que nunca teve o param TOCADO leria `0.0`,
+/// e um `0.0` que por acaso é o modo produtor faria o diagnóstico marcar toda
+/// instância recém-criada. O `EvalCtx::param` do cook já resolve assim; esta é a
+/// mesma escada, do lado de fora do cook.
+fn param_reader<'a>(
+    graph: &'a Graph,
+    reg: &'a NodeRegistry,
+    node: NodeId,
+    ty: NodeTypeId,
+) -> impl Fn(&str) -> f32 + 'a {
+    move |name: &str| {
+        graph
+            .node_params()
+            .get(&node)
+            .and_then(|m| m.get(name))
+            .copied()
+            .unwrap_or_else(|| {
+                reg.manifests()
+                    .find(|m| m.id == ty)
+                    .and_then(|m| m.params.iter().find(|p| p.name == name))
+                    .map_or(0.0, |p| p.default)
+            })
+    }
 }
 
 /// Does the node type `ty` **consume** `col` — read it without re-producing it (a
@@ -347,10 +380,20 @@ fn gpu_binding(
 
 /// The declared half of "produces": a `Coupling::Produces(col)` (the CPU-only
 /// stragglers with no GPU kernel).
-fn coupling_produces(reg: &NodeRegistry, ty: NodeTypeId, col: &str) -> bool {
+fn coupling_produces(
+    reg: &NodeRegistry,
+    ty: NodeTypeId,
+    col: &str,
+    param: &dyn Fn(&str) -> f32,
+) -> bool {
     reg.couplings(ty).is_some_and(|cs| {
-        cs.iter()
-            .any(|c| matches!(c, Coupling::Produces(x) if *x == col))
+        cs.iter().any(|c| match c {
+            Coupling::Produces(x) => *x == col,
+            // ⚠️ O predicado é perguntado SÓ depois de a coluna casar: ele é
+            // arbitrário e não deve correr para toda coluna transiente do repo.
+            Coupling::ProducesWhen(x, when) => *x == col && when(param),
+            _ => false,
+        })
     })
 }
 
@@ -435,157 +478,5 @@ fn particle_upstream(graph: &Graph, node: NodeId) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_nodegraph::gpu::KernelResolver;
-
-    /// **The transient set covers every column any node `Consume`-drops.** `accel`
-    /// and `inv_mass` are derived facts — some node drops each — so this gate makes
-    /// it impossible to introduce a new transient column (a new `Consume` binding)
-    /// without landing it in [`TRANSIENT_COLUMNS`], where the diagnoser can reason
-    /// about a producer of it. `falloff`, the modulation weight that is never
-    /// dropped, is the one named directly, so the gate pins it too. FALSIFIED by
-    /// removing "accel"/"inv_mass" (a `Consume` column escapes the analysis) or
-    /// "falloff" (the modulation column stops being analysed).
-    #[test]
-    fn the_transient_set_covers_every_consumed_column() {
-        let mut reg = NodeRegistry::new();
-        ph2d_node_registry_init::register_all_nodes(&mut reg).expect("register all nodes");
-        for m in reg.manifests() {
-            let Some(k) = reg.gpu_kernel(m.id) else {
-                continue;
-            };
-            for b in k.bindings {
-                assert!(
-                    !b.access.consumes() || TRANSIENT_COLUMNS.contains(&b.column),
-                    "a `Consume` binding drops `{}`, which is not in TRANSIENT_COLUMNS — \
-                     the diagnoser would never analyse a producer of it",
-                    b.column
-                );
-            }
-        }
-        assert!(
-            TRANSIENT_COLUMNS.contains(&"falloff"),
-            "falloff is the modulation weight the diagnoser must reason about"
-        );
-    }
-
-    /// **The required-upstream set is disjoint from the transient set, and every column
-    /// in it is really READ by some registered node.** The two analyses are mirror
-    /// images — a producer-inert transient vs a read-required stream — and a column in
-    /// both would have them fight over the same node. The second half pins that
-    /// `REQUIRED_UPSTREAM` names a real read column (not a typo `"P"` nothing reads),
-    /// which is what makes [`missing_upstream`] able to fire at all. FALSIFIED by adding
-    /// a transient column to `REQUIRED_UPSTREAM`, or by naming a column no node reads.
-    #[test]
-    fn the_required_set_is_disjoint_and_really_read() {
-        for &c in REQUIRED_UPSTREAM {
-            assert!(
-                !TRANSIENT_COLUMNS.contains(&c),
-                "`{c}` is both required-upstream and transient — the two analyses would fight"
-            );
-        }
-        let mut reg = NodeRegistry::new();
-        ph2d_node_registry_init::register_all_nodes(&mut reg).expect("register all nodes");
-        for &col in REQUIRED_UPSTREAM {
-            assert!(
-                reg.manifests().any(|m| reads_column(&reg, m.id, col)),
-                "no registered node reads `{col}` — REQUIRED_UPSTREAM names a column nothing needs"
-            );
-        }
-    }
-
-    /// **A stateful source that seeds its own state is NOT source-less** — the false
-    /// positive the diagnoser shipped on the flock. `motion.boids` READS `P` (a
-    /// `ReadWrite` binding on its `state` port), but the `P` it reads is its OWN previous
-    /// frame, arriving through the `pre` self-loop (`out --pre--> state`) the editor
-    /// auto-plumbs, and it MINTS the initial cloud itself. It has no non-delayed input by
-    /// design (the flock has no upstream source), so the naive "reads `P` + no incoming
-    /// edge = source-less" rule would flag a graph that WORKS. [`seeds_own_state`] (the
-    /// delayed self-loop, a signal a deformer never carries) exempts it. FALSIFIED two
-    /// ways: removing the exemption makes the wired boids get a spurious
-    /// [`Deficit::MissingSource`]; an over-broad exemption that always fires stops the
-    /// positive control (a bare boids, no self-loop) from being flagged.
-    #[test]
-    fn a_stateful_source_that_seeds_its_own_state_is_not_source_less() {
-        use ph2d_nodegraph::graph::Edge;
-        let mut reg = NodeRegistry::new();
-        ph2d_node_registry_init::register_all_nodes(&mut reg).expect("register all nodes");
-
-        // The boids WITH its `pre` self-loop (exactly what the editor builds): the flock
-        // seeds and reads its own state, so it is NOT source-less — zero diagnostics.
-        let mut g = Graph::new();
-        let boids = g.add_node("motion.boids");
-        g.connect(Edge {
-            from: (boids, 0),
-            to: (boids, 2),
-            delayed: true,
-        })
-        .expect("boids pre self-loop");
-        let out = g.add_node("motion.output");
-        g.connect(Edge {
-            from: (boids, 0),
-            to: (out, 0),
-            delayed: false,
-        })
-        .expect("boids -> output");
-        let diags = diagnose(&g, &reg);
-        assert!(
-            diags.is_empty(),
-            "a self-seeding simulation source must not be flagged source-less: {diags:?}"
-        );
-
-        // Positive control: the SAME node WITHOUT its self-loop IS source-less — the
-        // exemption is gated on the `pre` self-loop, not on the node type (an over-broad
-        // exemption that always fired would silence this too).
-        let mut bare = Graph::new();
-        let b = bare.add_node("motion.boids");
-        let o = bare.add_node("motion.output");
-        bare.connect(Edge {
-            from: (b, 0),
-            to: (o, 0),
-            delayed: false,
-        })
-        .expect("boids -> output");
-        let d2 = diagnose(&bare, &reg);
-        assert!(
-            d2.iter().any(|d| d.deficit == Deficit::MissingSource("P")),
-            "a P-reader with no self-loop and no input is genuinely source-less: {d2:?}"
-        );
-    }
-
-    /// **The appropriate flock-stamp graph is clean** — the exact scene of the fix
-    /// (`PH2D_AUTOFIX_SMOKE=7`): `source.shape (Star) -> duplicator.shape`, `boids ->
-    /// duplicator.points` (with its `pre` self-loop), `duplicator -> oscillator ->
-    /// output`. Headless proof (the smoke needs a window) that NO node warns — the
-    /// stateful `boids` is exempt, and `source.shape` / `duplicator` / `oscillator`
-    /// carry no spurious deficit either. FALSIFIED by the same `seeds_own_state`
-    /// mutation (the boids gets a spurious `MissingSource`), so the scene the artist
-    /// runs stays pinned green.
-    #[test]
-    fn the_appropriate_flock_stamp_graph_is_clean() {
-        use ph2d_nodegraph::graph::Edge;
-        let mut reg = NodeRegistry::new();
-        ph2d_node_registry_init::register_all_nodes(&mut reg).expect("register all nodes");
-        let mut g = Graph::new();
-        let shape = g.add_node("source.shape");
-        let boids = g.add_node("motion.boids");
-        let dup = g.add_node("motion.duplicator");
-        let osc = g.add_node("motion.oscillator");
-        let out = g.add_node("motion.output");
-        for (from, to, delayed) in [
-            ((boids, 0), (boids, 2), true), // the `pre` self-loop
-            ((shape, 0), (dup, 0), false),  // shape -> duplicator.shape
-            ((boids, 0), (dup, 1), false),  // boids -> duplicator.points
-            ((dup, 0), (osc, 0), false),
-            ((osc, 0), (out, 0), false),
-        ] {
-            g.connect(Edge { from, to, delayed }).expect("connect");
-        }
-        let diags = diagnose(&g, &reg);
-        assert!(
-            diags.is_empty(),
-            "the appropriate flock-stamp graph must warn nowhere: {diags:?}"
-        );
-    }
-}
+#[path = "lib_tests.rs"]
+mod tests;

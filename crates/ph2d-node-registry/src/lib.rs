@@ -622,9 +622,12 @@ mod tests {
         reg.register_couplings(SRC_MAN.id, COUPLINGS);
         let got = reg.couplings(SRC_MAN.id).expect("registered");
         assert_eq!(got.len(), 2);
-        assert_eq!(got[0], Coupling::Produces("accel"));
+        // ⚠️ Casa por PADRÃO, não por `==`: desde o `ProducesWhen` um acoplamento
+        // pode carregar um ponteiro de função, e é assim que TODO leitor de
+        // produção pergunta (o `matches!` do `ph2d-motion-diagnose`).
+        assert!(matches!(got[0], Coupling::Produces("accel")));
         assert_eq!(got[0].column(), "accel");
-        assert_eq!(got[1], Coupling::Requires("P"));
+        assert!(matches!(got[1], Coupling::Requires("P")));
         assert!(reg.couplings(NodeTypeId::of("nope")).is_none());
     }
 

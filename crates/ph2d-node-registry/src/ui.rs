@@ -278,7 +278,12 @@ pub struct ParamGate {
 /// `NodeManifest` — a node with no entry here is semantically neutral (produces,
 /// consumes, requires, and generates nothing), which is what every un-annotated
 /// node already means, so nothing moves by default.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+/// ⚠️ **Sem `PartialEq`/`Eq`, de propósito.** Desde o [`Coupling::ProducesWhen`]
+/// um acoplamento pode carregar um ponteiro de função, cujo endereço o compilador
+/// não garante único — uma igualdade derivada compararia endereços e daria uma
+/// resposta sem significado. Medido: nenhum leitor do repo compara acoplamentos;
+/// todos casam por padrão (`matches!`), que é a pergunta que de facto se faz.
+#[derive(Copy, Clone, Debug)]
 pub enum Coupling {
     /// Writes a transient column that is INERT unless a downstream node
     /// [`Consumes`](Coupling::Consumes) it. `force.*` → `Produces("accel")`;
@@ -294,6 +299,18 @@ pub enum Coupling {
     /// Generates a column from nothing (a source). `motion.grid` →
     /// `Generates("P")`.
     Generates(&'static str),
+    /// **`Produces`, mas só em parte do espaço de params** — o irmão exato do
+    /// [`ph2d_nodegraph::gpu::ApplicableFn`] do `KernelSpec`, e pela mesma razão: um nó cujo modo
+    /// decide QUAL coluna ele escreve não pode declarar a produção
+    /// incondicionalmente.
+    ///
+    /// ⚠️ Declarar `Produces("accel")` num nó que só o escreve num modo faria o
+    /// diagnóstico marcar TODA instância dele — o falso positivo que o ADR-0155
+    /// combateu no Boids, agora vindo da declaração em vez da inferência. E não
+    /// declarar nada devolve a classe de erro que o ADR existe para pegar: uma
+    /// coluna transiente escrita, nada a consome, e a cena fica parada **sem
+    /// erro**.
+    ProducesWhen(&'static str, ph2d_nodegraph::gpu::ApplicableFn),
 }
 
 impl Coupling {
@@ -304,7 +321,8 @@ impl Coupling {
             Coupling::Produces(c)
             | Coupling::Consumes(c)
             | Coupling::Requires(c)
-            | Coupling::Generates(c) => c,
+            | Coupling::Generates(c)
+            | Coupling::ProducesWhen(c, _) => c,
         }
     }
 }

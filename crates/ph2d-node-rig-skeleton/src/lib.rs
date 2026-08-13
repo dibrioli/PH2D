@@ -22,6 +22,7 @@ use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
+mod branches;
 mod fk;
 mod trig;
 
@@ -78,14 +79,12 @@ fn joint_count(joints: f32) -> usize {
 }
 
 /// Author the chain, then resolve it to world space.
-fn build(joints: f32, length: f32, angle: f32, root_angle: f32) -> Stream {
+fn build(joints: f32, length: f32, angle: f32, root_angle: f32, branches: &str) -> Stream {
     let n = joint_count(joints);
     let rest = Stream::new(n)
-        // Joint 0 is the root (`-1`); every other joint hangs off the previous one.
-        .with(
-            fk::PARENT,
-            Column::Scalar((0..n).map(|i| i as f32 - 1.0).collect()),
-        )
+        // Joint 0 is the root (`-1`); every other joint hangs off the previous one —
+        // e o `branches` re-pendura as que o artista listou (ver [`branches`]).
+        .with(fk::PARENT, Column::Scalar(branches::parents(n, branches)))
         // The root has no bone leading into it.
         .with(
             fk::LEN,
@@ -107,6 +106,11 @@ fn build(joints: f32, length: f32, angle: f32, root_angle: f32) -> Stream {
     fk::resolve(&rest)
 }
 
+/// O **text** param que carrega a árvore (o canal do doc 32 — um `ParamSpec` é
+/// f32-only e o manifesto é congelado, então a árvore vive no `Graph`, ao lado do
+/// manifesto e nunca dentro dele).
+pub const BRANCHES_PARAM: &str = "branches";
+
 struct RigSkeleton;
 
 impl NodeOp for RigSkeleton {
@@ -117,7 +121,11 @@ impl NodeOp for RigSkeleton {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let (joints, length) = (ctx.param("joints"), ctx.param("length"));
         let (angle, root_angle) = (ctx.param("angle"), ctx.param("root_angle"));
-        let out = build(joints, length, angle, root_angle);
+        let spec = ctx
+            .text_param(BRANCHES_PARAM)
+            .unwrap_or_default()
+            .to_string();
+        let out = build(joints, length, angle, root_angle, &spec);
         ctx.emit(out);
     }
 }
@@ -142,6 +150,17 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
 static PARAM_HINTS: &[ParamUiHint] = &[
+    // ⚠️ **Primeiro**, e é o que o nó É: um esqueleto é uma ÁRVORE, e a corrente
+    // única é o caso degenerado dela. `ParamWidget::Text` porque a forma é
+    // `filho=pai` (o canal do doc 32) — ver [`branches`].
+    ParamUiHint {
+        param: BRANCHES_PARAM,
+        label: "Branches",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Text,
+    },
     ParamUiHint {
         param: "joints",
         label: "Joints",
@@ -206,7 +225,7 @@ mod tests {
     /// of the root instead of stacking end-to-end.
     #[test]
     fn a_straight_limb_stacks_bone_on_bone_out_of_the_root() {
-        let s = build(4.0, 1.0, 0.0, 90.0);
+        let s = build(4.0, 1.0, 0.0, 90.0, "");
         assert_eq!(s.count(), 4);
         let p = ps(&s);
         for (i, q) in p.iter().enumerate() {
@@ -219,7 +238,7 @@ mod tests {
     /// property that makes it a skeleton and not a fan.
     #[test]
     fn the_bend_compounds_down_the_chain() {
-        let p = ps(&build(4.0, 1.0, 90.0, 0.0));
+        let p = ps(&build(4.0, 1.0, 90.0, 0.0, ""));
         // World angles 0, 90, 180, 270 → right, up, left: a square.
         let near =
             |a: [f32; 2], b: [f32; 2]| (a[0] - b[0]).abs() < 1e-3 && (a[1] - b[1]).abs() < 1e-3;
@@ -232,7 +251,7 @@ mod tests {
     /// backwards, the root has no bone, and re-resolving changes nothing.
     #[test]
     fn it_publishes_a_well_formed_re_resolvable_chain() {
-        let s = build(5.0, 0.5, 20.0, 0.0);
+        let s = build(5.0, 0.5, 20.0, 0.0, "");
         match s.get(fk::PARENT).unwrap() {
             Column::Scalar(v) => assert_eq!(v, &vec![-1.0, 0.0, 1.0, 2.0, 3.0]),
             _ => panic!("parent"),
@@ -253,5 +272,58 @@ mod tests {
         assert_eq!(joint_count(f32::NAN), 1);
         assert_eq!(joint_count(-4.0), 1);
         assert_eq!(joint_count(0.0), 1);
+    }
+}
+
+#[cfg(test)]
+mod branch_e2e_tests {
+    use super::*;
+
+    fn ps(s: &Stream) -> Vec<[f32; 2]> {
+        match s.get("P") {
+            Some(Column::Vec2(v)) => v.clone(),
+            _ => Vec::new(),
+        }
+    }
+
+    /// **A ÁRVORE CHEGA ÀS POSIÇÕES, não só à coluna `parent`.**
+    ///
+    /// ⚠️ Um gate sobre a coluna sozinho ficaria verde com o `fk` a ignorá-la —
+    /// e o `fk` **não** ignora, ele resolve por PAI, mas isso é uma afirmação
+    /// sobre outro módulo e afirmações se medem. Duas juntas penduradas na MESMA
+    /// junta têm de POUSAR NO MESMO PONTO quando têm o mesmo ângulo e o mesmo
+    /// comprimento: é a assinatura de um galho, e a corrente única não a produz.
+    #[test]
+    fn two_limbs_on_the_same_joint_land_on_the_same_point() {
+        // Quatro juntas, ângulo zero: a corrente anda em linha reta.
+        let chain = ps(&build(4.0, 1.0, 0.0, 0.0, ""));
+        assert!(
+            (chain[3][0] - chain[2][0] - 1.0).abs() < 1e-4,
+            "a corrente anda: {chain:?}"
+        );
+        // Agora a junta 3 pendura na 1, como a 2 já pendura.
+        let tree = ps(&build(4.0, 1.0, 0.0, 0.0, "3=1"));
+        let d = (tree[3][0] - tree[2][0]).hypot(tree[3][1] - tree[2][1]);
+        assert!(
+            d < 1e-4,
+            "3 e 2 penduram na MESMA junta com o mesmo osso ⇒ mesmo ponto, deu {d} ({tree:?})"
+        );
+        // E o CONTROLE: sem o galho elas não coincidem.
+        let d0 = (chain[3][0] - chain[2][0]).hypot(chain[3][1] - chain[2][1]);
+        assert!(
+            d0 > 0.9,
+            "sem galho a distancia e um osso inteiro, deu {d0}"
+        );
+    }
+
+    /// **Um `branches` vazio é o esqueleto de sempre, AO BIT.**
+    #[test]
+    fn an_empty_branches_is_the_skeleton_that_always_shipped() {
+        let a = ps(&build(6.0, 1.3, 17.0, 40.0, ""));
+        let b = ps(&build(6.0, 1.3, 17.0, 40.0, "   "));
+        for (p, q) in a.iter().zip(&b) {
+            assert_eq!(p[0].to_bits(), q[0].to_bits());
+            assert_eq!(p[1].to_bits(), q[1].to_bits());
+        }
     }
 }

@@ -14,7 +14,13 @@ fn every_matcap_decodes_to_the_texture_size() {
         // RGBA de meio-float = 8 bytes por texel.
         let want = (m.side as usize) * (m.side as usize) * 8;
         let px = decode(i);
-        assert_eq!(px.len(), want, "o matcap `{}` decodificou {} bytes", m.name, px.len());
+        assert_eq!(
+            px.len(),
+            want,
+            "o matcap `{}` decodificou {} bytes",
+            m.name,
+            px.len()
+        );
     }
 }
 
@@ -99,8 +105,14 @@ fn the_default_is_the_sculptgl_matcap_and_it_leads_the_table() {
 /// Blender (CC0).
 #[test]
 fn every_matcap_declares_where_it_came_from() {
-    let haz = MATCAPS.iter().filter(|m| m.credit == Credit::HazardousArts).count();
-    let blender = MATCAPS.iter().filter(|m| m.credit == Credit::Blender).count();
+    let haz = MATCAPS
+        .iter()
+        .filter(|m| m.credit == Credit::HazardousArts)
+        .count();
+    let blender = MATCAPS
+        .iter()
+        .filter(|m| m.credit == Credit::Blender)
+        .count();
     assert_eq!(haz, 2, "o LICENSES.md declara DOIS do HazardousArts");
     assert_eq!(blender, 8, "o LICENSES.md declara OITO do Blender");
     assert_eq!(haz + blender, MATCAPS.len());
@@ -151,9 +163,7 @@ fn the_cooked_image_has_its_lit_side_up() {
     // ⚠️ Meio-float agora: 8 bytes por texel, e cada canal são dois.
     let lum = |x: usize, y: usize| -> f32 {
         let i = (y * side + x) * 8;
-        let ch = |k: usize| {
-            half::f16::from_le_bytes([px[i + k * 2], px[i + k * 2 + 1]]).to_f32()
-        };
+        let ch = |k: usize| half::f16::from_le_bytes([px[i + k * 2], px[i + k * 2 + 1]]).to_f32();
         ch(0) + ch(1) + ch(2)
     };
     let cx = side / 2;

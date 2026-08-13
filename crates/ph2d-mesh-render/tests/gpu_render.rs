@@ -425,10 +425,7 @@ fn the_ambient_comes_from_the_sky_above_and_the_ground_below() {
             r,
             &cam,
             &rig,
-            ph2d_mesh_render::Shade {
-                env,
-                ..rig_shade()
-            },
+            ph2d_mesh_render::Shade { env, ..rig_shade() },
         )
     };
     let off = shot(&mut renderer, 0.0);
@@ -1110,14 +1107,7 @@ fn the_plane_the_painter_gets_is_the_gbuffer_the_device_wrote() {
     let mut renderer = MeshRenderer::new(&device, FORMAT);
     renderer.upload_at(&device, &queue, 0, &mesh, &[]);
     let plane = renderer
-        .form_plane(
-            &device,
-            &queue,
-            &camera,
-            (W, H),
-            rig_shade(),
-            None,
-        )
+        .form_plane(&device, &queue, &camera, (W, H), rig_shade(), None)
         .expect("com malha, o plano existe");
     assert_eq!(
         plane.normal.len(),
@@ -1166,14 +1156,7 @@ fn a_renderer_with_no_mesh_donates_nothing() {
     let camera = Camera3d::default();
     assert!(
         renderer
-            .form_plane(
-                &device,
-                &queue,
-                &camera,
-                (W, H),
-                rig_shade(),
-                None
-            )
+            .form_plane(&device, &queue, &camera, (W, H), rig_shade(), None)
             .is_none(),
         "sem geometria, nada a doar"
     );
@@ -1181,14 +1164,7 @@ fn a_renderer_with_no_mesh_donates_nothing() {
     renderer.upload_at(&device, &queue, 0, &shapes::uv_sphere(8, 12, 1.0), &[]);
     assert!(
         renderer
-            .form_plane(
-                &device,
-                &queue,
-                &camera,
-                (0, H),
-                rig_shade(),
-                None
-            )
+            .form_plane(&device, &queue, &camera, (0, H), rig_shade(), None)
             .is_none(),
         "canvas de largura zero não é um plano de zero texels — é ausência"
     );
@@ -1235,14 +1211,8 @@ fn measure_a_donation() {
         // resultado saía com o AO de tela *mais barato* que o caminho sem ele, em todas as linhas.
         // *Uma tabela em que a coluna mais cara é a mais rápida está medindo a ordem.*
         for params in [None, Some(ssao)] {
-            let _ = renderer.form_plane(
-                &device,
-                &queue,
-                &camera,
-                (edge, edge),
-                rig_shade(),
-                params,
-            );
+            let _ =
+                renderer.form_plane(&device, &queue, &camera, (edge, edge), rig_shade(), params);
         }
         for (k, params) in [None, Some(ssao)].into_iter().enumerate() {
             let mut best = f64::MAX;
@@ -1868,14 +1838,7 @@ fn o_ao_assado_chega_ao_shader_e_so_escurece_onde_foi_assado() {
 
     let mut renderer = MeshRenderer::new(&device, FORMAT);
     renderer.upload_at(&device, &queue, 0, &mesh, &[]);
-    let desligado = render_using_rig_shade(
-        &device,
-        &queue,
-        &mut renderer,
-        &cam,
-        &rig,
-        rig_shade(),
-    );
+    let desligado = render_using_rig_shade(&device, &queue, &mut renderer, &cam, &rig, rig_shade());
     let ligado = render_using_rig_shade(
         &device,
         &queue,
@@ -1944,14 +1907,7 @@ fn sem_bake_o_controle_de_ao_nao_muda_um_pixel() {
 
     let mut renderer = MeshRenderer::new(&device, FORMAT);
     renderer.upload_at(&device, &queue, 0, &mesh, &[]);
-    let zero = render_using_rig_shade(
-        &device,
-        &queue,
-        &mut renderer,
-        &cam,
-        &rig,
-        rig_shade(),
-    );
+    let zero = render_using_rig_shade(&device, &queue, &mut renderer, &cam, &rig, rig_shade());
     let cheio = render_using_rig_shade(
         &device,
         &queue,
@@ -2114,14 +2070,7 @@ fn a_fresta_entre_dois_corpos_escurece_e_o_flanco_aberto_nao() {
         },
         params,
     );
-    let on = render_with_ssao(
-        &device,
-        &queue,
-        &mut r,
-        &cam,
-        rig_shade(),
-        params,
-    );
+    let on = render_with_ssao(&device, &queue, &mut r, &cam, rig_shade(), params);
 
     // A fresta: a faixa vertical central, na altura do equador.
     let (gx0, gx1) = (W / 2 - 4, W / 2 + 4);
@@ -2417,14 +2366,7 @@ fn probe_what_each_knob_does_to_the_crevice() {
         });
     }
     for p in cases {
-        let on = render_with_ssao(
-            &device,
-            &queue,
-            &mut r,
-            &cam,
-            rig_shade(),
-            p,
-        );
+        let on = render_with_ssao(&device, &queue, &mut r, &cam, rig_shade(), p);
         let g = 1.0 - window_mean(&on, gx0, gx1, gy0, gy1) / gap0;
         let f = 1.0 - window_mean(&on, fx0, fx1, fy0, fy1) / flank0;
         eprintln!(
@@ -2517,14 +2459,7 @@ fn um_plano_chato_nao_oclui_nada_visto_de_qualquer_angulo() {
         cam.frame(bounds, W as f32 / H as f32);
 
         let sem = render_using(&device, &queue, &mut r, &cam);
-        let com = render_with_ssao(
-            &device,
-            &queue,
-            &mut r,
-            &cam,
-            rig_shade(),
-            params,
-        );
+        let com = render_with_ssao(&device, &queue, &mut r, &cam, rig_shade(), params);
         // ⚠️ **O QUARTO central, e não a metade.** A parede tem uma BORDA, e em
         // obliquidade extrema ela entra no alcance do AO de pixels da metade —
         // oclusão REAL, medida em 1,89% a 45°, contra uma barra de 2%. Apertar a
@@ -2818,14 +2753,7 @@ fn a_zero_strength_leaves_the_clay_byte_identical() {
     };
     let (mut r, cam) = lit_sphere(&device, &queue);
     let rig = LightRig::default();
-    let sem = render_using_rig_shade(
-        &device,
-        &queue,
-        &mut r,
-        &cam,
-        &rig,
-        rig_shade(),
-    );
+    let sem = render_using_rig_shade(&device, &queue, &mut r, &cam, &rig, rig_shade());
     // O canal DECLARADO mas em zero, e com um `scatter` grande — se o `mix`
     // vazasse, seria aqui.
     let com = render_using_rig_shade(

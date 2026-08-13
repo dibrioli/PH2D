@@ -40,7 +40,9 @@ fn what_a_matcap_switch_costs() {
         );
     }
     // RGBA de meio-float = 8 bytes por texel, e o lado é POR-MATCAP.
-    let mib = |m: &ph2d_mesh_render::Matcap| f64::from(m.side) * f64::from(m.side) * 8.0 / (1024.0 * 1024.0);
+    let mib = |m: &ph2d_mesh_render::Matcap| {
+        f64::from(m.side) * f64::from(m.side) * 8.0 / (1024.0 * 1024.0)
+    };
     let todos: f64 = ph2d_mesh_render::matcap::MATCAPS.iter().map(mib).sum();
     let maior = ph2d_mesh_render::matcap::MATCAPS
         .iter()

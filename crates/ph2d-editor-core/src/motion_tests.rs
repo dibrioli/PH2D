@@ -363,95 +363,131 @@ fn reduced_motion_makes_a_hover_arrive_in_the_frame_it_changes() {
 // A CASCATA (F5) — o horário de alvos que faz N cartões lerem-se como UM gesto.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// **Quanto demora a entrada inteira**, medida pela porta do produto: `n` tracks alvejadas pelo
-/// MESMO horário que o `tick` usa, andadas a 60 Hz até a última assentar a 1% do alvo.
+/// **Quantos QUADROS separam dois cartões vizinhos, e quanto dura a entrada inteira.**
 ///
-/// ⚠️ Isto NÃO é aritmética `(n−1)·ε + assentamento`: é o substrato a integrar, com a `ζ` que o
-/// carácter escolheu. O `#[ignore]` é a política das sondas — ela imprime, não afirma.
+/// ⚠️ **A régua é o QUADRO, e é essa a lição da wave.** A primeira versão desta sonda media só
+/// segundos, e um total honesto escondia o defeito que o Enio viu: com `ε = 0,020` os vizinhos
+/// partem a **um** quadro de distância — distinguível por um cronómetro, simultâneo para um olho.
 #[test]
 #[ignore = "sonda: imprime a tabela que escolhe o CASCADE_STAGGER_SECS"]
-fn measure_the_cascade_total() {
-    fn total_secs(stagger: f64, n: usize, ch: UiCharacter) -> f64 {
-        let mut m = UiMotion::default();
-        m.set_character(ch);
+fn probe_cascade_frames() {
+    // Em que QUADRO cada cartão parte, e em que quadro o último assenta.
+    fn run(eps: f64, n: usize) -> (Vec<usize>, usize) {
         let dt = 1.0 / 60.0;
-        let mut t = 0.0;
-        loop {
-            m.advance(dt);
-            // A MESMA ordem do `tick_palette_cascade`: alveja com o horário de agora, anda depois.
-            for i in 0..n {
+        let mut starts = vec![usize::MAX; n];
+        let mut secs = 0.0;
+        let mut m = UiMotion::default();
+        for f in 0..240 {
+            for (i, start) in starts.iter_mut().enumerate() {
                 #[allow(clippy::cast_precision_loss)]
-                let due = i as f64 * stagger;
-                m.animate(id(i as u64), f32::from(u8::from(t > due)), Role::Travel);
+                let due = i as f64 * eps;
+                let t = m.animate(id(i as u64), f32::from(u8::from(secs > due)), Role::Travel);
+                if t > 0.0 && *start == usize::MAX {
+                    *start = f;
+                }
             }
-            t += dt;
-            let settled =
-                (0..n).all(|i| m.get(id(i as u64)).is_some_and(|v| (v - 1.0).abs() < 0.01));
-            if settled || t > 5.0 {
-                return t;
+            secs += dt;
+            m.advance(dt);
+            if (0..n).all(|i| m.get(id(i as u64)).is_some_and(|v| (v - 1.0).abs() < 0.01)) {
+                return (starts, f);
             }
         }
+        (starts, 240)
     }
-    for ch in [UiCharacter::Discrete, UiCharacter::Expressive] {
-        println!(
-            "\n=== {ch:?} (n=1, so o assentamento: {:.2} s) ===",
-            total_secs(0.0, 1, ch)
-        );
-        println!("  eps  |  n=3   |  n=7");
-        println!("-------|--------|-------");
-        for eps in [0.010, 0.015, 0.020, 0.040] {
-            println!(
-                " {eps:.3} | {:.2} s | {:.2} s",
-                total_secs(eps, 3, ch),
-                total_secs(eps, 7, ch)
-            );
+    println!("\n eps  | n | quadros entre vizinhos | entrada inteira");
+    println!("------|---|------------------------|----------------");
+    for eps in [0.020, 0.035, 0.050, 0.065, 0.080] {
+        for n in [3usize, 7] {
+            let (st, end) = run(eps, n);
+            let gap = st[1].saturating_sub(st[0]);
+            #[allow(clippy::cast_precision_loss)]
+            let secs = end as f64 / 60.0;
+            println!(" {eps:.3}| {n} |          {gap:2} quadros       |   {secs:.2} s");
         }
     }
 }
 
-/// ⭐ **A CASCATA lê-se como UM gesto — e isto é uma condição, não um gosto.**
+/// ⭐ **A CASCATA é VISIVELMENTE sequencial — e a régua é o QUADRO, não o segundo.**
 ///
-/// O último cartão tem de COMEÇAR antes de o primeiro assentar; passando disso o que se vê é uma
-/// sequência. O carácter que aperta é o **Discreto**, por ser o default e o de assentamento mais
-/// curto. *Mutação: `CASCADE_STAGGER_SECS = 0.040` ⇒ espalhamento 0,24 s > 0,22 s ⇒ sangra.*
+/// ⚠️ **Este gate SUBSTITUI um que foi retirado por ter o critério errado.** O anterior chamava-se
+/// `the_cascade_still_reads_as_one_gesture` e exigia `(n−1)·ε < assentamento`; era invenção minha,
+/// e o smoke mostrou que uma cascata pode durar mais que o assentamento e continuar a ler-se bem.
+/// O que ele **não** media era a única coisa que o olho reprovou: a separação entre vizinhos.
+///
+/// Três quadros a 60 Hz (50 ms) é o que separa *uma sequência* de *um bloco*.
+/// *Mutação: `0,020`, o valor que o Enio reprovou ⇒ 1 quadro ⇒ sangra.*
 #[test]
-fn the_cascade_still_reads_as_one_gesture() {
-    /// A maior paleta REAL: uma categoria por token `NodeCat*` (a global tem 3).
-    const N_MAX: usize = 7;
-    let mut m = UiMotion::default();
-    // ⚠️ SEMEIA em 0. A lei do substrato é que a primeira vista CHEGA ao alvo, então alvejar `1.0`
-    //    de entrada mede **um quadro** de assentamento e o gate passa a comparar contra nada — foi
-    //    a terceira vez que esta lei mordeu nesta wave (a sonda e o próprio produto foram as duas
-    //    primeiras). Uma fixture que não contém o fenómeno é verde sobre coisa nenhuma.
-    m.animate(id(0), 0.0, Role::Travel);
-    let mut settle = 0.0;
+fn the_cascade_is_visibly_sequential_not_simultaneous() {
+    const MIN_FRAMES: usize = 3;
     let dt = 1.0 / 60.0;
-    while settle < 5.0 {
-        m.advance(dt);
-        m.animate(id(0), 1.0, Role::Travel);
-        settle += dt;
-        if m.get(id(0)).is_some_and(|v| (v - 1.0).abs() < 0.01) {
-            break;
+    let mut m = UiMotion::default();
+    let mut secs = 0.0;
+    let (mut a, mut b) = (usize::MAX, usize::MAX);
+    for f in 0..240 {
+        for i in 0..2u64 {
+            #[allow(clippy::cast_precision_loss)]
+            let due = i as f64 * CASCADE_STAGGER_SECS;
+            let t = m.animate(id(i), f32::from(u8::from(secs > due)), Role::Travel);
+            if t > 0.0 {
+                if i == 0 && a == usize::MAX {
+                    a = f;
+                } else if i == 1 && b == usize::MAX {
+                    b = f;
+                }
+            }
         }
+        secs += dt;
+        m.advance(dt);
     }
-    #[allow(clippy::cast_precision_loss)]
-    let spread = (N_MAX - 1) as f64 * CASCADE_STAGGER_SECS;
     assert!(
-        spread < settle,
-        "a cascata virou SEQUENCIA: espalhamento {spread:.3} s >= assentamento {settle:.3} s"
+        b.saturating_sub(a) >= MIN_FRAMES,
+        "vizinhos partem a {} quadro(s) — o olho le isso como SIMULTANEO",
+        b.saturating_sub(a)
     );
 }
 
-/// ⚠️ **E ela é VISÍVEL — o outro lado do intervalo.** Abaixo de um quadro dois cartões viram o
-/// alvo no mesmo tique e o escalonamento degrada para *dois a dois*.
+/// ⚠️ **E a entrada acaba a tempo — o outro lado, agora medido no que importa.** O artista abriu a
+/// paleta para a USAR; um cartão que chega depois de ele já estar a ler chegou tarde.
+/// *Mutação: `0,080` ⇒ 0,65 s na paleta grande ⇒ sangra.*
+#[test]
+fn the_whole_entrance_lands_inside_its_budget() {
+    /// A maior paleta REAL: uma categoria por token `NodeCat*` (a global tem 3).
+    const N_MAX: u64 = 7;
+    /// ⚠️ Do lado do PRODUTO: 0,48 s é o que `ε = 0,050` entrega, e a barra deixa uma casa de folga
+    /// sem admitir o 0,065 (0,57 s), que compra os MESMOS três quadros por mais espera.
+    const BUDGET_S: f64 = 0.55;
+    let dt = 1.0 / 60.0;
+    let mut m = UiMotion::default();
+    let mut secs = 0.0;
+    for f in 0..240 {
+        for i in 0..N_MAX {
+            #[allow(clippy::cast_precision_loss)]
+            let due = i as f64 * CASCADE_STAGGER_SECS;
+            m.animate(id(i), f32::from(u8::from(secs > due)), Role::Travel);
+        }
+        secs += dt;
+        m.advance(dt);
+        if (0..N_MAX).all(|i| m.get(id(i)).is_some_and(|v| (v - 1.0).abs() < 0.01)) {
+            #[allow(clippy::cast_precision_loss)]
+            let took = f as f64 * dt;
+            assert!(took <= BUDGET_S, "a entrada demorou {took:.2} s");
+            return;
+        }
+    }
+    panic!("a entrada nao acabou");
+}
+
+/// ⚠️ **E ela é VISÍVEL — o piso que o SMOKE escreveu.** A primeira versão pedia *um* quadro, que
+/// é condição **necessária e não suficiente**: a 60 Hz um quadro lê-se como simultâneo, e foi
+/// exactamente assim que a wave foi reprovada. Três.
 ///
 /// ⚠️ **Pin de COMPILAÇÃO e não teste**, porque os dois lados são constantes: o `clippy` apontou-o
 /// (*«this assertion has a constant value»*) e tem razão — uma pergunta cuja resposta o compilador
 /// já sabe deve falhar no compilador. *Mutação: `0.015`, o valor que esta wave shipou primeiro
 /// ⇒ o crate deixa de compilar.*
 const _: () = assert!(
-    CASCADE_STAGGER_SECS >= 1.0 / 60.0,
-    "CASCADE_STAGGER_SECS abaixo de um quadro a 60 Hz: cartoes vizinhos viram o alvo juntos"
+    CASCADE_STAGGER_SECS >= 3.0 / 60.0,
+    "CASCADE_STAGGER_SECS abaixo de tres quadros a 60 Hz: o Enio leu isso como SIMULTANEO"
 );
 
 /// ⭐ **O quadro da ABERTURA alveja ZERO — sem isto não há cascata, e a suíte ficaria verde.**

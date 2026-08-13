@@ -247,36 +247,33 @@ pub fn hover_lift(rect: crate::zones::Rect, t: f32, travels: bool) -> crate::zon
 
 /// O atraso entre dois cartões consecutivos na CASCATA de entrada.
 ///
-/// ⚠️ **O intervalo é apertado dos DOIS lados, e nenhum dos limites é gosto.**
+/// ⚠️ **NÚMERO DE APARÊNCIA: sai do SMOKE, não de um teste** — o idioma do [`HOVER_LIFT_PX`]. E a
+/// primeira versão desta constante (`0,020`) foi **REPROVADA pelo Enio** com a frase que a nomeia:
+/// *«os cartões têm um discreto movimento de subida SIMULTÂNEO e não encadeado»*.
 ///
-/// **Em baixo, o QUADRO.** O horário é de relógio de parede, mas quem o amostra é o tique: com
-/// `ε` abaixo de um período (16,7 ms a 60 Hz) dois cartões vizinhos viram o alvo **no mesmo
-/// quadro**, e a cascata degrada para *dois a dois* — mais grossa do que a que se pediu, e
-/// invisível como escalonamento.
+/// ⚠️ **E o erro não foi o número, foi o CRITÉRIO.** Eu tinha escrito duas cercas — *acima de um
+/// quadro* (senão dois cartões viram o alvo no mesmo tique) e *`(n−1)·ε < assentamento`* (para se
+/// ler como um gesto) — e depois **escolhi o piso da primeira como valor**. Estar acima de um
+/// quadro é condição **NECESSÁRIA**, e eu usei-a como suficiente: a 60 Hz, `0,020` põe os vizinhos
+/// a **um quadro** de distância, que é distinguível por um cronómetro e simultâneo para um olho.
+/// ⛔ E a segunda cerca era **invenção minha** — o smoke mostrou que uma cascata pode ser mais
+/// longa que o assentamento e continuar a ler-se bem; ela foi RETIRADA em vez de afrouxada.
 ///
-/// **Em cima, a SOBREPOSIÇÃO.** Uma cascata existe para que `N` coisas se leiam como **um** gesto,
-/// e isso tem uma condição verificável: *o último cartão tem de começar antes de o primeiro
-/// assentar* — `(n − 1)·ε < assentamento`. Passando disso, o que se vê é uma **sequência**.
+/// O que sobrou são as duas perguntas que o produto de facto faz — *vê-se a sequência?* e *a
+/// entrada acaba a tempo?* —, medidas em QUADROS e em segundos pela `probe_cascade_frames`:
 ///
-/// Medido pela `measure_the_cascade_total` (o substrato a integrar, não aritmética), com
-/// `n = 7` — a maior paleta REAL, uma categoria por token `NodeCat*`; a global tem 3:
+/// | ε | quadros entre vizinhos | entrada n=3 | entrada n=7 |
+/// |---|---|---|---|
+/// | 0,020 | **1** ⛔ *(o que foi reprovado)* | 0,22 s | 0,30 s |
+/// | 0,035 | 2 | 0,25 s | 0,38 s |
+/// | **0,050** | **3** | **0,28 s** | **0,48 s** |
+/// | 0,065 | 3 | 0,30 s | 0,57 s |
+/// | 0,080 | 4 | 0,33 s | 0,65 s |
 ///
-/// | ε | Discreto n=7 | Expressivo n=7 |
-/// |---|---|---|
-/// | 0,010 | 0,27 s | 0,57 s |
-/// | 0,015 | 0,30 s | 0,60 s |
-/// | **0,020** | **0,33 s** | **0,63 s** |
-/// | 0,040 | 0,45 s | 0,75 s |
-///
-/// O assentamento sozinho (`n = 1`) é **0,22 s** em Discreto e **0,37 s** em Expressivo, e o
-/// **Discreto é o que aperta** por ser o default E o mais rápido: `6·ε < 0,22` ⇒ `ε < 0,037`.
-/// `0,020` é o valor que fica **acima de um quadro** e ainda deixa a sobreposição com folga
-/// (0,12 s de espalhamento contra 0,22 s de assentamento).
-///
-/// ⚠️ **E a primeira versão desta constante era 0,015, escolhida sobre uma tabela que eu tinha
-/// calculado em vez de medido, e com `n = 17` INVENTADO.** Os dois erros apontavam para o mesmo
-/// lado: 0,015 fica **abaixo** de um quadro a 60 Hz.
-pub const CASCADE_STAGGER_SECS: f64 = 0.020;
+/// `0,050` é o primeiro valor com **três quadros** de separação — e 0,065 compra os mesmos três
+/// por mais 0,09 s de espera na paleta grande. `n = 7` é a maior paleta REAL (uma categoria por
+/// token `NodeCat*`); a global tem 3.
+pub const CASCADE_STAGGER_SECS: f64 = 0.050;
 
 /// Quanto um cartão SOBE ao entrar. ⚠️ **Número de APARÊNCIA**, irmão do [`HOVER_LIFT_PX`], e maior
 /// que ele pelo mesmo motivo que um cartão é maior que um chip: 3 px sobre 300 não se vê.

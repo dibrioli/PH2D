@@ -534,4 +534,3 @@ mod swim_gates;
 /// que se perdia era *quem escreve o eixo vertical neste tique*).
 #[path = "lib_glide_tests.rs"]
 mod glide_gates;
-

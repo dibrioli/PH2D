@@ -308,29 +308,32 @@ fn wall_rig() -> (SimWorld, PhysicsBridge, Entity) {
         },
         Transform::from_translation(Vec2::new(1.0, 0.0)),
     ));
-    let player = sim.world_mut().spawn((
-        Name::new("Subject"),
-        RigidBody {
-            kind: BodyKind::Dynamic,
-        },
-        Collider {
-            shape: ColliderShape::Capsule {
-                half_height: 0.3,
-                radius: 0.2,
+    let player = sim
+        .world_mut()
+        .spawn((
+            Name::new("Subject"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
             },
-            density: 1.0,
-            ..Collider::default()
-        },
-        PlatformPlayer {
-            float_height: FLOAT_HEIGHT,
-            // A parede só existe para a lei quando ela está ARMADA.
-            wall_slide_speed: 2.0,
-            wall_jump_height: 1.2,
-            wall_jump_push: 4.0,
-            ..PlatformPlayer::default()
-        },
-        Transform::from_translation(Vec2::new(0.3, 4.0)),
-    )).id();
+            Collider {
+                shape: ColliderShape::Capsule {
+                    half_height: 0.3,
+                    radius: 0.2,
+                },
+                density: 1.0,
+                ..Collider::default()
+            },
+            PlatformPlayer {
+                float_height: FLOAT_HEIGHT,
+                // A parede só existe para a lei quando ela está ARMADA.
+                wall_slide_speed: 2.0,
+                wall_jump_height: 1.2,
+                wall_jump_push: 4.0,
+                ..PlatformPlayer::default()
+            },
+            Transform::from_translation(Vec2::new(0.3, 4.0)),
+        ))
+        .id();
     (sim, PhysicsBridge::new(), player)
 }
 
@@ -432,4 +435,3 @@ fn the_three_jumps_are_three_names() {
         "o pulo do CHÃO tem o nome dele, e não um genérico: {names:?}"
     );
 }
-

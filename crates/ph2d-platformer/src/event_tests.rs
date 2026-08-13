@@ -206,7 +206,10 @@ fn the_water_publishes_both_edges() {
         ..PlayerView::default()
     };
 
-    assert_eq!(events(&dry, &step(wet, None)), vec![PlayerEvent::EnteredWater]);
+    assert_eq!(
+        events(&dry, &step(wet, None)),
+        vec![PlayerEvent::EnteredWater]
+    );
     assert_eq!(events(&wet, &step(dry, None)), vec![PlayerEvent::LeftWater]);
     assert!(events(&wet, &step(wet, None)).is_empty());
 }

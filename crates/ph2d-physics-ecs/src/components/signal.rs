@@ -155,4 +155,3 @@ fn signal_name(raw: &str) -> Option<&str> {
 pub struct PlayerSignals;
 
 impl SimComponent for PlayerSignals {}
-

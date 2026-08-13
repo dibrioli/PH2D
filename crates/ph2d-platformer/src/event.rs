@@ -94,7 +94,12 @@ pub enum PlayerEvent {
 /// afirma: um relatório de contato é um fato sobre o mundo **agora** (*isto
 /// está a tocar naquilo*), então uma baseline vazia reportar tudo no primeiro
 /// tique é honesto. `Landed` afirma um **verbo no passado**.
-pub fn events_between(before: &PlayerView, step: &PlayerStep, up: Vec2, out: &mut Vec<PlayerEvent>) {
+pub fn events_between(
+    before: &PlayerView,
+    step: &PlayerStep,
+    up: Vec2,
+    out: &mut Vec<PlayerEvent>,
+) {
     let after = &step.view;
 
     // O pulo é o único que a lei DECLARA em vez de a comparação derivar.
@@ -113,10 +118,7 @@ pub fn events_between(before: &PlayerView, step: &PlayerStep, up: Vec2, out: &mu
     }
 
     // ── O ÁPICE ──────────────────────────────────────────────────────────────
-    if after.footing == FootingKind::Airborne
-        && rise(before, up) > 0.0
-        && rise(after, up) <= 0.0
-    {
+    if after.footing == FootingKind::Airborne && rise(before, up) > 0.0 && rise(after, up) <= 0.0 {
         out.push(PlayerEvent::Apex);
     }
 

@@ -210,4 +210,3 @@ fn the_course_names_what_it_fires() {
         .map_or(0.0, |t| t.translation.x);
     eprintln!("  fim: x = {x:.2}");
 }
-

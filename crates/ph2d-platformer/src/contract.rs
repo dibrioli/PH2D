@@ -12,8 +12,7 @@
 use crate::{
     Motor, Reaction, Vec2, crouch::CrouchConfig, crouch::CrouchState, dash::DashConfig,
     dash::DashState, glide::GlideConfig, jump::JumpConfig, jump::JumpKind, jump::JumpState,
-    kinematic,
-    ledge::LedgeConfig, ledge::LedgeState, react::ReactionConfig, ride::RideConfig,
+    kinematic, ledge::LedgeConfig, ledge::LedgeState, react::ReactionConfig, ride::RideConfig,
     swim::SwimConfig, swim::SwimState, walk::WalkConfig, wall::GrabState, wall::WallConfig,
 };
 

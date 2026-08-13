@@ -58,9 +58,8 @@ pub use components::{
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,
     Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation,
     MassOverride, MaterialCombine, OneWayPlatform, PlatformPlayer, PlayerMode, PlayerSignals,
-    PulleyWheel,
-    RigidBody, RopeStops, SignalOnHit, SignalOnLeave, WestonAxle, WrapSide, reseat_mounted_axle,
-    reseat_wheel_geometry, rope_joint_of,
+    PulleyWheel, RigidBody, RopeStops, SignalOnHit, SignalOnLeave, WestonAxle, WrapSide,
+    reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
 };
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
@@ -95,16 +94,16 @@ pub use ph2d_platformer::{
     CORNER_SAMPLES, MAX_CORNER_SAMPLES, MAX_WALL_SAMPLES, WALL_SAMPLES, corner_offsets,
     odd_samples, wall_offsets,
 };
+/// A SAÍDA da lei, re-exportada pela MESMA razão dos vizinhos acima: quem a lê é
+/// o Inspector, e a shell **não depende da `ph2d-platformer`**. Re-exportar em
+/// vez de alargar o grafo de dependências mantém a contenção e a porta única.
+pub use ph2d_platformer::{FootingKind, JumpKind, PlayerEvent, PlayerView};
 /// A config da lei, re-exportada pela MESMA razão do `rope_route` e do
 /// `ShapeDesc`: a shell **não depende da `ph2d-platformer`** (a contenção que
 /// mantém o rapier e a lei confinados), e o Inspector precisa do ponto de
 /// partida e do piso geométrico da altura de flutuação. Uma segunda cópia deles
 /// na shell seria a segunda resposta a *"com que números um player nasce?"*.
 pub use ph2d_platformer::{PlayerConfig, RideConfig, WalkConfig};
-/// A SAÍDA da lei, re-exportada pela MESMA razão dos vizinhos acima: quem a lê é
-/// o Inspector, e a shell **não depende da `ph2d-platformer`**. Re-exportar em
-/// vez de alargar o grafo de dependências mantém a contenção e a porta única.
-pub use ph2d_platformer::{FootingKind, JumpKind, PlayerEvent, PlayerView};
 pub use rig::{RIG_LIMIT_DEG, rig_edges, rig_limits, subtree_parts};
 pub use scale::scaled_shape;
 pub use seam::{ColliderPose, seam_between, seam_point};

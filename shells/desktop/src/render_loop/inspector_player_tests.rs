@@ -41,7 +41,8 @@ const CAPSULE: ColliderShape = ColliderShape::Capsule {
 #[test]
 fn the_empty_face_becomes_a_player_with_the_laws_starting_point() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
-    let before = build_player_info(&sim, bits, 0.0, 0.0, None).expect("todo corpo Dynamic tem a §14");
+    let before =
+        build_player_info(&sim, bits, 0.0, 0.0, None).expect("todo corpo Dynamic tem a §14");
     assert!(!before.has_player, "ele ainda nao e' um player");
 
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
@@ -127,7 +128,8 @@ fn remove_gives_the_body_back_and_keeps_the_door_open() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Remove);
-    let info = build_player_info(&sim, bits, 0.0, 0.0, None).expect("a secao NAO some com o componente");
+    let info =
+        build_player_info(&sim, bits, 0.0, 0.0, None).expect("a secao NAO some com o componente");
     assert!(!info.has_player);
 }
 
@@ -345,7 +347,12 @@ fn switching_the_mode_writes_both_halves_and_the_section_survives_the_trip() {
         sim.world().get::<RigidBody>(e).map(|b| b.kind),
         Some(BodyKind::Dynamic)
     );
-    assert_eq!(build_player_info(&sim, bits, 0.0, 0.0, None).unwrap().mode_tag, 0);
+    assert_eq!(
+        build_player_info(&sim, bits, 0.0, 0.0, None)
+            .unwrap()
+            .mode_tag,
+        0
+    );
 }
 
 /// **Um corpo cinemático que NÃO é player continua fora da §14** — ele é dirigido

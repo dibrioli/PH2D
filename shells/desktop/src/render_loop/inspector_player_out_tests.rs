@@ -62,8 +62,7 @@ fn the_emit_signals_verb_attaches_and_detaches_the_marker() {
     let e = ph2d_ecs::Entity::from_bits(bits);
 
     assert!(
-        build_player_info(&sim, bits, 0.0, 0.0, None)
-            .is_some_and(|i| !i.emits_signals),
+        build_player_info(&sim, bits, 0.0, 0.0, None).is_some_and(|i| !i.emits_signals),
         "um player novo nasce em SILÊNCIO"
     );
 
@@ -119,4 +118,3 @@ fn the_live_readout_carries_what_the_law_published() {
     assert_eq!(live.facing, -1.0);
     assert_eq!(live.velocity, [2.5, -0.5]);
 }
-

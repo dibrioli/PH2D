@@ -119,4 +119,3 @@ fn the_facing_survives_the_dash_being_off() {
         "parar de andar nao e' virar-se para lugar nenhum"
     );
 }
-

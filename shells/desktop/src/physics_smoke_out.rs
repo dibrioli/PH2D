@@ -10,13 +10,17 @@
 //! razão de existir é ouvi-lo, então ela o arma — e o passo 5 manda desligá-lo,
 //! porque um opt-in que não se desfaz não é um opt-in.
 //!
-//! ⚠️ **O número 113 e não o 105 que a §5 do `CLAUDE.md` anuncia como livre:**
-//! medido, o roteador vai até ao **112**, e o 105 é do `physics_smoke_swim`. A
-//! nota sobreviveu ao facto — e o que a pegou foi o **compilador**: um braço
-//! duplicado num `match` de strings é `unreachable_patterns`, que este repo
-//! trata como erro no fecho. (O gate `no_two_smoke_scenes_claim_the_same_level`
-//! cobre a família do `build_smoke_router`, que é uma cadeia de `if` e não tem
-//! quem a avise.)
+//! ⚠️ **O número 113, e a §5 do `CLAUDE.md` anuncia 105 como livre — as duas
+//! coisas estão certas.** Aquela nota descreve o `main`, cujo roteador para no
+//! **104**; esta LINHA está 74 commits à frente e a jornada da ÁGUA já tomou o
+//! 105 (`physics_smoke_swim`) até ao 112. *Um número de cena escolhido numa
+//! linha paralela é PROVISÓRIO*, exatamente como um número de ADR ou um degrau
+//! de schema — quem integra CONTA contra o `main` do dia.
+//!
+//! ⚠️ E o que pegou a colisão foi o **compilador**: um braço duplicado num
+//! `match` de strings é `unreachable_patterns`, que este repo trata como erro no
+//! fecho. (O gate `no_two_smoke_scenes_claim_the_same_level` cobre a família do
+//! `build_smoke_router`, que é uma cadeia de `if` e não tem quem a avise.)
 //!
 //! ⚠️ **A cena imprime o readout a cada meio segundo** (`[player] …`). *Se essa
 //! linha não aparecer, pare*: sem ela o resto do smoke não diz nada — não há

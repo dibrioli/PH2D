@@ -15,7 +15,40 @@ A (a saída) → C (o peso) → B (a superfície) → D (o teto) → E (o empurr
 
 ---
 
-## §1 — Wave **A**: a SAÍDA ⟨começa hoje⟩
+## §1 — Wave **A**: a SAÍDA ⟨**FECHADA** 2026-08-13⟩
+
+> **FECHOU** em cinco commits (`3e0ac07e6` A1 · `4bcf12a9b`+`80d72be32` A2 ·
+> `4758f15ad` A3 · `933fa02fd` A5; o A4 é o que cada um deles carrega).
+> **Pendente de smoke** — cena **113**.
+>
+> ⚠️ **O que a medição mudou no que está escrito abaixo:**
+>
+> * **A2 ganhou uma porta que o plano não previu.** A mutação *"a subtração do
+>   chão vira zero"* sangrava UM gate, e a conta estava escrita **duas vezes**: a
+>   lei projeta a velocidade relativa no `up`, a mola do `ride` na **NORMAL**, e
+>   por serem eixos diferentes ninguém tinha visto que era a mesma subtração.
+>   `rise_over` → **`relative_along(body, ground, axis)`**, três chamadores, uma
+>   fórmula, byte-idêntica — e a mesma mutação passou a sangrar nos DOIS módulos.
+> * **A3 fundiu-se na porta que já existia** em vez de abrir uma segunda: o
+>   evento do player é a **terceira fonte** do `signal_events`, ao lado dos
+>   contatos e dos sensores, então a shell que já drena aquilo **não mudou uma
+>   linha**. E os três pulos são três NOMES (`player.jumped.ground|air|wall`),
+>   pela lei do ADR-0143 que o `SignalOnLeave` já enuncia.
+> * **A5 teve o roteiro REESCRITO pela sonda, três vezes.** Parede no meio do
+>   caminho ⇒ o percurso morria nela (`x = 10.50` para sempre); atrás do início
+>   ⇒ ele chegava pelo CHÃO, onde a lei recusa agarrar-se; colada à ponta do
+>   degrau ⇒ bloqueio. O que funciona é **um metro de vão** depois do degrau.
+> * ⚠️ **O readout é APAGADO nas duas descontinuidades** (scrub e `hold`), e isso
+>   não estava no plano: sem passo não há lei, e publicar *"no chão, a 4 m/s"*
+>   com a física desarmada seria um número errado apresentado como certo. A §14
+>   diz **`not simulating`** em vez de deixar um vão.
+> * ⚠️ **A cena é a 113 e não a 105:** esta linha está 74 commits à frente do
+>   `main`, e a jornada da ÁGUA já tomou 105..112. *Um número de cena escolhido
+>   numa linha paralela é PROVISÓRIO* — quem integra conta contra o `main` do dia.
+> * **O `physics_ecs_c9` NÃO se move com esta wave** (medido: `1699123f…` antes
+>   e depois dos cinco commits) — a diferença contra o `main` é da jornada da
+>   água, que já estava na linha.
+
 
 **O buraco, medido:** a superfície pública inteira da ponte para o player são
 seis portas (`bridge/player_channel.rs`) e **nenhuma diz o que o personagem está

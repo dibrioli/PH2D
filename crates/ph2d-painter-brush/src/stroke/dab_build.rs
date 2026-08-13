@@ -29,7 +29,8 @@ impl Stroke {
         //
         // O ARREMESSO entra antes do jitter — e a ordem NÃO é load-bearing; o porquê (medido) está
         // no doc do [`Stroke::throw`].
-        let center = self.apply_jitter(self.throw(pos), radius);
+        let thrown = self.throw(pos, arc);
+        let center = self.apply_jitter(thrown, radius);
         let mut dab = Dab {
             center,
             radius_px: radius,

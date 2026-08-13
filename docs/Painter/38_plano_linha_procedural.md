@@ -346,6 +346,41 @@ existir. Dois cortes por responsabilidade: `stroke/speed.rs` (a inércia do gest
 wave) e `stroke/dab_build.rs` (*como UM dab é construído*, um estágio nomeado do pipeline do
 cabeçalho). O pai fica em **652**.
 
+#### E o smoke REPROVOU: *"speed não é igual o Alchemy"* (Enio, 2026-08-13)
+
+⚠️ **A magnitude estava certa e a FORMA não.** A sonda mediu primeiro, antes de qualquer hipótese: o
+arremesso alcança **1 598 px** num chicote em `Amount = 8` — *"off the screen"* como o manual promete
+—, então *"não vai longe"* estava descartado. O defeito era outro e é medível: num arco rápido (quarto
+de círculo r=150 em 6 quadros) o maior **vão entre dabs vizinhos** valia **25× o passo nominal em
+`Amount = 1` e 99× em `Amount = 4`**. A tinta não saía como uma linha — saía como uma **fileira de
+arcos deslocados e desconectados, um por quadro**.
+
+**A causa:** a velocidade é medida por TIQUE, logo ela é uma **ESCADA** — um valor por quadro,
+constante dentro dele, saltando na fronteira. O Alchemy arremessa **por ponto gravado**, e é por isso
+que a curva dele é contínua.
+
+⚠️ **E a medida por tique NÃO pode ser abandonada** — é ela que a W0.1 provou ser a única
+device-independente (o per-evento varia 73×, o per-dab é constante por construção). O que muda é
+COMO ela é aplicada: a velocidade que cada dab cavalga **caminha** da anterior para a nova ao longo do
+**arco daquele quadro**.
+
+⚠️ **A rampa não tem constante mágica, e isso está GATEADO:** o comprimento dela é o arco do próprio
+quadro, então ela dura *um quadro de percurso* a 300 px/s e a 3 000 px/s igualmente. A mutação que a
+troca por uma constante em pixels **sangra** (vão 22,7 contra um diâmetro de 20 no topo da faixa) —
+a auto-escala é load-bearing, não decoração.
+
+**Medido depois:** vão/passo **25,5 → 2,0** (`a=1`) · **50,1 → 3,0** (`a=2`) · **99,2 → 5,0** (`a=4`),
+e a tinta **continua caindo para FORA do giro** (raio médio 153,6 / 162,7 / 192,8 contra os 150 do
+gesto), que é a metade do manual que já estava certa.
+
+⚠️ **O oráculo do gate novo é o DIÂMETRO, não o passo** — o que faz uma linha ser sólida é os dabs se
+sobreporem, e um arremesso que estica o caminho **aumenta o passo de propósito** (é a feature). O gate
+pergunta o que o olho pergunta: *dá para ver buraco?*
+
+⚠️ **E o acessor público mudou de significado, de propósito:** `Stroke::speed_px_s()` publica a
+**MEDIDA** do tique (a grandeza que descreve o gesto, e a que o Sketchy vai ler); a rampeada é privada
+e existe só para o arremesso. Duas grandezas, e a que sai pela porta é a que tem nome.
+
 ---
 
 ### W3 — **Sketchy** (o *neighbour points*)

@@ -200,3 +200,58 @@ fn the_amount_counts_frames_of_look_ahead() {
         "a janela deixou de ser um quadro de 60 fps"
     );
 }
+
+/// **A LINHA CONTINUA UMA LINHA** — o defeito que o Enio reprovou em 2026-08-13 (*"speed não é igual
+/// o Alchemy"*), com o número ao lado.
+///
+/// O arremesso medido por TIQUE é uma ESCADA: um valor por quadro, constante dentro dele, saltando na
+/// fronteira ⇒ a tinta saía como uma fileira de arcos deslocados e **desconectados**, um por quadro.
+/// Medido num arco rápido, o maior vão entre dabs vizinhos valia **25× o passo nominal em `Amount=1`
+/// e 99× em `Amount=4`**. O Alchemy arremessa por ponto gravado; a cura aqui é a RAMPA sobre o arco
+/// do próprio quadro (`super::stroke::speed`).
+///
+/// ⚠️ **O oráculo é o DIÂMETRO, não o passo:** o que faz uma linha ser sólida é os dabs se
+/// sobreporem, e um arremesso que estica o caminho **aumenta o passo de propósito** (é a feature).
+/// O gate pergunta o que o olho pergunta — *dá para ver buraco?* —, e a resposta é `vão < diâmetro`.
+///
+/// **Mutação que sangra:** trocar a rampa por um degrau (o `throw` lendo a medida do tique direto).
+#[test]
+fn the_thrown_line_stays_solid_it_does_not_break_into_shifted_arcs() {
+    let dt = 1.0 / 60.0;
+    let diameter = 2.0 * 10.0; // o raio do `spec()` acima
+    for amount in [1.0f32, 4.0, MAX_SPEED_AMOUNT] {
+        let mut s = Stroke::new(spec(0.1, LineKind::Speed, amount), plain_dynamics(), 1);
+        let mut out = Vec::new();
+        let mut centres: Vec<[f32; 2]> = Vec::new();
+        // Um gesto que ACELERA: cada quadro percorre mais que o anterior, então a escada tem degraus
+        // grandes — sem ela na fixture o gate não conteria o fenômeno.
+        let mut x = 0.0f32;
+        s.begin(p(x), &mut out);
+        centres.extend(out.iter().map(|d| d.center));
+        for f in 1..=8 {
+            #[allow(clippy::cast_precision_loss)]
+            let per = 6.0 * f as f32; // 6, 12, 18 … px por evento
+            for _ in 0..4 {
+                x += per;
+                s.extend(p(x), &mut out);
+                centres.extend(out.iter().map(|d| d.center));
+            }
+            s.tick(dt, &mut out);
+            centres.extend(out.iter().map(|d| d.center));
+        }
+        let mut worst = 0.0f32;
+        for w in centres.windows(2) {
+            worst = worst.max((w[1][0] - w[0][0]).abs().max((w[1][1] - w[0][1]).abs()));
+        }
+        // Não-vacuidade: sem arremesso nenhum um traço qualquer passa este gate de graça.
+        let span = centres.last().unwrap()[0] - centres[0][0];
+        assert!(
+            span > 700.0,
+            "a fixture não contém arremesso: o traço mede {span:.0} px contra os ~672 do gesto"
+        );
+        assert!(
+            worst < diameter,
+            "a linha se partiu em Amount={amount}: maior vão {worst:.1} px contra um diâmetro de {diameter}"
+        );
+    }
+}

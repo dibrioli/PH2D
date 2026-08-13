@@ -60,6 +60,9 @@ pub mod line_kind;
 #[path = "line_probe.rs"]
 mod line_probe; // W0 do plano 38: a fórmula de velocidade e o orçamento de fios do Sketchy
 #[cfg(test)]
+#[path = "line_speed_probe.rs"]
+mod line_speed_probe; // sonda do arremesso (plano 38 W2)
+#[cfg(test)]
 #[path = "line_speed_tests.rs"]
 mod line_speed_tests; // os gates do Speed Shapes (plano 38 W2)
 pub mod mask_ops;

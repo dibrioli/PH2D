@@ -97,11 +97,18 @@ pub struct Stroke {
     overlap: f32,
     /// Airbrush time accumulator in seconds, consumed by [`Stroke::tick`].
     airbrush_accum_s: f32,
-    /// A velocidade do gesto em px/s, medida no tique — a inércia que o `LineKind::Speed`
-    /// arremessa. A lei e o porquê vivem em [`mod@self::speed`], a porta única dela.
+    /// A velocidade do gesto em px/s **medida no tique** — a grandeza que [`Stroke::speed_px_s`]
+    /// publica. A lei e o porquê vivem em [`mod@self::speed`], a porta única dela.
     speed_px_s: f32,
     /// O `arc_len` no tique anterior — o outro extremo do `Δarco` que [`mod@self::speed`] divide.
     speed_arc_mark: f32,
+    /// A velocidade que o ARREMESSO deste dab cavalga: ela caminha até a medida acima pela rampa,
+    /// e é PRIVADA de propósito — a grandeza que descreve o gesto é a medida, não a rampeada.
+    throw_speed_px_s: f32,
+    /// O comprimento de arco sobre o qual a rampa caminha até o alvo — o arco do quadro medido.
+    speed_ramp_len: f32,
+    /// O `arc_len` do dab anterior, para a rampa saber quanto de caminho passou entre dois dabs.
+    speed_dab_arc: f32,
     /// The point *before* `last_pos` — the trailing neighbour the Catmull-Rom smoother needs for the
     /// centred tangent at the start of each segment. `None` until the second move after
     /// [`Stroke::begin`] (the first segment has no trailing neighbour, so it starts straight).
@@ -167,6 +174,9 @@ impl Stroke {
             airbrush_accum_s: 0.0,
             speed_px_s: 0.0,
             speed_arc_mark: 0.0,
+            throw_speed_px_s: 0.0,
+            speed_ramp_len: 0.0,
+            speed_dab_arc: 0.0,
             prev_prev: None,
             stab_pos: [0.0, 0.0],
             last_raw_pos: [0.0, 0.0],
@@ -202,6 +212,9 @@ impl Stroke {
         self.airbrush_accum_s = 0.0;
         self.speed_px_s = 0.0; // traço novo: a mão ainda não andou, então não há inércia a arremessar
         self.speed_arc_mark = 0.0;
+        self.throw_speed_px_s = 0.0;
+        self.speed_ramp_len = 0.0;
+        self.speed_dab_arc = 0.0;
         self.prev_prev = None;
         self.stab_pos = p.pos;
         self.last_raw_pos = p.pos;

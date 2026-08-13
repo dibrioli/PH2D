@@ -312,6 +312,52 @@ fn strict_front(mesh: &Mesh, cam: &Camera3d, mask: &mut [bool]) -> f64 {
     sum
 }
 
+/// **AS ARESTAS DO MIOLO, SEPARADAS POR QUÃO DE FRENTE ELAS ESTÃO.**
+///
+/// A `strict_front` responde *"quanto do miolo chegou?"* com um número só, e é
+/// esse número que satura em 86 %. Esta responde **ONDE os 14 % que faltam
+/// moram** — e a pergunta não é curiosidade: o empurrão LATERAL do Blender pesa
+/// `1 − facing²`, que é **zero** numa face de frente para o olho. Se a tinta que
+/// falta estiver no bin de `facing` alto, aquele empurrão não a alcança, e
+/// trocar o descarte por ele seria trocar uma cura por uma que não morde ali.
+fn strict_front_binned(mesh: &Mesh, cam: &Camera3d, bins: &mut [(Vec<bool>, f64)]) {
+    let mut wire = Vec::new();
+    ph2d_mesh_render::wire_indices(mesh, &mut wire);
+    let pos = mesh.positions();
+    let n = bins.len();
+    for e in wire.chunks_exact(2) {
+        let (fa, fb) = (facing_at(mesh, e[0], cam), facing_at(mesh, e[1], cam));
+        let f = fa.min(fb);
+        if f <= STRICT_MARGIN {
+            continue;
+        }
+        // `STRICT_MARGIN..=1` fatiado em `n`.
+        let t = (f - STRICT_MARGIN) / (1.0 - STRICT_MARGIN);
+        let b = ((t * n as f32) as usize).min(n - 1);
+        let (a, c) = (pos[e[0] as usize], pos[e[1] as usize]);
+        let (Some(pa), Some(pb)) = (cam.project(a, (W, H)), cam.project(c, (W, H))) else {
+            continue;
+        };
+        bins[b].1 += f64::from(((pb.0 - pa.0).powi(2) + (pb.1 - pa.1).powi(2)).sqrt());
+        let steps = ((pb.0 - pa.0).abs().max((pb.1 - pa.1).abs()).ceil() as i32).max(1);
+        for s in 0..=steps {
+            let t = s as f32 / steps as f32;
+            let (x, y) = (
+                (pa.0 + (pb.0 - pa.0) * t).round() as i32,
+                (pa.1 + (pb.1 - pa.1) * t).round() as i32,
+            );
+            for dy in -1..=1 {
+                for dx in -1..=1 {
+                    let (x, y) = (x + dx, y + dy);
+                    if x >= 0 && y >= 0 && x < W as i32 && y < H as i32 {
+                        bins[b].0[(y as u32 * W + x as u32) as usize] = true;
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Tinta de wireframe DENTRO de uma máscara.
 fn ink_in(plain: &[u8], wired: &[u8], mask: &[bool]) -> usize {
     (0..(W * H) as usize)
@@ -592,6 +638,86 @@ fn how_much_of_each_edge_reaches_the_screen() {
 ///
 /// ⚠️ **E as DUAS metades continuam necessárias:** só a cobertura passaria com o
 /// teste de profundidade removido, e aí a malha do outro lado atravessa.
+#[test]
+#[ignore = "sonda: precisa de adapter, roda com --ignored --nocapture"]
+fn where_the_interior_miss_lives() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter: skip");
+        return;
+    };
+    const N: usize = 4;
+    for (name, mesh) in [
+        ("esfera 32x64", shapes::uv_sphere(32, 64, 1.0)),
+        ("esfera 64x128", shapes::uv_sphere(64, 128, 1.0)),
+    ] {
+        let cam = camera_for(&mesh);
+        let plain = render(&device, &queue, &mesh, false);
+        let wired = render(&device, &queue, &mesh, true);
+        let mut bins: Vec<(Vec<bool>, f64)> = (0..N)
+            .map(|_| (vec![false; (W * H) as usize], 0.0))
+            .collect();
+        strict_front_binned(&mesh, &cam, &mut bins);
+        println!("\n  {name}");
+        println!("    facing        quer      chegou   cobertura   peso do empurrao lateral");
+        for (i, (mask, want)) in bins.iter().enumerate() {
+            let lo = STRICT_MARGIN + (1.0 - STRICT_MARGIN) * i as f32 / N as f32;
+            let hi = STRICT_MARGIN + (1.0 - STRICT_MARGIN) * (i + 1) as f32 / N as f32;
+            let mid = (lo + hi) / 2.0;
+            let got = ink_in(&plain, &wired, mask);
+            println!(
+                "    {lo:.2}-{hi:.2}   {want:>8.0}   {got:>9}   {:>8.1}%   {:>10.2}",
+                got as f64 / want.max(1.0) * 100.0,
+                1.0 - mid * mid,
+            );
+        }
+    }
+}
+
+/// **A ARESTA RASANTE NÃO É COMIDA PELA PRÓPRIA SUPERFÍCIE.**
+///
+/// ⚠️ **É o gate do EMPURRÃO LATERAL, e ele existe porque o SINAL do empurrão
+/// foi um defeito real desta wave.** Perto da silhueta o triângulo se projeta
+/// quase de perfil e cobre a linha que nasce sobre a aresta dele; a nudge de
+/// profundidade **satura** e não compra nada ali (3e-3 a 4,8e-2 dão o mesmo
+/// número), então quem morde é o deslocamento lateral.
+///
+/// O oráculo é o bin de `facing` mais RASANTE do miolo estrito — o único lugar
+/// onde `1 − facing²` vale quase 1, logo o único que o empurrão alcança. Os três
+/// mundos que a barra separa, medidos na mesma esfera:
+///
+/// | empurrão | cobertura do bin rasante |
+/// |---|---|
+/// | para FORA (o sinal errado) | 72,9 % |
+/// | nenhum | 75,1 % |
+/// | **para DENTRO, meio pixel** | **79,2 %** |
+///
+/// ⚠️ A barra fica em **78 %**, entre o certo e os DOIS modos de falha — apagar
+/// o empurrão e invertê-lo têm de sangrar, e o irmão de vazamento acima é o que
+/// impede a cura de ser *"empurre mais"* (a 0,75 px o vazamento já cruza 0,1 %).
+#[test]
+#[ignore = "precisa de adapter"]
+fn the_grazing_edges_are_not_eaten_by_their_own_surface() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter: skip");
+        return;
+    };
+    const N: usize = 4;
+    let mesh = shapes::uv_sphere(64, 128, 1.0);
+    let cam = camera_for(&mesh);
+    let plain = render(&device, &queue, &mesh, false);
+    let wired = render(&device, &queue, &mesh, true);
+    let mut bins: Vec<(Vec<bool>, f64)> = (0..N)
+        .map(|_| (vec![false; (W * H) as usize], 0.0))
+        .collect();
+    strict_front_binned(&mesh, &cam, &mut bins);
+    let (mask, want) = &bins[0];
+    let covered = ink_in(&plain, &wired, mask) as f64 / want.max(1.0) * 100.0;
+    assert!(
+        covered > 78.0,
+        "as arestas rasantes chegam comidas: {covered:.1}% (sem empurrao: 75,1%, para fora: 72,9%)"
+    );
+}
+
 #[test]
 #[ignore = "precisa de adapter"]
 fn a_wireframe_edge_reaches_the_screen_whole() {

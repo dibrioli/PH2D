@@ -29,6 +29,19 @@ pub(crate) const SSAO_WGSL: &str = include_str!("shaders/ssao.wgsl");
 struct CameraRaw {
     view_proj: [[f32; 4]; 4],
     view: [[f32; 4]; 4],
+    /// `(largura, altura, _, _)` em pixels — o que converte um deslocamento em
+    /// PIXELS num deslocamento em NDC.
+    ///
+    /// ⚠️ Ele mora na CÂMERA e não no `Shade` porque é da VISTA, não do
+    /// sombreamento: quem o lê pergunta *"quanto vale um pixel aqui?"*, que é a
+    /// mesma pergunta que a projeção ao lado responde. Os dois últimos canais
+    /// existem só para o alinhamento de 16 B que o WGSL exige de um `vec4`.
+    viewport: [f32; 4],
+}
+
+/// `(largura, altura, 0, 0)` — ver [`CameraRaw::viewport`].
+fn viewport_of(size: (u32, u32)) -> [f32; 4] {
+    [size.0.max(1) as f32, size.1.max(1) as f32, 0.0, 0.0]
 }
 
 /// O uniform do objeto: **onde ele está**, e **se ele é um sólido**.
@@ -432,6 +445,7 @@ impl MeshRenderer {
             bytemuck::bytes_of(&CameraRaw {
                 view_proj: camera.view_proj(aspect).to_cols_array_2d(),
                 view: camera.view().to_cols_array_2d(),
+                viewport: viewport_of(size),
             }),
         );
         queue.write_buffer(&self.rig_uniform, 0, bytemuck::bytes_of(&RigRaw::pack(rig)));
@@ -529,6 +543,7 @@ impl MeshRenderer {
             bytemuck::bytes_of(&CameraRaw {
                 view_proj: camera.view_proj(aspect).to_cols_array_2d(),
                 view: camera.view().to_cols_array_2d(),
+                viewport: viewport_of(size),
             }),
         );
 
@@ -612,12 +627,13 @@ impl MeshRenderer {
 /// A matriz que o uniform carrega, exposta para o gate poder afirmar o que sobe
 /// ao device sem abrir uma render pass.
 #[must_use]
-pub fn camera_uniform_bytes(camera: &Camera3d, aspect: f32) -> [u8; 128] {
+pub fn camera_uniform_bytes(camera: &Camera3d, aspect: f32, size: (u32, u32)) -> [u8; 144] {
     let raw = CameraRaw {
         view_proj: camera.view_proj(aspect).to_cols_array_2d(),
         view: camera.view().to_cols_array_2d(),
+        viewport: viewport_of(size),
     };
-    let mut out = [0u8; 128];
+    let mut out = [0u8; 144];
     out.copy_from_slice(bytemuck::bytes_of(&raw));
     out
 }
@@ -634,7 +650,7 @@ pub fn camera_uniform_bytes(camera: &Camera3d, aspect: f32) -> [u8; 128] {
 /// **enviesada** — numa câmera de frente a matriz é quase simétrica, e uma
 /// transposição passaria em metade das entradas.
 #[must_use]
-pub fn view_proj_from_bytes(bytes: &[u8; 128]) -> Mat4 {
+pub fn view_proj_from_bytes(bytes: &[u8]) -> Mat4 {
     let mut cols = [0f32; 16];
     for (i, c) in cols.iter_mut().enumerate() {
         *c = f32::from_ne_bytes([

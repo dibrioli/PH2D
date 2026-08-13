@@ -1056,6 +1056,85 @@ com nome é o wireframe de passe único por coordenada baricêntrica (Bærentzen
 geometria **não-indexada** no passe do barro (3× a memória de vértice), logo é
 decisão de produto, não correção.
 
+### §7.9 — ✅ O FIO SAI DE CIMA DE SI MESMO: o empurrão lateral (2026-08-12, 3º report)
+
+O 2º report fechou o **vazamento** (a malha do outro lado atravessando) e deixou
+o miolo estrito em **86 %**. Este fecha a outra metade, e ela vinha do Blender:
+*"veja no código do blender como ele faz"*.
+
+**Lendo o `overlay_wireframe_vert.glsl` (GPL, só comportamento):** o Blender
+carrega um empurrão **LATERAL** de meio pixel em espaço de tela, pesado por
+`facing_ratio = 1 − facing²` e com o sinal virado por `flip = sign(facing)`.
+Nós tínhamos só a nudge de profundidade.
+
+⚠️ **A pergunta que decidiu não foi *"o Blender faz?"*, foi *"onde mora o
+buraco?"*** — e a medição **REFUTOU o meu próprio raciocínio**. Eu argumentei que
+a tinta que falta estaria em `facing ≈ 1`, onde `1 − facing²` é zero, logo o
+empurrão não a alcançaria. Binando o miolo estrito por `facing`
+(`where_the_interior_miss_lives`):
+
+| facing | cobertura (32x64 / 64x128) | peso do empurrão |
+|---|---|---|
+| **0,20-0,40** | **79 % / 75 %** | **0,91** |
+| 0,40-0,60 | 100 % / 96 % | 0,75 |
+| 0,60-0,80 | 103 % / 100 % | 0,51 |
+| 0,80-1,00 | 100 % / 97 % | 0,19 |
+
+O buraco está **exatamente** onde o peso é quase 1 — o oposto do que eu previ.
+Perto da silhueta o triângulo se projeta quase de perfil e **cobre** a linha que
+nasce sobre a aresta dele; a nudge de profundidade **satura** ali (3e-3 a 4,8e-2
+dão o mesmo número) porque o problema não é disputa de profundidade.
+
+⚠️ **E o SINAL foi um defeito medido, não uma escolha.** Empurrar ao longo da
+normal externa leva o fio para **FORA** da silhueta, sobre o fundo: a tinta total
+cai monotonicamente (**11984 → 11750 → 11495 → 11071** em 0 / 0,5 / 1 / 2 px) e o
+bin rasante cai de 75,1 % para **72,9 %**. Invertido, os dois sobem. O fio tem de
+correr para o **CORPO** da peça.
+
+⚠️ **É `−sign(facing)`, não `−1`** — é isso que torna o empurrão **invariante à
+orientação**: virar o enrolamento de uma casca vira a normal *e* o sinal do
+`facing`, e o produto não se move. É o que mantém o
+`an_open_shell_keeps_its_wireframe` verde.
+
+**O meio pixel é MEDIDO** (e cai no mesmo número que o Blender ships):
+
+| px | continuidade (32x64 / 64x128 / toro) | arestas inteiras | vazada |
+|---|---|---|---|
+| 0 (o controle) | 43,0 / 48,6 / 28,6 % | 699 | 0,0 % |
+| **0,5** | **45,4 / 49,0 / 33,4 %** | **786** | **0,0 %** |
+| 0,75 | 43,7 / 47,4 / 31,3 % | 827 | 0,3 % |
+| 1,0 | 39,8 / 44,6 / 28,8 % | 766 | 1,4 % |
+
+A 0,75 o vazamento já cruza a barra de 0,1 %; a 1,0 a **continuidade cai abaixo
+do controle** — passado meio pixel o fio deixa de estar sobre a própria aresta e
+passa a mentir sobre onde a geometria está. O **toro** é quem mais ganha
+(28,6 → 33,4 %), porque é a peça com mais superfície de perfil.
+
+**A direção sai de uma DIFERENÇA FINITA** do próprio `view_proj` (um segundo
+caminho de *"onde este vértice cai na tela"* divergiria do `vs_core` no dia em
+que a `Pose` ganhasse rotação), medida em **pixels** e não em NDC (num viewport
+não-quadrado normalizar em NDC torceria a direção), com o passo proporcional a
+`clip.w` para a régua acompanhar escala e zoom.
+
+**Superfície nova:** `CameraRaw`/`Camera` ganham `viewport` — ⚠️ ele mora na
+CÂMERA porque *"quanto vale um pixel aqui?"* é a mesma pergunta que a projeção ao
+lado responde. `camera_uniform_bytes` passa a receber o tamanho e devolve
+**144 B**; `view_proj_from_bytes` passa a receber `&[u8]`.
+
+**Gate novo:** `the_grazing_edges_are_not_eaten_by_their_own_surface`, com a
+barra em **78 %** — entre o certo (79,2 %) e os **dois** modos de falha (75,1 %
+sem empurrão, 72,9 % invertido). **2 mutações, 2 sangram**, com os números exatos
+do doc. ⚠️ E as duas primeiras rodadas de mutação foram **vácuo**: sem
+`-- --ignored` nenhum teste rodou e os dois "verdes" não eram nada
+([[feedback_a_negative_search_needs_a_positive_control]]).
+
+**Aberto e nomeado:** o **59 %** de tinta nos dois anéis externos segue sendo
+GEOMETRIA (anéis de latitude comprimindo na silhueta), não defeito — o alvo dele
+é o limiar diedral do Blender (`wire_step_param`), que esconde aresta entre faces
+quase coplanares; ele tem a adjacência de que precisa (`Mesh::edges()`) e é
+**decisão de produto**, porque um wireframe que esconde arestas deixa de ser um
+instrumento que lê topologia.
+
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 
 **Os defaults de fábrica do Blender não estão no clone.** Eles vivem em

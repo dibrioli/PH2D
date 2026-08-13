@@ -31,6 +31,9 @@
 struct Camera {
     view_proj: mat4x4<f32>,
     view: mat4x4<f32>,
+    // `(largura, altura, _, _)` em pixels — a régua que converte um empurrão em
+    // PIXELS num empurrão em NDC. Ver `CameraRaw::viewport`.
+    viewport: vec4<f32>,
 };
 
 // Uma lâmpada resolvida — o mesmo dado que sobe para o passe de luz da tinta.
@@ -519,6 +522,107 @@ fn vs_main(
     return vs_core(pos, normal, mask, curv, ao, curv_world, thickness, preview);
 }
 
+// **O EMPURRÃO LATERAL** — o fio sai meio pixel para FORA, e só onde a face
+// raspa o olho.
+//
+// ⚠️ **Ele ataca uma metade DIFERENTE do problema que a [`WIRE_DEPTH_NUDGE`]
+// ataca, e a medição é quem diz isso.** Separando o miolo estrito por quanto a
+// face encara o olho (sonda `where_the_interior_miss_lives`), a tinta que falta
+// **não** está espalhada: ela mora no bin RASANTE.
+//
+// | facing | cobertura (esfera 32x64 / 64x128) | peso deste empurrão |
+// |---|---|---|
+// | **0,20-0,40** | **79 % / 75 %** | **0,91** |
+// | 0,40-0,60 | 100 % / 96 % | 0,75 |
+// | 0,60-0,80 | 103 % / 100 % | 0,51 |
+// | 0,80-1,00 | 100 % / 97 % | 0,19 |
+//
+// ⇒ O buraco está exatamente onde `1 − facing²` é quase 1. Uma nudge maior não o
+// compra (ela satura em 3e-3); um deslocamento LATERAL sim, porque perto da
+// silhueta a linha não perde a disputa de profundidade — ela é **coberta** pelo
+// próprio triângulo, que ali se projeta quase de perfil.
+//
+// ⚠️ **O MEIO PIXEL é medido, não herdado do Blender** (embora caia no mesmo
+// número), e o que fecha a escolha é o que acontece do outro lado dele:
+//
+// | px | continuidade (32x64 / 64x128 / toro) | arestas inteiras | vazada |
+// |---|---|---|---|
+// | 0 (o controle) | 43,0 / 48,6 / 28,6 % | 699 | 0,0 % |
+// | **0,5** | **45,4 / 49,0 / 33,4 %** | **786** | **0,0 %** |
+// | 0,75 | 43,7 / 47,4 / 31,3 % | 827 | 0,3 % |
+// | 1,0 | 39,8 / 44,6 / 28,8 % | 766 | 1,4 % |
+//
+// A 0,75 o vazamento já cruza a barra de 0,1 % do gate, e a 1,0 a **continuidade
+// cai abaixo do controle**: passado meio pixel o fio deixa de estar sobre a
+// própria aresta e passa a mentir sobre onde a geometria está. O ganho no bin
+// rasante da esfera fina é **75,1 % -> 79,2 %**, e no toro a continuidade sobe
+// **28,6 -> 33,4 %** — a peça não-convexa é a que mais ganha, porque é a que tem
+// mais superfície de perfil.
+//
+// ⚠️ **A direção sai de uma DIFERENÇA FINITA, não da normal projetada à mão.**
+// Um segundo caminho de "onde este vértice cai na tela" divergiria do
+// [`vs_core`] no dia em que a `Pose` ganhasse rotação — o mesmo argumento que
+// faz o [`vs_wire`] delegar em vez de recalcular. Só a DIREÇÃO é usada, então a
+// não-linearidade da divisão perspectiva sobre o passo é um erro de fração de
+// grau.
+//
+// ⚠️ **O passo é proporcional a `clip.w`** (a profundidade de vista), não um
+// comprimento de mundo fixo: uma peça pequena ou uma câmera afastada mudariam o
+// condicionamento da diferença, e a régua tem de acompanhar a cena.
+//
+// ⚠️ **`sign(facing)` empurra cada lado para FORA**, que é o que faz disto um
+// alargamento da silhueta e não um deslize. Numa peça FECHADA o lado de trás é
+// descartado no fragmento e o sinal nunca se vê; numa casca ABERTA ele é o que
+// impede as duas metades de se empurrarem para o mesmo lado.
+const WIRE_PUSH_PX: f32 = 0.5;
+const WIRE_PUSH_EPS_REL: f32 = 1.0e-3;
+
+fn wire_lateral_push(
+    pos: vec3<f32>,
+    normal: vec3<f32>,
+    clip: vec4<f32>,
+    facing: f32,
+) -> vec4<f32> {
+    let ratio = 1.0 - facing * facing;
+    if ratio <= 0.0 || clip.w <= 0.0 {
+        return clip;
+    }
+    let world = obj.model * vec4<f32>(pos, 1.0);
+    let wn = (obj.model * vec4<f32>(normal, 0.0)).xyz;
+    let nl = length(wn);
+    if nl <= 0.0 {
+        return clip;
+    }
+    let step = wn / nl * (clip.w * WIRE_PUSH_EPS_REL);
+    let ahead = cam.view_proj * (world + vec4<f32>(step, 0.0));
+    if ahead.w <= 0.0 {
+        return clip;
+    }
+    // Medida em PIXELS: num viewport não-quadrado normalizar em NDC torceria a
+    // direção, e o empurrão sairia mais largo num eixo que no outro.
+    let d_px = (ahead.xy / ahead.w - clip.xy / clip.w) * cam.viewport.xy;
+    let dl = length(d_px);
+    if dl <= 0.0 {
+        return clip;
+    }
+    // ⚠️ **PARA DENTRO, e o sinal foi um defeito MEDIDO desta wave.** `d_px` é a
+    // direção da normal EXTERNA na tela; empurrar ao longo dela leva o fio para
+    // FORA da silhueta, sobre o fundo, e a medição diz o que isso custa: a tinta
+    // total cai monotonicamente (11984 -> 11750 -> 11495 -> 11071 em 0 / 0,5 /
+    // 1 / 2 px) e o bin rasante cai de 75,1 % para 72,9 %. Invertido, os dois
+    // sobem. O fio tem de correr para o CORPO da peça, que é o lado onde a
+    // superfície de fato está.
+    //
+    // ⚠️ **E é `-sign(facing)`, não `-1`** — é isso que torna o empurrão
+    // INVARIANTE à orientação. Virar o enrolamento de uma casca vira a normal
+    // **e** o sinal do `facing`, e o produto dos dois não se move: as duas faces
+    // da mesma folha ganham o mesmo empurrão, que é o que o
+    // `an_open_shell_keeps_its_wireframe` cobra.
+    let off_px = d_px / dl * (WIRE_PUSH_PX * ratio * -sign(facing));
+    let off_ndc = off_px * 2.0 / cam.viewport.xy;
+    return vec4<f32>(clip.xy + off_ndc * clip.w, clip.z, clip.w);
+}
+
 @vertex
 fn vs_wire(
     @location(0) pos: vec3<f32>,
@@ -532,6 +636,7 @@ fn vs_wire(
 ) -> VsOut {
     var out = vs_core(pos, normal, mask, curv, ao, curv_world, thickness, preview);
     out.clip.z = out.clip.z - WIRE_DEPTH_NUDGE * out.clip.w;
+    out.clip = wire_lateral_push(pos, normal, out.clip, out.facing);
     return out;
 }
 

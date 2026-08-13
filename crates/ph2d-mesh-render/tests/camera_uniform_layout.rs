@@ -35,7 +35,7 @@ fn skewed() -> Camera3d {
 fn the_bytes_the_shader_reads_are_the_matrix_glam_built() {
     let cam = skewed();
     let aspect = 1.7;
-    let bytes = camera_uniform_bytes(&cam, aspect);
+    let bytes = camera_uniform_bytes(&cam, aspect, (1920, 1080));
     let back = view_proj_from_bytes(&bytes);
     let want = cam.view_proj(aspect);
 
@@ -70,19 +70,17 @@ fn a_transposed_reading_would_be_caught() {
     );
 }
 
-/// Os 128 bytes são **duas** matrizes, e o `view_proj` é a PRIMEIRA. Trocar a
+/// Os primeiros 128 bytes são **duas** matrizes, e o `view_proj` é a PRIMEIRA. Trocar a
 /// ordem dos dois campos deixaria a segunda metade dos bytes intacta e a
 /// primeira apontando para a matriz errada — a cena continuaria desenhando,
 /// iluminada por uma vista que não é a dela.
 #[test]
 fn the_view_proj_comes_first_and_the_view_second() {
     let cam = skewed();
-    let bytes = camera_uniform_bytes(&cam, 1.7);
-    assert_eq!(bytes.len(), 128, "duas mat4 de 64 B");
+    let bytes = camera_uniform_bytes(&cam, 1.7, (1920, 1080));
+    assert_eq!(bytes.len(), 144, "duas mat4 de 64 B + o viewport");
 
-    let mut second = [0u8; 128];
-    second[..64].copy_from_slice(&bytes[64..]);
-    let view = view_proj_from_bytes(&second);
+    let view = view_proj_from_bytes(&bytes[64..128]);
     let want = cam.view();
     for c in 0..4 {
         for r in 0..4 {

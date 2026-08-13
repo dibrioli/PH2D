@@ -32,7 +32,7 @@ fn row() -> Vec<P2> {
 /// `3 · s_at(u)`.
 fn xs(from: f32, to: f32, offset: f32) -> Vec<f32> {
     let map = ArcMap { from, to, offset };
-    wrap(&row(), &RULER, 0.0, map, 1.0, &[])
+    wrap(&row(), &Curve::cubic(&RULER), 0.0, map, 1.0, &[])
         .iter()
         .map(|p| p[0])
         .collect()
@@ -170,7 +170,7 @@ fn the_slice_holds_on_a_real_curve_too() {
     let map = |from: f32, to: f32| {
         wrap(
             &row(),
-            &S,
+            &Curve::cubic(&S),
             0.0,
             ArcMap {
                 from,

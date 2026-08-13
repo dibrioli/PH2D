@@ -92,6 +92,16 @@ consumidor distribute só usa `eval`/`arc_lut`/`t_at_arclen`; o wrap usa tudo �
 
 ## 5. O que fica
 
+> ⚠️ **EMENDA (2026-08-12) — a metade DEFERIDA abaixo foi construída, e o motivo do
+> deferimento tinha deixado de valer.** O texto que segue diz que ler a curva do
+> documento vetorial é *"cross-module"*; o **canal de externos** (doc 65) dissolveu
+> essa objeção — o shell publica toda forma vetorial nomeada como polilinha e o nó lê
+> **um nome**, sem dependência de crate nenhuma. O `motion.path` já shipava assim, e o
+> `motion.spline_wrap` passou a shipar em 2026-08-12 (ordem do Enio no smoke: *"pontos e
+> alças em sliders num painel. Absurdo!"*), com a cúbica dos oito params intacta como a
+> rota sem forma escolhida. *Quem move o número que tornava algo inalcançável tem de
+> reconferir a nota* — esta ficou de pé por duas jornadas depois de a premissa cair.
+
 A família **curva self-contained** fecha. O poço de nós que dependem só de `ph2d-nodegraph` está **esgotado** —
 tudo que resta é cross-module ou a fronteira GPU:
 - **Distribuição:** `motion.distribute-path` — a versão que lê a curva do **documento vetorial** (`vector.*`),

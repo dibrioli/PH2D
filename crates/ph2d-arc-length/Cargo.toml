@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-arc-length"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Dependency-free and value-typed: comprimento de arco ao longo de uma polilinha
+# (a LUT cumulativa + o amostrador). Uma folha como a `ph2d-curve` — o nodegraph
+# não depende de volta. Ela existe porque DOIS nós fazem a mesma pergunta sobre a
+# mesma curva desenhada (`motion.path` a percorre, `motion.spline_wrap` embrulha
+# nela), e duas cópias de "onde fica a fração de arco s" divergem em silêncio.
+[dependencies]

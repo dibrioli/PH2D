@@ -4939,6 +4939,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-arc-length"
+version = "0.0.0"
+
+[[package]]
 name = "ph2d-arclen"
 version = "0.0.0"
 
@@ -6166,6 +6170,7 @@ dependencies = [
 name = "ph2d-node-motion-path"
 version = "0.0.0"
 dependencies = [
+ "ph2d-arc-length",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6246,6 +6251,7 @@ dependencies = [
 name = "ph2d-node-motion-spline-wrap"
 version = "0.0.0"
 dependencies = [
+ "ph2d-arc-length",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]

@@ -265,6 +265,31 @@ pub struct ParamGate {
     pub values: &'static [i32],
 }
 
+/// **Um gate de visibilidade cuja condição é a PRESENÇA de um TEXT param** — o
+/// irmão do [`ParamGate`] para a pergunta que ele não sabe fazer.
+///
+/// O `ParamGate` decide pelo valor de outro param **f32**, e um nome de forma não
+/// é um f32: ele vive no canal de texto do `Graph` (doc 32), ao lado do manifesto
+/// congelado e nunca dentro dele. O caso canônico é o `motion.spline_wrap`: ele
+/// tem oito coordenadas de polígono de controle **e** um nome de forma desenhada,
+/// e escolher uma forma torna as oito **inertes**. *Um controle que não faz nada
+/// não é pintado* — a mesma lei do `amount_y` do `motion.scale`, com a condição do
+/// outro lado da fronteira f32.
+///
+/// Side-metadata do registry, como o [`ParamGate`] e o [`Coupling`] — **nunca** um
+/// campo do `NodeManifest` congelado. Um nó sem entrada aqui não é gateado.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ParamGateText {
+    /// O `ParamSpec::name` que este gate condicionalmente MOSTRA.
+    pub param: &'static str,
+    /// O nome do **text param** cuja presença decide.
+    pub when_text: &'static str,
+    /// `true` ⇒ mostra quando o text param existe e não é vazio; `false` ⇒ mostra
+    /// quando ele está AUSENTE (o caso do `spline_wrap`: os oito sliders somem
+    /// quando há forma).
+    pub when_present: bool,
+}
+
 /// **What a node PRODUCES, CONSUMES, REQUIRES, or GENERATES on its instance
 /// stream** — the semantic side-channel (ADR-0155) that lets the editor detect a
 /// node placed where its output is INERT. The canonical case: a `force.*` node is

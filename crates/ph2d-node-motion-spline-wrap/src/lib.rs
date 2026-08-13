@@ -136,6 +136,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
+/// O **text** param que nomeia a forma desenhada (o canal do doc 32 — um
+/// `ParamSpec` é f32-only e o manifesto é congelado, então um param de string vive
+/// no `Graph` ao lado do manifesto, nunca dentro dele). O MESMO nome de param que
+/// o `motion.path` usa: os dois perguntam *"qual forma?"*, e um artista que
+/// aprendeu a resposta num não a re-aprende no outro.
+const PATH_PARAM: &str = "path";
+
 fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
     match s.get(name) {
         Some(Column::Scalar(v)) => v.clone(),
@@ -177,6 +184,66 @@ impl ArcMap {
     }
 }
 
+/// **A curva em que este nó embrulha** — a que o artista DESENHOU, ou a cúbica
+/// dos oito params.
+///
+/// ⚠️ **O que é abstraído é a CURVA, nunca o WRAP.** O embrulho pergunta uma coisa
+/// só à curva — *"que ponto, que tangente e que normal há na fração de arco
+/// `s`?"* — e tudo o mais (`from`/`to`, `offset`, `height_scale`, o `falloff`, o
+/// `follow_rotation`) é aritmética sobre a resposta. Ter dois EMBRULHOS, um por
+/// representação, seria duas leis a divergir; ter duas CURVAS sob um embrulho é
+/// uma lei com duas fontes, e a forma desenhada herda os cinco controles de
+/// graça, sem uma linha por controle.
+///
+/// ⚠️ **As duas amostragens NÃO são duas respostas à mesma pergunta.** A cúbica é
+/// analítica e a desenhada é uma polilinha que o shell já achatou — são
+/// representações diferentes da mesma ideia, e cada uma tem o seu amostrador
+/// exato. O que seria duas portas é *"onde fica a fração de arco `s`"* respondida
+/// duas vezes para a MESMA representação, e é por isso que a polilinha vai à
+/// folha [`ph2d_arc_length`], compartilhada com o `motion.path`.
+#[expect(
+    clippy::large_enum_variant,
+    reason = "a LUT da cúbica é uma tabela de tamanho FIXO por desenho (a curva é analítica; amostrá-la exige inverter o comprimento de arco), enquanto a polilinha já chega achatada. A `Curve` é construída UMA vez por eval, na pilha, e nunca entra numa coleção — box-á-la trocaria bytes de pilha por uma alocação no caminho quente"
+)]
+enum Curve<'a> {
+    /// O polígono de controle dos oito params — o nó que sempre shipou.
+    Cubic { cp: &'a [P2; 4], lut: ArcLut },
+    /// A polilinha da forma que o artista desenhou, publicada pelo shell sob o
+    /// nome que ela carrega na Hierarquia.
+    Drawn { pts: &'a [P2], lut: Vec<f32> },
+}
+
+impl<'a> Curve<'a> {
+    fn cubic(cp: &'a [P2; 4]) -> Self {
+        Self::Cubic {
+            cp,
+            lut: arc_lut(cp),
+        }
+    }
+
+    /// A curva desenhada, ou `None` se não há arco a percorrer (forma ausente,
+    /// renomeada, apagada, ou um ponto só). ⚠️ `None` faz o nó cair na cúbica —
+    /// um DEFORMADOR sem curva não pode emitir nada, senão apagaria o layout do
+    /// artista; o irmão `motion.path` emite vazio porque é uma FONTE.
+    fn drawn(pts: &'a [P2]) -> Option<Self> {
+        let lut = ph2d_arc_length::lut(pts);
+        (!lut.is_empty()).then_some(Self::Drawn { pts, lut })
+    }
+
+    /// O ponto, a tangente unitária e a **normal esquerda** unitária em `s`.
+    /// A convenção da normal (`⟂` à esquerda) é a MESMA nos dois braços — trocá-la
+    /// num deles espelharia o `height_scale` só na curva desenhada.
+    fn frame_at(&self, s: f32) -> (P2, P2, P2) {
+        match self {
+            Self::Cubic { cp, lut } => frame_at(cp, lut, s),
+            Self::Drawn { pts, lut } => {
+                let (p, ut) = ph2d_arc_length::at(pts, lut, s);
+                (p, ut, [-ut[1], ut[0]])
+            }
+        }
+    }
+}
+
 /// The multiplicative falloff for element `i` (empty → 1.0).
 fn falloff_at(vals: &[f32], i: usize) -> f32 {
     match vals.len() {
@@ -197,13 +264,13 @@ fn falloff_at(vals: &[f32], i: usize) -> f32 {
 #[cfg(test)]
 fn wrap(
     p: &[P2],
-    cp: &[P2; 4],
+    curve: &Curve<'_>,
     height_scale: f32,
     map: ArcMap,
     amount: f32,
     falloff: &[f32],
 ) -> Vec<P2> {
-    wrap_with_frame(p, cp, height_scale, map, amount, falloff).0
+    wrap_with_frame(p, curve, height_scale, map, amount, falloff).0
 }
 
 /// The same wrap, also returning **how much each element turned** — the angle of
@@ -219,7 +286,7 @@ fn wrap(
 /// always knew which way the curve was going, and simply never said.
 fn wrap_with_frame(
     p: &[P2],
-    cp: &[P2; 4],
+    curve: &Curve<'_>,
     height_scale: f32,
     map: ArcMap,
     amount: f32,
@@ -235,14 +302,13 @@ fn wrap_with_frame(
         xmax = xmax.max(q[0]);
     }
     let w = xmax - xmin;
-    let lut: ArcLut = arc_lut(cp);
     (0..n)
         .map(|i| {
             let u = if w < EPS { 0.5 } else { (p[i][0] - xmin) / w };
             // Clamp (not wrap): the layout spans the curve [0,1]; `offset` slides it and
             // clamps at the ends, so the endpoint (u=1) stays on the curve end.
             let s = map.s_at(u);
-            let (b, ut, un) = frame_at(cp, &lut, s);
+            let (b, ut, un) = curve.frame_at(s);
             let wrapped = [
                 b[0] + un[0] * p[i][1] * height_scale,
                 b[1] + un[1] * p[i][1] * height_scale,
@@ -281,6 +347,16 @@ impl NodeOp for MotionSplineWrap {
             [ctx.param("p3x"), ctx.param("p3y")],
         ];
         let amount = amount_of(&scalar_col(ctx.input(1), VALUE_COL));
+        // **A forma que o artista DESENHOU**, se ele nomeou uma. O shell publica
+        // toda forma vetorial nomeada como uma polilinha sob o nome que ela
+        // carrega na Hierarquia (`motion_bridge_shapes`) — o mesmo canal, o mesmo
+        // widget e o mesmo gesto que o `motion.path` já usava. Vazio ⇒ a cúbica
+        // dos oito params, **byte-idêntica** ao nó que shipava.
+        let name = ctx.text_param(PATH_PARAM).unwrap_or_default().to_string();
+        let drawn: Vec<P2> = match ctx.external(&name).get("P") {
+            Some(Column::Vec2(v)) => v.clone(),
+            _ => Vec::new(),
+        };
         let input = ctx.input(0);
         let n = input.count();
         let p: Vec<P2> = match input.get("P") {
@@ -288,7 +364,8 @@ impl NodeOp for MotionSplineWrap {
             _ => vec![[0.0, 0.0]; n],
         };
         let falloff = scalar_col(input, "falloff");
-        let (out_p, turn) = wrap_with_frame(&p, &cp, height_scale, map, amount, &falloff);
+        let curve = Curve::drawn(&drawn).unwrap_or_else(|| Curve::cubic(&cp));
+        let (out_p, turn) = wrap_with_frame(&p, &curve, height_scale, map, amount, &falloff);
         // The element's OWN rotation composes with the curve's frame — this is a
         // modifier on a layout that may already be oriented, not a source that
         // mints one (its sibling `motion.distribute_curve` SETS `rot` because
@@ -329,6 +406,13 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
+    // ⚠️ **Os oito sliders SOMEM quando há forma** — é o que a queixa pedia. Com
+    // uma forma escolhida o polígono de controle não é lido por rota nenhuma, e
+    // *um controle que não faz nada não é pintado* (a lei do `amount_y` do
+    // `motion.scale`). O `ParamGate` comum não sabe fazer esta pergunta: ele
+    // decide pelo valor de outro param **f32**, e um nome de forma vive no canal
+    // de TEXTO — daí o irmão `ParamGateText`.
+    reg.register_param_gates_text(MANIFEST.id, PARAM_GATES_TEXT);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // CPU-only: this node reads `falloff` only at eval runtime (no GPU kernel), so the
     // diagnoser cannot derive the role from a `ColumnBinding` — declare it (ADR-0155).
@@ -339,7 +423,51 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{ParamGroup, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGateText, ParamGroup, ParamUiHint, ParamWidget};
+
+/// As oito coordenadas do polígono de controle só aparecem **sem** forma escolhida.
+static PARAM_GATES_TEXT: &[ParamGateText] = &[
+    ParamGateText {
+        param: "p0x",
+        when_text: PATH_PARAM,
+        when_present: false,
+    },
+    ParamGateText {
+        param: "p0y",
+        when_text: PATH_PARAM,
+        when_present: false,
+    },
+    ParamGateText {
+        param: "p1x",
+        when_text: PATH_PARAM,
+        when_present: false,
+    },
+    ParamGateText {
+        param: "p1y",
+        when_text: PATH_PARAM,
+        when_present: false,
+    },
+    ParamGateText {
+        param: "p2x",
+        when_text: PATH_PARAM,
+        when_present: false,
+    },
+    ParamGateText {
+        param: "p2y",
+        when_text: PATH_PARAM,
+        when_present: false,
+    },
+    ParamGateText {
+        param: "p3x",
+        when_text: PATH_PARAM,
+        when_present: false,
+    },
+    ParamGateText {
+        param: "p3y",
+        when_text: PATH_PARAM,
+        when_present: false,
+    },
+];
 
 /// As SEÇÕES deste nó (doc 88 B3). As oito coordenadas são UMA coisa — o polígono de controle
 /// de uma cúbica —, e listá-las ao lado dos dois controles reais faz um nó de dois botões
@@ -356,6 +484,26 @@ static PARAM_GROUPS: &[ParamGroup] = &[
 ];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
+    // ⚠️ **A PRIMEIRA row, e é uma decisão de produto.** O Enio, no smoke de
+    // 2026-08-12: *"esse é o tipo de nó que simplesmente não faz sentido num app
+    // de última geração. Pontos e alças em sliders num painel. Absurdo! … um
+    // botão no painel do nó para o usuário desenhar sua curva no canvas. Já
+    // temos ferramentas maravilhosas para desenhos como no módulo vector."*
+    //
+    // O app já tinha escolhido esta resposta — para o IRMÃO. O `motion.path` diz,
+    // no próprio doc-comment: *"a curva é uma forma desenhada de verdade em vez
+    // de quatro params de ponto de controle"*. O que faltava era o deformador,
+    // deixado para trás nos oito números; a rota, o widget e o gesto são os
+    // mesmos, e um artista que aprendeu a escolher a forma num nó não a
+    // re-aprende no outro.
+    ParamUiHint {
+        param: PATH_PARAM,
+        label: "Shape",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Source,
+    },
     ParamUiHint {
         param: "follow_rotation",
         label: "Follow Curve",
@@ -466,140 +614,16 @@ const fn pt(param: &'static str, label: &'static str) -> ParamUiHint {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// A curva INTEIRA sem deslize -- o mapeamento que shipava.
-    const WHOLE: ArcMap = ArcMap {
-        from: 0.0,
-        to: 1.0,
-        offset: 0.0,
-    };
-    const S_CURVE: [P2; 4] = [[-3.0, -1.5], [-1.0, 2.0], [1.0, -2.0], [3.0, 1.5]];
-    const LINE: [P2; 4] = [[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]];
-    // A symmetric arch (hump) — its arc-midpoint lifts clearly off the endpoint chord,
-    // unlike the antisymmetric S-curve whose midpoint sits *on* the chord.
-    const ARCH: [P2; 4] = [[-3.0, 0.0], [-1.0, 3.0], [1.0, 3.0], [3.0, 0.0]];
-
-    /// `amount` 0 is the identity — the layout is untouched.
-    #[test]
-    fn amount_zero_is_the_identity() {
-        let p = vec![[-2.0, 0.5], [0.0, -0.3], [2.0, 0.1]];
-        let out = wrap(&p, &S_CURVE, 1.0, WHOLE, 0.0, &[]);
-        for (o, q) in out.iter().zip(&p) {
-            assert!(
-                (o[0] - q[0]).abs() < 1e-5 && (o[1] - q[1]).abs() < 1e-5,
-                "{o:?} vs {q:?}"
-            );
-        }
-    }
-
-    /// Wrapping onto a straight horizontal line keeps a straight input row straight (the
-    /// remap is affine there): three points at constant y stay collinear.
-    #[test]
-    fn a_row_on_a_straight_curve_stays_straight() {
-        let p = vec![[-2.0, 0.4], [0.0, 0.4], [2.0, 0.4]];
-        let out = wrap(&p, &LINE, 1.0, WHOLE, 1.0, &[]);
-        // Constant normal (+y) ⇒ all share the same y; collinear.
-        assert!((out[0][1] - out[1][1]).abs() < 1e-3 && (out[1][1] - out[2][1]).abs() < 1e-3);
-    }
-
-    /// Wrapping onto a curved spline BENDS a straight input row: the midpoint leaves the
-    /// chord between the endpoints. FALSIFIED by a flat deformer (midpoint on the chord).
-    #[test]
-    fn a_row_on_a_curved_spline_bends() {
-        let p = vec![[-3.0, 0.0], [0.0, 0.0], [3.0, 0.0]]; // a straight row along x
-        let out = wrap(&p, &ARCH, 1.0, WHOLE, 1.0, &[]);
-        // Cross product of (mid−a) and (b−a): non-zero ⇒ the midpoint bent off the line.
-        let (a, mid, b) = (out[0], out[1], out[2]);
-        let cross = (mid[0] - a[0]) * (b[1] - a[1]) - (mid[1] - a[1]) * (b[0] - a[0]);
-        assert!(cross.abs() > 0.5, "the row bent (cross {cross})");
-    }
-
-    /// Falloff masks the wrap per element: falloff 0 leaves an element where it was.
-    #[test]
-    fn falloff_masks_the_wrap() {
-        let p = vec![[-3.0, 0.0], [0.0, 0.0], [3.0, 0.0]];
-        let falloff = vec![1.0, 0.0, 1.0]; // middle element pinned
-        let out = wrap(&p, &S_CURVE, 1.0, WHOLE, 1.0, &falloff);
-        assert_eq!(out[1], p[1], "falloff 0 -> unchanged");
-    }
-
-    /// Deterministic + cooks through the registry, copying columns and wrapping P.
-    #[test]
-    fn registers_and_wraps_through_the_cook() {
-        use ph2d_nodegraph::cook::{Cook, OpResolver};
-        use ph2d_nodegraph::graph::{Edge, Graph};
-
-        static SRC: NodeManifest = NodeManifest {
-            id: NodeTypeId::of("motion.spline_wrap.test.src"),
-            name: "motion.spline_wrap.test.src",
-            inputs: &[],
-            outputs: &[PortSpec {
-                name: "out",
-                ty: INST_VEC2,
-            }],
-            effect: Effect::Pure,
-            clock: Clock::Frame,
-            params: &[],
-            lowerings: &[LoweringKind::Cpu],
-        };
-        struct Src;
-        impl NodeOp for Src {
-            fn manifest(&self) -> &'static NodeManifest {
-                &SRC
-            }
-            fn eval(&self, ctx: &mut EvalCtx<'_>) {
-                ctx.emit(
-                    Stream::new(3)
-                        .with("P", Column::Vec2(vec![[-3.0, 0.0], [0.0, 0.0], [3.0, 0.0]]))
-                        .with("size", Column::Vec2(vec![[0.3, 0.3]; 3])),
-                );
-            }
-        }
-        struct Ops;
-        impl OpResolver for Ops {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                match ty {
-                    t if t == SRC.id => Some(&Src),
-                    t if t == MANIFEST.id => Some(&MotionSplineWrap),
-                    _ => None,
-                }
-            }
-        }
-        let mut reg = NodeRegistry::new();
-        register(&mut reg).unwrap();
-        assert!(reg.resolve(MANIFEST.id).is_some());
-
-        let mut g = Graph::new();
-        let src = g.add_node("motion.spline_wrap.test.src");
-        let sw = g.add_node("motion.spline_wrap");
-        g.connect(Edge {
-            from: (src, 0),
-            to: (sw, 0),
-            delayed: false,
-        })
-        .unwrap();
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, sw, 0.0).unwrap();
-        let s = out[0].as_stream();
-        assert!(s.get("size").is_some(), "columns pass through");
-        match s.get("P").unwrap() {
-            Column::Vec2(v) => {
-                // The wrapped row is no longer flat on y = 0 (the S-curve lifted it).
-                assert!(
-                    v.iter().any(|q| q[1].abs() > 0.3),
-                    "wrapped off the axis: {v:?}"
-                );
-            }
-            _ => panic!("P"),
-        }
-    }
-}
+#[path = "lib_tests.rs"]
+mod tests;
 
 #[cfg(test)]
 #[path = "follow_tests.rs"]
 mod follow_tests;
+
+#[cfg(test)]
+#[path = "drawn_tests.rs"]
+mod drawn_tests;
 
 #[cfg(test)]
 #[path = "range_tests.rs"]

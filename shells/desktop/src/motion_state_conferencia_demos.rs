@@ -60,6 +60,14 @@ fn tint(g: &mut ph2d_nodegraph::graph::Graph, rgb: [f32; 3]) -> NodeId {
 /// artista em posição de a fazer. Arrastar o **To** de 0 a 1 no painel abre a fila
 /// ao longo da curva; é o knob mais usado do Spline Wrap da referência, e é a
 /// razão de a folha marcar isto P0.
+///
+/// ⚠️ **E a curva pode ser a que o artista DESENHOU.** O smoke de 2026-08-12
+/// reprovou o MODELO do nó, não um número dele (*"pontos e alças em sliders num
+/// painel. Absurdo!"*), e a row **Shape** no topo do painel é a resposta: escolha
+/// uma forma que você desenhou com as ferramentas do Vector e a fila embrulha
+/// nela — os oito sliders de polígono de controle **somem**, porque deixam de ser
+/// lidos. A cena abre nos oito params de propósito: ela é o CONTROLE, o estado a
+/// partir do qual o gesto se faz.
 pub(super) fn build_write_on_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,

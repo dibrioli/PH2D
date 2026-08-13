@@ -23,7 +23,8 @@
 //! about which shape they mean. Rename the shape and the node follows it — because the name IS the
 //! reference, not a lookup into one.
 //!
-//! HR-5: arc-length is `sqrt` (sibling `arc.rs`), the tangent's angle is the Rajan `atan2`
+//! HR-5: arc-length is `sqrt` (the leaf `ph2d-arc-length`, shared with `motion.spline_wrap`
+//! — two nodes asking where arc fraction `s` is, one answer), the tangent's angle is the Rajan `atan2`
 //! (`trig.rs`). `Effect::Pure` — the layout is a pure function of the curve, the params, and
 //! nothing else; the curve's own revision rides in the cook's fingerprint, so editing the shape
 //! re-cooks this node and *only* the nodes downstream of it.
@@ -46,7 +47,6 @@ use ph2d_nodegraph::node::{
 };
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
-mod arc;
 mod trig;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -124,7 +124,7 @@ impl NodeOp for MotionPath {
 
         let name = ctx.text_param(PATH_PARAM).unwrap_or_default().to_string();
         let pts = polyline(ctx.external(&name));
-        let lut = arc::lut(&pts);
+        let lut = ph2d_arc_length::lut(&pts);
 
         // A shape that is not there (not drawn yet, renamed, deleted) is an EMPTY stream — the same
         // thing an unconnected input is. A node that cannot find its curve emits nothing; it does
@@ -139,8 +139,16 @@ impl NodeOp for MotionPath {
         for i in 0..count {
             // Even ARC-LENGTH, not even parameter: sampling by parameter bunches the points on the
             // tight bends, and the eye reads that as "not even".
+            // ⚠️ **O ENROLAMENTO é POLÍTICA DESTE NÓ, e agora está escrito aqui.**
+            // Ele morava dentro do amostrador, e o `motion.spline_wrap` — o segundo
+            // consumidor da mesma curva desenhada — precisa do OPOSTO (o elemento em
+            // `u = 1` tem de pousar no FIM). Um amostrador não tem política de ponta;
+            // um nó tem. Aqui o `offset` desliza o conjunto **e dá a volta**, que é o
+            // gesto (uma marquise correndo por um caminho, não um clamp na ponta) —
+            // e `s − floor(s)` é literalmente a linha que saiu do `arc::at`, então
+            // isto é byte-idêntico ao que shipava.
             let s = i as f32 / count as f32 + offset;
-            let (p, tangent) = arc::at(&pts, &lut, s);
+            let (p, tangent) = ph2d_arc_length::at(&pts, &lut, s - s.floor());
             pos.push(p);
             if align {
                 rot.push(trig::deg(trig::atan2_approx(tangent[1], tangent[0])));

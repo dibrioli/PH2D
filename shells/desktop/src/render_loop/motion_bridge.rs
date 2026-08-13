@@ -178,6 +178,7 @@ mod library_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_param_tests.rs"]
 mod param_tests;
+
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_plumbing_tests.rs"]
 mod plumbing_tests;
@@ -212,6 +213,9 @@ mod tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_unit_tests.rs"]
 mod unit_tests;
+#[cfg(test)]
+#[path = "motion_bridge_visibility_tests.rs"]
+mod visibility_tests;
 
 /// Per-frame Motion-tool plumbing. Safe to call every frame; a no-op when the
 /// Motion tool is inactive (beyond flipping panel visibility / the split off).

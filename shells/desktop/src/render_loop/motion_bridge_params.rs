@@ -181,6 +181,8 @@ pub(crate) fn build_params_snapshot(
         .unwrap_or_else(|| inst.type_name.clone());
     let hints = motion.registry.param_ui(type_id);
     let gates = motion.registry.param_gates(type_id);
+    let gates_text = motion.registry.param_gates_text(type_id);
+    let texts = motion.doc.graph.node_text_param_overrides(nid);
     let overrides = motion.doc.graph.node_param_overrides(nid);
     let value_of = |name: &str| -> f32 {
         if let Some(v) = overrides.and_then(|m| m.get(name)).copied() {
@@ -195,11 +197,24 @@ pub(crate) fn build_params_snapshot(
     // Conditional visibility (`ParamGate`): a param with a gate whose `when` value
     // is not one of its `values` is HIDDEN (filtered off both loops below), so a
     // `source.shape` shows only the controls its current `kind` uses.
+    // E a mesma pergunta do outro lado da fronteira f32 (`ParamGateText`): um
+    // param cuja condição é a PRESENÇA de um TEXT param — o nome de uma forma
+    // desenhada. É o que faz os oito sliders de polígono de controle do
+    // `motion.spline_wrap` sumirem quando o artista escolhe a curva que desenhou.
+    let has_text = |name: &str| -> bool {
+        texts
+            .and_then(|m| m.get(name))
+            .is_some_and(|v| !v.trim().is_empty())
+    };
     let shown = |param: &str| -> bool {
         !gates
             .into_iter()
             .flatten()
             .any(|g| g.param == param && !g.values.contains(&(value_of(g.when).round() as i32)))
+            && !gates_text
+                .into_iter()
+                .flatten()
+                .any(|g| g.param == param && has_text(g.when_text) != g.when_present)
     };
 
     // Channels folded into a colour swatch (or into a `Channels` picker's `mode`) —

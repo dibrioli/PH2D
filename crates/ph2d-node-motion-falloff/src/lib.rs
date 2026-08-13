@@ -14,7 +14,9 @@
 //! `center_x` (0), `center_y` (0), `radius` (5), `invert` (0/1 — flips the mask to
 //! `1 − f`). The defaults reproduce the classic smoothstep circle.
 
-use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
+mod trig;
+
+use ph2d_node_registry::{NodeRegistry, ParamGate, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -58,6 +60,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         ParamSpec {
             name: "radius",
             default: 5.0,
+        },
+        // ⚠️ **Apendado** (doc 89 folha 10, P0): o ângulo do campo, em graus. `0` é
+        // o nó que sempre shipou — a rampa Linear só sabia ir na HORIZONTAL, e o
+        // Rect só existia alinhado aos eixos.
+        ParamSpec {
+            name: "rotation",
+            default: 0.0,
         },
         ParamSpec {
             name: "invert",
@@ -129,15 +138,31 @@ fn field(shape: i32, dx: f32, dy: f32, radius: f32, curve_kind: i32, invert: boo
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let fl_p = read_P(i);\n\
+        // Para o FRAME do campo — a MESMA transcricao que o `field.box` faz.\n\
+        let fl_ox = fl_p.x - params.center_x;\n\
+        let fl_oy = fl_p.y - params.center_y;\n\
+        let fl_b = fl_cos_sin(params.rotation / 360.0);\n\
         let fl_v = fl_field(\n\
             i32(fl_round(params.shape)),\n\
-            fl_p.x - params.center_x,\n\
-            fl_p.y - params.center_y,\n\
+            fl_ox * fl_b.x + fl_oy * fl_b.y,\n\
+            -fl_ox * fl_b.y + fl_oy * fl_b.x,\n\
             params.radius,\n\
             i32(fl_round(params.curve)),\n\
             params.invert >= 0.5);\n\
         write_falloff(i, read_falloff(i) * fl_v);\n",
     wgsl_lib: "\
+        fn fl_sin_cycles(phase: f32) -> f32 {\n\
+            // A senoide parabolica corrigida (ver trig.rs) — o MESMO polinomio\n\
+            // que a CPU, entao a paridade vale; a fase e em ciclos (graus/360).\n\
+            let ff = phase - floor(phase);\n\
+            var p: f32;\n\
+            if (ff < 0.5) { let u = ff * 2.0; p = 4.0 * u * (1.0 - u); }\n\
+            else { let u = (ff - 0.5) * 2.0; p = -4.0 * u * (1.0 - u); }\n\
+            return 0.225 * (p * abs(p) - p) + p;\n\
+        }\n\
+        fn fl_cos_sin(phase: f32) -> vec2<f32> {\n\
+            return vec2<f32>(fl_sin_cycles(phase + 0.25), fl_sin_cycles(phase));\n\
+        }\n\
         fn fl_round(x: f32) -> f32 {\n\
             // Rust f32::round = half away from zero (WGSL round is half-even).\n\
             return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
@@ -184,7 +209,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &["shape", "curve", "center_x", "center_y", "radius", "invert"],
+    params: &[
+        "shape", "curve", "center_x", "center_y", "radius", "rotation", "invert",
+    ],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -203,6 +230,12 @@ impl NodeOp for MotionFalloff {
         let shape = ctx.param("shape").round() as i32;
         let curve_kind = ctx.param("curve").round() as i32;
         let invert = ctx.param("invert") >= 0.5;
+        // A base de rotação, calculada UMA vez (constante por cook). ⚠️ É a MESMA
+        // aproximação que o `field.box` usa (`trig.rs` copiado verbatim de lá), e
+        // tem de ser: os dois são campos espaciais que o artista gira, e um `30°`
+        // que significasse ângulos diferentes em dois nós seria a falha de duas
+        // portas na sua forma mais quieta — nada na tela diria qual está certo.
+        let (rc, rs) = trig::cos_sin_cycles(ctx.param("rotation") / 360.0);
         let out = {
             let input = ctx.input(0);
             let n = input.count();
@@ -218,7 +251,12 @@ impl NodeOp for MotionFalloff {
             let mut fall = Vec::with_capacity(n);
             for i in 0..n {
                 let p = positions.get(i).copied().unwrap_or([0.0, 0.0]);
-                let (dx, dy) = (p[0] - cx, p[1] - cy);
+                let (ox, oy) = (p[0] - cx, p[1] - cy);
+                // Para o FRAME do campo: gira o ponto por −rotação (a inversa de
+                // girar o campo). Em `rotation = 0` isto reduz LITERALMENTE ao
+                // `(ox, oy)` que shipava — `cos_sin_cycles(0)` é `(1, 0)` EXATO,
+                // então `ox·1 + oy·0` é `ox` em IEEE-754.
+                let (dx, dy) = (ox * rc + oy * rs, -ox * rs + oy * rc);
                 let base = prev.and_then(|v| v.get(i).copied()).unwrap_or(1.0);
                 fall.push(base * field(shape, dx, dy, radius, curve_kind, invert));
             }
@@ -250,6 +288,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    // ⚠️ Um CÍRCULO é isotrópico: girá-lo não move um texel, então o knob seria
+    // morto ali. Ele aparece no Rect (uma caixa orientada) e no Linear (a rampa
+    // num ângulo qualquer, que é o P0 da folha 10).
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     // GPU/M5 Fase 2 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
@@ -260,6 +302,17 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 /// Param UI hints (M1.P1): named Shape / Curve selectors, signed centre, positive
 /// radius, invert checkbox — never number sliders for the enums.
 static PARAM_HINTS: &[ParamUiHint] = &[
+    // O ângulo do campo. ⚠️ A faixa cobre a volta inteira: uma rampa a 190° é a de
+    // 10° ao contrário, e recusar metade do círculo faria o artista procurar um
+    // `invert` para dizer o que o ângulo já diz.
+    ParamUiHint {
+        param: "rotation",
+        label: "Rotation",
+        min: -180.0,
+        max: 180.0,
+        step: 1.0,
+        widget: ParamWidget::Slider,
+    },
     ParamUiHint {
         param: "shape",
         label: "Shape",
@@ -323,6 +376,13 @@ static PARAM_HINTS: &[ParamUiHint] = &[
 /// here. A weight, a fraction, a rate and a count are left bare on purpose: a unit
 /// that is wrong is worse than a unit that is missing, because the artist can read
 /// a bare number but a mislabelled one teaches them something false.
+/// O ângulo só é lido pelas formas que TÊM direção (`1` Rect · `2` Linear).
+static PARAM_GATES: &[ParamGate] = &[ParamGate {
+    param: "rotation",
+    when: "shape",
+    values: &[1, 2],
+}];
+
 static PARAM_UNITS: &[ParamUnitDecl] = &[
     ParamUnitDecl {
         param: "center_x",
@@ -337,6 +397,10 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
         unit: ParamUnit::Length,
     },
 ];
+
+#[cfg(test)]
+#[path = "rotation_tests.rs"]
+mod rotation_tests;
 
 #[cfg(test)]
 mod tests {

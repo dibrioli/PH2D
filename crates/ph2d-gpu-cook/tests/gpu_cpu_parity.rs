@@ -5765,3 +5765,42 @@ fn the_instance_field_key_falls_back_to_the_index_on_the_device_too() {
         assert_gpu_parity(&gpu, &reg, &g, out, 3);
     }
 }
+
+/// **A rampa do `motion.falloff` num ÂNGULO, no device** (doc 89 folha 10).
+///
+/// ⚠️ As duas fixtures de falloff acima usam a forma **Circle**, onde a rotação é
+/// no-op **por geometria** — nenhuma delas exercitaria o ramo novo, e um WGSL que
+/// ignorasse o `rotation` passaria nas duas. A forma aqui é **Linear** (a rampa) e
+/// o ângulo não é múltiplo de 90°, que é onde a senoide parabólica do CPU e a do
+/// device têm de concordar dígito a dígito.
+///
+/// A máscara chega às instâncias por um `motion.tint`: `assert_gpu_parity` compara
+/// instâncias, e um `falloff` que só existisse na coluna não seria comparado.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn a_rotated_linear_falloff_matches_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 40.0);
+    let foc = g.add_node("motion.falloff");
+    g.set_param(foc, "shape", 2.0); // Linear — a rampa
+    g.set_param(foc, "radius", 9.7);
+    g.set_param(foc, "center_x", 1.3);
+    g.set_param(foc, "center_y", -0.8);
+    g.set_param(foc, "rotation", 37.0); // nem 0 nem múltiplo de 90
+    g.set_param(foc, "curve", 3.0); // Smoother, o polinômio mais longo
+    let tint = g.add_node("motion.tint");
+    g.set_param(tint, "mode", 0.0);
+    g.set_param(tint, "r", 0.31);
+    g.set_param(tint, "g", 0.72);
+    g.set_param(tint, "b", 0.16);
+    let out = g.add_node("motion.output");
+    connect(&mut g, grid, foc);
+    connect(&mut g, foc, tint);
+    connect(&mut g, tint, out);
+    assert_gpu_parity(&gpu, &reg, &g, out, 3);
+}

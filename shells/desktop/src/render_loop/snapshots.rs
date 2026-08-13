@@ -131,6 +131,12 @@ pub(super) fn publish(
     // O passo fixo do relógio, para o número acima virar SEGUNDOS pela mesma
     // régua com que os tiques foram gravados.
     fixed_dt: f64,
+    // `W-PlayerOut` A3: o que a LEI publicou sobre o player selecionado no
+    // último tique. Resolvido pelo chamador pelo mesmo motivo das âncoras de
+    // joint — `publish` não recebe a ponte —, e vindo da porta ÚNICA
+    // (`PhysicsBridge::player_view`): uma segunda derivação aqui descreveria um
+    // personagem que a simulação não simulou.
+    player_live: Option<ph2d_physics_ecs::PlayerView>,
     // W-Pulley W3: a §13 tem a mesma máquina, uma família adiante — o eyedropper
     // de montagem da ROLDANA armado, para que ele pinte pressed enquanto espera o
     // clique no corpo. Dono: `App.wheel_body_pick`.
@@ -870,6 +876,7 @@ pub(super) fn publish(
             b,
             recorded_run_seconds,
             discarded_run_seconds,
+            player_live,
         )
     });
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {

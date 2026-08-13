@@ -14,7 +14,9 @@
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::screens::hero::{InspectorNameInfo, InspectorPlayerInfo, PlayerFieldEdit};
+use ph2d_editor_core::screens::hero::{
+    InspectorNameInfo, InspectorPlayerInfo, PlayerFieldEdit, PlayerLive,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{
     InspectorPanel, InspectorState, set_current_inspector_name, set_current_inspector_player,
@@ -41,6 +43,12 @@ fn player() -> InspectorPlayerInfo {
         // piso deixaria o gate do aviso verde pelo motivo errado.
         min_float_height: 0.58,
         mode_tag: 0,
+        // ⚠️ **Premissa declarada: o default é DESLIGADO e sem leitura viva** — é
+        // o mundo com o toggle Physics desmarcado, que é o que o artista vê ao
+        // abrir a cena. Uma fixture que já emitisse deixaria o gate do opt-in
+        // verde pelo motivo errado.
+        emits_signals: false,
+        live: None,
         reaction_is_live: true,
         push_is_live: true,
         min_float_known: true,
@@ -115,6 +123,19 @@ fn player() -> InspectorPlayerInfo {
         // ausência do gate `the_clear_run_button…`.
         recorded_run_seconds: 0.0,
         discarded_run_seconds: 0.0,
+    }
+}
+
+/// O MESMO player, com a saída de sinais LIGADA e uma leitura viva.
+fn emitting() -> InspectorPlayerInfo {
+    InspectorPlayerInfo {
+        emits_signals: true,
+        live: Some(PlayerLive {
+            footing_tag: 2,
+            facing: -1.0,
+            velocity: [3.5, -0.25],
+        }),
+        ..player()
     }
 }
 
@@ -1061,3 +1082,66 @@ fn the_shove_is_offered_only_to_the_mode_that_reads_it() {
         "e no modo que o LE' ele tem de estar la'"
     );
 }
+
+// ── A SAÍDA (`W-PlayerOut`, A3) ──────────────────────────────────────────────
+
+/// **O chip `Emit Signals` pinta, regista, e o clique CHEGA ao barramento.**
+///
+/// ⚠️ **As duas direções**, e não só a de ligar: um chip cujo `Off` não despacha
+/// é um opt-in que não se desfaz, e o artista fica com toasts para sempre.
+#[test]
+fn the_emit_signals_chip_reaches_the_bus_in_both_directions() {
+    expect(
+        &click_real(player(), ids::INSP_PLAYER_EMIT_IDS[1]),
+        PlayerFieldEdit::EmitSignals(true),
+        "ligar a saída de sinais",
+    );
+    expect(
+        &click_real(emitting(), ids::INSP_PLAYER_EMIT_IDS[0]),
+        PlayerFieldEdit::EmitSignals(false),
+        "desligar a saída de sinais",
+    );
+}
+
+/// **O readout vive na face COM o comportamento, e some da face vazia.**
+///
+/// ⚠️ Ele não tem id — *um readout que despacha mente* —, então o oráculo não
+/// pode ser um retângulo de hit. O que se afirma é o que ele DESLOCA: um bloco
+/// de três linhas empurra tudo o que vem depois, e a face vazia não o tem.
+#[test]
+fn the_live_readout_takes_room_only_where_there_is_a_player() {
+    let with = painted(emitting());
+    let empty_face = painted(empty());
+    let mode_y = |rects: &[(ph2d_a11y::NodeId, Rect)]| {
+        rects
+            .iter()
+            .find(|(n, _)| *n == ids::INSP_PLAYER_MODE_IDS[0])
+            .map(|(_, r)| r.y)
+    };
+    assert!(
+        mode_y(&with).is_some(),
+        "a face COM player pinta o chip de modo"
+    );
+    assert!(
+        mode_y(&empty_face).is_none(),
+        "a face VAZIA oferece um botão e nada mais"
+    );
+
+    // E o chip da saída fica ACIMA dos nove cards — o readout e o interruptor são
+    // a mesma pergunta, e nenhum deles é um knob de afinação.
+    let emit_y = with
+        .iter()
+        .find(|(n, _)| *n == ids::INSP_PLAYER_EMIT_IDS[0])
+        .map(|(_, r)| r.y)
+        .expect("o chip da saída é pintado com o player vivo");
+    let float_y = with
+        .iter()
+        .find(|(n, _)| *n == ids::INSP_PLAYER_FLOAT)
+        .map(|(_, r)| r.y)
+        .expect("a primeira row de afinação é pintada");
+    assert!(
+        emit_y < float_y,
+        "o chip da saída ({emit_y}) tem de vir antes das rows de afinação ({float_y})"
+    );
+}
+

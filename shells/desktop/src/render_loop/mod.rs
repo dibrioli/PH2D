@@ -89,6 +89,8 @@ mod inspector_ordering;
 mod inspector_part_tests;
 pub(crate) mod inspector_player;
 #[cfg(test)]
+mod inspector_player_out_tests;
+#[cfg(test)]
 mod inspector_player_tests;
 // ⚠️ `pub(crate)`: a porta `apply_physics_edit` é a ÚNICA regra de "como uma
 // entidade vira corpo" (o collider sai da CAIXA DO SPRITE), e o gerador de rig
@@ -2268,6 +2270,15 @@ impl crate::App {
                 // (descartar esvazia a fita viva).
                 self.discarded_run.len(),
                 self.fixed_step.fixed_dt(),
+                // `W-PlayerOut` A3: o readout do player SELECIONADO. Resolvido
+                // aqui porque `publish` não recebe a ponte, e pela porta única —
+                // `None` fora de um player, e também com a física desarmada, que
+                // é o que faz a §14 dizer *"not simulating"* em vez de mostrar
+                // números de uma corrida que acabou.
+                hero.gizmo
+                    .selection
+                    .and_then(|b| physics.player_view(ph2d_ecs::Entity::from_bits(b)))
+                    .copied(),
                 // W-Pulley W3: o eyedropper de montagem da §13, pelo mesmo motivo.
                 self.wheel_body_pick,
                 self.wheel_rope_pick,

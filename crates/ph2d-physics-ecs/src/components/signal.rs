@@ -130,3 +130,29 @@ fn signal_name(raw: &str) -> Option<&str> {
     let t = raw.trim();
     (!t.is_empty()).then_some(t)
 }
+
+/// **Este player publica os eventos dele como SINAIS** (`W-PlayerOut`, A3).
+///
+/// Ausente = silêncio, que é o default de toda cena que já existe — e o default
+/// é DESLIGADO de propósito: sem ele toda cena de smoke com um personagem
+/// passaria a cuspir toasts, e o custo cairia sobre waves que nada têm com esta.
+///
+/// # ⚠️ Um MARCADOR, e não um campo com um nome
+///
+/// Os irmãos [`SignalOnHit`]/[`SignalOnLeave`] carregam uma `String` porque o
+/// nome deles é **autorado** — a porta que o artista batiza. Os nomes de um
+/// player não são: eles descrevem o que a LEI fez (*aterrou*, *saltou de uma
+/// parede*), e são fixos. Um campo de nome aqui seria um controle a pedir uma
+/// escolha que não existe, e a presença é o booleano inteiro — o idioma do
+/// [`Ccd`](super::Ccd) e do [`LockRotation`](super::LockRotation).
+///
+/// ⚠️ **Componente próprio e não um campo do [`PlatformPlayer`](super::PlatformPlayer):**
+/// aquele é serializado POSICIONALMENTE pelo postcard, então apendar nele é um
+/// bump de `PROJECT_SCHEMA`, e **um bump recusa todo projeto já salvo**. Um
+/// componente recém-registrado é chaveado pelo hash do próprio nome de tipo e é
+/// puramente aditivo — **sem bump**.
+#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlayerSignals;
+
+impl SimComponent for PlayerSignals {}
+

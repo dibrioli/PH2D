@@ -32,6 +32,12 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
                 .unwrap_or(0);
             Some(PlayerFieldEdit::Mode(i as u8))
         }
+        WidgetEvent::Click(id) if ids::INSP_PLAYER_EMIT_IDS.contains(&id) => {
+            // ⚠️ O índice É a resposta: `0` = Off, `1` = On. A tabela de rótulos
+            // do pintor e esta posição são as duas metades da mesma escolha, e é
+            // por isso que a lista vive nos `ids` e não em nenhuma das duas.
+            Some(PlayerFieldEdit::EmitSignals(id == ids::INSP_PLAYER_EMIT_IDS[1]))
+        }
         WidgetEvent::Click(id) if id == ids::INSP_PLAYER_ADD => Some(PlayerFieldEdit::Add),
         WidgetEvent::Click(id) if id == ids::INSP_PLAYER_REMOVE => Some(PlayerFieldEdit::Remove),
         WidgetEvent::Click(id) if id == ids::INSP_PLAYER_FIT => {

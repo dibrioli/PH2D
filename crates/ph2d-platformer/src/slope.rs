@@ -108,6 +108,25 @@ pub enum FootingKind {
     Ground,
 }
 
+impl FootingKind {
+    /// **O número que a fronteira da UI carrega.**
+    ///
+    /// ⚠️ **O mapeamento variante↔número é feito AQUI e em lugar nenhum mais**, e
+    /// é a cicatriz que o `BodyKind::tag` deste repo já pagou: um segundo
+    /// `match` do outro lado é o que faz um readout nomear a postura errada no
+    /// dia em que uma quarta existir. O painel não conhece este enum — ele
+    /// conhece o índice de uma tabela de palavras, e essa tabela e este `match`
+    /// são as duas metades de UMA tradução.
+    #[must_use]
+    pub const fn tag(self) -> u8 {
+        match self {
+            Self::Airborne => 0,
+            Self::Steep => 1,
+            Self::Ground => 2,
+        }
+    }
+}
+
 /// A classificação, feita **UMA vez** — [`footing`] e [`Footing::steep`] são
 /// duas VISTAS dela, nunca dois testes.
 ///

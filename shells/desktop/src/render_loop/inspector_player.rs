@@ -52,6 +52,10 @@ pub(crate) fn build_player_info(
     entity_bits: u64,
     recorded_run_seconds: f32,
     discarded_run_seconds: f32,
+    // ⚠️ **A vista chega PRONTA, e a shell não a re-deriva** (`W-PlayerOut`, A3):
+    // quem a computa é a lei, dentro do laço de tiques da ponte, e uma segunda
+    // resposta aqui descreveria um personagem que a simulação não simulou.
+    live: Option<ph2d_physics_ecs::PlayerView>,
 ) -> Option<InspectorPlayerInfo> {
     let entity = Entity::from_bits(entity_bits);
     let body = sim.world().get::<RigidBody>(entity)?;
@@ -137,6 +141,17 @@ pub(crate) fn build_player_info(
         reaction_push: p.reaction_push,
         recorded_run_seconds,
         discarded_run_seconds,
+        live: live.map(|v| ph2d_editor::screens::hero::PlayerLive {
+            // ⚠️ A tradução variante→número é a do `FootingKind::tag`, e só ela.
+            footing_tag: v.footing.tag(),
+            facing: v.facing,
+            velocity: v.velocity,
+        }),
+        // ⚠️ **Presença = ligado** — o marcador não tem valor a ler.
+        emits_signals: sim
+            .world()
+            .get::<ph2d_physics_ecs::PlayerSignals>(entity)
+            .is_some(),
     })
 }
 
@@ -264,6 +279,18 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
                 .remove::<PlatformPlayer>();
             return;
         }
+        // ⚠️ **Anexa ou REMOVE — nunca escreve um campo** (A3): o marcador é o
+        // booleano, e um componente que ficasse presente a dizer *"desligado"*
+        // seria um no-op guardado no arquivo (o idioma do detach dos overrides).
+        PlayerFieldEdit::EmitSignals(on) => {
+            let mut e = sim.world_mut().entity_mut(entity);
+            if on {
+                e.insert(ph2d_physics_ecs::PlayerSignals);
+            } else {
+                e.remove::<ph2d_physics_ecs::PlayerSignals>();
+            }
+            return;
+        }
         _ => {}
     }
 
@@ -282,7 +309,8 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         PlayerFieldEdit::Add
         | PlayerFieldEdit::Remove
         | PlayerFieldEdit::ClearRun
-        | PlayerFieldEdit::RestoreRun => {}
+        | PlayerFieldEdit::RestoreRun
+        | PlayerFieldEdit::EmitSignals(_) => {}
         PlayerFieldEdit::Mode(_) => {}
         PlayerFieldEdit::FitFloatHeight => {
             if let Some(fit) = fitted_float(shape, p.max_slope_deg) {

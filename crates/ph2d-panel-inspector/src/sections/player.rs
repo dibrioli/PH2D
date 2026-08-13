@@ -130,6 +130,25 @@ pub(crate) fn paint_player_section(
         info.mode_tag,
     );
 
+    // **O QUE ELE ESTÁ A FAZER** (`W-PlayerOut`, A3) — o readout que torna a
+    // afinação observável sem um `println`, e o interruptor de quem fica sabendo.
+    yy = paint_live_readout(scene, text_system, theme, x, w, yy, info.live);
+    yy = seg_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        "Emit Signals",
+        ids::INSP_PLAYER_EMIT,
+        &ids::INSP_PLAYER_EMIT_IDS,
+        &["Off", "On"],
+        u8::from(info.emits_signals),
+    );
+
     yy = paint_cards(
         scene,
         text_system,
@@ -326,3 +345,70 @@ fn paint_cards(
     }
     yy
 }
+
+/// **O readout VIVO** — postura, `facing` e velocidade.
+///
+/// Sem id e sem hit: nada aqui é editável, e *um readout que despacha mente* (a
+/// lei da §12, e o desenho exacto do `paint_gear_readout` da §13).
+///
+/// ⚠️ **Sem leitura, ele DIZ isso** em vez de deixar um vão. Com o toggle
+/// **Physics** desmarcado — o default — a lei não deu passo nenhum, e um vão
+/// lê-se como *"o app não sabe"*, quando o que ele sabe é que não há corrida.
+fn paint_live_readout(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    live: Option<ph2d_editor_core::screens::hero::PlayerLive>,
+) -> f32 {
+    let font = TypeToken::Sm.px();
+    let label_w = (font * 5.0).min(w * 0.42); // LITERAL-PX-OK: a mesma coluna de rótulo das rows
+    let mut yy = y;
+    let mut line = |label: &str, value: &str, scene: &mut VectorScene, ts: &mut TextSystem| {
+        let text_y = yy + (ROW_H_PX - font) * 0.5;
+        paint_text(
+            ts,
+            scene,
+            label,
+            x,
+            text_y,
+            font,
+            label_w,
+            resolve(ColorToken::Text2, theme),
+        );
+        paint_text(
+            ts,
+            scene,
+            value,
+            x + label_w,
+            text_y,
+            font,
+            (w - label_w).max(0.0),
+            resolve(ColorToken::Text1, theme),
+        );
+        yy += ROW_H_PX;
+    };
+
+    let Some(l) = live else {
+        line("Live", "not simulating", scene, text_system);
+        return yy;
+    };
+    // ⚠️ **A tabela é a outra metade do `FootingKind::tag`**, e a ordem dela É o
+    // mapeamento: um índice fora dela seria uma postura que este build não
+    // conhece, e nomeá-la de qualquer coisa é como um readout passa a mentir.
+    const POSTURE: [&str; 3] = ["air", "steep", "ground"];
+    let posture = POSTURE.get(l.footing_tag as usize).copied().unwrap_or("?");
+    line("Posture", posture, scene, text_system);
+    line(
+        "Facing",
+        if l.facing < 0.0 { "left" } else { "right" },
+        scene,
+        text_system,
+    );
+    let speed = format!("{:.2}, {:.2} m/s", l.velocity[0], l.velocity[1]);
+    line("Speed", &speed, scene, text_system);
+    yy
+}
+

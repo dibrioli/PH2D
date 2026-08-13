@@ -226,6 +226,16 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         "Classic platformer: the same controller, but the physical world is \
          scenery. Everything stops him and he moves nothing.",
     );
+    // O mesmo, para o chip da saída de sinais (A3).
+    register_button_ids(store, &ids::INSP_PLAYER_EMIT_IDS);
+    store.set_tooltip(
+        ids::INSP_PLAYER_EMIT_IDS[0],
+        "Nobody hears him: he lands and jumps in silence.",
+    );
+    store.set_tooltip(
+        ids::INSP_PLAYER_EMIT_IDS[1],
+        "Publish what he does as signals (player.landed, player.jumped.wall, ...).",
+    );
     register_button_ids(
         store,
         &[

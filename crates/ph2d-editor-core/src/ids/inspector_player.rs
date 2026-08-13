@@ -83,6 +83,23 @@ pub const INSP_PLAYER_MODE_IDS: [NodeId; 3] = [
     hash_node_id("insp_player_mode_pure"),
 ];
 
+/// **Este player publica os eventos dele como SINAIS?** (`W-PlayerOut`, A3).
+///
+/// ⚠️ **Nasce DESLIGADO**, e a razão é o custo de quem não pediu: sem isso toda
+/// cena de smoke com um personagem passaria a cuspir toasts. É o mesmo opt-in
+/// autorado do `SignalOnHit`, e o mesmo motivo pelo qual ele também é.
+///
+/// ⚠️ **A row fica no TOPO, junto do readout**, e é deliberado: ela é a outra
+/// metade da mesma pergunta — *o que este personagem está a fazer, e quem fica
+/// sabendo* —, e não pertence a nenhum dos nove cards, que são todos knobs de
+/// AFINAÇÃO.
+pub const INSP_PLAYER_EMIT: NodeId = hash_node_id("insp_player_emit");
+/// As opções do chip acima.
+pub const INSP_PLAYER_EMIT_IDS: [NodeId; 2] = [
+    hash_node_id("insp_player_emit_off"),
+    hash_node_id("insp_player_emit_on"),
+];
+
 /// **A altura a que o personagem PAIRA**, metros, medida do centro do corpo.
 pub const INSP_PLAYER_FLOAT: NodeId = hash_node_id("insp_player_float");
 /// **Fit to Collider** — semeia a altura de flutuação a partir da forma.

@@ -196,6 +196,51 @@ pub struct InspectorPlayerInfo {
     /// botão de devolver some, e o próximo descarte sobrescreve o guardado. Não
     /// existe caminho em que ele ressuscite uma corrida velha.
     pub discarded_run_seconds: f32,
+
+    /// **O que ele está a fazer AGORA** — `None` enquanto a física não corre
+    /// (`W-PlayerOut`, A3).
+    ///
+    /// ⚠️ **A AUSÊNCIA é o outro readout**, e é a mesma lei que apaga o botão da
+    /// corrida gravada duas dúzias de linhas acima: com o toggle **Physics**
+    /// desmarcado — o default — a lei não deu passo nenhum, e desenhar *"no
+    /// chão, a 4 m/s"* seria um número errado apresentado como certo. O pintor
+    /// diz **por quê** em vez de deixar um vão.
+    pub live: Option<PlayerLive>,
+
+    /// **Este player publica os eventos dele como sinais?** (A3)
+    ///
+    /// ⚠️ **Nasce DESLIGADO**, e é decisão de custo e não de gosto: sem isso toda
+    /// cena de smoke com um personagem passaria a cuspir toasts, e a conta
+    /// cairia sobre waves que nada têm com esta. É o mesmo opt-in autorado do
+    /// `SignalOnHit`.
+    pub emits_signals: bool,
+}
+
+/// **O readout VIVO de um player** — o que a lei publicou no último tique.
+///
+/// ⚠️ **Fatos, nunca um veredito.** Agachado *e* no chão são simultâneos, e a
+/// prioridade entre eles é do JOGO, não do motor; por isso a postura viaja como
+/// o tag do `FootingKind` e nada aqui a colapsa num rótulo só.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PlayerLive {
+    /// O tag do `FootingKind` — `0` no ar, `1` numa encosta recusada, `2` no
+    /// chão.
+    ///
+    /// ⚠️ **Um `u8` e não um enum**, pela razão exacta do [`mode_tag`]: o painel
+    /// não conhece o tipo da lei, e um segundo `match` aqui é a cópia que
+    /// ninguém lembra de actualizar quando a quarta postura existir.
+    ///
+    /// [`mode_tag`]: InspectorPlayerInfo::mode_tag
+    pub footing_tag: u8,
+    /// Para onde ele olha — `+1` direita, `−1` esquerda.
+    pub facing: f32,
+    /// A velocidade do CORPO, m/s.
+    ///
+    /// ⚠️ **A do corpo, e a relativa ao chão é interpretação de quem lê:** os
+    /// dois fatos que a vista publica são a do corpo e a da plataforma, e a
+    /// diferença entre eles é uma subtração — publicar as três seria a mesma
+    /// coisa dita duas vezes.
+    pub velocity: [f32; 2],
 }
 
 /// Uma edição na §14 — o vocabulário que o painel emite e a shell honra.
@@ -227,6 +272,13 @@ pub enum PlayerFieldEdit {
     /// uma gravação), então sem isto o único caminho de volta era reabrir o
     /// arquivo.
     RestoreRun,
+
+    /// **Liga ou desliga a publicação de sinais** (A3).
+    ///
+    /// ⚠️ **É um MARCADOR do lado do componente** (presença = ligado), então o
+    /// braço que o honra anexa ou remove — nunca escreve um campo. Ver
+    /// `ph2d_physics_ecs::PlayerSignals`.
+    EmitSignals(bool),
 
     /// **Troca o modo** (W-KinMove) — escreve o `PlayerMode` E o `RigidBody.kind`
     /// por UMA porta; ver `ids::INSP_PLAYER_MODE`.

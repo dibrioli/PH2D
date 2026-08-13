@@ -257,4 +257,4 @@ pub use rope::{
     PulleyWheel, RopeStops, WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry,
     rope_joint_of,
 };
-pub use signal::{SignalOnHit, SignalOnLeave};
+pub use signal::{PlayerSignals, SignalOnHit, SignalOnLeave};

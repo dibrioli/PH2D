@@ -13,7 +13,7 @@ mod scene;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, PhysicsBridge, PlatformPlayer, RigidBody,
+    BodyKind, Collider, ColliderShape, PhysicsBridge, PlatformPlayer, PlayerSignals, RigidBody,
 };
 use ph2d_platformer::{DashConfig, FootingKind, JumpKind, PlayerEvent, PlayerInput};
 use scene::{FLOAT_HEIGHT, scene};
@@ -333,3 +333,103 @@ fn wall_rig() -> (SimWorld, PhysicsBridge, Entity) {
     )).id();
     (sim, PhysicsBridge::new(), player)
 }
+
+// ── A VOLTA FECHADA (A3) ─────────────────────────────────────────────────────
+
+/// **O opt-in é o que transforma um evento de player num SINAL.**
+///
+/// ⚠️ **As duas metades**, e a de SILÊNCIO é a que carrega o custo: sem ela toda
+/// cena de smoke com um personagem passaria a cuspir toasts, e a conta cairia
+/// sobre waves que nada têm com esta.
+#[test]
+fn the_opt_in_is_what_makes_a_player_event_a_signal() {
+    for emit in [false, true] {
+        let (mut sim, mut bridge, p) = scene(0.0, 0.0);
+        if emit {
+            sim.world_mut().entity_mut(p).insert(PlayerSignals);
+        }
+        let mut tick = 0u64;
+        let _ = coast(&mut sim, &mut bridge, p, &mut tick, 30);
+
+        // Salta e espera o pouso, colhendo os SINAIS (não os eventos) do caminho.
+        let mut names: Vec<String> = Vec::new();
+        for held in [true, false] {
+            bridge.set_player_input(
+                p,
+                PlayerInput {
+                    jump: held,
+                    ..PlayerInput::default()
+                },
+            );
+            tick += 1;
+            bridge.dispatch(&mut sim, true, tick);
+            names.extend(bridge.signal_events(&sim).into_iter().map(|s| s.name));
+        }
+        for _ in 0..120 {
+            bridge.set_player_input(p, PlayerInput::default());
+            tick += 1;
+            bridge.dispatch(&mut sim, true, tick);
+            names.extend(bridge.signal_events(&sim).into_iter().map(|s| s.name));
+        }
+
+        if emit {
+            assert!(
+                names.iter().any(|n| n == "player.landed"),
+                "com a saída LIGADA o pouso tem de virar um sinal: {names:?}"
+            );
+            assert!(
+                names.iter().any(|n| n == "player.jumped.ground"),
+                "e o pulo também: {names:?}"
+            );
+        } else {
+            assert!(
+                names.iter().all(|n| !n.starts_with("player.")),
+                "sem o opt-in o personagem salta e aterra em SILÊNCIO: {names:?}"
+            );
+        }
+    }
+}
+
+/// **Os três pulos são três NOMES.**
+///
+/// ⚠️ É a lei do ADR-0143 que o `SignalOnLeave` já enuncia: o contrato é o NOME,
+/// quem escuta casa numa string, e um campo de tipo obrigaria todo consumidor a
+/// perguntar duas coisas para saber uma. Um som de pulo de parede não é o som de
+/// um pulo do chão.
+#[test]
+fn the_three_jumps_are_three_names() {
+    // ⚠️ **O oráculo filtra por PREFIXO, nunca por índice:** casar a lista de
+    // eventos com a de sinais por posição só é verdade enquanto nenhum contato
+    // for nomeado, e uma fixture que ganhasse um `SignalOnHit` deixaria o gate
+    // a comparar coisas diferentes com a suíte verde.
+    let (mut sim, mut bridge, p) = scene(0.0, 0.0);
+    sim.world_mut().entity_mut(p).insert(PlayerSignals);
+    let mut tick = 0u64;
+    let _ = coast(&mut sim, &mut bridge, p, &mut tick, 30);
+
+    let mut names = Vec::new();
+    for held in [true, false] {
+        bridge.set_player_input(
+            p,
+            PlayerInput {
+                jump: held,
+                ..PlayerInput::default()
+            },
+        );
+        tick += 1;
+        bridge.dispatch(&mut sim, true, tick);
+        names.extend(
+            bridge
+                .signal_events(&sim)
+                .into_iter()
+                .map(|s| s.name)
+                .filter(|n| n.starts_with("player.jumped")),
+        );
+    }
+    assert_eq!(
+        names,
+        ["player.jumped.ground"],
+        "o pulo do CHÃO tem o nome dele, e não um genérico: {names:?}"
+    );
+}
+

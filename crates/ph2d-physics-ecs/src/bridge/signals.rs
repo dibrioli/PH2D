@@ -22,7 +22,9 @@
 
 use ph2d_ecs::{Entity, SimWorld};
 
-use crate::{SignalOnHit, SignalOnLeave};
+use ph2d_platformer::{JumpKind, PlayerEvent};
+
+use crate::{PlayerSignals, SignalOnHit, SignalOnLeave};
 
 use super::PhysicsBridge;
 use super::contacts::ContactPhase;
@@ -133,6 +135,56 @@ impl PhysicsBridge {
                 }
             }
         }
+        // ── E O PLAYER (`W-PlayerOut`, A3) ───────────────────────────────────
+        // ⚠️ **A TERCEIRA fonte da MESMA porta, e não uma segunda porta.** Este
+        // método já funde contatos e sensores; um canal paralelo obrigaria a
+        // shell a drenar duas coisas e a decidir a ordem entre elas — e a shell
+        // que já drena esta não muda uma linha para receber aquilo.
+        //
+        // ⚠️ **Opt-in por-player** (`PlayerSignals`): sem ele toda cena de smoke
+        // com um personagem cuspiria toasts, e o custo cairia sobre waves que
+        // nada têm com esta. É o mesmo idioma dos dois irmãos acima.
+        for (source, ev) in self.player_events() {
+            if sim.world().get::<PlayerSignals>(*source).is_none() {
+                continue;
+            }
+            out.push(SignalEvent {
+                name: player_signal_name(ev).to_owned(),
+                source: *source,
+                // ⚠️ **Um evento de player tem UMA parte.** O campo existe porque
+                // um contato tem duas, e repetir a fonte é a resposta honesta:
+                // inventar um segundo corpo (o chão em que aterrou?) seria um
+                // fato que o canal não carrega.
+                other: *source,
+            });
+        }
         out
+    }
+}
+
+/// **O nome estável de cada transição de player** — o contrato do A3.
+///
+/// ⚠️ **Os três pulos são três NOMES, não um nome com um campo**, e é a lei que
+/// o [`SignalOnLeave`] já enuncia palavra por palavra: o contrato é o NOME
+/// (ADR-0143), quem escuta casa numa string, e um campo de tipo obrigaria todo
+/// consumidor a perguntar duas coisas para saber uma. Um som de pulo de parede
+/// não é o som de um pulo do chão — são dois contratos, e é assim que se lê.
+///
+/// ⚠️ **Porta ÚNICA:** o dia em que um segundo lugar traduzir isto, os dois
+/// divergem e o consumidor deixa de casar com metade dos eventos.
+#[must_use]
+fn player_signal_name(ev: &PlayerEvent) -> &'static str {
+    match ev {
+        PlayerEvent::Landed { .. } => "player.landed",
+        PlayerEvent::Jumped { kind } => match kind {
+            JumpKind::Ground => "player.jumped.ground",
+            JumpKind::Air => "player.jumped.air",
+            JumpKind::Wall => "player.jumped.wall",
+        },
+        PlayerEvent::Apex => "player.apex",
+        PlayerEvent::Dashed => "player.dashed",
+        PlayerEvent::LedgeGrabbed => "player.ledge_grabbed",
+        PlayerEvent::EnteredWater => "player.entered_water",
+        PlayerEvent::LeftWater => "player.left_water",
     }
 }

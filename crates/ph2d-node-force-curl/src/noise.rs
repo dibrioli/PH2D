@@ -39,19 +39,17 @@ pub(crate) fn value_noise_2d(x: f32, y: f32) -> f32 {
     nx0 + v * (nx1 - nx0)
 }
 
-/// Fractal Brownian motion: `octaves` of value noise at doubling frequency and
-/// halving amplitude — the standard potential field for curl noise (Bridson
-/// 2007 §3), giving swirls at several scales instead of one. Normalized so the
-/// result stays in `[-1, 1]`.
-pub(crate) fn fbm(x: f32, y: f32, octaves: u32) -> f32 {
-    let (mut freq, mut amp, mut sum, mut norm) = (1.0f32, 1.0f32, 0.0f32, 0.0f32);
-    for _ in 0..octaves.max(1) {
-        sum += value_noise_2d(x * freq, y * freq) * amp;
-        norm += amp;
-        freq *= 2.0;
-        amp *= 0.5;
-    }
-    sum / norm
+/// ⚠️ **A LEI da soma fractal mudou-se para a folha [`ph2d_fbm`]** — ela tinha
+/// duas implementações neste repo (esta e a do `motion.noise`) e elas já
+/// divergiam. O que fica aqui é o **ruído de base**, que é de VALOR de propósito
+/// (mais barato, e o potencial `ψ` do curl noise do Bridson não precisa da
+/// diferença que o gradiente traz).
+///
+/// ⚠️ **Este nó NÃO desloca o seed por oitava** — o `motion.noise` desloca, e é
+/// por isso que o índice da oitava chega ao ruído de base em vez de a lei ter
+/// opinião. Ignorá-lo aqui é o que mantém a aparência byte a byte.
+pub(crate) fn octave(x: f32, y: f32, _o: u32) -> f32 {
+    value_noise_2d(x, y)
 }
 
 #[cfg(test)]
@@ -81,14 +79,64 @@ mod tests {
     fn fbm_is_bounded_deterministic_and_richer_than_one_octave() {
         for k in 0..100 {
             let (x, y) = (k as f32 * 0.31, k as f32 * 0.17);
-            let v = fbm(x, y, 3);
+            let v = ph2d_fbm::eval(
+                ph2d_fbm::Spec {
+                    octaves: 3,
+                    ..ph2d_fbm::Spec::default()
+                },
+                x,
+                y,
+                octave,
+            );
             assert!((-1.0..=1.0).contains(&v), "fbm {v} out of range");
-            assert_eq!(v, fbm(x, y, 3), "deterministic");
+            assert_eq!(
+                v,
+                ph2d_fbm::eval(
+                    ph2d_fbm::Spec {
+                        octaves: 3,
+                        ..ph2d_fbm::Spec::default()
+                    },
+                    x,
+                    y,
+                    octave
+                ),
+                "deterministic"
+            );
         }
         // Adding octaves changes the field (they are not a no-op).
-        assert_ne!(fbm(1.3, 2.7, 1), fbm(1.3, 2.7, 3));
+        assert_ne!(
+            ph2d_fbm::eval(
+                ph2d_fbm::Spec {
+                    octaves: 1,
+                    ..ph2d_fbm::Spec::default()
+                },
+                1.3,
+                2.7,
+                octave
+            ),
+            ph2d_fbm::eval(
+                ph2d_fbm::Spec {
+                    octaves: 3,
+                    ..ph2d_fbm::Spec::default()
+                },
+                1.3,
+                2.7,
+                octave
+            )
+        );
         // One octave IS the base noise.
-        assert_eq!(fbm(1.3, 2.7, 1), value_noise_2d(1.3, 2.7));
+        assert_eq!(
+            ph2d_fbm::eval(
+                ph2d_fbm::Spec {
+                    octaves: 1,
+                    ..ph2d_fbm::Spec::default()
+                },
+                1.3,
+                2.7,
+                octave
+            ),
+            value_noise_2d(1.3, 2.7)
+        );
     }
 
     #[test]

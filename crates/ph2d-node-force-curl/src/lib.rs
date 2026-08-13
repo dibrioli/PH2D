@@ -33,7 +33,7 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 mod accum;
 mod noise;
 use accum::{add_accel, falloff_at, vec2_at};
-use noise::fbm;
+use noise::octave;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
@@ -82,6 +82,39 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "seed",
             default: 0.0,
         },
+        // ⚠️ **O cluster de NOISE, apendado** (doc 89 folha 02). A família de
+        // animadores já o tinha; a de forças herdou `octaves` e mais nada — o
+        // `lacunarity` e o `roughness` eram LITERAIS cravados no laço
+        // (`freq *= 2.0; amp *= 0.5`), e os defaults abaixo são esses literais,
+        // então o campo de antes sai AO BIT.
+        ParamSpec {
+            name: "type",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "lacunarity",
+            default: 2.0,
+        },
+        ParamSpec {
+            name: "roughness",
+            default: 0.5,
+        },
+        // O *Pan Noise Field* do Niagara: desliza o campo sem mover as
+        // instâncias — como as vórtices caem noutro lugar sem a cena mudar.
+        ParamSpec {
+            name: "offset_x",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "offset_y",
+            default: 0.0,
+        },
+        // O *Looping + Loop Length* do Cavalry: `0` = nunca fecha, o mundo de
+        // sempre (e o segundo instante nem é avaliado).
+        ParamSpec {
+            name: "loop_period",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -89,17 +122,45 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 /// The scalar potential `ψ` at a world point, for a given field configuration.
 /// Time drifts the field along its own x-axis (the noise is 2D; a third lattice
 /// axis is the follow-up when the noise grows one).
-fn psi(x: f32, y: f32, drift: f32, seed: f32, octaves: u32) -> f32 {
-    fbm(x + drift + seed, y, octaves)
+fn psi(x: f32, y: f32, drift: f32, seed: f32, spec: ph2d_fbm::Spec, off: [f32; 2]) -> f32 {
+    ph2d_fbm::eval(spec, x + drift + seed + off[0], y + off[1], octave)
 }
 
 /// `curl ψ` at a world point: `(∂ψ/∂y, −∂ψ/∂x)` by central differences.
 /// Divergence-free (see the module docs).
-fn curl(x: f32, y: f32, drift: f32, seed: f32, octaves: u32) -> [f32; 2] {
-    let dpsi_dx = psi(x + EPS, y, drift, seed, octaves) - psi(x - EPS, y, drift, seed, octaves);
-    let dpsi_dy = psi(x, y + EPS, drift, seed, octaves) - psi(x, y - EPS, drift, seed, octaves);
+fn curl(x: f32, y: f32, drift: f32, seed: f32, spec: ph2d_fbm::Spec, off: [f32; 2]) -> [f32; 2] {
+    let dpsi_dx = psi(x + EPS, y, drift, seed, spec, off) - psi(x - EPS, y, drift, seed, spec, off);
+    let dpsi_dy = psi(x, y + EPS, drift, seed, spec, off) - psi(x, y - EPS, drift, seed, spec, off);
     let inv = 1.0 / (2.0 * EPS);
     [dpsi_dy * inv, -dpsi_dx * inv]
+}
+
+/// O curl **fechado no tempo**: a mistura dos dois instantes que a costura do laço
+/// nomeia.
+///
+/// ⚠️ **Misturar as duas CURLS é o mesmo que a curl da mistura, e isso não é
+/// acaso — é linearidade.** A curl é uma diferença central, um operador linear,
+/// então `lerp` e `∂` comutam: o campo misturado continua **divergence-free**, que
+/// é a razão de este nó existir. Se a mistura acontecesse depois de uma operação
+/// não-linear, o laço quebraria a propriedade em silêncio.
+fn curl_looped(
+    x: f32,
+    y: f32,
+    t: (f32, f32, f32),
+    speed: f32,
+    seed: f32,
+    spec: ph2d_fbm::Spec,
+    off: [f32; 2],
+) -> [f32; 2] {
+    let (t_a, t_b, w) = t;
+    let a = curl(x, y, t_a * speed, seed, spec, off);
+    // `w == 0` é o caminho de sempre: a segunda amostra nem é avaliada, e o nó
+    // sem laço custa exactamente o que custava.
+    if w == 0.0 {
+        return a;
+    }
+    let b = curl(x, y, t_b * speed, seed, spec, off);
+    [a[0] + (b[0] - a[0]) * w, a[1] + (b[1] - a[1]) * w]
 }
 
 /// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0126 side channel): the exact
@@ -119,13 +180,30 @@ fn curl(x: f32, y: f32, drift: f32, seed: f32, octaves: u32) -> [f32; 2] {
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let cl_p = read_P(i);\n\
-        let cl_oct = i32(min(max(cl_round(params.octaves), 1.0), CL_MAX_OCTAVES));\n\
-        let cl_v = cl_curl(\n\
-        \x20   cl_p.x * params.scale,\n\
-        \x20   cl_p.y * params.scale,\n\
-        \x20   params.playhead * params.speed,\n\
-        \x20   params.seed,\n\
-        \x20   cl_oct);\n\
+        var cl_s: ClSpec;\n\
+        cl_s.oct = i32(min(max(cl_round(params.octaves), 1.0), CL_MAX_OCTAVES));\n\
+        cl_s.lac = params.lacunarity;\n\
+        cl_s.rough = params.roughness;\n\
+        cl_s.ty = i32(cl_round(params.type_));\n\
+        cl_s.off = vec2<f32>(params.offset_x, params.offset_y);\n\
+        // A costura do laco (a transcricao de `ph2d_fbm::loop_times`).\n\
+        var cl_ta = params.playhead;\n\
+        var cl_tb = params.playhead;\n\
+        var cl_bw = 0.0;\n\
+        if (params.loop_period > 0.0) {\n\
+        \x20   let u0 = params.playhead / params.loop_period;\n\
+        \x20   let u = u0 - floor(u0);\n\
+        \x20   cl_ta = u * params.loop_period;\n\
+        \x20   cl_tb = cl_ta - params.loop_period;\n\
+        \x20   cl_bw = u * u * (3.0 - 2.0 * u);\n\
+        }\n\
+        let cl_x = cl_p.x * params.scale;\n\
+        let cl_y = cl_p.y * params.scale;\n\
+        var cl_v = cl_curl(cl_x, cl_y, cl_ta * params.speed, params.seed, cl_s);\n\
+        if (cl_bw != 0.0) {\n\
+        \x20   let cl_b = cl_curl(cl_x, cl_y, cl_tb * params.speed, params.seed, cl_s);\n\
+        \x20   cl_v = cl_v + (cl_b - cl_v) * cl_bw;\n\
+        }\n\
         let cl_w = params.strength * read_falloff(i);\n\
         write_accel(i, read_accel(i) + vec2<f32>(cl_v.x * cl_w, cl_v.y * cl_w));\n",
     wgsl_lib: "\
@@ -162,30 +240,52 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             let nx1 = n01 + u * (n11 - n01);\n\
             return nx0 + v * (nx1 - nx0);\n\
         }\n\
-        fn cl_fbm(x: f32, y: f32, octaves: i32) -> f32 {\n\
-            var freq = 1.0;\n\
+        struct ClSpec {\n\
+            oct: i32,\n\
+            lac: f32,\n\
+            rough: f32,\n\
+            ty: i32,\n\
+            off: vec2<f32>,\n\
+        };\n\
+        // A transcricao de `ph2d_fbm::eval` — a coordenada e escalada por\n\
+        // multiplicacao repetida, como na folha. Com lacunarity 2 isso e\n\
+        // identico ao `x * freq` que estava aqui; fora das potencias de dois\n\
+        // nao e, e a folha e a lei.\n\
+        fn cl_fbm(x0: f32, y0: f32, s: ClSpec) -> f32 {\n\
+            let gain = clamp(s.rough, 0.0, 1.0);\n\
+            var x = x0;\n\
+            var y = y0;\n\
             var amp = 1.0;\n\
             var sum = 0.0;\n\
-            var norm = 0.0;\n\
-            let n = max(octaves, 1);\n\
+            var total = 0.0;\n\
+            let n = max(s.oct, 1);\n\
             for (var k = 0; k < n; k = k + 1) {\n\
-                sum = sum + cl_noise(x * freq, y * freq) * amp;\n\
-                norm = norm + amp;\n\
-                freq = freq * 2.0;\n\
-                amp = amp * 0.5;\n\
+                let nz = cl_noise(x, y);\n\
+                var shaped = nz;\n\
+                if (s.ty == 1) {\n\
+                    shaped = abs(nz);\n\
+                } else if (s.ty == 2) {\n\
+                    let r = 1.0 - abs(nz);\n\
+                    shaped = r * r;\n\
+                }\n\
+                sum = sum + amp * shaped;\n\
+                total = total + amp;\n\
+                amp = amp * gain;\n\
+                x = x * s.lac;\n\
+                y = y * s.lac;\n\
             }\n\
-            return sum / norm;\n\
+            return sum / total;\n\
         }\n\
-        fn cl_psi(x: f32, y: f32, drift: f32, seed: f32, octaves: i32) -> f32 {\n\
-            return cl_fbm(x + drift + seed, y, octaves);\n\
+        fn cl_psi(x: f32, y: f32, drift: f32, seed: f32, s: ClSpec) -> f32 {\n\
+            return cl_fbm(x + drift + seed + s.off.x, y + s.off.y, s);\n\
         }\n\
-        fn cl_curl(x: f32, y: f32, drift: f32, seed: f32, octaves: i32) -> vec2<f32> {\n\
+        fn cl_curl(x: f32, y: f32, drift: f32, seed: f32, s: ClSpec) -> vec2<f32> {\n\
             let dpsi_dx =\n\
-                cl_psi(x + CL_EPS, y, drift, seed, octaves)\n\
-                - cl_psi(x - CL_EPS, y, drift, seed, octaves);\n\
+                cl_psi(x + CL_EPS, y, drift, seed, s)\n\
+                - cl_psi(x - CL_EPS, y, drift, seed, s);\n\
             let dpsi_dy =\n\
-                cl_psi(x, y + CL_EPS, drift, seed, octaves)\n\
-                - cl_psi(x, y - CL_EPS, drift, seed, octaves);\n\
+                cl_psi(x, y + CL_EPS, drift, seed, s)\n\
+                - cl_psi(x, y - CL_EPS, drift, seed, s);\n\
             let inv = 1.0 / (2.0 * CL_EPS);\n\
             return vec2<f32>(dpsi_dy * inv, -dpsi_dx * inv);\n\
         }\n",
@@ -212,7 +312,19 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &["strength", "scale", "speed", "octaves", "seed"],
+    params: &[
+        "strength",
+        "scale",
+        "speed",
+        "octaves",
+        "seed",
+        "type",
+        "lacunarity",
+        "roughness",
+        "offset_x",
+        "offset_y",
+        "loop_period",
+    ],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -228,16 +340,24 @@ impl NodeOp for ForceCurl {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let strength = ctx.param("strength");
         let scale = ctx.param("scale");
-        let drift = ctx.playhead() as f32 * ctx.param("speed");
+        let speed = ctx.param("speed");
         let octaves = (ctx.param("octaves").round().max(1.0) as u32).min(MAX_OCTAVES);
         let seed = ctx.param("seed");
+        let spec = ph2d_fbm::Spec {
+            octaves,
+            lacunarity: ctx.param("lacunarity"),
+            roughness: ctx.param("roughness"),
+            ty: ph2d_fbm::NoiseType::from_index(ctx.param("type")),
+        };
+        let off = [ctx.param("offset_x"), ctx.param("offset_y")];
+        let t = ph2d_fbm::loop_times(ctx.playhead() as f32, ctx.param("loop_period"));
         let out = {
             let input = ctx.input(0);
             // Pure per-instance map → parallel above the threshold
             // (bit-identical, no reduction). GPU/M5 Fase 0.
             let contrib: Vec<[f32; 2]> = par_build(input.count(), |i| {
                 let p = vec2_at(input, "P", i, [0.0, 0.0]);
-                let v = curl(p[0] * scale, p[1] * scale, drift, seed, octaves);
+                let v = curl_looped(p[0] * scale, p[1] * scale, t, speed, seed, spec, off);
                 let w = strength * falloff_at(input, i);
                 [v[0] * w, v[1] * w]
             });
@@ -284,6 +404,62 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
 
 /// Param UI hints (M1.P1).
 static PARAM_HINTS: &[ParamUiHint] = &[
+    // **O cluster de NOISE** (doc 89 folha 02) — a família de animadores já o
+    // tinha; esta é a de forças a herdá-lo. Os defaults são os literais que
+    // estavam cravados no laço, então o campo de antes sai ao bit.
+    ParamUiHint {
+        param: "type",
+        label: "Noise Type",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["fBm", "Turbulence", "Ridged"],
+        },
+    },
+    // ⚠️ A faixa começa em 1: abaixo disso as oitavas ficam MAIORES que a base e
+    // o campo perde a leitura fractal. `2` é o universal.
+    ParamUiHint {
+        param: "lacunarity",
+        label: "Lacunarity",
+        min: 1.0,
+        max: 4.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "roughness",
+        label: "Roughness",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "offset_x",
+        label: "Offset X",
+        min: -20.0,
+        max: 20.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "offset_y",
+        label: "Offset Y",
+        min: -20.0,
+        max: 20.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    // `0` = nunca fecha (o mundo de sempre, e a segunda amostra nem é avaliada).
+    ParamUiHint {
+        param: "loop_period",
+        label: "Loop Period",
+        min: 0.0,
+        max: 20.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
     ParamUiHint {
         param: "strength",
         label: "Strength",
@@ -327,200 +503,9 @@ static PARAM_HINTS: &[ParamUiHint] = &[
 ];
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_nodegraph::attr::{Column, Stream};
-    use ph2d_nodegraph::cook::{Cook, OpResolver};
-    use ph2d_nodegraph::graph::{Edge, Graph};
+#[path = "cluster_tests.rs"]
+mod cluster_tests;
 
-    static SRC_MAN: NodeManifest = NodeManifest {
-        id: NodeTypeId::of("force.curl.test.src"),
-        name: "force.curl.test.src",
-        inputs: &[],
-        outputs: &[PortSpec {
-            name: "out",
-            ty: INST_VEC2,
-        }],
-        effect: Effect::Pure,
-        clock: Clock::Frame,
-        params: &[],
-        lowerings: &[LoweringKind::Cpu],
-    };
-    struct Src;
-    impl NodeOp for Src {
-        fn manifest(&self) -> &'static NodeManifest {
-            &SRC_MAN
-        }
-        fn eval(&self, ctx: &mut EvalCtx<'_>) {
-            ctx.emit(Stream::new(3).with(
-                "P",
-                Column::Vec2(vec![[0.7, 1.3], [-2.1, 0.4], [3.3, -1.8]]),
-            ));
-        }
-    }
-    struct Ops;
-    impl OpResolver for Ops {
-        fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-            match ty {
-                t if t == SRC_MAN.id => Some(&Src),
-                t if t == MANIFEST.id => Some(&ForceCurl),
-                _ => None,
-            }
-        }
-    }
-
-    fn accel_at(playhead: f64) -> Vec<[f32; 2]> {
-        let mut g = Graph::new();
-        let src = g.add_node("force.curl.test.src");
-        let c = g.add_node("force.curl");
-        g.connect(Edge {
-            from: (src, 0),
-            to: (c, 0),
-            delayed: false,
-        })
-        .unwrap();
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, c, playhead).unwrap();
-        match out[0].as_stream().get("accel").unwrap() {
-            Column::Vec2(v) => v.clone(),
-            _ => panic!("accel"),
-        }
-    }
-
-    /// Divergence `∇·v` of a field, sampled with the SAME central-difference
-    /// step the field itself uses. Matching the stencil matters: the discrete
-    /// curl's mixed differences cancel exactly at step `EPS`, so any residue is
-    /// float rounding, not a modelling error. Measuring with a different `h`
-    /// would report the noise's own curvature, not the field's divergence.
-    fn divergence(field: impl Fn(f32, f32) -> [f32; 2], x: f32, y: f32) -> f32 {
-        let inv = 1.0 / (2.0 * EPS);
-        (field(x + EPS, y)[0] - field(x - EPS, y)[0]) * inv
-            + (field(x, y + EPS)[1] - field(x, y - EPS)[1]) * inv
-    }
-
-    /// The raw gradient `(∂ψ/∂x, ∂ψ/∂y)` — the naive "push the particle along
-    /// the noise" field the curl exists to replace.
-    fn gradient(x: f32, y: f32) -> [f32; 2] {
-        let inv = 1.0 / (2.0 * EPS);
-        [
-            (psi(x + EPS, y, 0.0, 0.0, 2) - psi(x - EPS, y, 0.0, 0.0, 2)) * inv,
-            (psi(x, y + EPS, 0.0, 0.0, 2) - psi(x, y - EPS, 0.0, 0.0, 2)) * inv,
-        ]
-    }
-
-    /// The property the whole node exists for (Bridson 2007): the field has
-    /// **zero divergence**, so particles swirl forever and never pile into a
-    /// sink. The same measurement on the raw gradient — the field you get by
-    /// sampling noise directly — shows divergence orders of magnitude larger,
-    /// which is exactly why curl noise is the published answer.
-    #[test]
-    fn the_curl_is_divergence_free_and_the_raw_gradient_is_not() {
-        let (mut worst_curl, mut worst_grad) = (0.0f32, 0.0f32);
-        for k in 0..64 {
-            let (x, y) = (k as f32 * 0.37 - 7.0, k as f32 * 0.21 - 4.0);
-            // Scale-relative, so a quiet patch of the field cannot flatter us.
-            let mag = curl(x, y, 0.0, 0.0, 2)
-                .iter()
-                .map(|c| c.abs())
-                .sum::<f32>()
-                .max(1e-3);
-            let d_curl = divergence(|a, b| curl(a, b, 0.0, 0.0, 2), x, y).abs() / mag;
-            let d_grad = divergence(gradient, x, y).abs() / mag;
-            worst_curl = worst_curl.max(d_curl);
-            worst_grad = worst_grad.max(d_grad);
-        }
-        assert!(
-            worst_curl < 1e-2,
-            "curl divergence must vanish, worst = {worst_curl}"
-        );
-        assert!(
-            worst_grad > 1.0,
-            "the raw gradient DOES diverge (that is the point), worst = {worst_grad}"
-        );
-    }
-
-    #[test]
-    fn instances_feel_different_eddies_and_the_field_drifts() {
-        let a = accel_at(0.0);
-        assert!(
-            a[0] != a[1] || a[1] != a[2],
-            "distinct positions sample distinct swirl"
-        );
-        let b = accel_at(2.0);
-        assert!(
-            (a[0][0] - b[0][0]).abs() > 1e-6,
-            "the field drifts with the playhead"
-        );
-    }
-
-    #[test]
-    fn is_deterministic_for_replay() {
-        assert_eq!(accel_at(0.8), accel_at(0.8));
-    }
-
-    #[test]
-    fn falloff_gates_the_force() {
-        // A stream with falloff 0 on the middle instance: it feels nothing.
-        static MASK_MAN: NodeManifest = NodeManifest {
-            id: NodeTypeId::of("force.curl.test.mask"),
-            name: "force.curl.test.mask",
-            inputs: &[],
-            outputs: &[PortSpec {
-                name: "out",
-                ty: INST_VEC2,
-            }],
-            effect: Effect::Pure,
-            clock: Clock::Frame,
-            params: &[],
-            lowerings: &[LoweringKind::Cpu],
-        };
-        struct Mask;
-        impl NodeOp for Mask {
-            fn manifest(&self) -> &'static NodeManifest {
-                &MASK_MAN
-            }
-            fn eval(&self, ctx: &mut EvalCtx<'_>) {
-                ctx.emit(
-                    Stream::new(2)
-                        .with("P", Column::Vec2(vec![[0.7, 1.3], [0.7, 1.3]]))
-                        .with("falloff", Column::Scalar(vec![1.0, 0.0])),
-                );
-            }
-        }
-        struct MaskOps;
-        impl OpResolver for MaskOps {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                match ty {
-                    t if t == MASK_MAN.id => Some(&Mask),
-                    t if t == MANIFEST.id => Some(&ForceCurl),
-                    _ => None,
-                }
-            }
-        }
-        let mut g = Graph::new();
-        let src = g.add_node("force.curl.test.mask");
-        let c = g.add_node("force.curl");
-        g.connect(Edge {
-            from: (src, 0),
-            to: (c, 0),
-            delayed: false,
-        })
-        .unwrap();
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &MaskOps, c, 0.0).unwrap();
-        match out[0].as_stream().get("accel").unwrap() {
-            Column::Vec2(v) => {
-                assert!(v[0] != [0.0, 0.0], "unmasked instance swirls");
-                assert_eq!(v[1], [0.0, 0.0], "falloff 0 → no force");
-            }
-            _ => panic!("accel"),
-        }
-    }
-
-    #[test]
-    fn registers_and_resolves() {
-        let mut reg = NodeRegistry::new();
-        register(&mut reg).unwrap();
-        assert!(reg.resolve(MANIFEST.id).is_some());
-    }
-}
+#[cfg(test)]
+#[path = "lib_tests.rs"]
+mod tests;

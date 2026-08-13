@@ -31,7 +31,10 @@ mod accum;
 mod noise;
 mod trig;
 use accum::{add_accel, falloff_at};
-use noise::value_noise_2d;
+
+/// O teto de oitavas — o mesmo do `force.curl`: o laço é real e o kernel de GPU o
+/// percorre por elemento, então ele é um limite de CUSTO, não de gosto.
+const MAX_OCTAVES: u32 = 4;
 use trig::cos_sin_cycles;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -72,6 +75,30 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "seed",
             default: 0.0,
         },
+        // **O cluster de NOISE, apendado** (doc 89 folha 02). ⚠️ Este nó não tinha
+        // fBm nenhum — a rajada era UMA oitava de ruído de valor —, então
+        // `octaves = 1` com os defaults abaixo é o nó de sempre AO BIT (uma
+        // oitava sai da lei como o ruído de base, sem retoque).
+        ParamSpec {
+            name: "octaves",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "type",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "lacunarity",
+            default: 2.0,
+        },
+        ParamSpec {
+            name: "roughness",
+            default: 0.5,
+        },
+        ParamSpec {
+            name: "loop_period",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -94,11 +121,63 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let wd_dir = wd_cos_sin_cycles(params.angle / 360.0);\n\
-        let wd_var = params.gust\n\
-        \x20   * wd_noise(params.playhead * params.gust_freq, f32(i) * 0.5 + params.seed);\n\
+        let wd_oct = i32(min(max(wd_round(params.octaves), 1.0), WD_MAX_OCTAVES));\n\
+        let wd_ty = i32(wd_round(params.type_));\n\
+        let wd_row = f32(i) * 0.5 + params.seed;\n\
+        // A costura do laco (a transcricao de `ph2d_fbm::loop_times`).\n\
+        var wd_ta = params.playhead;\n\
+        var wd_tb = params.playhead;\n\
+        var wd_bw = 0.0;\n\
+        if (params.loop_period > 0.0) {\n\
+        \x20   let u0 = params.playhead / params.loop_period;\n\
+        \x20   let u = u0 - floor(u0);\n\
+        \x20   wd_ta = u * params.loop_period;\n\
+        \x20   wd_tb = wd_ta - params.loop_period;\n\
+        \x20   wd_bw = u * u * (3.0 - 2.0 * u);\n\
+        }\n\
+        var wd_n = wd_fbm(wd_ta * params.gust_freq, wd_row, wd_oct,\n\
+        \x20   params.lacunarity, params.roughness, wd_ty);\n\
+        if (wd_bw != 0.0) {\n\
+        \x20   let wd_b = wd_fbm(wd_tb * params.gust_freq, wd_row, wd_oct,\n\
+        \x20       params.lacunarity, params.roughness, wd_ty);\n\
+        \x20   wd_n = wd_n + (wd_b - wd_n) * wd_bw;\n\
+        }\n\
+        let wd_var = params.gust * wd_n;\n\
         let wd_mag = params.strength * (1.0 + wd_var) * read_falloff(i);\n\
         write_accel(i, read_accel(i) + vec2<f32>(wd_dir.x * wd_mag, wd_dir.y * wd_mag));\n",
     wgsl_lib: "\
+        const WD_MAX_OCTAVES: f32 = 4.0;\n\
+        fn wd_round(x: f32) -> f32 {\n\
+            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
+            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
+        // A transcricao de `ph2d_fbm::eval`: a coordenada e escalada por\n\
+        // multiplicacao repetida, como na folha.\n\
+        fn wd_fbm(x0: f32, y0: f32, octaves: i32, lac: f32, rough: f32, ty: i32) -> f32 {\n\
+            let gain = clamp(rough, 0.0, 1.0);\n\
+            var x = x0;\n\
+            var y = y0;\n\
+            var amp = 1.0;\n\
+            var sum = 0.0;\n\
+            var total = 0.0;\n\
+            let n = max(octaves, 1);\n\
+            for (var k = 0; k < n; k = k + 1) {\n\
+                let nz = wd_noise(x, y);\n\
+                var shaped = nz;\n\
+                if (ty == 1) {\n\
+                    shaped = abs(nz);\n\
+                } else if (ty == 2) {\n\
+                    let r = 1.0 - abs(nz);\n\
+                    shaped = r * r;\n\
+                }\n\
+                sum = sum + amp * shaped;\n\
+                total = total + amp;\n\
+                amp = amp * gain;\n\
+                x = x * lac;\n\
+                y = y * lac;\n\
+            }\n\
+            return sum / total;\n\
+        }\n\
         fn wd_sin_cycles(phase: f32) -> f32 {\n\
             let f = phase - floor(phase);\n\
             var p: f32;\n\
@@ -157,7 +236,18 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &["angle", "strength", "gust", "gust_freq", "seed"],
+    params: &[
+        "angle",
+        "strength",
+        "gust",
+        "gust_freq",
+        "seed",
+        "octaves",
+        "type",
+        "lacunarity",
+        "roughness",
+        "loop_period",
+    ],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -177,7 +267,21 @@ impl NodeOp for ForceWind {
         let gust = ctx.param("gust");
         let gust_freq = ctx.param("gust_freq");
         let seed = ctx.param("seed");
-        let t = ctx.playhead() as f32;
+        // ⚠️ **O cluster de NOISE, e o que dele NÃO se aplica** (doc 89 folha 02).
+        // O campo de rajada deste nó tem eixos **TEMPO × índice da instância** —
+        // ele não é espacial —, então o `offset_x/y` do cluster (o *Pan Noise
+        // Field*) fica de FORA com motivo: deslizar o eixo do índice **é** um
+        // re-seed, e o `seed` já é esse knob; deslizar o tempo é uma fase, que o
+        // `seed` também decorrelaciona entre nós. Dois knobs a duplicar um
+        // terceiro é o botão morto que este repo caça.
+        let spec = ph2d_fbm::Spec {
+            octaves: (ctx.param("octaves").round().max(1.0) as u32).min(MAX_OCTAVES),
+            lacunarity: ctx.param("lacunarity"),
+            roughness: ctx.param("roughness"),
+            ty: ph2d_fbm::NoiseType::from_index(ctx.param("type")),
+        };
+        let (t_a, t_b, blend) =
+            ph2d_fbm::loop_times(ctx.playhead() as f32, ctx.param("loop_period"));
         let out = {
             let input = ctx.input(0);
             // Pure per-instance map → parallel above the threshold
@@ -185,7 +289,17 @@ impl NodeOp for ForceWind {
             let contrib: Vec<[f32; 2]> = par_build(input.count(), |i| {
                 // Each instance = its own noise row (reference parity: the
                 // per-instance seed picks the row; time scrolls along x).
-                let variation = gust * value_noise_2d(t * gust_freq, i as f32 * 0.5 + seed);
+                let row = i as f32 * 0.5 + seed;
+                let gust_at = |tt: f32| ph2d_fbm::eval(spec, tt * gust_freq, row, noise::octave);
+                // `blend == 0` é o caminho de sempre: a segunda amostra nem é
+                // avaliada, e o nó sem laço custa exactamente o que custava.
+                let n = if blend == 0.0 {
+                    gust_at(t_a)
+                } else {
+                    let a = gust_at(t_a);
+                    a + (gust_at(t_b) - a) * blend
+                };
+                let variation = gust * n;
                 let mag = strength * (1.0 + variation) * falloff_at(input, i);
                 [dir_x * mag, dir_y * mag]
             });
@@ -223,6 +337,48 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
 /// Param UI hints (M1.P1).
 static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "octaves",
+        label: "Octaves",
+        min: 1.0,
+        max: 4.0,
+        step: 1.0,
+        widget: ParamWidget::IntSlider,
+    },
+    ParamUiHint {
+        param: "type",
+        label: "Noise Type",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["fBm", "Turbulence", "Ridged"],
+        },
+    },
+    ParamUiHint {
+        param: "lacunarity",
+        label: "Lacunarity",
+        min: 1.0,
+        max: 4.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "roughness",
+        label: "Roughness",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "loop_period",
+        label: "Loop Period",
+        min: 0.0,
+        max: 20.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
     ParamUiHint {
         param: "angle",
         label: "Angle",

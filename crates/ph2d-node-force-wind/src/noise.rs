@@ -39,6 +39,13 @@ pub(crate) fn value_noise_2d(x: f32, y: f32) -> f32 {
     nx0 + v * (nx1 - nx0)
 }
 
+/// Uma oitava do ruído de base deste nó — a folha [`ph2d_fbm`] carrega a LEI, e
+/// este nó não desloca o seed por oitava (o `motion.noise` desloca; ver o doc da
+/// folha, que é por isso que o índice chega ao ruído em vez de a lei decidir).
+pub(crate) fn octave(x: f32, y: f32, _o: u32) -> f32 {
+    value_noise_2d(x, y)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

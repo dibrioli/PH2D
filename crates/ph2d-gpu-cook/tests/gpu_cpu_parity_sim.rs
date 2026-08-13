@@ -400,6 +400,15 @@ fn the_zone_demo_scale_cook_cost() {
     g.set_param(wind, "angle", 270.0);
     g.set_param(wind, "strength", 4.0);
     g.set_param(wind, "gust", 0.35);
+    // ⚠️ O cluster de noise da rajada, NÃO-neutro: com os defaults (uma oitava,
+    // fBm, lacunarity 2) o WGSL novo reduz ao ruído de uma oitava que já shipava,
+    // e um kernel que ignorasse os params passaria. A `lacunarity` foge da
+    // potência de dois de propósito.
+    g.set_param(wind, "octaves", 3.0);
+    g.set_param(wind, "type", 2.0);
+    g.set_param(wind, "lacunarity", 2.3);
+    g.set_param(wind, "roughness", 0.7);
+    g.set_param(wind, "loop_period", 4.0);
     let sea = g.add_node("force.buoyancy");
     for (k, v) in [
         ("level", -0.5),
@@ -1346,6 +1355,18 @@ fn one_step_of_curl_matches_the_cpu() {
                 ("speed", 0.85),
                 ("octaves", 3.0),
                 ("seed", 1.75),
+                // ⚠️ O cluster de noise, com valores NÃO-neutros: com os defaults
+                // (`lacunarity 2`, `roughness 0.5`, `type fBm`, offset zero, sem
+                // laço) um WGSL que ignorasse os params novos passaria, porque o
+                // default É o mundo de antes. A `lacunarity` foge da potência de
+                // dois de propósito — é ali que a forma repetida e a forma
+                // `x * lacunarity^k` deixam de coincidir.
+                ("lacunarity", 2.7),
+                ("roughness", 0.63),
+                ("type", 1.0),
+                ("offset_x", 3.5),
+                ("offset_y", -1.25),
+                ("loop_period", 5.0),
             ],
         )],
     );

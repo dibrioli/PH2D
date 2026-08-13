@@ -6,10 +6,11 @@
 //! forma óbvia de a ter é escrevê-la; a forma óbvia é também a que **apodrece no dia seguinte** — o
 //! verbo novo nasce na barra e não na paleta, e ninguém repara porque nada falha.
 //!
-//! Este módulo não escreve lista nenhuma. Ele **projeta duas que o app já mantém**:
+//! Este módulo não escreve lista nenhuma. Ele **projeta três que o app já mantém**:
 //!
 //! * [`super::left_rail::rail_entries`] — os chips do rail, cada um com `node_id()` e `label()`;
-//! * o **registry de painéis** — os 23 painéis registados, pelo `panel_node_id` do manifesto.
+//! * o **registry de painéis** — os 23 painéis registados, pelo `panel_node_id` do manifesto;
+//! * [`super::menu_rows::menu_rows`] — as **rows** dos menus folha da barra de topo.
 //!
 //! ⚠️ **E a primeira já era a fonte de verdade de outra coisa**: o gate
 //! `every_painted_rail_button_is_dispatched_by_somebody` existe precisamente porque *uma lista
@@ -23,10 +24,10 @@
 //! por onde o rato entra. Não há segunda tabela `id → acção` para divergir da primeira, e é o
 //! mesmo desenho com que a paleta do Motion roteia um pick (*«exactamente como um pick de rato»*).
 //!
-//! ## ⚠️ A BARRA DE TOPO fica de FORA, e a razão é um MECANISMO, não escopo escolhido
+//! ## ⚠️ O PILL da barra fica de fora; a ROW de dentro dele NÃO
 //!
-//! A primeira versão deste módulo projetava também os pills da barra, e o gate reprovou nove deles
-//! na primeira corrida: `Forge`, `Level_01`, `Save`, `Open`, `MIX`, `WAVE`, `WIDGET`, `GRID`,
+//! A primeira versão deste módulo projetava os pills da barra, e o gate reprovou nove deles na
+//! primeira corrida: `Forge`, `Level_01`, `Save`, `Open`, `MIX`, `WAVE`, `WIDGET`, `GRID`,
 //! `SETTINGS`. Eles **não estão mortos** — o que eles fazem é outra coisa: são **abridores de menu
 //! ancorados a um RECTÂNGULO** (`pointer_down_menus.rs` chama `open_context_menu` com o `hit_rect`
 //! do chip). Um `WidgetEvent::Click` neles não faz nada, medido; o que os aciona é um Down numa
@@ -34,12 +35,15 @@
 //!
 //! ⇒ **Os verbos do app são de dois tipos**, e só um é servível por uma paleta:
 //!
-//! 1. o clique **É** o verbo (os chips do rail; a visibilidade de um painel) — endereçável por id;
-//! 2. o clique **ABRE um menu onde o verbo está** (Save, Open, Theme, Settings…) — posicional.
+//! 1. o clique **É** o verbo (os chips do rail; a visibilidade de um painel; **uma row de menu**) —
+//!    endereçável por id, porque `chrome::dispatch_all` o resolve **sem geometria nenhuma**;
+//! 2. o clique **ABRE um menu onde o verbo está** (o pill Save, Open, Theme, Settings…) —
+//!    posicional, e uma paleta não tem rectângulo: o chip pode nem estar visível.
 //!
-//! Uma paleta não tem rectângulo: o chip pode nem estar visível. Para o tipo 2 a entrada honesta
-//! não é o pill, são as **rows do menu** — e projectá-las é a wave seguinte, com o mecanismo já
-//! nomeado aqui em vez de descoberto de novo.
+//! ⚠️ E a conclusão que a primeira versão tirou daí era LARGA DEMAIS: ela escreveu *«a barra de topo
+//! fica de fora»*, quando o que ela mediu foi só que **o PILL** fica. Uma row de menu folha é
+//! **tipo 1** — ver [`super::menu_rows::TOPBAR_LEAF_MENUS`], que nomeia as três classes de menu que
+//! **não** são servíveis e o mecanismo de cada uma.
 //!
 //! ## O nome de um painel é DERIVADO do id, e não uma tabela
 //!
@@ -72,6 +76,20 @@ pub fn humanise_panel_id(id: &str) -> String {
         }
     }
     out
+}
+
+/// O rótulo de uma row de menu, lido como NOME em vez de como linha de menu.
+///
+/// ⚠️ Uma coisa só muda: o **travessão de recuo**. Metade das rows do menu Look abre com `"— "`
+/// porque o pintor de rows não tem afordância de indentação, então o menu **codifica o recuo como
+/// caractere** — e numa lista plana de pills não há nada contra o que recuar. O resto passa
+/// verbatim, incluindo o atalho (`Save · Cmd+S`): num *command palette* mostrar a tecla ao lado do
+/// verbo é o que todo produto do género faz, e é informação que o artista quer ali.
+///
+/// Isto **não é uma segunda tabela** — é uma derivação da mesma string, no ponto onde ela deixa de
+/// ser desenhada como menu.
+fn palette_label(label: &str) -> String {
+    label.strip_prefix("\u{2014} ").unwrap_or(label).to_string()
 }
 
 /// **Constrói o modelo da paleta global a partir do que o app REGISTA agora.**
@@ -134,6 +152,38 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
                 title: None,
                 items: panels,
             }],
+        });
+    }
+
+    // ── As ROWS dos menus da barra de topo — o «tipo 2» que o doc-header nomeia ──
+    // O pill abre um menu ancorado a um rectângulo, e por isso não é servível daqui; a **row** de
+    // dentro dele é, porque um pick nela é um `Click(id)` que o `chrome::dispatch_all` resolve sem
+    // geometria nenhuma. É a diferença entre *abrir* um menu e *escolher* nele.
+    //
+    // ⚠️ Um GRUPO, um SUB por menu — e não N grupos. Cada grupo é um CARD no masonry, então nove
+    // cards de duas ou três linhas seriam ruído; um sub é exactamente «um cluster nomeado dentro de
+    // uma categoria», que é o que estas rows são.
+    let menus: Vec<PaletteSub> = super::menu_rows::TOPBAR_LEAF_MENUS
+        .iter()
+        .filter_map(|kind| {
+            let items: Vec<PaletteItem> = super::menu_rows::menu_rows(*kind)
+                .iter()
+                .map(|(id, label, _)| PaletteItem {
+                    label: palette_label(label),
+                    id: *id,
+                })
+                .collect();
+            (!items.is_empty()).then(|| PaletteSub {
+                title: super::menu_rows::menu_title(*kind).map(str::to_string),
+                items,
+            })
+        })
+        .collect();
+    if !menus.is_empty() {
+        groups.push(PaletteGroup {
+            title: "Menus".into(),
+            color: ColorToken::NodeCatOutput,
+            subs: menus,
         });
     }
 

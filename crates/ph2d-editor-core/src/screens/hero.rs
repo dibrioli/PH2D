@@ -55,6 +55,8 @@ mod inspector_model_player;
 /// O tique da UI viva (o `motion` + a corda) — irmão, e não corpo do `HeroScreen`: aquele diz o
 /// que uma tela É, este diz o que ela FAZ a cada quadro.
 mod live;
+/// A TABELA de rows de cada menu — a porta única de *«que linhas este menu tem?»*.
+pub mod menu_rows;
 /// O que esta tela OFERECE agora — as portas de *«esta superfície está viva?»*.
 mod offers;
 mod paint;

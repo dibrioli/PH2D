@@ -72,7 +72,9 @@ fn measure_what_a_solid_would_skip() {
             100.0 * tr / (pays + tr),
         );
     }
-    println!("[line] leitura: `PULA%` e' o traçado, que o Solid nao faz — e `pts` e' o que o Line ainda paga depois dele.");
+    println!(
+        "[line] leitura: `PULA%` e' o traçado, que o Solid nao faz — e `pts` e' o que o Line ainda paga depois dele."
+    );
 }
 
 /// **O QUE O SOLID ACRESCENTA** — reduzir a máscara supersampleada a cobertura e compor no canvas.
@@ -85,7 +87,9 @@ fn measure_what_a_solid_would_skip() {
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn measure_what_a_solid_would_add() {
-    println!("[line] o que o Solid ACRESCENTA: reduzir a mascara SS=3 a cobertura + compor (ESTIMATIVA)");
+    println!(
+        "[line] o que o Solid ACRESCENTA: reduzir a mascara SS=3 a cobertura + compor (ESTIMATIVA)"
+    );
     println!(
         "{:>12} {:>10}  {:>10} {:>10}  {:>10}",
         "janela SS", "px destino", "reduz(ms)", "compoe(ms)", "TOTAL(ms)"
@@ -110,7 +114,9 @@ fn measure_what_a_solid_would_add() {
                 let mut s = 0u32;
                 for j in 0..3 {
                     let row = (y * 3 + j) * sw + x * 3;
-                    s += u32::from(crisp[row]) + u32::from(crisp[row + 1]) + u32::from(crisp[row + 2]);
+                    s += u32::from(crisp[row])
+                        + u32::from(crisp[row + 1])
+                        + u32::from(crisp[row + 2]);
                 }
                 #[allow(clippy::cast_possible_truncation)]
                 {
@@ -145,7 +151,9 @@ fn measure_what_a_solid_would_add() {
             reduce_ms + over_ms
         );
     }
-    println!("[line] leitura: some isto ao `PAGA` da tabela anterior e compare com `PAGA + traca + os dabs`.");
+    println!(
+        "[line] leitura: some isto ao `PAGA` da tabela anterior e compare com `PAGA + traca + os dabs`."
+    );
 }
 
 /// **A BORDA: quantos níveis de cobertura ela precisa** — o preço de *"o melhor possível"* (Enio,
@@ -161,7 +169,9 @@ fn measure_what_a_solid_would_add() {
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn measure_how_many_levels_a_solid_edge_needs() {
-    println!("[line] a borda de uma forma solida: erro contra a referencia SS=32, num disco de raio 300");
+    println!(
+        "[line] a borda de uma forma solida: erro contra a referencia SS=32, num disco de raio 300"
+    );
     println!(
         "{:>5} {:>8}  {:>10} {:>10} {:>10}  {:>10}",
         "SS", "niveis", "erro medio", "erro max", "px>8/255", "custo(ms)"
@@ -255,5 +265,7 @@ fn measure_how_many_levels_a_solid_edge_needs() {
             100.0 * f64::from(over) / f64::from(edge.max(1)),
         );
     }
-    println!("[line] (referencia SS=32 custou {ref_ms:.1} ms; a coluna `px>8/255` e' a fracao da BORDA que erra mais que um degrau visivel)");
+    println!(
+        "[line] (referencia SS=32 custou {ref_ms:.1} ms; a coluna `px>8/255` e' a fracao da BORDA que erra mais que um degrau visivel)"
+    );
 }

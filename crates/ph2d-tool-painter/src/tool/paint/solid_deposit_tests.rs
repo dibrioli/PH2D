@@ -3,10 +3,10 @@
 
 use super::measure_shape_system::{cp, tool};
 use crate::tool::paint::media::PaintMedia;
-use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 use ph2d_editor_core::Tool;
+use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::PanelEvent;
+use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 
 /// Quantos texels do canvas deixaram de ser o branco de fundo.
 fn inked(t: &crate::tool::PainterTool) -> usize {
@@ -107,7 +107,109 @@ fn the_unticked_checkbox_leaves_the_canvas_byte_identical() {
     b.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
     b.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
     let _ = loop_gesture(&mut b, 64.0, 30.0);
-    assert_eq!(before, *b.canvas_rgba, "o traço mudou com o checkbox desligado");
+    assert_eq!(
+        before, *b.canvas_rgba,
+        "o traço mudou com o checkbox desligado"
+    );
+}
+
+/// Desenha uma ELIPSE pelo shape editor (Down no centro, arrasta o raio, solta) e devolve os texels
+/// entintados. ⚠️ O editor fica ABERTO depois disto — é assim que um shape editor funciona, e é
+/// nesse estado que a mancha do Solid tem de estar na tela.
+fn ellipse_gesture(t: &mut crate::tool::PainterTool, c: f32, r: f32) -> usize {
+    t.paint.brush.stroke_method = ph2d_painter_brush::StrokeMethod::Ellipse;
+    t.on_canvas_pointer(cp([c, c], PointerPhase::Down));
+    t.on_canvas_pointer(cp([c + r, c], PointerPhase::Move));
+    t.on_canvas_pointer(cp([c + r, c], PointerPhase::Up));
+    inked(t)
+}
+
+/// **UMA ELIPSE EM SOLID É UM DISCO, NÃO UM ANEL** — o `Style` alcança a família dos shape editors
+/// (plano 38 §5.1, decisão do Enio: *"para todos que forem possíveis"*).
+///
+/// ⚠️ O oráculo é a ÁREA CERCADA contra o rastro do contorno: um anel de raio 70 e pincel 4 tem
+/// ~1.800 texels, o disco tem ~15.400. A razão é o que a feature promete.
+#[test]
+fn an_ellipse_shape_in_solid_is_a_disc_not_a_ring() {
+    let side = 256u32;
+    let mut line = tool(side, PaintMedia::Digital, 4.0);
+    let as_ring = ellipse_gesture(&mut line, 128.0, 70.0);
+
+    let mut solid = tool(side, PaintMedia::Digital, 4.0);
+    solid.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    let as_disc = ellipse_gesture(&mut solid, 128.0, 70.0);
+
+    assert!(
+        as_disc > as_ring * 3,
+        "a elipse nao foi preenchida: {as_disc} texels contra {as_ring} do contorno"
+    );
+    // pi*70*70 = 15 394; o disco tem de chegar perto, nao ser uma mancha qualquer.
+    assert!(
+        (14_000..=16_500).contains(&as_disc),
+        "a area preenchida nao e a do disco (~15 394): {as_disc}"
+    );
+}
+
+/// **A ESPESSURA NÃO ENTRA numa forma SÓLIDA** — o mesmo gesto com dois raios de pincel pinta o
+/// MESMO número de texels; o CONTROLE em Line prova que ali ela TEM de entrar.
+#[test]
+fn in_solid_a_shape_ignores_the_brush_width_and_in_line_it_does_not() {
+    let side = 256u32;
+    let mut a = tool(side, PaintMedia::Digital, 3.0);
+    a.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    let thin = ellipse_gesture(&mut a, 128.0, 70.0);
+
+    let mut b = tool(side, PaintMedia::Digital, 24.0);
+    b.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    let thick = ellipse_gesture(&mut b, 128.0, 70.0);
+    assert_eq!(thin, thick, "a espessura mudou a forma solida");
+
+    let mut c = tool(side, PaintMedia::Digital, 3.0);
+    let ring_thin = ellipse_gesture(&mut c, 128.0, 70.0);
+    let mut d = tool(side, PaintMedia::Digital, 24.0);
+    let ring_thick = ellipse_gesture(&mut d, 128.0, 70.0);
+    assert!(
+        ring_thick > ring_thin + 1000,
+        "controle: em Line a espessura TEM de entrar ({ring_thin} contra {ring_thick})"
+    );
+}
+
+/// **UM `Remove` ABRE UM BURACO** — a Operação booleana entra pelo SENTIDO do laço, e o `nonzero` do
+/// preenchimento faz o resto (`super::solid_shapes`). Sem a orientação por op, a forma de Remove
+/// seria pintada como mais uma mancha e o buraco não existiria.
+///
+/// ⚠️ **A fixture monta as duas formas como estado parqueado** — o padrão que os gates booleanos
+/// desta crate já usam (`two_overlapping_add_ellipses_union_their_outline`), e não por dois gestos:
+/// um Down dentro de uma figura que já existe **REATIVA** aquela figura em vez de começar outra
+/// (`super::stroke_router`), então a 1ª versão desta fixture media UMA forma achando que media duas
+/// — e passava a impressão de estar exercitando o winding sem nunca o exercitar.
+#[test]
+fn a_remove_shape_punches_a_hole_in_the_solid() {
+    let side = 256u32;
+    let mut t = tool(side, PaintMedia::Digital, 4.0);
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    let disc = |c: f32, r: f32, op| super::stroke_multi::StrokeShape {
+        state: crate::undo::ShapeEditState::Ellipse(crate::undo::EllipseState {
+            center: [c, c],
+            u: [1.0, 0.0],
+            rx: r,
+            ry: r,
+            editing: true,
+            seed: 1,
+        }),
+        op,
+    };
+    t.paint
+        .parked_shapes
+        .push(disc(128.0, 70.0, super::stroke_multi::StrokeOp::Add));
+    t.paint
+        .parked_shapes
+        .push(disc(128.0, 30.0, super::stroke_multi::StrokeOp::Remove));
+    t.restamp_shapes_preview(&[]);
+
+    let px = |x: usize, y: usize| t.canvas_rgba[(y * side as usize + x) * 4];
+    assert!(px(128, 128) >= 250, "o Remove nao abriu buraco no centro");
+    assert!(px(128, 78) < 250, "a coroa entre os dois raios ficou vazia");
 }
 
 /// **O CHECKBOX ALCANÇA A FERRAMENTA** — o clique do painel flipa o estado publicado, nos dois
@@ -117,7 +219,10 @@ fn the_panel_click_reaches_the_tool_and_every_relief_slot() {
     let mut t = tool(64, PaintMedia::Digital, 8.0);
     assert!(!t.brush_settings().style_solid, "o default tem de ser Line");
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
-    assert!(t.brush_settings().style_solid, "o clique nao chegou ao tool");
+    assert!(
+        t.brush_settings().style_solid,
+        "o clique nao chegou ao tool"
+    );
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
     assert!(!t.brush_settings().style_solid, "o clique nao volta");
 }

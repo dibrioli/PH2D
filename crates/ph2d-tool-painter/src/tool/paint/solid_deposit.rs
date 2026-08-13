@@ -39,33 +39,49 @@ impl PainterTool {
         !self.paint.solid_path.is_empty() && self.solid_owns_the_gesture()
     }
 
-    /// Preenche o caminho acumulado, restaurando o preview do quadro anterior — a MESMA dança do
+    /// Preenche o caminho acumulado do gesto à MÃO LIVRE — o `solid_path` que o ciclo de traço
+    /// alimenta. Delega em [`Self::stamp_solid_loops`], que é a porta que a família dos shape
+    /// editors também atravessa (`super::solid_shapes`).
+    pub(super) fn stamp_solid_preview(&mut self) {
+        if self.paint.solid_path.len() < 2 {
+            // Nada a preencher ainda, mas o preview do quadro anterior TEM de sair da tela.
+            self.stamp_solid_loops(&[]);
+            return;
+        }
+        let path = std::mem::take(&mut self.paint.solid_path);
+        self.stamp_solid_loops(std::slice::from_ref(&path));
+        self.paint.solid_path = path;
+    }
+
+    /// Preenche os laços dados, restaurando o preview do quadro anterior — a MESMA dança do
     /// `stamp_drag_preview` (restaurar → medir → salvar → escrever), porque um Solid é um re-carimbo
     /// por construção: a cada ponto novo o polígono INTEIRO muda de forma.
-    pub(super) fn stamp_solid_preview(&mut self) {
+    ///
+    /// ⚠️ **Uma chamada, um `fill_coverage`, mesmo com N laços** — e não é economia, é CORREÇÃO: o
+    /// preenchimento é `nonzero` sobre o conjunto, então duas formas que se sobrepõem fundem sem
+    /// costura. Preenchê-las uma a uma comporia a borda anti-aliased **duas vezes** e deixaria uma
+    /// linha escura exatamente onde elas se tocam.
+    pub(super) fn stamp_solid_loops(&mut self, loops: &[Vec<[f32; 2]>]) {
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
         }
         let (w, h) = self.source_size;
-        if w == 0 || h == 0 || self.paint.solid_path.len() < 2 {
+        if w == 0 || h == 0 || loops.is_empty() {
             return;
         }
-        let loops = [std::mem::take(&mut self.paint.solid_path)];
-        let bb = solid::loops_bbox(&loops, w as usize, h as usize);
-        if let Some([bx, by, bw, bh]) = bb {
-            #[allow(clippy::cast_possible_truncation)]
-            let rect = Region {
-                x: bx as u32,
-                y: by as u32,
-                w: bw as u32,
-                h: bh as u32,
-            };
-            let pixels = self.save_region(&rect);
-            self.stamp_solid(&loops, rect);
-            self.paint.drag_preview = Some(super::DragPreview { rect, pixels });
-        }
-        let [path] = loops;
-        self.paint.solid_path = path;
+        let Some([bx, by, bw, bh]) = solid::loops_bbox(loops, w as usize, h as usize) else {
+            return;
+        };
+        #[allow(clippy::cast_possible_truncation)]
+        let rect = Region {
+            x: bx as u32,
+            y: by as u32,
+            w: bw as u32,
+            h: bh as u32,
+        };
+        let pixels = self.save_region(&rect);
+        self.stamp_solid(loops, rect);
+        self.paint.drag_preview = Some(super::DragPreview { rect, pixels });
     }
 
     /// Escreve a região **pela porta do gate**, exactamente como um lote de dabs: a proteção e a

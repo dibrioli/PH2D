@@ -235,6 +235,39 @@ gate de janela do undo sangra.
 **Smoke `PH2D_LINE_SMOKE=1`:** um laço aberto e um laço fechado, Line e Solid lado a lado; e o
 **CONTROLE** — com o checkbox desmarcado o traço tem de ficar exatamente como hoje.
 
+#### W1c — a família dos SHAPE EDITORS (fechada 2026-08-13)
+
+⚠️ **A "rota barata" que esta wave prescrevia — *consumir o bitmap do `stroke_boolean_contours`* —
+foi DESCARTADA na construção, e o motivo é o W1a:** o `stroke_boolean_contours` rasteriza a `SS = 3`,
+faz flood por componente e **traça** o contorno de volta, e a W0.3 mediu que `SS = 3` erra > 8/255 em
+**51% da borda** e custa **14× a cobertura exata**. Consumir o bitmap dele seria pagar caro por uma
+borda pior do que a que o `fill_coverage` já dá.
+
+**O que shipou é mais curto:** um shape editor **já É um caminho autorado**, então `shape_loop` (em
+`solid_shapes.rs`) devolve o laço que cada forma desenha — pelos **MESMOS produtores de geometria que
+o carimbo de dabs usa** (`offset_curve_spine` · `ellipse_perimeter` · `polygon_perimeter` ·
+`line_corner::expand`+`offset_polyline`+trim) — e os laços vão direto ao `fill_coverage`. Nenhum
+raster intermediário, nenhum traçado, nenhuma segunda ideia de *onde a forma está*.
+
+⚠️ **E a OPERAÇÃO booleana saiu de graça, pelo SENTIDO do laço:** o preenchimento é `nonzero`, então
+orientar `Add`/`Overlay` num sentido e `Remove` no oposto **é** a união-menos-subtração — um `Remove`
+vira buraco porque a soma corrida volta a zero ali. Sem motor booleano, sem `SS`, sem flood.
+
+⚠️ **Uma chamada de `fill_coverage` para N laços, e é CORREÇÃO e não economia:** preenchê-los um a um
+comporia a borda anti-aliased **duas vezes** na sobreposição e deixaria uma linha escura exatamente
+onde duas formas se tocam.
+
+**Gates** (`solid_deposit_tests.rs`): a elipse em Solid é um **disco** e não um anel (área medida
+contra π·r², e a razão contra o contorno) · a espessura **não entra**, com o CONTROLE em Line onde
+ela tem de entrar · um `Remove` **abre buraco**. **Mutações: 2, as 2 sangram** — neutralizar o desvio
+no funil mata os dois primeiros (e deixa os do gesto à mão livre VERDES, porque são outra porta) ·
+fixar o sentido em CCW mata só o do buraco.
+
+⚠️ **E a 1ª fixture do buraco media UMA forma achando que media duas:** um Down dentro de uma figura
+que já existe **REATIVA** aquela figura em vez de começar outra (`stroke_router`) — medido,
+`parked = 1 → 0` e `loops = 1`. A fixture passou a montar as duas formas como estado parqueado, o
+padrão que os gates booleanos desta crate já usam.
+
 ---
 
 ### W2 — o DROPDOWN e o primeiro tipo: **Speed**

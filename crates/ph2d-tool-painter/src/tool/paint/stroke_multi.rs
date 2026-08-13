@@ -245,6 +245,15 @@ impl PainterTool {
         }
         // A partir daqui a tela volta a mostrar as figuras abertas.
         self.paint.shape_stale = false;
+        // **`Style: Solid`** (plano 38): a figura deixa de ser um CONTORNO e passa a ser a REGIÃO que
+        // ela cerca, então a lista de dabs — inclusive o `own` que o chamador acabou de encher — não
+        // tem consumidor. Sair aqui é o que faz a espessura do pincel parar de entrar (o pedido do
+        // Enio); o `super::solid_shapes` responde onde cada forma está.
+        if self.solid_owns_the_gesture() {
+            let loops = self.solid_loops();
+            self.stamp_solid_loops(&loops);
+            return;
+        }
         let off = self.shape_offset_px();
         // The ACTIVE shape's state + op (captured), so it can join the boolean composite or keep its `own`.
         let active = self.capture_shape().map(|s| (*s, self.paint.active_op));

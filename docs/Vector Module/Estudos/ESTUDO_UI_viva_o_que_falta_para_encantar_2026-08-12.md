@@ -88,7 +88,7 @@ interface viva a partir de uma interface morta.*
 | **fluido**, **corpos rígidos**, **cordas com roldanas** | wet-paint · `ph2d-physics-ecs` | ❌ (e **deve** continuar) |
 | **42 efeitos de áudio** + mixer + vozes por streaming | `ph2d-audio*` | ❌ |
 | **paleta de comandos** de tela cheia | `editor-core::widget::command_palette` | ⚠️ só o editor de nós |
-| **readout que segue a mão** (o rótulo de distância) | `LengthDisplay`, W6.6 | ⚠️ **uma** instância |
+| **readout que segue a mão** (o rótulo de distância) | `LengthDisplay`, W6.6 | ✅ **regra** (`crate::readout`) — ver a C3 na §6 |
 | **cursor que veste a ferramenta viva** (o anel do pincel) | `the_brush_ring_wears_the_live_dab_rotor` | ⚠️ **uma** instância |
 | **snap que mostra o PORQUÊ** (4 espécies, 4 marcas) | W6.1 | ✅ — e é estado-da-arte |
 
@@ -124,7 +124,7 @@ modo que o utilizador não tenha de **re-encontrar** as coisas depois de cada mu
 |---|---|---|
 | **TETHER físico** | geometria simulada entre um controlo e o seu efeito | ❌ — **§5** |
 | **Razão do encaixe visível** | 4 espécies de ímã, 4 marcas distintas | ✅ estado-da-arte |
-| **Readout que segue a mão** | o número aparece onde os olhos já estão | ⚠️ 1 instância |
+| **Readout que segue a mão** | o número aparece onde os olhos já estão | ✅ **regra** (C3) |
 | **Realce de proveniência** | passar sobre um valor **acende** o que ele controla — e o inverso | ❌ — é o que torna navegável um inspector de 400 widgets |
 | **Fio de dependência** | no grafo, o *hover* num socket **apaga** o que não é a jusante | ❌ |
 | **Pré-visualização viva** | `LiveGeometry`, onion, ghost | ✅ farto |
@@ -204,7 +204,7 @@ descartável por construção; um corpo do mundo nunca é.*
 | E4 | **menu radial** sob a caneta / botão do meio | 3 | — | **M** |
 | C1 | **TETHER** (§5) + as três irmãs da família | 2 | F0 | **M** |
 | C2 | **realce de proveniência** nos dois sentidos (valor ↔ objecto) | 2 | — | **M** |
-| C3 | o **readout que segue a mão** vira REGRA (hoje é 1 instância) | 2 | — | **M** |
+| ~~C3~~ ✅ | o **readout que segue a mão** vira REGRA — **FEITA**. ⚠️ E a medição corrigiu a linha: eram **três** superfícies (o rótulo do smart guide · a carga de um joint · as dimensões do Line), cada uma com o próprio corpo e caixa, e **nenhuma segue a mão** — as três ancoram em GEOMETRIA. O buraco real era o gesto mais usado do app (arrastar o gizmo), que **não tinha número nenhum** sobre a tela | 2 | — | **M** |
 | R1 | **reduced motion** — um interruptor, e nasce **com** a F2 | 4 | F2 | **P** |
 | ~~⭐~~ **X1** | **a pressão da caneta chega à shell** (afecta Flip **e** Painter) — ⚠️ o ⭐ e o **P** foram **REFUTADOS por medição**: winit 0.30.13 crava `force: None` nos três backends de desktop, então não há função a escrever. Ver a §8 | 3 | **winit** | **M/G** |
 | D1 | **som de UI** opt-in, do motor que já temos | 4 | F0 | **M** |

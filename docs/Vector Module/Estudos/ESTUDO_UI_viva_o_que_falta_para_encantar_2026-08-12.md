@@ -194,10 +194,10 @@ descartável por construção; um corpo do mundo nunca é.*
 |---|---|---|---|---|
 | **F0** | **`wall_dt` chega ao chrome + estado contínuo por widget** (`UiMotion`: um mapa `id → (valor, velocidade)`) — e o toast passa a contar **segundos** | 1 | — | **M** |
 | F1 | a **mola** sai da UI autorada e passa a servir o chrome (mesma crate, `pub`) | 1 | F0 | **P** |
-| F2 | **hover/press/focus interpolam** — os 49 widgets herdam de graça pela porta de pintura | 1 | F0+F1 | **P** |
+| ⭐ **F2** | **hover/press/focus interpolam** — ⚠️ **MEDIDA em 2026-08-13, e ela NÃO está feita: o `.hover_t()` é passado em DOIS sítios do app inteiro contra 161 que pintam um Button/Toggle/Checkbox/IconButton.** O `hover_targets` publica alvos para todos eles e o `tick` integra as molas; a **pintura deita o resultado fora** (o default `hover_t = 1.0` cai no estado duro). Ver a §6.2 | 1 | F0+F1 | ~~P~~ **G** |
 | F3 | **interruptibilidade** como lei: todo alvo novo herda a velocidade actual | 1 | F1 | **P** |
 | F4 | **secções e painéis** abrem/fecham com movimento e **direcção coerente** | 1 | F1 | **M** |
-| F5 | **cascata** na lista da paleta / hierarquia / rows do inspector | 1 | F0 | **P** |
+| ~~F5~~ ✅ | **cascata** — **FEITA na PALETA** (`ε = 0,020 s`, MEDIDO; ver a §6.3). ⚠️ E ela é o **primeiro consumidor de `Role::Travel` do produto** — até aqui o eixo que o *reduced motion* existe para matar não era usado por ninguém. Hierarquia e rows do inspector ficam para quando a F2 abrir a porta | 1 | F0 | **P** |
 | ⭐ **E1** | **SCRUB numérico** em todo campo de número (o maior ganho de eficiência do estudo) | 3 | — | **M** |
 | E2 | **inércia** no pan de canvas e nas listas roláveis | 3 | F0 | **P** |
 | ~~E3~~ ✅ | **paleta de comandos GLOBAL** (o widget já existe) — **FEITA** (`Ctrl+K`, **62 comandos**: 10 do rail + 19 painéis + **33 rows de menu**). ⚠️ Ela é uma **projecção** das listas que o app já mantém, nunca uma tabela. ⚠️ **E a 1ª conclusão desta linha era LARGA DEMAIS** — ela mediu que o **PILL** não é servível (abre um menu ancorado a um rectângulo, e uma paleta não tem rectângulo) e escreveu *"a barra de topo fica de fora"*; a **ROW de dentro dele** é tipo 1, e entrou na wave seguinte (ver a §6.1 abaixo) | 3 | — | **M** |
@@ -248,6 +248,68 @@ o pintor de rows **não tem afordância de indentação**, então o menu codific
 E a tabela de rows saiu do `context_menu_overlay` para o **`menu_rows`** (218 linhas de
 `match req.kind`) — porta única: ela estava certa inline enquanto o pintor era o único consumidor, e
 deixou de estar no instante em que a paleta quis os mesmos verbos.
+
+### 6.2 — ⚠️ A F2 está MEDIDA e não está feita: 161 sítios pintam, 2 leem
+
+O substrato corre. O `hover_targets` publica um alvo para **todo** `Button`/`Radio`/`Toggle`/
+`Checkbox` do store, o `tick` integra as molas, e depois:
+
+| quem | número |
+|---|---|
+| sítios que **pintam** um Button | **103** |
+| … um IconButton | 24 |
+| … um Checkbox | 22 |
+| … um Toggle | 12 |
+| sítios que passam **`.hover_t()`** | **2** |
+
+Os dois são o card de Fill. Fora deles a rota do `t` é o rail e a barra de topo, que leem por outra
+porta (`hover_t(id)` do painter do rail). Todo o resto cai no **default `hover_t = 1.0`**, que faz
+o `bg_color` saltar o ramo do blend e devolver o estado DURO. ⇒ *o botão de um painel salta ao lado
+de um chip do rail que amacia*, e a mola daquele botão foi integrada na mesma.
+
+⚠️ **A cerca do `hover_targets` está a ser violada ao contrário do que o autor dela temia.** O
+doc-comment dele diz *«um tipo que não aparece aqui não ganha entrada nenhuma — é o que mantém o
+mapa do tamanho do que se move»*; medido, o mapa é **maior** do que o que se move.
+
+**E há um segundo buraco, mais barato:** quatro tipos **pintam** uma diferença de hover e nem estão
+na lista — `ListItem` (`Bg2` no fundo — é a **Hierarquia**), `TextInput` e `Dropdown`
+(`BorderEmph`), `Tag`. Esses não têm sequer o alvo.
+
+**A wave que isto pede: 124 chamadas de `button_state` em 64 arquivos**, e ela tem uma **bifurcação
+de desenho** que não é mecânica — ou cada sítio passa a pedir (`.hover_t(…)`, e o sítio 125 nasce
+sem), ou a leitura passa a ser **estrutural** (o `button_state` devolve o par, e é o compilador que
+enumera os sítios). ⇒ **não é «por gosto», e não se começa pela metade.**
+
+### 6.3 — A CASCATA (F5), com o `ε` medido e as três correcções
+
+A paleta aparecia instantânea. Agora os cartões chegam escalonados, e o `ε` **não foi escolhido** —
+ele está preso entre dois limites, cada um com mecanismo:
+
+* **em baixo, o QUADRO** — abaixo de 16,7 ms dois cartões viram o alvo no mesmo tique e o
+  escalonamento degrada para *dois a dois*;
+* **em cima, a SOBREPOSIÇÃO** — uma cascata só se lê como *um* gesto se o último cartão **começar
+  antes de o primeiro assentar**: `(n − 1)·ε < assentamento`.
+
+Medido pela porta do produto (Discreto, o carácter default, `n = 7`): assentamento sozinho
+**0,22 s**; totais **0,27 / 0,30 / 0,33 / 0,45 s** para `ε` de 0,010 / 0,015 / 0,020 / 0,040.
+⇒ `6·ε < 0,22` ⇒ `ε < 0,037`, e **`ε = 0,020`** é o que fica acima de um quadro com folga.
+
+⚠️ **A medição corrigiu-me três vezes, e as três valem mais que o número:**
+
+1. escrevi a tabela por **aritmética** e pu-la no doc antes de a medir — somando um assentamento de
+   0,467 s que é do **Expressivo**, quando o default é o Discreto (0,22 s);
+2. **`n = 17` era invenção minha** — a paleta de nós faz um grupo por categoria e há **sete**
+   tokens `NodeCat*`;
+3. a primeira corrida da sonda mediu `n = 1` em **0,02 s — um quadro**: o `tick` somava `dt`
+   **antes** de alvejar, então o cartão 0 nascia alvejado em `1.0` e, pela lei do substrato (*a
+   primeira vista CHEGA ao alvo*), aparecia assente. **A wave era meio no-op e ia shipar assim.**
+
+⚠️ Essa mesma lei mordeu **três vezes** na wave — no produto, na sonda, e na fixture do meu próprio
+gate de sobreposição, que media um «assentamento» de 0,017 s e comparava contra nada.
+
+**A lei que fica:** *o desenho anda, o alvo não.* O cartão desenha-se 12 px abaixo durante a
+entrada e o `hit_index` regista na posição **assente** — a mesma lei do `hover_lift`, que aqui
+morde mais forte.
 
 ---
 

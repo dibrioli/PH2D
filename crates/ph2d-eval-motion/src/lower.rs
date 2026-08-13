@@ -28,10 +28,11 @@ pub fn lower_to_instances_into(
     stream: &Stream,
     default_uv_rect: [f32; 4],
     default_size: [f32; 2],
+    blend: u8,
     out: &mut Vec<RenderInstance>,
 ) {
     out.clear();
-    lower_to_instances_onto(stream, default_uv_rect, default_size, out);
+    lower_to_instances_onto(stream, default_uv_rect, default_size, blend, out);
 }
 
 /// Like [`lower_to_instances_into`] but **appends** — `out` keeps whatever it
@@ -42,6 +43,7 @@ pub fn lower_to_instances_onto(
     stream: &Stream,
     default_uv_rect: [f32; 4],
     default_size: [f32; 2],
+    blend: u8,
     out: &mut Vec<RenderInstance>,
 ) {
     let n = stream.count();
@@ -59,6 +61,13 @@ pub fn lower_to_instances_onto(
     // exact in f32); the saturating `as u32` guards a non-finite/negative
     // column value to `0` rather than trusting the producer.
     let tex = stream.get("texture_id");
+    // doc 89, folha 17: the sink's blend mode, packed into `flip_uv` bits 5-7 —
+    // the encoding a sprite's `BlendMode` already rides in, so the renderer keys
+    // its draw runs on it with zero ABI cost. Hoisted OUT of `make`: it is one
+    // number for the whole sink, not a per-element gather. Tag 0 (`Mix`) packs to
+    // `0`, which is what this lowering hardcoded before the param existed ⇒ the
+    // default is byte-identical.
+    let flip_uv = RenderInstance::pack_blend_bits(blend);
     out.reserve(n);
     // Each instance is a pure function of its own index (a five-column gather +
     // one `sin_cos`); no cross-element dependency. Above the threshold
@@ -84,13 +93,14 @@ pub fn lower_to_instances_onto(
             basis: [cos_r, sin_r, -sin_r, cos_r],
             premultiplied: 0.0,
             anchor: [0.0, 0.0],
-            // Sprite-Inspector-v2 v4 ABI fields: a Motion node stream has
-            // no per-corner/opacity/flip authoring surface, so they take
-            // their identity values (white gradient, full opacity, no
-            // flip) — byte-identical render to the pre-v4 path.
+            // Sprite-Inspector-v2 v4 ABI fields: a Motion node stream has no
+            // per-corner/opacity authoring surface, so those take their identity
+            // values (white gradient, full opacity). `flip_uv` DOES have one now
+            // — the sink's blend tag, hoisted above; its flip/repeat/tint_fill
+            // bits stay zero, which is what `pack_blend_bits` writes.
             per_corner_tint: [[1.0; 4]; 4],
             opacity: 1.0,
-            flip_uv: 0,
+            flip_uv,
             texture_id: scalar_at(tex, i, 0.0) as u32,
             // Node-graph emit doesn't have a hierarchy slot — every
             // motion node's instances share `z_order = 0`. Renderer's
@@ -187,7 +197,9 @@ pub fn lower_to_vector_instances_onto(stream: &Stream, out: &mut Vec<VectorInsta
 /// supplies a real tile via [`lower_to_instances_into`]'s `default_uv_rect`).
 pub fn lower_to_instances(stream: &Stream) -> Vec<RenderInstance> {
     let mut out = Vec::new();
-    lower_to_instances_into(stream, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0], &mut out);
+    // No graph, no sink: this headless helper has nothing to ask, so it lowers in
+    // `Mix` — the mode every caller of it got before the param existed.
+    lower_to_instances_into(stream, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0], 0, &mut out);
     out
 }
 
@@ -247,7 +259,15 @@ pub fn evaluate_motion_into(
     // instance stream (ADR-0058-amendment-1). A non-stream value lowers to no
     // instances (its `as_stream()` is empty).
     match outputs.first() {
-        Some(v) => lower_to_instances_into(v.as_stream(), default_uv_rect, default_size, out),
+        Some(v) => lower_to_instances_into(
+            v.as_stream(),
+            default_uv_rect,
+            default_size,
+            // This helper COOKS a target, so the target IS the sink — it gets the
+            // same answer the pump's loop gets, from the same door.
+            crate::sink_blend_tag(graph, target),
+            out,
+        ),
         None => out.clear(),
     }
     Ok(())

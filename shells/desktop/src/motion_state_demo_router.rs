@@ -234,21 +234,30 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
         // A CURVA REVELA: a fila de cima gira com a tangente, a de baixo é o
         // CONTROLE com o toggle desligado. ⚠️ Arraste o **To** de 0 a 1 no painel
         // — o write-on é uma animação, e nenhum nó do grafo anima um param.
-        Ok("32") => conferencia_demos::build_write_on_demo_document(doc, registry)
-            .unwrap_or_default(),
+        Ok("32") => {
+            conferencia_demos::build_write_on_demo_document(doc, registry).unwrap_or_default()
+        }
         // O PIVÔ: duas grades idênticas com `scale = 2`; a de cima pivota na
         // origem do mundo e FOGE, a de baixo pivota no centroide e só se espalha.
-        Ok("33") => conferencia_demos::build_pivot_demo_document(doc, registry)
-            .unwrap_or_default(),
+        Ok("33") => conferencia_demos::build_pivot_demo_document(doc, registry).unwrap_or_default(),
         // QUALQUER FÓRMULA É UMA FORÇA: nenhuma `force.*` na cena — duas fórmulas
         // escrevem `accel` e o integrador as consome. ⚠️ Se a nuvem NÃO girar,
         // ou as lanes `x`/`y` da fórmula ou o alvo do `make_point` estão mortos.
-        Ok("34") => conferencia_demos::build_formula_force_demo_document(doc, registry)
-            .unwrap_or_default(),
+        Ok("34") => {
+            conferencia_demos::build_formula_force_demo_document(doc, registry).unwrap_or_default()
+        }
         // QUEM MIRA, E QUANTO: só a faixa do campo mira, e as bordas macias miram
         // PELA METADE — o contrato de família de que o `look_at` era a exceção.
-        Ok("35") => conferencia_demos::build_partial_aim_demo_document(doc, registry)
-            .unwrap_or_default(),
+        Ok("35") => {
+            conferencia_demos::build_partial_aim_demo_document(doc, registry).unwrap_or_default()
+        }
+        // O MODO É DO SINK: três `motion.output` sobre nuvens SOBREPOSTAS, em
+        // Normal / Add / Multiply. ⚠️ A pergunta é de OLHO — os três têm de
+        // parecer três coisas diferentes; se os três forem iguais, o param não
+        // está chegando à rota que este build usa (bissecte com `PH2D_GPU_COOK=0`).
+        Ok("36") => {
+            conferencia_demos::build_sink_blend_demo_document(doc, registry).unwrap_or_default()
+        }
         _ => Vec::new(),
     }
 }

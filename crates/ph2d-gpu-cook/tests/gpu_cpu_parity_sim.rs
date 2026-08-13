@@ -465,6 +465,7 @@ fn the_zone_demo_scale_cook_cost() {
             },
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
@@ -532,6 +533,7 @@ fn the_zone_demo_scale_cook_cost() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
+                0,
             )
             .expect("gpu cook");
         }
@@ -579,6 +581,7 @@ fn gpu_ticks(
             },
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
     }
@@ -1420,6 +1423,7 @@ fn the_state_is_double_buffered_and_a_steady_sim_stops_allocating() {
             },
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
     };
@@ -1590,6 +1594,7 @@ fn scrubbing_back_reproduces_the_past_state_instead_of_the_marching_future() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
+                0,
             )
             .expect("gpu cook");
         }
@@ -1740,6 +1745,7 @@ fn emitter_gpu_ticks(
             },
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
         frames.push(read_instances(gpu, gc.instances().expect("cooked")));
@@ -2000,6 +2006,7 @@ fn scrubbing_the_emitter_sim_reproduces_the_past_window() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
+                0,
             )
             .expect("gpu cook");
         }
@@ -2062,6 +2069,7 @@ fn emitter_gpu_ticks_with_live_edit(
             },
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
         frames.push(read_instances(gpu, gc.instances().expect("cooked")));
@@ -2204,6 +2212,7 @@ fn emitter_sim_ceiling_probe() {
                     },
                     DEFAULT_UV,
                     DEFAULT_SIZE,
+                    0,
                 )
                 .expect("gpu cook");
             }
@@ -2314,6 +2323,7 @@ fn the_emitter_sim_is_exact_past_the_old_id_cliff() {
             },
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
     }
@@ -2422,6 +2432,7 @@ fn readback_tap_cost_probe() {
                     },
                     DEFAULT_UV,
                     DEFAULT_SIZE,
+                    0,
                 )
                 .expect("gpu cook");
             }
@@ -2523,6 +2534,7 @@ fn bounded_readback_cost_probe() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
+                0,
             )
             .expect("gpu cook");
         }
@@ -2569,6 +2581,7 @@ fn bounded_readback_cost_probe() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
+                0,
             )
             .expect("gpu cook");
             let inst = gc.instances().expect("cooked");
@@ -2594,6 +2607,7 @@ fn bounded_readback_cost_probe() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
+                0,
             )
             .expect("gpu cook");
         }
@@ -2889,6 +2903,7 @@ fn probe_a_rewind_lands_on_the_seed() {
                     },
                     DEFAULT_UV,
                     DEFAULT_SIZE,
+                    0,
                 )
                 .expect("gpu cook");
             }

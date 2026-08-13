@@ -117,6 +117,7 @@ fn gpu_frame(gpu: &GpuContext, g: &Graph, reg: &NodeRegistry, out: NodeId) -> Ve
         CookClock::at(0.0),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     read_instances(gpu, gc.instances().expect("cooked"))
@@ -543,6 +544,7 @@ fn how_far_does_the_lloyd_scale() {
                 CookClock::at(0.0),
                 DEFAULT_UV,
                 DEFAULT_SIZE,
+                0,
             )
             .expect("gpu cook");
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());

@@ -6,21 +6,54 @@
 //! rendered result *follows the graph* — wire a chain into an Output node and it
 //! shows on canvas (a Material-Output / render node, not a hidden toggle).
 //!
-//! No params. One input, one output (the pass-through) so the cook lowers it like
-//! any node; conventionally terminal (you don't chain past it). An **unconnected**
-//! Output emits an empty stream → nothing renders. Pure.
+//! One input, one output (the pass-through) so the cook lowers it like any node;
+//! conventionally terminal (you don't chain past it). An **unconnected** Output
+//! emits an empty stream → nothing renders. Pure.
+//!
+//! **`blend` — how this sink composites** (doc 89, folha 17). Niagara puts blend on
+//! the Sprite Renderer's material, Cavalry on the layer/shader, AE/Stardust on the
+//! layer: every reference makes it a property of the RENDERER, not of a particle,
+//! and this node IS the renderer. The tag is `ph2d_ecs::BlendMode::tag()` (0 Mix ·
+//! 1 Add · 2 Subtract · 3 Multiply · 4 Screen · 5 PremultAlpha) — the SAME encoding
+//! a sprite's blend rides in, so the renderer keys its draw runs on it with no ABI
+//! cost (`RenderInstance::pack_blend_bits`, `flip_uv` bits 5-7).
+//!
+//! ⚠️ **The param is read by the LOWERING, not by `eval`.** On the device this node
+//! is `GpuKernel::PASSTHROUGH` — the sequencer emits no pass for it — so a column
+//! written here would never reach the device lowering. The tag travels as an
+//! argument of both lowerings instead (`ph2d_eval_motion::sink_blend_tag` is the
+//! one door), and `Mix` (the default) is `flip_uv = 0`, i.e. byte-identical to
+//! every frame this app has ever drawn.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::Stream;
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
+use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
 /// The canonical type name the shell bridge scans for to pick the render sink.
 pub const TYPE_NAME: &str = "motion.output";
+
+/// The blend param's name. It is the SAME string `ph2d_eval_motion` looks up when
+/// it lowers a sink (`SINK_BLEND_PARAM`) — the two crates are leaves and neither
+/// may depend on the other, so a gate in the shell (which sees both) pins that
+/// they agree rather than a shared symbol nobody could host.
+pub const BLEND_PARAM: &str = "blend";
+
+/// The blend modes this sink offers, in tag order — the artist-facing names for
+/// `ph2d_ecs::BlendMode::ALL`. Kept as one list so the UI hint and any future
+/// reader share it (the labels are what a segmented row paints).
+pub const BLEND_LABELS: [&str; 6] = [
+    "Normal",
+    "Add",
+    "Subtract",
+    "Multiply",
+    "Screen",
+    "Premultiplied",
+];
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -36,9 +69,29 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     }],
     effect: Effect::Pure,
     clock: Clock::Frame,
-    params: &[],
+    params: &[ParamSpec {
+        // The `BlendMode` tag this sink draws with. Default 0 = `Mix`, which is
+        // the `flip_uv: 0` both lowerings hardcoded before this param existed.
+        name: BLEND_PARAM,
+        default: 0.0,
+    }],
     lowerings: &[LoweringKind::Cpu],
 };
+
+use ph2d_node_registry::{ParamUiHint, ParamWidget};
+
+/// The blend row. `Enum` (not a slider) because a tag is a NAME, not a quantity —
+/// a slider between `Subtract` and `Multiply` has no midpoint to mean anything.
+static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
+    param: BLEND_PARAM,
+    label: "Blend",
+    min: 0.0,
+    max: (BLEND_LABELS.len() - 1) as f32,
+    step: 1.0,
+    widget: ParamWidget::Enum {
+        labels: &BLEND_LABELS,
+    },
+}];
 
 struct MotionOutput;
 
@@ -75,6 +128,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
             silhouette: ph2d_node_registry::NodeSilhouette::Circle,
         },
     );
+    reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     // GPU/M5 Fase 1 (ADR-0126): the render sink is a pure copy, so on the GPU
     // it is the PASSTHROUGH kernel — the sequencer emits no pass and the
     // upstream stream flows straight into the lowering.

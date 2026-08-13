@@ -5402,6 +5402,7 @@ dependencies = [
  "ph2d-motion-diagnose",
  "ph2d-motion-doc",
  "ph2d-node-fx-glow",
+ "ph2d-node-motion-output",
  "ph2d-node-motion-shape",
  "ph2d-node-motion-time-remap",
  "ph2d-node-pulse-signal",

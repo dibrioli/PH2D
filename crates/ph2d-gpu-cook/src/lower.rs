@@ -36,7 +36,16 @@ pub const LOWER_COLUMNS: [&str; 6] = ["P", "size", "rot", "tint", "uv_rect", "te
 /// Generate the lowering module for a concrete column set. Binding 0 = the
 /// uniforms, binding 1 = the instance output; then one `read` binding per
 /// present column, in [`LOWER_COLUMNS`] order.
-pub fn lower_module(present: [bool; 6]) -> String {
+///
+/// `blend` is the sink's `BlendMode` tag (doc 89, folha 17), packed into the
+/// instance's `flip_uv` bits 5-7 by the SAME function the CPU lowering uses. It
+/// is a **codegen constant**, not a uniform: it is one number for the whole sink,
+/// it cannot change within a dispatch, and it joins [`lower_signature`] so the
+/// pipeline cache keys on it — a uniform would have cost a binding and a write
+/// per frame to say something the source can simply spell. Tag 0 emits the
+/// literal `0u` this generator wrote before the param existed ⇒ byte-identical.
+pub fn lower_module(present: [bool; 6], blend: u8) -> String {
+    let blend_bits = ph2d_render::RenderInstance::pack_blend_bits(blend);
     let mut src = String::with_capacity(2048);
     src.push_str(
         "struct LowerParams {\n\
@@ -137,9 +146,9 @@ pub fn lower_module(present: [bool; 6]) -> String {
         \x20   for (var k = base + 19u; k < base + 35u; k = k + 1u) {{\n\
         \x20       wf(k, 1.0);\n\
         \x20   }}\n\
-        \x20   // opacity (35) = 1 · flip_uv (36) = 0 · uv_xform (37-40) = identity.\n\
+        \x20   // opacity (35) = 1 · flip_uv (36) = the sink's blend bits · uv_xform (37-40) = identity.\n\
         \x20   wf(base + 35u, 1.0);\n\
-        \x20   instances[base + 36u] = 0u;\n\
+        \x20   instances[base + 36u] = {blend_bits}u;\n\
         \x20   wf(base + 37u, 1.0);\n\
         \x20   wf(base + 38u, 1.0);\n\
         \x20   instances[base + 39u] = 0u;\n\
@@ -158,17 +167,22 @@ pub fn lower_module(present: [bool; 6]) -> String {
     src
 }
 
-/// Pipeline-cache signature for a lowering column set (bit per column).
-pub fn lower_signature(present: [bool; 6]) -> u64 {
-    present
+/// Pipeline-cache signature for a lowering column set (bit per column) **and the
+/// blend tag** — the two things [`lower_module`] bakes into its source. The tag
+/// rides above the column bits, so a document that only changes its sink's blend
+/// gets its own cached pipeline instead of silently reusing the previous mode's.
+pub fn lower_signature(present: [bool; 6], blend: u8) -> u64 {
+    let cols = present
         .iter()
         .enumerate()
-        .fold(0u64, |sig, (i, &p)| sig | ((p as u64) << i))
+        .fold(0u64, |sig, (i, &p)| sig | ((p as u64) << i));
+    cols | (u64::from(blend) << LOWER_COLUMNS.len())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ph2d_render::pipeline::BLEND_PIPELINE_COUNT;
 
     #[test]
     fn instance_words_matches_render_instance_size() {
@@ -182,7 +196,7 @@ mod tests {
 
     #[test]
     fn absent_columns_read_the_cpu_defaults() {
-        let src = lower_module([false; 6]);
+        let src = lower_module([false; 6], 0);
         assert!(src.contains("return vec2<f32>(0.0, 0.0);")); // P
         assert!(src.contains("return params.default_size;"));
         assert!(src.contains("return params.default_uv;"));
@@ -198,7 +212,7 @@ mod tests {
     fn the_lowering_carries_texture_id() {
         let mut present = [false; 6];
         present[5] = true; // texture_id present
-        let src = lower_module(present);
+        let src = lower_module(present, 0);
         // The column is bound and read as f32 (like `rot`), truncated to u32.
         assert!(src.contains("var<storage, read> in_texture_id: array<f32>;"));
         assert!(src.contains("fn read_texture_id(i: u32) -> f32 { return in_texture_id[i]; }"));
@@ -211,8 +225,71 @@ mod tests {
     /// graph is byte-identical — the reader falls back to `0.0`, truncating to 0.
     #[test]
     fn absent_texture_id_is_the_atlas() {
-        let src = lower_module([false; 6]);
+        let src = lower_module([false; 6], 0);
         assert!(src.contains("fn read_texture_id(i: u32) -> f32 { _ = i; return 0.0; }"));
         assert!(src.contains("instances[base + 41u] = u32(read_texture_id(i));"));
+    }
+
+    /// **The neutral tag emits the literal this generator always wrote** (doc 89,
+    /// folha 17): word 36 (`flip_uv`) is `0u` for `Mix`, so every document that
+    /// never touched the param produces byte-identical source — and therefore a
+    /// byte-identical instance.
+    #[test]
+    fn the_neutral_blend_emits_the_zero_word_it_always_did() {
+        let src = lower_module([false; 6], 0);
+        assert!(
+            src.contains("instances[base + 36u] = 0u;"),
+            "the default stopped writing the word this generator always wrote"
+        );
+    }
+
+    /// **A chosen tag reaches word 36, in the RENDERER's packing.** The oracle is
+    /// `pack_blend_bits` — the renderer's own packer, the inverse of the
+    /// `unpack_blend` that `compute_runs` keys draw runs on — not a
+    /// re-implementation of the shift here.
+    ///
+    /// ⚠️ This is the half **no device-free gate could otherwise see**: a
+    /// generator that ignored `blend` still emits valid WGSL, so the naga sweep
+    /// stays green and only an artist on a machine with a GPU would find it.
+    #[test]
+    fn an_authored_blend_is_baked_into_the_generated_source() {
+        for blend in 1..BLEND_PIPELINE_COUNT as u8 {
+            let bits = ph2d_render::RenderInstance::pack_blend_bits(blend);
+            let src = lower_module([false; 6], blend);
+            assert!(
+                src.contains(&format!("instances[base + 36u] = {bits}u;")),
+                "blend {blend} did not reach word 36 of the generated source"
+            );
+        }
+    }
+
+    /// **The pipeline cache can TELL two blends apart.** The tag is a codegen
+    /// constant, so two sources that differ only in it must not collide on one
+    /// cache key — a collision would hand the second mode the first mode's
+    /// compiled pipeline and draw it in the wrong blend, on the device, silently.
+    ///
+    /// Asserts the PROPERTY (all signatures distinct) rather than the bit layout,
+    /// so moving the tag's shift does not falsify a correct generator.
+    #[test]
+    fn two_blends_never_share_one_pipeline_cache_key() {
+        for mask in 0u8..64 {
+            let present = std::array::from_fn(|i| mask & (1 << i) != 0);
+            let sigs: Vec<u64> = (0..BLEND_PIPELINE_COUNT as u8)
+                .map(|b| lower_signature(present, b))
+                .collect();
+            let mut sorted = sigs.clone();
+            sorted.sort_unstable();
+            sorted.dedup();
+            assert_eq!(
+                sorted.len(),
+                sigs.len(),
+                "mask {mask:06b}: two blends collide on one cache key"
+            );
+        }
+        // And the column bits still separate column sets at a FIXED blend — the
+        // tag must not have eaten the bits it rides above.
+        let a = lower_signature([false; 6], 0);
+        let b = lower_signature([true; 6], 0);
+        assert_ne!(a, b, "the column bits stopped separating column sets");
     }
 }

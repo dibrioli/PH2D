@@ -213,6 +213,12 @@ pub(super) fn cook_gpu(
         &motion.registry,
         motion.sinks[0],
     );
+    // Como este sink compõe (doc 89, folha 17). Lido da porta ÚNICA — a MESMA que o
+    // pump da CPU pergunta no laço de sinks —, e resolvido AQUI, ao lado do sink que
+    // o plano escolheu: um segundo leitor teria liberdade de arredondar diferente, e
+    // as duas rotas compositariam o mesmo documento de maneiras diferentes, que
+    // nenhum gate que olha para uma rota consegue ver.
+    let blend = ph2d_eval_motion::sink_blend_tag(&motion.doc.graph, motion.sinks[0]);
     // The count-changing cerca (this wave): an OBJECT graph whose GPU suffix
     // reorders / changes count would mis-bind the texture-run partition — the
     // boundary `texture_id` column aligns with the sink ONLY when the suffix is
@@ -264,6 +270,7 @@ pub(super) fn cook_gpu(
                         ph2d_gpu_cook::CookClock { playhead, tick },
                         motion.default_uv_rect,
                         motion.default_size,
+                        blend,
                     )
                     .is_ok()
             });
@@ -332,6 +339,7 @@ pub(super) fn cook_gpu(
                                 ph2d_gpu_cook::CookClock { playhead, tick },
                                 motion.default_uv_rect,
                                 motion.default_size,
+                                blend,
                             )
                             .is_ok()
                     });
@@ -349,6 +357,7 @@ pub(super) fn cook_gpu(
                             ph2d_gpu_cook::CookClock::at(target as f64 * fixed_dt),
                             motion.default_uv_rect,
                             motion.default_size,
+                            blend,
                         )
                         .is_ok();
                 }

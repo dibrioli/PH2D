@@ -13,14 +13,14 @@ use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::node::NodeTypeId;
 use ph2d_nodegraph::value::CookValue;
 
-fn registry() -> NodeRegistry {
+pub(super) fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry builds");
     reg
 }
 
 /// Cozinha a cena no playhead pedido e devolve as posições.
-fn cook(doc: &MotionDoc, reg: &NodeRegistry, sink: NodeId, t: f64) -> Vec<[f32; 2]> {
+pub(super) fn cook(doc: &MotionDoc, reg: &NodeRegistry, sink: NodeId, t: f64) -> Vec<[f32; 2]> {
     let mut c = Cook::new();
     let out = c.cook(&doc.graph, reg, sink, t).expect("a cena coze");
     let CookValue::Instances(s) = &out[0] else {

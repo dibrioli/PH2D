@@ -89,30 +89,8 @@ use ph2d_nodegraph::gpu::KernelResolver;
 use ph2d_nodegraph::graph::{Graph, NodeId};
 use std::collections::{BTreeMap, BTreeSet};
 
-/// When a cook happens: the continuous `playhead` the kernels see, and the
-/// fixed `tick` it stands on.
-///
-/// They are not redundant. The playhead is what a kernel reads (and what a sim
-/// derives its own `dt` from — the state carries `sim_t`); the tick is the
-/// SEQUENCE number, which is how the caller knows whether it is continuing this
-/// sim or jumping. A stateless plan has no sequence to keep, hence `Option`.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct CookClock {
-    pub playhead: f64,
-    /// The fixed tick, for a plan that [`GpuPlan::drives_a_loop`]. `None` — a
-    /// stateless cook (`f(params, playhead)`, F1.1/Fase 2): nothing to sequence.
-    pub tick: Option<u64>,
-}
-
-impl CookClock {
-    /// A stateless cook at `playhead` — the F1.1/Fase 2 shape.
-    pub fn at(playhead: f64) -> Self {
-        Self {
-            playhead,
-            tick: None,
-        }
-    }
-}
+mod cook_clock;
+pub use cook_clock::CookClock;
 
 /// A compiled compute pipeline + the uniform buffer its dispatches write.
 pub(crate) struct CachedPipeline {
@@ -258,6 +236,11 @@ impl GpuCook {
         clock: CookClock,
         default_uv_rect: [f32; 4],
         default_size: [f32; 2],
+        // The sink's blend tag — a lowering decision the HOST owns, like the two
+        // defaults above. It comes from the one door, `sink_blend_tag`; the why
+        // is written there (this crate keeps `ph2d-eval-motion` a DEV dep on
+        // purpose, so it cannot ask that door itself).
+        blend: u8,
     ) -> Result<u32, GpuCookError> {
         let CookClock { playhead, tick } = clock;
         let want: BTreeSet<NodeId> = plan.boundaries.iter().map(|(n, _)| *n).collect();
@@ -652,6 +635,7 @@ impl GpuCook {
             &sink_stream,
             default_uv_rect,
             default_size,
+            blend,
         );
         gpu.queue.submit(Some(encoder.finish()));
 

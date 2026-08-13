@@ -374,6 +374,12 @@ rfd = "0.15"
 # testemunha honesta disso são os retângulos que o próprio painel registrou (uma segunda
 # aritmética de altura ao lado dele divergiria no dia em que uma linha composta mudar).
 ph2d-ui-testkit = { path = "../../crates/ph2d-ui-testkit" }
+# O sink de render, para o arch-gate do modo de composição (doc 89, folha 17). A
+# shell é o único lugar que enxerga as DUAS folhas — o nó que declara o param e o
+# substrato que o lê — e nenhuma delas pode depender da outra, então o acordo entre
+# as duas strings só é verificável daqui. Dev-only: o `src/` não o toca (o registro
+# dos nós é do `ph2d-node-registry-init`).
+ph2d-node-motion-output = { path = "../../crates/ph2d-node-motion-output" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-graphics = "0.23"

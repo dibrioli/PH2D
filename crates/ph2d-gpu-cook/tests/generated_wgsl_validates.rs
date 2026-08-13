@@ -196,12 +196,17 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
 }
 
 #[test]
-fn the_lowering_validates_for_all_64_column_subsets() {
+fn the_lowering_validates_for_all_64_column_subsets_and_every_blend() {
     // Six columns now (`texture_id` joined `P`/`size`/`rot`/`tint`/`uv_rect`),
-    // so 64 subsets — bit 5 is the texture_id column.
+    // so 64 subsets — bit 5 is the texture_id column. The blend tag (doc 89,
+    // folha 17) is a CODEGEN CONSTANT, so it is part of the source naga has to
+    // accept: a tag that produced malformed WGSL would only be found the first
+    // time an artist picked that mode, on a device, with no message.
     for mask in 0u8..64 {
         let present = std::array::from_fn(|i| mask & (1 << i) != 0);
-        let src = ph2d_gpu_cook::lower::lower_module(present);
-        validate(&format!("lowering mask {mask:06b}"), &src);
+        for blend in 0..ph2d_render::pipeline::BLEND_PIPELINE_COUNT as u8 {
+            let src = ph2d_gpu_cook::lower::lower_module(present, blend);
+            validate(&format!("lowering mask {mask:06b} blend {blend}"), &src);
+        }
     }
 }

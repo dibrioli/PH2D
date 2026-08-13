@@ -154,6 +154,7 @@ fn cook_gpu(gpu: &GpuContext, reg: &NodeRegistry, g: &Graph, out: NodeId) -> Vec
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     ph2d_gpu_cook::read_instances(gpu, gc.instances().expect("cooked"))

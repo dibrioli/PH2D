@@ -48,6 +48,9 @@ use ph2d_render::RenderInstance;
 mod checkpoint;
 pub use checkpoint::{CPU_RING_BYTES, CheckpointRing, RECENT_DENSE};
 
+mod sink_blend;
+pub use sink_blend::{SINK_BLEND_PARAM, sink_blend_tag};
+
 mod lower;
 pub use lower::{
     VectorInstance, evaluate_motion, evaluate_motion_into, lower_to_instances,
@@ -120,33 +123,8 @@ pub struct MotionCookPump {
     tap_fires: Vec<(u64, NodeId, Stream)>,
 }
 
-/// What one pump cook produces this frame — the two consumers of the SAME
-/// forward/scrub tick march + `pre` feedback, kept as one path so a "fast
-/// preview" boundary cook can never drift from the sink cook
-/// ([[feedback_two_doors_to_the_same_question_diverge]]).
-enum CookTarget<'a> {
-    /// The render sinks, lowered into `instances` (the CPU render path).
-    Sinks {
-        sinks: &'a [NodeId],
-        default_uv_rect: [f32; 4],
-        default_size: [f32; 2],
-    },
-    /// Each named node's raw output stream, stored in `boundary_streams` (the
-    /// CPU→GPU boundary: the lowering is the GPU's job now, so the CPU stops at
-    /// the stream).
-    Boundaries(&'a [NodeId]),
-}
-
-impl CookTarget<'_> {
-    /// Is there work to cook? Drives the once-per-frame `pre`-feedback advance
-    /// (a boundary node is always work; an empty sink list is not).
-    fn has_work(&self) -> bool {
-        match self {
-            CookTarget::Sinks { sinks, .. } => !sinks.is_empty(),
-            CookTarget::Boundaries(nodes) => !nodes.is_empty(),
-        }
-    }
-}
+mod cook_target;
+use cook_target::CookTarget;
 
 impl Default for MotionCookPump {
     fn default() -> Self {
@@ -343,6 +321,10 @@ impl MotionCookPump {
                                     stream,
                                     default_uv_rect,
                                     default_size,
+                                    // Per SINK, not per document: two Output nodes
+                                    // may draw the same document in two modes, and
+                                    // each lowers with its own tag.
+                                    sink_blend_tag(graph, sink),
                                     &mut self.instances,
                                 );
                                 lower_to_vector_instances_onto(stream, &mut self.vector_instances);

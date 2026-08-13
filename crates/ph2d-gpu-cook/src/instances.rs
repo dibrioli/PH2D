@@ -37,6 +37,10 @@ impl GpuInstances {
 
 impl GpuCook {
     /// Encode the final lowering pass into the persistent instance buffer.
+    // The lowering seam: device + encoder + slot + stream + the three host-side
+    // lowering decisions (uv rect, size, blend). Bundling them into a struct would
+    // buy a name and cost a second place to keep in step with `cook`'s signature.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn encode_lowering(
         &mut self,
         gpu: &GpuContext,
@@ -45,6 +49,7 @@ impl GpuCook {
         stream: &GpuStream,
         default_uv_rect: [f32; 4],
         default_size: [f32; 2],
+        blend: u8,
     ) {
         let count = stream.count;
         self.ensure_instance_capacity(gpu, count.max(1));
@@ -60,9 +65,9 @@ impl GpuCook {
                 .get(lower::LOWER_COLUMNS[i])
                 .is_some_and(|c| c.dim == expected_lower_dim(i))
         });
-        let sig = lower::lower_signature(present);
+        let sig = lower::lower_signature(present, blend);
         self.lower_pipelines.entry(sig).or_insert_with(|| {
-            let src = lower::lower_module(present);
+            let src = lower::lower_module(present, blend);
             CachedPipeline {
                 pipeline: create_pipeline(gpu, &src, "ph2d-gpu-cook lowering"),
             }

@@ -194,6 +194,7 @@ fn the_device_carries_the_real_texture_id_and_the_run_partition_matches() {
         },
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
 

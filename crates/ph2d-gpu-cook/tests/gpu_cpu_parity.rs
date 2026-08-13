@@ -250,6 +250,7 @@ fn the_fully_gpu_chain_matches_the_cpu_within_epsilon() {
             CookClock::at(PLAYHEAD),
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
     assert_eq!(n, 160 * 160);
@@ -271,6 +272,7 @@ fn the_fully_gpu_chain_matches_the_cpu_within_epsilon() {
             CookClock::at(PLAYHEAD),
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook 2");
     assert_eq!(n2, n);
@@ -280,6 +282,86 @@ fn the_fully_gpu_chain_matches_the_cpu_within_epsilon() {
         bytemuck::cast_slice::<_, u8>(&gpu_out2),
         "same device, same frame → byte-identical"
     );
+}
+
+/// **As duas rotas compositam o mesmo documento no mesmo MODO** (doc 89, folha 17).
+///
+/// ⚠️ **A fixture TEM de conter o fenômeno, e nenhuma outra contém:** o
+/// `assert_parity` já compara `flip_uv` exatamente, e sempre comparou — mas toda
+/// fixture deste arquivo cozinha com o tag neutro, onde os dois lados escrevem
+/// `0` por caminhos diferentes e concordam por vazio. Só um tag NÃO-ZERO
+/// distingue *o device honra o literal que o gerador assou* de *o device ignora o
+/// param e desenha em Normal*, que é exatamente o defeito que um artista veria e
+/// que nenhum gate sem device alcança.
+///
+/// Varre TODOS os modos: o tag é uma constante de codegen, então cada um é uma
+/// fonte diferente e uma pipeline diferente — e a última asserção é a que prova
+/// que o cache não os confundiu (dois modos, dois `flip_uv` distintos).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn both_routes_composite_the_same_document_in_the_same_blend() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut seen: Vec<u32> = Vec::new();
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    for tag in 0..ph2d_render::pipeline::BLEND_PIPELINE_COUNT as u8 {
+        // Um grafo por tag: o param mora no SINK, e é o sink que as duas rotas
+        // consultam pela porta única.
+        let (mut g, [_, _, _, out]) = chain(&reg, 8.0);
+        g.set_param(out, ph2d_eval_motion::SINK_BLEND_PARAM, f32::from(tag));
+        assert_eq!(ph2d_eval_motion::sink_blend_tag(&g, out), tag);
+
+        let mut cook = Cook::new();
+        let mut cpu = Vec::new();
+        ph2d_eval_motion::evaluate_motion_into(
+            &mut cook,
+            &g,
+            &reg,
+            out,
+            PLAYHEAD,
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+            &mut cpu,
+        )
+        .expect("cpu cook");
+
+        let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+        assert!(plan.is_fully_gpu(), "a cadeia tem de ser reclamada inteira");
+        gc.cook(
+            &gpu,
+            &g,
+            &reg,
+            &reg,
+            &plan,
+            &[],
+            CookClock::at(PLAYHEAD),
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+            // O que a shell passa: o tag lido da porta única.
+            ph2d_eval_motion::sink_blend_tag(&g, out),
+        )
+        .expect("gpu cook");
+        let gpu_out = ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"));
+
+        assert_parity(&cpu, &gpu_out);
+        // E o tag chegou de fato — sem isto, duas rotas que ambas o PERDESSEM
+        // continuariam a concordar, e a paridade ficaria verde sobre o defeito.
+        assert_eq!(
+            ph2d_render::RenderInstance::unpack_blend(gpu_out[0].flip_uv),
+            tag,
+            "o device não honrou o tag {tag}"
+        );
+        seen.push(gpu_out[0].flip_uv);
+    }
+    // Cada modo desenhou com uma palavra própria: a cache de pipeline não
+    // devolveu a compilada do modo anterior.
+    let mut sorted = seen.clone();
+    sorted.sort_unstable();
+    sorted.dedup();
+    assert_eq!(sorted.len(), seen.len(), "dois modos saíram idênticos");
 }
 
 #[test]
@@ -362,6 +444,7 @@ fn the_hybrid_boundary_chain_matches_the_cpu_within_epsilon() {
             CookClock::at(PLAYHEAD),
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
     assert_eq!(n as usize, cpu.len());
@@ -461,6 +544,7 @@ fn assert_gpu_parity(
             CookClock::at(PLAYHEAD),
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
     assert_eq!(n as usize, cpu.len());
@@ -857,6 +941,7 @@ fn field_remap_curve_contour_matches_the_cpu_on_the_device() {
             CookClock::at(PLAYHEAD),
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
     assert_eq!(n as usize, cpu.len());
@@ -1108,6 +1193,7 @@ fn a_gradient_tint_keys_positionally_when_index_is_absent() {
                 CookClock::at(PLAYHEAD),
                 DEFAULT_UV,
                 DEFAULT_SIZE,
+                0,
             )
             .expect("gpu cook");
         assert_eq!(n as usize, n_el);
@@ -1191,6 +1277,7 @@ fn gpu_cook_millions_timing() {
             CookClock::at(0.0),
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .unwrap();
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
@@ -1207,6 +1294,7 @@ fn gpu_cook_millions_timing() {
             CookClock::at(f64::from(f) / 60.0),
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .unwrap();
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
@@ -1278,6 +1366,7 @@ fn two_nodes_of_one_type_at_different_column_presence_get_different_pipelines() 
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let gpu_out = ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"));
@@ -1364,6 +1453,7 @@ fn color_ramp_kernel_matches_the_cpu_within_epsilon() {
             CookClock::at(PLAYHEAD),
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
         let gpu_out = ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"));
@@ -1459,6 +1549,7 @@ fn color_ramp_custom_gradient_matches_the_cpu_on_the_device() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let gpu_out = ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"));
@@ -1622,6 +1713,7 @@ fn a_translucent_ramp_keeps_its_alpha_on_the_device() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let gpu_out = ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"));
@@ -1827,6 +1919,7 @@ fn the_emitter_generator_matches_the_cpu() {
             CookClock::at(t),
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
         ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"))
@@ -1920,6 +2013,7 @@ fn the_sequencer_publishes_each_staged_nodes_element_count() {
             CookClock::at(PLAYHEAD),
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
 
@@ -2227,6 +2321,7 @@ fn a_value_node_emits_a_bare_stream_not_the_instance_base() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
 
@@ -2315,6 +2410,7 @@ fn an_unconnected_value_node_is_one_global_value_not_zero_of_them() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
 
@@ -2411,6 +2507,7 @@ fn the_bare_emitters_match_the_cpu_and_keep_their_stream_shape() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
 
@@ -2533,6 +2630,7 @@ fn every_colour_channel_reads_the_same_on_the_device() {
             CookClock::at(PLAYHEAD),
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
         let gpu_v = gc.read_column(&gpu, lum, "v").expect("`v` reads back");
@@ -2651,6 +2749,7 @@ fn the_colour_loop_closes_the_same_way_on_the_device() {
             CookClock::at(PLAYHEAD),
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
         let gpu_t = gc
@@ -2762,6 +2861,7 @@ fn look_at_broadcasts_a_single_target_and_reads_a_field_per_element() {
             CookClock::at(PLAYHEAD),
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
 
@@ -2888,6 +2988,7 @@ fn look_at_takes_the_partial_turn_the_falloff_asks_for() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
 
@@ -3113,6 +3214,7 @@ fn two_cpu_seams_hand_over_in_one_march_and_match_the_cpu() {
             CookClock::at(PLAYHEAD),
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
     assert_eq!(n as usize, cpu.len(), "same instance count");
@@ -3259,6 +3361,7 @@ fn two_seam_hybrid_timing() {
                 CookClock::at(t),
                 DEFAULT_UV,
                 DEFAULT_SIZE,
+                0,
             )
             .expect("gpu cook");
             // What the frame actually SPENDS: the shell submits and moves on, so
@@ -3340,6 +3443,7 @@ fn instance_field_kernel_matches_the_cpu_in_every_mode() {
             CookClock::at(PLAYHEAD),
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
 
@@ -3523,6 +3627,7 @@ fn drive_kernel_matches_the_cpu_across_channels_modes_and_both_value_lengths() {
                     CookClock::at(PLAYHEAD),
                     DEFAULT_UV,
                     DEFAULT_SIZE,
+                    0,
                 )
                 .expect("gpu cook");
 
@@ -3636,6 +3741,7 @@ fn value_noise_kernel_matches_the_cpu_on_the_device() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
@@ -3730,6 +3836,7 @@ fn value_mix_kernel_matches_the_cpu_on_the_device() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
@@ -3799,6 +3906,7 @@ fn value_quantize_kernel_matches_the_cpu_on_the_device() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
@@ -3866,6 +3974,7 @@ fn value_gain_kernel_matches_the_cpu_on_the_device() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
@@ -3935,6 +4044,7 @@ fn value_step_kernel_matches_the_cpu_on_the_device() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
@@ -4008,6 +4118,7 @@ fn value_normalize_kernel_matches_the_cpu_on_the_device() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
@@ -4078,6 +4189,7 @@ fn value_unary_kernel_matches_the_cpu_on_the_device() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
@@ -4150,6 +4262,7 @@ fn value_reduce_kernel_matches_the_cpu_on_the_device() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
@@ -4218,6 +4331,7 @@ fn value_smooth_kernel_matches_the_cpu_on_the_device() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
@@ -4286,6 +4400,7 @@ fn value_pattern_kernel_matches_the_cpu_on_the_device() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
@@ -4364,6 +4479,7 @@ fn value_wrap_kernel_matches_the_cpu_on_the_device() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
@@ -4432,6 +4548,7 @@ fn value_time_kernel_matches_the_cpu_on_the_device() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
@@ -4507,6 +4624,7 @@ fn value_slope_kernel_matches_the_cpu_on_the_device() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
@@ -4596,6 +4714,7 @@ fn value_median_kernel_matches_the_cpu_on_the_device() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
@@ -4677,6 +4796,7 @@ fn value_percentile_kernel_matches_the_cpu_on_the_device() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
@@ -4750,6 +4870,7 @@ fn value_wave_kernel_matches_the_cpu_on_the_device() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
@@ -4912,6 +5033,7 @@ fn pin_constraint_kernel_matches_the_cpu_within_epsilon() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     let gpu_w = gc
@@ -5056,6 +5178,7 @@ fn cook_both(
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     (cpu_stream, gc)
@@ -5492,6 +5615,7 @@ fn the_bounded_tap_reports_what_the_cpu_memo_reports() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
 
@@ -5623,6 +5747,7 @@ fn a_mixed_length_broadcast_port_refuses_the_cook_to_the_cpu() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     );
     match got {
         Err(ph2d_gpu_cook::GpuCookError::BroadcastLengthMismatch {
@@ -5662,6 +5787,7 @@ fn a_mixed_length_broadcast_port_refuses_the_cook_to_the_cpu() {
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("a per-element field still cooks");
 }

@@ -354,6 +354,71 @@ pub(super) fn build_partial_aim_demo_document(
     Some(vec![out])
 }
 
+/// **=36 — O MODO DE COMPOSIÇÃO É DO SINK** (doc 89, folha 17).
+///
+/// Três `motion.output` sobre a MESMA nuvem sobreposta, cada um num modo: o da
+/// esquerda `Normal`, o do meio `Add`, o da direita `Multiply`. A shell compõe
+/// vários sinks numa lista só, então os três desenham no mesmo quadro e a
+/// pergunta que a cena faz é a única que um gate não sabe fazer: **os três
+/// parecem três coisas diferentes?**
+///
+/// ⚠️ **A sobreposição é a cena.** Blend é o que acontece quando tinta cai sobre
+/// tinta — num campo de quads disjuntos `Add` e `Normal` desenham o mesmo pixel
+/// e a foto não separa os dois. Daí `gap` menor que o `amount`: cada cópia cobre
+/// a vizinha, e é NA sobreposição que `Add` clareia e `Multiply` escurece.
+pub(super) fn build_sink_blend_demo_document(
+    doc: &mut MotionDoc,
+    reg: &NodeRegistry,
+) -> Option<Vec<NodeId>> {
+    let g = &mut doc.graph;
+    let mut sinks = Vec::new();
+
+    // ⚠️ Meia-opacidade: em alfa 1,0 o `Normal` de cima TAPA o de baixo e os três
+    // modos ficariam indistinguíveis — um `Add` só tem o que somar se houver o
+    // que atravessar.
+    for (k, (tag, rgb)) in [
+        (0.0_f32, [0.85, 0.30, 0.30_f32]), // Normal
+        (1.0, [0.30, 0.55, 0.85]),         // Add
+        (3.0, [0.85, 0.75, 0.35]),         // Multiply
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let grid = g.add_node("motion.grid");
+        g.set_param(grid, "rows", 5.0);
+        g.set_param(grid, "cols", 5.0);
+        // Passo MENOR que o tamanho de uma cópia ⇒ elas se cobrem.
+        g.set_param(grid, "gap_x", 0.30);
+        g.set_param(grid, "gap_y", 0.30);
+        let mv = g.add_node("motion.move");
+        g.set_param(mv, "dx", (k as f32 - 1.0) * 2.6);
+        let scale = g.add_node("motion.scale");
+        g.set_param(scale, "amount", 0.55);
+        let t = g.add_node("motion.tint");
+        g.set_param(t, "r", rgb[0]);
+        g.set_param(t, "g", rgb[1]);
+        g.set_param(t, "b", rgb[2]);
+        g.set_param(t, "a", 0.5);
+        let out = g.add_node("motion.output");
+        // A wave inteira numa linha: o modo é param do SINK.
+        g.set_param(out, ph2d_eval_motion::SINK_BLEND_PARAM, tag);
+
+        lay(g, 120.0 + 130.0 * k as f32, &[grid, mv, scale, t, out]);
+        wire(g, grid, mv, 0)?;
+        wire(g, mv, scale, 0)?;
+        wire(g, scale, t, 0)?;
+        wire(g, t, out, 0)?;
+        sinks.push(out);
+    }
+
+    doc.graph.validate(reg).ok()?;
+    Some(sinks)
+}
+
 #[cfg(test)]
 #[path = "motion_state_conferencia_demos_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "motion_state_conferencia_demos_blend_tests.rs"]
+mod blend_tests;

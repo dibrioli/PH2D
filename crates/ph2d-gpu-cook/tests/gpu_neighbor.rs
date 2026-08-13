@@ -246,6 +246,7 @@ fn the_grid_neighbour_kernel_matches_the_cpu_all_pairs() {
             CookClock::at(PLAYHEAD),
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
     assert_eq!(n as usize, cpu.len());

@@ -124,6 +124,7 @@ fn gpu_cook_stages(
         },
         DEFAULT_UV,
         DEFAULT_SIZE,
+        0,
     )
     .expect("gpu cook");
     read_instances(gpu, gc.instances().expect("cooked"))
@@ -222,6 +223,7 @@ fn how_far_does_the_packing_scale() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
+                0,
             )
             .expect("gpu cook");
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
@@ -378,6 +380,7 @@ fn breath_ms(gpu: &GpuContext, reg: &NodeRegistry, side: f32, spread: f32) -> f6
             },
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());

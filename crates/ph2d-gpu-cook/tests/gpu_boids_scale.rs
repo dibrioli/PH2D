@@ -99,6 +99,7 @@ fn time_step_ms(gpu: &GpuContext, g: &Graph, reg: &NodeRegistry, out: NodeId) ->
             },
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
@@ -246,6 +247,7 @@ fn how_far_does_the_flock_scale() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
+                0,
             )
             .expect_err("12,58 M instances must refuse, not panic");
         assert!(
@@ -360,6 +362,7 @@ fn does_the_flock_stutter_as_it_gathers() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
+                0,
             )
             .expect("gpu cook");
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
@@ -422,6 +425,7 @@ fn what_boid_count_leaves_headroom() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
+                0,
             )
             .expect("gpu cook");
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
@@ -505,6 +509,7 @@ fn where_does_the_flock_settle() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
+                0,
             )
             .expect("gpu cook");
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
@@ -610,6 +615,7 @@ fn does_an_orbiting_target_bound_the_gather() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
+                0,
             )
             .expect("gpu cook");
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());

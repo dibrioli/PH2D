@@ -181,6 +181,7 @@ fn gpu_ticks(
             },
             DEFAULT_UV,
             DEFAULT_SIZE,
+            0,
         )
         .expect("gpu cook");
     }

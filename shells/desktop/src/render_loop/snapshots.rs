@@ -455,6 +455,9 @@ pub(super) fn publish(
         .gizmo
         .selection
         .and_then(|bits| build_view(bits, sim, present));
+    // **O NÚMERO do arrasto** (C3) — ao lado da view, e pelo mesmo motivo: os dois descrevem o
+    // gesto em curso e são reconstruídos do mundo a cada quadro. Ver `gizmo_readout`.
+    super::gizmo_readout::publish(hero, sim, camera, window_size);
     // The POINT gizmo — every joint's anchors. A joint has a `Transform` but no
     // box (so `build_view` returns None for it); these are the handles it gets,
     // and they are NOT selection-gated: a joint has no sprite to pick, so a

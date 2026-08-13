@@ -37,6 +37,8 @@ mod flip_pass_stage;
 mod flip_selection_overlay;
 mod flip_tween_overlay;
 mod gizmo_prune;
+/// **O número do arrasto de gizmo** — quem o publica (a lei mora no `editor-core`).
+mod gizmo_readout;
 mod hierarchy;
 mod image_edit;
 mod inspector_commits;

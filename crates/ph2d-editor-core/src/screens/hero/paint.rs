@@ -311,6 +311,22 @@ pub fn paint_hero_screen(
             hero.theme,
         );
     }
+    // **A FICHA do arrasto** — o número que segue a mão (o estudo da UI viva, C3).
+    //
+    // Por cima de todo o gizmo e de toda a etiqueta, e por baixo do chrome: ela é a leitura do
+    // gesto em curso, então nada do canvas pode tapá-la — e nada dela pode tapar um painel.
+    // ⚠️ Desenho puro, sem hit: um alvo aqui roubaria o pen-down a ~18 px do cursor, isto é
+    // exactamente onde a mão está a trabalhar. É a mesma decisão (e a mesma razão) da etiqueta de
+    // moldura acima.
+    if let (Some(text), Some(drag)) = (hero.gizmo.readout.as_deref(), hero.gizmo.drag) {
+        let w = crate::readout::chip_width(text_system, text, 0.0);
+        let at = crate::readout::at_cursor(
+            [drag.cursor_screen.0, drag.cursor_screen.1],
+            w,
+            layout.canvas,
+        );
+        crate::readout::paint_chip(text_system, scene, text, at, 0.0, hero.theme);
+    }
     paint_top_bar(
         &layout,
         scene,

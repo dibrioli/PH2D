@@ -58,6 +58,8 @@ pub mod panel;
 /// Long-operation pattern: off-thread work + a bar that can be painted while it runs.
 pub mod progress;
 pub mod project;
+/// A FICHA de leitura — o número que aparece onde os olhos já estão (a regra, uma só).
+pub mod readout;
 pub mod ruler;
 pub mod screens;
 pub mod tether;

@@ -73,7 +73,6 @@ mod build_smoke_router;
 mod chrome_hit;
 /// Teclado do palette de "Add Node" (busca/filtro, Enter/Backspace/Esc).
 mod command_palette_input;
-mod global_palette_input;
 /// **Contour** (pesquisa `20_*` #9) — o cozimento vivo do `VecContour`: N anéis concêntricos
 /// com rampa de cor, irmão do `offset_live` de que é a generalização.
 mod component_pieces_smoke;
@@ -179,6 +178,7 @@ mod fx_smoke;
 mod fx_turbulence_smoke;
 mod fx_undo_smoke;
 mod gizmo_anchor_smoke;
+mod global_palette_input;
 mod gradient_smoke;
 mod grid_smoke;
 mod guide_gesture;

@@ -219,6 +219,19 @@ pub struct GizmoStateGroup {
     /// `cursor_screen`, calls `compute_gizmo_transform`, writes back
     /// to SimWorld; Up clears the field.
     pub drag: Option<crate::gizmo::GizmoDragState>,
+    /// **O NÚMERO do arrasto em curso** (o estudo da UI viva, C3) — o texto que a ficha ao lado do
+    /// cursor desenha. `None` ⇒ nenhuma ficha.
+    ///
+    /// ⚠️ **Publicado pela shell, não derivado aqui**, e a razão é a mesma do [`Self::view`]: o
+    /// `editor-core` não alcança o ECS, e o número que interessa é o que o produto de facto
+    /// APLICOU (com o encaixe já dentro), não o que o cursor sugere. A shell chama
+    /// [`crate::gizmo::gizmo_readout`] + [`crate::gizmo::GizmoReadout::text`] — as duas em
+    /// `editor-core`, onde os gates as medem —, e o que atravessa a fronteira é o resultado.
+    /// Mesmo padrão do [`crate::frame_label::FrameLabel`], que publica o nome já resolvido.
+    ///
+    /// A ficha pousa ao lado do `cursor_screen` do [`Self::drag`]: sem arrasto aberto não há mão a
+    /// seguir, e a shell publica `None`.
+    pub readout: Option<String>,
 }
 
 impl GizmoStateGroup {

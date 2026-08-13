@@ -200,7 +200,7 @@ descartável por construção; um corpo do mundo nunca é.*
 | F5 | **cascata** na lista da paleta / hierarquia / rows do inspector | 1 | F0 | **P** |
 | ⭐ **E1** | **SCRUB numérico** em todo campo de número (o maior ganho de eficiência do estudo) | 3 | — | **M** |
 | E2 | **inércia** no pan de canvas e nas listas roláveis | 3 | F0 | **P** |
-| ~~E3~~ ✅ | **paleta de comandos GLOBAL** (o widget já existe) — **FEITA** (`Ctrl+K`, 29 comandos: 10 do rail + 19 painéis). ⚠️ Ela é uma **projecção** das listas que o app já mantém, nunca uma tabela; e a barra de topo ficou de fora **por mecanismo** (os pills dela abrem menus ancorados a um rectângulo, e um pick não tem rectângulo) | 3 | — | **M** |
+| ~~E3~~ ✅ | **paleta de comandos GLOBAL** (o widget já existe) — **FEITA** (`Ctrl+K`, **62 comandos**: 10 do rail + 19 painéis + **33 rows de menu**). ⚠️ Ela é uma **projecção** das listas que o app já mantém, nunca uma tabela. ⚠️ **E a 1ª conclusão desta linha era LARGA DEMAIS** — ela mediu que o **PILL** não é servível (abre um menu ancorado a um rectângulo, e uma paleta não tem rectângulo) e escreveu *"a barra de topo fica de fora"*; a **ROW de dentro dele** é tipo 1, e entrou na wave seguinte (ver a §6.1 abaixo) | 3 | — | **M** |
 | E4 | **menu radial** sob a caneta / botão do meio | 3 | — | **M** |
 | C1 | **TETHER** (§5) + as três irmãs da família | 2 | F0 | **M** |
 | C2 | **realce de proveniência** nos dois sentidos (valor ↔ objecto) | 2 | — | **M** |
@@ -211,6 +211,43 @@ descartável por construção; um corpo do mundo nunca é.*
 | D2 | **partículas de feedback** do motor que já temos (dissolver em vez de sumir) | 4 | F0 | **G** |
 
 ⭐ = **melhor razão ganho/custo do quadro**, e nenhum dos dois é animado.
+
+### 6.1 — A cauda da E3: as ROWS dos menus da barra (2026-08-13)
+
+O commit da paleta global fechou nomeando esta wave, e o **enquadramento dele estava largo demais**.
+Ele mediu que **o PILL** não é servível e escreveu *«a barra de topo fica de fora»*.
+
+**Os verbos deste app são de DOIS tipos, e só um é servível por uma paleta:**
+
+1. **o clique É o verbo** — endereçável por id, porque `chrome::dispatch_all` o resolve **sem
+   geometria nenhuma** (os chips do rail · a visibilidade de um painel · **uma row de menu**);
+2. **o clique ABRE um menu onde o verbo está** — posicional, ancorado a um `hit_rect`, e uma paleta
+   **não tem rectângulo** (o chip pode nem estar visível).
+
+O pill `Save` é tipo 2; a row `Save · Cmd+S` **de dentro dele** é tipo 1. São dois gestos diferentes
+no mesmo widget — *abrir* e *escolher* — e só um é posicional.
+
+**Verificado por LEITURA de cada handler, não por grep sobre um nome de função:** theme · radius ·
+rail_size · view_toggles · io_menu · settings_* tocam o contexto de menu **apenas** por
+`close_context_menu()`, que é um **no-op sem nada aberto**. As únicas que leem posição são as rows de
+**CASCATA** do `SettingsMenu` (`cascade_anchor(hero, id)`) — e elas estão **FORA**: servidas pela
+paleta seriam *consumidas* (`apply_event` devolve `true`) e abririam um submenu ancorado a uma row
+que ninguém pintou. ⚠️ **Consumir não é FAZER**, e é por isso que o gate que carrega a wave tem por
+oráculo o **EFEITO** (o tema muda, o `pixels_per_meter` muda) medido num `HeroScreen` que **nunca
+abriu menu**, e não o `true` do despacho.
+
+**Censo: 33 verbos, 9 menus** (File 2 · Open 2 · Look 12 · e os 5 submenus de Settings) — **um**
+grupo com um *sub* por menu, não nove grupos: cada grupo é um CARD no masonry, e nove cards de duas
+linhas seriam ruído.
+
+⚠️ **O rótulo perde UMA coisa: o travessão de recuo.** Metade das rows do Look abre com `"— "` porque
+o pintor de rows **não tem afordância de indentação**, então o menu codifica o recuo como
+**caractere** — e numa lista plana de pills não há nada contra o que recuar. O atalho FICA
+(`Save · Cmd+S`): mostrar a tecla ao lado do verbo é o que todo *command palette* faz.
+
+E a tabela de rows saiu do `context_menu_overlay` para o **`menu_rows`** (218 linhas de
+`match req.kind`) — porta única: ela estava certa inline enquanto o pintor era o único consumidor, e
+deixou de estar no instante em que a paleta quis os mesmos verbos.
 
 ---
 

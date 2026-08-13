@@ -379,7 +379,7 @@ _a_straight_line_and_simulates_nothing` (mutação: simular e desenhar reto ⇒ 
 | ~~**3**~~ ✅ | **Preferências de utilizador** + a row do pill Settings — **FEITA** (`~/.ph2d/prefs.txt`, irmão do `palette_persist`; ver a correcção na §3) | 2 | o carácter deixa de ser constante | **P** |
 | ~~**4**~~ ✅ | ⭐ **E1 scrub numérico** — **FEITO, e diferente do que esta linha dizia**: o gesto já shipava desde a M14.A; o buraco real era a taxa a consultar **duas** das **quatro** fontes de intervalo que o clamp já conhecia (43 campos cruzavam-se inteiros em < 20 px). Cura = a porta única `number_scrub_law`; 43 → 0. Ver a correcção na §4 | — (independente!) | eficiência | **M** |
 | ~~**5**~~ ✅ | ⭐ **C1 o TETHER** — **FEITA**, com a lei do relógio CORRIGIDA por medição (ver a nota na §5.2) e o card de Fill como primeiro consumidor | 1 | a família C2·C3·C4 | **M** |
-| **6** | o resto do catálogo, por gosto | 1-3 | — | — |
+| **6** | o resto do catálogo, por gosto — **em curso**: as **rows dos menus** da barra entraram na paleta global (33 verbos, 9 menus), fechando a cauda que o commit da E3 nomeou. ⚠️ E corrigindo-o: *«a barra de topo fica de fora»* era verdade do **PILL** e falsa da **ROW**. Ver a §6.1 do estudo | 1-3 | — | — |
 
 ⚠️ **A wave 2 tem de trazer a R1 dentro dela.** Um efeito que nasce sem o interruptor nasce dívida —
 e a acessibilidade retro-encaixada é a que fica meio-feita.

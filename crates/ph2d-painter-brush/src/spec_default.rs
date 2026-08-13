@@ -12,6 +12,7 @@ use crate::blend::BrushBlend;
 use crate::falloff::Falloff;
 use crate::falloff_curve::FalloffCurve;
 use crate::height::{DepthSource, DrawTo};
+use crate::line_kind::LineKind;
 use crate::spec::BrushSpec;
 use crate::stroke_method::{JitterUnit, StrokeMethod};
 use crate::symmetry::SymmetrySettings;
@@ -42,6 +43,8 @@ impl Default for BrushSpec {
             space_attenuation: false, // Adjust Strength off by default (Enio 2026-06-24)
             accumulate: false,
             style_solid: false,
+            line_kind: LineKind::None,
+            line_speed_amount: 0.0,
             dash_ratio: 1.0,
             dash_samples: 20,
             jitter_unit: JitterUnit::Brush,

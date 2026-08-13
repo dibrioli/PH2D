@@ -11,6 +11,7 @@ use super::{
     BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,
 };
 use crate::tool::PainterTool;
+use ph2d_painter_brush::line_kind::{LineKind, MAX_SPEED_AMOUNT};
 use ph2d_painter_brush::{BrushBlend, Falloff, HandleType, JitterUnit};
 
 impl PainterTool {
@@ -199,6 +200,29 @@ impl PainterTool {
         self.paint.brush.style_solid = on;
         for mode in super::impasto_settings::RELIEF_SLOTS {
             self.paint.brush_by_mode[mode.slot()].style_solid = on;
+        }
+    }
+
+    /// **O TIPO de linha procedural** (o dropdown `Type` do card Line; plano 38 §1). `0` = None,
+    /// `1` = Speed — e um valor desconhecido cai no neutro.
+    ///
+    /// ⚠️ **Escreve nos três slots de relevo**, como o [`Self::toggle_style_solid`] e pelo mesmo
+    /// motivo: Deposit, Faca e Sculpt são UM assunto para o artista.
+    pub fn set_line_kind(&mut self, wire: u8) {
+        let k = LineKind::from_wire(wire);
+        self.paint.brush.line_kind = k;
+        for mode in super::impasto_settings::RELIEF_SLOTS {
+            self.paint.brush_by_mode[mode.slot()].line_kind = k;
+        }
+    }
+
+    /// Quanto da velocidade do gesto é arremessada à frente do dedo, em **quadros de antecipação**
+    /// (`0..=`[`MAX_SPEED_AMOUNT`]; `0` é o neutro exato).
+    pub fn set_line_speed_amount(&mut self, a: f32) {
+        let a = a.clamp(0.0, MAX_SPEED_AMOUNT);
+        self.paint.brush.line_speed_amount = a;
+        for mode in super::impasto_settings::RELIEF_SLOTS {
+            self.paint.brush_by_mode[mode.slot()].line_speed_amount = a;
         }
     }
 

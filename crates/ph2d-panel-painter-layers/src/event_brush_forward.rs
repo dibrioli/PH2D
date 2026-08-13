@@ -29,6 +29,8 @@ pub(crate) fn is_forwardable_brush_slider(id: NodeId) -> bool {
         || id == core_ids::PAINTER_INPAINT_SEARCH_SLIDER
         || core_ids::PAINTER_BRUSH_RANDOMIZE_SLIDERS.contains(&id)
         || core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH.contains(&id)
+        // Card Line: o `Amount` do tipo `Speed` (plano 38 W2).
+        || id == core_ids::PAINTER_LINE_SPEED_AMOUNT
         // Selection section (ADR-0103): Feather + Automatic-threshold + overlay-opacity + Offset sliders.
         || id == core_ids::PAINTER_SEL_FEATHER_SLIDER
         || id == core_ids::PAINTER_SEL_THRESHOLD_SLIDER

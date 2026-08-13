@@ -215,6 +215,13 @@ impl Tool for PainterTool {
                     self.set_brush_spacing(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_OFFSET {
                     self.set_brush_offset(v as f32);
+                } else if id == core_ids::PAINTER_LINE_SPEED_AMOUNT {
+                    // Card Line, tipo `Speed`: a pista `0..1` do slider mapeia na faixa de QUADROS
+                    // de antecipação — a fronteira de display fica aqui, como em toda row deste
+                    // painel (o motor guarda quadros, o slider anda de 0 a 1).
+                    self.set_line_speed_amount(
+                        v as f32 * ph2d_painter_brush::line_kind::MAX_SPEED_AMOUNT,
+                    );
                 } else if id == core_ids::PAINTER_BRUSH_JITTER {
                     self.set_brush_jitter_norm(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_DASH_RATIO {
@@ -309,6 +316,12 @@ impl Tool for PainterTool {
             }
             // ── Paint Mode pick: value = the `PaintMedia` wire u8. The four media are exclusive, and
             //    `set_paint_media` is the only thing that knows it (2026-07-22). ────────────────────
+            // ── Card Line: o TIPO de linha procedural (plano 38 W2). ──────────────────────────
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_LINE_TYPE => {
+                if let Ok(v) = value.parse::<u8>() {
+                    self.set_line_kind(v);
+                }
+            }
             PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_MEDIA => {
                 if let Ok(v) = value.parse::<u8>() {
                     self.set_paint_media(crate::PaintMedia::from_u8(v));

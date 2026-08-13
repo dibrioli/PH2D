@@ -32,6 +32,14 @@ pub(super) fn decode_brush_media_option(id: NodeId) -> Option<u8> {
     (0..PaintMedia::COUNT).find(|&i| core_ids::painter_brush_media_option_id(i) == id)
 }
 
+/// Decodifica uma opção do popover do `Type` do card Line → o wire `u8` do `LineKind`.
+pub(super) fn decode_line_type_option(id: NodeId) -> Option<u8> {
+    crate::paint_line::LINE_KINDS
+        .iter()
+        .map(|k| k.to_wire())
+        .find(|&w| core_ids::painter_line_type_option_id(w) == id)
+}
+
 /// Decode a brush blend-mode popover option id → its mode `u8` (fixed; iterate the 24 stable ids).
 pub(super) fn decode_brush_blend_option(id: NodeId) -> Option<u8> {
     (0..MAX_BRUSH_BLEND_MODES).find(|&m| core_ids::painter_brush_blend_option_id(m) == id)

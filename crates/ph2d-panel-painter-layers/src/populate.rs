@@ -155,6 +155,16 @@ fn register_brush_inputs(store: &mut WidgetStore) {
             },
         );
     }
+    // Card Line: o slider `Amount` do tipo `Speed` (plano 38 W2). Registrado aqui pelo mesmo motivo
+    // dos três acima — sem isto ele pinta, registra hit e fica MORTO sob o mouse.
+    store.register(
+        ph2d_editor_core::ids::PAINTER_LINE_SPEED_AMOUNT,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: 0.0,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
     for id in std::iter::once(ph2d_editor_core::ids::PAINTER_BRUSH_COMPOSITE_ENABLE)
         .chain(ph2d_editor_core::ids::PAINTER_BRUSH_COMPOSITE_UP)
         .chain(ph2d_editor_core::ids::PAINTER_BRUSH_COMPOSITE_DOWN)
@@ -466,6 +476,8 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
     for id in [
         // The Paint Mode (medium) chip at the head of the appearance half.
         ph2d_editor_core::ids::PAINTER_BRUSH_MEDIA,
+        // Card Line: o chip `Type` dos tipos de traço procedural (plano 38 W2).
+        ph2d_editor_core::ids::PAINTER_LINE_TYPE,
         ph2d_editor_core::ids::PAINTER_BRUSH_BLEND,
         ph2d_editor_core::ids::PAINTER_BRUSH_FALLOFF,
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_METHOD,

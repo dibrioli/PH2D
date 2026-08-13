@@ -54,7 +54,10 @@ pub fn fill_coverage(loops: &[Vec<[f32; 2]>], w: usize, h: usize, origin: [f32; 
         let n = lp.len();
         for i in 0..n {
             let a = [lp[i][0] - origin[0], lp[i][1] - origin[1]];
-            let b = [lp[(i + 1) % n][0] - origin[0], lp[(i + 1) % n][1] - origin[1]];
+            let b = [
+                lp[(i + 1) % n][0] - origin[0],
+                lp[(i + 1) % n][1] - origin[1],
+            ];
             accumulate_edge(a, b, stride, h, &mut acc);
         }
     }
@@ -84,7 +87,11 @@ fn accumulate_edge(a: [f32; 2], b: [f32; 2], stride: usize, h: usize, acc: &mut 
         return;
     }
     // O sinal do sentido: subir e descer se cancelam, que é o que torna a soma corrida um winding.
-    let (dir, p0, p1) = if a[1] < b[1] { (1.0f32, a, b) } else { (-1.0f32, b, a) };
+    let (dir, p0, p1) = if a[1] < b[1] {
+        (1.0f32, a, b)
+    } else {
+        (-1.0f32, b, a)
+    };
     let dxdy = (p1[0] - p0[0]) / (p1[1] - p0[1]);
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let y_start = p0[1].max(0.0).floor() as usize;
@@ -161,7 +168,12 @@ pub fn loops_bbox(loops: &[Vec<[f32; 2]>], w: usize, h: usize) -> Option<[usize;
     for lp in loops {
         for p in lp {
             bb = Some(bb.map_or([p[0], p[1], p[0], p[1]], |r| {
-                [r[0].min(p[0]), r[1].min(p[1]), r[2].max(p[0]), r[3].max(p[1])]
+                [
+                    r[0].min(p[0]),
+                    r[1].min(p[1]),
+                    r[2].max(p[0]),
+                    r[3].max(p[1]),
+                ]
             }));
         }
     }

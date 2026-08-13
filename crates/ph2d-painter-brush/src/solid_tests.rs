@@ -34,9 +34,7 @@ fn the_total_coverage_is_the_polygons_area() {
     let tri = vec![vec![[1.0f32, 1.0], [14.0, 2.0], [3.0, 13.0]]];
     let cov = fill_coverage(&tri, 16, 16, [0.0, 0.0]);
     // Sapateiro.
-    let want = f64::from(
-        ((14.0f32 - 1.0) * (13.0 - 1.0) - (3.0 - 1.0) * (2.0 - 1.0)).abs() / 2.0,
-    );
+    let want = f64::from(((14.0f32 - 1.0) * (13.0 - 1.0) - (3.0 - 1.0) * (2.0 - 1.0)).abs() / 2.0);
     let got = total(&cov);
     assert!(
         (got - want).abs() / want < 0.01,
@@ -81,7 +79,8 @@ fn the_slanted_edge_carries_the_exact_area() {
     const SS: usize = 256;
     let inside = |px: f32, py: f32| -> bool {
         let t = &tri[0];
-        let sign = |a: [f32; 2], b: [f32; 2]| (px - b[0]) * (a[1] - b[1]) - (a[0] - b[0]) * (py - b[1]);
+        let sign =
+            |a: [f32; 2], b: [f32; 2]| (px - b[0]) * (a[1] - b[1]) - (a[0] - b[0]) * (py - b[1]);
         let (d1, d2, d3) = (sign(t[0], t[1]), sign(t[1], t[2]), sign(t[2], t[0]));
         let neg = d1 < 0.0 || d2 < 0.0 || d3 < 0.0;
         let pos = d1 > 0.0 || d2 > 0.0 || d3 > 0.0;
@@ -114,7 +113,10 @@ fn the_slanted_edge_carries_the_exact_area() {
             worst = worst.max(e);
         }
     }
-    assert!(edge > 60, "a fixture nao tem borda inclinada suficiente: {edge}");
+    assert!(
+        edge > 60,
+        "a fixture nao tem borda inclinada suficiente: {edge}"
+    );
     let mean = sum / f64::from(edge);
     // A quantização sozinha já vale 0,5 nível; o que sobra é o erro do modelo.
     assert!(
@@ -191,7 +193,10 @@ fn the_degenerate_cases_paint_nothing() {
     // Uma aresta HORIZONTAL sozinha não cruza linha de varredura nenhuma.
     let mut acc = vec![0.0f32; 9 * 8];
     accumulate_edge([1.0, 3.0], [7.0, 3.0], 9, 8, &mut acc);
-    assert!(acc.iter().all(|&v| v == 0.0), "a aresta horizontal depositou massa");
+    assert!(
+        acc.iter().all(|&v| v == 0.0),
+        "a aresta horizontal depositou massa"
+    );
 }
 
 /// **A JANELA RECORTA, E O QUE FICA DE FORA NÃO VOLTA PELA ESQUERDA.**
@@ -206,10 +211,18 @@ fn the_window_clips_and_nothing_wraps_to_the_left() {
     for y in 0..16 {
         assert_eq!(cov[y * 16], 0, "vazou para a coluna 0 na linha {y}");
     }
-    assert_eq!(cov[5 * 16 + 15], 255, "a figura devia encher ate' a borda direita");
+    assert_eq!(
+        cov[5 * 16 + 15],
+        255,
+        "a figura devia encher ate' a borda direita"
+    );
     // …e um que sai pela esquerda continua cheio à direita da fronteira.
     let cov = fill_coverage(&rect(-20.0, 2.0, 10.0, 10.0), 16, 16, [0.0, 0.0]);
-    assert_eq!(cov[5 * 16], 255, "a parte visivel do que entra pela esquerda sumiu");
+    assert_eq!(
+        cov[5 * 16],
+        255,
+        "a parte visivel do que entra pela esquerda sumiu"
+    );
     assert_eq!(cov[5 * 16 + 14], 0, "vazou para a direita da figura");
 }
 

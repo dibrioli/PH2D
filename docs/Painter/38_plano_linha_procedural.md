@@ -301,6 +301,51 @@ velocidade por evento ⇒ o gate de espaçamento sangra.
 **Smoke `=2`:** o mesmo gesto devagar e depressa; e um traço lento tem de ser indistinguível do
 `None`.
 
+#### O que a construção MUDOU no plano (fechada 2026-08-13)
+
+**A `Curved` NÃO foi construída, e é decisão, não esquecimento.** O manual do Alchemy oferece *"Line
+Type — toggle between drawing straight lines and curved lines"*, e ali a Speed Shapes produz uma
+FORMA (um caminho fechado) cujos segmentos são retos ou curvos. **Num motor de dabs não há
+segmento** — o traço já é um contínuo de carimbos —, então qualquer significado que eu desse a
+`Curved` seria INVENTADO. Um knob cujo comportamento a referência não determina é um knob que mente;
+ele volta no dia em que houver uma pergunta de produto por trás dele.
+
+⚠️ **A velocidade NÃO virou campo do `Dab`, e o plano dizia que sim.** A justificativa era o consumo
+futuro (Sketchy, Splatter), mas um campo com **um consumidor interno** e nenhum leitor é um campo
+morto que atravessa o `Dab` inteiro. O que a lei exige é *um lugar computa, todos leem*, e isso é
+satisfeito por **`Stroke::speed_px_s()`** — a porta que o Sketchy vai ler. O `Dab` fica intacto.
+
+⚠️ **O `SPEED_LOOKAHEAD_S` é MEDIDO, e é um TEMPO.** A W0.1 mede ~39 px de arco por quadro num gesto
+ligeiro de quarto de círculo ⇒ **~2 340 px/s**. A janela é **um quadro de 60 fps**, então `Amount = 1`
+arremessa exatamente o arco de um quadro (~39 px naquele gesto) e o teto — `MAX_SPEED_AMOUNT = 8` —
+diz **quantos quadros à frente** a tinta pode ir: 312 px ali, que é o *"and possibly off the screen
+itself"* do manual. Acima disso a tinta está mais de um oitavo de segundo à frente da mão.
+
+⚠️ **E o arremesso é ESTRUTURALMENTE inerte na família dos shape editors**, sem um `if` para isso:
+cada preenchimento de forma constrói uma `Stroke` **fresca**, e o `speed_px_s` só sai de zero num
+TIQUE — a mão nunca correu por ela. Um gesto sólido também o ignora, porque o `solid_path` é o
+caminho do PONTEIRO: arremessar a fronteira de uma mancha seria outra feature, e não foi construída.
+
+**Gates** (`line_speed_tests.rs` + `seam_line_card.rs`): a tinta cai adiante do dedo · o arremesso é
+invariante ao ESPAÇAMENTO e à TAXA DE EVENTOS · `Amount = 0` e o tipo `None` são byte-idênticos ·
+a velocidade é medida ANTES do desvio do Airbrush · o `Amount` conta quadros · o ponteiro escolhe
+cada tipo · a row `Amount` existe só com `Speed` · o slider é vivo sob o mouse. **7 mutações, 6
+sangram.**
+
+⚠️ **A sobrevivente ACUSOU a minha afirmação, não um buraco** (a 3ª vez nesta linha): eu escrevera
+que a ordem *arremesso antes do jitter* era load-bearing. O `apply_jitter` soma um deslocamento que
+**não depende da posição**, e o arremesso é outra translação — **duas translações comutam**, então as
+duas ordens dão o mesmo ponto ao bit. O comentário foi corrigido em vez de um gate ser escrito.
+
+⚠️ **E TRÊS gates de invariância nasceram VERDES SOBRE A MUTAÇÃO que mata a medição de velocidade** —
+com o arremesso em zero, *"dois arremessos iguais"* é verdade de graça. Cada um ganhou uma asserção de
+**não-vacuidade** antes da comparação; sem ela eles afirmavam que duas ausências são iguais.
+
+⚠️ **`stroke.rs` estava a NOVE linhas do teto de LOC** (691/700), então esta wave o cruzou por
+existir. Dois cortes por responsabilidade: `stroke/speed.rs` (a inércia do gesto — o assunto desta
+wave) e `stroke/dab_build.rs` (*como UM dab é construído*, um estágio nomeado do pipeline do
+cabeçalho). O pai fica em **652**.
+
 ---
 
 ### W3 — **Sketchy** (o *neighbour points*)

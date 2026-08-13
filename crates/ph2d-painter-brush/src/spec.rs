@@ -10,6 +10,7 @@ use crate::blend::BrushBlend;
 use crate::falloff::Falloff;
 use crate::falloff_curve::FalloffCurve;
 use crate::height::{DepthSource, DrawTo};
+use crate::line_kind::LineKind;
 use crate::stroke_method::{JitterUnit, StrokeMethod};
 use crate::symmetry::SymmetrySettings;
 use crate::texture::TextureSettings;
@@ -97,6 +98,13 @@ pub struct BrushSpec {
     /// polígono do caminho, então um laço fino e solto vira uma mancha gorda. `false` (o default) é
     /// o mundo de sempre, byte a byte.
     pub style_solid: bool,
+    /// **O TIPO de linha procedural** ([`crate::line_kind::LineKind`]) — o dropdown `Type` do card
+    /// Line. `None` (o default) é o neutro **byte-idêntico**: nenhuma lei procedural alcança um dab.
+    pub line_kind: LineKind,
+    /// Quanto da velocidade do gesto é arremessada à frente do dedo, em **quadros de antecipação**
+    /// (`0..=`[`crate::line_kind::MAX_SPEED_AMOUNT`]). Lido só com [`LineKind::Speed`]; `0` é o
+    /// neutro exato.
+    pub line_speed_amount: f32,
     /// Dash "on" fraction of each dash period, `0..1` (Blender `dash_ratio`, default `1.0` = solid,
     /// `DNA_brush_types.h:275`).
     pub dash_ratio: f32,

@@ -169,7 +169,9 @@ fn speed_table(spec: BrushSpec, stab_off: bool) {
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn measure_how_many_threads_a_sketchy_would_emit() {
-    println!("[line] fios de um Sketchy — quarto de circulo, 128 eventos, densidade 1,0 (todo par)");
+    println!(
+        "[line] fios de um Sketchy — quarto de circulo, 128 eventos, densidade 1,0 (todo par)"
+    );
     println!(
         "{:>6} {:>7}  {:>6} {:>8} {:>10}  {:>9} {:>11} {:>9} {:>9}",
         "raio", "arco", "dabs", "reach", "fios", "fios/dab", "compr(px)", "compr/arco", "dens@2x"

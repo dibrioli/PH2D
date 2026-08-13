@@ -220,6 +220,19 @@ pub const PAINTER_BRUSH_ACCUMULATE: NodeId = hash_node_id("painter_brush.accumul
 /// `LineKind::honours_style()`, não deste id — hoje ela devolve `true` para todos, e o dia em que
 /// nascer um tipo sem caminho-base é o dia em que ela deixa de ser trivial.
 pub const PAINTER_LINE_SOLID: NodeId = hash_node_id("painter_line.solid");
+/// **Type** — o dropdown do card **Line**: qual LEI procedural decora o traço
+/// (`ph2d_painter_brush::line_kind::LineKind`; `0` = None, o default, `1` = Speed).
+/// `SelectOption` → `set_line_kind`.
+pub const PAINTER_LINE_TYPE: NodeId = hash_node_id("painter_line.type");
+/// Id de uma OPÇÃO do popover do [`PAINTER_LINE_TYPE`]. Espelho do
+/// [`painter_brush_media_option_id`].
+#[must_use]
+pub fn painter_line_type_option_id(idx: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_line.typeopt.{idx}"))
+}
+/// **Amount** — o slider do tipo `Speed`: quantos QUADROS de antecipação a tinta é arremessada à
+/// frente do dedo (`0..=8`). `SetValue` → `set_line_speed_amount`. Pintado só com `Speed` escolhido.
+pub const PAINTER_LINE_SPEED_AMOUNT: NodeId = hash_node_id("painter_line.speed_amount");
 /// "Sync with other tools" checkbox at the top of the brush panel: off (default) = each paint tool keeps
 /// its own settings; on = all tools share these. `Click` → `toggle_link_shared_settings`.
 pub const PAINTER_BRUSH_SYNC: NodeId = hash_node_id("painter_brush.sync");

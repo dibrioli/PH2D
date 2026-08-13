@@ -47,6 +47,16 @@ pub(crate) fn take_pending_brush_media_dd() -> Option<(Rect, u8)> {
     state::PENDING_BRUSH_MEDIA_DD.with(|c| c.take())
 }
 
+/// Guarda o dropdown **Type** do card Line aberto, para o passe diferido de popover.
+pub(crate) fn set_pending_line_type_dd(v: Option<(Rect, u8)>) {
+    state::PENDING_LINE_TYPE_DD.with(|c| c.set(v));
+}
+
+/// Toma (e limpa) o dropdown Type pendente do card Line.
+pub(crate) fn take_pending_line_type_dd() -> Option<(Rect, u8)> {
+    state::PENDING_LINE_TYPE_DD.with(|c| c.take())
+}
+
 /// Stash the open brush blend dropdown for the deferred popover pass.
 pub(crate) fn set_pending_brush_blend_dd(v: Option<(Rect, u8)>) {
     state::PENDING_BRUSH_BLEND_DD.with(|c| c.set(v));

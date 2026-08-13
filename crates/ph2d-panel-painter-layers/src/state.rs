@@ -72,6 +72,8 @@ thread_local! {
 
     /// The open **Paint Mode** (medium) chip — mirror of [`PENDING_BRUSH_BLEND_DD`].
     pub(crate) static PENDING_BRUSH_MEDIA_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+    /// O dropdown `Type` do card Line, aberto neste quadro (plano 38 W2).
+    pub(crate) static PENDING_LINE_TYPE_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
     /// The open per-layer-colour **Shape layer blend** dropdown (the "B" chip): `(layer_index,
     /// chip_rect, current_mode_u8)`. One-open-at-a-time like [`PENDING_BLEND_DD`]; set during the

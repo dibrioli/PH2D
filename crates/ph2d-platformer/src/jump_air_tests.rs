@@ -69,7 +69,7 @@ fn an_air_jump_fires_once_per_charge_and_then_stops() {
     let cfg = with_air(1, 2.0);
     let first = tap(&cfg, JumpState::default(), Some(&ground()), 0.0);
     assert!(first.motor.boost[1] > 0.0, "o pulo do chao sai");
-    assert!(first.takeoff, "e ele EMPURRA o chao");
+    assert!(first.takeoff(), "e ele EMPURRA o chao");
 
     let second = tap(&cfg, first.state, None, -1.0);
     assert!(
@@ -156,8 +156,8 @@ fn an_air_jump_is_a_jump_but_pushes_nothing() {
         ..JumpState::default()
     };
     let s = tap(&cfg, falling, None, -2.0);
-    assert!(s.jumped, "e' um pulo");
-    assert!(!s.takeoff, "e NAO empurra o chao");
+    assert!(s.jumped(), "e' um pulo");
+    assert!(!s.takeoff(), "e NAO empurra o chao");
 }
 
 /// **Um pulo de PAREDE não gasta carga do ar** — a parede é apoio próprio.
@@ -189,7 +189,78 @@ fn a_wall_jump_does_not_spend_an_air_charge() {
     );
     assert!(s.motor.boost[0] > 0.0, "o pulo de parede sai");
     assert_eq!(s.state.air_jumps_left, 1, "e a carga do ar continua la'");
-    assert!(s.jumped, "e ele tambem e' um pulo");
+    assert!(s.jumped(), "e ele tambem e' um pulo");
+}
+
+/// **A LEI diz QUAL pulo saiu, e os três são distinguíveis** (`W-PlayerOut`).
+///
+/// # ⚠️ Por que este gate não é redundante com os dois acima
+///
+/// Eles afirmam o par de `bool` — e o par **não separa parede de ar**: os dois
+/// são `jumped && !takeoff`, exatamente o mesmo estado. Quem quiser tocar um som
+/// de parede não tem por onde perguntar, e a ponte teria de adivinhar por *"ele
+/// estava no chão no tique anterior?"*, que responde **não** nos dois casos.
+///
+/// ⚠️ **E a quarta asserção é o CONTROLE:** um tique sem pulo devolve `None`, o
+/// que é o que impede um `kind` cravado num valor de passar por aqui.
+#[test]
+fn the_law_names_which_of_the_three_jumps_left() {
+    let cfg = with_air(1, 2.0);
+
+    // CHÃO — o pé empurra, e só este é `takeoff`.
+    let from_ground = tap(&cfg, JumpState::default(), Some(&ground()), 0.0);
+    assert_eq!(from_ground.kind, Some(JumpKind::Ground), "o pulo do chao");
+    assert!(from_ground.takeoff(), "e ele e' o unico que empurra o chao");
+
+    // AR — sem chão, com carga.
+    let air = tap(
+        &cfg,
+        JumpState {
+            airborne: true,
+            air_jumps_left: 1,
+            ..JumpState::default()
+        },
+        None,
+        -2.0,
+    );
+    assert_eq!(air.kind, Some(JumpKind::Air), "o pulo do ar");
+
+    // PAREDE — sem chão, sem gastar carga.
+    let wall = jump_step(
+        &cfg,
+        JumpState {
+            airborne: true,
+            air_jumps_left: 1,
+            ..JumpState::default()
+        },
+        None,
+        -1.0,
+        true,
+        false,
+        Some(crate::WallLaunch {
+            height: 2.0,
+            away: [4.0, 0.0],
+            lockout: 0.2,
+        }),
+        G,
+        UP,
+        DT,
+        DRY,
+    );
+    assert_eq!(wall.kind, Some(JumpKind::Wall), "o pulo de parede");
+
+    // ⚠️ **O CONTROLE:** parede e ar concordam nos dois `bool` e DIFEREM aqui —
+    // é literalmente a informação que esta wave acrescentou.
+    assert_eq!(
+        (air.jumped(), air.takeoff()),
+        (wall.jumped(), wall.takeoff()),
+        "os dois bools NAO separam ar de parede"
+    );
+    assert_ne!(air.kind, wall.kind, "e o kind separa");
+
+    // E um tique sem aperto nenhum não nomeia pulo nenhum.
+    let quiet = step(&cfg, JumpState::default(), Some(&ground()), 0.0, false);
+    assert_eq!(quiet.kind, None, "sem aperto, sem pulo");
 }
 
 /// **UM aperto é UM pulo, mesmo com muitas cargas.**
@@ -239,5 +310,5 @@ fn zero_air_jumps_is_the_world_before_this_wave() {
         "e no ar nao ha segundo pulo: {:?}",
         second.motor.boost
     );
-    assert!(!second.jumped, "nem `jumped`");
+    assert!(!second.jumped(), "nem `jumped`");
 }

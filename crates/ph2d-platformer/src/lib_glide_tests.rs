@@ -148,7 +148,7 @@ fn and_the_same_tick_out_of_the_water_does_glide() {
 /// o botão apertado, o motor levava `+18,26` do pulo **e mais `+10,00` do
 /// planeio`. Dez metros por segundo que o jogador não pediu.
 ///
-/// ⚠️ **A cura foi uma sexta guarda (`!jump.takeoff`), e não afrouxar a lei:** o
+/// ⚠️ **A cura foi uma sexta guarda (`!jump.takeoff()`), e não afrouxar a lei:** o
 /// planeio está certo, o que faltava era a decisão de *quem escreve o eixo neste
 /// tique*.
 #[test]

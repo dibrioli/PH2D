@@ -360,13 +360,13 @@ pub fn player_motor(
     // ⚠️ **O `grounded` é o que a beirada e o pulo já consumiram**, pela MESMA
     // porta e sobre o MESMO estado de entrada — ver onde ele nasce, acima.
     // ⚠️ **Um pulo de QUALQUER tipo cancela o arranque**, e quem responde é o
-    // PRÓPRIO passo do pulo — não o `jump.takeoff` (que é só a decolagem do
+    // PRÓPRIO passo do pulo — não o `jump.takeoff()` (que é só a decolagem do
     // chão, e deixaria de fora o pulo de parede) e **não mais** a transição
     // `!antes.airborne && depois.airborne`: essa era exata enquanto todo pulo
     // começava com o pé em algo, e um pulo do AR acontece com `airborne` já
     // verdadeiro ⇒ o proxy dizia *não* justamente no gesto que mais se encadeia
     // com um arranque (`W-MultiJump`).
-    let jumped = jump.jumped;
+    let jumped = jump.jumped();
     let dash = dash::dash_step(
         &cfg.dash,
         state.dash,
@@ -485,7 +485,7 @@ pub fn player_motor(
         // ⚠️ Os canais entram SEPARADOS: a mola é força contínua, a decolagem é
         // um impulso de um tick só, e a diferença decide se o `boost` volta —
         // ver o aviso do `react`.
-        let impulse = if jump.takeoff {
+        let impulse = if jump.takeoff() {
             jump.motor
         } else {
             Motor::default()
@@ -542,7 +542,7 @@ pub fn player_motor(
     // TETO, então subir, o ápice e uma queda lenta já a deixam calada. Uma
     // segunda pergunta aqui seria uma segunda resposta à mesma.
     let float_down = if standing.is_none()
-        && !jump.takeoff
+        && !jump.takeoff()
         && !dashing
         && !ledging
         && !swimming

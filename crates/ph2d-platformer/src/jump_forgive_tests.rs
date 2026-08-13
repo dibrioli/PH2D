@@ -75,7 +75,7 @@ fn walking_off_a_ledge_still_jumps_inside_the_window_and_not_after() {
         }
         let s = jump_step(&cfg, st, None, -0.5, true, false, None, G, UP, DT, DRY);
         assert_eq!(
-            s.takeoff,
+            s.takeoff(),
             want,
             "coyote apos {ticks} tiques ({:.3} s) devia ser {want}",
             ticks as f32 * DT
@@ -91,7 +91,7 @@ fn the_coyote_window_is_spent_by_the_jump_it_forgives() {
     let mut st = standing(&cfg);
     st = jump_step(&cfg, st, None, -0.5, false, false, None, G, UP, DT, DRY).state;
     let first = jump_step(&cfg, st, None, -0.5, true, false, None, G, UP, DT, DRY);
-    assert!(first.takeoff, "o pulo de coyote tem de sair");
+    assert!(first.takeoff(), "o pulo de coyote tem de sair");
     assert_eq!(first.state.coyote, 0.0, "e a janela tem de ser GASTA");
     // Solta e aperta de novo, ainda no ar, dentro do que SERIA a janela.
     let released = jump_step(
@@ -120,7 +120,7 @@ fn the_coyote_window_is_spent_by_the_jump_it_forgives() {
         DT,
         DRY,
     );
-    assert!(!again.takeoff, "nao pode haver um segundo pulo no ar");
+    assert!(!again.takeoff(), "nao pode haver um segundo pulo no ar");
 }
 
 /// **Apertar CEDO demais ainda pula — no tique em que o pé toca.**
@@ -158,7 +158,7 @@ fn pressing_early_jumps_on_the_very_tick_the_foot_lands() {
         DRY,
     );
     assert!(
-        land.takeoff,
+        land.takeoff(),
         "o aperto guardado tem de disparar NO tique do pouso"
     );
     assert_eq!(land.state.buffer, 0.0, "e ser gasto");
@@ -186,7 +186,7 @@ fn pressing_early_jumps_on_the_very_tick_the_foot_lands() {
         DRY,
     );
     assert!(
-        !late.takeoff,
+        !late.takeoff(),
         "um aperto de {:.3} s atras nao pode sobreviver a janela de {:.3} s",
         past as f32 * DT,
         cfg.jump_buffer
@@ -212,7 +212,7 @@ fn one_press_is_one_jump() {
         DT,
         DRY,
     );
-    assert!(first.takeoff);
+    assert!(first.takeoff());
     // O tique seguinte: ainda segurando, o raio ainda vê o chão (a decolagem
     // não teleporta ninguém).
     let second = jump_step(
@@ -228,7 +228,7 @@ fn one_press_is_one_jump() {
         DT,
         DRY,
     );
-    assert!(!second.takeoff, "um aperto nao pode dar dois pulos");
+    assert!(!second.takeoff(), "um aperto nao pode dar dois pulos");
 }
 
 /// ⚠️ **Com as duas janelas em ZERO a lei é a de antes desta wave, AO BIT.**
@@ -246,7 +246,7 @@ fn zero_windows_are_the_law_of_before_this_wave() {
     let mut st = standing(&cfg);
     st = jump_step(&cfg, st, None, -0.5, false, false, None, G, UP, DT, DRY).state;
     assert!(
-        !jump_step(&cfg, st, None, -0.5, true, false, None, G, UP, DT, DRY).takeoff,
+        !jump_step(&cfg, st, None, -0.5, true, false, None, G, UP, DT, DRY).takeoff(),
         "sem coyote, sair da borda tira o pulo no tique seguinte"
     );
     // Apertar no ar nao sobrevive ate' o pouso.
@@ -269,7 +269,7 @@ fn zero_windows_are_the_law_of_before_this_wave() {
         DRY,
     );
     assert!(
-        !land.takeoff,
+        !land.takeoff(),
         "sem buffer, um aperto no ar morre com o tique em que foi feito"
     );
 }

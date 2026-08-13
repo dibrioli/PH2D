@@ -171,6 +171,24 @@ impl JumpState {
     }
 }
 
+/// **QUAL dos três pulos saiu** (`W-PlayerOut`).
+///
+/// ⚠️ **A LEI é a única que sabe, e é por isso que ela o diz.** A ponte teria de
+/// adivinhar por *"ele estava no chão no tique anterior?"* — e a adivinhação
+/// erra exactamente no caso interessante: um pulo de PAREDE acontece com o pé no
+/// ar, tal como um pulo do ar, então o proxy os funde. Publicar o veredito é uma
+/// linha; re-derivá-lo lá fora seria uma segunda resposta que o consumidor de
+/// som e de animação lê como *"o pulo de parede não existe"*.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum JumpKind {
+    /// O pé empurrou o CHÃO — o único que a 3.ª lei devolve à jangada.
+    Ground,
+    /// Um pulo do AR (`W-MultiJump`).
+    Air,
+    /// Um pulo de PAREDE (W13).
+    Wall,
+}
+
 /// O que a lei do pulo decidiu neste tick.
 pub struct JumpStep {
     /// O termo do motor: o impulso da decolagem (boost) e a gravidade extra
@@ -181,6 +199,30 @@ pub struct JumpStep {
     /// **A perna pode agir?** Falso enquanto o pulo sobe — ver o aviso do
     /// módulo.
     pub spring_armed: bool,
+    /// **QUAL pulo saiu neste tique**, ou `None` se não saiu nenhum.
+    ///
+    /// ⚠️ **Era DOIS `bool`, e a troca não é cosmética.** O `takeoff` (*o pé
+    /// empurrou o chão*) e o `jumped` (*saiu um pulo, de qualquer dos três*)
+    /// eram escritos à mão em **seis** sítios de construção — e um quarto tipo
+    /// de pulo teria de acertar os dois em cada um deles, sem que nada o
+    /// obrigasse. Sendo eles VISTAS ([`Self::takeoff`], [`Self::jumped`]), um
+    /// sítio novo só consegue escrever **um** fato, e os dois vereditos deixam
+    /// de poder discordar.
+    ///
+    /// ⚠️ E é este campo que a saída do player (`W-PlayerOut`) publica: sem o
+    /// tipo, um pulo de PAREDE e um pulo do AR são indistinguíveis para quem
+    /// toca o som.
+    pub kind: Option<JumpKind>,
+    /// **O aperto virou uma DESCIDA** (W12) — ver [`crate::PlayerStep::drop_through`].
+    ///
+    /// ⚠️ Verdadeiro **em vez de** [`Self::takeoff`], nunca junto: os dois são o
+    /// que o mesmo botão fez neste tique, e um tique em que ambos fossem
+    /// verdadeiros seria um personagem que pula e atravessa o chão ao mesmo
+    /// tempo.
+    pub drop_through: bool,
+}
+
+impl JumpStep {
     /// ⚠️ **Este motor é um EMPURRÃO no chão** — verdadeiro só no tick da
     /// decolagem.
     ///
@@ -190,9 +232,13 @@ pub struct JumpStep {
     /// chão seria ele empurrar uma plataforma que não está tocando).
     ///
     /// ⚠️ Hoje os dois são distinguíveis pelo acidente de um usar `boost` e o
-    /// outro `accel` — e é exatamente por ser acidente, e não contrato, que este
-    /// campo existe.
-    pub takeoff: bool,
+    /// outro `accel` — e é exatamente por ser acidente, e não contrato, que esta
+    /// pergunta existe.
+    #[must_use]
+    pub fn takeoff(&self) -> bool {
+        matches!(self.kind, Some(JumpKind::Ground))
+    }
+
     /// **Um pulo saiu neste tique — de QUALQUER dos três** (chão, parede, ar).
     ///
     /// ⚠️ **Ele existe porque o proxy que o ARRANQUE usava apodreceu com o
@@ -205,17 +251,12 @@ pub struct JumpStep {
     ///
     /// ⚠️ **Não é o [`Self::takeoff`]**, e a distinção é FÍSICA: aquele diz *o
     /// pé empurrou o CHÃO* (a 3ª lei o devolve à jangada) e este diz *um pulo
-    /// saiu*. Com `air_jumps = 0` os dois campos concordam com o proxy antigo em
-    /// todo tique, o que é o que torna esta wave byte-idêntica onde ela está
-    /// desligada.
-    pub jumped: bool,
-    /// **O aperto virou uma DESCIDA** (W12) — ver [`crate::PlayerStep::drop_through`].
-    ///
-    /// ⚠️ Verdadeiro **em vez de** [`Self::takeoff`], nunca junto: os dois são o
-    /// que o mesmo botão fez neste tique, e um tique em que ambos fossem
-    /// verdadeiros seria um personagem que pula e atravessa o chão ao mesmo
-    /// tempo.
-    pub drop_through: bool,
+    /// saiu*. Com `air_jumps = 0` os dois concordam com o proxy antigo em todo
+    /// tique, o que é o que torna aquela wave byte-idêntica onde está desligada.
+    #[must_use]
+    pub fn jumped(&self) -> bool {
+        self.kind.is_some()
+    }
 }
 
 /// **PULAR.** Ver a lei no topo do módulo.
@@ -363,8 +404,7 @@ pub fn jump_step(
             // sensor a partir do próximo), então uma mola viva seguraria o
             // personagem em cima do que ele acabou de pedir para atravessar.
             spring_armed: false,
-            takeoff: false,
-            jumped: false,
+            kind: None,
             drop_through: true,
         };
     }
@@ -393,8 +433,7 @@ pub fn jump_step(
             },
             state: next,
             spring_armed: false,
-            takeoff: true,
-            jumped: true,
+            kind: Some(JumpKind::Ground),
             drop_through: false,
         };
     }
@@ -441,12 +480,12 @@ pub fn jump_step(
             },
             state: next,
             spring_armed: false,
-            // ⚠️ **`takeoff: false`, e é FÍSICA:** a 3ª lei devolve ao CHÃO o que
-            // o pé nele empurrou, e este pé não empurrou chão nenhum — ele
-            // empurrou uma parede. Marcá-lo aqui faria o personagem afundar uma
-            // jangada com um pulo dado numa parede do outro lado da cena.
-            takeoff: false,
-            jumped: true,
+            // ⚠️ **Um pulo de PAREDE não é `takeoff`, e é FÍSICA:** a 3ª lei
+            // devolve ao CHÃO o que o pé nele empurrou, e este pé não empurrou
+            // chão nenhum — ele empurrou uma parede. Dizer `Ground` aqui faria o
+            // personagem afundar uma jangada com um pulo dado numa parede do
+            // outro lado da cena.
+            kind: Some(JumpKind::Wall),
             drop_through: false,
         };
     }
@@ -487,12 +526,11 @@ pub fn jump_step(
             },
             state: next,
             spring_armed: false,
-            // ⚠️ **`takeoff: false` pela MESMA física do pulo de parede** — a 3ª
+            // ⚠️ **Não é `Ground`, pela MESMA física do pulo de parede** — a 3ª
             // lei devolve ao chão o que o pé nele empurrou, e este pé não
-            // empurrou coisa alguma. Marcá-lo afundaria uma jangada com um pulo
+            // empurrou coisa alguma. Dizê-lo afundaria uma jangada com um pulo
             // dado no ar acima dela.
-            takeoff: false,
-            jumped: true,
+            kind: Some(JumpKind::Air),
             drop_through: false,
         };
     }
@@ -512,8 +550,7 @@ pub fn jump_step(
             motor: Motor::default(),
             state: next,
             spring_armed,
-            takeoff: false,
-            jumped: false,
+            kind: None,
             drop_through: false,
         };
     }
@@ -551,8 +588,7 @@ pub fn jump_step(
         },
         state: next,
         spring_armed,
-        takeoff: false,
-        jumped: false,
+        kind: None,
         drop_through: false,
     }
 }

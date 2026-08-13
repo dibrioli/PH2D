@@ -100,7 +100,7 @@ fn while_dashing_the_leg_the_walk_and_gravity_are_all_silent() {
 
 /// **Um pulo dado a partir de um arranque é um PULO** — e o arranque acaba ali.
 ///
-/// ⚠️ **Mutação medida:** trocar o `jumped` pelo `jump.takeoff` do chão deixa
+/// ⚠️ **Mutação medida:** trocar o `jumped` pelo `jump.takeoff()` do chão deixa
 /// este gate VERDE (a fixture pula do chão) e mata o pulo de PAREDE feito
 /// durante um arranque — que é o gesto que mais se encadeia com ele. É o gate
 /// seguinte que a apanha, e por isso os dois existem.

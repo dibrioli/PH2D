@@ -2024,6 +2024,35 @@ impl crate::App {
         // PRÓPRIO, porque uma explosão é um impulso e não deixa estado no mundo
         // para uma marca derivada ler (o irmão exato do `ContactFlash`).
         crate::body_grab::age_blast_flash(&mut self.blast_flash);
+        // **O READOUT do player, a cada meio segundo** (`W-PlayerOut` A5) — a
+        // metade do smoke que torna a afinação legível sem um `println` à mão.
+        //
+        // ⚠️ **Depois do dispatch, e a ordem é a lei:** a vista é escrita no fim
+        // do laço de tiques, então ler antes dele imprimiria o tique anterior — e
+        // um readout um tique atrasado é indistinguível de um readout certo,
+        // menos exactamente no instante em que o artista está a olhar.
+        if let Some(bits) = self.player_readout_log {
+            const EVERY: u64 = 30;
+            let tick = self.fixed_step.tick_count();
+            if tick.is_multiple_of(EVERY) {
+                let e = ph2d_ecs::Entity::from_bits(bits);
+                match physics.player_view(e) {
+                    Some(v) => eprintln!(
+                        "[player] {:?} facing {:+.0} vel ({:.2}, {:.2})                          ar {} dash {} agarrado {}",
+                        v.footing,
+                        v.facing,
+                        v.velocity[0],
+                        v.velocity[1],
+                        v.air_jumps_left,
+                        u8::from(v.dash_charged),
+                        u8::from(v.ledging),
+                    ),
+                    // ⚠️ **A ausência é o outro readout**, e ela é a linha que
+                    // ensina o toggle: sem `Physics` armado a lei não corre.
+                    None => eprintln!("[player] (a fisica esta' desarmada)"),
+                }
+            }
+        }
         // A joint that gave way announces itself (W-J7). The overlay shows where
         // and that; only the event carries the load it broke at.
         for msg in physics_bridge::break_reports(physics, sim) {

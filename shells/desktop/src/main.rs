@@ -274,6 +274,7 @@ mod physics_smoke_lead;
 mod physics_smoke_ledge;
 mod physics_smoke_multi_jump;
 mod physics_smoke_part;
+mod physics_smoke_out;
 mod physics_smoke_player;
 mod physics_smoke_player_bake;
 mod physics_smoke_player_carry;
@@ -671,6 +672,7 @@ impl App {
             expr_blend_smoke_done: false,
             morph_fade_smoke_done: false,
             nest_smoke_done: false,
+            player_readout_log: None,
             physics_smoke_done: false,
             show_colliders: true,
             onion_ghosts: Vec::new(),

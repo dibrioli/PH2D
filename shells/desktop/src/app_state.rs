@@ -595,6 +595,14 @@ pub(crate) struct App {
     pub(crate) morph_fade_smoke_done: bool,
     pub(crate) nest_smoke_done: bool,
     /// Latch for `PH2D_PHYSICS_SMOKE` (drop-a-sprite-on-a-floor, once).
+    /// **De quem o readout do player é impresso, e a cada meio segundo**
+    /// (`W-PlayerOut` A5) — `None` fora da cena de smoke que o pede.
+    ///
+    /// ⚠️ **Um campo e não uma env var lida por quadro:** quem sabe QUAL
+    /// entidade é o sujeito é a cena que a montou, e re-perguntar ao ambiente
+    /// obrigaria o laço a adivinhar (o primeiro player? o selecionado?) — uma
+    /// segunda resposta para algo que a cena já sabe.
+    pub(crate) player_readout_log: Option<u64>,
     pub(crate) physics_smoke_done: bool,
     /// Draw collider outlines over the canvas. **Default ON**, like Unity's
     /// scene gizmos: a collider is invisible, and an invisible thing you are

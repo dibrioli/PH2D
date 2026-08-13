@@ -107,6 +107,11 @@ impl PhysicsBridge {
         // tick by tick. (Flashes are NOT cleared here — they outlive their tick.)
         self.contact_events.clear();
         self.joint_breaks.clear();
+        // O canal do player tem o MESMO tempo de vida, e pela mesma razão
+        // (`bridge::player_out`). ⚠️ A tabela de VISTAS **não** é limpa aqui:
+        // ela é a memória entre tiques, e um dispatch não é uma descontinuidade
+        // — quem a limpa são as duas que são.
+        self.player_events.clear();
         match target.cmp(&self.last_stepped) {
             // The clock went BACKWARDS — Reset, or a scrub. rapier has no
             // rewind, so replay from the rest state (see `rewind_to`).

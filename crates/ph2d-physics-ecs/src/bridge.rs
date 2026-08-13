@@ -35,6 +35,10 @@ mod kinematic;
 /// A metade PEÇA do reconcile — os colliders extra de um corpo composto.
 pub mod parts;
 mod player;
+/// A SAÍDA do player — o readout contínuo e o canal de transições
+/// (`W-PlayerOut`). Módulo irmão do `player`, cortado por RESPONSABILIDADE: ali
+/// mora *o que a lei decide num tique*, aqui *o que o resto do app pode ler*.
+pub mod player_out;
 pub mod player_view;
 mod pose_owner;
 mod readback;
@@ -429,6 +433,25 @@ pub struct PhysicsBridge {
     /// `(corpo, início, fim, origem do cast)`. Reusado como o `player_probes`,
     /// e pela mesma razão.
     player_probe_anchors: Vec<(RigidBodyHandle, usize, usize, [f32; 2])>,
+
+    /// **O que cada player ESTAVA a fazer no fim do último tique** — o readout
+    /// contínuo (`W-PlayerOut`, ver `bridge::player_out`).
+    ///
+    /// ⚠️ **Ele é também a MEMÓRIA de que o canal de eventos precisa:** uma
+    /// transição é a diferença entre duas vistas consecutivas, e é por esta
+    /// tabela ser reescrita **por TIQUE** — e não por quadro — que um dispatch
+    /// que deve três tiques não perde o pulo do meio.
+    ///
+    /// ⚠️ **Ela é LIMPA nas duas descontinuidades** (scrub e `hold`), pela razão
+    /// exacta que limpa `player_probes` e os contatos: sem passo não há lei, e
+    /// publicar *"no chão, a 4 m/s"* com a física desarmada seria descrever uma
+    /// corrida que acabou.
+    player_views: BTreeMap<Entity, ph2d_platformer::PlayerView>,
+
+    /// **As TRANSIÇÕES deste dispatch** — mesma forma e mesmo tempo de vida que
+    /// `contact_events`, e pela mesma razão: um evento é uma borda, e um
+    /// dispatch pode dever vários tiques.
+    player_events: Vec<(Entity, ph2d_platformer::PlayerEvent)>,
 }
 
 impl Default for PhysicsBridge {
@@ -442,6 +465,8 @@ impl PhysicsBridge {
         Self {
             world: PhysicsWorld::new(),
             player_probes: Vec::new(),
+            player_views: BTreeMap::new(),
+            player_events: Vec::new(),
             player_probe_anchors: Vec::new(),
             bodies: BTreeMap::new(),
             last_stepped: 0,

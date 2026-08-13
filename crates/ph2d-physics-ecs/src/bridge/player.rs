@@ -140,6 +140,20 @@ impl PhysicsBridge {
         // motivo que todas as outras listas: perguntar ao mundo quanto coube toma
         // `&self` e escrever a pose toma `&mut self`.
         let mut moves: Vec<KinMove> = Vec::new();
+        // A SAÍDA deste tique (`W-PlayerOut`, `bridge::player_out`) — colhida
+        // pelo mesmo motivo que todas as listas acima: o laço lê `&self` e a
+        // tabela toma `&mut self`.
+        //
+        // ⚠️ **É AQUI que o canal de eventos nasce, e não num diff de quadro na
+        // shell:** um dispatch pode dever vários tiques, e um pulo que sai e
+        // aterra dentro do mesmo dispatch não teria acontecido. A memória contra
+        // a qual cada tique diferencia é a tabela do tique ANTERIOR, que este
+        // mesmo laço reescreve no fim.
+        let mut views: Vec<(Entity, ph2d_platformer::PlayerView)> = Vec::new();
+        let mut events: Vec<(Entity, ph2d_platformer::PlayerEvent)> = Vec::new();
+        // Reusado por entidade — quase todo tique de quase todo player publica
+        // ZERO eventos, e alocar por isso seria pagar pelo caso que não acontece.
+        let mut ev_scratch: Vec<ph2d_platformer::PlayerEvent> = Vec::new();
         for (&entity, b) in self.bodies.iter() {
             // ⚠️ **Quem escreve a pose deste corpo?** — a porta única do
             // `bridge::pose_owner`, e ela decide DUAS coisas de uma vez: se este
@@ -433,6 +447,16 @@ impl PhysicsBridge {
                 owner.support(),
             );
             states.push((entity, step.state));
+            // ── A SAÍDA (`W-PlayerOut`) ──────────────────────────────────────
+            // A vista é o estado do tique; os eventos, a diferença contra o
+            // anterior. Sem um anterior não há transição a relatar, só uma a
+            // inventar — e é por isso que o `events_between` EXIGE o `before`.
+            ev_scratch.clear();
+            if let Some(before) = self.player_views.get(&entity) {
+                ph2d_platformer::events_between(before, &step, UP, &mut ev_scratch);
+            }
+            events.extend(ev_scratch.iter().map(|e| (entity, *e)));
+            views.push((entity, step.view));
             // ⚠️ **A plataforma é a que o SENSOR viu, e é a mesma consulta que a
             // lei julgou** — o `hit` de que saiu o `one_way` que a fez dizer sim.
             // Uma segunda pergunta ("qual one-way está por perto?") poderia achar
@@ -603,6 +627,12 @@ impl PhysicsBridge {
         // O laço COLHEU; quem APLICA é o irmão `player_kinmove` — ver
         // `Self::apply_kin_moves` para a ordem e o porquê dela.
         self.apply_kin_moves(moves, dt);
+        // ── E A SAÍDA (`bridge::player_out`) ─────────────────────────────────
+        // ⚠️ **POR ÚLTIMO, e a ordem é a lei:** a tabela de vistas é a memória
+        // contra a qual o laço acabou de diferenciar, então reescrevê-la antes
+        // do fim faria os players seguintes deste MESMO tique compararem-se com
+        // uma vista já avançada.
+        self.publish_player_tick(views, events);
     }
 }
 

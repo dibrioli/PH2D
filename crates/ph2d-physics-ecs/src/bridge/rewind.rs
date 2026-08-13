@@ -57,6 +57,9 @@ impl PhysicsBridge {
         // collisions; the rebuild at the end of the dispatch re-baselines in silence.
         self.discard_contact_history();
         self.discard_trigger_history();
+        // E o que o player estava a fazer — a terceira metade da mesma frase
+        // (`bridge::player_out::discard_player_history`).
+        self.discard_player_history();
         // And the tuning high-water marks: a rebuild is where a new RUN begins,
         // so the hardest each joint was pulled describes a run that is over.
         // ⚠️ Deliberately NOT cleared by `hold` — pausing is exactly when the

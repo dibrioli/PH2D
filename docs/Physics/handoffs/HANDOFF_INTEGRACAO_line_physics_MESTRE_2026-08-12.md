@@ -20,8 +20,18 @@
 | branch | `line/physics` |
 | HEAD | **o tip de `line/physics`** ⚠️ ver abaixo |
 | merge-base com `main` | `76788440adbabb0e5b12f8fdafecc6f1e1183e1a` |
-| commits | **65** |
-| diff | 121 arquivos, +22.469 / −1.473 |
+| commits | **67** |
+| diff | 123 arquivos, +23.354 / −1.473 |
+
+⚠️ **Os dois últimos commits são DOCUMENTO, zero código** — a varredura de
+fecho e a **auditoria contra as engines**
+([`09_auditoria_engines.md`](../09_auditoria_engines.md), pedido do Enio: *"o que
+não temos em nosso Player Platform que deveríamos ter"* contra Unity, Godot,
+Unreal e o tnua). Ela é **plano, não implementação**: não toca uma linha de
+`crates/` nem de `shells/`, então **não muda nada nesta tabela de colisão**. O
+que ela acrescenta ao integrador é só isto: *a próxima jornada do player tem uma
+fila escrita, e ela começa por uma FRONTEIRA (o jogador não publica estado nem
+eventos), não por um verbo.*
 
 ⚠️ **Todos são pós-integração de 2026-08-10** (a jornada `W-KinMove` / modo
 cinemático, que já está no `main`). Nada aqui foi entregue antes.

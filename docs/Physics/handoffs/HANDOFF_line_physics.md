@@ -16,6 +16,15 @@
 > [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md).
 > **Seis waves**, as três últimas de REPORT do Enio e não de plano.
 >
+> ⚠️ **AUDITORIA contra as ENGINES (2026-08-12) — plano, zero código:**
+> [`09_auditoria_engines.md`](../09_auditoria_engines.md). O plano 08 fechou o **catálogo de
+> platformer 2D** (19/20); esta olha para os **controladores de personagem** (Unity · Godot ·
+> Unreal · tnua) e acha outro conjunto — **fronteiras**, não verbos. O maior achado: **o jogador
+> não tem SAÍDA** (nem readout de estado, nem eventos), e o canal genérico que existe
+> (`SignalOnHit`) é **estruturalmente cego** ao aterrar sob Spring, porque uma perna flutuante
+> nunca toca no chão. Fila: saída → frear≠acelerar → a superfície fala → teto de queda →
+> empurrão de fora.
+>
 > ⚠️ **`W-LedgeSensor` — o sensor da beirada ganha POSIÇÃO e EXTENSÃO** (pedido do Enio, com
 > pesquisa antes: GDevelop · Corgi · Unreal · hotspots de Sonic). São **QUATRO** controles, e a
 > matriz é a razão de cada um — *posição × tamanho, nos dois eixos*: `Ledge Grab` (X pos) ·

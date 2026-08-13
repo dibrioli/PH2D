@@ -29,6 +29,13 @@ o bake · empuxo/arrasto/trava de fluido.
 
 ## §2 — A pesquisa, confrontada
 
+> ⚠️ **Esta pesquisa é a do CATÁLOGO de platformer 2D, e ela foi fechada.** A
+> auditoria contra os **controladores de personagem das ENGINES** (Unity, Godot,
+> Unreal, e o tnua enquanto referencial declarado) é outra, e vive em
+> [`09_auditoria_engines.md`](09_auditoria_engines.md) — ela traz um conjunto
+> **diferente**: menos verbos e mais **fronteiras** (o que o personagem PUBLICA,
+> o que a superfície lhe diz, o que o mundo lhe pode fazer).
+
 O catálogo que a indústria repete (Godot asset library · o motor 2D do cjddmut ·
 GDevelop · GDQuest · o `bevy_tnua`, que é o **referencial declarado deste
 módulo**) tem **dezoito** itens recorrentes. Confrontados com o censo:

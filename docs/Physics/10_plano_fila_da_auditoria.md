@@ -170,7 +170,48 @@ o readout** a cada meio segundo. ⚠️ *Se a linha do readout não aparecer, pa
 
 ---
 
-## §2 — Wave **C**: o PESO ⟨frear ≠ acelerar⟩
+## §2 — Wave **C**: o PESO ⟨frear ≠ acelerar⟩ ⟨**FECHADA** 2026-08-13⟩
+
+> **FECHOU.** Cena **114**, `PROJECT_SCHEMA` **78→79** (`PlatformPlayer.brake_scale`,
+> ⚠️ **PROVISÓRIO** — o valor se CONTA contra o `main` do dia), `physics_ecs_c9`
+> **byte-idêntico** (`1699123f…`, 117 corpos), **10 mutações, 10 sangram**.
+>
+> ⚠️ **O que a medição mudou no que está escrito abaixo:**
+>
+> * ⛔ **O gate *"`2.0` para em METADE da distância"* está REFUTADO — ele para em
+>   `0,343×`.** A previsão vinha do modelo contínuo (`v²/2a`, onde dobrar `a`
+>   corta a distância ao meio) e a lei não é contínua: o fator de viragem faz `a`
+>   crescer com a sobra, e a paragem inteira cabe em **3 a 5 tiques**, onde quem
+>   manda é o ramo do `boost`. O gate que shipou afirma o que a sonda deu —
+>   monotónica, e o dobro corta **mais** que metade. Tabela (perfil de partida):
+>   `0,25 → 0,8486 m` · `0,50 → 0,3957` · `1,00 → 0,1700` · `2,00 → 0,0583` ·
+>   `4,00 → 0,0000` (um tique).
+> * **O AR ficou de FORA, e o plano não decidia isto.** *"O orçamento"* era
+>   ambíguo entre *o do regime activo* e *o do chão*; quem decide é a
+>   `air_acceleration`, que **já é** a resposta do ar à mesma pergunta (o doc dela
+>   promete que `0` conserva o arco) — um segundo número sobre aquele
+>   comportamento seria a falha de duas portas. Gate próprio
+>   (`the_brake_leaves_the_air_alone`) para ninguém *"completar"* a wave depois.
+> * ⚠️ **A ausência de teto ficou MEDIDA em vez de argumentada:** a lei é
+>   auto-limitada (a sobra que cabe num tique é escrita EXATA, então subir o
+>   número nunca ultrapassa o alvo), e o ponto de saturação é
+>   `speed / (turn·accel·dt)` — **função da config** (4,0 no perfil de partida,
+>   40 na cena de smoke), que é precisamente por que não cabe num `MAX_*`. O teto
+>   de **100** do slider é CONVENIÊNCIA, e o `populate` diz isso.
+> * ⚠️ **A cena autora uma aceleração BAIXA de propósito, e é a wave a morder a
+>   si própria:** com o perfil de partida a paragem inteira mede **17 cm** e a
+>   diferença entre freio 1 e 2 são **onze centímetros** — a cena seria um
+>   contraste que ninguém vê. Com `accel = 8` as três derrapadas medem
+>   **9,26 / 2,95 / 1,43 m**, e o gelo CAI no poço.
+> * ⚠️ **E o clippy pegou um gate que comparava duas CONSTANTES** (*"assertion has
+>   a constant value"*) — reescrito para medir a geometria MONTADA, ele nasceu
+>   **vermelho**: o poço de cada raia passava por baixo do deck da seguinte
+>   (`LANE_SPAN` 26 contra um poço que vai a 28). *Um oráculo que não olha para o
+>   produto não vê o produto.*
+> * **O fn `paint_player_section` cruzou o teto de 200 LOC** com a row nova ⇒
+>   split por responsabilidade (`paint_verbs`: os dois `Fit`, a corrida gravada e
+>   o `Remove` — *o pai decide o que a seção MOSTRA, o filho pinta o que ela FAZ*).
+
 
 **Medido:** `walk()` usa `cfg.acceleration` nos dois sentidos
 (`walk.rs:128-151`). O fator de mudança de direção cobre **inverter** e não

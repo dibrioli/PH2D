@@ -207,6 +207,7 @@ impl crate::App {
             "111" => self.physics_smoke_ledge(),
             "112" => self.physics_smoke_glide(),
             "113" => self.physics_smoke_out(),
+            "114" => self.physics_smoke_brake(),
             _ => self.physics_smoke_drop(),
         }
 

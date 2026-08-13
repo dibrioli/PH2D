@@ -826,8 +826,11 @@ passos laplacianos:
 | 0,50 / 0,53 | 1,000546 | −0,055% | 0,055% |
 | 0,60 / 0,64 | 1,000727 | −0,073% | 0,073% |
 
-**200× menos, e LIMITADO** — o sinal até inverte (sobre-correção clássica da
-banda de passagem), que é o oposto de uma deriva monotônica.
+**200× menos** — e ⚠️ **o *"LIMITADO"* que esta linha dizia era MEU e está
+REFUTADO pela §7.7**: eu deduzi um teto do SINAL ter invertido, e a medição pela
+porta do produto mostra as duas colunas **lineares no número de dabs**. O que
+muda é a inclinação (~87×), não a existência da deriva. *Uma inversão de sinal
+não é um teto.*
 
 ⚠️ **E a escolha do paper muda em relação ao §3, com motivo.** A tabela do §3
 dava ao Smooth o **HC** (Vollmer/Mencl/Müller 1999) e listava o Taubin no §4
@@ -835,9 +838,10 @@ como alternativa. O que a medição e a leitura do nosso kernel dizem:
 
 - **as duas metades do Taubin JÁ SÃO verbos deste motor** — o passo `λ` é o
   Smooth e o passo `μ` é o Sharpen (*"o laplaciano com o sinal trocado"*,
-  `stroke_target.rs:234`). É *uma lei, dois consumidores*, a doutrina desta casa,
-  e o l-mode do Sharpen sai no mesmo movimento (o §4 já lista Taubin para os
-  dois);
+  `stroke_target.rs:234`). É *uma lei, dois consumidores*, a doutrina desta casa
+  — ⚠️ e o *"o l-mode do Sharpen sai no mesmo movimento"* que esta linha dizia
+  **não foi construído, com motivo**: ver a §7.7. O par λ|μ descreve um
+  passa-baixa que não encolhe, e o paper não fala de afiar;
 - **o HC pede estado que este motor não tem**: um vetor `b` POR VÉRTICE e uma
   SEGUNDA passada sobre o anel para a média dele. O `compute_target` é uma função
   pura por-vértice, então o HC exige um buffer de pegada no molde do
@@ -860,6 +864,128 @@ por construção e é o que o gate afirma.
 a razão escrita (*"o `L` é `B` sem o `strength²` — um acidente da tabela vazia"*);
 com o Taubin ele passa a declarar uma lei com paper, ano e critério, e o
 `RefMode::declares` deixa de ser universal para ser **por verbo**.
+
+### §7.7 — ✅ W4 LANDOU: o chip `L` ganha conteúdo, e o Smooth para de encolher (2026-08-12)
+
+O par λ|μ do **Taubin 1995** é o primeiro paper portado, e com ele o `L` deixa
+de ser retido: ele passa a ser oferecido **exatamente** onde declara uma lei.
+
+**O RESULTADO, pela porta do PRODUTO** — o mesmo gesto nos dois modos, medido na
+mesma corrida (`tests/taubin_pair.rs::the_numbers_the_gates_assert`):
+
+| dabs | `S` | `L` |
+|---|---|---|
+| 1 | 0,0908% | **−0,0011%** |
+| 10 | 0,9076% | −0,0104% |
+| 20 | 1,8062% | −0,0206% |
+| 40 | 3,5754% | −0,0409% |
+
+⚠️ **A INCLINAÇÃO cai ~87×, e o resíduo NÃO É LIMITADO — a §7.6 dizia que sim e
+era uma dedução minha.** Eu li o teto no SINAL ter invertido (o `μ` sobre-corrige
+e a esfera CRESCE em vez de encolher); as duas colunas são **lineares no número
+de dabs**, e o que muda é a taxa — `0,0894%/dab` contra `0,00102%/dab`. Alisar
+para sempre ainda deriva: 87 vezes mais devagar, e para o outro lado.
+
+⚠️ **E o par NÃO foi afinado para zerar a coluna nesta esfera.** O `k_PB = 0,1` é
+o do paper e o `μ` é **DERIVADO** dele (`1/λ + 1/μ = k_PB` ⇒ −0,341262); um `μ`
+ajustado até a coluna zerar seria um número ajustado a UMA fixture, que passa a
+mentir na malha seguinte.
+
+**A ÚNICA PARTE ESTRUTURAL — `Brush::passes()`** (`brush_pass.rs`), a porta única
+de *quantas vezes o laço do dab roda e com que fator*. Três propriedades:
+
+- **um dab é um PAR** — se o λ e o μ se alternassem por DAB, um gesto de um
+  clique (o *Filter Layer*) seria `λ` puro e encolheria como o `S` com um terço
+  da força. O gate mede o gesto **mais curto** que existe, que é onde as duas
+  leituras mais divergem;
+- **o passe 0 define o CONJUNTO; os seguintes percorrem ELE** — não é
+  conveniência: o `μ` existe para desfazer a contração do `λ`, então tem de
+  alcançar exatamente quem o `λ` moveu. É também o que mantém a janela publicada
+  (o que a GPU re-lê) sendo um SUPERCONJUNTO do que foi escrito;
+- **todo pincel que não é o `L` do Smooth devolve EXATAMENTE um passe — ele
+  próprio, fator `1.0`** ⇒ o resto do motor é **byte-idêntico por construção**
+  (`x * 1.0 == x` no IEEE-754). A prova de que o plumbing não moveu nada são os
+  **166 gates** da crate, que passam sem uma linha de fixture mudada.
+
+⚠️ **O FATOR DO PASSE entra depois dos dois guards**, e a ordem é o que mantém a
+byte-identidade: o `w <= 0.0` pergunta *"este dab tem alguma coisa a dar?"*, uma
+grandeza SEM sinal — aplicado antes, o passe `μ` seria pulado em toda parte e o
+par nunca rodaria (mutação M4, sangra).
+
+**O `RefMode::declares` deixou de ser universal e passou a ser POR VERBO.**
+
+⚠️ **Ele é ESCRITO e não derivado de `passes().len() > 1`, e eu escrevi a
+derivada primeiro:** ela é elegante, casa hoje, e é **falsa em geral** — o
+Kelvinlets da W5 é um campo de deslocamento de **um** passe, e sob a derivada o
+chip dele nasceria mudo com todos os gates verdes. *Fazer dois passes* e
+*declarar uma lei* são perguntas diferentes que hoje têm a mesma resposta; o gate
+`the_literature_mode_is_offered_exactly_where_it_declares_a_law` pina a
+coincidência, e o dia em que ela cair é o dia em que alguém tem de vir aqui
+decidir.
+
+⚠️ **O SHARPEN fica FORA, revogando o que a §7.6 previa.** Ela dizia *"o l-mode
+do Sharpen sai no mesmo movimento"*; o par descreve um passa-baixa que **não
+encolhe**, e o Taubin não diz nada sobre afiar. Dar-lhe o par seria pôr o nome de
+uma fonte numa lei que ela não declara — o chip mentiroso que o `declares` existe
+para impedir.
+
+⚠️ **A `KernelLaw` do `L` deixou de ser FALLBACK à do `B`.** Ela declara
+`FrontFace::Ignored` — o Taubin é um filtro de MALHA e não sabe onde está a
+câmera —, e é isso que faz `S → L` mudar **uma** coisa só: o par. Herdar o
+`Continuous` do `B` faria o chip mudar duas coisas de uma vez, e o artista não
+teria como separá-las na tela. Os outros dois eixos (`lateral`, `plane`) são
+**inalcançáveis por construção** e trazem os valores do `S`; o gate da
+bi-implicação é o que torna impossível passar em silêncio no dia em que o `L`
+declarar um verbo de plano.
+
+⚠️ **E a porta "aplicar a todos" era a ÚNICA capaz de pôr um modo onde ele não
+tem lei.** Enquanto os três modos respondiam por todo verbo ela era um `fill` e
+ninguém notava; com o `L` declarando só o Smooth, carimbá-lo em todos deixaria
+quinze verbos rodando uma lei de literatura que não fala deles — **com o chip a
+mostrar `S`**, porque o painel pinta os OFERECIDOS. Ela agora só alcança quem
+declara, e onde não alcança **PRESERVA** em vez de repor um default.
+
+⚠️ **UMA DEFESA INERTE, dita em vez de afirmada ao contrário.** O
+`refresh_region` roda **por passe**, e o comentário que eu escrevi primeiro dizia
+que *"o passe seguinte relaxaria contra a vizinhança de antes"* — FALSO: a média
+do anel lê `mesh.positions()`, que o `apply_positions` já escreveu. Quem o
+refresh conserta são as NORMAIS, e o par não as lê (o `L` declara `Ignored`, então
+`facing` vale `1.0` exato nos dois passes). Ela fica porque o dia em que um modo
+declarar `Continuous` **e** mais de um passe, o passe seguinte pesaria pela normal
+de antes do anterior — um erro que não falha, escurece um anel na borda do pincel
+e ninguém sabe por quê.
+
+**O PREÇO, medido:** `0,848 → 1,466 ms/dab` na esfera de 8192 vértices
+(`what_the_pair_costs`) — **1,73× e não 2×**, porque a consulta da pegada, a
+captura e o ajuste do plano acontecem UMA vez por dab. Fica com folga sob o kill
+K1 do ADR-0150.
+
+**Gates: 4 novos em `tests/taubin_pair.rs` + 2 reescritos em `ref_mode_tests.rs`
++ 1 de seam. 6 mutações, 6 sangram** (o par vira um passe ⇒ 6 gates · o passe
+único deixa de ser identidade ⇒ 4 gates EXISTENTES do motor · passes posteriores
+empurram para a janela · o fator antes do guard · o `L` declara tudo · o carimbo
+volta a ser `fill`).
+
+⚠️ **E o gate da duplicata tinha um discriminante FALSO que eu escrevi primeiro:**
+ele comparava `verb.profile(a) != verb.profile(b)`, e o `VerbProfile` carrega
+quatro campos que **nenhum caminho lê pelo modo corrente** — os defaults são
+sempre armados da coluna `S`. `S` e `L` no Smooth têm perfis diferentes, e essa
+diferença **não move um vértice**: o gate teria ficado verde por um discriminante
+que não é o da feature. Ele passou a comparar a **assinatura observável**
+(`KernelLaw` · curva de força · passes).
+
+**LOC:** `stroke.rs` cruzou 700 (754) ⇒ corte por ASSUNTO em `stroke_windows.rs`
+(*o que um traço FAZ* × *o que se PERGUNTA a ele* — as sete janelas publicadas),
+671 + 104. **Filho e não irmão**, pela mesma conta do `stroke_apply.rs`: elas leem
+os planos privados, e um irmão os obrigaria a virar `pub(crate)` — a visibilidade
+viraria função do TAMANHO do arquivo.
+
+**Sem schema, sem ADR, sem crate nova, sem dep nova, sem id novo.**
+
+⚠️ **PENDENTE DE SMOKE.** A pergunta é de OLHO e tem controle: pegue o **Smooth**,
+alterne o chip **S ↔ L** e alise a mesma região muitas vezes. No `S` a forma
+**encolhe** sob o pincel; no `L` ela alisa e **fica onde está**. O `L` não aparece
+em nenhuma outra ferramenta — se aparecer, pare.
 
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 

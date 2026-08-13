@@ -2,6 +2,7 @@
 //! segunda porta, e que nenhum chip morto pode nascer dela.
 
 use super::*;
+use crate::{Brush, Pass};
 
 /// **A coluna `S` é o que o SculptGL declara**, tool a tool, com arquivo e linha.
 ///
@@ -329,29 +330,47 @@ fn the_mode_reaches_the_clay() {
     );
 }
 
+/// **A ASSINATURA OBSERVÁVEL de um modo sobre um verbo** — tudo o que o artista
+/// pode ver mudar ao trocar o chip, e nada além.
+///
+/// ⚠️ **Ela existe porque a comparação óbvia é FALSA, e eu a escrevi primeiro:**
+/// o gate comparava `verb.profile(a) != verb.profile(b)`, e o [`VerbProfile`]
+/// carrega quatro campos (falloff, força, fração de raio, accumulate) que
+/// **NENHUM caminho lê pelo modo corrente** — os defaults são armados da coluna
+/// `S`, sempre (`the_factory_strength_is_the_table_and_nothing_else`). Ou seja:
+/// `S` e `L` no Smooth têm perfis diferentes, e essa diferença **não move um
+/// vértice**. O gate teria ficado verde por um discriminante que não é o da
+/// feature.
+///
+/// O que de fato alcança o barro são três coisas: a [`KernelLaw`], a curva que
+/// traduz o slider em peso, e **quantos passes o dab faz**.
+fn signature(verb: Verb, mode: RefMode) -> (KernelLaw, StrengthCurve, &'static [Pass]) {
+    let brush = Brush {
+        verb,
+        mode,
+        ..Brush::default()
+    };
+    let curve = verb
+        .profile(mode)
+        .map_or(StrengthCurve::Linear, |p| p.strength_curve);
+    (mode.kernel(), curve, brush.passes())
+}
+
 /// **UM CHIP EXISTE SE E SOMENTE SE O MODO EXISTE** — a lei §3 do plano, agora
 /// com a porta que o painel pergunta.
 ///
-/// ⚠️ O `L` **não** é oferecido, e a razão não é *"ainda não implementamos"*:
-/// é que ele é uma **DUPLICATA observável** do `B` (mesmo perfil — nenhum — e
-/// mesma [`KernelLaw`] ao campo). Um chip que produz exatamente o que o vizinho
-/// produz é um botão que não faz nada, e o artista descobre isso clicando.
+/// ⚠️ Um chip que produz exatamente o que o vizinho produz é um botão que não
+/// faz nada, e o artista descobre isso clicando. A propriedade é escrita sobre
+/// a [`signature`], não enumerada.
 #[test]
 fn a_mode_is_offered_only_where_it_is_not_a_duplicate_of_an_earlier_one() {
     for verb in Verb::ALL {
         let offered: Vec<RefMode> = RefMode::offered_for(verb).collect();
-        assert_eq!(
-            offered,
-            vec![RefMode::S, RefMode::B],
-            "{}: hoje o L duplica o B",
-            verb.label()
-        );
-        // A propriedade que o `L` VIOLA hoje, escrita em vez de enumerada: dois
-        // modos oferecidos nunca produzem o mesmo par (perfil, lei).
         for (i, a) in offered.iter().enumerate() {
             for b in offered.iter().skip(i + 1) {
-                assert!(
-                    a.kernel() != b.kernel() || verb.profile(*a) != verb.profile(*b),
+                assert_ne!(
+                    signature(verb, *a),
+                    signature(verb, *b),
                     "{}: {} e {} são o mesmo modo",
                     verb.label(),
                     a.label(),
@@ -362,42 +381,79 @@ fn a_mode_is_offered_only_where_it_is_not_a_duplicate_of_an_earlier_one() {
     }
 }
 
-/// **A RAZÃO DE O `L` NÃO SER OFERECIDO, escrita como asserção.**
+/// **A LITERATURA É OFERECIDA EXATAMENTE ONDE ELA DECLARA UMA LEI** — a
+/// bi-implicação, nas duas direções.
 ///
-/// ⚠️ Ela não é *"ele duplicaria o `B`"* — e eu escrevi isso primeiro. Medido:
-/// o `profile_l` devolve `None`, então a [`StrengthCurve`] dele cai no `Linear`
-/// do `SILENT` enquanto a do `B` é `Squared` ⇒ **o `L` já significa alguma
-/// coisa hoje: `B` sem o `strength²`.** E essa coisa **não é literatura** — é um
-/// acidente da tabela vazia.
+/// ⚠️ **Ele SUBSTITUI o `the_l_mode_is_withheld_because_nothing_of_its_own_was_built_yet`,
+/// que era o mesmo gate com a resposta do outro lado** — e é o gate a funcionar,
+/// não a falhar: ele foi escrito para **cobrar a decisão** no dia em que o `L`
+/// ganhasse conteúdo, e a W4 é esse dia. O que aquele pinava (nenhum perfil ·
+/// kernel por fallback · chip retido) descrevia um estado que acabou.
 ///
-/// ⇒ O que este gate pina são os DOIS fatos que tornam o chip prematuro: ele
-/// não tem perfil de verbo nenhum, e a `kernel()` dele é um FALLBACK à do `B`.
-/// No dia em que qualquer um dos dois deixar de valer, este gate cai e cobra a
-/// decisão em vez de deixar o chip aparecer sozinho — ou não aparecer.
+/// ⚠️ **As duas metades são necessárias e nenhuma implica a outra:**
+///
+/// - *oferecido ⇒ declara* — sem ela, um chip aparece e não faz nada;
+/// - *declara ⇒ oferecido* — sem ela, o par λ|μ existe no kernel e **não tem
+///   como ser escolhido**, que é a feature invisível. Foi exatamente o estado
+///   em que o `L` viveu três waves.
+///
+/// ⚠️ **E a coincidência que ele pina é TEMPORÁRIA, de propósito:** hoje
+/// *declarar uma lei* e *fazer mais de um passe* têm a mesma resposta, porque a
+/// única literatura portada é o Taubin. O Kelvinlets da W5 é um campo de
+/// deslocamento de **um** passe — no dia em que ele chegar, este gate cai e
+/// obriga quem o traz a vir aqui dizer o que passou a ser o discriminante, em
+/// vez de deixar o [`RefMode::declares`] ser derivado de um acidente.
 #[test]
-fn the_l_mode_is_withheld_because_nothing_of_its_own_was_built_yet() {
-    // 1. Nenhum perfil por verbo.
+fn the_literature_mode_is_offered_exactly_where_it_declares_a_law() {
+    let mut declared = Vec::new();
     for verb in Verb::ALL {
-        assert!(
-            verb.profile(RefMode::L).is_none(),
-            "{}: o L ganhou perfil — o chip precisa de decisão",
+        let offered = RefMode::offered_for(verb).any(|m| m == RefMode::L);
+        let brush = Brush {
+            verb,
+            mode: RefMode::L,
+            ..Brush::default()
+        };
+        let has_law = brush.passes().len() > 1;
+        assert_eq!(
+            offered,
+            has_law,
+            "{}: o chip L e a lei dele discordam",
             verb.label()
         );
+        if offered {
+            declared.push(verb.label());
+        }
     }
-    // 2. Nenhuma lei de kernel própria: a dele é a do `B`, ao campo.
+    // O CENSO: uma wave que dê conteúdo ao `L` noutro verbo tem de vir aqui
+    // dizer o número novo. Um paper que aparece sem passar por esta linha é um
+    // chip que nasceu sem ninguém decidir que ele devia nascer.
+    assert_eq!(declared, vec!["Smooth"], "a literatura portada até hoje");
+}
+
+/// **O `L` DECLARA UMA LEI PRÓPRIA, e ela não é a de nenhum vizinho.**
+///
+/// ⚠️ **A [`KernelLaw`] dele coincide com a do `S` ao campo, e isso é uma
+/// DECLARAÇÃO e não uma herança** — o Taubin é um filtro de malha e não sabe
+/// onde está a câmera, então `front_face: Ignored` é o que o paper diz. É por
+/// isso que a assinatura dos dois **ainda difere**: o discriminante é o par
+/// λ|μ, e é ele que este gate obriga a existir.
+#[test]
+fn the_literature_law_differs_from_its_neighbours_only_where_the_paper_speaks() {
+    // A única diferença observável entre `S` e `L` no Smooth é o par de passes
+    // — é isso que o chip promete, e mais nada viaja de carona.
     assert_eq!(
         RefMode::L.kernel(),
-        RefMode::B.kernel(),
-        "o L ganhou lei própria — o chip precisa de decisão"
+        RefMode::S.kernel(),
+        "o L não pode arrastar um portão de face que o paper não menciona"
     );
-    // 3. E o acidente que o tornaria um chip MENTIROSO se fosse oferecido: sem
-    //    perfil, a curva de força dele difere da do `B`.
     assert_ne!(
         RefMode::L.kernel(),
-        RefMode::S.kernel(),
-        "o L herda o kernel do B, não o do S"
+        RefMode::B.kernel(),
+        "o L deixou de ser o fallback à lei do B na W4"
     );
-    for verb in Verb::ALL {
-        assert!(!RefMode::L.declares(verb), "{}", verb.label());
-    }
+    assert_ne!(
+        signature(Verb::Smooth, RefMode::S),
+        signature(Verb::Smooth, RefMode::L),
+        "sem o par λ|μ o chip L seria o S com outro nome"
+    );
 }

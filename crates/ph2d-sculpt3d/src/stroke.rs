@@ -150,93 +150,6 @@ impl SculptStroke {
         (fit.point, fit.normal)
     }
 
-    /// Os vértices que este traço tocou — **a janela do undo**.
-    #[must_use]
-    pub fn touched(&self) -> &[u32] {
-        &self.touched
-    }
-
-    /// As posições de antes do traço, na ordem de [`Self::touched`] — **o
-    /// estado anterior do undo**. Não há um segundo sistema a construir: o
-    /// congelamento que a lei exige já É a entrada de undo.
-    #[must_use]
-    pub fn base_positions(&self) -> &[[f32; 3]] {
-        &self.base_pos
-    }
-
-    /// As máscaras de antes do traço, na ordem de [`Self::touched`].
-    #[must_use]
-    pub fn base_masks(&self) -> &[f32] {
-        &self.base_mask
-    }
-
-    /// Os vértices que o ÚLTIMO [`Self::dab`] de fato moveu — **todas as cópias
-    /// de espelho dele**, e não a última.
-    ///
-    /// ⚠️ *"O último dab"* é a CHAMADA, e a diferença já custou um smoke: com o
-    /// espelho armado a chamada aplica de duas a oito cópias, e publicar a
-    /// última é publicar o reflexo do que o artista fez. O tamanho desta lista é
-    /// exatamente o número que [`Self::dab`] devolve — se os dois divergirem,
-    /// dois chamadores do mesmo dab discordam sobre ele.
-    #[must_use]
-    pub fn last_moved(&self) -> &[u32] {
-        &self.call_moved
-    }
-
-    /// Os vértices que o último dab deixou **obsoletos na GPU** — a janela do
-    /// upload incremental.
-    ///
-    /// ⚠️ **É um SUPERCONJUNTO de [`Self::last_moved`], e confundir os dois é um
-    /// defeito visível.** Mover um vértice muda a normal de todo vizinho que
-    /// compartilha uma face com ele, mesmo que o vizinho não tenha andado —
-    /// `refresh_region` já os conserta na CPU, e subir só os movidos deixa a
-    /// malha iluminada por normais velhas numa faixa de um anel de largura, bem
-    /// na BORDA do pincel. Um gate de GPU pegou isto comparando o quadro
-    /// incremental com o quadro do upload cheio.
-    #[must_use]
-    pub fn last_refreshed(&self) -> &[u32] {
-        &self.call_refreshed
-    }
-
-    /// Os vértices que a GPU precisa **RE-LER** depois do último dab, em
-    /// QUALQUER canal — a janela do upload incremental.
-    ///
-    /// ⚠️ **Não é o mesmo que [`Self::last_refreshed`], e a diferença é uma
-    /// feature inteira.** Aquele responde *de quem eu recomputei a NORMAL*, e um
-    /// traço de máscara não move geometria: ele escreve o canal de máscara e
-    /// **esquece a região de propósito**. Um chamador que subisse `refreshed`
-    /// não subiria byte nenhum de um traço de Mask — a máscara ficaria invisível
-    /// na GPU, agora por um segundo motivo, com todos os gates de CPU verdes.
-    ///
-    /// Os dois casos são exclusivos por construção (o dab ou pinta máscara, ou
-    /// move geometria), então a resposta é uma escolha e nunca uma união.
-    #[must_use]
-    pub fn last_gpu_dirty(&self) -> &[u32] {
-        if self.last_paints_mask {
-            &self.call_moved
-        } else {
-            &self.call_refreshed
-        }
-    }
-
-    /// Bytes segurados. A sonda de memória o soma: o custo do GESTO não pode
-    /// ficar fora da conta só por ser transitório.
-    #[must_use]
-    pub fn capacity_bytes(&self) -> usize {
-        let v3 = size_of::<[f32; 3]>();
-        (self.slot.capacity() + self.stamp.capacity()) * size_of::<u32>()
-            + (self.touched.capacity()
-                + self.footprint.capacity()
-                + self.moved.capacity()
-                + self.call_moved.capacity()
-                + self.call_refreshed.capacity())
-                * size_of::<u32>()
-            + (self.base_pos.capacity() + self.base_nrm.capacity() + self.target.capacity()) * v3
-            + (self.base_mask.capacity() + self.accum.capacity()) * size_of::<f32>()
-            + self.query.capacity_bytes()
-            + self.region.capacity_bytes()
-    }
-
     /// Aplica um dab, **com a simetria expandida aqui e em lugar nenhum mais**.
     ///
     /// Devolve quantos vértices se moveram. As cópias espelhadas caem no mesmo
@@ -421,188 +334,261 @@ impl SculptStroke {
             self.footprint.len()
         };
 
-        for i in 0..work {
-            let v = if frozen {
-                self.touched[i]
-            } else {
-                self.footprint[i]
-            };
-            let vi = v as usize;
-            let s = self.slot[vi] as usize;
-            let base = self.base_pos[s];
-            // ⚠️ **De ONDE se mede a distância, e as duas respostas são certas
-            // para leis diferentes.** No envelope o peso tem de ser função do
-            // estado CONGELADO: se ele fosse recomputado sobre a superfície que
-            // o próprio traço moveu, dois dabs no mesmo lugar dariam pesos
-            // diferentes e a idempotência — a propriedade que o envelope existe
-            // para dar — cairia junto.
-            //
-            // No revezamento é o oposto, e é o que faz um espinho ser um
-            // espinho: a pegada ANDA, e um vértice que já foi arrastado para
-            // perto do novo centro **tem** de continuar sendo arrastado. Medido
-            // pelo `base`, esse mesmo vértice ficaria com peso ~0 (o `pre` dele
-            // está lá atrás), a ponta pararia de crescer e o gesto viraria um
-            // Grab com centro móvel. `Drag.js:99` lê `vAr[ind]`, a posição viva.
-            //
-            // A pegada (`verts_in_sphere`) já sai das posições vivas nos dois
-            // casos, então no revezamento pegada e peso concordam.
-            let from = if from_live {
-                mesh.positions()[vi]
-            } else {
-                base
-            };
-            let d = [
-                from[0] - dab.center[0],
-                from[1] - dab.center[1],
-                from[2] - dab.center[2],
-            ];
-            let dist = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
-            // A máscara é lida do estado CONGELADO: um traço de Mask não pode
-            // mudar o quanto ele próprio já mascarou no meio do gesto.
-            let keep = if gated_by_mask {
-                crate::mask_ops::free_weight(self.base_mask[s])
-            } else {
-                1.0
-            };
-            // ⚠️ **O alpha multiplica o FALLOFF, e é lido na posição CONGELADA.**
-            //
-            // No falloff porque é onde ele pertence: o `shape` logo abaixo — o
-            // que o Crease eleva à quinta — é `curva × máscara`, e no original o
-            // expoente cai sobre `curva × máscara × alpha`. Multiplicar o `w` já
-            // formado deixaria o padrão de fora do expoente, e o verbo afiaria a
-            // máscara sem afiar o padrão.
-            //
-            // Na posição congelada porque é o que faz o padrão sobreviver ao
-            // ENVELOPE. Um vértice cai sob dezenas de dabs (o espaçamento é
-            // `0,15·r`); lido na posição VIVA, cada dab veria um valor diferente
-            // — o próprio traço move a superfície — e o `max` tomaria o maior de
-            // dezenas de amostras, LAVANDO o padrão até a envoltória superior
-            // dele: o pincel ficaria mais forte, não texturizado. Lido no `pre`,
-            // todos os dabs concordam sobre aquele vértice, e o `max` de valores
-            // iguais é o valor. É a mesma frase que a distância já obedece três
-            // parágrafos acima.
-            // ⚠️ **O CANAL TEM CURVA PRÓPRIA, e ela é da referência.** As dez
-            // tools de geometria do original multiplicam pela quártica; o
-            // `Masking.paint` usa `(1 − d)^{2(1 − hardness)}`
-            // (`Masking.js:66-69`), que é uma família CONTÍNUA com um knob —
-            // ver [`Brush::mask_weight`]. Perguntar ao [`Falloff`] aqui media
-            // uma tool contra a curva de outra, e é literalmente o *"cada tool
-            // deve ter seu falloff apropriado"* que o pedido nomeia.
-            // ⚠️ **A DUREZA entra AQUI, antes de qualquer curva** — é a ordem
-            // do original (`apply_hardness_to_distances` roda antes do
-            // `BKE_brush_calc_curve_factors`), e é o que faz as duas curvas
-            // abaixo lerem a MESMA distância. Com `hardness = 0`, o default,
-            // ela devolve o argumento sem tocar num bit.
-            let t = brush.shaped_distance(dist * inv_r);
-            let curve = if brush.verb.paints_mask() {
-                brush.mask_weight(t)
-            } else {
-                brush.falloff.weight(t)
-            };
-            // ⚠️ **O FRONT-FACE entra no FATOR, e é aqui que ele pertence** —
-            // o `sculpt.cc:7283-7295` faz `factors[i] *= max(dot, 0)`, e o
-            // `fall` é o nosso `factors` (ele alimenta o `w` E o `shape`). O
-            // filtro BINÁRIO do `fit_plane_over` é outro consumidor e continua
-            // onde está: um pesa o dab, o outro pesa a ESTIMATIVA DO PLANO.
-            //
-            // ⚠️ **O sinal:** o [`Dab::eye`] aponta *do olho para a superfície*,
-            // então um vértice de frente tem `n · eye` NEGATIVO — o `max(dot,0)`
-            // do original vira `max(−dot, 0)` aqui. Trocar o sinal daria um
-            // pincel que só pega o que está de costas, e o gate mede a
-            // SILHUETA justamente porque no miolo os dois são indistinguíveis.
-            let facing = match brush.mode.kernel().front_face {
-                crate::FrontFace::Ignored => 1.0,
-                crate::FrontFace::Continuous => {
-                    let n = mesh.normals()[vi];
-                    (-(n[0] * dab.eye[0] + n[1] * dab.eye[1] + n[2] * dab.eye[2])).max(0.0)
+        // ⚠️ **UM DAB PODE SER MAIS DE UM PASSE, e a tabela é a porta única**
+        // ([`Brush::passes`]). Todo pincel que não é o `L` do Smooth devolve
+        // **exatamente um** passe de fator `1.0`, e `x * 1.0 == x` no IEEE-754
+        // ⇒ o resto do motor é byte-idêntico **por construção**, não por
+        // promessa.
+        //
+        // ⚠️ **É a única parte ESTRUTURAL da W4, e sem ela o par não existe:**
+        // um traço de `N` dabs seria `N` passos `λ` sem nenhum `μ`, e o `L`
+        // encolheria exatamente como o `S` — a feature ficaria verde nos gates
+        // de unidade e morta no barro.
+        //
+        // ⚠️ **O PASSE 0 DEFINE O CONJUNTO; os seguintes percorrem ELE.** É a
+        // leitura correta do par, não uma conveniência: o passo `μ` existe para
+        // desfazer a contração do passo `λ`, então ele tem de alcançar
+        // exatamente os vértices que o `λ` moveu — um vértice que recebesse só
+        // o `λ` guardaria o encolhimento para sempre. E é também o que mantém a
+        // janela publicada (`moved`) sendo um SUPERCONJUNTO do que foi escrito:
+        // o guard depende do peso, que num passe posterior pode ter mudado (a
+        // distância sai da posição VIVA sob Accumulate), e publicar a lista do
+        // ÚLTIMO passe deixaria fora um vértice que o primeiro sujou.
+        //
+        // ⚠️ Um vértice pulado por um passe posterior não fica meio-escrito: o
+        // `target`/`accum` dele guardam o que o passe anterior decidiu, e o
+        // aplicador reescreve o MESMO valor sobre a posição que já o tem — um
+        // no-op, não um passo perdido.
+        let passes = brush.passes();
+        for (pi, pass) in passes.iter().enumerate() {
+            let first = pi == 0;
+            let count = if first { work } else { self.moved.len() };
+            for i in 0..count {
+                let v = if first {
+                    if frozen {
+                        self.touched[i]
+                    } else {
+                        self.footprint[i]
+                    }
+                } else {
+                    self.moved[i]
+                };
+                let vi = v as usize;
+                let s = self.slot[vi] as usize;
+                let base = self.base_pos[s];
+                // ⚠️ **De ONDE se mede a distância, e as duas respostas são certas
+                // para leis diferentes.** No envelope o peso tem de ser função do
+                // estado CONGELADO: se ele fosse recomputado sobre a superfície que
+                // o próprio traço moveu, dois dabs no mesmo lugar dariam pesos
+                // diferentes e a idempotência — a propriedade que o envelope existe
+                // para dar — cairia junto.
+                //
+                // No revezamento é o oposto, e é o que faz um espinho ser um
+                // espinho: a pegada ANDA, e um vértice que já foi arrastado para
+                // perto do novo centro **tem** de continuar sendo arrastado. Medido
+                // pelo `base`, esse mesmo vértice ficaria com peso ~0 (o `pre` dele
+                // está lá atrás), a ponta pararia de crescer e o gesto viraria um
+                // Grab com centro móvel. `Drag.js:99` lê `vAr[ind]`, a posição viva.
+                //
+                // A pegada (`verts_in_sphere`) já sai das posições vivas nos dois
+                // casos, então no revezamento pegada e peso concordam.
+                let from = if from_live {
+                    mesh.positions()[vi]
+                } else {
+                    base
+                };
+                let d = [
+                    from[0] - dab.center[0],
+                    from[1] - dab.center[1],
+                    from[2] - dab.center[2],
+                ];
+                let dist = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+                // A máscara é lida do estado CONGELADO: um traço de Mask não pode
+                // mudar o quanto ele próprio já mascarou no meio do gesto.
+                let keep = if gated_by_mask {
+                    crate::mask_ops::free_weight(self.base_mask[s])
+                } else {
+                    1.0
+                };
+                // ⚠️ **O alpha multiplica o FALLOFF, e é lido na posição CONGELADA.**
+                //
+                // No falloff porque é onde ele pertence: o `shape` logo abaixo — o
+                // que o Crease eleva à quinta — é `curva × máscara`, e no original o
+                // expoente cai sobre `curva × máscara × alpha`. Multiplicar o `w` já
+                // formado deixaria o padrão de fora do expoente, e o verbo afiaria a
+                // máscara sem afiar o padrão.
+                //
+                // Na posição congelada porque é o que faz o padrão sobreviver ao
+                // ENVELOPE. Um vértice cai sob dezenas de dabs (o espaçamento é
+                // `0,15·r`); lido na posição VIVA, cada dab veria um valor diferente
+                // — o próprio traço move a superfície — e o `max` tomaria o maior de
+                // dezenas de amostras, LAVANDO o padrão até a envoltória superior
+                // dele: o pincel ficaria mais forte, não texturizado. Lido no `pre`,
+                // todos os dabs concordam sobre aquele vértice, e o `max` de valores
+                // iguais é o valor. É a mesma frase que a distância já obedece três
+                // parágrafos acima.
+                // ⚠️ **O CANAL TEM CURVA PRÓPRIA, e ela é da referência.** As dez
+                // tools de geometria do original multiplicam pela quártica; o
+                // `Masking.paint` usa `(1 − d)^{2(1 − hardness)}`
+                // (`Masking.js:66-69`), que é uma família CONTÍNUA com um knob —
+                // ver [`Brush::mask_weight`]. Perguntar ao [`Falloff`] aqui media
+                // uma tool contra a curva de outra, e é literalmente o *"cada tool
+                // deve ter seu falloff apropriado"* que o pedido nomeia.
+                // ⚠️ **A DUREZA entra AQUI, antes de qualquer curva** — é a ordem
+                // do original (`apply_hardness_to_distances` roda antes do
+                // `BKE_brush_calc_curve_factors`), e é o que faz as duas curvas
+                // abaixo lerem a MESMA distância. Com `hardness = 0`, o default,
+                // ela devolve o argumento sem tocar num bit.
+                let t = brush.shaped_distance(dist * inv_r);
+                let curve = if brush.verb.paints_mask() {
+                    brush.mask_weight(t)
+                } else {
+                    brush.falloff.weight(t)
+                };
+                // ⚠️ **O FRONT-FACE entra no FATOR, e é aqui que ele pertence** —
+                // o `sculpt.cc:7283-7295` faz `factors[i] *= max(dot, 0)`, e o
+                // `fall` é o nosso `factors` (ele alimenta o `w` E o `shape`). O
+                // filtro BINÁRIO do `fit_plane_over` é outro consumidor e continua
+                // onde está: um pesa o dab, o outro pesa a ESTIMATIVA DO PLANO.
+                //
+                // ⚠️ **O sinal:** o [`Dab::eye`] aponta *do olho para a superfície*,
+                // então um vértice de frente tem `n · eye` NEGATIVO — o `max(dot,0)`
+                // do original vira `max(−dot, 0)` aqui. Trocar o sinal daria um
+                // pincel que só pega o que está de costas, e o gate mede a
+                // SILHUETA justamente porque no miolo os dois são indistinguíveis.
+                let facing = match brush.mode.kernel().front_face {
+                    crate::FrontFace::Ignored => 1.0,
+                    crate::FrontFace::Continuous => {
+                        let n = mesh.normals()[vi];
+                        (-(n[0] * dab.eye[0] + n[1] * dab.eye[1] + n[2] * dab.eye[2])).max(0.0)
+                    }
+                };
+                let fall = curve * brush.alpha_weight(base, &alpha_frame) * facing;
+                // ⚠️ **O `w` fica VERBATIM — mesma ordem, mesmos bits.** A forma
+                // "natural" seria derivar um do outro (`w = shape * intensity`), e
+                // ela **re-associa** o produto de `(falloff × intensity) × keep`
+                // para `(falloff × keep) × intensity`: medido, **30,4% dos triplos
+                // divergem**, até ~1 ulp. Em `keep == 1.0` EXATO — o caso comum,
+                // porque `DEFAULT_MASK` é 0 — a divergência é ZERO, mas o preço de
+                // não arriscar os doze verbos é **uma multiplicação**.
+                let w = fall * intensity * keep;
+                // A metade SEM intensidade: é ela que o Crease eleva, porque no
+                // original o expoente cai sobre `curva × máscara × alpha` e a
+                // intensidade entra depois, linear nos dois termos.
+                let shape = fall * keep;
+                // `<=` e não `<`: um dab que EMPATA não vence. A diferença não é de
+                // resultado (o alvo recomputado seria o mesmo) — é de TRABALHO: com
+                // `<`, re-carimbar a mesma lista de dabs reescreveria a pegada
+                // inteira e a mandaria para o refit do octree e para o upload
+                // incremental, todo frame, sem um pixel mudar.
+                // ⚠️ **Quem tem ÂNCORA não pode ser freado pelo early-out**: a
+                // pegada dos três é presa no pen-down (ou o `accum` deles vale 1),
+                // então o peso de cada vértice nunca mais sobe. Sem esta exceção o
+                // barro andaria UM evento e pararia, com o cursor seguindo em frente
+                // — e o que mudou não é o peso, é o gesto. Ver a tabela dos grips.
+                // ⚠️ **Peso zero não é um dab: ele não tem nada a dar.** Para os
+                // doze verbos de carimbo isto já saía do early-out abaixo (`0 <= 0`)
+                // e é redundante; para os que têm âncora ele é a linha que os mantém
+                // corretos, porque eles **dispensam** aquele early-out. Sem ela, um
+                // vértice de peso zero levaria `accum ← 0` e `target ← base`, e o
+                // dab seguinte de um Grab **desfaria** o que a cópia espelhada
+                // acabou de fazer — as duas cópias compartilham o `touched`.
+                if w <= 0.0 {
+                    continue;
                 }
-            };
-            let fall = curve * brush.alpha_weight(base, &alpha_frame) * facing;
-            // ⚠️ **O `w` fica VERBATIM — mesma ordem, mesmos bits.** A forma
-            // "natural" seria derivar um do outro (`w = shape * intensity`), e
-            // ela **re-associa** o produto de `(falloff × intensity) × keep`
-            // para `(falloff × keep) × intensity`: medido, **30,4% dos triplos
-            // divergem**, até ~1 ulp. Em `keep == 1.0` EXATO — o caso comum,
-            // porque `DEFAULT_MASK` é 0 — a divergência é ZERO, mas o preço de
-            // não arriscar os doze verbos é **uma multiplicação**.
-            let w = fall * intensity * keep;
-            // A metade SEM intensidade: é ela que o Crease eleva, porque no
-            // original o expoente cai sobre `curva × máscara × alpha` e a
-            // intensidade entra depois, linear nos dois termos.
-            let shape = fall * keep;
-            // `<=` e não `<`: um dab que EMPATA não vence. A diferença não é de
-            // resultado (o alvo recomputado seria o mesmo) — é de TRABALHO: com
-            // `<`, re-carimbar a mesma lista de dabs reescreveria a pegada
-            // inteira e a mandaria para o refit do octree e para o upload
-            // incremental, todo frame, sem um pixel mudar.
-            // ⚠️ **Quem tem ÂNCORA não pode ser freado pelo early-out**: a
-            // pegada dos três é presa no pen-down (ou o `accum` deles vale 1),
-            // então o peso de cada vértice nunca mais sobe. Sem esta exceção o
-            // barro andaria UM evento e pararia, com o cursor seguindo em frente
-            // — e o que mudou não é o peso, é o gesto. Ver a tabela dos grips.
-            // ⚠️ **Peso zero não é um dab: ele não tem nada a dar.** Para os
-            // doze verbos de carimbo isto já saía do early-out abaixo (`0 <= 0`)
-            // e é redundante; para os que têm âncora ele é a linha que os mantém
-            // corretos, porque eles **dispensam** aquele early-out. Sem ela, um
-            // vértice de peso zero levaria `accum ← 0` e `target ← base`, e o
-            // dab seguinte de um Grab **desfaria** o que a cópia espelhada
-            // acabou de fazer — as duas cópias compartilham o `touched`.
-            if w <= 0.0 {
-                continue;
+                // **O CANAL SATURADO não tem o que receber.** É a última coisa que
+                // sobrou do early-out do envelope, e ela mudou de pergunta junto com
+                // a lei: não é mais *"este dab supera o que já está lá?"* (que numa
+                // lei aditiva é sempre sim), é *"ainda cabe alguma coisa?"*. Um
+                // vértice em `1.0` receberia `clamp(1 + w) == 1` e seria mandado ao
+                // upload por nada.
+                //
+                // ⚠️ **O `piling` MORREU com a troca de lei do carimbo.** Ele somava
+                // `w · ACCUM_PER_DAB` sobre o envelope para exprimir o Accumulate, e
+                // o preço estava medido: a primeira passada saía **13,3× mais
+                // fraca** que a mesma pincelada com o interruptor desarmado — um
+                // controle que promete acumular e começa enfraquecendo. Hoje o
+                // Accumulate é `from_live`, que é o que ele é no original, e esta
+                // linha não tem mais braço que o consulte.
+                if additive && self.accum[s] >= 1.0 {
+                    continue;
+                }
+                // ⚠️ **Quem carrega o peso no ALVO carimba `accum = 1`**, e é isso
+                // que o faz caber no MESMO aplicador (`lerp(base, target, 1) ==
+                // target`). Sem essa identidade haveria um segundo caminho de
+                // escrita de posição — e duas rotas para *"onde este vértice vai
+                // parar"* divergem no dia em que uma delas ganhar um caso especial.
+                // O `base` continua guardado e intocado, que é o que mantém o undo
+                // trivial nas três leis.
+                // ⚠️ **A lei ADITIVA satura AQUI e não no aplicador**, e a diferença
+                // é observável: o `accum` é o que o dab seguinte lê para decidir se
+                // ainda cabe alguma coisa, então deixá-lo crescer sem teto faria o
+                // early-out acima disparar cedo demais em dois dabs e tarde demais
+                // em vinte. Guardar o valor SATURADO é o que mantém as duas leituras
+                // — *quanto foi pintado* e *ainda cabe?* — respondendo o mesmo.
+                self.accum[s] = if unit_accum {
+                    1.0
+                } else if additive {
+                    (self.accum[s] + w).min(1.0)
+                } else {
+                    w
+                };
+                // ⚠️ **O FATOR DO PASSE entra AQUI, depois dos dois guards e do
+                // `accum`, e a ordem é o que mantém a byte-identidade.** O guard
+                // `w <= 0.0` pergunta *"este dab tem alguma coisa a dar?"*, que é
+                // uma grandeza SEM sinal — aplicado antes, um passe `μ` negativo
+                // seria pulado em toda parte e o par nunca rodaria. E o `accum` é
+                // *quanto foi pintado*, não *para que lado*: os cinco grips o leem
+                // como fração em `[0, 1]`.
+                self.target[s] = self.compute_target(
+                    mesh,
+                    brush,
+                    dab,
+                    &plane,
+                    reach,
+                    shape * pass.weight,
+                    w * pass.weight,
+                    v,
+                    s,
+                );
+                if first {
+                    self.moved.push(v);
+                }
             }
-            // **O CANAL SATURADO não tem o que receber.** É a última coisa que
-            // sobrou do early-out do envelope, e ela mudou de pergunta junto com
-            // a lei: não é mais *"este dab supera o que já está lá?"* (que numa
-            // lei aditiva é sempre sim), é *"ainda cabe alguma coisa?"*. Um
-            // vértice em `1.0` receberia `clamp(1 + w) == 1` e seria mandado ao
-            // upload por nada.
-            //
-            // ⚠️ **O `piling` MORREU com a troca de lei do carimbo.** Ele somava
-            // `w · ACCUM_PER_DAB` sobre o envelope para exprimir o Accumulate, e
-            // o preço estava medido: a primeira passada saía **13,3× mais
-            // fraca** que a mesma pincelada com o interruptor desarmado — um
-            // controle que promete acumular e começa enfraquecendo. Hoje o
-            // Accumulate é `from_live`, que é o que ele é no original, e esta
-            // linha não tem mais braço que o consulte.
-            if additive && self.accum[s] >= 1.0 {
-                continue;
-            }
-            // ⚠️ **Quem carrega o peso no ALVO carimba `accum = 1`**, e é isso
-            // que o faz caber no MESMO aplicador (`lerp(base, target, 1) ==
-            // target`). Sem essa identidade haveria um segundo caminho de
-            // escrita de posição — e duas rotas para *"onde este vértice vai
-            // parar"* divergem no dia em que uma delas ganhar um caso especial.
-            // O `base` continua guardado e intocado, que é o que mantém o undo
-            // trivial nas três leis.
-            // ⚠️ **A lei ADITIVA satura AQUI e não no aplicador**, e a diferença
-            // é observável: o `accum` é o que o dab seguinte lê para decidir se
-            // ainda cabe alguma coisa, então deixá-lo crescer sem teto faria o
-            // early-out acima disparar cedo demais em dois dabs e tarde demais
-            // em vinte. Guardar o valor SATURADO é o que mantém as duas leituras
-            // — *quanto foi pintado* e *ainda cabe?* — respondendo o mesmo.
-            self.accum[s] = if unit_accum {
-                1.0
-            } else if additive {
-                (self.accum[s] + w).min(1.0)
-            } else {
-                w
-            };
-            self.target[s] = self.compute_target(mesh, brush, dab, &plane, reach, shape, w, v, s);
-            self.moved.push(v);
-        }
 
-        if self.moved.is_empty() {
-            return 0;
-        }
-        self.last_paints_mask = brush.verb.paints_mask();
-        if brush.verb.paints_mask() {
-            self.apply_mask(mesh, brush);
-            // Nada de geometria mudou: quem lê `last_refreshed` tem de ver
-            // vazio, não a lista do dab anterior.
-            self.region.forget();
-        } else {
-            self.apply_positions(mesh);
-            mesh.refresh_region(&self.moved, &mut self.region);
+            if self.moved.is_empty() {
+                return 0;
+            }
+            self.last_paints_mask = brush.verb.paints_mask();
+            if brush.verb.paints_mask() {
+                self.apply_mask(mesh, brush);
+                // Nada de geometria mudou: quem lê `last_refreshed` tem de ver
+                // vazio, não a lista do dab anterior.
+                self.region.forget();
+            } else {
+                self.apply_positions(mesh);
+                // ⚠️ **Por PASSE, e é uma DEFESA INERTE hoje — dito em vez de
+                // afirmado ao contrário.** Escrevi primeiro que *"o passe
+                // seguinte relaxaria contra a vizinhança de antes"*, e isso é
+                // FALSO: a média do anel lê `mesh.positions()`, que o
+                // `apply_positions` acima já escreveu. Quem o `refresh_region`
+                // conserta são as NORMAIS, e o par λ|μ não as lê — o `L` declara
+                // `FrontFace::Ignored`, então `facing` vale `1.0` exato nos dois
+                // passes.
+                //
+                // ⇒ Ela fica porque o dia em que um modo declarar
+                // `Continuous` **e** mais de um passe, o passe seguinte pesaria
+                // pela normal de antes do anterior — e esse é o tipo de erro que
+                // não falha, escurece um anel de vértices na borda do pincel e
+                // ninguém sabe por quê.
+                //
+                // ⚠️ **O preço está MEDIDO e é do par inteiro, não só disto:**
+                // `0,848 → 1,466 ms/dab` sobre a esfera de 8192 vértices
+                // (`what_the_pair_costs`) — **1,73×** e não 2×, porque a
+                // consulta da pegada, a captura e o ajuste do plano acontecem
+                // UMA vez por dab. Fica com folga sob o kill K1 do ADR-0150.
+                mesh.refresh_region(&self.moved, &mut self.region);
+            }
         }
         self.moved.len()
     }
@@ -659,6 +645,10 @@ mod target;
 /// *a ESCRITA* (lá).
 #[path = "stroke_apply.rs"]
 mod apply;
+
+/// **AS JANELAS QUE UM TRAÇO PUBLICA** — ver [`windows`].
+#[path = "stroke_windows.rs"]
+mod windows;
 
 #[cfg(test)]
 #[path = "stroke_tests.rs"]

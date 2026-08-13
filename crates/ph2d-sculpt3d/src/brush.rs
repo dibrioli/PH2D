@@ -593,6 +593,11 @@ mod brush_scale;
 // chamador não muda: quem escreve `brush::MAX_MASK_HARDNESS` continua certo.
 pub use brush_scale::MAX_MASK_HARDNESS;
 
+/// **Quantos passes este pincel faz** — ver o cabeçalho dele.
+#[path = "brush_pass.rs"]
+mod brush_pass;
+pub use brush_pass::{Pass, TAUBIN_LAMBDA, TAUBIN_MU, TAUBIN_PASS_BAND};
+
 /// **AS PORTAS DO ALPHA** — ver [`alpha_doors`].
 #[path = "brush_alpha.rs"]
 mod alpha_doors;

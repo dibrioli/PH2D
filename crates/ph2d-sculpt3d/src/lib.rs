@@ -58,8 +58,8 @@ pub use alpha::{
     MAX_AXIS_ELEV_DEG, MIN_ALPHA_SCALE, recommended_scale, sampled_edge,
 };
 pub use brush::{
-    Brush, CLAY_PLANE_FRACTION, CREASE_FRACTION, MAX_MASK_HARDNESS, PINCH_GAIN, REACH_FRACTION,
-    Symmetry, Verb,
+    Brush, CLAY_PLANE_FRACTION, CREASE_FRACTION, MAX_MASK_HARDNESS, PINCH_GAIN, Pass,
+    REACH_FRACTION, Symmetry, TAUBIN_LAMBDA, TAUBIN_MU, TAUBIN_PASS_BAND, Verb,
 };
 pub use falloff::Falloff;
 pub use grip::{Amount, Grip, GripLaw};

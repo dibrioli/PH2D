@@ -107,10 +107,28 @@ pub(crate) fn apply_event(
         }
         // **Carimba a referência corrente em TODAS as ferramentas** — um GESTO
         // sobre o estado por-verbo, nunca um segundo seletor global.
+        //
+        // ⚠️ **Ele só alcança quem DECLARA o modo, e a metade que faltava era a
+        // única porta que podia pôr um modo onde ele não tem lei.** Enquanto os
+        // três modos respondiam por todo verbo isto era um `fill` e ninguém
+        // notava; com o `L` declarando só o Smooth (W4), carimbá-lo em todos
+        // deixaria quinze verbos rodando uma `KernelLaw` de literatura que não
+        // fala deles, **com o chip a mostrar `S`** — porque o painel pinta os
+        // OFERECIDOS e o `L` não estaria entre eles. O chip que mente, pela
+        // porta de trás.
+        //
+        // ⚠️ E onde ele não alcança, ele **PRESERVA** em vez de repor um
+        // default: o artista carimbou uma escolha, não pediu um reset das que
+        // não cabem.
         WidgetEvent::Click(id) if id == ids::SCULPT3D_REF_MODE_ALL => {
             seam_reset_button(host, id);
             let mut ui = snapshot.ui;
-            ui.mode_by_verb = [ui.brush.mode; Verb::ALL.len()];
+            let stamp = ui.brush.mode;
+            for (i, slot) in ui.mode_by_verb.iter_mut().enumerate() {
+                if stamp.declares(Verb::ALL[i]) {
+                    *slot = stamp;
+                }
+            }
             state::push_intent(Sculpt3dIntent::SetUi(ui));
             true
         }

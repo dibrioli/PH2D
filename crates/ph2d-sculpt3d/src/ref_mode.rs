@@ -230,19 +230,38 @@ impl RefMode {
     /// `a_mode_is_offered_only_where_it_is_not_a_duplicate_of_an_earlier_one`
     /// cobra a metade perigosa — *dois modos oferecidos nunca são o mesmo* — e
     /// o irmão dele fixa a razão do `L` em vez de a deixar como prosa.
+    ///
+    /// ⚠️ **E ela DEIXOU DE SER UNIVERSAL na W4**, que é a wave que o parágrafo
+    /// acima previa. O `S` e o `B` respondem por TODO verbo porque as fontes
+    /// deles são motores completos; a LITERATURA não é um motor — ela é um
+    /// paper por assunto, e o primeiro portado (Taubin 1995) fala do **Smooth**
+    /// e de mais nada. Uma resposta universal aqui daria quinze chips sem
+    /// conteúdo pelo preço do que tem um.
     #[must_use]
-    pub fn declares(self, _verb: Verb) -> bool {
+    pub fn declares(self, verb: Verb) -> bool {
         match self {
             // A tabela lida das fontes (§7 do plano) e a lei de kernel.
             Self::S => true,
             // A lei de kernel (bilateral · tangencial · front-face contínuo) e
             // a `StrengthCurve::Squared` do E13.
             Self::B => true,
-            // ⚠️ **NADA foi construído** — nem perfil por verbo nem lei de
-            // kernel própria (a `kernel()` dele é um FALLBACK à do `B`, não uma
-            // declaração). Ele aparece com a primeira wave que lhe der conteúdo:
-            // W4 (HC/Taubin/cotangentes), W5 (Kelvinlets), W7 (MLS).
-            Self::L => false,
+            // ⚠️ **TAUBIN 1995 no Smooth, e mais nada** — o par λ|μ de
+            // [`crate::Brush::passes`], que é a única literatura portada.
+            //
+            // ⚠️ **Escrita e não DERIVADA de `passes().len() > 1`, e eu escrevi
+            // a derivada primeiro:** ela é elegante, casa hoje, e é **falsa em
+            // geral** — o Kelvinlets da W5 é um campo de deslocamento de UM
+            // passe, e sob a derivada o chip dele nasceria mudo com todos os
+            // gates verdes. *Fazer dois passes* e *declarar uma lei* são
+            // perguntas diferentes que hoje têm a mesma resposta; o gate
+            // `the_literature_mode_is_offered_exactly_where_it_declares_a_law`
+            // pina a coincidência, e o dia em que ela cair é o dia em que
+            // alguém tem de vir aqui decidir.
+            //
+            // ⚠️ **O Sharpen fica FORA de propósito:** o paper descreve um
+            // passa-baixa que não encolhe, e não diz nada sobre afiar — dar-lhe
+            // o par seria pôr o nome de uma fonte numa lei que ela não declara.
+            Self::L => matches!(verb, Verb::Smooth),
         }
     }
 
@@ -253,11 +272,15 @@ impl RefMode {
 
     /// A lei de kernel que este modo manda.
     ///
-    /// ⚠️ **O `B` e o `L` devolvem o que o app JÁ shipava**, de propósito: esta
-    /// wave não muda o produto, ela torna o `S` verdadeiro. Antes dela o app
-    /// rodava um kernel que não era o de referência nenhuma em três verbos, com
-    /// um chip que dizia `S` — o mesmo defeito que a W0 curou nos DEFAULTS,
-    /// aqui na LEI.
+    /// ⚠️ **O `B` devolve o que o app JÁ shipava**, de propósito: a W3 não
+    /// mudou o produto, ela tornou o `S` verdadeiro. Antes dela o app rodava um
+    /// kernel que não era o de referência nenhuma em três verbos, com um chip
+    /// que dizia `S` — o mesmo defeito que a W0 curou nos DEFAULTS, aqui na LEI.
+    ///
+    /// ⚠️ **O `L` deixou de o acompanhar na W4.** Ele partilhava este braço
+    /// como FALLBACK — um `match` precisa de um braço e ele não tinha lei
+    /// própria —, e era exatamente por isso que não era oferecido. Hoje ele
+    /// declara, e o braço dele diz o que o paper diz.
     #[must_use]
     pub const fn kernel(self) -> KernelLaw {
         match self {
@@ -266,13 +289,31 @@ impl RefMode {
                 plane: PlaneReach::OneSided,
                 front_face: FrontFace::Ignored,
             },
-            // ⚠️ **O `L` está aqui por FALLBACK, não por declaração** — ele
-            // ainda não tem lei própria, e um `match` precisa de um braço. É
-            // exatamente por isso que ele não é oferecido ([`RefMode::declares`]):
-            // herdar em silêncio a lei do vizinho e pintar um chip com o nome de
-            // outra coisa é o erro que esta linha já cometeu duas vezes (a curva
-            // do `B`, o `Tangential` do pinch).
-            Self::B | Self::L => KernelLaw {
+            // **O `L` — a LITERATURA**, e desde a W4 ele é uma declaração e não
+            // mais o fallback à lei do `B`.
+            //
+            // ⚠️ **`Ignored` é DECLARADO, não copiado do `S`:** o Taubin é um
+            // filtro de MALHA — ele não sabe onde está a câmera, e nenhum passo
+            // dele consulta uma direção de vista. Herdar o `Continuous` do `B`
+            // faria trocar `S → L` mudar DUAS coisas (o par λ|μ **e** um portão
+            // de face que o paper não menciona), e o artista não teria como
+            // separar as duas na tela. Assim, a única diferença entre `S` e `L`
+            // no Smooth é a que o chip promete.
+            //
+            // ⚠️ **Os outros dois eixos são INALCANÇÁVEIS por construção** — o
+            // `L` só é oferecido no Smooth ([`RefMode::declares`]), que não lê
+            // `lateral` nem `plane`, e a porta "aplicar a todos" só carimba onde
+            // o modo declara. Eles trazem os valores do `S` porque um `match`
+            // precisa de um braço; no dia em que o `L` declarar um verbo de
+            // plano, este arm tem de ser reescrito **com a fonte na mão**, e é o
+            // gate `the_literature_mode_is_offered_exactly_where_it_declares_a_law`
+            // que torna esse dia impossível de passar em silêncio.
+            Self::L => KernelLaw {
+                lateral: LateralPull::Direct,
+                plane: PlaneReach::OneSided,
+                front_face: FrontFace::Ignored,
+            },
+            Self::B => KernelLaw {
                 lateral: LateralPull::Tangential,
                 plane: PlaneReach::Bilateral,
                 // ⚠️ **É o único dos três eixos em que o `B` ACRESCENTA** em vez

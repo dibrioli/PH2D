@@ -1341,6 +1341,54 @@ fn apply_to_all_stamps_the_current_reference_onto_every_verb() {
     );
 }
 
+/// **O CARIMBO SÓ ALCANÇA QUEM DECLARA O MODO — e onde ele não alcança,
+/// PRESERVA.**
+///
+/// ⚠️ **Esta era a única porta capaz de pôr um modo onde ele não tem lei.**
+/// Enquanto os três modos respondiam por todo verbo (até a W4) o carimbo era um
+/// `fill` e ninguém notava; com o `L` declarando só o Smooth, carimbá-lo em
+/// todos deixaria quinze verbos rodando uma [`RefMode::kernel`] de literatura
+/// que não fala deles — **e com o chip a mostrar `S`**, porque o painel pinta os
+/// OFERECIDOS e o `L` não estaria entre eles. O chip que mente, pela porta de
+/// trás.
+///
+/// ⚠️ **A segunda metade é tão load-bearing quanto a primeira:** onde o carimbo
+/// não alcança ele **guarda o que estava lá**, em vez de repor um default. O
+/// artista carimbou uma escolha; ele não pediu um reset das que não cabem.
+#[test]
+fn apply_to_all_only_reaches_the_verbs_that_declare_the_mode() {
+    let smooth = ph2d_panel_sculpt3d::state::verb_index(Verb::Smooth);
+    let draw = ph2d_panel_sculpt3d::state::verb_index(Verb::Draw);
+    let mut ui = Sculpt3dUi::default();
+    // O Draw tem uma escolha DELIBERADA que o carimbo não pode alcançar.
+    ui.mode_by_verb[draw] = RefMode::B;
+    ui.mode_by_verb[smooth] = RefMode::L;
+    ph2d_panel_sculpt3d::state::arm_verb_defaults(&mut ui, Verb::Smooth);
+    assert_eq!(ui.brush.mode, RefMode::L, "a premissa: o Smooth está no L");
+    let (mut host, mut state) = arrange(ui);
+    host.apply_panel_event::<Sculpt3dPanel>(
+        &mut state,
+        WidgetEvent::Click(ids::SCULPT3D_REF_MODE_ALL),
+    );
+    let Sculpt3dIntent::SetUi(got) = only_intent("apply to all") else {
+        panic!("intent errado")
+    };
+    assert_eq!(got.mode_by_verb[smooth], RefMode::L, "onde ele declara");
+    assert_eq!(
+        got.mode_by_verb[draw],
+        RefMode::B,
+        "onde ele NÃO declara, a escolha do artista fica de pé"
+    );
+    for (i, &m) in got.mode_by_verb.iter().enumerate() {
+        assert!(
+            RefMode::offered_for(Verb::ALL[i]).any(|o| o == m),
+            "{}: ficou com um modo que ele não oferece ({})",
+            Verb::ALL[i].label(),
+            m.label()
+        );
+    }
+}
+
 // ── Basic × Pro (§2 do plano) ───────────────────────────────────────────────
 
 /// **Cada nível tem um chip que o escolhe.**

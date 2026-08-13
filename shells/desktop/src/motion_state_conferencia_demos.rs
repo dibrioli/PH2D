@@ -26,12 +26,7 @@ fn lay(g: &mut ph2d_nodegraph::graph::Graph, row: f32, nodes: &[NodeId]) {
     }
 }
 
-fn wire(
-    g: &mut ph2d_nodegraph::graph::Graph,
-    from: NodeId,
-    to: NodeId,
-    port: u16,
-) -> Option<()> {
+fn wire(g: &mut ph2d_nodegraph::graph::Graph, from: NodeId, to: NodeId, port: u16) -> Option<()> {
     use ph2d_nodegraph::graph::Edge;
     g.connect(Edge {
         from: (from, 0),
@@ -42,10 +37,7 @@ fn wire(
 }
 
 /// Um `motion.tint` sólido, para as duas metades de uma comparação se separarem.
-fn tint(
-    g: &mut ph2d_nodegraph::graph::Graph,
-    rgb: [f32; 3],
-) -> NodeId {
+fn tint(g: &mut ph2d_nodegraph::graph::Graph, rgb: [f32; 3]) -> NodeId {
     let t = g.add_node("motion.tint");
     g.set_param(t, "mode", 0.0);
     g.set_param(t, "r", rgb[0]);
@@ -79,10 +71,18 @@ pub(super) fn build_write_on_demo_document(
     let mut chain = |follow: f32, py: f32, rgb: [f32; 3], row: f32| -> Option<Vec<NodeId>> {
         let grid = g.add_node("motion.grid");
         g.set_param(grid, "rows", 1.0);
-        g.set_param(grid, "cols", 48.0);
+        g.set_param(grid, "cols", 16.0);
         g.set_param(grid, "gap_x", 0.12);
         let scale = g.add_node("motion.scale");
-        g.set_param(scale, "amount", 0.09);
+        // ⚠️ MEDIDO, e a primeira versão reprovou aqui: com 48 quadrados de 0,09
+        // o passo ao longo do arco era 0,143 ⇒ razão tamanho/passo **0,63**, os
+        // vizinhos quase se tocando, e a fila lia como uma FITA contínua em vez
+        // de dezesseis quadrados com orientações diferentes. A rotação estava lá
+        // o tempo todo (`basis` com 55,6° de leque, contra 0,0 do controle) — o
+        // que faltava era poder VÊ-LA. Dezesseis a 0,22 dão passo 0,449 e razão
+        // **0,49**: vão entre vizinhos, e cada peça com quase o dobro da área da
+        // cena `=35`, que é a que o smoke aprovou.
+        g.set_param(scale, "amount", 0.22);
         let sw = g.add_node("motion.spline_wrap");
         g.set_param(sw, "follow_rotation", follow);
         // Um S pronunciado: a tangente varre um bom ângulo do começo ao fim, que é
@@ -182,15 +182,36 @@ pub(super) fn build_pivot_demo_document(
 
 /// **`=34` — QUALQUER FÓRMULA É UMA FORÇA** (folha 08, o P0 do §0).
 ///
-/// Nenhuma `force.*` nesta cena. Duas fórmulas escrevem a **aceleração**
-/// (`motion.make_point` com `target = Acceleration`), o `motion.integrate` a
-/// consome, e a nuvem entra num redemoinho — `a = (−y, x)` é um campo rotacional
-/// puro, escrito como texto.
+/// Nenhuma `force.*` nesta cena. Quatro fórmulas de texto e dois
+/// `motion.make_point` põem a nuvem em **ÓRBITA**: uma escreve a velocidade
+/// inicial, a outra a aceleração, o `motion.integrate` faz o resto.
 ///
-/// ⚠️ **Ela exercita DUAS waves de uma vez, e honestamente:** as lanes `x`/`y` da
+/// ⚠️ **A primeira versão desta cena estava ERRADA e o smoke a pegou** (*"a nuvem
+/// gira e os pontos se afastam uns dos outros"*). Ela usava `a = k·perp(P)`,
+/// descrito como *"um campo rotacional puro"* — e não é: em forma complexa isso é
+/// `z'' = i·k·z`, cujas raízes são `±√k·e^{iπ/4}`, **com parte real positiva**.
+/// É uma espiral que cresce como `e^{√(k/2)·t}` — a nuvem dobra de raio a cada
+/// 0,62 s, e o que o Enio viu foi exactamente isso. *Uma cena que se destrói não
+/// demonstra nada.*
+///
+/// **O campo que ORBITA precisa de duas metades, e nenhuma delas sozinha basta:**
+/// a aceleração **centrípeta** `a = −ω²·P` (que sozinha, a partir do repouso,
+/// colapsa tudo pela origem) e a velocidade inicial **tangencial** `v₀ = ω·perp(P)`
+/// (que sozinha manda todo mundo embora em linha reta). Juntas, a solução é
+/// `P(t) = P₀·cos(ωt) + perp(P₀)·sen(ωt)` — uma **rotação rígida exacta**, com o
+/// raio de cada ponto constante para sempre. E o Euler semi-implícito do
+/// integrador é **simplético**, então a órbita não deriva com o tempo.
+///
+/// ⚠️ **A semente entra pelo stream `rest`, e é o próprio integrador que diz
+/// isso:** ele copia `vel` do `rest` no tique em que ainda não conhece o
+/// elemento — *"a velocidade de boca do emissor é o que o lança"*. Não há
+/// primitivo novo aqui; há a rota que já existia, usada pelo que ela é.
+///
+/// ⚠️ **Ela exercita TRÊS waves de uma vez, e honestamente:** as lanes `x`/`y` da
 /// `motion.expression` (sem elas a fórmula lia a posição como **zero**, em
-/// silêncio, e a nuvem ficaria parada) e o alvo do `make_point` (sem ele não há
-/// como escrever `accel` de rota nenhuma). Se a cena girar, as duas estão vivas.
+/// silêncio, e a nuvem ficaria parada) e os **dois** alvos novos do
+/// `make_point` — `Velocity` na semente, `Acceleration` na força. Se a nuvem
+/// girar **sem se abrir**, as três estão vivas.
 ///
 /// ⚠️ **A aresta de realimentação é escrita à MÃO** — o editor a plumba ao soltar
 /// um nó, e um documento montado por `add_node` não a ganha.
@@ -200,6 +221,12 @@ pub(super) fn build_formula_force_demo_document(
 ) -> Option<Vec<NodeId>> {
     use ph2d_nodegraph::graph::Edge;
     let g = &mut doc.graph;
+
+    // ω = 2,5 rad/s ⇒ uma volta a cada 2,51 s. O número aparece em DOIS sítios
+    // (ω na semente, ω² na aceleração) porque são duas grandezas diferentes da
+    // mesma órbita; o gate afirma a propriedade que uma discordância quebra —
+    // *todo ponto guarda o seu raio*.
+    let (omega, omega_sq) = ("2.5", "6.25");
 
     let grid = g.add_node("motion.grid");
     g.set_param(grid, "rows", 64.0);
@@ -212,20 +239,37 @@ pub(super) fn build_formula_force_demo_document(
     let ig = g.add_node("motion.integrate");
     let out = g.add_node("motion.output");
 
-    // As DUAS metades do campo rotacional, como texto.
+    // A SEMENTE — `v₀ = ω · perp(P)`, lida das posições de repouso.
+    let sx = g.add_node("motion.expression");
+    g.set_text_param(sx, "expr", format!("0 - y * {omega}"));
+    let sy = g.add_node("motion.expression");
+    g.set_text_param(sy, "expr", format!("x * {omega}"));
+    let seed = g.add_node("motion.make_point");
+    g.set_param(seed, "target", 1.0); // Velocity
+
+    // A FORÇA — `a = −ω² · P`, lida do estado do tique anterior.
     let ax = g.add_node("motion.expression");
-    g.set_text_param(ax, "expr", "0 - y * 2.5".to_string());
+    g.set_text_param(ax, "expr", format!("0 - x * {omega_sq}"));
     let ay = g.add_node("motion.expression");
-    g.set_text_param(ay, "expr", "x * 2.5".to_string());
+    g.set_text_param(ay, "expr", format!("0 - y * {omega_sq}"));
     let mp = g.add_node("motion.make_point");
     g.set_param(mp, "target", 2.0); // Acceleration
 
-    lay(g, 120.0, &[grid, scale, t, ig, out]);
-    lay(g, 340.0, &[ax, ay, mp]);
+    lay(g, 120.0, &[grid, scale, t, seed, ig, out]);
+    lay(g, 340.0, &[sx, sy]);
+    lay(g, 560.0, &[ax, ay, mp]);
 
     wire(g, grid, scale, 0)?;
     wire(g, scale, t, 0)?;
-    wire(g, t, ig, 0)?; // `rest`
+    // A semente roda no ramo VIVO (arestas para a frente): ela descreve a
+    // condição inicial, não o estado.
+    wire(g, t, sx, 0)?;
+    wire(g, t, sy, 0)?;
+    wire(g, t, seed, 0)?;
+    wire(g, sx, seed, 1)?;
+    wire(g, sy, seed, 2)?;
+    wire(g, seed, ig, 0)?; // `rest`
+
     // A realimentação que o artista nunca desenha: o estado do tique anterior.
     for (to, port) in [(ax, 0u16), (ay, 0), (mp, 0)] {
         g.connect(Edge {

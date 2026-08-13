@@ -7,11 +7,11 @@
 //! nós dentro.
 
 use super::*;
+use ph2d_eval_motion::MotionCookPump;
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::node::NodeTypeId;
 use ph2d_nodegraph::value::CookValue;
-use ph2d_eval_motion::MotionCookPump;
 
 fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();
@@ -61,7 +61,10 @@ fn the_write_on_scene_turns_one_row_and_leaves_the_control_flat() {
     let reg = registry();
     let mut doc = MotionDoc::new();
     let sinks = build_write_on_demo_document(&mut doc, &reg).expect("cena bem-tipada");
-    assert!(has(&doc, "motion.spline_wrap"), "a cena contem o no que smoka");
+    assert!(
+        has(&doc, "motion.spline_wrap"),
+        "a cena contem o no que smoka"
+    );
 
     let r = rot(&doc, &reg, *sinks.first().expect("um sink"));
     assert!(!r.is_empty(), "a cena produz uma coluna de rotacao");
@@ -144,22 +147,32 @@ fn the_pivot_scene_shows_one_grid_running_away_and_one_staying() {
     );
 }
 
-/// **`=34` — a nuvem GIRA, e nenhuma `force.*` está na cena.**
+/// **`=34` — a nuvem ORBITA, e nenhuma `force.*` está na cena.**
 ///
-/// ⚠️ O gate mede a coisa inteira de uma vez, e é de propósito: se as lanes
-/// `x`/`y` da fórmula estiverem mortas ela lê a posição como zero e a nuvem fica
-/// parada; se o alvo do `make_point` estiver morto ele escreve `P` e a cena vira
-/// outra coisa. Girar exige as duas vivas.
+/// ⚠️ **A versão anterior deste gate afirmava só que a nuvem SE MOVEU, e por isso
+/// ficou verde sobre a cena que o smoke reprovou:** `a = k·perp(P)` é uma espiral
+/// que cresce como `e^{√(k/2)·t}`, e *"a maioria se moveu"* é exactamente o que
+/// uma explosão faz. A propriedade que separa uma órbita de uma espiral é o
+/// **RAIO**, e ela mata as duas doenças de uma vez — a espiral (o raio cresce) e
+/// uma discordância entre o `ω` da semente e o `ω²` da força (o raio pulsa).
 #[test]
-fn the_formula_force_scene_spins_with_no_force_node_in_it() {
+fn the_formula_force_scene_orbits_with_no_force_node_in_it() {
     let reg = registry();
     let mut doc = MotionDoc::new();
     let sinks = build_formula_force_demo_document(&mut doc, &reg).expect("cena bem-tipada");
 
-    for banned in ["force.vortex", "force.attractor", "force.curl", "force.wind"] {
+    for banned in [
+        "force.vortex",
+        "force.attractor",
+        "force.curl",
+        "force.wind",
+    ] {
         assert!(!has(&doc, banned), "a cena nao tem `{banned}` -- e a tese");
     }
-    assert!(has(&doc, "motion.make_point"), "e tem o no que escreve accel");
+    assert!(
+        has(&doc, "motion.make_point"),
+        "e tem o no que escreve accel"
+    );
 
     // ⚠️ Uma sim avança pelo PUMP, não por um `Cook::cook` cru: o cook devolve o
     // estado do tique pedido e NÃO o faz correr. A primeira versão deste gate
@@ -185,15 +198,39 @@ fn the_formula_force_scene_spins_with_no_force_node_in_it() {
     let last: Vec<[f32; 2]> = pump.instances.iter().map(|i| i.world_pos).collect();
     assert!(!at0.is_empty(), "a cena produz instancias");
     assert_eq!(last.len(), at0.len(), "a contagem nao muda");
-    let moved = at0
+
+    // **Ela GIRA** — 40 tiques a ω = 2,5 rad/s são 95,5° previstos; medido, 94,3
+    // (o tique de semente não anda, e o Euler semi-implícito desloca a frequência
+    // um nada). Um alvo morto no `make_point` escreveria `P` e isto seria zero.
+    let swept = |a: &[f32; 2], b: &[f32; 2]| {
+        let d = (b[1].atan2(b[0]) - a[1].atan2(a[0])).to_degrees();
+        d - 360.0 * (d / 360.0).round()
+    };
+    let turn = at0
         .iter()
         .zip(&last)
-        .filter(|(a, b)| (a[0] - b[0]).hypot(a[1] - b[1]) > 0.01)
-        .count();
+        .map(|(a, b)| swept(a, b).abs())
+        .fold(0.0f32, f32::max);
     assert!(
-        moved > at0.len() / 2,
-        "a maioria da nuvem se moveu ({moved} de {}) -- uma formula virou forca",
-        at0.len()
+        turn > 60.0,
+        "a nuvem varre um bom arco em 40 tiques, deu {turn:.1} graus"
+    );
+
+    // **E NÃO SE ABRE** — a propriedade que a espiral quebrava. Medido 0,16%; o
+    // bar a 3% deixa passar o erro do integrador e recusa qualquer crescimento
+    // (a espiral de antes dobrava o raio a cada 0,62 s ⇒ +62% nesta janela).
+    let drift = at0
+        .iter()
+        .zip(&last)
+        .filter_map(|(a, b)| {
+            let r0 = a[0].hypot(a[1]);
+            (r0 > 0.2).then(|| ((b[0].hypot(b[1]) - r0) / r0).abs())
+        })
+        .fold(0.0f32, f32::max);
+    assert!(
+        drift < 0.03,
+        "todo ponto guarda o seu raio -- e uma ORBITA, nao uma espiral: {:.2}%",
+        drift * 100.0
     );
 }
 
@@ -212,7 +249,10 @@ fn the_partial_aim_scene_has_a_band_that_aims_and_a_soft_edge() {
     let r = rot(&doc, &reg, *sinks.first().expect("sink"));
     assert!(!r.is_empty(), "ha rotacao a olhar");
     let untouched = r.iter().filter(|a| a.abs() < 1e-4).count();
-    assert!(untouched > 0, "quem esta fora do campo fica EXACTAMENTE como estava");
+    assert!(
+        untouched > 0,
+        "quem esta fora do campo fica EXACTAMENTE como estava"
+    );
     // A borda macia: existe ângulo estritamente entre "nada" e o máximo.
     let peak = r.iter().fold(0.0f32, |a, b| a.max(b.abs()));
     assert!(peak > 1.0, "e a faixa do meio mira de verdade, pico {peak}");
@@ -236,7 +276,8 @@ fn probe_conferencia_scenes() {
     for (n, build) in [
         (
             32,
-            build_write_on_demo_document as fn(&mut MotionDoc, &NodeRegistry) -> Option<Vec<NodeId>>,
+            build_write_on_demo_document
+                as fn(&mut MotionDoc, &NodeRegistry) -> Option<Vec<NodeId>>,
         ),
         (33, build_pivot_demo_document),
         (34, build_formula_force_demo_document),
@@ -253,6 +294,53 @@ fn probe_conferencia_scenes() {
             p.len()
         );
     }
+    // ⚠️ `=32` mede-se pelo caminho do APP (o pump → `RenderInstance.basis`), não
+    // pelo cook: a rotação já estava no `basis` quando o smoke a reprovou, e o que
+    // faltava era a razão TAMANHO/PASSO — com 0,63 os vizinhos se tocam e a fila
+    // lê como uma fita.
+    let mut doc = MotionDoc::new();
+    let sinks = build_write_on_demo_document(&mut doc, &reg).expect("cena");
+    let scopes = ph2d_node_motion_time_remap::time_scopes(&doc.graph, &reg);
+    let mut pump = MotionCookPump::new();
+    pump.advance_or_scrub_scoped(
+        &doc.graph,
+        &reg,
+        &sinks,
+        0,
+        |k| k as f64 / 60.0,
+        [0.0, 0.0, 1.0, 1.0],
+        [1.0, 1.0],
+        &scopes,
+    );
+    let n = pump.instances.len();
+    let deg: Vec<f32> = pump
+        .instances
+        .iter()
+        .map(|i| i.basis[1].atan2(i.basis[0]).to_degrees())
+        .collect();
+    let top = &deg[..n / 2];
+    let near45 = top
+        .iter()
+        .filter(|a| (a.rem_euclid(90.0) - 45.0).abs() < 12.0)
+        .count();
+    let pos: Vec<[f32; 2]> = pump.instances[..n / 2]
+        .iter()
+        .map(|i| i.world_pos)
+        .collect();
+    let gaps: Vec<f32> = pos
+        .windows(2)
+        .map(|w| (w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]))
+        .collect();
+    let step = gaps.iter().sum::<f32>() / gaps.len() as f32;
+    println!(
+        "[=32] basis {:.1} .. {:.1} graus | {near45} de {} a menos de 12 de um losango | tamanho {:.2} passo {step:.3} razao {:.2}",
+        top.iter().fold(f32::MAX, |a, b| a.min(*b)),
+        top.iter().fold(f32::MIN, |a, b| a.max(*b)),
+        top.len(),
+        pump.instances[0].size[0],
+        pump.instances[0].size[0] / step,
+    );
+
     // O pivô, o número da célula.
     let mut doc = MotionDoc::new();
     let sinks = build_pivot_demo_document(&mut doc, &reg).expect("cena");
@@ -268,19 +356,54 @@ fn probe_conferencia_scenes() {
     let mut at0 = Vec::new();
     for tick in 0..40u64 {
         pump.advance_or_scrub_scoped(
-            &doc.graph, &reg, &sinks, tick, |k| k as f64 / 60.0,
-            [0.0, 0.0, 1.0, 1.0], [1.0, 1.0], &scopes,
+            &doc.graph,
+            &reg,
+            &sinks,
+            tick,
+            |k| k as f64 / 60.0,
+            [0.0, 0.0, 1.0, 1.0],
+            [1.0, 1.0],
+            &scopes,
         );
         if tick == 0 {
             at0 = pump.instances.iter().map(|i| i.world_pos).collect();
         }
     }
     let last: Vec<[f32; 2]> = pump.instances.iter().map(|i| i.world_pos).collect();
-    let d: Vec<f32> = at0.iter().zip(&last).map(|(a, b)| (a[0] - b[0]).hypot(a[1] - b[1])).collect();
+    let d: Vec<f32> = at0
+        .iter()
+        .zip(&last)
+        .map(|(a, b)| (a[0] - b[0]).hypot(a[1] - b[1]))
+        .collect();
+    // A propriedade da órbita: o RAIO de cada ponto é constante, e o ÂNGULO anda.
+    let drift = at0
+        .iter()
+        .zip(&last)
+        .map(|(a, b)| {
+            let (r0, r1) = (a[0].hypot(a[1]), b[0].hypot(b[1]));
+            if r0 > 0.2 {
+                ((r1 - r0) / r0).abs()
+            } else {
+                0.0
+            }
+        })
+        .fold(0.0f32, f32::max);
+    let swept = at0
+        .iter()
+        .zip(&last)
+        // ⚠️ O `atan2` tem CORTE DE RAMO: a diferença crua reportava 265,7° para
+        // um ponto que varreu 94,3°, e um bar escrito sobre esse número mediria o
+        // corte, não a órbita. Enrola-se para (−180, 180].
+        .map(|(a, b)| {
+            let d = (b[1].atan2(b[0]) - a[1].atan2(a[0])).to_degrees();
+            d - 360.0 * (d / 360.0).round()
+        })
+        .fold(0.0f32, |m, v| m.max(v.abs()));
     println!(
-        "[=34] {} de {} se moveram | deslocamento max {:.3}",
+        "[=34] {} de {} se moveram | deslocamento max {:.3} | deriva de raio max {:.2}% | varreu {swept:.1} graus",
         d.iter().filter(|x| **x > 0.01).count(),
         d.len(),
-        d.iter().fold(0.0f32, |a, b| a.max(*b))
+        d.iter().fold(0.0f32, |a, b| a.max(*b)),
+        drift * 100.0
     );
 }

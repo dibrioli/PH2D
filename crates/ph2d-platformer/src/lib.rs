@@ -308,13 +308,7 @@ pub fn player_motor(
     // um fato da caminhada.
     let facing = facing_step(state.facing, input.drive);
     let dash = dash::dash_step(
-        &cfg.dash,
-        state.dash,
-        grounded,
-        facing,
-        input.dash,
-        jumped,
-        dt,
+        &cfg.dash, state.dash, grounded, facing, input.dash, jumped, dt,
     );
     let dashing = dash.active;
 

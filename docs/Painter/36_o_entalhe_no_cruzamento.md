@@ -5,10 +5,15 @@
 > cruzamentos de traços. Parece que o mesmo ocorre com watercolor. Descubra se isso é verdade.
 > Estude a cura em FLIP e relate aqui."*
 
-**Veredito: é verdade, e são DOIS mecanismos empilhados.** Um é literalmente o do FLIP; o outro é da
-óptica da aquarela e é o que produz a cunha BRANCA da foto. Nada foi construído — este documento é a
-medição e a avaliação da cura. Sonda: `crossing_probe::measure_the_crossing_notch`
-(`cargo test -p ph2d-tool-painter --release crossing_probe -- --ignored --nocapture`).
+⚠️ **LEIA O §9 ANTES DO RESTO.** Os §§1-8 são a 1ª rodada: eles diagnosticam DOIS mecanismos (a união
+da cobertura + o aro que não vira a quina) e constroem a cura do segundo. O smoke seguinte reprovou, e
+a medição do §9 **REFUTOU o primeiro** — a união não deixa cunha nenhuma. A causa real, e a cura que
+shipa, estão nos §§9-10. O que os §§1-8 dizem sobre o ARO continua válido; o que eles dizem sobre a
+UNIÃO está superado.
+
+Sondas: `crossing_probe` (a cena pequena: união × composição) e `crossing_scale_probe` (a varredura de
+escala: o défice contra `edge_spread / raio`) —
+`cargo test -p ph2d-tool-painter --release crossing -- --ignored --nocapture`.
 
 ---
 
@@ -311,3 +316,88 @@ As duas curas possíveis, com o que cada uma custa:
 ⚠️ **A (1) muda o LOOK de toda lavagem de pincel grande** (aro mais largo e mais forte) e mexe na
 semântica de um knob shipado; a (2) não muda nada fora da quina. **Recomendação: (2)** — e o
 Spread continua sendo do artista.
+
+
+## 10. A CURA (2) — a régua sai da COBERTURA (ordem do Enio: *"vamos tentar 2"*)
+
+### 10.1 A lei, em duas linhas
+
+O teto do §6 limita `inner` por `P(régua, core_r)`. O que estava errado era a **régua**: ela era a
+distância geométrica à fronteira da UNIÃO, e numa quina côncava um ponto a `t` px de cada braço está
+a `t·√2` dali (o vizinho mais próximo é o vértice). Agora ela é o **mínimo** de duas leituras:
+
+```text
+  régua = min( distância geométrica (EDT) , (cov − COV_HALF) / |∇cov| )
+```
+
+⚠️ **É um `min`, como o teto** — só pode DAR aro, nunca tirar. E a segunda leitura é a estimativa
+analítica clássica da distância ao nível `cov = COV_HALF`, que é **exatamente** o nível que a EDT
+semeia (via o endurecimento): as duas medem a mesma fronteira, por caminhos diferentes.
+
+⚠️ **A propriedade que ela estabelece não é *"a quina mede a distância à frente mais próxima"*** — essa
+frase era MINHA e está errada, e foi o gate que a derrubou. A cobertura é um `max`, então o valor num
+texel é o da faixa que o cobre **melhor**; a régua devolve a profundidade que a COBERTURA implica, e a
+propriedade é ***mesma cobertura, mesmo aro***. É a certa: a cobertura é o que decide o TOM da
+silhueta ali, e o aro tem de acompanhar o tom, não uma distância que o artista não vê.
+
+### 10.2 Três decisões, cada uma com o número que a obrigou
+
+* **Lê a cobertura CRUA, não a endurecida.** Com `hard` a régua morre onde o `smoothstep` satura
+  (±6 px num pincel grande) — exatamente onde o aro vive. Medido: com `hard` a cura valia **4 pontos
+  percentuais**; com `cov`, **20**.
+* **O termo de UM LADO é a CRISTA, não higiene.** Na bissetriz exata de um `max` de dois campos lisos
+  a diferença central mede **metade** (para a frente o campo é constante, para trás ele sobe) e `|∇|`
+  sai `√2` pequeno demais — na linha exata que a quina tem. Sem ele, a cura trocaria a cunha por uma
+  **rachadura de 1 px** correndo pela bissetriz. E `|∇|` (e não o máximo por eixo) é quem serve o
+  flanco a 45°: as duas metades do `max` cobrem casos opostos, e nenhuma sozinha é isotrópica.
+* **A régua só é calculada na FAIXA em que o teto pode agir** (`−(r+½) < geom < (r+1½)·2`), e fora
+  dela ela é **provadamente inerte** (`P` satura em 0 ou em 1 nos dois lados). É o corte que a torna
+  barata: **≈1 borrão** varrida a janela inteira contra **0,16 borrão** com ele, porque a faixa é o
+  PERÍMETRO e não a janela. ⚠️ O `2` é um **limite NOMEADO**: numa quina de ângulo `θ` a frente está a
+  `geom·sen(θ/2)`, e ele cobre até **60°** — dois traços cruzando mais agudo que isso mantêm o aro de
+  hoje na quina.
+
+### 10.3 O resultado, medido nos QUATRO cantos
+
+| raio · spread | antes | depois |
+|---|---:|---:|
+| 24 · 7 | −1% | −1% |
+| 48 · 7 | −9% | **+3%** |
+| 75 · 7 | **−33%** | **−13%** |
+| 75 · 16 | −11% | **−4%** |
+| 110 · 7 | −19% | −19% |
+| 110 · 16 | −14% | **−4%** |
+| 110 · 32 | −3% | −2% |
+
+E o que a foto mostra: **os BURACOS sumiram**. Antes, a 110 px, os perfis dos cantos zeravam no meio
+(vão de 2,5 px cercado de tinta); agora a sonda mede **0,0 px de buraco nos quatro cantos, nas quatro
+escalas**, e os perfis são monótonos.
+
+### 10.4 O preço, e o que NÃO fecha
+
+**Custo:** +0,16 borrão no campo do aro (sonda `the_coverage_ruler_costs_this_many_blurs`,
+intercalada e com o mínimo como redutor — esta máquina deriva 4× sob carga).
+
+**Aparência:** o pino `smooth_edges_off_is_the_pre_aa_render_byte_for_byte` moveu de novo
+(`0xe59f2fb788ce5874` → `0x9744233f9f852066`), e o preço num traço RETO é **494 bytes de 262144
+(0,2%) · 192 px de 65536 (0,3%) · pior delta 14/255** — **um quinto** do 1º movimento, porque num
+flanco as duas réguas concordam e o `min` é quase inerte.
+
+⚠️ **`raio 110 · spread 7` (razão 0,06) NÃO melhora, e a causa está medida:** ali o ombro endurecido
+mede ~46 px contra um borrão de 15, então `blur(hard) ≈ hard` e ele fica **sempre abaixo** do teto —
+o `min` nunca morde, e a régua (que só entra pelo teto) não tem como agir. Naquele regime o aro do
+próprio flanco já vale 0,44 contra os 0,74 de um pincel pequeno: **quem está degenerado é o modelo do
+aro em pincel grande**, não a quina. A resposta que existe hoje é o slider **Spread** (a partir de
+`≈ 0,3 × raio` o défice é ≤ 3% em toda a tabela); a resposta estrutural seria o aro deixar de ser
+derivado de um borrão de raio ABSOLUTO — outra wave, e ela muda o look de toda lavagem.
+
+### 10.5 ⚠️ E o commit anterior shipou um vermelho-latente de LOC
+
+`watercolor_render.rs` foi de 688 para **725** no `28d2b2596` e cruzou o teto de 700 **sem ninguém
+ver**: o gate mora em `ph2d-editor-core/tests/` e um fechamento por `cargo test -p ph2d-tool-painter`
+**não o alcança** — a mesma causa estrutural que physics, motion-value e Vector já documentaram.
+Curado por corte de RESPONSABILIDADE, não por tamanho: `hard`, os borrões do `inner` e a régua do teto
+**nascem juntos e só o aro os lê**, então a receita virou `watercolor_rim::rim_fields` e o composite
+ficou com o laço que compõe o pixel. O mesmo corte na sonda: o pai responde *união ou composição?* na
+cena pequena, o irmão `crossing_scale_probe` responde *o défice contra `spread/raio`* — assunto, não
+tamanho.

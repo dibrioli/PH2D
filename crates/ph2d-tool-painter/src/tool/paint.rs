@@ -162,6 +162,10 @@ mod composite_probe;
 /// curou) ou a COMPOSIÇÃO na axila de dois traços que se cruzam.
 #[cfg(test)]
 mod crossing_probe;
+/// **A ESCALA** — o défice do aro na quina contra `edge_spread / raio`, a pergunta que a sonda
+/// acima abriu ao refutar a união.
+#[cfg(test)]
+mod crossing_scale_probe;
 /// **Grid Stamp** — o que o carimbo de fato PINTA (o irmão do módulo acima, que mede os controles).
 #[cfg(test)]
 mod grid_stamp_paint_tests;

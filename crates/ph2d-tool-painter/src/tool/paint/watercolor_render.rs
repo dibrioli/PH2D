@@ -10,9 +10,7 @@
 //! ```text
 //!   cover = smoothstep(SS0, SS1, coverage(warp(x,y)))     // hardened, warped silhouette
 //!   inner = blur(coverage)                                 // ~1 inside, →0 at the rim
-//!   inner = min(inner, P(sd, core_r))                      // O ARO VIRA A QUINA (doc 36):
-//!                                                          // teto do que um flanco RETO daria
-//!                                                          // a esta distância à fronteira
+//!   inner = min(inner, P(régua, core_r))                   // O ARO VIRA A QUINA (`watercolor_rim`)
 //!   edge  = clamp(cover·(1 − inner)·edge_gain, 0, 1)       // pigment pooled at the receding front
 //!   gran  = 1 + (paperHeight − 0.5)·2·granulation          // paper-tooth granulation (value noise)
 //!   D     = (cover·fill + edge)·gran                        // optical density
@@ -27,8 +25,8 @@ mod window;
 
 use super::watercolor_field::*;
 use super::watercolor_rewet_px::{
-    apply_wet_lift, blur_of, build_style_field, build_wet_field, inner_blur_set, params_differ,
-    rewet_px, sample_wet_field, style_at,
+    apply_wet_lift, blur_of, build_style_field, build_wet_field, params_differ, rewet_px,
+    sample_wet_field, style_at,
 };
 use super::*;
 use ph2d_painter_brush::blend::ryb_mix;
@@ -98,41 +96,16 @@ impl PainterTool {
                 cov_src[dbase + wx] = f32::from(self.paint.stroke_coverage[sbase + wx]) / 255.0;
             }
         }
-        // The feather blur (`inner`) must SATURATE to ~1 in a pool's core — `core_r` caps it at
-        // ~half the brush (a wider Spread otherwise read the whole pool as "rim" and the edge
-        // flooded the centre, Enio 2026-07-07); `spread ≤ radius·½` is a no-op. EDGE-3: blur of
-        // the HARDENED coverage (the raw plateau shifted the interior tone with Edge). One blur
-        // per DISTINCT per-owner core_r (usually one): a baked wash keeps ITS feather — the live
-        // brush's radius re-blurred the neighbour's rim (doc 13 "mudança no brush propaga").
-        let hard: Vec<f32> = cov_src.iter().map(|&c| smoothstep(SS0, SS1, c)).collect();
-        let blurs = inner_blur_set(&hard, rw, rh, &self.paint.wet_styles.table, core_r);
-        // O ARO VIRA A QUINA (doc 36): a distância assinada à fronteira, que limita o `inner` ao que
-        // um flanco RETO daria à mesma distância. Sem ela, o borrão linear mede a FRAÇÃO da
-        // vizinhança que está fora em vez da DISTÂNCIA, e numa quina côncava o aro some (medido:
-        // ombro 0,624 contra axila 0,282 — a cunha branca do report).
-        //
-        // ⚠️ **Só é computada se ALGUM dono tem aro.** `edge_gain = 0` em toda a sessão ⇒ o teto não
-        // teria consumidor, e a EDT seria trabalho por quadro que ninguém lê. O `any` cobre
-        // a tabela de donos E o estilo vivo, porque um dos dois pode ser o único com aro.
-        // ⚠️ O lado VIVO é lido do pincel AUTORADO (`brush.edge_gain`), não do `cur_style`, que só
-        // nasce 100 linhas abaixo. É conservador de propósito: com Dilution 1 o `wash_flow` zera o
-        // ganho e o campo seria computado à toa, mas nunca acontece o contrário.
-        //
-        // ⚠️ **E ele é REDUNDANTE hoje — medido, não suposto.** A mutação que o remove **não sangra**
-        // em nenhuma das duas cenas de quina (nem na cruz de dois traços, nem no PRIMEIRO traço da
-        // sessão): quando um composite tem aro, o estilo já está na tabela. Ele fica porque a
-        // pergunta certa é *"algum estilo que ESTE composite vai usar tem aro?"*, e a tabela sozinha
-        // é meia resposta — mas o doc diz o que a medição diz, e não que está gateado.
-        let wants_rim = self
-            .paint
-            .wet_styles
-            .table
-            .iter()
-            .any(|s| s.edge_gain > 0.0)
-            || self.paint.brush.edge_gain > 0.0;
-        let rim_sd = wants_rim
-            .then(|| watercolor_rim::signed_distance(&hard, rw, rh))
-            .flatten();
+        // OS CAMPOS DO ARO ([`watercolor_rim::rim_fields`]): `hard`, os borrões e a régua do teto
+        // nascem juntos e só o aro os lê, então a receita mora ao lado dele.
+        let rim = watercolor_rim::rim_fields(
+            &cov_src,
+            rw,
+            rh,
+            core_r,
+            &self.paint.wet_styles.table,
+            &self.paint.brush,
+        );
 
         let lut = luts();
         let brush = &self.paint.brush;
@@ -407,12 +380,12 @@ impl PainterTool {
                     let owner_px = if has_style { style_owner[widx] } else { 0 };
                     let settled = commit || (owner_px != 0 && owner_px != cur_o);
                     let inner =
-                        sample_bilinear(blur_of(&blurs, st.core_r as usize), rw, rh, sx, sy)
+                        sample_bilinear(blur_of(&rim.blurs, st.core_r as usize), rw, rh, sx, sy)
                             .min(1.0);
                     // O TETO do flanco reto (doc 36). É um `min`, então ele só pode DAR aro, nunca
                     // tirar — e fora / sem borrão a porta devolve `1.0`, logo o `min` é inerte e a
                     // expressão fica incondicional. Ausente (`None`) ⇒ nada a limitar.
-                    let inner = rim_sd.as_ref().map_or(inner, |sd| {
+                    let inner = rim.sd.as_ref().map_or(inner, |sd| {
                         let d = sample_bilinear(sd, rw, rh, sx, sy);
                         inner.min(watercolor_rim::straight_edge_cap(d, st.core_r as usize))
                     });

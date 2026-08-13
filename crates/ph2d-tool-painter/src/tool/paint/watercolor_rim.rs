@@ -60,10 +60,89 @@ use super::sculpt_close::distance_inside;
 /// O limiar que define a fronteira da lavagem: a meia-altura da cobertura endurecida.
 const HALF: f32 = 0.5;
 
+/// **OS CAMPOS DO ARO** — a cobertura endurecida, o conjunto de borrões que dá o `inner`, e a régua
+/// do teto. Nascem juntos, só o aro os lê, e por isso a receita mora aqui e não no composite.
+pub(super) struct RimFields {
+    /// Um borrão por `core_r` DISTINTO entre os donos (quase sempre um só).
+    pub(super) blurs: Vec<(usize, Vec<f32>)>,
+    /// A régua do teto — `None` quando ninguém na janela tem aro (ver [`field_for`]).
+    pub(super) sd: Option<Vec<f32>>,
+}
+
+/// Constrói [`RimFields`] a partir da cobertura CRUA da janela.
+pub(super) fn rim_fields(
+    cov: &[f32],
+    rw: usize,
+    rh: usize,
+    core_r: usize,
+    table: &[super::watercolor_field::WetStrokeStyle],
+    brush: &ph2d_painter_brush::BrushSpec,
+) -> RimFields {
+    // The feather blur (`inner`) must SATURATE to ~1 in a pool's core — `core_r` caps it at
+    // ~half the brush (a wider Spread otherwise read the whole pool as "rim" and the edge
+    // flooded the centre, Enio 2026-07-07); `spread <= radius/2` is a no-op. EDGE-3: blur of
+    // the HARDENED coverage (the raw plateau shifted the interior tone with Edge). One blur
+    // per DISTINCT per-owner core_r (usually one): a baked wash keeps ITS feather — the live
+    // brush's radius re-blurred the neighbour's rim (doc 13 "mudanca no brush propaga").
+    let hard: Vec<f32> = cov
+        .iter()
+        .map(|&c| {
+            super::watercolor_field::smoothstep(
+                super::watercolor_render::SS0,
+                super::watercolor_render::SS1,
+                c,
+            )
+        })
+        .collect();
+    let blurs = super::watercolor_rewet_px::inner_blur_set(&hard, rw, rh, table, core_r);
+    let sd = field_for(&hard, cov, rw, rh, core_r, table, brush);
+    RimFields { blurs, sd }
+}
+
+/// **O CAMPO DE RÉGUA do teto do aro — e a decisão de construí-lo.**
+///
+/// O ARO VIRA A QUINA (doc 36): a distância assinada à fronteira, que limita o `inner` ao que
+/// um flanco RETO daria à mesma distância. Sem ela, o borrão linear mede a FRAÇÃO da
+/// vizinhança que está fora em vez da DISTÂNCIA, e numa quina côncava o aro some (medido:
+/// ombro 0,624 contra axila 0,282 — a cunha branca do report).
+///
+/// ⚠️ **Só é computada se ALGUM dono tem aro.** `edge_gain = 0` em toda a sessão ⇒ o teto não
+/// teria consumidor, e a EDT seria trabalho por quadro que ninguém lê. O `any` cobre
+/// a tabela de donos E o estilo vivo, porque um dos dois pode ser o único com aro.
+/// ⚠️ O lado VIVO é lido do pincel AUTORADO (`brush.edge_gain`), não do `cur_style`, que só
+/// nasce 100 linhas abaixo. É conservador de propósito: com Dilution 1 o `wash_flow` zera o
+/// ganho e o campo seria computado à toa, mas nunca acontece o contrário.
+///
+/// ⚠️ **E ele é REDUNDANTE hoje — medido, não suposto.** A mutação que o remove **não sangra**
+/// em nenhuma das duas cenas de quina (nem na cruz de dois traços, nem no PRIMEIRO traço da
+/// sessão): quando um composite tem aro, o estilo já está na tabela. Ele fica porque a
+/// pergunta certa é *"algum estilo que ESTE composite vai usar tem aro?"*, e a tabela sozinha
+/// é meia resposta — mas o doc diz o que a medição diz, e não que está gateado.
+pub(super) fn field_for(
+    hard: &[f32],
+    cov: &[f32],
+    rw: usize,
+    rh: usize,
+    core_r: usize,
+    table: &[super::watercolor_field::WetStrokeStyle],
+    brush: &ph2d_painter_brush::BrushSpec,
+) -> Option<Vec<f32>> {
+    let wants_rim = table.iter().any(|s| s.edge_gain > 0.0) || brush.edge_gain > 0.0;
+    wants_rim
+        .then(|| signed_distance(hard, cov, rw, rh, core_r))
+        .flatten()
+}
+
 /// A distância ASSINADA (px) à fronteira `hard = 0.5`, positiva DENTRO. `None` quando a janela não
 /// tem fronteira nenhuma (tudo dentro ou tudo fora) — ali não há aro a corrigir e o chamador pula o
 /// teto inteiro em vez de carregar um campo constante.
-pub(super) fn signed_distance(hard: &[f32], rw: usize, rh: usize) -> Option<Vec<f32>> {
+pub(super) fn signed_distance(
+    hard: &[f32],
+    cov: &[f32],
+    rw: usize,
+    rh: usize,
+    core_r: usize,
+) -> Option<Vec<f32>> {
     let n = rw * rh;
     if n == 0 || hard.len() < n {
         return None;
@@ -116,11 +195,108 @@ pub(super) fn signed_distance(hard: &[f32], rw: usize, rh: usize) -> Option<Vec<
     if d.len() < n {
         return None;
     }
+    // A SEGUNDA RÉGUA (doc 36 §10): a distância à frente MAIS PRÓXIMA, lida da própria cobertura.
+    // As duas entram por `min` — como o teto, ela só pode DAR aro, nunca tirar.
+    //
+    // ⚠️ **Fundida NESTE laço, e só na FAIXA onde o teto pode agir** — e as duas metades da faixa não
+    // são simétricas, o que é o único jeito de o corte ser provado inerte em vez de escolhido:
+    //
+    // * `geom ≤ −(r+½)` ⇒ `P` já satura em 0, e `min(geom, front) ≤ geom` ⇒ satura também. Inerte.
+    // * `geom ≥ (r+1½)·2` ⇒ nem a maior correção que a régua pode fazer nesta faixa desce o argumento
+    //   abaixo de `r+½`, onde `P` satura em 1. Inerte.
+    //
+    // ⚠️ **O `2` é um LIMITE NOMEADO, não um arredondamento:** numa quina de ângulo `θ` a frente está
+    // a `geom·sen(θ/2)`, e `2` cobre até **60°** — dois traços cruzando mais agudo que isso mantêm o
+    // aro de hoje na quina. O `½` extra é a discretização: a EDT mede até o pixel de fronteira, meio
+    // pixel além do nível `0,5` que a régua lê, e com `√2` cravado o gate de `t = 7` caía **fora** da
+    // faixa por 0,02 px.
+    //
+    // Fora dessa faixa a régua nem é calculada — e é o corte que a torna barata, porque a faixa é o
+    // PERÍMETRO e não a janela. Medido pela sonda `the_coverage_ruler_costs_this_many_blurs`,
+    // intercalado e com o mínimo como redutor: **≈1 borrão** varrida a janela inteira contra
+    // **0,16 borrão** com o corte.
+    let lo = -(core_r as f32 + 0.5);
+    let hi = (core_r as f32 + 1.5) * 2.0;
     Some(
         (0..n)
-            .map(|i| if inside[i] != 0 { d[i] } else { -d[i] })
+            .map(|i| {
+                let geom = if inside[i] != 0 { d[i] } else { -d[i] };
+                if geom <= lo || geom >= hi {
+                    return geom;
+                }
+                geom.min(coverage_distance_at(cov, rw, rh, i))
+            })
             .collect(),
     )
+}
+
+/// Abaixo disto o campo é chato (miolo saturado ou papel nu) e não há frente por perto: a régua da
+/// cobertura se cala e o teto fica com a geométrica.
+const FLAT: f32 = 1.0e-4;
+
+/// O valor de cobertura que o endurecimento leva a `0,5` — a MESMA fronteira que a EDT semeia.
+/// `smoothstep(SS0, SS1, cov) = 0.5` ⟺ `cov = (SS0 + SS1)/2`.
+const COV_HALF: f32 = (super::watercolor_render::SS0 + super::watercolor_render::SS1) * 0.5;
+
+/// **A PROFUNDIDADE QUE A COBERTURA IMPLICA** — a régua que a geométrica não sabe dar numa quina
+/// côncava (doc 36 §9–§10).
+///
+/// ## O que a geométrica erra, e por quê
+///
+/// A cobertura da lavagem é um **`max`** sobre os depósitos, então o VALOR dela num texel é o da faixa
+/// que o cobre MELHOR: `cov = f(profundidade nessa faixa)`. E é essa profundidade que decide o TOM da
+/// silhueta ali — o mesmo tom que o flanco reto tem à mesma profundidade.
+///
+/// ⚠️ **Ela não é a distância à frente mais próxima, e a diferença importa:** numa quina côncava não
+/// existe frente a `t` px (o ponto a `t` do eixo de um braço está DENTRO do outro), e a fronteira da
+/// união fica a **`t·√2`**. As três leituras discordam, e a que o artista vê é a da COBERTURA — é ela
+/// que diz "aqui é a beirada". Medido: com `spread/raio = 0,09` o aro da quina vale **dois terços**
+/// do aro do flanco reto, e a 110 px ele **rompe** — a cunha branca da foto do Enio.
+///
+/// ## A régua
+///
+/// `cov = COV_HALF` **é** a fronteira (é o mesmo nível que a EDT semeia, via o endurecimento), então a
+/// profundidade é a estimativa analítica clássica `(cov − COV_HALF) / |∇cov|` — imune à quina, porque
+/// lê o VALOR e não a forma do nível.
+///
+/// ⚠️ **E lê a cobertura CRUA, não a endurecida:** com `hard` a régua morre onde o `smoothstep` satura
+/// (±6 px num pincel grande) — exatamente onde o aro vive. Medida com `hard` a cura valia 4 pontos
+/// percentuais; com `cov` ela vale 20.
+///
+/// ⚠️ **O termo de UM LADO não é higiene, é a CRISTA:** na bissetriz exata de um `max` de dois campos
+/// lisos a diferença central mede **metade** do que deveria (para a frente o campo é constante, para
+/// trás ele sobe), e `|∇|` sai `√2` pequeno demais — exatamente na linha que a quina tem. Tomar
+/// também as quatro derivadas de UM LADO e ficar com a MAIOR devolve `|f'|` na crista **e** concorda
+/// com a central em toda parte lisa. Sem ele a cura teria uma costura de 1 px correndo pela bissetriz,
+/// que é a forma de trocar uma cunha por uma rachadura.
+///
+/// ⚠️ **E `|∇|` (não o máximo por eixo) é quem serve o flanco INCLINADO:** numa borda a 45° as duas
+/// derivadas de um lado valem `|f'|/√2` e só a norma do gradiente devolve `|f'|`. As duas metades do
+/// `max` cobrem casos opostos, e nenhuma sozinha é isotrópica.
+///
+/// Devolve `+∞` onde não há frente (campo chato) — o `min` do chamador o descarta.
+#[inline]
+fn coverage_distance_at(cov: &[f32], rw: usize, rh: usize, i: usize) -> f32 {
+    let (x, y) = (i % rw, i / rw);
+    if x == 0 || y == 0 || x + 1 >= rw || y + 1 >= rh {
+        return f32::INFINITY;
+    }
+    let h = cov[i];
+    let (l, r) = (cov[i - 1], cov[i + 1]);
+    let (u, d) = (cov[i - rw], cov[i + rw]);
+    let gx = (r - l) * 0.5;
+    let gy = (d - u) * 0.5;
+    let g = (gx * gx + gy * gy)
+        .sqrt()
+        .max((h - l).abs())
+        .max((r - h).abs())
+        .max((h - u).abs())
+        .max((d - h).abs());
+    if g > FLAT {
+        (h - COV_HALF) / g
+    } else {
+        f32::INFINITY
+    }
 }
 
 /// **O TETO** — o `inner` que um flanco RETO daria a esta distância, para o raio de borrão `r`.
@@ -181,17 +357,210 @@ mod tests {
                 if (y - 16).abs() < 8 { 1.0 } else { 0.0 }
             })
             .collect();
-        let sd = signed_distance(&hard, rw, rh).expect("a faixa tem fronteira");
+        let sd = signed_distance(&hard, &hard, rw, rh, 7).expect("a faixa tem fronteira");
         let at = |x: usize, y: usize| sd[y * rw + x];
         assert!(at(16, 16) > 6.0, "o miolo esta fundo: {}", at(16, 16));
         assert!(at(16, 2) < -4.0, "fora e' negativo: {}", at(16, 2));
         assert!(at(16, 9).abs() < 2.0, "perto da borda: {}", at(16, 9));
     }
 
+    /// A largura da rampa da fixture (px) e onde ela cruza `0,5`.
+    const W: f32 = 24.0;
+    const S: f32 = 40.0;
+    const DIM: usize = 96;
+
+    /// A COBERTURA de DUAS faixas ortogonais, composta por `max` — a lavagem em miniatura. A faixa
+    /// horizontal ocupa `y ≤ S`, a vertical `x ≤ S`; a quina côncava fica em `(S, S)`.
+    ///
+    /// A rampa é LINEAR de propósito: com ela `(cov − COV_HALF)/|∇cov|` vale `S − s` **exatamente**,
+    /// então o gate mede a régua e não o erro de curvatura de um falloff.
+    fn two_bands_cov() -> Vec<f32> {
+        let ramp = |s: f32| (COV_HALF + (S - s) / W).clamp(0.0, 1.0);
+        (0..DIM * DIM)
+            .map(|i| {
+                let (x, y) = ((i % DIM) as f32, (i / DIM) as f32);
+                ramp(x).max(ramp(y))
+            })
+            .collect()
+    }
+
+    /// O endurecimento que o composite aplica — a fronteira que a EDT semeia é `hard = 0.5`.
+    fn harden(cov: &[f32]) -> Vec<f32> {
+        cov.iter()
+            .map(|&c| {
+                super::super::watercolor_field::smoothstep(
+                    super::super::watercolor_render::SS0,
+                    super::super::watercolor_render::SS1,
+                    c,
+                )
+            })
+            .collect()
+    }
+
+    /// As duas metades que `signed_distance` consome, da mesma fixture.
+    fn two_bands() -> (Vec<f32>, Vec<f32>) {
+        let cov = two_bands_cov();
+        let hard = harden(&cov);
+        (hard, cov)
+    }
+
+    /// **O GATE da régua da cobertura — a quina côncava mede o que o flanco mede.**
+    ///
+    /// A `hard` de duas faixas vale `f(min(dx, dy))`, então um ponto na bissetriz a `t` px de CADA
+    /// frente tem **a mesma cobertura** que um ponto do flanco reto a `t` px da sua — e é isso que o
+    /// aro tem de ver. A régua GEOMÉTRICA discorda: da fronteira da união aquele ponto está a `t·√2`,
+    /// porque o vizinho mais próximo é o vértice da quina.
+    ///
+    /// ⚠️ **O CONTROLE está na própria asserção:** a fixture só prova alguma coisa se `t·√2` estiver
+    /// FORA da tolerância — senão as duas réguas seriam indistinguíveis e o gate passaria por vácuo.
+    ///
+    /// **Mutações que têm de sangrar:** tirar o `.min(front[i])` de [`signed_distance`] (a quina volta
+    /// a `t·√2`) · tirar os quatro termos de UM LADO de [`coverage_distance`] (na crista do `max` a
+    /// diferença central mede metade, `|∇|` sai `√2` pequeno, e a quina volta a `t·√2`).
+    #[test]
+    fn the_concave_corner_measures_what_the_straight_flank_measures() {
+        let (hard, cov) = two_bands();
+        let sd = signed_distance(&hard, &cov, DIM, DIM, 7).expect("a fixture tem fronteira");
+        let at = |x: usize, y: usize| sd[y * DIM + x];
+        // ⚠️ `t` fica DENTRO da faixa em que o teto age (`t <= core_r + 1/2`): alem dela `P`
+        // satura em 1 e a regua nao e' sequer calculada — o que o teste seguinte afirma como propriedade.
+        for t in [4.0f32, 6.0, 7.0] {
+            let inside = (S - t) as usize;
+            // Flanco reto: longe da outra faixa (a rampa dela ja' zerou), borda VERTICAL.
+            let far = (S + W) as usize;
+            let flank = at(inside, far);
+            // Axila: `t` px de CADA frente — e EXATAMENTE na bissetriz, que e' a crista do `max`.
+            let pit = at(inside, inside);
+            // Um passo FORA da bissetriz: a crista tem 1 px de largura e o gate tem de cobrir os dois.
+            // ⚠️ Ali a cobertura é a da profundidade `t + 1` (o `max` fica com a faixa que cobre
+            // MELHOR), então o flanco com que ele se compara é o de `t + 1` — a propriedade é *mesma
+            // cobertura, mesmo aro*, e não *mesma distância à frente mais próxima*.
+            let off = at(inside, inside - 1);
+            let flank_off = at((S - t - 1.0) as usize, far);
+            let geom = t * std::f32::consts::SQRT_2;
+            assert!(
+                (geom - t) > 1.0,
+                "a fixture nao contem o fenomeno: t={t} e t*raiz2={geom} estao dentro da tolerancia"
+            );
+            assert!(
+                (pit - flank).abs() < 1.0,
+                "t={t}: a axila mede {pit:.2} e o flanco {flank:.2} (a geometrica daria {geom:.2})"
+            );
+            assert!(
+                (off - flank_off).abs() < 1.0,
+                "t={t}: fora da bissetriz a axila mede {off:.2} contra o flanco de mesma \
+                 cobertura {flank_off:.2}"
+            );
+        }
+    }
+
+    /// **Fora da faixa em que o teto age, a régua NÃO é calculada — e isso é INERTE, não um atalho.**
+    ///
+    /// Acima de `core_r + ½` o `P` do teto satura em 1 e o `min` do composite não tem o que limitar;
+    /// abaixo de `−(core_r + ½)` ele satura em 0 e a régua só poderia baixar ainda mais. O corte é o
+    /// que faz a régua custar **0,16 borrão** em vez de ≈1 (a faixa é o perímetro, não a janela), e
+    /// aqui ele é afirmado pelo que o CHAMADOR vê: as duas leituras dão o mesmo teto.
+    #[test]
+    fn beyond_the_caps_reach_the_two_rulers_give_the_same_cap() {
+        let (hard, cov) = two_bands();
+        let sd = signed_distance(&hard, &cov, DIM, DIM, 7).expect("a fixture tem fronteira");
+        let at = |x: usize, y: usize| sd[y * DIM + x];
+        let t = 12.0f32;
+        let inside = (S - t) as usize;
+        let pit = at(inside, inside);
+        let flank = at(inside, (S + W) as usize);
+        assert!(
+            (pit - flank).abs() > 1.0,
+            "a fixture nao contem o fenomeno: as duas leituras ja concordam ({pit:.2} vs {flank:.2})"
+        );
+        assert_eq!(straight_edge_cap(pit, 7), straight_edge_cap(flank, 7));
+        assert_eq!(straight_edge_cap(pit, 7), 1.0);
+    }
+
+    /// **E o flanco reto NÃO é sequestrado pela régua nova.** Ela entra por `min`, então o risco é ela
+    /// morder onde a geometria já estava certa — o que fortaleceria o aro de TODA borda em vez de só
+    /// da quina. Num flanco a estimativa analítica e a EDT medem a mesma coisa, e o gate exige isso.
+    #[test]
+    fn the_straight_flank_keeps_its_geometric_reading() {
+        let (hard, cov) = two_bands();
+        let sd = signed_distance(&hard, &cov, DIM, DIM, 7).expect("a fixture tem fronteira");
+        let far = (S + W) as usize;
+        for t in [0.0f32, 2.0, 4.0, 6.0, 9.0] {
+            let got = sd[far * DIM + (S - t) as usize];
+            assert!(
+                (got - t).abs() < 0.75,
+                "flanco a t={t}: a regua devolveu {got:.2}"
+            );
+        }
+    }
+
+    /// **O PREÇO da régua da cobertura, na moeda que o composite já paga.**
+    ///
+    /// Wall-clock absoluto nesta máquina não decide nada (ela é compartilhada), então a medida é uma
+    /// RAZÃO contra o `box_blur` que o composite já roda várias vezes por janela — a mesma régua com
+    /// que a EDT foi precificada (**1,69 borrões**, doc 36 §6).
+    ///
+    /// `cargo test -p ph2d-tool-painter --release the_coverage_ruler_costs -- --ignored --nocapture`
+    #[test]
+    #[ignore = "sonda; roda com --ignored --nocapture"]
+    fn the_coverage_ruler_costs_this_many_blurs() {
+        use std::time::Instant;
+        const D: usize = 512;
+        let cov: Vec<f32> = {
+            let ramp = |s: f32| (COV_HALF + (200.0 - s) / 24.0).clamp(0.0, 1.0);
+            (0..D * D)
+                .map(|i| {
+                    let (x, y) = ((i % D) as f32, (i / D) as f32);
+                    ramp(x).max(ramp(y))
+                })
+                .collect()
+        };
+        let hard = harden(&cov);
+        // ⚠️ Esta máquina é COMPARTILHADA e o relógio dela deriva 4× sob carga. As três medidas são
+        // INTERCALADAS (a carga vira fator comum) e o redutor é o MÍNIMO — que é o certo aqui porque
+        // toda amostra faz exatamente o mesmo trabalho.
+        let bench = |f: &dyn Fn()| -> f64 {
+            let mut best = f64::INFINITY;
+            for _ in 0..12 {
+                let t0 = Instant::now();
+                f();
+                best = best.min(t0.elapsed().as_secs_f64() * 1000.0);
+            }
+            best
+        };
+        let mut b = (f64::INFINITY, f64::INFINITY, f64::INFINITY);
+        for _ in 0..6 {
+            b.0 = b.0.min(bench(&|| {
+                std::hint::black_box(super::super::watercolor_field::box_blur(&hard, D, D, 7));
+            }));
+            b.1 = b.1.min(bench(&|| {
+                std::hint::black_box(signed_distance(&hard, &cov, D, D, 0));
+            }));
+            b.2 = b.2.min(bench(&|| {
+                std::hint::black_box(signed_distance(&hard, &cov, D, D, 7));
+            }));
+        }
+        let bench = |label: &str, ms: f64| -> f64 {
+            println!("   {label:36} {ms:7.3} ms");
+            ms
+        };
+        let blur = bench("box_blur(r=7)", b.0);
+        // ⚠️ O que interessa é o DELTA que o produto paga, não o custo da régua rodada sozinha sobre a
+        // janela inteira — ela só roda na FAIXA. `core_r = 0` fecha a faixa a quase nada e serve de
+        // linha de base sem precisar de uma segunda implementação para divergir.
+        let base = bench("signed_distance (faixa fechada)", b.1);
+        let whole = bench("signed_distance (r = 7, o produto)", b.2);
+        println!(
+            "   => a EDT custa {:.2} borroes; a regua acrescenta {:.2}",
+            base / blur,
+            (whole - base) / blur
+        );
+    }
+
     /// Janela sem fronteira ⇒ `None`: o chamador pula o teto em vez de carregar um campo constante.
     #[test]
     fn a_window_with_no_boundary_has_no_cap() {
-        assert!(signed_distance(&vec![1.0f32; 64], 8, 8).is_none());
-        assert!(signed_distance(&vec![0.0f32; 64], 8, 8).is_none());
+        assert!(signed_distance(&vec![1.0f32; 64], &vec![1.0f32; 64], 8, 8, 7).is_none());
+        assert!(signed_distance(&vec![0.0f32; 64], &vec![0.0f32; 64], 8, 8, 7).is_none());
     }
 }

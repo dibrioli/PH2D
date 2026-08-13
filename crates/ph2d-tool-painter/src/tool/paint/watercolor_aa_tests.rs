@@ -94,15 +94,21 @@ fn the_smooth_edges_click_flips_the_mode() {
 /// the whole-canvas fingerprint the original `a_thick_watercolor_stroke_is_byte_identical` gate
 /// pinned before the AA existed, resurrected as the hard-mode oracle.
 ///
-/// ⚠️ **O pino MOVEU em 2026-08-12** (`0xc5ebf8cf645fb6f6` → `0xe59f2fb788ce5874`), e o protocolo é o
-/// do doc 23: um hash pinado não se re-escreve em silêncio. O que o moveu foi **o aro virar a quina**
-/// ([`super::watercolor_rim`], doc 36) — o `inner` passou a ser limitado pelo que um flanco RETO
-/// daria à mesma distância, e um `min` só pode DAR aro.
+/// ⚠️ **O pino MOVEU DUAS vezes em 2026-08-12** (`0xc5ebf8cf645fb6f6` → `0xe59f2fb788ce5874` →
+/// `0x9744233f9f852066`), e o protocolo é o do doc 23: um hash pinado não se re-escreve em silêncio.
 ///
-/// **Quanto ele moveu, medido byte a byte nesta MESMA fixture** (sonda
+/// **1º movimento — o aro virar a quina** ([`super::watercolor_rim`], doc 36 §6): o `inner` passou a
+/// ser limitado pelo que um flanco RETO daria à mesma distância, e um `min` só pode DAR aro.
+/// Medido byte a byte nesta MESMA fixture (sonda
 /// `crossing_probe::rim_dump_the_straight_stroke_the_pin_watches`, com e sem a cura):
 /// **6247 bytes de 262144 (2,4%) · 2486 px de 65536 (3,8%) · pior delta 18/255**, e a cauda do
 /// histograma é toda ≤ 12. Tudo na banda do ARO — o miolo e o papel não se movem.
+///
+/// **2º movimento — a RÉGUA DA COBERTURA** (doc 36 §10): o smoke disse que a cunha continuava, e a
+/// medição mostrou que o teto lia a distância à fronteira da UNIÃO (`t·√2` numa quina côncava) em vez
+/// da distância à frente mais próxima (`t`), que **a cobertura já carrega no valor**. Preço na mesma
+/// fixture: **494 bytes de 262144 (0,2%) · 192 px de 65536 (0,3%) · pior delta 14/255** — um quinto
+/// do 1º movimento, porque num flanco reto as duas réguas concordam e o `min` é quase inerte.
 ///
 /// ⚠️ **E ele move num traço RETO de propósito, não por acidente:** esta fixture tem `warp = 6`, e um
 /// contorno ondulado é localmente **côncavo** em metade das ondas. É a mesma correção da quina, na
@@ -118,7 +124,7 @@ fn smooth_edges_off_is_the_pre_aa_render_byte_for_byte() {
     let hard = wc_stroke_hard(256, 40.0, 6.0, &pts);
     assert_eq!(
         canvas_hash(&hard),
-        0xe59f2fb788ce5874,
+        0x9744233f9f852066,
         "Smooth Edges OFF must render the hard-mode composite byte-for-byte"
     );
     // And the two modes genuinely differ where the AA lives (the rim) — the checkbox is not dead.

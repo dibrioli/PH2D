@@ -987,6 +987,75 @@ alterne o chip **S ↔ L** e alise a mesma região muitas vezes. No `S` a forma
 **encolhe** sob o pincel; no `L` ela alisa e **fica onde está**. O `L` não aparece
 em nenhuma outra ferramenta — se aparecer, pare.
 
+### §7.8 — ✅ O WIREFRAME REMOVE LINHA ESCONDIDA (2026-08-12, 2º report)
+
+Report do Enio, com foto de uma esfera: *"ainda ruim. veja as bordas"* — a
+borda saía numa faixa escura e embolada.
+
+**A medição por ANEL desarmou a hipótese fácil antes de qualquer código**
+(`probe_wire_continuity::where_the_wire_ink_falls`). Na esfera 64×128, **59 % de
+toda a tinta de wireframe cai nos dois anéis externos** (`u > 0,8`), que são 36 %
+da área: os anéis de latitude de uma esfera UV **comprimem-se na silhueta**, e a
+faixa escurece por geometria. Curar o vazamento inteiro deixaria aquela banda com
+~92 % da densidade. ⇒ *a faixa não é um defeito de profundidade.*
+
+**Mas o vazamento existia e era grande onde a malha é grossa** — 25,7 % da tinta
+do anel `0,8-0,9` na esfera 32×64, 14,0 % num toro — e ele **é** um defeito: é a
+malha do outro lado da peça atravessando.
+
+⚠️ **A cura tem DUAS metades e nenhuma delas basta**, e isto está medido:
+
+| | miolo estrito | vazada |
+|---|---|---|
+| sem a nudge (o defeito do 1º report) | 45 % | 0,0 % |
+| só a nudge (o que shipava) | **109 %** | 2,2 % |
+| nudge + descarte por FRAGMENTO | **86 %** | **0,0 %** |
+| nudge + descarte no VÉRTICE | 73 % | 0,0 % |
+
+⚠️ **Os 109 % são a lição da wave: o oráculo anterior estava INFLADO.** Ele media
+a tinta total contra o comprimento das arestas de frente, e numa esfera densa o
+fio de trás projeta-se **por cima** do da frente — parte do que ele contava como
+*"a aresta chegou"* era a malha de trás tapando o buraco de uma aresta cortada.
+A queda para 86 % é a ilusão a sair, não cobertura a perder. A régua nova é o
+**miolo estrito** (as arestas cujas DUAS pontas encaram o olho com folga, num
+sólido convexo), que não tem essa ambiguidade.
+
+⚠️ **E o descarte é do FRAGMENTO, não do vértice** — uma aresta que CRUZA a
+silhueta tem uma ponta de cada lado, então decidir no vértice leva a metade
+visível junto (86 % → 73 %).
+
+⚠️ **A nudge fica em 3e-3, e não sobe.** Com o descarte ela deixou de ter
+orçamento de vazamento, mas a varredura mostra que ela **SATURA** ali (86 % de
+3e-3 a 4,8e-2) — e num TORO subir para 6e-3 faz o número *melhorar* para 87 %
+porque arestas que encaram o olho e estão **atrás do tubo da frente** voltam a
+atravessar. Um oráculo subindo enquanto a remoção de superfície escondida piora.
+
+⚠️ **O preço foi COBRADO, não aceito:** numa casca ABERTA vista por trás toda
+normal aponta para longe do olho, e uma regra que lesse *"normal de costas ⇒
+escondido"* apagaria exatamente o que o artista está olhando. Por isso o descarte
+só se arma numa malha **FECHADA** (`Mesh::is_closed`, um `f32` por-objeto no
+uniform — **por-objeto e não do quadro**, senão uma única casca aberta na cena
+devolveria o vazamento a todas as peças). Gate: `an_open_shell_keeps_its_wireframe`
+compara a MESMA grade plana enrolada nos dois sentidos.
+
+⚠️ **E a nota do resíduo da wave anterior era FALSA e foi corrigida:** ela dizia
+que a cura precisava da adjacência aresta→face, que o `wire_indices` não constrói
+(+89 % medidos). A normal POR-VÉRTICE já responde, e o toro foi de 14,0 % a 0,0 %
+sem grafo nenhum.
+
+**4 mutações, 4 sangram** (descarte sempre armado ⇒ a casca aberta some · sem
+descarte ⇒ o vazamento volta · sem a nudge ⇒ as duas · o atalho ortográfico
+`n_view.z` ⇒ 0,3 % de vazamento na esfera grossa, que é por que o `facing` é
+perspectiva-correto).
+
+**Aberto, com o número ao lado:** a faixa da silhueta continua **59 % da tinta**
+por geometria da esfera, e a cura disso não é profundidade — é **anti-aliasing**
+(desenhar linhas mais juntas que um pixel é aliasing por definição). O caminho
+com nome é o wireframe de passe único por coordenada baricêntrica (Bærentzen
+2006), que dá cobertura com `fwidth` e dissolve a faixa num degradê — e ele exige
+geometria **não-indexada** no passe do barro (3× a memória de vértice), logo é
+decisão de produto, não correção.
+
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 
 **Os defaults de fábrica do Blender não estão no clone.** Eles vivem em

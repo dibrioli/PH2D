@@ -216,6 +216,8 @@ impl MeshRenderer {
             index_capacity: idx,
             wire: None,
             wire_count: 0,
+            // *"a pergunta ainda não foi feita"* — ver `ObjectRaw::wire_cull`.
+            closed: false,
         };
         if let Some(slot) = self.slots.get_mut(index) {
             // O bind group e o buffer de pose sobrevivem: só a geometria mudou.
@@ -415,6 +417,10 @@ impl MeshRenderer {
         }
         crate::wire_indices(mesh, &mut self.scratch_indices_flat);
         let count = u32::try_from(self.scratch_indices_flat.len()).unwrap_or(u32::MAX);
+        // ⚠️ **A pergunta é feita AQUI porque aqui ela é quase de graça** — este
+        // corpo já é `O(arestas)` e já roda uma vez por mudança de topologia (a
+        // porta é idempotente). Fazê-la no desenho a cobraria por QUADRO.
+        let closed = mesh.is_closed();
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("ph2d-mesh wire"),
             contents: bytemuck::cast_slice(&self.scratch_indices_flat),
@@ -423,6 +429,7 @@ impl MeshRenderer {
         let g = &mut self.slots.get_mut(index).expect("conferido acima").gpu;
         g.wire = Some(buffer);
         g.wire_count = count;
+        g.closed = closed;
         true
     }
 }

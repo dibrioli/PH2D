@@ -109,7 +109,11 @@ impl MeshRenderer {
             label: Some("ph2d-mesh object bgl"),
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX,
+                // ⚠️ **O FRAGMENT também**, e é o `wire_cull` que o exige: quem
+                // decide se uma linha de costas some é o fragmento (o vértice não
+                // pode descartar um primitivo), então a pergunta *"esta peça é um
+                // sólido?"* tem de estar visível de lá.
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,

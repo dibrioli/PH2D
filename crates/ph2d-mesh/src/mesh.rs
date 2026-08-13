@@ -23,7 +23,7 @@ use crate::adjacency::Adjacency;
 use crate::edges::Edges;
 use crate::face::Face;
 use crate::normals;
-use crate::octree::{Octree, RefitScratch};
+use crate::octree::Octree;
 
 /// A malha de triângulos/quads residente na CPU.
 /// As portas que mudam a topologia — ver o módulo.
@@ -271,6 +271,24 @@ impl Mesh {
     #[must_use]
     pub fn edges(&self) -> Edges {
         Edges::build(&self.faces, &self.adjacency)
+    }
+
+    /// **ESTA MALHA É UM SÓLIDO?** — toda aresta partilhada por exatamente duas
+    /// faces. É a pergunta que separa um sólido de uma CASCA.
+    ///
+    /// ⚠️ **Ela decide quem pode remover linha escondida pela NORMAL.** Num
+    /// sólido, um ponto cuja normal aponta para longe do olho está do outro lado
+    /// da peça e não devia ser visto; numa casca aberta ele é a face de TRÁS de
+    /// uma folha, que o artista vê de frente ao girar a câmera. Quem usa a normal
+    /// como oráculo de visibilidade sem perguntar isto apaga, em silêncio, o que
+    /// o artista está olhando.
+    ///
+    /// Custa `O(arestas)` e não é cacheada, pela razão que a [`Self::edges`]
+    /// explica: quem a chama duas vezes seguidas guarda o retorno.
+    #[must_use]
+    pub fn is_closed(&self) -> bool {
+        let e = self.edges();
+        (0..e.len()).all(|i| e.valence(u32::try_from(i).unwrap_or(u32::MAX)) == 2)
     }
 
     #[must_use]
@@ -593,72 +611,6 @@ impl Mesh {
     }
 }
 
-/// Buffers reutilizados entre consultas — a consulta é feita por movimento do
-/// mouse, e alocar por dab é o que transforma um gesto em serrilhado.
-#[derive(Clone, Debug, Default)]
-pub struct QueryScratch {
-    faces: Vec<u32>,
-    seen: Vec<u32>,
-    epoch: u32,
-}
-
-/// Buffers reutilizados pelo [`Mesh::refresh_region`].
-///
-/// Os `*_seen` são vetores do TAMANHO da malha, mas o passe só os toca onde
-/// escreveu e os limpa na saída — é o que torna o custo função da pegada e não
-/// da malha, e é a razão de eles viverem aqui em vez de nascerem por dab.
-#[derive(Clone, Debug, Default)]
-pub struct RegionScratch {
-    faces: Vec<u32>,
-    verts: Vec<u32>,
-    face_seen: Vec<bool>,
-    vert_seen: Vec<bool>,
-    /// Saída contígua das portas paralelas, reusada pelas duas metades do passe.
-    tmp: Vec<[f32; 3]>,
-    /// A mesma coisa para a CURVATURA, que é escalar. ⚠️ Vetor próprio e não um
-    /// reuso do [`Self::tmp`]: a curvatura roda **depois** das normais e as lê,
-    /// então os dois estão vivos ao mesmo tempo.
-    tmp_k: Vec<f32>,
-    /// O irmão do `tmp_k` para a curvatura de MUNDO — mesma lista de vértices,
-    /// mesmo gather, saída própria (o `curvature_of` devolve o par).
-    tmp_kw: Vec<f32>,
-    refit: RefitScratch,
-}
-
-impl RegionScratch {
-    /// Os vértices cuja NORMAL o último `refresh_region` recomputou.
-    ///
-    /// ⚠️ **É um superconjunto de "quem se moveu", e a diferença é visível.** Um
-    /// vizinho parado ao lado de uma face que girou tem a normal mudada; quem
-    /// subir para a GPU só a lista de movidos deixa a normal velha exatamente na
-    /// BORDA do pincel, que é onde o artista está olhando. Esta é a lista que o
-    /// upload incremental consome.
-    #[must_use]
-    pub fn refreshed(&self) -> &[u32] {
-        &self.verts
-    }
-
-    /// Declara que nada foi refrescado (um dab que não tocou geometria).
-    ///
-    /// Existe porque a alternativa é o chamador ler a lista do dab ANTERIOR e
-    /// subir uma região que ninguém mexeu — barato, mas mentiroso, e a mentira
-    /// vira um gate verde sobre um upload que não acompanha o produto.
-    pub fn forget(&mut self) {
-        self.verts.clear();
-    }
-
-    /// ⚠️ **`resize` e não `vec![]`, e a diferença aparece na topologia dinâmica:**
-    /// a malha muda de tamanho a cada dab, e re-alocar dois vetores do tamanho
-    /// dela por dab é `O(malha)` entrando pela porta dos fundos justamente na
-    /// wave que existe para tirá-lo. Crescer preserva a capacidade e zera só a
-    /// cauda — e as entradas antigas já são `false`, porque o passe limpa o que
-    /// sujou antes de sair.
-    fn reset(&mut self, faces: usize, verts: usize) {
-        self.face_seen.resize(faces, false);
-        self.vert_seen.resize(verts, false);
-    }
-}
-
 /// O que impede uma malha inválida de existir.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MeshError {
@@ -685,6 +637,10 @@ impl core::fmt::Display for MeshError {
 }
 
 impl core::error::Error for MeshError {}
+
+#[path = "mesh_scratch.rs"]
+mod scratch;
+pub use self::scratch::{QueryScratch, RegionScratch};
 
 #[cfg(test)]
 #[path = "mesh_tests.rs"]

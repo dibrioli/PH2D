@@ -31,12 +31,24 @@ struct CameraRaw {
     view: [[f32; 4]; 4],
 }
 
-/// O uniform do objeto: **onde ele está**. Uma `mat4x4` alinha em 16 B, então
-/// não há padding a declarar.
+/// O uniform do objeto: **onde ele está**, e **se ele é um sólido**.
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 struct ObjectRaw {
     model: [[f32; 4]; 4],
+    /// **O WIREFRAME PODE REMOVER LINHA ESCONDIDA PELA NORMAL?** `1` só numa
+    /// malha FECHADA (`Mesh::is_closed`).
+    ///
+    /// ⚠️ **Ele é POR-OBJETO e não do quadro**, e a diferença é o produto: uma
+    /// única casca aberta na cena devolveria o vazamento a TODAS as peças se a
+    /// pergunta morasse no `Shade`.
+    ///
+    /// ⚠️ **E o default é `0`** — o mundo de antes desta wave, ao byte. Uma malha
+    /// cuja lista de arestas nunca subiu não teve a pergunta feita, e o valor
+    /// que ela carrega tem de significar *"não sei"*, não *"pode cortar"*.
+    wire_cull: f32,
+    /// A `mat4x4` alinha em 16 B: o `f32` acima abre um vec4 que precisa fechar.
+    _pad: [f32; 3],
 }
 
 /// Os buffers da malha no device.
@@ -93,6 +105,15 @@ struct MeshGpu {
     /// um dab servir os dois passes sem saber que o segundo existe.
     wire: Option<wgpu::Buffer>,
     wire_count: u32,
+    /// **ESTA MALHA É UM SÓLIDO?** — a resposta de `Mesh::is_closed`, guardada
+    /// no instante em que a lista de arestas sobe.
+    ///
+    /// ⚠️ **Ela mora AQUI e não no `Mesh`, e é ao lado da escrita que ela
+    /// descreve:** o `upload_at` derruba a lista de arestas exatamente quando a
+    /// topologia pode ter mudado, então guardar a resposta em qualquer outro
+    /// lugar abriria a janela em que a peça tem uma topologia e o device carrega
+    /// o veredito da anterior.
+    closed: bool,
 }
 
 /// **UM OBJETO no device** — a geometria e a pose que a põe no mundo.
@@ -348,6 +369,8 @@ impl MeshRenderer {
                 0,
                 bytemuck::bytes_of(&ObjectRaw {
                     model: pose.to_cols_array_2d(),
+                    wire_cull: if slot.gpu.closed { 1.0 } else { 0.0 },
+                    _pad: [0.0; 3],
                 }),
             );
             pass.set_bind_group(1, &slot.bind, &[]);

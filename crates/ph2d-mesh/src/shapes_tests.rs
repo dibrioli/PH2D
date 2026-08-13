@@ -8,14 +8,13 @@
 use super::*;
 use crate::Aabb;
 
-/// Uma malha é FECHADA quando toda aresta é compartilhada por exatamente duas
-/// faces. É a pergunta que separa um sólido de uma casca — e um sólido é o que
-/// uma primitiva de blocagem tem de ser, senão o remesh (que precisa de dentro e
-/// fora) a recusa em silêncio.
+/// ⚠️ **A pergunta tem UMA porta** (`Mesh::is_closed`), e este alias existe só
+/// para as asserções abaixo continuarem legíveis. A cópia que morava aqui
+/// reconstruía a adjacência à mão — e uma segunda resposta a *"isto é um
+/// sólido?"* divergiria da que o renderer usa para decidir se pode remover
+/// linha escondida.
 fn is_closed(mesh: &Mesh) -> bool {
-    let adj = crate::Adjacency::build(mesh.vert_count(), mesh.faces());
-    let edges = crate::Edges::build(mesh.faces(), &adj);
-    (0..edges.len()).all(|e| edges.valence(e as u32) == 2)
+    mesh.is_closed()
 }
 
 #[test]

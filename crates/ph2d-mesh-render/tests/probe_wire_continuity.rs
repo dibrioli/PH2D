@@ -167,7 +167,13 @@ fn lum(px: &[u8], x: i32, y: i32) -> Option<f32> {
 /// barro cuja luminância varia de ponta a ponta da peça, então um limiar fixo
 /// mediria a ILUMINAÇÃO junto e chamaria de *"aresta que sumiu"* toda aresta que
 /// cai numa sombra.
-fn continuity(mesh: &Mesh, plain: &[u8], wired: &[u8], cam: &Camera3d) -> (f64, usize, usize) {
+fn continuity(
+    mesh: &Mesh,
+    plain: &[u8],
+    wired: &[u8],
+    cam: &Camera3d,
+    strict: bool,
+) -> (f64, usize, usize) {
     let mut wire = Vec::new();
     ph2d_mesh_render::wire_indices(mesh, &mut wire);
     let pos = mesh.positions();
@@ -194,6 +200,16 @@ fn continuity(mesh: &Mesh, plain: &[u8], wired: &[u8], cam: &Camera3d) -> (f64, 
             (a[2] + b[2]) * 0.5,
         ];
         if !front_facing(mesh, e[0], mid, cam) {
+            continue;
+        }
+        // ⚠️ **O modo ESTRITO é o único que responde *"o descarte cortou uma
+        // aresta da FRENTE?"*.** Uma aresta que CRUZA a silhueta tem uma ponta de
+        // cada lado, então ela DEVE perder metade — contá-la mede a lei, não o
+        // defeito.
+        if strict
+            && (facing_at(mesh, e[0], cam) <= STRICT_MARGIN
+                || facing_at(mesh, e[1], cam) <= STRICT_MARGIN)
+        {
             continue;
         }
         edges += 1;
@@ -235,6 +251,81 @@ fn front_facing(mesh: &Mesh, v: u32, at: [f32; 3], cam: &Camera3d) -> bool {
     n[0] * d[0] + n[1] * d[1] + n[2] * d[2] > 0.0
 }
 
+/// `n · (olho − p)`, normalizado — o cosseno do ângulo entre a normal do vértice
+/// e o raio que vai dele até o olho.
+fn facing_at(mesh: &Mesh, v: u32, cam: &Camera3d) -> f32 {
+    let n = mesh.normals()[v as usize];
+    let p = mesh.positions()[v as usize];
+    let eye = cam.eye();
+    let d = [eye[0] - p[0], eye[1] - p[1], eye[2] - p[2]];
+    let dl = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt().max(1e-9);
+    let nl = (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt().max(1e-9);
+    (n[0] * d[0] + n[1] * d[1] + n[2] * d[2]) / (dl * nl)
+}
+
+/// **AS ARESTAS INEQUÍVOCAS** — as que têm as DUAS pontas voltadas para o olho
+/// com folga (`facing > MARGIN`), rasterizadas numa máscara, e o comprimento
+/// delas.
+///
+/// ⚠️ **Elas existem porque a silhueta torna a pergunta mal-posta.** Uma aresta
+/// que CRUZA a silhueta tem metade visível e metade do outro lado, então
+/// *"quanto dela deveria chegar?"* não tem resposta sem re-implementar a lei que
+/// o produto usa — e um oráculo que copia a regra sob teste é um espelho, não um
+/// oráculo. Com a folga, o conjunto é o miolo da peça: ali *toda* a aresta
+/// deveria chegar, sob qualquer lei, e a percentagem volta a significar o que o
+/// nome dela diz.
+const STRICT_MARGIN: f32 = 0.2;
+
+fn strict_front(mesh: &Mesh, cam: &Camera3d, mask: &mut [bool]) -> f64 {
+    let mut wire = Vec::new();
+    ph2d_mesh_render::wire_indices(mesh, &mut wire);
+    let pos = mesh.positions();
+    let mut sum = 0.0;
+    for e in wire.chunks_exact(2) {
+        if facing_at(mesh, e[0], cam) <= STRICT_MARGIN
+            || facing_at(mesh, e[1], cam) <= STRICT_MARGIN
+        {
+            continue;
+        }
+        let (a, b) = (pos[e[0] as usize], pos[e[1] as usize]);
+        let (Some(pa), Some(pb)) = (cam.project(a, (W, H)), cam.project(b, (W, H))) else {
+            continue;
+        };
+        sum += f64::from(((pb.0 - pa.0).powi(2) + (pb.1 - pa.1).powi(2)).sqrt());
+        let steps = ((pb.0 - pa.0).abs().max((pb.1 - pa.1).abs()).ceil() as i32).max(1);
+        for s in 0..=steps {
+            let t = s as f32 / steps as f32;
+            let (x, y) = (
+                (pa.0 + (pb.0 - pa.0) * t).round() as i32,
+                (pa.1 + (pb.1 - pa.1) * t).round() as i32,
+            );
+            for dy in -1..=1 {
+                for dx in -1..=1 {
+                    let (x, y) = (x + dx, y + dy);
+                    if x >= 0 && y >= 0 && x < W as i32 && y < H as i32 {
+                        mask[(y as u32 * W + x as u32) as usize] = true;
+                    }
+                }
+            }
+        }
+    }
+    sum
+}
+
+/// Tinta de wireframe DENTRO de uma máscara.
+fn ink_in(plain: &[u8], wired: &[u8], mask: &[bool]) -> usize {
+    (0..(W * H) as usize)
+        .filter(|&i| {
+            let (x, y) = ((i as u32 % W) as i32, (i as u32 / W) as i32);
+            mask[i]
+                && match (lum(plain, x, y), lum(wired, x, y)) {
+                    (Some(p), Some(w)) => p - w > 6.0,
+                    _ => false,
+                }
+        })
+        .count()
+}
+
 /// **O CONTROLE da sonda** — a tinta TOTAL do quadro contra o comprimento total
 /// das arestas de frente.
 ///
@@ -266,6 +357,25 @@ fn total_ink(plain: &[u8], wired: &[u8]) -> usize {
 /// de profundidade existe para impedir.
 fn leaked_ink(mesh: &Mesh, plain: &[u8], wired: &[u8], cam: &Camera3d) -> usize {
     let mut near = vec![false; (W * H) as usize];
+    front_edge_mask(mesh, cam, &mut near);
+    (0..(W * H) as usize)
+        .filter(|&i| {
+            let (x, y) = ((i as u32 % W) as i32, (i as u32 / W) as i32);
+            !near[i]
+                && match (lum(plain, x, y), lum(wired, x, y)) {
+                    (Some(p), Some(w)) => p - w > 6.0,
+                    _ => false,
+                }
+        })
+        .count()
+}
+
+/// Rasteriza as arestas de FRENTE numa máscara com um pixel de folga.
+///
+/// ⚠️ **UMA porta, dois consumidores** (o total vazado e a tabela por anel): duas
+/// cópias desta rasterização divergiriam na folga, e aí os dois números falariam
+/// de conjuntos diferentes com o mesmo nome.
+fn front_edge_mask(mesh: &Mesh, cam: &Camera3d, near: &mut [bool]) {
     let mut wire = Vec::new();
     ph2d_mesh_render::wire_indices(mesh, &mut wire);
     let pos = mesh.positions();
@@ -301,16 +411,6 @@ fn leaked_ink(mesh: &Mesh, plain: &[u8], wired: &[u8], cam: &Camera3d) -> usize 
             );
         }
     }
-    (0..(W * H) as usize)
-        .filter(|&i| {
-            let (x, y) = ((i as u32 % W) as i32, (i as u32 / W) as i32);
-            !near[i]
-                && match (lum(plain, x, y), lum(wired, x, y)) {
-                    (Some(p), Some(w)) => p - w > 6.0,
-                    _ => false,
-                }
-        })
-        .count()
 }
 
 /// O comprimento, em pixels de tela, de todas as arestas voltadas para o olho.
@@ -337,6 +437,86 @@ fn front_edge_pixels(mesh: &Mesh, cam: &Camera3d) -> f64 {
     sum
 }
 
+/// **ONDE a tinta cai, por ANEL** — a sonda do 2º report (*"ainda ruim, veja as
+/// bordas"*, Enio, 2026-08-12, com foto de uma esfera cuja borda sai numa faixa
+/// escura).
+///
+/// ⚠️ **Ela existe porque um número GLOBAL não distingue as duas leituras da
+/// foto.** *Vazamento de 2 % do quadro* e *densidade honesta da silhueta* são
+/// compatíveis com a mesma percentagem total, e pedem curas OPOSTAS: a primeira
+/// é um defeito de profundidade, a segunda é a projeção de uma esfera UV — os
+/// anéis de latitude comprimem-se na borda e escurecem sozinhos, sem nada de
+/// errado. O que separa as duas é ONDE a tinta está, e se ela é vazada.
+///
+/// A régua é `u = raio / raio_da_silhueta`, com a silhueta MEDIDA do quadro sem
+/// wireframe (o pixel mais distante do centro que não é fundo) em vez de
+/// derivada da câmera — é a silhueta que o device desenhou.
+fn ink_by_annulus(mesh: &Mesh, plain: &[u8], wired: &[u8], cam: &Camera3d) -> [(usize, usize); 10] {
+    let c = cam
+        .project([0.0, 0.0, 0.0], (W, H))
+        .unwrap_or((W as f32 * 0.5, H as f32 * 0.5));
+    let mut r_sil = 1.0f32;
+    for i in 0..(W * H) as usize {
+        let (x, y) = ((i as u32 % W) as i32, (i as u32 / W) as i32);
+        // O fundo é preto sólido: qualquer luminância é peça.
+        if lum(plain, x, y).is_some_and(|l| l > 1.0) {
+            let d = ((x as f32 - c.0).powi(2) + (y as f32 - c.1).powi(2)).sqrt();
+            r_sil = r_sil.max(d);
+        }
+    }
+    let mut near = vec![false; (W * H) as usize];
+    front_edge_mask(mesh, cam, &mut near);
+    let mut bands = [(0usize, 0usize); 10];
+    for (i, near) in near.iter().enumerate() {
+        let (x, y) = ((i as u32 % W) as i32, (i as u32 / W) as i32);
+        let dark = match (lum(plain, x, y), lum(wired, x, y)) {
+            (Some(p), Some(w)) => p - w > 6.0,
+            _ => false,
+        };
+        if !dark {
+            continue;
+        }
+        let d = ((x as f32 - c.0).powi(2) + (y as f32 - c.1).powi(2)).sqrt() / r_sil;
+        let b = ((d * 10.0).floor() as usize).min(9);
+        bands[b].0 += 1;
+        if !near {
+            bands[b].1 += 1;
+        }
+    }
+    bands
+}
+
+#[test]
+#[ignore = "sonda: precisa de adapter, roda com --ignored --nocapture"]
+fn where_the_wire_ink_falls() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter: skip");
+        return;
+    };
+    for (name, mesh) in [
+        ("esfera 32x64", shapes::uv_sphere(32, 64, 1.0)),
+        ("esfera 64x128", shapes::uv_sphere(64, 128, 1.0)),
+        ("toro 48x24", shapes::torus(48, 24, 1.0, 0.35)),
+    ] {
+        let cam = camera_for(&mesh);
+        let plain = render(&device, &queue, &mesh, false);
+        let wired = render(&device, &queue, &mesh, true);
+        let bands = ink_by_annulus(&mesh, &plain, &wired, &cam);
+        let total: usize = bands.iter().map(|b| b.0).sum();
+        println!("\n  {name}   (tinta total {total})");
+        println!("    u          tinta    % do quadro   vazada");
+        for (i, (ink, leak)) in bands.iter().enumerate() {
+            println!(
+                "    {:.1}-{:.1}   {ink:>7}   {:>9.1}%   {:>5.1}%",
+                i as f32 / 10.0,
+                (i + 1) as f32 / 10.0,
+                *ink as f64 / total.max(1) as f64 * 100.0,
+                *leak as f64 / (*ink).max(1) as f64 * 100.0
+            );
+        }
+    }
+}
+
 #[test]
 #[ignore = "sonda: precisa de adapter, roda com --ignored --nocapture"]
 fn how_much_of_each_edge_reaches_the_screen() {
@@ -344,8 +524,12 @@ fn how_much_of_each_edge_reaches_the_screen() {
         eprintln!("sem adapter: skip");
         return;
     };
-    println!("\n  malha              continuidade   inteiras / arestas   tinta   vazada");
-    println!("  ----------------   ------------   ------------------   -----   ------");
+    println!(
+        "\n  malha              continuidade   inteiras / arestas   tinta   vazada   miolo    teto"
+    );
+    println!(
+        "  ----------------   ------------   ------------------   -----   ------   -----   -----"
+    );
     for (name, mesh) in [
         // ⚠️ **Só malhas DENSAS, e a ausência das outras é MEDIDA.** Num cubo,
         // num octaedro ou na tampa de um cilindro vistos de frente as arestas
@@ -361,31 +545,53 @@ fn how_much_of_each_edge_reaches_the_screen() {
         let cam = camera_for(&mesh);
         let plain = render(&device, &queue, &mesh, false);
         let wired = render(&device, &queue, &mesh, true);
-        let (c, whole, edges) = continuity(&mesh, &plain, &wired, &cam);
+        let (c, whole, edges) = continuity(&mesh, &plain, &wired, &cam, false);
+        let (cs, _, es) = continuity(&mesh, &plain, &wired, &cam, true);
         let ink = total_ink(&plain, &wired);
         let leak = leaked_ink(&mesh, &plain, &wired, &cam);
         let want = front_edge_pixels(&mesh, &cam);
+        let mut smask = vec![false; (W * H) as usize];
+        let swant = strict_front(&mesh, &cam, &mut smask);
+        let sink = ink_in(&plain, &wired, &smask);
+        // ⚠️ **O CONTROLE do miolo:** a máscara é dilatada e arestas vizinhas
+        // partilham pixels, então o comprimento SOMADO conta duas vezes o que a
+        // tela gasta uma. Este número é o teto que o oráculo consegue reportar
+        // com a malha 100 % desenhada — sem ele, um deficit de sobreposição lê-se
+        // como aresta cortada.
+        let smask_px = smask.iter().filter(|b| **b).count();
         println!(
-            "  {name:<16}   {:>10.1}%   {whole:>6} / {edges}   {:>5.0}%   {:>5.1}%",
+            "  {name:<16}   {:>10.1}%   {whole:>6} / {edges}   {:>5.0}%   {:>5.1}%   {:>5.0}%   {:>5.0}%",
             c * 100.0,
             ink as f64 / want * 100.0,
-            leak as f64 / ink.max(1) as f64 * 100.0
+            leak as f64 / ink.max(1) as f64 * 100.0,
+            sink as f64 / swant * 100.0,
+            smask_px as f64 / swant * 100.0
         );
+        println!("      miolo estrito: {:.1}% sobre {es} arestas", cs * 100.0);
     }
 }
 
 /// **A ARESTA CHEGA À TELA INTEIRA** — o gate do report de 2026-08-12.
 ///
-/// ⚠️ **O oráculo é a TINTA e não a continuidade por-aresta.** Aquela amostra a
-/// reta que EU projeto enquanto o device rasteriza a dele, e num segmento de
-/// ângulo raso as duas escolhas de pixel divergem: o teto dela é ~65 % **com o
-/// teste de profundidade desligado**, então uma barra ali falaria do meu
-/// amostrador. A tinta total é global e imune a isso.
+/// ⚠️ **O oráculo é o MIOLO ESTRITO, e a régua anterior estava INFLADA.** Ela
+/// media a tinta TOTAL contra o comprimento das arestas de frente, e numa esfera
+/// densa o fio do outro lado da peça projeta-se **por cima** do da frente: parte
+/// do que ela contava como *"a aresta chegou"* era a malha de trás tapando o
+/// buraco de uma aresta cortada. Medido, ao instalar a remoção de linha
+/// escondida a mesma cena caiu de `109 %` para `86 %` — e a queda é a ilusão a
+/// sair, não cobertura a perder.
 ///
-/// ⚠️ **E o gate tem DUAS metades porque o defeito tem dois lados.** Só a
-/// cobertura passaria com o teste de profundidade removido — e aí a malha do
-/// outro lado da peça atravessa, que é o emaranhado que o `depth_write` existe
-/// para impedir. Medido: sem teste a tinta vai a **144 %** e a vazada a 19 %.
+/// O miolo estrito não tem essa ambiguidade: são as arestas cujas DUAS pontas
+/// encaram o olho com folga, num sólido CONVEXO (onde encarar o olho implica ser
+/// visível). Ali toda a aresta deve chegar, sob qualquer lei.
+///
+/// | | miolo | vazada |
+/// |---|---|---|
+/// | sem a nudge (o defeito do 1º report) | **45 %** | 0,0 % |
+/// | hoje | **86 %** | **0,0 %** |
+///
+/// ⚠️ **E as DUAS metades continuam necessárias:** só a cobertura passaria com o
+/// teste de profundidade removido, e aí a malha do outro lado atravessa.
 #[test]
 #[ignore = "precisa de adapter"]
 fn a_wireframe_edge_reaches_the_screen_whole() {
@@ -397,22 +603,106 @@ fn a_wireframe_edge_reaches_the_screen_whole() {
     let cam = camera_for(&mesh);
     let plain = render(&device, &queue, &mesh, false);
     let wired = render(&device, &queue, &mesh, true);
-    let ink = total_ink(&plain, &wired) as f64;
-    let want = front_edge_pixels(&mesh, &cam);
-    let leak = leaked_ink(&mesh, &plain, &wired, &cam) as f64;
-    let covered = ink / want * 100.0;
-    // O que shipava media 39 %: a barra fica no meio do caminho entre o defeito
-    // e os 93 % de hoje, para não pinar ruído de driver.
+    let mut smask = vec![false; (W * H) as usize];
+    let swant = strict_front(&mesh, &cam, &mut smask);
+    let covered = ink_in(&plain, &wired, &smask) as f64 / swant * 100.0;
+    // A barra fica entre o defeito (45 %) e os 86 % de hoje, para não pinar
+    // ruído de driver.
     assert!(
-        covered > 75.0,
-        "as arestas chegam CORTADAS: {covered:.0}% da tinta esperada"
+        covered > 70.0,
+        "as arestas do miolo chegam CORTADAS: {covered:.0}%"
     );
+    // ⚠️ **ZERO, e não *"pouco"* — e as DUAS densidades.** Numa peça fechada
+    // nenhuma tinta pode cair onde aresta de frente nenhuma passa. A barra é
+    // apertada porque o modo de falha mais próximo não é ruído: trocar o
+    // `facing` perspectiva-correto pelo atalho ortográfico (`n_view.z`) devolve
+    // **0,3 %** na esfera grossa e 0,0 % na fina — o erro dele cresce com o
+    // ângulo do raio contra o eixo da câmera, logo com a DENSIDADE aparente na
+    // borda do quadro, e uma malha só não o vê.
+    for (name, mesh) in [
+        ("esfera 32x64", shapes::uv_sphere(32, 64, 1.0)),
+        ("esfera 64x128", mesh),
+    ] {
+        let cam = camera_for(&mesh);
+        let plain = render(&device, &queue, &mesh, false);
+        let wired = render(&device, &queue, &mesh, true);
+        let ink = total_ink(&plain, &wired) as f64;
+        let leak = leaked_ink(&mesh, &plain, &wired, &cam) as f64 / ink * 100.0;
+        assert!(
+            leak < 0.1,
+            "{name}: a malha do outro lado atravessou: {leak:.1}% da tinta"
+        );
+    }
+}
+
+/// **UMA CASCA ABERTA NÃO PERDE O WIREFRAME** — o preço da remoção de linha
+/// escondida, cobrado.
+///
+/// ⚠️ **Ela é a única coisa que o descarte por normal poderia quebrar**, e o modo
+/// de falha seria mudo: numa folha vista pelo lado de TRÁS toda normal aponta
+/// para longe do olho, então uma regra que lesse *"normal de costas ⇒ está
+/// escondido"* apagaria exatamente o que o artista está olhando — com a
+/// superfície ainda desenhada por baixo.
+///
+/// O oráculo é a MESMA geometria com as duas orientações: um plano enrolado para
+/// o olho e o mesmo plano enrolado ao contrário têm de desenhar a mesma malha.
+/// ⚠️ **Ele não menciona `wire_cull`** — afirma a propriedade, e é por isso que
+/// ele morre quando alguém arma o descarte incondicionalmente.
+#[test]
+#[ignore = "precisa de adapter"]
+fn an_open_shell_keeps_its_wireframe() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter: skip");
+        return;
+    };
+    let (front, back) = (open_grid(false), open_grid(true));
+    assert!(!front.is_closed(), "a fixture TEM de ser uma casca");
+    let cam = camera_for(&front);
     assert!(
-        leak / ink * 100.0 < 6.0,
-        "a malha do outro lado atravessou: {:.1}% da tinta caiu fora de toda \
-         aresta de frente",
-        leak / ink * 100.0
+        facing_at(&front, 0, &cam) > 0.0 && facing_at(&back, 0, &cam) < 0.0,
+        "a fixture não contém o fenômeno: as duas orientações têm de cair em \
+         lados opostos do olho"
     );
+    let ink_front = total_ink(
+        &render(&device, &queue, &front, false),
+        &render(&device, &queue, &front, true),
+    );
+    let ink_back = total_ink(
+        &render(&device, &queue, &back, false),
+        &render(&device, &queue, &back, true),
+    );
+    assert!(ink_front > 500, "a fixture não desenhou nada: {ink_front}");
+    let ratio = ink_back as f64 / ink_front as f64;
+    assert!(
+        ratio > 0.9,
+        "a folha vista por trás perdeu o wireframe: {ink_back} contra \
+         {ink_front} pixels ({ratio:.2}x)"
+    );
+}
+
+/// Uma grade PLANA — uma casca aberta, com a orientação escolhida.
+fn open_grid(flip: bool) -> Mesh {
+    const N: usize = 8;
+    let mut pos = Vec::new();
+    for j in 0..=N {
+        for i in 0..=N {
+            let (u, v) = (i as f32 / N as f32 - 0.5, j as f32 / N as f32 - 0.5);
+            pos.push([u * 2.0, v * 2.0, 0.0]);
+        }
+    }
+    let idx = |i: usize, j: usize| u32::try_from(j * (N + 1) + i).unwrap_or(u32::MAX);
+    let mut faces = Vec::new();
+    for j in 0..N {
+        for i in 0..N {
+            let (a, b, c, d) = (idx(i, j), idx(i + 1, j), idx(i + 1, j + 1), idx(i, j + 1));
+            faces.push(if flip {
+                ph2d_mesh::Face::quad(a, d, c, b)
+            } else {
+                ph2d_mesh::Face::quad(a, b, c, d)
+            });
+        }
+    }
+    Mesh::from_parts(pos, faces).expect("grade plana")
 }
 
 // ⚠️ **E NÃO HÁ um gate afirmando *"o viés do pipeline não alcança uma linha"*,

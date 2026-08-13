@@ -52,6 +52,9 @@ struct Rig {
 // de as duas ficarem em desacordo no dia em que uma delas for escrita a menos.
 struct Object {
     model: mat4x4<f32>,
+    // **O WIREFRAME PODE REMOVER LINHA ESCONDIDA PELA NORMAL?** `1` só numa malha
+    // FECHADA. Ver `ObjectRaw::wire_cull`.
+    wire_cull: f32,
 };
 
 // **AS OPÇÕES DE SOMBREAMENTO** (`crate::shade`). Uniform e não `const` de
@@ -358,6 +361,15 @@ struct VsOut {
     @location(3) ao: f32,
     @location(4) curv_world: f32,
     @location(5) thickness: f32,
+    // **DE QUE LADO DA PEÇA ESTE PONTO ESTÁ** — `n · (olho − p)`, no espaço de
+    // vista. Só o wireframe a lê; o barro a ignora.
+    //
+    // ⚠️ **Ela é perspectiva-correta de propósito, e o atalho `n_view.z` foi
+    // MEDIDO:** ele erra proporcionalmente ao ângulo do raio contra o eixo da
+    // câmera — ou seja **erra mais na borda do quadro**, que é exatamente onde
+    // esta grandeza decide alguma coisa. Vazamento com ele: **0,3 %** na esfera
+    // grossa e 0,5 % no toro, contra **0,0 %** nos dois com a forma correta.
+    @location(7) facing: f32,
 };
 
 fn vs_core(
@@ -420,6 +432,9 @@ fn vs_core(
     // acenderia a forma com a normal de antes de ela girar. Mesma decisão, e
     // mesmo motivo, do `Sculpt3dScene::dir_to_local`.
     out.n_view = (cam.view * obj.model * vec4<f32>(normal, 0.0)).xyz;
+    // O olho é a ORIGEM do espaço de vista, então o vetor ponto→olho é `-p_view`.
+    let p_view = (cam.view * obj.model * vec4<f32>(pos, 1.0)).xyz;
+    out.facing = dot(normalize(out.n_view), normalize(-p_view));
     return out;
 }
 
@@ -443,45 +458,47 @@ fn vs_core(
 // deslocaria a linha na tela por perspectiva, e a aresta passaria a desenhar ao
 // lado de si mesma na silhueta.
 //
-// ⚠️ **O valor é MEDIDO, e há DOIS oráculos que ele tem de satisfazer ao mesmo
-// tempo** (`probe_wire_continuity.rs`, esfera 64×128): a TINTA que chega tem de
-// subir, e a VAZADA — tinta que caiu onde nenhuma aresta de frente passa — tem
-// de ficar perto de zero, porque ela é a malha do outro lado da peça
-// atravessando, o emaranhado que o teste de profundidade existe para impedir.
+// ⚠️ **A NUDGE SOZINHA NÃO BASTA, e a razão é geometria:** perto da silhueta a
+// face da frente e a de trás CONVERGEM em profundidade, então qualquer
+// deslocamento constante grande o bastante para uma linha de frente vencer o
+// próprio triângulo é grande o bastante para o fio do outro lado da peça
+// atravessar. As duas metades do mesmo número, puxadas em sentidos opostos.
+// Quem separa as duas é o descarte por normal do [`fs_wire`], e é ELE que
+// libertou este valor de ter um orçamento de vazamento.
 //
-// | nudge | tinta | vazada |
+// ⚠️ **O valor é MEDIDO** (`probe_wire_continuity.rs`), na régua do MIOLO
+// ESTRITO — as arestas cujas duas pontas encaram o olho com folga, num sólido
+// convexo, onde toda a aresta tem de chegar sob qualquer lei:
+//
+// | nudge | miolo | vazada |
 // |---|---|---|
-// | 0 (o que shipava) | **39 %** | 0,0 % |
-// | 1e-3 | 73 % | 0,0 % |
-// | 2e-3 | 79 % | 0,0 % |
-// | **3e-3** | **93 %** | **2,2 %** |
-// | 4e-3 | 112 % | 8,3 % |
-// | 6e-3 | 143 % | 18,9 % |
+// | 0 (o que shipava antes do 1º report) | **45 %** | 0,0 % |
+// | **3e-3** | **86 %** | **0,0 %** |
+// | 6e-3 · 1,2e-2 · 2,4e-2 · 4,8e-2 | 86 % | 0,0 % |
+//
+// ⇒ **Ela SATURA em 3e-3**, e é isso que diz que os 14 % que faltam não são
+// disputa de profundidade (mais empurrão não os compra): são a sobreposição de
+// pixels entre arestas vizinhas dentro da máscara do próprio oráculo.
+//
+// ⚠️ **E subir a nudge PIORA a peça não-convexa**, que é o que fecha a escolha:
+// num TORO o miolo estrito inclui arestas que encaram o olho e estão ATRÁS do
+// tubo da frente. A 3e-3 elas ficam corretamente escondidas (50 %); a 6e-3 elas
+// atravessam e o número SOBE para 87 % — um oráculo melhorando enquanto a
+// remoção de superfície escondida piora.
 //
 // ⚠️ **DUAS formas mais espertas foram construídas, MEDIDAS e REJEITADAS** — não
 // as refaça:
 //
 // 1. **`nudge / sec(ângulo)`**, reproduzindo o termo de INCLINAÇÃO que o viés de
-//    polígono teria a partir da normal do vértice: `94 % / 76 %` contra os
-//    `93 % / 81 %` da constante, e o piso da amplificação (0,05 · 0,1 · 0,25) não
-//    move o número. Um `normalize` e uma divisão por vértice por ~1 %;
-// 2. **`nudge × facing`**, para o vértice de COSTAS não ganhar empurrão nenhum e
-//    o vazamento morrer na origem: ele de facto zera a vazada em toda magnitude
-//    — e satura a tinta em **73 %**, porque na silhueta `facing → 0` e nenhuma
-//    magnitude alcança. Com um piso (`max(f, 0,5)` sobre 6e-3) ele devolve
-//    `93 % / 2,2 %`: **exatamente a constante 3e-3**. É uma reparametrização,
-//    não um mecanismo.
-//
-// ⇒ O que sobra é escolher ONDE sentar na curva, e o ponto é o joelho: a tinta
-// quase completa com a vazada ainda invisível (1 pixel de wireframe em 45).
-//
-// ⚠️ **O RESÍDUO fica NOMEADO:** num TORO (tubo fino, onde a face de trás está
-// logo atrás da da frente em toda parte) o mesmo valor dá `81 % / 14 %`. A cura
-// que removeria o compromisso é **descartar as arestas cujas DUAS faces estão de
-// costas**, e ela precisa da adjacência aresta→face, que o `wire_indices` não
-// constrói de propósito (o doc dele mede: montar o grafo custa +89 %).
+//    polígono teria a partir da normal do vértice: um `normalize` e uma divisão
+//    por vértice por ~1 %;
+// 2. **`nudge × facing`** (e a versão em DEGRAU, `facing > 0 ? nudge : 0`), para
+//    o vértice de costas não ganhar empurrão nenhum: as duas zeram o vazamento
+//    — e as duas derrubam o miolo para **73 %**, porque uma aresta que CRUZA a
+//    silhueta tem uma ponta de cada lado e o empurrão interpolado morre no meio
+//    dela. O vazamento tem de ser cortado no FRAGMENTO, onde a pergunta é feita
+//    por pixel; no vértice ela leva a metade da frente junto.
 const WIRE_DEPTH_NUDGE: f32 = 3.0e-3;
-const WIRE_BACK_SHARE: f32 = 0.3;
 
 // **A ARESTA** — a mesma posição do [`vs_main`], um passo mais perto do olho.
 //
@@ -664,8 +681,34 @@ fn fs_gbuffer(in: VsOut) -> GbufferOut {
 // forma que ela deveria anotar.
 const WIRE_RGBA: vec4<f32> = vec4<f32>(0.05, 0.06, 0.08, 0.55);
 
+// **A REMOÇÃO DE LINHA ESCONDIDA** — o que faz a borda de uma peça densa deixar
+// de ser uma mancha.
+//
+// ⚠️ **Ela é feita AQUI e não no vértice, e a diferença é a silhueta:** uma
+// aresta que a cruza tem uma ponta de cada lado, então a pergunta *"este ponto
+// está do outro lado da peça?"* só tem UMA resposta por FRAGMENTO. Decidi-la no
+// vértice leva a metade visível junto — medido, o miolo cai de 86 % para 73 %.
+//
+// ⚠️ **E ela só se arma numa malha FECHADA** (`obj.wire_cull`): numa casca
+// aberta uma normal de costas é a face de TRÁS de uma folha, que o artista vê de
+// frente ao girar a câmera. Ver `Mesh::is_closed`.
+//
+// ⚠️ **O teste de profundidade NÃO substitui isto**, e é o ponto que custou uma
+// investigação: a nudge que faz a linha da frente vencer o próprio triângulo é
+// exatamente o que deixa o fio de trás atravessar perto da silhueta. Medido na
+// esfera 64×128, a tinta que cai onde aresta de frente nenhuma passa vai de
+// **2,2 % a 0,0 %** (11,1 % na malha grossa, 14,0 % num toro).
+//
+// ⚠️ **E ela corrige uma MEDIÇÃO, não só o desenho:** parte do que a régua
+// anterior contava como *"a aresta chegou"* era o fio de trás caindo POR CIMA do
+// da frente — na esfera densa a metade oculta projeta-se sobre a inteira. Ao
+// removê-lo, a mesma cena caiu de `109 %` para `86 %` no miolo estrito: a
+// ilusão a sair, não cobertura a perder.
 @fragment
-fn fs_wire() -> @location(0) vec4<f32> {
+fn fs_wire(in: VsOut) -> @location(0) vec4<f32> {
+    if obj.wire_cull > 0.5 && in.facing < 0.0 {
+        discard;
+    }
     return WIRE_RGBA;
 }
 

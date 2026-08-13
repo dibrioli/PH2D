@@ -3595,6 +3595,10 @@ fn value_noise_kernel_matches_the_cpu_on_the_device() {
     g.set_param(vn, "roughness", 0.55);
     g.set_param(vn, "amplitude", 1.9);
     g.set_param(vn, "seed", 4.0);
+    // ⚠️ **O eixo ESPACIAL** (doc 89 folha 10): com `space = Index` o kernel novo
+    // reduz ao que já shipava, então um WGSL que ignorasse o param passaria — o
+    // default É Index. É este `1.0` que faz o ramo do `HAS_P` correr no device.
+    g.set_param(vn, "space", 1.0);
     connect(&mut g, grid, vn); // read the grid for its count
     let drive = g.add_node("motion.drive");
     g.set_param(drive, "channel", 1.0); // Y

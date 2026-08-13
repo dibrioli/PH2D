@@ -99,6 +99,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "offset",
             default: 0.0,
         },
+        // ⚠️ **Apendado**: `0` = Index (o nó que sempre shipou), `1` = World.
+        ParamSpec {
+            name: "space",
+            default: 0.0,
+        },
         ParamSpec {
             name: "seed",
             default: 0.0,
@@ -141,6 +146,25 @@ impl Sample {
         let y = i as f32 * self.frequency + self.seed;
         fbm_2d(x, y, self.octaves, self.roughness) * self.amplitude + self.offset
     }
+
+    /// **O valor no PONTO `(px, py)`** — o mesmo campo, amostrado no espaço em vez
+    /// de na fila (doc 89 folha 10, o P0 do `field.noise`).
+    ///
+    /// ⚠️ **Sem isto o campo procedural era inexprimível, e o motivo era ESTE.** A
+    /// célula nomeava dois bloqueios: (1) *"o `drive` não tem canal `falloff`"* —
+    /// **morreu**, o canal existe e escreve a coluna — e (2) *"o `value.noise` é
+    /// indexado, não tem `P`, logo não é um campo ESPACIAL"*. Com o eixo espacial,
+    /// `value.noise(space = World) → motion.drive(channel = Falloff)` **é** o campo
+    /// de ruído: composição, que é o desenho desta biblioteca, e não um nó novo.
+    ///
+    /// ⚠️ **O TEMPO continua no mesmo eixo `x`**, somado à posição em vez de a
+    /// substituí-la: um campo espacial que congelasse ao ganhar `P` perderia o
+    /// *"animável"* que a referência (MOPs Noise Falloff) pede no mesmo fôlego.
+    fn at_world(&self, px: f32, py: f32, t: f32) -> f32 {
+        let x = px * self.frequency + t * self.speed;
+        let y = py * self.frequency + self.seed;
+        fbm_2d(x, y, self.octaves, self.roughness) * self.amplitude + self.offset
+    }
 }
 
 /// GPU compute kernel (ADR-0126) — the WGSL port of [`Sample::at`] + [`noise`],
@@ -153,8 +177,18 @@ impl Sample {
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let vn_oct = clamp(i32(vn_round(params.octaves)), 1, 8);\n\
-        let vn_x = params.playhead * params.speed;\n\
-        let vn_y = f32(i) * params.frequency + params.seed;\n\
+        // O eixo: a fila (o indice) ou o ESPACO (a posicao). ⚠️ `HAS_P` e o que\n\
+        // impede a coluna AUSENTE de ler a identidade zero e colapsar o campo\n\
+        // num valor so -- sem posicao nao ha espaco a amostrar, e a queda e o\n\
+        // indice, como na CPU.\n\
+        let vn_world = i32(vn_round(params.space)) == 1 && HAS_P;\n\
+        var vn_x = params.playhead * params.speed;\n\
+        var vn_y = f32(i) * params.frequency + params.seed;\n\
+        if (vn_world) {\n\
+        \x20   let vn_p = read_P(i);\n\
+        \x20   vn_x = vn_p.x * params.frequency + params.playhead * params.speed;\n\
+        \x20   vn_y = vn_p.y * params.frequency + params.seed;\n\
+        }\n\
         let vn_n = vn_fbm(vn_x, vn_y, vn_oct, params.roughness);\n\
         write_v(i, vn_n * params.amplitude + params.offset);\n",
     wgsl_lib: "\
@@ -204,14 +238,26 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             }\n\
             return sum / max(norm, 1e-6);\n\
         }\n",
-    bindings: &[ColumnBinding {
-        column: VALUE_COL,
-        dim: Dim::Scalar,
-        access: ColumnAccess::Write,
-        identity: [0.0; 4],
-        port: 0,
-    }],
+    bindings: &[
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        // ⚠️ A `identity` de um `P` AUSENTE é zero, e zero não é uma posição — o
+        // campo colapsaria num valor só. Por isso o corpo ramifica no `HAS_P`.
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
     params: &[
+        "space",
         "frequency",
         "speed",
         "octaves",
@@ -244,8 +290,22 @@ impl NodeOp for ValueNoise {
         let s = Sample::from_ctx(ctx);
         let t = ctx.playhead() as f32;
         // Cardinality follows the geometry; unconnected → one degenerate value.
-        let n = ctx.input(0).count().max(1);
-        let v: Vec<f32> = (0..n as u32).map(|i| s.at(i, t)).collect();
+        let world = ctx.param("space").round() as i32 == 1;
+        let input = ctx.input(0);
+        let n = input.count().max(1);
+        let pos = match input.get("P") {
+            Some(Column::Vec2(v)) if world => Some(v.clone()),
+            _ => None,
+        };
+        let v: Vec<f32> = (0..n)
+            .map(|i| match pos.as_ref().and_then(|p| p.get(i)) {
+                // ⚠️ Sem coluna `P` o modo World CAI no índice, e não em zero: um
+                // stream sem posição não tem espaço a amostrar, e um campo que
+                // colapsasse num valor só leria como "o ruído morreu".
+                Some(p) => s.at_world(p[0], p[1], t),
+                None => s.at(i as u32, t),
+            })
+            .collect();
         ctx.emit(Stream::new(n).with(VALUE_COL, Column::Scalar(v)));
     }
 }
@@ -286,6 +346,20 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
 ];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
+    // ⚠️ **Primeiro**, e é o que decide o que o nó SIGNIFICA: o mesmo ruído lido
+    // ao longo da FILA (o de sempre) ou no ESPAÇO. É o modo World que faz
+    // `value.noise → motion.drive(Falloff)` ser um campo procedural (doc 89
+    // folha 10, o P0 do `field.noise`).
+    ParamUiHint {
+        param: "space",
+        label: "Sample",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Index", "World"],
+        },
+    },
     ParamUiHint {
         param: "frequency",
         label: "Frequency",
@@ -547,3 +621,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "space_tests.rs"]
+mod space_tests;

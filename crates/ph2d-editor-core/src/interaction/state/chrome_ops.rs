@@ -365,9 +365,33 @@ impl WidgetStore {
 
     /// Take the pending command-palette pick, clearing it (so a pick is routed exactly once). `None` when
     /// nothing was picked since the last take.
+    ///
+    /// ⚠️ **Com DOIS consumidores no canal, prefira [`Self::take_command_pick_if`].** Um take
+    /// incondicional é o que torna a ORDEM dos drenos load-bearing: quem corre primeiro engole o
+    /// pick do outro, e o sintoma é um comando que não faz nada de vez em quando.
     #[must_use]
     pub fn take_command_pick(&mut self) -> Option<ph2d_a11y::NodeId> {
         self.command_pick.take()
+    }
+
+    /// **Toma o pick só se ele for MEU** — a porta de um canal com mais de um consumidor.
+    ///
+    /// Há duas paletas neste app (a de nós do Motion e a global do chrome) e **um** canal de pick.
+    /// Com dois `take` incondicionais, qual dos dois recebe o pick passa a ser a ordem em que os
+    /// drenos correm — um facto invisível, que muda quando alguém reordena o frame. Com os dois a
+    /// perguntar *«este id é meu?»* a ordem deixa de importar: cada um reconhece os próprios ids e
+    /// deixa o resto onde está.
+    ///
+    /// `pred` devolve `true` quando o id pertence a este consumidor.
+    #[must_use]
+    pub fn take_command_pick_if(
+        &mut self,
+        pred: impl FnOnce(ph2d_a11y::NodeId) -> bool,
+    ) -> Option<ph2d_a11y::NodeId> {
+        match self.command_pick {
+            Some(id) if pred(id) => self.command_pick.take(),
+            _ => None,
+        }
     }
 
     /// The Fill modal's top-left `(x, y)` in screen px, or `None` when the modal is closed. The painter

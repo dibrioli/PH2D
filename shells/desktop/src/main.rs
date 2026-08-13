@@ -73,6 +73,7 @@ mod build_smoke_router;
 mod chrome_hit;
 /// Teclado do palette de "Add Node" (busca/filtro, Enter/Backspace/Esc).
 mod command_palette_input;
+mod global_palette_input;
 /// **Contour** (pesquisa `20_*` #9) — o cozimento vivo do `VecContour`: N anéis concêntricos
 /// com rampa de cor, irmão do `offset_live` de que é a generalização.
 mod component_pieces_smoke;
@@ -969,6 +970,10 @@ impl App {
         // §4.C — o PEDAÇO sob o cursor no modo Segment (hover). ANTES do render: o overlay
         // o lê no mesmo frame. Barato e guardado (só recomputa quando o cursor move).
         self.flip_segment_hover_refresh();
+        // A escolha da paleta de comandos GLOBAL, executada ANTES do render do frame — assim o
+        // comando (pegar uma ferramenta, mostrar um painel) já está reflectido no que este frame
+        // desenha, em vez de aparecer um quadro depois.
+        self.global_palette_drain();
         self.run_render_frame();
         // **A SELEÇÃO** (`flip_select`, W6): no modo Edit ela é o alvo dos ajustes do
         // painel. Só a MUDANÇA de estilo age.

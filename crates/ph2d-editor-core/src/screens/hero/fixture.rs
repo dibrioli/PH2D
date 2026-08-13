@@ -181,6 +181,21 @@ impl TopBarCluster {
     fn right() -> Self {
         Self::Right
     }
+
+    /// **O nome do pill, quando o id EXTERNO do cluster é o que se clica** — `None` quando não é.
+    ///
+    /// ⚠️ A distinção não é cosmética e é o que impede uma entrada morta na paleta global: `Theme`,
+    /// `Single` e `Project` pintam **um** pill, e o id do cluster É esse botão. `Play` e `Right` são
+    /// clusters de VÁRIOS botões, cada um com id próprio registado pelo pintor — o id externo deles
+    /// não é clicável, então oferecê-lo na paleta seria um comando que não faz nada.
+    #[must_use]
+    pub fn palette_label(&self) -> Option<&str> {
+        match self {
+            Self::Theme { label } | Self::Single { label, .. } => Some(label),
+            Self::Project { name } => Some(name),
+            Self::Play | Self::Right => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

@@ -121,6 +121,15 @@ impl App {
                 gfx.toasts.push(Toast::info(msg));
                 self.title_dirty = true;
             }
+            // ⚠️ **ANTES do `KeyCode::KeyK` de baixo, e a ordem é a lei.** O arm do `K` não olha
+            // para os modificadores, então hoje `Ctrl+K` insere um keyframe por acidente — nada o
+            // documenta, e a tecla documentada é o `K` nu. Um arm guardado colocado ACIMA vence
+            // (o `match` do Rust é ordenado), e o `K` nu fica exactamente como estava.
+            KeyCode::KeyK if cmd_chord => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    crate::global_palette_input::open_global_palette(hero);
+                }
+            }
             KeyCode::KeyM => {
                 gfx.theme = gfx.theme.next();
                 gfx.toasts

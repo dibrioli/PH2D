@@ -127,6 +127,21 @@ impl ToolRailEntry {
         }
     }
 
+    /// O nome humano do chip — `None` só para o [`Self::Divider`], que não é clicável.
+    ///
+    /// Irmão exato do [`Self::node_id`], e existe pelo mesmo motivo: a **paleta de comandos global**
+    /// projeta a lista que o rail PINTA, e uma segunda tabela de nomes noutro sítio driftaria da
+    /// tela — que é como o botão Redo passou meses pintado, clicável e órfão.
+    #[must_use]
+    pub fn label(&self) -> Option<&str> {
+        match self {
+            Self::Icon { label, .. }
+            | Self::Compound { label, .. }
+            | Self::Swatch { label, .. } => Some(label),
+            Self::Divider => None,
+        }
+    }
+
     pub fn icon(id: NodeId, label: impl Into<String>, icon: IconId) -> Self {
         Self::Icon {
             id,

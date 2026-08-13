@@ -501,8 +501,7 @@ pub fn paint_hero_screen(
     // paint after this (unchanged). Painter mode = Image-Tools on AND the
     // active tool is the Painter (mirrored shell-side into `active_tool_id`),
     // which swaps the transform block for the paint tools.
-    let painter_active =
-        hero.image_edit.mode_on && hero.image_edit.active_tool_id == Some("painter");
+    let painter_active = hero.rail_shows_painter_tools();
     paint_left_rail(
         &layout,
         scene,

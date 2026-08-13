@@ -31,6 +31,7 @@ pub mod color_picker_demo;
 mod context_menu_dialogs;
 pub mod context_menu_overlay;
 pub mod fixture;
+pub mod global_palette;
 // Wave 6+7 Phase 2: hero ids promoted to ph2d-editor-core so dispatch
 // and panel crates can reach them without depending back on hero. The
 // `screens::hero::ids` path continues to resolve via this re-export.
@@ -314,6 +315,18 @@ impl HeroScreen {
     /// can read without dyn-dispatching through the trait.
     pub fn is_panel_visible(&self, id: &str) -> bool {
         self.panel_visibility.get(id).copied().unwrap_or(false)
+    }
+
+    /// **A coluna mostra as ferramentas de PINTURA?** — a porta única da pergunta.
+    ///
+    /// São duas condições e nenhuma basta sozinha: o modo Image-Tools ligado **e** o Painter em
+    /// mãos. Ela existe porque a pergunta ganhou um segundo consumidor — o `paint` (para desenhar o
+    /// rail) e a [`global_palette`](self::global_palette) (para oferecer os mesmos comandos) — e
+    /// duas cópias divergiriam no dia em que a condição ganhasse um terceiro termo, com a paleta a
+    /// oferecer ferramentas que a coluna não mostra.
+    #[must_use]
+    pub fn rail_shows_painter_tools(&self) -> bool {
+        self.image_edit.mode_on && self.image_edit.active_tool_id == Some("painter")
     }
 
     /// **As réguas estão vivas neste frame?** — a PORTA ÚNICA da W6.2, perguntada pelo paint

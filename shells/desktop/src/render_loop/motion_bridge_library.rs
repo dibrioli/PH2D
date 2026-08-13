@@ -17,7 +17,17 @@ use ph2d_editor::HeroScreen;
 /// intents so the edit lands this frame. A click and an Enter on the palette both arrive here, so they
 /// route identically.
 pub(super) fn route_palette_pick(hero: &mut HeroScreen, motion: &mut MotionState) {
-    let Some(id) = hero.store.take_command_pick() else {
+    // ⚠️ CONDICIONAL, e é o que torna a ordem dos drenos irrelevante. O canal do pick tem DOIS
+    // consumidores desde a paleta de comandos global (`hero::global_palette`); um `take`
+    // incondicional aqui engoliria um comando do chrome e devolveria `None` a quem o soubesse
+    // executar, com o sintoma a ser *«às vezes não faz nada»*.
+    let known = |id| {
+        motion
+            .registry
+            .manifests()
+            .any(|m| ph2d_tool_registry::hash_node_id(m.name) == id)
+    };
+    let Some(id) = hero.store.take_command_pick_if(known) else {
         return;
     };
     let type_name = motion

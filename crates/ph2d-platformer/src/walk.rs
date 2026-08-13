@@ -35,6 +35,18 @@
 //! cruzamento do zero — um solavanco que o artista sente como engasgo. Aqui o
 //! fator é `1 + |Δv| / (2·speed)`, saturado em 2: **reproduz os dois extremos que
 //! o tnua quer** (2× num 180° cheio, 1× já no alvo) e é contínuo no meio.
+//!
+//! **4. FREAR não é ACELERAR** (`W-Brake`). Até esta wave a lei gastava
+//! `cfg.acceleration` nos DOIS sentidos, e o fator de viragem — que cobre
+//! **inverter** — não cobre **largar o direcional**: um personagem que arranca
+//! rápido era obrigado a parar rápido. O [`WalkConfig::brake_scale`] é a fração
+//! do orçamento usada quando o eixo está solto.
+//!
+//! ⚠️ **"Frear" é o eixo SOLTO, e não *"a velocidade está a cair"*** — é a
+//! definição do `bUseSeparateBrakingFriction` do Unreal (*braking = quando não se
+//! acelera*). Com o eixo apertado quem manda é o fator de viragem, que já existe
+//! e já está medido; e um personagem acima do cruzeiro com o dedo no acelerador
+//! está a ser **contido**, não a frear.
 
 use crate::{GroundSample, Motor, Vec2, perp_cw};
 
@@ -71,6 +83,30 @@ pub struct WalkConfig {
     /// impulso do salto por completo põe `0.0` aqui; o número é do artista, não
     /// um caso especial do motor.
     pub air_acceleration: f32,
+    /// **Quanto do orçamento de aceleração é gasto a FREAR** — a fração aplicada
+    /// no chão quando o eixo está SOLTO (item 4 do topo do módulo).
+    ///
+    /// ⚠️ **`1` reduz LITERALMENTE ao mundo de antes desta wave** (`x * 1.0` é
+    /// `x` em IEEE-754), e é isso que mantém o `physics_ecs_c9` byte-idêntico e a
+    /// arte já autorada intocada.
+    ///
+    /// ⚠️ **`0` é legítimo e significa *não freia*** — não é *"desligado"*. É
+    /// por isso que este número é um MULTIPLICADOR e não um segundo valor
+    /// absoluto: num campo absoluto o `0` teria de significar *"usa a
+    /// aceleração"*, e o valor que o artista quer para gelo ficaria inexprimível.
+    ///
+    /// ⚠️ **Não tem teto, e a ausência é MEDIDA:** a lei é auto-limitada por
+    /// construção — quando a sobra cabe num tique ela é escrita EXATA (o `boost`),
+    /// então subir este número só encurta a parada até ela ficar instantânea e
+    /// nunca ultrapassa o alvo. O ponto de saturação é `speed / (turn·accel·dt)`,
+    /// **função da config**, não uma constante que caiba num `MAX_*` (ver
+    /// `measure_the_brake`).
+    ///
+    /// ⚠️ **O AR é isento, de propósito:** [`Self::air_acceleration`] já é a
+    /// resposta do ar à mesma pergunta — o doc dele promete que `0` conserva o
+    /// arco —, e um segundo número sobre aquele comportamento é a falha de duas
+    /// portas. Há gate a pinar isto (`the_brake_leaves_the_air_alone`).
+    pub brake_scale: f32,
     /// A inclinação máxima em que o personagem fica DE PÉ, em graus.
     ///
     /// Acima dela a superfície deixa de ser chão (ver [`crate::footing`]): a
@@ -90,6 +126,7 @@ impl WalkConfig {
         speed: 6.0,
         acceleration: 60.0,
         air_acceleration: 20.0,
+        brake_scale: 1.0,
         max_slope_deg: 45.0,
     };
 
@@ -104,6 +141,22 @@ impl WalkConfig {
     #[must_use]
     pub fn max_slope_cos(&self) -> f32 {
         libm::cosf(self.max_slope_deg.clamp(0.0, 90.0) * core::f32::consts::PI / 180.0)
+    }
+}
+
+/// **A fração do orçamento que ESTE tique pode gastar** — `1` em toda a parte
+/// menos a travagem no chão (item 4 do topo do módulo).
+///
+/// ⚠️ **O piso em zero é load-bearing, não higiene:** um `brake_scale` negativo
+/// faria `a` negativo, e `push = a · delta.signum()` empurraria para o lado
+/// ERRADO — o personagem *acelera* ao largar o direcional. O clamp da UI é a
+/// fronteira; este é o consumidor, e é aqui que a garantia tem de viver.
+#[must_use]
+fn brake_scale(cfg: &WalkConfig, grounded: bool, drive: f32) -> f32 {
+    if grounded && drive == 0.0 && cfg.brake_scale.is_finite() {
+        cfg.brake_scale.max(0.0)
+    } else {
+        1.0
     }
 }
 
@@ -167,7 +220,7 @@ pub fn walk(
     } else {
         1.0
     };
-    let a = accel * turn;
+    let a = accel * turn * brake_scale(cfg, footing.is_some(), drive);
 
     // Um empurrão deste tick move a velocidade em `a·dt`. Se isso passaria do
     // alvo, escreva o que falta — senão empurre.
@@ -472,3 +525,7 @@ mod tests {
         assert!((cfg.max_slope_cos() - 0.5).abs() < 1.0e-5);
     }
 }
+
+#[cfg(test)]
+#[path = "walk_brake_tests.rs"]
+mod brake_tests;

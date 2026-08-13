@@ -285,6 +285,18 @@ pub struct PlatformPlayer {
     /// nada. A medição que descartou as outras duas formas está no topo do
     /// [`ph2d_platformer::glide`].
     pub glide_fall_speed: f32,
+
+    /// **Quanto do orçamento de aceleração ele gasta a FREAR** (`W-Brake`) — a
+    /// fração usada no chão com o eixo SOLTO; ver [`WalkConfig::brake_scale`].
+    ///
+    /// ⚠️ **Mora no FIM do struct e não ao lado da `acceleration`**, que é onde
+    /// ele se lê: o postcard é POSICIONAL, e apendar é a política dos cinco
+    /// degraus anteriores deste componente. A vizinhança semântica está na UI,
+    /// onde a row nasce dentro do card ANDAR.
+    ///
+    /// ⚠️ **`1` é o mundo de antes desta wave, AO BIT** — e é por isso que o
+    /// degrau de schema é o único preço dela: nenhum projeto reabre diferente.
+    pub brake_scale: f32,
 }
 
 impl PlatformPlayer {
@@ -308,6 +320,7 @@ impl PlatformPlayer {
                 speed: self.speed,
                 acceleration: self.acceleration,
                 air_acceleration: self.air_acceleration,
+                brake_scale: self.brake_scale,
                 max_slope_deg: self.max_slope_deg,
             },
             jump: JumpConfig {
@@ -385,6 +398,7 @@ impl Default for PlatformPlayer {
             speed: c.walk.speed,
             acceleration: c.walk.acceleration,
             air_acceleration: c.walk.air_acceleration,
+            brake_scale: c.walk.brake_scale,
             max_slope_deg: c.walk.max_slope_deg,
             jump_height: c.jump.jump_height,
             takeoff_gravity: c.jump.takeoff_gravity,

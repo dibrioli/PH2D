@@ -49,11 +49,18 @@ fn tint(g: &mut ph2d_nodegraph::graph::Graph, rgb: [f32; 3]) -> NodeId {
 
 /// **`=32` — A CURVA REVELA, E A GEOMETRIA SEGUE** (folha 04, os dois P0).
 ///
-/// Uma fila de quadrados embrulhada num S. Com `follow_rotation` ligado cada um
+/// Uma FITA de quadrados embrulhada num S. Com `follow_rotation` ligado cada um
 /// **gira com a tangente** (um quadrado a 45° lê como losango, então a rotação é
-/// visível sem carregar sprite nenhum); a fila de baixo é o **CONTROLE**, com o
+/// visível sem carregar sprite nenhum); a fita de baixo é o **CONTROLE**, com o
 /// toggle desligado — os quadrados ficam todos alinhados ao eixo enquanto a
 /// posição segue a mesma curva.
+///
+/// ⚠️ **O `x` do layout percorre o arco; o `y` é o que a curva desloca pela
+/// NORMAL** — e é por isso que a fita tem três linhas. O `Height` multiplica esse
+/// `y`, então uma FILA o deixa inerte por multiplicação (`p.y = 0`), que foi o que
+/// o Enio encontrou: *"height serve para que? pois não vejo mudar nada"*. Medido,
+/// a espessura da fita é linear no knob: **0,700 / 0,350 / 0,000** para Height
+/// 1 / 0,5 / 0 (= `2 · gap_y · height`).
 ///
 /// ⚠️ **O write-on é um GESTO:** `from`/`to` são params, e nenhum nó do grafo
 /// anima um param — então a cena não pode *mostrar* a revelação, ela põe o
@@ -74,13 +81,18 @@ pub(super) fn build_write_on_demo_document(
 ) -> Option<Vec<NodeId>> {
     let g = &mut doc.graph;
 
-    // Uma FILA (uma linha, muitas colunas): o `spline_wrap` mapeia o x do layout
-    // no arco, então é o eixo x que tem de estar povoado.
+    // Uma FITA (três linhas, muitas colunas). ⚠️ **O `x` é o que percorre o arco e
+    // o `y` é o que a curva desloca pela NORMAL**, então um layout de UMA linha
+    // deixa o `Height` inerte por multiplicação — `p.y` é zero e zero vezes
+    // qualquer coisa é zero. A primeira versão desta cena era uma fila, e o Enio
+    // perguntou, com razão, para que serve o Height: *"não vejo mudar nada"*. Três
+    // linhas dão à curva o que deslocar, e o knob passa a ter o que fazer.
     let mut chain = |follow: f32, py: f32, rgb: [f32; 3], row: f32| -> Option<Vec<NodeId>> {
         let grid = g.add_node("motion.grid");
-        g.set_param(grid, "rows", 1.0);
+        g.set_param(grid, "rows", 3.0);
         g.set_param(grid, "cols", 16.0);
         g.set_param(grid, "gap_x", 0.12);
+        g.set_param(grid, "gap_y", 0.35);
         let scale = g.add_node("motion.scale");
         // ⚠️ MEDIDO, e a primeira versão reprovou aqui: com 48 quadrados de 0,09
         // o passo ao longo do arco era 0,143 ⇒ razão tamanho/passo **0,63**, os

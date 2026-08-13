@@ -323,10 +323,10 @@ fn probe_conferencia_scenes() {
         .iter()
         .filter(|a| (a.rem_euclid(90.0) - 45.0).abs() < 12.0)
         .count();
-    let pos: Vec<[f32; 2]> = pump.instances[..n / 2]
-        .iter()
-        .map(|i| i.world_pos)
-        .collect();
+    // ⚠️ O passo mede-se dentro de UMA pista. A grade é row-major, então os
+    // dezasseis primeiros são a pista de cima; percorrer a metade inteira saltaria
+    // entre pistas e reportaria o salto como se fosse o passo ao longo do arco.
+    let pos: Vec<[f32; 2]> = pump.instances[..16].iter().map(|i| i.world_pos).collect();
     let gaps: Vec<f32> = pos
         .windows(2)
         .map(|w| (w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]))
@@ -340,6 +340,33 @@ fn probe_conferencia_scenes() {
         pump.instances[0].size[0],
         pump.instances[0].size[0] / step,
     );
+
+    // A ESPESSURA da fita, e o que o `Height` faz com ela.
+    for h in [1.0f32, 0.5, 0.0] {
+        let mut doc = MotionDoc::new();
+        let sinks = build_write_on_demo_document(&mut doc, &reg).expect("cena");
+        for n in doc
+            .graph
+            .nodes()
+            .iter()
+            .map(|n| (n.id, n.type_id()))
+            .collect::<Vec<_>>()
+        {
+            if n.1 == NodeTypeId::of("motion.spline_wrap") {
+                doc.graph.set_param(n.0, "height_scale", h);
+            }
+        }
+        let p = cook(&doc, &reg, sinks[0], 0.0);
+        // A espessura: a maior distância entre dois elementos da MESMA coluna.
+        let n = p.len() / 2;
+        let thick = (0..n / 3)
+            .map(|c| {
+                let (a, b) = (p[c], p[c + 2 * (n / 3)]);
+                (a[0] - b[0]).hypot(a[1] - b[1])
+            })
+            .fold(0.0f32, f32::max);
+        println!("[=32] height {h:.1} -> espessura da fita {thick:.3}");
+    }
 
     // O pivô, o número da célula.
     let mut doc = MotionDoc::new();
@@ -406,4 +433,92 @@ fn probe_conferencia_scenes() {
         d.iter().fold(0.0f32, |a, b| a.max(*b)),
         drift * 100.0
     );
+}
+
+/// **TODO controle que a cena `=32` oferece TEM de fazer alguma coisa NELA.**
+///
+/// ⚠️ **A lei do botão morto, aplicada à cena em vez de ao painel.** Um param pode
+/// estar vivo no nó e **inerte na cena**, porque a cena não lhe deu entrada: o
+/// `Height` desloca `p.y` ao longo da normal da curva, e a primeira versão desta
+/// cena era uma FILA (`rows = 1`) ⇒ `p.y` zero ⇒ zero vezes qualquer coisa. O nó
+/// estava certo, o slider estava pintado, e o Enio perguntou para que ele servia.
+///
+/// Foi a **terceira** vez nesta cena que um controle não demonstrava nada (a
+/// rotação ilegível, a espiral, e agora este), e as três eram a mesma coisa: a
+/// cena não continha o fenômeno que prometia. Este gate faz a pergunta uma vez
+/// por param, em vez de eu me lembrar dela uma vez por smoke.
+///
+/// O oráculo é `P` **ou** `rot`: o `Follow Curve` não move um elemento, ele o
+/// vira — pedir só posição deixaria o toggle passar por morto.
+#[test]
+fn every_control_the_write_on_scene_offers_does_something_in_it() {
+    let reg = registry();
+    let sw_id = NodeTypeId::of("motion.spline_wrap");
+
+    let cook_both = |doc: &MotionDoc, sink: NodeId| -> (Vec<[f32; 2]>, Vec<f32>) {
+        (cook(doc, &reg, sink, 0.0), rot(doc, &reg, sink))
+    };
+    let base_doc = {
+        let mut d = MotionDoc::new();
+        build_write_on_demo_document(&mut d, &reg).expect("cena");
+        d
+    };
+    let manifest = reg
+        .manifests()
+        .find(|m| m.id == sw_id)
+        .expect("o no existe");
+    let hints = reg.param_ui(sw_id);
+
+    for spec in manifest.params {
+        let mut doc = MotionDoc::new();
+        let sinks = build_write_on_demo_document(&mut doc, &reg).expect("cena");
+        let sink = *sinks.first().expect("sink");
+        let before = cook_both(&base_doc, sink);
+
+        // Um valor DENTRO da faixa que o painel oferece e diferente do de hoje —
+        // ⚠️ empurrar sempre para cima faria o `to` (default 1, teto 1) saturar e
+        // o gate reprovaria um param VIVO por ter sido cutucado onde não anda.
+        let (lo, hi) = hints
+            .into_iter()
+            .flatten()
+            .find(|h| h.param == spec.name)
+            .filter(|h| h.max > h.min)
+            .map_or((spec.default - 1.0, spec.default + 1.0), |h| (h.min, h.max));
+        let a = lo + (hi - lo) * 0.37;
+        let nudged = if (a - spec.default).abs() > 1e-4 {
+            a
+        } else {
+            lo + (hi - lo) * 0.71
+        };
+
+        for n in doc
+            .graph
+            .nodes()
+            .iter()
+            .filter(|n| n.type_id() == sw_id)
+            .map(|n| n.id)
+            .collect::<Vec<_>>()
+        {
+            doc.graph.set_param(n, spec.name, nudged);
+        }
+        let after = cook_both(&doc, sink);
+        let moved = before
+            .0
+            .iter()
+            .zip(&after.0)
+            .any(|(a, b)| (a[0] - b[0]).hypot(a[1] - b[1]) > 1e-4);
+        let turned = before.1.len() != after.1.len()
+            || before
+                .1
+                .iter()
+                .zip(&after.1)
+                .any(|(a, b)| (a - b).abs() > 1e-4);
+        assert!(
+            moved || turned,
+            "`{}` ({} -> {nudged}) nao mudou NADA na cena -- ou o param esta morto, \
+             ou a cena nao lhe da entrada (foi o caso do `height_scale` com uma fila)",
+            spec.name,
+            spec.default
+        );
+    }
 }

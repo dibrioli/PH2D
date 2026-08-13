@@ -360,16 +360,15 @@ struct VsOut {
     @location(5) thickness: f32,
 };
 
-@vertex
-fn vs_main(
-    @location(0) pos: vec3<f32>,
-    @location(1) normal: vec3<f32>,
-    @location(2) mask: f32,
-    @location(3) curv: f32,
-    @location(4) ao: f32,
-    @location(5) curv_world: f32,
-    @location(6) thickness: f32,
-    @location(7) preview: f32,
+fn vs_core(
+    pos: vec3<f32>,
+    normal: vec3<f32>,
+    mask: f32,
+    curv: f32,
+    ao: f32,
+    curv_world: f32,
+    thickness: f32,
+    preview: f32,
 ) -> VsOut {
     var out: VsOut;
     out.clip = cam.view_proj * obj.model * vec4<f32>(pos, 1.0);
@@ -421,6 +420,101 @@ fn vs_main(
     // acenderia a forma com a normal de antes de ela girar. Mesma decisão, e
     // mesmo motivo, do `Sculpt3dScene::dir_to_local`.
     out.n_view = (cam.view * obj.model * vec4<f32>(normal, 0.0)).xyz;
+    return out;
+}
+
+// **QUANTO A ARESTA SE APROXIMA DO OLHO** — em profundidade NDC, e é o número
+// que faz o wireframe existir.
+//
+// ⚠️ **O viés de profundidade do pipeline NÃO alcança uma LINHA, e isso é spec,
+// não bug do driver:** ele é definido para POLÍGONOS. Medido em 2026-08-12,
+// varrendo `constant` de `0` a `-4096` e `slope_scale` de `0` a `-16`: a tinta
+// que chega à tela é **exatamente a mesma** nos quatro pontos. Enquanto o corte
+// foi lido como z-fighting, a cura óbvia era um viés maior — e ela é INERTE.
+//
+// ⚠️ **É por isso que a nudge mora AQUI e não no `DepthBiasState`:** o vertex
+// shader é o único lugar que o wgpu garante alcançar toda topologia, em todo
+// backend.
+//
+// ⚠️ **Ela é um deslocamento em `z` de CLIP proporcional a `w`**, o que a torna
+// um deslocamento CONSTANTE em NDC — e por isso não move um pixel em `x`/`y`:
+// a linha continua exatamente sobre a aresta, ela só ganha a disputa de
+// profundidade. Um empurrão no espaço de VISTA (aproximar o vértice do olho)
+// deslocaria a linha na tela por perspectiva, e a aresta passaria a desenhar ao
+// lado de si mesma na silhueta.
+//
+// ⚠️ **O valor é MEDIDO, e há DOIS oráculos que ele tem de satisfazer ao mesmo
+// tempo** (`probe_wire_continuity.rs`, esfera 64×128): a TINTA que chega tem de
+// subir, e a VAZADA — tinta que caiu onde nenhuma aresta de frente passa — tem
+// de ficar perto de zero, porque ela é a malha do outro lado da peça
+// atravessando, o emaranhado que o teste de profundidade existe para impedir.
+//
+// | nudge | tinta | vazada |
+// |---|---|---|
+// | 0 (o que shipava) | **39 %** | 0,0 % |
+// | 1e-3 | 73 % | 0,0 % |
+// | 2e-3 | 79 % | 0,0 % |
+// | **3e-3** | **93 %** | **2,2 %** |
+// | 4e-3 | 112 % | 8,3 % |
+// | 6e-3 | 143 % | 18,9 % |
+//
+// ⚠️ **DUAS formas mais espertas foram construídas, MEDIDAS e REJEITADAS** — não
+// as refaça:
+//
+// 1. **`nudge / sec(ângulo)`**, reproduzindo o termo de INCLINAÇÃO que o viés de
+//    polígono teria a partir da normal do vértice: `94 % / 76 %` contra os
+//    `93 % / 81 %` da constante, e o piso da amplificação (0,05 · 0,1 · 0,25) não
+//    move o número. Um `normalize` e uma divisão por vértice por ~1 %;
+// 2. **`nudge × facing`**, para o vértice de COSTAS não ganhar empurrão nenhum e
+//    o vazamento morrer na origem: ele de facto zera a vazada em toda magnitude
+//    — e satura a tinta em **73 %**, porque na silhueta `facing → 0` e nenhuma
+//    magnitude alcança. Com um piso (`max(f, 0,5)` sobre 6e-3) ele devolve
+//    `93 % / 2,2 %`: **exatamente a constante 3e-3**. É uma reparametrização,
+//    não um mecanismo.
+//
+// ⇒ O que sobra é escolher ONDE sentar na curva, e o ponto é o joelho: a tinta
+// quase completa com a vazada ainda invisível (1 pixel de wireframe em 45).
+//
+// ⚠️ **O RESÍDUO fica NOMEADO:** num TORO (tubo fino, onde a face de trás está
+// logo atrás da da frente em toda parte) o mesmo valor dá `81 % / 14 %`. A cura
+// que removeria o compromisso é **descartar as arestas cujas DUAS faces estão de
+// costas**, e ela precisa da adjacência aresta→face, que o `wire_indices` não
+// constrói de propósito (o doc dele mede: montar o grafo custa +89 %).
+const WIRE_DEPTH_NUDGE: f32 = 3.0e-3;
+const WIRE_BACK_SHARE: f32 = 0.3;
+
+// **A ARESTA** — a mesma posição do [`vs_main`], um passo mais perto do olho.
+//
+// ⚠️ **Ele delega em vez de recalcular:** duas expressões para *"onde este
+// vértice cai na tela"* divergiriam no dia em que a `Pose` ganhasse rotação, e o
+// wireframe passaria a anotar uma forma que não é a desenhada.
+@vertex
+fn vs_main(
+    @location(0) pos: vec3<f32>,
+    @location(1) normal: vec3<f32>,
+    @location(2) mask: f32,
+    @location(3) curv: f32,
+    @location(4) ao: f32,
+    @location(5) curv_world: f32,
+    @location(6) thickness: f32,
+    @location(7) preview: f32,
+) -> VsOut {
+    return vs_core(pos, normal, mask, curv, ao, curv_world, thickness, preview);
+}
+
+@vertex
+fn vs_wire(
+    @location(0) pos: vec3<f32>,
+    @location(1) normal: vec3<f32>,
+    @location(2) mask: f32,
+    @location(3) curv: f32,
+    @location(4) ao: f32,
+    @location(5) curv_world: f32,
+    @location(6) thickness: f32,
+    @location(7) preview: f32,
+) -> VsOut {
+    var out = vs_core(pos, normal, mask, curv, ao, curv_world, thickness, preview);
+    out.clip.z = out.clip.z - WIRE_DEPTH_NUDGE * out.clip.w;
     return out;
 }
 

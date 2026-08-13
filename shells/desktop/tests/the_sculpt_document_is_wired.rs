@@ -352,3 +352,33 @@ fn the_placement_runs_before_any_piece_enters_the_scene() {
         "…e a peça que abriu a cena tem de receber a pose que a colocação deu"
     );
 }
+
+/// **O APP ABRE NO MATERIAL QUE O RENDERIZADOR DECLARA** — e o número não é
+/// escrito duas vezes.
+///
+/// ⚠️ **Ele nasce de um defeito de TRÊS respostas para uma pergunta** (report do
+/// Enio, 2026-08-12): a shell abria em `matcap: None` — o rig do documento —,
+/// o `Shade::default()` do renderizador dizia `Some(0)` (o `Skin Haz 2`, com
+/// gate a pinar o nome) e o `sculpt3d_announce` anunciava, na tela, *"o app abre
+/// no 'Skin Haz 2'"*. Quem ganhava era a shell, porque é ela que passa o campo
+/// ao `Shade` — ou seja **a resposta que ninguém tinha escrito de propósito**, e
+/// o anúncio sobreviveu ao fato.
+///
+/// ⚠️ **O gate lê o CÓDIGO e não o valor, e é a única coisa que ele pode ler:**
+/// construir uma cena exige um `wgpu::Device`, e o defeito é a shell ter um
+/// literal PRÓPRIO. Um teste que comparasse dois números não distinguiria
+/// *"delega"* de *"copiou o mesmo número"* — e é a cópia que apodrece no dia em
+/// que o default do renderizador mudar.
+///
+/// ⚠️ **E ele lê o CLUSTER inteiro, não `sculpt3d_birth.rs`** — a prosa do
+/// [`sculpt_src`] já mede que nomear o arquivo de uma função vira vermelho no
+/// próximo split, sobre produto correto. A propriedade é *a fiação delega*, e
+/// ela sobrevive ao arquivo mudar de nome.
+#[test]
+fn the_scene_opens_on_the_material_the_renderer_declares() {
+    assert!(
+        sculpt_src().contains("matcap: ph2d_mesh_render::DEFAULT_MATCAP"),
+        "o nascimento da cena tem de DELEGAR o material de abertura ao \
+         renderizador; um literal aqui e' a segunda resposta que diverge"
+    );
+}

@@ -353,6 +353,9 @@ impl MeshRenderer {
         // decidir por conta.
         struct Variant<'a> {
             label: &'a str,
+            /// A entrada de VÉRTICE. Só o passe de arestas a troca — ver o
+            /// `WIRE_DEPTH_NUDGE` no shader.
+            vs: &'a str,
             entry: &'a str,
             format: wgpu::TextureFormat,
             /// O SEGUNDO alvo, quando o fragment escreve dois — hoje só o
@@ -369,6 +372,7 @@ impl MeshRenderer {
         let make = |v: Variant<'_>| {
             let Variant {
                 label,
+                vs,
                 entry,
                 format,
                 second,
@@ -398,7 +402,7 @@ impl MeshRenderer {
                 layout: Some(&layout),
                 vertex: wgpu::VertexState {
                     module: &shader,
-                    entry_point: Some("vs_main"),
+                    entry_point: Some(vs),
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
                     buffers: &[
                         vec3_buffer(&POS),
@@ -478,6 +482,7 @@ impl MeshRenderer {
         };
         let pipeline = make(Variant {
             label: "ph2d-mesh pipeline",
+            vs: "vs_main",
             entry: "fs_main",
             format: target_format,
             second: None,
@@ -487,6 +492,7 @@ impl MeshRenderer {
         });
         let gbuffer_pipeline = make(Variant {
             label: "ph2d-mesh gbuffer",
+            vs: "vs_main",
             entry: "fs_gbuffer",
             format: Self::GBUFFER_FORMAT,
             second: Some(Self::OCCLUSION_FORMAT),
@@ -496,6 +502,7 @@ impl MeshRenderer {
         });
         let wire_pipeline = make(Variant {
             label: "ph2d-mesh wire",
+            vs: "vs_wire",
             entry: "fs_wire",
             format: target_format,
             second: None,

@@ -45,7 +45,18 @@ impl Sculpt3dScene {
             drag: None,
             last: (0.0, 0.0),
             viewport: (1, 1),
-            matcap: None,
+            // **O MATERIAL COM QUE O APP ABRE** — ver
+            // [`ph2d_mesh_render::DEFAULT_MATCAP`], hoje o `Skin Haz 2`.
+            //
+            // ⚠️ **A const do RENDERIZADOR e não um literal aqui, porque o fato
+            // já tem dono** (`MATCAPS[0]`, com gate que pina o nome). Ele
+            // nascia `None` — o rig do documento — enquanto o
+            // `Shade::default()` do renderizador dizia `Some(0)` e o
+            // `sculpt3d_announce` anunciava *"o app abre no 'Skin Haz 2'"*:
+            // **três respostas para uma pergunta, e a que ganhava era a que
+            // ninguém tinha escrito de propósito**, porque é a shell quem passa
+            // o campo ao `Shade`. O anúncio sobreviveu ao fato.
+            matcap: ph2d_mesh_render::DEFAULT_MATCAP,
             wireframe: false,
             brush: Brush::default(),
             mode_by_verb: [ph2d_sculpt3d::RefMode::default(); 16],

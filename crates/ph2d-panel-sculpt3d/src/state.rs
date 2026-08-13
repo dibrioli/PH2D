@@ -211,7 +211,12 @@ impl Default for Sculpt3dUi {
             sss_scatter: 0.25, // LITERAL-PX-OK: fração adimensional, não métrica de layout
             light_az_deg: 0.0,
             light_elev_deg: 45.0, // LITERAL-PX-OK: graus de elevacao, nao metrica de design
-            matcap: None,
+            // ⚠️ **O literal segue o precedente do `ssao`/`sss_scatter` acima:**
+            // este painel é agnóstico ao renderizador de propósito, e o valor
+            // que vale é o que o snapshot da shell escreve no primeiro frame —
+            // a fonte é `ph2d_mesh_render::DEFAULT_MATCAP`. Ele espelha para que
+            // uma fixture de seam veja o mesmo mundo que o artista vê.
+            matcap: Some(0),
             alpha_preview: true,
             wireframe: false,
             detail: 1,

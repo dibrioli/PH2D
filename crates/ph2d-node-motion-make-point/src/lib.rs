@@ -17,7 +17,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
+use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -51,9 +51,64 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     }],
     effect: Effect::Pure,
     clock: Clock::Frame,
-    params: &[],
+    params: &[
+        // QUAL coluna Vec2 o par (x, y) constrói. `0` = `P`, que é o nó que shipava.
+        ParamSpec {
+            name: "target",
+            default: 0.0,
+        },
+    ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// **Qual coluna Vec2 este nó constrói** (doc 89 folha 08 — o P0 do §0).
+///
+/// ⚠️ **NÃO é um nome livre.** O *Store Named Attribute* do Blender aceita
+/// qualquer string; aqui um nome de coluna é **CONVENÇÃO** — quem a lê é um
+/// consumidor específico —, então uma string livre construiria uma coluna que
+/// ninguém lê, que é uma feature que não faz nada. A lista é MEDIDA: das sete
+/// colunas `Vec2` que o repo escreve, três (`sim_d`, `sb_vel`, `rope_prev`) são
+/// estado PRIVADO de um nó cada e oferecê-las seria deixar o artista corromper o
+/// buffer de um solver.
+///
+/// ⚠️ **E `size` fica de fora com motivo:** o `motion.drive` já o escreve (o canal
+/// `Size`), e o por-eixo tem dono e forma prescritos noutra folha (a 05: um
+/// `uniform` ao lado de um `scale_y`, o molde do irmão `motion.scale`). Uma
+/// segunda porta para a mesma pergunta diverge.
+///
+/// O que sobra são as duas que o domínio de VALOR não alcança por rota nenhuma —
+/// e é isso que faz do P0 um P0.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Target {
+    /// A posição. O nó que shipava.
+    Position,
+    /// A velocidade — semear um campo de velocidade a partir de dados.
+    Velocity,
+    /// A aceleração: a coluna TRANSIENTE que a família `force.*` acumula e o
+    /// `motion.integrate` consome. Escrevê-la de um campo computado é o que faz
+    /// de **qualquer fórmula uma força**.
+    Acceleration,
+}
+
+impl Target {
+    fn of(v: f32) -> Self {
+        // `round` e não `as`: o param é `f32` e um 0,999999 vindo de um slider não
+        // pode virar a coluna anterior.
+        match v.round() as i32 {
+            1 => Self::Velocity,
+            2 => Self::Acceleration,
+            _ => Self::Position,
+        }
+    }
+
+    fn column(self) -> &'static str {
+        match self {
+            Self::Position => "P",
+            Self::Velocity => "vel",
+            Self::Acceleration => "accel",
+        }
+    }
+}
 
 fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
     match s.get(name) {
@@ -85,6 +140,7 @@ impl NodeOp for MotionMakePoint {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
+        let target = Target::of(ctx.param("target"));
         let x = scalar_col(ctx.input(1), VALUE_COL);
         let y = scalar_col(ctx.input(2), VALUE_COL);
         let in_stream = ctx.input(0);
@@ -93,14 +149,18 @@ impl NodeOp for MotionMakePoint {
         let positions = make_points(&x, &y, n);
         let mut out = Stream::new(n);
         // Carry the `in` columns through only when it set the count (they line up).
+        // ⚠️ O que é excluído é a coluna ALVO, não `P` literal: escrevendo `vel`, o
+        // `P` da entrada TEM de atravessar, senão o adaptador que semeia uma
+        // velocidade apagaria a geometria em que ela age.
+        let written = target.column();
         if in_count == n {
             for (name, col) in in_stream.columns() {
-                if name != "P" {
+                if name != written {
                     out.set(name.clone(), col.clone());
                 }
             }
         }
-        out.set("P", Column::Vec2(positions));
+        out.set(written, Column::Vec2(positions));
         ctx.emit(out);
     }
 }
@@ -117,8 +177,36 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,
         },
     );
+    reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // ⚠️ **Condicional, e é o ponto.** Só o modo Acceleration escreve a coluna
+    // transiente; declarar `Produces("accel")` seco marcaria todo `make_point` da
+    // cena (o falso positivo que o ADR-0155 combateu), e não declarar nada
+    // devolveria a classe de erro que ele existe para pegar — uma aceleração
+    // escrita que ninguém integra, e a cena parada sem erro nenhum.
+    reg.register_couplings(
+        MANIFEST.id,
+        &[ph2d_node_registry::Coupling::ProducesWhen("accel", |p| {
+            Target::of(p("target")) == Target::Acceleration
+        })],
+    );
     Ok(())
 }
+
+use ph2d_node_registry::{ParamUiHint, ParamWidget};
+
+static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
+    param: "target",
+    label: "Builds",
+    min: 0.0,
+    max: 2.0,
+    step: 1.0,
+    // ⚠️ **Apendados**, nunca inseridos: o índice é o que o grafo guarda, então
+    // reordenar por gosto trocaria a coluna de todo documento já autorado — em
+    // silêncio, porque o param é um `f32` sem versão (a cerca do `motion.drive`).
+    widget: ParamWidget::Enum {
+        labels: &["Position", "Velocity", "Acceleration"],
+    },
+}];
 
 #[cfg(test)]
 mod tests {
@@ -240,3 +328,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "target_tests.rs"]
+mod target_tests;

@@ -20,7 +20,43 @@ pub(super) fn tick(hero: &mut HeroScreen, dt: f64) {
         hero.motion.animate(id, target, crate::motion::Role::Fade);
     }
     tick_palette_cascade(hero, dt);
+    tick_panel_scroll(hero);
     tick_fill_tether(hero, dt);
+}
+
+/// **A ROLAGEM SUAVE** — a roda mexe um ALVO, e a superfície desliza até lá.
+///
+/// ⚠️ **É `Role::Travel`**, então o *reduced motion* leva-a — e leva-a bem: uma superfície que
+/// desliza é exactamente a classe de movimento que o interruptor existe para matar.
+///
+/// ⚠️ **O tique é o ÚNICO escritor do vivo**, e é por isso que isto não é uma segunda cópia do
+/// mesmo facto: o alvo é *para onde a roda mandou*, o vivo é *onde a superfície está*. Os ~130
+/// sítios que pintam a partir de `panel_scroll` herdaram a suavidade sem uma linha de mudança,
+/// porque aquela porta passou a devolver o vivo.
+///
+/// ⚠️ E **não anda o relógio**: quem o andou foi o `motion.advance` no topo do `tick`. Uma segunda
+/// chamada aqui daria a esta família o dobro do `dt` das outras.
+fn tick_panel_scroll(hero: &mut HeroScreen) {
+    let targets: Vec<(ph2d_a11y::NodeId, f32)> = hero.store.scrolled_panels().collect();
+    for (panel, target) in targets {
+        let live = hero
+            .motion
+            .animate(scroll_track(panel), target, crate::motion::Role::Travel);
+        hero.store.set_panel_scroll_live(panel, live);
+    }
+}
+
+/// O id de motion da rolagem de um painel. ⚠️ **Não é o id do painel** — aquele já é o alvo de hit
+/// do chrome e do `hover_targets`, e partilhá-lo poria duas grandezas (*quanto do hover está
+/// presente* e *onde a superfície está*) no MESMO track.
+fn scroll_track(panel: ph2d_a11y::NodeId) -> ph2d_a11y::NodeId {
+    const FNV_PRIME_64: u64 = 0x0000_0100_0000_01b3;
+    let mut h = panel.0 ^ 0x7363_726f_6c6c_5f74; // "scroll_t"
+    for b in panel.0.to_le_bytes() {
+        h ^= u64::from(b);
+        h = h.wrapping_mul(FNV_PRIME_64);
+    }
+    ph2d_a11y::NodeId(if h == 0 { 1 } else { h })
 }
 
 /// A CASCATA da paleta de comandos: os cartões chegam **um a seguir ao outro**, para que `N` deles

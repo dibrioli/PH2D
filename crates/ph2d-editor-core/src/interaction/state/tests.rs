@@ -1,4 +1,7 @@
 use super::*;
+// ⚠️ O que só o TESTE usa importa-se AQUI. Deixá-los no pai fá-los "não usados" na build de lib —
+//    e foi assim que o `cargo fix --lib`, que não enxerga este filho, os podou e partiu a suíte.
+use crate::widget::{SliderOrientation, SliderState, TextInputState};
 
 fn store_with(states: &[(u64, InteractiveState)]) -> WidgetStore {
     let mut s = WidgetStore::with_capacity(64);

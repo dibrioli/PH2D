@@ -531,3 +531,65 @@ fn reduced_motion_takes_the_rise_and_leaves_the_arrival() {
     );
     assert_eq!(cascade_rise(1.0, true), 0.0, "assente e assente");
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A ROLAGEM SUAVE (E2) — a roda mexe um ALVO, a superfície desliza até lá.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// ⭐ **A roda acumula no ALVO, e é isso que faz girar depressa cobrir a distância toda.**
+///
+/// Somando ao valor EM VOO, cada nova volta parte de uma posição que ainda não chegou e a
+/// superfície anda **menos** do que o dedo pediu — o defeito clássico de toda rolagem suave
+/// escrita à pressa. *Mutação: a roda a ler `panel_scroll` (vivo) ⇒ o total encolhe.*
+#[test]
+fn spinning_the_wheel_fast_covers_the_whole_distance() {
+    use crate::interaction::WidgetStore;
+    let mut store = WidgetStore::with_capacity(4);
+    let p = NodeId(7);
+    // ⚠️ **A fixture TEM de conter o fenómeno.** Sem um valor VIVO atrasado, `panel_scroll` cai no
+    //    alvo e ler um ou outro é a mesma coisa — a primeira versão deste gate ficou VERDE com a
+    //    roda a ler o vivo, porque não havia vivo. Aqui a superfície fica sempre 40% para trás, que
+    //    é o que a mola faz entre duas voltas de roda seguidas.
+    for _ in 0..5 {
+        let cur = store.panel_scroll_target(p);
+        store.set_panel_scroll(p, cur + 100.0);
+        let t = store.panel_scroll_target(p);
+        store.set_panel_scroll_live(p, t * 0.6);
+    }
+    assert!(
+        (store.panel_scroll_target(p) - 500.0).abs() < 1e-3,
+        "o alvo tem de somar as cinco voltas, e somou {}",
+        store.panel_scroll_target(p)
+    );
+}
+
+/// ⚠️ **Sem substrato, `panel_scroll` É o alvo — o mundo pré-wave, byte-idêntico.**
+///
+/// É a neutralidade que torna esta wave segura: um store que ninguém tiquou desenha exactamente
+/// onde desenhava. *Mutação: o `or_else` a devolver 0.0 ⇒ toda superfície salta para o topo.*
+#[test]
+fn an_untocked_store_paints_where_it_always_painted() {
+    use crate::interaction::WidgetStore;
+    let mut store = WidgetStore::with_capacity(4);
+    let p = NodeId(7);
+    store.set_panel_scroll(p, 240.0);
+    assert!((store.panel_scroll(p) - 240.0).abs() < 1e-3);
+}
+
+/// E o vivo, quando existe, é o que o pintor vê — enquanto o alvo fica onde a roda o pôs.
+#[test]
+fn the_painter_sees_the_live_offset_and_the_wheel_sees_the_target() {
+    use crate::interaction::WidgetStore;
+    let mut store = WidgetStore::with_capacity(4);
+    let p = NodeId(7);
+    store.set_panel_scroll(p, 300.0);
+    store.set_panel_scroll_live(p, 120.0);
+    assert!(
+        (store.panel_scroll(p) - 120.0).abs() < 1e-3,
+        "o pintor vê o vivo"
+    );
+    assert!(
+        (store.panel_scroll_target(p) - 300.0).abs() < 1e-3,
+        "a roda vê o alvo"
+    );
+}

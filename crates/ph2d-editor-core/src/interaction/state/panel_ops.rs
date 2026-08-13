@@ -77,8 +77,29 @@ impl WidgetStore {
         &self.panel_z_order
     }
 
-    /// Read the vertical scroll offset for a panel (defaults to 0).
+    /// **Onde a superfície está AGORA** — o que o pintor desenha.
+    ///
+    /// ⚠️ **Devolve o valor VIVO, e é por isso que os ~130 leitores herdaram a rolagem suave sem
+    /// uma linha de mudança.** Sem entrada viva (antes do primeiro tique, ou com o movimento
+    /// desligado) cai no alvo, então o mundo pré-substrato é byte-idêntico.
+    ///
+    /// ⚠️ E os clamps dos painéis (`if panel_scroll(id) > max_scroll { set_panel_scroll(max) }`)
+    /// continuam CERTOS a ler daqui: a pergunta deles é *o que está desenhado saiu da faixa?*, e
+    /// re-alvejar a borda faz a superfície **deslizar** até lá em vez de saltar.
     pub fn panel_scroll(&self, panel: NodeId) -> f32 {
+        self.panel_scroll_live
+            .get(&panel)
+            .or_else(|| self.panel_scroll.get(&panel))
+            .copied()
+            .unwrap_or(0.0)
+    }
+
+    /// **Para onde a roda mandou** — o alvo autorado.
+    ///
+    /// ⚠️ **A roda TEM de acumular aqui, e não no vivo.** Somando ao valor em voo, girar depressa
+    /// soma sobre uma posição que ainda não chegou e a superfície **anda menos** do que o dedo
+    /// pediu — o defeito clássico de toda rolagem suave escrita à pressa.
+    pub fn panel_scroll_target(&self, panel: NodeId) -> f32 {
         self.panel_scroll.get(&panel).copied().unwrap_or(0.0)
     }
 
@@ -86,6 +107,16 @@ impl WidgetStore {
     /// responsible for clamping to `[0, content_h - visible_h]`.
     pub fn set_panel_scroll(&mut self, panel: NodeId, y: f32) {
         self.panel_scroll.insert(panel, y);
+    }
+
+    /// O tique da UI viva publica aqui o que integrou. **Único escritor.**
+    pub fn set_panel_scroll_live(&mut self, panel: NodeId, y: f32) {
+        self.panel_scroll_live.insert(panel, y);
+    }
+
+    /// Os painéis que têm um alvo de rolagem — o tique itera-os.
+    pub fn scrolled_panels(&self) -> impl Iterator<Item = (NodeId, f32)> + '_ {
+        self.panel_scroll.iter().map(|(k, v)| (*k, *v))
     }
 
     /// Painter publishes its panel rect each frame so wheel

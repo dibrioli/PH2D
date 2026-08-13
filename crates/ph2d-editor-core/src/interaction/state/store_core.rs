@@ -46,6 +46,7 @@ impl WidgetStore {
             palette_io_pending: None,
             palette_dropdown_open: None,
             panel_scroll: BTreeMap::new(),
+            panel_scroll_live: BTreeMap::new(),
             panel_rects: BTreeMap::new(),
             panel_content_h: BTreeMap::new(),
             panel_visible_h: BTreeMap::new(),

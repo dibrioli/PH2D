@@ -62,7 +62,7 @@ pub fn dispatch_wheel<'frame>(
             Some(InteractiveState::Dropdown { open: true, .. })
         )
     {
-        let mut next = (store.panel_scroll(dd) - event.delta_y).max(0.0);
+        let mut next = (store.panel_scroll_target(dd) - event.delta_y).max(0.0);
         if let Some(content_h) = store.panel_content_h(dd) {
             let visible_h = store.panel_visible_h(dd).unwrap_or(0.0);
             next = next.min((content_h - visible_h).max(0.0));
@@ -71,7 +71,9 @@ pub fn dispatch_wheel<'frame>(
         return events.into_bump_slice();
     }
     if let Some(panel) = store.panel_at(event.x, event.y) {
-        let cur = store.panel_scroll(panel);
+        // ⚠️ O ALVO, nunca o vivo: girar depressa sobre uma posição em voo anda menos do que
+        //    o dedo pediu.
+        let cur = store.panel_scroll_target(panel);
         // delta_y > 0 from winit means "scroll forward" / content
         // moves up. We store offset as "how far down content
         // pretends to be" — so positive delta increments the

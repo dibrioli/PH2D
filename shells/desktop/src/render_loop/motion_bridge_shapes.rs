@@ -157,6 +157,26 @@ pub(super) fn publish(
             ph2d_nodegraph::external::position_of(&name),
             Stream::new(1).with("P", Column::Vec2(vec![mean])),
         );
+        // ⚠️ **A GEOMETRIA vai no canal DELA, e é a correção do smoke de
+        // 2026-08-12** (*"escolhi a curva mas não funcionou"*). O nome cru é
+        // publicado aqui como polilinha **e** logo depois pelo publicador de
+        // objetos como a APARÊNCIA da forma assada (uma instância na origem) —
+        // os dois dizem, cada um no seu comentário, que *"o último a escrever
+        // num nome vence"*. O que se perdia era a resposta que o `motion.path` e
+        // o `motion.spline_wrap` pedem: eles achavam um stream de UM ponto, não
+        // achavam arco, e caíam no fallback **em silêncio**, com o painel
+        // mostrando a forma escolhida.
+        //
+        // A cura é a do irmão `position_of`, uma pergunta adiante: *a aparência,
+        // a posição e a FORMA de X são três perguntas*, e uma coluna com o nome
+        // certo carregando a resposta de outra é o jeito mais quieto de errar.
+        cook.set_external(
+            ph2d_nodegraph::external::curve_of(&name),
+            Stream::new(n).with("P", Column::Vec2(pts.clone())),
+        );
+        // O nome cru continua publicado como antes: quem não foi assado como
+        // objeto (o frame em que a forma nasce) ainda o encontra, e nada que já
+        // lia daqui muda de comportamento.
         cook.set_external(name, Stream::new(n).with("P", Column::Vec2(pts)));
     }
 }

@@ -426,3 +426,100 @@ fn the_lod_partition_cost_at_scale() {
         println!("N={n:>7}  particao(+clone da entrada)={ms:>7.3} ms/frame");
     }
 }
+
+/// Uma cena vetorial com UM caminho aberto nomeado, e o mapa/xform que o frame
+/// entrega aos dois publicadores.
+#[cfg(test)]
+fn one_named_path(
+    sim: &mut SimWorld,
+    name: &str,
+) -> (
+    ph2d_vec_scene::VecScene,
+    crate::vec_entities::VecEntityMap,
+    ph2d_vec_scene::VecXforms,
+) {
+    use ph2d_ecs::{Name, Transform, VecPathRef};
+    let mut scene = ph2d_vec_scene::VecScene::new();
+    let id = scene.push_path(ph2d_vec_scene::VecPath {
+        verts: vec![
+            ph2d_vec_scene::VecVertex::corner([0.0, 0.0]),
+            ph2d_vec_scene::VecVertex::corner([4.0, 0.0]),
+            ph2d_vec_scene::VecVertex::corner([4.0, 3.0]),
+        ],
+        closed: false,
+        ..ph2d_vec_scene::VecPath::default()
+    });
+    let e = sim
+        .world_mut()
+        .spawn((Transform::default(), Name::new(name), VecPathRef(id)))
+        .id();
+    let mut map = crate::vec_entities::VecEntityMap::default();
+    map.insert(id, e.to_bits());
+    (scene, map, ph2d_vec_scene::VecXforms::default())
+}
+
+/// Quantos pontos há na coluna `P` do externo `key` (0 se não há externo).
+#[cfg(test)]
+fn points_under(cook: &ph2d_nodegraph::cook::Cook, key: &str) -> usize {
+    use ph2d_nodegraph::attr::Column;
+    match cook.externals().get(key).map(|e| e.value.get("P")) {
+        Some(Some(Column::Vec2(v))) => v.len(),
+        _ => 0,
+    }
+}
+
+/// O id do único caminho da fixture.
+#[cfg(test)]
+fn path_id_of(scene: &ph2d_vec_scene::VecScene) -> ph2d_vec_scene::VecPathId {
+    scene.paths()[0].id
+}
+
+/// **A CURVA DESENHADA SOBREVIVE AO PUBLICADOR DE OBJETOS** (smoke de 2026-08-12:
+/// *"escolhi a curva mas não funcionou"*).
+///
+/// ⚠️ **O defeito era um NOME com três donos.** Toda forma vetorial nomeada é
+/// publicada como polilinha por `shapes::publish` **e** assada como objeto, e o
+/// `objects::publish` roda DEPOIS e escreve, sob o mesmo nome, uma aparência de
+/// UMA instância na origem. Os dois publicadores documentam a colisão — *"objects
+/// publish after curves; the last write on a name clash wins"* — e o que se perdia
+/// era exactamente a resposta que o `motion.path` e o `motion.spline_wrap` pedem.
+/// O leitor achava um stream de um ponto, não achava arco, e caía no fallback: sem
+/// erro, sem aviso, com o painel mostrando a forma escolhida.
+///
+/// A cura é a do irmão `position_of`, uma pergunta adiante: **a geometria ganha
+/// canal próprio**, e o nome cru continua a querer dizer *aparência* (que é o que
+/// o `source.object` precisa). Este gate afirma as DUAS metades — a curva chega
+/// inteira, e a aparência continua onde estava.
+#[test]
+fn the_drawn_curve_survives_the_object_publisher() {
+    let mut cook = ph2d_nodegraph::cook::Cook::new();
+    let mut sim = SimWorld::new();
+    let (scene, map, xforms) = one_named_path(&mut sim, "Path 0");
+
+    // 1) O publicador de CURVAS, como o frame o chama.
+    super::super::shapes::publish(&mut cook, &sim, &scene, &map, &xforms);
+    let curve_key = ph2d_nodegraph::external::curve_of("Path 0");
+    let n_before = points_under(&cook, &curve_key);
+    assert!(
+        n_before >= 2,
+        "a polilinha da forma desenhada tem de estar publicada no canal dela, deu {n_before}"
+    );
+
+    // 2) O publicador de OBJETOS, que roda depois no MESMO frame.
+    let mut vbake = crate::motion_object_bake::ObjectBake::default();
+    vbake.seed_named_for_test(path_id_of(&scene), Some("Path 0"), 70, 700, [2.0, 1.0]);
+    super::publish_vector_bakes(&mut cook, &vbake);
+
+    // A CURVA sobrevive, ponto por ponto.
+    assert_eq!(
+        points_under(&cook, &curve_key),
+        n_before,
+        "o publicador de objetos nao pode levar a curva embora -- e o defeito do smoke"
+    );
+    // E a APARÊNCIA continua no nome cru, que e o que o `source.object` le.
+    assert_eq!(
+        points_under(&cook, "Path 0"),
+        1,
+        "o nome cru continua sendo a aparencia: UMA instancia"
+    );
+}

@@ -21,7 +21,7 @@ fn walk(curve: &[[f32; 2]], name: &str, params: &[(&str, f32)]) -> (Vec<[f32; 2]
     }
     let mut cook = Cook::new();
     cook.set_external(
-        name,
+        ph2d_nodegraph::external::curve_of(name),
         Stream::new(curve.len()).with("P", Column::Vec2(curve.to_vec())),
     );
     let out = cook.cook(&g, &Ops, n, 0.0).unwrap();
@@ -149,7 +149,7 @@ fn dragging_the_shape_moves_the_set() {
     let mut cook = Cook::new();
 
     cook.set_external(
-        "Track",
+        ph2d_nodegraph::external::curve_of("Track"),
         Stream::new(2).with("P", Column::Vec2(vec![[0.0, 0.0], [10.0, 0.0]])),
     );
     let before = cook.cook(&g, &Ops, n, 0.0).unwrap()[0]
@@ -159,7 +159,7 @@ fn dragging_the_shape_moves_the_set() {
 
     // The artist drags the curve up.
     cook.set_external(
-        "Track",
+        ph2d_nodegraph::external::curve_of("Track"),
         Stream::new(2).with("P", Column::Vec2(vec![[0.0, 5.0], [10.0, 5.0]])),
     );
     let after = cook.cook(&g, &Ops, n, 0.0).unwrap()[0]

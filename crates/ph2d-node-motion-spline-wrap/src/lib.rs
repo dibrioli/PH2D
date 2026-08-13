@@ -352,8 +352,16 @@ impl NodeOp for MotionSplineWrap {
         // carrega na Hierarquia (`motion_bridge_shapes`) — o mesmo canal, o mesmo
         // widget e o mesmo gesto que o `motion.path` já usava. Vazio ⇒ a cúbica
         // dos oito params, **byte-idêntica** ao nó que shipava.
+        //
+        // ⚠️ **Pelo canal da GEOMETRIA (`curve_of`), NUNCA pelo nome cru** — o
+        // nome cru carrega a APARÊNCIA da forma assada (uma instância na origem),
+        // que o publicador de objetos escreve por cima da polilinha todo frame.
+        // E **sem fallback para o nome cru**: um fallback seria a segunda porta
+        // que reintroduz a colisão, e ela erra devolvendo *um ponto* — que este
+        // nó lê como *"sem arco"* e trata como forma ausente. Silêncio outra vez.
         let name = ctx.text_param(PATH_PARAM).unwrap_or_default().to_string();
-        let drawn: Vec<P2> = match ctx.external(&name).get("P") {
+        let key = ph2d_nodegraph::external::curve_of(&name);
+        let drawn: Vec<P2> = match ctx.external(&key).get("P") {
             Some(Column::Vec2(v)) => v.clone(),
             _ => Vec::new(),
         };

@@ -16,7 +16,6 @@ use super::*;
 use ph2d_nodegraph::cook::{Cook, OpResolver};
 use ph2d_nodegraph::graph::Graph;
 
-
 /// Uma fonte de layout: uma fila em `x ∈ [0, 3]`, toda em `y = 0`.
 static ROW: NodeManifest = NodeManifest {
     id: NodeTypeId::of("motion.spline_wrap.drawn.row"),
@@ -70,7 +69,7 @@ fn wrapped(shape: Option<(&str, &[P2])>, named: Option<&str>) -> Vec<P2> {
     let mut cook = Cook::new();
     if let Some((n, pts)) = shape {
         cook.set_external(
-            n,
+            ph2d_nodegraph::external::curve_of(n),
             Stream::new(pts.len()).with("P", Column::Vec2(pts.to_vec())),
         );
     }
@@ -182,7 +181,7 @@ fn the_map_controls_reach_the_drawn_curve_too() {
     .expect("in");
     let mut cook = Cook::new();
     cook.set_external(
-        "Track",
+        ph2d_nodegraph::external::curve_of("Track"),
         Stream::new(DRAWN.len()).with("P", Column::Vec2(DRAWN.to_vec())),
     );
     let out = match cook.cook(&g, &RowOps, sw, 0.0).expect("coze")[0]

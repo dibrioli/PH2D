@@ -122,8 +122,12 @@ impl NodeOp for MotionPath {
         };
         let offset = ctx.param("offset") + wired;
 
+        // ⚠️ **O canal da GEOMETRIA, não o nome cru.** O nome cru carrega a
+        // APARÊNCIA da forma (uma instância na origem, publicada pelo bake de
+        // objetos DEPOIS das curvas), e ler dali dava um stream de um ponto — sem
+        // arco, sem erro, sem aviso. Ver `external::curve_of`.
         let name = ctx.text_param(PATH_PARAM).unwrap_or_default().to_string();
-        let pts = polyline(ctx.external(&name));
+        let pts = polyline(ctx.external(&ph2d_nodegraph::external::curve_of(&name)));
         let lut = ph2d_arc_length::lut(&pts);
 
         // A shape that is not there (not drawn yet, renamed, deleted) is an EMPTY stream — the same

@@ -132,6 +132,21 @@ fn appearance_vector(size: [f32; 2], tint: [f32; 4], geometry_id: u32) -> Stream
 /// Called once a frame, before the pump. Republishing is free: the external's
 /// revision is a hash of its content, so a sprite nobody touched invalidates
 /// nothing (`ph2d_nodegraph::external`).
+/// **A metade VETORIAL do publicador de objetos** — um passo nomeado porque é ela
+/// que disputa o nome com o publicador de curvas, e um gate tem de poder dirigi-la
+/// sem um atlas (que é da metade dos SPRITES, e precisa de GPU).
+pub(super) fn publish_vector_bakes(cook: &mut Cook, bakes: &crate::motion_object_bake::ObjectBake) {
+    for (name, obj) in bakes.objects() {
+        if super::shapes::is_reserved(name) {
+            continue; // the editor's namespace (`motion_bridge_shapes::is_reserved`)
+        }
+        cook.set_external(
+            name.to_string(),
+            appearance_vector(obj.size, [1.0, 1.0, 1.0, 1.0], obj.geometry_id),
+        );
+    }
+}
+
 pub(super) fn publish(
     cook: &mut Cook,
     sim: &mut SimWorld,
@@ -179,15 +194,7 @@ pub(super) fn publish(
     // fixed-DPI raster tile). The drawing carries its own colours, so the tint is
     // WHITE. ⚠️ A graph with a live vector recuses to the CPU cook — the GPU has no
     // `geometry_id` route (`motion_bridge_gpu::cook_publishes_live_geometry`).
-    for (name, obj) in bakes.objects() {
-        if super::shapes::is_reserved(name) {
-            continue; // the editor's namespace (`motion_bridge_shapes::is_reserved`)
-        }
-        cook.set_external(
-            name.to_string(),
-            appearance_vector(obj.size, [1.0, 1.0, 1.0, 1.0], obj.geometry_id),
-        );
-    }
+    publish_vector_bakes(cook, bakes);
 
     // Flip objects come as BAKED tiles too (doc 86 §2 A3): the fx phase composed each
     // named object's layers at the current frame into an individual texture. Same

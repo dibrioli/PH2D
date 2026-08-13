@@ -94,6 +94,26 @@ pub fn position_of(name: &str) -> String {
     format!("{RESERVED_PREFIX}at:{name}")
 }
 
+/// The external the editor publishes a named drawing's **GEOMETRY** under — the
+/// flattened polyline of the curve, `P` per vertex.
+///
+/// ⚠️ **The third question about the same name, and it needed the same cure.** The
+/// appearance channel (the raw name) answers *"what does X look like"* with ONE
+/// instance at the origin; [`position_of`] answers *"where is X"*. A node walking a
+/// drawn curve asks a third thing — *"what SHAPE is X"* — and the polyline used to
+/// ride the raw name, where the object-bake publisher **overwrote it every frame**
+/// with the appearance (the two publishers say so in their own comments: *"objects
+/// publish after curves; the last write on a name clash wins"*). The reader got a
+/// one-point stream, could not find an arc, and fell back — silently.
+///
+/// The same shape of bug `position_of` was cut for, one question over: another
+/// question's answer wearing the right column name. So the geometry gets its own
+/// channel, and the raw name keeps meaning **appearance** for `source.object`.
+#[must_use]
+pub fn curve_of(name: &str) -> String {
+    format!("{RESERVED_PREFIX}curve:{name}")
+}
+
 /// One published value, and the revision that IS its content.
 #[derive(Clone, Debug, PartialEq)]
 pub struct External {

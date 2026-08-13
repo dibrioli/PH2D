@@ -164,11 +164,14 @@ impl ObjectBake {
     }
 
     /// Seed a fake handle under `id` — for headless membrane gates that drive
-    /// `resolve_leaf` / `apply_object_lod` without a GPU render.
+    /// `resolve_leaf` / `apply_object_lod` without a GPU render. `name` é o que o
+    /// `objects()` publica: `None` = um filho de grupo sem nome (que não é
+    /// publicado), `Some` = a forma que o artista nomeou.
     #[cfg(test)]
-    pub(crate) fn seed_for_test(
+    pub(crate) fn seed_named_for_test(
         &mut self,
         id: VecPathId,
+        name: Option<&str>,
         geometry_id: u32,
         texture_id: u32,
         size: [f32; 2],
@@ -176,7 +179,7 @@ impl ObjectBake {
         self.cache.insert(
             id,
             Baked {
-                name: None,
+                name: name.map(ToString::to_string),
                 key: BakeKey {
                     path: VecPath::default(),
                     linear: [0.0; 4],
@@ -192,6 +195,18 @@ impl ObjectBake {
                 },
             },
         );
+    }
+
+    /// O caso comum das gates antigas: um handle sem nome.
+    #[cfg(test)]
+    pub(crate) fn seed_for_test(
+        &mut self,
+        id: VecPathId,
+        geometry_id: u32,
+        texture_id: u32,
+        size: [f32; 2],
+    ) {
+        self.seed_named_for_test(id, None, geometry_id, texture_id, size);
     }
 
     /// The preview THUMBNAIL for a live `geometry_id`, or `None` (doc 86 A5). The

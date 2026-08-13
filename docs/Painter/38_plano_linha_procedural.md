@@ -1,0 +1,329 @@
+# 38 — Plano: o card **Line**, o Style Line/Solid e os traços procedurais
+
+> Ordem do Enio, 2026-08-12: *"crie um plano de implementação e salve o plano. Quero essas novas
+> features dentro de um card acima de Composite Brush. Dentro do card um checkbox para Style —
+> Line/Solid e um Dropdown com cada uma das opções de traço/linha. Ao escolher um tipo de traço,
+> sliders de ajustes específicos para aquele tipo aparecem no card. Por padrão o dropdown é none."*
+>
+> A pesquisa que decide **quais** tipos entram é o doc [37](37_pesquisa_tracos_procedurais.md).
+> Este doc é o **como**: a forma exata do card, onde cada coisa mora, as waves em ordem de custo, os
+> gates de cada uma, e o que é decisão do Enio em vez de engenharia.
+>
+> ⚠️ **Clean-room:** o Alchemy é GPL-3 e o Krita também. Tudo aqui é **comportamento**, lido de
+> manual — nenhuma linha de fonte de nenhum dos dois foi lida, e nenhuma será.
+
+---
+
+## 1. A forma do card (o que o Enio pediu, desenhado)
+
+O card fica **imediatamente acima do Composite Brush** — em `paint_brush.rs`, entre o `4b′` (Inpaint)
+e o `4c` (Composite).
+
+```
+┌─ Line ───────────────────────────────────┐
+│  ☐ Solid                                 │   ← Style: desmarcado = Line, marcado = forma sólida
+│  Type   [ None            ▾ ]            │   ← default None
+│                                          │
+│  … as rows DO TIPO escolhido …           │   ← nada aqui enquanto Type = None
+└──────────────────────────────────────────┘
+```
+
+Com **Type = Sketchy**, por exemplo:
+
+```
+┌─ Line ───────────────────────────────────┐
+│  Type   [ Sketchy         ▾ ]            │
+│  Reach        ▬▬▬▬▬▬●▬▬▬   0.35          │
+│  Density      ▬▬▬●▬▬▬▬▬▬   0.20          │
+│  Line Width   ▬▬●▬▬▬▬▬▬▬   0.12          │
+│  Opacity      ▬▬▬▬●▬▬▬▬▬   0.30          │
+│  ☑ Magnetify                             │
+└──────────────────────────────────────────┘
+```
+
+**Três leis de forma, e cada uma tem precedente executável neste repo:**
+
+1. **O card pinta SÓ as rows do tipo escolhido.** É o `each_kind_paints_only_the_rows_it_uses` da
+   §12 da física e o `knob_family()` do card do Sculpt. Row de outro tipo pintada aqui é knob morto.
+2. **O checkbox `Solid` só é pintado onde o tipo tem caminho fechado para preencher**
+   (`LineKind::honours_style()`). Sketchy/Wire/Spray produzem *muitos fios curtos*, não uma
+   silhueta — oferecer Solid neles seria um checkbox que não faz nada. Ver §5.1: isto é uma decisão
+   e não um detalhe.
+3. **O dropdown não é pintado enquanto tiver uma opção só.** Na W1 o card tem apenas o checkbox; o
+   dropdown nasce na W2, junto com o primeiro tipo. Um dropdown de uma linha é o mesmo controle
+   morto com outra roupa.
+
+---
+
+## 2. Onde cada coisa mora (levantado por `grep`, não de memória)
+
+| O quê | Onde | Nota |
+|---|---|---|
+| O card | **arquivo novo** `crates/ph2d-panel-painter-layers/src/paint_line.rs` | molde: `paint_composite.rs` (178 LOC, card com borda própria) — ⚠️ `paint_brush.rs` está em **611**, o card não cabe lá |
+| A chamada | `paint_brush.rs`, entre o `4b′` e o `4c` | uma linha |
+| Os ids | `ph2d-editor-core/src/ids/chrome/painter.rs` | **`hash_node_id("painter_line.…")`** ⇒ **nenhum gate de contagem**, nenhum id numérico a alocar |
+| O registro | `populate.rs` (499) | sem ele o widget pinta, registra hit e fica **morto sob o mouse** |
+| A rota do Click | `event.rs` (567) | checkbox + dropdown |
+| A rota do slider | `event_brush_forward.rs` | a whitelist `is_forwardable_brush_slider` |
+| O estado | `BrushSpec` (`ph2d-painter-brush/src/spec.rs`, 445) | ⚠️ **`BrushSpec` não é serde** ⇒ **zero `PROJECT_SCHEMA`**, zero save antigo afetado |
+| O espelho do painel | `BrushSettings` (`brush_settings.rs`, 581) | o snapshot que o card lê |
+| O emissor de dabs | `ph2d-painter-brush/src/stroke.rs` — **691/700** | ⚠️ todo produtor novo nasce em **módulo irmão**, obrigatoriamente |
+
+**Estado novo, num bloco só:**
+
+```rust
+pub enum LineKind { None, Speed, Sketchy, Wire, Spray }   // discriminantes de wire 0..4
+
+// em BrushSpec:
+pub style_solid: bool,      // false = Line (o mundo de hoje), true = forma sólida
+pub line_kind: LineKind,    // None por default
+pub line: LineParams,       // TODOS os params de TODOS os tipos, num struct só
+```
+
+⚠️ **`LineParams` é um struct ÚNICO com neutro, nunca um struct por tipo.** É o molde do
+`KernelResolver`/`SkinParam` e dos canais de side-metadata do registry: um tipo que não consome um
+campo não sabe que ele existe, e `LineParams::default()` é o mundo de hoje **byte a byte**. Um enum
+com payload por variante espalharia `match` por todo sítio de construção e faria o tipo N+1 tocar
+todos eles.
+
+---
+
+## 3. As três leis que toda wave obedece
+
+1. **O neutro é BYTE-IDÊNTICO.** `line_kind == None && !style_solid` ⇒ o depósito produz os mesmos
+   bytes de hoje. Não é promessa: é **gate de fingerprint** rodado em toda wave, e é a rede que
+   torna cada uma reversível.
+2. **Uma porta.** Os tipos que **moldam** um dab entram no `walk_dab` (onde Symmetry, Tiling, shape
+   editors, pressão, Jitter, Shape e Grain já se penduram — foi assim que o smear field herdou tudo
+   de graça). Os que **emitem dabs a mais** entram no emissor, **antes** do `push_symmetric`, para
+   que as cópias de simetria espelhem os fios e não só o eixo. Isto é gate, não comentário.
+3. **Medir antes de limitar (§0 do `CLAUDE.md`).** Nenhum slider ganha faixa sem a sonda ao lado.
+   Um teto que só diz "por segurança" é um palpite esperando um smoke.
+
+---
+
+## 4. As waves
+
+### W0 — as três medições (nenhuma mudança de produto)
+
+O doc 37 §5 nomeia três números que **decidem o desenho** e que ninguém tem. Sonda em
+`crates/ph2d-tool-painter/src/tool/paint/line_probe.rs`, `#[ignore]`, `--test-threads=1`:
+
+1. **Qual fórmula de velocidade sobrevive ao polling.** O doc 28 §5.48 já mediu que *o custo é por
+   DAB, não por evento* — o mesmo caminho de 640 px custa o mesmo entregue em 16 ou em 640 eventos.
+   ⚠️ Uma velocidade derivada **de evento a evento** herda a taxa de polling do mouse e faz o mesmo
+   gesto desenhar diferente em duas máquinas. A candidata que sobrevive é **arc-length por relógio
+   de parede** — e o `Dab` já carrega `arc_len` (o Shape Flow o pôs lá). **Medir as duas** com o
+   mesmo caminho a 1 px e a 8 px de espaçamento; a que ficar plana é a certa.
+2. **O custo do Solid contra o Line de hoje.** O doc [35](35_boolean_o_que_o_vector_ensina.md) §1.1
+   mede que o **traçado é 4,777 dos 6,448 ms** de uma elipse de 200 px. Se `Solid` para antes do
+   traçado, ele pode sair **mais barato que o Line**. Instrumento: o
+   `measure_what_the_boolean_is_made_of`, que já existe.
+3. **Quantos dabs um Sketchy emite por evento.** É a família que estoura orçamento sem avisar — o
+   Krita ship um *Simple Mode* justamente para pincel grande. O número sai da sonda **antes** de o
+   slider ter faixa.
+
+**Entrega:** três tabelas no doc 37 §5, com o número ao lado. Zero produto.
+
+---
+
+### W1 — o CARD e o **Style: Solid**
+
+**Entrega.** O card **Line** acima do Composite Brush, com o checkbox `Solid` **vivo**: marcado, o
+traço deixa de ser a área varrida pelo pincel e passa a ser a **área cercada pelo gesto**, preenchida
+— e a espessura deixa de entrar (o pedido do Enio, e o `Style` do Alchemy: *"toggle between drawing
+with a line or solid fill"*).
+
+**Onde o motor se pendura.** O caminho fechado só existe onde há caminho autorado: os métodos
+`Line`/`Arc`/`Ellipse`/`Polygon`/`FreeHand` (que já re-carimbam a figura inteira por frame via
+`restamp_shapes_preview`) e o `Space`, cujo caminho amostrado se fecha no pen-up. ⇒ **duas rotas, a
+mesma porta de escrita.**
+
+⚠️ **A rota barata é parar antes do traçado.** O `stroke_boolean_contours` hoje rasteriza → flood por
+componente → **traça (Moore)** → polilinha densa → dabs. A região preenchida **já está em mãos** no
+meio disso e é jogada fora. `Solid` = consumir o bitmap e escrever a região.
+
+**As duas decisões que a wave carrega (§5.2 e §5.3 são do Enio):** a borda do preenchimento e o que
+`Solid` faz com um gesto aberto.
+
+**Toca:** `paint_line.rs` (novo) · `paint_brush.rs` (+1 linha) · `populate.rs` · `event.rs` ·
+`ids/chrome/painter.rs` (`PAINTER_LINE_SOLID`) · `BrushSpec.style_solid` · `BrushSettings` · a porta
+de escrita de canvas (`fork_par` + **`declare_wrote`** — sem declarar a janela o commit de undo
+varre o canvas inteiro, doc 28 §5.17).
+
+**Gates.** (a) o card é pintado **acima** do Composite (arch-gate de ordem sobre o fonte — a
+posição é o pedido) · (b) o checkbox está **registrado e vivo sob o mouse** (seam com `click_at`
+REAL, nunca `WidgetEvent` sintético — a lição das 36 células do W2c da física) · (c) `!style_solid`
+é **byte-idêntico** (fingerprint) · (d) um laço fino e solto pinta uma região **maior que a área
+varrida** (o oráculo é a APARÊNCIA: contar texels entintados dentro do laço, não a regra) · (e) a
+espessura **não muda nada** em Solid (dois raios, mesmos bytes) — é literalmente a frase do pedido,
+executável. **Mutações:** trocar a região pelo rastro ⇒ (d) sangra · ignorar `declare_wrote` ⇒ o
+gate de janela do undo sangra.
+
+**Smoke `PH2D_LINE_SMOKE=1`:** um laço aberto e um laço fechado, Line e Solid lado a lado; e o
+**CONTROLE** — com o checkbox desmarcado o traço tem de ficar exatamente como hoje.
+
+---
+
+### W2 — o DROPDOWN e o primeiro tipo: **Speed**
+
+**Entrega.** O dropdown `Type` nasce (`None` default + `Speed`), e com ele a **entrada de
+velocidade**, que é o desbloqueio de metade do doc 37.
+
+**O que o tipo faz.** *"Accentuates the pen speed to create shapes that throw the line beyond the
+actual pen position"* — o dab pousa em `p + v·k`, então o gesto rápido arremessa a linha muito além
+do dedo. É **inércia**: o oposto exato do estabilizador, que já mora ao lado (`stroke/stabilize.rs`)
+e que **já mede a velocidade e a descarta** (ele guarda a posição filtrada e a crua lado a lado; a
+diferença entre elas é o número).
+
+**Rows do tipo:** `Amount` (quanto da velocidade é aplicada) e `Curved` (o *Line Type* do Alchemy:
+retas × curvas).
+
+⚠️ **A fórmula vem da W0**, não da conveniência. E ⚠️ **a velocidade nasce como CAMPO do frame do
+dab, não como número solto**: o próximo tipo (Sketchy) a lê para o *distance-opacity*, e o Splatter
+futuro a lê para a direção do respingo. Duas leituras da mesma grandeza por duas fórmulas é a falha
+de duas-portas que este módulo já pagou quatro vezes.
+
+**Gates.** `Amount = 0` é **byte-idêntico** ao `None` · o mesmo caminho a 1 px e a 8 px de
+espaçamento produz o **mesmo** arremesso (a lei do caminho, não da amostragem — a doença que este
+módulo curou quatro vezes no relevo) · a row só é pintada com `Speed` escolhido. **Mutação:**
+velocidade por evento ⇒ o gate de espaçamento sangra.
+
+**Smoke `=2`:** o mesmo gesto devagar e depressa; e um traço lento tem de ser indistinguível do
+`None`.
+
+---
+
+### W3 — **Sketchy** (o *neighbour points*)
+
+**Entrega.** O traço procedural mais amado do mundo: guarda-se todos os pontos do traço e, a cada
+ponto novo, ligam-se os vizinhos dentro de um raio com fios de opacidade baixa. Sai o hachurado de
+lápis / teia que ninguém imita à mão. (Ze Frank → Mr.doob/Harmony → Krita *Sketch*.)
+
+⚠️ **É o único item do doc 37 que não precisa de entrada nova nem de geometria nova** — só da
+memória do traço, que já existe (é o que o FreeHand simplifica no pen-up e o que o `taper`
+re-percorre no resolve de cauda).
+
+**Rows:** `Reach` (o raio de vizinhança) · `Density` · `Line Width` · `Opacity` · ☑ `Magnetify` (os
+fios se atraem para trechos próximos — ligado por default no Krita).
+
+**Onde se pendura:** o **emissor**, antes do `push_symmetric` (lei 2 da §3) — e ⚠️ em **módulo
+irmão**, porque `stroke.rs` está em 691/700.
+
+**Gates.** `Density = 0` byte-idêntico · o fio nasce **entre pontos do MESMO traço** (nunca do
+anterior) · sob Symmetry os fios espelham (não só o eixo) · **o orçamento**: dabs por evento sob o
+teto que a W0 mediu, com o `Simple Mode` nomeado se o número pedir. **Mutação:** vizinhança global
+em vez de por-traço ⇒ o gate do traço anterior sangra.
+
+**Smoke `=3`.**
+
+---
+
+### W4 — **Wire** (o *history*)
+
+O primo do W3 com memória **limitada**: liga o ponto atual aos últimos `N`. Dá o traço de
+arame/laço. Rows: `History` · `Width` · `Opacity` · `Smoothing`.
+
+**Wave pequena — é o mesmo produtor com uma janela deslizante.** Se ela não for pequena, o W3 foi
+construído errado, e isso é um sinal e não um contratempo.
+
+---
+
+### W5 — **Spray** (a contagem)
+
+⚠️ **Temos a metade errada disto hoje:** `jitter`, `jitter_scale`, `jitter_rotate` deslocam **um**
+dab. Spray é **contagem** — `N` cópias no mesmo instante. É a diferença entre *tremer* e *espalhar*.
+
+Rows: `Count` · `Spread` · `Size Jitter` · `Angle Jitter`.
+
+**Onde:** o fan-out no `walk_dab` — a mesma porta única de Symmetry/Tiling ⇒ herda tudo de graça.
+Wave pequena, **e é o multiplicador**: com o Speed da W2 ela vira o **respingo** do Splatter (o
+escorrido nós já temos, e é físico — a gravidade do Wet Paint).
+
+---
+
+### W6 — opcionais, só com pedido
+
+- **Ribbon** (o *Ribbon Shapes* do Alchemy: `Size · Spacing · Friction · Gravity`) — a fita presa ao
+  cursor por uma mola com atrito e peso; o traço **pesa**. O estabilizador já é a metade *arrasto*
+  deste modelo, sem massa e sem gravidade.
+- **Rough** — o traço que finge ser à mão (`rough.js`/Excalidraw): a primitiva redesenhada 2× com
+  deslocamento pseudo-aleatório. Muito barato sobre os shape editors, e dá uma família visual
+  inteira.
+
+---
+
+## 5. As decisões que são do Enio (não construo sem resposta)
+
+### 5.1 O `Solid` é oferecido em quais tipos?
+
+Minha recomendação: `honours_style()` verdadeiro em **None**, **Speed** e **Ribbon** (os que
+produzem *um* caminho), falso em **Sketchy**, **Wire** e **Spray** (que produzem muitos fios curtos —
+preencher "o caminho" deles não significa nada). O checkbox some onde é falso.
+
+**A alternativa** é oferecer sempre e definir Solid como *"preencha o casco do que foi depositado"* —
+que é outra ferramenta (um *fill* do rastro), e que eu não recomendo por ser uma segunda resposta à
+pergunta *"o que é a forma deste gesto?"*.
+
+### 5.2 A borda de uma forma sólida é do PINCEL ou da FORMA?
+
+Hoje toda borda do Painter vem dos dabs (o falloff), então ela é **macia e cara**. Um preenchimento
+tem borda **de forma**. Duas saídas:
+
+- **(a) borda de forma com AA por área exata** — a lei que o motor novo do Flip já shipou
+  (Sutherland-Hodgman + sapateiro). Nítida, barata, e é o que o Alchemy faz.
+- **(b) contornar com um dab e preencher o miolo** — a borda continua sendo a do pincel (macia,
+  coerente com o resto do Painter), ao preço de o pincel voltar a importar, o que **contradiz o
+  pedido** (*"para forma sólida a espessura da linha passa a não ser considerada"*).
+
+**Recomendo (a)**, e é o que o plano assume. É decisão de LOOK.
+
+### 5.3 O que `Solid` faz com um gesto que não fecha?
+
+O Alchemy fecha o caminho sozinho (a forma é sempre fechada). Recomendo o mesmo — **fecha do último
+ponto ao primeiro** —, com a consequência nomeada: uma pincelada reta em Solid vira uma **sliver** de
+área quase zero, e isso lê como *"o Solid apagou meu traço"*. A alternativa é recusar o preenchimento
+abaixo de um limiar de área e depositar como Line — o que é um caso especial, e casos especiais deste
+tipo é o que a §0 manda medir antes de escrever.
+
+### 5.4 O Style é do PINCEL ou do documento?
+
+Ele mora no `BrushSpec` (por-modo, como todo o resto), o que significa que **cada meio tem o seu**.
+Se o Enio quiser um único Style atravessando Digital/Aquarela/Impasto, ele vira estado do tool com
+fan-out para os slots — o molde do `toggle_brush_impasto`, que escreve nos três slots de relevo
+porque *os três são o mesmo assunto*.
+
+---
+
+## 6. O que fica FORA, com o motivo
+
+- **Pressure Shapes.** Temos a feature (`dynamics.rs`) e **não temos o dispositivo**:
+  `shells/desktop/tests/the_desktop_shell_has_no_pen_pressure.rs` demonstra, varrendo a grade inteira
+  de sliders, que nenhuma combinação move um pixel. A cura é **subir o winit** (fundação de janela do
+  app inteiro ⇒ cross-line, classe ADR) ou um caminho de tablet por plataforma. Não é wave de pincel.
+- **A matriz de dinâmica completa** (doc 37 §2). Depois da W2 e da W3 haverá duas entradas e três
+  alvos; antes disso é infra sem consumidor.
+- **Assistentes de perspectiva.** O motor de snap já é do Vector; um segundo no Painter é a segunda
+  porta. É wave de ponte.
+- **Generativo** (flow field, growth, voronoi). Os algoritmos já são nossos, no Motion Nodes, com
+  paridade CPU×GPU gateada. Falta a **ponte**, e ela é ADR.
+- **Blindness / Limit / Auto-Clear.** São ferramentas de ideação, num app que tem undo, save e
+  camadas. Mudam a tese do produto; só com pedido explícito.
+
+---
+
+## 7. Ordem de execução, resumida
+
+| Wave | Entrega | Tamanho | Depende de |
+|---|---|---|---|
+| **W0** | as três medições | pequena | — |
+| **W1** | o card + **Solid** | média | W0 (2) |
+| **W2** | o dropdown + **Speed** | média | W0 (1) |
+| **W3** | **Sketchy** | média | W0 (3) |
+| **W4** | **Wire** | pequena | W3 |
+| **W5** | **Spray** | pequena | — |
+| **W6** | Ribbon · Rough | — | só com pedido |
+
+⚠️ **A W1 e a W2 são independentes** — se o Enio quiser ver o card mais cedo, a W1 sozinha já entrega
+um card com um controle vivo. O que não pode acontecer é o card nascer com o dropdown de uma opção
+só.

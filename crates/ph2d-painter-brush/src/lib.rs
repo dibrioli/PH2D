@@ -54,6 +54,9 @@ mod height_film_lut_wiring_tests; // a LUT no laço REAL dos dois kernels (plano
 pub mod height_modes;
 pub mod height_push;
 pub(crate) mod jitter;
+#[cfg(test)]
+#[path = "line_probe.rs"]
+mod line_probe; // W0 do plano 38: a fórmula de velocidade e o orçamento de fios do Sketchy
 pub mod mask_ops;
 pub mod material;
 /// The **local plane** fitted to a dab's footprint — the engine behind Flatten / Scrape / Fill. Tilted,

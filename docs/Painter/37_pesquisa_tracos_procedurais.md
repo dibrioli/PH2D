@@ -388,6 +388,12 @@ Ordenada por **valor ÷ custo**, com o motivo de cada posição.
 
 ## 5. O que MEDIR antes de qualquer uma virar wave
 
+> ✅ **MEDIDO em 2026-08-12** — as três tabelas, com os números, estão no
+> [plano 38 §4 W0](38_plano_linha_procedural.md). Em resumo: a velocidade é **arco por tick** (o
+> deslocamento por evento varia **73×** para o mesmo gesto) · o **Solid sai mais barato que o Line**
+> (ele pula **53%** do composite e os 3 393 pontos de contorno) · e o Sketchy é orçado pelo
+> **comprimento** de fio, que a densidade 1,0 põe em **~50× o arco do traço**.
+
 A §0 do `CLAUDE.md` manda medir antes de limitar, e há três números que decidem o desenho:
 
 1. **A velocidade que o nosso `on_canvas_pointer` de fato entrega.** O `stabilize.rs` filtra

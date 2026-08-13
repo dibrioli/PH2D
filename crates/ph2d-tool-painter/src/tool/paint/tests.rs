@@ -6,6 +6,8 @@ mod journal_delta_tests; // o delta do journal É o de dois snapshots (doc 28 §
 mod journal_tests; // o journal descreve a TELA, e só ela (doc 28 §5.23, os 3 mecanismos do degrau 2)
 #[path = "measure_boolean_cost.rs"]
 mod measure_boolean_cost; // ...e o que a Operation cobra por cima dela
+#[path = "line_probe.rs"]
+mod line_probe; // W0 do plano 38: o que um Solid pularia, o que ele acrescenta, e o preço da borda
 #[path = "measure_commit_cost.rs"]
 mod measure_commit_cost; // …e de que é feito o CUSTO: fork, pen-up, commit, Ctrl+Z (doc 28 §5.13-§5.20)
 #[path = "measure_dirty_overclaim.rs"]

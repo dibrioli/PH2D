@@ -199,7 +199,7 @@ descartável por construção; um corpo do mundo nunca é.*
 | F4 | **secções e painéis** abrem/fecham com movimento e **direcção coerente** | 1 | F1 | **M** |
 | ~~F5~~ ✅ | **cascata** — **FEITA na PALETA** (`ε = 0,020 s`, MEDIDO; ver a §6.3). ⚠️ E ela é o **primeiro consumidor de `Role::Travel` do produto** — até aqui o eixo que o *reduced motion* existe para matar não era usado por ninguém. Hierarquia e rows do inspector ficam para quando a F2 abrir a porta | 1 | F0 | **P** |
 | ⭐ **E1** | **SCRUB numérico** em todo campo de número (o maior ganho de eficiência do estudo) | 3 | — | **M** |
-| E2 | **inércia** no pan de canvas e nas listas roláveis | 3 | F0 | **P** |
+| ~~E2~~ ✅ | **rolagem SUAVE** nas listas — **FEITA**, e a forma é o que a fez caber: `panel_scroll` passa a devolver o **VIVO** e ganha o irmão `panel_scroll_target`, então os **~130 leitores** e os **36 escritores** herdaram sem uma linha. ⚠️ A roda acumula no ALVO — no vivo, cinco voltas de 100 px somam **230,56** em vez de 500. O **pan de canvas** fica de fora (outro gesto, outro dono) | 3 | F0 | **P** |
 | ~~E3~~ ✅ | **paleta de comandos GLOBAL** (o widget já existe) — **FEITA** (`Ctrl+K`, **62 comandos**: 10 do rail + 19 painéis + **33 rows de menu**). ⚠️ Ela é uma **projecção** das listas que o app já mantém, nunca uma tabela. ⚠️ **E a 1ª conclusão desta linha era LARGA DEMAIS** — ela mediu que o **PILL** não é servível (abre um menu ancorado a um rectângulo, e uma paleta não tem rectângulo) e escreveu *"a barra de topo fica de fora"*; a **ROW de dentro dele** é tipo 1, e entrou na wave seguinte (ver a §6.1 abaixo) | 3 | — | **M** |
 | E4 | **menu radial** sob a caneta / botão do meio | 3 | — | **M** |
 | C1 | **TETHER** (§5) + as três irmãs da família | 2 | F0 | **M** |
@@ -280,32 +280,51 @@ de desenho** que não é mecânica — ou cada sítio passa a pedir (`.hover_t(�
 sem), ou a leitura passa a ser **estrutural** (o `button_state` devolve o par, e é o compilador que
 enumera os sítios). ⇒ **não é «por gosto», e não se começa pela metade.**
 
-### 6.3 — A CASCATA (F5), com o `ε` medido e as três correcções
+### 6.3 — A CASCATA (F5), e o `ε` que foi reprovado uma vez
 
-A paleta aparecia instantânea. Agora os cartões chegam escalonados, e o `ε` **não foi escolhido** —
-ele está preso entre dois limites, cada um com mecanismo:
+A paleta aparecia instantânea. Agora os cartões chegam escalonados — mas **o primeiro valor foi
+REPROVADO no smoke**, e o que se aprendeu vale mais que o número.
 
-* **em baixo, o QUADRO** — abaixo de 16,7 ms dois cartões viram o alvo no mesmo tique e o
-  escalonamento degrada para *dois a dois*;
-* **em cima, a SOBREPOSIÇÃO** — uma cascata só se lê como *um* gesto se o último cartão **começar
-  antes de o primeiro assentar**: `(n − 1)·ε < assentamento`.
+**Rodada 1 (`ε = 0,020`) — reprovada.** *«os cartões têm um discreto movimento de subida
+SIMULTÂNEO e não encadeado»*. Medido: os vizinhos viravam o alvo a **um quadro** de distância
+(16,7 ms) — distinguível por um cronómetro, simultâneo para um olho.
 
-Medido pela porta do produto (Discreto, o carácter default, `n = 7`): assentamento sozinho
-**0,22 s**; totais **0,27 / 0,30 / 0,33 / 0,45 s** para `ε` de 0,010 / 0,015 / 0,020 / 0,040.
-⇒ `6·ε < 0,22` ⇒ `ε < 0,037`, e **`ε = 0,020`** é o que fica acima de um quadro com folga.
+⚠️ **O erro foi de CRITÉRIO, não de número.** Eu tinha escrito duas cercas — *acima de um quadro*
+(senão dois cartões viram o alvo no mesmo tique) e *`(n−1)·ε < assentamento`* (para se ler como um
+gesto) — e depois **escolhi o piso da primeira como valor**. Estar acima de um quadro é condição
+**NECESSÁRIA**, e usei-a como suficiente.
 
-⚠️ **A medição corrigiu-me três vezes, e as três valem mais que o número:**
+⛔ **E a segunda cerca era invenção minha.** O smoke mostrou que uma cascata pode durar mais que o
+assentamento e continuar a ler-se bem; ela foi **retirada** — com o gate que a encarnava — em vez
+de afrouxada, porque estava errada e não apertada demais.
+
+**Rodada 2 (`ε = 0,050`) — aprovada.** As duas perguntas que sobraram são as que o produto faz, e a
+régua da primeira é o **QUADRO**:
+
+| ε | quadros entre vizinhos | entrada n=3 | entrada n=7 |
+|---|---|---|---|
+| 0,020 | **1** ⛔ *(o reprovado)* | 0,22 s | 0,30 s |
+| 0,035 | 2 | 0,25 s | 0,38 s |
+| **0,050** | **3** | **0,28 s** | **0,48 s** |
+| 0,065 | 3 | 0,30 s | 0,57 s |
+| 0,080 | 4 | 0,33 s | 0,65 s |
+
+`0,050` é o primeiro com três quadros de separação, e 0,065 compra os mesmos três por mais 0,09 s
+de espera. O número está declarado como o que é — **número de APARÊNCIA, que sai do smoke e não de
+um teste** —, o idioma que o `HOVER_LIFT_PX` já usava no mesmo módulo.
+
+**Mais três coisas que a medição corrigiu antes disso:**
 
 1. escrevi a tabela por **aritmética** e pu-la no doc antes de a medir — somando um assentamento de
    0,467 s que é do **Expressivo**, quando o default é o Discreto (0,22 s);
 2. **`n = 17` era invenção minha** — a paleta de nós faz um grupo por categoria e há **sete**
    tokens `NodeCat*`;
-3. a primeira corrida da sonda mediu `n = 1` em **0,02 s — um quadro**: o `tick` somava `dt`
-   **antes** de alvejar, então o cartão 0 nascia alvejado em `1.0` e, pela lei do substrato (*a
-   primeira vista CHEGA ao alvo*), aparecia assente. **A wave era meio no-op e ia shipar assim.**
+3. a sonda mediu `n = 1` em **0,02 s — um quadro**: o `tick` somava `dt` **antes** de alvejar,
+   então o cartão 0 nascia alvejado em `1.0` e, pela lei do substrato (*a primeira vista CHEGA ao
+   alvo*), aparecia assente. **A wave era meio no-op e ia shipar assim.**
 
-⚠️ Essa mesma lei mordeu **três vezes** na wave — no produto, na sonda, e na fixture do meu próprio
-gate de sobreposição, que media um «assentamento» de 0,017 s e comparava contra nada.
+⚠️ Essa lei mordeu **três vezes** na wave — no produto, na sonda, e na fixture do meu próprio gate,
+que media um «assentamento» de 0,017 s e comparava contra nada.
 
 **A lei que fica:** *o desenho anda, o alvo não.* O cartão desenha-se 12 px abaixo durante a
 entrada e o `hit_index` regista na posição **assente** — a mesma lei do `hover_lift`, que aqui

@@ -52,45 +52,39 @@ fn kind_index_round_trips_and_labels_align() {
     assert_eq!(ShapeKind::from_index(999.0), ShapeKind::IsoPyramid);
 }
 
-/// The content key is a pure function of the descriptor: identical params give
-/// identical keys (so identical shapes SHARE one `VecPath`), and any single param
+/// The content key is a pure function of the params: identical params give
+/// identical keys (so identical shapes SHARE one `VecPath`), and **any** param
 /// change gives a different key. `to_bits` makes it exact — no float-format drift.
 /// FALSIFIED by a key that ignores a param (two different shapes would collide).
+///
+/// ⚠️ **O gate é DERIVADO de [`param::ALL`], como a chave.** Ele enumerava os
+/// campos numa lista de mutadores, que é a mesma doença um nível acima: um param
+/// acrescentado sem entrar na lista ficaria **não-testado**, e o defeito que isso
+/// esconde é o pior de um cache — o controle novo fica inerte DEPOIS da primeira
+/// vez, porque a forma antiga volta do cache com a chave velha.
 #[test]
 fn the_key_is_deterministic_and_separates_every_param() {
-    let base = ShapeParams {
-        kind: ShapeKind::Star,
-        size: 1.0,
-        aspect: 1.0,
-        sides: 5,
-        corner: 0.0,
-        star_depth: 0.45,
-        cleft: 0.2,
-        tooth_depth: 0.35,
-        hole: 0.45,
+    // O default do manifesto, pela mesma rota que o `ctx.param` do nó usa.
+    let dflt = |n: &str| {
+        MANIFEST
+            .params
+            .iter()
+            .find(|p| p.name == n)
+            .map_or(0.0, |p| p.default)
     };
-    assert_eq!(shape_key(&base), shape_key(&base), "deterministic");
+    let base = &dflt;
+    assert_eq!(shape_key(base), shape_key(base), "deterministic");
 
-    // Flip each field in turn — every one must move the key, or two distinct
-    // shapes would resolve to the same stored geometry.
-    let mutate: &[fn(&mut ShapeParams)] = &[
-        |p| p.kind = ShapeKind::Circle,
-        |p| p.size = 2.0,
-        |p| p.aspect = 1.5,
-        |p| p.sides = 6,
-        |p| p.corner = 0.3,
-        |p| p.star_depth = 0.6,
-        |p| p.cleft = 0.3,
-        |p| p.tooth_depth = 0.4,
-        |p| p.hole = 0.5,
-    ];
-    for (i, m) in mutate.iter().enumerate() {
-        let mut v = base;
-        m(&mut v);
+    for name in param::ALL {
+        // Cutuca UM param — qualquer valor diferente do default serve, e o
+        // `+ 1.0` move os bits de qualquer f32 finito que o manifesto declare.
+        let nudged = |n: &str| {
+            if n == *name { dflt(n) + 1.0 } else { dflt(n) }
+        };
         assert_ne!(
-            shape_key(&v),
-            shape_key(&base),
-            "param #{i} must change the key"
+            shape_key(nudged),
+            shape_key(base),
+            "`{name}` tem de mover a chave, senao duas formas distintas partilham a geometria"
         );
     }
 }

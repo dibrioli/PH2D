@@ -86,17 +86,10 @@ pub(crate) fn manifest_default(name: &str) -> f32 {
         .unwrap_or(0.0)
 }
 
-/// Read a shape descriptor exactly as the node's `eval` does — override-else-
-/// manifest-default, the SAME door ([`ShapeParams::read`]). `source.shape` has no
-/// inputs, so `ctx.param` has no *driven* layer this could disagree with; that is
-/// what makes the shell's key and the node's key the same string (gated).
-pub(crate) fn read_params(overrides: Option<&BTreeMap<String, f32>>) -> ShapeParams {
-    ShapeParams::read(|name| {
-        overrides
-            .and_then(|m| m.get(name).copied())
-            .unwrap_or_else(|| manifest_default(name))
-    })
-}
+// ⚠️ O `read_params` (o leitor por-`Option<&BTreeMap>`) MORREU aqui: o `publish`
+// e os gates passaram a ler pelo mesmo GETTER que a chave usa, e um `pub(crate)`
+// sem chamador não é código morto silencioso — é uma SEGUNDA porta esperando
+// alguém a chamar, e ela leria os params sem a chave concordar.
 
 /// **The translation** — this node's kind to the vector library's, and the box and
 /// values `cook` wants. The ONE place the two orders meet.
@@ -228,7 +221,30 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
 /// graph: not geometry missing, wiring missing.
 pub(crate) fn build_shape_path(p: &ShapeParams) -> VecPath {
     let (kind, a, b, v) = vec_recipe(p);
-    cook(kind, a, b, &v)
+    let mut path = cook(kind, a, b, &v);
+    // ⚠️ **O TRAÇO** (doc 89 folha 14, P0). O renderer já o desenha — o
+    // `tessellate_shape_instance` ramifica em `fill.is_some() || stroke.is_some()`
+    // desde sempre —, e o que faltava era o shell PÔ-LO aqui: o `cook` devolve o
+    // caminho com os dois em `None`. `stroke_width = 0` ⇒ `None` ⇒ a forma que
+    // sempre shipou, byte-idêntica.
+    if let Some(st) = p.stroke {
+        path.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
+            rgba8(st.rgba),
+            f64::from(st.width),
+        ));
+    }
+    path
+}
+
+/// `[f32; 4]` em 0..1 → o `Rgba8` que o `StrokeSpec` fala.
+fn rgba8(c: [f32; 4]) -> ph2d_vec_scene::Rgba8 {
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "clampado a 0..1 e escalado a 0..255"
+    )]
+    let ch = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    ph2d_vec_scene::Rgba8::new(ch(c[0]), ch(c[1]), ch(c[2]), ch(c[3]))
 }
 
 /// The builder EXACTLY as it shipped before the catalogue was wired to `cook()`,
@@ -278,8 +294,14 @@ pub(crate) fn publish(motion: &mut MotionState) {
         .iter()
         .filter(|n| n.type_name == MANIFEST.name)
         .map(|n| {
-            let p = read_params(graph.node_param_overrides(n.id));
-            (shape_key(&p), p)
+            // ⚠️ A chave e o descritor leem pelo MESMO getter — é o que faz a
+            // chave do shell e a do nó serem os mesmos bits.
+            let ov = graph.node_param_overrides(n.id);
+            let get = |name: &str| {
+                ov.and_then(|m| m.get(name).copied())
+                    .unwrap_or_else(|| manifest_default(name))
+            };
+            (shape_key(get), ShapeParams::read(get))
         })
         .collect();
     for (key, p) in jobs {
@@ -337,3 +359,7 @@ pub(crate) fn encode(
 #[cfg(test)]
 #[path = "motion_shape_gen_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "motion_shape_catalogue_tests.rs"]
+mod catalogue_tests;

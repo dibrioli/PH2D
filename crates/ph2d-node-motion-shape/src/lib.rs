@@ -35,9 +35,7 @@
 //! content-revision rides in the cook fingerprint, so editing a slider re-cooks
 //! this node and only what is downstream of it.
 
-use ph2d_node_registry::{
-    NodeRegistry, ParamGate, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget, RegistryError,
-};
+use ph2d_node_registry::{NodeRegistry, ParamGate, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -256,6 +254,22 @@ pub struct ShapeParams {
     pub tooth_depth: f32,
     /// Gear centre hole as a fraction of the root circle (`0` = solid).
     pub hole: f32,
+    /// **O TRAÇO** — largura em unidades de mundo e cor RGBA. `width = 0` é o
+    /// mundo de sempre: sem `StrokeSpec`, e a forma aparece só pelo preenchimento
+    /// que o `tint` da instância dá.
+    ///
+    /// ⚠️ **A cor do traço é PRÓPRIA, e tem de ser.** O preenchimento de uma forma
+    /// vem do `tint` da instância (é o que o `motion.tint` a jusante pinta), então
+    /// um traço que herdasse essa cor seria **invisível** — a mesma tinta por cima
+    /// dela mesma. É o controle que separa *forma* de *silhueta*.
+    pub stroke: Option<Stroke>,
+}
+
+/// A largura e a cor do traço de uma forma.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Stroke {
+    pub width: f32,
+    pub rgba: [f32; 4],
 }
 
 /// The names of the f32 params — the ONE list the manifest, the UI hints, the
@@ -271,6 +285,39 @@ pub mod param {
     pub const CLEFT: &str = "cleft";
     pub const TOOTH_DEPTH: &str = "tooth_depth";
     pub const HOLE: &str = "hole";
+    /// A largura do TRAÇO em unidades de mundo. `0` = sem traço ⇒ a forma de
+    /// sempre, byte-idêntica (ver [`super::ShapeParams::stroke`]).
+    pub const STROKE_WIDTH: &str = "stroke_width";
+    pub const STROKE_R: &str = "stroke_r";
+    pub const STROKE_G: &str = "stroke_g";
+    pub const STROKE_B: &str = "stroke_b";
+    pub const STROKE_A: &str = "stroke_a";
+
+    /// **TODOS eles, na ordem do manifesto.**
+    ///
+    /// ⚠️ Ela existe para a CHAVE do cache ser derivada em vez de enumerada. A
+    /// `shape_key` listava os nove campos à mão, e uma chave que enumera as
+    /// entradas de um valor é como a próxima é esquecida — o param novo passa a
+    /// não mintar entrada nova, a forma antiga volta do cache, e o controle fica
+    /// **inerte depois da primeira vez** (foi o defeito do *Pattern Offset* do
+    /// sculpt3d, 2026-08-09). Um param acrescentado aqui entra na chave e no
+    /// manifesto de uma vez.
+    pub const ALL: &[&str] = &[
+        KIND,
+        SIZE,
+        ASPECT,
+        SIDES,
+        CORNER,
+        STAR_DEPTH,
+        CLEFT,
+        TOOTH_DEPTH,
+        HOLE,
+        STROKE_WIDTH,
+        STROKE_R,
+        STROKE_G,
+        STROKE_B,
+        STROKE_A,
+    ];
 }
 
 impl ShapeParams {
@@ -292,6 +339,18 @@ impl ShapeParams {
             cleft: get(param::CLEFT),
             tooth_depth: get(param::TOOTH_DEPTH),
             hole: get(param::HOLE),
+            // `width <= 0` ⇒ `None`, e é o que torna o default byte-idêntico: a
+            // ausência do `StrokeSpec` é a forma que sempre shipou, não um traço
+            // de largura zero (que o tesselador ainda percorreria).
+            stroke: (get(param::STROKE_WIDTH) > 0.0).then(|| Stroke {
+                width: get(param::STROKE_WIDTH),
+                rgba: [
+                    get(param::STROKE_R),
+                    get(param::STROKE_G),
+                    get(param::STROKE_B),
+                    get(param::STROKE_A),
+                ],
+            }),
         }
     }
 }
@@ -304,19 +363,13 @@ impl ShapeParams {
 /// stays at its default for any shape an artist authors, so identical shapes still
 /// share geometry, and no per-kind branch can drift from the reader.
 #[must_use]
-pub fn shape_key(p: &ShapeParams) -> String {
-    format!(
-        "shape:{}:{}:{}:{}:{}:{}:{}:{}:{}",
-        p.kind as u32,
-        p.size.to_bits(),
-        p.aspect.to_bits(),
-        p.sides,
-        p.corner.to_bits(),
-        p.star_depth.to_bits(),
-        p.cleft.to_bits(),
-        p.tooth_depth.to_bits(),
-        p.hole.to_bits(),
-    )
+pub fn shape_key(get: impl Fn(&str) -> f32) -> String {
+    let mut k = String::from("shape");
+    for name in param::ALL {
+        k.push(':');
+        k.push_str(&get(name).to_bits().to_string());
+    }
+    k
 }
 
 /// The static contract of this node type (ADR-0031). The `kind` param is an
@@ -370,6 +423,28 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: param::HOLE,
             default: 0.45,
         },
+        // ⚠️ **Apendados** (doc 89 folha 14, P0). `stroke_width = 0` ⇒ sem
+        // `StrokeSpec` ⇒ a forma que sempre shipou, byte-idêntica.
+        ParamSpec {
+            name: param::STROKE_WIDTH,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::STROKE_R,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::STROKE_G,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::STROKE_B,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::STROKE_A,
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -382,8 +457,9 @@ impl NodeOp for SourceShape {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        let p = ShapeParams::read(|n| ctx.param(n));
-        let key = shape_key(&p);
+        // ⚠️ A chave e o descritor leem pela MESMA porta — o `ctx.param` do nó —
+        // e é isso que faz a chave do nó e a do shell serem os mesmos bits.
+        let key = shape_key(|n| ctx.param(n));
         // The shell built this shape's `VecPath`, stored it, and published a
         // one-row instance stream `(P, geometry_id, size, tint)` under `key`.
         // Clone is refcount (Arc columns); a key with no published shape (a
@@ -416,87 +492,6 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_live_vector_source(MANIFEST.id);
     Ok(())
 }
-
-/// The param rows: a real dropdown for the shape family (the segmented `Enum`
-/// widget the Vector panel uses for Cap/Join), then the geometry sliders. Every
-/// row past `size` is gated by [`PARAM_GATES`], so the panel shows ONLY the
-/// controls the current `kind` uses.
-static PARAM_HINTS: &[ParamUiHint] = &[
-    ParamUiHint {
-        param: param::KIND,
-        label: "Shape",
-        min: 0.0,
-        max: 0.0,
-        step: 0.0,
-        widget: ParamWidget::Enum {
-            labels: KIND_LABELS,
-        },
-    },
-    ParamUiHint {
-        param: param::SIZE,
-        label: "Size",
-        min: 0.05,
-        max: 10.0,
-        step: 0.05,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: param::ASPECT,
-        label: "Aspect (H/W)",
-        min: 0.1,
-        max: 4.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: param::SIDES,
-        label: "Sides / Points / Teeth",
-        min: 3.0,
-        max: 32.0,
-        step: 1.0,
-        widget: ParamWidget::IntSlider,
-    },
-    ParamUiHint {
-        param: param::CORNER,
-        label: "Corner Radius",
-        min: 0.0,
-        max: 1.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: param::STAR_DEPTH,
-        label: "Point Depth",
-        min: 0.05,
-        max: 0.95,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: param::CLEFT,
-        label: "Cleft",
-        min: 0.02,
-        max: 0.45,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: param::TOOTH_DEPTH,
-        label: "Tooth Depth",
-        min: 0.05,
-        max: 0.6,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: param::HOLE,
-        label: "Hole",
-        min: 0.0,
-        max: 0.9,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
 /// shown. A `Length` is stored in world METRES and the panel resolves the face
@@ -608,3 +603,6 @@ static PARAM_GATES: &[ParamGate] = &[
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+mod hints;
+use hints::PARAM_HINTS;

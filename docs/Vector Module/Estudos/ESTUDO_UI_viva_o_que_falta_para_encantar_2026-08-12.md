@@ -200,7 +200,7 @@ descartável por construção; um corpo do mundo nunca é.*
 | F5 | **cascata** na lista da paleta / hierarquia / rows do inspector | 1 | F0 | **P** |
 | ⭐ **E1** | **SCRUB numérico** em todo campo de número (o maior ganho de eficiência do estudo) | 3 | — | **M** |
 | E2 | **inércia** no pan de canvas e nas listas roláveis | 3 | F0 | **P** |
-| E3 | **paleta de comandos GLOBAL** (o widget já existe) | 3 | — | **M** |
+| ~~E3~~ ✅ | **paleta de comandos GLOBAL** (o widget já existe) — **FEITA** (`Ctrl+K`, 29 comandos: 10 do rail + 19 painéis). ⚠️ Ela é uma **projecção** das listas que o app já mantém, nunca uma tabela; e a barra de topo ficou de fora **por mecanismo** (os pills dela abrem menus ancorados a um rectângulo, e um pick não tem rectângulo) | 3 | — | **M** |
 | E4 | **menu radial** sob a caneta / botão do meio | 3 | — | **M** |
 | C1 | **TETHER** (§5) + as três irmãs da família | 2 | F0 | **M** |
 | C2 | **realce de proveniência** nos dois sentidos (valor ↔ objecto) | 2 | — | **M** |

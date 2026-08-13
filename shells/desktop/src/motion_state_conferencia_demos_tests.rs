@@ -1,0 +1,286 @@
+//! Os gates das quatro cenas da conferência (`PH2D_GPU_COOK_DEMO=32..35`).
+//!
+//! ⚠️ **Uma cena que não coze é pior que cena nenhuma:** ela abre a tela vazia e o
+//! artista lê isso como *"a feature não funciona"*. Cada gate aqui cozinha o
+//! documento pela porta real e afirma o que a cena existe para mostrar — e o que
+//! ele afirma é a **DIFERENÇA** entre as duas metades, nunca só que a cena tem
+//! nós dentro.
+
+use super::*;
+use ph2d_nodegraph::attr::Column;
+use ph2d_nodegraph::cook::Cook;
+use ph2d_nodegraph::node::NodeTypeId;
+use ph2d_nodegraph::value::CookValue;
+use ph2d_eval_motion::MotionCookPump;
+
+fn registry() -> NodeRegistry {
+    let mut reg = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry builds");
+    reg
+}
+
+/// Cozinha a cena no playhead pedido e devolve as posições.
+fn cook(doc: &MotionDoc, reg: &NodeRegistry, sink: NodeId, t: f64) -> Vec<[f32; 2]> {
+    let mut c = Cook::new();
+    let out = c.cook(&doc.graph, reg, sink, t).expect("a cena coze");
+    let CookValue::Instances(s) = &out[0] else {
+        panic!("a saida e um stream")
+    };
+    match ph2d_nodegraph::attr::Stream::get(s, "P") {
+        Some(Column::Vec2(v)) => v.clone(),
+        _ => Vec::new(),
+    }
+}
+
+fn rot(doc: &MotionDoc, reg: &NodeRegistry, sink: NodeId) -> Vec<f32> {
+    let mut c = Cook::new();
+    let out = c.cook(&doc.graph, reg, sink, 0.0).expect("a cena coze");
+    let CookValue::Instances(s) = &out[0] else {
+        panic!("stream")
+    };
+    match ph2d_nodegraph::attr::Stream::get(s, "rot") {
+        Some(Column::Scalar(v)) => v.clone(),
+        _ => Vec::new(),
+    }
+}
+
+fn has(doc: &MotionDoc, ty: &str) -> bool {
+    doc.graph
+        .nodes()
+        .iter()
+        .any(|n| n.type_id() == NodeTypeId::of(ty))
+}
+
+/// **`=32` — metade gira, metade não.**
+///
+/// As duas filas percorrem a MESMA curva, então a diferença tem de estar só no
+/// `rot`: a de cima varre um leque de ângulos, a de baixo fica em zero. Um gate
+/// que só pedisse "a cena coze" ficaria verde com o toggle morto nas duas.
+#[test]
+fn the_write_on_scene_turns_one_row_and_leaves_the_control_flat() {
+    let reg = registry();
+    let mut doc = MotionDoc::new();
+    let sinks = build_write_on_demo_document(&mut doc, &reg).expect("cena bem-tipada");
+    assert!(has(&doc, "motion.spline_wrap"), "a cena contem o no que smoka");
+
+    let r = rot(&doc, &reg, *sinks.first().expect("um sink"));
+    assert!(!r.is_empty(), "a cena produz uma coluna de rotacao");
+    let (turning, flat) = r.split_at(r.len() / 2);
+    let spread = |v: &[f32]| {
+        v.iter().fold(f32::MIN, |a, b| a.max(*b)) - v.iter().fold(f32::MAX, |a, b| a.min(*b))
+    };
+    assert!(
+        spread(turning) > 40.0,
+        "a fila de cima varre um leque de angulos, deu {}",
+        spread(turning)
+    );
+    assert!(
+        flat.iter().all(|a| a.abs() < 1e-4),
+        "e a de baixo -- o CONTROLE -- fica em zero: {:?}",
+        &flat[..flat.len().min(4)]
+    );
+}
+
+/// **`=32` — e o `To` de facto ENCOLHE o que a fila cobre.**
+///
+/// A cena não pode animar um param, então este gate faz pela porta o gesto que o
+/// smoke pede à mão: baixar o `to` tem de encurtar o trecho ocupado. Sem ele a
+/// cena prometeria um write-on que ninguém verificou.
+#[test]
+fn dragging_the_to_slider_shortens_what_the_row_covers() {
+    let reg = registry();
+    let mut doc = MotionDoc::new();
+    let sinks = build_write_on_demo_document(&mut doc, &reg).expect("cena");
+    let sink = *sinks.first().expect("sink");
+    // ⚠️ A cena tem DUAS filas e o `combine` as concatena, então medir a união
+    // deixa a fila intocada mascarar a que foi editada — a primeira versão deste
+    // gate reprovou por isso, com o produto CERTO. Mede-se só a primeira metade,
+    // que é a do `spline_wrap` que o gate mexe.
+    let span = |p: &[[f32; 2]]| {
+        let xs: Vec<f32> = p[..p.len() / 2].iter().map(|q| q[0]).collect();
+        xs.iter().fold(f32::MIN, |a, b| a.max(*b)) - xs.iter().fold(f32::MAX, |a, b| a.min(*b))
+    };
+    let full = span(&cook(&doc, &reg, sink, 0.0));
+
+    let sw = doc
+        .graph
+        .nodes()
+        .iter()
+        .find(|n| n.type_id() == NodeTypeId::of("motion.spline_wrap"))
+        .expect("o no esta la")
+        .id;
+    doc.graph.set_param(sw, "to", 0.4);
+    let short = span(&cook(&doc, &reg, sink, 0.0));
+    assert!(
+        short < full * 0.85,
+        "baixar o `to` encurta o trecho: {short} contra {full}"
+    );
+}
+
+/// **`=33` — uma grade FOGE e a outra fica.**
+///
+/// O sintoma da célula, medido: com o pivô na origem o centro do layout é
+/// multiplicado pela escala e anda; com o centroide ele não se move um décimo.
+#[test]
+fn the_pivot_scene_shows_one_grid_running_away_and_one_staying() {
+    let reg = registry();
+    let mut doc = MotionDoc::new();
+    let sinks = build_pivot_demo_document(&mut doc, &reg).expect("cena bem-tipada");
+    let p = cook(&doc, &reg, *sinks.first().expect("sink"), 0.0);
+    assert!(!p.is_empty(), "a cena produz posicoes");
+
+    // As duas metades do `motion.combine`: a de cima pivota na origem.
+    let (origin, centroid) = p.split_at(p.len() / 2);
+    let cx = |v: &[[f32; 2]]| v.iter().map(|q| q[0]).sum::<f32>() / v.len() as f32;
+    assert!(
+        cx(origin) > 4.0,
+        "o pivo na origem DOBRA o deslocamento (2,2 -> ~4,4), deu {}",
+        cx(origin)
+    );
+    assert!(
+        (cx(centroid) - 2.2).abs() < 0.1,
+        "e o centroide fica onde o layout foi posto, deu {}",
+        cx(centroid)
+    );
+}
+
+/// **`=34` — a nuvem GIRA, e nenhuma `force.*` está na cena.**
+///
+/// ⚠️ O gate mede a coisa inteira de uma vez, e é de propósito: se as lanes
+/// `x`/`y` da fórmula estiverem mortas ela lê a posição como zero e a nuvem fica
+/// parada; se o alvo do `make_point` estiver morto ele escreve `P` e a cena vira
+/// outra coisa. Girar exige as duas vivas.
+#[test]
+fn the_formula_force_scene_spins_with_no_force_node_in_it() {
+    let reg = registry();
+    let mut doc = MotionDoc::new();
+    let sinks = build_formula_force_demo_document(&mut doc, &reg).expect("cena bem-tipada");
+
+    for banned in ["force.vortex", "force.attractor", "force.curl", "force.wind"] {
+        assert!(!has(&doc, banned), "a cena nao tem `{banned}` -- e a tese");
+    }
+    assert!(has(&doc, "motion.make_point"), "e tem o no que escreve accel");
+
+    // ⚠️ Uma sim avança pelo PUMP, não por um `Cook::cook` cru: o cook devolve o
+    // estado do tique pedido e NÃO o faz correr. A primeira versão deste gate
+    // media com o relógio parado e reprovou sobre um produto correto.
+    let scopes = ph2d_node_motion_time_remap::time_scopes(&doc.graph, &reg);
+    let mut pump = MotionCookPump::new();
+    let mut at0 = Vec::new();
+    for tick in 0..40u64 {
+        pump.advance_or_scrub_scoped(
+            &doc.graph,
+            &reg,
+            &sinks,
+            tick,
+            |k| k as f64 / 60.0,
+            [0.0, 0.0, 1.0, 1.0],
+            [1.0, 1.0],
+            &scopes,
+        );
+        if tick == 0 {
+            at0 = pump.instances.iter().map(|i| i.world_pos).collect();
+        }
+    }
+    let last: Vec<[f32; 2]> = pump.instances.iter().map(|i| i.world_pos).collect();
+    assert!(!at0.is_empty(), "a cena produz instancias");
+    assert_eq!(last.len(), at0.len(), "a contagem nao muda");
+    let moved = at0
+        .iter()
+        .zip(&last)
+        .filter(|(a, b)| (a[0] - b[0]).hypot(a[1] - b[1]) > 0.01)
+        .count();
+    assert!(
+        moved > at0.len() / 2,
+        "a maioria da nuvem se moveu ({moved} de {}) -- uma formula virou forca",
+        at0.len()
+    );
+}
+
+/// **`=35` — só a faixa mira, e as bordas miram PELA METADE.**
+///
+/// A cena existe para o gradiente ser visto; este gate afirma que ele existe, que
+/// é a metade que um olho não consegue conferir sozinho (um campo binário e um
+/// campo macio desenham quase a mesma coisa em miniatura).
+#[test]
+fn the_partial_aim_scene_has_a_band_that_aims_and_a_soft_edge() {
+    let reg = registry();
+    let mut doc = MotionDoc::new();
+    let sinks = build_partial_aim_demo_document(&mut doc, &reg).expect("cena bem-tipada");
+    assert!(has(&doc, "motion.look_at") && has(&doc, "field.box"));
+
+    let r = rot(&doc, &reg, *sinks.first().expect("sink"));
+    assert!(!r.is_empty(), "ha rotacao a olhar");
+    let untouched = r.iter().filter(|a| a.abs() < 1e-4).count();
+    assert!(untouched > 0, "quem esta fora do campo fica EXACTAMENTE como estava");
+    // A borda macia: existe ângulo estritamente entre "nada" e o máximo.
+    let peak = r.iter().fold(0.0f32, |a, b| a.max(b.abs()));
+    assert!(peak > 1.0, "e a faixa do meio mira de verdade, pico {peak}");
+    let partial = r
+        .iter()
+        .filter(|a| a.abs() > 1e-3 && a.abs() < peak * 0.9)
+        .count();
+    assert!(
+        partial > 0,
+        "e ha quem mire PELA METADE -- e o contrato de familia, nao um degrau"
+    );
+}
+
+/// **A SONDA das quatro cenas** — os números que a mensagem de smoke cita.
+///
+/// `cargo test -p ph2d-host-desktop --bin ph2d-host-desktop probe_conferencia_scenes -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda"]
+fn probe_conferencia_scenes() {
+    let reg = registry();
+    for (n, build) in [
+        (
+            32,
+            build_write_on_demo_document as fn(&mut MotionDoc, &NodeRegistry) -> Option<Vec<NodeId>>,
+        ),
+        (33, build_pivot_demo_document),
+        (34, build_formula_force_demo_document),
+        (35, build_partial_aim_demo_document),
+    ] {
+        let mut doc = MotionDoc::new();
+        let sinks = build(&mut doc, &reg).expect("cena");
+        let p = cook(&doc, &reg, sinks[0], 0.0);
+        let r = rot(&doc, &reg, sinks[0]);
+        let ang = r.iter().fold(0.0f32, |a, b| a.max(b.abs()));
+        println!(
+            "[={n}] {} nos | {} instancias | rot max {ang:.1} graus",
+            doc.graph.nodes().len(),
+            p.len()
+        );
+    }
+    // O pivô, o número da célula.
+    let mut doc = MotionDoc::new();
+    let sinks = build_pivot_demo_document(&mut doc, &reg).expect("cena");
+    let p = cook(&doc, &reg, sinks[0], 0.0);
+    let (o, c) = p.split_at(p.len() / 2);
+    let cx = |v: &[[f32; 2]]| v.iter().map(|q| q[0]).sum::<f32>() / v.len() as f32;
+    println!("[=33] centro: origem {:.2} | centroide {:.2}", cx(o), cx(c));
+    // O redemoinho, quanto anda em 40 tiques.
+    let mut doc = MotionDoc::new();
+    let sinks = build_formula_force_demo_document(&mut doc, &reg).expect("cena");
+    let scopes = ph2d_node_motion_time_remap::time_scopes(&doc.graph, &reg);
+    let mut pump = MotionCookPump::new();
+    let mut at0 = Vec::new();
+    for tick in 0..40u64 {
+        pump.advance_or_scrub_scoped(
+            &doc.graph, &reg, &sinks, tick, |k| k as f64 / 60.0,
+            [0.0, 0.0, 1.0, 1.0], [1.0, 1.0], &scopes,
+        );
+        if tick == 0 {
+            at0 = pump.instances.iter().map(|i| i.world_pos).collect();
+        }
+    }
+    let last: Vec<[f32; 2]> = pump.instances.iter().map(|i| i.world_pos).collect();
+    let d: Vec<f32> = at0.iter().zip(&last).map(|(a, b)| (a[0] - b[0]).hypot(a[1] - b[1])).collect();
+    println!(
+        "[=34] {} de {} se moveram | deslocamento max {:.3}",
+        d.iter().filter(|x| **x > 0.01).count(),
+        d.len(),
+        d.iter().fold(0.0f32, |a, b| a.max(*b))
+    );
+}

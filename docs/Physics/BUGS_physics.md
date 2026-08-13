@@ -14,6 +14,8 @@
 | [1](#bug-1--a-simulação-rodava-junto-com-a-animação-e-uma-nota-minha-dizia-que-o-interruptor-seria-o-desenho-errado) | **A sim rodava junto com a animação** — e uma nota minha dizia que o interruptor seria o desenho errado | `ph2d-timeline` (transporte) + `ph2d-physics-ecs` (ponte) | ✅ Resolvido (W4b, smoke aprovado) | 2026-07-18 |
 | [2](#bug-2--o-collider-não-estava-onde-o-sprite-estava-em-todo-corpo-filho) | **O collider não estava onde o sprite estava**, em todo corpo FILHO | `ph2d-physics-ecs` (5 sítios) + `ph2d-ecs` (o inverso) | ✅ Resolvido (W5; pendente smoke) | 2026-07-18 |
 | [3](#bug-3--a-escala-não-alcançava-o-collider) | **A escala não alcançava o collider** — o sprite crescia, o corpo não | `ph2d-physics-ecs` (`body_desc`) + `ph2d-physics` (`ShapeDesc`) + overlay | ✅ Resolvido (W6; smokada pelos gates) | 2026-07-19 |
+| [8](#bug-8--os-players-pulavam-e-andavam-sozinhos-e-a-física-estava-imóvel) | **Os players pulavam e andavam sozinhos** — e a física estava IMÓVEL | `shells/desktop` (o caminho da ENTRADA) | ✅ Resolvido (smoke aprovado) | 2026-08-12 |
+| [9](#bug-9--o-leque-de-sensores-driftava-do-corpo-e-a-geometria-estava-certa) | **O leque de sensores driftava do corpo** — e a geometria estava certa | `ph2d-physics-ecs` (a ÂNCORA da leitura) | ✅ Resolvido (smoke aprovado) | 2026-08-12 |
 
 **Anteriores, catalogados no tracker** (mesma classe — *a causa enganava* — mas escritos por wave,
 lá, e não repetidos aqui):
@@ -1050,3 +1052,117 @@ um literal) e o de COMPORTAMENTO na `ph2d-physics-ecs`.
 
 **c9:** `2278035e…` → **`74d4ea5d…`**, 108 corpos, debug ≡ release. Ele **tem**
 de se mover: a altura de repouso do player é função do amortecimento.
+
+
+---
+
+## Bug #8 — Os players pulavam e andavam sozinhos, e a física estava IMÓVEL
+
+**Sintoma** (Enio, com foto, cena `=112`): *"os players ficam dando pulinhos
+discretos sozinhos (sem input)"* — e, na segunda rodada, *"o players pular e se
+movem sozinhos"*.
+
+### A física foi EXONERADA por MEDIÇÃO, não por argumento
+
+Cinco sondas headless, todas negativas, e a decisiva rodou **pelo binário do
+produto**: pose **bit-constante ao longo de 1190 tiques**, com a cadência real do
+app (`time += 1.0/144.0; t = (time * 60.0).round()`), e o relógio **nunca** andou
+para trás. ⚠️ **O resultado honesto de uma sonda é às vezes *não existe bug
+aqui*** — e é ele que move a caçada para o sistema seguinte em vez de a deixar a
+afinar constantes de mola.
+
+⚠️ **DUAS hipóteses minhas morreram antes de virar código** (a oscilação da mola
+da perna; a cadência de tiques do produto), as duas por medição.
+
+### A causa: um ACORDE era lido como entrada de jogo
+
+`player_keys.key()` observava a tecla **FÍSICA**, sem guarda de modificador.
+Então:
+
+| acorde | o que o player fazia |
+|---|---|
+| `Ctrl+Z` | **pulava** |
+| `Ctrl+A` | andava para a esquerda |
+| `Ctrl+D` | andava para a direita |
+| `Ctrl+S` | agachava |
+
+⇒ desfazer, salvar ou selecionar tudo **dirigia o personagem**. Os *"pulinhos
+discretos"* eram os Ctrl+Z do artista.
+
+⚠️ **E o doc do `player_input.rs` afirmava o oposto como impossível.** A frase é
+que estava errada, não o report — e foi ela que fez a suspeita cair na física.
+
+### A cura, e a assimetria que ela precisa
+
+Um acorde **não arma**; a **SOLTURA passa sempre**:
+
+```rust
+let chord = mods.control_key() || mods.alt_key() || mods.super_key();
+if !pressed || !chord { self.player_keys.key(code, pressed); }
+```
+
+⚠️ **Uma guarda simétrica trocaria um pulo espúrio por um personagem que ANDA
+PARA SEMPRE** — tecla premida nua e solta com o Ctrl em baixo, e nada mais volta
+a desarmá-la. *A metade que não pode ser esquecida é a que desliga.*
+
+### Lições
+
+1. **Um relato de *"a física está a agir sozinha"* começa por MEDIR a física.**
+   Ela estava imóvel, e provar isso é o que dá licença para procurar noutro
+   sistema.
+2. **Um doc que declara algo impossível é uma pista, não uma prova** — este
+   declarava exactamente o defeito como inalcançável.
+3. **Um gate que pina TEXTO verbatim reprova no primeiro reflow.** O antigo
+   cravava três linhas; passou a afirmar a **propriedade** (o bloco de observação
+   não retorna cedo) e ganhou um irmão que exige as três perguntas de modificador.
+
+---
+
+## Bug #9 — O leque de sensores driftava do corpo, e a geometria estava certa
+
+**Sintoma** (Enio, com foto, logo após o smoke dos sensores): *"temos um drift
+dos gizmos dos sensores do platformer ao se mover o Player"*.
+
+### O número veio ANTES da hipótese
+
+Sonda `measure_probe_lag`, pela porta do produto: o leque fica **0,1000 m atrás
+em regime** — a distância **exacta** que o personagem percorre num tique a
+6 m/s —, constante e para sempre. **Parado é zero**, e é por isso que nenhuma
+cena de repouso o mostrava; num arranque a 18 m/s são 0,3 m.
+
+### A causa não é geometria, é QUANDO
+
+A leitura é gravada **antes** do `step` — tem de ser, é ela que a lei consome
+para decidir o tique — e o `readback` publica a pose **depois**. O overlay
+desenhava a cápsula no fim do tique e o leque no começo dele.
+
+⚠️ **É a mesma classe do defeito de ORDEM que o `readback` já documenta** (o
+filho convertido contra a pose que o mesmo passe vai substituir): *duas coisas
+publicadas de estados do mundo diferentes*.
+
+### A cura é a ÂNCORA, não um re-cast
+
+Re-perguntar ao mundo depois do passo seria a **segunda resposta** a *"o que este
+sensor viu neste tique?"*, e ela discordaria da que a lei usou — a única que
+produziu movimento. O leque é **rígido** em relação ao corpo, então o `readback`
+o desloca pelo que o corpo andou, mantendo `hit`, `reach` e `skin` exactamente
+como foram medidos. **0,1000 → 0,0000 m.**
+
+⚠️ **O `Sweep` não é tocado, e a assimetria é a PROVA do diagnóstico:** ele já
+viaja como `(corpo, deslocamento)` e o overlay o resolve contra a pose viva — por
+isso ele **nunca** driftou. Deslocá-lo somaria o movimento a um número que já é
+relativo a ele.
+
+### Lições
+
+1. **Um desenho que "erra a posição" pode não ter erro de posição nenhum** — a
+   pergunta seguinte é *de que INSTANTE cada metade fala?*.
+2. **O oráculo é a RELAÇÃO, não a coordenada.** O gate afirma que a distância do
+   leque ao corpo não muda por o corpo estar em movimento; um gate que cravasse a
+   origem em mundo teria de saber onde a perna nasce.
+3. **Parado é o CONTROLE**, e cada amostra em movimento tem de afirmar primeiro
+   que o corpo ANDOU — uma fixture parada passa sem conter o fenômeno.
+4. **Um corte de LOC pode reprovar um arch-gate sobre produto CORRETO.** Dois
+   gates ancorados no ENDEREÇO `player.rs` caíram quando duas funções se mudaram
+   para o irmão; a cura é ler a **família** por uma porta única — *afirme a
+   PROPRIEDADE, nunca o endereço*.

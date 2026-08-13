@@ -478,18 +478,49 @@ shipam separam-nos:
 | **Unreal** (mantle) | **três** traços com papéis distintos + **5** line traces *"ajustável para mais ou menos precisão"* + uma cápsula de folga |
 | *hotspots* estilo Sonic | o sensor de beirada é um **SEGMENTO** com extensão autorada |
 
-⇒ **Três controles**, e a razão de cada um é da referência, não de gosto:
-**`Ledge Grab`** é só o X · **`Grab Height`** é o Y, independente **pela ARTE**
-(a mão agarra onde a mão é DESENHADA, e o nosso pendurar é derivado do topo do
-collider — o caso exacto que o `Grab offset` existe para consertar) ·
-**`Grab Span`** dá extensão, e há um defeito real por trás: **um raio acha o
+⇒ **QUATRO controles**, e a matriz é a razão de cada um — *posição × tamanho*,
+nos dois eixos:
+
+| | posição | tamanho |
+|---|---|---|
+| **X** | `Ledge Grab` | `Grab Span` |
+| **Y** | **`Grab Offset Y`** | `Grab Window` |
+
+O **`Grab Span`** dá extensão, e há um defeito real por trás: **um raio acha o
 lábio num único `x`**, então ele erra um patamar estreito e não distingue *"o
 lábio está dois centímetros adiante"* de *"não há lábio"*.
 
-⚠️ **A minha recomendação inicial estava ERRADA e a construção a corrigiu:** eu
-escrevi que a banda de histerese seria derivada do `span`. O `span` é uma
-extensão **horizontal** e não dá banda vertical nenhuma; quem a dá é o
-`reach_y`, e é assim que os controles continuam **três** em vez de quatro.
+⚠️ **O span é HORIZONTAL, e a razão é o SENTIDO do raio** (a pergunta do Enio com
+foto: *"deveria dividir o sensor na horizontal ou os pontos de apoio na
+vertical?"*): o raio aponta para BAIXO, e um raio para baixo **já integra a
+janela vertical inteira num cast** — ele devolve *a que altura o lábio está*.
+Espalhar amostras na vertical faria N raios responderem a mesma pergunta. A
+varredura vertical é o desenho do **Unreal**, com traços para a **FRENTE**, e foi
+descartada de propósito: um traço para a frente diz *que há parede* e ainda é
+preciso descobrir a altura.
+
+⚠️ **DUAS recomendações minhas estavam ERRADAS, e as duas ficam escritas.**
+
+**(a)** Eu escrevi que a banda de histerese seria derivada do `span`. O `span` é
+uma extensão **horizontal** e não dá banda vertical nenhuma; quem a dá é o
+`reach_y`.
+
+**(b)** ⚠️ **E a frase que dizia *"é assim que os controles continuam TRÊS em vez
+de quatro"* estava errada** — foi o Enio que a derrubou (*"não temos como mover
+os sensores na vertical, precisamos de mais esse ajuste"*), e o mecanismo é meu:
+eu chamei o `reach_y` de *"o Y"* citando o `Grab offset` do GDevelop, **mas
+aquele é uma POSIÇÃO** e o que eu construí com o argumento dele foi o **TAMANHO**.
+A janela era sempre centrada no topo do corpo, então alcançar um lábio mais alto
+custava **alargar a histerese junto**: uma decisão sobre *quando ele solta*
+pagando por uma sobre *onde ele olha*. São quatro controles porque são **duas
+perguntas em dois eixos**, não três por economia.
+
+⚠️ **O rótulo também mentia:** *"Grab Height"* lê como posição; virou
+**`Grab Window`**, com a dica a dizer *quão ALTA é a janela, acima e abaixo*.
+
+⚠️ **E o `offset_y` é o único da família SEM `max(0.0)`** — um offset é uma
+**direção**, e deslizar para baixo é legítimo (uma arte cuja mão fica abaixo do
+topo do collider).
 
 ⚠️ **E a rejeição de *"a parede continua acima da cabeça"* deixou de ser
 grátis.** Ela era de graça porque o sensor era um PONTO (a origem cai dentro da
@@ -502,10 +533,11 @@ um patamar, as amostras de dentro caem no vazio e as de fora batem no topo, logo
 a mais próxima **é a beirada**), e é ele que define o alvo do mantle.
 
 **`span = 0` reduz LITERALMENTE ao raio único** — uma amostra, na posição exacta
-de antes —, e é isso que mantém o mundo aprovado byte-idêntico e o degrau de
-schema barato.
+de antes — e **`offset_y = 0` é a janela centrada no topo da cabeça**: é isso que
+mantém o mundo aprovado byte-idêntico e os DOIS degraus de schema baratos (v77 e
+v78; o `c9` intocado é quem o prova).
 
-**5 gates, 4 mutações, 4 sangram.** ⚠️ **E dois deles nasceram sem poder falhar
+**6 gates, 5 mutações, 5 sangram.** ⚠️ **E três deles nasceram sem poder falhar
 pelo motivo que alegavam:** o do leque tinha a aritmética da fixture errada (o
 raio nu ainda pousava dentro do bloco, e o **CONTROLE** reprovou); e o da recusa
 punha o corpo onde **todas** as amostras nascem dentro da parede — ali
@@ -513,7 +545,10 @@ punha o corpo onde **todas** as amostras nascem dentro da parede — ali
 de corrigido, ele ainda **não continha o fenômeno** numa segunda versão, porque
 o corpo estava apoiado no chão e `ledge_probe_wanted` nem casta o sensor de quem
 está no chão. A fixture que morde é: parede FINA que sobe acima da cabeça +
-prateleira mais baixa **atrás** dela, com o corpo no AR.
+prateleira mais baixa **atrás** dela, com o corpo no AR. E o do offset tem **TRÊS**
+fixtures porque a terceira é a que separa *deslizar* de *crescer*: com offset
+0,40 o teto sobe **exactamente** 0,40, então um lábio 1,20 acima continua fora —
+sem ela o gate ficaria verde sobre um `reach_y` disfarçado.
 
 ### 4.55 · `W-Probes` — **OS SENSORES FICAM VISÍVEIS** ✅ ⟨pedido do Enio⟩
 

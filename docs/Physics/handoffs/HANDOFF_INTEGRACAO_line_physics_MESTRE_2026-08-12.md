@@ -20,8 +20,8 @@
 | branch | `line/physics` |
 | HEAD | **o tip de `line/physics`** ⚠️ ver abaixo |
 | merge-base com `main` | `76788440adbabb0e5b12f8fdafecc6f1e1183e1a` |
-| commits | **58** |
-| diff | 112 arquivos, +20.077 / −1.011 |
+| commits | **65** |
+| diff | 121 arquivos, +22.469 / −1.473 |
 
 ⚠️ **Todos são pós-integração de 2026-08-10** (a jornada `W-KinMove` / modo
 cinemático, que já está no `main`). Nada aqui foi entregue antes.
@@ -31,9 +31,14 @@ que o escreve MUDA o HEAD, então um sha nesta tabela é falso no instante em qu
 commitado. O que identifica esta entrega é o **merge-base** acima mais *"o tip da
 branch"* — que é o que um integrador usa de qualquer forma.
 
-**O assunto é o PLAYER, em cinco metades.** As duas primeiras estão no handoff
-de 08-11 (o catálogo do plano 08, e os SENSORES). As três novas aqui são o **PULO
-DO AR** (§2), a **BEIRADA** (§2b) e o **PLANEIO** (§2c).
+**O assunto é o PLAYER, em oito metades.** As duas primeiras estão no handoff
+de 08-11 (o catálogo do plano 08, e os SENSORES). As seis novas aqui são o **PULO
+DO AR** (§2), a **BEIRADA** (§2b), o **PLANEIO** (§2c), o **SENSOR DA BEIRADA**
+(§2d) e os **dois reports** que fecharam a jornada — o **ACORDE** (§2e) e a
+**ÂNCORA** dos gizmos (§2f).
+
+⚠️ **As três últimas são de REPORT, não de plano**, e as três fecharam com o
+smoke aprovado pelo Enio.
 
 ---
 
@@ -247,30 +252,179 @@ repo). Toda mutação desta wave passou a **asserir a âncora antes de escrever*
 
 ---
 
+## 2d. A quarta wave — `W-LedgeSensor`, o sensor da beirada ganha POSIÇÃO e EXTENSÃO
+
+> *"Em Ledge Grab precisamos de mais ajuste: pelo menos 3 controles — posições x
+> e y e scale do sensor. Mas antes de construir faça uma pesquisa melhor sobre o
+> assunto."* — e depois, com foto: *"O grab span deveria dividir o sensor na
+> horizontal como na foto? ou os pontos de apoio na vertical? Outra coisa: não
+> temos como mover os sensores na vertical."*
+
+**A pesquisa REFUTOU a frase que o `grab` carregava** (*"até onde ele alcança é
+uma grandeza só"*): GDevelop expõe `Grab tolerance` **e** `Grab offset` (*"to
+match character animation"*), o Corgi configura *"origem e comprimento"*, o
+mantle do Unreal paga **três** traços + **cinco** line traces + uma cápsula de
+folga, e o hotspot estilo Sonic é um **SEGMENTO**.
+
+**São QUATRO controles, e a matriz é a razão de cada um:**
+
+| | posição | tamanho |
+|---|---|---|
+| **X** | `Ledge Grab` | `Grab Span` |
+| **Y** | **`Grab Offset Y`** | `Grab Window` |
+
+⚠️ **O span é HORIZONTAL, e a razão é o SENTIDO do raio** — a resposta à foto do
+Enio: o raio aponta para BAIXO, e um raio para baixo **já integra a janela
+vertical inteira num cast** (ele devolve *a que altura o lábio está*). Espalhar
+amostras na vertical faria N raios responderem a mesma pergunta. A varredura
+vertical é o desenho do Unreal, com traços para a **frente** — descartado de
+propósito: um traço para a frente diz *que há parede* e ainda é preciso descobrir
+a altura.
+
+⚠️ **E o quarto controle nasceu de um erro MEU, nomeado:** eu chamei o `reach_y`
+de *"o Y"* citando o `Grab offset` do GDevelop — **mas aquele é uma POSIÇÃO**, e
+o que eu construí com o argumento dele foi o **TAMANHO**. A janela era sempre
+centrada no topo do corpo, então alcançar um lábio mais alto custava **alargar a
+histerese junto**: uma decisão sobre *quando ele solta* pagando por uma sobre
+*onde ele olha*. O plano 08 §4.51 dizia *"é assim que os controles continuam
+TRÊS em vez de quatro"* — a frase está **corrigida lá**, não apagada.
+
+⚠️ **O rótulo também mentia:** *"Grab Height"* lê como posição; virou
+**`Grab Window`**, com a dica a dizer *quão ALTA é a janela, acima e abaixo*.
+
+⚠️ **O `offset_y` é o único da família SEM `max(0.0)`** — um offset é uma
+**direção**, e deslizar para baixo é legítimo (uma arte cuja mão fica abaixo do
+topo do collider).
+
+**Duas reduções LITERAIS mantêm o degrau de schema barato:** `span = 0` é **uma**
+amostra na posição exacta de antes, e `offset_y = 0` é a janela centrada no topo
+da cabeça — o mundo aprovado fica byte-idêntico, e o **`c9` intocado** é quem o
+prova.
+
+⚠️ **A rejeição de *"a parede continua acima da cabeça"* deixou de ser grátis:**
+ela era de graça enquanto o sensor era um PONTO (a origem cai dentro da geometria
+e o cast devolve `distance == 0`). Num leque é feita à mão — **uma amostra dentro
+recusa o leque INTEIRO**, que é o traço de folga que o mantle do Unreal paga em
+separado.
+
+**A lei do vencedor:** ganha o acerto mais **PERTO** do corpo — aproximando-se de
+um patamar, as amostras de dentro caem no vazio e as de fora batem no topo, logo
+a mais próxima **é a beirada** —, e é ele que define o `across`, o alvo do mantle.
+
+**6 gates, 5 mutações, 5 sangram.** ⚠️ **E três nasceram sem poder falhar pelo
+motivo que alegavam:** o do leque tinha a aritmética da fixture errada (o raio nu
+ainda pousava dentro do bloco, e o **CONTROLE** reprovou); o da recusa
+SOBREVIVEU **duas vezes** — na v1 todas as amostras nasciam dentro da parede
+(onde `return None` e `continue` dão o mesmo resultado) e na v2 o corpo estava no
+CHÃO, onde `ledge_probe_wanted` nem casta o sensor. A fixture que morde é: parede
+FINA que sobe acima da cabeça + prateleira mais baixa **atrás** dela, com o corpo
+no AR. E o gate do offset tem **TRÊS** fixtures porque a terceira é a que separa
+*deslizar* de *crescer*: com offset 0,40 o teto sobe **exatamente** 0,40, então um
+lábio 1,20 acima continua fora — sem ela o gate ficaria verde sobre um `reach_y`
+disfarçado.
+
+---
+
+## 2e. A quinta — **um ACORDE nunca é entrada de jogo**
+
+> *"Os players ficam dando pulinhos discretos sozinhos (sem input)"* — e depois
+> *"o players pular e se movem sozinhos"*.
+
+⚠️ **A física foi EXONERADA por medição, não por argumento:** pose bit-constante
+ao longo de 1190 tiques pelo binário do produto, e o relógio nunca andou para
+trás. Cinco sondas headless, todas negativas — e o resultado honesto de uma sonda
+é às vezes *não existe bug aqui*.
+
+**A causa está no caminho da ENTRADA:** `player_keys.key()` observava a tecla
+**física** sem guarda de modificador, então **`Ctrl+Z` pulava**, `Ctrl+A` andava
+para a esquerda, `Ctrl+D` para a direita e `Ctrl+S` agachava. ⚠️ **E o doc do
+`player_input.rs` afirmava o oposto como impossível** — a frase é que estava
+errada, não o report.
+
+⚠️ **A SOLTURA passa sempre, e a assimetria é a correção:** uma guarda simétrica
+trocaria um pulo espúrio por um personagem que **anda para sempre** (tecla
+premida nua, solta com o Ctrl em baixo).
+
+⚠️ **O gate mudou de FORMA:** ele pinava três linhas verbatim, o que reprova no
+primeiro reflow; passou a afirmar a **propriedade** (o bloco de observação não
+retorna cedo) e ganhou o irmão `a_modifier_chord_never_reaches_the_player`, que
+exige as três perguntas de modificador e a linha do guarda.
+
+---
+
+## 2f. A sexta — **a marca de sensor pousa onde o corpo ESTÁ**
+
+> *"Temos um drift dos gizmos dos sensores do platformer ao se mover o Player"*
+> (com foto).
+
+**Medido pela porta do produto ANTES de qualquer hipótese** (sonda
+`measure_probe_lag`): o leque fica **0,1000 m atrás em regime** — a distância
+EXATA que o personagem percorre num tique a 6 m/s —, constante e para sempre.
+**Parado é zero**, e é por isso que nenhuma cena de repouso o mostrava; num
+arranque a 18 m/s são 0,3 m.
+
+**A causa não é geometria, é QUANDO:** a leitura é gravada **antes** do `step`
+(tem de ser — é ela que a lei consome para decidir o tique) e o `readback`
+publica a pose **depois**. O overlay desenhava a cápsula no fim do tique e o
+leque no começo dele.
+
+⚠️ **A cura é a ÂNCORA, não um re-cast.** Re-perguntar ao mundo depois do passo
+seria a **segunda resposta** a *"o que este sensor viu neste tique?"*, e ela
+discordaria da que a lei usou — a única que produziu movimento. O leque é rígido
+em relação ao corpo, então o `readback` o desloca pelo que o corpo andou
+(`reanchor_player_probes`), mantendo `hit`, `reach` e `skin` **exactamente** como
+foram medidos. **No `readback` e não em cada ramo:** é o ponto por onde as DUAS
+rotas que dão passo passam (o laço de tiques e o replay do rewind).
+
+⚠️ **O `Sweep` não é tocado, e a assimetria é a prova de que o diagnóstico está
+certo:** ele já viaja como `(corpo, deslocamento)` e o overlay o resolve contra a
+pose viva — **por isso ele nunca driftou**. Deslocá-lo aqui somaria o movimento
+do corpo a um número que já é relativo a ele.
+
+**Resultado: 0,1000 → 0,0000 m.**
+
+**Gate `the_published_fan_rides_the_body_it_belongs_to`:** o oráculo é a
+**RELAÇÃO** (a distância do leque ao corpo não muda por o corpo estar em
+movimento), não uma coordenada — um gate que cravasse a origem em mundo teria de
+saber onde a perna nasce. **Parado é o CONTROLE**, e cada amostra em movimento
+afirma primeiro que o corpo de facto **ANDOU** naquele tique: uma fixture parada
+passaria sem conter o fenômeno.
+
+**5 mutações:** sem a re-âncora (sangra com o número) · deslocar o `Sweep`
+(sangra a assimetria) · um 2º leitor de `got.grounded` (sangra o arch-gate da
+família) · afastar a aplicação da dedup (sangra a adjacência). ⚠️ **A quinta
+SOBREVIVE e está documentada como higiene, não vendida como defesa:** o `clear`
+das faixas no `preview` não pode ser observado, porque o `reanchor` as DRENA e o
+`drive_players` as limpa antes de as reencher.
+
+---
+
 ## 3. Superfície de colisão
 
 | item | valor | nota |
 |---|---|---|
-| `PROJECT_SCHEMA` | **70 → 76** | ⚠️ **seis degraus**, ver §4 |
-| tripla do pin | `(76, 13, 14)` | `project_schema_tests.rs` |
-| `physics_ecs_c9` | **`1699123f9ed2844f…`, 117 corpos** | debug ≡ release, medido no tip. ⚠️ **NÃO se move com NENHUMA das duas waves novas** |
+| `PROJECT_SCHEMA` | **70 → 78** | ⚠️ **oito degraus**, ver §4 |
+| tripla do pin | `(78, 13, 14)` | `project_schema_tests.rs` |
+| `physics_ecs_c9` | **`1699123f9ed2844f…`, 117 corpos** | debug ≡ release, medido no tip. ⚠️ **NÃO se move com NENHUMA das seis waves** |
 | registro `ph2d-physics-ecs` | **29, INTOCADO** | nenhum componente novo |
 | registro `ph2d-ecs` + os 2 espelhos | **INTOCADOS** | |
 | gizmo ids | **nenhum novo** (o último segue **973**, próximo livre **974**) | |
-| ids novos | **17, todos `hash_node_id`** | ⇒ fora de todo gate de contagem |
+| ids novos | **20, todos `hash_node_id`** | ⇒ fora de todo gate de contagem |
 | ADR | **nenhum** | ⇒ a linha fica **fora de toda disputa de número** |
 | `Cargo.toml` / `Cargo.lock` | **ZERO** | nenhuma crate nova, nenhuma dep nova |
 | `.typos.toml` | **+1 entrada** (`^PILAR$`) | ⚠️ lista COMPARTILHADA — ver abaixo |
 | contrato congelado | **4/4** | rodado, não auto-relatado |
-| `PLAYER_ROW_COUNT` | **42 → 47** | +2 do pulo do ar, +2 da beirada, +1 do planeio |
+| `PLAYER_ROW_COUNT` | **42 → 50** | +2 do pulo do ar, +2 da beirada, +1 do planeio, **+3 do sensor da beirada** |
 | `PLAYER_CARDS` | **9 → 11** | ⚠️ o card `GLIDE` é o primeiro de UMA row |
 | cenas de smoke | maior **112** (próxima livre **113**) | ⚠️ o `=84` não existe, de propósito |
 
-⚠️ **O `c9` intocado é a PROVA de que os degraus v74, v75 e v76 não movem
-física.** As três capacidades nascem DESLIGADAS (`air_jumps = 0` ·
-`ledge_grab = 0` · `glide_fall_speed = 0`), então nenhuma lane do hash as
-exercita — e o hash é o único oráculo que não depende de
-eu afirmar coisa alguma.
+⚠️ **O `c9` intocado é a PROVA de que os degraus v74..v78 não movem física.** As
+três capacidades nascem DESLIGADAS (`air_jumps = 0` · `ledge_grab = 0` ·
+`glide_fall_speed = 0`), e os dois degraus do sensor da beirada **reduzem
+LITERALMENTE** ao raio único (`span = 0` · `offset_y = 0`) — então nenhuma lane do
+hash os exercita, e o hash é o único oráculo que não depende de eu afirmar coisa
+alguma. ⚠️ **A ÂNCORA (§2f) também não o move, e ali a razão é outra:** ela é
+DESENHO — a lista de marcas nunca é lida pelo solver.
 
 ⚠️ **E um GATE COMPARTILHADO mudou de afirmação:** o
 `every_card_holds_its_own_rows_and_they_do_not_overlap` (§14) afirmava `hi > lo`
@@ -322,6 +476,16 @@ estava — e o `c9` intocado é quem o prova.
 **v76 (`W-Glide`):** o `PlatformPlayer` ganhou `glide_fall_speed`, apendado ao
 FIM ⇒ **quebra dura**. ⚠️ **Também NÃO move física** — o teto nasce em `0`.
 
+**v77 e v78 (`W-LedgeSensor`):** o `PlatformPlayer` ganhou `ledge_reach_y` +
+`ledge_span` (v77) e `ledge_offset_y` (v78), **no MEIO do struct** (junto dos
+outros dois números da beirada, que é onde se leem) ⇒ **quebra dura**.
+
+⚠️ **Os dois NÃO movem física, e a razão é diferente da dos irmãos:** aqui a
+capacidade não nasce desligada — ela nasce **reduzida ao raio único**
+(`span = 0` é uma amostra na posição exacta de antes; `offset_y = 0` é a janela
+centrada no topo da cabeça). É por isso que a beirada aprovada no smoke da cena
+`=111` continua byte-idêntica, e o **`c9` intocado** é quem o prova.
+
 ⚠️ **PROVISÓRIO — o valor se CONTA contra o `main` do dia.** Três linhas já
 colidiram neste número por o terem *escolhido*, e da última vez o certo não
 estava em nenhum dos dois lados. ⚠️ **E a colisão passa MUDA quando as duas
@@ -331,7 +495,7 @@ que o número significa — confira nos **DOIS** arquivos (`project.rs` **e**
 
 ---
 
-## 5. LOC — os dois cortes
+## 5. LOC — os três cortes
 
 ### O corte de `jump.rs` (`W-MultiJump`)
 
@@ -360,6 +524,32 @@ que foi visto** sai para **`player_marks.rs`** (`record_marks` +
 é *"perguntou e não há lábio"*. Colapsá-los faz o marcador do sensor desaparecer
 da tela exatamente quando ele é mais útil (o artista a mirar uma beirada e a
 falhar).
+
+### E o corte de `player.rs` (a ÂNCORA)
+
+A faixa de âncoras levou-o a **708 > 700**. Corte pela mesma linha das outras
+duas: o laço **COLHE** (o cast toma `&self`) e a ponte **APLICA** (a pose toma
+`&mut self`) — a lista de `KinMove` já existia por essa razão, e o que muda é que
+a metade que a consome ganhou casa própria em **`player_kinmove.rs`** (94
+linhas), em vez de ser a cauda de um laço de quinhentas.
+
+⚠️ **E o corte fez DOIS arch-gates reprovarem sobre produto CORRETO** — os dois
+ancorados no ENDEREÇO `src/bridge/player.rs`, de onde o `kinematic_settle` e o
+`push_from_hits` se mudaram: `the_law_asks_footing_not_the_controller` (o próprio
+CONTROLE dele disparou, que é para o que ele existe) e `the_push_is_our_law`. Os
+dois passaram a ler a **FAMÍLIA** (`player.rs` + `player_*.rs`) por uma porta
+única nova — **`tests/player_bridge_source.rs`**, incluída por `#[path]` nos dois,
+porque duas cópias de *"que texto é a ponte do player?"* divergiriam no primeiro
+corte que uma delas não visse.
+
+⚠️ **Quem afirma ORDEM DENTRO de uma função continua a ler só o arquivo do
+laço** (`player_loop()`): ordem entre dois pontos de arquivos diferentes seria a
+ordem alfabética dos irmãos, não uma propriedade do produto. *Afirme a
+PROPRIEDADE, nunca o endereço* — e as duas perguntas são diferentes.
+
+⚠️ **Provado que a varredura da família não ficou vazia:** um segundo leitor de
+`got.grounded` no irmão faz o contador sangrar (`achei 2`), e afastar a aplicação
+da dedup faz a adjacência sangrar (`3513 bytes depois`).
 
 ---
 
@@ -454,6 +644,29 @@ chegar ao ar, então o aperto guardado nunca alcança o ramo do ar. Quem apanha 
 irmão de unidade, cuja fixture entra **já no ar** com uma borda fresca. Doc
 corrigido em vez de contrabandeado.
 
+### Da `W-LedgeSensor`
+
+- `ph2d-physics-ecs/tests/player_ledge_sensor.rs` (6) — o leque acha o lábio que
+  um raio erra · uma amostra DENTRO recusa o leque inteiro · o vencedor é o mais
+  PERTO · o offset DESLIZA sem redimensionar · e os dois **CONTROLES** de redução
+  literal (`span = 0` e `offset_y = 0` reproduzem o raio único).
+- `ph2d-panel-inspector/tests/seam_player.rs` — as três rows novas na varredura.
+
+**5 mutações, 5 sangram** — e a da recusa **sobreviveu duas vezes por FIXTURE**
+(§2d).
+
+### Da ÂNCORA (§2f)
+
+- `ph2d-physics-ecs/tests/player_probe_view.rs` (+1) —
+  `the_published_fan_rides_the_body_it_belongs_to`, com o repouso como CONTROLE e
+  a asserção de que o corpo ANDOU no tique medido.
+- `ph2d-physics-ecs/tests/player_bridge_source.rs` — a porta única do texto da
+  ponte, partilhada pelos dois arch-gates (§5).
+- Sonda `measure_probe_lag` (`--ignored --nocapture`) — a tabela que atribuiu o
+  defeito e mede a cura.
+
+**5 mutações, 4 sangram; a 5ª está documentada como higiene** (§2f).
+
 ---
 
 ## 7. Como rodar o gate
@@ -500,6 +713,12 @@ direita o alcança — e ele fica **pendurado**, não em cima.
 ⚠️ **O passo 8 é o que fecha a lei:** com a beirada armada, andar contra o
 patamar BAIXO **no chão**, sem pular, **não** deve pendurar — um degrau que se
 sobe a pé não é beirada.
+
+⚠️ **E o passo 9 é o do SENSOR** (§2d): os quatro controles, um a um —
+`Grab Span` alarga o leque na horizontal · `Grab Window` muda quão ALTA é a
+janela · **`Grab Offset Y` DESLIZA o sensor na vertical sem o redimensionar**
+(suba para 0,40 e ele alcança lábios mais altos **sem** que a histerese do
+pendurar mude) · `Ledge Grab` é o alcance à frente.
 
 ⚠️ **A cena 112 em uma frase:** a mesma forma das duas anteriores — duas raias
 iguais, dois personagens iguais, um teclado — e a única diferença é o **teto de
@@ -556,6 +775,29 @@ Da `W-Glide`:
   segundo número no planeio.
 - **Um planador não é travado por uma parede** (`clinging.is_none()` cala-o ali,
   e quem manda é o `wall_slide`). Não foi medido se incomoda.
+
+Da `W-LedgeSensor`:
+
+- **Não há alça de canvas para nenhum dos quatro** — a mesma decisão das outras
+  waves: o que se julga é o comportamento, e o **overlay do sensor** (`W-Probes`)
+  já desenha o leque onde ele está. As quatro rows na §14 são a autoria.
+- **O span não tem teto**, e é deliberado: um leque largo custa `n` casts e o
+  custo já está medido (18 ns por raio); um teto seria um número sem recurso por
+  trás.
+
+Do ACORDE (§2e):
+
+- **A guarda é do PLAYER, não do app inteiro.** Um acorde continua a chegar a
+  toda a outra ferramenta, porque ali ele É o gesto (Ctrl+Z é o undo). O que
+  mudou é que ele deixou de virar *entrada de jogo* — e um atalho de jogo que
+  seja **Shift**+tecla continua a funcionar, porque o Shift não é acorde.
+
+Da ÂNCORA (§2f):
+
+- **O leque desenhado descreve o tique ANTERIOR**, e continua a descrever: o que
+  a wave corrige é ONDE ele pousa, não QUANDO ele foi medido. As distâncias
+  (`hit`, `reach`, `skin`) são as que a lei consumiu — re-castá-las seria a
+  segunda resposta que o §2f recusa.
 
 - **A fila do plano 08 acabou:** ~~`W-Ledge`~~ ✅ → ~~`W-Glide`~~ ✅ → *o ajuste*
   (§4.7, que é **decisão de aparência e o instrumento é o smoke**, não uma wave).

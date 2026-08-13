@@ -12,6 +12,51 @@
 > · gizmo ids até **973** (próximo livre **974**) · maior cena de smoke **104** (próxima livre
 > **105**; ⚠️ o `=84` não existe, de propósito).
 >
+> ⚠️ **Jornada de 2026-08-12 FECHADA e SMOKADA, aguardando ordem de integração** — handoff
+> [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md).
+> **Seis waves**, as três últimas de REPORT do Enio e não de plano.
+>
+> ⚠️ **`W-LedgeSensor` — o sensor da beirada ganha POSIÇÃO e EXTENSÃO** (pedido do Enio, com
+> pesquisa antes: GDevelop · Corgi · Unreal · hotspots de Sonic). São **QUATRO** controles, e a
+> matriz é a razão de cada um — *posição × tamanho, nos dois eixos*: `Ledge Grab` (X pos) ·
+> `Grab Span` (X tam) · **`Grab Offset Y`** (Y pos) · `Grab Window` (Y tam). ⚠️ **O span é
+> HORIZONTAL porque o raio aponta para BAIXO** — um raio para baixo já integra a janela vertical
+> inteira num cast; a varredura vertical é o desenho do Unreal, com traços para a FRENTE, e um
+> traço para a frente diz *que há parede* e ainda precisa descobrir a altura. ⚠️ **E o quarto
+> controle nasceu de um erro MEU:** eu chamei o `reach_y` de *"o Y"* citando o `Grab offset` do
+> GDevelop, **mas aquele é POSIÇÃO** e o que construí com o argumento dele foi o TAMANHO — a
+> janela era sempre centrada no topo do corpo, então alcançar um lábio mais alto custava
+> **alargar a histerese junto**. A frase do plano 08 §4.51 (*"é assim que os controles continuam
+> TRÊS em vez de quatro"*) está **corrigida lá**. ⚠️ O rótulo *"Grab Height"* lia como posição ⇒
+> **`Grab Window`**; e o `offset_y` é o único da família **sem `max(0.0)`** (um offset é uma
+> DIREÇÃO). ⚠️ **Uma amostra DENTRO recusa o leque INTEIRO** — a rejeição de *"a parede continua
+> acima da cabeça"* era grátis enquanto o sensor era um PONTO, e num leque é feita à mão.
+> **`span = 0` e `offset_y = 0` reduzem LITERALMENTE ao raio único** ⇒ **`PROJECT_SCHEMA` 76 → 78
+> sem mover física** (`c9` `1699123f…` intocado). `PLAYER_ROW_COUNT` **47 → 50**. 6 gates, 5
+> mutações, 5 sangram — ⚠️ **a da recusa sobreviveu DUAS vezes por FIXTURE** (v1: todas as
+> amostras nasciam dentro da parede, onde `return None` e `continue` empatam; v2: o corpo estava
+> no CHÃO, onde `ledge_probe_wanted` nem casta).
+>
+> ⚠️ **Um ACORDE nunca é entrada de jogo** (report *"os players pulam e se movem sozinhos"*,
+> [BUGS #8](../BUGS_physics.md)). **A física foi EXONERADA por medição**: pose bit-constante ao
+> longo de 1190 tiques pelo binário do produto, com a cadência real do app. A causa era
+> `player_keys.key()` a observar a tecla FÍSICA sem guarda de modificador — **`Ctrl+Z` pulava**,
+> `Ctrl+A`/`Ctrl+D` andavam, `Ctrl+S` agachava. ⚠️ **E o doc do `player_input.rs` declarava isso
+> impossível.** ⚠️ **A SOLTURA passa sempre**, e a assimetria é a correção: uma guarda simétrica
+> trocaria um pulo espúrio por um personagem que **anda para sempre**.
+>
+> ⚠️ **A marca de sensor pousa onde o corpo ESTÁ** (report *"drift dos gizmos dos sensores"*,
+> [BUGS #9](../BUGS_physics.md)). Medido pela porta do produto ANTES de qualquer hipótese: o leque
+> fica **0,1000 m atrás em regime** — a distância exacta de um tique a 6 m/s —, e **zero parado**.
+> A leitura é gravada ANTES do `step` (é ela que a lei consome) e o `readback` publica a pose
+> DEPOIS. ⚠️ **A cura é a ÂNCORA, não um re-cast** (re-perguntar seria a segunda resposta a *"o
+> que este sensor viu?"*): o `readback` desloca o leque pelo que o corpo andou, e `hit`/`reach`/
+> `skin` ficam como foram medidos. **0,1000 → 0,0000 m.** ⚠️ **O `Sweep` não é tocado, e a
+> assimetria é a prova:** ele já viaja como `(corpo, deslocamento)` e por isso **nunca** driftou.
+> ⚠️ **E o corte de LOC que a wave exigiu (`player_kinmove.rs`) reprovou DOIS arch-gates sobre
+> produto CORRETO** — os dois ancorados no ENDEREÇO `player.rs`; passaram a ler a **FAMÍLIA** por
+> uma porta única (`tests/player_bridge_source.rs`). *Afirme a PROPRIEDADE, nunca o endereço.*
+>
 > ⚠️ **Jornada de 2026-08-12 (`W-MultiJump` + `W-Ledge` + `W-Glide`) FECHADA, aguardando
 > ordem de integração** — handoff
 > [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md).

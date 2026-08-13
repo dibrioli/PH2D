@@ -11,7 +11,8 @@
 
 use crate::{
     Motor, Reaction, Vec2, crouch::CrouchConfig, crouch::CrouchState, dash::DashConfig,
-    dash::DashState, glide::GlideConfig, jump::JumpConfig, jump::JumpState, kinematic,
+    dash::DashState, glide::GlideConfig, jump::JumpConfig, jump::JumpKind, jump::JumpState,
+    kinematic,
     ledge::LedgeConfig, ledge::LedgeState, react::ReactionConfig, ride::RideConfig,
     swim::SwimConfig, swim::SwimState, walk::WalkConfig, wall::GrabState, wall::WallConfig,
 };
@@ -277,4 +278,24 @@ pub struct PlayerStep {
     /// onde a plataforma fosse grossa ou a queda lenta, re-solidificando com o
     /// personagem dentro dela.
     pub drop_through: bool,
+    /// **Um pulo SAIU neste tique, e de qual apoio** — `None` na esmagadora
+    /// maioria dos tiques.
+    ///
+    /// # ⚠️ Por que aqui e não na [`PlayerView`]
+    ///
+    /// A vista é estado **contínuo**; isto é uma **borda**, verdadeira por
+    /// exactamente um tique — a mesma forma do [`Self::drop_through`] logo
+    /// acima, e por isso a mesma casa. Pô-lo na vista faria duas vistas
+    /// consecutivas diferirem por um flag de evento, o que é precisamente o
+    /// ruído que a derivação por comparação ([`crate::events_between`]) existe
+    /// para não ter.
+    ///
+    /// # ⚠️ Por que a LEI o declara
+    ///
+    /// De fora, *que pulo foi este* só se adivinha por *"ele estava no chão no
+    /// tique anterior?"* — que responde **não** para o pulo do ar E para o de
+    /// parede, ou seja erra exactamente no caso que se queria distinguir. A lei
+    /// sabe; o [`crate::JumpStep`] já o diz desde o `W-PlayerOut`, e este campo
+    /// apenas o deixa atravessar a porta.
+    pub jump: Option<JumpKind>,
 }

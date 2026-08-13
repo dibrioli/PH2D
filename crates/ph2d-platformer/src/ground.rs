@@ -23,7 +23,28 @@ use crate::{GroundSample, Vec2, perp_cw};
 #[must_use]
 pub fn relative_rise(footing: Option<&GroundSample>, body_velocity: Vec2, up: Vec2) -> f32 {
     let g = footing.map_or([0.0, 0.0], |s| s.ground_velocity);
-    (body_velocity[0] - g[0]) * up[0] + (body_velocity[1] - g[1]) * up[1]
+    relative_along(body_velocity, g, up)
+}
+
+/// **A velocidade RELATIVA ao chão, projetada num eixo** — o núcleo de que a
+/// [`relative_rise`] é o caso do `up`.
+///
+/// ⚠️ **Ele existe porque há TRÊS donos da mesma conta, e só pode haver uma
+/// fórmula.** A lei tem a amostra do sensor na mão ([`relative_rise`]); o canal
+/// de eventos ([`crate::event`]) tem a [`crate::PlayerView`], que publica as
+/// duas velocidades e nunca a amostra (uma vista sobrevive ao tique que a
+/// produziu, uma referência à amostra não); e a mola do [`crate::ride`]
+/// pergunta a MESMA coisa **noutro eixo** — a NORMAL, e não o `up`.
+///
+/// ⚠️ **O eixo é parâmetro justamente porque os três não concordam sobre ele**,
+/// e é por isso que a função não se chama *rise*: o que ela responde é
+/// *"quão depressa me afasto do chão ao longo de `axis`?"*. Fixar o `up` aqui
+/// obrigaria a mola a re-escrever a subtração, que foi como ela viveu até esta
+/// wave.
+#[must_use]
+pub fn relative_along(body_velocity: Vec2, ground_velocity: Vec2, axis: Vec2) -> f32 {
+    (body_velocity[0] - ground_velocity[0]) * axis[0]
+        + (body_velocity[1] - ground_velocity[1]) * axis[1]
 }
 
 /// **O QUE O CHÃO AINDA DEVE** — a parte da velocidade do chão que a lei da

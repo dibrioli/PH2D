@@ -54,6 +54,7 @@ pub use contract::{PlayerConfig, PlayerState, PlayerStep, PlayerView};
 pub mod corner;
 pub mod crouch;
 pub mod dash;
+pub mod event;
 pub mod glide;
 mod ground;
 pub mod jump;
@@ -76,9 +77,10 @@ pub use crouch::{
     ride_for, walk_for,
 };
 pub use dash::{DashConfig, DashState, DashStep, dash_burst, dash_step};
+pub use event::{PlayerEvent, events_between};
 pub use glide::{GlideConfig, glide_motor};
-pub use ground::{ground_carry, relative_rise};
-pub use jump::{JumpConfig, JumpState, JumpStep, carried_frame, jump_step};
+pub use ground::{ground_carry, relative_along, relative_rise};
+pub use jump::{JumpConfig, JumpKind, JumpState, JumpStep, carried_frame, jump_step};
 pub use kinematic::{
     Fluid, KinematicState, kinematic_advance, kinematic_settle, supported_velocity, surface_descent,
 };
@@ -621,6 +623,7 @@ pub fn player_motor(
             [0.0, 0.0]
         },
         drop_through: jump.drop_through,
+        jump: jump.kind,
     }
 }
 

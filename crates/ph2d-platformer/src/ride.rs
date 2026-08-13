@@ -4,7 +4,7 @@
 //! corta arquivos: **uma lei por módulo**. O pulo (W4) e a tolerância (W8) já
 //! têm onde nascer sem que ninguém precise reabrir este.
 
-use crate::{GroundSample, Motor, Vec2};
+use crate::{GroundSample, Motor, Vec2, relative_along};
 
 /// Os ganhos da perna.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -393,15 +393,16 @@ pub fn ride_spring(
     // corpo já contém a dela, e amortecer contra o referencial do mundo faria a
     // mola lutar contra a plataforma em vez de contra a oscilação.
     //
-    let rel = [
-        body_velocity[0] - s.ground_velocity[0],
-        body_velocity[1] - s.ground_velocity[1],
-    ];
     // ⚠️ **O eixo do amortecedor é a NORMAL, o da mola é o `up`, e são perguntas
     // DIFERENTES** — ver [`damping_axis`] para o eixo e o aviso abaixo para o
     // porquê de a mola ficar onde está.
+    //
+    // ⚠️ E é por aqui passar num eixo que NÃO é o `up` que a porta comum se
+    // chama [`relative_along`] e não *rise*: a subtração é a mesma que o canal
+    // de eventos e a [`crate::relative_rise`] fazem, e escrevê-la aqui à mão
+    // era a segunda cópia que nenhum gate de nenhum dos dois lados via.
     let axis = damping_axis(s.normal, up);
-    let rel_along_axis = rel[0] * axis[0] + rel[1] * axis[1];
+    let rel_along_axis = relative_along(body_velocity, s.ground_velocity, axis);
 
     let damping = cfg.spring_damping.clamp(0.0, RideConfig::MAX_DAMPING);
     let spring = offset * clamped_strength(cfg);

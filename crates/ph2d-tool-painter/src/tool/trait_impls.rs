@@ -131,6 +131,9 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_ACCUMULATE => {
                 self.toggle_brush_accumulate();
             }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_LINE_SOLID => {
+                self.toggle_style_solid();
+            }
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_GRID_SHOW => {
                 self.toggle_grid_show();
             }

@@ -188,6 +188,20 @@ impl PainterTool {
         self.paint.brush.accumulate = !self.paint.brush.accumulate;
     }
 
+    /// **Style: Solid** — o traço deixa de ser a área varrida pelo pincel e passa a ser a área
+    /// CERCADA pelo gesto (o `Style` do Alchemy; plano 38 §1.1).
+    ///
+    /// ⚠️ Escreve nos **três slots de relevo** pelo mesmo motivo do `toggle_brush_impasto`: Deposit,
+    /// Faca e Sculpt são UM assunto para o artista, e um flag que vive só no slot vivo desaparece
+    /// quando ele pega a ferramenta ao lado — o defeito medido em 2026-07-19.
+    pub fn toggle_style_solid(&mut self) {
+        let on = !self.paint.brush.style_solid;
+        self.paint.brush.style_solid = on;
+        for mode in super::impasto_settings::RELIEF_SLOTS {
+            self.paint.brush_by_mode[mode.slot()].style_solid = on;
+        }
+    }
+
     /// Set the Jitter slider (`0..1` track), routed by the current unit: `Brush` → relative jitter
     /// (`0..1`), `View` → absolute pixels (`track × BRUSH_JITTER_ABS_MAX_PX`).
     pub fn set_brush_jitter_norm(&mut self, t: f32) {

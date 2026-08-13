@@ -212,6 +212,14 @@ pub const PAINTER_BRUSH_SPACING: NodeId = hash_node_id("painter_brush.spacing");
 pub const PAINTER_BRUSH_SPACE_ATTEN: NodeId = hash_node_id("painter_brush.space_atten");
 /// "Accumulate" toggle (Blender `BRUSH_ACCUMULATE`): off caps a stroke at Strength. `Click` → toggle.
 pub const PAINTER_BRUSH_ACCUMULATE: NodeId = hash_node_id("painter_brush.accumulate");
+
+/// **Style: Solid** — o checkbox do card **Line** (acima do Composite Brush): desmarcado o traço é
+/// uma LINHA, marcado ele é a forma CERCADA pelo gesto, preenchida. `Click` → alterna.
+///
+/// ⚠️ A pergunta *"este tipo de linha tem caminho fechado para preencher?"* é do
+/// `LineKind::honours_style()`, não deste id — hoje ela devolve `true` para todos, e o dia em que
+/// nascer um tipo sem caminho-base é o dia em que ela deixa de ser trivial.
+pub const PAINTER_LINE_SOLID: NodeId = hash_node_id("painter_line.solid");
 /// "Sync with other tools" checkbox at the top of the brush panel: off (default) = each paint tool keeps
 /// its own settings; on = all tools share these. `Click` → `toggle_link_shared_settings`.
 pub const PAINTER_BRUSH_SYNC: NodeId = hash_node_id("painter_brush.sync");

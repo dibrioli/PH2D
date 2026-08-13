@@ -41,6 +41,7 @@ impl Default for BrushSpec {
             grid_fit: 0.0,
             space_attenuation: false, // Adjust Strength off by default (Enio 2026-06-24)
             accumulate: false,
+            style_solid: false,
             dash_ratio: 1.0,
             dash_samples: 20,
             jitter_unit: JitterUnit::Brush,

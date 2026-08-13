@@ -25,6 +25,12 @@ pub(crate) struct PaintState {
     pub(super) hover_pos: Option<[f32; 2]>,
     /// Reused dab buffer so a hot pointer stream allocates nothing per sample.
     pub(super) dabs: Vec<Dab>,
+    /// O caminho do gesto enquanto ele é depositado como forma SÓLIDA (plano 38 §1.1). Vazio — e
+    /// sem uma alocação — em todo traço que não é Solid.
+    ///
+    /// ⚠️ Ele existe porque a lista de dabs de um evento é o PEDAÇO do gesto desde o último ponteiro,
+    /// e o que uma forma sólida cerca é o percurso inteiro.
+    pub(super) solid_path: Vec<[f32; 2]>,
     /// Per-stroke jitter seed; bumped each stroke so jitter is reproducible yet varies.
     pub(super) seed: u64,
     /// Splitmix64 for the texture's per-dab Random rotation/offset — reset per stroke (seed-decorrelated), advanced once per textured dab (HR-5).

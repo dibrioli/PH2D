@@ -326,6 +326,8 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_REPEAT_IMAGE,
         ph2d_editor_core::ids::PAINTER_BRUSH_SPACE_ATTEN,
         ph2d_editor_core::ids::PAINTER_BRUSH_ACCUMULATE,
+        // Card Line: o checkbox Solid (sem ele o widget pinta, registra hit e fica MORTO sob o mouse).
+        ph2d_editor_core::ids::PAINTER_LINE_SOLID,
         // "Sync with other tools" checkbox at the top of the brush panel (independent settings by default).
         ph2d_editor_core::ids::PAINTER_BRUSH_SYNC,
         // "Dimensions" checkbox below the Method dropdown (Line only) — dx/dy + corner angles while drawing.

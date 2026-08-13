@@ -211,6 +211,9 @@ pub struct BrushSettings {
     pub space_attenuation: bool,
     /// **Accumulate** on/off: off (default) caps a stroke at Strength.
     pub accumulate: bool,
+    /// **Style: Solid** on/off — o checkbox do card Line. Desmarcado (default) o traço é a linha de
+    /// sempre; marcado ele é a região CERCADA pelo gesto, e a espessura deixa de entrar.
+    pub style_solid: bool,
     /// "Sync with other tools" on/off: on = every paint tool shares these settings; off (default) = each
     /// tool independent. Drives the checkbox at the top of the brush panel.
     pub link_shared: bool,

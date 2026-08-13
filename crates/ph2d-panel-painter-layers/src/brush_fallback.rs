@@ -122,6 +122,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     has_drawn_curve: false,   // no drawn curve in the fallback snapshot
     space_attenuation: false, // Adjust Strength off by default (Enio 2026-06-24; mirrors BrushSpec::default)
     accumulate: false,
+    style_solid: false,
     link_shared: false, // "Sync with other tools" off = independent tools (the default)
     line_show_dimensions: true, // Line CAD dimensions shown by default
     jitter: 0.0,

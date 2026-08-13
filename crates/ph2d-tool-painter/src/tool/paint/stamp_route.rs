@@ -34,6 +34,12 @@ impl PainterTool {
     /// shows is `lerp(base, free, keep)` ([`Self::stamp_dabs_gated`]). Nothing is made invisible — only the
     /// paint is gated. Engine-agnostic: it wraps ALL the routes in [`Self::stamp_dabs_routed`].
     pub(super) fn stamp_dabs(&mut self, dabs: &[Dab]) {
+        // **Style: Solid** — enquanto um gesto sólido está em voo, a tinta é a REGIÃO cercada e a
+        // linha por baixo dela não é pintada (plano 38 §1.1). A supressão mora nesta porta, e não nos
+        // seis sítios do ciclo de traço, pelo motivo que o gate da espessura mediu.
+        if self.solid_suppresses_dabs() {
+            return;
+        }
         // Watercolor optical render-path: DON'T deposit dabs on the canvas — accumulate the coverage
         // (max-blended discs) + the deposited colour (source-over), and let `apply_watercolor` reconstruct
         // the whole wash over the frozen base ([`super::watercolor_render`]). Short-circuits every route.

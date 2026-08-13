@@ -201,6 +201,11 @@ pub(crate) fn paint_brush_body(
         y = crate::paint_inpaint::paint_inpaint_card(ctx, theme, x, content_w, y, brush);
     }
 
+    // 4b″. Card **Line** — o Style (Line/Solid) e, nas waves seguintes, o tipo de traço
+    //      procedural. Fica IMEDIATAMENTE acima do Composite Brush (pedido do Enio, plano 38 §1);
+    //      a posição é a feature, então há gate sobre a ordem destas duas chamadas.
+    y = crate::paint_line::paint_line_card(ctx, theme, x, content_w, y, brush);
+
     // 4c. Composite Brush card (checkbox + the 3-layer Brush/Smear/Blur stack when on) — the plain Brush
     //     tool only (Smear/Blur/Clone/Mask are single-op rail tools; Eraser bypasses composite too — it's
     //     the Erase-Alpha override; `composite_active()` requires the plain Brush + `!eraser`).

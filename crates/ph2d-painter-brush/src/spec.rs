@@ -90,6 +90,13 @@ pub struct BrushSpec {
     /// dab adds on top so opacity builds up without the per-stroke cap (airbrush-like buildup). At
     /// Strength `1.0` the two are identical (the cap is full coverage). See [`crate::dab`].
     pub accumulate: bool,
+    /// **Style: Solid** — o traço deixa de ser a área VARRIDA pelo pincel e passa a ser a área
+    /// CERCADA pelo gesto, preenchida com cobertura exata por área ([`crate::solid`]).
+    ///
+    /// ⚠️ **Em Solid a ESPESSURA não entra** (decisão do Enio, plano 38 §1.1): o que se pinta é o
+    /// polígono do caminho, então um laço fino e solto vira uma mancha gorda. `false` (o default) é
+    /// o mundo de sempre, byte a byte.
+    pub style_solid: bool,
     /// Dash "on" fraction of each dash period, `0..1` (Blender `dash_ratio`, default `1.0` = solid,
     /// `DNA_brush_types.h:275`).
     pub dash_ratio: f32,

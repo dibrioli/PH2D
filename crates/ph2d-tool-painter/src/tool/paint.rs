@@ -31,6 +31,8 @@ mod curve_refit; // Simplify/Merge quality funnel: corner-split + piecewise Schn
 mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay snapshot; split from `curve`
 mod curve_trim; // self-intersection trim of the offset spine (open + closed); split from `curve_offset`
 mod stroke_boolean; // multi-shape Add/Remove boolean composite (rasterise → union/subtract → trace contours)
+/// **A forma SÓLIDA** — o caminho acumulado do gesto vira região preenchida (plano 38 §1.1).
+mod solid_deposit;
 mod stroke_boolean_raster; // com que PIXELS uma forma entra no composite (sub-janela + rasterizadores)
 mod stroke_multi; // multi-shape: parked (inactive-but-editable) stroke shapes + their Operation; pixels are a derived recompose
 mod stroke_outline; // o CONTORNO de uma figura -- produtor unico do que o gizmo desenha E do que o clique alcanca

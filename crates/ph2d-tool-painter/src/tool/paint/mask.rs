@@ -265,6 +265,23 @@ impl PainterTool {
         mask_gate: bool,
         sel_gate: bool,
     ) {
+        self.gate_scoped(region, mask_gate, sel_gate, |t| t.stamp_dabs_routed(dabs));
+    }
+
+    /// **A dança do gate, com o depósito como PARÂMETRO** — trocar o canvas pelo plano LIVRE, deixar
+    /// o depósito pintar sem gate nenhum, trocar de volta e projetar `free·keep + base·(1−keep)`.
+    ///
+    /// ⚠️ Ela existe como porta porque a sequência é a lei, e a lei tem **dois** depositantes desde a
+    /// forma sólida (plano 38 §1.1): os dabs e a região preenchida. Uma segunda cópia das seis linhas
+    /// seria a segunda resposta a *"como um depósito atravessa a proteção?"*, e as duas divergiriam no
+    /// dia em que uma ganhasse um caso especial — que é exactamente o defeito que o §13.13 pagou.
+    pub(super) fn gate_scoped(
+        &mut self,
+        region: Region,
+        mask_gate: bool,
+        sel_gate: bool,
+        deposit: impl FnOnce(&mut Self),
+    ) {
         self.begin_or_keep_gate_epoch();
         let Some(mut sess) = self.gate.take() else {
             return; // unreachable (just seeded) — but never stamp ungated by accident
@@ -281,7 +298,7 @@ impl PainterTool {
             &mut sess.free,
             &self.undo.write_state,
         );
-        self.stamp_dabs_routed(dabs);
+        deposit(self);
         super::plane_fork::swap_canvas_plane(
             &mut self.canvas_rgba,
             &mut sess.free,

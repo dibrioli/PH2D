@@ -228,6 +228,7 @@ impl PainterTool {
             has_drawn_curve: self.paint.curve.as_ref().is_some_and(|ed| ed.editing),
             space_attenuation: b.space_attenuation,
             accumulate: b.accumulate,
+            style_solid: b.style_solid,
             link_shared: self.paint.link_shared_settings,
             line_show_dimensions: self.paint.line_show_dimensions,
             jitter: b.jitter,

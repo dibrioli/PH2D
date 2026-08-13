@@ -44,6 +44,13 @@ impl PainterTool {
         if matches!(self.paint.paint_mode, PaintMode::WetPaint) {
             self.paint.wetpaint.live_gesture = true;
         }
+        // **Style: Solid** — o gesto passa a ser um CAMINHO acumulado, e o depósito é o polígono dele
+        // (plano 38 §1.1). O caminho é semeado aqui e cresce a cada Move; a lista de dabs continua a
+        // ser produzida pelo motor de traço e simplesmente não é carimbada.
+        self.paint.solid_path.clear();
+        if self.solid_owns_the_gesture() {
+            self.paint.solid_path.push(ev.pos);
+        }
         // **O passo de undo começa AQUI** (doc 28 §5.26): a cadeia é reconciliada e o journal passa a
         // descrever este traço em vez do intervalo desde o último commit.
         self.begin_undo_step();
@@ -213,7 +220,17 @@ impl PainterTool {
             },
             &mut dabs,
         );
+        // ⚠️ **Em Solid o dab não é carimbado**, e não é uma otimização: a tinta do gesto é a REGIÃO
+        // cercada por ele, então carimbar a linha por baixo do preenchimento seria pintar a coisa que
+        // o Style existe para substituir. O motor de traço continua a rodar (o caminho, o
+        // estabilizador, a simetria futura vivem nele).
+        if self.solid_owns_the_gesture() {
+            self.paint.solid_path.push(pos);
+        }
         self.stamp_stroke_dabs(&dabs);
+        if self.solid_owns_the_gesture() {
+            self.stamp_solid_preview();
+        }
         // Watercolor render-path: the dabs are ACCUMULATED here (the path is the data, so this is per
         // event and stays per event) and the optical reconstruction is **left to the frame**, not run
         // here. `paint_tick` pays it once — it already knows a Move arrived, from `moved_this_frame`,

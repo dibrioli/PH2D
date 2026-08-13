@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-fbm"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Dependency-free e value-typed: a LEI de acumulação fractal (fBm/Turbulence/
+# Ridged) e a costura do laço no tempo. Uma folha como a `ph2d-curve` — o
+# nodegraph não depende de volta. Ela existe porque a MESMA lei tinha duas
+# implementações já divergentes (`motion.noise` e `force.curl`), e a família de
+# forças ia ganhar a terceira.
+[dependencies]

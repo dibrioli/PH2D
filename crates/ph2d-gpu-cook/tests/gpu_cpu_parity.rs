@@ -1984,6 +1984,10 @@ fn noise_kernel_matches_the_cpu_within_epsilon() {
         g.set_param(node, "type", ty);
         g.set_param(node, "speed", 0.43);
         g.set_param(node, "seed", 5.0);
+        // ⚠️ NÃO a potência de dois: com `lacunarity = 2` escalar a coordenada é
+        // exato nos dois lados e um WGSL que ignorasse o param passaria (o
+        // default É 2). O valor torto é o que torna o param observável.
+        g.set_param(node, "lacunarity", 2.7);
         eprintln!("  noise type = {label}");
         assert_gpu_parity(&gpu, &reg, &g, out, 2);
     }

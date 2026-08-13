@@ -22,6 +22,7 @@ pub(crate) const NS_PARAMS: &[&str] = &[
     "octaves",
     "roughness",
     "type",
+    "lacunarity",
 ];
 
 /// **X / Y** — adds the delta to one component of `P`. The channel test is
@@ -52,18 +53,17 @@ const NS_LIB: &str = "\
             }\n\
             let sa = ns_fbm(p.x * params.scale,\n\
             \x20   p.y * params.scale + ta * params.speed,\n\
-            \x20   seed, oct, params.roughness, ty);\n\
+            \x20   seed, oct, params.roughness, ty, params.lacunarity);\n\
             var s = sa;\n\
             if (w != 0.0) {\n\
             \x20   let sb = ns_fbm(p.x * params.scale,\n\
             \x20       p.y * params.scale + tb * params.speed,\n\
-            \x20       seed, oct, params.roughness, ty);\n\
+            \x20       seed, oct, params.roughness, ty, params.lacunarity);\n\
             \x20   s = sa + (sb - sa) * w;\n\
             }\n\
             return s * params.amplitude * read_falloff(i);\n\
         }\n\
         const NS_NORM: f32 = 1.0 / 1.5;\n\
-        const NS_LACUNARITY: f32 = 2.0;\n\
         fn ns_round(x: f32) -> f32 {\n\
             // Rust f32::round = half away from zero (WGSL round is half-even).\n\
             return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
@@ -109,7 +109,7 @@ const NS_LIB: &str = "\
             let nx1 = n01 + u * (n11 - n01);\n\
             return (nx0 + v * (nx1 - nx0)) * NS_NORM;\n\
         }\n\
-        fn ns_fbm(x0: f32, y0: f32, seed: i32, octaves: i32, roughness: f32, ty: i32) -> f32 {\n\
+        fn ns_fbm(x0: f32, y0: f32, seed: i32, octaves: i32, roughness: f32, ty: i32, lac: f32) -> f32 {\n\
             let gain = clamp(roughness, 0.0, 1.0);\n\
             var x = x0;\n\
             var y = y0;\n\
@@ -130,8 +130,8 @@ const NS_LIB: &str = "\
                 sum = sum + amp * shaped;\n\
                 total = total + amp;\n\
                 amp = amp * gain;\n\
-                x = x * NS_LACUNARITY;\n\
-                y = y * NS_LACUNARITY;\n\
+                x = x * lac;\n\
+                y = y * lac;\n\
             }\n\
             return sum / total;\n\
         }\n";

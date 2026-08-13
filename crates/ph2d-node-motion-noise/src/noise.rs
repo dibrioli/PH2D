@@ -74,74 +74,35 @@ pub(crate) fn gradient_noise_2d(x: f32, y: f32, seed: i32) -> f32 {
     (nx0 + v * (nx1 - nx0)) * NORM
 }
 
-/// The fractal-sum flavour, decoded from the `type` enum param.
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub(crate) enum NoiseType {
-    /// `Σ aᵢ·noise` — signed, bipolar `[-1,1]`. The default drifting field.
-    Fbm,
-    /// `Σ aᵢ·|noise|` — rectified, unipolar `[0,1]`. Sharp billows/creases
-    /// (Perlin's original "turbulence": smoke, marble).
-    Turbulence,
-    /// `Σ aᵢ·(1−|noise|)²` — inverted turbulence, unipolar `[0,1]`. Sharp ridges
-    /// (mountains, veins).
-    Ridged,
-}
-
-impl NoiseType {
-    pub(crate) fn from_index(i: f32) -> Self {
-        match i.round() as i32 {
-            1 => NoiseType::Turbulence,
-            2 => NoiseType::Ridged,
-            _ => NoiseType::Fbm,
-        }
-    }
-}
-
-/// **Lacunarity** — the per-octave frequency multiplier. Fixed at the universal
-/// default 2.0 (each octave halves the feature size); exposing it is a rarely-
-/// touched advanced knob every tool defaults to 2, so it stays internal.
-const LACUNARITY: f32 = 2.0;
-
-/// fBm (fractional Brownian motion): a sum of `octaves` octaves, each at twice
-/// the frequency ([`LACUNARITY`]) and `roughness`× the amplitude of the last —
-/// the canonical fractal sum (Quilez, "fbm"). `roughness` is the gain/
-/// persistence (0.5 typical). Normalized by the total amplitude so the result
-/// stays bounded regardless of octave count. One octave is the base noise.
+/// ⚠️ **A LEI da soma fractal MUDOU-SE para a folha [`ph2d_fbm`]** — ela tinha
+/// DUAS implementações neste repo (esta e a do `force.curl`) e elas já
+/// divergiam; a família de forças ia ganhar a terceira ao herdar o cluster de
+/// params. O que fica aqui é o **ruído de base**, que é de GRADIENTE de
+/// propósito e não se compartilha (ver o topo do módulo).
 ///
-/// `ty` picks the per-octave rectification: signed fBm ([-1,1]), turbulence, or
-/// ridged (both [0,1]). Applying it PER OCTAVE (not to the final sum) is what
-/// gives turbulence its creases and ridged its sharp veins.
-pub(crate) fn fbm_2d(
-    mut x: f32,
-    mut y: f32,
-    seed: i32,
-    octaves: u32,
-    roughness: f32,
-    ty: NoiseType,
-) -> f32 {
-    let gain = roughness.clamp(0.0, 1.0);
-    let mut amp = 1.0;
-    let mut sum = 0.0;
-    let mut total = 0.0;
-    for o in 0..octaves.max(1) {
-        // A per-octave seed offset so octaves are independent, not scaled copies
-        // of one field (which would beat visibly).
-        let n = gradient_noise_2d(x, y, seed.wrapping_add(o as i32 * 1013));
-        let shaped = match ty {
-            NoiseType::Fbm => n,
-            NoiseType::Turbulence => n.abs(),
-            NoiseType::Ridged => {
-                let r = 1.0 - n.abs();
-                r * r
-            }
-        };
-        sum += amp * shaped;
-        total += amp;
-        amp *= gain;
-        x *= LACUNARITY;
-        y *= LACUNARITY;
-    }
-    sum / total
+/// ⚠️ E o `LACUNARITY` que morava aqui era uma **cerca**: *"expô-lo é um knob
+/// avançado raramente tocado que toda ferramenta defaulta em 2, então fica
+/// interno"*. A premissa é verdade e a conclusão não segue — Cavalry
+/// (`Octaves, Lacunarity, Gain`), VFXG (`Octaves · Roughness · Lacunarity`) e
+/// Houdini **expõem** e defaultam em 2. É um param (doc 89 folha 02), e o
+/// default preserva o mundo de antes AO BIT.
+pub(crate) use ph2d_fbm::NoiseType;
+
+/// Uma oitava do ruído de base deste nó, com o seed deslocado pelo índice dela.
+///
+/// ⚠️ **O deslocamento por oitava é DESTE nó, não da lei** — sem ele as oitavas
+/// são cópias escaladas de um campo só e batem visivelmente; com ele, dentro da
+/// lei, o `force.curl` (que não o faz) mudaria de aparência. Por isso a folha
+/// entrega o índice e não tem opinião.
+pub(crate) fn octave(x: f32, y: f32, o: u32, seed: i32) -> f32 {
+    gradient_noise_2d(x, y, seed.wrapping_add(o as i32 * 1013))
+}
+
+/// **A composição deste nó**: a lei da folha sobre o ruído de gradiente dele.
+/// Uma porta, dois chamadores — o `eval` e os gates —, senão o que os gates
+/// medem deixa de ser o que o produto faz.
+pub(crate) fn fbm(x: f32, y: f32, seed: i32, spec: ph2d_fbm::Spec) -> f32 {
+    ph2d_fbm::eval(spec, x, y, |px, py, o| octave(px, py, o, seed))
 }
 
 #[cfg(test)]
@@ -171,10 +132,30 @@ mod tests {
         for k in 0..4000 {
             let x = k as f32 * 0.0731;
             let y = (k as f32 * 0.1373).sin_like();
-            let n = fbm_2d(x, y, 7, 4, 0.5, NoiseType::Fbm);
+            let n = fbm(
+                x,
+                y,
+                7,
+                ph2d_fbm::Spec {
+                    octaves: 4,
+                    roughness: 0.5,
+                    ty: NoiseType::Fbm,
+                    ..ph2d_fbm::Spec::default()
+                },
+            );
             assert!((-1.0..=1.0).contains(&n), "fbm {n} out of range at {k}");
             assert_eq!(
-                fbm_2d(x, y, 7, 4, 0.5, NoiseType::Fbm),
+                fbm(
+                    x,
+                    y,
+                    7,
+                    ph2d_fbm::Spec {
+                        octaves: 4,
+                        roughness: 0.5,
+                        ty: NoiseType::Fbm,
+                        ..ph2d_fbm::Spec::default()
+                    }
+                ),
                 n,
                 "fbm must be pure"
             );
@@ -193,7 +174,17 @@ mod tests {
         for k in 0..50 {
             let (x, y) = (k as f32 * 0.31, k as f32 * 0.17);
             assert_eq!(
-                fbm_2d(x, y, 3, 1, 0.5, NoiseType::Fbm),
+                fbm(
+                    x,
+                    y,
+                    3,
+                    ph2d_fbm::Spec {
+                        octaves: 1,
+                        roughness: 0.5,
+                        ty: NoiseType::Fbm,
+                        ..ph2d_fbm::Spec::default()
+                    }
+                ),
                 gradient_noise_2d(x, y, 3)
             );
         }
@@ -207,8 +198,28 @@ mod tests {
         let (mut turb_min, mut ridge_max) = (f32::MAX, 0.0_f32);
         for k in 0..3000 {
             let (x, y) = (k as f32 * 0.083, (k as f32 * 0.151).sin_like());
-            let t = fbm_2d(x, y, 5, 4, 0.5, NoiseType::Turbulence);
-            let r = fbm_2d(x, y, 5, 4, 0.5, NoiseType::Ridged);
+            let t = fbm(
+                x,
+                y,
+                5,
+                ph2d_fbm::Spec {
+                    octaves: 4,
+                    roughness: 0.5,
+                    ty: NoiseType::Turbulence,
+                    ..ph2d_fbm::Spec::default()
+                },
+            );
+            let r = fbm(
+                x,
+                y,
+                5,
+                ph2d_fbm::Spec {
+                    octaves: 4,
+                    roughness: 0.5,
+                    ty: NoiseType::Ridged,
+                    ..ph2d_fbm::Spec::default()
+                },
+            );
             assert!((0.0..=1.0).contains(&t), "turbulence {t} not in [0,1]");
             assert!((0.0..=1.0).contains(&r), "ridged {r} not in [0,1]");
             turb_min = turb_min.min(t);
@@ -229,7 +240,17 @@ mod tests {
         for k in 0..50 {
             let (x, y) = (k as f32 * 0.29, k as f32 * 0.41);
             assert_eq!(
-                fbm_2d(x, y, 2, 5, 0.0, NoiseType::Fbm),
+                fbm(
+                    x,
+                    y,
+                    2,
+                    ph2d_fbm::Spec {
+                        octaves: 5,
+                        roughness: 0.0,
+                        ty: NoiseType::Fbm,
+                        ..ph2d_fbm::Spec::default()
+                    }
+                ),
                 gradient_noise_2d(x, y, 2),
                 "roughness 0 = only octave 0 contributes"
             );

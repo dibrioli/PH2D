@@ -33,7 +33,7 @@ mod kernel;
 use kernel::GPU_KERNEL;
 mod noise;
 use channel::{apply_channel_delta, falloff_at};
-use noise::{NoiseType, fbm_2d};
+use noise::{NoiseType, fbm};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
@@ -106,6 +106,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "seed",
             default: 0.0,
         },
+        // ⚠️ **Apendado**, e o default é o valor que era const: `2.0` reproduz o
+        // mundo de antes AO BIT (escalar por potência de dois não arredonda).
+        ParamSpec {
+            name: "lacunarity",
+            default: 2.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -126,7 +132,18 @@ impl NodeOp for MotionNoise {
         let ty = NoiseType::from_index(ctx.param("type"));
         let speed = ctx.param("speed");
         let seed = ctx.param("seed").round() as i32;
-        let (t_a, t_b, w) = loop_times(ctx.playhead() as f32, ctx.param("loop_len"));
+        let spec = ph2d_fbm::Spec {
+            octaves,
+            lacunarity: ctx.param("lacunarity"),
+            roughness,
+            ty,
+        };
+        // ⚠️ A costura do laço no tempo mudou-se para a folha `ph2d_fbm` — ela é a
+        // terceira peça com UM dono e dois consumidores futuros (a família de
+        // forças herda o `loop_period` no doc 89 folha 02). O raciocínio inteiro
+        // (por que o tempo tem de WRAPAR primeiro, e por que o peso é smoothstep
+        // e não linear) viajou com ela.
+        let (t_a, t_b, w) = ph2d_fbm::loop_times(ctx.playhead() as f32, ctx.param("loop_len"));
 
         let out = {
             let input = ctx.input(0);
@@ -138,16 +155,7 @@ impl NodeOp for MotionNoise {
             let deltas: Vec<f32> = (0..n)
                 .map(|i| {
                     let (px, py) = pos[i];
-                    let sample = |tt: f32| {
-                        fbm_2d(
-                            px * scale,
-                            py * scale + tt * speed,
-                            seed,
-                            octaves,
-                            roughness,
-                            ty,
-                        )
-                    };
+                    let sample = |tt: f32| fbm(px * scale, py * scale + tt * speed, seed, spec);
                     // `w == 0` é o caminho de sempre: a segunda amostra nem é avaliada.
                     let s = if w == 0.0 {
                         sample(t_a)
@@ -162,36 +170,6 @@ impl NodeOp for MotionNoise {
         };
         ctx.emit(out);
     }
-}
-
-/// **O tempo que o campo LÊ, fechado num ciclo** (`loop_len` em segundos; `0` = nunca fecha).
-///
-/// Devolve `(t_a, t_b, w)`: o ruído é `lerp(campo(t_a), campo(t_b), w)`. Com o loop desligado
-/// `w = 0` e `t_a = t`, então **o mundo de sempre sai byte-idêntico** e o segundo `fbm` nem é
-/// avaliado.
-///
-/// ⚠️ **O cross-fade ingênuo — misturar `t` com `t − L` — NÃO fecha o ciclo**, e é o erro
-/// natural: comparando `s(t)` com `s(t+L)` os dois lados são `lerp(campo(t+L), campo(t))` contra
-/// `lerp(campo(t), campo(t−L))`, que não são a mesma coisa. O que fecha é o tempo **WRAPAR
-/// primeiro**: o campo é lido em `τ = frac(t/L)·L`, que já é periódico, e a segunda amostra é
-/// `τ − L`. Em `τ = 0` o resultado é `campo(0)`; em `τ → L` o peso vai a 1 e a segunda amostra
-/// vale `campo(0)` de novo — a costura fecha no MESMO número.
-///
-/// ⚠️ **O peso é smoothstep, não linear, e isso não é enfeite:** com peso linear o VALOR fecha
-/// mas a DERIVADA salta na costura, e um salto de derivada num campo de movimento lê como um
-/// tranco a cada volta. Com `w' = 0` nas duas pontas os dois lados da costura têm a mesma
-/// inclinação (`campo'(0)`), então o ciclo é C¹.
-///
-/// Transcendental-free (HR-5): só `floor`, multiplicação e soma — a técnica que usa
-/// `sin`/`cos` para andar num círculo do espaço de ruído está fora por essa razão.
-pub(crate) fn loop_times(t: f32, loop_len: f32) -> (f32, f32, f32) {
-    if loop_len <= 0.0 {
-        return (t, t, 0.0);
-    }
-    let u = t / loop_len;
-    let u = u - u.floor();
-    let tau = u * loop_len;
-    (tau, tau - loop_len, u * u * (3.0 - 2.0 * u))
 }
 
 /// Each element's `P` (absent → origin), the field's sample points.
@@ -257,6 +235,17 @@ static PARAM_GROUPS: &[ParamGroup] = &[
 ];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
+    // ⚠️ A faixa começa em 1: lacunarity < 1 faz as oitavas ficarem mais GRANDES
+    // que a base — o campo perde a leitura fractal e vira um borrão de baixa
+    // frequência. `2` é o universal, e `1,5..3` é onde a mão trabalha.
+    ParamUiHint {
+        param: "lacunarity",
+        label: "Lacunarity",
+        min: 1.0,
+        max: 4.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
     ParamUiHint {
         param: "channel",
         label: "Channel",
@@ -442,7 +431,7 @@ mod tests {
         println!("\n=== tempo LIDO pelo campo, volta a volta (L = 3.0) ===");
         for volta in [0u32, 1, 2, 10, 100, 1000] {
             let t = 0.125 + f32::from(u16::try_from(volta).unwrap()) * l;
-            let (a, _b, w) = loop_times(t, l);
+            let (a, _b, w) = ph2d_fbm::loop_times(t, l);
             let mut g = Graph::new();
             let src = g.add_node("test.grid");
             let noise = g.add_node("motion.noise");

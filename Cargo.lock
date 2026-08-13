@@ -5187,6 +5187,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-fbm"
+version = "0.0.0"
+
+[[package]]
 name = "ph2d-flip"
 version = "0.0.0"
 dependencies = [
@@ -6138,6 +6142,7 @@ dependencies = [
 name = "ph2d-node-motion-noise"
 version = "0.0.0"
 dependencies = [
+ "ph2d-fbm",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]

@@ -10,5 +10,6 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+ph2d-fbm = { path = "../ph2d-fbm" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }

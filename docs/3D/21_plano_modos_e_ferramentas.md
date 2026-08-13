@@ -1135,6 +1135,113 @@ quase coplanares; ele tem a adjacência de que precisa (`Mesh::edges()`) e é
 **decisão de produto**, porque um wireframe que esconde arestas deixa de ser um
 instrumento que lê topologia.
 
+### §7.10 — ✅ W5 (metade A): O AGARRE VIRA UM CAMPO ELÁSTICO (2026-08-13)
+
+O primeiro Kelvinlet ([de Goes & James 2017](https://graphics.pixar.com/library/Kelvinlets/))
+entra pelo **Grab**, e com ele o `L` deixa de ser um chip com um verbo só.
+
+**O que o chip troca, numa frase:** a lei do `S` é `gesto × escalar`, e um
+escalar **não tem para onde apontar** — todo vértice da pegada anda na MESMA
+direção. Um Kelvinlet é a solução fundamental da elasticidade: o termo
+`(r·f)·r` faz o barro à **frente** do puxão acompanhar mais que o barro ao
+**lado** dele. Medido no campo, a um `ε` do centro (onde o barro ainda anda 45 %
+do que o bico anda): **2,72×**.
+
+⚠️ **O `ν` tem TRÊS ATOS, e o do meio é meu.** (1) O argumento físico: barro é
+incompressível ⇒ `ν = 1/2`. (2) A refutação: o ganho do bico do modo de escala
+vale `(5/2)a − 5b`, que é **exatamente zero** em `ν = 1/2` — escrevi `0,4` e uma
+tabela a justificar. (3) **A refutação da refutação, achada MEDINDO**: a
+varredura devolveu a MESMA linha para todo `ν` de `0,00` a `0,49`, porque o campo
+de escala **FATORA** — usando `r² = rε² − ε²` o colchete inteiro colapsa em
+`(1 − 2b)·K(r)·r` e o ganho é `(5/2)(1 − 2b)`, o **mesmo** fator. Depois de
+normalizar ele cancela: *a escala não pergunta de que material o barro é*, e o
+zero era uma **singularidade removível da minha parametrização**. O argumento
+físico do ato 1 volta a valer, e agora paga — os dois eixos que sobram (a
+anisotropia do agarre `1,125× → 1,333×` e a divergência `0,5 → 0,0`) melhoram
+**monotonicamente** até `1/2`.
+
+⚠️ **E o fatorar também expôs que TWIST e ESCALA são o MESMO kernel** aplicado a
+vetores diferentes (`ω × r` e `s·r`) — partilham o `radial()`, e o efeito
+colateral é medido: **18,2 → 4,7 ns** por avaliação, 4× mais barato.
+
+⚠️ **O campo é ILIMITADO e a pegada não é** — a outra decisão da wave. Um
+Kelvinlet cru decai como `1/r` e a um raio de pincel ainda vale **70,7 %** do
+bico: truncá-lo ali é um degrau enorme no anel do cursor. A cura é do próprio
+paper (*multi-scale*), e o número escolheu:
+
+| r/ε | Mono | Bi | Tri |
+|---|---|---|---|
+| 1 | 0,7071 | 0,5198 | 0,4533 |
+| **3** | 0,3162 | 0,0778 | **0,0347** |
+| 4 | 0,2425 | 0,0379 | 0,0119 |
+
+⇒ **`KELVINLET_REACH = 3`** (`ε = raio/3`) com a família **Tri**: 3,5 % na borda.
+O **preço está nomeado** — o campo fica mais APERTADO que a curva do `s-mode`
+(meia-altura em `0,29·raio` contra `0,46`), que é a forma da resposta elástica e
+não um defeito. ⛔ **A outra cura foi pesada e recusada:** manter `ε = raio` e
+crescer a consulta do octree para `3·raio` custa ~9× os vértices por dab e faz o
+anel do cursor deixar de significar *o que eu toco*.
+
+**A ÚNICA parte estrutural é uma COLUNA:** `Grip::law` passou a receber
+`carries_field`, e ele move **exatamente uma** — o `unit_accum` do `Grip::Hold`.
+Um campo **é** o falloff, então quem o recebe carrega o peso no ALVO; deixar o
+aplicador atenuar de novo aplicaria o perfil duas vezes, que é o defeito mais
+caro que este verbo já pagou (`0,12226` contra `0,22500`). ⚠️ E ele move UMA
+coluna e não quatro **por medição**: os outros quatro grips já carimbam
+`unit_accum = true` por razões próprias.
+
+⚠️ **DOIS gates da W4 morderam, e um deles é a profecia dela a cumprir-se:**
+
+- `the_literature_mode_is_offered_exactly_where_it_declares_a_law` pinava a
+  coincidência *declara ⟺ mais de um passe*, e o doc dele dizia: *"o Kelvinlets
+  da W5 é um campo de UM passe — no dia em que ele chegar, este gate cai e obriga
+  quem o traz a vir aqui dizer o que passou a ser o discriminante"*. **Este é o
+  dia**, e a resposta é que **não há discriminante derivável**: o `L` declara por
+  um par de passes (Taubin) **ou** por um campo (Kelvinlets), e a próxima família
+  pode não ser nem uma coisa nem outra;
+- `a_mode_is_offered_only_where_it_is_not_a_duplicate_of_an_earlier_one` disse
+  *"Move / Grab: S e L são o mesmo modo"* — o `l-mode` do Grab não muda lei de
+  kernel, não muda curva e faz um passe, então **sob a assinatura de três eixos
+  ele ERA o `s-mode` letra por letra**. É a lição do próprio doc da `signature`
+  cobrada uma segunda vez: *uma assinatura que não contém um eixo observável é um
+  discriminante falso*, e a defesa é ela crescer no MESMO commit que o eixo (hoje
+  são quatro).
+
+⚠️ **UMA MUTAÇÃO NÃO SANGROU E O BURACO ERA MEU.** Trocar o peso `flat` pelo `w`
+— ou seja, aplicar a curva POR CIMA do campo, o defeito histórico deste verbo —
+passava por **todos** os gates da wave: o bico não se move (a curva vale 1 ali), a
+razão *à frente ÷ ao lado* não se move (os dois probes estão à mesma distância,
+logo levam a mesma curva) e o degrau da borda só ENCOLHE. **Nenhum media o
+PERFIL**, que é o que o defeito deforma. Nasceu daí o
+`the_stroke_delivers_what_the_kernel_promises`, que compara o traço inteiro
+contra o campo, vértice a vértice.
+
+⚠️ **E o gate do degrau era VERDADEIRO e não DISCRIMINAVA:** sobre a esfera
+partilhada (aresta `0,13081`) o degrau é `0,019` com o campo que shipa e `0,108`
+com o campo CRU — os dois passam, porque a malha não consegue desenhar nem o
+defeito. Quem o expôs foi a mutação da família de escalas, que não sangrou em
+lado nenhum; ele passou a medir numa malha subdividida (aresta `0,065`).
+
+⚠️ **E o CONTROLE pegou a minha sonda de anisotropia:** eu exigia que o `s-mode`
+desse `1,00×` e ele deu **`1,19×`** — a esfera é UV, `+x` corre num meridiano e
+`+y` num paralelo, e a anisotropia da MALHA entrava inteira no número. O oráculo
+virou **razão contra razão**, com a malha como fator comum.
+
+**11 gates de campo + 6 de produto. 7 mutações, 7 sangram.** Sem schema, sem
+ADR, sem crate nova, sem dep nova, sem id novo.
+
+⚠️ **PENDENTE DE SMOKE — `PH2D_SCULPT3D_SMOKE=28`.** A cena **não arma o
+pincel** (a cicatriz do `impasto_smoke`): o artista pega o Grab, vê o chip `L`
+nascer ao lado do `S`, e compara o MESMO gesto nos dois. O vértice sob o cursor
+tem de seguir o dedo **igual** nos dois modos; o que muda é a vizinhança. E o
+`L` **não pode** aparecer em mais nenhum verbo de geometria além do Smooth.
+
+**Aberto (a metade B da W5):** os outros cinco verbos da tabela §5 — SnakeHook
+(agarre de âncora móvel) · Twist · LocalScale · Pinch · Magnify —, e o pincel
+**Elastic Deform**, que é o único que pede `Verb` novo. O kernel dos quatro
+modos **já está construído e gateado**; o que falta é a fiação e o gate de
+produto de cada um.
+
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 
 **Os defaults de fábrica do Blender não estão no clone.** Eles vivem em

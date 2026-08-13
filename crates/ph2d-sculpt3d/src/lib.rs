@@ -39,6 +39,9 @@ mod brush;
 /// **A CURVA DO PINCEL** — o falloff, irmão do [`brush`]. Ver [`falloff`].
 mod falloff;
 mod grip;
+/// **O CAMPO ELÁSTICO** — os Kelvinlets regularizados (de Goes & James 2017),
+/// que são o `l-mode` da família que agarra. Ver [`kelvinlet`].
+pub mod kelvinlet;
 pub mod mask_ops;
 mod preview;
 /// **OS KERNELS DA REFERÊNCIA** — o porte 1:1 do SculptGL, `f64` na aritmética
@@ -63,8 +66,9 @@ pub use brush::{
 };
 pub use falloff::Falloff;
 pub use grip::{Amount, Grip, GripLaw};
+pub use kelvinlet::KELVINLET_REACH;
 pub use preview::{NO_PREVIEW, preview_into, preview_verts};
-pub use ref_mode::{FrontFace, KernelLaw, LateralPull, PlaneReach, RefMode, VerbProfile};
+pub use ref_mode::{Field, FrontFace, KernelLaw, LateralPull, PlaneReach, RefMode, VerbProfile};
 pub use spacing::{MIN_SPACING_FRACTION, Walk, min_spacing, walk};
 pub use stroke::{Dab, SculptStroke};
 pub use transform::{Gesture, MIN_SCALE_FACTOR, MaskTransform, TransformKind};

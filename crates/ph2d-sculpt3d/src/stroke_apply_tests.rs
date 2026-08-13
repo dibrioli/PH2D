@@ -33,11 +33,16 @@ use crate::stroke::apply::toward;
 /// **INCOMPLETA** e o gate seguiu VERDE — medindo dez verbos a menos, com o
 /// `assert` de não-vácuo satisfeito pelos dois que sobraram. Uma lista escrita
 /// à mão só sabe reclamar quando fica VAZIA.
+/// ⚠️ **Os dois `false` são o mundo do `s-mode`, e é ele que este arquivo
+/// julga:** sem Accumulate e sem [`crate::Field`]. O `l-mode` do Grab MOVE a
+/// segunda coluna (um campo elástico já traz o peso), e quem o julga é o gate
+/// `the_elastic_grab_lands_its_target_exactly` — ali, e não aqui, para que a
+/// lista acima continue a descrever exatamente uma lei.
 fn unit_accum_verbs() -> Vec<Verb> {
     let list: Vec<Verb> = Verb::ALL
         .iter()
         .copied()
-        .filter(|v| v.grip().law(false).unit_accum)
+        .filter(|v| v.grip().law(false, false).unit_accum)
         .collect();
     assert!(
         !list.is_empty(),
@@ -57,7 +62,7 @@ fn attenuating_verb() -> Verb {
         .iter()
         .copied()
         .find(|v| {
-            let law = v.grip().law(false);
+            let law = v.grip().law(false, false);
             // A máscara atenua e o alvo dela é o PRÓPRIO lugar do vértice, então
             // `toward(b, b, a) == b == alvo` e ela não serve de controle: ela
             // pousa no alvo por coincidência, não por peso.

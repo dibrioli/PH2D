@@ -310,6 +310,8 @@ mod verb_culling;
 /// O Grab, que é a exceção ao envelope — ver o cabeçalho dele.
 #[path = "verb_move_tests.rs"]
 mod verb_move;
+#[path = "verb_move_field_tests.rs"]
+mod verb_move_field;
 
 /// A BORDA, que só uma malha ABERTA revela — ver o cabeçalho dele.
 #[path = "verb_border_tests.rs"]

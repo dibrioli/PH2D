@@ -261,7 +261,29 @@ impl RefMode {
             // ⚠️ **O Sharpen fica FORA de propósito:** o paper descreve um
             // passa-baixa que não encolhe, e não diz nada sobre afiar — dar-lhe
             // o par seria pôr o nome de uma fonte numa lei que ela não declara.
-            Self::L => matches!(verb, Verb::Smooth),
+            Self::L => matches!(verb, Verb::Smooth) || self.field(verb).is_some(),
+        }
+    }
+
+    /// **QUE CAMPO ELÁSTICO este modo entrega a este verbo** — o `l-mode` da
+    /// família que AGARRA ([`crate::kelvinlet`], de Goes & James 2017).
+    ///
+    /// ⚠️ **`None` é o mundo que já shipava, e não um buraco:** só o `L`
+    /// responde, e só nos verbos cuja lei o paper de facto declara.
+    ///
+    /// ⚠️ **Esta pergunta move uma COLUNA da [`crate::GripLaw`]**, e é por isso
+    /// que ela é uma porta e não um `match` no meio do laço do dab: um campo
+    /// **é** o falloff, então quem o recebe carrega o peso no ALVO. Perguntada
+    /// em dois lugares, o dia em que um verbo novo entrasse na família seria o
+    /// dia em que ele aplicaria o perfil duas vezes — o defeito que o
+    /// [`Verb::Move`] já pagou uma vez, medido em `0,12226` contra `0,22500`.
+    #[must_use]
+    pub const fn field(self, verb: Verb) -> Option<Field> {
+        match (self, verb) {
+            // **O AGARRE.** O gesto inteiro é a força no bico, e a vizinhança
+            // responde como um sólido elástico em vez de como uma curva.
+            (Self::L, Verb::Move) => Some(Field::Grab),
+            _ => None,
         }
     }
 
@@ -323,6 +345,21 @@ impl RefMode {
             },
         }
     }
+}
+
+/// **O CAMPO ELÁSTICO que um modo entrega** — qual das leis do
+/// [`crate::kelvinlet`] governa o deslocamento.
+///
+/// ⚠️ **Um `enum` de um variante hoje, e ele é o certo:** as outras três
+/// famílias do paper (twist · scale · pinch) têm verbo esperando por elas no
+/// plano §7 W5, e a alternativa — um `bool` *"usa Kelvinlet"* — não teria onde
+/// dizer QUAL, o que faria o segundo membro nascer com um `match` paralelo ao
+/// lado desta tabela.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Field {
+    /// O agarre (eq. 5): a vizinhança acompanha o bico elasticamente, e **mais
+    /// à frente do puxão do que ao lado dele**.
+    Grab,
 }
 
 /// **O que uma referência DECLARA sobre um verbo.**

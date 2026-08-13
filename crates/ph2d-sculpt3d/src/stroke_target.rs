@@ -19,6 +19,7 @@
 //! parte que difere entre os treze — fica aqui.
 
 use super::*;
+use crate::kelvinlet::Scales;
 
 /// O plano ajustado à pegada de um dab.
 ///
@@ -169,6 +170,10 @@ impl SculptStroke {
         // (`SnakeHook`, `Twist`, `LocalScale` — os que carimbam `accum = 1`); os
         // outros treze compõem o alvo sem peso, e é o `accum` que os atenua.
         w: f32,
+        // O MESMO peso **sem a curva de falloff** — ver o sítio que o constrói.
+        // Lido só pelos verbos que o modo serve com um [`crate::Field`], porque
+        // um campo elástico já traz a geometria da pegada dentro dele.
+        flat: f32,
         v: u32,
         s: usize,
     ) -> [f32; 3] {
@@ -378,7 +383,38 @@ impl SculptStroke {
             // ⚠️ **O gate do miolo não podia ver isto**: em `fall == 1` os dois
             // são o mesmo número, e é o miolo que ele mede. Quem vê é o PERFIL.
             // A máscara continua entrando uma vez, pelo `accum`.
-            Verb::Move => add_vec(base, dab.pull, 1.0),
+            // ⚠️ **E é aqui que o `l-mode` entra**, com a lei de de Goes & James
+            // 2017: o gesto deixa de ser um vetor multiplicado por um escalar e
+            // passa a ser a FORÇA aplicada ao bico de um sólido elástico. O que
+            // muda de visível é que o barro **à frente** do puxão acompanha mais
+            // que o barro **ao lado** dele (medido `1,33×` a um ε do centro) —
+            // uma curva de falloff não tem como exprimir isto, porque ela devolve
+            // um escalar e um escalar não tem para onde apontar.
+            //
+            // ⚠️ **O peso que entra é o `flat`, nunca o `w`:** o campo É o
+            // falloff. Ver [`crate::Field`] e a coluna que ele move na
+            // [`crate::GripLaw`].
+            //
+            // ⚠️ **O `ε` é o raio DIVIDIDO** pelo [`crate::KELVINLET_REACH`]: o
+            // campo tem suporte infinito e a pegada não, e é esse número que diz
+            // onde a segunda acaba em unidades do primeiro.
+            Verb::Move => match brush.mode.field(Verb::Move) {
+                Some(crate::Field::Grab) => {
+                    let f = [dab.pull[0] * flat, dab.pull[1] * flat, dab.pull[2] * flat];
+                    let r = [
+                        base[0] - dab.center[0],
+                        base[1] - dab.center[1],
+                        base[2] - dab.center[2],
+                    ];
+                    let eps = dab.radius / crate::KELVINLET_REACH;
+                    add_vec(
+                        base,
+                        crate::kelvinlet::grab(r, eps, f, Scales::default()),
+                        1.0,
+                    )
+                }
+                None => add_vec(base, dab.pull, 1.0),
+            },
             // **O SNAKE HOOK** — o único alvo desta tabela que **não** parte do
             // `base`: ele parte de onde o vértice ESTÁ e soma o incremento deste
             // dab. É o revezamento ([`Grip::Hook`]), e é por isso que ele

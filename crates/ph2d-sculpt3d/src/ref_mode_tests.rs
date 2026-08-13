@@ -342,9 +342,27 @@ fn the_mode_reaches_the_clay() {
 /// vértice**. O gate teria ficado verde por um discriminante que não é o da
 /// feature.
 ///
-/// O que de fato alcança o barro são três coisas: a [`KernelLaw`], a curva que
-/// traduz o slider em peso, e **quantos passes o dab faz**.
-fn signature(verb: Verb, mode: RefMode) -> (KernelLaw, StrengthCurve, &'static [Pass]) {
+/// O que de fato alcança o barro são QUATRO coisas: a [`KernelLaw`], a curva
+/// que traduz o slider em peso, **quantos passes o dab faz** e **que campo
+/// elástico governa o deslocamento**.
+///
+/// ⚠️ **O quarto eixo entrou na W5, e a entrada dele foi o gate a MORDER:** o
+/// `l-mode` do Grab não muda lei de kernel, não muda curva e faz **um** passe —
+/// sob a assinatura de três eixos ele era, letra por letra, o `s-mode`, e este
+/// arquivo dizia *"Move / Grab: S e L são o mesmo modo"* sobre dois modos que
+/// movem o barro de formas diferentes. É a mesma lição que o doc acima já
+/// carregava, cobrada uma segunda vez: **uma assinatura que não contém um eixo
+/// observável é um discriminante falso**, e a única defesa é ela crescer no
+/// mesmo commit que o eixo.
+fn signature(
+    verb: Verb,
+    mode: RefMode,
+) -> (
+    KernelLaw,
+    StrengthCurve,
+    &'static [Pass],
+    Option<crate::Field>,
+) {
     let brush = Brush {
         verb,
         mode,
@@ -353,7 +371,7 @@ fn signature(verb: Verb, mode: RefMode) -> (KernelLaw, StrengthCurve, &'static [
     let curve = verb
         .profile(mode)
         .map_or(StrengthCurve::Linear, |p| p.strength_curve);
-    (mode.kernel(), curve, brush.passes())
+    (mode.kernel(), curve, brush.passes(), mode.field(verb))
 }
 
 /// **UM CHIP EXISTE SE E SOMENTE SE O MODO EXISTE** — a lei §3 do plano, agora
@@ -397,12 +415,18 @@ fn a_mode_is_offered_only_where_it_is_not_a_duplicate_of_an_earlier_one() {
 ///   como ser escolhido**, que é a feature invisível. Foi exatamente o estado
 ///   em que o `L` viveu três waves.
 ///
-/// ⚠️ **E a coincidência que ele pina é TEMPORÁRIA, de propósito:** hoje
-/// *declarar uma lei* e *fazer mais de um passe* têm a mesma resposta, porque a
-/// única literatura portada é o Taubin. O Kelvinlets da W5 é um campo de
-/// deslocamento de **um** passe — no dia em que ele chegar, este gate cai e
-/// obriga quem o traz a vir aqui dizer o que passou a ser o discriminante, em
-/// vez de deixar o [`RefMode::declares`] ser derivado de um acidente.
+/// ⚠️ **A COINCIDÊNCIA CAIU NA W5, exatamente como o doc antigo previu**, e o
+/// que estava escrito aqui era: *"o Kelvinlets é um campo de UM passe — no dia
+/// em que ele chegar, este gate cai e obriga quem o traz a vir aqui dizer o que
+/// passou a ser o discriminante"*. Este é o dia, e a resposta é que **não há um
+/// discriminante derivável**: o `L` declara uma lei quando faz mais de um passe
+/// (Taubin) **ou** quando entrega um [`crate::Field`] (Kelvinlets), e a próxima
+/// família da literatura pode não ser nem uma coisa nem outra.
+///
+/// ⇒ O que este gate pina hoje é a **BI-IMPLICAÇÃO contra a lista de mecanismos
+/// conhecidos**, e o censo abaixo é o que obriga a decisão a passar por aqui.
+/// Um paper cuja lei não seja nenhum dos dois faz este gate falhar — que é o
+/// comportamento certo: ele não sabe adivinhar o mecanismo do próximo.
 #[test]
 fn the_literature_mode_is_offered_exactly_where_it_declares_a_law() {
     let mut declared = Vec::new();
@@ -413,7 +437,9 @@ fn the_literature_mode_is_offered_exactly_where_it_declares_a_law() {
             mode: RefMode::L,
             ..Brush::default()
         };
-        let has_law = brush.passes().len() > 1;
+        // Os DOIS mecanismos pelos quais uma referência da literatura pode
+        // governar o barro hoje: um par de passes, ou um campo elástico.
+        let has_law = brush.passes().len() > 1 || RefMode::L.field(verb).is_some();
         assert_eq!(
             offered,
             has_law,
@@ -427,7 +453,11 @@ fn the_literature_mode_is_offered_exactly_where_it_declares_a_law() {
     // O CENSO: uma wave que dê conteúdo ao `L` noutro verbo tem de vir aqui
     // dizer o número novo. Um paper que aparece sem passar por esta linha é um
     // chip que nasceu sem ninguém decidir que ele devia nascer.
-    assert_eq!(declared, vec!["Smooth"], "a literatura portada até hoje");
+    assert_eq!(
+        declared,
+        vec!["Smooth", "Move / Grab"],
+        "a literatura portada até hoje"
+    );
 }
 
 /// **O `L` DECLARA UMA LEI PRÓPRIA, e ela não é a de nenhum vizinho.**

@@ -339,6 +339,10 @@ pub(crate) fn directional_alpha_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("21")
 }
 
+/// **A CENA DO AGARRE ELÁSTICO** (`=28`) — irmã da [`masked`] pelo mesmo teto de
+/// LOC e pela mesma linha de corte: cada arquivo é a história de uma wave.
+#[path = "sculpt3d_scenes_elastic.rs"]
+pub(crate) mod elastic;
 /// `=22` — a cena do **EXTRACT**: a máscara vira uma PEÇA.
 ///
 /// ⚠️ **Duas esferas, e a assimetria é o smoke inteiro.** A da DIREITA já vem

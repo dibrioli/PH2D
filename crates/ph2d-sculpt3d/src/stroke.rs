@@ -299,7 +299,10 @@ impl SculptStroke {
             from_live,
             unit_accum,
             additive,
-        } = brush.verb.grip().law(brush.accumulate);
+        } = brush
+            .verb
+            .grip()
+            .law(brush.accumulate, brush.mode.field(brush.verb).is_some());
         // ⚠️ **Quem SEGURA trabalha sobre o que já TOCOU, não sobre a consulta
         // deste dab — e sem isto o Grab PERDE barro.** A consulta sai das
         // posições vivas, então um vértice arrastado para além do raio SAI da
@@ -476,6 +479,20 @@ impl SculptStroke {
                 // original o expoente cai sobre `curva × máscara × alpha` e a
                 // intensidade entra depois, linear nos dois termos.
                 let shape = fall * keep;
+                // **O PESO SEM A GEOMETRIA** — o que sobra do `w` quando a curva
+                // sai dele.
+                //
+                // ⚠️ **Ele existe porque um CAMPO elástico ([`crate::Field`]) É o
+                // falloff**, e multiplicá-lo pela curva aplicaria o perfil duas
+                // vezes. O que a força de um Kelvinlet ainda tem de honrar é o que
+                // NÃO é geometria da pegada: a máscara, o alpha, o front-face e a
+                // intensidade.
+                //
+                // ⚠️ **Escrito VERBATIM, como os outros dois** (mesma lição dos
+                // 30,4 % de triplos que divergem por re-associação): derivá-lo de
+                // `w / curve` seria uma divisão por um número que vale zero na
+                // borda da pegada.
+                let flat = brush.alpha_weight(base, &alpha_frame) * facing * intensity * keep;
                 // `<=` e não `<`: um dab que EMPATA não vence. A diferença não é de
                 // resultado (o alvo recomputado seria o mesmo) — é de TRABALHO: com
                 // `<`, re-carimbar a mesma lista de dabs reescreveria a pegada
@@ -548,6 +565,7 @@ impl SculptStroke {
                     reach,
                     shape * pass.weight,
                     w * pass.weight,
+                    flat * pass.weight,
                     v,
                     s,
                 );

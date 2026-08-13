@@ -185,8 +185,21 @@ impl Grip {
     /// move exatamente uma: o `from_live` do [`Grip::Stamp`]. Passá-lo como
     /// parâmetro é o que mantém a tabela sendo a resposta inteira em vez de
     /// *quase* a resposta, com o chamador colando o resto por fora.
+    ///
+    /// ⚠️ **`carries_field` entra pela MESMA razão, e move exatamente uma
+    /// coluna também** — o `unit_accum` do [`Grip::Hold`]. Um campo elástico
+    /// ([`crate::Field`]) **é** o falloff, não um fator a multiplicar por ele:
+    /// quem o recebe já traz o peso no alvo, e deixar o aplicador atenuar de
+    /// novo aplicaria o perfil duas vezes (o `0,12226` contra `0,22500` que o
+    /// [`crate::Verb::Move`] documenta ter pago).
+    ///
+    /// ⚠️ **Ele move UMA coluna e não quatro, e isso é medição e não desenho:**
+    /// os outros quatro grips já carimbam `unit_accum = true` por razões
+    /// próprias, então um campo entregue a eles não muda linha nenhuma desta
+    /// tabela. O `Hold` é o único que atenua no aplicador — e é por isso que
+    /// era ele que ia aplicar o perfil duas vezes.
     #[must_use]
-    pub fn law(self, accumulate: bool) -> GripLaw {
+    pub fn law(self, accumulate: bool, carries_field: bool) -> GripLaw {
         let (frozen, from_live, unit_accum, additive) = match self {
             // ⚠️ **O CARIMBO COMPÕE** (2026-08-11) — a metade 2 do plano de
             // paridade. Cada dab soma o próprio incremento sobre o que o
@@ -210,7 +223,7 @@ impl Grip {
             // [`crate::ref_kernels::Origin`], que o modela num tipo justamente
             // para ninguém achar que ele multiplica alguma coisa.
             Self::Stamp => (false, accumulate, true, false),
-            Self::Hold => (true, false, false, false),
+            Self::Hold => (true, false, carries_field, false),
             Self::Hook => (false, true, true, false),
             Self::Turn(_) => (true, false, true, false),
             // O canal: ADITIVO e saturante, o `clamp(m + f)` da referência.

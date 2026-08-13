@@ -26,8 +26,11 @@ pub(super) fn tick(hero: &mut HeroScreen, dt: f64) {
 
 /// **A ROLAGEM SUAVE** — a roda mexe um ALVO, e a superfície desliza até lá.
 ///
-/// ⚠️ **É `Role::Travel`**, então o *reduced motion* leva-a — e leva-a bem: uma superfície que
-/// desliza é exactamente a classe de movimento que o interruptor existe para matar.
+/// ⚠️ **É `Role::Surface`, e o `Travel` que aqui shipou primeiro foi reprovado no smoke** (*«o
+/// balanço das labels ficou bem artificial e pouco suave»*): em Expressivo o `Travel` ultrapassa
+/// 15,5%, e uma superfície que passa do sítio para onde a roda a mandou está a contradizer o gesto.
+/// O *reduced motion* continua a levá-la — e leva-a bem: uma superfície que desliza é exactamente a
+/// classe de movimento que o interruptor existe para matar.
 ///
 /// ⚠️ **O tique é o ÚNICO escritor do vivo**, e é por isso que isto não é uma segunda cópia do
 /// mesmo facto: o alvo é *para onde a roda mandou*, o vivo é *onde a superfície está*. Os ~130
@@ -41,7 +44,7 @@ fn tick_panel_scroll(hero: &mut HeroScreen) {
     for (panel, target) in targets {
         let live = hero
             .motion
-            .animate(scroll_track(panel), target, crate::motion::Role::Travel);
+            .animate(scroll_track(panel), target, crate::motion::Role::Surface);
         hero.store.set_panel_scroll_live(panel, live);
     }
 }

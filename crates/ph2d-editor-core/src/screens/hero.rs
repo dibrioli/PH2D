@@ -258,15 +258,9 @@ pub struct HeroScreen {
 }
 
 impl HeroScreen {
-    /// **Anda o relógio da UI viva e re-alveja a partir do estado semântico.**
-    ///
-    /// Uma chamada por quadro, com o `dt` de **PAREDE** — nunca uma contagem de quadros.
-    ///
-    /// ⚠️ **A ordem é load-bearing:** avançar PRIMEIRO (o tempo que passou desde o último quadro
-    /// aplica-se ao alvo que estava em vigor) e só então ler os alvos novos do store, que os
-    /// eventos de ponteiro deste quadro acabaram de mexer. Ao contrário, o primeiro quadro de um
-    /// **O tique da UI VIVA** — uma chamada por quadro, com o `dt` de PAREDE. O corpo mora no
-    /// irmão [`live`]; este método é a porta que o shell conhece.
+    /// **O tique da UI VIVA** — uma chamada por quadro, com o `dt` de **PAREDE** (nunca uma
+    /// contagem de quadros). Esta é a porta que o shell conhece; o corpo — e a ordem, que é
+    /// load-bearing — mora no irmão [`live::tick`].
     pub fn tick_motion(&mut self, dt: f64) {
         live::tick(self, dt);
     }

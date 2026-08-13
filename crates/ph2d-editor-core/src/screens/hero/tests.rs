@@ -1990,6 +1990,43 @@ fn the_menu_can_reach_expressive_with_reduced_motion_on() {
     );
 }
 
+/// ⭐ **O CORPO DE UM PAINEL DESLIZA SEM PASSAR DO ALVO — e este gate lê o TIQUE, não a lei.**
+///
+/// ⚠️ **Os gates do `motion.rs` provam que o `Role::Surface` não ultrapassa; este prova que a
+/// rolagem PEDE esse papel.** A distinção não é cerimónia — a versão que o Enio reprovou tinha a
+/// lei toda certa e o tique a pedir `Role::Travel`, e nenhum gate de lei podia vê-lo.
+///
+/// Corre em **Expressivo**, que é o carácter em que a diferença existe (e o que o
+/// `~/.ph2d/prefs.txt` dele diz). *Mutação: `Role::Surface` → `Role::Travel` no `live.rs` ⇒ a
+/// superfície passa ~15% e sangra.*
+#[test]
+fn the_panel_body_glides_without_passing_the_target() {
+    crate::test_support::ensure_panel_registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.motion
+        .set_character(crate::motion::UiCharacter::Expressive);
+    const TARGET: f32 = 200.0;
+    let panel = NodeId(4242);
+    hero.store.set_panel_scroll(panel, 0.0);
+    hero.tick_motion(1.0 / 60.0);
+    hero.store.set_panel_scroll(panel, TARGET);
+    let mut peak = 0.0_f32;
+    for _ in 0..120 {
+        hero.tick_motion(1.0 / 60.0);
+        peak = peak.max(hero.store.panel_scroll(panel));
+    }
+    assert!(
+        peak <= TARGET + 0.01,
+        "a superfície passou {:.2} px do sítio para onde a roda a mandou",
+        peak - TARGET
+    );
+    assert!(
+        (hero.store.panel_scroll(panel) - TARGET).abs() < 1.0,
+        "e chegou lá: {}",
+        hero.store.panel_scroll(panel)
+    );
+}
+
 // ---------------------------------------------------------------------------
 // A CORDA do card de Fill (`crate::tether`).
 //

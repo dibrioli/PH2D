@@ -98,6 +98,26 @@ impl UiCharacter {
 pub enum Role {
     /// Posição, tamanho, percurso. É o que o *reduced motion* mata.
     Travel,
+    /// Uma **SUPERFÍCIE cujo lugar o dedo COMANDA** — o corpo de um painel debaixo da roda.
+    ///
+    /// Viaja (o *reduced motion* mata-a, como o [`Role::Travel`]) e **nunca ultrapassa, nos DOIS
+    /// carácteres**.
+    ///
+    /// ⚠️ **Isto não é o chamador a re-implementar o carácter; é o `Role` a dizer o que a coisa É.**
+    /// Uma roda nomeia um **destino**, e passar dele e voltar não lê como peso — lê como a régua a
+    /// mentir: no meio do curso as linhas *balançam*, e no fim do curso a superfície mostra
+    /// exactamente o que o clamp de cada painel existe para proibir (conteúdo para além do fim, e um
+    /// vão que fecha sozinho). Um percurso com peso é uma coisa que **chega**; uma que o dedo
+    /// comanda é uma coisa que **obedece**.
+    ///
+    /// ⚠️ **E os papéis JÁ diferiam em como respondem ao carácter** — o [`Role::Number`] é
+    /// instantâneo nos três regimes e a [`Role::Decoration`] é *ausente* em Discreto. Este é o
+    /// terceiro membro dessa família, não uma excepção nova.
+    ///
+    /// ⚠️ **Nasceu de um smoke, e o report é o nome dele:** *«o balanço das labels ficou bem
+    /// artificial e pouco suave»* (Enio, 2026-08-13) — a rolagem tinha shipado em `Travel`, e o
+    /// `~/.ph2d/prefs.txt` diz `motion_character=expressive`, onde `Travel` ultrapassa **15,5%**.
+    Surface,
     /// Opacidade, cor. ⚠️ **Sobrevive ao reduced motion**: o gatilho vestibular é a área grande a
     /// deslocar-se, não a tinta a mudar.
     Fade,
@@ -350,8 +370,13 @@ impl UiMotion {
     pub fn law(&self, role: Role) -> Option<Spring> {
         match role {
             Role::Number => None,
-            Role::Travel if self.reduced => None,
+            Role::Travel | Role::Surface if self.reduced => None,
             Role::Decoration if self.reduced || self.character == UiCharacter::Discrete => None,
+            // ⚠️ **Criticamente amortecida nos DOIS carácteres** — ver [`Role::Surface`]. E reusa a
+            // `DISCRETE` em vez de cunhar rigidez própria: o joelho dela (t95 = 0,133 s) é o que uma
+            // rolagem quer, e uma constante nova seria um segundo número a afinar sem ninguém saber
+            // contra o quê. Se o smoke pedir outra, ela nasce AQUI, nomeada.
+            Role::Surface => Some(DISCRETE),
             Role::Travel | Role::Fade | Role::Decoration => Some(match self.character {
                 UiCharacter::Discrete => DISCRETE,
                 UiCharacter::Expressive => EXPRESSIVE,
@@ -492,6 +517,13 @@ impl UiMotion {
 #[cfg(test)]
 #[path = "motion_tests.rs"]
 mod motion_tests;
+
+// ⚠️ Irmão e não continuação: o `motion_tests` prova o que o substrato **É**, este prova o que a
+// SUPERFÍCIE lhe pede. O corte nasceu no tecto de 700 LOC e a linha escolheu-se sozinha — a
+// rolagem é o único consumidor cujo lugar o utilizador nomeia, e é isso que lhe dá lei própria.
+#[cfg(test)]
+#[path = "motion_surface_tests.rs"]
+mod motion_surface_tests;
 
 /// **A PORTA ÚNICA da mistura de cor de token.** Um `t` fora de `[0,1]` é clampado aqui, e não em
 /// cada chamador — a segunda cópia de um clamp é a que alguém esquece.

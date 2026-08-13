@@ -117,7 +117,8 @@ pub fn paint_tool_rail_t(
                 sub,
                 ..
             } => {
-                let chip_rect = Rect::new(chip_x, y, chip_px, chip_px);
+                let rest_rect = Rect::new(chip_x, y, chip_px, chip_px);
+                let chip_rect = rest_rect;
                 // Halved 2026-05-24 (Lg → Sm, 12 → 6 px) per user
                 // feedback that rail buttons looked too bubbly.
                 let radius = Radius::Sm.px();
@@ -151,13 +152,24 @@ pub fn paint_tool_rail_t(
                 };
                 let fg = blend_or(t, ColorToken::Text2, ColorToken::Text1, fg, theme);
                 paint_icon(scene, *icon, chip_rect, fg, StrokeToken::Default.px());
+                // ⚠️ **O rótulo é medido contra o chip em REPOUSO, não contra o crescido.** O 6º
+                // argumento é o `max_width` do LAYOUT (ver `paint_text::paint_text_rotated_ccw`),
+                // então passar o rect do hover fazia a largura de QUEBRA do texto mudar quando o
+                // rato pousava — um rótulo que roça o limite re-fluiria no hover, e no Expressivo
+                // re-fluiria duas vezes (o percurso ultrapassa e volta). É a lei que o `hover_lift`
+                // já carrega para o hit: *o desenho cresce, o que o vizinho MEDE não*.
+                //
+                // ⚠️ A POSIÇÃO não muda com isto — `chip_center_y` é invariante sob o `hover_lift`
+                // (sobe `d` e cresce `2d`, logo o centro fica). O que muda é só a largura de layout.
+                // **NÃO foi medido se algum rótulo de hoje chega a re-fluir** (são palavras curtas
+                // contra 36-44 px): entra por ser a mesma lei, não por um sintoma reportado.
                 paint_sub_label_vertical(
                     text_system,
                     scene,
                     sub,
                     sub_font,
                     rect.x,
-                    chip_rect,
+                    rest_rect,
                     // M14.5 r4: Text2 keeps the label legible on the
                     // canvas-floating chrome without competing with the
                     // chip's primary content (Text3 was invisible on

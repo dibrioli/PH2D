@@ -199,7 +199,7 @@ descartável por construção; um corpo do mundo nunca é.*
 | F4 | **secções e painéis** abrem/fecham com movimento e **direcção coerente** | 1 | F1 | **M** |
 | ~~F5~~ ✅ | **cascata** — **FEITA na PALETA** (`ε = 0,020 s`, MEDIDO; ver a §6.3). ⚠️ E ela é o **primeiro consumidor de `Role::Travel` do produto** — até aqui o eixo que o *reduced motion* existe para matar não era usado por ninguém. Hierarquia e rows do inspector ficam para quando a F2 abrir a porta | 1 | F0 | **P** |
 | ⭐ **E1** | **SCRUB numérico** em todo campo de número (o maior ganho de eficiência do estudo) | 3 | — | **M** |
-| ~~E2~~ ✅ | **rolagem SUAVE** nas listas — **FEITA**, e a forma é o que a fez caber: `panel_scroll` passa a devolver o **VIVO** e ganha o irmão `panel_scroll_target`, então os **~130 leitores** e os **36 escritores** herdaram sem uma linha. ⚠️ A roda acumula no ALVO — no vivo, cinco voltas de 100 px somam **230,56** em vez de 500. O **pan de canvas** fica de fora (outro gesto, outro dono) | 3 | F0 | **P** |
+| ~~E2~~ ✅ | **rolagem SUAVE** nas listas — **FEITA**, e a forma é o que a fez caber: `panel_scroll` passa a devolver o **VIVO** e ganha o irmão `panel_scroll_target`, então os **~130 leitores** e os **36 escritores** herdaram sem uma linha. ⚠️ A roda acumula no ALVO — no vivo, cinco voltas de 100 px somam **230,56** em vez de 500. O **pan de canvas** fica de fora (outro gesto, outro dono). ⚠️ **Reprovada no 1º smoke e curada pelo `Role::Surface`** — §6.4 | 3 | F0 | **P** |
 | ~~E3~~ ✅ | **paleta de comandos GLOBAL** (o widget já existe) — **FEITA** (`Ctrl+K`, **62 comandos**: 10 do rail + 19 painéis + **33 rows de menu**). ⚠️ Ela é uma **projecção** das listas que o app já mantém, nunca uma tabela. ⚠️ **E a 1ª conclusão desta linha era LARGA DEMAIS** — ela mediu que o **PILL** não é servível (abre um menu ancorado a um rectângulo, e uma paleta não tem rectângulo) e escreveu *"a barra de topo fica de fora"*; a **ROW de dentro dele** é tipo 1, e entrou na wave seguinte (ver a §6.1 abaixo) | 3 | — | **M** |
 | E4 | **menu radial** sob a caneta / botão do meio | 3 | — | **M** |
 | C1 | **TETHER** (§5) + as três irmãs da família | 2 | F0 | **M** |
@@ -329,6 +329,61 @@ que media um «assentamento» de 0,017 s e comparava contra nada.
 **A lei que fica:** *o desenho anda, o alvo não.* O cartão desenha-se 12 px abaixo durante a
 entrada e o `hit_index` regista na posição **assente** — a mesma lei do `hover_lift`, que aqui
 morde mais forte.
+
+---
+
+### 6.4 — A E2 foi REPROVADA no smoke, e a causa estava num ficheiro de PREFERÊNCIAS
+
+*«o balanço das labels ficou bem artificial e pouco suave»* (Enio, 2026-08-13).
+
+**A causa saiu de um comando, antes de qualquer hipótese:**
+
+```
+~/.ph2d/prefs.txt →  motion_character=expressive
+```
+
+Ele corre em **Expressivo** (`ζ = 0,50`), e eu tinha shipado a rolagem em `Role::Travel` — o papel
+que naquele carácter **ultrapassa 15,5% e volta**. As labels de um painel a deslizar são a maior
+área de texto que este app move, então o balanço é exactamente ali que se lê.
+
+Medido pela sonda `probe_the_scroll_glide`, numa volta de roda de 200 px:
+
+| carácter | role | ultrapassa | assenta |
+|---|---|---|---|
+| discreto | `Travel` | 0,00 px | 0,217 s |
+| **expressivo** | **`Travel`** | **31,08 px** | **0,500 s** |
+| expressivo | **`Surface`** | **0,00 px** | **0,217 s** |
+
+⚠️ **As duas metades do report são dois números diferentes, e uma troca de `Role` responde às
+duas:** os 31,08 px são o *«artificial»*; os 0,500 s contra 0,217 são o *«pouco suave»*.
+
+**A cura é um `Role` novo, não um knob** — `Role::Surface`, *a superfície cujo lugar o dedo
+COMANDA*: viaja (o *reduced motion* leva-a, como o `Travel`) e **nunca ultrapassa, nos dois
+carácteres**.
+
+⚠️ **E isto não é o chamador a re-implementar o carácter.** Uma roda nomeia um **destino**; passar
+dele e voltar não lê como peso — lê como a régua a mentir, e no fim do curso mostra o que o clamp
+de cada painel existe para proibir (conteúdo além do fim, e um vão que fecha sozinho). Um percurso
+com peso é uma coisa que **chega**; uma que o dedo comanda é uma coisa que **obedece**.
+
+⚠️ **Os papéis JÁ diferiam em como respondem ao carácter** — `Number` é instantâneo nos três
+regimes, `Decoration` é *ausente* em Discreto. Este é o terceiro membro dessa família.
+
+⚠️ **E a ultrapassagem FICA onde ela é o produto:** o cartão da paleta continua a passar do sítio e
+a voltar, e foi assim que ela foi aprovada — há um gate de **CONTROLE** a afirmá-lo, sem o qual
+*«a superfície não ultrapassa»* seria satisfeito por castrar o Expressivo inteiro.
+
+**Dois gates, e a mutação prova que não são redundantes:** o da LEI (o `Role` não ultrapassa) e o
+da FIAÇÃO (o tique da rolagem PEDE esse papel, dirigindo o `tick_motion` a sério). Mutar só o
+`live.rs` — que é literalmente o defeito que o Enio viu — **deixa os três gates de lei VERDES** e
+sangra apenas o da fiação.
+
+**Achado de carona, no mesmo assunto e não reportado:** o rótulo vertical do rail era medido contra
+o chip **crescido pelo hover**, e o 6.º argumento daquele pintor é o `max_width` do *layout* — a
+largura de QUEBRA do texto mudava quando o rato pousava (e no Expressivo mudaria duas vezes).
+Corrigido para o rect em repouso. ⚠️ **A posição nunca esteve errada** (o centro é invariante sob o
+`hover_lift`), e **não foi medido se algum rótulo de hoje chega a re-fluir** — entra por ser a mesma
+lei, não por um sintoma.
 
 ---
 

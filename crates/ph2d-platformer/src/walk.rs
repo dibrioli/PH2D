@@ -38,6 +38,25 @@
 
 use crate::{GroundSample, Motor, Vec2, perp_cw};
 
+/// **PARA ONDE ELE OLHA** — a direção que o eixo de caminhada deixou.
+///
+/// ⚠️ **Um eixo neutro NÃO apaga a direção:** parar de andar não é virar-se para
+/// lugar nenhum. É por isso que a lei é *"o último sinal não-nulo"* e não
+/// `drive.signum()`, que devolveria zero — e zero não é uma direção.
+///
+/// ⚠️ **Mora aqui porque o fato é do EIXO DE CAMINHADA**, e não do arranque, que
+/// apenas o lê. Ver [`crate::PlayerState::facing`].
+#[must_use]
+pub fn facing_step(prev: f32, drive: f32) -> f32 {
+    if drive > 0.0 {
+        1.0
+    } else if drive < 0.0 {
+        -1.0
+    } else {
+        prev
+    }
+}
+
 /// Como o personagem ANDA.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct WalkConfig {

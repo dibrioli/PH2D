@@ -74,6 +74,38 @@ impl<'a> Footing<'a> {
             _ => None,
         }
     }
+
+    /// **A POSTURA, sem a amostra** — a mesma resposta, publicável
+    /// (`W-PlayerOut`).
+    ///
+    /// ⚠️ **Ela existe porque o readout do player não pode emprestar nada:** o
+    /// [`Footing`] carrega uma referência à amostra do tique, e um estado que se
+    /// publica sobrevive ao tique que o produziu.
+    ///
+    /// ⚠️ **E são TRÊS, não um `bool`** — quem publicasse *"estou no chão?"*
+    /// re-colapsaria exactamente o que a W9 separou: *no ar* e *encostado numa
+    /// rampa íngreme demais* pedem coisas OPOSTAS da caminhada, e um consumidor
+    /// de animação que não os distingue toca a queda em quem está a escorregar.
+    #[must_use]
+    pub fn kind(self) -> FootingKind {
+        match self {
+            Footing::Airborne => FootingKind::Airborne,
+            Footing::Steep(_) => FootingKind::Steep,
+            Footing::Ground(_) => FootingKind::Ground,
+        }
+    }
+}
+
+/// A [`Footing`] sem a amostra — ver [`Footing::kind`].
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum FootingKind {
+    /// Nada ao alcance da perna.
+    #[default]
+    Airborne,
+    /// Há superfície, e ela é íngreme demais para se ficar em pé.
+    Steep,
+    /// Chão.
+    Ground,
 }
 
 /// A classificação, feita **UMA vez** — [`footing`] e [`Footing::steep`] são

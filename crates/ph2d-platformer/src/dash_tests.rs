@@ -27,13 +27,17 @@ fn armed() -> DashConfig {
 }
 
 /// Um tique com o botão do arranque SEGURADO.
-fn hold(cfg: &DashConfig, s: DashState, grounded: bool, drive: f32) -> DashStep {
-    dash_step(cfg, s, grounded, drive, true, false, DT)
+///
+/// ⚠️ **O `facing` é do CHAMADOR** desde o `W-PlayerOut` — a direção deixou de
+/// ser campo do arranque; ele apenas a lê. Os gates que a exercitam passam a
+/// compô-la com a [`facing_step`], que é a lei que a produz.
+fn hold(cfg: &DashConfig, s: DashState, grounded: bool, facing: f32) -> DashStep {
+    dash_step(cfg, s, grounded, facing, true, false, DT)
 }
 
 /// Um tique com o botão SOLTO.
-fn idle(cfg: &DashConfig, s: DashState, grounded: bool, drive: f32) -> DashStep {
-    dash_step(cfg, s, grounded, drive, false, false, DT)
+fn idle(cfg: &DashConfig, s: DashState, grounded: bool, facing: f32) -> DashStep {
+    dash_step(cfg, s, grounded, facing, false, false, DT)
 }
 
 /// **O arranque dura o que foi autorado, e nem um tique a mais.**
@@ -181,15 +185,17 @@ fn the_cooldown_spaces_two_ground_dashes() {
 #[test]
 fn a_neutral_press_dashes_where_he_faces() {
     let cfg = armed();
-    // Anda para a esquerda, para, arranca.
-    let mut s = idle(&cfg, DashState::default(), true, -1.0).state;
-    assert!((s.facing - -1.0).abs() < 1e-6);
-    s = idle(&cfg, s, true, 0.0).state;
+    // Anda para a esquerda, para, arranca — com o `facing` a vir da lei que o
+    // produz, exactamente como a porta única faz.
+    let mut facing = crate::facing_step(1.0, -1.0);
+    assert!((facing - -1.0).abs() < 1e-6);
+    let s = idle(&cfg, DashState::default(), true, facing).state;
+    facing = crate::facing_step(facing, 0.0);
     assert!(
-        (s.facing - -1.0).abs() < 1e-6,
+        (facing - -1.0).abs() < 1e-6,
         "parar de andar nao e' virar-se para lugar nenhum"
     );
-    let step = hold(&cfg, s, true, 0.0);
+    let step = hold(&cfg, s, true, facing);
     assert!(step.active);
     assert!(
         (step.state.dir - -1.0).abs() < 1e-6,
@@ -203,9 +209,11 @@ fn the_direction_is_frozen_for_the_whole_dash() {
     let cfg = armed();
     let mut s = hold(&cfg, DashState::default(), true, 1.0).state;
     assert!((s.dir - 1.0).abs() < 1e-6);
+    let mut facing = 1.0;
     for _ in 0..5 {
         // O jogador vira o eixo para o outro lado no meio do gesto.
-        let step = hold(&cfg, s, false, -1.0);
+        facing = crate::facing_step(facing, -1.0);
+        let step = hold(&cfg, s, false, facing);
         assert!(step.active);
         s = step.state;
         assert!(
@@ -214,7 +222,7 @@ fn the_direction_is_frozen_for_the_whole_dash() {
         );
     }
     assert!(
-        (s.facing - -1.0).abs() < 1e-6,
+        (facing - -1.0).abs() < 1e-6,
         "mas o lado para onde ele OLHA acompanha o eixo"
     );
 }

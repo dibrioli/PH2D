@@ -215,7 +215,6 @@ fn a_dash_wins_over_the_stroke() {
         dash: DashState {
             left: 0.1,
             dir: 1.0,
-            facing: 1.0,
             ..DashState::default()
         },
         ..PlayerState::default()

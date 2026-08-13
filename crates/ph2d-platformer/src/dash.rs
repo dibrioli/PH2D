@@ -115,14 +115,6 @@ pub struct DashState {
     /// ⚠️ É ele que impede voar; o [`DashConfig::cooldown`] não faria isso
     /// sozinho (ver o aviso do módulo).
     pub charged: bool,
-    /// **Para que lado o personagem olha** — a última direção não-nula.
-    ///
-    /// ⚠️ **Mora aqui porque o arranque é o único consumidor HOJE**, e é a
-    /// resposta honesta a um botão apertado com o eixo neutro: sem ele, arrancar
-    /// parado seria uma recusa em silêncio, que é a forma de um botão parecer
-    /// quebrado. Quando um segundo consumidor aparecer (uma animação, um tiro),
-    /// ele sobe para o [`crate::PlayerState`] — e a mudança é mecânica.
-    pub facing: f32,
     /// O botão estava segurado no tick anterior — a BORDA sai daqui.
     ///
     /// A mesma razão do [`crate::JumpState::was_held`]: sem ela, segurar a tecla
@@ -141,7 +133,6 @@ impl Default for DashState {
             dir: 1.0,
             cool: 0.0,
             charged: true,
-            facing: 1.0,
             was_held: false,
         }
     }
@@ -159,7 +150,15 @@ pub struct DashStep {
 /// **ARRANCAR.** Ver a lei no topo do módulo.
 ///
 /// - `grounded`: o pé está no chão — é ele que RECARREGA.
-/// - `drive`: o eixo de caminhada, de onde sai a direção que o personagem olha.
+/// - `facing`: para onde o personagem OLHA, resolvido pela lei antes de aqui
+///   chegar. ⚠️ Ele **era um campo do [`DashState`]** e mudou de casa
+///   (`W-PlayerOut`): quem o escreve é a caminhada, quem o publica é o readout,
+///   e o arranque apenas o **lê** para escolher a direção — um nome que dizia o
+///   contrário era conveniência de armazenamento, exactamente o que o doc do
+///   [`crate::PlayerState`] recusa para o arranque dentro do `JumpState`.
+///   ⚠️ **E com ele o eixo de caminhada (`drive`) DEIXOU de entrar**: ele só
+///   existia aqui para derivar a direção, e a direção passou a chegar pronta —
+///   um parâmetro que nenhum ramo lê é a segunda porta à espera de quem a use.
 /// - `held`: o botão de arranque está pressionado AGORA (o estado, não a borda —
 ///   ela é derivada aqui, como no pulo).
 /// - `cancelled`: alguma coisa mais forte aconteceu neste tique e o arranque
@@ -169,7 +168,7 @@ pub fn dash_step(
     cfg: &DashConfig,
     state: DashState,
     grounded: bool,
-    drive: f32,
+    facing: f32,
     held: bool,
     cancelled: bool,
     dt: f32,
@@ -180,15 +179,6 @@ pub fn dash_step(
         was_held: held,
         ..state
     };
-
-    // ── PARA ONDE ELE OLHA ───────────────────────────────────────────────────
-    // ⚠️ Um eixo neutro **não** apaga a direção: parar de andar não é virar-se
-    // para lugar nenhum, e é isso que dá resposta a um arranque com o eixo solto.
-    if drive > 0.0 {
-        next.facing = 1.0;
-    } else if drive < 0.0 {
-        next.facing = -1.0;
-    }
 
     // ── A RECARGA ────────────────────────────────────────────────────────────
     // O pé no chão devolve o arranque — não um relógio (ver o aviso do módulo).
@@ -231,7 +221,7 @@ pub fn dash_step(
     if cfg.armed() && pressed && !cancelled && next.charged && next.cool <= 0.0 {
         next.left = (cfg.time - dt).max(0.0);
         next.charged = false;
-        next.dir = next.facing;
+        next.dir = facing;
         return DashStep {
             state: next,
             active: true,

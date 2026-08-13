@@ -74,8 +74,19 @@ impl PlayerConfig {
 /// e devolve, e continua a ser só isso. Empurrar o arranque para dentro dele
 /// daria a `jump_step` um campo que ela nunca toca — um nome que mente por
 /// conveniência de armazenamento.
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PlayerState {
+    /// **PARA ONDE ELE OLHA** (`W-PlayerOut`) — `+1` direita, `−1` esquerda.
+    ///
+    /// ⚠️ **Ele morava dentro do [`DashState`] e mudou de casa**, pelo argumento
+    /// que este mesmo doc já faz contra guardar o arranque dentro do
+    /// [`JumpState`]: quem o ESCREVE é a caminhada, quem o LÊ é o arranque (para
+    /// escolher a direção) e quem o PUBLICA é o readout — um campo do arranque
+    /// era um nome que mentia por conveniência de armazenamento.
+    ///
+    /// ⚠️ **Um eixo neutro NÃO o apaga:** parar de andar não é virar-se para
+    /// lugar nenhum, e é isso que dá resposta a um arranque com o eixo solto.
+    pub facing: f32,
     /// O pulo, o corte, os dois relógios do perdão e a memória do chão.
     pub jump: JumpState,
     /// O arranque (W14) — o relógio, a carga, a direção e o lado que ele olha.
@@ -107,6 +118,80 @@ pub struct PlayerState {
     pub kin: kinematic::KinematicState,
 }
 
+impl Default for PlayerState {
+    /// ⚠️ **O personagem nasce olhando para a DIREITA** (`facing = 1`), e `0`
+    /// não é uma direção — era o default manual do [`DashState`], que veio junto
+    /// com o campo.
+    fn default() -> Self {
+        Self {
+            facing: 1.0,
+            jump: JumpState::default(),
+            dash: DashState::default(),
+            crouch: CrouchState::default(),
+            grab: GrabState::default(),
+            swim: SwimState::default(),
+            ledge: LedgeState::default(),
+            kin: kinematic::KinematicState::default(),
+        }
+    }
+}
+
+/// **O que o personagem ESTÁ A FAZER** — o readout publicado (`W-PlayerOut`).
+///
+/// # ⚠️ Por que ele existe, e por que não é o [`PlayerState`]
+///
+/// O estado é o que a lei precisa para o PRÓXIMO tique (relógios, travas,
+/// cargas); este é o que o RESTO DO APP precisa para desenhar, tocar e animar.
+/// Publicar o estado cru obrigaria cada consumidor a re-derivar *"isto significa
+/// que ele está agarrado?"* — e cada um o faria à sua maneira.
+///
+/// # ⚠️ FATOS, nunca um `enum` de regime único
+///
+/// Agachado **e** no chão são simultâneos; arrancar no ar também. Um enum teria
+/// de escolher uma prioridade, e essa escolha é do JOGO — é literalmente para
+/// isso que o `bevy_tnua` publica *animation helpers* em vez de um estado. Um
+/// enum aqui seria uma segunda resposta ao lado dos bits, e a primeira a
+/// divergir.
+///
+/// # ⚠️ Os dois vetores são FATOS; a diferença é interpretação
+///
+/// [`Self::velocity`] é a do corpo e [`Self::ground_velocity`] a da plataforma.
+/// A **relativa** — que é a que casa com um ciclo de caminhada — é a subtração,
+/// e publicá-la seria a mesma coisa dita duas vezes.
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+pub struct PlayerView {
+    /// A postura: no ar · encostado numa rampa íngreme demais · no chão.
+    pub footing: crate::FootingKind,
+    /// Agarrado a uma parede, e de que LADO ela está (`+1` à direita).
+    pub wall: Option<f32>,
+    /// Segurando a parede de vez (o botão de agarrar, `W23`).
+    pub gripping: bool,
+    /// Agachado.
+    pub crouching: bool,
+    /// Nadando.
+    pub swimming: bool,
+    /// Pendurado numa beirada ou a subi-la.
+    pub ledging: bool,
+    /// Em arranque.
+    pub dashing: bool,
+    /// A planar (o teto de descida está a agir).
+    pub gliding: bool,
+    /// Para onde ele olha — ver [`PlayerState::facing`].
+    pub facing: f32,
+    /// A velocidade do CORPO, em mundo.
+    pub velocity: Vec2,
+    /// A velocidade do CHÃO no ponto de contato (`[0, 0]` sem chão).
+    pub ground_velocity: Vec2,
+    /// A normal do chão que a lei ACEITOU.
+    pub ground_normal: Option<Vec2>,
+    /// Quantos pulos do ar ainda restam.
+    pub air_jumps_left: u32,
+    /// O arranque está carregado.
+    pub dash_charged: bool,
+    /// Quantos segundos de reserva de parede sobram.
+    pub grab_left: f32,
+}
+
 /// **O que a porta única decidiu neste tick** — as três respostas.
 ///
 /// ⚠️ Uma struct e não uma tupla porque a lista **cresce**: a W7 traz a fita e a
@@ -119,6 +204,16 @@ pub struct PlayerStep {
     pub motor: Motor,
     /// O estado a guardar para o próximo tick — ver [`PlayerState`].
     pub state: PlayerState,
+    /// **O que o personagem está a fazer**, para quem desenha e toca som — ver
+    /// [`PlayerView`].
+    ///
+    /// ⚠️ **Ele sai da LEI e não é remontado pela ponte**, e a razão não é
+    /// economia: metade destes campos são vereditos que só existem aqui dentro
+    /// (*a perna agiu?*, *a parede foi aceite?*), e re-derivá-los lá fora seria
+    /// uma segunda resposta que diverge no primeiro tique em que uma delas ganhe
+    /// um caso. É também o que torna os EVENTOS baratos: a ponte compara duas
+    /// vistas consecutivas em vez de reconstruir o mundo.
+    pub view: PlayerView,
     /// **O que devolver ao chão** — `None` quando não há chão em que empurrar.
     pub reaction: Option<Reaction>,
     /// **Um DESLOCAMENTO em metros** (W10) — a correção de quina, e a única

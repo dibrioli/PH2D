@@ -20,6 +20,163 @@
 
 use super::*;
 
+/// Arrasta a esfera por `pull`, entregue em `steps` eventos de ponteiro.
+///
+/// ⚠️ **A rampa é sobre o puxão TOTAL** (`pull · k/steps`), não um passo por
+/// evento: o Grab é `Grip::Hold`, e a mão que ele modela é uma posição ABSOLUTA
+/// do dedo, nunca um incremento.
+fn dragged(mode: crate::RefMode, pull: [f32; 3], steps: usize) -> ph2d_mesh::Mesh {
+    let mut mesh = sphere();
+    let b = Brush {
+        verb: Verb::Move,
+        mode,
+        radius: 0.5,
+        strength: 1.0,
+        ..Brush::default()
+    };
+    let mut s = SculptStroke::default();
+    s.begin(&mesh);
+    for k in 1..=steps {
+        let t = k as f32 / steps as f32;
+        let p = [pull[0] * t, pull[1] * t, pull[2] * t];
+        s.dab(
+            &mut mesh,
+            &b,
+            &Dab::pulling([0.0, 0.0, 1.0], b.radius, [0.0, 0.0, -1.0], p),
+            Symmetry::default(),
+        );
+    }
+    mesh
+}
+
+/// O índice do vértice de repouso mais próximo de `p`.
+fn nearest(rest: &ph2d_mesh::Mesh, p: [f32; 3]) -> usize {
+    (0..rest.vert_count())
+        .min_by(|&x, &y| {
+            let d = |k: usize| {
+                let q = rest.positions()[k];
+                (q[0] - p[0]).powi(2) + (q[1] - p[1]).powi(2) + (q[2] - p[2]).powi(2)
+            };
+            d(x).total_cmp(&d(y))
+        })
+        .expect("a esfera tem vértices")
+}
+
+/// **O PESO É UM FATO SOBRE O `pre` CONGELADO — o mesmo puxão entregue em 1 e em
+/// 12 eventos tem de dar a MESMA malha.**
+///
+/// ⚠️ **Isto não é uma tolerância, é uma IDENTIDADE**, e vale a pena saber por
+/// quê: o Grab é [`crate::Grip::Hold`], que recomputa `accum = w` do zero a cada
+/// dab (`unit_accum = false` sem campo) e escreve o alvo a partir das posições
+/// CONGELADAS no pen-down. Logo o dab final — o único que importa — escreve
+/// `base + f(pull)` nos dois casos, bit a bit. Qualquer termo de `w` que leia
+/// estado VIVO quebra isto, porque o estado vivo é justamente a deformação que
+/// os dabs anteriores produziram: realimentação.
+///
+/// ⚠️ **Era exatamente o que o `b-mode` fazia**, e o número é o mecanismo: com
+/// a normal VIVA no `FrontFace::Continuous` a divergência mede **0,013280 ·
+/// 0,535897 · 0,867680** nos puxões 0,2 / 0,6 / 0,9 — no maior, quase o
+/// tamanho do próprio gesto. Com a normal do `pre`, **0,000000** nos três.
+///
+/// ⚠️ **O `s-mode` é o CONTROLE e não é redundante:** ele não tem termo de
+/// facing nenhum, então já era invariante — se ele estivesse vermelho o defeito
+/// seria de outra coisa (do aplicador, do `Hold`, da fixture), e a leitura deste
+/// gate mudaria de dono.
+#[test]
+fn the_weight_is_a_fact_about_the_frozen_surface() {
+    let rest = sphere();
+    for pull in [0.2f32, 0.6, 0.9] {
+        let p = [pull, 0.0, 0.0];
+        let mut worst = [0.0f32; 3];
+        for (i, mode) in [crate::RefMode::S, crate::RefMode::B, crate::RefMode::L]
+            .into_iter()
+            .enumerate()
+        {
+            let one = dragged(mode, p, 1);
+            let many = dragged(mode, p, 12);
+            worst[i] = (0..rest.vert_count())
+                .map(|v| {
+                    let (a, b) = (one.positions()[v], many.positions()[v]);
+                    (0..3).map(|k| (a[k] - b[k]).abs()).fold(0.0f32, f32::max)
+                })
+                .fold(0.0f32, f32::max);
+        }
+        // ⚠️ **O anti-vácuo:** um gesto que não move barro é invariante por
+        // acidente, e os três `worst` sairiam zero sem nada ser provado.
+        let moved = {
+            let m = dragged(crate::RefMode::B, p, 12);
+            let t = nearest(&rest, [0.0, 0.0, 1.0]);
+            let (a, b) = (rest.positions()[t], m.positions()[t]);
+            ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt()
+        };
+        assert!(moved > pull * 0.5, "a fixture não contém o gesto ({moved})");
+        for (i, name) in ["s", "b", "l"].iter().enumerate() {
+            assert!(
+                worst[i] < 1e-5,
+                "puxão {pull}: o {name}-mode divergiu {} entre 1 e 12 eventos — \
+                 algum termo do peso está a ler estado VIVO",
+                worst[i]
+            );
+        }
+    }
+}
+
+/// **O BARRO AGARRADO NUNCA LARGA O DEDO — em NENHUM evento do arrasto.**
+///
+/// ⚠️ **Afirmação distinta da do gate acima, e o par é deliberado:** aquele
+/// julga a LEI (o resultado não pode depender de quantos eventos o rato mandou);
+/// este julga o que o ARTISTA VÊ *durante* o gesto. O defeito reportado — *"os
+/// modos B e L do grab estão bizarros"* — era visível como o barro a escorregar
+/// de volta no meio do arrasto, e uma lei correta medida só no FIM não teria
+/// nada a dizer sobre isso.
+///
+/// ⚠️ **O bico é onde o `b-mode` se auto-destruía:** ali a normal congelada é
+/// `+Z`, o olho é `−Z`, e `max(−(n·eye), 0)` vale exatamente **1** — o peso
+/// cheio. Com a normal VIVA, o próprio deslocamento gira a superfície para fora
+/// do olho e o fator desaba: medido, **0,9956 → 0,1418** do puxão no 9º de 12
+/// eventos, com salto de volta no último. Hoje, `1,0000` em todos.
+#[test]
+fn the_grabbed_clay_never_lets_go_of_the_finger() {
+    let rest = sphere();
+    let tip = nearest(&rest, [0.0, 0.0, 1.0]);
+    let pull = [0.6f32, 0.0, 0.0];
+    const STEPS: usize = 12;
+
+    for mode in [crate::RefMode::S, crate::RefMode::B, crate::RefMode::L] {
+        let mut mesh = sphere();
+        let b = Brush {
+            verb: Verb::Move,
+            mode,
+            radius: 0.5,
+            strength: 1.0,
+            ..Brush::default()
+        };
+        let mut s = SculptStroke::default();
+        s.begin(&mesh);
+        let mut worst = f32::MAX;
+        for k in 1..=STEPS {
+            let t = k as f32 / STEPS as f32;
+            let want = [pull[0] * t, pull[1] * t, pull[2] * t];
+            s.dab(
+                &mut mesh,
+                &b,
+                &Dab::pulling([0.0, 0.0, 1.0], b.radius, [0.0, 0.0, -1.0], want),
+                Symmetry::default(),
+            );
+            let (a, q) = (rest.positions()[tip], mesh.positions()[tip]);
+            let got =
+                ((q[0] - a[0]).powi(2) + (q[1] - a[1]).powi(2) + (q[2] - a[2]).powi(2)).sqrt();
+            let asked = (want[0] * want[0] + want[1] * want[1] + want[2] * want[2]).sqrt();
+            worst = worst.min(got / asked);
+        }
+        assert!(
+            worst > 0.98,
+            "{mode:?}: no pior evento do arrasto o bico entregou {worst:.4} do \
+             que o dedo pediu — o barro escorregou sob a mão"
+        );
+    }
+}
+
 /// **EM `S`, O FLATTEN É O SCRAPE — ao vértice.**
 ///
 /// Não é uma aproximação nem um piso escolhido: o `Flatten.js:11` nasce com

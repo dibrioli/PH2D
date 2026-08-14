@@ -128,4 +128,28 @@ impl Brush {
         };
         radius * REACH_FRACTION * s
     }
+
+    /// **O RAIO QUE A CONSULTA DA PEGADA USA** — a quinta porta, e a única que
+    /// pode devolver MAIS que o raio do pincel.
+    ///
+    /// ⚠️ **Ela existe porque um campo elástico decide o próprio suporte, e o
+    /// inverso não é verdade.** Um verbo de carimbo é uma curva que já vale zero
+    /// em `t = 1`, então a pegada e a influência são o mesmo círculo. Um
+    /// Kelvinlet não acaba em lado nenhum: o raio do pincel é o `ε` dele — a
+    /// ESCALA da resposta —, e quem decide onde cortar é o resíduo que ainda
+    /// sobra (ver [`crate::KELVINLET_REACH`]).
+    ///
+    /// ⚠️ **A leitura do anel do cursor MUDA, e é o preço nomeado:** com um
+    /// campo, ele deixa de significar *o que eu toco* e passa a significar *a
+    /// escala do que eu deformo* — a mesma leitura do Elastic Deform do Blender,
+    /// cujo pincel deforma bem além do círculo desenhado. Um artista que quer o
+    /// círculo literal tem o `s-mode` ao lado, no mesmo verbo.
+    #[must_use]
+    pub fn query_radius(&self, radius: f32) -> f32 {
+        if self.mode.field(self.verb).is_some() {
+            radius * crate::KELVINLET_REACH
+        } else {
+            radius
+        }
+    }
 }

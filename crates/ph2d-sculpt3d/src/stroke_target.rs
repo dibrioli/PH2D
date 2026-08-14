@@ -169,11 +169,12 @@ impl SculptStroke {
         // até um ulp**. Leem-no os TRÊS verbos cujo alvo já é a posição final
         // (`SnakeHook`, `Twist`, `LocalScale` — os que carimbam `accum = 1`); os
         // outros treze compõem o alvo sem peso, e é o `accum` que os atenua.
+        //
+        // ⚠️ **E os verbos servidos por um [`crate::Field`] o leem também**,
+        // porque com um campo a curva vira a INDICADORA do suporte: `w` já é *o
+        // peso sem geometria*, ao bit. O parâmetro `flat` que existia para eles
+        // morreu com essa troca — ver o sítio que constrói o `w`.
         w: f32,
-        // O MESMO peso **sem a curva de falloff** — ver o sítio que o constrói.
-        // Lido só pelos verbos que o modo serve com um [`crate::Field`], porque
-        // um campo elástico já traz a geometria da pegada dentro dele.
-        flat: f32,
         v: u32,
         s: usize,
     ) -> [f32; 3] {
@@ -391,22 +392,24 @@ impl SculptStroke {
             // uma curva de falloff não tem como exprimir isto, porque ela devolve
             // um escalar e um escalar não tem para onde apontar.
             //
-            // ⚠️ **O peso que entra é o `flat`, nunca o `w`:** o campo É o
-            // falloff. Ver [`crate::Field`] e a coluna que ele move na
-            // [`crate::GripLaw`].
-            //
-            // ⚠️ **O `ε` é o raio DIVIDIDO** pelo [`crate::KELVINLET_REACH`]: o
-            // campo tem suporte infinito e a pegada não, e é esse número que diz
-            // onde a segunda acaba em unidades do primeiro.
+            // ⚠️ **O `ε` É O RAIO DO PINCEL**, e até 2026-08-13 ele era o raio
+            // DIVIDIDO pelo [`crate::KELVINLET_REACH`] — a inversão que fez o
+            // report *"o l-mode do grab está bizarro"*. Espremendo o campo dentro
+            // da pegada, a largura característica dele virava um terço do
+            // círculo do cursor e o agarre saía uma AGULHA: medido no arrasto do
+            // produto, o barro a meio raio acompanhava `0,03` do puxão contra os
+            // `0,55` do `s-mode`, e o modo inteiro movia **um terço** do barro.
+            // Hoje o raio do pincel é o `ε` — a ESCALA da resposta elástica — e é
+            // a PEGADA que cresce para conter o campo ([`Brush::query_radius`]).
             Verb::Move => match brush.mode.field(Verb::Move) {
                 Some(crate::Field::Grab) => {
-                    let f = [dab.pull[0] * flat, dab.pull[1] * flat, dab.pull[2] * flat];
+                    let f = [dab.pull[0] * w, dab.pull[1] * w, dab.pull[2] * w];
                     let r = [
                         base[0] - dab.center[0],
                         base[1] - dab.center[1],
                         base[2] - dab.center[2],
                     ];
-                    let eps = dab.radius / crate::KELVINLET_REACH;
+                    let eps = dab.radius;
                     add_vec(
                         base,
                         crate::kelvinlet::grab(r, eps, f, Scales::default()),

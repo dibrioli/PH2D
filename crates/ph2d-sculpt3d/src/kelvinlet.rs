@@ -124,35 +124,66 @@ impl Scales {
 /// dele passa a decair como `1/r⁵` **sem precisar de escalas nenhumas**.
 pub const POISSON: f32 = 0.5;
 
-/// **Quantos `ε` de campo cabem dentro da pegada do pincel** — a ponte entre um
-/// campo de suporte INFINITO e um cursor que tem raio.
+/// **QUANTOS `ε` DE CAMPO A PEGADA TEM DE CONTER** — a ponte entre um campo de
+/// suporte INFINITO e um octree que precisa de um raio para consultar.
 ///
-/// O motor consulta o octree pelo raio do dab e corta ali; o Kelvinlet não
-/// acaba em lado nenhum. Este é o número que decide **onde** ele é cortado, em
-/// unidades do próprio `ε` — logo `ε = raio / KELVINLET_REACH`.
+/// `ε` **é o raio do pincel**, e a pegada é `KELVINLET_REACH · raio`
+/// ([`crate::Brush::query_radius`]). Este é o número que decide **onde o campo é
+/// cortado**, em unidades da escala dele.
 ///
-/// ⚠️ **MEDIDO** (`the_rim_residual_is_what_chose_the_scale_family`, e a sonda
-/// `measure_kelvinlet::rim_residual` traz a tabela inteira): o que ainda sobra
-/// do deslocamento do bico quando a pegada corta, no pior caso (à FRENTE do
-/// puxão) —
+/// ⚠️ **A PRIMEIRA versão desta constante estava do avesso, e foi um report do
+/// Enio que a derrubou** (*"os modos B e L do grab estão bizarros"*). Ela dizia
+/// `ε = raio / REACH` — a pegada mandando no campo — com o racional de que o
+/// resíduo na borda do cursor tinha de ser pequeno. O resíduo ficava pequeno e o
+/// preço era o produto: espremido a um terço do círculo, o agarre elástico saía
+/// uma **AGULHA**. Medido pela porta do artista, ao lado do `s-mode` no mesmo
+/// gesto (`measure_grab_modes`) —
 ///
-/// | r/ε | Mono | Bi | Tri |
+/// | r/raio | `s-mode` | `l-mode`, `ε = raio/3` |
+/// |---|---|---|
+/// | 0,25 | 0,9742 | 0,5165 |
+/// | 0,50 | 0,5473 | **0,0296** |
+/// | 0,75 | 0,2117 | 0,0372 |
+///
+/// — e o modo inteiro movia **um terço** do barro do irmão (soma `3,060` contra
+/// `8,712`). A meia-altura em `0,29·raio` estava escrita como *"a forma da
+/// resposta elástica e não um defeito"*: era um defeito, e a nota que o
+/// declarava aceitável é o que o manteve vivo.
+///
+/// ⚠️ **E o cerco tinha uma SEGUNDA metade, mais feia:** as escalas múltiplas
+/// matam o campo distante por SUBTRAÇÃO, e subtração ultrapassa — a `Tri` cruza
+/// zero AO LADO do puxão em `r/ε ≈ 1,5`. Com `ε = raio/3` isso caía dentro do
+/// círculo, então **metade da pegada empurrava o barro para trás** (um anel
+/// medido em `−3,8 %` do bico). Com `ε = raio` o cruzamento vai para
+/// `1,5 · raio`, fora do que o artista lê como o pincel.
+///
+/// ⚠️ **A cura é a alternativa que este mesmo doc havia recusado — por
+/// ESTIMATIVA, que é o que o §0 do `CLAUDE.md` proíbe.** Ela dizia *"custa ~9×
+/// os vértices por dab"*, e ~9× não era um número medido. Medido
+/// (`measure_grab_modes::what_a_three_times_wider_query_costs`, malha de 95 234
+/// vértices, contra o K1 de 8 ms do ADR-0150) —
+///
+/// | raio do pincel | vértices na pegada | ms/dab | % do K1 |
 /// |---|---|---|---|
-/// | 1 | 0,7071 | 0,5198 | 0,4533 |
-/// | 2 | 0,4472 | 0,1873 | 0,1198 |
-/// | **3** | 0,3162 | 0,0778 | **0,0347** |
-/// | 4 | 0,2425 | 0,0379 | 0,0119 |
+/// | 0,1 | 161 | 0,013 | 0,2 % |
+/// | 0,3 | 1 429 | 0,100 | 1,2 % |
+/// | 0,5 | 4 035 | 0,547 | 6,8 % |
+/// | 0,9 | 14 267 | 1,382 | 17,3 % |
+/// | 1,5 (a malha INTEIRA) | 57 405 | 5,000 | 62,5 % |
 ///
-/// ⚠️ **`ε = raio` é INDEFENSÁVEL e é o que uma leitura ingênua faria:** 45 % do
-/// puxão sobreviveria até à borda do cursor e viraria um degrau ali. Com `3` o
-/// degrau é **3,5 %**, e o preço está nomeado — o campo fica mais APERTADO que a
-/// curva do `s-mode` (meia-altura em `0,29·raio` contra `0,46`), que é a forma
-/// da resposta elástica e não um defeito.
+/// ⇒ um pincel de detalhe com a pegada TRIPLICADA custa **1,2 % do K1**, e o
+/// caso patológico — o modelo todo dentro da pegada — cabe com folga. *O teto
+/// era do meu palpite, não do hardware.*
 ///
-/// ⚠️ **A outra cura foi pesada e recusada:** manter `ε = raio` e CRESCER a
-/// consulta do octree para `3·raio` custa ~9× os vértices por dab (a pegada é
-/// uma área) e faz o anel do cursor deixar de significar *o que eu toco* —
-/// duas coisas caras para comprar 3,5 %.
+/// ⚠️ **O resíduo na borda da pegada continua sendo o que escolhe a FAMÍLIA**
+/// (`the_rim_residual_is_what_chose_the_scale_family`; a `Tri` deixa `0,0347`
+/// à frente e `−0,025` ao lado em `r/ε = 3`) — o que mudou é que esse corte
+/// deixou de morar no círculo do cursor.
+///
+/// ⚠️ **O preço que FICA, nomeado:** o anel do cursor deixa de significar *o que
+/// eu toco*. É a leitura do Elastic Deform do Blender, cujo pincel deforma bem
+/// além do círculo desenhado, e quem quer o círculo literal tem o `s-mode` ao
+/// lado no mesmo verbo.
 pub const KELVINLET_REACH: f32 = 3.0;
 
 /// `b/a` em função do coeficiente de Poisson.

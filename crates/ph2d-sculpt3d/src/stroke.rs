@@ -44,7 +44,7 @@ use crate::grip::{Amount, Grip};
 #[path = "dab.rs"]
 mod dab;
 pub use dab::Dab;
-use ph2d_mesh::{DEFAULT_MASK, Mesh, QueryScratch, RegionScratch};
+use ph2d_mesh::{Mesh, QueryScratch, RegionScratch};
 
 /// Um ponto ou vetor refletido pelo trio de sinais de uma cópia da simetria.
 fn mirror(v: [f32; 3], s: &[f32; 3]) -> [f32; 3] {
@@ -120,34 +120,6 @@ impl SculptStroke {
         self.base_mask.clear();
         self.accum.clear();
         self.target.clear();
-    }
-
-    /// **DIAGNÓSTICO: que plano este dab ajustaria?** Devolve `(ponto, normal)`.
-    ///
-    /// ⚠️ **Ele existe para uma sonda não escrever a SEGUNDA resposta.** O
-    /// atlas de divergência precisa comparar o nosso plano com o
-    /// `area_center`/`area_normal` da referência, e a alternativa — re-derivar
-    /// o ajuste do lado da sonda — é exatamente a forma que este módulo
-    /// documenta como a que apodrece: duas leituras da mesma pergunta, e a
-    /// medição passa a falar sobre a cópia. Aqui a rota é a MESMA
-    /// (`verts_in_sphere` → `capture` → `fit_plane`), então o que a sonda mede
-    /// é o que o dab usaria.
-    ///
-    /// ⚠️ **Ele CAPTURA** (é `&mut self`): sem a captura o `fit_plane` leria
-    /// `base_pos` de vértices que este traço nunca viu.
-    pub fn probe_plane(
-        &mut self,
-        mesh: &mut Mesh,
-        brush: &Brush,
-        dab: &Dab,
-    ) -> ([f32; 3], [f32; 3]) {
-        mesh.verts_in_sphere(dab.center, dab.radius, &mut self.query, &mut self.footprint);
-        for i in 0..self.footprint.len() {
-            let v = self.footprint[i];
-            self.capture(mesh, v);
-        }
-        let fit = self.fit_plane(mesh, brush, dab);
-        (fit.point, fit.normal)
     }
 
     /// Aplica um dab, **com a simetria expandida aqui e em lugar nenhum mais**.
@@ -256,7 +228,13 @@ impl SculptStroke {
         }
         // A pegada sai das posições VIVAS: o pincel age onde a superfície está
         // agora, não onde ela estava no pen-down. É só o ALVO que vem do `pre`.
-        mesh.verts_in_sphere(dab.center, dab.radius, &mut self.query, &mut self.footprint);
+        //
+        // ⚠️ **O RAIO da consulta não é o raio do pincel quando há CAMPO**, e a
+        // porta é o [`Brush::query_radius`]: um Kelvinlet decide o próprio
+        // suporte, e espremê-lo dentro do círculo do cursor é o que fazia o
+        // `l-mode` do Grab desenhar uma agulha (ver [`crate::KELVINLET_REACH`]).
+        let query_r = brush.query_radius(dab.radius);
+        mesh.verts_in_sphere(dab.center, query_r, &mut self.query, &mut self.footprint);
         if self.footprint.is_empty() {
             return 0;
         }
@@ -273,6 +251,12 @@ impl SculptStroke {
         let alpha_frame = brush.alpha_frame();
         let reach = brush.reach(dab.radius);
         let inv_r = 1.0 / dab.radius;
+        // ⚠️ **UMA vez por dab**, e as três perguntas que ele responde no laço
+        // (que curva usar · onde a pegada acaba · que alvo computar) têm de sair
+        // da MESMA resposta: um campo que valesse para o alvo e não para a curva
+        // aplicaria o perfil duas vezes, que é o defeito que o [`Verb::Move`]
+        // documenta ter pago.
+        let field = brush.mode.field(brush.verb);
         // ⚠️ `weight()`, nunca `strength` cru: o slider e o PESO deixaram
         // de ser a mesma coisa quando o `B` entrou (o E13).
         let intensity = brush.weight() * dab.pressure.clamp(0.0, 1.0);
@@ -299,10 +283,7 @@ impl SculptStroke {
             from_live,
             unit_accum,
             additive,
-        } = brush
-            .verb
-            .grip()
-            .law(brush.accumulate, brush.mode.field(brush.verb).is_some());
+        } = brush.verb.grip().law(brush.accumulate, field.is_some());
         // ⚠️ **Quem SEGURA trabalha sobre o que já TOCOU, não sobre a consulta
         // deste dab — e sem isto o Grab PERDE barro.** A consulta sai das
         // posições vivas, então um vértice arrastado para além do raio SAI da
@@ -442,11 +423,25 @@ impl SculptStroke {
                 // `BKE_brush_calc_curve_factors`), e é o que faz as duas curvas
                 // abaixo lerem a MESMA distância. Com `hardness = 0`, o default,
                 // ela devolve o argumento sem tocar num bit.
-                let t = brush.shaped_distance(dist * inv_r);
-                let curve = if brush.verb.paints_mask() {
-                    brush.mask_weight(t)
+                //
+                // ⚠️ **COM CAMPO a curva é a INDICADORA do suporte, e é isso que
+                // *"o campo É o falloff"* quer dizer em código.** O perfil inteiro
+                // — quanto cada vértice anda e para que lado — é do
+                // [`crate::kelvinlet`]; o que sobra para a curva é a única coisa
+                // que ela ainda decide, que é ONDE o campo é avaliado e onde ele
+                // simplesmente não é. Multiplicar as duas aplicaria o perfil duas
+                // vezes; deixar a curva fora do `w` largaria a **separação das
+                // cópias da simetria**, que é feita pelo `w > 0` medido contra
+                // ESTE centro.
+                let curve = if field.is_some() {
+                    if dist <= query_r { 1.0 } else { 0.0 }
                 } else {
-                    brush.falloff.weight(t)
+                    let t = brush.shaped_distance(dist * inv_r);
+                    if brush.verb.paints_mask() {
+                        brush.mask_weight(t)
+                    } else {
+                        brush.falloff.weight(t)
+                    }
                 };
                 // ⚠️ **O FRONT-FACE entra no FATOR, e é aqui que ele pertence** —
                 // o `sculpt.cc:7283-7295` faz `factors[i] *= max(dot, 0)`, e o
@@ -459,10 +454,26 @@ impl SculptStroke {
                 // do original vira `max(−dot, 0)` aqui. Trocar o sinal daria um
                 // pincel que só pega o que está de costas, e o gate mede a
                 // SILHUETA justamente porque no miolo os dois são indistinguíveis.
+                //
+                // ⚠️ **A normal é a CONGELADA, e ler a viva era o defeito que o
+                // report *"o modo B do grab está bizarro"* nomeou.** O peso de um
+                // [`Grip::Hold`] é **recomputado do zero a cada evento**
+                // (`accum = w`), então uma normal viva o torna função da
+                // deformação que ele próprio produziu: medido no arrasto do
+                // produto, o bico caía de `0,9956` para **`0,1418`** do puxão e
+                // voltava — o barro agarrado COLAPSA no meio do gesto e salta de
+                // volta. É realimentação, não ruído.
+                //
+                // ⚠️ **E ela é a única entrada do `fall` que era lida VIVA.** A
+                // máscara sai do `base_mask`, o alpha é amostrado na posição
+                // congelada (com o porquê escrito acima), o [`Verb::Inflate`]
+                // empurra pelo `base_nrm` — quatro respostas à mesma pergunta e
+                // uma delas divergindo, sem uma linha a justificar. *O peso é um
+                // fato sobre o `pre`*, e agora é uma frase só.
                 let facing = match brush.mode.kernel().front_face {
                     crate::FrontFace::Ignored => 1.0,
                     crate::FrontFace::Continuous => {
-                        let n = mesh.normals()[vi];
+                        let n = self.base_nrm[s];
                         (-(n[0] * dab.eye[0] + n[1] * dab.eye[1] + n[2] * dab.eye[2])).max(0.0)
                     }
                 };
@@ -479,20 +490,13 @@ impl SculptStroke {
                 // original o expoente cai sobre `curva × máscara × alpha` e a
                 // intensidade entra depois, linear nos dois termos.
                 let shape = fall * keep;
-                // **O PESO SEM A GEOMETRIA** — o que sobra do `w` quando a curva
-                // sai dele.
-                //
-                // ⚠️ **Ele existe porque um CAMPO elástico ([`crate::Field`]) É o
-                // falloff**, e multiplicá-lo pela curva aplicaria o perfil duas
-                // vezes. O que a força de um Kelvinlet ainda tem de honrar é o que
-                // NÃO é geometria da pegada: a máscara, o alpha, o front-face e a
-                // intensidade.
-                //
-                // ⚠️ **Escrito VERBATIM, como os outros dois** (mesma lição dos
-                // 30,4 % de triplos que divergem por re-associação): derivá-lo de
-                // `w / curve` seria uma divisão por um número que vale zero na
-                // borda da pegada.
-                let flat = brush.alpha_weight(base, &alpha_frame) * facing * intensity * keep;
+                // ⚠️ **O `flat` MORREU aqui (2026-08-13), e não por higiene:** ele
+                // era *"o `w` sem a curva"*, e existia porque a curva atenuava um
+                // campo que já traz o próprio perfil. Com a curva virando a
+                // INDICADORA do suporte, `curve` vale `1,0` EXATO onde o campo é
+                // avaliado — e `1.0 * x == x` no IEEE-754 —, então `w` **é** o
+                // `flat`, ao bit. Dois nomes para um número é a segunda porta que
+                // este módulo passa o dia a evitar.
                 // `<=` e não `<`: um dab que EMPATA não vence. A diferença não é de
                 // resultado (o alvo recomputado seria o mesmo) — é de TRABALHO: com
                 // `<`, re-carimbar a mesma lista de dabs reescreveria a pegada
@@ -565,7 +569,6 @@ impl SculptStroke {
                     reach,
                     shape * pass.weight,
                     w * pass.weight,
-                    flat * pass.weight,
                     v,
                     s,
                 );
@@ -610,39 +613,17 @@ impl SculptStroke {
         }
         self.moved.len()
     }
-
-    /// Guarda o `pre` de um vértice, se ainda não guardou. Idempotente.
-    fn capture(&mut self, mesh: &Mesh, v: u32) {
-        let vi = v as usize;
-        if self.stamp[vi] == self.epoch {
-            return;
-        }
-        self.stamp[vi] = self.epoch;
-        self.slot[vi] = self.touched.len() as u32;
-        self.touched.push(v);
-        self.base_pos.push(mesh.positions()[vi]);
-        self.base_nrm.push(mesh.normals()[vi]);
-        self.base_mask
-            .push(mesh.masks().map_or(DEFAULT_MASK, |m| m[vi]));
-        self.accum.push(0.0);
-        // Alvo neutro: sem dab que vença, `lerp(base, base, 0)` não move nada.
-        self.target.push(mesh.positions()[vi]);
-    }
-
-    /// A posição de `v` ANTES do traço.
-    ///
-    /// Um vértice não capturado nunca foi escrito por este traço, logo a posição
-    /// viva dele **é** o `pre`. É isso que torna o Smooth barato: ele lê o anel
-    /// inteiro sem obrigar a captura de vizinhos que ninguém vai mover.
-    fn base_pos_of(&self, mesh: &Mesh, v: u32) -> [f32; 3] {
-        let vi = v as usize;
-        if self.stamp[vi] == self.epoch {
-            self.base_pos[self.slot[vi] as usize]
-        } else {
-            mesh.positions()[vi]
-        }
-    }
 }
+
+/// **O `pre` QUE O TRAÇO CONGELA** — ver [`freeze`]. Irmão dos três abaixo, e o
+/// assunto que os três já pressupunham sem ter casa própria.
+#[path = "stroke_freeze.rs"]
+mod freeze;
+
+/// **O QUE UMA SONDA PODE PERGUNTAR** — ver [`probe`]. O corte é *o que um dab
+/// FAZ* (aqui) contra *o que se consegue MEDIR dele* (lá).
+#[path = "stroke_probe.rs"]
+mod probe;
 
 /// **A MALHA CRESCEU DEBAIXO DO TRAÇO** — o refino e a lei do `pre`.
 ///

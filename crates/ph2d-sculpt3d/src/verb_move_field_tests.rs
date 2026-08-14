@@ -156,7 +156,12 @@ fn the_stroke_delivers_what_the_kernel_promises() {
     let center = [0.0, 0.0, 1.0];
     let radius = 0.5;
     let l = pulled(RefMode::L, pull);
-    let eps = radius / crate::KELVINLET_REACH;
+    // ⚠️ **`ε` É o raio do pincel, e a PEGADA é que vale `REACH · raio`** — a
+    // inversão que o report de 2026-08-13 derrubou. Escrito com o `ε` dividido,
+    // este gate media a fiação contra a lei errada e passava: ele compara o
+    // traço com o kernel, e os dois liam o mesmo número trocado.
+    let eps = radius;
+    let support = radius * crate::KELVINLET_REACH;
 
     let mut checked = 0;
     for v in 0..rest.vert_count() {
@@ -168,7 +173,7 @@ fn the_stroke_delivers_what_the_kernel_promises() {
         ];
         // Só os vértices DENTRO da pegada: fora dela o motor não escreve, e a
         // promessa do kernel não se aplica.
-        if (r[0] * r[0] + r[1] * r[1] + r[2] * r[2]).sqrt() >= radius {
+        if (r[0] * r[0] + r[1] * r[1] + r[2] * r[2]).sqrt() >= support {
             continue;
         }
         // Força `1.0`, máscara vazia, sem alpha, front-face ignorado ⇒ o peso
@@ -210,6 +215,114 @@ fn the_s_mode_grab_is_untouched_to_the_bit() {
     // paradas seria verde por vácuo.
     let rest = sphere();
     assert!(moved(&rest, &a, [0.0, 0.0, 1.0]) > 0.05);
+}
+
+/// **O AGARRE ELÁSTICO NÃO É UMA AGULHA — a meio raio ele move o que o
+/// `s-mode` move.**
+///
+/// ⚠️ **O `ε` do paper É o raio do pincel, e a pegada é que vale
+/// [`crate::KELVINLET_REACH`] vezes ele** — a inversão que o report de
+/// 2026-08-13 (*"os modos B e L do grab estão bizarros"*) derrubou. Escrito ao
+/// contrário (`ε = raio / REACH`), a pegada ESPREMIA o campo: a resposta caía
+/// para o zero em 1/3 do caminho até a borda do cursor, e o traço saía uma
+/// AGULHA — medido a meio raio, **0,0296 contra os 0,5473 do `s-mode`**, ou
+/// **5,4%**; o modo inteiro movia um terço do barro que o outro move.
+///
+/// ⚠️ **O oráculo é a RAZÃO CONTRA O `s-mode`, nunca um número absoluto**, e é
+/// a mesma disciplina do gate da anisotropia acima: a esfera é UV, então a
+/// densidade de vértices difere entre meridiano e paralelo, e essa diferença é
+/// um FATOR COMUM aos dois modos. Pedir um absoluto seria medir a tesselação.
+///
+/// ⚠️ **E o gate pergunta pelos DOIS probes de propósito.** O campo elástico é
+/// anisotrópico — ele *deve* mover mais à frente do que ao lado —, então um
+/// gate só na frente ficaria verde sobre uma agulha estreita e comprida, que é
+/// literalmente a forma do defeito. É o *ao lado* que prova a LARGURA.
+#[test]
+fn the_elastic_grab_is_not_a_needle() {
+    let rest = sphere();
+    let pull = [0.2, 0.0, 0.0];
+    let d = 0.25; // metade do raio do pincel (0,5)
+    let z = (1.0f32 - d * d).sqrt();
+    let (s, l) = (pulled(RefMode::S, pull), pulled(RefMode::L, pull));
+
+    for (name, probe) in [("à frente", [d, 0.0, z]), ("ao lado", [0.0, d, z])] {
+        let (a, b) = (moved(&rest, &s, probe), moved(&rest, &l, probe));
+        // ⚠️ O anti-vácuo mora no CONTROLE: com o `s-mode` parado ali a razão
+        // seria infinita e o gate passaria sem medir nada.
+        assert!(
+            a > 0.02,
+            "{name}: o s-mode não moveu barro no probe ({a:.4})"
+        );
+        assert!(
+            b > a * 0.8,
+            "{name}: a meio raio o l-mode moveu {b:.4} contra {a:.4} do s-mode \
+             ({:.1}%) — o campo está espremido dentro da pegada",
+            100.0 * b / a
+        );
+    }
+}
+
+/// **É O CAMPO QUE DECIDE A PEGADA, NÃO O ANEL DO CURSOR** — e nada dentro do
+/// anel anda para TRÁS.
+///
+/// ⚠️ **Duas metades, e a segunda é o preço da primeira.** Um kelvinlet
+/// multi-escala mata o campo distante por SUBTRAÇÃO (`Σwᵢ = 0`), e uma
+/// subtração passa do ponto: a família `Tri` cruza o zero em `r/ε ≈ 1,5` e tem
+/// um lóbulo NEGATIVO depois disso. Com o `ε` espremido esse cruzamento caía
+/// **dentro do cursor** — metade da pegada empurrava o barro para o lado
+/// contrário ao dedo (medido: −3,8% do bico). Com `ε = raio`, ele cai em
+/// `1,5 × raio`, fora do anel: o artista vê o que agarra andar junto, e o
+/// contra-lóbulo vive na cauda, onde ele é a física e não um defeito.
+///
+/// ⚠️ **A leitura do anel MUDA, e é o preço nomeado do [`Brush::query_radius`]:**
+/// com um campo, o círculo do cursor deixa de significar *o que eu toco* e
+/// passa a significar *a escala do que eu deformo* — a mesma leitura do Elastic
+/// Deform do Blender. Quem quer o círculo literal tem o `s-mode` ao lado, no
+/// mesmo verbo, e é ele o CONTROLE aqui.
+#[test]
+fn the_field_decides_the_footprint_not_the_cursor_ring() {
+    let rest = sphere();
+    let pull = [0.2f32, 0.0, 0.0];
+    let (s, l) = (pulled(RefMode::S, pull), pulled(RefMode::L, pull));
+
+    // Um ponto FORA do anel (corda 0,60 contra o raio 0,50) e dentro do
+    // suporte do campo (1,50) — antes do cruzamento de zero, em 0,75.
+    let th = 2.0 * (0.30f32).asin();
+    let beyond = [th.sin(), 0.0, th.cos()];
+    let outside = moved(&rest, &l, beyond);
+    assert!(
+        outside > 0.01,
+        "além do anel o campo tem de continuar a deformar ({outside:.4})"
+    );
+    assert!(
+        moved(&rest, &s, beyond) < 1e-6,
+        "o CONTROLE falhou: o s-mode não pode alcançar fora do próprio cursor"
+    );
+
+    // E dentro do anel nada recua: o pior deslocamento projetado no puxão.
+    let mut worst = f32::MAX;
+    let c = [0.0f32, 0.0, 1.0];
+    let mut inside = 0usize;
+    for v in 0..rest.vert_count() {
+        let p = rest.positions()[v];
+        let chord = ((p[0] - c[0]).powi(2) + (p[1] - c[1]).powi(2) + (p[2] - c[2]).powi(2)).sqrt();
+        if chord >= 0.5 {
+            continue;
+        }
+        inside += 1;
+        let q = l.positions()[v];
+        worst =
+            worst.min((q[0] - p[0]) * pull[0] + (q[1] - p[1]) * pull[1] + (q[2] - p[2]) * pull[2]);
+    }
+    assert!(
+        inside > 20,
+        "a fixture não contém o anel ({inside} vértices)"
+    );
+    assert!(
+        worst > -1e-6,
+        "algum barro DENTRO do anel andou contra o dedo ({worst:.6}) — o lóbulo \
+         negativo do campo multi-escala entrou na pegada"
+    );
 }
 
 /// **O DEGRAU NA BORDA DA PEGADA, medido no produto** — o preço nomeado do

@@ -1175,12 +1175,16 @@ paper (*multi-scale*), e o número escolheu:
 | **3** | 0,3162 | 0,0778 | **0,0347** |
 | 4 | 0,2425 | 0,0379 | 0,0119 |
 
-⇒ **`KELVINLET_REACH = 3`** (`ε = raio/3`) com a família **Tri**: 3,5 % na borda.
-O **preço está nomeado** — o campo fica mais APERTADO que a curva do `s-mode`
-(meia-altura em `0,29·raio` contra `0,46`), que é a forma da resposta elástica e
-não um defeito. ⛔ **A outra cura foi pesada e recusada:** manter `ε = raio` e
-crescer a consulta do octree para `3·raio` custa ~9× os vértices por dab e faz o
-anel do cursor deixar de significar *o que eu toco*.
+⇒ **`KELVINLET_REACH = 3`** com a família **Tri**: 3,5 % na borda.
+
+⛔ **E a leitura que estas linhas faziam do `3` estava INVERTIDA — ver §7.11.**
+Elas diziam `ε = raio/3` (a pegada espremendo o campo) e recusavam a alternativa
+*"manter `ε = raio` e crescer a consulta para `3·raio`"* com uma **estimativa**
+(*"~9× os vértices por dab"*), que é o que a §0 proíbe. Medida, a pegada
+triplicada custa **1,2 % do K1** num pincel de detalhe, e a leitura espremida
+punha o cruzamento de zero do Tri **dentro do cursor**. O que shipa é
+**`ε = raio`, pegada `3·raio`** — o anel passa a significar *a escala do que eu
+deformo*, e o preço é esse, nomeado.
 
 **A ÚNICA parte estrutural é uma COLUNA:** `Grip::law` passou a receber
 `carries_field`, e ele move **exatamente uma** — o `unit_accum` do `Grip::Hold`.
@@ -1241,6 +1245,94 @@ tem de seguir o dedo **igual** nos dois modos; o que muda é a vizinhança. E o
 **Elastic Deform**, que é o único que pede `Verb` novo. O kernel dos quatro
 modos **já está construído e gateado**; o que falta é a fiação e o gate de
 produto de cada um.
+
+### §7.11 — ✅ OS MODOS `B` E `L` DO GRAB ESTAVAM BIZARROS (2026-08-13)
+
+Report do Enio: *"os modo B e L do grob/move estão bizarros"*. **Dois defeitos
+INDEPENDENTES**, os dois diagnosticados pela sonda antes de qualquer hipótese
+(`tests/measure_grab_modes.rs`, que dirige o produto com um arrasto de **doze
+eventos** — é isso que os torna visíveis).
+
+**B — o barro agarrado COLAPSA no meio do arrasto.** O `Grip::Hold` recomputa
+`accum = w` **do zero a cada dab**, e o `w` contém o `facing` do
+[`FrontFace::Continuous`], que lia a normal **VIVA** — a normal que o dab
+anterior acabou de girar. Isso é realimentação: o vértice roda para longe do
+olho, o peso dele cai, o alvo encolhe, ele volta. Medido na ponta, como fração
+do que o dedo pediu:
+
+| evento | 1 | 5 | **9** | 12 |
+|---|---|---|---|---|
+| antes | 0,9956 | 0,7195 | **0,1418** | 0,8874 |
+| depois | 1,0000 | 1,0000 | **1,0000** | 1,0000 |
+
+⚠️ **A cura é uma linha e a LEI que ela honra é do repo inteiro:** *o peso é um
+fato sobre a superfície CONGELADA*. A máscara já saía do `base_mask`, a distância
+do `base_pos`, a normal do `Verb::Inflate` do `base_nrm` — o `facing` era o
+**único leitor vivo**, e a assimetria frente/trás que o número mostra (0,7195
+contra 0,9391 no mesmo instante) era exatamente ele.
+
+**L — o agarre elástico era uma AGULHA com um colar invertido.** O `ε` era
+`raio / REACH`, ou seja **a pegada espremia o campo** em vez de o campo escolher
+a pegada. Medido a meio raio, ao LADO do puxão: **0,0296** contra os **0,5473**
+do `s-mode` — 5,4 %. E o cruzamento de zero da família **Tri** (`r/ε ≈ 1,5`)
+caía **DENTRO do cursor**, então metade da pegada empurrava barro **para trás**
+(−3,8 % da ponta).
+
+⚠️ **O defeito era MEU e a §0 nomeia as duas metades.** (1) A sonda que escolheu
+o `KELVINLET_REACH` mediu **só À FRENTE** — o lóbulo onde o resíduo multi-escala
+é menor e **positivo** —, e nunca AO LADO, que é onde ele fica negativo: *uma
+tabela medida num eixo só é um número que não conhece o próprio sinal*. (2) A
+alternativa que o doc da §7.10 recusou foi recusada **por ESTIMATIVA**
+(*"~9× os vértices por dab"*), que é precisamente o que a §0 proíbe — medido, a
+pegada triplicada custa **1,2 % do K1** num pincel de detalhe.
+
+⇒ **`ε` É o raio do pincel**, e a pegada é `KELVINLET_REACH · raio`, pela porta
+nova **`Brush::query_radius`** (o consultador do octree pergunta a ela; um verbo
+sem campo devolve o raio, byte a byte). A curva do falloff vira a **INDICADORA
+do suporte** — o campo já É o perfil —, o que preserva a separação entre cópias
+de espelho **e torna o `flat` redundante** (`curva == 1,0` faz `w` ser o `flat`
+ao bit): ele morreu.
+
+| | antes | depois | `s-mode` |
+|---|---|---|---|
+| vértices movidos | 61 | **903** | 1063 |
+| soma do deslocamento | 3,060 | **31,385** | 33,462 |
+| ao lado, a meio raio | 0,0296 | **0,5185** | 0,5473 |
+| à frente, a meio raio | — | **0,7708** | 0,5473 |
+| maior passo entre vizinhos | — | **0,0919** | 0,1805 |
+
+⇒ o perfil fica **mais largo que o do `s-mode`** com a anisotropia intacta
+(1,49× à frente), e o passo máximo entre vértices vizinhos é **o menor dos
+três** — o oposto de uma agulha. A invariância de caminho (o mesmo puxão total
+em 1 ou em 12 eventos) mede **0,000000 nos três modos**, em puxões de 0,2 · 0,6
+· 0,9.
+
+**3 mutações, 3 sangram, cada uma nos gates certos:**
+
+- a normal viva de volta no `facing` ⇒ **exatamente** os dois gates de B
+  (185 passam, 2 falham) e mais nada;
+- `query_radius` ignorando o campo ⇒ o gate da pegada + o do traço + o do degrau
+  do aro (184/3);
+- `ε = raio / REACH` (o defeito original) ⇒ o gate da agulha + os dois acima.
+
+⚠️ **E o gate da agulha NÃO sangra sob a mutação da pegada** — é ele que prova
+que *largura de PERFIL* e *alcance de PEGADA* são duas perguntas, e que um gate
+por cada é o par mínimo.
+
+**LOC:** o `stroke.rs` cruzou o teto (720 > 700) e foi cortado por
+RESPONSABILIDADE em dois irmãos — `stroke_freeze.rs` (*o que um traço CONGELA*,
+o assunto que os outros três filhos já pressupunham sem ter casa) e
+`stroke_probe.rs` (*o que se consegue MEDIR de um dab*, contra *o que um dab
+FAZ*). 671 + 54 + 41.
+
+Sem schema, sem ADR, sem crate nova, sem dep nova, sem id novo.
+
+⚠️ **PENDENTE DE SMOKE — a cena é a `PH2D_SCULPT3D_SMOKE=28` da §7.10**, e o
+roteiro dela **muda**: o `L` agora deforma **para além do anel do cursor** (a
+leitura do *Elastic Deform* do Blender — o anel passa a significar *a escala do
+que eu deformo*, não *o que eu toco*), e o `B` tem de seguir o dedo do primeiro
+ao último evento de um arrasto **longo** — o colapso do meio só aparece num
+gesto que dure.
 
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 

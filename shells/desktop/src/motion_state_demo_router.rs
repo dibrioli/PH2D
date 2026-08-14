@@ -258,6 +258,13 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
         Ok("36") => {
             conferencia_demos::build_sink_blend_demo_document(doc, registry).unwrap_or_default()
         }
+        // O CATÁLOGO de kernels do `value.noise` (doc 89 folha 15): Value /
+        // Perlin / Cellular-Cells / Cellular-Cracks, o mesmo campo espacial a
+        // dirigir o TAMANHO. ⚠️ A pergunta é de OLHO — as quatro grades têm de
+        // desenhar quatro coisas; se forem iguais, o `kernel` não chegou.
+        Ok("37") => {
+            conferencia_demos::build_noise_kernel_demo_document(doc, registry).unwrap_or_default()
+        }
         _ => Vec::new(),
     }
 }

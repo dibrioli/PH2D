@@ -415,6 +415,89 @@ pub(super) fn build_sink_blend_demo_document(
     Some(sinks)
 }
 
+/// **O CATÁLOGO de kernels do `value.noise`** (doc 89 folha 15) — quatro grades
+/// idênticas, cada uma com o TAMANHO dos elementos dirigido pelo MESMO campo de
+/// ruído lido no ESPAÇO, e só o `kernel` a diferir.
+///
+/// ⚠️ **A pergunta é de OLHO e as quatro têm de parecer quatro coisas:** manchas
+/// macias (Value) · fluxo orgânico sem eixos (Perlin) · bolhas com um miolo
+/// pequeno por célula (Cellular/Cells) · e uma teia de linhas escuras
+/// (Cellular/Cracks). Se as quatro parecerem a mesma, o `kernel` não está a
+/// chegar à rota que este build usa — bissecte com `PH2D_GPU_COOK=0`.
+///
+/// ⚠️ **`space = World` é o que torna a cena legível:** lido pela FILA o campo
+/// varia com a ordem do elemento na lista e a grade sai listrada; lido no espaço
+/// ele é uma imagem do campo, que é o que se quer julgar.
+pub(super) fn build_noise_kernel_demo_document(
+    doc: &mut MotionDoc,
+    reg: &NodeRegistry,
+) -> Option<Vec<NodeId>> {
+    let g = &mut doc.graph;
+    let mut sinks = Vec::new();
+
+    for (k, (kernel, feature)) in [
+        (0.0_f32, 0.0_f32), // Value
+        (1.0, 0.0),         // Perlin
+        (2.0, 0.0),         // Cellular / Cells
+        (2.0, 1.0),         // Cellular / Cracks
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let grid = g.add_node("motion.grid");
+        g.set_param(grid, "rows", 14.0);
+        g.set_param(grid, "cols", 14.0);
+        g.set_param(grid, "gap_x", 0.34);
+        g.set_param(grid, "gap_y", 0.34);
+        let mv = g.add_node("motion.move");
+        g.set_param(mv, "dx", (k as f32 - 1.5) * 5.6);
+        let scale = g.add_node("motion.scale");
+        g.set_param(scale, "amount", 0.10);
+
+        let vn = g.add_node("value.noise");
+        g.set_param(vn, "kernel", kernel);
+        g.set_param(vn, "feature", feature);
+        g.set_param(vn, "jitter", 1.0);
+        g.set_param(vn, "space", 1.0); // o eixo ESPACIAL — a cena inteira
+        g.set_param(vn, "frequency", 0.55);
+        g.set_param(vn, "speed", 0.25);
+        g.set_param(vn, "octaves", 2.0);
+        g.set_param(vn, "roughness", 0.5);
+        // UNIPOLAR de proposito: o campo nasce em [-1, 1] e o canal que esta cena
+        // dirige e o TAMANHO, que nao tem metade negativa. A primeira versao saia
+        // com tamanhos ate -0.26 (a sonda apanhou-o) e a grade do Cracks -- cuja
+        // media crua e a mais baixa das quatro (0.27 contra 0.43 do Cells) --
+        // ficava quase invisivel.
+        g.set_param(vn, "amplitude", 0.5);
+        g.set_param(vn, "offset", 0.5);
+        g.set_param(vn, "seed", 7.0);
+
+        let drive = g.add_node("motion.drive");
+        g.set_param(drive, "channel", 3.0); // Size
+        g.set_param(drive, "mode", 0.0); // Add
+        g.set_param(drive, "scale", 0.40);
+        let out = g.add_node("motion.output");
+
+        lay(
+            g,
+            120.0 + 150.0 * k as f32,
+            &[grid, mv, scale, vn, drive, out],
+        );
+        wire(g, grid, mv, 0)?;
+        wire(g, mv, scale, 0)?;
+        // O ruído lê a geometria (para ter `P` e contagem) e o drive recebe-a
+        // na porta 0 e o VALOR na porta 1 — o encaminhamento do domínio de valor.
+        wire(g, scale, vn, 0)?;
+        wire(g, scale, drive, 0)?;
+        wire(g, vn, drive, 1)?;
+        wire(g, drive, out, 0)?;
+        sinks.push(out);
+    }
+
+    doc.graph.validate(reg).ok()?;
+    Some(sinks)
+}
+
 #[cfg(test)]
 #[path = "motion_state_conferencia_demos_tests.rs"]
 mod tests;
@@ -422,3 +505,7 @@ mod tests;
 #[cfg(test)]
 #[path = "motion_state_conferencia_demos_blend_tests.rs"]
 mod blend_tests;
+
+#[cfg(test)]
+#[path = "motion_state_conferencia_demos_noise_tests.rs"]
+mod noise_tests;

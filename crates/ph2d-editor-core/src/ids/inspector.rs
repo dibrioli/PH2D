@@ -215,6 +215,16 @@ pub const INSP_PHYS_CAP_HALF_H: NodeId = hash_node_id("insp_phys_cap_half_h");
 /// Dynamic-only — any collider can be offset (a character's feet, an off-centre
 /// hitbox). The overlay draws the outline there so the offset is visible.
 pub const INSP_PHYS_OFFSET_X: NodeId = hash_node_id("insp_phys_offset_x");
+/// **De que é feito este chão para quem ANDA sobre ele** (`W-Surface`) — o
+/// multiplicador de tração. Neutro `1.0`; gelo é baixo, borracha é alto.
+///
+/// ⚠️ **Oferecido em TODO collider, e é o caso de uso inteiro:** a superfície
+/// que importa é quase sempre um chão ESTÁTICO, então gateá-lo em Dynamic
+/// deletaria o controle exatamente onde ele serve.
+pub const INSP_PHYS_WALK_GRIP: NodeId = hash_node_id("insp_phys_walk_grip");
+/// **A ESTEIRA** (`W-Surface`) — a velocidade que esta superfície apresenta a
+/// quem está sobre ela, em m/s COM SINAL, ao longo da tangente dela.
+pub const INSP_PHYS_WALK_BELT: NodeId = hash_node_id("insp_phys_walk_belt");
 pub const INSP_PHYS_OFFSET_Y: NodeId = hash_node_id("insp_phys_offset_y");
 /// §11 Mass density (kg/m² in 2D).
 pub const INSP_PHYS_DENSITY: NodeId = hash_node_id("insp_phys_density");

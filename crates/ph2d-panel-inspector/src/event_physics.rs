@@ -48,6 +48,8 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             // Collider offset — a collider property, honoured for any body (not
             // Dynamic-gated like velocity/gravity).
             ids::INSP_PHYS_OFFSET_X => Some(PhysicsFieldEdit::OffsetX(v)),
+            ids::INSP_PHYS_WALK_GRIP => Some(PhysicsFieldEdit::WalkGrip(v)),
+            ids::INSP_PHYS_WALK_BELT => Some(PhysicsFieldEdit::WalkBelt(v)),
             ids::INSP_PHYS_OFFSET_Y => Some(PhysicsFieldEdit::OffsetY(v)),
             ids::INSP_PHYS_DENSITY => Some(PhysicsFieldEdit::Density(v)),
             // The explicit Mass row (Manual mode) — gated on `mass_is_read`, the

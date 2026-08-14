@@ -13,6 +13,7 @@
 
 use super::outlines;
 use super::tests::{camera, points, window};
+use crate::render_loop::physics_overlay_annotations::BELT_RGBA;
 use crate::render_loop::physics_overlay_annotations::{
     EFFECTOR_RGBA, FALLOFF_RGBA, FALLOFF_RING, TORQUE_RGBA,
 };
@@ -407,4 +408,106 @@ fn a_mirrored_zone_draws_a_mirrored_arrow_and_a_reversed_spin() {
         "o glifo de uma zona espelhada tem de girar ao contrário — um torque 2D é um \
          pseudoescalar, e o espelho troca a mão do frame"
     );
+}
+
+/// **Uma esteira desenha para que lado ela corre — e a tangente segue a rampa**
+/// (`W-Surface`).
+///
+/// ⚠️ **Uma correia PARADA é indistinguível de um chão comum**, e é essa a razão
+/// da seta: o contorno de um piso com gelo, com esteira ou com nada é o mesmo
+/// traço. A única outra forma de ler a direção seria pôr uma caixa em cima e
+/// olhar — que é literalmente o que a seta do campo de força existe para evitar.
+///
+/// ⚠️ **E o `grip` NÃO ganha marca, de propósito:** ele não tem lado. Vê-se no
+/// personagem derrapando, que é o argumento com que o arrasto de área recusou a
+/// sua própria seta — a metade visível pode ser *"nada"*, desde que escrita.
+#[test]
+fn a_belt_draws_which_way_it_runs_and_follows_the_ramp() {
+    use ph2d_core::Vec2;
+    use ph2d_ecs::Transform;
+    use ph2d_physics_ecs::{Collider, RigidBody, WalkSurface};
+
+    let floor = |deg: f32, surf: WalkSurface| {
+        let mut sim = ph2d_ecs::SimWorld::new();
+        sim.world_mut().spawn((
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 4.0,
+                    half_y: 0.5,
+                },
+                ..Collider::default()
+            },
+            Transform {
+                rotation: deg.to_radians(),
+                ..Transform::from_translation(Vec2::new(0.0, 0.0))
+            },
+            surf,
+        ));
+        sim
+    };
+
+    // Um piso plano com correia: contorno + seta, e a seta tem cor própria.
+    let mut running = floor(
+        0.0,
+        WalkSurface {
+            grip: 1.0,
+            belt: 3.0,
+        },
+    );
+    let drawn = outlines(true, false, &mut running, &[], false, &camera(), window());
+    assert_eq!(
+        drawn.len(),
+        2,
+        "uma esteira desenha o contorno E a seta, saíram {} caminhos",
+        drawn.len()
+    );
+    assert_eq!(
+        drawn[1].1, BELT_RGBA,
+        "a seta da esteira nao pode vestir uma cor que ja' significa outra coisa"
+    );
+    let pts = points(&drawn[1].0);
+    assert!(
+        pts[1].0 > pts[0].0 && (pts[1].1 - pts[0].1).abs() < 1e-6,
+        "uma correia +3 num piso plano aponta +X na tela, saiu {pts:?}"
+    );
+
+    // ⚠️ **A metade que separa esta seta de um vetor de mundo:** numa rampa ela
+    // segue a TANGENTE, e é a mesma direção que a lei da caminhada usa. Uma seta
+    // horizontal sobre uma rampa desenharia uma correia que não corre ali.
+    let mut uphill = floor(
+        30.0,
+        WalkSurface {
+            grip: 1.0,
+            belt: 3.0,
+        },
+    );
+    let ramp = outlines(true, false, &mut uphill, &[], false, &camera(), window());
+    let pts = points(&ramp[1].0);
+    let (dx, dy) = (pts[1].0 - pts[0].0, pts[1].1 - pts[0].1);
+    assert!(
+        dx > 0.0 && dy < 0.0,
+        "numa rampa que sobe para a direita a correia aponta para CIMA na tela \
+         (y cresce para baixo), saiu dx={dx:.3} dy={dy:.3}"
+    );
+
+    // Uma superfície sem correia não desenha seta — só o contorno. O `grip`
+    // sozinho é mudo, e isso é a decisão.
+    let mut icy = floor(
+        0.0,
+        WalkSurface {
+            grip: 0.1,
+            belt: 0.0,
+        },
+    );
+    assert_eq!(
+        outlines(true, false, &mut icy, &[], false, &camera(), window()).len(),
+        1,
+        "o gelo nao tem lado: uma superficie so' com grip desenha apenas o contorno"
+    );
+
+    // E obedece ao toggle, como todo o resto deste chrome.
+    assert!(outlines(false, false, &mut running, &[], false, &camera(), window()).is_empty());
 }

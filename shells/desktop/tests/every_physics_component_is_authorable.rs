@@ -24,9 +24,15 @@ use std::fs;
 /// rows de ZONA (*o que esta ÁREA faz a outros corpos*) do resto (*o que ESTE corpo é*),
 /// e o gate nasceu VERMELHO nomeando os seis componentes de área — o corte moveu os
 /// escritores para fora da lista. Foi a falha ALTA que a lista existe para produzir.
-const WRITERS: [&str; 8] = [
+const WRITERS: [&str; 9] = [
     "src/render_loop/inspector_physics_apply.rs",
     "src/render_loop/inspector_physics_area.rs",
+    // ⚠️ **O nono chegou pelo mesmo caminho do quarto** (W-Surface): o cap de
+    // 600 LOC do shell obrigou a separar *de que esta SUPERFÍCIE é feita* do
+    // resto, e o gate nasceu VERMELHO nomeando o `WalkSurface` no instante do
+    // corte — o escritor tinha saído da lista sem sair do produto. A falha alta
+    // funcionando pela segunda vez.
+    "src/render_loop/inspector_physics_surface.rs",
     "src/render_loop/inspector_physics_markers.rs",
     "src/render_loop/inspector_joint.rs",
     // ⚠️ **Nem todo caminho de autoria é uma ROW.** A roldana (W-Pulley W1) é

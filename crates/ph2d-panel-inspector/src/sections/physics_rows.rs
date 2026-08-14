@@ -345,6 +345,35 @@ pub(super) fn paint_collision_rows(
             u8::from(one_way),
         );
     }
+    // **De que este chão é feito para quem ANDA sobre ele** (`W-Surface`).
+    //
+    // ⚠️ **Aqui, e oferecidas em TODO collider — sólido ou sensor, qualquer
+    // kind.** A superfície que importa é quase sempre um chão ESTÁTICO (o gelo,
+    // a esteira), então restringi-la a Dynamic deletaria o controle exatamente
+    // onde ele serve; e a peça de um corpo composto carrega a sua, que é o que
+    // deixa uma plataforma ter uma face de gelo e outra de borracha.
+    //
+    // ⚠️ **Só a lei do PLAYER as lê**, e isto é uma limitação NOMEADA e não um
+    // descuido: um caixote sobre a esteira não é levado por ela. O
+    // `SurfaceEffector2D` da Unity leva qualquer rigidbody; aqui o alcance é o
+    // que o nome diz.
+    for (label, id) in [
+        ("Grip", ids::INSP_PHYS_WALK_GRIP),
+        ("Belt (m/s)", ids::INSP_PHYS_WALK_BELT),
+    ] {
+        yy = num_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            label,
+            id,
+        );
+    }
     // **O que este objeto GRITA quando algo chega nele — e quando algo sai**
     // (W-Signal · W-SignalLeave).
     //

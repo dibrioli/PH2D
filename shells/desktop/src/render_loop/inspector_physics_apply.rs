@@ -12,6 +12,7 @@ use ph2d_editor::PhysicsFieldEdit;
 
 use super::inspector_ordering::{queue_remove, queue_set};
 use super::inspector_physics_area::apply_area_edit;
+use super::inspector_physics_surface::apply_surface_edit;
 
 /// Apply one [`PhysicsFieldEdit`] (§11).
 ///
@@ -352,6 +353,12 @@ pub(crate) fn apply_physics_edit(
         }
         return;
     }
+    // **A superfície de caminhada** (W-Surface) — no módulo IRMÃO, pela mesma
+    // linha de corte que separou as zonas: *o que este CORPO é* × *o que esta
+    // ÁREA faz a outros* × **de que esta SUPERFÍCIE é feita para quem anda**.
+    if apply_surface_edit(world, entity, entity_bits, edit, queue, registry) {
+        return;
+    }
     if let PhysicsFieldEdit::LinearDamping(_)
     | PhysicsFieldEdit::AngularDamping(_)
     | PhysicsFieldEdit::DampMode(_) = edit
@@ -570,7 +577,9 @@ pub(crate) fn apply_physics_edit(
         | PhysicsFieldEdit::AreaDensity(_)
         | PhysicsFieldEdit::AreaFormDrag(_)
         | PhysicsFieldEdit::AreaTorque(_)
-        | PhysicsFieldEdit::AreaFalloff(_) => {
+        | PhysicsFieldEdit::AreaFalloff(_)
+        | PhysicsFieldEdit::WalkGrip(_)
+        | PhysicsFieldEdit::WalkBelt(_) => {
             unreachable!("handled above")
         }
     }

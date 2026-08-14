@@ -68,6 +68,13 @@ pub struct InspectorPhysicsInfo {
     /// the sprite centre (a character's feet, an off-centre hitbox). Mirrors
     /// `Collider.offset`. Not Dynamic-only — any collider can be offset.
     pub offset: [f32; 2],
+    /// **A superfície que o pé encontra** (`W-Surface`) — espelha
+    /// `WalkSurface.grip`: quanto do orçamento de caminhada o pé aproveita
+    /// aqui. Neutro `1.0`. Ausente o componente, é o neutro.
+    pub walk_grip: f32,
+    /// **A esteira** (`W-Surface`) — espelha `WalkSurface.belt`, m/s com sinal
+    /// ao longo da tangente da superfície. Neutro `0.0`.
+    pub walk_belt: f32,
     /// Where a Bake's window ENDS, in seconds — resolved by the shell (W4): the
     /// armed loop's end if there is one, else the document's extent, else the
     /// measured default.
@@ -344,6 +351,12 @@ pub enum PhysicsFieldEdit {
     /// write on `Collider.offset`; not Dynamic-only.
     OffsetX(f32),
     OffsetY(f32),
+    /// **A tração desta superfície** (`W-Surface`) — escreve `WalkSurface.grip`.
+    /// Só a lei do PLAYER a lê; um caixote não sabe que ela existe.
+    WalkGrip(f32),
+    /// **A esteira desta superfície** (`W-Surface`) — escreve
+    /// `WalkSurface.belt`, m/s com SINAL ao longo da tangente.
+    WalkBelt(f32),
     Density(f32),
     Restitution(f32),
     Friction(f32),

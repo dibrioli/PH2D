@@ -441,6 +441,25 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
         // Bounds the drag only; the component/BodyDesc take any f32.
         (ids::INSP_PHYS_OFFSET_X, 0.0, -1000.0, 1000.0, 0.01), // LITERAL-PX-OK: meters
         (ids::INSP_PHYS_OFFSET_Y, 0.0, -1000.0, 1000.0, 0.01), // LITERAL-PX-OK: meters
+        // **A superfície** (W-Surface). ⚠️ **As duas faixas limitam o ARRASTO e
+        // nada mais** — a caixa de texto e o componente tomam qualquer `f32`.
+        //
+        // O teto do `grip` é MEDIDO (`measure_where_the_grip_saturates`), com os
+        // defaults de produto (`speed 6`, `acceleration 60`): a partir de **4,0**
+        // o personagem alcança o cruzeiro dentro de um tique e mais tração não
+        // muda um número — 0,6000 m em 0,1 s a 4, 6, 8, 12 e 20, idênticos.
+        // ⚠️ A aritmética que eu previa dizia 6,0 (`speed / (accel · dt)`) e
+        // estava errada; o número é o da medição.
+        //
+        // ⚠️ **E ele NÃO é um cap:** onde a saturação cai é propriedade do
+        // PLAYER, não da superfície — um personagem mais rápido satura mais
+        // tarde, e por isso o teto vive na comodidade do arrasto e não numa
+        // regra.
+        (ids::INSP_PHYS_WALK_GRIP, 1.0, 0.0, 4.0, 0.05), // LITERAL-PX-OK: multiplier
+        // A esteira é COM SINAL (é uma direção ao longo da tangente, não uma
+        // magnitude). ±20 m/s é ~3× o cruzeiro default de 6 — a mesma razão da
+        // faixa da velocidade inicial: comodidade de arrasto em torno do zero.
+        (ids::INSP_PHYS_WALK_BELT, 0.0, -20.0, 20.0, 0.1), // LITERAL-PX-OK: m/s
         // Initial velocity (W9): signed. The range bounds the DRAG only —
         // the component/BodyDesc/rapier take any f32 — so it spans a sane
         // authoring range around zero, like gravity scale does.

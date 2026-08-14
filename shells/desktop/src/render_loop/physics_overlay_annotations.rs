@@ -85,6 +85,42 @@ pub(super) fn velocity_arrow(
     Some(path)
 }
 
+/// A seta da ESTEIRA — **verde-água**, um tom que nenhum collider, joint,
+/// lançamento, campo ou giro usa (`W-Surface`).
+///
+/// ⚠️ **Ela existe porque uma esteira PARADA é indistinguível de um chão** — o
+/// mesmo argumento que deu a seta ao campo de força: o que o artista autorou é
+/// uma DIREÇÃO, e a única outra forma de a ler seria pôr uma caixa em cima e
+/// olhar. O `grip` não ganha marca nenhuma, e isso é decisão: ele não tem lado,
+/// e vê-se no personagem derrapando — o argumento com que o arrasto de área
+/// recusou a sua.
+pub(super) const BELT_RGBA: [f32; 4] = [0.28, 0.92, 0.78, 0.95]; // LITERAL-COLOR-OK: overlay de esteira
+
+/// A seta de uma esteira. `None` para uma superfície que não corre.
+///
+/// ⚠️ **A direção é a TANGENTE da face de cima, que é o eixo +X local do
+/// collider** — a lei da caminhada toma `perp_cw(normal)`, e a normal da face
+/// que se pisa é o +Y local. Ela mora AQUI, ao lado da seta, e não no laço de
+/// emissão: quem desenha a direção é quem sabe de que direção se trata.
+///
+/// ⚠️ **E pela MESMA [`velocity_arrow`] do lançamento e do campo:** uma correia
+/// É uma velocidade (m/s), então lê-se contra o mesmo comprimento. Uma segunda
+/// escala seria uma segunda resposta a *"quão longa é uma forte"*.
+///
+/// ⚠️ Para a face de BAIXO a tangente inverteria; ninguém anda lá, e a limitação
+/// fica escrita em vez de descoberta.
+pub(super) fn belt_arrow(
+    cx: f32,
+    cy: f32,
+    rotation: f32,
+    belt: f32,
+    camera: &Camera2d,
+    window: WindowSize,
+) -> Option<BezPath> {
+    let (s, c) = (rotation.sin(), rotation.cos());
+    velocity_arrow(cx, cy, [c * belt, s * belt], camera, window)
+}
+
 /// The force-zone arrow — **orange**, a hue no collider, joint or launch uses.
 pub(super) const EFFECTOR_RGBA: [f32; 4] = [1.0, 0.62, 0.16, 0.95]; // LITERAL-COLOR-OK: overlay de campo de forca
 

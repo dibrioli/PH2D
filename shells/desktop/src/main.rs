@@ -307,6 +307,7 @@ mod physics_smoke_signal_leave;
 mod physics_smoke_soft_weld;
 mod physics_smoke_stone;
 mod physics_smoke_stop;
+mod physics_smoke_surface;
 mod physics_smoke_swim;
 mod physics_smoke_water;
 mod physics_smoke_wheel;

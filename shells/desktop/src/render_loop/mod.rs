@@ -103,10 +103,13 @@ pub(crate) mod inspector_physics;
 mod inspector_physics_apply;
 mod inspector_physics_area;
 #[cfg(test)]
+mod inspector_physics_gesture_surface_tests;
+#[cfg(test)]
 mod inspector_physics_gesture_tests;
 #[cfg(test)]
 mod inspector_physics_gesture_zone_tests;
 mod inspector_physics_markers;
+mod inspector_physics_surface;
 #[cfg(test)]
 // ⚠️ `pub(crate)`: a porta `apply` (um edit do §11 aplicado ao ECS) é o caminho
 // do PRODUTO, e a cena 70 a usa para provar que afinar uma PEÇA muda a

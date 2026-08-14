@@ -33,6 +33,12 @@ fn with_body() -> InspectorPhysicsInfo {
         has_body: true,
         join_count: 0,
         rig_parts: 0,
+        // ⚠️ **Premissa declarada: a superfície é o NEUTRO** (`W-Surface`) — é o
+        // chão comum, o que toda cena tinha antes de ela existir. Uma fixture
+        // que já chegasse com gelo deixaria o gate do detach verde pelo motivo
+        // errado.
+        walk_grip: 1.0,
+        walk_belt: 0.0,
         // W-PartFace: um corpo SEMPRE tem collider — a `BodyQuery` da ponte exige
         // os dois, então `has_body ⇒ has_collider` por construção. Declarado, e
         // não herdado, porque uma fixture que chega ao estado por omissão inverte
@@ -357,6 +363,21 @@ fn every_dimension_field_reaches_the_bus() {
             2.5,
             PhysicsFieldEdit::Density(2.5),
             "Density",
+        ),
+        // A superfície de caminhada (W-Surface) — os dois campos, cada um pelo
+        // seu braço: um `read-modify-write` que escrevesse o par derrubaria o
+        // campo que a edição não nomeia.
+        (
+            ids::INSP_PHYS_WALK_GRIP,
+            0.15,
+            PhysicsFieldEdit::WalkGrip(0.15),
+            "Grip",
+        ),
+        (
+            ids::INSP_PHYS_WALK_BELT,
+            -3.0,
+            PhysicsFieldEdit::WalkBelt(-3.0),
+            "Belt",
         ),
         (
             ids::INSP_PHYS_RESTITUTION,
@@ -1622,6 +1643,67 @@ fn selecting_a_zone_shows_its_authored_area_values() {
     );
 }
 
+/// **Selecionar uma superfície MOSTRA o que ela tem** (`W-Surface`).
+///
+/// ⚠️ **Sem isto as duas rows seriam WRITE-ONLY** — o defeito que a família das
+/// zonas shipou inteira e que custou um report do Enio (*"não vi nada disso
+/// agindo na UI"*): a autoria sempre funcionou, mas re-selecionar o chão lia
+/// `0` em vez do que o artista tinha escrito. Uma row que não mostra o próprio
+/// valor é um controle que MENTE a cada seleção.
+#[test]
+fn selecting_a_surface_shows_its_authored_grip_and_belt() {
+    use ph2d_editor_core::interaction::InteractiveState;
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    let info = InspectorPhysicsInfo {
+        // Um chão ESTÁTICO com gelo e esteira — o caso de uso, não um Dynamic.
+        kind_tag: 1,
+        // ⚠️ **Valores exatos em binário, e é disciplina do irmão acima:** com
+        // um `0,15` o espelho compara `0,15000000596` contra `0,15` e o gate
+        // pede uma tolerância — que é exatamente onde uma deriva real se
+        // esconderia. Escolhidos representáveis, a igualdade é honesta.
+        walk_grip: 0.25,
+        walk_belt: -3.25,
+        ..with_body()
+    };
+    let mut host = Host::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_physics(Some(info));
+    // A borda de seleção que gateia o sync sai do snapshot de TRANSFORM.
+    set_current_inspector_transform(Some(InspectorTransformInfo {
+        entity_bits: ENTITY,
+        translation: [0.0, 0.0],
+        rotation_rad: 0.0,
+        scale: [1.0, 1.0],
+        skew_rad: [0.0, 0.0],
+    }));
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    set_current_inspector_physics(None);
+    set_current_inspector_transform(None);
+
+    let val = |id| match host.store().get(id) {
+        Some(InteractiveState::NumberInput { value, .. }) => *value,
+        other => panic!("{id:?} nao e' um NumberInput registrado: {other:?}"),
+    };
+    assert_eq!(
+        val(ids::INSP_PHYS_WALK_GRIP),
+        0.25,
+        "a row Grip tem de MOSTRAR a tracao autorada ao selecionar, nao o neutro"
+    );
+    assert_eq!(
+        val(ids::INSP_PHYS_WALK_BELT),
+        -3.25,
+        "a row Belt tem de MOSTRAR a esteira autorada, com o SINAL"
+    );
+}
+
 // ── W-J4: as duas rotas de criação ───────────────────────────────────────────
 
 /// **O botão *Draw Joint* é SEMPRE oferecido, e o clique chega ao barramento.**
@@ -1925,6 +2007,8 @@ fn the_part_face_paints_the_collider_rows_and_no_body_rows() {
         (ids::INSP_PHYS_LAYER[0], "a camada"),
         (ids::INSP_PHYS_SENSOR[0], "o trigger"),
         (ids::INSP_PHYS_ONEWAY[0], "o one-way"),
+        (ids::INSP_PHYS_WALK_GRIP, "a tração da superfície"),
+        (ids::INSP_PHYS_WALK_BELT, "a esteira"),
         (ids::INSP_PHYS_ADD, "a promoção a corpo próprio"),
         (ids::INSP_PHYS_REMOVE, "a remoção da forma"),
     ] {
@@ -2218,4 +2302,52 @@ fn selecting_an_entity_shows_the_signal_names_it_carries() {
         Some("door_close"),
         "a row de SAÍDA não mostra o nome autorado — ela é write-only"
     );
+}
+
+/// **A superfície é oferecida em TODO collider — e em nenhum sprite pelado.**
+///
+/// ⚠️ **A metade da AUSÊNCIA é a que carrega o gate.** As duas rows escrevem um
+/// componente que vive ao lado do `Collider`, então numa entidade sem collider
+/// elas seriam um controle que anexa um órfão a um sprite comum — e a metade da
+/// PRESENÇA sozinha ficaria verde com a seção inteira pintada em branco
+/// ([[feedback_absence_gate_needs_a_presence_sibling]]).
+///
+/// ⚠️ **E a presença tem de valer para um corpo ESTÁTICO, que é o caso de uso
+/// inteiro:** o gelo e a esteira são chão, e um gate que só olhasse o Dynamic
+/// deixaria passar a versão que restringe o controle a exatamente onde ele não
+/// serve.
+#[test]
+fn the_walk_surface_rows_are_offered_for_every_collider_and_never_without_one() {
+    for (info, what) in [
+        (with_body(), "um corpo dinâmico"),
+        (
+            InspectorPhysicsInfo {
+                kind_tag: 1,
+                ..with_body()
+            },
+            "um chão ESTÁTICO",
+        ),
+        (as_part(), "uma PEÇA de corpo composto"),
+    ] {
+        let painted = painted_ids(info);
+        for (id, label) in [
+            (ids::INSP_PHYS_WALK_GRIP, "Grip"),
+            (ids::INSP_PHYS_WALK_BELT, "Belt"),
+        ] {
+            assert!(
+                painted.contains(&id),
+                "{what} nao ofereceu {label} — a superfície é de quem tem collider"
+            );
+        }
+    }
+    let bare = painted_ids(without_body());
+    for (id, label) in [
+        (ids::INSP_PHYS_WALK_GRIP, "Grip"),
+        (ids::INSP_PHYS_WALK_BELT, "Belt"),
+    ] {
+        assert!(
+            !bare.contains(&id),
+            "um sprite SEM collider ofereceu {label} — a row anexaria um órfão"
+        );
+    }
 }

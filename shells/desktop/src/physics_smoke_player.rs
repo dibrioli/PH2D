@@ -67,25 +67,27 @@ pub(crate) fn slab(
     half: [f32; 2],
     rot: f32,
     tint: [f32; 4],
-) {
-    world.spawn((
-        Name::new(name.to_string()),
-        Transform {
-            rotation: rot,
-            ..Transform::from_translation(at)
-        },
-        Sprite::atlas(WHITE_TILE_KEY, [half[0] * 2.0, half[1] * 2.0], tint),
-        RigidBody {
-            kind: BodyKind::Static,
-        },
-        Collider {
-            shape: ColliderShape::Cuboid {
-                half_x: half[0],
-                half_y: half[1],
+) -> Entity {
+    world
+        .spawn((
+            Name::new(name.to_string()),
+            Transform {
+                rotation: rot,
+                ..Transform::from_translation(at)
             },
-            ..Collider::default()
-        },
-    ));
+            Sprite::atlas(WHITE_TILE_KEY, [half[0] * 2.0, half[1] * 2.0], tint),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: half[0],
+                    half_y: half[1],
+                },
+                ..Collider::default()
+            },
+        ))
+        .id()
 }
 
 /// A plataforma vai e volta.

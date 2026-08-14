@@ -44,8 +44,8 @@ use ph2d_vector::{BezPath, VectorScene};
 pub(crate) use super::physics_overlay_shapes::collider_outline;
 
 use super::physics_overlay_annotations::{
-    EFFECTOR_RGBA, FALLOFF_RGBA, FALLOFF_RING, TORQUE_RGBA, VELOCITY_RGBA, effector_arrow,
-    torque_glyph, velocity_arrow, zone_mirror, zone_pushes,
+    BELT_RGBA, EFFECTOR_RGBA, FALLOFF_RGBA, FALLOFF_RING, TORQUE_RGBA, VELOCITY_RGBA, belt_arrow,
+    effector_arrow, torque_glyph, velocity_arrow, zone_mirror, zone_pushes,
 };
 use super::physics_overlay_contacts::{
     CONTACT_FLASH_RGBA, CONTACT_RGBA, WATERLINE_RGBA, contact_flashes, contact_marks,
@@ -268,6 +268,26 @@ pub(crate) fn outlines(
             )
         {
             out.push((arrow, EFFECTOR_RGBA));
+        }
+        // A ESTEIRA desta superfície — PARA QUE LADO ELA CORRE (W-Surface).
+        //
+        // ⚠️ A tangente e a régua moram no `belt_arrow` — ver o doc dele.
+        //
+        // ⚠️ **Desenhada com o relógio a andar também**, como a do campo: uma
+        // correia é propriedade da SUPERFÍCIE, autorada uma vez, e não deixa de
+        // ser verdade porque a simulação começou.
+        if show
+            && let Some(surf) = world.get::<ph2d_physics_ecs::WalkSurface>(e)
+            && let Some(arrow) = belt_arrow(
+                t.translation.x + wox,
+                t.translation.y + woy,
+                t.rotation,
+                surf.belt,
+                camera,
+                window,
+            )
+        {
+            out.push((arrow, BELT_RGBA));
         }
         // The torque zone's spin — WHICH WAY DOES THIS TURN. The rotational sibling of the
         // force arrow, drawn for the same reason and under the same rule (authored, so it

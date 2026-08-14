@@ -67,6 +67,7 @@ pub(crate) fn build_physics_info(
         AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaFormDrag, AreaTorque, Ccd, Collider,
         ColliderShape, DampingOverride, Dominance, GravityScale, InitialVelocity, LockPositionX,
         LockPositionY, LockRotation, MassOverride, MaterialCombine, OneWayPlatform, RigidBody,
+        WalkSurface,
     };
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
@@ -88,6 +89,12 @@ pub(crate) fn build_physics_info(
     // Optional Freeze Position markers (W-LockPos); each presence is a flag.
     let lock_x = world.get::<LockPositionX>(entity).is_some();
     let lock_y = world.get::<LockPositionY>(entity).is_some();
+    // A superfície de caminhada (W-Surface); ausente = o neutro, que é
+    // exatamente o que toda cena fazia antes de ela existir.
+    let surface = world
+        .get::<WalkSurface>(entity)
+        .copied()
+        .unwrap_or(WalkSurface::NEUTRAL);
     // Optional mass override (W-Mass); presence = Manual mode, value = the kg. Absent
     // = Auto (density-derived), and the Mass row is not shown.
     let mass_ov = world.get::<MassOverride>(entity).map(|m| m.0);
@@ -190,6 +197,8 @@ pub(crate) fn build_physics_info(
             ccd: false,
             lock_rotation: false,
             offset: [0.0, 0.0],
+            walk_grip: WalkSurface::NEUTRAL.grip,
+            walk_belt: WalkSurface::NEUTRAL.belt,
             lock_x: false,
             lock_y: false,
             mass_manual: false,
@@ -289,6 +298,11 @@ pub(crate) fn build_physics_info(
         ccd,
         lock_rotation,
         offset: col.offset,
+        // A superfície AUTORADA — ausente, o neutro. Sem estas duas linhas as
+        // rows seriam write-only, o defeito que a família das zonas shipou
+        // inteira e que custou um report do Enio.
+        walk_grip: surface.grip,
+        walk_belt: surface.belt,
         lock_x,
         lock_y,
         // Manual mode = the override is present; its value is shown in the Mass row.

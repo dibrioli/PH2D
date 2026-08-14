@@ -210,6 +210,56 @@ impl Rig {
     }
 }
 
+/// **A SONDA que numerou a FAIXA do slider** — onde o `grip` deixa de fazer
+/// diferença, com os defaults de PRODUTO (`WalkConfig::STARTING_POINT`).
+///
+/// `cargo test -p ph2d-physics-ecs --test walk_surface measure_where_the_grip_saturates -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda: imprime, nao afirma"]
+fn measure_where_the_grip_saturates() {
+    eprintln!("  grip   0,1 s (m)   1,0 s (m)");
+    for g in [1.0_f32, 2.0, 4.0, 6.0, 8.0, 12.0, 20.0] {
+        let mut r = Rig::new();
+        let deck = r.floor("Deck", Vec2::new(20.0, -0.5), [40.0, 0.5]);
+        r.sim
+            .world_mut()
+            .entity_mut(deck)
+            .insert(WalkSurface { grip: g, belt: 0.0 });
+        // ⚠️ **O pincel de PRODUTO, não o desta suíte** — as consts daqui são
+        // baixas de propósito para a diferença ser mensurável, e a faixa de um
+        // slider tem de sair do que o artista de facto encontra.
+        let p = r
+            .sim
+            .world_mut()
+            .spawn((
+                Name::new("Player"),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Capsule {
+                        half_height: 0.3,
+                        radius: 0.2,
+                    },
+                    ..Collider::default()
+                },
+                LockRotation,
+                PlatformPlayer {
+                    float_height: FLOAT,
+                    ..PlatformPlayer::default()
+                },
+                Transform::from_translation(Vec2::new(0.0, FLOAT)),
+            ))
+            .id();
+        r.run(p, SETTLE_SPAWN, 0.0);
+        let x0 = r.x(p);
+        let _ = r.run(p, 6, 1.0);
+        let short = r.x(p) - x0;
+        let _ = r.run(p, 54, 1.0);
+        eprintln!("  {g:4.1}   {short:9.4}   {:9.4}", r.x(p) - x0);
+    }
+}
+
 /// **A SONDA da correia em rampa** — quanto ARCO ela carrega por inclinação.
 ///
 /// `cargo test -p ph2d-physics-ecs --test walk_surface measure_the_belt_on_a_ramp -- --ignored --nocapture`

@@ -76,6 +76,10 @@ pub(crate) fn sync_physics_fields(host: &mut dyn PanelHostInternal) {
         (ids::INSP_PHYS_HALF_Y, info.half_y),
         (ids::INSP_PHYS_CAP_HALF_H, info.cap_half_height),
         (ids::INSP_PHYS_OFFSET_X, info.offset[0]),
+        // ⚠️ Sem estas duas as rows seriam WRITE-ONLY — o defeito que a família
+        // das zonas shipou inteira (W-AreaTorque) e que custou um report.
+        (ids::INSP_PHYS_WALK_GRIP, info.walk_grip),
+        (ids::INSP_PHYS_WALK_BELT, info.walk_belt),
         (ids::INSP_PHYS_OFFSET_Y, info.offset[1]),
         (ids::INSP_PHYS_DENSITY, info.density),
         (ids::INSP_PHYS_MASS, info.mass),

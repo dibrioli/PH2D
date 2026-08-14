@@ -114,6 +114,44 @@ pub fn curve_of(name: &str) -> String {
     format!("{RESERVED_PREFIX}curve:{name}")
 }
 
+/// The external a named object's **APPEARANCE at a SHIFTED time** rides on — the
+/// fourth question about the same name, and the first that is about WHEN.
+///
+/// The raw name answers *"what does X look like"* — at the playhead, now. That is
+/// the only answer a cel-animated object could give, because the shell bakes its
+/// tile **once per object, at the app's current frame**: two `source.object` nodes
+/// naming the same Flip got the SAME drawing, and nothing downstream could ask for
+/// another. A stagger of copies each showing a different drawing — the canonical
+/// pair with an offset in every reference that has one — was not expressible.
+///
+/// So a shifted appearance gets its own key, exactly as [`position_of`] and
+/// [`curve_of`] did when they were another question wearing the right column name.
+///
+/// ⚠️ **The zero offset returns the RAW NAME, and that is the whole neutrality
+/// argument.** A graph that never touches the param mints no key, publishes no extra
+/// external, bakes no extra tile and reads the channel it always read — byte-identical
+/// to every frame this app has drawn. There is no "shifted by nothing" state to keep
+/// in agreement with the unshifted one, because it is the same string.
+///
+/// ⚠️ **`-0.0` also returns the raw name**, because `-0.0 == 0.0` in IEEE-754 — and a
+/// shift of negative nothing is no shift. The alternative (comparing bits) would mint
+/// a second key for a value the artist cannot distinguish from zero on any slider.
+///
+/// The offset is encoded as its **BITS in hex**, never as a formatted decimal: the two
+/// callers are a leaf node crate and the shell, and a float formatted by two different
+/// call sites is a divergence waiting for a locale or a precision change. Here there is
+/// one call site — this function — and the bits are exact.
+#[must_use]
+pub fn appearance_of(name: &str, time_offset: f32) -> String {
+    if time_offset == 0.0 {
+        return name.to_string();
+    }
+    format!(
+        "{RESERVED_PREFIX}shift:{:08x}:{name}",
+        time_offset.to_bits()
+    )
+}
+
 /// One published value, and the revision that IS its content.
 #[derive(Clone, Debug, PartialEq)]
 pub struct External {
@@ -211,5 +249,67 @@ mod reserved_tests {
     fn the_cursor_lives_in_the_namespace_it_claims() {
         assert!(is_reserved(CURSOR));
         assert!(CURSOR.starts_with(RESERVED_PREFIX));
+    }
+
+    /// **The unshifted appearance IS the raw name** — the neutrality of the whole
+    /// channel. If this ever minted a key for zero, every graph in every saved
+    /// document would start reading an external nobody publishes: an empty stream,
+    /// and the object silently vanishes from the canvas.
+    ///
+    /// `-0.0` is the same case and not a curiosity: a slider dragged to the left
+    /// edge and back can leave it there, and `-0.0 == 0.0` is what makes the two
+    /// indistinguishable to the artist. Minting a second key for it would bake a
+    /// second tile for the same picture.
+    #[test]
+    fn a_zero_offset_is_the_name_itself() {
+        assert_eq!(appearance_of("Ball", 0.0), "Ball");
+        assert_eq!(appearance_of("Ball", -0.0), "Ball");
+        assert!(!is_reserved(&appearance_of("Ball", 0.0)));
+    }
+
+    /// A shifted appearance lands INSIDE the editor's namespace, so an artist can
+    /// never name an object into it. The complement of the test above: the two
+    /// halves are what stop a shifted key and a real object from ever being the
+    /// same string.
+    #[test]
+    fn a_shifted_appearance_is_reserved_and_carries_the_name() {
+        let k = appearance_of("Ball", 0.25);
+        assert!(is_reserved(&k), "{k} escaped the namespace");
+        assert!(k.ends_with("Ball"), "{k} lost the name it refers to");
+    }
+
+    /// **Distinct offsets are distinct keys, and equal offsets are the SAME key** —
+    /// the property the bake cache rides on. Two nodes asking for the same shift of
+    /// the same object share one tile; two asking for different shifts must not.
+    ///
+    /// The pair `0.1` / `0.2` is here because it is the one a decimal format would
+    /// most plausibly collapse (one significant digit at a coarse precision); the
+    /// bits cannot.
+    #[test]
+    fn the_key_separates_offsets_and_joins_equal_ones() {
+        assert_eq!(appearance_of("Ball", 0.1), appearance_of("Ball", 0.1));
+        assert_ne!(appearance_of("Ball", 0.1), appearance_of("Ball", 0.2));
+        assert_ne!(appearance_of("Ball", 0.1), appearance_of("Ball", -0.1));
+        assert_ne!(appearance_of("Ball", 0.1), appearance_of("Box", 0.1));
+    }
+
+    /// The four questions about one name are four DIFFERENT keys. This is the gate
+    /// the module's own history asks for: `curve_of` exists because the geometry
+    /// used to ride the raw name and the appearance publisher overwrote it every
+    /// frame. A shifted appearance colliding with the position channel would be the
+    /// same bug, and `$at:` vs `$shift:` is one character of prefix away from it.
+    #[test]
+    fn the_four_questions_about_a_name_are_four_keys() {
+        let keys = [
+            appearance_of("Ball", 0.0),
+            position_of("Ball"),
+            curve_of("Ball"),
+            appearance_of("Ball", 0.25),
+        ];
+        for (i, a) in keys.iter().enumerate() {
+            for b in keys.iter().skip(i + 1) {
+                assert_ne!(a, b, "two questions about `Ball` share a key");
+            }
+        }
     }
 }

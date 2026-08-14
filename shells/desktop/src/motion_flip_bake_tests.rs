@@ -64,7 +64,7 @@ fn filled_rect(a: [f32; 2], b: [f32; 2], color: Rgba) -> FlipStroke {
 
 fn key_of(doc: &FlipDoc, oid: FlipObjectId, model: Xform) -> u64 {
     let obj = doc.objects().iter().find(|o| o.id == oid).expect("object");
-    content_key(obj, &model, &Playhead::default())
+    content_key(obj, &model, obj.frame_at(&Playhead::default()))
 }
 
 /// The design decision the cache stands on (doc 86 §2, A3): the tile is the object's
@@ -94,7 +94,7 @@ fn moving_the_object_does_not_rebake_but_rotating_and_editing_do() {
     for f in 0..25 {
         ph.seek_frame(f, 12.0);
         let obj = doc.objects().iter().find(|o| o.id == oid).expect("object");
-        distinct.insert(content_key(obj, &Xform::IDENTITY, &ph));
+        distinct.insert(content_key(obj, &Xform::IDENTITY, obj.frame_at(&ph)));
     }
     assert_eq!(
         distinct.len(),
@@ -141,7 +141,7 @@ fn a_baked_flip_object_carries_the_composed_two_layer_silhouette() {
         .bake_one(
             obj,
             &Xform::IDENTITY,
-            &Playhead::default(),
+            obj.frame_at(&Playhead::default()),
             &gpu,
             &mut renderer,
         )
@@ -153,7 +153,7 @@ fn a_baked_flip_object_carries_the_composed_two_layer_silhouette() {
         .bake_one(
             obj,
             &Xform::IDENTITY,
-            &Playhead::default(),
+            obj.frame_at(&Playhead::default()),
             &gpu,
             &mut renderer,
         )

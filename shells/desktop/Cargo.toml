@@ -80,7 +80,13 @@ ph2d-node-fx-glow = { path = "../../crates/ph2d-node-fx-glow" }
 ph2d-node-motion-time-remap = { path = "../../crates/ph2d-node-motion-time-remap" }
 # A porta `fired_rows`/`NAME_KEY` do `pulse.signal` — a soleira do disparo e a chave do
 # nome moram no NÓ, e a ponte pergunta em vez de re-derivar (o precedente do time-remap).
-ph2d-node-pulse-signal = { path = "../../crates/ph2d-node-pulse-signal" }
+ph2d-node-pulse-signal = { path = "../../crates/ph2d-node-pulse-signal" }# A fonte de objeto, para a MEMBRANA. Aqui a dep não é de gate: o shell tem de
+# varrer o documento atrás dos `time_offset` que os `source.object` pedem, e o
+# nome do tipo + o nome do param são do nó. Um literal `"source.object"` na
+# membrana seria a segunda cópia de uma string que o nó já declara, e o dia em
+# que uma delas mudasse a varredura ficaria VAZIA — em silêncio, com a cena
+# desenhando o quadro atual e nada reclamando.
+ph2d-node-source-object = { path = "../../crates/ph2d-node-source-object" }
 # General timeline data layer (M0): keyframe store + curves. Backs the
 # app-general TimelineDoc (authoring + sampling at the engine Playhead) and the
 # per-component SpriteAnimation apply path.

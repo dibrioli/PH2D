@@ -46,7 +46,14 @@ use ph2d_render::{RenderInstance, Sprite, SpriteSource, TextureAtlas};
 // `objects::apply_object_lod` / `objects::LOD_COUNT` resolving unchanged.
 #[path = "motion_bridge_objects_lod.rs"]
 mod lod;
+// O canal da aparência DESLOCADA (doc 89, folha 14) mora num irmão: ele é um
+// ASSUNTO — *com que cara este objeto está em OUTRO tempo* — e não uma variação do
+// publicador de agora. O pai fica com "o que a cena tem", o filho com "quando".
+#[path = "motion_bridge_objects_shift.rs"]
+mod shift;
 pub(crate) use lod::{LOD_COUNT, apply_object_lod};
+pub(crate) use shift::publish_shifted;
+pub(crate) use shift::wanted_shifts;
 // The faithful VectorInstance→tile conversion is exercised only by the gate
 // `the_lod_tile_lands_exactly_where_the_crisp_vector_would` (the partition uses it
 // internally); re-exported for the tests' `use super::*` alone.
@@ -494,6 +501,16 @@ pub(crate) fn publish_objects(motion: &mut MotionState, sim: &mut SimWorld, atla
         &motion.object_bake,
         &motion.flip_object_bake,
     );
+    // ⚠️ **DEPOIS de tudo, e a ordem é load-bearing:** o canal deslocado começa por
+    // COPIAR o que o nome cru acabou de publicar, então ele tem de correr quando esse
+    // canal já existe. Rodá-lo antes daria um external vazio, e um `time_offset` num
+    // sprite faria o objeto SUMIR — que é a forma mais cara de um param novo estar
+    // errado, porque ela parece a feature funcionando em outro objeto.
+    publish_shifted(
+        &mut motion.pump.cook,
+        &motion.doc.graph,
+        &motion.flip_object_bake,
+    );
 }
 
 /// **Bake the named vector shapes to tiles** (doc 86 §2 A2) — at the fx phase, where
@@ -546,11 +563,16 @@ pub(crate) fn bake_flip_objects(
     renderer: &mut ph2d_render::SpriteRenderer,
     sim: &SimWorld,
 ) {
+    let shifts = wanted_shifts(&motion.doc.graph);
     motion
         .flip_object_bake
-        .bake(flip, map, playhead, gpu, renderer, sim);
+        .bake(flip, map, playhead, &shifts, gpu, renderer, sim);
 }
 
 #[cfg(test)]
 #[path = "motion_bridge_objects_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "motion_bridge_objects_shift_tests.rs"]
+mod shift_tests;

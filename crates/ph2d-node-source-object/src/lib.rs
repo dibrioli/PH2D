@@ -32,10 +32,13 @@
 //! own content-revision rides in the cook's fingerprint, so moving/retinting the
 //! object re-cooks this node and only what is downstream of it.
 
-use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
+use ph2d_node_registry::{
+    NodeRegistry, ParamHardMax, ParamHardMin, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
+    RegistryError,
+};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
+use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -45,6 +48,20 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 /// in the `Graph` beside the manifest, not in it; the same slot `motion.path`
 /// uses for its `path` name).
 const OBJECT_PARAM: &str = "object";
+
+/// **Quando** este nó olha para o objeto — segundos à frente (ou atrás) do playhead.
+///
+/// A tile de um objeto Flip é assada **no shell, uma por objeto, no quadro atual do
+/// app**: dois `source.object` do mesmo Flip recebiam o MESMO desenho, e nenhum nó a
+/// jusante podia pedir outro. Uma cascata de cópias, cada uma num desenho diferente —
+/// o par canônico com um stagger, e o `Shape Time Offset` de toda referência que tem
+/// um — era **inexprimível**.
+///
+/// ⚠️ **Zero é o mundo de sempre, e é o próprio nome do canal:** com `0.0` este nó lê
+/// o external do nome cru, exatamente como sempre leu, e o shell não assa tile nenhuma
+/// a mais ([`ph2d_nodegraph::external::appearance_of`] devolve o nome). Não existe um
+/// estado "deslocado de nada" para manter de acordo com o não-deslocado.
+pub const TIME_OFFSET_PARAM: &str = "time_offset";
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -57,7 +74,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     }],
     effect: Effect::Pure,
     clock: Clock::Frame,
-    params: &[],
+    params: &[ParamSpec {
+        // Segundos de deslocamento no relógio deste objeto. `0.0` = o quadro atual,
+        // que é o único frame que este nó soube pedir até 2026-08-13.
+        name: TIME_OFFSET_PARAM,
+        default: 0.0,
+    }],
     lowerings: &[LoweringKind::Cpu],
 };
 
@@ -70,10 +92,15 @@ impl NodeOp for SourceObject {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let name = ctx.text_param(OBJECT_PARAM).unwrap_or_default().to_string();
+        // ⚠️ A chave é mintada pela porta ÚNICA que o shell também chama. As duas
+        // pontas são folhas que não podem depender uma da outra, e um float
+        // formatado em dois sítios é uma divergência esperando uma mudança de
+        // precisão — aqui há um sítio só, e ele devolve o NOME CRU no offset zero.
+        let key = ph2d_nodegraph::external::appearance_of(&name, ctx.param(TIME_OFFSET_PARAM));
         // The membrane published `(P, size, tint, uv_rect, texture_id)` under
-        // this name. Clone is refcount, not a copy (columns are `Arc`); a name
+        // this key. Clone is refcount, not a copy (columns are `Arc`); a key
         // with no published object is the empty external → an empty stream.
-        let stream = ctx.external(&name).clone();
+        let stream = ctx.external(&key).clone();
         ctx.emit(stream);
     }
 }
@@ -91,6 +118,9 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_param_hard_min(MANIFEST.id, PARAM_HARD_MIN);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     // Its output carries `texture_id` (the engine object's tile). The GPU cook
     // now DRAWS this — the lowering writes the id into the instance and the
     // renderer binds the object's texture per run — so it is an OBJECT source,
@@ -101,15 +131,70 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-/// One row: the object name, a `ParamWidget::Source` (a picker of the objects
-/// the app has published, doc 65) with the raw text field as the escape.
-static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
-    param: OBJECT_PARAM,
-    label: "Object",
-    min: 0.0,
-    max: 0.0,
-    step: 0.0,
-    widget: ParamWidget::Source,
+/// **O passo que alcança TODO desenho no fps mais rápido do domínio.**
+///
+/// Não é um número escolhido: a faixa de `fps` que a tira oferece é `[1, 120]`
+/// (`ph2d-panel-flip-frames`), então um quadro no extremo rápido dura `1/120 s` —
+/// um passo maior deixaria desenhos inalcançáveis pelo stepper num objeto a 120 fps,
+/// que é precisamente o objeto em que o offset é mais fino.
+const OFFSET_STEP: f32 = 1.0 / 120.0;
+
+/// **O teto MEDIDO, derivado do domínio — não um palpite de segurança.**
+///
+/// A magnitude do offset não consome recurso nenhum: a tile assada tem o mesmo
+/// tamanho deslocada ou não, e *quantas* tiles existem é limitado por construção
+/// (o bake despeja por quadro o que ninguém pediu, então o conjunto vivo é a
+/// contagem de nós `source.object`, não a de offsets já visitados).
+///
+/// O que existe é um limite de **SIGNIFICADO**: passado o vão da própria animação o
+/// desenho segura, e o offset deixa de mostrar coisa nova. O maior vão que um
+/// documento pode expressar é a exposição máxima de uma chave — `HOLD_MAX = 999`
+/// quadros — no fps mais lento que a tira oferece (`1`), o que dá **999 s**. Além
+/// disso não há Flip alcançável com outro desenho para mostrar, em nenhum fps.
+const OFFSET_HARD: f32 = 999.0;
+
+/// Duas rows: o nome do objeto (o picker) e QUANDO olhar para ele.
+///
+/// ⚠️ A faixa confortável do arrasto é ±2 s — 48 desenhos a 24 fps, que é a escala de
+/// uma cascata de cópias —, e o *disfuncional* começa muito mais longe
+/// ([`OFFSET_HARD`]), que é a divisão que o doc 88 B2 instalou: o slider é o gesto,
+/// a caixa de texto é o alcance.
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: OBJECT_PARAM,
+        label: "Object",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Source,
+    },
+    ParamUiHint {
+        param: TIME_OFFSET_PARAM,
+        label: "Time Offset",
+        min: -2.0,
+        max: 2.0,
+        step: OFFSET_STEP,
+        widget: ParamWidget::Slider,
+    },
+];
+
+/// O offset é tempo de RELÓGIO, e é a unidade que o diz. Um número nu aqui leria
+/// como *quadros* — que é a outra lei, a que este nó deliberadamente não tem.
+static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
+    param: TIME_OFFSET_PARAM,
+    unit: ParamUnit::Seconds,
+}];
+
+/// O piso e o teto digitáveis são simétricos porque o offset é uma DIREÇÃO: uma cópia
+/// pode mostrar um desenho anterior tão legitimamente quanto um posterior.
+static PARAM_HARD_MIN: &[ParamHardMin] = &[ParamHardMin {
+    param: TIME_OFFSET_PARAM,
+    min: -OFFSET_HARD,
+}];
+
+static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
+    param: TIME_OFFSET_PARAM,
+    max: OFFSET_HARD,
 }];
 
 #[cfg(test)]

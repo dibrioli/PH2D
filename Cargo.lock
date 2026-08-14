@@ -5408,6 +5408,7 @@ dependencies = [
  "ph2d-node-pulse-signal",
  "ph2d-node-registry",
  "ph2d-node-registry-init",
+ "ph2d-node-source-object",
  "ph2d-node-util-reroute",
  "ph2d-nodegraph",
  "ph2d-paint-gpu",

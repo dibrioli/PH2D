@@ -522,3 +522,76 @@ fn rename_layer_of_a_missing_id_is_false() {
         "uma camada real não pode ter sido renomeada por um id fantasma"
     );
 }
+
+/// **Deslocamento zero é o quadro de sempre, em toda a faixa** — a metade que
+/// torna o `frame_at` uma delegação honesta em vez de uma segunda aritmética.
+///
+/// A varredura inclui `-0.0` porque é ali que a soma de `0.0` deixa de ser a
+/// identidade estrita do IEEE-754 (`-0.0 + 0.0 = +0.0`): o quadro tem de ser o mesmo
+/// mesmo assim, senão a delegação teria trocado o comportamento de um caso que
+/// nenhuma cena exercita.
+///
+/// ⚠️ **E ela NÃO inclui tempo negativo, porque o `Playhead` não vai lá** — o `seek`
+/// clampa em `0.0`, então uma fixture que pedisse `-2.5` mediria o quadro **zero**
+/// achando que media um passado (foi o que a 1ª versão deste gate fez, e ele nasceu
+/// vermelho contra código correto). O tempo negativo é alcançável pelo *offset*, e é
+/// o gate abaixo que o exercita.
+#[test]
+fn a_zero_shift_is_the_frame_that_always_shipped() {
+    let mut o = FlipObject::new(FlipObjectId(1), "O");
+    for fps in [8.0_f32, 12.0, 24.0, 60.0] {
+        o.fps = fps;
+        for t in [-0.0_f64, 0.0, 0.041_666, 1.0, 3.7, 120.0] {
+            let mut ph = Playhead::default();
+            ph.seek(t);
+            assert_eq!(
+                o.frame_at_shifted(&ph, 0.0),
+                ((t * f64::from(fps)).round() as i64).clamp(i32::MIN as i64, i32::MAX as i64)
+                    as i32,
+                "fps {fps}, t {t}"
+            );
+        }
+    }
+}
+
+/// **O deslocamento é de RELÓGIO, e quantos desenhos ele pula é `fps × offset`.**
+///
+/// É a consequência que o doc-comment promete, e a que separa este desenho de um
+/// offset em quadros: a MESMA meia-segundo pula 6 desenhos a 12 fps e 12 a 24. Um
+/// gate que medisse só um fps não distinguiria as duas leis.
+#[test]
+fn the_shift_is_wall_clock_so_the_drawings_it_skips_scale_with_fps() {
+    let mut o = FlipObject::new(FlipObjectId(1), "O");
+    let mut ph = Playhead::default();
+    ph.seek(1.0);
+    for (fps, skipped) in [(12.0_f32, 6), (24.0, 12), (8.0, 4)] {
+        o.fps = fps;
+        let here = o.frame_at(&ph);
+        assert_eq!(
+            o.frame_at_shifted(&ph, 0.5) - here,
+            skipped,
+            "meio segundo a {fps} fps"
+        );
+        assert_eq!(
+            o.frame_at_shifted(&ph, -0.5) - here,
+            -skipped,
+            "para tras, a {fps} fps"
+        );
+    }
+}
+
+/// **Um offset negativo alcança tempo ANTES de zero, que é o único caminho que
+/// alcança.** O `Playhead::seek` clampa em `0.0`, então esta é a metade do domínio
+/// que só existe através deste param — e ela tem de dar quadro negativo, não zero,
+/// senão toda cópia deslocada para trás perto do começo da linha empilharia no
+/// mesmo desenho em silêncio.
+#[test]
+fn a_backward_shift_reaches_before_the_start_of_time() {
+    let mut o = FlipObject::new(FlipObjectId(1), "O");
+    o.fps = 24.0;
+    let mut ph = Playhead::default();
+    ph.seek(0.25);
+    assert_eq!(o.frame_at(&ph), 6);
+    assert_eq!(o.frame_at_shifted(&ph, -0.5), -6);
+    assert_eq!(o.frame_at_shifted(&ph, -1.0), -18);
+}

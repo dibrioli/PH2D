@@ -565,9 +565,30 @@ impl FlipObject {
     }
 
     /// O quadro (número inteiro) em que o playhead está, dado o FPS deste objeto.
+    ///
+    /// É [`Self::frame_at_shifted`] com deslocamento zero — uma lei, não duas.
     #[must_use]
     pub fn frame_at(&self, playhead: &Playhead) -> Frame {
-        let f = playhead.frame(self.fps as f64);
+        self.frame_at_shifted(playhead, 0.0)
+    }
+
+    /// O quadro em que este objeto está **`offset_seconds` adiante do playhead**.
+    ///
+    /// O deslocamento é de **relógio de parede**, não de contagem de desenhos, e a
+    /// escolha decide o que o artista sente: cada objeto Flip carrega o próprio `fps`,
+    /// então um offset em QUADROS deslocaria dois objetos da mesma cena por tempos
+    /// diferentes — e uma cascata de cópias ("cada uma um décimo de segundo atrás") é
+    /// uma ideia de relógio, não de grade. Quantos desenhos ela pula é `fps × offset`,
+    /// que é uma consequência e não um segundo controle.
+    ///
+    /// ⚠️ **Com `offset_seconds = 0.0` isto reduz LITERALMENTE ao que sempre shipou:**
+    /// somar `0.0` a um `f64` finito é a identidade em IEEE-754, e o único valor que
+    /// ela move é `-0.0 → +0.0`, cuja `round()` e cuja conversão para inteiro dão o
+    /// mesmo quadro. É por isso que o `frame_at` pode delegar em vez de guardar uma
+    /// segunda cópia da mesma aritmética.
+    #[must_use]
+    pub fn frame_at_shifted(&self, playhead: &Playhead, offset_seconds: f64) -> Frame {
+        let f = ((playhead.time() + offset_seconds) * f64::from(self.fps)).round() as i64;
         f.clamp(i32::MIN as i64, i32::MAX as i64) as i32
     }
 

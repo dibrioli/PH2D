@@ -45,7 +45,7 @@ use std::collections::BTreeMap;
 
 use ph2d_core::{Playhead, Vec2};
 use ph2d_ecs::{Entity, Name, SimWorld};
-use ph2d_flip::{FlipDoc, FlipObject, FlipObjectId};
+use ph2d_flip::{FlipDoc, FlipObject, FlipObjectId, Frame};
 use ph2d_flip_render::{FlipCompose, FlipRenderer, pack_drawing};
 use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
@@ -102,83 +102,42 @@ pub(crate) struct FlipObjectBake {
     /// The zeroed pixels the compositor's `LayerPixelProvider` reports for every key
     /// (version 0 — the injected slices are what's really composed; never uploaded).
     dummy: Vec<u8>,
-    /// Keyed by the object's own [`FlipObjectId`] (undo/rename-stable), NOT its name —
-    /// so an unnamed group child gets a tile and a rename doesn't evict it.
-    cache: BTreeMap<FlipObjectId, FlipBaked>,
+    /// Keyed por `(objeto, QUADRO RESOLVIDO)` — o id é undo/rename-stable (um filho de
+    /// grupo sem nome ganha tile e um rename não o despeja), e o quadro é o que torna
+    /// um mesmo objeto em dois tempos duas tiles.
+    ///
+    /// ⚠️ **A chave é o QUADRO, não o offset, e é isso que fecha o perigo do param
+    /// dirigido.** Um `time_offset` pode ser dirigido por fio (doc 58) — um `value.lfo`
+    /// nele varreria offsets contínuos, e uma chave por offset cunharia uma tile por
+    /// QUADRO DE APP, com a cache nunca acertando. Chaveando pelo quadro, dois offsets
+    /// que caem no mesmo desenho **são a mesma tile**, e o conjunto vivo é limitado
+    /// pelo que o grafo pede neste quadro (o despejo abaixo remove o resto) — ou seja
+    /// pela contagem de nós, que é uma coisa que o artista põe na tela com a mão.
+    cache: BTreeMap<(FlipObjectId, Frame), FlipBaked>,
+    /// `(objeto, BITS do offset) -> quadro`, reconstruído a cada bake: a tradução de
+    /// *o que o grafo pediu* para *que tile responde*. Não é uma segunda cache — é a
+    /// resolução, e ela existe porque o pedido chega em segundos e a tile mora num
+    /// quadro.
+    asked: BTreeMap<(FlipObjectId, u32), Frame>,
 }
 
 impl FlipObjectBake {
-    /// The `name -> tile` map the membrane publishes individually (the picker path).
-    /// Read-only — the bake ran at the fx phase. Only NAMED entries are yielded: an
-    /// unnamed group child has a tile (for the group stamp) but nothing to type into a
-    /// node.
-    pub(crate) fn tiles(&self) -> impl Iterator<Item = (&str, FlipTile)> {
-        self.cache.values().filter_map(|b| {
-            b.name.as_deref().map(|n| {
-                (
-                    n,
-                    FlipTile {
-                        texture_id: b.texture_id,
-                        size: b.size,
-                    },
-                )
-            })
-        })
-    }
-
-    /// The baked tile for ONE Flip object by its `FlipObjectId` (the raw `u64` a
-    /// `FlipObjectRef` carries), or `None` if it isn't baked (doc 86 §2 A4). A group
-    /// child that is a Flip object resolves its appearance here — by its drawing id, so
-    /// an unnamed child still resolves.
-    pub(crate) fn tile_for_id(&self, id: u64) -> Option<FlipTile> {
-        self.cache.get(&FlipObjectId(id)).map(|b| FlipTile {
-            texture_id: b.texture_id,
-            size: b.size,
-        })
-    }
-
-    /// Seed a fake tile under `id` — for headless membrane gates that drive
-    /// `resolve_leaf` without a GPU bake.
-    #[cfg(test)]
-    pub(crate) fn seed_for_test(&mut self, id: u64, texture_id: u32, size: [f32; 2]) {
-        self.cache.insert(
-            FlipObjectId(id),
-            FlipBaked {
-                name: None,
-                key: 0,
-                texture_id,
-                size,
-                thumb: ph2d_panel_motion_graph::PreviewThumb {
-                    rgba: std::sync::Arc::new(Vec::new()),
-                    w: 0,
-                    h: 0,
-                },
-            },
-        );
-    }
-
-    /// The baked-tile THUMBNAIL for `texture_id`, or `None` (doc 86 A5) — the Flip
-    /// twin of `ObjectBake::thumbnail_for`, so the membrane looks a source node's tid
-    /// up in BOTH bakes without caring which medium answered.
-    pub(crate) fn thumbnail_for(
-        &self,
-        texture_id: u32,
-    ) -> Option<ph2d_panel_motion_graph::PreviewThumb> {
-        self.cache
-            .values()
-            .find(|b| b.texture_id == texture_id)
-            .map(|b| b.thumb.clone())
-    }
-
     /// Re-bake every named Flip object whose resolved frame changed; evict + RELEASE
     /// the texture of any name that vanished. Runs at the fx phase, where the doc, the
     /// entity map, the playhead, the GPU + the sprite renderer are in hand. Cached by
     /// content ⇒ a static hold (same drawing/pose across frames) bakes once.
+    ///
+    /// `shifts` são os offsets de tempo que o grafo pede neste quadro, em segundos.
+    /// O chamador SEMPRE inclui `0.0` (o nome cru), e os demais vêm dos
+    /// `source.object` do documento — então o conjunto de tiles vivas é o que a cena
+    /// de fato nomeia, e o despejo abaixo devolve a VRAM de tudo o mais.
+    #[allow(clippy::too_many_arguments)] // o 8º é `shifts`, e cada um é um dono distinto
     pub(crate) fn bake(
         &mut self,
         flip: &FlipDoc,
         map: &FlipEntityMap,
         playhead: &Playhead,
+        shifts: &[f32],
         gpu: &GpuContext,
         renderer: &mut SpriteRenderer,
         sim: &SimWorld,
@@ -195,16 +154,35 @@ impl FlipObjectBake {
         let world = sim.world();
         let present = select_present(world, map);
 
-        // Evict the ids that vanished (deleted, or an unnamed object no group references
-        // any more), releasing their texture so a tile never leaks VRAM.
-        let gone: Vec<FlipObjectId> = self
+        // A resolução do quadro é reconstruída do zero: ela descreve o que o grafo
+        // pede AGORA, e é ela que decide o que sobrevive ao despejo abaixo.
+        self.asked.clear();
+        for &oid in present.keys() {
+            let Some(obj) = flip.objects().iter().find(|o| o.id == oid) else {
+                continue;
+            };
+            for sh in shifts {
+                self.asked.insert(
+                    (oid, sh.to_bits()),
+                    obj.frame_at_shifted(playhead, f64::from(*sh)),
+                );
+            }
+        }
+
+        // Despeja o que ninguém pede mais: o objeto que sumiu (deletado, ou um filho de
+        // grupo sem nome que nenhum grupo referencia) E o QUADRO que nenhum offset
+        // resolve neste quadro do app — é esta segunda metade que impede um offset
+        // dirigido por fio de acumular uma tile por quadro visitado.
+        let wanted: std::collections::BTreeSet<(FlipObjectId, Frame)> =
+            self.asked.iter().map(|((o, _), f)| (*o, *f)).collect();
+        let gone: Vec<(FlipObjectId, Frame)> = self
             .cache
             .keys()
-            .filter(|id| !present.contains_key(*id))
+            .filter(|k| !wanted.contains(*k))
             .copied()
             .collect();
-        for id in gone {
-            if let Some(b) = self.cache.remove(&id) {
+        for k in gone {
+            if let Some(b) = self.cache.remove(&k) {
                 renderer.individual_mut().release(b.texture_id);
             }
         }
@@ -218,31 +196,40 @@ impl FlipObjectBake {
                 .iter()
                 .find(|(id, _)| *id == oid)
                 .map_or(Xform::IDENTITY, |(_, x)| *x);
-            let key = content_key(obj, &model, playhead);
-            if self.cache.get(&oid).is_some_and(|b| b.key == key) {
-                // Content unchanged — refresh the (metadata) NAME so a rename
-                // re-publishes without a re-bake, and continue.
-                if let Some(b) = self.cache.get_mut(&oid) {
-                    b.name = name;
+            // Um objeto, um quadro por offset pedido — e dois offsets que caem no MESMO
+            // desenho visitam a mesma entrada, então o segundo é um acerto de cache.
+            let frames: std::collections::BTreeSet<Frame> = shifts
+                .iter()
+                .map(|sh| obj.frame_at_shifted(playhead, f64::from(*sh)))
+                .collect();
+            for frame in frames {
+                let ck = (oid, frame);
+                let key = content_key(obj, &model, frame);
+                if self.cache.get(&ck).is_some_and(|b| b.key == key) {
+                    // Content unchanged — refresh the (metadata) NAME so a rename
+                    // re-publishes without a re-bake, and continue.
+                    if let Some(b) = self.cache.get_mut(&ck) {
+                        b.name.clone_from(&name);
+                    }
+                    continue;
                 }
-                continue;
-            }
-            let old = self.cache.remove(&oid).map(|b| b.texture_id);
-            let baked = self.bake_one(obj, &model, playhead, gpu, renderer);
-            if let Some(t) = old {
-                renderer.individual_mut().release(t);
-            }
-            if let Some((texture_id, size, thumb)) = baked {
-                self.cache.insert(
-                    oid,
-                    FlipBaked {
-                        name,
-                        key,
-                        texture_id,
-                        size,
-                        thumb,
-                    },
-                );
+                let old = self.cache.remove(&ck).map(|b| b.texture_id);
+                let baked = self.bake_one(obj, &model, frame, gpu, renderer);
+                if let Some(t) = old {
+                    renderer.individual_mut().release(t);
+                }
+                if let Some((texture_id, size, thumb)) = baked {
+                    self.cache.insert(
+                        ck,
+                        FlipBaked {
+                            name: name.clone(),
+                            key,
+                            texture_id,
+                            size,
+                            thumb,
+                        },
+                    );
+                }
             }
         }
     }
@@ -254,12 +241,10 @@ impl FlipObjectBake {
         &mut self,
         obj: &FlipObject,
         model: &Xform,
-        playhead: &Playhead,
+        frame: Frame,
         gpu: &GpuContext,
         renderer: &mut SpriteRenderer,
     ) -> Option<(u32, [f32; 2], ph2d_panel_motion_graph::PreviewThumb)> {
-        let frame = obj.frame_at(playhead);
-
         // The visible layers WITH geometry at this frame, bottom-to-top. Each carries
         // its LOCAL→world afine (object model ∘ layer pose) and its blend/opacity + a
         // per-layer compositor key. No parallax (a template has no camera pan).
@@ -461,14 +446,13 @@ struct BakeLayer<'a> {
 /// re-bakes, the tile being bbox-normalized) — plus the DPI. A static hold keeps the
 /// key; a frame change that swaps the drawing or moves a pose, an edit, or a rotate/
 /// scale changes it.
-fn content_key(obj: &FlipObject, model: &Xform, playhead: &Playhead) -> u64 {
+fn content_key(obj: &FlipObject, model: &Xform, frame: Frame) -> u64 {
     use std::hash::{Hash, Hasher};
     let mut h = std::collections::hash_map::DefaultHasher::new();
     BAKE_DPI.to_bits().hash(&mut h);
     // The object's LINEAR part only (translation zeroed): a MOVE is a cache hit.
     let [a, b, c, d, _, _] = model.0;
     let linear = Xform([a, b, c, d, 0.0, 0.0]);
-    let frame = obj.frame_at(playhead);
     for layer in obj.layers() {
         if !layer.visible {
             continue;
@@ -595,6 +579,13 @@ fn readback(gpu: &GpuContext, tex: &wgpu::Texture, w: u32, h: u32) -> Vec<u8> {
 
 // Gates live in a sibling FILHO (via `#[path]`) so the parent stays under the shell
 // LOC cap; `use super::*` there reaches the private `content_key`/`bake_one`.
+// A metade que se CONSULTA (quais tiles existem, e qual responde a este pedido) mora
+// num irmão: o pai é *como uma tile é PRODUZIDA* (o bake na GPU, os scratch renderers,
+// a chave de conteúdo) e o filho *como se PEDE por uma*. Os dois são `impl
+// FlipObjectBake` — a divisão é de assunto, não de tipo.
+#[path = "motion_flip_bake_query.rs"]
+mod query;
+
 #[cfg(test)]
 #[path = "motion_flip_bake_tests.rs"]
 mod tests;

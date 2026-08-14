@@ -625,6 +625,12 @@ mod freeze;
 #[path = "stroke_probe.rs"]
 mod probe;
 
+/// **O PLANO que quatro verbos ajustam** — ver [`plane`]. O corte é o `e` que o
+/// cabeçalho do [`target`] carregava: *para onde um verbo aponta* difere entre
+/// os dezasseis, *que forma a superfície tem* é uma pergunta só.
+#[path = "stroke_plane.rs"]
+mod plane;
+
 /// **A MALHA CRESCEU DEBAIXO DO TRAÇO** — o refino e a lei do `pre`.
 ///
 /// Filho para alcançar os planos congelados; o corte é o mesmo do

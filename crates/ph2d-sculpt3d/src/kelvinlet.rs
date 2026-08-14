@@ -349,21 +349,57 @@ fn radial(r: [f32; 3], eps: f32) -> f32 {
     1.0 / re3 + 1.5 * eps * eps / (re3 * re2)
 }
 
-/// O campo `K(r)·v(r)` normalizado pelo ganho `5/2` que as duas famílias
-/// b-livres partilham — a porta do [`twist`] e da [`scale`].
-fn rigid(r: [f32; 3], eps: f32, scales: Scales, v: impl Fn([f32; 3]) -> [f32; 3]) -> [f32; 3] {
-    let vr = v(r);
-    let mut acc = [0.0f32; 3];
+/// **O PERFIL ESCALAR das duas famílias b-livres** — o número por que `ω × r` e
+/// `s·r` são multiplicados, e vale `1` no bico.
+///
+/// ⚠️ **Ele é público porque um giro elástico entregue como DESLOCAMENTO INCHA
+/// o barro.** O `v(r)` não depende da escala, então ele sai do somatório e o que
+/// sobra é um escalar — mas somar `perfil · (ω × r)` à posição põe o vértice
+/// **fora** da circunferência, em `|r|·√(1 + (θ·perfil)²)`. É a MESMA objeção
+/// que o braço do [`crate::Verb::Twist`] já documenta contra interpolar pela
+/// corda, pelo outro lado da igualdade: ali a forma encolhia, aqui ela cresce.
+///
+/// **MEDIDO** a meio raio do bico (`measure_field_verbs`), onde o perfil vale
+/// `0,577`:
+///
+/// | θ (rad) | deslocamento | ângulo |
+/// |---|---|---|
+/// | 0,25 | 1,0104 | **1,0000** |
+/// | 0,50 | 1,0408 | **1,0000** |
+/// | 1,00 | 1,1546 | **1,0000** |
+/// | 2,00 | **1,5271** | **1,0000** |
+///
+/// ⚠️ **E o primeiro número que escrevi aqui era `+12 %` a meio radiano, sem
+/// medição** — a conta com `perfil = 1`, que só vale no BICO, onde `r = 0` e não
+/// há raio nenhum a inflar. O expoente é `θ·perfil`, e é a sonda que o diz.
+///
+/// ⇒ Um verbo que GIRA (ou que ESCALA ao longo de um raio) consome o **perfil**
+/// e mantém a própria geometria exata; o campo decide só *quanto cada vértice
+/// acompanha*. Quem não tem essa estrutura — o [`pinch`], cuja `F` produz um
+/// termo `(r·F r)r` que não é múltiplo de `F r` — consome o vetor.
+#[must_use]
+pub fn rigid_profile(r: [f32; 3], eps: f32, scales: Scales) -> f32 {
+    let mut num = 0.0f32;
     let mut norm = 0.0f32;
     for &(w, m) in scales.taps() {
         let e = eps * m;
-        let k = w * radial(r, e);
-        acc[0] += k * vr[0];
-        acc[1] += k * vr[1];
-        acc[2] += k * vr[2];
+        num += w * radial(r, e);
         norm += w * 2.5 / (e * e * e);
     }
-    [acc[0] / norm, acc[1] / norm, acc[2] / norm]
+    num / norm
+}
+
+/// O campo `K(r)·v(r)` normalizado pelo ganho `5/2` que as duas famílias
+/// b-livres partilham — a porta do [`twist`] e da [`scale`].
+///
+/// ⚠️ **Ele DELEGA ao [`rigid_profile`] em vez de somar o vetor**, e é isso que
+/// impede as duas leituras do mesmo campo de divergirem: o verbo que gira e a
+/// função da biblioteca leem o mesmo número, e não dois somatórios com a mesma
+/// álgebra e arredondamentos diferentes.
+fn rigid(r: [f32; 3], eps: f32, scales: Scales, v: impl Fn([f32; 3]) -> [f32; 3]) -> [f32; 3] {
+    let vr = v(r);
+    let p = rigid_profile(r, eps, scales);
+    [p * vr[0], p * vr[1], p * vr[2]]
 }
 
 /// Qual das três formas de `F` um campo afim carrega.

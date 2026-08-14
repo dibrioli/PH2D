@@ -20,137 +20,12 @@
 
 use super::*;
 use crate::kelvinlet::Scales;
-
-/// O plano ajustado à pegada de um dab.
-///
-/// ⚠️ **Inclinado, nunca horizontal** — um ajuste horizontal *cava uma cratera
-/// na encosta* em vez de achatá-la (lição paga no `plane.rs` do Painter 2D).
-/// O estimador é a média ponderada pelo falloff das posições e das normais da
-/// pegada, que é o `calc_area_normal_and_center` do Blender; ele difere de um
-/// ajuste por mínimos quadrados de verdade numa sela, e a divergência está
-/// registrada aqui em vez de escondida.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(super) struct PlaneFit {
-    pub(super) point: [f32; 3],
-    pub(super) normal: [f32; 3],
-}
+// ⚠️ **O `PlaneFit` vem do IRMÃO, e é a única abertura que o corte cobrou:** ele
+// aparece na assinatura do `compute_target` porque quatro verbos consomem o
+// plano que o outro arquivo ajusta.
+use super::plane::PlaneFit;
 
 impl SculptStroke {
-    pub(super) fn fit_plane(&self, mesh: &Mesh, brush: &Brush, dab: &Dab) -> PlaneFit {
-        // ⚠️ **O conjunto FRONTAL, e é a metade que o original faz
-        // INCONDICIONALMENTE.** O `getFrontVertices` (`SculptBase.js:206-221`)
-        // filtra por `n · eyeDir <= 0`, e o `Brush.js:32-34` / `Flatten.js:25-27`
-        // o consomem sem perguntar a ninguém — é ele que decide a DIREÇÃO do
-        // Draw e o PLANO do Flatten.
-        //
-        // ⚠️ **A outra metade do culling — filtrar o que se MOVE — NÃO entra.**
-        // Ela é um checkbox do usuário, `_culling = false` por default em dez
-        // tools (`GuiSculptingTools.js:62`), e portá-la ligada seria divergir
-        // com a ferramenta em silêncio (livro-razão §A).
-        //
-        // Sem isto, um dab perto da silhueta ajusta o plano com vértices que
-        // olham para o OUTRO lado, e o Draw empurra numa direção que o artista
-        // não vê.
-        let mut fit = self.fit_plane_over(mesh, brush, dab, true);
-        if fit.is_none() {
-            // Pegada inteiramente de costas (um dab que pegou só o outro lado da
-            // silhueta): sem frontais não há o que cullar, e recusar aqui seria
-            // devolver um plano NaN. A pegada inteira é a melhor resposta que
-            // existe, e é a que havia antes desta fatia.
-            fit = self.fit_plane_over(mesh, brush, dab, false);
-        }
-        fit.unwrap_or(PlaneFit {
-            point: dab.center,
-            normal: [0.0, 1.0, 0.0],
-        })
-    }
-
-    /// O ajuste sobre a pegada, opcionalmente só nos vértices que olham para o
-    /// olho. `None` = ninguém pesou (conjunto vazio, ou todo peso zero).
-    fn fit_plane_over(
-        &self,
-        mesh: &Mesh,
-        brush: &Brush,
-        dab: &Dab,
-        front_only: bool,
-    ) -> Option<PlaneFit> {
-        // ⚠️ **O PLANO É O DA REFERÊNCIA, e o produto CHAMA os kernels
-        // portados** (`SculptBase.js:224-261`) em vez de os re-derivar. Até
-        // 2026-08-11 esta função tinha uma soma própria, ponderada pelo
-        // **FALLOFF** e lida do `pre` congelado, com o racional escrito ao lado:
-        // *"o plano descreve a superfície sob o pincel, e força/pressão/máscara
-        // dizem o quanto agir sobre ela, não que forma ela tem"*. O racional é
-        // defensável e o **preço estava medido**: a NORMAL saía idêntica
-        // (`cos 1,000000`) e o CENTRO ficava **0,029 fora, inteiramente ao
-        // longo da normal** — `5,8 %` do raio.
-        //
-        // ⚠️ **E é por isso que o Draw não sentia e o Flatten sentia.** O Draw
-        // consome só a direção (media `1,01×`); quem consome o PONTO entra pelo
-        // `signed_distance`, que enxerga exatamente a componente ao longo da
-        // normal — o Flatten media `0,54×` e o Clay `1,74×`.
-        //
-        // ⚠️ **A ponderação é a MÁSCARA, não o falloff** (`mAr[ind + 2]`).
-        //
-        // ⚠️ **E a leitura é a VIVA, desde 2026-08-12 — ela era do `pre`
-        // CONGELADO, e essa era a razão de o Accumulate ser INERTE nos quatro
-        // verbos de plano.** A nota que defendia o congelamento dizia *"a
-        // divergência é a mesma que o `Grip::Stamp` já carrega"*, e isso
-        // **deixou de ser verdade** quando a metade 2 pôs o carimbo a compor
-        // sobre o vivo: a premissa mudou sob os pés da nota, que sobreviveu ao
-        // fato. Medido pela porta do produto, com o plano congelado o
-        // interruptor valia **1,04× no Clay** (0,99× no Flatten, 1,00× no
-        // Scrape) contra 1,74× no Draw — *o barro subia até o plano do pen-down
-        // e PARAVA*, e nenhum valor do checkbox mudava isso.
-        //
-        // A referência recomputa os dois por dab sobre a malha VIVA
-        // (`SculptBase.areaNormal` lê `getNormals()`, `areaCenter` lê
-        // `getVertices()`, e `Flatten.stroke` os chama a cada `stroke`), e é
-        // isso que faz um Clay CONSTRUIR: o plano sobe com a tinta.
-        //
-        // ⚠️ **O medo que a nota antiga registrava — *"o Flatten perseguindo a
-        // superfície que ele achata"* — não se realiza, e é geometria:** o
-        // Flatten PROJETA em direção ao plano, e uma projeção preserva o
-        // centroide, então o plano ajustado sobre a pegada não corre. Quem sobe
-        // é o Clay, cujo plano é deslocado `raio · 0,1` — e subir é o que ele
-        // existe para fazer.
-        let front = |v: u32| {
-            let n = mesh.normals()[v as usize];
-            !front_only || n[0] * dab.eye[0] + n[1] * dab.eye[1] + n[2] * dab.eye[2] <= 0.0
-        };
-        // O peso da referência: `1` é livre. O nosso `DEFAULT_MASK` é o oposto,
-        // e o `free_weight` é a porta única dessa conversão.
-        let free = |v: u32| {
-            if front(v) {
-                f64::from(crate::mask_ops::free_weight(
-                    self.base_mask[self.slot[v as usize] as usize],
-                ))
-            } else {
-                0.0
-            }
-        };
-        let normal = crate::ref_kernels::area_normal_with(&self.footprint, |v| {
-            let n = mesh.normals()[v as usize];
-            ([f64::from(n[0]), f64::from(n[1]), f64::from(n[2])], free(v))
-        })?;
-        let point = crate::ref_kernels::area_center_with(&self.footprint, |v| {
-            let p = mesh.positions()[v as usize];
-            ([f64::from(p[0]), f64::from(p[1]), f64::from(p[2])], free(v))
-        })?;
-        let mut point = [point[0] as f32, point[1] as f32, point[2] as f32];
-        let normal = [normal[0] as f32, normal[1] as f32, normal[2] as f32];
-        // O offset move o PLANO, não os vértices — é o knob que faz do Flatten
-        // um Clay sem um segundo verbo.
-        //
-        // ⚠️ **Ele fica DEPOIS do kernel de propósito:** o `areaCenter` da
-        // referência não o conhece (é nosso), e aplicá-lo por dentro faria a
-        // soma que os gates de paridade comparam deixar de ser a dela.
-        let off = brush.plane_offset * dab.radius;
-        for k in 0..3 {
-            point[k] += normal[k] * off;
-        }
-        Some(PlaneFit { point, normal })
-    }
-
     #[allow(clippy::too_many_arguments)]
     pub(super) fn compute_target(
         &self,
@@ -332,16 +207,64 @@ impl SculptStroke {
             // ⚠️ **O ganho não existia, e a ausência valia 20×**: o alvo era a
             // tangente inteira atenuada pelo peso, ou seja o vértice caminhava
             // até `w` da distância ao centro **num dab**. Medido: `16,88×`.
-            Verb::Pinch => add_vec(
-                live,
-                lateral_pull(brush.mode.kernel(), live, dab.center, n_area),
-                w * crate::PINCH_GAIN,
-            ),
-            Verb::Magnify => add_vec(
-                live,
-                lateral_pull(brush.mode.kernel(), live, dab.center, n_area),
-                -w * crate::PINCH_GAIN,
-            ),
+            //
+            // ⚠️ **COM CAMPO ele deixa de REMOVER VOLUME, e é essa a frase.** O
+            // puxão lateral leva barro para dentro e não o devolve a lugar
+            // nenhum — o vinco que sobra é um furo raso. A `F` do
+            // [`crate::kelvinlet::pinch`] tem **traço zero** por construção
+            // (`+s` na normal, `−s/2` no plano), então o que sai de lado sai
+            // pela normal: aperta E espirra, que é o que um material faz.
+            //
+            // ⚠️ **Aqui o campo entra como VETOR** (ao contrário do Twist e do
+            // LocalScale), porque a `F` do aperto produz um termo `(r·F r)·r`
+            // que **não** é múltiplo de `F r` — não há escalar a extrair, e não
+            // há geometria de verbo a preservar.
+            Verb::Pinch => match brush.mode.field(Verb::Pinch) {
+                Some(_) => add_vec(
+                    live,
+                    crate::kelvinlet::pinch(
+                        [
+                            live[0] - dab.center[0],
+                            live[1] - dab.center[1],
+                            live[2] - dab.center[2],
+                        ],
+                        dab.radius,
+                        n_area,
+                        w * crate::PINCH_GAIN,
+                        Scales::default(),
+                    ),
+                    1.0,
+                ),
+                _ => add_vec(
+                    live,
+                    lateral_pull(brush.mode.kernel(), live, dab.center, n_area),
+                    w * crate::PINCH_GAIN,
+                ),
+            },
+            // ⚠️ **O l-mode do Magnify é a ESCALA, não o aperto invertido.** O
+            // `s-mode` é o Pinch com o sinal trocado — um empurrão lateral para
+            // fora, que **acrescenta** volume no plano e nada na normal. A
+            // família *scale* do paper dilata a vizinhança **radialmente**, que
+            // é o que "magnificar" quer dizer, e o perfil decide onde a
+            // dilatação acaba.
+            Verb::Magnify => match brush.mode.field(Verb::Magnify) {
+                Some(_) => {
+                    let d = [
+                        live[0] - dab.center[0],
+                        live[1] - dab.center[1],
+                        live[2] - dab.center[2],
+                    ];
+                    let f = 1.0
+                        + w * crate::PINCH_GAIN
+                            * crate::kelvinlet::rigid_profile(d, dab.radius, Scales::default());
+                    add_vec(dab.center, d, f.max(0.0))
+                }
+                _ => add_vec(
+                    live,
+                    lateral_pull(brush.mode.kernel(), live, dab.center, n_area),
+                    -w * crate::PINCH_GAIN,
+                ),
+            },
             // `Crease.js:38-76` — aperta lateralmente **e** cava, com ganho
             // próprio (`intensidade · 0,07`).
             //
@@ -402,7 +325,7 @@ impl SculptStroke {
             // Hoje o raio do pincel é o `ε` — a ESCALA da resposta elástica — e é
             // a PEGADA que cresce para conter o campo ([`Brush::query_radius`]).
             Verb::Move => match brush.mode.field(Verb::Move) {
-                Some(crate::Field::Grab) => {
+                Some(_) => {
                     let f = [dab.pull[0] * w, dab.pull[1] * w, dab.pull[2] * w];
                     let r = [
                         base[0] - dab.center[0],
@@ -416,6 +339,11 @@ impl SculptStroke {
                         1.0,
                     )
                 }
+                // ⚠️ **`Some(_)` e não o variante nomeado, desde que o *qual*
+                // passou a ser do VERBO** ([`crate::Verb::elastic_field`]): este
+                // braço só pode ser alcançado pelo campo deste verbo, então
+                // nomeá-lo seria repetir num segundo sítio um fato que já tem
+                // dono — e o segundo sítio é exatamente onde um par discorda.
                 None => add_vec(base, dab.pull, 1.0),
             },
             // **O SNAKE HOOK** — o único alvo desta tabela que **não** parte do
@@ -429,7 +357,32 @@ impl SculptStroke {
             // — há uma verdade lida em dois lugares do mesmo instante. Se um dia
             // o aplicador passar a escrever DENTRO do laço, esta é a linha que
             // deixa de valer.
-            Verb::SnakeHook => add_vec(mesh.positions()[v as usize], dab.pull, w),
+            //
+            // ⚠️ **COM CAMPO ele continua partindo do vivo, e é isso que o
+            // separa do [`Verb::Move`] sem lhe dar um campo próprio:** o
+            // [`crate::Field::Grab`] é o MESMO, e o gancho é a âncora que anda.
+            // O `r` sai da posição VIVA porque é dela que este verbo parte —
+            // medi-lo do `pre` daria um perfil ancorado onde o vértice já não
+            // está, e o revezamento comporia dois erros por dab.
+            Verb::SnakeHook => {
+                let from = mesh.positions()[v as usize];
+                match brush.mode.field(Verb::SnakeHook) {
+                    Some(_) => {
+                        let f = [dab.pull[0] * w, dab.pull[1] * w, dab.pull[2] * w];
+                        let r = [
+                            from[0] - dab.center[0],
+                            from[1] - dab.center[1],
+                            from[2] - dab.center[2],
+                        ];
+                        add_vec(
+                            from,
+                            crate::kelvinlet::grab(r, dab.radius, f, Scales::default()),
+                            1.0,
+                        )
+                    }
+                    _ => add_vec(from, dab.pull, w),
+                }
+            }
             // **O TWIST** — gira o `pre` em torno da reta que passa pela âncora
             // na direção de quem olha. Ver [`Grip::Turn`].
             //
@@ -452,12 +405,38 @@ impl SculptStroke {
             // o mesmo erro que o smoke pegou nos dois sinais da órbita. O
             // original nega exatamente aqui (`Twist.js:41`,
             // `vec3.negate(twistData.normal, picking.getEyeDirection())`).
-            Verb::Twist => rotate_about(
-                base,
-                dab.center,
-                [-dab.eye[0], -dab.eye[1], -dab.eye[2]],
-                dab.amount * w,
-            ),
+            //
+            // ⚠️ **COM CAMPO só o ÂNGULO muda, e a geometria fica a mesma** — o
+            // campo elástico entra como o ESCALAR do
+            // [`crate::kelvinlet::rigid_profile`], não como deslocamento. Somar
+            // `perfil · (ω × r)` à posição seria linearizar a rotação e o barro
+            // **INCHARIA** com o ângulo varrido — medido a meio raio,
+            // **1,0408 a meio radiano e 1,5271 a dois**, contra **1,0000** por
+            // esta rota (a tabela vive no [`crate::kelvinlet::rigid_profile`]).
+            // É a mesma objeção do parágrafo acima vista do outro lado: pela
+            // corda a forma encolhe, pelo deslocamento ela cresce.
+            // Girar `θ·w·perfil` mantém todo vértice **sobre** a própria
+            // circunferência e deixa o campo decidir só quanto cada um
+            // acompanha.
+            Verb::Twist => {
+                let turn = match brush.mode.field(Verb::Twist) {
+                    Some(_) => {
+                        let r = [
+                            base[0] - dab.center[0],
+                            base[1] - dab.center[1],
+                            base[2] - dab.center[2],
+                        ];
+                        w * crate::kelvinlet::rigid_profile(r, dab.radius, Scales::default())
+                    }
+                    _ => w,
+                };
+                rotate_about(
+                    base,
+                    dab.center,
+                    [-dab.eye[0], -dab.eye[1], -dab.eye[2]],
+                    dab.amount * turn,
+                )
+            }
             // **O LOCAL SCALE** — afasta (ou aproxima) o `pre` da âncora.
             //
             // ⚠️ **O fator é clampado em ZERO, e o limite não é um palpite:** é
@@ -465,13 +444,27 @@ impl SculptStroke {
             // encolhe mais — ele **reflete** a pegada através da âncora, virando
             // aquele pedaço da malha do avesso (normais para dentro, faces
             // invertidas). Colapsar na âncora é o fim honesto do gesto.
+            //
+            // ⚠️ **COM CAMPO é a FRAÇÃO que o perfil pesa, pelo mesmo motivo do
+            // Twist:** `s·r` é radial, então escalar o raio por
+            // `1 + s·perfil` é exato onde somar `perfil·(s·r)` seria a mesma
+            // conta — mas só enquanto o clamp em zero não morde. Passando pelo
+            // fator, o *fim honesto do gesto* que o parágrafo acima descreve
+            // continua sendo o colapso na âncora, e não uma reflexão através
+            // dela num vértice qualquer do meio da pegada.
             Verb::LocalScale => {
-                let f = (1.0 + dab.amount * w).max(0.0);
                 let d = [
                     base[0] - dab.center[0],
                     base[1] - dab.center[1],
                     base[2] - dab.center[2],
                 ];
+                let grow = match brush.mode.field(Verb::LocalScale) {
+                    Some(_) => {
+                        w * crate::kelvinlet::rigid_profile(d, dab.radius, Scales::default())
+                    }
+                    _ => w,
+                };
+                let f = (1.0 + dab.amount * grow).max(0.0);
                 add_vec(dab.center, d, f)
             }
         }

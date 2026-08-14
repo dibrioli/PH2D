@@ -1334,6 +1334,95 @@ que eu deformo*, não *o que eu toco*), e o `B` tem de seguir o dedo do primeiro
 ao último evento de um arrasto **longo** — o colapso do meio só aparece num
 gesto que dure.
 
+### §7.12 — ✅ W5 (metade B): AS TRÊS FAMÍLIAS AFINS E O GANCHO (2026-08-13)
+
+Os cinco verbos que a §7.10 deixou abertos ganham o `l-mode`: **Snake Hook ·
+Twist · Local Scale · Pinch · Magnify**. Os kernels já estavam construídos e
+gateados desde a metade A — o que faltava era *como um verbo CONSOME um campo*, e
+a resposta não é a mesma para os cinco.
+
+**⚠️ O ACHADO QUE DECIDE A WAVE: `rigid()` é `perfil(r) · v(r)`.** O vetor rígido
+(`ω × r` para a torção, `s·r` para a escala) **não depende da escala do
+Kelvinlet**, então ele sai do somatório e o que sobra é um **escalar**. Isso
+importa porque um verbo que GIRA já tem a geometria certa, e somar-lhe o
+deslocamento linearizado do paper põe o vértice **fora da circunferência** —
+`|r|·√(1 + (θ·perfil)²)`. Medido a meio raio, onde o perfil vale `0,577`:
+
+| θ (rad) | deslocamento | ângulo |
+|---|---|---|
+| 0,50 | 1,0408 | **1,0000** |
+| 1,00 | 1,1546 | **1,0000** |
+| 2,00 | **1,5271** | **1,0000** |
+
+⇒ **Twist e Local Scale consomem o ESCALAR** (`kelvinlet::rigid_profile`, porta
+nova) e mantêm a própria geometria exata — giram sobre a circunferência, escalam
+ao longo do raio —, com o campo a decidir só *quanto cada vértice acompanha*.
+**Grab, Snake Hook e Pinch consomem o VETOR**, porque não há geometria de verbo a
+preservar (e a `F` do aperto produz um termo `(r·F r)·r` que não é múltiplo de
+`F r`: não há escalar a extrair).
+
+⚠️ **E o primeiro número que escrevi para isto era `+12 %` a meio radiano, sem
+medição** — a conta com `perfil = 1`, que só vale no BICO, onde `r = 0` e não há
+raio nenhum a inflar. É a §0 em casa: *a sonda corrigiu a minha própria
+afirmação antes de ela shipar num doc-comment*.
+
+**O que cada verbo passou a fazer, medido pela porta do artista:**
+
+| verbo | vértices S→L | o que o campo acrescenta |
+|---|---|---|
+| Snake Hook | 84 → **946** | a vizinhança acompanha o gancho, com perfil (`aro÷bico = 0,1035`) |
+| Twist | 60 → **902** | gira sem inflar (`1,0000`) e decai do bico ao aro |
+| Local Scale | 60 → **902** | dilata radialmente com perfil |
+| Pinch | 60 → **902** | **devolve pela normal o que tira do plano** (razão `0,1515 → 0,5043`) |
+| Magnify | 60 → **902** | dilata **além do anel**, onde o `s-mode` para |
+
+⚠️ **A MUTAÇÃO ACHOU UM BURACO DE DESENHO, e a cura não foi um gate melhor.**
+Escrever na tabela um par (verbo, campo) TROCADO — `Pinch → Field::Scale` —
+passava nos **193** gates: o alvo do Pinch casa o próprio variante, não casa,
+cai no modo que já shipava … **e a pegada continua a do campo**, porque o
+`query_radius` pergunta só `is_some`. O resultado é um `l-mode` **com o alcance e
+sem a lei**, e um gate que mede *"L difere de S"* não o distingue de um `l-mode`
+são. ⇒ O *qual* mudou-se para o **VERBO** (`Verb::elastic_field`) e o modo ficou
+só com o *se*: o par deixou de ter um segundo sítio onde discordar, e a mutação
+passou de *não-detectada* a **inexprimível**.
+
+⚠️ **E DOIS gates meus ficaram VERDES sobre a mutação pelo MESMO motivo — a
+SOMA.** O gate do gancho contava vértices e o do aperto somava deslocamento
+sobre a pegada; tirado o braço de campo, a pegada 3× mais larga com a
+curva-**indicadora** (que vale `1` em toda ela) **finge o sinal**: mais vértices,
+soma maior, gate verde. O oráculo que ela não consegue fingir é o **PERFIL** —
+`aro ÷ bico`, que sem lei nenhuma é ~1,0 e com o campo mede `0,10` e `0,23`. É a
+lição da §7.11 outra vez (*o número no lugar errado diz o contrário da foto*),
+desta vez no meu próprio gate.
+
+⚠️ **E um discriminante que eu afirmei NÃO EXISTE:** o gate do Magnify nasceu a
+dizer que o campo dilata *ao longo de `r`* contra um `s-mode` *lateral* —
+medido, os dois dão **cos 1,0000**, porque o `lateral_pull` aponta do centro do
+dab para o vértice e sobre a calota raio e tangente são a mesma direção. A
+radialidade ficou como CONTROLE (uma propriedade do campo *scale* que um bug de
+sinal quebraria) e o discriminante passou a ser o **alcance**.
+
+**7 gates novos** (o censo + cinco de forma + o perfil da escala), **7 mutações,
+7 sangram** — e a oitava (o par trocado) é a que deixou de existir. Sem schema,
+sem ADR, sem crate nova, sem dep nova, sem id novo.
+
+**LOC:** `stroke_target.rs` cruzou o teto (708) e foi cortado pelo **`e` que o
+próprio cabeçalho dele carregava** — *"o alvo de cada verbo, **e** o plano que
+quatro deles ajustam"*: o estimador de plano saiu para `stroke_plane.rs` (578 +
+147). ⚠️ E a minha inserção do `elastic_field` **ORFANOU o doc-comment do
+`grip`** (entrou entre o doc dele e o `#[must_use]`), o mesmo defeito de âncora
+que o `paint.rs` do Painter já pagou; quem o pegou foi o `warning: unused
+attribute`, não um gate.
+
+⚠️ **PENDENTE DE SMOKE — `PH2D_SCULPT3D_SMOKE=28`**, a cena da §7.10, agora com
+cinco verbos a mais para comparar no dropdown. A pergunta de olho é a mesma dos
+outros dois: **o chip `L` tem de mudar o que se vê**, e o que muda é a
+vizinhança — nunca o barro sob o cursor.
+
+**Aberto:** o **Crease** (a matriz §3 pede *Draw + Kelvinlets pinch*, que é uma
+COMPOSIÇÃO e não um campo puro) · o pincel **Elastic Deform**, o único que pede
+`Verb` novo · e o resto da §5.
+
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 
 **Os defaults de fábrica do Blender não estão no clone.** Eles vivem em

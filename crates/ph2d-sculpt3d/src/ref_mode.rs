@@ -279,11 +279,18 @@ impl RefMode {
     /// [`Verb::Move`] já pagou uma vez, medido em `0,12226` contra `0,22500`.
     #[must_use]
     pub const fn field(self, verb: Verb) -> Option<Field> {
-        match (self, verb) {
-            // **O AGARRE.** O gesto inteiro é a força no bico, e a vizinhança
-            // responde como um sólido elástico em vez de como uma curva.
-            (Self::L, Verb::Move) => Some(Field::Grab),
-            _ => None,
+        match self {
+            // ⚠️ **O modo decide SE, o verbo decide QUAL** — ver
+            // [`Verb::elastic_field`]. As duas perguntas viviam neste `match` e
+            // isso deixava um par (verbo, campo) ERRADO ser escrito: o alvo do
+            // verbo casa o próprio variante, então um par trocado o mandava para
+            // o modo que já shipava **enquanto a pegada continuava a do campo**
+            // (o [`crate::Brush::query_radius`] pergunta só `is_some`). O
+            // resultado era um `l-mode` sem a lei e com o alcance, e um gate
+            // comportamental não o distinguia de um `l-mode` são — medido: a
+            // mutação passou nos 193.
+            Self::L => verb.elastic_field(),
+            Self::S | Self::B => None,
         }
     }
 
@@ -350,16 +357,28 @@ impl RefMode {
 /// **O CAMPO ELÁSTICO que um modo entrega** — qual das leis do
 /// [`crate::kelvinlet`] governa o deslocamento.
 ///
-/// ⚠️ **Um `enum` de um variante hoje, e ele é o certo:** as outras três
-/// famílias do paper (twist · scale · pinch) têm verbo esperando por elas no
-/// plano §7 W5, e a alternativa — um `bool` *"usa Kelvinlet"* — não teria onde
-/// dizer QUAL, o que faria o segundo membro nascer com um `match` paralelo ao
-/// lado desta tabela.
+/// ⚠️ **Ele nasceu com UM variante e a aposta pagou na wave seguinte:** a
+/// alternativa — um `bool` *"usa Kelvinlet"* — não teria onde dizer QUAL, e os
+/// outros três membros teriam nascido num `match` paralelo ao lado desta tabela.
+///
+/// ⚠️ **E os quatro NÃO são consumidos da mesma forma**, que é o achado da W5-B:
+/// [`Self::Twist`] e [`Self::Scale`] entregam um **escalar**
+/// ([`crate::kelvinlet::rigid_profile`]) porque o verbo que os recebe já tem a
+/// geometria certa — girar sobre a circunferência, escalar ao longo do raio — e
+/// somar o deslocamento linearizado a INFLARIA; [`Self::Grab`] e [`Self::Pinch`]
+/// entregam o vetor, porque não há geometria de verbo a preservar.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Field {
     /// O agarre (eq. 5): a vizinhança acompanha o bico elasticamente, e **mais
     /// à frente do puxão do que ao lado dele**.
     Grab,
+    /// A torção: o barro sob o bico gira como corpo rígido e o resto acompanha.
+    Twist,
+    /// A dilatação radial em torno da âncora.
+    Scale,
+    /// O aperto de traço zero: espreme num eixo e **espirra** no outro. É o que
+    /// separa um vinco de material de um encolhimento.
+    Pinch,
 }
 
 /// **O que uma referência DECLARA sobre um verbo.**

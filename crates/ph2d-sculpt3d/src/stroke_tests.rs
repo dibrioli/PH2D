@@ -313,6 +313,11 @@ mod verb_move;
 #[path = "verb_move_field_tests.rs"]
 mod verb_move_field;
 
+/// As TRÊS famílias AFINS do paper (twist · scale · pinch) e o gancho que reusa
+/// o agarre — a W5-B. Ver o cabeçalho dele.
+#[path = "verb_field_tests.rs"]
+mod verb_field;
+
 /// A BORDA, que só uma malha ABERTA revela — ver o cabeçalho dele.
 #[path = "verb_border_tests.rs"]
 mod verb_border;

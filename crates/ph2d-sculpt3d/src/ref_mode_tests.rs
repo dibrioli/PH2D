@@ -455,7 +455,15 @@ fn the_literature_mode_is_offered_exactly_where_it_declares_a_law() {
     // chip que nasceu sem ninguém decidir que ele devia nascer.
     assert_eq!(
         declared,
-        vec!["Smooth", "Move / Grab"],
+        vec![
+            "Smooth",
+            "Pinch",
+            "Magnify",
+            "Move / Grab",
+            "Snake Hook",
+            "Twist",
+            "Local Scale"
+        ],
         "a literatura portada até hoje"
     );
 }

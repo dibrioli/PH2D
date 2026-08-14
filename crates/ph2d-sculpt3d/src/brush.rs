@@ -222,6 +222,32 @@ impl Verb {
         }
     }
 
+    /// **QUAL campo elástico este verbo consegue consumir** — a metade *qual* da
+    /// pergunta cuja metade *se* mora no [`crate::RefMode::field`].
+    ///
+    /// ⚠️ **Ela é do VERBO porque é um fato sobre ele, não sobre o modo:** um
+    /// verbo que gira só sabe consumir uma torção, e o alvo dele nomeia esse
+    /// kernel. Enquanto as duas metades viviam na tabela do modo, um par trocado
+    /// era **escrivível** e o produto o engolia em silêncio — o alvo caía no
+    /// modo que já shipava e a pegada continuava a do campo
+    /// ([`Brush::query_radius`] só pergunta `is_some`), ou seja um `l-mode` com
+    /// o alcance e sem a lei. A mutação que o instalou passou nos **193** gates.
+    ///
+    /// ⇒ Com o *qual* aqui, o par deixa de poder discordar: não há segundo sítio
+    /// para ele estar escrito.
+    #[must_use]
+    pub const fn elastic_field(self) -> Option<crate::Field> {
+        match self {
+            // O agarre (eq. 5). O Snake Hook é o MESMO campo com a âncora a
+            // andar — o que os separa é o [`Grip::Hook`], não a lei.
+            Self::Move | Self::SnakeHook => Some(crate::Field::Grab),
+            Self::Twist => Some(crate::Field::Twist),
+            Self::LocalScale | Self::Magnify => Some(crate::Field::Scale),
+            Self::Pinch => Some(crate::Field::Pinch),
+            _ => None,
+        }
+    }
+
     /// **Como este verbo consome o gesto** — ver [`Grip`]. A porta única de que
     /// [`Self::anchors`] é uma leitura, e sobre a qual o kernel e o shell fazem
     /// perguntas diferentes.

@@ -185,8 +185,13 @@ custa tanto quanto o inverso):
 
 ## Contagem
 
-**P0 = 3** (`field.noise` · `field.linear` · a porta `value → falloff`, que é o destravador dos
-outros dois e de mais três P1) · **P1 = 9** · **P2 = 5** · **⛔ recusado-com-motivo = 8**.
+**P0 = 0** · **P1 = 9** · **P2 = 5** · **⛔ recusado-com-motivo = 8**.
+
+⚠️ **Esta linha dizia `P0 = 3` até 2026-08-13, com os três já RISCADOS na tabela acima** —
+`field.noise` · `field.linear` · e a porta `value → falloff`, que era o destravador e virou o canal
+`Falloff` do `motion.drive`. Uma contagem que sobrevive ao próprio fechamento faz a próxima
+varredura propor o que já existe, que é o que a §0 do CLAUDE.md manda reconferir em quem move o
+número.
 
 ⚠️ **A leitura honesta da contagem:** os três P0 e três dos P1 (`shape/spline`,
 `delay/decay/freeze`, `audio`) **não são seis itens** — são **um mecanismo** (§1) mais dois nós.

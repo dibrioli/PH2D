@@ -190,7 +190,8 @@ sink**, e um conserto tem de tocar os dois lados (a paridade CPU×GPU é gate).
 - **2 com resíduo pequeno e citado** — `motion.luminance` (o *luminance math* do Nuke) e
   `motion.morph` (as propriedades do Mix do Blender — **e o motor de correspondência, que é o item
   grande**).
-- **2 viraram gap REAL** — **`motion.output`** (blend **P0**; sort/pivô/filtro/sub-UV P2) e
+- **2 viraram gap REAL** — **`motion.output`** (blend ~~**P0**~~ ✅ **FECHADO em 2026-08-13**,
+  cena `=36`; sort/pivô/filtro/sub-UV P2) e
   **`motion.integrate`** (sub-steps **P1**; os dois `MAX_DT` sem medição P2).
 
 ⚠️ **O veredito em duas linhas, para a §10 do plano:** *o `motion.output` é magro por **OMISSÃO**, e a

@@ -136,7 +136,10 @@ Os dois fazem crossfade de dois streams, e **cada um é fraco onde o outro é fo
 5. **`motion.mixer` → "peso POR entrada"** [doc 63 §3] — certo, mas parou cedo: o `blend` é **global** (`v.first()`), não por elemento, e a referência de **origem** (MiniCavalry) já trazia `wa/wb/wc/wd` **e** `geomFrom`, que o port deixou cair.
 6. **`motion.combine` não aparece em lugar nenhum do doc 63 §3** — e é o nó com o gap mais barato e mais concreto da família (o `reindex`, cujo valor ausente é o modo de falha que a referência de origem documenta com todas as letras). O `Merge` marcado PARCIAL no dump da Cavalry [cavalry L29] é o **merge de PATHS** (booleana vetorial), assunto do módulo Vector — não este nó.
 7. **`motion.sort` → "`group_id` · peso-como-coluna"** [doc 63 §3] — **correto e ainda aberto**; esta conferência confirma os dois e acrescenta a direção arbitrária (o `axis_angle`) e o shift.
-8. **`motion.cull`, `motion.duplicator` e `motion.make_point` não têm linha no doc 63 §3** — os três nasceram ou foram tocados depois de 2026-07-24, e o `cull` carrega um **P0** desta família.
+8. **`motion.cull`, `motion.duplicator` e `motion.make_point` não têm linha no doc 63 §3** — os três nasceram ou foram tocados depois de 2026-07-24. ⚠️ **E esta frase terminava em *"o `cull`
+   carrega um **P0** desta família"* até 2026-08-13** — ela contradizia a Contagem da própria folha
+   (`P0 0`) e a linha do `motion.cull` na tabela acima, que é **⛔ REFUTADO** por duas cadeias
+   independentes. Ficou a metade que continua verdadeira: os três não têm linha no doc 63 §3.
 
 ---
 

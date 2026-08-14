@@ -238,21 +238,36 @@ impl PhysicsBridge {
             let leg_hits = leg.per_foot;
             let hit = leg.hit;
 
-            let sample = hit.as_ref().map(|h| GroundSample {
-                grip: 1.0,
-                distance: h.distance,
-                normal: h.normal,
-                // ⚠️ **Que TIPO de chão é este?** — o único que sabe é quem
-                // consultou, e a lei precisa da resposta para decidir o que o
-                // botão de pulo significa neste tique.
-                one_way: self.world.collider_is_one_way(h.collider),
-                // ⚠️ A velocidade do PONTO, não a do centro: uma plataforma que
-                // gira leva a borda mesmo com o centro parado
-                // (`PhysicsWorld::point_velocity`).
-                ground_velocity: h
-                    .body
-                    .and_then(|gb| self.world.point_velocity(gb, h.point))
-                    .unwrap_or([0.0, 0.0]),
+            let sample = hit.as_ref().map(|h| {
+                // ⚠️ **De que é feito este chão?** (W-Surface) — perguntado ao
+                // MESMO raio que ganhou o leque, senão o personagem andaria no
+                // gelo e derraparia na madeira dentro do mesmo tique. Uma cena
+                // que não autorou superfície nenhuma recebe o neutro sem tocar
+                // num mapa (`bridge::surfaces`).
+                let surface = self.surfaces.at(h);
+                GroundSample {
+                    distance: h.distance,
+                    normal: h.normal,
+                    // ⚠️ **Que TIPO de chão é este?** — o único que sabe é quem
+                    // consultou, e a lei precisa da resposta para decidir o que o
+                    // botão de pulo significa neste tique.
+                    one_way: self.world.collider_is_one_way(h.collider),
+                    grip: surface.grip,
+                    // ⚠️ A velocidade do PONTO, não a do centro: uma plataforma que
+                    // gira leva a borda mesmo com o centro parado
+                    // (`PhysicsWorld::point_velocity`).
+                    //
+                    // ⚠️ **E a ESTEIRA entra AQUI**, ao longo da tangente — ver
+                    // `surfaces::ground_velocity_with_belt` para por que ela não
+                    // tem campo próprio.
+                    ground_velocity: super::surfaces::ground_velocity_with_belt(
+                        h.body
+                            .and_then(|gb| self.world.point_velocity(gb, h.point))
+                            .unwrap_or([0.0, 0.0]),
+                        h.normal,
+                        surface,
+                    ),
+                }
             });
 
             // ── O SENSOR DE TETO (W10) ───────────────────────────────────────

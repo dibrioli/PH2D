@@ -45,6 +45,9 @@ impl PhysicsBridge {
         if self.wheel_query.is_none() {
             self.wheel_query = Some(sim.world_mut().query());
         }
+        if self.surface_query.is_none() {
+            self.surface_query = Some(sim.world_mut().query());
+        }
         if self.part_query.is_none() {
             // `query_filtered`, não `query`: o `Without<RigidBody>` É a definição
             // de uma peça, e ele mora no TIPO.
@@ -52,6 +55,10 @@ impl PhysicsBridge {
         }
         self.reconcile_structure(sim);
         self.reconcile_parts(sim);
+        // ⚠️ **DEPOIS das peças**, e a ordem é a lei: uma superfície autorada
+        // numa peça é indexada pelo COLLIDER dela, que só existe depois de a
+        // peça ter sido pendurada.
+        self.reconcile_surfaces(sim);
         self.reconcile_joints(sim);
         self.restamp_damping();
         // A static body has ONE author — the authored `Transform` — so it tracks

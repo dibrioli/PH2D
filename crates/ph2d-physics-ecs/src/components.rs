@@ -244,6 +244,8 @@ mod overrides;
 mod player;
 mod rope;
 mod signal;
+/// A SUPERFÍCIE que o pé encontra (docs dele).
+mod surface;
 
 pub use area::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag, AreaTorque,
@@ -258,3 +260,4 @@ pub use rope::{
     rope_joint_of,
 };
 pub use signal::{PlayerSignals, SignalOnHit, SignalOnLeave};
+pub use surface::WalkSurface;

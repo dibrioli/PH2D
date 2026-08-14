@@ -48,6 +48,7 @@ pub mod rope;
 mod settings;
 pub mod signals;
 mod space;
+mod surfaces;
 pub mod triggers;
 pub mod views;
 
@@ -110,6 +111,10 @@ type PartQuery = QueryState<
     bevy_ecs::query::Without<RigidBody>,
 >;
 
+/// A query das SUPERFÍCIES (`W-Surface`) — quem carrega uma, seja corpo ou
+/// peça. Cacheada pelo mesmo motivo zero-alloc das irmãs.
+type SurfaceQuery = QueryState<(Entity, &'static crate::WalkSurface)>;
+
 /// The joint query, cached for the same zero-alloc reason as [`BodyQuery`].
 /// The `Transform` is the anchor — see `bridge::joints` for the policy.
 type JointQuery = QueryState<(Entity, &'static PhysicsJoint, &'static Transform)>;
@@ -169,6 +174,10 @@ pub struct PhysicsBridge {
     joint_query: Option<JointQuery>,
     /// W-Compound: a query das peças e a tabela delas.
     part_query: Option<PartQuery>,
+    /// W-Surface: a query das superfícies e a tabela delas — ver
+    /// `bridge::surfaces` para por que ela é reconstruída a cada dispatch.
+    surface_query: Option<SurfaceQuery>,
+    surfaces: surfaces::Surfaces,
     parts: std::collections::BTreeMap<Entity, bridge_parts::PartRef>,
     /// Scratch da varredura de peças — zero-alloc em regime, como o `seen`.
     part_seen: Vec<Entity>,
@@ -476,6 +485,8 @@ impl PhysicsBridge {
             fk: None,
             joint_query: None,
             part_query: None,
+            surface_query: None,
+            surfaces: surfaces::Surfaces::default(),
             parts: std::collections::BTreeMap::new(),
             part_seen: Vec::new(),
             wheel_query: None,

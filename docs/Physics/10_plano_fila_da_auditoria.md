@@ -9,9 +9,11 @@
 > escolhido aqui** (§0): quem os escreve é a medição da wave.
 
 ```
-A (a saída) → C (o peso) → B (a superfície) → D (o teto) → E (o empurrão)
+A (a saída) ✅ → C (o peso) ✅ → B (a superfície) ✅ → D (o teto) → E (o empurrão)
    → J (a sonda do Snap) → G · H · I
 ```
+
+> **Estado (2026-08-13):** **A**, **C** e **B** fechadas — a próxima é a **D**.
 
 ---
 
@@ -241,7 +243,7 @@ velocidade com o eixo solto · `2.0` para em metade da distância · a mutação
 
 ---
 
-## §3 — Wave **B**: a SUPERFÍCIE fala ⟨gelo e esteira⟩
+## §3 — Wave **B**: a SUPERFÍCIE fala ⟨gelo e esteira⟩ ⟨**FECHADA** 2026-08-13⟩
 
 **Medido:** o chão contribui **dois** fatos (`normal`, `ground_velocity`), e
 `friction` não aparece uma única vez no crate da lei.
@@ -267,6 +269,58 @@ caixote desliza nela"*, e uma esteira **não-escorregadia** ficaria inexprimíve
 ⚠️ **Quem responde é o MESMO raio que ganhou.** O leque de pés toma o chão como o
 **mais próximo** de N raios; a superfície tem de vir desse mesmo vencedor, senão
 o personagem anda no gelo e derrapa na madeira no mesmo tique.
+
+---
+
+### ⟨FECHADA⟩ o que de facto shipou, e onde o plano errou
+
+**O componente é `WalkSurface { grip, belt }`** — e o segundo campo mudou de
+forma contra o plano: ele previa `surface_velocity: Vec2`, e o que shipa é um
+**ESCALAR ao longo da tangente**. A razão é que o erro fica **inexprimível**: um
+vetor autorado em eixos de mundo tem componente ao longo da NORMAL numa rampa, e
+uma superfície não empurra ninguém para dentro nem para fora de si mesma. Como
+escalar, uma esteira em rampa sobe sozinha e uma plataforma que gira leva a
+correia com ela.
+
+⚠️ **E o preço disso foi MEDIDO, não argumentado.** Com o eixo de mundo o arco
+percorrido explode — `6,000 m` a 0°, **22,832** a 20° e **63,526** a 40°, com 55
+m de subida —, porque a componente normal fantasma faz a PERNA brigar com um chão
+que parece afundar. O oráculo do gate é a **invariância do arco**: uma correia é
+um escalar, então o comprimento percorrido *não sabe da inclinação*.
+
+**A correia entra na `ground_velocity`, não num campo próprio da amostra** — a
+lei já mede tudo relativo ao chão, e uma esteira é literalmente *um chão que anda
+sem o corpo andar*. Somada ali, ela chega de graça a todo consumidor daquele
+campo.
+
+**A superfície NÃO viaja no `BodyDesc`**, e a decisão tem duas metades: ela é
+VIVA (o artista arrasta o slider e o personagem responde no tique seguinte) e o
+SOLVER não precisa dela — só o laço do player a lê. Enfiá-la no descriptor
+custaria uma linha em cada um dos ~147 sítios que o constroem.
+
+**A faixa do slider é MEDIDA:** o `grip` satura em **4,0** com os defaults de
+produto (0,6000 m em 0,1 s a 4, 6, 8, 12 e 20, idênticos) — ⚠️ e a aritmética
+que eu previa dizia **6,0** (`speed / (accel · dt)`). O teto **não é um cap**:
+onde a saturação cai é propriedade do PLAYER, não da superfície.
+
+**A metade VISÍVEL:** a correia ganha uma **seta verde-água** (uma esteira parada
+é indistinguível de um chão — o argumento que deu a seta ao campo de força), e o
+**`grip` não ganha marca nenhuma**, de propósito: ele não tem lado, e vê-se no
+personagem derrapando — o argumento com que o arrasto de área recusou a sua.
+
+**Limitação NOMEADA:** só a lei do PLAYER lê a superfície. Um caixote sobre a
+esteira **não** é levado por ela; o `SurfaceEffector2D` da Unity leva qualquer
+rigidbody, e aqui o alcance é o que o nome diz.
+
+**Cena `PH2D_PHYSICS_SMOKE=115`** — quatro raias, e a do meio é o **CONTROLE**
+(sem componente nenhum). ⚠️ A primeira mensagem dela citava os números da suíte
+da ponte, onde os personagens são **LANÇADOS** à mesma velocidade; nesta cena o
+artista **arranca**, e o gelo — que nunca arranca — derrapava *menos* (1,16 m
+contra 2,95 do controle). Com o gesto do roteiro: gelo **8,27 m e CAI**,
+controle 2,95, borracha 0,87.
+
+**`PROJECT_SCHEMA` INTOCADO** (componente opcional é chaveado pelo hash do nome
+do tipo) e **`physics_ecs_c9` intocado** — a superfície não alcança o solver.
 
 ---
 

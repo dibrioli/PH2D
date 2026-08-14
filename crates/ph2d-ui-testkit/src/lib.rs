@@ -68,6 +68,10 @@ const NANOS_PER_SECOND: u128 = 1_000_000_000;
 /// most seam tests only touch `store()` / `store_mut()` / `bus_mut()`.
 pub struct MockPanelHost {
     store: WidgetStore,
+    /// O relógio da UI viva. ⚠️ Nasce VAZIO de propósito: com o mapa vazio o
+    /// `PanelHostInternal::button_visual` devolve o neutro `1.0`, e um gate de painel continua a
+    /// medir exactamente o que media antes da UI viva existir. Quem quer exercitar o `t` tica-o.
+    motion: ph2d_editor_core::motion::UiMotion,
     hit_index: HitIndex,
     bus: ActionBus,
     selection: Option<HeroSelection>,
@@ -88,6 +92,7 @@ impl MockPanelHost {
     pub fn new() -> Self {
         Self {
             store: WidgetStore::with_capacity(32),
+            motion: ph2d_editor_core::motion::UiMotion::default(),
             hit_index: HitIndex::new(),
             bus: ActionBus::new(),
             selection: None,
@@ -491,6 +496,10 @@ impl PanelHost for MockPanelHost {
 impl PanelHostInternal for MockPanelHost {
     fn store(&self) -> &WidgetStore {
         &self.store
+    }
+
+    fn motion(&self) -> &ph2d_editor_core::motion::UiMotion {
+        &self.motion
     }
 
     fn store_mut(&mut self) -> &mut WidgetStore {

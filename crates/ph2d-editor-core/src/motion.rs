@@ -330,6 +330,51 @@ pub fn cascade_rise(t: f32, travels: bool) -> f32 {
     CASCADE_RISE_PX * (1.0 - t.clamp(0.0, 1.0))
 }
 
+/// **A LEI de *«como este botão se pinta AGORA?»*** — o estado DISCRETO que o store guarda e o
+/// quanto do hover que o relógio integrou, respondidos **de uma vez**.
+///
+/// ⚠️ **Esta é a função; o [`crate::panel::PanelHostInternal::button_visual`] é a FACE dela** para
+/// quem tem um `ctx` (um painel). Duas assinaturas, uma lei — o idioma que o `denoise_ml` já usa
+/// (delegar com o callback vazio) e o oposto das quatro cópias privadas que ela substitui.
+///
+/// ⚠️ **O neutro do `t` é `1.0`.** Um id que o relógio nunca viu está *assente no seu estado*, e é
+/// isso que torna a migração byte-idêntica onde ela ainda não chegou — o mesmo default que o
+/// `Button` já trazia.
+///
+/// ⚠️ **E ela SUBSUME duas leis que o app tinha em separado — medido, não suposto.** Havia quatro
+/// cópias privadas desta pergunta, e elas **não eram todas a mesma**:
+///
+/// - o `paint_helpers` do grid-snap repetia a lei do STORE (`InteractiveState::Button { state }`);
+/// - o `context_menu_dialogs`, o `fill_modal` e o `onion_modal` — três cópias **idênticas entre
+///   si** — derivavam de `hot_id`/`active_id`.
+///
+/// A segunda existe por uma razão boa: um botão de modal **não está registado** como `Button` no
+/// store, e ali a lei do store devolveria `Normal` **para sempre** (um botão que nunca acende).
+/// ⇒ A porta pergunta primeiro ao store e só **cai** no ponteiro quando não há registo — o estado
+/// próprio de um botão registado vence, e um não-registado deixa de ser condenado ao `Normal`.
+///
+/// ⚠️ **Consequência nomeada:** um botão PINTADO e não-registado passa a reagir ao ponteiro onde
+/// antes ficava morto. Isso é uma correcção, mas é uma mudança — e é a razão de a fallback viver
+/// aqui, à vista, e não numa quinta cópia privada.
+#[must_use]
+pub fn button_visual(
+    store: &crate::interaction::WidgetStore,
+    motion: &UiMotion,
+    id: NodeId,
+) -> (crate::widget::ButtonState, f32) {
+    use crate::widget::ButtonState;
+    let state = store.button_state(id).unwrap_or_else(|| {
+        if store.active_id() == Some(id) {
+            ButtonState::Pressed
+        } else if store.hot_id() == Some(id) {
+            ButtonState::Hovered
+        } else {
+            ButtonState::Normal
+        }
+    });
+    (state, motion.get(id).unwrap_or(1.0))
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct UiMotion {
     tracks: BTreeMap<NodeId, Track>,

@@ -25,6 +25,7 @@ use crate::interaction::{HitIndex, WidgetStore};
 use crate::project::ProjectSettings;
 use crate::screens::HeroSelection;
 use crate::zones::Rect;
+use ph2d_a11y::NodeId;
 use ph2d_tokens::Theme;
 
 /// Public-stable subset of host operations panels can consume across
@@ -58,6 +59,30 @@ pub trait PanelHostInternal: PanelHost {
     fn store(&self) -> &WidgetStore;
     fn store_mut(&mut self) -> &mut WidgetStore;
     fn hit_index_mut(&mut self) -> &mut HitIndex;
+
+    /// **O RELÓGIO da UI viva.** Sem ele um painel não consegue sequer *perguntar* quanto de um
+    /// hover está presente — o `t` não vive no store, vive no [`crate::motion::UiMotion`] da tela.
+    ///
+    /// ⚠️ **Era esta a ausência que fazia da F2 uma impossibilidade, e não um trabalho grande:** o
+    /// `hover_targets` publica um alvo para todo botão do store e o tique integra as molas, mas o
+    /// resultado não tinha por onde CHEGAR ao pintor de um painel. Medido em 2026-08-13: `.hover_t()`
+    /// era passado em **2** sítios do app inteiro contra **161** que pintam um botão.
+    fn motion(&self) -> &crate::motion::UiMotion;
+
+    /// **A PORTA ÚNICA de *«como este botão se pinta AGORA?»*** — o estado DISCRETO e quanto do
+    /// hover está presente, numa pergunta só.
+    ///
+    /// ⚠️ **Ela nasceu porque o app já a tinha inventado QUATRO vezes em privado — e as quatro não
+    /// eram a mesma.** Três (`context_menu_dialogs`, `fill_modal`, `onion_modal`) derivavam de
+    /// `hot_id`/`active_id`; a quarta (`paint_helpers` do grid-snap) repetia a lei do store. A
+    /// porta **subsume as duas**, e o porquê está em [`crate::motion::button_visual`] — nenhuma
+    /// delas podia ver o relógio.
+    ///
+    /// ⚠️ **O neutro é `1.0` = *assente no estado*, e é o que mantém a neutralidade da wave:** um id
+    /// que o relógio nunca viu pinta exactamente o que pintava antes de tudo isto existir.
+    fn button_visual(&self, id: NodeId) -> (crate::widget::ButtonState, f32) {
+        crate::motion::button_visual(self.store(), self.motion(), id)
+    }
 
     /// Joint borrow: returns `(&WidgetStore, &mut HitIndex)` in one
     /// call so panel paint code can pass them to inner painters

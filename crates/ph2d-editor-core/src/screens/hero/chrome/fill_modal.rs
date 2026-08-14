@@ -17,9 +17,8 @@ use crate::interaction::{HitIndex, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use crate::screens::hero::HeroScreen;
 use crate::tool::PanelEvent;
-use crate::widget::{Button, ButtonState, Slider, SliderState, paint_button, paint_slider};
+use crate::widget::{Button, Slider, SliderState, paint_button, paint_slider};
 use crate::zones::Rect;
-use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -126,32 +125,24 @@ pub fn paint_fill_adjust_modal(
     let bw = ((inner_w - gap) * 0.5).max(1.0);
     let cancel_rect = Rect::new(inner_x, cy, bw, row_h);
     hit_index.register(ids::PAINTER_FILL_MODAL_CANCEL, cancel_rect);
-    let cancel = Button::new(ids::PAINTER_FILL_MODAL_CANCEL, "Cancel")
-        .state(button_state(store, ids::PAINTER_FILL_MODAL_CANCEL))
-        // ⚠️ O `hover_t` é NEUTRO (1.0) quando ausente; quem o define recebe a fade.
-        .hover_t(motion.get(ids::PAINTER_FILL_MODAL_CANCEL).unwrap_or(1.0));
+    // ⚠️ **A porta ÚNICA** (`motion::button_visual`): o estado e o `t` numa pergunta só. Ela
+    //    substituiu a cópia privada que vivia no fim deste arquivo -- e como estes botões NÃO estão
+    //    registados como `Button` no store, é a metade `hot`/`active` da porta que os acende.
+    let cancel = Button::new(ids::PAINTER_FILL_MODAL_CANCEL, "Cancel").visual(
+        crate::motion::button_visual(store, motion, ids::PAINTER_FILL_MODAL_CANCEL),
+    );
     paint_button(&cancel, cancel_rect, scene, text_system, theme);
 
     let done_rect = Rect::new(inner_x + bw + gap, cy, bw, row_h);
     hit_index.register(ids::PAINTER_FILL_MODAL_DONE, done_rect);
     let done = Button::new(ids::PAINTER_FILL_MODAL_DONE, "Done")
         .accent()
-        .state(button_state(store, ids::PAINTER_FILL_MODAL_DONE))
-        // ⚠️ O `hover_t` é NEUTRO (1.0) quando ausente; quem o define recebe a fade.
-        .hover_t(motion.get(ids::PAINTER_FILL_MODAL_DONE).unwrap_or(1.0));
+        .visual(crate::motion::button_visual(
+            store,
+            motion,
+            ids::PAINTER_FILL_MODAL_DONE,
+        ));
     paint_button(&done, done_rect, scene, text_system, theme);
-}
-
-/// Hover/press [`ButtonState`] for a modal button id, from the store's hot/active tracking (mirror of
-/// the New-image dialog's local helper).
-fn button_state(store: &WidgetStore, id: NodeId) -> ButtonState {
-    if store.active_id() == Some(id) {
-        ButtonState::Pressed
-    } else if store.hot_id() == Some(id) {
-        ButtonState::Hovered
-    } else {
-        ButtonState::Normal
-    }
 }
 
 /// Dispatch the Fill modal's widget events (wired into `chrome::dispatch_all`). Only acts while the
@@ -197,6 +188,9 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // ⚠️ Aqui e não no topo: o `cargo fix --lib` NÃO vê o `cfg(test)` e poda todo import que só o
+    //    filho usa — a mesma armadilha que esta linha já pagou no `interaction/state`.
+    use ph2d_a11y::NodeId;
 
     /// Build a headless text system for paint tests (no system fonts → fast).
     fn text_system() -> TextSystem {

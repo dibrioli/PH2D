@@ -129,9 +129,18 @@ impl Button {
         }
     }
 
-    /// Resolve the background token. Returns `None` for ghost
-    /// (Default + IconOnly Normal); the rect stays transparent and
-    /// the label/icon paint over the panel surface beneath.
+    /// **As DUAS metades numa chamada** — o par que a
+    /// [`crate::panel::PanelHostInternal::button_visual`] devolve.
+    ///
+    /// ⚠️ **Existe para ser mais CURTO que a rota errada.** A alternativa é
+    /// `.state(store.button_state(id).unwrap_or(Normal))` seguido de um `.hover_t(...)` que o sítio
+    /// seguinte esquece — e um botão sem `t` cai no default `1.0`, que **salta**. Quando a rota
+    /// certa é a mais curta de escrever, o sítio 103 nasce certo por preguiça e não por disciplina.
+    #[must_use]
+    pub fn visual(self, v: (ButtonState, f32)) -> Self {
+        self.state(v.0).hover_t(v.1)
+    }
+
     /// **Quanto do hover está presente**, `0..1`. Neutro = `1.0` ⇒ toda construção que não o
     /// define pinta **exactamente** o que pintava antes da wave da UI viva.
     #[must_use]
@@ -162,6 +171,12 @@ impl Button {
         self.bg_token(self.state).map(|t| t.resolve(theme))
     }
 
+    /// O token de fundo de UM estado. `None` para o *ghost* (Default + IconOnly em Normal): o
+    /// rectângulo fica transparente e o rótulo/ícone pintam sobre a superfície do painel.
+    ///
+    /// ⚠️ Este doc estava **ÓRFÃO** no topo do `hover_t` desde a wave do F0 — a inserção de um
+    /// membro entre um doc e a função dele é o mesmo deslize que o `tick_motion` sofreu no corte do
+    /// `live.rs`. Reposto no membro que de facto codifica a regra.
     fn bg_token(&self, state: ButtonState) -> Option<ColorToken> {
         let token = match (self.kind, state) {
             (_, ButtonState::Disabled) => match self.kind {

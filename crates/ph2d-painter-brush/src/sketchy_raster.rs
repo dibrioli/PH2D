@@ -30,42 +30,22 @@
 use crate::solid;
 use crate::stroke::sketchy::Thread;
 
-/// Com que tinta um feixe de fios é desenhado. Agrupado num tipo porque os quatro números são
-/// **uma decisão só** — o que o card `Line` chama de Line Width · Opacity · Reach · ☑ Magnetify.
+/// Com que tinta um feixe de fios é desenhado — a espessura e a opacidade, e mais nada.
+///
+/// ⚠️ **O `Magnetify` NÃO mora aqui, e a primeira versão desta wave o pôs aqui por engano.** Ele foi
+/// construído como uma rampa de opacidade por distância (*fio perto puxa mais*) e o manual do Krita
+/// diz outra coisa, verbatim: *"It's what causes curve lines to form **between two close line
+/// sections** … With Magnetify off, the curve line just forms on either side of the current active
+/// portion of your connection line."* Ele decide **QUE PARES viram fio**, não com que força um fio
+/// desenha — e é por isso que vive no motor ([`crate::stroke::sketchy`]), onde os pares nascem.
+/// O que esta rampa fazia é o que o Krita chama de *Distance Opacity* / *Use Distance Density*, dois
+/// controles SEPARADOS que este card não oferece.
 #[derive(Clone, Copy, Debug)]
 pub struct ThreadInk {
     /// A espessura de um fio, em pixels de canvas.
     pub width_px: f32,
     /// A opacidade de UM fio (`0..=1`) — a do cruzamento sai do acúmulo, não daqui.
     pub opacity: f32,
-    /// O alcance da vizinhança em pixels — a régua do [`Self::magnetify`], e ela TEM de ser a mesma
-    /// que o motor usou para escolher os pares ([`crate::spec::BrushSpec::sketchy_reach_px`]).
-    pub reach_px: f32,
-    /// **Magnetify** — ligado, um fio PERTO puxa mais: a opacidade cai linearmente com a distância
-    /// e chega a zero no alcance. Desligado, todo fio dentro do alcance pesa igual.
-    ///
-    /// ⚠️ **Leitura clean-room do comportamento** (o Krita é GPL-3 e não foi lido): o que o nome
-    /// promete é atração, e o que o desenho mostra é a teia adensando onde o traço passou perto de
-    /// si mesmo. Quem julga o LOOK é o smoke; o que este doc fixa é a LEI, para ninguém a inferir
-    /// dos pixels depois.
-    pub magnetify: bool,
-}
-
-impl ThreadInk {
-    /// O peso de um fio: `1` sem Magnetify, e a rampa de proximidade com ele.
-    ///
-    /// ⚠️ Alcance zero ⇒ peso cheio. A divisão não é protegida por gosto: sem alcance o motor não
-    /// emite fio nenhum ([`crate::spec::BrushSpec::sketchy_active`]), então o único jeito de chegar
-    /// aqui com zero é um chamador que passou a régua errada — e devolver `NaN` para ele pintaria
-    /// nada, em silêncio.
-    #[must_use]
-    fn weight(&self, t: Thread) -> f32 {
-        if !self.magnetify || self.reach_px <= 0.0 {
-            return 1.0;
-        }
-        let d = (t[2] - t[0]).hypot(t[3] - t[1]);
-        (1.0 - d / self.reach_px).clamp(0.0, 1.0)
-    }
 }
 
 /// O retângulo do canvas que um feixe toca, já recortado a `w × h`. `None` quando não sobra nada
@@ -94,13 +74,12 @@ pub fn threads_alpha(
     // Um laço reusado: o `fill_coverage` recebe uma fatia, então a alocação do quad não precisa
     // nascer por fio.
     let mut one: [Vec<[f32; 2]>; 1] = [Vec::with_capacity(4)];
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let op255 = (ink.opacity.clamp(0.0, 1.0) * 255.0 + 0.5) as u32;
+    if op255 == 0 {
+        return alpha;
+    }
     for t in threads {
-        let op = ink.opacity * ink.weight(*t);
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let op255 = (op.clamp(0.0, 1.0) * 255.0 + 0.5) as u32;
-        if op255 == 0 {
-            continue;
-        }
         one[0].clear();
         if !push_quad(&mut one[0], *t, ink.width_px * 0.5, origin) {
             continue;

@@ -13,8 +13,6 @@ fn ink(op: f32) -> ThreadInk {
     ThreadInk {
         width_px: 2.0,
         opacity: op,
-        reach_px: 24.0,
-        magnetify: false,
     }
 }
 
@@ -79,28 +77,26 @@ fn the_thread_is_as_wide_as_the_slider_says() {
     }
 }
 
-/// **MAGNETIFY: O FIO PERTO PUXA MAIS** — e o CONTROLE é o mesmo par sem ele, onde os dois pesam
-/// igual. Sem a segunda metade o gate passaria com o peso constante em qualquer coisa.
+/// **O RASTERIZADOR NÃO TEM OPINIÃO SOBRE A DISTÂNCIA** — um fio curto e um longo pintam com a
+/// MESMA tinta.
+///
+/// ⚠️ Esta é a metade que sobrou de um gate que pinava o oposto: a wave nasceu com uma rampa de
+/// opacidade por distância aqui, batizada de `Magnetify`, e o manual do Krita a desmente (o
+/// Magnetify escolhe QUE PARES viram fio — a lei mora no motor). Um fio que chegou até aqui **já é**
+/// um par escolhido, e pesá-lo de novo pela distância seria a decisão tomada duas vezes.
+///
+/// **Mutação que sangra:** qualquer re-introdução de peso por comprimento nesta função.
 #[test]
-fn magnetify_makes_the_near_thread_stronger_and_the_far_one_fainter() {
-    // Dois fios paralelos: um curto (4 px) e um longo (20 px), o mesmo alcance de 24 px.
-    let near: Thread = [4.0, 10.0, 8.0, 10.0];
-    let far: Thread = [4.0, 30.0, 24.0, 30.0];
-    let mut on = ink(0.8);
-    on.magnetify = true;
-    let a = threads_alpha(&[near, far], on, W, H, [0.0, 0.0]);
-    let (n, f) = (at(&a, 6, 10), at(&a, 14, 30));
-    assert!(n > 0 && f > 0, "controle: os dois fios têm de pintar");
-    assert!(
-        n > f + 20,
-        "o Magnetify não pesou a proximidade: perto {n}, longe {f}"
-    );
-
-    let b = threads_alpha(&[near, far], ink(0.8), W, H, [0.0, 0.0]);
-    let (n2, f2) = (at(&b, 6, 10), at(&b, 14, 30));
+fn the_rasteriser_has_no_opinion_about_a_threads_length() {
+    // Dois fios paralelos com o MESMO desenho e comprimentos bem diferentes (4 px e 20 px).
+    let short: Thread = [4.0, 10.0, 8.0, 10.0];
+    let long: Thread = [4.0, 30.0, 24.0, 30.0];
+    let a = threads_alpha(&[short, long], ink(0.8), W, H, [0.0, 0.0]);
+    let (s, l) = (at(&a, 6, 10), at(&a, 14, 30));
+    assert!(s > 0 && l > 0, "controle: os dois fios têm de pintar");
     assert_eq!(
-        n2, f2,
-        "sem Magnetify os dois fios têm de pesar igual: {n2} contra {f2}"
+        s, l,
+        "o comprimento do fio mudou a tinta dele: curto {s}, longo {l}"
     );
 }
 

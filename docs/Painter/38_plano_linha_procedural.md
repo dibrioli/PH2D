@@ -493,9 +493,16 @@ para compor `over` por fio, que é o que o acúmulo do hachurado exige. Gate: `r
 o que o `taper` re-percorre no resolve de cauda)"* — o replay do taper foi **REMOVIDO em 2026-08-10**.
 A memória nasceu nesta wave.
 
-**O `Magnetify`** é leitura clean-room: *o fio perto puxa mais* — a opacidade cai linearmente com a
-distância e chega a zero no alcance; desligado, todo fio dentro do alcance pesa igual. A LEI está no
-doc do `ThreadInk::magnetify`; o LOOK é do smoke.
+**O `Magnetify` foi construído ERRADO e corrigido pelo MANUAL** (2026-08-14). A v1 era *"o fio perto
+puxa mais"* — uma rampa de opacidade por distância dentro do `ThreadInk`. O manual do Krita a
+desmente, verbatim: *"It's what causes curve lines to form **between two close line sections** …
+With Magnetify off, the curve line just forms on either side of the **current active portion** of
+your connection line."* Ele decide **QUE PARES viram fio**, não com que força um fio desenha ⇒ a lei
+mora no MOTOR (`stroke::sketchy`), onde os pares nascem, e a régua da *porção ativa* é o **ARCO**
+percorrido — a distinção que o próprio `note_sketchy_point` já tinha escrita como o motivo de a
+varredura não poder cortar por arco (*voltar sobre si mesmo é o único jeito de um ponto velho estar
+perto*). O que a rampa fazia é o que o Krita chama de *Distance Opacity* / *Use Distance Density*,
+dois controles SEPARADOS que este card não oferece. O LOOK segue sendo do smoke.
 
 **⚠️ Escopo NOMEADO:** o Sketchy costura só nos métodos **incrementais** (`is_incremental`). Os de
 re-carimbo re-emitem a figura inteira por quadro, então a memória cresceria por quadro e a teia

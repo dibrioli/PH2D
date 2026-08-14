@@ -215,6 +215,104 @@ fn under_symmetry_a_thread_ends_on_mirrored_dab_centres() {
     }
 }
 
+/// Um GRAMPO: o traço vai para a direita ao longo de `y = 200`, dá a volta, e volta para a esquerda
+/// **6 px abaixo** — bem dentro do alcance de 24 px, e a um ARCO enorme de distância. Devolve os
+/// fios.
+///
+/// ⚠️ É a fixture que o Magnetify distingue, e ela existe porque o zigue-zague **não** a distingue:
+/// lá as pernas ficam perto no canvas **e** perto no percurso, então os dois modos costuram igual.
+fn hairpin(sp: BrushSpec) -> Vec<[f32; 4]> {
+    let mut s = Stroke::new(sp, plain_dynamics(), 7);
+    let mut out = Vec::new();
+    let mut threads = Vec::new();
+    let mut all: Vec<[f32; 4]> = Vec::new();
+    let mut lay = |s: &mut Stroke, p: [f32; 2], first: bool| {
+        let pt = StrokePoint {
+            pos: p,
+            pressure: 1.0,
+        };
+        if first {
+            s.begin(pt, &mut out);
+        } else {
+            s.extend(pt, &mut out);
+        }
+        s.take_threads(&mut threads);
+        all.append(&mut threads);
+    };
+    lay(&mut s, [200.0, 200.0], true);
+    for k in 1..=30 {
+        #[allow(clippy::cast_precision_loss)]
+        lay(&mut s, [200.0 + (k as f32) * 4.0, 200.0], false);
+    }
+    for k in 0..=30 {
+        #[allow(clippy::cast_precision_loss)]
+        lay(&mut s, [320.0 - (k as f32) * 4.0, 206.0], false);
+    }
+    all
+}
+
+/// **MAGNETIFY: LIGADO, O TRAÇO COSTURA-SE A DOIS TRECHOS SEPARADOS; DESLIGADO, SÓ À PORÇÃO ATIVA.**
+///
+/// ⚠️ A lei é a do manual do Krita, verbatim: *"It's what causes curve lines to form between two
+/// close line sections … With Magnetify off, the curve line just forms on either side of the current
+/// active portion of your connection line."* Ele escolhe QUE PARES viram fio — **não** com que força
+/// um fio desenha, que foi como esta wave o construiu primeiro (a rampa de opacidade por distância
+/// morreu em `sketchy_raster`, e o que ela fazia é o *Distance Opacity* do Krita, outro controle).
+///
+/// **O oráculo é GEOMÉTRICO:** um fio que atravessa as duas pernas do grampo liga `y = 200` a
+/// `y = 206`; um fio dentro de uma perna tem as duas pontas no mesmo `y`. E o CONTROLE é a segunda
+/// metade — desligado ele **continua costurando** (a porção ativa), senão o gate confundiria *"o
+/// Magnetify recusa o par distante"* com *"o Sketchy parou de funcionar"*.
+///
+/// ⚠️ **A DOBRA é excluída, e o gate nasceu VERMELHO por não a excluir** (51 fios cross-perna com o
+/// Magnetify desligado). Na volta do grampo as duas pernas estão a ~6 px de percurso uma da outra:
+/// ali elas **são** a porção ativa, e costurá-las é o comportamento CERTO nos dois modos. O que
+/// distingue os modos é o outro extremo do grampo, a 240 px de arco — daí o corte em `x < 280`.
+///
+/// **Mutação que sangra:** a janela de arco ignorar o flag (⇒ o OFF costura entre as pernas).
+#[test]
+fn magnetify_sews_across_sections_and_without_it_only_the_active_portion() {
+    // Cross-perna e LONGE da dobra (que fica em x = 320): é ali que os dois modos discordam.
+    let crosses = |ts: &[[f32; 4]]| {
+        ts.iter()
+            .filter(|t| (t[3] - t[1]).abs() > 3.0 && t[0] < 280.0 && t[2] < 280.0)
+            .count()
+    };
+
+    let mut on = spec(LineKind::Sketchy, 1.0);
+    on.sketchy_magnetify = true;
+    let a = hairpin(on);
+    assert!(crosses(&a) > 0, "com Magnetify o traço TEM de ligar as duas pernas");
+
+    let mut off = spec(LineKind::Sketchy, 1.0);
+    off.sketchy_magnetify = false;
+    let b = hairpin(off);
+    // ⚠️ **O CONTROLE é a CAUDA, não `!is_empty()`** — e a diferença foi MEDIDA por uma mutação que
+    // sobreviveu: com a memória guardando arco `0.0` em vez do `Dab::arc_len`, o modo OFF costura os
+    // primeiros 24 px do traço e depois **emudece para sempre**, o que `!is_empty()` aceita. A porção
+    // ativa VIAJA com o dedo, então tem de haver fio no FIM do grampo.
+    //
+    // ⚠️ E o fim é `x` pequeno **na perna de VOLTA** (`y = 206`): o grampo começa e termina no mesmo
+    // `x`, então um corte só em `x` mede o COMEÇO do traço — que é exatamente o pedaço que a mutação
+    // preserva, e foi assim que ela sobreviveu à primeira versão deste controle.
+    let tail = |ts: &[[f32; 4]]| {
+        ts.iter()
+            .filter(|t| t[1] > 203.0 && t[3] > 203.0 && t[0] < 220.0 && t[2] < 220.0)
+            .count()
+    };
+    assert!(
+        tail(&b) > 0,
+        "controle: sem Magnetify a porção ativa tem de VIAJAR — nada costurado no fim do traço"
+    );
+    assert_eq!(
+        crosses(&b),
+        0,
+        "sem Magnetify um fio alcançou a outra perna do grampo: {} de {}",
+        crosses(&b),
+        b.len()
+    );
+}
+
 /// **O SKETCHY NÃO MEXE NO JITTER** — ele sorteia de um fluxo de RNG PRÓPRIO.
 ///
 /// ⚠️ O `rng` do traço é o mesmo que serve posição, escala, rotação e cor por dab. Se o Sketchy o
@@ -267,3 +365,4 @@ fn the_density_is_the_budget_and_the_spend_is_proportional_to_it() {
             .is_empty()
     );
 }
+

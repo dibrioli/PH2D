@@ -113,8 +113,11 @@ pub struct BrushSpec {
     /// **Sketchy — a opacidade do fio**, `0..1`. Baixa por natureza: é o acúmulo de muitos fios que
     /// desenha o hachurado, não a força de cada um.
     pub sketchy_opacity: f32,
-    /// **Sketchy — `Magnetify`**: o fio é puxado para o ponto MAIS PRÓXIMO da vizinhança em vez de
-    /// ligar um vizinho sorteado (o default do Krita). Adensa a teia onde o traço já é denso.
+    /// **Sketchy — `Magnetify`** (o default do Krita, ligado): que PARES da memória viram fio.
+    ///
+    /// Ligado, qualquer par dentro do alcance — inclusive dois trechos que o traço aproximou depois
+    /// de dar a volta. Desligado, só a **porção ativa** do percurso: os pontos que o dedo acabou de
+    /// deixar. ⚠️ Ele **não** pesa a tinta de um fio — ver [`crate::stroke::sketchy`].
     pub sketchy_magnetify: bool,
     /// Dash "on" fraction of each dash period, `0..1` (Blender `dash_ratio`, default `1.0` = solid,
     /// `DNA_brush_types.h:275`).
@@ -464,11 +467,10 @@ impl BrushSpec {
 
     /// **O ALCANCE do Sketchy em PIXELS** — o raio dentro do qual dois pontos do traço se costuram.
     ///
-    /// ⚠️ **Porta ÚNICA, e ela existe porque há DOIS consumidores que têm de concordar:** o motor
-    /// decide com ela *quais pares viram fio*, e o depósito decide com ela *quanto um fio pesa*
-    /// (o `Magnetify` mede a distância CONTRA este número). Duas cópias da mesma multiplicação
-    /// divergiriam no dia em que o alcance deixasse de ser medido em diâmetros — e o sintoma seria
-    /// um fio no limite do alcance nascendo com peso negativo, ou nunca chegando a zero.
+    /// ⚠️ **Porta ÚNICA, e ela existe porque o motor a lê DUAS vezes, para duas perguntas:** *quão
+    /// longe no CANVAS um par pode estar* e — sem o `Magnetify` — *quão longe no PERCURSO*. As duas
+    /// são a mesma régua de propósito: um alcance escrito duas vezes divergiria no dia em que ele
+    /// deixasse de ser medido em diâmetros, e o sintoma seria uma teia que ignora o próprio slider.
     ///
     /// A unidade é o **DIÂMETRO** (`reach = 1` ⇒ um diâmetro), que é o que torna a lei livre de
     /// escala: a W0.3 mediu `fios/dab ≈ 8` em qualquer tamanho de pincel justamente por isto.

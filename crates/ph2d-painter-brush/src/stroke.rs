@@ -109,11 +109,18 @@ pub struct Stroke {
     speed_ramp_len: f32,
     /// O `arc_len` do dab anterior, para a rampa saber quanto de caminho passou entre dois dabs.
     speed_dab_arc: f32,
-    /// **A MEMÓRIA do traço** (centros de dab, em px de canvas) — a vizinhança que o Sketchy costura.
+    /// **A MEMÓRIA do traço** — a vizinhança que o Sketchy costura: `[x, y, arco]`, os dois
+    /// primeiros em px de canvas e o terceiro o [`Dab::arc_len`] daquele centro.
+    ///
+    /// ⚠️ **O arco não é enfeite: é o que separa os dois modos de Magnetify.** *Perto no canvas* e
+    /// *perto no percurso* são perguntas diferentes, e o Krita chama a primeira de Magnetify ligado
+    /// (dois trechos que se aproximaram) e a segunda de desligado (a porção ativa do traço). Sem o
+    /// arco guardado ao lado do ponto, a segunda é inexprimível.
+    ///
     /// Nasce vazia em cada [`Stroke::begin`], que é o que impede um fio de ligar dois TRAÇOS.
     /// Só é populada com o Sketchy armado: um `Vec` que cresce em todo traço do app seria memória
     /// paga por quem nunca escolheu o tipo.
-    sketchy_pts: Vec<[f32; 2]>,
+    sketchy_pts: Vec<[f32; 3]>,
     /// Os fios costurados desde o último [`Stroke::take_threads`].
     threads: Vec<sketchy::Thread>,
     /// ⚠️ **Fluxo de RNG PRÓPRIO do Sketchy.** Sortear os fios do `rng` do traço adiantaria o mesmo

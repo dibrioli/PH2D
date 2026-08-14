@@ -234,8 +234,8 @@ pub const PAINTER_LINE_SKETCHY_DENSITY: NodeId = hash_node_id("painter_line.sket
 pub const PAINTER_LINE_SKETCHY_WIDTH: NodeId = hash_node_id("painter_line.sketchy_width");
 /// **Opacity** — a opacidade de UM fio; a do cruzamento sai do acúmulo. `SetValue` → `set_sketchy_opacity`.
 pub const PAINTER_LINE_SKETCHY_OPACITY: NodeId = hash_node_id("painter_line.sketchy_opacity");
-/// **Magnetify** — o fio perto puxa mais (a opacidade cai com a distância dentro do alcance).
-/// `Click` → alterna.
+/// **Magnetify** — ligado, o traço costura DOIS trechos que se aproximaram (ainda que a um arco
+/// enorme um do outro); desligado, só a porção ATIVA do percurso. `Click` → alterna.
 pub const PAINTER_LINE_SKETCHY_MAGNETIFY: NodeId = hash_node_id("painter_line.sketchy_magnetify");
 /// Id de uma OPÇÃO do popover do [`PAINTER_LINE_TYPE`]. Espelho do
 /// [`painter_brush_media_option_id`].

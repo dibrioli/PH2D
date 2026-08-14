@@ -54,17 +54,16 @@ impl PainterTool {
             && !self.solid_owns_the_gesture()
     }
 
-    /// A tinta com que ESTE pincel desenha um fio — os quatro números do card, num lugar só.
+    /// A tinta com que ESTE pincel desenha um fio.
     ///
-    /// ⚠️ O alcance vem da **porta única** do motor, nunca de uma segunda multiplicação aqui: é ela
-    /// que escolheu os pares, e é contra ela que o `Magnetify` mede a proximidade.
+    /// ⚠️ **Só a espessura e a opacidade.** O `Reach` e o `Magnetify` decidem QUE PARES o motor
+    /// costura (`ph2d_painter_brush::stroke::sketchy`), e um fio que chegou até aqui já é um par
+    /// escolhido — reler os dois no depósito seria a segunda resposta à mesma pergunta.
     fn thread_ink(&self) -> ThreadInk {
         let b = &self.paint.brush;
         ThreadInk {
             width_px: b.sketchy_width_px,
             opacity: b.sketchy_opacity,
-            reach_px: b.sketchy_reach_px(),
-            magnetify: b.sketchy_magnetify,
         }
     }
 

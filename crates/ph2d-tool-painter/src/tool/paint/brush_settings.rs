@@ -225,7 +225,7 @@ pub struct BrushSettings {
     pub sketchy_width_px: f32,
     /// **Sketchy — Opacity**: a opacidade de UM fio.
     pub sketchy_opacity: f32,
-    /// **Sketchy — Magnetify**: o fio perto puxa mais.
+    /// **Sketchy — Magnetify**: costurar dois trechos que se aproximaram, ou só a porção ativa.
     pub sketchy_magnetify: bool,
     /// "Sync with other tools" on/off: on = every paint tool shares these settings; off (default) = each
     /// tool independent. Drives the checkbox at the top of the brush panel.

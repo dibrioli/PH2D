@@ -3753,6 +3753,91 @@ fn value_noise_kernel_matches_the_cpu_on_the_device() {
     );
 }
 
+/// **O CATÁLOGO de kernels do `value.noise` no device** (doc 89 folha 15) —
+/// Value · Perlin · Cellular(Cells) · Cellular(Cracks), o sweep inteiro.
+///
+/// ⚠️ **A fixture irmã acima cozinha com `kernel = 0` — o default —, então os
+/// kernels novos concordariam ali POR VÁCUO:** os dois lados escreveriam o campo
+/// de valor por caminhos diferentes e bateriam. Uma mutação que faça o `vn_base`
+/// devolver sempre `vn_value_noise` passa em toda a suíte menos aqui.
+///
+/// ⚠️ **E a tolerância é maior que a dos irmãos, com o mecanismo:** o celular
+/// usa `sqrt`, que o IEEE-754 exige correctamente arredondado mas o WGSL só
+/// especifica a **2,5 ULP** — sobre um resultado da ordem de 1,0 isso são ~3e-7,
+/// três ordens de grandeza dentro do `1e-4` que este ficheiro já usa. Não é
+/// byte-identidade e o ficheiro nunca a prometeu (o compositor declara que o
+/// runtime não é bit-idêntico entre backends).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn every_value_noise_kernel_matches_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    for (name, kernel, feature) in [
+        ("Value", 0.0, 0.0),
+        ("Perlin", 1.0, 0.0),
+        ("Cellular/Cells", 2.0, 0.0),
+        ("Cellular/Cracks", 2.0, 1.0),
+    ] {
+        let mut g = Graph::new();
+        let grid = grid_node(&mut g, 11.0);
+        let vn = g.add_node("value.noise");
+        g.set_param(vn, "kernel", kernel);
+        g.set_param(vn, "feature", feature);
+        g.set_param(vn, "jitter", 0.83); // nem 0 nem 1: um jitter ignorado sangra
+        g.set_param(vn, "frequency", 0.29);
+        g.set_param(vn, "speed", 0.7);
+        g.set_param(vn, "octaves", 3.0); // o laço fBm, com o kernel lá dentro
+        g.set_param(vn, "roughness", 0.55);
+        g.set_param(vn, "amplitude", 1.9);
+        g.set_param(vn, "seed", 4.0);
+        g.set_param(vn, "space", 1.0); // o eixo espacial, onde o `P` entra
+        connect(&mut g, grid, vn);
+        let drive = g.add_node("motion.drive");
+        g.set_param(drive, "channel", 1.0); // Y
+        g.set_param(drive, "mode", 0.0); // Add
+        g.set_param(drive, "scale", 1.3);
+        connect(&mut g, grid, drive);
+        g.connect(Edge {
+            from: (vn, 0),
+            to: (drive, 1),
+            delayed: false,
+        })
+        .expect("noise into drive's value port");
+
+        g.validate(&reg).expect("well-typed");
+        let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
+        assert!(plan.is_fully_gpu(), "{name}: claimed end to end");
+
+        let mut cook = Cook::new();
+        let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
+        let mut gc = ph2d_gpu_cook::GpuCook::new();
+        gc.retain_streams_for_debug(true);
+        gc.cook(
+            &gpu,
+            &g,
+            &reg,
+            &reg,
+            &plan,
+            &[],
+            CookClock::at(PLAYHEAD),
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+            0,
+        )
+        .expect("gpu cook");
+        let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
+        eprintln!("value.noise[{name}] -> drive(Y): col P, max |d| = {worst:e}");
+        assert!(worst < 1e-4, "{name}: col P, max |d| = {worst:e}");
+        assert!(
+            column_is_nonzero(cpu[0].as_stream(), "P"),
+            "{name}: fixture check — the noise drove nothing"
+        );
+    }
+}
+
 /// **`value.mix` on the device — the crossfader, with `t` DRIVEN by a port.**
 /// `grid → {lfo→a, noise→b, instance_field(Ramp)→t} → mix → drive(Y)`, no CPU
 /// seam. The `factor` param is a decoy `0.9`; the connected `t` port must win on

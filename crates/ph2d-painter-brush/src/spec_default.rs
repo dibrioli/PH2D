@@ -44,6 +44,13 @@ impl Default for BrushSpec {
             accumulate: false,
             style_solid: false,
             line_kind: LineKind::None,
+            // Sketchy: o alcance e a densidade são o ponto de operação do Krita traduzido para as
+            // unidades desta casa (alcance em DIÂMETROS; densidade no teto ORÇADO da W0.3).
+            sketchy_reach: 1.0,
+            sketchy_density: crate::line_kind::SKETCHY_DENSITY_MAX,
+            sketchy_width_px: 1.0,
+            sketchy_opacity: 0.25,
+            sketchy_magnetify: true,
             dash_ratio: 1.0,
             dash_samples: 20,
             jitter_unit: JitterUnit::Brush,

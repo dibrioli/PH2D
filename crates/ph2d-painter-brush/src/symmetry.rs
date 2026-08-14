@@ -141,6 +141,49 @@ pub(crate) fn push_symmetric(out: &mut Vec<Dab>, dab: Dab, sym: &SymmetrySetting
     }
 }
 
+/// Push the base `seg` into `out`, then — quando a simetria está ligada — as cópias dele.
+///
+/// ⚠️ **Irmã de [`push_symmetric`], no MESMO módulo e sobre os MESMOS primitivos** ([`reflect_vec`] /
+/// [`radial_rotor`]), porque um fio do Sketchy e o dab que o gerou têm de acabar no mesmo lugar em
+/// toda cópia. Um segmento não é um dab (ele não tem raio, cobertura nem orientação de carimbo), mas
+/// a LEI de onde as cópias caem é uma só — e é por isso que as duas funções são vizinhas e há um gate
+/// exigindo que o fio espelhado ligue os centros dos dabs espelhados.
+pub(crate) fn push_symmetric_segment(
+    out: &mut Vec<[f32; 4]>,
+    seg: [f32; 4],
+    sym: &SymmetrySettings,
+) {
+    out.push(seg);
+    if !sym.enabled {
+        return;
+    }
+    let map = |f: &dyn Fn([f32; 2]) -> [f32; 2]| {
+        let a = f([seg[0], seg[1]]);
+        let b = f([seg[2], seg[3]]);
+        [a[0], a[1], b[0], b[1]]
+    };
+    if sym.circular {
+        let n = sym.segments();
+        let step = radial_rotor(n);
+        let mut rotor = step;
+        for _ in 1..n {
+            out.push(map(&|p| {
+                let v = [p[0] - sym.center[0], p[1] - sym.center[1]];
+                let rv = crate::heading::rotate(v, rotor);
+                [sym.center[0] + rv[0], sym.center[1] + rv[1]]
+            }));
+            rotor = crate::heading::rotate(rotor, step);
+        }
+    } else {
+        let d = sym.mirror_dir();
+        out.push(map(&|p| {
+            let v = [p[0] - sym.center[0], p[1] - sym.center[1]];
+            let r = reflect_vec(v, d);
+            [sym.center[0] + r[0], sym.center[1] + r[1]]
+        }));
+    }
+}
+
 /// Reflect a dab across the line through `a` with unit direction `d`: the centre is mirrored, and the
 /// orientation vectors (`rotation`, `dir`) are reflected too so a mirror image has the flipped
 /// handedness a real reflection would. Radius / coverage / colour are untouched.

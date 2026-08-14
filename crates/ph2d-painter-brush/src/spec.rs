@@ -101,6 +101,21 @@ pub struct BrushSpec {
     /// **O TIPO de linha procedural** ([`crate::line_kind::LineKind`]) — o dropdown `Type` do card
     /// Line. `None` (o default) é o neutro **byte-idêntico**: nenhuma lei procedural alcança um dab.
     pub line_kind: LineKind,
+    /// **Sketchy — o alcance da vizinhança**, em DIÂMETROS do pincel (a W0.3 mediu que a lei é
+    /// livre de escala nessa unidade). `0` desliga.
+    pub sketchy_reach: f32,
+    /// **Sketchy — a `Density`**, a fração dos pares vizinhos que viram fio. ⚠️ Ela é o ORÇAMENTO
+    /// (`crate::line_kind::SKETCHY_DENSITY_MAX`), não um enfeite.
+    pub sketchy_density: f32,
+    /// **Sketchy — a largura do fio**, em px de canvas. Um fio é fino por natureza: ele desenha a
+    /// teia, não o traço.
+    pub sketchy_width_px: f32,
+    /// **Sketchy — a opacidade do fio**, `0..1`. Baixa por natureza: é o acúmulo de muitos fios que
+    /// desenha o hachurado, não a força de cada um.
+    pub sketchy_opacity: f32,
+    /// **Sketchy — `Magnetify`**: o fio é puxado para o ponto MAIS PRÓXIMO da vizinhança em vez de
+    /// ligar um vizinho sorteado (o default do Krita). Adensa a teia onde o traço já é denso.
+    pub sketchy_magnetify: bool,
     /// Dash "on" fraction of each dash period, `0..1` (Blender `dash_ratio`, default `1.0` = solid,
     /// `DNA_brush_types.h:275`).
     pub dash_ratio: f32,
@@ -438,6 +453,15 @@ pub struct BrushSpec {
 }
 
 impl BrushSpec {
+    /// **O Sketchy está armado?** — o tipo escolhido E um alcance que alcança alguma coisa.
+    ///
+    /// ⚠️ Porta ÚNICA: o motor pergunta para decidir se guarda a memória do traço, e o painel para
+    /// decidir se oferece as rows. Duas cópias divergem no dia em que o alcance ganhar um piso.
+    #[must_use]
+    pub fn sketchy_active(&self) -> bool {
+        self.line_kind == crate::line_kind::LineKind::Sketchy && self.sketchy_reach > 0.0
+    }
+
     /// This brush's [`crate::material::Material`] — what its paint IS, as opposed to what shape it
     /// leaves. The one place the four fields are read together, so a knob added later cannot be
     /// forgotten by half the pipeline.

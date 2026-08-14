@@ -134,8 +134,20 @@ impl Stroke {
             [pos[0] + d[0] * k_now, pos[1] + d[1] * k_now]
         };
         // O segmento que a TINTA saltou desde o dab anterior — o caminho que o `fill_thrown_gap`
-        // vai percorrer. Guardado aqui porque este e o unico lugar que conhece as duas pontas.
-        self.fill_from = self.last_thrown.replace((thrown, arc));
+        // vai percorrer. Guardado aqui porque este é o único lugar que conhece as duas pontas.
+        //
+        // ⚠️ **Só com arremesso VIVO**, e o motivo é exatidão, não economia: com `k = 0` a tinta cai
+        // exatamente onde a mão passou, e o caminhador já a espaçou — o vão entre dois dabs vale o
+        // passo *ao bit*. Comparar `gap > step` sobre essa igualdade decide por **ruído de vírgula
+        // flutuante**, e um dab extra nasce ou não conforme a aritmética cair de um lado ou do outro.
+        // Foi assim que um tipo de linha SEM arremesso (o Sketchy, que não mede velocidade) deixou de
+        // ser byte-idêntico ao neutro — pego pelo gate que exige que ligar o Sketchy não mova a tinta.
+        if k_now > 0.0 {
+            self.fill_from = self.last_thrown.replace((thrown, arc));
+        } else {
+            self.fill_from = None;
+            self.last_thrown = None;
+        }
         thrown
     }
 
@@ -156,6 +168,7 @@ impl Stroke {
     /// Num motor de dabs o equivalente e este: **os pontos arremessados formam um caminho, e o
     /// espacamento e honrado ONDE A TINTA CAI, nunca onde a mao passou**.
     pub(super) fn emit(&mut self, dab: Dab, out: &mut Vec<Dab>) {
+        self.note_sketchy_point(&dab);
         self.fill_thrown_gap(&dab, out);
         crate::symmetry::push_symmetric(out, dab, &self.spec.symmetry);
     }

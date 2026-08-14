@@ -22,14 +22,19 @@ pub enum LineKind {
     /// dedo na proporção da velocidade do gesto — é INÉRCIA, o oposto exato do estabilizador, que
     /// atrasa a linha.
     Speed,
+    /// **Sketchy** — o traço costura-se a si mesmo: a cada dab, fios de opacidade baixa ligam os
+    /// pontos vizinhos do MESMO traço, e o acúmulo desenha o hachurado de lápis (Ze Frank →
+    /// Harmony → Krita *Sketch*). Ver [`crate::stroke::sketchy`].
+    Sketchy,
 }
 
 impl LineKind {
-    /// Wire `u8` para o round-trip com o painel (`0` = None · `1` = Speed).
+    /// Wire `u8` para o round-trip com o painel (`0` = None · `1` = Speed · `2` = Sketchy).
     pub fn to_wire(self) -> u8 {
         match self {
             LineKind::None => 0,
             LineKind::Speed => 1,
+            LineKind::Sketchy => 2,
         }
     }
 
@@ -37,6 +42,7 @@ impl LineKind {
     pub fn from_wire(w: u8) -> Self {
         match w {
             1 => LineKind::Speed,
+            2 => LineKind::Sketchy,
             _ => LineKind::None,
         }
     }
@@ -63,3 +69,33 @@ impl LineKind {
 /// lento e 400 num rápido, que é precisamente a lei que o `Speed Shapes` afirma. Um número em
 /// pixels teria de ser re-escolhido por tamanho de tela, por zoom e por temperamento de mão.
 pub const SPEED_LOOKAHEAD_S: f32 = 1.0 / 10.0;
+
+/// **Teto da `Density` — PROVISÓRIO, e o doc diz por quê.**
+///
+/// ⚠️ **O teto que o plano derivou não sobreviveu à porta do produto.** A W0.3 mediu o comprimento de
+/// fio contra o arco num **quarto de círculo** — um gesto que não se sobrepõe — e derivou 4% para
+/// manter o gasto em 2× o traço. Medido pelo motor numa **ESPIRAL**, que é o gesto para o qual esta
+/// feature existe, a mesma densidade deposita **8,45× · 10,64× · 3,54×** o arco (4, 16 e 64 voltas):
+/// quatro a cinco vezes o que a derivação prometia, *e variando com o gesto* — um traço que volta
+/// sobre si mesmo tem muito mais vizinhos dentro do alcance, que é precisamente o ponto.
+///
+/// ⚠️ **Logo `fio/arco` não é o orçamento: ele não é uma propriedade da FERRAMENTA, é do desenho.**
+/// O recurso de verdade é o **tempo de rasterização por evento**, contra o kill de 8 ms desta casa —
+/// e ele não pode ser medido antes de o rasterizador de fios existir. Este número fica como ponto de
+/// partida declarado; quem construir a rasterização **mede e o substitui**, com a tabela ao lado.
+///
+/// O que JÁ está medido e não muda: a GERAÇÃO dos fios custa **0,56 µs/dab e é constante** de 370 a
+/// 50 857 dabs (`measure_the_sketchy_scan`) — o trabalho super-linear foi eliminado pelo
+/// [`SKETCHY_SCAN_CAP`], não pela densidade.
+pub const SKETCHY_DENSITY_MAX: f32 = 0.04;
+
+/// **Quantos pontos da memória do traço um dab novo consulta.**
+///
+/// ⚠️ **Não é uma janela de arco, e a distinção é a feature:** o arco entre dois pontos limita a
+/// distância entre eles por baixo, então cortar por arco pareceria seguro — mas o Sketchy existe
+/// justamente para costurar o traço que VOLTA sobre si mesmo, e ali dois pontos vizinhos no canvas
+/// estão a um arco enorme. O teto é de CONSULTAS, o que mantém o custo linear no traço em vez de
+/// quadrático sem decidir por geometria nenhuma qual par é legítimo.
+///
+/// O número é MEDIDO (`measure_the_sketchy_scan`, sonda desta crate).
+pub const SKETCHY_SCAN_CAP: usize = 512;

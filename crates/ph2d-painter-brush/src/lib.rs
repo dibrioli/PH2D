@@ -74,6 +74,12 @@ pub mod ramp_alpha;
 pub mod sampler;
 /// **Sculpt** — the brush as a local operator on the relief (Smooth / Sharpen / Flatten / Scrape / Fill).
 pub mod sculpt;
+#[cfg(test)]
+#[path = "sketchy_probe.rs"]
+mod sketchy_probe; // W3 do plano 38: o orcamento do Sketchy pela porta do produto
+#[cfg(test)]
+#[path = "sketchy_tests.rs"]
+mod sketchy_tests; // os gates do Sketchy (plano 38 W3)
 pub mod smear;
 pub mod smear_field;
 /// **A FORMA SÓLIDA** — o caminho fechado do gesto vira região preenchida, com cobertura exata

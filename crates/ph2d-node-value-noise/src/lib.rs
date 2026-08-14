@@ -40,12 +40,13 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, CountLawCtx, GpuKernel, SourceWindow};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
+mod kernel;
 mod noise;
-use noise::fbm_2d;
+use kernel::GPU_KERNEL;
+use noise::{CellFeature, Kernel, fbm_2d};
 
 /// The instance stream type — the optional `in` port, read for its count only.
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -108,6 +109,23 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "seed",
             default: 0.0,
         },
+        // ⚠️ **Apendado, e o nome NÃO é `type`**: o `motion.noise` já gastou essa
+        // palavra na LEI fractal (fBm/Turbulence/Ridged) e aqui a pergunta é o
+        // RUÍDO DE BASE. `0` = Value (o que sempre shipou) · `1` = Perlin ·
+        // `2` = Cellular.
+        ParamSpec {
+            name: "kernel",
+            default: 0.0,
+        },
+        // Só o Cellular os lê — o `ParamGate` esconde-os nos outros dois.
+        ParamSpec {
+            name: "feature",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "jitter",
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -122,6 +140,9 @@ struct Sample {
     amplitude: f32,
     offset: f32,
     seed: f32,
+    kernel: Kernel,
+    feature: CellFeature,
+    jitter: f32,
 }
 
 impl Sample {
@@ -136,7 +157,22 @@ impl Sample {
             amplitude: ctx.param("amplitude"),
             offset: ctx.param("offset"),
             seed: ctx.param("seed"),
+            kernel: Kernel::from_index(ctx.param("kernel")),
+            feature: CellFeature::from_index(ctx.param("feature")),
+            jitter: ctx.param("jitter"),
         }
+    }
+
+    /// **A porta única do campo** — as duas leituras (fila e espaço) diferem só
+    /// no PONTO que amostram, nunca no ruído que somam. Duas cópias divergiriam
+    /// no dia em que um kernel novo entrasse, e o modo World é exactamente onde
+    /// ninguém olha.
+    fn field(&self, x: f32, y: f32) -> f32 {
+        let (k, feat, j) = (self.kernel, self.feature, self.jitter);
+        fbm_2d(x, y, self.octaves, self.roughness, |px, py| {
+            noise::base(k, feat, j, px, py)
+        }) * self.amplitude
+            + self.offset
     }
 
     /// Instance `i`'s value at playhead `t`. `x = t·speed` (the time axis),
@@ -144,7 +180,7 @@ impl Sample {
     fn at(&self, i: u32, t: f32) -> f32 {
         let x = t * self.speed;
         let y = i as f32 * self.frequency + self.seed;
-        fbm_2d(x, y, self.octaves, self.roughness) * self.amplitude + self.offset
+        self.field(x, y)
     }
 
     /// **O valor no PONTO `(px, py)`** — o mesmo campo, amostrado no espaço em vez
@@ -163,120 +199,8 @@ impl Sample {
     fn at_world(&self, px: f32, py: f32, t: f32) -> f32 {
         let x = px * self.frequency + t * self.speed;
         let y = py * self.frequency + self.seed;
-        fbm_2d(x, y, self.octaves, self.roughness) * self.amplitude + self.offset
+        self.field(x, y)
     }
-}
-
-/// GPU compute kernel (ADR-0126) — the WGSL port of [`Sample::at`] + [`noise`],
-/// **fully device-resident**. Reads `params.playhead` (the magic uniform every
-/// kernel gets, like `value.lfo`). No `applicable` gate — the sequencer never
-/// falls back to the CPU for this node (the "maximize GPU" north). The lattice
-/// hash + fade are byte-mirrors of `motion.wiggle`'s WGSL (`vn_` ↔ `wg_`), so the
-/// two nodes sample the same field; the fBm loop is bounded by a hard `8`
-/// (== `noise::MAX_OCTAVES`).
-const GPU_KERNEL: GpuKernel = GpuKernel {
-    wgsl: "\
-        let vn_oct = clamp(i32(vn_round(params.octaves)), 1, 8);\n\
-        // O eixo: a fila (o indice) ou o ESPACO (a posicao). ⚠️ `HAS_P` e o que\n\
-        // impede a coluna AUSENTE de ler a identidade zero e colapsar o campo\n\
-        // num valor so -- sem posicao nao ha espaco a amostrar, e a queda e o\n\
-        // indice, como na CPU.\n\
-        let vn_world = i32(vn_round(params.space)) == 1 && HAS_P;\n\
-        var vn_x = params.playhead * params.speed;\n\
-        var vn_y = f32(i) * params.frequency + params.seed;\n\
-        if (vn_world) {\n\
-        \x20   let vn_p = read_P(i);\n\
-        \x20   vn_x = vn_p.x * params.frequency + params.playhead * params.speed;\n\
-        \x20   vn_y = vn_p.y * params.frequency + params.seed;\n\
-        }\n\
-        let vn_n = vn_fbm(vn_x, vn_y, vn_oct, params.roughness);\n\
-        write_v(i, vn_n * params.amplitude + params.offset);\n",
-    wgsl_lib: "\
-        fn vn_round(x: f32) -> f32 {\n\
-            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
-            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
-        }\n\
-        fn vn_hash2(ix: i32, iy: i32) -> f32 {\n\
-            // Same mix as noise::hash2 — u32 wraps mod 2^32 (== Rust wrapping_*),\n\
-            // bitcast<u32> == Rust `as u32` (bit reinterpretation, not a value cast).\n\
-            var h: u32 = bitcast<u32>(ix) * 0x27d4eb2du + bitcast<u32>(iy) * 0x165667b1u;\n\
-            h = h ^ (h >> 15u);\n\
-            h = h * 0x2c1b3c6du;\n\
-            h = h ^ (h >> 12u);\n\
-            h = h * 0x297175f9u;\n\
-            h = h ^ (h >> 15u);\n\
-            return (f32(h) / f32(0xffffffffu)) * 2.0 - 1.0;\n\
-        }\n\
-        fn vn_fade(t: f32) -> f32 {\n\
-            return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);\n\
-        }\n\
-        fn vn_value_noise(x: f32, y: f32) -> f32 {\n\
-            let x0 = floor(x);\n\
-            let y0 = floor(y);\n\
-            let ix = i32(x0);\n\
-            let iy = i32(y0);\n\
-            let u = vn_fade(x - x0);\n\
-            let v = vn_fade(y - y0);\n\
-            let n00 = vn_hash2(ix, iy);\n\
-            let n10 = vn_hash2(ix + 1, iy);\n\
-            let n01 = vn_hash2(ix, iy + 1);\n\
-            let n11 = vn_hash2(ix + 1, iy + 1);\n\
-            let nx0 = n00 + u * (n10 - n00);\n\
-            let nx1 = n01 + u * (n11 - n01);\n\
-            return nx0 + v * (nx1 - nx0);\n\
-        }\n\
-        fn vn_fbm(x: f32, y: f32, oct: i32, rough: f32) -> f32 {\n\
-            var sum = 0.0;\n\
-            var amp = 1.0;\n\
-            var freq = 1.0;\n\
-            var norm = 0.0;\n\
-            for (var o = 0; o < oct; o = o + 1) {\n\
-            \x20   sum = sum + amp * vn_value_noise(x * freq, y * freq);\n\
-            \x20   norm = norm + amp;\n\
-            \x20   amp = amp * rough;\n\
-            \x20   freq = freq * 2.0;\n\
-            }\n\
-            return sum / max(norm, 1e-6);\n\
-        }\n",
-    bindings: &[
-        ColumnBinding {
-            column: VALUE_COL,
-            dim: Dim::Scalar,
-            access: ColumnAccess::Write,
-            identity: [0.0; 4],
-            port: 0,
-        },
-        // ⚠️ A `identity` de um `P` AUSENTE é zero, e zero não é uma posição — o
-        // campo colapsaria num valor só. Por isso o corpo ramifica no `HAS_P`.
-        ColumnBinding {
-            column: "P",
-            dim: Dim::Vec2,
-            access: ColumnAccess::Read,
-            identity: [0.0; 4],
-            port: 0,
-        },
-    ],
-    params: &[
-        "space",
-        "frequency",
-        "speed",
-        "octaves",
-        "roughness",
-        "amplitude",
-        "offset",
-        "seed",
-    ],
-    count_law: Some(noise_count),
-    variant_by_param: None,
-    applicable: None,
-};
-
-/// **How wide is the field?** — the same law `value.lfo`/`value.instance_field`
-/// use: connected, one value per instance; **unconnected, ONE global value** (held
-/// across every instance by `motion.drive`'s broadcast). The engine's default —
-/// "as wide as port 0" — sizes an unconnected one at 0 and SKIPS the stage.
-fn noise_count(c: &CountLawCtx<'_>) -> SourceWindow {
-    SourceWindow::of_count(c.inputs.first().copied().unwrap_or(0).max(1) as usize)
 }
 
 struct ValueNoise;
@@ -326,10 +250,28 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGate, ParamHardMax, ParamUiHint, ParamWidget};
+
+/// **Os dois knobs do celular só existem no celular** (`kernel == 2`). Um
+/// controlo que não faz nada é pior que um controlo que falta — e aqui a
+/// alternativa é literal: `feature` e `jitter` não são lidos por nenhum dos
+/// outros dois kernels (`noise::base` ramifica antes deles).
+static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: "feature",
+        when: "kernel",
+        values: &[2],
+    },
+    ParamGate {
+        param: "jitter",
+        when: "kernel",
+        values: &[2],
+    },
+];
 
 /// O teto que a MÁQUINA (ou o bom senso) impõe, alcançável por DIGITAÇÃO — o slider fica
 /// onde a MÃO trabalha (soft/hard do Blender; doc 88 §11). O curso de antes é este número:
@@ -346,7 +288,40 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
 ];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
-    // ⚠️ **Primeiro**, e é o que decide o que o nó SIGNIFICA: o mesmo ruído lido
+    // ⚠️ **Primeiro de todos**, porque é a maior decisão visual do nó: que ruído
+    // de base a lei fractal soma. `Pattern` e não `Type` — o `motion.noise` já
+    // gasta `Type` na LEI (fBm/Turbulence/Ridged), e a mesma palavra a
+    // selecionar coisas diferentes em dois nós irmãos é o que faz um menu mentir.
+    ParamUiHint {
+        param: "kernel",
+        label: "Pattern",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Value", "Perlin", "Cellular"],
+        },
+    },
+    // Os dois seguintes são gateados no Cellular (ver `PARAM_GATES`).
+    ParamUiHint {
+        param: "feature",
+        label: "Cell",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Cells", "Cracks"],
+        },
+    },
+    ParamUiHint {
+        param: "jitter",
+        label: "Jitter",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    // ⚠️ **Depois**, e é o que decide o que o nó SIGNIFICA: o mesmo ruído lido
     // ao longo da FILA (o de sempre) ou no ESPAÇO. É o modo World que faz
     // `value.noise → motion.drive(Falloff)` ser um campo procedural (doc 89
     // folha 10, o P0 do `field.noise`).
@@ -434,6 +409,12 @@ mod tests {
             amplitude: 1.0,
             offset: 0.0,
             seed: 0.0,
+            // A premissa desta fixture, DECLARADA: ela mede o kernel de VALOR,
+            // o que o no sempre shipou. Herda-la de um default e o que faz um
+            // teste inverter de sentido quando o default se move.
+            kernel: Kernel::Value,
+            feature: CellFeature::Cells,
+            jitter: 1.0,
         }
     }
 
@@ -617,6 +598,9 @@ mod tests {
                 amplitude: 1.0,
                 offset: 0.0,
                 seed: 0.0,
+                kernel: Kernel::Value,
+                feature: CellFeature::Cells,
+                jitter: 1.0,
             }
         }
     }

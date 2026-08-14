@@ -15,6 +15,11 @@ fn spec() -> Sample {
         amplitude: 1.0,
         offset: 0.0,
         seed: 4.0,
+        // O eixo (fila x espaco) e ortogonal ao KERNEL: estes gates medem o
+        // primeiro, com o segundo pinado no que sempre shipou.
+        kernel: Kernel::Value,
+        feature: CellFeature::Cells,
+        jitter: 1.0,
     }
 }
 
@@ -66,7 +71,10 @@ fn the_index_axis_is_untouched() {
     for i in 0..8u32 {
         let x = 0.0f32 * s.speed;
         let y = i as f32 * s.frequency + s.seed;
-        let want = fbm_2d(x, y, s.octaves, s.roughness) * s.amplitude + s.offset;
+        let want = fbm_2d(x, y, s.octaves, s.roughness, |px, py| {
+            noise::base(s.kernel, s.feature, s.jitter, px, py)
+        }) * s.amplitude
+            + s.offset;
         assert_eq!(s.at(i, 0.0).to_bits(), want.to_bits(), "i = {i}");
     }
 }

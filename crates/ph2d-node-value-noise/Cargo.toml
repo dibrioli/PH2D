@@ -10,5 +10,8 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# A LEI da soma fractal (fBm) — a folha que nasceu quando ela tinha duas cópias
+# divergentes no repo. O RUÍDO DE BASE fica local de propósito (ver `noise.rs`).
+ph2d-fbm = { path = "../ph2d-fbm" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }

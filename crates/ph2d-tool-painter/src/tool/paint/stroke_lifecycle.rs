@@ -156,7 +156,7 @@ impl PainterTool {
             self.pour_canvas_wet(); // #2: moisture is laid LIVE (the damp shows during the stroke, not at pen-up)
         }
         self.paint.dabs = dabs;
-        self.paint.stroke = Some(stroke);
+        self.park_stroke(stroke);
     }
 
     /// The cursor moved over the canvas with **no button down** (image px). Advances the hover heading so
@@ -257,7 +257,7 @@ impl PainterTool {
             self.pour_canvas_wet();
         }
         self.paint.dabs = dabs;
-        self.paint.stroke = Some(stroke);
+        self.park_stroke(stroke);
         self.paint.moved_this_frame = true;
         true
     }
@@ -346,7 +346,7 @@ impl PainterTool {
             self.pour_canvas_wet(); // #2: live moisture on the held/settling heartbeat too
         }
         self.paint.dabs = dabs;
-        self.paint.stroke = Some(stroke);
+        self.park_stroke(stroke);
     }
 
     /// Finish the stroke at `ev` (stamp the final segment, flush the freehand smoother's tail so
@@ -358,7 +358,7 @@ impl PainterTool {
             stroke.finish(&mut dabs);
             self.stamp_dabs(&dabs);
             self.paint.dabs = dabs;
-            self.paint.stroke = Some(stroke);
+            self.park_stroke(stroke);
         }
         // ⛔ The taper's far end was resolved HERE, by putting the stroke back and laying it again at
         // pen-up. It is gone (Enio 2026-08-10) — the taper shapes only the head now, which every dab

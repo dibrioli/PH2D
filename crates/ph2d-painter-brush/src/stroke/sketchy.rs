@@ -28,7 +28,8 @@ impl Stroke {
             return;
         }
         let p = dab.center;
-        let reach = self.spec.sketchy_reach * 2.0 * self.spec.clamped_radius();
+        // ⚠️ Pela porta única — o depósito pesa o fio contra ESTE número (ver o doc dela).
+        let reach = self.spec.sketchy_reach_px();
         let density = self.spec.sketchy_density.clamp(0.0, 1.0);
         if reach > 0.0 && density > 0.0 {
             let r2 = reach * reach;

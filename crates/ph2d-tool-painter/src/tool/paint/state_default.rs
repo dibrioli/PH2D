@@ -65,6 +65,7 @@ impl Default for PaintState {
             hover_pos: None,
             dabs: Vec::new(),
             solid_path: Vec::new(),
+            sketchy_threads: Vec::new(),
             seed: 0,
             tex_rng: 0,
             stroke_undo: None,

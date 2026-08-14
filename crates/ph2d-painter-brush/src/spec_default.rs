@@ -47,7 +47,9 @@ impl Default for BrushSpec {
             // Sketchy: o alcance e a densidade são o ponto de operação do Krita traduzido para as
             // unidades desta casa (alcance em DIÂMETROS; densidade no teto ORÇADO da W0.3).
             sketchy_reach: 1.0,
-            sketchy_density: crate::line_kind::SKETCHY_DENSITY_MAX,
+            // Metade do teto medido: uma teia que se vê sem cobrir o desenho. ⚠️ É um default de
+            // LOOK — o smoke é quem o julga, e o teto (o que o produto SUSTENTA) é outra pergunta.
+            sketchy_density: 0.2,
             sketchy_width_px: 1.0,
             sketchy_opacity: 0.25,
             sketchy_magnetify: true,

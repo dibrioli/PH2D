@@ -77,6 +77,12 @@ pub mod sculpt;
 #[cfg(test)]
 #[path = "sketchy_probe.rs"]
 mod sketchy_probe; // W3 do plano 38: o orcamento do Sketchy pela porta do produto
+/// **A rasterização dos fios do Sketchy** — o segmento vira cobertura por área exata, e os fios
+/// compõem `over` um sobre o outro (plano 38 W3).
+pub mod sketchy_raster;
+#[cfg(test)]
+#[path = "sketchy_raster_tests.rs"]
+mod sketchy_raster_tests; // os gates da rasterização dos fios
 #[cfg(test)]
 #[path = "sketchy_tests.rs"]
 mod sketchy_tests; // os gates do Sketchy (plano 38 W3)

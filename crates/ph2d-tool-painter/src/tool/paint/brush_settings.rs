@@ -214,9 +214,19 @@ pub struct BrushSettings {
     /// **Style: Solid** on/off — o checkbox do card Line. Desmarcado (default) o traço é a linha de
     /// sempre; marcado ele é a região CERCADA pelo gesto, e a espessura deixa de entrar.
     pub style_solid: bool,
-    /// **O TIPO de linha procedural** como wire (`0` = None · `1` = Speed) — o dropdown `Type` do
-    /// card Line.
+    /// **O TIPO de linha procedural** como wire (`0` = None · `1` = Speed · `2` = Sketchy) — o
+    /// dropdown `Type` do card Line.
     pub line_kind: u8,
+    /// **Sketchy — Reach**: o raio da vizinhança, em DIÂMETROS de pincel.
+    pub sketchy_reach: f32,
+    /// **Sketchy — Density**: a fração dos pares no alcance que viram fio (o orçamento do tipo).
+    pub sketchy_density: f32,
+    /// **Sketchy — Line Width**: a espessura de UM fio, em pixels.
+    pub sketchy_width_px: f32,
+    /// **Sketchy — Opacity**: a opacidade de UM fio.
+    pub sketchy_opacity: f32,
+    /// **Sketchy — Magnetify**: o fio perto puxa mais.
+    pub sketchy_magnetify: bool,
     /// "Sync with other tools" on/off: on = every paint tool shares these settings; off (default) = each
     /// tool independent. Drives the checkbox at the top of the brush panel.
     pub link_shared: bool,

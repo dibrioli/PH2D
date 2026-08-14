@@ -461,6 +461,58 @@ em vez de por-traço ⇒ o gate do traço anterior sangra.
 
 ---
 
+#### W3 — FECHADA (2026-08-13)
+
+**O que shipou:** o motor (a memória, a vizinhança, o orçamento, o canal de saída) + a
+**rasterização** dos fios + as **cinco rows** do card + o depósito pela porta de proteção.
+
+**⚠️ O teto da `Density` era `0,04` e a MEDIÇÃO o subiu para `0,40` — dez vezes.** O número antigo
+saía de um proxy (`fio/arco`) e o próprio doc dele mandava medir *o tempo de rasterização por evento*
+assim que o rasterizador existisse. Medido pela porta `on_canvas_pointer` (espiral de 8 voltas,
+r=24, 2048²):
+
+| density | reach | width | ms/evento | pior ms |
+|---:|---:|---:|---:|---:|
+| 1,00 | 1 | 1 | 0,226 | **0,433** |
+| 0,40 | 4 | 4 | 2,508 | **6,384** |
+| 0,50 | 4 | 4 | 3,156 | **8,040** ⇠ estoura |
+| 1,00 | 4 | 4 | 6,029 | **16,181** |
+
+`0,40` é a maior densidade cujo PIOR evento cabe no kill de 8 ms **com o alcance e a espessura nos
+tetos deles**. ⚠️ O preço de um escalar governar um produto de dois (`density × reach²`) está
+**nomeado** no doc da constante: no alcance de 1 diâmetro sobra 20× de margem.
+
+**⚠️ Uma razão que eu ia escrever no motor era FALSA e foi conferida:** *"dois fios de sentidos
+opostos cancelariam o winding e abririam um buraco no cruzamento"*. Não abrem — inverter um segmento
+inverte **a ordem dos vértices E a normal**, então a orientação do quad é invariante ao sentido
+(medido: área com sinal `−60` nos dois). O preenchimento único de todos os quads não é *unsound*, é
+**chapado** (a regra não-zero satura em 1 e o cruzamento sai igual ao fio solto) — e chapado já basta
+para compor `over` por fio, que é o que o acúmulo do hachurado exige. Gate: `reversing_a_thread_paints_the_same_ink`.
+
+**⚠️ E a premissa que o plano deixou escrita envelheceu:** *"só da memória do traço, que já existe (é
+o que o `taper` re-percorre no resolve de cauda)"* — o replay do taper foi **REMOVIDO em 2026-08-10**.
+A memória nasceu nesta wave.
+
+**O `Magnetify`** é leitura clean-room: *o fio perto puxa mais* — a opacidade cai linearmente com a
+distância e chega a zero no alcance; desligado, todo fio dentro do alcance pesa igual. A LEI está no
+doc do `ThreadInk::magnetify`; o LOOK é do smoke.
+
+**⚠️ Escopo NOMEADO:** o Sketchy costura só nos métodos **incrementais** (`is_incremental`). Os de
+re-carimbo re-emitem a figura inteira por quadro, então a memória cresceria por quadro e a teia
+adensaria enquanto o artista olha. Gate: `a_re_stamp_method_does_not_sew` — e ⚠️ **a fixture dele foi
+escolhida por medição**: com `Anchored`/`FreeHand`/`Line` a mutação SOBREVIVE (o roteador de figuras
+intercepta antes do `park_stroke`, e a tinta sai igual pelo motivo errado); só o `DragDot` morde
+(44 → 147 texels).
+
+**A porta única `park_stroke`** substitui os quatro `self.paint.stroke = Some(stroke)` do ciclo de
+traço. ⚠️ Esquecê-la falha **ALTO** (o traço não volta e o pincel para de pintar), não em silêncio.
+
+**Gates:** 7 no rasterizador · 6 no motor · 4 no depósito · 3 no seam. **8 mutações, 8 sangram.**
+
+**Aberto:** os shape editors (o escopo acima) · o smoke `=3`.
+
+---
+
 ### W4 — **Wire** (o *history*)
 
 O primo do W3 com memória **limitada**: liga o ponto atual aos últimos `N`. Dá o traço de

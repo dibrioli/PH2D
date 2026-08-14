@@ -31,6 +31,10 @@ pub(crate) struct PaintState {
     /// ⚠️ Ele existe porque a lista de dabs de um evento é o PEDAÇO do gesto desde o último ponteiro,
     /// e o que uma forma sólida cerca é o percurso inteiro.
     pub(super) solid_path: Vec<[f32; 2]>,
+    /// Buffer reusado dos fios que o Sketchy costurou desde o último depósito (plano 38 W3). Ele é
+    /// só a ALOCAÇÃO: o motor é o dono da memória do traço, e [`ph2d_painter_brush::Stroke::take_threads`]
+    /// esvazia isto antes de encher.
+    pub(super) sketchy_threads: Vec<ph2d_painter_brush::stroke::sketchy::Thread>,
     /// Per-stroke jitter seed; bumped each stroke so jitter is reproducible yet varies.
     pub(super) seed: u64,
     /// Splitmix64 for the texture's per-dab Random rotation/offset — reset per stroke (seed-decorrelated), advanced once per textured dab (HR-5).

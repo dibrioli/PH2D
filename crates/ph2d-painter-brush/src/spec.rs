@@ -462,6 +462,21 @@ impl BrushSpec {
         self.line_kind == crate::line_kind::LineKind::Sketchy && self.sketchy_reach > 0.0
     }
 
+    /// **O ALCANCE do Sketchy em PIXELS** — o raio dentro do qual dois pontos do traço se costuram.
+    ///
+    /// ⚠️ **Porta ÚNICA, e ela existe porque há DOIS consumidores que têm de concordar:** o motor
+    /// decide com ela *quais pares viram fio*, e o depósito decide com ela *quanto um fio pesa*
+    /// (o `Magnetify` mede a distância CONTRA este número). Duas cópias da mesma multiplicação
+    /// divergiriam no dia em que o alcance deixasse de ser medido em diâmetros — e o sintoma seria
+    /// um fio no limite do alcance nascendo com peso negativo, ou nunca chegando a zero.
+    ///
+    /// A unidade é o **DIÂMETRO** (`reach = 1` ⇒ um diâmetro), que é o que torna a lei livre de
+    /// escala: a W0.3 mediu `fios/dab ≈ 8` em qualquer tamanho de pincel justamente por isto.
+    #[must_use]
+    pub fn sketchy_reach_px(&self) -> f32 {
+        self.sketchy_reach * 2.0 * self.clamped_radius()
+    }
+
     /// This brush's [`crate::material::Material`] — what its paint IS, as opposed to what shape it
     /// leaves. The one place the four fields are read together, so a knob added later cannot be
     /// forgotten by half the pipeline.

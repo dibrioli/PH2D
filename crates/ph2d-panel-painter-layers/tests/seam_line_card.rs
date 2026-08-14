@@ -115,3 +115,104 @@ fn the_speed_type_has_nothing_left_to_tune() {
         "o checkbox Solid sumiu do card"
     );
 }
+
+/// Os cinco controles que o `Sketchy` acrescenta ao card, e o que cada um autora no tool.
+const SKETCHY_SLIDERS: [(NodeId, &str); 4] = [
+    (core_ids::PAINTER_LINE_SKETCHY_REACH, "Reach"),
+    (core_ids::PAINTER_LINE_SKETCHY_DENSITY, "Density"),
+    (core_ids::PAINTER_LINE_SKETCHY_WIDTH, "Line Width"),
+    (core_ids::PAINTER_LINE_SKETCHY_OPACITY, "Opacity"),
+];
+
+/// **AS ROWS DO `Sketchy` SÓ EXISTEM COM ELE ESCOLHIDO** — presença E ausência, que é o par que
+/// prova que o card pinta a tabela do escopo e não a união de todas.
+#[test]
+fn the_sketchy_rows_exist_only_under_the_sketchy_type() {
+    let mut tool = PainterTool::default();
+    tool.set_line_kind(2); // Sketchy
+    let (_, _, on) = painted(&tool);
+    for (id, name) in SKETCHY_SLIDERS {
+        assert!(
+            rect_of(&on, id).is_some(),
+            "o slider {name} do Sketchy não é pintado"
+        );
+    }
+    assert!(
+        rect_of(&on, core_ids::PAINTER_LINE_SKETCHY_MAGNETIFY).is_some(),
+        "o checkbox Magnetify não é pintado"
+    );
+
+    tool.set_line_kind(0); // None
+    let (_, _, off) = painted(&tool);
+    for (id, name) in SKETCHY_SLIDERS {
+        assert!(
+            rect_of(&off, id).is_none(),
+            "o slider {name} sobrevive ao tipo None — é um controle que não faz nada"
+        );
+    }
+    assert!(
+        rect_of(&off, core_ids::PAINTER_LINE_SKETCHY_MAGNETIFY).is_none(),
+        "o Magnetify sobrevive ao tipo None"
+    );
+}
+
+/// **CADA SLIDER DO `Sketchy` ESTÁ VIVO SOB O MOUSE, E AUTORA O SEU CAMPO** — arrastado por um
+/// ponteiro REAL, do despachante ao tool.
+///
+/// ⚠️ **Mutações que sangram:** tirar um id do `populate` (o slider pinta, registra hit e não recebe
+/// arrasto) · tirá-lo da whitelist do `event_brush_forward` (o arrasto acontece e não sai do painel)
+/// · tirar o braço do `trait_impls` (o valor chega e não escreve em nada).
+#[test]
+fn every_sketchy_slider_is_alive_under_the_pointer() {
+    for (id, name) in SKETCHY_SLIDERS {
+        let mut tool = PainterTool::default();
+        tool.set_line_kind(2);
+        let before = tool.brush_settings();
+        let (mut host, mut st, rects) = painted(&tool);
+        let r = rect_of(&rects, id).unwrap_or_else(|| panic!("o slider {name} não é pintado"));
+        // Arrasta para o EXTREMO DIREITO da pista: o valor tem de subir para o topo da faixa.
+        let (x, y) = (r.x + r.w - 1.0, r.y + r.h * 0.5);
+        for ev in host.drag_at(r.x + r.w * 0.5, y, x, y) {
+            host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+        }
+        for action in host.drained_actions() {
+            if let EditorAction::ToolPanelEvent(pe) = action {
+                tool.handle_panel_event(pe);
+            }
+        }
+        let after = tool.brush_settings();
+        let moved = (before.sketchy_reach - after.sketchy_reach).abs() > 1e-4
+            || (before.sketchy_density - after.sketchy_density).abs() > 1e-4
+            || (before.sketchy_width_px - after.sketchy_width_px).abs() > 1e-4
+            || (before.sketchy_opacity - after.sketchy_opacity).abs() > 1e-4;
+        assert!(moved, "arrastar o slider {name} não autorou nada no pincel");
+    }
+}
+
+/// **O `Magnetify` ALTERNA sob um clique REAL** — e volta, que é a metade que prova que o clique é
+/// um toggle e não uma escrita fixa.
+#[test]
+fn the_magnetify_checkbox_toggles_under_a_real_click() {
+    let mut tool = PainterTool::default();
+    tool.set_line_kind(2);
+    let start = tool.brush_settings().sketchy_magnetify;
+    let (mut host, mut st, rects) = painted(&tool);
+    let r = rect_of(&rects, core_ids::PAINTER_LINE_SKETCHY_MAGNETIFY)
+        .expect("o Magnetify não é pintado");
+    let (cx, cy) = centre(r);
+    click_through(&mut host, &mut st, &mut tool, cx, cy);
+    assert_eq!(
+        tool.brush_settings().sketchy_magnetify,
+        !start,
+        "o clique não alternou o Magnetify"
+    );
+    let (mut host, mut st, rects) = painted(&tool);
+    let r = rect_of(&rects, core_ids::PAINTER_LINE_SKETCHY_MAGNETIFY).expect("sumiu ao alternar");
+    let (cx, cy) = centre(r);
+    click_through(&mut host, &mut st, &mut tool, cx, cy);
+    assert_eq!(
+        tool.brush_settings().sketchy_magnetify,
+        start,
+        "o segundo clique não voltou"
+    );
+}

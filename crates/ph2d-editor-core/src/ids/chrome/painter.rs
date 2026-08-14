@@ -221,9 +221,22 @@ pub const PAINTER_BRUSH_ACCUMULATE: NodeId = hash_node_id("painter_brush.accumul
 /// nascer um tipo sem caminho-base é o dia em que ela deixa de ser trivial.
 pub const PAINTER_LINE_SOLID: NodeId = hash_node_id("painter_line.solid");
 /// **Type** — o dropdown do card **Line**: qual LEI procedural decora o traço
-/// (`ph2d_painter_brush::line_kind::LineKind`; `0` = None, o default, `1` = Speed).
+/// (`ph2d_painter_brush::line_kind::LineKind`; `0` = None, o default, `1` = Speed, `2` = Sketchy).
 /// `SelectOption` → `set_line_kind`.
 pub const PAINTER_LINE_TYPE: NodeId = hash_node_id("painter_line.type");
+/// **Reach** — o raio da vizinhança do Sketchy, em DIÂMETROS de pincel (`0..=SKETCHY_REACH_MAX`).
+/// `SetValue` → `set_sketchy_reach_norm`.
+pub const PAINTER_LINE_SKETCHY_REACH: NodeId = hash_node_id("painter_line.sketchy_reach");
+/// **Density** — a fração dos pares dentro do alcance que viram fio. É o ORÇAMENTO do tipo, não um
+/// enfeite (`ph2d_painter_brush::line_kind::SKETCHY_DENSITY_MAX`). `SetValue` → `set_sketchy_density_norm`.
+pub const PAINTER_LINE_SKETCHY_DENSITY: NodeId = hash_node_id("painter_line.sketchy_density");
+/// **Line Width** — a espessura de UM fio, em pixels. `SetValue` → `set_sketchy_width_norm`.
+pub const PAINTER_LINE_SKETCHY_WIDTH: NodeId = hash_node_id("painter_line.sketchy_width");
+/// **Opacity** — a opacidade de UM fio; a do cruzamento sai do acúmulo. `SetValue` → `set_sketchy_opacity`.
+pub const PAINTER_LINE_SKETCHY_OPACITY: NodeId = hash_node_id("painter_line.sketchy_opacity");
+/// **Magnetify** — o fio perto puxa mais (a opacidade cai com a distância dentro do alcance).
+/// `Click` → alterna.
+pub const PAINTER_LINE_SKETCHY_MAGNETIFY: NodeId = hash_node_id("painter_line.sketchy_magnetify");
 /// Id de uma OPÇÃO do popover do [`PAINTER_LINE_TYPE`]. Espelho do
 /// [`painter_brush_media_option_id`].
 #[must_use]

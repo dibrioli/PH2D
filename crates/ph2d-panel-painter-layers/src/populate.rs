@@ -84,6 +84,11 @@ fn register_brush_inputs(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_SPACING,
         ph2d_editor_core::ids::PAINTER_BRUSH_OFFSET,
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER,
+        // Card Line / Sketchy: os quatro sliders do tipo (plano 38 W3).
+        ph2d_editor_core::ids::PAINTER_LINE_SKETCHY_REACH,
+        ph2d_editor_core::ids::PAINTER_LINE_SKETCHY_DENSITY,
+        ph2d_editor_core::ids::PAINTER_LINE_SKETCHY_WIDTH,
+        ph2d_editor_core::ids::PAINTER_LINE_SKETCHY_OPACITY,
         // Per-dab Jitter Scale / Rotate / Spacing (next to the position Jitter).
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_SCALE,
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_ROTATE,
@@ -328,6 +333,8 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_ACCUMULATE,
         // Card Line: o checkbox Solid (sem ele o widget pinta, registra hit e fica MORTO sob o mouse).
         ph2d_editor_core::ids::PAINTER_LINE_SOLID,
+        // Card Line / Sketchy: o checkbox Magnetify.
+        ph2d_editor_core::ids::PAINTER_LINE_SKETCHY_MAGNETIFY,
         // "Sync with other tools" checkbox at the top of the brush panel (independent settings by default).
         ph2d_editor_core::ids::PAINTER_BRUSH_SYNC,
         // "Dimensions" checkbox below the Method dropdown (Line only) — dx/dy + corner angles while drawing.

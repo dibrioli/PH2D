@@ -70,24 +70,56 @@ impl LineKind {
 /// pixels teria de ser re-escolhido por tamanho de tela, por zoom e por temperamento de mão.
 pub const SPEED_LOOKAHEAD_S: f32 = 1.0 / 10.0;
 
-/// **Teto da `Density` — PROVISÓRIO, e o doc diz por quê.**
+/// **Teto da `Density` — MEDIDO pela porta do produto, com a tabela ao lado.**
 ///
-/// ⚠️ **O teto que o plano derivou não sobreviveu à porta do produto.** A W0.3 mediu o comprimento de
-/// fio contra o arco num **quarto de círculo** — um gesto que não se sobrepõe — e derivou 4% para
-/// manter o gasto em 2× o traço. Medido pelo motor numa **ESPIRAL**, que é o gesto para o qual esta
-/// feature existe, a mesma densidade deposita **8,45× · 10,64× · 3,54×** o arco (4, 16 e 64 voltas):
-/// quatro a cinco vezes o que a derivação prometia, *e variando com o gesto* — um traço que volta
-/// sobre si mesmo tem muito mais vizinhos dentro do alcance, que é precisamente o ponto.
+/// ⚠️ **Ele era `0,04`, e a medição o derrubou por DEZ vezes.** O número antigo saía de um proxy —
+/// `fio/arco`, o comprimento de fio contra o arco do traço — e o doc dele já dizia que o recurso de
+/// verdade é outro: *o tempo de rasterização por evento, contra o kill de 8 ms desta casa*, que não
+/// podia ser medido antes de o rasterizador existir. Ele existe (a W3 fechou), e o número foi
+/// medido: `measure_the_sketchy_budget_per_event`, espiral de 8 voltas, pincel r=24, 2048²,
+/// **pela porta `on_canvas_pointer`**.
 ///
-/// ⚠️ **Logo `fio/arco` não é o orçamento: ele não é uma propriedade da FERRAMENTA, é do desenho.**
-/// O recurso de verdade é o **tempo de rasterização por evento**, contra o kill de 8 ms desta casa —
-/// e ele não pode ser medido antes de o rasterizador de fios existir. Este número fica como ponto de
-/// partida declarado; quem construir a rasterização **mede e o substitui**, com a tabela ao lado.
+/// | density | reach | width | ms/evento | pior ms |
+/// |---:|---:|---:|---:|---:|
+/// | 0,00 | 1 | 1 | 0,077 | 0,309 |
+/// | 1,00 | 1 | 1 | 0,226 | **0,433** |
+/// | 0,10 | 4 | 4 | 0,742 | 2,086 |
+/// | 0,30 | 4 | 4 | 1,923 | 5,361 |
+/// | **0,40** | **4** | **4** | **2,508** | **6,384** |
+/// | 0,50 | 4 | 4 | 3,156 | **8,040** ⇠ estoura |
+/// | 1,00 | 4 | 4 | 6,029 | **16,181** |
 ///
-/// O que JÁ está medido e não muda: a GERAÇÃO dos fios custa **0,56 µs/dab e é constante** de 370 a
+/// **`0,40` é a maior densidade cujo PIOR evento cabe no kill de 8 ms com o alcance E a espessura
+/// nos tetos deles** — o canto mais caro que os três sliders alcançam juntos.
+///
+/// ⚠️ **E o preço deste número ser UM é honesto e está nomeado:** no alcance de 1 diâmetro a mesma
+/// densidade custa **0,15 ms** e o slider poderia ir a 1,0 sem encostar no kill — ou seja, o canto
+/// caro cobra 20× de margem ao canto barato. É o custo de um escalar governar um PRODUTO de dois
+/// (`density × reach²`); o redesenho que o removeria é a densidade passar a significar *"que fração
+/// do que o alcance permite"*, e ele **não foi construído** porque muda a lei que os gates do motor
+/// pinam e o LOOK que o smoke ainda vai julgar. Deixar a combinação estourar não é opção: quem
+/// mexeu no `Reach` derrubaria o quadro sem ter tocado neste slider.
+///
+/// O que JÁ estava medido e não muda: a GERAÇÃO dos fios custa **0,56 µs/dab e é constante** de 370 a
 /// 50 857 dabs (`measure_the_sketchy_scan`) — o trabalho super-linear foi eliminado pelo
 /// [`SKETCHY_SCAN_CAP`], não pela densidade.
-pub const SKETCHY_DENSITY_MAX: f32 = 0.04;
+pub const SKETCHY_DENSITY_MAX: f32 = 0.4;
+
+/// **Teto do `Reach`, em DIÂMETROS de pincel.**
+///
+/// A W0.3 mediu o gasto nas duas pontas: a **um** diâmetro os fios somam ~50× o arco do traço, a
+/// **quatro**, ~700×. Quatro é onde a medição parou porque é onde a teia deixa de ser a decoração de
+/// um traço e passa a ser um véu sobre o desenho inteiro — e a [`SKETCHY_DENSITY_MAX`] é quem paga a
+/// diferença.
+pub const SKETCHY_REACH_MAX: f32 = 4.0;
+
+/// **Teto da `Line Width`, em pixels.**
+///
+/// ⚠️ O custo de rasterizar é linear em `largura × comprimento total de fio`, então este número
+/// multiplica o mesmo orçamento que a [`SKETCHY_DENSITY_MAX`] governa — e por isso ele é pequeno: um
+/// fio é um traço de LÁPIS ao lado do traço, não um segundo pincel. Acima de ~4 px a teia deixa de
+/// ler como hachura e passa a ser uma segunda pincelada por cima da primeira.
+pub const SKETCHY_WIDTH_MAX_PX: f32 = 4.0;
 
 /// **Quantos pontos da memória do traço um dab novo consulta.**
 ///

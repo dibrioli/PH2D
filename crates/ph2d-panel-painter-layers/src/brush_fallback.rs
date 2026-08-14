@@ -124,6 +124,12 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     accumulate: false,
     style_solid: false,
     line_kind: 0,
+    // Sketchy: os defaults do `BrushSpec` (o fallback é o espelho de um pincel de fábrica).
+    sketchy_reach: 1.0,
+    sketchy_density: 0.2,
+    sketchy_width_px: 1.0,
+    sketchy_opacity: 0.25,
+    sketchy_magnetify: true,
     link_shared: false, // "Sync with other tools" off = independent tools (the default)
     line_show_dimensions: true, // Line CAD dimensions shown by default
     jitter: 0.0,

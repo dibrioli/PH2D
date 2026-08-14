@@ -31,6 +31,8 @@ mod curve_refit; // Simplify/Merge quality funnel: corner-split + piecewise Schn
 mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay snapshot; split from `curve`
 mod curve_trim; // self-intersection trim of the offset spine (open + closed); split from `curve_offset`
 /// **A forma SÓLIDA** — o caminho acumulado do gesto vira região preenchida (plano 38 §1.1).
+mod sketchy_deposit;
+mod sketchy_settings;
 mod solid_deposit;
 /// O `Style: Solid` na família dos shape editors — o laço que cada forma desenha (plano 38 §5.1).
 mod solid_shapes;

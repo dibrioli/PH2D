@@ -236,17 +236,34 @@ fn sewing_threads_does_not_disturb_the_brushs_jitter() {
     );
 }
 
-/// **O TETO DA DENSIDADE É O QUE O SLIDER ENTREGA** — e ele deposita mais fio que o alcance cheio
-/// não depositaria, senão o controle não existe.
+/// **A DENSIDADE É O ORÇAMENTO: o gasto é PROPORCIONAL a ela.**
+///
+/// ⚠️ **A barra é a PROPORÇÃO, não um fator escolhido.** A versão anterior pedia `cheia > 4 × teto`,
+/// um número calibrado contra um teto de `0,04` — e quando a medição do produto subiu o teto para
+/// `0,40` (dez vezes; ver o doc da constante) o gate reprovou um produto correto. A lei do motor é
+/// *cada par candidato vira fio com probabilidade `density`*, então o que se afirma é isso: dobrar a
+/// densidade dobra os fios, seja qual for o teto do dia.
 #[test]
-fn the_density_ceiling_is_the_budget_the_slider_hands_out() {
-    let (_, low) = zigzag(spec(LineKind::Sketchy, SKETCHY_DENSITY_MAX), 8);
-    let (_, full) = zigzag(spec(LineKind::Sketchy, 1.0), 8);
-    assert!(!low.is_empty(), "o teto orçado não costura nada");
+fn the_density_is_the_budget_and_the_spend_is_proportional_to_it() {
+    let count = |d: f32| zigzag(spec(LineKind::Sketchy, d), 8).1.len();
+    let base = count(0.1);
     assert!(
-        full.len() > 4 * low.len(),
-        "a densidade não governa o gasto: {} fios no teto contra {} na cheia",
-        low.len(),
-        full.len()
+        base > 50,
+        "controle: a fixture tem de costurar ({base} fios)"
+    );
+    for mult in [2.0f32, 5.0, 10.0] {
+        let got = count(0.1 * mult);
+        #[allow(clippy::cast_precision_loss)]
+        let ratio = got as f32 / base as f32;
+        assert!(
+            (ratio - mult).abs() < 0.25 * mult,
+            "densidade {mult}× deu {ratio:.2}× os fios ({got} contra {base})"
+        );
+    }
+    // E o teto que o produto SUSTENTA costura — senão o slider entrega uma faixa que não pinta.
+    assert!(
+        !zigzag(spec(LineKind::Sketchy, SKETCHY_DENSITY_MAX), 8)
+            .1
+            .is_empty()
     );
 }

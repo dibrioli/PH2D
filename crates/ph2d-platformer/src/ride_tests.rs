@@ -40,6 +40,7 @@ fn the_ground_feels_the_push_and_the_weight_but_never_the_pull() {
 
 fn flat(distance: f32) -> GroundSample {
     GroundSample {
+        grip: 1.0,
         distance,
         normal: [0.0, 1.0],
         ground_velocity: [0.0, 0.0],
@@ -158,6 +159,7 @@ fn the_float_height_has_a_geometric_floor() {
 fn the_spring_damps_against_the_ground_not_the_world() {
     let cfg = RideConfig::STARTING_POINT;
     let rising = GroundSample {
+        grip: 1.0,
         distance: cfg.float_height,
         normal: [0.0, 1.0],
         ground_velocity: [0.0, 2.0],
@@ -220,6 +222,7 @@ fn sliding_along_the_ramp_is_not_approaching_it() {
     let n: Vec2 = [-0.5, 0.866_025_4];
     let t = crate::perp_cw(n);
     let s = GroundSample {
+        grip: 1.0,
         distance: cfg.float_height,
         normal: n,
         ground_velocity: [0.0, 0.0],
@@ -256,6 +259,7 @@ fn at_the_ceiling_the_leg_kills_the_whole_approach_in_one_tick() {
     let mut cfg = RideConfig::STARTING_POINT;
     let n: Vec2 = [-0.5, 0.866_025_4];
     let s = GroundSample {
+        grip: 1.0,
         distance: cfg.float_height,
         normal: n,
         ground_velocity: [0.0, 0.0],

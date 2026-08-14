@@ -21,6 +21,7 @@ const DT: f32 = 1.0 / 60.0;
 
 fn at(distance: f32, normal: Vec2) -> GroundSample {
     GroundSample {
+        grip: 1.0,
         distance,
         normal,
         ground_velocity: [0.0, 0.0],

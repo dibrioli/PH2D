@@ -94,6 +94,12 @@ pub struct GroundSample {
     /// ⚠️ É ela que faz a plataforma móvel cair de graça: tudo nesta lei é
     /// medido *relativo ao chão*, então andar sobre um vagão é andar, e o vagão
     /// acelerando não derruba ninguém. Um chão estático manda `[0, 0]`.
+    ///
+    /// ⚠️ **Uma ESTEIRA chega por aqui** (`W-Surface`), e não por um campo
+    /// próprio: a lei já mede tudo relativo ao chão, e uma correia é literalmente
+    /// *um chão que anda sem o corpo andar*. Quem soma a velocidade de correia é
+    /// a ponte, ao longo da TANGENTE da superfície que o raio acertou — ver
+    /// [`Self::grip`] para a outra metade do que uma superfície diz.
     pub ground_velocity: Vec2,
     /// **Este chão é uma plataforma jump-through?** (W12)
     ///
@@ -107,6 +113,36 @@ pub struct GroundSample {
     /// Chão comum manda `false`, e é isso que mantém a wave inteira inerte em
     /// toda cena que nunca autorou uma plataforma jump-through.
     pub one_way: bool,
+    /// **Quanto desta superfície o pé aproveita** — o multiplicador do orçamento
+    /// de aceleração e de travagem da [`crate::walk`] (`W-Surface`). Neutro
+    /// **`1.0`**; gelo é baixo, borracha é alto.
+    ///
+    /// ⚠️ **É o SENSOR quem responde**, pela mesma razão do [`Self::one_way`]: a
+    /// única coisa que sabe de que superfície é o chão achado é quem o consultou,
+    /// e num leque de pés a resposta tem de vir do MESMO raio que ganhou — senão
+    /// o personagem anda no gelo e derrapa na madeira no mesmo tique.
+    ///
+    /// ⚠️ **NÃO é o `friction` do collider, e a razão é estrutural:** a perna
+    /// FLUTUA (`crate::ride`), então o atrito de contato do solver nunca se
+    /// aplica a este personagem — nem uma vez. Acoplá-los faria *"esta rampa é
+    /// escorregadia para o personagem"* significar também *"e todo caixote
+    /// desliza nela"*.
+    ///
+    /// ⚠️ **`1.0` reduz LITERALMENTE ao mundo de antes desta wave** (`x * 1.0` é
+    /// `x` em IEEE-754) — é isso que mantém o `physics_ecs_c9` byte-idêntico e
+    /// toda cena que nunca autorou uma superfície intocada.
+    ///
+    /// ⚠️ **`0.0` é legítimo e significa gelo PERFEITO:** o orçamento inteiro
+    /// zera, o personagem conserva a velocidade que tem e não consegue nem
+    /// arrancar nem parar. Não é um valor inválido a rejeitar — é o limite que a
+    /// escala descreve, e ele sai da própria aritmética sem um `if`.
+    pub grip: f32,
+}
+
+impl GroundSample {
+    /// O `grip` de uma superfície que ninguém autorou — e o valor que a lei usa
+    /// **no ar**, onde não há superfície nenhuma a que perguntar.
+    pub const NEUTRAL_GRIP: f32 = 1.0;
 }
 
 /// **A entrada do jogador neste tick.**

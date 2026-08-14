@@ -35,6 +35,7 @@ fn flat() -> GroundSample {
 /// Chão PLANO que se move — a única fixture que estas leis precisam do sensor.
 fn floor_moving(gv: Vec2) -> GroundSample {
     GroundSample {
+        grip: 1.0,
         distance: 0.5,
         normal: [0.0, 1.0],
         ground_velocity: gv,

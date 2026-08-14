@@ -58,6 +58,7 @@ fn gliding_and_swimming_cfg() -> PlayerConfig {
 /// pôr a escrever.
 fn on_ground() -> GroundSample {
     GroundSample {
+        grip: 1.0,
         distance: 0.5,
         normal: UP,
         ground_velocity: [0.0, 0.0],

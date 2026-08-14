@@ -47,6 +47,18 @@
 //! acelera*). Com o eixo apertado quem manda é o fator de viragem, que já existe
 //! e já está medido; e um personagem acima do cruzeiro com o dedo no acelerador
 //! está a ser **contido**, não a frear.
+//!
+//! **5. O CHÃO tem uma palavra sobre o orçamento** (`W-Surface`). Até esta wave
+//! toda superfície valia o mesmo, e `friction` não aparecia uma única vez neste
+//! crate — o que é honesto, porque a perna FLUTUA e o atrito de contato do solver
+//! nunca alcança este personagem. O [`GroundSample::grip`] multiplica o orçamento
+//! do tique: gelo é baixo, borracha é alto.
+//!
+//! ⚠️ **Ele multiplica os DOIS sentidos, e é isso que faz gelo ser gelo** —
+//! arrancar e parar usam a mesma tração. Quem os separa é o item 4: com
+//! `brake_scale` o artista escolhe *quanto* do escorregadio é "não consigo parar"
+//! contra "não consigo arrancar", e sem ele a razão entre os dois seria fixa. É
+//! por isso que esta lei chega DEPOIS daquela.
 
 use crate::{GroundSample, Motor, Vec2, perp_cw};
 
@@ -160,6 +172,28 @@ fn brake_scale(cfg: &WalkConfig, grounded: bool, drive: f32) -> f32 {
     }
 }
 
+/// **O que a SUPERFÍCIE deixa o pé aproveitar** — o multiplicador do chão
+/// achado (item 5 do topo do módulo), lido da amostra do sensor.
+///
+/// ⚠️ **O piso em zero é a mesma garantia do [`brake_scale`], e pelo mesmo
+/// motivo:** um `grip` negativo faria `a` negativo, e `push = a · delta.signum()`
+/// empurraria para o lado ERRADO — o personagem *acelera* na direção contrária à
+/// que o dedo pede. Um `NaN` vindo do arquivo cai no neutro em vez de envenenar a
+/// força (e daí o `Transform`, e daí o hash).
+///
+/// ⚠️ **Não há teto, e a ausência é a MESMA do `brake_scale`:** a lei é
+/// auto-limitada por construção — quando a sobra cabe num tique ela é escrita
+/// EXATA (o ramo do `boost`) —, então subir o `grip` só encurta o arranque e a
+/// paragem até ficarem instantâneos, e nunca passa do alvo.
+#[must_use]
+fn surface_grip(s: &GroundSample) -> f32 {
+    if s.grip.is_finite() {
+        s.grip.max(0.0)
+    } else {
+        GroundSample::NEUTRAL_GRIP
+    }
+}
+
 /// **ANDAR.** Ver a lei no topo do módulo.
 ///
 /// - `footing`: o chão que a lei ACEITA (o resultado de [`crate::footing`]),
@@ -192,14 +226,27 @@ pub fn walk(
         0.0
     };
 
-    // O eixo, o referencial e o orçamento mudam com o regime — e é a ÚNICA
-    // ramificação da lei.
+    // O eixo, o referencial, o orçamento e a SUPERFÍCIE mudam com o regime — e é
+    // a ÚNICA ramificação da lei.
     // ⚠️ No ar o referencial é o `carried` (W10), e ele é `[0, 0]` sempre que a
     // memória fechou — então esta linha é byte-idêntica ao que ela era enquanto
     // não houver plataforma móvel na cena.
-    let (axis, ground_v, accel) = match footing {
-        Some(s) => (perp_cw(s.normal), s.ground_velocity, cfg.acceleration),
-        None => (perp_cw(up), carried, cfg.air_acceleration),
+    // ⚠️ **E o `grip` do AR sai daqui, não de um `if`:** não há superfície no ar,
+    // então o neutro é a resposta certa — a representação apaga o caso especial,
+    // e não existe um segundo lugar onde alguém possa esquecer de o neutralizar.
+    let (axis, ground_v, accel, grip) = match footing {
+        Some(s) => (
+            perp_cw(s.normal),
+            s.ground_velocity,
+            cfg.acceleration,
+            surface_grip(s),
+        ),
+        None => (
+            perp_cw(up),
+            carried,
+            cfg.air_acceleration,
+            GroundSample::NEUTRAL_GRIP,
+        ),
     };
     if accel <= 0.0 || !accel.is_finite() {
         return Motor::default();
@@ -220,7 +267,7 @@ pub fn walk(
     } else {
         1.0
     };
-    let a = accel * turn * brake_scale(cfg, footing.is_some(), drive);
+    let a = accel * turn * brake_scale(cfg, footing.is_some(), drive) * grip;
 
     // Um empurrão deste tick move a velocidade em `a·dt`. Se isso passaria do
     // alvo, escreva o que falta — senão empurre.
@@ -247,6 +294,7 @@ mod tests {
 
     fn flat() -> GroundSample {
         GroundSample {
+            grip: 1.0,
             distance: 0.5,
             normal: [0.0, 1.0],
             ground_velocity: [0.0, 0.0],
@@ -379,6 +427,7 @@ mod tests {
         let s = 0.5_f32; // sin 30°
         let c = 0.866_025_4_f32; // cos 30°
         let ramp = GroundSample {
+            grip: 1.0,
             distance: 0.5,
             normal: [-s, c],
             ground_velocity: [0.0, 0.0],
@@ -405,6 +454,7 @@ mod tests {
     fn the_target_is_relative_to_the_ground() {
         let cfg = WalkConfig::STARTING_POINT;
         let wagon = GroundSample {
+            grip: 1.0,
             distance: 0.5,
             normal: [0.0, 1.0],
             ground_velocity: [4.0, 0.0],
@@ -527,5 +577,13 @@ mod tests {
 }
 
 #[cfg(test)]
+#[path = "walk_sim_tests.rs"]
+mod sim_tests;
+
+#[cfg(test)]
 #[path = "walk_brake_tests.rs"]
 mod brake_tests;
+
+#[cfg(test)]
+#[path = "walk_grip_tests.rs"]
+mod grip_tests;

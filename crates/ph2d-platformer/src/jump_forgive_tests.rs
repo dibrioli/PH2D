@@ -21,6 +21,7 @@ const DT: f32 = 1.0 / 60.0;
 
 fn ground() -> GroundSample {
     GroundSample {
+        grip: 1.0,
         distance: 0.9,
         normal: [0.0, 1.0],
         ground_velocity: [0.0, 0.0],
@@ -279,6 +280,7 @@ fn zero_windows_are_the_law_of_before_this_wave() {
 /// Um vagão a 4 m/s sob os pés.
 fn wagon() -> GroundSample {
     GroundSample {
+        grip: 1.0,
         ground_velocity: [4.0, 0.0],
         ..ground()
     }

@@ -13,21 +13,9 @@
 //! gravidade, então o que sobra no eixo é exactamente `v += accel·dt + boost` —
 //! a mesma aritmética que a ponte dinâmica faz do outro lado da cerca.
 
+use super::sim_tests::{DT, UP, drive_for, flat_at};
 use super::*;
-use crate::{KinematicState, PlayerConfig, PlayerInput, PlayerState, Support, kinematic_advance};
-
-const UP: Vec2 = [0.0, 1.0];
-const G: Vec2 = [0.0, -9.81];
-const DT: f32 = 1.0 / 60.0;
-
-fn flat_at(distance: f32) -> GroundSample {
-    GroundSample {
-        distance,
-        normal: [0.0, 1.0],
-        ground_velocity: [0.0, 0.0],
-        one_way: false,
-    }
-}
+use crate::PlayerConfig;
 
 /// **Quanto ele percorre até parar**, largando o direcional à velocidade de
 /// cruzeiro — e quantos tiques leva.
@@ -35,53 +23,23 @@ fn flat_at(distance: f32) -> GroundSample {
 /// ⚠️ **O critério de parada é `|v| < 1 mm/s`, e o teto de tiques é o que impede
 /// um `brake_scale = 0` de rodar para sempre** — em `0` a resposta HONESTA é
 /// *"não pára"*, e é isso que o `None` diz.
+///
+/// ⚠️ **O laço mora no banco de ensaio** (`walk_sim_tests`), não aqui: a
+/// `W-Surface` precisou do mesmo, e um integrador copiado é como duas tabelas do
+/// mesmo produto passam a discordar. A tabela abaixo foi re-medida depois da
+/// extração e não moveu um dígito, que é o que prova que ela foi *pure code
+/// motion*.
 fn stopping(brake: f32) -> Option<(f32, u32)> {
     let mut cfg = PlayerConfig::STARTING_POINT;
     cfg.walk.brake_scale = brake;
-
-    let ground = flat_at(cfg.ride.float_height);
-    let mut state = KinematicState {
-        velocity: [cfg.walk.speed, 0.0],
-        grounded: true,
-    };
-    let mut travelled = 0.0_f32;
-
-    for tick in 1..=600 {
-        let step = crate::player_motor(
-            &cfg,
-            Some(&ground),
-            None,
-            None,
-            None,
-            None,
-            PlayerInput::default(),
-            PlayerState::default(),
-            state.velocity,
-            G,
-            UP,
-            DT,
-            crate::Buoyed::DRY,
-            Support::Snap,
-        );
-        let (next, delta) = kinematic_advance(
-            state,
-            step.motor,
-            Some(&ground),
-            G,
-            UP,
-            DT,
-            crate::Fluid::DRY,
-        );
-        state = KinematicState {
-            grounded: true,
-            ..next
-        };
-        travelled += delta[0];
-        if state.velocity[0].abs() < 1.0e-3 {
-            return Some((travelled, tick));
-        }
-    }
-    None
+    let run = drive_for(
+        &cfg,
+        &flat_at(cfg.ride.float_height),
+        cfg.walk.speed,
+        0.0,
+        600,
+    );
+    run.ticks_to_still.map(|t| (run.travelled_when_still, t))
 }
 
 /// **A SONDA que numerou os gates** — a varredura do freio.
@@ -172,6 +130,23 @@ fn a_huge_brake_stops_dead_without_ever_overshooting() {
             distance.abs() < 1.0e-6,
             "e sem andar mais nada: {distance:.6}"
         );
+    }
+
+    // ⚠️ **E um `brake_scale` quebrado cai no NEUTRO** — a metade que a
+    // `W-Surface` descobriu em falta ao rodar a mesma mutação no irmão dela.
+    // `cfg.brake_scale.max(0.0)` sozinho **não** basta: em Rust `NaN.max(0.0)`
+    // devolve `0.0`, o operando não-NaN, e `0.0` significa **não freia** — um
+    // número corrompido no arquivo deixaria o personagem a patinar em silêncio.
+    // A guarda escolhe *"a config não diz nada"*, e é esta linha que a torna
+    // observável em vez de uma camada que ninguém vê.
+    {
+        let mut broken = WalkConfig::STARTING_POINT;
+        broken.brake_scale = f32::NAN;
+        let neutral = WalkConfig::STARTING_POINT;
+        let ground = flat_at(0.5);
+        let a = walk(&broken, Some(&ground), [3.0, 0.0], UP, 0.0, [0.0, 0.0], DT);
+        let b = walk(&neutral, Some(&ground), [3.0, 0.0], UP, 0.0, [0.0, 0.0], DT);
+        assert_eq!(a, b, "um brake NaN e' lido como config que nao diz nada");
     }
 
     // E o overshoot: a velocidade pousa em ZERO, nunca do outro lado.

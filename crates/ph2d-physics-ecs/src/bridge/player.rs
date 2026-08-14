@@ -239,6 +239,7 @@ impl PhysicsBridge {
             let hit = leg.hit;
 
             let sample = hit.as_ref().map(|h| GroundSample {
+                grip: 1.0,
                 distance: h.distance,
                 normal: h.normal,
                 // ⚠️ **Que TIPO de chão é este?** — o único que sabe é quem

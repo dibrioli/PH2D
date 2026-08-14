@@ -21,6 +21,7 @@ const DT: f32 = 1.0 / 60.0;
 /// Uma amostra de chão a `dist` do pé, com a normal dada.
 fn at(dist: f32, normal: Vec2) -> GroundSample {
     GroundSample {
+        grip: 1.0,
         distance: dist,
         normal,
         ground_velocity: [0.0, 0.0],

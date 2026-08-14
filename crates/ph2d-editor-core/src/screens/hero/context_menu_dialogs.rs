@@ -9,7 +9,7 @@ use super::context_menu_overlay::{ROW_H, pad_y};
 use super::ids;
 use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
-use crate::widget::{Button, ButtonState, TextInput, paint_button, paint_text_input_with_buffer};
+use crate::widget::{Button, TextInput, paint_button, paint_text_input_with_buffer};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
@@ -24,6 +24,7 @@ pub(super) fn paint_palette_rename_dialog(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    motion: &crate::motion::UiMotion,
     viewport: Rect,
 ) {
     paint_centered_input_dialog(
@@ -40,6 +41,7 @@ pub(super) fn paint_palette_rename_dialog(
         theme,
         hit_index,
         store,
+        motion,
         viewport,
     );
 }
@@ -56,6 +58,12 @@ struct CenteredInputDialog {
 
 /// Paint a centered, dialog-style popover: a title + a hint + a single `TextInput` + one accent CTA
 /// button. Shared by the API-key, vector-prompt and palette-rename popovers.
+///
+/// ⚠️ **O 8º argumento é o RELÓGIO, e o lint que ele acorda é o sintoma medido da wave:** a rota
+/// para o `t` chegar a um pintor é somar um parâmetro a toda a corrente que já leva o `store`, e
+/// aqui a corrente tem dois elos. No `ph2d-panel-inspector` ela tem **56**, para 20 botões — é esse
+/// número que diz que a corrente é o lugar errado para o relógio viajar.
+#[allow(clippy::too_many_arguments)]
 fn paint_centered_input_dialog(
     d: CenteredInputDialog,
     scene: &mut VectorScene,
@@ -63,6 +71,7 @@ fn paint_centered_input_dialog(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    motion: &crate::motion::UiMotion,
     viewport: Rect,
 ) {
     let menu_w = 320.0_f32; // LITERAL-PX-OK: dialog width (long key / prompt string)
@@ -157,20 +166,8 @@ fn paint_centered_input_dialog(
     hit_index.register(d.button_id, button_rect);
     let btn = Button::new(d.button_id, d.button_label)
         .accent()
-        .state(button_state(store, d.button_id));
+        .visual(crate::motion::button_visual(store, motion, d.button_id));
     paint_button(&btn, button_rect, scene, text_system, theme);
-}
-
-/// Hover/press [`ButtonState`] for a menu-row-id painted as a [`Button`], from
-/// the store's hot/active tracking.
-fn button_state(store: &WidgetStore, id: NodeId) -> ButtonState {
-    if store.active_id() == Some(id) {
-        ButtonState::Pressed
-    } else if store.hot_id() == Some(id) {
-        ButtonState::Hovered
-    } else {
-        ButtonState::Normal
-    }
 }
 
 /// Paint one radio-style choice button (accent when `selected`) + register its hit rect. Shared by the
@@ -182,17 +179,18 @@ fn paint_choice_button(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    motion: &crate::motion::UiMotion,
     id: NodeId,
     label: &str,
     rect: Rect,
     selected: bool,
 ) {
     hit_index.register(id, rect);
-    let st = button_state(store, id);
+    let st = crate::motion::button_visual(store, motion, id);
     let btn = if selected {
-        Button::new(id, label).accent().state(st)
+        Button::new(id, label).accent().visual(st)
     } else {
-        Button::new(id, label).state(st)
+        Button::new(id, label).visual(st)
     };
     paint_button(&btn, rect, scene, text_system, theme);
 }
@@ -207,6 +205,7 @@ pub(super) fn paint_new_image_dialog(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    motion: &crate::motion::UiMotion,
     viewport: Rect,
 ) {
     let row_h = ROW_H;
@@ -270,6 +269,7 @@ pub(super) fn paint_new_image_dialog(
             theme,
             hit_index,
             store,
+            motion,
             *id,
             &px.to_string(),
             r,
@@ -306,6 +306,7 @@ pub(super) fn paint_new_image_dialog(
             theme,
             hit_index,
             store,
+            motion,
             *id,
             label,
             r,
@@ -319,6 +320,10 @@ pub(super) fn paint_new_image_dialog(
     hit_index.register(ids::CTX_MENU_NEW_IMAGE_CREATE, create_rect);
     let btn = Button::new(ids::CTX_MENU_NEW_IMAGE_CREATE, "Create")
         .accent()
-        .state(button_state(store, ids::CTX_MENU_NEW_IMAGE_CREATE));
+        .visual(crate::motion::button_visual(
+            store,
+            motion,
+            ids::CTX_MENU_NEW_IMAGE_CREATE,
+        ));
     paint_button(&btn, create_rect, scene, text_system, theme);
 }

@@ -26,7 +26,7 @@ use crate::ids;
 use crate::interaction::{HitIndex, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use crate::screens::hero::HeroScreen;
-use crate::widget::{Button, ButtonState, Slider, SliderState, paint_button, paint_slider};
+use crate::widget::{Button, Slider, SliderState, paint_button, paint_slider};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
@@ -81,6 +81,7 @@ pub fn paint_onion_modal(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    motion: &crate::motion::UiMotion,
     viewport: Rect,
 ) {
     let Some((x, y)) = store.onion_modal_pos() else {
@@ -124,8 +125,9 @@ pub fn paint_onion_modal(
     );
     let close_rect = Rect::new(close_x, cy, CLOSE_W, row_h);
     hit_index.register(ids::TIMELINE_ONION_MODAL_CLOSE, close_rect);
-    let close = Button::new(ids::TIMELINE_ONION_MODAL_CLOSE, "X")
-        .state(button_state(store, ids::TIMELINE_ONION_MODAL_CLOSE));
+    let close = Button::new(ids::TIMELINE_ONION_MODAL_CLOSE, "X").visual(
+        crate::motion::button_visual(store, motion, ids::TIMELINE_ONION_MODAL_CLOSE),
+    );
     paint_button(&close, close_rect, scene, text_system, theme);
     cy += row_h + gap;
 
@@ -210,17 +212,6 @@ pub fn paint_onion_modal(
     }
 }
 
-/// Hover/press [`ButtonState`] for a modal button id (mirror of `fill_modal::button_state`).
-fn button_state(store: &WidgetStore, id: NodeId) -> ButtonState {
-    if store.active_id() == Some(id) {
-        ButtonState::Pressed
-    } else if store.hot_id() == Some(id) {
-        ButtonState::Hovered
-    } else {
-        ButtonState::Normal
-    }
-}
-
 /// Dispatch the Onion modal's widget events (wired into `chrome::dispatch_all`). Only acts while the
 /// modal is open. The close X closes it; the handle click is consumed (the move is the shell's drag
 /// machine); the sliders' `ValueChanged` is consumed so it never leaks to another handler (their
@@ -290,6 +281,7 @@ mod tests {
             hero.theme,
             &mut hero.hit_index,
             &hero.store,
+            &hero.motion,
             viewport,
         );
         for id in ids_all {
@@ -317,6 +309,7 @@ mod tests {
             hero.theme,
             &mut hero.hit_index,
             &hero.store,
+            &hero.motion,
             viewport,
         );
         for id in ids_all {

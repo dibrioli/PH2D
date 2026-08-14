@@ -51,10 +51,26 @@ fn fade(t: f32) -> f32 {
     t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
 }
 
-/// Normalization so the raw gradient noise lands in `[-1, 1]`. The `(±1,±2)`
-/// gradients give a raw range of about `±√5 · ½`; the empirical peak of this
-/// construction is ~1.49, so `1/1.5` maps it safely inside `[-1,1]` (the golden
-/// test pins the true bound). A single constant multiply — HR-5 clean.
+/// Normalization so the raw gradient noise lands in `[-1, 1]` **com 0,74% de
+/// folga** — e as duas frases que estavam aqui eram falsas, medidas em 2026-08-13.
+///
+/// Diziam *"o pico empírico desta construção é ~1,49, então `1/1.5` mapeia-o com
+/// segurança dentro de `[-1,1]` (o golden test pina o limite verdadeiro)"*.
+/// Varrido por CÉLULA (180×180 células × sub-grid 24², a sonda
+/// `measure_the_true_perlin_peak` do `value.noise`, que shipa este mesmo kernel)
+/// o pico cru é **1,5111**, logo a saída de UMA oitava chega a **1,0074**.
+///
+/// ⚠️ E o "golden test" é o [`fbm_is_bounded_deterministic_and_uses_the_full_range`]
+/// abaixo, que roda com **4 oitavas**: a média de quatro camadas não alcança o
+/// pico de uma, então a fixture dele **não contém o fenómeno** que ele afirma
+/// pinar. É por isso que a folga viveu com a suíte verde.
+///
+/// ⚠️ **A constante NÃO foi mexida, de propósito** — apertá-la mudaria em 1,3% o
+/// desenho de toda arte que este nó já produziu, por uma violação de limite que
+/// ninguém reportou. O que se corrige aqui é a AFIRMAÇÃO; apertar (ou não) é
+/// decisão do dono deste nó, com o número agora na mão.
+///
+/// A single constant multiply — HR-5 clean.
 const NORM: f32 = 1.0 / 1.5;
 
 /// Single-octave Perlin gradient noise at `(x, y)`, seeded. Range `[-1, 1]`.

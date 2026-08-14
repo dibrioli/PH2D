@@ -44,16 +44,22 @@ impl LineKind {
 
 /// **A JANELA DE ANTECIPAÇÃO, em segundos** — quanto do futuro o `Amount = 1` arremessa.
 ///
-/// ⚠️ **O número é MEDIDO, não escolhido** (plano 38 W0.1): a mesma curva de um quarto de círculo
-/// (raio 200, arco 314 px) desenhada em 8 quadros dá **~39 px de arco por quadro** ⇒ um gesto ligeiro
-/// corre a **~2 340 px/s**. Com a janela num quadro de 60 fps, `Amount = 1` arremessa exatamente o
-/// arco de um quadro — **~39 px** naquele gesto —, e o teto do slider ([`MAX_SPEED_AMOUNT`]) diz
-/// quantos quadros à frente a tinta pode ir.
-pub const SPEED_LOOKAHEAD_S: f32 = 1.0 / 60.0;
-
-/// O teto do `Amount`: **oito quadros** de antecipação.
+/// ⚠️ **É um TEMPO, e é o único número que calibra o `Speed`** — o Alchemy não oferece controle
+/// nenhum ao artista (Enio 2026-08-13: *"em alchemy o slider não é necessário"*), então o produto
+/// tem de acertar de fábrica em vez de delegar.
 ///
-/// ⚠️ Ele diz de que recurso é: no gesto medido acima são `8 × 39 = 312 px` de arremesso — o arco do
-/// quarto de círculo INTEIRO, o *"and possibly off the screen itself"* que o manual promete. Acima
-/// disso a tinta está mais de um oitavo de segundo à frente da mão e o traço deixa de ser um traço.
-pub const MAX_SPEED_AMOUNT: f32 = 8.0;
+/// **De onde ele vem:** a mesma curva de um quarto de círculo (raio 200, arco 314 px) desenhada em
+/// 8 quadros dá **~39 px de arco por quadro** ⇒ um gesto ligeiro corre a **~2 340 px/s** (plano 38
+/// W0.1, medido). A um décimo de segundo isso são **~234 px** de arremesso — a ordem da cauda que as
+/// figuras do Alchemy mostram para além do bico do pássaro, e num chicote de 12 000 px/s são
+/// 1 200 px, o *"and possibly off the screen itself"* que o manual promete.
+///
+/// ⚠️ **É uma decisão de LOOK, e o SMOKE é quem a julga** — não há aqui um recurso a medir (o custo
+/// de tinta é linear no caminho que ela percorre, e o `fill_thrown_gap` o paga honestamente). Movê-la
+/// é UMA linha; o que não se pode é devolvê-la ao artista como slider, que é o que o Alchemy
+/// deliberadamente não faz.
+///
+/// ⚠️ **Um tempo AUTO-ESCALA e um comprimento não:** a mesma constante arremessa 20 px num traço
+/// lento e 400 num rápido, que é precisamente a lei que o `Speed Shapes` afirma. Um número em
+/// pixels teria de ser re-escolhido por tamanho de tela, por zoom e por temperamento de mão.
+pub const SPEED_LOOKAHEAD_S: f32 = 1.0 / 10.0;

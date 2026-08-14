@@ -10,23 +10,16 @@
 //! parâmetro*.
 
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{
-    Checkbox, CheckboxValue, DropdownOption, Slider, SliderState, paint_checkbox, paint_slider,
-};
+use ph2d_editor_core::widget::{Checkbox, CheckboxValue, DropdownOption, paint_checkbox};
 use ph2d_editor_core::zones::Rect;
 
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
-use ph2d_tool_painter::{BrushSettings, LineKind, MAX_SPEED_AMOUNT};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken};
+use ph2d_tool_painter::{BrushSettings, LineKind};
 
 /// Coluna fixa do rótulo de uma row de parâmetro do tipo (cabe "Amount" na fonte Base).
-const LABEL_W: f32 = 54.0; // LITERAL-PX-OK: coluna do rótulo do parâmetro
 /// Coluna do readout "3.0" à direita do slider.
-const READOUT_W: f32 = 34.0; // LITERAL-PX-OK: coluna do readout
-/// Piso da pista do slider num painel muito estreito.
-const MIN_SLIDER_W: f32 = 24.0; // LITERAL-PX-OK: piso da pista do slider
-
 /// O nome de cada tipo, para o chip e para as opções do popover.
 fn kind_name(k: LineKind) -> &'static str {
     match k {
@@ -117,62 +110,6 @@ pub(crate) fn paint_line_card(
     }
     iy = ny;
 
-    if kind == LineKind::Speed {
-        iy = paint_amount_row(ctx, theme, ix, iw, iy + gap, brush);
-    }
     let _ = iy;
     y + card_h + Spacing::Sm.px()
-}
-
-/// A row `Amount` do tipo `Speed`: rótulo · slider nu · readout. O valor é lido do snapshot e o
-/// ESTADO do store, como toda row de slider deste painel.
-fn paint_amount_row(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    row_w: f32,
-    y: f32,
-    brush: BrushSettings,
-) -> f32 {
-    let gap = Spacing::Xs.px();
-    let font = TypeToken::Base.px();
-    let readout_x = x + row_w - READOUT_W;
-    let slider_x = x + LABEL_W + gap;
-    let slider_w = (readout_x - gap - slider_x).max(MIN_SLIDER_W);
-
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        "Amount",
-        x,
-        y + (ROW_H_PX - font) * 0.5,
-        font,
-        LABEL_W,
-        resolve(ColorToken::Text1, theme),
-    );
-
-    let sid = core_ids::PAINTER_LINE_SPEED_AMOUNT;
-    let val = (brush.line_speed_amount / MAX_SPEED_AMOUNT).clamp(0.0, 1.0);
-    let st = ctx
-        .host
-        .store()
-        .slider(sid)
-        .map(|(s, _)| s)
-        .unwrap_or(SliderState::Normal);
-    let mut slider = Slider::new(sid, "").accent(true).state(st);
-    slider.value = val;
-    let slider_rect = Rect::new(slider_x, y, slider_w, ROW_H_PX);
-    paint_slider(&slider, slider_rect, ctx.scene, theme);
-    ctx.host.hit_index_mut().register(sid, slider_rect);
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        &format!("{:.1}", brush.line_speed_amount),
-        readout_x,
-        y + (ROW_H_PX - font) * 0.5,
-        font,
-        READOUT_W,
-        resolve(ColorToken::Text2, theme),
-    );
-    y + ROW_H_PX
 }

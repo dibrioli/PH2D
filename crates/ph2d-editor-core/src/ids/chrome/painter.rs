@@ -230,9 +230,6 @@ pub const PAINTER_LINE_TYPE: NodeId = hash_node_id("painter_line.type");
 pub fn painter_line_type_option_id(idx: u8) -> NodeId {
     fnv_node_id_runtime(&format!("painter_line.typeopt.{idx}"))
 }
-/// **Amount** — o slider do tipo `Speed`: quantos QUADROS de antecipação a tinta é arremessada à
-/// frente do dedo (`0..=8`). `SetValue` → `set_line_speed_amount`. Pintado só com `Speed` escolhido.
-pub const PAINTER_LINE_SPEED_AMOUNT: NodeId = hash_node_id("painter_line.speed_amount");
 /// "Sync with other tools" checkbox at the top of the brush panel: off (default) = each paint tool keeps
 /// its own settings; on = all tools share these. `Click` → `toggle_link_shared_settings`.
 pub const PAINTER_BRUSH_SYNC: NodeId = hash_node_id("painter_brush.sync");

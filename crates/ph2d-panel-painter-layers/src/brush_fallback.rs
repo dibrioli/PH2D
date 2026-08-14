@@ -124,7 +124,6 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     accumulate: false,
     style_solid: false,
     line_kind: 0,
-    line_speed_amount: 0.0,
     link_shared: false, // "Sync with other tools" off = independent tools (the default)
     line_show_dimensions: true, // Line CAD dimensions shown by default
     jitter: 0.0,

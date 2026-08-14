@@ -109,6 +109,16 @@ pub struct Stroke {
     speed_ramp_len: f32,
     /// O `arc_len` do dab anterior, para a rampa saber quanto de caminho passou entre dois dabs.
     speed_dab_arc: f32,
+    /// **A MIRA do arremesso** (vetor unitário; `[0,0]` = ainda não estabelecida) — o heading suavizado
+    /// por uma janela PRÓPRIA, muito mais longa que a do Rake. A lei e o porquê vivem em
+    /// [`mod@self::speed`]; o resumo é que o arremesso é uma ALAVANCA e uma alavanca amplifica tremor.
+    throw_dir: [f32; 2],
+    /// Onde a TINTA do dab anterior caiu (posição arremessada, pré-jitter) e o arco dele — o começo
+    /// do segmento que [`mod@self::speed`] preenche. `None` = não há dab anterior a ligar.
+    fill_from: Option<([f32; 2], f32)>,
+    /// Onde a tinta do dab ATUAL caiu; vira o `fill_from` do próximo. Um par, não dois campos, porque
+    /// as duas metades são a mesma resposta (*onde e quando esta tinta caiu*).
+    last_thrown: Option<([f32; 2], f32)>,
     /// The point *before* `last_pos` — the trailing neighbour the Catmull-Rom smoother needs for the
     /// centred tangent at the start of each segment. `None` until the second move after
     /// [`Stroke::begin`] (the first segment has no trailing neighbour, so it starts straight).
@@ -177,6 +187,9 @@ impl Stroke {
             throw_speed_px_s: 0.0,
             speed_ramp_len: 0.0,
             speed_dab_arc: 0.0,
+            throw_dir: [0.0, 0.0],
+            fill_from: None,
+            last_thrown: None,
             prev_prev: None,
             stab_pos: [0.0, 0.0],
             last_raw_pos: [0.0, 0.0],
@@ -215,6 +228,9 @@ impl Stroke {
         self.throw_speed_px_s = 0.0;
         self.speed_ramp_len = 0.0;
         self.speed_dab_arc = 0.0;
+        self.throw_dir = [0.0, 0.0];
+        self.fill_from = None;
+        self.last_thrown = None; // traço novo: nenhuma tinta anterior a que ligar a primeira
         self.prev_prev = None;
         self.stab_pos = p.pos;
         self.last_raw_pos = p.pos;
@@ -245,7 +261,7 @@ impl Stroke {
         } else if self.spec.stroke_method.emits_on_begin() {
             let pr = self.method_pressure(p.pressure);
             let dab = self.dab_at(p.pos, pr, self.method_overlap(), self.arc_len);
-            crate::symmetry::push_symmetric(out, dab, &self.spec.symmetry);
+            self.emit(dab, out);
             self.tot_samples = self.tot_samples.wrapping_add(1);
         }
         self.warmup_gate(out);
@@ -358,7 +374,7 @@ impl Stroke {
         if self.spec.dash_on(self.tot_samples) {
             let pr = self.method_pressure(pressure);
             let d = self.dab_at(a, pr, self.method_overlap(), self.arc_len);
-            crate::symmetry::push_symmetric(out, d, &self.spec.symmetry);
+            self.emit(d, out);
         }
         self.tot_samples = self.tot_samples.wrapping_add(1);
         self.walk_space(StrokePoint { pos: b, pressure }, out);
@@ -409,7 +425,7 @@ impl Stroke {
             self.airbrush_accum_s -= rate;
             let pr = self.method_pressure(self.last_pressure);
             let d = self.dab_at(self.last_pos, pr, 1.0, self.arc_len); // per-event: no spacing attenuation
-            crate::symmetry::push_symmetric(out, d, &self.spec.symmetry);
+            self.emit(d, out);
             self.tot_samples = self.tot_samples.wrapping_add(1);
             emitted += 1;
             // Stall guard: a frame-driven tick can hand us a huge `dt` after a hitch (GC/resize/
@@ -482,7 +498,7 @@ impl Stroke {
             advanced = traveled;
             if self.spec.dash_on(self.tot_samples) {
                 let d = self.dab_at(pos, pressure, overlap, base_arc + traveled);
-                crate::symmetry::push_symmetric(out, d, &self.spec.symmetry);
+                self.emit(d, out);
             }
             self.tot_samples = self.tot_samples.wrapping_add(1);
             self.accum = 0.0;
@@ -553,7 +569,7 @@ impl Stroke {
     /// space-attenuation (that normalises *dense spacing*, which these don't have).
     fn emit_single(&mut self, pos: [f32; 2], pressure: f32, arc: f32, out: &mut Vec<Dab>) {
         let d = self.dab_at(pos, pressure, 1.0, arc);
-        crate::symmetry::push_symmetric(out, d, &self.spec.symmetry);
+        self.emit(d, out);
         self.tot_samples = self.tot_samples.wrapping_add(1);
     }
 

@@ -293,10 +293,55 @@ dab, não como número solto**: o próximo tipo (Sketchy) a lê para o *distance
 futuro a lê para a direção do respingo. Duas leituras da mesma grandeza por duas fórmulas é a falha
 de duas-portas que este módulo já pagou quatro vezes.
 
-**Gates.** `Amount = 0` é **byte-idêntico** ao `None` · o mesmo caminho a 1 px e a 8 px de
+**Gates.** O tipo NEUTRO ignora o relógio (byte-idêntico) · o mesmo caminho a 1 px e a 8 px de
 espaçamento produz o **mesmo** arremesso (a lei do caminho, não da amostragem — a doença que este
-módulo curou quatro vezes no relevo) · a row só é pintada com `Speed` escolhido. **Mutação:**
-velocidade por evento ⇒ o gate de espaçamento sangra.
+módulo curou quatro vezes no relevo) · a antecipação é um TEMPO (quadruplicar a velocidade
+quadruplica o arremesso). **Mutação:** velocidade por evento ⇒ o gate de espaçamento sangra.
+
+---
+
+#### W2 — FECHADA (2026-08-13), e as DUAS reprovações de smoke que a reescreveram
+
+**A primeira** (*"speed não é igual o Alchemy"*): a magnitude estava certa desde o começo (1 598 px
+de arremesso num chicote — o *"off the screen"* do manual), e o defeito era a CONTINUIDADE. A
+velocidade é medida por TIQUE ⇒ ela é uma ESCADA, e o arremesso saía como uma fileira de arcos
+deslocados, um por quadro (vão de **25× o passo nominal**). Curada por uma rampa sobre o arco do
+próprio quadro — hoje uma **EMA ponderada por comprimento**, a mesma lei do `heading`.
+
+**A segunda** (*"não é idêntico na FORMA e ainda fica pontilhado"*, com a foto) tinha **duas causas
+independentes**, e nenhuma era a que a primeira consertou:
+
+1. **PONTILHADO — o arremesso ESTICA o caminho da tinta e ninguém re-espaçava.** O motor emite um dab
+   a cada `spacing × diâmetro` do caminho da **MÃO**; entre dois dabs a tinta anda `passo × (1 + Δv/v)`,
+   e um gesto de artista (que acelera na reta e freia na curva) chega facil a 5×. Medido num pincel de
+   raio 4: vão de **1,61 diâmetro** com a **contagem de dabs IDÊNTICA** à do traço sem arremesso — os
+   mesmos dabs espalhados por um caminho mais longo. **O Alchemy não tem este problema porque o traço
+   dele é um `GeneralPath` PERCORRIDO**: uma curva traçada é contínua por construção. O equivalente
+   num motor de dabs é honrar o espaçamento **onde a tinta cai**, e é o que o `fill_thrown_gap` faz
+   (vão **1,61 → 0,12 diâmetro**, idêntico ao controle em todo raio).
+2. **FORMA — o arremesso é uma ALAVANCA.** ⚠️ A primeira hipótese (a escada da velocidade) foi
+   **REFUTADA por medição**: suavizá-la levou a razão de virada de 25,1 para 24,4× — *quase nada*.
+   Olhando ONDE a virada estava, não era quina de quadro: era **ondulação de ±5 px numa reta**. O
+   arremesso desloca a tinta por `k` px ao longo do heading, e o heading do **Rake** é suavizado sobre
+   `0,1 × diâmetro` — **1,6 px**, o certo para girar um carimbo que tem de ACOMPANHAR o traço. Com
+   `k = 470`, o tremor residual de **0,6°** vira ±5 px. A cura é a **MIRA com janela própria, longa
+   como o próprio arremesso** (`L = k`): o erro lateral é `k·Δθ`, então para ele ficar abaixo de uma
+   fração do diâmetro o `Δθ` tem de encolher como `1/k`. Razão **24,4× → 0,9×**, contra um controle
+   de 6,8° — a tinta passa a virar *menos* que a mão, que é o que uma curva maior tem de fazer.
+
+⚠️ **E o `Amount` MORREU** (Enio: *"em alchemy o slider não é necessário"*): a antecipação é UMA
+constante de tempo (`SPEED_LOOKAHEAD_S = 1/10 s`), e um tempo **auto-escala** — a mesma constante
+arremessa 20 px num traço lento e 400 num rápido, que é precisamente a lei que o `Speed Shapes`
+afirma. Sumiram o campo, o setter, o id, a row, o `populate` e a rota de `SetValue`. ⚠️ **É a única
+calibração que sobrou, e ela é decisão de LOOK: o SMOKE é quem a julga**, e movê-la é uma linha.
+
+⛔ **`Curved` não foi construído, e não é adiamento:** num motor de dabs não existe *segmento*, então
+"retas × curvas" não tem referente — qualquer significado seria inventado. O `Line Type` do Alchemy
+governa o `GeneralPath` dele, que tem segmentos de verdade.
+
+**9 gates · 8 mutações · 7 sangram** (a sobrevivente é a janela da EMA de velocidade, **medida** e
+documentada: depois que a mira passou a fazer o trabalho pesado, o valor dela deixou de ser
+observável nos regimes medidos).
 
 **Smoke `=2`:** o mesmo gesto devagar e depressa; e um traço lento tem de ser indistinguível do
 `None`.

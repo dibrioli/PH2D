@@ -44,7 +44,6 @@ impl Default for BrushSpec {
             accumulate: false,
             style_solid: false,
             line_kind: LineKind::None,
-            line_speed_amount: 0.0,
             dash_ratio: 1.0,
             dash_samples: 20,
             jitter_unit: JitterUnit::Brush,

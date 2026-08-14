@@ -217,8 +217,6 @@ pub struct BrushSettings {
     /// **O TIPO de linha procedural** como wire (`0` = None · `1` = Speed) — o dropdown `Type` do
     /// card Line.
     pub line_kind: u8,
-    /// O `Amount` do tipo `Speed`, em quadros de antecipação (`0..=8`).
-    pub line_speed_amount: f32,
     /// "Sync with other tools" on/off: on = every paint tool shares these settings; off (default) = each
     /// tool independent. Drives the checkbox at the top of the brush panel.
     pub link_shared: bool,

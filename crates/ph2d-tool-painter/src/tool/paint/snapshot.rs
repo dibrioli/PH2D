@@ -230,7 +230,6 @@ impl PainterTool {
             accumulate: b.accumulate,
             style_solid: b.style_solid,
             line_kind: b.line_kind.to_wire(),
-            line_speed_amount: b.line_speed_amount,
             link_shared: self.paint.link_shared_settings,
             line_show_dimensions: self.paint.line_show_dimensions,
             jitter: b.jitter,

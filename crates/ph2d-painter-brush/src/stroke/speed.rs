@@ -72,17 +72,23 @@ impl Stroke {
             self.throw_speed_px_s = self.speed_px_s;
             return;
         }
-        let t = (ds / self.speed_ramp_len).clamp(0.0, 1.0);
-        self.throw_speed_px_s += (self.speed_px_s - self.throw_speed_px_s) * t;
+        // ⚠️ **EMA ponderada por COMPRIMENTO, `α = Δs/(Δs + L)`** — a MESMA lei que o
+        // [`crate::heading`] usa para suavizar a tangente, e não uma rampa linear até o alvo. Uma
+        // rampa linear é contínua no valor e **descontínua na derivada**: no arco em que ela
+        // COMPLETA, o `d(arremesso)/d(arco)` cai de golpe e o caminho da tinta ganha uma QUINA
+        // (medido: 25× a virada da própria mão num arco de 3 quadros). A EMA nunca completa, então
+        // não há onde pôr o canto.
+        let alpha = ds / (ds + self.speed_ramp_len);
+        self.throw_speed_px_s += (self.speed_px_s - self.throw_speed_px_s) * alpha;
     }
 
     /// **O ARREMESSO** — onde a tinta cai quando o gesto tem inércia (manual do Alchemy, verbatim:
     /// *"throw the line beyond the actual pen position"*).
     ///
     /// A tinta é lançada ao longo do **heading** (a EMA da tangente do caminho — o mesmo vetor que o
-    /// Rake cavalga) por `velocidade × antecipação`, e a antecipação é `Amount` **quadros** de
-    /// [`crate::line_kind::SPEED_LOOKAHEAD_S`]. Sem heading (o primeiro dab de um traço) não há
-    /// direção a arremessar e a tinta fica onde o dedo a pôs.
+    /// Rake cavalga) por `velocidade × antecipação`, e a antecipação é [`crate::line_kind::SPEED_LOOKAHEAD_S`]:
+    /// **onde a mão ESTARÁ**. Sem heading (o primeiro dab de um traço) não há direção a arremessar e a
+    /// tinta fica onde o dedo a pôs.
     ///
     /// ⚠️ **A velocidade é avançada AQUI, por dab** (a rampa de [`Self::advance_speed`]) — é o que
     /// mantém a linha CONTÍNUA em vez de uma fileira de arcos deslocados, um por quadro.
@@ -104,13 +110,86 @@ impl Stroke {
         if self.spec.line_kind == LineKind::None {
             return pos;
         }
+        let ds = (arc - self.speed_dab_arc).max(0.0);
         self.advance_speed(arc);
-        let a = self.spec.line_speed_amount;
-        let d = self.heading;
-        if a > 0.0 && (d[0] != 0.0 || d[1] != 0.0) {
-            let k = self.throw_speed_px_s * a * crate::line_kind::SPEED_LOOKAHEAD_S;
-            return [pos[0] + d[0] * k, pos[1] + d[1] * k];
+        let k_now = self.throw_speed_px_s * crate::line_kind::SPEED_LOOKAHEAD_S;
+        // ⚠️ **A MIRA tem janela PRÓPRIA, e o comprimento dela é o próprio ARREMESSO.**
+        //
+        // O heading do motor é suavizado sobre `0,1 × diâmetro` — **1,6 px** num pincel de 16 —, que é
+        // o certo para o Rake: ele gira o carimbo, e um carimbo tem de ACOMPANHAR o traço. Mas o
+        // arremesso não gira nada: ele **desloca** a tinta por `k` px ao longo dessa direção, e isso é
+        // uma ALAVANCA. Medido num arco de 3 quadros com `k = 470 px`: um tremor residual de **0,6°**
+        // no heading vira **±5 px** de ondulação lateral na tinta, e a linha — contínua e no lugar —
+        // sai TORTA (24× a virada da própria mão, na escala de um diâmetro).
+        //
+        // A lei cai da geometria: o erro lateral é `k · Δθ`, então para ele ficar abaixo de uma fração
+        // fixa do diâmetro o `Δθ` tem de encolher como `1/k` ⇒ **a janela cresce com o arremesso**.
+        // Quanto mais longe você joga, mais firme a mira precisa ser — e o número não é escolhido: é
+        // a distância que a própria tinta vai percorrer.
+        self.throw_dir = crate::heading::advance(self.throw_dir, self.heading, ds, k_now);
+        let d = self.throw_dir;
+        let thrown = if d[0] == 0.0 && d[1] == 0.0 {
+            pos
+        } else {
+            [pos[0] + d[0] * k_now, pos[1] + d[1] * k_now]
+        };
+        // O segmento que a TINTA saltou desde o dab anterior — o caminho que o `fill_thrown_gap`
+        // vai percorrer. Guardado aqui porque este e o unico lugar que conhece as duas pontas.
+        self.fill_from = self.last_thrown.replace((thrown, arc));
+        thrown
+    }
+
+    /// **A PORTA UNICA por onde um dab chega ao mundo** — ela percorre o caminho que a tinta de
+    /// fato descreve e so entao espelha.
+    ///
+    /// ⚠️ **O arremesso ESTICA o caminho da tinta, e ate esta wave ninguem re-espacava.** O motor
+    /// emite um dab a cada `spacing x diametro` do caminho da MAO; o arremesso vale `v x T`, entao
+    /// entre dois dabs a tinta anda `passo x (1 + d(arremesso)/d(arco))` — e num gesto de artista,
+    /// que acelera na reta e freia na curva, esse fator e `1 + Δv/v` e chega facil a cinco. Medido
+    /// (sonda `measure_the_gap_on_a_gesture_that_changes_speed`, pincel de raio 4): o maior vao
+    /// entre dabs vizinhos valia **1,61 diametro** e a contagem de dabs era **identica** a do traco
+    /// sem arremesso — a assinatura exata do defeito, *os mesmos dabs espalhados por um caminho mais
+    /// longo*, que o Enio viu como *"ainda fica pontilhado"* (2026-08-13, com a foto).
+    ///
+    /// O Alchemy nao tem este problema porque o traco dele e um `GeneralPath` **percorrido**: uma
+    /// curva tracada e continua por construcao, seja qual for a distancia entre os pontos gravados.
+    /// Num motor de dabs o equivalente e este: **os pontos arremessados formam um caminho, e o
+    /// espacamento e honrado ONDE A TINTA CAI, nunca onde a mao passou**.
+    pub(super) fn emit(&mut self, dab: Dab, out: &mut Vec<Dab>) {
+        self.fill_thrown_gap(&dab, out);
+        crate::symmetry::push_symmetric(out, dab, &self.spec.symmetry);
+    }
+
+    /// Preenche o vao que o arremesso abriu entre o dab anterior e este, no dominio da TINTA.
+    ///
+    /// ⚠️ **O passo e `spacing x o diametro que de fato sera carimbado aqui`**, nao o nominal — a
+    /// mesma lei que o [`Stroke::walk_space`] ja aplica ao taper: espacamento e uma RAZAO, e segurar
+    /// o vao fixo enquanto o dab encolhe faz a ponta sair em pontos separados.
+    ///
+    /// ⚠️ **O jitter e sorteado por dab preenchido**, nao copiado: a interpolacao corre nas posicoes
+    /// ARREMESSADAS (pre-jitter), entao um pincel com scatter continua a espalhar em vez de desenhar
+    /// uma fileira alinhada dentro do proprio vao.
+    fn fill_thrown_gap(&mut self, dab: &Dab, out: &mut Vec<Dab>) {
+        let (Some((from, from_arc)), Some((to, to_arc))) = (self.fill_from, self.last_thrown)
+        else {
+            return;
+        };
+        let d = [to[0] - from[0], to[1] - from[1]];
+        let gap = (d[0] * d[0] + d[1] * d[1]).sqrt();
+        let step = (2.0 * dab.radius_px * self.spec.spacing).max(1.0);
+        if gap <= step {
+            return;
         }
-        pos
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let n = ((gap / step).ceil() as usize).saturating_sub(1);
+        for k in 1..=n {
+            #[allow(clippy::cast_precision_loss)]
+            let t = k as f32 / (n + 1) as f32;
+            let p = [from[0] + d[0] * t, from[1] + d[1] * t];
+            let mut fill = *dab;
+            fill.center = self.apply_jitter(p, dab.radius_px);
+            fill.arc_len = from_arc + (to_arc - from_arc) * t;
+            crate::symmetry::push_symmetric(out, fill, &self.spec.symmetry);
+        }
     }
 }

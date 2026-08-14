@@ -101,10 +101,6 @@ pub struct BrushSpec {
     /// **O TIPO de linha procedural** ([`crate::line_kind::LineKind`]) — o dropdown `Type` do card
     /// Line. `None` (o default) é o neutro **byte-idêntico**: nenhuma lei procedural alcança um dab.
     pub line_kind: LineKind,
-    /// Quanto da velocidade do gesto é arremessada à frente do dedo, em **quadros de antecipação**
-    /// (`0..=`[`crate::line_kind::MAX_SPEED_AMOUNT`]). Lido só com [`LineKind::Speed`]; `0` é o
-    /// neutro exato.
-    pub line_speed_amount: f32,
     /// Dash "on" fraction of each dash period, `0..1` (Blender `dash_ratio`, default `1.0` = solid,
     /// `DNA_brush_types.h:275`).
     pub dash_ratio: f32,

@@ -92,44 +92,26 @@ fn a_pointer_can_pick_every_line_type() {
     }
 }
 
-/// **A row `Amount` existe SÓ com o `Speed` escolhido** — presença E ausência, porque um controle sob
-/// um tipo que não o consome é um knob morto.
+/// **E NÃO HÁ MAIS NADA A AJUSTAR NO `Speed`** — o card oferece o TIPO e mais nada.
+///
+/// ⚠️ O Alchemy não dá controle nenhum sobre o arremesso (Enio 2026-08-13: *"em alchemy o slider não
+/// é necessário"*), então a antecipação é UMA constante de produto. Este gate é o que impede o
+/// slider de voltar por hábito: um controle a mais aqui seria uma segunda resposta a *"quão longe a
+/// tinta voa?"*, e a primeira é a lei `velocidade × antecipação`.
 #[test]
-fn the_amount_row_is_painted_only_for_the_speed_type() {
-    let mut tool = PainterTool::default();
-    let (_, _, rects) = painted(&tool);
-    assert!(
-        rect_of(&rects, core_ids::PAINTER_LINE_SPEED_AMOUNT).is_none(),
-        "o tipo None pintou a row Amount, que ele não consome"
-    );
-
-    tool.set_line_kind(1);
-    let (_, _, rects) = painted(&tool);
-    assert!(
-        rect_of(&rects, core_ids::PAINTER_LINE_SPEED_AMOUNT).is_some(),
-        "o tipo Speed NÃO pintou a row Amount"
-    );
-}
-
-/// **E o slider `Amount` é vivo sob o mouse** — arrastar a pista chega ao tool com o valor da FAIXA
-/// (a fronteira de display: a pista anda `0..1` e o motor guarda QUADROS de antecipação).
-#[test]
-fn dragging_the_amount_slider_reaches_the_tool_in_frames() {
+fn the_speed_type_has_nothing_left_to_tune() {
     let mut tool = PainterTool::default();
     tool.set_line_kind(1);
-    let (mut host, mut st, rects) = painted(&tool);
-    let sl = rect_of(&rects, core_ids::PAINTER_LINE_SPEED_AMOUNT)
-        .expect("o slider Amount não é pintado com o Speed escolhido");
-    // Clica no meio da pista: `0.5` da faixa ⇒ metade do teto.
-    let (cx, cy) = centre(sl);
-    click_through(&mut host, &mut st, &mut tool, cx, cy);
-    let a = tool.brush_settings().line_speed_amount;
+    let (_, _, rects) = painted(&tool);
+    let rows = rects.iter().filter(|(_, r)| r.w > 0.0 && r.h > 0.0).count();
+    assert!(rows > 0, "controle: o card Line tem de pintar alguma coisa");
+    // O chip do tipo é o ÚNICO widget que o `Speed` acrescenta ao card.
     assert!(
-        a > 0.1,
-        "o clique na pista não chegou ao tool (Amount ficou em {a})"
+        rect_of(&rects, core_ids::PAINTER_LINE_TYPE).is_some(),
+        "o chip Type sumiu do card"
     );
     assert!(
-        a <= ph2d_tool_painter::MAX_SPEED_AMOUNT,
-        "o Amount passou do teto medido: {a}"
+        rect_of(&rects, core_ids::PAINTER_LINE_SOLID).is_some(),
+        "o checkbox Solid sumiu do card"
     );
 }

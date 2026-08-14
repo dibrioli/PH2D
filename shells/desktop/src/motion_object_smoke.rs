@@ -27,6 +27,13 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 use ph2d_render::Sprite;
 use ph2d_vec_scene::{Paint, Rgba8, VecPath};
 
+// A cena das DUAS FASES (`=7`, o `time_offset` do doc 89 folha 14) mora num irmão:
+// ela é um ASSUNTO — *o mesmo objeto em dois tempos* — e traz a própria fixture
+// animada, que nenhum dos outros modos precisa. Cortado pelo teto de LOC da shell.
+#[path = "motion_object_smoke_times.rs"]
+mod times;
+use times::{build_two_times_graph, spawn_flip_walk_named};
+
 /// O nome que o artista daria ao objeto — e que ele escolhe no campo `Object`.
 const OBJECT: &str = "Object";
 
@@ -557,6 +564,31 @@ impl crate::App {
                     crate::render_loop::motion_bridge::objects_lod_count(),
                     tiles,
                     vecs
+                );
+            }
+            7 if f == 3 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                spawn_flip_walk_named(&mut gfx.flip, OBJECT);
+            }
+            7 if f == 6 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let outs = build_two_times_graph(&mut gfx.motion.doc.graph, OBJECT);
+                gfx.motion.sinks.extend(outs);
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+                // O relógio ANDA: um offset de tempo só é visível numa animação que
+                // corre. Uma cena parada mostraria dois desenhos diferentes e não
+                // diria se a diferença é de FASE.
+                self.playhead.play();
+                eprintln!(
+                    "[motion.obj smoke =7] o MESMO objeto Flip ({OBJECT}, 12 fps, 4 desenhos \
+                     em 0/3/6/9) trazido DUAS vezes: a grade da ESQUERDA em time_offset = 0 \
+                     (o quadro atual) e a da DIREITA em +0,25 s, que a 12 fps sao TRES \
+                     desenhos a frente. O QUE OLHAR: as duas grades desenham a MESMA arte \
+                     (campo azul + quadrado laranja) e o quadrado da direita esta sempre UM \
+                     PASSO a frente do da esquerda — se os dois andarem juntos, o offset nao \
+                     chegou ao bake; se a direita SUMIR, o canal deslocado nao foi publicado. \
+                     Pare o play e faca scrub: a diferenca de fase tem de se manter em \
+                     qualquer quadro."
                 );
             }
             _ => {}

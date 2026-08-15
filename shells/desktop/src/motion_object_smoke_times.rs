@@ -20,7 +20,7 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 /// A 12 fps as chaves em `0/3/6/9` dão um desenho a cada `0,25 s` — então o offset da
 /// cena (`0,25`) pousa **exatamente** no desenho seguinte, e o que o artista vê é uma
 /// grade adiantada em um passo, não um borrão a meio caminho.
-pub(super) fn spawn_flip_walk_named(flip: &mut ph2d_flip::FlipDoc, name: &str) {
+pub(crate) fn spawn_flip_walk_named(flip: &mut ph2d_flip::FlipDoc, name: &str) {
     use ph2d_flip::{Hold, KeyKind, Rgba};
     let oid = flip.push_object(name);
     let obj = flip.object_mut(oid).expect("objeto Flip recém-criado");

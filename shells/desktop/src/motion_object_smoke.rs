@@ -31,7 +31,7 @@ use ph2d_vec_scene::{Paint, Rgba8, VecPath};
 // ela é um ASSUNTO — *o mesmo objeto em dois tempos* — e traz a própria fixture
 // animada, que nenhum dos outros modos precisa. Cortado pelo teto de LOC da shell.
 #[path = "motion_object_smoke_times.rs"]
-mod times;
+pub(crate) mod times;
 use times::{build_two_times_graph, spawn_flip_walk_named};
 
 /// O nome que o artista daria ao objeto — e que ele escolhe no campo `Object`.

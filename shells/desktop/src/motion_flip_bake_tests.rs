@@ -238,3 +238,111 @@ fn select_present_bakes_named_and_group_flip_objects_but_not_loose_art() {
         "unnamed canvas Flip art no group references is NOT tiled"
     );
 }
+
+/// **SONDA — o que o bake faz quadro a quadro com um objeto ANIMADO** (o repro do
+/// report *"=7 piscando o tempo todo"*, 2026-08-13).
+///
+/// Todos os modos anteriores do smoke montam um Flip de UM desenho, cuja chave de
+/// conteúdo nunca muda ⇒ ele assa uma vez e nunca mais. A cena `=7` é a **primeira com
+/// um Flip animado**, logo a primeira a percorrer o caminho de RE-BAKE (despejo +
+/// aquisição) — e é ali que um piscar tem de ser procurado, não no offset.
+///
+/// Roda com `cargo test -p ph2d-host-desktop --bins probe_animated_flip_bake_churn --
+/// --ignored --nocapture`.
+#[test]
+#[ignore = "sonda de medicao; requires a GPU adapter"]
+fn probe_animated_flip_bake_churn() {
+    use ph2d_ecs::{Name, SimWorld};
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        eprintln!("no GPU adapter on this machine — nothing to measure");
+        return;
+    };
+    let mut renderer = ph2d_render::SpriteRenderer::new(
+        gpu.clone(),
+        ph2d_render::GameRt::FORMAT,
+        ph2d_render::TextureAtlas::dummy(&gpu),
+        8,
+    );
+
+    // O MESMO objeto que a cena `=7` monta: 12 fps, quatro desenhos em 0/3/6/9.
+    let mut flip = FlipDoc::default();
+    crate::motion_object_smoke::times::spawn_flip_walk_named(&mut flip, "Walk");
+    let oid = flip.objects().first().expect("o objeto").id;
+
+    let mut sim = SimWorld::new();
+    let e = sim.world_mut().spawn((Name::new("Walk"),)).id();
+    let mut map = FlipEntityMap::new();
+    map.insert(oid, e.to_bits());
+
+    let mut bake = FlipObjectBake::default();
+    let shifts = [0.0_f32, 0.25];
+    let mut ph = Playhead::default();
+
+    eprintln!("frame |  t   | asked | cache | tiles() | tid(agora) | tid(+0,25)");
+    for f in 0..40 {
+        ph.seek(f64::from(f) / 60.0);
+        bake.bake(&flip, &map, &ph, &shifts, &gpu, &mut renderer, &sim);
+        let tiles: Vec<_> = bake
+            .tiles()
+            .map(|(n, t)| (n.to_string(), t.texture_id))
+            .collect();
+        let now = tiles.first().map_or(u32::MAX, |(_, t)| *t);
+        let shifted = bake
+            .tile_named_shifted("Walk", 0.25)
+            .map_or(u32::MAX, |t| t.texture_id);
+        eprintln!(
+            "{f:5} | {:.3} | {:5} | {:5} | {:7} | {:10} | {:10}",
+            ph.time(),
+            bake.asked_len_for_test(),
+            bake.cache_len_for_test(),
+            tiles.len(),
+            now,
+            shifted
+        );
+    }
+}
+
+/// **Um desenho SEGURADO tem a mesma chave em quadros diferentes** — a propriedade
+/// que a cache inteira monta em cima, e a que a 1ª versão da wave do `time_offset`
+/// violou ao chavear pelo QUADRO.
+///
+/// O report do smoke foi *"piscando o tempo todo"*: com a chave por quadro, os
+/// quadros 1 e 2 de um hold eram entradas diferentes ⇒ despejo + re-bake **doze vezes
+/// por segundo** com a imagem idêntica (medido: os `texture_id` subiam sem parar).
+/// *Um quadro é o que se PEDE; uma imagem é o que se ASSA* — e é a imagem que
+/// endereça a tile.
+#[test]
+fn a_held_drawing_hashes_the_same_at_every_frame_it_is_held() {
+    let (doc, oid) = two_layer_object(0.2);
+    let obj = doc.objects().iter().find(|o| o.id == oid).expect("object");
+    // O objeto tem UMA chave (quadro 0, hold implícito) ⇒ todo quadro mostra a mesma
+    // figura, e todo quadro tem de dar a mesma chave.
+    let k0 = content_key(obj, &Xform::IDENTITY, 0);
+    for f in [1, 2, 5, 40, 999] {
+        assert_eq!(
+            content_key(obj, &Xform::IDENTITY, f),
+            k0,
+            "o quadro {f} segura o mesmo desenho e tem de ser a MESMA tile"
+        );
+    }
+}
+
+/// O CONTROLE do gate acima: desenhos diferentes dão chaves diferentes. Sem ele, um
+/// `content_key` que devolvesse uma constante passaria — e a cache colapsaria toda a
+/// animação numa tile só, que é o defeito oposto e igualmente invisível num gate
+/// que só afirma igualdade.
+#[test]
+fn different_drawings_hash_differently() {
+    let mut flip = FlipDoc::default();
+    crate::motion_object_smoke::times::spawn_flip_walk_named(&mut flip, "Walk");
+    let obj = flip.objects().first().expect("o objeto");
+    let keys: std::collections::BTreeSet<u64> = [0, 3, 6, 9]
+        .into_iter()
+        .map(|f| content_key(obj, &Xform::IDENTITY, f))
+        .collect();
+    assert_eq!(
+        keys.len(),
+        4,
+        "quatro desenhos distintos tem de dar quatro chaves distintas"
+    );
+}

@@ -76,13 +76,15 @@ impl FlipObjectBake {
         size: [f32; 2],
     ) {
         let oid = FlipObjectId(id);
-        let frame: ph2d_flip::Frame = 1;
-        self.asked.insert((oid, offset.to_bits()), frame);
+        // A chave é uma CHAVE DE CONTEÚDO qualquer, distinta da do pedido cru — o que
+        // este seed encena é a resolução `(objeto, offset) -> conteúdo`, não a
+        // aritmética que a produz.
+        let ck: u64 = 1;
+        self.asked.insert((oid, offset.to_bits()), ck);
         self.cache.insert(
-            (oid, frame),
+            (oid, ck),
             super::FlipBaked {
                 name: Some(name.to_string()),
-                key: 0,
                 texture_id,
                 size,
                 thumb: ph2d_panel_motion_graph::PreviewThumb {
@@ -98,12 +100,11 @@ impl FlipObjectBake {
     /// `resolve_leaf` without a GPU bake.
     #[cfg(test)]
     pub(crate) fn seed_for_test(&mut self, id: u64, texture_id: u32, size: [f32; 2]) {
-        self.asked.insert((FlipObjectId(id), 0u32), 0);
+        self.asked.insert((FlipObjectId(id), 0u32), 0u64);
         self.cache.insert(
             (FlipObjectId(id), 0),
             super::FlipBaked {
                 name: None,
-                key: 0,
                 texture_id,
                 size,
                 thumb: ph2d_panel_motion_graph::PreviewThumb {
@@ -126,5 +127,18 @@ impl FlipObjectBake {
             .values()
             .find(|b| b.texture_id == texture_id)
             .map(|b| b.thumb.clone())
+    }
+
+    /// Quantas resoluções `(objeto, offset) -> quadro` este bake carrega — para a
+    /// sonda de churn medir o que o produto de facto faz, e não um laço próprio.
+    #[cfg(test)]
+    pub(crate) fn asked_len_for_test(&self) -> usize {
+        self.asked.len()
+    }
+
+    /// Quantas tiles vivas — idem.
+    #[cfg(test)]
+    pub(crate) fn cache_len_for_test(&self) -> usize {
+        self.cache.len()
     }
 }

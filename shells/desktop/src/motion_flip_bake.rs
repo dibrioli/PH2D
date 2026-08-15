@@ -75,10 +75,9 @@ const SCRATCH_HDR: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 /// What a baked Flip object is on the render side: the individual `texture_id` + the
 /// tile's WORLD size (natural stamp size), keyed by a content hash of the resolved frame.
 struct FlipBaked {
-    /// The artist's name, if any. **Metadata, not the cache key** — the cache is keyed by
-    /// [`FlipObjectId`] (undo/rename-stable); an unnamed group child (`None`) still gets a tile.
+    /// The artist's name, if any. **Metadata, not the cache key** — a cache é chaveada
+    /// por `(objeto, CONTEÚDO)`; um filho de grupo sem nome (`None`) ainda ganha tile.
     name: Option<String>,
-    key: u64,
     texture_id: u32,
     size: [f32; 2],
     /// A mini-render of the composed tile for the node-card preview (doc 86 A5), cached.
@@ -102,23 +101,30 @@ pub(crate) struct FlipObjectBake {
     /// The zeroed pixels the compositor's `LayerPixelProvider` reports for every key
     /// (version 0 — the injected slices are what's really composed; never uploaded).
     dummy: Vec<u8>,
-    /// Keyed por `(objeto, QUADRO RESOLVIDO)` — o id é undo/rename-stable (um filho de
-    /// grupo sem nome ganha tile e um rename não o despeja), e o quadro é o que torna
-    /// um mesmo objeto em dois tempos duas tiles.
+    /// Keyed por `(objeto, CHAVE DE CONTEÚDO)` — o id é undo/rename-stable (um filho de
+    /// grupo sem nome ganha tile e um rename não o despeja), e o conteúdo é o que torna
+    /// duas tiles diferentes.
     ///
-    /// ⚠️ **A chave é o QUADRO, não o offset, e é isso que fecha o perigo do param
-    /// dirigido.** Um `time_offset` pode ser dirigido por fio (doc 58) — um `value.lfo`
-    /// nele varreria offsets contínuos, e uma chave por offset cunharia uma tile por
-    /// QUADRO DE APP, com a cache nunca acertando. Chaveando pelo quadro, dois offsets
-    /// que caem no mesmo desenho **são a mesma tile**, e o conjunto vivo é limitado
-    /// pelo que o grafo pede neste quadro (o despejo abaixo remove o resto) — ou seja
-    /// pela contagem de nós, que é uma coisa que o artista põe na tela com a mão.
-    cache: BTreeMap<(FlipObjectId, Frame), FlipBaked>,
-    /// `(objeto, BITS do offset) -> quadro`, reconstruído a cada bake: a tradução de
-    /// *o que o grafo pediu* para *que tile responde*. Não é uma segunda cache — é a
-    /// resolução, e ela existe porque o pedido chega em segundos e a tile mora num
-    /// quadro.
-    asked: BTreeMap<(FlipObjectId, u32), Frame>,
+    /// ⚠️ **A chave é o CONTEÚDO, não o QUADRO, e a diferença foi MEDIDA: um quadro é
+    /// o que se PEDE, uma imagem é o que se ASSA.** A 1ª versão desta wave chaveou pelo
+    /// quadro resolvido, e o report do smoke foi *"piscando o tempo todo"*: entre duas
+    /// chaves de animação o desenho está SEGURADO, então os quadros 0/1/2 são a MESMA
+    /// figura — mas números diferentes, logo entradas diferentes, logo **despejo +
+    /// re-bake a cada quadro de Flip** (medido pela sonda `probe_animated_flip_bake_churn`:
+    /// os `texture_id` subiam 1,2 → 3,4 → 5,6 … doze vezes por segundo, com a imagem
+    /// idêntica). Chaveando pelo conteúdo o hold volta a ser um acerto de cache, que é o
+    /// que ele sempre foi antes desta wave.
+    ///
+    /// ⚠️ E ela fecha o perigo do param DIRIGIDO por fio (doc 58) **melhor** do que a
+    /// chave por quadro fechava: um `value.lfo` no `time_offset` varre offsets
+    /// contínuos, e todos os que caem no mesmo desenho — não só os que caem no mesmo
+    /// *número* — colapsam numa tile só.
+    cache: BTreeMap<(FlipObjectId, u64), FlipBaked>,
+    /// `(objeto, BITS do offset) -> chave de conteúdo`, reconstruído a cada bake: a
+    /// tradução de *o que o grafo pediu* para *que tile responde*. Não é uma segunda
+    /// cache — é a resolução, e ela existe porque o pedido chega em segundos e a tile
+    /// mora num conteúdo.
+    asked: BTreeMap<(FlipObjectId, u32), u64>,
 }
 
 impl FlipObjectBake {
@@ -154,31 +160,36 @@ impl FlipObjectBake {
         let world = sim.world();
         let present = select_present(world, map);
 
-        // A resolução do quadro é reconstruída do zero: ela descreve o que o grafo
-        // pede AGORA, e é ela que decide o que sobrevive ao despejo abaixo.
+        // A resolução é reconstruída do zero: ela descreve o que o grafo pede AGORA, e
+        // é ela que decide o que sobrevive ao despejo. `to_bake` carrega, junto, o
+        // QUADRO que produziu cada conteúdo — o bake precisa dele para desenhar e a
+        // cache não, que é exatamente a distinção que esta wave errou uma vez.
         self.asked.clear();
+        let mut to_bake: BTreeMap<(FlipObjectId, u64), Frame> = BTreeMap::new();
         for &oid in present.keys() {
             let Some(obj) = flip.objects().iter().find(|o| o.id == oid) else {
                 continue;
             };
+            let model = models
+                .iter()
+                .find(|(id, _)| *id == oid)
+                .map_or(Xform::IDENTITY, |(_, x)| *x);
             for sh in shifts {
-                self.asked.insert(
-                    (oid, sh.to_bits()),
-                    obj.frame_at_shifted(playhead, f64::from(*sh)),
-                );
+                let frame = obj.frame_at_shifted(playhead, f64::from(*sh));
+                let ck = content_key(obj, &model, frame);
+                self.asked.insert((oid, sh.to_bits()), ck);
+                to_bake.insert((oid, ck), frame);
             }
         }
 
         // Despeja o que ninguém pede mais: o objeto que sumiu (deletado, ou um filho de
-        // grupo sem nome que nenhum grupo referencia) E o QUADRO que nenhum offset
-        // resolve neste quadro do app — é esta segunda metade que impede um offset
-        // dirigido por fio de acumular uma tile por quadro visitado.
-        let wanted: std::collections::BTreeSet<(FlipObjectId, Frame)> =
-            self.asked.iter().map(|((o, _), f)| (*o, *f)).collect();
-        let gone: Vec<(FlipObjectId, Frame)> = self
+        // grupo sem nome que nenhum grupo referencia) E a IMAGEM que nenhum offset
+        // resolve agora — é esta segunda metade que impede um offset dirigido por fio
+        // de acumular uma tile por valor visitado.
+        let gone: Vec<(FlipObjectId, u64)> = self
             .cache
             .keys()
-            .filter(|k| !wanted.contains(*k))
+            .filter(|k| !to_bake.contains_key(*k))
             .copied()
             .collect();
         for k in gone {
@@ -187,8 +198,17 @@ impl FlipObjectBake {
             }
         }
 
-        // Bake the new + changed. A cache hit is a content-hash equality — no GPU work.
-        for (oid, name) in present {
+        // Assa o que falta. Uma entrada que já existe é um acerto de cache POR
+        // CONSTRUÇÃO — a chave É o conteúdo —, então um desenho SEGURADO ao longo de
+        // vários quadros não custa GPU nenhuma.
+        for ((oid, ck), frame) in to_bake {
+            let name = present.get(&oid).cloned().unwrap_or_default();
+            if let Some(b) = self.cache.get_mut(&(oid, ck)) {
+                // Conteúdo inalterado — refresca o NOME (metadado) para que um rename
+                // re-publique sem re-assar.
+                b.name = name;
+                continue;
+            }
             let Some(obj) = flip.objects().iter().find(|o| o.id == oid) else {
                 continue;
             };
@@ -196,40 +216,18 @@ impl FlipObjectBake {
                 .iter()
                 .find(|(id, _)| *id == oid)
                 .map_or(Xform::IDENTITY, |(_, x)| *x);
-            // Um objeto, um quadro por offset pedido — e dois offsets que caem no MESMO
-            // desenho visitam a mesma entrada, então o segundo é um acerto de cache.
-            let frames: std::collections::BTreeSet<Frame> = shifts
-                .iter()
-                .map(|sh| obj.frame_at_shifted(playhead, f64::from(*sh)))
-                .collect();
-            for frame in frames {
-                let ck = (oid, frame);
-                let key = content_key(obj, &model, frame);
-                if self.cache.get(&ck).is_some_and(|b| b.key == key) {
-                    // Content unchanged — refresh the (metadata) NAME so a rename
-                    // re-publishes without a re-bake, and continue.
-                    if let Some(b) = self.cache.get_mut(&ck) {
-                        b.name.clone_from(&name);
-                    }
-                    continue;
-                }
-                let old = self.cache.remove(&ck).map(|b| b.texture_id);
-                let baked = self.bake_one(obj, &model, frame, gpu, renderer);
-                if let Some(t) = old {
-                    renderer.individual_mut().release(t);
-                }
-                if let Some((texture_id, size, thumb)) = baked {
-                    self.cache.insert(
-                        ck,
-                        FlipBaked {
-                            name: name.clone(),
-                            key,
-                            texture_id,
-                            size,
-                            thumb,
-                        },
-                    );
-                }
+            if let Some((texture_id, size, thumb)) =
+                self.bake_one(obj, &model, frame, gpu, renderer)
+            {
+                self.cache.insert(
+                    (oid, ck),
+                    FlipBaked {
+                        name,
+                        texture_id,
+                        size,
+                        thumb,
+                    },
+                );
             }
         }
     }

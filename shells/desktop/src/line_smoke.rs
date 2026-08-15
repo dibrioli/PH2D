@@ -18,9 +18,11 @@
 //! Em debug isso lê como *"o pincel travou"*.
 //!
 //! ⚠️ **A FITA precisa que a mão SOLTE e ESPERE**, e é a metade dela que um roteiro apressado pula:
-//! ela percorre caminho no TIQUE, não no evento de ponteiro, então a cauda do pen-up é onde se vê
-//! que o traço acaba onde a fita parou — e não num salto até o cursor, que seria um gancho que a
-//! física não produziu.
+//! ela percorre caminho no TIQUE, não no evento de ponteiro. No pen-up a mão **larga** a fita — a
+//! mola que a puxava para o cursor é cortada — e o que se vê é a inércia a esgotar-se: ela segue na
+//! direção em que ia, desacelera e para **antes** do dedo. ⚠️ **A 1ª versão corria até o cursor**, e
+//! como o alvo já estava parado essa corrida era uma **reta atravessando o desenho** (a espícula do
+//! report de 2026-08-15).
 //!
 //! ⚠️ **O SPRAY não mora no card Line, e isso é a decisão da W5** — ele não é um tipo de linha, é um
 //! multiplicador da emissão que compõe com todos eles (o *Scattering* do Photoshop, não um modo).
@@ -100,8 +102,9 @@ pub(crate) fn spawn_if_enabled(
                 "[line-smoke]   RIBBON: o traco PESA. A tinta fica ATRAS do dedo, chicoteia na \
                  saida da curva e -- com Gravity -- PENDE. Desenhe um S rapido: o rastro corta a \
                  curva por dentro e passa do ponto onde a mao mudou de direcao. SOLTE no meio do \
-                 gesto e nao mexa: a fita continua a CHEGAR, e o traco acaba onde ela de facto \
-                 parou, nunca num salto ate o cursor."
+                 gesto e nao mexa: a mao LARGOU a fita, entao ela segue na direcao em que ia, \
+                 desacelera e assenta. Ela NAO corre ate o cursor -- o traco acaba ANTES do dedo, e \
+                 essa distancia e a inercia dela."
             );
             println!(
                 "[line-smoke]     Weight e QUANTO TEMPO ela atrasa, Friction e COMO ela assenta \

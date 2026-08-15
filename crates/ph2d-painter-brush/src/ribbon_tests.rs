@@ -338,52 +338,6 @@ fn the_ribbon_is_a_fact_of_the_clock_not_of_the_pointer_rate() {
     );
 }
 
-/// **A CAUDA CHEGA no pen-up** — o traço não termina no meio do atraso.
-///
-/// ⚠️ E ela **não é um salto até o dedo**: com gravidade a fita repousa ABAIXO do cursor, então o
-/// gate afirma que a tinta ANDOU (a física correu) sem exigir que ela pouse no cursor.
-#[test]
-fn the_tail_arrives_when_the_pen_lifts() {
-    let sp = spec(LineKind::Ribbon, 0.45, 0.30, 0.0);
-    let (dabs, tip) = straight(sp, 2400.0, 120);
-    let before = dabs.last().map_or(tip[0], |d| d.center[0]);
-    // Reconstrói o mesmo traço e fecha-o, para ler o que a cauda acrescentou.
-    let mut s = Stroke::new(sp, plain(), 7);
-    let mut out = Vec::new();
-    let start = [100.0f32, 300.0];
-    s.begin(
-        StrokePoint {
-            pos: start,
-            pressure: 1.0,
-        },
-        &mut out,
-    );
-    let mut x = start[0];
-    for _ in 0..120 {
-        x += 2400.0 * DT;
-        s.extend(
-            StrokePoint {
-                pos: [x, start[1]],
-                pressure: 1.0,
-            },
-            &mut out,
-        );
-        s.tick(DT, &mut out);
-    }
-    s.finish(&mut out);
-    assert!(!out.is_empty(), "a cauda não pintou nada no pen-up");
-    let after = out.last().expect("cauda").center[0];
-    assert!(
-        after - before > 100.0,
-        "a cauda deveria trazer a tinta para perto do dedo: {before:.1} → {after:.1} (dedo em {:.1})",
-        tip[0]
-    );
-    assert!(
-        (tip[0] - after).abs() < 40.0,
-        "a cauda parou longe do dedo: {after:.1} contra {:.1}",
-        tip[0]
-    );
-}
 
 /// **A MÃO PARADA ASSENTA** — o piso do amortecimento é o que impede um traço de crescer para sempre.
 ///
@@ -456,6 +410,81 @@ fn a_stalled_frame_does_not_blow_the_spring_up() {
         (last[0] - 700.0).abs() < ARRIVAL_TOL_PX,
         "a fita nem chegou ao alvo: parou em {:.1}",
         last[0]
+    );
+}
+
+/// **A CAUDA NÃO CORRE ATÉ O DEDO** — a espícula do report de 2026-08-15.
+///
+/// ⚠️ **O oráculo é a POSIÇÃO onde a tinta acaba, e não um salto entre dabs.** Uma espícula é uma
+/// corrida **reta de dabs normalmente espaçados** numa direção que o gesto não tem, então uma sonda
+/// de *salto* mede **zero** sobre ela — foi o que aconteceu, e custou três hipóteses.
+///
+/// **O que a foto mostrava:** a cauda levava a tinta de `x = 947,2` a `x = 1316,8` — **369 px em
+/// 154 dabs**, largura cheia, atravessando o desenho, uma reta por traço. **Mecanismo:** a mola
+/// continuava presa ao cursor durante a cauda, e uma mola **CONVERGE** para o alvo; com o alvo
+/// parado no dedo, convergir é andar em linha reta até ele.
+///
+/// ⚠️ **Ele SUBSTITUI o gate `the_tail_arrives_when_the_pen_lifts`, que eu escrevi na mesma wave e
+/// que afirmava o DEFEITO como lei** — a mensagem de falha dele era *"a cauda parou LONGE do
+/// dedo"*. As duas metades verdadeiras daquele gate (a cauda pinta, e ela ANDA) vivem aqui, com a
+/// barra no número medido; a terceira, *"para a menos de 40 px do dedo"*, era a espícula. ⚠️ E o
+/// **doc dele contradizia a própria asserção** (*"não é um salto até o dedo"* sobre um `assert` que
+/// exigia pousar a 40 px): quando as duas discordam, é o `assert` que shipa.
+///
+/// ⚠️ **A mola só é cortada no PEN-UP, nunca numa pausa.** Se a mão para sem levantar, a fita
+/// continua a ser puxada e alcança o dedo — que é o certo, e é o que o gate irmão
+/// `a_stalled_frame_does_not_blow_the_spring_up` afirma ao exigir que ela CHEGUE.
+#[test]
+fn the_tail_does_not_run_to_the_finger() {
+    let dt = 1.0 / 60.0;
+    let mut s = Stroke::new(spec(LineKind::Ribbon, 0.45, 0.30, 0.0), plain(), 7);
+    let mut out = Vec::new();
+    s.begin(
+        StrokePoint {
+            pos: [100.0, 300.0],
+            pressure: 1.0,
+        },
+        &mut out,
+    );
+    let mut x = 100.0f32;
+    let mut antes = [100.0f32, 300.0];
+    for _ in 0..30 {
+        out.clear();
+        x += 40.0;
+        s.extend(
+            StrokePoint {
+                pos: [x, 300.0],
+                pressure: 1.0,
+            },
+            &mut out,
+        );
+        s.tick(dt, &mut out);
+        if let Some(d) = out.last() {
+            antes = d.center;
+        }
+    }
+    // PREMISSA: a fita tem de estar de facto atrasada, senão o gate não contém o fenômeno.
+    let atraso = x - antes[0];
+    assert!(
+        atraso > 100.0,
+        "premissa: a fita nem estava atrasada ({atraso:.1} px) -- o gate mede o vazio"
+    );
+    out.clear();
+    s.finish(&mut out);
+    let fim = out.last().map_or(antes, |d| d.center);
+    // A tinta acaba onde a FITA parou. Chegar ao dedo é o gancho que a física não produziu.
+    assert!(
+        fim[0] < x - 100.0,
+        "a cauda correu ate o dedo: soltou em {x:.1}, a tinta acabou em {:.1}",
+        fim[0]
+    );
+    // E ela ANDA -- uma cauda que não anda é um corte seco, e o traço perderia a inércia que a
+    // feature inteira promete.
+    assert!(
+        fim[0] > antes[0] + 100.0,
+        "a cauda nem andou: {:.1} -> {:.1}",
+        antes[0],
+        fim[0]
     );
 }
 

@@ -62,7 +62,7 @@ impl Stroke {
     /// média do `sampler`, crua. O estabilizador é uma etapa IRMÃ (o `stabilize` escreve o
     /// `stab_pos`, que a fita não lê) — encadeá-los faria a fita perseguir um alvo que já atrasa, e
     /// os dois atrasos se somariam sem ninguém ter pedido. Com a fita armada o caminho é o dela.
-    pub(super) fn step_ribbon(&mut self, dt: f32) {
+    pub(super) fn step_ribbon(&mut self, dt: f32, leashed: bool) {
         if dt <= 0.0 {
             return;
         }
@@ -73,7 +73,19 @@ impl Stroke {
         // ω = 1/τ é a rigidez da mola; c = 2ζω o amortecimento. A forma normalizada é o que torna os
         // dois knobs ORTOGONAIS: `weight` diz QUANTO TEMPO, `friction` diz COMO ASSENTA.
         let w = 1.0 / tau;
-        let k = w * w;
+        // ⚠️ **A COLEIRA é cortada no pen-up, e é o que separa uma fita de um gancho.** Enquanto a
+        // mão desenha, a mola puxa a ponta para o cursor (`leashed`). No pen-up a mão SOLTOU: o
+        // termo de mola sai e ficam a inércia, o atrito e a gravidade — a ponta segue na direção em
+        // que ia, desacelera e assenta. É o *follow-through* da animação clássica, e é o que o
+        // Alchemy (a forma termina no release) e o Dyna do Krita (a massa é solta) fazem.
+        //
+        // ⚠️ **Sem isto a cauda desenha uma ESPÍCULA, e não é opinião — foi medido:** uma mola
+        // CONVERGE para o alvo, e com o alvo já parado no dedo essa convergência é uma **reta**.
+        // Report do Enio (2026-08-15, com foto): a cauda levava a tinta de `x = 947,2` a
+        // `x = 1316,8` — **369 px em 154 dabs**, em linha reta, largura cheia, atravessando o
+        // desenho. Uma por traço. O doc abaixo argumentava contra *"um salto até o cursor"* e a
+        // física chegava ao mesmo lugar pelo outro caminho.
+        let k = if leashed { w * w } else { 0.0 };
         let c = 2.0 * self.spec.ribbon_damping() * w;
         let g = self.spec.ribbon_gravity_px_s2();
         let target = self.last_raw_pos;
@@ -120,7 +132,7 @@ impl Stroke {
     /// movimento, e é o que dá a segunda metade da feature de graça: solte o gesto no ar e a fita
     /// continua a chegar, porque o tique não parou.
     pub(super) fn tick_ribbon(&mut self, dt: f32, out: &mut Vec<Dab>) {
-        self.step_ribbon(dt);
+        self.step_ribbon(dt, true);
         self.walk_smoothed(
             StrokePoint {
                 pos: self.ribbon_pos,
@@ -138,9 +150,19 @@ impl Stroke {
     ///
     /// ⚠️ **Ela NÃO é encerrada por um salto até o cursor**, ao contrário do estabilizador (cujo
     /// `finish` percorre em linha reta até `last_raw_pos`, *"para o traço acabar exactamente onde a
-    /// caneta levantou"*). Numa fita esse salto seria um artefacto: a tinta **deve** ficar atrás, e
-    /// com gravidade o repouso nem sequer é o cursor — é `g·τ²` abaixo dele. Terminar no dedo
-    /// desenharia um gancho que a física não produziu.
+    /// caneta levantou"*). Numa fita esse salto seria um artefacto: a tinta **deve** ficar atrás.
+    ///
+    /// ⚠️ **E a 1ª versão desta cauda chegava ao mesmo gancho pelo outro caminho.** Ela rodava a
+    /// física com a MOLA ainda presa ao cursor, e uma mola **CONVERGE** para o alvo — com o alvo
+    /// parado no dedo, convergir é andar em **linha reta** até ele. Medido no report do Enio
+    /// (2026-08-15, com foto): **369 px em 154 dabs**, largura cheia, uma espícula por traço
+    /// atravessando o desenho. *Argumentar contra o salto não impede a física de o desenhar.*
+    ///
+    /// **Hoje o pen-up CORTA A COLEIRA** ([`Stroke::step_ribbon`] com `leashed = false`): ficam a
+    /// inércia, o atrito e a gravidade. A ponta segue na direção em que ia, desacelera e assenta —
+    /// o *follow-through* da animação clássica, e o que o Alchemy (a forma termina no release) e o
+    /// Dyna do Krita (a massa é solta) fazem. Medido, o mesmo gesto: **156 px**, e a tinta **para
+    /// antes do dedo** em vez de o ultrapassar.
     ///
     /// O teto de tempo existe porque um `ζ` pequeno balança por muito tempo, e um traço não pode
     /// continuar a crescer depois de o artista o ter terminado.
@@ -149,7 +171,7 @@ impl Stroke {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let steps = (RIBBON_TAIL_MAX_S / dt) as usize;
         for _ in 0..steps {
-            self.step_ribbon(dt);
+            self.step_ribbon(dt, false);
             let speed =
                 (self.ribbon_vel[0] * self.ribbon_vel[0] + self.ribbon_vel[1] * self.ribbon_vel[1])
                     .sqrt();

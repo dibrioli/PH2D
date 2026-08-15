@@ -279,3 +279,147 @@ fn measure_the_ribbon_floor_of_visibility() {
     println!("[ribbon] leitura: o piso e a linha onde `em dabs` cruza 1,0 -- abaixo dela a fita");
     println!("[ribbon] carimba onde o neutro carimba, e o slider inteiro nao desenha nada.");
 }
+
+/// **QUEM EMITE NUM TRAÇO DE FITA** — o `extend` ou o tique?
+///
+/// ⚠️ **A sonda de atraso NÃO consegue ver isto**: ela lê o último dab depois das DUAS chamadas,
+/// então se o `extend` carimba no dedo e o tique carimba na fita, o segundo sobrescreve a leitura e
+/// a tabela sai correta sobre um traço que alterna entre dois lugares.
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn measure_who_emits_on_a_ribbon_stroke() {
+    let dt = 1.0 / 60.0;
+    for (name, mut sp) in [
+        ("None (controle)", spec(0.0, 0.30, 0.0)),
+        ("Ribbon 0,45", spec(0.45, 0.30, 0.0)),
+    ] {
+        if name.starts_with("None") {
+            sp.line_kind = LineKind::None;
+        }
+        let mut s = Stroke::new(sp, plain(), 7);
+        let mut out = Vec::new();
+        s.begin(
+            StrokePoint {
+                pos: [100.0, 300.0],
+                pressure: 1.0,
+            },
+            &mut out,
+        );
+        let (mut ext, mut tik) = (0usize, 0usize);
+        let (mut ext_last, mut tik_last) = ([0.0f32, 0.0], [0.0f32, 0.0]);
+        for i in 1..=30 {
+            out.clear();
+            #[allow(clippy::cast_precision_loss)]
+            let x = 100.0 + (i as f32) * 40.0;
+            s.extend(
+                StrokePoint {
+                    pos: [x, 300.0],
+                    pressure: 1.0,
+                },
+                &mut out,
+            );
+            ext += out.len();
+            if let Some(d) = out.last() {
+                ext_last = d.center;
+            }
+            s.tick(dt, &mut out);
+            tik += out.len();
+            if let Some(d) = out.last() {
+                tik_last = d.center;
+            }
+        }
+        println!(
+            "[quem-emite] {name:<16} extend={ext:>5} dabs (ultimo x={:.1}) | tique={tik:>5} dabs (ultimo x={:.1}) | dedo x=1300.0",
+            ext_last[0], tik_last[0]
+        );
+    }
+    println!("[quem-emite] leitura: numa FITA so o TIQUE pode emitir. Se as duas colunas tiverem");
+    println!("[quem-emite] dabs, o caminho alterna entre o dedo e a fita -- e isso desenha ESPICULAS.");
+}
+
+/// **ONDE A FITA SALTA** — uma espícula é um segmento reto entre dois dabs distantes, então basta
+/// perguntar por saltos maiores que o espaçamento e reportar em que FASE do traço eles caem.
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn measure_where_the_ribbon_jumps() {
+    let dt = 1.0 / 60.0;
+    let spacing_px = 12.0 * 0.1 * 2.0;
+    let mut s = Stroke::new(spec(0.45, 0.30, 0.0), plain(), 7);
+    let mut out = Vec::new();
+    let mut prev: Option<[f32; 2]> = None;
+    let mut worst = (0.0f32, String::new());
+    let mut jumps = 0usize;
+    let mut scan = |out: &[crate::stroke::Dab], fase: &str, prev: &mut Option<[f32; 2]>| {
+        for d in out {
+            if let Some(p) = *prev {
+                let g = ((d.center[0] - p[0]).powi(2) + (d.center[1] - p[1]).powi(2)).sqrt();
+                if g > spacing_px * 2.0 {
+                    jumps += 1;
+                    if g > worst.0 {
+                        worst = (g, format!("{fase} de {p:?} para {:?}", d.center));
+                    }
+                }
+            }
+            *prev = Some(d.center);
+        }
+    };
+    s.begin(
+        StrokePoint {
+            pos: [100.0, 300.0],
+            pressure: 1.0,
+        },
+        &mut out,
+    );
+    scan(&out, "begin", &mut prev);
+    // Um gesto CURVO: a espicula do report aparece nos extremos, e uma reta nao os tem.
+    for i in 1..=60 {
+        out.clear();
+        #[allow(clippy::cast_precision_loss)]
+        let t = i as f32 / 60.0;
+        let x = 100.0 + t * 900.0;
+        let y = 300.0 + (t * 12.0).sin() * 160.0;
+        s.extend(StrokePoint { pos: [x, y], pressure: 1.0 }, &mut out);
+        scan(&out, "extend", &mut prev);
+        s.tick(dt, &mut out);
+        scan(&out, "tique", &mut prev);
+    }
+    out.clear();
+    s.finish(&mut out);
+    println!("[salto] o pen-up emitiu {} dabs (a CAUDA)", out.len());
+    scan(&out, "finish", &mut prev);
+    println!("[salto] espacamento = {spacing_px:.2} px; saltos > 2x isso: {jumps}");
+    println!("[salto] pior: {:.1} px -- {}", worst.0, worst.1);
+}
+
+/// **ONDE A TINTA ACABA** — a fita tem de parar onde a FITA parou, nunca no cursor.
+///
+/// ⚠️ **O oráculo NÃO é o salto entre dabs.** Uma espícula é uma corrida RETA de dabs, espaçados
+/// normalmente, numa direção que o gesto não tem — logo o `measure_where_the_ribbon_jumps` mede
+/// zero sobre ela. Quem a denuncia é a POSIÇÃO final da tinta contra as duas candidatas.
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn measure_where_the_ink_ends_after_pen_up() {
+    let dt = 1.0 / 60.0;
+    let mut s = Stroke::new(spec(0.45, 0.30, 0.0), plain(), 7);
+    let mut out = Vec::new();
+    s.begin(StrokePoint { pos: [100.0, 300.0], pressure: 1.0 }, &mut out);
+    let mut antes = [100.0f32, 300.0];
+    let mut x = 100.0f32;
+    for _ in 0..30 {
+        out.clear();
+        x += 40.0;
+        s.extend(StrokePoint { pos: [x, 300.0], pressure: 1.0 }, &mut out);
+        s.tick(dt, &mut out);
+        if let Some(d) = out.last() {
+            antes = d.center;
+        }
+    }
+    out.clear();
+    s.finish(&mut out);
+    let depois = out.last().map_or(antes, |d| d.center);
+    println!("[fim] dedo soltou em x={x:.1}");
+    println!("[fim] ultimo dab ANTES do pen-up  : x={:.1}  (a fita, atrasada)", antes[0]);
+    println!("[fim] ultimo dab DEPOIS do pen-up : x={:.1}  ({} dabs de cauda)", depois[0], out.len());
+    println!("[fim] leitura: se o depois pousar NO DEDO, algo arrastou a tinta ate o cursor em");
+    println!("[fim] linha reta -- e essa reta E a espicula. A fita tem de parar onde ela parou.");
+}

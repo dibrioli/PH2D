@@ -512,3 +512,120 @@ fn measure_whether_a_solid_move_is_bound_by_the_canvas() {
         );
     }
 }
+
+/// **O CENSO DOS SEIS TIPOS SOB SOLID** — cada um faz alguma coisa DISTINTA, ou algum deles é
+/// inerte? (auditoria do Enio, 2026-08-15: *"os demais traços não ficaram bons … o efeito do traço
+/// não acontece"*).
+///
+/// ⚠️ **O oráculo é a diferença contra o MESMO gesto em `None`, não um valor absoluto.** Metade dos
+/// tipos move a TINTA (Speed arremessa, Ribbon atrasa) e metade decora o traço (Sketchy, Wire) —
+/// então *"quantos texels ele pinta"* não os compara. O que se pergunta é: **este tipo muda o
+/// desenho?** Um tipo inerte sob Solid dá zero.
+///
+/// # O que ele mediu (2026-08-15, gesto em C, canvas 256, r=4, Rough armado a 0,4)
+///
+/// ```text
+/// tipo        vs None SEM  vs None COM    tinta SEM    tinta COM
+/// Speed                 0            0         3263        11768
+/// Sketchy            1075          799         3767        12250
+/// Wire               1341            0         3989        11768
+/// Ribbon             3194        12227           44           44
+/// Rough              3119         1778         4309        12202
+/// ```
+///
+/// **Nenhum tipo é apagado pelo Solid** — a coluna `tinta COM` é ≥ a do `None` em todos. O que a
+/// tabela mostra são três coisas de naturezas diferentes, e nenhuma é um defeito da mancha:
+///
+/// - **Wire dá 0 sob Solid e 1341 sem ele.** Os laços do arame cortam a CONCAVIDADE do C, que é
+///   exactamente a região que o preenchimento enche — tinta da mesma cor dentro de uma região cheia
+///   dessa cor é **invisível por construção**. O Sketchy dá 799 porque a teia dele alcança fora.
+/// - **Speed dá 0 nas duas colunas**, e a fixture é a razão: o arremesso é `v · T`, e um arco de
+///   passos curtos com o estabilizador ligado quase não tem `v`. A régua do tipo é o
+///   [`super::line_speed_probe`], não este censo.
+/// - **Ribbon pinta 44 texels com E sem Solid** — ou seja, **o Solid não é a variável**. A fita é
+///   uma MOLA, e passos de ~1,65 px nunca a aceleram: ela fica dentro de um espaçamento e o motor
+///   emite um dab. Medido, 160 eventos sobre o MESMO arco dão os mesmos 44, e o probe próprio dela
+///   (`probe_ribbon_look`, reta rápida a 2048²) mede faixas de 42 a 356 px. É pergunta da FITA, com
+///   dono e sonda próprios; fica NOMEADA e não foi perseguida aqui.
+///
+/// ⚠️ **E o `Rough` só entra na tabela porque a sonda o ARMA:** `rough_amount` e `rough_bowing`
+/// nascem em **0,0**, então escolher `Rough` no dropdown não muda um pixel até o artista mexer no
+/// slider. O `spec_default.rs` argumenta o contrário quatro linhas acima, para o Ribbon — *"um tipo
+/// escolhido tem de FAZER alguma coisa"* — e o Spray teve de armar um default pela mesma razão.
+/// **Decisão de produto do Enio**, não contrabandeada aqui.
+#[test]
+#[ignore = "medição, não gate — auditoria de 2026-08-15"]
+fn measure_that_every_line_kind_does_something_under_solid() {
+    use ph2d_painter_brush::StrokeMethod;
+    use ph2d_painter_brush::line_kind::LineKind;
+
+    let side = 256u32;
+    let run = |kind: LineKind, solid: bool| -> Vec<u8> {
+        let mut t = tool(side, PaintMedia::Digital, 4.0);
+        t.paint.brush.line_kind = kind;
+        t.paint.brush.stroke_method = StrokeMethod::Space;
+        t.paint.brush.sketchy_reach = 3.0;
+        t.paint.brush.sketchy_density = 1.0;
+        t.paint.brush.thread_width_px = 1.0;
+        t.paint.brush.thread_opacity = 0.5;
+        // ⚠️ **O Rough é ARMADO à mão, e isso é o achado**: `rough_amount`/`rough_bowing` nascem em
+        // ZERO, então escolher `Rough` no dropdown não muda um pixel até o artista mexer no slider.
+        // O censo mede a CAPACIDADE do tipo; o default fica NOMEADO à parte.
+        t.paint.brush.rough_amount = 0.4;
+        t.paint.brush.rough_bowing = 0.4;
+        if solid {
+            t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+        }
+        // Um "C": ele cerca área (a mancha existe) e volta para perto de si (há vizinhos a costurar).
+        let c = 128.0f32;
+        t.on_canvas_pointer(cp([c + 50.0, c - 50.0], PointerPhase::Down));
+        for k in 1..=40 {
+            #[allow(clippy::cast_precision_loss)]
+            let a = 0.9 + (k as f32) * 0.11;
+            t.on_canvas_pointer(cp(
+                [c + 60.0 * a.cos(), c + 60.0 * a.sin()],
+                PointerPhase::Move,
+            ));
+        }
+        t.on_canvas_pointer(cp([c + 50.0, c + 50.0], PointerPhase::Up));
+        t.canvas_rgba.to_vec()
+    };
+    let diff = |a: &[u8], b: &[u8]| -> usize {
+        a.chunks_exact(4)
+            .zip(b.chunks_exact(4))
+            .filter(|(x, y)| x[0].abs_diff(y[0]) > 8)
+            .count()
+    };
+    println!(
+        "\n=== CADA TIPO DE LINHA MUDA O DESENHO SOB SOLID? (gesto em C, canvas {side}) ===\n"
+    );
+    println!(
+        "{:<10} {:>12} {:>12} {:>12} {:>12}",
+        "tipo", "vs None SEM", "vs None COM", "tinta SEM", "tinta COM"
+    );
+    let base_off = run(LineKind::None, false);
+    let base_on = run(LineKind::None, true);
+    for kind in [
+        LineKind::Speed,
+        LineKind::Sketchy,
+        LineKind::Wire,
+        LineKind::Ribbon,
+        LineKind::Rough,
+    ] {
+        let off = run(kind, false);
+        let on = run(kind, true);
+        let ink_off = off.chunks_exact(4).filter(|p| p[0] < 250).count();
+        let ink_on = on.chunks_exact(4).filter(|p| p[0] < 250).count();
+        println!(
+            "{:<10} {:>12} {:>12} {:>12} {:>12}",
+            format!("{kind:?}"),
+            diff(&off, &base_off),
+            diff(&on, &base_on),
+            ink_off,
+            ink_on
+        );
+    }
+    let i0 = base_off.chunks_exact(4).filter(|p| p[0] < 250).count();
+    let i1 = base_on.chunks_exact(4).filter(|p| p[0] < 250).count();
+    println!("{:<10} {:>12} {:>12} {i0:>12} {i1:>12}", "None", 0, 0);
+}

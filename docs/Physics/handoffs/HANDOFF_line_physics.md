@@ -11081,3 +11081,98 @@ o fato já é medido por tique, dentro do laço que produz os eventos.
 * `platform_floor_layers` / `platform_wall_layers` (pequeno) · *climbing* (o
   buraco que o plano 08 §4.8 já nomeia) · §3.F, os modos de movimento como coisa
   de primeira classe (arquitetura, e a recomendação continua **não agora**).
+
+## ⬛ W-Bonked — a batida de cabeça vira EVENTO ⟨2026-08-15⟩
+
+O seguimento que a `W-Ceiling` nomeou: *o valor de `is_on_ceiling` é
+event-like, e o canal dos eventos é o A2*. **`PlayerEvent::Bonked { speed }`** —
+o irmão exacto do `Landed { speed }`, na outra ponta do mesmo eixo.
+
+Ele é barato porque o fato **já é medido por tique**, dentro do laço que produz
+os eventos: a wave não acrescenta sensor nenhum.
+
+### A derivação, e por que a BORDA basta
+
+`after.ceiling && !before.ceiling` — a borda de um booleano que a vista já
+publica, mecanicamente da família do `Dashed`/`LedgeGrabbed`, escrita ao lado do
+POUSO porque é assim que se lê.
+
+⚠️ **E a borda basta porque o bit se apaga sozinho:** o sensor do teto só é
+consultado a SUBIR (`ceiling_fact_wanted`), então assim que o solver mata a
+subida o bit cai — não há estado pegajoso a segurar um evento aceso. Medido na
+cena: o bit fica de pé nos tiques **8 e 9**, e o evento sai **uma vez**.
+
+### O `speed` é ABSOLUTO, e a diferença para o irmão é nomeada
+
+O `Landed` mede **relativo ao chão** (o elevador que sobe torna suave uma queda
+de 5 m/s). Um teto não tem velocidade publicada na vista ⇒ não há segundo corpo
+contra o qual subtrair.
+
+⚠️ **E não é uma omissão que morde:** o bit `ceiling` só existe com o
+personagem **NO AR** (`ceiling_fact_wanted` exige `!grounded`), onde a
+`ground_velocity` publicada é `[0, 0]` — logo a forma relativa do `Landed` **já
+reduz** à absoluta aqui, e as duas leis dão o mesmo número. Um teto que se MOVE
+precisaria de uma `ceiling_velocity` na vista: outro sensor, outra wave.
+
+### ⚠️ O sensor olha um tique à frente — o que isso faz ao evento, MEDIDO
+
+O `head_blocked` varre `rel_up * dt` para cima, ou seja diz *vou bater dentro
+deste tique*. A pergunta honesta não é *"há falso positivo?"* e sim **quão alto
+ele grita na margem**. Varrendo a altura do teto:
+
+| teto | bonk m/s |   | teto | bonk m/s |
+|------|----------|---|------|----------|
+| 1,80 | 4,035    |   | 2,05 | 1,746    |
+| 1,85 | 3,871    |   | 2,10 | 0,847    |
+| 1,90 | 3,871    |   | 2,15 | 0,438    |
+| 1,95 | 3,708    |   | 2,20 | —        |
+| 2,00 | 3,054    |   | 2,40 | —        |
+
+**A batida é auto-silenciosa na margem:** a velocidade publicada desce
+continuamente até o teto sair do alcance, e o último evento antes do corte
+carrega **~9%** de uma batida cheia — um consumidor que escale o som pela
+`speed` toca praticamente nada exactamente onde o contato é marginal.
+
+⚠️ **E o corte cai onde a GEOMETRIA manda:** o ápice livre põe o topo do
+collider em **2,1715**, e o primeiro teto sem batida é **2,20** — não existe
+evento com o teto fora de alcance. Reproduzir:
+`measure_the_bonk_across_ceiling_heights` (`-- --ignored --nocapture`).
+
+**E a cena `=1,9` é uma batida de verdade, não um quase:** o topo do collider
+chega a **1,4 mm** do teto no tique 8 com `vy = 3,8712`, e no tique seguinte
+percorre **0,6 mm** em vez dos 65 mm que a velocidade pedia.
+
+### O barramento
+
+`player_signal_name` ganhou **`"player.bonked"`**. ⚠️ **O `match` é exaustivo,
+então o compilador OBRIGA a nomear o variant novo** — mas um nome escrito não é
+um nome que sai: a saída é **opt-in por-player** (`PlayerSignals`), e essa
+metade um `match` não garante ⇒ gate próprio
+(`the_bonk_reaches_the_signal_bus_with_a_name`).
+
+### Números
+
+* **`physics_ecs_c9` byte-idêntico** — `1699123f9ed2844fa5159bc842a4e583f0675cdd88bb8895e2654ac706053787`,
+  117 corpos: o `PlayerEvent` é readout, o solver não foi tocado.
+* `PROJECT_SCHEMA` **intocado** — ⚠️ `PlayerEvent` **não é serializado**
+  (conferido: a crate não tem `serde`), então o variant não custa degrau nenhum.
+* Registro do `ph2d-physics-ecs` **intocado** · nenhum id novo · nenhum ADR ·
+  zero `Cargo.toml` · nenhuma cena de smoke nova.
+* **6 gates, 3 mutações, 3 sangram:** o NÍVEL em vez da borda ⇒ dois eventos
+  numa batida (`[3.8712, 3.7077]`) · sem o `.max(0.0)` ⇒ velocidade negativa ·
+  `before` em vez de `after` ⇒ a velocidade do tique errado (a fixture da lei
+  traz **9,0 antes** e **6,0 na batida** de propósito: sem essa diferença a
+  escolha entre as duas seria indistinguível).
+
+### ⚠️ Aberto, com o preço ao lado
+
+**Nenhuma cena shipada demonstra o sinal** — medido: o percurso do
+`physics_smoke_out` não tem teto (`the_course_names_what_it_fires` não produz
+`player.bonked`). A metade VISÍVEL existe **por construção** (qualquer player
+com `PlayerSignals` que bata a cabeça produz o toast, e há gate provando o
+caminho), mas pôr um teto no percurso aprovado é mexer numa cena que o Enio já
+smokou ⇒ **decisão dele**, não contrabando.
+
+E o último item da cauda do §3.A segue aberto: **`get_last_slide_collision` /
+`OnControllerColliderHit`** — a única das três que **não colapsa num campo**,
+porque é uma LISTA por tique, com estado.

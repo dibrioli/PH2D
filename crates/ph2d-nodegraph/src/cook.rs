@@ -38,9 +38,7 @@ use crate::graph::{Graph, NodeId};
 use crate::node::{NodeManifest, NodeOp, NodeTypeId};
 use crate::time::TimeMap;
 use crate::value::CookValue;
-use std::any::Any;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 /// Identifies the chain of [`TimeMap`]s a node is being cooked under (plan
 /// §1.5). `0` = the outer clock, i.e. no remap — the only key a graph without
@@ -84,157 +82,9 @@ pub trait OpResolver {
     fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp>;
 }
 
-/// Per-eval context handed to a node. A node sees **only** this — its typed
-/// inputs, the playhead, and its own resolved parameters — never the graph.
-/// FBP black box (ADR-0031).
-pub struct EvalCtx<'a> {
-    inputs: &'a [CookValue],
-    playhead: f64,
-    manifest: &'static NodeManifest,
-    overrides: Option<&'a BTreeMap<String, f32>>,
-    text_overrides: Option<&'a BTreeMap<String, String>>,
-    /// **Params driven by a wire** (doc 58) — already cooked, already reduced to one
-    /// number, resolved by [`Cook::cook_node`] in the same recursion that resolved the
-    /// input ports. Read by [`EvalCtx::param`] BEFORE the override and the default, which
-    /// is what makes all 86 node types drivable without touching one of them: they all
-    /// read their params through that one funnel.
-    driven: BTreeMap<&'a str, f32>,
-    /// **What the APP published** (doc 65) — a drawn curve, and anything else the graph cannot
-    /// reach on its own. Read by [`EvalCtx::external`].
-    externals: &'a crate::external::All,
-    /// The names this node actually READ this eval. The cook keeps them beside the memo, because
-    /// the reuse decision is made BEFORE the eval and can only know what the node read LAST time
-    /// (`external.rs`: the chicken and the egg).
-    read_externals: Vec<String>,
-    /// Did THIS node emit anything on the previous tick? (`prev_outputs` holds it.)
-    started: bool,
-    /// Seconds since the previous tick, on the ROOT clock (0 on the first tick).
-    dt: f64,
-    outputs: Vec<CookValue>,
-}
-
-impl<'a> EvalCtx<'a> {
-    /// **What the app published under this name** (doc 65) — a drawn curve, most of the time.
-    /// Empty if nobody published one, exactly like an unconnected input: a node asking for a shape
-    /// that is not there emits nothing, it does not fail.
-    ///
-    /// Reading one is what puts it in this node's fingerprint (the cook keeps the names beside the
-    /// memo), so editing the curve recomputes the node — which nothing else here would notice.
-    pub fn external(&mut self, name: &str) -> &'a Stream {
-        static EMPTY: Stream = Stream::empty();
-        self.read_externals.push(name.to_string());
-        self.externals.get(name).map_or(&EMPTY, |e| &e.value)
-    }
-    /// The cooked **instance stream** on input `port` (empty if unconnected, or
-    /// if the upstream emitted a non-stream value; for a `pre` port, the
-    /// previous tick's value). The value's domain is guaranteed by `PortType`
-    /// checking at connect time, so a motion node reads its columns directly.
-    pub fn input(&self, port: usize) -> &Stream {
-        self.inputs[port].as_stream()
-    }
-
-    /// The cooked **opaque value** on input `port` (e.g. a geometry
-    /// `VectorNetwork`), type-erased; the domain layer downcasts it. `None` if
-    /// the input is unconnected or carries an instance stream rather than an
-    /// opaque value (ADR-0058-amendment-1).
-    pub fn input_any(&self, port: usize) -> Option<&(dyn Any + Send + Sync)> {
-        self.inputs.get(port).and_then(CookValue::as_any)
-    }
-
-    pub fn input_count(&self) -> usize {
-        self.inputs.len()
-    }
-
-    /// **Did this node emit anything on the previous tick?** — the node's own memory of the
-    /// sequential circuit it sits in. `false` on the very first tick of a sim, and after any
-    /// reset that cleared the `pre` state.
-    ///
-    /// This exists for the **simulation zone** (doc 48), and it is the ONLY question that
-    /// answers *"has the sim started?"* correctly. The two obvious cheaper tests both lie:
-    ///
-    /// - *"is my `state` input empty?"* — a sim that killed its last element hands back an
-    ///   EMPTY STREAM, which is a real answer that happens to carry nothing. Read it as "not
-    ///   started" and the zone re-seeds from `init`: kill every particle and the scene
-    ///   **resurrects**, one frame later, forever.
-    /// - *"did an edge deliver a value on `state`?"* — it always did. The interior is wired into
-    ///   `state` by a FORWARD edge, so the cook evaluates it first and it hands back an empty
-    ///   stream on tick 1 (its own input, the zone's previous output, was the absent one).
-    ///
-    /// The state lives on the node's OWN previous output, so that is where the question belongs.
-    pub fn started(&self) -> bool {
-        self.started
-    }
-
-    /// Current clock time; meaningful for `Temporal` nodes.
-    pub fn playhead(&self) -> f64 {
-        self.playhead
-    }
-
-    /// **Seconds since the previous tick** — `0.0` on the first tick of a cook (there is no
-    /// previous), and after any reset.
-    ///
-    /// The engine has always known this and never said it, so the nodes that needed it invented
-    /// it: `motion.integrate` carries a `sim_t` CLOCK COLUMN on its own state and subtracts. That
-    /// works (and stays, because a per-element clock is exactly right for elements born at
-    /// different times), but a node with no state of its own — a birth rate, a counter — had no
-    /// way to ask at all.
-    ///
-    /// It is the ROOT clock's step. Inside a **time scope** it is `0.0`: the lane's clock is
-    /// rewritten, so a delta across ticks is not a thing that exists there — and a node that
-    /// needs `dt` to hold state is sequential, which a time scope already refuses
-    /// (`CookError::SequentialInTimeScope`).
-    pub fn dt(&self) -> f64 {
-        self.dt
-    }
-
-    /// The current value of parameter `name`, resolved **wire > override > default** — the
-    /// hierarchy the plan reserved from day one (*"socket conectado > literal"*): the node
-    /// that drives it if one is wired ([`crate::graph::Graph::drive_param`], doc 58), else
-    /// the graph's per-instance override ([`crate::graph::Graph::set_param`]), else the node
-    /// type's manifest default. Panics if `name` is not a declared param of this node
-    /// — a programmer error (the name is a literal of the node's own crate),
-    /// caught by its golden test rather than silently reading `0.0`, the same
-    /// no-silent-failure discipline as [`NodeManifest::param_default`].
-    pub fn param(&self, name: &str) -> f32 {
-        self.driven
-            .get(name)
-            .copied()
-            .or_else(|| self.overrides.and_then(|o| o.get(name).copied()))
-            .or_else(|| self.manifest.param_default(name))
-            .unwrap_or_else(|| {
-                panic!(
-                    "node `{}` read undeclared param `{name}`",
-                    self.manifest.name
-                )
-            })
-    }
-
-    /// The current value of a per-node **text** param `name` (e.g. an expression
-    /// node's formula), set via [`crate::graph::Graph::set_text_param`]; `None` if
-    /// unset. Unlike [`param`](Self::param) text params are **not** declared in the
-    /// frozen `NodeManifest` (which is f32-only, ADR-0039) — they are the additive
-    /// string channel (doc 32), so a node reads its own key with its own default.
-    pub fn text_param(&self, name: &str) -> Option<&str> {
-        self.text_overrides
-            .and_then(|m| m.get(name))
-            .map(String::as_str)
-    }
-
-    /// Emit the next output port's **instance stream**. Call once per output
-    /// port, in order.
-    pub fn emit(&mut self, stream: Stream) {
-        self.outputs.push(CookValue::Instances(stream));
-    }
-
-    /// Emit the next output port's **opaque value** — a domain-specific rich
-    /// value (e.g. a geometry `VectorNetwork`) carried type-erased behind
-    /// `Arc<dyn Any>` (ADR-0058-amendment-1). Call once per output port, in
-    /// order, just like [`Self::emit`]. The domain layer
-    /// (`ph2d-vector-graph::VectorEvalExt::emit_network`) wraps this.
-    pub fn emit_any(&mut self, value: Arc<dyn Any + Send + Sync>) {
-        self.outputs.push(CookValue::Opaque(value));
-    }
-}
+#[path = "cook_eval_ctx.rs"]
+mod eval_ctx;
+pub use eval_ctx::EvalCtx;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum CookError {
@@ -630,6 +480,7 @@ impl Cook {
             text_overrides: graph.node_text_param_overrides(node),
             driven,
             started: self.prev_outputs.contains_key(&node),
+            node_key: node.0,
             // The ROOT clock's step. A rewritten lane has no meaningful delta across ticks —
             // and a node that needs one to hold state is sequential, which a scope refuses.
             dt: if key == SCOPE_ROOT {

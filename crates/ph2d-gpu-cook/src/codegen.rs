@@ -268,6 +268,26 @@ pub fn declares_src_n(has_count_law: bool, port_names: &[&str]) -> bool {
     has_count_law && !port_names.is_empty()
 }
 
+/// O nome do uniforme que carrega a IDENTIDADE do nó — o `NodeId`, o mesmo
+/// número que `EvalCtx::node_key` entrega à CPU.
+pub const NODE_KEY_FIELD: &str = "params.node_key";
+
+/// Does the module carry `node_key` — this node's own identity?
+///
+/// ⚠️ **DERIVADO do kernel, não declarado num canal**, e é a mesma disciplina de
+/// [`declares_window`]/[`broadcasts_anything`]: a pergunta é feita a partir do que
+/// o kernel É. Um canal no `KernelResolver` seria um registro a mais que um nó
+/// pode esquecer com o corpo já a ler o campo; aqui, *se o corpo o menciona, ele
+/// existe*, e as duas metades (a que DECLARA o campo e a que o PREENCHE) chamam
+/// esta função — nunca cada uma a sua cópia da regra.
+///
+/// Um nó que só o cite num comentário ganha um uniforme inerte, que custa quatro
+/// bytes e nada mais; a falha oposta — o corpo lê e o campo não existe — é um
+/// erro de compilação de shader, alto e imediato.
+pub fn declares_node_key(kernel: &GpuKernel) -> bool {
+    kernel.wgsl.contains(NODE_KEY_FIELD) || kernel.wgsl_lib.contains(NODE_KEY_FIELD)
+}
+
 /// Generate the full compute module for `kernel` against a concrete input
 /// column set. `port_names` are the node manifest's input port names (they name
 /// the readers of a multi-input kernel — [`accessor_suffix`]); binding indices
@@ -345,6 +365,12 @@ pub fn kernel_module(
     // `grid_bucket_of` must agree bit-for-bit with the build's binning.
     if grid.is_some() {
         src.push_str("    grid_num_buckets: u32,\n    grid_cell: f32,\n");
+    }
+    // A identidade do nó, **por ÚLTIMA no layout** — assim nenhum deslocamento
+    // acima dela se move, exactamente o argumento que pôs o `bcast_one` onde ele
+    // está. O sequenciador a empacota no mesmo lugar, perguntando à MESMA função.
+    if declares_node_key(kernel) {
+        src.push_str("    node_key: u32,\n");
     }
     src.push_str("}\n@group(0) @binding(0) var<uniform> params: KernelParams;\n\n");
 

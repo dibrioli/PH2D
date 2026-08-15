@@ -155,14 +155,22 @@ impl GpuCook {
         // The grid's bucket count + cell, LAST in the layout (ADR-0140). `cell`
         // is re-resolved here from the SAME param the build read, so the body's
         // `grid_bucket_of` bins exactly as the build did.
+        let grid_at = window_at
+            + usize::from(has_window) * 8
+            + usize::from(has_src_n) * 4
+            + usize::from(codegen::broadcasts_anything(bindings)) * 4;
         if let Some((spec, gb)) = grid {
-            let grid_at = window_at
-                + usize::from(has_window) * 8
-                + usize::from(has_src_n) * 4
-                + usize::from(codegen::broadcasts_anything(bindings)) * 4;
             let cell = resolve_param(graph, node, manifest, spec.cell_param);
             uni[grid_at..grid_at + 4].copy_from_slice(&gb.num_buckets.to_le_bytes());
             uni[grid_at + 4..grid_at + 8].copy_from_slice(&cell.to_le_bytes());
+        }
+        // A identidade do nó, ÚLTIMA (o layout que `kernel_module` declarou —
+        // a MESMA pergunta, feita à mesma função). É o `NodeId` cru, o mesmo
+        // número que `EvalCtx::node_key` entrega à CPU: as duas rotas do nó
+        // decorrelacionam-se pelo mesmo valor ou por nenhum.
+        if codegen::declares_node_key(kernel) {
+            let at = grid_at + usize::from(grid.is_some()) * 8;
+            uni[at..at + 4].copy_from_slice(&node.0.to_le_bytes());
         }
         let uniform = self.uniform_slot(gpu, stage_idx);
         gpu.queue.write_buffer(uniform, 0, &uni);

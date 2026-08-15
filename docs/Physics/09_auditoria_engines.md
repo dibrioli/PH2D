@@ -301,12 +301,47 @@ O Unreal ship. Serve a IA e ao *andar com cuidado*.
 Pequeno e isolado: é um veredito a mais no `footing` quando o leque de pés vê o
 chão acabar.
 
-### 3.H · **Voar / noclip** (`MOVE_Flying`)
+### 3.H · **Voar / noclip** (`MOVE_Flying`) ⟨**RECUSADA por medição** 2026-08-15⟩
+
+> ⚠️ **A capacidade JÁ EXISTE pelos gestos que o editor tem, e a sonda mede
+> isso em vez de o supor.** Com o toggle **Physics** desmarcado o artista põe o
+> personagem **dentro de uma parede sólida** (`6,0000 · 4,0000`), **do outro
+> lado dela** (`12,0000 · 0,9000`) e **20 m acima** (`6,0000 · 20,0000`) — exato
+> a quatro casas —, e o Play **retoma dali** (largado em `12,0 · 6,0`, oitenta
+> tiques depois: `12,0000 · 0,9005`, deriva lateral **0,0000 m**). Com
+> **CONTROLE**: empurrado contra a parede com o relógio a andar, ele **pára em
+> x = 3,8011** contra uma parede que começa em 4,0 — sem essa linha as duas
+> tabelas descreveriam um mundo sem parede.
+>
+> ⚠️ **O que a recusa NÃO cobre, dito por inteiro:** o `MOVE_Flying` do Unreal é
+> voar **com as teclas DURANTE o play**, e isso não existe aqui (a MÃO da cena
+> `=52` agarra por mola *através do solver*, logo colide). O gesto existente dá
+> **teleporte com o relógio parado** — que é exactamente o caso de uso que a
+> linha abaixo nomeia. Detalhe e tabelas na §6 do plano 10; sonda
+> `measure_noclip`.
 
 Barato, útil para percorrer um nível grande no editor, valor de produto baixo
 num editor que já tem câmera livre.
 
-### 3.I · **Air control boost** (`AirControlBoostMultiplier`)
+### 3.I · **Air control boost** (`AirControlBoostMultiplier`) ⟨**RECUSADA por medição** 2026-08-15⟩
+
+> ⚠️ **O SINTOMA que a linha abaixo descreve NÃO EXISTE neste produto, e o knob
+> que o curaria já shipa.** Medido (`measure_air_control`, pulo vertical parado
+> com o direcional apertado): **no ápice ele já corre à velocidade de CRUZEIRO**
+> (`5,9999` contra `speed = 6,0`) em toda a varredura — *não há o que um
+> multiplicador acelere* —, e **8× o `air_acceleration` compra 8,5% de deriva e
+> move a velocidade do ápice em ZERO**.
+>
+> ⚠️ **O regime em que o sintoma existe também está medido:** abaixo de
+> `air_accel ≈ 10` a fração do cruzeiro alcançada no ápice cai para 67% / 29% /
+> 15% / 7% (em 5 / 2 / 1 / 0,5) — e o knob que o cura é o **`air_acceleration`,
+> que já está no painel**. É por isso que o Unreal precisa do multiplicador e
+> nós não: lá o `AirControl` é uma **FRAÇÃO da velocidade de caminhada** (5% por
+> default) e subi-lo globalmente faria o personagem voar à velocidade cheia o
+> tempo todo; aqui ele é uma **aceleração própria** (20 m/s², que alcança o
+> cruzeiro em 18 dos 73 tiques de voo) e o CAP continua a segurar o teto. Um
+> `air_control_boost` seria a **segunda porta** para *"quero mais controlo no
+> ar"*. Tabelas na §6 do plano 10.
 
 Quando a velocidade lateral no ar é pequena, o controle aéreo é multiplicado —
 tira a sensação de *"não consigo sair do lugar"* no topo de um pulo vertical.

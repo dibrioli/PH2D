@@ -10,11 +10,14 @@
 
 ```
 A (a saída) ✅ → C (o peso) ✅ → B (a superfície) ✅ → D (o teto) ✅ → E (o empurrão) ✅
-   → J (a sonda do Snap) ✅ → G · H · I
+   → J (a sonda do Snap) ✅ → G ✅ · H ⛔ · I ⛔
 ```
 
-> **Estado (2026-08-14):** **A**, **C**, **B**, **D**, **E** e **J** fechadas — a
-> próxima é a **G**.
+> **Estado (2026-08-15): a fila FECHOU.** **A**, **C**, **B**, **D**, **E**, **J**
+> e **G** construídas; **H** e **I** **recusadas por MEDIÇÃO** (§6) — a capacidade
+> do noclip já existe pelos gestos do editor, e o sintoma que o boost de controlo
+> aéreo cura não existe neste produto. ⚠️ *Duas recusas medidas valem tanto quanto
+> sete waves construídas: elas são o que impede a fila de voltar.*
 
 ---
 
@@ -629,8 +632,85 @@ entra quando houver quem o peça.
   Mais o `bCanWalkOffLedgesWhenCrouching` (o **sneak-to-the-brink** do Unreal),
   que só **APERTA** — a porta é a `walk_for`, que o doc dela já reservava para
   *"o dia em que um terceiro termo tiver de encolher"*. Cena **119**.
-* **H · voar/noclip** — um modo de depuração.
-* **I · air control boost** — um campo e um `if`.
+* **I · air control boost** ⟨**RECUSADA por medição** 2026-08-15 — o sintoma que
+  ela existe para curar não existe neste produto⟩ — a auditoria descreve o item
+  por um SINTOMA (*"tira a sensação de 'não consigo sair do lugar' no topo de um
+  pulo vertical"*), e a §0 manda medir o fenómeno antes de escrever a cura.
+  Sonda `measure_air_control`, pulo vertical parado com o direcional apertado:
+
+  | segura a partir do tique | deriva (m) | vel no ápice | tiques no ar | pico (m) |
+  |---|---|---|---|---|
+  | 1 | 6,88 | **5,9999** | 73 | 1,75 |
+  | 5 | 6,53 | **5,9999** | 73 | 1,75 |
+  | 10 | 6,09 | **5,9999** | 73 | 1,75 |
+  | 20 | 4,98 | **6,0000** | 73 | 1,75 |
+
+  ⚠️ **No ápice ele já corre à velocidade de CRUZEIRO** (`speed = 6,0`) —
+  *não há o que um multiplicador acelere*. E multiplicar o `air_acceleration`
+  confirma-o pelo outro lado: **8× a aceleração compra 8,5% de deriva e move a
+  velocidade do ápice em ZERO.**
+
+  | × base | air_accel | deriva (m) | vel no ápice |
+  |---|---|---|---|
+  | 0,5 | 10,0 | 6,20 | 5,9999 |
+  | 1,0 | 20,0 | 6,88 | 5,9999 |
+  | 2,0 | 40,0 | 7,22 | 5,9999 |
+  | 4,0 | 80,0 | 7,39 | 5,9999 |
+  | 8,0 | 160,0 | **7,47** | **5,9999** |
+
+  **O regime em que o sintoma EXISTE também está medido — e o knob que o cura já
+  shipa.** Varrendo o `air_acceleration` para baixo, a fração do cruzeiro que ele
+  alcança no ápice é:
+
+  | air_accel | deriva (m) | vel no ápice | fração do cruzeiro |
+  |---|---|---|---|
+  | 0,5 | 0,72 | 0,44 | **7%** |
+  | 1,0 | 1,27 | 0,88 | 15% |
+  | 2,0 | 2,32 | 1,72 | 29% |
+  | 5,0 | 4,84 | 3,99 | 67% |
+  | 10,0 | 6,20 | 6,00 | **100%** |
+  | 20,0 ⟨o default⟩ | 6,88 | 6,00 | **100%** |
+
+  ⚠️ **É por isso que o Unreal precisa do multiplicador e nós não:** lá o
+  `AirControl` é uma **FRAÇÃO da velocidade de caminhada** (5% por default),
+  então subi-lo globalmente faz o personagem *voar à velocidade cheia o tempo
+  todo* e o boost existe para resgatar só o começo; aqui ele é uma **aceleração
+  própria** (20 m/s², que alcança o cruzeiro em 18 dos 73 tiques de voo) e o
+  CAP continua a segurar o teto. Um `air_control_boost` seria a **segunda porta**
+  para *"quero mais controlo no ar"*, cuja primeira já está no painel — a forma
+  que este repo removeu no Conserve do sculpt. **Não construir.**
+
+* **H · voar/noclip** ⟨**RECUSADA por medição** 2026-08-15 — a capacidade já
+  existe pelos gestos que o editor tem⟩ — a auditoria dá-lhe valor baixo com uma
+  razão escrita (*"útil para percorrer um nível grande no editor, valor de
+  produto baixo num editor que já tem câmera livre"*), e a §0 manda medir a
+  premissa antes de a aceitar **ou** de a recusar. Sonda `measure_noclip`, com
+  uma parede sólida em `x ∈ [4, 8]` e o toggle **Physics** desmarcado:
+
+  | pedido | ficou |
+  |---|---|
+  | no meio da PAREDE ⟨6,0 · 4,0⟩ | **6,0000 · 4,0000** |
+  | do outro LADO dela ⟨12,0 · 0,9⟩ | **12,0000 · 0,9000** |
+  | bem lá em CIMA ⟨6,0 · 20,0⟩ | **6,0000 · 20,0000** |
+
+  E a sim **retoma dali**: largado em `(12,0 · 6,0)`, oitenta tiques de Play
+  deixam-no em `(12,0000 · 0,9005)` — **0,0000 m de deriva lateral**, caindo no
+  lugar, do outro lado da parede. ⚠️ **Com CONTROLE**, senão as duas linhas
+  descreveriam um mundo sem parede: empurrado contra ela com o relógio a andar,
+  ele **pára em x = 3,8011** contra uma parede que começa em 4,0.
+
+  ⇒ *desmarcar Physics → arrastar → marcar* já é o noclip inteiro, com a metade
+  que importa (**a física retoma de onde ele foi largado**) gateada desde o W4b.
+
+  ⚠️ **O que a recusa NÃO cobre, dito por inteiro:** o `MOVE_Flying` do Unreal é
+  um modo em que se **voa com as teclas durante o play**, e isso não existe aqui
+  (a MÃO da cena `=52` agarra por mola *através do solver*, logo colide). O que
+  o gesto existente dá é **teleporte com o relógio parado** — que é exactamente
+  o caso de uso que a auditoria nomeia (*percorrer um nível grande no editor*) e
+  não o que ela não nomeia. Construir o modo custaria um membro de enum de modo,
+  um chip, a fiação e um gate, para uma segunda resposta a uma pergunta já
+  respondida. **Não construir** — e se um dia o pedido for *voar jogando*, é
+  feature de produto com smoke próprio, não a limpeza de uma pendência.
 
 ---
 

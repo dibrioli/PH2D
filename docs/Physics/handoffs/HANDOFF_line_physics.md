@@ -23,12 +23,25 @@
 > `no_two_smoke_scenes_claim_the_same_level`: escrevê-lo seria a segunda resposta a uma
 > pergunta que o `rustc` já responde.
 >
-> ⚠️ **A jornada de 2026-08-15 fechou com a AUDITORIA FINAL** (três blocos) — o
-> `pose_owner` publicado como `PlayerLiveness` e lido pela §14 · os três defeitos
-> isolados (o `Remove` que prendia o corpo, as frações da 3ª lei, o teto de
-> rigidez 27,8× acima do que o kernel honra) · e os gates/notas. **Sem smoke, com
-> o argumento escrito** no §2c do handoff MESTRE de hoje. `physics_ecs_c9`
-> **não se move** (`1699123f…`, 117 corpos): nenhum dos três toca o solver.
+> ⚠️ **A jornada de 2026-08-15 FECHOU. A linha entrega o handoff e PARA** —
+> [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-15.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-15.md),
+> **116 commits**. Ela tem TRÊS partes: a **fila da auditoria** (sete waves, duas
+> recusas medidas, smokadas) · a **AUDITORIA FINAL** de três blocos (§2c) · e a
+> **CAUDA de cinco waves** (§2e: `W-WallNormal` · `W-Ceiling` · `W-Bonked` ·
+> `W-HitNormal` · `W-WallMaterial`), que fechou o **§3.A** e o item das **camadas**.
+> As duas últimas partes **não têm smoke, com o argumento escrito** no §2d.
+>
+> ⚠️ **Estado medido no TIP** (não auto-relatado): `PROJECT_SCHEMA` **82** ·
+> registro `ph2d-physics-ecs` **32** · `physics_ecs_c9`
+> **`2d7f9d51…`, 121 corpos**, debug ≡ release · gizmo ids **inalterados** ·
+> **zero** `Cargo.toml`/`Cargo.lock`/ADR. ⚠️ **O hash MOVEU contra o `main` por
+> duas causas distintas** — a CONTAGEM pela lane pareada da `W-WallMaterial`, e o
+> hash dos 117 antigos pela LEI do player, que já movia antes dela.
+>
+> ⚠️ **A auditoria 09 saiu de NOVE ❌ para QUATRO, e nenhum dos quatro é trabalho
+> pendente** (dois recusados por medição, um por arquitetura, um fora da fila sem
+> pedido) — a tabela com o porquê de cada um está no §7b do MESTRE. O único buraco
+> real que sobra contra o referencial é *climbing*, que o **plano 08 §4.8** nomeia.
 >
 > ⚠️ **Jornada de 2026-08-12 FECHADA e SMOKADA, aguardando ordem de integração** — handoff
 > [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md).

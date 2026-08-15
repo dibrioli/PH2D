@@ -8,7 +8,8 @@
 > apenas como *o que integrar agora*.** O **detalhe de mecanismo** das waves até
 > a ÂNCORA dos gizmos continua LÁ (e o das sete waves de sensores continua no de
 > 08-11), e **nada disso foi copiado**. O que é NOVO aqui é a **fila da auditoria
-> 09**: sete waves construídas e **duas recusadas por medição**.
+> 09**: sete waves construídas, **duas recusadas por medição**, e a **CAUDA de
+> cinco waves** (§2e) que fechou o §3.A e o item das camadas.
 
 ---
 
@@ -19,8 +20,8 @@
 | branch | `line/physics` |
 | HEAD | **o tip de `line/physics`** ⚠️ ver abaixo |
 | merge-base com `main` | `76788440adbabb0e5b12f8fdafecc6f1e1183e1a` |
-| commits | **102** |
-| diff | 212 arquivos, **+39.708 / −2.293** |
+| commits | **116** |
+| diff | 224 arquivos, **+42.238 / −2.336** |
 
 ⚠️ **O HEAD não é escrito aqui de propósito, e a razão é aritmética:** o commit
 que o escreve MUDA o HEAD, então um sha nesta tabela é falso no instante em que é
@@ -36,10 +37,13 @@ confira no dia, porque esta frase envelhece.
 
 ## 2. O que é NOVO nesta entrega
 
-A entrega tem **duas metades**, e elas se JULGAM de formas diferentes: a **fila
-da auditoria** (sete waves construídas, duas recusadas por medição — todas
-**smokadas pelo Enio**) e a **auditoria FINAL** dos três blocos do fim da
-jornada, que **não tem smoke** e cujo argumento está na §2b.
+A entrega tem **três partes**, e elas se JULGAM de formas diferentes: a **fila da
+auditoria** (sete waves construídas, duas recusadas por medição — todas
+**smokadas pelo Enio**) · a **auditoria FINAL** dos três blocos, que **não tem
+smoke** e cujo argumento está na §2c · e a **CAUDA de cinco waves** (§2e), que
+fechou o §3.A e o item das camadas e **também não tem smoke**, pelo mesmo
+argumento (são consultas de READOUT e um filtro de sensor, cada uma com gate
+mutação-provado; nenhuma muda o que o artista vê sem ele pedir).
 
 **A fila da [auditoria 09](../09_auditoria_engines.md), desenhada no [plano
 10](../10_plano_fila_da_auditoria.md) e executada na ordem que ele fixou.** O
@@ -98,7 +102,7 @@ pausado"*, porque o estado da sim é função do TIQUE e não do botão de play)
 
 ---
 
-### 2b. ⚠️ A AUDITORIA FINAL — três blocos, e o mecanismo é UM
+### 2c. ⚠️ A AUDITORIA FINAL — três blocos, e o mecanismo é UM
 
 Levantados vários agentes sob lentes independentes, **três delas convergiram na
 mesma causa estrutural**: o veredito do `bridge::pose_owner` **não alcançava a
@@ -153,7 +157,7 @@ painel** (o scrollbar, o cabeçalho da seção, o círculo de cor). *Nenhum cont
 da §14 está descoberto* — o defeito era o gate ser **cego a 15 dos 70**, e doze
 deles terem dica por sorte.
 
-### 2c. ⚠️ Por que os blocos da §2b NÃO têm smoke, e por que isso é defensável
+### 2d. ⚠️ Por que os blocos da §2c NÃO têm smoke, e por que isso é defensável
 
 Dos itens, os que mudam o **produto** são: três controles que **desaparecem**
 onde já eram inertes, um botão que **desaparece** onde a lei apagava o efeito
@@ -167,13 +171,72 @@ cena de player cinemático (`=101`) sem roteiro novo.
 
 ---
 
+### 2e. ⚠️ A CAUDA — cinco waves, e a auditoria 09 sai de nove ❌ para quatro
+
+Depois dos três blocos da §2c a linha fechou a **cauda do §3.A** (as consultas
+que faltavam ao `PlayerView`) e o item das **camadas**. Detalhe de mecanismo, gate
+a gate, no tracker (`HANDOFF_line_physics.md`, cinco seções `⬛ W-*` de 15/08).
+
+| wave | o que ela é |
+|---|---|
+| **W-WallNormal** | `get_wall_normal` — a normal da parede entra no readout, e o **TETO virou uma recusa MEDIDA** em vez de um item aberto |
+| **W-Ceiling** | `is_on_ceiling` — o teto vira um **FATO** do `PlayerView`, com margem que se auto-silencia (a velocidade reportada decai a ~9% de um toque cheio no corte geométrico) |
+| **W-Bonked** | o espelho do `Landed` na outra ponta: `PlayerEvent::Bonked { speed }`, ⚠️ **ABSOLUTA e não relativa** — o bit `ceiling` só existe com o personagem NO AR, onde a velocidade de chão publicada é `[0,0]`, logo a forma relativa do `Landed` **já reduz** à absoluta aqui |
+| **W-HitNormal** | `OnControllerColliderHit` — o contato ganha **ORIENTAÇÃO**; a normal viaja com o ponto sob o mesmo teste de profundidade, em `ContactReport` · `PeakSample` · `BodyContact` · `ContactEvent` |
+| **W-WallMaterial** | `platform_wall_layers` — **esta superfície não é parede**, por CORPO/PEÇA |
+
+⚠️ **Três achados que o integrador precisa, e nenhum é sobre o diff:**
+
+**(1) Uma defesa que nenhum gate consegue ver não é uma defesa.** No `W-HitNormal`
+o rapier **não ordena o par**, então a normal publicada leva um flip de sinal
+quando os handles vêm trocados — o ramo dispara **976 vezes** na suíte e
+**nenhuma cena o distingue** (ele nunca vence o teste de profundidade). A cura
+não foi caçar fixture: foi **extrair `published_normal` como função pura** com
+gate próprio. *Um ramo alcançável que nenhum oráculo separa é código sem
+cobertura, por mais verde que a suíte esteja.*
+
+**(2) O oráculo é a PROPRIEDADE, nunca o eixo.** O primeiro gate da normal
+reprovou **produto correto**: ele exigia alinhamento com o eixo dominante da
+separação de centros, e uma cápsula alta contra a face de um caixote baixo tem
+centros separados em `y` (0,586) com normal **horizontal** (`[−0,997, 0,079]`).
+*Direção de centro não é normal de superfície* — o que a geometria garante é o
+**semiespaço** (`n · (b−a) > 0`), e é isso que o gate afirma hoje.
+
+**(3) Duas metades do mesmo item tiveram vereditos OPOSTOS, e medir decidiu.**
+O `platform_floor_layers` (*o que me CARREGA*) **já era exprimível** — a sonda
+`measure_kinematic_carry` mostra uma plataforma horizontal a levar `0,99×` com
+tração cheia e **`0,00×` com `WalkSurface { grip: 0 }`**, nos dois modos; a
+sonda **já estava no repo**. Só o `platform_wall_layers` (*o que me SEGURA*) era
+gap real — a lei aceitava parede **só por inclinação**. ⚠️ **E o filtro cai no
+SENSOR, não na lei:** uma superfície marcada some do array de acertos como se o
+raio não tivesse batido, então os três verbos (deslizar, agarrar-se, pular)
+somem juntos e o `cling` **não aprende o conceito** — a mesma divisão que a
+matriz de colisão já faz.
+
+⚠️ **`NoWallCling` é marcador (presença = booleano) ⇒ ZERO `PROJECT_SCHEMA`** — é
+a razão de o número não se mexer nesta cauda; um campo apendado a um struct
+serializado é postcard **posicional** e teria bumpado.
+
+⚠️ **E o CONTROLE reprovou a minha fixture DUAS vezes**, o que é o padrão desta
+casa a funcionar: mandei o personagem **escalar** e o controle chegou a 1,389 m
+(ele não escala — um pulo de parede empurra para LONGE, e o gate da peça passava
+**por vácuo**); re-aimado para a **descida**, controle 1,499 m contra marcado
+0,151 — **ao contrário**, porque encostado à parede o atrito de Coulomb segura um
+corpo dinâmico quase parado nos dois casos. O oráculo honesto é **a amostra
+existir**: medido, **119 de 120 tiques agarrado contra 0** — e ⚠️ **o gate afirma
+`> 30` contra `== 0`, não o 119**, porque a contagem exacta é afinação do solver e
+a PROPRIEDADE é *agarra* contra *não agarra*; um bar em 119 falharia no dia em que
+um sub-passo mudasse, pelo motivo errado.
+
+---
+
 ## 3. Superfície de colisão
 
 | | |
 |---|---|
 | `PROJECT_SCHEMA` | **70 → 82** ⚠️ **PROVISÓRIO — CONTE contra o `main` do dia** |
 | a tripla do pin | **`(70, 13, 14)` → `(82, 13, 14)`** em `shells/desktop/src/project_schema_tests.rs` ⚠️ *é `src/`, não `tests/`* |
-| registro `ph2d-physics-ecs` | **29 → 31** (`PlayerSignals` · `WalkSurface`) — ⚠️ os blocos da §2b **não acrescentam nenhum** |
+| registro `ph2d-physics-ecs` | **29 → 32** (`PlayerSignals` · `WalkSurface` · `NoWallCling`) — ⚠️ os blocos da §2c **não acrescentam nenhum**; o 32º é a cauda (§2e) |
 | registro `ph2d-ecs` + os **dois** espelhos | **INTOCADOS** (`git diff` vazio em `crates/ph2d-ecs/`) |
 | gizmo ids | **nenhum novo** — o último segue **973**, próximo livre **974** |
 | ids novos | **todos `hash_node_id`** ⇒ fora de todo gate de contagem |
@@ -216,18 +279,23 @@ bem-formado).
 
 ### 3b. O `physics_ecs_c9`
 
-**`1699123f9ed2844fa5159bc842a4e583f0675cdd88bb8895e2654ac706053787`**,
-**117 corpos**, **debug ≡ release** (medido nesta árvore, nos dois perfis).
+**`2d7f9d5145d09de646f1a3a6da544b67e3497ada475eac85f761089e3d78658d`**,
+**121 corpos**, 120 passos, **debug ≡ release** (medido nesta árvore, nos dois
+perfis). ⚠️ **Os 121 são 117 + a lane PAREADA da `W-WallMaterial`** (uma parede
+marcada e uma não, de propósito — uma lane só cobriria a rota do filtro e não a do
+sensor que segue a passar), e ela **DISCRIMINA**: tirar o filtro leva o hash a
+`9dbb8bc2…`.
 
-⚠️ **Ele MOVE contra o `main`** (`fb27f676…`, os mesmos 117 corpos) **e a
-atribuição é medida, não suposta:** `git diff main...HEAD` sobre
-`crates/ph2d-physics-ecs/src/bin/physics_ecs_c9/` é **VAZIO** ⇒ nenhuma lane
-nasceu ou morreu, e o que moveu foi a **LEI do player** — a cena carrega quatro
-lanes com `PlatformPlayer::default()`, e esta linha mudou defaults (o mais visível
-é o **leque de pés**, que nasce com **três** raios contra o raio único do `main`).
-Cada degrau v79..v82 declara byte-identidade individualmente; o movimento
-acumulado vem das waves anteriores à fila, cujo detalhe está nos handoffs de
-08-11 / 08-12.
+⚠️ **Ele MOVE contra o `main`** (`fb27f676…`, 117 corpos) **por DUAS causas
+distintas, e as duas são medidas:** a **CONTAGEM** sobe porque a `W-WallMaterial`
+acrescentou a lane pareada (o `git diff` sobre
+`crates/ph2d-physics-ecs/src/bin/physics_ecs_c9/` deixou de ser vazio, e é essa a
+única lane nova da linha); e o **HASH dos 117 antigos** já movia antes dela, pela
+**LEI do player** — a cena carrega quatro lanes com `PlatformPlayer::default()`, e
+esta linha mudou defaults (o mais visível é o **leque de pés**, que nasce com
+**três** raios contra o raio único do `main`). Cada degrau v79..v82 declara
+byte-identidade individualmente; o movimento acumulado vem das waves anteriores à
+fila, cujo detalhe está nos handoffs de 08-11 / 08-12.
 
 ---
 
@@ -254,36 +322,73 @@ acumulado vem das waves anteriores à fila, cujo detalhe está nos handoffs de
    tinha o valor certo **em função de outros dois** — medido, a 8 m/s um `0,30`
    deixava CAIR e um `0,60` segurava, com a fronteira exactamente em `0,533`.
 
+**E as da CAUDA (§2e) — três são ADITIVAS e uma é opt-in:**
+
+8. **O contato ganha ORIENTAÇÃO** (`W-HitNormal`) — ⚠️ **é a única mudança de
+   SUPERFÍCIE PÚBLICA da cauda**: `ContactReport` · `PeakSample` · `BodyContact` ·
+   `ContactEvent` ganharam `normal: [f32; 2]`, então quem os constrói por literal
+   (fixtures, o overlay) precisa do campo. **O solver não o lê** ⇒ é READOUT, e é
+   por isso que o c9 é indiferente a ele.
+9. **O `PlayerView` ganhou teto e normal de parede** (`W-Ceiling` ·
+   `W-WallNormal`) — campos novos num struct de leitura; nada no `step` muda.
+10. **`PlayerEvent::Bonked`** (`W-Bonked`) — variante nova, e o
+    `player_signal_name` é `match` **exaustivo** ⇒ quem casar sobre `PlayerEvent`
+    fora desta crate **falha a compilar**, que é o modo de falha certo. Publica
+    `player.bonked` no barramento **sob o mesmo opt-in do item 1** (nasce
+    desligado).
+11. **Uma superfície pode deixar de ser parede** (`W-WallMaterial`) —
+    `NoWallCling` é MARCADOR, ausente ⇒ o mundo de antes da wave, ao bit; e ele é
+    por **CORPO/PEÇA**, não por camada (um bitmask obrigaria o artista a arrumar o
+    nível em camadas para exprimir uma propriedade de **material**).
+
 ---
 
 ## 5. O gate de fechamento — o que foi rodado, e o resultado
 
-Tudo abaixo nesta árvore, com a máquina em `load average 1,8` (⚠️ *nenhum kill de
-relógio deste repo significa coisa nenhuma com o load alto*).
+Tudo abaixo nesta árvore (⚠️ *nenhum kill de relógio deste repo significa coisa
+nenhuma com o load alto* — a passagem final correu com o load a subir de **3,4**
+para **36** enquanto a suíte da shell compilava, e **nenhum gate de relógio
+falhou**; se algum falhar no dia, **re-rode isolado antes de suspeitar do merge**).
 
 | gate | resultado |
 |---|---|
-| `cargo test -p ph2d-physics-ecs -p ph2d-physics -p ph2d-platformer --release` | **verde**, 0 falhas |
-| `cargo test -p ph2d-host-desktop --release` | **verde**, **2897 passados / 0 falhas** (inclui o `file_loc_caps` da shell) |
-| `cargo test -p ph2d-panel-inspector -p ph2d-editor-core --release` | **verde**, 0 falhas |
+| `cargo test -p ph2d-physics-ecs -p ph2d-physics -p ph2d-platformer -p ph2d-panel-inspector -p ph2d-editor-core --release` | **verde por EXIT CODE**, **304 suítes `ok`**, 0 falhas |
+| `cargo test -p ph2d-host-desktop --release` | **verde por EXIT CODE**, **2902 passados** / 141 suítes / 0 falhas (inclui o `file_loc_caps` da shell) |
 | `arch_safe_clamp_only` | 2/2 |
 | `architecture_workspace_file_loc_cap` | 2/2 |
 | `architecture_contract_surface` (nós) | 3/3 |
 | `architecture_tool_contract_surface` | 4/4 |
 | `architecture_vector_contract_surface` | 11/11 |
-| `cargo clippy --workspace --all-targets --release` | **limpo** |
-| `cargo fmt --all -- --check` | **limpo** ⚠️ *depois de dois arquivos da wave D* |
-| `typos` | **limpo** |
-| `physics_ecs_c9` | hash acima, **debug ≡ release** |
+| `cargo clippy --workspace --all-targets --release` | **limpo** — exit 0, **zero** warnings |
+| `cargo fmt --all -- --check` | **limpo** — exit 0 ⚠️ *depois de dois arquivos da wave D* |
+| `typos` | **limpo** ⚠️ *depois de UM vermelho da cauda* (abaixo) |
+| `physics_ecs_c9` | `2d7f9d51…`, **121 corpos**, 120 passos, **debug ≡ release** (as duas corridas dão o mesmo hash) |
 
-⚠️ **RE-RODADO depois dos três blocos da §2b, e o resultado é o que se esperava:**
+⚠️ **RE-RODADO depois dos três blocos da §2c, e o resultado é o que se esperava:**
 `1699123f9ed2844fa5159bc842a4e583f0675cdd88bb8895e2654ac706053787`, **117
 corpos**, 120 passos — **o mesmo hash**. Nenhum dos três blocos toca o solver:
 dois são a fronteira de AUTORIA (o painel e a escrita do Inspector) e o terceiro
-é gate e documento. `cargo clippy --workspace --all-targets` limpo,
-`cargo fmt --all --check` sem drift, e as suítes das crates tocadas verdes por
-**exit code**, não por `grep` (o pipe mascara o código de saída — a lição que
-esta linha já tem escrita).
+é gate e documento.
+
+⚠️ **E RE-RODADO OUTRA VEZ depois da CAUDA (§2e)** — os números da tabela acima são
+os desta última passagem, e o hash **MOVEU** para
+`2d7f9d51…` / **121 corpos** pela lane nova da `W-WallMaterial` (§3b), que é o
+esperado: as outras quatro waves da cauda são READOUT (`ContactReport` ganhou um
+campo; ninguém no `step` o lê) e o c9 é indiferente a elas.
+
+⚠️ **As suítes são verdes por EXIT CODE, não por `grep`** — e a armadilha mordeu
+nesta mesma passagem: a primeira corrida terminou com `[exited with code 0]` que
+era do **`grep` do pipe**, não do cargo. Medido pelo status do cargo:
+`CARGO EXIT: 0`, com o `grep` de `FAILED|panicked|error` a devolver **1** (nada
+encontrado), que é o sinal certo ao contrário. *O pipe mascara o código de saída*
+[[feedback_pipe_masks_script_exit_code]].
+
+⚠️ **E o `typos` pegou UM vermelho meu, da própria cauda:** o gate
+`the_published_order_wins_over_the_librarys_…` (`librarys` → **`libraries`**),
+renomeado e re-rodado verde. É a **quinta** vez que a varredura de fecho desta
+linha acha um latente que um `cargo test -p` por crate **não alcança** — o
+`typos` e o `fmt` não correm na suíte de nenhuma crate, e um nome de teste só é
+lido por eles.
 
 ⚠️ **E pegou um TERCEIRO na varredura final:** o commit que trocou
 `slope.abs().tan()` por `libm::tanf(slope.abs())` deixou a chamada quebrada em
@@ -300,8 +405,19 @@ alguém varrer a árvore inteira.
 ## 6. Smoke
 
 **Nada nesta entrega está pendente de smoke** — as sete waves foram aprovadas pelo
-Enio à medida que fecharam, e as duas recusas não têm o que smokar (elas são
-medição).
+Enio à medida que fecharam, as duas recusas não têm o que smokar (elas são
+medição), e a **AUDITORIA FINAL** (§2c) mais a **CAUDA** (§2e) têm o argumento
+escrito no §2d.
+
+⚠️ **A cauda NÃO acrescentou cena, e é decisão, não esquecimento:** quatro das
+cinco waves são **READOUT** (um campo novo no `PlayerView` / na `ContactReport`),
+que um smoke não distingue de um campo ausente sem alguém pôr um readout na tela
+para o gesto; a quinta (`W-WallMaterial`) é um **filtro de sensor** cujo oráculo é
+a contagem de tiques agarrado, e ela **está no `physics_ecs_c9`** como lane
+pareada. ⚠️ **O que NÃO está coberto por cena, e fica nomeado:** nenhuma cena
+shipada demonstra o `player.bonked` — o percurso do `physics_smoke_out` não tem
+teto —, e acrescentar um teto a um percurso **já smokado** é decisão do Enio, não
+minha.
 
 Rodar, se o integrador quiser reconferir:
 `env PH2D_PHYSICS_SMOKE=<n> cargo run -p ph2d-host-desktop --release`
@@ -338,16 +454,19 @@ ph2d-run cargo test -p ph2d-physics-ecs --release --test measure_air_control -- 
   de arrasto do modo cinemático, o bobbing na poça) está onde estava: nada nesta
   entrega o toca.
 
-**E o que a auditoria final (§2b) deixou aberto, com o número ao lado:**
+**E o que a auditoria final (§2c) deixou aberto, com o número ao lado:**
 
-* **Quatro consultas do Godot seguem em falta, e agora estão NOMEADAS** em vez de
-  escondidas num ❌ genérico: `is_on_ceiling`, `get_wall_normal`,
-  `get_last_slide_collision`, `collisionFlags`. As duas primeiras são um campo no
-  `PlayerView`; as duas últimas são o canal de *hits com estado* do KCC, que é
-  outra estrutura.
-* **A §3.B (gelo/esteira) está DESBLOQUEADA** — a dependência que ela declarava
-  (o §3.C) foi paga pela `W-Brake`. Ela não foi construída, e agora o preço dela
-  é o que a seção diz: um campo na `GroundSample` e um produto no `walk`.
+* ~~**Quatro consultas do Godot seguem em falta**~~ — ⚠️ **FECHADAS pela cauda
+  (§2e), e esta linha do handoff sobreviveu ao fato por uma janela:**
+  `is_on_ceiling` (W-Ceiling) · `get_wall_normal` (W-WallNormal) ·
+  `collisionFlags` (W-Ceiling) · `get_last_slide_collision` (W-HitNormal).
+  ⚠️ **E a última delas estava 80% respondida antes de eu abrir a wave** — o canal
+  de contatos já carregava par, ponto e carga; faltava a **orientação**. *Meça o
+  item antes de construir o que a tabela descreve.*
+* ~~**A §3.B (gelo/esteira) está DESBLOQUEADA**~~ — ⚠️ **ela já estava CONSTRUÍDA
+  pela `W-Surface`**, e a seção prescrevia trabalho que existia (`395fbecae`
+  corrigiu o doc). A dependência que ela declarava (o §3.C) tinha sido paga pela
+  `W-Brake`, e o `WalkSurface` pagou o resto.
 * **A guarda de LOC do `seam_player.rs`** (1399 linhas) é legítima: o
   `architecture_workspace_file_loc_cap` isenta `**/tests/**` **de propósito**.
   Não é dívida escondida — está medido.
@@ -356,15 +475,35 @@ ph2d-run cargo test -p ph2d-physics-ecs --release --test measure_air_control -- 
   no doc-comment: sem ele a §14 piscaria inerte por um quadro, no gesto que a
   acabou de criar.
 
+### 7b. ⚠️ Restam QUATRO ❌ na auditoria 09, e **nenhum é trabalho pendente**
+
+A tabela saiu de **nove** ❌ para quatro, e os quatro estão fechados por
+**decisão** ou por **medição** — não por falta de tempo. *Um ❌ que significa
+«recusado com motivo» e um ❌ que significa «ninguém fez» leem igual na tabela, e
+é por isso que cada um tem a seção ao lado:*
+
+| item | por que fica |
+|---|---|
+| `AirControlBoostMultiplier` | **§3.I** — *nicety*, e o knob que cura o sintoma já está no painel (§2c) |
+| `MovementMode` + `MOVE_Custom` | **§3.F** — é ARQUITETURA, e a recomendação escrita é **não agora** |
+| `MOVE_Flying` / noclip | **§3.H** — **medido e decidido** pela sonda `measure_noclip` (§2c) |
+| Root motion | **§5.K** — fora da fila sem pedido |
+
+⚠️ **E o único buraco REAL que sobra contra o referencial não é da auditoria 09:**
+*obstacle actions: **climbing***, que o **plano 08 §4.8** já nomeia.
+
 ---
 
 ## 8. Ordem de leitura para quem integrar
 
 1. **§3 deste doc** — a superfície de colisão, e em particular o `PROJECT_SCHEMA`
    e o corte do `project.rs`.
-2. **[plano 10](../10_plano_fila_da_auditoria.md)** — o mecanismo de cada wave,
-   com as seções `⟨FECHADA⟩` que dizem **onde o plano errou** e o que a medição
-   refutou.
-3. **[08-12](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md)** e
+2. **[plano 10](../10_plano_fila_da_auditoria.md)** — o mecanismo de cada wave
+   **da fila**, com as seções `⟨FECHADA⟩` que dizem **onde o plano errou** e o que
+   a medição refutou.
+3. **O tracker** ([`HANDOFF_line_physics.md`](HANDOFF_line_physics.md)), cinco
+   seções `⬛ W-*` de 15/08 — o mecanismo da **CAUDA** (§2e), que o plano 10 não
+   cobre porque ela nasceu do §3.A da auditoria e não da fila.
+4. **[08-12](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md)** e
    **[08-11](HANDOFF_INTEGRACAO_line_physics_sensores_2026-08-11.md)** — para o
    porquê de cada número das waves anteriores à fila.

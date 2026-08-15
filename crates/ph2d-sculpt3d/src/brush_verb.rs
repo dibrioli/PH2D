@@ -363,6 +363,32 @@ impl Verb {
     /// duas portas para *"o que a referência arma neste verbo?"* divergiriam na
     /// primeira wave que mexesse numa delas. O resultado é **byte-idêntico** ao
     /// `matches!` que ela substituiu, e há gate afirmando isso.
+    /// **A LEI DE GRIP QUE GOVERNA ESTE VERBO** — a porta do produto.
+    ///
+    /// ⚠️ **[`crate::Grip::law`] responde outra pergunta:** *qual é a lei deste
+    /// grip*. É o mesmo par do [`crate::RefMode::kernel`] / `kernel_for`, e pela
+    /// mesma razão — um verbo pode ter uma referência que o grip não conhece.
+    ///
+    /// ⚠️ **O `from_live` do [`crate::Grip::Stamp`] é o Accumulate do
+    /// SCULPTGL**, e a faixa não é dele. O `clay_strips.cc::calc_faces` chama
+    /// `calc_local_positions(position_data.eval, …)` — a posição **VIVA**,
+    /// sempre —, e o que o `accum` da referência escolhe é a fonte do PLANO
+    /// (`sculpt.cc`, `!ss.cache->accum` ⇒ pen-down congelado).
+    ///
+    /// ⚠️ **E é a combinação que dá o auto-limite:** posição viva contra plano
+    /// congelado faz o `z` do portão `z·(1−z)` **encolher** à medida que o barro
+    /// sobe, até fechar no plano. Com as duas congeladas o `z` não se move e a
+    /// faixa cresce para sempre — medido, `27 → 81 dabs` dava `1,52×` em vez de
+    /// saturar.
+    #[must_use]
+    pub fn grip_law(self, accumulate: bool, carries_field: bool) -> crate::GripLaw {
+        let mut law = self.grip().law(accumulate, carries_field);
+        if self == Self::ClayStrips {
+            law.from_live = true;
+        }
+        law
+    }
+
     #[must_use]
     pub fn default_accumulate(self) -> bool {
         self.profile(crate::RefMode::S)
@@ -413,6 +439,27 @@ impl Verb {
 /// é teto de recurso nenhum, é o quanto de barro uma pincelada move.
 pub const REACH_FRACTION: f32 = 0.1;
 
+/// **Quanto do raio um dab da FAIXA desloca** — e não é o [`REACH_FRACTION`].
+///
+/// ⚠️ **`clay_strips.cc:327`, verbatim:**
+///
+/// ```text
+/// const float3 offset = plane_normal * ss.cache->bstrength * ss.cache->radius;
+/// ```
+///
+/// O deslocamento é `raio · força`, **fração 1,0** — o `0,1` do
+/// [`REACH_FRACTION`] é o `deform = intensidade · raio · 0,1` do `Brush.js`, do
+/// SculptGL, que **não tem esta ferramenta**. É a mesma classe do defeito que a
+/// §7.21 curou na lei de kernel, uma camada abaixo.
+///
+/// ⚠️ **MEDIDO, e é o que a foto do Enio mostra:** com `0,1` a faixa era
+/// **7,5× mais fraca por dab** que a referência, e por isso deixava estrias
+/// macias que ACOMPANHAM a forma em vez das placas chatas que a CORTAM.
+///
+/// ⚠️ **É por causa dele que o `STRIP_DEPTH_GAIN` morreu:** aquele ganho existia
+/// para preservar uma magnitude que era ela própria errada.
+pub const STRIP_REACH_FRACTION: f32 = 1.0;
+
 /// O ganho do **Crease**, e o do vinco é MENOR que o do Draw.
 ///
 /// ⚠️ **Os três números desta família saem da referência, não de afinação:**
@@ -451,7 +498,8 @@ pub const PINCH_GAIN: f32 = 0.05;
 /// propriedade que decide.
 ///
 /// **MEDIDO** (`tests/measure_valley.rs`, vale de 0,40 de profundidade, pincel
-/// `r = 0,8`, nove dabs, magnitude presa pelo [`STRIP_DEPTH_GAIN`]):
+/// `r = 0,8`, nove dabs; a varredura prendeu a magnitude pela FORÇA, para que
+/// a única coisa a mover fosse a forma):
 ///
 /// | lift | vale (Δ profundidade) | miolo ÷ aro numa CÚPULA |
 /// |---|---|---|
@@ -460,6 +508,12 @@ pub const PINCH_GAIN: f32 = 0.05;
 /// | **0,25** | **−0,073** | **0,649** |
 /// | 0,30 | −0,048 | 0,756 |
 /// | 0,50 | **+0,027 (AUMENTA)** | 0,971 |
+///
+/// ⚠️ **A tabela foi medida com o `reach` do SculptGL, que era ele próprio
+/// errado** (ver [`STRIP_REACH_FRACTION`]). Com o `raio · força` da referência o
+/// vale FECHA muito mais forte — `0,4000 → 0,0406` em nove dabs a `r = 0,5` —,
+/// mas a FORMA da tabela é a que decide o lift e ela não muda: o enchimento
+/// segue monótono no lift, e o miolo segue a esvaziar-se quando ele baixa.
 ///
 /// ⚠️ **As duas colunas puxam em sentidos OPOSTOS, e as duas são a mesma lei.**
 /// Numa cúpula o miolo da pegada está acima do plano ajustado e o aro abaixo,
@@ -485,23 +539,6 @@ pub const PINCH_GAIN: f32 = 0.05;
 /// mesma via ([`CLAY_PLANE_FRACTION`]), e o `plane_offset` do artista SOMA a
 /// este em vez de o substituir.
 pub const STRIP_PLANE_FRACTION: f32 = 0.25;
-
-/// **O ganho que impede o lift de ser TAMBÉM um controle de força.**
-///
-/// O portão vale `lift·(1 − lift)` na superfície em repouso, então mover o
-/// [`STRIP_PLANE_FRACTION`] mudaria a espessura da banda junto com a forma dela
-/// — e um smoke que muda duas coisas ao mesmo tempo não é legível. Este ganho
-/// repõe o pico (`0,25`) exatamente onde a superfície está, de modo que **chapa
-/// plana recebe o que sempre recebeu** e a única coisa que o lift move é o que a
-/// faixa faz com o RELEVO.
-///
-/// ⚠️ **DERIVADO, nunca um literal ao lado** — escrito à mão ele apodrece no dia
-/// em que o lift se mover, e a ferramenta mudaria de força em silêncio. Com o
-/// lift em `0,25` ele vale exatamente `4/3`.
-///
-/// **MEDIDO** (mesma sonda, chapa plana, `r = 0,8`, nove dabs): `0,0876` antes,
-/// `0,0823` depois — `94 %`, dentro do que o re-ajuste vivo do plano explica.
-pub const STRIP_DEPTH_GAIN: f32 = 0.25 / (STRIP_PLANE_FRACTION * (1.0 - STRIP_PLANE_FRACTION));
 
 /// Quanto o plano do **Clay** sobe acima da superfície, em fração do raio.
 ///

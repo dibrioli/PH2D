@@ -120,12 +120,52 @@ impl SculptStroke {
                 0.0
             }
         };
+        // ⚠️ **DE QUE SUPERFÍCIE o plano é ajustado — e a resposta é do VERBO,
+        // porque é da REFERÊNCIA dele.**
+        //
+        // O SculptGL recomputa sobre a malha VIVA a cada `stroke`
+        // (`SculptBase.areaNormal` lê `getNormals()`, `areaCenter` lê
+        // `getVertices()`), e é o que os quatro verbos de plano dele fazem. O
+        // Blender ramifica: o
+        // `sculpt.cc::calc_area_normal_and_center_node_mesh` abre com
+        //
+        // ```text
+        // if (ss.cache && !ss.cache->accum) { ... orig_positions / orig_normals ... return; }
+        // ```
+        //
+        // ou seja **com o Accumulate desligado — o default — ele lê o pen-down
+        // CONGELADO**, e é isso que faz o barro subir até o plano e PARAR.
+        //
+        // ⚠️ **Ler o vivo na faixa custou TRÊS sintomas medidos**, cada um numa
+        // wave diferente: o crescimento sub-linear que nunca fecha (§7.21) · a
+        // divergência entre os dois passes de simetria quando eles se tocam
+        // (§7.22, 1,77% residual) · e a faixa a **não saturar** com a força em
+        // `1,0` — ela ultrapassa o plano, o plano persegue, e o auto-limite
+        // desaparece.
+        //
+        // ⚠️ **É a mesma lei da [`crate::RefMode::kernel_for`], um andar acima:**
+        // uma referência só governa as ferramentas que ela TEM.
+        let live = brush.verb != Verb::ClayStrips || brush.accumulate;
+        let nrm_of = |v: u32| {
+            if live {
+                mesh.normals()[v as usize]
+            } else {
+                self.base_nrm[self.slot[v as usize] as usize]
+            }
+        };
+        let pos_of = |v: u32| {
+            if live {
+                mesh.positions()[v as usize]
+            } else {
+                self.base_pos[self.slot[v as usize] as usize]
+            }
+        };
         let normal = crate::ref_kernels::area_normal_with(&self.footprint, |v| {
-            let n = mesh.normals()[v as usize];
+            let n = nrm_of(v);
             ([f64::from(n[0]), f64::from(n[1]), f64::from(n[2])], free(v))
         })?;
         let point = crate::ref_kernels::area_center_with(&self.footprint, |v| {
-            let p = mesh.positions()[v as usize];
+            let p = pos_of(v);
             ([f64::from(p[0]), f64::from(p[1]), f64::from(p[2])], free(v))
         })?;
         let mut point = [point[0] as f32, point[1] as f32, point[2] as f32];

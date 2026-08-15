@@ -233,7 +233,7 @@ impl SculptStroke {
             from_live,
             unit_accum,
             additive,
-        } = brush.verb.grip().law(brush.accumulate, field.is_some());
+        } = brush.verb.grip_law(brush.accumulate, field.is_some());
         // ⚠️ **Quem SEGURA trabalha sobre o que já TOCOU, não sobre a consulta
         // deste dab — e sem isto o Grab PERDE barro.** A consulta sai das
         // posições vivas, então um vértice arrastado para além do raio SAI da

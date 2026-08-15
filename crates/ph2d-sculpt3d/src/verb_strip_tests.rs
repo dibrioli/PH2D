@@ -53,6 +53,14 @@ fn strip_brush(length: f32, roundness: f32) -> Brush {
         // `0,6000 → 0,6000`.
         strip_length: length,
         tip_roundness: roundness,
+        // ⚠️ **A PREMISSA, DECLARADA — e ela invalidou uma sessão inteira de
+        // medições minhas.** `Brush::default().accumulate` está preso ao default
+        // do **Draw** (`true`), mas o da faixa é `false`
+        // (`ClayStrips::default_accumulate()`, porque o SculptGL não tem perfil
+        // para ela). Uma fixture `..Brush::default()` corria com o Accumulate
+        // LIGADO, que não é o que a ferramenta shipa — e é justamente o
+        // interruptor que escolhe a fonte do PLANO na referência.
+        accumulate: Verb::ClayStrips.default_accumulate(),
         ..Brush::default()
     }
 }
@@ -299,10 +307,25 @@ fn the_mirrored_copy_lays_its_strip_along_its_own_path() {
         stroke.dab(
             &mut mesh,
             &b,
-            &Dab::at([0.5 + t * 0.7, t * 0.7, 0.0], R, [0.0, 0.0, -1.0]),
+            &Dab::at([1.1 + t * 0.7, t * 0.7, 0.0], R, [0.0, 0.0, -1.0]),
             Symmetry::MIRROR_X,
         );
     }
+    // ⚠️ **O traço nasce LONGE do eixo do espelho, e a fixture pagou por isso.**
+    // O raio de CONSULTA da faixa é `√(1 + L²) · r = 0,566`, então um traço a
+    // começar em `x = 0,5` faz as duas metades da simetria tocarem os MESMOS
+    // vértices perto de `x = 0` — e aí o segundo passe ajusta o plano sobre a
+    // superfície que o primeiro levantou. Medido com a magnitude da referência:
+    // **5,28% de divergência em `x = 0,5` contra 1,77% em `x = 1,1`**, ou seja
+    // dois terços eram a sobreposição e não o espelhamento do caminho, que é o
+    // que este gate afirma.
+    //
+    // ⚠️ **A divergência residual tem dono e está nomeada:** o nosso
+    // `fit_plane` lê a superfície VIVA, e o
+    // `sculpt.cc::calc_area_normal_and_center_node_mesh` ramifica em
+    // `!ss.cache->accum` para ler o pen-down congelado. Sob o plano congelado os
+    // dois passes de simetria seriam idênticos por construção.
+    //
     // A altura no ponto `p` e no espelho dele têm de ser a mesma.
     let h = |p: [f32; 2]| {
         let mut best = (f32::MAX, 0.0f32);
@@ -318,7 +341,7 @@ fn the_mirrored_copy_lays_its_strip_along_its_own_path() {
     let mut peak = 0.0f32;
     for i in 0..12 {
         for j in 0..12 {
-            let p = [0.3 + i as f32 * 0.06, -0.3 + j as f32 * 0.06];
+            let p = [1.1 + i as f32 * 0.06, -0.3 + j as f32 * 0.06];
             let (a, m) = (h(p), h([-p[0], p[1]]));
             worst = worst.max((a - m).abs());
             peak = peak.max(a.abs());
@@ -549,27 +572,6 @@ fn the_band_still_lands_under_the_cursor_on_a_convex_form() {
     );
 }
 
-/// **MOVER O LIFT NÃO MOVE A FORÇA** — é para isto que o
-/// [`crate::STRIP_DEPTH_GAIN`] existe.
-///
-/// O portão vale `lift·(1 − lift)` na superfície em repouso, então sem o ganho
-/// baixar o lift emagreceria a banda junto — e um smoke que muda a forma **e** a
-/// espessura ao mesmo tempo não é legível.
-///
-/// ⚠️ **O oráculo é o PICO da parábola**, computado aqui e não pedido ao
-/// [`crate::Strip`]: o produto tem de pousar a superfície em repouso onde o
-/// depósito vale `0,25`, que é o número que a faixa depositava quando o lift era
-/// `0,5`.
-#[test]
-fn moving_the_plane_lift_does_not_change_how_much_the_strip_lays_on_flat_clay() {
-    let f = crate::STRIP_PLANE_FRACTION;
-    let at_rest = crate::STRIP_DEPTH_GAIN * f * (1.0 - f);
-    assert!(
-        (at_rest - 0.25).abs() < 1e-6,
-        "chapa plana tinha de receber o pico `0,25`: {at_rest}"
-    );
-}
-
 // --- A FAIXA É UMA TOOL DO BLENDER, e a lei dela vem de la' ------------------
 
 /// **A FAIXA NÃO DEPOSITA NO QUE O ARTISTA NÃO VÊ.**
@@ -674,5 +676,71 @@ fn sculptgl_does_not_declare_the_strip_so_it_does_not_govern_it() {
         RefMode::S.kernel_for(Verb::Draw).front_face,
         crate::FrontFace::Ignored,
         "o Draw é do SculptGL e a lei dele não pode ter mudado"
+    );
+}
+
+/// **O BARRO SOBE ATÉ O PLANO E PARA** — o auto-limite que É um clay strip.
+///
+/// ⚠️ **Este gate nasceu porque a mutação do [`crate::STRIP_REACH_FRACTION`]
+/// SOBREVIVEU aos 219:** devolver à faixa o `0,1` do SculptGL deixava tudo
+/// verde. O número que fazia a ferramenta parecer certa não era afirmado por
+/// ninguém.
+///
+/// ⚠️ **E a propriedade não é o número, é o que ele DESTRAVA.** Com o `raio ·
+/// força` do `clay_strips.cc:327`, a posição VIVA no portão e o plano
+/// CONGELADO do `!ss.cache->accum`, o `z` do portão `z·(1−z)` encolhe à medida
+/// que o barro sobe e **fecha no plano**. Medido, o pico pousa em `0,1000`
+/// contra um plano em `0,1000` e lá fica.
+///
+/// ⚠️ **A FIXTURE VARIA UMA COISA SÓ, e a 1ª versão variava duas:** ela
+/// aumentava a contagem de dabs *e*, com ela, o COMPRIMENTO do traço — a 81
+/// dabs o traço media `4,8` contra uma chapa de `1,5` e saía da malha, o que
+/// lia como *"não saturou"* (`1,67×`). O caminho é FIXO e o que muda é só quão
+/// fino ele é amostrado; é a lei que este repo já pagou quatro vezes no relevo
+/// do Painter.
+#[test]
+fn the_clay_rises_to_the_plane_and_stops() {
+    // O plano congelado: a superfície em repouso mais o lift.
+    let plane = R * crate::STRIP_PLANE_FRACTION;
+    let peak = |dabs: usize| {
+        let mut mesh = plane_grid(N, HALF);
+        let brush = strip_brush(1.0, crate::Brush::default().tip_roundness);
+        let mut stroke = SculptStroke::default();
+        stroke.begin(&mesh);
+        for k in 0..dabs {
+            // ⚠️ O MESMO caminho, amostrado mais fino — nunca um caminho maior.
+            let t = if dabs == 1 {
+                0.0
+            } else {
+                k as f32 / (dabs - 1) as f32 - 0.5
+            };
+            stroke.dab(
+                &mut mesh,
+                &brush,
+                &Dab::at([t * 0.6, 0.0, 0.0], R, [0.0, 0.0, -1.0]),
+                Symmetry::default(),
+            );
+        }
+        mesh.positions()
+            .iter()
+            .map(|p| p[2])
+            .fold(f32::NEG_INFINITY, f32::max)
+    };
+    let (a, b) = (peak(9), peak(81));
+    assert!(
+        a > plane * 0.9,
+        "a fixture tinha de chegar ao plano: {a:.4}"
+    );
+    // ⚠️ **NOVE vezes os dabs sobre o MESMO caminho quase não pode mover o
+    // barro** — é isso que "sobe até o plano e para" significa.
+    assert!(
+        b < a * 1.05,
+        "a faixa não saturou: 9 dabs {a:.4} → 81 dabs {b:.4} ({:.2}x)",
+        b / a
+    );
+    // E ela para NO plano, não muito acima dele.
+    assert!(
+        b < plane * 1.2,
+        "a faixa passou do plano ({plane:.4}): {b:.4}"
     );
 }

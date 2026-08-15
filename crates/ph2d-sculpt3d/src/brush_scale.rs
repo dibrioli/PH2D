@@ -126,7 +126,17 @@ impl Brush {
         } else {
             1.0
         };
-        radius * REACH_FRACTION * s
+        // ⚠️ **A FAIXA NÃO USA A CONSTANTE DO SCULPTGL** — ela é uma tool do
+        // Blender, e o `REACH_FRACTION` é o `deform = intensidade · raio · 0,1`
+        // do `Brush.js`. É a MESMA classe do defeito que a §7.21 curou na lei
+        // de kernel, uma camada abaixo: um verbo a herdar um número de uma
+        // referência que não tem a ferramenta. Ver [`crate::STRIP_REACH_FRACTION`].
+        let f = if self.verb == crate::Verb::ClayStrips {
+            crate::STRIP_REACH_FRACTION
+        } else {
+            REACH_FRACTION
+        };
+        radius * f * s
     }
 
     /// **O RAIO QUE A CONSULTA DA PEGADA USA** — a quinta porta, e a única que

@@ -187,10 +187,12 @@ impl Strip {
         // [`crate::STRIP_PLANE_FRACTION`], e é ele que decide se a passada fecha
         // um vale ou o exagera (a tabela medida está no doc dele).
         //
-        // ⚠️ **O ganho é uma CALIBRAÇÃO, não parte da lei:** ele repõe o pico na
-        // superfície em repouso para que mover o lift mude a FORMA sem mudar a
-        // força. Ver [`crate::STRIP_DEPTH_GAIN`].
-        let gate = crate::STRIP_DEPTH_GAIN * (z * (1.0 - z)).max(0.0);
+        // ⚠️ **CRUA, sem ganho nenhum** — o `factors[i] *= max(0, z·(1−z))` do
+        // `clay_strips.cc` não tem termo de calibração, e a magnitude vem do
+        // [`crate::STRIP_REACH_FRACTION`], que é `raio · força`. Houve aqui um
+        // `STRIP_DEPTH_GAIN` por umas horas: ele existia para preservar uma
+        // magnitude que era ela própria errada (o `0,1` do SculptGL).
+        let gate = (z * (1.0 - z)).max(0.0);
         if gate <= 0.0 {
             // Fora da faixa em profundidade: o `t` não importa, mas devolvê-lo
             // fora do alcance mantém a leitura honesta para quem inspecionar.

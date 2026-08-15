@@ -2260,3 +2260,125 @@ mutações, 2 sangram os DOIS gates** (o `S` voltar a declarar a faixa · o
 ⚠️ **PENDENTE DE RE-SMOKE — `PH2D_SCULPT3D_SMOKE=29`.** A pergunta de olho é a da
 foto: passe a faixa **perto da silhueta** de uma forma curva e nada pode aparecer
 do outro lado do contorno.
+
+---
+
+### §7.22 — ✅ A FAIXA ESTAVA 7,5× MAIS FRACA: o `reach` também era do SculptGL (2026-08-15)
+
+**Report do Enio, com três fotos:** o nosso traço sobre a esfera (estrias macias
+que ACOMPANHAM a forma) e, ao lado, **o Blender** — uma fila de **placas chatas e
+distintas** que CORTA a esfera em degraus.
+
+⚠️ **É a §7.21 uma camada abaixo, e eu não a segui até ao fim.** O deslocamento
+de um dab é `Brush::reach`:
+
+```rust
+radius * REACH_FRACTION * s      // REACH_FRACTION = 0,1
+```
+
+e o `0,1` é o `deform = intensidade · raio · 0,1` do **`Brush.js`** — do
+SculptGL, que **não tem esta ferramenta**. O `clay_strips.cc:327` diz:
+
+```cpp
+const float3 offset = plane_normal * ss.cache->bstrength * ss.cache->radius;
+```
+
+**`raio · força`, fração `1,0`.** A faixa vinha **7,5× mais fraca por dab** que a
+referência — daí estria macia em vez de placa.
+
+#### O que a magnitude certa DESTRAVA (medido, e é mais do que velocidade)
+
+| | com `0,1` | com `1,0` (a referência) |
+|---|---|---|
+| 1 / 3 / 9 / 27 / 81 dabs (chapa plana) | 0,006 → 0,116 | 0,047 → **0,592** |
+| crescimento 27÷9 | 1,47× | **1,20×** (81÷27 = 1,04×) |
+| vale de 0,40, `r = 0,5`, 9 dabs | 0,331 | **0,041** |
+| razão altura ÷ largura da banda | 0,080 | **0,355** |
+
+⚠️ **A saturação NASCEU com a magnitude certa.** Com o `reach` fraco a faixa
+nunca alcançava o plano, então a parábola nunca fechava e a ferramenta parecia
+crescer devagar para sempre; com `raio · força` o barro **sobe até o plano e
+PARA** — o auto-limite que é a assinatura de um clay strip. Dez vezes o `reach`
+dá só **2,4×** de altura, e essa não-linearidade É a ferramenta.
+
+#### `STRIP_DEPTH_GAIN` MORREU
+
+Ele existia (por umas horas, §7.20) para preservar a magnitude ao mover o lift —
+**e a magnitude que ele preservava era ela própria errada**. Com a fração da
+referência, a cadeia é a dela ponta a ponta: `offset = raio · força`, portão
+`z·(1−z)` **cru**, sem termo de calibração. O gate
+`moving_the_plane_lift_does_not_change_how_much_the_strip_lays_on_flat_clay` saiu
+com a const, e o pico do portão voltou ao `0,25` da referência.
+
+#### ⚠️ E a magnitude certa EXPÔS uma assimetria que o traço fraco escondia
+
+O `the_mirrored_copy_lays_its_strip_along_its_own_path` media `0,63 %` e passou a
+medir **5,16 %** contra uma barra de 5. **Não foi afrouxada — foi decomposta:**
+
+| traço começa em | divergência |
+|---|---|
+| `x = 0,5` (as metades TOCAM-SE) | 5,28 % |
+| `x = 1,1` (separadas) | **1,77 %** |
+
+O raio de CONSULTA da faixa é `√(1 + L²)·r = 0,566`, então um traço a começar em
+`x = 0,5` faz os dois passes da simetria tocarem os mesmos vértices perto do
+eixo — e o segundo ajusta o plano sobre a superfície que o primeiro levantou.
+**Dois terços da divergência eram a sobreposição, não o espelhamento do caminho,
+que é o que o gate afirma** ⇒ a fixture saiu da zona de contacto e a barra ficou
+onde estava.
+
+⚠️ **E o residual tem DONO nomeado:** o nosso `fit_plane` lê a superfície VIVA,
+enquanto o `sculpt.cc::calc_area_normal_and_center_node_mesh` ramifica em
+`!ss.cache->accum` e lê o **pen-down congelado**. Sob o plano congelado os dois
+passes de simetria seriam idênticos **por construção**. É a mesma divergência que
+a §7.21 já tinha medido e deixado quieta (o crescimento sub-linear), agora com um
+segundo sintoma — e é a candidata natural à próxima wave.
+
+#### E a magnitude sozinha não bastava: o AUTO-LIMITE tem TRÊS metades
+
+⚠️ **A mutação do `STRIP_REACH_FRACTION` SOBREVIVEU aos 219 gates** — devolver à
+faixa o `0,1` deixava tudo verde. O número que fazia a ferramenta parecer certa
+não era afirmado por ninguém, e escrever o gate expôs que faltavam mais duas
+peças da referência:
+
+| | nós (antes) | `clay_strips.cc` / `sculpt.cc` |
+|---|---|---|
+| deslocamento | `raio · 0,1` (`Brush.js`) | **`raio · força`** |
+| posição do portão | CONGELADA (`from_live = accumulate`, a lei do *Stamp*) | **VIVA** (`position_data.eval`) |
+| fonte do plano | VIVA | **CONGELADA** com `!accum` |
+
+⚠️ **É a combinação que dá o auto-limite**, e nenhuma das três sozinha o dá:
+posição viva contra plano congelado faz o `z` do portão `z·(1−z)` **encolher** à
+medida que o barro sobe, até fechar. Medido, o pico pousa em **`0,1000` contra um
+plano em `0,1000`** e lá fica (3 · 9 · 27 dabs: `0,1000` · `0,1002` · `0,1006`).
+Com o Accumulate LIGADO ele constrói (`0,146` · `0,271` · `0,319`) — **o
+interruptor passou a significar alguma coisa**: antes media `0,058` contra
+`0,051`.
+
+As duas portas novas espelham o `kernel_for`: **`Verb::grip_law`** (a lei que
+governa este verbo, contra `Grip::law`, que é a lei do grip) e o ramo por-verbo
+do `fit_plane`. Os quatro verbos de plano do SculptGL **não mudam** — o
+`areaNormal`/`areaCenter` deles lê o vivo e é o que a fonte diz.
+
+#### ⚠️ E uma PREMISSA não declarada invalidou uma sessão de medições minhas
+
+`Brush::default().accumulate` está preso ao default do **Draw** (`true`), mas o
+da faixa é **`false`**. Toda fixture `Brush { verb: ClayStrips, ..default() }`
+— as minhas sondas e os gates — corria com o Accumulate **LIGADO**, que não é o
+que a ferramenta shipa, e é justamente o interruptor que escolhe a fonte do
+plano. A premissa passou a ser **escrita** no `strip_brush`.
+
+⚠️ **E a fixture do gate de saturação variava DUAS coisas:** aumentar a contagem
+de dabs aumentava junto o COMPRIMENTO do traço, e a 81 dabs ele media `4,8`
+contra uma chapa de `1,5` — saía da malha, e o `1,67×` lia como *"não saturou"*.
+O caminho é FIXO e o que muda é só quão fino ele é amostrado: é a lei que o
+relevo do Painter já pagou quatro vezes.
+
+**3 mutações, 3 sangram**, uma por metade da lei (o `reach` · o plano vivo · o
+portão congelado).
+
+⚠️ **PENDENTE DE RE-SMOKE — `PH2D_SCULPT3D_SMOKE=29`.** A pergunta de olho é a
+comparação que o Enio mandou fazer: a faixa tem de deixar **placas** que cortam a
+forma, como no Blender, e não estrias que a acompanham — e uma segunda passada
+por cima da primeira **quase não pode subir mais** (é o barro a parar no plano);
+ligar o Accumulate é que a faz construir.

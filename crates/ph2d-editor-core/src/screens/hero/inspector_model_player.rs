@@ -165,6 +165,11 @@ pub struct InspectorPlayerInfo {
     pub glide_fall_speed: f32,
     /// A velocidade TERMINAL, m/s (`W-Fall`). `0` = sem teto.
     pub max_fall_speed: f32,
+
+    /// **O que a plataforma da ao pulo quando se larga ela** (`W-Leave`) — o
+    /// `PlatformLift::tag` da politica autorada (`0` Full · `1` UpOnly ·
+    /// `2` Nothing), que E' o indice do chip.
+    pub platform_lift: u8,
     /// Quanto do peso volta ao chao (W6).
     pub reaction_support: f32,
     /// Quanto da caminhada volta ao chao (W6).
@@ -371,6 +376,9 @@ pub enum PlayerFieldEdit {
     GlideFallSpeed(f32),
     /// **A velocidade TERMINAL**, m/s (`W-Fall`). `0` = sem teto.
     MaxFallSpeed(f32),
+    /// **O que a plataforma da ao pulo ao larga-la** (`W-Leave`) — o `tag` da
+    /// politica; ver `ids::INSP_PLAYER_LIFT_POLICY`.
+    PlatformLift(u8),
     /// Quanto do peso volta ao chao (W6).
     ReactionSupport(f32),
     /// Quanto da caminhada volta ao chao (W6).

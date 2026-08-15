@@ -273,6 +273,7 @@ mod physics_smoke_kin_push;
 mod physics_smoke_kin_water;
 mod physics_smoke_kinematic;
 mod physics_smoke_lead;
+mod physics_smoke_leave;
 mod physics_smoke_ledge;
 mod physics_smoke_multi_jump;
 mod physics_smoke_out;

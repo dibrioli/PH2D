@@ -83,6 +83,27 @@ pub const INSP_PLAYER_MODE_IDS: [NodeId; 3] = [
     hash_node_id("insp_player_mode_pure"),
 ];
 
+/// **O QUE A PLATAFORMA DA AO PULO QUANDO SE LARGA ELA** (`W-Leave`) — as tres
+/// politicas do `platform_on_leave` do Godot.
+///
+/// ⚠️ **A row fica FORA dos cards, e nao e' arrumacao:** os cards sao medidos
+/// pela CONTAGEM de rows (`card_frame(.., n)`) e todas as rows deles tem a
+/// altura de uma caixa numerica; um controle segmentado mede a PROPRIA altura e
+/// pode quebrar em duas linhas numa janela estreita, e ali a moldura passaria a
+/// nao caber no que emoldura. As duas rows segmentadas que ja existiam nesta
+/// secao (`INSP_PLAYER_MODE`, `INSP_PLAYER_EMIT`) vivem fora deles pelo mesmo
+/// motivo.
+///
+/// ⚠️ **Ela nao pertence ao card PERDAO** — onde o `Lift Momentum` mora e onde
+/// o assunto se le —, e isso e' um preco NOMEADO, nao um descuido.
+pub const INSP_PLAYER_LIFT_POLICY: NodeId = hash_node_id("insp_player_lift_policy");
+/// As opcoes do chip acima. ⚠️ **O indice E o `PlatformLift::tag`**, sem remap.
+pub const INSP_PLAYER_LIFT_POLICY_IDS: [NodeId; 3] = [
+    hash_node_id("insp_player_lift_policy_full"),
+    hash_node_id("insp_player_lift_policy_up"),
+    hash_node_id("insp_player_lift_policy_none"),
+];
+
 /// **Este player publica os eventos dele como SINAIS?** (`W-PlayerOut`, A3).
 ///
 /// ⚠️ **Nasce DESLIGADO**, e a razão é o custo de quem não pediu: sem isso toda

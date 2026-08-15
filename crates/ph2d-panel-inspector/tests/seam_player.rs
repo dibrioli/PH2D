@@ -116,6 +116,10 @@ fn player() -> InspectorPlayerInfo {
         // quatro acima: ele nasce em zero no produto (a lei desligada), e uma
         // fixture que herdasse o zero varreria uma row cujo valor nunca muda.
         max_fall_speed: 30.0,
+        // ⚠️ **`Full` é o default do produto**, e a fixture o declara em vez de o
+        // herdar: um gate que chega ao estado por acidente inverte de sentido no
+        // dia em que o default se move, e segue verde testando o oposto.
+        platform_lift: 0,
         lift_momentum: 1.5,
         reaction_support: 1.0,
         reaction_movement: 0.0,
@@ -1127,6 +1131,27 @@ fn the_emit_signals_chip_reaches_the_bus_in_both_directions() {
         PlayerFieldEdit::EmitSignals(false),
         "desligar a saída de sinais",
     );
+}
+
+/// **O CHIP DA POLÍTICA DE PLATAFORMA chega ao barramento, nas TRÊS opções**
+/// (`W-Leave`).
+///
+/// ⚠️ **As três, e não só a que muda o comportamento:** um chip cujo `Full` não
+/// despacha é uma escolha que não se desfaz, e o artista fica preso na política
+/// que experimentou. É a mesma metade que o irmão do `Emit Signals` afirma.
+///
+/// ⚠️ **O índice É o `PlatformLift::tag`**, e o gate o afirma: uma tabela de
+/// rótulos e uma lista de ids que discordassem sobre a ordem dariam um chip que
+/// seleciona outra coisa, com tudo pintado e vivo.
+#[test]
+fn the_platform_lift_chip_reaches_the_bus_in_every_option() {
+    for (i, tag) in [(0usize, "Full"), (1, "Up Only"), (2, "None")] {
+        expect(
+            &click_real(player(), ids::INSP_PLAYER_LIFT_POLICY_IDS[i]),
+            PlayerFieldEdit::PlatformLift(i as u8),
+            tag,
+        );
+    }
 }
 
 /// **O readout vive na face COM o comportamento, e some da face vazia.**

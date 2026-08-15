@@ -162,6 +162,25 @@ pub(crate) fn paint_player_section(
         info.push_is_live,
     );
 
+    // **O QUE A PLATAFORMA DA AO PULO AO LARGA-LA** (`W-Leave`) — fora dos
+    // cards porque um controle segmentado mede a PROPRIA altura e a moldura de
+    // um card e' medida pela CONTAGEM de rows; ver `ids::INSP_PLAYER_LIFT_POLICY`.
+    yy = seg_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        "Platform Lift",
+        ids::INSP_PLAYER_LIFT_POLICY,
+        &ids::INSP_PLAYER_LIFT_POLICY_IDS,
+        &["Full", "Up Only", "None"],
+        info.platform_lift,
+    );
+
     // **OS VERBOS da seção** — extraídos do `paint` por TETO DE LOC (o `Brake`
     // da W-Brake foi a row que o cruzou), e o corte é por responsabilidade: o pai
     // decide o que a seção MOSTRA, o filho pinta o que ela FAZ.

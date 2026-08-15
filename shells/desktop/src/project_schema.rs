@@ -473,4 +473,13 @@
 /// preço da wave:** o campo nasce em `0`, que **desliga** a lei (a porta devolve
 /// `None` e o motor é `Motor::default()`) ⇒ todo projeto salvo em v79 reabre a
 /// cair exactamente como caía, e o `physics_ecs_c9` sai byte-idêntico.
-pub(crate) const PROJECT_SCHEMA: u32 = 80;
+/// v81 (physics, W-Leave — O QUE A PLATAFORMA DA AO PULO): o `PlatformPlayer`
+/// ganhou `platform_lift`, apendado ao FIM ⇒ quebra dura. ⚠️ **A altura autorada
+/// era medida contra a PLATAFORMA, e ninguem tinha escolhido isso:** o pulo leva
+/// a subida RELATIVA ao chao ao `v0`, o que e' o `ADD_VELOCITY` do Godot — e num
+/// elevador a descer a 4 m/s o pico medido cai de **1,865 para 0,016 m**, nos
+/// tres modos (`measure_platform_leave`). ⚠️ **E o degrau e' o UNICO preco:** o
+/// campo nasce em `Full`, onde a porta devolve `rel_up` VERBATIM ⇒ todo projeto
+/// salvo em v80 reabre a pular exactamente como pulava, e o `physics_ecs_c9` sai
+/// byte-identico.
+pub(crate) const PROJECT_SCHEMA: u32 = 81;

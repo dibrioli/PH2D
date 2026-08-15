@@ -11,6 +11,79 @@
 //! arquivo é o vocabulário, não a semântica; re-exportado pelo pai, então nenhum
 //! caminho de chamador muda.
 
+/// **O QUE A PLATAFORMA DÁ AO PULO QUANDO SE LARGA ELA** (`W-Leave`) — as três
+/// políticas que o Godot chama de `platform_on_leave`.
+///
+/// # ⚠️ Porque isto existe: a altura autorada era RELATIVA À PLATAFORMA
+///
+/// O pulo do chão leva a subida **relativa ao chão** ao `v0` da altura autorada
+/// (`delta = v0 − rel_up`, e o doc daquela linha diz porquê: *pular já subindo
+/// tem de dar a mesma altura que pular parado*). Isso é coerente e é o
+/// `ADD_VELOCITY` do Godot — mas em MUNDO significa que a plataforma soma a sua
+/// própria velocidade ao pulo, e um elevador a DESCER a subtrai.
+///
+/// **Medido** (`measure_platform_leave`, plataforma a 4 m/s, meio segundo de voo,
+/// pico acima do ponto de partida — o controle é a mesma cena com ela parada):
+///
+/// | plataforma | Spring | Snap | Pure |
+/// |---|---|---|---|
+/// | parada (controle) | 1,903 | 1,865 | 1,865 |
+/// | elevador SOBE | 3,903 | 3,998 | 3,998 |
+/// | elevador DESCE | **0,378** | **0,016** | **0,016** |
+///
+/// ⚠️ **A última linha é o buraco:** o artista autora dois metros e recebe um
+/// centímetro e meio. Não é um defeito do solver nem divergência entre modos —
+/// é a política, e ela faltava.
+///
+/// # A régua
+///
+/// A política governa **só a componente vertical do pulo do CHÃO**, e isso é
+/// geometria em vez de escopo escolhido: o `delta` do pulo é ao longo do `up`,
+/// então a velocidade horizontal de um vagão **nunca** passa por aqui (ela vive
+/// na velocidade que o corpo possui e no referencial que o
+/// [`JumpConfig::lift_momentum`] segura — medido, os três modos a levam a
+/// **100%**). O pulo do AR e o da PAREDE também não: nenhum deles tem chão.
+///
+/// ⚠️ **Em chão ESTÁTICO as três variantes são a MESMA, ao bit** — `ground_up` é
+/// zero e a lei devolve `rel_up` verbatim pelos três caminhos.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum PlatformLift {
+    /// **Soma tudo** — o mundo de antes desta wave, e o default do Godot. A
+    /// altura autorada é medida contra a PLATAFORMA: um elevador a subir dá um
+    /// super-pulo, um a descer quase anula o pulo.
+    #[default]
+    Full,
+    /// **Soma só o que sobe.** Um elevador a subir continua a dar o impulso; um
+    /// a descer deixa de o roubar, e a altura autorada é entregue em MUNDO. É o
+    /// `ADD_UPWARD_VELOCITY`, e existe precisamente por causa da linha do
+    /// elevador que desce.
+    UpOnly,
+    /// **Não soma nada** — a altura autorada é sempre medida contra o MUNDO,
+    /// suba ou desça a plataforma. `DO_NOTHING`.
+    Nothing,
+}
+
+/// **A subida que o pulo do chão leva ao `v0`**, depois da política — a porta
+/// única de [`PlatformLift`].
+///
+/// `rel_up` é a subida relativa ao chão e `ground_up` a do próprio chão ao longo
+/// do `up`, então `rel_up + ground_up` é a subida **ABSOLUTA**: descartar a
+/// contribuição da plataforma e medir contra o mundo são a mesma aritmética, e é
+/// por isso que as duas variantes não-default partilham um braço.
+///
+/// ⚠️ **`Full` devolve `rel_up` VERBATIM** — é o que torna esta wave byte-idêntica
+/// para todo projeto já salvo, sem depender de `ground_up` ser zero.
+#[must_use]
+pub fn takeoff_rise(lift: PlatformLift, rel_up: f32, ground_up: f32) -> f32 {
+    match lift {
+        PlatformLift::Full => rel_up,
+        // Um chão que SOBE não é roubado por nenhuma das políticas: o que a
+        // `UpOnly` recusa é a contribuição para baixo, e só ela.
+        PlatformLift::UpOnly if ground_up >= 0.0 => rel_up,
+        _ => rel_up + ground_up,
+    }
+}
+
 /// Como o personagem PULA.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct JumpConfig {
@@ -147,6 +220,11 @@ pub struct JumpConfig {
     /// memória é `[0, 0]`, então o default ligado não move nada até existir uma
     /// plataforma que se mova.
     pub lift_momentum: f32,
+
+    /// **O QUE A PLATAFORMA DÁ AO PULO QUANDO SE LARGA ELA** (`W-Leave`) — ver
+    /// [`PlatformLift`], e o default [`PlatformLift::Full`] é o mundo de antes
+    /// desta wave AO BIT.
+    pub platform_lift: PlatformLift,
 }
 
 impl JumpConfig {
@@ -225,5 +303,9 @@ impl JumpConfig {
         // impede uma queda de dez segundos de guardar a velocidade de um
         // elevador que ficou lá em cima.
         lift_momentum: 1.5,
+        // ⚠️ **O default é o mundo que já shipava**, e não o que a medição
+        // recomenda: mudar isto alteraria a altura de todo pulo já autorado
+        // sobre uma plataforma móvel. A escolha é do artista, na row.
+        platform_lift: PlatformLift::Full,
     };
 }

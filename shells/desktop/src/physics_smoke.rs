@@ -214,6 +214,10 @@ impl crate::App {
             // proxima livre e tinha envelhecido em onze cenas.
             "116" => self.physics_smoke_terminal(),
             "117" => self.physics_smoke_blast(),
+            // ⚠️ **O NUMERO E' CONTADO, nunca escolhido** — lido deste `match`,
+            // que e' a fonte. O compilador e' o gate: um segundo braco com o
+            // mesmo literal e' `unreachable`.
+            "118" => self.physics_smoke_leave(),
             _ => self.physics_smoke_drop(),
         }
 

@@ -321,7 +321,11 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // NAO E' ACELERAR), apendado ao FIM. ⚠️ Nasce em `1`, onde a lei reduz
         // LITERALMENTE — o degrau e' so' o layout, e nenhum player ja' salvo
         // muda de comportamento.
-        (80, 13, 14),
+        // PROJECT 80→81: `PlatformPlayer` ganhou `platform_lift` (W-Leave — O
+        // QUE A PLATAFORMA DA AO PULO), apendado ao FIM. ⚠️ Nasce em `Full`,
+        // onde a lei devolve o `rel_up` VERBATIM — o degrau e' so' o layout, e
+        // nenhum player ja' salvo muda de comportamento.
+        (81, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

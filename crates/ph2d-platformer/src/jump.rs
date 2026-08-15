@@ -44,7 +44,7 @@ use crate::{GroundSample, Motor, Vec2};
 /// **Os knobs** — módulo irmão, re-exportado (ver o doc dele).
 #[path = "jump_config.rs"]
 mod jump_config;
-pub use jump_config::JumpConfig;
+pub use jump_config::{JumpConfig, PlatformLift, takeoff_rise};
 
 /// O estado VIVO de um pulo — o que o tick anterior deixou.
 ///
@@ -425,7 +425,16 @@ pub fn jump_step(
         // subindo (numa plataforma que sobe, ou logo depois de um degrau) tem de
         // dar a mesma altura que pular parado — que é a frase inteira do
         // "parametrizado por altura".
-        let delta = v0 - rel_up;
+        //
+        // ⚠️ **E a pergunta seguinte é *"a mesma altura CONTRA O QUÊ?"*** — a
+        // linha acima a responde *contra a plataforma*, que é o `ADD_VELOCITY`
+        // do Godot e o único mundo que existia até `W-Leave`. A
+        // [`crate::takeoff_rise`] é onde a política do artista escolhe, e
+        // `PlatformLift::Full` devolve o `rel_up` verbatim.
+        let ground_up = footing.map_or(0.0, |s| {
+            s.ground_velocity[0] * up[0] + s.ground_velocity[1] * up[1]
+        });
+        let delta = v0 - crate::takeoff_rise(cfg.platform_lift, rel_up, ground_up);
         return JumpStep {
             motor: Motor {
                 accel: [0.0, 0.0],

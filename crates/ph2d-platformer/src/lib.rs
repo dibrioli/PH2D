@@ -82,7 +82,9 @@ pub use descent::{FallConfig, descent_ceiling, descent_motor};
 pub use event::{PlayerEvent, events_between};
 pub use glide::GlideConfig;
 pub use ground::{ground_carry, relative_along, relative_rise};
-pub use jump::{JumpConfig, JumpKind, JumpState, JumpStep, carried_frame, jump_step};
+pub use jump::{
+    JumpConfig, JumpKind, JumpState, JumpStep, PlatformLift, carried_frame, jump_step, takeoff_rise,
+};
 pub use kinematic::{
     Fluid, KinematicState, kinematic_advance, kinematic_settle, supported_velocity, surface_descent,
 };

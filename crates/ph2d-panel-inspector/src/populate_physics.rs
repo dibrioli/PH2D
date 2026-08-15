@@ -236,6 +236,23 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         ids::INSP_PLAYER_EMIT_IDS[1],
         "Publish what he does as signals (player.landed, player.jumped.wall, ...).",
     );
+    // O mesmo, para o chip da política de plataforma (`W-Leave`).
+    register_button_ids(store, &ids::INSP_PLAYER_LIFT_POLICY_IDS);
+    store.set_tooltip(
+        ids::INSP_PLAYER_LIFT_POLICY_IDS[0],
+        "Jump height is measured against the PLATFORM: a rising lift launches \
+         him higher, a descending one almost cancels the jump.",
+    );
+    store.set_tooltip(
+        ids::INSP_PLAYER_LIFT_POLICY_IDS[1],
+        "A rising platform still launches him; a descending one stops stealing \
+         the jump. The authored height is delivered in the world.",
+    );
+    store.set_tooltip(
+        ids::INSP_PLAYER_LIFT_POLICY_IDS[2],
+        "The platform never changes the jump: the authored height is always \
+         measured against the world.",
+    );
     register_button_ids(
         store,
         &[
@@ -379,7 +396,7 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         (ids::INSP_PLAYER_LEDGE_OFFSET_Y, 0.0, -2.0, 2.0, 0.05), // LITERAL-PX-OK: m
         (ids::INSP_PLAYER_LEDGE_SPEED, 3.0, 0.0, 20.0, 0.25), // LITERAL-PX-OK: m/s
         (ids::INSP_PLAYER_GLIDE_FALL, 0.0, 0.0, 20.0, 0.25), // LITERAL-PX-OK: m/s
-        (ids::INSP_PLAYER_MAX_FALL, 0.0, 0.0, 150.0, 0.5), // LITERAL-PX-OK: m/s
+        (ids::INSP_PLAYER_MAX_FALL, 0.0, 0.0, 150.0, 0.5),  // LITERAL-PX-OK: m/s
         // A REAÇÃO (W6), em FRAÇÃO da força que o personagem faz. ⚠️ O piso é 0
         // (nada volta) e o teto é 1 (volta inteira) porque **acima de 1 o
         // personagem devolveria mais do que recebeu** — inventar energia, e o

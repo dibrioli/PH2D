@@ -174,24 +174,30 @@ fn every_offered_chip_has_a_profile_behind_it() {
 #[test]
 fn the_census_of_offered_chips() {
     let count = |m: RefMode| Verb::ALL.iter().filter(|v| v.profile(m).is_some()).count();
-    // ⚠️ **O SculptGL tem tudo menos o Sharpen E o Clay Strips** (`Verb::ALL`
-    // tem 17). O número não se moveu quando a faixa entrou — e essa
-    // COINCIDÊNCIA é o motivo de a frase estar escrita: a W6 acrescentou um
-    // verbo e um `None`, e um censo lido só pelo número teria dito *"nada
-    // mudou"* sobre uma tabela que mudou duas vezes.
+    // ⚠️ **O SculptGL tem tudo menos o Sharpen, o Clay Strips E o Blob**
+    // (`Verb::ALL` tem 18). O número **não se moveu duas vezes seguidas** — a
+    // faixa e depois o Blob acrescentaram cada um um verbo E um `None`, e as
+    // duas vezes um censo lido só pelo número teria dito *"nada mudou"* sobre
+    // uma tabela que mudou duas vezes.
+    //
+    // ⇒ Este `15` é o exemplo de que **um censo de CONTAGEM não é um censo de
+    // CONTEÚDO**: quem o move é o `B` logo abaixo, e quem diria o resto seria a
+    // lista por nome que o gate da literatura carrega. A frase fica porque a
+    // coincidência já reincidiu.
     assert_eq!(
         count(RefMode::S),
         15,
-        "S: todos menos o Sharpen e o Clay Strips"
+        "S: todos menos o Sharpen, o Clay Strips e o Blob"
     );
     // ⚠️ O `B` alcança TODO verbo com uma coisa só — o `alpha = root_alpha²` do
     // `brush_strength`, que é o funil de todas as tools. Os DEFAULTS dele
     // seguem bloqueados (§7.1 do plano): o `brush.cc` não está no clone.
-    // ⚠️ **17 e não 16 desde a W6:** o Clay Strips é uma tool do BLENDER, então
-    // o `alpha = root_alpha²` do `brush_strength` — que é o funil de todas elas
-    // — vale para ela por construção. Os DEFAULTS seguem bloqueados para todo o
-    // `B` (§7.1), este número é sobre a LEI.
-    assert_eq!(count(RefMode::B), 17, "B: a lei da força vale para todos");
+    // ⚠️ **17 e não 16 desde a W6, e 18 desde o Blob:** os dois são tools do
+    // BLENDER (`clay_strips.cc` e `crease.cc`), então o `alpha = root_alpha²` do
+    // `brush_strength` — que é o funil de todas elas — vale para os dois por
+    // construção. Os DEFAULTS seguem bloqueados para todo o `B` (§7.1), este
+    // número é sobre a LEI.
+    assert_eq!(count(RefMode::B), 18, "B: a lei da força vale para todos");
     // A literatura chega paper a paper, nas waves W4/W5/W7.
     assert_eq!(count(RefMode::L), 0, "L: nenhum paper portado ainda");
 }
@@ -471,8 +477,10 @@ fn the_literature_mode_is_offered_exactly_where_it_declares_a_law() {
             "Smooth",
             "Pinch",
             "Magnify",
-            // O único COMPOSTO: `Draw + Kelvinlets pinch` (a matriz §3).
+            // Os dois COMPOSTOS: `Draw + Kelvinlets pinch` (a matriz §3), e o
+            // Blob é a mesma soma com os dois sinais trocados.
             "Crease",
+            "Blob",
             "Move / Grab",
             "Snake Hook",
             "Twist",

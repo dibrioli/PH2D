@@ -2382,3 +2382,107 @@ comparação que o Enio mandou fazer: a faixa tem de deixar **placas** que corta
 forma, como no Blender, e não estrias que a acompanham — e uma segunda passada
 por cima da primeira **quase não pode subir mais** (é o barro a parar no plano);
 ligar o Accumulate é que a faz construir.
+
+✅ **SMOKE APROVADO (Enio, 2026-08-15): *"smoke OK"*.** A faixa fechou.
+
+### §7.23 — ✅ W6 (metade B): O BLOB, o irmão do Crease com o aperto invertido (2026-08-15)
+
+O 2º dos três itens que a §7.19 deixou nomeados. `Verb::Blob` — o **18º** verbo,
+e o primeiro cuja definição inteira é *um vizinho com um sinal trocado*.
+
+**A relação é a do Blender ao pé da letra:** o `crease.cc` tem UMA função
+(`do_crease_or_blob_brush`) e um `bool invert_strength` que troca o sinal do
+termo LATERAL e mais nada — o `offset` normal dos dois é o mesmo
+`sculpt_normal · raio · força`.
+
+#### Por que é um VERBO e não um slider negativo no `pinch`
+
+⚠️ **O nosso próprio catálogo já decidiu esta pergunta uma vez, e não é gosto:**
+[`Verb::Pinch`] e [`Verb::Magnify`] são exatamente o mesmo kernel com um sinal, e
+são **dois chips**. Um `pinch` que alcançasse negativo seria a segunda resposta a
+*"como o artista pede o oposto?"*.
+
+#### ⚠️ A DIREÇÃO do depósito é NOSSA, e a §4 é o motivo
+
+O nosso Crease **cava** por default porque herda o `_negative = true` do
+`Crease.js`. O SculptGL **não tem** Blob, então não há `_negative` a herdar — e
+inventar um com a autoridade de uma referência que não o declara é precisamente o
+que a §4 proíbe. ⇒ a direção é escolha nossa, e é a que o NOME diz: um *blob* é
+um monte, então ele **SOBE**. O `Ctrl` dá o oposto de cada verbo, como em toda a
+família.
+
+⚠️ **Os DOIS sinais mudam, e a simetria não é estética:** negar só o lateral daria
+um monte que ainda cava; negar só o normal daria um Crease erguido, que é o que o
+`Ctrl` no Crease já entrega. É a COMBINAÇÃO que nenhum ajuste do vizinho alcança,
+e é ela que o torna um verbo em vez de um flag — o gate
+`the_blob_is_not_the_inverted_crease` afirma exatamente isso, medindo o RADIAL
+(`+2,616` contra `−2,688`) onde a ALTURA é idêntica nos dois (`+0,028`).
+
+**O `S` fica silencioso** (a 3ª vez, depois do Sharpen e da faixa) e o `B`
+governa — o `crease.cc` é do Blender. O `L` é oferecido: a `F` de traço zero do
+[`crate::kelvinlet::pinch`] cobre os dois sinais, então o Blob é o **segundo
+verbo COMPOSTO** e herda as três armadilhas do Crease inteiras.
+
+**Gates:** 6 próprios (`verb_blob_tests.rs`) + 1 de forma do `l-mode`
+(`the_blobs_dome_stays_narrow_while_the_push_reaches_out`). **4 mutações, 4
+sangram.**
+
+#### ⚠️ Um oráculo meu estava ERRADO, com o gate VERDE
+
+O gate da largura comparava o domo com o **EMPURRÃO do próprio Blob**. O termo
+lateral é `centro − posição`, que vale **zero no eixo**: o empurrão é um **ANEL**,
+com o pico fora do centro. *Um domo é mais estreito que um anel para QUALQUER
+expoente* — a mutação `shape⁴ → shape` passava (razão 2,911× → 1,881×, contra uma
+barra de 1,5). O oráculo virou o **Draw como controle**, o espelho exato do gate
+do Crease, e a mesma mutação sangra (2,128× → 1,375×).
+
+⇒ **Duas grandezas de FORMA diferente não se comparam por meia-largura.**
+
+#### ⚠️ E o censo do `S` mediu 15 antes e depois — pela SEGUNDA vez seguida
+
+O comentário dele já registrava a coincidência da wave da faixa (*"um verbo e um
+`None` ao mesmo tempo"*). Ela **reincidiu**: o Blob acrescenta um verbo E uma
+exclusão. ⇒ *um censo de CONTAGEM não é um censo de CONTEÚDO* — quem se move é o
+`B` (17 → 18) e quem diria o resto é a lista por NOME do gate da literatura.
+
+#### ⚠️ E a wave achou TRÊS vermelhos-latentes da §7.22, todos da mesma causa
+
+Nenhum é desta metade, e os três só apareceram porque um commit tocou os ids do
+painel e a `ph2d-editor-core` entrou na varredura impactada — a mesma causa
+estrutural que a `line/physics`, a `line/Vector` e a `line/motion-value` já
+documentaram: **um fechamento por `cargo test -p <crate>` não alcança
+`crates/ph2d-editor-core/tests/` nem `shells/desktop/tests/`.**
+
+| vermelho | o que era |
+|---|---|
+| `verb_strip_tests.rs` **746 > 700** | o teto de LOC, e eu **reportei-o como verde** no fim da sessão anterior |
+| `rows.rs:196` `max: 4.0` | um literal sem o marcador `LITERAL-PX-OK` |
+| `every_verb_is_reachable_from_the_keyboard` | o gate lê `brush.rs` procurando `impl Verb {`, e a §7.19 **mudou o catálogo para `brush_verb.rs`** — ele morria no `expect` |
+| `the_grab_holds_its_footprint_instead_of_re_picking` | o `63c856aa4` coalesceu o puxão por QUADRO, e o gate exigia `grab_at(` DENTRO do braço `Grip::Hold` |
+
+⚠️ **E a PREMISSA do gate do teclado tinha EXPIRADO.** A mensagem dele dizia *"o
+artista não consegue pegá-lo"* — verdade quando a cena 3D não tinha painel, e
+**falsa desde a W10.7**, cujo `every_verb_has_a_chip_that_selects_it` garante um
+chip por verbo. A ausência de tecla deixou de ser *inalcançável* e passou a ser
+*sem atalho*; quem move o número que tornava algo inalcançável tem de reconferir
+a nota, e ninguém reconferiu esta.
+
+⇒ O gate passou a afirmar *tecla **OU** isenção NOMEADA*, com controle nos dois
+lados (um nome que saiu do catálogo · um verbo que GANHOU tecla e ficou na lista).
+⚠️ **E o teclado ACABOU, medido:** os dez dígitos estão tomados e das 26 letras só
+`L` e `W` sobram — o `W` é a tecla do painel de física no app inteiro. Dar um
+mnemônico fraco a um dos dois e deixar o outro sem seria pior que a ausência
+nomeada. **A faixa e o Blob shipam chip-only, e a escolha de atalho é do Enio.**
+
+**LOC:** o corte do `verb_strip_tests.rs` é por ASSUNTO — a **FORMA** da faixa
+(silhueta, lados paralelos, quinas, toque redondo; grade PLANA) fica no pai, e a
+**LEI** (o plano erguido, o vale, o auto-limite, a referência que governa;
+superfície MOLDADA) vai para `verb_strip_law_tests.rs`. 423 + 343.
+
+⚠️ **PENDENTE DE SMOKE.** A pergunta de olho: com o **Blob** em mãos e o `pinch`
+alto, a passada tem de deixar um **monte REDONDO** onde o Crease deixa um sulco
+afiado — e o `Ctrl` tem de dar o oposto de cada um (poço redondo · crista afiada).
+Os dois chips ficam lado a lado no painel; **o `S` não é oferecido para o Blob**.
+
+**Aberto na W6:** o **Multiplane Scrape** e o **Clay Thumb** reusam a moldura da
+faixa; o **Draw Sharp** segue bloqueado pela tabela ausente (§7.18).

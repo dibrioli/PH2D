@@ -303,6 +303,10 @@ mod verb_mode;
 #[path = "verb_crease_tests.rs"]
 mod verb_crease;
 
+/// **O BLOB**, o irmão dele com o aperto invertido — ver o cabeçalho dele.
+#[path = "verb_blob_tests.rs"]
+mod verb_blob;
+
 /// O conjunto FRONTAL, que tem fixtures de silhueta — ver o cabeçalho dele.
 #[path = "verb_culling_tests.rs"]
 mod verb_culling;
@@ -316,9 +320,14 @@ mod verb_move_field;
 #[path = "verb_move_scales_tests.rs"]
 mod verb_move_scales;
 
-/// **A FAIXA** — ver [`verb_strip`].
+/// **A FAIXA**, a FORMA dela — ver [`verb_strip`].
 #[path = "verb_strip_tests.rs"]
 mod verb_strip;
+
+/// **A FAIXA**, a LEI dela (o plano, o vale, o auto-limite) — ver
+/// [`verb_strip_law`].
+#[path = "verb_strip_law_tests.rs"]
+mod verb_strip_law;
 
 /// As TRÊS famílias AFINS do paper (twist · scale · pinch) e o gancho que reusa
 /// o agarre — a W5-B. Ver o cabeçalho dele.

@@ -193,7 +193,7 @@ static BRUSH: &[Row] = &[
         // O teto é MEDIDO pela consulta que ele paga: a pegada alcança
         // `√(1 + L²)` raios, então `4` já pede uma consulta de 4,1 raios — 17×
         // a área de um disco. Além disso a tira deixa de caber num traço curto.
-        max: 4.0,
+        max: 4.0,   // LITERAL-PX-OK: teto de um knob adimensional, não métrica de layout
         step: 0.25, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
         decimals: 2,
         get: |u| u.brush.strip_length,

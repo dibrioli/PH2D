@@ -317,11 +317,40 @@ fn the_grab_holds_its_footprint_instead_of_re_picking() {
     // E o arrasto de quem SEGURA não passa pelo walk do espaçamento: um Grab
     // não carimba, então percorrer o caminho daria N dabs idênticos no mesmo
     // lugar.
+    // ⚠️ **O ENDEREÇO mudou e a PROPRIEDADE não.** Este gate exigia `grab_at(`
+    // DENTRO do braço `Grip::Hold`, e o `63c856aa4` coalesceu o puxão por
+    // QUADRO: o braço passou a REGISTAR (`pending_grab`) e quem carimba é o
+    // `flush_pending_grab`. O gate ficou vermelho sobre produto correto — a
+    // enésima vez nesta cena que um proxy de endereço expirou —, e ficou
+    // vermelho-LATENTE porque nenhum fechamento por crate alcança
+    // `shells/desktop/tests/`.
+    //
+    // ⇒ A propriedade é a mesma em duas metades: quem segura **não percorre um
+    // caminho** (a metade que o walk violaria) e o puxão **chega ao `grab_at`**
+    // (a metade que um registo sem consumidor violaria — o gesto ficaria mudo).
     let mv = function_body(&src, "sculpt3d_pointer_move");
     let holding = grip_arm(&mv, "Grip::Hold");
     assert!(
-        holding.contains("grab_at(") && !holding.contains("walk("),
+        !holding.contains("walk("),
         "quem segura arrasta a pegada, não percorre um caminho"
+    );
+    assert!(
+        holding.contains("grab_at(") || holding.contains("pending_grab"),
+        "o braço do Hold tem de levar o gesto a algum lugar — carimbando ou \
+         registando para o flush do quadro"
+    );
+    // E o registo TEM consumidor: sem esta metade, `pending_grab = Some(..)` num
+    // braço e ninguém a drenar é um Grab que nunca move barro, com o gate acima
+    // verde.
+    let flush = function_body(&src, "flush_pending_grab");
+    assert!(
+        flush.contains("pending_grab.take()") && flush.contains("grab_at("),
+        "o pendente tem de ser CONSUMIDO e virar um `grab_at` — um registo sem \
+         dreno é um gesto mudo"
+    );
+    assert!(
+        src.contains("scene.flush_pending_grab()"),
+        "e alguém no ciclo do quadro tem de chamar o dreno"
     );
 }
 
@@ -497,11 +526,24 @@ fn the_swept_angle_accumulates_instead_of_saturating_at_half_a_turn() {
 /// alguma coisa a dizer.
 #[test]
 fn every_verb_is_reachable_from_the_keyboard() {
-    let brush = std::fs::read_to_string(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../crates/ph2d-sculpt3d/src/brush.rs"
-    ))
-    .expect("a fonte do kernel");
+    // ⚠️ **O catálogo MUDOU DE ARQUIVO e este gate morreu no `expect`** — a wave
+    // da faixa cortou o `brush.rs` por responsabilidade e levou o `impl Verb`
+    // para o `brush_verb.rs`. Ele ficou vermelho-latente até um commit posterior
+    // tocar a shell, porque um fechamento por `cargo test -p ph2d-sculpt3d` não
+    // alcança `shells/desktop/tests/`. *Afirme a PROPRIEDADE, nunca o endereço*
+    // — e onde o endereço é inevitável (ler a fonte alheia), tente os dois e
+    // deixe o `expect` gritar só quando NENHUM tiver o catálogo.
+    let brush = ["brush_verb.rs", "brush.rs"]
+        .iter()
+        .filter_map(|f| {
+            std::fs::read_to_string(format!(
+                "{}/../../crates/ph2d-sculpt3d/src/{f}",
+                env!("CARGO_MANIFEST_DIR")
+            ))
+            .ok()
+        })
+        .find(|s| s.contains("impl Verb {"))
+        .expect("a fonte do catálogo de verbos");
     // ⚠️ **Ancorado no `impl Verb`, e não no primeiro `pub const ALL:`** — o
     // `Falloff` tem um do mesmo nome e vem ANTES no arquivo. O controle abaixo
     // pegou isso na primeira corrida, lendo `["Smooth", "Sphere", "Sharper", …]`.
@@ -521,11 +563,48 @@ fn every_verb_is_reachable_from_the_keyboard() {
         "não consegui ler o Verb::ALL (achei {verbs:?})"
     );
 
+    // ⚠️ **A PREMISSA DESTE GATE EXPIROU, e a mensagem dele provava-o:** ela
+    // dizia *"o artista não consegue pegá-lo"*, o que era verdade quando a cena
+    // 3D não tinha painel. O `ph2d-panel-sculpt3d` chegou na W10.7 com o
+    // `every_verb_has_a_chip_that_selects_it`, que garante um chip por verbo —
+    // então a ausência de tecla deixou de ser *inalcançável* e passou a ser
+    // *sem atalho*. Quem mudou o número que tornava algo inalcançável tem de
+    // reconferir a nota, e ninguém reconferiu esta.
+    //
+    // ⇒ O que fica é a proteção REAL: um verbo novo não pode escorregar para o
+    // grupo sem-atalho **em silêncio**. Ele entra nesta lista ou ganha tecla, e
+    // as duas exigem que alguém decida.
+    //
+    // ⚠️ **E o teclado ACABOU, medido:** os dez dígitos estão tomados, e das 26
+    // letras só `L` e `W` sobram — o `W` é a tecla do painel de física no app
+    // inteiro. Dar um mnemônico fraco a um dos dois (*"cLay"*? *"bLob"*?) e
+    // deixar o outro sem seria pior que a ausência nomeada: o artista aprenderia
+    // uma regra que não existe. A escolha de atalho é do Enio.
+    const CHIP_ONLY: &[&str] = &[
+        // A faixa (W6). Entrou sem tecla e a ausência nunca foi escrita.
+        "ClayStrips",
+        // O Blob, pelo mesmo motivo e no mesmo aperto de teclado.
+        "Blob",
+    ];
     let keys = function_body(&sculpt_src(), "sculpt3d_key");
-    for v in verbs {
+    for v in &verbs {
         assert!(
-            keys.contains(&format!("Verb::{v}")),
-            "o verbo {v} não tem tecla: ele existe, tem alvo, e o artista não consegue pegá-lo"
+            keys.contains(&format!("Verb::{v}")) || CHIP_ONLY.contains(v),
+            "o verbo {v} não tem tecla NEM está na lista dos que shipam só com \
+             chip: ele existe, tem alvo, e ninguém decidiu como o artista o pega"
+        );
+    }
+    // O CONTROLE da lista: um nome que deixou de existir no catálogo é uma
+    // isenção que sobrevive ao verbo — e ela esconderia o verbo SEGUINTE.
+    for c in CHIP_ONLY {
+        assert!(
+            verbs.contains(c),
+            "`{c}` está na lista dos sem-atalho e não existe mais no `Verb::ALL`"
+        );
+        assert!(
+            !keys.contains(&format!("Verb::{c}")),
+            "`{c}` GANHOU tecla e continua na lista dos sem-atalho — a isenção \
+             tem de sair no mesmo commit que a tecla entra"
         );
     }
 }

@@ -65,6 +65,33 @@ pub enum Verb {
     Magnify,
     /// Pinch + deslocamento negativo — cava um vinco.
     Crease,
+    /// **O BOLO DE BARRO** — o [`Self::Crease`] com o aperto lateral INVERTIDO:
+    /// em vez de puxar o barro para o eixo (afiando), ele o empurra para fora
+    /// (arredondando), e o depósito sobe.
+    ///
+    /// ⚠️ **A relação é a do Blender, ao pé da letra** — `crease.cc` tem UMA
+    /// função (`do_crease_or_blob_brush`) e um `bool invert_strength` que troca
+    /// o sinal do termo lateral e **mais nada**; o `offset` normal dos dois é o
+    /// mesmo `sculpt_normal · raio · força`.
+    ///
+    /// ⚠️ **E é por isso que ele é um VERBO e não um slider negativo no
+    /// `pinch`:** o nosso próprio catálogo já decidiu esta pergunta uma vez —
+    /// [`Self::Pinch`] e [`Self::Magnify`] são exatamente o mesmo kernel com um
+    /// sinal, e são dois chips. Um `pinch` que alcança negativo seria a segunda
+    /// resposta a *"como o artista pede o oposto?"*.
+    ///
+    /// ⚠️ **A DIREÇÃO do depósito é NOSSA, e a §4 é o motivo.** O nosso
+    /// [`Self::Crease`] cava por default porque herda o `_negative = true` do
+    /// `Crease.js`; o SculptGL **não tem** Blob, então não há `_negative` a
+    /// herdar — e inventar um com a autoridade de uma referência que não o
+    /// declara é precisamente o que a §4 proíbe. ⇒ a direção é escolha nossa, e
+    /// ela é a que o NOME diz: um *blob* é um monte, então ele SOBE. O `Ctrl`
+    /// dá o oposto de cada verbo, como em toda a família.
+    ///
+    /// ⚠️ **O SculptGL NÃO O TEM** — ver [`crate::RefMode`]: o `S` fica
+    /// silencioso aqui, como já fica no [`Self::Sharpen`] e no
+    /// [`Self::ClayStrips`].
+    Blob,
     /// Não move geometria: escreve `mask[v]`, que **todos** os outros respeitam.
     Mask,
     /// **Pega o barro e o traz junto** — ver [`Grip::Hold`].
@@ -101,7 +128,7 @@ pub enum Verb {
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 17] = [
+    pub const ALL: [Self; 18] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -113,6 +140,7 @@ impl Verb {
         Self::Pinch,
         Self::Magnify,
         Self::Crease,
+        Self::Blob,
         Self::Mask,
         Self::Move,
         Self::SnakeHook,
@@ -194,7 +222,7 @@ impl Verb {
     pub fn honours_invert(self) -> bool {
         matches!(
             self,
-            Self::Draw | Self::Inflate | Self::Clay | Self::Crease | Self::Mask
+            Self::Draw | Self::Inflate | Self::Clay | Self::Crease | Self::Blob | Self::Mask
         )
     }
 
@@ -228,6 +256,7 @@ impl Verb {
             Self::Pinch => "Pinch",
             Self::Magnify => "Magnify",
             Self::Crease => "Crease",
+            Self::Blob => "Blob",
             Self::Mask => "Mask",
             Self::Move => "Move / Grab",
             Self::SnakeHook => "Snake Hook",
@@ -258,7 +287,11 @@ impl Verb {
             Self::Move | Self::SnakeHook => Some(crate::Field::Grab),
             Self::Twist => Some(crate::Field::Twist),
             Self::LocalScale | Self::Magnify => Some(crate::Field::Scale),
-            Self::Pinch | Self::Crease => Some(crate::Field::Pinch),
+            // ⚠️ **O Blob divide o campo com o Crease, e o paper cobre os dois
+            // sinais:** a `F` de [`crate::kelvinlet::pinch`] tem traço zero por
+            // construção, então negá-la continua sendo um campo de deslocamento
+            // legítimo — o que muda é para que lado o barro sai.
+            Self::Pinch | Self::Crease | Self::Blob => Some(crate::Field::Pinch),
             _ => None,
         }
     }

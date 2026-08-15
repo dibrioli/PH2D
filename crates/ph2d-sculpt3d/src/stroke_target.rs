@@ -344,6 +344,59 @@ impl SculptStroke {
                     )
                 }
             },
+            // **O BLOB** (`crease.cc::do_crease_or_blob_brush`, `invert_strength
+            // = true`) — o Crease com o aperto lateral NEGADO e o depósito para
+            // CIMA. Ver [`Verb::Blob`] para por que a direção é nossa.
+            //
+            // ⚠️ **Os DOIS sinais mudam, e não é simetria por gosto:** negar só
+            // o lateral daria um monte que ainda CAVA (o `-` do Crease é o
+            // `_negative` do `Crease.js`, herdado); negar só o normal daria um
+            // Crease erguido, que é outro verbo — precisamente o que o `Ctrl` no
+            // Crease já entrega. É a combinação que não é alcançável por nenhum
+            // ajuste do vizinho, e é isso que o torna um verbo em vez de um flag.
+            //
+            // ⚠️ **O `shape⁴` FICA, e ele é o que separa os dois na TELA:** o
+            // termo normal é quíntico no falloff (estreito) e o lateral é linear
+            // (largo), então no Crease o resultado é um sulco fino dentro de um
+            // aperto largo. No Blob a mesma assimetria vira um **domo estreito
+            // dentro de um empurrão largo** — o barro sai de baixo e sobe no
+            // meio, que é a forma que a palavra descreve.
+            Verb::Blob => match brush.mode.field(Verb::Blob) {
+                Some(_) => {
+                    let d = [
+                        live[0] - dab.center[0],
+                        live[1] - dab.center[1],
+                        live[2] - dab.center[2],
+                    ];
+                    let gain = w * crate::CREASE_FRACTION;
+                    let prof = crate::kelvinlet::rigid_profile(d, dab.radius, brush.elastic_scales);
+                    add(
+                        add_vec(
+                            live,
+                            crate::kelvinlet::pinch(
+                                d,
+                                dab.radius,
+                                n_area,
+                                -gain * brush.pinch,
+                                brush.elastic_scales,
+                            ),
+                            1.0,
+                        ),
+                        n_area,
+                        gain * prof.powi(4) * dab.radius * sign,
+                    )
+                }
+                _ => {
+                    let t =
+                        lateral_pull(brush.mode.kernel_for(brush.verb), live, dab.center, n_area);
+                    let gain = w * crate::CREASE_FRACTION;
+                    add(
+                        add_vec(live, t, -gain * brush.pinch),
+                        n_area,
+                        gain * shape.powi(4) * dab.radius * sign,
+                    )
+                }
+            },
             // O alvo de posição de um verbo de máscara é o próprio lugar: ele
             // não move geometria ([`crate::Grip::Paint`]), e `apply_mask` é quem
             // escreve o canal dele.

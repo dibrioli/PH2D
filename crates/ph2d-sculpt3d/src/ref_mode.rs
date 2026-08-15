@@ -258,7 +258,11 @@ impl RefMode {
             // ⚠️ **A lei de uma referência só vale para as ferramentas que ela
             // TEM** — é a mesma frase que a coluna de defaults já honrava, e
             // agora as duas tabelas concordam.
-            Self::S => !matches!(verb, Verb::ClayStrips),
+            // ⚠️ **E nem o Blob, pela MESMA frase:** o `Crease.js` é o único
+            // parente que o SculptGL tem, e ele não carrega o `invert_strength`
+            // que faz de um Blob um Blob. Uma referência governa as ferramentas
+            // que ela TEM.
+            Self::S => !matches!(verb, Verb::ClayStrips | Verb::Blob),
             // A lei de kernel (bilateral · tangencial · front-face contínuo) e
             // a `StrengthCurve::Squared` do E13.
             Self::B => true,
@@ -600,7 +604,9 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // `S` segue oferecido porque a LEI DE KERNEL dele (lateral direta,
         // plano de um lado, front-face ignorado) é universal naquele motor —
         // é a distinção que o [`RefMode::declares`] documenta.
-        Verb::Sharpen | Verb::ClayStrips => return None,
+        // ⚠️ **Nem o Blob** — o `crease.cc` é do Blender, e este `None` é a
+        // mesma frase que os dois vizinhos carregam.
+        Verb::Sharpen | Verb::ClayStrips | Verb::Blob => return None,
     };
     Some(p)
 }

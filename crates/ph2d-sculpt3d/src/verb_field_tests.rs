@@ -174,10 +174,13 @@ const SHAPE_GATED: &[&str] = &[
     "Twist",
     // `the_elastic_scale_falls_off_from_the_tip_to_the_rim`
     "Local Scale",
-    // `the_creased_trench_stays_narrow_while_the_squeeze_reaches_out` — o único
-    // COMPOSTO da tabela, e por isso o único cujo gate tem de olhar as duas
-    // metades separadas.
+    // `the_creased_trench_stays_narrow_while_the_squeeze_reaches_out` — um dos
+    // dois COMPOSTOS da tabela, e por isso um dos dois cujo gate tem de olhar as
+    // duas metades separadas.
     "Crease",
+    // `the_blobs_dome_stays_narrow_while_the_push_reaches_out` — o outro
+    // COMPOSTO, a mesma soma com os dois sinais trocados.
+    "Blob",
     // `the_elastic_pinch_gives_back_along_the_normal_what_it_takes_from_the_plane`
     "Pinch",
     // `the_elastic_magnify_dilates_along_the_ray_not_across_the_plane`

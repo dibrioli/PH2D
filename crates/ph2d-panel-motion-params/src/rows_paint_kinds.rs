@@ -467,6 +467,7 @@ pub(super) fn paint_toggle_row(
         CheckboxValue::Unchecked
     };
     let cb = Checkbox::new(cb_id, row.label.clone())
+        .visual(store.checkbox_visual(cb_id))
         .state(cb_state)
         .value(value);
     let crect = Rect::new(inner_x, y, inner_w, ROW_H_PX);

@@ -130,11 +130,13 @@ pub(crate) fn paint_shape_per_layer_color(
         } else {
             content_w
         };
-        let cb = Checkbox::new(check_id, format!("Layer {} Color", i + 1)).value(if color_on {
-            CheckboxValue::Checked
-        } else {
-            CheckboxValue::Unchecked
-        });
+        let cb = Checkbox::new(check_id, format!("Layer {} Color", i + 1))
+            .visual(ctx.host.store().checkbox_visual(check_id))
+            .value(if color_on {
+                CheckboxValue::Checked
+            } else {
+                CheckboxValue::Unchecked
+            });
         let cb_rect = Rect::new(x, y, cb_w, ROW_H_PX);
         paint_checkbox(&cb, cb_rect, ctx.scene, ctx.text_system, theme);
         register_button(ctx.host.store_mut(), check_id);

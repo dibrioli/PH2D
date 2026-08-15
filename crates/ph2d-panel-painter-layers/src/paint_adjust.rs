@@ -237,7 +237,10 @@ fn paint_toggle_row(
         ADJ_TOGGLE_W,
         ADJ_TOGGLE_H,
     );
-    let toggle = Toggle::new(id, "").on(on).state(ToggleState::Normal);
+    let toggle = Toggle::new(id, "")
+        .visual(ctx.host.store().toggle_visual(id))
+        .on(on)
+        .state(ToggleState::Normal);
     paint_toggle(&toggle, toggle_rect, ctx.scene, theme);
     register_button(ctx.host.store_mut(), id);
     ctx.host.hit_index_mut().register(id, toggle_rect);

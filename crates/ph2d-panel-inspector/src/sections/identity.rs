@@ -67,6 +67,7 @@ pub(crate) fn paint_visibility_row(
     let host = Rect::new(x, y, w, row_h);
     hit_index.register(ids::INSP_VISIBILITY_CHECK, host);
     let checkbox = Checkbox::new(ids::INSP_VISIBILITY_CHECK, "Visible")
+        .visual(store.checkbox_visual(ids::INSP_VISIBILITY_CHECK))
         .state(state)
         .value(value);
     paint_checkbox(&checkbox, host, scene, text_system, theme);

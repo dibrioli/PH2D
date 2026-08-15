@@ -480,13 +480,3 @@ pub(crate) fn button_state(store: &WidgetStore, id: NodeId) -> ButtonState {
         _ => ButtonState::Normal,
     }
 }
-
-pub(crate) fn toggle_state(
-    store: &WidgetStore,
-    id: NodeId,
-) -> ph2d_editor_core::widget::ToggleState {
-    match store.get(id) {
-        Some(InteractiveState::Toggle { state, .. }) => *state,
-        _ => ph2d_editor_core::widget::ToggleState::Normal,
-    }
-}

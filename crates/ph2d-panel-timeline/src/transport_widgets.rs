@@ -190,7 +190,10 @@ pub(crate) fn toggle(
         .map(|(s, _)| s)
         .unwrap_or(ToggleState::Normal);
     // Gallery builder form (label rendered separately, above).
-    let widget = Toggle::new(id, "").on(on).state(state);
+    let widget = Toggle::new(id, "")
+        .visual(ctx.host.store().toggle_visual(id))
+        .on(on)
+        .state(state);
     paint_toggle(&widget, rect, ctx.scene, theme);
     ctx.host.hit_index_mut().register(id, rect);
     x + cell_w

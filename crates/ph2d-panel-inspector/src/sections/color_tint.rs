@@ -223,6 +223,7 @@ pub(crate) fn paint_color_tint_section(
     hit_index.register(ids::INSP_SPRITE_TINT_FILL, tf_rect);
     paint_checkbox(
         &Checkbox::new(ids::INSP_SPRITE_TINT_FILL, "Tint Fill")
+            .visual(store.checkbox_visual(ids::INSP_SPRITE_TINT_FILL))
             .state(tf_state)
             .value(tf_value),
         tf_rect,

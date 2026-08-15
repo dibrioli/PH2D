@@ -6,7 +6,6 @@
 
 use crate::ids;
 use crate::layout::{LABEL_COL_W, LABEL_FONT_SIZE, ROW_H, row_gap};
-use crate::paint_helpers::toggle_state;
 use crate::state::{meters_to_display, unit_suffix_paren};
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::grid_snap::GridSnapState;
@@ -353,12 +352,13 @@ pub(crate) fn paint_labeled_toggle(
         toggle_w,
         toggle_h,
     );
-    let toggle = Toggle {
-        id,
-        label: String::new(),
-        on,
-        state: toggle_state(store, id),
-    };
+    // ⚠️ **Era um literal de struct com uma derivação PRIVADA do estado** (`toggle_state`, a sexta
+    //    cópia da mesma pergunta no app) — e um literal não tem como ganhar um campo novo sem que
+    //    o compilador o exija, que foi exactamente o que aconteceu aqui. O construtor + a porta
+    //    única resolvem os dois: o `on` vem do modelo, o estado e o `t` do store.
+    let toggle = Toggle::new(id, String::new())
+        .on(on)
+        .visual(store.toggle_visual(id));
     paint_toggle(&toggle, toggle_rect, scene, theme);
     hit_index.register(id, toggle_rect);
 }

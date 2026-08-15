@@ -88,6 +88,7 @@ pub(crate) fn paint_sprite_sheet_section(
     hit_index.register(ids::INSP_SPRITE_CENTERED, ce_rect);
     paint_checkbox(
         &Checkbox::new(ids::INSP_SPRITE_CENTERED, "Centered")
+            .visual(store.checkbox_visual(ids::INSP_SPRITE_CENTERED))
             .state(ce_state)
             .value(ce_value),
         ce_rect,
@@ -128,6 +129,7 @@ pub(crate) fn paint_sprite_sheet_section(
     hit_index.register(ids::INSP_SPRITE_FLIP_X, fx_rect);
     paint_checkbox(
         &Checkbox::new(ids::INSP_SPRITE_FLIP_X, "Flip H")
+            .visual(store.checkbox_visual(ids::INSP_SPRITE_FLIP_X))
             .state(fx_state)
             .value(fx_value),
         fx_rect,
@@ -142,6 +144,7 @@ pub(crate) fn paint_sprite_sheet_section(
     hit_index.register(ids::INSP_SPRITE_FLIP_Y, fy_rect);
     paint_checkbox(
         &Checkbox::new(ids::INSP_SPRITE_FLIP_Y, "Flip V")
+            .visual(store.checkbox_visual(ids::INSP_SPRITE_FLIP_Y))
             .state(fy_state)
             .value(fy_value),
         fy_rect,

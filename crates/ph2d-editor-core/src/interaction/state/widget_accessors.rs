@@ -73,6 +73,42 @@ impl WidgetStore {
         }
     }
 
+    /// **O par visual de um CHECKBOX**: o estado + quanto do hover está presente.
+    ///
+    /// ⚠️ **Ele nasceu porque a caixa deste app nunca reagiu ao rato.** Medido: `Checkbox::new`
+    /// nasce em `CheckboxState::Normal` e **nenhum sítio de produção chamava `.state(..)`** — as
+    /// ~20 caixas do editor pintavam o estado de repouso para sempre, hovered ou não, enquanto o
+    /// store já sabia quem estava sob o ponteiro (o `hover_targets` sempre as incluiu). O `t` era a
+    /// metade que faltava a seguir; a que faltava primeiro era o próprio ESTADO.
+    ///
+    /// ⚠️ **O `value` NÃO sai daqui, de propósito.** Quem sabe se a caixa está marcada é o MODELO
+    /// que o painel desenha, não o store — perguntá-lo aqui poria o mesmo facto em dois sítios, e
+    /// o do store fica um quadro atrás no quadro em que o artista clica.
+    #[must_use]
+    pub fn checkbox_visual(&self, id: NodeId) -> (CheckboxState, f32) {
+        let state = self
+            .checkbox(id)
+            .map(|(s, _)| s)
+            .unwrap_or_else(|| match () {
+                () if self.active_id() == Some(id) => CheckboxState::Pressed,
+                () if self.hot_id() == Some(id) => CheckboxState::Hovered,
+                () => CheckboxState::Normal,
+            });
+        (state, self.hover_live(id))
+    }
+
+    /// **O par visual de um TOGGLE** — o irmão exacto do [`Self::checkbox_visual`], e pelo mesmo
+    /// motivo: o `on` é do modelo, o estado e o `t` são do store.
+    #[must_use]
+    pub fn toggle_visual(&self, id: NodeId) -> (ToggleState, f32) {
+        let state = self.toggle(id).map(|(s, _)| s).unwrap_or_else(|| match () {
+            () if self.active_id() == Some(id) => ToggleState::Pressed,
+            () if self.hot_id() == Some(id) => ToggleState::Hovered,
+            () => ToggleState::Normal,
+        });
+        (state, self.hover_live(id))
+    }
+
     /// Convenience: read toggle on/off + state.
     pub fn toggle(&self, id: NodeId) -> Option<(ToggleState, bool)> {
         match self.states.get(&id) {

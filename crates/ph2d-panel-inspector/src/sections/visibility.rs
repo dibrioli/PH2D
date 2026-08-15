@@ -206,21 +206,22 @@ pub(crate) fn paint_visibility_section(
     // masks sibling VisibleInside/Outside responders).
     let src_rect = Rect::new(x, yy, w, h);
     hit_index.register(ids::INSP_VIS_MASK_SOURCE, src_rect);
-    let src_cb = Checkbox::new(ids::INSP_VIS_MASK_SOURCE, "Mask Source (Mask2D)").value(
-        if info.mask_source {
+    let src_cb = Checkbox::new(ids::INSP_VIS_MASK_SOURCE, "Mask Source (Mask2D)")
+        .visual(store.checkbox_visual(ids::INSP_VIS_MASK_SOURCE))
+        .value(if info.mask_source {
             CheckboxValue::Checked
         } else {
             CheckboxValue::Unchecked
-        },
-    );
+        });
     paint_checkbox(&src_cb, src_rect, scene, text_system, theme);
     yy += h + row_gap;
 
     // On-Screen Enabler toggle (presence of the component).
     let on_rect = Rect::new(x, yy, w, h);
     hit_index.register(ids::INSP_VIS_ON_SCREEN, on_rect);
-    let on_cb =
-        Checkbox::new(ids::INSP_VIS_ON_SCREEN, "On-Screen Enabler").value(if info.on_screen {
+    let on_cb = Checkbox::new(ids::INSP_VIS_ON_SCREEN, "On-Screen Enabler")
+        .visual(store.checkbox_visual(ids::INSP_VIS_ON_SCREEN))
+        .value(if info.on_screen {
             CheckboxValue::Checked
         } else {
             CheckboxValue::Unchecked

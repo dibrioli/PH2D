@@ -173,14 +173,14 @@ pub(crate) fn paint_render_source_section(
     // Filter Clip. Renders via the extract `region_subrect` (W2.T2.4).
     if !matches!(info.source_kind, InspectorSpriteSource::HandPacked) {
         let cb_h = 18.0_f32; // LITERAL-PX-OK: Checkbox visual height
-        let (re_state, re_value) = store
+        let re_value = store
             .checkbox(ids::INSP_REGION_ENABLED)
-            .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
+            .map_or(CheckboxValue::Unchecked, |(_, v)| v);
         let re_rect = Rect::new(x, cur_y, w, cb_h);
         hit_index.register(ids::INSP_REGION_ENABLED, re_rect);
         paint_checkbox(
             &Checkbox::new(ids::INSP_REGION_ENABLED, "Region")
-                .state(re_state)
+                .visual(store.checkbox_visual(ids::INSP_REGION_ENABLED))
                 .value(re_value),
             re_rect,
             scene,
@@ -261,14 +261,14 @@ pub(crate) fn paint_render_source_section(
             );
             cur_y += field_h + row_gap;
 
-            let (fc_state, fc_value) = store
+            let fc_value = store
                 .checkbox(ids::INSP_REGION_FILTER_CLIP)
-                .unwrap_or((CheckboxState::Normal, CheckboxValue::Checked));
+                .map_or(CheckboxValue::Checked, |(_, v)| v);
             let fc_rect = Rect::new(x, cur_y, w, cb_h);
             hit_index.register(ids::INSP_REGION_FILTER_CLIP, fc_rect);
             paint_checkbox(
                 &Checkbox::new(ids::INSP_REGION_FILTER_CLIP, "Filter Clip")
-                    .state(fc_state)
+                    .visual(store.checkbox_visual(ids::INSP_REGION_FILTER_CLIP))
                     .value(fc_value),
                 fc_rect,
                 scene,

@@ -238,3 +238,22 @@ fn a_curve_point_drag_is_only_taken_by_the_editor_it_belongs_to() {
     // Drenado uma vez.
     assert!(store.take_curve_point_drag_if(|p| p == mine).is_none());
 }
+
+/// **O par visual cai no PONTEIRO quando o widget não está registado** — a mesma fallback do
+/// [`WidgetStore::button_visual`], e a razão é idêntica: um checkbox de modal que o `populate` não
+/// registou não tem `InteractiveState::Checkbox`, e sem a fallback ficaria `Normal` para sempre.
+///
+/// **Mutação que deve sangrar:** devolver `Normal` em vez de consultar `hot_id`/`active_id`.
+#[test]
+fn an_unregistered_checkbox_still_follows_the_pointer() {
+    use crate::widget::CheckboxState;
+    let mut store = WidgetStore::with_capacity(8);
+    let id = NodeId(4242);
+    assert_eq!(store.checkbox_visual(id).0, CheckboxState::Normal);
+    store.set_hot(Some(id));
+    assert_eq!(store.checkbox_visual(id).0, CheckboxState::Hovered);
+    store.set_active(Some(id));
+    assert_eq!(store.checkbox_visual(id).0, CheckboxState::Pressed);
+    // E o `t` neutro mantém o mundo pré-substrato byte a byte.
+    assert_eq!(store.checkbox_visual(id).1, crate::motion::SETTLED);
+}

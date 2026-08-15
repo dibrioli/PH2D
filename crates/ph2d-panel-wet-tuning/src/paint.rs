@@ -349,11 +349,13 @@ fn checkbox_row(
     on: bool,
 ) -> f32 {
     let rect = Rect::new(x, y, w, ROW_H_PX);
-    let cb = Checkbox::new(id, label).value(if on {
-        CheckboxValue::Checked
-    } else {
-        CheckboxValue::Unchecked
-    });
+    let cb = Checkbox::new(id, label)
+        .visual(ctx.host.store().checkbox_visual(id))
+        .value(if on {
+            CheckboxValue::Checked
+        } else {
+            CheckboxValue::Unchecked
+        });
     paint_checkbox(&cb, rect, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(id, rect);
     y + ROW_H_PX + Spacing::Xs.px()

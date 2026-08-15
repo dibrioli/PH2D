@@ -75,13 +75,17 @@ pub(crate) fn paint_composite_card(
     let mut iy = y + pad;
 
     // The enable checkbox (forwards a plain Click → the tool's `toggle_composite`).
-    let cb = Checkbox::new(core_ids::PAINTER_BRUSH_COMPOSITE_ENABLE, "Composite Brush").value(
-        if checked {
+    let cb = Checkbox::new(core_ids::PAINTER_BRUSH_COMPOSITE_ENABLE, "Composite Brush")
+        .visual(
+            ctx.host
+                .store()
+                .checkbox_visual(core_ids::PAINTER_BRUSH_COMPOSITE_ENABLE),
+        )
+        .value(if checked {
             CheckboxValue::Checked
         } else {
             CheckboxValue::Unchecked
-        },
-    );
+        });
     let cb_rect = Rect::new(ix, iy, iw, ROW_H_PX);
     paint_checkbox(&cb, cb_rect, ctx.scene, ctx.text_system, theme);
     ctx.host

@@ -87,7 +87,9 @@ pub(crate) fn paint_checkbox_row(
     } else {
         CheckboxValue::Unchecked
     };
-    let cb = Checkbox::new(id, label).value(value);
+    let cb = Checkbox::new(id, label)
+        .visual(ctx.host.store().checkbox_visual(id))
+        .value(value);
     let rect = Rect::new(x, y, content_w, ROW_H_PX);
     paint_checkbox(&cb, rect, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(id, rect);

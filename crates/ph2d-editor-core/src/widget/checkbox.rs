@@ -39,6 +39,8 @@ pub struct Checkbox {
     pub id: NodeId,
     pub label: String,
     pub state: CheckboxState,
+    /// Quanto do hover está PRESENTE (`0`..=`1`); [`crate::motion::SETTLED`] = assente no estado.
+    pub hover_t: f32,
     pub value: CheckboxValue,
     /// Aresta da caixa, em px. **`None` é o token** ([`CHECKBOX_BOX_PX`]) — a lei que todo
     /// painel usa e a razão de um formulário ler como formulário: cada checkbox do app tem
@@ -58,9 +60,28 @@ impl Checkbox {
             id,
             label: label.into(),
             state: CheckboxState::Normal,
+            hover_t: crate::motion::SETTLED,
             value: CheckboxValue::Unchecked,
             box_px: None,
         }
+    }
+
+    /// **O par visual do store numa chamada** — o irmão exacto do [`super::Button::visual`].
+    ///
+    /// ⚠️ **É esta a porta, e não o `.state()` ao lado de um `.hover_t()`:** com dois métodos,
+    /// esquecer o segundo é o estado natural, e o sítio nasce silenciosamente discreto. A fonte é
+    /// [`crate::interaction::WidgetStore::checkbox_visual`]; o `.value(..)` continua a vir do
+    /// MODELO, porque quem sabe se a caixa está marcada é o painel, não o store.
+    #[must_use]
+    pub fn visual(self, v: (CheckboxState, f32)) -> Self {
+        self.state(v.0).hover_t(v.1)
+    }
+
+    /// Quanto do hover está presente. O neutro [`crate::motion::SETTLED`] pinta os tokens DUROS.
+    #[must_use]
+    pub fn hover_t(mut self, t: f32) -> Self {
+        self.hover_t = t.clamp(0.0, 1.0);
+        self
     }
 
     pub fn state(mut self, state: CheckboxState) -> Self {
@@ -130,7 +151,29 @@ pub fn paint_checkbox(
         }
         _ => (ColorToken::Bg1, ColorToken::Border),
     };
-    fill_rounded_rect(scene, box_rect, radius, resolve(bg_token, theme));
+    // ⚠️ **O eixo do hover é o par NÃO-MARCADO** (`Bg1 → Bg2`, `Border → BorderEmph`): uma caixa
+    //    MARCADA é `Accent` em qualquer estado, então ali não há eixo nenhum a percorrer. O
+    //    `Focused` fica de fora com o `Disabled` — é estado duro, e o traço dele mede 2 px.
+    let soft = matches!(cb.state, CheckboxState::Normal | CheckboxState::Hovered)
+        && matches!(cb.value, CheckboxValue::Unchecked);
+    let bg = crate::motion::hover_axis(
+        soft,
+        cb.hover_t,
+        Some(ColorToken::Bg1.resolve(theme)),
+        Some(ColorToken::Bg2.resolve(theme)),
+    )
+    .map_or_else(|| resolve(bg_token, theme), crate::paint::token_to_vello);
+    let border = crate::motion::hover_axis(
+        soft,
+        cb.hover_t,
+        Some(ColorToken::Border.resolve(theme)),
+        Some(ColorToken::BorderEmph.resolve(theme)),
+    )
+    .map_or_else(
+        || resolve(border_token, theme),
+        crate::paint::token_to_vello,
+    );
+    fill_rounded_rect(scene, box_rect, radius, bg);
     stroke_rounded_rect(
         scene,
         box_rect,
@@ -140,7 +183,7 @@ pub fn paint_checkbox(
         } else {
             1.0
         },
-        resolve(border_token, theme),
+        border,
     );
 
     let glyph_color = if cb.state == CheckboxState::Disabled {
@@ -185,6 +228,33 @@ pub fn paint_checkbox(
 
 #[cfg(test)]
 mod tests {
+    /// **A caixa REAGE ao rato — e antes desta wave não reagia.**
+    ///
+    /// ⚠️ O oráculo é *entre as duas pontas E diferente das duas*: um eixo partido que devolvesse
+    /// sempre a ponta HOT passaria num `assert_ne!` contra o repouso apenas. A outra metade é o
+    /// NEUTRO — `SETTLED` tem de dar o token duro, senão toda caixa do app nasceria hovered.
+    ///
+    /// **Mutação que deve sangrar:** deixar `Checked` entrar no eixo — uma caixa marcada é
+    /// `Accent` em qualquer estado, e misturá-la seria inventar um meio-marcado.
+    #[test]
+    fn half_a_hover_moves_the_unchecked_box_between_the_two_ends() {
+        use super::*;
+        let theme = Theme::Forge;
+        let rest = ColorToken::Bg1.resolve(theme);
+        let hot = ColorToken::Bg2.resolve(theme);
+        let mid = crate::motion::hover_axis(true, 0.5, Some(rest), Some(hot))
+            .expect("o eixo macio mistura");
+        assert_ne!(mid, rest);
+        assert_ne!(mid, hot);
+        // O neutro sai como `None` ⇒ o chamador cai no token DURO.
+        assert!(
+            crate::motion::hover_axis(true, crate::motion::SETTLED, Some(rest), Some(hot))
+                .is_none()
+        );
+        // Estado duro (ou caixa MARCADA) não é uma quantidade: fora do eixo.
+        assert!(crate::motion::hover_axis(false, 0.5, Some(rest), Some(hot)).is_none());
+    }
+
     use super::*;
 
     fn fixture() -> Checkbox {

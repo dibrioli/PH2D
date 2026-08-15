@@ -27,6 +27,8 @@ pub struct Toggle {
     pub label: String,
     pub on: bool,
     pub state: ToggleState,
+    /// Quanto do hover está PRESENTE (`0`..=`1`); [`crate::motion::SETTLED`] = assente no estado.
+    pub hover_t: f32,
 }
 
 impl Toggle {
@@ -36,11 +38,26 @@ impl Toggle {
             label: label.into(),
             on: false,
             state: ToggleState::Normal,
+            hover_t: crate::motion::SETTLED,
         }
     }
 
     pub fn on(mut self, on: bool) -> Self {
         self.on = on;
+        self
+    }
+
+    /// **O par visual do store numa chamada** — o irmão exacto do [`super::Button::visual`]; o
+    /// `.on(..)` continua a vir do MODELO.
+    #[must_use]
+    pub fn visual(self, v: (ToggleState, f32)) -> Self {
+        self.state(v.0).hover_t(v.1)
+    }
+
+    /// Quanto do hover está presente. O neutro [`crate::motion::SETTLED`] pinta o traço DURO.
+    #[must_use]
+    pub fn hover_t(mut self, t: f32) -> Self {
+        self.hover_t = t.clamp(0.0, 1.0);
         self
     }
 
@@ -145,7 +162,20 @@ pub fn paint_toggle(toggle: &Toggle, rect: Rect, scene: &mut VectorScene, theme:
 
     // Subtle border emphasis on Hover/Focus so the off-state pill
     // doesn't look static when the cursor is over it.
-    if matches!(toggle.state, ToggleState::Hovered | ToggleState::Focused) {
+    // ⚠️ **Aqui o eixo é uma PRESENÇA, não um par de cores:** em repouso não há traço nenhum, e o
+    //    do hover tem de EMERGIR do nada — é o caso `(None, Some(hot))` da `blend_token_color`, o
+    //    mesmo que o botão `Default` já usava. O `Focused` fica de fora (estado duro, traço de
+    //    2 px), e o neutro `SETTLED` devolve o traço cheio de sempre.
+    let soft = matches!(toggle.state, ToggleState::Normal | ToggleState::Hovered);
+    let emph = crate::motion::hover_axis(
+        soft,
+        toggle.hover_t,
+        None,
+        Some(ColorToken::BorderEmph.resolve(theme)),
+    );
+    if let Some(c) = emph {
+        stroke_rounded_rect(scene, rect, radius, 1.0, crate::paint::token_to_vello(c));
+    } else if matches!(toggle.state, ToggleState::Hovered | ToggleState::Focused) {
         let stroke_w = if toggle.state == ToggleState::Focused {
             2.0
         } else {

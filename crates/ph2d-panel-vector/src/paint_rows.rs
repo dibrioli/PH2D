@@ -94,7 +94,9 @@ impl BodyCtx<'_> {
         } else {
             CheckboxValue::Unchecked
         };
-        let cb = Checkbox::new(id, label).value(value);
+        let cb = Checkbox::new(id, label)
+            .visual(self.store.checkbox_visual(id))
+            .value(value);
         let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
         paint_checkbox(&cb, rect, self.scene, self.text_system, self.theme);
         self.hit_index.register(id, rect);

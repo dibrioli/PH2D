@@ -567,6 +567,30 @@ pub fn blend_token_color(
     }
 }
 
+/// **O eixo do hover com a sua GUARDA** — a mistura `repouso → hover`, ou `None` quando este
+/// estado não é uma quantidade.
+///
+/// ⚠️ **Uma pergunta, um sítio.** Três widgets já a fazem (`Button::bg_color`, o tint do
+/// `IconButton`, a caixa do `Checkbox`) e a lei tem DUAS metades que é preciso não separar: só
+/// estados **macios** entram no eixo (`Pressed`/`Focused`/`Disabled` não são uma *fracção* de
+/// nada — meia-desactivação não significa coisa alguma), e o neutro [`SETTLED`] sai por aqui como
+/// `None`, para o chamador cair no **token duro** e pintar byte a byte o mundo pré-substrato.
+///
+/// ⚠️ **Sem degrau na fronteira:** um id genuinamente assente no hover publica `1.0` e sai pelo
+/// token duro `hot`, que é exactamente `lerp(rest, hot, 1)`.
+#[must_use]
+pub fn hover_axis(
+    soft: bool,
+    t: f32,
+    rest: Option<ph2d_tokens::Color>,
+    hot: Option<ph2d_tokens::Color>,
+) -> Option<ph2d_tokens::Color> {
+    if !soft || t >= SETTLED {
+        return None;
+    }
+    blend_token_color(rest, hot, t)
+}
+
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 fn mix(a: u8, b: u8, t: f32) -> u8 {
     (f32::from(a) + (f32::from(b) - f32::from(a)) * t)

@@ -153,11 +153,13 @@ fn blend_on_hover_axis(
     hot: ColorToken,
     theme: Theme,
 ) -> Option<ph2d_vector::Color> {
-    if t >= crate::motion::SETTLED || !matches!(state, ButtonState::Normal | ButtonState::Hovered) {
-        return None;
-    }
-    crate::motion::blend_token_color(Some(rest.resolve(theme)), Some(hot.resolve(theme)), t)
-        .map(crate::paint::token_to_vello)
+    crate::motion::hover_axis(
+        matches!(state, ButtonState::Normal | ButtonState::Hovered),
+        t,
+        Some(rest.resolve(theme)),
+        Some(hot.resolve(theme)),
+    )
+    .map(crate::paint::token_to_vello)
 }
 
 /// Paint a canonical icon button at `rect`. Caller still registers the

@@ -231,6 +231,12 @@ pub struct BrushSettings {
     pub wire_history: f32,
     /// **Wire — Connection Line**: o traço em si é pintado, ou sobra só o arame?
     pub wire_connection_line: bool,
+    /// **Ribbon — Weight**: a fração do atraso máximo da fita.
+    pub ribbon_weight: f32,
+    /// **Ribbon — Friction**: a fração da faixa de amortecimento (baixo chicoteia, alto assenta).
+    pub ribbon_friction: f32,
+    /// **Ribbon — Gravity**: a fração da gravidade máxima; `0` = a fita atrasa e não pende.
+    pub ribbon_gravity: f32,
     /// "Sync with other tools" on/off: on = every paint tool shares these settings; off (default) = each
     /// tool independent. Drives the checkbox at the top of the brush panel.
     pub link_shared: bool,

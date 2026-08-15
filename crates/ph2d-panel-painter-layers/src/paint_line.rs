@@ -37,16 +37,18 @@ fn kind_name(k: LineKind) -> &'static str {
         LineKind::Speed => "Speed",
         LineKind::Sketchy => "Sketchy",
         LineKind::Wire => "Wire",
+        LineKind::Ribbon => "Ribbon",
     }
 }
 
 /// Quantos tipos existem — **derivado da lista abaixo**, nunca um literal, para que um tipo novo
 /// apareça no dropdown sem ninguém lembrar de subir um número.
-pub(crate) const LINE_KINDS: [LineKind; 4] = [
+pub(crate) const LINE_KINDS: [LineKind; 5] = [
     LineKind::None,
     LineKind::Speed,
     LineKind::Sketchy,
     LineKind::Wire,
+    LineKind::Ribbon,
 ];
 
 /// Os tipos como opções de `Dropdown` (valor = o wire `u8`, rótulo = o nome).
@@ -187,6 +189,24 @@ const WIRE_SLIDERS: [ParamSlider; 3] = [
     THREAD_INK_ROWS[1],
 ];
 
+/// A FITA: `Weight` diz QUANTO TEMPO ela atrasa, `Friction` COMO ela assenta e `Gravity` quanto ela
+/// PENDE. Três perguntas independentes — a forma normalizada da mola é o que as torna ortogonais.
+///
+/// ⚠️ **`Size` e `Spacing` do Alchemy NÃO estão aqui**, e é a mesma lei do Spray: eles são o tamanho
+/// e o espaçamento do PINCEL, que já shipam com slider próprio. Gêmeos deles neste card seriam a
+/// segunda porta para a mesma pergunta.
+const RIBBON_SLIDERS: [ParamSlider; 3] = [
+    (core_ids::PAINTER_LINE_RIBBON_WEIGHT, "Weight", |b| {
+        (b.ribbon_weight, b.ribbon_weight)
+    }),
+    (core_ids::PAINTER_LINE_RIBBON_FRICTION, "Friction", |b| {
+        (b.ribbon_friction, b.ribbon_friction)
+    }),
+    (core_ids::PAINTER_LINE_RIBBON_GRAVITY, "Gravity", |b| {
+        (b.ribbon_gravity, b.ribbon_gravity)
+    }),
+];
+
 /// Os sliders deste tipo. `None`/`Speed` não têm **de propósito** — o Alchemy não oferece controle
 /// sobre o arremesso (Enio 2026-08-13), e uma row sob eles seria um controle que não faz nada.
 fn sliders_of(kind: LineKind) -> &'static [ParamSlider] {
@@ -194,6 +214,7 @@ fn sliders_of(kind: LineKind) -> &'static [ParamSlider] {
         LineKind::None | LineKind::Speed => &[],
         LineKind::Sketchy => &SKETCHY_SLIDERS,
         LineKind::Wire => &WIRE_SLIDERS,
+        LineKind::Ribbon => &RIBBON_SLIDERS,
     }
 }
 
@@ -217,7 +238,9 @@ fn checkbox_of(kind: LineKind) -> Option<ParamCheckbox> {
             "Connection Line",
             |b: BrushSettings| b.wire_connection_line,
         )),
-        LineKind::None | LineKind::Speed => None,
+        // A fita não tem checkbox: os três knobs dela são contínuos, e um interruptor a mais teria
+        // de responder a uma pergunta que nenhum dos três já responde.
+        LineKind::None | LineKind::Speed | LineKind::Ribbon => None,
     }
 }
 

@@ -175,6 +175,51 @@ fn the_neutral_type_ignores_the_clock_entirely() {
     );
 }
 
+/// **SÓ O `Speed` ARREMESSA** — escolher um tipo que costura fios não pode jogar a tinta além do
+/// dedo.
+///
+/// ⚠️ **Este gate nasceu VERMELHO sobre o produto que shipava**, e o número é a razão de ele existir:
+/// a guarda do arremesso era *"o tipo não é o neutro"*, correta enquanto o `Speed` era o único tipo,
+/// e a W3/W4 a herdaram em silêncio. Medido nesta mesma fixture, num traço em que a mão vai a
+/// `x = 400`: `Sketchy` e `Wire` punham a última gota **onde o `Speed` a punha**, ~180 px adiante.
+///
+/// ⚠️ **A fixture TEM de TICAR, e é por isso que nenhum dos vinte gates das W3/W4 viu isto:** o
+/// arremesso é `velocidade × antecipação`, a velocidade só existe depois de um tique, e as fixtures
+/// daquelas waves nunca chamam [`Stroke::tick`]. O produto tica todo quadro.
+///
+/// ⚠️ **O CONTROLE é o `Speed` na mesma corrida** — sem ele, o dia em que o arremesso morrer por
+/// inteiro deixa este gate **verde**, afirmando que três tipos que não arremessam não arremessam.
+#[test]
+fn only_the_speed_type_throws_the_ink() {
+    let dt = 1.0 / 60.0;
+    let (plain, tip) = run(spec(0.1, LineKind::None), 8, 4, 400.0, dt);
+    let (thrown, _) = run(spec(0.1, LineKind::Speed), 8, 4, 400.0, dt);
+    assert!(
+        thrown[0] - plain[0] > 100.0,
+        "controle: a fixture não contém arremesso nenhum ({:.1} px)",
+        thrown[0] - plain[0]
+    );
+    for kind in [LineKind::Sketchy, LineKind::Wire, LineKind::Ribbon] {
+        let (ink, _) = run(spec(0.1, kind), 8, 4, 400.0, dt);
+        let delta = ink[0] - plain[0];
+        // O SUJEITO deste gate é o arremesso, e um arremesso põe a tinta ADIANTE.
+        assert!(
+            delta < 1.0,
+            "{kind:?} arremessou a tinta: {delta:.1} px ADIANTE do neutro (o dedo parou em {tip:.1})"
+        );
+        // ⚠️ **O outro lado só vale para quem não tem modelo de atraso, e a 1ª versão media
+        // `.abs()`** — o que conta ATRASO como se fosse arremesso. A fita mede **−314 px** nesta
+        // fixture, e isso é literalmente a feature dela (com gate próprio em `ribbon_tests`);
+        // colapsar os dois sinais num módulo faz este gate reprovar o produto correto.
+        if kind != LineKind::Ribbon {
+            assert!(
+                delta > -1.0,
+                "{kind:?} não tem modelo de atraso e ficou {delta:.1} px atrás do neutro"
+            );
+        }
+    }
+}
+
 /// **A VELOCIDADE É MEDIDA EM TODO PINCEL, NÃO SÓ NO AIRBRUSH** — o tique mede o gesto ANTES de
 /// perguntar qual é o método de traço.
 ///

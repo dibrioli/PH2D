@@ -91,6 +91,10 @@ fn register_brush_inputs(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_LINE_SKETCHY_OPACITY,
         // Card Line / Wire: a janela (plano 38 W4).
         ph2d_editor_core::ids::PAINTER_LINE_WIRE_HISTORY,
+        // Card Line / Ribbon: os tres knobs da mola (plano 38 W6).
+        ph2d_editor_core::ids::PAINTER_LINE_RIBBON_WEIGHT,
+        ph2d_editor_core::ids::PAINTER_LINE_RIBBON_FRICTION,
+        ph2d_editor_core::ids::PAINTER_LINE_RIBBON_GRAVITY,
         // Per-dab Jitter Scale / Rotate / Spacing (next to the position Jitter).
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_SCALE,
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_ROTATE,

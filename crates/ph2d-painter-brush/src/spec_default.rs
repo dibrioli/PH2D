@@ -60,6 +60,20 @@ impl Default for BrushSpec {
             // LOOK, e o teto (o que o produto SUSTENTA, medido em 24) é outra pergunta.
             wire_history: 6.0,
             wire_connection_line: true,
+            // ⚠️ Estes três já nascem VIVOS, ao contrário do `spray_count`, e a razão é a mesma que
+            // fez o Spray precisar de armar um default: **um tipo escolhido tem de FAZER alguma
+            // coisa**. Aqui os campos são exclusivos do Ribbon (nenhum outro modo os lê), então
+            // escrever o ponto de operação no default não impõe política a ninguém — o que seria
+            // errado é o artista escolher `Ribbon` e ver o traço de sempre.
+            //
+            // ⚠️ **E são decisão de LOOK; o SMOKE é quem os julga.** `0,45` são ~0,11 s de atraso
+            // (~260 px atrás num gesto ligeiro de 2 340 px/s, a régua medida do `SPEED_LOOKAHEAD_S`)
+            // e `0,30` põe o `ζ` em ~0,70 — sub-amortecido, que é o chicote na saída da curva.
+            ribbon_weight: 0.45,
+            ribbon_friction: 0.30,
+            // A gravidade nasce em ZERO: uma fita que atrasa já é uma fita, e pender é a segunda
+            // descoberta. Um slider cujo neutro é 0 não é controle morto — é o `jitter`.
+            ribbon_gravity: 0.0,
             dash_ratio: 1.0,
             dash_samples: 20,
             jitter_unit: JitterUnit::Brush,

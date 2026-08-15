@@ -20,6 +20,8 @@ mod solid_deposit_tests;
 mod spray_defaults_tests; // W5: a primeira nuvem parece uma nuvem
 #[path = "spray_probe.rs"]
 mod spray_probe; // W5 do plano 38: o custo por evento de `n` marcas — o teto do Count
+#[path = "ribbon_probe.rs"]
+mod ribbon_probe; // W6 do plano 38: o orcamento da FITA — move, tique e o pen-up
 #[path = "thread_deposit_tests.rs"]
 mod thread_deposit_tests;
 #[path = "thread_probe.rs"]

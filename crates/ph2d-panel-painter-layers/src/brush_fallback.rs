@@ -132,6 +132,10 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     sketchy_magnetify: true,
     wire_history: 6.0, // LITERAL-PX-OK: espelho do default do BrushSpec, não é medida de UI
     wire_connection_line: true,
+    // LITERAL-PX-OK: espelho dos defaults do BrushSpec, não é medida de UI
+    ribbon_weight: 0.45,
+    ribbon_friction: 0.30,
+    ribbon_gravity: 0.0,
     link_shared: false, // "Sync with other tools" off = independent tools (the default)
     line_show_dimensions: true, // Line CAD dimensions shown by default
     jitter: 0.0,

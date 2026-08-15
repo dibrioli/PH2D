@@ -63,6 +63,12 @@ mod line_probe; // W0 do plano 38: a fórmula de velocidade e o orçamento de fi
 #[path = "line_speed_probe.rs"]
 mod line_speed_probe; // sonda do arremesso (plano 38 W2)
 #[cfg(test)]
+mod ribbon_probe; // sonda da FITA (plano 38 W6)
+#[cfg(test)]
+mod ribbon_tests; // os gates da FITA (plano 38 W6)
+#[cfg(test)]
+mod walk_bounds_tests; // o batente de MEMÓRIA do percurso (achado do OOM de 2026-08-14)
+#[cfg(test)]
 #[path = "line_speed_tests.rs"]
 mod line_speed_tests; // os gates do Speed Shapes (plano 38 W2)
 pub mod mask_ops;

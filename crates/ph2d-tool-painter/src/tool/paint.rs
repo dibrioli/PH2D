@@ -42,7 +42,7 @@ mod stroke_router; // o que um Down SIGNIFICA com varias figuras: editar / reati
 mod taper_media_tests;
 /// **A forma SÓLIDA** — o caminho acumulado do gesto vira região preenchida (plano 38 §1.1).
 mod thread_deposit;
-mod thread_settings;
+mod line_settings;
 pub use self::stroke_multi::StrokeOpBadge;
 pub use self::wetpaint_settings::{WetKnobs, WetTool};
 mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output

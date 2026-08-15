@@ -241,6 +241,15 @@ pub const PAINTER_LINE_SKETCHY_MAGNETIFY: NodeId = hash_node_id("painter_line.sk
 pub const PAINTER_LINE_WIRE_HISTORY: NodeId = hash_node_id("painter_line.wire_history");
 /// **Connection Line** — o traço em si é pintado, ou sobra só o arame? `Click` → alterna.
 pub const PAINTER_LINE_WIRE_CONNECTION: NodeId = hash_node_id("painter_line.wire_connection");
+/// **Weight** — quanto a FITA atrasa, em fração do `RIBBON_LAG_MAX_S`. É um TEMPO, então a mesma
+/// escolha atrasa mais num gesto rápido — que é o que *pesar* significa. `SetValue` →
+/// `set_ribbon_weight_norm`.
+pub const PAINTER_LINE_RIBBON_WEIGHT: NodeId = hash_node_id("painter_line.ribbon_weight");
+/// **Friction** — o amortecimento `ζ` da fita: baixo chicoteia, alto chega devagar sem ultrapassar.
+/// `SetValue` → `set_ribbon_friction_norm`.
+pub const PAINTER_LINE_RIBBON_FRICTION: NodeId = hash_node_id("painter_line.ribbon_friction");
+/// **Gravity** — o peso que faz a fita PENDER. `SetValue` → `set_ribbon_gravity_norm`.
+pub const PAINTER_LINE_RIBBON_GRAVITY: NodeId = hash_node_id("painter_line.ribbon_gravity");
 /// Id de uma OPÇÃO do popover do [`PAINTER_LINE_TYPE`]. Espelho do
 /// [`painter_brush_media_option_id`].
 #[must_use]

@@ -132,6 +132,18 @@ pub struct BrushSpec {
     /// o Krita mostra. ⚠️ A supressão mora na MESMA porta do `Style: Solid` — ver
     /// `PainterTool::stamp_dabs`.
     pub wire_connection_line: bool,
+    /// **Ribbon — o `Weight`**, a fração do [`crate::line_kind::RIBBON_LAG_MAX_S`] que o traço
+    /// atrasa. `0` desliga (sem atraso não há fita).
+    ///
+    /// ⚠️ **Um TEMPO, não uma distância** — é isso que faz a fita *pesar*: no mesmo peso ela fica
+    /// 20 px atrás num gesto lento e 400 num rápido. Ver o doc da const.
+    pub ribbon_weight: f32,
+    /// **Ribbon — o `Friction`**, a fração da faixa `[RIBBON_DAMPING_MIN, RIBBON_DAMPING_MAX]` do
+    /// amortecimento `ζ`. Baixo chicoteia (ultrapassa e volta), alto chega devagar sem ultrapassar.
+    pub ribbon_friction: f32,
+    /// **Ribbon — a `Gravity`**, a fração do [`crate::line_kind::RIBBON_GRAVITY_MAX_PX_S2`]. `0` é o
+    /// neutro: a fita atrasa e não pende.
+    pub ribbon_gravity: f32,
     /// Dash "on" fraction of each dash period, `0..1` (Blender `dash_ratio`, default `1.0` = solid,
     /// `DNA_brush_types.h:275`).
     pub dash_ratio: f32,
@@ -498,6 +510,46 @@ impl BrushSpec {
     #[must_use]
     pub fn wire_active(&self) -> bool {
         self.line_kind == crate::line_kind::LineKind::Wire && self.wire_history > 0.0
+    }
+
+    /// **A FITA está armada?** — o tipo escolhido E um peso que atrasa alguma coisa. Irmã exata da
+    /// [`Self::sketchy_active`] e da [`Self::wire_active`], e porta ÚNICA pela mesma razão: o motor
+    /// pergunta para decidir se integra a mola, e o painel para decidir se oferece as rows.
+    #[must_use]
+    pub fn ribbon_active(&self) -> bool {
+        self.line_kind == crate::line_kind::LineKind::Ribbon && self.ribbon_weight > 0.0
+    }
+
+    /// **O ATRASO da fita em SEGUNDOS** — a constante de tempo `τ` da mola.
+    ///
+    /// ⚠️ **Com PISO** ([`crate::line_kind::RIBBON_LAG_MIN_S`]), e ele não é higiene: `ω = 1/τ`, então
+    /// um peso de `1e-9` pede uma mola infinitamente rígida que NENHUM número de sub-passos integra.
+    /// O piso é onde a fita deixa de ser distinguível do traço comum — medido —, e é ele que torna o
+    /// custo do integrador um número FECHADO em vez de uma função do que o artista digitar.
+    #[must_use]
+    pub fn ribbon_lag_s(&self) -> f32 {
+        let tau = self.ribbon_weight.clamp(0.0, 1.0) * crate::line_kind::RIBBON_LAG_MAX_S;
+        if tau <= 0.0 {
+            return 0.0; // o NEUTRO: sem atraso não há fita, e o `ribbon_active` já o diz
+        }
+        tau.max(crate::line_kind::RIBBON_LAG_MIN_S)
+    }
+
+    /// **O AMORTECIMENTO `ζ` da fita** — projeção do `Friction` sobre a faixa medida.
+    ///
+    /// ⚠️ **O piso não é zero, e o motivo é RECURSO, não gosto:** `ζ = 0` é o oscilador perpétuo, e
+    /// um traço que nunca assenta pinta para sempre com a mão parada (ver [`crate::line_kind::RIBBON_DAMPING_MIN`]).
+    #[must_use]
+    pub fn ribbon_damping(&self) -> f32 {
+        use crate::line_kind::{RIBBON_DAMPING_MAX, RIBBON_DAMPING_MIN};
+        RIBBON_DAMPING_MIN
+            + self.ribbon_friction.clamp(0.0, 1.0) * (RIBBON_DAMPING_MAX - RIBBON_DAMPING_MIN)
+    }
+
+    /// **A GRAVIDADE da fita em px/s²** — para BAIXO no canvas (`+y`).
+    #[must_use]
+    pub fn ribbon_gravity_px_s2(&self) -> f32 {
+        self.ribbon_gravity.clamp(0.0, 1.0) * crate::line_kind::RIBBON_GRAVITY_MAX_PX_S2
     }
 
     /// **Este pincel costura fios?** — a porta ÚNICA que decide se a memória do traço é mantida.

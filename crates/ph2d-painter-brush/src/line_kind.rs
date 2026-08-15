@@ -35,6 +35,20 @@ pub enum LineKind {
     /// o que muda é a pergunta que escolhe os pares. Se esta variante tivesse precisado de geometria
     /// nova, o Sketchy teria sido construído errado.
     Wire,
+    /// **Ribbon** — o *Ribbon Shapes* do Alchemy (*"Leaves a trail of ribbon like shapes"*) e o
+    /// *Dyna* do Krita (*massa e arrasto*): a tinta é uma **massa presa ao cursor por uma mola**, com
+    /// atrito e peso. O traço **PESA** — atrasa na curva, chicoteia na saída e pende sob a gravidade.
+    ///
+    /// ⚠️ **É o oposto exato do [`Self::Speed`]**, e por isso os dois são o mesmo dropdown: um
+    /// arremessa a tinta ADIANTE do dedo, o outro a deixa ATRÁS. Pedir os dois ao mesmo tempo é
+    /// pedir duas leis contrárias sobre o mesmo ponto.
+    ///
+    /// ⚠️ **Ele move o CAMINHO, não a tinta — e essa é a diferença que decide tudo.** O `Speed`
+    /// desloca onde o dab cai e deixa o percurso intacto (senão a velocidade se realimentaria); a
+    /// fita é um **filtro passa-baixa do percurso**, exatamente como o estabilizador, e realimentar
+    /// um passa-baixa é estável por construção. É por isso que o espaçamento, os fios, o preenchedor
+    /// de vão, a Symmetry e o Spray saem todos de graça: para eles a fita **é** o traço.
+    Ribbon,
 }
 
 impl LineKind {
@@ -50,6 +64,7 @@ impl LineKind {
             LineKind::Speed => 1,
             LineKind::Sketchy => 2,
             LineKind::Wire => 3,
+            LineKind::Ribbon => 4,
         }
     }
 
@@ -59,6 +74,7 @@ impl LineKind {
             1 => LineKind::Speed,
             2 => LineKind::Sketchy,
             3 => LineKind::Wire,
+            4 => LineKind::Ribbon,
             _ => LineKind::None,
         }
     }
@@ -73,6 +89,30 @@ impl LineKind {
     #[must_use]
     pub fn sews_threads(self) -> bool {
         matches!(self, LineKind::Sketchy | LineKind::Wire)
+    }
+
+    /// **Este tipo ARREMESSA a tinta?** — a porta única que o [`crate::stroke::Stroke::throw`]
+    /// pergunta antes de deslocar o ponto onde o dab cai.
+    ///
+    /// ⚠️ **Ela nasceu de um defeito MEDIDO, e o mecanismo vale mais que a linha:** a guarda daquele
+    /// sítio era `line_kind == None`, o que era **correto enquanto o Speed era o único tipo** — e a
+    /// W3 e a W4 herdaram o arremesso em silêncio. Medido no mesmo traço reto, com o tique do produto
+    /// entre os eventos (a mão foi até `x = 900`): `None` deixa a tinta em **899,2** e `Speed`,
+    /// `Sketchy` **e** `Wire` a jogam em **1 139,2** — escolher o hachurado dava *Speed Shapes* de
+    /// brinde, 240 px além do dedo, e dobrava a contagem de dabs (334 → 688).
+    ///
+    /// ⚠️ **É a `enumeração apodrece` no eixo oposto ao que o [`Self::sews_threads`] cobre:** aquele
+    /// nasceu para o dia em que entrasse o TERCEIRO costurador; este é o dia em que entrou o segundo
+    /// tipo que NÃO arremessa. Uma guarda escrita como *"todo mundo menos o neutro"* é uma lista de
+    /// um item só, e ela apodreceu na primeira wave seguinte.
+    ///
+    /// ⚠️ **O que NÃO é gateado aqui é a MEDIÇÃO da velocidade** ([`crate::stroke::Stroke::speed_px_s`]):
+    /// ela é do GESTO, não de um tipo — o Sketchy a quer para o *distance-opacity* e um Splatter
+    /// futuro para a direção do respingo. Um lugar computa, todos leem; o que o tipo decide é se a
+    /// tinta é **deslocada** por ela.
+    #[must_use]
+    pub fn throws(self) -> bool {
+        matches!(self, LineKind::Speed)
     }
 }
 
@@ -214,3 +254,234 @@ pub const WIRE_HISTORY_MAX: f32 = 24.0;
 /// pior evento a `history 24` iria de 3,9 para ~7,8 ms, encostando no kill). Quem mexer num tem de
 /// re-medir o outro; a tabela do teto foi levantada com a contagem em 4.
 pub const WIRE_CURVES_PER_DAB: usize = 4;
+
+/// **O ATRASO da fita no peso máximo, em SEGUNDOS.**
+///
+/// ⚠️ **É um TEMPO, e a unidade é a lei** — a mesma escolha do [`SPEED_LOOKAHEAD_S`], pelo mesmo
+/// motivo e no sentido oposto: um atraso em tempo AUTO-ESCALA, enquanto um atraso em pixels teria de
+/// ser re-escolhido por tamanho de tela, por zoom e por temperamento de mão.
+///
+/// **E a lei está MEDIDA** (`measure_the_ribbon_lag_against_speed`, peso 0,45 ⇒ `τ = 0,1125 s`):
+///
+/// | gesto | atraso | `atraso / (v·τ)` |
+/// |---:|---:|---:|
+/// | 300 px/s | 43,0 px | 1,274 |
+/// | 600 | 86,0 | 1,274 |
+/// | 1 200 | 172,0 | 1,274 |
+/// | 2 400 | 341,6 | 1,265 |
+/// | 4 800 | 683,2 | 1,265 |
+///
+/// **A razão é CONSTANTE sobre dezasseis vezes a velocidade** ⇒ o atraso é `v · τ` (a constante 1,27
+/// é o regime permanente de um segundo-ordem a perseguir uma rampa, `2ζ`). *É esta tabela que
+/// separa a fita do estabilizador*, cujo atraso não responde à velocidade.
+///
+/// ⚠️ **E o teto NÃO é de recurso — é de LOOK, e a medição é que o diz.** O orçamento por evento é
+/// PLANO no peso (`measure_the_ribbon_budget_per_event`, tabela no [`RIBBON_TAIL_MAX_S`]): nenhuma
+/// combinação encosta no kill de 8 ms, e a fita chega a custar MENOS que o traço comum. O que um
+/// quarto de segundo escolhe é *quão longe a tinta pode ficar do dedo* — a 2 400 px/s são ~760 px —,
+/// e movê-lo é UMA linha. O que não se pode é escrevê-lo sem dizer de que ele é.
+pub const RIBBON_LAG_MAX_S: f32 = 0.25;
+
+/// **O PISO do amortecimento (`ζ`) — MEDIDO, e o recurso é TINTA, não tempo de quadro.**
+///
+/// ⚠️ **`ζ = 0` é o oscilador PERPÉTUO**, e num pincel isso não é teoria: enquanto o botão está
+/// preso o tique percorre o caminho todo quadro, então uma fita que nunca para de balançar **pinta
+/// para sempre com a mão parada**. Medido por `measure_the_ribbon_settling_ink` — peso máximo, a mão
+/// corre 400 px e PARA, e a sonda conta os dabs dos 30 s seguintes e o instante do último:
+///
+/// | `ζ` | dabs com a mão parada | silêncio |
+/// |---:|---:|---:|
+/// | **0,00** | **11 840** | **nunca** (a janela de 30 s acabou) |
+/// | 0,04 | 2 402 | 29,97 s |
+/// | 0,10 | 948 | 19,72 s |
+/// | **0,15** | **622** | **10,98 s** |
+/// | 0,24 | 378 | 6,57 |
+/// | 0,43 | 214 | 5,78 |
+/// | 0,71 | 143 | 1,70 |
+/// | 2,00 | 145 | 5,10 |
+///
+/// **`0,15` é o menor amortecimento cujo silêncio chega em tempo de GESTO** — dezanove vezes menos
+/// tinta que o oscilador perpétuo, e ainda bem sub-amortecido, que é onde vive o chicote. ⚠️ Subir
+/// mais o piso **removeria a feature**: um `ζ` alto não ultrapassa, e ultrapassar é o que uma fita
+/// faz.
+///
+/// ⚠️ A cauda de ~145 dabs que sobra no fundo da tabela **não é oscilação, é CHEGADA** — a fita
+/// estava 400 px atrás e tem de percorrer isso. Ela é o piso irredutível, não desperdício.
+pub const RIBBON_DAMPING_MIN: f32 = 0.15;
+
+/// **O TETO do amortecimento (`ζ`).**
+///
+/// `ζ < 1` é sub-amortecido (a fita ultrapassa e volta — o chicote), `ζ = 1` é crítico (chega e
+/// para) e `ζ > 1` é super-amortecido (chega devagar, sem nunca ultrapassar). Dois é onde a fita
+/// deixa de ser uma fita e passa a ser um estabilizador lento — e um estabilizador já existe, com
+/// slider próprio.
+///
+/// O `Friction` do card percorre a faixa inteira: `ζ = MIN + friction × (MAX − MIN)`.
+pub const RIBBON_DAMPING_MAX: f32 = 2.0;
+
+/// **A GRAVIDADE no máximo, em px/s².**
+///
+/// ⚠️ **O que ela produz é um PENDURAR, e ele vale `g · τ²`** — a posição de equilíbrio da mola sob
+/// peso. A fórmula não é derivada de memória: `measure_the_ribbon_hang` põe a mão parada 3 s e mede
+/// a queda contra a previsão, e as duas coincidem **ao dígito** onde o espaçamento de dab as deixa
+/// coincidir:
+///
+/// | peso | gravity | queda medida | `g·τ²` |
+/// |---:|---:|---:|---:|
+/// | 0,45 | 0,50 | 12,0 px | 12,7 |
+/// | 0,45 | 1,00 | 24,0 | 25,3 |
+/// | 1,00 | 0,25 | **31,2** | **31,2** |
+/// | 1,00 | 0,50 | **62,4** | **62,5** |
+/// | 1,00 | 1,00 | **124,8** | **125,0** |
+///
+/// (A folga nas linhas de peso baixo é a QUANTIZAÇÃO do espaçamento — 2,4 px por dab —, não erro do
+/// modelo: a fita pende onde pende, e a sonda só a vê onde um dab caiu.)
+///
+/// ⚠️ **O teto é de LOOK**, como o do atraso: 125 px de queda no canto máximo é uma fita que pende
+/// bem, e o orçamento por evento não se move com ele.
+///
+/// ⚠️ **E isso ACOPLA a gravidade ao peso, o que é FÍSICA e está nomeado em vez de escondido:** uma
+/// fita mais pesada pende mais sob a mesma gravidade. Não é a falha de ergonomia que o Conserve
+/// pagou (*"o valor CERTO do knob é função de outro knob"*) — aqui não há valor certo, há duas
+/// propriedades do mundo, e o artista arrasta até pender como ele quer.
+pub const RIBBON_GRAVITY_MAX_PX_S2: f32 = 2000.0;
+
+/// **A fração do atraso que um sub-passo do integrador pode valer.**
+///
+/// ⚠️ **A fita é integrada por SUB-PASSOS e não uma vez por quadro, e o motivo é ESTABILIDADE:** o
+/// Euler semi-implícito de uma mola só é estável enquanto `ω · h` é pequeno, e `ω = 1/τ` cresce sem
+/// limite quando o peso encosta no zero. Com um quarto do atraso por sub-passo, **`ω · h = 0,25`
+/// sempre** — em qualquer peso e em qualquer taxa de quadros.
+///
+/// ⚠️ **E o "sempre" é literal: nada tem permissão de o violar.** Ver [`RIBBON_MAX_STEP_S`], que é
+/// a razão de o teto de sub-passos ter deixado de ser um `clamp`.
+pub const RIBBON_SUBSTEP_FRACTION: f32 = 0.25;
+
+/// **O PISO do atraso, em segundos — MEDIDO.**
+///
+/// ⚠️ **Ele existe porque `ω = 1/τ` é ILIMITADO**: um peso de `1e-9` pede uma mola infinitamente
+/// rígida, e nenhum número de sub-passos a integra. **Ele é um piso de ESTABILIDADE**, e o que o
+/// fixa neste valor é o orçamento de sub-passos do outro lado ([`RIBBON_MAX_SUBSTEPS`]) — os dois
+/// números são um par, e escolher um sem olhar o outro foi como o teto virou um clamp.
+///
+/// ⚠️ **E a 1ª versão deste doc dizia que ele é o piso de VISIBILIDADE — a medição o desmentiu.**
+/// `measure_the_ribbon_floor_of_visibility` mede o deslocamento da tinta contra o traço neutro e a
+/// travessia de *um dab* acontece **entre `τ = 0,005` e `τ = 0,010`**, não aqui: em `τ = 0,005` a
+/// fita já desloca **0,00 px**. A afirmação *"abaixo dele a tinta desloca-se menos que um dab"*
+/// continua **verdadeira** neste valor — o que era falso é o *"é ONDE isso passa a valer"*, e a
+/// consequência de produto fica nomeada: **o fundo do slider é inerte** por uma faixa, o que é o
+/// comportamento que se quer de um controle cujo mínimo significa *desligado*.
+///
+/// ⚠️ **O piso NÃO foi subido para os 0,005 medidos, de propósito:** aquele número é de UMA
+/// velocidade de gesto (2 400 px/s) e de UM espaçamento (2,4 px) — um gesto mais rápido ou um
+/// pincel maior o movem. Mover um limite de estabilidade por uma medição de aparência de um único
+/// ponto de operação seria trocar a razão do número pela mais frágil das duas.
+///
+/// **A tabela medida está no doc de [`RIBBON_MAX_SUBSTEPS`]**, com o `n` que cada linha custa.
+pub const RIBBON_LAG_MIN_S: f32 = 0.002;
+
+/// **O TETO DE TRABALHO de um passo, em segundos** — quanto de relógio um tique pode consumir.
+///
+/// ⚠️ **Ele substitui um `clamp(1, 32)` no número de SUB-PASSOS, e a diferença entre os dois é a
+/// wave inteira.** O clamp limitava a **RESOLUÇÃO**: com `n` capado, `h = dt/n` parava de encolher,
+/// `ω · h` saía dos 0,25 que a [`RIBBON_SUBSTEP_FRACTION`] promete, e a mola **DIVERGIA**. Medido
+/// analiticamente no extremo que o gate escolhe (peso 0,02 ⇒ `τ = 5 ms`, `dt = 200 ms`): o `n`
+/// necessário é **160** e o clamp aplicava **32**, levando `ω · h` de 0,25 a **1,25** e o maior
+/// autovalor da matriz de amplificação a **1,7586 > 1** — `1,7586^320 ≈ 1e78` em dez quadros.
+///
+/// ⚠️ **E o custo disso não foi um desenho torto: foi a MÁQUINA.** Com a ponta em `1e78` o
+/// percurso emite um dab a cada `spacing` até lá, e o processo morreu com **90,2 GB de RSS**,
+/// derrubando a janela do editor junto (achado externo, 2026-08-14).
+///
+/// ⚠️ **O doc do teto antigo chamava-o de *"o irmão do `MAX_AIRBRUSH_DABS_PER_TICK`"*, e era o
+/// OPOSTO dele:** aquele **descarta o backlog** — limita o TRABALHO e deixa o passo intacto. Esta
+/// const faz o mesmo, e é a lei do [`ph2d_core::time::FixedStep`], que cappa quantos tiques rodar e
+/// **joga fora o tempo excedente** (*"roda em câmara lenta"*, o trade que o comentário dele nomeia).
+/// **Uma limita o TRABALHO, a outra limita a RESOLUÇÃO — e só a primeira é segura.**
+///
+/// Quatro quadros de 60 fps: uma engasgada perde tempo de física (a fita atrasa um pouco mais do que
+/// atrasaria), nunca precisão.
+pub const RIBBON_MAX_STEP_S: f32 = 4.0 / 60.0;
+
+/// **Quantos sub-passos um tique pode precisar — DERIVADO, não escolhido.**
+///
+/// `ceil(RIBBON_MAX_STEP_S / (RIBBON_SUBSTEP_FRACTION · RIBBON_LAG_MIN_S))`, e o gate
+/// `the_substep_ceiling_can_never_bind` afirma exactamente essa aritmética. ⚠️ **Ele é um
+/// BATENTE, não um regulador:** se ele algum dia morder, a `ω · h = 0,25` deixou de valer e a mola
+/// diverge — então o gate existe para que mover qualquer uma das outras duas consts fique VERMELHO
+/// em vez de sair a pintar `1e78`.
+///
+/// **O que a fita desenha em cada `τ`** — `measure_the_ribbon_floor_of_visibility`, gesto reto de
+/// 2 400 px/s por 2 s, pincel r=12 com espaçamento de 2,40 px, atrito 0,30 (`ζ = 0,705`). O
+/// deslocamento é medido **contra o traço neutro**, que termina 0,80 px atrás do dedo:
+///
+/// | peso | τ | deslocamento | em dabs | `2ζvτ` (lei contínua) | `n` no `dt` CAPADO |
+/// |---:|---:|---:|---:|---:|---:|
+/// | 1,000 | 0,2500 s | 804,00 px | 335 | 846,00 | 2 |
+/// | 0,400 | 0,1000 | 300,00 | 125 | 338,40 | 3 |
+/// | 0,160 | 0,0400 | 105,60 | 44 | 135,36 | 7 |
+/// | 0,080 | 0,0200 | 43,20 | 18 | 67,68 | 14 |
+/// | 0,040 | 0,0100 | 12,00 | 5 | 33,84 | 27 |
+/// | 0,020 | 0,0050 | **0,00** | **0** | 16,92 | 54 |
+/// | 0,008 | **0,0020** | **0,00** | **0** | 6,77 | **134** |
+///
+/// ⚠️ **A lei contínua `L = 2ζvτ` é um TETO, não uma previsão** — a razão medida/lei cai
+/// monotonicamente (0,95 · 0,89 · 0,78 · 0,64 · 0,35 · 0) porque o alvo que a fita persegue é uma
+/// **ESCADA**: o dedo salta 40 px e fica parado o resto do quadro. Quando `τ` encolhe a ponto de a
+/// mola convergir dentro de um quadro, o atraso **colapsa a zero** — e é isso, não a aritmética da
+/// lei, que decide onde a feature deixa de desenhar.
+///
+/// ⚠️ **A escada é do RELÓGIO, nunca do mouse:** a sonda mede a 60 Hz e a 960 Hz de ponteiro e dá
+/// **os mesmos números**, porque `step_ribbon` lê o `last_raw_pos` **uma vez por tique** e as
+/// amostras intermediárias não a alcançam. É o gate `the_ribbon_is_a_fact_of_the_clock…` visto por
+/// outro ângulo — e, por ser identidade por construção, aquela coluna **não pode falhar**: ela é
+/// controle, não experimento.
+///
+/// **`0,002 s` fica DENTRO da zona onde a fita já não move a tinta um dab inteiro** — a travessia
+/// medida é entre `τ = 0,005` e `τ = 0,010`, então o piso não é a fronteira: é um valor confortável
+/// abaixo dela, escolhido pelo orçamento de sub-passos. A zona morta que isso deixa na pista vai do
+/// zero até **~2 %** do slider (peso 0,02), e é o comportamento certo para um controle cujo mínimo
+/// deve significar *desligado*.
+///
+/// ⚠️ **A coluna de `n` é a do `dt` CAPADO, e eu escrevi a const contra a errada.** A 1ª versão
+/// deste teto dizia **34** — o `n` de um quadro NOMINAL — e o que ele tem de cobrir é o `dt` que o
+/// [`RIBBON_MAX_STEP_S`] deixa passar, que são **quatro** quadros. O batente MORDIA no piso do
+/// slider (134 precisos contra 34 aplicados), `ω · h` ia de 0,25 a **0,98**, e com o atrito no topo
+/// da pista o maior autovalor voltava a **3,68 > 1**: a divergência reinstalada dentro do commit
+/// que a curava. É por isso que o gate afirma a ARITMÉTICA das três consts em vez de comparar o
+/// literal com um número escrito à mão — um número à mão erra junto com quem o escreveu.
+pub const RIBBON_MAX_SUBSTEPS: usize = 134;
+
+/// **Quanto tempo a CAUDA da fita tem para chegar, em segundos.**
+///
+/// No pen-up a mão soltou mas a fita ainda tem inércia: a cauda é a física a correr até ela assentar.
+/// O teto existe porque `ζ` pequeno faz uma fita balançar por muito tempo, e um traço não pode
+/// continuar a crescer depois de o artista o ter terminado.
+///
+/// **O ORÇAMENTO DA FITA INTEIRA, medido pela porta do PRODUTO** (`measure_the_ribbon_budget_per_event`,
+/// traço reto de 2 s a 2 400 px/s, 2048², com a linha `None` como CONTROLE):
+///
+/// | raio | tipo | pior Move | pior tique | pen-up |
+/// |---:|---|---:|---:|---:|
+/// | 24 | *None (controle)* | **1,294** | 0,001 | 0,141 |
+/// | 24 | Ribbon 1,00 / 0,05 | 0,001 | 1,080 | 0,152 |
+/// | 100 | *None (controle)* | **1,183** | 0,001 | 0,453 |
+/// | 100 | Ribbon 1,00 / 0,30 | 0,000 | 1,092 | 0,214 |
+/// | 200 | *None (controle)* | **1,018** | 0,002 | 0,553 |
+/// | 200 | Ribbon 1,00 / 1,00 | 0,000 | 0,919 | **0,390** |
+///
+/// ⚠️ **Duas leituras, e as duas são achados:** (1) o custo **MIGRA do `Move` para o TIQUE**, que é
+/// exactamente o desenho (o `extend` não percorre, o tique percorre) — uma sonda que medisse só o
+/// movimento diria que a fita é de graça; (2) **o pen-up fica MAIS BARATO com a fita** (0,553 →
+/// 0,390 no pincel grande), porque ela atrasa, logo percorre menos caminho no mesmo tempo.
+///
+/// ⚠️ **Nenhuma combinação encosta no kill de 8 ms** ⇒ **não há teto de recurso a derivar aqui**, e
+/// dizer isso é a metade honesta do §0: os três knobs da fita são limitados por LOOK, com a régua de
+/// cada um escrita no doc dele.
+pub const RIBBON_TAIL_MAX_S: f32 = 0.6;
+
+/// **A velocidade abaixo da qual a cauda considera a fita ASSENTADA, em px/s.**
+///
+/// Meio pixel por quadro a 60 fps — o mesmo limiar sub-pixel que o `SETTLE_EPS_PX` do estabilizador
+/// usa, dito em velocidade porque o que decide aqui é se ainda há movimento a pintar.
+pub const RIBBON_TAIL_REST_PX_S: f32 = 30.0;

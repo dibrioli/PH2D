@@ -31,6 +31,62 @@
 | [21](#bug-21--a-secagem-custava-10-16-ms-em-todo-quadro-e-três-curas-byte-idênticas-mediram-100) | **Aquarela**: a **secagem** custava 10-16 ms em TODO quadro — e três curas byte-idênticas mediram **1,00×** | `dry_canvas_wet` / `pour_canvas_wet` (o custo era o CAMINHAR) | ✅ Resolvido (9,3× e 19,8×, row-parallel; smoke Enio 2026-08-02) | 2026-08-02 |
 | [22](#bug-22--composite-brush-a-sessão-de-smear-nunca-era-encerrada--o-desenho-inteiro-escorregava) | **Composite Brush**: "não pinta mais que uma mancha" → retângulos → escada → **o desenho inteiro escorregando** — quatro rodadas, e a guarda que fechava a sessão era uma ENUMERAÇÃO | `end_smear_session` (`paint_mode.smears()`) — a pilha é o **terceiro** membro da família do smear | ✅ Resolvido (smoke Enio 2026-08-09: *"finalmente correto!"*) | 2026-08-09 |
 
+## Bug #23 — A FITA divergiu e o processo comeu 90,2 GB: um teto que limitava a RESOLUÇÃO, não o TRABALHO
+
+**Sintoma, e ele não foi um desenho torto — foi a MÁQUINA.** Em 2026-08-14 o kernel matou
+`ph2d_painter_br` com **90,2 GB de RSS anônimo** e derrubou a janela do editor junto (o teste corria
+dentro do `app-code-*.scope`, e `OOMPolicy=stop` leva o scope inteiro). Achado por uma sessão de
+FORA da linha, diagnosticando o travamento da workstation; a suíte parava **sem `ok` e sem falha**,
+que é a assinatura de um `Vec` a crescer até o alocador desistir — o gate nunca chegava ao próprio
+`assert`.
+
+**Causa, e são DUAS metades independentes.** *(1) O teto errado.* A fita é uma mola integrada por
+sub-passos, e o Euler semi-implícito só é estável enquanto `ω · h` é pequeno; a
+`RIBBON_SUBSTEP_FRACTION` promete `ω · h = 0,25` **sempre**. O código capava o **número de
+sub-passos** (`clamp(1, 32)`) e deixava `h = dt/n` crescer — ou seja, capava a **RESOLUÇÃO** e
+desfazia exatamente a garantia que a fração existe para dar. Medido no extremo que o gate escolhe
+(peso 0,02 ⇒ `τ = 5 ms`, quadro travado de 200 ms): eram precisos **160** sub-passos e aplicavam-se
+**32**, levando `ω · h` de 0,25 a **1,25** e o maior autovalor da matriz de amplificação a
+**1,7586 > 1** — `1,7586^320 ≈ 1e78` em dez quadros. *(2) O percurso sem batente.* Com a ponta em
+`1e78` o `walk_space` emite um dab a cada `spacing` até lá, e o passo tem **piso de 1 px**: a
+divergência vira um `Vec<Dab>` de tamanho astronômico. A primeira metade é a doença; a segunda é o
+que transformou um traço feio em RAM esgotada.
+
+**A lei que ficou** é a do [`ph2d_core::time::FixedStep`], e ela cabe numa frase: **um teto limita o
+TRABALHO, nunca a RESOLUÇÃO.** Capar o `dt` (`RIBBON_MAX_STEP_S`, quatro quadros de 60 fps) custa
+*tempo de física* — a fita atrasa um pouco mais atravessando a engasgada — e nunca precisão, que é
+o mesmo trade que o `FixedStep` nomeia (*"roda em câmara lenta"*). O `RIBBON_MAX_SUBSTEPS` passou a
+ser **DERIVADO** (`ceil(RIBBON_MAX_STEP_S / (FRACTION · LAG_MIN))`) e é um **BATENTE, não um
+regulador**: o gate `the_substep_ceiling_can_never_bind` afirma a **aritmética das três consts**, de
+modo que mover qualquer uma fique VERMELHO em vez de sair a pintar `1e78`.
+
+⚠️ **E o batente nasceu ERRADO dentro do commit que curava a doença** — a lição mais cara desta
+entrada. Escrevi **34**, que é o `n` de um quadro NOMINAL, quando o que ele tem de cobrir é o `dt`
+que o cap deixa passar, que são **quatro** quadros: o valor certo é **134**. O batente MORDIA no
+piso do slider (134 precisos contra 34 aplicados), `ω · h` ia de 0,25 a **0,98**, e com o atrito no
+topo da pista o maior autovalor voltava a **3,68 > 1**. *Um número escrito à mão erra junto com quem
+o escreveu* — foi o gate da aritmética, escrito depois, que o pegou.
+
+⚠️ **O batente de MEMÓRIA do percurso é do EVENTO, não da chamada.** A primeira versão contava dabs
+por chamada de `walk_space` e mediu **416 652** deles: o achatador de Catmull-Rom pica a corda e
+chama o percurso **uma vez por corda**, então um teto por-chamada é derrotado por milhares de
+chamadas. O `MAX_DABS_PER_WALK` limita o **buffer de eventos** (`out.len()`), exatamente como o
+`MAX_AIRBRUSH_DABS_PER_TICK` limita um tique. ⚠️ E a conferência é **ANTES do carimbo**: perguntada
+depois, cada corda seguinte carimba uma vez antes de desistir — medido, **86 dabs de excesso**.
+
+⚠️ **O gate que explodiu nunca tinha sido observado VERDE.** Ele morria a alocar, então o oráculo
+dele jamais fora validado — e quando passou a terminar, reprovou **produto correto**: media a
+distância ao ALVO num salto de 300 px, e uma fita **atrasa por construção**. O oráculo certo é a
+**excursão para fora da caixa do gesto**, que é a assinatura da divergência e não do atraso. Irmão
+disto: a tolerância de chegada é **um ESPAÇAMENTO** (4 px), porque um emissor de dabs não tem como
+entregar precisão sub-espaçamento.
+
+**Gates:** `the_substep_ceiling_can_never_bind` (a aritmética + o produto dirigido na quina do
+slider) · `a_stalled_frame_does_not_blow_the_spring_up` · `walk_bounds_tests.rs` (a posição absurda
+trunca · **o gesto real mais longo nunca alcança o batente**, o controle que mantém o teto honesto ·
+um alvo não-finito é recusado). **Sem o controle, o batente poderia ser posto em `8` e o primeiro
+gate continuaria verde com o produto a cortar todo traço longo.**
+
 ## Bug #22 — Composite Brush: a sessão de smear nunca era encerrada — o desenho inteiro escorregava
 
 **Sintoma, em quatro rodadas, cada uma com uma aparência diferente.** Enio, depois de os outros três

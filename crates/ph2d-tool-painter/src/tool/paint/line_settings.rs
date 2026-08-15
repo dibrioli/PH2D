@@ -1,9 +1,14 @@
-//! **O que o card `Line` AUTORA nos tipos que costuram fios** — Sketchy (W3) e Wire (W4).
+//! **O que o card `Line` AUTORA** — os parâmetros de cada tipo de traço procedural.
 //!
 //! Separado do [`super::thread_deposit`] por assunto: aqui mora *o que o artista escolheu*, lá *o
 //! que o depósito faz com a escolha*.
 //!
-//! ⚠️ **Os cinco escrevem nos MESMOS slots que o `set_line_kind`** ([`super::impasto_settings::RELIEF_SLOTS`]).
+//! ⚠️ **O arquivo chamava-se `thread_settings` e o nome MENTIU na wave seguinte** (W6): ele nasceu
+//! quando os dois únicos tipos com parâmetro costuravam fios, e a FITA não costura nada. Renomeado
+//! em vez de ganhar um irmão, porque o irmão teria de copiar o `fan_out!` abaixo — e a lei que ele
+//! carrega (*um parâmetro de tipo de linha escreve os slots de relevo*) é UMA, não uma por família.
+//!
+//! ⚠️ **Todos escrevem nos MESMOS slots que o `set_line_kind`** ([`super::impasto_settings::RELIEF_SLOTS`]).
 //! O tipo de linha é um assunto do TRAÇO, não da ferramenta de relevo em que a mão está: sem o
 //! fan-out, escolher Sketchy no Deposit e afinar a densidade lá deixaria a Faca com o tipo armado e
 //! a densidade do outro slot — o defeito medido que o `toggle_brush_impasto` já paga.
@@ -75,5 +80,24 @@ impl PainterTool {
     /// **Magnetify** — alterna.
     pub fn toggle_sketchy_magnetify(&mut self) {
         fan_out!(self, sketchy_magnetify, !self.paint.brush.sketchy_magnetify);
+    }
+
+    /// **Weight** da FITA a partir da pista `0..1` — a fração do atraso máximo.
+    ///
+    /// ⚠️ A pista É a fração, e o TEMPO é derivado por `BrushSpec::ribbon_lag_s` — o mesmo desenho
+    /// do `sketchy_density`: o número que o artista arrasta é adimensional, e quem sabe a régua é o
+    /// motor. Guardar segundos aqui poria a régua em duas casas.
+    pub fn set_ribbon_weight_norm(&mut self, t: f32) {
+        fan_out!(self, ribbon_weight, t.clamp(0.0, 1.0));
+    }
+
+    /// **Friction** da fita a partir da pista `0..1` — a fração da faixa de amortecimento.
+    pub fn set_ribbon_friction_norm(&mut self, t: f32) {
+        fan_out!(self, ribbon_friction, t.clamp(0.0, 1.0));
+    }
+
+    /// **Gravity** da fita a partir da pista `0..1` — a fração da gravidade máxima.
+    pub fn set_ribbon_gravity_norm(&mut self, t: f32) {
+        fan_out!(self, ribbon_gravity, t.clamp(0.0, 1.0));
     }
 }

@@ -107,7 +107,10 @@ impl Stroke {
     /// espaçamento passaria a depender do arremesso, que é a dependência de amostragem que este
     /// módulo já curou quatro vezes.
     pub(super) fn throw(&mut self, pos: [f32; 2], arc: f32) -> [f32; 2] {
-        if self.spec.line_kind == LineKind::None {
+        // ⚠️ A pergunta é `este tipo ARREMESSA?`, nunca `este tipo não é o neutro?` — a segunda é
+        // uma lista de um item só, e ela apodreceu na wave seguinte: ver [`LineKind::throws`], que
+        // traz os números do defeito que a trocou.
+        if !self.spec.line_kind.throws() {
             return pos;
         }
         let ds = (arc - self.speed_dab_arc).max(0.0);

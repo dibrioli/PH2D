@@ -8,7 +8,6 @@
 //! are tool/shell-owned; the engine exposes [`Stroke::fill_segment`] + [`Stroke::tick`] as primitives.
 
 use crate::dynamics::Dynamics;
-use crate::line_kind::LineKind;
 use crate::sampler::InputSampler;
 use crate::spec::{BrushSpec, MAX_BRUSH_RADIUS_PX};
 use crate::stroke_method::{JitterUnit, StrokeMethod};
@@ -126,6 +125,11 @@ pub struct Stroke {
     /// centred tangent at the start of each segment. `None` until the second move after
     /// [`Stroke::begin`] (the first segment has no trailing neighbour, so it starts straight).
     prev_prev: Option<[f32; 2]>,
+    /// **A ponta da FITA** (posição absoluta) e a velocidade dela em px/s — a massa que persegue o
+    /// cursor por uma mola com atrito e peso. A LEI vive em [`mod@self::ribbon`], que é quem os
+    /// produz; aqui só o estado. Inertes com o tipo desarmado.
+    ribbon_pos: [f32; 2],
+    ribbon_vel: [f32; 2],
     /// The stabilizer's lazy-mouse filtered position (lags the cursor by the stabilizer intensity).
     /// The path is built from this, not the raw cursor — that is what regularises a shaky hand.
     stab_pos: [f32; 2],
@@ -166,6 +170,35 @@ const SETTLE_EPS_PX: f32 = 0.5;
 /// can't dump a retroactive flood (Blender's async timer never catches up after a hitch).
 const MAX_AIRBRUSH_DABS_PER_TICK: u32 = 8;
 
+/// Max dabs a single [`Stroke::walk_space`] may emit — a **BATENTE de MEMÓRIA**, irmão do
+/// [`MAX_AIRBRUSH_DABS_PER_TICK`] e escrito pelo mesmo motivo.
+///
+/// ⚠️ **De que recurso ele é:** o percurso empurra um `Dab` por passo num `Vec` que o chamador é
+/// dono, e o passo tem PISO de 1 px — então o número de iterações é o COMPRIMENTO da corda, sem
+/// teto nenhum. Uma posição absurda a chegar aqui (uma mola que divergiu, um `Transform`
+/// degenerado, um `NaN` que virou `inf`) não pinta uma linha errada: ela **esgota a RAM da
+/// máquina**. Medido em 2026-08-14, uma fita cujo integrador divergiu levou o processo a **90,2 GB
+/// de RSS** e o kernel derrubou a janela do editor junto (`OOMPolicy=stop` no scope do VSCode).
+///
+/// ⚠️ **Ele conta o BUFFER DO EVENTO, não a chamada — e a 1ª versão contava a chamada.** O
+/// `extend` do método `Space` passa pelo flattener Catmull-Rom, que pica a corda e chama o percurso
+/// **uma vez por corda**: um teto por-chamada é contornado por milhares de chamadas, e o gate mediu
+/// **416 652 dabs** com o batente instalado. O irmão airbrush já tinha a resposta na assinatura —
+/// ele conta o TIQUE.
+///
+/// ⚠️ **O número é DERIVADO, não escolhido, e o recurso é MEMÓRIA.** A maior corda legítima é uma
+/// tacada de ponteiro a atravessar a maior tela que o app abre — a diagonal de 8192² são **11 585
+/// px**, logo 11 585 dabs no piso de passo —, e a Symmetry radial multiplica isso pelas cópias, o
+/// que põe o pior gesto honesto na ordem de **2 × 10⁵**. Este teto é ~5× isso e, com o `Dab` medido
+/// em **52 B**, ele limita o `Vec` a **~55 MB**: cinco ordens de grandeza abaixo dos 90,2 GB do
+/// achado. *Um gesto nunca o alcança; uma divergência passa por ele no primeiro quadro.*
+///
+/// ⚠️ **Ele NÃO conserta a causa, e não é para isso que existe** — quem mantém a mola estável é a
+/// tríade `RIBBON_MAX_STEP_S`/`RIBBON_LAG_MIN_S`/`RIBBON_MAX_SUBSTEPS`, com gate próprio. Este
+/// batente é o que faz o modo de falha da PRÓXIMA origem de posição absurda ser *uma linha
+/// truncada que se vê*, em vez de *a máquina no chão*.
+pub(crate) const MAX_DABS_PER_WALK: usize = 1_048_576;
+
 impl Stroke {
     /// Create a stroke for `spec`/`dynamics`. `seed` seeds the jitter RNG (use a per-stroke
     /// counter; never a global/thread RNG — keeps replays reproducible, HR-5).
@@ -195,6 +228,8 @@ impl Stroke {
             fill_from: None,
             last_thrown: None,
             prev_prev: None,
+            ribbon_pos: [0.0, 0.0],
+            ribbon_vel: [0.0, 0.0],
             stab_pos: [0.0, 0.0],
             last_raw_pos: [0.0, 0.0],
             last_raw_pressure: 1.0,
@@ -237,6 +272,9 @@ impl Stroke {
         self.fill_from = None;
         self.last_thrown = None; // traço novo: nenhuma tinta anterior a que ligar a primeira
         self.prev_prev = None;
+        // A fita comeca PARADA sob o dedo: sem isto ela chegaria voando do traco anterior.
+        self.ribbon_pos = p.pos;
+        self.ribbon_vel = [0.0, 0.0];
         self.stab_pos = p.pos;
         self.last_raw_pos = p.pos;
         self.last_raw_pressure = p.pressure;
@@ -289,6 +327,12 @@ impl Stroke {
             // The stabilizer (smooth-stroke) applies to Space + the per-event Dots/Airbrush, like
             // Blender. Space additionally resamples through the spline; Dots/Airbrush place one
             // dab per event at the filtered position. Drag Dot below stays raw (exact placement).
+            // ⚠️ **Com a FITA armada o `extend` NÃO percorre** — quem percorre é o tique
+            // ([`ribbon::tick_ribbon`]), porque a mola é integrada no relógio de parede. O evento de
+            // ponteiro já gravou o `last_raw_pos` acima, que é o alvo que a mola persegue; percorrer
+            // aqui também faria o caminho depender da taxa do dispositivo, a doença que este módulo
+            // já curou quatro vezes no relevo.
+            StrokeMethod::Space if self.spec.ribbon_active() => {}
             StrokeMethod::Space => {
                 let target = self.stabilize(avg);
                 self.walk_smoothed(target, out);
@@ -390,13 +434,19 @@ impl Stroke {
     pub fn finish(&mut self, out: &mut Vec<Dab>) {
         out.clear();
         if self.started && self.spec.stroke_method == StrokeMethod::Space {
-            self.walk_smoothed(
-                StrokePoint {
-                    pos: self.last_raw_pos,
-                    pressure: self.last_raw_pressure,
-                },
-                out,
-            );
+            if self.spec.ribbon_active() {
+                // A fita termina onde a FÍSICA a deixa, nunca num salto até o dedo — ver
+                // [`ribbon::finish_ribbon`], que é onde o porquê está escrito.
+                self.finish_ribbon(out);
+            } else {
+                self.walk_smoothed(
+                    StrokePoint {
+                        pos: self.last_raw_pos,
+                        pressure: self.last_raw_pressure,
+                    },
+                    out,
+                );
+            }
         }
         // Ended still warming (e.g. a tap): flush the held dabs + tail at whatever heading settled
         // (`[0, 0]` ⇒ the rest Angle, right for a directionless tap).
@@ -418,6 +468,11 @@ impl Stroke {
         // ⚠️ A velocidade do gesto é medida ANTES do desvio abaixo, e a ordem é a feature — o
         // porquê está no [`mod@self::speed`], junto da lei.
         self.note_tick_speed(dt);
+        // ⚠️ A FITA percorre o caminho AQUI, e é a única lei que o faz — parada ou em movimento, um
+        // passo por quadro. A lei e o porquê vivem em [`mod@self::ribbon`].
+        if self.spec.ribbon_active() && self.spec.stroke_method == StrokeMethod::Space {
+            self.tick_ribbon(dt, out);
+        }
         if self.spec.stroke_method != StrokeMethod::Airbrush {
             return;
         }
@@ -470,7 +525,20 @@ impl Stroke {
         // 2026-07-19) ran it with a step up to 16× too small, i.e. an effective smoothing length of ~240 px
         // where 12 was intended, which is where the 52° of Rake lag came from.
         let mut advanced = 0.0;
+        // ⚠️ **Uma corda NÃO-FINITA não é percorrível, e falhar cedo aqui é o barato.** `seg` alimenta
+        // `f = traveled / seg` e a direção; com `NaN` toda comparação é falsa, o `break` do laço nunca
+        // dispara e o percurso escreve para sempre. Recusar é honesto: não há caminho a desenhar.
+        if !seg.is_finite() || !to[0].is_finite() || !to[1].is_finite() {
+            return;
+        }
         loop {
+            // ⚠️ **A conferência é ANTES do carimbo, e a 1ª versão era depois.** O flattener chama
+            // este percurso uma vez por corda, então um teto conferido no FIM deixa cada chamada
+            // seguinte carimbar mais um antes de desistir — medido, 86 dabs de excesso. Perguntada
+            // aqui, a corda que chega com o buffer cheio sai sem escrever nada.
+            if out.len() >= MAX_DABS_PER_WALK {
+                break; // ver [`MAX_DABS_PER_WALK`]: batente de MEMÓRIA, nunca alcançado por um gesto
+            }
             // **Jitter Spacing** scales each gap by the carried multiplier (`1.0` = even); a break does
             // not redraw (no wasted draw), and the next-gap draw is gated so an off brush is unchanged.
             // ⚠️ The gap is `spacing × the diameter that will actually be stamped here`, not the nominal
@@ -657,6 +725,8 @@ mod speed;
 pub mod spray;
 /// A MEMÓRIA do traço e os FIOS que ela costura — `Sketchy` (W3) e `Wire` (W4).
 pub mod threads;
+/// **A FITA** — a massa presa ao cursor por uma mola com atrito e peso (W6).
+pub mod ribbon;
 pub use curve::flatten_catmull_rom;
 /// The Ellipse stroke method's perimeter generator + ellipse fill (same child-module rationale).
 mod ellipse;

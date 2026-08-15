@@ -231,6 +231,12 @@ impl Tool for PainterTool {
                     self.set_thread_opacity(v as f32);
                 } else if id == core_ids::PAINTER_LINE_WIRE_HISTORY {
                     self.set_wire_history_norm(v as f32);
+                } else if id == core_ids::PAINTER_LINE_RIBBON_WEIGHT {
+                    self.set_ribbon_weight_norm(v as f32);
+                } else if id == core_ids::PAINTER_LINE_RIBBON_FRICTION {
+                    self.set_ribbon_friction_norm(v as f32);
+                } else if id == core_ids::PAINTER_LINE_RIBBON_GRAVITY {
+                    self.set_ribbon_gravity_norm(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_JITTER {
                     self.set_brush_jitter_norm(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_DASH_RATIO {

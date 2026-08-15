@@ -498,6 +498,12 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
+    // CPU-only: o rastro lê `falloff` só no `eval` (não há kernel de GPU de onde
+    // uma `ColumnBinding` pudesse ser derivada) — declare (ADR-0155).
+    reg.register_couplings(
+        MANIFEST.id,
+        &[ph2d_node_registry::Coupling::Consumes("falloff")],
+    );
     Ok(())
 }
 

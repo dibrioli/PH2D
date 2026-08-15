@@ -269,6 +269,16 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    // ⚠️ **Este nó TEM binding de `falloff` — e ela é INVISÍVEL à derivação.** A
+    // leitura mora no `GPU_PREDICATE` do `StreamOp::Compact`, e o kernel que o
+    // registry guarda é o `PASSTHROUGH` (ADR-0136: a compactação é maquinaria do
+    // stream op, não do kernel). O `consumes` do diagnoser só consulta
+    // `gpu_kernel(ty).bindings`, então o canal que resta é a declaração — o mesmo
+    // vão de um nó CPU-only, por outro motivo (ADR-0155).
+    reg.register_couplings(
+        MANIFEST.id,
+        &[ph2d_node_registry::Coupling::Consumes("falloff")],
+    );
     Ok(())
 }
 

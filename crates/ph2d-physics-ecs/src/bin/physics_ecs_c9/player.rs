@@ -480,4 +480,70 @@ pub fn spawn(sim: &mut SimWorld) {
         // nascimento é hasheada, e o `cos` do `std` é a libm da plataforma.
         Transform::from_translation(Vec2::new(STEEP_X, 0.25 / libm::cosf(steep) + 1.0)),
     ));
+
+    // ── A PAREDE QUE NÃO É PAREDE (`W-WallMaterial`) ─────────────────────────
+    //
+    // ⚠️ **Uma lane para o RAMO NOVO, e ela cobre os DOIS lados de propósito:**
+    // um par de paredes idênticas com um personagem a cair contra cada uma, e só
+    // a segunda marcada. Sem o par, o hash cobriria a rota do filtro e **não** a
+    // do sensor que segue a passar — e é a coexistência das duas que a tabela de
+    // superfícies tem de resolver, por CORPO, na mesma varredura.
+    //
+    // A fita é a MESMA dos outros (`drive = 1` nos primeiros 90 tiques), então o
+    // personagem corre contra a parede enquanto cai: agarrado de um lado,
+    // ignorado do outro.
+    const WALLMAT_X: f32 = 400.0;
+    for (i, marked) in [false, true].into_iter().enumerate() {
+        let x = WALLMAT_X + (i as f32) * 20.0;
+        let wall = sim
+            .world_mut()
+            .spawn((
+                Name::new(if marked {
+                    "C9 WallMat Smooth"
+                } else {
+                    "C9 WallMat Wall"
+                }),
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 0.5,
+                        half_y: 8.0,
+                    },
+                    ..Collider::default()
+                },
+                Transform::from_translation(Vec2::new(x + 1.0, 0.0)),
+            ))
+            .id();
+        if marked {
+            sim.world_mut()
+                .entity_mut(wall)
+                .insert(ph2d_physics_ecs::NoWallCling);
+        }
+        sim.world_mut().spawn((
+            Name::new(if marked {
+                "C9 WallMat Player Smooth"
+            } else {
+                "C9 WallMat Player Wall"
+            }),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Capsule {
+                    half_height: 0.3,
+                    radius: 0.2,
+                },
+                ..Collider::default()
+            },
+            LockRotation,
+            PlatformPlayer {
+                float_height: 0.9,
+                wall_slide_speed: 1.0,
+                ..PlatformPlayer::default()
+            },
+            Transform::from_translation(Vec2::new(x, 6.0)),
+        ));
+    }
 }

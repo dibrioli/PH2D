@@ -95,6 +95,7 @@ fn with_body() -> InspectorPhysicsInfo {
         angular_damping: 0.0,
         damp_mode_tag: 0,
         one_way: false,
+        no_wall_cling: false,
         force: [0.0, 0.0],
         area_drag: 0.0,
         area_density: 0.0,

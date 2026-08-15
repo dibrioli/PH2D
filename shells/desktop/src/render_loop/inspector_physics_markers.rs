@@ -66,6 +66,7 @@ pub(super) fn apply_marker_edit(
                 | PhysicsFieldEdit::LockPositionX(_)
                 | PhysicsFieldEdit::LockPositionY(_)
                 | PhysicsFieldEdit::OneWay(_)
+                | PhysicsFieldEdit::NoWallCling(_)
                 | PhysicsFieldEdit::ForceWorldAxes(_)
         );
     }
@@ -110,6 +111,18 @@ pub(super) fn apply_marker_edit(
             entity_bits,
             "ph2d::physics::OneWayPlatform",
             &OneWayPlatform,
+        ),
+        // Wall material — a SURFACE property (W-WallMaterial), read from the same
+        // entity as the collider so a PART can speak for itself. Not Dynamic-only
+        // and not solid-only: it drops a RAY hit, and a ray hits whatever the
+        // collision matrix lets it.
+        PhysicsFieldEdit::NoWallCling(on) => set_or_clear(
+            on,
+            queue,
+            registry,
+            entity_bits,
+            "ph2d::physics::NoWallCling",
+            &ph2d_physics_ecs::NoWallCling,
         ),
         // The frame of a force zone — also a COLLIDER property, and the second marker
         // here that is not Dynamic-only (a wind column is Static scenery).

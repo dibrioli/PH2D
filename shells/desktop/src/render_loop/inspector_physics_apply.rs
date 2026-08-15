@@ -570,6 +570,7 @@ pub(crate) fn apply_physics_edit(
         | PhysicsFieldEdit::AngularDamping(_)
         | PhysicsFieldEdit::DampMode(_)
         | PhysicsFieldEdit::OneWay(_)
+        | PhysicsFieldEdit::NoWallCling(_)
         | PhysicsFieldEdit::ForceWorldAxes(_)
         | PhysicsFieldEdit::ForceX(_)
         | PhysicsFieldEdit::ForceY(_)

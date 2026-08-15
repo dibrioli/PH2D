@@ -45,6 +45,9 @@ impl PhysicsBridge {
         if self.wheel_query.is_none() {
             self.wheel_query = Some(sim.world_mut().query());
         }
+        if self.no_cling_query.is_none() {
+            self.no_cling_query = Some(sim.world_mut().query());
+        }
         if self.surface_query.is_none() {
             self.surface_query = Some(sim.world_mut().query());
         }

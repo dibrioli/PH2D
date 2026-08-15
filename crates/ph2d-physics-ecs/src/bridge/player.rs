@@ -376,7 +376,14 @@ impl PhysicsBridge {
             // sensor de quina. Com a capacidade desligada — que é como todo
             // player já autorado nasce — nenhum raio é lançado.
             let wall = if wall_probe_wanted(&cfg.wall, stand.is_some(), input.drive) {
-                probe_wall(&self.world, b.handle, b.rest.layer, &cfg, input.drive)
+                probe_wall(
+                    &self.world,
+                    &self.surfaces,
+                    b.handle,
+                    b.rest.layer,
+                    &cfg,
+                    input.drive,
+                )
             } else {
                 None
             };

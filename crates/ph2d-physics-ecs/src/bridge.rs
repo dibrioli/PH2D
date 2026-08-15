@@ -120,6 +120,7 @@ type PartQuery = QueryState<
 /// A query das SUPERFÍCIES (`W-Surface`) — quem carrega uma, seja corpo ou
 /// peça. Cacheada pelo mesmo motivo zero-alloc das irmãs.
 type SurfaceQuery = QueryState<(Entity, &'static crate::WalkSurface)>;
+type NoClingQuery = QueryState<(Entity, &'static crate::NoWallCling)>;
 
 /// The joint query, cached for the same zero-alloc reason as [`BodyQuery`].
 /// The `Transform` is the anchor — see `bridge::joints` for the policy.
@@ -183,6 +184,7 @@ pub struct PhysicsBridge {
     /// W-Surface: a query das superfícies e a tabela delas — ver
     /// `bridge::surfaces` para por que ela é reconstruída a cada dispatch.
     surface_query: Option<SurfaceQuery>,
+    no_cling_query: Option<NoClingQuery>,
     surfaces: surfaces::Surfaces,
     parts: std::collections::BTreeMap<Entity, bridge_parts::PartRef>,
     /// Scratch da varredura de peças — zero-alloc em regime, como o `seen`.
@@ -503,6 +505,7 @@ impl PhysicsBridge {
             joint_query: None,
             part_query: None,
             surface_query: None,
+            no_cling_query: None,
             surfaces: surfaces::Surfaces::default(),
             parts: std::collections::BTreeMap::new(),
             part_seen: Vec::new(),

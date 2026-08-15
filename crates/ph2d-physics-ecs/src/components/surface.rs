@@ -109,3 +109,44 @@ impl Default for WalkSurface {
 }
 
 impl SimComponent for WalkSurface {}
+
+/// **Esta superfície NÃO é parede** — a mão não a agarra (`W-WallMaterial`).
+///
+/// O `platform_wall_layers` do Godot, e como o irmão dele
+/// ([`crate::PlatformLift`] para o `platform_on_leave`) resolvido **por CORPO ou
+/// por PEÇA**, não por camada: um bitmask obriga o artista a arrumar o nível em
+/// camadas para exprimir uma propriedade de material, e a peça é a granularidade
+/// que a família da superfície já tem.
+///
+/// Sua **presença É o booleano**, como [`crate::Ccd`]/[`crate::LockRotation`]/
+/// [`crate::OneWayPlatform`]. Ausente — o caso comum — toda superfície íngreme
+/// continua a ser parede, exactamente como antes disto existir.
+///
+/// # O que ele desliga, e é a família inteira de uma vez
+///
+/// A lei aceita uma parede por **inclinação** e só por ela ([`ph2d_platformer::cling`]:
+/// *"a MESMA régua da perna: parede é o que ela recusou por inclinação"*), e a
+/// amostra que sai dali alimenta os **três** verbos — deslizar, agarrar-se e o
+/// pulo de parede. Marcar a superfície derruba o acerto **no SENSOR**, então os
+/// três somem juntos: não é *"não pula daqui"*, é *"isto não é uma parede"*.
+///
+/// ⚠️ **Por que NÃO é o [`WalkSurface::grip`], que já existe e já significa
+/// tração:** o doc dele diz o que ele é — *quanto do orçamento de CAMINHADA o pé
+/// aproveita aqui* —, e esticá-lo até a mão faria a documentação mentir sobre o
+/// próprio campo. E as duas propriedades são de facto independentes: um piso de
+/// gelo escalável e uma parede de borracha inescalável são as duas coisas que um
+/// nível quer dizer, e um só número não diz as duas.
+///
+/// ⚠️ **A lei do part-vs-corpo é a MESMA da [`WalkSurface`]** — a peça
+/// sobrepõe-se ao corpo, wholesale — porque as duas viajam na mesma entrada da
+/// tabela do bridge. Corolário honesto: **uma peça não consegue dizer *"eu SOU
+/// parede"* contra um corpo marcado**, porque a presença de um marcador não tem
+/// como exprimir o "sim"; quem precisar disso marca as peças, não o corpo.
+///
+/// Um componente novo é chaveado pelo hash do próprio nome de tipo, então **não
+/// custa bump de `PROJECT_SCHEMA`** — a saída que o doc deste módulo já prescreve
+/// para o dia em que um campo novo apareça.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct NoWallCling;
+
+impl SimComponent for NoWallCling {}

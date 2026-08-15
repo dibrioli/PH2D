@@ -273,6 +273,10 @@ pub struct InspectorPhysicsInfo {
     /// coming back down. Mirrors the presence of the optional `OneWayPlatform` marker.
     /// NOT Dynamic-only — a platform is usually Static, which is the whole point.
     pub one_way: bool,
+    /// **Esta superfície NÃO é parede** (`W-WallMaterial`) — a presença do
+    /// `NoWallCling`. `false` (o comum) é o mundo de sempre: toda superfície
+    /// íngreme é escalável.
+    pub no_wall_cling: bool,
     /// **Force zone** (W-Area): the force in newtons, world axes, this area applies to
     /// every dynamic body overlapping it — wind, an updraft, a conveyor. Mirrors the
     /// optional `AreaEffector` component's `force`; absent means a body that pushes
@@ -425,6 +429,9 @@ pub enum PhysicsFieldEdit {
     /// One-way (jump-through) platform toggle (W-OneWay). Attaches/detaches the optional
     /// `OneWayPlatform` marker — the presence-override idiom. NOT Dynamic-only.
     OneWay(bool),
+    /// **Esta superfície não é parede** (`W-WallMaterial`) — `true` anexa o
+    /// `NoWallCling`, `false` o remove.
+    NoWallCling(bool),
     /// The FRAME of the zone's force (W-AreaFrame): `false` the zone's own axes (turning
     /// the sensor turns the wind), `true` pinned to world axes. Attaches/detaches the
     /// optional `AreaForceWorldAxes` marker — the presence-override idiom, so the default

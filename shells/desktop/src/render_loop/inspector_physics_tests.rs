@@ -428,7 +428,9 @@ fn the_area_drag_is_its_own_component_and_leaves_the_force_alone() {
 /// the sweep: every marker attaches on, detaches off, and is refused on a plain sprite.
 #[test]
 fn every_presence_marker_attaches_detaches_and_is_refused_without_a_body() {
-    use ph2d_physics_ecs::{Ccd, LockPositionX, LockPositionY, LockRotation, OneWayPlatform};
+    use ph2d_physics_ecs::{
+        Ccd, LockPositionX, LockPositionY, LockRotation, NoWallCling, OneWayPlatform,
+    };
 
     // (edit builder, "is it attached?" probe, name for the message)
     type Probe = (
@@ -436,7 +438,7 @@ fn every_presence_marker_attaches_detaches_and_is_refused_without_a_body() {
         fn(&SimWorld, Entity) -> bool,
         &'static str,
     );
-    const PROBES: [Probe; 5] = [
+    const PROBES: [Probe; 6] = [
         (
             PhysicsFieldEdit::Ccd,
             |s, e| s.world().get::<Ccd>(e).is_some(),
@@ -461,6 +463,11 @@ fn every_presence_marker_attaches_detaches_and_is_refused_without_a_body() {
             PhysicsFieldEdit::OneWay,
             |s, e| s.world().get::<OneWayPlatform>(e).is_some(),
             "OneWayPlatform",
+        ),
+        (
+            PhysicsFieldEdit::NoWallCling,
+            |s, e| s.world().get::<NoWallCling>(e).is_some(),
+            "NoWallCling",
         ),
     ];
 

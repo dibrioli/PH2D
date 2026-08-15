@@ -63,9 +63,9 @@ pub use components::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,
     Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation,
-    MassOverride, MaterialCombine, OneWayPlatform, PlatformLift, PlatformPlayer, PlayerMode,
-    PlayerSignals, PulleyWheel, RigidBody, RopeStops, SignalOnHit, SignalOnLeave, WalkSurface,
-    WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
+    MassOverride, MaterialCombine, NoWallCling, OneWayPlatform, PlatformLift, PlatformPlayer,
+    PlayerMode, PlayerSignals, PulleyWheel, RigidBody, RopeStops, SignalOnHit, SignalOnLeave,
+    WalkSurface, WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
 };
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
@@ -175,6 +175,7 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     reg.register::<PlatformPlayer>("ph2d::physics::PlatformPlayer");
     reg.register::<PlayerMode>("ph2d::physics::PlayerMode");
     reg.register::<WalkSurface>("ph2d::physics::WalkSurface");
+    reg.register::<NoWallCling>("ph2d::physics::NoWallCling");
 }
 
 #[cfg(test)]
@@ -188,7 +189,7 @@ mod tests {
     fn registers_every_physics_component() {
         let mut reg = ComponentRegistry::new();
         register_physics_components(&mut reg);
-        assert_eq!(reg.len(), 31);
+        assert_eq!(reg.len(), 32);
         assert!(reg.get_by_name("ph2d::physics::RigidBody").is_some());
         assert!(reg.get_by_name("ph2d::physics::Collider").is_some());
         assert!(reg.get_by_name("ph2d::physics::PhysicsJoint").is_some());
@@ -201,6 +202,7 @@ mod tests {
         assert!(reg.get_by_name("ph2d::physics::MassOverride").is_some());
         assert!(reg.get_by_name("ph2d::physics::Dominance").is_some());
         assert!(reg.get_by_name("ph2d::physics::WalkSurface").is_some());
+        assert!(reg.get_by_name("ph2d::physics::NoWallCling").is_some());
         assert!(reg.get_by_name("ph2d::physics::MaterialCombine").is_some());
         assert!(reg.get_by_name("ph2d::physics::DampingOverride").is_some());
         assert!(reg.get_by_name("ph2d::physics::OneWayPlatform").is_some());

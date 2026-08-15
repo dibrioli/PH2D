@@ -143,6 +143,7 @@ pub(super) fn paint_part_face(
         info.layer,
         info.is_sensor,
         info.one_way,
+        info.no_wall_cling,
     );
     super::physics_doors::paint_part_doors(scene, text_system, theme, hit_index, store, x, w, yy)
 }

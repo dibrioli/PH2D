@@ -260,4 +260,4 @@ pub use rope::{
     rope_joint_of,
 };
 pub use signal::{PlayerSignals, SignalOnHit, SignalOnLeave};
-pub use surface::WalkSurface;
+pub use surface::{NoWallCling, WalkSurface};

@@ -246,6 +246,10 @@ const SENSOR_LABELS: [&str; 2] = ["Solid", "Sensor"];
 /// `1` a jump-through platform (solid only from its local +Y side).
 const ONEWAY_LABELS: [&str; 2] = ["Off", "On"];
 
+/// Wall-material labels, indexed by `no_wall_cling as u8`: `0` — a ausência do
+/// marcador, o caso comum — é PAREDE; `1` a mão não a segura (`W-WallMaterial`).
+const WALLMAT_LABELS: [&str; 2] = ["On", "Off"];
+
 /// Force-frame labels, indexed by `world_axes as u8`: `0` the zone's own frame (turn
 /// the sensor and the wind turns with it), `1` pinned to world axes (the zone turns,
 /// the blow does not).
@@ -291,6 +295,7 @@ pub(super) fn paint_collision_rows(
     layer: u8,
     is_sensor: bool,
     one_way: bool,
+    no_wall_cling: bool,
 ) -> f32 {
     let mut yy = y;
     // The per-body half of collision layers. The other half — WHICH layers collide —
@@ -357,6 +362,21 @@ pub(super) fn paint_collision_rows(
     // descuido: um caixote sobre a esteira não é levado por ela. O
     // `SurfaceEffector2D` da Unity leva qualquer rigidbody; aqui o alcance é o
     // que o nome diz.
+    yy = seg_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        "Wall Cling",
+        ids::INSP_LIVE_PHYSICS_WALLMAT,
+        &ids::INSP_PHYS_WALLMAT,
+        &WALLMAT_LABELS,
+        u8::from(no_wall_cling),
+    );
     for (label, id) in [
         ("Grip", ids::INSP_PHYS_WALK_GRIP),
         ("Belt (m/s)", ids::INSP_PHYS_WALK_BELT),

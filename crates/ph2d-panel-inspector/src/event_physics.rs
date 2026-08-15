@@ -245,6 +245,14 @@ fn click_edit(
         // condition is asked here (W-Area made this row exclusive with Force).
         // ⚠️ `has_collider` (W-PartFace): a ponte lê `OneWayPlatform` da PEÇA.
         (info.has_collider && !info.is_sensor).then_some(PhysicsFieldEdit::OneWay(i == 1))
+    } else if let Some(i) = ids::INSP_PHYS_WALLMAT.iter().position(|&o| o == id) {
+        // On | Off (W-WallMaterial). ⚠️ **NEM Dynamic-only NEM sólido-only**, e a
+        // diferença para o vizinho de cima é o mecanismo: o one-way mexe em
+        // CONTATOS (que um sensor não gera), enquanto isto derruba um acerto de
+        // RAIO — e um raio acerta o que a matriz de colisão deixa, sensor ou não.
+        // ⚠️ `has_collider` (W-PartFace): a ponte lê o marcador da PEÇA.
+        info.has_collider
+            .then_some(PhysicsFieldEdit::NoWallCling(i == 1))
     } else if let Some(i) = ids::INSP_PHYS_FORCE_AXES.iter().position(|&o| o == id) {
         // Zone | World (W-AreaFrame) — the mirror image of the One-Way gate above:
         // SENSOR-only, because it qualifies the force rows, and those only exist for

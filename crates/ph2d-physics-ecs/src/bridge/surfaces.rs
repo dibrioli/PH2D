@@ -39,13 +39,29 @@ use crate::WalkSurface;
 /// mesma razão: `BTreeMap` para a iteração ser determinística cross-OS.
 type Key = (u32, u32);
 
+/// **Tudo o que uma superfície diz**, numa entrada só.
+///
+/// ⚠️ **Duas COMPONENTES, uma ENTRADA**, e as duas metades da decisão são
+/// separadas de propósito: do lado do ARQUIVO são componentes irmãos (um campo
+/// apendado à [`WalkSurface`] seria postcard posicional ⇒ bump de
+/// `PROJECT_SCHEMA` ⇒ recusa de todo projeto salvo — a saída que o doc daquele
+/// módulo já prescreve); do lado do RUNTIME esta tabela é interna ao bridge e
+/// pode crescer à vontade. Fundi-las aqui é o que mantém **uma** lei de
+/// resolução part-vs-corpo em vez de duas que divergem.
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+pub(super) struct SurfaceFacts {
+    pub(super) walk: WalkSurface,
+    /// A mão não agarra aqui (`W-WallMaterial`).
+    pub(super) no_cling: bool,
+}
+
 /// As superfícies vivas, indexadas por onde a consulta as procura.
 #[derive(Default)]
 pub(super) struct Surfaces {
     /// Peças (um filho com `Collider` e sem `RigidBody`): pelo COLLIDER.
-    by_collider: BTreeMap<Key, WalkSurface>,
+    by_collider: BTreeMap<Key, SurfaceFacts>,
     /// Corpos de forma única: pelo CORPO.
-    by_body: BTreeMap<Key, WalkSurface>,
+    by_body: BTreeMap<Key, SurfaceFacts>,
 }
 
 impl Surfaces {
@@ -62,8 +78,20 @@ impl Surfaces {
     /// outra de borracha passaria a ter uma só.
     #[must_use]
     pub(super) fn at(&self, hit: &CastHit) -> WalkSurface {
+        self.facts_at(hit).walk
+    }
+
+    /// **Esta superfície é parede?** — a pergunta que o sensor de parede faz
+    /// (`W-WallMaterial`), pela MESMA porta e portanto sob a mesma lei
+    /// part-vs-corpo.
+    #[must_use]
+    pub(super) fn clings_at(&self, hit: &CastHit) -> bool {
+        !self.facts_at(hit).no_cling
+    }
+
+    fn facts_at(&self, hit: &CastHit) -> SurfaceFacts {
         if self.is_empty() {
-            return WalkSurface::NEUTRAL;
+            return SurfaceFacts::default();
         }
         if let Some(s) = self.by_collider.get(&hit.collider.into_raw_parts()) {
             return *s;
@@ -71,7 +99,7 @@ impl Surfaces {
         hit.body
             .and_then(|b| self.by_body.get(&b.into_raw_parts()))
             .copied()
-            .unwrap_or(WalkSurface::NEUTRAL)
+            .unwrap_or_default()
     }
 }
 
@@ -87,6 +115,17 @@ impl PhysicsBridge {
         self.surfaces.by_collider.clear();
         self.surfaces.by_body.clear();
         let world = sim.world();
+        // ⚠️ **Passe 2 primeiro? Não — a ORDEM não importa aqui, e é por isso que
+        // ela pode ser lida sem susto:** cada passe escreve um campo DIFERENTE da
+        // mesma entrada, e a entrada nasce no neutro. O que importa é que os dois
+        // usem a mesma chave (peça pelo collider, corpo pelo corpo), senão a
+        // mesma superfície teria duas identidades.
+        let mut nq = self.no_cling_query.take().expect("query built in prepare");
+        for (e, _) in nq.iter(world) {
+            self.surface_entry(e).no_cling = true;
+        }
+        self.no_cling_query = Some(nq);
+
         let mut q = self.surface_query.take().expect("query built in prepare");
         for (e, surf) in q.iter(world) {
             // ⚠️ **O neutro não entra na tabela.** Ele é indistinguível da
@@ -95,17 +134,27 @@ impl PhysicsBridge {
             if surf.is_neutral() {
                 continue;
             }
-            if let Some(p) = self.parts.get(&e) {
-                self.surfaces
-                    .by_collider
-                    .insert(p.handle.into_raw_parts(), *surf);
-            } else if let Some(b) = self.bodies.get(&e) {
-                self.surfaces
-                    .by_body
-                    .insert(b.handle.into_raw_parts(), *surf);
-            }
+            self.surface_entry(e).walk = *surf;
         }
         self.surface_query = Some(q);
+    }
+
+    /// A entrada desta entidade na tabela, criada no neutro se ainda não existe.
+    ///
+    /// ⚠️ **A PEÇA primeiro, e é a mesma ordem que a consulta usa** — o
+    /// `hit.body` de uma peça é o corpo DONO dela, então indexar uma peça pelo
+    /// corpo daria a superfície do tronco a quem pisou nela.
+    fn surface_entry(&mut self, e: ph2d_ecs::Entity) -> &mut SurfaceFacts {
+        if let Some(p) = self.parts.get(&e) {
+            let k = p.handle.into_raw_parts();
+            return self.surfaces.by_collider.entry(k).or_default();
+        }
+        let k = self
+            .bodies
+            .get(&e)
+            .map(|b| b.handle.into_raw_parts())
+            .unwrap_or_default();
+        self.surfaces.by_body.entry(k).or_default()
     }
 }
 

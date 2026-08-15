@@ -225,6 +225,20 @@ pub const INSP_PHYS_WALK_GRIP: NodeId = hash_node_id("insp_phys_walk_grip");
 /// **A ESTEIRA** (`W-Surface`) — a velocidade que esta superfície apresenta a
 /// quem está sobre ela, em m/s COM SINAL, ao longo da tangente dela.
 pub const INSP_PHYS_WALK_BELT: NodeId = hash_node_id("insp_phys_walk_belt");
+/// **Esta superfície é PAREDE?** (`W-WallMaterial`) — o `platform_wall_layers` do
+/// Godot, por CORPO/PEÇA em vez de por camada. Grupo + as duas opções
+/// (`On` = agarra-se, o default; `Off` = a mão não a segura).
+///
+/// ⚠️ **Ao lado do Grip e da Belt, e não junto do One-Way**, porque é a mesma
+/// pergunta que aquelas duas fazem — *de que esta superfície é feita para quem
+/// encosta nela* —, enquanto o One-Way é sobre a GEOMETRIA do collider (*de que
+/// lado ele é sólido*). E é oferecida em TODO collider pela razão que a família
+/// da superfície já tem escrita: a parede que importa é quase sempre ESTÁTICA.
+pub const INSP_LIVE_PHYSICS_WALLMAT: NodeId = hash_node_id("insp_live_physics_wallmat");
+pub const INSP_PHYS_WALLMAT: [NodeId; 2] = [
+    hash_node_id("insp_phys_wallmat_on"),
+    hash_node_id("insp_phys_wallmat_off"),
+];
 pub const INSP_PHYS_OFFSET_Y: NodeId = hash_node_id("insp_phys_offset_y");
 /// §11 Mass density (kg/m² in 2D).
 pub const INSP_PHYS_DENSITY: NodeId = hash_node_id("insp_phys_density");

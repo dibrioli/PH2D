@@ -550,8 +550,21 @@ pub(super) fn probe_headroom(
 /// ([`ph2d_platformer::Headroom`], [`ph2d_platformer::CeilingProbe`]). Reduzir
 /// aqui seria uma segunda régua ao lado da que a perna já usa, e as duas
 /// divergiriam no dia em que o `max_slope` autorado se movesse.
+///
+/// ⚠️ **O MATERIAL é recusado AQUI, no sensor, e não na lei** (`W-WallMaterial`).
+/// Uma superfície marcada [`crate::NoWallCling`] some do array como se o raio não
+/// tivesse acertado nada, então os **três** verbos que bebem da amostra —
+/// deslizar, agarrar-se, pular da parede — desaparecem juntos, sem que
+/// `ph2d_platformer::cling` aprenda o conceito: ela continua a ser a régua de
+/// INCLINAÇÃO e nada mais. É a mesma divisão que a matriz de colisão já faz um
+/// nível abaixo (o `layer` do `cast_ray`): *o que o sensor não vê, a lei não
+/// julga*.
+///
+/// ⚠️ E a identidade estava aqui de graça — o [`ph2d_physics::CastHit`] carrega o
+/// `collider` e o `body`, e este laço os **descartava** ao montar o `WallHit`.
 pub(super) fn probe_wall(
     world: &ph2d_physics::PhysicsWorld,
+    surfaces: &crate::bridge::surfaces::Surfaces,
     handle: rapier2d_handle::Handle,
     layer: u8,
     cfg: &PlayerConfig,
@@ -562,6 +575,7 @@ pub(super) fn probe_wall(
     for (slot, r) in hits.iter_mut().zip(rays.iter()).take(n) {
         *slot = world
             .cast_ray(r.origin, r.dir, r.reach, Some(handle), layer)
+            .filter(|hit| surfaces.clings_at(hit))
             .map(|hit| WallHit {
                 distance: hit.distance,
                 normal: hit.normal,

@@ -115,6 +115,10 @@ pub(crate) fn build_physics_info(
     // Optional OneWayPlatform marker (W-OneWay); its presence is the flag. A collider
     // property, so it is read for any body kind (a platform is usually Static).
     let one_way = world.get::<OneWayPlatform>(entity).is_some();
+    // Optional NoWallCling marker (W-WallMaterial); its presence says the surface is
+    // not wall material. Read for any kind, and from the SAME entity as the collider —
+    // a part carries its own, which is what lets one face of a body be unclimbable.
+    let no_wall_cling = world.get::<ph2d_physics_ecs::NoWallCling>(entity).is_some();
     // Optional AreaForceWorldAxes marker (W-AreaFrame); its presence pins the zone's
     // force to world axes, its absence authors it in the zone's own frame. Read for any
     // kind for the same reason as the marker above: it is a collider question.
@@ -155,6 +159,7 @@ pub(crate) fn build_physics_info(
             has_body: false,
             has_collider: false,
             part_count: 0,
+            no_wall_cling: false,
             bake_seconds,
             bake_start_seconds,
             kind_tag: 0,
@@ -337,6 +342,7 @@ pub(crate) fn build_physics_info(
         angular_damping: damping.angular,
         damp_mode_tag: damping.mode.tag(),
         one_way,
+        no_wall_cling,
         force,
         force_world_axes,
         area_drag,

@@ -177,7 +177,7 @@ fn the_blast_pushes_outward_with_a_falloff_that_reaches_zero() {
     floating(&mut bridge);
     let tick = run(&mut bridge, &mut sim, 0, 1);
 
-    let hit = bridge.explode([0.0, 0.0], 3.0, 10.0);
+    let hit = bridge.explode(&sim, [0.0, 0.0], 3.0, 10.0);
     assert_eq!(
         hit, 2,
         "the blast reported {hit} bodies inside a 3 m radius"
@@ -326,7 +326,7 @@ fn a_blast_drops_the_scrub_cache() {
         bridge.ring_stats().0 > 0,
         "fixture: the ring should be warm"
     );
-    let hit = bridge.explode([0.0, 0.0], 3.0, 10.0);
+    let hit = bridge.explode(&sim, [0.0, 0.0], 3.0, 10.0);
     assert_eq!(hit, 1);
     assert_eq!(
         bridge.ring_stats().0,
@@ -348,7 +348,7 @@ fn a_blast_that_hits_nothing_leaves_the_cache_alone() {
     let warm = bridge.ring_stats().0;
     assert!(warm > 0, "fixture: the ring should be warm");
     // Longe de tudo.
-    assert_eq!(bridge.explode([50.0, 50.0], 3.0, 10.0), 0);
+    assert_eq!(bridge.explode(&sim, [50.0, 50.0], 3.0, 10.0), 0);
     assert_eq!(
         bridge.ring_stats().0,
         warm,

@@ -213,6 +213,7 @@ impl crate::App {
             // que e' a fonte; a nota da §5 do CLAUDE.md dava a `=105` como a
             // proxima livre e tinha envelhecido em onze cenas.
             "116" => self.physics_smoke_terminal(),
+            "117" => self.physics_smoke_blast(),
             _ => self.physics_smoke_drop(),
         }
 

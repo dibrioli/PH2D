@@ -2250,6 +2250,7 @@ impl App {
         let simulating = self.timeline.flags.simulate_physics;
         let Some(hit) = crate::body_grab::poke_at(
             &mut gfx.physics,
+            &gfx.sim,
             &self.interaction,
             world,
             playing,

@@ -41,6 +41,7 @@ pub use bridge::signals::SignalEvent;
 pub use bridge::triggers::TriggerEvent;
 // O par de números que um readout de joint mostra. Re-exportado porque a shell
 // não depende de `ph2d-physics` direto.
+pub use bridge::Launch;
 pub use bridge::fk::FkSession;
 pub use bridge::ik::{IkPlan, IkSession};
 pub use bridge::joints::joint_desc;

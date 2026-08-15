@@ -11,9 +11,10 @@
 
 use crate::{
     Motor, Reaction, Vec2, crouch::CrouchConfig, crouch::CrouchState, dash::DashConfig,
-    dash::DashState, descent::FallConfig, glide::GlideConfig, jump::JumpConfig, jump::JumpKind, jump::JumpState,
-    kinematic, ledge::LedgeConfig, ledge::LedgeState, react::ReactionConfig, ride::RideConfig,
-    swim::SwimConfig, swim::SwimState, walk::WalkConfig, wall::GrabState, wall::WallConfig,
+    dash::DashState, descent::FallConfig, glide::GlideConfig, jump::JumpConfig, jump::JumpKind,
+    jump::JumpState, kinematic, ledge::LedgeConfig, ledge::LedgeState, react::ReactionConfig,
+    ride::RideConfig, swim::SwimConfig, swim::SwimState, walk::WalkConfig, wall::GrabState,
+    wall::WallConfig,
 };
 
 /// A config inteira de um player — as metades que a [`footing`] precisa
@@ -121,6 +122,27 @@ pub struct PlayerState {
     /// memória do controlador de outro. **Inerte no modo dinâmico** (fica em
     /// zero: ninguém o escreve), então o campo é byte-neutro para quem não o usa.
     pub kin: kinematic::KinematicState,
+    /// **Segundos de silêncio que um empurrão de FORA comprou** (`W-Launch`) —
+    /// escorre com o tempo, e **não morre ao pousar**.
+    ///
+    /// ⚠️ **Não é o [`JumpState::wall_lock`], e a diferença é medida.** Aquele é
+    /// sobre um pulo, então o pé no chão o ZERA — um jogador que aterrou espera
+    /// dirigir. Este é sobre um empurrão que o mundo deu, e a medição diz que na
+    /// maior parte das vezes ele acontece **no chão**: uma explosão ao lado do
+    /// personagem entrega `13,92 m/s` no primeiro tique e a caminhada os apaga
+    /// no **décimo** (0,15 s), com o jogador a não tocar em nada — é o FREIO que
+    /// come, não o direcional. Zerar esta janela ao pousar devolveria o
+    /// empurrão à caminhada exactamente no caso comum.
+    ///
+    /// ⚠️ **Mora AQUI e não num mapa da ponte** pela razão que o doc deste tipo
+    /// enuncia acima: é este valor que o ring de tiques âncora guarda, e uma
+    /// janela que vivesse noutro mapa teria de ser acrescentada ao ring à mão —
+    /// esquecê-la é um scrub que devolve o mundo de um tique e a memória do
+    /// controlador de outro.
+    ///
+    /// ⚠️ **Zero é o mundo de antes desta wave ao bit:** quem nunca foi empurrado
+    /// carrega `0.0`, o `if` da caminhada lê falso e nada muda.
+    pub push_lock: f32,
 }
 
 impl Default for PlayerState {
@@ -137,6 +159,7 @@ impl Default for PlayerState {
             swim: SwimState::default(),
             ledge: LedgeState::default(),
             kin: kinematic::KinematicState::default(),
+            push_lock: 0.0,
         }
     }
 }

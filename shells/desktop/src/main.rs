@@ -238,6 +238,7 @@ mod pattern_path_smoke;
 mod pencil_smoke;
 mod physics_smoke;
 mod physics_smoke_authoring;
+mod physics_smoke_blast;
 mod physics_smoke_brake;
 mod physics_smoke_collider;
 mod physics_smoke_collision;

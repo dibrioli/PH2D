@@ -37,12 +37,27 @@
 //! kinematic (massa infinita — o fato que a W-BakeJoint mediu), então a recusa é
 //! do wrapper e o chamador fica livre para deixar o gesto de sempre acontecer.
 
-use ph2d_ecs::Entity;
+use ph2d_ecs::{Entity, SimWorld};
 use ph2d_physics::HoldSpec;
 
 use crate::interaction::InteractionSettings;
 
 use super::PhysicsBridge;
+
+/// **Quantos segundos um estouro é dono do personagem** (`W-Launch`).
+///
+/// ⚠️ **MEDIDO, não escolhido:** com o jogador a não tocar em nada a caminhada
+/// apaga um empurrão em **9 tiques — 0,15 s** (`measure_launch.rs`), e com o
+/// direcional contrário ela chega a velocidade de cruzeiro contrária em 18. O
+/// dobro disso é o que faz o estouro ser lido como *um estouro* em vez de um
+/// tropeção; abaixo de 0,15 ele não compraria nada.
+///
+/// ⚠️ **É daqui e não do `WallConfig::jump_lockout`:** o mecanismo é reusado (um
+/// relógio que cala o controlo, lido por um `if` só), o NÚMERO é de quem
+/// empurra — uma explosão e uma almofada de salto não são donas do personagem
+/// pelo mesmo tempo, e ler o número da parede faria um knob significar duas
+/// coisas.
+const BLAST_LOCK: f32 = 0.3;
 
 impl PhysicsBridge {
     /// **Qual corpo esta entidade É, ou de qual ela faz parte** (W-PartFace).
@@ -101,12 +116,111 @@ impl PhysicsBridge {
     /// registro nenhum) — então a resposta para um tick passaria a depender de o
     /// cache tê-lo ou não. Com o ring vazio as duas rotas concordam: o cutucão se
     /// perde, sempre.
-    pub fn explode(&mut self, center: [f32; 2], radius: f32, impulse: f32) -> usize {
+    /// ⚠️ **E ela alcança os PLAYERS dos três modos** (`W-Launch`) — a metade
+    /// que a torna honesta. O `PhysicsWorld::explode` pula todo corpo que não é
+    /// `Dynamic`, então sob **Snap** e **Pure** o estouro alcançava **ZERO**
+    /// corpos (medido em `measure_launch.rs`): o botão existia, o toast dizia
+    /// *"0"*, e o personagem ficava parado ao lado de uma explosão.
+    ///
+    /// ⚠️ **O `sim` é o preço de a explosão saber quem é player**, e não há
+    /// atalho: quem responde *"a lei escreve a pose deste corpo?"* é o
+    /// [`pose_owner`](super::pose_owner::pose_owner), que lê o ECS. Adivinhar
+    /// pelo `BodyKind` seria a segunda resposta à pergunta que aquela porta
+    /// existe para responder uma vez.
+    pub fn explode(
+        &mut self,
+        sim: &SimWorld,
+        center: [f32; 2],
+        radius: f32,
+        impulse: f32,
+    ) -> usize {
         let hit = self.world.explode(center, radius, impulse);
-        if hit > 0 {
+        let players = self.blast_players(sim, center, radius, impulse);
+        if hit + players > 0 {
             self.ring.clear();
         }
-        hit
+        hit + players
+    }
+
+    /// **Quantos players o estouro apanhou** — e o que ele lhes deu.
+    ///
+    /// ⚠️ **A FALLOFF é a mesma porta** (`ph2d_physics::blast_falloff`), pela
+    /// razão que o doc dela já dá: uma segunda curva aqui descreveria um alcance
+    /// que o solver não usa, e o anel que o overlay desenha deixaria de valer
+    /// para metade dos corpos da cena.
+    ///
+    /// ⚠️ **A um player DINÂMICO ela não dá velocidade nenhuma** — o solver já
+    /// lhe entregou o impulso —, mas dá-lhe a **JANELA**. Sem ela o estouro
+    /// alcança-o e a caminhada apaga-o em **0,15 s** (medido: `13,92 m/s` no
+    /// primeiro tique, `0,000` no décimo), que é a queixa *"a explosão mal o
+    /// move"* escrita como número.
+    ///
+    /// ⚠️ **E a um player de pose PRÓPRIA ela converte impulso em velocidade
+    /// pela massa REAL do solver** (`rb.mass()` responde para toda espécie de
+    /// corpo — o doc do `fluid_at` mediu `1,0000` em Dynamic, Kinematic e
+    /// Fixed): é a mesma lei do estouro (*resistido pela massa, a folha voa e o
+    /// caixote resiste*), e dividir por outra coisa faria o mesmo botão empurrar
+    /// dois personagens iguais de maneiras diferentes conforme o modo.
+    fn blast_players(
+        &mut self,
+        sim: &SimWorld,
+        center: [f32; 2],
+        radius: f32,
+        impulse: f32,
+    ) -> usize {
+        let world = sim.world();
+        let mut pushes: Vec<(Entity, [f32; 2], bool)> = Vec::new();
+        for (&entity, b) in self.bodies.iter() {
+            if world
+                .get::<crate::components::PlatformPlayer>(entity)
+                .is_none()
+            {
+                continue;
+            }
+            let owner = super::pose_owner::pose_owner(world, entity, b.kind);
+            if owner.driven_by_scene() {
+                continue;
+            }
+            let Some(pose) = self.world.body_pose(b.handle) else {
+                continue;
+            };
+            let d = [
+                pose.translation.x - center[0],
+                pose.translation.y - center[1],
+            ];
+            let dist = (d[0] * d[0] + d[1] * d[1]).sqrt();
+            let w = ph2d_physics::blast_falloff(dist, radius);
+            if w <= 0.0 {
+                continue;
+            }
+            // ⚠️ **No olho do estouro não há direção**, e `normalize` de um vetor
+            // nulo é NaN — a mesma recusa que o `PhysicsWorld::explode` faz, e
+            // pelo mesmo motivo: um NaN na velocidade envenena a pose, o
+            // `Transform` e o hash determinista.
+            if dist <= f32::EPSILON {
+                continue;
+            }
+            // Quem já foi empurrado pelo solver leva só a janela.
+            let own = owner.writes_own_pose();
+            let v = if own {
+                let mass = self.world.body_mass(b.handle).max(f32::EPSILON);
+                let k = impulse * w / mass;
+                [d[0] / dist * k, d[1] / dist * k]
+            } else {
+                [0.0, 0.0]
+            };
+            pushes.push((entity, v, own));
+        }
+        // ⚠️ **Só os de pose PRÓPRIA entram na contagem, e não é detalhe:** o
+        // `PhysicsWorld::explode` já contou o player dinâmico, e somá-lo outra
+        // vez faria o toast dizer *"2 corpos"* para UM personagem — medido, foi
+        // exactamente o que a primeira versão desta função fez. O que este passe
+        // acrescenta à contagem é quem o estouro não alcançava.
+        let n = pushes.iter().filter(|(_, _, own)| *own).count();
+        for (entity, v, _) in pushes {
+            self.launch_player(entity, v, BLAST_LOCK);
+        }
+        n
     }
 
     /// **Arma o campo de atração** no ponto dado, com as settings do artista.

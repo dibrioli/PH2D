@@ -35,6 +35,9 @@ mod kinematic;
 /// A metade PEÇA do reconcile — os colliders extra de um corpo composto.
 pub mod parts;
 mod player;
+/// O tipo do empurrão de fora (`W-Launch`) — mora no canal do player, e sobe
+/// por aqui porque o módulo dono é privado.
+pub use player::channel::Launch;
 /// A SAÍDA do player — o readout contínuo e o canal de transições
 /// (`W-PlayerOut`). Módulo irmão do `player`, cortado por RESPONSABILIDADE: ali
 /// mora *o que a lei decide num tique*, aqui *o que o resto do app pode ler*.
@@ -381,6 +384,17 @@ pub struct PhysicsBridge {
     ///
     /// `BTreeMap` pelo motivo determinístico que o `bodies` documenta.
     player_input: BTreeMap<Entity, ph2d_platformer::PlayerInput>,
+    /// **O EMPURRÃO DE FORA que ainda não foi entregue** (`W-Launch`).
+    ///
+    /// ⚠️ **Mapa PRÓPRIO, e não um campo do `player_input`, porque a semântica é
+    /// oposta:** a entrada do dedo é *set-and-hold* (um dispatch que deve vários
+    /// tiques aplica a MESMA a todos eles, que é o que segurar uma tecla quer
+    /// dizer), e um empurrão é um **evento**. Guardado ali, um dispatch que
+    /// devesse quatro tiques entregaria o empurrão **quatro vezes**.
+    ///
+    /// Drenado pelo `drive_players` no primeiro tique que o vê — `BTreeMap` pelo
+    /// motivo determinístico que o `bodies` documenta.
+    player_launch: BTreeMap<Entity, player::channel::Launch>,
     /// **Os estados de pulo nos tiques ÂNCORA** (W7) — o irmão do `ring`.
     ///
     /// Ver `bridge::tape`: um seed do ring devolve o mundo do tique T e este
@@ -531,6 +545,7 @@ impl PhysicsBridge {
             flashes: Vec::new(),
             contacts_continuous: true,
             player_input: BTreeMap::new(),
+            player_launch: BTreeMap::new(),
             state_ring: BTreeMap::new(),
             player_state: BTreeMap::new(),
             player_drop: BTreeMap::new(),

@@ -607,6 +607,20 @@ impl PhysicsWorld {
         self.bodies.get(handle).map(|b| *b.position())
     }
 
+    /// **A massa que o solver tem para este corpo**, em kg.
+    ///
+    /// ⚠️ **Ela responde para TODA espécie de corpo, o que não é óbvio:** um
+    /// corpo cinemático tem massa INFINITA *efetiva* (o rapier zera a
+    /// inversa-massa), mas `mass()` continua a devolver a massa dos colliders —
+    /// medido em `1,0000` para Dynamic, Kinematic e Fixed no doc do `fluid_at`,
+    /// que é quem primeiro precisou do fato. É isso que deixa o estouro converter
+    /// impulso em velocidade para um personagem de pose própria com a MESMA lei
+    /// que usa para um caixote (`W-Launch`).
+    #[must_use]
+    pub fn body_mass(&self, handle: RigidBodyHandle) -> f32 {
+        self.bodies.get(handle).map_or(0.0, RigidBody::mass)
+    }
+
     /// Iterate every dynamic body's snapshot, sorted by handle index
     /// for stable order across runs / OSes.
     pub fn body_snapshots(&self) -> Vec<BodySnapshot> {

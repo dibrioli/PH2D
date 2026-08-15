@@ -123,7 +123,7 @@ fn probe_smoke_53() {
         };
         let c = s.clamped();
         let spread_before = tower_spread(&sim);
-        let hit = bridge.explode([0.0, 0.3], c.blast_radius, c.blast_impulse);
+        let hit = bridge.explode(&sim, [0.0, 0.3], c.blast_radius, c.blast_impulse);
         // ⚠️ O oráculo é o ESPALHAMENTO depois de 1 s, e a 1ª versão desta sonda
         // media a velocidade de um caixote 1 tick depois do estouro: dentro de uma
         // pilha ele bate nos vizinhos no MESMO tick, então o número reportado era o
@@ -142,7 +142,7 @@ fn probe_smoke_53() {
         );
         // E um estouro FORA do alcance.
         let (mut sim2, mut bridge2) = scene();
-        let far = bridge2.explode([40.0, 0.3], c.blast_radius, c.blast_impulse);
+        let far = bridge2.explode(&sim2, [40.0, 0.3], c.blast_radius, c.blast_impulse);
         bridge2.dispatch(&mut sim2, true, 61);
         println!("  fora do alcance -> {far} corpos");
     }

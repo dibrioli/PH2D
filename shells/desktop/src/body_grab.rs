@@ -112,6 +112,11 @@ pub(crate) fn take_hold(
 /// que faz destas duas uma família própria.
 pub(crate) fn poke_at(
     physics: &mut PhysicsBridge,
+    // ⚠️ **A cena entra aqui porque a EXPLOSÃO precisa de saber quem é player**
+    // (`W-Launch`): o `PhysicsWorld::explode` pula todo corpo que não é
+    // `Dynamic`, e quem responde *"a lei escreve a pose deste?"* é o
+    // `pose_owner`, que lê o ECS.
+    sim: &ph2d_ecs::SimWorld,
     settings: &InteractionSettings,
     world_point: [f32; 2],
     playing: bool,
@@ -126,7 +131,7 @@ pub(crate) fn poke_at(
         // exaustivo sem um `_ =>` que engoliria uma ferramenta nova em silêncio.
         InteractionTool::Hand => None,
         InteractionTool::Explode => {
-            Some(physics.explode(world_point, s.blast_radius, s.blast_impulse))
+            Some(physics.explode(sim, world_point, s.blast_radius, s.blast_impulse))
         }
         InteractionTool::Attract => {
             physics.attract(&s, world_point);

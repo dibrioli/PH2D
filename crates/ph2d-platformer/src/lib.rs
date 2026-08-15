@@ -78,8 +78,8 @@ pub use crouch::{
     ride_for, walk_for,
 };
 pub use dash::{DashConfig, DashState, DashStep, dash_burst, dash_step};
-pub use event::{PlayerEvent, events_between};
 pub use descent::{FallConfig, descent_ceiling, descent_motor};
+pub use event::{PlayerEvent, events_between};
 pub use glide::GlideConfig;
 pub use ground::{ground_carry, relative_along, relative_rise};
 pub use jump::{JumpConfig, JumpKind, JumpState, JumpStep, carried_frame, jump_step};
@@ -395,23 +395,29 @@ pub fn player_motor(
     // próprio e no eixo horizontal. Deixá-la viva seria um segundo servo a
     // escrever o mesmo eixo que a braçada, e os dois discordariam sobre o alvo
     // (ela mira `speed`, ele mira `swim.speed`).
-    let step = if jump.state.wall_lock > 0.0 || dashing || swimming || ledging {
-        Motor::default()
-    } else {
-        no_uphill(
-            walk(
-                &cfg.walk,
-                standing,
-                body_velocity,
+    // ⚠️ **E o EMPURRÃO DE FORA cala a caminhada pela MESMA razão** (`W-Launch`),
+    // com a janela lida do estado que ENTRA: ela foi comprada antes deste tique,
+    // e é ela que impede o freio de apagar o empurrão em 0,15 s — o número
+    // medido em `measure_launch.rs`. Sem o termo, `launch_player` seria uma porta
+    // que entrega velocidade a quem a apaga no tique seguinte.
+    let step =
+        if jump.state.wall_lock > 0.0 || state.push_lock > 0.0 || dashing || swimming || ledging {
+            Motor::default()
+        } else {
+            no_uphill(
+                walk(
+                    &cfg.walk,
+                    standing,
+                    body_velocity,
+                    up,
+                    input.drive,
+                    carried,
+                    dt,
+                ),
+                verdict.steep(),
                 up,
-                input.drive,
-                carried,
-                dt,
-            ),
-            verdict.steep(),
-            up,
-        )
-    };
+            )
+        };
 
     // ── A 3ª LEI ─────────────────────────────────────────────────────────────
     // Só há em quem empurrar se houver chão. ⚠️ E o que volta é o CONTATO: a
@@ -577,6 +583,13 @@ pub fn player_motor(
             // Passar `was` por aqui só para o devolver seria uma segunda porta
             // para o mesmo número.
             kin: state.kin,
+            // ⚠️ **A janela do empurrão de fora escorre aqui, e NÃO é zerada
+            // pelo chão** — a diferença deliberada com o `wall_lock`, cujo
+            // argumento (*"quem aterrou espera dirigir"*) é sobre um PULO. Um
+            // empurrão acontece na maior parte das vezes com o pé no chão, e é o
+            // FREIO que o come: medido, `13,92 m/s` no primeiro tique e `0,000`
+            // no décimo, com o jogador a não tocar em nada.
+            push_lock: (state.push_lock - dt).max(0.0),
         },
         // ⚠️ **A VISTA é montada aqui, no fim, com os vereditos que a lei já
         // tomou** — nenhum deles é re-derivado (ver [`PlayerStep::view`]).

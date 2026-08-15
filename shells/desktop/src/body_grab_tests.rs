@@ -222,7 +222,7 @@ fn probe_smoke_52() {
 /// dispararia o estouro **e** pegaria o corpo debaixo dele.
 #[test]
 fn the_two_tool_families_refuse_each_other() {
-    let (_sim, mut bridge, e) = scene(BodyKind::Dynamic);
+    let (sim, mut bridge, e) = scene(BodyKind::Dynamic);
     // A mão recusa quando a ferramenta é de ponto.
     assert!(
         !crate::body_grab::take_hold(&mut bridge, &blast(), e, [0.0, 0.0], true, true),
@@ -231,7 +231,7 @@ fn the_two_tool_families_refuse_each_other() {
     assert!(!bridge.is_grabbing());
     // E a porta de ponto recusa quando a ferramenta é a mão.
     assert!(
-        crate::body_grab::poke_at(&mut bridge, &hand(), [0.0, 0.0], true, true).is_none(),
+        crate::body_grab::poke_at(&mut bridge, &sim, &hand(), [0.0, 0.0], true, true).is_none(),
         "a porta de ponto consumiu o press com a MÃO em mãos"
     );
     assert!(!bridge.is_poking());
@@ -249,17 +249,20 @@ fn the_point_tools_need_the_clock_and_the_toggle() {
             tool,
             ..InteractionSettings::default()
         };
-        let (_sim, mut bridge, _e) = scene(BodyKind::Dynamic);
+        let (sim, mut bridge, _e) = scene(BodyKind::Dynamic);
         assert!(
-            crate::body_grab::poke_at(&mut bridge, &settings, [0.0, 0.0], false, true).is_none(),
+            crate::body_grab::poke_at(&mut bridge, &sim, &settings, [0.0, 0.0], false, true)
+                .is_none(),
             "{tool:?} disparou com o relógio parado"
         );
         assert!(
-            crate::body_grab::poke_at(&mut bridge, &settings, [0.0, 0.0], true, false).is_none(),
+            crate::body_grab::poke_at(&mut bridge, &sim, &settings, [0.0, 0.0], true, false)
+                .is_none(),
             "{tool:?} disparou com a física desarmada"
         );
         assert!(
-            crate::body_grab::poke_at(&mut bridge, &settings, [0.0, 0.0], true, true).is_some(),
+            crate::body_grab::poke_at(&mut bridge, &sim, &settings, [0.0, 0.0], true, true)
+                .is_some(),
             "{tool:?} não disparou com as duas condições satisfeitas"
         );
     }
@@ -272,20 +275,20 @@ fn the_point_tools_need_the_clock_and_the_toggle() {
 /// mesmo braço, que é a regressão mais fácil deste `match`.
 #[test]
 fn each_point_tool_does_its_own_thing() {
-    let (_sim, mut bridge, _e) = scene(BodyKind::Dynamic);
-    let hit = crate::body_grab::poke_at(&mut bridge, &blast(), [0.0, 0.0], true, true);
+    let (sim, mut bridge, _e) = scene(BodyKind::Dynamic);
+    let hit = crate::body_grab::poke_at(&mut bridge, &sim, &blast(), [0.0, 0.0], true, true);
     assert_eq!(hit, Some(1), "o estouro não contou o corpo sob ele");
     assert!(
         !bridge.is_poking(),
         "o estouro deixou um cutucão SUSTENTADO em voo — ele é um impulso"
     );
 
-    let (_sim, mut bridge, _e) = scene(BodyKind::Dynamic);
+    let (sim, mut bridge, _e) = scene(BodyKind::Dynamic);
     let pull = InteractionSettings {
         tool: InteractionTool::Attract,
         ..InteractionSettings::default()
     };
-    assert!(crate::body_grab::poke_at(&mut bridge, &pull, [0.0, 0.0], true, true).is_some());
+    assert!(crate::body_grab::poke_at(&mut bridge, &sim, &pull, [0.0, 0.0], true, true).is_some());
     assert!(
         bridge.attract_marks().is_some(),
         "a atração não armou campo nenhum"

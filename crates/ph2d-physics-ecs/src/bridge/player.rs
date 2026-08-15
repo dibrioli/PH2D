@@ -34,9 +34,10 @@ use ph2d_ecs::SimWorld;
 use ph2d_physics::{CharacterHit, CharacterParams};
 use ph2d_platformer::{
     Buoyed, CeilingProbe, Fluid, GroundSample, Headroom, KinematicState, MAX_CORNER_SAMPLES,
-    MAX_WALL_SAMPLES, PlayerConfig, PlayerInput, PlayerState, ReactionConfig, WallHit, WallProbe,
-    corner_offsets, corner_probe_wanted, footing, headroom_probe_wanted, kinematic_advance,
-    kinematic_settle, odd_samples, player_motor, relative_rise, wall_offsets, wall_probe_wanted,
+    MAX_WALL_SAMPLES, Motor, PlayerConfig, PlayerInput, PlayerState, ReactionConfig, WallHit,
+    WallProbe, corner_offsets, corner_probe_wanted, footing, headroom_probe_wanted,
+    kinematic_advance, kinematic_settle, odd_samples, player_motor, relative_rise, wall_offsets,
+    wall_probe_wanted,
 };
 
 use super::player_view::{ProbeKind, ProbeMark};
@@ -176,7 +177,21 @@ impl PhysicsBridge {
             let Some(solver_vel) = self.world.body_velocity(b.handle) else {
                 continue;
             };
-            let was = self.player_state.get(&entity).copied().unwrap_or_default();
+            let mut was = self.player_state.get(&entity).copied().unwrap_or_default();
+            // ── O EMPURRÃO DE FORA (`W-Launch`) ──────────────────────────────
+            // ⚠️ **DRENADO, e é a diferença inteira contra a entrada do dedo:**
+            // aquela é *set-and-hold* (um dispatch que deve quatro tiques aplica
+            // a MESMA a todos eles, que é o que segurar uma tecla quer dizer), e
+            // um empurrão é um EVENTO — guardado, ele seria entregue quatro
+            // vezes.
+            //
+            // ⚠️ **A janela entra no estado que a lei vai LER**, e não no que ela
+            // devolve: é este tique que a caminhada tem de passar calada, senão o
+            // freio apaga o empurrão antes de ele chegar ao solver.
+            let launch = self.player_launch.remove(&entity);
+            if let Some(l) = launch {
+                was.push_lock = was.push_lock.max(l.lock);
+            }
 
             let mut cfg = cfg.config();
             // ⚠️ **Sob Snap a PERNA é o próprio corpo** — ver
@@ -486,7 +501,23 @@ impl PhysicsBridge {
             if step.nudge != [0.0, 0.0] {
                 nudges.push((b.handle, step.nudge));
             }
-            let motor = step.motor;
+            // ⚠️ **O empurrão sai pela porta do `boost`, e é a MESMA descoberta
+            // que a wave do teto de queda fez:** os dois modos já a consomem — o
+            // `kinematic_advance` soma `motor.boost` à velocidade que possui, e a
+            // ponte dinâmica manda-o ao solver como impulso (`apply_player_motor`)
+            // —, então uma segunda entrega por modo seria a segunda resposta à
+            // mesma pergunta. Sob Snap e Pure é a ÚNICA que existe: medido, uma
+            // explosão alcança **zero** corpos ali.
+            let motor = match launch {
+                Some(l) => Motor {
+                    boost: [
+                        step.motor.boost[0] + l.velocity[0],
+                        step.motor.boost[1] + l.velocity[1],
+                    ],
+                    ..step.motor
+                },
+                None => step.motor,
+            };
             if owner.writes_own_pose() {
                 // ── O MODO CINEMÁTICO (W-KinMove) ────────────────────────────
                 // ⚠️ **A `gravity_hold` NÃO é consultada aqui, e é deliberado:**
@@ -668,7 +699,7 @@ use probes::{probe_ceiling, probe_headroom, probe_ledge, probe_wall};
 
 /// O canal com o mundo de fora — ver o cabeçalho do módulo filho.
 #[path = "player_channel.rs"]
-mod channel;
+pub(crate) mod channel;
 
 #[path = "player_drops.rs"]
 mod drops;

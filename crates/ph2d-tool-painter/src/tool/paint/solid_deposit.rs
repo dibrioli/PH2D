@@ -225,11 +225,7 @@ impl PainterTool {
             let mut dab = template;
             dab.center = [a[0] + dir[0] * t, a[1] + dir[1] * t];
             dab.arc_len = t;
-            ph2d_painter_brush::symmetry::push_symmetric(
-                &mut out,
-                dab,
-                &self.paint.brush.symmetry,
-            );
+            ph2d_painter_brush::symmetry::push_symmetric(&mut out, dab, &self.paint.brush.symmetry);
         }
         out
     }
@@ -243,9 +239,19 @@ impl PainterTool {
     /// deixaria um LEQUE de cordas velhas pelo gesto inteiro. Dentro desta transação ela é restaurada
     /// e re-carimbada com a mancha, que é exactamente o que um re-carimbo é.
     ///
-    /// ⚠️ **E o retângulo cresce meia-espessura por causa dela:** a caixa dos laços contém a corda
-    /// (as duas pontas são vértices do laço) mas não o RAIO dos dabs dela — sem a folga, o `save`
-    /// não cobriria o que a corda escreve e o restore do quadro seguinte deixaria um rastro.
+    /// ⚠️ **E o retângulo cresce pela pegada REAL da corda, perguntada às portas do depósito.** A
+    /// caixa dos laços contém a corda (as duas pontas são vértices do laço) mas não o que os dabs
+    /// dela escrevem — sem a folga, o `save` não cobre a tinta da corda e o restore do quadro
+    /// seguinte deixa um rastro.
+    ///
+    /// ⚠️ **E a folga NÃO pode ser meia-espessura, porque o Tiling tem régua PRÓPRIA** (auditoria do
+    /// Enio, 2026-08-15). Um laço é replicado quando a CAIXA dele passa a costura; um dab, quando
+    /// `centro ± raio` passa. Um caminho colado à borda tem a caixa DENTRO da tela e dabs de corda
+    /// cuja pegada passa dela: a cópia envolvida cai na borda OPOSTA, a um span inteiro de distância,
+    /// fora de qualquer folga de raio. Medido, um caminho a 8 px da borda deixava **279 texels** que
+    /// o restore nunca alcançava — e o desenho passava a depender da TAXA DE EVENTOS, que é a lei que
+    /// este módulo já pagou quatro vezes no relevo. A cura é não ter uma segunda régua: a região sai
+    /// de [`Self::tiled_chord_region`], que pergunta às MESMAS portas que o carimbo vai usar.
     pub(super) fn stamp_solid_loops_with_chord(&mut self, loops: &[Vec<[f32; 2]>], chord: &[Dab]) {
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
@@ -253,25 +259,8 @@ impl PainterTool {
         let Some(mut rect) = self.solid_fill_rect(loops) else {
             return;
         };
-        if !chord.is_empty() {
-            let pad = chord
-                .iter()
-                .fold(0.0f32, |m, d| m.max(d.radius_px))
-                .max(0.0)
-                .ceil();
-            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            let pad = pad as u32 + 1;
-            let (w, h) = self.source_size;
-            let x0 = rect.x.saturating_sub(pad);
-            let y0 = rect.y.saturating_sub(pad);
-            let x1 = (rect.x + rect.w + pad).min(w);
-            let y1 = (rect.y + rect.h + pad).min(h);
-            rect = Region {
-                x: x0,
-                y: y0,
-                w: x1.saturating_sub(x0),
-                h: y1.saturating_sub(y0),
-            };
+        if let Some(chord_rect) = self.tiled_chord_region(chord) {
+            rect = super::union_region(rect, chord_rect);
         }
         if rect.w == 0 || rect.h == 0 {
             return;
@@ -282,6 +271,24 @@ impl PainterTool {
             self.stamp_dabs_dispatch(chord);
         }
         self.paint.drag_preview = Some(super::DragPreview { rect, pixels });
+    }
+
+    /// **A região que a corda vai de facto escrever** — já replicada pelo Tiling, pelas MESMAS portas
+    /// que o carimbo usa (`tiling::tiled_dabs` → `dab_batch_region`).
+    ///
+    /// ⚠️ **Ela não redescobre nada, e é isso que a torna correta:** perguntar *"o que esta corda
+    /// pinta?"* com uma régua própria é como a régua do laço e a do dab passam a discordar sobre a
+    /// costura — que é exactamente o defeito que a fez nascer.
+    pub(super) fn tiled_chord_region(&self, chord: &[Dab]) -> Option<Region> {
+        if chord.is_empty() {
+            return None;
+        }
+        if self.paint.tiling[0] || self.paint.tiling[1] {
+            let wrapped = super::tiling::tiled_dabs(chord, self.source_size, self.paint.tiling);
+            self.dab_batch_region(&wrapped)
+        } else {
+            self.dab_batch_region(chord)
+        }
     }
 
     /// Escreve a região **pela porta do gate**, exactamente como um lote de dabs: a proteção e a

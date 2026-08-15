@@ -423,7 +423,10 @@ fn the_solid_fill_follows_the_ink_not_the_pointer() {
         loop_gesture_ticked(&mut b, 96.0, 34.0, 6);
         let cov = ph2d_painter_brush::solid::fill_coverage(&b.solid_fill_loops(), n, n, [0.0, 0.0]);
         let total = ink.iter().filter(|i| **i).count();
-        assert!(total > 300, "{kind:?}: a fixture nao entintou nada ({total})");
+        assert!(
+            total > 300,
+            "{kind:?}: a fixture nao entintou nada ({total})"
+        );
         #[allow(clippy::cast_precision_loss)]
         let hit = ink
             .iter()
@@ -510,5 +513,136 @@ fn the_closing_chord_wears_the_brush_like_the_rest_of_the_rim() {
         chord * 2 >= walked,
         "a corda de fechamento tem borda DURA ({chord} texels de meio-tom) contra os {walked} da \
          aresta que o pincel percorreu — ela nao levou o falloff"
+    );
+}
+
+/// **A TEIA SOBREVIVE AO PREENCHIMENTO** — os fios do Sketchy / Wire são tinta CUMULATIVA, e a
+/// transação da mancha não pode apagá-los (auditoria do Enio, 2026-08-15: *"os demais traços não
+/// ficaram bons … o efeito do traço não acontece"*).
+///
+/// ⚠️ **O mecanismo era a ORDEM do ciclo de traço.** Num evento o produto faz `stamp_dabs` — que
+/// abria a transação, **salvava** o retângulo e escrevia a mancha — e só DEPOIS `park_stroke` →
+/// `stamp_threads`. Os fios caíam **fora** do instantâneo, e o `peel` do evento seguinte restaurava
+/// exactamente aquele retângulo: **sobravam 11,9% da teia**. A mancha passou a fechar o evento
+/// (`super::stamp_route` arma, `super::thread_deposit::park_stroke` consome).
+///
+/// ⚠️ **A fixture põe a `Strength` do pincel em ZERO, e é ela que torna a pergunta respondível.** Um
+/// fio que cai DENTRO da região cheia é invisível por construção (mesma cor sobre mesma cor), então
+/// um oráculo que conte texels sobre a mancha **não distingue apagado de invisível** — a primeira
+/// versão mediu `0 de 117` e não podia dizer qual dos dois. A tinta do fio sai por um canal PRÓPRIO
+/// (`thread_ink` lê `thread_width_px`/`thread_opacity`, nunca a `strength`), então com a força a zero
+/// a mancha e os dabs não escrevem um byte e o que estiver na tela é a teia e só ela.
+///
+/// **Mutação que sangra:** devolver o `stamp_solid_preview()` ao `stamp_dabs` (261 de 2186).
+#[test]
+fn the_web_survives_the_fill() {
+    use ph2d_painter_brush::StrokeMethod;
+    use ph2d_painter_brush::line_kind::LineKind;
+
+    let side = 256u32;
+    let run = |kind: LineKind, solid: bool| -> usize {
+        let mut t = tool(side, PaintMedia::Digital, 3.0);
+        t.paint.brush.line_kind = kind;
+        t.paint.brush.strength = 0.0; // a mancha e os dabs ficam mudos; a teia não
+        t.paint.brush.sketchy_reach = 3.0;
+        t.paint.brush.sketchy_density = 1.0;
+        t.paint.brush.thread_width_px = 1.0;
+        t.paint.brush.thread_opacity = 0.5;
+        t.paint.brush.stroke_method = StrokeMethod::Space;
+        if solid {
+            t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+        }
+        let c = 128.0f32;
+        t.on_canvas_pointer(cp([c - 40.0, c], PointerPhase::Down));
+        for leg in 0..6 {
+            #[allow(clippy::cast_precision_loss)]
+            let x = c - 40.0 + (leg as f32) * 16.0;
+            let up = if leg % 2 == 0 { 1.0 } else { -1.0 };
+            for k in 1..=8 {
+                #[allow(clippy::cast_precision_loss)]
+                let y = c + up * (k as f32) * 4.0;
+                t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+            }
+            t.on_canvas_pointer(cp([x + 16.0, c], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([c + 56.0, c], PointerPhase::Up));
+        inked(&t)
+    };
+
+    let control = run(LineKind::None, true);
+    assert_eq!(
+        control, 0,
+        "com Strength 0 e sem fios a tela tem de ficar limpa ({control} texels): a fixture esta \
+         medindo outra coisa"
+    );
+    let without = run(LineKind::Sketchy, false);
+    assert!(
+        without > 500,
+        "a fixture nao costurou teia nenhuma ({without} texels): o oraculo nao mede nada"
+    );
+    let with_solid = run(LineKind::Sketchy, true);
+    assert!(
+        with_solid * 10 >= without * 9,
+        "o preenchimento APAGOU a teia: {with_solid} texels sob Solid contra {without} sem ele"
+    );
+}
+
+/// **A TRANSAÇÃO NÃO ESCREVE FORA DO RETÂNGULO QUE ELA SALVOU** — senão cada evento deixa um
+/// fantasma que nenhum restore volta a alcançar (auditoria do Enio, 2026-08-15).
+///
+/// ⚠️ **O Tiling tem régua PRÓPRIA, e era essa a discordância.** Um laço é replicado quando a CAIXA
+/// dele passa a costura; um dab, quando `centro ± raio` passa. Um caminho colado à borda tem a caixa
+/// DENTRO da tela e dabs de corda cuja pegada passa dela: a cópia envolvida cai na borda OPOSTA, a um
+/// span inteiro do retângulo salvo. Medido, o desenho passava a depender da TAXA DE EVENTOS.
+///
+/// ⚠️ **O oráculo é EXATO e o controle é obrigatório:** descascar o preview no fim do gesto devolve a
+/// tinta cumulativa, que é exactamente o que o MESMO gesto sem Solid pinta. Um oráculo por *"o
+/// desenho muda com o número de eventos?"* seria contaminado — o próprio caminho é amostrado
+/// diferente (medido: 718 texels de piso já com o Tiling desligado).
+///
+/// **Mutação que sangra:** devolver a folga de meia-espessura no lugar da [`tiled_chord_region`]
+/// (197 fantasmas, todos na faixa envolvida).
+#[test]
+fn the_fill_writes_nothing_outside_the_rect_it_saved() {
+    let side = 256u32;
+    // Um caminho colado à borda direita: a caixa não cruza a costura, a pegada dos dabs sim.
+    let path = |k: usize, n: usize| -> [f32; 2] {
+        #[allow(clippy::cast_precision_loss)]
+        let f = k as f32 / n as f32;
+        [
+            248.0 - 8.0 * (f * std::f32::consts::TAU).sin(),
+            40.0 + 170.0 * f,
+        ]
+    };
+    let bare = |solid: bool| -> Vec<u8> {
+        let events = 40usize;
+        let mut t = tool(side, PaintMedia::Digital, 5.0);
+        if solid {
+            t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+        }
+        t.toggle_brush_tiling(0);
+        t.on_canvas_pointer(cp(path(0, events), PointerPhase::Down));
+        for k in 1..events {
+            t.on_canvas_pointer(cp(path(k, events), PointerPhase::Move));
+        }
+        t.peel_drag_preview(); // fora a mancha e a corda deste evento
+        t.canvas_rgba.to_vec()
+    };
+    let a = bare(true);
+    let b = bare(false);
+    let painted = b.chunks_exact(4).filter(|p| p[0] < 250).count();
+    assert!(
+        painted > 1_000,
+        "a fixture nao pintou nada ({painted} texels): o oraculo nao mede nada"
+    );
+    let ghosts = a
+        .chunks_exact(4)
+        .zip(b.chunks_exact(4))
+        .filter(|(x, y)| x[0].abs_diff(y[0]) > 8)
+        .count();
+    assert_eq!(
+        ghosts, 0,
+        "a transacao escreveu {ghosts} texels fora do retangulo que salvou — eles sobrevivem a \
+         todo restore e o desenho passa a depender da taxa de eventos"
     );
 }

@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**68 handoffs** · **24** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**71 handoffs** · **25** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 | Data | | Arquivo | Papel | Assunto |
@@ -81,6 +81,9 @@
 | 2026-08-06 | ◆ | [HANDOFF_INTEGRACAO_line_Painter_bow_wave_2026-08-06.md](HANDOFF_INTEGRACAO_line_Painter_bow_wave_2026-08-06.md) | integração | HANDOFF DE INTEGRAÇÃO — line/Painter, o bow wave gateado no knob + as bandas por trabalho (2026-… |
 | 2026-08-08 | ◆ | [HANDOFF_INTEGRACAO_line_Painter_MESTRE_2026-08-08.md](HANDOFF_INTEGRACAO_line_Painter_MESTRE_2026-08-08.md) | integração | HANDOFF DE INTEGRAÇÃO — line/Painter, MESTRE (2026-08-08) |
 | 2026-08-09 | ◆ | [HANDOFF_INTEGRACAO_line_Painter_grid_stamp_2026-08-09.md](HANDOFF_INTEGRACAO_line_Painter_grid_stamp_2026-08-09.md) | integração | HANDOFF DE INTEGRAÇÃO — line/Painter, 2026-08-09 |
+| 2026-08-10 |  | [HANDOFF_line_Painter_reabertura_2026-08-10.md](HANDOFF_line_Painter_reabertura_2026-08-10.md) | trabalho | line/Painter REABERTA — para o agente que assume a linha |
+| 2026-08-15 |  | [HANDOFF_INTEGRACAO_line_Painter_linha_procedural_2026-08-15.md](HANDOFF_INTEGRACAO_line_Painter_linha_procedural_2026-08-15.md) | integração | HANDOFF DE INTEGRAÇÃO — line/Painter, a LINHA PROCEDURAL (plano 38, W1→W6) |
+| 2026-08-15 | ◆ | [HANDOFF_INTEGRACAO_line_Painter_MESTRE_2026-08-15.md](HANDOFF_INTEGRACAO_line_Painter_MESTRE_2026-08-15.md) | integração | HANDOFF DE INTEGRAÇÃO — line/Painter MESTRE (2026-08-15) |
 
 ---
 *Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na

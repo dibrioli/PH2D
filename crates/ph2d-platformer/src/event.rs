@@ -55,6 +55,26 @@ pub enum PlayerEvent {
         /// Metros por segundo, para baixo, relativos ao chão.
         speed: f32,
     },
+    /// **A cabeça bateu** — o espelho do [`Self::Landed`], na outra ponta.
+    ///
+    /// A `speed` é a velocidade de SUBIDA (m/s, sempre ≥ 0) no tique em que o
+    /// sensor relatou o bloqueio, medida antes de o motor daquele tique correr
+    /// — a mesma régua e o mesmo instante do pouso.
+    ///
+    /// ⚠️ **ABSOLUTA, não relativa ao teto**, e a diferença para o irmão é
+    /// honesta em vez de esquecida: a vista publica a velocidade do CHÃO
+    /// ([`PlayerView::ground_velocity`]) e não a de um teto, então não há
+    /// segundo corpo contra o qual subtrair. E não é uma omissão que morde: o
+    /// bit `ceiling` só existe com o personagem NO AR
+    /// ([`crate::ceiling_fact_wanted`] exige `!grounded`), onde a velocidade
+    /// de chão publicada é `[0, 0]` — logo a forma relativa que o `Landed` usa
+    /// **já reduz** à absoluta aqui, e as duas leis dão o mesmo número. Um teto
+    /// que se MOVE (um elevador por cima) precisaria de uma `ceiling_velocity`
+    /// na vista, o que é outro sensor e outra wave.
+    Bonked {
+        /// Metros por segundo, para cima.
+        speed: f32,
+    },
     /// **Um pulo SAIU**, e de onde — ver o aviso do módulo.
     Jumped {
         /// Chão, ar ou parede.
@@ -114,6 +134,20 @@ pub fn events_between(
     if after.footing == FootingKind::Ground && before.footing != FootingKind::Ground {
         out.push(PlayerEvent::Landed {
             speed: (-rise(after, up)).max(0.0),
+        });
+    }
+
+    // ── A BATIDA DE CABEÇA ───────────────────────────────────────────────────
+    // ⚠️ **É a BORDA de um booleano que a vista já publica** — mecanicamente da
+    // família das travas lá em baixo, e escrito aqui porque se LÊ como o espelho
+    // do pouso: as duas pontas do mesmo eixo, uma ao lado da outra.
+    //
+    // ⚠️ **A borda basta porque o bit se apaga sozinho:** o sensor do teto só é
+    // consultado a SUBIR (`ceiling_fact_wanted`), então assim que o solver mata
+    // a subida o bit cai — não há estado pegajoso a segurar um evento aceso.
+    if after.ceiling && !before.ceiling {
+        out.push(PlayerEvent::Bonked {
+            speed: rise(after, up).max(0.0),
         });
     }
 

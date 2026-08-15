@@ -176,6 +176,7 @@ impl PhysicsBridge {
 fn player_signal_name(ev: &PlayerEvent) -> &'static str {
     match ev {
         PlayerEvent::Landed { .. } => "player.landed",
+        PlayerEvent::Bonked { .. } => "player.bonked",
         PlayerEvent::Jumped { kind } => match kind {
             JumpKind::Ground => "player.jumped.ground",
             JumpKind::Air => "player.jumped.air",

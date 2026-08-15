@@ -238,3 +238,52 @@ fn one_tick_can_publish_more_than_one_event() {
     assert!(got.contains(&PlayerEvent::LeftWater));
     assert_eq!(got.len(), 2, "nem mais, nem menos: {got:?}");
 }
+
+/// Uma vista de cabeça bloqueada, subindo a `vy`.
+fn bonking(vy: f32) -> PlayerView {
+    PlayerView {
+        footing: FootingKind::Airborne,
+        velocity: [0.0, vy],
+        ceiling: true,
+        ..PlayerView::default()
+    }
+}
+
+/// **A batida carrega a subida que ele trazia, e a subida nunca é negativa.**
+///
+/// ⚠️ O segundo caso é o espelho exato do `a_landing_speed_is_never_negative`, e
+/// pelo mesmo motivo: um número negativo aqui viraria, no consumidor, uma poeira
+/// ao contrário — um efeito para BAIXO num evento cuja palavra é *subir*. Ele é
+/// inalcançável no produto (o sensor do teto só é consultado com a subida
+/// positiva) e o piso fica porque a vista é dado simples: quem a construir de
+/// outro sítio não herda essa garantia.
+#[test]
+fn a_bonk_carries_the_ascent_and_never_a_negative() {
+    // ⚠️ As duas vistas trazem subidas DIFERENTES de propósito: é o que separa
+    // *a velocidade no tique da batida* (6,0) de *a do tique anterior* (9,0), e
+    // sem essa diferença a escolha entre as duas seria indistinguível — a mesma
+    // régua e o mesmo instante do `Landed`, que também lê o `after`.
+    let before = airborne(9.0);
+    assert_eq!(
+        events(&before, &step(bonking(6.0), None)),
+        vec![PlayerEvent::Bonked { speed: 6.0 }]
+    );
+
+    let mut sinking = bonking(-2.0);
+    sinking.ceiling = true;
+    assert_eq!(
+        events(&airborne(-2.0), &step(sinking, None)),
+        vec![PlayerEvent::Bonked { speed: 0.0 }]
+    );
+}
+
+/// **A cabeça que CONTINUA encostada não publica um segundo evento.**
+///
+/// ⚠️ É o controle que separa este canal do da VISTA: o bit `ceiling` é estado
+/// contínuo e pode ficar de pé vários tiques (medido na ponte: dois), enquanto
+/// um evento vale por um tique — e a única coisa que impõe isso é a borda.
+#[test]
+fn a_head_that_stays_blocked_publishes_no_second_bonk() {
+    let held = bonking(4.0);
+    assert!(events(&held, &step(bonking(3.8), None)).is_empty());
+}

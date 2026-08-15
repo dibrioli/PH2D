@@ -598,6 +598,10 @@ pub fn player_motor(
         view: PlayerView {
             footing: verdict.kind(),
             wall: clinging.as_ref().map(|w| w.side),
+            // ⚠️ Do MESMO veredito que deu o lado, e na mesma linha: são dois
+            // fatos sobre a superfície que a lei aceitou, e derivar um do outro
+            // (o `[-side, 0]`) erra em toda parede inclinada.
+            wall_normal: clinging.as_ref().map(|w| w.normal),
             gripping,
             crouching: crouch.crouched,
             swimming,

@@ -192,6 +192,21 @@ pub struct PlayerView {
     pub footing: crate::FootingKind,
     /// Agarrado a uma parede, e de que LADO ela está (`+1` à direita).
     pub wall: Option<f32>,
+    /// **A normal da parede que a lei ACEITOU** — o `get_wall_normal` do Godot.
+    ///
+    /// ⚠️ **Não é derivável do [`Self::wall`], e é por isso que é um campo.** O
+    /// lado é o sinal do GESTO (a direção em que o jogador empurrou, ver
+    /// [`crate::WallSample::side`]) e a normal é a da SUPERFÍCIE — numa parede
+    /// inclinada as duas divergem. Quem desenha, sem este campo, teria de
+    /// inventar `[-side, 0]`, que está errado em toda parede que não é vertical
+    /// e é exactamente o palpite que o `WallSample` existe para não obrigar.
+    ///
+    /// ⚠️ **Sai do veredito, nunca do array cru do sensor** — o flanco casta
+    /// várias alturas e é a lei quem escolhe qual delas *é* a parede (pela mesma
+    /// régua de inclinação da perna). Ler o array aqui seria uma segunda régua
+    /// ao lado dessa, e as duas divergiriam no dia em que o `max_slope` autorado
+    /// se movesse.
+    pub wall_normal: Option<Vec2>,
     /// Segurando a parede de vez (o botão de agarrar, `W23`).
     pub gripping: bool,
     /// Agachado.

@@ -12,9 +12,31 @@ impl Stroke {
     /// high-stabilizer stroke reaches the cursor on a pause — not only at pointer-up. No-op when
     /// there is no lag to flush (stabilizer off, already caught up, or a non-`Space` method). The
     /// tool drives this from its per-frame tick while the pointer is stationary.
+    /// ⚠️ **E ele é INERTE com a fita armada, porque num traço de fita há UM caminho e ele é dela.**
+    ///
+    /// O `extend` de uma fita cai no braço vazio (`StrokeMethod::Space if ribbon_active() => {}`), ou
+    /// seja [`Stroke::stabilize`] — o único escritor de `stab_pos` durante um traço — **nunca corre**,
+    /// e o `stab_pos` fica no ponto do PEN-DOWN o gesto inteiro. Sem esta guarda o `settle` percorria
+    /// de `last_pos` (que está no trilho da FITA) até esse ponto morto, e o resultado é a **espícula**
+    /// do report de 2026-08-15: uma reta de largura cheia até `pen_down + blend·(cursor − pen_down)`
+    /// e outra de volta, formando o triângulo agudíssimo da foto.
+    ///
+    /// ⚠️ **A guarda mora AQUI, na porta única, e não num `if` do tool** — o tool pergunta *"a mão
+    /// parou?"*, que é uma pergunta legítima e continua a valer; quem sabe que a fita já É o
+    /// passa-baixa do caminho é o motor. Um `if` do lado de lá deixaria o próximo tipo que move o
+    /// CAMINHO (o `LineKind` seguinte) nascer com o defeito de volta.
+    ///
+    /// ⚠️ **Não há atraso a drenar, e é por isso que a inércia é a resposta certa em vez de um alvo
+    /// melhor:** a fita persegue o `last_raw_pos` CRU de propósito ([`Stroke::step_ribbon`] —
+    /// encadear os dois somaria dois atrasos), então com ela armada o estabilizador está fora do
+    /// caminho por desenho. Um `settle` que perseguisse `ribbon_pos` seria um segundo integrador da
+    /// mesma mola.
     pub fn settle(&mut self, out: &mut Vec<Dab>) {
         out.clear();
-        if !self.started || self.spec.stroke_method != StrokeMethod::Space {
+        if !self.started
+            || self.spec.stroke_method != StrokeMethod::Space
+            || self.spec.ribbon_active()
+        {
             return;
         }
         let s = self.spec.stabilizer.clamp(0.0, 1.0);

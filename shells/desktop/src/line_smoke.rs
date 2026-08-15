@@ -107,9 +107,10 @@ pub(crate) fn spawn_if_enabled(
             println!(
                 "[line-smoke]     O traco tambem PESA: a tinta fica ATRAS do dedo, chicoteia na \
                  saida da curva e -- com Gravity -- PENDE. ⚠️ PARE a mao no meio do gesto, com o \
-                 botao preso: NADA pode ser desenhado. Sem gesto nao ha tempo -- uma mola que \
-                 converge para um alvo parado desenha uma RETA de largura cheia, e era essa a \
-                 espicula. Retome e o traco continua de onde parou, sem salto."
+                 botao preso: NADA pode ser desenhado. Sao DUAS leis -- sem gesto nao ha tempo (a \
+                 mola congela) E o settle e inerte com a fita armada (num traco de fita ha UM \
+                 caminho e ele e o dela). Retome e o traco continua de onde parou, sem salto. O \
+                 CONTROLE e sem fita: Type=None com Stabilizer alto ainda alcanca o cursor."
             );
             println!(
                 "[line-smoke]     RUNGS e a densidade das travessas. ⚠️ Em 0 a faixa DEGENERA na \

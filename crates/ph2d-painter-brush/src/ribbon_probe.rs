@@ -546,11 +546,20 @@ fn measure_a_real_gesture_for_spikes() {
 /// **O QUADRO PARADO** — o `paint_tick` chama [`Stroke::settle`] quando o ponteiro não se moveu, e
 /// uma mão real tem quadros parados aos montes (é onde ela desacelera para virar). ⚠️ **Nenhuma
 /// outra sonda o chamava**, e é a diferença entre a fixture e o produto.
+///
+/// ⚠️ **E ela ainda media ZERO, porque o `spec()` deste arquivo crava `stabilizer: 0.0`** — o valor
+/// exacto que faz o `settle` sair no segundo `if`, sobre um produto cujo default é **0,5**. A sonda
+/// escrita para esta pergunta não a fazia: *a fixture diferia do produto no único parâmetro que liga
+/// o mecanismo que ela existe para medir*. Com 0,5 ela imprime a espícula (o `settle` levava a tinta
+/// de x≈947 para x≈748, uma reta de ~200 px para TRÁS), e com a guarda da fita imprime zero de novo
+/// — que é a diferença entre *medir zero* e *não poder medir*.
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn measure_what_settle_does_to_a_lagging_ribbon() {
     let dt = 1.0 / 60.0;
-    let mut s = Stroke::new(spec(0.45, 0.30, 0.0), plain(), 7);
+    let mut sp = spec(0.45, 0.30, 0.0);
+    sp.stabilizer = 0.5; // o que SHIPA, e não o 0.0 das fixtures desta linha
+    let mut s = Stroke::new(sp, plain(), 7);
     let mut out = Vec::new();
     s.begin(
         StrokePoint {

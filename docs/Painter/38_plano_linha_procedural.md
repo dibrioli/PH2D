@@ -761,6 +761,53 @@ whole_span`, no crate do painel). **10 mutações, 10 sangram.**
       intactos) · e *"a mão parada assenta"* passou a ser **trivialmente verdadeiro no tique 0**,
       então cedeu o lugar à lei nova. O piso do `RIBBON_DAMPING_MIN` **fica**, mas a tabela dele
       media um recurso que deixou de existir: hoje ele bounda **LOOK**, não tinta.
+  - ⚠️ **E O SMOKE SEGUINTE REPROVOU DE NOVO — a lei do gesto estava CERTA e era METADE.** Enio,
+    2ª rodada com foto, o mesmo veredito (*"parece melhor mas com as espículas do algoritmo
+    antigo"*). A auditoria correu em **três lentes independentes** (rota de entrega · geometria dos
+    fios · máquina de estados por tique) e **as três convergiram na mesma causa**, que não é a mola:
+    - **Num traço de fita há DOIS percorredores de caminho.** O `tick_ribbon` é um; o outro é
+      **`Stroke::settle`**, que o tool chama em todo quadro **PARADO** e que percorre de `last_pos`
+      — a cabeça do trilho da FITA — até `stab_pos`. E com a fita armada o `extend` cai no braço
+      vazio (`StrokeMethod::Space if ribbon_active() => {}`), logo `Stroke::stabilize` **nunca
+      corre** e o `stab_pos` fica **no ponto do PEN-DOWN o gesto inteiro**.
+    - **A geometria cai da aritmética, e é a da foto:** `blend = 0,54` com o `stabilizer = 0,5` que
+      SHIPA ⇒ o `settle` percorre até `pen_down + 0,54·(cursor − pen_down)` e o tique seguinte volta
+      de lá — **duas retas partilhando um ápice que o dedo nunca visitou**, o triângulo agudíssimo.
+      Medido: **295,0 px em 123 dabs** (gate) e o ápice previsto em `x = 748` contra **749,5**
+      medido (sonda). Escuras porque são **DABS de largura e cobertura cheias** — e a 3ª lente mediu
+      a tinta de um fio (**largura 1,0 px, opacidade 0,25**), que é o cinza-claro das travessas.
+    - **A cura é a PORTA ÚNICA:** `settle` é **inerte com a fita armada**, e a guarda mora no motor
+      (`stabilize.rs`), nunca num `if` do tool — o tool pergunta *"a mão parou?"*, que continua
+      legítimo; quem sabe que a fita já É o passa-baixa do caminho é o motor. Um `if` do lado de lá
+      deixaria o próximo `LineKind` que move o CAMINHO nascer com o defeito de volta. E **não há
+      atraso a drenar**: a fita persegue o `last_raw_pos` CRU de propósito, então o estabilizador
+      está fora do caminho dela por desenho.
+    - ⚠️ **DUAS cegueiras de fixture, cada uma bastando sozinha** — e é isto que fez a ablação
+      anterior reportar *"PAUSA: nenhuma tinta nova"* sobre uma foto que a mostrava: **(a)** as
+      **cinco** fixtures de fita desta linha cravam `stabilizer: 0.0`, que é exactamente o valor que
+      faz o `settle` sair no segundo `if`, sobre um produto cujo default é **0,5** — a irmã exacta
+      do `hardness = 1.0` do smear; **(b)** as sondas simulavam a pausa entregando um `Move` na
+      MESMA posição, e isso põe `moved_this_frame = true` ⇒ `parked == false` ⇒ **o `settle` nunca
+      corria**. *A fixture modelava a pausa exactamente da única maneira que mantém adormecido o
+      mecanismo que ela existe para medir.* As duas foram corrigidas, e a prova de que deixaram de
+      ser cegas é o A/B: com a guarda a coluna PAUSA mede **0 dabs**; sem ela, **462 dabs / 244 px
+      de reta**.
+    - ⚠️ **A lei *"sem gesto, sem tempo"* NÃO é revogada** — ela curou a mola e os gates dela medem
+      o que dizem. O que faltava não era grau, era **ENDEREÇO**: ela foi instalada num dos dois
+      percorredores, e o outro corre no MESMO quadro parado com a resposta **oposta** (o tique
+      congela, o `settle` salta até ao cursor). Das duas leis contrárias sobre o mesmo instante,
+      sobrevivia a que emitia dabs.
+    - ⚠️ **E o pen-up herdava o cursor envenenado:** se o último quadro antes do `Up` fosse parado,
+      a cauda partia do `stab_pos` — uma **terceira** reta do mesmo ápice, pelo mecanismo que a nota
+      do `finish_ribbon` já dava por curado. A guarda fecha isto de carona.
+  - ⚠️ **ABERTO, medido e NÃO construído** (a 3ª lente): a **cadência das travessas é medida no arco
+    da FITA** e o ponto de fora é colhido no trilho do DEDO na mesma fração, então quando o dedo
+    desacelera enquanto a fita descarrega atraso as pontas de fora **colapsam num ponto** e o leque
+    volta — dentro de um tique. O gate que devia pegá-lo
+    (`the_rungs_of_one_tick_do_not_fan_to_a_single_point`) usa um arrasto **RETO a velocidade
+    constante**, e o doc-comment dele nomeia a condição (*"nas cristas, onde a mão desacelera"*) que
+    a fixture, por construção, não tem. É **fio** (cinza-claro), não a espícula escura do report — e
+    é o próximo item, com o gesto que o contém já escrito na sonda.
   - ⚠️ **E o card Line não tinha seam nenhum** — os três sliders da W6 shiparam com id, row,
     `populate`, encaminhamento e setter, e **nenhum gate os exercitava** (um `grep` pelo id nos
     testes do repo devolvia nada). O `line_seam_tests.rs` fecha as duas condições que o

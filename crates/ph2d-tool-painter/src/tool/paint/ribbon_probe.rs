@@ -244,7 +244,13 @@ fn probe_ribbon_spike() {
             // A mão PARA no meio, com o botão preso — o gesto que a foto do Enio sugere.
             if pausa && i == EVENTOS / 2 {
                 for _ in 0..25 {
-                    t.on_canvas_pointer(cp(pt(u), PointerPhase::Move));
+                    // ⚠️ **A pausa entrega SÓ o tique, e a versão anterior desta linha entregava um
+                    // `Move` na mesma posição.** Uma mão parada não gera `CursorMoved` nenhum, e o
+                    // `Move` sintético punha `moved_this_frame = true` ⇒ `parked == false` ⇒ o
+                    // `Stroke::settle` — o SEGUNDO percorredor de caminho de um traço de fita —
+                    // nunca corria. A fixture modelava a pausa exactamente da única maneira que
+                    // mantém adormecido o mecanismo que ela existe para medir, e foi por isso que a
+                    // ablação reportou *"PAUSA: nenhuma tinta nova"* sobre uma foto que a mostrava.
                     t.on_tick(dt * 1e3);
                 }
             }

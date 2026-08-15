@@ -210,10 +210,18 @@ que importa, *escolher o tipo*, pulada em todas). A cena dá o material e **não
    faixa: quem a abre é o Weight (o atraso) e a velocidade da sua mão.
 2. Um **S rápido**: o rastro corta a curva por dentro e **passa do ponto** onde a mão mudou de
    direção.
-3. ⚠️ **PARE a mão no meio do gesto, com o botão preso — NADA pode ser desenhado.** *Sem gesto, sem
-   tempo*: uma mola que converge para um alvo parado desenha uma **reta de largura cheia**, e era
-   essa a espícula do report. Retome, e o traço continua de onde parou, **sem salto**. (Medido por
-   ablação: a pausa acrescentava **18 013 px, 5 715 escuros**; hoje acrescenta **zero**.)
+3. ⚠️ **PARE a mão no meio do gesto, com o botão preso — NADA pode ser desenhado.** É **o passo que
+   reprovou duas vezes**, e são DUAS leis a segurá-lo, não uma:
+   - *Sem gesto, sem tempo*: uma mola que converge para um alvo parado desenha uma **reta de largura
+     cheia**. A fita congela — posição e velocidade.
+   - **E o `Stroke::settle` é INERTE com a fita armada**: num traço de fita há um caminho só e ele é
+     o dela. Sem esta segunda metade, um quadro parado percorria da cabeça da fita até um
+     `stab_pos` **congelado no pen-down** e desenhava o triângulo agudíssimo da 2ª foto — **295,0 px
+     em 123 dabs**, medido.
+
+   Retome, e o traço continua de onde parou, **sem salto**. ⚠️ **E o CONTROLE é sem a fita:**
+   `Type = None` com o Stabilizer alto, mão parada — a linha **tem** de continuar a alcançar o
+   cursor. (A/B da ablação, coluna PAUSA: **462 dabs / 244 px de reta** sem a guarda, **0** com ela.)
 4. **Weight** (quanto tempo atrasa — e é ele que abre a faixa) · **Friction** (como assenta: baixo =
    chicote, alto = arrasto) · **Gravity** (o peso). Medido a 2 400 px/s: peso 1,00 deixa a tinta
    **804 px** atrás do dedo, que é também a largura da faixa ali.

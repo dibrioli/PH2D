@@ -424,3 +424,78 @@ fn the_substep_ceiling_can_never_bind() {
         last[0]
     );
 }
+
+/// **UM TRAÇO DE FITA TEM UM CAMINHO SÓ, E ELE É O DA FITA** — um quadro PARADO não pode carimbar
+/// tinta fora do trilho dela.
+///
+/// ⚠️ **Este gate nasce de um defeito que atravessou DUAS rodadas de smoke com a suíte verde**
+/// (report do Enio, 2026-08-15: *"parece melhor mas com as espículas do algoritmo antigo"*), e a
+/// causa não era a mola — era um **SEGUNDO percorredor de caminho**. Num quadro sem evento de
+/// ponteiro o tool chama [`Stroke::settle`], que percorre de `last_pos` (a cabeça do trilho da FITA)
+/// até `stab_pos`; e com a fita armada o `extend` cai no braço vazio, logo `Stroke::stabilize` nunca
+/// corre e o `stab_pos` fica **no ponto do pen-down o gesto inteiro**. O resultado é uma reta de
+/// largura cheia até `pen_down + blend·(cursor − pen_down)` e outra de volta: o triângulo agudíssimo
+/// da foto. Medido aqui, sem a guarda: **295,0 px de tinta fora do trilho, em 123 dabs**.
+///
+/// ⚠️ **A METADE DE CONTROLE é o que impede a cura de matar o estabilizador** — sem fita, o mesmo
+/// quadro parado tem de continuar a alcançar o cursor, que é a razão de o `settle` existir.
+///
+/// ⚠️ **E o `stabilizer` aqui é o do PRODUTO (0,5), não o `0.0` que TODAS as fixtures de fita desta
+/// linha cravam** (`ribbon_tests` · `ribbon_band_tests` · `ribbon_probe` · `ribbon_band_probe` · o
+/// `spec` deste próprio arquivo). Esse zero faz o `settle` sair no segundo `if` — *a fixture não
+/// podia formar o defeito*, a irmã exacta do `hardness = 1.0` do smear.
+#[test]
+fn a_parked_frame_lays_no_ink_off_the_ribbon_rail() {
+    let d2 = |a: [f32; 2], b: [f32; 2]| ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2)).sqrt();
+    let corre = |kind: LineKind| -> (Vec<crate::stroke::Dab>, [f32; 2], [f32; 2]) {
+        let mut sp = spec(kind, 0.45, 0.30, 0.0);
+        sp.stabilizer = 0.5; // o valor que SHIPA (`spec_default.rs`)
+        let mut s = Stroke::new(sp, plain(), 1);
+        let mut out = Vec::new();
+        let p = |x: f32| StrokePoint {
+            pos: [x, 300.0],
+            pressure: 1.0,
+        };
+        s.begin(p(100.0), &mut out);
+        let mut cabeca = [100.0f32, 300.0];
+        let mut dedo = [100.0f32, 300.0];
+        for i in 1..=40 {
+            #[allow(clippy::cast_precision_loss)]
+            let x = 100.0 + i as f32 * 30.0;
+            dedo = [x, 300.0];
+            s.extend(p(x), &mut out);
+            s.tick(DT, &mut out);
+            if let Some(d) = out.last() {
+                cabeca = d.center;
+            }
+        }
+        // O QUADRO PARADO: nenhum evento de ponteiro chega, só o tique e o `settle` — que é
+        // exactamente o que o tool faz quando `moved_this_frame` é falso.
+        s.tick(DT, &mut out);
+        let mut parado = Vec::new();
+        s.settle(&mut parado);
+        (parado, cabeca, dedo)
+    };
+
+    let (fita, cabeca, _) = corre(LineKind::Ribbon);
+    let fora = fita.iter().fold(0.0f32, |m, d| m.max(d2(d.center, cabeca)));
+    assert!(
+        fora <= 4.0,
+        "um quadro parado carimbou tinta a {fora:.1} px do trilho da fita ({} dabs): \
+         o `settle` está a percorrer para um `stab_pos` que ninguém alimenta desde o pen-down",
+        fita.len()
+    );
+
+    // CONTROLE: sem fita, o quadro parado TEM de alcançar o cursor — é para isso que o `settle` existe.
+    let (liso, _, dedo) = corre(LineKind::None);
+    assert!(
+        !liso.is_empty(),
+        "sem fita, um quadro parado tem de drenar o atraso do estabilizador"
+    );
+    let chegou = liso.iter().fold(f32::MAX, |m, d| m.min(d2(d.center, dedo)));
+    assert!(
+        chegou < 400.0,
+        "o `settle` deixou de alcançar o cursor (mais perto: {chegou:.1} px) — a cura da fita \
+         não pode matar o estabilizador"
+    );
+}

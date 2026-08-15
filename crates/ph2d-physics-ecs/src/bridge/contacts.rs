@@ -38,6 +38,10 @@ pub struct BodyContact {
     pub b: Entity,
     /// The deepest contact point, in world units.
     pub point: [f32; 2],
+    /// The surface normal there, **pointing from [`Self::a`] toward [`Self::b`]** —
+    /// straight through from [`ph2d_physics::ContactReport::normal`], where the law
+    /// and the two conversions it costs are written. A reader who is `b` negates.
+    pub normal: [f32; 2],
     /// The load this pair is carrying right now, in N·s — what the standing cross's
     /// size means. **Not the impact peak** — see [`Self::impact`].
     pub impulse: f32,
@@ -123,6 +127,13 @@ pub struct ContactEvent {
     /// Where the touch was. For `Began`, the last-active sub-step's deepest point; for
     /// `Ended`, the LAST point the pair was known to touch at — the place they parted.
     pub point: [f32; 2],
+    /// The surface normal at [`Self::point`], **pointing from [`Self::a`] toward
+    /// [`Self::b`]**. For an `Ended`, the normal they last touched at.
+    ///
+    /// ⚠️ It is this field that makes the pair a *"what did I hit"* — a `Began` with
+    /// a place, a load and an ORIENTATION is exactly Unity's
+    /// `OnControllerColliderHit` and Godot's `get_last_slide_collision`.
+    pub normal: [f32; 2],
     /// The load at that moment, in N·s. For `Ended`, the last load the pair carried.
     /// The load meter — for *how hard the hit was*, read [`Self::impact`].
     pub impulse: f32,
@@ -140,6 +151,7 @@ pub struct ContactEvent {
 #[derive(Copy, Clone, Debug)]
 pub(super) struct ContactMemo {
     point: [f32; 2],
+    normal: [f32; 2],
     impulse: f32,
     impact: f32,
 }
@@ -198,6 +210,7 @@ impl PhysicsBridge {
                 (a, b),
                 ContactMemo {
                     point: sample.point,
+                    normal: sample.normal,
                     impulse: sample.impulse,
                     impact: sample.impact,
                 },
@@ -222,6 +235,7 @@ impl PhysicsBridge {
                     b,
                     phase: ContactPhase::Ended,
                     point: memo.point,
+                    normal: memo.normal,
                     impulse: memo.impulse,
                     impact: memo.impact,
                 });
@@ -234,6 +248,7 @@ impl PhysicsBridge {
                     b,
                     phase: ContactPhase::Began,
                     point: memo.point,
+                    normal: memo.normal,
                     impulse: memo.impulse,
                     impact: memo.impact,
                 });
@@ -289,6 +304,7 @@ impl PhysicsBridge {
                 a,
                 b,
                 point: r.point,
+                normal: r.normal,
                 impulse: r.impulse,
                 impact: r.impact,
             });

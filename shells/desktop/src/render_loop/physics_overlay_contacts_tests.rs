@@ -26,6 +26,9 @@ fn contact(point: [f32; 2], impulse: f32) -> BodyContact {
         a: Entity::from_bits(1),
         b: Entity::from_bits(2),
         point,
+        // Estes gates medem POSIÇÃO e CARGA; a orientação não entra em nenhum
+        // deles, e um valor "bonito" aqui insinuaria que entra.
+        normal: [0.0, 1.0],
         impulse,
         impact: impulse,
     }

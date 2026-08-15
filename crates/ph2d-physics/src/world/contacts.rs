@@ -68,6 +68,9 @@ pub struct PeakSample {
     pub impact: f32,
     /// The deepest contact point at the last sub-step the pair was active in, world units.
     pub point: [f32; 2],
+    /// The surface normal at that point, world units, **pointing from `body1` to
+    /// `body2`** — see [`ContactReport::normal`], same law, same door.
+    pub normal: [f32; 2],
     /// The summed normal impulse at that same last-active sub-step, N·s.
     pub impulse: f32,
 }
@@ -82,6 +85,27 @@ pub struct ContactReport {
     pub body2: RigidBodyHandle,
     /// The **deepest** contact point, in world units. Where the touch most is.
     pub point: [f32; 2],
+    /// The surface normal at [`Self::point`], world units, unit length —
+    /// ***pointing from [`Self::body1`] toward [`Self::body2`]***.
+    ///
+    /// This is the *"against what did I hit"* half that a place and a load cannot
+    /// answer: it is what orients a spark, decides *wall or floor*, and lets a
+    /// caller slide along what it struck (the `normal` of Godot's
+    /// `get_last_slide_collision` and Unity's `OnControllerColliderHit`).
+    ///
+    /// ⚠️ **The direction is stated here because it CANNOT be inferred.** The pair
+    /// is published in handle order, which has nothing to do with which of the two
+    /// the narrow phase happened to call *collider1*; a reader who is `body2`
+    /// negates. Publishing rapier's raw `local_n1` would make the sign a coin flip
+    /// from the caller's side — the same trap [`crate::CharacterHit::normal`] names
+    /// and the one-way hook already pays for with its `s = -1`.
+    ///
+    /// ⚠️ **It is the normal of the DEEPEST contact, not an average.** A compound
+    /// body touching a corner has two manifolds with perpendicular normals, and
+    /// their mean points somewhere no surface faces; the deepest one is the same
+    /// choice [`Self::point`] already makes, and the two must agree because they
+    /// describe one contact.
+    pub normal: [f32; 2],
     /// The summed normal impulse over the pair's manifolds, in N·s — **the load this
     /// pair is carrying right now**.
     ///
@@ -133,14 +157,25 @@ fn active_pair(
     // ⚠️ `local_p1` is in **collider1's** frame, so it has to go through
     // collider1's world position — the same whose-frame-is-this care the one-way
     // hook pays, and for the same reason: the pair is not ordered for us.
-    let (_, deepest) = pair.find_deepest_contact()?;
+    let (manifold, deepest) = pair.find_deepest_contact()?;
     let world = c1.position() * deepest.local_p1;
     let impulse = pair.total_impulse_magnitude();
-    let (body1, body2) = if b1.into_raw_parts() <= b2.into_raw_parts() {
-        (b1, b2)
-    } else {
-        (b2, b1)
-    };
+    let swapped = b1.into_raw_parts() > b2.into_raw_parts();
+    let (body1, body2) = if swapped { (b2, b1) } else { (b1, b2) };
+    // ⚠️ **A normal do manifold é `local_n1`: no frame de COLLIDER1 e apontando
+    // de 1 para 2** — a mesma convenção que o hook one-way lê ao comparar contra
+    // o *up* da plataforma (`oneway.rs`). Duas conversões, e nenhuma é opcional:
+    //
+    //  1. **para o MUNDO**, pela rotação de collider1 — a mesma
+    //     de-que-frame-é-isto que o `local_p1` acima já paga;
+    //  2. **para a ORDEM PUBLICADA**, negando quando o par de corpos foi trocado
+    //     para caber em (handle menor primeiro).
+    //
+    // Sem (2) o SINAL vira cara-ou-coroa contra o `a`/`b` que o leitor recebe —
+    // exactamente o perigo que o [`crate::CharacterHit::normal`] nomeia (*qual
+    // das duas testemunhas produz a normal é convenção da biblioteca*) e que o
+    // one-way já pagou com o `s = -1`.
+    let normal = published_normal(manifold.local_n1, c1.position().rotation, swapped);
     let (s1, s2) = (
         pair.collider1.into_raw_parts(),
         pair.collider2.into_raw_parts(),
@@ -149,9 +184,36 @@ fn active_pair(
         key: (body1.into_raw_parts(), body2.into_raw_parts()),
         seq: if s1 <= s2 { (s1, s2) } else { (s2, s1) },
         point: [world.x, world.y],
+        normal,
         dist: deepest.dist,
         impulse,
     })
+}
+
+/// A normal de um manifold, levada ao MUNDO e à ORDEM PUBLICADA — a porta única
+/// das duas conversões que separam `local_n1` do que um leitor recebe.
+///
+/// ⚠️ **Existe como função porque nenhuma CENA a distingue.** A troca de ordem
+/// dispara de facto (medido: **976 vezes** numa cena com corpo composto), mas o
+/// vencedor do teste de profundidade nunca foi um par trocado em nenhum fixture
+/// deste repo — apagar o `swapped` deixa a suíte INTEIRA de `ph2d-physics-ecs`
+/// verde. Uma defesa que nenhum gate pode ver não é uma defesa: extraída, ela
+/// vira uma lei que se afirma directamente.
+///
+/// * `local_n1` está no frame de **collider1** e aponta de **1 para 2** — a mesma
+///   convenção que o hook one-way lê ao compará-la com o *up* da plataforma.
+/// * `rot` é a rotação de collider1: leva ao mundo.
+/// * `swapped` diz que o par de CORPOS foi trocado para caber em *handle menor
+///   primeiro*; então o que aponta de 1 para 2 aponta de `body2` para `body1`, e
+///   a publicação (que promete `body1 → body2`) tem de negar.
+fn published_normal(
+    local_n1: rapier2d::na::Vector2<f32>,
+    rot: rapier2d::na::UnitComplex<f32>,
+    swapped: bool,
+) -> [f32; 2] {
+    let n = rot * local_n1;
+    let s = if swapped { -1.0 } else { 1.0 };
+    [s * n.x, s * n.y]
 }
 
 /// One actively-touching **collider** pair, already resolved to bodies — the raw
@@ -189,6 +251,9 @@ pub(super) struct ActivePair {
     /// The ordered collider pair — the tiebreak that fixes the summation order.
     seq: ((u32, u32), (u32, u32)),
     point: [f32; 2],
+    /// A normal em MUNDO, orientada **de `key.0` para `key.1`** — ver
+    /// [`active_pair`], que é onde as duas conversões acontecem.
+    normal: [f32; 2],
     /// Depth of `point` (negative = penetrating), so the DEEPEST contact across a
     /// compound body's shapes wins the merge — the literal extension of what one
     /// collider pair already answers with `find_deepest_contact`.
@@ -217,20 +282,31 @@ fn collect_active(narrow_phase: &NarrowPhase, colliders: &ColliderSet, out: &mut
 /// *two objects touching is ONE event*. A box resting flat reports one pair, not two
 /// corners; a compound raft resting flat reports one pair, not one per plank. Both
 /// are facts about how the thing was built, not about the scene.
-fn for_each_body_pair(sorted: &[ActivePair], mut emit: impl FnMut(PeakKey, [f32; 2], f32)) {
+fn for_each_body_pair(
+    sorted: &[ActivePair],
+    mut emit: impl FnMut(PeakKey, [f32; 2], [f32; 2], f32),
+) {
     let mut i = 0;
     while i < sorted.len() {
         let key = sorted[i].key;
-        let (mut point, mut dist, mut impulse) = (sorted[i].point, sorted[i].dist, 0.0);
+        let (mut point, mut normal, mut dist, mut impulse) =
+            (sorted[i].point, sorted[i].normal, sorted[i].dist, 0.0);
         while i < sorted.len() && sorted[i].key == key {
             impulse += sorted[i].impulse;
             if sorted[i].dist < dist {
                 dist = sorted[i].dist;
                 point = sorted[i].point;
+                // ⚠️ **A normal viaja COM o ponto, sob o mesmo teste de
+                // profundidade** — as duas descrevem o MESMO contato, e escolhê-las
+                // por critérios diferentes daria a orientação de um plano da jangada
+                // no lugar onde o outro toca. Somá-las (uma média) seria pior: num
+                // corpo composto encostado numa quina, a média de duas normais
+                // perpendiculares aponta para um lado que nenhuma superfície tem.
+                normal = sorted[i].normal;
             }
             i += 1;
         }
-        emit(key, point, impulse);
+        emit(key, point, normal, impulse);
     }
 }
 
@@ -258,14 +334,16 @@ pub(super) fn accumulate_peaks(
     out: &mut BTreeMap<PeakKey, PeakSample>,
 ) {
     collect_active(narrow_phase, colliders, scratch);
-    for_each_body_pair(scratch, |key, point, impulse| {
+    for_each_body_pair(scratch, |key, point, normal, impulse| {
         let s = out.entry(key).or_insert(PeakSample {
             impact: 0.0,
             point,
+            normal,
             impulse,
         });
         s.impact = s.impact.max(impulse);
         s.point = point;
+        s.normal = normal;
         s.impulse = impulse;
     });
 }
@@ -303,7 +381,7 @@ impl PhysicsWorld {
         let mut active = Vec::new();
         collect_active(&self.narrow_phase, &self.colliders, &mut active);
         let mut out = Vec::new();
-        for_each_body_pair(&active, |key, point, impulse| {
+        for_each_body_pair(&active, |key, point, normal, impulse| {
             // The impact peak the step loop captured for this pair. `impulse`
             // (the settled load) is the floor: the peak is at least the
             // endpoint, and a pair with no captured peak (impossible from the
@@ -318,6 +396,7 @@ impl PhysicsWorld {
                 body1: RigidBodyHandle::from_raw_parts(key.0.0, key.0.1),
                 body2: RigidBodyHandle::from_raw_parts(key.1.0, key.1.1),
                 point,
+                normal,
                 impulse,
                 impact,
             });
@@ -341,5 +420,81 @@ impl PhysicsWorld {
     #[must_use]
     pub fn tick_contacts(&self) -> &BTreeMap<PeakKey, PeakSample> {
         &self.contact_peaks
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rapier2d::na::{UnitComplex, Vector2};
+
+    const EPS: f32 = 1e-5;
+
+    fn close(a: [f32; 2], b: [f32; 2]) -> bool {
+        (a[0] - b[0]).abs() < EPS && (a[1] - b[1]).abs() < EPS
+    }
+
+    /// **As duas conversões são independentes, e cada uma é necessária.**
+    ///
+    /// ⚠️ Este gate existe porque **nenhuma cena as distingue** (ver o doc da
+    /// [`published_normal`]): a troca de ordem dispara no mundo real mas o
+    /// vencedor do teste de profundidade nunca é um par trocado em fixture
+    /// nenhum deste repo. Aqui a lei é afirmada onde ela mora.
+    #[test]
+    fn the_published_normal_goes_to_the_world_and_to_the_published_order() {
+        let x = Vector2::new(1.0, 0.0);
+        let id = UnitComplex::identity();
+        let quarter = UnitComplex::new(std::f32::consts::FRAC_PI_2);
+
+        // Sem rotação e sem troca: passa verbatim.
+        assert!(close(published_normal(x, id, false), [1.0, 0.0]));
+        // Só a rotação: o frame de collider1 girou um quarto de volta.
+        assert!(close(published_normal(x, quarter, false), [0.0, 1.0]));
+        // Só a troca: `1 -> 2` vira `body2 -> body1`, logo nega.
+        assert!(close(published_normal(x, id, true), [-1.0, 0.0]));
+        // As duas COMPÕEM — e é este caso que uma implementação que esqueça
+        // uma delas acerta por acaso nos três de cima.
+        assert!(close(published_normal(x, quarter, true), [0.0, -1.0]));
+    }
+
+    /// **A normal viaja com o PONTO, sob o mesmo teste de profundidade.**
+    ///
+    /// ⚠️ O fixture põe a entrada mais funda em **segundo** lugar e com uma
+    /// normal PERPENDICULAR à da primeira — é o corpo composto encostado numa
+    /// quina, o caso que o doc do [`for_each_body_pair`] descreve. Sem ele o
+    /// vencedor seria sempre o primeiro da lista e a lei ficaria por afirmar.
+    #[test]
+    fn the_deepest_contact_brings_its_own_normal() {
+        let key = ((1, 0), (2, 0));
+        let pairs = [
+            ActivePair {
+                key,
+                seq: ((1, 0), (2, 0)),
+                point: [0.0, 0.0],
+                normal: [0.0, 1.0],
+                dist: -0.01,
+                impulse: 1.0,
+            },
+            ActivePair {
+                key,
+                seq: ((1, 0), (3, 0)),
+                point: [5.0, 5.0],
+                normal: [1.0, 0.0],
+                dist: -0.50,
+                impulse: 2.0,
+            },
+        ];
+        let mut got = None;
+        for_each_body_pair(&pairs, |_, point, normal, impulse| {
+            got = Some((point, normal, impulse));
+        });
+        let (point, normal, impulse) = got.expect("um par de corpos");
+        assert!(close(point, [5.0, 5.0]), "o ponto mais fundo: {point:?}");
+        assert!(
+            close(normal, [1.0, 0.0]),
+            "a normal tem de ser a DO ponto mais fundo, nao a da primeira \
+             entrada: {normal:?}"
+        );
+        assert!((impulse - 3.0).abs() < EPS, "a carga SOMA: {impulse}");
     }
 }

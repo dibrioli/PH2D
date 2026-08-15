@@ -10767,3 +10767,87 @@ motion*:
 **`env PH2D_PHYSICS_SMOKE=119 cargo run -p ph2d-host-desktop --release`** — três
 raias, a MESMA autoria, só a trava difere. ⚠️ A cena **imprime o que montou**; se
 a linha não aparecer, o resto não significa nada.
+
+---
+
+## ⛔ H e I — RECUSADAS por MEDIÇÃO, e a fila da auditoria FECHOU (2026-08-15)
+
+Os dois últimos itens do [plano 10](../10_plano_fila_da_auditoria.md) são
+respondidos por **sonda, não por código**. As duas sondas ficam no repo
+(`--ignored`, imprimem e não afirmam, cada uma com o seu **CONTROLE**): elas são o
+que impede o item de voltar.
+
+### I · air control boost (`AirControlBoostMultiplier`)
+
+A auditoria descreve o item por um **SINTOMA** (*"não consigo sair do lugar no
+topo de um pulo vertical"*), e a §0 manda medir o fenómeno antes de escrever a
+cura. Medido (`measure_air_control`), pulo vertical parado com o direcional
+apertado:
+
+| segura a partir do tique | deriva (m) | vel no ápice | tiques no ar | pico (m) |
+|---|---|---|---|---|
+| 1 | 6,88 | **5,9999** | 73 | 1,75 |
+| 5 | 6,53 | **5,9999** | 73 | 1,75 |
+| 10 | 6,09 | **5,9999** | 73 | 1,75 |
+| 20 | 4,98 | **6,0000** | 73 | 1,75 |
+
+⚠️ **No ápice ele já corre à velocidade de CRUZEIRO** (`speed = 6,0`) — *não há o
+que um multiplicador acelere* —, e multiplicar o `air_acceleration` confirma-o
+pelo outro lado: **8× compra 8,5% de deriva (6,88 → 7,47 m) e move a velocidade do
+ápice em ZERO**.
+
+**O regime em que o sintoma EXISTE também está medido, e o knob que o cura já
+shipa:** varrendo o `air_acceleration` para baixo, a fração do cruzeiro alcançada
+no ápice é **7% / 15% / 29% / 67% / 100%** em `0,5 / 1 / 2 / 5 / 10` — e o default
+que shipa é **20**. É por isso que o Unreal precisa do multiplicador e nós não:
+lá o `AirControl` é uma **FRAÇÃO da velocidade de caminhada** (5% por default),
+então subi-lo globalmente faz o personagem voar à velocidade cheia o tempo todo e
+o boost existe para resgatar só o começo; aqui ele é uma **aceleração própria**
+que alcança o cruzeiro em 18 dos 73 tiques de voo, com o CAP a segurar o teto. Um
+`air_control_boost` seria a **segunda porta** para *"quero mais controlo no ar"*.
+
+### H · voar / noclip (`MOVE_Flying`)
+
+A auditoria dá-lhe valor baixo com uma razão escrita; a §0 manda medir a premissa
+antes de a aceitar **ou** de a recusar. Sonda `measure_noclip`, com uma parede
+sólida em `x ∈ [4, 8]` e o toggle **Physics** desmarcado:
+
+| pedido | ficou |
+|---|---|
+| no meio da PAREDE ⟨6,0 · 4,0⟩ | **6,0000 · 4,0000** |
+| do outro LADO dela ⟨12,0 · 0,9⟩ | **12,0000 · 0,9000** |
+| bem lá em CIMA ⟨6,0 · 20,0⟩ | **6,0000 · 20,0000** |
+
+E a sim **retoma dali**: largado em `(12,0 · 6,0)`, oitenta tiques de Play deixam-no
+em `(12,0000 · 0,9005)` — **0,0000 m de deriva lateral**. ⚠️ **Com CONTROLE**,
+senão as duas linhas descreveriam um mundo sem parede: empurrado contra ela com o
+relógio a andar, ele **pára em x = 3,8011**.
+
+⇒ *desmarcar Physics → arrastar → marcar* já é o noclip inteiro, com a metade que
+importa (**a física retoma de onde ele foi largado**) gateada desde o W4b.
+
+⚠️ **O que a recusa NÃO cobre, dito por inteiro:** voar **com as teclas durante o
+play** não existe aqui (a MÃO da cena `=52` agarra por mola *através do solver*,
+logo colide). O que o gesto existente dá é **teleporte com o relógio parado** —
+que é exactamente o caso de uso que a auditoria nomeia.
+
+### ⚠️ E a fixture do noclip nasceu ERRADA, com a primeira tabela a MENTIR
+
+O gesto do toggle desmarcado é **`PhysicsBridge::hold`**, e **não**
+`dispatch(playing = false, …)`: aquela porta, com o alvo a CRESCER, entra no braço
+`Greater` e **DÁ PASSO** — o doc dela chama-lhe *"um scrub para a FRENTE enquanto
+pausado"*, porque o estado da sim é função do **TIQUE** e não do botão de play.
+Com ela, a pose escrita à mão era devolvida pelo `readback` do passo seguinte, e a
+tabela dizia *"o artista não consegue pô-lo em lado nenhum"* sobre um produto em
+que ele consegue.
+
+### Superfície
+
+**Zero código de produto.** Duas sondas novas
+(`crates/ph2d-physics-ecs/tests/measure_air_control.rs` ·
+`measure_noclip.rs`), a §6 do plano 10 e a §3.H/§3.I da auditoria 09.
+`PROJECT_SCHEMA` **intocado**, registro intocado, nenhum id, nenhuma cena nova.
+
+**A fila da auditoria está FECHADA:** A · C · B · D · E · J · G construídas,
+H e I recusadas com o número ao lado. O handoff de integração é o
+**[MESTRE de 2026-08-15](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-15.md)**.

@@ -114,7 +114,9 @@ pub(crate) fn spawn_if_enabled(
             );
             println!(
                 "[line-smoke]     RUNGS e a densidade das travessas. ⚠️ Em 0 a faixa DEGENERA na \
-                 linha atrasada sozinha (o pincel de arrasto) -- e o CONTROLE desta wave: mexa o \
+                 linha atrasada sozinha (o pincel de arrasto) -- e o CONTROLE desta wave. ⚠️ Numa \
+                 onda que DESACELERA nos picos a faixa tem de ficar uma ESCADA tambem nas cristas: \
+                 onde os dois trilhos discordam ela fica mais esparsa, e isso e a lei. Mexa o \
                  slider de 0 ate 1 e a faixa tem de aparecer e adensar. A largura dela nao muda com \
                  este slider: quem a abre e o Weight (o atraso) e a velocidade da sua mao."
             );

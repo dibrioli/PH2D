@@ -276,6 +276,8 @@ fn measure_the_ink_one_tick_lays_on_a_hand_that_slows_at_the_peaks() {
         let (mut pior_fio, mut pior_fio_i) = (0.0f32, 0usize);
         let mut pior_fio_kind = "-";
         let (mut leque, mut leque_i, mut leque_n) = (0.0f32, 0usize, 0usize);
+        let mut ultima_trav: Option<[f32; 4]> = None;
+        let (mut corrida, mut corrida_n) = (0.0f32, 1usize);
         let (mut n_trav, mut n_trilho) = (0usize, 0usize);
         let (mut longas_trav, mut longos_trilho) = (0usize, 0usize);
         let mut pior_fio_seg = [0.0f32; 4];
@@ -327,6 +329,25 @@ fn measure_the_ink_one_tick_lays_on_a_hand_that_slows_at_the_peaks() {
                     perto_fim = [t[0], t[1]];
                     longe_fim = [t[2], t[3]];
                     n_do_tique += 1;
+                    // ⚠️ **O LEQUE É ATRAVÉS DE TIQUES, e a régua por-tique não o via.** Numa crista
+                    // a mão desacelera e a fita descarrega atraso durante VÁRIOS quadros, cada um
+                    // com uma ou duas travessas — todas com a ponta de fora no mesmo sítio. Medir
+                    // dentro de um tique reportava 27 px sobre um leque de centenas.
+                    if let Some(ant) = ultima_trav {
+                        if dist2([ant[2], ant[3]], [t[2], t[3]]) < 3.0 {
+                            corrida += dist2([ant[0], ant[1]], [t[0], t[1]]);
+                            corrida_n += 1;
+                            if corrida > leque {
+                                leque = corrida;
+                                leque_i = i;
+                                leque_n = corrida_n;
+                            }
+                        } else {
+                            corrida = 0.0;
+                            corrida_n = 1;
+                        }
+                    }
+                    ultima_trav = Some(t);
                 }
                 let d = dist2([t[0], t[1]], [t[2], t[3]]);
                 let travessa = j % 2 == 0;
@@ -348,15 +369,7 @@ fn measure_the_ink_one_tick_lays_on_a_hand_that_slows_at_the_peaks() {
                     pior_fio_kind = if travessa { "TRAVESSA" } else { "TRILHO  " };
                 }
             }
-            if n_do_tique >= 2 {
-                let abre = dist2(perto_ini, perto_fim);
-                let fecha = dist2(longe_ini, longe_fim);
-                if fecha < 5.0 && abre > leque {
-                    leque = abre;
-                    leque_i = i;
-                    leque_n = n_do_tique;
-                }
-            }
+            let _ = (n_do_tique, perto_ini, perto_fim, longe_ini, longe_fim);
             if out.is_empty() {
                 parados += 1;
                 continue;
@@ -381,8 +394,8 @@ fn measure_the_ink_one_tick_lays_on_a_hand_that_slows_at_the_peaks() {
              pior tique #{pior_i:3} = {pior:6.1} px/{pior_n:4} dabs \
              ({:.0},{:.0}->{:.0},{:.0}) · PIOR FIO {pior_fio_kind} #{pior_fio_i:3} = {pior_fio:6.1} px \
              ({:.0},{:.0}->{:.0},{:.0}) · >150px: {longas_trav}/{n_trav} travessas, \
-             {longos_trilho}/{n_trilho} trilhos · CUNHA {leque:6.1} px em {leque_n:3} travessas \
-             (tique #{leque_i:3}) · cauda {} dabs / {cauda:6.1} px",
+             {longos_trilho}/{n_trilho} trilhos · LEQUE {leque:6.1} px em {leque_n:3} travessas \
+             (ate o tique #{leque_i:3}) · cauda {} dabs / {cauda:6.1} px",
             pior_de[0],
             pior_de[1],
             pior_ate[0],

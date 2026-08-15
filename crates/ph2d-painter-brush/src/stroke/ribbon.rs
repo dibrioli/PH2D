@@ -210,7 +210,23 @@ impl Stroke {
         if !self.spec.ribbon_band_active() {
             return;
         }
-        let seg = dist(a, b);
+        // ⚠️ **A FAIXA AVANÇA O QUE OS DOIS TRILHOS AVANÇARAM — e é o `min`, não o arco da fita.**
+        //
+        // Duas travessas só são distinguíveis se as DUAS pontas andaram: se uma ficou parada, o que
+        // se desenhou não é uma escada, é um LEQUE. A cadência era medida só no arco da fita, então
+        // quando o dedo desacelera numa crista enquanto a fita descarrega atraso, cada quadro emitia
+        // travessas cujas pontas de fora caíam todas no mesmo sítio. Medido no gesto que desacelera:
+        // **148,5 px de leque em 12 travessas** com o peso que shipa (27,0 · 94,5 · 148,5 nos pesos
+        // 0,08 · 0,20 · 0,45 — o leque cresce com o atraso, que é o que ele tem de descarregar).
+        //
+        // ⚠️ **A interpolação de `f` só cobria o caso ESPELHO** (dedo rápido, fita lenta) e cobria-o
+        // bem; o leque dela vive DENTRO de um tique. Este vive ATRAVÉS deles, e nenhuma fração o
+        // alcança — quem o fecha é a cadência.
+        //
+        // ⚠️ **No regime que o smoke aprovou isto é NEUTRO:** em regime a fita anda à velocidade do
+        // dedo (o atraso é um deslocamento constante), então `min ≈ dist(a, b)` e a faixa é a mesma.
+        // A mudança é estritamente para MENOS travessas, e só onde os dois trilhos discordam.
+        let seg = dist(a, b).min(dist(fa, fb));
         if !seg.is_finite() || seg <= f32::EPSILON {
             return;
         }

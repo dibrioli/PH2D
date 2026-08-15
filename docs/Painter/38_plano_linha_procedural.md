@@ -800,14 +800,37 @@ whole_span`, no crate do painel). **10 mutações, 10 sangram.**
     - ⚠️ **E o pen-up herdava o cursor envenenado:** se o último quadro antes do `Up` fosse parado,
       a cauda partia do `stab_pos` — uma **terceira** reta do mesmo ápice, pelo mecanismo que a nota
       do `finish_ribbon` já dava por curado. A guarda fecha isto de carona.
-  - ⚠️ **ABERTO, medido e NÃO construído** (a 3ª lente): a **cadência das travessas é medida no arco
-    da FITA** e o ponto de fora é colhido no trilho do DEDO na mesma fração, então quando o dedo
-    desacelera enquanto a fita descarrega atraso as pontas de fora **colapsam num ponto** e o leque
-    volta — dentro de um tique. O gate que devia pegá-lo
-    (`the_rungs_of_one_tick_do_not_fan_to_a_single_point`) usa um arrasto **RETO a velocidade
-    constante**, e o doc-comment dele nomeia a condição (*"nas cristas, onde a mão desacelera"*) que
-    a fixture, por construção, não tem. É **fio** (cinza-claro), não a espícula escura do report — e
-    é o próximo item, com o gesto que o contém já escrito na sonda.
+  - ⚠️ **E o LEQUE DAS TRAVESSAS fechou logo a seguir (ordem *"construa"*), com uma lei de uma
+    linha:** a cadência era medida **só no arco da FITA**, e o ponto de fora é colhido no trilho do
+    DEDO na mesma fração — então quando a mão desacelera numa crista **enquanto a fita descarrega
+    atraso**, cada quadro emite uma ou duas travessas com a ponta de fora no mesmo sítio e o leque
+    cresce quadro a quadro.
+    - ⚠️ **A interpolação de `f` não o alcançava, e não é falha dela:** ela resolve o caso ESPELHO —
+      dedo rápido, fita lenta, várias travessas num quadro —, que vive **dentro** de um tique. Este
+      vive **ATRAVÉS** deles, e nenhuma fração de um tique vê o tique seguinte. Foi por isso que a
+      régua por-tique reportava **27 px** sobre um leque de centenas.
+    - **A lei: a faixa avança o que os DOIS trilhos avançaram** (`min`), nunca o arco da fita —
+      *duas travessas só são distinguíveis se as DUAS pontas andaram; se uma ficou parada, o que se
+      desenhou não é uma escada, é um leque.*
+    - ⚠️ **No regime que o smoke aprovou isto é NEUTRO**, e é o que o torna seguro: em regime a fita
+      anda à velocidade do dedo (o atraso é um deslocamento constante), logo `min ≈ dist(a, b)` e a
+      faixa é a mesma — o render mediu **62 px de faixa e preenchimento 0,43..1,00 antes e depois**.
+      A mudança é estritamente para MENOS travessas, e só onde os dois trilhos discordam.
+    - **Medido:** leque **148,5 → 0,0 px** na sonda do gesto ondulado (27,0 · 94,5 · 148,5 nos pesos
+      0,08 · 0,20 · 0,45 — ele cresce com o atraso), e a contagem de travessas cai só onde elas eram
+      duplicatas (215 → 181 · 202 → 129 · 179 → 100).
+    - ⚠️ **E o gate nasceu ASSIMÉTRICO — quem o completou foi uma mutação que sobreviveu.** A 1ª
+      versão media só o ápice no DEDO, e a cadência pelo arco do dedo (a cura ingénua da metade que
+      eu via) **passava nas duas réguas** enquanto abria o leque espelho na ponta da FITA. Hoje o
+      gesto tem as duas assimetrias — corre · **freia** · **arranca** — e a mesma régua mede as duas
+      pontas: `dist(a,b)` sangra **297,0 px em 12 travessas** no ápice do dedo, `dist(fa,fb)` sangra
+      **54,0 px em 3** no ápice da fita, o `max` repete os 297,0, e o `min` é o único dos quatro que
+      fecha as duas metades.
+    - ⚠️ **E a cerca do gate irmão foi ENCARADA, não deixada verde:** o doc do
+      `the_rungs_of_one_tick_do_not_fan_to_a_single_point` afirmava cobrir *"as cristas, onde a mão
+      desacelera"* sobre uma fixture que é um arrasto **RETO a velocidade constante**. A frase estava
+      certa sobre o fenômeno e errada sobre aquela régua; ele continua a guardar a interpolação, que
+      é a outra metade e continua load-bearing (ele **passa** sob a mutação que sangra o irmão).
   - ⚠️ **E o card Line não tinha seam nenhum** — os três sliders da W6 shiparam com id, row,
     `populate`, encaminhamento e setter, e **nenhum gate os exercitava** (um `grep` pelo id nos
     testes do repo devolvia nada). O `line_seam_tests.rs` fecha as duas condições que o

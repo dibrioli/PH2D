@@ -208,6 +208,11 @@ que importa, *escolher o tipo*, pulada em todas). A cena dá o material e **não
 1. **Rungs de 0 a 1**: em `0` a faixa **degenera na linha atrasada sozinha** (o pincel de arrasto — o
    CONTROLE); subindo, as travessas aparecem e adensam. ⚠️ Este slider **não** muda a largura da
    faixa: quem a abre é o Weight (o atraso) e a velocidade da sua mão.
+   - ⚠️ **E desenhe uma onda em que a mão DESACELERA nos picos** — é ali que as travessas viravam um
+     leque espetado num ponto (medido: **148,5 px em 12 travessas** no peso que shipa). A faixa tem
+     de ficar uma ESCADA em toda parte, inclusive nas cristas; onde os dois trilhos discordam ela
+     fica mais esparsa, e isso é a lei (*a faixa avança o que os DOIS trilhos avançaram*), não um
+     buraco.
 2. Um **S rápido**: o rastro corta a curva por dentro e **passa do ponto** onde a mão mudou de
    direção.
 3. ⚠️ **PARE a mão no meio do gesto, com o botão preso — NADA pode ser desenhado.** É **o passo que

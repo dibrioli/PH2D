@@ -114,12 +114,18 @@ fn the_band_is_the_lag_so_it_opens_with_the_hand() {
     );
 }
 
-/// **AS TRAVESSAS DE UM QUADRO NÃO CONVERGEM NUM PONTO** — o gate do LEQUE.
+/// **AS TRAVESSAS DE UM QUADRO NÃO CONVERGEM NUM PONTO** — o gate do leque DENTRO de um tique.
 ///
 /// ⚠️ Um quadro emite várias travessas, e ligá-las todas ao dedo de AGORA faz um punhado de
-/// segmentos apontar para o mesmo ponto: o leque que aparece nas cristas, onde a mão desacelera e o
-/// quadro cobre mais arco da fita. As duas pontas de uma travessa têm de ser do MESMO instante, e é
-/// a interpolação de [`Stroke::sew_rungs`] que as carimba nele.
+/// segmentos apontar para o mesmo ponto. As duas pontas de uma travessa têm de ser do MESMO
+/// instante, e é a interpolação de [`Stroke::sew_rungs`] que as carimba nele.
+///
+/// ⚠️ **A fixture é um arrasto RETO a velocidade CONSTANTE, e é de propósito — mas o doc deste gate
+/// afirmava cobrir *"as cristas, onde a mão desacelera"*, que ela não tem.** A frase estava certa
+/// sobre o fenômeno e errada sobre esta régua: o leque das cristas vive ATRAVÉS de tiques, não
+/// dentro de um, e nenhuma interpolação o alcança. Quem o mede é o irmão
+/// [`the_rungs_do_not_fan_across_ticks_when_the_two_rails_disagree`]; este continua a guardar a
+/// interpolação, que é outra metade e continua load-bearing.
 #[test]
 fn the_rungs_of_one_tick_do_not_fan_to_a_single_point() {
     let mut s = Stroke::new(spec(LineKind::Ribbon, 0.45, 1.0), plain(), 7);
@@ -290,5 +296,91 @@ fn a_ribbon_with_no_lag_has_no_band_to_draw() {
         all.is_empty(),
         "costurou {} fios de comprimento zero",
         all.len()
+    );
+}
+
+/// **O LEQUE ATRAVÉS DE TIQUES** — quando a mão desacelera, a faixa não pode virar um punhado de
+/// travessas espetadas no mesmo ponto.
+///
+/// ⚠️ **É a outra metade do leque, e a interpolação não a alcança.** A irmã
+/// [`the_rungs_of_one_tick_do_not_fan_to_a_single_point`] guarda o caso ESPELHO — dedo rápido, fita
+/// lenta, várias travessas num quadro — e a fração `f` o resolve. Este é o caso em que a mão
+/// desacelera numa crista **enquanto a fita descarrega atraso**: cada quadro emite uma ou duas
+/// travessas, todas com a ponta de fora praticamente no mesmo sítio, e o leque cresce quadro a
+/// quadro. Nenhuma fração dentro de um tique o vê.
+///
+/// **A lei que o fecha:** a faixa avança o que os DOIS trilhos avançaram (`min`), e não o arco da
+/// fita — duas travessas só são distinguíveis se as duas pontas andaram.
+///
+/// Medido nesta fixture: a cadência só pelo arco da FITA abre **297,0 px em 12 travessas** no ápice
+/// do dedo; só pelo arco do DEDO abre **54,0 px em 3** no ápice da fita; o `max` repete os 297,0. O
+/// `min` é o único dos quatro que fecha as duas metades. (Na sonda do gesto ondulado, com o peso que
+/// shipa, o leque era **148,5 px em 12 travessas** — 27,0 · 94,5 · 148,5 nos pesos 0,08 · 0,20 ·
+/// 0,45: ele cresce com o atraso, que é o que ele tem de descarregar.)
+/// ⚠️ **E a fixture TEM de conter o fenômeno**: a asserção de contagem abaixo é o que impede este
+/// gate de ficar verde sobre uma faixa que não costurou travessa nenhuma.
+#[test]
+fn the_rungs_do_not_fan_across_ticks_when_the_two_rails_disagree() {
+    let d2 = |a: [f32; 2], b: [f32; 2]| ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2)).sqrt();
+    let mut s = Stroke::new(spec(LineKind::Ribbon, 0.45, 0.5), plain(), 7);
+    let (mut out, mut buf) = (Vec::new(), Vec::new());
+    let mut x = 100.0f32;
+    s.begin(at(x), &mut out);
+    let mut travessas: Vec<Thread> = Vec::new();
+    for i in 0..80 {
+        // ⚠️ **O gesto tem as DUAS assimetrias, e a segunda foi escrita por uma mutação que
+        // sobreviveu:** corre · FREIA (fita depressa, dedo devagar ⇒ leque na ponta de FORA) ·
+        // ARRANCA (dedo depressa, fita ainda devagar ⇒ leque na ponta de PERTO). Medir a cadência
+        // pelo arco do DEDO fecha a primeira e abre a segunda, e passava nas duas réguas anteriores.
+        // A freada não PARA: o piso de meio pixel recusaria o tique, e a pergunta aqui é sobre a mão
+        // a desacelerar.
+        x += if (40..60).contains(&i) { 1.5 } else { 40.0 };
+        s.extend(at(x), &mut out);
+        s.tick(DT, &mut out);
+        s.take_threads(&mut buf);
+        for (j, t) in buf.drain(..).enumerate() {
+            if j % 2 == 0 {
+                travessas.push(t);
+            }
+        }
+    }
+    assert!(
+        travessas.len() >= 20,
+        "a fixture tem de conter o fenômeno: só {} travessas em 80 quadros",
+        travessas.len()
+    );
+    // A corrida de travessas consecutivas que partilham UMA ponta, medida na OUTRA. As duas metades
+    // pela mesma régua: um leque é um leque, esteja o ápice no trilho da fita ou no do dedo.
+    let corrida_max = |partilha: fn(&Thread) -> [f32; 2], abre: fn(&Thread) -> [f32; 2]| {
+        let (mut corrida, mut pior, mut pior_n, mut n) = (0.0f32, 0.0f32, 0usize, 1usize);
+        for par in travessas.windows(2) {
+            let (a, b) = (&par[0], &par[1]);
+            if d2(partilha(a), partilha(b)) < 3.0 {
+                corrida += d2(abre(a), abre(b));
+                n += 1;
+                if corrida > pior {
+                    pior = corrida;
+                    pior_n = n;
+                }
+            } else {
+                corrida = 0.0;
+                n = 1;
+            }
+        }
+        (pior, pior_n)
+    };
+    let perto = |t: &Thread| [t[0], t[1]];
+    let longe = |t: &Thread| [t[2], t[3]];
+    let (fora, fora_n) = corrida_max(longe, perto);
+    assert!(
+        fora <= 40.0,
+        "{fora_n} travessas espetadas no mesmo ponto do DEDO, abrindo {fora:.1} px no trilho da \
+         fita: a cadência está a ser medida só no arco da fita"
+    );
+    let (dentro, dentro_n) = corrida_max(perto, longe);
+    assert!(
+        dentro <= 40.0,
+        "{dentro_n} travessas espetadas no mesmo ponto da FITA, abrindo {dentro:.1} px no trilho \
+         do dedo: a cadência está a ser medida só no arco do dedo"
     );
 }

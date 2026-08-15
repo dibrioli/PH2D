@@ -16,8 +16,8 @@ use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
 use ph2d_editor_core::widget::{
-    Checkbox, CheckboxState, CheckboxValue, ColorSwatch, DEFAULT_LABEL_W, SwatchSize,
-    paint_checkbox, paint_color_swatch, paint_slider_with_chip_layout_adaptive,
+    Checkbox, CheckboxValue, ColorSwatch, DEFAULT_LABEL_W, SwatchSize, paint_checkbox,
+    paint_color_swatch, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;

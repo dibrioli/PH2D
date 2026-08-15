@@ -15,8 +15,8 @@ use ph2d_editor_core::paint::{paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
-    Button, ButtonState, IconButtonStyle, IconGlyph, NumberInput, Toggle, ToggleState,
-    paint_button, paint_icon_button, paint_number_input_with_buffer, paint_toggle,
+    Button, ButtonState, IconButtonStyle, IconGlyph, NumberInput, Toggle, paint_button,
+    paint_icon_button, paint_number_input_with_buffer, paint_toggle,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{DEFAULT_FPS, TimelineViewSnapshot};

@@ -458,9 +458,6 @@ pub(super) fn paint_toggle_row(
     theme: Theme,
 ) -> f32 {
     let cb_id = param_checkbox_id(i);
-    let (cb_state, _) = store
-        .checkbox(cb_id)
-        .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
     let value = if row.on {
         CheckboxValue::Checked
     } else {
@@ -468,7 +465,6 @@ pub(super) fn paint_toggle_row(
     };
     let cb = Checkbox::new(cb_id, row.label.clone())
         .visual(store.checkbox_visual(cb_id))
-        .state(cb_state)
         .value(value);
     let crect = Rect::new(inner_x, y, inner_w, ROW_H_PX);
     paint_checkbox(&cb, crect, scene, text_system, theme);

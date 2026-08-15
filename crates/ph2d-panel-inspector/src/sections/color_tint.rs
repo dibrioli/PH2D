@@ -214,7 +214,7 @@ pub(crate) fn paint_color_tint_section(
 
     // Tint Fill silhouette toggle.
     let cb_h = 18.0_f32; // LITERAL-PX-OK: matches Checkbox visual height
-    let (tf_state, tf_value) = store
+    let (_, tf_value) = store
         .checkbox(ids::INSP_SPRITE_TINT_FILL)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
     let tf_rect = Rect::new(x, cur_y, w, cb_h);
@@ -222,7 +222,6 @@ pub(crate) fn paint_color_tint_section(
     paint_checkbox(
         &Checkbox::new(ids::INSP_SPRITE_TINT_FILL, "Tint Fill")
             .visual(store.checkbox_visual(ids::INSP_SPRITE_TINT_FILL))
-            .state(tf_state)
             .value(tf_value),
         tf_rect,
         scene,

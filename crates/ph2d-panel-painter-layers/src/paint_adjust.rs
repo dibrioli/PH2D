@@ -33,7 +33,7 @@ use ph2d_editor_core::paint::{
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Slider, SliderOrientation, SliderState, Toggle, ToggleState, paint_slider, paint_toggle,
+    Slider, SliderOrientation, SliderState, Toggle, paint_slider, paint_toggle,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, TypeToken};
@@ -235,8 +235,7 @@ fn paint_toggle_row(
     );
     let toggle = Toggle::new(id, "")
         .visual(ctx.host.store().toggle_visual(id))
-        .on(on)
-        .state(ToggleState::Normal);
+        .on(on);
     paint_toggle(&toggle, toggle_rect, ctx.scene, theme);
     register_button(ctx.host.store_mut(), id);
     ctx.host.hit_index_mut().register(id, toggle_rect);

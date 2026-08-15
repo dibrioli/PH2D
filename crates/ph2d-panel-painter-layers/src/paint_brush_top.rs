@@ -123,7 +123,7 @@ pub(crate) fn paint_collapsible_section(
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for an unconfigured section dot
     let header = SectionHeader::new(section_id, label)
         .collapsible(!collapsed)
-            .open_t(ctx.host.store().section_open_live(section_id))
+        .open_t(ctx.host.store().section_open_live(section_id))
         .color(rgba);
     let header_rect = Rect::new(x, y, content_w, header_h);
     let reset_state = ctx.host.store().button_visual(reset_id);

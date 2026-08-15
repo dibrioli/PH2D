@@ -55,8 +55,13 @@ pub(crate) fn paint_mask_section(
         .host
         .store()
         .is_collapsed(core_ids::PAINTER_MASK_SECTION);
-    let header = SectionHeader::new(core_ids::PAINTER_MASK_SECTION, "Mask").collapsible(!collapsed)
-            .open_t(ctx.host.store().section_open_live(core_ids::PAINTER_MASK_SECTION));
+    let header = SectionHeader::new(core_ids::PAINTER_MASK_SECTION, "Mask")
+        .collapsible(!collapsed)
+        .open_t(
+            ctx.host
+                .store()
+                .section_open_live(core_ids::PAINTER_MASK_SECTION),
+        );
     let header_rect = Rect::new(x, y, content_w, header_h);
     {
         let scene = &mut *ctx.scene;

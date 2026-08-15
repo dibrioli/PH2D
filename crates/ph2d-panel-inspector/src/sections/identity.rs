@@ -60,7 +60,7 @@ pub(crate) fn paint_visibility_row(
     // (user 2026-05-24: "espaço entre visible e separador fora do
     // padrão"). Now both sections finish at the same visual rhythm.
     let row_h = 18.0_f32; // LITERAL-PX-OK: matches Checkbox visual height (box 16 + label baseline)
-    let (state, value) = match store.checkbox(ids::INSP_VISIBILITY_CHECK) {
+    let (_, value) = match store.checkbox(ids::INSP_VISIBILITY_CHECK) {
         Some(pair) => pair,
         None => (CheckboxState::Normal, CheckboxValue::Checked),
     };
@@ -68,7 +68,6 @@ pub(crate) fn paint_visibility_row(
     hit_index.register(ids::INSP_VISIBILITY_CHECK, host);
     let checkbox = Checkbox::new(ids::INSP_VISIBILITY_CHECK, "Visible")
         .visual(store.checkbox_visual(ids::INSP_VISIBILITY_CHECK))
-        .state(state)
         .value(value);
     paint_checkbox(&checkbox, host, scene, text_system, theme);
     y + row_h + SECTION_BOTTOM_PAD_PX

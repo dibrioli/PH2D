@@ -125,7 +125,8 @@ impl BodyCtx<'_> {
     ) -> (f32, bool) {
         let header_h = TypeToken::Md.px() + Spacing::Md.px();
         let collapsed = self.store.is_collapsed(id);
-        let header = SectionHeader::new(id, label).collapsible(!collapsed)
+        let header = SectionHeader::new(id, label)
+            .collapsible(!collapsed)
             .open_t(self.store.section_open_live(id));
         let rect = Rect::new(self.inner_x, y, self.inner_w, header_h);
         paint_section_header(&header, rect, self.scene, self.text_system, self.theme);

@@ -79,7 +79,7 @@ pub(crate) fn paint_sprite_sheet_section(
     // texture top-left + offset) + Offset X/Y (intrinsic px). Render via
     // Sprite::resolve_anchor (no atlas-UV change — they move the quad).
     let cb_h = 18.0_f32; // LITERAL-PX-OK: Checkbox visual height
-    let (ce_state, ce_value) = store
+    let (_, ce_value) = store
         .checkbox(ids::INSP_SPRITE_CENTERED)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Checked));
     let ce_rect = Rect::new(x, cur_y, w, cb_h);
@@ -87,7 +87,6 @@ pub(crate) fn paint_sprite_sheet_section(
     paint_checkbox(
         &Checkbox::new(ids::INSP_SPRITE_CENTERED, "Centered")
             .visual(store.checkbox_visual(ids::INSP_SPRITE_CENTERED))
-            .state(ce_state)
             .value(ce_value),
         ce_rect,
         scene,
@@ -120,7 +119,7 @@ pub(crate) fn paint_sprite_sheet_section(
     let flip_row_h = 18.0_f32; // LITERAL-PX-OK: matches Checkbox visual height
     let flip_gap = Spacing::Md.px();
     let flip_half = ((w - flip_gap) * 0.5).max(0.0);
-    let (fx_state, fx_value) = store
+    let (_, fx_value) = store
         .checkbox(ids::INSP_SPRITE_FLIP_X)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
     let fx_rect = Rect::new(x, cur_y, flip_half, flip_row_h);
@@ -128,14 +127,13 @@ pub(crate) fn paint_sprite_sheet_section(
     paint_checkbox(
         &Checkbox::new(ids::INSP_SPRITE_FLIP_X, "Flip H")
             .visual(store.checkbox_visual(ids::INSP_SPRITE_FLIP_X))
-            .state(fx_state)
             .value(fx_value),
         fx_rect,
         scene,
         text_system,
         theme,
     );
-    let (fy_state, fy_value) = store
+    let (_, fy_value) = store
         .checkbox(ids::INSP_SPRITE_FLIP_Y)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
     let fy_rect = Rect::new(x + flip_half + flip_gap, cur_y, flip_half, flip_row_h);
@@ -143,7 +141,6 @@ pub(crate) fn paint_sprite_sheet_section(
     paint_checkbox(
         &Checkbox::new(ids::INSP_SPRITE_FLIP_Y, "Flip V")
             .visual(store.checkbox_visual(ids::INSP_SPRITE_FLIP_Y))
-            .state(fy_state)
             .value(fy_value),
         fy_rect,
         scene,

@@ -33,14 +33,13 @@ fn check_row(
     label: &str,
 ) -> f32 {
     let h = 18.0_f32; // LITERAL-PX-OK: Checkbox visual height (box 16 + label baseline)
-    let (state, value) = store
+    let (_, value) = store
         .checkbox(id)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
     let host = Rect::new(x, y, w, h);
     hit_index.register(id, host);
     let cb = Checkbox::new(id, label)
         .visual(store.checkbox_visual(id))
-        .state(state)
         .value(value);
     paint_checkbox(&cb, host, scene, text_system, theme);
     y + h + Spacing::Sm.px()

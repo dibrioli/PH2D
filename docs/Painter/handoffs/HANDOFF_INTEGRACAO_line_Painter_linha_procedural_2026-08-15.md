@@ -1,9 +1,9 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter`, a LINHA PROCEDURAL (plano 38, W1→W6)
 
-> **Estado:** linha FECHADA, **55 commits**, aguardando **ordem explícita do Enio** para integrar.
-> ⚠️ **A W6 (a FITA) está PENDENTE DE SMOKE** — as waves W1..W5 foram smokadas e aprovadas ao longo
-> da jornada; a fita foi construída depois do último *"smoke OK. Siga"* e **ninguém a viu na tela**.
-> *Integrar não é aprovar.*
+> **Estado:** linha FECHADA, aguardando **ordem explícita do Enio** para integrar.
+> ⚠️ **A W6 (a FAIXA) está PENDENTE DE SMOKE** — as waves W1..W5 foram smokadas e aprovadas ao longo
+> da jornada; a fita foi construída depois do último *"smoke OK. Siga"*, e a **FAIXA** (as travessas)
+> depois do report do Enio com a captura do Alchemy. *Integrar não é aprovar.*
 
 ---
 
@@ -19,12 +19,72 @@ multiplicador de emissão:
 | W3 | O **Sketchy** — o traço ganha MEMÓRIA e costura-se a si mesmo; o Magnetify | ✅ aprovado |
 | W4 | O **Wire** — o mesmo produtor com uma janela de ARCO | ✅ aprovado |
 | W5 | O **Spray** — uma contagem, e ela **não é um tipo de linha** (mora no card Jitter) | ✅ aprovado |
-| W6 | A **FITA** — o traço PESA | ⚠️ **pendente** |
+| W6 | A **FAIXA** — dois trilhos e travessas (o *Ribbon Shapes* do Alchemy); a fita massa-mola é o trilho de tinta | ⚠️ **pendente** |
 | W6 | **Rough** | ⛔ **não construído** (ver §5) |
 
 ---
 
-## 2. A FITA, em três frases que decidem o resto
+## 2. A FAIXA — a premissa da wave estava errada, e a referência a corrigiu
+
+⚠️ **O `Ribbon Shapes` do Alchemy NÃO é uma curva atrasada.** O Enio pôs a saída dele ao lado da
+nossa (2026-08-15) e a diferença é estrutural: a marca dele é uma **FAIXA com travessas** — dois
+trilhos ligados por riscos atravessados que se abrem quando a mão acelera —, e a nossa era **uma
+linha só, atrasada**, que é o **Dynamic Brush do Krita** (`Mass` + `Drag`). O plano 38 citava a
+referência de uma feature e descrevia a outra; **eu implementei a descrição**, e é por isso que
+nenhuma das minhas sete hipóteses anteriores chegava à foto dele: eu consertava a coisa certa da
+feature errada.
+
+⚠️ **Clean-room, e a regra não afrouxou por conveniência:** Alchemy e Krita são GPL-3. O desenho saiu
+da **captura** (comportamento observado) e do manual — nenhuma linha do fonte de nenhum dos dois foi
+lida, e a pergunta *"não tem o código aberto para ver?"* tem a resposta que este repo já dá ao
+Blender Texture Paint: **comportamento sim, expressão nunca**.
+
+**O desenho:** o trilho de **tinta** é o massa-mola já construído (dabs); o trilho do **DEDO** e as
+**travessas** são **FIOS** (o canal `Thread` do Sketchy/Wire — mesmo produtor, mesmo rasterizador,
+mesma tinta). A **largura da faixa É o atraso**, então ela abre com a mão e fecha nos picos.
+
+⚠️ **A assimetria dab/fio é o desenho, não um compromisso.** Um segundo trilho de DABS seria uma
+segunda pincelada: a Symmetry o espelharia, o Spray o multiplicaria, o impasto construiria relevo
+nele e a taper o afinaria — e um ribbon é **UMA** marca. É também o que dispensou o segundo cursor de
+percurso que a primeira tentativa (revertida) exigia.
+
+⚠️ **Três leis, cada uma com gate e mutação:** as duas pontas de uma travessa são do **MESMO
+instante** (senão sai um LEQUE nas cristas) · a cadência é de **ARCO** com o resíduo a atravessar os
+quadros (uma por dab preenche SÓLIDO, uma por quadro põe a taxa de quadros no desenho) · e a
+**CAUDA não costura** (no pen-up o trilho do dedo acabou; ligá-la à caneta parada é o leque outra
+vez).
+
+⚠️ **`Rungs = 0` é DEGENERAÇÃO, não modo** — sobra o massa-mola sozinho. Uma densidade cobre os dois
+looks, e por isso a família não ganhou um segundo tipo nem um interruptor (que teria de nomear o
+estado desligado). Default **0,5**: uma fita É uma faixa.
+
+### 2.1 O defeito que custou o diagnóstico: uma porta DUPLICADA
+
+Havia **dois** `sews_threads` — um no `LineKind` (*este tipo costura?*) e um no `BrushSpec` (o que o
+depósito pergunta) — e o **doc do segundo dizia consultar o primeiro sem o consultar**: ele
+enumerava `sketchy_active() || wire_active()`. Ligar a fita no portão do enum deixou o motor a
+costurar **343 travessas por traço** com o depósito **MUDO**, e a imagem renderizada saía idêntica ao
+controle.
+
+**O portão do enum não existe mais.** O do spec é um `match` **EXAUSTIVO sem braço `_`**, então um
+quarto costurador é um **erro de compilação** em vez de uma faixa que nunca pinta. E os três
+produtores passaram a publicar por **uma porta** (`Stroke::sew`), que é onde a Symmetry é aplicada —
+uma cópia por produtor é a regra que o quarto nasce sem.
+
+### 2.2 E o card Line não tinha seam nenhum
+
+Os três sliders da W6 shiparam com id, row, `populate`, encaminhamento e setter — e **nenhum gate os
+exercitava** (`grep` pelo id nos testes do repo: nada). O `wiring_parity` cobre *o widget existe* e
+*está registrado*, e é cego às outras duas: **o clique chega ao tool?** e **a sequência leva a algum
+lugar?**. O `line_seam_tests.rs` fecha as duas para as **oito** rows do card.
+
+⚠️ **E ele pegou uma fixture minha antes de shipar:** o `Reach` mapeia a pista em `0..4`, então
+`0,25` cai exactamente no `1.0` de fábrica e a asserção *"o campo mudou"* reprovava uma row viva. O
+oráculo certo é a **diferença entre duas posições da pista**.
+
+---
+
+## 2b. A FITA (o trilho de tinta), em três frases que decidem o resto
 
 **Ela move o CAMINHO, não a tinta.** O `Speed` arremessa a TINTA e deixa o caminho intacto porque a
 velocidade dele é medida *do* caminho — realimentá-la a somaria a si mesma e o traço fugiria da tela
@@ -139,17 +199,27 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter && \
 **Uma cena para o CARD** (não uma por tipo — três cenas seriam três canvas idênticos com a costura
 que importa, *escolher o tipo*, pulada em todas). A cena dá o material e **não arma tipo nenhum**.
 
-**O que julgar na FITA** (dropdown `Type` → Ribbon):
+**O que julgar na FAIXA** (dropdown `Type` → Ribbon):
 
-1. Um **S rápido**: o rastro corta a curva por dentro e **passa do ponto** onde a mão mudou de
+0. ⚠️ **A pergunta de OLHO desta wave, e é a primeira:** desenhe uma **onda RÁPIDA**. Tem de sair uma
+   **FAIXA com travessas** — o traço de tinta atrás, o caminho do dedo à frente, riscos atravessados
+   entre os dois —, e ela tem de **ABRIR nas retas e FECHAR nos picos**, onde a mão desacelera.
+   Compare com a captura do Alchemy: é essa a figura.
+1. **Rungs de 0 a 1**: em `0` a faixa **degenera na linha atrasada sozinha** (o pincel de arrasto — o
+   CONTROLE); subindo, as travessas aparecem e adensam. ⚠️ Este slider **não** muda a largura da
+   faixa: quem a abre é o Weight (o atraso) e a velocidade da sua mão.
+2. Um **S rápido**: o rastro corta a curva por dentro e **passa do ponto** onde a mão mudou de
    direção.
-2. ⚠️ **SOLTE no meio do gesto e não mexa** — a fita continua a **CHEGAR**. É a metade que um
-   roteiro apressado pula, e é onde se vê que o traço acaba onde ela parou.
-3. **Weight** (quanto tempo atrasa) · **Friction** (como assenta: baixo = chicote, alto = arrasto) ·
-   **Gravity** (o peso). Medido a 2 400 px/s: peso 1,00 deixa a tinta **804 px** atrás do dedo.
-4. ⚠️ **Se mexer no fundo do slider e nada mudar, suba mais** — é a zona inerte medida (§4.4).
-5. **Ela COMPÕE**: ligue o Spray (Jitter → Count) ou a Symmetry com a fita armada.
-6. **O CONTROLE**: `Type = None` e `Count = 1` têm de pintar exatamente como sempre pintaram.
+3. ⚠️ **SOLTE no meio do gesto e não mexa** — a fita continua a **CHEGAR**, e a **FAIXA termina onde
+   a mão terminou**: a cauda é só o trilho de tinta, sem travessas. Ligá-las à caneta parada
+   desenharia um leque, e é por isso que a cauda não costura.
+4. **Weight** (quanto tempo atrasa — e é ele que abre a faixa) · **Friction** (como assenta: baixo =
+   chicote, alto = arrasto) · **Gravity** (o peso). Medido a 2 400 px/s: peso 1,00 deixa a tinta
+   **804 px** atrás do dedo, que é também a largura da faixa ali.
+5. ⚠️ **Se mexer no fundo do slider e nada mudar, suba mais** — é a zona inerte medida (§4.4), e ela
+   leva a faixa junto: sem atraso os dois trilhos coincidem e não há faixa a desenhar.
+6. **Ela COMPÕE**: ligue o Spray (Jitter → Count) ou a Symmetry com a fita armada.
+7. **O CONTROLE**: `Type = None` e `Count = 1` têm de pintar exatamente como sempre pintaram.
 
 ⚠️ **`--release` não é preferência** — a densidade cheia do Sketchy põe ~16 mil px de fio num traço
 de 312 px, o Wire desenha quatro cordas por dab, e o Spray multiplica cada dab por até dezasseis.

@@ -696,28 +696,50 @@ whole_span`, no crate do painel). **10 mutações, 10 sangram.**
 
 ### W6 — opcionais, só com pedido
 
-- ⛔ **A PREMISSA DESTA LINHA ESTÁ ERRADA, e a referência a desmente** (Enio, 2026-08-15, com a
-  captura do Alchemy ao lado da nossa). **O `Ribbon Shapes` do Alchemy NÃO é uma curva atrasada** —
-  é uma **FAIXA com travessas**: a marca segue o gesto e dentro dela correm dezenas de riscos
-  atravessados, densos, que se abrem e fecham conforme a mão acelera. O que esta wave construiu é um
-  **seguidor massa-mola** (uma linha só, atrasada), que é o **Dynamic Brush do Krita** (`Mass` +
-  `Drag`), não o Alchemy. **São duas features diferentes**, e o bullet abaixo citava a referência de
-  uma e descrevia a outra.
-  - **O desenho que a referência dita** (derivado da captura, não do código — Alchemy e Krita são
-    GPL-3 e a regra deste repo é *comportamento sim, linha de código nunca*): a fita tem **dois
-    trilhos** — o caminho do DEDO e o caminho **ATRASADO** — e entre eles correm **travessas**, com
-    a **largura da faixa sendo o próprio atraso** (por isso ela **estreita nos picos**, onde a mão
-    desacelera: é o que a captura mostra). `Friction`/`Gravity` moldam o trilho atrasado, e a
-    cadência das travessas é por **ARCO**, nunca por dab.
-  - ⚠️ **O massa-mola já construído é o MOTOR disto, não trabalho perdido** — ele produz o trilho
-    atrasado. O que falta é o segundo trilho e as travessas.
-  - ⚠️ **PRIMEIRA TENTATIVA FEITA E REVERTIDA (não a repita assim):** ligar `sews_threads()` à fita e
-    emitir um `Thread` por dab do trilho cru **preenche SÓLIDO** (a travessa sai a cada 1,2 px), e
-    com a cadência por arco a faixa **continua sem abrir** — porque os dois trilhos **partilham o
-    cursor do percurso** (`walk_smoothed`), então percorrer os dois alterna o caminho em vez de
-    desenhar duas bordas. **O trilho cru precisa de percurso PRÓPRIO**, e é aí que a wave começa.
-  - ⚠️ **E o nome tem de dizer o que a coisa é:** se as duas ficarem, o massa-mola não pode chamar-se
-    `Ribbon` — ele é o `Dyna`/`Weighted` do Krita.
+- ✅ **A PREMISSA DESTA LINHA ESTAVA ERRADA, a referência a desmentiu, e a FAIXA foi construída**
+  (Enio, 2026-08-15, com a captura do Alchemy ao lado da nossa; construída na mesma sessão). **O
+  `Ribbon Shapes` do Alchemy NÃO é uma curva atrasada** — é uma **FAIXA com travessas**: a marca
+  segue o gesto e dentro dela correm riscos atravessados que se abrem e fecham conforme a mão
+  acelera. O que a wave tinha construído era o **seguidor massa-mola** (uma linha só, atrasada), que
+  é o **Dynamic Brush do Krita** (`Mass` + `Drag`). O bullet abaixo citava a referência de uma e
+  descrevia a outra; hoje o massa-mola é **metade** da fita — o trilho de tinta.
+  - **O desenho, derivado da captura e não do código** (Alchemy e Krita são GPL-3 e a regra deste
+    repo é *comportamento sim, linha de código nunca*): dois **trilhos** — o do DEDO e o
+    **ATRASADO** — ligados por **travessas**, com a **largura da faixa sendo o próprio atraso**.
+    É por isso que ela **estreita nos picos**, onde a mão desacelera, que é o que a captura mostra —
+    e o gate que a pina é uma **RAZÃO** entre duas velocidades (`the_band_is_the_lag_so_it_opens…`),
+    nunca um comprimento absoluto.
+  - ⚠️ **A ASSIMETRIA é o desenho, não um compromisso:** o trilho de tinta é de **DABS**, o trilho de
+    fora e as travessas são **FIOS** (o canal `Thread` do Sketchy/Wire, mesmo rasterizador, mesma
+    tinta). Um segundo trilho de dabs seria uma segunda **pincelada** — a Symmetry o espelharia, o
+    Spray o multiplicaria, o impasto construiria relevo nele e a taper o afinaria —, e um ribbon é
+    UMA marca. É também o que evitou o segundo cursor de percurso que a tentativa revertida pedia.
+  - ⚠️ **A interpolação NÃO é refinamento — é ela que impede o LEQUE:** um quadro emite várias
+    travessas, e ligá-las todas ao dedo de AGORA faz um punhado de segmentos convergir num ponto
+    (o leque das cristas). As duas pontas de uma travessa são do **MESMO instante**, carimbadas pela
+    fração do quadro. Gate próprio, com mutação.
+  - ⚠️ **A cadência é de ARCO e o resíduo atravessa os quadros** — uma travessa por DAB preenche
+    SÓLIDO (a primeira tentativa: um dab sai a cada ~1,2 px) e uma por QUADRO faria o número de
+    travessas mudar com a taxa de quadros. O gate afirma as duas metades (taxa de eventos **e** taxa
+    de tiques).
+  - ⚠️ **A CAUDA não costura**, pela mesma lei do leque: no pen-up o trilho do DEDO acabou, e ligar a
+    cauda ao ponto onde a caneta levantou é literalmente o leque. A faixa termina onde a mão terminou.
+  - ⚠️ **`Rungs = 0` é uma DEGENERAÇÃO, não um modo** — uma faixa sem travessas é uma linha, e sobra
+    o massa-mola sozinho (o *Dyna*). É por isso que a família **não** precisou de um segundo tipo nem
+    de um interruptor: uma densidade cobre os dois looks, e um interruptor teria de escolher um nome
+    para o estado desligado. O default nasce em **0,5** — uma fita É uma faixa, e um default em `0`
+    daria a quem escolhe `Ribbon` o pincel de arrasto sob o nome da outra feature.
+  - ⚠️ **E o defeito que custou a hora de diagnóstico foi uma PORTA DUPLICADA:** havia dois
+    `sews_threads` — um no `LineKind` (que respondia *o tipo costura?*) e um no `BrushSpec` (que o
+    depósito pergunta) — e o **doc do segundo dizia consultar o primeiro sem o consultar**: ele
+    enumerava `sketchy_active() || wire_active()`. Ligar a fita no portão do enum deixou o motor a
+    costurar **343 travessas por traço** com o depósito **mudo**, e a imagem saía idêntica ao
+    controle. **O portão do enum não existe mais** e o do spec é um `match` **EXAUSTIVO sem braço
+    `_`**, então um quarto costurador é um erro de compilação em vez de uma faixa que nunca pinta.
+  - ⚠️ **E o card Line não tinha seam nenhum** — os três sliders da W6 shiparam com id, row,
+    `populate`, encaminhamento e setter, e **nenhum gate os exercitava** (um `grep` pelo id nos
+    testes do repo devolvia nada). O `line_seam_tests.rs` fecha as duas condições que o
+    `wiring_parity` é cego a ver: *o clique chega ao tool?* e *a sequência leva a algum lugar?*
 - **Ribbon (o massa-mola, a construir-se `Dyna`)** — ✅ **CONSTRUÍDO** (2026-08-14/15, ordem *"Siga"*). A fita presa ao cursor por uma mola
   com atrito e peso; o traço **pesa**. Sliders **Weight · Friction · Gravity** (`Size` e `Spacing`
   do Alchemy já são do pincel — dois donos para o mesmo número seria a segunda porta).
@@ -828,7 +850,7 @@ porque *os três são o mesmo assunto*.
 | **W3** | **Sketchy** | média | W0 (3) |
 | **W4** | **Wire** | pequena | W3 |
 | **W5** | **Spray** — só o `Count`, e fora do dropdown | pequena | — |
-| **W6** | Ribbon ✅ · Rough ⛔ | Ribbon: `PH2D_LINE_SMOKE=1` | Ribbon feito 2026-08-15; Rough só com pedido |
+| **W6** | Ribbon (a FAIXA) ✅ · Rough ⛔ | Ribbon: `PH2D_LINE_SMOKE=1` | A faixa com travessas fechou 2026-08-15; Rough só com pedido |
 
 ⚠️ **A W1 e a W2 são independentes** — se o Enio quiser ver o card mais cedo, a W1 sozinha já entrega
 um card com um controle vivo. O que não pode acontecer é o card nascer com o dropdown de uma opção

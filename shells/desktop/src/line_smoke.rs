@@ -99,12 +99,24 @@ pub(crate) fn spawn_if_enabled(
                  marca. Combine com Speed ou Sketchy: eles compoem."
             );
             println!(
-                "[line-smoke]   RIBBON: o traco PESA. A tinta fica ATRAS do dedo, chicoteia na \
-                 saida da curva e -- com Gravity -- PENDE. Desenhe um S rapido: o rastro corta a \
-                 curva por dentro e passa do ponto onde a mao mudou de direcao. SOLTE no meio do \
-                 gesto e nao mexa: a mao LARGOU a fita, entao ela segue na direcao em que ia, \
-                 desacelera e assenta. Ela NAO corre ate o cursor -- o traco acaba ANTES do dedo, e \
-                 essa distancia e a inercia dela."
+                "[line-smoke]   RIBBON: uma FAIXA com travessas (o Ribbon Shapes do Alchemy). Dois \
+                 trilhos -- o do DEDO e o ATRASADO -- ligados por riscos atravessados, e a LARGURA \
+                 DA FAIXA E O PROPRIO ATRASO. Desenhe uma onda RAPIDA: a faixa ABRE nas retas e \
+                 FECHA nos picos, onde a mao desacelera. E a pergunta de olho desta wave."
+            );
+            println!(
+                "[line-smoke]     O traco tambem PESA: a tinta fica ATRAS do dedo, chicoteia na \
+                 saida da curva e -- com Gravity -- PENDE. SOLTE no meio do gesto e nao mexa: a mao \
+                 LARGOU a fita, entao ela segue na direcao em que ia, desacelera e assenta. Ela NAO \
+                 corre ate o cursor -- o traco acaba ANTES do dedo. ⚠️ E a FAIXA termina onde a mao \
+                 terminou: a cauda e so o trilho de tinta, sem travessas (liga-las a caneta parada \
+                 desenharia um leque)."
+            );
+            println!(
+                "[line-smoke]     RUNGS e a densidade das travessas. ⚠️ Em 0 a faixa DEGENERA na \
+                 linha atrasada sozinha (o pincel de arrasto) -- e o CONTROLE desta wave: mexa o \
+                 slider de 0 ate 1 e a faixa tem de aparecer e adensar. A largura dela nao muda com \
+                 este slider: quem a abre e o Weight (o atraso) e a velocidade da sua mao."
             );
             println!(
                 "[line-smoke]     Weight e QUANTO TEMPO ela atrasa, Friction e COMO ela assenta \

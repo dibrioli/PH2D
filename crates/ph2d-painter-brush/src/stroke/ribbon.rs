@@ -41,17 +41,25 @@
 //!
 //! Um filtra TREMOR, a outra dá PESO; compõem em série sem se contradizer.
 //!
-//! ## O relógio
+//! ## O relógio — e ele é o do GESTO
 //!
 //! ⚠️ **A mola é integrada no TIQUE, e o caminho é percorrido no tique** — não no evento de
 //! ponteiro. É a mesma lei que o [`mod@super::speed`] aplica à velocidade: *a grandeza é fato do
 //! CAMINHO e do RELÓGIO, nunca de quão fino o dispositivo amostrou o caminho*. Um mouse de 960 Hz e
 //! um de 125 Hz entregam a mesma fita, porque quem a move é o relógio de parede.
+//!
+//! ⚠️ **Mas um tique em que o dedo não andou NÃO entrega tempo** ([`Stroke::tick_ribbon`]): uma mola
+//! que converge para um alvo parado desenha uma **linha reta de largura cheia**, e essa é a
+//! espícula que o smoke reprovou duas vezes. A fita congela — posição e velocidade —, então retomar
+//! é continuar de onde parou. **As duas metades não se contradizem:** *integrar em segundos* é o
+//! que torna o desenho independente do dispositivo; *não integrar sem gesto* é o que o torna
+//! função do que a mão fez. O que morreu foi uma frase MINHA — *"solte no ar e a fita continua a
+//! chegar"* —, que a referência nunca prometeu.
 
 use super::*;
 use crate::line_kind::{
-    RIBBON_MAX_STEP_S, RIBBON_MAX_SUBSTEPS, RIBBON_SUBSTEP_FRACTION, RIBBON_TAIL_MAX_S,
-    RIBBON_TAIL_REST_PX_S,
+    RIBBON_MAX_STEP_S, RIBBON_MAX_SUBSTEPS, RIBBON_PARK_EPS_PX, RIBBON_SUBSTEP_FRACTION,
+    RIBBON_TAIL_MAX_S, RIBBON_TAIL_REST_PX_S,
 };
 
 impl Stroke {
@@ -128,12 +136,40 @@ impl Stroke {
     /// O passo de caminho de um quadro: integra e percorre até onde a ponta chegou.
     ///
     /// ⚠️ **Chamado do [`Stroke::tick`], e é ele o ÚNICO que percorre** num traço de fita — o
-    /// `extend` só grava onde o dedo está. Isto vale para a mão PARADA tanto quanto para a mão em
-    /// movimento, e é o que dá a segunda metade da feature de graça: solte o gesto no ar e a fita
-    /// continua a chegar, porque o tique não parou.
+    /// `extend` só grava onde o dedo está.
+    ///
+    /// ## SEM GESTO, SEM TEMPO — e é a lei que mata a espícula na raiz
+    ///
+    /// ⚠️ **Uma mola que converge para um alvo PARADO anda em LINHA RETA.** Enquanto o dedo se
+    /// move, o alvo foge e a ponta descreve uma curva; assim que ele para, a convergência é um
+    /// segmento — desenhado com a largura cheia do pincel, atravessando o desenho. É a **espícula**,
+    /// e ela não é do pen-up: é de **qualquer** instante em que a mão pára com o botão preso.
+    ///
+    /// **Medido por ablação, pela porta do produto** (o gesto do report do Enio, 2026-08-15, com a
+    /// mesma imagem renderizada com e sem cada fase): a PAUSA acrescenta **18 013 px de tinta, 5 715
+    /// deles ESCUROS** (tinta cheia ⇒ dabs, não fios), numa caixa de 725 × 396 px; a CAUDA
+    /// acrescenta **zero**. Cortar a coleira no pen-up — a correção anterior — tratou o sintoma no
+    /// único instante em que ele tinha nome, e deixou o mecanismo vivo no meio do traço.
+    ///
+    /// ⚠️ **A cura é o RELÓGIO DO GESTO:** um tique em que o dedo não andou não entrega tempo à
+    /// fita. Ela congela — posição **e** velocidade —, então retomar é continuar de onde parou, como
+    /// se o tempo não tivesse passado. É o que a referência faz: o *Ribbon Shapes* do Alchemy é
+    /// função dos PONTOS de entrada e não tem relógio nenhum, logo parar a mão não desenha nada.
+    ///
+    /// ⚠️ **Isto NÃO contradiz *a fita é fato do relógio*** — aquela lei é sobre integrar em
+    /// SEGUNDOS, para um mouse de 960 Hz desenhar o que um de 125 Hz desenha, e ela continua de pé
+    /// (o gate dela move o dedo em todo evento). O que morre aqui é a outra metade, que era **minha
+    /// e não da referência**: *"solte o gesto no ar e a fita continua a chegar"*. O smoke a reprovou
+    /// duas vezes, com foto.
     pub(super) fn tick_ribbon(&mut self, dt: f32, out: &mut Vec<Dab>) {
         let a = self.ribbon_pos;
         let fa = self.ribbon_prev_raw;
+        // ⚠️ **O portão do heading fica ANTES da recusa, de propósito** — um quadro parado é onde o
+        // heading assenta, e sem isto as aberturas seguradas pelo warm-up do Rake nunca sairiam.
+        self.warmup_gate(out);
+        if dist(fa, self.last_raw_pos) <= RIBBON_PARK_EPS_PX {
+            return;
+        }
         self.step_ribbon(dt, true);
         self.sew_rungs(a, self.ribbon_pos, fa, self.last_raw_pos);
         self.ribbon_prev_raw = self.last_raw_pos;
@@ -144,9 +180,6 @@ impl Stroke {
             },
             out,
         );
-        // Um quadro parado ainda é onde o heading pode assentar (fita pesada), então as aberturas
-        // seguram pelo MESMO portão do `settle` — sem isto a abertura nunca é solta.
-        self.warmup_gate(out);
     }
 
     /// **AS TRAVESSAS** — o que faz da fita uma FAIXA em vez de uma linha atrasada.

@@ -736,6 +736,31 @@ whole_span`, no crate do painel). **10 mutações, 10 sangram.**
     costurar **343 travessas por traço** com o depósito **mudo**, e a imagem saía idêntica ao
     controle. **O portão do enum não existe mais** e o do spec é um `match` **EXAUSTIVO sem braço
     `_`**, então um quarto costurador é um erro de compilação em vez de uma faixa que nunca pinta.
+  - ⚠️ **E o SMOKE DA FAIXA reprovou as ESPÍCULAS, que a correção da cauda tinha tratado pela
+    metade** (Enio, 2026-08-15: *"parece melhor mas com as espículas do algoritmo antigo"*). A
+    ablação pela porta do produto — a mesma imagem renderizada com e sem cada fase — nomeou a fase
+    em uma corrida: a **PAUSA** acrescentava **18 013 px de tinta, 5 715 deles ESCUROS** (tinta
+    cheia ⇒ dabs, não fios), numa caixa de 725 × 396 px; a **CAUDA** acrescentava **zero**.
+    - **A lei:** uma mola que converge para um alvo **PARADO** anda em **linha reta**. Enquanto o
+      dedo se move o alvo foge e a ponta descreve uma curva; assim que ele pára, a convergência é um
+      segmento de largura cheia atravessando o desenho. **Não é do pen-up** — é de *qualquer*
+      instante em que a mão pára com o botão preso, e cortar a coleira no pen-up tratou o sintoma no
+      único instante em que ele tinha nome.
+    - **A cura é o RELÓGIO DO GESTO:** um tique em que o dedo não andou não entrega tempo à fita.
+      Ela **congela** — posição *e* velocidade —, então retomar continua de onde parou (medido: **13
+      dabs** no tique retomado, contra **239** se ela descartasse o estado). É o que a referência
+      faz: o Alchemy não tem relógio nenhum, a fita dele é função dos PONTOS de entrada.
+    - ⚠️ **Isto NÃO contradiz *a fita é fato do relógio*** — aquela lei é sobre integrar em
+      SEGUNDOS (960 Hz desenha o que 125 Hz desenha) e continua de pé. O que morreu foi uma frase
+      **minha, não da referência**: *"solte no ar e a fita continua a chegar"*, que eu tinha posto
+      no roteiro do smoke como feature.
+    - ⚠️ **E TRÊS gates repousavam na premissa que isto dissolveu, encarados em vez de deixados
+      verdes:** a GRAVIDADE media o pingar com a mão parada (a fixture morreu, o número `g·τ²` não —
+      ele é o mesmo no equilíbrio sob arrasto) · o CHICOTE media a ultrapassagem depois da mão parar
+      (mudou para a QUINA, onde a massa leva a ponta para fora da curva, com os dois controles
+      intactos) · e *"a mão parada assenta"* passou a ser **trivialmente verdadeiro no tique 0**,
+      então cedeu o lugar à lei nova. O piso do `RIBBON_DAMPING_MIN` **fica**, mas a tabela dele
+      media um recurso que deixou de existir: hoje ele bounda **LOOK**, não tinta.
   - ⚠️ **E o card Line não tinha seam nenhum** — os três sliders da W6 shiparam com id, row,
     `populate`, encaminhamento e setter, e **nenhum gate os exercitava** (um `grep` pelo id nos
     testes do repo devolvia nada). O `line_seam_tests.rs` fecha as duas condições que o

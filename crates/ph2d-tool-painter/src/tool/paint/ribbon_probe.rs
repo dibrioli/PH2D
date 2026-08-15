@@ -203,3 +203,68 @@ fn probe_ribbon_look() {
         );
     }
 }
+
+/// **A ABLAÇÃO DA ESPÍCULA** — a MESMA imagem com e sem cada fase, e a DIFERENÇA é a tinta daquela
+/// fase. É o oráculo honesto: um "trecho reto" medido sobre dabs não distingue a inflexão de uma
+/// onda de uma espícula, e foi por isso que a sonda de fases apontou para o gesto inteiro.
+///
+/// `PH2D_RIBBON_LOOK_DIR=<dir> cargo test -p ph2d-tool-painter --release probe_ribbon_spike -- --ignored --nocapture`
+#[test]
+#[ignore = "render-and-look, not a gate"]
+fn probe_ribbon_spike() {
+    let Some(dir) = std::env::var_os("PH2D_RIBBON_LOOK_DIR") else {
+        return;
+    };
+    let dir = std::path::PathBuf::from(dir);
+    std::fs::create_dir_all(&dir).expect("dir");
+    let side = 1024u32;
+    let dt = 1.0 / 60.0;
+    // (nome, pausa no meio do gesto?, cauda no pen-up?)
+    for (nome, pausa, cauda) in [
+        ("spike_completo", true, true),
+        ("spike_sem_pausa", false, true),
+        ("spike_sem_cauda", true, false),
+        ("spike_nu", false, false),
+    ] {
+        let mut t = tool(side, PaintMedia::Digital, 6.0);
+        t.paint.brush.stroke_method = StrokeMethod::Space;
+        t.paint.brush.line_kind = LineKind::Ribbon;
+        let pt = |u: f32| [80.0 + u * 880.0, 512.0 + (u * 16.0).sin() * 200.0];
+        // ⚠️ **VINTE E CINCO eventos, não cento e dez** — uma mão rápida a 60 Hz anda ~40 px por
+        // evento, e a 1ª versão desta sonda andava 8. Com o gesto lento o atraso é pequeno, a faixa
+        // quase não abre e a fixture **não continha o fenômeno**: a imagem saía limpa e teria
+        // inocentado o produto.
+        const EVENTOS: usize = 25;
+        t.on_canvas_pointer(cp(pt(0.0), PointerPhase::Down));
+        for i in 1..=EVENTOS {
+            #[allow(clippy::cast_precision_loss)]
+            let u = i as f32 / EVENTOS as f32;
+            t.on_canvas_pointer(cp(pt(u), PointerPhase::Move));
+            t.on_tick(dt * 1e3);
+            // A mão PARA no meio, com o botão preso — o gesto que a foto do Enio sugere.
+            if pausa && i == EVENTOS / 2 {
+                for _ in 0..25 {
+                    t.on_canvas_pointer(cp(pt(u), PointerPhase::Move));
+                    t.on_tick(dt * 1e3);
+                }
+            }
+        }
+        t.on_canvas_pointer(cp(pt(1.0), PointerPhase::Up));
+        if cauda {
+            for _ in 0..60 {
+                t.on_tick(dt * 1e3);
+            }
+        }
+        let px = &t.canvas_rgba;
+        let mut buf = format!("P5\n{side} {side}\n255\n").into_bytes();
+        for i in 0..(side as usize * side as usize) {
+            buf.push(px[i * 4]);
+        }
+        let p = dir.join(format!("{nome}.pgm"));
+        std::fs::write(&p, buf).expect("write");
+        println!(
+            "[spike] {nome}: pausa={pausa} cauda={cauda} -> {}",
+            p.display()
+        );
+    }
+}

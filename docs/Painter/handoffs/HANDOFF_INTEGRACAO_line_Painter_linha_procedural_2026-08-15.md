@@ -210,9 +210,10 @@ que importa, *escolher o tipo*, pulada em todas). A cena dá o material e **não
    faixa: quem a abre é o Weight (o atraso) e a velocidade da sua mão.
 2. Um **S rápido**: o rastro corta a curva por dentro e **passa do ponto** onde a mão mudou de
    direção.
-3. ⚠️ **SOLTE no meio do gesto e não mexa** — a fita continua a **CHEGAR**, e a **FAIXA termina onde
-   a mão terminou**: a cauda é só o trilho de tinta, sem travessas. Ligá-las à caneta parada
-   desenharia um leque, e é por isso que a cauda não costura.
+3. ⚠️ **PARE a mão no meio do gesto, com o botão preso — NADA pode ser desenhado.** *Sem gesto, sem
+   tempo*: uma mola que converge para um alvo parado desenha uma **reta de largura cheia**, e era
+   essa a espícula do report. Retome, e o traço continua de onde parou, **sem salto**. (Medido por
+   ablação: a pausa acrescentava **18 013 px, 5 715 escuros**; hoje acrescenta **zero**.)
 4. **Weight** (quanto tempo atrasa — e é ele que abre a faixa) · **Friction** (como assenta: baixo =
    chicote, alto = arrasto) · **Gravity** (o peso). Medido a 2 400 px/s: peso 1,00 deixa a tinta
    **804 px** atrás do dedo, que é também a largura da faixa ali.

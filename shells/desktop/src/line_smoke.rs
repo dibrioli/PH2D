@@ -106,11 +106,10 @@ pub(crate) fn spawn_if_enabled(
             );
             println!(
                 "[line-smoke]     O traco tambem PESA: a tinta fica ATRAS do dedo, chicoteia na \
-                 saida da curva e -- com Gravity -- PENDE. SOLTE no meio do gesto e nao mexa: a mao \
-                 LARGOU a fita, entao ela segue na direcao em que ia, desacelera e assenta. Ela NAO \
-                 corre ate o cursor -- o traco acaba ANTES do dedo. ⚠️ E a FAIXA termina onde a mao \
-                 terminou: a cauda e so o trilho de tinta, sem travessas (liga-las a caneta parada \
-                 desenharia um leque)."
+                 saida da curva e -- com Gravity -- PENDE. ⚠️ PARE a mao no meio do gesto, com o \
+                 botao preso: NADA pode ser desenhado. Sem gesto nao ha tempo -- uma mola que \
+                 converge para um alvo parado desenha uma RETA de largura cheia, e era essa a \
+                 espicula. Retome e o traco continua de onde parou, sem salto."
             );
             println!(
                 "[line-smoke]     RUNGS e a densidade das travessas. ⚠️ Em 0 a faixa DEGENERA na \

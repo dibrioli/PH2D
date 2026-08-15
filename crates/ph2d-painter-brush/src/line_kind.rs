@@ -299,6 +299,21 @@ pub const RIBBON_LAG_MAX_S: f32 = 0.25;
 ///
 /// ⚠️ A cauda de ~145 dabs que sobra no fundo da tabela **não é oscilação, é CHEGADA** — a fita
 /// estava 400 px atrás e tem de percorrer isso. Ela é o piso irredutível, não desperdício.
+///
+/// ## ⚠️ O RECURSO QUE ESTE PISO LIMITAVA DEIXOU DE EXISTIR — e o número fica pelo LOOK
+///
+/// A tabela acima mede *"a mão corre 400 px e PARA"*, e desde **sem gesto, sem tempo**
+/// ([`crate::stroke::Stroke::tick_ribbon`]) uma mão parada não entrega tempo à física: a linha
+/// `ζ = 0` mede hoje **zero dabs e silêncio imediato**, e o mesmo vale para as outras sete. *Pintar
+/// para sempre com a mão parada* passou a ser **estruturalmente impossível**, não *caro*.
+///
+/// **O piso FICA, e a justificação dele mudou de eixo:** ele já não bounda tinta, ele bounda o
+/// **LOOK** — `ζ = 0` faz a fita oscilar em torno do caminho *enquanto o artista desenha*, e a
+/// cauda do pen-up (que corre com a coleira cortada) ficaria a balançar até o
+/// [`RIBBON_TAIL_MAX_S`] a cortar. **A tabela continua válida como o que mediu**, e é por isso que
+/// não foi apagada: ela é a razão de `0,15` e não de `0,04`, e quem a reler tem de saber que o
+/// número que ela conta hoje é outro. *Quem move o número que tornava algo caro tem de reconferir a
+/// nota.*
 pub const RIBBON_DAMPING_MIN: f32 = 0.15;
 
 /// **O TETO do amortecimento (`ζ`).**
@@ -477,6 +492,18 @@ pub const RIBBON_TAIL_MAX_S: f32 = 0.6;
 /// Meio pixel por quadro a 60 fps — o mesmo limiar sub-pixel que o `SETTLE_EPS_PX` do estabilizador
 /// usa, dito em velocidade porque o que decide aqui é se ainda há movimento a pintar.
 pub const RIBBON_TAIL_REST_PX_S: f32 = 30.0;
+
+/// **Quanto o dedo tem de andar entre dois tiques para a fita ganhar TEMPO, em pixels.**
+///
+/// ⚠️ **É o piso de *sem gesto, sem tempo*** ([`crate::stroke::Stroke::tick_ribbon`]): abaixo dele o
+/// tique não integra e a fita congela, porque uma mola que converge para um alvo parado desenha uma
+/// LINHA RETA de largura cheia — a espícula que o smoke reprovou duas vezes.
+///
+/// **O número é DERIVADO, não escolhido:** meio pixel é o mesmo limiar sub-pixel com que o
+/// estabilizador declara ter alcançado o cursor (`SETTLE_EPS_PX`), e a razão é a mesma nos dois —
+/// **um deslocamento menor que meio pixel não move um dab**, então tratá-lo como movimento é
+/// entregar tempo de física a um gesto que não existe.
+pub const RIBBON_PARK_EPS_PX: f32 = 0.5;
 
 /// **O espaçamento das TRAVESSAS da faixa no `Rungs = 0⁺`, em DIÂMETROS do pincel** — a ponta
 /// esparsa da pista.

@@ -72,7 +72,11 @@ pub mod material;
 pub mod plane;
 pub mod ramp_alpha;
 #[cfg(test)]
+mod ribbon_band_probe; // sonda da FAIXA: as travessas e a espicula (plano 38 W6)
+#[cfg(test)]
 mod ribbon_band_tests; // os gates da FAIXA -- as travessas (plano 38 W6)
+#[cfg(test)]
+mod ribbon_clock_tests; // os gates do RELOGIO da fita: sem gesto, sem tempo (plano 38 W6)
 #[cfg(test)]
 mod ribbon_probe; // sonda da FITA (plano 38 W6)
 #[cfg(test)]

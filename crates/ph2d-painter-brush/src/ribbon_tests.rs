@@ -120,8 +120,13 @@ fn the_ribbon_leaves_the_ink_behind_the_finger() {
 /// nenhum ajuste de intensidade.
 #[test]
 fn the_ribbon_overshoots_the_stop_and_the_stabilizer_never_does() {
-    /// Corre para a direita, PARA de repente, e devolve o maior `x` que a tinta alcançou menos o
-    /// `x` onde a mão parou. Positivo = ultrapassou.
+    /// Corre para a direita e VIRA para baixo em `x = 1000`, sem nunca parar. Devolve o quanto a
+    /// tinta passou da quina no eixo `x` — positivo = ultrapassou.
+    ///
+    /// ⚠️ **A fixture parada MORREU e a propriedade não** — desde *sem gesto, sem tempo* uma mão
+    /// parada não entrega tempo à física, então medir o chicote *depois* da mão parar mede zero em
+    /// qualquer ajuste. O chicote nunca foi sobre a mão parar: é a MASSA a levar a ponta para fora
+    /// da curva, e a quina é onde ele se vê. *A distinção mudou de sítio, não de existência.*
     fn overshoot(sp: BrushSpec) -> f32 {
         let mut s = Stroke::new(sp, plain(), 7);
         let mut out = Vec::new();
@@ -133,9 +138,10 @@ fn the_ribbon_overshoots_the_stop_and_the_stabilizer_never_does() {
             },
             &mut out,
         );
+        let quina = 1000.0f32;
         let mut x = start[0];
-        for _ in 0..60 {
-            x += 3600.0 * DT;
+        while x < quina {
+            x = (x + 3600.0 * DT).min(quina);
             s.extend(
                 StrokePoint {
                     pos: [x, start[1]],
@@ -145,13 +151,14 @@ fn the_ribbon_overshoots_the_stop_and_the_stabilizer_never_does() {
             );
             s.tick(DT, &mut out);
         }
-        // A mão PARA: o alvo deixa de andar, e só o que tem inércia continua.
-        let stop = x;
+        // A mão VIRA e continua a andar — nunca pára.
+        let mut y = start[1];
         let mut far = start[0];
-        for _ in 0..180 {
+        for _ in 0..90 {
+            y += 3600.0 * DT;
             s.extend(
                 StrokePoint {
-                    pos: [stop, start[1]],
+                    pos: [quina, y],
                     pressure: 1.0,
                 },
                 &mut out,
@@ -161,7 +168,7 @@ fn the_ribbon_overshoots_the_stop_and_the_stabilizer_never_does() {
                 far = far.max(d.center[0]);
             }
         }
-        far - stop
+        far - quina
     }
     // A fita no canto whippy (atrito no PISO) tem de PASSAR do ponto onde a mão parou.
     let whip = overshoot(spec(LineKind::Ribbon, 0.45, 0.0, 0.0));
@@ -197,10 +204,17 @@ fn the_weight_is_the_lag_time() {
     );
 }
 
-/// **A GRAVIDADE FAZ A FITA PENDER, e a queda é `g·τ²`** — a mão parada, a tinta desce.
+/// **A GRAVIDADE FAZ A FITA PENDER, e a queda é `g·τ²`** — a tinta desce ABAIXO do caminho.
 ///
 /// ⚠️ A fórmula é afirmada como NÚMERO, não como forma: um pendurar que só *acontece* passaria com
 /// qualquer constante, e é o `g·τ²` que torna os dois knobs previsíveis um contra o outro.
+///
+/// ⚠️ **A FIXTURE MUDOU e o NÚMERO não** — e a distinção é o que impede este gate de ser silenciado.
+/// Ele media a mão PARADA (180 tiques sobre o mesmo ponto), e desde *sem gesto, sem tempo*
+/// ([`Stroke::tick_ribbon`]) uma mão parada não entrega tempo à física: aquele fixture passou a
+/// medir zero. **Não é o pendurar que morreu — é o pingar com a mão parada**, que era a espícula
+/// vertical do report. Em regime, sob arrasto horizontal, o equilíbrio da mola sob gravidade
+/// constante é `k·Δy = g` ⇒ `Δy = g/ω² = g·τ²`: **o mesmo número**, medido onde a feature se usa.
 #[test]
 fn the_gravity_makes_the_ribbon_hang_by_g_tau_squared() {
     let sp = spec(LineKind::Ribbon, 1.0, 0.50, 1.0);
@@ -216,10 +230,13 @@ fn the_gravity_makes_the_ribbon_hang_by_g_tau_squared() {
         &mut out,
     );
     let mut last = at;
-    for _ in 0..180 {
+    for i in 1..=600 {
+        // Arrasto HORIZONTAL lento e longo, até o transiente vertical assentar no equilíbrio.
+        #[allow(clippy::cast_precision_loss)]
+        let x = at[0] + (i as f32) * 4.0;
         s.extend(
             StrokePoint {
-                pos: at,
+                pos: [x, at[1]],
                 pressure: 1.0,
             },
             &mut out,
@@ -263,152 +280,6 @@ fn the_gravity_makes_the_ribbon_hang_by_g_tau_squared() {
         (last2[1] - at[1]).abs() < 1.0,
         "controle: sem gravidade a fita não pende ({:.1} px)",
         last2[1] - at[1]
-    );
-}
-
-/// **A FITA É INTEGRADA NO RELÓGIO, NÃO NO EVENTO** — o mesmo caminho, no mesmo tempo, entregue em
-/// 1 e em 8 eventos por quadro, dá a MESMA fita.
-///
-/// ⚠️ É a lei que este módulo aprendeu quatro vezes no relevo (*a grandeza é fato do CAMINHO e do
-/// RELÓGIO, nunca de quão fino o dispositivo amostrou o caminho*), aplicada à mola: se ela fosse
-/// integrada no `extend`, um mouse de 960 Hz desenharia outra fita que um de 125 Hz.
-#[test]
-fn the_ribbon_is_a_fact_of_the_clock_not_of_the_pointer_rate() {
-    fn run_with(sp: BrushSpec, per_frame: usize) -> f32 {
-        let mut s = Stroke::new(sp, plain(), 7);
-        let mut out = Vec::new();
-        let start = [100.0f32, 300.0];
-        s.begin(
-            StrokePoint {
-                pos: start,
-                pressure: 1.0,
-            },
-            &mut out,
-        );
-        let mut last = start;
-        let mut x = start[0];
-        #[allow(clippy::cast_precision_loss)]
-        let step = 2400.0 * DT / per_frame as f32;
-        for _ in 0..120 {
-            for _ in 0..per_frame {
-                x += step;
-                s.extend(
-                    StrokePoint {
-                        pos: [x, start[1]],
-                        pressure: 1.0,
-                    },
-                    &mut out,
-                );
-                // ⚠️ **As DUAS portas, e a primeira versão desta fixture lia só a segunda.** Numa
-                // fita quem emite é o tique; num traço comum é o `extend` — um helper que lê só um
-                // deles mede `x − start` no outro e reporta um número que não é atraso nenhum
-                // (medido: o controle dava `4800 contra 4800`, o comprimento do traço).
-                if let Some(d) = out.last() {
-                    last = d.center;
-                }
-            }
-            s.tick(DT, &mut out);
-            if let Some(d) = out.last() {
-                last = d.center;
-            }
-        }
-        x - last[0]
-    }
-    let run = |n| run_with(spec(LineKind::Ribbon, 0.45, 0.30, 0.0), n);
-    let sparse = run(1);
-    let dense = run(8);
-    assert!(
-        sparse > 100.0,
-        "a fixture não contém fita nenhuma: {sparse:.1} px"
-    );
-    assert!(
-        (sparse - dense).abs() < 10.0,
-        "a fita mudou com a taxa do ponteiro: {sparse:.1} px contra {dense:.1}"
-    );
-    // ⚠️ **CONTROLE NEGATIVO — o estabilizador FALHA esta invariância**, e é isso que a torna uma
-    // propriedade e não uma trivialidade da fixture: ele filtra por EVENTO, então oito amostras por
-    // quadro dão oito passos de convergência e a mão dele muda com o dispositivo.
-    let mut stab = spec(LineKind::None, 0.0, 0.0, 0.0);
-    stab.stabilizer = 0.9;
-    let (s_sparse, s_dense) = (run_with(stab, 1), run_with(stab, 8));
-    assert!(
-        (s_sparse - s_dense).abs() > 40.0,
-        "controle: o estabilizador DEVERIA mudar com a taxa ({s_sparse:.1} contra {s_dense:.1}) — \
-         se ele parou de mudar, esta invariância deixou de dizer algo sobre a fita"
-    );
-}
-
-/// **A MÃO PARADA ASSENTA** — o piso do amortecimento é o que impede um traço de crescer para sempre.
-///
-/// ⚠️ **O oráculo é o SILÊNCIO, não a contagem** — quantos dabs a fita deixa ao chegar depende do
-/// quanto ela estava atrás, e isso é legítimo; o que não pode acontecer é ela nunca parar. A tabela
-/// que escolheu o piso vive no doc do `RIBBON_DAMPING_MIN` (11 840 dabs e nunca em silêncio a `ζ=0`).
-#[test]
-fn a_parked_ribbon_falls_silent() {
-    // O canto mais whippy que o slider alcança: peso máximo, atrito no PISO.
-    let mut s = Stroke::new(spec(LineKind::Ribbon, 1.0, 0.0, 0.0), plain(), 7);
-    let mut out = Vec::new();
-    s.begin(
-        StrokePoint {
-            pos: [100.0, 300.0],
-            pressure: 1.0,
-        },
-        &mut out,
-    );
-    for i in 1..=20 {
-        #[allow(clippy::cast_precision_loss)]
-        let x = 100.0 + (i as f32) * 20.0;
-        s.extend(
-            StrokePoint {
-                pos: [x, 300.0],
-                pressure: 1.0,
-            },
-            &mut out,
-        );
-        s.tick(DT, &mut out);
-    }
-    let mut silent_at = None;
-    for t in 0..1800 {
-        s.tick(DT, &mut out);
-        if out.is_empty() {
-            if silent_at.is_none() {
-                silent_at = Some(t);
-            }
-        } else {
-            silent_at = None;
-        }
-    }
-    let at = silent_at.expect("a fita parada nunca ficou em silêncio");
-    #[allow(clippy::cast_precision_loss)]
-    let secs = at as f32 * DT;
-    assert!(
-        secs < 15.0,
-        "a fita parada só assentou aos {secs:.1} s — o piso do amortecimento não está a segurar"
-    );
-}
-
-/// **UMA ENGASGADA NÃO EXPLODE A MOLA** — um quadro de 200 ms sobre a mola mais rígida que o slider
-/// alcança, e a fita continua na tela.
-///
-/// ⚠️ **Este gate nasceu de uma MUTAÇÃO SOBREVIVENTE, e o doc do `step_ribbon` já a tinha previsto:**
-/// *"um quadro lento entregaria um `dt` grande sobre uma mola rígida e a fita explodiria para fora
-/// da tela — com todo gate de unidade verde, porque a unidade nunca vê um quadro de 200 ms"*. Tirar
-/// os sub-passos não fazia nenhum dos sete gates sangrar, porque **todos eles ticam a 60 fps**. A
-/// previsão estava escrita; faltava a fixture que a contém.
-///
-/// O peso é o MENOR que ainda arma a fita (`τ` pequeno ⇒ `ω` enorme), que é onde o Euler
-/// semi-implícito de passo único diverge.
-#[test]
-fn a_stalled_frame_does_not_blow_the_spring_up() {
-    let (excursion, last) = stalled_excursion(spec(LineKind::Ribbon, 0.02, 0.30, 0.0));
-    assert!(
-        excursion < STALL_EXCURSION_PX,
-        "a fita explodiu num quadro de 200 ms: {excursion:.1} px FORA do gesto"
-    );
-    assert!(
-        (last[0] - 700.0).abs() < ARRIVAL_TOL_PX,
-        "a fita nem chegou ao alvo: parou em {:.1}",
-        last[0]
     );
 }
 
@@ -484,151 +355,6 @@ fn the_tail_does_not_run_to_the_finger() {
         "a cauda nem andou: {:.1} -> {:.1}",
         antes[0],
         fim[0]
-    );
-}
-
-/// **UM BREAKPOINT NÃO É UMA ENGASGADA — e só o cap de `dt` cobre o segundo caso.**
-///
-/// ⚠️ **Este gate nasceu de uma MUTAÇÃO QUE SOBREVIVEU:** tirar o
-/// [`crate::line_kind::RIBBON_MAX_STEP_S`] deixava o
-/// `a_stalled_frame_does_not_blow_the_spring_up` **VERDE**, porque num quadro de 200 ms o
-/// [`crate::line_kind::RIBBON_MAX_SUBSTEPS`] sozinho já segura (`n` pedido 400, aplicado 134 ⇒
-/// `ω · h = 0,75`, ainda estável). São **duas camadas**, cada uma suficiente naquele ponto de
-/// operação — e uma defesa em camadas precisa de um gate POR CAMADA
-/// ([[feedback_layered_defenses_need_per_layer_gates]]).
-///
-/// A camada que só o cap compra é o travamento LONGO: com 10 s de quadro e o teto de sub-passos
-/// intacto, `h = 10/134 = 74,6 ms` e `ω · h = 37,3` — divergência, com o batente a fazer
-/// exactamente o que ele foi escrito para nunca fazer. **O cap não deixa o pedido nascer.**
-#[test]
-fn a_breakpoint_length_stall_is_capped_by_work_not_by_substeps() {
-    // Dez segundos: o artista voltou de um breakpoint. Nenhuma taxa de quadros produz isto, e é
-    // por isso que a defesa tem de ser sobre o TRABALHO de um tique, nunca sobre a resolução dele.
-    let (excursion, last) = stalled_excursion_at(spec(LineKind::Ribbon, 0.02, 0.30, 0.0), 10.0);
-    assert!(
-        excursion < STALL_EXCURSION_PX,
-        "a fita explodiu num quadro de 10 s: {excursion:.1} px FORA do gesto"
-    );
-    assert!(
-        (last[0] - 700.0).abs() < ARRIVAL_TOL_PX,
-        "a fita nem chegou ao alvo: parou em {:.1}",
-        last[0]
-    );
-}
-
-/// Quanto um dab pode pousar FORA da caixa do gesto antes de ser divergência, em px.
-///
-/// ⚠️ **Frouxo de propósito, e ainda assim afiado:** uma mola instável não sai da caixa por um
-/// punhado de pixels — ela vai a `1e78` em dez quadros. O que este número tem de fazer é caber
-/// acima do overshoot LEGÍTIMO (o chicote, que é a feature) e muito abaixo de qualquer divergência.
-const STALL_EXCURSION_PX: f32 = 100.0;
-
-/// Quão perto do alvo o ÚLTIMO dab tem de pousar, em px.
-///
-/// ⚠️ **Um ESPAÇAMENTO, não um pixel** — o último dab pousa na última fronteira de espaçamento que o
-/// percurso cruzou, nunca na posição exata da ponta da fita. Medido, a quina para a 2,4 px do alvo,
-/// que É o passo do pincel de referência: a 1ª versão deste gate pedia `< 1,0` e reprovava produto
-/// correto, porque pedir precisão sub-espaçamento a um emissor de DABS é perguntar a coisa errada.
-const ARRIVAL_TOL_PX: f32 = 4.0;
-
-/// Dirige a mão a SALTAR 300 px com o processo a ENGASGAR (`dt = 0,2 s`, dez vezes) e devolve
-/// `(excursão para fora do gesto, último dab)`.
-///
-/// ⚠️ **O oráculo é a EXCURSÃO, nunca a distância ao ALVO — e a 1ª versão deste gate usava a
-/// distância.** Uma fita ATRASA por construção, então nos primeiros quadros ela está legitimamente a
-/// ~300 px do alvo: um limite sobre essa distância reprova o produto CORRETO. Ninguém tinha visto,
-/// porque o gate original **nunca chegou ao `assert`** — ele morria a alocar (ver o achado do OOM),
-/// e um oráculo que nunca correu verde nunca foi observado. Uma mola que diverge SAI da caixa do
-/// gesto; uma que atrasa, fica dentro dela.
-fn stalled_excursion(sp: BrushSpec) -> (f32, [f32; 2]) {
-    stalled_excursion_at(sp, 0.2)
-}
-
-/// O mesmo, com o tamanho do quadro travado como parâmetro — 200 ms é uma engasgada de GC, e
-/// segundos é um breakpoint. ⚠️ **Os dois números medem camadas DIFERENTES da mesma defesa**, e
-/// mudá-lo é o que separa o teto de sub-passos do cap de `dt`.
-fn stalled_excursion_at(sp: BrushSpec, stall_dt: f32) -> (f32, [f32; 2]) {
-    let at = [400.0f32, 300.0];
-    let to = [700.0f32, 300.0];
-    let mut s = Stroke::new(sp, plain(), 7);
-    let mut out = Vec::new();
-    s.begin(
-        StrokePoint {
-            pos: at,
-            pressure: 1.0,
-        },
-        &mut out,
-    );
-    s.extend(
-        StrokePoint {
-            pos: to,
-            pressure: 1.0,
-        },
-        &mut out,
-    );
-    let (lo_x, hi_x) = (at[0].min(to[0]), at[0].max(to[0]));
-    let (lo_y, hi_y) = (at[1].min(to[1]), at[1].max(to[1]));
-    let mut excursion = 0.0f32;
-    let mut last = at;
-    for _ in 0..10 {
-        out.clear();
-        s.tick(stall_dt, &mut out);
-        for d in &out {
-            let dx = (lo_x - d.center[0]).max(d.center[0] - hi_x).max(0.0);
-            let dy = (lo_y - d.center[1]).max(d.center[1] - hi_y).max(0.0);
-            excursion = excursion.max(dx.max(dy));
-            last = d.center;
-        }
-    }
-    (excursion, last)
-}
-
-/// **O BATENTE DE SUB-PASSOS NUNCA MORDE** — as duas metades de uma promessa só.
-///
-/// A [`crate::line_kind::RIBBON_SUBSTEP_FRACTION`] promete `ω · h = 0,25` **sempre**, e o
-/// [`crate::line_kind::RIBBON_MAX_SUBSTEPS`] é um BATENTE contra laço em fuga — não um regulador.
-/// Se ele morder, a promessa deixou de valer em silêncio e a mola volta a divergir.
-///
-/// ⚠️ **Este gate existe porque eu escrevi a const contra o `dt` ERRADO.** Derivei `34` de um quadro
-/// de 60 fps quando o que ela tem de cobrir é o `dt` que o [`crate::line_kind::RIBBON_MAX_STEP_S`]
-/// deixa passar — **quatro** quadros, logo **134**. Com 34 o batente mordia no piso do slider e, com
-/// o atrito no topo, o maior autovalor voltava a **3,68 > 1**.
-///
-/// ⚠️ **Por isso a 1ª metade afirma a ARITMÉTICA das três consts, nunca um literal escrito à mão** —
-/// um número à mão erra junto com quem o escreveu, que é exactamente o que aconteceu. E a 2ª metade
-/// dirige o PRODUTO na quina mais dura que o artista alcança (peso no piso ⇒ `ω` máximo, atrito no
-/// topo ⇒ `c` máximo, quadro engasgado), porque uma aritmética certa sobre um integrador trocado
-/// continuaria verde.
-#[test]
-fn the_substep_ceiling_can_never_bind() {
-    use crate::line_kind::{
-        RIBBON_LAG_MIN_S, RIBBON_MAX_STEP_S, RIBBON_MAX_SUBSTEPS, RIBBON_SUBSTEP_FRACTION,
-    };
-    // (1) A ARITMÉTICA: o pior caso alcançável é `dt` no teto sobre `τ` no piso.
-    let needed = (RIBBON_MAX_STEP_S / (RIBBON_SUBSTEP_FRACTION * RIBBON_LAG_MIN_S)).ceil();
-    assert!(
-        needed <= RIBBON_MAX_SUBSTEPS as f32,
-        "o batente MORDE: {needed} sub-passos precisos contra {RIBBON_MAX_SUBSTEPS} aplicados \
-         -- com ele a mordê-lo, `omega*h` sai de {RIBBON_SUBSTEP_FRACTION} e a mola diverge"
-    );
-
-    // (2) O PRODUTO na quina: o menor peso que ainda arma a fita, o maior atrito, um quadro
-    // engasgado. `far` mede a distância ao alvo — uma mola que diverge sai da tela em dois passos.
-    let sp = spec(LineKind::Ribbon, f32::EPSILON, 1.0, 0.0);
-    assert_eq!(
-        sp.ribbon_lag_s(),
-        RIBBON_LAG_MIN_S,
-        "premissa da fixture: este peso tem de pousar no PISO do atraso"
-    );
-    let (excursion, last) = stalled_excursion(sp);
-    assert!(
-        excursion < STALL_EXCURSION_PX,
-        "a fita divergiu na quina mais dura do slider: {excursion:.1} px FORA do gesto"
-    );
-    assert!(
-        (last[0] - 700.0).abs() < ARRIVAL_TOL_PX,
-        "a fita nem chegou ao alvo na quina: parou em {:.1}",
-        last[0]
     );
 }
 

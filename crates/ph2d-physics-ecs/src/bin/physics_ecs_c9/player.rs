@@ -411,7 +411,20 @@ pub fn spawn(sim: &mut SimWorld) {
             ..PlatformPlayer::default()
         },
         // Acima da face da rampa naquele x, com folga para assentar.
-        Transform::from_translation(Vec2::new(RAMP_X - 6.0, 6.0 * slope.abs().tan() + 1.1)),
+        //
+        // ⚠️ **`libm::tanf`, NUNCA `f32::tan`** — este `y` é a pose de NASCIMENTO
+        // de um corpo que o `deterministic_hash` lê, então ele entra no hash já
+        // no tique 0 e propaga por 120 passos. O `tan` do `std` resolve para a
+        // libm da PLATAFORMA (glibc · libSystem · UCRT), que não é a mesma nas
+        // três, e `tanf` nem sequer é obrigada pelo IEEE-754 a ser corretamente
+        // arredondada — 1 ulp de diferença parte o hash entre os OSes. É a
+        // MESMA regra que o `main.rs` desta cena escreve duas vezes sobre o
+        // `sin_cos` e que a `ph2d-platformer` toma no `step_limit` (que deriva a
+        // tangente por `sqrt`, de propósito, para não chamar a do `std`).
+        Transform::from_translation(Vec2::new(
+            RAMP_X - 6.0,
+            6.0 * libm::tanf(slope.abs()) + 1.1,
+        )),
     ));
 
     // ── A RAMPA QUE A LEI RECUSA (§8.3) ─────────────────────────────────────
@@ -466,6 +479,8 @@ pub fn spawn(sim: &mut SimWorld) {
             float_height: 0.9,
             ..PlatformPlayer::default()
         },
-        Transform::from_translation(Vec2::new(STEEP_X, 0.25 / steep.cos() + 1.0)),
+        // ⚠️ **`libm::cosf`, pela razão do irmão da rampa acima:** esta pose de
+        // nascimento é hasheada, e o `cos` do `std` é a libm da plataforma.
+        Transform::from_translation(Vec2::new(STEEP_X, 0.25 / libm::cosf(steep) + 1.0)),
     ));
 }

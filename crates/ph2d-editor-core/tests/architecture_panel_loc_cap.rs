@@ -85,7 +85,7 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-hierarchy/src/paint.rs",
         "paint_hierarchy_body",
-        386,
+        384,
         "Wave 10 paint orchestrator; per-section split deferred (needs smoke)",
     ),
     (
@@ -140,7 +140,7 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-painter-layers/src/paint.rs",
         "paint",
-        273,
+        267,
         "unmasked by the 2026-07-10 parser fix; layer-stack paint orchestrator, per-section split deferred (needs smoke)",
     ),
     (
@@ -152,7 +152,7 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-audio-mixer/src/paint.rs",
         "paint",
-        225,
+        222,
         "unmasked by the 2026-07-10 parser fix; per-strip split deferred (needs smoke)",
     ),
 ];

@@ -232,9 +232,14 @@ pub fn paint_showcase_body(
         let body = Rect::new(rect.x, content_top, rect.w, visible_h);
         let track = crate::widget::scrollbar_track_rect(body);
         let thumb = crate::widget::scrollbar_thumb_rect(track, scroll_y, content_h, visible_h);
-        let is_active = matches!(store.scrollbar_drag(), Some(d) if d.panel == ids::GAL_PANEL);
         crate::widget::paint_scrollbar(
-            body, scroll_y, content_h, visible_h, is_active, scene, theme,
+            body,
+            scroll_y,
+            content_h,
+            visible_h,
+            store.scrollbar_visual(crate::widget::GALLERY_SCROLLBAR_ID),
+            scene,
+            theme,
         );
         hit_index.register(crate::widget::GALLERY_SCROLLBAR_ID, thumb);
     }

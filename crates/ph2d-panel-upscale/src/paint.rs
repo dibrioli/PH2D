@@ -256,12 +256,14 @@ fn paint_scrollbar_and_publish(
     if scrollbar_is_needed(content_h, body_h) {
         let track = scrollbar_track_rect(body_rect);
         let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
-        let is_active = matches!(
-            ctx.host.store().scrollbar_drag(),
-            Some(d) if d.panel == ids::UPS_PANEL
-        );
         paint_scrollbar(
-            body_rect, scroll, content_h, body_h, is_active, ctx.scene, theme,
+            body_rect,
+            scroll,
+            content_h,
+            body_h,
+            ctx.host.store().scrollbar_visual(UPSCALE_SCROLLBAR_ID),
+            ctx.scene,
+            theme,
         );
         ctx.host
             .hit_index_mut()

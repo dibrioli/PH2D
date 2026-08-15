@@ -554,13 +554,14 @@ pub(crate) fn paint_blend_popover(ctx: &mut PaintCtx, theme: Theme, pending: &Pe
         ctx.host.store_mut().set_panel_scroll(id, max_scroll);
     }
     let scroll = ctx.host.store().panel_scroll(id).clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
-    let scrollbar_active = matches!(ctx.host.store().scrollbar_drag(), Some(d) if d.panel == id);
     paint_dropdown_popover_scrolled(
         &dd,
         pending.chip_rect,
         panel,
         scroll,
-        scrollbar_active,
+        ctx.host
+            .store()
+            .scrollbar_visual_for(DROPDOWN_SCROLLBAR_ID, Some(id)),
         ctx.scene,
         ctx.text_system,
         theme,

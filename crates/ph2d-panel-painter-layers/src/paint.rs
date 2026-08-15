@@ -252,20 +252,14 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     // scrolling works via the generic `dispatch_wheel` once the bounds below are
     // published; thumb-DRAG works via the foundational
     // `scrollbar_panel_for_id → PAINTER_LAYERS_PANEL` mapping (Coord `d5146b7`)
-    // plus the hit-rect registered in the post-body chrome block. `is_active`
-    // tints the thumb Accent while dragging (mirror of the Inspector).
-    let scrollbar_active = matches!(
-        ctx.host.store().scrollbar_drag(),
-        Some(d) if d.panel == core_ids::PAINTER_LAYERS_PANEL
-    );
+    // plus the hit-rect registered in the post-body chrome block. O par visual do
+    // store tinge o polegar (repouso -> hover -> Accent enquanto arrasta).
+    let visual = ctx
+        .host
+        .store()
+        .scrollbar_visual(PAINTER_LAYERS_SCROLLBAR_ID);
     paint_scrollbar(
-        body_rect,
-        scroll_y,
-        content_h,
-        body_h,
-        scrollbar_active,
-        ctx.scene,
-        theme,
+        body_rect, scroll_y, content_h, body_h, visual, ctx.scene, theme,
     );
 
     register_header_chrome(ctx, rect);
@@ -346,18 +340,12 @@ fn paint_brush_view(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, rect: Rect, h
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
 
-    let scrollbar_active = matches!(
-        ctx.host.store().scrollbar_drag(),
-        Some(d) if d.panel == core_ids::PAINTER_LAYERS_PANEL
-    );
+    let visual = ctx
+        .host
+        .store()
+        .scrollbar_visual(PAINTER_LAYERS_SCROLLBAR_ID);
     paint_scrollbar(
-        body_rect,
-        scroll_y,
-        content_h,
-        body_h,
-        scrollbar_active,
-        ctx.scene,
-        theme,
+        body_rect, scroll_y, content_h, body_h, visual, ctx.scene, theme,
     );
     if scrollbar_is_needed(content_h, body_h) {
         // Register the whole TRACK as the drag zone (grab the bar anywhere; real `track_h` for the

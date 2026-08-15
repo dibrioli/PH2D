@@ -279,12 +279,9 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     if scrollbar_is_needed(content_h, body_h) {
         let track = scrollbar_track_rect(body_rect);
         let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
-        let is_active = matches!(
-            ctx.host.store().scrollbar_drag(),
-            Some(d) if d.panel == AMIX_PANEL
-        );
+        let visual = ctx.host.store().scrollbar_visual(AUDIO_MIXER_SCROLLBAR_ID);
         paint_scrollbar(
-            body_rect, scroll, content_h, body_h, is_active, ctx.scene, theme,
+            body_rect, scroll, content_h, body_h, visual, ctx.scene, theme,
         );
         ctx.host
             .hit_index_mut()

@@ -452,10 +452,8 @@ fn paint_hierarchy_body(
         let body = Rect::new(rect.x, body_top, rect.w, visible_h);
         let track = widget::scrollbar_track_rect(body);
         let thumb = widget::scrollbar_thumb_rect(track, scroll_y, content_h, visible_h);
-        let is_active = matches!(store.scrollbar_drag(), Some(d) if d.panel == ids::HIER_PANEL);
-        widget::paint_scrollbar(
-            body, scroll_y, content_h, visible_h, is_active, scene, theme,
-        );
+        let visual = store.scrollbar_visual(HIERARCHY_SCROLLBAR_ID);
+        widget::paint_scrollbar(body, scroll_y, content_h, visible_h, visual, scene, theme);
         hit_index.register(HIERARCHY_SCROLLBAR_ID, thumb);
     }
     order.iter().copied().collect()

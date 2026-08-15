@@ -39,6 +39,10 @@ ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 # The keyboard/text dispatch arena (`dispatch_key`/`dispatch_text_input`) — the
 # duration-chip gesture gate types into the painted chip for real.
 bumpalo = { version = "3", features = ["collections"] }
+# O `PaintCtx` pede um `TextSystem` vivo, e o gate da barra chama o `scrollbar::paint` REAL
+# (`pub(crate)`, logo so alcancavel de dentro desta crate). Dev-dep de caminho interno: o `src/`
+# nao a toca, entao continua machete-safe.
+ph2d-text = { path = "../ph2d-text" }
 # `Playhead` — the seam tests drive `apply_intent`/`rebuild` to build a real
 # document + snapshot (the same objects the shell publishes).
 ph2d-core = { path = "../ph2d-core" }

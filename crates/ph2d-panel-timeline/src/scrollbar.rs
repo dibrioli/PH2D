@@ -11,7 +11,9 @@
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{SliderOrientation, SliderState};
+use ph2d_editor_core::widget::{
+    ScrollbarState, SliderOrientation, SliderState, scrollbar_thumb_color,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Theme};
 
@@ -55,14 +57,22 @@ pub(crate) fn paint(
     if state.scroll_max <= 0.0 || track.h <= 0.0 || track.w <= 0.0 {
         return;
     }
-    // Mirror the model into the widget unless the user owns it this frame.
+    // Espelha o MODELO no widget, a menos que o utilizador o possua neste quadro.
+    //
+    // ⚠️ **Remenda o valor NO LUGAR; nunca re-regista o widget inteiro.** O `register` reescreve
+    // tambem o `state`, e o passe de ponteiro acabou de la escrever `Hovered` — re-registar com
+    // `Normal` apagava-o antes de a barra ser desenhada, e a barra ficava muda sob o rato para
+    // sempre. *O seed e dono do VALOR, o dispatch e dono do ESTADO*; e o mesmo molde do
+    // `mirror_number` e do `mirror_slider`: registar-se-ausente, depois remendar — remendar nao
+    // PODE perder o estado, porque nao ha campo para esquecer de copiar.
     let dragging = matches!(
         ctx.host.store().slider(ids::TIMELINE_SCROLLBAR),
         Some((SliderState::Dragging, _))
     );
     if !dragging {
         let v = 1.0 - (state.scroll_y / state.scroll_max).clamp(0.0, 1.0); // CLAMP-OK: fraction bounds, min<max
-        ctx.host.store_mut().register(
+        let store = ctx.host.store_mut();
+        let _ = store.register_if_absent(
             ids::TIMELINE_SCROLLBAR,
             InteractiveState::Slider {
                 state: SliderState::Normal,
@@ -70,6 +80,10 @@ pub(crate) fn paint(
                 orientation: SliderOrientation::Vertical,
             },
         );
+        if let Some(InteractiveState::Slider { value, .. }) = store.get_mut(ids::TIMELINE_SCROLLBAR)
+        {
+            *value = v;
+        }
     }
     fill_rounded_rect(
         ctx.scene,
@@ -78,12 +92,26 @@ pub(crate) fn paint(
         resolve(ColorToken::Bg2, theme),
     );
     let thumb = thumb_rect(track, state.scroll_y, state.scroll_max, content_h);
-    let tok = if dragging {
-        ColorToken::Accent
-    } else {
-        ColorToken::Border
-    };
-    fill_rounded_rect(ctx.scene, thumb, Radius::Xs.px(), resolve(tok, theme));
+    // ⚠️ **A cor sai da porta do app, nao de uma tabela local.** Esta barra e pintada a mao
+    // (geometria propria, dentro do corpo do painel) e por isso NAO passa pelo `paint_scrollbar` —
+    // mas *que cor tem um polegar* e uma pergunta so, e o `scrollbar_thumb_color` e quem a
+    // responde. O estado dela e guardado como `Slider` (e o despachante generico de 1-D que a
+    // arrasta), entao a traducao acontece aqui, uma vez.
+    let (sstate, t) = ctx.host.store().slider_visual(ids::TIMELINE_SCROLLBAR);
+    let visual = (
+        match sstate {
+            SliderState::Dragging => ScrollbarState::Dragging,
+            SliderState::Hovered => ScrollbarState::Hovered,
+            _ => ScrollbarState::Normal,
+        },
+        t,
+    );
+    fill_rounded_rect(
+        ctx.scene,
+        thumb,
+        Radius::Xs.px(),
+        scrollbar_thumb_color(visual, theme),
+    );
     ctx.host
         .hit_index_mut()
         .register(ids::TIMELINE_SCROLLBAR, track);

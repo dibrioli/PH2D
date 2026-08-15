@@ -114,10 +114,10 @@ pub use scrollbar::{
     FLIP_SCROLLBAR_ID, GALLERY_SCROLLBAR_ID, GRID_SETTINGS_SCROLLBAR_ID, HIERARCHY_SCROLLBAR_ID,
     INSPECTOR_SCROLLBAR_ID, MOTION_PARAMS_SCROLLBAR_ID, PADDING_SCROLLBAR_ID,
     PAINTER_BRUSH_STUDIO_SCROLLBAR_ID, PAINTER_LAYERS_SCROLLBAR_ID, PHYSICS_SCROLLBAR_ID,
-    SCROLLBAR_W, SCULPT3D_SCROLLBAR_ID, TOKENS_SCROLLBAR_ID, UPSCALE_SCROLLBAR_ID,
+    SCROLLBAR_W, SCULPT3D_SCROLLBAR_ID, ScrollbarState, TOKENS_SCROLLBAR_ID, UPSCALE_SCROLLBAR_ID,
     VECTOR_SCROLLBAR_ID, WET_TUNING_SCROLLBAR_ID, delta_for_drag as scrollbar_delta_for_drag,
-    is_needed as scrollbar_is_needed, paint_scrollbar, thumb_rect as scrollbar_thumb_rect,
-    track_rect as scrollbar_track_rect,
+    is_needed as scrollbar_is_needed, paint_scrollbar, thumb_color as scrollbar_thumb_color,
+    thumb_rect as scrollbar_thumb_rect, track_rect as scrollbar_track_rect,
 };
 pub use section_header::{SectionHeader, color_circle_hit_rect, paint_section_header};
 pub use segmented_adaptive::{

@@ -108,7 +108,7 @@ pub fn dispatch_wheel<'frame>(
 /// Returns `None` for non-scrollbar ids. Keeps the panel↔scrollbar
 /// mapping in one place — hosts that add new scrollable panels
 /// extend this match.
-pub(super) fn scrollbar_panel_for_id(id: NodeId) -> Option<NodeId> {
+pub(crate) fn scrollbar_panel_for_id(id: NodeId) -> Option<NodeId> {
     use crate::ids;
     if id == crate::widget::INSPECTOR_SCROLLBAR_ID {
         Some(ids::INSP_PANEL)

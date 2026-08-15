@@ -423,9 +423,14 @@ pub(crate) fn publish_and_finish(
         let body = Rect::new(f.rect.x, f.content_top, f.rect.w, visible_h);
         let track = widget::scrollbar_track_rect(body);
         let thumb = widget::scrollbar_thumb_rect(track, f.scroll_y, content_h, visible_h);
-        let is_active = matches!(store.scrollbar_drag(), Some(d) if d.panel == ids::INSP_PANEL);
         widget::paint_scrollbar(
-            body, f.scroll_y, content_h, visible_h, is_active, scene, theme,
+            body,
+            f.scroll_y,
+            content_h,
+            visible_h,
+            store.scrollbar_visual(INSPECTOR_SCROLLBAR_ID),
+            scene,
+            theme,
         );
         hit_index.register(INSPECTOR_SCROLLBAR_ID, thumb);
     }

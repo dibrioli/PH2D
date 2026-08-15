@@ -112,8 +112,8 @@ pub const DROPDOWN_SCROLLBAR_ID: NodeId = NodeId(831);
 
 /// Paint an open dropdown popover whose option list **scrolls**: rows are clipped to `panel` and
 /// shifted up by `scroll`, with a draggable scrollbar when the list overflows. `panel` is the clamped
-/// popover rect, `scroll` the current offset (`>= 0`), `scrollbar_active` highlights the bar while
-/// dragged. Mirrors [`paint_dropdown_popover_in_viewport`] visually; the caller owns the
+/// popover rect, `scroll` the current offset (`>= 0`), `scrollbar` e o PAR visual do polegar
+/// ([`crate::interaction::WidgetStore::scrollbar_visual_for`], chaveado pelo CHIP). Mirrors [`paint_dropdown_popover_in_viewport`] visually; the caller owns the
 /// store/scroll/hit wiring (see the panels' `paint_dropdown_popover`).
 #[allow(clippy::too_many_arguments)]
 pub fn paint_dropdown_popover_scrolled<T: Clone + PartialEq>(
@@ -121,7 +121,7 @@ pub fn paint_dropdown_popover_scrolled<T: Clone + PartialEq>(
     chip_rect: Rect,
     panel: Rect,
     scroll: f32,
-    scrollbar_active: bool,
+    scrollbar: (crate::widget::ScrollbarState, f32),
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -178,15 +178,7 @@ pub fn paint_dropdown_popover_scrolled<T: Clone + PartialEq>(
     scene.pop_layer();
     let content_h = dd.content_height(chip_rect.h);
     if scrollbar::is_needed(content_h, panel.h) {
-        scrollbar::paint_scrollbar(
-            panel,
-            scroll,
-            content_h,
-            panel.h,
-            scrollbar_active,
-            scene,
-            theme,
-        );
+        scrollbar::paint_scrollbar(panel, scroll, content_h, panel.h, scrollbar, scene, theme);
     }
 }
 

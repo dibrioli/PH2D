@@ -62,6 +62,11 @@ mod resize;
 mod ruler;
 mod scale_drag;
 mod scrollbar;
+/// A barra do timeline e a SEGUNDA implementacao de scrollbar do app; estes gates provam que o
+/// espelho do modelo nao apaga o estado que o ponteiro escreveu.
+#[cfg(test)]
+#[path = "scrollbar_tests.rs"]
+mod scrollbar_tests;
 mod stack_add_header;
 mod stack_ease_grip;
 mod stack_lane_paint;

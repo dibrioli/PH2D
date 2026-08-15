@@ -220,10 +220,16 @@ fn paint_body(
     if needs_scrollbar {
         let track = scrollbar_track_rect(body_rect);
         let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
-        let is_active =
-            matches!(ctx.host.store().scrollbar_drag(), Some(d) if d.panel == ids::GS_PANEL);
         paint_scrollbar(
-            body_rect, scroll, content_h, body_h, is_active, ctx.scene, theme,
+            body_rect,
+            scroll,
+            content_h,
+            body_h,
+            ctx.host
+                .store()
+                .scrollbar_visual(GRID_SETTINGS_SCROLLBAR_ID),
+            ctx.scene,
+            theme,
         );
         {
             let hit_index = ctx.host.hit_index_mut();

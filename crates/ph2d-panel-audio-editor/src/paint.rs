@@ -215,12 +215,14 @@ fn paint_scroll_chrome(
     if scrollbar_is_needed(content_h, body_h) {
         let track = scrollbar_track_rect(body_rect);
         let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
-        let is_active = matches!(
-            ctx.host.store().scrollbar_drag(),
-            Some(d) if d.panel == AEDIT_PANEL
-        );
         paint_scrollbar(
-            body_rect, scroll, content_h, body_h, is_active, ctx.scene, theme,
+            body_rect,
+            scroll,
+            content_h,
+            body_h,
+            ctx.host.store().scrollbar_visual(AUDIO_EDITOR_SCROLLBAR_ID),
+            ctx.scene,
+            theme,
         );
         // The thumb sits on the rail OUTSIDE the body's widgets, and its drag is routed
         // by `scrollbar_panel_for_id`, not by an `InteractiveState` — so it registers on

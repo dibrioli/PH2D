@@ -70,7 +70,6 @@ pub(crate) fn paint(ctx: &mut PaintCtx, chip_rect: Rect, theme: Theme) {
         }
     }
     let scroll = ctx.host.store().panel_scroll(id).clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
-    let scrollbar_active = matches!(ctx.host.store().scrollbar_drag(), Some(d) if d.panel == id);
 
     // Opaque floating surface (occludes the sections behind it).
     let radius = Radius::Md.px();
@@ -117,7 +116,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, chip_rect: Rect, theme: Theme) {
             scroll,
             content_h,
             visible_h,
-            scrollbar_active,
+            ctx.host.store().scrollbar_visual(DROPDOWN_SCROLLBAR_ID),
             ctx.scene,
             theme,
         );

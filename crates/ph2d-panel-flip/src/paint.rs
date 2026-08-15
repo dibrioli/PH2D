@@ -144,10 +144,14 @@ pub(crate) fn paint(state: &mut FlipPanelState, ctx: &mut PaintCtx) {
     if scrollbar_is_needed(content_h, body_h) {
         let body = Rect::new(rect.x, body_top, rect.w, body_h);
         let thumb = scrollbar_thumb_rect(scrollbar_track_rect(body), scroll_y, content_h, body_h);
-        let is_active =
-            matches!(ctx.host.store().scrollbar_drag(), Some(d) if d.panel == ids::FLIP_PANEL);
         paint_scrollbar(
-            body, scroll_y, content_h, body_h, is_active, ctx.scene, theme,
+            body,
+            scroll_y,
+            content_h,
+            body_h,
+            ctx.host.store().scrollbar_visual(FLIP_SCROLLBAR_ID),
+            ctx.scene,
+            theme,
         );
         ctx.host.hit_index_mut().register(FLIP_SCROLLBAR_ID, thumb);
     }

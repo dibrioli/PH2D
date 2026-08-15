@@ -73,6 +73,49 @@ impl WidgetStore {
         }
     }
 
+    /// **O par visual de um POLEGAR DE SCROLLBAR** — o irmão dos outros `*_visual`, e o único que
+    /// não pergunta ao `states`.
+    ///
+    /// ⚠️ **Um polegar não tem estado GUARDADO, e é por isso que ele estava mudo.** O arrasto vive
+    /// no `scrollbar_drag()` (chaveado pelo PAINEL) e o hover no `hot_id()` (chaveado pelo
+    /// POLEGAR) — duas chaves diferentes para o mesmo widget. Os 24 sítios que pintam uma barra
+    /// respondiam só à primeira, cada um com a sua linha de `matches!(..d.panel == X)`, e nenhum à
+    /// segunda: **nenhuma barra do app acendia sob o ponteiro**.
+    ///
+    /// A ponte entre as duas chaves já existia e tinha um dono — o `scrollbar_panel_for_id`, que o
+    /// despachante mantém —, então perguntar aqui **remove** uma linha de cada sítio em vez de
+    /// acrescentar uma: o chamador passa o id do polegar e mais nada.
+    #[must_use]
+    pub fn scrollbar_visual(&self, thumb: NodeId) -> (crate::widget::ScrollbarState, f32) {
+        let panel = crate::interaction::dispatch::scroll::scrollbar_panel_for_id(thumb);
+        self.scrollbar_visual_for(thumb, panel)
+    }
+
+    /// O mesmo, para uma barra cujo PAINEL não está no mapa do despachante.
+    ///
+    /// ⚠️ **A do popover de um dropdown é chaveada pelo CHIP**, não por um id de painel — só há um
+    /// dropdown aberto de cada vez, e é o chip que diz qual. Ela é a razão de a primitiva receber
+    /// o painel: sem esta porta, ou o popover perdia a metade do arrasto, ou o mapa do despachante
+    /// ganhava uma entrada que descreve uma coisa que não é um painel.
+    #[must_use]
+    pub fn scrollbar_visual_for(
+        &self,
+        thumb: NodeId,
+        panel: Option<NodeId>,
+    ) -> (crate::widget::ScrollbarState, f32) {
+        use crate::widget::ScrollbarState as S;
+        let dragging =
+            panel.is_some_and(|p| matches!(self.scrollbar_drag(), Some(d) if d.panel == p));
+        let state = if dragging {
+            S::Dragging
+        } else if self.hot_id() == Some(thumb) {
+            S::Hovered
+        } else {
+            S::Normal
+        };
+        (state, self.hover_live(thumb))
+    }
+
     /// **O par visual de um CHECKBOX**: o estado + quanto do hover está presente.
     ///
     /// ⚠️ **Ele nasceu porque a caixa deste app nunca reagiu ao rato.** Medido: `Checkbox::new`

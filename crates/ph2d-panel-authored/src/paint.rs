@@ -211,13 +211,16 @@ fn paint_open_list(ctx: &mut PaintCtx, open: &OpenList, theme: Theme) {
         }
     }
     let scroll = ctx.host.store().panel_scroll(id).clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
-    let scrollbar_active = matches!(ctx.host.store().scrollbar_drag(), Some(d) if d.panel == id);
+    let scrollbar = ctx
+        .host
+        .store()
+        .scrollbar_visual_for(DROPDOWN_SCROLLBAR_ID, Some(id));
     paint_dropdown_popover_scrolled(
         &dd,
         open.chip,
         panel,
         scroll,
-        scrollbar_active,
+        scrollbar,
         ctx.scene,
         ctx.text_system,
         theme,
@@ -353,11 +356,8 @@ fn paint_scrollbar_and_publish(
     if scrollbar_is_needed(content_h, body_h) {
         let track = scrollbar_track_rect(body);
         let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
-        let is_active = matches!(
-            ctx.host.store().scrollbar_drag(),
-            Some(d) if d.panel == ids::AUTHORED_PANEL
-        );
-        paint_scrollbar(body, scroll, content_h, body_h, is_active, ctx.scene, theme);
+        let visual = ctx.host.store().scrollbar_visual(AUTHORED_SCROLLBAR_ID);
+        paint_scrollbar(body, scroll, content_h, body_h, visual, ctx.scene, theme);
         ctx.host
             .hit_index_mut()
             .register(AUTHORED_SCROLLBAR_ID, thumb);

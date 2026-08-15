@@ -157,6 +157,18 @@ fn duplicate_labels_are_counted_not_renamed() {
 /// do `paint_widget_skin_with(` — um número que envelhece no dia em que um argumento entra, e que
 /// já custou a esta linha dois arch-gates reescritos (23/07). Aqui ela vai até o `);` que fecha,
 /// que é o que a asserção de facto quer dizer.
+///
+/// ⚠️ **E a versão que dizia isso ainda não o fazia — estava VERDE POR ACIDENTE, e foi uma wave
+/// alheia que o expôs.** Ela procurava o primeiro `"\n        );"`, um fecho a OITO espaços, e a
+/// chamada da pele fecha a **doze**: a janela ia da chamada até um `);` que pertencia a um
+/// `matches!` de *outra função*, dezenas de linhas abaixo. Passava porque uma janela grande demais
+/// contém tudo o que o gate procura — o modo de falha mais silencioso que um scanner tem. Quem o
+/// derrubou foi a wave dos scrollbars (2026-08-15), que apagou aquele `matches!` por outro motivo
+/// inteiramente.
+///
+/// A cura é medir a indentação da PRÓPRIA chamada e fechar nela. Um literal de indentação é a
+/// mesma classe de erro que a contagem de bytes que este doc já recusava: *afirme a propriedade,
+/// nunca o endereço*.
 #[test]
 fn the_paint_hands_what_it_knows_to_the_skin() {
     let src = include_str!("paint.rs");
@@ -168,9 +180,13 @@ fn the_paint_hands_what_it_knows_to_the_skin() {
     let call = src
         .find("paint_widget_skin_with(\n")
         .expect("a chamada da pele sumiu do paint");
+    // A indentação da linha em que a chamada começa — é nela que o `);` fecha.
+    let line_start = src[..call].rfind('\n').map_or(0, |i| i + 1);
+    let indent = &src[line_start..call];
+    let closer = format!("\n{indent});");
     let end = src[call..]
-        .find("\n        );")
-        .expect("a chamada da pele nao fecha");
+        .find(&closer)
+        .expect("a chamada da pele nao fecha na indentacao em que abriu");
     let window = &src[call..call + end];
     assert!(
         window.contains("store.get(row.id)"),

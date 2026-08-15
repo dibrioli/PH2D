@@ -365,9 +365,15 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
             let body = Rect::new(rect.x, body_top, rect.w, body_h);
             let thumb =
                 scrollbar_thumb_rect(scrollbar_track_rect(body), scroll_y, content_h, body_h);
-            let is_active =
-                matches!(b.store.scrollbar_drag(), Some(d) if d.panel == ids::VECTOR_PANEL);
-            paint_scrollbar(body, scroll_y, content_h, body_h, is_active, b.scene, theme);
+            paint_scrollbar(
+                body,
+                scroll_y,
+                content_h,
+                body_h,
+                b.store.scrollbar_visual(VECTOR_SCROLLBAR_ID),
+                b.scene,
+                theme,
+            );
             b.hit_index.register(VECTOR_SCROLLBAR_ID, thumb);
         }
         b.scene.pop_layer();

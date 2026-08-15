@@ -81,6 +81,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "seed",
             default: 0.0,
         },
+        // ⚠️ **Apendado, e `0` é o mundo de hoje.** Ver [`decorrelate`].
+        ParamSpec {
+            name: "unique_per_node",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -134,6 +139,40 @@ impl KeyBy {
         } else {
             Self::Index
         }
+    }
+}
+
+/// O golden-ratio de 32 bits — o MESMO multiplicador que o `rand01` usa no slot
+/// da semente (`hash.rs`), reusado aqui para o mesmo fim: espalhar.
+const GOLDEN32: u32 = 0x9e37_79b9;
+
+/// **A semente EFETIVA:** a autorada, decorrelacionada pela identidade do nó
+/// quando o artista pede.
+///
+/// ⚠️ **Dois `value.instance_field` arrastados para a tela com os defaults
+/// produziam campos IDÊNTICOS** — o *"Noise com Use Layer as Seed evita gêmeos"*
+/// do Cavalry (doc 63 §D). A única saída era o artista lembrar de digitar uma
+/// semente diferente em cada um, e nada na tela dizia que era preciso.
+///
+/// ⚠️ **É opt-in, e o default `0` é LITERALMENTE o nó de antes** — `node_key`
+/// dobrado por default mudaria a aleatoriedade de **todo grafo já salvo** (lei 6).
+///
+/// ⚠️ **SOMAR o `node_key` cru seria colisão fácil:** um nó de semente 5 e id 3 e
+/// outro de semente 3 e id 5 cairiam na MESMA semente efetiva. Multiplicar a
+/// identidade pelo golden-ratio antes de somar espalha os ids por toda a faixa,
+/// e é o mesmo espalhamento que o hash já faz um degrau adiante.
+///
+/// ⚠️ **O param chama-se `unique_per_node`, e não `use_node_as_seed`** (o nome da
+/// feature no Cavalry, e o que a folha 15 escreve). Ele é um BOOLEANO *sobre* a
+/// semente, não uma semente — e o gate de convenção `a_seed_wears_the_seed_widget`
+/// pegou o nome antigo na hora, porque um scanner por nome lê `*_seed` como *"isto
+/// é uma semente"* e exige o widget de semente. O rótulo do painel já dizia a
+/// verdade ("Unique Per Node"); o identificador passou a dizê-la também.
+pub(crate) fn decorrelate(seed: u32, node_key: u32, use_node: bool) -> u32 {
+    if use_node {
+        seed.wrapping_add(node_key.wrapping_mul(GOLDEN32))
+    } else {
+        seed
     }
 }
 
@@ -217,7 +256,13 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         if (if_mode == 0) {\n\
         \x20   if_v = if_kf;\n\
         } else if (if_mode == 2) {\n\
-        \x20   let if_seed = u32(max(if_round(params.seed), 0.0));\n\
+        \x20   var if_seed = u32(max(if_round(params.seed), 0.0));\n\
+        \x20   // A semente EFETIVA (ver `decorrelate`): a identidade do no,\n\
+        \x20   // espalhada pelo golden-ratio, quando o artista a pede. Off e a\n\
+        \x20   // adicao de zero, logo byte-identico.\n\
+        \x20   if (i32(if_round(params.unique_per_node)) == 1) {\n\
+        \x20       if_seed = if_seed + params.node_key * 0x9e3779b9u;\n\
+        \x20   }\n\
         \x20   if_v = if_rand01(if_seed, if_ku);\n\
         } else {\n\
         \x20   // N == 1 has no span: the low end, never a divide by zero.\n\
@@ -262,7 +307,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &["mode", "key", "seed"],
+    params: &["mode", "key", "seed", "unique_per_node"],
     // Same law as `value.lfo`, and the same expression `eval` uses: connected it
     // is one value per instance, unconnected it is ONE degenerate value. The
     // engine's default ("as wide as port 0") would size an unconnected one at 0
@@ -285,7 +330,11 @@ impl NodeOp for ValueInstanceField {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let mode = FieldMode::from_param(ctx.param("mode"));
-        let seed = ctx.param("seed").round().max(0.0) as u32;
+        let seed = decorrelate(
+            ctx.param("seed").round().max(0.0) as u32,
+            ctx.node_key(),
+            ctx.param("unique_per_node").round() as i32 == 1,
+        );
         let key = KeyBy::from_param(ctx.param("key"));
         // Cardinality follows the geometry; unconnected → one degenerate value.
         let input = ctx.input(0);
@@ -324,11 +373,21 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
 /// O seletor de chave só aparece nos modos que a LEEM (`0` Index · `2` Random).
-static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[ph2d_node_registry::ParamGate {
-    param: "key",
-    when: "mode",
-    values: &[0, 2],
-}];
+static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
+    ph2d_node_registry::ParamGate {
+        param: "key",
+        when: "mode",
+        values: &[0, 2],
+    },
+    // ⚠️ A semente e a decorrelação só existem no modo que as LÊ. Index e Ramp
+    // são funções puras do ordinal — um toggle ali seria controle morto, e o
+    // `Seed` ao lado dele já é gateado pelo mesmo motivo.
+    ph2d_node_registry::ParamGate {
+        param: "unique_per_node",
+        when: "mode",
+        values: &[2],
+    },
+];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
@@ -358,6 +417,14 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 9999.0,
         step: 1.0,
         widget: ParamWidget::Seed,
+    },
+    ParamUiHint {
+        param: "unique_per_node",
+        label: "Unique Per Node",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
     },
 ];
 
@@ -496,3 +563,7 @@ mod tests {
         assert!(reg.resolve(MANIFEST.id).is_some());
     }
 }
+
+#[cfg(test)]
+#[path = "seed_tests.rs"]
+mod seed_tests;

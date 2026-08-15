@@ -31,6 +31,14 @@ pub(crate) struct PaintState {
     /// ⚠️ Ele existe porque a lista de dabs de um evento é o PEDAÇO do gesto desde o último ponteiro,
     /// e o que uma forma sólida cerca é o percurso inteiro.
     pub(super) solid_path: Vec<[f32; 2]>,
+    /// **A mancha do Solid está DEVIDA neste evento?** — armada pela porta do carimbo, consumida
+    /// pelo `park_stroke`, que é a última coisa que todo sítio do ciclo de traço faz.
+    ///
+    /// ⚠️ **Ela existe porque a transação do preenchimento é SEPARADA no tempo:** o `peel` tem de
+    /// preceder os dabs (senão a mancha velha entra no instantâneo e vira permanente) e o `save` tem
+    /// de suceder os FIOS (senão o restore do evento seguinte os apaga). Um booleano é o que torna
+    /// as duas metades a mesma transação sem enumerar os sítios do ciclo.
+    pub(super) solid_fill_owed: bool,
     /// Buffer reusado dos fios que o Sketchy costurou desde o último depósito (plano 38 W3). Ele é
     /// só a ALOCAÇÃO: o motor é o dono da memória do traço, e [`ph2d_painter_brush::Stroke::take_threads`]
     /// esvazia isto antes de encher.

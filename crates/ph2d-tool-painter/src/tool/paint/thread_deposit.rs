@@ -38,6 +38,12 @@ impl PainterTool {
         threads.clear();
         self.paint.pending_threads = threads;
         self.paint.stroke = Some(stroke);
+        // **Style: Solid** — a mancha FECHA o evento, aqui e não na porta do carimbo. O instantâneo
+        // que a transação guarda tem de conter toda a tinta cumulativa deste evento; os fios acabam
+        // de cair, então esta é a primeira linha em que isso é verdade (`super::stamp_route`).
+        if std::mem::take(&mut self.paint.solid_fill_owed) {
+            self.stamp_solid_preview();
+        }
     }
 
     /// O gesto está costurando fios?

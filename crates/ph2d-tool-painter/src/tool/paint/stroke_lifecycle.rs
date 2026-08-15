@@ -50,6 +50,9 @@ impl PainterTool {
         // linha move a tinta para longe da mão, e era essa discordância que o Enio fotografou. Aqui
         // só se ZERA, para o gesto novo não herdar o caminho do anterior.
         self.paint.solid_path.clear();
+        // …e a mancha devida do gesto anterior morre com ele: um `owed` sobrevivente faria o
+        // primeiro `park_stroke` deste traço preencher um caminho que já não existe.
+        self.paint.solid_fill_owed = false;
         // **O passo de undo começa AQUI** (doc 28 §5.26): a cadeia é reconciliada e o journal passa a
         // descrever este traço em vez do intervalo desde o último commit.
         self.begin_undo_step();

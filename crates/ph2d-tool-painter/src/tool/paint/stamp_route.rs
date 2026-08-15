@@ -43,15 +43,25 @@ impl PainterTool {
         // ⚠️ O `peel_drag_preview` é a porta de descascar do módulo; as duas coisas a mais que ela
         // faz (o rascunho da água e o stash de commit do Wet Paint) são no-ops aqui por construção,
         // porque `solid_owns_the_gesture` já recusa a aquarela e o fluido.
-        if self.freehand_solid_fill_live() {
+        // ⚠️ **Um lote VAZIO não abre a transação.** Descascar e re-preencher com o mesmo caminho dá
+        // exactamente os mesmos pixels, então a única coisa que isso produzia era trabalho: o tique
+        // do motor corre a cada quadro, e sob simetria circular o retângulo é a TELA INTEIRA — um
+        // pincel PARADO pagava um preenchimento de canvas por quadro para não mudar um byte.
+        if self.freehand_solid_fill_live() && !dabs.is_empty() {
             self.peel_drag_preview();
             // ⚠️ **O caminho é gravado ANTES do carimbo, e a ordem é a feature:** o preenchimento
-            // deste quadro é o polígono da tinta deste quadro. Gravá-lo depois (no `park_stroke`, a
-            // porta onde os FIOS são drenados) atrasaria a mancha um evento — e no ÚLTIMO evento do
-            // gesto nada re-carimba, então os pontos finais nunca entrariam na mancha.
+            // deste quadro é o polígono da tinta deste quadro.
             self.note_ink_path(dabs);
             self.stamp_dabs_dispatch(dabs);
-            self.stamp_solid_preview();
+            // ⚠️ **A MANCHA É A ÚLTIMA ESCRITA DO EVENTO, e por isso ela NÃO corre aqui** (auditoria
+            // do Enio, 2026-08-15). O instantâneo da transação tem de conter toda a tinta CUMULATIVA
+            // do evento e nenhuma transitória — e os FIOS (Sketchy / Wire) são cumulativos e caem
+            // **depois** desta porta, no `park_stroke`. Preenchendo aqui, o instantâneo nascia sem
+            // eles e o `peel` do evento seguinte os **apagava**: medido, sobrava **11,9%** da teia.
+            // Quem fecha a transação é [`Self::park_stroke`], a porta que TODO sítio do ciclo de
+            // traço chama depois de carimbar — e cujo modo de falha, se alguém a esquecer, já é
+            // ALTO (o pincel para de pintar) em vez de silencioso.
+            self.paint.solid_fill_owed = true;
             return;
         }
         self.stamp_dabs_dispatch(dabs);

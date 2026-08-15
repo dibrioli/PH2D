@@ -18,6 +18,8 @@ mod measure_gpu_frontier; // o pool dos cinco planos do traço escreve o que a a
 mod ribbon_probe; // W6 do plano 38: o orcamento da FITA — move, tique e o pen-up
 #[path = "solid_deposit_tests.rs"]
 mod solid_deposit_tests;
+#[path = "solid_transaction_tests.rs"]
+mod solid_transaction_tests; // …e o que a TRANSACAO garante: nada apagado, nada fora do retangulo
 #[path = "spray_defaults_tests.rs"]
 mod spray_defaults_tests; // W5: a primeira nuvem parece uma nuvem
 #[path = "spray_probe.rs"]

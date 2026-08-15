@@ -10177,3 +10177,153 @@ porta.
 - O sensor de quina desenha o vão e as células tapadas, e **não** a busca de
   escape — *para onde ele decidiu empurrar* é outra pergunta, e ela já tem
   resposta visível: o personagem desvia.
+
+---
+
+## W-Fall — a queda tem TETO (2026-08-14, plano 10 §4, cena `=116`)
+
+O item **D** da fila da auditoria. Até aqui **não existia velocidade terminal**:
+um personagem que caísse de alto o bastante atravessava o cenário a velocidades
+que nenhum colisor discreto resolve, e o artista não tinha número nenhum para
+dizer *"não mais depressa que isto"*.
+
+### O que a medição fez ao plano
+
+O plano trazia a premissa herdada (*"não existe velocidade terminal"*) e o §0
+manda reconferir o número antes de construir sobre ele. A sonda
+(`ph2d-physics-ecs/tests/measure_terminal.rs`), largando de **mil metros**:
+
+| s | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| m | 5,94 | 24,86 | 44,48 | 64,10 | 83,72 | 103,33 | 122,95 | **142,57** |
+
+Monotónica, **nos dois modos**. A premissa estava certa e passou a ter número.
+
+⛔ **E a prescrição de DUAS implementações está REFUTADA.** O plano escreveu
+*"sob Spring é um boost contra a gravidade do solver; sob Snap é um clamp no
+`KinematicState`"*, mas o freio do planeio já sai da lei como um **`Motor`** e o
+`kinematic_advance` **consome `motor.boost`** — medido com o planeio armado a
+`4,0`, os dois modos assentam numa descida constante (**4,25** Spring · **4,33**
+Snap). **Uma porta serve os dois modos**, e a segunda implementação seria a
+segunda resposta à mesma pergunta.
+
+### Três defeitos de FIXTURE, todos na sonda e todos antes do código
+
+1. **As duas colunas saíam IDÊNTICAS** — a assinatura de uma fixture que não
+   contém o fenómeno. O **controlo positivo** (a altura de repouso, o
+   discriminante conhecido: os dois modos pousam a alturas diferentes de
+   propósito) media **1,4005 nos dois**. Causa: `pose_owner` pergunta ao **KIND
+   do corpo** antes de olhar para o `PlayerMode` — *é o corpo que existe que
+   importa, não o que foi pedido* —, e inserir só o componente sobre um corpo
+   `Dynamic` é **inerte**. Com o par (`PlayerMode` + `RigidBody { Kinematic }`) o
+   discriminante volta: **1,4005 × 1,0101**.
+2. **`DROP = 200` fazia o corpo POUSAR aos ~5 s**, e as últimas colunas
+   descreviam o CHÃO — a fixture a ler-se como *"assentou"* exactamente sobre a
+   pergunta que ela existe para responder. `½·g·t²` diz 314 m aos 8 s ⇒ **1000**.
+3. **Subir o `DROP` estragou o CONTROLO**, que passou a medir **meio-voo** com o
+   nome de repouso (65,44 / 64,66) — ele ganhou uma queda curta própria.
+
+### O desenho
+
+Módulo novo **`ph2d-platformer::descent`**, e o `glide_motor` **morreu nele**:
+
+* duas leis **PROPÕEM um número** — o planeio (enquanto o dedo dura) e o teto de
+  queda (sempre) —, `descent_ceiling` fica com o **MENOR**, e existe **um**
+  `descent_motor`. Se cada uma tivesse a sua porta e o seu `boost`, os dois
+  motores somariam e o planeio ganharia o poder de **acelerar** uma queda que o
+  teto já tinha limitado. *A composição deixa de ser algo que alguém tem de
+  acertar e passa a ser o que a representação permite escrever.*
+* ⚠️ **o guard (`rel_up >= −ceiling`) é o TETO e é também a prova de que `delta` é
+  positivo** — uma linha, duas perguntas, e é por isso que este módulo não
+  consegue acelerar uma queda em instante nenhum. Foi ela que descartou a forma
+  *alvo* na wave do planeio.
+* ⚠️ **os sete gates do planeio foram RE-APONTADOS, não reescritos:** eles sempre
+  mediram a lei do teto, que agora é partilhada, e é por isso que servem de rede
+  — o teto de queda entra por baixo de gates que já provavam o comportamento do
+  planeio, em vez de estrear numa suíte própria que nada obriga a concordar com a
+  antiga.
+
+⚠️ **O teto assenta ~6% ACIMA do número autorado** (`4,0` → 4,25/4,33): o freio é
+aplicado no topo do tique e a gravidade soma **dentro** dele. Nomeado, porque um
+gate de igualdade exacta nasceria **vermelho sobre produto correto** — o oráculo
+honesto é *a descida PARA de crescer*, e é ele que os gates usam.
+
+### A metade VISÍVEL
+
+Card **PRÓPRIO** (`FALL`, o 12º), e **não** uma row dentro do GLIDE. Os dois são
+tetos da mesma velocidade e compõem por uma porta só, mas um dura **o que o dedo
+durar** e o outro vale **sempre** — o card é onde o artista lê *o que está a
+autorar*, e juntá-los pediria que ele descobrisse a diferença lendo a dica.
+
+⚠️ **Sem teto no valor DIGITÁVEL, e é o §0:** o número que a faixa tem de
+conseguir descrever é o da MEDIÇÃO (142,57 m/s), não um redondo confortável. O
+slider cobre a faixa confortável (0..150) e a caixa aceita o resto.
+
+### Superfície
+
+**`PROJECT_SCHEMA` 79 → 80** — `max_fall_speed` apendado ao `PlatformPlayer`,
+postcard é posicional ⇒ quebra dura, tripla **`(80, 13, 14)`**. ⚠️ **O valor é
+PROVISÓRIO e re-conta-se contra o `main` do dia** ⇒ conferir nos **DOIS**
+arquivos (`project.rs` **e** `project_schema_tests.rs`), porque esta colisão
+passa **MUDA** quando duas linhas escrevem o mesmo literal.
+
+O default `0,0` **DESLIGA** a lei ⇒ todo projeto salvo antes reabre a cair
+exactamente como caía, e o **`physics_ecs_c9` fica byte-idêntico** — é essa a
+prova de que o degrau não move física nenhuma.
+
+Registro do `ph2d-physics-ecs` **intocado** (campo, não componente) · gizmo ids
+**nenhum novo** · **zero `Cargo.toml`** · **nenhum ADR** (tudo sob o ADR-0131) ·
+ids novos: `INSP_PLAYER_MAX_FALL` e `INSP_PLAYER_CARD_FALL`, os dois por **hash
+de string** ⇒ fora de todo contador.
+
+### Gates
+
+**10 no kernel** (3 novos: *o teto não pede dedo* · *vence a menor* · *a queda
+capada para de crescer, com CONTROLE*) + **3 no ECS pelos DOIS modos** + **2 na
+shell** (`inspector_player_fall_tests`, o degrau do MEIO da quarta condição de UI)
++ a varredura de seam + os 4 da cena.
+
+**4 mutações, 4 sangram:**
+
+| mutação | o que sangra |
+|---|---|
+| a ponte larga o teto (`fall: STARTING_POINT`) | os **três** do ECS (a queda volta a 83,7 m no 5º segundo) |
+| `min` → `max` no `descent_ceiling` | o gate da composição, **no kernel E no produto** (o planeio deixa de apertar: 20,25 em vez de 3) |
+| o braço da shell escreve no **VIZINHO** (`glide_fall_speed`) | `a_typed_cap_reaches_the_config_and_leaves_the_glide_alone` (`(0,0, 8,0)` contra `(8,0, 2,5)`) |
+| tirar o `.max(0.0)` do braço | o clamp de fronteira (a row mostraria `−1`) |
+
+⚠️ **A mutação do vizinho é o modo de falha que esta wave de facto produz:**
+`max_fall_speed` e `glide_fall_speed` são dois tetos da MESMA velocidade, com
+nomes quase iguais, fiados no mesmo commit e compostos por uma porta só —
+escrever num pelo braço do outro dá um produto que **funciona** (a queda ainda
+trava) e mente sobre **QUANDO**.
+
+⚠️ **E a varredura do seam deixou de comparar a contagem com um literal ao lado
+dela:** um número escrito à mão só sabe dizer *"a tabela mudou"*, e quem o bumpa
+para ficar verde faz exactamente o que ele existia para impedir. Comparada com o
+`len()` da própria lista, a asserção passa a afirmar a propriedade que interessa:
+*toda row pintada é varrida aqui*.
+
+### Smoke
+
+**`env PH2D_PHYSICS_SMOKE=116 cargo run -p ph2d-host-desktop --release`** — três
+raias iguais largadas de **16 m**, e só os números diferem: sem teto **1,52 s**,
+com teto **4,05 s**, com teto+planeio e o dedo preso **9,22 s** (medidos por
+`when_each_lane_lands`, não pelo olho).
+
+⚠️ **O passo 1 manda NÃO tocar em nada**, e é essa metade que separa esta cena da
+irmã `=112`: o planeio precisa do dedo, o teto **não pergunta nada ao jogador**.
+⚠️ **O número da cena é CONTADO do `match`** — a nota da §5 do `CLAUDE.md` dava a
+`=105` como a próxima livre e tinha envelhecido em **onze** cenas.
+
+### Aberto, nomeado
+
+- **O teto por ZONA** (`APhysicsVolume::TerminalVelocity` do Unreal — *cair na
+  água devia ter outro teto*) segue fora de escopo, e agora com o mecanismo ao
+  lado: ele **não** é *"mais um número"* — a zona teria de o entregar por
+  consulta, e re-derivar ali o frame, o espelho e o falloff seria a **segunda
+  resposta** a *"que empurrão esta zona dá neste ponto?"*, exactamente a recusa
+  que a `W-KinMove` já nomeou para a FORÇA.
+- O teto é uma velocidade e **não** um `fall_gravity`: quem diz *quão depressa a
+  descida cresce* é aquele, este diz *onde ela para de crescer*. Os dois têm row,
+  em cards diferentes, de propósito.

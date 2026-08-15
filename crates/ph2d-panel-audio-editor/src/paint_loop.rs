@@ -89,10 +89,16 @@ pub(crate) fn paint_loop_section(
         hit_index.register(AEDIT_LOOP_XFADE, track);
     } else {
         // Inert track (no thumb, not hit-registered) when there is nothing to audition.
+        // ⚠️ Par visual NEUTRO e declarado, pela razão da irmã em `paint_delivery`: sem registo
+        // não há estado a que perguntar, e acender seria prometer um arrasto que não existe.
         paint_slider_track(
             track,
             loop_state::xfade_norm(),
             SliderOrientation::Horizontal,
+            (
+                ph2d_editor_core::widget::SliderState::Normal,
+                ph2d_editor_core::motion::SETTLED,
+            ),
             scene,
             theme,
         );

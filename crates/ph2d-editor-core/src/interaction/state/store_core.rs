@@ -671,8 +671,26 @@ impl WidgetStore {
                 InteractiveState::Checkbox { state, .. } => {
                     matches!(state, CheckboxState::Hovered | CheckboxState::Pressed)
                 }
+                // ⚠️ **O `Dragging` conta, e é o que separa um slider de um botão.** Um botão é
+                // premido e solto; uma trilha é AGARRADA e o dedo fica lá — se o arrasto não
+                // acendesse, a superfície apagaria debaixo da mão que a comanda.
+                InteractiveState::Slider { state, .. } => matches!(
+                    state,
+                    crate::widget::SliderState::Hovered
+                        | crate::widget::SliderState::Dragging
+                        | crate::widget::SliderState::Focused
+                ),
                 // Os restantes tipos não têm eixo de hover HOJE. ⚠️ Um tipo que não aparece aqui
                 // não ganha entrada nenhuma — é o que mantém o mapa do tamanho do que se move.
+                //
+                // ⚠️ **E "os restantes" inclui quem NÃO É REGISTADO, que é outra classe.** O
+                // polegar de uma scrollbar e um botão de modal vivem só no `hit_index`, então o
+                // ponteiro (`hot_id`/`active_id`) é a única coisa que sabe deles — e emitir os ids
+                // do ponteiro aqui NÃO bastaria: quando o cursor sai, o id **desaparece da lista**,
+                // o tique deixa de o conduzir, e o `hover_live` congela no último valor publicado
+                // (medido: `button_visual` de um id não-registado devolve `(Hovered, 1.0)`), o que
+                // faz RE-ENTRAR não animar. Conduzi-los exige uma lista de quem está a APAGAR-SE,
+                // que é estado novo — wave própria, não um braço a mais neste `match`.
                 _ => return None,
             };
             Some((*id, if lit { 1.0 } else { 0.0 }))

@@ -10,9 +10,7 @@ use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{
-    Checkbox, CheckboxValue, Slider, SliderState, paint_checkbox, paint_slider,
-};
+use ph2d_editor_core::widget::{Checkbox, CheckboxValue, Slider, paint_checkbox, paint_slider};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::BrushSettings;
@@ -138,13 +136,9 @@ fn paint_layer_row(
     // Bare Strength slider (value from the snapshot; state from the store) + plain readout.
     let sid = core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[pos];
     let val = brush.composite_strength[pos].clamp(0.0, 1.0);
-    let st = ctx
-        .host
-        .store()
-        .slider(sid)
-        .map(|(s, _)| s)
-        .unwrap_or(SliderState::Normal);
-    let mut slider = Slider::new(sid, "").accent(true).state(st);
+    let mut slider = Slider::new(sid, "")
+        .accent(true)
+        .visual(ctx.host.store().slider_visual(sid));
     slider.value = val;
     let slider_rect = Rect::new(slider_x, y, slider_w, ROW_H_PX);
     paint_slider(&slider, slider_rect, ctx.scene, theme);

@@ -146,10 +146,17 @@ pub fn paint_slider_with_chip_layout(
 
     // Track background + filled portion — shared canonical painter so
     // this matches the bare `paint_slider` look exactly.
+    //
+    // ⚠️ **O par visual vem do STORE, que é o que o doc-header deste módulo já PROMETIA** (*"reads
+    // the slider's state … straight from the WidgetStore"*) e não cumpria: o despachante escrevia
+    // `Hovered`/`Dragging` ali desde sempre, esta linha nunca perguntou, e o `paint_slider_track`
+    // não tinha por onde recebê-lo. É por aqui que os ~67 sítios de linha-com-chip do app ganham
+    // a reacção sem tocar num deles.
     crate::widget::paint_slider_track(
         track_rect,
         value,
         crate::widget::SliderOrientation::Horizontal,
+        store.slider_visual(slider_id),
         scene,
         theme,
     );

@@ -135,10 +135,18 @@ pub(crate) fn paint_delivery_section(
     } else {
         // Inert track (no thumb, not hit-registered): a lossless codec has no quality
         // to trade, and a live-looking slider that did nothing would be a lie.
+        //
+        // ⚠️ Por isso o par visual é o NEUTRO **declarado**: uma trilha que ninguém regista não
+        // tem estado no store para acender, e reagir ao ponteiro seria exactamente a mentira que
+        // o ramo acima recusa.
         paint_slider_track(
             track,
             delivery_state::quality_norm(),
             SliderOrientation::Horizontal,
+            (
+                ph2d_editor_core::widget::SliderState::Normal,
+                ph2d_editor_core::motion::SETTLED,
+            ),
             scene,
             theme,
         );
@@ -186,33 +194,7 @@ pub(crate) fn paint_delivery_section(
         ) + gap;
     }
 
-    // **The shipping targets.** One row per platform: what it downloads, what it holds, and
-    // whether that is a worrying share of the budget. These are the numbers a variant EXISTS for
-    // — and they differ per row only because each target conforms the audio, not just the
-    // container (see the module docs).
-    let targets = delivery_state::platforms();
-    if loaded && !targets.is_empty() {
-        for (name, cost, frac) in &targets {
-            y = text_row(
-                &format!("{name}  {cost}"),
-                x,
-                y,
-                w,
-                label_h,
-                resolve(
-                    if *frac > BUDGET_WARN_FRAC {
-                        ColorToken::Warn
-                    } else {
-                        ColorToken::Text2
-                    },
-                    theme,
-                ),
-                scene,
-                text_system,
-            );
-        }
-        y += gap;
-    }
+    y = paint_shipping_targets(loaded, x, y, w, label_h, gap, scene, text_system, theme);
 
     // One click writes all three, each conformed to its own platform's format first.
     button(
@@ -279,6 +261,52 @@ fn text_row(
     let h = text_system.layout(text, size, w).height().max(size);
     paint_text(text_system, scene, text, x, y, size, w, color);
     y + h
+}
+
+/// **Os alvos de entrega — uma linha por plataforma:** o que ela baixa, o que ela segura, e se
+/// isso é uma fatia preocupante do orçamento. São os números pelos quais uma variante EXISTE, e
+/// diferem entre linhas só porque cada alvo *conforma* o áudio, não apenas o contêiner (ver o doc
+/// do módulo).
+///
+/// ⚠️ **Recebe o `y` e devolve o `y`** — a forma que o cap de função deste crate prescreve, e a
+/// razão de o corte ser aqui: este bloco é a única parte do painel que percorre uma LISTA cujo
+/// tamanho o painel não escolhe.
+#[allow(clippy::too_many_arguments)]
+fn paint_shipping_targets(
+    loaded: bool,
+    x: f32,
+    mut y: f32,
+    w: f32,
+    label_h: f32,
+    gap: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) -> f32 {
+    let targets = delivery_state::platforms();
+    if loaded && !targets.is_empty() {
+        for (name, cost, frac) in &targets {
+            y = text_row(
+                &format!("{name}  {cost}"),
+                x,
+                y,
+                w,
+                label_h,
+                resolve(
+                    if *frac > BUDGET_WARN_FRAC {
+                        ColorToken::Warn
+                    } else {
+                        ColorToken::Text2
+                    },
+                    theme,
+                ),
+                scene,
+                text_system,
+            );
+        }
+        y += gap;
+    }
+    y
 }
 
 #[cfg(test)]

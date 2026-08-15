@@ -36,6 +36,9 @@ pub struct Slider {
     /// Normalized 0..=1; UI maps this to whatever the binding wants.
     pub value: f32,
     pub state: SliderState,
+    /// **Quanto do hover está presente**, `0..1`. Neutro = [`crate::motion::SETTLED`] ⇒ toda
+    /// construção que não o define pinta **exactamente** o que pintava antes da UI viva.
+    pub hover_t: f32,
     pub orientation: SliderOrientation,
     /// True ⇒ filled bar uses `Accent`; false ⇒ `AccentPress` (a dim
     /// default). Distinct from focus highlight.
@@ -61,6 +64,7 @@ impl Slider {
             label: label.into(),
             value: 0.5,
             state: SliderState::Normal,
+            hover_t: crate::motion::SETTLED,
             orientation: SliderOrientation::Horizontal,
             accent: false,
             ticks: Vec::new(),
@@ -75,6 +79,28 @@ impl Slider {
 
     pub fn state(mut self, state: SliderState) -> Self {
         self.state = state;
+        self
+    }
+
+    /// **As DUAS metades numa chamada** — o par que a
+    /// [`crate::interaction::WidgetStore::slider_visual`] devolve, irmão exacto do
+    /// [`super::button::Button::visual`].
+    ///
+    /// ⚠️ **Existe para ser mais CURTO que a rota errada**, pela razão que o `Button` já registou:
+    /// a alternativa é `.state(store.slider(id).map(|(s, _)| s).unwrap_or(Normal))` seguido de um
+    /// `.hover_t(..)` que o sítio seguinte esquece — e um slider sem `t` cai no neutro, que
+    /// **salta**. Quando a rota certa é a mais curta de escrever, o sítio seguinte nasce certo por
+    /// preguiça e não por disciplina.
+    #[must_use]
+    pub fn visual(self, v: (SliderState, f32)) -> Self {
+        self.state(v.0).hover_t(v.1)
+    }
+
+    /// Ver [`Self::hover_t`] o campo. Clampa, porque um `t` fora de `0..1` extrapolaria a mistura
+    /// para fora dos dois tokens que a nomeiam.
+    #[must_use]
+    pub fn hover_t(mut self, t: f32) -> Self {
+        self.hover_t = t.clamp(0.0, 1.0); // CLAMP-OK: both bounds are literal non-NaN
         self
     }
 
@@ -109,20 +135,81 @@ impl Slider {
     }
 }
 
-/// Canonical slider track: rounded-rect background (`Bg2`) + an
-/// `Accent`-filled portion for the current value. **Single source of
-/// truth for the slider look** — both the bare [`paint_slider`] and
-/// `widget::slider_with_chip::paint_slider_with_chip` render through
-/// this, so every slider in the app shares one rectangular appearance.
+/// O token DURO da CALHA por estado — o fundo que sobra atrás do valor.
+///
+/// ⚠️ `Focused` devolve o mesmo `Bg2` do repouso **de propósito**: o foco já se anuncia pelo anel
+/// `BorderEmph` que o [`paint_slider`] traça por cima, e tingir a calha também seria o mesmo facto
+/// dito duas vezes — com as duas metades livres para divergir no dia em que uma delas mudar.
+fn track_tint(state: SliderState) -> ColorToken {
+    match state {
+        SliderState::Hovered | SliderState::Dragging => ColorToken::Bg3,
+        _ => ColorToken::Bg2,
+    }
+}
+
+/// O token DURO do PREENCHIMENTO por estado — a parte que mede o valor.
+fn fill_tint(state: SliderState) -> ColorToken {
+    match state {
+        SliderState::Hovered => ColorToken::AccentHover,
+        SliderState::Dragging => ColorToken::AccentPress,
+        _ => ColorToken::Accent,
+    }
+}
+
+/// A mistura `repouso → hover` deste canal, **ou `None` quando este estado não é uma quantidade**
+/// — a porta do [`crate::motion::hover_axis`], idêntica à do
+/// [`super::icon_button`], porque é a mesma pergunta noutro widget.
+///
+/// ⚠️ **`soft` inclui o `Normal`, e é isso que faz a SAÍDA do hover funcionar.** Se o estado
+/// escolhesse sozinho, tirar o rato seria instantâneo: no quadro em que ele sai o `state` já voltou
+/// a `Normal` e `track_tint(Normal)` **já É** a cor de repouso, então não sobraria nada entre onde
+/// a cor está e onde ela vai.
+///
+/// ⚠️ **`Dragging` é estado DURO, e aqui isso não é simetria — é o gesto.** Uma trilha agarrada
+/// tem de acender no quadro do `Down`; interpolá-la deixaria a superfície a caminho da cor
+/// enquanto o dedo já a comanda. `Focused`/`Disabled` são duros pela razão que o botão já
+/// registou: não são uma *quantidade* de nada.
+fn blend_on_hover_axis(
+    state: SliderState,
+    t: f32,
+    rest: ColorToken,
+    hot: ColorToken,
+    theme: Theme,
+) -> Option<ph2d_vector::Color> {
+    crate::motion::hover_axis(
+        matches!(state, SliderState::Normal | SliderState::Hovered),
+        t,
+        Some(rest.resolve(theme)),
+        Some(hot.resolve(theme)),
+    )
+    .map(crate::paint::token_to_vello)
+}
+
+/// Canonical slider track: rounded-rect background + a filled portion for the current value.
+/// **Single source of truth for the slider look** — both the bare [`paint_slider`] and
+/// `widget::slider_with_chip::paint_slider_with_chip` render through this, so every slider in the
+/// app shares one rectangular appearance.
+///
+/// ⚠️ **`visual` é o PAR `(estado, t)` e vive na ASSINATURA, não num campo opcional** — a lei que
+/// o [`super::icon_button::paint_icon_button`] instalou. É ela que fecha os cinco chamadores pelo
+/// compilador: uma trilha que não quer reagir **declara** o neutro em vez de o herdar por omissão,
+/// e a declaração é o sítio onde se lê *porquê*.
+///
+/// ⚠️ **`(Normal, SETTLED)` é BYTE-IDÊNTICO ao mundo pré-wave** — o `hover_axis` devolve `None`
+/// nesse par e a cor sai dos tokens duros `Bg2`/`Accent`, os mesmos literais que aqui estavam.
 pub fn paint_slider_track(
     track: Rect,
     value: f32,
     orientation: SliderOrientation,
+    visual: (SliderState, f32),
     scene: &mut VectorScene,
     theme: Theme,
 ) {
+    let (state, t) = visual;
     let r = Radius::Xs.px();
-    fill_rounded_rect(scene, track, r, resolve(ColorToken::Bg2, theme));
+    let bg = blend_on_hover_axis(state, t, ColorToken::Bg2, ColorToken::Bg3, theme)
+        .unwrap_or_else(|| resolve(track_tint(state), theme));
+    fill_rounded_rect(scene, track, r, bg);
     let v = value.clamp(0.0, 1.0);
     if v > 0.0 {
         let filled = match orientation {
@@ -132,7 +219,9 @@ pub fn paint_slider_track(
                 Rect::new(track.x, track.y + track.h - h, track.w, h)
             }
         };
-        fill_rounded_rect(scene, filled, r, resolve(ColorToken::Accent, theme));
+        let fg = blend_on_hover_axis(state, t, ColorToken::Accent, ColorToken::AccentHover, theme)
+            .unwrap_or_else(|| resolve(fill_tint(state), theme));
+        fill_rounded_rect(scene, filled, r, fg);
     }
 }
 
@@ -148,7 +237,14 @@ pub fn paint_slider(slider: &Slider, rect: Rect, scene: &mut VectorScene, theme:
         return;
     }
 
-    paint_slider_track(track, slider.value, slider.orientation, scene, theme);
+    paint_slider_track(
+        track,
+        slider.value,
+        slider.orientation,
+        (slider.state, slider.hover_t),
+        scene,
+        theme,
+    );
 
     for tick in &slider.ticks {
         let pos = tick.clamp(0.0, 1.0);
@@ -217,154 +313,4 @@ fn tick_mark_rect(orientation: SliderOrientation, rect: Rect, value: f32) -> Rec
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// **A rota do PAINEL é a lei que shipava, verbatim** (BUGS_vector #26).
-    ///
-    /// ⚠️ `None` não é "um default razoável": é a política de LINHA — 25% com piso E teto — e
-    /// mudá-la re-dimensionaria todo slider do app. O gate a escreve por extenso, para que
-    /// alterá-la exija alterar as duas coisas.
-    #[test]
-    fn without_an_override_the_track_is_the_panel_law() {
-        for across in [0.0, 4.0, 8.0, 28.0, 32.0, 96.0, 400.0] {
-            assert_eq!(
-                track_thickness(None, across),
-                (across * 0.25).clamp(TRACK_MIN_PX, TRACK_MAX_PX), // CLAMP-OK: mirrors the law under test
-                "a politica de linha mudou em across={across}"
-            );
-        }
-    }
-
-    /// **O TETO é do painel; o PISO é do pintor.** Quem informa a espessura escapa ao teto de
-    /// linha — e não escapa ao piso, porque uma trilha abaixo dele é invisível seja quem for o
-    /// chamador.
-    #[test]
-    fn an_override_escapes_the_ceiling_but_never_the_floor() {
-        assert_eq!(track_thickness(Some(40.0), 160.0), 40.0);
-        assert!(
-            track_thickness(None, 160.0) < 40.0,
-            "a fixture nao contem o fenomeno: o teto de linha nao mordeu em across=160"
-        );
-        assert_eq!(track_thickness(Some(0.0), 160.0), TRACK_MIN_PX);
-        assert_eq!(track_thickness(Some(-3.0), 160.0), TRACK_MIN_PX);
-    }
-
-    /// **No ponto de operação do painel os dois caminhos COINCIDEM.** É esta igualdade que faz
-    /// da pele de canvas uma continuação da lei, e não uma segunda lei.
-    #[test]
-    fn at_a_panel_row_the_override_and_the_law_agree() {
-        let row = ph2d_tokens::ROW_H_PX;
-        assert_eq!(
-            track_thickness(Some(row * 0.25), row),
-            track_thickness(None, row)
-        );
-    }
-
-    fn fixture() -> Slider {
-        Slider::new(NodeId(1), "Opacity")
-    }
-
-    #[test]
-    fn defaults_match_spec() {
-        let s = fixture();
-        assert_eq!(s.id, NodeId(1));
-        assert_eq!(s.label, "Opacity");
-        assert!((s.value - 0.5).abs() < f32::EPSILON);
-        assert_eq!(s.state, SliderState::Normal);
-        assert_eq!(s.orientation, SliderOrientation::Horizontal);
-        assert!(!s.accent);
-        assert!(s.ticks.is_empty());
-    }
-
-    #[test]
-    fn set_value_clamps_below_zero() {
-        let mut s = fixture();
-        s.set_value(-0.5);
-        assert_eq!(s.value, 0.0);
-    }
-
-    #[test]
-    fn set_value_clamps_above_one() {
-        let mut s = fixture();
-        s.set_value(1.5);
-        assert_eq!(s.value, 1.0);
-    }
-
-    #[test]
-    fn ticks_setter_round_trips() {
-        let s = fixture().ticks(vec![0.0, 0.25, 0.5, 0.75, 1.0]);
-        assert_eq!(s.ticks.len(), 5);
-    }
-
-    #[test]
-    fn a11y_node_has_slider_role_and_value() {
-        let s = fixture();
-        let node = s.build_a11y(0.0, 0.0, 100.0, 30.0);
-        assert_eq!(node.role(), Role::Slider);
-        assert_eq!(node.label(), Some("Opacity"));
-        assert_eq!(node.numeric_value(), Some(0.5));
-        assert_eq!(node.min_numeric_value(), Some(0.0));
-        assert_eq!(node.max_numeric_value(), Some(1.0));
-    }
-
-    fn smoke(slider: Slider, rect: Rect, theme: Theme) {
-        let mut scene = VectorScene::new();
-        paint_slider(&slider, rect, &mut scene, theme);
-    }
-
-    #[test]
-    fn paint_smoke_horizontal_default() {
-        smoke(fixture(), Rect::new(0.0, 0.0, 200.0, 24.0), Theme::Forge);
-    }
-
-    #[test]
-    fn paint_smoke_horizontal_zero() {
-        let mut s = fixture();
-        s.set_value(0.0);
-        smoke(s, Rect::new(0.0, 0.0, 200.0, 24.0), Theme::Forge);
-    }
-
-    #[test]
-    fn paint_smoke_horizontal_one() {
-        let mut s = fixture();
-        s.set_value(1.0);
-        smoke(s, Rect::new(0.0, 0.0, 200.0, 24.0), Theme::Sunstone);
-    }
-
-    #[test]
-    fn paint_smoke_vertical_half() {
-        smoke(
-            fixture().orientation(SliderOrientation::Vertical),
-            Rect::new(0.0, 0.0, 24.0, 200.0),
-            Theme::Blueprint,
-        );
-    }
-
-    #[test]
-    fn paint_smoke_dragging_with_ticks() {
-        let s = fixture()
-            .accent(true)
-            .ticks(vec![0.0, 0.25, 0.5, 0.75, 1.0])
-            .state(SliderState::Dragging);
-        smoke(s, Rect::new(0.0, 0.0, 200.0, 24.0), Theme::Forge);
-    }
-
-    #[test]
-    fn paint_smoke_focused_draws_ring() {
-        smoke(
-            fixture().state(SliderState::Focused),
-            Rect::new(0.0, 0.0, 200.0, 24.0),
-            Theme::Workshop,
-        );
-    }
-
-    #[test]
-    fn paint_smoke_disabled() {
-        smoke(
-            fixture().state(SliderState::Disabled),
-            Rect::new(0.0, 0.0, 200.0, 24.0),
-            Theme::Forge,
-        );
-    }
-}
+mod tests;

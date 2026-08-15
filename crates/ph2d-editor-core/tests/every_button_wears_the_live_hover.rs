@@ -1,9 +1,10 @@
-//! **Um `Button` pintado veste o `t` VIVO — a estrada do estado duro está fechada.**
+//! **Um `Button` ou um `Slider` pintado veste o `t` VIVO — a estrada do estado duro está fechada.**
 //!
 //! A wave da UI viva deu ao substrato um `t` de hover por id e publicou-o no store
-//! (`WidgetStore::button_visual`, o gêmeo exacto do `panel_scroll_live`). O consumo tem **uma
-//! porta**: `Button::visual((state, t))`. Este gate afirma que o sítio N+1 não pode nascer na
-//! estrada antiga.
+//! (`WidgetStore::button_visual`/`slider_visual`, os gêmeos exactos do `panel_scroll_live`). O
+//! consumo tem **uma porta** por família: `Button::visual((state, t))`,
+//! `Slider::visual((state, t))`. Este gate afirma que o sítio N+1 não pode nascer na estrada
+//! antiga.
 //!
 //! ⚠️ **Porquê um gate e não «a revisão apanha»:** `.state(x)` continua a compilar, a pintar e a
 //! responder ao rato — o que falta é a única coisa que nenhum teste de unidade olha, a
@@ -23,9 +24,18 @@
 //! gate é ele* — este ficheiro existe só onde a API não pode recusar (um builder cujo `.state()`
 //! continua legítimo para os estados duros).
 //!
-//! **Fora de escopo, e nomeado:** `Checkbox` e `Toggle` têm estados próprios e ainda não passaram
-//! pela porta — o relógio já os anima (`hover_targets` inclui-os), e são os pintores que deitam o
-//! `t` fora. Quando passarem, é aqui que a família entra — não num segundo gate.
+//! ⚠️ **Fora de escopo, MEDIDO, e não é o que esta nota dizia.** Ela afirmava que `Checkbox` e
+//! `Toggle` *"ainda não passaram pela porta"* — eles passaram (14 e 4 sítios chamam
+//! `checkbox_visual`/`toggle_visual`), e a nota sobreviveu ao facto. O que há hoje é pior e mais
+//! interessante: **nove** desses sítios escrevem `.visual(store.…_visual(id)).state(x)` na MESMA
+//! cadeia, e como `visual(v)` É `state(v.0).hover_t(v.1)`, o `.state(x)` que vem a seguir
+//! **sobrescreve** a metade do estado — o pior deles crava `.state(ToggleState::Normal)`, um
+//! toggle que não pode acender. Admiti-los nesta varredura seria **verde sobre defeito**: o
+//! `chain_verb` devolve o verbo que aparece PRIMEIRO, e nesses sítios é o `.visual(`.
+//!
+//! A pergunta que os apanha é outra — *«tomou a estrada e depois saiu dela?»* — e a cura é nos
+//! nove sítios, não no scanner. Fica **nomeada** em vez de contrabandeada nesta wave; a família
+//! `Button`/`Slider` foi medida e **não tem nenhum** sítio dessa forma.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -86,8 +96,13 @@ fn chain_verb(src: &str, at: usize) -> Option<&'static str> {
     }
 }
 
-#[test]
-fn every_button_wears_the_live_hover() {
+/// Varre a árvore de produção por cadeias `<ctor>` e separa-as em `(ofensores, convertidos)`.
+///
+/// ⚠️ **Parametrizada pelo construtor de propósito: uma lei, uma varredura.** O `Slider` chegou
+/// à mesma porta (`.visual((SliderState, f32))`) pelo mesmo motivo, e dar-lhe um ficheiro próprio
+/// seria a segunda cópia de um scanner cujo modo de falha — *ver zero e chamar-lhe verde* — é
+/// precisamente o que o controlo positivo abaixo existe para apanhar.
+fn scan_widget(ctor: &str) -> (Vec<String>, Vec<String>) {
     let mut offenders: Vec<String> = Vec::new();
     let mut converted: Vec<String> = Vec::new();
 
@@ -100,7 +115,7 @@ fn every_button_wears_the_live_hover() {
             return;
         };
         let mut from = 0usize;
-        while let Some(hit) = src[from..].find("Button::new(") {
+        while let Some(hit) = src[from..].find(ctor) {
             let at = from + hit;
             // `IconButton::new(` / `ToggleButton::new(` não são este widget.
             let is_plain = src[..at]
@@ -115,12 +130,18 @@ fn every_button_wears_the_live_hover() {
                     _ => {}
                 }
             }
-            from = at + "Button::new(".len();
+            from = at + ctor.len();
         }
     };
 
     visit(&crates_root(), &mut scan);
     visit(&shells_root(), &mut scan);
+    (offenders, converted)
+}
+
+#[test]
+fn every_button_wears_the_live_hover() {
+    let (offenders, converted) = scan_widget("Button::new(");
 
     // O CONTROLO POSITIVO, primeiro: sem ele um scanner partido passa em silêncio.
     assert!(
@@ -148,6 +169,41 @@ fn every_button_wears_the_live_hover() {
          conserto: `let v = store.button_visual(ID);` + `.visual(v)`. Um estado FORÇADO \
          (um toggle armado, um botão desligado) emparelha com o neutro: \
          `(ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)`.",
+        offenders.join("\n  ")
+    );
+}
+
+/// O mesmo, para o `Slider` — a superfície que se ARRASTA.
+///
+/// ⚠️ **A lei é a mesma e o defeito era um andar mais fundo.** No `Button` o estado DURO chegava
+/// ao pintor e ele o honrava; no `Slider` o despachante escrevia `Hovered`/`Dragging` no store, a
+/// struct os carregava, e o **pintor os DEITAVA FORA** — `paint_slider(Hovered)` era byte-idêntico
+/// a `paint_slider(Normal)`. Por isso nenhum gate que olhasse o store podia vê-lo, e por isso este
+/// gate não basta sozinho: ele prova que a informação CHEGA, e os gates de tinta
+/// (`the_track_reacts_to_the_pointer` e irmãos) provam que ela é USADA.
+///
+/// ⚠️ **O controlo positivo é MENOR que o do botão, e é um facto e não folga:** só ~8 dos 33
+/// sítios de `Slider::new` leem o store — o resto passa o neutro declarado (uma pista inerte de
+/// waveform, a rota legada do picker), e a alavanca de verdade é o `paint_slider_with_chip`, que
+/// serve ~67 linhas de painel por DENTRO e não aparece nesta varredura.
+#[test]
+fn every_slider_wears_the_live_hover() {
+    let (offenders, converted) = scan_widget("Slider::new(");
+
+    assert!(
+        converted.len() >= 5,
+        "o scanner viu apenas {} cadeias `Slider::new(...).visual(...)` — ele está partido, e um \
+         gate que não vê nada não pode acusar nada. Esperado: os sítios que leem o store \
+         (fill_modal, onion_modal, painter-layers).",
+        converted.len()
+    );
+
+    assert!(
+        offenders.is_empty(),
+        "estes `Slider` recebem o estado DURO e nunca acendem sob o ponteiro:\n  {}\n\
+         conserto: `.visual(store.slider_visual(ID))` — UMA pergunta, o estado e o `t` juntos. \
+         Uma pista sem `NodeId` a que perguntar declara o neutro: \
+         `(SliderState::Normal, ph2d_editor_core::motion::SETTLED)`.",
         offenders.join("\n  ")
     );
 }

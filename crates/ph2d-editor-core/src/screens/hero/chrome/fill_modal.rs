@@ -17,7 +17,7 @@ use crate::interaction::{HitIndex, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use crate::screens::hero::HeroScreen;
 use crate::tool::PanelEvent;
-use crate::widget::{Button, Slider, SliderState, paint_button, paint_slider};
+use crate::widget::{Button, Slider, paint_button, paint_slider};
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
@@ -110,12 +110,14 @@ pub fn paint_fill_adjust_modal(
     // ── Threshold slider (`0..1`; the tool maps it to a per-channel tolerance). ──
     let slider_rect = Rect::new(inner_x, cy, inner_w, row_h);
     hit_index.register(ids::PAINTER_FILL_MODAL_SLIDER, slider_rect);
-    let (sl_state, sl_val) = store
+    let sl_val = store
         .slider(ids::PAINTER_FILL_MODAL_SLIDER)
-        .unwrap_or((SliderState::Normal, 0.5));
+        .map_or(0.5, |(_, v)| v);
+    // ⚠️ O par vem da porta ÚNICA, não de um `state` local ao lado de um `hover_t` que o sítio
+    // seguinte esquece — `slider_visual` responde às duas metades de uma vez.
     let mut slider = Slider::new(ids::PAINTER_FILL_MODAL_SLIDER, "Threshold")
         .accent(true)
-        .state(sl_state);
+        .visual(store.slider_visual(ids::PAINTER_FILL_MODAL_SLIDER));
     slider.set_value(sl_val);
     paint_slider(&slider, slider_rect, scene, theme);
     cy += row_h + gap;

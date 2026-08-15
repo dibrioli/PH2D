@@ -117,6 +117,29 @@ impl WidgetStore {
         }
     }
 
+    /// **O par visual de um SLIDER** — o quarto irmão de [`Self::button_visual`], e o primeiro
+    /// para uma superfície que se ARRASTA em vez de se clicar.
+    ///
+    /// ⚠️ **Ele nasceu porque o pintor deitava fora o estado que o despachante já punha aqui.**
+    /// Medido pela tinta, e não por leitura: `paint_slider(Hovered)` era **byte-idêntico** a
+    /// `paint_slider(Normal)`, e `Dragging` também — só `Focused` e `Disabled` chegavam ao
+    /// desenho. Não é a doença do `Checkbox` (que nunca RECEBIA o estado): aqui o `hover.rs` põe
+    /// `Hovered`/`Dragging` no store desde sempre, a struct carrega-o, e o `paint` descarta-o —
+    /// uma camada mais fundo, e por isso invisível a qualquer gate que olhasse o store.
+    ///
+    /// ⚠️ **O `value` NÃO sai daqui**, pela razão exacta do [`Self::checkbox_visual`]: quem sabe
+    /// onde o slider está é o MODELO que o painel desenha. Um slider que lesse a posição daqui
+    /// ficaria um quadro atrás no quadro em que o artista o arrasta — precisamente o gesto.
+    #[must_use]
+    pub fn slider_visual(&self, id: NodeId) -> (SliderState, f32) {
+        let state = self.slider(id).map(|(s, _)| s).unwrap_or_else(|| match () {
+            () if self.active_id() == Some(id) => SliderState::Dragging,
+            () if self.hot_id() == Some(id) => SliderState::Hovered,
+            () => SliderState::Normal,
+        });
+        (state, self.hover_live(id))
+    }
+
     /// Convenience: read slider value + state.
     pub fn slider(&self, id: NodeId) -> Option<(SliderState, f32)> {
         match self.states.get(&id) {

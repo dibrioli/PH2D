@@ -34,6 +34,10 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     // Unit tests for `command_palette` (moved into the widget folder so the mod-sync scan stops
     // seeing them as a widget of their own) — no user-facing widget.
     ("command_palette/tests.rs", "test module; parent owns a11y"),
+    // Gates do `slider` — na pasta pelo MESMO motivo (um `*_tests.rs` solto no topo de
+    // `src/widget/` seria varrido como um widget). Eles PINTAM para comparar tinta, mas quem
+    // anuncia a trilha é o pai (`slider.rs`), e é ele que constrói o nó.
+    ("slider/tests.rs", "test module; parent owns a11y"),
     // A metade que DESENHA o rail. O corte é por responsabilidade (o teto de 500 LOC dos
     // primitivos forçou-o na wave da UI viva): o PAI carrega o modelo — as entradas, o preset de
     // tamanho e a árvore `Role::Toolbar` — e este filho só põe tinta. Mover o a11y para cá seria

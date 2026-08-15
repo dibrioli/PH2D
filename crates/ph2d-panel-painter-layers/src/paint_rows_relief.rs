@@ -12,9 +12,7 @@ use crate::paint::register_button;
 use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{
-    ButtonState, Slider, SliderState, flat_button_surface, paint_slider,
-};
+use ph2d_editor_core::widget::{ButtonState, Slider, flat_button_surface, paint_slider};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, StrokeToken};
 use ph2d_tool_painter::{Layer, ReliefComposite};
@@ -56,13 +54,9 @@ pub(crate) fn paint_relief_line(
     let slider_w =
         (content_right - x - crate::paint_rows::OPACITY_PCT_W - MODE_CHIP_W - cell_gap * 2.0)
             .max(0.0);
-    let st = ctx
-        .host
-        .store()
-        .slider(slider_id)
-        .map(|(s, _)| s)
-        .unwrap_or(SliderState::Normal);
-    let mut slider = Slider::new(slider_id, "").accent(true).state(st);
+    let mut slider = Slider::new(slider_id, "")
+        .accent(true)
+        .visual(ctx.host.store().slider_visual(slider_id));
     slider.value = norm;
     let track = Rect::new(x, y, slider_w, ROW_H_PX);
     paint_slider(&slider, track, ctx.scene, theme);

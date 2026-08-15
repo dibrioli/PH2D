@@ -333,13 +333,9 @@ fn paint_layer_row(
     register_bare_slider(ctx.host.store_mut(), op_slider, layer.opacity);
     let pct = (layer.opacity * PCT_SCALE).round();
     let slider_w = (content_right - x - OPACITY_PCT_W - cell_gap).max(0.0);
-    let st = ctx
-        .host
-        .store()
-        .slider(op_slider)
-        .map(|(s, _)| s)
-        .unwrap_or(SliderState::Normal);
-    let mut slider = Slider::new(op_slider, "").accent(true).state(st);
+    let mut slider = Slider::new(op_slider, "")
+        .accent(true)
+        .visual(ctx.host.store().slider_visual(op_slider));
     slider.value = layer.opacity;
     paint_slider(
         &slider,

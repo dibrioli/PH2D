@@ -135,6 +135,69 @@ fn slider_convenience_round_trip() {
     assert!((v - 0.42).abs() < f32::EPSILON);
 }
 
+/// Re-assenta o estado da trilha — o que o `hover.rs` faz ao escrever no `InteractiveState`.
+fn reseat(store: &mut WidgetStore, id: NodeId, state: SliderState) {
+    store.register(
+        id,
+        InteractiveState::Slider {
+            state,
+            value: 0.5,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
+}
+
+/// **O TIQUE alcança um slider — e o par visual sai por UMA pergunta.**
+///
+/// ⚠️ **É a metade que faltava do outro lado do defeito.** O `paint_slider` deitava fora o estado
+/// (gate `the_track_reacts_to_the_pointer`); aqui prova-se que a informação CHEGA: o
+/// `hover_targets` publica o alvo `1.0` para uma trilha acesa, o relógio anima esse id, e o
+/// `slider_visual` devolve estado e `t` juntos. Duas perguntas separadas (um `slider()` aqui, um
+/// `hover_live()` ali) é a forma que apodrece — o segundo é o que se esquece.
+///
+/// ⚠️ **`Dragging` conta como aceso, e é o que separa uma trilha de um botão:** um botão é premido
+/// e solto; uma trilha é AGARRADA e o dedo fica lá. Se o arrasto não fosse alvo, a superfície
+/// apagaria debaixo da mão que a comanda.
+///
+/// **Mutação que deve sangrar:** tirar o braço `Slider` do `hover_targets` (o alvo desaparece e o
+/// `t` congela), ou tirar `Dragging` da lista de acesos.
+#[test]
+fn the_tick_reaches_a_slider_and_the_visual_pair_comes_out_of_one_question() {
+    let id = NodeId(7);
+    let mut store = WidgetStore::with_capacity(4);
+    store.register(
+        id,
+        InteractiveState::Slider {
+            state: SliderState::Hovered,
+            value: 0.5,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
+    assert_eq!(
+        store.hover_targets().collect::<Vec<_>>(),
+        vec![(id, 1.0)],
+        "a trilha acesa nao e alvo do relogio: o `t` dela nunca sobe"
+    );
+    assert_eq!(
+        store.slider_visual(id),
+        (SliderState::Hovered, crate::motion::SETTLED)
+    );
+
+    reseat(&mut store, id, SliderState::Dragging);
+    assert_eq!(
+        store.hover_targets().collect::<Vec<_>>(),
+        vec![(id, 1.0)],
+        "a trilha AGARRADA deixou de ser alvo: ela apaga debaixo da mao que a comanda"
+    );
+
+    reseat(&mut store, id, SliderState::Normal);
+    assert_eq!(
+        store.hover_targets().collect::<Vec<_>>(),
+        vec![(id, 0.0)],
+        "a trilha em repouso tem de ser alvo ZERO — e o que faz a SAIDA animar em vez de cortar"
+    );
+}
+
 /// **`set_slider_value` recentra o slider E o chip ligado.** É o que devolve o Offset ao
 /// "sem offset" após um commit: sem a segunda metade (o número), o chip mostraria o valor
 /// velho ao ser aberto para edição.

@@ -26,7 +26,7 @@ use crate::ids;
 use crate::interaction::{HitIndex, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use crate::screens::hero::HeroScreen;
-use crate::widget::{Button, Slider, SliderState, paint_button, paint_slider};
+use crate::widget::{Button, Slider, paint_button, paint_slider};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
@@ -148,7 +148,7 @@ pub fn paint_onion_modal(
             "panel.timeline.onion_after",
         ),
     ] {
-        let (st, v) = store.slider(id).unwrap_or((SliderState::Normal, 0.5));
+        let v = store.slider(id).map_or(0.5, |(_, v)| v);
         let label = slider_label(id, ph2d_i18n::tr(key), v);
         paint_text(
             text_system,
@@ -162,7 +162,9 @@ pub fn paint_onion_modal(
         );
         let track_rect = Rect::new(track_x, cy, track_w, row_h);
         hit_index.register(id, track_rect);
-        let mut slider = Slider::new(id, label).accent(true).state(st);
+        let mut slider = Slider::new(id, label)
+            .accent(true)
+            .visual(store.slider_visual(id));
         slider.set_value(v);
         paint_slider(&slider, track_rect, scene, theme);
         cy += row_h + gap;

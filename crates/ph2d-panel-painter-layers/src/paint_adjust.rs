@@ -193,13 +193,9 @@ fn paint_labeled_slider(
     );
     let slider_x = x + ADJ_LABEL_W + gap;
     let slider_w = (w - ADJ_LABEL_W - gap).max(0.0);
-    let st = ctx
-        .host
-        .store()
-        .slider(id)
-        .map(|(s, _)| s)
-        .unwrap_or(SliderState::Normal);
-    let mut slider = Slider::new(id, "").accent(true).state(st);
+    let mut slider = Slider::new(id, "")
+        .accent(true)
+        .visual(ctx.host.store().slider_visual(id));
     slider.value = val01.clamp(0.0, 1.0);
     let rect = Rect::new(slider_x, y, slider_w, ROW_H_PX);
     paint_slider(&slider, rect, ctx.scene, theme);

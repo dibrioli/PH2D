@@ -40,10 +40,16 @@ pub fn paint_slider_row(
 
     // Canonical slider track (Bg2 + Accent fill) — shared with every
     // other slider in the app. Was a one-off Border-filled track.
+    //
+    // ⚠️ O par visual é o NEUTRO, e a declaração é o sítio onde se lê porquê: esta rota é a
+    // LEGADA (ver o doc-header do módulo — a linha interactiva é hoje desenhada pelo
+    // `paint_slider_with_chip`), então ela não tem `NodeId` a que perguntar um estado. Herdar o
+    // neutro por omissão daria a mesma tinta e nenhuma frase.
     crate::widget::paint_slider_track(
         track_rect,
         value,
         crate::widget::SliderOrientation::Horizontal,
+        (crate::widget::SliderState::Normal, crate::motion::SETTLED),
         scene,
         theme,
     );

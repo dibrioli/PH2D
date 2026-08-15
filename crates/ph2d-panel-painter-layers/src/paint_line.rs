@@ -195,7 +195,14 @@ const WIRE_SLIDERS: [ParamSlider; 3] = [
 /// ⚠️ **`Size` e `Spacing` do Alchemy NÃO estão aqui**, e é a mesma lei do Spray: eles são o tamanho
 /// e o espaçamento do PINCEL, que já shipam com slider próprio. Gêmeos deles neste card seriam a
 /// segunda porta para a mesma pergunta.
-const RIBBON_SLIDERS: [ParamSlider; 4] = [
+///
+/// ⚠️ **E a fita É o TERCEIRO consumidor da tinta de FIO**, então ela carrega as
+/// [`THREAD_INK_ROWS`] como o Sketchy e o Wire. Isto não é simetria de tabela: o trilho de fora e
+/// TODA travessa saem pelo `thread_ink` (`thread_width_px` / `thread_opacity`), que é a porta única
+/// do depósito de fios — sem estas duas rows os dois números que decidem como a FAIXA aparece só
+/// eram alcançáveis trocando para outro tipo, mexendo, e voltando. *Um controle que governa o que
+/// se vê e vive noutro modo é um controle que o artista não tem.*
+const RIBBON_SLIDERS: [ParamSlider; 6] = [
     (core_ids::PAINTER_LINE_RIBBON_WEIGHT, "Weight", |b| {
         (b.ribbon_weight, b.ribbon_weight)
     }),
@@ -208,6 +215,8 @@ const RIBBON_SLIDERS: [ParamSlider; 4] = [
     (core_ids::PAINTER_LINE_RIBBON_RUNGS, "Rungs", |b| {
         (b.ribbon_rungs, b.ribbon_rungs)
     }),
+    THREAD_INK_ROWS[0],
+    THREAD_INK_ROWS[1],
 ];
 
 /// Os sliders deste tipo. `None`/`Speed` não têm **de propósito** — o Alchemy não oferece controle

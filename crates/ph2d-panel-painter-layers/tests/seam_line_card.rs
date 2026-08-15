@@ -289,6 +289,101 @@ fn the_wire_history_slider_is_alive_under_the_pointer() {
     );
 }
 
+/// Os SEIS controles que a `Ribbon` acrescenta ao card (plano 38 W6).
+///
+/// ⚠️ **As duas últimas são as [`THREAD_INK_ROWS`] compartilhadas, e é POR ISSO que elas estão
+/// aqui:** o trilho de fora e TODA travessa de uma faixa são FIOS, então `thread_width_px` e
+/// `thread_opacity` decidem como a fita aparece. Elas shiparam alcançáveis só no Sketchy e no Wire
+/// — um controle que governa o que se vê e vive noutro modo é um controle que o artista não tem.
+const RIBBON_SLIDERS: [(NodeId, &str); 6] = [
+    (core_ids::PAINTER_LINE_RIBBON_WEIGHT, "Weight"),
+    (core_ids::PAINTER_LINE_RIBBON_FRICTION, "Friction"),
+    (core_ids::PAINTER_LINE_RIBBON_GRAVITY, "Gravity"),
+    (core_ids::PAINTER_LINE_RIBBON_RUNGS, "Rungs"),
+    (core_ids::PAINTER_LINE_SKETCHY_WIDTH, "Line Width"),
+    (core_ids::PAINTER_LINE_SKETCHY_OPACITY, "Opacity"),
+];
+
+/// **AS ROWS DA `Ribbon` SÓ EXISTEM COM ELA ESCOLHIDA — e a tinta de FIO está entre elas.**
+///
+/// ⚠️ **A metade da AUSÊNCIA carrega o peso aqui:** os quatro knobs da mola não podem vazar para os
+/// outros tipos (nenhum deles tem uma mola), e o que é do Sketchy/Wire não pode aparecer sob a fita.
+///
+/// **Mutação que sangra:** tirar as `THREAD_INK_ROWS` do `RIBBON_SLIDERS` (as duas rows somem do
+/// card e a fita volta a ser a única família de fio sem controlo sobre a própria tinta).
+#[test]
+fn the_ribbon_rows_exist_only_under_the_ribbon_type_and_carry_the_thread_ink() {
+    let mut tool = PainterTool::default();
+    tool.set_line_kind(4); // Ribbon
+    let (_, _, on) = painted(&tool);
+    for (id, name) in RIBBON_SLIDERS {
+        assert!(
+            rect_of(&on, id).is_some(),
+            "o slider {name} da Ribbon não é pintado"
+        );
+    }
+    // O que é de OUTRO tipo não vaza para este.
+    assert!(
+        rect_of(&on, core_ids::PAINTER_LINE_SKETCHY_REACH).is_none(),
+        "o Reach do Sketchy sobrevive na Ribbon — é um controle que não faz nada"
+    );
+    assert!(
+        rect_of(&on, core_ids::PAINTER_LINE_WIRE_HISTORY).is_none(),
+        "o History do Wire sobrevive na Ribbon"
+    );
+
+    // E os quatro knobs da mola não vazam para quem não tem mola.
+    tool.set_line_kind(2); // Sketchy
+    let (_, _, off) = painted(&tool);
+    for (id, name) in RIBBON_SLIDERS.iter().take(4) {
+        assert!(
+            rect_of(&off, *id).is_none(),
+            "o slider {name} da Ribbon sobrevive no Sketchy"
+        );
+    }
+}
+
+/// **CADA SLIDER DA `Ribbon` ESTÁ VIVO SOB O MOUSE, E AUTORA O SEU CAMPO** — arrastado por um
+/// ponteiro REAL, do despachante ao tool.
+///
+/// ⚠️ **A fita shipou SEIS sliders sem nenhum gate os clicar**, que é literalmente a cicatriz que o
+/// plano 38 registou uma wave antes (*"o card Line não tinha seam nenhum — id, row, `populate`,
+/// encaminhamento e setter, e nenhum gate os exercitava"*): o seam nasceu, a wave seguinte
+/// acrescentou quatro rows, e a lista do gate não as seguiu. Um gate por FAMÍLIA que não é estendido
+/// com a família apodrece no mesmo lugar em que nasceu.
+///
+/// ⚠️ **Mutações que sangram:** tirar um id do `populate` (o slider pinta, registra hit e não recebe
+/// arrasto) · tirá-lo da whitelist do `event_brush_forward` (o arrasto acontece e não sai do painel)
+/// · tirar o braço do `trait_impls` (o valor chega e não escreve em nada).
+#[test]
+fn every_ribbon_slider_is_alive_under_the_pointer() {
+    for (id, name) in RIBBON_SLIDERS {
+        let mut tool = PainterTool::default();
+        tool.set_line_kind(4);
+        let before = tool.brush_settings();
+        let (mut host, mut st, rects) = painted(&tool);
+        let r = rect_of(&rects, id).unwrap_or_else(|| panic!("o slider {name} não é pintado"));
+        // Arrasta para o EXTREMO DIREITO da pista: o valor tem de subir para o topo da faixa.
+        let (x, y) = (r.x + r.w - 1.0, r.y + r.h * 0.5);
+        for ev in host.drag_at(r.x + r.w * 0.5, y, x, y) {
+            host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+        }
+        for action in host.drained_actions() {
+            if let EditorAction::ToolPanelEvent(pe) = action {
+                tool.handle_panel_event(pe);
+            }
+        }
+        let after = tool.brush_settings();
+        let moved = (before.ribbon_weight - after.ribbon_weight).abs() > 1e-4
+            || (before.ribbon_friction - after.ribbon_friction).abs() > 1e-4
+            || (before.ribbon_gravity - after.ribbon_gravity).abs() > 1e-4
+            || (before.ribbon_rungs - after.ribbon_rungs).abs() > 1e-4
+            || (before.thread_width_px - after.thread_width_px).abs() > 1e-4
+            || (before.thread_opacity - after.thread_opacity).abs() > 1e-4;
+        assert!(moved, "arrastar o slider {name} não autorou nada no pincel");
+    }
+}
+
 /// **O `Connection Line` ALTERNA sob um clique REAL** — e volta.
 #[test]
 fn the_connection_line_checkbox_toggles_under_a_real_click() {

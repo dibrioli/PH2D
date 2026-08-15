@@ -28,7 +28,11 @@ impl PainterTool {
         // durante o traço inteiro num modo que não a desenha.
         let mut threads = std::mem::take(&mut self.paint.pending_threads);
         stroke.take_threads(&mut threads);
-        if !threads.is_empty() && self.threads_own_the_gesture() {
+        let owns = self.threads_own_the_gesture();
+        // O par cosido/carimbado é o que separa *o motor não costurou* de *o depósito recusou* —
+        // ver o doc do `ribbon_diag`, onde essa confusão já custou uma hora.
+        super::ribbon_diag::note_threads(threads.len(), if owns { threads.len() } else { 0 });
+        if !threads.is_empty() && owns {
             self.stamp_threads(&threads);
         }
         threads.clear();

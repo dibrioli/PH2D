@@ -122,6 +122,12 @@ pub(crate) fn spawn_if_enabled(
                  este slider: quem a abre e o Weight (o atraso) e a velocidade da sua mao."
             );
             println!(
+                "[line-smoke]     LINE WIDTH e OPACITY sao a tinta dos FIOS -- o trilho de fora e \
+                 TODA travessa saem por elas, entao sao os dois numeros que decidem como a faixa \
+                 APARECE. Sao as mesmas rows do Sketchy e do Wire, na mesma posicao: mexa e a \
+                 escada tem de engrossar/clarear na hora."
+            );
+            println!(
                 "[line-smoke]     Weight e QUANTO TEMPO ela atrasa, Friction e COMO ela assenta \
                  (baixo = chicote que passa do ponto e volta; alto = ela so arrasta), Gravity e o \
                  peso. Medido a 2 400 px/s: peso 1,00 deixa a tinta 804 px atras do dedo, peso \

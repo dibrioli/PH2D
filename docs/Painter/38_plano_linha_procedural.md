@@ -730,6 +730,29 @@ whole_span`, no crate do painel). **10 mutações, 10 sangram.**
     de um interruptor: uma densidade cobre os dois looks, e um interruptor teria de escolher um nome
     para o estado desligado. O default nasce em **0,5** — uma fita É uma faixa, e um default em `0`
     daria a quem escolhe `Ribbon` o pincel de arrasto sob o nome da outra feature.
+  - ⚠️ **A FITA É O TERCEIRO CONSUMIDOR DA TINTA DE FIO, e shipou sem as duas rows dela** (fechado
+    2026-08-15). O trilho de fora e TODA travessa saem pelo `thread_ink` — a porta única do depósito
+    de fios —, logo `thread_width_px` e `thread_opacity` decidem **como a faixa aparece**; e o
+    `RIBBON_SLIDERS` não as trazia, então os dois números eram alcançáveis apenas trocando para
+    Sketchy, mexendo, e voltando. *Um controle que governa o que se vê e vive noutro modo é um
+    controle que o artista não tem.* O doc das `THREAD_INK_ROWS` já dizia *"as MESMAS duas rows nos
+    dois tipos, na MESMA posição, porque são o mesmo fato"* — a fita é o terceiro tipo e ficou de
+    fora da frase.
+  - ⚠️ **E o card Line tinha seam, mas a fita nasceu FORA dele** — a cicatriz que este plano registou
+    uma wave antes (*"os três sliders da W6 shiparam com id, row, `populate`, encaminhamento e
+    setter, e nenhum gate os exercitava"*) reincidiu no lugar exato: o `seam_line_card.rs` nasceu
+    cobrindo `Type` / `Solid` / Sketchy / Wire, a fita acrescentou quatro sliders, e a lista do gate
+    **não seguiu a família**. *Um gate por FAMÍLIA que não é estendido com a família apodrece no
+    mesmo lugar em que nasceu.* Fechado com os dois irmãos de sempre (presença-E-ausência ·
+    arrasto por ponteiro REAL), **3 mutações, 3 sangram** — tirar as rows de tinta do array · tirar
+    um id do `populate` · tirar um id da whitelist do `event_brush_forward`.
+  - ⚠️ **E o `ribbon_diag` contava METADE do que a fita desenha:** ele soma dabs por fonte, e o
+    trilho de fora mais as travessas são **fios**, por um canal próprio — um traço de faixa correcto
+    e uma faixa que não é costurada davam a MESMA linha de log. O par novo é
+    `fios: cosidos=N carimbados=M`, e são **dois** números de propósito: um contador só mostra `0`
+    tanto quando *o motor não costurou* quanto quando *o depósito recusou*, que são curas opostas —
+    e é literalmente a confusão que custou a hora de diagnóstico desta wave (**343 travessas por
+    traço com o depósito mudo**). Com o par, `0/0` acusa o motor e `343/0` acusa o depósito.
   - ⚠️ **E o defeito que custou a hora de diagnóstico foi uma PORTA DUPLICADA:** havia dois
     `sews_threads` — um no `LineKind` (que respondia *o tipo costura?*) e um no `BrushSpec` (que o
     depósito pergunta) — e o **doc do segundo dizia consultar o primeiro sem o consultar**: ele

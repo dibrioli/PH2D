@@ -109,7 +109,8 @@ Legenda: ✅ temos · 🟡 temos por outra via (com o porquê) · ❌ não temos
 | `slide_on_ceiling`, `wall_min_slide_angle`, `max_slides`, `floor_block_on_wall`, `safe_margin` | ⛔ | **§4.5** — são knobs do *solver de slide* do Godot; a nossa saída é força/velocidade para um solver, não uma iteração de deslize |
 | **`is_on_floor/wall`, `get_floor_normal`, `get_platform_velocity`, `get_real_velocity`** | ✅ | **W-PlayerOut** (2026-08-13) — o `PlayerView` carrega `footing`, `wall`, `ground_normal`, `ground_velocity`, `velocity` e mais seis regimes |
 | `get_wall_normal` | ✅ | **W-WallNormal** (2026-08-15) — `PlayerView::wall_normal`, do VEREDITO da lei; era de graça (o `WallSample` já a carregava) e **não** é derivável do lado, que é o sinal do gesto |
-| `is_on_ceiling`, `get_last_slide_collision` | ❌ | **§3.A** — o que SOBRA da superfície de consulta do Godot, e é a lista honesta. ⚠️ **O teto NÃO tem fonte honesta hoje** (medido 2026-08-15): os dois sensores de cima são assistências CONDICIONAIS — o `Headroom` só é sondado *agachado + botão solto* e o `CeilingProbe` só *subindo, no ar, com `corner_reach > 0`* — e a lei **não tem head-bonk**; derivar o bit de qualquer um deles daria um teto falso na maioria dos tiques, em silêncio. Custa um sensor próprio (uma `sweep_body` rasa), não um campo |
+| `is_on_ceiling` | ✅ | **W-Ceiling** (2026-08-15) — `PlayerView::ceiling`. ⚠️ Custou um **sensor próprio** e não um campo: os dois sensores de cima que já existiam são assistências CONDICIONAIS (o `Headroom` só é sondado *agachado + botão solto*, o `CeilingProbe` só *subindo, no ar, com `corner_reach > 0`*) e a lei **não tem head-bonk**, então derivar o bit de qualquer um deles daria um teto falso na maioria dos tiques, em silêncio |
+| `get_last_slide_collision` | ❌ | **§3.A** — o que SOBRA, e é a lista honesta. É o *"em que eu bati"* com estado (o `OnControllerColliderHit` da Unity, abaixo): uma LISTA por tique, não um bit, e por isso é a única das três que não colapsa num campo do readout |
 
 ### Unity — `CharacterController` + `Effector2D` + KCC
 
@@ -119,7 +120,7 @@ Legenda: ✅ temos · 🟡 temos por outra via (com o porquê) · ❌ não temos
 | `stepOffset` | 🟡 | **§4.1** |
 | `skinWidth`, `minMoveDistance` | 🟡 | o wrapper do controlador cinemático já os carrega |
 | `isGrounded`, `velocity` | ✅ | **W-PlayerOut** — `PlayerView.footing` / `.velocity` |
-| `collisionFlags` | ❌ | **§3.A** — o bitfield *teto/lado/baixo*; temos os dois primeiros por outra via (`footing`, `wall`) e o teto não |
+| `collisionFlags` | 🟡 | o bitfield *teto/lado/baixo* — temos os **três**, como fatos separados (`footing` · `wall` · `ceiling`, este pela **W-Ceiling** de 2026-08-15) e não como um campo de bits. ⚠️ A divergência é deliberada e é a mesma do `PlayerView` inteiro: *fatos, nunca um enum de regime único* — agachado **e** no chão são simultâneos, e um bitfield obriga quem lê a desempacotar antes de perguntar |
 | **`OnControllerColliderHit`** / hits com estado (KCC) | ❌ | **§3.A** |
 | `PlatformEffector2D` (one-way) | ✅ | W12 + `player_drops` |
 | **`SurfaceEffector2D`** (esteira: *"forças tangentes para igualar uma velocidade ao longo da superfície"*) | ✅ | **§3.B** — **W-Surface** (2026-08-13): `WalkSurface::belt`, escalar sobre a TANGENTE, somado à `ground_velocity`; leva por TRAÇÃO ⇒ correia sobre `grip = 0` não leva nada |

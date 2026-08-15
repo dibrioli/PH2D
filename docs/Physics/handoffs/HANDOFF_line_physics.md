@@ -10965,3 +10965,119 @@ tornar por-tique, e precisa de cena. *Não foi meio-construída de propósito.*
 · nenhum `Cargo.toml`. A auditoria 09 fica com **oito + duas** linhas
 reconciliadas, e a linha do teto passa a carregar a medição acima em vez de um ❌
 sem explicação.
+
+---
+
+## ⬛ W-Ceiling — o teto vira um FATO ⟨2026-08-15⟩
+
+Fecha o `is_on_ceiling` do Godot e a metade que faltava do `collisionFlags` da
+Unity. A cauda do §3.A passa de três consultas para **uma**
+(`get_last_slide_collision`).
+
+### ⚠️ Por que custou um SENSOR e não um campo
+
+A sessão anterior mediu isto e recusou construir sem o sensor — a medição
+continua a ser a razão do desenho:
+
+* o **`Headroom`** só é sondado **agachado + botão solto** (*"a resposta é
+  `false` em quase todo tique"*, diz o doc dele);
+* o **`CeilingProbe`** só **subindo, no ar, com `corner_reach > 0`** — ele é a
+  porta do **ASSIST**;
+* a lei **não tem head-bonk**: quem pára o personagem é o solver.
+
+⇒ Derivar o bit de qualquer um deles daria um teto **falso na maioria dos
+tiques, em silêncio**.
+
+### O desenho: duas portas, um sensor
+
+**`ceiling_fact_wanted(grounded, rel_up) = !grounded && rel_up > 0`** — **sem
+knob**, porque *um fato não é opt-in*. Ela é o **SUPERCONJUNTO** de
+`corner_probe_wanted` (que é isto **e** `corner_reach > 0`), e é essa relação
+que carrega a economia inteira: com o alcance do ponto de partida (**0,12**) as
+duas coincidem ⇒ **o sensor roda exactamente onde rodava** e o teto custa uma
+varredura a mais, nunca uma invocação nova. O que a separação compra é o caso em
+que o artista **desarma** a quina: ali o leque continua a não custar raio nenhum
+e o `is_on_ceiling` continua a existir.
+
+Dentro do `probe_ceiling`: a **varredura da FORMA** (`sweep_body`, o primitivo do
+`probe_headroom`, composite-safe) corre sempre; o **leque de 65 raios + os 2
+laterais** só sob o `assist`. Com ele desarmado o `samples` fica `0`, que o campo
+passou a documentar como *"não perguntei o leque"*.
+
+⚠️ **A régua do fato é `rel_up · dt`** — o que a cabeça percorre NESTE tique —,
+**sem** o `corner_lookahead` que o leque usa: a antecipação é da assistência, e
+herdá-la faria o fato dizer *"bateu"* um tique antes de bater.
+
+⚠️ **E ele NÃO é *"há teto acima"*:** de pé sob uma marquise o bit é `false`.
+*Falta de espaço para levantar* é a pergunta do `Headroom`; colapsá-las daria um
+bit aceso permanentemente num corredor baixo, que é o oposto de um evento de
+batida. Há gate.
+
+### O que a medição disse, e o que ela NÃO disse
+
+* Personagem **a ANDAR**: custo **zero** — a porta é `!grounded`, e o
+  `measure_player_budget` (fixture de caminhada) não se move.
+* **A subir**: o leque custa **+0,0004 ms/tique**; a varredura do fato fica
+  **abaixo do piso de ruído da sonda** — o A/B ablacionado, costas-com-costas,
+  saiu **0,0048 contra 0,0046**, ou seja a versão SEM a varredura mediu mais
+  lenta. ⚠️ **Não há número inventado aqui:** a leitura honesta é *"não
+  distinguível de zero nesta resolução"*.
+
+⚠️ **E a sonda passou a MENTIR no rótulo, o que foi corrigido junto:**
+*"desligado (reach 0)"* deixou de significar *"sensor nenhum"*, porque o fato
+roda nas duas linhas. Ela agora diz **"só o fato"** × **"fato + leque"**, com a
+diferença rotulada **SÓ o leque** — senão a próxima leitura precificaria a coisa
+errada.
+
+### Gates
+
+Três, em `crates/ph2d-physics-ecs/tests/player_ceiling.rs`, e eles moram na
+**PONTE** porque o bit é medido contra o mundo: um teste que o soletrasse numa
+fixture estaria a afirmar o que ele próprio escreveu.
+
+⚠️ **O que carrega a wave é `the_ceiling_fact_survives_the_corner_assist_being_off`.**
+A mutação — gatear o fato pelo knob do assist — sangra **só** no braço do
+`corner_reach = 0` e deixa os outros dois **VERDES**: um gate medido só na
+configuração padrão (onde as duas condições coincidem) seria **verde exactamente
+sobre o defeito que esta wave existe para não ter**.
+
+Os outros dois são o controle (`a_clear_sky_is_never_a_ceiling`) e a fronteira
+contra o `Headroom` (`standing_under_an_overhang_is_not_a_ceiling`).
+
+### Superfície
+
+`CeilingProbe` ganha `head_blocked` · `PlayerView` ganha `ceiling` ·
+`ceiling_fact_wanted` é exportada · `probe_ceiling` ganha o parâmetro `assist`.
+**`physics_ecs_c9` BYTE-IDÊNTICO** (`1699123f…`, 117 corpos) — o solver não é
+tocado e o bit é readout puro. `PROJECT_SCHEMA` **intocado**, registro intocado,
+nenhum id, nenhuma cena nova, nenhum `Cargo.toml`.
+
+⚠️ **LOC:** a wave empurrou `bridge/player.rs` de **695 para 711 > 700** ⇒ split
+por responsabilidade — o `KinMove` mudou-se para o `player_kinmove.rs`, o módulo
+que o doc dele já nomeia como dono (*"a lista é a fronteira entre COLHER e
+APLICAR"*). ⚠️ **A mudança curou um doc-comment ÓRFÃO de carona:** o texto do
+`GroundPush` estava colado por cima do `KinMove` **sem linha em branco**, então o
+rustdoc lia os dois como UM — o `KinMove` anunciava-se como *"um empurrão devido
+ao chão (W6)"* e o `GroundPush` ficava sem doc nenhum.
+
+### Metade VISÍVEL: nada, de propósito — e o motivo é o que nomeia o próximo item
+
+O readout vivo da §14 é um resumo de três linhas (Posture/Facing/Speed) sobre um
+`PlayerLive` encolhido. Um bit que é verdadeiro por **um ou dois tiques** não é
+legível num readout de texto por-quadro — ele pisca e some.
+
+⚠️ **E isso diz onde ele quer estar:** o valor de `is_on_ceiling` é
+*event-like*, e o canal dos eventos é o **A2** (`PlayerEvent`, publicado no
+`SignalOutbox`). Um **`PlayerEvent::Bonked { speed }`** — irmão exacto do
+`Landed { speed }` que já existe — é o seguimento nomeado, e ele agora é barato:
+o fato já é medido por tique, dentro do laço que produz os eventos.
+
+### Aberto
+
+* **`get_last_slide_collision` / `OnControllerColliderHit`** — a última da cauda,
+  e a única que **não colapsa num campo**: é uma LISTA por tique (*em que eu
+  bati*), com estado.
+* **`PlayerEvent::Bonked`** — o parágrafo acima.
+* `platform_floor_layers` / `platform_wall_layers` (pequeno) · *climbing* (o
+  buraco que o plano 08 §4.8 já nomeia) · §3.F, os modos de movimento como coisa
+  de primeira classe (arquitetura, e a recomendação continua **não agora**).

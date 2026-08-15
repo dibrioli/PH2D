@@ -121,21 +121,60 @@ Gate novo: `both_walkers_of_the_solid_over_write_the_same_bytes`.
 forma. A 4096² a extrapolação dá ~30 ms/move sob simetria circular; **não medido a 4096²**, e um
 número extrapolado não é um número medido.
 
-### 2.4 ⚠️ ABERTO, com o preço ao lado — decisão do Enio
+### 2.4 ✅ FECHADO — a soma corrida foi para as linhas (ADR-0158)
 
-O outro item de área é o **`solid::fill_coverage`**: **1,414 ms de 2,926 = 48%** do que sobrou. Ele
-mora na **`ph2d-painter-brush`, que não tem `rayon`** — pô-lo lá é **dep nova**, logo ADR e ordem.
+Ordem do Enio, 2026-08-15: *"siga e corrija os abertos"*.
 
-Decomposto (mesmo retângulo, 1024², circ12 + tiling):
+**O `rayon` entrou na `ph2d-painter-brush`** ([ADR-0158](../architecture/decisions/0158-solid-fill-running-sum-is-row-disjoint-rayon-exception.md),
+a 4ª exceção do repo), **exclusivamente na soma corrida**: a cobertura de uma linha é a soma da
+derivada daquela linha, nada atravessa a fronteira horizontal, e a ordem das somas dentro da linha é a
+mesma nas duas rotas ⇒ byte-idêntico.
 
-- **área** (a alocação do acumulador de ~4,2 MB, o zero dele e a soma corrida): **0,808 ms** (57%)
-- **arestas** (os 29 304 pontos): **0,606 ms** (43%)
+Medido **costas-com-costas dentro da mesma corrida** (a forma é a lição do doc 28 §5.46: o mesmo passe
+foi medido entre 1,01 e 1,43 ms sem uma linha mudar):
 
-Ou seja: **paralelizar as linhas** ataca os 0,808 e **decimar o caminho de tinta** ataca os 0,606.
-A segunda é medida — um ponto em cada oito leva o `fill_coverage` de 1,414 a 1,056 — e **não** exige
-dep nova, mas muda a **geometria da mancha**, logo é decisão de LOOK com smoke próprio.
+| conjunto | pontos | serial | paralela | ganho |
+|---|---:|---:|---:|---:|
+| piso de ÁREA | 3 | 0,975 | 0,187 | **5,22×** |
+| rosácea 12 | 14 520 | 1,383 | 0,602 | **2,30×** |
+| rosácea 24 (tiling) | 29 040 | 1,823 | 1,053 | **1,73×** |
 
-Não construído, com motivo, nos dois casos.
+⛔ **O depósito das ARESTAS fica serial, e o mecanismo é aritmético, não preguiça:** `acc[cell] += d`
+em `f32` não é associativo, e o `x` de uma aresta é caminhado **incrementalmente** linha a linha — uma
+banda que comece no meio de uma aresta recomputa `x` e sai um `f32` diferente. Manter a identidade
+exige que cada banda caminhe a aresta desde o começo dela, e o pré-filtro disso (29 040 arestas × 32
+bandas) foi **medido como mais caro que o passe serial inteiro**. Pré-binar por banda (counting sort
+por linha) é possível e fica **nomeado, não construído**.
+
+### 2.5 ⛔ Decimar o caminho de tinta — MEDIDO E REJEITADO
+
+⚠️ **O oráculo é a COBERTURA, não a contagem de pontos:** mover a fronteira `t` px muda a área coberta
+do texel de borda em até `t`, ou seja `255·t` níveis. Só é *de graça* se o pior delta couber no
+arredondamento que o `u8` já faz — **1 nível**.
+
+| tol px | pontos | corte | pior delta | texels ≠ | fill ms |
+|---:|---:|---:|---:|---:|---:|
+| 0,00 | 1 181 | 3% | **0** | 0 | 1,194 |
+| 0,01 | 384 | 69% | **12** | 1 724 | 0,917 |
+| 0,02 | 294 | 76% | 12 | 2 456 | 0,845 |
+| 0,05 | 196 | 84% | 21 | 3 014 | 0,762 |
+| 0,50 | 94 | 92% | 138 | 3 756 | 0,798 |
+
+**Só `tol = 0` é de graça, e compra 3%.** Já a 0,01 px o corte é de 69% mas o pior delta é **doze
+vezes o piso**. E o ganho encolheu: depois do ADR-0158 a decimação levaria ~0,27 ms de uma transação
+de 2,29. Trocar isso por uma mudança mensurável de borda é mau negócio — e agora é um **número** em
+vez de um adjetivo. A sonda fica, para ninguém re-derivar o item.
+
+### 2.6 O placar da auditoria
+
+| | transação (1024², circ12 + tiling) |
+|---|---:|
+| como estava | **4,232 ms** |
+| o `over` por linha | 2,926 |
+| a soma corrida por linha | **2,291** |
+
+**1,85× no total**, e o que sobra é `fill_coverage` **1,007** (dos quais ~0,82 são o depósito serial
+das arestas), a corda + o bbox ~0,9, e `save`+`restore` 0,196.
 
 ---
 
@@ -167,12 +206,18 @@ têm três naturezas, e nenhuma é defeito da mancha:
   próprio dela (reta rápida a 2048²) mede faixas de 42 a 356 px. **Pergunta da fita, com dono e sonda
   próprios** — nomeada, não perseguida aqui.
 
-### 3.1 ⚠️ Um default que contradiz o argumento do vizinho — decisão do Enio
+### 3.1 ✅ FECHADO — um default que contradizia o argumento do vizinho
 
-`rough_amount` e `rough_bowing` nascem em **0,0**: escolher `Rough` no dropdown **não muda um pixel**
-até o artista mexer no slider. O `spec_default.rs` argumenta o **contrário** quatro linhas acima, para
-o Ribbon — *"um tipo escolhido tem de FAZER alguma coisa"* — e o Spray teve de armar um default pela
-mesma razão. Não alterado aqui: é número de produto.
+`rough_amount` e `rough_bowing` nasciam em **0,0**: escolher `Rough` no dropdown **não mudava um
+pixel** até o artista mexer no slider — medido, o gesto em C saía **byte-idêntico** ao `None`. O
+`spec_default.rs` argumentava o **contrário** seis linhas acima, para o Ribbon (*"um tipo escolhido tem
+de FAZER alguma coisa"*), e o Spray teve de aprender a mesma lei.
+
+**Curado** (ordem do Enio, *"siga e corrija os abertos"*): os dois nascem em **0,4** de
+`ROUGH_AMOUNT_MAX_D` — ~0,8 raio de desvio curto, e a 0,4 o gesto difere do `None` em 3 119 texels.
+⚠️ **É decisão de LOOK e o smoke é quem a julga**, como os defaults do Ribbon. Gate:
+`choosing_rough_changes_the_line_at_its_default`, que **não menciona o valor** — ele pergunta ao
+predicado que o motor consulta, porque *um default só é testado por um teste que não o menciona*.
 
 ---
 

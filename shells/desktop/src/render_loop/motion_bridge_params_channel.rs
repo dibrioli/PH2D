@@ -45,6 +45,64 @@ pub(in crate::render_loop::motion_bridge) fn apply_channel_presets(
         }
         _ => {}
     }
+    // ⚠️ **E depois a regra DERIVADA, que é a que não apodrece.** Todo param cuja
+    // FAIXA segue o canal (a declaração do nó) tem de ter o VALOR trazido para
+    // dentro da faixa do canal NOVO — senão um `scale` de 360 graus dialado em
+    // Rotation sobrevive para o canal X, onde ele é 360 unidades de mundo e joga
+    // as instâncias para fora do quadro, mostrado num slider que não o alcança.
+    //
+    // Os presets acima escolhem um valor BONITO para os três nós que os têm; isto
+    // só garante o mínimo para TODOS — e para aqueles três é no-op, porque o valor
+    // que eles escrevem já está dentro (gate).
+    clamp_channel_ranged_params(motion, nid, type_name, ch);
+}
+
+/// Traz cada param de faixa-por-canal para dentro da faixa que o canal NOVO
+/// implica: a declarada, se o canal é angular; a do hint, caso contrário — pela
+/// MESMA porta que a row do painel usa, senão a faixa em que o valor é guardado e
+/// a faixa em que ele é mostrado divergiriam.
+fn clamp_channel_ranged_params(
+    motion: &mut MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    type_name: &str,
+    ch: i32,
+) {
+    let id = ph2d_nodegraph::node::NodeTypeId::of(type_name);
+    let Some(decls) = motion
+        .registry
+        .channel_ranged_types()
+        .find(|(k, _)| *k == id)
+        .map(|(_, v)| v)
+    else {
+        return;
+    };
+    let hints = motion.registry.param_ui(id).unwrap_or(&[]);
+    for d in decls {
+        let (lo, hi) = if channel_unit(ch) == ParamUnit::Angle {
+            (d.min, d.max)
+        } else if let Some(h) = hints.iter().find(|h| h.param == d.param) {
+            (h.min, h.max)
+        } else {
+            continue;
+        };
+        let v = motion
+            .doc
+            .graph
+            .node_param_overrides(nid)
+            .and_then(|m| m.get(d.param).copied())
+            .unwrap_or_else(|| {
+                motion
+                    .registry
+                    .manifests()
+                    .find(|m| m.id == id)
+                    .and_then(|m| m.params.iter().find(|p| p.name == d.param))
+                    .map_or(0.0, |p| p.default)
+            });
+        let c = v.clamp(lo, hi);
+        if c != v {
+            motion.doc.graph.set_param(nid, d.param, c);
+        }
+    }
 }
 
 /// The `channel` enum's Rotation option (see the behaviours' `channel` hint:

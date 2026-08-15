@@ -27,7 +27,7 @@
 #![forbid(unsafe_code)]
 
 use channel::CH_OPACITY;
-use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamChannelRange, RegistryError};
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -441,6 +441,9 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_channel_range(MANIFEST.id, PARAM_CHANNEL_RANGE);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
+    reg.register_param_hard_min(MANIFEST.id, PARAM_HARD_MIN);
     Ok(())
 }
 
@@ -489,6 +492,42 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         },
     },
 ];
+/// **A faixa que estas magnitudes querem quando o canal é ANGULAR** — graus, não
+/// unidades de mundo. Uma volta para cada lado, discada em graus inteiros.
+///
+/// ⚠️ Ela mora AQUI e não numa tabela do shell porque a tabela apodreceu: medida,
+/// ela cobria três dos seis nós que precisavam dela, e cada um dos três ausentes
+/// esperava o próprio report do artista.
+const TURN: f32 = 360.0;
+static PARAM_CHANNEL_RANGE: &[ParamChannelRange] = &[ParamChannelRange {
+    param: "scale",
+    min: -TURN,
+    max: TURN,
+    step: 1.0,
+}];
+
+/// **O teto DIGITÁVEL do `scale`, e o recurso é a PRECISÃO DE REPRESENTAÇÃO.**
+///
+/// ⚠️ O `scale` é uma multiplicação PURA — nem a CPU nem o WGSL o clampam —, então
+/// o teto do slider não era um teto do kernel: medido, o canal Rotation honra
+/// `1e7` graus com erro `0.000e0`. Era um número de UI sem recurso nenhum atrás,
+/// e a §0 do CLAUDE.md chama isso pelo nome.
+///
+/// O limite real é o `f32`: **`2^24 = 16 777 216` é o primeiro número em que
+/// `x + 1.0 == x`** (medido, não escolhido). Acima dele um passo de UM grau não
+/// move o número — o controle deixa de controlar, que é onde *o disfuncional
+/// começa*. Abaixo, tudo é honrado exatamente.
+const F32_UNIT_STEP_CEILING: f32 = 16_777_216.0;
+static PARAM_HARD_MAX: &[ph2d_node_registry::ParamHardMax] = &[ph2d_node_registry::ParamHardMax {
+    param: "scale",
+    max: F32_UNIT_STEP_CEILING,
+}];
+/// O piso, espelhado: um `scale` negativo INVERTE o drive, e o slider já o oferece.
+static PARAM_HARD_MIN: &[ph2d_node_registry::ParamHardMin] = &[ph2d_node_registry::ParamHardMin {
+    param: "scale",
+    min: -F32_UNIT_STEP_CEILING,
+}];
+
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;

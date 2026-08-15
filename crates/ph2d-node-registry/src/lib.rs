@@ -21,8 +21,8 @@ use std::collections::BTreeMap;
 
 mod ui;
 pub use ui::{
-    Coupling, NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamGate, ParamGateText, ParamGroup,
-    ParamHardMax, ParamUiHint, ParamWidget, ReadChannel, card_title,
+    Coupling, NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamChannelRange, ParamGate,
+    ParamGateText, ParamGroup, ParamHardMax, ParamUiHint, ParamWidget, ReadChannel, card_title,
 };
 
 /// The param UNIT vocabulary (doc 88, Wave A) — a sibling module rather than more
@@ -48,6 +48,9 @@ pub struct NodeRegistry {
     /// já carrega. Side-metadata, o irmão exato do `param_ui`; ausente ⇒ nada a
     /// semear, que é o mundo de sempre.
     text_defaults: BTreeMap<NodeTypeId, &'static [(&'static str, &'static str)]>,
+    /// Os params cuja FAIXA segue o CANAL que o nó dirige — a declaração que
+    /// substituiu uma tabela de nomes de nó no shell.
+    param_channel_range: BTreeMap<NodeTypeId, &'static [ParamChannelRange]>,
     param_hard_max: BTreeMap<NodeTypeId, &'static [ParamHardMax]>,
     /// A SEÇÃO de cada param (doc 88, B3 — o passe visual). Mesma forma, mesmo default
     /// vazio: nó sem entrada pinta uma lista plana, exatamente como antes.
@@ -222,6 +225,53 @@ impl NodeRegistry {
         pairs: &'static [(&'static str, &'static str)],
     ) {
         self.text_defaults.insert(id, pairs);
+    }
+
+    /// **Os params cuja FAIXA segue o CANAL que o nó dirige.**
+    ///
+    /// Um nó de comportamento tem uma magnitude (`scale`, `amplitude`, `min`) cujo
+    /// SIGNIFICADO muda com o canal: sobre Position é metro, sobre Rotation é
+    /// **GRAU**, sobre Size é um fator. Uma faixa de `±4` que serve o mundo é uma
+    /// inclinação invisível em graus — e não é hipótese: o artista reportou
+    /// exatamente isso duas vezes, primeiro no `motion.stagger` e depois no
+    /// `motion.drive`.
+    ///
+    /// ⚠️ **Isto vive no NÓ porque a alternativa apodreceu, com número.** A regra
+    /// morava numa tabela de nomes de nó dentro do shell, e uma varredura mediu que
+    /// ela cobria **três** dos seis nós que precisavam dela: `motion.drive`,
+    /// `motion.step` e `motion.noise` shipavam sem, cada um esperando o seu report.
+    /// Declarado ao lado dos próprios hints, um nó que nasça amanhã mostra a
+    /// ausência **no próprio arquivo**, não numa tabela que ninguém abre.
+    ///
+    /// A divisão de saber é a que já existia: o **nó** diz *quais dos meus params
+    /// são magnitudes, e que faixa eles querem em graus*; o **shell** diz *quais
+    /// canais são angulares* (ele já o dizia, no `channel_unit`).
+    ///
+    /// Aditivo; last write wins. Ausente ⇒ `&[]`, e a faixa do hint fica.
+    pub fn register_param_channel_range(
+        &mut self,
+        id: NodeTypeId,
+        ranges: &'static [ParamChannelRange],
+    ) {
+        self.param_channel_range.insert(id, ranges);
+    }
+
+    /// A faixa angular declarada por `id` para `param`, se houver.
+    #[must_use]
+    pub fn param_channel_range(&self, id: NodeTypeId, param: &str) -> Option<ParamChannelRange> {
+        self.param_channel_range
+            .get(&id)?
+            .iter()
+            .find(|r| r.param == param)
+            .copied()
+    }
+
+    /// **Todo tipo que declara uma faixa angular**, para quem precisa varrer em vez
+    /// de enumerar — é o que torna um gate universal em vez de uma lista.
+    pub fn channel_ranged_types(
+        &self,
+    ) -> impl Iterator<Item = (NodeTypeId, &'static [ParamChannelRange])> + '_ {
+        self.param_channel_range.iter().map(|(k, v)| (*k, *v))
     }
 
     /// Os text params de fábrica de `id`. Ausente ⇒ `&[]`, o default byte-idêntico.

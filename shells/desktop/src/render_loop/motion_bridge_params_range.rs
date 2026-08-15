@@ -33,22 +33,31 @@ pub(super) fn contain(min: f32, max: f32, value: f32) -> (f32, f32) {
     (min.min(value), max.max(value))
 }
 
-/// Returns `(min, max, step)` to use instead of the hint's, or `None` to keep it.
-/// Only Rotation needs widening (Position / Size are already world-unit-scaled).
+/// Devolve `(min, max, step)` a usar no lugar da do hint, ou `None` para a manter.
+///
+/// ⚠️ **Isto era uma TABELA DE NOMES DE NÓ, e ela apodreceu com número.** Ela
+/// listava três nós; a varredura de 2026-08-14 mediu **seis** que precisavam dela
+/// — `motion.drive`, `motion.step` e `motion.noise` shipavam sem, cada um a
+/// esperar o próprio report do artista (o do `drive` chegou: *"Scale não aceita
+/// mais que 4 em sua caixa de texto e 4 não é quase nada para rot"*, o mesmo
+/// defeito que o Stagger já tinha reportado).
+///
+/// Agora a lista é uma **DECLARAÇÃO do nó** (`register_param_channel_range`), ao
+/// lado dos hints dele, e a divisão de saber é a que já existia: o nó diz *quais
+/// dos meus params são magnitudes na unidade do canal*, e este arquivo diz *quais
+/// canais são angulares* — a pergunta que o [`super::params_channel::channel_unit`]
+/// já respondia. Um nó que nasça amanhã mostra a ausência **no próprio arquivo**.
 pub(super) fn channel_range_override(
+    registry: &ph2d_node_registry::NodeRegistry,
     type_name: &str,
     param: &str,
     channel: i32,
 ) -> Option<(f32, f32, f32)> {
-    if channel != params_channel::CHANNEL_ROTATION {
+    if params_channel::channel_unit(channel) != ph2d_node_registry::ParamUnit::Angle {
         return None;
     }
-    // A full turn each way, dialled in whole degrees.
-    const TURN: f32 = 360.0;
-    match (type_name, param) {
-        ("motion.stagger", "min" | "max") => Some((-TURN, TURN, 1.0)),
-        ("motion.oscillator", "offset") => Some((-TURN, TURN, 1.0)),
-        ("motion.oscillator" | "motion.wiggle", "amplitude") => Some((0.0, TURN, 1.0)),
-        _ => None,
-    }
+    let id = ph2d_nodegraph::node::NodeTypeId::of(type_name);
+    registry
+        .param_channel_range(id, param)
+        .map(|r| (r.min, r.max, r.step))
 }

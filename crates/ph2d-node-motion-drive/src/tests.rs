@@ -421,3 +421,25 @@ fn the_falloff_masks_the_colour_drive() {
         _ => panic!("tint"),
     }
 }
+
+/// **SONDA (§0) — o que o canal Rotation de facto HONRA.** O `scale` é uma
+/// multiplicação PURA (nem a CPU nem o WGSL o clampam), então o teto da caixa de
+/// texto não é um teto do kernel: é um número de UI, e a §0 manda medir antes de
+/// escrever qualquer um.
+#[test]
+#[ignore = "sonda: `cargo test -p ph2d-node-motion-drive -- --ignored --nocapture`"]
+fn measure_what_the_rotation_channel_honours() {
+    let src = Stream::new(1).with("P", Column::Vec2(vec![[0.0, 0.0]]));
+    for scale in [4.0_f32, 90.0, 360.0, 720.0, 3.6e3, 1.0e5, 1.0e7] {
+        let out = channel::drive_channel(&src, 2 /* Rotation */, &[1.0], scale, Combine::Set);
+        let Some(Column::Scalar(rot)) = out.get("rot") else {
+            panic!("rot")
+        };
+        let voltas = rot[0] / 360.0;
+        eprintln!(
+            "scale {scale:>10} -> rot {:>14} graus  ({voltas:>10.2} voltas, erro {:.3e})",
+            rot[0],
+            (f64::from(rot[0]) - f64::from(scale)).abs()
+        );
+    }
+}

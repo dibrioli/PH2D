@@ -469,7 +469,9 @@ pub(crate) fn build_params_snapshot(
                     // (degrees on Rotation vs world units on X/Y) — the static hint
                     // can only describe one, so widen it for ergonomics …
                     let (min, max, step) = channel
-                        .and_then(|ch| channel_range_override(&inst.type_name, spec.name, ch))
+                        .and_then(|ch| {
+                            channel_range_override(&motion.registry, &inst.type_name, spec.name, ch)
+                        })
                         .unwrap_or((h.min, h.max, h.step));
                     // … then widen it again, unconditionally, so it CONTAINS the doc
                     // value. That is the correctness half: no clamp, no lie, no

@@ -69,7 +69,7 @@
 
 #![forbid(unsafe_code)]
 
-use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamChannelRange, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -302,6 +302,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_channel_range(MANIFEST.id, PARAM_CHANNEL_RANGE);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // CPU-only: this node reads `falloff` only at eval runtime (no GPU kernel), so the
     // diagnoser cannot derive the role from a `ColumnBinding` — declare it (ADR-0155).
@@ -382,6 +383,20 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
         unit: ParamUnit::FromChannel,
     },
 ];
+
+/// **A faixa que estas magnitudes querem quando o canal é ANGULAR** — graus, não
+/// unidades de mundo. Uma volta para cada lado, discada em graus inteiros.
+///
+/// ⚠️ Ela mora AQUI e não numa tabela do shell porque a tabela apodreceu: medida,
+/// ela cobria três dos seis nós que precisavam dela, e cada um dos três ausentes
+/// esperava o próprio report do artista.
+const TURN: f32 = 360.0;
+static PARAM_CHANNEL_RANGE: &[ParamChannelRange] = &[ParamChannelRange {
+    param: "step",
+    min: -TURN,
+    max: TURN,
+    step: 1.0,
+}];
 
 #[cfg(test)]
 #[path = "tests.rs"]

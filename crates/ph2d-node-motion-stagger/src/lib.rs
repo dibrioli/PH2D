@@ -21,7 +21,9 @@
 //!
 //! `delta_i = (min + ease(raw_i)·(max−min)) · falloff_i`, added to the channel.
 
-use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
+use ph2d_node_registry::{
+    NodeRegistry, ParamChannelRange, ParamUnit, ParamUnitDecl, RegistryError,
+};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -138,6 +140,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_channel_range(MANIFEST.id, PARAM_CHANNEL_RANGE);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
@@ -220,6 +223,28 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
     ParamUnitDecl {
         param: "max",
         unit: ParamUnit::FromChannel,
+    },
+];
+
+/// **A faixa que estas magnitudes querem quando o canal é ANGULAR** — graus, não
+/// unidades de mundo. Uma volta para cada lado, discada em graus inteiros.
+///
+/// ⚠️ Ela mora AQUI e não numa tabela do shell porque a tabela apodreceu: medida,
+/// ela cobria três dos seis nós que precisavam dela, e cada um dos três ausentes
+/// esperava o próprio report do artista.
+const TURN: f32 = 360.0;
+static PARAM_CHANNEL_RANGE: &[ParamChannelRange] = &[
+    ParamChannelRange {
+        param: "min",
+        min: -TURN,
+        max: TURN,
+        step: 1.0,
+    },
+    ParamChannelRange {
+        param: "max",
+        min: -TURN,
+        max: TURN,
+        step: 1.0,
     },
 ];
 

@@ -214,6 +214,24 @@ pub struct ParamHardMax {
     pub max: f32,
 }
 
+/// **A faixa que uma MAGNITUDE quer quando o canal que ela dirige é ANGULAR.**
+///
+/// Declarada pelo nó (ver [`NodeRegistry::register_param_channel_range`]), ao lado
+/// dos hints dele: o nó sabe quais dos seus params são magnitudes no *unit do
+/// canal*; o shell sabe quais canais são graus.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ParamChannelRange {
+    /// O `ParamSpec::name` cuja faixa segue o canal.
+    pub param: &'static str,
+    /// A faixa em GRAUS. ⚠️ Uma magnitude que não tem metade negativa (uma
+    /// amplitude é um PICO) declara `min = 0`, e é a razão de a faixa ser
+    /// declarada em vez de derivada de um sinal.
+    pub min: f32,
+    pub max: f32,
+    /// O passo em graus — inteiro, porque ninguém disca um ângulo em centésimos.
+    pub step: f32,
+}
+
 /// **A que SEÇÃO do painel um param pertence** — a metade visual do doc 88 B3.
 ///
 /// Um nó com treze params é uma parede de sliders: eles cabem na tela (o teto de linhas é

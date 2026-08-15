@@ -11284,3 +11284,104 @@ A cauda do §3.A **fechou** — as três consultas estão respondidas. O que res
 tabela do Godot é `platform_floor_layers` / `platform_wall_layers` (pequeno: *que
 camadas contam como plataforma*), e o §3.F (modos de movimento) segue com
 recomendação *"não agora"*.
+
+## ⬛ W-WallMaterial — esta superfície não é parede ⟨2026-08-15⟩
+
+O `platform_floor_layers` / `platform_wall_layers` do Godot. **As duas metades
+tiveram vereditos diferentes ao serem medidas, e só uma era trabalho.**
+
+### A medição, antes de qualquer desenho
+
+| metade | medido | veredito |
+|---|---|---|
+| *o que me CARREGA* | plataforma horizontal leva **0,99×** com tração cheia e **0,00×** com `WalkSurface { grip: 0 }`, nos dois modos (sonda `measure_kinematic_carry`, que **já existia**) | **já exprimível** |
+| *o que me SEGURA* | a lei aceita parede **só por inclinação** — toda superfície íngreme com que o personagem colide é escalável | **gap real** |
+
+⇒ Metade do item estava fechada e a tabela dizia ❌ nas duas. E não havia
+alternativa: pôr a parede numa camada que o player não vê fá-lo cair através
+dela, e mudar a geometria é mudar o nível.
+
+### O desenho: por CORPO/PEÇA, e o filtro no SENSOR
+
+**`NoWallCling`** — marcador, presença é o booleano, o idioma do
+`Ccd`/`LockRotation`/`OneWayPlatform` ⇒ **zero bump de `PROJECT_SCHEMA`** (a
+saída que o doc do módulo da superfície já prescrevia para o dia em que um campo
+novo aparecesse).
+
+⚠️ **Não é uma camada, e a divergência é deliberada:** um bitmask obriga o artista
+a arrumar o nível em camadas para exprimir uma propriedade de **material**; a
+PEÇA é a granularidade que a família da superfície já tem, e é ela que deixa uma
+torre ter uma face escalável e outra não.
+
+⚠️ **O filtro cai no SENSOR, não na lei.** Uma superfície marcada some do array de
+acertos como se o raio não tivesse batido em nada, então os **três** verbos que
+bebem da amostra — deslizar, agarrar-se, pular da parede — desaparecem juntos, e
+`ph2d_platformer::cling` **não aprende o conceito**: continua a régua de
+inclinação e nada mais. É a mesma divisão que a matriz de colisão já faz um nível
+abaixo: *o que o sensor não vê, a lei não julga*.
+
+⚠️ **E a identidade estava lá de graça** — o `CastHit` carrega `collider` e `body`,
+e o laço que monta o `WallHit` os **descartava**.
+
+⚠️ **Duas COMPONENTES, uma ENTRADA na tabela:** do lado do ARQUIVO são irmãs (um
+campo apendado à `WalkSurface` seria postcard posicional ⇒ bump ⇒ recusa de todo
+projeto salvo); do lado do RUNTIME a tabela do bridge é interna e pode crescer.
+Fundi-las é o que mantém **uma** lei part-vs-corpo em vez de duas que divergem.
+Corolário honesto e escrito: **uma peça não consegue dizer *"eu SOU parede"* contra
+um corpo marcado** — a presença de um marcador não exprime o "sim".
+
+⚠️ **Por que NÃO o `grip`, que já existe e já significa tração:** o doc dele diz o
+que ele é — *quanto do orçamento de CAMINHADA o pé aproveita aqui* — e esticá-lo
+até a mão faria a documentação mentir sobre o próprio campo. E as duas são
+independentes: um piso de gelo escalável e uma parede de borracha inescalável são
+as duas coisas que um nível quer dizer.
+
+### ⚠️ O CONTROLE reprovou a minha primeira fixture — duas vezes
+
+1. O gate mandava o personagem **escalar** e o controle chegou a **1,389 m**: ele
+   não escala. Um pulo de parede empurra para LONGE (`wall_jump_push`), então
+   escalar uma parede única exige uma afinação que não é o assunto da wave — e o
+   gate da PEÇA, que media a mesma altura, tinha passado **por vácuo**.
+2. Re-aimado para a DESCIDA, o controle desceu **1,499 m** e o marcado **0,151** —
+   ao contrário do esperado, porque encostado a uma parede com `drive` contra ela
+   o **atrito de Coulomb** segura um corpo dinâmico quase parado nos dois casos.
+
+⇒ O oráculo honesto é **a amostra existir**, que é literalmente o que a wave muda
+e o que a vista publica: **119 de 120 tiques agarrado** contra **0**. A descida
+continua impressa na sonda, marcada como *não é oráculo*.
+
+### Números
+
+* **`physics_ecs_c9` `2d7f9d5145d09de646f1a3a6da544b67e3497ada475eac85f761089e3d78658d`,
+  121 corpos**, debug ≡ release — move porque a lane nova entrou, e ⚠️ **ela
+  DISCRIMINA**: tirar o filtro do sensor leva o hash a `9dbb8bc2…`. A lane traz o
+  **par** (uma parede marcada e uma não) de propósito: sem as duas o hash cobriria
+  a rota do filtro e não a do sensor que segue a passar.
+* `PROJECT_SCHEMA` **intocado** (por `git diff` vazio no `project.rs`) · registro
+  do `ph2d-physics-ecs` **31→32** · 3 ids novos, todos hash de string · **nenhum
+  ADR** · zero `Cargo.toml`.
+* **5 gates, 3 mutações, 3 sangram** — o sensor não filtrar (sangra os dois) · a
+  peça ser procurada pelo corpo (sangra **só** o gate da peça, que é a
+  granularidade certa) · o passe do marcador não correr.
+* **As QUATRO condições da política de UI do plano:** o componente existe
+  (`every_physics_component_is_authorable`) · é pintado e registrado
+  (`architecture_panel_wiring_parity`) · o clique chega ao barramento (o sweep do
+  seam) · e a sequência leva a algum lugar
+  (`every_presence_marker_attaches_detaches_and_is_refused_without_a_body`, 5→6).
+
+### A metade VISÍVEL
+
+A row **"Wall Cling" (On | Off)** na seção de colisão, ao lado do Grip e da Belt —
+e **não** junto do One-Way, porque é a mesma pergunta que aquelas duas fazem (*de
+que esta superfície é feita para quem encosta nela*), enquanto o One-Way é sobre a
+GEOMETRIA do collider (*de que lado ele é sólido*). Oferecida em TODO collider,
+sólido ou sensor: ela derruba um acerto de RAIO, e um raio acerta o que a matriz
+de colisão deixar.
+
+### Aberto
+
+Restam quatro ❌ na auditoria, e **nenhum é trabalho pendente**: o
+`AirControlBoostMultiplier` (§3.I, *nicety*), o `MovementMode`/`MOVE_Custom`
+(§3.F, arquitetura, recomendação *não agora*), o `MOVE_Flying`/noclip (§3.H,
+**medido e decidido** pela sonda `measure_noclip` — o artista já põe o personagem
+onde quiser) e o Root motion (§5.K, fora da fila sem pedido).

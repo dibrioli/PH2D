@@ -390,6 +390,37 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
             );
             sinks
         }
+        // A TABELA E A SEMENTE (doc 89, o grupo D / W-E): a lista que o artista
+        // DIGITA, sem o teto de oito, e a semente que a identidade do no separa.
+        Ok("44") => {
+            let sinks = conferencia_demos_table_seed::build_table_seed_demo_document(doc, registry)
+                .unwrap_or_default();
+            eprintln!(
+                "[table-seed-demo] CADA FILEIRA E' UM GRAFICO: {cols} pecas, e o Y de cada peca \
+                 E' o valor.",
+                cols = conferencia_demos_table_seed::COLS as u32,
+            );
+            for (i, label) in conferencia_demos_table_seed::BAND_LABELS.iter().enumerate() {
+                eprintln!("  {}. {label}", i + 1);
+            }
+            eprintln!(
+                "  (!) Esta cena julga-se PARADA -- nada aqui depende do relogio.
+  (!) A TABELA (bandas 1-2): a de baixo autora {steps} passos por TEXT PARAM, acima do teto de
+      OITO que o nome `v0..v7` impunha. O dente de serra dela e' {ratio}x mais largo que o de
+      cima -- se os dois tiverem a MESMA largura, a tabela nao chegou ao cozido.
+  (!) A SEMENTE (bandas 3-6): as quatro tem a MESMA semente autorada (7). As DUAS DE CIMA tem
+      de ser IDENTICAS -- e' o defeito que a wave cura, e sem ele a vista `ligado eles diferem`
+      nao provaria nada. As DUAS DE BAIXO nao podem ser.
+  (!) Aqui o olho compara SILHUETA, nao altura -- por isso cada fileira tem a propria linha de
+      base, ao contrario da cena =43.
+  (!) Se a lista de {bands} fileiras acima nao aparecer, PARE: o resto da cena nao diz nada.",
+                steps = conferencia_demos_table_seed::TABLE_STEPS,
+                ratio = conferencia_demos_table_seed::TABLE_STEPS as f32
+                    / conferencia_demos_table_seed::LEGACY_STEPS,
+                bands = conferencia_demos_table_seed::BANDS,
+            );
+            sinks
+        }
         _ => Vec::new(),
     }
 }

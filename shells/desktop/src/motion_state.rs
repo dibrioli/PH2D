@@ -75,6 +75,8 @@ mod conferencia_demos_audio;
 mod conferencia_demos_direction;
 #[path = "motion_state_conferencia_demos_stats.rs"]
 mod conferencia_demos_stats;
+#[path = "motion_state_conferencia_demos_table_seed.rs"]
+mod conferencia_demos_table_seed;
 #[path = "motion_state_conferencia_demos_text.rs"]
 mod conferencia_demos_text;
 #[path = "motion_state_conferencia_demos_time.rs"]

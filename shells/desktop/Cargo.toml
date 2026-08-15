@@ -96,6 +96,12 @@ ph2d-node-source-text = { path = "../../crates/ph2d-node-source-text" }
 # declara — no dia em que o degrau se movesse, a cena desenharia traços NÃO-alinhados
 # afirmando demonstrar alinhamento. Aresta interna de path, nenhum pacote novo.
 ph2d-node-value-attribute = { path = "../../crates/ph2d-node-value-attribute" }
+# Pelo MESMO motivo, um grupo adiante: a cena `=44` autora a TABELA do
+# `value.pattern` por TEXT PARAM, e a chave dela é do NÓ. Um literal `"table"`
+# aqui seria a segunda cópia de uma string que o nó já declara, e no dia em que
+# ela mudasse a cena semearia uma chave que ninguém lê — desenhando o caminho
+# LEGADO enquanto anuncia a tabela. Aresta interna de path, nenhum pacote novo.
+ph2d-node-value-pattern = { path = "../../crates/ph2d-node-value-pattern" }
 # General timeline data layer (M0): keyframe store + curves. Backs the
 # app-general TimelineDoc (authoring + sampling at the engine Playhead) and the
 # per-component SpriteAnimation apply path.

@@ -2486,3 +2486,172 @@ Os dois chips ficam lado a lado no painel; **o `S` não é oferecido para o Blob
 
 **Aberto na W6:** o **Multiplane Scrape** e o **Clay Thumb** reusam a moldura da
 faixa; o **Draw Sharp** segue bloqueado pela tabela ausente (§7.18).
+
+---
+
+### §7.24 — ✅ O REPORT DA FAMÍLIA QUE APERTA: o `l-mode` sai, e o `B` do Pinch passa a ser o `pinch.cc` (2026-08-15)
+
+Report do Enio, três frases, sobre o Blob que a §7.23 acabou de entregar e sobre
+os dois vizinhos dele:
+
+> *"Blob modo B bom! Blob modo L ruim. Pinch em B e S bons mas idênticos ou quase
+> idênticos. Em L Pinch ruim. Crease OK."*
+
+⚠️ **São DOIS defeitos com mecanismos independentes, e a medição achou os dois
+antes de uma linha ser escrita** — sonda `measure_pinch_family_modes`, que dirige
+`SculptStroke::dab` (a porta do artista), malha 64×96, `r = 0,30`, traço de oito
+eventos a força `0,75`.
+
+#### (A) O `l-mode` — 62 % do gesto caía FORA do anel do cursor
+
+| verbo | modo | fora do anel | ΔV/V (10⁻⁴) | pico |
+|---|---|---|---|---|
+| Pinch | S | 0,0 % | −0,92 | 0,1027 |
+| Pinch | B | 0,0 % | −1,41 | 0,0758 |
+| **Pinch** | **L** | **62,4 %** | **−4,43** | 0,0514 |
+| Crease | S | 0,0 % | −9,50 | 0,3309 |
+| **Crease** | **L** | **43,7 %** | −11,48 | 0,3374 |
+| Blob | B | 0,0 % | +10,52 | 0,2892 |
+| **Blob** | **L** | **46,5 %** | +11,95 | 0,2906 |
+
+O `KELVINLET_REACH = 3` é a **feature** do verbo que AGARRA — o doc dele nomeia o
+preço em voz alta (*"o anel do cursor deixa de significar o que eu toco"*) — e é
+o **defeito** de um verbo que aperta, que é local por definição.
+
+⚠️ **E o campo PIORAVA justamente o que existia para curar.** A nota do
+`Verb::Pinch` afirmava *"com campo ele deixa de REMOVER VOLUME … o que sai de
+lado sai pela normal: aperta E espirra"*. Medido: ele remove **4,8× mais** volume
+que o `s-mode`, e **dentro do anel o deslocamento normal é NEGATIVO** (−0,00078
+na banda 0,5-0,75 r contra um lateral de +0,00761) — afunda, não espirra. O
+mecanismo é geometria: o traço zero reparte `+s` na normal e `−s/2` no plano, mas
+os vértices de uma MALHA vivem na superfície (`r · n ≈ 0`), então o termo normal
+é ~zero. **Uma casca não tem material fora do plano para receber o que sai de
+lado.**
+
+⛔ **E não há corte honesto que o localize:** o perfil lateral é quase CHATO até o
+anel (0,00304 · 0,00649 · 0,00761 · 0,00666) e ainda vale **88 % do pico** em
+`1,0 r` — cortá-lo ali seria um degrau **trinta vezes** maior que os 2,90 % que o
+`rim_landing` foi construído para curar.
+
+⚠️ **A REFERÊNCIA fecha o argumento:** o `elastic_deform.cc` do Blender porta
+**este mesmo paper** e declara cinco famílias — `GRAB`, `GRAB_BISCALE`,
+`GRAB_TRISCALE`, `SCALE`, `TWIST`. **Nenhuma é o pinch.** O SculptGL não tem
+Kelvinlets. O paper tem a família afim de traço zero como MATEMÁTICA e nenhum
+escultor a shipa como PINCEL.
+
+⇒ **O `Field::Pinch` foi retirado.** O `L` desaparece de Pinch/Crease/Blob **por
+construção** (o `declares` pergunta `field(verb).is_some()`), e o censo da
+literatura **encolheu pela primeira vez**: `["Smooth", "Magnify", "Move / Grab",
+"Snake Hook", "Twist", "Local Scale"]`.
+
+⚠️ **O Crease-L tinha a MESMA doença** (43,7 %) e o report diz *"Crease OK"* — o
+Enio quase de certeza o testou em `S`/`B`, que são os modos limpos. **Ele sai
+junto, e isto está aqui para o smoke poder discordar.**
+
+#### (B) `B ≈ S` no Pinch — o chip `B` vestia a lei do `crease.cc`
+
+Medido: a diferença é quase toda o `strength²`. Em força `1,00`, onde o `x²` é a
+identidade, o que sobrava entre os dois era **0,0125 r no pior vértice (9 % do
+pico)**, com a normal do `B` em `0,00000` exato contra `0,00129` do `S`. Dois
+apertos radiais separados por um arredondamento.
+
+⚠️ **A causa é uma leitura de fonte alheia feita pelo COMENTÁRIO e não pelo
+código.** A nota do `LateralPull::Tangential` dizia *"isto NÃO é a lei do
+Blender"* e descrevia o `pinch.cc` como *"a tangente ao longo do TRAÇO mais a
+normal"* — direto do comentário de lá (*"the X vector (aligned to the stroke)"*),
+**que é falso no próprio Blender**: o código monta `X = cross(area_no,
+grab_delta)`, que é **perpendicular** ao traço. Lida a fonte, o mapa inverte-se:
+
+| lei | remove | fonte |
+|---|---|---|
+| `Direct` | nada (3D cru) | `Pinch.js:52-58` · `Crease.js:59-61` |
+| `Tangential` | a componente **NORMAL** | `crease.cc:112` — *"pinched towards a **line** instead of a single point"* |
+| `AcrossStroke` | a componente **AO LONGO DO TRAÇO** | `pinch.cc:39-60` — *"the Y component is removed"* |
+
+⇒ **Nós coincidíamos com o `crease.cc`** (e o `B` do Crease e do Blob estava
+certo o tempo todo — é o que o Enio viu) e **faltava-nos o `pinch.cc`**.
+
+**Com a lei certa em cada um:** o mesmo desvio em força `1,00` mede **`0,1342 r`
+— 99 % do pico, 10,7× o que era**. Os dois chips deixaram de ser o mesmo aperto
+com forças diferentes.
+
+⚠️ **E a lei da referência responde de graça o que o `l-mode` tentava e
+piorava.** Apertar para uma LINHA em vez de um PONTO não colapsa a vizinhança
+radialmente, logo quase não remove volume: **`−0,0119` contra `−0,9066`** (10⁻⁴
+de `V`), **76× menos** que o `s-mode`. O campo elástico existia para *"deixar de
+remover volume"* e removia 4,8× mais; **a resposta estava na fonte o tempo
+todo.**
+
+⚠️ **E a nota que declarava isto bloqueado ENVELHECEU:** ela dizia *"fechar a
+dele pede o frame do traço dentro do `Dab` — wave própria"*. O `Dab::path` chegou
+na wave da FAIXA e ninguém reconferiu a nota. *Quem move o número que tornava
+algo inalcançável tem de reconferir a nota* — a segunda vez nesta linha, depois
+do gate do teclado da §7.23.
+
+⚠️ **A lei lateral saiu do `KernelLaw` e virou `RefMode::lateral_for(verb)`**: os
+outros dois eixos são fatos sobre o MODO, mas o Blender tem **duas ferramentas
+nesta família e duas leis**, e um campo teria de responder duas coisas com um
+valor. O `Magnify` fica no `Tangential` por AUSÊNCIA declarada — o Blender não
+tem essa ferramenta.
+
+#### ⚠️ Mudanças de comportamento, nomeadas
+
+1. **O Pinch em `B` passa a ter componente normal** (o `z_disp` que o `pinch.cc`
+   **guarda** de propósito). O nome do gate antigo — *"does not secretly
+   flatten"* — era uma afirmação sobre a lei antiga; quem quer o aperto puro no
+   plano tem o `S` ao lado no mesmo verbo.
+2. **O Pinch em `B` recusa um dab sem direção.** É a referência
+   (`pinch.cc:188-195`: *"delay the first daub because grab delta is not
+   setup"*), e o preço é que um TAP solto neste modo não aperta. Inventar um eixo
+   ali seria escolher uma direção que o artista não desenhou.
+3. **O chip `L` some de Pinch, Crease e Blob.**
+
+#### ⚠️ E um gate ficava VERDE sobre a afirmação falsa, por FIXTURE
+
+O `the_elastic_pinch_gives_back_along_the_normal_what_it_takes_from_the_plane`
+somava o deslocamento normal sobre a **esfera inteira** e lia `0,5043` contra
+`0,1515` do `s-mode`. A decomposição por BANDA mostra que essa espirrada vive
+**toda fora do anel** — dentro dele a normal é negativa. *Uma soma global disse o
+contrário do que acontece sob o cursor*, a mesma doença que o Painter 2D pagou ao
+medir a ondulação no EIXO do traço em vez do ombro.
+
+⚠️ **E os outros dois EXIGIAM o defeito.** A mensagem de falha de um deles, com o
+campo já removido, foi: *"o empurrão elástico não alcança além do anel — sem isso
+o `l-mode` do Blob é um domo mais fraco e nada mais"*. Ele estava certo sobre o
+mecanismo e errado sobre o veredito.
+
+⇒ Os três foram substituídos por **dois**: `the_squeezing_family_stays_inside_the_cursor_ring`
+(a propriedade que o artista vê) e `no_reference_declares_an_elastic_squeeze` (a
+razão, que é de REFERÊNCIA e não de número — sem ela a primeira passaria no dia
+em que alguém religasse o campo com um alcance menor).
+
+#### ⚠️ E a minha fixture nova caiu no MESMO buraco, e o meu anti-vácuo pegou-a
+
+A primeira versão do gate do anel usou o helper `stroke` do irmão, que carimba
+sempre no mesmo centro — logo `path = 0` e o `B` do Pinch **recusa**. O
+`assert!(inside > 1e-4)` disparou com *"a fixture não contém o fenômeno (0)"*
+antes de eu ter olhado. **O anti-vácuo é a linha que separa um gate de um
+carimbo**, e ele pagou-se no primeiro uso.
+
+**5 mutações, 5 sangram**, cada gate com uma que só ele mata: religar o campo (4
+gates) · o `B` voltar ao `crease.cc` (2) · o degenerado inventar um eixo (só o da
+recusa) · o `remove_along` não remover (2) · o eixo ser o `path` cru (só o da
+ortogonalização).
+
+**Higiene:** `kelvinlet::pinch` e a cadeia afim inteira (`Mat3`, `mul`,
+`raw_affine`, `affine_tip`, `affine_gain`, `affine`, `Affine`) ficam **congeladas
+sob `cfg(test)`** — a `pinch` era a única consumidora de produção delas, e os
+gates continuam a usá-las como ORÁCULO (o `twist` é verificado contra a forma
+geral; o `affine_gain` é o que torna a degenerescência do `POISSON` uma asserção
+em vez de prosa). O precedente é o `warp_axis` do Painter 2D: *um `pub fn` sem
+chamador não é código morto silencioso, é uma segunda resposta à espera de que
+alguém a chame.*
+
+⚠️ **PENDENTE DE SMOKE.** As perguntas de olho:
+1. **Pinch em `B` contra `S`** — arraste (não clique) e eles têm de ficar
+   VISIVELMENTE diferentes: o `B` faz um vinco ao longo do traço, o `S` um funil
+   radial.
+2. **Blob e Crease** — os chips `L` deles não existem mais; `B` e `S` (o Crease)
+   têm de continuar como estavam.
+3. **O CONTROLE** — Grab, Snake Hook, Twist e Local Scale **mantêm** o `L`, e é
+   ele que continua a alcançar além do anel, porque ali isso é a ferramenta.

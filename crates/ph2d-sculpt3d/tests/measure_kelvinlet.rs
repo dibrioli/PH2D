@@ -9,7 +9,7 @@
 //! diferença entre *"o kernel diz isto"* e *"o traço faz isto"* já custou a esta
 //! casa uma nota errada mais de uma vez.
 
-use ph2d_sculpt3d::kelvinlet::{POISSON, Scales, grab, pinch, scale, twist};
+use ph2d_sculpt3d::kelvinlet::{POISSON, Scales, grab, scale, twist};
 
 fn len(v: [f32; 3]) -> f32 {
     (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt()
@@ -100,9 +100,10 @@ fn what_a_field_evaluation_costs() {
         twist(r, 0.5, [0.0, 0.0, 1.0], Scales::Tri)
     });
     bench("scale Tri", &|r| scale(r, 0.5, 0.3, Scales::Tri));
-    bench("pinch Tri", &|r| {
-        pinch(r, 0.5, [0.0, 0.0, 1.0], 0.3, Scales::Tri)
-    });
+    // ⚠️ **A linha do `pinch` saiu em 2026-08-15**: ele deixou de ter chamador
+    // de produção (ver o doc dele) e vive sob `cfg(test)`, que um teste de
+    // INTEGRAÇÃO não alcança. Cronometrar uma função congelada seria publicar o
+    // custo de um caminho que ninguém percorre.
 }
 
 /// **O PERFIL, lado a lado com a curva que ele substitui** — é a tabela que

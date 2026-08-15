@@ -174,15 +174,6 @@ const SHAPE_GATED: &[&str] = &[
     "Twist",
     // `the_elastic_scale_falls_off_from_the_tip_to_the_rim`
     "Local Scale",
-    // `the_creased_trench_stays_narrow_while_the_squeeze_reaches_out` — um dos
-    // dois COMPOSTOS da tabela, e por isso um dos dois cujo gate tem de olhar as
-    // duas metades separadas.
-    "Crease",
-    // `the_blobs_dome_stays_narrow_while_the_push_reaches_out` — o outro
-    // COMPOSTO, a mesma soma com os dois sinais trocados.
-    "Blob",
-    // `the_elastic_pinch_gives_back_along_the_normal_what_it_takes_from_the_plane`
-    "Pinch",
     // `the_elastic_magnify_dilates_along_the_ray_not_across_the_plane`
     "Magnify",
 ];
@@ -269,76 +260,130 @@ fn the_turn_falls_off_from_the_tip_to_the_rim() {
     );
 }
 
-/// **O APERTO DEVOLVE PELA NORMAL O QUE TIRA DO PLANO** — a `F` de traço zero, e
-/// o que separa um vinco de material de um furo raso.
+/// **A FAMÍLIA QUE APERTA FICA DENTRO DO ANEL DO CURSOR** — o gate que a
+/// remoção do `Field::Pinch` deixou no lugar dos três que afirmavam o contrário.
 ///
-/// ⚠️ **O `s-mode` é o CONTROLE e ele não é um espantalho:** ele puxa
-/// lateralmente com a mesma força e devolve **0,5610** pela normal contra
-/// **1,7653** do campo, com o aperto lateral praticamente igual (`−3,70` contra
-/// `−3,50`). *O barro que sai de lado tem de sair por algum lugar*, e é essa
-/// frase que o número mede.
+/// ⚠️ **Os gates que ele substitui EXIGIAM o defeito, e a mensagem de falha de
+/// um deles dizia-o em voz alta:** *"o empurrão elástico não alcança além do
+/// anel — sem isso o `l-mode` do Blob é um domo mais fraco e nada mais"*. Ele
+/// estava certo sobre o mecanismo e errado sobre o veredito: alcançar além do
+/// anel **era** a lei do campo, e é exatamente o que o Enio reprovou em
+/// 2026-08-15 (*"Blob modo L ruim … em L Pinch ruim"*).
 ///
-/// ⚠️ **Mas a grandeza é a RAZÃO, não a soma — e a mutação obrigou a troca.**
-/// Tirar o braço de campo deixa o alvo cair no `s-mode` **com a pegada do
-/// campo**, e uma soma sobre 3× mais vértices cresce sozinha: o gate passava
-/// sobre um `l-mode` sem lei. A razão `normal ÷ lateral` é adimensional e as
-/// duas somas crescem juntas, então ela mede o que a `F` de traço zero faz e
-/// nada mais — **0,1515** no modo que já shipava contra **0,5043** no campo.
+/// ⚠️ **E o terceiro deles ficava VERDE sobre uma afirmação falsa, por FIXTURE.**
+/// O `the_elastic_pinch_gives_back_along_the_normal_what_it_takes_from_the_plane`
+/// somava o deslocamento normal sobre a **esfera inteira** e lia `0,5043` contra
+/// `0,1515` do `s-mode` — mas a sonda `measure_pinch_family_modes`, que
+/// decompõe por banda, mostra que essa espirrada vive **toda fora do anel**:
+/// dentro dele a normal é **NEGATIVA** (`−0,00078` na banda 0,5-0,75 r contra um
+/// lateral de `+0,00761`). *Uma soma global disse o contrário do que acontece
+/// sob o cursor* — a mesma doença que o Painter 2D pagou ao medir a ondulação no
+/// EIXO do traço em vez do ombro.
+///
+/// ⇒ A propriedade que fica é a que o artista pode ver: **o anel diz `1,0`, e o
+/// gesto obedece.** Medido antes e depois, num traço de oito eventos a força
+/// `0,75`:
+///
+/// | verbo | fora do anel ANTES | depois |
+/// |---|---|---|
+/// | Pinch | **62,4 %** | 0,0 % |
+/// | Crease | **43,7 %** | 0,0 % |
+/// | Blob | **46,5 %** | 0,0 % |
 #[test]
-fn the_elastic_pinch_gives_back_along_the_normal_what_it_takes_from_the_plane() {
+fn the_squeezing_family_stays_inside_the_cursor_ring() {
     let rest = sphere();
-    let normal_gain = |mode: RefMode| -> (f32, f32) {
-        let out = stroke(Verb::Pinch, mode, 0.0, [0.0; 3]);
-        let (a, b) = (rest.positions(), out.positions());
-        let (mut lat, mut nrm) = (0.0f32, 0.0f32);
-        for i in 0..a.len() {
-            let d = [b[i][0] - a[i][0], b[i][1] - a[i][1], b[i][2] - a[i][2]];
-            if (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt() <= 1e-6 {
+    // ⚠️ **O traço ANDA, e a fixture do irmão não andava** — o helper [`stroke`]
+    // carimba sempre no mesmo centro, então o [`crate::Dab::path`] fica zero e o
+    // `B` do Pinch **recusa** (a lei dele é o `pinch.cc`, que precisa de
+    // direção). A primeira versão deste gate usou-o e o próprio anti-vácuo
+    // abaixo a pegou: *"a fixture não contém o fenômeno (0)"*.
+    const STEP: f32 = 0.12 * R;
+    let c0 = [TIP[0] - STEP, TIP[1], TIP[2]];
+    // A pegada de um TRAÇO é o tubo em volta do segmento que ele percorre, não
+    // um disco — medir contra um ponto acusaria de "fora do anel" o barro que o
+    // outro extremo do gesto alcança legitimamente.
+    let ring = |p: [f32; 3]| -> f32 {
+        let seg = [TIP[0] - c0[0], TIP[1] - c0[1], TIP[2] - c0[2]];
+        let l2 = seg[0] * seg[0] + seg[1] * seg[1] + seg[2] * seg[2];
+        let w = [p[0] - c0[0], p[1] - c0[1], p[2] - c0[2]];
+        let t = ((w[0] * seg[0] + w[1] * seg[1] + w[2] * seg[2]) / l2).clamp(0.0, 1.0);
+        let q = [w[0] - seg[0] * t, w[1] - seg[1] * t, w[2] - seg[2] * t];
+        (q[0] * q[0] + q[1] * q[1] + q[2] * q[2]).sqrt()
+    };
+    for verb in [Verb::Pinch, Verb::Crease, Verb::Blob] {
+        for mode in RefMode::ALL {
+            if !mode.declares(verb) {
                 continue;
             }
-            let rad = [a[i][0] - TIP[0], a[i][1] - TIP[1]];
-            let rn = (rad[0] * rad[0] + rad[1] * rad[1]).sqrt();
-            if rn > 1e-4 {
-                lat += (d[0] * rad[0] + d[1] * rad[1]) / rn;
+            let mut out = sphere();
+            let brush = crate::Brush {
+                verb,
+                mode,
+                radius: R,
+                strength: 1.0,
+                ..crate::Brush::default()
+            };
+            let mut st = crate::SculptStroke::default();
+            st.begin(&out);
+            for c in [c0, TIP] {
+                let mut d = crate::Dab::pulling(c, R, EYE, [0.0; 3]);
+                d.amount = 1.0;
+                st.dab(&mut out, &brush, &d, crate::Symmetry::default());
             }
-            nrm += d[2];
+            let (a, b) = (rest.positions(), out.positions());
+            let (mut inside, mut outside) = (0.0f32, 0.0f32);
+            for i in 0..a.len() {
+                let d = [b[i][0] - a[i][0], b[i][1] - a[i][1], b[i][2] - a[i][2]];
+                let m = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+                if ring(a[i]) <= R {
+                    inside += m;
+                } else {
+                    outside += m;
+                }
+            }
+            // ⚠️ **O anti-vácuo primeiro**: um verbo que não move nada tem 0 %
+            // fora do anel e passaria a metade de baixo sem medir coisa alguma.
+            assert!(
+                inside > 1e-4,
+                "{} em {mode:?}: a fixture não contém o fenômeno ({inside})",
+                verb.label()
+            );
+            let share = outside / (inside + outside);
+            assert!(
+                share < 0.02,
+                "{} em {mode:?}: {:.1} % do gesto cai FORA do anel do cursor — \
+                 um verbo que APERTA é local por definição, e o alcance elástico \
+                 é a lei do verbo que AGARRA",
+                verb.label(),
+                share * 100.0
+            );
         }
-        (lat, nrm)
-    };
-    let (s_lat, s_nrm) = normal_gain(RefMode::S);
-    let (l_lat, l_nrm) = normal_gain(RefMode::L);
-    assert!(
-        s_lat < -1.0 && l_lat < -1.0,
-        "a fixture não aperta: s={s_lat:.4} l={l_lat:.4}"
-    );
-    // ⚠️ **E a razão SOZINHA não bastou** — medido, ela sobrevive a tirar o
-    // braço de campo, porque o `lateral_pull` para uma âncora que está SOBRE a
-    // superfície também tem componente normal, e a pegada larga a amplifica. A
-    // metade que sangra é o PERFIL, a mesma do gancho: sem lei, a
-    // curva-indicadora leva o gesto inteiro até ao aro.
-    let rest2 = sphere();
-    let l_out = stroke(Verb::Pinch, RefMode::L, 0.0, [0.0; 3]);
-    let (near, rim) = (
-        band_displacement(&rest2, &l_out, 0.1, 0.4),
-        band_displacement(&rest2, &l_out, 1.5, 2.0),
-    );
-    assert!(
-        near > 1e-3,
-        "a fixture não aperta perto do bico ({near:.4})"
-    );
-    assert!(
-        rim < 0.5 * near,
-        "o aperto elástico não decai ({near:.4} no bico, {rim:.4} no aro) — com \
-         a indicadora sobre a pegada larga isto é o modo que já shipava a vestir \
-         o alcance do campo"
-    );
-    let (s_ratio, l_ratio) = (s_nrm / -s_lat, l_nrm / -l_lat);
-    assert!(
-        l_ratio > 2.0 * s_ratio,
-        "o aperto elástico não espirrou pela normal (razão {l_ratio:.4} contra \
-         {s_ratio:.4} do modo que já shipava) — sem o termo de traço zero ele \
-         remove volume, e uma SOMA maior só diria que a pegada é maior"
-    );
+    }
+}
+
+/// **E O `L` NÃO É OFERECIDO A NENHUM DELES** — a outra metade, porque a de cima
+/// passaria sozinha no dia em que alguém religasse o campo com um alcance menor.
+///
+/// ⚠️ **A razão é de REFERÊNCIA e não de número:** o `elastic_deform.cc` do
+/// Blender porta este mesmo paper e declara **cinco** famílias — `GRAB`,
+/// `GRAB_BISCALE`, `GRAB_TRISCALE`, `SCALE`, `TWIST` —, e nenhuma é o pinch; o
+/// SculptGL não tem Kelvinlets. Um chip `L` aqui vestia uma LEI inteira com a
+/// autoridade de uma fonte que não a declara, que é o que a §4 do plano proíbe.
+#[test]
+fn no_reference_declares_an_elastic_squeeze() {
+    for verb in [Verb::Pinch, Verb::Crease, Verb::Blob] {
+        assert_eq!(
+            verb.elastic_field(),
+            None,
+            "{}: nenhuma das três fontes declara um aperto elástico",
+            verb.label()
+        );
+        assert!(
+            !RefMode::L.declares(verb),
+            "{}: o chip `L` seria oferecido sobre uma lei que ninguém declara",
+            verb.label()
+        );
+    }
 }
 
 /// **A DILATAÇÃO DO MAGNIFY É RADIAL, e ela ALCANÇA ALÉM DO ANEL.**

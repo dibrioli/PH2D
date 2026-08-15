@@ -2,6 +2,7 @@
 //! segunda porta, e que nenhum chip morto pode nascer dela.
 
 use super::*;
+use crate::falloff::Falloff;
 use crate::{Brush, Pass};
 
 /// **A coluna `S` é o que o SculptGL declara**, tool a tool, com arquivo e linha.
@@ -372,11 +373,26 @@ fn the_mode_reaches_the_clay() {
 /// carregava, cobrada uma segunda vez: **uma assinatura que não contém um eixo
 /// observável é um discriminante falso**, e a única defesa é ela crescer no
 /// mesmo commit que o eixo.
+/// ⚠️ **O [`crate::LateralPull`] entrou aqui em 2026-08-15, e a ausência dele era
+/// um buraco:** a lei lateral deixou de ser um campo do [`KernelLaw`] e passou a
+/// ser por VERBO ([`RefMode::lateral_for`]), porque o Blender tem duas
+/// ferramentas nesta família e duas leis. Sem esta coluna a assinatura de um
+/// chip ignora o eixo que a wave tornou o mais visível.
+///
+/// ⚠️ **E ela é uma defesa em camadas que HOJE não é observável — a mutação que
+/// a removeria não sangra, e isso fica escrito em vez de ser contrabandeado.**
+/// O `S` e o `B` já diferem no [`KernelLaw`] (`plane` e `front_face`), então
+/// nenhum par de modos colide nas outras colunas e a falta desta não produz um
+/// falso *"duplicata"* hoje. Ela existe para o dia em que dois modos coincidirem
+/// em tudo menos no aperto — e nesse dia o gate teria declarado um chip morto
+/// que não é. Precedente do repo: quando a corrida não existe no regime que
+/// shipa, documenta-se.
 fn signature(
     verb: Verb,
     mode: RefMode,
 ) -> (
     KernelLaw,
+    crate::LateralPull,
     StrengthCurve,
     &'static [Pass],
     Option<crate::Field>,
@@ -389,7 +405,13 @@ fn signature(
     let curve = verb
         .profile(mode)
         .map_or(StrengthCurve::Linear, |p| p.strength_curve);
-    (mode.kernel(), curve, brush.passes(), mode.field(verb))
+    (
+        mode.kernel(),
+        mode.lateral_for(verb),
+        curve,
+        brush.passes(),
+        mode.field(verb),
+    )
 }
 
 /// **UM CHIP EXISTE SE E SOMENTE SE O MODO EXISTE** — a lei §3 do plano, agora
@@ -475,17 +497,19 @@ fn the_literature_mode_is_offered_exactly_where_it_declares_a_law() {
         declared,
         vec![
             "Smooth",
-            "Pinch",
             "Magnify",
-            // Os dois COMPOSTOS: `Draw + Kelvinlets pinch` (a matriz §3), e o
-            // Blob é a mesma soma com os dois sinais trocados.
-            "Crease",
-            "Blob",
             "Move / Grab",
             "Snake Hook",
             "Twist",
             "Local Scale"
         ],
+        // ⚠️ **O censo ENCOLHEU em 2026-08-15, e é a primeira vez.** Pinch,
+        // Crease e Blob saíram com o `Field::Pinch`: um chip `L` neles vestia
+        // uma lei que **nenhuma das três fontes declara** (o
+        // `elastic_deform.cc` do Blender porta o mesmo paper e traz cinco
+        // famílias, nenhuma delas o pinch), e o preço estava medido — 44 a 62 %
+        // do gesto caía fora do anel do cursor. Ver
+        // [`crate::Verb::elastic_field`] para a tabela inteira.
         "a literatura portada até hoje"
     );
 }

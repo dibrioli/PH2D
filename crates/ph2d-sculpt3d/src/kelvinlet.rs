@@ -276,7 +276,16 @@ pub fn grab(r: [f32; 3], eps: f32, f: [f32; 3], scales: Scales) -> [f32; 3] {
     }
     [acc[0] / norm, acc[1] / norm, acc[2] / norm]
 }
-
+/// ⛔ **A CADEIA AFIM INTEIRA é `cfg(test)` desde 2026-08-15**, e não por
+/// higiene: a [`pinch`] era a **única** consumidora de produção dela, e quando
+/// ela saiu do motor (ver o doc de lá) tudo o que a alimentava ficou sem
+/// chamador. Os gates continuam a consumi-la como ORÁCULO — o [`twist`] é
+/// verificado contra a forma geral, e o [`affine_gain`] é o que torna a
+/// degenerescência do [`POISSON`] uma asserção em vez de prosa —, e é por isso
+/// que ela é congelada em vez de removida.
+///
+/// ⚠️ **O enum [`Affine`] fica com os TRÊS modos**, o pinch incluído: ele é a
+/// taxonomia do paper, e apagar um variante faria o tipo mentir sobre a fonte.
 /// Uma matriz `3×3` em ordem de LINHAS, e o que ela significa para o campo afim.
 ///
 /// ⚠️ **O tipo é um alias e não uma struct de propósito:** o campo afim aceita
@@ -284,8 +293,9 @@ pub fn grab(r: [f32; 3], eps: f32, f: [f32; 3], scales: Scales) -> [f32; 3] {
 /// dela (antissimétrica · isotrópica · simétrica sem traço). Uma struct por
 /// família esconderia que é uma lei só, e é a lei só que faz o twist não precisar
 /// de `ν`.
+#[cfg(test)]
 type Mat3 = [[f32; 3]; 3];
-
+#[cfg(test)]
 #[inline]
 fn mul(m: &Mat3, r: [f32; 3]) -> [f32; 3] {
     [
@@ -294,7 +304,6 @@ fn mul(m: &Mat3, r: [f32; 3]) -> [f32; 3] {
         m[2][0] * r[0] + m[2][1] * r[1] + m[2][2] * r[2],
     ]
 }
-
 /// O Kelvinlet AFIM, **sem normalizar** — a derivada direcional do agarre.
 ///
 /// `u_F(r) = [ (a−b)/rε³ + 3aε²/(2rε⁵) ]·F r + [3b/rε⁵]·(rᵀFr)·r
@@ -304,6 +313,7 @@ fn mul(m: &Mat3, r: [f32; 3]) -> [f32; 3] {
 /// três famílias: com `F` antissimétrica ele SOMA ao primeiro (`Fᵀ = −F`,
 /// `tr = 0`) e o `b` desaparece do twist inteiro; com `F = s·I` ele subtrai
 /// `4b`, e é dali que sai o zero em `ν = 1/2`.
+#[cfg(test)]
 fn raw_affine(r: [f32; 3], eps: f32, f: &Mat3) -> [f32; 3] {
     let re = r_eps(r, eps);
     let re2 = re * re;
@@ -329,19 +339,19 @@ fn raw_affine(r: [f32; 3], eps: f32, f: &Mat3) -> [f32; 3] {
         c1 * fr[2] + c2 * r[2] - c3 * (tr * r[2] + ftr[2]),
     ]
 }
-
 /// O ganho do bico de um campo afim de raio `ε`, para um `F` de cada família.
 ///
 /// `∇u(0) = (1/ε³)·[ (5a/2 − b)·F − b·tr(F)·I − b·Fᵀ ]`, e cada família colapsa
 /// esse colchete num múltiplo escalar do próprio `F` — é isso que permite
 /// normalizar sem inverter uma matriz.
+#[cfg(test)]
 #[inline]
 const fn affine_tip(kind: Affine, eps: f32) -> f32 {
     affine_gain(kind, B) / (eps * eps * eps)
 }
-
 /// O colchete `[ (5a/2 − b)·F − b·tr(F)·I − b·Fᵀ ]` colapsado num escalar, por
 /// família — **parametrizado em `b` para que a degenerescência seja um GATE**.
+#[cfg(test)]
 #[inline]
 const fn affine_gain(kind: Affine, b: f32) -> f32 {
     match kind {
@@ -495,8 +505,8 @@ fn rigid(r: [f32; 3], eps: f32, scales: Scales, v: impl Fn([f32; 3]) -> [f32; 3]
     let p = rigid_profile(r, eps, scales);
     [p * vr[0], p * vr[1], p * vr[2]]
 }
-
 /// Qual das três formas de `F` um campo afim carrega.
+#[cfg(test)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Affine {
     /// `F` antissimétrica — gira em torno de um eixo. Sem mudança de volume, e
@@ -507,8 +517,8 @@ pub enum Affine {
     /// `F` simétrica e sem traço — aperta num eixo e espirra no outro.
     Pinch,
 }
-
 /// O campo afim normalizado para que `∇u(0) == F`.
+#[cfg(test)]
 fn affine(r: [f32; 3], eps: f32, f: &Mat3, kind: Affine, scales: Scales) -> [f32; 3] {
     let mut acc = [0.0f32; 3];
     let mut norm = 0.0f32;
@@ -565,6 +575,22 @@ pub fn scale(r: [f32; 3], eps: f32, s: f32, scales: Scales) -> [f32; 3] {
 /// ⚠️ **`n` tem de chegar UNITÁRIO.** Não há normalização aqui de propósito: o
 /// chamador já tem a normal de área do dab e re-normalizá-la por vértice
 /// pagaria uma raiz por vértice por dab para responder o que já se sabe.
+///
+/// ⛔ **ELA SAIU DO PRODUTO EM 2026-08-15 e fica CONGELADA sob `cfg(test)`** —
+/// o precedente é o `warp_axis` do Painter 2D: um `pub fn` sem chamador não é
+/// código morto silencioso, é uma **segunda resposta** à espera de que alguém a
+/// chame. Aqui ela continua a servir os gates que provam a álgebra do paper (o
+/// traço zero, o ganho do bico), e é isso que a mantém verificável sem a
+/// oferecer de volta ao motor.
+///
+/// ⚠️ **O motivo da saída está medido no doc do [`crate::Verb::elastic_field`]**,
+/// e o resumo é que a frase que ela carregava é falsa numa MALHA: o traço zero
+/// reparte `+s` na normal e `−s/2` no plano, mas os vértices de uma casca vivem
+/// na superfície (`r · n ≈ 0`), então **não há material fora do plano para
+/// receber o que sai de lado**. Medido no produto, o aperto com campo removia
+/// **4,8× mais volume** que o sem — o oposto exato do que ele existia para
+/// fazer.
+#[cfg(test)]
 #[must_use]
 pub fn pinch(r: [f32; 3], eps: f32, n: [f32; 3], s: f32, scales: Scales) -> [f32; 3] {
     // `n nᵀ − ½(I − n nᵀ)` == `1,5·n nᵀ − ½·I`.

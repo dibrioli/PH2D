@@ -287,11 +287,58 @@ impl Verb {
             Self::Move | Self::SnakeHook => Some(crate::Field::Grab),
             Self::Twist => Some(crate::Field::Twist),
             Self::LocalScale | Self::Magnify => Some(crate::Field::Scale),
-            // ⚠️ **O Blob divide o campo com o Crease, e o paper cobre os dois
-            // sinais:** a `F` de [`crate::kelvinlet::pinch`] tem traço zero por
-            // construção, então negá-la continua sendo um campo de deslocamento
-            // legítimo — o que muda é para que lado o barro sai.
-            Self::Pinch | Self::Crease | Self::Blob => Some(crate::Field::Pinch),
+            // ⛔ **A FAMÍLIA QUE APERTA NÃO TEM CAMPO, e a linha que dizia
+            // `Some(Field::Pinch)` foi RETIRADA em 2026-08-15 depois de um
+            // report do Enio (*"Blob modo L ruim … em L Pinch ruim"*) e de a
+            // medição concordar com ele em três eixos** — sonda
+            // `measure_pinch_family_modes`, malha de 64×96, pincel `r = 0,30`,
+            // traço de 8 eventos a força 0,75:
+            //
+            // | verbo | modo | fora do anel | ΔV/V (10⁻⁴) |
+            // |---|---|---|---|
+            // | Pinch | S | 0,0 % | −0,92 |
+            // | Pinch | **L** | **62,4 %** | **−4,43** |
+            // | Crease | S | 0,0 % | −9,50 |
+            // | Crease | **L** | **43,7 %** | −11,48 |
+            // | Blob | B | 0,0 % | +10,52 |
+            // | Blob | **L** | **46,5 %** | +11,95 |
+            //
+            // ⚠️ **Metade a dois terços do gesto caía FORA do anel do cursor** —
+            // o `KELVINLET_REACH = 3` é a feature do verbo que AGARRA (o doc
+            // dele nomeia o preço: *"o anel do cursor deixa de significar o que
+            // eu toco"*) e é o defeito de um verbo que APERTA, que é local por
+            // definição.
+            //
+            // ⚠️ **E o campo PIORAVA justamente o que ele existia para curar.**
+            // A nota do [`crate::Verb::Pinch`] afirmava *"com campo ele deixa de
+            // REMOVER VOLUME … o que sai de lado sai pela normal: aperta E
+            // espirra"*; medido, o Pinch com campo remove **4,8× mais** volume
+            // que o sem, e dentro do anel o deslocamento normal é **NEGATIVO**
+            // (−0,00078 na banda 0,5-0,75 r contra um lateral de +0,00761): ele
+            // AFUNDA, não espirra. O mecanismo é geometria — o traço zero
+            // reparte `+s` na normal e `−s/2` no plano, mas numa MALHA os
+            // vértices vivem na superfície (`r · n ≈ 0`), então o termo normal é
+            // ~zero e não há material fora do plano para receber o que sai de
+            // lado. *Uma casca não tem para onde espirrar.*
+            //
+            // ⛔ **E não há corte honesto que o localize:** o perfil lateral é
+            // quase CHATO até o anel (0,00304 · 0,00649 · 0,00761 · 0,00666 nas
+            // quatro bandas de dentro) e ainda vale **88 % do pico** em `1,0 r`
+            // — cortá-lo ali seria um degrau trinta vezes maior que os 2,90 %
+            // que o [`crate::kelvinlet::rim_landing`] foi construído para curar.
+            //
+            // ⚠️ **A REFERÊNCIA chegou à mesma conclusão, e é isso que fecha:**
+            // o `elastic_deform.cc` do Blender porta este paper e declara CINCO
+            // famílias — `GRAB`, `GRAB_BISCALE`, `GRAB_TRISCALE`, `SCALE`,
+            // `TWIST`. **Nenhuma é o pinch.** O SculptGL não tem Kelvinlets. O
+            // paper tem a família afim de traço zero como MATEMÁTICA e nenhum
+            // escultor a shipa como PINCEL.
+            //
+            // ⇒ Um chip `L` aqui era exatamente o que a §4 do plano proíbe: uma
+            // LEI inteira vestida com a autoridade de uma fonte que não a
+            // declara. O `L` desaparece destes três por construção — o
+            // [`crate::RefMode::declares`] pergunta `field(verb).is_some()` —, e
+            // não por uma segunda lista a manter.
             _ => None,
         }
     }

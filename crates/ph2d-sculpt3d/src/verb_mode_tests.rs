@@ -253,15 +253,20 @@ fn in_s_mode_the_flatten_is_the_scrape_vertex_by_vertex() {
 /// sinal também teria) — é **a DIREÇÃO**: cada vértice deslocado tem de andar ao
 /// longo da reta que o liga ao centro do dab, ao cosseno.
 ///
-/// ⚠️ **E o gate mede o par, não o absoluto:** o mesmo dab em `B` tem de ficar
-/// perpendicular à normal. Sem essa metade ele passaria com os dois modos em
-/// `S`, e o chip não escolheria nada.
+/// ⚠️ **E o gate mede o par, não o absoluto:** o mesmo traço em `B` tem de
+/// deixar a direção do traço QUIETA. Sem essa metade ele passaria com os dois
+/// modos em `S`, e o chip não escolheria nada.
+///
+/// ⚠️ **Ele passou a dirigir um TRAÇO e não um dab, e não foi conveniência:** o
+/// `B` do Pinch é o `pinch.cc`, cuja lei precisa da direção do gesto — sem ela a
+/// referência **recusa o dab** (`pinch.cc:188-195`) e nós também. Um dab solto
+/// aqui media o `B` no degenerado dele e afirmava a lei errada sobre um conjunto
+/// vazio.
 #[test]
 fn in_s_mode_the_pinch_pulls_straight_at_the_centre() {
     let c = [0.0, 0.0, 1.0];
     let run = |mode: crate::RefMode| {
         let mut mesh = sphere();
-        let base = snapshot(&mesh);
         let b = Brush {
             verb: Verb::Pinch,
             radius: 0.5,
@@ -271,6 +276,15 @@ fn in_s_mode_the_pinch_pulls_straight_at_the_centre() {
         };
         let mut s = SculptStroke::default();
         s.begin(&mesh);
+        // Dois dabs ao longo de `+x`: o segundo é o que tem direção, e é ele que
+        // o oráculo lê. O primeiro existe para o `SculptStroke` a poder derivar.
+        s.dab(
+            &mut mesh,
+            &b,
+            &dab_at([-0.06, 0.0, 1.0], b.radius),
+            Symmetry::default(),
+        );
+        let base = snapshot(&mesh);
         s.dab(&mut mesh, &b, &dab_at(c, b.radius), Symmetry::default());
         // O pior cosseno contra a direção `v -> centro`, e o pior |normal|/|d|.
         let (mut worst_cos, mut worst_normal, mut moved) = (1.0f32, 0.0f32, 0usize);
@@ -291,26 +305,185 @@ fn in_s_mode_the_pinch_pulls_straight_at_the_centre() {
         (worst_cos, worst_normal, moved)
     };
 
-    let (cos_s, normal_s, moved) = run(crate::RefMode::S);
+    let (cos_s, _normal_s, moved) = run(crate::RefMode::S);
     assert!(
         cos_s > 0.9999,
         "em `S` todo vértice anda RETO para o centro (pior cosseno {cos_s})"
     );
-    // O CONTROLE: em `B` a projeção tira a componente normal, e é isso que faz
-    // o mesmo dab andar para OUTRO lugar.
-    let (cos_b, normal_b, moved_b) = run(crate::RefMode::B);
-    // ⚠️ **O anti-vácuo é ESTRUTURAL, e não um piso que eu escolhesse:** a
-    // pegada não depende do modo (ela é a esfera do dab), então os dois têm de
-    // mover o MESMO conjunto — e um conjunto vazio faria os `worst_*` acima
-    // devolverem os valores de identidade e o gate passar sem medir nada.
-    assert_eq!(moved, moved_b, "a pegada não pode depender do modo");
-    assert!(moved > 0, "a fixture não contém o fenômeno");
-    assert!(
-        normal_s > normal_b * 10.0,
-        "o puxão cru tem de carregar a normal que a projeção corta          (`S` {normal_s} contra `B` {normal_b})"
-    );
+    // O CONTROLE: em `B` a lei do `pinch.cc` remove a componente ao longo do
+    // traço, e é isso que faz o mesmo dab andar para OUTRO lugar.
+    let (cos_b, _normal_b, moved_b) = run(crate::RefMode::B);
+    // ⚠️ **O `assert_eq!(moved, moved_b)` que estava aqui era EXATO e passou a
+    // ser FALSO, e o que mudou foi a lei.** Ele dizia *"a pegada não depende do
+    // modo"*, verdade enquanto as duas leis eram projeções que nunca zeram o
+    // vetor; o `AcrossStroke` zera **por construção** o vértice que cai sobre a
+    // LINHA do traço, porque ali o deslocamento ao centro é inteiramente a
+    // componente que a lei remove. É o *"pinched towards a line"* do comentário
+    // da referência, medido em **61 contra 60** vértices — um.
+    //
+    // ⇒ A metade que ele de facto protegia — *um conjunto vazio faz os `worst_*`
+    // devolverem a identidade e o gate passa sem medir nada* — fica, e é o que
+    // as duas linhas abaixo afirmam. Uma propriedade que deixou de ser verdade
+    // não se afrouxa com um limiar: ela sai, e a que sobra é dita inteira.
+    assert!(moved > 0, "a fixture não contém o fenômeno em `S`");
+    assert!(moved_b > 0, "a fixture não contém o fenômeno em `B`");
     assert!(
         cos_b < 0.9999,
         "em `B` o puxão NÃO é reto para o centro (cosseno {cos_b})"
     );
+}
+
+/// **O PINCH EM `B` APERTA ATRAVÉS DO TRAÇO E DEIXA A LINHA QUIETA** — o
+/// `pinch.cc:39-60`, e a lei que fecha o report do Enio de 2026-08-15 (*"Pinch em
+/// B e S bons mas idênticos ou quase idênticos"*).
+///
+/// ⚠️ **O gate afirmava o CONTRÁRIO até esta wave, e o comentário dele carregava
+/// o erro que a nota do [`crate::LateralPull::Tangential`] agora nomeia:** ele
+/// dizia que o `pinch.cc` projeta *"a tangente ao longo do TRAÇO mais a
+/// NORMAL"* e que *"nenhum dos dois projeta como nós"*. As duas frases saíram do
+/// COMENTÁRIO do Blender (*"the X vector (aligned to the stroke)"*), que é falso
+/// no próprio Blender — o código monta `X = cross(area_no, grab_delta)`, que é
+/// **perpendicular** ao traço. Lida a fonte em vez do comentário: o `crease.cc`
+/// projeta **exatamente** como nós, e o `pinch.cc` remove a componente **ao
+/// longo** do traço.
+///
+/// ⚠️ **E o *"does not secretly flatten"* do nome antigo era uma afirmação sobre
+/// a lei antiga.** O `pinch.cc` **GUARDA** a componente normal (`z_disp`) de
+/// propósito, então o Pinch em `B` passa a ter uma — é a mudança de
+/// comportamento desta wave, e ela vem da referência. Quem quer o aperto puro no
+/// plano tem o `S` ao lado no mesmo verbo.
+#[test]
+fn the_b_pinch_squeezes_across_the_stroke_and_leaves_the_line_alone() {
+    let mut mesh = sphere();
+    let c = [0.0, 0.0, 1.0];
+    let b = Brush {
+        verb: Verb::Pinch,
+        radius: 0.5,
+        strength: 1.0,
+        mode: crate::RefMode::B,
+        ..Brush::default()
+    };
+    let mut s = SculptStroke::default();
+    s.begin(&mesh);
+    // ⚠️ **DOIS dabs ao longo de `+x`, e o primeiro não é decoração:** a lei do
+    // `B` precisa da direção do gesto, e o [`crate::Dab::path`] nasce em zero —
+    // a referência **recusa** o primeiro dab de cada passe (`pinch.cc:188-195`)
+    // e nós recusamos junto. Um dab solto media esta lei no degenerado dela.
+    s.dab(
+        &mut mesh,
+        &b,
+        &dab_at([-0.06, 0.0, 1.0], b.radius),
+        Symmetry::default(),
+    );
+    let base = snapshot(&mesh);
+    s.dab(&mut mesh, &b, &dab_at(c, b.radius), Symmetry::default());
+
+    // ⚠️ **O oráculo é a razão ATRAVÉS ÷ AO LONGO, e ela é adimensional** — um
+    // aperto que some é indistinguível de um aperto certo se o gate só medir
+    // magnitude, e um traço em `+x` faz de `y` o eixo *através* e de `x` o eixo
+    // *ao longo*. A lei do `pinch.cc` deixa o `x` quieto e é isso que se afirma.
+    let (mut across, mut along) = (0.0f32, 0.0f32);
+    for (p, q) in base.iter().zip(mesh.positions()) {
+        let d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+        let len = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+        if len < 1e-5 {
+            continue;
+        }
+        across = across.max(d[1].abs());
+        along = along.max(d[0].abs());
+    }
+    let lateral = across;
+    // ⚠️ **O piso é DERIVADO do ganho, e não escolhido** — ele é anti-vácuo, e
+    // um literal aqui envelhece com a constante. O maior deslocamento possível
+    // num dab é `ganho · força · raio` (peso 1 na distância cheia, que o
+    // falloff nunca entrega junto); medido, o produto pousa em 28 % disso.
+    //
+    // ⚠️ **Ele era `0.02` e o número mudou porque o PRODUTO mudou:** o
+    // [`crate::PINCH_GAIN`] não existia, o alvo era a tangente inteira atenuada
+    // pelo peso, e o verbo era **20× mais forte que a referência**. O piso
+    // antigo estava calibrado nesse erro.
+    let floor = crate::PINCH_GAIN * b.strength * b.radius * 0.2;
+    assert!(
+        lateral > floor,
+        "o Pinch não apertou nada ({lateral} contra o piso {floor})"
+    );
+    assert!(
+        along < across * 0.05,
+        "o Pinch em `B` moveu {along:.6} AO LONGO do traço contra {across:.6} \
+         através dele — a componente que o `pinch.cc` remove voltou, e com ela \
+         o aperto radial que torna o `B` indistinguível do `S`"
+    );
+}
+
+/// **SEM DIREÇÃO NÃO HÁ APERTO NO `B`** — a recusa que o `pinch.cc:188-195` faz
+/// (*"delay the first daub because grab delta is not setup"*, e `return` com
+/// `grab_delta` zero), e a metade que impede alguém de "consertar" o degenerado
+/// inventando um eixo.
+///
+/// ⚠️ **O `S` é o CONTROLE, e ele não é um espantalho:** o MESMO dab solto, no
+/// mesmo lugar, aperta em `S` — então o que este gate mede é a LEI, não uma
+/// fixture que não toca a malha.
+#[test]
+fn without_a_stroke_direction_the_b_pinch_refuses_and_the_s_pinch_does_not() {
+    let squeeze = |mode: crate::RefMode| {
+        let mut mesh = sphere();
+        let base = snapshot(&mesh);
+        let b = Brush {
+            verb: Verb::Pinch,
+            radius: 0.5,
+            strength: 1.0,
+            mode,
+            ..Brush::default()
+        };
+        let mut s = SculptStroke::default();
+        s.begin(&mesh);
+        // UM dab: o `Dab::path` nasce em zero e ninguém o preencheu.
+        s.dab(
+            &mut mesh,
+            &b,
+            &dab_at([0.0, 0.0, 1.0], b.radius),
+            Symmetry::default(),
+        );
+        let mut worst = 0.0f32;
+        for (p, q) in base.iter().zip(mesh.positions()) {
+            let d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+            worst = worst.max((d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt());
+        }
+        worst
+    };
+    let s_only = squeeze(crate::RefMode::S);
+    assert!(
+        s_only > 1e-4,
+        "o CONTROLE não aperta ({s_only}) — a fixture não contém o fenômeno"
+    );
+    assert_eq!(
+        squeeze(crate::RefMode::B),
+        0.0,
+        "o `B` apertou sem saber para que lado o traço vai — um eixo inventado \
+         é uma direção que o artista não desenhou"
+    );
+}
+
+/// **O EIXO DO TRAÇO É ORTOGONALIZADO CONTRA A NORMAL** — o `cross` duas vezes
+/// do `pinch.cc:199-200`, e não uma normalização do gesto cru.
+///
+/// ⚠️ **A diferença só aparece num gesto que MERGULHA**, e um traço sobre uma
+/// esfera mergulha um pouco por curvatura. Sem a ortogonalização o eixo carrega
+/// parte da normal, e a lei passaria a remover parte do `z_disp` que o
+/// `pinch.cc` **guarda** de propósito — um erro que nenhum traço raso denuncia.
+#[test]
+fn the_stroke_axis_is_orthogonalised_against_the_normal() {
+    let n = [0.0, 0.0, 1.0];
+    let flat = super::super::target::stroke_axis(n, [1.0, 0.0, 0.0]).expect("traço tangencial");
+    // O MESMO gesto com meio metro de mergulho: o eixo tem de ser o mesmo.
+    let diving = super::super::target::stroke_axis(n, [1.0, 0.0, -0.5]).expect("traço a mergulhar");
+    for k in 0..3 {
+        assert!(
+            (flat[k] - diving[k]).abs() < 1e-6,
+            "o eixo do traço mudou por o gesto mergulhar: {flat:?} contra {diving:?}"
+        );
+    }
+    // E os dois degenerados devolvem a MESMA resposta, que é a ausência dela.
+    assert_eq!(super::super::target::stroke_axis(n, [0.0; 3]), None);
+    assert_eq!(super::super::target::stroke_axis(n, [0.0, 0.0, 2.0]), None);
 }

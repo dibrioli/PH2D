@@ -52,10 +52,12 @@ mod preview;
 /// e `f32` no armazenamento, gateado bit a bit contra o JS EXECUTANDO
 /// (`tests/sculptgl_parity.rs`). Ver [`ref_kernels`].
 pub mod ref_kernels;
+mod ref_mode;
 /// **OS TRÊS MODOS DE REFERÊNCIA** — de qual fonte (SculptGL · Blender ·
 /// literatura) um verbo herda o que ele é. Ver [`ref_mode`] e o plano
 /// `docs/3D/21_plano_modos_e_ferramentas.md`.
-mod ref_mode;
+/// A tabela DECLARATIVA dos modos — ver o cabeçalho dela.
+mod ref_profiles;
 mod spacing;
 mod stroke;
 mod transform;
@@ -73,7 +75,8 @@ pub use falloff::Falloff;
 pub use grip::{Amount, Grip, GripLaw};
 pub use kelvinlet::KELVINLET_REACH;
 pub use preview::{NO_PREVIEW, preview_into, preview_verts};
-pub use ref_mode::{Field, FrontFace, KernelLaw, LateralPull, PlaneReach, RefMode, VerbProfile};
+pub use ref_mode::{Field, FrontFace, KernelLaw, LateralPull, PlaneReach, RefMode};
+pub use ref_profiles::VerbProfile;
 pub use spacing::{MIN_SPACING_FRACTION, Walk, min_spacing, walk};
 pub use stroke::{Dab, SculptStroke};
 pub use transform::{Gesture, MIN_SCALE_FACTOR, MaskTransform, TransformKind};

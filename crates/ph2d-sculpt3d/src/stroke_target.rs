@@ -217,39 +217,33 @@ impl SculptStroke {
             // tangente inteira atenuada pelo peso, ou seja o vértice caminhava
             // até `w` da distância ao centro **num dab**. Medido: `16,88×`.
             //
-            // ⚠️ **COM CAMPO ele deixa de REMOVER VOLUME, e é essa a frase.** O
-            // puxão lateral leva barro para dentro e não o devolve a lugar
-            // nenhum — o vinco que sobra é um furo raso. A `F` do
-            // [`crate::kelvinlet::pinch`] tem **traço zero** por construção
-            // (`+s` na normal, `−s/2` no plano), então o que sai de lado sai
-            // pela normal: aperta E espirra, que é o que um material faz.
+            // ⛔ **O DOC QUE ESTAVA AQUI AFIRMAVA O CONTRÁRIO DO QUE O CÓDIGO
+            // FAZIA, e ficou dois meses de pé.** Ele dizia: *"com campo ele
+            // deixa de REMOVER VOLUME … a `F` tem traço zero, então o que sai de
+            // lado sai pela normal: aperta E espirra, que é o que um material
+            // faz"*. Medido pela porta do artista
+            // (`tests/measure_pinch_family_modes`), o aperto com campo removia
+            // **4,8× MAIS** volume que o sem (`−4,43` contra `−0,92`, em
+            // 10⁻⁴ de `V`), e dentro do anel o deslocamento normal era
+            // **NEGATIVO** — ele afundava.
             //
-            // ⚠️ **Aqui o campo entra como VETOR** (ao contrário do Twist e do
-            // LocalScale), porque a `F` do aperto produz um termo `(r·F r)·r`
-            // que **não** é múltiplo de `F r` — não há escalar a extrair, e não
-            // há geometria de verbo a preservar.
-            Verb::Pinch => match brush.mode.field(Verb::Pinch) {
-                Some(_) => add_vec(
-                    live,
-                    crate::kelvinlet::pinch(
-                        [
-                            live[0] - dab.center[0],
-                            live[1] - dab.center[1],
-                            live[2] - dab.center[2],
-                        ],
-                        dab.radius,
-                        n_area,
-                        w * crate::PINCH_GAIN,
-                        brush.elastic_scales,
-                    ),
-                    1.0,
-                ),
-                _ => add_vec(
-                    live,
-                    lateral_pull(brush.mode.kernel_for(brush.verb), live, dab.center, n_area),
-                    w * crate::PINCH_GAIN,
-                ),
-            },
+            // ⚠️ **A álgebra estava certa e a GEOMETRIA do consumidor não:** o
+            // traço zero reparte `+s` na normal e `−s/2` no plano, mas os
+            // vértices de uma MALHA vivem na superfície (`r · n ≈ 0`), então o
+            // termo normal é ~zero. *Uma casca não tem material fora do plano
+            // para receber o que sai de lado.* O campo saiu do verbo em
+            // 2026-08-15 — ver [`crate::Verb::elastic_field`].
+            //
+            // ⚠️ **A LEI LATERAL passou a ser função do MODO E DO VERBO**, e é
+            // ela que fecha a outra metade do report (*"Pinch em B e S bons mas
+            // idênticos ou quase idênticos"*): o `B` daqui é o `pinch.cc`, que
+            // remove a componente ao longo do traço — ver
+            // [`crate::RefMode::lateral_for`].
+            Verb::Pinch => add_vec(
+                live,
+                lateral_pull(brush.mode, brush.verb, live, dab.center, n_area, dab.path),
+                w * crate::PINCH_GAIN,
+            ),
             // ⚠️ **O l-mode do Magnify é a ESCALA, não o aperto invertido.** O
             // `s-mode` é o Pinch com o sinal trocado — um empurrão lateral para
             // fora, que **acrescenta** volume no plano e nada na normal. A
@@ -270,7 +264,7 @@ impl SculptStroke {
                 }
                 _ => add_vec(
                     live,
-                    lateral_pull(brush.mode.kernel_for(brush.verb), live, dab.center, n_area),
+                    lateral_pull(brush.mode, brush.verb, live, dab.center, n_area, dab.path),
                     -w * crate::PINCH_GAIN,
                 ),
             },
@@ -288,62 +282,25 @@ impl SculptStroke {
             // antes do `:68`): um vértice meio-mascarado leva `0,5⁵ = 3%` do
             // empurrão normal e `0,5` do lateral. A assimetria é da referência.
             //
-            // ⚠️ **O `l-mode` dele é uma COMPOSIÇÃO, e é o único da tabela.** Os
-            // cinco verbos da W5-B têm o deslocamento INTEIRO vindo do kernel,
-            // então a lei *"com campo, a curva é o SUPORTE do campo"* os serve
-            // toda. Aqui ela alcançaria também a metade que **não** é do campo —
-            // e a medição (`measure_the_crease_trench`) diz o que isso faz:
-            //
-            // | banda | s-mode | campo INGÊNUO |
-            // |---|---|---|
-            // | 0,25-0,50 r | 0,08594 | 0,18890 |
-            // | 1,00-1,50 r | 0,00000 | 0,15410 |
-            //
-            // ⇒ o vinco vira **CRATERA**: com a indicadora no lugar da quártica
-            // ele afunda **82 %** do bico a um raio e meio (contra 11 % do
-            // s-mode) e 2,2× fundo demais no bico. Um vinco é fundo e ESTREITO.
-            //
-            // ⇒ A metade estreita toma a estreiteza do **perfil do próprio
-            // Kelvinlet** — a mesma quártica que o s-mode aplica à curva do
-            // pincel, aplicada ao perfil do campo. Não há canal novo: o verbo
-            // composto fica inteiro na linguagem do campo, e o aperto lateral
-            // ganha o alcance elástico que era o ponto de ter um `l-mode`.
-            Verb::Crease => match brush.mode.field(Verb::Crease) {
-                Some(_) => {
-                    let d = [
-                        live[0] - dab.center[0],
-                        live[1] - dab.center[1],
-                        live[2] - dab.center[2],
-                    ];
-                    let gain = w * crate::CREASE_FRACTION;
-                    let prof = crate::kelvinlet::rigid_profile(d, dab.radius, brush.elastic_scales);
-                    add(
-                        add_vec(
-                            live,
-                            crate::kelvinlet::pinch(
-                                d,
-                                dab.radius,
-                                n_area,
-                                gain * brush.pinch,
-                                brush.elastic_scales,
-                            ),
-                            1.0,
-                        ),
-                        n_area,
-                        -gain * prof.powi(4) * dab.radius * sign,
-                    )
-                }
-                _ => {
-                    let t =
-                        lateral_pull(brush.mode.kernel_for(brush.verb), live, dab.center, n_area);
-                    let gain = w * crate::CREASE_FRACTION;
-                    add(
-                        add_vec(live, t, gain * brush.pinch),
-                        n_area,
-                        -gain * shape.powi(4) * dab.radius * sign,
-                    )
-                }
-            },
+            // ⛔ **O `l-mode` COMPOSTO deste verbo MORREU em 2026-08-15.** Ele
+            // era o único da tabela cujo deslocamento não vinha inteiro do
+            // kernel, e a nota aqui media o que acontecia se a lei *"com campo, a
+            // curva é o SUPORTE do campo"* alcançasse também a metade que não é
+            // do campo (o vinco virava CRATERA: 82 % do bico a um raio e meio).
+            // A cura de então foi tomar a estreiteza do perfil do próprio
+            // Kelvinlet; a medição de agora diz que o problema era um degrau
+            // acima — **43,7 % do gesto caía fora do anel do cursor**, e nenhuma
+            // das três referências declara um aperto elástico. Ver
+            // [`crate::Verb::elastic_field`].
+            Verb::Crease => {
+                let t = lateral_pull(brush.mode, brush.verb, live, dab.center, n_area, dab.path);
+                let gain = w * crate::CREASE_FRACTION;
+                add(
+                    add_vec(live, t, gain * brush.pinch),
+                    n_area,
+                    -gain * shape.powi(4) * dab.radius * sign,
+                )
+            }
             // **O BLOB** (`crease.cc::do_crease_or_blob_brush`, `invert_strength
             // = true`) — o Crease com o aperto lateral NEGADO e o depósito para
             // CIMA. Ver [`Verb::Blob`] para por que a direção é nossa.
@@ -361,42 +318,15 @@ impl SculptStroke {
             // aperto largo. No Blob a mesma assimetria vira um **domo estreito
             // dentro de um empurrão largo** — o barro sai de baixo e sobe no
             // meio, que é a forma que a palavra descreve.
-            Verb::Blob => match brush.mode.field(Verb::Blob) {
-                Some(_) => {
-                    let d = [
-                        live[0] - dab.center[0],
-                        live[1] - dab.center[1],
-                        live[2] - dab.center[2],
-                    ];
-                    let gain = w * crate::CREASE_FRACTION;
-                    let prof = crate::kelvinlet::rigid_profile(d, dab.radius, brush.elastic_scales);
-                    add(
-                        add_vec(
-                            live,
-                            crate::kelvinlet::pinch(
-                                d,
-                                dab.radius,
-                                n_area,
-                                -gain * brush.pinch,
-                                brush.elastic_scales,
-                            ),
-                            1.0,
-                        ),
-                        n_area,
-                        gain * prof.powi(4) * dab.radius * sign,
-                    )
-                }
-                _ => {
-                    let t =
-                        lateral_pull(brush.mode.kernel_for(brush.verb), live, dab.center, n_area);
-                    let gain = w * crate::CREASE_FRACTION;
-                    add(
-                        add_vec(live, t, -gain * brush.pinch),
-                        n_area,
-                        gain * shape.powi(4) * dab.radius * sign,
-                    )
-                }
-            },
+            Verb::Blob => {
+                let t = lateral_pull(brush.mode, brush.verb, live, dab.center, n_area, dab.path);
+                let gain = w * crate::CREASE_FRACTION;
+                add(
+                    add_vec(live, t, -gain * brush.pinch),
+                    n_area,
+                    gain * shape.powi(4) * dab.radius * sign,
+                )
+            }
             // O alvo de posição de um verbo de máscara é o próprio lugar: ele
             // não move geometria ([`crate::Grip::Paint`]), e `apply_mask` é quem
             // escreve o canal dele.
@@ -656,38 +586,88 @@ fn signed_distance(p: [f32; 3], plane: &PlaneFit) -> f32 {
         + (p[2] - plane.point[2]) * plane.normal[2]
 }
 
-/// A parte de `centro − p` que corre ao longo da superfície.
-///
-/// ⚠️ **Divergência deliberada do Blender**, que faz o Pinch mover para o centro
-/// em 3D (`co += (center − co) * fade`). Aquele vetor tem componente ao longo da
-/// normal, então o Pinch dele também ACHATA um pouco — dois efeitos num knob. Ao
-/// remover a componente normal, apertar é apertar; quem quer achatar tem quatro
-/// verbos para isso.
 /// **O PUXÃO LATERAL, por uma porta só** — Pinch, Magnify e o termo lateral do
-/// Crease perguntam aqui, e o modo responde.
+/// Crease e do Blob perguntam aqui, e a [`crate::RefMode::lateral_for`] responde.
 ///
-/// ⚠️ Três braços com um `match mode` cada seriam três lugares onde o quarto
+/// ⚠️ Quatro braços com um `match mode` cada seriam quatro lugares onde o quinto
 /// verbo que aperta nasce sem a resposta; e a divergência que isto fecha vale
 /// `5,776e-4` no atlas, contra um piso de `5,96e-8`.
+///
+/// ⚠️ **Ela toma o MODO e o VERBO, não a [`crate::KernelLaw`] já resolvida**, e
+/// a razão é o achado de 2026-08-15: a lei lateral do Blender é **por
+/// ferramenta**, então ela não cabe num campo do `KernelLaw` — ver o doc do
+/// [`crate::RefMode::lateral_for`].
 fn lateral_pull(
-    law: crate::KernelLaw,
+    mode: crate::RefMode,
+    verb: Verb,
     p: [f32; 3],
     center: [f32; 3],
     normal: [f32; 3],
+    path: [f32; 3],
 ) -> [f32; 3] {
-    match law.lateral {
-        crate::LateralPull::Tangential => tangential(p, center, normal),
+    let d = [center[0] - p[0], center[1] - p[1], center[2] - p[2]];
+    match mode.lateral_for(verb) {
+        crate::LateralPull::Tangential => remove_along(d, normal),
         // `Pinch.js:52-58` / `Crease.js:59-61`: o delta CRU até o centro, em 3D.
-        crate::LateralPull::Direct => [center[0] - p[0], center[1] - p[1], center[2] - p[2]],
+        crate::LateralPull::Direct => d,
+        // `pinch.cc:39-60` — `x_disp + z_disp`, com a componente ao longo do
+        // TRAÇO removida. Ver [`crate::LateralPull::AcrossStroke`].
+        crate::LateralPull::AcrossStroke => match stroke_axis(normal, path) {
+            Some(along) => remove_along(d, along),
+            // ⚠️ **Sem direção não há aperto, e é a referência que recusa** —
+            // `pinch.cc:188-195` adia o primeiro dab de cada passe de simetria
+            // e devolve cedo com `grab_delta` zero. Um eixo inventado aqui seria
+            // uma direção que o artista não desenhou.
+            None => [0.0; 3],
+        },
     }
 }
 
-fn tangential(p: [f32; 3], center: [f32; 3], normal: [f32; 3]) -> [f32; 3] {
-    let d = [center[0] - p[0], center[1] - p[1], center[2] - p[2]];
-    let along = d[0] * normal[0] + d[1] * normal[1] + d[2] * normal[2];
+/// A parte de `d` que sobra depois de remover o que corre ao longo de `axis`.
+///
+/// ⚠️ **`axis` chega UNITÁRIO** — os dois chamadores já o têm normalizado (a
+/// normal de área e o [`stroke_axis`]), e re-normalizar por vértice pagaria uma
+/// raiz para responder o que já se sabe. É a mesma lei do
+/// [`crate::kelvinlet::pinch`] quando ela existia no produto.
+fn remove_along(d: [f32; 3], axis: [f32; 3]) -> [f32; 3] {
+    let along = d[0] * axis[0] + d[1] * axis[1] + d[2] * axis[2];
     [
-        d[0] - normal[0] * along,
-        d[1] - normal[1] * along,
-        d[2] - normal[2] * along,
+        d[0] - axis[0] * along,
+        d[1] - axis[1] * along,
+        d[2] - axis[2] * along,
+    ]
+}
+
+/// **A DIREÇÃO DO TRAÇO no plano tangente**, unitária — ou `None` quando o dab
+/// não tem uma.
+///
+/// O `pinch.cc:199-200` monta `X = cross(area_no, grab_delta)` e
+/// `Y = cross(area_no, X)`; o `Y` é o que ele descarta, e é ele que esta função
+/// devolve. Passar pelo `X` e cruzar de volta — em vez de projetar o `path`
+/// direto — é o que **ortogonaliza** o traço contra a normal: um gesto que
+/// mergulha na superfície não leva a componente que mergulha.
+///
+/// ⚠️ **`None` cobre os DOIS degenerados com a mesma pergunta:** um dab sem
+/// traço ([`crate::Dab::path`] nasce em zero) e um traço paralelo à normal (o
+/// `cross` colapsa). Distingui-los daria dois braços para uma resposta só.
+pub(super) fn stroke_axis(normal: [f32; 3], path: [f32; 3]) -> Option<[f32; 3]> {
+    let x = cross(normal, path);
+    let y = cross(normal, x);
+    let len = (y[0] * y[0] + y[1] * y[1] + y[2] * y[2]).sqrt();
+    // ⚠️ O piso é sobre o COMPRIMENTO e não sobre `len² `: um traço curto tem
+    // `|path|` da ordem do espaçamento, e o quadrado dele desce a `1e-8` num
+    // gesto perfeitamente normal.
+    if len > 1.0e-6 {
+        Some([y[0] / len, y[1] / len, y[2] / len])
+    } else {
+        None
+    }
+}
+
+fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
     ]
 }

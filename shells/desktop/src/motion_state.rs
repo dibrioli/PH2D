@@ -61,15 +61,19 @@ mod gpu_field_demos;
 /// julga, `PH2D_GPU_COOK_DEMO=32..35`.
 #[path = "motion_state_conferencia_demos.rs"]
 mod conferencia_demos;
+/// A cena da ARITMETICA (`=41`) — o grupo A da conferencia (cinco nos irmaos do
+/// dominio de VALOR), irmao pelo mesmo teto de LOC.
+#[path = "motion_state_conferencia_demos_arith.rs"]
+mod conferencia_demos_arith;
+/// A cena do AUDIO (`=40`), irmao pelo mesmo motivo — e porque ela escreve a
+/// propria fixture em disco (nao ha asset de audio no repo).
+#[path = "motion_state_conferencia_demos_audio.rs"]
+mod conferencia_demos_audio;
 /// A cena da DIRECAO (`=38`) mora num irmao: o pai bate no teto de LOC da shell.
 #[path = "motion_state_conferencia_demos_direction.rs"]
 mod conferencia_demos_direction;
 #[path = "motion_state_conferencia_demos_text.rs"]
 mod conferencia_demos_text;
-/// A cena do AUDIO (`=40`), irmao pelo mesmo motivo — e porque ela escreve a
-/// propria fixture em disco (nao ha asset de audio no repo).
-#[path = "motion_state_conferencia_demos_audio.rs"]
-mod conferencia_demos_audio;
 /// A cena da MARCA DO IMPACTO (doc 89, folha 13), arquivo próprio pela mesma razão: ela
 /// responde *"um nó a jusante consegue saber que houve uma COLISÃO?"* — o passo mexe em `P` e
 /// `vel` a cada tique, então até existir a coluna `hit` a pergunta não era exprimível.

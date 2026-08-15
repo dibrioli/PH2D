@@ -297,8 +297,8 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
             sinks
         }
         Ok("40") => {
-            let sinks =
-                conferencia_demos_audio::build_audio_demo_document(doc, registry).unwrap_or_default();
+            let sinks = conferencia_demos_audio::build_audio_demo_document(doc, registry)
+                .unwrap_or_default();
             eprintln!(
                 "[audio-demo] O SOM DIRIGE A GEOMETRIA: a MESMA fileira de {} barras duas vezes.
   EM CIMA sem o canal: todas do mesmo tamanho, o CONTROLE.
@@ -307,6 +307,29 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
   A cena escreveu um VARRIMENTO de {:.0}s (60 Hz -> 12 kHz) em disco, entao a figura e' uma ONDA correndo da esquerda para a direita. De PLAY.",
                 conferencia_demos_audio::BANDS,
                 conferencia_demos_audio::SWEEP_SECS,
+            );
+            sinks
+        }
+        // A ARITMETICA do dominio de valor (doc 89, o grupo A): cinco nos irmaos,
+        // dez perfis, e cada modo NOVO ao lado do seu CONTROLE.
+        Ok("41") => {
+            let sinks = conferencia_demos_arith::build_arith_demo_document(doc, registry)
+                .unwrap_or_default();
+            eprintln!(
+                "[arith-demo] CADA FILEIRA E' UM GRAFICO: {} pecas por fileira, e o Y de cada peca E' o valor.",
+                conferencia_demos_arith::COLS as u32,
+            );
+            for (i, label) in conferencia_demos_arith::row_labels() {
+                eprintln!("  {}. {label}", i + 1);
+            }
+            eprintln!(
+                "  (!) Nenhuma fileira esta' sozinha -- cada modo NOVO tem o vizinho do MESMO no' ao lado,
+      sobre a MESMA entrada. A pergunta nao e' \"apareceu alguma coisa?\" e sim \"apareceu coisa
+      DIFERENTE?\": dois perfis identicos sao um param de modo que o kernel ignorou.
+  (!) As tres leituras que valem: os dois DENTES DE SERRA diferem so' na metade ESQUERDA (o
+      truncado mergulha abaixo do eixo, o aterrado nunca) - as duas ESCADAS diferem so' no MEIO
+      (o Truncate tem um degrau de largura DUPLA sobre a origem) - e as fileiras 5-7 sao a MESMA
+      rampa como reta, escada e S."
             );
             sinks
         }

@@ -121,7 +121,51 @@ impl WidgetStore {
     /// `set_collapsed(id, !is_collapsed(id))`.
     pub fn toggle_collapsed(&mut self, id: NodeId) {
         let was = self.is_collapsed(id);
+        // ⚠️ **A PARTIDA é gravada ANTES de o estado virar, e é isso que faz a PRIMEIRA dobra de
+        //    cada secção animar.** A lei do substrato é que a *primeira vista de um id CHEGA ao
+        //    alvo*; sem esta linha o relógio vê a secção pela primeira vez já no destino e a
+        //    estreia de cada dobra SALTA — todas as seguintes animariam, e o defeito seria uma
+        //    vez por secção por sessão, que é a forma mais fácil de ninguém reproduzir.
+        //
+        // ⚠️ `or_insert` e não `insert`: com uma dobra EM VOO o valor publicado é a verdade, e
+        //    re-clicar a meio tem de RETOMAR de onde ela está — é a interruptibilidade que o
+        //    substrato promete, e escrever por cima dela devolveria a secção ao extremo.
+        self.fold_live
+            .entry(id)
+            .or_insert(if was { 0.0 } else { 1.0 });
         self.collapsed.insert(id, !was);
+    }
+
+    /// **Quanto desta secção está ABERTO** (`0.0` fechada … `1.0` aberta) — o número que o
+    /// chevron veste.
+    ///
+    /// ⚠️ **O neutro é o BINÁRIO de hoje**, não zero: uma secção que o relógio nunca viu devolve
+    /// exatamente `1.0`/`0.0` conforme [`Self::is_collapsed`], então um store não-tiquado — e um
+    /// pintor ainda não migrado — desenha **byte a byte** o que desenhava antes desta wave. É a
+    /// mesma neutralidade do `hover_live`, e é ela que torna a migração dos ~34 sítios segura de
+    /// fazer aos poucos: um sítio esquecido fica com a troca binária, nunca meio-animado.
+    #[must_use]
+    pub fn section_open_live(&self, id: NodeId) -> f32 {
+        self.fold_live
+            .get(&id)
+            .copied()
+            .unwrap_or(if self.is_collapsed(id) { 0.0 } else { 1.0 })
+    }
+
+    /// **O tique publica aqui.** Único escritor — o gêmeo exacto do
+    /// [`super::WidgetStore::set_hover_live`] e do `set_panel_scroll_live`.
+    pub fn set_section_open_live(&mut self, id: NodeId, t: f32) {
+        self.fold_live.insert(id, t);
+    }
+
+    /// As secções que o tique tem de animar: **as que o utilizador tocou**.
+    ///
+    /// ⚠️ Uma secção nunca tocada não está no mapa e **não custa nada** — ela está aberta, o
+    /// neutro devolve `1.0`, e não há nada a integrar. Uma que nasce fechada no `populate`
+    /// (`set_collapsed(id, true)` no arranque) entra no mapa **sem partida gravada**, então o
+    /// alvo e o neutro coincidem e ela assenta sem animar: *nascer fechada não é dobrar-se*.
+    pub fn collapse_states(&self) -> impl Iterator<Item = (NodeId, bool)> + '_ {
+        self.collapsed.iter().map(|(k, v)| (*k, *v))
     }
 
     /// Open a right-click context menu at `(x, y)` with the given

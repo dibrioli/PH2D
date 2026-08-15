@@ -81,3 +81,20 @@ pub(crate) use sprite_sheet::paint_sprite_sheet_section;
 pub(crate) use transform::paint_transform_section;
 pub(crate) use visibility::paint_visibility_section;
 pub(crate) use wheel::paint_wheel_section;
+
+/// **A PORTA ÚNICA do cabeçalho de uma secção do Inspector.**
+///
+/// As doze secções construíam a mesma cadeia à mão (`new` + `collapsible` + agora o `open_t`), e
+/// a terceira metade — o `t` VIVO da dobra — é precisamente a que um sítio novo esquece: ele
+/// compila, pinta, responde ao rato, e fica **silenciosamente discreto** no meio de onze vizinhas
+/// que rodam. Com uma porta, a secção treze nasce viva.
+///
+/// ⚠️ **Lê o `is_collapsed` outra vez de propósito.** Quase todo chamador já tem um `collapsed`
+/// local (ele decide se o CORPO é pintado, que é outra pergunta) — passá-lo aqui seria pedir ao
+/// chamador que mantivesse duas respostas coerentes, e é assim que nasce um cabeçalho a dizer
+/// aberto sobre um corpo escondido. As duas leituras são puras e do mesmo quadro.
+pub(crate) fn section_header(store: &WidgetStore, id: NodeId, label: &str) -> SectionHeader {
+    SectionHeader::new(id, label)
+        .collapsible(!store.is_collapsed(id))
+        .open_t(store.section_open_live(id))
+}

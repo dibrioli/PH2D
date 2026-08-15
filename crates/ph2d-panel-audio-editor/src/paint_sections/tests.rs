@@ -8,7 +8,10 @@ use ph2d_editor_core::widget::TextInputState;
 
 fn body(open: [bool; 8]) -> Body {
     Body {
-        open,
+        // ⚠️ O `t` da fixture é o ASSENTADO do estado que ela declara — uma secção aberta em
+        //    repouso é `1.0`, uma fechada é `0.0`. Semear ambos a `0.0` deixaria estes gates a
+        //    medir um mundo a meio de uma dobra, que não é o que eles afirmam.
+        open: open.map(|o| (o, if o { 1.0 } else { 0.0 })),
         loaded: true,
         undo_ok: true,
         redo_ok: true,
@@ -117,9 +120,9 @@ fn the_fold_state_follows_the_section_not_the_slot() {
         let mut open = [true; 8];
         open[i] = false;
         let b = body(open);
-        assert!(!b.open(*id), "{id:?} lost its own fold state");
+        assert!(!b.fold(*id).0, "{id:?} lost its own fold state");
         for other in SECTIONS.iter().filter(|s| *s != id) {
-            assert!(b.open(*other), "{other:?} was handed {id:?}'s fold state");
+            assert!(b.fold(*other).0, "{other:?} was handed {id:?}'s fold state");
         }
     }
 }

@@ -45,8 +45,11 @@ pub(crate) fn apply_event(
                 || id == ids::WET_TUNING_GROUP_HEADERS[5] =>
         {
             seam_reset_button(host, id);
-            let collapsed = host.store().is_collapsed(id);
-            host.store_mut().set_collapsed(id, !collapsed);
+            // ⚠️ A PORTA ÚNICA — este bloco era `set_collapsed(id, !is_collapsed(id))` escrito à
+            //    mão, que é literalmente o corpo do `toggle_collapsed`. Três cópias privadas da
+            //    mesma pergunta, e a que sabe que uma dobra tem PARTIDA (o `t` de onde ela vem)
+            //    é a porta — pela cópia, a estreia de cada secção destes painéis saltaria.
+            host.store_mut().toggle_collapsed(id);
             true
         }
         // Per-knob reset / group reset / the PAPER eye / the K–M checkboxes:

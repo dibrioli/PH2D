@@ -152,6 +152,7 @@ fn paint_body(
     let artist_paper_armed = brush.paper_kind != 0;
     for section in rows::SECTIONS {
         let open = !ctx.host.store().is_collapsed(section.header);
+        let fold = (open, ctx.host.store().section_open_live(section.header));
         y = header_row(
             ctx,
             theme,
@@ -168,7 +169,7 @@ fn paint_body(
                     .then_some((ids::WET_TUNING_PAPER_EYE, brush.wet_paper_visual))
             },
             tr(section.label),
-            open,
+            fold,
         );
         if !open {
             continue;
@@ -192,9 +193,14 @@ fn paint_body(
         ids::WET_TUNING_GROUP_HEADERS[5], // no reset: the reset slot repeats the header (skipped)
         None,
         tr("panel.wet_tuning.group.experimental"),
-        !ctx.host
-            .store()
-            .is_collapsed(ids::WET_TUNING_GROUP_HEADERS[5]),
+        (
+            !ctx.host
+                .store()
+                .is_collapsed(ids::WET_TUNING_GROUP_HEADERS[5]),
+            ctx.host
+                .store()
+                .section_open_live(ids::WET_TUNING_GROUP_HEADERS[5]),
+        ),
     );
     if !ctx
         .host
@@ -296,10 +302,16 @@ fn header_row(
     reset: ph2d_a11y::NodeId,
     eye: Option<(ph2d_a11y::NodeId, bool)>,
     label: &str,
-    open: bool,
+    // ⚠️ **O PAR, num argumento só** — o estado semântico e o `t` VIVO da dobra; a lei que a wave
+    //    dos botões deixou (`visual: (ButtonState, f32)`). Com duas entradas separadas, um
+    //    chamador esquece a segunda e a secção fica silenciosamente discreta entre vizinhas que
+    //    rodam, com a suíte verde.
+    fold: (bool, f32),
 ) -> f32 {
     let rect = Rect::new(x, y, w, ROW_H_PX);
-    let hdr = SectionHeader::new(header, label).collapsible(open);
+    let hdr = SectionHeader::new(header, label)
+        .collapsible(fold.0)
+        .open_t(fold.1);
     paint_section_header(&hdr, rect, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(header, rect);
     let mut right = x + w - RESET_W;

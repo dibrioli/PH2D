@@ -109,7 +109,8 @@ fn slider_row(ctx: &mut Ctx, y: f32, label: &str, id: NodeId, value: f32) -> f32
 fn section_header(ctx: &mut Ctx, y: f32, id: NodeId, label: &str) -> (bool, f32) {
     let open = !ctx.store.is_collapsed(id);
     let rect = Rect::new(ctx.x, y, ctx.w, MUTE_H);
-    let header = SectionHeader::new(id, label).collapsible(open);
+    let header = SectionHeader::new(id, label).collapsible(open)
+            .open_t(ctx.store.section_open_live(id));
     paint_section_header(&header, rect, ctx.scene, ctx.text_system, ctx.theme);
     ctx.hit_index.register(id, rect);
     (open, y + MUTE_H + Spacing::Sm.px())

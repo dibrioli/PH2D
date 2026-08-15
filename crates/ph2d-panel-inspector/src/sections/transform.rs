@@ -36,9 +36,7 @@ pub(crate) fn paint_transform_section(
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for unconfigured section accent
     // Header rect spans the FULL panel width so paint_section_header
     // anchors the color dot at the right edge (panel border).
-    let header = SectionHeader::new(ids::INSP_LIVE_TRANSFORM_SECTION, "Transform")
-        .collapsible(!collapsed)
-        .color(rgba);
+    let header = section_header(store, ids::INSP_LIVE_TRANSFORM_SECTION, "Transform").color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     // Reserve for the color dot at the right edge (≈ Md pad + 14 px
     // dot diameter) — the reset icon slots just to the LEFT of it.

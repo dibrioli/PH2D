@@ -117,13 +117,13 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-inspector/src/sections/render_source.rs",
         "paint_render_source_section",
-        307,
+        305,
         "unmasked by the 2026-07-10 parser fix; per-row split deferred (needs smoke)",
     ),
     (
         "ph2d-panel-inspector/src/sections/transform.rs",
         "paint_transform_section",
-        279,
+        277,
         "was frozen at a mis-measured 212; truly 281 → 279 quando o botão de reset passou a ler o \
          par `(estado, t)` do store numa chamada em vez de três linhas. Per-row split deferred \
          (needs smoke)",

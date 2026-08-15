@@ -17,7 +17,6 @@
 // `FloatingPanel` paint impl retired 2026-05-17 — struct itself
 // remains in `crate::floating_panel` for tool event dispatch but no
 // longer needs a paint helper import here.
-use crate::icons::{IconId, cmd_to_path};
 use crate::toast::ToastQueue;
 // `paint_color_swatch`, `paint_radio_group`, `paint_slider`, and
 // `paint_toggle` were used inside `impl Paint for FloatingPanel`
@@ -28,8 +27,7 @@ use crate::zones::{Layout, Rect, Zone};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{Color as TokenColor, ColorToken, Theme};
 use ph2d_vector::{
-    Affine, BezPath, Brush, Circle, Color, Fill, Rect as VelloRect, RoundedRect, Stroke,
-    VectorScene,
+    Affine, BezPath, Circle, Color, Fill, Rect as VelloRect, RoundedRect, Stroke, VectorScene,
 };
 
 /// Per-frame paint context. Built by the shell, threaded through
@@ -51,6 +49,10 @@ pub trait Paint {
 
 #[path = "paint_text.rs"]
 mod text;
+
+#[path = "paint_icons.rs"]
+mod icons_paint;
+pub use icons_paint::{paint_icon, paint_icon_path, paint_icon_rotated};
 pub use text::{paint_text, paint_text_block, paint_text_rotated_ccw, paint_text_title};
 
 /// Convert a `ph2d_tokens::Color` (sRGB 8-bit + alpha) to Vello's
@@ -219,60 +221,6 @@ pub fn stroke_polyline(scene: &mut VectorScene, points: &[(f32, f32)], width: f3
     scene
         .inner_mut()
         .stroke(&stroke, Affine::IDENTITY, color, None, &path);
-}
-
-/// Render an icon centered inside `rect`. The source icons are 24x24
-/// and stroked with a 1.5pt line; we scale uniformly to fit, keeping
-/// 2px of padding so glyphs don't kiss the rect edge.
-pub fn paint_icon(
-    scene: &mut VectorScene,
-    icon: IconId,
-    rect: Rect,
-    color: Color,
-    stroke_width: f32,
-) {
-    let mut path = BezPath::new();
-    for cmd in icon.cmds() {
-        path.extend(cmd_to_path(*cmd));
-    }
-    paint_icon_path(scene, &path, rect, color, stroke_width);
-}
-
-/// Same as [`paint_icon`] but takes a pre-built [`BezPath`] in the
-/// canonical 24×24 icon design space. Used by Wave 2 PR 11.4 chrome
-/// derivation — manifest `icon_fn` returns a `BezPath` directly, so
-/// the editor can paint registry-derived pills without an
-/// `IconId` enum round-trip.
-pub fn paint_icon_path(
-    scene: &mut VectorScene,
-    path: &BezPath,
-    rect: Rect,
-    color: Color,
-    stroke_width: f32,
-) {
-    const VIEWBOX: f64 = 24.0;
-    let pad = 2.0_f32.min(rect.w.min(rect.h) * 0.1);
-    let avail_w = (rect.w - pad * 2.0).max(0.0) as f64;
-    let avail_h = (rect.h - pad * 2.0).max(0.0) as f64;
-    if avail_w <= 0.0 || avail_h <= 0.0 {
-        return;
-    }
-    let scale = (avail_w / VIEWBOX).min(avail_h / VIEWBOX);
-    let drawn = VIEWBOX * scale;
-    // Pixel-snap the icon origin: with `stroke_width = 1.5px`, sub-pixel
-    // translation makes MSAA16 stipple the stroke across two rows of
-    // pixels. Rounding to the nearest integer pixel keeps strokes
-    // anchored to a predictable grid position (up to 0.5 px visual
-    // shift from "ideal" centering — invisible at icon sizes, big
-    // crispness win on near-horizontal/vertical strokes).
-    let tx = (rect.x as f64 + (rect.w as f64 - drawn) * 0.5).round();
-    let ty = (rect.y as f64 + (rect.h as f64 - drawn) * 0.5).round();
-    let transform = Affine::translate((tx, ty)) * Affine::scale(scale);
-    let stroke = Stroke::new(stroke_width as f64);
-    let brush = Brush::Solid(color);
-    scene
-        .inner_mut()
-        .stroke(&stroke, transform, &brush, None, path);
 }
 
 /// Tool palette paint helper — for each `(rect, label, is_active)`
@@ -518,6 +466,7 @@ impl Paint for ToastQueue {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::icons::IconId;
 
     /// `radius_scale` is a thread-local — paint_rounded_rect helpers
     /// scale by it, but `Radius::Full` (999) is preserved exactly so

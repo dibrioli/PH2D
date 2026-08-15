@@ -104,7 +104,12 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     let has_sel = snapshot::has_selection();
     // Fold state, read BEFORE the mutable store/hit borrows below (same reason as the
     // scroll above): the paint pass cannot reach the store once `hit_index` holds it.
-    let open = crate::paint_sections::SECTIONS.map(|id| !ctx.host.store().is_collapsed(id));
+    let open = crate::paint_sections::SECTIONS.map(|id| {
+        (
+            !ctx.host.store().is_collapsed(id),
+            ctx.host.store().section_open_live(id),
+        )
+    });
 
     sync_widget_buffers(ctx);
 

@@ -77,9 +77,7 @@ pub(crate) fn paint_sampling_section(
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default section accent
-    let header = SectionHeader::new(ids::INSP_LIVE_SAMPLING_SECTION, "Sampling")
-        .collapsible(!collapsed)
-        .color(rgba);
+    let header = section_header(store, ids::INSP_LIVE_SAMPLING_SECTION, "Sampling").color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)

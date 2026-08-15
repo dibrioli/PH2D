@@ -445,6 +445,68 @@ se move ⇒ o glifo centrado não viaja; quantizá-lo só tornaria o crescimento
 uma linha de 1 px numa fracção reparte a cobertura por dois pixels e muda de aparência a cada
 quadro.
 
+### 6.2 F4a — a SECÇÃO dobra-se: o chevron roda e a placa desvanece (2026-08-14)
+
+A **F4** estava na §6.5 do estudo como *«36 `is_collapsed` em 32 arquivos, e é mudança de LAYOUT —
+mais cara que a contagem sugere»*. Medida antes de escolher, ela tem **duas metades com preços
+muito diferentes**, e só uma delas tem porta:
+
+| metade | preço medido | tem porta? |
+|---|---|---|
+| **o CHEVRON** (e a placa) | **23** cadeias `.collapsible(..)`, e o `paint_section_header` é **um só** | ✅ |
+| **o CORPO** (a altura interpola) | ~20 pintores, cada um com aritmética de `y` própria; pede medir-lembrar-recortar por painel | ❌ |
+
+**Esta wave fez a primeira.** O `t` da dobra é publicado no store (`section_open_live`, o terceiro
+membro da família `hover_live`/`panel_scroll_live`) e o cabeçalho veste-o.
+
+⚠️ **O FACTO que a torna sem costura foi medido, não assumido:** os dois glifos que o app já
+mostra são **a mesma seta**. Rodando `chevron-down` por −90° em torno de `(12,12)`:
+
+| `chevron-down` | rodado | `chevron-right` |
+|---|---|---|
+| `6,9` · `12,15` · `18,9` | `9,18` · `15,12` · `9,6` | `9,18` · `15,12` · `9,6` |
+
+— **ao ponto**. A trajectória atravessa exactamente os dois desenhos que já shipavam; se não
+fossem rotações um do outro, a forma daria um salto em cada extremo. ⚠️ **E o gate apanhou um erro
+de SINAL meu antes do smoke:** a kurbo roda pela matriz `[[cos,−sin],[sin,cos]]` sobre um espaço
+**y-para-baixo**, então o `+π/2` que a conta de papel dá produz `chevron-LEFT` — a seta giraria ao
+contrário durante o gesto inteiro.
+
+⚠️ **Nos dois repousos o desenho é BYTE-IDÊNTICO** (o glifo é pintado sem rotação nenhuma, e só
+entre eles é que roda): `cos(90°)` em `f64` vale `6,1e-17`, e um glifo parado alinhado aos eixos é
+o que o encaixe no grid de pixels consegue afiar — *nítido parado, suave em movimento*.
+
+**E a PLACA escura foi junto**, porque sem ela o cabeçalho teria duas metades a discordar sobre
+quando a secção fechou. ⚠️ A primeira versão gateava-a no flag **semântico** e era assimétrica —
+desvanecia a FECHAR e **sumia de repente a ABRIR**; quem manda é o `t`.
+
+**A estreia de cada secção precisa de uma PARTIDA.** A lei do substrato é que *a primeira vista de
+um id chega ao alvo*, então sem semear o `toggle_collapsed` a **primeira** dobra de cada secção
+saltaria — um defeito de uma-vez-por-secção-por-sessão, o mais difícil de reproduzir que há.
+⚠️ E a metade oposta é igualmente lei: uma secção que **nasce** fechada (`set_collapsed` no
+`populate`) tem de aparecer fechada, não fechar-se sozinha no primeiro quadro. Os dois gates são
+independentes, e cada mutação sangra só o seu.
+
+**Higiene que a wave arrastou, e que vale por si:**
+
+- **três `event.rs`** (physics · sculpt3d · wet-tuning) re-escreviam `toggle_collapsed` à mão
+  (`set_collapsed(id, !is_collapsed(id))`) — pela cópia, a estreia daqueles painéis saltaria;
+- as **doze secções do Inspector** passaram a construir o cabeçalho por **uma porta**
+  (`sections::section_header`), o que pagou a dívida de LOC das duas `fn` mais gordas do painel
+  (307→305 · 279→277: *as tolerâncias encolhem, nunca crescem*);
+- a **família dos ícones saiu do `paint.rs`** para o irmão `paint_icons.rs` (o tecto de 700), e a
+  allowlist do `canonical_icon_button` **seguiu o código** — senão o gate passaria a proibir o
+  ficheiro que define a função que ele protege;
+- `section_header.rs` virou **directório** (518 > 500) com a dobra no irmão `fold.rs`. ⚠️ Um
+  `section_fold.rs` solto em `src/widget/` viraria um **widget** para o `ph2d-widget-sync` — a
+  cicatriz que o `command_palette_tests.rs` pagou.
+
+⚠️ **O CORPO fica por fazer, e o número está aqui para a próxima decisão o usar:** ele precisa de
+`body_h` **antes** de pintar (a altura só se sabe depois de percorrer as rows), logo de
+medir-lembrar-e-recortar por painel; o clip existe (`push_layer`/`pop_layer`, 10+ consumidores) e
+o neutro do `open_t` torna a migração parcial segura. **O smoke decide se ele é sentido em falta**
+— um chevron que roda sobre um corpo que salta é o que várias ferramentas de referência shipam.
+
 ⚠️ **A wave 4 não depende de nada** e pode correr em paralelo, ou primeiro se o objectivo for
 eficiência antes de encanto.
 

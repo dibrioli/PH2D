@@ -27,7 +27,50 @@ pub(super) fn tick(hero: &mut HeroScreen, dt: f64) {
     }
     tick_palette_cascade(hero, dt);
     tick_panel_scroll(hero);
+    tick_section_fold(hero);
     tick_fill_tether(hero, dt);
+}
+
+/// **A DOBRA de uma secção** — o chevron gira em vez de trocar de glifo.
+///
+/// ⚠️ **`Role::Surface`, e não `Travel`** — pela razão exacta que o `Role` nomeia: uma dobra
+/// obedece ao dedo. Ultrapassar mostraria o chevron a passar do ângulo que a secção de facto tem
+/// e a voltar, que é a régua a mentir sobre um estado binário; e num carácter Expressivo o
+/// `Travel` ultrapassa 15,5%.
+///
+/// ⚠️ **A PRIMEIRA vista parte da PARTIDA, não do alvo.** O `toggle_collapsed` grava onde a
+/// secção estava; aqui isso é lido e alvejado na mesma passagem — semear e re-alvejar no mesmo
+/// tique é o que faz a mola nascer em voo, e é o mesmo movimento que a cascata da paleta faz.
+/// Sem ele a estreia de cada secção saltaria (a lei: *a primeira vista CHEGA ao alvo*).
+fn tick_section_fold(hero: &mut HeroScreen) {
+    let states: Vec<(ph2d_a11y::NodeId, bool)> = hero.store.collapse_states().collect();
+    for (id, collapsed) in states {
+        let target = if collapsed { 0.0 } else { 1.0 };
+        let track = fold_track(id);
+        if hero.motion.get(track).is_none() {
+            let from = hero.store.section_open_live(id);
+            hero.motion
+                .animate(track, from, crate::motion::Role::Surface);
+        }
+        let live = hero
+            .motion
+            .animate(track, target, crate::motion::Role::Surface);
+        hero.store.set_section_open_live(id, live);
+    }
+}
+
+/// O id de motion da dobra de uma secção. ⚠️ **Não é o id da secção** — aquele já é alvo de hit
+/// (o cabeçalho é clicável) e o `hover_targets` pode animá-lo; partilhá-lo poria *quanto do hover
+/// está presente* e *quanto da secção está aberta* no MESMO track. O mesmo argumento do
+/// `scroll_track`, e a constante de mistura é outra para os dois nunca colidirem.
+fn fold_track(section: ph2d_a11y::NodeId) -> ph2d_a11y::NodeId {
+    const FNV_PRIME_64: u64 = 0x0000_0100_0000_01b3;
+    let mut h = section.0 ^ 0x666f_6c64_5f74_7261; // "fold_tra"
+    for b in section.0.to_le_bytes() {
+        h ^= u64::from(b);
+        h = h.wrapping_mul(FNV_PRIME_64);
+    }
+    ph2d_a11y::NodeId(if h == 0 { 1 } else { h })
 }
 
 /// **A ROLAGEM SUAVE** — a roda mexe um ALVO, e a superfície desliza até lá.

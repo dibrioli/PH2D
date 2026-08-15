@@ -87,7 +87,8 @@ pub(crate) fn paint_header(
 ) -> f32 {
     let id = section_id(title);
     let h = TypeToken::Md.px() + Spacing::Md.px();
-    let header = SectionHeader::new(id, title).collapsible(!store.is_collapsed(id));
+    let header = SectionHeader::new(id, title).collapsible(!store.is_collapsed(id))
+            .open_t(store.section_open_live(id));
     let rect = Rect::new(inner_x, y, inner_w, h);
     paint_section_header(&header, rect, scene, text_system, theme);
     hit_index.register(id, rect);

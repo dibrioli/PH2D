@@ -1,7 +1,7 @@
 //! Arch gate: `paint_icon_path` — the manifest-`BezPath` glyph draw — may
 //! only be called from the canonical icon-button painter
-//! (`widget/icon_button.rs`) and its own definition in `paint.rs` (where
-//! `paint_icon` calls it internally). Every manifest/SVG icon button must
+//! (`widget/icon_button.rs`) and its own definition in `paint_icons.rs` (where
+//! `paint_icon`/`paint_icon_rotated` o chamam internamente). Every manifest/SVG icon button must
 //! render through the single source of truth `paint_icon_button`, never
 //! through hand-rolled `fill_rounded_rect` + `stroke` + `paint_icon_path`
 //! chrome (the TopBar Image Tools pills used to). A new chrome surface
@@ -17,6 +17,9 @@ fn paint_icon_path_only_in_canonical_icon_button() {
     //  - `widget/icon_button.rs` — the canonical painter.
     let allowed = [
         PathBuf::from("paint.rs"),
+        // ⚠️ A família dos ícones saiu do `paint.rs` (tecto de 700 LOC) — a allowlist SEGUE o
+        //    código, senão o gate proíbe o ficheiro que define a função que ele protege.
+        PathBuf::from("paint_icons.rs"),
         PathBuf::from("widget").join("icon_button.rs"),
     ];
     let mut offenders = Vec::new();

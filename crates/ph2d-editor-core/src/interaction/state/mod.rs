@@ -269,6 +269,15 @@ pub struct WidgetStore {
     /// open by default. Toggled by `apply_event` on Click and
     /// consumed by section painters that early-out when collapsed.
     pub(super) collapsed: BTreeMap<NodeId, bool>,
+    /// **Quanto de cada secção está ABERTO** — o `t` VIVO que o chevron veste, publicado pelo
+    /// tique (`set_section_open_live`) e semeado pela partida no `toggle_collapsed`.
+    ///
+    /// ⚠️ Mapa PARALELO ao `collapsed`, e não um campo dentro dele: aquele é o estado
+    /// **semântico** (o que o painel consulta para decidir se pinta as rows, e o que um gate
+    /// compara), este é APARÊNCIA. Misturá-los faria cada `assert_eq!` de estado passar a
+    /// depender de *quando* foi lido — o mesmo argumento que mantém o `UiMotion` fora do
+    /// `InteractiveState`.
+    pub(super) fold_live: BTreeMap<NodeId, f32>,
     /// Pending right-click context menu. `Some` when a Secondary
     /// Down landed somewhere a menu should appear (e.g. an empty
     /// inspector panel or a section header); `None` when no menu

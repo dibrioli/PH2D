@@ -32,8 +32,11 @@ use crate::paint::ROW_H;
 
 /// Everything the body needs for one frame, bundled so the walk fits one arg list.
 pub(crate) struct Body {
-    /// Fold state per section, in [`SECTIONS`] order.
-    pub open: [bool; 8],
+    /// Fold state per section, in [`SECTIONS`] order: **o par** `(aberta?, t VIVO)`.
+    ///
+    /// ⚠️ **Um array de PARES e não dois arrays paralelos** — duas listas indexadas pela mesma
+    /// posição são duas cópias do mesmo facto, e a segunda é a que alguém esquece de reordenar.
+    pub open: [(bool, f32); 8],
     pub loaded: bool,
     pub undo_ok: bool,
     pub redo_ok: bool,
@@ -43,15 +46,17 @@ pub(crate) struct Body {
 }
 
 impl Body {
-    /// Whether `id` is unfolded. **By id, never by index**: `open[2]` means whatever the
-    /// third entry of [`SECTIONS`] happens to be today, so reordering the panel would
-    /// silently hand every section somebody else's fold state — a bug that paints
-    /// perfectly and is invisible until a user clicks the wrong chevron.
-    fn open(&self, id: NodeId) -> bool {
+    /// O par que o cabeçalho veste: o estado semântico e o `t` VIVO da dobra.
+    ///
+    /// **By id, never by index**: `open[2]` means whatever the third entry of [`SECTIONS`]
+    /// happens to be today, so reordering the panel would silently hand every section somebody
+    /// else's fold state — a bug that paints perfectly and is invisible until a user clicks the
+    /// wrong chevron.
+    fn fold(&self, id: NodeId) -> (bool, f32) {
         SECTIONS
             .iter()
             .position(|s| *s == id)
-            .is_some_and(|i| self.open[i])
+            .map_or((false, 0.0), |i| self.open[i])
     }
 }
 
@@ -95,7 +100,7 @@ fn paint_sound_sections(
         AEDIT_SEC_TRANSPORT,
         "Transport",
         None,
-        b.open(AEDIT_SEC_TRANSPORT),
+        b.fold(AEDIT_SEC_TRANSPORT),
         scene,
         text_system,
         theme,
@@ -125,7 +130,7 @@ fn paint_sound_sections(
         AEDIT_SEC_LOOP,
         "Loop",
         Some(&loop_read),
-        b.open(AEDIT_SEC_LOOP),
+        b.fold(AEDIT_SEC_LOOP),
         scene,
         text_system,
         theme,
@@ -155,7 +160,7 @@ fn paint_sound_sections(
         AEDIT_SEC_EDIT,
         "Edit",
         None,
-        b.open(AEDIT_SEC_EDIT),
+        b.fold(AEDIT_SEC_EDIT),
         scene,
         text_system,
         theme,
@@ -189,7 +194,7 @@ fn paint_sound_sections(
         AEDIT_SEC_SPECTRAL,
         "Spectral",
         Some(crate::paint_spectral::spectral_readout()),
-        b.open(AEDIT_SEC_SPECTRAL),
+        b.fold(AEDIT_SEC_SPECTRAL),
         scene,
         text_system,
         theme,
@@ -219,7 +224,7 @@ fn paint_sound_sections(
         AEDIT_SEC_FX,
         "Effects",
         None,
-        b.open(AEDIT_SEC_FX),
+        b.fold(AEDIT_SEC_FX),
         scene,
         text_system,
         theme,
@@ -266,7 +271,7 @@ fn paint_asset_sections(
         AEDIT_SEC_MARKERS,
         "Markers",
         Some(&mark_read),
-        b.open(AEDIT_SEC_MARKERS),
+        b.fold(AEDIT_SEC_MARKERS),
         scene,
         text_system,
         theme,
@@ -296,7 +301,7 @@ fn paint_asset_sections(
         AEDIT_SEC_VARIATIONS,
         "Variations",
         Some(&var_read),
-        b.open(AEDIT_SEC_VARIATIONS),
+        b.fold(AEDIT_SEC_VARIATIONS),
         scene,
         text_system,
         theme,
@@ -325,7 +330,7 @@ fn paint_asset_sections(
         AEDIT_SEC_DELIVERY,
         "Delivery",
         Some(&del_read),
-        b.open(AEDIT_SEC_DELIVERY),
+        b.fold(AEDIT_SEC_DELIVERY),
         scene,
         text_system,
         theme,
@@ -381,7 +386,11 @@ fn section(
     id: NodeId,
     label: &str,
     readout: Option<&str>,
-    open: bool,
+    // ⚠️ **O PAR, num argumento só** — o estado semântico e o `t` VIVO da dobra. É a lei que a
+    //    wave dos botões deixou (`visual: (ButtonState, f32)`): com duas entradas separadas, um
+    //    chamador esquece a segunda e a secção fica **silenciosamente discreta** no meio de
+    //    vizinhas que rodam, com a suíte inteira verde.
+    fold: (bool, f32),
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -390,7 +399,9 @@ fn section(
     let h = section_h();
     let rect = Rect::new(x, y, w, h);
     paint_section_header(
-        &SectionHeader::new(id, label).collapsible(open),
+        &SectionHeader::new(id, label)
+            .collapsible(fold.0)
+            .open_t(fold.1),
         rect,
         scene,
         text_system,
@@ -415,7 +426,7 @@ fn section(
             resolve(ColorToken::Text2, theme),
         );
     }
-    (open, y + h + Spacing::Xs.px())
+    (fold.0, y + h + Spacing::Xs.px())
 }
 
 /// The rule between two sections — `paint_section_separator`, the SAME one the Sprite

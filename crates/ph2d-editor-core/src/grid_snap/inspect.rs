@@ -256,6 +256,7 @@ pub fn paint(
         label: "Inspect".to_string(),
         count: None,
         collapsible: None,
+        open_t: None,
         color: None,
     };
     paint_section_header(

@@ -2027,6 +2027,73 @@ fn the_panel_body_glides_without_passing_the_target() {
     );
 }
 
+/// ⭐ **A PRIMEIRA dobra de uma secção ANIMA** — e sem a partida gravada no `toggle_collapsed`
+/// ela saltava.
+///
+/// A lei do substrato é que *a primeira vista de um id CHEGA ao alvo*. Uma secção nunca tocada não
+/// está no mapa, então no instante em que o utilizador a fecha o relógio vê-a pela primeira vez
+/// **já fechada** e assenta ali. O defeito seria **uma vez por secção por sessão** — a forma mais
+/// fácil de nunca ser reproduzido por quem o reporta.
+///
+/// *Mutação: tirar o `or_insert` da partida no `toggle_collapsed` ⇒ o `t` cai a 0,0 no primeiro
+/// quadro e este gate sangra.*
+#[test]
+fn the_first_fold_of_a_section_animates_instead_of_snapping() {
+    crate::test_support::ensure_panel_registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.motion
+        .set_character(crate::motion::UiCharacter::Expressive);
+    let sec = NodeId(9911);
+    // CONTROLO: nunca tocada ⇒ aberta, e o neutro di-lo sem o relógio ter corrido.
+    assert!((hero.store.section_open_live(sec) - 1.0).abs() < f32::EPSILON);
+
+    hero.store.toggle_collapsed(sec);
+    // ⚠️ DOIS quadros, e a razão é a ordem do tique: o `advance` corre no TOPO, então o quadro do
+    //    clique semeia a partida e re-alveja, e o seguinte é o primeiro que integra. É a mesma
+    //    lei que faz a cascata da paleta existir (*todo cartão nasce em 0 no quadro da abertura*)
+    //    — um gate de um quadro só mediria a partida e chamar-lhe-ia salto.
+    hero.tick_motion(1.0 / 60.0);
+    hero.tick_motion(1.0 / 60.0);
+    let t = hero.store.section_open_live(sec);
+    assert!(
+        t < 1.0 && t > 0.0,
+        "a estreia da dobra SALTOU: t = {t} no primeiro quadro (esperado entre 0 e 1)"
+    );
+
+    // e chega ao fim
+    for _ in 0..120 {
+        hero.tick_motion(1.0 / 60.0);
+    }
+    assert!(
+        hero.store.section_open_live(sec).abs() < 1e-3,
+        "a dobra não fechou: {}",
+        hero.store.section_open_live(sec)
+    );
+}
+
+/// **E NASCER fechada não é dobrar-se.** O `populate` de vários painéis chama
+/// `set_collapsed(id, true)` no arranque; essa secção tem de aparecer fechada, não a fechar-se
+/// sozinha no primeiro quadro que o artista vê.
+///
+/// ⚠️ É a metade OPOSTA do gate acima, e é ela que impede a cura de ser *animar tudo o que entra
+/// no mapa*. *Mutação: semear a partida em `set_collapsed` (e não só no `toggle`) ⇒ a secção
+/// nasce aberta e fecha-se à vista, e este gate sangra.*
+#[test]
+fn a_section_born_collapsed_does_not_fold_itself_on_the_first_frame() {
+    crate::test_support::ensure_panel_registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.motion
+        .set_character(crate::motion::UiCharacter::Expressive);
+    let sec = NodeId(9912);
+    hero.store.set_collapsed(sec, true); // a rota do `populate`
+    hero.tick_motion(1.0 / 60.0);
+    assert!(
+        hero.store.section_open_live(sec).abs() < f32::EPSILON,
+        "uma secção que NASCE fechada animou: t = {}",
+        hero.store.section_open_live(sec)
+    );
+}
+
 // ---------------------------------------------------------------------------
 // A CORDA do card de Fill (`crate::tether`).
 //

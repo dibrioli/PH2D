@@ -6,13 +6,15 @@
 //! Used by the editor Inspector to break a body into "Params (12)",
 //! "Advanced (7)", "Inputs (24)" etc.
 
-use crate::icons::IconId;
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text_centered, paint_text_title, resolve};
+mod fold;
+use fold::{paint_chevron, plate_color};
+
+use crate::paint::{fill_rounded_rect, paint_text_centered, paint_text_title, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{
-    ColorToken, ICON_BTN_SIZE_PX, Radius, SECTION_GAP_PX, Spacing, StrokeToken, Theme, TypeToken,
+    ColorToken, ICON_BTN_SIZE_PX, Radius, SECTION_GAP_PX, Spacing, Theme, TypeToken,
 };
 use ph2d_vector::{Affine, Brush, Circle, Color as VelloColor, Fill, Point, VectorScene};
 
@@ -24,6 +26,8 @@ pub struct SectionHeader {
     /// When `Some(open)`, paints a chevron that flips on open/closed.
     /// `None` means the section is non-collapsible.
     pub collapsible: Option<bool>,
+    /// O `t` VIVO da dobra; `None` = o binário de sempre. Ver [`SectionHeader::open_t`].
+    pub open_t: Option<f32>,
     /// Right-edge color circle (RGBA bytes). When `Some`, replaces
     /// the count chip — the user can click it to open the global
     /// color picker for the section. When `None`, falls back to
@@ -38,12 +42,25 @@ impl SectionHeader {
             label: label.into(),
             count: None,
             collapsible: None,
+            open_t: None,
             color: None,
         }
     }
 
     pub fn count(mut self, n: u32) -> Self {
         self.count = Some(n);
+        self
+    }
+
+    /// **Quanto desta secção está ABERTO** (`0.0` fechada … `1.0` aberta) — o `t` VIVO que o
+    /// chevron veste, vindo de [`crate::interaction::WidgetStore::section_open_live`].
+    ///
+    /// ⚠️ **Omitir é o NEUTRO, não o zero:** sem esta chamada o chevron cai no binário de sempre
+    /// (`is_open()` escolhe entre os dois glifos), **byte a byte** como antes desta wave. É isso
+    /// que torna a migração dos ~34 cabeçalhos segura de fazer aos poucos — um sítio esquecido
+    /// fica discreto, nunca meio-animado.
+    pub fn open_t(mut self, t: f32) -> Self {
+        self.open_t = Some(t);
         self
     }
 
@@ -59,6 +76,13 @@ impl SectionHeader {
 
     pub fn is_open(&self) -> bool {
         self.collapsible.unwrap_or(true)
+    }
+
+    /// O `t` que o chevron veste: o VIVO quando o chamador o passou, senão o **binário de sempre**.
+    #[must_use]
+    pub fn fold_t(&self) -> f32 {
+        self.open_t
+            .unwrap_or(if self.is_open() { 1.0 } else { 0.0 })
     }
 
     pub fn build_a11y(&self, x: f64, y: f64, w: f64, h: f64) -> Node {
@@ -88,12 +112,22 @@ pub fn paint_section_header(
     // visual hierarchy (open = transparent on panel; closed =
     // tinted) reads as "this block is folded". Centralized here so
     // every panel using `SectionHeader` gets the same affordance.
-    if matches!(header.collapsible, Some(false)) {
+    // ⚠️ **A placa DESVANECE com o mesmo `t` do chevron, e não é enfeite:** sem isto ela trocava
+    //    no instante SEMÂNTICO enquanto a seta desliza, e o cabeçalho ficava com duas metades a
+    //    discordar sobre quando a secção fechou — precisamente a classe de defeito que esta wave
+    //    existe para remover, um sistema acima. Nos dois extremos é byte-idêntica: `t = 0` pinta
+    //    a placa cheia de hoje, `t = 1` não pinta nada.
+    // ⚠️ **Quem gateia é o `t`, NUNCA o flag semântico** — e a primeira versão desta linha errava
+    //    numa direcção só. Com `matches!(collapsible, Some(false))` a placa desvanecia a FECHAR
+    //    (o flag já virou, o `t` ainda desce) e **sumia de repente a ABRIR** (o flag vira para
+    //    `Some(true)` no clique e a placa deixa de ser pintada nesse quadro). Um efeito que só é
+    //    simétrico num sentido é um efeito que ninguém escreveu.
+    if let Some(plate) = plate_color(header, theme) {
         fill_rounded_rect(
             scene,
             rect,
             Radius::Sm.px(),
-            resolve(ColorToken::Bg3, theme),
+            crate::paint::token_to_vello(plate),
         );
     }
     let pad_x = Spacing::Md.px();
@@ -104,17 +138,11 @@ pub fn paint_section_header(
     // simply default to "open" via `is_open()`. Single visual anchor
     // for the "this is a section title, click me to fold" affordance.
     let chev_rect = Rect::new(cursor_x, rect.y + (rect.h - icon_w) * 0.5, icon_w, icon_w);
-    let icon = if header.is_open() {
-        IconId::ChevronDown
-    } else {
-        IconId::ChevronRight
-    };
-    paint_icon(
+    paint_chevron(
         scene,
-        icon,
         chev_rect,
+        header.fold_t(),
         resolve(ColorToken::Text2, theme),
-        StrokeToken::Default.px(),
     );
     cursor_x += icon_w + Spacing::Sm.px();
 
@@ -216,6 +244,19 @@ pub fn color_circle_hit_rect(header: &SectionHeader, host: Rect) -> Option<Rect>
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **O NEUTRO do `t` é o BINÁRIO de hoje** — um cabeçalho que ninguém migrou pinta exactamente
+    /// o que pintava. *Mutação: `fold_t` a cair em `0.0` ⇒ toda secção aberta não-migrada desenha
+    /// a seta fechada.*
+    #[test]
+    fn an_unmigrated_header_keeps_the_binary_chevron() {
+        let open = SectionHeader::new(NodeId(1), "x").collapsible(true);
+        let shut = SectionHeader::new(NodeId(1), "x").collapsible(false);
+        assert!((open.fold_t() - 1.0).abs() < f32::EPSILON);
+        assert!(shut.fold_t().abs() < f32::EPSILON);
+        // e o `t` VIVO vence quando o chamador o passa
+        assert!((open.open_t(0.25).fold_t() - 0.25).abs() < f32::EPSILON);
+    }
 
     #[test]
     fn defaults_no_count_no_collapsible() {

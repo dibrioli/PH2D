@@ -134,8 +134,8 @@ pub(crate) fn paint_visibility_section(
     yy = paint_section_separator(scene, theme, x, w, yy);
     let layer_collapsed = store.is_collapsed(ids::INSP_VIS_LAYER_HEADER);
     let layer_header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let layer_header = SectionHeader::new(ids::INSP_VIS_LAYER_HEADER, "Visibility Layer")
-        .collapsible(!layer_collapsed);
+    let layer_header = section_header(store, ids::INSP_VIS_LAYER_HEADER, "Visibility Layer")
+        .open_t(store.section_open_live(ids::INSP_VIS_LAYER_HEADER));
     let layer_header_rect = Rect::new(x, yy, w, layer_header_h);
     paint_section_header(&layer_header, layer_header_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_VIS_LAYER_HEADER, layer_header_rect);

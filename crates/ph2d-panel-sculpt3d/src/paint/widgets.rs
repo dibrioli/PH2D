@@ -29,7 +29,8 @@ pub(super) fn header(
     let h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: altura da faixa de cabeçalho
     let collapsed = ctx.host.store().is_collapsed(id);
     let rect = Rect::new(x, y, w, h);
-    let head = SectionHeader::new(id, title).collapsible(!collapsed);
+    let head = SectionHeader::new(id, title).collapsible(!collapsed)
+            .open_t(ctx.host.store().section_open_live(id));
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
     let (_, hit_index) = ctx.host.store_and_hit_index_mut();

@@ -5,8 +5,8 @@
 //! ferve enquanto o artista a ajusta) e **ele não é o jitter** (senão a row é a segunda porta para
 //! um controle que já existe).
 
-use crate::stroke::roughen::offset_at;
 use crate::line_kind::LineKind;
+use crate::stroke::roughen::offset_at;
 use crate::{BrushSpec, Dab, Dynamics, Stroke, StrokeMethod, StrokePoint};
 
 /// Um pincel com o `Rough` armado nas duas oitavas.
@@ -67,7 +67,11 @@ fn run(spec: BrushSpec, n: usize) -> Vec<Dab> {
 fn the_same_path_lays_the_same_ink_to_the_bit() {
     let a = run(rough_spec(), 12);
     let b = run(rough_spec(), 12);
-    assert_eq!(a.len(), b.len(), "duas corridas do mesmo caminho divergiram");
+    assert_eq!(
+        a.len(),
+        b.len(),
+        "duas corridas do mesmo caminho divergiram"
+    );
     assert!(a.len() > 20, "controle: o traço tem de deixar dabs");
     for (i, (x, y)) in a.iter().zip(b.iter()).enumerate() {
         assert_eq!(
@@ -213,5 +217,35 @@ fn the_wander_is_perpendicular_to_the_stroke() {
         back <= dabs.len() / 4,
         "{back} de {} dabs andaram para TRAS -- o desvio esta' ao longo do traco, nao de lado",
         dabs.len()
+    );
+}
+
+/// **UM TIPO ESCOLHIDO TEM DE FAZER ALGUMA COISA** — o `Rough` nasce VIVO (auditoria do Enio,
+/// 2026-08-15).
+///
+/// ⚠️ **Ele existe porque o default anterior era ZERO e a nota que o justificava contradizia a que
+/// está seis linhas acima dela**, no mesmo arquivo: o Ribbon arma os dele exactamente por esta lei, e
+/// o Spray teve de a aprender. Medido antes da cura, um gesto em C com `Rough` escolhido saía
+/// **byte-idêntico** ao `None`; o artista escolhia o tipo no dropdown e não via um pixel mudar.
+///
+/// ⚠️ **O gate NÃO menciona o valor**, e é o que o torna um teste do default em vez de um espelho
+/// dele: ele pergunta ao predicado que o motor consulta. *Um default só é testado por um teste que
+/// não o menciona.*
+///
+/// **Mutação que sangra:** devolver `rough_amount`/`rough_bowing` a `0.0`.
+#[test]
+fn choosing_rough_changes_the_line_at_its_default() {
+    let b = crate::BrushSpec {
+        line_kind: crate::line_kind::LineKind::Rough,
+        ..Default::default()
+    };
+    assert!(
+        b.rough_active(),
+        "escolher `Rough` no dropdown nao muda um pixel: as duas amplitudes nascem no neutro"
+    );
+    assert!(
+        b.rough_amount_px() > 0.0,
+        "a amplitude em pixels e' zero ({}): o tipo esta' escolhido e inerte",
+        b.rough_amount_px()
     );
 }

@@ -30,6 +30,7 @@ mod curve_offset; // perpendicular offset (parallel curve) + CAD-grade reconstru
 mod curve_refit; // Simplify/Merge quality funnel: corner-split + piecewise Schneider least-squares refit
 mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay snapshot; split from `curve`
 mod curve_trim; // self-intersection trim of the offset spine (open + closed); split from `curve_offset`
+mod line_settings;
 mod ribbon_diag; // `PH2D_RIBBON_DIAG=1`: quem pinta o que num traco, impresso no pen-up
 mod solid_deposit;
 /// O `Style: Solid` na família dos shape editors — o laço que cada forma desenha (plano 38 §5.1).
@@ -43,7 +44,6 @@ mod stroke_router; // o que um Down SIGNIFICA com varias figuras: editar / reati
 mod taper_media_tests;
 /// **A forma SÓLIDA** — o caminho acumulado do gesto vira região preenchida (plano 38 §1.1).
 mod thread_deposit;
-mod line_settings;
 pub use self::stroke_multi::StrokeOpBadge;
 pub use self::wetpaint_settings::{WetKnobs, WetTool};
 mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output
@@ -176,6 +176,8 @@ mod crossing_scale_probe;
 /// **Grid Stamp** — o que o carimbo de fato PINTA (o irmão do módulo acima, que mede os controles).
 #[cfg(test)]
 mod grid_stamp_paint_tests;
+#[cfg(test)]
+mod line_seam_tests; // o seam do card Line: o clique chega ao pincel (plano 38)
 /// **O relevo VIAJA com a Shape** — a capacidade pedida em 2026-08-09.
 #[cfg(test)]
 mod shape_relief_tests;

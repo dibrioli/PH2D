@@ -375,16 +375,38 @@ _a_straight_line_and_simulates_nothing` (mutação: simular e desenhar reto ⇒ 
 | # | wave | depende de | desbloqueia | tam. |
 |---|---|---|---|---|
 | **1** | **F0 substrato** + o toast em segundos | — | **tudo** o eixo 1 | **M** |
-| **2** ⚠️ | **F1+F2+R1 juntos** — a mola chega ao chrome, os 49 widgets ganham vida, e o interruptor que a desliga nasce no MESMO commit | 1 | A · B · E · F | **M** |
+| ~~**2**~~ ✅ | **F1+F2+R1 juntos** — **FEITA (F2 fechou 2026-08-14)**, e por uma rota que esta tabela não listava: o `t` é **publicado no store**, não passado a cada pintor. 108 `.visual(..)` em 19 crates; as quatro famílias de botão fecharam, e as três que puderam pôr o par na assinatura são fechadas **pelo compilador** em vez de por um gate. ⚠️ **Pendente de smoke:** ~20 caixas e ~10 interruptores passam a mostrar hover/press pela primeira vez. Ver a nota abaixo | 1 | A · B · E · F | **M** |
 | ~~**3**~~ ✅ | **Preferências de utilizador** + a row do pill Settings — **FEITA** (`~/.ph2d/prefs.txt`, irmão do `palette_persist`; ver a correcção na §3) | 2 | o carácter deixa de ser constante | **P** |
 | ~~**4**~~ ✅ | ⭐ **E1 scrub numérico** — **FEITO, e diferente do que esta linha dizia**: o gesto já shipava desde a M14.A; o buraco real era a taxa a consultar **duas** das **quatro** fontes de intervalo que o clamp já conhecia (43 campos cruzavam-se inteiros em < 20 px). Cura = a porta única `number_scrub_law`; 43 → 0. Ver a correcção na §4 | — (independente!) | eficiência | **M** |
 | ~~**5**~~ ✅ | ⭐ **C1 o TETHER** — **FEITA**, com a lei do relógio CORRIGIDA por medição (ver a nota na §5.2) e o card de Fill como primeiro consumidor | 1 | a família C2·C3·C4 | **M** |
 | **6** | o resto do catálogo, por gosto — **em curso**: a **F5 cascata** FEITA na paleta (⚠️ `ε` reprovado uma vez no smoke — 0,020 lia-se simultâneo; o valor é **0,050 s**, §6.3 do estudo), a **E2 rolagem suave** (a porta `panel_scroll` passou a devolver o vivo ⇒ ~130 leitores de graça) e as **rows dos menus** da barra entraram na paleta global (33 verbos, 9 menus), fechando a cauda que o commit da E3 nomeou. ⚠️ E corrigindo-o: *«a barra de topo fica de fora»* era verdade do **PILL** e falsa da **ROW**. Ver a §6.1 do estudo. ⚠️ A **E2 foi REPROVADA no 1º smoke** (*«o balanço das labels ficou bem artificial e pouco suave»*) e curada por um `Role` novo — o **`Role::Surface`**, a superfície cujo lugar o dedo COMANDA: a causa era o `~/.ph2d/prefs.txt` dizer `motion_character=expressive`, onde o `Travel` ultrapassa **31,08 px** numa volta de 200. §6.4. ⚠️ E a **tabela da §6 do estudo mentia em cinco linhas** (F1·F3·R1·C1·E1 apareciam pendentes e estavam feitas) — auditada na §6.5, com os três itens que sobram MEDIDOS | 1-3 | — | — |
 
-⚠️ **A wave 2 NÃO está feita, e a medição de 2026-08-13 diz quanto falta:** a F1 chegou (o chrome
+~~⚠️ **A wave 2 NÃO está feita, e a medição de 2026-08-13 diz quanto falta:** a F1 chegou (o chrome
 tem a mola) e a **F2 não** — `.hover_t()` é passado em **2** sítios contra **161** que pintam um
-botão, então a mola é integrada e a pintura deita-a fora. São **124 chamadas em 64 arquivos**, com
-uma bifurcação de desenho (cada sítio pede × o compilador enumera). Ver a **§6.2** do estudo.
+botão, então a mola é integrada e a pintura deita-a fora.~~ ✅ **A F2 FECHOU em 2026-08-14, e a
+bifurcação resolveu-se para a TERCEIRA opção, que não estava na lista.**
+
+O plano oferecia *cada sítio pede* × *o compilador enumera*. Medido antes de escolher, a primeira
+custa **~150 assinaturas em 17 crates** (**56 só no `ph2d-panel-inspector`, para 20 botões**) — o
+número que diz que a corrente é o lugar errado para o relógio viajar. A que shipou é o precedente
+desta mesma linha: **o `t` é PUBLICADO no store** (`WidgetStore::button_visual`, o gêmeo do
+`panel_scroll_live`, que já dera suavidade a ~130 pintores sem uma assinatura mudar) — e a posse do
+relógio **não se move**: o `UiMotion` mantém as tracks, o carácter e o *reduced motion*.
+
+**Estado medido:** **108 chamadas `.visual(..)` em 19 crates**, e **157 leituras** das três portas
+(`button_visual` · `checkbox_visual` · `toggle_visual`). As quatro famílias fecharam:
+
+| família | porta | quem a fecha |
+|---|---|---|
+| `Button` | `.visual((estado, t))` | o gate `every_button_wears_the_live_hover` (nenhum `Button::new(..)` de produção chega a `.state(`) |
+| `IconButton` | `paint_icon_button(.., visual, ..)` | **o compilador** — o par está na assinatura, um `ButtonState` solto não compila |
+| `Checkbox` · `Toggle` | `.visual((estado, t))` | idem, mais `motion::hover_axis` como guarda única do eixo |
+
+⚠️ **E a F2 achou trabalho que não era o `t`:** o `Checkbox` **nunca reagiu ao rato** (nasce em
+`Normal` e nenhum sítio de produção chamava `.state(..)`), três botões de ícone do `wet-tuning`
+pintavam `Normal` cravado com `hit_index.register` ao lado, e a derivação hot/active estava
+inventada **seis** vezes em privado. ⚠️ **A rack de FX do áudio fica inerte e agora está NOMEADA no
+código:** ela pinta sem `WidgetStore` no caminho todo — acordá-la é wave própria.
 
 ⚠️ **A wave 2 tem de trazer a R1 dentro dela.** Um efeito que nasce sem o interruptor nasce dívida —
 e a acessibilidade retro-encaixada é a que fica meio-feita.

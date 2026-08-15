@@ -92,7 +92,7 @@ Legenda: ✅ temos · 🟡 temos por outra via (com o porquê) · ❌ não temos
 | `up_direction` | ✅ | `up`, e a lei inteira é relativa a ele |
 | `motion_mode` (Grounded/Floating) | 🟡 | temos três MODOS (Spring/Snap/Pure), que é outro eixo |
 | `platform_floor_layers` / `platform_wall_layers` | ❌ | pequeno: *que camadas contam como plataforma* |
-| **`platform_on_leave` (3 modos)** | ⚠️ | **§3.J** — sob Spring a física responde sozinha; **sob Snap é PERGUNTA ABERTA e o 1.º passo é MEDIR** |
+| **`platform_on_leave` (3 modos)** | ✅ | **§3.J** — `PlatformLift` (`Full`/`Up Only`/`None`), 2026-08-14; ⚠️ o Snap **não divergia**, o que faltava era a política |
 | `slide_on_ceiling`, `wall_min_slide_angle`, `max_slides`, `floor_block_on_wall`, `safe_margin` | ⛔ | **§4.5** — são knobs do *solver de slide* do Godot; a nossa saída é força/velocidade para um solver, não uma iteração de deslize |
 | **`is_on_floor/wall/ceiling`, `get_floor_normal`, `get_wall_normal`, `get_platform_velocity`, `get_real_velocity`, `get_last_slide_collision`** | ❌ | **§3.A** — o Godot expõe uma superfície de CONSULTA inteira; nós expomos três portas e nenhuma é sobre o estado |
 
@@ -299,7 +299,22 @@ Quando a velocidade lateral no ar é pequena, o controle aéreo é multiplicado 
 tira a sensação de *"não consigo sair do lugar"* no topo de um pulo vertical.
 Um campo, um `if`.
 
-### 3.J · **`platform_on_leave` sob SNAP** ⟨e o 1.º passo é MEDIR⟩
+### 3.J · **`platform_on_leave` sob SNAP** ⟨**FECHADO** 2026-08-14 — e a medição refutou a metade do Snap⟩
+
+> ⚠️ **A desconfiança sobre o Snap estava ERRADA, e o buraco era outro.** Medido
+> (`measure_platform_leave`, plataforma a 4 m/s, o CONTROLE dentro da tabela): a
+> horizontal chega a **100% nos três modos** e o elevador que sobe a 100/107/107 —
+> a memória do `lift_momentum` **funciona sob Snap**, e o que a linha abaixo
+> chamava de divergência (78% × 95% no elevador que desce) é a **folga da mola**
+> de um corpo dinâmico, física real.
+>
+> ⚠️ **O que a sonda achou é a outra linha desta mesma tabela** (`platform_on_leave
+> (3 modos)`): a política faltava, e os três modos partilhavam o buraco — pular de
+> um elevador a descer dava pico **0,378 m** (Spring) e **0,016** (Snap) contra
+> ~1,87 num chão parado, porque a altura autorada era medida **contra a
+> plataforma**. Construída como `PlatformLift` (`Full` / `Up Only` / `None`), com
+> o default `Full` = o mundo que já shipava, byte a byte. Cena de smoke **118**;
+> detalhe no `W-Leave` do tracker.
 
 O Godot tem três modos explícitos ao largar uma plataforma móvel:
 `ADD_VELOCITY`, `ADD_UPWARD_VELOCITY` (que existe porque uma plataforma a
@@ -381,8 +396,8 @@ personagem.
 ## §6 — A fila, com o racional de ordem
 
 ```
-A (saída: readout + eventos) → C (frear ≠ acelerar) → B (a superfície fala)
-   → D (teto de queda) → E (empurrão de fora) → J (medir o Snap) → G·H·I
+A (saída: readout + eventos) ✅ → C (frear ≠ acelerar) ✅ → B (a superfície fala) ✅
+   → D (teto de queda) ✅ → E (empurrão de fora) ✅ → J (medir o Snap) ✅ → G·H·I
 ```
 
 **Porquê esta e não outra:**

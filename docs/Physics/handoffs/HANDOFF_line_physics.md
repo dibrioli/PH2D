@@ -10479,3 +10479,148 @@ outros pela caminhada, que rampeia. Está no passo 2b do roteiro.
   primeiro corte, e entra quando houver quem o peça.
 - Um empurrão **não está na fita** (`W7`), então um scrub para trás replaya sem
   ele — o mesmo preço que a explosão e a mão já pagam, e pela mesma razão.
+
+---
+
+## `W-Leave` — O QUE A PLATAFORMA DÁ AO PULO ⟨2026-08-14, o item **J** do plano 10⟩
+
+**O item era uma SONDA, e a medição fechou-o VERDE e abriu outro.** O plano
+mandava *"largar uma plataforma a 4 m/s nos dois modos e comparar a trajetória —
+se divergirem, a cura é o canal da wave E"*.
+
+### O que a sonda mediu ⟨`measure_platform_leave`⟩
+
+Meio segundo de voo, o CONTROLE dentro da tabela (a mesma cena com a plataforma
+parada), pico acima do ponto de partida:
+
+| plataforma (4 m/s) | Spring | Snap | Pure |
+|---|---|---|---|
+| vagão horizontal | **100%** | **100%** | **100%** |
+| elevador SOBE | 100% | 107% | 107% |
+| elevador DESCE | 78% | 95% | 95% |
+
+⚠️ **O Snap NÃO diverge, e o §3.J da auditoria fecha por medição.** A premissa
+dela — *"sob Snap quem possui a velocidade é o `KinematicState`, e a
+`ground_velocity` não lhe é somada quando o chão desaparece"* — está
+**REFUTADA**: a memória do `lift_momentum` (W10) funciona nos três modos, e o
+gate daquela wave (`platform_lift.rs`) só a tinha medido no dinâmico. A diferença
+que resta no elevador que desce (78 × 95%) é a **folga da mola** de um corpo
+dinâmico a acompanhar a plataforma — física real, não defeito. ⇒ *a cura que o
+plano prescrevia não era necessária.*
+
+### O que ela achou no lugar ⟨e a auditoria também o lista⟩
+
+Pular de um elevador a **descer** dá pico **0,378 m** (Spring) e **0,016** (Snap)
+contra ~1,87 num chão parado: **o artista autora dois metros e recebe um
+centímetro e meio**, nos três modos.
+
+⚠️ **Não é bug.** O pulo leva a subida **relativa ao chão** ao `v0` da altura
+autorada, e o doc daquela linha diz porquê (*pular já subindo tem de dar a mesma
+altura que pular parado*). É coerente, é o `ADD_VELOCITY` do Godot — e responde
+*"dois metros contra a PLATAFORMA"*, o que ninguém tinha escolhido. **A política
+faltava**, e é o que a linha 95 da tabela da auditoria já listava
+(`platform_on_leave (3 modos)`).
+
+### O que foi construído
+
+`PlatformLift` — **`Full`** (o que shipava) · **`UpOnly`** (a descida deixa de
+roubar) · **`Nothing`** (a altura é sempre do mundo), pela porta única
+`ph2d_platformer::takeoff_rise`.
+
+⚠️ **`Full` devolve `rel_up` VERBATIM**, e é isso que torna a wave byte-idêntica
+para todo projeto já salvo — sem depender de `ground_up` ser zero.
+
+⚠️ **A política governa só a componente VERTICAL do pulo do CHÃO, e é geometria
+em vez de escopo escolhido:** o `delta` do pulo é ao longo do `up`, então a
+horizontal de um vagão nunca passa por aqui (ela vive na velocidade que o corpo
+possui e no referencial do `lift_momentum` — medido, 100% nos três modos). O pulo
+do AR e o da PAREDE também não: nenhum tem chão.
+
+⚠️ **O espelho serde é o precedente do `CombineRule`:** a lei vive na crate pura,
+que não fala serde; o componente carrega `PlatformLift` com `tag`/`from_tag`/
+`law`/`of_law`, e o discriminante é o índice do chip **sem remap**.
+
+**Depois da política** (`measure_what_the_policy_buys`, e a coluna que decide é o
+CONTROLE):
+
+| | Full | UpOnly | Nothing |
+|---|---|---|---|
+| parada (controle) | 1,903 | 1,903 | 1,903 |
+| vagão horizontal | 1,903 | 1,903 | 1,903 |
+| elevador SOBE | 3,903 | 3,903 | 2,002 |
+| elevador DESCE | **0,378** | **1,903** | **1,903** |
+
+As três são distinguíveis — o elevador que SOBE é o único lugar onde `UpOnly` e
+`Nothing` divergem, e é isso que justifica haver três em vez de duas.
+
+### A superfície
+
+**`PROJECT_SCHEMA` 80→81** ⚠️ **PROVISÓRIO** (o `main` diz **70**; o valor se
+CONTA contra o `main` do dia da integração). Tripla `(81, 13, 14)`.
+`physics_ecs_c9` **`1699123f…`, 117 corpos — byte-idêntico**, como o default
+promete. Registro do `ph2d-physics-ecs` **intocado** (o campo é de um componente
+que já existe) · gizmo ids **nenhum novo** · ids novos **por hash de string** ·
+**zero `Cargo.toml`** · **nenhum ADR** (sob o ADR-0131). API nova:
+`ph2d_platformer::{PlatformLift, takeoff_rise}` · `JumpConfig::platform_lift` ·
+`ph2d_physics_ecs::PlatformLift` · `PlatformPlayer::platform_lift` ·
+`PlayerFieldEdit::PlatformLift` · `InspectorPlayerInfo::platform_lift`.
+
+### A UI
+
+Row **`Platform Lift`** (`Full` / `Up Only` / `None`) na §14, **fora dos cards**
+— ⚠️ e não é arrumação: um card é medido pela CONTAGEM de rows (`card_frame`) e
+todas as dele têm a altura de uma caixa numérica; um controle segmentado mede a
+PRÓPRIA altura e pode quebrar em duas linhas numa janela estreita, e ali a
+moldura passaria a não caber no que emoldura. As duas rows segmentadas que já
+existiam nesta seção vivem fora deles pelo mesmo motivo. **O preço fica nomeado:**
+ela não pertence ao card PERDÃO, onde o `Lift Momentum` mora e onde o assunto se
+lê.
+
+### Gates
+
+**6 no ECS** (`tests/platform_leave.rs`) + **1 seam** + **2 na shell** + **5 na
+cena**. **6 mutações, 6 sangram:**
+
+| mutação | o que sangra |
+|---|---|
+| a política nunca dispara (`_ => rel_up`) | 2 (a entrega e a distinção) |
+| `UpOnly` perde a guarda ⇒ vira `Nothing` | o da distinção |
+| o `ground_up` lê o eixo errado | o da horizontal |
+| o fold do componente descarta a política | 3 |
+| `from_tag` dobra o desconhecido em `Full` | o do componente e o da shell |
+| o chip fora do `populate` | o seam (pintado e morto sob o mouse) |
+
+⚠️ **E o gate da shell lê a lei pela INVERSA** (`of_law`), não pela mesma `law()`
+que o fold usa — comparar `config().jump.platform_lift == lift.law()` seria o
+oráculo que usa a função sob teste para computar o que espera.
+
+⚠️ **Um erro de processo meu, registado:** desfiz uma mutação com
+`git checkout --` num ficheiro **não-commitado** e apaguei as edições da wave
+inteira naquele arquivo. Reconstruídas. *A regra é `cp` a partir de um backup,
+nunca `git checkout`* [[feedback_mutation_undo_with_cp_never_git_checkout]].
+
+### Smoke
+
+**`env PH2D_PHYSICS_SMOKE=118 cargo run -p ph2d-host-desktop --release`** — três
+raias IDÊNTICAS (mesmo personagem, altura autorada 2,00 m), elevador a descer a
+4,00 m/s, e **só a política difere**.
+
+⚠️ **O elevador é DINÂMICO, e a nota já existia no repo:** um cinemático é
+dirigido por uma pose por tique (o `SceneAtTick` da timeline) e uma cena de smoke
+não tem timeline — a mesma razão pela qual o vagão do gate da W10 é dinâmico com
+massa enorme. Aqui ele desce por **velocidade terminal** (`v = g/d`, com o
+arrasto em `Replace`), que é física do próprio motor em vez de um empurrão
+escrito à mão — e há gate a **medir** os 4 m/s que a mensagem promete, porque uma
+cena que anuncia um número que não entrega ensina o número errado.
+
+**Medido na cena:** a descer **0,393 / 1,903 / 1,903**; no chão parado
+**1,903 / 1,903 / 1,903** (o CONTROLE do passo 3).
+
+### Aberto, nomeado
+
+- A folga de **12% no Snap** com a política ligada (1,7316 contra o controle
+  1,8650) é um erro de **fase de dois tiques**: no tique do pulo o personagem
+  ainda está `grounded` e o `ground_carry` ainda paga a componente normal da
+  plataforma. Está na barra do gate, não escondido.
+- A política **não alcança o pulo da PAREDE nem o do AR** — nenhum tem chão, e um
+  knob que os prometesse seria controle morto.

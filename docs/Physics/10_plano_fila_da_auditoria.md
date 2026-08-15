@@ -9,11 +9,12 @@
 > escolhido aqui** (§0): quem os escreve é a medição da wave.
 
 ```
-A (a saída) ✅ → C (o peso) ✅ → B (a superfície) ✅ → D (o teto) → E (o empurrão)
-   → J (a sonda do Snap) → G · H · I
+A (a saída) ✅ → C (o peso) ✅ → B (a superfície) ✅ → D (o teto) ✅ → E (o empurrão) ✅
+   → J (a sonda do Snap) ✅ → G · H · I
 ```
 
-> **Estado (2026-08-13):** **A**, **C** e **B** fechadas — a próxima é a **D**.
+> **Estado (2026-08-14):** **A**, **C**, **B**, **D**, **E** e **J** fechadas — a
+> próxima é a **G**.
 
 ---
 
@@ -547,9 +548,33 @@ entra quando houver quem o peça.
 
 ## §6 — As pequenas, e a sonda
 
-* **J · a sonda do Snap** — *largar uma plataforma a 4 m/s nos dois modos e
-  comparar a trajetória*. ⚠️ **Medir antes de afirmar**: se divergirem, a cura é
-  o canal da wave E (somar uma velocidade de fora), não um caso especial.
+* **J · a sonda do Snap** ⟨**FECHADA** 2026-08-14, e a medição mudou a wave⟩ —
+  *largar uma plataforma a 4 m/s nos dois modos e comparar a trajetória*.
+  **Medido** (`measure_platform_leave`, meio segundo de voo, o CONTROLE é a mesma
+  cena com a plataforma parada):
+
+  | plataforma (4 m/s) | Spring | Snap | Pure |
+  |---|---|---|---|
+  | vagão horizontal | **100%** | **100%** | **100%** |
+  | elevador SOBE | 100% | 107% | 107% |
+  | elevador DESCE | 78% | 95% | 95% |
+
+  ⚠️ **O Snap NÃO diverge, e o item §3.J da auditoria fecha VERDE por medição:** a
+  premissa dela (*"sob Snap a `ground_velocity` não lhe é somada quando o chão
+  desaparece"*) está **refutada** — a memória do `lift_momentum` (W10) funciona
+  nos três modos, e a diferença que resta no elevador que desce (78 × 95%) é a
+  **folga da mola** do corpo dinâmico, física real e não um defeito. ⇒ *a cura do
+  canal da wave E, que o plano prescrevia, não era necessária.*
+
+  ⚠️ **E a sonda achou o que a auditoria também lista** (linha 95 da tabela dela,
+  `platform_on_leave (3 modos)`): **a política faltava**, e os três modos
+  partilhavam o buraco. Pular de um elevador a descer dava pico **0,378 m**
+  (Spring) e **0,016** (Snap) contra ~1,87 num chão parado — o artista autora dois
+  metros e recebe um centímetro e meio. Não é bug do solver: a altura autorada era
+  medida **contra a plataforma** (o `ADD_VELOCITY` do Godot, e o único mundo que
+  existia). Construída a política (`PlatformLift` · `Full` / `Up Only` / `None`),
+  com o default **`Full` = o mundo que já shipava, byte a byte**. Cena **118**.
+
 * **G · `bCanWalkOffLedges`** — um veredito a mais quando o leque vê o chão
   acabar.
 * **H · voar/noclip** — um modo de depuração.

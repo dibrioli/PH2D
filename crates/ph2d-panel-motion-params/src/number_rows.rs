@@ -16,12 +16,13 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
-use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
+use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore, format_number};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
-    DEFAULT_LABEL_W, IconButtonStyle, IconGlyph, NumberInput, NumericInputWithUnit, TextInputState,
-    Unit, paint_icon_button, paint_number_input_with_buffer, paint_numeric_input_with_unit,
+    DEFAULT_LABEL_W, IconButtonStyle, IconGlyph, NumberInput, NumericInputWithUnit,
+    SliderOrientation, SliderState, TextInputState, Unit, paint_icon_button,
+    paint_number_input_with_buffer, paint_numeric_input_with_unit,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -73,6 +74,67 @@ pub(crate) fn mirror_number(store: &mut WidgetStore, id: NodeId, value: f64, dec
         buffer.push_str(&text);
         *caret = buffer.len();
         *last_committed = value;
+    }
+}
+
+/// **Mirror the doc value into a pooled SLIDER without touching its state.**
+///
+/// The scalar row's two halves are seeded every frame from the document, and the
+/// seed owns the **value** while the *dispatch* owns the **state** — the same
+/// division [`mirror_number`] above already keeps, and the same one the toggle
+/// branch of `seed_rows` states in prose.
+///
+/// Re-registering the whole widget here is what broke Motion's hover: the pointer
+/// pass writes `Hovered` and the paint that follows erased it, so a row lit under
+/// the mouse and went out again before anything was drawn (measured, one paint:
+/// `Hovered -> Normal`, on BOTH halves of the row). Patching in place cannot lose
+/// it — there is no field left to remember to copy.
+pub(crate) fn mirror_slider(store: &mut WidgetStore, id: NodeId, track: f32) {
+    let _ = store.register_if_absent(
+        id,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: track,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
+    if let Some(InteractiveState::Slider { value, .. }) = store.get_mut(id) {
+        *value = track;
+    }
+}
+
+/// The chip half of [`mirror_slider`] — every field the old wholesale re-register
+/// wrote, **except** `state`. Distinct from [`mirror_number`] because the scalar
+/// chip formats with the shared [`format_number`] (no per-row decimals) and parks
+/// the caret at 0; focusing it runs `init_number_buffer`, which selects all.
+pub(crate) fn mirror_chip(store: &mut WidgetStore, id: NodeId, v: f64) {
+    let text = format_number(v);
+    let _ = store.register_if_absent(
+        id,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: v,
+            buffer: text.clone(),
+            caret: 0,
+            last_committed: v,
+            selection_anchor: None,
+        },
+    );
+    if let Some(InteractiveState::NumberInput {
+        value,
+        buffer,
+        caret,
+        last_committed,
+        selection_anchor,
+        ..
+    }) = store.get_mut(id)
+    {
+        *value = v;
+        buffer.clear();
+        buffer.push_str(&text);
+        *caret = 0;
+        *last_committed = v;
+        *selection_anchor = None;
     }
 }
 

@@ -59,10 +59,16 @@ mod tests_reset;
 #[path = "lib_unit_tests.rs"]
 mod tests_unit;
 
+/// **Quem é dono de que campo** quando o painel se re-semeia a cada quadro — o
+/// valor é do seed, o estado é do dispatch.
+#[cfg(test)]
+#[path = "lib_seed_tests.rs"]
+mod tests_seed;
+
 use events::{on_click, on_text_commit, on_toggled, on_value_changed};
 use number_rows::{
-    ANGLE_DECIMALS, SEED_DECIMALS, mirror_number, next_seed, number_is_typing, number_value,
-    paint_angle_row, paint_seed_row,
+    ANGLE_DECIMALS, SEED_DECIMALS, mirror_chip, mirror_number, mirror_slider, next_seed,
+    number_is_typing, number_value, paint_angle_row, paint_seed_row,
 };
 pub use snapshot::{
     AngleRow, ChannelsRow, ColorRow, CurveRow, EnumRow, GradientRow, MAX_ENUM_OPTIONS,
@@ -470,15 +476,10 @@ fn seed_rows(store: &mut WidgetStore, rows: &[ParamRow]) {
             })
         );
         if !dragging && !typing {
-            store.register(
-                slider_id,
-                InteractiveState::Slider {
-                    state: SliderState::Normal,
-                    value: normalized_track(row.value, row.min, span),
-                    orientation: SliderOrientation::Horizontal,
-                },
-            );
-            store.register(chip_id, number_input(row.value));
+            // Value from the doc, STATE from the dispatch — `number_rows` owns both
+            // halves of that split now, for the reason written there.
+            mirror_slider(store, slider_id, normalized_track(row.value, row.min, span));
+            mirror_chip(store, chip_id, row.value);
         }
         // Range (chip typed-value clamp/step) + slider↔chip affine (track 0..1 →
         // value): display = track * span + min. Integer rows snap the chip.

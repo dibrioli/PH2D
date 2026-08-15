@@ -1094,6 +1094,34 @@ impl crate::App {
             }
         }
 
+        // A cena do card LINE (`PH2D_LINE_SMOKE=1`): a mesma dança, para os tipos de linha
+        // procedural — que vivem no DIGITAL, e por isso a cena não escolhe meio nem tipo nenhum.
+        if let Some(hero) = hero_screen.as_mut()
+            && crate::line_smoke::enabled()
+            && !std::mem::replace(&mut self.line_smoke_done, true)
+        {
+            let ppm = hero.project.pixels_per_meter;
+            let cell = *next_import_cell;
+            if let Some(bits) = crate::line_smoke::spawn_if_enabled(
+                sim,
+                renderer,
+                asset_db,
+                cell,
+                ppm,
+                atlas_asset_map,
+            ) {
+                *next_import_cell = next_import_cell.saturating_add(1);
+                hero.gizmo.replace_selection(Some(bits));
+                hero.bus
+                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor::ViewFocusKind::Selected,
+                    });
+                toasts.push(Toast::success(
+                    "Line smoke: Painter -> card Line -> dropdown Type".to_string(),
+                ));
+            }
+        }
+
         // A cena da DOAÇÃO (`PH2D_SCULPT3D_SMOKE=2`): a mesma dança do impasto, para a tela em que a
         // forma vai acender a tinta. A esfera nasce em `sculpt3d_smoke`; aqui nasce o que pintar.
         #[cfg(feature = "sculpt3d")]

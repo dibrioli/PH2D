@@ -36,17 +36,19 @@ mod number_field;
 mod paint;
 mod paint_adjust;
 mod paint_brush;
+/// Os primitivos de ROW que o card Brush empresta aos outros (rótulo, row de dropdown, chip).
+mod paint_brush_rows;
 mod paint_brush_sections;
 mod paint_brush_top;
 mod paint_clone;
 mod paint_composite;
-mod paint_line; // o card Line (Style: Solid) — plano 38 §1
 mod paint_deform;
 mod paint_falloff;
 mod paint_impasto;
 mod paint_impasto_rig; // Impasto: the Body (per-brush) + Lighting (per-canvas) cards
 mod paint_impasto_tool;
 mod paint_inpaint;
+mod paint_line; // o card Line (Style: Solid) — plano 38 §1
 mod paint_mask;
 mod paint_mask_row;
 mod paint_ramp_widget;

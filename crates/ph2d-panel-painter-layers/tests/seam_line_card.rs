@@ -183,8 +183,8 @@ fn every_sketchy_slider_is_alive_under_the_pointer() {
         let after = tool.brush_settings();
         let moved = (before.sketchy_reach - after.sketchy_reach).abs() > 1e-4
             || (before.sketchy_density - after.sketchy_density).abs() > 1e-4
-            || (before.sketchy_width_px - after.sketchy_width_px).abs() > 1e-4
-            || (before.sketchy_opacity - after.sketchy_opacity).abs() > 1e-4;
+            || (before.thread_width_px - after.thread_width_px).abs() > 1e-4
+            || (before.thread_opacity - after.thread_opacity).abs() > 1e-4;
         assert!(moved, "arrastar o slider {name} não autorou nada no pincel");
     }
 }
@@ -212,6 +212,105 @@ fn the_magnetify_checkbox_toggles_under_a_real_click() {
     click_through(&mut host, &mut st, &mut tool, cx, cy);
     assert_eq!(
         tool.brush_settings().sketchy_magnetify,
+        start,
+        "o segundo clique não voltou"
+    );
+}
+
+/// Os controles que o `Wire` acrescenta ao card (plano 38 W4).
+const WIRE_SLIDERS: [(NodeId, &str); 3] = [
+    (core_ids::PAINTER_LINE_WIRE_HISTORY, "History"),
+    (core_ids::PAINTER_LINE_SKETCHY_WIDTH, "Line Width"),
+    (core_ids::PAINTER_LINE_SKETCHY_OPACITY, "Opacity"),
+];
+
+/// **AS ROWS DO `Wire` SÓ EXISTEM COM ELE ESCOLHIDO — e as DUAS compartilhadas ficam no LUGAR.**
+///
+/// ⚠️ A `Line Width` e a `Opacity` são as mesmas rows nos dois tipos porque são o mesmo fato (a tinta
+/// de um fio; ver `set_thread_width_norm`), e este gate é quem prova que trocar de tipo **não
+/// embaralha o card**: o que muda é a lei, não onde os controles foram parar.
+#[test]
+fn the_wire_rows_exist_only_under_the_wire_type_and_share_the_ink_rows() {
+    let mut tool = PainterTool::default();
+    tool.set_line_kind(3); // Wire
+    let (_, _, on) = painted(&tool);
+    for (id, name) in WIRE_SLIDERS {
+        assert!(
+            rect_of(&on, id).is_some(),
+            "o slider {name} do Wire não é pintado"
+        );
+    }
+    assert!(
+        rect_of(&on, core_ids::PAINTER_LINE_WIRE_CONNECTION).is_some(),
+        "o checkbox Connection Line não é pintado"
+    );
+    // O que é do OUTRO tipo não vaza para este.
+    assert!(
+        rect_of(&on, core_ids::PAINTER_LINE_SKETCHY_REACH).is_none(),
+        "o Reach do Sketchy sobrevive no Wire — é um controle que não faz nada"
+    );
+    assert!(
+        rect_of(&on, core_ids::PAINTER_LINE_SKETCHY_MAGNETIFY).is_none(),
+        "o Magnetify sobrevive no Wire"
+    );
+
+    tool.set_line_kind(0); // None
+    let (_, _, off) = painted(&tool);
+    assert!(
+        rect_of(&off, core_ids::PAINTER_LINE_WIRE_HISTORY).is_none(),
+        "o History sobrevive ao tipo None"
+    );
+    assert!(
+        rect_of(&off, core_ids::PAINTER_LINE_WIRE_CONNECTION).is_none(),
+        "o Connection Line sobrevive ao tipo None"
+    );
+}
+
+/// **O `History` ESTÁ VIVO SOB O MOUSE** — arrastado por um ponteiro REAL, do despachante ao tool.
+#[test]
+fn the_wire_history_slider_is_alive_under_the_pointer() {
+    let mut tool = PainterTool::default();
+    tool.set_line_kind(3);
+    let before = tool.brush_settings().wire_history;
+    let (mut host, mut st, rects) = painted(&tool);
+    let r = rect_of(&rects, core_ids::PAINTER_LINE_WIRE_HISTORY).expect("o History não é pintado");
+    let (x, y) = (r.x + r.w - 1.0, r.y + r.h * 0.5);
+    for ev in host.drag_at(r.x + r.w * 0.5, y, x, y) {
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+    }
+    for action in host.drained_actions() {
+        if let EditorAction::ToolPanelEvent(pe) = action {
+            tool.handle_panel_event(pe);
+        }
+    }
+    assert!(
+        (tool.brush_settings().wire_history - before).abs() > 1e-4,
+        "arrastar o History não autorou nada no pincel"
+    );
+}
+
+/// **O `Connection Line` ALTERNA sob um clique REAL** — e volta.
+#[test]
+fn the_connection_line_checkbox_toggles_under_a_real_click() {
+    let mut tool = PainterTool::default();
+    tool.set_line_kind(3);
+    let start = tool.brush_settings().wire_connection_line;
+    let (mut host, mut st, rects) = painted(&tool);
+    let r = rect_of(&rects, core_ids::PAINTER_LINE_WIRE_CONNECTION)
+        .expect("o Connection Line não é pintado");
+    let (cx, cy) = centre(r);
+    click_through(&mut host, &mut st, &mut tool, cx, cy);
+    assert_eq!(
+        tool.brush_settings().wire_connection_line,
+        !start,
+        "o clique não alternou o Connection Line"
+    );
+    let (mut host, mut st, rects) = painted(&tool);
+    let r = rect_of(&rects, core_ids::PAINTER_LINE_WIRE_CONNECTION).expect("sumiu ao alternar");
+    let (cx, cy) = centre(r);
+    click_through(&mut host, &mut st, &mut tool, cx, cy);
+    assert_eq!(
+        tool.brush_settings().wire_connection_line,
         start,
         "o segundo clique não voltou"
     );

@@ -9,7 +9,7 @@
 //! A W0.3 mediu: com densidade cheia os fios somam **~50× o arco do traço** no alcance de um
 //! diâmetro. Carimbar um fio fino à spacing de sub-pixel poria a conta em 10⁴–10⁶ dabs por traço —
 //! é por isso que o Harmony e o Krita o desenham como segmento, e é por isso que ele sai por um
-//! canal PRÓPRIO ([`crate::stroke::sketchy::Thread`]) em vez de entrar na lista de dabs.
+//! canal PRÓPRIO ([`crate::stroke::threads::Thread`]) em vez de entrar na lista de dabs.
 //!
 //! # Por que `over` por fio, e nunca um preenchimento só de todos os quads
 //!
@@ -28,7 +28,7 @@
 //! janela; a janela inteira é escrita **uma vez** pelo tool.
 
 use crate::solid;
-use crate::stroke::sketchy::Thread;
+use crate::stroke::threads::Thread;
 
 /// Com que tinta um feixe de fios é desenhado — a espessura e a opacidade, e mais nada.
 ///
@@ -37,7 +37,7 @@ use crate::stroke::sketchy::Thread;
 /// diz outra coisa, verbatim: *"It's what causes curve lines to form **between two close line
 /// sections** … With Magnetify off, the curve line just forms on either side of the current active
 /// portion of your connection line."* Ele decide **QUE PARES viram fio**, não com que força um fio
-/// desenha — e é por isso que vive no motor ([`crate::stroke::sketchy`]), onde os pares nascem.
+/// desenha — e é por isso que vive no motor ([`crate::stroke::threads`]), onde os pares nascem.
 /// O que esta rampa fazia é o que o Krita chama de *Distance Opacity* / *Use Distance Density*, dois
 /// controles SEPARADOS que este card não oferece.
 #[derive(Clone, Copy, Debug)]

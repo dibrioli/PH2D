@@ -23,7 +23,7 @@ fn paint_media_row(
     brush: BrushSettings,
 ) -> f32 {
     let cur = brush.media;
-    let (ny, open) = crate::paint_brush::paint_dropdown_row(
+    let (ny, open) = crate::paint_brush_rows::paint_dropdown_row(
         ctx,
         theme,
         x,

@@ -222,11 +222,15 @@ pub struct BrushSettings {
     /// **Sketchy — Density**: a fração dos pares no alcance que viram fio (o orçamento do tipo).
     pub sketchy_density: f32,
     /// **Sketchy — Line Width**: a espessura de UM fio, em pixels.
-    pub sketchy_width_px: f32,
+    pub thread_width_px: f32,
     /// **Sketchy — Opacity**: a opacidade de UM fio.
-    pub sketchy_opacity: f32,
+    pub thread_opacity: f32,
     /// **Sketchy — Magnetify**: costurar dois trechos que se aproximaram, ou só a porção ativa.
     pub sketchy_magnetify: bool,
+    /// **Wire — History**: a janela em DIÂMETROS de ARCO percorrido.
+    pub wire_history: f32,
+    /// **Wire — Connection Line**: o traço em si é pintado, ou sobra só o arame?
+    pub wire_connection_line: bool,
     /// "Sync with other tools" on/off: on = every paint tool shares these settings; off (default) = each
     /// tool independent. Drives the checkbox at the top of the brush panel.
     pub link_shared: bool,

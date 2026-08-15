@@ -20,7 +20,8 @@ use ph2d_editor_core::zones::Rect;
 
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::{
-    BrushSettings, LineKind, SKETCHY_DENSITY_MAX, SKETCHY_REACH_MAX, SKETCHY_WIDTH_MAX_PX,
+    BrushSettings, LineKind, SKETCHY_DENSITY_MAX, SKETCHY_REACH_MAX, THREAD_WIDTH_MAX_PX,
+    WIRE_HISTORY_MAX,
 };
 
 /// Coluna fixa do rótulo de uma row de parâmetro do tipo (cabe "Line Width" na fonte Base).
@@ -35,12 +36,18 @@ fn kind_name(k: LineKind) -> &'static str {
         LineKind::None => "None",
         LineKind::Speed => "Speed",
         LineKind::Sketchy => "Sketchy",
+        LineKind::Wire => "Wire",
     }
 }
 
 /// Quantos tipos existem — **derivado da lista abaixo**, nunca um literal, para que um tipo novo
 /// apareça no dropdown sem ninguém lembrar de subir um número.
-pub(crate) const LINE_KINDS: [LineKind; 3] = [LineKind::None, LineKind::Speed, LineKind::Sketchy];
+pub(crate) const LINE_KINDS: [LineKind; 4] = [
+    LineKind::None,
+    LineKind::Speed,
+    LineKind::Sketchy,
+    LineKind::Wire,
+];
 
 /// Os tipos como opções de `Dropdown` (valor = o wire `u8`, rótulo = o nome).
 pub(crate) fn line_type_options() -> Vec<DropdownOption<u8>> {
@@ -74,10 +81,7 @@ pub(crate) fn paint_line_card(
     // ⚠️ O `Speed` não tem row nenhuma **de propósito**: o Alchemy não oferece controle sobre o
     // arremesso (Enio 2026-08-13, *"em alchemy o slider não é necessário"*), então o produto acerta
     // de fábrica em vez de delegar.
-    let param_rows = match kind {
-        LineKind::None | LineKind::Speed => 0.0,
-        LineKind::Sketchy => SKETCHY_ROWS,
-    };
+    let param_rows = rows_of(kind);
     let card_h = pad + ROW_H_PX + gap + ROW_H_PX + param_rows * (gap + ROW_H_PX) + pad;
     let card = Rect::new(x, y, content_w, card_h);
     let radius = Radius::Md.px();
@@ -106,7 +110,7 @@ pub(crate) fn paint_line_card(
         .register(core_ids::PAINTER_LINE_SOLID, cb_rect);
     iy += ROW_H_PX + gap;
 
-    let (ny, open) = crate::paint_brush::paint_dropdown_row(
+    let (ny, open) = crate::paint_brush_rows::paint_dropdown_row(
         ctx,
         theme,
         ix,
@@ -122,78 +126,130 @@ pub(crate) fn paint_line_card(
     }
     iy = ny;
 
-    if kind == LineKind::Sketchy {
-        iy = paint_sketchy_rows(ctx, theme, ix, iw, iy + gap, brush);
+    if param_rows > 0.0 {
+        iy = paint_param_rows(ctx, theme, ix, iw, iy + gap, brush, kind);
     }
     let _ = iy;
     y + card_h + Spacing::Sm.px()
 }
 
-/// Quantas rows o `Sketchy` acrescenta — **derivado da tabela**, para que uma row nova mude a altura
-/// do card sem ninguém lembrar de subir um número (a mesma lei do [`LINE_KINDS`]).
+/// Quantas rows o TIPO acrescenta — **derivado das tabelas**, para que uma row nova mude a altura do
+/// card sem ninguém lembrar de subir um número (a mesma lei do [`LINE_KINDS`]).
 #[allow(clippy::cast_precision_loss)]
-const SKETCHY_ROWS: f32 = SKETCHY_SLIDERS.len() as f32 + 1.0; // +1 = o checkbox Magnetify
+fn rows_of(kind: LineKind) -> f32 {
+    sliders_of(kind).len() as f32 + f32::from(u8::from(checkbox_of(kind).is_some()))
+}
 
-/// Os quatro sliders do Sketchy: `(id, rótulo, valor na pista 0..1, o que o readout mostra)`.
+/// Um slider de parâmetro do tipo: `(id, rótulo, valor na pista 0..1, o que o readout mostra)`.
 ///
-/// ⚠️ **UMA tabela, DOIS consumidores** — o pintor a percorre e o `populate` registra os mesmos ids;
-/// e é ela que faz a altura do card ser contada em vez de escolhida. Uma row a mais aqui nasce
-/// pintada, medida e com hit registrado.
-type SketchySlider = (
+/// ⚠️ **UMA tabela por tipo, DOIS consumidores** — o pintor a percorre e o `populate` registra os
+/// mesmos ids; e é ela que faz a altura do card ser CONTADA em vez de escolhida. Uma row a mais
+/// aqui nasce pintada, medida e com hit registrado.
+type ParamSlider = (
     ph2d_editor_core::NodeId,
     &'static str,
     fn(BrushSettings) -> (f32, f32),
 );
-const SKETCHY_SLIDERS: [SketchySlider; 4] = [
+
+/// A `Line Width` e a `Opacity` são as MESMAS duas rows nos dois tipos, na MESMA posição — porque
+/// são o mesmo fato (a tinta de um fio; ver `set_thread_width_norm`). Trocar de tipo não embaralha
+/// o card, e é isso que torna a troca uma decisão sobre a LEI e não sobre onde os controles foram
+/// parar.
+const THREAD_INK_ROWS: [ParamSlider; 2] = [
+    (core_ids::PAINTER_LINE_SKETCHY_WIDTH, "Line Width", |b| {
+        (b.thread_width_px / THREAD_WIDTH_MAX_PX, b.thread_width_px)
+    }),
+    (core_ids::PAINTER_LINE_SKETCHY_OPACITY, "Opacity", |b| {
+        (b.thread_opacity, b.thread_opacity)
+    }),
+];
+
+const SKETCHY_SLIDERS: [ParamSlider; 4] = [
     (core_ids::PAINTER_LINE_SKETCHY_REACH, "Reach", |b| {
         (b.sketchy_reach / SKETCHY_REACH_MAX, b.sketchy_reach)
     }),
     (core_ids::PAINTER_LINE_SKETCHY_DENSITY, "Density", |b| {
+        const PCT: f32 = 100.0; // LITERAL-PX-OK: a Density é lida em PORCENTAGEM na face do artista
         (
             b.sketchy_density / SKETCHY_DENSITY_MAX,
-            b.sketchy_density * 100.0,
+            b.sketchy_density * PCT,
         )
     }),
-    (core_ids::PAINTER_LINE_SKETCHY_WIDTH, "Line Width", |b| {
-        (
-            b.sketchy_width_px / SKETCHY_WIDTH_MAX_PX,
-            b.sketchy_width_px,
-        )
-    }),
-    (core_ids::PAINTER_LINE_SKETCHY_OPACITY, "Opacity", |b| {
-        (b.sketchy_opacity, b.sketchy_opacity)
-    }),
+    THREAD_INK_ROWS[0],
+    THREAD_INK_ROWS[1],
 ];
 
-/// Pinta as rows do `Sketchy` e devolve o próximo `y`.
-fn paint_sketchy_rows(
+const WIRE_SLIDERS: [ParamSlider; 3] = [
+    (core_ids::PAINTER_LINE_WIRE_HISTORY, "History", |b| {
+        (b.wire_history / WIRE_HISTORY_MAX, b.wire_history)
+    }),
+    THREAD_INK_ROWS[0],
+    THREAD_INK_ROWS[1],
+];
+
+/// Os sliders deste tipo. `None`/`Speed` não têm **de propósito** — o Alchemy não oferece controle
+/// sobre o arremesso (Enio 2026-08-13), e uma row sob eles seria um controle que não faz nada.
+fn sliders_of(kind: LineKind) -> &'static [ParamSlider] {
+    match kind {
+        LineKind::None | LineKind::Speed => &[],
+        LineKind::Sketchy => &SKETCHY_SLIDERS,
+        LineKind::Wire => &WIRE_SLIDERS,
+    }
+}
+
+/// O checkbox de um tipo: `(id, rótulo, o valor)`.
+type ParamCheckbox = (
+    ph2d_editor_core::NodeId,
+    &'static str,
+    fn(BrushSettings) -> bool,
+);
+
+/// O checkbox deste tipo, se houver.
+fn checkbox_of(kind: LineKind) -> Option<ParamCheckbox> {
+    match kind {
+        LineKind::Sketchy => Some((
+            core_ids::PAINTER_LINE_SKETCHY_MAGNETIFY,
+            "Magnetify",
+            |b: BrushSettings| b.sketchy_magnetify,
+        )),
+        LineKind::Wire => Some((
+            core_ids::PAINTER_LINE_WIRE_CONNECTION,
+            "Connection Line",
+            |b: BrushSettings| b.wire_connection_line,
+        )),
+        LineKind::None | LineKind::Speed => None,
+    }
+}
+
+/// Pinta as rows do tipo escolhido e devolve o próximo `y`.
+fn paint_param_rows(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
     row_w: f32,
     y: f32,
     brush: BrushSettings,
+    kind: LineKind,
 ) -> f32 {
     let gap = Spacing::Xs.px();
     let mut iy = y;
-    for (id, label, read) in SKETCHY_SLIDERS {
+    for (id, label, read) in sliders_of(kind) {
         let (track, shown) = read(brush);
-        paint_param_row(ctx, theme, x, row_w, iy, label, id, track, shown);
+        paint_param_row(ctx, theme, x, row_w, iy, label, *id, track, shown);
         iy += ROW_H_PX + gap;
     }
-    let cb = Checkbox::new(core_ids::PAINTER_LINE_SKETCHY_MAGNETIFY, "Magnetify").value(
-        if brush.sketchy_magnetify {
+    if let Some((id, label, read)) = checkbox_of(kind) {
+        let cb = Checkbox::new(id, label).value(if read(brush) {
             CheckboxValue::Checked
         } else {
             CheckboxValue::Unchecked
-        },
-    );
-    let cb_rect = Rect::new(x, iy, row_w, ROW_H_PX);
-    paint_checkbox(&cb, cb_rect, ctx.scene, ctx.text_system, theme);
-    ctx.host
-        .hit_index_mut()
-        .register(core_ids::PAINTER_LINE_SKETCHY_MAGNETIFY, cb_rect);
-    iy + ROW_H_PX
+        });
+        let cb_rect = Rect::new(x, iy, row_w, ROW_H_PX);
+        paint_checkbox(&cb, cb_rect, ctx.scene, ctx.text_system, theme);
+        ctx.host.hit_index_mut().register(id, cb_rect);
+        iy += ROW_H_PX;
+    }
+    iy
 }
 
 /// Uma row de parâmetro do tipo: rótulo · slider nu · readout. O valor vem do snapshot e o ESTADO do

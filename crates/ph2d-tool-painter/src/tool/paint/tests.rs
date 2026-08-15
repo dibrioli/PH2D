@@ -4,10 +4,6 @@ mod impasto_pool_tests;
 mod journal_delta_tests; // o delta do journal É o de dois snapshots (doc 28 §5.58.2, degrau 2 do S3)
 #[path = "journal_tests.rs"]
 mod journal_tests; // o journal descreve a TELA, e só ela (doc 28 §5.23, os 3 mecanismos do degrau 2)
-#[path = "sketchy_deposit_tests.rs"]
-mod sketchy_deposit_tests; // W3 do plano 38: o Sketchy no produto
-#[path = "sketchy_probe.rs"]
-mod sketchy_probe; // W3 do plano 38: o custo por evento que o teto da densidade EXIGE
 #[path = "line_probe.rs"]
 mod line_probe; // W0 do plano 38: o que um Solid pularia, o que ele acrescenta, e o preço da borda
 #[path = "measure_boolean_cost.rs"]
@@ -19,7 +15,11 @@ mod measure_dirty_overclaim;
 #[path = "measure_gpu_frontier.rs"]
 mod measure_gpu_frontier; // o pool dos cinco planos do traço escreve o que a alocação escrevia
 #[path = "solid_deposit_tests.rs"]
-mod solid_deposit_tests; // o Style: Solid no produto (plano 38 §1.1)
+mod solid_deposit_tests;
+#[path = "thread_deposit_tests.rs"]
+mod thread_deposit_tests;
+#[path = "thread_probe.rs"]
+mod thread_probe; // W3 do plano 38: o custo por evento que o teto da densidade EXIGE // W3 do plano 38: o Sketchy no produto // o Style: Solid no produto (plano 38 §1.1)
 
 #[path = "measure_penup_cost.rs"]
 mod measure_penup_cost; // o que custa FECHAR um traço — a irmã do `measure_pendown_cost`

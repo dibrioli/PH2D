@@ -1,11 +1,12 @@
-//! Os gates do **Sketchy** — o `LineKind::Sketchy` do plano 38 W3.
+//! Os gates dos tipos que **costuram fios** — `Sketchy` (plano 38 W3) e `Wire` (W4).
 //!
-//! O que a feature promete: a cada dab, fios de opacidade baixa ligam os pontos vizinhos **do mesmo
-//! traço**, e o acúmulo desenha o hachurado. Os gates perguntam pelos FIOS, não pela fórmula.
+//! O que a família promete: a cada dab, fios de opacidade baixa ligam pontos da memória do traço.
+//! Os gates perguntam pelos FIOS, não pela fórmula — e o que separa os dois tipos é **qual** par eles
+//! escolhem: o Sketchy pergunta *quem está perto no CANVAS*, o Wire *quem está perto no PERCURSO*.
 
 use crate::dynamics::Dynamics;
 use crate::falloff::Falloff;
-use crate::line_kind::{LineKind, SKETCHY_DENSITY_MAX};
+use crate::line_kind::{LineKind, SKETCHY_DENSITY_MAX, WIRE_CURVES_PER_DAB};
 use crate::spec::BrushSpec;
 use crate::stroke::{Stroke, StrokePoint};
 use crate::symmetry::{MirrorAxis, SymmetrySettings};
@@ -257,7 +258,7 @@ fn hairpin(sp: BrushSpec) -> Vec<[f32; 4]> {
 /// close line sections … With Magnetify off, the curve line just forms on either side of the current
 /// active portion of your connection line."* Ele escolhe QUE PARES viram fio — **não** com que força
 /// um fio desenha, que foi como esta wave o construiu primeiro (a rampa de opacidade por distância
-/// morreu em `sketchy_raster`, e o que ela fazia é o *Distance Opacity* do Krita, outro controle).
+/// morreu em `thread_raster`, e o que ela fazia é o *Distance Opacity* do Krita, outro controle).
 ///
 /// **O oráculo é GEOMÉTRICO:** um fio que atravessa as duas pernas do grampo liga `y = 200` a
 /// `y = 206`; um fio dentro de uma perna tem as duas pontas no mesmo `y`. E o CONTROLE é a segunda
@@ -282,7 +283,10 @@ fn magnetify_sews_across_sections_and_without_it_only_the_active_portion() {
     let mut on = spec(LineKind::Sketchy, 1.0);
     on.sketchy_magnetify = true;
     let a = hairpin(on);
-    assert!(crosses(&a) > 0, "com Magnetify o traço TEM de ligar as duas pernas");
+    assert!(
+        crosses(&a) > 0,
+        "com Magnetify o traço TEM de ligar as duas pernas"
+    );
 
     let mut off = spec(LineKind::Sketchy, 1.0);
     off.sketchy_magnetify = false;
@@ -366,3 +370,203 @@ fn the_density_is_the_budget_and_the_spend_is_proportional_to_it() {
     );
 }
 
+// ---------------------------------------------------------------------------------------------
+// WIRE (plano 38 W4) — o mesmo produtor com uma janela de ARCO.
+// ---------------------------------------------------------------------------------------------
+
+fn wire_spec(history: f32) -> BrushSpec {
+    BrushSpec {
+        radius_px: 12.0,
+        spacing: 0.1,
+        falloff: Falloff::Constant,
+        space_attenuation: false,
+        stabilizer: 0.0,
+        line_kind: LineKind::Wire,
+        wire_history: history,
+        ..Default::default()
+    }
+}
+
+/// Um traço RETO de `len` px, com o espaçamento pedido. Devolve `(dabs, fios)`.
+///
+/// ⚠️ Reto de propósito: é a fixture em que a janela de arco e a janela de contagem de pontos
+/// **divergem visivelmente** quando o espaçamento muda, e onde o comprimento de uma corda é
+/// exatamente o arco que ela cobre.
+fn straight(sp: BrushSpec, len: f32, step: f32) -> (Vec<[f32; 2]>, Vec<[f32; 4]>) {
+    let mut s = Stroke::new(sp, plain_dynamics(), 7);
+    let mut out = Vec::new();
+    let mut threads = Vec::new();
+    let mut dabs: Vec<[f32; 2]> = Vec::new();
+    let mut all: Vec<[f32; 4]> = Vec::new();
+    s.begin(
+        StrokePoint {
+            pos: [100.0, 300.0],
+            pressure: 1.0,
+        },
+        &mut out,
+    );
+    dabs.extend(out.iter().map(|d| d.center));
+    s.take_threads(&mut threads);
+    all.append(&mut threads);
+    let mut x = 100.0f32;
+    while x < 100.0 + len {
+        x += step;
+        s.extend(
+            StrokePoint {
+                pos: [x, 300.0],
+                pressure: 1.0,
+            },
+            &mut out,
+        );
+        dabs.extend(out.iter().map(|d| d.center));
+        s.take_threads(&mut threads);
+        all.append(&mut threads);
+    }
+    (dabs, all)
+}
+
+/// **O WIRE OLHA PARA O PERCURSO, NÃO PARA O CANVAS** — o discriminante contra o irmão.
+///
+/// ⚠️ **É a MESMA fixture do Magnetify**, e não por economia: o grampo é precisamente a cena em que
+/// as duas perguntas divergem. As duas pernas estão a **6 px no canvas** e a **240 px de arco** uma
+/// da outra na ponta medida.
+///
+/// ⚠️ **A comparação é feita com o MESMO número — um diâmetro para os dois** (o Sketchy alcança
+/// 24 px de canvas; o Wire, 24 px de arco). Sem isso o gate provaria só que uma janela é menor que a
+/// outra; com isso ele prova que a PERGUNTA é outra.
+///
+/// ⚠️ **E o gate nasceu VERMELHO sobre um produto CORRETO** (31 fios cross-perna), porque a 1ª versão
+/// deu ao Wire uma janela de 6 diâmetros = 144 px de arco contra um grampo de 240 px no total: **a
+/// dobra estava DENTRO da janela**, e alcançar a outra perna ali é a lei do Wire a funcionar, não a
+/// falhar. O fato fica escrito para ninguém "consertar" o motor: *um arame CRUZA uma dobra que caiba
+/// na janela dele* — o que ele nunca faz é cruzar por proximidade no canvas.
+///
+/// **Mutação que sangra:** o Wire testar a distância no canvas em vez do arco.
+#[test]
+fn the_wire_looks_along_the_path_where_the_sketchy_looks_across_the_canvas() {
+    let crosses = |ts: &[[f32; 4]]| {
+        ts.iter()
+            .filter(|t| (t[3] - t[1]).abs() > 3.0 && t[0] < 280.0 && t[2] < 280.0)
+            .count()
+    };
+    let sketchy = hairpin(spec(LineKind::Sketchy, 1.0));
+    assert!(
+        crosses(&sketchy) > 0,
+        "controle: o Sketchy costura entre as pernas (é o que o canvas vê)"
+    );
+    let wire = hairpin(wire_spec(1.0));
+    assert!(
+        wire.len() > 100,
+        "controle: o Wire tem de costurar ao longo do percurso ({} fios)",
+        wire.len()
+    );
+    assert_eq!(
+        crosses(&wire),
+        0,
+        "o Wire ligou as duas pernas do grampo: {} de {} fios",
+        crosses(&wire),
+        wire.len()
+    );
+}
+
+/// **A JANELA É DE ARCO, NÃO DE CONTAGEM DE PONTOS** — o mesmo gesto com o DOBRO dos dabs desenha o
+/// mesmo arame.
+///
+/// ⚠️ **É a lei que esta casa já pagou quatro vezes no relevo:** *a lei é função do CAMINHO, nunca de
+/// quão fino o motor amostrou o caminho*. Uma janela em pontos (que é como o Krita a mede) faria
+/// apertar o Spacing encurtar o arame **sem ninguém tocar no slider**.
+///
+/// O oráculo é o COMPRIMENTO DA MAIOR CORDA — num traço reto ele é o arco que a janela cobre, e não
+/// depende de quantos dabs couberam nela.
+///
+/// **Mutação que sangra:** a janela contar pontos (`thread_pts.len() - k`) em vez de arco.
+#[test]
+fn the_wire_window_is_measured_in_arc_not_in_dabs() {
+    let longest = |ts: &[[f32; 4]]| {
+        ts.iter()
+            .map(|t| (t[2] - t[0]).hypot(t[3] - t[1]))
+            .fold(0.0f32, f32::max)
+    };
+    let mut fine = wire_spec(2.0);
+    fine.spacing = 0.05; // dabs a ~1,2 px
+    let mut coarse = wire_spec(2.0);
+    coarse.spacing = 0.2; // dabs a ~4,8 px — QUATRO vezes menos pontos no mesmo arco
+    let (df, tf) = straight(fine, 400.0, 3.0);
+    let (dc, tc) = straight(coarse, 400.0, 3.0);
+    assert!(
+        df.len() > 2 * dc.len(),
+        "controle: os dois espaçamentos têm de dar contagens de dab bem diferentes ({} contra {})",
+        df.len(),
+        dc.len()
+    );
+    let (lf, lc) = (longest(&tf), longest(&tc));
+    // A janela é 2 diâmetros = 48 px; a maior corda cobre a janela inteira.
+    assert!(
+        (lf - lc).abs() < 6.0,
+        "o arame mudou de tamanho com o espaçamento: {lf:.1} px contra {lc:.1} px"
+    );
+    assert!(
+        (lf - 48.0).abs() < 6.0,
+        "a maior corda não cobre a janela de 48 px: {lf:.1} px"
+    );
+}
+
+/// **A CONTAGEM DE CORDAS POR DAB É FIXA** — e é por isso que o Wire não tem slider de densidade.
+///
+/// ⚠️ *"Ligue aos últimos N"* lido ao pé da letra são `N` fios por dab, com `N` = quantos dabs
+/// couberam na janela ⇒ o CUSTO passaria a ser função do Spacing. Amostrando posições igualmente
+/// espaçadas em arco, a contagem é a constante — e o orçamento é conhecido antes de o artista tocar
+/// num slider.
+///
+/// **Mutação que sangra:** ligar a todos os pontos da janela.
+#[test]
+fn the_wire_draws_a_fixed_number_of_cords_per_dab() {
+    let sp = wire_spec(2.0);
+    let (dabs, threads) = straight(sp, 400.0, 3.0);
+    assert!(dabs.len() > 100, "controle: a fixture tem de emitir tinta");
+    // Os primeiros dabs não têm janela cheia (as cordas são PULADAS), então a razão é um teto.
+    #[allow(clippy::cast_precision_loss)]
+    let per_dab = threads.len() as f32 / dabs.len() as f32;
+    #[allow(clippy::cast_precision_loss)]
+    let cap = WIRE_CURVES_PER_DAB as f32;
+    assert!(
+        per_dab <= cap + 0.01,
+        "o Wire desenhou {per_dab:.2} cordas por dab, acima da constante de {cap}"
+    );
+    assert!(
+        per_dab > cap * 0.8,
+        "o Wire desenhou só {per_dab:.2} cordas por dab: a janela nunca encheu?"
+    );
+}
+
+/// **NO COMEÇO DO TRAÇO AS CORDAS SÃO PULADAS, NÃO PRESAS À ORIGEM.**
+///
+/// ⚠️ Prendê-las no 1º ponto desenharia um LEQUE saindo da origem do traço — muitas cordas
+/// compartilhando exatamente o mesmo ponto —, e é o que o manual do Krita descreve como o contrário
+/// do certo: *"if you set this value too high, the curve lines will only start forming relatively
+/// late"*. Formar tarde É o comportamento.
+///
+/// **Mutação que sangra:** trocar o `break` por um clamp no ponto mais antigo.
+#[test]
+fn the_wire_skips_the_cords_the_window_cannot_reach_yet() {
+    let sp = wire_spec(4.0); // janela de 96 px
+    let (_, threads) = straight(sp, 400.0, 3.0);
+    assert!(!threads.is_empty(), "controle: a fixture tem de costurar");
+    let at_origin = threads
+        .iter()
+        .filter(|t| (t[2] - 100.0).abs() < 0.5 && (t[3] - 300.0).abs() < 0.5)
+        .count();
+    assert!(
+        at_origin <= WIRE_CURVES_PER_DAB,
+        "{at_origin} cordas ancoraram na ORIGEM do traço: a janela vazia está a prender em vez de pular"
+    );
+}
+
+/// **O NEUTRO DO WIRE** — `History = 0` não costura, e o CONTROLE prova que a fixture costuraria.
+#[test]
+fn the_wire_neutral_sews_nothing() {
+    let (_, zero) = straight(wire_spec(0.0), 400.0, 3.0);
+    assert!(zero.is_empty(), "History 0 costurou {} fios", zero.len());
+    let (_, armed) = straight(wire_spec(2.0), 400.0, 3.0);
+    assert!(!armed.is_empty(), "controle: a fixture tem de costurar");
+}

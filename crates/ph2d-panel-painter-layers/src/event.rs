@@ -394,6 +394,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_BRUSH_ACCUMULATE
                 || id == core_ids::PAINTER_LINE_SOLID
                 || id == core_ids::PAINTER_LINE_SKETCHY_MAGNETIFY
+                || id == core_ids::PAINTER_LINE_WIRE_CONNECTION
                 || id == core_ids::PAINTER_BRUSH_SYNC
                 || id == core_ids::PAINTER_BRUSH_LINE_DIMENSIONS
                 || id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE

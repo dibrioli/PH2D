@@ -240,6 +240,7 @@ pub(super) fn dispatch(
             crate::impasto_smoke::arm_brush_once(painter);
             crate::wetpaint_smoke::arm_brush_once(painter);
             crate::substrate_smoke::arm_brush_once(painter);
+            crate::line_smoke::arm_brush_once(painter);
             *last_painter_pushed_entity = Some(bits);
             // The bind abandons any pending Fill (tool side); close its now-orphaned adjust modal too, so
             // switching sprites never leaves a stale Fill modal floating over the new one.

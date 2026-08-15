@@ -109,16 +109,29 @@ pub struct BrushSpec {
     pub sketchy_density: f32,
     /// **Sketchy — a largura do fio**, em px de canvas. Um fio é fino por natureza: ele desenha a
     /// teia, não o traço.
-    pub sketchy_width_px: f32,
+    pub thread_width_px: f32,
     /// **Sketchy — a opacidade do fio**, `0..1`. Baixa por natureza: é o acúmulo de muitos fios que
     /// desenha o hachurado, não a força de cada um.
-    pub sketchy_opacity: f32,
+    pub thread_opacity: f32,
     /// **Sketchy — `Magnetify`** (o default do Krita, ligado): que PARES da memória viram fio.
     ///
     /// Ligado, qualquer par dentro do alcance — inclusive dois trechos que o traço aproximou depois
     /// de dar a volta. Desligado, só a **porção ativa** do percurso: os pontos que o dedo acabou de
-    /// deixar. ⚠️ Ele **não** pesa a tinta de um fio — ver [`crate::stroke::sketchy`].
+    /// deixar. ⚠️ Ele **não** pesa a tinta de um fio — ver [`crate::stroke::threads`].
     pub sketchy_magnetify: bool,
+    /// **Wire — o `History`**, a janela em DIÂMETROS de ARCO percorrido. `0` desliga.
+    ///
+    /// ⚠️ Ela é o tamanho do LAÇO: numa curva, a corda que fecha a janela corta a quina, e o que
+    /// sobra para fora do traço é o arame. Ver [`crate::line_kind::WIRE_HISTORY_MAX`] para o porquê
+    /// de a régua ser o arco e não a contagem de pontos.
+    pub wire_history: f32,
+    /// **Wire — `Connection Line`** (o *Paint connection line* do Krita, verbatim: *"which toggles
+    /// the visibility of the connection line"*): o traço em si é pintado, ou só o arame?
+    ///
+    /// Ligado (o default) o arame decora a pincelada; desligado sobra o laço solto, que é o look que
+    /// o Krita mostra. ⚠️ A supressão mora na MESMA porta do `Style: Solid` — ver
+    /// `PainterTool::stamp_dabs`.
+    pub wire_connection_line: bool,
     /// Dash "on" fraction of each dash period, `0..1` (Blender `dash_ratio`, default `1.0` = solid,
     /// `DNA_brush_types.h:275`).
     pub dash_ratio: f32,
@@ -463,6 +476,30 @@ impl BrushSpec {
     #[must_use]
     pub fn sketchy_active(&self) -> bool {
         self.line_kind == crate::line_kind::LineKind::Sketchy && self.sketchy_reach > 0.0
+    }
+
+    /// **O Wire está armado?** — o tipo escolhido E uma janela que alcança alguma coisa. Irmã exata
+    /// da [`Self::sketchy_active`].
+    #[must_use]
+    pub fn wire_active(&self) -> bool {
+        self.line_kind == crate::line_kind::LineKind::Wire && self.wire_history > 0.0
+    }
+
+    /// **Este pincel costura fios?** — a porta ÚNICA que decide se a memória do traço é mantida.
+    ///
+    /// ⚠️ Ela pergunta ao TIPO (`LineKind::sews_threads`) e ao parâmetro daquele tipo. Um `match`
+    /// sobre os tipos escrito aqui e outro no depósito é a lista que apodrece no terceiro membro.
+    #[must_use]
+    pub fn sews_threads(&self) -> bool {
+        self.sketchy_active() || self.wire_active()
+    }
+
+    /// **A JANELA do Wire em PIXELS de arco** — irmã da [`Self::sketchy_reach_px`], mesma unidade
+    /// (diâmetros) e mesma razão para ser porta única: o motor a lê para escolher os pares e a sonda
+    /// para medir o orçamento.
+    #[must_use]
+    pub fn wire_history_px(&self) -> f32 {
+        self.wire_history * 2.0 * self.clamped_radius()
     }
 
     /// **O ALCANCE do Sketchy em PIXELS** — o raio dentro do qual dois pontos do traço se costuram.

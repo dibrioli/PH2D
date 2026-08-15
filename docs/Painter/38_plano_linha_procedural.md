@@ -530,6 +530,74 @@ construído errado, e isso é um sinal e não um contratempo.
 
 ---
 
+#### W4 — FECHADA (2026-08-14)
+
+**O que shipou:** o `LineKind::Wire` (o *Curve brush engine* do Krita), as rows `History` · `Line
+Width` · `Opacity` · ☑ `Connection Line`, e a cena de smoke do card.
+
+**A wave FOI pequena, e é o sinal que o plano previu:** zero geometria nova, zero canal novo, zero
+rasterizador novo. O Wire é o mesmo `note_thread_point`, o mesmo `ThreadInk`, o mesmo depósito pela
+porta de proteção — o que muda é **a pergunta que escolhe os pares**: o Sketchy pergunta *quem está
+perto no CANVAS*, o Wire *quem está perto no PERCURSO*.
+
+**⚠️ A janela é de ARCO, não de contagem de pontos, e a decisão não é gosto.** O Krita mede a
+história em PONTOS; num motor de dabs isso seria uma janela cujo tamanho depende do **Spacing** —
+apertar o espaçamento encurtaria o arame sem ninguém tocar no slider. É a doença que esta linha já
+curou quatro vezes no relevo (*a lei é função do CAMINHO, nunca de quão fino o motor amostrou o
+caminho*). Pelo mesmo motivo a **contagem de cordas é FIXA** (`WIRE_CURVES_PER_DAB = 4`, amostradas
+igualmente espaçadas em arco): *"ligue aos últimos N"* ao pé da letra são `N` fios por dab com `N` =
+quantos dabs couberam na janela, e o custo voltaria a ser função do Spacing. **É por isso que o Wire
+não tem slider de densidade — nem aqui nem no Krita.**
+
+**⚠️ O `Smoothing` do Krita foi CORTADO, e o motivo é o manual dele:** *"Smoothing: which… I have no
+idea actually. I don't see any differences with or without it. Maybe it's for tablets?"* A própria
+referência não sabe o que o controle faz. Construí-lo seria shipar um knob que provavelmente não faz
+nada — o controle morto que este codebase nomeia em toda wave. No lugar dele entrou o **`Paint
+connection line`**, que o manual DEFINE (*"which toggles the visibility of the connection line"*) e
+que o plano tinha deixado de fora: desligado, o traço em si não é pintado e sobra só o arame.
+⚠️ A supressão mora na **MESMA porta do `Style: Solid`** (`stamp_dabs`) — uma segunda casa para *"não
+deposite dabs"* é como as duas passam a discordar num modo que só uma delas conhece.
+
+**⚠️ E o teto do `History` era uma OPINIÃO minha, que a medição derrubou.** A primeira versão escreveu
+`6.0` por raciocínio (*"o meio da pista do Krita"*); medido pela porta do produto, a 6 sobram **17× de
+margem** contra o kill de 8 ms. O teto é **24**, com a tabela no doc da constante. E o achado de
+FIXTURE que o torna honesto: **a espiral que mede o Sketchy SUB-MEDE o Wire** — nela o traço enrola
+sobre si mesmo, então uma corda de 1 152 px *de arco* liga dois pontos a ~200 px um do outro no
+canvas, e o que custa a rasterizar é o COMPRIMENTO da corda. Na espiral `history 24` custava **1,038**
+no pior evento; num traço **RETO**, **3,914**. Um teto tirado da espiral é um teto que o produto dobra
+assim que o artista desenha uma linha.
+
+**⚠️ Um gate meu nasceu VERMELHO sobre um produto CORRETO**, e o fato ficou escrito para ninguém
+"consertar" o motor: com a janela em 6 diâmetros (144 px de arco) contra um grampo de 240 px no total,
+**a dobra está DENTRO da janela** e o arame alcança a outra perna — pelo percurso, que é a lei dele.
+*Um arame CRUZA uma dobra que caiba na janela dele*; o que ele nunca faz é cruzar por proximidade no
+canvas. O gate passou a comparar os dois tipos **com o mesmo número** (um diâmetro para cada), que é o
+que o torna uma prova sobre a PERGUNTA e não sobre o tamanho da janela.
+
+**⚠️ O rename que a wave obrigou:** `sketchy_width_px`/`sketchy_opacity` viraram
+`thread_width_px`/`thread_opacity` (e `sketchy_raster` → `thread_raster`, `stroke::sketchy` →
+`stroke::threads`, `sketchy_deposit` → `thread_deposit`). Um fio de Sketchy e um de Wire são a **mesma
+substância pelo mesmo rasterizador**; dois campos seriam duas respostas a *"quão grosso é um fio deste
+pincel?"*, e trocar de tipo faria o card mostrar um número que a tinta não usa. As duas rows ficam na
+MESMA posição nos dois tipos — trocar de tipo muda a LEI, não onde os controles foram parar.
+
+**⚠️ E a wave achou um VERMELHO LATENTE que eu mesmo shipei no commit do Magnetify:** `stroke.rs` foi
+de 697 para **704 LOC**, e o gate de LOC mora na `ph2d-editor-core` — `cargo test -p
+ph2d-painter-brush` nunca o alcança (a causa estrutural que physics, motion-value e Vector já
+documentaram). Curado por **responsabilidade**: a memória dos fios (`pts` · `out` · `rng`) virou
+`threads::ThreadMemory`, no módulo que a PRODUZ e que sabe o que cada campo significa (686 LOC).
+
+**Gates:** 5 no motor · 1 no depósito · 3 no seam. **6 mutações, 6 sangram** (o canvas em vez do arco ·
+a janela contando pontos · ligar a todos os pontos · prender na origem em vez de pular · a supressão
+ignorar o flag · a porta única esquecer o Wire).
+
+**Smoke: `PH2D_LINE_SMOKE=1`** — uma cena para o **CARD**, não uma por tipo (três cenas seriam três
+canvas idênticos, e a costura que importa — *escolher o tipo* — ficaria pulada em todas). Ela dá o
+canvas e o tamanho do pincel e **não arma tipo nenhum**: o dropdown `Type` é exatamente o que o smoke
+existe para exercitar.
+
+---
+
 ### W5 — **Spray** (a contagem)
 
 ⚠️ **Temos a metade errada disto hoje:** `jitter`, `jitter_scale`, `jitter_rotate` deslocam **um**

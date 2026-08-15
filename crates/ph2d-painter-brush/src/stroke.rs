@@ -109,24 +109,9 @@ pub struct Stroke {
     speed_ramp_len: f32,
     /// O `arc_len` do dab anterior, para a rampa saber quanto de caminho passou entre dois dabs.
     speed_dab_arc: f32,
-    /// **A MEMÓRIA do traço** — a vizinhança que o Sketchy costura: `[x, y, arco]`, os dois
-    /// primeiros em px de canvas e o terceiro o [`Dab::arc_len`] daquele centro.
-    ///
-    /// ⚠️ **O arco não é enfeite: é o que separa os dois modos de Magnetify.** *Perto no canvas* e
-    /// *perto no percurso* são perguntas diferentes, e o Krita chama a primeira de Magnetify ligado
-    /// (dois trechos que se aproximaram) e a segunda de desligado (a porção ativa do traço). Sem o
-    /// arco guardado ao lado do ponto, a segunda é inexprimível.
-    ///
-    /// Nasce vazia em cada [`Stroke::begin`], que é o que impede um fio de ligar dois TRAÇOS.
-    /// Só é populada com o Sketchy armado: um `Vec` que cresce em todo traço do app seria memória
-    /// paga por quem nunca escolheu o tipo.
-    sketchy_pts: Vec<[f32; 3]>,
-    /// Os fios costurados desde o último [`Stroke::take_threads`].
-    threads: Vec<sketchy::Thread>,
-    /// ⚠️ **Fluxo de RNG PRÓPRIO do Sketchy.** Sortear os fios do `rng` do traço adiantaria o mesmo
-    /// fluxo que o Jitter (posição, escala, rotação, cor) consome — e então **ligar o Sketchy mudaria
-    /// o jitter de um pincel**, em silêncio. Dois consumidores, dois fluxos.
-    sketchy_rng: u64,
+    /// **A MEMÓRIA dos fios** — os pontos que o traço lembra, o que já foi costurado e o sorteio.
+    /// A LEI e o porquê de cada campo vivem em [`mod@self::threads`], que é quem os produz.
+    threads: threads::ThreadMemory,
     /// **A MIRA do arremesso** (vetor unitário; `[0,0]` = ainda não estabelecida) — o heading suavizado
     /// por uma janela PRÓPRIA, muito mais longa que a do Rake. A lei e o porquê vivem em
     /// [`mod@self::speed`]; o resumo é que o arremesso é uma ALAVANCA e uma alavanca amplifica tremor.
@@ -205,9 +190,7 @@ impl Stroke {
             throw_speed_px_s: 0.0,
             speed_ramp_len: 0.0,
             speed_dab_arc: 0.0,
-            sketchy_pts: Vec::new(),
-            threads: Vec::new(),
-            sketchy_rng: seed ^ 0x2545_F491_4F6C_DD1D,
+            threads: threads::ThreadMemory::new(seed),
             throw_dir: [0.0, 0.0],
             fill_from: None,
             last_thrown: None,
@@ -249,8 +232,7 @@ impl Stroke {
         self.throw_speed_px_s = 0.0;
         self.speed_ramp_len = 0.0;
         self.speed_dab_arc = 0.0;
-        self.sketchy_pts.clear(); // traço novo: nenhum fio liga ao traço anterior
-        self.threads.clear();
+        self.threads.clear(); // traço novo: nenhum fio liga ao traço anterior
         self.throw_dir = [0.0, 0.0];
         self.fill_from = None;
         self.last_thrown = None; // traço novo: nenhuma tinta anterior a que ligar a primeira
@@ -673,10 +655,10 @@ mod curve;
 /// **Como UM dab é construído** a partir de uma posição do caminho: dinâmica de pressão, atenuação
 /// de espaçamento, o jitter por-dab e o taper. Um estágio nomeado do pipeline do cabeçalho.
 mod dab_build;
-/// A MEMÓRIA do traço e os fios do `Sketchy` (plano 38 W3).
-pub mod sketchy;
 /// A INÉRCIA do gesto: a velocidade por tique e o arremesso do `Speed Shapes` (plano 38 W2).
 mod speed;
+/// A MEMÓRIA do traço e os FIOS que ela costura — `Sketchy` (W3) e `Wire` (W4).
+pub mod threads;
 pub use curve::flatten_catmull_rom;
 /// The Ellipse stroke method's perimeter generator + ellipse fill (same child-module rationale).
 mod ellipse;

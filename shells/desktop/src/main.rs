@@ -207,6 +207,7 @@ mod layout_live;
 mod layout_reorder;
 mod layout_smoke;
 mod lens_smoke;
+mod line_smoke;
 mod mask_smoke;
 mod morph_fade_smoke;
 mod morph_live;
@@ -637,6 +638,7 @@ impl App {
             title_dirty: true,
             impasto_smoke_done: false,
             substrate_smoke_done: false,
+            line_smoke_done: false,
             sculpt3d_canvas_done: false,
             sculpt3d_bake_request: false,
             sculpt3d_alpha_request: false,

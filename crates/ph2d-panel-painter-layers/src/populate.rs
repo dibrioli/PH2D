@@ -89,6 +89,8 @@ fn register_brush_inputs(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_LINE_SKETCHY_DENSITY,
         ph2d_editor_core::ids::PAINTER_LINE_SKETCHY_WIDTH,
         ph2d_editor_core::ids::PAINTER_LINE_SKETCHY_OPACITY,
+        // Card Line / Wire: a janela (plano 38 W4).
+        ph2d_editor_core::ids::PAINTER_LINE_WIRE_HISTORY,
         // Per-dab Jitter Scale / Rotate / Spacing (next to the position Jitter).
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_SCALE,
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_ROTATE,
@@ -335,6 +337,8 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_LINE_SOLID,
         // Card Line / Sketchy: o checkbox Magnetify.
         ph2d_editor_core::ids::PAINTER_LINE_SKETCHY_MAGNETIFY,
+        // Card Line / Wire: o checkbox Connection Line.
+        ph2d_editor_core::ids::PAINTER_LINE_WIRE_CONNECTION,
         // "Sync with other tools" checkbox at the top of the brush panel (independent settings by default).
         ph2d_editor_core::ids::PAINTER_BRUSH_SYNC,
         // "Dimensions" checkbox below the Method dropdown (Line only) — dx/dy + corner angles while drawing.

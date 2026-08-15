@@ -1,10 +1,10 @@
-//! Os gates da **rasterização dos fios** ([`crate::sketchy_raster`], plano 38 W3).
+//! Os gates da **rasterização dos fios** ([`crate::thread_raster`], plano 38 W3).
 //!
 //! Eles perguntam pelo ALFA que sai — quanto, onde, e quanto mais no cruzamento —, nunca pela
 //! fórmula que o produz.
 
-use crate::sketchy_raster::{ThreadInk, threads_alpha, threads_bbox};
-use crate::stroke::sketchy::Thread;
+use crate::stroke::threads::Thread;
+use crate::thread_raster::{ThreadInk, threads_alpha, threads_bbox};
 
 const W: usize = 40;
 const H: usize = 40;

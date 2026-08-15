@@ -24,17 +24,32 @@ pub enum LineKind {
     Speed,
     /// **Sketchy** — o traço costura-se a si mesmo: a cada dab, fios de opacidade baixa ligam os
     /// pontos vizinhos do MESMO traço, e o acúmulo desenha o hachurado de lápis (Ze Frank →
-    /// Harmony → Krita *Sketch*). Ver [`crate::stroke::sketchy`].
+    /// Harmony → Krita *Sketch*). Ver [`crate::stroke::threads`].
     Sketchy,
+    /// **Wire** — o *Curve brush engine* do Krita (*"a fun tool that you can use for jazzing up your
+    /// linework"*): o primo do [`Self::Sketchy`] com memória **LIMITADA**. Em vez de perguntar quem
+    /// está perto no CANVAS, ele liga o ponto atual aos que estão perto no PERCURSO — sai o arame /
+    /// laço, porque numa curva a corda corta a quina e sobra um laço para fora do traço.
+    ///
+    /// ⚠️ **O mesmo produtor, o mesmo canal, o mesmo rasterizador** ([`crate::stroke::threads`]) —
+    /// o que muda é a pergunta que escolhe os pares. Se esta variante tivesse precisado de geometria
+    /// nova, o Sketchy teria sido construído errado.
+    Wire,
 }
 
 impl LineKind {
-    /// Wire `u8` para o round-trip com o painel (`0` = None · `1` = Speed · `2` = Sketchy).
+    /// Wire `u8` para o round-trip com o painel (`0` = None · `1` = Speed · `2` = Sketchy ·
+    /// `3` = Wire).
+    ///
+    /// ⚠️ O nome do método é o do CANAL (um `u8` que atravessa o painel), e desde 2026-08-14 existe
+    /// um tipo chamado `Wire` — a coincidência é infeliz e está nomeada aqui para ninguém a ler como
+    /// *"o wire do tipo Wire"*.
     pub fn to_wire(self) -> u8 {
         match self {
             LineKind::None => 0,
             LineKind::Speed => 1,
             LineKind::Sketchy => 2,
+            LineKind::Wire => 3,
         }
     }
 
@@ -43,8 +58,21 @@ impl LineKind {
         match w {
             1 => LineKind::Speed,
             2 => LineKind::Sketchy,
+            3 => LineKind::Wire,
             _ => LineKind::None,
         }
+    }
+
+    /// **Este tipo COSTURA fios?** — a porta única que o motor pergunta para decidir se guarda a
+    /// memória do traço, e o depósito para decidir se drena o canal.
+    ///
+    /// ⚠️ Ela existe porque a família tem DOIS membros e vai ter mais: enumerar `Sketchy | Wire` nos
+    /// sítios de despacho é exatamente a lista que apodrece quando entra o terceiro — a cicatriz que
+    /// o `PaintMode::smears()` deste módulo já pagou (o Composite Brush foi o terceiro, e a sessão de
+    /// smear dele nunca era encerrada).
+    #[must_use]
+    pub fn sews_threads(self) -> bool {
+        matches!(self, LineKind::Sketchy | LineKind::Wire)
     }
 }
 
@@ -119,7 +147,7 @@ pub const SKETCHY_REACH_MAX: f32 = 4.0;
 /// multiplica o mesmo orçamento que a [`SKETCHY_DENSITY_MAX`] governa — e por isso ele é pequeno: um
 /// fio é um traço de LÁPIS ao lado do traço, não um segundo pincel. Acima de ~4 px a teia deixa de
 /// ler como hachura e passa a ser uma segunda pincelada por cima da primeira.
-pub const SKETCHY_WIDTH_MAX_PX: f32 = 4.0;
+pub const THREAD_WIDTH_MAX_PX: f32 = 4.0;
 
 /// **Quantos pontos da memória do traço um dab novo consulta.**
 ///
@@ -131,3 +159,58 @@ pub const SKETCHY_WIDTH_MAX_PX: f32 = 4.0;
 ///
 /// O número é MEDIDO (`measure_the_sketchy_scan`, sonda desta crate).
 pub const SKETCHY_SCAN_CAP: usize = 512;
+
+/// **Teto do `History` do Wire, em DIÂMETROS de ARCO — MEDIDO, com a tabela ao lado.**
+///
+/// ⚠️ **A unidade é ARCO, e a escolha é a lei desta casa, não gosto.** O Krita mede a história em
+/// PONTOS (*"History size determines the distance for the formation of curve lines"*, default 40~60)
+/// e num motor de dabs isso seria uma janela cujo tamanho depende do **Spacing**: apertar o
+/// espaçamento encurtaria o arame sem ninguém ter tocado no slider. É a doença que este módulo já
+/// curou quatro vezes no relevo — *a lei é função do CAMINHO, nunca de quão fino o motor amostrou o
+/// caminho* —, e a cura é medir a janela no percurso.
+///
+/// E o **DIÂMETRO** é a mesma unidade do [`SKETCHY_REACH_MAX`], pelo mesmo motivo: um pincel grande
+/// desenha o mesmo arame, maior. Um número em pixels teria de ser re-escolhido por tamanho.
+///
+/// **O recurso é o tempo de rasterização por evento, contra o kill de 8 ms desta casa.** Medido pela
+/// porta `on_canvas_pointer` (`measure_the_wire_worst_case_on_a_straight_stroke`), pincel r=24,
+/// 2048², com a **espessura NO TETO** (o outro fator do mesmo orçamento):
+///
+/// | history | ms/evento | pior ms |
+/// |---:|---:|---:|
+/// | 1 | 0,070 | 0,197 |
+/// | 3 | 0,113 | 0,171 |
+/// | 6 | 0,228 | 0,448 |
+/// | 12 | 0,609 | 0,920 |
+/// | **24** | **1,709** | **3,914** |
+/// | 48 | 2,965 | **12,862** ⇠ estoura |
+///
+/// ⚠️ **A fixture é um traço RETO, e a escolha dela é o que torna o número honesto.** A espiral que
+/// mede o Sketchy **SUB-MEDE** o Wire: nela o traço enrola sobre si mesmo, então uma corda de
+/// 1 152 px *de arco* liga dois pontos a ~200 px um do outro no canvas — e o que custa a rasterizar
+/// é o COMPRIMENTO da corda, não o arco que ela pula. Medido na espiral, `history 24` custava 1,038
+/// no pior evento; medido na reta, **3,914**. Um teto tirado da espiral seria um teto que o produto
+/// dobra assim que o artista desenha uma linha.
+///
+/// ⚠️ **E o achado que este teto carrega: o custo NÃO era o que apertava.** A primeira versão desta
+/// wave escreveu `6.0` por raciocínio (*"o meio da pista do Krita"*), e a medição diz que a 6 sobra
+/// **17× de margem** contra o kill. O §0 é explícito — *escreva o número que a MEDIÇÃO deu* —, então
+/// o teto é 24 e não uma opinião sobre onde o laço fica bonito. Onde ele fica bonito é o DEFAULT, que
+/// é outra pergunta e a decide o smoke.
+pub const WIRE_HISTORY_MAX: f32 = 24.0;
+
+/// **Quantas cordas um dab novo desenha para trás.**
+///
+/// ⚠️ **É uma CONTAGEM FIXA amostrada por ARCO, e é por isso que o Wire não tem slider de densidade
+/// — nem aqui nem no Krita.** *"Ligue o ponto atual aos últimos N"* lido ao pé da letra são `N` fios
+/// por dab, e `N` é a contagem de dabs na janela: a um espaçamento fino um arame de 24 diâmetros
+/// pediria centenas de fios por movimento do dedo, e o custo seria função do Spacing outra vez.
+/// Amostrando `WIRE_CURVES_PER_DAB` posições **igualmente espaçadas em arco** dentro da janela, a
+/// contagem é constante, o desenho é o mesmo em qualquer espaçamento, e o orçamento é conhecido
+/// antes de o artista tocar num slider.
+///
+/// ⚠️ **Este número e o [`WIRE_HISTORY_MAX`] são UM par, não dois números** — o custo é linear em
+/// `contagem × janela × espessura`, então dobrar a contagem para 8 **metade** o teto da janela (o
+/// pior evento a `history 24` iria de 3,9 para ~7,8 ms, encostando no kill). Quem mexer num tem de
+/// re-medir o outro; a tabela do teto foi levantada com a contagem em 4.
+pub const WIRE_CURVES_PER_DAB: usize = 4;

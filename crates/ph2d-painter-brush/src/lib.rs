@@ -75,15 +75,6 @@ pub mod sampler;
 /// **Sculpt** — the brush as a local operator on the relief (Smooth / Sharpen / Flatten / Scrape / Fill).
 pub mod sculpt;
 #[cfg(test)]
-#[path = "sketchy_probe.rs"]
-mod sketchy_probe; // W3 do plano 38: o orcamento do Sketchy pela porta do produto
-/// **A rasterização dos fios do Sketchy** — o segmento vira cobertura por área exata, e os fios
-/// compõem `over` um sobre o outro (plano 38 W3).
-pub mod sketchy_raster;
-#[cfg(test)]
-#[path = "sketchy_raster_tests.rs"]
-mod sketchy_raster_tests; // os gates da rasterização dos fios
-#[cfg(test)]
 #[path = "sketchy_tests.rs"]
 mod sketchy_tests; // os gates do Sketchy (plano 38 W3)
 pub mod smear;
@@ -100,6 +91,15 @@ pub mod stamp;
 pub mod stamp_color;
 pub mod stamp_ramped;
 pub mod stroke;
+#[cfg(test)]
+#[path = "thread_probe.rs"]
+mod thread_probe; // W3 do plano 38: o orcamento do Sketchy pela porta do produto
+/// **A rasterização dos fios do Sketchy** — o segmento vira cobertura por área exata, e os fios
+/// compõem `over` um sobre o outro (plano 38 W3).
+pub mod thread_raster;
+#[cfg(test)]
+#[path = "thread_raster_tests.rs"]
+mod thread_raster_tests; // os gates da rasterização dos fios
 // A aritmética do cap por-traço (Accumulate OFF), numa cópia só. Arquivo próprio: é uma LEI, não um
 // helper — e o módulo registra a lei alternativa que foi construída e REPROVADA (doc 25 §13.10).
 /// **Grid Stamp** — a geometria da grade própria do método: a célula sob um ponto, o centro dela,

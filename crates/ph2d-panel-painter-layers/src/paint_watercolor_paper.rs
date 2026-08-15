@@ -3,7 +3,7 @@
 //! `paint_watercolor.rs` for the panel file-LOC cap; all fixed-id, tool-global widgets.
 
 use crate::paint::register_button;
-use crate::paint_brush::paint_dropdown_row;
+use crate::paint_brush_rows::paint_dropdown_row;
 use crate::paint_brush_top::paint_checkbox_row;
 use crate::{number_field, state};
 use ph2d_editor_core::action_bus::EditorAction;
@@ -320,7 +320,7 @@ fn paint_paper_color_row(
 ) -> f32 {
     const LABEL_W: f32 = 60.0; // LITERAL-PX-OK: row label column (mirrors paint_brush::LABEL_W)
     let id = core_ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB;
-    crate::paint_brush::label(ctx, theme, "Color", x, y, TypeToken::Sm.px());
+    crate::paint_brush_rows::label(ctx, theme, "Color", x, y, TypeToken::Sm.px());
     let sx = x + LABEL_W + Spacing::Sm.px();
     let sw = (content_w - LABEL_W - Spacing::Sm.px()).max(0.0);
     let rect = Rect::new(sx, y, sw, ROW_H_PX);

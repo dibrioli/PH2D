@@ -168,7 +168,7 @@ impl Stroke {
     /// Num motor de dabs o equivalente e este: **os pontos arremessados formam um caminho, e o
     /// espacamento e honrado ONDE A TINTA CAI, nunca onde a mao passou**.
     pub(super) fn emit(&mut self, dab: Dab, out: &mut Vec<Dab>) {
-        self.note_sketchy_point(&dab);
+        self.note_thread_point(&dab);
         self.fill_thrown_gap(&dab, out);
         crate::symmetry::push_symmetric(out, dab, &self.spec.symmetry);
     }

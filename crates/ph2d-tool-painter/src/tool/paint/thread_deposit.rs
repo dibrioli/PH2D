@@ -1,7 +1,7 @@
-//! **O depósito dos fios do Sketchy** — a metade de tool do `LineKind::Sketchy` (plano 38 W3).
+//! **O depósito dos FIOS** — a metade de tool dos tipos que costuram (`Sketchy`, W3 · `Wire`, W4).
 //!
-//! O motor costura (`ph2d_painter_brush::stroke::sketchy`) e responde *que alfa este feixe deixa*
-//! (`ph2d_painter_brush::sketchy_raster`); aqui decide-se **com que cor**, **onde**, e — a parte que
+//! O motor costura (`ph2d_painter_brush::stroke::threads`) e responde *que alfa este feixe deixa*
+//! (`ph2d_painter_brush::thread_raster`); aqui decide-se **com que cor**, **onde**, e — a parte que
 //! importa — **pela mesma porta de proteção que os dabs atravessam** (`gate_scoped`). É o desenho do
 //! irmão [`super::solid_deposit`], e de propósito: um canal novo de tinta que não passasse pelo gate
 //! seria a segunda semântica de proteção do módulo.
@@ -9,7 +9,7 @@
 use super::Region;
 use crate::tool::PainterTool;
 use ph2d_painter_brush::Stroke;
-use ph2d_painter_brush::sketchy_raster::{ThreadInk, threads_alpha, threads_bbox};
+use ph2d_painter_brush::thread_raster::{ThreadInk, threads_alpha, threads_bbox};
 
 impl PainterTool {
     /// **A PORTA ÚNICA por onde o traço volta para o tool.** Ela substitui os quatro
@@ -26,26 +26,28 @@ impl PainterTool {
     pub(super) fn park_stroke(&mut self, mut stroke: Stroke) {
         // Drena SEMPRE, escreve só quando a tinta é nossa: sem o dreno a memória do motor cresceria
         // durante o traço inteiro num modo que não a desenha.
-        let mut threads = std::mem::take(&mut self.paint.sketchy_threads);
+        let mut threads = std::mem::take(&mut self.paint.pending_threads);
         stroke.take_threads(&mut threads);
-        if !threads.is_empty() && self.sketchy_owns_the_gesture() {
-            self.stamp_sketchy(&threads);
+        if !threads.is_empty() && self.threads_own_the_gesture() {
+            self.stamp_threads(&threads);
         }
         threads.clear();
-        self.paint.sketchy_threads = threads;
+        self.paint.pending_threads = threads;
         self.paint.stroke = Some(stroke);
     }
 
     /// O gesto está costurando fios?
     ///
-    /// ⚠️ **Porta única, e ela pergunta ao MÉTODO também.** O Sketchy vive da memória do traço, e ela
+    /// ⚠️ **Porta única, e ela pergunta ao TIPO e ao MÉTODO.** Ao tipo pela `sews_threads`, que é
+    /// quem sabe que a família tem dois membros — um `match` escrito aqui seria a segunda lista a
+    /// apodrecer no terceiro. Ao método porque a memória do traço
     /// só é laid UMA vez nos métodos **incrementais**; os de re-carimbo (Line / Drag Dot / Anchored
     /// e os shape editors) re-emitem a figura INTEIRA a cada quadro, então a memória cresceria por
     /// quadro e a teia adensaria enquanto o artista apenas olha — a mesma doença que o `pre`
     /// congelado do sculpt existe para impedir. O que falta para eles é a wave dos shape editors,
     /// **nomeada** no handoff em vez de ficar como uma teia que engorda parada.
-    pub(super) fn sketchy_owns_the_gesture(&self) -> bool {
-        self.paint.brush.sketchy_active()
+    pub(super) fn threads_own_the_gesture(&self) -> bool {
+        self.paint.brush.sews_threads()
             && self.paint.brush.stroke_method.is_incremental()
             && matches!(self.paint.paint_mode, super::PaintMode::Paint)
             && !self.paint.eraser
@@ -54,16 +56,32 @@ impl PainterTool {
             && !self.solid_owns_the_gesture()
     }
 
+    /// **O `Connection Line` do Wire está DESLIGADO?** — então o traço em si não é pintado e sobra
+    /// só o arame (o *Paint connection line* do Krita, verbatim: *"which toggles the visibility of
+    /// the connection line"*).
+    ///
+    /// ⚠️ **A supressão mora na MESMA porta do `Style: Solid`** (`stamp_dabs`), e não nos sítios do
+    /// ciclo de traço — o doc daquela porta já diz por quê, e uma segunda casa para *"não deposite
+    /// dabs"* é como as duas passam a discordar num modo que só uma delas conhece.
+    ///
+    /// ⚠️ E ela **não** desliga a memória: os fios continuam a ser costurados a partir dos mesmos
+    /// pontos, porque o arame é função do caminho, não da tinta que ele deixou.
+    pub(super) fn wire_suppresses_dabs(&self) -> bool {
+        !self.paint.brush.wire_connection_line
+            && self.paint.brush.wire_active()
+            && self.threads_own_the_gesture()
+    }
+
     /// A tinta com que ESTE pincel desenha um fio.
     ///
     /// ⚠️ **Só a espessura e a opacidade.** O `Reach` e o `Magnetify` decidem QUE PARES o motor
-    /// costura (`ph2d_painter_brush::stroke::sketchy`), e um fio que chegou até aqui já é um par
+    /// costura (`ph2d_painter_brush::stroke::threads`), e um fio que chegou até aqui já é um par
     /// escolhido — reler os dois no depósito seria a segunda resposta à mesma pergunta.
     fn thread_ink(&self) -> ThreadInk {
         let b = &self.paint.brush;
         ThreadInk {
-            width_px: b.sketchy_width_px,
-            opacity: b.sketchy_opacity,
+            width_px: b.thread_width_px,
+            opacity: b.thread_opacity,
         }
     }
 
@@ -72,7 +90,7 @@ impl PainterTool {
     /// ⚠️ Não há restore/re-carimbo aqui, e não é esquecimento: um fio é tinta CUMULATIVA (como um
     /// dab de método incremental), não um preview que se refaz. É por isso que o depósito é um
     /// `over` sobre o que já está lá em vez da dança do `drag_preview`.
-    fn stamp_sketchy(&mut self, threads: &[ph2d_painter_brush::stroke::sketchy::Thread]) {
+    fn stamp_threads(&mut self, threads: &[ph2d_painter_brush::stroke::threads::Thread]) {
         let (w, h) = self.source_size;
         if w == 0 || h == 0 {
             return;
@@ -103,7 +121,7 @@ impl PainterTool {
     /// A escrita crua: `over` da cor do pincel pesada pelo alfa do feixe.
     fn write_threads(
         &mut self,
-        threads: &[ph2d_painter_brush::stroke::sketchy::Thread],
+        threads: &[ph2d_painter_brush::stroke::threads::Thread],
         rect: Region,
     ) {
         let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);

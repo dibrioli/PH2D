@@ -37,7 +37,7 @@ impl PainterTool {
         // **Style: Solid** — enquanto um gesto sólido está em voo, a tinta é a REGIÃO cercada e a
         // linha por baixo dela não é pintada (plano 38 §1.1). A supressão mora nesta porta, e não nos
         // seis sítios do ciclo de traço, pelo motivo que o gate da espessura mediu.
-        if self.solid_suppresses_dabs() {
+        if self.solid_suppresses_dabs() || self.wire_suppresses_dabs() {
             return;
         }
         // Watercolor optical render-path: DON'T deposit dabs on the canvas — accumulate the coverage

@@ -9,7 +9,7 @@
 //! real range (the `BRUSH_*_MAX` constants are the single source). Edits forward over the frozen
 //! `PanelEvent` channel (drained in [`crate::event`]).
 
-use crate::paint_brush::paint_dropdown_row;
+use crate::paint_brush_rows::paint_dropdown_row;
 use crate::paint_brush_top::{paint_checkbox_row, paint_slider_chip_row};
 use crate::state;
 use ph2d_editor_core::ids::{

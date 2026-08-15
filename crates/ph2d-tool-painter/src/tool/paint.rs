@@ -30,9 +30,6 @@ mod curve_offset; // perpendicular offset (parallel curve) + CAD-grade reconstru
 mod curve_refit; // Simplify/Merge quality funnel: corner-split + piecewise Schneider least-squares refit
 mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay snapshot; split from `curve`
 mod curve_trim; // self-intersection trim of the offset spine (open + closed); split from `curve_offset`
-/// **A forma SÓLIDA** — o caminho acumulado do gesto vira região preenchida (plano 38 §1.1).
-mod sketchy_deposit;
-mod sketchy_settings;
 mod solid_deposit;
 /// O `Style: Solid` na família dos shape editors — o laço que cada forma desenha (plano 38 §5.1).
 mod solid_shapes;
@@ -43,6 +40,9 @@ mod stroke_outline; // o CONTORNO de uma figura -- produtor unico do que o gizmo
 mod stroke_router; // o que um Down SIGNIFICA com varias figuras: editar / reativar / comecar outra
 #[cfg(test)]
 mod taper_media_tests;
+/// **A forma SÓLIDA** — o caminho acumulado do gesto vira região preenchida (plano 38 §1.1).
+mod thread_deposit;
+mod thread_settings;
 pub use self::stroke_multi::StrokeOpBadge;
 pub use self::wetpaint_settings::{WetKnobs, WetTool};
 mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output

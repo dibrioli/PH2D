@@ -27,10 +27,10 @@
 //!      relevo — que é o que faltava ao Digital. ⚠️ **Olhe as bordas do rastro:** o papel dentro do que
 //!      o pincel acabou de tocar tem de ser o MESMO de fora. Um degrau retangular ali é o defeito
 //!      voltando (o fold parcial dobrando dente novo só dentro do rect).
-//!   5b. **O DEPÓSITO como relevo** — as duas rows no fim da seção **Shape**, e é o pedido de
+//!      5b. **O DEPÓSITO como relevo** — as duas rows no fim da seção **Shape**, e é o pedido de
 //!      2026-08-10 (*"o depósito de pigmento com pouca água é visto como relevo, exatamente como faz
-//!      Wet Paint"*) com a correção do smoke seguinte (*"nome mais adequado, na seção de Shape, com um
-//!      slider de alto brilho ou fosca"*).
+//!      Wet Paint"*) com a correção do smoke seguinte (*"nome mais adequado, na seção de Shape, com
+//!      um slider de alto brilho ou fosca"*).
 //!      ⚠️ **Escolha a SHAPE primeiro** (a mesma seção → Texture: `Stripes`, as cerdas), e é o passo
 //!      que decide: o relevo não INVENTA textura, ele revela a que o pincel já deposita — com o pincel
 //!      redondo macio o depósito é um domo, e um domo tem `n_z ≈ 1`, então a luz o desenha chato

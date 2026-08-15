@@ -50,9 +50,16 @@ impl Default for BrushSpec {
             // Metade do teto medido: uma teia que se vê sem cobrir o desenho. ⚠️ É um default de
             // LOOK — o smoke é quem o julga, e o teto (o que o produto SUSTENTA) é outra pergunta.
             sketchy_density: 0.2,
-            sketchy_width_px: 1.0,
-            sketchy_opacity: 0.25,
+            thread_width_px: 1.0,
+            thread_opacity: 0.25,
             sketchy_magnetify: true,
+            // Wire: a janela tem de ENCHER dentro de um gesto normal, senão o artista vê o arame
+            // *"formar tarde"* — que é a consequência que o próprio manual do Krita descreve para uma
+            // história longa. Num pincel de fábrica (diâmetro 24 px) seis diâmetros são 144 px de
+            // arco, e um gesto de algumas centenas de px mostra o laço inteiro. ⚠️ É um default de
+            // LOOK, e o teto (o que o produto SUSTENTA, medido em 24) é outra pergunta.
+            wire_history: 6.0,
+            wire_connection_line: true,
             dash_ratio: 1.0,
             dash_samples: 20,
             jitter_unit: JitterUnit::Brush,

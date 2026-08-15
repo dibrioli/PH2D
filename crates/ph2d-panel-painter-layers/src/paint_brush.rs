@@ -11,26 +11,22 @@
 
 use crate::paint::register_button;
 use crate::state;
-use ph2d_editor_core::IconId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids::{
     self as core_ids, painter_brush_blend_option_id, painter_brush_falloff_option_id,
     painter_brush_preset_option_id,
 };
-use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
+use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
 use ph2d_editor_core::widget::showcase::paint_section_separator;
-use ph2d_editor_core::widget::{DropdownOption, DropdownState};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::{BrushBlend, BrushSettings, Falloff, MAX_BRUSH_BLEND_MODES, MAX_FALLOFF};
 
-const LABEL_W: f32 = 60.0; // LITERAL-PX-OK: brush row label column ("Hardness"/"Strength")
+use crate::paint_brush_rows::LABEL_W;
 
 // The pre-publish `FALLBACK_BRUSH` snapshot lives in the sibling `brush_fallback` module (file-LOC cap);
 // re-exported here so `crate::paint_brush::FALLBACK_BRUSH` (tests + the body) stays stable.
@@ -82,7 +78,7 @@ pub(crate) fn paint_brush_body(
     }
 
     let mut y = top_y;
-    use crate::paint_brush_top::{paint_checkbox_row, paint_slider_chip_row};
+    use crate::paint_brush_top::paint_checkbox_row;
 
     // **Preset** dropdown at the very TOP — one-click media presets (Digital Basic / Watercolor Basic).
     y = paint_preset_row(ctx, theme, x, content_w, y, brush);
@@ -106,6 +102,29 @@ pub(crate) fn paint_brush_body(
         y = paint_section_separator(ctx.scene, theme, x, content_w, y);
     }
 
+    // ⚠️ **Os básicos do topo saíram para uma porta própria** — não por tamanho, por assunto: acima
+    // desta linha mora *quem é dono do corpo do painel* (os modos exclusivos, o readback do picker, o
+    // Preset, o Sync), e abaixo *os controles que todo pincel tem*. O corte veio de a função ter
+    // cruzado o teto de 200 LOC, e ele é onde o próprio comentário já dizia que um assunto acabava.
+    let y = paint_top_basics(ctx, theme, x, content_w, y, brush);
+
+    crate::paint_brush_sections::paint_appearance_sections(ctx, theme, x, content_w, y, brush)
+}
+
+/// Os controles que TODO pincel tem — Blend · Color · Size · Strength · Accumulate · Falloff, na
+/// ordem que o Enio pediu em 2026-06-24. A metade do corpo do painel que não depende de qual modo
+/// está em mãos.
+#[allow(clippy::too_many_lines)]
+fn paint_top_basics(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    top_y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let mut y = top_y;
+    use crate::paint_brush_top::{paint_checkbox_row, paint_slider_chip_row};
     // ── TOP basics (no section), reordered (Enio 2026-06-24):
     //    Blend · Color · Size · Strength · Accumulate · Falloff ──
 
@@ -118,7 +137,7 @@ pub(crate) fn paint_brush_body(
         // mirrors the Composite card, which also hides in watercolor). KEEP Color — the wash's pigment
         // IS the brush colour. Not painted ⇒ not hit-indexed ⇒ inert; the `populate` register stays.
         if !brush.watercolor {
-            let (ny, blend_open) = paint_dropdown_row(
+            let (ny, blend_open) = crate::paint_brush_rows::paint_dropdown_row(
                 ctx,
                 theme,
                 x,
@@ -261,7 +280,7 @@ pub(crate) fn paint_brush_body(
         );
     }
 
-    crate::paint_brush_sections::paint_appearance_sections(ctx, theme, x, content_w, y, brush)
+    y
 }
 
 /// Drain the Brush-properties dropdown popovers (Blend, Falloff, Stroke Method, Jitter Unit) — one
@@ -390,7 +409,7 @@ fn paint_color_swatch_row(
     brush: BrushSettings,
 ) -> f32 {
     let font = TypeToken::Sm.px();
-    label(ctx, theme, "Color", x, y, font);
+    crate::paint_brush_rows::label(ctx, theme, "Color", x, y, font);
     let sx = x + LABEL_W + Spacing::Sm.px();
     let sw = (content_w - LABEL_W - Spacing::Sm.px()).max(0.0);
     let rect = Rect::new(sx, y, sw, ROW_H_PX);
@@ -423,127 +442,6 @@ fn paint_color_swatch_row(
 /// Re-exported so the many `crate::paint_brush::paint_dropdown_popover` callers keep resolving.
 pub(crate) use crate::dropdown_popover::paint_dropdown_popover;
 
-/// A left-aligned, vertically-centred row label in a `ROW_H_PX` cell.
-pub(crate) fn label(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    text: &str,
-    x: f32,
-    y: f32,
-    font: f32,
-) {
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        text,
-        x,
-        y + (ROW_H_PX - font) * 0.5,
-        font,
-        LABEL_W,
-        resolve(ColorToken::Text2, theme),
-    );
-}
-
-/// Paint a "label + dropdown chip" row. Returns `(next_y, Some(chip_rect))` when
-/// the chip is open (the caller stashes the rect into the matching pending slot).
-/// `pub(crate)` so the Stroke section reuses it for Method + Jitter Unit.
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_dropdown_row(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    y: f32,
-    label_txt: &str,
-    id: ph2d_a11y::NodeId,
-    cur_value: u8,
-    cur_label: &str,
-) -> (f32, Option<Rect>) {
-    let gap = Spacing::Sm.px();
-    label(ctx, theme, label_txt, x, y, TypeToken::Sm.px());
-    let chip_w = (content_w - LABEL_W - gap).max(0.0);
-    let rect = Rect::new(x + LABEL_W + gap, y, chip_w, ROW_H_PX);
-    let open = paint_dropdown_chip(ctx, theme, id, cur_value, cur_label, rect);
-    (y + ROW_H_PX + Spacing::Sm.px(), open.then_some(rect))
-}
-
-/// Paint a dropdown chip (registered as a `Dropdown` for the generic open/close
-/// dispatch). Returns whether it is open. Shared by the Blend + Falloff chips.
-pub(crate) fn paint_dropdown_chip(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    id: ph2d_a11y::NodeId,
-    cur_value: u8,
-    cur_label: &str,
-    rect: Rect,
-) -> bool {
-    ctx.host.store_mut().register_if_absent(
-        id,
-        InteractiveState::Dropdown {
-            state: DropdownState::Normal,
-            open: false,
-            selected_index: Some(cur_value as usize),
-        },
-    );
-    let open = matches!(
-        ctx.host.store().get(id),
-        Some(InteractiveState::Dropdown { open: true, .. })
-    );
-
-    let radius = Radius::Sm.px();
-    fill_rounded_rect(ctx.scene, rect, radius, resolve(ColorToken::Bg1, theme));
-    let border = if open {
-        ColorToken::Accent
-    } else {
-        ColorToken::Border
-    };
-    stroke_rounded_rect(
-        ctx.scene,
-        rect,
-        radius,
-        StrokeToken::Default.px(),
-        resolve(border, theme),
-    );
-
-    let chevron = Spacing::Md.px();
-    let pad = Spacing::Sm.px();
-    let chevron_rect = Rect::new(
-        rect.x + rect.w - pad - chevron,
-        rect.y + (rect.h - chevron) * 0.5,
-        chevron,
-        chevron,
-    );
-    let icon = if open {
-        IconId::ChevronUp
-    } else {
-        IconId::ChevronDown
-    };
-    paint_icon(
-        ctx.scene,
-        icon,
-        chevron_rect,
-        resolve(ColorToken::Text2, theme),
-        StrokeToken::Default.px(),
-    );
-
-    let font = TypeToken::Sm.px();
-    let text_x = rect.x + pad;
-    let text_w = (chevron_rect.x - Spacing::Xs.px() - text_x).max(0.0);
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        cur_label,
-        text_x,
-        rect.y + (rect.h - font) * 0.5,
-        font,
-        text_w,
-        resolve(ColorToken::Text1, theme),
-    );
-
-    ctx.host.hit_index_mut().register(id, rect);
-    open
-}
-
 /// Paint the top-of-panel **Preset** dropdown row, returning the next `y`. The "current" preset is
 /// inferred from the master watercolor flag (there's no stored preset id — a preset just seeds the whole
 /// `BrushSpec`); selecting one forwards `SelectOption(PAINTER_BRUSH_PRESET, idx)` → `apply_brush_preset`.
@@ -556,7 +454,7 @@ fn paint_preset_row(
     brush: BrushSettings,
 ) -> f32 {
     let preset_idx = u8::from(brush.watercolor); // 0 = Digital, 1 = Watercolor
-    let (ny, preset_open) = paint_dropdown_row(
+    let (ny, preset_open) = crate::paint_brush_rows::paint_dropdown_row(
         ctx,
         theme,
         x,

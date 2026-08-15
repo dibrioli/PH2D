@@ -233,10 +233,14 @@ pub const PAINTER_LINE_SKETCHY_DENSITY: NodeId = hash_node_id("painter_line.sket
 /// **Line Width** — a espessura de UM fio, em pixels. `SetValue` → `set_sketchy_width_norm`.
 pub const PAINTER_LINE_SKETCHY_WIDTH: NodeId = hash_node_id("painter_line.sketchy_width");
 /// **Opacity** — a opacidade de UM fio; a do cruzamento sai do acúmulo. `SetValue` → `set_sketchy_opacity`.
-pub const PAINTER_LINE_SKETCHY_OPACITY: NodeId = hash_node_id("painter_line.sketchy_opacity");
+pub const PAINTER_LINE_SKETCHY_OPACITY: NodeId = hash_node_id("painter_line.thread_opacity");
 /// **Magnetify** — ligado, o traço costura DOIS trechos que se aproximaram (ainda que a um arco
 /// enorme um do outro); desligado, só a porção ATIVA do percurso. `Click` → alterna.
 pub const PAINTER_LINE_SKETCHY_MAGNETIFY: NodeId = hash_node_id("painter_line.sketchy_magnetify");
+/// **History** — a janela do Wire, em DIÂMETROS de ARCO percorrido. `SetValue` → `set_wire_history_norm`.
+pub const PAINTER_LINE_WIRE_HISTORY: NodeId = hash_node_id("painter_line.wire_history");
+/// **Connection Line** — o traço em si é pintado, ou sobra só o arame? `Click` → alterna.
+pub const PAINTER_LINE_WIRE_CONNECTION: NodeId = hash_node_id("painter_line.wire_connection");
 /// Id de uma OPÇÃO do popover do [`PAINTER_LINE_TYPE`]. Espelho do
 /// [`painter_brush_media_option_id`].
 #[must_use]

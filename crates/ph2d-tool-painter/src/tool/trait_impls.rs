@@ -134,6 +134,9 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_LINE_SOLID => {
                 self.toggle_style_solid();
             }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_LINE_WIRE_CONNECTION => {
+                self.toggle_wire_connection_line();
+            }
             PanelEvent::Click(id) if id == core_ids::PAINTER_LINE_SKETCHY_MAGNETIFY => {
                 self.toggle_sketchy_magnetify();
             }
@@ -223,9 +226,11 @@ impl Tool for PainterTool {
                 } else if id == core_ids::PAINTER_LINE_SKETCHY_DENSITY {
                     self.set_sketchy_density_norm(v as f32);
                 } else if id == core_ids::PAINTER_LINE_SKETCHY_WIDTH {
-                    self.set_sketchy_width_norm(v as f32);
+                    self.set_thread_width_norm(v as f32);
                 } else if id == core_ids::PAINTER_LINE_SKETCHY_OPACITY {
-                    self.set_sketchy_opacity(v as f32);
+                    self.set_thread_opacity(v as f32);
+                } else if id == core_ids::PAINTER_LINE_WIRE_HISTORY {
+                    self.set_wire_history_norm(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_JITTER {
                     self.set_brush_jitter_norm(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_DASH_RATIO {

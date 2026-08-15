@@ -24,6 +24,7 @@ const IMPASTO: &str = include_str!("../src/impasto_smoke.rs");
 const WETPAINT: &str = include_str!("../src/wetpaint_smoke.rs");
 const MASK: &str = include_str!("../src/mask_smoke.rs");
 const SUBSTRATE: &str = include_str!("../src/substrate_smoke.rs");
+const LINE: &str = include_str!("../src/line_smoke.rs");
 
 /// Nenhum smoke chama `set_paint_media(PaintMedia::<não-Digital>)`.
 ///
@@ -37,6 +38,7 @@ fn no_painter_smoke_forces_a_medium() {
         ("wetpaint", WETPAINT),
         ("mask", MASK),
         ("substrate", SUBSTRATE),
+        ("line", LINE),
     ] {
         for medium in ["Impasto", "Watercolor", "WetPaint"] {
             // A chamada exata que abre num meio; a prosa dos docs cita os meios em texto, nunca nesta
@@ -59,6 +61,7 @@ fn the_smokes_still_prepare_a_canvas() {
         ("impasto", IMPASTO),
         ("wetpaint", WETPAINT),
         ("substrate", SUBSTRATE),
+        ("line", LINE),
     ] {
         assert!(
             src.contains("fn spawn_if_enabled")

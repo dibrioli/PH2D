@@ -34,7 +34,7 @@ pub(crate) struct PaintState {
     /// Buffer reusado dos fios que o Sketchy costurou desde o último depósito (plano 38 W3). Ele é
     /// só a ALOCAÇÃO: o motor é o dono da memória do traço, e [`ph2d_painter_brush::Stroke::take_threads`]
     /// esvazia isto antes de encher.
-    pub(super) sketchy_threads: Vec<ph2d_painter_brush::stroke::sketchy::Thread>,
+    pub(super) pending_threads: Vec<ph2d_painter_brush::stroke::threads::Thread>,
     /// Per-stroke jitter seed; bumped each stroke so jitter is reproducible yet varies.
     pub(super) seed: u64,
     /// Splitmix64 for the texture's per-dab Random rotation/offset — reset per stroke (seed-decorrelated), advanced once per textured dab (HR-5).

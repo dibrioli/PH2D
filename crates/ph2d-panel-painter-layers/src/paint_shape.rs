@@ -4,7 +4,7 @@
 //! replaced by the image preview + the image's rotation controls). Mirrors the Grain section's row
 //! helpers; all controls are fixed-id, tool-global widgets registered in [`crate::populate`].
 
-use crate::paint_brush::paint_dropdown_row;
+use crate::paint_brush_rows::paint_dropdown_row;
 use crate::paint_brush_top::{paint_checkbox_row, paint_collapsible_section};
 use crate::state;
 use ph2d_editor_core::ids as core_ids;
@@ -240,7 +240,7 @@ fn paint_shape_transform_controls(
         .iter()
         .find(|(v, _)| *v == brush.shape_follow)
         .map_or("Off", |(_, n)| n);
-    let (ny, open) = crate::paint_brush::paint_dropdown_row(
+    let (ny, open) = crate::paint_brush_rows::paint_dropdown_row(
         ctx,
         theme,
         x,

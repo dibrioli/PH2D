@@ -524,6 +524,8 @@ pub(crate) struct App {
     pub(crate) impasto_smoke_done: bool,
     /// `PH2D_SUBSTRATE_SMOKE` one-shot latch (o dente do papel como superfície, no Digital).
     pub(crate) substrate_smoke_done: bool,
+    /// Latch one-shot da tela do card **Line** (`PH2D_LINE_SMOKE`).
+    pub(crate) line_smoke_done: bool,
     /// `PH2D_MASK_SMOKE` one-shot latch (doc 25 §13.9 — the coverage-law scene).
     pub(crate) mask_smoke_done: bool,
     /// `PH2D_TAPER_SMOKE` one-shot latch (the Procreate Touch Taper scene).

@@ -10,7 +10,7 @@
 //! authored stop colours are untouched, so toggling it back restores them).
 
 use crate::paint::register_button;
-use crate::paint_brush::paint_dropdown_chip;
+use crate::paint_brush_rows::paint_dropdown_chip;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::InteractiveState;

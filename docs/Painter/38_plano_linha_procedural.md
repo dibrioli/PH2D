@@ -696,7 +696,29 @@ whole_span`, no crate do painel). **10 mutações, 10 sangram.**
 
 ### W6 — opcionais, só com pedido
 
-- **Ribbon** — ✅ **CONSTRUÍDO** (2026-08-14/15, ordem *"Siga"*). A fita presa ao cursor por uma mola
+- ⛔ **A PREMISSA DESTA LINHA ESTÁ ERRADA, e a referência a desmente** (Enio, 2026-08-15, com a
+  captura do Alchemy ao lado da nossa). **O `Ribbon Shapes` do Alchemy NÃO é uma curva atrasada** —
+  é uma **FAIXA com travessas**: a marca segue o gesto e dentro dela correm dezenas de riscos
+  atravessados, densos, que se abrem e fecham conforme a mão acelera. O que esta wave construiu é um
+  **seguidor massa-mola** (uma linha só, atrasada), que é o **Dynamic Brush do Krita** (`Mass` +
+  `Drag`), não o Alchemy. **São duas features diferentes**, e o bullet abaixo citava a referência de
+  uma e descrevia a outra.
+  - **O desenho que a referência dita** (derivado da captura, não do código — Alchemy e Krita são
+    GPL-3 e a regra deste repo é *comportamento sim, linha de código nunca*): a fita tem **dois
+    trilhos** — o caminho do DEDO e o caminho **ATRASADO** — e entre eles correm **travessas**, com
+    a **largura da faixa sendo o próprio atraso** (por isso ela **estreita nos picos**, onde a mão
+    desacelera: é o que a captura mostra). `Friction`/`Gravity` moldam o trilho atrasado, e a
+    cadência das travessas é por **ARCO**, nunca por dab.
+  - ⚠️ **O massa-mola já construído é o MOTOR disto, não trabalho perdido** — ele produz o trilho
+    atrasado. O que falta é o segundo trilho e as travessas.
+  - ⚠️ **PRIMEIRA TENTATIVA FEITA E REVERTIDA (não a repita assim):** ligar `sews_threads()` à fita e
+    emitir um `Thread` por dab do trilho cru **preenche SÓLIDO** (a travessa sai a cada 1,2 px), e
+    com a cadência por arco a faixa **continua sem abrir** — porque os dois trilhos **partilham o
+    cursor do percurso** (`walk_smoothed`), então percorrer os dois alterna o caminho em vez de
+    desenhar duas bordas. **O trilho cru precisa de percurso PRÓPRIO**, e é aí que a wave começa.
+  - ⚠️ **E o nome tem de dizer o que a coisa é:** se as duas ficarem, o massa-mola não pode chamar-se
+    `Ribbon` — ele é o `Dyna`/`Weighted` do Krita.
+- **Ribbon (o massa-mola, a construir-se `Dyna`)** — ✅ **CONSTRUÍDO** (2026-08-14/15, ordem *"Siga"*). A fita presa ao cursor por uma mola
   com atrito e peso; o traço **pesa**. Sliders **Weight · Friction · Gravity** (`Size` e `Spacing`
   do Alchemy já são do pincel — dois donos para o mesmo número seria a segunda porta).
   - ⚠️ **A premissa do plano estava certa e é o que decide a arquitetura:** *"o estabilizador já é a

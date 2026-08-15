@@ -479,6 +479,10 @@ próprio jogador a segurar a direção contrária.
 3. uma **cena de smoke com números MEDIDOS**, que imprime o que montou;
 4. o `physics_ecs_c9` **conferido** — e onde ele se mover, a wave diz porquê.
 
-⚠️ **O número da cena CONTA-SE no `physics_smoke.rs`** (hoje o máximo é `=112`,
-e o `=84` não existe de propósito). ⚠️ **O `PROJECT_SCHEMA` conta-se contra o
-`main` do dia**, e o degrau da escada é escrito no MESMO commit.
+⚠️ **O número da cena CONTA-SE no `physics_smoke.rs`** — e este parágrafo já
+envelheceu uma vez: ele dizia *"hoje o máximo é `=112`"* e o `match` trazia
+**`=115`** quando a wave D o foi ler. **Conte o `match`, nunca esta linha**; o
+`=84` não existe de propósito, e a wave D levou o **`=116`**.
+
+⚠️ **O `PROJECT_SCHEMA` conta-se contra o `main` do dia**, e o degrau da escada é
+escrito no MESMO commit.

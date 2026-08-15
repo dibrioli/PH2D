@@ -240,6 +240,13 @@ pub struct BrushSettings {
     /// **Ribbon — os `Rungs`**, a densidade das travessas da FAIXA. `0` degenera na linha atrasada
     /// sozinha; ver [`ph2d_painter_brush::BrushSpec::ribbon_rungs`].
     pub ribbon_rungs: f32,
+    /// **Rough — o `Roughness`**, a amplitude do desvio CURTO em diâmetros; ver
+    /// [`ph2d_painter_brush::BrushSpec::rough_amount`].
+    pub rough_amount: f32,
+    /// **Rough — o `Bowing`**, a amplitude do ARQUEAMENTO longo, na mesma unidade.
+    pub rough_bowing: f32,
+    /// **Rough — as `Passes`**, quantas caminhadas o traço deixa (`2` = o contorno duplo).
+    pub rough_passes: u32,
     /// "Sync with other tools" on/off: on = every paint tool shares these settings; off (default) = each
     /// tool independent. Drives the checkbox at the top of the brush panel.
     pub link_shared: bool,

@@ -132,11 +132,16 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     sketchy_magnetify: true,
     wire_history: 6.0, // LITERAL-PX-OK: espelho do default do BrushSpec, não é medida de UI
     wire_connection_line: true,
-    // LITERAL-PX-OK: espelho dos defaults do BrushSpec, não é medida de UI
-    ribbon_weight: 0.45,
-    ribbon_friction: 0.30,
+    // ⚠️ O marcador tem de estar **NA** linha, nunca acima dela — um bloco solto foi como estes dois
+    // literais ficaram VERMELHO-LATENTES desde a wave da fita: os gates da `editor-core` só correm
+    // na varredura impactada, e um fechamento por `cargo test -p` por crate não os alcança.
+    ribbon_weight: 0.45, // LITERAL-PX-OK: espelho do default do BrushSpec, não é medida de UI
+    ribbon_friction: 0.30, // LITERAL-PX-OK: espelho do default do BrushSpec, não é medida de UI
     ribbon_gravity: 0.0,
     ribbon_rungs: 0.5,
+    rough_amount: 0.0,
+    rough_bowing: 0.0,
+    rough_passes: 2,
     link_shared: false, // "Sync with other tools" off = independent tools (the default)
     line_show_dimensions: true, // Line CAD dimensions shown by default
     jitter: 0.0,

@@ -10,7 +10,12 @@ use super::{ImageMask, TextureKind};
 use crate::ramp_alpha::RampAlphaMode;
 
 mod layer;
-mod math;
+/// ⚠️ **`pub(crate)` e nao `private`, e a razao esta nos quatro helpers ESCALARES que ele exporta**
+/// (`hash2` · `smoothstep` · `lerp` · `ifloor`): eles respondem perguntas genericas — *hash um ponto
+/// de rede*, *interpole suave* — e nao geometria de textura. O `stroke::roughen` os consome para o
+/// campo 1-D do `Rough`; escrever um segundo `smoothstep` nesta crate seria a segunda resposta que
+/// esta casa recusa em todo lado.
+pub(crate) mod math;
 mod paper_tile;
 mod specs;
 mod tileable;

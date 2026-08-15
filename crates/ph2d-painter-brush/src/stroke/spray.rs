@@ -121,9 +121,41 @@ impl Stroke {
     ) {
         // O arremesso é do CAMINHO: uma vez por ponto, e é ele que abre o vão que o `emit` preenche.
         let thrown = self.throw(pos, arc);
-        let base = self.dab_from(thrown, pressure, overlap, arc);
+        // O desvio do `Rough` é do CAMINHO pela mesma razão, e vem DEPOIS do arremesso porque os dois
+        // são translações e o arremesso é quem decide onde a tinta desta passada nasce.
+        // ⚠️ A passada 0 é a de sempre, então com o tipo desarmado o `roughen` devolve `thrown` e o
+        // traço é byte-idêntico.
+        let base_pos = self.roughen(thrown, arc, 0);
+        let base = self.dab_from(base_pos, pressure, overlap, arc);
         self.emit(base, out);
-        self.spray_copies(thrown, pressure, overlap, arc, out);
+        self.rough_passes(thrown, pressure, overlap, arc, out);
+        self.spray_copies(base_pos, pressure, overlap, arc, out);
+    }
+
+    /// As passadas EXTRA do `Rough` (`passes − 1`) — no-op com o tipo desarmado ou com uma passada.
+    ///
+    /// ⚠️ **Elas não passam pelo [`Stroke::emit`], e é o MESMO argumento do [`Self::spray_copies`]:**
+    /// aquela porta alimenta a memória dos fios e preenche o vão do arremesso, e as duas coisas são
+    /// propriedades do CAMINHO — que aconteceu **uma** vez. Uma segunda caminhada empurraria o traço
+    /// para a própria memória e mandaria o preenchedor percorrer o vão duas vezes.
+    ///
+    /// ⚠️ **E ela é uma CAMINHADA, não uma cópia:** cada passada avalia o campo com a SUA semente, o
+    /// que a faz divergir e cruzar a primeira ao longo do arco — o contorno duplo do Excalidraw. Uma
+    /// cópia no mesmo lugar (o molde literal do spray) empilharia tinta e não desenharia nada.
+    fn rough_passes(
+        &mut self,
+        thrown: [f32; 2],
+        pressure: f32,
+        overlap: f32,
+        arc: f32,
+        out: &mut Vec<Dab>,
+    ) {
+        let n = self.spec.rough_pass_count();
+        for pass in 1..n {
+            let p = self.roughen(thrown, arc, pass);
+            let copy = self.dab_from(p, pressure, overlap, arc);
+            crate::symmetry::push_symmetric(out, copy, &self.spec.symmetry);
+        }
     }
 
     /// As cópias EXTRA de um ponto do caminho (`count − 1`) — no-op com o `count` neutro.

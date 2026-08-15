@@ -96,6 +96,10 @@ fn register_brush_inputs(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_LINE_RIBBON_FRICTION,
         ph2d_editor_core::ids::PAINTER_LINE_RIBBON_GRAVITY,
         ph2d_editor_core::ids::PAINTER_LINE_RIBBON_RUNGS,
+        // Card Line / Rough: as duas amplitudes e a contagem de passadas (plano 38 W6).
+        ph2d_editor_core::ids::PAINTER_LINE_ROUGH_AMOUNT,
+        ph2d_editor_core::ids::PAINTER_LINE_ROUGH_BOWING,
+        ph2d_editor_core::ids::PAINTER_LINE_ROUGH_PASSES,
         // Per-dab Jitter Scale / Rotate / Spacing (next to the position Jitter).
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_SCALE,
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_ROTATE,

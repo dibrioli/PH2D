@@ -20,8 +20,8 @@ use ph2d_editor_core::zones::Rect;
 
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::{
-    BrushSettings, LineKind, SKETCHY_DENSITY_MAX, SKETCHY_REACH_MAX, THREAD_WIDTH_MAX_PX,
-    WIRE_HISTORY_MAX,
+    BrushSettings, LineKind, ROUGH_AMOUNT_MAX_D, ROUGH_PASSES_MAX, SKETCHY_DENSITY_MAX,
+    SKETCHY_REACH_MAX, THREAD_WIDTH_MAX_PX, WIRE_HISTORY_MAX,
 };
 
 /// Coluna fixa do rótulo de uma row de parâmetro do tipo (cabe "Line Width" na fonte Base).
@@ -38,17 +38,19 @@ fn kind_name(k: LineKind) -> &'static str {
         LineKind::Sketchy => "Sketchy",
         LineKind::Wire => "Wire",
         LineKind::Ribbon => "Ribbon",
+        LineKind::Rough => "Rough",
     }
 }
 
 /// Quantos tipos existem — **derivado da lista abaixo**, nunca um literal, para que um tipo novo
 /// apareça no dropdown sem ninguém lembrar de subir um número.
-pub(crate) const LINE_KINDS: [LineKind; 5] = [
+pub(crate) const LINE_KINDS: [LineKind; 6] = [
     LineKind::None,
     LineKind::Speed,
     LineKind::Sketchy,
     LineKind::Wire,
     LineKind::Ribbon,
+    LineKind::Rough,
 ];
 
 /// Os tipos como opções de `Dropdown` (valor = o wire `u8`, rótulo = o nome).
@@ -227,6 +229,7 @@ fn sliders_of(kind: LineKind) -> &'static [ParamSlider] {
         LineKind::Sketchy => &SKETCHY_SLIDERS,
         LineKind::Wire => &WIRE_SLIDERS,
         LineKind::Ribbon => &RIBBON_SLIDERS,
+        LineKind::Rough => &ROUGH_SLIDERS,
     }
 }
 
@@ -236,6 +239,39 @@ type ParamCheckbox = (
     &'static str,
     fn(BrushSettings) -> bool,
 );
+
+/// O `Rough`: `Roughness` é o tremor CURTO, `Bowing` o arqueamento LONGO e `Passes` quantas
+/// caminhadas o traço deixa (`2` = o contorno duplo do Excalidraw).
+///
+/// ⚠️ **As duas amplitudes são DUAS oitavas, não dois estilos** — o `rough.js` tem os dois knobs
+/// porque são escalas diferentes do mesmo desvio, e uma só tornaria o arco inexprimível.
+///
+/// ⚠️ **E não há row de tinta de FIO aqui, ao contrário do Sketchy / Wire / Ribbon:** o `Rough` não
+/// costura nada — ele desenha o TRAÇO outra vez, com os dabs do próprio pincel. Oferecer
+/// `Line Width` sob ele seriam duas rows que não fazem nada.
+const ROUGH_SLIDERS: [ParamSlider; 3] = [
+    (core_ids::PAINTER_LINE_ROUGH_AMOUNT, "Roughness", |b| {
+        (
+            b.rough_amount / ROUGH_AMOUNT_MAX_D,
+            b.rough_amount * ROUGH_READOUT_D,
+        )
+    }),
+    (core_ids::PAINTER_LINE_ROUGH_BOWING, "Bowing", |b| {
+        (
+            b.rough_bowing / ROUGH_AMOUNT_MAX_D,
+            b.rough_bowing * ROUGH_READOUT_D,
+        )
+    }),
+    (core_ids::PAINTER_LINE_ROUGH_PASSES, "Passes", |b| {
+        #[allow(clippy::cast_precision_loss)]
+        let n = b.rough_passes as f32;
+        (n / ROUGH_PASSES_MAX as f32, n)
+    }),
+];
+
+/// O readout das amplitudes é em **décimos de diâmetro**, para a pista `0..1` não mostrar sempre
+/// `0.x` — o número que o artista lê é *"quantos décimos de pincel a linha vagueia"*.
+const ROUGH_READOUT_D: f32 = 10.0; // LITERAL-PX-OK: fator de leitura, não medida de UI
 
 /// O checkbox deste tipo, se houver.
 fn checkbox_of(kind: LineKind) -> Option<ParamCheckbox> {
@@ -250,9 +286,10 @@ fn checkbox_of(kind: LineKind) -> Option<ParamCheckbox> {
             "Connection Line",
             |b: BrushSettings| b.wire_connection_line,
         )),
-        // A fita não tem checkbox: os três knobs dela são contínuos, e um interruptor a mais teria
-        // de responder a uma pergunta que nenhum dos três já responde.
-        LineKind::None | LineKind::Speed | LineKind::Ribbon => None,
+        // Nem a fita nem o `Rough` têm checkbox: os knobs deles são contínuos, e um interruptor a
+        // mais teria de responder a uma pergunta que nenhum deles já responde. ⚠️ No `Rough` a
+        // tentação seria um *"Multi-stroke"* — mas isso é o `Passes = 1`, e o slider já o diz.
+        LineKind::None | LineKind::Speed | LineKind::Ribbon | LineKind::Rough => None,
     }
 }
 

@@ -80,6 +80,8 @@ mod ribbon_clock_tests; // os gates do RELOGIO da fita: sem gesto, sem tempo (pl
 #[cfg(test)]
 mod ribbon_probe; // sonda da FITA (plano 38 W6)
 #[cfg(test)]
+mod rough_tests; // os gates do ROUGH: idempotente sob re-carimbo, e nao e' jitter (plano 38 W6)
+#[cfg(test)]
 mod ribbon_tests; // os gates da FITA (plano 38 W6)
 pub mod sampler;
 /// **Sculpt** — the brush as a local operator on the relief (Smooth / Sharpen / Flatten / Scrape / Fill).
@@ -94,6 +96,8 @@ pub mod smear_field;
 pub mod solid;
 pub mod spec;
 mod spec_default;
+/// As portas das LEIS DE LINHA (`Sketchy`/`Wire`/`Ribbon`/`Rough`) — irmão do `spec` por LOC cap.
+mod spec_line;
 mod spec_frame;
 #[cfg(test)]
 mod spec_tests;

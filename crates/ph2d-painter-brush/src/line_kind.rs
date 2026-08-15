@@ -49,6 +49,28 @@ pub enum LineKind {
     /// um passa-baixa é estável por construção. É por isso que o espaçamento, os fios, o preenchedor
     /// de vão, a Symmetry e o Spray saem todos de graça: para eles a fita **é** o traço.
     Ribbon,
+    /// **Rough** — o `rough.js` / Excalidraw: a linha **vagueia** e é desenhada **duas vezes**, e o
+    /// resultado lê como mão em vez de como máquina. É a lei que faz de uma elipse perfeita um
+    /// desenho de quadro-branco.
+    ///
+    /// ⚠️ **Ele NÃO é o jitter, e a distinção é a matemática inteira.** O motor já espalha cada dab
+    /// independentemente ([`crate::jitter`]) — um desvio pseudo-aleatório POR DAB **seria** aquilo,
+    /// a segunda porta para a mesma pergunta. O que o `rough.js` faz e o jitter não é **vaguear**:
+    /// o desvio é COERENTE ao longo do traço. Daí o campo ser ruído de valor **1-D no ARCO** (baixa
+    /// frequência), na perpendicular do heading — ver [`crate::stroke::roughen`].
+    ///
+    /// ⚠️ **Ele move a TINTA, nunca o CAMINHO** — a mesma lei do [`Self::Speed`], e por isso os dois
+    /// vivem no mesmo dropdown: `last_pos`, o `accum` do espaçamento e o `arc_len` continuam sendo o
+    /// que a mão fez. Aqui a realimentação seria impossível de qualquer modo (o campo não acumula),
+    /// e a lei está dita porque o próximo tipo que a violar não terá aviso nenhum.
+    ///
+    /// ⚠️ **E é ELE que responde a pergunta que o plano 38 deixou aberta** (*"`LineKind` ou efeito
+    /// do editor de forma?"*): o cabeçalho deste módulo já separa as duas coisas — `StrokeMethod` é
+    /// *como o caminho é AUTORADO*, `LineKind` é *que lei DECORA o caminho autorado*. Roughen não é
+    /// uma maneira de autorar. E o medo que a acompanhava (*"o que o Apply assa?"*) tem precedente
+    /// nesta casa: o **Offset** dos shape editors já é *drawing-only* — os pontos ficam pristinos e
+    /// só o desenho desloca.
+    Rough,
 }
 
 impl LineKind {
@@ -65,6 +87,7 @@ impl LineKind {
             LineKind::Sketchy => 2,
             LineKind::Wire => 3,
             LineKind::Ribbon => 4,
+            LineKind::Rough => 5,
         }
     }
 
@@ -75,6 +98,7 @@ impl LineKind {
             2 => LineKind::Sketchy,
             3 => LineKind::Wire,
             4 => LineKind::Ribbon,
+            5 => LineKind::Rough,
             _ => LineKind::None,
         }
     }
@@ -528,3 +552,50 @@ pub const RIBBON_RUNG_DENSE_D: f32 = 0.25;
 /// `0,25 × 4 = 1 px`, exactamente a espessura default de um fio, e a faixa chaparia. O piso é o que
 /// mantém a mesma escolha legível nos dois extremos de tamanho.
 pub const RIBBON_RUNG_DUTY: f32 = 2.0;
+
+/// **Quantas caminhadas um traço `Rough` pode deixar.**
+///
+/// ⚠️ **O recurso é o MESMO do `Spray`, e a forma do custo é idêntica:** uma passada é um dab
+/// inteiro por ponto do caminho (silhueta, falloff, Shape, Grain, blend), então o custo é **linear
+/// na contagem** e o multiplicador cai sobre o pincel inteiro — literalmente a tabela do
+/// [`crate::stroke::spray::SPRAY_COUNT_MAX`], que mediu **16** como a maior contagem cujo pior
+/// evento cabe no kill de 8 ms num pincel grande (r=200).
+///
+/// ⚠️ **E é por isso que este teto NÃO é 16:** o que aperta aqui não é o tempo, é o LOOK. O
+/// `rough.js` ship **2** (`disableMultiStroke` desliga a segunda) e o Excalidraw inteiro é feito
+/// dessa dupla; três já lê como uma linha borrada em vez de um contorno desenhado duas vezes, e
+/// além disso as passadas são caminhadas COERENTES sobre o mesmo caminho — elas se sobrepõem, ao
+/// contrário de uma nuvem de spray, então a quarta cai quase toda sobre as três anteriores.
+/// **`4` é folga honesta sobre o que a referência usa**, e a medição de tempo do irmão diz que ele
+/// cabe com sobra.
+pub const ROUGH_PASSES_MAX: u32 = 4;
+
+/// **O comprimento de onda do desvio CURTO, em DIÂMETROS de pincel** — o `roughness` do `rough.js`,
+/// que lá desloca os pontos de controle de cada segmento.
+///
+/// ⚠️ **É uma decisão de LOOK, e o SMOKE é quem a julga** — não há recurso a medir aqui (o campo é
+/// um `lerp` entre dois hashes, e custa o mesmo em qualquer comprimento de onda). Movê-la é UMA
+/// linha.
+///
+/// ⚠️ **Em diâmetros, então o vaguear é AUTO-SIMILAR:** um pincel grosso vagueia numa escala grossa
+/// e um fino numa escala fina, e o desenho lê igual nos dois. Um número em pixels faria a mesma
+/// escolha parecer tremor num pincel e arco noutro.
+pub const ROUGH_WAVELENGTH_SHORT_D: f32 = 4.0;
+
+/// **O comprimento de onda do ARQUEAMENTO, em diâmetros** — o `bowing` do `rough.js`, que lá desloca
+/// o MEIO de cada segmento.
+///
+/// ⚠️ **A razão para a curta é o que faz das duas oitavas DUAS oitavas** (6×): perto de 1× as duas
+/// colapsariam num desvio só e o segundo slider viraria um duplicado do primeiro.
+pub const ROUGH_WAVELENGTH_LONG_D: f32 = 24.0;
+
+/// **O teto DIGITÁVEL das duas amplitudes, em diâmetros.**
+///
+/// ⚠️ **O recurso é a PREMISSA DO PREENCHEDOR DE VÃO, e ela é medida:** o motor varre de um dab ao
+/// anterior assumindo que o segmento é tinta garantida, e a cápsula do relevo já ensinou que essa
+/// premissa quebra quando o dab salta mais que o próprio raio. Com amplitude `a` diâmetros e
+/// comprimento de onda `w` diâmetros, o passo lateral entre dois dabs vizinhos é da ordem de
+/// `a/w × espaçamento` — em `a = 1` e `w = 4` isso é um quarto do espaçamento, muito abaixo do
+/// raio. **`1` diâmetro de desvio já é o dobro da espessura do traço**, que é onde o contorno duplo
+/// deixa de ler como um contorno; acima disso o `rough.js` também não vai.
+pub const ROUGH_AMOUNT_MAX_D: f32 = 1.0;

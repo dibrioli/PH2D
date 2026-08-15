@@ -43,7 +43,7 @@ pub(super) fn hash2w(ix: i32, iy: i32, pu: i32, pv: i32) -> f32 {
 }
 
 /// Hash an integer lattice point to `[0, 1)` — the value-noise / Voronoi randomness.
-pub(super) fn hash2(ix: i32, iy: i32) -> f32 {
+pub(crate) fn hash2(ix: i32, iy: i32) -> f32 {
     let mut h = (ix as u32).wrapping_mul(0x9E37_79B1) ^ (iy as u32).wrapping_mul(0x85EB_CA77);
     h ^= h >> 15;
     h = h.wrapping_mul(0x2C1B_3C6D);
@@ -54,17 +54,17 @@ pub(super) fn hash2(ix: i32, iy: i32) -> f32 {
 }
 
 /// Hermite smoothstep `3t² − 2t³` on a value already in `[0, 1]` (polynomial — no transcendental).
-pub(super) fn smoothstep(t: f32) -> f32 {
+pub(crate) fn smoothstep(t: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
 /// Linear interpolate.
-pub(super) fn lerp(a: f32, b: f32, t: f32) -> f32 {
+pub(crate) fn lerp(a: f32, b: f32, t: f32) -> f32 {
     a + (b - a) * t
 }
 
 /// `floor` to `i32` (integer cell index) — avoids the `as i32` truncation-toward-zero bug for
 /// negative coordinates.
-pub(super) fn ifloor(x: f32) -> i32 {
+pub(crate) fn ifloor(x: f32) -> i32 {
     x.floor() as i32
 }

@@ -109,4 +109,29 @@ impl PainterTool {
     pub fn set_ribbon_rungs_norm(&mut self, t: f32) {
         fan_out!(self, ribbon_rungs, t.clamp(0.0, 1.0));
     }
+
+    /// **Roughness** — a amplitude do desvio CURTO, da pista `0..1` para diâmetros de pincel.
+    pub fn set_rough_amount_norm(&mut self, t: f32) {
+        let max = ph2d_painter_brush::line_kind::ROUGH_AMOUNT_MAX_D;
+        fan_out!(self, rough_amount, t.clamp(0.0, 1.0) * max);
+    }
+
+    /// **Bowing** — a amplitude do ARQUEAMENTO longo. ⚠️ **Compartilha o teto da irmã de propósito:**
+    /// são duas amplitudes do MESMO desvio, em oitavas diferentes, e dois tetos diferentes fariam a
+    /// mesma posição de slider significar duas coisas.
+    pub fn set_rough_bowing_norm(&mut self, t: f32) {
+        let max = ph2d_painter_brush::line_kind::ROUGH_AMOUNT_MAX_D;
+        fan_out!(self, rough_bowing, t.clamp(0.0, 1.0) * max);
+    }
+
+    /// **Passes** — quantas caminhadas o traço deixa, da pista `0..1` para `1..=ROUGH_PASSES_MAX`.
+    ///
+    /// ⚠️ **O piso é `1`, não `0`:** zero passadas seria um traço que não pinta nada, e o desligado
+    /// deste tipo é a amplitude em zero (o `rough_active`), nunca a contagem.
+    pub fn set_rough_passes_norm(&mut self, t: f32) {
+        let max = ph2d_painter_brush::line_kind::ROUGH_PASSES_MAX;
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let n = (t.clamp(0.0, 1.0) * max as f32).round().max(1.0) as u32;
+        fan_out!(self, rough_passes, n.clamp(1, max));
+    }
 }

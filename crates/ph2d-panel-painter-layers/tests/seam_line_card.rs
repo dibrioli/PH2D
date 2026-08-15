@@ -384,6 +384,77 @@ fn every_ribbon_slider_is_alive_under_the_pointer() {
     }
 }
 
+/// Os TRÊS controles que o `Rough` acrescenta ao card (plano 38 W6).
+const ROUGH_SLIDERS: [(NodeId, &str); 3] = [
+    (core_ids::PAINTER_LINE_ROUGH_AMOUNT, "Roughness"),
+    (core_ids::PAINTER_LINE_ROUGH_BOWING, "Bowing"),
+    (core_ids::PAINTER_LINE_ROUGH_PASSES, "Passes"),
+];
+
+/// **AS ROWS DO `Rough` SÓ EXISTEM COM ELE ESCOLHIDO — e ele NÃO carrega a tinta de fio.**
+///
+/// ⚠️ **A metade da AUSÊNCIA é a que diz o desenho:** ao contrário do Sketchy, do Wire e da Ribbon,
+/// este tipo **não costura nada** — ele desenha o TRAÇO outra vez, com os dabs do próprio pincel.
+/// Um `Line Width` sob ele seriam duas rows que não fazem nada, e é exactamente o inverso do buraco
+/// que a fita tinha.
+#[test]
+fn the_rough_rows_exist_only_under_the_rough_type_and_carry_no_thread_ink() {
+    let mut tool = PainterTool::default();
+    tool.set_line_kind(5); // Rough
+    let (_, _, on) = painted(&tool);
+    for (id, name) in ROUGH_SLIDERS {
+        assert!(
+            rect_of(&on, id).is_some(),
+            "o slider {name} do Rough não é pintado"
+        );
+    }
+    assert!(
+        rect_of(&on, core_ids::PAINTER_LINE_SKETCHY_WIDTH).is_none(),
+        "o Rough pinta Line Width -- ele nao costura fio nenhum, e' uma row que nao faz nada"
+    );
+    assert!(
+        rect_of(&on, core_ids::PAINTER_LINE_RIBBON_WEIGHT).is_none(),
+        "o Weight da fita sobrevive no Rough"
+    );
+
+    tool.set_line_kind(0); // None
+    let (_, _, off) = painted(&tool);
+    for (id, name) in ROUGH_SLIDERS {
+        assert!(
+            rect_of(&off, id).is_none(),
+            "o slider {name} sobrevive ao tipo None"
+        );
+    }
+}
+
+/// **CADA SLIDER DO `Rough` ESTÁ VIVO SOB O MOUSE, E AUTORA O SEU CAMPO.**
+#[test]
+fn every_rough_slider_is_alive_under_the_pointer() {
+    for (id, name) in ROUGH_SLIDERS {
+        let mut tool = PainterTool::default();
+        tool.set_line_kind(5);
+        let before = tool.brush_settings();
+        let (mut host, mut st, rects) = painted(&tool);
+        let r = rect_of(&rects, id).unwrap_or_else(|| panic!("o slider {name} não é pintado"));
+        // Arrasta para o EXTREMO ESQUERDO: as `Passes` nascem em 2 e o topo da pista já é o teto,
+        // então um arrasto para a direita não moveria o slider que o gate existe para exercitar.
+        let (x, y) = (r.x + 1.0, r.y + r.h * 0.5);
+        for ev in host.drag_at(r.x + r.w * 0.5, y, x, y) {
+            host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+        }
+        for action in host.drained_actions() {
+            if let EditorAction::ToolPanelEvent(pe) = action {
+                tool.handle_panel_event(pe);
+            }
+        }
+        let after = tool.brush_settings();
+        let moved = (before.rough_amount - after.rough_amount).abs() > 1e-4
+            || (before.rough_bowing - after.rough_bowing).abs() > 1e-4
+            || before.rough_passes != after.rough_passes;
+        assert!(moved, "arrastar o slider {name} não autorou nada no pincel");
+    }
+}
+
 /// **O `Connection Line` ALTERNA sob um clique REAL** — e volta.
 #[test]
 fn the_connection_line_checkbox_toggles_under_a_real_click() {

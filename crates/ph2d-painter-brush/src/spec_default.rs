@@ -79,6 +79,12 @@ impl Default for BrushSpec {
             // um default em `0` daria ao artista que escolhe `Ribbon` o trilho sozinho, isto é, o
             // pincel de arrasto sob o nome da outra feature. `0,5` é o meio da pista.
             ribbon_rungs: 0.5,
+            // O `Rough` nasce no NEUTRO como todo tipo que nao e o escolhido: o dropdown abre em
+            // `None`, e um default de amplitude aqui so mudaria o que o artista ve depois de
+            // escolher `Rough` -- que e' onde os numeros de produto vivem (ver `spec_line.rs`).
+            rough_amount: 0.0,
+            rough_bowing: 0.0,
+            rough_passes: 2,
             dash_ratio: 1.0,
             dash_samples: 20,
             jitter_unit: JitterUnit::Brush,

@@ -144,6 +144,25 @@ pub(crate) fn spawn_if_enabled(
                  a fita armada -- eles seguem a fita, porque para todos eles a fita E o traco."
             );
             println!(
+                "[line-smoke]   ROUGH: a linha VAGUEIA e e' desenhada DUAS vezes (rough.js / \
+                 Excalidraw). ROUGHNESS e' o tremor CURTO, BOWING o arqueamento LONGO -- sao duas \
+                 OITAVAS do mesmo desvio, entao mexa uma de cada vez para as ver separadas. PASSES \
+                 e' quantas caminhadas: em 2 as duas divergem e se CRUZAM (o contorno duplo), em 1 \
+                 sobra a linha que so' vagueia."
+            );
+            println!(
+                "[line-smoke]     ⚠️ A PERGUNTA DE OLHO DESTA WAVE e' com um SHAPE EDITOR: escolha \
+                 Stroke -> Ellipse, desenhe uma elipse e ARRASTE um ponto dela. A figura tem de \
+                 ficar PARADA enquanto voce a ajusta -- o desvio e' funcao do ARCO, entao \
+                 re-carimbar a mesma figura da' os mesmos dabs. Se ela FERVER, pare: o desvio \
+                 virou jitter."
+            );
+            println!(
+                "[line-smoke]     E o CONTRASTE que diz que ele nao e' o jitter: ponha Roughness \
+                 no maximo e desenhe uma reta longa -- tem de sair uma linha que ONDULA, nunca uma \
+                 linha empoeirada. O jitter (secao Stroke) e' o outro controle, e faz o oposto."
+            );
+            println!(
                 "[line-smoke]   E o CONTROLE: com Type = None e Count = 1 o pincel tem de pintar \
                  exatamente como sempre pintou."
             );

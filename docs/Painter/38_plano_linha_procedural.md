@@ -914,11 +914,49 @@ whole_span`, no crate do painel). **10 mutações, 10 sangram.**
   - ⚠️ **O fundo do slider é INERTE e está medido:** até peso ~0,02 a fita não move a tinta um dab
     inteiro. É o comportamento certo para um mínimo que significa *desligado*, e o roteiro do smoke
     o diz em vez de deixar o artista descobrir.
-- **Rough** — ⛔ **NÃO construído.** O traço que finge ser à mão (`rough.js`/Excalidraw): a primitiva
-  redesenhada 2× com deslocamento pseudo-aleatório. Muito barato sobre os shape editors, e dá uma
-  família visual inteira. ⚠️ **A adjacência que ele tem e a fita não tinha:** ele reescreve a
-  GEOMETRIA de um shape editor, então a pergunta *"o que o Apply assa?"* é dele e não do pincel —
-  e a resposta decide se ele é um `LineKind` ou um efeito do editor de forma. Fica para pedido.
+- **Rough** — ✅ **CONSTRUÍDO** (2026-08-15, ordem *"siga implementando"*). O traço que finge ser à
+  mão (`rough.js`/Excalidraw): a linha **vagueia** e é desenhada **duas vezes**. Sliders
+  **Roughness · Bowing · Passes**.
+  - ⚠️ **A PERGUNTA ABERTA DESTE ITEM JÁ ESTAVA RESPONDIDA, no doc do próprio `LineKind`** — o
+    plano perguntava *"é um `LineKind` ou um efeito do editor de forma?"* e o cabeçalho daquele
+    módulo separa as duas coisas em uma frase: *"o `StrokeMethod` responde **como este caminho é
+    AUTORADO** (mão livre, linha, elipse…) e o `LineKind` responde **que lei procedural decora o
+    caminho autorado** — as duas perguntas são ortogonais"*. Roughen não é uma maneira de autorar:
+    é uma lei que decora um caminho já autorado. **É um `LineKind`.**
+  - ⚠️ **E o medo que a pergunta carregava (*"o que o Apply assa?"*) dissolve num PRECEDENTE desta
+    casa, não numa invenção:** o **Offset** dos shape editors já é *drawing-only* — os pontos e a
+    guia ficam pristinos e só o desenho desloca (`bake_curve_offset` = no-op). O Rough é a mesma
+    forma de coisa: o artista autora uma elipse limpa e a TINTA cai torta. Nada reescreve
+    `verts`.
+  - ⚠️ **ELE NÃO É O JITTER, e essa é a linha que decide a matemática.** O motor já espalha cada dab
+    independentemente (`jitter`), e um deslocamento pseudo-aleatório POR DAB **seria** aquilo — a
+    segunda porta para a mesma pergunta, que esta casa já removeu duas vezes (o *Random Angle*
+    por-slot, o `sews_threads` do enum). O que o `rough.js` faz e o jitter não é **vaguear**: o
+    desvio é COERENTE ao longo do traço, e é por isso que o resultado lê como mão e não como poeira.
+    Logo o campo é **ruído de valor 1-D no ARCO** — baixa frequência —, avaliado na PERPENDICULAR
+    do heading.
+  - ⚠️ **DUAS oitavas, porque o `rough.js` tem DOIS knobs e eles são amplitudes de escalas
+    diferentes:** o `roughness` dele desloca os pontos de controle (o tremor curto) e o `bowing`
+    desloca o MEIO do segmento (o arqueamento longo). Uma oitava só colapsaria os dois num slider e
+    tornaria o arco inexprimível. Os comprimentos de onda são em **DIÂMETROS de pincel** — a mesma
+    unidade do `sketchy_reach_px` e do `wire_history_px`, porque a escala natural desta casa é o
+    pincel, não o pixel.
+  - ⚠️ **A SEGUNDA PASSADA é o que ninguém consegue exprimir hoje** (é o `disableMultiStroke` do
+    `rough.js`, ligado por default): duas caminhadas ao longo do MESMO caminho, com sementes
+    diferentes, que divergem e se cruzam — o contorno duplo do Excalidraw. Ela sai pela porta que já
+    existe para *um ponto do caminho deixa `n` marcas* (`stamp_at` → o molde do `spray_copies`), e
+    **não** pelo `emit`: aquela porta também alimenta a memória dos fios e preenche o vão do
+    arremesso, que são fatos do CAMINHO e acontecem uma vez.
+  - ⚠️ **IDEMPOTÊNCIA SOB RE-CARIMBO é a propriedade load-bearing, e ela cai de graça da escolha do
+    ARCO como semente.** Os shape editors re-carimbam a figura INTEIRA a cada quadro, então um
+    desvio semeado num contador por-dab faria a figura **FERVER enquanto o artista só olha** — é a
+    doença que este módulo nomeia desde o sculpt (*"o re-stamp por-frame dos shape editors
+    empilharia enquanto o artista só OLHA"*). Sendo `d` função PURA de `(arco, passada, spec)`, o
+    mesmo desenho dá os mesmos dabs **ao bit**, e é isso que o gate afirma.
+  - ⚠️ **Ele move a TINTA, nunca o CAMINHO** — a mesma lei do `Speed`, pelo mesmo motivo escrito no
+    doc do `throw`: `last_pos`, o `accum` do espaçamento e o `arc_len` continuam sendo o que a mão
+    fez. Aqui a realimentação seria impossível de qualquer modo (o campo não acumula), e a lei fica
+    dita porque o próximo tipo que a violar não terá aviso nenhum.
 
 ---
 

@@ -104,7 +104,8 @@ pub use ph2d_painter_brush::{
     eval_falloff_curve,
     // O TIPO de linha procedural (plano 38) — o painel o lê por aqui, como os irmãos acima.
     line_kind::{
-        LineKind, SKETCHY_DENSITY_MAX, SKETCHY_REACH_MAX, THREAD_WIDTH_MAX_PX, WIRE_HISTORY_MAX,
+        LineKind, ROUGH_AMOUNT_MAX_D, ROUGH_PASSES_MAX, SKETCHY_DENSITY_MAX, SKETCHY_REACH_MAX,
+        THREAD_WIDTH_MAX_PX, WIRE_HISTORY_MAX,
     },
     param_specs,
     render_shape_preview,

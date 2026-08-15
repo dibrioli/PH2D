@@ -40,6 +40,30 @@
 //! **`ticks = 0` is a byte-identical no-op** in every mode — the neutral point, so dropping the
 //! node into a chain changes nothing until you ask it to.
 //!
+//! ## Subir e descer são dois tempos (`ticks_down`)
+//!
+//! O **Lag CHOP** do TouchDesigner — a referência que o próprio `value.smooth` cita — tem *Lag
+//! up* e *Lag down* separados, e é o que faz de um smoother um envelope: um medidor que salta
+//! e desce devagar, uma luz que acende no ato e apaga com calma. Aqui um `ticks` governava as
+//! duas direções.
+//!
+//! `ticks_down` é o tempo da DESCIDA, e vale **só no `Blend`** — é o único modo em que o número
+//! é uma TAXA. O `Delay` é uma consulta ao passado e o `Average` é um boxcar: nenhum dos dois
+//! tem direção sobre a qual perguntar, e um controle pintado ali seria um knob morto (daí o
+//! [`ParamGate`]).
+//!
+//! ⚠️ **`0` significa *"o mesmo da subida"*, e nada se torna inalcançável por isso** — a
+//! sentinela custaria um valor de verdade se `0` fosse um tempo pedível, e ele não é: a lei do
+//! one-pole já divide por `ticks.max(1.0)`, então **`ticks_down = 1` JÁ É a descida
+//! instantânea**. O par alternativo (um toggle *Same | Custom* mais o número, o idioma do
+//! `Mass: Auto | Manual` da física) seria dois params para uma grandeza que a sentinela
+//! exprime sem perda.
+//!
+//! ⚠️ **A direção é decidida POR COMPONENTE**, não pela posição inteira: uma cor que clareia no
+//! vermelho e escurece no azul usa os dois tempos no mesmo tick. É o que um Lag CHOP faz (ele
+//! é por-canal), e a alternativa — decidir pela norma do vetor — faria o eixo que anda pouco
+//! herdar a direção do que anda muito.
+//!
 //! ## What is delayed — the `channel`
 //!
 //! C4D's Delay Effector lags a set *"with regard to **position, scale and rotation**"*, and the
@@ -83,7 +107,7 @@
 //! fingerprint through the consumed `pre` edge), HR-5: arithmetic only.
 
 use ph2d_node_registry::{
-    NodeRegistry, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget, RegistryError,
+    NodeRegistry, ParamGate, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget, RegistryError,
 };
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
@@ -203,6 +227,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "ticks",
             default: 8.0,
         },
+        // O tempo da DESCIDA (só no `Blend`). **`0` = o mesmo da subida**, e é
+        // por isso que um grafo salvo que nunca o escreveu é byte-idêntico — ver
+        // o cabeçalho para por que a sentinela não torna nada inalcançável.
+        ParamSpec {
+            name: "ticks_down",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -276,7 +307,17 @@ fn unwrap_live(live: &mut [f32], prev_live: &[f32]) {
 ///
 /// `past[k-1][j]` is what it was `k` ticks ago; `prev[j]` is what this node emitted for it last
 /// tick (the one-pole's own state).
-fn delayed(mode: i32, ticks: f32, j: usize, live: f32, past: &[Vec<f32>], prev: &[f32]) -> f32 {
+///
+/// ⚠️ `down` é a régua da DESCIDA e só o `Blend` a lê — ver o cabeçalho.
+fn delayed(
+    mode: i32,
+    ticks: f32,
+    down: f32,
+    j: usize,
+    live: f32,
+    past: &[Vec<f32>],
+    prev: &[f32],
+) -> f32 {
     match mode {
         MODE_DELAY => {
             // Fractional lookback: 3.4 ticks back is 60% of the way from slot 3 toward slot 4.
@@ -299,7 +340,18 @@ fn delayed(mode: i32, ticks: f32, j: usize, live: f32, past: &[Vec<f32>], prev: 
         }
         // Blend: the one-pole. `out += (live - out) / ticks` — it approaches and never passes, and
         // that is the whole difference between it and `motion.spring`.
-        _ => prev[j] + (live - prev[j]) * (1.0 / ticks.max(1.0)),
+        //
+        // ⚠️ **A régua é escolhida pela direção DESTE componente**: `live < prev` é
+        // uma descida. `down <= 0` = a sentinela *"o mesmo da subida"*, e nesse
+        // caso a expressão é literalmente a de antes.
+        _ => {
+            let rule = if down > 0.0 && live < prev[j] {
+                down
+            } else {
+                ticks
+            };
+            prev[j] + (live - prev[j]) * (1.0 / rule.max(1.0))
+        }
     }
 }
 
@@ -316,6 +368,9 @@ impl NodeOp for MotionDelay {
         // 0 = no lag at all. Clamped to the ring, so a hand-edited 900 cannot ask for state that
         // does not exist.
         let ticks = ctx.param("ticks").clamp(0.0, MAX_LAG as f32); // CLAMP-OK: the ring's depth
+        // 0 = a sentinela "o mesmo da subida"; negativo é lixo de documento e cai
+        // nela também.
+        let ticks_down = ctx.param("ticks_down").clamp(0.0, MAX_LAG as f32); // CLAMP-OK: the ring's depth
 
         let out = {
             let input = ctx.input(0);
@@ -362,7 +417,7 @@ impl NodeOp for MotionDelay {
                     } else {
                         (0..live.len())
                             .map(|j| {
-                                let d = delayed(mode, ticks, j, live[j], &past, &prev);
+                                let d = delayed(mode, ticks, ticks_down, j, live[j], &past, &prev);
                                 // The field gates the EFFECT, not the state: the line keeps
                                 // filling regardless, so a falloff that opens later does not
                                 // start from nothing.
@@ -396,6 +451,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     // CPU-only: this node reads `falloff` only at eval runtime (no GPU kernel), so the
     // diagnoser cannot derive the role from a `ColumnBinding` — declare it (ADR-0155).
     reg.register_couplings(
@@ -435,7 +491,17 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "ticks",
-        label: "Ticks",
+        label: "Rise",
+        min: 0.0,
+        max: 32.0,
+        step: 0.5,
+        widget: ParamWidget::Slider,
+    },
+    // ⚠️ O rótulo de cima virou **Rise** e não é cosmético: com uma régua de
+    // descida ao lado, *"Ticks"* deixou de nomear a única duração do nó.
+    ParamUiHint {
+        param: "ticks_down",
+        label: "Fall",
         min: 0.0,
         max: 32.0,
         step: 0.5,
@@ -443,15 +509,29 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
 ];
 
+/// **A descida só existe no `Blend`.** O `Delay` consulta o passado e o `Average`
+/// é um boxcar — nenhum dos dois tem direção, e um slider ali não faria nada.
+static PARAM_GATES: &[ParamGate] = &[ParamGate {
+    param: "ticks_down",
+    when: "mode",
+    values: &[2],
+}];
+
 /// ⚠️ **`ticks` is a `Count` on every channel, not [`ParamUnit::FromChannel`]** — that variant is
 /// for a behaviour whose *magnitude* changes unit with what it drives (metres on Position, degrees
 /// on Rotation, a bare factor on Size). A duration does not: eight ticks is eight ticks whether it
 /// is lagging a point, an angle or a colour. Declaring `FromChannel` here would hand the display
 /// boundary a length conversion to apply to a frame count.
-static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
-    param: "ticks",
-    unit: ParamUnit::Count,
-}];
+static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "ticks",
+        unit: ParamUnit::Count,
+    },
+    ParamUnitDecl {
+        param: "ticks_down",
+        unit: ParamUnit::Count,
+    },
+];
 
 #[cfg(test)]
 #[path = "tests.rs"]

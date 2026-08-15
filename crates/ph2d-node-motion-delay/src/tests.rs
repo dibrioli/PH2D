@@ -559,3 +559,141 @@ fn the_falloff_field_gates_the_delay() {
         "half the field is half the delay: expected 5, got {y}"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// `ticks_down` — subir e descer são dois tempos (o Lag CHOP do TD)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Um degrau: sobe a `1.0` no tick 1, desce a `0.0` no tick `fall`, e fica. É a
+/// entrada canônica de um envelope — a única em que *"quanto tempo para subir"* e
+/// *"quanto tempo para descer"* são perguntas separadas.
+fn step_path(fall: usize, total: usize) -> Vec<f32> {
+    (0..total)
+        .map(|t| if (1..fall).contains(&t) { 1.0 } else { 0.0 })
+        .collect()
+}
+
+/// **A DESCIDA É MAIS LENTA QUE A SUBIDA** — o que o Lag CHOP entrega e um
+/// `ticks` só não conseguia dizer.
+///
+/// ⚠️ O oráculo mede as DUAS metades do mesmo degrau na MESMA corrida: quanto
+/// falta para chegar ao topo `k` ticks depois de subir, e quanto ainda resta `k`
+/// ticks depois de descer. Um gate que só olhasse a descida ficaria verde com um
+/// `ticks_down` que atrasasse tudo.
+#[test]
+fn the_fall_can_be_slower_than_the_rise() {
+    const RISE: f32 = 2.0;
+    const FALL: f32 = 16.0;
+    let path = step_path(12, 24);
+    let sym = run(&[("mode", 2.0), ("ticks", RISE)], &path);
+    let asym = run(
+        &[("mode", 2.0), ("ticks", RISE), ("ticks_down", FALL)],
+        &path,
+    );
+
+    // A SUBIDA é a mesma nos dois — `ticks_down` não a toca.
+    assert_eq!(
+        sym[..12],
+        asym[..12],
+        "a régua da subida não pode mudar: {sym:?} / {asym:?}"
+    );
+    // E a DESCIDA do assimétrico fica MUITO mais alta quatro ticks depois do
+    // degrau — ele ainda está a soltar o valor que o simétrico já largou.
+    let (s, a) = (sym[15], asym[15]);
+    assert!(
+        a > s * 3.0,
+        "quatro ticks após o degrau: simétrico {s:.4}, assimétrico {a:.4}"
+    );
+    eprintln!("degrau: subida idêntica · descida {s:.4} contra {a:.4}");
+}
+
+/// **A SENTINELA É *"o mesmo da subida"*, BYTE A BYTE** — o param ausente coza o
+/// que um `ticks_down` igual ao `ticks` coza.
+///
+/// ⚠️ **A 1ª versão deste gate era VAZIA e uma mutação a nomeou:** ela comparava
+/// *param ausente* contra *param explicitamente `0`*, e os dois resolvem ao MESMO
+/// número — era o nó comparado consigo mesmo, verde sob qualquer lei que a
+/// sentinela pudesse ter. Trocar `0` por *"descida instantânea"* passava. O
+/// oráculo falsificável é o OUTRO lado da promessa: zero tem de significar
+/// **cinco**, e é isso que também prova que um grafo salvo antes deste param coza
+/// o que cozia.
+#[test]
+fn the_zero_sentinel_means_the_rise_rule_to_the_bit() {
+    let path = step_path(10, 20);
+    let absent = run(&[("mode", 2.0), ("ticks", 5.0)], &path);
+    let spelled = run(&[("mode", 2.0), ("ticks", 5.0), ("ticks_down", 5.0)], &path);
+    for (t, (a, b)) in absent.iter().zip(&spelled).enumerate() {
+        assert_eq!(a.to_bits(), b.to_bits(), "tick {t}: {a} contra {b}");
+    }
+    // ⚠️ E o CONTROLE: a fixture tem de CONTER uma descida, senão a igualdade é
+    // verdadeira por vácuo (só o ramo da subida foi percorrido).
+    assert!(
+        absent.windows(2).any(|w| w[1] < w[0]),
+        "a fixture tem de descer: {absent:?}"
+    );
+}
+
+/// **`ticks_down = 1` É a descida instantânea** — a medição que torna a
+/// sentinela gratuita.
+///
+/// ⚠️ Sem este número a escolha de `0` como *"o mesmo da subida"* seria uma troca
+/// (um tempo pedível gasto numa sentinela). A lei do one-pole divide por
+/// `rule.max(1.0)`, então `1` já leva o valor ao vivo num tick — nada se perde.
+#[test]
+fn a_fall_of_one_tick_is_already_instant() {
+    let path = step_path(10, 14);
+    let out = run(&[("mode", 2.0), ("ticks", 8.0), ("ticks_down", 1.0)], &path);
+    // No tick 10 o degrau desceu; com régua 1 o nó já está no vivo (0.0).
+    assert_eq!(out[10], 0.0, "a descida de um tick é instantânea: {out:?}");
+    // E o CONTROLE: a subida continua lenta (régua 8), senão o gate estaria a
+    // medir um nó que virou passa-adiante.
+    assert!(out[2] < 0.5, "a subida continua lagada: {out:?}");
+}
+
+/// **A régua da descida NÃO alcança `Delay` nem `Average`** — os dois não têm
+/// direção, e é por isso que a row é gateada ao `Blend`.
+///
+/// ⚠️ Um gate só sobre o `ParamGate` (a row some) provaria a UI e não a LEI: um
+/// documento pode carregar `ticks_down` num nó em modo `Average`, e o kernel tem
+/// de o ignorar.
+#[test]
+fn the_fall_rule_is_blend_only() {
+    let path = step_path(10, 20);
+    for mode in [0.0f32, 1.0] {
+        let plain = run(&[("mode", mode), ("ticks", 4.0)], &path);
+        let with = run(
+            &[("mode", mode), ("ticks", 4.0), ("ticks_down", 20.0)],
+            &path,
+        );
+        assert_eq!(plain, with, "modo {mode}: a descida não pode ser lida");
+    }
+}
+
+/// **A direção é POR COMPONENTE** — uma cor que clareia num canal e escurece
+/// noutro usa os dois tempos no mesmo tick.
+///
+/// ⚠️ A alternativa (decidir pela norma do vetor) faria o canal que anda pouco
+/// herdar a direção do que anda muito, e é exatamente o que este oráculo separa:
+/// os dois canais partem do MESMO valor e vão para lados opostos.
+#[test]
+fn the_direction_is_decided_per_component() {
+    let mid = |v: f32| Stream::new(1).with("tint", Column::Vec4(vec![[v, 1.0 - v, 0.5, 1.0]]));
+    // Assenta em (0.5, 0.5), depois o vermelho SOBE e o verde DESCE.
+    let out = run_any(
+        &[
+            ("channel", CH_COLOR as f32),
+            ("mode", 2.0),
+            ("ticks", 2.0),
+            ("ticks_down", 24.0),
+        ],
+        40,
+        |_, _, t| mid(if t < 30 { 0.5 } else { 1.0 }),
+    );
+    let last = col(out.last().expect("frames"), "tint");
+    let (red, green) = (last[0], last[1]);
+    // O vermelho subiu de 0,5 para ~1,0 com régua 2 (rápido); o verde desceu de
+    // 0,5 para 0,0 com régua 24 (devagar) e ainda está bem acima de zero.
+    assert!(red > 0.95, "o canal que SOBE é rápido: {red:.4}");
+    assert!(green > 0.25, "o canal que DESCE é lento: {green:.4}");
+    eprintln!("por componente: vermelho {red:.4} (sobe) · verde {green:.4} (desce)");
+}

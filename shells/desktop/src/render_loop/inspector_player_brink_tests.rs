@@ -16,6 +16,13 @@ use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_editor::PlayerFieldEdit;
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PlatformPlayer, RigidBody};
 
+/// **A premissa desta fixture, declarada uma vez** — todo corpo aqui é
+/// `Dynamic` e vira player pela porta do Inspector, então a lei corre nele com
+/// a perna ELÁSTICA. Passá-la a cada chamada seria repetir trinta vezes o que
+/// é um fato do arquivo; passá-la ERRADA deixaria verdes, pelo motivo errado,
+/// os gates que leem `reaction_is_live`/`push_is_live`/`spring_is_live`.
+const SPRUNG: ph2d_physics_ecs::PlayerLiveness = ph2d_physics_ecs::PlayerLiveness::SPRING;
+
 const CAPSULE: ColliderShape = ColliderShape::Capsule {
     half_height: 0.3,
     radius: 0.2,
@@ -71,7 +78,7 @@ fn the_walk_off_chip_reaches_the_config_and_the_row_reads_it_back() {
             .walk_off_ledges
     };
     let row_index = |sim: &SimWorld| {
-        build_player_info(sim, bits, 0.0, 0.0, None)
+        build_player_info(sim, bits, 0.0, 0.0, None, SPRUNG)
             .expect("a §14 monta a info")
             .walk_off_ledges
     };
@@ -141,7 +148,7 @@ fn the_crouch_armed_flag_comes_from_the_law() {
     let (mut sim, bits) = dynamic_body();
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
     let armed = |sim: &SimWorld| {
-        build_player_info(sim, bits, 0.0, 0.0, None)
+        build_player_info(sim, bits, 0.0, 0.0, None, SPRUNG)
             .expect("a §14 monta a info")
             .crouch_armed
     };

@@ -53,6 +53,22 @@ pub struct InspectorPlayerInfo {
     /// o painel recebe a resposta e nunca o mapeamento.
     pub push_is_live: bool,
 
+    /// **A perna é uma MOLA?** — o terceiro membro da família, e o que decide se
+    /// as rows `Float Height` / `Leg Stiffness` / `Leg Damping` (e o botão
+    /// *Fit to Collider*) são PINTADAS.
+    ///
+    /// ⚠️ **Sob Snap os três são lidos por NINGUÉM, e o mecanismo é diferente do
+    /// dos irmãos acima:** a lei sobrescreve o `float_height` pela geometria do
+    /// corpo antes de o motor o ver (*"sob Snap a perna é o próprio corpo"*), e
+    /// os dois números da mola não têm mola que os consuma. Um deles ainda diz
+    /// ao artista quanto o personagem paira — e ele **não paira**.
+    ///
+    /// ⚠️ **`Cling Distance` FICA**, e é por isso que o card não se esconde
+    /// inteiro: sob Snap ela é o `snap_distance` E o `step_height` do
+    /// controlador, o número mais vivo da seção. Esconder o card levaria o único
+    /// controle que ali funciona.
+    pub spring_is_live: bool,
+
     /// A altura a que ele paira, metros (do centro do corpo para baixo).
     pub float_height: f32,
     /// A altura MÍNIMA que a forma deste corpo exige para de fato flutuar —

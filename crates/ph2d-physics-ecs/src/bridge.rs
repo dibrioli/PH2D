@@ -43,7 +43,10 @@ pub use player::channel::Launch;
 /// mora *o que a lei decide num tique*, aqui *o que o resto do app pode ler*.
 pub mod player_out;
 pub mod player_view;
-mod pose_owner;
+// ⚠️ `pub(crate)` só para o `lib.rs` poder RE-EXPORTAR a [`PlayerLiveness`]: o
+// veredito é o que a §14 do Inspector lê, e o `pose_owner`/`PoseOwner` seguem
+// `pub(super)` — quem escreve a pose continua a ser uma pergunta interna.
+pub(crate) mod pose_owner;
 mod readback;
 mod rewind;
 pub mod rope;

@@ -15,6 +15,13 @@ use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_editor::PlayerFieldEdit;
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
 
+/// **A premissa desta fixture, declarada uma vez** — todo corpo aqui é
+/// `Dynamic` e vira player pela porta do Inspector, então a lei corre nele com
+/// a perna ELÁSTICA. Passá-la a cada chamada seria repetir trinta vezes o que
+/// é um fato do arquivo; passá-la ERRADA deixaria verdes, pelo motivo errado,
+/// os gates que leem `reaction_is_live`/`push_is_live`/`spring_is_live`.
+const SPRUNG: ph2d_physics_ecs::PlayerLiveness = ph2d_physics_ecs::PlayerLiveness::SPRING;
+
 const CAPSULE: ColliderShape = ColliderShape::Capsule {
     half_height: 0.3,
     radius: 0.2,
@@ -62,7 +69,7 @@ fn the_emit_signals_verb_attaches_and_detaches_the_marker() {
     let e = ph2d_ecs::Entity::from_bits(bits);
 
     assert!(
-        build_player_info(&sim, bits, 0.0, 0.0, None).is_some_and(|i| !i.emits_signals),
+        build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).is_some_and(|i| !i.emits_signals),
         "um player novo nasce em SILÊNCIO"
     );
 
@@ -73,7 +80,7 @@ fn the_emit_signals_verb_attaches_and_detaches_the_marker() {
             .is_some(),
         "ligar anexa o marcador"
     );
-    assert!(build_player_info(&sim, bits, 0.0, 0.0, None).is_some_and(|i| i.emits_signals));
+    assert!(build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).is_some_and(|i| i.emits_signals));
 
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::EmitSignals(false));
     assert!(
@@ -83,7 +90,7 @@ fn the_emit_signals_verb_attaches_and_detaches_the_marker() {
         "desligar REMOVE o marcador — um arquivo não carrega um no-op"
     );
     assert!(
-        build_player_info(&sim, bits, 0.0, 0.0, None).is_some_and(|i| !i.emits_signals),
+        build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).is_some_and(|i| !i.emits_signals),
         "e a §14 volta a mostrar Off"
     );
 }
@@ -98,7 +105,7 @@ fn the_live_readout_carries_what_the_law_published() {
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
 
     assert!(
-        build_player_info(&sim, bits, 0.0, 0.0, None).is_some_and(|i| i.live.is_none()),
+        build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).is_some_and(|i| i.live.is_none()),
         "sem leitura da ponte a §14 não inventa uma"
     );
 
@@ -108,7 +115,7 @@ fn the_live_readout_carries_what_the_law_published() {
         velocity: [2.5, -0.5],
         ..Default::default()
     };
-    let info = build_player_info(&sim, bits, 0.0, 0.0, Some(view)).expect("a §14 existe");
+    let info = build_player_info(&sim, bits, 0.0, 0.0, Some(view), SPRUNG).expect("a §14 existe");
     let live = info.live.expect("com leitura, ela chega");
     assert_eq!(
         live.footing_tag,

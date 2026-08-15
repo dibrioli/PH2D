@@ -14,6 +14,14 @@ use super::inspector_player::{apply_player_edit, build_player_info};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_editor::PlayerFieldEdit;
+
+/// **A premissa desta fixture, declarada uma vez** — todo corpo aqui é
+/// `Dynamic` e vira player pela porta do Inspector, então a lei corre nele com
+/// a perna ELÁSTICA. Passá-la a cada chamada seria repetir trinta vezes o que
+/// é um fato do arquivo; passá-la ERRADA deixaria verdes, pelo motivo errado,
+/// os gates que leem `reaction_is_live`/`push_is_live`/`spring_is_live`.
+const SPRUNG: ph2d_physics_ecs::PlayerLiveness = ph2d_physics_ecs::PlayerLiveness::SPRING;
+
 use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, PlatformLift, PlatformPlayer, RigidBody,
 };
@@ -80,7 +88,7 @@ fn the_chosen_policy_reaches_the_config_and_the_row_shows_it_back() {
         )
     };
     let shown = |sim: &SimWorld| {
-        build_player_info(sim, bits, 0.0, 0.0, None)
+        build_player_info(sim, bits, 0.0, 0.0, None, SPRUNG)
             .expect("a secao continua viva")
             .platform_lift
     };

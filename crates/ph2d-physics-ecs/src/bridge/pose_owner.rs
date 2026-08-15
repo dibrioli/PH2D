@@ -96,6 +96,113 @@ impl PoseOwner {
     }
 }
 
+/// **O QUE A LEI DE FACTO LÊ DESTE PERSONAGEM** — o veredito do
+/// [`pose_owner`], publicado para quem PINTA a §14.
+///
+/// # ⚠️ Por que isto nasce aqui e não na shell
+///
+/// Cada campo é a condição literal de um `if` do `drive_players`, e a shell
+/// respondia às mesmas quatro perguntas por conta própria, a partir do
+/// `PlayerMode` lido do mundo. Isso é a **segunda cópia** de uma resposta que
+/// este módulo existe para dar uma vez — e ela já mentia num caso real: um
+/// player **ASSADO** (`Kinematic` + [`PlatformPlayer`], sem `PlayerMode` ⇒
+/// `PlayerMode::default()` é `Dynamic`) resolve para [`PoseOwner::Scene`], a
+/// lei **não corre**, e o painel pintava os doze cards como se corresse.
+///
+/// ⚠️ **É um struct de bools, não um enum:** as quatro perguntas não são
+/// mutuamente exclusivas (o modo `Pure` corre a lei, tem perna rígida e **não**
+/// transmite), e um enum obrigaria o painel a re-derivar a combinação — que é
+/// precisamente a segunda cópia que se está a remover.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct PlayerLiveness {
+    /// **A lei corre neste corpo?** — `drive_players` nem entra no laço quando
+    /// a cena dirige a pose, e sai no `else` seguinte sem o componente.
+    pub law_runs: bool,
+    /// **A perna é uma MOLA?** — [`Support::Spring`]. Sob [`Support::Snap`] o
+    /// `float_height` é sobrescrito pela geometria do corpo e os dois números da
+    /// mola não são lidos por ninguém.
+    pub spring: bool,
+    /// **O mundo ouve este personagem?** — a 3ª lei inteira (o card `REACT`).
+    pub transmits: bool,
+    /// **O empurrão LATERAL é lido?** — só o laço dos `KinMove` o corre, e sob
+    /// `Pure` a `ReactionConfig` já chega zerada.
+    pub pushes: bool,
+}
+
+impl PlayerLiveness {
+    /// **A lei NÃO corre** — sem componente, ou a pose é da cena.
+    ///
+    /// ⚠️ É o neutro que mantém a §14 OFERECIDA onde ela tem de estar: a face
+    /// vazia (o botão *Make Platform Player*) é o gesto que faz o comportamento
+    /// existir, e escondê-la aqui tornaria a física alcançável só onde já há
+    /// física — a lição da §11 do W2a.
+    pub const INERT: Self = Self {
+        law_runs: false,
+        spring: false,
+        transmits: false,
+        pushes: false,
+    };
+    /// O player DINÂMICO: perna elástica, transmite pelo solver, sem empurrão
+    /// lateral próprio (ele já empurra pelo contato).
+    pub const SPRING: Self = Self {
+        law_runs: true,
+        spring: true,
+        transmits: true,
+        pushes: false,
+    };
+    /// O player CINEMÁTICO: a perna pousa, e o empurrão lateral é a única via
+    /// pela qual ele move um caixote.
+    pub const SNAP: Self = Self {
+        law_runs: true,
+        spring: false,
+        transmits: true,
+        pushes: true,
+    };
+}
+
+/// **A tradução, feita UMA vez** — cada linha nomeia o `if` que ela espelha.
+pub(super) fn liveness(world: &World, entity: Entity, kind: BodyKind) -> PlayerLiveness {
+    // `drive_players`: `let Some(cfg) = world.get::<PlatformPlayer>(…) else { continue }`.
+    if world.get::<PlatformPlayer>(entity).is_none() {
+        return PlayerLiveness::INERT;
+    }
+    let owner = pose_owner(world, entity, kind);
+    // `drive_players`: `if owner.driven_by_scene() { continue }`.
+    if owner.driven_by_scene() {
+        return PlayerLiveness::INERT;
+    }
+    PlayerLiveness {
+        law_runs: true,
+        spring: owner.support() == Support::Spring,
+        transmits: owner.transmits(),
+        // ⚠️ A conjunção é a mesma do `PlayerMode::pushes_bodies`, e agora sai
+        // do OWNER: o `writes_own_pose` é o que põe o corpo no laço dos
+        // `KinMove` (o único que chama `push_from_hits`), e o `transmits` é o
+        // que impede o `Pure` de o herdar.
+        pushes: owner.writes_own_pose() && owner.transmits(),
+    }
+}
+
+impl crate::PhysicsBridge {
+    /// **O que a §14 pode oferecer sem mentir.**
+    ///
+    /// ⚠️ **O `kind` vem do corpo CONSTRUÍDO, com o autorado como recuo** — a
+    /// mesma preferência do [`pose_owner`], e o recuo existe porque o painel
+    /// pergunta no MESMO quadro em que o artista clica *Add*: sem ele a seção
+    /// piscaria inerte por um quadro, no gesto que a acabou de criar.
+    #[must_use]
+    pub fn player_liveness(&self, world: &World, entity: Entity) -> PlayerLiveness {
+        let Some(kind) = self.bodies.get(&entity).map(|b| b.kind).or_else(|| {
+            world
+                .get::<crate::components::RigidBody>(entity)
+                .map(|b| b.kind)
+        }) else {
+            return PlayerLiveness::INERT;
+        };
+        liveness(world, entity, kind)
+    }
+}
+
 /// A porta. `kind` vem do registro de corpos da ponte (o que de facto foi
 /// construído no rapier), e não do componente — é o corpo que existe que
 /// importa, não o que foi pedido.

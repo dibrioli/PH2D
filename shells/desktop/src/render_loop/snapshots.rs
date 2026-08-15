@@ -137,6 +137,12 @@ pub(super) fn publish(
     // (`PhysicsBridge::player_view`): uma segunda derivação aqui descreveria um
     // personagem que a simulação não simulou.
     player_live: Option<ph2d_physics_ecs::PlayerView>,
+    // **O veredito do `pose_owner` sobre o player selecionado** — o que a lei de
+    // facto lê dele. Resolvido pelo chamador pelo mesmo motivo do `player_live`
+    // acima, e pela MESMA porta que decide quem escreve a pose: uma segunda
+    // derivação aqui (do `PlayerMode`) é o que fazia a §14 oferecer controles
+    // que ninguém consome.
+    player_law: ph2d_physics_ecs::PlayerLiveness,
     // W-Pulley W3: a §13 tem a mesma máquina, uma família adiante — o eyedropper
     // de montagem da ROLDANA armado, para que ele pinte pressed enquanto espera o
     // clique no corpo. Dono: `App.wheel_body_pick`.
@@ -877,6 +883,7 @@ pub(super) fn publish(
             recorded_run_seconds,
             discarded_run_seconds,
             player_live,
+            player_law,
         )
     });
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {

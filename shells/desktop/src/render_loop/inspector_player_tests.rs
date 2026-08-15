@@ -14,6 +14,13 @@ use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_editor::PlayerFieldEdit;
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PlatformPlayer, RigidBody};
 
+/// **A premissa desta fixture, declarada uma vez** — todo corpo aqui é
+/// `Dynamic` e vira player pela porta do Inspector, então a lei corre nele com
+/// a perna ELÁSTICA. Passá-la a cada chamada seria repetir trinta vezes o que
+/// é um fato do arquivo; passá-la ERRADA deixaria verdes, pelo motivo errado,
+/// os gates que leem `reaction_is_live`/`push_is_live`/`spring_is_live`.
+const SPRUNG: ph2d_physics_ecs::PlayerLiveness = ph2d_physics_ecs::PlayerLiveness::SPRING;
+
 fn body(kind: BodyKind, shape: ColliderShape) -> (SimWorld, u64) {
     let mut sim = SimWorld::new();
     let e = sim
@@ -41,12 +48,13 @@ const CAPSULE: ColliderShape = ColliderShape::Capsule {
 #[test]
 fn the_empty_face_becomes_a_player_with_the_laws_starting_point() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
-    let before =
-        build_player_info(&sim, bits, 0.0, 0.0, None).expect("todo corpo Dynamic tem a §14");
+    let before = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG)
+        .expect("todo corpo Dynamic tem a §14");
     assert!(!before.has_player, "ele ainda nao e' um player");
 
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
-    let after = build_player_info(&sim, bits, 0.0, 0.0, None).expect("a secao continua viva");
+    let after =
+        build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).expect("a secao continua viva");
     assert!(after.has_player);
     assert_eq!(after.speed, 6.0, "a velocidade do ponto de partida");
     assert_eq!(after.max_slope_deg, 45.0);
@@ -62,7 +70,7 @@ fn the_empty_face_becomes_a_player_with_the_laws_starting_point() {
 fn a_new_player_floats_over_its_own_collider() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
-    let info = build_player_info(&sim, bits, 0.0, 0.0, None).unwrap();
+    let info = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).unwrap();
     assert!(
         info.min_float_known,
         "uma capsula tem piso computavel — sem isto o resto do gate nao diz nada"
@@ -81,14 +89,14 @@ fn fit_to_collider_raises_a_short_float_height() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::FloatHeight(0.2));
-    let short = build_player_info(&sim, bits, 0.0, 0.0, None).unwrap();
+    let short = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).unwrap();
     assert!(
         short.float_height < short.min_float_height,
         "a fixture TEM de conter o defeito"
     );
 
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::FitFloatHeight);
-    let fixed = build_player_info(&sim, bits, 0.0, 0.0, None).unwrap();
+    let fixed = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).unwrap();
     assert!(
         fixed.float_height > fixed.min_float_height,
         "o ajuste tem de passar do piso: {:.3} vs {:.3}",
@@ -108,7 +116,7 @@ fn a_static_body_gets_neither_the_section_nor_the_write() {
     for kind in [BodyKind::Static, BodyKind::Kinematic] {
         let (mut sim, bits) = body(kind, CAPSULE);
         assert!(
-            build_player_info(&sim, bits, 0.0, 0.0, None).is_none(),
+            build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).is_none(),
             "{kind:?} nao pode receber a secao"
         );
         apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
@@ -128,8 +136,8 @@ fn remove_gives_the_body_back_and_keeps_the_door_open() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Remove);
-    let info =
-        build_player_info(&sim, bits, 0.0, 0.0, None).expect("a secao NAO some com o componente");
+    let info = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG)
+        .expect("a secao NAO some com o componente");
     assert!(!info.has_player);
 }
 
@@ -144,7 +152,7 @@ fn the_damping_is_clamped_to_the_measured_ceiling() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::SpringDamping(5.0));
-    let info = build_player_info(&sim, bits, 0.0, 0.0, None).unwrap();
+    let info = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).unwrap();
     assert_eq!(
         info.spring_damping,
         ph2d_physics_ecs::RideConfig::MAX_DAMPING
@@ -167,7 +175,7 @@ fn a_box_reports_no_known_floor() {
             half_y: 0.5,
         },
     );
-    let info = build_player_info(&sim, bits, 0.0, 0.0, None).unwrap();
+    let info = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).unwrap();
     assert!(!info.min_float_known);
 }
 
@@ -184,14 +192,14 @@ fn the_two_w10_assists_land_on_the_component_and_are_clamped() {
 
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::CornerReach(0.2));
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::LiftMomentum(0.8));
-    let info = build_player_info(&sim, bits, 0.0, 0.0, None).unwrap();
+    let info = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).unwrap();
     assert!((info.corner_reach - 0.2).abs() < 1.0e-6, "{info:?}");
     assert!((info.lift_momentum - 0.8).abs() < 1.0e-6, "{info:?}");
 
     // Negativo não é uma direção nem uma janela: vira o desligado.
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::CornerReach(-1.0));
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::LiftMomentum(-1.0));
-    let clamped = build_player_info(&sim, bits, 0.0, 0.0, None).unwrap();
+    let clamped = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).unwrap();
     assert_eq!((clamped.corner_reach, clamped.lift_momentum), (0.0, 0.0));
 }
 
@@ -222,7 +230,7 @@ fn fitting_the_crouch_seeds_it_from_the_floor_not_from_the_standing_leg() {
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::CrouchHeight(0.10));
 
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::FitCrouchHeight);
-    let info = build_player_info(&sim, bits, 0.0, 0.0, None).unwrap();
+    let info = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).unwrap();
 
     assert!(
         info.crouch_height > info.min_float_height,
@@ -254,7 +262,7 @@ fn a_fitted_crouch_never_rises_above_the_standing_leg() {
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::FloatHeight(0.20));
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::CrouchHeight(0.10));
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::FitCrouchHeight);
-    let info = build_player_info(&sim, bits, 0.0, 0.0, None).unwrap();
+    let info = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).unwrap();
     assert!(
         info.crouch_height <= info.float_height,
         "o agachar ({:.3}) passou da perna de pe ({:.3})",
@@ -285,7 +293,7 @@ fn the_player_section_is_no_home_for_a_document_wide_run() {
     // 1. O corpo não é Dynamic: a §14 não existe, e com ela nenhum verbo de fita.
     let (sim, bits) = body(BodyKind::Static, CAPSULE);
     assert!(
-        build_player_info(&sim, bits, 4.0, 0.0, None).is_none(),
+        build_player_info(&sim, bits, 4.0, 0.0, None, SPRUNG).is_none(),
         "a §14 nasceu sobre um corpo Static -- a mola e' um impulso e nao move \
          massa infinita"
     );
@@ -295,306 +303,24 @@ fn the_player_section_is_no_home_for_a_document_wide_run() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
     assert!(
-        build_player_info(&sim, bits, 4.0, 0.0, None).is_some(),
+        build_player_info(&sim, bits, 4.0, 0.0, None, SPRUNG).is_some(),
         "o controle: enquanto o player existe a §14 mostra a corrida"
     );
     sim.world_mut().despawn(ph2d_ecs::Entity::from_bits(bits));
     assert!(
-        build_player_info(&sim, bits, 4.0, 0.0, None).is_none(),
+        build_player_info(&sim, bits, 4.0, 0.0, None, SPRUNG).is_none(),
         "apagar o personagem tinha de levar a §14 embora -- e' isso que prendia \
          a corrida"
     );
 }
 
-/// **O gesto do MODO leva a algum lugar, e VOLTA** (W-KinMove).
+/// **O que decide COMO este personagem é movido** — o `PlayerMode` e as duas
+/// consequências dele (a 3ª lei e o empurrão lateral), cortadas para um irmão
+/// por TETO DE LOC (a shell mede 600).
 ///
-/// ⚠️ **As duas metades, e a segunda é a que quase shipou quebrada:** o
-/// `build_player_info` recusava todo corpo que não fosse `Dynamic`, então clicar
-/// `Kinematic` fazia a §14 inteira **DESAPARECER** — o artista escolhia o modo e
-/// perdia o controle que o traria de volta. Um gate que só testasse a ida ficaria
-/// verde sobre isso.
-#[test]
-fn switching_the_mode_writes_both_halves_and_the_section_survives_the_trip() {
-    use ph2d_physics_ecs::PlayerMode;
-    let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
-
-    // Ida: o componente E o corpo.
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Mode(1));
-    let e = ph2d_ecs::Entity::from_bits(bits);
-    assert_eq!(
-        sim.world().get::<PlayerMode>(e).copied(),
-        Some(PlayerMode::Kinematic),
-        "o modo tem de ser escrito"
-    );
-    assert_eq!(
-        sim.world().get::<RigidBody>(e).map(|b| b.kind),
-        Some(BodyKind::Kinematic),
-        "e o CORPO junto: pedir os dois em duas secoes e' a falha de duas-portas"
-    );
-    let info = build_player_info(&sim, bits, 0.0, 0.0, None)
-        .expect("a §14 tem de continuar VIVA num player cinematico");
-    assert_eq!(info.mode_tag, 1, "e o chip tem de mostrar onde ele esta");
-
-    // Volta: e o componente sai no neutro (o detach do `GravityScale`).
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Mode(0));
-    assert_eq!(
-        sim.world().get::<PlayerMode>(e).copied(),
-        None,
-        "no neutro o componente sai: um arquivo nao carrega um no-op"
-    );
-    assert_eq!(
-        sim.world().get::<RigidBody>(e).map(|b| b.kind),
-        Some(BodyKind::Dynamic)
-    );
-    assert_eq!(
-        build_player_info(&sim, bits, 0.0, 0.0, None)
-            .unwrap()
-            .mode_tag,
-        0
-    );
-}
-
-/// **Um corpo cinemático que NÃO é player continua fora da §14** — ele é dirigido
-/// pela cena (um bake, uma curva), e oferecer *"Make Platform Player"* ali criaria
-/// um player que a ponte não dirige.
-#[test]
-fn a_scene_driven_kinematic_body_is_not_offered_the_section() {
-    let (sim, bits) = body(BodyKind::Kinematic, CAPSULE);
-    assert!(build_player_info(&sim, bits, 0.0, 0.0, None).is_none());
-}
-
-/// **O EMPURRÃO autorado chega ao caixote** (W-KinPush) — a quarta condição.
-///
-/// ⚠️ **A ponta que nenhum outro gate cobre é o MEIO:** o seam prova que o
-/// clique vira um `ReactionPush`, e o `player_push::a_walking_player_shoves_a_loose_crate`
-/// prova que o componente move o caixote. Entre os dois há a linha que ESCREVE o
-/// componente, e uma escrita no campo errado deixaria os dois verdes com o
-/// slider inerte.
-///
-/// ⚠️ **O modo é CINEMÁTICO de propósito:** sob Spring o solver empurra sozinho e
-/// o gate ficaria verde com o canal inteiro deletado — *um gate que passa no
-/// controle está a medir a coisa errada*.
-#[test]
-fn authoring_the_push_reaches_the_crate() {
-    fn crate_travel(push: f32) -> f32 {
-        let mut sim = SimWorld::new();
-        sim.world_mut().spawn((
-            Name::new("Floor"),
-            RigidBody {
-                kind: BodyKind::Static,
-            },
-            Collider {
-                shape: ColliderShape::Cuboid {
-                    half_x: 40.0,
-                    half_y: 0.5,
-                },
-                ..Collider::default()
-            },
-            Transform::from_translation(Vec2::new(0.0, -0.5)),
-        ));
-        let boxy = sim
-            .world_mut()
-            .spawn((
-                Name::new("Crate"),
-                RigidBody {
-                    kind: BodyKind::Dynamic,
-                },
-                Collider {
-                    shape: ColliderShape::Cuboid {
-                        half_x: 0.3,
-                        half_y: 0.3,
-                    },
-                    ..Collider::default()
-                },
-                ph2d_physics_ecs::LockRotation,
-                Transform::from_translation(Vec2::new(1.5, 0.3)),
-            ))
-            .id();
-        let hero = sim
-            .world_mut()
-            .spawn((
-                Name::new("Hero"),
-                RigidBody {
-                    kind: BodyKind::Dynamic,
-                },
-                Collider {
-                    shape: CAPSULE,
-                    ..Collider::default()
-                },
-                ph2d_physics_ecs::LockRotation,
-                Transform::from_translation(Vec2::new(0.0, 0.9)),
-            ))
-            .id();
-        let bits = hero.to_bits();
-        // O gesto do artista, pela porta do Inspector e nada mais.
-        apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
-        apply_player_edit(&mut sim, bits, PlayerFieldEdit::FloatHeight(0.9));
-        apply_player_edit(&mut sim, bits, PlayerFieldEdit::Mode(1));
-        apply_player_edit(&mut sim, bits, PlayerFieldEdit::ReactionPush(push));
-        assert!(
-            (build_player_info(&sim, bits, 0.0, 0.0, None)
-                .unwrap()
-                .reaction_push
-                - push)
-                .abs()
-                < 1.0e-6,
-            "a row tem de MOSTRAR o que foi autorado"
-        );
-
-        let mut bridge = ph2d_physics_ecs::PhysicsBridge::new();
-        for t in 1..=60u64 {
-            bridge.dispatch(&mut sim, true, t);
-        }
-        let x0 = sim.world().get::<Transform>(boxy).unwrap().translation.x;
-        bridge.set_player_input(
-            hero,
-            ph2d_physics_ecs::PlayerInput {
-                drive: 1.0,
-                ..ph2d_physics_ecs::PlayerInput::default()
-            },
-        );
-        for t in 61..=240u64 {
-            bridge.dispatch(&mut sim, true, t);
-        }
-        sim.world().get::<Transform>(boxy).unwrap().translation.x - x0
-    }
-
-    let off = crate_travel(0.0);
-    let on = crate_travel(1.0);
-    assert!(
-        off.abs() < 0.01,
-        "com o slider em zero o caixote fica: {off:.4}"
-    );
-    assert!(
-        on > 1.0,
-        "e com ele em um o gesto do artista move o caixote: {on:.4} (zero deu {off:.4})"
-    );
-}
-
-/// **Negativo vira zero**, nunca um empurrão invertido: o personagem PUXANDO o
-/// caixote em que esbarra seria a lei com o sinal trocado.
-#[test]
-fn a_negative_push_is_refused_not_inverted() {
-    let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::ReactionPush(-2.0));
-    let info = build_player_info(&sim, bits, 0.0, 0.0, None).unwrap();
-    assert!((info.reaction_push).abs() < 1.0e-6, "{info:?}");
-}
-
-/// **O TERCEIRO CHIP leva a algum lugar** (W-KinPure) — a quarta condição de UI
-/// deste módulo, pela porta que o artista de facto usa.
-///
-/// ⚠️ O gesto é UM clique, e ele tem de fazer três coisas de uma vez: pôr o
-/// componente, virar o corpo em cinemático e calar a 3ª lei. Um teste por-edit
-/// ficaria verde com qualquer uma das três faltando.
-#[test]
-fn choosing_pure_turns_the_world_into_scenery() {
-    fn crate_travel(mode_tag: u8) -> f32 {
-        let mut sim = SimWorld::new();
-        sim.world_mut().spawn((
-            Name::new("Floor"),
-            RigidBody {
-                kind: BodyKind::Static,
-            },
-            Collider {
-                shape: ColliderShape::Cuboid {
-                    half_x: 40.0,
-                    half_y: 0.5,
-                },
-                ..Collider::default()
-            },
-            Transform::from_translation(Vec2::new(0.0, -0.5)),
-        ));
-        let boxy = sim
-            .world_mut()
-            .spawn((
-                Name::new("Crate"),
-                RigidBody {
-                    kind: BodyKind::Dynamic,
-                },
-                Collider {
-                    shape: ColliderShape::Cuboid {
-                        half_x: 0.3,
-                        half_y: 0.3,
-                    },
-                    ..Collider::default()
-                },
-                ph2d_physics_ecs::LockRotation,
-                Transform::from_translation(Vec2::new(1.5, 0.3)),
-            ))
-            .id();
-        let hero = sim
-            .world_mut()
-            .spawn((
-                Name::new("Hero"),
-                RigidBody {
-                    kind: BodyKind::Dynamic,
-                },
-                Collider {
-                    shape: CAPSULE,
-                    ..Collider::default()
-                },
-                ph2d_physics_ecs::LockRotation,
-                Transform::from_translation(Vec2::new(0.0, 0.9)),
-            ))
-            .id();
-        let bits = hero.to_bits();
-        apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
-        apply_player_edit(&mut sim, bits, PlayerFieldEdit::FloatHeight(0.9));
-        apply_player_edit(&mut sim, bits, PlayerFieldEdit::Mode(mode_tag));
-
-        let info = build_player_info(&sim, bits, 0.0, 0.0, None).unwrap();
-        assert_eq!(info.mode_tag, mode_tag, "o chip tem de MOSTRAR o escolhido");
-        assert_eq!(
-            info.reaction_is_live,
-            mode_tag != 2,
-            "e o card REACTION segue quem o mundo ouve"
-        );
-        // ⚠️ **A OFERTA fica ao lado da MEDIÇÃO, de propósito** (report do Enio,
-        // 2026-08-09): o `push` é lido só pelo cinemático, e o número que este
-        // helper devolve logo abaixo é o que prova a frase. Um gate de painel
-        // sozinho afirmaria que a row some; este afirma que ela some **onde
-        // não faz nada** — que é a razão.
-        assert_eq!(
-            info.push_is_live,
-            mode_tag == 1,
-            "o `Push on Bodies` so' e' oferecido a quem o le'"
-        );
-
-        let mut bridge = ph2d_physics_ecs::PhysicsBridge::new();
-        for t in 1..=60u64 {
-            bridge.dispatch(&mut sim, true, t);
-        }
-        let x0 = sim.world().get::<Transform>(boxy).unwrap().translation.x;
-        bridge.set_player_input(
-            hero,
-            ph2d_physics_ecs::PlayerInput {
-                drive: 1.0,
-                ..ph2d_physics_ecs::PlayerInput::default()
-            },
-        );
-        for t in 61..=240u64 {
-            bridge.dispatch(&mut sim, true, t);
-        }
-        sim.world().get::<Transform>(boxy).unwrap().translation.x - x0
-    }
-
-    let snap = crate_travel(1);
-    let pure = crate_travel(2);
-    assert!(snap > 1.0, "o CONTROLE empurra: {snap:.4} m");
-    assert!(
-        pure.abs() < 0.01,
-        "e o puro sangue nao: {pure:.4} m (contra {snap:.4})"
-    );
-    // ⚠️ **E o DINÂMICO fecha o triângulo:** ele empurra sem o knob, porque quem
-    // o empurra é o SOLVER (16,55 m medidos pela sonda da W-KinPush contra
-    // 0,0000 do cinemático sem a wave). É por isso que oferecer-lhe o slider era
-    // um controle morto, e é por isso que escondê-lo não lhe tira nada.
-    let dynamic = crate_travel(0);
-    assert!(
-        dynamic > 1.0,
-        "o dinamico empurra pelo solver, sem knob nenhum: {dynamic:.4} m"
-    );
-}
+/// ⚠️ **FILHO e não irmão de módulo**, o precedente do `pose_owner_tests`: o
+/// `body()` e a `CAPSULE` deste arquivo são a porta pela qual as duas metades
+/// montam a mesma cena, e uma segunda cópia delas é como as duas famílias
+/// passariam a testar corpos diferentes sem ninguém notar.
+#[path = "inspector_player_mode_tests.rs"]
+mod mode;

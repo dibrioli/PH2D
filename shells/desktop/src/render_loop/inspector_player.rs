@@ -56,6 +56,12 @@ pub(crate) fn build_player_info(
     // quem a computa é a lei, dentro do laço de tiques da ponte, e uma segunda
     // resposta aqui descreveria um personagem que a simulação não simulou.
     live: Option<ph2d_physics_ecs::PlayerView>,
+    // **O que a LEI lê deste corpo** — a resposta do `bridge::pose_owner`,
+    // resolvida no chamador (que é quem tem a ponte). Ela chega PRONTA pelo
+    // mesmo motivo da vista: as quatro perguntas que a §14 faz são os quatro
+    // `if` do `drive_players`, e respondê-las aqui a partir do `PlayerMode` é a
+    // segunda cópia que já mentia sobre um player assado.
+    law: ph2d_physics_ecs::PlayerLiveness,
 ) -> Option<InspectorPlayerInfo> {
     let entity = Entity::from_bits(entity_bits);
     let body = sim.world().get::<RigidBody>(entity)?;
@@ -76,12 +82,18 @@ pub(crate) fn build_player_info(
         entity_bits,
         has_player,
         mode_tag: mode.tag(),
-        // ⚠️ A pergunta é feita à PORTA do modo, aqui na shell — o painel recebe
-        // a resposta, nunca o mapeamento (W-KinPure).
-        reaction_is_live: mode.transmits(),
-        // ⚠️ E o empurrão lateral é mais estreito que o card: só o cinemático o
-        // lê (um corpo dinâmico já empurra pelo solver). A porta é do MODO.
-        push_is_live: mode.pushes_bodies(),
+        // ⚠️ **As três saem do MESMO veredito, e a conjunção com `law_runs` é o
+        // que as torna honestas:** um player que a CENA dirige (um bake) não lê
+        // nenhum dos três, e a resposta do modo sozinha dizia que sim. O painel
+        // recebe bools, nunca o mapeamento (W-KinPure).
+        reaction_is_live: law.transmits && law.law_runs,
+        // ⚠️ E o empurrão lateral é mais estreito que o card: só o laço dos
+        // `KinMove` o corre (um corpo dinâmico já empurra pelo solver).
+        push_is_live: law.pushes,
+        // ⚠️ **A perna elástica é o terceiro** (a auditoria de 15/08): sob Snap
+        // a lei sobrescreve o `float_height` pela geometria do corpo e os dois
+        // números da mola não têm consumidor.
+        spring_is_live: law.spring,
         float_height: p.float_height,
         min_float_height: min.unwrap_or(0.0),
         min_float_known: min.is_some(),

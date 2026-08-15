@@ -46,6 +46,11 @@ pub use bridge::fk::FkSession;
 pub use bridge::ik::{IkPlan, IkSession};
 pub use bridge::joints::joint_desc;
 pub use bridge::player_view::{ProbeKind, ProbeMark, ProbeShape, ProbeState};
+// **O que a lei do player de facto lê deste corpo** — a resposta que a §14 do
+// Inspector pinta. Ela sai da MESMA porta que decide quem escreve a pose; a
+// shell re-derivá-la do `PlayerMode` foi o que fazia o painel mentir sobre um
+// player assado.
+pub use bridge::pose_owner::PlayerLiveness;
 pub use bridge::rope::pulley_rig;
 // A geometria da corda de uma polia. Re-exportada porque a shell **não depende
 // de `ph2d-physics`** — a mesma contenção que mantém o rapier confinado — e o

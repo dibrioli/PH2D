@@ -51,6 +51,11 @@ fn player() -> InspectorPlayerInfo {
         live: None,
         reaction_is_live: true,
         push_is_live: true,
+        // ⚠️ Premissa declarada: este é o player DINÂMICO (`mode_tag: 0`), cuja
+        // perna É uma mola — então as três rows dela e o botão de ajuste são
+        // oferecidos. Uma fixture com a perna que POUSA deixaria verdes pelo
+        // motivo errado todos os gates que contam rows do card LEG.
+        spring_is_live: true,
         min_float_known: true,
         cling_distance: 0.25,
         spring_strength: 400.0,
@@ -1069,6 +1074,70 @@ fn the_reaction_card_follows_who_is_heard_by_the_world() {
     }
     // ⚠️ E o resto da seção continua lá — esconder UM card não é esconder a
     // ferramenta (sem esta linha, um `return` no topo do laço passaria).
+    assert!(
+        rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_SPEED),
+        "os outros cards seguem pintados"
+    );
+}
+
+/// **As rows da MOLA seguem a perna que é uma mola** (auditoria de 2026-08-15).
+///
+/// ⚠️ **A metade da AUSÊNCIA é a wave:** sob a perna que POUSA (`Support::Snap`,
+/// o modo cinemático) a lei sobrescreve o `float_height` pela geometria do corpo
+/// **antes de o motor o ver**, e a rigidez e o amortecimento não têm mola que os
+/// consuma — três números que o artista afina e que ninguém lê, mais um botão
+/// cujo efeito a lei apaga no mesmo tique.
+///
+/// ⚠️ **E a metade da PRESENÇA é sobre o card, não sobre as rows:** a `Cling
+/// Distance` fica, porque sob Snap ela é o `snap_distance` E o `step_height` do
+/// controlador — o número mais vivo da seção. Sem esta asserção a cura
+/// preguiçosa (esconder o card LEG inteiro, o precedente do `Pure`) passaria, e
+/// levaria embora o único controle que ali funciona.
+#[test]
+fn the_spring_rows_follow_the_leg_that_is_a_spring() {
+    const SPRING_ONLY: [ph2d_a11y::NodeId; 3] = [
+        ids::INSP_PLAYER_FLOAT,
+        ids::INSP_PLAYER_STIFFNESS,
+        ids::INSP_PLAYER_DAMPING,
+    ];
+
+    // A perna elástica: as três rows E o botão de ajuste na tela.
+    let mut sprung = player();
+    sprung.spring_is_live = true;
+    let rects = painted(sprung);
+    for id in SPRING_ONLY {
+        assert!(
+            rects.iter().any(|(n, _)| *n == id),
+            "com perna de MOLA a row {id:?} tem de estar na tela"
+        );
+    }
+    assert!(
+        rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_FIT),
+        "e o botao que conserta a altura tambem"
+    );
+
+    // A perna que pousa: as três somem, e o card sobrevive pela `Cling`.
+    let mut snapped = player();
+    snapped.mode_tag = 1;
+    snapped.spring_is_live = false;
+    let rects = painted(snapped);
+    for id in SPRING_ONLY {
+        assert!(
+            !rects.iter().any(|(n, _)| *n == id),
+            "sob a perna que POUSA a row {id:?} foi pintada e esta' MORTA"
+        );
+    }
+    assert!(
+        !rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_FIT),
+        "e o botao escreveria um numero que a lei sobrescreve no mesmo tique"
+    );
+    assert!(
+        rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_CLING),
+        "⚠️ a Cling Distance FICA -- sob Snap ela e' o snap_distance E o \
+         step_height do controlador, e esconder o card levaria o unico \
+         controle que ali funciona"
+    );
+    // E o resto da seção continua lá: esconder rows não é esconder a ferramenta.
     assert!(
         rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_SPEED),
         "os outros cards seguem pintados"

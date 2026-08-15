@@ -125,3 +125,67 @@ fn the_mode_survives_the_ui_boundary_and_an_unknown_tag_is_refused() {
     assert_eq!(PlayerMode::from_tag(3), None);
     assert_eq!(PlayerMode::default(), PlayerMode::Dynamic);
 }
+
+/// **O VEREDITO que a §14 pinta sai desta porta, e o caso que ele existe para
+/// não errar é o player ASSADO** (auditoria de 2026-08-15).
+///
+/// ⚠️ **A shell respondia às mesmas quatro perguntas a partir do `PlayerMode`**,
+/// e um bake não escreve `PlayerMode` nenhum — `default()` é `Dynamic`, então a
+/// cópia dela dizia *"mola viva, mundo ouve"* sobre um corpo cuja pose vem de
+/// uma CURVA e cuja lei o `drive_players` nem chega a correr. Doze cards de
+/// controles inertes, com a suíte inteira verde.
+///
+/// ⚠️ E a metade da PRESENÇA é o que impede a cura de virar *"a §14 sumiu"*: o
+/// dinâmico e o cinemático continuam a ter tudo o que de facto leem.
+#[test]
+fn the_liveness_is_what_the_law_reads_and_a_baked_player_reads_nothing() {
+    let mut sim = SimWorld::new();
+    let plain = sim.world_mut().spawn(()).id();
+    let baked = sim.world_mut().spawn(player_cfg()).id();
+    let dynamic = sim
+        .world_mut()
+        .spawn((player_cfg(), PlayerMode::Dynamic))
+        .id();
+    let kinematic = sim
+        .world_mut()
+        .spawn((player_cfg(), PlayerMode::Kinematic))
+        .id();
+    let pure = sim.world_mut().spawn((player_cfg(), PlayerMode::Pure)).id();
+    let w = sim.world();
+
+    // ⚠️ O CASO DA WAVE: o mesmo componente, o mesmo `BodyKind`, e a lei não corre.
+    assert_eq!(
+        liveness(w, baked, BodyKind::Kinematic),
+        PlayerLiveness::INERT,
+        "um player ASSADO e' dirigido pela CENA -- nenhum dos knobs dele e' lido"
+    );
+    // Sem o componente não há personagem — mas a §14 continua OFERECIDA (o
+    // botão que o cria mora fora deste veredito).
+    assert_eq!(liveness(w, plain, BodyKind::Dynamic), PlayerLiveness::INERT);
+
+    // A presença: cada modo lê exatamente o que a lei dele lê.
+    assert_eq!(
+        liveness(w, dynamic, BodyKind::Dynamic),
+        PlayerLiveness::SPRING,
+        "o dinamico tem perna de mola e transmite pelo solver"
+    );
+    assert_eq!(
+        liveness(w, kinematic, BodyKind::Kinematic),
+        PlayerLiveness::SNAP,
+        "o cinematico pousa, e o empurrao lateral e' a UNICA via dele"
+    );
+    let pure = liveness(w, pure, BodyKind::Kinematic);
+    assert!(pure.law_runs, "o puro sangue e' o mesmo controlador");
+    assert!(!pure.spring, "e a perna dele e' o corpo");
+    assert!(
+        !pure.transmits && !pure.pushes,
+        "mas o mundo e' CENARIO: os tres escalares da 3a lei sao mortos"
+    );
+
+    // ⚠️ E o modo NÃO sobrepõe o corpo, pela mesma razão do `pose_owner`: com o
+    // corpo DINÂMICO a ponte está a simular a mola, e a falha é a SEGURA.
+    assert_eq!(
+        liveness(w, kinematic, BodyKind::Dynamic),
+        PlayerLiveness::SPRING
+    );
+}

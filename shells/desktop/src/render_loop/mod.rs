@@ -2320,6 +2320,17 @@ impl crate::App {
                     .selection
                     .and_then(|b| physics.player_view(ph2d_ecs::Entity::from_bits(b)))
                     .copied(),
+                // **O que a LEI de facto lê deste personagem** — resolvido aqui
+                // pela mesma razão do readout acima (`publish` não recebe a
+                // ponte) e pela MESMA porta que decide quem escreve a pose. A
+                // shell re-derivá-lo do `PlayerMode` era a segunda cópia que
+                // fazia a §14 pintar doze cards vivos sobre um player ASSADO,
+                // que a lei não dirige.
+                hero.gizmo
+                    .selection
+                    .map_or(ph2d_physics_ecs::PlayerLiveness::INERT, |b| {
+                        physics.player_liveness(sim.world(), ph2d_ecs::Entity::from_bits(b))
+                    }),
                 // W-Pulley W3: o eyedropper de montagem da §13, pelo mesmo motivo.
                 self.wheel_body_pick,
                 self.wheel_rope_pick,

@@ -15,6 +15,13 @@ use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_editor::PlayerFieldEdit;
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PlatformPlayer, RigidBody};
 
+/// **A premissa desta fixture, declarada uma vez** — todo corpo aqui é
+/// `Dynamic` e vira player pela porta do Inspector, então a lei corre nele com
+/// a perna ELÁSTICA. Passá-la a cada chamada seria repetir trinta vezes o que
+/// é um fato do arquivo; passá-la ERRADA deixaria verdes, pelo motivo errado,
+/// os gates que leem `reaction_is_live`/`push_is_live`/`spring_is_live`.
+const SPRUNG: ph2d_physics_ecs::PlayerLiveness = ph2d_physics_ecs::PlayerLiveness::SPRING;
+
 const CAPSULE: ColliderShape = ColliderShape::Capsule {
     half_height: 0.3,
     radius: 0.2,
@@ -106,7 +113,8 @@ fn a_negative_cap_is_clamped_at_the_boundary_so_the_row_never_lies() {
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::MaxFallSpeed(-1.0));
 
-    let info = build_player_info(&sim, bits, 0.0, 0.0, None).expect("a secao continua viva");
+    let info =
+        build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).expect("a secao continua viva");
     assert!(
         (info.max_fall_speed - 0.0).abs() < 1.0e-6,
         "a row tem de mostrar o que o motor honra: {info:?}"

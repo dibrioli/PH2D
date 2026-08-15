@@ -160,6 +160,7 @@ pub(crate) fn paint_player_section(
         yy,
         info.reaction_is_live,
         info.push_is_live,
+        info.spring_is_live,
     );
 
     // **O QUE A PLATAFORMA DA AO PULO AO LARGA-LA** (`W-Leave`) — fora dos
@@ -268,7 +269,12 @@ fn paint_verbs(
     // O aviso mora no rótulo do próprio botão que o conserta: um controle, uma
     // mensagem. Um readout separado seria uma segunda superfície dizendo o mesmo
     // fato, e as duas divergiriam no dia em que a fórmula ganhasse uma forma.
-    if info.min_float_known {
+    // ⚠️ **E ele segue a row que conserta** (a auditoria de 15/08): o botão
+    // escreve o `float_height`, que sob a perna que POUSA é sobrescrito pela
+    // geometria do corpo antes de o motor o ver. Oferecê-lo ali seria um verbo
+    // cujo efeito a lei apaga no mesmo tique — a lei do knob morto que o resto
+    // desta função já honra.
+    if info.min_float_known && info.spring_is_live {
         let label = if info.float_height <= info.min_float_height {
             format!("Fit to Collider (needs > {:.2} m)", info.min_float_height)
         } else {
@@ -390,12 +396,26 @@ fn paint_cards(
     mut yy: f32,
     reaction_is_live: bool,
     push_is_live: bool,
+    spring_is_live: bool,
 ) -> f32 {
     // ⚠️ **UMA regra, e o pintor E a moldura a perguntam** — o `card_frame`
     // recebe a CONTAGEM das rows e desenha a caixa por ela, então medir com uma
     // lista e preencher com outra é como a seção seguinte pinta por cima dos
     // controles (a lição que o `segmented_row_counts` do Painter já pagou).
-    let shown = |id: ph2d_a11y::NodeId| push_is_live || id != ids::INSP_PLAYER_REACT_PUSH;
+    // ⚠️ **As TRÊS rows da MOLA saem juntas, e o card FICA** — sob a perna que
+    // pousa (`Support::Snap`) a lei sobrescreve o `float_height` pela geometria
+    // do corpo e ninguém lê a rigidez nem o amortecimento, mas a `Cling
+    // Distance` vira o `snap_distance` E o `step_height` do controlador: é o
+    // número mais vivo da seção, e esconder o card inteiro o levaria junto.
+    const SPRING_ONLY: [ph2d_a11y::NodeId; 3] = [
+        ids::INSP_PLAYER_FLOAT,
+        ids::INSP_PLAYER_STIFFNESS,
+        ids::INSP_PLAYER_DAMPING,
+    ];
+    let shown = |id: ph2d_a11y::NodeId| {
+        (push_is_live || id != ids::INSP_PLAYER_REACT_PUSH)
+            && (spring_is_live || !SPRING_ONLY.contains(&id))
+    };
     for (title, card_id, rows) in PLAYER_CARDS {
         // ⚠️ **O card da 3ª lei some no modo que não a tem** (W-KinPure) — não é
         // arrumação, é a lei do knob-morto: sob o *puro sangue* NENHUM dos três

@@ -1177,6 +1177,12 @@ paper (*multi-scale*), e o número escolheu:
 
 ⇒ **`KELVINLET_REACH = 3`** com a família **Tri**: 3,5 % na borda.
 
+⛔ **E os 3,5 % deixaram de ser um resíduo ACEITÁVEL — ver §7.13.** Estas linhas
+escolhem a família que decai mais depressa e depois **CORTAM** o que sobra; com
+`ε = raio/3` o corte caía no anel do cursor, onde um degrau se lê como *a borda
+do pincel*, e com a §7.11 ele mudou-se para 3× fora dele, onde nada o explica.
+O número da tabela continua certo — o que estava errado era o veredito.
+
 ⛔ **E a leitura que estas linhas faziam do `3` estava INVERTIDA — ver §7.11.**
 Elas diziam `ε = raio/3` (a pegada espremendo o campo) e recusavam a alternativa
 *"manter `ε = raio` e crescer a consulta para `3·raio`"* com uma **estimativa**
@@ -1422,6 +1428,81 @@ vizinhança — nunca o barro sob o cursor.
 **Aberto:** o **Crease** (a matriz §3 pede *Draw + Kelvinlets pinch*, que é uma
 COMPOSIÇÃO e não um campo puro) · o pincel **Elastic Deform**, o único que pede
 `Verb` novo · e o resto da §5.
+
+### §7.13 — ✅ O CAMPO ATERRISSA NA BORDA DA PEGADA (2026-08-13, 4º report)
+
+> *"MOdo L o Falloff parece ter borda dura"* — Enio, com screenshot: uma escada
+> ao longo de um arco que cruza o anel do cursor e segue pela esfera.
+
+**O que a medição achou, antes de qualquer hipótese.** A curva que o `stroke`
+entrega a um verbo de campo era a **INDICADORA do suporte** —
+`if dist <= query_r { 1.0 } else { 0.0 }`, um corte C0 — e no raio da pegada o
+campo ainda carrega **3,47 %** do deslocamento do bico (`|grab|`, o gate
+`the_rim_residual_is_what_chose_the_scale_family` mede exatamente isso e o
+**CERTIFICA**). Medido no produto: degrau de **2,90 % ao longo de uma costura de
+114 vértices**, contra os **1,57 % / 10 vértices** que o `s-mode` — o que shipa
+há meses sem report — deixa na borda dele.
+
+⚠️ **A minha primeira hipótese CAIU e fica escrita.** Eu li o `rigid_profile`
+em `r/ε = 3` (**0,00011**) e declarei a tabela §7.10 refutada. O `rigid_profile`
+é só o ESCALAR; o que o artista vê é `|grab|`, que inclui o termo anisotrópico
+`(r·f)r` — e ele vale **0,03472**, ou seja a tabela estava certa e eu tinha
+medido a grandeza errada. *Um número no lugar errado diz o contrário da foto.*
+
+⚠️ **E a causa é a §0 mordendo a minha própria wave anterior.** O degrau sempre
+existiu; a §7.11 mudou `ε` de `raio/3` para `raio` e **mudou o corte de lugar**,
+do anel do cursor (10 vértices, onde um degrau se lê como *a borda do pincel*)
+para 3× o anel (114 vértices, onde nada o explica). *Quem move o número que
+tornava algo tolerável tem de reconferir a nota.*
+
+⛔ **Esticar o alcance NÃO é a cura, e isto é medição:** `REACH` 4 → 1,19 % ·
+5 → 0,48 % · 6 → 0,215 % — **nunca zero**, com o número de vértices a crescer
+como `r²`. Um kernel regularizado tem cauda infinita por construção; o corte é
+inerente, e o que se escolhe é **como** ele acontece.
+
+**A cura é uma JANELA no CONSUMIDOR, não no kernel.** `kelvinlet::rim_landing`
+é `1,0` até `RIM_HOLD` e desce por `smoothstep` até zero na borda:
+
+- **A concessão pertence a quem corta.** O `grab` é a eq. 5 do paper e as três
+  famílias afins são derivadas direcionais DELE; deformá-lo para esconder o
+  próprio corte tornaria toda paridade com a referência uma comparação contra
+  uma versão nossa. O paper fica intacto e o `stroke` — que é quem decide o
+  suporte finito — paga.
+- **UM sítio serve os CINCO verbos.** Os cinco consomem a curva **linearmente**
+  (grab/pinch a dobram na força, que é linear em `f`/`s`), então um fator na
+  indicadora escala os cinco **por construção** — não há tabela por-verbo a
+  apodrecer.
+- **`RIM_HOLD = 0,75` é MEDIDO, não escolhido.** A varredura: `0,50` deixa o
+  degrau em 0,04 % **e** derruba o gate do pinch (0,1686 contra o piso de
+  0,1515 — o splash ao longo da normal vive predominantemente na metade
+  EXTERNA da pegada, então uma janela que morde metade do raio devolve menos
+  volume); `0,75` dá **0,06 %** e o pinch volta a 0,1993. *A barra não foi
+  afrouxada — o número foi lido do joelho.*
+
+**Resultado, pela porta do produto:** degrau **2,90 % → 0,06 %** (26× abaixo do
+que o `s-mode` aprovado já deixa), bico **byte-idêntico** (o hold cobre 75 % do
+raio), o `s-mode` **intocado** (controle), e a subida no aro que o histograma de
+saltos mostrava (0,1873 / 0,3521) **desapareceu** — o decaimento é monotônico
+até a borda.
+
+**Gates.** `the_elastic_field_lands_at_the_rim_instead_of_being_cut` afirma o
+**CONTROLE primeiro** (`at_rim > 0,03`, senão ele passaria por vácuo sobre um
+campo que já fosse zero ali) e só então o degrau. E
+`the_stroke_delivers_what_the_kernel_promises` foi reescrito para dizer o que o
+produto FAZ (`kernel × janela`) e ganhou uma metade que **não existia**: dentro
+do hold a janela tem de ser a identidade **AO BIT**.
+
+⚠️ **Três mutações, três sangram — e uma sangrou noutro lugar.** M1 (indicadora
+de volta ao corte duro) → 2 RED · M2 (`RIM_HOLD = 1,0`, a janela existe e não
+aterrissa) → 1 RED · M3 (`RIM_HOLD = 0,0`, a janela morde o gesto) → 1 RED, **no
+gate do PINCH**. A minha asserção de hold é **vazia** com `HOLD = 0` (nenhum
+vértice tem `t ≤ 0`) ⇒ quem protege o gesto é o volume do pinch, não ela.
+
+⚠️ **E o gate que estava VERDE sobre isto tinha a MENSAGEM já falsa:** ele dizia
+*"o Tri é o que torna a borda do CURSOR honesta"*, frase verdadeira enquanto
+`ε = raio/3` e falsa desde a §7.11. Ele mede o resíduo e o **certifica como
+aceitável** — um veredito calibrado para uma colocação que deixou de existir.
+Corrigido no mesmo commit, com o mecanismo escrito ao lado.
 
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 

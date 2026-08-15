@@ -424,17 +424,23 @@ impl SculptStroke {
                 // abaixo lerem a MESMA distância. Com `hardness = 0`, o default,
                 // ela devolve o argumento sem tocar num bit.
                 //
-                // ⚠️ **COM CAMPO a curva é a INDICADORA do suporte, e é isso que
+                // ⚠️ **COM CAMPO a curva é o SUPORTE do campo — hoje uma
+                // indicadora que ATERRISSA, não um degrau 1/0 —, e é isso que
                 // *"o campo É o falloff"* quer dizer em código.** O perfil inteiro
                 // — quanto cada vértice anda e para que lado — é do
                 // [`crate::kelvinlet`]; o que sobra para a curva é a única coisa
-                // que ela ainda decide, que é ONDE o campo é avaliado e onde ele
-                // simplesmente não é. Multiplicar as duas aplicaria o perfil duas
+                // que ela ainda decide, que é ONDE o campo é avaliado, onde ele
+                // simplesmente não é, e como ele chega a zero entre os dois. Multiplicar as duas aplicaria o perfil duas
                 // vezes; deixar a curva fora do `w` largaria a **separação das
                 // cópias da simetria**, que é feita pelo `w > 0` medido contra
                 // ESTE centro.
                 let curve = if field.is_some() {
-                    if dist <= query_r { 1.0 } else { 0.0 }
+                    // ⚠️ **A indicadora ATERRISSA em vez de decapitar** — o campo
+                    // ainda carrega 2,90 % do bico na borda da pegada, e cortá-lo
+                    // ali era um degrau numa costura de 114 vértices. Ver
+                    // [`crate::kelvinlet::rim_landing`] para a medição e para o
+                    // porquê de a concessão ser do consumidor, não do kernel.
+                    crate::kelvinlet::rim_landing(dist / query_r)
                 } else {
                     let t = brush.shaped_distance(dist * inv_r);
                     if brush.verb.paints_mask() {

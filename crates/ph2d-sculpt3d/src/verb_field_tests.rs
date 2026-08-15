@@ -528,3 +528,61 @@ fn the_elastic_scale_falls_off_from_the_tip_to_the_rim() {
          isto é uma escala rígida da pegada inteira, e não um campo elástico"
     );
 }
+
+/// **O CAMPO ATERRISSA NA BORDA DA PEGADA, EM VEZ DE SER DECAPITADO NELA** — o
+/// report *"modo L o Falloff parece ter borda dura"* (Enio, 2026-08-14).
+///
+/// ⚠️ **O oráculo é o DEGRAU, não o gradiente máximo** — e a distinção custou a
+/// primeira sonda desta caça. O maior salto do l-mode (0,7818 por unidade de
+/// aresta) é MENOR que o do s-mode (1,1969), então um máximo global declarava o
+/// l-mode *o mais liso dos dois* enquanto o aro dele saltava; quem separa é
+/// comparar o último anel DENTRO da pegada com o primeiro FORA.
+///
+/// ⚠️ **E o CONTROLE é o que impede este gate de ser verde por vácuo:** se o
+/// campo já não carregasse nada no corte, não haveria o que aterrissar e a
+/// asserção passaria sem tocar em nada. Ele exige primeiro que o kernel CRU
+/// ainda valha ≥ 3 % do bico ali — o `0,0347` que a família [`Scales::Tri`]
+/// deixa e que a tabela do plano §7.10 escolheu.
+#[test]
+fn the_elastic_field_lands_at_the_rim_instead_of_being_cut() {
+    use crate::kelvinlet::{Scales, grab};
+    let len = |v: [f32; 3]| (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+
+    // O CONTROLE, primeiro: há degrau a remover?
+    let f = [1.0, 0.0, 0.0];
+    let at_rim = len(grab(
+        [crate::KELVINLET_REACH, 0.0, 0.0],
+        1.0,
+        f,
+        Scales::default(),
+    )) / len(grab([1e-6, 0.0, 0.0], 1.0, f, Scales::default()));
+    assert!(
+        at_rim > 0.03,
+        "sem resíduo no corte não há aterrissagem a provar, e este gate seria \
+         verde por vácuo: o kernel deixa {at_rim:.4} do bico em r/eps = REACH"
+    );
+
+    let rest = sphere();
+    let out = stroke(Verb::Move, RefMode::L, 0.0, [0.35, 0.0, 0.0]);
+    let tip = band_displacement(&rest, &out, 0.0, 0.25);
+    let cut = crate::KELVINLET_REACH;
+    let inner = band_displacement(&rest, &out, cut - 0.12, cut);
+    let outer = band_displacement(&rest, &out, cut, cut + 0.12);
+    assert!(tip > 1e-3, "a fixture não puxa o bico ({tip:.5})");
+    assert!(
+        outer == 0.0,
+        "fora da pegada o motor não escreve: {outer:.6}"
+    );
+    // ⚠️ A barra é o s-mode, que shipa e que ninguém reportou: o degrau dele
+    // vale 1,57 % do bico, e ele cai NO ANEL DO CURSOR, onde um degrau lê como
+    // *a borda do pincel*. O do campo cai a 3× o cursor, numa costura 11× mais
+    // longa — então tem de ser MUITO menor, não meramente comparável.
+    let step = (inner - outer) / tip;
+    assert!(
+        step < 0.003,
+        "o campo foi DECAPITADO na borda da pegada: último anel dentro vale \
+         {:.2} % do bico ({inner:.5} contra bico {tip:.5}), e fora é zero — \
+         era 2,90 % antes da aterrissagem",
+        100.0 * step
+    );
+}

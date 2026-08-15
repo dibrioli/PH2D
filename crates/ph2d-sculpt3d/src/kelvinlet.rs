@@ -389,6 +389,78 @@ pub fn rigid_profile(r: [f32; 3], eps: f32, scales: Scales) -> f32 {
     num / norm
 }
 
+/// **Onde a indicadora começa a aterrissar** — fração da pegada.
+///
+/// ⚠️ **`0,75` é o JOELHO de uma varredura, e a minha primeira escolha (`0,5`)
+/// foi reprovada por um gate que eu não tinha previsto.** O degrau morre a
+/// QUALQUER hold (a janela vale `0` com derivada `0` em `t = 1` por
+/// construção), então o que o hold decide não é o degrau — é **quanto do campo
+/// externo sobrevive**, e o `pinch` espirra pela normal predominantemente na
+/// metade de FORA:
+///
+/// | HOLD | degrau no aro | retorno de volume do pinch |
+/// |---|---|---|
+/// | 0,50 | 0,02 % | **0,1686 — reprova** |
+/// | 0,65 | 0,03 % | **0,2468 — reprova** |
+/// | **0,75** | **0,06 %** | **passa** |
+/// | 0,85 | 0,15 % | passa |
+///
+/// ⇒ o primeiro valor em que o `pinch` mantém o termo de traço zero, com o
+/// degrau ainda **26× menor que o do próprio s-mode** (1,57 %), que shipa e que
+/// ninguém reportou. Abaixo de `t = 0,75` — os primeiros 2,25 raios de pincel,
+/// onde vive todo o gesto — a janela vale `1,0` EXATO e o traço é
+/// **byte-idêntico** ao campo cru.
+pub const RIM_HOLD: f32 = 0.75;
+
+/// **A ATERRISSAGEM DA INDICADORA** — o que faz o campo chegar a ZERO na borda
+/// da pegada em vez de ser decapitado nela.
+///
+/// ⚠️ **O degrau que isto remove foi MEDIDO, e a nota que o autorizava era
+/// minha.** O campo do paper tem suporte INFINITO; a família [`Scales::Tri`]
+/// mata os termos `1/r` e `1/r³`, mas em `r/ε = 3` o deslocamento ainda vale
+/// **3,47 %** do bico (`the_rim_residual_is_what_chose_the_scale_family`), e a
+/// indicadora o cortava a zero em distância nenhuma:
+///
+/// | | bico | último anel DENTRO | 1º anel FORA | degrau | vértices na costura |
+/// |---|---|---|---|---|---|
+/// | s-mode | 0,34398 | 0,00539 | 0 | 1,57 % | 10 |
+/// | l-mode | 0,33241 | 0,00962 | 0 | **2,90 %** | **114** |
+///
+/// ⚠️ **E o que tornou isto VISÍVEL foi mover o `ε`, não o resíduo.** Enquanto
+/// `ε = raio/3` a pegada era `raio` e o corte caía **no anel do cursor**, onde
+/// um degrau lê como *a borda do pincel* — a §7.11 pôs `ε = raio` e a pegada em
+/// `3·raio`, e o MESMO degrau mudou-se para onde nada explica que o pincel
+/// acabou, numa costura **11× mais longa**. O gate continuou verde (`0,0347 <
+/// 0,036`) porque ele mede o resíduo e o CERTIFICA; a mensagem dele dizia *"a
+/// borda do CURSOR"*, e essa frase deixou de ser verdade sem ninguém a
+/// reconferir.
+///
+/// ⛔ **Alargar o alcance NÃO é a cura, e isso é medição:** `r/ε = 4` deixa
+/// `1,19 %`, `5` deixa `0,48 %`, `6` deixa `0,215 %` — nunca zero, e a contagem
+/// de vértices da pegada cresce com `r²`. A janela dá **exatamente zero, por
+/// construção, a qualquer alcance**, por uma multiplicação.
+///
+/// ⚠️ **Ela mora aqui e é aplicada pelo CONSUMIDOR**, de propósito: o campo do
+/// paper é infinito por desenho e fica intacto; quem tem pegada finita é o
+/// traço, e é dele a concessão. E como os cinco verbos de campo consomem a
+/// curva **linearmente** (o `grab` e o `pinch` dobram-na na força, que é linear
+/// nela), um fator na indicadora escala os cinco **por construção** — não há
+/// lista de verbos a apodrecer.
+///
+/// `C¹` nas duas pontas (valor e derivada nulos em `t = 1`) e sem
+/// transcendental (HR-5).
+#[must_use]
+pub fn rim_landing(t: f32) -> f32 {
+    if t <= RIM_HOLD {
+        return 1.0;
+    }
+    if t >= 1.0 {
+        return 0.0;
+    }
+    let s = (t - RIM_HOLD) / (1.0 - RIM_HOLD);
+    1.0 - s * s * (3.0 - 2.0 * s)
+}
+
 /// O campo `K(r)·v(r)` normalizado pelo ganho `5/2` que as duas famílias
 /// b-livres partilham — a porta do [`twist`] e da [`scale`].
 ///

@@ -238,3 +238,273 @@ fn what_the_missing_field_arm_can_fake() {
         }
     }
 }
+
+/// ⚠️ **ONDE O CAMPO SALTA** — o report do Enio (*"modo L, o falloff parece ter
+/// borda dura"*, com estrias em escada num arco).
+///
+/// Uma borda dura é uma **descontinuidade**: dois vértices vizinhos que recebem
+/// deslocamentos muito diferentes. A malha desenha isso como escada porque só há
+/// vértices em posições discretas. Esta sonda percorre as ARESTAS e diz qual é o
+/// maior salto e **a que distância da âncora ele está** — que é o que separa as
+/// hipóteses (a indicadora corta em `REACH·raio`; o anel do cursor é `raio`).
+#[test]
+#[ignore = "sonda"]
+fn where_the_field_jumps() {
+    let rest = sphere();
+    let mut tris: Vec<[u32; 3]> = Vec::new();
+    rest.triangle_indices(&mut tris);
+    for mode in [RefMode::S, RefMode::L] {
+        let out = stroke(Verb::Move, mode, 0.0, [0.35, 0.0, 0.0], 12);
+        let (a, b) = (rest.positions(), out.positions());
+        let disp = |i: usize| {
+            let d = [b[i][0] - a[i][0], b[i][1] - a[i][1], b[i][2] - a[i][2]];
+            (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt()
+        };
+        let dist = |i: usize| {
+            let r = [a[i][0] - TIP[0], a[i][1] - TIP[1], a[i][2] - TIP[2]];
+            (r[0] * r[0] + r[1] * r[1] + r[2] * r[2]).sqrt() / R
+        };
+        // O maior salto POR ARESTA, normalizado pelo comprimento da aresta.
+        let mut worst = (0.0f32, 0.0f32, 0.0f32);
+        // E o histograma do salto por banda de distância, para ver se ele tem
+        // um LUGAR ou está espalhado.
+        let mut bands = vec![(0.0f32, 0usize); 20];
+        for t in &tris {
+            for (u, v) in [(t[0], t[1]), (t[1], t[2]), (t[2], t[0])] {
+                let (u, v) = (u as usize, v as usize);
+                let len = ((a[u][0] - a[v][0]).powi(2)
+                    + (a[u][1] - a[v][1]).powi(2)
+                    + (a[u][2] - a[v][2]).powi(2))
+                .sqrt();
+                if len < 1e-6 {
+                    continue;
+                }
+                let jump = (disp(u) - disp(v)).abs() / len;
+                let at = 0.5 * (dist(u) + dist(v));
+                if jump > worst.0 {
+                    worst = (jump, at, len);
+                }
+                let bi = ((at / 4.0) * 20.0) as usize;
+                if bi < 20 {
+                    bands[bi].0 = bands[bi].0.max(jump);
+                    bands[bi].1 += 1;
+                }
+            }
+        }
+        println!(
+            "\n  {} — maior salto {:.4} por unidade de aresta, a {:.2} raios da âncora",
+            mode.label(),
+            worst.0,
+            worst.1
+        );
+        println!("  banda (raios) | maior salto | arestas");
+        for (i, (j, n)) in bands.iter().enumerate() {
+            if *n == 0 {
+                continue;
+            }
+            let lo = i as f32 * 4.0 / 20.0;
+            if *j > 0.02 {
+                println!("  {:.2}-{:.2}   | {:>10.4} | {:>6}", lo, lo + 0.2, j, n);
+            }
+        }
+    }
+}
+
+/// ⚠️ **O TAMANHO do degrau na fronteira da pegada**, em unidades de mundo — o
+/// que a sonda do gradiente localizou, agora medido como o artista o vê.
+#[test]
+#[ignore = "sonda"]
+fn how_big_is_the_cliff_at_the_footprint_edge() {
+    let rest = sphere();
+    let out = stroke(Verb::Move, RefMode::L, 0.0, [0.35, 0.0, 0.0], 12);
+    let (a, b) = (rest.positions(), out.positions());
+    println!("\n  r/raio | deslocamento médio | n");
+    let band = |lo: f32, hi: f32| -> (f32, usize) {
+        let (mut s, mut n) = (0.0f32, 0usize);
+        for i in 0..a.len() {
+            let r = [a[i][0] - TIP[0], a[i][1] - TIP[1], a[i][2] - TIP[2]];
+            let rm = (r[0] * r[0] + r[1] * r[1] + r[2] * r[2]).sqrt() / R;
+            if rm < lo || rm >= hi {
+                continue;
+            }
+            let d = [b[i][0] - a[i][0], b[i][1] - a[i][1], b[i][2] - a[i][2]];
+            s += (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+            n += 1;
+        }
+        (if n == 0 { 0.0 } else { s / n as f32 }, n)
+    };
+    for k in 0..16 {
+        let lo = k as f32 * 0.2;
+        let (m, n) = band(lo, lo + 0.2);
+        println!("  {:.2}-{:.2} | {:>18.5} | {}", lo, lo + 0.2, m, n);
+    }
+
+    // ⚠️ O CONTROLE: o s-mode chega a zero na fronteira DELE (1,0 raio) do mesmo
+    // jeito, ou desce liso? Sem esta metade, "o campo cliffa" nao e um achado —
+    // e uma observacao sobre um numero que talvez todo modo tenha.
+    let out_s = stroke(Verb::Move, RefMode::S, 0.0, [0.35, 0.0, 0.0], 12);
+    let bs = out_s.positions();
+    println!("\n  CONTROLE s-mode (pegada = 1,0 raio)");
+    println!("  r/raio | deslocamento medio | n");
+    for k in 0..10 {
+        let lo = 0.6 + k as f32 * 0.1;
+        let (hi, mut sum, mut n) = (lo + 0.1, 0.0f32, 0usize);
+        for i in 0..a.len() {
+            let r = [a[i][0] - TIP[0], a[i][1] - TIP[1], a[i][2] - TIP[2]];
+            let rm = (r[0] * r[0] + r[1] * r[1] + r[2] * r[2]).sqrt() / R;
+            if rm < lo || rm >= hi {
+                continue;
+            }
+            let d = [bs[i][0] - a[i][0], bs[i][1] - a[i][1], bs[i][2] - a[i][2]];
+            sum += (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+            n += 1;
+        }
+        let m = if n == 0 { 0.0 } else { sum / n as f32 };
+        println!("  {:.2}-{:.2} | {:>18.5} | {}", lo, hi, m, n);
+    }
+    // A aresta média da malha, para saber se o degrau é visível.
+    let mut tris: Vec<[u32; 3]> = Vec::new();
+    rest.triangle_indices(&mut tris);
+    let mut el = 0.0f32;
+    let mut ne = 0usize;
+    for t in &tris {
+        for (u, v) in [(t[0], t[1]), (t[1], t[2]), (t[2], t[0])] {
+            let (u, v) = (u as usize, v as usize);
+            el += ((a[u][0] - a[v][0]).powi(2)
+                + (a[u][1] - a[v][1]).powi(2)
+                + (a[u][2] - a[v][2]).powi(2))
+            .sqrt();
+            ne += 1;
+        }
+    }
+    println!(
+        "\n  aresta média {:.4} · raio da esfera 1,0 · raio do pincel {R}",
+        el / ne as f32
+    );
+}
+
+/// ⚠️ **O RESIDUO NA FRONTEIRA, por familia e por alcance** — o numero que
+/// decide se o corte da indicadora e de graca ou e um penhasco.
+#[test]
+#[ignore = "sonda"]
+fn what_the_field_still_carries_where_we_cut_it() {
+    use ph2d_sculpt3d::kelvinlet::{Scales, rigid_profile};
+    // A familia Quad: multiplos 1..4, pesos do sistema
+    //   Sw = 0 · Sw m^2 = 0 · Sw m^4 = 0  =>  mata 1/r, 1/r^3 E 1/r^5.
+    const QUAD: [(f32, f32); 4] = [(7.0, 1.0), (-14.0, 2.0), (9.0, 3.0), (-2.0, 4.0)];
+    // ⚠️ Montada pela API PUBLICA: `radial(r,e) = rigid_profile(r,e,Mono)·2,5/e³`,
+    // entao a Quad e uma combinacao de perfis Mono — sem abrir nada do kernel.
+    fn quad_profile(r: f32, eps: f32) -> f32 {
+        let (mut num, mut norm) = (0.0f32, 0.0f32);
+        for &(w, m) in &QUAD {
+            let e = eps * m;
+            let inv = 2.5 / (e * e * e);
+            num += w * rigid_profile([r, 0.0, 0.0], e, Scales::Mono) * inv;
+            norm += w * inv;
+        }
+        num / norm
+    }
+    println!("\n  perfil normalizado (1,0 = bico), eps = 1");
+    println!("  r/eps |     Mono |       Bi |      Tri |     Quad");
+    for k in 1..=8 {
+        let r = k as f32;
+        let m = rigid_profile([r, 0.0, 0.0], 1.0, Scales::Mono);
+        let b = rigid_profile([r, 0.0, 0.0], 1.0, Scales::Bi);
+        let t = rigid_profile([r, 0.0, 0.0], 1.0, Scales::Tri);
+        let q = quad_profile(r, 1.0);
+        println!("  {r:>5.0} | {m:>8.5} | {b:>8.5} | {t:>8.5} | {q:>8.5}");
+    }
+    println!("\n  ⚠️ o corte de hoje e r/eps = 3 (KELVINLET_REACH)");
+}
+
+/// ⚠️ **UM dab contra DOZE** — separa o que o CAMPO faz do que o TRACO faz.
+#[test]
+#[ignore = "sonda"]
+fn one_dab_against_twelve() {
+    use ph2d_sculpt3d::kelvinlet::{Scales, grab, rigid_profile};
+    let rest = sphere();
+    let a = rest.positions().to_vec();
+    let prof = |out: &ph2d_mesh::Mesh, tag: &str| {
+        let b = out.positions();
+        println!("\n  {tag}");
+        println!("  r/raio | desloc medio | razao/bico");
+        let mut tip = 0.0f32;
+        for k in 0..16 {
+            let (lo, hi) = (k as f32 * 0.2, k as f32 * 0.2 + 0.2);
+            let (mut s, mut n) = (0.0f32, 0usize);
+            for i in 0..a.len() {
+                let r = [a[i][0] - TIP[0], a[i][1] - TIP[1], a[i][2] - TIP[2]];
+                let rm = (r[0] * r[0] + r[1] * r[1] + r[2] * r[2]).sqrt() / R;
+                if rm < lo || rm >= hi {
+                    continue;
+                }
+                let d = [b[i][0] - a[i][0], b[i][1] - a[i][1], b[i][2] - a[i][2]];
+                s += (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+                n += 1;
+            }
+            let m = if n == 0 { 0.0 } else { s / n as f32 };
+            if k == 0 {
+                tip = m;
+            }
+            println!(
+                "  {lo:.2}-{hi:.2} | {m:>12.5} | {:>10.5}",
+                if tip > 0.0 { m / tip } else { 0.0 }
+            );
+        }
+    };
+    prof(
+        &stroke(Verb::Move, RefMode::L, 0.0, [0.35, 0.0, 0.0], 1),
+        "UM evento",
+    );
+    prof(
+        &stroke(Verb::Move, RefMode::L, 0.0, [0.35, 0.0, 0.0], 12),
+        "DOZE eventos",
+    );
+
+    // O que o KERNEL diz, nas duas leituras que existem.
+    println!("\n  r/eps | rigid_profile | |grab|/|grab(0)|");
+    let g0 = grab([1e-6, 0.0, 0.0], 1.0, [1.0, 0.0, 0.0], Scales::Tri);
+    let n0 = (g0[0] * g0[0] + g0[1] * g0[1] + g0[2] * g0[2]).sqrt();
+    for k in 1..=6 {
+        let r = k as f32;
+        let p = rigid_profile([r, 0.0, 0.0], 1.0, Scales::Tri);
+        let g = grab([r, 0.0, 0.0], 1.0, [1.0, 0.0, 0.0], Scales::Tri);
+        let gn = (g[0] * g[0] + g[1] * g[1] + g[2] * g[2]).sqrt();
+        println!("  {r:>5.0} | {p:>13.5} | {:>17.5}", gn / n0);
+    }
+}
+
+/// ⚠️ **O DEGRAU no corte, medido num anel FINO** — a media de banda mistura o
+/// interior; o que decide e o ultimo anel antes do corte contra o bico.
+#[test]
+#[ignore = "sonda"]
+fn the_step_at_the_cut_in_a_thin_shell() {
+    let rest = sphere();
+    let a = rest.positions().to_vec();
+    let shell = |b: &[[f32; 3]], lo: f32, hi: f32| -> (f32, usize) {
+        let (mut s, mut n) = (0.0f32, 0usize);
+        for i in 0..a.len() {
+            let r = [a[i][0] - TIP[0], a[i][1] - TIP[1], a[i][2] - TIP[2]];
+            let rm = (r[0] * r[0] + r[1] * r[1] + r[2] * r[2]).sqrt() / R;
+            if rm < lo || rm >= hi {
+                continue;
+            }
+            let d = [b[i][0] - a[i][0], b[i][1] - a[i][1], b[i][2] - a[i][2]];
+            s += (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+            n += 1;
+        }
+        (if n == 0 { 0.0 } else { s / n as f32 }, n)
+    };
+    for (mode, cut, tag) in [(RefMode::S, 1.0f32, "S"), (RefMode::L, 3.0, "L")] {
+        let out = stroke(Verb::Move, mode, 0.0, [0.35, 0.0, 0.0], 12);
+        let b = out.positions();
+        let (tip, _) = shell(b, 0.0, 0.25);
+        let (inner, ni) = shell(b, cut - 0.12, cut);
+        let (outer, no) = shell(b, cut, cut + 0.12);
+        println!(
+            "  {tag}: bico {tip:.5} | ultimo anel DENTRO {inner:.5} ({ni} vts) \
+             | 1o anel FORA {outer:.5} ({no} vts) | degrau = {:.2}% do bico",
+            100.0 * (inner - outer) / tip
+        );
+    }
+}

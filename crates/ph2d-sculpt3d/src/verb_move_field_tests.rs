@@ -178,7 +178,24 @@ fn the_stroke_delivers_what_the_kernel_promises() {
         }
         // Força `1.0`, máscara vazia, sem alpha, front-face ignorado ⇒ o peso
         // sem geometria vale exatamente 1, e a força é o gesto inteiro.
-        let want = crate::kelvinlet::grab(r, eps, pull, crate::kelvinlet::Scales::default());
+        //
+        // ⚠️ **A promessa tem DUAS metades desde a aterrissagem da indicadora**
+        // (`kelvinlet::rim_landing`), e a de dentro é a mais forte: no quarto
+        // externo o traço entrega `campo × janela`, e nos primeiros 2,25 raios
+        // ele entrega o campo **CRU, ao bit** — a janela vale `1,0` EXATO ali, e
+        // é isso que garante que a aterrissagem não tocou no gesto. Escrever só
+        // a metade de fora deixaria passar uma janela que morde o bico.
+        let t = (r[0] * r[0] + r[1] * r[1] + r[2] * r[2]).sqrt() / support;
+        let land = crate::kelvinlet::rim_landing(t);
+        if t <= crate::kelvinlet::RIM_HOLD {
+            assert!(
+                land == 1.0,
+                "dentro do hold a janela tem de ser a identidade AO BIT: \
+                 t = {t:.4}, janela = {land}"
+            );
+        }
+        let raw = crate::kelvinlet::grab(r, eps, pull, crate::kelvinlet::Scales::default());
+        let want = [raw[0] * land, raw[1] * land, raw[2] * land];
         let got = l.positions()[v];
         for i in 0..3 {
             assert!(

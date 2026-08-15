@@ -188,6 +188,18 @@ fn the_rim_residual_is_what_chose_the_scale_family() {
     // ⚠️ **É por isto que o campo cru não pode ser o pincel:** quase um TERÇO do
     // deslocamento do bico sobreviveria até ao corte da pegada, e ali ele vira
     // um degrau.
+    //
+    // ⚠️ **E este gate ESTAVA VERDE sobre o report de 2026-08-14, com a própria
+    // mensagem já falsa.** Ele dizia *"o Tri é o que torna a borda do CURSOR
+    // honesta"*, frase verdadeira enquanto `ε = raio/3` — aí a pegada era
+    // `raio` e o corte CAÍA no anel do cursor. A §7.11 pôs `ε = raio` e a pegada
+    // em `3·raio`, e o MESMO `0,0347` mudou-se para 3× fora do cursor, numa
+    // costura 11× mais longa; o gate continuou verde porque ele mede o resíduo
+    // e o **CERTIFICA como aceitável** — um veredito calibrado para uma
+    // colocação que deixou de existir. Quem fecha o degrau é a
+    // [`crate::kelvinlet::rim_landing`], e quem o pina é o
+    // `the_elastic_field_lands_at_the_rim_instead_of_being_cut`: este aqui
+    // segue medindo só qual FAMÍLIA decai mais depressa.
     assert!(
         mono > 0.30,
         "um Kelvinlet cru tinha de sobrar quase um terço na borda: {mono:.4}"
@@ -198,7 +210,7 @@ fn the_rim_residual_is_what_chose_the_scale_family() {
     );
     assert!(
         tri < 0.036,
-        "o Tri é o que torna a borda do cursor honesta: {tri:.4}"
+        "o Tri é o que torna o resíduo da borda PEQUENO: {tri:.4}"
     );
     // ⚠️ **A ORDEM é a propriedade**, e não os três números: cada soma que
     // cancela tem de comprar uma ordem de decaimento.

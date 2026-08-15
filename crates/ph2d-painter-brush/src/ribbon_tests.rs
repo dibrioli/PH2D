@@ -459,6 +459,35 @@ fn a_stalled_frame_does_not_blow_the_spring_up() {
     );
 }
 
+/// **UM BREAKPOINT NÃO É UMA ENGASGADA — e só o cap de `dt` cobre o segundo caso.**
+///
+/// ⚠️ **Este gate nasceu de uma MUTAÇÃO QUE SOBREVIVEU:** tirar o
+/// [`crate::line_kind::RIBBON_MAX_STEP_S`] deixava o
+/// `a_stalled_frame_does_not_blow_the_spring_up` **VERDE**, porque num quadro de 200 ms o
+/// [`crate::line_kind::RIBBON_MAX_SUBSTEPS`] sozinho já segura (`n` pedido 400, aplicado 134 ⇒
+/// `ω · h = 0,75`, ainda estável). São **duas camadas**, cada uma suficiente naquele ponto de
+/// operação — e uma defesa em camadas precisa de um gate POR CAMADA
+/// ([[feedback_layered_defenses_need_per_layer_gates]]).
+///
+/// A camada que só o cap compra é o travamento LONGO: com 10 s de quadro e o teto de sub-passos
+/// intacto, `h = 10/134 = 74,6 ms` e `ω · h = 37,3` — divergência, com o batente a fazer
+/// exactamente o que ele foi escrito para nunca fazer. **O cap não deixa o pedido nascer.**
+#[test]
+fn a_breakpoint_length_stall_is_capped_by_work_not_by_substeps() {
+    // Dez segundos: o artista voltou de um breakpoint. Nenhuma taxa de quadros produz isto, e é
+    // por isso que a defesa tem de ser sobre o TRABALHO de um tique, nunca sobre a resolução dele.
+    let (excursion, last) = stalled_excursion_at(spec(LineKind::Ribbon, 0.02, 0.30, 0.0), 10.0);
+    assert!(
+        excursion < STALL_EXCURSION_PX,
+        "a fita explodiu num quadro de 10 s: {excursion:.1} px FORA do gesto"
+    );
+    assert!(
+        (last[0] - 700.0).abs() < ARRIVAL_TOL_PX,
+        "a fita nem chegou ao alvo: parou em {:.1}",
+        last[0]
+    );
+}
+
 /// Quanto um dab pode pousar FORA da caixa do gesto antes de ser divergência, em px.
 ///
 /// ⚠️ **Frouxo de propósito, e ainda assim afiado:** uma mola instável não sai da caixa por um
@@ -484,6 +513,13 @@ const ARRIVAL_TOL_PX: f32 = 4.0;
 /// e um oráculo que nunca correu verde nunca foi observado. Uma mola que diverge SAI da caixa do
 /// gesto; uma que atrasa, fica dentro dela.
 fn stalled_excursion(sp: BrushSpec) -> (f32, [f32; 2]) {
+    stalled_excursion_at(sp, 0.2)
+}
+
+/// O mesmo, com o tamanho do quadro travado como parâmetro — 200 ms é uma engasgada de GC, e
+/// segundos é um breakpoint. ⚠️ **Os dois números medem camadas DIFERENTES da mesma defesa**, e
+/// mudá-lo é o que separa o teto de sub-passos do cap de `dt`.
+fn stalled_excursion_at(sp: BrushSpec, stall_dt: f32) -> (f32, [f32; 2]) {
     let at = [400.0f32, 300.0];
     let to = [700.0f32, 300.0];
     let mut s = Stroke::new(sp, plain(), 7);
@@ -508,7 +544,7 @@ fn stalled_excursion(sp: BrushSpec) -> (f32, [f32; 2]) {
     let mut last = at;
     for _ in 0..10 {
         out.clear();
-        s.tick(0.2, &mut out);
+        s.tick(stall_dt, &mut out);
         for d in &out {
             let dx = (lo_x - d.center[0]).max(d.center[0] - hi_x).max(0.0);
             let dy = (lo_y - d.center[1]).max(d.center[1] - hi_y).max(0.0);

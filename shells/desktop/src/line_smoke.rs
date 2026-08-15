@@ -1,4 +1,4 @@
-//! `PH2D_LINE_SMOKE` — a tela pronta para julgar o card **Line** (plano 38, W2/W3/W4).
+//! `PH2D_LINE_SMOKE` — a tela pronta para julgar o card **Line** (plano 38, W2..W6).
 //!
 //! ⚠️ **Uma cena para o CARD, não uma por tipo.** O que a wave entrega é o dropdown `Type` e as rows
 //! que cada tipo pinta; três cenas seriam três canvas idênticos com três roteiros, e a costura que
@@ -16,6 +16,11 @@
 //! **O `--release` não é preferência:** a densidade cheia do Sketchy põe ~16 mil px de fio num traço
 //! de 312 px, o Wire desenha quatro cordas por dab, e o Spray multiplica cada dab por até dezasseis.
 //! Em debug isso lê como *"o pincel travou"*.
+//!
+//! ⚠️ **A FITA precisa que a mão SOLTE e ESPERE**, e é a metade dela que um roteiro apressado pula:
+//! ela percorre caminho no TIQUE, não no evento de ponteiro, então a cauda do pen-up é onde se vê
+//! que o traço acaba onde a fita parou — e não num salto até o cursor, que seria um gancho que a
+//! física não produziu.
 //!
 //! ⚠️ **O SPRAY não mora no card Line, e isso é a decisão da W5** — ele não é um tipo de linha, é um
 //! multiplicador da emissão que compõe com todos eles (o *Scattering* do Photoshop, não um modo).
@@ -90,6 +95,29 @@ pub(crate) fn spawn_if_enabled(
                  (senao as copias empilhariam e o slider pareceria morto) -- confira que ele mexeu, \
                  e depois mande nele. O Scale e o Rotation ao lado dao tamanho e angulo a cada \
                  marca. Combine com Speed ou Sketchy: eles compoem."
+            );
+            println!(
+                "[line-smoke]   RIBBON: o traco PESA. A tinta fica ATRAS do dedo, chicoteia na \
+                 saida da curva e -- com Gravity -- PENDE. Desenhe um S rapido: o rastro corta a \
+                 curva por dentro e passa do ponto onde a mao mudou de direcao. SOLTE no meio do \
+                 gesto e nao mexa: a fita continua a CHEGAR, e o traco acaba onde ela de facto \
+                 parou, nunca num salto ate o cursor."
+            );
+            println!(
+                "[line-smoke]     Weight e QUANTO TEMPO ela atrasa, Friction e COMO ela assenta \
+                 (baixo = chicote que passa do ponto e volta; alto = ela so arrasta), Gravity e o \
+                 peso. Medido a 2 400 px/s: peso 1,00 deixa a tinta 804 px atras do dedo, peso \
+                 0,16 deixa 106."
+            );
+            println!(
+                "[line-smoke]     ⚠️ O FUNDO DA PISTA E INERTE, e e medido: ate peso ~0,02 a fita \
+                 nao consegue mover a tinta um dab inteiro e desenha o traco comum. E o que se \
+                 quer de um minimo que significa DESLIGADO -- se voce mexer no slider e nada \
+                 mudar, suba mais."
+            );
+            println!(
+                "[line-smoke]     E ela COMPOE: ligue o Spray (Jitter -> Count) ou a Symmetry com \
+                 a fita armada -- eles seguem a fita, porque para todos eles a fita E o traco."
             );
             println!(
                 "[line-smoke]   E o CONTROLE: com Type = None e Count = 1 o pincel tem de pintar \

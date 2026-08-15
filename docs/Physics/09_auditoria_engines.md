@@ -48,11 +48,17 @@ Isso é o que esta auditoria encontrou de maior, e não é um verbo em falta: é
 ## §2 — A tabela, engine a engine
 
 ⚠️ **ESTA TABELA FOI RECONFERIDA em 2026-08-15, e a correção é o §0 na sua forma mais
-direta:** seis linhas diziam ❌ e estavam **certas no dia em que foram escritas** (12/08).
-A fila que este próprio documento gerou fechou-as em 13-14/08 — `W-PlayerOut`,
-`W-Launch`, `W-Fall` — e ninguém voltou à tabela. *Quem move o número que tornava algo
-inalcançável tem de reconferir a nota*, e aqui quem o moveu foi o plano que a nota
-originou.
+direta:** **oito** linhas diziam ❌ e estavam **certas no dia em que foram escritas**
+(12/08). A fila que este próprio documento gerou fechou-as em 13-14/08 —
+`W-PlayerOut`, `W-Launch`, `W-Fall`, **`W-Surface`** — e ninguém voltou à tabela.
+*Quem move o número que tornava algo inalcançável tem de reconferir a nota*, e aqui
+quem o moveu foi o plano que a nota originou.
+
+⚠️ **E a segunda passagem (mesmo dia) achou mais duas, no §3.B** — a seção continuava
+a prescrever gelo e esteira como trabalho futuro, **sem o marcador `FECHADO`** que as
+irmãs C/G/H/I/J já tinham, três dias depois de a W-Surface as construir. *Uma seção de
+plano que descreve como aberto o que já shipou manda a próxima LLM construir duas
+vezes* — foi exactamente o que esta linha escreveu sobre a §3.C, e reincidiu na §3.B.
 
 Legenda: ✅ temos · 🟡 temos por outra via (com o porquê) · ❌ não temos ·
 ⛔ divergência deliberada (não queremos, com motivo).
@@ -115,10 +121,10 @@ Legenda: ✅ temos · 🟡 temos por outra via (com o porquê) · ❌ não temos
 | `collisionFlags` | ❌ | **§3.A** — o bitfield *teto/lado/baixo*; temos os dois primeiros por outra via (`footing`, `wall`) e o teto não |
 | **`OnControllerColliderHit`** / hits com estado (KCC) | ❌ | **§3.A** |
 | `PlatformEffector2D` (one-way) | ✅ | W12 + `player_drops` |
-| **`SurfaceEffector2D`** (esteira: *"forças tangentes para igualar uma velocidade ao longo da superfície"*) | ❌ | **§3.B** — a nossa esteira exigiria que a plataforma **se movesse de facto** |
+| **`SurfaceEffector2D`** (esteira: *"forças tangentes para igualar uma velocidade ao longo da superfície"*) | ✅ | **§3.B** — **W-Surface** (2026-08-13): `WalkSurface::belt`, escalar sobre a TANGENTE, somado à `ground_velocity`; leva por TRAÇÃO ⇒ correia sobre `grip = 0` não leva nada |
 | `BuoyancyEffector2D` | ✅ | W-Water / empuxo |
 | `AreaEffector2D` / `PointEffector2D` | ✅ | zonas com força, torque, frame, espelho e falloff |
-| **`PhysicsMaterial2D.friction`** a alcançar o andar | ❌ | **§3.B** — gelo |
+| **`PhysicsMaterial2D.friction`** a alcançar o andar | 🟡 | **§3.B** — **W-Surface** (2026-08-13) dá o gelo por `WalkSurface::grip`, mas **de propósito NÃO é o `friction` do collider**: a perna FLUTUA, então o atrito de contato nunca alcança este personagem — acoplá-los faria *"rampa escorregadia"* significar *"e todo caixote desliza nela"* |
 | Personagem-contra-personagem (KCC) | 🟡 | sob Spring os dois são corpos dinâmicos e colidem |
 
 ### `bevy_tnua` — o **referencial declarado** deste módulo
@@ -191,7 +197,49 @@ tiques, ao lado de quem o causou*, nunca de um diff lá fora.
 **Preço:** o A1 é um `struct` e uma porta. O A2 é uma comparação de estado por
 tique dentro do laço que já existe. **Nenhum toca a lei.**
 
-### 3.B · **A SUPERFÍCIE NÃO FALA COM A LEI** ⟨gelo e esteira⟩
+### 3.B · ~~**A SUPERFÍCIE NÃO FALA COM A LEI**~~ ⟨gelo e esteira — **FECHADO pela W-Surface, 2026-08-13**⟩
+
+⚠️ **Esta seção descreve o mundo de 12/08 e SOBREVIVEU AO FATO por três dias.**
+A **W-Surface** (três commits em 2026-08-13 — o kernel `df83abb88`, a ponte
+`0229967c3`, a UI `cc7268e37`) construiu as duas metades pela mesma porta, como
+esta seção prescrevia. O que shipou:
+
+* **`WalkSurface { grip, belt }`** — componente opcional na entidade que carrega
+  o `Collider`, logo **por PEÇA** de um corpo composto: uma plataforma pode ter
+  uma face de gelo e outra de borracha.
+* **`GroundSample::grip`** multiplica o orçamento de aceleração **e** de
+  travagem; **`NEUTRAL_GRIP = 1.0`** reduz LITERALMENTE (`x * 1.0` é `x` em
+  IEEE-754) ⇒ toda cena que nunca autorou superfície fica **byte-idêntica**, e é
+  isso que manteve o `physics_ecs_c9` intacto. **`grip = 0.0` é legítimo** e
+  significa gelo PERFEITO: o orçamento inteiro zera, o personagem conserva a
+  velocidade que tem e não arranca nem pára — o limite que a escala descreve,
+  sem um `if`.
+* **A esteira chega pela `ground_velocity`**, não por um campo próprio: a lei já
+  mede tudo relativo ao chão, e uma correia é literalmente *um chão que anda sem
+  o corpo andar*. O `belt` é **ESCALAR sobre a TANGENTE** — um vetor autorado em
+  eixos de mundo teria componente ao longo da NORMAL numa rampa, e uma superfície
+  não empurra ninguém para dentro de si mesma. Como escalar, uma esteira em rampa
+  sobe sozinha e uma plataforma que gira leva a correia com ela.
+* ⚠️ **Ela leva por TRAÇÃO** ⇒ uma correia sobre `grip = 0` **não leva nada**, que
+  é o que uma esteira sem atrito faz no mundo (gate
+  `a_belt_carries_by_traction_so_a_frictionless_one_carries_nothing`).
+* ⚠️ **Quem responde é o MESMO raio que ganhou** — o leque de pés toma o chão
+  como o mais próximo de N raios e a superfície sai desse vencedor, senão o
+  personagem andaria no gelo e derraparia na madeira dentro do mesmo tique.
+
+⚠️ **E o `grip` NÃO é o `Collider::friction`, por razão ESTRUTURAL — não por
+gosto:** a perna do personagem **FLUTUA** (`ride`), então o atrito de Coulomb do
+solver, que é o que aquele campo governa, **nunca se aplica a este personagem,
+nem uma vez**. Acoplá-los faria *"esta rampa é escorregadia para o personagem"*
+significar também *"e todo caixote desliza nela"*, e uma esteira
+**não-escorregadia** ficaria inexprimível: uma correia não tem análogo nenhum em
+`friction`. ⇒ **a prescrição do item 1 abaixo (*"o collider já carrega `friction`
+… a lei simplesmente nunca o lê"*) foi DESCARTADA na construção, e o motivo é
+este.**
+
+O texto original fica abaixo, como o registro do que foi medido em 12/08.
+
+---
 
 **Medido:** o chão contribui exactamente **dois** fatos — a `normal` e a
 `ground_velocity` (`walk.rs:129`). Uma varredura por `friction` no crate da lei

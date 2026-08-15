@@ -184,6 +184,64 @@ pub(crate) fn push_symmetric_segment(
     }
 }
 
+/// As cópias de um conjunto de **LAÇOS FECHADOS** — a terceira irmã de [`push_symmetric`] (dabs) e
+/// [`push_symmetric_segment`] (fios), sobre os MESMOS primitivos ([`reflect_vec`] / [`radial_rotor`]).
+///
+/// ⚠️ **O WINDING é REPOSTO, e isto é correção e não higiene.** O preenchimento sólido é `nonzero`
+/// (`|soma corrida|.min(1)`), então dois contornos de sentidos OPOSTOS se furam um ao outro — é
+/// exatamente assim que o `solid_shapes` desenha um `Remove`. Uma **reflexão inverte o sinal da
+/// área**: sem repor o sentido, um espelho cujo eixo cruza a figura devolveria uma cópia que
+/// **CANCELA** a original na sobreposição e abriria um buraco onde tem de haver tinta. Uma
+/// **rotação preserva** o sinal, então só o braço do espelho reverte a lista de pontos.
+///
+/// Desligada ⇒ devolve os laços de entrada **na ordem e nos valores de entrada**, o que mantém o
+/// mundo sem simetria byte-idêntico.
+#[must_use]
+pub fn symmetric_loops(loops: &[Vec<[f32; 2]>], sym: &SymmetrySettings) -> Vec<Vec<[f32; 2]>> {
+    if !sym.enabled || loops.is_empty() {
+        return loops.to_vec();
+    }
+    let mut out = Vec::with_capacity(loops.len() * 2);
+    out.extend_from_slice(loops);
+    if sym.circular {
+        let n = sym.segments();
+        let step = radial_rotor(n);
+        let mut rotor = step;
+        for _ in 1..n {
+            for lp in loops {
+                out.push(
+                    lp.iter()
+                        .map(|p| {
+                            let v = [p[0] - sym.center[0], p[1] - sym.center[1]];
+                            let rv = crate::heading::rotate(v, rotor);
+                            [sym.center[0] + rv[0], sym.center[1] + rv[1]]
+                        })
+                        .collect(),
+                );
+            }
+            rotor = crate::heading::rotate(rotor, step);
+        }
+    } else {
+        let d = sym.mirror_dir();
+        for lp in loops {
+            // Espelha os pontos **e** inverte a ordem: a reflexão trocou o sinal da área, e a ordem
+            // invertida o traz de volta ao da fonte (ver o ⚠️ do doc).
+            let mut m: Vec<[f32; 2]> = lp
+                .iter()
+                .rev()
+                .map(|p| {
+                    let v = [p[0] - sym.center[0], p[1] - sym.center[1]];
+                    let r = reflect_vec(v, d);
+                    [sym.center[0] + r[0], sym.center[1] + r[1]]
+                })
+                .collect();
+            m.shrink_to_fit();
+            out.push(m);
+        }
+    }
+    out
+}
+
 /// Reflect a dab across the line through `a` with unit direction `d`: the centre is mirrored, and the
 /// orientation vectors (`rotation`, `dir`) are reflected too so a mirror image has the flipped
 /// handedness a real reflection would. Radius / coverage / colour are untouched.
@@ -384,6 +442,108 @@ mod tests {
         assert!(near(out[1].center, [0.0, 10.0]));
         assert!(near(out[2].center, [-10.0, 0.0]));
         assert!(near(out[3].center, [0.0, -10.0]));
+    }
+
+    /// Área com sinal (sapateiro). Só o SINAL é lido, então a falta do fator ½ não importa.
+    fn signed_area(pts: &[[f32; 2]]) -> f32 {
+        let n = pts.len();
+        let mut acc = 0.0;
+        for i in 0..n {
+            let (a, b) = (pts[i], pts[(i + 1) % n]);
+            acc += a[0] * b[1] - b[0] * a[1];
+        }
+        acc
+    }
+
+    /// Um quadrado anti-horário longe do eixo.
+    fn square() -> Vec<[f32; 2]> {
+        vec![[10.0, 10.0], [30.0, 10.0], [30.0, 30.0], [10.0, 30.0]]
+    }
+
+    #[test]
+    fn loops_disabled_are_the_input_verbatim() {
+        let src = vec![square()];
+        let out = symmetric_loops(&src, &SymmetrySettings::default());
+        assert_eq!(out, src, "sem simetria o conjunto tem de sair como entrou");
+    }
+
+    /// **UMA CÓPIA ESPELHADA MANTÉM O SENTIDO DA FONTE** — a propriedade que impede o buraco.
+    ///
+    /// ⚠️ O preenchimento é `nonzero`: sentidos opostos se cancelam na sobreposição. Uma reflexão
+    /// inverte o sinal da área, então a cópia só é somável se a ordem dos pontos for revertida.
+    ///
+    /// **Mutação que sangra:** tirar o `.rev()` do braço do espelho (o sinal da cópia inverte).
+    #[test]
+    fn a_mirrored_loop_keeps_the_winding_of_its_source() {
+        let src = vec![square()];
+        let sym = SymmetrySettings {
+            enabled: true,
+            axis: MirrorAxis::X,
+            center: [0.0, 0.0],
+            ..Default::default()
+        };
+        let out = symmetric_loops(&src, &sym);
+        assert_eq!(out.len(), 2, "espelho = fonte + uma cópia");
+        let (a, b) = (signed_area(&out[0]), signed_area(&out[1]));
+        assert!(
+            a * b > 0.0,
+            "a cópia espelhada trocou de sentido (fonte {a:.1}, cópia {b:.1}) -- o `nonzero` vai \
+             abrir um buraco onde ela cruzar a fonte"
+        );
+        // E ela de facto foi para o outro lado do eixo (senão o gate acima é vácuo).
+        assert!(
+            out[1].iter().all(|p| p[0] < 0.0),
+            "não espelhou: {:?}",
+            out[1]
+        );
+    }
+
+    /// **E O BURACO É MEDIDO, não deduzido** — um espelho cujo eixo CRUZA a figura tem de a deixar
+    /// cheia. É o oráculo de APARÊNCIA da propriedade acima, sobre o rasterizador que a consome.
+    #[test]
+    fn a_mirror_through_the_shape_does_not_punch_a_hole_in_it() {
+        let src = vec![square()];
+        let sym = SymmetrySettings {
+            enabled: true,
+            axis: MirrorAxis::X,
+            center: [20.0, 0.0], // o eixo passa pelo MEIO do quadrado 10..30
+            ..Default::default()
+        };
+        let out = symmetric_loops(&src, &sym);
+        let cov = crate::solid::fill_coverage(&out, 40, 40, [0.0, 0.0]);
+        // O miolo, onde a fonte e a cópia se sobrepõem, tem de estar CHEIO.
+        for y in 12..28 {
+            for x in 12..28 {
+                assert_eq!(
+                    cov[y * 40 + x],
+                    255,
+                    "buraco em ({x},{y}): a cópia espelhada cancelou a fonte"
+                );
+            }
+        }
+    }
+
+    /// **A cópia RADIAL não reverte, e isso também é medido** — uma rotação preserva o sinal, então
+    /// reverter ali seria a inversão que o espelho existe para desfazer.
+    #[test]
+    fn radial_loops_keep_the_winding_without_reversing() {
+        let src = vec![square()];
+        let sym = SymmetrySettings {
+            enabled: true,
+            circular: true,
+            radial_segments: 4,
+            center: [0.0, 0.0],
+            ..Default::default()
+        };
+        let out = symmetric_loops(&src, &sym);
+        assert_eq!(out.len(), 4, "radial 4 = quatro laços");
+        let a0 = signed_area(&out[0]);
+        for (i, lp) in out.iter().enumerate() {
+            assert!(
+                signed_area(lp) * a0 > 0.0,
+                "a cópia radial {i} trocou de sentido"
+            );
+        }
     }
 
     #[test]

@@ -67,13 +67,16 @@ fn a_thin_loop_in_solid_paints_the_region_it_encircles() {
     );
 }
 
-/// **A ESPESSURA NÃO ENTRA** — o mesmo gesto com dois raios de pincel tem de pintar o MESMO número de
-/// texels em Solid, e números bem diferentes em Line.
+/// **A ESPESSURA ENTRA — e a região continua cheia** (W7, ordem do Enio 2026-08-15: *"Solid deve
+/// usar o pincel com o falloff e espessura do traço como no modo flip"*).
 ///
-/// ⚠️ A segunda metade é o CONTROLE: sem ela o gate passaria num produto que simplesmente ignora o
-/// pincel em toda parte.
+/// ⚠️ **Este gate SUBSTITUI o que afirmava o contrário** (`in_solid_the_brush_width_does_not_enter…`,
+/// a §1.1 do plano 38). A decisão é do mesmo autor e o modelo novo é o do Flip: uma figura é o
+/// preenchimento **mais** o traço que a cerca. As DUAS metades são load-bearing e nenhuma basta
+/// sozinha — só a primeira passaria num produto que voltou a pintar só o contorno; só a segunda,
+/// num que voltou a esconder o pincel.
 #[test]
-fn in_solid_the_brush_width_does_not_enter_and_in_line_it_does() {
+fn in_solid_the_brush_paints_the_rim_and_the_region_stays_filled() {
     let side = 256u32;
     let mut a = tool(side, PaintMedia::Digital, 3.0);
     a.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
@@ -82,15 +85,54 @@ fn in_solid_the_brush_width_does_not_enter_and_in_line_it_does() {
     let mut b = tool(side, PaintMedia::Digital, 24.0);
     b.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
     let thick = loop_gesture(&mut b, 128.0, 60.0);
-    assert_eq!(thin, thick, "a espessura mudou a forma solida");
-
-    let mut c = tool(side, PaintMedia::Digital, 3.0);
-    let line_thin = loop_gesture(&mut c, 128.0, 60.0);
-    let mut d = tool(side, PaintMedia::Digital, 24.0);
-    let line_thick = loop_gesture(&mut d, 128.0, 60.0);
     assert!(
-        line_thick > line_thin + 1000,
-        "controle: em Line a espessura TEM de entrar ({line_thin} contra {line_thick})"
+        thick > thin + 5_000,
+        "o pincel nao entrou na forma solida ({thin} texels com raio 3 contra {thick} com raio 24)"
+    );
+
+    // …e a REGIÃO continua cheia: a mancha de 120×120 (~14 400) tem de estar lá com o pincel fino.
+    assert!(
+        thin > 13_000,
+        "a mancha deixou de cobrir a area cercada (~14 400): {thin}"
+    );
+}
+
+/// **UM GESTO QUE NÃO CERCA NADA AINDA DEIXA O PINCEL** — o gate que isola a metade nova, e o que
+/// prova que a mancha não come o traço.
+///
+/// ⚠️ **A DIAGONAL é a fixture, e ela foi escolhida por conter DOIS fenômenos que uma reta não
+/// contém.** (1) Ela fecha numa *sliver* de área ~zero (§5.3 do plano), então tudo o que sobra na
+/// tela é o traço — se ele voltar a ser suprimido, a tela fica **vazia**. (2) A caixa do
+/// preenchimento é o QUADRADO inteiro que ela atravessa, e o traço corre pelo **meio** dela: é ali
+/// que um snapshot velho apaga tinta, e uma reta horizontal (caixa de 1 px de altura) deixaria o
+/// traço todo do lado de fora e passaria nos dois casos.
+///
+/// **Mutações que sangram:** reinstalar a supressão de dabs em `stamp_dabs`; e tirar o
+/// `peel_drag_preview()` do bracket (o restore do quadro seguinte desfaz o lote que acabou de cair
+/// dentro da caixa).
+#[test]
+fn in_solid_a_diagonal_gesture_still_lays_the_brush() {
+    let side = 256u32;
+    let stroke = |solid: bool| {
+        let mut t = tool(side, PaintMedia::Digital, 6.0);
+        if solid {
+            t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+        }
+        t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
+        for k in 1..=16 {
+            #[allow(clippy::cast_precision_loss)]
+            let d = 40.0 + (k as f32 / 16.0) * 176.0;
+            t.on_canvas_pointer(cp([d, d], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([216.0, 216.0], PointerPhase::Up));
+        inked(&t)
+    };
+    let as_line = stroke(false);
+    let as_solid = stroke(true);
+    assert!(as_line > 800, "controle: a diagonal tem de pintar");
+    assert!(
+        as_solid * 10 >= as_line * 9,
+        "o traço sumiu sob o Solid: {as_solid} texels contra {as_line} sem ele"
     );
 }
 
@@ -129,6 +171,10 @@ fn ellipse_gesture(t: &mut crate::tool::PainterTool, c: f32, r: f32) -> usize {
 ///
 /// ⚠️ O oráculo é a ÁREA CERCADA contra o rastro do contorno: um anel de raio 70 e pincel 4 tem
 /// ~1.800 texels, o disco tem ~15.400. A razão é o que a feature promete.
+///
+/// ⚠️ **O teto subiu com a W7 e o motivo está no número:** o disco agora veste o traço, então o raio
+/// visível é `70 + raio do pincel`, e `π·74² ≈ 17 200`. O piso ficou onde estava — a mancha não
+/// encolheu, o contorno é que passou a somar.
 #[test]
 fn an_ellipse_shape_in_solid_is_a_disc_not_a_ring() {
     let side = 256u32;
@@ -143,17 +189,21 @@ fn an_ellipse_shape_in_solid_is_a_disc_not_a_ring() {
         as_disc > as_ring * 3,
         "a elipse nao foi preenchida: {as_disc} texels contra {as_ring} do contorno"
     );
-    // pi*70*70 = 15 394; o disco tem de chegar perto, nao ser uma mancha qualquer.
+    // pi*70*70 = 15 394 de mancha, mais o aro do pincel (pi*74*74 = 17 203).
     assert!(
-        (14_000..=16_500).contains(&as_disc),
-        "a area preenchida nao e a do disco (~15 394): {as_disc}"
+        (14_000..=17_600).contains(&as_disc),
+        "a area preenchida nao e a do disco vestindo o pincel (~17 200): {as_disc}"
     );
 }
 
-/// **A ESPESSURA NÃO ENTRA numa forma SÓLIDA** — o mesmo gesto com dois raios de pincel pinta o
-/// MESMO número de texels; o CONTROLE em Line prova que ali ela TEM de entrar.
+/// **UMA FORMA SÓLIDA VESTE O PINCEL TAMBÉM** — o irmão do gate da mão livre, na família dos shape
+/// editors, e a metade que prova que a wave alcançou os dois caminhos de depósito (a transação de
+/// re-carimbo é OUTRA — ver `super::solid_deposit`).
+///
+/// **Mutação que sangra:** devolver o `return` do `restamp_shapes_preview` sob Solid (os dois raios
+/// voltam a pintar o mesmo número).
 #[test]
-fn in_solid_a_shape_ignores_the_brush_width_and_in_line_it_does_not() {
+fn in_solid_a_shape_wears_the_brush_too() {
     let side = 256u32;
     let mut a = tool(side, PaintMedia::Digital, 3.0);
     a.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
@@ -162,15 +212,14 @@ fn in_solid_a_shape_ignores_the_brush_width_and_in_line_it_does_not() {
     let mut b = tool(side, PaintMedia::Digital, 24.0);
     b.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
     let thick = ellipse_gesture(&mut b, 128.0, 70.0);
-    assert_eq!(thin, thick, "a espessura mudou a forma solida");
-
-    let mut c = tool(side, PaintMedia::Digital, 3.0);
-    let ring_thin = ellipse_gesture(&mut c, 128.0, 70.0);
-    let mut d = tool(side, PaintMedia::Digital, 24.0);
-    let ring_thick = ellipse_gesture(&mut d, 128.0, 70.0);
     assert!(
-        ring_thick > ring_thin + 1000,
-        "controle: em Line a espessura TEM de entrar ({ring_thin} contra {ring_thick})"
+        thick > thin + 3_000,
+        "o pincel nao entrou na forma solida ({thin} com raio 3 contra {thick} com raio 24)"
+    );
+    // …e a mancha continua lá com o pincel fino (o disco de raio 70 mede ~15 394).
+    assert!(
+        thin > 14_000,
+        "a forma deixou de ser preenchida: {thin} texels"
     );
 }
 
@@ -210,6 +259,83 @@ fn a_remove_shape_punches_a_hole_in_the_solid() {
     let px = |x: usize, y: usize| t.canvas_rgba[(y * side as usize + x) * 4];
     assert!(px(128, 128) >= 250, "o Remove nao abriu buraco no centro");
     assert!(px(128, 78) < 250, "a coroa entre os dois raios ficou vazia");
+}
+
+/// **TODO TIPO CONTINUA DONO DO GESTO SOB SOLID** (W7, ordem do Enio: *"todos os types devem ser
+/// compatíveis com solid"*).
+///
+/// ⚠️ **A pergunta é feita ao ENUM, não a uma lista escrita aqui** (`sews_threads` é a porta que
+/// sabe quem costura), então um tipo novo entra neste gate sozinho — e a cláusula que o Solid
+/// mantinha (`!solid_owns_the_gesture()`) fica impossível de reinstalar em silêncio.
+///
+/// **Mutação que sangra:** devolver `&& !self.solid_owns_the_gesture()` ao
+/// `threads_own_the_gesture`.
+#[test]
+fn every_sewing_type_still_owns_its_gesture_under_solid() {
+    use ph2d_painter_brush::line_kind::LineKind;
+    for kind in [
+        LineKind::None,
+        LineKind::Speed,
+        LineKind::Sketchy,
+        LineKind::Wire,
+        LineKind::Ribbon,
+        LineKind::Rough,
+    ] {
+        let mut t = tool(128, PaintMedia::Digital, 6.0);
+        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+        t.paint.brush.line_kind = kind;
+        if !t.paint.brush.sews_threads() {
+            continue; // este tipo não costura fio nenhum — nada a exigir
+        }
+        assert!(
+            t.threads_own_the_gesture(),
+            "{kind:?} deixou de costurar sob o Style: Solid"
+        );
+    }
+}
+
+/// **A SIMETRIA ALCANÇA A MANCHA** — desenhar um laço de um lado do eixo tem de pintar o outro.
+///
+/// ⚠️ **O oráculo é o TEXEL espelhado**, não uma contagem: uma contagem maior passaria num produto
+/// que apenas engordou a mancha, e o que a feature promete é que a cópia cai no lugar refletido.
+///
+/// **Mutação que sangra:** o `solid_fill_loops` devolver os laços sem passar pelo `symmetric_loops`.
+#[test]
+fn the_solid_fill_is_mirrored_by_symmetry() {
+    let side = 256u32;
+    let mut t = tool(side, PaintMedia::Digital, 4.0);
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    t.toggle_symmetry_enabled(); // eixo X pelo centro do canvas (128), o default do bind
+    let _ = loop_gesture(&mut t, 70.0, 30.0); // um quadrado 40..100, bem à esquerda do eixo
+
+    let px = |x: usize, y: usize| t.canvas_rgba[(y * side as usize + x) * 4];
+    assert!(px(70, 70) < 250, "a mancha original nao foi pintada");
+    // O espelho de x=70 em torno de 128 é 186.
+    assert!(
+        px(186, 70) < 250,
+        "a mancha nao foi espelhada: o texel em (186,70) ficou branco"
+    );
+}
+
+/// **O TILING ALCANÇA A MANCHA** — um laço que cruza a costura pinta o outro lado da tile.
+///
+/// **Mutação que sangra:** o `solid_fill_loops` pular o `tiled_loops`.
+#[test]
+fn the_solid_fill_wraps_across_the_tiled_seam() {
+    let side = 128u32;
+    let mut t = tool(side, PaintMedia::Digital, 3.0);
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    t.toggle_brush_tiling(0); // só o eixo X
+    // Um quadrado centrado em x=118: metade dele cai FORA da borda direita (128).
+    let _ = loop_gesture(&mut t, 118.0, 20.0);
+
+    let px = |x: usize, y: usize| t.canvas_rgba[(y * side as usize + x) * 4];
+    assert!(px(120, 118) < 250, "a mancha original nao foi pintada");
+    // O que passou de 128 reaparece em x−128: o quadrado vai até 138 ⇒ 10.
+    assert!(
+        px(5, 118) < 250,
+        "a mancha nao envolveu a costura: o texel em (5,118) ficou branco"
+    );
 }
 
 /// **O CHECKBOX ALCANÇA A FERRAMENTA** — o clique do painel flipa o estado publicado, nos dois

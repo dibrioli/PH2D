@@ -50,6 +50,11 @@ impl PainterTool {
     /// quadro e a teia adensaria enquanto o artista apenas olha — a mesma doença que o `pre`
     /// congelado do sculpt existe para impedir. O que falta para eles é a wave dos shape editors,
     /// **nomeada** no handoff em vez de ficar como uma teia que engorda parada.
+    ///
+    /// ⚠️ **O `Style: Solid` NÃO recusa mais os fios** (W7, ordem do Enio: *"todos os types devem
+    /// ser compatíveis com solid"*). A cláusula `!solid_owns_the_gesture()` existia porque a mancha
+    /// SUBSTITUÍA o traço, e sem traço não há o que costurar; desde que ela passou a ser a região
+    /// **sob** o traço (`super::solid_deposit`), a teia decora o contorno como em qualquer gesto.
     pub(super) fn threads_own_the_gesture(&self) -> bool {
         self.paint.brush.sews_threads()
             && self.paint.brush.stroke_method.is_incremental()
@@ -57,16 +62,17 @@ impl PainterTool {
             && !self.paint.eraser
             && !self.paint.brush.watercolor
             && !self.paint.wetpaint.armed
-            && !self.solid_owns_the_gesture()
     }
 
     /// **O `Connection Line` do Wire está DESLIGADO?** — então o traço em si não é pintado e sobra
     /// só o arame (o *Paint connection line* do Krita, verbatim: *"which toggles the visibility of
     /// the connection line"*).
     ///
-    /// ⚠️ **A supressão mora na MESMA porta do `Style: Solid`** (`stamp_dabs`), e não nos sítios do
-    /// ciclo de traço — o doc daquela porta já diz por quê, e uma segunda casa para *"não deposite
-    /// dabs"* é como as duas passam a discordar num modo que só uma delas conhece.
+    /// ⚠️ **Ela é a ÚNICA supressão de dabs que restou** na porta do carimbo (`stamp_dabs`) — a do
+    /// `Style: Solid` morreu na W7, quando a mancha passou a ser a região **sob** o traço em vez de
+    /// a substituir. A casa continua sendo aquela, e não os sítios do ciclo de traço: uma segunda
+    /// casa para *"não deposite dabs"* é como as duas passam a discordar num modo que só uma delas
+    /// conhece.
     ///
     /// ⚠️ E ela **não** desliga a memória: os fios continuam a ser costurados a partir dos mesmos
     /// pontos, porque o arame é função do caminho, não da tinta que ele deixou.
@@ -100,6 +106,19 @@ impl PainterTool {
             return;
         }
         let ink = self.thread_ink();
+        // **Tiling** (W7): um fio que cruza a costura também desenha do outro lado, como um dab.
+        // ⚠️ A **Symmetry** não entra aqui e não é omissão: ela mora no MOTOR
+        // (`push_symmetric_segment`, ao lado da que espelha o dab que gerou o fio), e replicá-la
+        // outra vez no depósito duplicaria cada cópia.
+        let wrapped;
+        let threads: &[ph2d_painter_brush::stroke::threads::Thread] =
+            if self.paint.tiling[0] || self.paint.tiling[1] {
+                wrapped =
+                    super::tiling::tiled_threads(threads, ink.width_px, (w, h), self.paint.tiling);
+                &wrapped
+            } else {
+                threads
+            };
         let Some([bx, by, bw, bh]) = threads_bbox(threads, ink.width_px, w as usize, h as usize)
         else {
             return;

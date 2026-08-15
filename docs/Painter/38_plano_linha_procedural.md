@@ -960,6 +960,92 @@ whole_span`, no crate do painel). **10 mutações, 10 sangram.**
 
 ---
 
+### W7 — o `Solid` passa a USAR o pincel, e com ele todo tipo, a Symmetry e o Tiling
+
+**Ordem do Enio, 2026-08-15**, em três frases que são **uma**:
+
+> *"Solid deve usar o pincel com o falloff e espessura do traço como no modo flip."*
+> *"Todos os types devem ser compatíveis com solid."*
+> *"Simetry e Tiling devem ser compatíveis com os traços e solid."*
+
+#### A frase que decide tudo
+
+**`Style: Solid` deixa de ser *a região EM VEZ do traço* e passa a ser *a região SOB o traço*** — o
+modelo do **Flip**, onde um `FlipStroke` tem `fill: Option<Fill>` e **continua a ter a largura e a
+dureza dele**. O preenchimento é a região cercada; o contorno é o pincel.
+
+⚠️ **Isto REVOGA a §1.1 deste plano**, e a revogação é do mesmo autor: até aqui o Solid **suprimia**
+o carimbo, sob o pedido de 2026-08-12 (*"para forma sólida a espessura da linha passa a não ser
+considerada"*). Os gates que pinavam aquela lei (`in_solid_the_brush_width_does_not_enter…`,
+`in_solid_a_shape_ignores_the_brush_width…`) foram **substituídos**, não apagados: o que eles
+afirmam agora é o oposto medível, e a metade *"a região continua cheia"* ficou ao lado para nenhuma
+das duas poder passar sozinha.
+
+#### As três metades eram a mesma, e é por isso que a wave é pequena
+
+| o pedido | o que o entrega |
+|---|---|
+| falloff + espessura | os dabs voltam a ser carimbados — **o pincel é o pincel** |
+| todo tipo compatível | Speed/Sketchy/Wire/Ribbon/Rough **decoram o traço**, e não havia traço |
+| Symmetry + Tiling nos traços | eles moram na porta do dab: chegam **de graça** |
+| Symmetry + Tiling no Solid | a única metade que a wave teve de construir |
+
+#### As duas transações, e por que não podem ser uma
+
+O preenchimento é sempre um **re-carimbo** (a cada ponto novo o polígono INTEIRO muda de forma), mas
+o traço não: metade dos métodos deposita **cumulativamente**. Isso dá duas transações, e o
+`drag_preview` é **um slot só** — duas encadeadas nele deixariam só a última de pé, restaurando por
+cima dos dabs que a outra acabou de carimbar.
+
+- **métodos de RE-CARIMBO** (Drag Dot / Anchored / Line + os cinco shape editors): a mancha viaja
+  **dentro** do `stamp_drag_preview`, e a região salva é a **união** das duas caixas;
+- **métodos CUMULATIVOS** (mão livre, Airbrush, Dots, Grid Stamp): a mancha é uma transação própria,
+  **descascada antes** do lote e **re-escrita depois** — e o bracket mora na **porta única do
+  carimbo** (`stamp_dabs`), nunca nos seis sítios do ciclo de traço. ⚠️ **O modo de falha de
+  esquecer um sítio aqui não é *deixar de desenhar*, é APAGAR:** o restore de um snapshot velho
+  desfaz a tinta que o artista acabou de pôr.
+
+⚠️ **E a ORDEM entre a mancha e o traço não é observável** — as duas tintas são a mesma cor, e o
+`over` de duas fontes da mesma cor é **comutativo** (`a₁ ⊕ a₂ = a₁ + a₂ − a₁a₂` é simétrico, e a cor
+sai `c` nos dois casos). É esse fato que **permite** as duas famílias usarem transações diferentes
+sem a imagem discordar.
+
+#### O que a Symmetry teve de aprender sobre um LAÇO
+
+`symmetric_loops` nasce ao lado de `push_symmetric` (dabs) e `push_symmetric_segment` (fios), sobre os
+mesmos primitivos. ⚠️ **O WINDING é REPOSTO, e é correção e não higiene:** o preenchimento é
+`nonzero`, então dois contornos de sentidos opostos **se furam** — é assim que o `Remove` de um shape
+editor abre um buraco. Uma **reflexão inverte o sinal da área**; sem repor a ordem dos pontos, um
+espelho cujo eixo cruza a figura devolveria uma cópia que **CANCELA** a original e abriria um buraco
+onde tem de haver tinta. Uma **rotação preserva** o sinal, então só o braço do espelho reverte.
+Gates: a propriedade (o sinal) e o oráculo de aparência (o miolo cheio, medido no rasterizador).
+
+#### O que o Tiling teve de aprender
+
+`tiled_loops` e `tiled_threads` perguntam à **MESMA `axis_offsets`** que os dabs já usam — a régua de
+um laço é a **caixa** dele, e a de um fio é a caixa **mais meia espessura**. ⚠️ Sem o meio-lado, um
+fio que corre RENTE à costura (caixa de altura zero, tinta de `width_px` de largura) não seria
+replicado e a tile ficaria com **meia linha**; é o mesmo motivo pelo qual a régua de um dab é
+`centro ± raio`. Uma segunda regra de *"o que cruza a costura"* divergiria da dos dabs no dia em que
+alguém afinasse uma delas.
+
+⚠️ **A Symmetry dos FIOS não foi tocada** — ela já morava no motor (`push_symmetric_segment`, ao lado
+da que espelha o dab que gerou o fio), e replicá-la outra vez no depósito duplicaria cada cópia.
+
+#### Aberto, nomeado
+
+- **A fita e a mancha discordam sobre onde o traço está, e por desenho:** o caminho do preenchimento
+  é o do PONTEIRO, e o `Ribbon` deixa a tinta até 800 px atrás dele (o `Speed` a joga à frente). É a
+  mesma família de *"a tinta não está sobre o caminho"* que os dois tipos existem para produzir, e o
+  **smoke decide** se ela lê bem sob Solid.
+- **Sob impasto a mancha é PLANA** e só o traço tem corpo — o preenchimento não escreve relevo. É
+  coerente com o Flip (o `fill` não tem espessura) e fica nomeado.
+- **Com `Strength < 1` a borda fica mais escura que o miolo**, porque a mancha e o traço se somam na
+  faixa em que se sobrepõem. É inerente a pintar as duas coisas (o Grease Pencil tem o mesmo), e o
+  default de 1.0 não o mostra.
+
+---
+
 ## 5. As decisões — as três primeiras RESPONDIDAS pelo Enio em 2026-08-12
 
 ### 5.1 O `Solid` é oferecido em quais tipos? — ✅ **"para todos que forem possíveis"**
@@ -974,6 +1060,13 @@ hoje**, e não é cerimônia: ela é onde a resposta mora no dia em que nascer u
 Gate: `every_kind_with_a_base_path_offers_solid`.
 
 ### 5.2 A borda de uma forma sólida — ✅ **"pode ser sólida e específica para essa tool; faça o melhor possível"**
+
+⚠️ **A W7 mudou de que borda esta seção fala.** A medição abaixo é da borda da **MANCHA** — a
+cobertura exata por área, que continua sendo o melhor e o mais barato dos três candidatos. O que o
+artista **vê** hoje é a borda do **TRAÇO**, meia espessura para fora dela e com o falloff do pincel:
+a mancha é a região, o contorno é o pincel, e a borda analítica fica escondida sob o miolo opaco do
+traço. Fazer a mancha crescer meia-espessura sozinha seria uma **segunda resposta** a *"que borda
+este pincel tem"*, divergindo do falloff no dia em que alguém afinasse um dos dois.
 
 Então é **borda da FORMA**, e *"o melhor possível"* virou uma medição em vez de uma opinião (W0.3 do
 `line_probe` do tool): erro de cobertura contra a referência `SS = 32`, num disco de raio 300 —

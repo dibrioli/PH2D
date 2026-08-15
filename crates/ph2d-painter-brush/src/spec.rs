@@ -91,12 +91,15 @@ pub struct BrushSpec {
     /// dab adds on top so opacity builds up without the per-stroke cap (airbrush-like buildup). At
     /// Strength `1.0` the two are identical (the cap is full coverage). See [`crate::dab`].
     pub accumulate: bool,
-    /// **Style: Solid** — o traço deixa de ser a área VARRIDA pelo pincel e passa a ser a área
-    /// CERCADA pelo gesto, preenchida com cobertura exata por área ([`crate::solid`]).
+    /// **Style: Solid** — o gesto ganha a área que ele CERCA, preenchida com cobertura exata por
+    /// área ([`crate::solid`]), **além** do traço que a cerca. Um laço fino e solto vira uma mancha
+    /// gorda com o contorno do pincel por cima. `false` (o default) é o mundo de sempre, byte a byte.
     ///
-    /// ⚠️ **Em Solid a ESPESSURA não entra** (decisão do Enio, plano 38 §1.1): o que se pinta é o
-    /// polígono do caminho, então um laço fino e solto vira uma mancha gorda. `false` (o default) é
-    /// o mundo de sempre, byte a byte.
+    /// ⚠️ **A ESPESSURA E O FALLOFF ENTRAM** (W7, ordem do Enio 2026-08-15: *"Solid deve usar o
+    /// pincel com o falloff e espessura do traço como no modo flip"*). Até então o Solid SUPRIMIA o
+    /// carimbo e a §1.1 do plano 38 registrava a decisão inversa; o modelo agora é o do Flip, onde um
+    /// traço tem `fill: Option<Fill>` e continua a ter a largura e a dureza dele. É essa mudança que
+    /// faz **todo tipo de linha** funcionar sob Solid: eles decoram o traço, e não havia traço.
     pub style_solid: bool,
     /// **O TIPO de linha procedural** ([`crate::line_kind::LineKind`]) — o dropdown `Type` do card
     /// Line. `None` (o default) é o neutro **byte-idêntico**: nenhuma lei procedural alcança um dab.
@@ -129,7 +132,8 @@ pub struct BrushSpec {
     /// the visibility of the connection line"*): o traço em si é pintado, ou só o arame?
     ///
     /// Ligado (o default) o arame decora a pincelada; desligado sobra o laço solto, que é o look que
-    /// o Krita mostra. ⚠️ A supressão mora na MESMA porta do `Style: Solid` — ver
+    /// o Krita mostra. ⚠️ Ela é a **única** supressão de dabs que restou na porta do carimbo — a do
+    /// `Style: Solid` morreu na W7, quando a mancha passou a ser a região **sob** o traço; ver
     /// `PainterTool::stamp_dabs`.
     pub wire_connection_line: bool,
     /// **Ribbon — o `Weight`**, a fração do [`crate::line_kind::RIBBON_LAG_MAX_S`] que o traço

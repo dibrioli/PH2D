@@ -118,6 +118,92 @@ pub(super) fn tiled_offsets_into(
     n
 }
 
+/// Replica **laços fechados** (o `Style: Solid`) através das bordas envolvidas — a irmã de
+/// [`tiled_dabs`], sobre a MESMA [`axis_offsets`].
+///
+/// ⚠️ **A régua de um laço é a CAIXA dele, e é isso que a torna a mesma pergunta:** um dab cruza a
+/// borda quando `centro ± raio` a passa, e um laço quando a sua caixa a passa — então basta entregar
+/// o centro e o meio-lado da caixa à função que já responde. Uma segunda regra de *"o que cruza a
+/// costura"* divergiria da dos dabs no dia em que alguém afinasse uma delas, e a tinta do traço
+/// apareceria do outro lado sem a mancha (ou o contrário).
+///
+/// ⚠️ **O SENTIDO de cada laço é preservado** (a cópia é uma translação, que não mexe no sinal da
+/// área) — ver [`ph2d_painter_brush::symmetry::symmetric_loops`], onde a reflexão exige o oposto.
+#[must_use]
+pub(super) fn tiled_loops(
+    loops: &[Vec<[f32; 2]>],
+    source_size: (u32, u32),
+    tiling: [bool; 2],
+) -> Vec<Vec<[f32; 2]>> {
+    let (fw, fh) = (source_size.0 as f32, source_size.1 as f32);
+    let mut out = Vec::with_capacity(loops.len() * 2);
+    for lp in loops {
+        let Some((c, r)) = bbox_centre_half(lp) else {
+            continue; // laço vazio: não cerca área, não cruza costura nenhuma
+        };
+        let mut xs = [0.0f32; 3];
+        let nx = axis_offsets(c[0], r[0], fw, tiling[0], &mut xs);
+        let mut ys = [0.0f32; 3];
+        let ny = axis_offsets(c[1], r[1], fh, tiling[1], &mut ys);
+        for &dx in &xs[..nx] {
+            for &dy in &ys[..ny] {
+                out.push(lp.iter().map(|p| [p[0] + dx, p[1] + dy]).collect());
+            }
+        }
+    }
+    out
+}
+
+/// Replica os **FIOS** (Sketchy / Wire / as travessas da fita) através das bordas envolvidas.
+///
+/// ⚠️ **O meio-lado leva a espessura do fio**, senão um fio que corre RENTE à costura (caixa de
+/// altura zero, mas tinta de `width_px` de largura) não seria replicado e a tile ficaria com meia
+/// linha — o mesmo motivo pelo qual a régua de um dab é `centro ± raio` e não o centro sozinho.
+#[must_use]
+pub(super) fn tiled_threads(
+    threads: &[[f32; 4]],
+    width_px: f32,
+    source_size: (u32, u32),
+    tiling: [bool; 2],
+) -> Vec<[f32; 4]> {
+    let (fw, fh) = (source_size.0 as f32, source_size.1 as f32);
+    let half = 0.5 * width_px.max(0.0);
+    let mut out = Vec::with_capacity(threads.len() * 2);
+    for t in threads {
+        let c = [0.5 * (t[0] + t[2]), 0.5 * (t[1] + t[3])];
+        let r = [
+            0.5 * (t[0] - t[2]).abs() + half,
+            0.5 * (t[1] - t[3]).abs() + half,
+        ];
+        let mut xs = [0.0f32; 3];
+        let nx = axis_offsets(c[0], r[0], fw, tiling[0], &mut xs);
+        let mut ys = [0.0f32; 3];
+        let ny = axis_offsets(c[1], r[1], fh, tiling[1], &mut ys);
+        for &dx in &xs[..nx] {
+            for &dy in &ys[..ny] {
+                out.push([t[0] + dx, t[1] + dy, t[2] + dx, t[3] + dy]);
+            }
+        }
+    }
+    out
+}
+
+/// O centro e o meio-lado da caixa de um laço — o par que [`axis_offsets`] chama de `centre`/`radius`.
+fn bbox_centre_half(lp: &[[f32; 2]]) -> Option<([f32; 2], [f32; 2])> {
+    let first = *lp.first()?;
+    let mut bb = [first[0], first[1], first[0], first[1]];
+    for p in lp {
+        bb[0] = bb[0].min(p[0]);
+        bb[1] = bb[1].min(p[1]);
+        bb[2] = bb[2].max(p[0]);
+        bb[3] = bb[3].max(p[1]);
+    }
+    Some((
+        [0.5 * (bb[0] + bb[2]), 0.5 * (bb[1] + bb[3])],
+        [0.5 * (bb[2] - bb[0]), 0.5 * (bb[3] - bb[1])],
+    ))
+}
+
 /// Wrap offsets for one axis of a tiled dab: always `0`, plus `∓span` when the dab's footprint
 /// (`centre ± radius`) crosses an enabled edge — so an edge dab also paints the wrapped copy. Writes
 /// up to 3 offsets into `out` and returns the count (`1` when tiling is off or the dab is interior).
@@ -173,5 +259,60 @@ impl PainterTool {
     pub fn reset_brush_tiling(&mut self) {
         self.paint.tiling = [false, false];
         self.paint.repeat_image = false;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Um quadrado 100..140 numa tela de 128: ele passa da borda direita.
+    fn crossing_loop() -> Vec<Vec<[f32; 2]>> {
+        vec![vec![
+            [100.0, 40.0],
+            [140.0, 40.0],
+            [140.0, 80.0],
+            [100.0, 80.0],
+        ]]
+    }
+
+    /// **DESLIGADO É A ENTRADA VERBATIM** — a rede que mantém o mundo sem Tiling byte-idêntico.
+    #[test]
+    fn loops_and_threads_are_untouched_with_tiling_off() {
+        let lp = crossing_loop();
+        assert_eq!(tiled_loops(&lp, (128, 128), [false, false]), lp);
+        let th = [[10.0f32, 10.0, 120.0, 10.0]];
+        assert_eq!(tiled_threads(&th, 2.0, (128, 128), [false, false]), th);
+    }
+
+    /// **UM LAÇO QUE CRUZA A COSTURA GANHA A CÓPIA DO OUTRO LADO** — e ela é uma TRANSLAÇÃO exata,
+    /// que é o que mantém o sentido (e portanto o `nonzero`) intacto.
+    #[test]
+    fn a_loop_crossing_the_seam_is_replicated_by_the_span() {
+        let out = tiled_loops(&crossing_loop(), (128, 128), [true, false]);
+        assert_eq!(out.len(), 2, "o laço da borda tem de ganhar UMA cópia");
+        for (a, b) in out[0].iter().zip(out[1].iter()) {
+            assert!(
+                (b[0] - (a[0] - 128.0)).abs() < 1e-3 && (b[1] - a[1]).abs() < 1e-3,
+                "a cópia não é a translação de −128 em x: {a:?} -> {b:?}"
+            );
+        }
+    }
+
+    /// **A ESPESSURA DO FIO ENTRA NA RÉGUA** — um fio RENTE à costura (caixa de altura zero) só é
+    /// replicado porque a tinta dele tem largura. Sem o meio-lado, a tile fica com meia linha.
+    ///
+    /// **Mutação que sangra:** tirar o `+ half` do meio-lado (o fio deixa de ser replicado).
+    #[test]
+    fn a_thread_grazing_the_seam_is_replicated_because_its_ink_has_width() {
+        // Um fio horizontal a 1 px da borda de baixo (y = 127) de uma tela 128, com 6 px de largura.
+        let th = [[10.0f32, 127.0, 60.0, 127.0]];
+        let out = tiled_threads(&th, 6.0, (128, 128), [false, true]);
+        assert_eq!(out.len(), 2, "o fio rente à costura tem de ganhar a cópia");
+        assert!(
+            (out[1][1] - (127.0 - 128.0)).abs() < 1e-3,
+            "a cópia do fio não desceu um span: {:?}",
+            out[1]
+        );
     }
 }

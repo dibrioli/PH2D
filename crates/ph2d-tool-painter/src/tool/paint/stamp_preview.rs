@@ -103,12 +103,23 @@ impl PainterTool {
         } else {
             dabs
         };
-        let bbox = coverage.iter().fold(None, |acc, d| {
+        let mut bbox = coverage.iter().fold(None, |acc, d| {
             match (acc, self.dab_bbox(d.center, d.radius_px)) {
                 (Some(a), Some(r)) => Some(union_region(a, r)),
                 (a, r) => a.or(r),
             }
         });
+        // **Style: Solid** (W7): num método de RE-CARIMBO a mancha viaja DENTRO desta transação, e
+        // não numa segunda — as duas encadeariam no mesmo slot `drag_preview` e só a última ficaria
+        // de pé, restaurando por cima dos dabs que a outra acabou de carimbar. Então a região salva
+        // é a UNIÃO das duas, e a mancha é escrita logo depois do carimbo (a ordem não é observável:
+        // a tinta é uma só, e o `over` de duas fontes da mesma cor é comutativo — ver
+        // `super::solid_deposit`).
+        let solid_loops = self.solid_fill_loops();
+        let solid_rect = self.solid_fill_rect(&solid_loops);
+        if let Some(r) = solid_rect {
+            bbox = Some(bbox.map_or(r, |a| union_region(a, r)));
+        }
         // Each preview frame re-stamps the WHOLE current batch onto the restored (pristine) canvas, so
         // a Composite Brush's Smear layer must chain fresh within THIS batch — clear the cross-batch
         // source (a Line's dabs then smear from the anchor; a single Drag-Dot dab simply has no source).
@@ -121,6 +132,9 @@ impl PainterTool {
                 save_us = t_save.elapsed().as_micros() as u64;
                 let t_stamp = std::time::Instant::now();
                 self.stamp_dabs(dabs);
+                if let Some(r) = solid_rect {
+                    self.stamp_solid(&solid_loops, r);
+                }
                 stamp_us = t_stamp.elapsed().as_micros() as u64;
                 self.paint.drag_preview = Some(DragPreview { rect, pixels });
             }

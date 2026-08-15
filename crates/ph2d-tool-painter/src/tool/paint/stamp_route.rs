@@ -34,10 +34,29 @@ impl PainterTool {
     /// shows is `lerp(base, free, keep)` ([`Self::stamp_dabs_gated`]). Nothing is made invisible — only the
     /// paint is gated. Engine-agnostic: it wraps ALL the routes in [`Self::stamp_dabs_routed`].
     pub(super) fn stamp_dabs(&mut self, dabs: &[Dab]) {
-        // **Style: Solid** — enquanto um gesto sólido está em voo, a tinta é a REGIÃO cercada e a
-        // linha por baixo dela não é pintada (plano 38 §1.1). A supressão mora nesta porta, e não nos
-        // seis sítios do ciclo de traço, pelo motivo que o gate da espessura mediu.
-        if self.solid_suppresses_dabs() || self.wire_suppresses_dabs() {
+        // **Style: Solid** (W7) — o preenchimento de um gesto CUMULATIVO é uma transação própria, e
+        // o snapshot dela tem de conter todo dab e nenhum fill. Descascar antes do lote e
+        // re-escrever depois mora NESTA porta, e não nos seis sítios do ciclo de traço, pelo motivo
+        // que o gate da espessura mediu: um sítio esquecido não *deixa de desenhar*, ele **apaga** —
+        // o restore de um snapshot velho desfaz a tinta que o artista acabou de pôr.
+        //
+        // ⚠️ O `peel_drag_preview` é a porta de descascar do módulo; as duas coisas a mais que ela
+        // faz (o rascunho da água e o stash de commit do Wet Paint) são no-ops aqui por construção,
+        // porque `solid_owns_the_gesture` já recusa a aquarela e o fluido.
+        if self.freehand_solid_fill_live() {
+            self.peel_drag_preview();
+            self.stamp_dabs_dispatch(dabs);
+            self.stamp_solid_preview();
+            return;
+        }
+        self.stamp_dabs_dispatch(dabs);
+    }
+
+    /// O corpo do carimbo — tudo o que [`Self::stamp_dabs`] fazia antes de ganhar o bracket do Solid.
+    fn stamp_dabs_dispatch(&mut self, dabs: &[Dab]) {
+        // **Wire com `Connection Line` desligado** — o traço em si não é pintado e sobra só o arame
+        // (o *Paint connection line* do Krita). É a única supressão que restou nesta porta.
+        if self.wire_suppresses_dabs() {
             return;
         }
         // Watercolor optical render-path: DON'T deposit dabs on the canvas — accumulate the coverage

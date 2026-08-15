@@ -163,8 +163,34 @@ pub(crate) fn spawn_if_enabled(
                  linha empoeirada. O jitter (secao Stroke) e' o outro controle, e faz o oposto."
             );
             println!(
-                "[line-smoke]   E o CONTROLE: com Type = None e Count = 1 o pincel tem de pintar \
-                 exatamente como sempre pintou."
+                "[line-smoke]   SOLID: o checkbox no topo do card. A tinta passa a ser a REGIAO que \
+                 o gesto cerca -- um laco fino e solto vira uma mancha gorda, e um gesto que nao \
+                 fecha fecha sozinho. Ele vale para os shape editors tambem: Stroke -> Ellipse com \
+                 Solid marcado desenha um DISCO, nao um anel."
+            );
+            println!(
+                "[line-smoke]     ⚠️ A PERGUNTA DE OLHO DESTA WAVE: a mancha nao substitui mais o \
+                 traco, ela fica POR BAIXO dele -- o modelo do Flip, onde um traco tem \
+                 preenchimento E continua a ter a largura e a dureza dele. Entao SUBA o tamanho do \
+                 pincel com Solid marcado: a borda da mancha tem de ENGORDAR e ficar macia (o \
+                 falloff). Se ela nao se mexer, o traco voltou a ser suprimido."
+            );
+            println!(
+                "[line-smoke]     E os TIPOS valem sob Solid: marque Solid e escolha Sketchy -- a \
+                 teia costura por cima da mancha. Idem Speed, Wire, Ribbon e Rough: eles decoram o \
+                 traco, e agora ha traco. Symmetry e Tiling tambem alcancam a mancha: ligue a \
+                 Symmetry e o laco aparece espelhado, ligue o Tiling e o que passa da borda \
+                 reaparece do outro lado."
+            );
+            println!(
+                "[line-smoke]     ⚠️ Duas consequencias NOMEADAS, nao defeitos: sob RIBBON a tinta \
+                 fica ate' 800 px atras do dedo enquanto a mancha e' a regiao que o DEDO cercou (o \
+                 Speed a joga a' frente -- e' a mesma familia); e com Strength < 1 a faixa onde a \
+                 mancha e o traco se somam fica mais escura que o miolo."
+            );
+            println!(
+                "[line-smoke]   E o CONTROLE: com Type = None, Solid desmarcado e Count = 1 o \
+                 pincel tem de pintar exatamente como sempre pintou."
             );
             Some(bits)
         }

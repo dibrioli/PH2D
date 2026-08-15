@@ -44,9 +44,10 @@ impl PainterTool {
         if matches!(self.paint.paint_mode, PaintMode::WetPaint) {
             self.paint.wetpaint.live_gesture = true;
         }
-        // **Style: Solid** — o gesto passa a ser um CAMINHO acumulado, e o depósito é o polígono dele
-        // (plano 38 §1.1). O caminho é semeado aqui e cresce a cada Move; a lista de dabs continua a
-        // ser produzida pelo motor de traço e simplesmente não é carimbada.
+        // **Style: Solid** — o gesto passa a ser um CAMINHO acumulado, e a MANCHA é o polígono dele
+        // (plano 38 §1.1). O caminho é semeado aqui e cresce a cada Move; a lista de dabs segue o
+        // caminho normal e é carimbada POR CIMA da mancha (W7 — o modelo do Flip: uma figura é o
+        // preenchimento **mais** o traço que a cerca).
         self.paint.solid_path.clear();
         if self.solid_owns_the_gesture() {
             self.paint.solid_path.push(ev.pos);
@@ -220,18 +221,15 @@ impl PainterTool {
             },
             &mut dabs,
         );
-        // ⚠️ **Em Solid o dab não é carimbado**, e não é uma otimização: a tinta do gesto é a REGIÃO
-        // cercada por ele, então carimbar a linha por baixo do preenchimento seria pintar a coisa que
-        // o Style existe para substituir. O motor de traço continua a rodar (o caminho, o
-        // estabilizador, a simetria futura vivem nele).
+        // **Style: Solid** — o caminho cresce aqui; a MANCHA é escrita pela porta do carimbo
+        // (`stamp_dabs` a bracketa, `super::solid_deposit`), e não por uma chamada solta neste sítio.
+        // ⚠️ Desde a W7 o dab **é** carimbado: a tinta do gesto é a região cercada **MAIS** o traço
+        // que a cerca, como um `FlipStroke` com `fill`.
         if self.solid_owns_the_gesture() {
             self.paint.solid_path.push(pos);
         }
         super::ribbon_diag::note(super::ribbon_diag::Source::Extend, dabs.len());
         self.stamp_stroke_dabs(&dabs);
-        if self.solid_owns_the_gesture() {
-            self.stamp_solid_preview();
-        }
         // Watercolor render-path: the dabs are ACCUMULATED here (the path is the data, so this is per
         // event and stays per event) and the optical reconstruction is **left to the frame**, not run
         // here. `paint_tick` pays it once — it already knows a Move arrived, from `moved_this_frame`,

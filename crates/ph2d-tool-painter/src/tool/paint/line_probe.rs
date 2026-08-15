@@ -2,10 +2,16 @@
 //! `docs/Painter/38_plano_linha_procedural.md`), e o preço da borda que o Enio pediu *"o melhor
 //! possível"*.
 //!
-//! O `Style: Solid` do Alchemy preenche o caminho em vez de o contornar. ⚠️ **A rota barata é parar
-//! antes do traçado:** o `stroke_boolean_contours` já rasteriza a máscara a `SS = 3`, compõe as
-//! formas e **então** traça o contorno (Moore) para devolver uma polilinha que vira dabs — a região
-//! preenchida (`crisp`) está em mãos no meio do caminho e é jogada fora.
+//! O `Style: Solid` do Alchemy preenche o caminho. ⚠️ **A rota barata é parar antes do traçado:** o
+//! `stroke_boolean_contours` já rasteriza a máscara a `SS = 3`, compõe as formas e **então** traça o
+//! contorno (Moore) para devolver uma polilinha que vira dabs — a região preenchida (`crisp`) está
+//! em mãos no meio do caminho e é jogada fora.
+//!
+//! ⚠️ **A W7 mudou o que este número SIGNIFICA, e as tabelas continuam válidas.** Elas medem o custo
+//! da MANCHA, e a mancha continua sendo exactamente isto. O que mudou é que ela deixou de
+//! SUBSTITUIR o contorno: desde 2026-08-15 uma figura sólida é o preenchimento **mais** o traço
+//! (o modelo do Flip), então o `traca`/`pts` que aqui aparecem como *"o que o Solid pula"* são hoje
+//! **o que ele paga ao lado** — a economia medida é sobre o composite booleano, não sobre o pincel.
 //!
 //! As duas irmãs de motor (a fórmula de velocidade e o orçamento do Sketchy) moram no
 //! `ph2d-painter-brush::line_probe`. O corte é por ASSUNTO: lá *o que o traço É*, aqui *o que a
@@ -73,7 +79,9 @@ fn measure_what_a_solid_would_skip() {
         );
     }
     println!(
-        "[line] leitura: `PULA%` e' o traçado, que o Solid nao faz — e `pts` e' o que o Line ainda paga depois dele."
+        "[line] leitura: `PULA%` e' o traçado do composite BOOLEANO, que a mancha nao precisa — \
+         desde a W7 o traço e' carimbado ao lado dela (o modelo do Flip), so' que pelo motor de \
+         dabs e nao por este contorno."
     );
 }
 

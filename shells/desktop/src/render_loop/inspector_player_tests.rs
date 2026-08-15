@@ -324,3 +324,55 @@ fn the_player_section_is_no_home_for_a_document_wide_run() {
 /// passariam a testar corpos diferentes sem ninguém notar.
 #[path = "inspector_player_mode_tests.rs"]
 mod mode;
+
+/// **REMOVER devolve o corpo ao que ele era, e o caso que decide é o
+/// CINEMÁTICO** (auditoria de 2026-08-15).
+///
+/// ⚠️ **O `Mode` escreve DUAS metades** (o `PlayerMode` e o `RigidBody.kind`) e o
+/// `Remove` desfazia UMA. O que sobrava era um corpo `Kinematic` sem
+/// `PlatformPlayer` — e esse é exatamente o estado que a §14 **NÃO OFERECE**
+/// (ele é dirigido pela cena), então o artista removia o comportamento e ficava
+/// **preso**, sem controle nenhum na tela para o trazer de volta. É o mesmo beco
+/// sem saída que a W-KinMove consertou para o gesto do MODO, reaberto pela porta
+/// do lado.
+///
+/// ⚠️ E a segunda consequência é silenciosa: o corpo **deixa de cair**, e um
+/// `PlayerMode` órfão viaja no arquivo a descrever um personagem que não existe.
+#[test]
+fn removing_the_behaviour_gives_a_plain_dynamic_body_back() {
+    let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Mode(1));
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::EmitSignals(true));
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    // A fixture TEM de conter o fenômeno: as duas metades foram escritas.
+    assert_eq!(
+        sim.world().get::<RigidBody>(e).unwrap().kind,
+        BodyKind::Kinematic,
+        "o Mode escreve o kind -- sem isso o resto do gate nao diz nada"
+    );
+
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Remove);
+
+    assert!(sim.world().get::<PlatformPlayer>(e).is_none());
+    assert!(
+        sim.world().get::<ph2d_physics_ecs::PlayerMode>(e).is_none(),
+        "um PlayerMode orfao descreve um personagem que nao existe -- e VIAJA no arquivo"
+    );
+    assert!(
+        sim.world()
+            .get::<ph2d_physics_ecs::PlayerSignals>(e)
+            .is_none(),
+        "e o opt-in de sinais e' da §14: sem ela ele nao tem quem o desligue"
+    );
+    assert_eq!(
+        sim.world().get::<RigidBody>(e).unwrap().kind,
+        BodyKind::Dynamic,
+        "⚠️ o corpo tem de VOLTAR a cair -- Kinematic sem player e' dirigido pela \
+         CENA, e a §14 nao e' oferecida ali: o artista fica PRESO"
+    );
+    // E a porta de volta continua aberta — a face vazia sobrevive ao Remove.
+    let info =
+        build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).expect("a secao NAO some com o kind");
+    assert!(!info.has_player);
+}

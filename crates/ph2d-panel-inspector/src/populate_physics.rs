@@ -316,14 +316,31 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         // (o botão Fit to Collider o diz).
         (ids::INSP_PLAYER_FLOAT, 0.5, 0.01, 100.0, 0.01), // LITERAL-PX-OK: meters
         (ids::INSP_PLAYER_CLING, 0.25, 0.0, 100.0, 0.01), // LITERAL-PX-OK: meters
-        // Aceleração-por-metro. Sem teto medido: o que aperta a rigidez é a
-        // estabilidade do passo, e o amortecimento é quem a governa.
-        (ids::INSP_PLAYER_STIFFNESS, 400.0, 0.0, 100_000.0, 1.0), // LITERAL-PX-OK: accel per metre
+        // Aceleração-por-metro. ⚠️ **TETO MEDIDO em 3600** (`1/dt²` para o tique
+        // de 60 Hz, `RideConfig::MAX_SPRING_STRENGTH`): ali a mola chega ao alvo
+        // em UM passo (*deadbeat*), e **acima disso ela passa do alvo** — 4000
+        // afunda 2,5 cm no pouso, 5000 afunda 8,9.
+        //
+        // ⚠️ **Esta linha dizia *"sem teto medido"* e a frase envelheceu** — era
+        // verdade até a `W-Landing` medir o teto e pôr o clamp na LEI, e ninguém
+        // reconferiu a nota. O slider seguiu a oferecer **100 000**, vinte e
+        // sete vezes o que o kernel honra: o artista arrastava até ao fim e não
+        // via nada mudar. O gate `a_typable_ceiling_never_passes_what_the_law_honours`
+        // lê a constante VIVA, então mover a medição move a faixa.
+        //
+        // ⚠️ E o default é o do produto (`RideConfig::STARTING_POINT`, 2000), não
+        // o `400` do `bevy-tnua` que shipava aqui: o `Add` escreve 2000, então
+        // este número era a segunda cópia de um default — e a errada.
+        (ids::INSP_PLAYER_STIFFNESS, 2000.0, 0.0, 3600.0, 1.0), // LITERAL-PX-OK: accel per metre
         // ⚠️ TETO MEDIDO em 1.0 (`RideConfig::MAX_DAMPING`): acima dele o boost
         // INVERTE a velocidade em vez de matá-la, e o personagem pipoca. É o
         // único teto desta seção que descreve um limite de estabilidade em vez
         // de conveniência de stepper.
-        (ids::INSP_PLAYER_DAMPING, 0.5, 0.0, 1.0, 0.05), // LITERAL-PX-OK: fraction per tick
+        //
+        // ⚠️ E o default é o do produto (`1,0`, o teto): a `W-Landing` pôs o
+        // amortecimento no teto para o resíduo de rampa ser **0,0000 m exato**
+        // em toda inclinação, e este `0,5` era a segunda cópia — a errada.
+        (ids::INSP_PLAYER_DAMPING, 1.0, 0.0, 1.0, 0.05), // LITERAL-PX-OK: fraction per tick
         // m/s, relativa ao chão.
         (ids::INSP_PLAYER_SPEED, 6.0, 0.0, 1000.0, 0.1), // LITERAL-PX-OK: m/s
         (ids::INSP_PLAYER_ACCEL, 60.0, 0.0, 10_000.0, 1.0), // LITERAL-PX-OK: m/s^2

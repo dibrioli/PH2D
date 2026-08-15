@@ -222,6 +222,24 @@ fn clamp_samples(v: f32, max: usize) -> u16 {
     n as u16
 }
 
+/// **Uma FRAÇÃO da 3ª lei** — o que volta ao chão, em `[0, 1]`.
+///
+/// ⚠️ **Porta única para os três canais** (peso · tapete · empurrão): eles são a
+/// mesma grandeza medida em lugares diferentes, e três `clamp` copiados são
+/// como o quarto nasce sem um dos lados.
+///
+/// ⚠️ **Não-finito vira ZERO, e não o teto:** um `NaN` que chegasse ao
+/// componente envenenaria o impulso e, por ele, a pose que o `readback` escreve
+/// — e um `NaN.clamp(0,1)` devolve `NaN` em Rust. Zero é a resposta segura (o
+/// personagem volta a ser um fantasma), nunca a máxima.
+fn clamp_fraction(v: f32) -> f32 {
+    if v.is_finite() {
+        v.clamp(0.0, 1.0)
+    } else {
+        0.0
+    }
+}
+
 /// **Uma CONTAGEM autorada por um campo numérico** — arredonda, recusa não-finito
 /// e nunca é negativa.
 ///
@@ -297,10 +315,28 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
             }
             return;
         }
+        // ⚠️ **Desfaz o que o `Add` e o `Mode` FIZERAM, e não só o componente.**
+        //
+        // O gesto do modo escreve DUAS metades (o `PlayerMode` e o
+        // `RigidBody.kind`), e tirar uma deixava um corpo `Kinematic` sem
+        // player: o estado que a §14 **não oferece**, porque ele é dirigido pela
+        // cena. O artista removia o comportamento e ficava PRESO, sem controle
+        // nenhum na tela para o trazer de volta — o mesmo beco sem saída que a
+        // W-KinMove consertou para o gesto do modo, reaberto pela porta do lado.
+        //
+        // ⚠️ E a consequência silenciosa era pior que o beco: o corpo **deixava
+        // de cair**, e um `PlayerMode` órfão viajava no arquivo a descrever um
+        // personagem que já não existe.
         PlayerFieldEdit::Remove => {
-            sim.world_mut()
-                .entity_mut(entity)
-                .remove::<PlatformPlayer>();
+            let mut e = sim.world_mut().entity_mut(entity);
+            e.remove::<PlatformPlayer>();
+            e.remove::<PlayerMode>();
+            // O opt-in de sinais é uma row DESTA seção: sem ela, ninguém o
+            // desliga (a lei do controle sem porta).
+            e.remove::<ph2d_physics_ecs::PlayerSignals>();
+            if let Some(mut rb) = e.get_mut::<RigidBody>() {
+                rb.kind = BodyKind::Dynamic;
+            }
             return;
         }
         // ⚠️ **Anexa ou REMOVE — nunca escreve um campo** (A3): o marcador é o
@@ -455,8 +491,17 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         PlayerFieldEdit::WalkOffLedges(v) => p.walk_off_ledges = v,
         PlayerFieldEdit::CrouchWalkOffLedges(v) => p.crouch_walk_off_ledges = v,
         PlayerFieldEdit::LedgeSpeed(v) => p.ledge_speed = v.max(0.0),
-        PlayerFieldEdit::ReactionSupport(v) => p.reaction_support = v.max(0.0),
-        PlayerFieldEdit::ReactionMovement(v) => p.reaction_movement = v.max(0.0),
-        PlayerFieldEdit::ReactionPush(v) => p.reaction_push = v.max(0.0),
+        // ⚠️ **Os três são FRAÇÕES, e o teto é de RECURSO** — o registro das
+        // faixas já o diz (*"acima de 1 o personagem devolveria mais do que
+        // recebeu"*), e o slider parava em 1; era a **escrita** que só impunha o
+        // piso, então digitar `5` na caixa guardava um chão a levar cinco vezes
+        // o peso do personagem.
+        //
+        // ⚠️ Isto é o oposto do slider dual: ali a caixa passa da faixa de
+        // propósito (o arrasto é conforto, o disfuncional começa depois). Aqui
+        // não há duas grandezas — há **uma**, e ela é a física.
+        PlayerFieldEdit::ReactionSupport(v) => p.reaction_support = clamp_fraction(v),
+        PlayerFieldEdit::ReactionMovement(v) => p.reaction_movement = clamp_fraction(v),
+        PlayerFieldEdit::ReactionPush(v) => p.reaction_push = clamp_fraction(v),
     }
 }

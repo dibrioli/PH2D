@@ -311,3 +311,62 @@ fn choosing_pure_turns_the_world_into_scenery() {
         "o dinamico empurra pelo solver, sem knob nenhum: {dynamic:.4} m"
     );
 }
+
+/// **A FRAÇÃO da 3ª lei é uma fração, e a caixa de texto tem de o honrar**
+/// (auditoria de 2026-08-15).
+///
+/// ⚠️ **O teto `1,0` desta família é de RECURSO, não de gosto** — o próprio
+/// registro das faixas o diz: *"acima de 1 o personagem devolveria mais do que
+/// recebeu"*, quantidade de movimento inventada do nada. O slider parava em 1 e
+/// a **escrita** só impunha o piso (`v.max(0.0)`), então digitar `5` na caixa
+/// guardava um chão a levar cinco vezes o peso do personagem.
+///
+/// ⚠️ Isto é o oposto do slider dual: ali a caixa passa da faixa **de propósito**
+/// (o arrasto é conforto, o disfuncional começa depois). Aqui não há faixa
+/// confortável e um teto físico — há **um** número, e ele é o físico.
+#[test]
+fn the_reaction_fractions_are_fractions_in_the_text_box_too() {
+    let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    let e = ph2d_ecs::Entity::from_bits(bits);
+
+    for (edit, read) in [
+        (
+            PlayerFieldEdit::ReactionSupport(5.0),
+            (|p: &PlatformPlayer| p.reaction_support) as fn(&PlatformPlayer) -> f32,
+        ),
+        (PlayerFieldEdit::ReactionMovement(5.0), |p| {
+            p.reaction_movement
+        }),
+        (PlayerFieldEdit::ReactionPush(5.0), |p| p.reaction_push),
+    ] {
+        apply_player_edit(&mut sim, bits, edit);
+        let v = read(sim.world().get::<PlatformPlayer>(e).unwrap());
+        assert!(
+            (v - 1.0).abs() < 1.0e-6,
+            "uma fracao acima de 1 INVENTA quantidade de movimento: {edit:?} guardou {v}"
+        );
+    }
+
+    // E o piso continua lá — negativo seria o personagem PUXANDO o chão.
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::ReactionSupport(-2.0));
+    assert_eq!(
+        sim.world()
+            .get::<PlatformPlayer>(e)
+            .unwrap()
+            .reaction_support,
+        0.0
+    );
+
+    // ⚠️ **E um NaN vira ZERO, não o teto** — `NaN.clamp(0,1)` devolve `NaN` em
+    // Rust, e um NaN aqui viaja pelo impulso até à pose que o `readback`
+    // escreve: o personagem desaparece do mundo com todos os números na tela a
+    // parecerem certos. Zero é a resposta segura; a máxima seria uma escolha
+    // inventada num caminho de erro.
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::ReactionPush(f32::NAN));
+    assert_eq!(
+        sim.world().get::<PlatformPlayer>(e).unwrap().reaction_push,
+        0.0,
+        "um NaN tem de virar ZERO -- clamp() sozinho o deixa passar"
+    );
+}

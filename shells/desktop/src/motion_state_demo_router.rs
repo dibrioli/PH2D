@@ -351,12 +351,42 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
       da familia (um ruido que nao fecha nao faz um GIF).
   (!) As quatro leituras: (1-2) a de baixo volta a MESMA forma a cada {loop_s:.0}s, a de cima nunca -
       (3-4) a mesma pilha de 5 oitavas com detalhe mais FINO em baixo - (5-7) a 6 e' a 5
-      DESLOCADA (as mesmas feicoes, meia celula a' direita) e a 7 e' um perfil OUTRO: deslize
-      contra re-sorteio - (8-10) a 9 anda em LOCK-STEP com a 8 (0,5s por ciclo e 120 BPM sao o
-      MESMO numero em duas reguas) e a 10 e' visivelmente mais rapida.
+      DESLIZADA ao longo da fila (as mesmas feicoes, 0,4 de celula adiante) e a 7 e' outra
+      FATIA do campo, no eixo do TEMPO, onde nao existe seed nenhum - (8-10) a 9 anda em
+      LOCK-STEP com a 8 (0,5s por ciclo e 120 BPM sao o MESMO numero em duas reguas) e a 10
+      e' visivelmente mais rapida.
   (!) As fileiras 3-7 estao CONGELADAS de proposito: uma comparacao de FORMA nao pode ser
       tambem uma comparacao de instante.",
                 loop_s = conferencia_demos_time::loop_seconds(),
+            );
+            sinks
+        }
+        // AS ESTATISTICAS (doc 89, o grupo C): os agregados novos do reduce, as
+        // duas portas que os escopam, e os pesos da janela do smooth.
+        Ok("43") => {
+            let sinks = conferencia_demos_stats::build_stats_demo_document(doc, registry)
+                .unwrap_or_default();
+            eprintln!(
+                "[stats-demo] CADA BANDA E' UM GRAFICO: {} pecas, e o Y de cada peca E' o valor. \
+                 As pecas PEQUENAS sao o campo; as GRANDES sao a estatistica sobre ele.",
+                conferencia_demos_stats::COLS as u32,
+            );
+            for (i, label) in conferencia_demos_stats::BAND_LABELS.iter().enumerate() {
+                eprintln!("  {}. {label}", i + 1);
+            }
+            eprintln!(
+                "  (!) Esta cena julga-se PARADA -- nada aqui depende do relogio.
+  (!) O campo das bandas 1-4 e' ENVIESADO de proposito (x^4: quase tudo perto do chao, uma
+      cauda alta). Num campo simetrico a media e a mediana cairiam no MESMO lugar e a banda 1
+      desenharia duas retas coincidentes -- verde por vacuo, no sentido visual.
+  (!) As quatro leituras: (1) as retas da Mean e da Median NAO coincidem - (2) ligar a mask
+      SOBE a reta da media, e ela continua a ser desenhada por TODAS as pecas (a mascara
+      escolhe quem e' CONTADO, nunca quem e' RESPONDIDO) - (3) ligar o group transforma a reta
+      numa ESCADA de {bins} degraus - (4) o Range mede o vao inteiro e o Std Dev a dispersao,
+      bem mais baixa. E as bandas 6-8 filtram o MESMO degrau com o mesmo raio: a de cima tem
+      rampa RETA com duas QUINAS, a de baixo e' um S sem quina nenhuma.
+  (!) Se a lista de 8 bandas acima nao aparecer, PARE: o resto da cena nao diz nada.",
+                bins = conferencia_demos_stats::group_bins() as u32,
             );
             sinks
         }

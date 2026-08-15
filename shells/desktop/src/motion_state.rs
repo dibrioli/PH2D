@@ -73,6 +73,8 @@ mod conferencia_demos_audio;
 /// A cena da DIRECAO (`=38`) mora num irmao: o pai bate no teto de LOC da shell.
 #[path = "motion_state_conferencia_demos_direction.rs"]
 mod conferencia_demos_direction;
+#[path = "motion_state_conferencia_demos_stats.rs"]
+mod conferencia_demos_stats;
 #[path = "motion_state_conferencia_demos_text.rs"]
 mod conferencia_demos_text;
 #[path = "motion_state_conferencia_demos_time.rs"]

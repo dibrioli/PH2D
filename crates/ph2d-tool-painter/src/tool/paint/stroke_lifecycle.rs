@@ -227,6 +227,7 @@ impl PainterTool {
         if self.solid_owns_the_gesture() {
             self.paint.solid_path.push(pos);
         }
+        super::ribbon_diag::note(super::ribbon_diag::Source::Extend, dabs.len());
         self.stamp_stroke_dabs(&dabs);
         if self.solid_owns_the_gesture() {
             self.stamp_solid_preview();
@@ -300,6 +301,7 @@ impl PainterTool {
         };
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.tick(dt_s, &mut dabs);
+        super::ribbon_diag::note(super::ribbon_diag::Source::Tick, dabs.len());
         // Watercolor render-path: accumulate the airbrush/settle dabs, then recomposite over the frozen
         // base once — but only when a dab actually landed (a held stroke ticks every frame).
         let wet = self.watercolor_render_active();
@@ -307,6 +309,7 @@ impl PainterTool {
         self.stamp_dabs(&dabs);
         if parked {
             stroke.settle(&mut dabs); // clears `dabs` first
+            super::ribbon_diag::note(super::ribbon_diag::Source::Settle, dabs.len());
             stamped |= !dabs.is_empty();
             self.stamp_dabs(&dabs);
         }
@@ -356,6 +359,8 @@ impl PainterTool {
         if let Some(mut stroke) = self.paint.stroke.take() {
             let mut dabs = std::mem::take(&mut self.paint.dabs);
             stroke.finish(&mut dabs);
+            super::ribbon_diag::note(super::ribbon_diag::Source::Finish, dabs.len());
+            super::ribbon_diag::report(&self.paint.brush);
             self.stamp_dabs(&dabs);
             self.paint.dabs = dabs;
             self.park_stroke(stroke);

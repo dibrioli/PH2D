@@ -30,6 +30,7 @@ mod curve_offset; // perpendicular offset (parallel curve) + CAD-grade reconstru
 mod curve_refit; // Simplify/Merge quality funnel: corner-split + piecewise Schneider least-squares refit
 mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay snapshot; split from `curve`
 mod curve_trim; // self-intersection trim of the offset spine (open + closed); split from `curve_offset`
+mod ribbon_diag; // `PH2D_RIBBON_DIAG=1`: quem pinta o que num traco, impresso no pen-up
 mod solid_deposit;
 /// O `Style: Solid` na família dos shape editors — o laço que cada forma desenha (plano 38 §5.1).
 mod solid_shapes;

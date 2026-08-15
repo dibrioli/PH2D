@@ -289,9 +289,15 @@ fn measure_the_ribbon_floor_of_visibility() {
 #[ignore = "measurement, not a gate — run explicitly"]
 fn measure_who_emits_on_a_ribbon_stroke() {
     let dt = 1.0 / 60.0;
+    let mut estab = spec(0.45, 0.30, 0.0);
+    estab.stabilizer = 0.5;
+    let mut estab_hi = spec(0.45, 0.30, 0.0);
+    estab_hi.stabilizer = 0.9;
     for (name, mut sp) in [
         ("None (controle)", spec(0.0, 0.30, 0.0)),
-        ("Ribbon 0,45", spec(0.45, 0.30, 0.0)),
+        ("Ribbon estab 0", spec(0.45, 0.30, 0.0)),
+        ("Ribbon estab 0,5", estab),
+        ("Ribbon estab 0,9", estab_hi),
     ] {
         if name.starts_with("None") {
             sp.line_kind = LineKind::None;
@@ -422,4 +428,108 @@ fn measure_where_the_ink_ends_after_pen_up() {
     println!("[fim] ultimo dab DEPOIS do pen-up : x={:.1}  ({} dabs de cauda)", depois[0], out.len());
     println!("[fim] leitura: se o depois pousar NO DEDO, algo arrastou a tinta ate o cursor em");
     println!("[fim] linha reta -- e essa reta E a espicula. A fita tem de parar onde ela parou.");
+}
+
+/// **UM GESTO DE VERDADE** — curvas, velocidade variável (com quase-paradas), vários eventos de
+/// ponteiro por quadro e `dt` com jitter. ⚠️ **É a fixture que as outras sondas não tinham**, e uma
+/// espícula é uma INVERSÃO: o caminho sai e volta, então a direção entre dabs consecutivos vira
+/// mais de 90°.
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn measure_a_real_gesture_for_spikes() {
+    for (nome, w) in [("None (controle)", 0.0f32), ("Ribbon 0,45", 0.45)] {
+        let mut sp = spec(w, 0.30, 0.0);
+        if w == 0.0 {
+            sp.line_kind = LineKind::None;
+        }
+        let mut s = Stroke::new(sp, plain(), 7);
+        let mut out = Vec::new();
+        s.begin(
+            StrokePoint {
+                pos: [200.0, 400.0],
+                pressure: 1.0,
+            },
+            &mut out,
+        );
+        let (mut prev, mut prev_dir) = (None::<[f32; 2]>, None::<[f32; 2]>);
+        let (mut inversoes, mut pior) = (0usize, 0.0f32);
+        let mut scan = |out: &[crate::stroke::Dab]| {
+            for d in out {
+                if let Some(p) = prev {
+                    let v = [d.center[0] - p[0], d.center[1] - p[1]];
+                    let n = (v[0] * v[0] + v[1] * v[1]).sqrt();
+                    if n > 1e-4 {
+                        let u = [v[0] / n, v[1] / n];
+                        if let Some(q) = prev_dir {
+                            let cos = u[0] * q[0] + u[1] * q[1];
+                            if cos < 0.0 {
+                                inversoes += 1;
+                                pior = pior.max(-cos);
+                            }
+                        }
+                        prev_dir = Some(u);
+                    }
+                }
+                prev = Some(d.center);
+            }
+        };
+        let mut t = 0.0f32;
+        for i in 0..240 {
+            out.clear();
+            // 4 eventos por quadro, com a velocidade a variar entre quase-parada e rapida
+            #[allow(clippy::cast_precision_loss)]
+            for k in 0..4 {
+                t += 0.004 * (1.0 + (t * 3.0).sin().abs() * 6.0);
+                let x = 200.0 + t * 300.0;
+                let y = 400.0 + (t * 5.0).sin() * 150.0 + (t * 13.0).cos() * 40.0;
+                let _ = k;
+                s.extend(StrokePoint { pos: [x, y], pressure: 1.0 }, &mut out);
+            }
+            scan(&out);
+            out.clear();
+            // dt com jitter, como um frame real
+            #[allow(clippy::cast_precision_loss)]
+            let dt = 1.0 / 60.0 * (0.7 + 0.6 * ((i as f32) * 0.37).sin().abs());
+            s.tick(dt, &mut out);
+            scan(&out);
+        }
+        out.clear();
+        s.finish(&mut out);
+        scan(&out);
+        println!("[gesto] {nome:<16} inversoes de direcao: {inversoes:>4} (pior cos {pior:.2})");
+    }
+    println!("[gesto] leitura: o controle diz quantas inversoes um gesto DESTE formato ja tem.");
+    println!("[gesto] Se a fita tiver muitas a mais, a espicula reproduz aqui.");
+}
+
+/// **O QUADRO PARADO** — o `paint_tick` chama [`Stroke::settle`] quando o ponteiro não se moveu, e
+/// uma mão real tem quadros parados aos montes (é onde ela desacelera para virar). ⚠️ **Nenhuma
+/// outra sonda o chamava**, e é a diferença entre a fixture e o produto.
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn measure_what_settle_does_to_a_lagging_ribbon() {
+    let dt = 1.0 / 60.0;
+    let mut s = Stroke::new(spec(0.45, 0.30, 0.0), plain(), 7);
+    let mut out = Vec::new();
+    s.begin(StrokePoint { pos: [100.0, 300.0], pressure: 1.0 }, &mut out);
+    let mut x = 100.0f32;
+    for _ in 0..30 {
+        out.clear();
+        x += 40.0;
+        s.extend(StrokePoint { pos: [x, 300.0], pressure: 1.0 }, &mut out);
+        s.tick(dt, &mut out);
+    }
+    let fita = out.last().map_or([0.0, 0.0], |d| d.center);
+    println!("[parado] dedo em x={x:.1}; a fita esta em x={:.1}", fita[0]);
+    // O QUADRO PARADO: nenhum extend, o tique corre, e o tool chama settle.
+    out.clear();
+    s.tick(dt, &mut out);
+    let pos_tick = out.last().map_or(fita, |d| d.center);
+    println!("[parado] apos o tique  : {} dabs, ultimo x={:.1}", out.len(), pos_tick[0]);
+    out.clear();
+    s.settle(&mut out);
+    let pos_settle = out.last().map_or(pos_tick, |d| d.center);
+    println!("[parado] apos o SETTLE : {} dabs, ultimo x={:.1}", out.len(), pos_settle[0]);
+    println!("[parado] leitura: se o settle levar a tinta ao DEDO, ele desenha uma reta da fita ate");
+    println!("[parado] o cursor -- e um gesto real tem um quadro parado a cada virada.");
 }

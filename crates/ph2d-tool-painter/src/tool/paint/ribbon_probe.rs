@@ -81,3 +81,75 @@ fn measure_the_ribbon_budget_per_event() {
     }
     println!("[ribbon] leitura: o teto e o maior peso cujo PIOR evento cabe nos 8 ms.");
 }
+
+/// **RENDERIZAR E OLHAR** — a fita desenhada por um gesto ONDULADO, pela porta do produto, salva em
+/// PGM para inspeção visual.
+///
+/// ⚠️ **Cinco hipóteses caíram por medição antes desta sonda existir** (o `extend` emitindo no dedo;
+/// o replay do taper; um salto entre dabs; o `settle` do quadro parado; a teia do Sketchy a vazar) —
+/// todas testadas contra o MOTOR, e o motor está limpo por toda via que eu o dirija. Quando a
+/// dedução falha cinco vezes, o que falta é **olhar o que o produto pinta**, que é o precedente do
+/// `push_look_probe`.
+///
+/// `PH2D_RIBBON_LOOK_DIR=<dir> cargo test -p ph2d-tool-painter --release probe_ribbon_look -- --ignored --nocapture`
+#[test]
+#[ignore = "render-and-look, not a gate"]
+fn probe_ribbon_look() {
+    let Some(dir) = std::env::var_os("PH2D_RIBBON_LOOK_DIR") else {
+        println!("[look] defina PH2D_RIBBON_LOOK_DIR=<dir>");
+        return;
+    };
+    let dir = std::path::PathBuf::from(dir);
+    std::fs::create_dir_all(&dir).expect("dir");
+    let side = 1024u32;
+    let dt = 1.0 / 60.0;
+    for (nome, kind, w, fr, gr) in [
+        ("controle_none", LineKind::None, 0.0f32, 0.30f32, 0.0f32),
+        ("ribbon_045", LineKind::Ribbon, 0.45, 0.30, 0.0),
+        ("ribbon_100", LineKind::Ribbon, 1.0, 0.30, 0.0),
+        // Os extremos que o roteiro manda mexer: o chicote (atrito no PISO) e o peso.
+        ("ribbon_w100_fr000", LineKind::Ribbon, 1.0, 0.0, 0.0),
+        ("ribbon_w045_fr000", LineKind::Ribbon, 0.45, 0.0, 0.0),
+        ("ribbon_w100_fr100", LineKind::Ribbon, 1.0, 1.0, 0.0),
+        ("ribbon_w100_grav", LineKind::Ribbon, 1.0, 0.30, 0.5),
+    ] {
+        let mut t = tool(side, PaintMedia::Digital, 6.0);
+        t.paint.brush.stroke_method = StrokeMethod::Space;
+        t.paint.brush.line_kind = kind;
+        t.paint.brush.ribbon_weight = w;
+        t.paint.brush.ribbon_friction = fr;
+        t.paint.brush.ribbon_gravity = gr;
+        // O gesto da foto: uma onda que desacelera nos picos (a mao vira devagar).
+        let pt = |u: f32| {
+            let x = 80.0 + u * 860.0;
+            let y = 512.0 + (u * 18.0).sin() * 200.0;
+            [x, y]
+        };
+        t.on_canvas_pointer(cp(pt(0.0), PointerPhase::Down));
+        let mut u = 0.0f32;
+        let mut frame = 0;
+        while u < 1.0 {
+            // varios eventos por quadro, com a velocidade a variar
+            // ⚠️ **UM evento por quadro, com passo GROSSO** — um mouse de 125 Hz e uma mao rapida
+            // andam 30-60 px por evento. A 1ª versao desta sonda andava 1,4 px, vinte vezes mais
+            // fina que o produto, e nao continha o fenomeno.
+            u = (u + 0.012 * (0.15 + (u * 18.0).cos().abs())).min(1.0);
+            t.on_canvas_pointer(cp(pt(u), PointerPhase::Move));
+            t.on_tick(dt * 1e3);
+            frame += 1;
+        }
+        t.on_canvas_pointer(cp(pt(1.0), PointerPhase::Up));
+        for _ in 0..60 {
+            t.on_tick(dt * 1e3);
+        }
+        // PGM: a tinta e o alpha do canvas.
+        let px = &t.canvas_rgba;
+        let mut buf = format!("P5\n{side} {side}\n255\n").into_bytes();
+        for i in 0..(side as usize * side as usize) {
+            buf.push(px[i * 4]);
+        }
+        let p = dir.join(format!("{nome}.pgm"));
+        std::fs::write(&p, buf).expect("write");
+        println!("[look] {nome}: {frame} quadros -> {}", p.display());
+    }
+}

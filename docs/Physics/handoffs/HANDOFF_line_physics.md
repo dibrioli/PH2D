@@ -11176,3 +11176,111 @@ smokou ⇒ **decisão dele**, não contrabando.
 E o último item da cauda do §3.A segue aberto: **`get_last_slide_collision` /
 `OnControllerColliderHit`** — a única das três que **não colapsa num campo**,
 porque é uma LISTA por tique, com estado.
+
+## ⬛ W-HitNormal — o contato ganha ORIENTAÇÃO ⟨2026-08-15⟩
+
+O último ❌ da cauda do §3.A: `get_last_slide_collision` (Godot) /
+`OnControllerColliderHit` (Unity). **E a medição reescreveu o item antes de uma
+linha ser desenhada.**
+
+### ⚠️ O que a tabela pedia não era o que faltava
+
+A linha da auditoria dizia *"uma LISTA por tique, não um bit — a única das três
+que não colapsa num campo do readout"*. Medido pelo canal que já existe:
+
+| modo | onde parou | pares COM o player (de 180 tiques) |
+|---|---|---|
+| Dynamic | x 2,301 | **155** |
+| Kinematic | x 2,301 | **155** |
+| Pure | x 2,301 | **155** |
+
+E empurrando um caixote: **163** tiques com o par no canal, nos dois modos, com o
+caixote a viajar **15,7 m**. ⇒ ***"em que eu bati"* já era respondido**, para os
+três modos, pelo `contacts()` genérico. O que ele não carregava era a **normal**.
+
+⛔ **E é por isso que uma lista de `CharacterHit` teria sido a resposta ERRADA** —
+ela nasce dentro do `move_character` e portanto só existe nos dois modos que
+passam pelo controlador cinemático; no **Dynamic** estaria **vazia em silêncio**.
+O *"funciona às vezes"* que esta linha recusa desde a `W-Ceiling`.
+
+### A normal estava na metade que o código jogava fora
+
+`let (_, deepest) = pair.find_deepest_contact()?;` — o `_` é o **manifold**, e é
+nele que a normal mora. `ContactReport` · `PeakSample` · `BodyContact` ·
+`ContactEvent` ganharam `normal`, e **um `ContactEvent::Began` com lugar, carga e
+orientação É o `OnControllerColliderHit`**.
+
+⚠️ **A parte que carrega peso é a ORIENTAÇÃO, e são DUAS conversões:**
+
+1. **para o MUNDO** — `local_n1` está no frame de *collider1*;
+2. **para a ORDEM PUBLICADA** — o par sai em ordem de HANDLE, que não tem relação
+   nenhuma com qual dos dois a fase estreita chamou de *collider1*; quando as duas
+   discordam, nega.
+
+Sem (2) o SINAL é cara-ou-coroa do lado de quem lê — exactamente o que o
+`CharacterHit::normal` já avisava e o hook one-way pagou com o seu `s = -1`.
+
+### ⚠️ Uma defesa que NENHUMA cena distingue — e o que se fez com isso
+
+A mutação que apaga o flip de ordem **sobreviveu**, e a investigação é o achado:
+
+* o ramo **dispara** — pondo um `assert!(!swapped)` no produto, ele estoura
+  **976 vezes** numa cena com corpo composto (e **sete** testes do `compound.rs`,
+  e nenhum outro da suíte);
+* mas o vencedor do teste de **profundidade** nunca é um par trocado em fixture
+  nenhum ⇒ **apagar o flip deixa a suíte INTEIRA de `ph2d-physics-ecs` verde.**
+
+⇒ A lei foi **extraída para uma função pura** (`published_normal(local_n1, rot,
+swapped)`) com gate próprio, em vez de ficar um ramo que nenhum gate vê. *Uma
+defesa que nenhum gate pode ver não é uma defesa* — e o gate afirma as duas
+conversões **compostas**, porque uma implementação que esqueça uma delas acerta
+por acaso nos três casos degenerados.
+
+O mesmo para o fold: a normal viaja **com o ponto**, sob o mesmo teste de
+profundidade (somá-las seria pior — num composto encostado numa quina a média de
+duas normais perpendiculares aponta para um lado que nenhuma superfície tem), e o
+fixture do gate põe a entrada mais funda em **segundo** lugar com normal
+perpendicular à primeira.
+
+**3 mutações, 3 sangram** (sem o flip · sem a ida ao mundo · a normal da primeira
+entrada em vez da mais funda).
+
+### ⚠️ E o meu primeiro gate REPROVOU um produto correto
+
+Ele pedia que a normal se alinhasse com o eixo dominante da separação entre
+**CENTROS**. Uma cápsula alta encostada na FACE de um caixote baixo tem os centros
+separados sobretudo em `y` e uma normal de superfície **horizontal** — medido,
+separação `y` de **0,586** contra normal **`[-0,997, 0,079]`**. *Direção entre
+centros não é normal de superfície.* O oráculo honesto é o **SEMI-ESPAÇO**
+(`n · (b − a) > 0`), que é o que a geometria de facto garante.
+
+### Números
+
+* **`physics_ecs_c9` byte-idêntico** — `1699123f9ed2844fa5159bc842a4e583f0675cdd88bb8895e2654ac706053787`,
+  117 corpos: a normal é readout, o solver não foi tocado.
+* **CUSTO: abaixo do piso de ruído.** A/B alternado a 320 pares tocando —
+  **com** 0,206 / 0,219 / 0,215 ms/tique contra **sem** 0,218 / 0,224. As amostras
+  *sem* caem entre as *com*, e a dispersão dentro de um braço já excede qualquer
+  diferença sistemática ⇒ **não há número a inventar**. ⚠️ Medido com
+  `load average ~11` (um `rustc` alheio a 99%), o que só reforça a leitura: a
+  diferença é menor que o ruído que a própria máquina impõe. Sonda:
+  `measure_contact_normal`.
+* `PROJECT_SCHEMA` **intocado** · registro **intocado** · nenhum id · nenhum ADR ·
+  zero `Cargo.toml` · nenhuma cena de smoke nova.
+* **7 gates** (4 de cena + 2 de lei pura + o de unidade), 3 mutações, 3 sangram.
+
+### ⚠️ A metade VISÍVEL: NADA, de propósito
+
+O overlay não desenha a normal, e a razão não é economia. A seta do vento existe
+porque o artista **AUTORA** um vetor e precisa de ver o frame da zona aplicado a
+ele; ninguém autora uma normal de contato — ela é saída derivada do solver, e não
+há intenção contra a qual conferi-la a olho. O `+` já diz *onde*; o consumidor da
+orientação é gameplay, não o olho. Se um dia ela for desenhada, é ao lado do
+`+`/`×` que já existem, não como um quarto canal.
+
+### Aberto
+
+A cauda do §3.A **fechou** — as três consultas estão respondidas. O que resta na
+tabela do Godot é `platform_floor_layers` / `platform_wall_layers` (pequeno: *que
+camadas contam como plataforma*), e o §3.F (modos de movimento) segue com
+recomendação *"não agora"*.

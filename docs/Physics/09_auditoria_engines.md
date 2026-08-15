@@ -60,6 +60,13 @@ irmãs C/G/H/I/J já tinham, três dias depois de a W-Surface as construir. *Uma
 plano que descreve como aberto o que já shipou manda a próxima LLM construir duas
 vezes* — foi exactamente o que esta linha escreveu sobre a §3.C, e reincidiu na §3.B.
 
+⚠️ **E a TERCEIRA passagem (ainda 15/08) achou o mesmo padrão no último ❌ da cauda.**
+O `get_last_slide_collision` foi medido antes de qualquer desenho, e o canal genérico
+de contatos **já respondia à pergunta dele nos três modos** — o que faltava era um
+campo (a normal), não um canal. *Ler a linha da tabela e construir o que ela descreve
+teria produzido uma lista por-player que estaria VAZIA no modo Dynamic*, ou seja a
+resposta certa para dois terços do produto.
+
 Legenda: ✅ temos · 🟡 temos por outra via (com o porquê) · ❌ não temos ·
 ⛔ divergência deliberada (não queremos, com motivo).
 
@@ -110,7 +117,7 @@ Legenda: ✅ temos · 🟡 temos por outra via (com o porquê) · ❌ não temos
 | **`is_on_floor/wall`, `get_floor_normal`, `get_platform_velocity`, `get_real_velocity`** | ✅ | **W-PlayerOut** (2026-08-13) — o `PlayerView` carrega `footing`, `wall`, `ground_normal`, `ground_velocity`, `velocity` e mais seis regimes |
 | `get_wall_normal` | ✅ | **W-WallNormal** (2026-08-15) — `PlayerView::wall_normal`, do VEREDITO da lei; era de graça (o `WallSample` já a carregava) e **não** é derivável do lado, que é o sinal do gesto |
 | `is_on_ceiling` | ✅ | **W-Ceiling** (2026-08-15) — `PlayerView::ceiling`. ⚠️ Custou um **sensor próprio** e não um campo: os dois sensores de cima que já existiam são assistências CONDICIONAIS (o `Headroom` só é sondado *agachado + botão solto*, o `CeilingProbe` só *subindo, no ar, com `corner_reach > 0`*) e a lei **não tem head-bonk**, então derivar o bit de qualquer um deles daria um teto falso na maioria dos tiques, em silêncio. **W-Bonked** (mesmo dia) publica a BORDA dele como `PlayerEvent::Bonked { speed }` / `"player.bonked"` — o irmão do `Landed` |
-| `get_last_slide_collision` | ❌ | **§3.A** — o que SOBRA, e é a lista honesta. É o *"em que eu bati"* com estado (o `OnControllerColliderHit` da Unity, abaixo): uma LISTA por tique, não um bit, e por isso é a única das três que não colapsa num campo do readout |
+| `get_last_slide_collision` | ✅ | **W-HitNormal** (2026-08-15) — e a medição REESCREVEU o item: o `contacts()` genérico **já** nomeava o par do player nos **três** modos (155 de 180 tiques contra uma parede; 163 empurrando um caixote 15,7 m), logo *"em que eu bati"* nunca precisou de um canal por-player. O que faltava era a **ORIENTAÇÃO**: `BodyContact::normal` / `ContactEvent::normal`, de `a` para `b`. ⚠️ Uma lista de `CharacterHit` teria sido a resposta ERRADA — ela só existe nos dois modos que passam pelo controlador cinemático, e no Dynamic estaria vazia em silêncio |
 
 ### Unity — `CharacterController` + `Effector2D` + KCC
 
@@ -121,7 +128,7 @@ Legenda: ✅ temos · 🟡 temos por outra via (com o porquê) · ❌ não temos
 | `skinWidth`, `minMoveDistance` | 🟡 | o wrapper do controlador cinemático já os carrega |
 | `isGrounded`, `velocity` | ✅ | **W-PlayerOut** — `PlayerView.footing` / `.velocity` |
 | `collisionFlags` | 🟡 | o bitfield *teto/lado/baixo* — temos os **três**, como fatos separados (`footing` · `wall` · `ceiling`, este pela **W-Ceiling** de 2026-08-15) e não como um campo de bits. ⚠️ A divergência é deliberada e é a mesma do `PlayerView` inteiro: *fatos, nunca um enum de regime único* — agachado **e** no chão são simultâneos, e um bitfield obriga quem lê a desempacotar antes de perguntar |
-| **`OnControllerColliderHit`** / hits com estado (KCC) | ❌ | **§3.A** |
+| **`OnControllerColliderHit`** / hits com estado (KCC) | ✅ | **W-HitNormal** (2026-08-15) — um `ContactEvent::Began` com lugar, carga e **normal** É este callback, e vale nos três modos |
 | `PlatformEffector2D` (one-way) | ✅ | W12 + `player_drops` |
 | **`SurfaceEffector2D`** (esteira: *"forças tangentes para igualar uma velocidade ao longo da superfície"*) | ✅ | **§3.B** — **W-Surface** (2026-08-13): `WalkSurface::belt`, escalar sobre a TANGENTE, somado à `ground_velocity`; leva por TRAÇÃO ⇒ correia sobre `grip = 0` não leva nada |
 | `BuoyancyEffector2D` | ✅ | W-Water / empuxo |

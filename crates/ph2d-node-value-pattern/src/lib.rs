@@ -9,13 +9,23 @@
 //!
 //! **A PRODUCER** (like `instance_field`): its input is read for its COUNT only
 //! (never passed through), and it writes a fresh `v` where `out[i] = pattern[i mod
-//! steps]`. The pattern is up to **8 slots** (`v0…v7`) with `steps` saying how
-//! many cycle — the common sequencer length, and the reason it rides the kernel's
-//! own uniform (params, no device array channel): the values ARE the uniform, so
-//! it is **device-resident** with no new infrastructure.
+//! len]`.
 //!
-//! - **`steps`** — how many slots cycle (`1…8`); `steps = 4` repeats `v0,v1,v2,v3`.
-//! - **`v0…v7`** — the values, assigned to consecutive instances and cycled.
+//! **Há DUAS formas de autorar o padrão, e a tabela VENCE quando existe:**
+//!
+//! - **`table`** — um **TEXT PARAM** (doc 32, o canal aditivo de string): a lista
+//!   inteira digitada, `"0.1 0.5 0.9 0.2"`, **sem o teto de oito**. Ausente ou
+//!   malformada ⇒ o caminho abaixo, byte a byte.
+//! - **`steps` + `v0…v7`** — os oito slides, o nó que sempre shipou. `steps = 4`
+//!   repete `v0,v1,v2,v3`.
+//!
+//! ⚠️ **O teto de OITO não era de recurso** (folha 15, `P1`): ele vinha de *"params
+//! são f32"* — o `NodeManifest` é f32-only por contrato congelado (ADR-0039), então
+//! uma lista arbitrária não cabia num `ParamSpec`. A cura é a mesma que o
+//! `motion.expression` e o `ramp` do `motion.color_ramp` já usam, e **não custou
+//! canal nenhum**: o `LutSpec` (construído em 2026-07-25 para a curva) já lê um
+//! text param e leva um vetor ao DEVICE. Ver [`table`] para o teto que sobra, que
+//! é o do buffer.
 //!
 //! **The value type** is the continuous per-instance scalar field `(Instances,
 //! Scalar, Frame)` on the `v` column (doc 12). `Pure` (no clock, no state); the
@@ -25,9 +35,14 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, LutSpec};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
+
+pub mod table;
+
+/// A chave do text param que carrega a tabela (lida por `EvalCtx::text_param`).
+pub const TABLE_KEY: &str = "table";
 
 /// The value type — the continuous per-instance scalar field on the `v` column
 /// (mirror of the sibling value nodes; kept local so this stays a leaf drop-crate
@@ -42,9 +57,14 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 /// The value column, out (this is a producer — it writes, never reads `v`).
 const VALUE_COL: &str = "v";
 
-/// The number of authored slots. The common step-sequencer length; the uniform
-/// holds far more, so the cap is panel readability — a longer arbitrary pattern
-/// wants a device ARRAY channel (a text-authored list), deferred.
+/// Quantos slots o caminho LEGADO tem. O comprimento comum de um sequenciador,
+/// e o teto vem de o `NodeManifest` ser f32-only (contrato congelado, ADR-0039).
+///
+/// ⚠️ **Este doc dizia *"um padrão arbitrário mais longo quer um canal de ARRAY
+/// no device (uma lista autorada em texto), deferido"* — e é exatamente esta
+/// wave.** O canal existe desde 2026-07-25 (o `LutSpec` da curva) e a lista mora
+/// no [`TABLE_KEY`]; o que sobra aqui é o caminho que já shipava, vivo enquanto
+/// nenhuma tabela for autorada.
 const SLOTS: usize = 8;
 
 /// The value for instance `i` given the authored `steps` (clamped to `[1, SLOTS]`,
@@ -113,25 +133,52 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
+/// O canal de LUT que este nó registra: a TABELA autorada, levada ao device
+/// como um `storage` de floats cujo **slot 0 é a CONTAGEM** (ver
+/// [`table::fill_lut`]). Chamá-la `vp_table` faz o binding ser `lut_vp_table`,
+/// que é o nome que o corpo do kernel lê.
+///
+/// ⚠️ **O corpo lê o BUFFER direto, nunca o `vp_table_sample(t)` que o gerador
+/// também emite.** Aquele acessor LERPA entre vizinhos — certo para uma curva,
+/// errado para um sequenciador, cujos valores são autorados um a um e têm de
+/// sair **exatos**. Um `sample` num `t` derivado do índice passaria por
+/// `(i/last)*last`, que em `f32` não devolve `i` para todo par, e um passo do
+/// padrão sairia misturado com o vizinho por ~1e-7 sem ninguém pedir.
+static LUTS: &[LutSpec] = &[LutSpec {
+    name: "vp_table",
+    text_key: TABLE_KEY,
+    resolution: table::LUT_LEN,
+    fill: table::fill_lut,
+}];
+
 /// GPU compute kernel (ADR-0126) — the WGSL port of [`pattern_value`], **fully
 /// device-resident**. No `applicable` gate — the sequencer never falls back to
 /// the CPU. VALUE out; the binding is `Write` (a producer — it never reads the
-/// input `v`, only its count), so no `in_v` is declared for naga to strip. The
-/// `steps` clamp keeps `vp_idx` inside the eight slots; the `switch` selects.
+/// input `v`, only its count), so no `in_v` is declared for naga to strip.
+///
+/// **Dois ramos, e o cabeçalho da LUT escolhe** — exatamente como a CPU escolhe
+/// pela lista vazia: `len > 0` lê a tabela, `len == 0` cai nos oito slots, onde o
+/// `steps` clamp mantém `vp_idx` dentro deles e o `switch` seleciona.
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
-        let vp_steps = clamp(i32(vp_round(params.steps)), 1, 8);\n\
-        let vp_idx = i32(i) % vp_steps;\n\
+        // O cabecalho: quantos valores a tabela autorada carrega (0 = nenhuma).\n\
+        let vp_n = u32(max(lut_vp_table[0], 0.0));\n\
         var vp_v: f32;\n\
-        switch (vp_idx) {\n\
-            case 1: { vp_v = params.v1; }\n\
-            case 2: { vp_v = params.v2; }\n\
-            case 3: { vp_v = params.v3; }\n\
-            case 4: { vp_v = params.v4; }\n\
-            case 5: { vp_v = params.v5; }\n\
-            case 6: { vp_v = params.v6; }\n\
-            case 7: { vp_v = params.v7; }\n\
-            default: { vp_v = params.v0; }\n\
+        if (vp_n > 0u) {\n\
+        \x20   vp_v = lut_vp_table[1u + (i % vp_n)];\n\
+        } else {\n\
+        \x20   let vp_steps = clamp(i32(vp_round(params.steps)), 1, 8);\n\
+        \x20   let vp_idx = i32(i) % vp_steps;\n\
+        \x20   switch (vp_idx) {\n\
+        \x20       case 1: { vp_v = params.v1; }\n\
+        \x20       case 2: { vp_v = params.v2; }\n\
+        \x20       case 3: { vp_v = params.v3; }\n\
+        \x20       case 4: { vp_v = params.v4; }\n\
+        \x20       case 5: { vp_v = params.v5; }\n\
+        \x20       case 6: { vp_v = params.v6; }\n\
+        \x20       case 7: { vp_v = params.v7; }\n\
+        \x20       default: { vp_v = params.v0; }\n\
+        \x20   }\n\
         }\n\
         write_v(i, vp_v);\n",
     wgsl_lib: "\
@@ -171,10 +218,17 @@ impl NodeOp for ValuePattern {
             ctx.param("v6"),
             ctx.param("v7"),
         ];
+        // A tabela autorada, UMA vez por cook. Vazia ⇒ o caminho dos oito slots,
+        // literalmente o que shipava.
+        let authored = table::parse(ctx.text_param(TABLE_KEY).unwrap_or(""));
         // The input is read for its COUNT only (like `instance_field`); the output
         // is a fresh field of that length.
         let n = ctx.input(0).count();
-        let out: Vec<f32> = (0..n).map(|i| pattern_value(i, steps, &vals)).collect();
+        let out: Vec<f32> = (0..n)
+            .map(|i| {
+                table::value_at(i, &authored).unwrap_or_else(|| pattern_value(i, steps, &vals))
+            })
+            .collect();
         ctx.emit(Stream::new(n).with(VALUE_COL, Column::Scalar(out)));
     }
 }
@@ -184,6 +238,7 @@ impl NodeOp for ValuePattern {
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(ValuePattern))?;
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    reg.register_luts(MANIFEST.id, LUTS);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
@@ -195,10 +250,35 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
+    // ⚠️ Autorar a TABELA torna os nove controles legados INERTES — o `eval` nem
+    // os lê. *Um controle que não faz nada não é pintado*, e é o mesmo gate que o
+    // `motion.spline_wrap` usa para os oito pontos dele quando há forma.
+    reg.register_param_gates_text(MANIFEST.id, PARAM_GATES_TEXT);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamGroup, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGateText, ParamGroup, ParamUiHint, ParamWidget};
+
+/// Os nove controles legados aparecem **só sem tabela**.
+static PARAM_GATES_TEXT: &[ParamGateText] = &[
+    gate_legacy("steps"),
+    gate_legacy("v0"),
+    gate_legacy("v1"),
+    gate_legacy("v2"),
+    gate_legacy("v3"),
+    gate_legacy("v4"),
+    gate_legacy("v5"),
+    gate_legacy("v6"),
+    gate_legacy("v7"),
+];
+
+const fn gate_legacy(param: &'static str) -> ParamGateText {
+    ParamGateText {
+        param,
+        when_text: TABLE_KEY,
+        when_present: false,
+    }
+}
 
 /// A value slider for one slot, `0..1` (the value-domain normalised convention;
 /// compose a `value.map_range` for another range).
@@ -230,6 +310,17 @@ static PARAM_GROUPS: &[ParamGroup] = &[
 ];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
+    // A TABELA — um text param, então não é um `ParamSpec` do manifesto (que é
+    // f32-only por contrato congelado); o painel a desenha como campo de texto,
+    // exatamente como desenha a fórmula do `motion.expression`.
+    ParamUiHint {
+        param: TABLE_KEY,
+        label: "Table",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Text,
+    },
     // How many slots cycle. The extra slots stay on the panel but are ignored
     // above `steps`; the doc says so.
     ParamUiHint {
@@ -251,116 +342,5 @@ static PARAM_HINTS: &[ParamUiHint] = &[
 ];
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_nodegraph::cook::{Cook, OpResolver};
-    use ph2d_nodegraph::graph::{Edge, Graph};
-
-    /// **The pattern is assigned by index and cycles.** `steps = 3` over 7
-    /// instances repeats `v0,v1,v2` — `[a,b,c,a,b,c,a]`.
-    #[test]
-    fn the_pattern_cycles_by_index() {
-        let vals = [10.0, 20.0, 30.0, 40.0, 0.0, 0.0, 0.0, 0.0];
-        let got: Vec<f32> = (0..7).map(|i| pattern_value(i, 3, &vals)).collect();
-        assert_eq!(got, vec![10.0, 20.0, 30.0, 10.0, 20.0, 30.0, 10.0]);
-    }
-
-    /// **`steps` is clamped to `[1, SLOTS]`** — `0` collapses to a constant `v0`,
-    /// and a value past the slots never indexes out of bounds.
-    #[test]
-    fn steps_is_clamped_to_the_slots() {
-        let vals = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
-        // steps 0 -> clamps to 1 -> every element is v0.
-        assert!(
-            (0..5).all(|i| pattern_value(i, 0, &vals) == 1.0),
-            "0 steps is constant v0"
-        );
-        // steps beyond SLOTS clamps to SLOTS (uses all eight, never out of bounds).
-        assert_eq!(pattern_value(8, 20, &vals), 1.0, "index 8 wraps to slot 0");
-        assert_eq!(pattern_value(7, 20, &vals), 8.0, "the last slot is used");
-    }
-
-    /// **Every one of the eight slots is reachable** — `steps = 8` reads `v0…v7`
-    /// in order, so no slot is a dead param.
-    #[test]
-    fn all_eight_slots_are_reachable() {
-        let vals = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8];
-        let got: Vec<f32> = (0..SLOTS).map(|i| pattern_value(i, SLOTS, &vals)).collect();
-        assert_eq!(got, vals.to_vec(), "all eight slots read in order");
-    }
-
-    /// The grid-like source: a count-only input, so `value.pattern` can produce a
-    /// field of length N through a real cook (it reads the count, never a `v`).
-    static SRC_MAN: NodeManifest = NodeManifest {
-        id: NodeTypeId::of("value.pattern.test.src"),
-        name: "value.pattern.test.src",
-        inputs: &[],
-        outputs: &[PortSpec {
-            name: "out",
-            ty: VALUE,
-        }],
-        effect: Effect::Pure,
-        clock: Clock::Frame,
-        params: &[],
-        lowerings: &[LoweringKind::Cpu],
-    };
-    struct Src(usize);
-    impl NodeOp for Src {
-        fn manifest(&self) -> &'static NodeManifest {
-            &SRC_MAN
-        }
-        fn eval(&self, ctx: &mut EvalCtx<'_>) {
-            // A field of N zeros — only its LENGTH matters to `value.pattern`.
-            ctx.emit(Stream::new(self.0).with(VALUE_COL, Column::Scalar(vec![0.0; self.0])));
-        }
-    }
-
-    /// End-to-end through the cook: a length-5 input with `steps = 2`,
-    /// `v0 = 0, v1 = 1` produces `[0, 1, 0, 1, 0]` — the pattern authored by
-    /// param, keyed on the input's count.
-    #[test]
-    fn produces_the_pattern_through_the_cook() {
-        struct Ops(usize);
-        impl OpResolver for Ops {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                match ty {
-                    t if t == SRC_MAN.id => Some(Box::leak(Box::new(Src(self.0))) as &dyn NodeOp),
-                    t if t == MANIFEST.id => Some(&ValuePattern),
-                    _ => None,
-                }
-            }
-        }
-        let ops = Ops(5);
-        let mut g = Graph::new();
-        let src = g.add_node("value.pattern.test.src");
-        let vp = g.add_node("value.pattern");
-        g.set_param(vp, "steps", 2.0);
-        g.set_param(vp, "v0", 0.0);
-        g.set_param(vp, "v1", 1.0);
-        g.connect(Edge {
-            from: (src, 0),
-            to: (vp, 0),
-            delayed: false,
-        })
-        .unwrap();
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &ops, vp, 0.0).unwrap();
-        match out[0].as_stream().get(VALUE_COL).unwrap() {
-            Column::Scalar(v) => {
-                assert_eq!(
-                    v,
-                    &vec![0.0, 1.0, 0.0, 1.0, 0.0],
-                    "alternating pattern, length 5"
-                );
-            }
-            _ => panic!("v"),
-        }
-    }
-
-    #[test]
-    fn registers_and_resolves() {
-        let mut reg = NodeRegistry::new();
-        register(&mut reg).unwrap();
-        assert!(reg.resolve(MANIFEST.id).is_some());
-    }
-}
+#[path = "lib_tests.rs"]
+mod tests;

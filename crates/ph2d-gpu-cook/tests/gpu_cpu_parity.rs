@@ -713,6 +713,53 @@ fn field_index_range_kernel_matches_the_cpu_within_epsilon() {
     assert_gpu_parity(&gpu, &reg, &g, out, 3); // grid + index_range + tint
 }
 
+/// **O braço da DIREÇÃO da projeção, no device** (doc 89 §10.0) — e o único da escada que é
+/// TRANSCENDENTAL, logo o único cuja paridade é por épsilon e não por bit: a CPU corre
+/// `libm::atan2f` (o porte do MUSL) e o device o `atan2` do vendedor.
+///
+/// A cadeia é `grid → value.attribute(P, ANGLE) → motion.drive(Rotation, Set) → output`: o
+/// ângulo de `P` é a direção da origem até cada ponto, então a grade inteira sai com cada peça
+/// virada para fora — e é um `RenderInstance.rot` que o comparador de paridade de fato vê. Uma
+/// coluna `vel` exigiria uma SIMULAÇÃO (o `motion.integrate` lê o próprio `vel` por aresta
+/// DELAYED, que `add_node` não plumba — a armadilha do Boids), e a escada é sobre a COLUNA, não
+/// sobre quem a escreveu.
+///
+/// ⚠️ A grade é ímpar (35×35) **de propósito**: com um número par nenhum ponto cai na origem, e
+/// `atan2(0, 0)` — o degenerado que o braço tem de responder `0` nos dois lados — nunca seria
+/// exercitado.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_projection_angle_arm_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 35.0);
+    let attr = g.add_node("value.attribute");
+    g.set_text_param(attr, "attr", "P");
+    g.set_param(attr, "mode", ph2d_node_value_attribute::MODE_ANGLE as f32);
+    let drive = g.add_node("motion.drive");
+    g.set_param(drive, "channel", 2.0); // Rotation
+    g.set_param(drive, "mode", 1.0); // Set (0 Add - 1 Set - 2 Multiply)
+    let out = g.add_node("motion.output");
+    connect(&mut g, grid, attr);
+    connect(&mut g, grid, drive);
+    g.connect(Edge {
+        from: (attr, 0),
+        to: (drive, 1),
+        delayed: false,
+    })
+    .unwrap();
+    connect(&mut g, drive, out);
+    // ⚠️ DOIS estágios, não três: a projeção registra `GpuKernel::PASSTHROUGH` e o trabalho
+    // dela corre na maquinaria do SEQUENCIADOR (`encode_project`), que despacha o seu próprio
+    // passe fora desta contagem. O número é de estágios de KERNEL, e é o que o `is_fully_gpu`
+    // ao lado prova não ser um recuo para a CPU.
+    assert_gpu_parity(&gpu, &reg, &g, out, 2); // grid + drive
+}
+
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
 fn field_box_kernel_matches_the_cpu_within_epsilon() {
@@ -5903,6 +5950,7 @@ fn the_projection_modes_agree_across_the_dev_dependency_fence() {
             "MODE_COMPONENT_BASE",
             ph2d_node_value_attribute::MODE_COMPONENT_BASE,
         ),
+        ("MODE_ANGLE", ph2d_node_value_attribute::MODE_ANGLE),
     ] {
         let needle = format!("const {name}: i32 = ");
         let at = src.find(&needle).unwrap_or_else(|| {
@@ -5913,6 +5961,9 @@ fn the_projection_modes_agree_across_the_dev_dependency_fence() {
             )
         });
         let tail = &src[at + needle.len()..];
+        // ⚠️ `parse::<i32>` aceita o sinal, e e por isso que o degrau NEGATIVO do
+        // `MODE_ANGLE` cabe aqui sem o gate mudar de forma: reducoes crescem para baixo
+        // (ver o doc do `MODE_ANGLE`) e este leitor ja lia um literal com sinal.
         let got: i32 = tail[..tail.find(';').expect("a declaracao termina em ;")]
             .trim()
             .parse()

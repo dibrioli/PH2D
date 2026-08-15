@@ -5410,6 +5410,7 @@ dependencies = [
  "ph2d-node-registry-init",
  "ph2d-node-source-object",
  "ph2d-node-util-reroute",
+ "ph2d-node-value-attribute",
  "ph2d-nodegraph",
  "ph2d-paint-gpu",
  "ph2d-painter-brush",
@@ -6698,6 +6699,7 @@ dependencies = [
 name = "ph2d-node-value-attribute"
 version = "0.0.0"
 dependencies = [
+ "libm",
  "ph2d-node-registry",
  "ph2d-node-registry-init",
  "ph2d-nodegraph",

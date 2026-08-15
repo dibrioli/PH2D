@@ -265,6 +265,23 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
         Ok("37") => {
             conferencia_demos::build_noise_kernel_demo_document(doc, registry).unwrap_or_default()
         }
+        // A DIRECAO: o `value.attribute(Direction) -> motion.drive(Rotation)` que fecha a
+        // linha da doc 89 §10.0 citada por CINCO familias.
+        Ok("38") => {
+            let sinks = conferencia_demos_direction::build_direction_demo_document(doc, registry)
+                .unwrap_or_default();
+            // ⚠️ A cena se ANUNCIA aqui, no roteador, que e' quem sabe que o ambiente a pediu
+            // (o construtor os gates chamam as dezenas). Sem a linha, quem nao souber o que
+            // olhar julga duas nuvens iguais.
+            eprintln!(
+                "[direction-demo] VIRE PARA ONDE ESTA INDO: o MESMO redemoinho duas vezes,                  {} pecas cada.
+  ESQUERDA sem o canal: os tracos ficam HORIZONTAIS e                  derrapam de lado.
+  DIREITA com                  `value.attribute(Direction) -> motion.drive(Rotation)`: cada traco aponta ao                  longo do proprio caminho.
+  (!) As pecas sao TRACOS de proposito -- um                  quadrado rodado 90 graus e' o mesmo quadrado, e a cena nao provaria nada.",
+                (conferencia_demos_direction::SIDE * conferencia_demos_direction::SIDE) as u32,
+            );
+            sinks
+        }
         _ => Vec::new(),
     }
 }

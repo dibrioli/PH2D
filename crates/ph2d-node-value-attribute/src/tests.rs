@@ -51,11 +51,13 @@ fn a_column_of_the_wrong_kind_is_not_coerced() {
     assert_eq!(field(&stream(), "age", MODE_LENGTH), vec![0.0; 3]);
 }
 
-/// **A DIRECTION becomes readable** — the gap five families found at once (doc 89 §10.0).
+/// **As COMPONENTES de um vetor tornam-se legiveis.** O dominio de valor lia qualquer coluna
+/// pelo nome e so sabia devolver um escalar ou uma magnitude; esta escada devolve uma lane.
 ///
-/// The value domain could read any column by name and only ever get a scalar or a magnitude
-/// back, so a tangent was unreachable and *"turn to face where you're going"* had no path
-/// through this library.
+/// ⚠️ **Esta doc afirmava fechar o vao das cinco familias (doc 89 §10.0), e nao fecha** — duas
+/// componentes SOLTAS nao sao uma direcao, e nada no dominio de valor as junta num angulo
+/// (`value.math` e aritmetica, `value.unary` nao tem trigonometria inversa, o parser nao tem
+/// `atan2`). Quem fecha aquela linha e o `MODE_ANGLE`, gateado abaixo.
 ///
 /// ⚠️ The fixture's third element is `[-1, 0]`: its X is **−1** and its LENGTH is **+1**. A
 /// component mode that quietly fell back to the magnitude would agree with this test on the
@@ -180,5 +182,109 @@ fn the_weight_a_field_leaves_is_readable_by_the_picker() {
         field(&shaped, ch.column, ch.mode),
         vec![0.0, 0.5, 1.0],
         "escolher `Falloff` tem de devolver o peso que o campo escreveu"
+    );
+}
+
+/// **A DIREÇÃO de uma coluna Vec2 — em GRAUS.** A linha da doc 89 §10.0 que CINCO famílias
+/// (1·4·5·6·15) citaram como inexprimível: `Speed` sempre respondeu *quão rápido* e descartou
+/// *para onde*, e nada no catálogo recuperava a segunda metade.
+///
+/// O oráculo são vetores cujo ângulo se sabe de cor, e o eixo −Y é o que separa `atan2(y, x)`
+/// de `atan2(x, y)`: os dois concordam em (1,0) e discordam de 90° ali.
+#[test]
+fn the_direction_channel_reads_a_vec2_as_an_angle_in_degrees() {
+    let s = Stream::new(5).with(
+        "vel",
+        Column::Vec2(vec![
+            [1.0, 0.0],
+            [0.0, 2.0],
+            [-3.0, 0.0],
+            [0.0, -1.0],
+            [1.0, 1.0],
+        ]),
+    );
+    let ch = READ_CHANNELS
+        .iter()
+        .find(|c| c.label == "Direction")
+        .expect("o picker oferece um canal Direction");
+    let got = field(&s, ch.column, ch.mode);
+    for (i, (g, want)) in got.iter().zip([0.0, 90.0, 180.0, -90.0, 45.0]).enumerate() {
+        assert!(
+            (g - want).abs() < 1e-3,
+            "elemento {i}: a direcao e {want} graus, o canal disse {g} — \
+             57.3x disto seria a resposta em RADIANOS"
+        );
+    }
+}
+
+/// **A unidade é a do CONSUMIDOR, e é isto que o gate acima não consegue provar sozinho.**
+///
+/// A coluna `rot` — a que o `motion.drive(Rotation)` escreve — é em GRAUS, e o lowering só cruza
+/// para radianos na borda do render (`ph2d-eval-motion::lower`, *"the app's authored-angle
+/// unit"*). Então a pergunta que fecha a cadeia não é *"o número está certo?"*, é ***"levado pela
+/// conversão do consumidor, ele aponta ao longo de `vel`?"***.
+///
+/// ⚠️ A conversão é RE-ESCRITA aqui de propósito: uma crate-nó não pode depender de outra
+/// (ADR-0075), então o lowering está fora de alcance e o que este gate pina é a CONVENÇÃO dele.
+/// Uma resposta em radianos passaria no gate acima com outros literais e **falharia aqui**, que
+/// é exactamente onde o artista a veria — a peça girada para o lugar errado.
+#[test]
+fn the_angle_points_along_the_velocity_once_the_consumer_converts_it() {
+    let vel = [[3.0_f32, 4.0], [-2.0, 0.0], [0.0, -5.0], [-1.0, -1.0]];
+    let s = Stream::new(4).with("vel", Column::Vec2(vel.to_vec()));
+    for (i, deg) in field(&s, "vel", MODE_ANGLE).iter().enumerate() {
+        // A conversao do consumidor, verbatim: graus -> radianos -> base.
+        let (sin_r, cos_r) = deg.to_radians().sin_cos();
+        let len = (vel[i][0] * vel[i][0] + vel[i][1] * vel[i][1]).sqrt();
+        let (ux, uy) = (vel[i][0] / len, vel[i][1] / len);
+        assert!(
+            (cos_r - ux).abs() < 1e-4 && (sin_r - uy).abs() < 1e-4,
+            "elemento {i}: a base ({cos_r:.4}, {sin_r:.4}) tem de ser a velocidade \
+             normalizada ({ux:.4}, {uy:.4})"
+        );
+    }
+}
+
+/// **Quem não se move não tem direção, e não pode girar.** `atan2(0, 0)` é `0`, e é a resposta
+/// certa: um elemento parado mantém o ângulo em vez de saltar para um valor arbitrário.
+#[test]
+fn an_element_that_is_not_moving_keeps_its_angle() {
+    let s = Stream::new(2).with("vel", Column::Vec2(vec![[0.0, 0.0], [0.0, 0.0]]));
+    assert_eq!(field(&s, "vel", MODE_ANGLE), vec![0.0, 0.0]);
+}
+
+/// **A direção de uma coluna ESCALAR é o miss ORDINÁRIO do módulo** — zeros no comprimento
+/// cheio, a mesma resposta que `Length` sobre um escalar já dava.
+///
+/// ⚠️ É o braço que a mutação encontra: sem a exclusão do `MODE_ANGLE` no arm escalar, pedir a
+/// direção de `age` devolveria **o próprio `age` verbatim**, como se fosse um ângulo — a mentira
+/// mais quieta que este nó sabe contar, porque um número plausível sai onde nada deveria sair.
+#[test]
+fn a_scalar_column_has_no_direction() {
+    assert_eq!(field(&stream(), "age", MODE_ANGLE), vec![0.0; 3]);
+    assert_eq!(
+        field(&stream(), "age", MODE_LENGTH),
+        vec![0.0; 3],
+        "o irmao"
+    );
+}
+
+/// **O degrau novo não move nenhum degrau velho** — o `mode` é um param que o grafo GUARDA, e
+/// renumerar a escada re-apontaria em silêncio todo documento salvo. O `MODE_ANGLE` é negativo
+/// precisamente para não precisar de espaço no meio dos que já shipam.
+#[test]
+fn the_new_rung_does_not_move_the_rungs_that_ship() {
+    assert_eq!(MODE_LENGTH, 1);
+    assert_eq!(MODE_COMPONENT_BASE, 2);
+    // NEGATIVO: reducoes crescem para BAIXO, a escada de lanes e aberta para cima, e as duas
+    // nunca colidem. O valor e pinado (e nao so o sinal) porque e um numero que os documentos
+    // GUARDAM -- move-lo re-aponta em silencio o que ja foi salvo.
+    assert_eq!(MODE_ANGLE, -1);
+    // E a escada inteira continua a responder o que respondia.
+    assert_eq!(field(&stream(), "age", 0), vec![0.0, 1.5, 3.0]);
+    assert_eq!(field(&stream(), "vel", MODE_LENGTH), vec![5.0, 0.0, 1.0]);
+    assert_eq!(
+        field(&stream(), "vel", MODE_COMPONENT_BASE),
+        vec![3.0, 0.0, -1.0]
     );
 }

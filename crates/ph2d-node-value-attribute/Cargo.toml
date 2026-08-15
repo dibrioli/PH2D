@@ -12,6 +12,11 @@ authors.workspace = true
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
+# libm -- `atan2f` puro-Rust (porte do MUSL) para a DIRECAO de uma coluna Vec2 sair
+# identica em todo OS. O `f32::atan2` do std chama a libm da PLATAFORMA, e este
+# numero atravessa o cozido: a fisica ja recusou o `atan2` do std por isto
+# (`zone_force_world_at`, W-AreaFrame). Mesmo pin das outras cinco crates.
+libm = { version = "=0.2.16", default-features = false }
 
 [dev-dependencies]
 ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }

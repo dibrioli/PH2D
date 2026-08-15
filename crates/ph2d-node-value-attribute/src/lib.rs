@@ -62,14 +62,60 @@ pub const MODE_LENGTH: i32 = 1;
 /// ## What this unblocks, and why it was the gap
 ///
 /// The value domain could already READ any column by name and could only ever get a scalar or a
-/// magnitude back. A direction — the tangent in `vel`, the position in `P`, a channel of `tint` —
-/// was unreachable, which is why *"turn to face where you're going"* had no path through this
-/// library (doc 89 §10.0, found by five families at once).
+/// magnitude back. The COMPONENTS of a vector — a lane of `vel`, of `P`, of `tint` — were
+/// unreachable, and this rung reaches them.
+///
+/// ⚠️ **Esta doc afirmava que a lane destravava *"turn to face where you're going"* (doc 89
+/// §10.0, a linha que CINCO famílias citam), e a medição REFUTOU:** uma lane devolve `vel.x` e
+/// `vel.y` como dois escalares SOLTOS, e nada no domínio de valor os junta num ângulo —
+/// `value.math` faz `Add·Subtract·Multiply·Divide·Min·Max`, `value.unary` faz
+/// `Abs·Negate·Sign·Floor·Fract·Square·Sqrt·Reciprocal`, e o parser de `motion.expression` tem
+/// `sin`/`cos` e **não tem `atan2`** (com `ph2d-expr` FROZEN por ADR-0039). Alcançar as
+/// componentes não é alcançar a DIREÇÃO; quem a alcança é [`MODE_ANGLE`, o irmão de
+/// `MODE_LENGTH`](MODE_ANGLE). *Uma afirmação de ter fechado um vão é a forma mais cara de nota
+/// errada: ela faz a varredura seguinte pular a linha.*
 ///
 /// ⚠️ A lane the column does not have (`Z` of a `Vec2`) is the ladder's ORDINARY miss: zeros at
 /// full length, exactly like a mistyped name. The module's fence stands — this rung adds a
 /// question the node can answer, it does not change what happens when it cannot.
 pub const MODE_COMPONENT_BASE: i32 = 2;
+
+/// A **DIREÇÃO** de uma coluna `Vec2`, em **GRAUS** — o irmão exacto do [`MODE_LENGTH`]: se
+/// `Speed` responde *quão rápido*, este responde *para onde*, e as duas metades de um vetor
+/// ficam ambas alcançáveis pelo domínio de valor.
+///
+/// ## O que ele fecha
+///
+/// `value.attribute(Direction de vel) → motion.drive(Rotation)` **é** o *align to velocity* de
+/// todo sistema de partículas — a linha da [doc 89 §10.0] que cinco famílias (1·4·5·6·15)
+/// citaram como inexprimível. Medido antes de construir: **nenhum** nó lê `vel` e escreve `rot`,
+/// o `motion.look_at` mira em Point·Object·Cursor (nunca em *"para onde este elemento vai"*), e
+/// nada no domínio de valor computa uma tangente inversa. É **composição de dois nós**, não um nó
+/// novo — o mesmo desenho que fez de `value.noise(World) → motion.drive(Falloff)` o campo de
+/// ruído.
+///
+/// ## Por que o degrau é NEGATIVO
+///
+/// A escada tem duas metades: **reduções** (o vetor inteiro vira um escalar) nos degraus baixos e
+/// **lanes** em `MODE_COMPONENT_BASE + k`, aberta por construção. O espaço positivo já está
+/// falado, e o `mode` é um **param que o grafo GUARDA** — renumerar `MODE_COMPONENT_BASE` para
+/// abrir espaço re-apontaria em silêncio todo documento salvo (um `Opacity` gravado como `5`
+/// passaria a significar outra lane). Então reduções crescem para BAIXO e lanes para cima, e as
+/// duas nunca colidem.
+///
+/// ## Por que GRAUS, e não radianos
+///
+/// A coluna `rot` — a que o `motion.drive(Rotation)` escreve — **é em graus**; o lowering só
+/// cruza para radianos na borda do render (`ph2d-eval-motion::lower`, *"the app's authored-angle
+/// unit"*). Um canal que respondesse radianos erraria por **57×** exactamente na costura que ele
+/// existe para servir, e nada na tela diria porquê
+/// ([[feedback_geometry_over_mixed_units_needs_the_consumers_conversion]]).
+///
+/// ⚠️ **`atan2` vem do `libm`, não do `std`** — o do `std` chama a libm da PLATAFORMA, e este
+/// número atravessa o cozido; a física recusou o mesmo `atan2` pelo mesmo motivo
+/// (`zone_force_world_at`). E o **vetor ZERO responde `0`**: quem não se move não tem direção, e
+/// não pode girar.
+pub const MODE_ANGLE: i32 = -1;
 
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("value.attribute"),
@@ -123,10 +169,24 @@ fn field(s: &Stream, name: &str, mode: i32) -> Vec<f32> {
         (Some(c), m) if m >= MODE_COMPONENT_BASE => {
             component(c, (m - MODE_COMPONENT_BASE) as usize, n)
         }
-        (Some(Column::Scalar(v)), m) if m != MODE_LENGTH && v.len() == n => v.clone(),
+        // ⚠️ O `MODE_ANGLE` entra na EXCLUSÃO junto com o `MODE_LENGTH`: pedir a direção de uma
+        // coluna ESCALAR não quer dizer nada, e a lei do módulo para uma pergunta que a coluna
+        // não pode responder é a falha ORDINÁRIA (zeros), nunca a coluna verbatim. Sem esta
+        // metade, `Direction` sobre um escalar devolveria o próprio número como se fosse um
+        // ângulo — a mentira mais quieta que este nó sabe contar.
+        (Some(Column::Scalar(v)), m) if m != MODE_LENGTH && m != MODE_ANGLE && v.len() == n => {
+            v.clone()
+        }
         (Some(Column::Vec2(v)), MODE_LENGTH) if v.len() == n => v
             .iter()
             .map(|p| (p[0] * p[0] + p[1] * p[1]).sqrt())
+            .collect(),
+        // A DIREÇÃO — ver [`MODE_ANGLE`]. Graus, porque é o que a coluna `rot` fala; `libm`,
+        // porque o número atravessa o cozido; e `atan2(0, 0)` é `0`, que é a resposta certa
+        // para um elemento parado (ele não tem direção, e não pode girar).
+        (Some(Column::Vec2(v)), MODE_ANGLE) if v.len() == n => v
+            .iter()
+            .map(|p| libm::atan2f(p[1], p[0]).to_degrees())
             .collect(),
         _ => vec![0.0; n],
     }
@@ -178,6 +238,16 @@ const READ_CHANNELS: &[ReadChannel] = &[
         label: "Speed",
         column: "vel",
         mode: MODE_LENGTH,
+    },
+    // ⚠️ **A OUTRA METADE DO MESMO VETOR** (doc 89 §10.0, a linha que cinco famílias citaram):
+    // `Speed` responde *quão rápido* e descarta *para onde*, e era essa a ausência — não a da
+    // coluna, que sempre esteve lá. Com esta entrada,
+    // `value.attribute(Direction) → motion.drive(Rotation)` é o *align to velocity*, em dois nós.
+    // A unidade é GRAUS porque é o que o `rot` do outro lado fala; ver [`MODE_ANGLE`].
+    ReadChannel {
+        label: "Direction",
+        column: "vel",
+        mode: MODE_ANGLE,
     },
     // ⚠️ **`tint` lane 3, not a column called `"opacity"`.** This entry used to name a
     // column that NOTHING in the library writes: `motion.drive`'s opacity channel writes

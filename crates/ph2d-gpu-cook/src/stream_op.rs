@@ -74,6 +74,15 @@ pub(crate) struct StreamOpPipes {
     /// `Vec4` is the same strided read, which is exactly why the CPU ladder has
     /// one arm for it too.
     component: wgpu::ComputePipeline,
+    /// `dst[i] = degrees(atan2(y, x))` over a vec2 column — `value.attribute`'s ANGLE
+    /// mode, a direcao. GRAUS porque e o que a coluna `rot` fala do outro lado da
+    /// cadeia; ver `MODE_ANGLE` no crate do no.
+    ///
+    /// ⚠️ Este e o UNICO bracao transcendental da escada, e por isso o unico cuja
+    /// paridade e por EPSILON e nao por bit: a CPU corre `libm::atan2f` (MUSL) e o
+    /// device o `atan2` do vendedor. O bit-a-bit nao e a politica deste projeto
+    /// (o compositor ja o declara), e o gate de paridade carrega o numero.
+    angle: wgpu::ComputePipeline,
 }
 
 fn simple_module(bindings: &str, body: &str) -> String {
@@ -126,6 +135,13 @@ impl StreamOpPipes {
              \x20   let y = src[2u * i + 1u];\n\
              \x20   dst[i] = sqrt(x * x + y * y);",
         );
+        let angle = simple_module(
+            "@group(0) @binding(1) var<storage, read> src: array<f32>;\n\
+             @group(0) @binding(2) var<storage, read_write> dst: array<f32>;",
+            "\x20   let x = src[2u * i];\n\
+             \x20   let y = src[2u * i + 1u];\n\
+             \x20   dst[i] = degrees(atan2(y, x));",
+        );
         let component = simple_module(
             "@group(0) @binding(1) var<storage, read> src: array<f32>;\n\
              @group(0) @binding(2) var<storage, read_write> dst: array<f32>;",
@@ -147,6 +163,7 @@ impl StreamOpPipes {
             ),
             length: create_pipeline(gpu, &length, "ph2d-stream-op length"),
             component: create_pipeline(gpu, &component, "ph2d-stream-op component"),
+            angle: create_pipeline(gpu, &angle, "ph2d-stream-op angle"),
         }
     }
 
@@ -542,6 +559,7 @@ impl GpuCook {
         // both: `the_projection_modes_agree_across_the_dev_dependency_fence`.
         const MODE_LENGTH: i32 = 1;
         const MODE_COMPONENT_BASE: i32 = 2;
+        const MODE_ANGLE: i32 = -1;
         let src_stream = inputs.first().cloned().unwrap_or_default();
         let n = src_stream.count;
         if n == 0 {
@@ -556,7 +574,7 @@ impl GpuCook {
         let dst: Arc<wgpu::Buffer> = self.pool.acquire(gpu, u64::from(n) * 4);
         let mut hold: Vec<wgpu::Buffer> = Vec::new();
         match (src_stream.cols.get(name), mode) {
-            (Some(c), m) if c.dim == Dim::Scalar && m != MODE_LENGTH => {
+            (Some(c), m) if c.dim == Dim::Scalar && m != MODE_LENGTH && m != MODE_ANGLE => {
                 encoder.copy_buffer_to_buffer(&c.buffer, 0, &dst, 0, u64::from(n) * 4);
             }
             (Some(c), MODE_LENGTH) if c.dim == Dim::Vec2 => {
@@ -567,6 +585,22 @@ impl GpuCook {
                     gpu,
                     encoder,
                     &pipes.length,
+                    n,
+                    1,
+                    0,
+                    &[&c.buffer, &dst],
+                    &mut hold,
+                );
+            }
+            // A DIRECAO — o irmao do length, e o unico braco transcendental da escada.
+            (Some(c), MODE_ANGLE) if c.dim == Dim::Vec2 => {
+                let pipes = self
+                    .stream_op_pipes
+                    .get_or_insert_with(|| StreamOpPipes::new(gpu));
+                pipes.pass(
+                    gpu,
+                    encoder,
+                    &pipes.angle,
                     n,
                     1,
                     0,

@@ -20,7 +20,7 @@ use crate::{
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::interaction::HitIndex;
+use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
@@ -213,31 +213,21 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
         });
     }
 
-    // Responsive column layout: split the content width across the strips.
-    let pad = Spacing::Lg.px();
-    let content_x = rect.x + pad;
-    let content_w = (rect.w - pad * 2.0).max(1.0);
-    let gap = Spacing::Sm.px();
-    let cols = strips.len() as f32;
-    let col_w = ((content_w - gap * (cols - 1.0)) / cols).max(FADER_W);
     // Body is scrolled: content lays out from `body_top - scroll`, clipped to the
     // body rect so anything scrolled past the top/bottom is hidden.
     let strip_top = body_top - scroll;
+    let row = StripRow::new(rect, strips.len(), strip_top);
+    let (content_x, content_w) = (row.content_x, row.content_w);
     ctx.scene.push_clip(&rect_to_vello(body_rect));
-
-    for (c, strip) in strips.iter().enumerate() {
-        let col_x = content_x + c as f32 * (col_w + gap);
-        paint_strip(
-            strip,
-            col_x,
-            strip_top,
-            col_w,
-            ctx.scene,
-            ctx.text_system,
-            theme,
-            hit_index,
-        );
-    }
+    paint_strips(
+        &strips,
+        row,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+        store,
+        hit_index,
+    );
 
     // Master section below the strips. Strip stack (see `paint_strip`):
     // label · pan · tone · low cut · fader/meter · dB readout · M/S.
@@ -304,6 +294,65 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
 
 /// Paint one channel strip in its column: label · pan · fader (standard
 /// `Slider`, unity tick) + meter · dB readout · mute (+ solo on sub-buses).
+/// **A geometria da fileira de colunas** — os números do layout responsivo, que só fazem sentido
+/// juntos e cuja aritmética é a mesma desde sempre (só mudou de casa).
+#[derive(Clone, Copy)]
+struct StripRow {
+    content_x: f32,
+    content_w: f32,
+    col_w: f32,
+    gap: f32,
+    top: f32,
+}
+
+impl StripRow {
+    /// Reparte a largura do painel pelas `cols` colunas, com o piso de [`FADER_W`].
+    fn new(rect: Rect, cols: usize, top: f32) -> Self {
+        let pad = Spacing::Lg.px();
+        let content_x = rect.x + pad;
+        let content_w = (rect.w - pad * 2.0).max(1.0);
+        let gap = Spacing::Sm.px();
+        let n = cols as f32;
+        let col_w = ((content_w - gap * (n - 1.0)) / n).max(FADER_W);
+        Self {
+            content_x,
+            content_w,
+            col_w,
+            gap,
+            top,
+        }
+    }
+}
+
+/// **A fileira de strips.** Cortada do `paint` porque ele estava no tecto de 200 LOC e a fiação do
+/// store lhe custou uma linha — e a tolerância deste repo **só encolhe**, nunca cresce: subir o
+/// `FN_OVERAGE_OK` de 222 para 223 seria pagar um teto com um número em vez de com um corte.
+#[allow(clippy::too_many_arguments)]
+fn paint_strips(
+    strips: &[Strip],
+    row: StripRow,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+) {
+    for (c, strip) in strips.iter().enumerate() {
+        let col_x = row.content_x + c as f32 * (row.col_w + row.gap);
+        paint_strip(
+            strip,
+            col_x,
+            row.top,
+            row.col_w,
+            scene,
+            text_system,
+            theme,
+            store,
+            hit_index,
+        );
+    }
+}
+
 /// Registers the pan/fader/mute/solo hit rects.
 #[allow(clippy::too_many_arguments)]
 fn paint_strip(
@@ -314,6 +363,7 @@ fn paint_strip(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    store: &WidgetStore,
     hit_index: &mut HitIndex,
 ) {
     // Column title.
@@ -408,6 +458,7 @@ fn paint_strip(
                 scene,
                 text_system,
                 theme,
+                store,
                 hit_index,
             );
         }
@@ -423,6 +474,7 @@ fn paint_strip(
                 scene,
                 text_system,
                 theme,
+                store,
                 hit_index,
             );
             paint_toggle(
@@ -434,6 +486,7 @@ fn paint_strip(
                 scene,
                 text_system,
                 theme,
+                store,
                 hit_index,
             );
         }

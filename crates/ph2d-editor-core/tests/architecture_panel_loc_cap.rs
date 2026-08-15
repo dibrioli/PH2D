@@ -152,8 +152,10 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-audio-mixer/src/paint.rs",
         "paint",
-        222,
-        "unmasked by the 2026-07-10 parser fix; per-strip split deferred (needs smoke)",
+        212,
+        "unmasked by the 2026-07-10 parser fix; a fileira de strips SAIU em 2026-08-15 (222 -> 212, \
+         medido DEPOIS do rustfmt, que re-expande a chamada) \
+         quando a fiacao do store lhe custou uma linha — as tolerancias encolhem, nunca crescem",
     ),
 ];
 

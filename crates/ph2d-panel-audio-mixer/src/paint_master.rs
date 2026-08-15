@@ -83,6 +83,7 @@ fn toggle_row(ctx: &mut Ctx, y: f32, label: &str, active: bool, id: NodeId) -> f
         ctx.scene,
         ctx.text_system,
         ctx.theme,
+        ctx.store,
         ctx.hit_index,
     );
     y + MUTE_H + Spacing::Sm.px()
@@ -100,6 +101,7 @@ fn slider_row(ctx: &mut Ctx, y: f32, label: &str, id: NodeId, value: f32) -> f32
         ctx.scene,
         ctx.text_system,
         ctx.theme,
+        ctx.store,
         ctx.hit_index,
     )
 }
@@ -232,6 +234,7 @@ fn paint_ducking(ctx: &mut Ctx, y: f32) -> f32 {
             ctx.scene,
             ctx.text_system,
             ctx.theme,
+            ctx.store,
             ctx.hit_index,
         );
         y += MUTE_H + Spacing::Sm.px();

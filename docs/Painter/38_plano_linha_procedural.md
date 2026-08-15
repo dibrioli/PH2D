@@ -696,12 +696,34 @@ whole_span`, no crate do painel). **10 mutações, 10 sangram.**
 
 ### W6 — opcionais, só com pedido
 
-- **Ribbon** (o *Ribbon Shapes* do Alchemy: `Size · Spacing · Friction · Gravity`) — a fita presa ao
-  cursor por uma mola com atrito e peso; o traço **pesa**. O estabilizador já é a metade *arrasto*
-  deste modelo, sem massa e sem gravidade.
-- **Rough** — o traço que finge ser à mão (`rough.js`/Excalidraw): a primitiva redesenhada 2× com
-  deslocamento pseudo-aleatório. Muito barato sobre os shape editors, e dá uma família visual
-  inteira.
+- **Ribbon** — ✅ **CONSTRUÍDO** (2026-08-14/15, ordem *"Siga"*). A fita presa ao cursor por uma mola
+  com atrito e peso; o traço **pesa**. Sliders **Weight · Friction · Gravity** (`Size` e `Spacing`
+  do Alchemy já são do pincel — dois donos para o mesmo número seria a segunda porta).
+  - ⚠️ **A premissa do plano estava certa e é o que decide a arquitetura:** *"o estabilizador já é a
+    metade arrasto deste modelo"*. A fita move o **CAMINHO**, não a tinta — é um passa-baixa, como o
+    estabilizador, e realimentar um passa-baixa é estável por construção. O `Speed` faz o oposto
+    (move a TINTA e deixa o caminho intacto) porque a velocidade dele é medida *do* caminho, e
+    realimentá-la a somaria a si mesma. **Por isso ela custa tão pouco:** para o espaçamento, os
+    fios, o preenchedor de vão, a Symmetry, o Tiling e o Spray, **a fita É o traço** — nenhum deles
+    sabe que ela existe.
+  - ⚠️ **Ela NÃO é um segundo estabilizador, e a distinção é MEDIDA, não argumentada:** ela
+    **ultrapassa** (`ζ < 1` passa do alvo e volta — o estabilizador é média corrida e converge por
+    baixo, com nenhuma intensidade) e é **fato do RELÓGIO** (um mouse de 960 Hz desenha o que um de
+    125 Hz desenha). Cada metade tem gate próprio. ⚠️ E o CONTROLE derrubou a 1ª versão desta nota,
+    que dizia *"o atraso do estabilizador não depende da velocidade"*: **depende** (50,4 → 386,4 px
+    para 8× a velocidade), porque um lag de 1ª ordem em regime também vale `v · τ`.
+  - ⚠️ **O TETO LIMITA O TRABALHO, NUNCA A RESOLUÇÃO** — a lei do `FixedStep`, e a 1ª versão fazia o
+    oposto: capava o número de sub-passos e deixava `h = dt/n` crescer, **desfazendo** a garantia de
+    `ω · h = 0,25`. Custou **90,2 GB de RSS** e a janela do editor (achado externo). Detalhe,
+    mecanismo e números: [`BUGS_painter.md` #23](BUGS_painter.md).
+  - ⚠️ **O fundo do slider é INERTE e está medido:** até peso ~0,02 a fita não move a tinta um dab
+    inteiro. É o comportamento certo para um mínimo que significa *desligado*, e o roteiro do smoke
+    o diz em vez de deixar o artista descobrir.
+- **Rough** — ⛔ **NÃO construído.** O traço que finge ser à mão (`rough.js`/Excalidraw): a primitiva
+  redesenhada 2× com deslocamento pseudo-aleatório. Muito barato sobre os shape editors, e dá uma
+  família visual inteira. ⚠️ **A adjacência que ele tem e a fita não tinha:** ele reescreve a
+  GEOMETRIA de um shape editor, então a pergunta *"o que o Apply assa?"* é dele e não do pincel —
+  e a resposta decide se ele é um `LineKind` ou um efeito do editor de forma. Fica para pedido.
 
 ---
 
@@ -784,7 +806,7 @@ porque *os três são o mesmo assunto*.
 | **W3** | **Sketchy** | média | W0 (3) |
 | **W4** | **Wire** | pequena | W3 |
 | **W5** | **Spray** — só o `Count`, e fora do dropdown | pequena | — |
-| **W6** | Ribbon · Rough | — | só com pedido |
+| **W6** | Ribbon ✅ · Rough ⛔ | Ribbon: `PH2D_LINE_SMOKE=1` | Ribbon feito 2026-08-15; Rough só com pedido |
 
 ⚠️ **A W1 e a W2 são independentes** — se o Enio quiser ver o card mais cedo, a W1 sozinha já entrega
 um card com um controle vivo. O que não pode acontecer é o card nascer com o dropdown de uma opção

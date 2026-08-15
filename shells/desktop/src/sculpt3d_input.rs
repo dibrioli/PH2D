@@ -14,6 +14,18 @@ impl App {
     /// `PH2D_SCULPT3D_SMOKE=1` — a cena pronta: uma esfera de barro para
     /// esculpir. `=2` acrescenta a TELA e é a cena da **doação**
     /// (`crate::sculpt3d::donation`). Roda uma vez, no primeiro frame com GPU.
+    /// **O dreno de QUADRO do puxão do Grab.** Ver
+    /// [`Sculpt3dScene::pending_grab`] e `flush_pending_grab`: o evento de
+    /// ponteiro regista, o quadro carimba, e o pen-up drena o resto.
+    ///
+    /// ⚠️ **Sem cena aberta é no-op** — e não um `expect`: este é chamado do
+    /// laço de quadro incondicionalmente, como os irmãos ao lado dele.
+    pub(crate) fn sculpt3d_flush_grab(&mut self) {
+        if let Some(scene) = self.sculpt3d_scene_mut() {
+            scene.flush_pending_grab();
+        }
+    }
+
     pub(crate) fn sculpt3d_smoke(&mut self) {
         // Guard estático, o mesmo idioma dos outros smokes do shell — evita um
         // campo em `App` que só existe para dizer "já rodei".
@@ -130,6 +142,13 @@ impl App {
                 // está sob o dedo, e o resíduo passa a contar a partir dele.
                 scene.stroke_anchor = [pos.0, pos.1];
                 scene.grab = None;
+                // ⚠️ **E o pendente morre com o gesto anterior.** O pen-up
+                // drena, então em regime ele já está vazio — mas um arrasto que
+                // termine por outra porta (a cena fechada, o botão trocado)
+                // deixaria um puxão órfão para carimbar dentro do traço
+                // SEGUINTE, com a âncora nova. É a mesma razão do `twist`
+                // logo abaixo.
+                scene.pending_grab = None;
                 // O ângulo varrido é do GESTO, então ele morre com o gesto
                 // anterior — deixá-lo vivo faria o traço seguinte começar já
                 // torcido, no lugar onde o anterior parou.
@@ -171,6 +190,12 @@ impl App {
         };
         let was = scene.drag.take();
         if was == Some(Drag::Sculpt) {
+            // ⚠️ **ANTES do fecho, e sem isto o gesto perde a ponta.** O último
+            // movimento do dedo chega como evento e fica pendente; se o traço
+            // fechasse primeiro, o barro pararia onde o último QUADRO o deixou
+            // — um erro que cresce com a velocidade da mão e some quando ela é
+            // lenta, que é a forma mais cara de um bug se esconder.
+            scene.flush_pending_grab();
             scene.close_stroke();
         }
         if was == Some(Drag::Transform) {
@@ -233,7 +258,11 @@ impl App {
                 // não deixar buracos entre dois carimbos, e um Grab não carimba
                 // — o "caminho" dele é o vetor do pen-down até aqui. Rodar o
                 // walk daria N dabs idênticos no mesmo lugar.
-                Grip::Hold => scene.grab_at(x, y),
+                // ⚠️ **REGISTA, não carimba** — ver [`Sculpt3dScene::pending_grab`].
+                // O alvo do `Hold` é função do `pre` congelado e do puxão TOTAL,
+                // então dabs intermediários são o mesmo trabalho no mesmo lugar
+                // (byte-idêntico, medido). Quem os drena é o quadro.
+                Grip::Hold => scene.pending_grab = Some((x, y)),
                 // ⚠️ **Quem ARRASTA percorre, e é o walk que torna o espinho um
                 // fato do CAMINHO.** A lei do Hook é uma soma sobre a lista de
                 // dabs; sem o passo fixo na geometria, essa soma passaria a

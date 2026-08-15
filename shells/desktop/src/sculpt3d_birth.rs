@@ -66,6 +66,7 @@ impl Sculpt3dScene {
             radius_px: DEFAULT_RADIUS_PX,
             stroke_anchor: [0.0, 0.0],
             grab: None,
+            pending_grab: None,
             twist: None,
             transform_arm: None,
             transform: None,

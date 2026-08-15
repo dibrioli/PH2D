@@ -265,3 +265,96 @@ fn measure_what_a_field_evaluation_is_made_of() {
         100.0 * land / tri
     );
 }
+
+/// **O QUE SE PERDE COALESCENDO OS DABS DE UM `Grip::Hold`** — a medição que
+/// tem de vir ANTES da linha de código (Enio, 2026-08-13: *"ambos"*).
+///
+/// O `walk`, que espaça dabs por DISTÂNCIA percorrida, cobre só
+/// `Grip::Stamp | Paint`. O `Grip::Hold` — o Move/Grab, o modo cujo FPS foi
+/// reportado — faz **um dab por EVENTO de ponteiro**: a ~1000 Hz de mouse e
+/// 60 fps são ~16 dabs por quadro.
+///
+/// ⚠️ **O argumento para coalescer já está escrito no braço vizinho do
+/// `sculpt3d_input.rs`**, no `Grip::Turn`: *"daria N dabs com o mesmo total
+/// acumulado no mesmo lugar — trabalho idêntico repetido, porque o alvo é
+/// função do `pre` congelado e do gesto TOTAL"*. O `Hold` tem a mesma lei.
+///
+/// ⚠️ **E a diferença honesta que esta sonda mede:** a PEGADA é consultada nas
+/// posições **VIVAS**, então descartar dabs intermediários pode mudar *quais*
+/// vértices entram no conjunto `touched` — que só cresce. Se o barro final
+/// diverge, coalescer é decisão de produto; se não diverge, é trabalho repetido
+/// a menos.
+#[test]
+#[ignore = "sonda de medição; roda sob demanda com --ignored --nocapture"]
+fn measure_what_coalescing_a_hold_gesture_changes() {
+    let radius_frac = 0.10f32;
+    // O puxão, em fração do raio do pincel: um gesto curto (dentro da pegada) e
+    // um longo (que arrasta barro para fora dela) medem coisas diferentes.
+    for pull_frac in [0.5f32, 1.0, 2.0] {
+        println!("\n=== puxão de {:.0}% do raio ===", pull_frac * 100.0);
+        println!(
+            "{:>8} {:>10} {:>12} {:>14} {:>12}",
+            "eventos", "movidos", "dab total ms", "desvio max", "desvio rel"
+        );
+
+        let mut reference: Option<Vec<[f32; 3]>> = None;
+        for events in [16usize, 8, 4, 2, 1] {
+            let mut mesh = shapes::sculpt_sphere(1.0);
+            let radius = mesh.bounds().longest_edge() * radius_frac;
+            let pull = radius * pull_frac;
+            let start = mesh.positions()[0];
+            let eye = eye_towards(start);
+            let brush = Brush {
+                verb: Verb::Move,
+                mode: RefMode::L,
+                radius,
+                strength: 1.0,
+                ..Brush::default()
+            };
+
+            let mut stroke = SculptStroke::default();
+            stroke.begin(&mesh);
+            let t = Instant::now();
+            let mut moved = 0usize;
+            for k in 1..=events {
+                // O ponteiro anda em passos iguais até o MESMO destino: é a
+                // mesma mão, amostrada mais fino ou mais grosso.
+                let f = k as f32 / events as f32;
+                let c = [start[0] + pull * f, start[1], start[2]];
+                let dab = Dab::at(c, radius, eye);
+                moved = moved.max(stroke.dab(&mut mesh, &brush, &dab, Symmetry::default()));
+            }
+            let ms = t.elapsed().as_secs_f64() * 1e3;
+
+            let now = mesh.positions().to_vec();
+            let (dev, rel) = match &reference {
+                // O CONTROLE é a rota de 16 eventos — o que o app faz hoje.
+                None => (0.0f32, 0.0f32),
+                Some(r) => {
+                    let d = r
+                        .iter()
+                        .zip(&now)
+                        .map(|(a, b)| {
+                            let dx = a[0] - b[0];
+                            let dy = a[1] - b[1];
+                            let dz = a[2] - b[2];
+                            (dx * dx + dy * dy + dz * dz).sqrt()
+                        })
+                        .fold(0.0f32, f32::max);
+                    (d, d / pull)
+                }
+            };
+            println!(
+                "{events:>8} {moved:>10} {ms:>12.3} {dev:>14.6} {:>11.2}%",
+                rel * 100.0
+            );
+            if reference.is_none() {
+                reference = Some(now);
+            }
+        }
+    }
+    println!(
+        "\n⚠️  O desvio é medido contra a rota de 16 eventos — o que o produto\n\
+           faz hoje. `desvio rel` é a fração do PUXÃO que o artista pediu."
+    );
+}

@@ -856,6 +856,14 @@ impl crate::App {
         self.flip_multiplane_smoke();
         #[cfg(feature = "sculpt3d")]
         self.sculpt3d_smoke();
+        // ⚠️ **O puxão do Grab é carimbado UMA vez por quadro, não por evento.**
+        // Ver `Sculpt3dScene::pending_grab`: o alvo do `Grip::Hold` é função do
+        // `pre` congelado e do puxão TOTAL, então os dabs intermediários são
+        // byte-idênticos ao último — 16 deles custavam 17,9 ms onde um custa
+        // 1,2. E ANTES do desenho, senão o barro que este quadro mostra é o do
+        // quadro anterior.
+        #[cfg(feature = "sculpt3d")]
+        self.sculpt3d_flush_grab();
         // A escultura que um Ctrl+O deixou pendente — ela espera o device, que o
         // load não tinha (ADR-0150 W8.3).
         #[cfg(feature = "sculpt3d")]

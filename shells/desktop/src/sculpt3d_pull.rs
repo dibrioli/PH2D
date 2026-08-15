@@ -64,6 +64,24 @@ impl Sculpt3dScene {
         [at[0] + d[0], at[1] + d[1], at[2] + d[2]]
     }
 
+    /// **CARIMBA o puxão pendente, se houver** — a porta ÚNICA por onde um
+    /// `Grip::Hold` alcança o barro.
+    ///
+    /// Ela é chamada de dois lugares e os dois são obrigatórios: o **quadro**
+    /// (para o artista ver o barro andar enquanto arrasta) e o **pen-up** (para
+    /// a última fatia do gesto não evaporar). Ver
+    /// [`Sculpt3dScene::pending_grab`] para o porquê de o evento de ponteiro
+    /// não carimbar direto — e para a medição que prova que descartar os
+    /// intermediários é byte-idêntico.
+    ///
+    /// ⚠️ **Ela CONSOME o pendente**, então chamá-la duas vezes no mesmo quadro
+    /// é um no-op — que é o que a torna segura nos dois sítios.
+    pub(super) fn flush_pending_grab(&mut self) {
+        if let Some((x, y)) = self.pending_grab.take() {
+            self.grab_at(x, y);
+        }
+    }
+
     /// **O gesto de quem SEGURA** ([`Grip::Hold`]): a pegada fica onde foi
     /// presa e o que cresce é o puxão.
     pub(super) fn grab_at(&mut self, x: f32, y: f32) {

@@ -406,3 +406,75 @@ fn the_rim_step_is_smaller_than_an_edge() {
          o KELVINLET_REACH ou a família de escalas deixaram de ser suficientes"
     );
 }
+
+/// **O BARRO DE UM `Grip::Hold` NÃO DEPENDE DE QUÃO FINO O PONTEIRO FOI
+/// AMOSTRADO** — a lei que autoriza o shell a carimbar uma vez por QUADRO em
+/// vez de uma por evento.
+///
+/// O mecanismo é o `frozen`: o laço percorre o `touched` congelado no pen-down
+/// e o alvo é medido contra o `pre`, então o puxão TOTAL é a única entrada que
+/// importa. Dezesseis eventos e um dab pousam no mesmo lugar, **ao bit**.
+///
+/// ⚠️ **O CONTROLE é a metade que torna este gate não-vazio:** um verbo de
+/// CARIMBO (`Draw`) sobre o mesmo caminho **tem de divergir** — ele acumula por
+/// dab, e coalescê-lo perderia barro. Sem essa metade o gate passaria com o
+/// `frozen` quebrado, porque *"dois caminhos dão o mesmo resultado"* também é
+/// verdade quando nenhum dos dois faz nada.
+#[test]
+fn a_hold_gesture_is_the_same_clay_however_finely_the_pointer_was_sampled() {
+    let run = |verb: crate::Verb, events: usize| -> Vec<[f32; 3]> {
+        let mut mesh = ph2d_mesh::shapes::sculpt_sphere(1.0);
+        let radius = mesh.bounds().longest_edge() * 0.10;
+        let start = mesh.positions()[0];
+        let eye = [-start[0], -start[1], -start[2]];
+        let brush = crate::Brush {
+            verb,
+            mode: crate::RefMode::L,
+            radius,
+            strength: 1.0,
+            ..crate::Brush::default()
+        };
+        let mut stroke = crate::SculptStroke::default();
+        stroke.begin(&mesh);
+        for k in 1..=events {
+            let f = k as f32 / events as f32;
+            let c = [start[0] + radius * 2.0 * f, start[1], start[2]];
+            let dab = crate::Dab::at(c, radius, eye);
+            stroke.dab(&mut mesh, &brush, &dab, crate::Symmetry::default());
+        }
+        mesh.positions().to_vec()
+    };
+
+    let fine = run(crate::Verb::Move, 16);
+    let coarse = run(crate::Verb::Move, 1);
+    assert_eq!(fine.len(), coarse.len());
+    let worst = fine
+        .iter()
+        .zip(&coarse)
+        .map(|(a, b)| {
+            let d = [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+            (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt()
+        })
+        .fold(0.0f32, f32::max);
+    assert!(
+        worst == 0.0,
+        "um Grip::Hold amostrado em 16 eventos tem de pousar onde o de 1 pousa, AO BIT: {worst:e}"
+    );
+
+    // O CONTROLE: um carimbo NÃO é coalescível, e é isso que dá sentido ao de cima.
+    let s_fine = run(crate::Verb::Draw, 16);
+    let s_coarse = run(crate::Verb::Draw, 1);
+    let s_worst = s_fine
+        .iter()
+        .zip(&s_coarse)
+        .map(|(a, b)| {
+            let d = [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+            (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt()
+        })
+        .fold(0.0f32, f32::max);
+    assert!(
+        s_worst > 0.0,
+        "o CONTROLE é vazio: um verbo de carimbo tem de divergir quando o caminho \
+         é amostrado mais grosso, senão este gate não afirma nada sobre o `frozen`"
+    );
+}

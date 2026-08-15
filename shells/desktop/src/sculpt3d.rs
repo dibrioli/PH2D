@@ -423,6 +423,29 @@ pub(crate) struct Sculpt3dScene {
     /// o [`Grip::Hold`] mede o puxão total até aqui, o [`Grip::Hook`] mede o
     /// incremento entre dois passos do caminho.
     grab: Option<([f32; 3], (f32, f32))>,
+    /// **ONDE O DEDO ESTÁ, ainda não carimbado** — o par do [`Self::grab`], e a
+    /// razão de ele existir é que um `Grip::Hold` faz **um dab por EVENTO de
+    /// ponteiro**: a ~1000 Hz de mouse e 60 fps são ~16 dabs por quadro, e o
+    /// dab do `l-mode` custa 1,05 ms num pincel de 10 % (medido em
+    /// `ph2d-sculpt3d/tests/measure_field_cost.rs`).
+    ///
+    /// ⚠️ **Descartar os intermediários é BYTE-IDÊNTICO, e isso é MEDIDO, não
+    /// suposto** (`measure_what_coalescing_a_hold_gesture_changes`): 16 eventos
+    /// contra 1, com puxões de 50 %, 100 % e 200 % do raio, dão **desvio máximo
+    /// 0,000000** e a MESMA contagem de movidos — 17,9 ms viram 1,2.
+    ///
+    /// O mecanismo já estava escrito no `touched`: o `Grip::Hold` é **frozen**,
+    /// então o laço percorre o conjunto congelado no pen-down e o alvo é medido
+    /// contra o `pre`. A pegada é consultada nas posições VIVAS e por isso pode
+    /// CRESCER — mas o que ela acrescenta pesa zero contra a posição congelada.
+    /// *A ressalva que eu tinha escrito (`pode mudar quais vértices entram`)
+    /// caiu na medição.*
+    ///
+    /// ⚠️ **É o mesmo argumento que o `Grip::Turn` já usa** para não andar o
+    /// `walk` (`sculpt3d_input.rs`): *N dabs com o mesmo total acumulado no
+    /// mesmo lugar é trabalho idêntico repetido*. A diferença é que o `Turn`
+    /// paga isso uma vez por evento e o `Hold` pagava dezesseis.
+    pending_grab: Option<(f32, f32)>,
     /// **O ângulo já varrido** pelo gesto do Twist — ver [`TwistSweep`]. `None`
     /// fora de um gesto; o pen-down o zera.
     twist: Option<TwistSweep>,

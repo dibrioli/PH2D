@@ -11,6 +11,17 @@
 > 09**: sete waves construídas, **duas recusadas por medição**, e a **CAUDA de
 > cinco waves** (§2e) que fechou o §3.A e o item das camadas.
 
+**Os seis itens que a DIRETRIZ §1.5.9 exige, e onde estão:**
+
+| # | item | onde |
+|---|---|---|
+| 1 | identidade (branch · HEAD · merge-base · nº commits) | **§1** — e a caixa **medida** do rebase |
+| 2 | foundational/compartilhado tocado + porquê | **§3c** |
+| 3 | símbolos que podem COLIDIR, com valores literais | **§3d** — a resposta é **NENHUM**, por construção |
+| 4 | contratos congelados encostados | **§3** — **nenhum**, rodado |
+| 5 | o que só o `ship.sh` pega | **§5b** |
+| 6 | ordem/dependências + o que NÃO foi smokado | **§2d · §6** |
+
 ---
 
 ## 1. Identidade
@@ -20,18 +31,31 @@
 | branch | `line/physics` |
 | HEAD | **o tip de `line/physics`** ⚠️ ver abaixo |
 | merge-base com `main` | `76788440adbabb0e5b12f8fdafecc6f1e1183e1a` |
-| commits | **116** |
-| diff | 224 arquivos, **+42.238 / −2.336** |
+| commits | **117** |
+| diff | 224 arquivos, **+42.342 / −2.336** |
 
 ⚠️ **O HEAD não é escrito aqui de propósito, e a razão é aritmética:** o commit
 que o escreve MUDA o HEAD, então um sha nesta tabela é falso no instante em que é
 commitado. O que identifica a entrega é o **merge-base** acima mais *"o tip da
 branch"*.
 
-⚠️ **O `main` local está 5 commits à frente do `origin/main` e a linha parte
-DELE** (`76788440a` é o tip do `main` local). O `origin/main` **não moveu** desde
-o fork (`refs/heads/main..origin/main` = 0), então o rebase é trivial — mas
-confira no dia, porque esta frase envelhece.
+⚠️ **A INTEGRAÇÃO É FAST-FORWARD TRIVIAL, e isto é MEDIDO, não suposto** (medido
+em 2026-08-15, depois de um `git fetch origin main`):
+
+| pergunta | medido |
+|---|---|
+| o `main` local andou desde o fork? | **não** — `merge-base(main, HEAD)` **é** o tip do `main` (`76788440a`) |
+| o `origin/main` andou? | **não** — `main..origin/main` = **0** |
+| o `main` local está à frente do remoto? | **sim, 5 commits** (`origin/main..main` = 5) |
+
+⇒ **Não há conflito possível com o `main`**, porque o `main` não se mexeu: não há
+rebase a fazer, e `--ff-only` passa. ⚠️ **Mas esta caixa envelhece** — se outra
+linha integrar antes desta, re-meça as três linhas acima **antes** de tocar em
+qualquer coisa; é a única parte deste doc que muda sozinha.
+
+⚠️ **O push da jornada leva 5 + 116 commits** (os 5 que o `main` local já tinha
+por pushar mais os desta linha) — quem fizer o ship conta com isso no babysit do
+CI.
 
 ---
 
@@ -297,6 +321,54 @@ esta linha mudou defaults (o mais visível é o **leque de pés**, que nasce com
 byte-identidade individualmente; o movimento acumulado vem das waves anteriores à
 fila, cujo detalhe está nos handoffs de 08-11 / 08-12.
 
+### 3c. O FOUNDATIONAL / COMPARTILHADO tocado (item **2** da DIRETRIZ §1.5.9)
+
+Tudo fora de `crates/ph2d-{physics,physics-ecs,platformer}/` e de `docs/Physics/`,
+**medido por `git diff main...HEAD --name-only`**:
+
+| onde | arquivos | o que é |
+|---|---|---|
+| `shells/desktop/src/**` | **65** (42 + 23 no `render_loop`) | a ponte, o overlay, o Inspector do lado da shell, as cenas de smoke |
+| `crates/ph2d-panel-inspector/**` | **11** | a §11/§12/§14 — as rows dos knobs |
+| `shells/desktop/tests/**` | **4** | os arch-gates de shell |
+| `crates/ph2d-editor-core/src/{ids,screens/hero}/**` | **4** | os ids (abaixo) + os tipos de info do Inspector |
+| `.typos.toml` | **1** | ⚠️ **lista COMPARTILHADA** — ver abaixo |
+| `CLAUDE.md` | **1** | ⚠️ **1 insert / 1 delete**, tudo DENTRO do bullet §5 desta linha |
+
+⚠️ **Os dois de risco são os dois últimos, e os dois foram editados na forma que
+NÃO colide:**
+
+* **`.typos.toml`** — a linha **ACRESCENTOU** uma entrada (`^PILAR$`) em vez de
+  reescrever a vizinha (`^pilar$`, que não a cobria porque as regexes são
+  sensíveis a maiúsculas). O comentário no próprio arquivo diz porquê: *num merge,
+  um `(?i)` na linha existente arriscaria perder o que outra linha lhe tenha
+  acrescentado*. **Só ADICIONE** [[feedback_a_shared_list_is_merged_against_todays_main]].
+* **`CLAUDE.md`** — a mudança é **inteira dentro do bullet da física**: corrige uma
+  frase FALSA (a nota dizia *"uma lista de `if level == N` e o primeiro vence"*,
+  que é o mecanismo do **Vector**, copiado; o roteador da física é um `match`, logo
+  um número repetido é `unreachable pattern` **no compilador**) e move a próxima
+  cena livre de `105` para `120`. ⚠️ **Nenhuma linha do §0–§4 (o roteador) é
+  tocada** — é a forma de menor colisão possível neste arquivo.
+
+### 3d. Símbolos que podem COLIDIR (item **3** da §1.5.9) — **NENHUM**
+
+⚠️ **A resposta é vazia, e é por construção, não por sorte:** os **41** ids novos
+(`crates/ph2d-editor-core/src/ids/inspector.rs` + o arquivo novo
+`inspector_player.rs`) são **todos `hash_node_id`** — medido, **zero** literais
+numéricos no diff daquele diretório. Logo:
+
+* não entram em **nenhum contador** (`node_id_collisions` cobre-os por hash);
+* **não há valor literal para o integrador grepar** contra outra linha (§1.5.5);
+* **gizmo ids: nenhum novo** — o último segue **973**, próximo livre **974**;
+* **scrollbar ids: nenhum novo**;
+* **variants de enum novos:** `PlayerEvent::Bonked` (apendado) e o componente
+  `NoWallCling` — ⚠️ o primeiro é **exaustivo num `match`**, então quem casar sobre
+  `PlayerEvent` fora da crate **falha a COMPILAR**, que é o modo de falha certo, e
+  não um símbolo que colide em silêncio.
+
+**O ÚNICO número desta linha que colide com outra é o `PROJECT_SCHEMA`** (§3a), e
+ele **se CONTA contra o `main` do dia** — nunca se lê daqui.
+
 ---
 
 ## 4. Mudanças de comportamento, nomeadas
@@ -389,6 +461,38 @@ renomeado e re-rodado verde. É a **quinta** vez que a varredura de fecho desta
 linha acha um latente que um `cargo test -p` por crate **não alcança** — o
 `typos` e o `fmt` não correm na suíte de nenhuma crate, e um nome de teste só é
 lido por eles.
+
+### 5b. O que só o `ship.sh` pega (item **5** da DIRETRIZ §1.5.9)
+
+⚠️ **A tabela acima roda `--release`, e o `ship.sh` roda o perfil `ci-test`, que
+HERDA do `dev`** — ou seja, com `overflow-checks` e `debug-assertions` **ligados**,
+que o `--release` desliga. Este repo tem precedente do que isso esconde (o
+`wrapping_sub` do `ph2d-flip-colorize`, que só panicava em debug). **Fechado onde
+a linha de facto escreveu código:**
+`cargo test -p ph2d-physics-ecs -p ph2d-physics -p ph2d-platformer --profile ci-test`
+⇒ **`CARGO EXIT: 0`, 253 suítes `ok`**, zero `attempt to add/subtract/multiply
+with overflow`.
+
+**O que fica genuinamente por rodar, e o que cada um pode dizer:**
+
+| só no ship | o que esta linha lhe dá | risco |
+|---|---|---|
+| `cargo machete` (deps não usadas) | **zero `Cargo.toml`/`Cargo.lock`** ⇒ nada de novo | **nenhum desta linha** |
+| `cargo deny` (licenças/bans/fontes) | idem — **nenhuma dep nova** | **nenhum desta linha** |
+| `cargo audit` (RUSTSEC) | idem | ⚠️ **dependente do TEMPO** — pode ficar vermelho **sem uma linha de código mudar**, e aí não é regressão desta linha |
+| `clippy --all-features` | eu corri `--all-targets`, **não** `--all-features` | features desligadas podem esconder lint |
+| `nextest` na workspace INTEIRA sob `ci-test` | eu corri 5 crates em `--release` + 3 em `ci-test` | as crates **não tocadas** não foram re-rodadas neste perfil |
+
+⚠️ **E a deriva pré-fork não existe aqui, pela medição da §1:** como o `main`
+**não andou** desde o fork, tudo o que o `ship.sh` achar de latente já estava no
+`main` **antes** desta linha — ela não o introduziu nem o pode ter drenado
+[[project_integration_prefork_lines_ship_drift]].
+
+⚠️ **Nota de ambiente que NÃO vale aqui:** a memória do repo regista que
+`target/` é symlink para `/dev/shm` e que uma passada de debug encheu o tmpfs.
+**Isto é a árvore PRIMÁRIA** — uma worktree tem `target/` próprio **em disco**
+(DIRETRIZ §1.5.1), e esta mediu **151 GB de artefactos com 153 GB livres (84% do
+disco)**. O `ship.sh` do integrador corre na primária, onde a nota original vale.
 
 ⚠️ **E pegou um TERCEIRO na varredura final:** o commit que trocou
 `slope.abs().tan()` por `libm::tanf(slope.abs())` deixou a chamada quebrada em

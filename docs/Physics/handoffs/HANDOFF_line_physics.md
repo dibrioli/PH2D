@@ -25,7 +25,7 @@
 >
 > ⚠️ **A jornada de 2026-08-15 FECHOU. A linha entrega o handoff e PARA** —
 > [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-15.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-15.md),
-> **116 commits**. Ela tem TRÊS partes: a **fila da auditoria** (sete waves, duas
+> **117 commits**. Ela tem TRÊS partes: a **fila da auditoria** (sete waves, duas
 > recusas medidas, smokadas) · a **AUDITORIA FINAL** de três blocos (§2c) · e a
 > **CAUDA de cinco waves** (§2e: `W-WallNormal` · `W-Ceiling` · `W-Bonked` ·
 > `W-HitNormal` · `W-WallMaterial`), que fechou o **§3.A** e o item das **camadas**.

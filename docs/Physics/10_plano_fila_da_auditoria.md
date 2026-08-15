@@ -438,7 +438,7 @@ ponto?"*, exactamente a recusa que a `W-KinMove` já nomeou para a FORÇA.
 
 ---
 
-## §5 — Wave **E**: o EMPURRÃO de fora
+## §5 — Wave **E**: o EMPURRÃO de fora ⟨**FECHADA** 2026-08-14⟩
 
 **Medido:** sob Spring um impulso chega ao corpo dinâmico e o `walk` **resiste**
 em vez de o apagar (o boost só dispara dentro de `a·dt`); sob **Snap/Pure** um
@@ -454,6 +454,94 @@ segunda pergunta e entra quando houver quem a peça). ⚠️ E ele **silencia o
 controle aéreo** por uma janela — primitivo que **já existe**
 (`wall_jump_lockout`), e reusá-lo é o que impede o empurrão de ser comido pelo
 próprio jogador a segurar a direção contrária.
+### ⟨FECHADA⟩ o que de facto shipou, e onde o plano errou
+
+**O "medido" acima foi RE-MEDIDO** (`ph2d-physics-ecs/tests/measure_launch.rs`),
+e as duas metades confirmaram-se com número:
+
+* uma explosão ao lado do personagem alcança **1** corpo sob Spring e **ZERO**
+  sob Snap e Pure — o botão existia, o toast dizia *"0"*, e o personagem ficava
+  parado ao lado do estouro;
+* e sob Spring, onde ela SEMPRE chegou, a caminhada apaga-a em **9 tiques
+  (0,15 s)**: `13,92 m/s` no primeiro, `0,000` no décimo, **com o jogador a não
+  tocar em nada**. ⚠️ Quem come é o **FREIO**, não o direcional — e isso muda o
+  desenho: a janela não é sobre o *controlo aéreo*, é sobre a caminhada inteira.
+
+⚠️ **A JANELA é do CHAMADOR, e não o `WallConfig::jump_lockout`.** O plano dizia
+*"reusá-lo"*, e o que se reusa é o **mecanismo** (um relógio que cala a
+caminhada, lido pelo `if` que já existe no `lib.rs`); o **número** é de quem
+empurra — uma explosão e uma almofada de salto não são donas do personagem pelo
+mesmo tempo, e ler o número da parede faria um knob significar duas coisas.
+
+⚠️ **E ela NÃO é o `JumpState::wall_lock`, por um argumento que o próprio doc
+daquele campo faz:** ele morre ao pousar, porque *"quem aterrou espera dirigir"*
+— e um empurrão acontece na maior parte das vezes **com o pé no chão**. Campo
+próprio, `PlayerState::push_lock`, que escorre no ar e no chão.
+
+⚠️ **Ele mora no `PlayerState` e não num mapa da ponte**, e a razão está escrita
+no doc daquele tipo: é o `PlayerState` que o **ring de tiques âncora** guarda, e
+uma janela noutro mapa teria de ser acrescentada ao ring à mão — esquecê-la é um
+scrub que devolve o mundo de um tique e a memória do controlador de outro.
+
+**A porta:** `PhysicsBridge::launch_player(entity, velocity, lock)`, num mapa
+**próprio** e **DRENADO** — a entrada do dedo é *set-and-hold* (um dispatch que
+deve quatro tiques aplica a MESMA a todos eles) e um empurrão é um **evento**;
+guardado ali, ele seria entregue quatro vezes. E ela **descarta o ring**, pela
+razão exacta do `explode`: é uma descontinuidade que a fita não grava.
+
+⚠️ **A velocidade sai pela porta do `boost`, e é a MESMA descoberta da wave D:**
+os dois modos já a consomem (`kinematic_advance` soma-o; a ponte dinâmica
+manda-o ao solver como impulso), então uma segunda entrega por modo seria a
+segunda resposta à mesma pergunta.
+
+**A metade VISÍVEL é uma CORREÇÃO, sem UI nova:** a **explosão** que já está no
+Inspector passa a alcançar os três modos. Ela converte impulso em velocidade
+**pela massa real** e com a **mesma falloff** (`ph2d_physics::blast_falloff`,
+porta única), e a um player dinâmico dá **só a janela** — o solver já lhe
+entregou o impulso. Medido, o mesmo estouro leva-o **5,81 m** em meio segundo
+contra **1,03** antes.
+
+⚠️ **E ela conta UM corpo por personagem:** a primeira versão somava a varredura
+de players por cima do que o `PhysicsWorld::explode` já contara, e o toast dizia
+*"2 corpos"* para um personagem sozinho na cena.
+
+**`PROJECT_SCHEMA` INTOCADO** (nada disto é serializado) e **`physics_ecs_c9`
+byte-idêntico** — `1699123f…`, 117 corpos, medido contra o commit ANTERIOR à wave
+D num worktree temporário. ⚠️ **E a diferença contra o `main` NÃO é destas waves:**
+medido no `main` de hoje, ele dá **`fb27f676…`** — exactamente o que a §5 do
+`CLAUDE.md` regista —, e o que o move é a **jornada da ÁGUA**, que já estava na
+linha (a wave A registou-o). *Nem a D nem a E lhe tocam.*
+
+**Cena `PH2D_PHYSICS_SMOKE=117`** — três personagens IGUAIS, um por modo, e o
+artista estoura debaixo de cada um com a ferramenta que já existe. ⚠️ **Duas
+versões dela mediram a caixa em vez do modo:** uma *régua viva* ao lado de cada
+personagem entrava no caminho (à frente, o do meio andava `0,740 m` contra
+`4,979` do vizinho; atrás, a caixa de um é a da frente do outro) — as raias estão
+a 4 m e o empurrão leva-os 5 a 8, então **qualquer** objecto entre eles é um
+obstáculo. ⚠️ **E os números do gate eram inventados** (`raio 6`), com o da
+direita exactamente na borda do alcance: `0,000 m`, um gate vermelho sobre
+produto correto. Os defaults da ferramenta são `3`/`10`, e é deles que a cena
+vive.
+
+⚠️ **ASSIMETRIA nomeada, não escondida:** o mesmo estouro leva o dinâmico
+**5,57 m** e os cinemáticos **8,09** — eles saem quase juntos (`15,3` contra
+`17,9 m/s`) e **param diferente**, porque um é travado pelo SOLVER quando a
+janela acaba e os outros pela caminhada, que rampeia. Está no roteiro, para o
+smoke julgar.
+
+**Gates:** 8 no ECS (a porta, a janela, o dedo contrário, o dreno, a contagem, a
+massa e a explosão nos três modos) + 3 na cena. **6 mutações, 6 sangram.**
+⚠️ **Uma delas SOBREVIVEU primeiro, e a culpa era da fixture:** trocar a massa
+real por `1.0` deixava tudo verde porque o personagem pesa **1,0 kg**. E a
+fixture que a corrigiu nasceu ERRADA por sua vez — ela autorava o
+`MassOverride` **depois** de o personagem assentar, e o `reconcile` só
+re-descreve um corpo **em repouso**, então media o mesmo número com e sem ele.
+Autorada antes do primeiro tique: `0,218 m` contra `7,106`.
+
+**Aberto, com o preço ao lado:** o campo de ATRAÇÃO ainda não alcança um player
+de pose própria (é sustentado, não um evento — pede um canal por-tique, não esta
+porta) · o `bXYOverride` do Unreal (substituir em vez de somar) segue fora, e
+entra quando houver quem o peça.
 
 ---
 

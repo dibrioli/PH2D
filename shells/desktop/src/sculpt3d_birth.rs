@@ -59,7 +59,7 @@ impl Sculpt3dScene {
             matcap: ph2d_mesh_render::DEFAULT_MATCAP,
             wireframe: false,
             brush: Brush::default(),
-            mode_by_verb: [ph2d_sculpt3d::RefMode::default(); 16],
+            mode_by_verb: [ph2d_sculpt3d::RefMode::default(); ph2d_sculpt3d::Verb::ALL.len()],
             ui_level: ph2d_panel_sculpt3d::UiLevel::default(),
             alpha_preview: true,
             alpha_image: None,

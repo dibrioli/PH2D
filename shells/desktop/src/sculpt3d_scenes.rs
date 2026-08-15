@@ -343,6 +343,11 @@ pub(crate) fn directional_alpha_scene() -> bool {
 /// LOC e pela mesma linha de corte: cada arquivo é a história de uma wave.
 #[path = "sculpt3d_scenes_elastic.rs"]
 pub(crate) mod elastic;
+
+/// **A CENA DA FAIXA** (`=29`) — irmã da [`elastic`] pela mesma linha de corte:
+/// cada arquivo é a história de uma wave.
+#[path = "sculpt3d_scenes_strip.rs"]
+pub(crate) mod strip;
 /// `=22` — a cena do **EXTRACT**: a máscara vira uma PEÇA.
 ///
 /// ⚠️ **Duas esferas, e a assimetria é o smoke inteiro.** A da DIREITA já vem

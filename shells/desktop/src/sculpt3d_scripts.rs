@@ -483,6 +483,7 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
     }
     topology::for_scene(mesh);
     crate::sculpt3d::scenes::elastic::announce();
+    crate::sculpt3d::scenes::strip::announce();
     if crate::sculpt3d::donation_scene() {
         eprintln!(
             "[sculpt3d] =2 A DOACAO: ha uma TELA BRANCA embaixo, e a tecla D alterna\n\

@@ -1833,6 +1833,94 @@ foi *o eixo vem dos CENTROS dos dabs*: o `SculptStroke` vê a sequência, então
 ele que deriva, e o vetor entra no `Dab` para o espelho o tratar como trata o
 `pull` (a lei das espécies geométricas do `dab()`).
 
+### §7.19 — ✅ W6 (metade A): O DAB DEIXA DE SER UM DISCO (2026-08-14)
+
+O item que a §7.18 apontou como o único da W6 cujo conteúdo não depende de
+tabela ausente. `Verb::ClayStrips` — o **17º** verbo, e o primeiro cuja pegada
+não é redonda.
+
+**A espinha: a curva de falloff passa a receber uma COORDENADA LOCAL.** Até aqui
+todo verbo media `dist / raio` contra o centro, e é por isso que o catálogo
+inteiro tem a mesma silhueta. Agora existe uma [`Footprint`], hoisted uma vez por
+dab (ao lado do `alpha_frame`), que responde `(t, portão)`:
+
+- **`Disc`** devolve `(dist · inv_r, 1.0)` — o mundo que já shipa, **ao bit**;
+- **`Strip`** devolve a **distância de caixa arredondada** no plano e a
+  **parábola `z·(1−z)`** na profundidade.
+
+⚠️ **A entrada da curva continua sendo UM número**, e é isso que faz uma forma
+nova não pedir um segundo falloff: a dureza, as doze curvas e a curva própria da
+máscara seguem lendo o mesmo `t`.
+
+⚠️ **`roundness = 1` é a distância euclidiana, EXATAMENTE** (o miolo chato
+colapsa num ponto e toda consulta cai no ramo da quina, cujo centro é a origem) —
+a mesma âncora que o `rf = 1` da multi-resolução do Wet Paint e o `eye = 0` do
+estêncil do alpha usam.
+
+**A DIREÇÃO DO TRAÇO chega ao dab** (`Dab::path`), derivada pelo
+`SculptStroke` da diferença entre CENTROS de dabs consecutivos — nunca de uma
+tangente suavizada, que é a lição de 2D onde a `line/Painter` mediu **52,4° de
+atraso**. Ela espelha como VETOR, junto do `eye` e do `pull`.
+
+**Cinco correções que só a medição achou, e as três primeiras eram minhas:**
+
+1. ⚠️ **O SINAL do plano.** A faixa deposita o que está ABAIXO do plano, então
+   ele tem de estar ACIMA da superfície. Com o sinal trocado o portão fecha em
+   todo vértice e sobra só o primeiro dab — dois gates mediam um disco contra
+   outro e reportavam `0,6000 → 0,6000`.
+2. ⚠️ **Sem caminho a faixa nasce REDONDA, não deixa de nascer.** A 1ª versão
+   caía no `Footprint::Disc`, que **não tem portão de profundidade**: o toque
+   depositava `0,039998` onde a lei manda **zero**. O caminho decide a
+   ORIENTAÇÃO da caixa e mais nada; a profundidade é fato do PLANO, que existe
+   desde o primeiro dab. Numa ponta redonda a moldura no plano é **irrelevante
+   por construção**, então escolher um perpendicular qualquer não é inventar
+   orientação — é escolher entre respostas iguais.
+3. ⚠️ **A ferramenta nascia MORTA**, e quatro varreduras da suíte o disseram ao
+   mesmo tempo (o alpha, o invert, os dois do aplicador), cada uma com *"dab
+   inerte"*. Com o plano rente, `z = 0` em toda parte. ⇒ **`STRIP_PLANE_FRACTION
+   = 0.5`**, e o número sai da própria lei: o pico da parábola está a meio raio
+   abaixo do plano, então erguê-lo por meia fração põe o pico exatamente na
+   superfície em repouso. O `plane_offset` do artista **soma** a este.
+4. ⚠️ **Uma CAIXA não cabe no círculo que a inscreve.** O canto de uma faixa
+   `1 × L` está a `√(1 + L²)` raios do centro ⇒ o `query_radius` cresce, senão a
+   tira chega com as **quinas comidas** e o defeito é mudo.
+5. ⚠️ **O shell tinha uma segunda cópia da contagem de verbos** (`[RefMode; 16]`
+   literal em dois arquivos, onde a crate deriva de `Verb::ALL.len()`). Ela
+   sobreviveu enquanto o catálogo não crescia e virou erro de tipo no dia em que
+   cresceu.
+
+**O `S` fica SILENCIOSO na faixa**, pela mesma frase que o `Sharpen` já
+carregava: *o SculptGL não a tem*. O censo veio dizer o número novo — e ⚠️ **ele
+não se moveu** (15, porque entraram um verbo e um `None` ao mesmo tempo), o que
+é precisamente por que a coincidência ficou escrita ali; o `B` foi a **17**,
+porque o `alpha = root_alpha²` é o funil de toda tool do Blender.
+
+**Gates:** 8 na forma (`footprint_tests`) + 7 no produto (`verb_strip_tests`).
+**7 mutações, 7 sangram** — ⚠️ e **duas delas escreveram gates**: *"sem portão de
+profundidade"* passava por cinco gates de produto (nenhum falava de
+profundidade), e *"o espelho não espelha o caminho"* passava pelos 213 testes
+(nenhum traçava uma faixa **na diagonal** sob simetria — ao longo de um eixo o
+espelho preserva a direção e a metade espelhada acerta por acidente).
+
+**LOC por corte de RESPONSABILIDADE:** o catálogo de verbos sai do `brush.rs`
+para `brush_verb.rs` (*que OPERAÇÃO* × *que pincel a carrega* — as duas crescem
+por razões diferentes) e a expansão do espelho sai do `stroke.rs` para
+`stroke_symmetry.rs` (*quantas vezes um dab acontece* × *o que ele faz a um
+vértice*).
+
+Sem schema, sem ADR, sem crate nova, sem dep nova; os ids dos verbos são
+`hash_node_id` e o array cresceu de 16 para 17 com o gate a cobrar.
+
+⚠️ **PENDENTE DE SMOKE — `PH2D_SCULPT3D_SMOKE=29`.** As perguntas de olho: a
+tira tem **topo chato** onde o Draw faz domo · ela **acompanha uma curva em S** ·
+um **toque** sai redondo (a decisão, não o bug) · e não há **canto comido** no
+fim de uma tira.
+
+**Aberto na W6:** o **Multiplane Scrape** e o **Clay Thumb** reusam esta moldura;
+o **Blob** é o Crease com o pinch invertido; o **Draw Sharp** segue bloqueado
+pela tabela ausente (§7.18). E os dois knobs da faixa (`tip_roundness`,
+`strip_length`) **ainda não têm row no painel** — hoje só os defaults shipam.
+
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 
 **Os defaults de fábrica do Blender não estão no clone.** Eles vivem em

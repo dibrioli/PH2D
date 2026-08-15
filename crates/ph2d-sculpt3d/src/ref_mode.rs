@@ -555,7 +555,14 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         },
         // ⚠️ **O SculptGL NÃO TEM Sharpen**, e este `None` é essa frase.
         // (O Blender tem o equivalente, `Enhance Details` — doc 20 §9 item 12.)
-        Verb::Sharpen => return None,
+        //
+        // ⚠️ **Nem Clay Strips** — a faixa é do Blender (`clay_strips.cc`), e o
+        // `None` aqui é a MESMA frase. Quem arma um verbo que a fonte não
+        // declara cai no [`VerbProfile::SILENT`], que é o nosso default; o chip
+        // `S` segue oferecido porque a LEI DE KERNEL dele (lateral direta,
+        // plano de um lado, front-face ignorado) é universal naquele motor —
+        // é a distinção que o [`RefMode::declares`] documenta.
+        Verb::Sharpen | Verb::ClayStrips => return None,
     };
     Some(p)
 }

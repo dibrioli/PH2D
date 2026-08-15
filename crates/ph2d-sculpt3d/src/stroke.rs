@@ -101,6 +101,11 @@ pub struct SculptStroke {
     /// separa os dois braços; derivá-lo do `Brush` no chamador seria pedir a ele
     /// que soubesse a regra.
     last_paints_mask: bool,
+    /// **O CENTRO DO DAB ANTERIOR**, para derivar [`Dab::path`].
+    ///
+    /// ⚠️ Guardado ANTES da expansão do espelho: o que interessa é o caminho que
+    /// a mão percorreu, e as cópias de simetria são todas do mesmo gesto.
+    last_center: Option<[f32; 3]>,
 }
 
 impl SculptStroke {
@@ -129,105 +134,10 @@ impl SculptStroke {
         self.base_mask.clear();
         self.accum.clear();
         self.target.clear();
-    }
-
-    /// Aplica um dab, **com a simetria expandida aqui e em lugar nenhum mais**.
-    ///
-    /// Devolve quantos vértices se moveram. As cópias espelhadas caem no mesmo
-    /// núcleo, então um verbo novo herda simetria de graça — a lição literal do
-    /// `stamp_dabs_inner` do Painter 2D.
-    ///
-    /// ⚠️ O plano do espelho passa pela **origem do mundo**. Quando uma malha
-    /// ganhar `Transform` próprio (W8), é o frame local dela que entra aqui —
-    /// e será uma mudança nesta função, não nos dezesseis verbos.
-    ///
-    /// ⚠️ **O espelho alcança o DAB INTEIRO, e até 2026-08-02 ele alcançava só o
-    /// centro** — o `eye` e o `pull` atravessavam sem tocar, e o preço está
-    /// medido: um Grab com espelho puxava as duas metades na MESMA direção de
-    /// mundo, **0,343574** de erro de simetria num pincel de raio 0,4 (a metade
-    /// espelhada ia parar em `x = +1,1540` onde a simetria pede `+0,8076`). O
-    /// doc do [`Dab::eye`] já **afirmava** que a cópia espelhada tinha o olho
-    /// dela; a linha que o faria nunca existiu.
-    ///
-    /// ⚠️ **E o `eye` só é observável onde a pegada atravessa a TERMINADOR** —
-    /// medido `0,047`–`0,094` ali e **0,000001** em qualquer outro lugar, porque
-    /// longe dela o conjunto frontal é *tudo* (e o fallback do `fit_plane` cobre
-    /// o caso em que ele é *nada*). Era a fixture que não continha o fenômeno,
-    /// não o defeito que era pequeno.
-    ///
-    /// # A lei, e por que ela não é um `for` sobre os campos
-    ///
-    /// Cada canal do dab tem uma **espécie geométrica**, e um espelho trata as
-    /// três de maneiras diferentes:
-    ///
-    /// - o `center` é um **PONTO** e o `eye`/`pull` são **VETORES** — todos
-    ///   componente a componente pelo sinal do eixo;
-    /// - o [`Amount::Angle`] é um **PSEUDOESCALAR**: ele troca de sinal com o
-    ///   **determinante** do espelho (um redemoinho no espelho gira ao
-    ///   contrário), e espelhar os TRÊS eixos não é uma reflexão — é uma rotação
-    ///   de 180°, e o produto dos sinais devolve `+1` sozinho, sem caso especial;
-    /// - o [`Amount::Fraction`] é um **ESCALAR comum** e o espelho não a toca.
-    ///
-    /// # ⚠️ A malha tem de ser a MESMA em que o traço COMEÇOU
-    ///
-    /// Os planos por-vértice (`slot`, `stamp`) são dimensionados no
-    /// [`Self::begin`], então um dab noutra malha os indexa com índices que não
-    /// são deles. Enquanto a malha nova for MENOR o defeito é mudo — escreve na
-    /// vizinhança errada e ninguém vê; assim que for maior, estoura.
-    ///
-    /// Este `assert` custa uma comparação de `usize` por dab e troca *"index out
-    /// of bounds"* por uma frase. Ele já se pagou: numa cena com mais de um
-    /// objeto, o pen-down começava o traço na peça ATIVA e o pick escolhia a
-    /// peça sob o cursor — tocar um cubo de 8 vértices e depois uma esfera de
-    /// 6050 panicava. A lei mora no chamador (*um traço pertence a uma peça*), e
-    /// isto é o que a nomeia quando alguém a quebrar de novo.
-    ///
-    /// ⚠️ **A lei é *a malha para a qual o traço está DIMENSIONADO*, e não *a
-    /// malha em que ele começou*** — a diferença nasceu com a topologia
-    /// dinâmica: o refino faz a malha crescer NO MEIO do traço, e o
-    /// [`Self::grow_to`] re-dimensiona sem jogar fora o `pre`. A igualdade que
-    /// este `assert` exige continua exata; o que mudou é quem a mantém.
-    pub fn dab(&mut self, mesh: &mut Mesh, brush: &Brush, dab: &Dab, sym: Symmetry) -> usize {
-        assert_eq!(
-            self.slot.len(),
-            mesh.vert_count(),
-            "um dab tem de cair na malha em que o traço COMEÇOU: \
-             `begin` dimensionou {} vértices e esta malha tem {}",
-            self.slot.len(),
-            mesh.vert_count()
-        );
-        let (signs, n) = sym.signs();
-        let handed = matches!(brush.verb.grip(), Grip::Turn(Amount::Angle));
-        let mut total = 0;
-        // ⚠️ **Zerados UMA vez, aqui, e não a cada cópia.** É esta linha que faz
-        // as janelas publicadas descreverem a CHAMADA; zerá-las lá dentro é
-        // exatamente o defeito que o report de 2026-08-05 desenhou na tela. E
-        // zerar aqui — antes do laço, incondicionalmente — é também o que impede
-        // um dab que não move nada de herdar a janela do anterior.
-        self.call_moved.clear();
-        self.call_refreshed.clear();
-        for s in signs.iter().take(n) {
-            let det = s[0] * s[1] * s[2];
-            let mirrored = Dab {
-                center: mirror(dab.center, s),
-                eye: mirror(dab.eye, s),
-                pull: mirror(dab.pull, s),
-                amount: if handed { dab.amount * det } else { dab.amount },
-                ..*dab
-            };
-            // ⚠️ **Só uma cópia que TRABALHOU contribui.** O `dab_core` sai cedo
-            // quando a pegada é vazia, e nesse caminho ele não chega ao
-            // `refresh_region` — a `region` fica com a lista da cópia anterior.
-            // Ler o rascunho sem esta pergunta a contaria duas vezes.
-            let n = self.dab_core(mesh, brush, &mirrored);
-            if n > 0 {
-                self.call_moved.extend_from_slice(&self.moved);
-                self.call_refreshed
-                    .extend_from_slice(self.region.refreshed());
-            }
-            total += n;
-        }
-        total
+        // ⚠️ **Um traço novo não herda a direção do anterior** — sem esta linha o
+        // primeiro dab apontaria para onde a mão ia no gesto passado, que é um
+        // lugar arbitrário.
+        self.last_center = None;
     }
 
     fn dab_core(&mut self, mesh: &mut Mesh, brush: &Brush, dab: &Dab) -> usize {
@@ -258,6 +168,37 @@ impl SculptStroke {
         // derivado por vértice ele custaria mais que o padrão inteiro que
         // orienta. Ver `Brush::alpha_frame`.
         let alpha_frame = brush.alpha_frame();
+        // ⚠️ **A SILHUETA é hoisted, como o `alpha_frame`** — ver
+        // [`crate::Footprint`]. Ela depende do plano ajustado e da direção do
+        // traço, que são fatos do DAB; construí-la por vértice pagaria duas
+        // raízes quadradas em cada um.
+        //
+        // ⚠️ **O `None` do [`crate::Strip::new`] cai no disco**, e ele só
+        // acontece sem plano em que deitar a caixa. *Sem CAMINHO* é outra coisa
+        // e a faixa trata dela sozinha, nascendo redonda — a distinção custou um
+        // gate de produto (ver o doc de [`crate::Strip::new`]).
+        let footprint = if brush.verb == Verb::ClayStrips {
+            // ⚠️ **O plano da faixa SOBE**, e o `plane_offset` do artista já
+            // está dentro do `plane.point` — este termo soma ao dele. Ver
+            // [`crate::STRIP_PLANE_FRACTION`] para o porquê de o número sair da
+            // própria parábola.
+            let lift = dab.radius * crate::STRIP_PLANE_FRACTION;
+            crate::Strip::new(
+                [
+                    plane.point[0] + plane.normal[0] * lift,
+                    plane.point[1] + plane.normal[1] * lift,
+                    plane.point[2] + plane.normal[2] * lift,
+                ],
+                plane.normal,
+                dab.path,
+                dab.radius,
+                brush.strip_length,
+                brush.tip_roundness,
+            )
+            .map_or(crate::Footprint::Disc, crate::Footprint::Strip)
+        } else {
+            crate::Footprint::Disc
+        };
         let reach = brush.reach(dab.radius);
         let inv_r = 1.0 / dab.radius;
         // ⚠️ **UMA vez por dab**, e as três perguntas que ele responde no laço
@@ -454,12 +395,18 @@ impl SculptStroke {
                     // porquê de a concessão ser do consumidor, não do kernel.
                     crate::kelvinlet::rim_landing(dist / query_r)
                 } else {
-                    let t = brush.shaped_distance(dist * inv_r);
-                    if brush.verb.paints_mask() {
+                    // ⚠️ **A COORDENADA vem da SILHUETA, e a dureza e as curvas
+                    // seguem lendo UM número** — é isso que faz uma forma nova
+                    // não pedir um segundo falloff. O `Disc` devolve `dist ·
+                    // inv_r` e portão `1`, ou seja o mundo que já shipa, ao bit.
+                    let (raw, gate) = footprint.at(from, dist, inv_r);
+                    let t = brush.shaped_distance(raw);
+                    let c = if brush.verb.paints_mask() {
                         brush.mask_weight(t)
                     } else {
                         brush.falloff.weight(t)
-                    }
+                    };
+                    c * gate
                 };
                 // ⚠️ **O FRONT-FACE entra no FATOR, e é aqui que ele pertence** —
                 // o `sculpt.cc:7283-7295` faz `factors[i] *= max(dot, 0)`, e o
@@ -633,6 +580,10 @@ impl SculptStroke {
 
 /// **O `pre` QUE O TRAÇO CONGELA** — ver [`freeze`]. Irmão dos três abaixo, e o
 /// assunto que os três já pressupunham sem ter casa própria.
+/// **QUANTAS VEZES UM DAB ACONTECE** — ver [`symmetry`].
+#[path = "stroke_symmetry.rs"]
+mod symmetry;
+
 #[path = "stroke_map.rs"]
 mod stroke_map;
 pub(crate) use stroke_map::DabOut;

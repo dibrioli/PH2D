@@ -316,6 +316,10 @@ mod verb_move_field;
 #[path = "verb_move_scales_tests.rs"]
 mod verb_move_scales;
 
+/// **A FAIXA** — ver [`verb_strip`].
+#[path = "verb_strip_tests.rs"]
+mod verb_strip;
+
 /// As TRÊS famílias AFINS do paper (twist · scale · pinch) e o gancho que reusa
 /// o agarre — a W5-B. Ver o cabeçalho dele.
 #[path = "verb_field_tests.rs"]

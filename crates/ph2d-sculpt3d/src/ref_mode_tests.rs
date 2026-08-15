@@ -174,12 +174,24 @@ fn every_offered_chip_has_a_profile_behind_it() {
 #[test]
 fn the_census_of_offered_chips() {
     let count = |m: RefMode| Verb::ALL.iter().filter(|v| v.profile(m).is_some()).count();
-    // O SculptGL tem tudo menos o Sharpen (`Verb::ALL` tem 16).
-    assert_eq!(count(RefMode::S), 15, "S: todos menos o Sharpen");
+    // ⚠️ **O SculptGL tem tudo menos o Sharpen E o Clay Strips** (`Verb::ALL`
+    // tem 17). O número não se moveu quando a faixa entrou — e essa
+    // COINCIDÊNCIA é o motivo de a frase estar escrita: a W6 acrescentou um
+    // verbo e um `None`, e um censo lido só pelo número teria dito *"nada
+    // mudou"* sobre uma tabela que mudou duas vezes.
+    assert_eq!(
+        count(RefMode::S),
+        15,
+        "S: todos menos o Sharpen e o Clay Strips"
+    );
     // ⚠️ O `B` alcança TODO verbo com uma coisa só — o `alpha = root_alpha²` do
     // `brush_strength`, que é o funil de todas as tools. Os DEFAULTS dele
     // seguem bloqueados (§7.1 do plano): o `brush.cc` não está no clone.
-    assert_eq!(count(RefMode::B), 16, "B: a lei da força vale para todos");
+    // ⚠️ **17 e não 16 desde a W6:** o Clay Strips é uma tool do BLENDER, então
+    // o `alpha = root_alpha²` do `brush_strength` — que é o funil de todas elas
+    // — vale para ela por construção. Os DEFAULTS seguem bloqueados para todo o
+    // `B` (§7.1), este número é sobre a LEI.
+    assert_eq!(count(RefMode::B), 17, "B: a lei da força vale para todos");
     // A literatura chega paper a paper, nas waves W4/W5/W7.
     assert_eq!(count(RefMode::L), 0, "L: nenhum paper portado ainda");
 }

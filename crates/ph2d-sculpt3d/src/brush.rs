@@ -8,416 +8,12 @@ use crate::falloff::Falloff;
 use crate::grip::{Amount, Grip};
 use crate::{Alpha, AlphaStencil};
 
-/// O que o pincel FAZ. Ver `docs/3D/04.1` para a família de cada um.
-///
-/// ⚠️ **`Layer` não está aqui, e a PREMISSA que o mantinha fora MORREU**
-/// (conferido em 2026-08-12). A nota antiga dizia, e estava certa no dia em que
-/// foi escrita: *"sob a lei do traço (`accum` é um ENVELOPE em `[0,1]`, nunca
-/// uma soma) o Draw já é limitado a um `reach` por traço — que é exatamente o
-/// que o Layer do ZBrush existe para garantir; os dois colapsam"*.
-///
-/// **Não há mais envelope.** A wave da paridade (2026-08-11) fez o
-/// [`crate::Grip::Stamp`] **COMPOR** — cada dab soma o próprio incremento sobre
-/// o que o anterior deixou, que é a estrutura do kernel da referência —, e o
-/// doc da [`crate::GripLaw::additive`] diz a frase inteira: *"nenhum grip é mais
-/// um envelope"*. Com isso o Draw deixou de saturar num `reach`:
-///
-/// - **Accumulate ON** (`from_live`) — o vértice e o centro sobem juntos, o
-///   pincel **não se esgota**, e um traço demorado empilha sem teto.
-/// - **Accumulate OFF** — o vértice atravessa `dist >= 1` e **sai da pegada
-///   sozinho**, o que auto-limita por GEOMETRIA. ⚠️ E isso não é a mesma coisa
-///   que o Layer: o teto dele é uma **ALTURA escolhida**, o deste é *"o vértice
-///   andou mais que o raio"* — um número que muda quando o artista muda o raio.
-///
-/// ⇒ **os dois deixaram de colapsar, e o Layer é hoje uma ferramenta distinta**
-/// (altura constante, saturante, persistente por vértice e **apagável**). Ele é
-/// a wave W8 do [`plano dos modos`](../../../docs/3D/21_plano_modos_e_ferramentas.md),
-/// e o que ele traz de novo é a ideia 3 do doc 20 §10: **estado persistente por
-/// vértice** — que é também o que obriga um plano novo a entrar no
-/// `ModelSnapshot` do undo **no mesmo commit** que o cria.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub enum Verb {
-    /// Empurra ao longo da normal **da ÁREA** (uma direção para o dab inteiro) —
-    /// é isso que faz um domo liso em vez de um ouriço.
-    #[default]
-    Draw,
-    /// Empurra cada vértice ao longo da **própria** normal: a forma ENGORDA,
-    /// que é uma palavra diferente de "sobe". (A distinção Draw×Inflate é
-    /// exatamente esta, no Blender e no ZBrush.)
-    Inflate,
-    /// Puxa cada vértice para a média dos vizinhos — o laplaciano.
-    Smooth,
-    /// O laplaciano com o sinal trocado: afia o que o Smooth arredondaria.
-    Sharpen,
-    /// Projeta no plano ajustado à pegada; move nos dois sentidos.
-    Flatten,
-    /// O plano, só para CIMA — enche vale sem raspar crista.
-    Fill,
-    /// O plano, só para BAIXO — raspa crista sem encher vale.
-    Scrape,
-    /// O plano deslocado para fora: o barro que se ADICIONA (é o Flatten com
-    /// Offset > 0; os dois knobs ficam na tela, e por isso não é um verbo que
-    /// esconde um número).
-    Clay,
-    /// Puxa tangencialmente para o centro do dab: afia uma aresta.
-    Pinch,
-    /// O oposto do Pinch: empurra para fora, alarga.
-    Magnify,
-    /// Pinch + deslocamento negativo — cava um vinco.
-    Crease,
-    /// Não move geometria: escreve `mask[v]`, que **todos** os outros respeitam.
-    Mask,
-    /// **Pega o barro e o traz junto** — ver [`Grip::Hold`].
-    Move,
-    /// **Estica o barro num espinho**: a pegada ANDA com o cursor e cada dab
-    /// entrega ao seguinte — ver [`Grip::Hook`].
-    SnakeHook,
-    /// **TORCE** o barro em torno do eixo da vista — o redemoinho. Ver
-    /// [`Grip::Turn`].
-    Twist,
-    /// **INFLA ou ENCOLHE** o barro em torno da âncora, radialmente. Ver
-    /// [`Grip::Turn`].
-    ///
-    /// ⚠️ **Não é o [`Self::Inflate`], e a diferença é o CENTRO.** O Inflate
-    /// empurra cada vértice pela PRÓPRIA normal (a forma engorda em relação à
-    /// superfície dela); este empurra cada vértice para longe de UM ponto — o
-    /// que cresce é a região inteira, como um balão que se enche a partir do
-    /// lugar onde a mão está.
-    LocalScale,
-}
-
-impl Verb {
-    /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 16] = [
-        Self::Draw,
-        Self::Inflate,
-        Self::Smooth,
-        Self::Sharpen,
-        Self::Flatten,
-        Self::Fill,
-        Self::Scrape,
-        Self::Clay,
-        Self::Pinch,
-        Self::Magnify,
-        Self::Crease,
-        Self::Mask,
-        Self::Move,
-        Self::SnakeHook,
-        Self::Twist,
-        Self::LocalScale,
-    ];
-
-    /// **Este verbo pode ACUMULAR?** — a porta única do `accumulate`.
-    ///
-    /// Só a família do CARIMBO. Os outros três grips carregam o gesto TOTAL
-    /// desde o pen-down (o puxão, o ângulo varrido, a fração de escala) e
-    /// carimbam `accum = 1` ou congelam a pegada: somar um total N vezes seria
-    /// multiplicar o gesto pelo número de eventos de ponteiro, que é exatamente
-    /// a dependência de taxa de amostragem que a lei do traço existe para não
-    /// ter.
-    ///
-    /// ⚠️ Porta e não um `matches!` no sítio de uso: o painel pergunta para
-    /// OFERECER o interruptor e o aplicador pergunta para HONRAR o clique, e
-    /// duas cópias divergiriam num controle que aparece e não faz nada.
-    #[must_use]
-    pub fn accumulates(self) -> bool {
-        matches!(self.grip(), Grip::Stamp)
-    }
-
-    /// Este verbo escreve na MÁSCARA em vez da posição?
-    ///
-    /// Porta única: o aplicador pergunta para saber onde escrever, e a UI
-    /// perguntará para saber que knobs oferecer. Duas listas divergiriam no dia
-    /// em que entrar o segundo verbo de canal (Paint, na W7).
-    #[must_use]
-    pub fn paints_mask(self) -> bool {
-        matches!(self, Self::Mask)
-    }
-
-    /// O sinal (o `Ctrl` de todo app de escultura) muda o RESULTADO deste verbo?
-    ///
-    /// ⚠️ **Era uma blacklist, e ela MENTIA.** Ao excluir só `Smooth`/`Sharpen` e
-    /// `Pinch`/`Magnify`, ela afirmava sinal para `Flatten`, `Fill` e `Scrape` —
-    /// e o `invert` **nunca chega neles**: o alvo dos três é `project(base,
-    /// plane)` (`stroke.rs:410-424`), que não lê o `reach`, o único canal por
-    /// onde o sinal viaja até um verbo de posição. Três controles mortos, com uma
-    /// função afirmando que estavam vivos.
-    ///
-    /// A lista verdadeira é a de quem CONSOME o sinal: `Draw`, `Inflate` e
-    /// `Clay` somam `reach` (`stroke.rs:397,398,427`), `Crease` soma `-reach`
-    /// (`:435`), e `Mask` troca o alvo do canal dele de 1 para 0
-    /// (`apply_mask`, `:481`).
-    ///
-    /// ⚠️ **Whitelist e não blacklist, e a direção é o conserto.** Numa
-    /// blacklist um verbo NOVO nasce reivindicando um sinal que talvez não tenha,
-    /// em silêncio — que é exatamente como este defeito nasceu. Numa whitelist
-    /// ele nasce sem sinal, e quem o tem escreve o nome aqui.
-    ///
-    /// ⚠️ **Isto NÃO é um `uses_reach()`.** O `Mask` não lê `reach` — o alvo de
-    /// posição dele é o próprio lugar — e mesmo assim tem oposto. A pergunta é
-    /// sobre *o resultado que o artista vê*, e `reach` e `apply_mask::goal` são
-    /// duas implementações dela.
-    ///
-    /// **As três alternativas, e por que cada uma morre:** *"faça o invert
-    /// funcionar no Flatten"* — não há o que negar, o Flatten projeta nos dois
-    /// sentidos e o oposto dele é ele mesmo; *"Ctrl troca Fill↔Scrape"* — é o
-    /// `_negative` do `Flatten.js`, mas ele tem UM tool com um toggle e nós temos
-    /// DOIS verbos com dois chips, então o rail destacaria "Fill" enquanto a
-    /// ferramenta raspa; *"Ctrl nega o `plane_offset`"* — o slider já tem sinal
-    /// nos dois sentidos, com gate provando
-    /// (`the_plane_offset_lifts_the_plane_the_verbs_project_onto`).
-    ///
-    /// ⚠️ **Nenhuma UI pergunta isto hoje** (o shell arma `invert = ctrl`
-    /// incondicionalmente, `sculpt3d.rs`): o consumidor é o [`Brush::reach`], e o
-    /// chip que decide oferecer ou não o controle é da wave que trouxer painel.
-    ///
-    /// ⚠️ **Os dois [`Grip::Turn`] ficam de fora, e a razão é que o gesto já tem
-    /// sinal:** varrer para o outro lado torce ao contrário, arrastar para a
-    /// esquerda encolhe. Um `Ctrl` ali seria a segunda maneira de dizer a mesma
-    /// coisa — e uma que **compõe** com a primeira, então varrer ao contrário
-    /// com `Ctrl` apertado voltaria a torcer no sentido original.
-    #[must_use]
-    pub fn honours_invert(self) -> bool {
-        matches!(
-            self,
-            Self::Draw | Self::Inflate | Self::Clay | Self::Crease | Self::Mask
-        )
-    }
-
-    /// Este verbo ajusta um plano à pegada do dab? (Quem responde `true` usa o
-    /// knob `plane_offset`.)
-    #[must_use]
-    pub fn uses_plane(self) -> bool {
-        matches!(self, Self::Flatten | Self::Fill | Self::Scrape | Self::Clay)
-    }
-
-    /// Este verbo lê o anel de vizinhos? (Quem responde `true` custa a
-    /// travessia do CSR por vértice, e é o que decide se o `vert_verts` pode um
-    /// dia virar preguiçoso.)
-    #[must_use]
-    pub fn uses_neighbours(self) -> bool {
-        matches!(self, Self::Smooth | Self::Sharpen)
-    }
-
-    /// O nome que a UI mostra.
-    #[must_use]
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Draw => "Draw",
-            Self::Inflate => "Inflate",
-            Self::Smooth => "Smooth",
-            Self::Sharpen => "Sharpen",
-            Self::Flatten => "Flatten",
-            Self::Fill => "Fill",
-            Self::Scrape => "Scrape",
-            Self::Clay => "Clay",
-            Self::Pinch => "Pinch",
-            Self::Magnify => "Magnify",
-            Self::Crease => "Crease",
-            Self::Mask => "Mask",
-            Self::Move => "Move / Grab",
-            Self::SnakeHook => "Snake Hook",
-            Self::Twist => "Twist",
-            Self::LocalScale => "Local Scale",
-        }
-    }
-
-    /// **QUAL campo elástico este verbo consegue consumir** — a metade *qual* da
-    /// pergunta cuja metade *se* mora no [`crate::RefMode::field`].
-    ///
-    /// ⚠️ **Ela é do VERBO porque é um fato sobre ele, não sobre o modo:** um
-    /// verbo que gira só sabe consumir uma torção, e o alvo dele nomeia esse
-    /// kernel. Enquanto as duas metades viviam na tabela do modo, um par trocado
-    /// era **escrivível** e o produto o engolia em silêncio — o alvo caía no
-    /// modo que já shipava e a pegada continuava a do campo
-    /// ([`Brush::query_radius`] só pergunta `is_some`), ou seja um `l-mode` com
-    /// o alcance e sem a lei. A mutação que o instalou passou nos **193** gates.
-    ///
-    /// ⇒ Com o *qual* aqui, o par deixa de poder discordar: não há segundo sítio
-    /// para ele estar escrito.
-    #[must_use]
-    pub const fn elastic_field(self) -> Option<crate::Field> {
-        match self {
-            // O agarre (eq. 5). O Snake Hook é o MESMO campo com a âncora a
-            // andar — o que os separa é o [`Grip::Hook`], não a lei.
-            Self::Move | Self::SnakeHook => Some(crate::Field::Grab),
-            Self::Twist => Some(crate::Field::Twist),
-            Self::LocalScale | Self::Magnify => Some(crate::Field::Scale),
-            Self::Pinch | Self::Crease => Some(crate::Field::Pinch),
-            _ => None,
-        }
-    }
-
-    /// **Como este verbo consome o gesto** — ver [`Grip`]. A porta única de que
-    /// [`Self::anchors`] é uma leitura, e sobre a qual o kernel e o shell fazem
-    /// perguntas diferentes.
-    #[must_use]
-    pub fn grip(self) -> Grip {
-        match self {
-            Self::Move => Grip::Hold,
-            Self::SnakeHook => Grip::Hook,
-            Self::Twist => Grip::Turn(Amount::Angle),
-            Self::LocalScale => Grip::Turn(Amount::Fraction),
-            Self::Mask => Grip::Paint,
-            _ => Grip::Stamp,
-        }
-    }
-
-    /// **Este verbo PEGA uma âncora no pen-down** em vez de carimbar? — uma
-    /// leitura de [`Self::grip`] em vez de um segundo predicado.
-    ///
-    /// Os três grips que não são [`Grip::Stamp`] têm em comum que o primeiro
-    /// toque **escolhe um ponto e não move nada**: o barro só anda quando o dedo
-    /// anda, porque no instante do pen-down o gesto ainda vale zero (o puxão, o
-    /// incremento, o ângulo varrido, a fração de escala).
-    ///
-    /// ⚠️ **O nome era `pulls()`, e ele passou a MENTIR quando o
-    /// [`Grip::Turn`] chegou** — um redemoinho não puxa nada. O que a pergunta
-    /// sempre quis dizer é *este verbo tem âncora?*, e é essa a palavra que
-    /// sobrevive a um quinto grip.
-    ///
-    /// ⚠️ **Ela era `!matches!(grip, Stamp)`, e o quinto grip a tornou FALSA:**
-    /// o [`Grip::Paint`] também não carimba geometria, e um verbo de máscara
-    /// não tem âncora nenhuma. A pergunta passou a ser feita pelo lado
-    /// POSITIVO — quem de fato pega um ponto no pen-down —, que é a forma que
-    /// sobrevive ao sexto grip em vez de o adotar em silêncio.
-    #[must_use]
-    pub fn anchors(self) -> bool {
-        matches!(self.grip(), Grip::Hold | Grip::Hook | Grip::Turn(_))
-    }
-
-    /// A força com que um pincel deste verbo **nasce**.
-    ///
-    /// ⚠️ **A máscara nasce em 1,0 e a geometria em 0,5, e a diferença é o
-    /// significado da força em cada canal.** Para geometria ela é *quão longe ao
-    /// longo do trajeto*, e meio caminho é um default são. Para a máscara o alvo
-    /// é um PLATÔ (protegido) e a lei do traço é um envelope, então a força vira
-    /// o **TETO** que um traço alcança: medido com 0,5, esfregar oito dabs no
-    /// mesmo lugar chega a **0,5000 e para** — e `keep = 1 − mask` deixa metade
-    /// de todo dab seguinte atravessar a proteção. O artista mascara, esculpe, e
-    /// o barro se move debaixo da máscara pela metade, que é indistinguível de
-    /// *"a máscara não funciona"*. Traços repetidos convergem geometricamente
-    /// (0,75 · 0,875 · 0,969), e depois de DEZ ainda são 31 texels acima de 0,99.
-    ///
-    /// ⚠️ **Divergência do original, e ela é sobre a LEI, não sobre o número:**
-    /// lá a força é uma TAXA (ele acumula sobre o estado vivo e satura dentro do
-    /// traço), aqui é um TETO (envelope sobre o `pre` congelado). Trocar a nossa
-    /// lei devolveria a dependência de espaçamento que o módulo inteiro existe
-    /// para não ter; trocar o DEFAULT entrega o gesto sem tocar em nada.
-    /// A proteção parcial continua exprimível — é o slider.
-    /// ⚠️ **E ela DELEGA à tabela dos modos** (`ref_mode`, 2026-08-12): a força
-    /// de fábrica é o que a referência `S` declara, tool a tool, e não uma
-    /// segunda cópia dela aqui. Antes disto o app shipava `0,5` em tudo — o
-    /// **D3** do doc 20 —, e o número que sobrevive à delegação é o do Draw
-    /// (`Brush.js:12`), o único que já batia.
-    ///
-    /// ⚠️ **Onde a fonte é SILENCIOSA o nosso número fica** (`0,5`): o
-    /// `Drag`/`Twist`/`LocalScale` não declaram `_intensity` e o SculptGL não
-    /// tem Sharpen. Um `unwrap_or` aqui é *"a referência não respondeu"*, nunca
-    /// um valor inventado com a autoridade dela.
-    #[must_use]
-    pub fn default_strength(self) -> f32 {
-        self.profile(crate::RefMode::S)
-            .and_then(|p| p.strength)
-            .unwrap_or(0.5)
-    }
-
-    /// **O Accumulate nasce ARMADO neste verbo?** — e a resposta é da
-    /// referência, tool a tool, não uma afinação.
-    ///
-    /// ⚠️ **O pedido original do Enio dizia isto e eu li como descrição de UI:**
-    /// *"Brush:Checkbox:Clay com accumulate **checado por padrão**"*. É o
-    /// `Brush.js:16` — `this._accumulate = true` —, e a tool `Brush` do original
-    /// é a nossa **Draw E Clay** (o `_clay` é um checkbox dela, ligado de
-    /// fábrica). Nós shipávamos os dois **desarmados**, então o artista pegava o
-    /// Clay e tinha outra ferramenta na mão.
-    ///
-    /// ⚠️ **E a família do PLANO é mais forte que um default:** o `Flatten.js`
-    /// **não declara `_accumulate`**, e o kernel dele pergunta
-    /// `this._accumulate === false` — que em `undefined` é FALSO. Ou seja
-    /// `Flatten`/`Fill`/`Scrape` leem o vivo **sempre**, sem checkbox. Nós temos
-    /// o interruptor, então o honesto é nascerem armados: é o comportamento
-    /// que a referência não deixa desligar.
-    ///
-    /// Os que ficam DESARMADOS não são omissão — são os que a referência não
-    /// arma: o `Smooth` e o `Mask` não têm o campo e não o leem, o `Pinch`, o
-    /// `Crease` e os quatro grips de gesto tampouco.
-    /// ⚠️ **E ela DELEGA à mesma tabela** que a força (`ref_mode`, 2026-08-12) —
-    /// duas portas para *"o que a referência arma neste verbo?"* divergiriam na
-    /// primeira wave que mexesse numa delas. O resultado é **byte-idêntico** ao
-    /// `matches!` que ela substituiu, e há gate afirmando isso.
-    #[must_use]
-    pub fn default_accumulate(self) -> bool {
-        self.profile(crate::RefMode::S)
-            .and_then(|p| p.accumulate)
-            .unwrap_or(false)
-    }
-}
-
-impl Verb {
-    /// A **CURVA** com que um pincel deste verbo nasce — o D1 do estudo, e o
-    /// único achado dele que o artista encontra sem tocar em nada.
-    ///
-    /// ⚠️ **Onde a fonte não tem resposta o nosso default fica** (o Sharpen, que
-    /// o SculptGL não tem) — a mesma lei do `unwrap_or` da força.
-    #[must_use]
-    pub fn default_falloff(self) -> Falloff {
-        self.profile(crate::RefMode::S)
-            .and_then(|p| p.falloff)
-            .unwrap_or(Falloff::Smooth)
-    }
-
-    /// O **RAIO** de fábrica em pixels de tela — o D4/E3.
-    ///
-    /// ⚠️ **A fração é da REFERÊNCIA e a base é NOSSA:** o perfil guarda
-    /// `_radius / 50` (o Crease do original é `25`, metade; o Move é `150`,
-    /// três vezes) e a base é o raio que o app oferece de fábrica. Guardar
-    /// pixels no perfil congelaria a escolha do artista no dia em que a base
-    /// mudasse — a mesma lei do `sss_scatter` e do próprio falloff.
-    #[must_use]
-    pub fn default_radius_px(self, base_px: f32) -> f32 {
-        base_px
-            * self
-                .profile(crate::RefMode::S)
-                .and_then(|p| p.radius_factor)
-                .unwrap_or(1.0)
-    }
-}
-
-/// Quanto do RAIO do pincel um dab de força cheia desloca.
-///
-/// ⚠️ **É fração do raio, nunca uma distância absoluta** — a lição que o impasto
-/// do Painter pagou em 2026-07-14: com altura absoluta, um pincel pequeno e um
-/// grande picam no mesmo valor, e o grande vira uma poça chata porque a razão
-/// *altura ÷ largura* despenca. Amarrando ao raio, a razão de aspecto do domo é
-/// constante em toda escala e o falloff lê igual com pincel de 1 mm e de 1 m.
-///
-/// O NÚMERO é decisão de **smoke**, como o `ORBIT_RAD_PER_PX` da câmera: ele não
-/// é teto de recurso nenhum, é o quanto de barro uma pincelada move.
-pub const REACH_FRACTION: f32 = 0.1;
-
-/// O ganho do **Crease**, e o do vinco é MENOR que o do Draw.
-///
-/// ⚠️ **Os três números desta família saem da referência, não de afinação:**
-/// `Brush.js` e `Inflate.js` usam `intensidade · raio · 0,1`, o `Crease.js` usa
-/// `intensidade · 0,07` e o `Pinch.js` usa `intensidade · 0,05`. Eles são o que
-/// separa *"a lei está certa"* de *"a ferramenta responde como a referência"* —
-/// e a sonda `measure_reference_divergence` é quem os cobra.
-pub const CREASE_FRACTION: f32 = 0.07;
-
-/// O ganho do **Pinch** e do **Magnify** — ver [`CREASE_FRACTION`].
-///
-/// ⚠️ **Ele não existia, e a ausência valia 20×:** o alvo era `base + tangente`
-/// atenuado pelo peso, ou seja o vértice caminhava até `w` da distância inteira
-/// ao centro **num dab**. Medido contra a referência, `16,88×`.
-pub const PINCH_GAIN: f32 = 0.05;
-
-/// Quanto o plano do **Clay** sobe acima da superfície, em fração do raio.
-///
-/// ⚠️ **É o literal `0.1` do `Brush.js:52`, e ele não é um knob no original.** O
-/// nosso `plane_offset` é um controle do artista e SOMA a este — o default dele
-/// (`0`) devolve a referência exata, e girá-lo levanta o plano a mais.
-pub const CLAY_PLANE_FRACTION: f32 = 0.1;
+/// **O CATÁLOGO** — ver [`verb`].
+#[path = "brush_verb.rs"]
+mod verb;
+pub use verb::{
+    CLAY_PLANE_FRACTION, CREASE_FRACTION, PINCH_GAIN, REACH_FRACTION, STRIP_PLANE_FRACTION, Verb,
+};
 
 /// A ferramenta na mão. Um traço inteiro corre contra um destes.
 /// ⚠️ **`Copy` MORREU quando o alpha ganhou IMAGEM** — ver [`crate::Alpha`], onde
@@ -515,6 +111,21 @@ pub struct Brush {
     pub plane_offset: f32,
     /// Quanto o `Crease` aperta lateralmente, em `[0, 1]`.
     pub pinch: f32,
+    /// **QUÃO REDONDA É A PONTA**, em `[0, 1]` — `1` é um disco, `0` é uma caixa
+    /// de quina viva. Só a [`Verb::ClayStrips`] a lê.
+    ///
+    /// ⚠️ **`1` devolve a distância euclidiana AO BIT** (ver
+    /// [`crate::rounded_box`]), então este knob no default não é uma segunda
+    /// silhueta: é a mesma.
+    pub tip_roundness: f32,
+    /// **QUANTOS RAIOS A FAIXA MEDE AO LONGO DO TRAÇO** — `1` é uma pegada
+    /// quadrada, `3` é uma tira. Só a [`Verb::ClayStrips`] a lê.
+    ///
+    /// ⚠️ **O nome diz o que ele FAZ, e a referência o chama de `tip_scale_x`
+    /// enquanto escala o eixo `y` da moldura dela.** Herdar o nome seria herdar
+    /// uma confusão: o eixo que o número estica é o que corre AO LONGO do
+    /// caminho, e é isso que o artista vê.
+    pub strip_length: f32,
     /// **A dureza da borda do canal de MÁSCARA**, em `[0, 1]` — o `_hardness`
     /// da tool `Masking` do original (`Masking.js:14`).
     ///
@@ -640,6 +251,14 @@ impl Default for Brush {
             invert: false,
             plane_offset: 0.0,
             pinch: 0.5,
+            // ⚠️ **Ponta REDONDA por default, e é a âncora de identidade**: com
+            // `1` a caixa arredondada É a distância euclidiana, então o mundo
+            // que já shipa atravessa a camada da silhueta byte a byte.
+            tip_roundness: 1.0,
+            // Uma pegada QUADRADA por default. A tira é o que o artista pede
+            // esticando; nascer esticada seria escolher por ele o gesto de
+            // blocagem, e o número que a referência usa não está no clone (§7.1).
+            strip_length: 1.0,
             // O `_hardness` de fábrica da `Masking` do original.
             mask_hardness: 0.25,
             // O neutro do `apply_hardness_to_distances` — ver o campo.

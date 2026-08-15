@@ -71,6 +71,16 @@ impl SculptStroke {
             // `Brush.js:57-91` — `deform = intensidade · raio · 0,1`, e o peso
             // inteiro (curva × intensidade × máscara × alpha) chega no `w`.
             Verb::Draw => add(live, n_area, reach * w),
+            // ⚠️ **A LEI É A DO DRAW, ao bit — e isso É a wave.** O que separa
+            // uma faixa de um domo não é para onde o barro vai (os dois sobem
+            // pela normal da área, pelo mesmo `reach`), é **QUE BARRO** a
+            // passada alcança: a silhueta em caixa e o portão parabólico da
+            // profundidade vivem no `w`, pela [`crate::Footprint`].
+            //
+            // ⚠️ **Um segundo braço aritmético aqui seria a segunda resposta a
+            // *"para onde este dab empurra"*** — e o dia em que o Draw ganhasse
+            // um termo, a faixa não o ganharia, em silêncio.
+            Verb::ClayStrips => add(live, n_area, reach * w),
             // `Inflate.js:36-76` — a MESMA constante do Draw, pela normal de
             // cada vértice em vez da de área.
             //

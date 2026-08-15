@@ -380,7 +380,11 @@ pub(crate) struct Sculpt3dScene {
     /// destes campos, então uma escolha que vivesse só no pincel seria perdida
     /// na primeira troca de ferramenta — e a troca é justamente o gesto que a
     /// re-resolve.
-    mode_by_verb: [ph2d_sculpt3d::RefMode; 16],
+    /// ⚠️ **O TAMANHO É DERIVADO, e era um `16` literal** — a segunda cópia de
+    /// uma contagem que o [`ph2d_sculpt3d::Verb::ALL`] já responde. Ela sobreviveu
+    /// enquanto o catálogo não crescia, e o dia em que a W6 acrescentou a faixa
+    /// ela virou erro de tipo em dois arquivos do shell.
+    mode_by_verb: [ph2d_sculpt3d::RefMode; ph2d_sculpt3d::Verb::ALL.len()],
     /// **COM QUE PROFUNDIDADE O PAINEL SE MOSTRA** — ver
     /// [`ph2d_panel_sculpt3d::UiLevel`].
     ///

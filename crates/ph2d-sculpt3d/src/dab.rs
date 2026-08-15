@@ -73,6 +73,26 @@ pub struct Dab {
     /// pagou: dois campos deixariam cada um morto em quinze dos dezesseis
     /// verbos, e o dia em que entrasse o terceiro gesto escalar seriam três.
     pub amount: f32,
+    /// **PARA ONDE O TRAÇO IA** quando este dab caiu — vetor de MUNDO, não
+    /// normalizado. `[0, 0, 0]` significa *ainda não se sabe* (o primeiro dab de
+    /// um traço não tem antecessor).
+    ///
+    /// ⚠️ **Quem o preenche é o [`crate::SculptStroke`], não o chamador**, e a
+    /// razão é que ele é a única coisa que vê a SEQUÊNCIA. Um campo que o shell
+    /// preenchesse teria de ser preenchido igual em todo chamador — os smokes, os
+    /// gates, o replay — e o modo de falha de esquecer um é uma ferramenta que
+    /// perde a orientação em silêncio.
+    ///
+    /// ⚠️ **E ele sai da diferença entre CENTROS de dabs consecutivos, nunca de
+    /// uma tangente suavizada.** A lição está paga em 2D: a `line/Painter` mediu
+    /// **52,4° de atraso** num heading por média móvel (o atraso ESCALA com o
+    /// pincel), e a cura foi exatamente esta — os centros são amostras exatas do
+    /// caminho, então a diferença entre dois deles atrasa meio espaçamento.
+    ///
+    /// ⚠️ **Espelha como VETOR** (ver a lei das espécies geométricas do
+    /// [`crate::SculptStroke::dab`]): uma cópia de simetria vai para o outro lado
+    /// e o traço dela vai junto.
+    pub path: [f32; 3],
 }
 
 impl Dab {
@@ -86,6 +106,11 @@ impl Dab {
             eye,
             pull: [0.0; 3],
             amount: 0.0,
+            // ⚠️ **Zero é *não sei*, e é o [`crate::SculptStroke`] quem
+            // responde** — ver [`Self::path`]. Nenhum construtor o recebe: um
+            // argumento a mais em cinco portas convidaria o chamador a
+            // adivinhar, e a resposta certa não é dele.
+            path: [0.0; 3],
         }
     }
 

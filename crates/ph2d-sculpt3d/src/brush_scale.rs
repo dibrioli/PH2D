@@ -148,6 +148,13 @@ impl Brush {
     pub fn query_radius(&self, radius: f32) -> f32 {
         if self.mode.field(self.verb).is_some() {
             radius * crate::KELVINLET_REACH
+        } else if self.verb == crate::Verb::ClayStrips {
+            // ⚠️ **Uma CAIXA não cabe no círculo que a inscreve.** O canto de
+            // uma faixa `1 × L` está a `√(1 + L²)` raios do centro, e uma
+            // consulta de raio `r` devolveria a faixa com as QUINAS comidas —
+            // um defeito mudo, porque a silhueta continuaria plausível. O fator
+            // é perguntado à própria forma, nunca recomputado aqui.
+            radius * crate::Footprint::strip_query_factor(self.strip_length)
         } else {
             radius
         }

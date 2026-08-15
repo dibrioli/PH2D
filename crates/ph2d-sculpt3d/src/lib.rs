@@ -35,6 +35,10 @@
 //! números da W1 foram **re-medidos** em vez de herdados.
 
 mod alpha;
+/// **A SILHUETA DE UM DAB** — ver [`footprint`].
+mod footprint;
+pub use footprint::{Footprint, Strip, rounded_box};
+
 mod brush;
 /// **A CURVA DO PINCEL** — o falloff, irmão do [`brush`]. Ver [`falloff`].
 mod falloff;
@@ -62,7 +66,8 @@ pub use alpha::{
 };
 pub use brush::{
     Brush, CLAY_PLANE_FRACTION, CREASE_FRACTION, MAX_MASK_HARDNESS, PINCH_GAIN, Pass,
-    REACH_FRACTION, Symmetry, TAUBIN_LAMBDA, TAUBIN_MU, TAUBIN_PASS_BAND, Verb,
+    REACH_FRACTION, STRIP_PLANE_FRACTION, Symmetry, TAUBIN_LAMBDA, TAUBIN_MU, TAUBIN_PASS_BAND,
+    Verb,
 };
 pub use falloff::Falloff;
 pub use grip::{Amount, Grip, GripLaw};

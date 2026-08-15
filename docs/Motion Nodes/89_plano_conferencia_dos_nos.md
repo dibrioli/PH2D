@@ -250,12 +250,21 @@ divergem no scrub deles.
 só consegue devolver cinco coisas. Cada "gap inexprimível" P0 abaixo é a MESMA ausência, vista
 de uma família diferente:
 
-| a coluna que ninguém escreve | o que fica inexprimível | família |
-|---|---|---|
-| `falloff` | campo de ruído/textura/fórmula/áudio · densidade por-instância · force-over-life | 2 · 10 |
-| `rot` a partir de uma tangente | texto em curva que gira · órbita que vira · *"vire para onde está indo"* | 1 · 4 · 5 · 6 · 15 |
-| `vel` | speed-limit suave · a rampa que inclina o chão | 13 |
-| `parent` · `len` | comprimento por-osso · ramificação · peso por-osso | 16 |
+| a coluna que ninguém escreve | o que fica inexprimível | família | estado (2026-08-14) |
+|---|---|---|---|
+| `falloff` | campo de ruído/textura/fórmula/áudio · densidade por-instância · force-over-life | 2 · 10 | ✅ **FECHADO** — `CH_FALLOFF` no `motion.drive` |
+| `rot` a partir de uma tangente | texto em curva que gira · órbita que vira · *"vire para onde está indo"* | 1 · 4 · 5 · 6 · 15 | ✅ **FECHADO** — o `rot` sempre foi escrevível; o que faltava era a **DIREÇÃO** do lado da LEITURA (`value.attribute` lia `vel` só como `Speed`, a magnitude). `MODE_ANGLE` + canal `Direction`, em GRAUS ⇒ `attribute(Direction) → drive(Rotation)`. Cena `=38` |
+| `vel` | speed-limit suave · a rampa que inclina o chão | 13 | ✅ o que a linha CAUSAVA fechou por outra rota (o speed limit dentro do `sim.step`, folha 13); a coluna segue sem escritor do domínio de valor |
+| `parent` · `len` | comprimento por-osso · ramificação · peso por-osso | 16 | ⏸ família **DEFERIDA** |
+
+⚠️ **E a hipótese que esta seção mandava testar primeiro — *"um escritor genérico destrava as
+quatro linhas de uma vez"* — foi respondida pelos FATOS em vez de construída:** o `motion.drive`
+foi de cinco canais para **nove** (`P`·`rot`·`size`·`tint` com H/S/V/alfa·`falloff`), um por vez,
+cada um com a sua wave — e três das quatro linhas caíram assim. Um canal por NOME continua a ser
+o desenho mais limpo, mas **deixou de ser o destravador**: o que resta é uma família deferida e
+uma coluna cuja ausência já não bloqueia nada medido. ⚠️ *Quem move o número que tornava algo
+inalcançável tem de reconferir a nota* — a tabela acima descrevia o mundo de 2026-08-09 e nenhuma
+das waves que a esvaziou voltou aqui.
 
 ⚠️ **A leitura ainda RESPONDE ERRADO** (T4): `value.attribute` cai em `_ => vec![0.0; n]` para
 Vec4 e para Vec2 em X/Y. Então a assimetria real é pior — *lê quase tudo, e o que não lê devolve

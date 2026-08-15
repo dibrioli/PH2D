@@ -23,6 +23,9 @@ mod kind;
 #[path = "param_tests.rs"]
 mod param;
 
+#[path = "axis_tests.rs"]
+mod axis;
+
 /// A impressão digital de uma cena: os caminhos, os bytes de geometria e de tinta, **e os
 /// glifos**.
 ///
@@ -247,7 +250,8 @@ fn the_live_state_reaches_the_paint() {
             WidgetKind::Slider,
             "Opacity",
             NodeId(7),
-            Some(&live),
+            // ⚠️ `SETTLED` reproduz o mundo pré-par ao BYTE — estes dois gates medem outra coisa.
+            Some((&live, crate::motion::SETTLED)),
             SkinParam::default(),
             rect(),
             scene,
@@ -329,7 +333,8 @@ fn the_number_input_paints_what_is_being_typed_not_the_committed_value() {
             WidgetKind::NumberInput,
             "Radius",
             NodeId(11),
-            Some(&live),
+            // ⚠️ `SETTLED` reproduz o mundo pré-par ao BYTE — estes dois gates medem outra coisa.
+            Some((&live, crate::motion::SETTLED)),
             SkinParam::default(),
             rect(),
             scene,

@@ -322,7 +322,10 @@ fn paint_body(
                 row.kind,
                 &row.label,
                 row.id,
-                store.get(row.id),
+                // ⚠️ **O par vem de UMA porta e de UM id.** `store.get(..)` sozinho entrega o
+                // estado DISCRETO e deixa o `hover_t` no default — era isso que fazia este painel
+                // SALTAR enquanto o resto do app amaciava.
+                store.skin_live(row.id),
                 SkinParam {
                     rgba: row.rgba,
                     options: &row.options,

@@ -188,10 +188,15 @@ fn the_paint_hands_what_it_knows_to_the_skin() {
         .find(&closer)
         .expect("a chamada da pele nao fecha na indentacao em que abriu");
     let window = &src[call..call + end];
+    // ⚠️ **`skin_live` e não `get`, e a diferença custou uma mutação sobrevivente.** A janela
+    // contém `store.get(row.id)` noutras linhas (o `selected`), então a asserção antiga ficava
+    // VERDE com o par a ser fabricado à mão — que é literalmente o defeito: o estado DISCRETO
+    // chegava e o `hover_t` ficava no default, e este painel SALTAVA enquanto o resto do app
+    // amaciava. *Uma sub-cadeia que outra linha da janela também satisfaz não é oráculo.*
     assert!(
-        window.contains("store.get(row.id)"),
-        "a pele recebe um estado que nao e' o do store — os controles pintariam o valor de \
-         PREVIA para sempre, com toda a suite verde"
+        window.contains("store.skin_live(row.id)"),
+        "a pele recebe um estado que nao e' o PAR do store — ou os controles pintam a PREVIA para \
+         sempre, ou reagem e SALTAM (o `hover_t` fica no default), com toda a suite verde"
     );
     assert!(
         window.contains("rgba: row.rgba"),

@@ -112,7 +112,7 @@ fn the_colour_is_inert_in_every_kind_that_does_not_take_it() {
 }
 
 /// Um glifo de teste: um triângulo que ninguém confunde com um retângulo.
-fn glyph(w: f64) -> ph2d_vector::BezPath {
+pub(super) fn glyph(w: f64) -> ph2d_vector::BezPath {
     let mut p = ph2d_vector::BezPath::new();
     p.move_to((0.0, 0.0));
     p.line_to((w, 12.0));

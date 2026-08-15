@@ -32,6 +32,24 @@ use std::path::{Path, PathBuf};
 /// de outra coisa — e, pior, isentaria um ficheiro de produção com nome parecido. Quem sabe se
 /// isto é teste é a declaração que o compila.
 pub fn is_declared_under_cfg_test(path: &Path) -> bool {
+    declared_under_cfg_test(path, 8)
+}
+
+/// **A NETA também é teste** — e é ela que obrigava a allowlist a crescer.
+///
+/// ⚠️ Um `#[cfg(test)] mod tests;` em `skin.rs` gateia `skin/tests.rs`; os módulos que
+/// **`skin/tests.rs`** declara (`mod param;`, `mod axis;`, …) **não levam `#[cfg(test)]`**, porque
+/// já estão dentro de um. A pergunta *«o meu pai gateia-me?»* respondia `false` para todos eles, e
+/// a consequência era uma linha de allowlist escrita à mão **por ficheiro** — cinco só em `skin/`,
+/// e a sexta seria escrita hoje. *A enumeração apodrece; a recursão não.*
+///
+/// ⚠️ **O `depth` não é cautela decorativa:** dois ficheiros podem declarar-se mutuamente (um
+/// `#[path]` cruzado é legal em Rust), e sem tecto a varredura de um gate entraria em ciclo. Oito
+/// é folgado — a árvore mais funda deste repo tem três degraus.
+fn declared_under_cfg_test(path: &Path, depth: u8) -> bool {
+    if depth == 0 {
+        return false;
+    }
     let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
         return false;
     };
@@ -59,14 +77,28 @@ pub fn is_declared_under_cfg_test(path: &Path) -> bool {
             }
         }
     }
-    parents
-        .iter()
-        .any(|p| fs::read_to_string(p).is_ok_and(|src| declares_cfg_test_mod(&src, stem, path, p)))
+    parents.iter().any(|p| {
+        fs::read_to_string(p).is_ok_and(|src| {
+            // O pai gateia-me com um `#[cfg(test)]` próprio…
+            declares_cfg_test_mod(&src, stem, path, p)
+                // …ou ele PRÓPRIO é um módulo de teste, e então declarar-me basta.
+                || (declares_mod(&src, stem, path, p) && declared_under_cfg_test(p, depth - 1))
+        })
+    })
+}
+
+/// O pai declara este ficheiro, **sem exigir o `#[cfg(test)]`** — a metade que a recursão usa.
+fn declares_mod(src: &str, stem: &str, path: &Path, parent: &Path) -> bool {
+    decl_matches(src, stem, path, parent, false)
 }
 
 /// O pai declara `mod <stem>;` (ou um `#[path = "…"] mod …;` que resolve para `path`) sob um
 /// `#[cfg(test)]`?
 fn declares_cfg_test_mod(src: &str, stem: &str, path: &Path, parent: &Path) -> bool {
+    decl_matches(src, stem, path, parent, true)
+}
+
+fn decl_matches(src: &str, stem: &str, path: &Path, parent: &Path, need_cfg: bool) -> bool {
     let lines: Vec<&str> = src.lines().collect();
     for (i, line) in lines.iter().enumerate() {
         let t = line.trim();
@@ -92,7 +124,7 @@ fn declares_cfg_test_mod(src: &str, stem: &str, path: &Path, parent: &Path) -> b
             }
             j -= 1;
         }
-        if !cfg_test {
+        if need_cfg && !cfg_test {
             continue;
         }
         let matches_by_name = t

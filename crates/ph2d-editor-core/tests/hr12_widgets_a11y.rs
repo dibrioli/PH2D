@@ -26,6 +26,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// Files that legitimately don't need a11y wiring of their own.
+// ⚠️ **Um módulo de TESTE não precisa de entrada aqui — a lei partilhada responde.**
+//    `common::cfg_test_modules` pergunta ao PAI (e ao AVÔ) quem gateia o ficheiro sob
+//    `#[cfg(test)]`, então dez linhas escritas à mão morreram: cinco já estavam mortas
+//    desde que a lei nasceu (2026-08-15) e ninguém as tinha removido, e cinco caíram com
+//    a recursão que os NETOS obrigaram (`skin/tests.rs` declara `mod axis;` SEM
+//    `#[cfg(test)]`, porque já está dentro de um). *A enumeração apodrece; a lei não.*
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
     // A lei de COLOCAÇÃO de um menu: dado um âncora, um tamanho e o viewport, onde é que o rect
@@ -45,11 +51,9 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     ),
     // Unit tests for `command_palette` (moved into the widget folder so the mod-sync scan stops
     // seeing them as a widget of their own) — no user-facing widget.
-    ("command_palette/tests.rs", "test module; parent owns a11y"),
     // Gates do `slider` — na pasta pelo MESMO motivo (um `*_tests.rs` solto no topo de
     // `src/widget/` seria varrido como um widget). Eles PINTAM para comparar tinta, mas quem
     // anuncia a trilha é o pai (`slider.rs`), e é ele que constrói o nó.
-    ("slider/tests.rs", "test module; parent owns a11y"),
     // A metade que DESENHA o rail. O corte é por responsabilidade (o teto de 500 LOC dos
     // primitivos forçou-o na wave da UI viva): o PAI carrega o modelo — as entradas, o preset de
     // tamanho e a árvore `Role::Toolbar` — e este filho só põe tinta. Mover o a11y para cá seria
@@ -61,11 +65,9 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     // Unit tests for `skin` (na pasta pelo MESMO motivo do `command_palette`: um `*_tests.rs`
     // solto vira um "widget" para o gerador de `mod`) — o pai delega ao pintor real do catálogo,
     // que é quem tem a11y.
-    ("skin/tests.rs", "test module; parent owns a11y"),
     // A outra metade dos gates da pele — *quanto da moldura ela ocupa* (BUGS_vector #26), separada
     // quando o pai cruzou o teto de 500 LOC ao catálogo ganhar o `NumberInput` e o `LevelMeter`.
     // Mesma razão do irmão acima: módulo de teste, e quem tem a11y é o pintor real do catálogo.
-    ("skin/frame_tests.rs", "test module; parent owns a11y"),
     // O CANAL de parâmetro por-tipo (`SkinParam` + a lei do índice marcado), separado quando o pai
     // cruzou o teto de 500 LOC. Ele é uma `struct` de dados e duas funções puras: não toca a cena,
     // não regista nada, não anuncia nada — quem pinta (e portanto quem tem a11y) é o pintor real
@@ -74,9 +76,6 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
         "skin/param.rs",
         "data channel + pure helpers; paints nothing — parent owns a11y",
     ),
-    ("skin/kind_tests.rs", "test module; parent owns a11y"),
-    ("skin/param_tests.rs", "test module; parent owns a11y"),
-    ("skin/geometry_tests.rs", "test module; parent owns a11y"),
     // ⚠️ Este NÃO é módulo de teste: é o CATÁLOGO (o enum `WidgetKind` e o que cada tipo É), o
     // irmão de assunto do pintor. Ele não desenha nada, então não há nó de a11y a construir — o
     // `skin.rs` ao lado é quem pinta, e é ele quem responde pela árvore.
@@ -86,18 +85,13 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     ("skin/geometry.rs", "pure layout; paints nothing"),
     // Unit tests for `tool_rail` (split out for the widget LOC cap) — no user-facing widget; the
     // parent `tool_rail.rs` owns the a11y wiring (build_a11y / build_entry_a11y).
-    ("tool_rail/tests.rs", "test module; parent owns a11y"),
     // ⚠️ O QUINTO irmão com a MESMA justificação — `<slug>/tests.rs` é o padrão, e uma lista
     // que o enumera é uma lista que o sexto nasce sem. Flipar o gate para saltar todo
     // `tests.rs` dentro de um directório de widget é a cura, e mexe num gate de que ~20
     // ficheiros dependem: fica NOMEADO em vez de contrabandeado dentro desta wave.
-    ("text_input/tests.rs", "test module; parent owns a11y"),
     // Color-Harmonies engine gates — pure `partners()` math, no user-facing widget; the section is
     // painted by `harmony.rs` (which wires a11y) and the picker owns the announcements.
-    (
-        "blender_color_picker/harmony_tests.rs",
-        "test module; harmony.rs / picker own a11y",
-    ),
+
     // The dropdown's OPEN list, split out for the widget LOC cap. Paint only: the parent
     // `dropdown/mod.rs` builds the ComboBox node AND one `ListBoxOption` per row
     // (`build_a11y`/`build_option_a11y`), so the rows painted here are already announced.

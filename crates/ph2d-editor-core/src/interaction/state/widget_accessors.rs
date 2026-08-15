@@ -59,6 +59,22 @@ impl WidgetStore {
             .unwrap_or(crate::motion::SETTLED)
     }
 
+    /// **O par que a PELE consome** — o estado inteiro deste id e quanto da transição já passou.
+    ///
+    /// ⚠️ **Ela existe pela razão do [`Self::button_visual`], uma camada acima:** a
+    /// [`crate::widget::paint_widget_skin_with`] tomava só o `&InteractiveState`, então cada arm
+    /// copiava o estado DISCRETO e deixava o `hover_t` no default — o painel gerado **reagia e
+    /// SALTAVA** enquanto os vinte e três painéis escritos à mão amaciavam. O par sai daqui
+    /// **inteiro, de um id só**, e um par descasado deixa de ser exprimível no chamador.
+    ///
+    /// ⚠️ **`None` é a PRÉVIA, e é por isso que o tipo é `Option` e não um par com neutro:** um
+    /// widget que o `populate` nunca registou não tem estado nenhum a mostrar, e a pele de canvas
+    /// desenha os valores de prévia. Um `(Normal, SETTLED)` fabricado aqui apagaria essa distinção.
+    #[must_use]
+    pub fn skin_live(&self, id: NodeId) -> Option<(&InteractiveState, f32)> {
+        self.states.get(&id).map(|st| (st, self.hover_live(id)))
+    }
+
     /// **O tique publica aqui.** Único escritor, uma vez por quadro, imediatamente antes de todos os
     /// leitores — o gêmeo exacto do [`WidgetStore::set_panel_scroll_live`].
     pub fn set_hover_live(&mut self, id: NodeId, t: f32) {

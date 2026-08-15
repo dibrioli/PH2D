@@ -176,8 +176,20 @@ pub fn paint_widget_skin(
 
 /// **A MESMA porta, com o que o widget É agora** — a pele viva (plano UI/UX W8b.2).
 ///
-/// `live` é a fatia do [`WidgetStore`](crate::interaction::WidgetStore) daquele id: o valor de um
-/// slider, o on/off de um toggle, o texto de um campo, e o *hot/active* que o ponteiro escreve.
+/// `live` é a fatia do [`WidgetStore`](crate::interaction::WidgetStore) daquele id **e o `t` do
+/// hover dele**: o valor de um slider, o on/off de um toggle, o texto de um campo, o *hot/active*
+/// que o ponteiro escreve — e quanto da transição já passou.
+///
+/// ⚠️ **O par vem INTEIRO, e é isso que o torna impossível de descasar.** A versão anterior tomava
+/// só o `&InteractiveState`, então cada arm copiava o estado DISCRETO e deixava o `hover_t` no
+/// default `1.0` — o valor que faz o `Button::bg_color` cair no token duro. O painel gerado
+/// **reagia e SALTAVA** enquanto os vinte e três painéis escritos à mão amaciavam: metade do app
+/// numa lei, metade noutra, que é precisamente o sintoma que a F2 existe para curar. Quem
+/// constrói o par é a porta [`WidgetStore::skin_live`](crate::interaction::WidgetStore::skin_live),
+/// que recebe o id **uma vez**.
+///
+/// ⚠️ **`Some((estado, SETTLED))` é BYTE-IDÊNTICO ao mundo pré-par** — era esse o default que os
+/// arms herdavam —, e é por isso que o gate da prévia continua a ser o mesmo teste.
 ///
 /// ⚠️ **Um painel gerado e a prévia do canvas percorrem ESTA função, e é isso que os impede de
 /// divergir.** Um segundo `match` sobre os doze tipos seria a segunda resposta a *"que aparência
@@ -194,7 +206,7 @@ pub fn paint_widget_skin_with(
     kind: WidgetKind,
     label: &str,
     id: NodeId,
-    live: Option<&InteractiveState>,
+    live: Option<(&InteractiveState, f32)>,
     param: SkinParam,
     rect: Rect,
     scene: &mut VectorScene,
@@ -205,15 +217,15 @@ pub fn paint_widget_skin_with(
     match kind {
         WidgetKind::Button => {
             let mut b = Button::new(id, label);
-            if let Some(InteractiveState::Button { state }) = live {
-                b.state = *state;
+            if let Some((InteractiveState::Button { state }, t)) = live {
+                b = b.visual((*state, t));
             }
             paint_button(&b, rect, scene, text_system, theme);
         }
         WidgetKind::Toggle => {
             let mut t = Toggle::new(id, label);
-            if let Some(InteractiveState::Toggle { state, on }) = live {
-                t.state = *state;
+            if let Some((InteractiveState::Toggle { state, on }, hover_t)) = live {
+                t = t.visual((*state, hover_t));
                 t.on = *on;
             }
             paint_toggle(&t, rect, scene, theme);
@@ -221,8 +233,8 @@ pub fn paint_widget_skin_with(
         WidgetKind::Checkbox => {
             let mut c = Checkbox::new(id, label);
             c.box_px = Some(skin_checkbox_box_px(rect));
-            if let Some(InteractiveState::Checkbox { state, value }) = live {
-                c.state = *state;
+            if let Some((InteractiveState::Checkbox { state, value }, t)) = live {
+                c = c.visual((*state, t));
                 c.value = *value;
             }
             paint_checkbox(&c, rect, scene, text_system, theme);
@@ -231,8 +243,8 @@ pub fn paint_widget_skin_with(
             let mut s = Slider::new(id, label);
             s.value = PREVIEW_VALUE;
             s.track_px = Some(skin_slider_track_px(rect));
-            if let Some(InteractiveState::Slider { state, value, .. }) = live {
-                s.state = *state;
+            if let Some((InteractiveState::Slider { state, value, .. }, t)) = live {
+                s = s.visual((*state, t));
                 // ⚠️ Pela porta do widget, nunca pelo campo: `set_value` é quem limita a `0..=1`,
                 // e escrever o campo cru pintaria uma barra fora da trilha.
                 s.set_value(*value);
@@ -248,7 +260,9 @@ pub fn paint_widget_skin_with(
         }
         WidgetKind::Tag => {
             let mut t = Tag::new(id, label);
-            if let Some(InteractiveState::Tag { state }) = live {
+            // ⚠️ **O `Tag` não tem `hover_t`, então não há o que vestir** — o fade dele é wave
+            // própria (acrescentar o campo), e continua o adiamento que o `tag.rs` já nomeia.
+            if let Some((InteractiveState::Tag { state }, _)) = live {
                 t.state = *state;
             }
             paint_tag(&t, rect, scene, text_system, theme);
@@ -256,11 +270,14 @@ pub fn paint_widget_skin_with(
         WidgetKind::TextInput => {
             let mut i = TextInput::new(id, label);
             i.value = label.to_string();
-            if let Some(InteractiveState::TextInput {
-                state, text, caret, ..
-            }) = live
+            if let Some((
+                InteractiveState::TextInput {
+                    state, text, caret, ..
+                },
+                t,
+            )) = live
             {
-                i.state = *state;
+                i = i.visual((*state, t));
                 i.value = text.clone();
                 i.caret_byte = *caret;
             }
@@ -280,7 +297,10 @@ pub fn paint_widget_skin_with(
         ),
         WidgetKind::ListItem => {
             let mut l = ListItem::new(id, label);
-            if let Some(InteractiveState::ListItem { state, selected }) = live {
+            // ⛔ **O `ListItem` NÃO amacia, e a cerca é honrada por CONSTRUÇÃO** (ele não tem
+            // `hover_t`): oito rows a descer em 200 ms com um assentamento de 0,22 s ficariam
+            // meio-acesas ao mesmo tempo — *o realce de menu obedece ao cursor*. Estudo §6.5.
+            if let Some((InteractiveState::ListItem { state, selected }, _)) = live {
                 l.state = *state;
                 l.selected = *selected;
             }
@@ -298,16 +318,19 @@ pub fn paint_widget_skin_with(
             // formata o `value` sozinho — é o que o `None` significa aqui.
             let mut buf: Option<&str> = None;
             let (mut caret, mut anchor) = (0usize, None);
-            if let Some(InteractiveState::NumberInput {
-                state,
-                value,
-                buffer,
-                caret: c,
-                selection_anchor,
-                ..
-            }) = live
+            if let Some((
+                InteractiveState::NumberInput {
+                    state,
+                    value,
+                    buffer,
+                    caret: c,
+                    selection_anchor,
+                    ..
+                },
+                t,
+            )) = live
             {
-                n.state = *state;
+                n = n.visual((*state, t));
                 n.value = *value;
                 buf = Some(buffer.as_str());
                 caret = *c;
@@ -428,20 +451,16 @@ pub fn paint_widget_skin_with(
             // leria como sua; um retângulo vazio é *nenhum ícone escolhido*, que é o que é.
             let empty = BezPath::new();
             let glyph = param.icon.unwrap_or(IconGlyph::Path(&empty));
-            let mut state = ButtonState::Normal;
-            if let Some(InteractiveState::Button { state: s }) = live {
-                state = *s;
-            }
-            paint_icon_button(
-                rect,
-                glyph,
-                IconButtonStyle::Compact,
-                // ⚠️ O painel autorado desenha uma PRÉVIA a partir de `live`, e um botão vestido
-                //    não tem track no relógio da tela — o neutro é o que o mantém byte a byte.
-                (state, crate::motion::SETTLED),
-                scene,
-                theme,
-            );
+            // ⚠️ **A premissa que aqui estava era VERDADE quando foi escrita, e esta wave
+            //    tornou-a falsa.** Ela dizia *"um botão vestido não tem track no relógio da tela —
+            //    o neutro é o que o mantém byte a byte"*, e o neutro era a única resposta possível
+            //    enquanto o `t` não chegava a esta função. Ele chega: o par entra inteiro, e a
+            //    prévia (`None`) continua a cair no neutro pelo `unwrap_or`.
+            let visual = match live {
+                Some((InteractiveState::Button { state }, t)) => (*state, t),
+                _ => (ButtonState::Normal, crate::motion::SETTLED),
+            };
+            paint_icon_button(rect, glyph, IconButtonStyle::Compact, visual, scene, theme);
         }
         WidgetKind::LevelMeter => {
             // ⚠️ Um medidor é READOUT: ele não tem estado de interação (não há

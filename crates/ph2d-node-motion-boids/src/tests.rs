@@ -17,6 +17,11 @@ fn params(count: usize) -> Params {
         // steering*, e escrevê-lo aqui é o que impede estes testes de mudarem de
         // sentido em silêncio no dia em que o default se mover.
         max_force: 0.0,
+        // O neutro dos dois controles novos, DECLARADO pela mesma razão: `-1` é o
+        // disco de 360° (o cone desligado) e `0,2` é o piso que a const escondida
+        // sempre aplicou.
+        cos_half_fov: -1.0,
+        min_speed_frac: MIN_SPEED_FRAC,
         spread: false,
     }
 }
@@ -257,4 +262,146 @@ fn registers_and_steps_through_the_cook() {
         Column::Vec2(v) => assert!(v.iter().all(|q| q[0].is_finite()), "still alive & finite"),
         _ => panic!("P"),
     }
+}
+
+/// **O cone RECUSA o vizinho que está ATRÁS.**
+///
+/// É a metade da vizinhança de Reynolds que faltava (*a vizinhança é distância
+/// **E** ângulo*), e a folha nomeou o preço da ausência: *"um boid que enxerga
+/// atrás de si não vira bando, vira nuvem"*.
+#[test]
+fn a_narrow_cone_ignores_the_neighbour_behind() {
+    // Um agente a andar para a DIREITA, com um vizinho colado atrás dele.
+    let pos = [[0.0f32, 0.0], [-1.0, 0.0]];
+    let vel = [[1.0f32, 0.0], [1.0, 0.0]];
+    let zero = [[0.0f32, 0.0]; 2];
+
+    // Só a COESÃO ligada: se o vizinho for visto, o agente 0 é puxado para trás.
+    let mut p = params(2);
+    p.cohesion = 1.0;
+    // ⚠️ **Os DOIS clamps saem do caminho, e o segundo custou uma corrida:** subir
+    // o `max_speed` para 100 tira o teto do caminho e **sobe o PISO junto** (ele é
+    // uma fração dele), então a velocidade era grampeada PARA CIMA em 20 e o gate
+    // media o piso achando que media o cone. Mover um clamp de lado pode mover
+    // outro para o meio.
+    p.max_speed = 100.0;
+    p.min_speed_frac = 0.0;
+
+    let wide = step(&pos, &vel, &zero, [0.0, 0.0], 0.1, &p).1[0];
+    let mut narrow = p;
+    narrow.cos_half_fov = super::cos_half_fov(90.0);
+    let cone = step(&pos, &vel, &zero, [0.0, 0.0], 0.1, &narrow).1[0];
+
+    assert!(
+        wide[0] < vel[0][0],
+        "com o disco, o vizinho de tras PUXA para tras: {wide:?}"
+    );
+    assert_eq!(
+        cone, vel[0],
+        "com o cone de 90 graus ele nao existe, e nada acelera o agente: {cone:?}"
+    );
+}
+
+/// **E o cone ACEITA quem está à frente** — sem esta metade, um cone que
+/// recusasse TODO vizinho passaria no gate acima.
+#[test]
+fn the_same_cone_still_sees_the_neighbour_ahead() {
+    let pos = [[0.0f32, 0.0], [1.0, 0.0]];
+    let vel = [[1.0f32, 0.0], [1.0, 0.0]];
+    let zero = [[0.0f32, 0.0]; 2];
+    let mut p = params(2);
+    p.cohesion = 1.0;
+    p.max_speed = 100.0;
+    p.min_speed_frac = 0.0;
+    p.cos_half_fov = super::cos_half_fov(90.0);
+    let v = step(&pos, &vel, &zero, [0.0, 0.0], 0.1, &p).1[0];
+    assert!(
+        v[0] > vel[0][0],
+        "o vizinho a FRENTE puxa para a frente: {v:?}"
+    );
+}
+
+/// ⚠️ **Um agente PARADO enxerga tudo, e é DECISÃO** — sem heading não há cone, e
+/// cegá-lo faria dele um retardatário permanente: ele nunca reencontraria o bando
+/// que o deixou para trás.
+#[test]
+fn a_motionless_agent_is_not_blind() {
+    // ⚠️ **A velocidade é sub-EPS e NÃO zero, e a MUTAÇÃO ensinou a diferença:**
+    // com `[0,0]` exatos a comparação vira `0 < 0`, falsa nos dois mundos, então
+    // apagar a guarda **não sangrava** e o gate media um caso que não contém o
+    // fenômeno. O caso REAL é o agente que desacelerou até um rastejo: o heading
+    // dele ainda é um vetor, e sem a guarda o cone o julga por ele.
+    let pos = [[0.0f32, 0.0], [-1.0, 0.0]];
+    let vel = [[0.0f32, 1.0e-9], [1.0, 0.0]];
+    let zero = [[0.0f32, 0.0]; 2];
+    let mut p = params(2);
+    p.cohesion = 1.0;
+    p.max_speed = 100.0;
+    p.min_speed_frac = 0.0;
+    p.cos_half_fov = super::cos_half_fov(30.0); // um cone bem estreito
+    let v = step(&pos, &vel, &zero, [0.0, 0.0], 0.1, &p).1[0];
+    assert!(
+        v[0] < 0.0,
+        "parado, ele ainda e' puxado pelo vizinho atras: {v:?}"
+    );
+}
+
+/// **`>= 360` devolve EXATAMENTE `-1`**, e o literal é load-bearing: é ele que o
+/// [`step`] compara para PULAR o teste angular. Um `cos(180°)` que saísse
+/// `-0.99999994` deixaria o ramo ligado e o disco de hoje passaria a pagar uma
+/// raiz por vizinho — mesmo desenho, outro relógio.
+///
+/// ⚠️ **E a prova de que o default é byte-idêntico não é este gate, são os NOVE
+/// que já existiam** neste arquivo: eles foram escritos contra o mundo pré-cone e
+/// passam **sem uma edição**.
+#[test]
+fn a_full_circle_switches_the_cone_off_exactly() {
+    assert_eq!(super::cos_half_fov(360.0), -1.0);
+    assert_eq!(super::cos_half_fov(1.0e9), -1.0);
+    assert_eq!(
+        super::cos_half_fov(
+            MANIFEST
+                .params
+                .iter()
+                .find(|p| p.name == "fov")
+                .expect("o param existe")
+                .default
+        ),
+        -1.0,
+        "o DEFAULT do manifesto e' o disco"
+    );
+    // ...e um cone real nao e' -1 (senao o gate acima seria verdade por vacuo).
+    assert!(super::cos_half_fov(90.0) > 0.7);
+}
+
+/// **O piso de velocidade é o PARAM, e o default é a const que sempre existiu.**
+#[test]
+fn the_speed_floor_is_authored_and_its_default_is_the_old_constant() {
+    let pos = [[0.0f32, 0.0]];
+    let vel = [[0.01f32, 0.0]]; // bem abaixo do piso
+    let zero = [[0.0f32, 0.0]; 1];
+    let p = params(1);
+    let held = step(&pos, &vel, &zero, [0.0, 0.0], 0.1, &p).1[0];
+    let want = p.max_speed * MIN_SPEED_FRAC;
+    assert!(
+        (held[0] - want).abs() < 1e-5,
+        "o default segura em max_speed * {MIN_SPEED_FRAC}: {held:?} contra {want}"
+    );
+
+    // Com o piso em ZERO o bando pode de facto parar — o que a const escondida
+    // tornava inalcançável.
+    let mut free = p;
+    free.min_speed_frac = 0.0;
+    let slow = step(&pos, &vel, &zero, [0.0, 0.0], 0.1, &free).1[0];
+    assert!(slow[0] < 0.1, "com piso 0 ele fica lento: {slow:?}");
+    assert_eq!(
+        MANIFEST
+            .params
+            .iter()
+            .find(|p| p.name == "speed_floor")
+            .expect("o param existe")
+            .default,
+        MIN_SPEED_FRAC,
+        "o default e' a const que sempre shipou"
+    );
 }

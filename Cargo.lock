@@ -5919,6 +5919,7 @@ dependencies = [
 name = "ph2d-node-motion-boids"
 version = "0.0.0"
 dependencies = [
+ "libm",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]

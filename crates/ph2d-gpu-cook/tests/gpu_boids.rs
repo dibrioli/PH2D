@@ -39,13 +39,18 @@ fn registry() -> NodeRegistry {
 }
 
 /// `boids ──> output`, with the `out ──pre──> state` self-loop the editor auto-wires.
-fn boids_graph(count: f32) -> (Graph, NodeId) {
+fn boids_graph(count: f32) -> (Graph, NodeId, NodeId) {
     boids_graph_spread(count, false)
 }
 
 /// As [`boids_graph`], with the √N `spread` mode explicit — its one `sqrt` is the
 /// only place the two seeds diverge, so `spread` on is an ε seed (not bit-exact).
-fn boids_graph_spread(count: f32, spread: bool) -> (Graph, NodeId) {
+/// ⚠️ **Devolve os DOIS nós, e a assinatura é uma cicatriz:** ela dava só o
+/// `output`, e um gate que quisesse afinar o BANDO escrevia `set_param(out, ..)`
+/// — um param no nó errado, **ignorado em silêncio**. Foi assim que a paridade do
+/// cone nasceu verde por vácuo (ela cozia nos defaults e comparava dois bandos que
+/// nunca usaram o cone), e quem a pegou foi o gate de CONTROLE ao lado dela.
+fn boids_graph_spread(count: f32, spread: bool) -> (Graph, NodeId, NodeId) {
     let mut g = Graph::new();
     let boids = g.add_node("motion.boids");
     g.set_param(boids, "count", count);
@@ -73,7 +78,7 @@ fn boids_graph_spread(count: f32, spread: bool) -> (Graph, NodeId) {
         delayed: false,
     })
     .unwrap();
-    (g, out)
+    (g, boids, out)
 }
 
 /// `boids ──pre──> force.wind ──> boids.state`, plus the render edge — the flock
@@ -217,7 +222,7 @@ fn the_boids_seed_matches_the_cpu_bit_for_bit() {
         return;
     };
     let reg = registry();
-    let (g, out) = boids_graph(400.0);
+    let (g, _boids, out) = boids_graph(400.0);
     let cpu = cpu_ticks(&g, &reg, out, 0);
     let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 0, 1);
     // The seed is the integer `hash3` on both sides → bit-exact.
@@ -232,13 +237,67 @@ fn one_boids_step_matches_the_cpu_within_epsilon() {
         return;
     };
     let reg = registry();
-    let (g, out) = boids_graph(400.0);
+    let (g, _boids, out) = boids_graph(400.0);
     // Tick 1 is ONE step from the seed (which already carries a muzzle velocity),
     // so the three urges + seek all fire. The neighbour SET is identical (grid =
     // all-pairs within radius); only the float SUM order differs ⇒ ε.
     let cpu = cpu_ticks(&g, &reg, out, 1);
     let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 1, 1);
     parity("one step", &cpu[1], &gpu_out, 2e-3);
+}
+
+/// **A paridade com o CONE LIGADO.**
+///
+/// ⚠️ **A fixture irmã coze nos DEFAULTS, logo é CEGA ao cone** — com `fov = 360`
+/// o ramo angular não roda em nenhuma das duas rotas, e as duas concordariam
+/// **por vácuo** sobre um teste que nenhuma executa. É a mesma armadilha que a
+/// wave do `value.noise` pagou (a paridade cozinhava `kernel = 0` e os kernels
+/// novos concordavam por não serem exercidos).
+///
+/// ⚠️ **E a tolerância é ε, não bit, por um motivo NOMEADO:** o cosseno do
+/// meio-ângulo é o único transcendental do modelo, a CPU corre a `libm` e o
+/// device o `cos` do vendedor. Um vizinho EXATAMENTE na borda do cone pode ser
+/// contado por uma rota e não pela outra — medida-zero em float, e é por isso que
+/// o `>= 360 ⇒ -1` é **literal** dos dois lados: o caso comum, o disco, não
+/// depende de nenhum dos dois `cos`.
+#[test]
+#[ignore = "needs a GPU adapter"]
+fn one_boids_step_with_the_view_cone_matches_the_cpu() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping gpu_boids");
+        return;
+    };
+    let reg = registry();
+    let (mut g, boids, out) = boids_graph(400.0);
+    // Um cone ESTREITO e não-redondo: 360 seria o controle disfarçado de teste, e
+    // um número redondo esconderia um erro de meio-ângulo (180 contra 90).
+    // ⚠️ **No `boids`, não no `out`** — ver [`boids_graph_spread`].
+    g.set_param(boids, "fov", 110.0);
+    g.set_param(boids, "speed_floor", 0.35);
+    let cpu = cpu_ticks(&g, &reg, out, 1);
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 1, 1);
+    parity("one step, view cone", &cpu[1], &gpu_out, 2e-3);
+}
+
+/// O **CONTROLE** do gate acima: com o cone ligado o bando de facto anda para
+/// outro lugar. Sem ele, um `fov` que o kernel ignorasse nos dois lados passaria
+/// na paridade e a wave seria invisível.
+#[test]
+#[ignore = "needs a GPU adapter"]
+fn the_view_cone_actually_changes_where_the_flock_goes() {
+    let reg = registry();
+    let (wide, boids, out) = boids_graph(400.0);
+    let mut narrow = wide.clone();
+    narrow.set_param(boids, "fov", 110.0);
+    let a = cpu_ticks(&wide, &reg, out, 2);
+    let b = cpu_ticks(&narrow, &reg, out, 2);
+    let moved = a[2]
+        .iter()
+        .zip(&b[2])
+        .flat_map(|(x, y)| (0..2).map(move |k| (x.world_pos[k] - y.world_pos[k]).abs()))
+        .fold(0.0f32, f32::max);
+    assert!(moved > 1e-4, "o cone move o bando: max delta {moved:e}");
+    eprintln!("[cone] o cone de 110 graus move o bando em {moved:e}");
 }
 
 #[test]
@@ -252,7 +311,7 @@ fn the_spread_seed_matches_the_cpu_within_epsilon() {
     // √N spread at a count whose √(count/64) is IRRATIONAL (300/64 = 4.6875 →
     // √ ≈ 2.165), so the CPU/GPU `sqrt` genuinely differs — this exercises the ε,
     // where 400 (=√6.25=2.5 exact) would have hidden it at 0.
-    let (g, out) = boids_graph_spread(300.0, true);
+    let (g, _boids, out) = boids_graph_spread(300.0, true);
     let cpu = cpu_ticks(&g, &reg, out, 0);
     let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 0, 1);
     // Half-extent ≈ 3·√(300/64) ≈ 6.5 world units → a 1-ULP sqrt is ~1e-6.
@@ -267,7 +326,7 @@ fn one_spread_step_matches_the_cpu_within_epsilon() {
         return;
     };
     let reg = registry();
-    let (g, out) = boids_graph_spread(400.0, true);
+    let (g, _boids, out) = boids_graph_spread(400.0, true);
     let cpu = cpu_ticks(&g, &reg, out, 1);
     let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 1, 1);
     parity("spread step", &cpu[1], &gpu_out, 2e-3);
@@ -323,7 +382,7 @@ fn the_wind_fixture_actually_moves_the_flock() {
 /// nenhuma das duas avalia — apagar o bloco do WGSL as deixaria todas VERDES,
 /// com a CPU truncando a aceleração e o device não.
 fn boids_graph_clamped(count: f32, max_force: f32) -> (Graph, NodeId) {
-    let (mut g, out) = boids_graph_spread(count, false);
+    let (mut g, _boids, out) = boids_graph_spread(count, false);
     let boids = g
         .nodes()
         .iter()

@@ -10,5 +10,9 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# ⚠️ O MESMO pin das outras crates que o usam: o cosseno do cone atravessa o
+# cozido, e o `cos` do `std` e' a libm da PLATAFORMA (a fisica ja o recusou pelo
+# mesmo motivo). Aresta interna, nao pacote novo.
+libm = "=0.2.16"
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }

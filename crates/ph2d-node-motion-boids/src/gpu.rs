@@ -116,6 +116,15 @@ fn boids_hash3(a: u32, b: u32, lane: u32) -> f32 {
     return f32(h >> 8u) / 16777216.0;
 }
 
+// Graus -> cosseno do meio-angulo. O verbatim do `crate::cos_half_fov`, e o
+// `-1.0` EXATO em >= 360 e' o que faz o ramo do cone ficar desligado nas duas
+// rotas: um `cos(180deg)` do vendedor que saisse -0.99999994 ligaria o teste no
+// device e nao na CPU, e as duas passariam a percorrer vizinhancas diferentes.
+fn boids_cos_half_fov(deg: f32) -> f32 {
+    if (deg >= 360.0) { return -1.0; }
+    return cos(radians(max(deg, 0.0)) * 0.5);
+}
+
 fn boids_finite2(v: vec2<f32>) -> bool {
     return v.x == v.x && v.y == v.y && abs(v.x) < 3.4028235e38 && abs(v.y) < 3.4028235e38;
 }
@@ -150,6 +159,7 @@ const WGSL: &str = r#"
     let vi = read_state_vel(i);
     let dt = clamp(params.playhead - read_state_sim_t(i), 0.0, BOIDS_MAX_DT);
     let r2 = params.radius * params.radius;
+    let cos_half = boids_cos_half_fov(params.fov);
     var sep = vec2<f32>(0.0, 0.0);
     var align = vec2<f32>(0.0, 0.0);
     var centroid = vec2<f32>(0.0, 0.0);
@@ -190,6 +200,16 @@ const WGSL: &str = r#"
                 let d = pi - pj;
                 let dsq = dot(d, d);
                 if (dsq > r2 || dsq < BOIDS_EPS) { continue; }
+                // O CONE DE VISAO -- o `crate::step` verbatim, com o mesmo ramo:
+                // em 360 nada aqui roda, entao o disco de hoje nao paga a raiz.
+                if (cos_half > -1.0) {
+                    let v_sq = dot(vi, vi);
+                    // Um agente PARADO enxerga tudo (sem heading nao ha cone).
+                    if (v_sq > BOIDS_EPS) {
+                        let ahead = dot(-d, vi);
+                        if (ahead < cos_half * sqrt(dsq * v_sq)) { continue; }
+                    }
+                }
                 let inv = 1.0 / dsq;
                 sep = sep + d * inv;
                 align = align + read_state_vel(j);
@@ -219,7 +239,7 @@ const WGSL: &str = r#"
     accel = accel + read_state_accel(i);
     var nv = vi + accel * dt;
     let speed = sqrt(dot(nv, nv));
-    let min_speed = params.max_speed * BOIDS_MIN_SPEED_FRAC;
+    let min_speed = params.max_speed * clamp(params.speed_floor, 0.0, 1.0);
     if (speed > params.max_speed) {
         nv = nv / speed * params.max_speed;
     } else if (speed > BOIDS_EPS && speed < min_speed) {
@@ -249,6 +269,12 @@ pub const GPU_KERNEL: GpuKernel = GpuKernel {
         "seek",
         "max_speed",
         "max_force",
+        // ⚠️ **Esta lista NÃO é derivada do manifesto**, e é por isso que ela é o
+        // sítio que se esquece: um param novo compila, coza na CPU, e o device
+        // recusa o shader com `invalid field accessor` — falha alta, ao menos, e
+        // não silêncio.
+        "fov",
+        "speed_floor",
         "spread",
     ],
     count_law: Some(count_law),

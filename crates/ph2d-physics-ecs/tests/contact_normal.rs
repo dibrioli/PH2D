@@ -249,7 +249,7 @@ fn compound_touching() -> (SimWorld, Vec<(String, String, [f32; 2])>) {
 /// apontar para o lado contrário ao do `a`/`b` que o leitor recebeu — um sinal
 /// que ninguém consegue prever de fora.
 #[test]
-fn the_published_order_wins_over_the_librarys_even_on_a_compound_body() {
+fn the_published_order_wins_over_the_libraries_even_on_a_compound_body() {
     let (sim, pairs) = compound_touching();
     assert!(!pairs.is_empty(), "o L tem de assentar no chao: {pairs:?}");
     for (a, b, n) in &pairs {

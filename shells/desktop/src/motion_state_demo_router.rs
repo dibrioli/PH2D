@@ -282,6 +282,20 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
             );
             sinks
         }
+        Ok("39") => {
+            let sinks =
+                conferencia_demos_text::build_text_demo_document(doc, registry).unwrap_or_default();
+            eprintln!(
+                "[text-demo] O TEXTO E' UMA LETRA POR INSTANCIA: a palavra \"{}\" duas vezes, {} letras cada.
+  EM CIMA sem o canal: a palavra assenta na baseline, reta.
+  EM BAIXO com `value.instance_field(Ramp) -> motion.drive(Rotation)`: cada letra roda um pouco mais que a anterior, abrindo em leque ate {} graus.
+  (!) E' o LEQUE que prova a wave, nao o texto aparecer -- um bloco emitido como UMA instancia giraria RIGIDAMENTE, com todas as letras no mesmo angulo.",
+                conferencia_demos_text::WORD,
+                conferencia_demos_text::WORD.chars().count(),
+                conferencia_demos_text::FAN_DEG as i32,
+            );
+            sinks
+        }
         _ => Vec::new(),
     }
 }

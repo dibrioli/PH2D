@@ -421,10 +421,7 @@ pub fn spawn(sim: &mut SimWorld) {
         // MESMA regra que o `main.rs` desta cena escreve duas vezes sobre o
         // `sin_cos` e que a `ph2d-platformer` toma no `step_limit` (que deriva a
         // tangente por `sqrt`, de propósito, para não chamar a do `std`).
-        Transform::from_translation(Vec2::new(
-            RAMP_X - 6.0,
-            6.0 * libm::tanf(slope.abs()) + 1.1,
-        )),
+        Transform::from_translation(Vec2::new(RAMP_X - 6.0, 6.0 * libm::tanf(slope.abs()) + 1.1)),
     ));
 
     // ── A RAMPA QUE A LEI RECUSA (§8.3) ─────────────────────────────────────

@@ -333,36 +333,103 @@ impl PainterTool {
             width_px,
             Some(rect),
         );
-        for row in 0..rect.h as usize {
-            let y = rect.y as usize + row;
-            if y >= h {
-                break;
-            }
-            for cx in 0..rect.w as usize {
-                let x = rect.x as usize + cx;
-                if x >= w {
-                    break;
-                }
-                let a = u32::from(cov[row * rect.w as usize + cx]) * strength / 255;
-                if a == 0 {
-                    continue;
-                }
-                let p = (y * w + x) * 4;
-                for ch in 0..3 {
-                    let d = u32::from(canvas[p + ch]);
-                    #[allow(clippy::cast_possible_truncation)]
-                    {
-                        canvas[p + ch] = ((rgb[ch] * a + d * (255 - a)) / 255) as u8;
-                    }
-                }
-                let da = u32::from(canvas[p + 3]);
-                #[allow(clippy::cast_possible_truncation)]
-                {
-                    canvas[p + 3] = (a + da * (255 - a) / 255) as u8;
-                }
-            }
+        // ── A ESCRITA É POR LINHA, E AS LINHAS SÃO DISJUNTAS ────────────────────────────────────
+        // O `over` de um texel lê `cov` (imutável) e escreve só o seu próprio pixel, então a lei é a
+        // do ADR-0109 e o paralelo é **byte-idêntico por construção**: muda que thread avalia que
+        // linha, nunca o que a linha responde. Não há RNG nem transcendental no laço.
+        //
+        // ⚠️ **Ela paga a área INTEIRA do retângulo, e sob simetria circular esse retângulo é a TELA**
+        // (medido, 1024²: a rosácea abre para 1 048 576 px já no primeiro evento). Este era o maior
+        // item isolado da transação — 1,65 ms de 4,23 — e é o único dos dois que mora numa crate com
+        // a exceção do ADR-0109 já concedida. O irmão (`solid::fill_coverage`, 1,47 ms) vive na
+        // `ph2d-painter-brush`, que **não** tem `rayon`: pô-lo lá é dep nova, logo ordem do Enio.
+        let x0 = rect.x as usize;
+        let x1 = (x0 + rect.w as usize).min(w);
+        let y0 = rect.y as usize;
+        let y1 = (y0 + rect.h as usize).min(h);
+        if x1 <= x0 || y1 <= y0 {
+            return;
         }
+        // Piso do pool MEDIDO (`measure_what_a_solid_move_is_made_of`): abaixo dele o fork do rayon
+        // custa mais que o passe, como o limiar em BYTES do `plane_copy` e o `WET_PAR_MIN` da secagem.
+        let par = (x1 - x0) * (y1 - y0) >= SOLID_PAR_MIN;
+        blend_solid_rows(
+            &mut canvas[y0 * w * 4..y1 * w * 4],
+            SolidBand {
+                cov: &cov,
+                cov_stride: rect.w as usize,
+                row_bytes: w * 4,
+                x0,
+                cols: x1 - x0,
+                rgb,
+                strength,
+            },
+            par,
+        );
         self.declare_wrote(Some(rect));
         self.mark_dirty(rect);
     }
 }
+
+/// O que uma linha do `over` da mancha precisa saber — agrupado porque o kernel tem **um corpo e
+/// dois walkers** e uma lista de sete argumentos repetida nos dois é como eles divergem.
+pub(super) struct SolidBand<'a> {
+    pub(super) cov: &'a [u8],
+    pub(super) cov_stride: usize,
+    pub(super) row_bytes: usize,
+    pub(super) x0: usize,
+    pub(super) cols: usize,
+    pub(super) rgb: [u32; 3],
+    pub(super) strength: u32,
+}
+
+/// **UM CORPO, DOIS WALKERS** — `par` escolhe quem percorre as linhas, nunca o que a linha responde.
+///
+/// ⚠️ **Não existe versão paralela do kernel**, e é isso que torna a identidade uma propriedade da
+/// forma em vez de uma promessa: as duas rotas chamam [`blend_solid_row`]. O que um gate de
+/// identidade PODE provar é o mapeamento `linha → y`; o corpo partilhado ele não vê
+/// ([[feedback_an_identity_gate_cannot_see_a_defect_in_the_shared_body]]), e quem o cobre são os
+/// gates de aparência da mancha.
+pub(super) fn blend_solid_rows(band: &mut [u8], b: SolidBand<'_>, par: bool) {
+    if par {
+        use rayon::prelude::*;
+        band.par_chunks_mut(b.row_bytes)
+            .enumerate()
+            .for_each(|(row, d)| blend_solid_row(row, d, &b));
+    } else {
+        band.chunks_mut(b.row_bytes)
+            .enumerate()
+            .for_each(|(row, d)| blend_solid_row(row, d, &b));
+    }
+}
+
+/// O `over` de UMA linha: cobertura exata × opacidade do pincel, sobre o que já está lá.
+fn blend_solid_row(row: usize, dst: &mut [u8], b: &SolidBand<'_>) {
+    for cx in 0..b.cols {
+        let a = u32::from(b.cov[row * b.cov_stride + cx]) * b.strength / 255;
+        if a == 0 {
+            continue;
+        }
+        let p = (b.x0 + cx) * 4;
+        for ch in 0..3 {
+            let d = u32::from(dst[p + ch]);
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                dst[p + ch] = ((b.rgb[ch] * a + d * (255 - a)) / 255) as u8;
+            }
+        }
+        let da = u32::from(dst[p + 3]);
+        #[allow(clippy::cast_possible_truncation)]
+        {
+            dst[p + 3] = (a + da * (255 - a) / 255) as u8;
+        }
+    }
+}
+
+/// **Onde o pool de threads se paga no `over` da mancha**, em texels do retângulo — medido, não
+/// escolhido (a varredura vive em [`super::measure_solid_cost`]).
+///
+/// ⚠️ O piso é o MESMO do kernel de dab (`PARALLEL_MIN_AREA`, ~131 k px) e por uma razão: as duas
+/// perguntas são a mesma — *quantos texels é preciso escrever para o fork valer a pena?* — e dois
+/// números para uma pergunta divergem no dia em que alguém afinar um deles.
+const SOLID_PAR_MIN: usize = ph2d_painter_brush::PARALLEL_MIN_AREA;

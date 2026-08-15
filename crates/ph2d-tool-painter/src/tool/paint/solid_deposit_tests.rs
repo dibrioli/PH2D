@@ -646,3 +646,74 @@ fn the_fill_writes_nothing_outside_the_rect_it_saved() {
          todo restore e o desenho passa a depender da taxa de eventos"
     );
 }
+
+/// **AS DUAS ROTAS DO `over` DA MANCHA ESCREVEM O MESMO** — a rede que torna o pool de threads uma
+/// escolha de agendamento em vez de uma segunda resposta (ADR-0109; auditoria de 2026-08-15).
+///
+/// ⚠️ **Ele existe porque nenhum outro gate alcança a rota paralela:** o piso do pool é ~131 k
+/// texels e toda a fixture de Solid deste arquivo roda a 256² (65 k) — a rota rápida shipava
+/// **sem gate nenhum**. Aqui as duas são chamadas sobre o MESMO estado e comparadas ao byte.
+///
+/// ⚠️ **O que ele PODE provar é o mapeamento `linha → y`**; o corpo é partilhado
+/// ([`super::solid_deposit::blend_solid_rows`] escolhe o walker, nunca a aritmética), então um
+/// defeito DENTRO da linha é invisível aqui e é dos gates de aparência
+/// ([[feedback_an_identity_gate_cannot_see_a_defect_in_the_shared_body]]).
+///
+/// **Mutação que sangra:** trocar o `enumerate()` da rota paralela por um índice que não seja a
+/// linha (a banda sai deslocada).
+#[test]
+fn both_walkers_of_the_solid_over_write_the_same_bytes() {
+    use crate::tool::paint::solid_deposit::{SolidBand, blend_solid_rows};
+
+    // Uma banda deliberadamente ESTRUTURADA: cobertura que varia por linha E por coluna, senão um
+    // erro de mapeamento de linha é invisível por vácuo.
+    let (rows, cols, row_bytes, x0) = (37usize, 29usize, 64usize * 4, 11usize);
+    let cov: Vec<u8> = (0..rows * cols)
+        .map(|i| {
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                ((i / cols) * 7 + (i % cols) * 3) as u8
+            }
+        })
+        .collect();
+    let base: Vec<u8> = (0..rows * row_bytes)
+        .map(|i| {
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                (i % 251) as u8
+            }
+        })
+        .collect();
+    let band = |par: bool| -> Vec<u8> {
+        let mut buf = base.clone();
+        blend_solid_rows(
+            &mut buf,
+            SolidBand {
+                cov: &cov,
+                cov_stride: cols,
+                row_bytes,
+                x0,
+                cols,
+                rgb: [200, 40, 90],
+                strength: 178,
+            },
+            par,
+        );
+        buf
+    };
+    let serial = band(false);
+    let parallel = band(true);
+    assert_ne!(
+        serial, base,
+        "a fixture nao escreveu um byte: o oraculo nao mede nada"
+    );
+    let diff = serial
+        .iter()
+        .zip(parallel.iter())
+        .filter(|(a, b)| a != b)
+        .count();
+    assert_eq!(
+        diff, 0,
+        "as duas rotas do `over` divergem em {diff} bytes — o pool deixou de ser so' agendamento"
+    );
+}

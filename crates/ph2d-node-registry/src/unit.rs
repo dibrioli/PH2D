@@ -67,6 +67,14 @@ pub enum ParamUnit {
     /// length conversion from being applied to degrees — the failure that turns a
     /// `±90` into a `±9000`.
     FromChannel,
+    /// A frequency in **hertz**. Não converte: um hertz é um hertz em qualquer
+    /// escala de mundo — ele descreve o SOM, não a cena.
+    Hertz,
+    /// Um nível em **decibéis**, relativo à escala cheia (`0 dB` = o mais alto que
+    /// o arquivo pode ser, negativo abaixo dele). É a mesma face que o editor de
+    /// áudio já mostra, e o mesmo número não pode significar coisas diferentes nos
+    /// dois painéis.
+    Decibel,
 }
 
 impl ParamUnit {
@@ -87,6 +95,8 @@ impl ParamUnit {
         match self {
             ParamUnit::Angle => Some("deg"),
             ParamUnit::Seconds => Some("s"),
+            ParamUnit::Hertz => Some("Hz"),
+            ParamUnit::Decibel => Some("dB"),
             ParamUnit::Length | ParamUnit::FromChannel | ParamUnit::None => None,
             ParamUnit::Count | ParamUnit::Ratio => None,
         }

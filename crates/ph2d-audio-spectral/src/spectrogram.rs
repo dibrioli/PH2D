@@ -144,6 +144,51 @@ impl Spectrogram {
         self.sample_rate as f32 * 0.5
     }
 
+    /// Bins per column — DC through Nyquist.
+    pub fn bins(&self) -> usize {
+        self.bins
+    }
+
+    /// The width of one bin, in hertz. The **frequency axis**, published rather than
+    /// re-derived: a consumer that computed `rate / (2·(bins−1))` for itself would be a
+    /// second answer to *what frequency is bin k*, and the two would part company the day
+    /// the window changed.
+    pub fn hz_per_bin(&self) -> f32 {
+        self.nyquist() / (self.bins.saturating_sub(1).max(1)) as f32
+    }
+
+    /// The column that speaks for sample `frame`, clamped into the picture.
+    ///
+    /// ⚠️ It is **`hop`, not the STFT's hop** — a long clip is decimated (see
+    /// [`MAX_COLS`]), so the stride grows with the length and must be read from the
+    /// picture that was actually built.
+    pub fn column_at_frame(&self, frame: usize) -> usize {
+        if self.cols == 0 {
+            return 0;
+        }
+        (frame / self.hop.max(1)).min(self.cols - 1)
+    }
+
+    /// One column, in **decibels** (`FLOOR_DB..=0`), written into `out` (which is
+    /// truncated or short-filled to [`Self::bins`]).
+    ///
+    /// The inverse of the byte quantisation, and it lives here **because the encoding
+    /// does**: a caller that unpacked `b/255` itself would own half of a contract whose
+    /// other half it cannot see, and a change to [`FLOOR_DB`] would silently rescale it.
+    pub fn column_db(&self, col: usize, out: &mut Vec<f32>) {
+        out.clear();
+        if col >= self.cols {
+            out.resize(self.bins, FLOOR_DB);
+            return;
+        }
+        let row = col * self.bins;
+        out.extend(
+            self.db[row..row + self.bins]
+                .iter()
+                .map(|&b| FLOOR_DB - f32::from(b) * FLOOR_DB / 255.0),
+        );
+    }
+
     /// Render into RGBA at exactly `w` × `h` pixels, ready for `draw_image_rgba`.
     ///
     /// `ramp` is the colour scale from silence to full scale, sampled piecewise-linearly —
@@ -234,6 +279,53 @@ mod tests {
                 channels: ChannelLayout::Mono,
             },
         )
+    }
+
+    /// **The dB reader is the exact inverse of the byte quantisation**, and the axis it
+    /// publishes is the one the picture was built on.
+    ///
+    /// ⚠️ It exists so a consumer never unpacks `b/255` for itself — that would own half
+    /// of a contract whose other half lives here, and a change to [`FLOOR_DB`] would
+    /// rescale it in silence.
+    #[test]
+    fn a_column_reads_back_the_decibels_it_stored() {
+        let s = Spectrogram::build(&clip(1000.0, 0.2, 1.0));
+        assert!(!s.is_empty());
+        let mut db = Vec::new();
+        s.column_db(s.columns() / 2, &mut db);
+        assert_eq!(db.len(), s.bins());
+        // Every value lands in the declared range, and the loudest bin of a full-scale
+        // sine is at the top of it.
+        assert!(db.iter().all(|v| (FLOOR_DB..=0.5).contains(v)), "{db:?}");
+        let peak = db.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+        assert!(peak > -3.0, "a full-scale sine reads near 0 dB, got {peak}");
+        // ...and the bin it sits in is the one at 1 kHz, by the published axis.
+        let loudest = db
+            .iter()
+            .enumerate()
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .unwrap()
+            .0;
+        let hz = loudest as f32 * s.hz_per_bin();
+        assert!((hz - 1000.0).abs() < 60.0, "peak bin sits at {hz} Hz");
+        // Out of range is the floor, never a panic and never stale data.
+        let mut oob = Vec::new();
+        s.column_db(s.columns() + 5, &mut oob);
+        assert_eq!(oob.len(), s.bins());
+        assert!(oob.iter().all(|v| *v == FLOOR_DB));
+    }
+
+    /// The column that speaks for a sample is inside the picture, and it advances with
+    /// the frame. ⚠️ It reads `hop` from the built picture because a long clip is
+    /// DECIMATED — assuming the STFT hop would drift on anything past ~87 s.
+    #[test]
+    fn a_frame_maps_to_a_column_inside_the_picture() {
+        let s = Spectrogram::build(&clip(440.0, 0.5, 0.5));
+        assert_eq!(s.column_at_frame(0), 0);
+        assert!(s.column_at_frame(usize::MAX) < s.columns());
+        let a = s.column_at_frame(0);
+        let b = s.column_at_frame(s.hop() * 3);
+        assert!(b > a, "the column advances with the frame: {a} -> {b}");
     }
 
     /// **The picture is calibrated.** A full-scale sine has to read as full scale, and its

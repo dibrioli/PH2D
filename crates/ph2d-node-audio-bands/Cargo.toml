@@ -1,0 +1,19 @@
+[package]
+name = "ph2d-node-audio-bands"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⚠️ **NENHUMA crate de áudio entra aqui, e a ausência É a arquitetura** (doc 63
+# §6: *"FFT NUNCA entra no cook"*). Este nó não decodifica, não transforma e não
+# sabe o que é um arquivo: ele lê um stream que o shell publicou. A contenção é
+# ESTRUTURAL — sem a dependência o nó não CONSEGUE ter opinião sobre o espectro —,
+# e o gate `the_fft_never_reaches_the_cook` lê este arquivo.
+[dependencies]
+ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+ph2d-node-registry = { path = "../ph2d-node-registry" }

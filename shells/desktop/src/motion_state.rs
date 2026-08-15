@@ -65,6 +65,7 @@ mod conferencia_demos;
 /// dominio de VALOR), irmao pelo mesmo teto de LOC.
 #[path = "motion_state_conferencia_demos_arith.rs"]
 mod conferencia_demos_arith;
+
 /// A cena do AUDIO (`=40`), irmao pelo mesmo motivo — e porque ela escreve a
 /// propria fixture em disco (nao ha asset de audio no repo).
 #[path = "motion_state_conferencia_demos_audio.rs"]
@@ -74,6 +75,8 @@ mod conferencia_demos_audio;
 mod conferencia_demos_direction;
 #[path = "motion_state_conferencia_demos_text.rs"]
 mod conferencia_demos_text;
+#[path = "motion_state_conferencia_demos_time.rs"]
+mod conferencia_demos_time;
 /// A cena da MARCA DO IMPACTO (doc 89, folha 13), arquivo próprio pela mesma razão: ela
 /// responde *"um nó a jusante consegue saber que houve uma COLISÃO?"* — o passo mexe em `P` e
 /// `vel` a cada tique, então até existir a coluna `hit` a pergunta não era exprimível.

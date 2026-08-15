@@ -333,6 +333,33 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
             );
             sinks
         }
+        // O RUIDO e o RELOGIO (doc 89, o grupo B): os dois geradores TEMPORAIS,
+        // dez perfis, e a unica leitura desta jornada que so' o PLAY responde.
+        Ok("42") => {
+            let sinks =
+                conferencia_demos_time::build_time_demo_document(doc, registry).unwrap_or_default();
+            eprintln!(
+                "[time-demo] CADA FILEIRA E' UM GRAFICO: {} pecas por fileira, e o Y de cada peca E' o valor.",
+                conferencia_demos_time::COLS as u32,
+            );
+            for (i, label) in conferencia_demos_time::row_labels() {
+                eprintln!("  {}. {label}", i + 1);
+            }
+            eprintln!(
+                "  (!) DE' PLAY -- esta cena tem uma leitura que uma foto nao responde. Um campo que fecha
+      o laco e um que nao fecha sao INDISTINGUIVEIS parados, e o laco e' o item de maior valor
+      da familia (um ruido que nao fecha nao faz um GIF).
+  (!) As quatro leituras: (1-2) a de baixo volta a MESMA forma a cada {loop_s:.0}s, a de cima nunca -
+      (3-4) a mesma pilha de 5 oitavas com detalhe mais FINO em baixo - (5-7) a 6 e' a 5
+      DESLOCADA (as mesmas feicoes, meia celula a' direita) e a 7 e' um perfil OUTRO: deslize
+      contra re-sorteio - (8-10) a 9 anda em LOCK-STEP com a 8 (0,5s por ciclo e 120 BPM sao o
+      MESMO numero em duas reguas) e a 10 e' visivelmente mais rapida.
+  (!) As fileiras 3-7 estao CONGELADAS de proposito: uma comparacao de FORMA nao pode ser
+      tambem uma comparacao de instante.",
+                loop_s = conferencia_demos_time::loop_seconds(),
+            );
+            sinks
+        }
         _ => Vec::new(),
     }
 }

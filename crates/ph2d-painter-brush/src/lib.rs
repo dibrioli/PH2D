@@ -63,12 +63,6 @@ mod line_probe; // W0 do plano 38: a fórmula de velocidade e o orçamento de fi
 #[path = "line_speed_probe.rs"]
 mod line_speed_probe; // sonda do arremesso (plano 38 W2)
 #[cfg(test)]
-mod ribbon_probe; // sonda da FITA (plano 38 W6)
-#[cfg(test)]
-mod ribbon_tests; // os gates da FITA (plano 38 W6)
-#[cfg(test)]
-mod walk_bounds_tests; // o batente de MEMÓRIA do percurso (achado do OOM de 2026-08-14)
-#[cfg(test)]
 #[path = "line_speed_tests.rs"]
 mod line_speed_tests; // os gates do Speed Shapes (plano 38 W2)
 pub mod mask_ops;
@@ -77,6 +71,12 @@ pub mod material;
 /// which is the whole point: a horizontal fit cuts a crater into a hillside.
 pub mod plane;
 pub mod ramp_alpha;
+#[cfg(test)]
+mod ribbon_band_tests; // os gates da FAIXA -- as travessas (plano 38 W6)
+#[cfg(test)]
+mod ribbon_probe; // sonda da FITA (plano 38 W6)
+#[cfg(test)]
+mod ribbon_tests; // os gates da FITA (plano 38 W6)
 pub mod sampler;
 /// **Sculpt** — the brush as a local operator on the relief (Smooth / Sharpen / Flatten / Scrape / Fill).
 pub mod sculpt;
@@ -108,7 +108,9 @@ mod thread_probe; // W3 do plano 38: o orcamento do Sketchy pela porta do produt
 pub mod thread_raster;
 #[cfg(test)]
 #[path = "thread_raster_tests.rs"]
-mod thread_raster_tests; // os gates da rasterização dos fios
+mod thread_raster_tests;
+#[cfg(test)]
+mod walk_bounds_tests; // o batente de MEMÓRIA do percurso (achado do OOM de 2026-08-14) // os gates da rasterização dos fios
 // A aritmética do cap por-traço (Accumulate OFF), numa cópia só. Arquivo próprio: é uma LEI, não um
 // helper — e o módulo registra a lei alternativa que foi construída e REPROVADA (doc 25 §13.10).
 /// **Grid Stamp** — a geometria da grade própria do método: a célula sob um ponto, o centro dela,

@@ -21,7 +21,13 @@ use std::time::Instant;
 
 /// Um traço reto de `secs` a `speed` px/s, com o tique do produto entre os eventos.
 /// Devolve `(pior Move ms, pior tique ms, pen-up ms)`.
-fn straight(kind: LineKind, weight: f32, friction: f32, radius: f32, speed: f32) -> (f64, f64, f64) {
+fn straight(
+    kind: LineKind,
+    weight: f32,
+    friction: f32,
+    radius: f32,
+    speed: f32,
+) -> (f64, f64, f64) {
     let side = 2048u32;
     let dt = 1.0 / 60.0;
     let mut t = tool(side, PaintMedia::Digital, radius);
@@ -103,15 +109,26 @@ fn probe_ribbon_look() {
     std::fs::create_dir_all(&dir).expect("dir");
     let side = 1024u32;
     let dt = 1.0 / 60.0;
-    for (nome, kind, w, fr, gr) in [
-        ("controle_none", LineKind::None, 0.0f32, 0.30f32, 0.0f32),
-        ("ribbon_045", LineKind::Ribbon, 0.45, 0.30, 0.0),
-        ("ribbon_100", LineKind::Ribbon, 1.0, 0.30, 0.0),
+    for (nome, kind, w, fr, gr, ru) in [
+        (
+            "controle_none",
+            LineKind::None,
+            0.0f32,
+            0.30f32,
+            0.0f32,
+            0.0f32,
+        ),
+        // O CONTROLE da faixa: a fita SEM travessas degenera na linha atrasada sozinha.
+        ("banda_r000", LineKind::Ribbon, 0.08, 0.30, 0.0, 0.0),
+        // A faixa, na largura que o atraso dá (~40 px a 0,08 — a tabela do `RIBBON_MAX_SUBSTEPS`).
+        ("banda_r050", LineKind::Ribbon, 0.08, 0.30, 0.0, 0.5),
+        ("banda_r100", LineKind::Ribbon, 0.08, 0.30, 0.0, 1.0),
+        // Faixa LARGA — o atraso é a largura, então mais peso abre mais a faixa.
+        ("banda_w020", LineKind::Ribbon, 0.20, 0.30, 0.0, 0.5),
+        ("banda_w045", LineKind::Ribbon, 0.45, 0.30, 0.0, 0.5),
         // Os extremos que o roteiro manda mexer: o chicote (atrito no PISO) e o peso.
-        ("ribbon_w100_fr000", LineKind::Ribbon, 1.0, 0.0, 0.0),
-        ("ribbon_w045_fr000", LineKind::Ribbon, 0.45, 0.0, 0.0),
-        ("ribbon_w100_fr100", LineKind::Ribbon, 1.0, 1.0, 0.0),
-        ("ribbon_w100_grav", LineKind::Ribbon, 1.0, 0.30, 0.5),
+        ("ribbon_w100_fr000", LineKind::Ribbon, 1.0, 0.0, 0.0, 0.5),
+        ("ribbon_w100_grav", LineKind::Ribbon, 1.0, 0.30, 0.5, 0.5),
     ] {
         let mut t = tool(side, PaintMedia::Digital, 6.0);
         t.paint.brush.stroke_method = StrokeMethod::Space;
@@ -119,12 +136,18 @@ fn probe_ribbon_look() {
         t.paint.brush.ribbon_weight = w;
         t.paint.brush.ribbon_friction = fr;
         t.paint.brush.ribbon_gravity = gr;
+        t.paint.brush.ribbon_rungs = ru;
         // O gesto da foto: uma onda que desacelera nos picos (a mao vira devagar).
         let pt = |u: f32| {
             let x = 80.0 + u * 860.0;
             let y = 512.0 + (u * 18.0).sin() * 200.0;
             [x, y]
         };
+        // ⚠️ **O predicado do DEPÓSITO entra no relatório**, e não é enfeite: a faixa nasceu com o
+        // motor a costurar 343 travessas por traço e o tool MUDO (o `sews_threads` do spec enumerava
+        // os tipos), e a imagem saía idêntica ao controle. Sem esta linha o próximo a olhar uma
+        // imagem vazia procura o defeito no motor, onde ele não está.
+        let deposita = t.threads_own_the_gesture();
         t.on_canvas_pointer(cp(pt(0.0), PointerPhase::Down));
         let mut u = 0.0f32;
         let mut frame = 0;
@@ -150,6 +173,33 @@ fn probe_ribbon_look() {
         }
         let p = dir.join(format!("{nome}.pgm"));
         std::fs::write(&p, buf).expect("write");
-        println!("[look] {nome}: {frame} quadros -> {}", p.display());
+        // ⚠️ **A pergunta é ALTERNAÇÃO, não largura** — "uma faixa com travessas" e "uma linha
+        // grossa" têm a mesma extensão vertical; o que as separa é o vão ENTRE as travessas. Uma
+        // coluna que corta uma travessa fica cheia, a vizinha fica só com os dois trilhos ⇒ um
+        // traço sólido tem `preenchimento` alto em TODA coluna, e a faixa tem o mínimo baixo.
+        let (mut span_max, mut fill_min, mut fill_max) = (0usize, 1.0f32, 0.0f32);
+        for x in (300..700).step_by(1) {
+            let col: Vec<bool> = (0..side as usize)
+                .map(|y| px[(y * side as usize + x) * 4] < 200)
+                .collect();
+            let (Some(a), Some(b)) = (col.iter().position(|&v| v), col.iter().rposition(|&v| v))
+            else {
+                continue;
+            };
+            let span = b - a + 1;
+            if span < 4 {
+                continue; // uma coluna que só pega a ponta não descreve a faixa
+            }
+            #[allow(clippy::cast_precision_loss)]
+            let fill = col[a..=b].iter().filter(|&&v| v).count() as f32 / span as f32;
+            span_max = span_max.max(span);
+            fill_min = fill_min.min(fill);
+            fill_max = fill_max.max(fill);
+        }
+        println!(
+            "[look] {nome:18}: {frame:3} quadros · deposita fios? {deposita:5} · \
+             faixa {span_max:3} px · preenchimento {fill_min:.2}..{fill_max:.2} -> {}",
+            p.display()
+        );
     }
 }

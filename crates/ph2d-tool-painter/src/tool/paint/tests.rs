@@ -14,14 +14,14 @@ mod measure_commit_cost; // …e de que é feito o CUSTO: fork, pen-up, commit, 
 mod measure_dirty_overclaim;
 #[path = "measure_gpu_frontier.rs"]
 mod measure_gpu_frontier; // o pool dos cinco planos do traço escreve o que a alocação escrevia
+#[path = "ribbon_probe.rs"]
+mod ribbon_probe; // W6 do plano 38: o orcamento da FITA — move, tique e o pen-up
 #[path = "solid_deposit_tests.rs"]
 mod solid_deposit_tests;
 #[path = "spray_defaults_tests.rs"]
 mod spray_defaults_tests; // W5: a primeira nuvem parece uma nuvem
 #[path = "spray_probe.rs"]
 mod spray_probe; // W5 do plano 38: o custo por evento de `n` marcas — o teto do Count
-#[path = "ribbon_probe.rs"]
-mod ribbon_probe; // W6 do plano 38: o orcamento da FITA — move, tique e o pen-up
 #[path = "thread_deposit_tests.rs"]
 mod thread_deposit_tests;
 #[path = "thread_probe.rs"]

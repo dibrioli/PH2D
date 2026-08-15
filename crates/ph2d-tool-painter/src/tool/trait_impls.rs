@@ -237,6 +237,8 @@ impl Tool for PainterTool {
                     self.set_ribbon_friction_norm(v as f32);
                 } else if id == core_ids::PAINTER_LINE_RIBBON_GRAVITY {
                     self.set_ribbon_gravity_norm(v as f32);
+                } else if id == core_ids::PAINTER_LINE_RIBBON_RUNGS {
+                    self.set_ribbon_rungs_norm(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_JITTER {
                     self.set_brush_jitter_norm(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_DASH_RATIO {

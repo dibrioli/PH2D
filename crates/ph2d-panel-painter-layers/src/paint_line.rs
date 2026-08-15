@@ -195,7 +195,7 @@ const WIRE_SLIDERS: [ParamSlider; 3] = [
 /// ⚠️ **`Size` e `Spacing` do Alchemy NÃO estão aqui**, e é a mesma lei do Spray: eles são o tamanho
 /// e o espaçamento do PINCEL, que já shipam com slider próprio. Gêmeos deles neste card seriam a
 /// segunda porta para a mesma pergunta.
-const RIBBON_SLIDERS: [ParamSlider; 3] = [
+const RIBBON_SLIDERS: [ParamSlider; 4] = [
     (core_ids::PAINTER_LINE_RIBBON_WEIGHT, "Weight", |b| {
         (b.ribbon_weight, b.ribbon_weight)
     }),
@@ -204,6 +204,9 @@ const RIBBON_SLIDERS: [ParamSlider; 3] = [
     }),
     (core_ids::PAINTER_LINE_RIBBON_GRAVITY, "Gravity", |b| {
         (b.ribbon_gravity, b.ribbon_gravity)
+    }),
+    (core_ids::PAINTER_LINE_RIBBON_RUNGS, "Rungs", |b| {
+        (b.ribbon_rungs, b.ribbon_rungs)
     }),
 ];
 

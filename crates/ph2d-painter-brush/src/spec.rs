@@ -144,6 +144,13 @@ pub struct BrushSpec {
     /// **Ribbon — a `Gravity`**, a fração do [`crate::line_kind::RIBBON_GRAVITY_MAX_PX_S2`]. `0` é o
     /// neutro: a fita atrasa e não pende.
     pub ribbon_gravity: f32,
+    /// **Ribbon — os `Rungs`**, a densidade das TRAVESSAS que fazem da fita uma **FAIXA**.
+    ///
+    /// ⚠️ **`0` é o neutro e ele é uma DEGENERAÇÃO, não um modo:** uma faixa sem travessas é uma
+    /// linha — sobra o trilho de tinta sozinho, que é o pincel de arrasto (o *Dyna* do Krita). É por
+    /// isso que a família não precisou de um segundo tipo nem de um interruptor: uma densidade cobre
+    /// os dois looks, e um interruptor teria de escolher um nome para o estado desligado.
+    pub ribbon_rungs: f32,
     /// Dash "on" fraction of each dash period, `0..1` (Blender `dash_ratio`, default `1.0` = solid,
     /// `DNA_brush_types.h:275`).
     pub dash_ratio: f32,
@@ -552,13 +559,57 @@ impl BrushSpec {
         self.ribbon_gravity.clamp(0.0, 1.0) * crate::line_kind::RIBBON_GRAVITY_MAX_PX_S2
     }
 
-    /// **Este pincel costura fios?** — a porta ÚNICA que decide se a memória do traço é mantida.
+    /// **A fita desenha a FAIXA?** — a porta única que o motor pergunta antes de costurar uma
+    /// travessa e o depósito antes de pintar o feixe.
     ///
-    /// ⚠️ Ela pergunta ao TIPO (`LineKind::sews_threads`) e ao parâmetro daquele tipo. Um `match`
-    /// sobre os tipos escrito aqui e outro no depósito é a lista que apodrece no terceiro membro.
+    /// ⚠️ Ela exige o ATRASO junto com a densidade, e não é redundância: **a largura da faixa É o
+    /// atraso**. Sem atraso os dois trilhos coincidem e cada travessa é um segmento de comprimento
+    /// zero — fios gastos a pintar nada.
+    #[must_use]
+    pub fn ribbon_band_active(&self) -> bool {
+        self.ribbon_active() && self.ribbon_rungs > 0.0
+    }
+
+    /// **O ESPAÇAMENTO das travessas em PIXELS de arco do trilho da fita.**
+    ///
+    /// ⚠️ **Porta única, e ela tem DOIS leitores com perguntas diferentes:** o motor a lê para saber
+    /// *onde cai a próxima travessa* e a sonda para medir *quantos fios uma faixa custa*. Duas
+    /// cópias divergiriam no dia em que o piso deixasse de ser lido, e o sintoma seria uma faixa que
+    /// chapa só no pincel pequeno.
+    ///
+    /// A pista é em DIÂMETROS (livre de escala) com **piso em larguras-de-FIO** — as duas metades
+    /// estão nos docs das consts.
+    #[must_use]
+    pub fn ribbon_rung_px(&self) -> f32 {
+        use crate::line_kind::{RIBBON_RUNG_DENSE_D, RIBBON_RUNG_DUTY, RIBBON_RUNG_SPARSE_D};
+        let t = self.ribbon_rungs.clamp(0.0, 1.0);
+        let d = RIBBON_RUNG_SPARSE_D + t * (RIBBON_RUNG_DENSE_D - RIBBON_RUNG_SPARSE_D);
+        (d * 2.0 * self.clamped_radius()).max(RIBBON_RUNG_DUTY * self.thread_width_px.max(0.0))
+    }
+
+    /// **Este pincel costura fios?** — a porta ÚNICA que decide se a memória do traço é mantida, se
+    /// o motor costura e se o depósito drena o canal.
+    ///
+    /// ⚠️ **O `match` é EXAUSTIVO de propósito — sem braço `_`.** A família tem três membros
+    /// (Sketchy, Wire e as travessas da FITA) e vai ter mais, e a pergunta *"este pincel costura?"*
+    /// é sempre **o tipo E o parâmetro daquele tipo**: um tipo que costura com o knob no neutro não
+    /// costura. Um braço curinga aqui engoliria o quarto membro **em silêncio** — ele nasceria com
+    /// os fios produzidos pelo motor e **nunca pintados**, que é exatamente o defeito que esta
+    /// função já teve.
+    ///
+    /// ⚠️ **E ele já teve:** havia um segundo portão (`LineKind::sews_threads`) que respondia à
+    /// metade *do tipo*, com um doc que dizia que ESTA função o consultava — e ela não consultava,
+    /// enumerava. Ligar a fita lá deixou o motor a costurar 343 travessas por traço com o depósito
+    /// mudo, medido. O portão do enum **não existe mais**: duas respostas para uma pergunta divergem
+    /// no dia em que alguém edita só uma.
     #[must_use]
     pub fn sews_threads(&self) -> bool {
-        self.sketchy_active() || self.wire_active()
+        match self.line_kind {
+            crate::line_kind::LineKind::Sketchy => self.sketchy_active(),
+            crate::line_kind::LineKind::Wire => self.wire_active(),
+            crate::line_kind::LineKind::Ribbon => self.ribbon_band_active(),
+            crate::line_kind::LineKind::None | crate::line_kind::LineKind::Speed => false,
+        }
     }
 
     /// **A JANELA do Wire em PIXELS de arco** — irmã da [`Self::sketchy_reach_px`], mesma unidade

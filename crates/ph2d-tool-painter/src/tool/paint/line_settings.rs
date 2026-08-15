@@ -100,4 +100,13 @@ impl PainterTool {
     pub fn set_ribbon_gravity_norm(&mut self, t: f32) {
         fan_out!(self, ribbon_gravity, t.clamp(0.0, 1.0));
     }
+
+    /// **Rungs** da fita a partir da pista `0..1` — a densidade das travessas da FAIXA.
+    ///
+    /// ⚠️ O espaçamento em pixels é DERIVADO (`BrushSpec::ribbon_rung_px`), pela mesma razão do
+    /// `sketchy_density`: o que o artista arrasta é adimensional e quem sabe a régua — os diâmetros
+    /// e o piso em larguras-de-fio — é o motor.
+    pub fn set_ribbon_rungs_norm(&mut self, t: f32) {
+        fan_out!(self, ribbon_rungs, t.clamp(0.0, 1.0));
+    }
 }

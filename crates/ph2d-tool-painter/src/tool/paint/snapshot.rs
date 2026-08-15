@@ -240,6 +240,7 @@ impl PainterTool {
             ribbon_weight: b.ribbon_weight,
             ribbon_friction: b.ribbon_friction,
             ribbon_gravity: b.ribbon_gravity,
+            ribbon_rungs: b.ribbon_rungs,
             link_shared: self.paint.link_shared_settings,
             line_show_dimensions: self.paint.line_show_dimensions,
             jitter: b.jitter,

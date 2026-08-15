@@ -150,9 +150,14 @@ fn measure_the_ribbon_settling_ink() {
             }
             parked += out.len();
         }
-        println!("{f:>9.2} {zeta:>7.2}  {parked:>10} {:>12.2}", silence as f32 * dt);
+        println!(
+            "{f:>9.2} {zeta:>7.2}  {parked:>10} {:>12.2}",
+            silence as f32 * dt
+        );
     }
-    println!("[ribbon] leitura: o piso e o menor amortecimento cujo silencio chega em tempo de gesto.");
+    println!(
+        "[ribbon] leitura: o piso e o menor amortecimento cujo silencio chega em tempo de gesto."
+    );
 }
 
 /// **A LEI** — o atraso cresce com a VELOCIDADE do gesto, que é o que *pesar* significa.
@@ -192,7 +197,10 @@ fn measure_the_ribbon_dab_budget() {
 fn measure_the_ribbon_hang() {
     let dt = 1.0 / 60.0;
     println!("[ribbon] mao PARADA por 3 s: quanto a fita desce sob a gravidade");
-    println!("{:>7} {:>9}  {:>12} {:>12}", "weight", "gravity", "queda px", "previsto g*tau2");
+    println!(
+        "{:>7} {:>9}  {:>12} {:>12}",
+        "weight", "gravity", "queda px", "previsto g*tau2"
+    );
     for w in [0.25f32, 0.45, 1.0] {
         for g in [0.25f32, 0.5, 1.0] {
             let sp = spec(w, 0.5, g);
@@ -340,7 +348,9 @@ fn measure_who_emits_on_a_ribbon_stroke() {
         );
     }
     println!("[quem-emite] leitura: numa FITA so o TIQUE pode emitir. Se as duas colunas tiverem");
-    println!("[quem-emite] dabs, o caminho alterna entre o dedo e a fita -- e isso desenha ESPICULAS.");
+    println!(
+        "[quem-emite] dabs, o caminho alterna entre o dedo e a fita -- e isso desenha ESPICULAS."
+    );
 }
 
 /// **ONDE A FITA SALTA** — uma espícula é um segmento reto entre dois dabs distantes, então basta
@@ -384,7 +394,13 @@ fn measure_where_the_ribbon_jumps() {
         let t = i as f32 / 60.0;
         let x = 100.0 + t * 900.0;
         let y = 300.0 + (t * 12.0).sin() * 160.0;
-        s.extend(StrokePoint { pos: [x, y], pressure: 1.0 }, &mut out);
+        s.extend(
+            StrokePoint {
+                pos: [x, y],
+                pressure: 1.0,
+            },
+            &mut out,
+        );
         scan(&out, "extend", &mut prev);
         s.tick(dt, &mut out);
         scan(&out, "tique", &mut prev);
@@ -408,13 +424,25 @@ fn measure_where_the_ink_ends_after_pen_up() {
     let dt = 1.0 / 60.0;
     let mut s = Stroke::new(spec(0.45, 0.30, 0.0), plain(), 7);
     let mut out = Vec::new();
-    s.begin(StrokePoint { pos: [100.0, 300.0], pressure: 1.0 }, &mut out);
+    s.begin(
+        StrokePoint {
+            pos: [100.0, 300.0],
+            pressure: 1.0,
+        },
+        &mut out,
+    );
     let mut antes = [100.0f32, 300.0];
     let mut x = 100.0f32;
     for _ in 0..30 {
         out.clear();
         x += 40.0;
-        s.extend(StrokePoint { pos: [x, 300.0], pressure: 1.0 }, &mut out);
+        s.extend(
+            StrokePoint {
+                pos: [x, 300.0],
+                pressure: 1.0,
+            },
+            &mut out,
+        );
         s.tick(dt, &mut out);
         if let Some(d) = out.last() {
             antes = d.center;
@@ -424,8 +452,15 @@ fn measure_where_the_ink_ends_after_pen_up() {
     s.finish(&mut out);
     let depois = out.last().map_or(antes, |d| d.center);
     println!("[fim] dedo soltou em x={x:.1}");
-    println!("[fim] ultimo dab ANTES do pen-up  : x={:.1}  (a fita, atrasada)", antes[0]);
-    println!("[fim] ultimo dab DEPOIS do pen-up : x={:.1}  ({} dabs de cauda)", depois[0], out.len());
+    println!(
+        "[fim] ultimo dab ANTES do pen-up  : x={:.1}  (a fita, atrasada)",
+        antes[0]
+    );
+    println!(
+        "[fim] ultimo dab DEPOIS do pen-up : x={:.1}  ({} dabs de cauda)",
+        depois[0],
+        out.len()
+    );
     println!("[fim] leitura: se o depois pousar NO DEDO, algo arrastou a tinta ate o cursor em");
     println!("[fim] linha reta -- e essa reta E a espicula. A fita tem de parar onde ela parou.");
 }
@@ -483,7 +518,13 @@ fn measure_a_real_gesture_for_spikes() {
                 let x = 200.0 + t * 300.0;
                 let y = 400.0 + (t * 5.0).sin() * 150.0 + (t * 13.0).cos() * 40.0;
                 let _ = k;
-                s.extend(StrokePoint { pos: [x, y], pressure: 1.0 }, &mut out);
+                s.extend(
+                    StrokePoint {
+                        pos: [x, y],
+                        pressure: 1.0,
+                    },
+                    &mut out,
+                );
             }
             scan(&out);
             out.clear();
@@ -511,12 +552,24 @@ fn measure_what_settle_does_to_a_lagging_ribbon() {
     let dt = 1.0 / 60.0;
     let mut s = Stroke::new(spec(0.45, 0.30, 0.0), plain(), 7);
     let mut out = Vec::new();
-    s.begin(StrokePoint { pos: [100.0, 300.0], pressure: 1.0 }, &mut out);
+    s.begin(
+        StrokePoint {
+            pos: [100.0, 300.0],
+            pressure: 1.0,
+        },
+        &mut out,
+    );
     let mut x = 100.0f32;
     for _ in 0..30 {
         out.clear();
         x += 40.0;
-        s.extend(StrokePoint { pos: [x, 300.0], pressure: 1.0 }, &mut out);
+        s.extend(
+            StrokePoint {
+                pos: [x, 300.0],
+                pressure: 1.0,
+            },
+            &mut out,
+        );
         s.tick(dt, &mut out);
     }
     let fita = out.last().map_or([0.0, 0.0], |d| d.center);
@@ -525,11 +578,62 @@ fn measure_what_settle_does_to_a_lagging_ribbon() {
     out.clear();
     s.tick(dt, &mut out);
     let pos_tick = out.last().map_or(fita, |d| d.center);
-    println!("[parado] apos o tique  : {} dabs, ultimo x={:.1}", out.len(), pos_tick[0]);
+    println!(
+        "[parado] apos o tique  : {} dabs, ultimo x={:.1}",
+        out.len(),
+        pos_tick[0]
+    );
     out.clear();
     s.settle(&mut out);
     let pos_settle = out.last().map_or(pos_tick, |d| d.center);
-    println!("[parado] apos o SETTLE : {} dabs, ultimo x={:.1}", out.len(), pos_settle[0]);
-    println!("[parado] leitura: se o settle levar a tinta ao DEDO, ele desenha uma reta da fita ate");
+    println!(
+        "[parado] apos o SETTLE : {} dabs, ultimo x={:.1}",
+        out.len(),
+        pos_settle[0]
+    );
+    println!(
+        "[parado] leitura: se o settle levar a tinta ao DEDO, ele desenha uma reta da fita ate"
+    );
     println!("[parado] o cursor -- e um gesto real tem um quadro parado a cada virada.");
+}
+
+/// **Quantos fios uma fita costura, e de que tamanho?** — a pergunta que separa *"a faixa não abre"*
+/// de *"a faixa não existe"*, e ela é do MOTOR (o depósito é do tool).
+#[test]
+#[ignore = "sonda"]
+fn measure_the_ribbon_rungs() {
+    for (nome, w, ru) in [
+        ("rungs 0.0", 0.20f32, 0.0f32),
+        ("rungs 0.5", 0.20, 0.5),
+        ("rungs 1.0", 0.20, 1.0),
+        ("peso 0.45", 0.45, 0.5),
+    ] {
+        let mut sp = spec(w, 0.30, 0.0);
+        sp.radius_px = 6.0;
+        sp.ribbon_rungs = ru;
+        let mut s = Stroke::new(sp, plain(), 1);
+        let mut out = Vec::new();
+        let mut fios = Vec::new();
+        let mut total = 0usize;
+        let mut comp = 0.0f32;
+        let p = |x: f32| StrokePoint {
+            pos: [x, 300.0],
+            pressure: 1.0,
+        };
+        s.begin(p(100.0), &mut out);
+        for i in 1..=120 {
+            #[allow(clippy::cast_precision_loss)]
+            let x = 100.0 + i as f32 * 20.0;
+            s.extend(p(x), &mut out);
+            s.tick(1.0 / 60.0, &mut out);
+            s.take_threads(&mut fios);
+            for f in &fios {
+                total += 1;
+                comp += ((f[2] - f[0]).powi(2) + (f[3] - f[1]).powi(2)).sqrt();
+            }
+        }
+        #[allow(clippy::cast_precision_loss)]
+        let medio = if total == 0 { 0.0 } else { comp / total as f32 };
+        println!("[fios] {nome}: {total} fios, comprimento medio {medio:.1} px");
+    }
 }

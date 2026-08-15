@@ -70,6 +70,18 @@ impl ThreadMemory {
 pub type Thread = [f32; 4];
 
 impl Stroke {
+    /// **A PORTA por onde um fio é publicado.** Ela existe porque a Symmetry tem de ser aplicada
+    /// aqui e em nenhum outro lugar: três produtores (Sketchy, Wire e as travessas da FITA) chegam
+    /// a este canal, e uma cópia do `push_symmetric_segment` por produtor é a regra que o quarto
+    /// nasce sem — o feixe sairia sem espelho num tipo e com espelho nos outros, e nada no
+    /// compilador ligaria as duas metades.
+    ///
+    /// ⚠️ É também o que mantém a `out` PRIVADA: quem produz um fio diz *este segmento é um fio*,
+    /// nunca *empurre isto no vetor*.
+    pub(super) fn sew(&mut self, seg: Thread) {
+        crate::symmetry::push_symmetric_segment(&mut self.threads.out, seg, &self.spec.symmetry);
+    }
+
     /// Registra o centro de um dab na memória do traço e costura os fios que ele fecha.
     ///
     /// ⚠️ **A vizinhança é do TRAÇO, nunca do canvas:** a memória nasce vazia em cada
@@ -83,7 +95,12 @@ impl Stroke {
         match self.spec.line_kind {
             LineKind::Sketchy => self.sew_neighbours(p, dab),
             LineKind::Wire => self.sew_history(p, dab),
-            _ => {}
+            // ⚠️ **A FITA costura fios e NÃO lê esta memória** — as travessas dela ligam os DOIS
+            // trilhos no MESMO instante, e quem sabe onde os dois estavam é o tique
+            // ([`Stroke::sew_rungs`]), não o dab. Cair no braço vazio e empurrar o ponto faria o
+            // `pts` crescer o traço inteiro para ninguém o ler; sair aqui é o que mantém o custo da
+            // memória com quem de facto a consome.
+            _ => return,
         }
         // ⚠️ O ponto entra na memória DEPOIS de costurar — senão o dab novo seria vizinho de si
         // mesmo, e o par degenerado (`a == b`) pintaria nada consumindo um fio do orçamento.
@@ -132,11 +149,7 @@ impl Stroke {
                 if crate::jitter::next_f32(&mut self.threads.rng) > density {
                     continue;
                 }
-                crate::symmetry::push_symmetric_segment(
-                    &mut self.threads.out,
-                    [p[0], p[1], q[0], q[1]],
-                    &self.spec.symmetry,
-                );
+                self.sew([p[0], p[1], q[0], q[1]]);
             }
         }
     }
@@ -178,11 +191,7 @@ impl Stroke {
             let Some(q) = self.threads.pts.get(i) else {
                 continue;
             };
-            crate::symmetry::push_symmetric_segment(
-                &mut self.threads.out,
-                [p[0], p[1], q[0], q[1]],
-                &self.spec.symmetry,
-            );
+            self.sew([p[0], p[1], q[0], q[1]]);
         }
     }
 

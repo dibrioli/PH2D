@@ -250,6 +250,9 @@ pub const PAINTER_LINE_RIBBON_WEIGHT: NodeId = hash_node_id("painter_line.ribbon
 pub const PAINTER_LINE_RIBBON_FRICTION: NodeId = hash_node_id("painter_line.ribbon_friction");
 /// **Gravity** — o peso que faz a fita PENDER. `SetValue` → `set_ribbon_gravity_norm`.
 pub const PAINTER_LINE_RIBBON_GRAVITY: NodeId = hash_node_id("painter_line.ribbon_gravity");
+/// **Rungs** — a densidade das TRAVESSAS que fazem da fita uma FAIXA. `0` degenera na linha
+/// atrasada sozinha (o pincel de arrasto). `SetValue` → `set_ribbon_rungs_norm`.
+pub const PAINTER_LINE_RIBBON_RUNGS: NodeId = hash_node_id("painter_line.ribbon_rungs");
 /// Id de uma OPÇÃO do popover do [`PAINTER_LINE_TYPE`]. Espelho do
 /// [`painter_brush_media_option_id`].
 #[must_use]

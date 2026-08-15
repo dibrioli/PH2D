@@ -22,6 +22,7 @@ pub(crate) fn is_forwardable_brush_slider(id: NodeId) -> bool {
         || id == core_ids::PAINTER_LINE_RIBBON_WEIGHT
         || id == core_ids::PAINTER_LINE_RIBBON_FRICTION
         || id == core_ids::PAINTER_LINE_RIBBON_GRAVITY
+        || id == core_ids::PAINTER_LINE_RIBBON_RUNGS
         || id == core_ids::PAINTER_BRUSH_DASH_RATIO
         || id == core_ids::PAINTER_BRUSH_DASH_LENGTH
         || id == core_ids::PAINTER_BRUSH_INPUT_SAMPLES

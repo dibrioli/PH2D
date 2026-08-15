@@ -237,6 +237,9 @@ pub struct BrushSettings {
     pub ribbon_friction: f32,
     /// **Ribbon — Gravity**: a fração da gravidade máxima; `0` = a fita atrasa e não pende.
     pub ribbon_gravity: f32,
+    /// **Ribbon — os `Rungs`**, a densidade das travessas da FAIXA. `0` degenera na linha atrasada
+    /// sozinha; ver [`ph2d_painter_brush::BrushSpec::ribbon_rungs`].
+    pub ribbon_rungs: f32,
     /// "Sync with other tools" on/off: on = every paint tool shares these settings; off (default) = each
     /// tool independent. Drives the checkbox at the top of the brush panel.
     pub link_shared: bool,

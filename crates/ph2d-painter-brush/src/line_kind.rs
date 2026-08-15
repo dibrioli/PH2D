@@ -79,18 +79,6 @@ impl LineKind {
         }
     }
 
-    /// **Este tipo COSTURA fios?** — a porta única que o motor pergunta para decidir se guarda a
-    /// memória do traço, e o depósito para decidir se drena o canal.
-    ///
-    /// ⚠️ Ela existe porque a família tem DOIS membros e vai ter mais: enumerar `Sketchy | Wire` nos
-    /// sítios de despacho é exatamente a lista que apodrece quando entra o terceiro — a cicatriz que
-    /// o `PaintMode::smears()` deste módulo já pagou (o Composite Brush foi o terceiro, e a sessão de
-    /// smear dele nunca era encerrada).
-    #[must_use]
-    pub fn sews_threads(self) -> bool {
-        matches!(self, LineKind::Sketchy | LineKind::Wire)
-    }
-
     /// **Este tipo ARREMESSA a tinta?** — a porta única que o [`crate::stroke::Stroke::throw`]
     /// pergunta antes de deslocar o ponto onde o dab cai.
     ///
@@ -101,10 +89,14 @@ impl LineKind {
     /// `Sketchy` **e** `Wire` a jogam em **1 139,2** — escolher o hachurado dava *Speed Shapes* de
     /// brinde, 240 px além do dedo, e dobrava a contagem de dabs (334 → 688).
     ///
-    /// ⚠️ **É a `enumeração apodrece` no eixo oposto ao que o [`Self::sews_threads`] cobre:** aquele
-    /// nasceu para o dia em que entrasse o TERCEIRO costurador; este é o dia em que entrou o segundo
-    /// tipo que NÃO arremessa. Uma guarda escrita como *"todo mundo menos o neutro"* é uma lista de
-    /// um item só, e ela apodreceu na primeira wave seguinte.
+    /// ⚠️ **É a `enumeração apodrece` no eixo oposto ao que a [`crate::BrushSpec::sews_threads`]
+    /// cobre:** aquela é sobre o dia em que entra um costurador novo; esta foi o dia em que entrou o
+    /// segundo tipo que NÃO arremessa. Uma guarda escrita como *"todo mundo menos o neutro"* é uma
+    /// lista de um item só, e ela apodreceu na primeira wave seguinte.
+    ///
+    /// ⚠️ **E ele fica no ENUM porque a resposta não depende de parâmetro nenhum** — arremessar é
+    /// propriedade do tipo. A pergunta irmã (*este pincel costura?*) depende do knob daquele tipo, e
+    /// por isso mora no `BrushSpec`; ter as duas no enum foi o que deixou uma delas apodrecer.
     ///
     /// ⚠️ **O que NÃO é gateado aqui é a MEDIÇÃO da velocidade** ([`crate::stroke::Stroke::speed_px_s`]):
     /// ela é do GESTO, não de um tipo — o Sketchy a quer para o *distance-opacity* e um Splatter
@@ -485,3 +477,33 @@ pub const RIBBON_TAIL_MAX_S: f32 = 0.6;
 /// Meio pixel por quadro a 60 fps — o mesmo limiar sub-pixel que o `SETTLE_EPS_PX` do estabilizador
 /// usa, dito em velocidade porque o que decide aqui é se ainda há movimento a pintar.
 pub const RIBBON_TAIL_REST_PX_S: f32 = 30.0;
+
+/// **O espaçamento das TRAVESSAS da faixa no `Rungs = 0⁺`, em DIÂMETROS do pincel** — a ponta
+/// esparsa da pista.
+///
+/// A unidade é o diâmetro pela MESMA razão da [`SKETCHY_REACH_MAX`] e da [`WIRE_HISTORY_MAX`]: é o
+/// que torna a lei livre de escala, e um pincel do dobro do tamanho desenha a mesma faixa maior em
+/// vez de outra faixa.
+pub const RIBBON_RUNG_SPARSE_D: f32 = 2.0;
+
+/// **O espaçamento das travessas no `Rungs = 1`, em DIÂMETROS** — a ponta densa.
+///
+/// ⚠️ **O teto de densidade NÃO é de RECURSO, e a medição é que o diz:** a faixa custa `2` fios por
+/// travessa (a travessa e o segmento do trilho longe), e no ponto mais denso um traço de 312 px com
+/// pincel de raio 10 emite **~125 fios** — contra os **16 mil px de fio** que a densidade cheia do
+/// Sketchy põe no mesmo traço. O que limita é o LOOK: passado o [`RIBBON_RUNG_DUTY`] as travessas
+/// encostam umas nas outras e a faixa deixa de ler como travessas para ler como um bloco chapado.
+pub const RIBBON_RUNG_DENSE_D: f32 = 0.25;
+
+/// **Quantas larguras-de-fio um vão entre travessas tem de ter, no mínimo.**
+///
+/// ⚠️ **É um piso de APARÊNCIA com mecanismo, não um número de gosto:** uma travessa tem a
+/// espessura do fio (`BrushSpec::thread_width_px`), então um espaçamento igual à espessura é uma
+/// duty cycle de 100% — tinta contínua, e a faixa **preenche SÓLIDO**. Dois é a duty cycle de 50%,
+/// que é onde a travessa e o vão medem o mesmo e a alternância ainda é legível.
+///
+/// ⚠️ **Ele é lido em PIXELS e não em diâmetros, e a razão é o pincel PEQUENO:** a lei em diâmetros
+/// escala com o pincel e a espessura do fio **não** — num pincel de raio 2 o passo denso vale
+/// `0,25 × 4 = 1 px`, exactamente a espessura default de um fio, e a faixa chaparia. O piso é o que
+/// mantém a mesma escolha legível nos dois extremos de tamanho.
+pub const RIBBON_RUNG_DUTY: f32 = 2.0;

@@ -74,6 +74,11 @@ impl Default for BrushSpec {
             // A gravidade nasce em ZERO: uma fita que atrasa já é uma fita, e pender é a segunda
             // descoberta. Um slider cujo neutro é 0 não é controle morto — é o `jitter`.
             ribbon_gravity: 0.0,
+            // ⚠️ **As travessas nascem LIGADAS, e o mesmo argumento das duas linhas acima é quem o
+            // decide:** uma fita É uma faixa — foi essa a referência (Alchemy *Ribbon Shapes*) —, e
+            // um default em `0` daria ao artista que escolhe `Ribbon` o trilho sozinho, isto é, o
+            // pincel de arrasto sob o nome da outra feature. `0,5` é o meio da pista.
+            ribbon_rungs: 0.5,
             dash_ratio: 1.0,
             dash_samples: 20,
             jitter_unit: JitterUnit::Brush,

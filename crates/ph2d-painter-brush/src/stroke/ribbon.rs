@@ -132,7 +132,11 @@ impl Stroke {
     /// movimento, e é o que dá a segunda metade da feature de graça: solte o gesto no ar e a fita
     /// continua a chegar, porque o tique não parou.
     pub(super) fn tick_ribbon(&mut self, dt: f32, out: &mut Vec<Dab>) {
+        let a = self.ribbon_pos;
+        let fa = self.ribbon_prev_raw;
         self.step_ribbon(dt, true);
+        self.sew_rungs(a, self.ribbon_pos, fa, self.last_raw_pos);
+        self.ribbon_prev_raw = self.last_raw_pos;
         self.walk_smoothed(
             StrokePoint {
                 pos: self.ribbon_pos,
@@ -143,6 +147,67 @@ impl Stroke {
         // Um quadro parado ainda é onde o heading pode assentar (fita pesada), então as aberturas
         // seguram pelo MESMO portão do `settle` — sem isto a abertura nunca é solta.
         self.warmup_gate(out);
+    }
+
+    /// **AS TRAVESSAS** — o que faz da fita uma FAIXA em vez de uma linha atrasada.
+    ///
+    /// A faixa tem dois trilhos: o do **DEDO** e o **ATRASADO**, e a largura dela **É o atraso** —
+    /// é por isso que ela abre quando a mão acelera e fecha quando a mão trava, que é o que se vê
+    /// na saída do Alchemy. Este método costura as travessas de um quadro: o trilho da fita andou
+    /// `a → b` e o dedo andou `fa → fb`, e a travessa de fração `f` liga `lerp(a,b,f)` a
+    /// `lerp(fa,fb,f)`.
+    ///
+    /// ⚠️ **A interpolação NÃO é refinamento — é ela que impede o LEQUE.** Um quadro emite várias
+    /// travessas, e ligá-las todas ao dedo de AGORA (o `last_raw_pos`) faz um punhado de segmentos
+    /// convergir num ponto só: o leque que aparece nas cristas, onde a mão desacelera e o quadro
+    /// cobre mais arco da fita. As duas pontas têm de ser do MESMO instante, e é a fração que as
+    /// carimba nele.
+    ///
+    /// ⚠️ **A cadência é de ARCO, e é o que a torna fato do CAMINHO** — o resíduo (`ribbon_rung_accum`)
+    /// atravessa os quadros, então um mouse de 960 Hz costura a mesma faixa que um de 125 Hz. Uma
+    /// travessa por QUADRO seria o número de travessas a mudar com a taxa de quadros, e a primeira
+    /// tentativa desta wave (uma por DAB) preenchia SÓLIDO, porque um dab sai a cada ~1,2 px.
+    ///
+    /// ⚠️ **O trilho longe é desenhado por FIOS, e o de tinta por DABS — a assimetria é o desenho.**
+    /// Um segundo trilho de dabs seria uma segunda pincelada: a Symmetry o espelharia, o Spray o
+    /// multiplicaria, o impasto construiria relevo nele e a taper o afinaria — duas pinceladas de
+    /// tinta onde a marca é UMA. O fio é o primitivo certo para o ornamento, e ele já existe (é o
+    /// mesmo do Sketchy e do Wire, mesmo rasterizador, mesma tinta).
+    fn sew_rungs(&mut self, a: [f32; 2], b: [f32; 2], fa: [f32; 2], fb: [f32; 2]) {
+        if !self.spec.ribbon_band_active() {
+            return;
+        }
+        let seg = dist(a, b);
+        if !seg.is_finite() || seg <= f32::EPSILON {
+            return;
+        }
+        let step = self.spec.ribbon_rung_px();
+        // ⚠️ `is_finite() && > 0` e não `!(step > 0.0)`: o segundo é verdadeiro para `NaN`, e um
+        // passo `NaN` faz o laço abaixo nunca fechar (toda comparação com `NaN` é falsa).
+        if !(step.is_finite() && step > 0.0) {
+            return;
+        }
+        let mut traveled = 0.0;
+        loop {
+            let to_next = (step - self.ribbon_rung_accum).max(0.0);
+            if traveled + to_next > seg {
+                break;
+            }
+            traveled += to_next;
+            self.ribbon_rung_accum = 0.0;
+            let f = traveled / seg;
+            let near = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+            let far = [fa[0] + (fb[0] - fa[0]) * f, fa[1] + (fb[1] - fa[1]) * f];
+            // A travessa.
+            self.sew([near[0], near[1], far[0], far[1]]);
+            // O trilho LONGE: o segmento entre esta ponta e a anterior. Sem ele a borda de fora da
+            // faixa é uma fila de pontos (as pontas das travessas), não uma aresta.
+            if let Some(prev) = self.ribbon_rung_far {
+                self.sew([prev[0], prev[1], far[0], far[1]]);
+            }
+            self.ribbon_rung_far = Some(far);
+        }
+        self.ribbon_rung_accum += seg - traveled;
     }
 
     /// **A CAUDA** — no pen-up a mão soltou e a fita ainda tem inércia; a física corre até ela
@@ -166,15 +231,22 @@ impl Stroke {
     ///
     /// O teto de tempo existe porque um `ζ` pequeno balança por muito tempo, e um traço não pode
     /// continuar a crescer depois de o artista o ter terminado.
+    ///
+    /// ⚠️ **A cauda NÃO costura travessas, e é a mesma lei do leque.** Uma travessa liga os dois
+    /// trilhos *no mesmo instante*; no pen-up o trilho do dedo **acabou** — ele está parado onde a
+    /// caneta levantou — enquanto o da fita ainda corre. Costurar aqui ligaria dezenas de pontos da
+    /// cauda ao mesmo ponto parado, que é literalmente o leque que a interpolação de
+    /// [`Stroke::sew_rungs`] existe para não desenhar. A faixa termina onde a mão terminou; o que
+    /// sobra da cauda é o trilho de tinta sozinho.
     pub(super) fn finish_ribbon(&mut self, out: &mut Vec<Dab>) {
         let dt = 1.0 / 60.0; // o passo do relógio da cauda: um quadro nominal
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let steps = (RIBBON_TAIL_MAX_S / dt) as usize;
         for _ in 0..steps {
             self.step_ribbon(dt, false);
-            let speed =
-                (self.ribbon_vel[0] * self.ribbon_vel[0] + self.ribbon_vel[1] * self.ribbon_vel[1])
-                    .sqrt();
+            let speed = (self.ribbon_vel[0] * self.ribbon_vel[0]
+                + self.ribbon_vel[1] * self.ribbon_vel[1])
+                .sqrt();
             // `walk_smoothed` ACRESCENTA (é o `walk_space` que empurra), então a cauda inteira cai
             // no mesmo buffer que o chamador já limpou.
             self.walk_smoothed(

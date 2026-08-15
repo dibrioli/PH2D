@@ -338,7 +338,6 @@ fn the_ribbon_is_a_fact_of_the_clock_not_of_the_pointer_rate() {
     );
 }
 
-
 /// **A MÃO PARADA ASSENTA** — o piso do amortecimento é o que impede um traço de crescer para sempre.
 ///
 /// ⚠️ **O oráculo é o SILÊNCIO, não a contagem** — quantos dabs a fita deixa ao chegar depende do
@@ -644,5 +643,8 @@ fn a_weightless_ribbon_is_the_plain_stroke_to_the_byte() {
     );
     // CONTROLE: com peso ela DIFERE — senão este gate afirmaria que a fita nunca faz nada.
     let (armed, _) = straight(spec(LineKind::Ribbon, 0.45, 0.30, 0.0), 2400.0, 60);
-    assert_ne!(plain_dabs, armed, "controle: a fita armada tem de mudar a tinta");
+    assert_ne!(
+        plain_dabs, armed,
+        "controle: a fita armada tem de mudar a tinta"
+    );
 }

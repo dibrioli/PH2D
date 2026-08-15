@@ -343,7 +343,7 @@ Toda wave fecha com smoke próprio e não deixa knob morto atrás.
 | # | wave | entrega | depende de |
 |---|---|---|---|
 | **W0** | ✅ **A espinha — LANDOU** (`8b207e505` + `f4677c8cd`) | `RefMode` · `VerbProfile` · a tabela `S` lida das fontes · `default_strength`/`_accumulate`/`_falloff`/`_radius_px` **delegam** · a porta única `arm_verb_defaults` arma os **quatro**. 11 gates, 4 mutações provadas | — |
-| ~~**W1**~~ | ⛔ **BLOQUEADA — trocou de lugar com a W3** (ver §7.1) | o perfil `B` de DEFAULTS não é construível: o arquivo que os declara não está no clone | — |
+| ~~**W1**~~ | ⛔ **SEM CURA EM CÓDIGO** (trocou de lugar com a W3 — §7.1; o *porquê* medido está na **§7.0**) | o perfil `B` de DEFAULTS não é construível: ⚠️ **não é o clone** — a partir do 4.3 o Blender tirou os defaults por-ferramenta do C e os pôs num **brush asset binário**. Vira decisão de produto, não pendência | — |
 | **W1'** | **A UI, sobre o `B` de KERNEL** | o dropdown · o *apply to all* · o chip Basic/Pro — depois que a W3 der ao `B` o que declarar | W3 |
 | **W2** | **Os knobs de Pro** | as rows condicionais por tool (`show:` já existe): Hardness · Normal Radius · Plane Trim · Auto-Smooth · Front-Face · Strength Curve | W1 |
 | **W3** | **Os kernels divergentes baratos** | E5 lado do plano · E11 `normal_radius_factor` · E12 front-face contínuo · E13 `strength²` · E14 hardness · E8 direção · E9 espaço do pinch · E10 normal viva | W2 |
@@ -1797,11 +1797,15 @@ domo*) **não estaria lá**: os dois perfis são o mesmo domo.
 
 ⚠️ **Onde a palavra de facto mora é na CURVA** — o nome do tool é literal, e o
 que o separa do Draw no Blender é o preset de falloff, não o `orig_data`. E é
-exatamente aí que a §7.1 morde de novo: `BKE_brush_sculpt_reset` **continua fora
-do clone** (`grep -rn "BKE_brush_sculpt_reset" source/` devolve **vazio** hoje,
-mesmo depois de o `brush.cc` ter sido trazido), então escrever *"o Draw Sharp
-nasce com a curva Sharp"* seria inventar um número e shipá-lo com a autoridade de
-uma referência que não o declara — o que o §4 proíbe.
+exatamente aí que a §7.1 morde de novo — ⚠️ **mas NÃO pelo motivo que esta
+frase dizia.** Ela foi escrita como *"o `BKE_brush_sculpt_reset` continua fora do
+clone"*, e isso **contradiz a §7.0, escrita dois dias ANTES**: a função não está
+fora do clone, ela **deixou de existir em C** (Blender 4.3+ guarda os defaults
+por-tool num `.blend` de assets, binário — a medição inteira está lá, incluindo a
+ausência do `DNA_brush_defaults.h`). *Uma frase corrigida num parágrafo não se
+corrige sozinha no parágrafo seguinte.* A **conclusão** sobrevive intacta:
+escrever *"o Draw Sharp nasce com a curva Sharp"* seria inventar um número e
+shipá-lo com a autoridade de uma referência que não o declara — o que o §4 proíbe.
 
 ⇒ **O Draw Sharp SAI da lista de itens baratos da W6.** Ele não é caro por
 kernel; ele está **bloqueado pela mesma tabela que bloqueou a W1**, e a decisão
@@ -1917,8 +1921,8 @@ ponta a caixa arredondada **É** a distância euclidiana: a faixa saía disco.
 
 ⚠️ **O número tinha fonte, e era a fonte ERRADA.** `DNA_brush_types.h:264` diz
 `tip_roundness = 1.0` — e esse é o default do pincel **GENÉRICO**, não o desta
-tool; o que declara por-tool é o `BKE_brush_sculpt_reset`, que **não está no
-clone** (a §7.1 outra vez). Eu peguei o único número citável e deixei-o definir o
+tool; o que declarava por-tool era o `BKE_brush_sculpt_reset`, que **não existe
+mais em C** (a §7.0). Eu peguei o único número citável e deixei-o definir o
 produto — *nunca deixe o fallback definir o produto*, na forma mais literal
 possível.
 
@@ -2128,7 +2132,7 @@ um marco da própria lei, e as duas medições o põem longe de qualquer extremo
 
 ⚠️ **NÃO é citável da referência.** O `clay_strips.cc` lê `brush.plane_offset` e
 o genérico do DNA é `0.0`; quem declara o valor por-tool é o
-`BKE_brush_sculpt_reset`, **ausente do clone** — a lacuna da §7.1 que já
+`BKE_brush_sculpt_reset`, que **não existe mais em C** (§7.0) — a lacuna que já
 bloqueou a W1 e o Draw Sharp. O número é NOSSO, com a tabela ao lado (§4).
 
 #### `STRIP_DEPTH_GAIN` — o lift é forma, não força
@@ -2647,11 +2651,52 @@ em vez de prosa). O precedente é o `warp_axis` do Painter 2D: *um `pub fn` sem
 chamador não é código morto silencioso, é uma segunda resposta à espera de que
 alguém a chame.*
 
-⚠️ **PENDENTE DE SMOKE.** As perguntas de olho:
-1. **Pinch em `B` contra `S`** — arraste (não clique) e eles têm de ficar
+✅ **SMOKE OK (2026-08-15).** As três perguntas de olho, verificadas:
+1. **Pinch em `B` contra `S`** — arrastado (não clicado), eles ficam
    VISIVELMENTE diferentes: o `B` faz um vinco ao longo do traço, o `S` um funil
    radial.
 2. **Blob e Crease** — os chips `L` deles não existem mais; `B` e `S` (o Crease)
-   têm de continuar como estavam.
+   continuam como estavam.
 3. **O CONTROLE** — Grab, Snake Hook, Twist e Local Scale **mantêm** o `L`, e é
    ele que continua a alcançar além do anel, porque ali isso é a ferramenta.
+
+
+---
+
+### §7.25 — 📊 O PLACAR: o que falta, medido contra a lista do §5.1 (2026-08-15)
+
+**Waves** — 5 fechadas, 2 pela metade, 6 por abrir, 1 sem cura em código:
+
+| wave | estado |
+|---|---|
+| **W0** a espinha · **W1'** a UI · **W2** os knobs de Pro · **W3** os kernels divergentes · **W5** Kelvinlets | ✅ **fechadas** |
+| ~~**W1**~~ os defaults do `B` | ⛔ **sem cura em código** — §7.0; vira decisão de produto |
+| **W4** o Smooth que não encolhe | 🟡 **metade** — o `l-mode` (Taubin λ\|μ) landou; faltam **Slide Relax**, o **Surface Smooth como pincel próprio** e o **laplaciano por cotangentes** (que é o `L` do Inflate na matriz do §3) |
+| **W6** os dabs que não são discos | 🟡 **metade** — **Clay Strips** e **Blob** landaram; faltam **Multiplane Scrape** e **Clay Thumb**, que **reusam a moldura da faixa** (o item caro da wave já está pago) |
+| **W7** o plano MLS · **W8** Layer · **W9** Mesh Filter · **W10** Cloth · **W11** handles · **W12** a geodésica | ⬜ **por abrir** |
+
+**Ferramentas** — a lista do §5.1 tem 16 itens:
+
+| | itens |
+|---|---|
+| ✅ **feitos (2)** | Clay Strips · Blob |
+| ✅ **respondido SEM verbo novo (1)** | **Elastic Deform** — a §7.17 mediu que 3 dos 5 tipos dele são o mesmo verbo com outra família de escalas e os outros 2 já shipavam; o que faltava era o knob **Field width**. *Um sexto botão cujo conteúdo é um dropdown para verbos que a lista já tem é o item de menu morto que este plano recusa.* ⇒ **o alvo de 14 pincéis novos é de 13** |
+| ⛔ **fora, com motivo (1)** | Draw Sharp — §7.18 mediu que o que o nome promete mora na **CURVA**, e a curva de fábrica por-tool está no mesmo `.blend` binário da §7.0 ⇒ ele **é** o item da W1 |
+| ⬜ **faltam (12)** | Multiplane Scrape · Clay Thumb · Layer · Cloth · Pose · Boundary · Nudge · Thumb · Surface Smooth · Slide Relax · Mesh Filter (9 tipos) · Cloth Filter (5 tipos) |
+
+⇒ **18 verbos hoje**, contra os 16 de que a linha partiu. O placar do §10 dizia
+**32**; com o Elastic Deform respondido sem verbo e o Draw Sharp fora, o alvo
+honesto é **29** (16 + 11 pincéis + 2 filtros).
+
+⚠️ **E os quatro que valem mais que a contagem, porque não são "mais um chip":**
+o **Layer** (W8) traz um plano por-vértice novo, e com ele a lei do repo — *ao
+adicionar um plano, adicione-o ao snapshot de undo no MESMO commit* · o **Mesh
+Filter** (W9) é o mais barato da lista inteira, porque o precedente do *Filter
+Layer* do Painter diz que **não há kernel novo** (só `Sphere` e `Random` o são) ·
+o **Cloth** (W10) é o único que traz um SOLVER, com cadência e undo próprios · e
+a **geodésica** (W12) troca o falloff da família inteira de uma vez.
+
+**Se for para escolher onde parar** — a §7.1 já respondeu e a resposta continua
+de pé: W0-W3 entregam o **pedido inteiro** (os três modos, o Basic/Pro, e o app
+deixa de esculpir mal). O que corre agora é a metade que muda **o que o app
+consegue fazer**.

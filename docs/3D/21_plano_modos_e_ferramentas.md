@@ -1504,6 +1504,87 @@ vértice tem `t ≤ 0`) ⇒ quem protege o gesto é o volume do pinch, não ela.
 aceitável** — um veredito calibrado para uma colocação que deixou de existir.
 Corrigido no mesmo commit, com o mecanismo escrito ao lado.
 
+### §7.14 — 📐 O QUE O `l-mode` CUSTA, e as três alavancas que a medição MATOU (2026-08-13)
+
+> *"o resultado ficou muito bom do modo L mas com um pouco de queda de FPS.
+> Avalie se pode otimizar sem perder a qualidade"* — Enio.
+
+**Isto é MEDIÇÃO, não wave: nenhum byte do produto mudou.** As duas sondas são
+`ph2d-sculpt3d/tests/measure_field_cost.rs` e a
+`measure_what_the_refresh_region_is_made_of` (unit, na `ph2d-mesh` — os campos
+do `RegionScratch` são `pub(crate)`, e de fora a decomposição mediria o laço da
+SONDA em vez do laço do produto).
+
+#### O CONTROLE primeiro: a queda não é da §7.13
+
+`rim_landing` custa **2,14 ns** contra **15,58 ns** de uma avaliação `grab` —
+e ⚠️ os dois números carregam o mesmo overhead de closure boxed, então o da
+janela é **cota superior**. Sobre a pegada inteira, a aterrissagem é **~2 % do
+dab**. *A wave que o Enio aprovou não é a que ele está pagando.*
+
+#### A malha certa, e por que a primeira tabela mentia
+
+⚠️ **O 1º corte da sonda mediu numa `sphere_with_triangles(1M)` — uma
+UV-SPHERE**, com vértices amontoados nos polos, e tomava o **MAX** sobre os
+dabs. Ali a pegada cresce **linearmente** com o raio (3,00× para 3× o raio),
+porque um disco perto do polo engole anéis inteiros. A cena do módulo abre a
+`sculpt_sphere` — cubo subdividido, **196 608 triângulos, densidade
+quase-uniforme** —, e ali a lei é `r²`:
+
+| raio | pegada `s` | pegada `l` | razão | dab `s` | dab `l` | razão |
+|---|---|---|---|---|---|---|
+| 2 % | 121 | 661 | 5,46× | 0,013 ms | 0,054 ms | 4,22× |
+| 10 % | 1 489 | 8 995 | 6,04× | 0,108 ms | 1,047 ms | 9,67× |
+| 30 % | 8 995 | 76 861 | 8,54× | 1,027 ms | 6,406 ms | 6,24× |
+
+**`S(30 %) = L(10 %) = 8 995`** — a porta `query_radius` a funcionar, e o
+controle interno da tabela. *Uma fixture com a densidade errada responde a outra
+pergunta com confiança.*
+
+#### De que o dab do `l-mode` é feito (raio 30 %)
+
+| parte | ms | % | natureza |
+|---|---|---|---|
+| normais + curvatura | 3,166 | **49 %** | já `rayon` |
+| o laço de vértices | 2,649 | **41 %** | **SERIAL** |
+| a consulta do octree | 0,591 | 9 % | — |
+
+#### ⛔ Três alavancas MEDIDAS e mortas
+
+1. **A família de escalas: zero.** `Tri` custa **1,00×** o `Bi` (62,30 contra
+   62,43 ms em 4 M avaliações) — o 3º tap é grátis, o kernel é limitado por
+   LATÊNCIA e não por vazão. Só o `Mono` é barato (4,41×), e ele é a família
+   cujo campo longe **não cancela**: é o look, não o custo.
+2. **Paralelizar a descoberta do `refresh_region`: ≤ 5 % do dab.** Ela é
+   **3 % / 6 % / 10 %** do passe (os outros 90-97 % são as normais e a
+   curvatura, que já são `rayon`). ⚠️ **E isto REFUTA um número que o
+   `CLAUDE.md` §5 carrega da W1** (*"o custo real é DESCOBRIR A VIZINHANÇA,
+   11,5 ms = 88 % do refresh"*): aquilo era do `apply_dab`, numa UV-sphere de
+   5 M, antes de o refresh paralelizar as duas metades. *A nota sobreviveu ao
+   fato.*
+3. **Pular a curvatura: muda a APARÊNCIA.** Ela parecia desperdício — a
+   `ph2d-sculpt3d` não a lê em lugar nenhum —, mas quem a lê é o **RENDERER**,
+   todo quadro (`pipeline_upload`: cavidade e sombreado). Fora da mesa.
+
+#### ✅ A alavanca que sobra, com o teto
+
+**O laço de vértices do `SculptStroke::dab` é 41 % e roda em UM núcleo de
+trinta e dois.** As escritas são disjuntas (cada vértice lê `pre` + vizinhança e
+escreve a própria posição) — a condição do ADR-0109, e o `rayon` na
+`ph2d-mesh` já é sancionado pelo ADR-0150. Teto: dab **6,4 → ~4,0 ms (1,6×)**.
+⚠️ **Byte-identidade tem de ser PROVADA por gate, não assumida:** o `fit_plane`
+e o banco do `Grip` acumulam em ponto flutuante, e ordem de soma entre threads
+move bits — o corte tem de deixar a acumulação fora do laço paralelo.
+
+#### ⚠️ E o que NÃO foi medido, nomeado em vez de estimado
+
+Um dab roda **por EVENTO de ponteiro**, e o `sculpt_at` faz três coisas por
+evento: `pick_active` (raycast), `refine_for_dab` (dyntopo) e o dab. **Só o dab
+está medido.** Os dois primeiros são **independentes do modo** (o `refine` usa
+`brush.radius`, não o `query_radius`), então a razão `l/s` que o report descreve
+está atribuída — mas o orçamento por QUADRO precisa dos outros dois, e quantos
+eventos o shell entrega por quadro é o número que falta.
+
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 
 **Os defaults de fábrica do Blender não estão no clone.** Eles vivem em

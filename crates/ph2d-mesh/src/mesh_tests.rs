@@ -516,3 +516,110 @@ fn recentering_a_centred_mesh_is_a_no_op() {
     assert_eq!(m.recenter(), [0.0, 0.0, 0.0]);
     assert_eq!(m.positions(), before.as_slice());
 }
+
+/// **DE QUE O `refresh_region` É FEITO** — a sonda que o report de FPS do
+/// `l-mode` pede (Enio, 2026-08-13).
+///
+/// O dab elástico gasta **49-64% do tempo aqui** (medido em
+/// `ph2d-sculpt3d/tests/measure_field_cost.rs`, na malha que o módulo abre), e
+/// esta função tem TRÊS metades com naturezas diferentes: a **descoberta** (dois
+/// passes SERIAIS de dedup, `vértice → faces → vértices`), as **normais**
+/// (`rayon`, já paralelas) e a **curvatura** (idem). Só um número separa
+/// *"paralelizar a descoberta vale a pena"* de *"o paralelo já domina"*.
+///
+/// ⚠️ **Ela mora AQUI, e não na sonda da `ph2d-sculpt3d`, porque os campos do
+/// [`RegionScratch`] são `pub(crate)`** — de fora, a decomposição exigiria ou
+/// re-implementar a descoberta (medindo a MINHA e não a do produto) ou abrir a
+/// estrutura só para medir.
+///
+/// ```text
+/// cargo test -p ph2d-mesh --release refresh_region_is_made_of -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medição; roda sob demanda com --ignored --nocapture"]
+fn measure_what_the_refresh_region_is_made_of() {
+    use std::time::Instant;
+
+    let median = |mut v: Vec<f64>| {
+        v.remove(0);
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+
+    // A malha do PRODUTO — a que a cena de escultura abre.
+    let mut mesh = shapes::sculpt_sphere(1.0);
+    let mut q = QueryScratch::default();
+    let mut region = RegionScratch::default();
+    let mut hits = Vec::new();
+    let n = mesh.vert_count();
+
+    println!("\n=== de que o refresh_region é feito ({n} vertices) ===\n");
+    println!(
+        "{:>8} {:>9} {:>9} {:>10} {:>10} {:>10} {:>8}",
+        "raio", "pegada", "regiao", "total ms", "descoberta", "normais+k", "desc %"
+    );
+
+    for frac in [0.02f32, 0.10, 0.30] {
+        let radius = mesh.bounds().longest_edge() * frac;
+        let centers: Vec<[f32; 3]> = (0..12).map(|i| mesh.positions()[(i * 7919) % n]).collect();
+
+        let mut total = Vec::new();
+        let mut discovery = Vec::new();
+        let mut region_size = 0usize;
+        let mut footprint = 0usize;
+
+        for c in &centers {
+            mesh.verts_in_sphere(*c, radius, &mut q, &mut hits);
+            footprint = footprint.max(hits.len());
+
+            // (a) o passe COMPLETO.
+            let t = Instant::now();
+            mesh.refresh_region(&hits, &mut region);
+            total.push(t.elapsed().as_secs_f64() * 1e3);
+            region_size = region_size.max(region.verts.len());
+
+            // (b) só a DESCOBERTA — os dois passes seriais de dedup, verbatim
+            // como o produto os escreve. Não é re-implementação: é o mesmo
+            // corpo, isolado, e por isso ele fica ao lado dele em `mesh.rs`.
+            let t = Instant::now();
+            region.reset(mesh.faces.len(), mesh.positions.len());
+            region.faces.clear();
+            for &v in &hits {
+                for &fi in mesh.adjacency.vert_faces.neighbours(v as usize) {
+                    if !region.face_seen[fi as usize] {
+                        region.face_seen[fi as usize] = true;
+                        region.faces.push(fi);
+                    }
+                }
+            }
+            region.verts.clear();
+            for &fi in &region.faces {
+                for &v in mesh.faces[fi as usize].verts() {
+                    if !region.vert_seen[v as usize] {
+                        region.vert_seen[v as usize] = true;
+                        region.verts.push(v);
+                    }
+                }
+            }
+            discovery.push(t.elapsed().as_secs_f64() * 1e3);
+        }
+
+        let tot = median(total);
+        let disc = median(discovery);
+        println!(
+            "{:>7.0}% {:>9} {:>9} {:>10.3} {:>10.3} {:>10.3} {:>7.0}%",
+            frac * 100.0,
+            footprint,
+            region_size,
+            tot,
+            disc,
+            (tot - disc).max(0.0),
+            100.0 * disc / tot
+        );
+    }
+
+    println!(
+        "\n⚠️  A descoberta é SERIAL; as normais e a curvatura já são `rayon`.\n\
+           A fração acima é o TETO do que paralelizá-la pode devolver."
+    );
+}

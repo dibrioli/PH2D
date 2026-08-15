@@ -34,11 +34,6 @@ use ph2d_fbm::{NoiseType, Spec};
 /// 8 is past the point of visible return (each octave halves the feature size);
 /// the WGSL loop guards on the same bound.
 pub(crate) const MAX_OCTAVES: u32 = 8;
-/// Lacunarity — the frequency multiplier per octave. Fixed at 2 (the near-
-/// universal standard: Blender/Houdini/Cavalry all default here). Exposing it is
-/// a rare tweak that would widen the param surface for little gain; named in
-/// doc 69 as a deliberate limit, not an oversight.
-const LACUNARITY: f32 = 2.0;
 
 /// **Que ruído de base a lei soma** — o que o artista vê mudar de DESENHO.
 ///
@@ -292,25 +287,34 @@ pub(crate) fn base(kernel: Kernel, feature: CellFeature, jitter: f32, x: f32, y:
     }
 }
 
-/// A soma fractal deste nó: `octaves` camadas do kernel escolhido, cada uma ao
-/// dobro da frequência e a `roughness×` da amplitude da anterior, **normalizada
-/// pela soma dos pesos** (o alcance não cresce quando se acrescenta detalhe).
+/// A soma fractal deste nó: `octaves` camadas do kernel escolhido, cada uma a
+/// `lacunarity×` a frequência e a `roughness×` a amplitude da anterior,
+/// **normalizada pela soma dos pesos** (o alcance não cresce quando se
+/// acrescenta detalhe).
 ///
 /// ⚠️ **A LEI vem da folha [`ph2d_fbm`] e o CLAMP das oitavas fica aqui.** A
 /// folha faz `octaves.max(1)` e **não** tem tecto: um param `f32` não confiável
 /// dirigiria o laço. O tecto é deste nó (é ele que tem o gémeo em WGSL com o
 /// mesmo `8` cravado), e é por isso que a adopção da folha não pode ser uma
 /// chamada nua.
+///
+/// ⚠️ **A `lacunarity` era a const `2.0` deste arquivo e virou param** (doc 89
+/// folha 15). A troca é **byte-idêntica em `2.0`** por aritmética e não por
+/// promessa: a folha já a recebia pelo `Spec`, então o que muda é de ONDE o
+/// número vem, nunca a multiplicação — e a folha documenta que escalar por uma
+/// potência de dois não arredonda. ⚠️ E ela é **provadamente INERTE em uma
+/// oitava**: o `px *= lacunarity` do laço acontece DEPOIS da única amostra.
 pub(crate) fn fbm_2d(
     x: f32,
     y: f32,
     octaves: u32,
+    lacunarity: f32,
     roughness: f32,
     base_fn: impl Fn(f32, f32) -> f32,
 ) -> f32 {
     let spec = Spec {
         octaves: octaves.clamp(1, MAX_OCTAVES),
-        lacunarity: LACUNARITY,
+        lacunarity,
         roughness,
         ty: NoiseType::Fbm,
     };

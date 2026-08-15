@@ -26,19 +26,43 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
         // num valor so -- sem posicao nao ha espaco a amostrar, e a queda e o\n\
         // indice, como na CPU.\n\
         let vn_world = i32(vn_round(params.space)) == 1 && HAS_P;\n\
-        var vn_x = params.playhead * params.speed;\n\
-        var vn_y = f32(i) * params.frequency + params.seed;\n\
+        // A COSTURA DO LACO -- a transcricao de `ph2d_fbm::loop_times`. O tempo\n\
+        // WRAPA antes de entrar no campo (misturar campo(t) com campo(t-L) nao\n\
+        // fecha: sao campos diferentes nas duas pontas) e o peso e smoothstep\n\
+        // (com peso linear o valor fecha e a DERIVADA salta na costura).\n\
+        var vn_ta = params.playhead;\n\
+        var vn_tb = vn_ta;\n\
+        var vn_w = 0.0;\n\
+        if (params.loop_period > 0.0) {\n\
+        \x20   let vn_u0 = params.playhead / params.loop_period;\n\
+        \x20   let vn_u = vn_u0 - floor(vn_u0);\n\
+        \x20   vn_ta = vn_u * params.loop_period;\n\
+        \x20   vn_tb = vn_ta - params.loop_period;\n\
+        \x20   vn_w = vn_u * vn_u * (3.0 - 2.0 * vn_u);\n\
+        }\n\
+        // O eixo do reticulado: a fila ou o espaco, mais o PAN (o `seed` feito\n\
+        // continuo -- a mesma regua, que e' por isso que ele soma ao lado dele).\n\
+        var vn_base_x = params.pan_x;\n\
+        var vn_y = f32(i) * params.frequency + params.seed + params.pan_y;\n\
         if (vn_world) {\n\
         \x20   let vn_p = read_P(i);\n\
-        \x20   vn_x = vn_p.x * params.frequency + params.playhead * params.speed;\n\
-        \x20   vn_y = vn_p.y * params.frequency + params.seed;\n\
+        \x20   vn_base_x = vn_p.x * params.frequency + params.pan_x;\n\
+        \x20   vn_y = vn_p.y * params.frequency + params.seed + params.pan_y;\n\
         }\n\
         // O CATALOGO de kernels (doc 89 folha 15): 0 Value (o que sempre\n\
         // shipou) - 1 Perlin - 2 Cellular. Um indice fora da lista cai no Value,\n\
         // como na CPU.\n\
         let vn_kern = i32(vn_round(params.kernel));\n\
         let vn_feat = i32(vn_round(params.feature));\n\
-        let vn_n = vn_fbm(vn_x, vn_y, vn_oct, params.roughness, vn_kern, vn_feat, params.jitter);\n\
+        let vn_a = vn_fbm(vn_base_x + vn_ta * params.speed, vn_y, vn_oct,\n\
+        \x20   params.roughness, vn_kern, vn_feat, params.jitter, params.lacunarity);\n\
+        var vn_n = vn_a;\n\
+        // `w == 0` e o caminho de sempre: a segunda amostra nem e' avaliada.\n\
+        if (vn_w != 0.0) {\n\
+        \x20   let vn_b = vn_fbm(vn_base_x + vn_tb * params.speed, vn_y, vn_oct,\n\
+        \x20       params.roughness, vn_kern, vn_feat, params.jitter, params.lacunarity);\n\
+        \x20   vn_n = vn_a + (vn_b - vn_a) * vn_w;\n\
+        }\n\
         write_v(i, vn_n * params.amplitude + params.offset);\n",
     wgsl_lib: "\
         fn vn_round(x: f32) -> f32 {\n\
@@ -141,7 +165,8 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
             if (kern == 2) { return vn_cell(x, y, feature, jitter); }\n\
             return vn_value_noise(x, y);\n\
         }\n\
-        fn vn_fbm(x: f32, y: f32, oct: i32, rough: f32, kern: i32, feature: i32, jitter: f32) -> f32 {\n\
+        fn vn_fbm(x: f32, y: f32, oct: i32, rough: f32, kern: i32, feature: i32,\n\
+        \x20   jitter: f32, lac: f32) -> f32 {\n\
             // O gemeo do `ph2d_fbm::eval`: ganho clampado, a COORDENADA escalada\n\
             // por multiplicacao repetida (com lacunarity 2 nao arredonda), e a\n\
             // normalizacao pela soma dos pesos.\n\
@@ -155,8 +180,8 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
             \x20   sum = sum + amp * vn_base(kern, feature, jitter, px, py);\n\
             \x20   total = total + amp;\n\
             \x20   amp = amp * gain;\n\
-            \x20   px = px * 2.0;\n\
-            \x20   py = py * 2.0;\n\
+            \x20   px = px * lac;\n\
+            \x20   py = py * lac;\n\
             }\n\
             return sum / total;\n\
         }\n",
@@ -190,6 +215,13 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
         "kernel",
         "feature",
         "jitter",
+        // ⚠️ Esta lista NÃO é derivada do manifesto: um param novo compila, coza na
+        // CPU, e o device **recusa o shader** (`invalid field accessor`). É falha
+        // alta e não silêncio, mas o sítio esquece-se — a lição do `motion.boids`.
+        "lacunarity",
+        "loop_period",
+        "pan_x",
+        "pan_y",
     ],
     count_law: Some(noise_count),
     variant_by_param: None,

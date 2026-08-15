@@ -98,9 +98,41 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "phase_stagger",
             default: 0.0,
         },
+        // ⚠️ **Apendados**: a RÉGUA do mesmo número. `0` = Seconds, o nó que
+        // sempre shipou. Ver [`seconds_per_cycle`].
+        ParamSpec {
+            name: "time_mode",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "bpm",
+            default: 120.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// **Segundos por ciclo, na régua que o artista escolheu** (`time_mode`: `0`
+/// segundos, `1` BPM) — a porta única, e a razão de ela existir.
+///
+/// ⚠️ **NÃO é um segundo controlo de velocidade: é a UNIDADE do mesmo número**, a
+/// família do px/m da Wave A. O irmão `motion.oscillator` já tem exactamente este
+/// par (`time_mode` + `bpm`, doc 88) e escreve-o na régua DELE — ele fala
+/// `frequency` (Hz), então converte `bpm/60`; este fala `period` (segundos), então
+/// converte `60/bpm`. **São recíprocos, e é isso que os torna a mesma grandeza:**
+/// 120 BPM é 2 ciclos por segundo lá e meio segundo por ciclo aqui, e o gate
+/// `bpm_is_the_same_ruler_the_oscillator_uses` pina o número que os liga.
+///
+/// ⚠️ **O piso é o `MIN_PERIOD` que o nó já tinha**, e não um `MIN_BPM` novo: um
+/// segundo guarda seria um segundo lugar onde a mesma degenerescência é decidida.
+/// Um BPM zero dá `60/0 = inf`, que **não é NaN** — `t/inf` é `0`, a fase congela
+/// e a saída fica finita; um BPM negativo cai no piso e é a onda mais rápida que
+/// o nó representa. Nenhum dos dois produz um valor não-finito, que é o que o
+/// gate afirma.
+fn seconds_per_cycle(mode: f32, period: f32, bpm: f32) -> f32 {
+    let s = if mode >= 0.5 { 60.0 / bpm } else { period };
+    s.max(MIN_PERIOD)
+}
 
 /// GPU compute kernel (ADR-0126) — the WGSL port of [`wave::waveform`], element
 /// for element.
@@ -119,7 +151,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 /// takes the same `MIN_PERIOD` floor as the CPU — a zero period is a divide.
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
-        let lfo_period = max(params.period, 1e-3);\n\
+        // A REGUA do mesmo numero (`time_mode`: 0 segundos, 1 BPM) -- o gemeo de\n\
+        // `seconds_per_cycle`. O piso e' o MIN_PERIOD que ja' existia: um BPM zero\n\
+        // da' `inf`, e `t/inf` e' 0 (fase congelada, valor finito), nao NaN.\n\
+        var lfo_sec = params.period;\n\
+        if (params.time_mode >= 0.5) { lfo_sec = 60.0 / params.bpm; }\n\
+        let lfo_period = max(lfo_sec, 1e-3);\n\
         let lfo_phase = params.playhead / lfo_period + params.phase\n\
         \x20   + f32(i) * params.phase_stagger;\n\
         let lfo_v = lfo_wave(i32(lfo_round(params.wave)), lfo_phase)\n\
@@ -171,6 +208,10 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "offset",
         "phase",
         "phase_stagger",
+        // ⚠️ Esta lista não é derivada do manifesto: um param novo compila, coza na
+        // CPU, e o device recusa o shader (`invalid field accessor`).
+        "time_mode",
+        "bpm",
     ],
     count_law: Some(lfo_count),
     variant_by_param: None,
@@ -199,7 +240,11 @@ impl NodeOp for ValueLfo {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let wave = ctx.param("wave").round() as i32;
-        let period = ctx.param("period").max(MIN_PERIOD);
+        let period = seconds_per_cycle(
+            ctx.param("time_mode"),
+            ctx.param("period"),
+            ctx.param("bpm"),
+        );
         let amplitude = ctx.param("amplitude");
         let offset = ctx.param("offset");
         let phase0 = ctx.param("phase");
@@ -234,10 +279,30 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGate, ParamUiHint, ParamWidget};
+
+/// **Só a régua escolhida aparece.**
+///
+/// `period` e `bpm` são o MESMO número em duas unidades, então mostrar os dois
+/// seria pior que um botão morto: dois números na tela que **discordam entre si**
+/// sobre a mesma grandeza, sem nada dizendo qual manda. É verbatim a decisão que o
+/// irmão `motion.oscillator` tomou para o par `frequency`/`bpm`.
+static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: "period",
+        when: "time_mode",
+        values: &[0],
+    },
+    ParamGate {
+        param: "bpm",
+        when: "time_mode",
+        values: &[1],
+    },
+];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
@@ -288,6 +353,28 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 2.0,
         step: 0.02,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "time_mode",
+        label: "Time Mode",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Seconds", "BPM"],
+        },
+    },
+    // A faixa de um BPM é a de uma música, não a de um período: 20 é um *largo*
+    // muito lento e 300 passa o topo de qualquer género. É a mesma faixa do irmão
+    // `motion.oscillator`, e é a mesma pelo mesmo motivo — uma faixa 0,05..8 aqui
+    // (a do `period`) faria o slider inteiro caber entre 0 e 8 batidas por minuto.
+    ParamUiHint {
+        param: "bpm",
+        label: "BPM",
+        min: 20.0,
+        max: 300.0,
+        step: 1.0,
         widget: ParamWidget::Slider,
     },
 ];
@@ -428,6 +515,91 @@ mod tests {
     fn a_zero_period_never_divides_by_zero() {
         let v = lfo_at(1.0, false, |g, lfo| g.set_param(lfo, "period", 0.0));
         assert!(v[0].is_finite(), "clamped period keeps the value finite");
+    }
+
+    /// **A régua BPM é a mesma grandeza noutra unidade** — e o número que a prova é
+    /// o que liga este nó ao irmão `motion.oscillator`.
+    ///
+    /// Ele fala Hz e converte `bpm/60`; este fala segundos-por-ciclo e converte
+    /// `60/bpm`. **120 BPM ⇒ 2 ciclos/s lá ⇒ 0,5 s por ciclo aqui**, e os dois são
+    /// recíprocos exactos — é isso que torna a palavra "BPM" a mesma palavra nos
+    /// dois nós em vez de duas convenções que se parecem.
+    ///
+    /// ⚠️ O gate vive AQUI e não num teste cruzado: uma crate-nó não pode depender
+    /// de outra crate-nó (drop-crate, ADR-0075), então o que se pina é o número, e
+    /// o doc nomeia o irmão.
+    #[test]
+    fn bpm_is_the_same_ruler_the_oscillator_uses() {
+        // A conversão, isolada da onda.
+        assert_eq!(seconds_per_cycle(1.0, 999.0, 120.0), 0.5, "120 BPM = 0,5 s");
+        assert_eq!(seconds_per_cycle(1.0, 999.0, 60.0), 1.0, "60 BPM = 1 s");
+        // E o recíproco do irmão: 120 BPM = 2 ciclos por segundo.
+        assert_eq!(1.0 / seconds_per_cycle(1.0, 999.0, 120.0), 120.0 / 60.0);
+        // ⚠️ CONTROLE: em Seconds o `bpm` é INERTE — sem isto, um modo que
+        // ignorasse o `time_mode` e lesse sempre o BPM passaria nas linhas acima.
+        assert_eq!(
+            seconds_per_cycle(0.0, 0.25, 999.0),
+            0.25,
+            "Seconds ignora o BPM"
+        );
+    }
+
+    /// **O default é o mundo anterior, ao bit** — a régua nova não move um valor
+    /// enquanto ninguém a escolhe.
+    ///
+    /// O oráculo é a expressão que SHIPAVA, escrita à mão: chamar
+    /// `seconds_per_cycle` para computar o que se espera dela seria o gate
+    /// sempre-verde que este repo já documentou três vezes.
+    #[test]
+    fn seconds_is_byte_identical_to_the_world_before_the_ruler() {
+        for period in [0.05f32, 0.25, 1.0, 2.5, 8.0, 0.0, -3.0] {
+            let want = period.max(MIN_PERIOD);
+            let got = seconds_per_cycle(0.0, period, 120.0);
+            assert_eq!(got.to_bits(), want.to_bits(), "period {period}");
+        }
+        // E pelo cook, no caminho real: o valor de sempre com os params novos nos
+        // defaults do manifesto.
+        let v = lfo_at(0.5, false, |g, lfo| {
+            g.set_param(lfo, "period", 2.0);
+            g.set_param(lfo, "amplitude", 3.0);
+        });
+        assert_eq!(v, vec![3.0], "quarto de período → pico, como antes");
+    }
+
+    /// **Um BPM degenerado nunca produz um valor não-finito.** O irmão deste gate
+    /// é `a_zero_period_never_divides_by_zero`, e o mecanismo é OUTRO: ali o
+    /// divisor é o param, aqui o param é o dividendo — `60/0` é `inf`, e o que
+    /// tem de ser provado é que `t/inf` sai finito em vez de NaN.
+    #[test]
+    fn a_degenerate_bpm_never_produces_a_non_finite_value() {
+        for bpm in [0.0f32, -1.0, -1e30, 1e30] {
+            let v = lfo_at(3.25, false, |g, lfo| {
+                g.set_param(lfo, "time_mode", 1.0);
+                g.set_param(lfo, "bpm", bpm);
+            });
+            assert!(v[0].is_finite(), "bpm {bpm} → {v:?}");
+        }
+        // E o caso ZERO é a fase CONGELADA, não uma onda: o mesmo valor em dois
+        // instantes distintos.
+        let frozen = |t: f64| {
+            lfo_at(t, false, |g, lfo| {
+                g.set_param(lfo, "time_mode", 1.0);
+                g.set_param(lfo, "bpm", 0.0);
+            })
+        };
+        assert_eq!(frozen(0.0), frozen(9.75), "bpm 0 congela a fase");
+    }
+
+    /// **A régua BPM anda o relógio** — o modo não é só uma etiqueta.
+    #[test]
+    fn the_bpm_ruler_drives_the_wave() {
+        // 120 BPM = 0,5 s por ciclo ⇒ em t = 0,125 s a fase é ¼ ⇒ o pico.
+        let v = lfo_at(0.125, false, |g, lfo| {
+            g.set_param(lfo, "time_mode", 1.0);
+            g.set_param(lfo, "bpm", 120.0);
+            g.set_param(lfo, "amplitude", 3.0);
+        });
+        assert_eq!(v, vec![3.0], "120 BPM põe o pico em t = 1/8 s");
     }
 
     #[test]

@@ -23,7 +23,10 @@ fn fbm_2d_frozen(x: f32, y: f32, octaves: u32, roughness: f32) -> f32 {
         sum += amp * value_noise_2d(x * freq, y * freq);
         norm += amp;
         amp *= roughness;
-        freq *= LACUNARITY;
+        // ⚠️ O `2.0` era a const `LACUNARITY` deste crate, que a wave do grupo B
+        // promoveu a param. Aqui ele fica LITERAL de propósito: este é o código
+        // que SHIPAVA, e um oráculo que lê o param sob teste não é oráculo.
+        freq *= 2.0;
     }
     sum / norm.max(MIN_NORM)
 }
@@ -49,7 +52,7 @@ fn adopting_the_fractal_law_leaf_is_byte_identical() {
         for oct in 1..=MAX_OCTAVES {
             for r in [0.0f32, 0.25, 0.5, 0.9, 1.0] {
                 assert_eq!(
-                    fbm_2d(x, y, oct, r, val).to_bits(),
+                    fbm_2d(x, y, oct, 2.0, r, val).to_bits(),
                     fbm_2d_frozen(x, y, oct, r).to_bits(),
                     "oct {oct} rough {r} at ({x}, {y})"
                 );
@@ -63,10 +66,18 @@ fn adopting_the_fractal_law_leaf_is_byte_identical() {
 /// laço. FALSIFICADO por uma chamada nua à folha.
 #[test]
 fn a_wild_octave_param_cannot_unbound_the_loop() {
-    let big = fbm_2d(3.5, 1.2, 999, 0.5, val);
-    assert_eq!(big, fbm_2d(3.5, 1.2, MAX_OCTAVES, 0.5, val), "clamps down");
-    let zero = fbm_2d(3.5, 1.2, 0, 0.5, val);
-    assert_eq!(zero, fbm_2d(3.5, 1.2, 1, 0.5, val), "0 octaves clamps up");
+    let big = fbm_2d(3.5, 1.2, 999, 2.0, 0.5, val);
+    assert_eq!(
+        big,
+        fbm_2d(3.5, 1.2, MAX_OCTAVES, 2.0, 0.5, val),
+        "clamps down"
+    );
+    let zero = fbm_2d(3.5, 1.2, 0, 2.0, 0.5, val);
+    assert_eq!(
+        zero,
+        fbm_2d(3.5, 1.2, 1, 2.0, 0.5, val),
+        "0 octaves clamps up"
+    );
 }
 
 #[test]
@@ -75,8 +86,8 @@ fn one_octave_fbm_is_the_bare_value_noise() {
     // single `motion.wiggle` sample reads.
     for k in 0..200 {
         let (x, y) = (k as f32 * 0.137, k as f32 * 0.311);
-        assert_eq!(fbm_2d(x, y, 1, 0.5, val), value_noise_2d(x, y));
-        assert_eq!(fbm_2d(x, y, 1, 0.9, val), value_noise_2d(x, y));
+        assert_eq!(fbm_2d(x, y, 1, 2.0, 0.5, val), value_noise_2d(x, y));
+        assert_eq!(fbm_2d(x, y, 1, 2.0, 0.9, val), value_noise_2d(x, y));
     }
 }
 
@@ -110,13 +121,13 @@ fn every_kernel_is_bounded_and_deterministic() {
                         let x = cx as f32 + (sub % 3) as f32 / 3.0;
                         let y = cy as f32 + (sub / 3) as f32 / 3.0;
                         for oct in [1u32, MAX_OCTAVES] {
-                            let n = fbm_2d(x, y, oct, 0.5, f);
+                            let n = fbm_2d(x, y, oct, 2.0, 0.5, f);
                             worst = worst.max(n.abs());
                             assert!(
                                 n.abs() <= bound,
                                 "{kernel:?}/{feature:?} out of range: {n} (oct {oct})"
                             );
-                            assert_eq!(fbm_2d(x, y, oct, 0.5, f), n, "deterministic");
+                            assert_eq!(fbm_2d(x, y, oct, 2.0, 0.5, f), n, "deterministic");
                         }
                     }
                 }
@@ -134,7 +145,7 @@ fn every_kernel_is_bounded_and_deterministic() {
 #[test]
 fn adjacent_instances_decorrelate_and_zero_roughness_is_one_octave() {
     assert_ne!(value_noise_2d(3.5, 0.0), value_noise_2d(3.5, 1.0));
-    assert_eq!(fbm_2d(2.5, 4.0, 4, 0.0, val), value_noise_2d(2.5, 4.0));
+    assert_eq!(fbm_2d(2.5, 4.0, 4, 2.0, 0.0, val), value_noise_2d(2.5, 4.0));
 }
 
 /// **O Perlin não tem o padrão de grade que o Value tem** — é o que o kernel
@@ -490,5 +501,64 @@ fn measure_the_raw_cellular_distribution() {
                 sum / n as f64
             );
         }
+    }
+}
+
+/// **Onde a lacunarity deixa de resolver** — a medição que escolhe o
+/// `ParamHardMax` do param, em vez de um palpite "por segurança" (§0).
+///
+/// A oitava `k` amostra em `x · lacunarityᵏ`, então com o tecto de 8 oitavas o
+/// topo lê em `x · lac⁷`. Quando esse ponto passa do último inteiro que um `f32`
+/// resolve (2²⁴), duas células vizinhas do reticulado colapsam na mesma e a
+/// oitava **deixa de contribuir**: o controlo deixa de controlar, que é onde o
+/// disfuncional começa.
+///
+/// Rodar: `cargo test -p ph2d-node-value-noise measure_where_lacunarity -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn measure_where_lacunarity_stops_resolving() {
+    // A coordenada de uma cena real: `i·frequency + seed` com a frequency default
+    // e algumas dezenas de instâncias cai em 0..~5; uma grade grande com a
+    // frequency no tecto (4) chega a ~10³. As duas colunas mostram que o número é
+    // função da COORDENADA, e é por isso que ele é reportado, não derivado.
+    // A coordenada de uma cena real: `i·frequency + seed` com a frequency default
+    // e algumas dezenas de instâncias cai em 0..~5; uma grade grande com a
+    // frequency no tecto (4) chega a ~10³. As duas colunas mostram que o número é
+    // função da COORDENADA, e é por isso que ele é reportado, não derivado.
+    //
+    // ⚠️ O que se mede NÃO é "duas amostras diferem" (com um multiplicador enorme
+    // elas diferem sempre — o campo vira ruído branco). O que MORRE primeiro é a
+    // parte FRACIONÁRIA: acima de 2²⁴ um `f32` não tem bits fraccionários, o
+    // `x − floor(x)` é zero em todo ponto, o `fade` devolve 0 e a interpolação
+    // colapsa na hash da quina. É o ruído a deixar de ser coerente.
+    println!("lac  | topo(x=1)   frac dist. | topo(x=1000)  frac dist.");
+    for lac in [2.0f32, 3.0, 4.0, 6.0, 8.0, 10.0, 10.8, 12.0, 16.0, 32.0] {
+        let top = |x: f32| {
+            let mut p = x;
+            for _ in 0..7 {
+                p *= lac;
+            }
+            p
+        };
+        // Quantos valores fraccionários DISTINTOS um varrimento de 64 pontos
+        // vizinhos produz no topo da pilha. 64 = coerente; 1 = congelado.
+        let distinct = |x0: f32| {
+            let mut seen: Vec<u32> = (0..64)
+                .map(|k| {
+                    let p = top(x0 + k as f32 * 0.01);
+                    (p - p.floor()).to_bits()
+                })
+                .collect();
+            seen.sort_unstable();
+            seen.dedup();
+            seen.len()
+        };
+        println!(
+            "{lac:>4.1} | {:>11.3e} {:>3}/64 | {:>11.3e} {:>3}/64",
+            top(1.0),
+            distinct(1.0),
+            top(1000.0),
+            distinct(1000.0)
+        );
     }
 }

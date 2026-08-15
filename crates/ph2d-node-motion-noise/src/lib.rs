@@ -309,9 +309,13 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.05,
         widget: ParamWidget::Slider,
     },
-    // A faixa de um loop é a de um take de motion graphics: 0 (nunca fecha) até 30 s. O teto é
-    // do PAINEL, não do modelo — a caixa aceita além dele pelo `ParamHardMax` se alguém
-    // precisar de um ciclo mais longo.
+    // A faixa de um loop é a de um take de motion graphics: 0 (nunca fecha) até 30 s.
+    // ⚠️ **CORRIGIDO (doc 89, grupo B):** este comentário dizia que *"a caixa aceita
+    // além dele pelo `ParamHardMax`"* e isso é FALSO — este nó nunca chamou
+    // `register_param_hard_max`, e o shell resolve `param_hard_max(..).unwrap_or(max)`,
+    // logo a caixa PARA nos 30 s. Um ciclo mais longo é hoje inalcançável neste nó.
+    // O irmão `value.noise` declara o dele (2²⁴, precisão de representação); subir
+    // este muda o que a caixa aceita e é decisão do dono deste nó.
     ParamUiHint {
         param: "loop_len",
         label: "Loop Length",

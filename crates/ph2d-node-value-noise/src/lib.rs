@@ -126,6 +126,29 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "jitter",
             default: 1.0,
         },
+        // ⚠️ **Apendado**: era a const `LACUNARITY = 2.0` do `noise.rs`. `2.0` ⇒
+        // hoje, byte a byte (a folha já a recebia; o que muda é de onde vem).
+        ParamSpec {
+            name: "lacunarity",
+            default: 2.0,
+        },
+        // ⚠️ **Apendado**: `0` = sem laço, o nó que sempre shipou. O nome é o dos
+        // IRMÃOS que já fecham o laço (`force.curl`/`force.wind`); o `motion.noise`
+        // chama-o `loop_len`, e a maioria manda.
+        ParamSpec {
+            name: "loop_period",
+            default: 0.0,
+        },
+        // ⚠️ **Apendados**: o deslize CONTÍNUO do domínio — o `seed` feito
+        // animável. `0` ⇒ hoje. Ver [`Sample::at`].
+        ParamSpec {
+            name: "pan_x",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "pan_y",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -143,6 +166,10 @@ struct Sample {
     kernel: Kernel,
     feature: CellFeature,
     jitter: f32,
+    lacunarity: f32,
+    loop_period: f32,
+    pan_x: f32,
+    pan_y: f32,
 }
 
 impl Sample {
@@ -160,6 +187,10 @@ impl Sample {
             kernel: Kernel::from_index(ctx.param("kernel")),
             feature: CellFeature::from_index(ctx.param("feature")),
             jitter: ctx.param("jitter"),
+            lacunarity: ctx.param("lacunarity"),
+            loop_period: ctx.param("loop_period"),
+            pan_x: ctx.param("pan_x"),
+            pan_y: ctx.param("pan_y"),
         }
     }
 
@@ -169,18 +200,62 @@ impl Sample {
     /// ninguém olha.
     fn field(&self, x: f32, y: f32) -> f32 {
         let (k, feat, j) = (self.kernel, self.feature, self.jitter);
-        fbm_2d(x, y, self.octaves, self.roughness, |px, py| {
-            noise::base(k, feat, j, px, py)
-        }) * self.amplitude
+        fbm_2d(
+            x,
+            y,
+            self.octaves,
+            self.lacunarity,
+            self.roughness,
+            |px, py| noise::base(k, feat, j, px, py),
+        ) * self.amplitude
             + self.offset
     }
 
-    /// Instance `i`'s value at playhead `t`. `x = t·speed` (the time axis),
-    /// `y = i·frequency + seed` (the instance axis), then `fbm·amplitude + offset`.
+    /// **A porta única do TEMPO** — o campo no instante `t`, com o laço FECHADO
+    /// quando `loop_period > 0` (doc 89 folha 15, *"uma ferramenta de motion
+    /// design cujo ruído não fecha o laço não faz um GIF"*).
+    ///
+    /// ⚠️ **A costura vem da folha [`ph2d_fbm::loop_times`] e já tinha três
+    /// consumidores** (`motion.noise`, `force.curl`, `force.wind`) — este nó era
+    /// o único da família que lia `t` linearmente. O raciocínio inteiro viaja com
+    /// ela: o tempo **WRAPA primeiro** (misturar `campo(t)` com `campo(t−L)` não
+    /// fecha, são campos diferentes nas duas pontas) e o peso é **smoothstep**
+    /// (com peso linear o valor fecha e a DERIVADA salta, o que lê como um tranco
+    /// a cada volta).
+    ///
+    /// ⚠️ **`w == 0` pula a segunda amostra**, e é o caminho de sempre: sem laço
+    /// a folha devolve `(t, t, 0)` ⇒ uma amostra, no mesmo ponto de antes.
+    ///
+    /// ⚠️ **O `speed` não quebra o fecho**: as duas amostras atravessam o MESMO
+    /// `x_of`, então em `τ = 0` o resultado é `campo(0)` e em `τ → L` o peso vai
+    /// a 1 sobre `campo(0)` de novo — a costura fecha no mesmo número seja qual
+    /// for a velocidade.
+    fn over_time(&self, t: f32, x_of: impl Fn(f32) -> f32, y: f32) -> f32 {
+        let (t_a, t_b, w) = ph2d_fbm::loop_times(t, self.loop_period);
+        let a = self.field(x_of(t_a), y);
+        if w == 0.0 {
+            return a;
+        }
+        a + (self.field(x_of(t_b), y) - a) * w
+    }
+
+    /// Instance `i`'s value at playhead `t`. `x = t·speed + pan_x` (the time
+    /// axis), `y = i·frequency + seed + pan_y` (the instance axis), then
+    /// `fbm·amplitude + offset`.
+    ///
+    /// ⚠️ **O `pan` mede RETICULADO, não mundo — e é o `seed` feito contínuo.**
+    /// A célula da folha 15 nomeia exactamente isso: o `seed` *desloca o
+    /// reticulado* (outra fatia do campo) mas é inteiro e de passo 1, logo é um
+    /// **re-sorteio** e não um **deslize animável**. Escolher a unidade do
+    /// `seed` — e não a do mundo — é o que mantém o knob a significar UMA coisa
+    /// nos dois modos de amostragem: em World a alternativa seria `(px + pan)·
+    /// frequency`, que é unidade de mundo, e o mesmo controlo passaria a medir
+    /// duas grandezas diferentes conforme o `Sample`. O gate que prova a régua é
+    /// `a_pan_of_one_is_a_seed_of_one` — `pan_y = 1` tem de dar o campo de
+    /// `seed = 1`, ao bit.
     fn at(&self, i: u32, t: f32) -> f32 {
-        let x = t * self.speed;
-        let y = i as f32 * self.frequency + self.seed;
-        self.field(x, y)
+        let y = i as f32 * self.frequency + self.seed + self.pan_y;
+        self.over_time(t, |tt| tt * self.speed + self.pan_x, y)
     }
 
     /// **O valor no PONTO `(px, py)`** — o mesmo campo, amostrado no espaço em vez
@@ -197,9 +272,12 @@ impl Sample {
     /// substituí-la: um campo espacial que congelasse ao ganhar `P` perderia o
     /// *"animável"* que a referência (MOPs Noise Falloff) pede no mesmo fôlego.
     fn at_world(&self, px: f32, py: f32, t: f32) -> f32 {
-        let x = px * self.frequency + t * self.speed;
-        let y = py * self.frequency + self.seed;
-        self.field(x, y)
+        let y = py * self.frequency + self.seed + self.pan_y;
+        self.over_time(
+            t,
+            |tt| px * self.frequency + tt * self.speed + self.pan_x,
+            y,
+        )
     }
 }
 
@@ -251,10 +329,25 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamGate, ParamHardMax, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{
+    ParamGate, ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
+};
+
+/// **O que o `loop_period` É** (doc 88, Wave A): uma DURAÇÃO, em segundos.
+///
+/// ⚠️ É a única unidade declarada aqui, e a ausência das outras é deliberada: a
+/// magnitude do domínio de VALOR **não tem unidade própria** (o `amplitude` deste
+/// nó vale metros em `P`, graus em `rot` e nada em `tint` — o `ParamUnit::None` do
+/// registry escreve exactamente isso). O `pan` mede RETICULADO, que não é nenhuma
+/// das unidades do vocabulário; uma unidade errada é pior que uma ausente.
+static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
+    param: "loop_period",
+    unit: ParamUnit::Seconds,
+}];
 
 /// **Os dois knobs do celular só existem no celular** (`kernel == 2`). Um
 /// controlo que não faz nada é pior que um controlo que falta — e aqui a
@@ -273,6 +366,28 @@ static PARAM_GATES: &[ParamGate] = &[
     },
 ];
 
+/// **Onde uma coordenada de RETICULADO deixa de ser uma coordenada** — `2²³`.
+///
+/// ⚠️ **MEDIDO, e a medição derrubou a aritmética que eu tinha escrito** (sonda
+/// `measure_where_lacunarity_stops_resolving`). O número óbvio seria `2²⁴`, o
+/// último inteiro que um `f32` representa; o que de facto morre primeiro é a
+/// **parte FRACIONÁRIA**: a partir de `2²³` o ULP de um `f32` é `1.0`, então
+/// `x − floor(x)` é zero em TODO ponto, o `fade` devolve 0 e a interpolação
+/// colapsa na hash da quina — o ruído deixa de ser coerente uma oitava antes de
+/// deixar de ser um número. É este o recurso (**precisão de representação**) e é
+/// ele que decide o tecto digitável do `pan`.
+const LATTICE_LAST_FRACTIONAL: f32 = 8_388_608.0;
+
+/// **Onde um RELÓGIO deixa de resolver um segundo** — `2²⁴`.
+///
+/// Um `loop_period` não é uma coordenada de reticulado: ele entra em `t/L` e
+/// `u·L`, e nenhum dos dois degenera com `L` grande (com `L` enorme e `t`
+/// pequeno o wrap devolve `t` de volta). O que degenera é a régua: acima de
+/// `2²⁴` um `f32` não separa dois segundos vizinhos, e um laço cujo comprimento
+/// não distingue segundos não é um laço. Recurso diferente, número diferente —
+/// e é por isso que são duas constantes e não uma.
+const CLOCK_LAST_EXACT_SECOND: f32 = 16_777_216.0;
+
 /// O teto que a MÁQUINA (ou o bom senso) impõe, alcançável por DIGITAÇÃO — o slider fica
 /// onde a MÃO trabalha (soft/hard do Blender; doc 88 §11). O curso de antes é este número:
 /// nada ficou inalcançável, só deixou de ser o que o dedo percorre.
@@ -285,6 +400,25 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
         param: "frequency",
         max: 4.0,
     },
+    // ⚠️ Um laço mais longo que o slider é legítimo (um take de 90 s fecha em 90 s)
+    // e nada no modelo o impede — o que impede é a RÉGUA, e só muito acima.
+    ParamHardMax {
+        param: "loop_period",
+        max: CLOCK_LAST_EXACT_SECOND,
+    },
+    // O pan mede RETICULADO, e a régua dele é a outra.
+    ParamHardMax {
+        param: "pan_x",
+        max: LATTICE_LAST_FRACTIONAL,
+    },
+    ParamHardMax {
+        param: "pan_y",
+        max: LATTICE_LAST_FRACTIONAL,
+    },
+    // ⚠️ **A `lacunarity` NÃO tem tecto digitável, e a medição é o motivo** — ver
+    // o doc-comment do hint. Uma entrada aqui igual ao tecto do slider seria uma
+    // linha que não faz nada (`param_hard_max(..).unwrap_or(max)`), que é o
+    // controlo morto que este repo não shipa.
 ];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
@@ -359,11 +493,71 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Slider,
     },
+    // ⚠️ **A faixa começa em 1** (a mesma do irmão `motion.noise`, pela mesma
+    // razão): lacunarity < 1 faz as oitavas ficarem MAIORES que a base, o campo
+    // perde a leitura fractal e vira um borrão de baixa frequência.
+    //
+    // ⚠️ **E o tecto de 4 É o tecto digitável, MEDIDO** (sonda
+    // `measure_where_lacunarity_stops_resolving`). A oitava `k` amostra em
+    // `x · lacunarityᵏ`, então no topo de uma pilha de 8 ela lê em `x · lac⁷`, e
+    // a partir de [`LATTICE_LAST_FRACTIONAL`] aquela oitava **congela**:
+    //
+    // | lacunarity | topo em `x = 1` | topo em `x = 1000` |
+    // |---|---|---|
+    // | 2 | 29 de 64 fracções distintas | 25 de 64 |
+    // | 4 | 29 de 64 | **1 de 64** (congelado) |
+    // | 8 | 4 de 64 | 1 de 64 |
+    // | 10 | **1 de 64** | 1 de 64 |
+    //
+    // ⚠️ **O tecto é função da COORDENADA, e é por isso que não há `ParamHardMax`:**
+    // num campo perto da origem ele está em ~9,8 (`2^(23/7)`) e numa grade grande
+    // — `i · frequency` com a frequency no tecto — já está em 4. Um único número
+    // digitável seria certo numa cena e errado na seguinte; 4 é o valor que se
+    // sustenta na PIOR cena que este nó consegue produzir.
+    ParamUiHint {
+        param: "lacunarity",
+        label: "Lacunarity",
+        min: 1.0,
+        max: 4.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
     ParamUiHint {
         param: "roughness",
         label: "Roughness",
         min: 0.0,
         max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    // A faixa de um laço é a de um take de motion graphics: 0 (nunca fecha) até
+    // 30 s. Aqui o tecto É do painel, e a caixa aceita além dele — o
+    // `ParamHardMax` está registrado, ao contrário do que o irmão `motion.noise`
+    // afirmava sobre si mesmo.
+    ParamUiHint {
+        param: "loop_period",
+        label: "Loop",
+        min: 0.0,
+        max: 30.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    // O pan mede RETICULADO — a mesma régua do `seed`, que fica logo abaixo. Uma
+    // célula inteira é `1.0`, então ±8 atravessa dezasseis feições do campo, que
+    // é mais do que qualquer deslize que se assista.
+    ParamUiHint {
+        param: "pan_x",
+        label: "Pan X",
+        min: -8.0,
+        max: 8.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "pan_y",
+        label: "Pan Y",
+        min: -8.0,
+        max: 8.0,
         step: 0.01,
         widget: ParamWidget::Slider,
     },
@@ -394,218 +588,13 @@ static PARAM_HINTS: &[ParamUiHint] = &[
 ];
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_nodegraph::cook::{Cook, OpResolver};
-    use ph2d_nodegraph::graph::{Edge, Graph};
-
-    /// A default-ish sampler for the row tests (frequency low = a smooth swell).
-    fn smooth() -> Sample {
-        Sample {
-            frequency: 0.1,
-            speed: 0.5,
-            octaves: 1,
-            roughness: 0.5,
-            amplitude: 1.0,
-            offset: 0.0,
-            seed: 0.0,
-            // A premissa desta fixture, DECLARADA: ela mede o kernel de VALOR,
-            // o que o no sempre shipou. Herda-la de um default e o que faz um
-            // teste inverter de sentido quando o default se move.
-            kernel: Kernel::Value,
-            feature: CellFeature::Cells,
-            jitter: 1.0,
-        }
-    }
-
-    /// THE falsification: the field is COHERENT, not white. At a low frequency
-    /// adjacent instances read nearby lattice points, so the mean step between
-    /// neighbours is SMALL; raise the frequency past one lattice unit per instance
-    /// and neighbours DECORRELATE (a large step). A regression to white noise (a
-    /// per-instance hash, like `instance_field` Random) would fail the low-freq
-    /// half — its neighbour step is ~2/3 of the full range, always.
-    #[test]
-    fn the_field_is_coherent_not_white() {
-        let n = 24u32;
-        let mean_step = |freq: f32| {
-            let s = Sample {
-                frequency: freq,
-                ..smooth()
-            };
-            let row: Vec<f32> = (0..n).map(|i| s.at(i, 0.0)).collect();
-            let total: f32 = row.windows(2).map(|w| (w[1] - w[0]).abs()).sum();
-            total / (n - 1) as f32
-        };
-        let coherent = mean_step(0.1); // 10 instances per feature → smooth
-        let decorrelated = mean_step(3.0); // 3 units apart → white-ish
-        assert!(
-            coherent < 0.15,
-            "low frequency must be smooth, got mean step {coherent}"
-        );
-        assert!(
-            coherent > 0.0,
-            "but not constant — it is still a varying field"
-        );
-        assert!(
-            decorrelated > 2.0 * coherent,
-            "high frequency decorrelates: {decorrelated} vs {coherent}"
-        );
-    }
-
-    /// The field EVOLVES over time (the `wiggle`/CHOP-translate behaviour): the
-    /// same instance reads a different value at a different playhead when speed > 0.
-    #[test]
-    fn time_evolves_the_field() {
-        let s = smooth();
-        assert_ne!(s.at(5, 0.0), s.at(5, 2.0), "speed > 0 drifts the field");
-    }
-
-    /// Speed 0 FREEZES the field — a static per-instance coherent random,
-    /// independent of the playhead (the degenerate case, and a useful one).
-    #[test]
-    fn speed_zero_freezes_the_field() {
-        let s = Sample {
-            speed: 0.0,
-            ..smooth()
-        };
-        for i in 0..24 {
-            assert_eq!(s.at(i, 0.0), s.at(i, 7.5), "speed 0 is time-invariant");
-        }
-    }
-
-    /// The output is bounded by `|amplitude| + |offset|` (fBm ∈ [-1,1]): a value
-    /// stream downstream never sees a runaway magnitude, whatever the octaves.
-    #[test]
-    fn the_output_is_bounded_by_amplitude_and_offset() {
-        let s = Sample {
-            octaves: 8,
-            amplitude: 4.0,
-            offset: 10.0,
-            ..smooth()
-        };
-        for i in 0..200 {
-            let v = s.at(i, i as f32 * 0.3);
-            assert!(v.is_finite(), "finite at {i}");
-            assert!(
-                (6.0..=14.0).contains(&v),
-                "within offset±amplitude: {v} at {i}"
-            );
-        }
-    }
-
-    /// A value source emitting an N-wide instance stream, so `value.noise` can be
-    /// driven for its COUNT through a real cook.
-    static SRC_MAN: NodeManifest = NodeManifest {
-        id: NodeTypeId::of("value.noise.test.src"),
-        name: "value.noise.test.src",
-        inputs: &[],
-        outputs: &[PortSpec {
-            name: "out",
-            ty: INST_VEC2,
-        }],
-        effect: Effect::Pure,
-        clock: Clock::Frame,
-        params: &[],
-        lowerings: &[LoweringKind::Cpu],
-    };
-    struct Src(usize);
-    impl NodeOp for Src {
-        fn manifest(&self) -> &'static NodeManifest {
-            &SRC_MAN
-        }
-        fn eval(&self, ctx: &mut EvalCtx<'_>) {
-            // A vec2 `P` column of length N — the noise reads it for count only.
-            ctx.emit(Stream::new(self.0).with("P", Column::Vec2(vec![[0.0, 0.0]; self.0])));
-        }
-    }
-
-    struct Ops(usize);
-    impl OpResolver for Ops {
-        fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-            match ty {
-                t if t == SRC_MAN.id => Some(Box::leak(Box::new(Src(self.0))) as &dyn NodeOp),
-                t if t == MANIFEST.id => Some(&ValueNoise),
-                _ => None,
-            }
-        }
-    }
-
-    /// End-to-end through the cook: connected to a length-8 stream it emits a
-    /// length-8 field (cardinality follows the geometry) of finite values, and the
-    /// values match `Sample::at` (the eval reaches the same math the tests probe).
-    #[test]
-    fn emits_a_length_n_field_through_the_cook() {
-        let ops = Ops(8);
-        let mut g = Graph::new();
-        let src = g.add_node("value.noise.test.src");
-        let vn = g.add_node("value.noise");
-        g.set_param(vn, "frequency", 0.1);
-        g.connect(Edge {
-            from: (src, 0),
-            to: (vn, 0),
-            delayed: false,
-        })
-        .unwrap();
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &ops, vn, 3.0).unwrap();
-        match out[0].as_stream().get(VALUE_COL).unwrap() {
-            Column::Scalar(v) => {
-                assert_eq!(v.len(), 8, "cardinality follows the length-8 stream");
-                let s = Sample {
-                    frequency: 0.1,
-                    ..Sample::from_ctx_defaults()
-                };
-                for (i, &got) in v.iter().enumerate() {
-                    assert!(got.is_finite(), "finite at {i}");
-                    assert_eq!(got, s.at(i as u32, 3.0), "eval == Sample::at at {i}");
-                }
-            }
-            _ => panic!("v"),
-        }
-    }
-
-    /// Unconnected, the field is ONE global value (the count law's `max(_, 1)`) —
-    /// not the zero-count stage the engine's default would skip.
-    #[test]
-    fn an_unconnected_noise_is_one_global_value() {
-        let ops = Ops(0);
-        let mut g = Graph::new();
-        let vn = g.add_node("value.noise");
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &ops, vn, 0.0).unwrap();
-        match out[0].as_stream().get(VALUE_COL).unwrap() {
-            Column::Scalar(v) => assert_eq!(v.len(), 1, "one global oscillation"),
-            _ => panic!("v"),
-        }
-    }
-
-    #[test]
-    fn registers_and_resolves() {
-        let mut reg = NodeRegistry::new();
-        register(&mut reg).unwrap();
-        assert!(reg.resolve(MANIFEST.id).is_some());
-    }
-
-    impl Sample {
-        /// The MANIFEST defaults, for tests that assert the eval path matches the
-        /// direct sampler (only `frequency` is overridden in the cook test).
-        fn from_ctx_defaults() -> Self {
-            Self {
-                frequency: 0.2,
-                speed: 0.5,
-                octaves: 1,
-                roughness: 0.5,
-                amplitude: 1.0,
-                offset: 0.0,
-                seed: 0.0,
-                kernel: Kernel::Value,
-                feature: CellFeature::Cells,
-                jitter: 1.0,
-            }
-        }
-    }
-}
+#[path = "lib_tests.rs"]
+mod tests;
 
 #[cfg(test)]
 #[path = "space_tests.rs"]
 mod space_tests;
+
+#[cfg(test)]
+#[path = "time_tests.rs"]
+mod time_tests;

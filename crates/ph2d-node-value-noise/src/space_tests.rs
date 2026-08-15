@@ -20,6 +20,12 @@ fn spec() -> Sample {
         kernel: Kernel::Value,
         feature: CellFeature::Cells,
         jitter: 1.0,
+        // ⚠️ Premissa DECLARADA: o eixo e ortogonal ao grupo B tambem — estes
+        // gates medem fila-x-espaco com lacunarity 2, sem laco e sem pan.
+        lacunarity: 2.0,
+        loop_period: 0.0,
+        pan_x: 0.0,
+        pan_y: 0.0,
     }
 }
 
@@ -71,7 +77,7 @@ fn the_index_axis_is_untouched() {
     for i in 0..8u32 {
         let x = 0.0f32 * s.speed;
         let y = i as f32 * s.frequency + s.seed;
-        let want = fbm_2d(x, y, s.octaves, s.roughness, |px, py| {
+        let want = fbm_2d(x, y, s.octaves, s.lacunarity, s.roughness, |px, py| {
             noise::base(s.kernel, s.feature, s.jitter, px, py)
         }) * s.amplitude
             + s.offset;

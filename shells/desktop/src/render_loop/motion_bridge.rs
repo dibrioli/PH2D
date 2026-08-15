@@ -424,6 +424,9 @@ pub(super) fn dispatch(
     motion.signals_out.clear();
     motion.pump.clear_tap_fires();
     super::motion_shape_gen::publish(motion); // ADR-0154: post-drain, pre-cook (no flicker)
+    // O mesmo instante, pela mesma razão: publicar antes do dreno mintaria a chave
+    // PRÉ-edição e o texto piscaria a cada tecla digitada no painel.
+    super::motion_text_gen::publish(motion);
     // Time scopes (M2.N1): each `motion.time_remap` node rewrites the clock of
     // its upstream subtree. Rebuilt per frame — one pass over the node list, and
     // empty for a graph with no remapper (the common case), so the cook takes
@@ -543,6 +546,7 @@ fn motion_time(playhead: &ph2d_core::Playhead, fixed_dt: f64) -> f64 {
 #[cfg(feature = "panel-motion-graph")]
 pub(super) fn reconcile(motion: &mut MotionState, before: &ph2d_nodegraph::graph::Graph) {
     plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, before);
+    plumbing::seed_text_defaults(&mut motion.doc.graph, &motion.registry, before);
     subgraph::adopt_new(motion, before);
 }
 

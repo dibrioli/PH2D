@@ -5409,6 +5409,7 @@ dependencies = [
  "ph2d-node-registry",
  "ph2d-node-registry-init",
  "ph2d-node-source-object",
+ "ph2d-node-source-text",
  "ph2d-node-util-reroute",
  "ph2d-node-value-attribute",
  "ph2d-nodegraph",
@@ -6553,6 +6554,7 @@ dependencies = [
  "ph2d-node-sim-step",
  "ph2d-node-sim-zone",
  "ph2d-node-source-object",
+ "ph2d-node-source-text",
  "ph2d-node-sync",
  "ph2d-node-util-reroute",
  "ph2d-node-value-attribute",
@@ -6676,6 +6678,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-source-object"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-source-text"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",

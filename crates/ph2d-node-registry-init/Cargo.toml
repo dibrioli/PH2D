@@ -110,6 +110,7 @@ ph2d-node-sim-spawn = { path = "../ph2d-node-sim-spawn" }
 ph2d-node-sim-step = { path = "../ph2d-node-sim-step" }
 ph2d-node-sim-zone = { path = "../ph2d-node-sim-zone" }
 ph2d-node-source-object = { path = "../ph2d-node-source-object" }
+ph2d-node-source-text = { path = "../ph2d-node-source-text" }
 ph2d-node-util-reroute = { path = "../ph2d-node-util-reroute" }
 ph2d-node-value-attribute = { path = "../ph2d-node-value-attribute" }
 ph2d-node-value-curve = { path = "../ph2d-node-value-curve" }

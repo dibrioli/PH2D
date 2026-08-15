@@ -19,7 +19,7 @@ use ph2d_vec_edit::PenStyle;
 use ph2d_vec_scene::arc_path::ArcPath;
 use ph2d_vec_scene::text_path::GlyphFrame;
 use ph2d_vec_scene::{Contour, FillRule, Paint, StrokeSpec, VecPath};
-use ph2d_vector_font::{AxisTag, VariableFont};
+use ph2d_vector_font::{AxisTag, GlyphId, VariableFont};
 
 /// **Onde o bloco de texto assenta** — um ponto de mundo, ou um caminho que ele cavalga.
 ///
@@ -136,9 +136,54 @@ pub(crate) fn text_to_vec_paths(
     stroke: &Option<StrokeSpec>,
 ) -> Vec<VecPath> {
     let scale = layout.size / f64::from(font.units_per_em().max(1));
+    let mut out = Vec::new();
+    walk_glyphs(
+        font,
+        text,
+        layout,
+        axes,
+        placement,
+        |_, gid, pen, advance| {
+            if let Some(frame) = glyph_frame(placement, pen, advance)
+                && let Ok(outline) = font.outline(gid, axes)
+                && let Some(path) =
+                    glyph_to_vec_path(&outline, scale, &frame, fill.clone(), *stroke)
+            {
+                out.push(path);
+            }
+        },
+    );
+    out
+}
+
+/// **A porta única do LAYOUT** — percorre o bloco e entrega cada glifo com a
+/// posição do pen (no espaço do texto) e o próprio avanço, sem construir
+/// geometria nenhuma.
+///
+/// Ela saiu de dentro do [`text_to_vec_paths`] quando o `source.text` (doc 89,
+/// folha 14) precisou das MESMAS posições para emitir **uma instância por
+/// caractere**. Um segundo laço no shell responderia a pergunta *"onde cai cada
+/// letra?"* uma segunda vez, e as duas respostas divergiriam no dia em que
+/// alguém mexesse no alinhamento — com o texto do editor e o texto do grafo a
+/// desenhar coisas diferentes a partir dos mesmos números.
+///
+/// ⚠️ **Um caractere sem glifo na fonte não é entregue E NÃO AVANÇA o pen** — é o
+/// que o [`line_advance`] também faz ao medir a linha, e é por isso que a largura
+/// medida e a soma dos avanços concordam. Um glifo entregue pode ainda assim não
+/// ser desenhável (espaço, contorno degenerado, âncora fora do caminho): essa é
+/// uma decisão de quem constrói a geometria, e ela **não pode encolher o texto** —
+/// daí o pen avançar aqui, antes de o consumidor opinar.
+pub(crate) fn walk_glyphs(
+    font: &VariableFont,
+    text: &str,
+    layout: &TextLayout,
+    axes: &[(AxisTag, f32)],
+    placement: &TextPlacement<'_>,
+    mut f: impl FnMut(char, GlyphId, [f64; 2], f64),
+) {
+    let scale = layout.size / f64::from(font.units_per_em().max(1));
     let line_h = layout.size * layout.line_height;
     let track_px = layout.size * layout.tracking;
-    let mut out = Vec::new();
     let mut pen_y = 0.0;
     for line in wrapped_lines(font, text, layout, axes, placement) {
         let width = line_advance(font, line, scale, track_px, axes);
@@ -148,20 +193,13 @@ pub(crate) fn text_to_vec_paths(
                 continue;
             };
             let advance = f64::from(font.advance(gid, axes).unwrap_or(0.0)) * scale;
-            if let Some(frame) = glyph_frame(placement, [pen_x, pen_y], advance)
-                && let Ok(outline) = font.outline(gid, axes)
-                && let Some(path) =
-                    glyph_to_vec_path(&outline, scale, &frame, fill.clone(), *stroke)
-            {
-                out.push(path);
-            }
+            f(ch, gid, [pen_x, pen_y], advance);
             // O pen avança MESMO quando o glyph não é desenhado — um glyph fora do caminho
             // (ou sem contorno) não pode encolher o texto e puxar os seguintes para trás.
             pen_x += advance + track_px;
         }
         pen_y -= line_h; // linhas descem = y menor (world y-up)
     }
-    out
 }
 
 /// O referencial do CARET na ponta da última linha — o mesmo do glyph que ali seria

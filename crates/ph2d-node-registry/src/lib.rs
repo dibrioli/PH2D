@@ -44,6 +44,10 @@ pub struct NodeRegistry {
     /// declared `ParamSpec`), keyed the same way. A `&'static` slice per type so
     /// registration is a single insert; the params panel reads it to build rows.
     param_ui: BTreeMap<NodeTypeId, &'static [ParamUiHint]>,
+    /// O TEXTO DE FÁBRICA de um tipo de nó — os text params que um nó recém-solto
+    /// já carrega. Side-metadata, o irmão exato do `param_ui`; ausente ⇒ nada a
+    /// semear, que é o mundo de sempre.
+    text_defaults: BTreeMap<NodeTypeId, &'static [(&'static str, &'static str)]>,
     param_hard_max: BTreeMap<NodeTypeId, &'static [ParamHardMax]>,
     /// A SEÇÃO de cada param (doc 88, B3 — o passe visual). Mesma forma, mesmo default
     /// vazio: nó sem entrada pinta uma lista plana, exatamente como antes.
@@ -198,6 +202,32 @@ impl NodeRegistry {
     /// param has no hint).
     pub fn param_ui(&self, id: NodeTypeId) -> Option<&'static [ParamUiHint]> {
         self.param_ui.get(&id).copied()
+    }
+
+    /// **O texto que um nó recém-SOLTO já carrega** — declarado pelo nó, aplicado
+    /// pelo EDITOR no gesto de soltar (o molde do `pre` self-loop, que também é
+    /// plumbado ali para o nó *"chegar vivo em vez de congelado na semente"*).
+    ///
+    /// ⚠️ **Isto é a alternativa a um fallback dentro do `eval`, e a diferença é
+    /// uma DIVERGÊNCIA:** um nó que resolve `None → "Text"` desenha "Text" no
+    /// canvas enquanto o painel — que lê o override e não acha nenhum — mostra o
+    /// campo VAZIO. Duas respostas a *"que texto é este?"*, visíveis lado a lado
+    /// no primeiro quadro. Semeando o override, o painel e o cozido leem **o mesmo
+    /// valor**, e ausente volta a significar ausente em toda parte.
+    ///
+    /// Aditivo; last write wins. Ausente ⇒ nada é semeado.
+    pub fn register_text_defaults(
+        &mut self,
+        id: NodeTypeId,
+        pairs: &'static [(&'static str, &'static str)],
+    ) {
+        self.text_defaults.insert(id, pairs);
+    }
+
+    /// Os text params de fábrica de `id`. Ausente ⇒ `&[]`, o default byte-idêntico.
+    #[must_use]
+    pub fn text_defaults(&self, id: NodeTypeId) -> &'static [(&'static str, &'static str)] {
+        self.text_defaults.get(&id).copied().unwrap_or(&[])
     }
 
     /// Register a node type's conditional-visibility gates ([`ParamGate`]).

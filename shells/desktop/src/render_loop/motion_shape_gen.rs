@@ -50,7 +50,7 @@ impl VecPathStore {
 
     /// Intern a shape under its content key, building it once. Returns the handle
     /// (`>= 1`). Identical keys share the stored `VecPath`.
-    fn intern(&mut self, key: &str, build: impl FnOnce() -> VecPath) -> u32 {
+    pub(crate) fn intern(&mut self, key: &str, build: impl FnOnce() -> VecPath) -> u32 {
         if let Some(&h) = self.handle_of.get(key) {
             return h;
         }
@@ -58,6 +58,16 @@ impl VecPathStore {
         let h = self.by_handle.len() as u32; // index + 1
         self.handle_of.insert(key.to_owned(), h);
         h
+    }
+
+    /// O handle JÁ internado sob esta chave, ou `None`. É a metade de CONSULTA do
+    /// [`intern`](Self::intern), e ela existe porque o `source.text` precisa de
+    /// decidir se constrói: um glifo sem contorno (o espaço) não vira `VecPath`
+    /// nenhum, e um `intern` que recebe um closure não tem como dizer *"não havia
+    /// nada a guardar"*. Perguntar antes deixa a construção do lado de quem sabe
+    /// desistir, sem uma segunda tabela para as ausências.
+    pub(crate) fn handle_for(&self, key: &str) -> Option<u32> {
+        self.handle_of.get(key).copied()
     }
 
     /// Store a `VecPath` with NO content key, returning a fresh handle (`>= 1`).

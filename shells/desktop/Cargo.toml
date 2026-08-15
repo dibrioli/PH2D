@@ -87,6 +87,10 @@ ph2d-node-pulse-signal = { path = "../../crates/ph2d-node-pulse-signal" }# A fon
 # que uma delas mudasse a varredura ficaria VAZIA — em silêncio, com a cena
 # desenhando o quadro atual e nada reclamando.
 ph2d-node-source-object = { path = "../../crates/ph2d-node-source-object" }
+# doc 89 folha 14: a membrana do `source.text` autora os params pelo NOME que o nó
+# declara (o manifesto, a chave, o pivô) — um literal aqui seria uma segunda cópia
+# de números que o nó já é dono.
+ph2d-node-source-text = { path = "../../crates/ph2d-node-source-text" }
 # `value.attribute`, para a CENA da DIREÇÃO (`PH2D_GPU_COOK_DEMO=38`): ela autora o
 # `mode` do canal, e um LITERAL aqui seria a segunda cópia de um número que o nó
 # declara — no dia em que o degrau se movesse, a cena desenharia traços NÃO-alinhados

@@ -124,6 +124,37 @@ pub(super) fn clear_managed_pre_at(
 /// stood BEFORE the edit; the before/after branch diff keeps the pass surgical
 /// (only edges this module itself would have created are ever removed).
 /// Idempotent: a second run is a no-op.
+/// **O texto de FÁBRICA de um nó recém-solto** — o irmão do `pre` self-loop, no
+/// mesmo instante e pelo mesmo motivo: um nó tem de chegar VIVO em vez de mudo.
+///
+/// ⚠️ **Semear em vez de resolver no `eval` é o que impede uma DIVERGÊNCIA
+/// visível:** um nó que inferisse o próprio default desenharia o texto de fábrica
+/// no canvas enquanto o painel — que lê o override e não acharia nenhum — mostrava
+/// o campo VAZIO. Escrito no grafo, o painel e o cozido leem o MESMO valor.
+///
+/// Só nós NOVOS (ausentes de `before`) e só chaves que ainda não existem: um nó
+/// colado carrega os próprios text params, e sobrescrevê-los apagaria o que o
+/// artista escreveu.
+pub(super) fn seed_text_defaults(graph: &mut Graph, registry: &NodeRegistry, before: &Graph) {
+    let fresh: Vec<(ph2d_nodegraph::graph::NodeId, String)> = graph
+        .nodes()
+        .iter()
+        .filter(|n| !before.nodes().iter().any(|b| b.id == n.id))
+        .map(|n| (n.id, n.type_name.clone()))
+        .collect();
+    for (id, type_name) in fresh {
+        let ty = ph2d_nodegraph::node::NodeTypeId::of(type_name.as_str());
+        for (key, value) in registry.text_defaults(ty) {
+            if graph
+                .node_text_param_overrides(id)
+                .is_none_or(|m| !m.contains_key(*key))
+            {
+                graph.set_text_param(id, *key, *value);
+            }
+        }
+    }
+}
+
 pub(super) fn reconcile_after(graph: &mut Graph, registry: &NodeRegistry, before: &Graph) {
     for (host, fb) in feedback_hosts(graph, registry) {
         let b_before = branch_of(before, host, fb);

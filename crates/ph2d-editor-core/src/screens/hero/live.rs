@@ -15,20 +15,56 @@ use super::HeroScreen;
 /// perguntam ao `store`, e uma corrente de `motion` a par dela custaria **56 assinaturas só no
 /// `ph2d-panel-inspector`**, para 20 botões. Ver [`crate::interaction::WidgetStore::button_visual`].
 ///
-/// ⚠️ **A ordem é load-bearing:** avançar PRIMEIRO (o tempo que passou desde o último quadro
-/// aplica-se ao alvo que estava em vigor) e só então ler os alvos novos do store, que os eventos de
-/// ponteiro deste quadro acabaram de mexer. Ao contrário, o primeiro quadro de um hover andaria com
-/// o alvo novo por um `dt` que decorreu **antes** de o rato lá chegar.
 pub(super) fn tick(hero: &mut HeroScreen, dt: f64) {
-    hero.motion.advance(dt);
-    for (id, target) in hero.store.hover_targets().collect::<Vec<_>>() {
-        let live = hero.motion.animate(id, target, crate::motion::Role::Fade);
-        hero.store.set_hover_live(id, live);
-    }
+    tick_hover(hero, dt);
     tick_palette_cascade(hero, dt);
     tick_panel_scroll(hero);
     tick_section_fold(hero);
     tick_fill_tether(hero, dt);
+}
+
+/// **RE-ALVEJAR · INTEGRAR · PUBLICAR — e a ordem é a correcção de um defeito medido.**
+///
+/// ⚠️ **Um valor PUBLICADO nunca pode ser o valor de PARTIDA de um voo que já começou.** O
+/// `advance` corria antes de os alvos serem lidos, então um alvo que muda NESTE quadro instalava um
+/// voo que só seria integrado no quadro SEGUINTE — e o número publicado era o do estado ANTERIOR,
+/// que já não descreve nada. Consequência: no quadro em que o rato SAI, o estado publica `Normal`
+/// (frio) e o eixo publica `1.0` (*no extremo quente*), **um par que se contradiz**, e nenhum
+/// leitor o consegue reconciliar.
+///
+/// ⚠️ **E não havia cura local, porque a informação não existia:** `t = 1.0 · state = Normal` é
+/// produzido por DUAS situações que exigem respostas opostas — *um id que o relógio nunca viu*
+/// (⇒ pinta o token de repouso, o mundo pré-substrato byte a byte) e *o quadro em que o rato saiu*
+/// (⇒ pinta o extremo QUENTE, que é onde a cor está). Entradas idênticas, respostas contrárias.
+/// Reordenar aqui torna a contradição **inexprimível**: depois disto o eixo só publica
+/// [`crate::motion::SETTLED`] quando o voo CHEGOU, e chegar a `1.0` significa que o alvo é `1.0`,
+/// que significa que o estado está aceso.
+///
+/// Medido no par `Danger → DangerSoft` (o Mute do Audio Mixer, o tom de maior contraste do app),
+/// antes da cura: assente no hover `rgb(56,30,28)` → **UM quadro em `rgb(236,91,87)`** → `rgb(90,42,39)`
+/// → o desvanecer. **180 níveis de 255 de ida e volta num quadro** — o *pisca* que o smoke reportou.
+///
+/// ⚠️ **O preço da nova ordem, nomeado:** um hover que COMEÇA neste quadro anda um `dt` que
+/// decorreu em parte antes de o rato lá chegar (16 ms). É meio período de quadro de antecipação
+/// contra um salto de tinta visível, e o evento de ponteiro aconteceu *algures* nesse intervalo —
+/// então metade dele já pertencia ao gesto.
+///
+/// ⚠️ **O `unwrap_or(seeded)` não é defensivo:** um [`crate::motion::Role`] instantâneo (o
+/// `Role::Number`, ou um papel que o *reduced motion* desarme) faz o `animate` **remover** a track
+/// e devolver o alvo — e aí o `get` não tem o que responder. Sem o fallback, esses ids ficariam
+/// congelados no último valor publicado, para sempre.
+fn tick_hover(hero: &mut HeroScreen, dt: f64) {
+    let mut pending: Vec<(ph2d_a11y::NodeId, f32)> = hero.store.hover_targets().collect();
+    for slot in &mut pending {
+        slot.1 = hero
+            .motion
+            .animate(slot.0, slot.1, crate::motion::Role::Fade);
+    }
+    hero.motion.advance(dt);
+    for (id, seeded) in pending {
+        let live = hero.motion.get(id).unwrap_or(seeded);
+        hero.store.set_hover_live(id, live);
+    }
 }
 
 /// **A DOBRA de uma secção** — o chevron gira em vez de trocar de glifo.
@@ -86,8 +122,8 @@ fn fold_track(section: ph2d_a11y::NodeId) -> ph2d_a11y::NodeId {
 /// sítios que pintam a partir de `panel_scroll` herdaram a suavidade sem uma linha de mudança,
 /// porque aquela porta passou a devolver o vivo.
 ///
-/// ⚠️ E **não anda o relógio**: quem o andou foi o `motion.advance` no topo do `tick`. Uma segunda
-/// chamada aqui daria a esta família o dobro do `dt` das outras.
+/// ⚠️ E **não anda o relógio**: quem o andou foi o `motion.advance` dentro do [`tick_hover`], que
+/// corre antes desta família. Uma segunda chamada aqui daria a esta o dobro do `dt` das outras.
 fn tick_panel_scroll(hero: &mut HeroScreen) {
     let targets: Vec<(ph2d_a11y::NodeId, f32)> = hero.store.scrolled_panels().collect();
     for (panel, target) in targets {

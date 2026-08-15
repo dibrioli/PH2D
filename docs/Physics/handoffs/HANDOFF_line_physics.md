@@ -10624,3 +10624,146 @@ cena que anuncia um número que não entrega ensina o número errado.
   plataforma. Está na barra do gate, não escondido.
 - A política **não alcança o pulo da PAREDE nem o do AR** — nenhum tem chão, e um
   knob que os prometesse seria controle morto.
+
+---
+
+## ⬛ W-Brink — **A TRAVA DE BEIRADA** (`bCanWalkOffLedges`), item **G** da fila ⟨2026-08-15⟩
+
+Ele anda para a quina e **PARA**, em vez de cair dela. Cena de smoke **119**;
+`PROJECT_SCHEMA` **81 → 82** (⚠️ PROVISÓRIO — conta-se contra o `main` do dia).
+
+### O que a medição decidiu, e as duas vezes que ela me refutou
+
+**(1) O leque não consegue responder à pergunta.** O primeiro corte lia a quina
+dos **pés que perderam o chão** — a frase do plano. A sonda
+(`tests/measure_ledge_stop.rs`) mediu que ela acende sobre uma **fenda de 5 cm**,
+que o corpo de 40 cm atravessa sem esforço: o leque só amostra DENTRO da pegada,
+e ali *"o chão acaba"* e *"há um buraco à frente"* são indistinguíveis. Nenhum
+arranjo dos pés que já existem os separa.
+
+⇒ o sensor virou a **MESMA perna castada à FRENTE** (`cast_leg` verbatim, com as
+duas leis de redução intactas). É isso que faz a trava e o leque concordarem
+**por construção**: *a perna é quem o segura*, então recusar exactamente onde ela
+não o seguraria dá um personagem que pára onde de facto cairia e atravessa tudo o
+que de facto atravessa — sem nenhum número novo a decidir *"isto é uma fenda ou
+um patamar?"*.
+
+**(2) O alcance não podia ser um knob.** Com um `ledge_look` autorado, a 8 m/s um
+`0,30` deixa o personagem **CAIR** e um `0,60` o segura, e a fronteira é
+exactamente `v²/(2a) = 0,533` — *o valor certo era função de OUTROS DOIS knobs*,
+a forma que este repo já removeu uma vez (o Conserve do sculpt, cujo slider certo
+valia 168% no centro de outro controle). Um artista que subisse a **Speed** veria
+o personagem voltar a cair, sem nada na tela a explicar.
+
+⇒ **derivado**, e com **duas metades, cada uma de quem a sabe**: a lei dá a
+distância de paragem (`WalkConfig::ledge_look`, que não conhece corpo nenhum) e a
+ponte soma a **meia-largura**, porque a pergunta é *"quando eu parar, ainda haverá
+chão onde a minha BORDA estiver?"*.
+
+⚠️ **Sem a segunda parcela o alcance é o CASO DE FRONTEIRA** — ele trava no
+instante em que a perna o larga. Medido a 2 m/s, ele acabava equilibrado num pé
+só sobre o lábio **e caía na mesma** (as outras velocidades escapavam por um fio,
+pelo bónus de mudança de direção). O gate `the_trava_holds_at_every_speed` tem o
+`2.0` na lista por causa disto, e a mutação que tira o `half_w` sangra ali com o
+número exacto do diagnóstico (`parou em 1.4829`).
+
+| vel (m/s) | alcance derivado | borda vs quina | caiu? |
+|---|---|---|---|
+| 1 | 0,0083 | +0,175 | não |
+| 2 | 0,0333 | +0,181 | não |
+| 4 | 0,1333 | +0,156 | não |
+| 6 | 0,3000 | +0,135 | não |
+| 8 | 0,5333 | +0,048 | não |
+| 12 | 1,2000 | −0,131 | não |
+
+### O que a lei faz, e o que ela deliberadamente NÃO faz
+
+A trava mexe no **ALVO** da caminhada e em mais nada (`Brink::clamp_target`).
+Com o alvo em zero e o personagem já a correr para a beirada, `delta` fica
+negativo e a lei **trava com o orçamento inteiro** — um `drive = 0` daria a mesma
+direção com a *fração de travagem*, ou seja mais devagar justamente onde é
+preciso parar.
+
+- **Ela corta UM sentido**, nunca os dois: dá para andar para longe da beirada em
+  que se parou.
+- **Ela governa ANDAR.** Pular da quina continua a funcionar; ser LEVADO por uma
+  esteira ou por uma plataforma também (a caminhada mede tudo *relativo ao chão*,
+  e o que a trava corta é o alvo relativo, não o transporte). O arranque e um
+  `launch_player` escrevem velocidade por cima, de propósito.
+- ⚠️ **Uma fenda que a perna não vence é um PATAMAR**, e a trava recusa andar
+  para ela mesmo que a inércia a cruzasse. Medido: a 0,50 m ele pára; o CONTROLE
+  sem trava cruza-a. É a semântica, não um defeito.
+- ⚠️ **O `grip` não entra no alcance** — no gelo a travagem é mais longa e ele
+  pode escorregar para fora. É o que gelo significa, e pô-lo aqui devolveria a
+  beirada móvel que o desenho recusa.
+
+### `bCanWalkOffLedgesWhenCrouching`
+
+O **sneak-to-the-brink**: de pé anda normalmente, agachado pára. A porta é a
+`walk_for`, cujo doc já reservava o lugar para *"o dia em que um terceiro termo
+tiver de encolher"* — e ela lê os dois com um **`&&`**: agachar só **APERTA**. Um
+`=` faria o agachar LIGAR a caminhada para fora do patamar num personagem cujo
+autor a proibiu de pé, que é a trava a fazer o contrário do nome.
+
+⚠️ **Os dois campos guardam a CAPACIDADE, nunca a trava**, e a razão é o
+postcard: num `stop_at_ledges` o `false` que todo arquivo antigo traz num campo
+novo significaria *trava armada*, e a capacidade nasceria ligada em toda arte já
+autorada. A inversão para o índice do chip mora numa fronteira só (o
+`build_player_info`), com gate.
+
+### Gates e mutações
+
+**7 gates de lei** (`walk_brink_tests`) · **6 de produto** (`platform_brink`) ·
+**2 de seam** · **3 de shell** · **4 de cena**. **7 mutações, 7 sangram.**
+
+⚠️ **Uma sobreviveu e achou um buraco REAL:** inverter o braço ESQUERDO do
+`clamp_target` passava por toda a suíte, porque cada gate que eu tinha usava
+`Brink::RIGHT`. A esquerda é caminho vivo do produto (andar para a esquerda para
+fora de um patamar) e **nada olhava para ela** — nasceram
+`the_trava_cuts_one_way_only_on_both_sides` e `the_trava_holds_walking_left_too`,
+e com eles a mesma mutação sangra nos dois lados, mais a que ignora o `drive` ao
+escolher o lado do sensor.
+
+### Superfície
+
+- `PROJECT_SCHEMA` **81→82**, tripla `(82, 13, 14)` — dois campos apendados ao
+  FIM do `PlatformPlayer`. ⚠️ Nascem em `true`, onde a lei devolve o alvo
+  VERBATIM e o sensor **nem casta** ⇒ todo projeto salvo em v81 reabre a andar
+  exactamente como andava.
+- **`physics_ecs_c9` BYTE-IDÊNTICO**: `1699123f9ed2844fa5159bc842a4e583f0675cdd88bb8895e2654ac706053787`,
+  117 corpos — conferido antes E depois dos três splits de LOC.
+- Registro do `ph2d-physics-ecs` **fica em 29** (nenhum componente novo) ·
+  `ph2d-ecs` e os dois espelhos **intocados** · gizmo ids **nenhum novo** ·
+  4 ids de painel, **todos por hash de string** ⇒ fora de todo contador ·
+  **nenhum ADR** · **ZERO `Cargo.toml`/`Cargo.lock`**.
+- **Superfície pública nova:** `ph2d_platformer::{Brink, brink_probe_wanted}`,
+  `WalkConfig::{walk_off_ledges, ledge_look}`, `CrouchConfig::walk_off_ledges`,
+  `GroundSample::brink`, `PlayerView::brink`, e `ph2d_physics_ecs::walk_for`
+  (re-export, pela MESMA porta que já publica `PlayerConfig`/`RideConfig`/
+  `WalkConfig` — quem pinta a row do agachar precisa de saber o que a lei vai de
+  facto ler).
+
+### ⚠️ Três splits de LOC, e um deles era um VERMELHO LATENTE
+
+`ph2d-physics-ecs/src/bridge/player.rs` **já estava em 720 > 700 no `HEAD`** — a
+wave anterior o shipou vermelho, e o gate mora em `ph2d-editor-core/tests/`, que
+um fechamento por `cargo test -p` **não alcança** (a mesma causa estrutural que
+physics, motion-value e Vector já documentaram). Os três cortes são por
+RESPONSABILIDADE, e o `c9` byte-idêntico é a prova de que foram *pure code
+motion*:
+
+- `bridge/player.rs` 762 → **695**: a metade `&mut self` saiu para
+  **`player_apply.rs`** (o laço COLHE, a ponte APLICA — a lei que o próprio
+  módulo já dizia em sete comentários), e a decisão da quina foi para o
+  `player_leg`, que é quem sabe COMO a perna responde.
+- `platformer/walk.rs` 710 → **629**: a trava saiu para **`walk_brink.rs`**
+  (*quanto empurrar* × *até onde é seguro andar*).
+- `components/player.rs` 707 → **646**: o espelho serde saiu para
+  **`player_lift.rs`** (*o que o artista autora* × *como uma lei da crate pura
+  atravessa o arquivo*).
+
+### Smoke
+
+**`env PH2D_PHYSICS_SMOKE=119 cargo run -p ph2d-host-desktop --release`** — três
+raias, a MESMA autoria, só a trava difere. ⚠️ A cena **imprime o que montou**; se
+a linha não aparecer, o resto não significa nada.

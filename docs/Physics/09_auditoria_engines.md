@@ -64,7 +64,7 @@ Legenda: ✅ temos · 🟡 temos por outra via (com o porquê) · ❌ não temos
 | `FallingLateralFriction` | 🟡 | o `air_acceleration` já freia sem input (documentado em `walk.rs`) |
 | `MaxStepHeight`, `bCanStepUp` | 🟡 | **§4.1** — a perna sobe o degrau; sob Snap o `step_height` é **derivado** do `cling_distance` (`bridge/player.rs:491`) |
 | `WalkableFloorAngle` | ✅ | `max_slope_deg` → `footing` |
-| **`bCanWalkOffLedges`** | ❌ | **§3.G** |
+| **`bCanWalkOffLedges`** | ✅ | **§3.G** ⟨W-Brink⟩ |
 | `PerchRadiusThreshold`, `PerchAdditionalHeight` | 🟡 | **§4.2** — empoleiramos por construção (leque de pés), mas não é AUTORÁVEL |
 | `bImpartBaseVelocity{X,Y,Z}` | ✅ | `ground_velocity` |
 | **`bImpartBaseAngularVelocity`** | ✅ | **§4.3** — `velocity_at_point` já inclui `ω × r` (`world/player.rs:119`) |
@@ -283,10 +283,23 @@ consegue ler.
 do player (*como é que um jogo acrescenta um gancho sem editar a lei?*), para o
 dia em que houver um segundo jogo a pedi-lo.
 
-### 3.G · **`bCanWalkOffLedges`** — não cair da beirada
+### 3.G · **`bCanWalkOffLedges`** — não cair da beirada ⟨**FECHADO** 2026-08-15⟩
 
-O Unreal ship. Serve a IA e ao *andar com cuidado*. Pequeno e isolado: é um
-veredito a mais no `footing` quando o leque de pés vê o chão acabar.
+O Unreal ship. Serve a IA e ao *andar com cuidado*.
+
+> ⚠️ **A frase abaixo — *"um veredito a mais no `footing` quando o leque de pés
+> vê o chão acabar"* — estava ERRADA, e a sonda a refutou antes de uma linha ser
+> escrita.** O leque só amostra DENTRO da pegada, então ele **acende sobre uma
+> fenda de 5 cm** que o corpo de 40 cm atravessa: *"o chão acaba"* e *"há um
+> buraco à frente"* chegam-lhe idênticos. O que shipou é a **mesma perna castada
+> à FRENTE** — o que faz a trava e o leque concordarem por construção — com o
+> alcance **derivado** (`v²/2a` da lei + meia-largura da ponte), porque um
+> `ledge_look` autorado tinha o valor certo em função de outros dois knobs
+> (medido: a 8 m/s, `0,30` deixa cair e `0,60` segura, com a fronteira em
+> `0,533`). A tabela inteira está na §6 do plano 10; a cena de smoke é a **119**.
+
+Pequeno e isolado: é um veredito a mais no `footing` quando o leque de pés vê o
+chão acabar.
 
 ### 3.H · **Voar / noclip** (`MOVE_Flying`)
 

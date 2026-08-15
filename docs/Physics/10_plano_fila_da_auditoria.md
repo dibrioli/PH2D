@@ -575,8 +575,60 @@ entra quando houver quem o peça.
   existia). Construída a política (`PlatformLift` · `Full` / `Up Only` / `None`),
   com o default **`Full` = o mundo que já shipava, byte a byte**. Cena **118**.
 
-* **G · `bCanWalkOffLedges`** — um veredito a mais quando o leque vê o chão
-  acabar.
+* **G · `bCanWalkOffLedges`** ⟨**FECHADA** 2026-08-15, e a medição reescreveu a
+  wave DUAS vezes⟩ — a linha do plano dizia *"um veredito a mais quando o leque
+  vê o chão acabar"*, e a §0 mandou medir antes de escrever a lei. As duas
+  refutações, por ordem:
+
+  **(1) O leque NÃO consegue responder à pergunta.** O primeiro corte lia a
+  quina dos **pés que perderam o chão** — e a sonda mediu que ele acende sobre
+  uma **fenda de 5 cm**, que o corpo de 40 cm atravessa sem esforço:
+
+  | fenda | tiques acesos / sobre a fenda | atravessou? |
+  |---|---|---|
+  | 0,05 | 1 / 7 | sim |
+  | 0,10 | 2 / 8 | sim |
+  | 0,30 | 5 / 11 | sim |
+
+  O leque só amostra **DENTRO** da pegada, então *"o chão acaba"* e *"há um
+  buraco à minha frente"* chegam-lhe idênticos, e nenhum arranjo dos pés que já
+  existem os separa. ⇒ o sensor passou a ser a **MESMA perna castada à frente**
+  (`cast_leg` verbatim, com as duas leis de redução intactas), o que faz a trava
+  e o leque concordarem **por construção**: ele recusa andar exactamente onde
+  deixaria de ser segurado.
+
+  **(2) O alcance NÃO podia ser um knob, e a medição matou o que eu tinha
+  escrito.** Com um `ledge_look` autorado, a 8 m/s um `0,30` deixa o personagem
+  **CAIR** e um `0,60` o segura — e a fronteira é exactamente `v²/(2a) = 0,533`:
+  *o valor certo do knob era função de OUTROS DOIS knobs*, a forma que este repo
+  já removeu uma vez (o Conserve do sculpt). O alcance passou a ser **derivado**,
+  e ele tem **duas metades, cada uma de quem a sabe**: a lei dá a distância de
+  paragem (`v²/2a`) e a ponte soma a **meia-largura do corpo**, porque a pergunta
+  certa é *"quando eu parar, ainda haverá chão onde a minha BORDA estiver?"*.
+
+  ⚠️ **Sem a segunda parcela o alcance é o CASO DE FRONTEIRA** — ele trava no
+  instante em que a perna deixa de o segurar. Medido a 2 m/s, ele acabava
+  equilibrado num pé só sobre o lábio **e caía na mesma**, enquanto as outras
+  velocidades escapavam por um fio (pelo bónus de mudança de direção). Com as
+  duas metades, ninguém cai:
+
+  | vel (m/s) | alcance derivado | borda do corpo vs quina | caiu? |
+  |---|---|---|---|
+  | 1 | 0,0083 | +0,175 | não |
+  | 2 | 0,0333 | +0,181 | não |
+  | 4 | 0,1333 | +0,156 | não |
+  | 6 | 0,3000 | +0,135 | não |
+  | 8 | 0,5333 | +0,048 | não |
+  | 12 | 1,2000 | −0,131 | não |
+
+  ⚠️ **A fenda LARGA é a semântica, não um defeito:** um vão que a perna não
+  vence é um patamar, e a trava recusa andar para ele mesmo que a inércia o
+  cruzasse — que é literalmente o que *"não ande para fora"* significa. Medido: a
+  0,50 m ele pára, e o CONTROLE sem trava cruza-o.
+
+  Mais o `bCanWalkOffLedgesWhenCrouching` (o **sneak-to-the-brink** do Unreal),
+  que só **APERTA** — a porta é a `walk_for`, que o doc dela já reservava para
+  *"o dia em que um terceiro termo tiver de encolher"*. Cena **119**.
 * **H · voar/noclip** — um modo de depuração.
 * **I · air control boost** — um campo e um `if`.
 

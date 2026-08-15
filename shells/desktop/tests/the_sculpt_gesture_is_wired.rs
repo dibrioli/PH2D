@@ -585,6 +585,14 @@ fn every_verb_is_reachable_from_the_keyboard() {
         "ClayStrips",
         // O Blob, pelo mesmo motivo e no mesmo aperto de teclado.
         "Blob",
+        // ⚠️ **O POLEGAR (W6), e a ausência aqui é DELIBERADA.** Sobra o `L`, e
+        // *"cLay Thumb"* é exactamente o mnemônico fraco que o parágrafo acima
+        // recusa — com `Clay`, `Clay Strips` e `Clay Thumb` no catálogo, uma
+        // tecla de *clay* ensina uma regra que não existe. O Blender também não
+        // lhe dá atalho de fábrica. **A escolha é do Enio**, e até ela o verbo
+        // shipa pelo chip, que o `every_verb_has_a_chip_that_selects_it`
+        // garante.
+        "ClayThumb",
     ];
     let keys = function_body(&sculpt_src(), "sculpt3d_key");
     for v in &verbs {

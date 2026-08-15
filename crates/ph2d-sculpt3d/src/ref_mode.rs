@@ -300,7 +300,9 @@ impl RefMode {
             // parente que o SculptGL tem, e ele não carrega o `invert_strength`
             // que faz de um Blob um Blob. Uma referência governa as ferramentas
             // que ela TEM.
-            Self::S => !matches!(verb, Verb::ClayStrips | Verb::Blob),
+            // ⚠️ **E nem o Clay Thumb**, pela terceira vez a mesma frase: o
+            // `clay_thumb.cc` é do Blender e o SculptGL não tem parente dele.
+            Self::S => !matches!(verb, Verb::ClayStrips | Verb::Blob | Verb::ClayThumb),
             // A lei de kernel (bilateral · tangencial · front-face contínuo) e
             // a `StrengthCurve::Squared` do E13.
             Self::B => true,

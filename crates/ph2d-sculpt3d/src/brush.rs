@@ -12,8 +12,8 @@ use crate::{Alpha, AlphaStencil};
 #[path = "brush_verb.rs"]
 mod verb;
 pub use verb::{
-    CLAY_PLANE_FRACTION, CREASE_FRACTION, PINCH_GAIN, REACH_FRACTION, STRIP_PLANE_FRACTION,
-    STRIP_REACH_FRACTION, Verb,
+    CLAY_PLANE_FRACTION, CLAY_THUMB_TILT_MAX_DEG, CLAY_THUMB_TILT_STEP_DEG, CREASE_FRACTION,
+    PINCH_GAIN, REACH_FRACTION, STRIP_PLANE_FRACTION, STRIP_REACH_FRACTION, Verb,
 };
 
 /// A ferramenta na mão. Um traço inteiro corre contra um destes.

@@ -329,6 +329,10 @@ mod verb_strip;
 #[path = "verb_strip_law_tests.rs"]
 mod verb_strip_law;
 
+/// **O POLEGAR**, cujo plano se inclina ao longo do traço — ver [`verb_thumb`].
+#[path = "verb_thumb_tests.rs"]
+mod verb_thumb;
+
 /// As TRÊS famílias AFINS do paper (twist · scale · pinch) e o gancho que reusa
 /// o agarre — a W5-B. Ver o cabeçalho dele.
 #[path = "verb_field_tests.rs"]

@@ -199,7 +199,9 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // é a distinção que o [`RefMode::declares`] documenta.
         // ⚠️ **Nem o Blob** — o `crease.cc` é do Blender, e este `None` é a
         // mesma frase que os dois vizinhos carregam.
-        Verb::Sharpen | Verb::ClayStrips | Verb::Blob => return None,
+        // ⚠️ **Nem o Clay Thumb** — `clay_thumb.cc`, a mesma frase pela terceira
+        // vez.
+        Verb::Sharpen | Verb::ClayStrips | Verb::Blob | Verb::ClayThumb => return None,
     };
     Some(p)
 }

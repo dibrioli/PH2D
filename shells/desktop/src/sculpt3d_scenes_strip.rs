@@ -25,21 +25,14 @@ pub(crate) fn clay_strips_scene() -> bool {
 /// próprio plano em raios)`.
 #[must_use]
 pub(crate) fn strip_numbers() -> (f32, f32, f32) {
-    let corner = ph2d_sculpt3d::Footprint::strip_query_factor(
-        ph2d_sculpt3d::Brush::default().strip_length,
-    );
+    let corner =
+        ph2d_sculpt3d::Footprint::strip_query_factor(ph2d_sculpt3d::Brush::default().strip_length);
     // O pico de `z·(1−z)` está em `z = 1/2`, e o lugar é o número: derivá-lo do
     // kernel em vez de o escrever mantém o roteiro honesto se a lei mudar.
     let peak = {
-        let s = ph2d_sculpt3d::Strip::new(
-            [0.0; 3],
-            [0.0, 0.0, 1.0],
-            [1.0, 0.0, 0.0],
-            1.0,
-            1.0,
-            1.0,
-        )
-        .expect("há plano");
+        let s =
+            ph2d_sculpt3d::Strip::new([0.0; 3], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0], 1.0, 1.0, 1.0)
+                .expect("há plano");
         let mut best = (0.0f32, 0.0f32);
         for i in 0..=100 {
             let z = -(i as f32) / 100.0;

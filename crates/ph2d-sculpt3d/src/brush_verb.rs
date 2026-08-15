@@ -124,11 +124,45 @@ pub enum Verb {
     /// declarativa do `S` fica silenciosa aqui, como já fica no
     /// [`Self::Sharpen`].
     ClayStrips,
+    /// **O POLEGAR** — o plano se INCLINA ao longo do traço, e o ângulo CRESCE
+    /// enquanto a mão anda.
+    ///
+    /// ⚠️ **A lei é a do [`Self::Flatten`]; o que muda é QUAL plano** — o
+    /// `clay_thumb.cc` projeta cada vértice num plano *bilateral*, exatamente
+    /// como o Flatten, e a ferramenta inteira mora na construção do plano:
+    ///
+    /// 1. ele passa pelo **centro do dab** (`location_symm`), não pelo centro
+    ///    de área — a diferença com os quatro verbos de plano que a
+    ///    [`crate::stroke_plane`] serve;
+    /// 2. a normal dele é a normal de área **girada** em torno do eixo que
+    ///    ATRAVESSA o traço (`x = n × path`, o mesmo `X` que o `pinch.cc`
+    ///    monta);
+    /// 3. o ângulo dessa rotação **ACUMULA** ao longo do traço
+    ///    (`+`[`crate::CLAY_THUMB_TILT_STEP_DEG`]` por dab, teto
+    ///    [`crate::CLAY_THUMB_TILT_MAX_DEG`]) — *"simulate the clay accumulation
+    ///    by increasing the plane angle as more samples are added to the
+    ///    stroke"*, `clay_thumb.cc:170-176`.
+    ///
+    /// ⚠️ **É o PRIMEIRO verbo cujo alvo depende de quantos dabs já passaram**,
+    /// e não só de onde este caiu. O estado mora no [`crate::SculptStroke`], ao
+    /// lado do `last_center` de que ele é irmão: os dois são fatos sobre o
+    /// GESTO, e nenhum deles cabe num [`crate::Dab`].
+    ///
+    /// ⚠️ **Sem direção ele não deposita**, e isso é a referência ao pé da
+    /// letra (`if math::is_zero(grab_delta_symm) { return; }`): um plano
+    /// inclinado precisa de um eixo, e o eixo é o traço. O primeiro dab de todo
+    /// traço cai nesse caso por construção — o `path` dele é `[0, 0, 0]` —, que
+    /// é a mesma recusa que o *"delay the first daub"* da referência escreve com
+    /// um `return` próprio.
+    ///
+    /// ⚠️ **O SculptGL NÃO O TEM** — ver [`crate::RefMode`], como os dois
+    /// vizinhos acima.
+    ClayThumb,
 }
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 18] = [
+    pub const ALL: [Self; 19] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -147,6 +181,7 @@ impl Verb {
         Self::Twist,
         Self::LocalScale,
         Self::ClayStrips,
+        Self::ClayThumb,
     ];
 
     /// **Este verbo pode ACUMULAR?** — a porta única do `accumulate`.
@@ -263,6 +298,7 @@ impl Verb {
             Self::Twist => "Twist",
             Self::LocalScale => "Local Scale",
             Self::ClayStrips => "Clay Strips",
+            Self::ClayThumb => "Clay Thumb",
         }
     }
 
@@ -607,10 +643,10 @@ pub const PINCH_GAIN: f32 = 0.05;
 /// medições o confirmam longe de qualquer extremo.
 ///
 /// ⚠️ **NÃO é citável da referência.** O `clay_strips.cc` lê `brush.plane_offset`
-/// e o genérico do DNA é `0.0`; quem declara o valor por-tool é o
-/// `BKE_brush_sculpt_reset`, **ausente do clone** — a mesma lacuna da §7.1 do
-/// plano que bloqueou a W1 e o Draw Sharp. O número acima é NOSSO, e a tabela
-/// ao lado é a razão dele.
+/// e o genérico do DNA é `0.0`; quem declarava o valor por-tool era o
+/// `BKE_brush_sculpt_reset`, que **não existe mais em C** (§7.0 do plano) — a
+/// mesma lacuna que bloqueou a W1 e o Draw Sharp. O número acima é NOSSO, e a
+/// tabela ao lado é a razão dele.
 ///
 /// ⚠️ **E ele existe porque sem ele a ferramenta nasce MORTA:** com o plano
 /// rente, `z = 0` em toda parte e o portão fecha — quatro varreduras da suíte
@@ -626,3 +662,27 @@ pub const STRIP_PLANE_FRACTION: f32 = 0.25;
 /// nosso `plane_offset` é um controle do artista e SOMA a este — o default dele
 /// (`0`) devolve a referência exata, e girá-lo levanta o plano a mais.
 pub const CLAY_PLANE_FRACTION: f32 = 0.1;
+
+/// Quanto o plano do **Clay Thumb** se inclina a MAIS a cada dab, em graus.
+///
+/// ✅ **É o literal `0.8f` do `clay_thumb.cc:173`**, lido da fonte — não é nosso.
+///
+/// ⚠️ **E é por DAB, o que torna a lei dependente do ESPAÇAMENTO** — a
+/// referência declara graus-por-amostra, e quantas amostras cabem num
+/// centímetro de traço é decisão de cada motor. ⇒ o que é citável é *quanto o
+/// plano gira por dab*; *quanto ele gira por comprimento de traço* é uma
+/// grandeza NOSSA, e o gate `the_thumb_tilt_accumulates_with_the_stroke` mede a
+/// nossa em vez de a afirmar.
+pub const CLAY_THUMB_TILT_STEP_DEG: f32 = 0.8;
+
+/// O TETO da inclinação do **Clay Thumb**, em graus.
+///
+/// ✅ **É o literal `60.0f` do `clay_thumb.cc:175`** (`std::clamp(front_angle,
+/// 0.0f, 60.0f)`).
+///
+/// ⚠️ **Ele é ALCANÇÁVEL, e é isso que o torna um teto e não um adorno:** a
+/// [`CLAY_THUMB_TILT_STEP_DEG`] o atinge em `60 / 0,8 = 75` dabs, que é um traço
+/// longo mas comum. Um teto que ninguém encosta seria um número sem
+/// consequência; este muda o desenho de todo traço a partir do 75º dab, e o
+/// gate afirma a saturação.
+pub const CLAY_THUMB_TILT_MAX_DEG: f32 = 60.0;

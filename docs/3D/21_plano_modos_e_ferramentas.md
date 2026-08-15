@@ -2672,19 +2672,19 @@ alguém a chame.*
 | **W0** a espinha · **W1'** a UI · **W2** os knobs de Pro · **W3** os kernels divergentes · **W5** Kelvinlets | ✅ **fechadas** |
 | ~~**W1**~~ os defaults do `B` | ⛔ **sem cura em código** — §7.0; vira decisão de produto |
 | **W4** o Smooth que não encolhe | 🟡 **metade** — o `l-mode` (Taubin λ\|μ) landou; faltam **Slide Relax**, o **Surface Smooth como pincel próprio** e o **laplaciano por cotangentes** (que é o `L` do Inflate na matriz do §3) |
-| **W6** os dabs que não são discos | 🟡 **metade** — **Clay Strips** e **Blob** landaram; faltam **Multiplane Scrape** e **Clay Thumb**, que **reusam a moldura da faixa** (o item caro da wave já está pago) |
+| **W6** os dabs que não são discos | 🟡 **quase** — **Clay Strips**, **Blob** e **Clay Thumb** (§7.26) landaram; falta **um**, o **Multiplane Scrape** |
 | **W7** o plano MLS · **W8** Layer · **W9** Mesh Filter · **W10** Cloth · **W11** handles · **W12** a geodésica | ⬜ **por abrir** |
 
 **Ferramentas** — a lista do §5.1 tem 16 itens:
 
 | | itens |
 |---|---|
-| ✅ **feitos (2)** | Clay Strips · Blob |
+| ✅ **feitos (3)** | Clay Strips · Blob · **Clay Thumb** |
 | ✅ **respondido SEM verbo novo (1)** | **Elastic Deform** — a §7.17 mediu que 3 dos 5 tipos dele são o mesmo verbo com outra família de escalas e os outros 2 já shipavam; o que faltava era o knob **Field width**. *Um sexto botão cujo conteúdo é um dropdown para verbos que a lista já tem é o item de menu morto que este plano recusa.* ⇒ **o alvo de 14 pincéis novos é de 13** |
 | ⛔ **fora, com motivo (1)** | Draw Sharp — §7.18 mediu que o que o nome promete mora na **CURVA**, e a curva de fábrica por-tool está no mesmo `.blend` binário da §7.0 ⇒ ele **é** o item da W1 |
-| ⬜ **faltam (12)** | Multiplane Scrape · Clay Thumb · Layer · Cloth · Pose · Boundary · Nudge · Thumb · Surface Smooth · Slide Relax · Mesh Filter (9 tipos) · Cloth Filter (5 tipos) |
+| ⬜ **faltam (11)** | Multiplane Scrape · Layer · Cloth · Pose · Boundary · Nudge · Thumb · Surface Smooth · Slide Relax · Mesh Filter (9 tipos) · Cloth Filter (5 tipos) |
 
-⇒ **18 verbos hoje**, contra os 16 de que a linha partiu. O placar do §10 dizia
+⇒ **19 verbos hoje**, contra os 16 de que a linha partiu. O placar do §10 dizia
 **32**; com o Elastic Deform respondido sem verbo e o Draw Sharp fora, o alvo
 honesto é **29** (16 + 11 pincéis + 2 filtros).
 
@@ -2700,3 +2700,136 @@ a **geodésica** (W12) troca o falloff da família inteira de uma vez.
 de pé: W0-W3 entregam o **pedido inteiro** (os três modos, o Basic/Pro, e o app
 deixa de esculpir mal). O que corre agora é a metade que muda **o que o app
 consegue fazer**.
+
+---
+
+### §7.26 — ✅ O POLEGAR (W6): o primeiro verbo cujo alvo depende de QUANTOS dabs já passaram (2026-08-15)
+
+`Verb::ClayThumb`, o **19º** — o `clay_thumb.cc`, o penúltimo item da W6.
+
+**A lei, lida da fonte e não de memória.** A projeção é a do
+[`Verb::Flatten`], **bilateral**, sem `comp` e sem teste de lado
+(`calc_translations_to_plane`); a ferramenta inteira mora na construção do
+plano:
+
+1. ele passa pelo **centro do DAB** (`location_symm`), não pelo centro de área;
+2. a normal é a de área **girada** em torno do eixo que ATRAVESSA o traço
+   (`x = n × path`, o mesmo `X` que o `pinch.cc` monta);
+3. o ângulo **ACUMULA** — `+0,8°` por dab, teto `60°` — *"simulate the clay
+   accumulation by increasing the plane angle as more samples are added to the
+   stroke"*.
+
+⚠️ **DOIS erros de leitura foram evitados por ir ao código**, e os dois teriam
+shipado silenciosos:
+
+- os locais do `clay_thumb.cc` chamados `area_position` e `sculpt_plane_normal`
+  estão com os **nomes trocados** — `calc_brush_plane(..., r_area_no, r_area_co)`
+  devolve a **normal primeiro** (`sculpt.cc:3048-3053`). Lido pelos nomes, o
+  verbo giraria uma POSIÇÃO como se fosse um vetor;
+- o eixo chega ao `rotate_v3_v3v3fl` **escalado pelo raio** (`mat * scale`), e a
+  função **normaliza sozinha** (`math_vector.cc:660`) — a armadilha de assumir
+  que ela exige unitário é um erro que só aparece com `raio ≠ 1`.
+
+**O que a wave NÃO precisou inventar.** O eixo de inclinação sai do **mesmo
+door** que já responde *"este dab tem direção?"* — a referência monta `y = n × x`
+e num frame ortonormal isso se inverte em `x = y × n`, então o `stroke_axis`
+(que devolve o `y`) serve os dois, com **um** piso de degeneração. Um segundo
+`cross` com um segundo piso seria a segunda resposta, e o dia em que um dos dois
+mudasse o verbo depositaria onde o outro recusa.
+
+**Sem direção não deposita**, e isso reproduz os DOIS `return` da referência (o
+*"delay the first daub"* e o `is_zero(grab_delta)`) com **uma** pergunta: o
+primeiro dab de todo traço tem `path = [0,0,0]` por construção.
+
+**MEDIDO pela porta do artista** (`tests/measure_clay_thumb.rs`, esfera 96×144,
+`R = 0,35`, passo `0,06 R`; o ângulo é lido **dos vértices**, por ajuste de plano
+por mínimos quadrados):
+
+| dabs | inclinação do corte | plano (a lei) |
+|---|---|---|
+| 2 | −0,65° | 0,80° |
+| 5 | −2,83° | 3,20° |
+| 10 | −5,75° | 7,20° |
+| 20 | −15,18° | 15,20° |
+| 40 | **−44,42°** | 31,20° |
+| 76 | −79,97° | 60,00° |
+| 120 · 200 | **−81,75° (idêntico)** | 60,00° |
+
+⚠️ **As duas colunas medem grandezas DIFERENTES, e a segunda não é uma previsão
+da primeira** — *plano* é quanto o plano de UM dab está inclinado contra a normal
+de área DELE, *inclinação* é o corte que a SEQUÊNCIA deixou sobre uma esfera que
+já curva sozinha. Elas coincidem por volta dos 20 dabs e divergem depois, porque
+cada dab inclina contra o que os anteriores deixaram.
+
+⚠️ **O CONTROLE é o Flatten no mesmo traço: −3,64°.** Sem ele o gate mediria a
+curvatura da esfera e chamaria isso de inclinação.
+
+⚠️ **E a mudança de ORIGEM tem SINAL, medido:** volume assinado **−10,68 no
+Flatten contra +11,30 no polegar** — um REMOVE, o outro ACRESCENTA, e a causa é
+só o plano passar pelo centro do dab (sobre a superfície) em vez do centro de
+área (abaixo dela, numa calota curva). É o gate que morre se alguém "unificar" as
+duas origens achando que a diferença é cosmética.
+
+**O teto é ALCANÇÁVEL** (`60 / 0,8 = 75` dabs) e a ferramenta **satura**: 120 e
+200 dabs deixam a malha **idêntica**, porque projetar num plano é auto-limitado.
+
+⚠️ **O que é citável e o que é NOSSO:** `0,8°` e `60°` são literais do
+`clay_thumb.cc`. Mas eles são **por DAB**, e quantos dabs cabem num centímetro de
+traço é decisão de cada motor ⇒ *graus por comprimento de traço* é grandeza
+NOSSA (medida: 26,67 · 13,33 · 6,67 · 3,20 °/raio nos espaçamentos 0,03 · 0,06 ·
+0,12 · 0,25), e está escrita como nossa em vez de vestir a autoridade da fonte.
+
+**A inclinação é do TRAÇO, nunca do espelho** — a referência a avança só em
+`stroke_is_main_symmetry_pass`, e a nossa fronteira de chamada É essa passada.
+Avançá-la por cópia faria a ferramenta mudar de lei ao ligar a simetria.
+
+⚠️ **E o `!accum ⇒ orig` do estimador de plano vale para ele também** (o
+`clay_thumb.cc` chama o mesmo `calc_brush_plane`): a base da inclinação é a
+normal CONGELADA, senão ela persegue o barro que ela própria moveu. O `Blob`
+ficou **FORA** dessa lista de propósito — ele também é do Blender e também ajusta
+plano, mas hoje lê o vivo, e trocá-lo mudaria o desenho de um verbo que esta wave
+não toca: quem o quiser dentro traz a medição junto.
+
+**Gates:** 6 no verbo + 1 arch-gate novo na shell. **8 mutações, 8 sangram** — o
+ângulo nunca avança (mata 2) · avanço por cópia de espelho · `begin` sem reset ·
+sem o teto · a origem no centro de área · deposita sem eixo · o sinal da
+inclinação · e a cena **muda** (o roteiro existe e ninguém o chama).
+
+⚠️ **O arch-gate novo fecha uma classe que ninguém vigiava:**
+`every_sculpt3d_scene_script_is_announced` — uma cena cujo `announce` não é
+chamado compila, passa em toda a suíte e entrega ao Enio uma **janela sem
+instruções**. É o irmão do `no_two_sculpt3d_scenes_claim_the_same_level` (lá a
+cena é inalcançável, aqui ela é alcançável e não se apresenta).
+
+⚠️ **DOIS defeitos de FIXTURE, e o primeiro reprovou o próprio CONTROLE:** o
+ajuste de plano da sonda filtrava só em `xy` — um **cilindro** através de uma
+esfera apanha as DUAS calotas, a maior dispersão passa a ser em `z`, e o ajuste
+devolvia `±90°` para tudo, **inclusive para o Flatten**. *Uma sonda cujo controle
+falha está a medir outra coisa.* E o gate `invert_changes_the_result_of_exactly_…`
+reprovou no anti-vácuo apontando para o VERBO: ele dispara **um** dab em cada um,
+e um dab só não tem caminho — a fixture passou a andar dois, que é o que a torna
+honesta para os dezanove.
+
+**Sem tecla, e a ausência é DELIBERADA** (`CHIP_ONLY`): sobra o `L`, e *"cLay
+Thumb"* com `Clay`/`Clay Strips`/`Clay Thumb` no catálogo ensina uma regra que
+não existe — o Blender também não lhe dá atalho de fábrica. **A escolha é do
+Enio.**
+
+**LOC:** o `stroke_target.rs` cruzou 700 (717) ⇒ corte por ASSUNTO em
+`stroke_aim.rs` (648 + 94) — *a aritmética com que um alvo é escrito*, sete
+funções que **não sabem que existe um verbo**, contra *para onde cada verbo
+aponta*. ⚠️ O `stroke_axis` e o `lateral_pull` FICARAM no pai porque carregam LEI
+e são citados de fora: descê-los obrigaria o `pub(super)` deles a virar
+`pub(crate)`, e a visibilidade passaria a ser função do TAMANHO do arquivo.
+
+`Verb::ALL` **18 → 19** · `SCULPT3D_VERB` **18 → 19** (`sculpt3d.verb.18`) ·
+censo do `B` **18 → 19** (o `S` fica em 15: são 19 menos os quatro que o SculptGL
+não tem). **Nenhum schema, nenhum ADR, nenhuma dep, nenhuma crate nova.**
+
+⚠️ **PENDENTE DE SMOKE: `PH2D_SCULPT3D_SMOKE=30`**, e o roteiro imprime os
+números que ele manda contar (derivados das constantes, não escritos à mão). As
+perguntas de olho: **o CONTROLE primeiro** (o Flatten não deita ao longo do
+traço) · o polegar no mesmo gesto tem de ir **deitando** conforme a mão anda · um
+**toque parado faz NADA** · passando dos 75 dabs a superfície **para de mudar** ·
+o **traço seguinte nasce do zero** · e com o **espelho** os dois lados saem
+iguais entre si e iguais ao lado único.

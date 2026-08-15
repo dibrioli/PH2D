@@ -94,6 +94,21 @@ impl SculptStroke {
             },
             ..*dab
         };
+        // ⚠️ **A INCLINAÇÃO DO POLEGAR avança aqui, e a ORDEM é a da
+        // referência** (`clay_thumb.cc:165-176`): o primeiro passo do traço
+        // **zera e sai** — e para nós ele já sai por outra via, porque o `path`
+        // dele é nulo —, e só do segundo em diante o ângulo cresce. Ler
+        // `last_center` ANTES da linha abaixo é o que distingue os dois casos;
+        // depois dela a informação já não existe.
+        //
+        // ⚠️ **E ela é gateada no VERBO** — o `front_angle` da referência só
+        // avança dentro do `do_clay_thumb_brush`. Sem o gate, um traço de Draw
+        // deixaria a inclinação carregada para o próximo traço de polegar sem
+        // que nada na tela dissesse porquê.
+        if brush.verb == Verb::ClayThumb && self.last_center.is_some() {
+            self.thumb_tilt_deg = (self.thumb_tilt_deg + crate::CLAY_THUMB_TILT_STEP_DEG)
+                .clamp(0.0, crate::CLAY_THUMB_TILT_MAX_DEG);
+        }
         self.last_center = Some(dab.center);
         // ⚠️ **Zerados UMA vez, aqui, e não a cada cópia.** É esta linha que faz
         // as janelas publicadas descreverem a CHAMADA; zerá-las lá dentro é

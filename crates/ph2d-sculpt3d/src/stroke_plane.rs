@@ -145,7 +145,18 @@ impl SculptStroke {
         //
         // ⚠️ **É a mesma lei da [`crate::RefMode::kernel_for`], um andar acima:**
         // uma referência só governa as ferramentas que ela TEM.
-        let live = brush.verb != Verb::ClayStrips || brush.accumulate;
+        // ⚠️ **E o [`Verb::ClayThumb`] entra na MESMA lista, porque a regra é da
+        // REFERÊNCIA e não do verbo:** o `clay_thumb.cc` chama o mesmo
+        // `calc_brush_plane`, então herda o `!accum ⇒ orig` acima. Para ele só
+        // a NORMAL muda de fonte (o plano dele passa pelo centro do DAB, não
+        // pelo centro de área) — e é a normal congelada que impede a base da
+        // inclinação de perseguir o barro que ela própria moveu.
+        //
+        // ⚠️ **O [`Verb::Blob`] fica FORA, e é decisão medida-antes-de-mexer:**
+        // ele também é do Blender e também ajusta um plano, mas hoje lê o vivo,
+        // e trocá-lo mudaria o desenho de um verbo que esta wave não toca. Quem
+        // o quiser dentro traz a medição junto.
+        let live = !matches!(brush.verb, Verb::ClayStrips | Verb::ClayThumb) || brush.accumulate;
         let nrm_of = |v: u32| {
             if live {
                 mesh.normals()[v as usize]

@@ -348,6 +348,7 @@ pub(crate) mod elastic;
 /// cada arquivo é a história de uma wave.
 #[path = "sculpt3d_scenes_strip.rs"]
 pub(crate) mod strip;
+
 /// `=22` — a cena do **EXTRACT**: a máscara vira uma PEÇA.
 ///
 /// ⚠️ **Duas esferas, e a assimetria é o smoke inteiro.** A da DIREITA já vem
@@ -362,6 +363,9 @@ pub(crate) mod strip;
 /// peça ao lado.
 #[path = "sculpt3d_scenes_masked.rs"]
 pub(crate) mod masked;
+/// **A CENA DO POLEGAR** (`=30`) — irmã da [`strip`] pela mesma linha de corte.
+#[path = "sculpt3d_scenes_thumb.rs"]
+pub(crate) mod thumb;
 pub(crate) use masked::{
     flatten_scene, flatten_scene_counts, mask_channel_numbers, mask_channel_scene,
     masked_dome_counts, soft_masked_counts, transform_scene,

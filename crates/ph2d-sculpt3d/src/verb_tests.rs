@@ -171,14 +171,28 @@ fn invert_changes_the_result_of_exactly_the_verbs_that_have_an_opposite() {
         let mut mesh = sphere();
         let mut s = SculptStroke::default();
         s.begin(&mesh);
-        s.dab(
-            &mut mesh,
-            brush,
-            // A porta que dá a cada verbo o dab de que ELE precisa: sem
-            // gesto o Grab é inerte, e a comparação abaixo seria vácuo.
-            &dab_for(brush.verb, centre, brush.radius),
-            Symmetry::default(),
-        );
+        // ⚠️ **DOIS dabs, e o segundo é o que torna a fixture honesta.** O
+        // [`Dab::path`] é derivado da diferença entre CENTROS, então o primeiro
+        // dab de qualquer traço nasce sem direção — e o [`Verb::ClayThumb`]
+        // **recusa depositar sem eixo**, por lei da referência. Com um dab só
+        // ele reprovava no anti-vácuo desta função, apontando para o verbo em
+        // vez de para a fixture: *o gate não continha o fenômeno*.
+        //
+        // ⚠️ **E andar não enfraquece ninguém:** a pergunta aqui é se o `Ctrl`
+        // MUDA o resultado, não quanto ele deposita — os outros dezoito
+        // simplesmente carimbam duas vezes.
+        let step = brush.radius * 0.25;
+        for k in 0..2 {
+            let c = [centre[0] + step * k as f32, centre[1], centre[2]];
+            s.dab(
+                &mut mesh,
+                brush,
+                // A porta que dá a cada verbo o dab de que ELE precisa: sem
+                // gesto o Grab é inerte, e a comparação abaixo seria vácuo.
+                &dab_for(brush.verb, c, brush.radius),
+                Symmetry::default(),
+            );
+        }
         let n = mesh.vert_count();
         let mask = mesh.masks().map_or_else(|| vec![0.0; n], <[f32]>::to_vec);
         (mesh.positions().to_vec(), mask)

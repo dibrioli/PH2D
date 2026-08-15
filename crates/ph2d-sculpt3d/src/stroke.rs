@@ -106,6 +106,19 @@ pub struct SculptStroke {
     /// ⚠️ Guardado ANTES da expansão do espelho: o que interessa é o caminho que
     /// a mão percorreu, e as cópias de simetria são todas do mesmo gesto.
     last_center: Option<[f32; 3]>,
+    /// **A INCLINAÇÃO ACUMULADA do [`Verb::ClayThumb`]**, em graus.
+    ///
+    /// ⚠️ **Irmão do [`Self::last_center`], e pela mesma razão:** é um fato
+    /// sobre o GESTO, não sobre o dab. O `Dab` diz onde a mão apertou; quantos
+    /// dabs já passaram é do traço, e o `clay_thumb.cc` o guarda exatamente
+    /// aqui — no `StrokeCache`, não no evento.
+    ///
+    /// ⚠️ **Avançado UMA vez por chamada a [`Self::dab`], antes do espelho** —
+    /// a referência o gateia em `stroke_is_main_symmetry_pass`, e a nossa
+    /// fronteira de chamada É essa passada: avançá-lo por cópia faria a
+    /// inclinação correr de duas a oito vezes mais rápido com o espelho armado,
+    /// e o artista veria a ferramenta mudar de lei ao ligar a simetria.
+    thumb_tilt_deg: f32,
 }
 
 impl SculptStroke {
@@ -138,6 +151,12 @@ impl SculptStroke {
         // primeiro dab apontaria para onde a mão ia no gesto passado, que é um
         // lugar arbitrário.
         self.last_center = None;
+        // ⚠️ **Nem a inclinação**, e a referência escreve a mesma linha
+        // (`clay_thumb.cc:166`, `front_angle = 0` no primeiro passo do traço).
+        // Sem ela o segundo traço começaria de onde o primeiro parou, e o
+        // artista veria a mesma ferramenta cavar mais fundo por ter sido usada
+        // antes.
+        self.thumb_tilt_deg = 0.0;
     }
 
     fn dab_core(&mut self, mesh: &mut Mesh, brush: &Brush, dab: &Dab) -> usize {

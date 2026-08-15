@@ -35,6 +35,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // extenso é uma linha aqui, se o Enio preferir.
         "panel.sculpt3d.reference" => "Reference",
         "panel.sculpt3d.reference_all" => "Apply to all tools",
+        "panel.sculpt3d.elastic_scales" => "Field width",
         "panel.sculpt3d.ui_level" => "Detail",
         "panel.sculpt3d.ui_level.basic" => "Basic",
         "panel.sculpt3d.ui_level.pro" => "Pro",

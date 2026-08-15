@@ -71,6 +71,28 @@ pub enum Scales {
 }
 
 impl Scales {
+    /// As três famílias, na ordem em que o painel as pinta — **do mais largo ao
+    /// mais apertado**, que é a grandeza que o artista escolhe (meia-largura
+    /// `1,74 · 1,04 · 0,93` em `r/ε`, medida DEPOIS da aterrissagem em
+    /// `measure_whether_the_scales_change_the_clay`).
+    pub const ALL: [Self; 3] = [Self::Mono, Self::Bi, Self::Tri];
+
+    /// O nome do chip.
+    ///
+    /// ⚠️ **Nomes de LARGURA e não de aritmética.** *Mono/Bi/Tri* dizem quantos
+    /// kelvinlets a soma tem — um fato sobre a implementação, que não ajuda
+    /// ninguém a escolher; *Wide/Medium/Tight* dizem o que muda no barro. Os
+    /// identificadores continuam sendo os do paper, porque é lá que a álgebra é
+    /// verificável.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Mono => "Wide",
+            Self::Bi => "Medium",
+            Self::Tri => "Tight",
+        }
+    }
+
     /// Os `(peso, múltiplo de ε)` desta família.
     ///
     /// ⚠️ **Os múltiplos são `1, 2, 3` e os pesos saem de um SISTEMA**, não de

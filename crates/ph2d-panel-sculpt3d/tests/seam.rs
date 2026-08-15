@@ -21,7 +21,7 @@ use ph2d_panel_sculpt3d::{
     Sculpt3dIntent, Sculpt3dPanel, Sculpt3dPanelState, Sculpt3dSnapshot, Sculpt3dUi, UiLevel,
     drain_intents, ids, rows, set_current_sculpt3d,
 };
-use ph2d_sculpt3d::{Alpha, Falloff, RefMode, TransformKind, Verb};
+use ph2d_sculpt3d::{Alpha, Falloff, RefMode, TransformKind, Verb, kelvinlet::Scales};
 use ph2d_ui_testkit::MockPanelHost;
 
 /// A escala que a fixture finge que o modelo comporta.
@@ -492,6 +492,15 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
     // quatro controles que nunca foram clicados. *A fixture tem de conter o
     // fenômeno* — a quarta vez que este arquivo escreve isto.
     ui.ui_level = UiLevel::Pro;
+    // ⚠️ **E o modo `L` armado, pela MESMA frase, uma wave depois — a QUINTA.**
+    // A fileira da largura do campo só é pintada onde o verbo declara um campo
+    // elástico (`RefMode::field(verb).is_some()`), e no `S` de fábrica ela não
+    // é: a varredura passaria por cima de três chips que nunca foram clicados.
+    // O modo é escrito na TABELA DO VERBO e re-resolvido, que é a porta que o
+    // roteador usa — pôr `ui.brush.mode` direto seria a segunda porta que este
+    // arquivo já documenta no `event.rs`.
+    ui.mode_by_verb[ph2d_panel_sculpt3d::state::verb_index(Verb::Crease)] = RefMode::L;
+    ph2d_panel_sculpt3d::state::arm_verb_defaults(&mut ui, Verb::Crease);
     let (mut host, mut state) = arrange(ui.clone());
     let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
 
@@ -533,6 +542,18 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
         ));
     }
     want.push(("ref apply to all".to_string(), ids::SCULPT3D_REF_MODE_ALL));
+    // ⚠️ **A MESMA porta que o pintor pergunta**, e não `Verb::Crease` escrito à
+    // mão: uma lista de verbos aqui apodrece no dia em que um sexto verbo passar
+    // a declarar campo, e o gate ficaria verde sobre uma fileira que ele não
+    // varre.
+    if ui.brush.mode.field(ui.brush.verb).is_some() {
+        for (i, sc) in Scales::ALL.into_iter().enumerate() {
+            want.push((
+                format!("field width {}", sc.label()),
+                ids::SCULPT3D_ELASTIC_SCALES[i],
+            ));
+        }
+    }
     // ⚠️ **A opção `0` é o pincel LISO e não um padrão**, então o laço é sobre
     // `Alpha::ALL` deslocado de um — a mesma aritmética do pintor e do roteador.
     want.push(("alpha none".to_string(), ids::SCULPT3D_ALPHA[0]));
@@ -1582,5 +1603,85 @@ fn the_hardness_row_writes_the_field_the_kernel_reads() {
     assert!(
         (row.max - 1.0).abs() < 1e-6,
         "a pista da dureza tem de alcançar o disco duro"
+    );
+}
+
+/// **A LARGURA DO CAMPO É OFERECIDA ONDE O CAMPO CORRE, E EM LUGAR NENHUM
+/// MAIS** — e o chip escreve no pincel.
+///
+/// ⚠️ **As duas metades são portas INDEPENDENTES**, e um gate que só afirmasse a
+/// presença ficaria verde com qualquer uma delas removida: a fileira exige que o
+/// verbo declare campo (`RefMode::field`) **e** que o nível seja `Pro`. Os dois
+/// controles negativos abaixo são o que separa *"a row aparece"* de *"a row
+/// aparece pelo motivo certo"*.
+///
+/// ⚠️ **E a metade do CAMPO é a que importa:** sem ela os três chips existiriam
+/// em `S`, onde o `stroke_target` nunca chama o kernel — três botões que não
+/// movem um vértice, e o artista descobre isso arrastando.
+#[test]
+fn the_field_width_row_exists_only_where_the_field_does_and_the_chip_lands() {
+    let armed = || {
+        let mut ui = Sculpt3dUi {
+            ui_level: UiLevel::Pro,
+            ..Default::default()
+        };
+        ui.mode_by_verb[ph2d_panel_sculpt3d::state::verb_index(Verb::Move)] = RefMode::L;
+        ph2d_panel_sculpt3d::state::arm_verb_defaults(&mut ui, Verb::Move);
+        assert!(
+            ui.brush.mode.field(ui.brush.verb).is_some(),
+            "a fixture não contém o fenômeno: o Move em L tem de declarar campo"
+        );
+        ui
+    };
+
+    // Os três chips existem, e cada um pousa a sua família.
+    for (i, want) in Scales::ALL.into_iter().enumerate() {
+        let (mut host, mut state) = arrange(armed());
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        assert!(
+            painted
+                .iter()
+                .any(|(id, _)| *id == ids::SCULPT3D_ELASTIC_SCALES[i]),
+            "o chip {} não está na tela",
+            want.label()
+        );
+        host.apply_panel_event::<Sculpt3dPanel>(
+            &mut state,
+            WidgetEvent::Click(ids::SCULPT3D_ELASTIC_SCALES[i]),
+        );
+        let Sculpt3dIntent::SetUi(got) = only_intent(want.label()) else {
+            panic!("intent errado")
+        };
+        assert_eq!(
+            got.brush.elastic_scales,
+            want,
+            "o clique em {} não pousou",
+            want.label()
+        );
+    }
+
+    // CONTROLE 1 — o mesmo verbo em `S`: o campo não corre, a fileira não existe.
+    let mut ui = armed();
+    ui.mode_by_verb[ph2d_panel_sculpt3d::state::verb_index(Verb::Move)] = RefMode::S;
+    ph2d_panel_sculpt3d::state::arm_verb_defaults(&mut ui, Verb::Move);
+    let (mut host, mut state) = arrange(ui);
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    assert!(
+        !painted
+            .iter()
+            .any(|(id, _)| *id == ids::SCULPT3D_ELASTIC_SCALES[0]),
+        "sem campo elástico os chips não movem um vértice, e estão na tela"
+    );
+
+    // CONTROLE 2 — o campo corre, mas em BASIC a largura é a que o kernel armou.
+    let mut ui = armed();
+    ui.ui_level = UiLevel::Basic;
+    let (mut host, mut state) = arrange(ui);
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    assert!(
+        !painted
+            .iter()
+            .any(|(id, _)| *id == ids::SCULPT3D_ELASTIC_SCALES[0]),
+        "a fileira é de Pro e está no Basic"
     );
 }

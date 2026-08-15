@@ -572,3 +572,86 @@ fn measure_the_crease_trench() {
         }
     }
 }
+
+/// **AS TRÊS ESCALAS MUDAM O BARRO?** — a pergunta que decide se o
+/// `Elastic Deform` tem conteúdo, e a lei §3 do plano aplicada a um knob.
+///
+/// O `Elastic Deform` do Blender oferece **Grab · Grab Biscale · Grab Triscale ·
+/// Scale · Twist**. Os quatro tipos de deformação já existem aqui como VERBOS
+/// com `l-mode` (Move · Twist · Local Scale · Pinch); o que a nossa tabela não
+/// tem é a escolha entre `Mono`/`Bi`/`Tri`, hoje presa no `Scales::default()`.
+///
+/// Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_field_verbs
+/// -- --ignored --nocapture measure_whether_the_scales_change_the_clay`
+#[test]
+#[ignore = "sonda de medição"]
+fn measure_whether_the_scales_change_the_clay() {
+    use ph2d_sculpt3d::kelvinlet::{Scales, grab};
+
+    // O deslocamento do campo de agarre ao longo de um raio, por família.
+    // ⚠️ Medido no KERNEL e não no barro, e o motivo é honesto: a família não
+    // é autorável hoje, então não há porta de produto para a sonda dirigir.
+    // O que ela responde é a pergunta ANTERIOR — *há conteúdo a expor?*
+    const EPS: f32 = 0.5;
+    let pull = [1.0f32, 0.0, 0.0];
+    println!("\n=== o agarre por família de escala (ε = {EPS}) ===");
+    println!("   r/ε      Mono        Bi       Tri     Bi/Mono   Tri/Mono");
+    for k in [0.0f32, 0.25, 0.5, 1.0, 1.5, 2.0, 2.5, 2.9] {
+        let r = [k * EPS, 0.0, 0.0];
+        let m = grab(r, EPS, pull, Scales::Mono)[0];
+        let b = grab(r, EPS, pull, Scales::Bi)[0];
+        let t = grab(r, EPS, pull, Scales::Tri)[0];
+        println!(
+            "  {k:>4.2}  {m:>8.5}  {b:>8.5}  {t:>8.5}   {:>7.4}   {:>7.4}",
+            b / m,
+            t / m
+        );
+    }
+
+    // ⚠️ **A 1ª versão desta segunda tabela perguntava a coisa ERRADA** — ela
+    // computava *"que alcance esta família precisa para deixar o resíduo que a
+    // Tri deixa em 3"* (Mono 28,8 · Bi 4,2), e eu ia fazer o `KELVINLET_REACH`
+    // virar função da família por causa dela. O doc-comment do
+    // [`rim_landing`] já tinha REFUTADO esse movimento, com medição:
+    // *"alargar o alcance NÃO é a cura — 4 deixa 1,19 %, 5 deixa 0,48 %, 6
+    // deixa 0,215 %, nunca zero; a janela dá exatamente zero, por construção,
+    // a QUALQUER alcance"*.
+    //
+    // ⇒ A pergunta certa é a que o artista vê: **qual é o perfil DEPOIS da
+    // aterrissagem**, por família, no alcance que já shipa. A janela é `C¹`
+    // nas duas pontas, então o composto desce a zero liso em toda família — o
+    // que muda entre elas é a LARGURA da influência, que é a feature.
+    println!("\n=== o perfil que o barro recebe (campo × aterrissagem, reach = 3) ===");
+    println!("   r/ε      Mono        Bi       Tri");
+    let landed = |k: f32, sc: Scales| {
+        let f = grab([k * EPS, 0.0, 0.0], EPS, pull, sc)[0];
+        f * ph2d_sculpt3d::kelvinlet::rim_landing(k / 3.0)
+    };
+    for k in [0.0f32, 0.5, 1.0, 1.5, 2.0, 2.25, 2.5, 2.75, 3.0] {
+        println!(
+            "  {k:>4.2}  {:>8.5}  {:>8.5}  {:>8.5}",
+            landed(k, Scales::Mono),
+            landed(k, Scales::Bi),
+            landed(k, Scales::Tri)
+        );
+    }
+
+    // A meia-largura: onde cada família cai a metade do bico DEPOIS da janela.
+    // É o número que diz *quão largo* é o agarre, que é o que o knob vende.
+    println!("\n  família   meia-largura (r/ε)   fração do bico na borda");
+    for (name, sc) in [
+        ("Mono", Scales::Mono),
+        ("Bi", Scales::Bi),
+        ("Tri", Scales::Tri),
+    ] {
+        let peak = landed(0.0, sc);
+        let mut half = 0.0f32;
+        while half < 3.0 && landed(half, sc) > 0.5 * peak {
+            half += 0.01;
+        }
+        println!(
+            "  {name:>5}   {half:>17.2}   {:>22.5}",
+            landed(2.25, sc) / peak
+        );
+    }
+}

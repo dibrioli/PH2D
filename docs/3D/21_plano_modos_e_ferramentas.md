@@ -1687,8 +1687,84 @@ Sem schema, sem ADR, sem crate nova, sem dep nova, sem id novo.
 dropdown. A pergunta de olho: **o canal tem de continuar estreito** e a
 vizinhança tem de escoar para dentro dele.
 
-**Aberto na W5:** o pincel **Elastic Deform**, o único que pede `Verb` novo — e
-onde `b-mode ≡ l-mode` (o Blender *é* o paper), logo **um chip, sem dropdown**.
+~~**Aberto na W5:** o pincel **Elastic Deform**, o único que pede `Verb`
+novo.~~ — ⚠️ **A MEDIÇÃO DISSOLVEU O ITEM. Ver §7.17.**
+
+### §7.17 — ✅ A W5 FECHA NA LARGURA DO CAMPO, e o `Verb` novo era o item errado (2026-08-14)
+
+O último item aberto da W5 dizia *"o pincel **Elastic Deform**, o único que pede
+`Verb` novo"*. Antes de escrever uma linha, lidos os cinco tipos de deformação
+que o Blender oferece dentro desse pincel:
+
+| Elastic Deform do Blender | onde ele já vive aqui |
+|---|---|
+| *Grab* | `Verb::Move` em `l-mode` (§7.10) |
+| *Grab Biscale* | **o mesmo**, família `Bi` |
+| *Grab Triscale* | **o mesmo**, família `Tri` |
+| *Scale* | `Verb::LocalScale` em `l-mode` (§7.12) |
+| *Twist* | `Verb::Twist` em `l-mode` (§7.12) |
+
+⇒ **Três dos cinco são o mesmo verbo, e diferem SÓ na família de escalas**;
+os outros dois já shipam. Um `Verb::ElasticDeform` seria um sexto botão cujo
+conteúdo inteiro é um dropdown para verbos que a lista já tem — a forma exata do
+*item de menu morto* que este plano recusa em toda parte. **O que faltava era o
+knob**, e é ele que a wave entrega: `Brush.elastic_scales`, a fileira **Field
+width** (`Wide` · `Medium` · `Tight`).
+
+⚠️ **Os rótulos dizem LARGURA e não a aritmética.** `Mono`/`Bi`/`Tri` dizem
+*quantos kelvinlets a soma tem*, o que não ajuda ninguém a escolher; o que o
+artista vê é **quanto a vizinhança acompanha**. Medido pela porta do produto
+(esfera unitária, `Move` em `l-mode`, puxão de 0,2 tangente ao polo):
+
+| | ponta (o dedo) | saia a meio raio |
+|---|---|---|
+| **Wide** (`Mono`) | 0,200000003 | **0,136837** |
+| **Medium** (`Bi`) | 0,200000003 | 0,097633 |
+| **Tight** (`Tri`) | 0,200000003 | **0,084063** |
+
+**A ponta é bit-idêntica nas três** e a saia do `Wide` carrega **1,63×** a do
+`Tight` — a família **redistribui** o que o campo leva, ela não muda quanto o
+dedo leva, e é essa a metade do gate que impede um escalar global de passar.
+
+⚠️ **E um segundo desenho meu foi REFUTADO por um doc que já estava no repo.**
+Eu havia medido o *resíduo de borda* de cada família em `reach = 3` (`0,3162` ·
+`0,0778` · `0,0347`) e ia tornar o `KELVINLET_REACH` **função da família**, para
+igualá-los: `28,8` · `4,2` · `3,0`. O doc-comment do `rim_landing` (§7.13) já
+tinha medido e recusado exatamente esse movimento — *"alargar o alcance NÃO é a
+cura … a janela dá exatamente zero, por construção, a QUALQUER alcance"*. Com a
+aterrissagem no lugar as três chegam a `0,00000` na borda, e a única diferença é
+a **meia-largura do perfil** (1,74 · 1,04 · 0,93). ⇒ **`KELVINLET_REACH` e o
+`query_radius` ficaram intocados**, e a pergunta errada está escrita ao lado da
+medição para ninguém a refazer.
+
+⚠️ **O preço do `Wide`, nomeado:** a janela de aterrissagem desenha **40,6%** do
+perfil dele no último quarto do alcance (contra 8,7% do `Tight`) — é um ombro
+C¹, não um degrau, mas é ele que faz o `Mono` parecer *mais macio* em vez de
+*mais largo*.
+
+**Default `Tight`**, delegado ao `Scales::default()` do kernel em vez de
+reescrito no `Brush` — a medição do resíduo de borda continua sendo a dona do
+número, e o mundo que shipa é **byte-idêntico**.
+
+**A fileira é `Pro`**, pela regra do `UiLevel`: o valor foi **armado** (em Basic
+o artista está com a largura que o kernel escolheu por ele, não com um vazio). E
+ela é oferecida pela **MESMA porta que o motor pergunta** (`RefMode::field(verb)`)
+— nunca por uma lista de verbos ao lado, que seriam três chips que não movem um
+vértice no dia em que um verbo entrasse na família.
+
+Gates: `the_field_width_reaches_the_clay_in_the_direction_the_labels_promise`
+(as duas metades) + `the_field_width_row_exists_only_where_the_field_does_and_the_chip_lands`
+(presença · os dois CONTROLES negativos · o clique pousa). **4 mutações, 4
+sangram**: o tool ignorar o knob · o chip não pousar · a row perder a porta do
+CAMPO · a row perder a porta do NÍVEL.
+
+Sem schema, sem ADR, sem crate nova, sem dep nova, sem contrato tocado; os três
+ids são `hash_node_id`.
+
+⚠️ **PENDENTE DE SMOKE — `PH2D_SCULPT3D_SMOKE=28`.** Pegue o **Grab**, ponha o
+`Reference` em `L`, o painel em **Pro**, e puxe o barro com cada uma das três
+larguras: **a ponta tem de seguir o dedo igual nas três**, e o que muda é o
+quanto a vizinhança vem junto.
 
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 

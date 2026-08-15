@@ -11,11 +11,11 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
-use ph2d_sculpt3d::{RefMode, Verb};
+use ph2d_sculpt3d::{RefMode, Verb, kelvinlet::Scales};
 use ph2d_tokens::Spacing;
 
 use super::widgets::{command, header, labelled_seg, seg};
-use crate::state::Sculpt3dSnapshot;
+use crate::state::{Sculpt3dSnapshot, UiLevel};
 
 /// **A FERRAMENTA** — os dezesseis verbos numa faixa que REFLUI.
 ///
@@ -99,10 +99,55 @@ fn paint_reference_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f
         w,
         y,
     );
-    command(
+    let y = command(
         ctx,
         ids::SCULPT3D_REF_MODE_ALL,
         tr("panel.sculpt3d.reference_all"),
+        x,
+        w,
+        y,
+    );
+    paint_elastic_scales_row(ctx, snap, x, w, y)
+}
+
+/// **QUÃO LARGO é o campo elástico** — a família de escalas do kernel.
+///
+/// ⚠️ **A row é oferecida pela MESMA porta que o motor pergunta**
+/// (`RefMode::field(verb)`), e não por uma lista de verbos ao lado: o
+/// `stroke_target` consome o kernel exatamente onde essa porta devolve `Some`,
+/// então uma fileira desenhada em qualquer outro lugar seriam três chips que não
+/// movem um vértice. Duas cópias da mesma pergunta é como a próxima nasce
+/// desalinhada.
+///
+/// ⚠️ **PRO, pela regra do [`UiLevel`]:** o valor foi ARMADO — a `Tight` é a
+/// família que a medição do resíduo de borda escolheu —, então em Basic o
+/// artista está com a largura que o kernel escolheu por ele, não com um vazio.
+fn paint_elastic_scales_row(
+    ctx: &mut PaintCtx,
+    snap: &Sculpt3dSnapshot,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    if !snap.ui.ui_level.shows(UiLevel::Pro) {
+        return y;
+    }
+    let verb = snap.ui.brush.verb;
+    if snap.ui.brush.mode.field(verb).is_none() {
+        return y;
+    }
+    let labels: Vec<&str> = Scales::ALL.iter().map(|s| s.label()).collect();
+    let selected = Scales::ALL
+        .iter()
+        .position(|&s| s == snap.ui.brush.elastic_scales)
+        .unwrap_or(0);
+    labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.elastic_scales"),
+        ids::SCULPT3D_SEC_TOOL,
+        &ids::SCULPT3D_ELASTIC_SCALES,
+        &labels,
+        selected,
         x,
         w,
         y,

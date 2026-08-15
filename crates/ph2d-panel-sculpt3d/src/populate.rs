@@ -66,6 +66,9 @@ pub fn populate(store: &mut WidgetStore) {
         // só os pintados faria o registro depender do verbo corrente, e um chip
         // que nasce vivo num verbo e morto noutro é a forma mais cara deste bug.
         &ids::SCULPT3D_REF_MODE[..],
+        // ⚠️ Mesma lei do vizinho de cima: os três entram, e o painel pinta
+        // a fileira só onde o verbo declara campo E o nível é Pro.
+        &ids::SCULPT3D_ELASTIC_SCALES[..],
         &ids::SCULPT3D_UI_LEVEL[..],
         &ids::SCULPT3D_FALLOFF[..],
         &ids::SCULPT3D_ALPHA[..],

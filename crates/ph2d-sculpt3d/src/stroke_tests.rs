@@ -312,6 +312,9 @@ mod verb_culling;
 mod verb_move;
 #[path = "verb_move_field_tests.rs"]
 mod verb_move_field;
+/// **A LARGURA DO CAMPO ELÁSTICO** — ver [`verb_move_scales`].
+#[path = "verb_move_scales_tests.rs"]
+mod verb_move_scales;
 
 /// As TRÊS famílias AFINS do paper (twist · scale · pinch) e o gancho que reusa
 /// o agarre — a W5-B. Ver o cabeçalho dele.

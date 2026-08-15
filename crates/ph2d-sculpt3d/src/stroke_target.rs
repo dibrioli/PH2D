@@ -19,7 +19,6 @@
 //! parte que difere entre os treze — fica aqui.
 
 use super::*;
-use crate::kelvinlet::Scales;
 // ⚠️ **O `PlaneFit` vem do IRMÃO, e é a única abertura que o corte cobrou:** ele
 // aparece na assinatura do `compute_target` porque quatro verbos consomem o
 // plano que o outro arquivo ajusta.
@@ -231,7 +230,7 @@ impl SculptStroke {
                         dab.radius,
                         n_area,
                         w * crate::PINCH_GAIN,
-                        Scales::default(),
+                        brush.elastic_scales,
                     ),
                     1.0,
                 ),
@@ -256,7 +255,7 @@ impl SculptStroke {
                     ];
                     let f = 1.0
                         + w * crate::PINCH_GAIN
-                            * crate::kelvinlet::rigid_profile(d, dab.radius, Scales::default());
+                            * crate::kelvinlet::rigid_profile(d, dab.radius, brush.elastic_scales);
                     add_vec(dab.center, d, f.max(0.0))
                 }
                 _ => add_vec(
@@ -307,7 +306,7 @@ impl SculptStroke {
                         live[2] - dab.center[2],
                     ];
                     let gain = w * crate::CREASE_FRACTION;
-                    let prof = crate::kelvinlet::rigid_profile(d, dab.radius, Scales::default());
+                    let prof = crate::kelvinlet::rigid_profile(d, dab.radius, brush.elastic_scales);
                     add(
                         add_vec(
                             live,
@@ -316,7 +315,7 @@ impl SculptStroke {
                                 dab.radius,
                                 n_area,
                                 gain * brush.pinch,
-                                Scales::default(),
+                                brush.elastic_scales,
                             ),
                             1.0,
                         ),
@@ -382,7 +381,7 @@ impl SculptStroke {
                     let eps = dab.radius;
                     add_vec(
                         base,
-                        crate::kelvinlet::grab(r, eps, f, Scales::default()),
+                        crate::kelvinlet::grab(r, eps, f, brush.elastic_scales),
                         1.0,
                     )
                 }
@@ -423,7 +422,7 @@ impl SculptStroke {
                         ];
                         add_vec(
                             from,
-                            crate::kelvinlet::grab(r, dab.radius, f, Scales::default()),
+                            crate::kelvinlet::grab(r, dab.radius, f, brush.elastic_scales),
                             1.0,
                         )
                     }
@@ -473,7 +472,7 @@ impl SculptStroke {
                             base[1] - dab.center[1],
                             base[2] - dab.center[2],
                         ];
-                        w * crate::kelvinlet::rigid_profile(r, dab.radius, Scales::default())
+                        w * crate::kelvinlet::rigid_profile(r, dab.radius, brush.elastic_scales)
                     }
                     _ => w,
                 };
@@ -507,7 +506,7 @@ impl SculptStroke {
                 ];
                 let grow = match brush.mode.field(Verb::LocalScale) {
                     Some(_) => {
-                        w * crate::kelvinlet::rigid_profile(d, dab.radius, Scales::default())
+                        w * crate::kelvinlet::rigid_profile(d, dab.radius, brush.elastic_scales)
                     }
                     _ => w,
                 };

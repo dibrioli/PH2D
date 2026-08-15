@@ -16,7 +16,7 @@
 use super::*;
 use crate::RefMode;
 
-fn grab(mode: RefMode) -> Brush {
+pub(super) fn grab(mode: RefMode) -> Brush {
     Brush {
         verb: Verb::Move,
         mode,
@@ -41,7 +41,7 @@ fn pulled(mode: RefMode, pull: [f32; 3]) -> ph2d_mesh::Mesh {
 }
 
 /// O deslocamento do vértice mais próximo de `p`, entre duas malhas.
-fn moved(a: &ph2d_mesh::Mesh, b: &ph2d_mesh::Mesh, p: [f32; 3]) -> f32 {
+pub(super) fn moved(a: &ph2d_mesh::Mesh, b: &ph2d_mesh::Mesh, p: [f32; 3]) -> f32 {
     let i = (0..a.vert_count())
         .min_by(|&x, &y| {
             let d = |k: usize| {

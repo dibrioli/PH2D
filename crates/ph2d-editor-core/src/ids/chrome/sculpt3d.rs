@@ -75,6 +75,17 @@ pub const SCULPT3D_REF_MODE: [NodeId; 3] = [
     hash_node_id("sculpt3d.ref_mode.1"),
     hash_node_id("sculpt3d.ref_mode.2"),
 ];
+/// **QUÃO LARGO é o campo elástico** — os chips `Mono` · `Bi` · `Tri`.
+///
+/// ⚠️ **Só existe onde o campo existe** (`RefMode::field(verb).is_some()`), que
+/// é a MESMA porta que o motor pergunta antes de consumir o kernel. Uma fileira
+/// oferecida onde o campo não corre seria três chips que não movem um vértice —
+/// o controle morto que este painel varre a cada wave.
+pub const SCULPT3D_ELASTIC_SCALES: [NodeId; 3] = [
+    hash_node_id("sculpt3d.elastic_scales.0"),
+    hash_node_id("sculpt3d.elastic_scales.1"),
+    hash_node_id("sculpt3d.elastic_scales.2"),
+];
 /// Carimba a referência do verbo corrente em TODAS as ferramentas.
 ///
 /// ⚠️ **Um gesto, não uma segunda verdade** (§1.3 do plano): o estado é por

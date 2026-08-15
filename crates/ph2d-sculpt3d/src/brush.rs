@@ -552,6 +552,43 @@ pub struct Brush {
     /// nasce no neutro e o número passa a ser do ARTISTA — nunca uma tabela
     /// inventada com o nome de outro produto.
     pub hardness: f32,
+    /// **QUÃO LARGO é o campo elástico** — a família de escalas do
+    /// [`crate::kelvinlet`], e o único knob que o `l-mode` tinha e não oferecia.
+    ///
+    /// ⚠️ **É o conteúdo que o pincel *Elastic Deform* do Blender vende, e o
+    /// verbo dele foi RECUSADO por medição:** os cinco tipos de deformação
+    /// daquele pincel são *Grab · Grab Biscale · Grab Triscale · Scale · Twist*,
+    /// e os cinco já existem aqui como verbos com `l-mode` ([`Verb::Move`],
+    /// [`Verb::LocalScale`], [`Verb::Twist`]) — os três primeiros diferem
+    /// **apenas nesta família**. Um `Verb::ElasticDeform` seria um sexto nome
+    /// para ferramentas que o rail já tem, com um sub-dropdown a duplicar o
+    /// seletor de modo; o que faltava de verdade era este número.
+    ///
+    /// ⚠️ **O ALCANCE não é função da família, e a tentativa foi REFUTADA pela
+    /// medição que já estava escrita.** Eu ia fazer o [`crate::KELVINLET_REACH`]
+    /// variar por família, porque o resíduo de borda cru difere muito
+    /// (`0,3162 · 0,0778 · 0,0347`) e igualá-lo custaria alcance `28,8 · 4,2 ·
+    /// 3,0` — a `Mono` seria o modelo inteiro dentro da pegada. O doc-comment do
+    /// [`crate::kelvinlet::rim_landing`] já dizia o contrário, com número:
+    /// *"alargar o alcance NÃO é a cura — nunca dá zero; a janela dá exatamente
+    /// zero, por construção, a QUALQUER alcance"*. Medido depois da janela, as
+    /// três famílias chegam a **0,00000** na borda e a diferença é só a
+    /// LARGURA, que é a feature:
+    ///
+    /// | família | meia-largura (`r/ε`) | fração do bico em `0,75·reach` |
+    /// |---|---|---|
+    /// | `Mono` | **1,74** | 0,40614 |
+    /// | `Bi` | 1,04 | 0,14791 |
+    /// | **`Tri`** | **0,93** | 0,08662 |
+    ///
+    /// ⚠️ **O preço da `Mono` fica NOMEADO:** no último quarto da pegada quem
+    /// desenha o perfil é a janela, não o kernel (ela engole 40 % do bico contra
+    /// os 8,7 % da `Tri`). É um ombro `C¹`, não um degrau — mas é o ombro da
+    /// aterrissagem, e quem escolher a família mais larga está a escolhê-lo.
+    ///
+    /// **O default é [`Scales::Tri`]**, o que já shipava em todos os oito sítios
+    /// do [`crate::stroke_target`] ⇒ o mundo pré-knob é **byte-idêntico**.
+    pub elastic_scales: crate::kelvinlet::Scales,
 }
 
 impl Default for Brush {
@@ -607,6 +644,12 @@ impl Default for Brush {
             mask_hardness: 0.25,
             // O neutro do `apply_hardness_to_distances` — ver o campo.
             hardness: 0.0,
+            // ⚠️ **DELEGA, e não repete a palavra `Tri`:** a família que shipa
+            // é a que a MEDIÇÃO escolheu (o resíduo de borda, em
+            // [`crate::kelvinlet::Scales`]), e escrevê-la aqui poria o mesmo
+            // fato em dois lugares — no dia em que a medição mudar de veredito,
+            // este literal ficaria a contradizê-la em silêncio.
+            elastic_scales: crate::kelvinlet::Scales::default(),
         }
     }
 }
@@ -628,54 +671,10 @@ pub use brush_pass::{Pass, TAUBIN_LAMBDA, TAUBIN_MU, TAUBIN_PASS_BAND};
 #[path = "brush_alpha.rs"]
 mod alpha_doors;
 
-/// Os espelhos que multiplicam um dab.
-///
-/// ⚠️ **A simetria é aplicada na LISTA DE DABS, num ponto único** — nunca dentro
-/// de um verbo. É o que faz um verbo novo herdá-la de graça, e é literalmente a
-/// lição que o `stamp_dabs_inner` do Painter 2D deixou escrita.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub struct Symmetry {
-    pub x: bool,
-    pub y: bool,
-    pub z: bool,
-}
-
-impl Symmetry {
-    /// Só o eixo X — o caso que 95% da escultura de personagem usa.
-    pub const MIRROR_X: Self = Self {
-        x: true,
-        y: false,
-        z: false,
-    };
-
-    #[must_use]
-    pub fn any(self) -> bool {
-        self.x || self.y || self.z
-    }
-
-    /// Os sinais por eixo de cada cópia, incluindo o original. De 1 a 8
-    /// entradas; a primeira é sempre `[1, 1, 1]`.
-    ///
-    /// Devolve um array fixo + comprimento para não alocar por dab — um traço
-    /// emite dezenas de dabs por segundo, e este é o caminho quente.
-    #[must_use]
-    pub fn signs(self) -> ([[f32; 3]; 8], usize) {
-        let mut out = [[1.0f32; 3]; 8];
-        let mut n = 1;
-        for (axis, on) in [self.x, self.y, self.z].into_iter().enumerate() {
-            if !on {
-                continue;
-            }
-            for i in 0..n {
-                let mut s = out[i];
-                s[axis] = -s[axis];
-                out[n + i] = s;
-            }
-            n *= 2;
-        }
-        (out, n)
-    }
-}
+/// **OS ESPELHOS QUE MULTIPLICAM UM DAB** — ver [`symmetry`].
+#[path = "brush_symmetry.rs"]
+mod symmetry;
+pub use symmetry::Symmetry;
 
 #[cfg(test)]
 #[path = "brush_tests.rs"]

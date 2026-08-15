@@ -321,6 +321,13 @@ fn group_chip_ui(
         // que resolver passar a fazer mais alguma coisa.
         let verb = ui.brush.verb;
         crate::state::arm_verb_defaults(&mut ui, verb);
+    } else if let Some(i) = index_of(&ids::SCULPT3D_ELASTIC_SCALES, id) {
+        // ⚠️ **Sem `arm_verb_defaults`, e a razão é a do vizinho de baixo:** a
+        // largura do campo é uma escolha DO ARTISTA sobre o modo que ele já
+        // escolheu, não a escolha de uma ferramenta. Re-armar aqui devolveria a
+        // família que a medição elegeu, apagando o gesto no instante em que ele
+        // acontece.
+        ui.brush.elastic_scales = ph2d_sculpt3d::kelvinlet::Scales::ALL[i];
     } else if let Some(i) = index_of(&ids::SCULPT3D_UI_LEVEL, id) {
         // ⚠️ **Sem `arm_verb_defaults`:** mudar o nível não é escolher uma
         // ferramenta, é escolher quanto dela ver — re-armar jogaria fora os

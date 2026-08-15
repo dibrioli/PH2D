@@ -45,7 +45,7 @@
 
 use super::Region;
 use crate::tool::PainterTool;
-use ph2d_painter_brush::solid;
+use ph2d_painter_brush::{Dab, solid};
 
 impl PainterTool {
     /// O gesto está sendo depositado como forma SÓLIDA?
@@ -73,12 +73,45 @@ impl PainterTool {
     /// por ele (`canvas_pointer` os desvia antes), então só um gesto cumulativo cai aqui.
     ///
     /// ⚠️ **`is_incremental` é o que separa as duas transações da §doc do módulo:** Drag Dot,
-    /// Anchored e Line também semeiam o caminho, mas os dabs deles são transitórios e o
+    /// Anchored e Line também são gestos de ponteiro, mas os dabs deles são transitórios e o
     /// preenchimento viaja dentro do `stamp_drag_preview`.
+    ///
+    /// ⚠️ **Ela NÃO pergunta se o caminho já tem pontos, e não pode**: desde a W8 quem alimenta o
+    /// caminho é esta mesma porta ([`Self::note_ink_path`]), então exigir um caminho não-vazio para
+    /// entrar seria a condição que **impede o primeiro ponto de ser gravado** — o gesto inteiro
+    /// ficaria sem mancha, com todos os gates de unidade verdes.
     pub(super) fn freehand_solid_fill_live(&self) -> bool {
-        !self.paint.solid_path.is_empty()
-            && self.paint.brush.stroke_method.is_incremental()
-            && self.solid_owns_the_gesture()
+        self.paint.brush.stroke_method.is_incremental() && self.solid_owns_the_gesture()
+    }
+
+    /// **Grava onde a TINTA deste lote caiu** — a raia primária, que é o caminho que a mancha cerca.
+    ///
+    /// # Por que a tinta, e não o ponteiro (W8, report do Enio 2026-08-15)
+    ///
+    /// Até aqui o caminho era `ev.pos`, o percurso da MÃO. Mas metade dos tipos de linha **move a
+    /// tinta para longe da mão** — é literalmente a razão de existirem —, então a mancha e o traço
+    /// descreviam curvas diferentes:
+    ///
+    /// - **Speed** arremessa a tinta à frente (`v · T`, centenas de px num gesto rápido) ⇒ a mancha
+    ///   ficava para trás e MENOR que o contorno, que é a foto do report;
+    /// - **Ribbon** deixa a tinta atrás do dedo ⇒ o mesmo, ao contrário;
+    /// - **Rough** move o CAMINHO, e o desvio dele é pequeno perto da espessura ⇒ o traço cobria a
+    ///   discordância, que é por que ele foi o único aprovado (*"Rough com Solid funcionou"*).
+    ///
+    /// A lei nova é a do Alchemy, onde todo gesto é uma forma preenchida e o efeito mora no CAMINHO:
+    /// ***a mancha é o polígono da tinta***. Um tipo que joga a tinta para o lado passa a jogar a
+    /// FRONTEIRA junto, que é o que faz as pontas do Speed virarem espinhos da forma em vez de um
+    /// contorno solto ao lado dela.
+    ///
+    /// ⚠️ **A raia primária sai por passo de [`ph2d_painter_brush::SymmetrySettings::copies`]** — o
+    /// lote que chega ao carimbo já traz as cópias interleavadas, e a mancha aplica a simetria por
+    /// conta própria (`symmetric_loops`). Gravar o lote inteiro daria um polígono em ziguezague
+    /// ATRAVÉS das raias; gravar e não espelhar deixaria a mancha numa raia só.
+    pub(super) fn note_ink_path(&mut self, dabs: &[Dab]) {
+        let step = self.paint.brush.symmetry.copies().max(1);
+        for d in dabs.iter().step_by(step) {
+            self.paint.solid_path.push(d.center);
+        }
     }
 
     /// **A PORTA ÚNICA de *"que laços este gesto preenche AGORA?"*** — já replicados pela Symmetry e
@@ -138,21 +171,116 @@ impl PainterTool {
     /// guarda contém todo dab do gesto e nenhum fill, que é o invariante inteiro.
     pub(super) fn stamp_solid_preview(&mut self) {
         let loops = self.solid_fill_loops();
-        self.stamp_solid_loops(&loops);
+        let chord = self.closing_chord_dabs();
+        self.stamp_solid_loops_with_chord(&loops, &chord);
     }
 
-    /// Preenche os laços dados, restaurando o preview do quadro anterior — a MESMA dança do
-    /// `stamp_drag_preview` (restaurar → medir → salvar → escrever), porque um Solid é um re-carimbo
-    /// por construção: a cada ponto novo o polígono INTEIRO muda de forma.
-    pub(super) fn stamp_solid_loops(&mut self, loops: &[Vec<[f32; 2]>]) {
+    /// **A CORDA que fecha o laço, carimbada com o PINCEL** — do último ponto de tinta de volta ao
+    /// primeiro (report do Enio 2026-08-15: *"a linha reta da área não fechada de Solid deve levar o
+    /// falloff também"*).
+    ///
+    /// Um gesto aberto vira uma forma fechada porque o preenchimento fecha o laço implicitamente
+    /// (`solid::fill_coverage`, a decisão §5.3 do plano 38). Só que o pincel caminhava **o caminho**,
+    /// nunca a corda — então a fronteira inteira era macia e essa aresta, e só ela, era o corte duro
+    /// do rasterizador. Agora ela é tinta como o resto.
+    ///
+    /// ⚠️ **Os dabs saem do PINCEL, não do último dab do lote**, e é decisão: a corda é um trecho que
+    /// a mão nunca percorreu, então não há pressão, nem jitter, nem heading dela para herdar — o que
+    /// existe é a espessura e a dureza que o artista escolheu. Herdá-los do último dab faria a corda
+    /// afinar quando o gesto acabasse leve, o que é o taper de uma ponta que não existe.
+    ///
+    /// ⚠️ **As cópias saem da porta do MOTOR** (`push_symmetric`): a corda tem de cair nas mesmas
+    /// raias que os dabs do gesto, e o tiling vem de graça porque o dispatch do carimbo já o envolve.
+    fn closing_chord_dabs(&self) -> Vec<Dab> {
+        let path = &self.paint.solid_path;
+        if path.len() < 3 || !self.solid_owns_the_gesture() {
+            return Vec::new();
+        }
+        let (a, b) = (path[path.len() - 1], path[0]);
+        let d = [b[0] - a[0], b[1] - a[1]];
+        let len = (d[0] * d[0] + d[1] * d[1]).sqrt();
+        let r = self.paint.brush.clamped_radius();
+        // Um vão menor que um passo já está coberto pelos dabs das duas pontas.
+        let step = (2.0 * r * self.paint.brush.spacing).max(1.0);
+        if len <= step {
+            return Vec::new();
+        }
+        let dir = [d[0] / len, d[1] / len];
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let n = (len / step).floor() as usize;
+        let mut out = Vec::with_capacity(n * self.paint.brush.symmetry.copies());
+        let template = Dab {
+            center: a,
+            radius_px: r,
+            coverage: self.paint.brush.strength.clamp(0.0, 1.0),
+            color: self.paint.brush.color,
+            rotation: [1.0, 0.0],
+            dir,
+            arc_len: 0.0,
+            stroke_radius_px: r,
+        };
+        for k in 0..=n {
+            #[allow(clippy::cast_precision_loss)]
+            let t = k as f32 * step;
+            let mut dab = template;
+            dab.center = [a[0] + dir[0] * t, a[1] + dir[1] * t];
+            dab.arc_len = t;
+            ph2d_painter_brush::symmetry::push_symmetric(
+                &mut out,
+                dab,
+                &self.paint.brush.symmetry,
+            );
+        }
+        out
+    }
+
+    /// Preenche os laços dados **e a corda que os fecha**, restaurando o preview do quadro anterior —
+    /// a MESMA dança do `stamp_drag_preview` (restaurar → medir → salvar → escrever), porque um Solid
+    /// é um re-carimbo por construção: a cada ponto novo o polígono INTEIRO muda de forma.
+    ///
+    /// ⚠️ **A corda entra AQUI e não pela porta cumulativa do carimbo**, e é o que a torna correta:
+    /// ela muda de lugar a cada ponto novo (liga o fim do caminho ao começo), então tinta cumulativa
+    /// deixaria um LEQUE de cordas velhas pelo gesto inteiro. Dentro desta transação ela é restaurada
+    /// e re-carimbada com a mancha, que é exactamente o que um re-carimbo é.
+    ///
+    /// ⚠️ **E o retângulo cresce meia-espessura por causa dela:** a caixa dos laços contém a corda
+    /// (as duas pontas são vértices do laço) mas não o RAIO dos dabs dela — sem a folga, o `save`
+    /// não cobriria o que a corda escreve e o restore do quadro seguinte deixaria um rastro.
+    pub(super) fn stamp_solid_loops_with_chord(&mut self, loops: &[Vec<[f32; 2]>], chord: &[Dab]) {
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
         }
-        let Some(rect) = self.solid_fill_rect(loops) else {
+        let Some(mut rect) = self.solid_fill_rect(loops) else {
             return;
         };
+        if !chord.is_empty() {
+            let pad = chord
+                .iter()
+                .fold(0.0f32, |m, d| m.max(d.radius_px))
+                .max(0.0)
+                .ceil();
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let pad = pad as u32 + 1;
+            let (w, h) = self.source_size;
+            let x0 = rect.x.saturating_sub(pad);
+            let y0 = rect.y.saturating_sub(pad);
+            let x1 = (rect.x + rect.w + pad).min(w);
+            let y1 = (rect.y + rect.h + pad).min(h);
+            rect = Region {
+                x: x0,
+                y: y0,
+                w: x1.saturating_sub(x0),
+                h: y1.saturating_sub(y0),
+            };
+        }
+        if rect.w == 0 || rect.h == 0 {
+            return;
+        }
         let pixels = self.save_region(&rect);
         self.stamp_solid(loops, rect);
+        if !chord.is_empty() {
+            self.stamp_dabs_dispatch(chord);
+        }
         self.paint.drag_preview = Some(super::DragPreview { rect, pixels });
     }
 

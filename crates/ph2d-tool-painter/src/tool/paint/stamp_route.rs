@@ -45,6 +45,11 @@ impl PainterTool {
         // porque `solid_owns_the_gesture` já recusa a aquarela e o fluido.
         if self.freehand_solid_fill_live() {
             self.peel_drag_preview();
+            // ⚠️ **O caminho é gravado ANTES do carimbo, e a ordem é a feature:** o preenchimento
+            // deste quadro é o polígono da tinta deste quadro. Gravá-lo depois (no `park_stroke`, a
+            // porta onde os FIOS são drenados) atrasaria a mancha um evento — e no ÚLTIMO evento do
+            // gesto nada re-carimba, então os pontos finais nunca entrariam na mancha.
+            self.note_ink_path(dabs);
             self.stamp_dabs_dispatch(dabs);
             self.stamp_solid_preview();
             return;
@@ -53,7 +58,11 @@ impl PainterTool {
     }
 
     /// O corpo do carimbo — tudo o que [`Self::stamp_dabs`] fazia antes de ganhar o bracket do Solid.
-    fn stamp_dabs_dispatch(&mut self, dabs: &[Dab]) {
+    ///
+    /// ⚠️ **`pub(super)` para a corda de fechamento do Solid**, que precisa carimbar dabs DENTRO da
+    /// transação do preenchimento: passar por [`Self::stamp_dabs`] seria re-entrar no bracket e
+    /// descascar o preview que a própria transação acabou de salvar.
+    pub(super) fn stamp_dabs_dispatch(&mut self, dabs: &[Dab]) {
         // **Wire com `Connection Line` desligado** — o traço em si não é pintado e sobra só o arame
         // (o *Paint connection line* do Krita). É a única supressão que restou nesta porta.
         if self.wire_suppresses_dabs() {

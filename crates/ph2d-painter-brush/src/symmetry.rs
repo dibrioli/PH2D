@@ -105,6 +105,27 @@ impl SymmetrySettings {
             .clamp(SYMMETRY_MIN_SEGMENTS, SYMMETRY_MAX_SEGMENTS)
     }
 
+    /// **Quantos dabs [`push_symmetric`] emite por dab de ORIGEM** — `1` desligada, `2` no espelho,
+    /// [`Self::segments`] no radial.
+    ///
+    /// ⚠️ **Ela existe para se poder VOLTAR do lote à raia primária**, e é isso que o `Style: Solid`
+    /// consome: o preenchimento é o polígono do caminho da TINTA, e o lote que chega ao carimbo já
+    /// traz as cópias interleavadas. Como [`push_symmetric`] empurra a ORIGEM primeiro e as cópias
+    /// depois, o elemento `i · copies()` de um lote é sempre um primário — a propriedade que o gate
+    /// `the_source_dab_is_pushed_first_and_the_copies_follow` pina, para ninguém a inferir de novo do
+    /// corpo da função.
+    #[must_use]
+    pub fn copies(&self) -> usize {
+        if !self.enabled {
+            return 1;
+        }
+        if self.circular {
+            self.segments() as usize
+        } else {
+            2
+        }
+    }
+
     /// Unit direction of the mirror line for the current [`Self::axis`]: vertical for `X`, horizontal
     /// for `Y`, the (normalised) [`Self::custom_dir`] for `Custom` (falling back to vertical if it is
     /// degenerate). Used by [`push_symmetric`] and by the overlay to draw the axis.
@@ -122,7 +143,12 @@ impl SymmetrySettings {
 ///
 /// The single chokepoint the stroke engine routes every primary dab emission through. Disabled (or a
 /// 1-segment radial) ⇒ only the base dab, preserving the no-symmetry pixel output exactly.
-pub(crate) fn push_symmetric(out: &mut Vec<Dab>, dab: Dab, sym: &SymmetrySettings) {
+///
+/// ⚠️ **`pub` porque o TOOL também emite dabs que o motor não viu** — a corda de fechamento do
+/// `Style: Solid`, que liga o fim do caminho ao começo dele. Ela tem de cair nas mesmas cópias que os
+/// dabs do gesto, e re-derivar o espelho lá seria a **segunda resposta** a *"onde cai a cópia deste
+/// dab?"*, divergindo desta no dia em que um dos dois ganhasse um eixo novo.
+pub fn push_symmetric(out: &mut Vec<Dab>, dab: Dab, sym: &SymmetrySettings) {
     out.push(dab);
     if !sym.enabled {
         return;

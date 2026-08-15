@@ -44,14 +44,12 @@ impl PainterTool {
         if matches!(self.paint.paint_mode, PaintMode::WetPaint) {
             self.paint.wetpaint.live_gesture = true;
         }
-        // **Style: Solid** — o gesto passa a ser um CAMINHO acumulado, e a MANCHA é o polígono dele
-        // (plano 38 §1.1). O caminho é semeado aqui e cresce a cada Move; a lista de dabs segue o
-        // caminho normal e é carimbada POR CIMA da mancha (W7 — o modelo do Flip: uma figura é o
-        // preenchimento **mais** o traço que a cerca).
+        // **Style: Solid** — o gesto é um CAMINHO acumulado e a MANCHA é o polígono dele (plano 38
+        // §1.1). ⚠️ **Quem o alimenta é a porta do CARIMBO** (`note_ink_path`), com os centros dos
+        // dabs: desde a W8 a mancha é o polígono da TINTA, não o do ponteiro — metade dos tipos de
+        // linha move a tinta para longe da mão, e era essa discordância que o Enio fotografou. Aqui
+        // só se ZERA, para o gesto novo não herdar o caminho do anterior.
         self.paint.solid_path.clear();
-        if self.solid_owns_the_gesture() {
-            self.paint.solid_path.push(ev.pos);
-        }
         // **O passo de undo começa AQUI** (doc 28 §5.26): a cadeia é reconciliada e o journal passa a
         // descrever este traço em vez do intervalo desde o último commit.
         self.begin_undo_step();
@@ -221,13 +219,10 @@ impl PainterTool {
             },
             &mut dabs,
         );
-        // **Style: Solid** — o caminho cresce aqui; a MANCHA é escrita pela porta do carimbo
-        // (`stamp_dabs` a bracketa, `super::solid_deposit`), e não por uma chamada solta neste sítio.
-        // ⚠️ Desde a W7 o dab **é** carimbado: a tinta do gesto é a região cercada **MAIS** o traço
-        // que a cerca, como um `FlipStroke` com `fill`.
-        if self.solid_owns_the_gesture() {
-            self.paint.solid_path.push(pos);
-        }
+        // **Style: Solid** — o caminho E a mancha são escritos pela porta do carimbo (`stamp_dabs` a
+        // bracketa, `super::solid_deposit`), e não por uma chamada solta neste sítio. ⚠️ Desde a W7 o
+        // dab **é** carimbado (a tinta do gesto é a região cercada **MAIS** o traço que a cerca, como
+        // um `FlipStroke` com `fill`) e desde a W8 é ele quem DIZ onde a região passa.
         super::ribbon_diag::note(super::ribbon_diag::Source::Extend, dabs.len());
         self.stamp_stroke_dabs(&dabs);
         // Watercolor render-path: the dabs are ACCUMULATED here (the path is the data, so this is per

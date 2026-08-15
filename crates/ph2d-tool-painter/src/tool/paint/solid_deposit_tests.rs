@@ -352,3 +352,163 @@ fn the_panel_click_reaches_the_tool_and_every_relief_slot() {
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
     assert!(!t.brush_settings().style_solid, "o clique nao volta");
 }
+
+/// O mesmo laço, com um **TIQUE** entre eventos — sem eles o gesto não tem velocidade e o arremesso
+/// do `Speed` nasce **estruturalmente inerte** (é a razão de ele não existir num shape editor: cada
+/// forma constrói uma `Stroke` fresca, e a mão nunca correu por ela).
+fn loop_gesture_ticked(t: &mut crate::tool::PainterTool, c: f32, s: f32, steps: usize) {
+    let pts = [
+        [c - s, c - s],
+        [c + s, c - s],
+        [c + s, c + s],
+        [c - s, c + s],
+        [c - s, c - s],
+    ];
+    t.on_canvas_pointer(cp(pts[0], PointerPhase::Down));
+    for w in pts.windows(2) {
+        let (a, b) = (w[0], w[1]);
+        for k in 1..=steps {
+            #[allow(clippy::cast_precision_loss)]
+            let f = k as f32 / steps as f32;
+            t.on_canvas_pointer(cp(
+                [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f],
+                PointerPhase::Move,
+            ));
+            <crate::tool::PainterTool as Tool>::on_tick(t, 16.0);
+        }
+    }
+    t.on_canvas_pointer(cp(pts[0], PointerPhase::Up));
+}
+
+/// Os texels entintados, como máscara.
+fn ink_mask(t: &crate::tool::PainterTool) -> Vec<bool> {
+    t.canvas_rgba.chunks_exact(4).map(|p| p[0] < 250).collect()
+}
+
+/// **A MANCHA SEGUE A TINTA, NÃO O PONTEIRO** (W8; report do Enio 2026-08-15, com a foto: o contorno
+/// do Speed desenhado FORA de uma mancha menor).
+///
+/// Metade dos tipos de linha existe justamente para pôr a tinta longe da mão — o `Speed` a arremessa
+/// `v · T` à frente. Enquanto a mancha era o polígono de `ev.pos`, ela e o traço descreviam curvas
+/// diferentes, e o artista via as duas.
+///
+/// ⚠️ **O oráculo cruza DUAS fontes independentes:** onde a tinta caiu vem dos PIXELS de um gesto
+/// igual com a mancha desligada (o produto, sem modelo nenhum), e a região preenchida vem da porta
+/// que a produz. A pergunta é *a mancha cobre a tinta?* — que é exactamente a foto do report ao
+/// contrário.
+///
+/// ⚠️ **E a fração é comparada com o CONTROLE, nunca com um número escolhido:** um traço tem RAIO, e
+/// metade da tinta de qualquer gesto cai por fora da fronteira que ela desenha — mesmo quando as duas
+/// coincidem perfeitamente. O que separa *"a mancha segue a tinta"* de *"a mancha ficou noutro
+/// sítio"* é a fração do `Speed` medida contra a do gesto sem efeito, onde tinta e ponteiro são a
+/// mesma curva por construção.
+///
+/// **Mutação que sangra:** alimentar `solid_path` com `ev.pos` outra vez.
+#[test]
+fn the_solid_fill_follows_the_ink_not_the_pointer() {
+    use ph2d_painter_brush::line_kind::LineKind;
+    const N: u32 = 192;
+    let n = N as usize;
+    // Que fração da tinta deste tipo cai DENTRO da mancha que ele preenche.
+    let covered_fraction = |kind: LineKind| -> f32 {
+        // A tinta, medida nos pixels de um gesto com a mancha DESLIGADA.
+        let mut a = tool(N, PaintMedia::Digital, 5.0);
+        a.paint.brush.line_kind = kind;
+        loop_gesture_ticked(&mut a, 96.0, 34.0, 6);
+        let ink = ink_mask(&a);
+        // A região que o MESMO gesto preenche, perguntada à porta que a produz.
+        let mut b = tool(N, PaintMedia::Digital, 5.0);
+        b.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+        b.paint.brush.line_kind = kind;
+        loop_gesture_ticked(&mut b, 96.0, 34.0, 6);
+        let cov = ph2d_painter_brush::solid::fill_coverage(&b.solid_fill_loops(), n, n, [0.0, 0.0]);
+        let total = ink.iter().filter(|i| **i).count();
+        assert!(total > 300, "{kind:?}: a fixture nao entintou nada ({total})");
+        #[allow(clippy::cast_precision_loss)]
+        let hit = ink
+            .iter()
+            .enumerate()
+            .filter(|(i, on)| **on && cov[*i] > 0)
+            .count() as f32;
+        #[allow(clippy::cast_precision_loss)]
+        {
+            hit / total as f32
+        }
+    };
+    let plain = covered_fraction(LineKind::None);
+    let speed = covered_fraction(LineKind::Speed);
+    assert!(
+        plain > 0.3,
+        "o CONTROLE nao cobre a propria tinta ({plain:.3}): o oraculo esta a medir outra coisa"
+    );
+    assert!(
+        speed >= 0.8 * plain,
+        "a tinta do Speed cai FORA da mancha ({speed:.3} contra {plain:.3} do gesto sem efeito): \
+         a mancha esta a seguir o ponteiro, e a tinta foi arremessada para outro sitio"
+    );
+}
+
+/// **A CORDA DE FECHAMENTO LEVA O PINCEL** (W8; report do Enio 2026-08-15: *"a linha reta da área
+/// não fechada de Solid deve levar o falloff também"*).
+///
+/// Um gesto aberto fecha sozinho — o preenchimento liga o último ponto ao primeiro —, e essa aresta
+/// era a única da fronteira que o pincel nunca caminhava: tudo em volta tinha a borda macia do
+/// falloff e ela tinha o corte do rasterizador.
+///
+/// ⚠️ **O oráculo é a OUTRA borda da mesma varredura**, não um número escolhido: a linha `y = c`
+/// atravessa a corda (à esquerda) e uma aresta que o pincel de facto percorreu (à direita). As duas
+/// têm de ter uma banda de meio-tom comparável — é o que *"levar o falloff também"* significa em
+/// pixels, e é imune ao raio, ao falloff e à opacidade que a fixture escolher.
+///
+/// **Mutação que sangra:** devolver `Vec::new()` de `closing_chord_dabs`.
+#[test]
+fn the_closing_chord_wears_the_brush_like_the_rest_of_the_rim() {
+    const N: u32 = 160;
+    let n = N as usize;
+    let (c, s) = (80.0f32, 40.0f32);
+    let mut t = tool(N, PaintMedia::Digital, 7.0);
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    // Um "C": três arestas desenhadas, a quarta (a ESQUERDA) é a corda que o fecho inventa.
+    let pts = [
+        [c - s, c - s],
+        [c + s, c - s],
+        [c + s, c + s],
+        [c - s, c + s],
+    ];
+    t.on_canvas_pointer(cp(pts[0], PointerPhase::Down));
+    for w in pts.windows(2) {
+        let (a, b) = (w[0], w[1]);
+        for k in 1..=10 {
+            #[allow(clippy::cast_precision_loss)]
+            let f = k as f32 / 10.0;
+            t.on_canvas_pointer(cp(
+                [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f],
+                PointerPhase::Move,
+            ));
+        }
+    }
+    t.on_canvas_pointer(cp(pts[3], PointerPhase::Up));
+    // A banda de meio-tom (nem fundo, nem miolo cheio) atravessando `x0` na linha `y`.
+    let band = |x0: usize, y: usize| -> usize {
+        (x0.saturating_sub(14)..=(x0 + 14).min(n - 1))
+            .filter(|x| {
+                let v = t.canvas_rgba[(y * n + x) * 4];
+                // ⚠️ A janela é LARGA de propósito: a rampa medida do falloff é `249,173,71,17` —
+                // um limiar apertado conta 2 dos DOIS lados e o gate perde os dentes sem ninguém ver.
+                (3..252).contains(&v)
+            })
+            .count()
+    };
+    let mid = c as usize;
+    let chord = band((c - s) as usize, mid);
+    let walked = band((c + s) as usize, mid);
+    assert!(
+        walked >= 3,
+        "a fixture nao tem borda macia nem onde o pincel passou ({walked}): o oraculo nao mede nada"
+    );
+    assert!(
+        chord * 2 >= walked,
+        "a corda de fechamento tem borda DURA ({chord} texels de meio-tom) contra os {walked} da \
+         aresta que o pincel percorreu — ela nao levou o falloff"
+    );
+}

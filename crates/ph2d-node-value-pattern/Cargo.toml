@@ -12,3 +12,7 @@ authors.workspace = true
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
+# A LEI da lista (gramática, ciclo por índice, layout da LUT) mora numa FOLHA porque tem
+# DOIS consumidores independentes: este nó, que a coza, e o painel de params, que a
+# desenha como barras arrastáveis. Nenhum dos dois pode depender do outro.
+ph2d-steps = { path = "../ph2d-steps" }

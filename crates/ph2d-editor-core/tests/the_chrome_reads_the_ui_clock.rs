@@ -80,7 +80,7 @@ fn the_rail_asks_the_clock_for_each_chip_by_id() {
 #[test]
 fn the_top_bar_pill_asks_the_clock_for_its_own_chip() {
     assert!(
-        CLUSTER.contains("paint_icon_button_t(") && CLUSTER.contains("motion.get(chip_id)"),
+        CLUSTER.contains("(state, hover_t)") && CLUSTER.contains("motion.get(chip_id)"),
         "a pill da barra não lê o relógio pelo próprio `chip_id`"
     );
 }

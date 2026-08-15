@@ -312,9 +312,7 @@ fn paint_mount_row(
             brect,
             IconGlyph::Builtin(IconId::Trash),
             IconButtonStyle::Compact,
-            store
-                .button_state(ids::INSP_WHEEL_UNMOUNT)
-                .unwrap_or(ButtonState::Normal),
+            store.button_visual(ids::INSP_WHEEL_UNMOUNT),
             scene,
             theme,
         );
@@ -327,11 +325,9 @@ fn paint_mount_row(
         IconGlyph::Builtin(IconId::Eyedropper),
         IconButtonStyle::Compact,
         if info.mount_pick_armed {
-            ButtonState::Pressed
+            (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
         } else {
-            store
-                .button_state(ids::INSP_WHEEL_MOUNT_PICK)
-                .unwrap_or(ButtonState::Normal)
+            store.button_visual(ids::INSP_WHEEL_MOUNT_PICK)
         },
         scene,
         theme,
@@ -455,11 +451,9 @@ fn paint_rope_row(
         IconGlyph::Builtin(IconId::Eyedropper),
         IconButtonStyle::Compact,
         if info.rope_pick_armed {
-            ButtonState::Pressed
+            (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
         } else {
-            store
-                .button_state(ids::INSP_WHEEL_ROPE_PICK)
-                .unwrap_or(ButtonState::Normal)
+            store.button_visual(ids::INSP_WHEEL_ROPE_PICK)
         },
         scene,
         theme,

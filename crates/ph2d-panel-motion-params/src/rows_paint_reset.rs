@@ -18,7 +18,7 @@ use crate::ParamRow;
 use crate::snapshot::param_reset_id;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
-use ph2d_editor_core::widget::{ButtonState, IconButtonStyle, IconGlyph, paint_icon_button};
+use ph2d_editor_core::widget::{IconButtonStyle, IconGlyph, paint_icon_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Theme};
 use ph2d_vector::VectorScene;
@@ -60,7 +60,7 @@ pub(crate) fn paint_reset_button(
         rect,
         IconGlyph::Builtin(IconId::Reset),
         IconButtonStyle::Plain,
-        store.button_state(id).unwrap_or(ButtonState::Normal),
+        store.button_visual(id),
         scene,
         theme,
     );

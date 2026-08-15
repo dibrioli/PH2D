@@ -7,9 +7,8 @@ use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    ButtonState, Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionHeader,
-    color_circle_hit_rect, paint_checkbox, paint_icon_button, paint_section_header,
-    paint_slider_with_chip,
+    Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionHeader, color_circle_hit_rect,
+    paint_checkbox, paint_icon_button, paint_section_header, paint_slider_with_chip,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
@@ -124,11 +123,7 @@ pub(crate) fn paint_collapsible_section(
         .collapsible(!collapsed)
         .color(rgba);
     let header_rect = Rect::new(x, y, content_w, header_h);
-    let reset_state = ctx
-        .host
-        .store()
-        .button_state(reset_id)
-        .unwrap_or(ButtonState::Normal);
+    let reset_state = ctx.host.store().button_visual(reset_id);
     {
         let scene = &mut *ctx.scene;
         let text_system = &mut *ctx.text_system;

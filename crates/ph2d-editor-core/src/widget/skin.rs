@@ -432,7 +432,16 @@ pub fn paint_widget_skin_with(
             if let Some(InteractiveState::Button { state: s }) = live {
                 state = *s;
             }
-            paint_icon_button(rect, glyph, IconButtonStyle::Compact, state, scene, theme);
+            paint_icon_button(
+                rect,
+                glyph,
+                IconButtonStyle::Compact,
+                // ⚠️ O painel autorado desenha uma PRÉVIA a partir de `live`, e um botão vestido
+                //    não tem track no relógio da tela — o neutro é o que o mantém byte a byte.
+                (state, crate::motion::SETTLED),
+                scene,
+                theme,
+            );
         }
         WidgetKind::LevelMeter => {
             // ⚠️ Um medidor é READOUT: ele não tem estado de interação (não há

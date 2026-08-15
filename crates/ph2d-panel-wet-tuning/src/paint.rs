@@ -13,10 +13,10 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    ButtonState, Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionHeader,
-    WET_TUNING_SCROLLBAR_ID, paint_checkbox, paint_icon_button, paint_scrollbar,
-    paint_section_header, paint_slider_with_chip_layout_adaptive, scrollbar_is_needed,
-    scrollbar_thumb_rect, scrollbar_track_rect,
+    Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionHeader, WET_TUNING_SCROLLBAR_ID,
+    paint_checkbox, paint_icon_button, paint_scrollbar, paint_section_header,
+    paint_slider_with_chip_layout_adaptive, scrollbar_is_needed, scrollbar_thumb_rect,
+    scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -268,11 +268,14 @@ fn paint_row(
         RESET_W,
         ROW_H_PX.min(used.max(ROW_H_PX)),
     );
+    // ⚠️ **Estava cravado em `Normal`** — registado no hit index, clicável, e visualmente MORTO
+    //    sob o rato. O par tornou-o visível: quem tem id lê o estado (e agora o `t`) do store.
+    let reset_visual = ctx.host.store().button_visual(row.reset);
     paint_icon_button(
         reset_rect,
         IconGlyph::Builtin(ph2d_editor_core::IconId::Reset),
         IconButtonStyle::Plain,
-        ButtonState::Normal,
+        reset_visual,
         ctx.scene,
         theme,
     );
@@ -302,11 +305,12 @@ fn header_row(
     let mut right = x + w - RESET_W;
     if reset != header {
         let r = Rect::new(right, y, RESET_W, ROW_H_PX);
+        let v = ctx.host.store().button_visual(reset);
         paint_icon_button(
             r,
             IconGlyph::Builtin(ph2d_editor_core::IconId::Reset),
             IconButtonStyle::Plain,
-            ButtonState::Normal,
+            v,
             ctx.scene,
             theme,
         );
@@ -315,6 +319,7 @@ fn header_row(
     }
     if let Some((eye_id, on)) = eye {
         let r = Rect::new(right, y, RESET_W, ROW_H_PX);
+        let v = ctx.host.store().button_visual(eye_id);
         paint_icon_button(
             r,
             IconGlyph::Builtin(if on {
@@ -323,7 +328,7 @@ fn header_row(
                 ph2d_editor_core::IconId::EyeClosed
             }),
             IconButtonStyle::Plain,
-            ButtonState::Normal,
+            v,
             ctx.scene,
             theme,
         );

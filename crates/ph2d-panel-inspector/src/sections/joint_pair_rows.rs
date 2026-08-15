@@ -173,9 +173,9 @@ fn paint_body_rows(
         // ARMED, so the artist sees which end is waiting for a body click.
         let brect = Rect::new(x + w - icon_w, yy + (h - icon_w) * 0.5, icon_w, icon_w);
         let state = if armed {
-            ButtonState::Pressed
+            (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
         } else {
-            store.button_state(id).unwrap_or(ButtonState::Normal)
+            store.button_visual(id)
         };
         paint_icon_button(
             brect,

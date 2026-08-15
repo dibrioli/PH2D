@@ -16,10 +16,7 @@ use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
-use crate::widget::{
-    ButtonState, IconButtonStyle, IconGlyph, PILL_PADDING_PX, paint_icon_button,
-    paint_icon_button_t,
-};
+use crate::widget::{ButtonState, IconButtonStyle, IconGlyph, PILL_PADDING_PX, paint_icon_button};
 use crate::zones::Rect;
 
 use super::super::fixture;
@@ -104,11 +101,13 @@ pub(super) fn paint_topbar_rail_chip(
     // ⚠️ O HIT e' registado no retangulo de REPOUSO, antes de qualquer crescimento — ver a lei
     // no `motion::hover_lift`: um alvo que se move debaixo do dedo e' um alvo que foge.
     hit_index.register(chip_id, chip_rect);
-    // ⚠️ O escalar cru serve DOIS consumidores com neutros diferentes: a COR quer `None` quando
-    // não há relógio (pinta as cores duras) e a GEOMETRIA quer `0` quando o relógio ainda não viu
-    // este id (um chip desconhecido está em REPOUSO, não crescido).
+    // ⚠️ **O escalar cru serve DOIS consumidores com neutros DIFERENTES, e a diferença é de
+    //    significado, não de gosto:** a COR quer [`crate::motion::SETTLED`] quando não há relógio
+    //    (pinta o token duro do estado, byte a byte o mundo pré-substrato) e a GEOMETRIA quer `0`
+    //    (um chip que o relógio ainda não viu está em REPOUSO, não crescido). O mesmo número com
+    //    dois neutros é a razão de o `lift` não vir do par.
     let lift_t = motion.get(chip_id).unwrap_or(0.0);
-    let hover = Some(lift_t);
+    let hover_t = motion.get(chip_id).unwrap_or(crate::motion::SETTLED);
     let chip_rect = crate::motion::hover_lift(chip_rect, lift_t, motion.travels());
     let state = store.button_state(chip_id).unwrap_or(ButtonState::Normal);
     // Matriz EXATA do rail (tool_rail.rs:248-280). With the narrower
@@ -137,12 +136,11 @@ pub(super) fn paint_topbar_rail_chip(
     // gate doesn't fire here. `icon_tint(state)` inside `paint_icon_button`
     // produces the same Text2/Text1/Accent/TextDisabled mapping the
     // hand-rolled `fg` branch did.
-    paint_icon_button_t(
+    paint_icon_button(
         chip_rect,
         glyph,
         IconButtonStyle::Plain,
-        state,
-        hover,
+        (state, hover_t),
         scene,
         theme,
     );

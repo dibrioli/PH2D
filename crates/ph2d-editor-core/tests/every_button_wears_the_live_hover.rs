@@ -16,8 +16,16 @@
 //! reporta. Por isso ele também conta os sítios JÁ convertidos e exige que os veja, em vários
 //! crates: uma varredura vazia é uma falha alta, nunca um verde.
 //!
-//! **Fora de escopo, e nomeado:** `IconButton`, `Checkbox` e `Toggle` têm estados próprios e ainda
-//! não passaram pela porta. Quando passarem, é aqui que a família entra — não num segundo gate.
+//! ⚠️ **O `IconButton` fechou a mesma estrada por TIPO, e por isso não está aqui.** A porta dele é
+//! uma função, não um builder, então o par pôde entrar na própria assinatura
+//! (`paint_icon_button(.., visual: (ButtonState, f32), ..)`): um `ButtonState` solto **não
+//! compila**, e um estado forçado tem de se declarar. *Quando o compilador consegue ser o gate, o
+//! gate é ele* — este ficheiro existe só onde a API não pode recusar (um builder cujo `.state()`
+//! continua legítimo para os estados duros).
+//!
+//! **Fora de escopo, e nomeado:** `Checkbox` e `Toggle` têm estados próprios e ainda não passaram
+//! pela porta — o relógio já os anima (`hover_targets` inclui-os), e são os pintores que deitam o
+//! `t` fora. Quando passarem, é aqui que a família entra — não num segundo gate.
 
 use std::fs;
 use std::path::{Path, PathBuf};

@@ -359,12 +359,9 @@ fn paint_link_button(ctx: &mut PaintCtx, theme: Theme, row: usize, x: f32, y: f3
     let id = ids::tokens_link_id(row);
     let rect = Rect::new(x, y + (ROW_H_PX - LINK_W) * 0.5, LINK_W, LINK_W);
     let state = if armed {
-        ButtonState::Pressed
+        (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
     } else {
-        ctx.host
-            .store()
-            .button_state(id)
-            .unwrap_or(ButtonState::Normal)
+        ctx.host.store().button_visual(id)
     };
     paint_icon_button(
         rect,

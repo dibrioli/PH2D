@@ -289,10 +289,7 @@ impl BodyCtx<'_> {
         h: f32,
     ) {
         let rect = Rect::new(x, y + (h - ICON_PX) * 0.5, ICON_PX, ICON_PX);
-        let state = self
-            .store
-            .button_state(id)
-            .unwrap_or(ph2d_editor_core::widget::ButtonState::Normal);
+        let state = self.store.button_visual(id);
         paint_icon_button(
             rect,
             IconGlyph::Builtin(glyph),

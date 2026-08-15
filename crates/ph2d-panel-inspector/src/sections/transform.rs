@@ -49,9 +49,7 @@ pub(crate) fn paint_transform_section(
         hit_index.register(color_id, circle_rect);
     }
     let reset_rect = Rect::new(x + w - color_slot_w - reset_size, y, reset_size, reset_size);
-    let reset_state = store
-        .button_state(ids::INSP_TRANSFORM_RESET)
-        .unwrap_or(ButtonState::Normal);
+    let reset_state = store.button_visual(ids::INSP_TRANSFORM_RESET);
     hit_index.register(ids::INSP_TRANSFORM_RESET, reset_rect);
     paint_icon_button(
         reset_rect,

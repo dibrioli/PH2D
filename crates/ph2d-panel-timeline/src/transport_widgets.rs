@@ -19,11 +19,7 @@ pub(crate) fn icon_button(
     glyph: IconId,
 ) -> f32 {
     let rect = Rect::new(x, y, BTN_W, ROW_H_PX);
-    let state = ctx
-        .host
-        .store()
-        .button_state(id)
-        .unwrap_or(ButtonState::Normal);
+    let state = ctx.host.store().button_visual(id);
     paint_icon_button(
         rect,
         IconGlyph::Builtin(glyph),
@@ -53,7 +49,9 @@ pub(crate) fn dead_icon_button(
         rect,
         IconGlyph::Builtin(glyph),
         IconButtonStyle::Compact,
-        ButtonState::Disabled,
+        // ⚠️ Estado DURO e declarado: um botão morto não tem hover a apresentar, e o neutro é o
+        //    que diz isso em vez de o deixar acontecer por omissão.
+        (ButtonState::Disabled, ph2d_editor_core::motion::SETTLED),
         ctx.scene,
         theme,
     );

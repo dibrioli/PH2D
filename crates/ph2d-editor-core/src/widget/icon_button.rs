@@ -126,12 +126,18 @@ fn icon_tint(state: ButtonState) -> ColorToken {
 ///
 /// ⚠️ `Pressed`, `Focused` e `Disabled` continuam **estados duros**: não são uma *quantidade* de
 /// nada, e tratá-los como fracção faria um botão desactivado ter meia-desactivação.
-fn icon_tint_t(state: ButtonState, t: Option<f32>, theme: Theme) -> ph2d_vector::Color {
+fn icon_tint_t(state: ButtonState, t: f32, theme: Theme) -> ph2d_vector::Color {
     blend_on_hover_axis(state, t, ColorToken::Text2, ColorToken::Text1, theme)
         .unwrap_or_else(|| resolve(icon_tint(state), theme))
 }
 
 /// A mistura `repouso → hover`, **ou `None` quando este estado não é uma quantidade**.
+///
+/// ⚠️ **O neutro é [`crate::motion::SETTLED`] e sai por aqui como `None`** — exactamente o
+/// roteamento do [`super::button::Button::bg_color`], pela mesma razão: assente no estado, quem
+/// escolhe a cor é o TOKEN DURO, e é isso que faz um id que o relógio nunca viu pintar byte a byte
+/// o mundo pré-substrato. Um `t` de 1,0 num botão genuinamente hovered dá a mesma cor pelos dois
+/// caminhos (`lerp(rest, hot, 1) == hot`), então a fronteira não tem degrau.
 ///
 /// ⚠️ **Uma porta, dois canais.** O `Chip`/`Plain` anima o GLIFO (`Text2 → Text1`) e o `Primary`
 /// anima o FUNDO (`Danger → AccentSoft`) — perguntas idênticas em canais diferentes, e escrever a
@@ -142,13 +148,12 @@ fn icon_tint_t(state: ButtonState, t: Option<f32>, theme: Theme) -> ph2d_vector:
 /// aritmética de cor a divergir da primeira.
 fn blend_on_hover_axis(
     state: ButtonState,
-    t: Option<f32>,
+    t: f32,
     rest: ColorToken,
     hot: ColorToken,
     theme: Theme,
 ) -> Option<ph2d_vector::Color> {
-    let t = t?;
-    if !matches!(state, ButtonState::Normal | ButtonState::Hovered) {
+    if t >= crate::motion::SETTLED || !matches!(state, ButtonState::Normal | ButtonState::Hovered) {
         return None;
     }
     crate::motion::blend_token_color(Some(rest.resolve(theme)), Some(hot.resolve(theme)), t)
@@ -158,38 +163,25 @@ fn blend_on_hover_axis(
 /// Paint a canonical icon button at `rect`. Caller still registers the
 /// hit-rect + AccessKit node (chrome owns those); this draws only.
 ///
-/// ⚠️ **Delega com o NEUTRO.** O eixo do hover vive em [`paint_icon_button_t`]; esta assinatura é
-/// a de sempre e pinta **exactamente** o que pintava antes da wave da UI viva — é o que mantém os
-/// dezanove chamadores (painéis, que não têm relógio) intocados, em vez de os obrigar a passar um
-/// `1.0` que não lhes diz nada. Um caminho de código, duas portas de conveniência: o molde do
-/// `denoise_ml` / `denoise_ml_with_progress`.
+/// ⚠️ **`visual` é o PAR `(estado, t)`, e o par é a porta — não um segundo argumento opcional.**
+/// Esta assinatura teve por um commit uma irmã `paint_icon_button_t(.., Option<f32>, ..)`, com a
+/// antiga a delegar com o neutro; a forma foi trocada porque ela tem o modo de falha que esta wave
+/// existe para fechar: **um sítio novo escreve a porta curta e nasce silenciosamente discreto**, a
+/// pintar cores duras no meio de vizinhos que deslizam, com a suíte inteira verde. Com o par, o
+/// compilador recusa — e um estado FORÇADO declara-se, em vez de acontecer por omissão:
+/// `(ButtonState::Pressed, motion::SETTLED)`.
+///
+/// A fonte normal do par é [`crate::interaction::WidgetStore::button_visual`], a mesma do
+/// [`super::button::Button::visual`]: **um facto, uma porta, dois widgets.**
 pub fn paint_icon_button(
     rect: Rect,
     glyph: IconGlyph,
     style: IconButtonStyle,
-    state: ButtonState,
+    visual: (ButtonState, f32),
     scene: &mut VectorScene,
     theme: Theme,
 ) {
-    paint_icon_button_t(rect, glyph, style, state, None, scene, theme);
-}
-
-/// [`paint_icon_button`] **com o eixo do hover**: `hover_t` é *quanto do hover está presente*.
-///
-/// ⚠️ **O neutro é `None`, e não um número.** `None` significa *este pintor não tem relógio* — e
-/// aí o botão pinta as cores DURAS de sempre, byte a byte. Um `1.0` como neutro seria ambíguo:
-/// para a COR ele quer dizer *«já chegou ao hover»* e para uma GEOMETRIA quer dizer *«totalmente
-/// crescido»*, então um botão de painel sem relógio nasceria permanentemente hovered. Uma
-/// pergunta, uma resposta, sem um número a significar duas coisas.
-pub fn paint_icon_button_t(
-    rect: Rect,
-    glyph: IconGlyph,
-    style: IconButtonStyle,
-    state: ButtonState,
-    hover_t: Option<f32>,
-    scene: &mut VectorScene,
-    theme: Theme,
-) {
+    let (state, hover_t) = visual;
     let (icon_rect, icon_color) = match style {
         IconButtonStyle::Chip | IconButtonStyle::Compact => {
             let radius = if matches!(style, IconButtonStyle::Compact) {
@@ -271,7 +263,7 @@ mod tests {
         let theme = Theme::Forge;
         let rest = resolve(ColorToken::Text2, theme).to_rgba8().to_u8_array();
         let hot = resolve(ColorToken::Text1, theme).to_rgba8().to_u8_array();
-        let mid = icon_tint_t(ButtonState::Hovered, Some(0.5), theme)
+        let mid = icon_tint_t(ButtonState::Hovered, 0.5, theme)
             .to_rgba8()
             .to_u8_array();
         assert_ne!(mid, rest);
@@ -280,25 +272,26 @@ mod tests {
             let (lo, hi) = (rest[i].min(hot[i]), rest[i].max(hot[i]));
             assert!(mid[i] >= lo && mid[i] <= hi, "canal {i} fora do intervalo");
         }
-        // O neutro pinta EXACTAMENTE o que sempre pintou — o que mantém os dezanove
-        // chamadores de `paint_icon_button` byte-idênticos.
+        // O NEUTRO pinta EXACTAMENTE o que sempre pintou — é o que mantém byte a byte os
+        // chamadores que ainda não têm relógio (e, com a rota de token dura, sem degrau na
+        // fronteira: `lerp(rest, hot, 1)` é `hot`).
         assert_eq!(
-            icon_tint_t(ButtonState::Hovered, Some(1.0), theme)
+            icon_tint_t(ButtonState::Hovered, crate::motion::SETTLED, theme)
                 .to_rgba8()
                 .to_u8_array(),
             hot
         );
-        // Sem relógio (`None`) o botão pinta o que sempre pintou — o neutro que mantém os
-        // dezanove chamadores de painel byte-idênticos.
+        // E em repouso o neutro dá o repouso — a outra metade, sem a qual o gate ficaria verde
+        // com um botão permanentemente hovered.
         assert_eq!(
-            icon_tint_t(ButtonState::Hovered, None, theme)
+            icon_tint_t(ButtonState::Normal, crate::motion::SETTLED, theme)
                 .to_rgba8()
                 .to_u8_array(),
-            hot
+            rest
         );
         // `Pressed` é estado DURO: o escalar não o toca.
         assert_eq!(
-            icon_tint_t(ButtonState::Pressed, Some(0.5), theme)
+            icon_tint_t(ButtonState::Pressed, 0.5, theme)
                 .to_rgba8()
                 .to_u8_array(),
             resolve(ColorToken::Accent, theme).to_rgba8().to_u8_array()
@@ -311,7 +304,7 @@ mod tests {
             Rect::new(0.0, 0.0, 56.0, 40.0),
             IconGlyph::Builtin(IconId::Settings),
             style,
-            state,
+            (state, crate::motion::SETTLED),
             &mut scene,
             Theme::Forge,
         );
@@ -390,7 +383,7 @@ mod tests {
             Rect::new(0.0, 0.0, 56.0, 40.0),
             IconGlyph::Path(&path),
             IconButtonStyle::Chip,
-            ButtonState::Normal,
+            (ButtonState::Normal, crate::motion::SETTLED),
             &mut scene,
             Theme::Forge,
         );

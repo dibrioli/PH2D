@@ -20,9 +20,8 @@ use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
-    ButtonState, DEFAULT_LABEL_W, IconButtonStyle, IconGlyph, NumberInput, NumericInputWithUnit,
-    TextInputState, Unit, paint_icon_button, paint_number_input_with_buffer,
-    paint_numeric_input_with_unit,
+    DEFAULT_LABEL_W, IconButtonStyle, IconGlyph, NumberInput, NumericInputWithUnit, TextInputState,
+    Unit, paint_icon_button, paint_number_input_with_buffer, paint_numeric_input_with_unit,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -191,7 +190,7 @@ pub(crate) fn paint_seed_row(
     hit_index.register(id, field);
 
     let brect = Rect::new(fx + field_w + gap, rect.y, btn_w, ROW_H_PX);
-    let bstate = store.button_state(reroll_id).unwrap_or(ButtonState::Normal);
+    let bstate = store.button_visual(reroll_id);
     paint_icon_button(
         brect,
         IconGlyph::Builtin(IconId::Rotate),

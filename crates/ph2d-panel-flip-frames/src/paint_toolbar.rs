@@ -69,11 +69,7 @@ pub(crate) fn paint(
 }
 
 fn icon(ctx: &mut PaintCtx, theme: Theme, r: Rect, id: NodeId, glyph: IconId) {
-    let st = ctx
-        .host
-        .store()
-        .button_state(id)
-        .unwrap_or(ButtonState::Normal);
+    let st = ctx.host.store().button_visual(id);
     paint_icon_button(
         r,
         IconGlyph::Builtin(glyph),

@@ -15,6 +15,7 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 # of crates/ph2d-node-*. Do not edit between the markers by hand; the staleness
 # gate (tests/staleness.rs) fails CI if this is out of sync with the folder.
 # <ph2d-node-sync:begin>
+ph2d-node-audio-bands = { path = "../ph2d-node-audio-bands" }
 ph2d-node-debug-const = { path = "../ph2d-node-debug-const" }
 ph2d-node-debug-wave = { path = "../ph2d-node-debug-wave" }
 ph2d-node-field-box = { path = "../ph2d-node-field-box" }
@@ -111,7 +112,6 @@ ph2d-node-sim-step = { path = "../ph2d-node-sim-step" }
 ph2d-node-sim-zone = { path = "../ph2d-node-sim-zone" }
 ph2d-node-source-object = { path = "../ph2d-node-source-object" }
 ph2d-node-source-text = { path = "../ph2d-node-source-text" }
-ph2d-node-audio-bands = { path = "../ph2d-node-audio-bands" }
 ph2d-node-util-reroute = { path = "../ph2d-node-util-reroute" }
 ph2d-node-value-attribute = { path = "../ph2d-node-value-attribute" }
 ph2d-node-value-curve = { path = "../ph2d-node-value-curve" }

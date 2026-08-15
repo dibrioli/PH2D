@@ -302,6 +302,130 @@ fn probe_animated_flip_bake_churn() {
     }
 }
 
+/// **O despejo nunca alcança o que o quadro anterior PUBLICOU** — a lei que fecha o
+/// report *"o flip do grid à esquerda pisca uma vez por quadro"* (2026-08-14).
+///
+/// O quadro do app tem UM de profundidade: `publish_objects` entrega os `texture_id`
+/// deixados pelo bake ANTERIOR, o cook constrói as instâncias com eles, e só então o
+/// bake deste quadro corre. Uma tile despejada aqui é uma tile que o desenho deste
+/// quadro ainda referencia — `bind_group` devolve `None` e o lote é PULADO.
+///
+/// A fixture contém as TRÊS espécies, e é o terceiro que impede *"nunca despejar
+/// nada"* de passar: pedida agora · publicada no quadro anterior e não mais pedida (a
+/// transição, que tem de SOBREVIVER) · velha nos dois (que tem de MORRER).
+#[test]
+fn the_eviction_never_takes_a_tile_the_previous_frame_published() {
+    let oid = FlipObjectId(7);
+    let (now, leaving, stale) = ((oid, 100u64), (oid, 200u64), (oid, 300u64));
+
+    let mut cache: BTreeMap<(FlipObjectId, u64), FlipBaked> = BTreeMap::new();
+    for (k, tid) in [(now, 1u32), (leaving, 2), (stale, 3)] {
+        cache.insert(
+            k,
+            FlipBaked {
+                name: Some("Walk".to_string()),
+                texture_id: tid,
+                size: [1.0, 1.0],
+                thumb: ph2d_panel_motion_graph::PreviewThumb {
+                    rgba: std::sync::Arc::new(Vec::new()),
+                    w: 0,
+                    h: 0,
+                },
+            },
+        );
+    }
+    let wanted: BTreeMap<(FlipObjectId, u64), Frame> = [(now, 0)].into_iter().collect();
+    // O quadro ANTERIOR resolveu `now` e `leaving` — logo ESTE quadro publicou os dois.
+    let published: std::collections::BTreeSet<_> = [now, leaving].into_iter().collect();
+
+    let gone = evictable(&cache, &wanted, &published);
+
+    assert!(
+        !gone.contains(&leaving),
+        "a tile que este quadro PUBLICOU sobrevive ao bake do mesmo quadro"
+    );
+    assert!(
+        !gone.contains(&now),
+        "a tile pedida agora nunca e despejada"
+    );
+    assert_eq!(
+        gone,
+        vec![stale],
+        "e a carencia e de UM quadro so: o que saiu ha dois quadros MORRE"
+    );
+}
+
+/// **SONDA — a tile que o quadro PUBLICOU sobrevive ao bake do MESMO quadro?** (o
+/// repro do report *"o flip do grid à esquerda pisca uma vez por quadro"*, 2026-08-14).
+///
+/// O quadro do app corre nesta ordem: `publish_objects` (mod.rs:5969, que entrega os
+/// `texture_id` deixados pelo bake do quadro ANTERIOR) → o cook, que constrói as
+/// instâncias com esses ids → `bake_flip_objects` (7526, que despeja o que ninguém
+/// pede mais) → o desenho. Se o bake despeja um id que o cook deste quadro já
+/// referenciou, o `bind_group` devolve `None`, o lote é PULADO, e o objeto some por
+/// exactamente um quadro.
+///
+/// A sonda reproduz essa ordem: lê o que seria publicado, roda o bake, e pergunta se
+/// o id publicado ainda vive.
+#[test]
+#[ignore = "sonda de medicao; requires a GPU adapter"]
+fn probe_the_published_tile_survives_the_bake() {
+    use ph2d_ecs::{Name, SimWorld};
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        eprintln!("no GPU adapter on this machine — nothing to measure");
+        return;
+    };
+    let mut renderer = ph2d_render::SpriteRenderer::new(
+        gpu.clone(),
+        ph2d_render::GameRt::FORMAT,
+        ph2d_render::TextureAtlas::dummy(&gpu),
+        8,
+    );
+
+    let mut flip = FlipDoc::default();
+    crate::motion_object_smoke::times::spawn_flip_walk_named(&mut flip, "Walk");
+    let oid = flip.objects().first().expect("o objeto").id;
+    let mut sim = SimWorld::new();
+    let e = sim.world_mut().spawn((Name::new("Walk"),)).id();
+    let mut map = FlipEntityMap::new();
+    map.insert(oid, e.to_bits());
+
+    let mut bake = FlipObjectBake::default();
+    let shifts = [0.0_f32, 0.25];
+    let mut ph = Playhead::default();
+
+    let (mut dead_now, mut dead_shifted) = (0usize, 0usize);
+    eprintln!("frame |  t    | publicou(agora, +0,25) | vivo depois do bake");
+    for f in 0..40 {
+        // 1) PUBLISH — o que este quadro entrega ao cook (estado do bake anterior).
+        let pub_now = bake.tile_named_shifted("Walk", 0.0).map(|t| t.texture_id);
+        let pub_shift = bake.tile_named_shifted("Walk", 0.25).map(|t| t.texture_id);
+        // 2) BAKE deste quadro.
+        ph.seek(f64::from(f) / 60.0);
+        bake.bake(&flip, &map, &ph, &shifts, &gpu, &mut renderer, &sim);
+        // 3) o id publicado ainda existe na loja de texturas?
+        let alive = |id: Option<u32>| id.is_none_or(|i| renderer.individual().dims(i).is_some());
+        let (a_now, a_shift) = (alive(pub_now), alive(pub_shift));
+        if pub_now.is_some() && !a_now {
+            dead_now += 1;
+        }
+        if pub_shift.is_some() && !a_shift {
+            dead_shifted += 1;
+        }
+        eprintln!(
+            "{f:5} | {:.3} | {:>6?} {:>6?}         | agora {} | +0,25 {}",
+            ph.time(),
+            pub_now,
+            pub_shift,
+            if a_now { "vivo" } else { "MORTO" },
+            if a_shift { "vivo" } else { "MORTO" },
+        );
+    }
+    eprintln!(
+        "\nquadros em que a tile publicada MORREU no mesmo quadro: agora {dead_now} | +0,25 {dead_shifted}"
+    );
+}
+
 /// **Um desenho SEGURADO tem a mesma chave em quadros diferentes** — a propriedade
 /// que a cache inteira monta em cima, e a que a 1ª versão da wave do `time_offset`
 /// violou ao chavear pelo QUADRO.

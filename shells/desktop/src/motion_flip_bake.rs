@@ -41,7 +41,7 @@
 //! so dragging the object never re-bakes — A2's rule). Every `acquire` pairs with a
 //! `release` (refcounted `IndividualTextureStore`), so tiles don't leak VRAM.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_core::{Playhead, Vec2};
 use ph2d_ecs::{Entity, Name, SimWorld};
@@ -49,9 +49,7 @@ use ph2d_flip::{FlipDoc, FlipObject, FlipObjectId, Frame};
 use ph2d_flip_render::{FlipCompose, FlipRenderer, pack_drawing};
 use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
-use ph2d_render::layer_compositor::{
-    LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region,
-};
+use ph2d_render::layer_compositor::{LayerCompositor, LayerOp, Region};
 use ph2d_render::{Camera2d, SpriteRenderer};
 use ph2d_vec_scene::Xform;
 
@@ -125,6 +123,24 @@ pub(crate) struct FlipObjectBake {
     /// cache — é a resolução, e ela existe porque o pedido chega em segundos e a tile
     /// mora num conteúdo.
     asked: BTreeMap<(FlipObjectId, u32), u64>,
+    /// As chaves que o bake ANTERIOR resolveu — ou seja, **exactamente as tiles que
+    /// ESTE quadro publicou** ao cook.
+    ///
+    /// ⚠️ **O quadro do app tem UM de profundidade, e é esse fato que esta lista
+    /// guarda.** A ordem é `publish_objects` (`render_loop/mod.rs`, que entrega os
+    /// `texture_id` deixados pelo bake ANTERIOR) → o cook, que constrói as instâncias
+    /// com esses ids → `bake_flip_objects` (fase de paint) → o desenho. Despejar aqui
+    /// um id que o cook deste quadro já referenciou faz o `bind_group` devolver `None`,
+    /// o lote é **PULADO**, e o objeto **some por um quadro** — foi o report
+    /// *"o flip do grid à esquerda pisca uma vez por quadro"* (2026-08-14).
+    ///
+    /// ⚠️ E o defeito era **assimétrico**, o que é o próprio diagnóstico: com duas
+    /// cadeias do mesmo Flip separadas por um desenho, a da FRENTE só ASSA (a de trás
+    /// ainda vai querer a tile dela) e a de TRÁS só DESPEJA (a tile de que precisa já
+    /// está na cache) ⇒ **só o rastro pisca**. Medido pela sonda
+    /// `probe_the_published_tile_survives_the_bake`: 2 mortes em 40 quadros na cadeia
+    /// não-deslocada, **zero** na deslocada.
+    published: BTreeSet<(FlipObjectId, u64)>,
 }
 
 impl FlipObjectBake {
@@ -186,17 +202,13 @@ impl FlipObjectBake {
         // grupo sem nome que nenhum grupo referencia) E a IMAGEM que nenhum offset
         // resolve agora — é esta segunda metade que impede um offset dirigido por fio
         // de acumular uma tile por valor visitado.
-        let gone: Vec<(FlipObjectId, u64)> = self
-            .cache
-            .keys()
-            .filter(|k| !to_bake.contains_key(*k))
-            .copied()
-            .collect();
-        for k in gone {
+        for k in evictable(&self.cache, &to_bake, &self.published) {
             if let Some(b) = self.cache.remove(&k) {
                 renderer.individual_mut().release(b.texture_id);
             }
         }
+
+        let to_bake_keys: BTreeSet<(FlipObjectId, u64)> = to_bake.keys().copied().collect();
 
         // Assa o que falta. Uma entrada que já existe é um acerto de cache POR
         // CONSTRUÇÃO — a chave É o conteúdo —, então um desenho SEGURADO ao longo de
@@ -230,6 +242,11 @@ impl FlipObjectBake {
                 );
             }
         }
+
+        // O que este bake resolveu é o que o PRÓXIMO quadro vai publicar ⇒ a carência
+        // do despejo seguinte. Escrito por último, depois de o filtro acima ter usado
+        // o valor do quadro anterior.
+        self.published = to_bake_keys;
     }
 
     /// Bake ONE object at the current frame into a fresh individual texture; returns
@@ -401,6 +418,31 @@ impl FlipObjectBake {
     }
 }
 
+/// As chaves que este bake pode DESPEJAR: as que a cache guarda e **nem este quadro
+/// nem o anterior** pediram.
+///
+/// ⚠️ **A carência de um quadro não é folga — é a PROFUNDIDADE do pipeline**, e a
+/// aritmética fecha: o quadro `N` publica as chaves que o bake `N−1` resolveu, então
+/// poupá-las no despejo de `N` é exactamente cobrir as instâncias que o cook de `N` já
+/// construiu. Uma chave que saiu em `N−1` e não voltou em `N` é despejada em `N+1`,
+/// quando o último desenho que a usou já terminou. *Zero quadros de carência apaga uma
+/// tile debaixo do desenho que a referencia; dois seriam VRAM sem consumidor.*
+///
+/// O custo é limitado por construção: no pior caso a cache carrega, por um quadro, o
+/// conjunto pedido mais o do quadro anterior — e os dois são limitados pela CONTAGEM
+/// de nós `source.object` do documento, que é coisa que o artista põe na tela à mão.
+fn evictable(
+    cache: &BTreeMap<(FlipObjectId, u64), FlipBaked>,
+    wanted: &BTreeMap<(FlipObjectId, u64), Frame>,
+    published: &BTreeSet<(FlipObjectId, u64)>,
+) -> Vec<(FlipObjectId, u64)> {
+    cache
+        .keys()
+        .filter(|k| !wanted.contains_key(*k) && !published.contains(*k))
+        .copied()
+        .collect()
+}
+
 /// The Flip objects to bake this frame, keyed by [`FlipObjectId`] → the artist's name
 /// (`None` for an unnamed group child). Baked iff **named** (the picker path) OR inside a
 /// **named group** ([`entity_is_in_a_named_group`], so the group stamp has its tile);
@@ -502,78 +544,11 @@ fn xform_point(m: &Xform, p: Vec2) -> [f32; 2] {
     [(a * px + c * py + e) as f32, (b * px + d * py + f) as f32]
 }
 
-/// Provider that returns the zeroed dummy for ANY key at version `0` — the SAME version
-/// `inject_slice_from_texture` records, so the compositor finds every slice "clean" and
-/// never uploads the transparent dummy over the injected art (the frame pass's trick).
-struct DummyProvider<'a> {
-    pixels: &'a [u8],
-}
-
-impl LayerPixelProvider for DummyProvider<'_> {
-    fn layer_pixels(&self, _key: u64) -> Option<LayerPixels<'_>> {
-        Some(LayerPixels {
-            version: 0,
-            rgba8: self.pixels,
-            dirty: None,
-        })
-    }
-}
-
-/// Read a straight `Rgba8Unorm` texture back to CPU RGBA (`w·h·4`, row padding stripped)
-/// — the standard `copy_texture_to_buffer` + `map_async` + poll dance (mirrors
-/// `fx_dump::readback`). Slow, but it runs only on a content change (cached).
-fn readback(gpu: &GpuContext, tex: &wgpu::Texture, w: u32, h: u32) -> Vec<u8> {
-    let unpadded = w * 4;
-    let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-    let padded = unpadded.div_ceil(align) * align;
-    let staging = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("motion flip bake readback"),
-        size: u64::from(padded) * u64::from(h),
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        mapped_at_creation: false,
-    });
-    let mut enc = gpu
-        .device
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-    enc.copy_texture_to_buffer(
-        wgpu::TexelCopyTextureInfo {
-            texture: tex,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        wgpu::TexelCopyBufferInfo {
-            buffer: &staging,
-            layout: wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(padded),
-                rows_per_image: Some(h),
-            },
-        },
-        wgpu::Extent3d {
-            width: w,
-            height: h,
-            depth_or_array_layers: 1,
-        },
-    );
-    gpu.queue.submit([enc.finish()]);
-    let slice = staging.slice(..);
-    let (tx, rx) = std::sync::mpsc::channel();
-    slice.map_async(wgpu::MapMode::Read, move |r| {
-        let _ = tx.send(r);
-    });
-    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    let _ = rx.recv();
-    let view = slice.get_mapped_range();
-    let mut out = Vec::with_capacity((unpadded * h) as usize);
-    for row in 0..h as usize {
-        let s = row * padded as usize;
-        out.extend_from_slice(&view[s..s + unpadded as usize]);
-    }
-    drop(view);
-    staging.unmap();
-    out
-}
+// O maquinário de OFFSCREEN (o provider mudo do compositor + a volta dos pixels do
+// device) mora num irmão: o pai é *o que uma tile de Flip É e quando ela existe*.
+#[path = "motion_flip_bake_offscreen.rs"]
+mod offscreen;
+use offscreen::{DummyProvider, readback};
 
 // Gates live in a sibling FILHO (via `#[path]`) so the parent stays under the shell
 // LOC cap; `use super::*` there reaches the private `content_key`/`bake_one`.

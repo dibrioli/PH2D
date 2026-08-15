@@ -236,13 +236,15 @@ mod wet_grid_look_probe;
 // `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
 // bridge-queries module instead of downcasting in central dispatch.
+/// doc 89 folha 14: a metade do shell do `source.text` — o bloco vira uma
+/// instância POR CARACTERE, com a geometria de cada glifo internada no MESMO
+/// store das formas (um `geometry_id` é um `geometry_id`, venha de onde vier).
+pub(crate) mod motion_audio_gen;
+pub(crate) mod motion_externals;
 /// ADR-0154: the shell half of `source.shape` — build each shape's `VecPath` from
 /// its node params, publish it into the cook, and draw the cooked instances as
 /// live GPU vector into the shared vector scene.
 pub(crate) mod motion_shape_gen;
-/// doc 89 folha 14: a metade do shell do `source.text` — o bloco vira uma
-/// instância POR CARACTERE, com a geometria de cada glifo internada no MESMO
-/// store das formas (um `geometry_id` é um `geometry_id`, venha de onde vier).
 pub(crate) mod motion_text_gen;
 /// The Deform Transform gizmo (whole-region bounding box), split from `painter_bridge_overlays` (Wave 2).
 pub(crate) mod painter_bridge_deform_gizmo;

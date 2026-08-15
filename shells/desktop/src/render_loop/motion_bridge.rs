@@ -423,10 +423,9 @@ pub(super) fn dispatch(
     // de ontem para amanhã.
     motion.signals_out.clear();
     motion.pump.clear_tap_fires();
-    super::motion_shape_gen::publish(motion); // ADR-0154: post-drain, pre-cook (no flicker)
-    // O mesmo instante, pela mesma razão: publicar antes do dreno mintaria a chave
-    // PRÉ-edição e o texto piscaria a cada tecla digitada no painel.
-    super::motion_text_gen::publish(motion);
+    // As MEMBRANAS: post-drain, pre-cook. O instante e' propriedade do GRUPO, entao
+    // as tres moram numa porta so (`motion_externals`).
+    super::motion_externals::publish_all(motion, playhead.time());
     // Time scopes (M2.N1): each `motion.time_remap` node rewrites the clock of
     // its upstream subtree. Rebuilt per frame — one pass over the node list, and
     // empty for a graph with no remapper (the common case), so the cook takes

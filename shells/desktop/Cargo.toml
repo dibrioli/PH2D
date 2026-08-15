@@ -353,8 +353,19 @@ ph2d-audio-decode = { path = "../../crates/ph2d-audio-decode" }
 # Optional, pulled in only by the `panel-audio-editor` feature.
 ph2d-audio-edit = { path = "../../crates/ph2d-audio-edit", optional = true }
 ph2d-audio-encode = { path = "../../crates/ph2d-audio-encode", optional = true }
-ph2d-audio-spectral = { path = "../../crates/ph2d-audio-spectral", optional = true }
-ph2d-audio-opus = { path = "../../crates/ph2d-audio-opus", optional = true }
+ph2d-node-audio-bands = { path = "../../crates/ph2d-node-audio-bands" }
+# ⚠️ **NAO e mais opcional, e a razao e um CONSUMIDOR novo:** o `audio.bands`
+# (doc 63 §3) le o espectro de um arquivo para dirigir geometria, e ele nao e do
+# editor de audio. Decodificar um arquivo e olhar o espectro dele deixaram de ser
+# capacidades PRIVADAS daquele painel no dia em que um no de Motion precisou das
+# duas — o mesmo argumento que o `decode_any` ja fazia por si ("uma porta para todo
+# arquivo de audio que o app abre"). A alternativa era gatear a membrana na feature
+# do painel, o que deixaria o no REGISTRADO e sempre em silencio num build sem ele:
+# um controle morto, que e o que esta casa recusa.
+ph2d-audio-spectral = { path = "../../crates/ph2d-audio-spectral" }
+# Idem: o `decode_any` roteia Opus por conteudo, e ele agora tem um consumidor fora
+# do painel de audio.
+ph2d-audio-opus = { path = "../../crates/ph2d-audio-opus" }
 # W7 ML denoise (ADR-0123). Optional, pulled ONLY by the `audio-ml` feature (OFF by default): a
 # default build never resolves `tract`, never compiles the inference stack, never embeds the
 # model. It carries the whole DeepFilterNet dependency; the RT mixer (`ph2d-audio`) must never
@@ -523,7 +534,7 @@ panel-sculpt3d       = ["ph2d-panel-registry-init/panel-sculpt3d"]
 panel-wet-tuning     = ["ph2d-panel-registry-init/panel-wet-tuning"]
 # Direct dep too: the render_loop editor bridge reads the transport intents +
 # drives the preview engine + publishes position back for the readout/playhead.
-panel-audio-editor   = ["ph2d-panel-registry-init/panel-audio-editor", "dep:ph2d-panel-audio-editor", "dep:ph2d-audio-edit", "dep:ph2d-audio-encode", "dep:ph2d-audio-spectral", "dep:ph2d-audio-opus"]
+panel-audio-editor   = ["ph2d-panel-registry-init/panel-audio-editor", "dep:ph2d-panel-audio-editor", "dep:ph2d-audio-edit", "dep:ph2d-audio-encode"]
 # W7 AI Denoise (ADR-0123), OFF by default — NOT in `default`. Turning it on pulls the native
 # DeepFilterNet stack (`ph2d-audio-ml` → `tract`) and lights the "AI Denoise" button in the audio
 # editor. It implies `panel-audio-editor`, which is where the button and its bridge live.

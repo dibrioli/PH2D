@@ -15,7 +15,9 @@ use ph2d_audio::{
 // HR-18 (600-LOC shell cap) split: the Audio Editor runtime and the test-signal
 // generators live in descendant submodules (they still reach `AudioSystem`'s
 // private fields). `editor` is gated on the panel feature; `signals` is not.
-#[cfg(feature = "panel-audio-editor")]
+// ⚠️ **Sem `cfg`, e a razao esta no `Cargo.toml`:** o `audio.bands` do Motion abre
+// arquivos de audio, e esta e a UNICA porta que decide como. Gatea-la na feature do
+// painel deixaria aquele no registrado e mudo num build sem o editor.
 pub(crate) mod decode_any;
 pub(crate) mod editor;
 #[cfg(feature = "panel-audio-editor")]

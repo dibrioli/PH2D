@@ -66,6 +66,10 @@ mod conferencia_demos;
 mod conferencia_demos_direction;
 #[path = "motion_state_conferencia_demos_text.rs"]
 mod conferencia_demos_text;
+/// A cena do AUDIO (`=40`), irmao pelo mesmo motivo — e porque ela escreve a
+/// propria fixture em disco (nao ha asset de audio no repo).
+#[path = "motion_state_conferencia_demos_audio.rs"]
+mod conferencia_demos_audio;
 /// A cena da MARCA DO IMPACTO (doc 89, folha 13), arquivo próprio pela mesma razão: ela
 /// responde *"um nó a jusante consegue saber que houve uma COLISÃO?"* — o passo mexe em `P` e
 /// `vel` a cada tique, então até existir a coluna `hit` a pergunta não era exprimível.
@@ -261,6 +265,9 @@ pub(crate) struct MotionState {
     /// looks it up to draw the shape live. Kept across frames — a static shape
     /// builds once.
     pub(crate) shape_store: crate::render_loop::motion_shape_gen::VecPathStore,
+    /// As analises de audio vivas (`audio.bands`) — a FFT roda AQUI, uma vez por
+    /// `(arquivo, analise)`, e nunca dentro do cook (doc 63 §6).
+    pub(crate) band_cache: crate::render_loop::motion_audio_gen::BandCache,
     /// **The node-help system on/off** (ADR-0155, Enio 2026-08-04). The ONE flag the
     /// setup diagnoser rides: the auto-heal, the ⚠ inert badges and the advisories all
     /// read it (`motion_bridge_heal`), so turning it off makes the graph stop offering to
@@ -423,6 +430,7 @@ impl MotionState {
             flip_object_bake: crate::motion_flip_bake::FlipObjectBake::default(),
             // ADR-0154: empty until the publish pass interns a `source.shape`.
             shape_store: crate::render_loop::motion_shape_gen::VecPathStore::default(),
+            band_cache: crate::render_loop::motion_audio_gen::BandCache::default(),
             // ADR-0155: the node-help system is ON by default; the toolbar chip toggles it.
             node_help_enabled: true,
         }

@@ -296,6 +296,20 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
             );
             sinks
         }
+        Ok("40") => {
+            let sinks =
+                conferencia_demos_audio::build_audio_demo_document(doc, registry).unwrap_or_default();
+            eprintln!(
+                "[audio-demo] O SOM DIRIGE A GEOMETRIA: a MESMA fileira de {} barras duas vezes.
+  EM CIMA sem o canal: todas do mesmo tamanho, o CONTROLE.
+  EM BAIXO com `audio.bands -> motion.drive(Size)`: cada barra respira com a banda dela.
+  (!) E' o movimento COM O TEMPO que prova a wave, nao as barras diferirem -- um campo por-INDICE tambem as deixaria desiguais, e ficaria PARADO.
+  A cena escreveu um VARRIMENTO de {:.0}s (60 Hz -> 12 kHz) em disco, entao a figura e' uma ONDA correndo da esquerda para a direita. De PLAY.",
+                conferencia_demos_audio::BANDS,
+                conferencia_demos_audio::SWEEP_SECS,
+            );
+            sinks
+        }
         _ => Vec::new(),
     }
 }

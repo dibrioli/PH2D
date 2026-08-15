@@ -19,7 +19,9 @@
 mod scene_fixture;
 
 use ph2d_ecs::{Entity, SimWorld};
-use ph2d_physics_ecs::{BodyKind, PhysicsBridge, PlatformPlayer, PlayerInput, PlayerMode, RigidBody};
+use ph2d_physics_ecs::{
+    BodyKind, PhysicsBridge, PlatformPlayer, PlayerInput, PlayerMode, RigidBody,
+};
 use scene_fixture::{pose, scene};
 
 /// De quão alto se larga, em metros acima do repouso.
@@ -119,10 +121,7 @@ fn measure_that_the_mode_is_actually_live() {
 #[ignore = "sonda: imprime, nao afirma"]
 fn measure_whether_a_fall_ever_settles() {
     eprintln!("  modo         descida por segundo (m), 1..8 s");
-    for (mode, tag) in [
-        (None, "Spring"),
-        (Some(PlayerMode::Kinematic), "Snap"),
-    ] {
+    for (mode, tag) in [(None, "Spring"), (Some(PlayerMode::Kinematic), "Snap")] {
         let d = descent_per_second(mode, false, 8);
         eprintln!(
             "  {tag:<10}   {}",
@@ -143,10 +142,7 @@ fn measure_whether_a_fall_ever_settles() {
 #[ignore = "sonda: imprime, nao afirma"]
 fn measure_whether_the_glide_already_crosses_to_the_kinematic_mode() {
     eprintln!("  modo         botao   descida por segundo (m), 1..6 s");
-    for (mode, tag) in [
-        (None, "Spring"),
-        (Some(PlayerMode::Kinematic), "Snap"),
-    ] {
+    for (mode, tag) in [(None, "Spring"), (Some(PlayerMode::Kinematic), "Snap")] {
         for held in [false, true] {
             // Um planeio autorado: 4 m/s de teto sob o dedo.
             let (mut sim, mut bridge, player) = falling(mode);

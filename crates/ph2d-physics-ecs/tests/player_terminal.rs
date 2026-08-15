@@ -40,9 +40,12 @@ const SECS: usize = 5;
 fn dropped(mode: Option<PlayerMode>, cap: f32, glide: f32) -> (SimWorld, PhysicsBridge, Entity) {
     let (mut sim, bridge, player) = scene(0.0, 0.0);
     if let Some(m) = mode {
-        sim.world_mut()
-            .entity_mut(player)
-            .insert((m, RigidBody { kind: BodyKind::Kinematic }));
+        sim.world_mut().entity_mut(player).insert((
+            m,
+            RigidBody {
+                kind: BodyKind::Kinematic,
+            },
+        ));
     }
     if let Some(mut p) = sim.world_mut().get_mut::<PlatformPlayer>(player) {
         p.max_fall_speed = cap;

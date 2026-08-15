@@ -107,19 +107,12 @@ fn upstream_columns(
     sn: ph2d_nodegraph::graph::NodeId,
     sp: u16,
 ) -> Vec<String> {
-    if let Some(stream) = motion
-        .pump
-        .cook
-        .peek(sn)
-        .and_then(|o| o.get(sp as usize))
-        .map(|v| v.as_stream())
-    {
-        return scalar_names(stream);
-    }
-    match motion.gpu_tap.as_ref().and_then(|t| t.get(&sn)) {
-        Some(stream) if sp == 0 => scalar_names(stream),
-        _ => Vec::new(),
-    }
+    super::super::columns::at(motion, sn, sp)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|c| c.scalar)
+        .map(|c| c.name)
+        .collect()
 }
 
 /// **The names the app has published into the graph's external channel** (doc 65) — the
@@ -140,16 +133,6 @@ pub(super) fn source_options(motion: &MotionState) -> Vec<String> {
         .keys()
         .filter(|k| !ph2d_nodegraph::external::is_reserved(k))
         .cloned()
-        .collect()
-}
-
-/// The names of the `Scalar` columns of `stream`, owned.
-fn scalar_names(stream: &ph2d_nodegraph::attr::Stream) -> Vec<String> {
-    use ph2d_nodegraph::attr::Column;
-    stream
-        .columns()
-        .filter(|(_, c)| matches!(c, Column::Scalar(_)))
-        .map(|(n, _)| n.to_string())
         .collect()
 }
 

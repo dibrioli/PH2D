@@ -390,6 +390,41 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
             );
             sinks
         }
+        // A COMPARACAO E O NOME QUE NAO RESOLVE (doc 89, o grupo E): as duas
+        // perguntas que o grafo nao sabia fazer -- "a > b?" em um no' so', e
+        // "este nome nao resolve" em voz alta.
+        Ok("45") => {
+            let sinks = conferencia_demos_compare::build_compare_demo_document(doc, registry)
+                .unwrap_or_default();
+            eprintln!(
+                "[compare-demo] CADA FILEIRA E' UM GRAFICO: {cols} pecas, e o Y de cada peca \
+                 E' a MASCARA (0 em baixo, 1 em cima).",
+                cols = conferencia_demos_compare::COLS as u32,
+            );
+            for (i, label) in conferencia_demos_compare::BAND_LABELS.iter().enumerate() {
+                eprintln!("  {}. {label}", i + 1);
+            }
+            eprintln!(
+                "  (!) Esta cena julga-se PARADA -- nada aqui depende do relogio.
+  (!) O OP (bandas 1-2): a MESMA rampa contra o MESMO limiar ({thr}), uma com Greater e outra
+      com Less. Os dois degraus tem de ser COMPLEMENTARES (a de cima sobe onde a de baixo
+      desce). Medido: 24 levantadas de cada lado numa fileira de 48 -- eles PARTICIONAM a
+      fileira. Se desenharem o mesmo degrau, o kernel nao esta a ler o `op`.
+  (!) A TOLERANCIA (bandas 3-4): as duas em Equal contra o mesmo limiar, e SO' o epsilon difere
+      ({narrow} contra {wide}). Medido: 4 pecas levantadas contra 18 -- uma banda visivelmente
+      mais larga, e um kernel cego ao epsilon desenharia as duas IGUAIS.
+  (!) O NOME (banda 5): um `value.attribute` le' '{missing}' (o typo de `vel`) de uma GRADE, que
+      nao carrega nenhum dos dois. A fileira sai PLANA, e esse e' o desenho CERTO -- a escada
+      devolve zeros no comprimento certo. O QUE A WAVE ACRESCENTA NAO ESTA NO CANVAS: abra o
+      painel de GRAFO, e o no' tem um badge (!). Clique nele: ele diz o nome que voce escreveu.
+  (!) Se a lista de 5 bandas acima nao aparecer, PARE: o resto da cena nao diz nada.",
+                thr = conferencia_demos_compare::THRESHOLD,
+                narrow = conferencia_demos_compare::EPS_NARROW,
+                wide = conferencia_demos_compare::EPS_WIDE,
+                missing = conferencia_demos_compare::MISSING_NAME,
+            );
+            sinks
+        }
         // A TABELA E A SEMENTE (doc 89, o grupo D / W-E): a lista que o artista
         // DIGITA, sem o teto de oito, e a semente que a identidade do no separa.
         Ok("44") => {

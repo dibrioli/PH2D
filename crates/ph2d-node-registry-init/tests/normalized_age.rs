@@ -128,7 +128,9 @@ fn normalised_age_is_three_nodes_and_the_lifespan_comes_from_the_emitter() {
     );
     // ⚠️ A fixture TEM de conter o fenômeno: com todas as idades iguais o quociente
     // seria constante e o gate não distinguiria a divisão de uma cópia.
-    let (lo, hi) = v.iter().fold((f32::MAX, f32::MIN), |(a, b), x| (a.min(*x), b.max(*x)));
+    let (lo, hi) = v
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(a, b), x| (a.min(*x), b.max(*x)));
     assert!(
         hi - lo > 0.05,
         "fixture: as idades têm de estar ESPALHADAS, e medem [{lo:.4}, {hi:.4}]"
@@ -151,7 +153,11 @@ fn normalised_age_is_three_nodes_and_the_lifespan_comes_from_the_emitter() {
     // exactamente o mesmo campo aqui.
     let (g8, _, _, div8) = chain(8.0);
     let v8 = cook_v(&g8, &reg, div8);
-    assert_eq!(v8.len(), v.len(), "ninguém morre em nenhuma das duas corridas");
+    assert_eq!(
+        v8.len(),
+        v.len(),
+        "ninguém morre em nenhuma das duas corridas"
+    );
     for (i, (&a, &b)) in v.iter().zip(&v8).enumerate() {
         assert!(
             (b - a * 0.5).abs() < 1e-6,

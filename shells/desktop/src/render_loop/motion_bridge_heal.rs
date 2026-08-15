@@ -158,11 +158,40 @@ pub(super) fn inert_reaching_output(motion: &MotionState) -> BTreeSet<u32> {
     if !motion.node_help_enabled {
         return BTreeSet::new(); // node help off (ADR-0155): no ⚠ badges
     }
-    diagnose(&motion.doc.graph, &motion.registry)
+    let mut out: BTreeSet<u32> = diagnose(&motion.doc.graph, &motion.registry)
         .into_iter()
         .filter(|d| reaches_output(&motion.doc.graph, d.node))
         .map(|d| d.node.0)
-        .collect()
+        .collect();
+    // ⚠️ **A segunda espécie, e ela NÃO passa pelo `reaches_output`.** Aquele filtro
+    // existe para não marcar um produtor a meio de montagem (*"ainda não liguei o
+    // integrador"* é inacabado, não errado). Um nome que não resolve é errado
+    // AGORA — o nó já tem fonte, já cozeu, e já está a ler zeros; esperar que a
+    // cadeia alcance uma saída atrasaria o aviso para depois de o artista ter
+    // construído em cima do engano.
+    out.extend(unresolved_names(motion).into_iter().map(|u| u.node.0));
+    out
+}
+
+/// Os nomes que não resolvem, com a stream VIVA por trás da resposta (a porta
+/// `columns`, que sabe ler o memo do cook e a tomada de GPU).
+///
+/// ⚠️ Este é o único diagnóstico do editor que precisa de um COOK — os outros são
+/// estruturais —, e é por isso que a regra mora num módulo próprio da crate e não
+/// no `Deficit`.
+fn unresolved_names(motion: &MotionState) -> Vec<ph2d_motion_diagnose::UnresolvedRead> {
+    // ⚠️ **DEFESA EM CAMADAS, e a mutação mediu-a:** os DOIS chamadores de hoje
+    // (`inert_reaching_output` e `heal_one`) já saem cedo com o chip desligado, então
+    // apagar esta linha **não sangra** nenhum gate de comportamento. Ela fica — e
+    // ganha gate PRÓPRIO — porque é ela que torna este helper seguro de chamar de
+    // qualquer sítio: o terceiro chamador não pode nascer a analisar um grafo cujo
+    // dono pediu para não ser analisado.
+    if !motion.node_help_enabled {
+        return Vec::new(); // node help off (ADR-0155): sem badges
+    }
+    ph2d_motion_diagnose::unresolved_reads(&motion.doc.graph, &motion.registry, &|n, p| {
+        super::columns::names_at(motion, n, p)
+    })
 }
 
 /// Apply the fix under a ⚠ badge the artist clicked (ADR-0155). A CANONICAL fix — the
@@ -183,6 +212,20 @@ pub(super) fn heal_one(motion: &mut MotionState, toasts: &mut ToastQueue, node: 
         .into_iter()
         .find(|d| d.node == node)
     else {
+        // ⚠️ Não é um produtor inerte — pode ser a OUTRA espécie. Um nome que não
+        // resolve nunca tem cura canônica (qual coluna o artista queria é escolha
+        // dele, e adivinhar é exactamente o que o ADR-0155 proíbe): selecionar e
+        // EXPLICAR, citando o nome que ele escreveu.
+        if let Some(u) = unresolved_names(motion)
+            .into_iter()
+            .find(|u| u.node == node)
+        {
+            ph2d_panel_motion_graph::request_graph_selection(vec![node.0]);
+            toasts.push(Toast::info(format!(
+                "Nothing upstream carries a column called '{}', so this node reads zeros",
+                u.column
+            )));
+        }
         return;
     };
     // `plan_heal` is the ONE door on "does this fix have a canonical cure?" — it returns
@@ -423,3 +466,10 @@ fn forward_edges(g: &Graph, node: NodeId) -> Vec<Edge> {
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_heal_tests.rs"]
 mod tests;
+
+// A SEGUNDA espécie de diagnóstico, em arquivo próprio: os gates dela BOMBEIAM
+// antes de perguntar (a resposta só existe depois de um cook), e o irmão acima está
+// a 569 das 600 linhas do teto.
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_unresolved_tests.rs"]
+mod unresolved_tests;

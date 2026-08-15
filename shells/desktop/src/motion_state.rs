@@ -77,6 +77,12 @@ mod conferencia_demos_direction;
 mod conferencia_demos_stats;
 #[path = "motion_state_conferencia_demos_table_seed.rs"]
 mod conferencia_demos_table_seed;
+
+// O grupo E — a comparação e o nome que não resolve (cena `=45`).
+// ⚠️ `pub(crate)` porque o gate do badge da cena mora no `render_loop` (ver o doc
+// do `build_compare_demo_document`).
+#[path = "motion_state_conferencia_demos_compare.rs"]
+pub(crate) mod conferencia_demos_compare;
 #[path = "motion_state_conferencia_demos_text.rs"]
 mod conferencia_demos_text;
 #[path = "motion_state_conferencia_demos_time.rs"]

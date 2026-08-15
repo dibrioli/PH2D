@@ -100,6 +100,14 @@ mod library;
 #[path = "motion_bridge_adapt.rs"]
 mod adapt;
 
+// **Que colunas a stream carrega aqui?** — a porta única, com o memo do cook E a
+// tomada de GPU atrás dela. Sob `panel-motion-graph` (e não sob a cfg mais estreita
+// do painel de params) porque os DOIS consumidores dela vivem aqui: o column picker
+// e o diagnóstico do nome que não resolve.
+#[cfg(feature = "panel-motion-graph")]
+#[path = "motion_bridge_columns.rs"]
+mod columns;
+
 // ADR-0155 W2 — the setup auto-heal. Sibling of `adapt` (heal-on-gesture, not
 // heal-on-refusal): `apply_graph_intents` runs it after a constructive batch.
 #[cfg(feature = "panel-motion-graph")]
@@ -132,6 +140,12 @@ mod clock;
 // Re-exported at `motion_bridge` level: the cook loop here and the GPU/test siblings
 // all call `super::ticks_owed` / `motion_bridge::ticks_owed`.
 pub(crate) use clock::ticks_owed;
+// ⚠️ A derivação tique↔segundos e a trava de entrada da ferramenta mudaram-se para o
+// MESMO módulo: é o mesmo assunto que o `ticks_owed`, e este pai estava a UMA linha
+// do teto de 600 (dívida latente que esta wave herdou). Os chamadores não mudam —
+// `motion_bridge::motion_tick` e `super::motion_tick` continuam a ser o caminho.
+use clock::{LAST_ACTIVE, motion_time};
+pub(crate) use clock::{forget_tool_transition, motion_tick};
 
 /// O lado de Motion da fronteira de sinais — ver o módulo.
 #[path = "motion_bridge_signals.rs"]
@@ -478,58 +492,6 @@ pub(super) fn dispatch(
         &motion.object_bake,
         objects::LOD_COUNT,
     );
-}
-
-/// The fixed tick the playhead is standing on — the Motion cook's clock, DERIVED
-/// (W4.T7). Motion keeps no transport of its own: it used to, and two clocks that
-/// each advance themselves are two clocks that drift.
-///
-/// The cook is tick-based on purpose (a fixed `dt` is what makes a spring
-/// deterministic, plan §1.4) while the playhead is a continuous position in
-/// seconds — so the seam rounds. At `rate == 1` the playhead's time is an exact
-/// multiple of `fixed_dt` and the rounding is a no-op; a seek to mid-tick lands on
-/// the nearest one.
-/// The tool-activation latch: `true` while the Motion tool is the active tool.
-///
-/// The auto-play (and the scene/graph split) is EDGE-triggered on entry, so a document that
-/// changes underneath an already-open tool never sees that edge.
-static LAST_ACTIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-
-/// **Forget that the tool was ever entered** — so the next frame re-fires the entry edge.
-///
-/// Loading a project is a NEW document arriving under an open tool. Without this, the Motion
-/// tool's *"auto-play on entry so time-driven behaviours animate live"* never re-fires (the tool
-/// did not change; the document did), and — since a load now rewinds AND pauses the editor's one
-/// clock — the artist would open a project and watch the graph sit frozen at t=0 until they
-/// pressed Space. Re-entering is what the loaded document deserves: it is being opened for the
-/// first time.
-pub(crate) fn forget_tool_transition() {
-    LAST_ACTIVE.store(false, std::sync::atomic::Ordering::Relaxed);
-}
-
-pub(crate) fn motion_tick(playhead: &ph2d_core::Playhead, fixed_dt: f64) -> u64 {
-    if fixed_dt <= 0.0 {
-        return 0;
-    }
-    // `Playhead::time` is `>= 0` by construction; the clamp is belt-and-braces
-    // against a NaN reaching the cast, which would saturate to 0 silently.
-    let t = playhead.time() / fixed_dt;
-    if t.is_finite() && t > 0.0 {
-        t.round() as u64
-    } else {
-        0
-    }
-}
-
-/// The COOK's time in seconds — the tick of [`motion_tick`] measured back out in seconds.
-///
-/// This is what a readout (probe, flow marching) must be sampled at, and it is NOT the same
-/// as `Playhead::time()`: the playhead is continuous and a scrub lands mid-tick, while the
-/// pump's memo only ever holds the tick it cooked. Reading the panel at the raw playhead time
-/// would ask the memo for an instant that was never simulated — the derived-coordinate trap
-/// (the seed must match the sample), and it has bitten this codebase before.
-fn motion_time(playhead: &ph2d_core::Playhead, fixed_dt: f64) -> f64 {
-    motion_tick(playhead, fixed_dt) as f64 * fixed_dt
 }
 
 /// **Re-derive everything the graph's SHAPE implies**, after any structural edit —

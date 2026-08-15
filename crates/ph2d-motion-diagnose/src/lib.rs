@@ -222,12 +222,7 @@ pub fn canonical_consumer(col: &str, particle: bool) -> Option<&'static str> {
 /// Does the node type `ty` **produce** `col` — write it to its output? United from
 /// the two static, registry-queryable sources: a GPU `ColumnBinding` that writes
 /// it, or a `Coupling::Produces`.
-fn produces(
-    reg: &NodeRegistry,
-    ty: NodeTypeId,
-    col: &str,
-    param: &dyn Fn(&str) -> f32,
-) -> bool {
+fn produces(reg: &NodeRegistry, ty: NodeTypeId, col: &str, param: &dyn Fn(&str) -> f32) -> bool {
     coupling_produces(reg, ty, col, param) || gpu_binding(reg, ty, col, is_producer)
 }
 
@@ -480,3 +475,11 @@ fn particle_upstream(graph: &Graph, node: NodeId) -> bool {
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;
+
+// ⚠️ **A segunda espécie de diagnóstico, e ela mora num MÓDULO PRÓPRIO de propósito.**
+// Tudo acima é PURO e estrutural (grafo + registry, sem cook); a regra do `reads` só
+// pode ser respondida pelo stream COZIDO, e misturá-la no `Deficit` esconderia
+// exactamente essa distinção — quem chama `diagnose` não precisa de um cook, quem
+// chama `unresolved_reads` precisa.
+pub mod reads;
+pub use reads::{UnresolvedRead, unresolved_reads};

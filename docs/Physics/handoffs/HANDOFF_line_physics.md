@@ -12,6 +12,17 @@
 > · gizmo ids até **973** (próximo livre **974**) · maior cena de smoke **104** (próxima livre
 > **105**; ⚠️ o `=84` não existe, de propósito).
 >
+> ⚠️ **E o número da CENA tem duas leituras, então ele vem em duas linhas:** o **105** acima é o
+> do `main`, e é onde ele está certo; **nesta LINHA o roteador já vai a `119`, e a próxima livre
+> é `120`** — quem escolher um número lendo só a linha do `main` nasce colidido. ⚠️ **O
+> mecanismo protege, ao contrário do que a nota do `CLAUDE.md` dizia:** o roteador da física é
+> um `match` sobre a string do env (`physics_smoke.rs`), então dois braços com o mesmo número
+> são `unreachable pattern` **no compilador** — a frase *"uma lista de `if level == N` e o
+> primeiro vence"* é a do **Vector**, copiada para cá, e ela descreve um silêncio que aqui não
+> existe. É por isso que esta família **não tem** um gate irmão do
+> `no_two_smoke_scenes_claim_the_same_level`: escrevê-lo seria a segunda resposta a uma
+> pergunta que o `rustc` já responde.
+>
 > ⚠️ **Jornada de 2026-08-12 FECHADA e SMOKADA, aguardando ordem de integração** — handoff
 > [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md).
 > **Seis waves**, as três últimas de REPORT do Enio e não de plano.

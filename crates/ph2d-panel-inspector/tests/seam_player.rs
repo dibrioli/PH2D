@@ -682,42 +682,103 @@ fn the_rows_show_what_was_authored_not_the_seed() {
 ///
 /// ⚠️ A infra já existia (`WidgetStore::set_tooltip` + o passe de hover do
 /// `hero`), então o modo de falha não é *"não funciona"*: é **não registrar
-/// nada** e ficar exatamente igual a antes, em silêncio. O gate varre a tabela
-/// e exige texto para cada id — número **e** botão.
+/// nada** e ficar exatamente igual a antes, em silêncio.
+///
+/// # ⚠️ O ORÁCULO é o que a §14 PINTA, e a versão anterior não era
+///
+/// Ele varria `player_control_ids()` — a mesma tabela de onde tirava a
+/// expectativa (`PLAYER_ROW_COUNT + 5`) — e por isso era **cego a tudo o que
+/// não estivesse nela**. Medido: a §14 pinta **70** ids próprios e aquela
+/// varredura cobria **57**; os **15** restantes são os controles segmentados
+/// (`Body`, `Emit Signals`, `Platform Lift`, `Walk Off Ledges`, o irmão
+/// agachado) e as opções deles. Doze deles TÊM dica — por sorte, não por gate:
+/// apagá-las passava verde.
+///
+/// ⚠️ **O comentário antigo já nomeava o mecanismo para os BOTÕES** (*"derivar
+/// este número da tabela de dicas o tornaria um oráculo auto-referente"*) e não
+/// notou que o **conjunto varrido inteiro** tinha o mesmo defeito.
+///
+/// A varredura agora é a DIFERENÇA entre o painel com player e sem ele — o que
+/// esta seção acrescenta à tela —, e não uma lista que alguém mantém.
 ///
 /// **Mutação que deve sangrar:** apagar o laço de `set_tooltip` do
-/// `populate_player`.
+/// `populate_player`, **ou** a dica de um único controle segmentado.
 #[test]
 fn every_player_control_carries_a_hover_hint() {
+    // ⚠️ **Chrome do PAINEL, não controles da §14** — e a isenção é nominal e
+    // com recusa de entrada morta, nunca um `unwrap_or(true)`: uma isenção que
+    // sobrevive ao sítio que ela isenta é onde o próximo controle sem dica se
+    // esconde.
+    //
+    // ⚠️ Nenhuma OUTRA seção do Inspector dá dica a estes três, então exigi-la
+    // aqui seria esta seção a legislar para o painel inteiro.
+    let chrome: [(&str, ph2d_a11y::NodeId); 3] = [
+        (
+            "o scrollbar do Inspector (ele nasce porque a §14 estica o painel)",
+            ph2d_editor_core::widget::INSPECTOR_SCROLLBAR_ID,
+        ),
+        ("o cabecalho da secao", ids::INSP_LIVE_PLAYER_SECTION),
+        ("o circulo de cor do cabecalho", ids::INSP_LIVE_PLAYER_COLOR),
+    ];
+
+    let with_player = painted(player());
+    let without: Vec<ph2d_a11y::NodeId> = {
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_player(None);
+        host.paint::<InspectorPanel>(&mut state, VIEWPORT)
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect()
+    };
     let mut host = MockPanelHost::with_panel::<InspectorPanel>();
     let mut state = InspectorState::default();
     set_current_inspector_player(Some(player()));
     let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
 
-    let mut checked = 0;
-    for id in ph2d_panel_inspector::player_control_ids() {
-        let tip = host
-            .store()
-            .tooltip_for(id)
-            .unwrap_or_else(|| panic!("o controle {id:?} da §14 nao tem dica de hover"));
-        assert!(
-            tip.len() > 12,
-            "a dica de {id:?} e' curta demais para ensinar alguma coisa: {tip:?}"
-        );
-        checked += 1;
+    let mine: std::collections::BTreeSet<_> = with_player
+        .iter()
+        .map(|(id, _)| *id)
+        .filter(|id| !without.contains(id))
+        .collect();
+    // ⚠️ Controle positivo: uma diferença vazia é um gate verde sobre qualquer
+    // defeito, e ela acontece no dia em que o `painted` mudar de forma.
+    assert!(
+        mine.len() > 60,
+        "a §14 tem de acrescentar dezenas de controles a' tela (viu {}) -- uma          varredura vazia passa VERDE sobre tudo",
+        mine.len()
+    );
+
+    let mut used = vec![false; chrome.len()];
+    let mut naked = Vec::new();
+    for id in &mine {
+        if let Some(i) = chrome.iter().position(|(_, c)| c == id) {
+            used[i] = true;
+            continue;
+        }
+        match host.store().tooltip_for(*id) {
+            Some(tip) if tip.len() > 12 => {}
+            Some(tip) => naked.push(format!("{id:?}: a dica e' curta demais: {tip:?}")),
+            None => naked.push(format!("{id:?}: sem dica de hover")),
+        }
     }
     set_current_inspector_player(None);
-    assert_eq!(
-        checked,
-        ph2d_panel_inspector::PLAYER_ROW_COUNT + 5,
-        // ⚠️ **Os botões são um LITERAL de propósito, e as rows não.** O
-        // `PLAYER_ROW_COUNT` é contado da mesma tabela que o pintor itera, então
-        // ele viaja junto; os botões o pintor escreve à mão, um a um (é o que o
-        // `architecture_panel_wiring_parity` consegue enxergar), e derivar este
-        // número da tabela de DICAS o tornaria um oráculo auto-referente —
-        // encolher a tabela encolheria a lista percorrida E a expectativa, e o
-        // botão sem dica passaria.
-        "a varredura tem de cobrir todos os numeros E os CINCO botoes"
+
+    assert!(
+        naked.is_empty(),
+        "controle da §14 que o artista nao consegue entender:\n  {}",
+        naked.join("\n  ")
+    );
+    let stale: Vec<_> = chrome
+        .iter()
+        .zip(&used)
+        .filter(|(_, u)| !**u)
+        .map(|((why, _), _)| *why)
+        .collect();
+    assert!(
+        stale.is_empty(),
+        "isencao STALE -- o sitio isento ja' nao e' pintado, entao a linha sai:\n  {}",
+        stale.join("\n  ")
     );
 }
 
@@ -734,8 +795,20 @@ fn every_player_control_carries_a_hover_hint() {
 #[test]
 fn every_card_holds_its_own_rows_and_they_do_not_overlap() {
     let rects = painted(player());
+    // ⚠️ **Controle positivo:** o laço abaixo percorre um `Vec` — uma lista vazia
+    // não entra nele, e o gate passaria VERDE sem ter olhado para card nenhum.
+    // (Os irmãos que iteram `INSP_PLAYER_MODE_IDS` não precisam disto: aquilo é
+    // `[NodeId; 3]`, e encolher um array de tamanho fixo é erro de compilação —
+    // ali o controle é o `rustc`.)
+    let cards = ph2d_panel_inspector::player_card_spans();
+    assert!(
+        cards.len() >= 10,
+        "a §14 tem uma dezena de cards (viu {}) -- uma varredura vazia e' verde \
+         por vacuo",
+        cards.len()
+    );
     let mut spans: Vec<(f32, f32)> = Vec::new();
-    for (title, rows) in ph2d_panel_inspector::player_card_spans() {
+    for (title, rows) in cards {
         let ys: Vec<f32> = rows
             .iter()
             .map(|id| {

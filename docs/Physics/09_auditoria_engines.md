@@ -47,6 +47,13 @@ Isso é o que esta auditoria encontrou de maior, e não é um verbo em falta: é
 
 ## §2 — A tabela, engine a engine
 
+⚠️ **ESTA TABELA FOI RECONFERIDA em 2026-08-15, e a correção é o §0 na sua forma mais
+direta:** seis linhas diziam ❌ e estavam **certas no dia em que foram escritas** (12/08).
+A fila que este próprio documento gerou fechou-as em 13-14/08 — `W-PlayerOut`,
+`W-Launch`, `W-Fall` — e ninguém voltou à tabela. *Quem move o número que tornava algo
+inalcançável tem de reconferir a nota*, e aqui quem o moveu foi o plano que a nota
+originou.
+
 Legenda: ✅ temos · 🟡 temos por outra via (com o porquê) · ❌ não temos ·
 ⛔ divergência deliberada (não queremos, com motivo).
 
@@ -55,7 +62,7 @@ Legenda: ✅ temos · 🟡 temos por outra via (com o porquê) · ❌ não temos
 | deles | nós | onde / porquê |
 |---|---|---|
 | `MaxWalkSpeed`, `MaxAcceleration` | ✅ | `walk` |
-| **`BrakingDecelerationWalking`, `GroundFriction`, `bUseSeparateBrakingFriction`** | ❌ | **§3.C** — acelerar e frear são **o mesmo número** aqui |
+| **`BrakingDecelerationWalking`, `GroundFriction`, `bUseSeparateBrakingFriction`** | ✅ | **W-Brake** (2026-08-13) — `WalkConfig::brake_scale`, a fração do orçamento que sobra ao LARGAR o direcional; ⚠️ **só no chão**, com gate (`the_brake_leaves_the_air_alone`) |
 | `MaxWalkSpeedCrouched` | ✅ | `crouch_speed` |
 | `JumpZVelocity`, `JumpMaxHoldTime` | 🟡 | autoramos **altura**, e a variável é por gravidade (Celeste), não por tempo de aperto |
 | `JumpMaxCount` | ✅ | `air_jumps` (W-MultiJump) |
@@ -72,11 +79,11 @@ Legenda: ✅ temos · 🟡 temos por outra via (com o porquê) · ❌ não temos
 | `MovementMode` + **`MOVE_Custom`** + `OnMovementModeChanged` | ❌ | **§3.F** — é ARQUITETURA, e a recomendação é **não agora** |
 | `MOVE_Swimming` | ✅ | W-Swim |
 | `MOVE_Flying` / noclip | ❌ | **§3.H** — barato, valor baixo |
-| **`LaunchCharacter`** | ❌ | **§3.E** — e o Unreal tem-no *precisamente porque* o controlador comeria a velocidade |
-| **`OnLanded`, `bNotifyApex`** | ❌ | **§3.A** |
+| **`LaunchCharacter`** | ✅ | **W-Launch** (2026-08-14) — `PhysicsBridge::launch_player`, e sai pela porta do `boost` que os três modos já consomem |
+| **`OnLanded`, `bNotifyApex`** | ✅ | **W-PlayerOut** (2026-08-13) — `PlayerEvent::{Landed, Jumped, Apex}`, diferenciados contra a vista do tique anterior |
 | `bEnablePhysicsInteraction`, `PushForceFactor`, `StandingDownwardForceScale` | ✅ | **e melhor**: a nossa é a 3.ª lei com três frações autoradas (W6, W-KinPush) |
 | `GravityScale` | ✅ | componente por-corpo |
-| **`APhysicsVolume::TerminalVelocity`** | ❌ | **§3.D** — e note-se que lá é propriedade do **VOLUME** |
+| **`APhysicsVolume::TerminalVelocity`** | ✅ | **W-Fall** (2026-08-14) — `max_fall_speed`, por-PERSONAGEM; ⚠️ lá é propriedade do **volume**, e a divergência fica declarada |
 | `MaxSimulationTimeStep`, `MaxSimulationIterations` | ✅ | sub-passos (W11b/W11c) |
 | Root motion | ❌ | **§5.K** — fora da fila sem pedido |
 | Network prediction / rollback | ⛔ | **§4.6** — e o que temos no lugar é mais forte para um editor |
@@ -94,7 +101,8 @@ Legenda: ✅ temos · 🟡 temos por outra via (com o porquê) · ❌ não temos
 | `platform_floor_layers` / `platform_wall_layers` | ❌ | pequeno: *que camadas contam como plataforma* |
 | **`platform_on_leave` (3 modos)** | ✅ | **§3.J** — `PlatformLift` (`Full`/`Up Only`/`None`), 2026-08-14; ⚠️ o Snap **não divergia**, o que faltava era a política |
 | `slide_on_ceiling`, `wall_min_slide_angle`, `max_slides`, `floor_block_on_wall`, `safe_margin` | ⛔ | **§4.5** — são knobs do *solver de slide* do Godot; a nossa saída é força/velocidade para um solver, não uma iteração de deslize |
-| **`is_on_floor/wall/ceiling`, `get_floor_normal`, `get_wall_normal`, `get_platform_velocity`, `get_real_velocity`, `get_last_slide_collision`** | ❌ | **§3.A** — o Godot expõe uma superfície de CONSULTA inteira; nós expomos três portas e nenhuma é sobre o estado |
+| **`is_on_floor/wall`, `get_floor_normal`, `get_platform_velocity`, `get_real_velocity`** | ✅ | **W-PlayerOut** (2026-08-13) — o `PlayerView` carrega `footing`, `wall`, `ground_normal`, `ground_velocity`, `velocity` e mais seis regimes |
+| `is_on_ceiling`, `get_wall_normal`, `get_last_slide_collision` | ❌ | **§3.A** — o que SOBRA da superfície de consulta do Godot, e é a lista honesta |
 
 ### Unity — `CharacterController` + `Effector2D` + KCC
 
@@ -103,7 +111,8 @@ Legenda: ✅ temos · 🟡 temos por outra via (com o porquê) · ❌ não temos
 | `slopeLimit` | ✅ | `max_slope_deg` |
 | `stepOffset` | 🟡 | **§4.1** |
 | `skinWidth`, `minMoveDistance` | 🟡 | o wrapper do controlador cinemático já os carrega |
-| `isGrounded`, `velocity`, `collisionFlags` | ❌ | **§3.A** |
+| `isGrounded`, `velocity` | ✅ | **W-PlayerOut** — `PlayerView.footing` / `.velocity` |
+| `collisionFlags` | ❌ | **§3.A** — o bitfield *teto/lado/baixo*; temos os dois primeiros por outra via (`footing`, `wall`) e o teto não |
 | **`OnControllerColliderHit`** / hits com estado (KCC) | ❌ | **§3.A** |
 | `PlatformEffector2D` (one-way) | ✅ | W12 + `player_drops` |
 | **`SurfaceEffector2D`** (esteira: *"forças tangentes para igualar uma velocidade ao longo da superfície"*) | ❌ | **§3.B** — a nossa esteira exigiria que a plataforma **se movesse de facto** |
@@ -125,7 +134,7 @@ A lista de features do README dele, confrontada:
 | Air actions | ✅ (W-MultiJump) |
 | Obstacle actions: **wall sliding (and jumping)** | ✅ (W13/W23) |
 | Obstacle actions: **climbing** | ❌ — o buraco que o plano 08 §4.8 já nomeia |
-| **Animation helpers** (*"não a animação, mas as facilidades para decidir que animação tocar"*) | ❌ — **§3.A** |
+| **Animation helpers** (*"não a animação, mas as facilidades para decidir que animação tocar"*) | ✅ — **W-PlayerOut**: `PlayerView` é exatamente isso (postura, parede, seis regimes, `facing`), e o `PlayerEvent` é o gatilho |
 | Tilt correction | ⛔ 3D; em 2D o `LockRotation` resolve |
 
 ⚠️ **Contra o nosso próprio referencial sobram DUAS coisas**, e uma delas é a
@@ -207,11 +216,21 @@ escorregadias como gelo ou óleo"*.
 
 ⚠️ **É UMA wave, não duas:** as duas metades entram pelo mesmo sítio (o que a
 amostra de chão carrega) e saem pelo mesmo (o alvo e o orçamento do `walk`).
-⚠️ **E ela depende do §3.C**: *gelo* é um número de **travagem**, e enquanto
-acelerar e frear forem o mesmo número, gelo é inexprimível sem também tornar o
-personagem lento a arrancar — que é o oposto de gelo.
 
-### 3.C · **ACELERAR E FREAR SÃO O MESMO NÚMERO**
+⚠️ **A DEPENDÊNCIA que esta seção declarava está PAGA** (reconferido em
+2026-08-15). Ela dizia *"ela depende do §3.C: enquanto acelerar e frear forem o
+mesmo número, gelo é inexprimível sem também tornar o personagem lento a
+arrancar"* — e isso era verdade **no dia em que foi escrito**. A **W-Brake**
+(2026-08-13, a wave que este próprio documento pediu) deu à lei o
+`WalkConfig::brake_scale`, então a travagem já é um número separado e o
+bloqueador não existe mais: o *gelo* por-superfície passa a ser **um
+multiplicador sobre um orçamento que já sabe qual dos dois sentidos está a
+pagar**.
+
+⚠️ E é por isso que a §3.C abaixo ficou marcada ✅ na tabela: uma seção de plano
+que prescreve o que já shipou manda a próxima LLM construir duas vezes.
+
+### 3.C · ~~**ACELERAR E FREAR SÃO O MESMO NÚMERO**~~ ⟨FECHADO pela W-Brake, 2026-08-13⟩
 
 **Medido:** `walk()` usa `cfg.acceleration` para os dois sentidos
 (`walk.rs:128-151`). O fator de mudança de direção (`1 + |Δv|/(2·speed)`,
@@ -227,6 +246,12 @@ separados (o padrão do Celeste); `GroundFriction`.
 
 **Preço:** um campo por regime (chão/ar) e um `if` no sinal de `delta`. É a
 wave mais barata desta lista e provavelmente a mais sentida.
+
+⚠️ **FECHADO — e a medição REFUTOU metade do que esta seção previa.** A W-Brake
+(2026-08-13) deu um campo só (`brake_scale`) e **não** um por regime: o freio
+**não alcança o AR**, com gate a pinar isso (`the_brake_leaves_the_air_alone`).
+O que esta seção descrevia como *"um campo por regime"* teria dado ao artista um
+knob de travagem no ar que a lei do salto já governa por outra via.
 
 ### 3.D · **NÃO HÁ TETO DE QUEDA**
 

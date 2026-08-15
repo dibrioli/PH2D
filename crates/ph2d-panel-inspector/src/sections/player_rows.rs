@@ -396,6 +396,25 @@ const GLIDE_ROWS: [PlayerRow; 1] = [(
     "Top descent speed while holding jump in a fall. 0 = off.",
 )];
 
+/// **O TETO DE QUEDA** (`W-Fall`) — a velocidade TERMINAL do personagem.
+///
+/// ⚠️ **Card PRÓPRIO, e não uma row dentro do GLIDE**, ainda que os dois sejam
+/// tetos da mesma velocidade e componham por uma porta só
+/// (`ph2d_platformer::descent_ceiling`): o planeio dura **enquanto o dedo
+/// dura** e este vale **sempre**, e o card é onde o artista lê *o que está a
+/// autorar*. Juntá-los pediria que ele descobrisse a diferença lendo a dica.
+///
+/// ⚠️ **Sem teto no valor DIGITÁVEL, e o §0 é o motivo:** medido pela porta do
+/// produto (`ph2d-physics-ecs/tests/measure_terminal.rs`), uma queda livre de
+/// mil metros chega a **142,57 m/s aos 8 s** e continua a crescer — o número
+/// que a faixa do slider tem de conseguir descrever é o da MEDIÇÃO, não um
+/// redondo confortável.
+const FALL_ROWS: [PlayerRow; 1] = [(
+    "Max Fall (m/s)",
+    ids::INSP_PLAYER_MAX_FALL,
+    "Terminal speed: the fall never gets faster than this. 0 = no cap.",
+)];
+
 /// **A TABELA da §14** — onze cards, e os números dentro deles.
 ///
 /// ⚠️ **A contagem NÃO está escrita aqui**, e é uma correção: o doc dizia *"oito
@@ -414,7 +433,7 @@ const GLIDE_ROWS: [PlayerRow; 1] = [(
 /// pergunta ele pertence"*, e ela passou a estar escrita na tela (Enio,
 /// 2026-08-04: *"esse tanto de parâmetros juntos não fica bem; organize-os em
 /// cards com um título que facilite o entendimento"*).
-pub(crate) const PLAYER_CARDS: [(&str, ph2d_a11y::NodeId, &[PlayerRow]); 11] = [
+pub(crate) const PLAYER_CARDS: [(&str, ph2d_a11y::NodeId, &[PlayerRow]); 12] = [
     ("LEG", ids::INSP_PLAYER_CARD_LEG, &LEG_ROWS),
     ("WALK", ids::INSP_PLAYER_CARD_WALK, &WALK_ROWS),
     ("JUMP", ids::INSP_PLAYER_CARD_JUMP, &JUMP_ROWS),
@@ -426,6 +445,7 @@ pub(crate) const PLAYER_CARDS: [(&str, ph2d_a11y::NodeId, &[PlayerRow]); 11] = [
     ("SWIM", ids::INSP_PLAYER_CARD_SWIM, &SWIM_ROWS),
     ("LEDGE", ids::INSP_PLAYER_CARD_LEDGE, &LEDGE_ROWS),
     ("GLIDE", ids::INSP_PLAYER_CARD_GLIDE, &GLIDE_ROWS),
+    ("FALL", ids::INSP_PLAYER_CARD_FALL, &FALL_ROWS),
 ];
 
 /// Quantas rows numéricas a seção pinta — **contadas da tabela**, nunca escritas

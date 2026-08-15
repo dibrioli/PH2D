@@ -35,14 +35,18 @@
 //! corpo. **No ar livre não há**, então a objeção não viaja — e a forma que ela
 //! matou lá é a candidata certa aqui.
 //!
-//! # ⚠️ A lei não consegue empurrar para BAIXO, por construção
+//! # ⚠️ A LEI mudou de casa, e o `GlideConfig` ficou
 //!
-//! O guard (`rel_up >= −fall_speed` ⇒ silêncio) é o teto, e ele também é o que
-//! torna `delta` **sempre positivo**. Não é uma verificação a mais: é a mesma
-//! linha a responder às duas perguntas, e é por isso que não existe um instante
-//! em que este módulo possa acelerar uma queda.
-
-use crate::{Motor, Vec2};
+//! O freio vive no [`crate::descent`] desde a `W-Fall`, porque o teto de queda
+//! autoraria **um segundo** teto sobre a mesma velocidade — e duas portas a
+//! clampar o mesmo número dariam ao planeio o poder de *acelerar* uma queda que
+//! o teto já limitou. Aqui ficou o que é do planeio: o número que o artista
+//! escreve, e a medição acima que escolheu **teto** entre as três formas.
+//!
+//! ⚠️ **`glide_motor` não existe mais** — quem quer o freio chama
+//! [`crate::descent::descent_ceiling`] e depois
+//! [`crate::descent::descent_motor`]. Deixá-lo vivo como uma segunda porta para
+//! a mesma pergunta é precisamente o que esta wave removeu.
 
 /// **Como o personagem plana.**
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -86,38 +90,3 @@ impl Default for GlideConfig {
         Self::STARTING_POINT
     }
 }
-
-/// **O freio do planeio** — `Motor::default()` quando não há nada a fazer.
-///
-/// `rel_up` é a velocidade vertical **relativa ao suporte** (a mesma que o
-/// [`crate::wall_slide`] consome), e `up` é o eixo para cima.
-///
-/// ⚠️ **`held`, e não uma borda:** planar é um regime que dura enquanto o dedo
-/// dura — o idioma do `grab`. E ler o NÍVEL do mesmo botão cuja BORDA a lei do
-/// pulo possui é seguro *precisamente porque* é o nível: a advertência do
-/// [`crate::wall_launch`] é sobre a borda, que exigiria uma segunda memória do
-/// `was_held` e divergiria no primeiro dispatch que devesse mais de um tique.
-///
-/// ⚠️ **Isto COMPÕE com o pulo do ar em vez de brigar com ele**, e é de
-/// propósito: o pulo do ar é disparado por BORDA, o planeio por NÍVEL, então um
-/// toque dá o pulo e um segurar dá o pulo **e depois** o planeio — que é
-/// exatamente o que Kirby e Yoshi fazem. Um jogador sem cargas que segure o
-/// botão plana e mais nada.
-#[must_use]
-pub fn glide_motor(cfg: &GlideConfig, held: bool, rel_up: f32, up: Vec2) -> Motor {
-    // ⚠️ **Uma linha, duas perguntas:** ela é o TETO (só age sobre quem cai mais
-    // depressa que o limite) e é também o que garante que `delta` seja positivo
-    // — ou seja, que este módulo nunca consiga acelerar uma queda.
-    if !cfg.armed() || !held || rel_up >= -cfg.fall_speed {
-        return Motor::default();
-    }
-    let delta = -cfg.fall_speed - rel_up;
-    Motor {
-        accel: [0.0, 0.0],
-        boost: [up[0] * delta, up[1] * delta],
-    }
-}
-
-#[cfg(test)]
-#[path = "glide_tests.rs"]
-mod tests;

@@ -91,6 +91,8 @@ pub(crate) mod inspector_player;
 #[cfg(test)]
 mod inspector_player_brake_tests;
 #[cfg(test)]
+mod inspector_player_fall_tests;
+#[cfg(test)]
 mod inspector_player_out_tests;
 #[cfg(test)]
 mod inspector_player_tests;

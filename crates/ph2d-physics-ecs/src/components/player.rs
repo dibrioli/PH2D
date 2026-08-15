@@ -17,7 +17,7 @@
 
 use bevy_ecs::component::Component;
 use ph2d_platformer::{
-    CrouchConfig, DashConfig, GlideConfig, JumpConfig, LedgeConfig, PlayerConfig, ReactionConfig,
+    CrouchConfig, DashConfig, FallConfig, GlideConfig, JumpConfig, LedgeConfig, PlayerConfig, ReactionConfig,
     RideConfig, SwimConfig, WalkConfig, WallConfig,
 };
 use serde::{Deserialize, Serialize};
@@ -297,6 +297,23 @@ pub struct PlatformPlayer {
     /// ⚠️ **`1` é o mundo de antes desta wave, AO BIT** — e é por isso que o
     /// degrau de schema é o único preço dela: nenhum projeto reabre diferente.
     pub brake_scale: f32,
+
+    /// **A velocidade TERMINAL**, m/s (`W-Fall`). `0.0` **desliga** — sem teto,
+    /// que é o mundo de antes desta wave ao bit; ver [`FallConfig::max_speed`].
+    ///
+    /// ⚠️ **Não existia velocidade terminal, e o número é medido:** largando de
+    /// mil metros a descida chega a **142,57 m/s aos 8 s** e continua a crescer,
+    /// nos dois modos. A tabela inteira está no topo do [`ph2d_platformer::descent`].
+    ///
+    /// ⚠️ **Ele e o `glide_fall_speed` passam pela MESMA porta, e vence o
+    /// menor** — duas portas a clampar a mesma velocidade dariam ao planeio o
+    /// poder de *acelerar* uma queda que o teto já limitou.
+    ///
+    /// ⚠️ **Mora no FIM do struct e não ao lado do `glide_fall_speed`**, que é
+    /// onde ele se lê: o postcard é POSICIONAL, e apendar é a política de todos
+    /// os degraus anteriores deste componente. A vizinhança semântica está na
+    /// UI, onde a row nasce ao lado da do planeio.
+    pub max_fall_speed: f32,
 }
 
 impl PlatformPlayer {
@@ -374,6 +391,10 @@ impl PlatformPlayer {
             glide: GlideConfig {
                 fall_speed: self.glide_fall_speed,
             },
+
+            fall: FallConfig {
+                max_speed: self.max_fall_speed,
+            },
             react: ReactionConfig {
                 support: self.reaction_support,
                 movement: self.reaction_movement,
@@ -440,6 +461,7 @@ impl Default for PlatformPlayer {
             ledge_offset_y: c.ledge.offset_y,
             ledge_speed: c.ledge.speed,
             glide_fall_speed: c.glide.fall_speed,
+            max_fall_speed: c.fall.max_speed,
         }
     }
 }

@@ -104,6 +104,7 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
                 ids::INSP_PLAYER_LEDGE_OFFSET_Y => Some(PlayerFieldEdit::LedgeOffsetY(v)),
                 ids::INSP_PLAYER_LEDGE_SPEED => Some(PlayerFieldEdit::LedgeSpeed(v)),
                 ids::INSP_PLAYER_GLIDE_FALL => Some(PlayerFieldEdit::GlideFallSpeed(v)),
+                ids::INSP_PLAYER_MAX_FALL => Some(PlayerFieldEdit::MaxFallSpeed(v)),
                 ids::INSP_PLAYER_REACT_SUPPORT => Some(PlayerFieldEdit::ReactionSupport(v)),
                 ids::INSP_PLAYER_REACT_MOVEMENT => Some(PlayerFieldEdit::ReactionMovement(v)),
                 ids::INSP_PLAYER_REACT_PUSH => Some(PlayerFieldEdit::ReactionPush(v)),

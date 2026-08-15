@@ -54,6 +54,7 @@ pub use contract::{PlayerConfig, PlayerState, PlayerStep, PlayerView};
 pub mod corner;
 pub mod crouch;
 pub mod dash;
+pub mod descent;
 pub mod event;
 pub mod glide;
 mod ground;
@@ -78,7 +79,8 @@ pub use crouch::{
 };
 pub use dash::{DashConfig, DashState, DashStep, dash_burst, dash_step};
 pub use event::{PlayerEvent, events_between};
-pub use glide::{GlideConfig, glide_motor};
+pub use descent::{FallConfig, descent_ceiling, descent_motor};
+pub use glide::GlideConfig;
 pub use ground::{ground_carry, relative_along, relative_rise};
 pub use jump::{JumpConfig, JumpKind, JumpState, JumpStep, carried_frame, jump_step};
 pub use kinematic::{
@@ -482,7 +484,11 @@ pub fn player_motor(
         && !swimming
         && clinging.is_none()
     {
-        glide::glide_motor(&cfg.glide, input.jump, rel_up, up)
+        descent::descent_motor(
+            descent::descent_ceiling(&cfg.glide, &cfg.fall, input.jump),
+            rel_up,
+            up,
+        )
     } else {
         Motor::default()
     };

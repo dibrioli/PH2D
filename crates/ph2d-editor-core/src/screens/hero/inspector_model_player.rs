@@ -163,6 +163,8 @@ pub struct InspectorPlayerInfo {
     pub ledge_speed: f32,
     /// O TETO da descida enquanto se plana, m/s (`W-Glide`). `0` = desligado.
     pub glide_fall_speed: f32,
+    /// A velocidade TERMINAL, m/s (`W-Fall`). `0` = sem teto.
+    pub max_fall_speed: f32,
     /// Quanto do peso volta ao chao (W6).
     pub reaction_support: f32,
     /// Quanto da caminhada volta ao chao (W6).
@@ -367,6 +369,8 @@ pub enum PlayerFieldEdit {
     LedgeSpeed(f32),
     /// **O TETO da descida enquanto se plana**, m/s (`W-Glide`). `0` desliga.
     GlideFallSpeed(f32),
+    /// **A velocidade TERMINAL**, m/s (`W-Fall`). `0` = sem teto.
+    MaxFallSpeed(f32),
     /// Quanto do peso volta ao chao (W6).
     ReactionSupport(f32),
     /// Quanto da caminhada volta ao chao (W6).

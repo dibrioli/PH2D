@@ -326,6 +326,10 @@ pub const INSP_PLAYER_LEDGE_SPEED: NodeId = hash_node_id("insp.player.ledge.spee
 pub const INSP_PLAYER_GLIDE_FALL: NodeId = hash_node_id("insp.player.glide.fall");
 
 pub const INSP_PLAYER_CARD_GLIDE: NodeId = hash_node_id("insp_player_card_glide");
+/// **A velocidade TERMINAL**, m/s (`W-Fall`). `0` desliga.
+pub const INSP_PLAYER_MAX_FALL: NodeId = hash_node_id("insp.player.fall.max");
+/// O card do TETO DE QUEDA (`W-Fall`).
+pub const INSP_PLAYER_CARD_FALL: NodeId = hash_node_id("insp_player_card_fall");
 pub const INSP_PLAYER_CARD_LEDGE: NodeId = hash_node_id("insp_player_card_ledge");
 pub const INSP_PLAYER_CARD_LEG: NodeId = hash_node_id("insp_player_card_leg");
 pub const INSP_PLAYER_CARD_WALK: NodeId = hash_node_id("insp_player_card_walk");

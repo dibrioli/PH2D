@@ -464,4 +464,13 @@
 /// o campo nasce em `1`, onde a lei reduz LITERALMENTE (`x * 1.0` é `x` em
 /// IEEE-754) ⇒ todo projeto salvo em v78 reabre a andar e a parar exactamente
 /// como estava, e o `physics_ecs_c9` sai byte-idêntico.
-pub(crate) const PROJECT_SCHEMA: u32 = 79;
+/// v80 (physics, W-Fall — O TETO DE QUEDA): o `PlatformPlayer` ganhou
+/// `max_fall_speed`, apendado ao FIM ⇒ quebra dura. ⚠️ **Ele existe porque NÃO
+/// havia velocidade terminal, e o número é desta wave:** largando de mil metros
+/// a descida chega a **142,57 m/s aos 8 s** e continua a crescer, nos DOIS
+/// modos — um personagem que caia de alto o bastante atravessa o cenário a
+/// velocidades que nenhum colisor discreto resolve. ⚠️ **E o degrau é o ÚNICO
+/// preço da wave:** o campo nasce em `0`, que **desliga** a lei (a porta devolve
+/// `None` e o motor é `Motor::default()`) ⇒ todo projeto salvo em v79 reabre a
+/// cair exactamente como caía, e o `physics_ecs_c9` sai byte-idêntico.
+pub(crate) const PROJECT_SCHEMA: u32 = 80;

@@ -209,6 +209,10 @@ impl crate::App {
             "113" => self.physics_smoke_out(),
             "114" => self.physics_smoke_brake(),
             "115" => self.physics_smoke_surface(),
+            // ⚠️ **O NUMERO E' CONTADO, nunca escolhido** — lido deste `match`,
+            // que e' a fonte; a nota da §5 do CLAUDE.md dava a `=105` como a
+            // proxima livre e tinha envelhecido em onze cenas.
+            "116" => self.physics_smoke_terminal(),
             _ => self.physics_smoke_drop(),
         }
 

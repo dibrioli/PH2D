@@ -309,6 +309,7 @@ mod physics_smoke_stone;
 mod physics_smoke_stop;
 mod physics_smoke_surface;
 mod physics_smoke_swim;
+mod physics_smoke_terminal;
 mod physics_smoke_water;
 mod physics_smoke_wheel;
 mod physics_smoke_world_pin;

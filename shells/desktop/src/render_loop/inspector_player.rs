@@ -136,6 +136,7 @@ pub(crate) fn build_player_info(
         ledge_span: p.ledge_span,
         ledge_offset_y: p.ledge_offset_y,
         glide_fall_speed: p.glide_fall_speed,
+        max_fall_speed: p.max_fall_speed,
         ledge_speed: p.ledge_speed,
         reaction_support: p.reaction_support,
         reaction_movement: p.reaction_movement,
@@ -421,6 +422,7 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         // arte cuja mão fica abaixo do topo do collider).
         PlayerFieldEdit::LedgeOffsetY(v) => p.ledge_offset_y = v,
         PlayerFieldEdit::GlideFallSpeed(v) => p.glide_fall_speed = v.max(0.0),
+        PlayerFieldEdit::MaxFallSpeed(v) => p.max_fall_speed = v.max(0.0),
         PlayerFieldEdit::LedgeSpeed(v) => p.ledge_speed = v.max(0.0),
         PlayerFieldEdit::ReactionSupport(v) => p.reaction_support = v.max(0.0),
         PlayerFieldEdit::ReactionMovement(v) => p.reaction_movement = v.max(0.0),

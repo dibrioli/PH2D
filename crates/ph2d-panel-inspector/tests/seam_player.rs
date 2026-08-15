@@ -112,6 +112,10 @@ fn player() -> InspectorPlayerInfo {
         ledge_offset_y: -0.08,
         ledge_speed: 3.5,
         glide_fall_speed: 2.5,
+        // ⚠️ **O TETO DE QUEDA (W-Fall) LIGADO na fixture**, pela razão dos
+        // quatro acima: ele nasce em zero no produto (a lei desligada), e uma
+        // fixture que herdasse o zero varreria uma row cujo valor nunca muda.
+        max_fall_speed: 30.0,
         lift_momentum: 1.5,
         reaction_support: 1.0,
         reaction_movement: 0.0,
@@ -248,15 +252,16 @@ fn the_empty_face_offers_nothing_else() {
 /// falhar, e uma que esqueça a lista não existe (o pintor itera a mesma).
 #[test]
 fn every_number_raises_its_own_edit() {
-    // ⚠️ A lista TEM de cobrir a tabela inteira, e é isso que a asserção abaixo
+    // ⚠️ A lista TEM de cobrir a tabela inteira, e é isso que a asserção no fim
     // afirma: um número novo que chegue ao painel e não a esta varredura seria
     // exatamente o arm esquecido que ela existe para pegar.
-    assert_eq!(
-        ph2d_panel_inspector::PLAYER_ROW_COUNT,
-        51,
-        "a tabela de rows cresceu; acrescente o numero novo a esta varredura"
-    );
-    for (id, v, edit) in [
+    //
+    // ⚠️ **A contagem é DERIVADA da própria varredura**, e não um literal ao
+    // lado dela: um número escrito à mão só sabe dizer *"a tabela mudou"* — e
+    // quem o bumpa para ficar verde faz exactamente o que ele existia para
+    // impedir. Comparada com o `len()` da lista, a asserção passa a afirmar a
+    // propriedade que interessa: *toda row pintada é varrida aqui*.
+    let sweep = [
         // W-Probes2 — a GEOMETRIA das amostras dos sensores.
         (
             ids::INSP_PLAYER_FOOT_SAMPLES,
@@ -447,6 +452,12 @@ fn every_number_raises_its_own_edit() {
             2.5,
             PlayerFieldEdit::GlideFallSpeed(2.5),
         ),
+        // W-Fall — o TETO DE QUEDA (a velocidade terminal).
+        (
+            ids::INSP_PLAYER_MAX_FALL,
+            45.0,
+            PlayerFieldEdit::MaxFallSpeed(45.0),
+        ),
         (
             ids::INSP_PLAYER_MAX_SLOPE,
             55.0,
@@ -512,7 +523,13 @@ fn every_number_raises_its_own_edit() {
             5.0,
             PlayerFieldEdit::CutGravity(5.0),
         ),
-    ] {
+    ];
+    assert_eq!(
+        ph2d_panel_inspector::PLAYER_ROW_COUNT,
+        sweep.len(),
+        "a tabela de rows cresceu; acrescente o numero novo a esta varredura"
+    );
+    for (id, v, edit) in sweep {
         expect(&commit(player(), id, v), edit, &format!("{id:?}"));
     }
 }

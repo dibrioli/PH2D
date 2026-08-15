@@ -11,7 +11,7 @@
 
 use crate::{
     Motor, Reaction, Vec2, crouch::CrouchConfig, crouch::CrouchState, dash::DashConfig,
-    dash::DashState, glide::GlideConfig, jump::JumpConfig, jump::JumpKind, jump::JumpState,
+    dash::DashState, descent::FallConfig, glide::GlideConfig, jump::JumpConfig, jump::JumpKind, jump::JumpState,
     kinematic, ledge::LedgeConfig, ledge::LedgeState, react::ReactionConfig, ride::RideConfig,
     swim::SwimConfig, swim::SwimState, walk::WalkConfig, wall::GrabState, wall::WallConfig,
 };
@@ -40,6 +40,10 @@ pub struct PlayerConfig {
     pub ledge: LedgeConfig,
     /// O planeio (W-Glide) — ⚠️ nasce DESLIGADO, ver [`GlideConfig::STARTING_POINT`].
     pub glide: GlideConfig,
+    /// O teto de queda (W-Fall) — ⚠️ nasce DESLIGADO, ver
+    /// [`FallConfig::STARTING_POINT`]; ele e' o `glide` **compõem** pela porta
+    /// única do [`crate::descent`], onde vence o menor.
+    pub fall: FallConfig,
 }
 
 impl PlayerConfig {
@@ -55,6 +59,7 @@ impl PlayerConfig {
         swim: SwimConfig::STARTING_POINT,
         ledge: LedgeConfig::STARTING_POINT,
         glide: GlideConfig::STARTING_POINT,
+        fall: FallConfig::STARTING_POINT,
     };
 }
 

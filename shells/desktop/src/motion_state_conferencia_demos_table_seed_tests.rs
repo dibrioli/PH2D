@@ -157,7 +157,7 @@ fn the_announcement_names_every_row() {
 /// comprimento.
 #[test]
 fn the_generated_table_parses_back_to_the_announced_length() {
-    let parsed = ph2d_steps::parse(&table_text());
+    let parsed = ph2d_node_value_pattern::table::parse(&table_text());
     assert_eq!(parsed.len(), TABLE_STEPS);
     // E é uma rampa: o primeiro e o último são os extremos.
     assert!((parsed[0] - 0.0).abs() < 1e-6);

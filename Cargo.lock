@@ -5446,7 +5446,6 @@ dependencies = [
  "ph2d-script",
  "ph2d-sculpt3d",
  "ph2d-sdf",
- "ph2d-steps",
  "ph2d-text",
  "ph2d-timeline",
  "ph2d-token-math",
@@ -6816,7 +6815,6 @@ version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
  "ph2d-nodegraph",
- "ph2d-steps",
 ]
 
 [[package]]
@@ -7111,7 +7109,6 @@ dependencies = [
  "ph2d-color",
  "ph2d-curve",
  "ph2d-editor-core",
- "ph2d-steps",
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-ui-testkit",
@@ -7421,10 +7418,6 @@ version = "0.1.0"
 dependencies = [
  "serde",
 ]
-
-[[package]]
-name = "ph2d-steps"
-version = "0.0.0"
 
 [[package]]
 name = "ph2d-stroke-width"

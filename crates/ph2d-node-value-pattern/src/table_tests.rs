@@ -1,8 +1,8 @@
-//! Gates da LEI da lista — a gramática, a inversa, o ciclo e o layout que o device lê.
+//! Gates da LEI da tabela — a gramática, o ciclo e o layout que o device lê.
 //!
-//! O ORÁCULO do caminho legado é o `pattern_value` do nó, que **não mora aqui** — a metade
-//! *"sem lista nada muda"* vive no `lib_tests.rs` da `ph2d-node-value-pattern`, onde o cook
-//! a exercita de ponta a ponta.
+//! O ORÁCULO do caminho legado é o `pattern_value` do `lib.rs`, que **não é
+//! tocado por esta wave** — então a metade *"sem tabela nada muda"* mora no
+//! irmão `lib_tests.rs`, onde o cook a exercita de ponta a ponta.
 
 use super::*;
 
@@ -17,7 +17,7 @@ fn the_grammar_takes_spaces_and_commas() {
     assert_eq!(parse("  1  \n 2 \t 3 "), vec![1.0, 2.0, 3.0]);
 }
 
-/// **Nada autorado é a LISTA VAZIA**, e é ela que faz o consumidor cair no legado.
+/// **Nada autorado é a LISTA VAZIA**, e é ela que faz o nó cair nos oito slots.
 #[test]
 fn nothing_authored_is_the_empty_list() {
     assert!(parse("").is_empty());
@@ -25,11 +25,11 @@ fn nothing_authored_is_the_empty_list() {
     assert!(parse(",, ;").is_empty());
 }
 
-/// **Um token ruim invalida a lista INTEIRA** — nunca é pulado.
+/// **Um token ruim invalida a tabela INTEIRA** — nunca é pulado.
 ///
-/// ⚠️ Pular o token daria um padrão com um passo A MENOS, em silêncio; recusar devolve o
-/// consumidor ao caminho legado, que o painel mostra (os controles legados voltam a ser
-/// pintados).
+/// ⚠️ Pular o token daria um padrão com um passo A MENOS, em silêncio; recusar
+/// devolve o nó ao caminho legado, que o painel mostra (os nove controles
+/// legados voltam a ser pintados).
 #[test]
 fn one_bad_token_rejects_the_whole_table() {
     assert!(parse("0.1 oops 0.9").is_empty());
@@ -51,8 +51,8 @@ fn non_finite_is_malformed_even_though_rust_parses_it() {
     assert!(parse("-inf 2").is_empty());
 }
 
-/// **Acima do teto a lista é TRUNCADA, não recusada** — os primeiros [`MAX_ENTRIES`]
-/// continuam a funcionar.
+/// **Acima do teto a lista é TRUNCADA, não recusada** — os primeiros
+/// `MAX_ENTRIES` continuam a funcionar.
 #[test]
 fn past_the_cap_the_list_is_truncated_not_refused() {
     let long: String = (0..MAX_ENTRIES + 50)
@@ -66,41 +66,7 @@ fn past_the_cap_the_list_is_truncated_not_refused() {
     assert_eq!(got[MAX_ENTRIES - 1], last);
 }
 
-/// **`format` é a INVERSA de `parse`, BIT A BIT** — a propriedade que torna o editor de
-/// barras uma FACE da string em vez de um segundo modelo dela.
-///
-/// ⚠️ **Não é sorte do formatador:** o `Display` de `f32` em Rust emite a representação
-/// mais curta que re-parseia no MESMO valor. Sem isso, um arrasto de barra reescreveria a
-/// lista inteira com números ligeiramente diferentes dos que o artista digitou — e a
-/// deriva só apareceria depois de vários gestos.
-#[test]
-fn format_is_the_exact_inverse_of_parse() {
-    let cases: Vec<Vec<f32>> = vec![
-        vec![0.0, 1.0],
-        vec![0.05, 0.15, 0.25, 0.35],
-        vec![-1.5, 0.0, 1.5, 1000.0, -0.000_123_4],
-        vec![1.0 / 3.0, 2.0 / 3.0, core::f32::consts::PI],
-        (0..64).map(|k| k as f32 * 0.017).collect(),
-    ];
-    for v in cases {
-        let round = parse(&format(&v));
-        assert_eq!(round.len(), v.len(), "comprimento, lista {v:?}");
-        for (a, b) in v.iter().zip(&round) {
-            assert_eq!(a.to_bits(), b.to_bits(), "bit a bit, lista {v:?}");
-        }
-    }
-}
-
-/// **A lista VAZIA escreve string vazia** — o mesmo sinal de *nada autorado* que o
-/// `parse` consome, então apagar a última barra devolve o consumidor ao legado em vez de
-/// deixar uma string que PARECE autorada.
-#[test]
-fn an_empty_list_formats_to_the_unauthored_signal() {
-    assert_eq!(format(&[]), "");
-    assert!(parse(&format(&[])).is_empty());
-}
-
-/// **O ciclo é por índice**, o mesmo que os slots legados sempre fizeram.
+/// **O ciclo é por índice**, o mesmo que os oito slots sempre fizeram.
 #[test]
 fn the_table_cycles_by_index() {
     let t = vec![10.0, 20.0, 30.0];
@@ -117,9 +83,9 @@ fn an_empty_table_answers_nothing() {
 
 /// **O LAYOUT que o device lê:** o slot 0 é a CONTAGEM, os valores seguem.
 ///
-/// ⚠️ É este gate que casa com o WGSL do nó (`lut_vp_table[1u + (i % n)]`); mover o
-/// cabeçalho sem mover o kernel deixaria o device a ler o primeiro valor como se fosse um
-/// comprimento.
+/// ⚠️ É este gate que casa com o WGSL do `lib.rs` (`lut_vp_table[1u + (i % n)]`);
+/// mover o cabeçalho sem mover o kernel deixaria o device a ler o primeiro valor
+/// como se fosse um comprimento.
 #[test]
 fn the_lut_carries_the_count_in_slot_zero() {
     let mut buf = vec![0.0f32; LUT_LEN as usize];
@@ -134,8 +100,8 @@ fn the_lut_carries_the_count_in_slot_zero() {
     );
 }
 
-/// **Nada autorado escreve CONTAGEM ZERO** — o sinal que manda o kernel tomar o ramo
-/// legado, o mesmo que a lista vazia dá à CPU.
+/// **Nada autorado escreve CONTAGEM ZERO** — o sinal que manda o kernel tomar o
+/// ramo legado, o mesmo que a lista vazia dá à CPU.
 #[test]
 fn an_unauthored_lut_says_zero_and_that_is_the_legacy_signal() {
     for text in ["", "   ", "0.1 oops"] {
@@ -145,11 +111,11 @@ fn an_unauthored_lut_says_zero_and_that_is_the_legacy_signal() {
     }
 }
 
-/// **As duas metades concordam sobre a MESMA string** — a CPU pela lista, o device pelo
-/// buffer.
+/// **As duas metades concordam sobre a MESMA string** — a CPU pela lista, o
+/// device pelo buffer.
 ///
-/// ⚠️ Este é o gate que impede a gramática de existir em duas versões: ele lê o buffer com
-/// a aritmética EXATA do WGSL e a compara com o `value_at`.
+/// ⚠️ Este é o gate que impede a gramática de existir em duas versões: ele lê o
+/// buffer com a aritmética EXATA do WGSL e a compara com o `value_at`.
 #[test]
 fn the_cpu_list_and_the_device_buffer_answer_the_same() {
     for text in [
@@ -182,10 +148,10 @@ fn the_buffer_holds_the_header_plus_the_cap() {
     assert_eq!(buf[MAX_ENTRIES], 1.0, "o último slot é escrito");
 }
 
-/// **O CUSTO da lista** — o recurso de que o teto é (`-- --ignored`).
+/// **O CUSTO da tabela** — o recurso de que o teto é (`-- --ignored`).
 ///
-/// O buffer é CONSTANTE (`LUT_LEN` é uma const do `LutSpec`), então a linha que decide é
-/// *quanto o `fill` cobra*, e ele roda uma vez por encode.
+/// O buffer é CONSTANTE (`LUT_LEN` é uma const do `LutSpec`), então a linha que
+/// decide é *quanto o `fill` cobra*, e ele roda uma vez por encode.
 #[test]
 #[ignore = "sonda: imprime o custo do fill; roda com -- --ignored"]
 fn measure_table_cost() {

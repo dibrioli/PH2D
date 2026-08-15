@@ -1,6 +1,5 @@
-//! Event dispatch for the **text-channel shaper editors** — a Curve (A1), a Gradient
-//! (doc 85) e uma faixa de PASSOS. Todos autoram uma `String` num text param por alças
-//! arrastáveis +
+//! Event dispatch for the two **text-channel shaper editors** — the Curve (A1) and the
+//! Gradient (doc 85). Both author a `String` in a text param through draggable handles +
 //! `+`/`−`/interp buttons, so their `apply_event` routing is the same shape; split out of
 //! `lib.rs` for the 700-LOC panel-file cap. `super` is the crate root (the pooled-id helpers
 //! and the row types are in scope).
@@ -11,8 +10,7 @@ use crate::snapshot::{
     param_grad_editor_id, param_grad_hue_id, param_grad_interp_id, param_grad_preset_id,
     param_grad_remove_id, param_grad_space_id, push_param_intent,
 };
-use crate::snapshot::{param_steps_add_id, param_steps_editor_id, param_steps_remove_id};
-use crate::{curve_row, gradient_row, steps_row};
+use crate::{curve_row, gradient_row};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
 
@@ -120,55 +118,6 @@ pub(crate) fn on_gradient_click(id: NodeId, snap: &ParamsSnapshot) -> Option<Eve
         {
             // A preset chip LOADS that preset into the editable ramp (doc 85).
             gradient_row::preset_gradient(p)
-        } else {
-            continue;
-        };
-        push_param_intent(MotionParamIntent::SetTextParam {
-            node: snap.node,
-            param: row.name,
-            value,
-        });
-        return Some(EventOutcome::Consumed);
-    }
-    None
-}
-
-/// Uma BARRA de passo arrastada: a dispatch guardou o `(página, resto, x, y)` normalizado
-/// no slot `curve_point_drag`; dobra o `y` no valor daquele passo e emite a lista nova.
-/// `Some` = o id ERA um editor de passos (tratado), `None` = tente o caminho seguinte.
-pub(crate) fn on_steps_drag(
-    id: NodeId,
-    host: &mut dyn PanelHostInternal,
-    snap: &ParamsSnapshot,
-) -> Option<EventOutcome> {
-    for slot in 0..snap.rows.len().min(MAX_PARAM_ROWS) {
-        if id == param_steps_editor_id(slot) {
-            let ParamRow::Steps(row) = &snap.rows[slot] else {
-                return Some(EventOutcome::Ignored);
-            };
-            if let Some(value) = steps_row::drain_drag(host.store_mut(), slot, row) {
-                push_param_intent(MotionParamIntent::SetTextParam {
-                    node: snap.node,
-                    param: row.name,
-                    value,
-                });
-            }
-            return Some(EventOutcome::Consumed);
-        }
-    }
-    None
-}
-
-/// O `+` / `−` de uma faixa de passos → a lista nova. `None` = não era botão de passo.
-pub(crate) fn on_steps_click(id: NodeId, snap: &ParamsSnapshot) -> Option<EventOutcome> {
-    for slot in 0..snap.rows.len().min(MAX_PARAM_ROWS) {
-        let ParamRow::Steps(row) = &snap.rows[slot] else {
-            continue;
-        };
-        let value = if id == param_steps_add_id(slot) {
-            steps_row::add_step(row)
-        } else if id == param_steps_remove_id(slot) {
-            steps_row::remove_step(row)
         } else {
             continue;
         };

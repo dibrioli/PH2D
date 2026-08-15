@@ -163,7 +163,7 @@ const SLOT_VALS: [f32; SLOTS] = [9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0];
 #[test]
 fn the_authored_table_wins_and_is_not_capped_at_eight() {
     let text = "0.05 0.15 0.25 0.35 0.45 0.55 0.65 0.75 0.85 0.95 1.05";
-    let table = ph2d_steps::parse(text);
+    let table = table::parse(text);
     assert_eq!(table.len(), 11, "a fixture contem mais de oito passos");
     let got = cook_field(23, Some(text), 3.0, &SLOT_VALS);
     let want: Vec<f32> = (0..23).map(|i| table[i % 11]).collect();
@@ -225,15 +225,10 @@ fn authoring_a_table_hides_the_nine_legacy_controls() {
     assert!(!gated.contains(&TABLE_KEY));
 }
 
-/// **A row da tabela existe e é uma FAIXA DE PASSOS** — sem ela o canal seria
+/// **A row da tabela existe e é um campo de TEXTO** — sem ela o canal seria
 /// alcançável só por um grafo montado em código.
-///
-/// ⚠️ **E a faixa dela é a MESMA dos slots legados**, que é a metade que o gate existe
-/// para pinar: os dois widgets desenham o mesmo número, então uma barra que lesse outra
-/// faixa mostraria o padrão numa altura que o slider ao lado contradiz — o par de réguas
-/// discordando sobre a mesma grandeza, e sem nada na tela dizendo qual está certa.
 #[test]
-fn the_table_row_is_a_step_strip_on_the_slots_own_range() {
+fn the_table_has_a_text_row_on_the_panel() {
     let mut reg = NodeRegistry::new();
     register(&mut reg).unwrap();
     let hints = reg.param_ui(MANIFEST.id).expect("hints");
@@ -241,16 +236,7 @@ fn the_table_row_is_a_step_strip_on_the_slots_own_range() {
         .iter()
         .find(|h| h.param == TABLE_KEY)
         .expect("a row da tabela");
-    assert!(matches!(row.widget, ParamWidget::Steps), "faixa de passos");
-    let slot = hints
-        .iter()
-        .find(|h| h.param == "v0")
-        .expect("o slider do slot 0");
-    assert_eq!(
-        (row.min, row.max),
-        (slot.min, slot.max),
-        "a faixa da barra é a do slider ao lado"
-    );
+    assert!(matches!(row.widget, ParamWidget::Text), "campo de texto");
 }
 
 /// **O kernel LÊ o buffer, nunca o `_sample`** — a decisão que mantém um passo
@@ -268,5 +254,5 @@ fn the_kernel_reads_the_lut_buffer_and_never_lerps_it() {
     // O canal esta registrado com a chave e a resolucao que a lei declara.
     assert_eq!(LUTS.len(), 1);
     assert_eq!(LUTS[0].text_key, TABLE_KEY);
-    assert_eq!(LUTS[0].resolution, ph2d_steps::LUT_LEN);
+    assert_eq!(LUTS[0].resolution, table::LUT_LEN);
 }

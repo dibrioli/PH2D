@@ -163,26 +163,6 @@ pub enum ParamWidget {
     /// put controls on screen that change nothing. The strip WRAPS, so the row has no
     /// length limit of its own: the artist adds colours until they stop wanting more.
     Palette,
-    /// Uma LISTA DE NÚMEROS ordenada, carregada num text param (`ph2d_steps::format`),
-    /// pintada como uma **faixa de BARRAS ARRASTÁVEIS** com `+`/`−` — o sequenciador de
-    /// passos, o idioma que todo artista já leu numa caixa de ritmo.
-    ///
-    /// ⚠️ **É a gêmea NUMÉRICA de [`Self::Palette`], e a distinção é a mesma:** uma lista
-    /// não tem posições nem interpolação, então nem [`Self::Curve`] nem [`Self::Gradient`]
-    /// a descrevem — oferecer alças de tangente ou stops poria controles na tela que não
-    /// mudam nada. O que ela tem é *quantos* e *quais*, e é isso que o `+`/`−` e as barras
-    /// dizem. A faixa **ENVOLVE**, então a row não tem teto de comprimento próprio: o único
-    /// teto é o de RECURSO (`ph2d_steps::MAX_ENTRIES`, o buffer do device).
-    ///
-    /// **A altura da barra é o valor lido na faixa `min..max` DO HINT** — a mesma que os
-    /// sliders escalares do nó já declaram, nunca um auto-ajuste ao conteúdo: uma faixa que
-    /// se re-escala enquanto se arrasta **não acompanha o dedo** (a armadilha que o
-    /// ADR-0128 pagou cinco vezes). `step` é inerte.
-    ///
-    /// Açúcar de artista sobre [`Self::Text`], o padrão de [`Self::Channels`] e
-    /// [`Self::Source`]: **a string continua sendo a fonte da verdade** — o strip parseia,
-    /// mexe num elemento e re-escreve pela inversa exata (`ph2d_steps::parse`/`format`).
-    Steps,
 }
 
 impl ParamWidget {

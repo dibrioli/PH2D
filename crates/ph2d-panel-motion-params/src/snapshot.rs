@@ -30,7 +30,6 @@ pub enum ParamRow {
     Curve(CurveRow),
     Gradient(GradientRow),
     Palette(PaletteRow),
-    Steps(StepsRow),
     Channels(ChannelsRow),
     Source(SourceRow),
 }
@@ -102,47 +101,6 @@ pub struct CurveRow {
     pub value: String,
 }
 
-/// Uma LISTA DE NÚMEROS ordenada — uma faixa de barras arrastáveis com `+`/`−`, carregada
-/// num text param (`ph2d_steps::format`). A gêmea NUMÉRICA de [`PaletteRow`]: o valor é
-/// uma `String`, então tanto o arrasto quanto o `+`/`−` viajam por
-/// [`MotionParamIntent::SetTextParam`].
-///
-/// ⚠️ **Sem campo de comprimento, e não falta nenhum:** a contagem É
-/// `ph2d_steps::parse(value).len()`. Um número à parte seria uma segunda resposta a
-/// *quantos passos existem*.
-#[derive(Clone, Debug, PartialEq)]
-pub struct StepsRow {
-    /// The text-param key — echoed in the intent + the per-bar ids.
-    pub name: &'static str,
-    /// English label (from the `ParamUiHint`).
-    pub label: String,
-    /// A lista serializada (`ph2d_steps::format`); vazia = nada autorado.
-    pub value: String,
-    /// A faixa em que uma barra é lida e escrita — a MESMA que os sliders escalares do nó
-    /// declaram no hint. ⚠️ Nunca auto-ajustada ao conteúdo: um strip que se re-escala
-    /// durante o arrasto não acompanha o dedo.
-    pub min: f32,
-    pub max: f32,
-}
-
-/// An ordered COLOUR PALETTE — a wrapping strip of OKLCH swatches with `+`/`−`, carried
-/// in a text param (`ph2d_color::palette_text`). Like [`GradientRow`] the value is a
-/// `String`, so add/remove rides [`MotionParamIntent::SetTextParam`] and a colour edit
-/// rides the shell's picker read-back.
-///
-/// ⚠️ **No length field, and none is missing:** the count IS `parse_palette(value).len()`.
-/// A separate number would be a second answer to *how many colours are there*, and the
-/// one this wave removed.
-#[derive(Debug, Clone, PartialEq)]
-pub struct PaletteRow {
-    /// The text-param key — echoed in the intent + the per-swatch ids.
-    pub name: &'static str,
-    /// English label (from the `ParamUiHint`).
-    pub label: String,
-    /// The serialized palette (empty → the node's factory colours).
-    pub value: String,
-}
-
 /// An interactive **gradient editor** (doc 85) — the colour sibling of [`CurveRow`]: a
 /// `ph2d_color::ColorRamp` serialized in a text param (`Graph::set_text_param`,
 /// `serialize_gradient`), drawn as a gradient BAR with **draggable position markers** (the
@@ -152,6 +110,24 @@ pub struct PaletteRow {
 /// so a position/add/remove edit rides [`MotionParamIntent::SetTextParam`]; a colour edit
 /// rides the shell's picker read-back (mirror of [`ColorRow`]). The artist never sees the
 /// string — only the bar and the stops.
+/// An ordered COLOUR PALETTE — a wrapping strip of OKLCH swatches with `+`/`−`, carried
+/// in a text param (`ph2d_color::palette_text`). Like [`GradientRow`] the value is a
+/// `String`, so add/remove rides [`MotionParamIntent::SetTextParam`] and a colour edit
+/// rides the shell's picker read-back.
+///
+/// ⚠️ **No length field, and none is missing:** the count IS `parse_palette(value).len()`.
+/// A separate number would be a second answer to *how many colours are there*, and the
+/// one this wave removed.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PaletteRow {
+    /// The text-param key — echoed in the intent + the per-swatch ids.
+    pub name: &'static str,
+    /// English label (from the `ParamUiHint`).
+    pub label: String,
+    /// The serialized palette (empty → the node's factory colours).
+    pub value: String,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct GradientRow {
     /// The text-param key (`Graph::set_text_param`) — echoed in the intent + the
@@ -495,8 +471,7 @@ pub(crate) use ids::{
     param_curve_remove_id, param_enum_id, param_grad_add_id, param_grad_editor_id,
     param_grad_hue_id, param_grad_interp_id, param_grad_preset_id, param_grad_remove_id,
     param_grad_space_id, param_grad_stop_id, param_number_id, param_pal_add_id,
-    param_pal_remove_id, param_reroll_id, param_reset_id, param_slider_id, param_steps_add_id,
-    param_steps_bar_id, param_steps_editor_id, param_steps_remove_id, param_text_id,
+    param_pal_remove_id, param_reroll_id, param_reset_id, param_slider_id, param_text_id,
 };
 pub use ids::{
     MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, param_grad_swatch_id, param_pal_swatch_id, param_swatch_id,
@@ -521,7 +496,6 @@ impl ParamRow {
             Self::Curve(r) => vec![r.name],
             Self::Gradient(r) => vec![r.name],
             Self::Palette(r) => vec![r.name],
-            Self::Steps(r) => vec![r.name],
             Self::Source(r) => vec![r.param],
             // Uma cor é QUATRO params (o swatch dobra RGBA), então resetá-la é resetar os quatro.
             Self::Color(r) => r.channels.to_vec(),

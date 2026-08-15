@@ -102,9 +102,6 @@ ph2d-node-value-attribute = { path = "../../crates/ph2d-node-value-attribute" }
 # ela mudasse a cena semearia uma chave que ninguém lê — desenhando o caminho
 # LEGADO enquanto anuncia a tabela. Aresta interna de path, nenhum pacote novo.
 ph2d-node-value-pattern = { path = "../../crates/ph2d-node-value-pattern" }
-# E a LEI da lista que a cena semeia: o gate dela confere o que o nó vai LER, então ele
-# tem de perguntar à mesma gramática (a folha), nunca a uma re-leitura local.
-ph2d-steps = { path = "../../crates/ph2d-steps" }
 # General timeline data layer (M0): keyframe store + curves. Backs the
 # app-general TimelineDoc (authoring + sampling at the engine Playhead) and the
 # per-component SpriteAnimation apply path.

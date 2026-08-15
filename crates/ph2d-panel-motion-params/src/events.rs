@@ -119,17 +119,6 @@ pub(crate) fn on_toggled(
 ) -> EventOutcome {
     for slot in 0..snap.rows.len().min(MAX_PARAM_ROWS) {
         if id == param_checkbox_id(slot) {
-            // Numa row de PASSOS o mesmo checkbox é o `Type` (a troca de FACE), não um
-            // param: a dispatch genérica já virou o valor e o próximo paint o lê.
-            //
-            // ⚠️ **É HIGIENE, não correção, e isso foi MEDIDO:** a mutação que apaga estas
-            // três linhas **não sangra** — o `let ... else` abaixo já recusa toda row que
-            // não seja `Toggle`, então nenhum `SetParam` sai daqui de qualquer forma. O que
-            // se ganha é o veredito honesto (`Consumed`: o widget é NOSSO) em vez de um
-            // `Ignored` que convida outro consumidor a pegar o evento.
-            if matches!(&snap.rows[slot], ParamRow::Steps(_)) {
-                return EventOutcome::Consumed;
-            }
             let ParamRow::Toggle(row) = &snap.rows[slot] else {
                 return EventOutcome::Ignored;
             };
@@ -302,9 +291,6 @@ pub(crate) fn on_text_commit(
                 ParamRow::Text(row) => row.name,
                 ParamRow::Channels(row) => row.text_param,
                 ParamRow::Source(row) => row.param,
-                // A face CRUA de uma faixa de passos (o checkbox `Type`) — o mesmo id de
-                // texto do slot, porque uma row ocupa um slot só.
-                ParamRow::Steps(row) => row.name,
                 _ => return EventOutcome::Ignored,
             };
             push_param_intent(MotionParamIntent::SetTextParam {

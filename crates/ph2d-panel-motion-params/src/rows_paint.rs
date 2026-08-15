@@ -6,7 +6,6 @@
 
 use super::curve_row::{self, CurveWidgets};
 use super::gradient_row::{self, ColourRowWidgets};
-use super::steps_row::{self, StepsWidgets};
 use super::{
     CHANNELS_EXTRA_BASE, MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, ParamRow, normalized_track,
     paint_angle_row, paint_seed_row, paint_text_row, param_checkbox_id, param_chip_id,
@@ -67,14 +66,13 @@ pub(crate) fn paint_rows(
     theme: Theme,
     modified: &std::collections::BTreeSet<String>,
     section_at: &[(String, usize)],
-) -> (CurveWidgets, ColourRowWidgets, StepsWidgets, f32) {
+) -> (CurveWidgets, ColourRowWidgets, f32) {
     let mut y = body_top;
     // Toda row cede a MESMA calha à direita, tenha ou não o que reverter — largura que depende
     // do estado é rótulo que se mexe quando você toca nele (`rows_paint_reset`).
     let inner_w = (inner_w - RESET_GUTTER_W).max(0.0);
     let mut curve_widgets = CurveWidgets::new();
     let mut gradient_widgets = ColourRowWidgets::new();
-    let mut steps_widgets = StepsWidgets::new();
     // Dobrada até o próximo cabeçalho. Uma row DOBRADA é pulada no desenho e mantém o índice
     // `i` — os eventos enumeram a MESMA lista, então pular no pintor sem pular no roteador
     // desalinharia os slots (o bug clássico de lista filtrada).
@@ -234,10 +232,7 @@ pub(crate) fn paint_rows(
                     theme,
                 );
             }
-            ParamRow::Curve(_)
-            | ParamRow::Palette(_)
-            | ParamRow::Gradient(_)
-            | ParamRow::Steps(_) => {
+            ParamRow::Curve(_) | ParamRow::Palette(_) | ParamRow::Gradient(_) => {
                 // Os editores de várias linhas — cada um devolve a própria altura.
                 let used = editors::paint_editor_row(
                     row,
@@ -250,17 +245,15 @@ pub(crate) fn paint_rows(
                     scene,
                     text_system,
                     theme,
-                    store,
                     &mut curve_widgets,
                     &mut gradient_widgets,
-                    &mut steps_widgets,
                 )
                 .expect("o braço e a porta casam por construção");
                 y += used + row_gap;
             }
         }
     }
-    (curve_widgets, gradient_widgets, steps_widgets, y - body_top)
+    (curve_widgets, gradient_widgets, y - body_top)
 }
 
 #[cfg(test)]
@@ -303,7 +296,7 @@ mod tests {
         let mut per_row = 0.0f32;
         for n in [1usize, 8, MAX_PARAM_ROWS] {
             let rows: Vec<ParamRow> = (0..n).map(scalar).collect();
-            let (_, _, _, used) = paint_rows(
+            let (_, _, used) = paint_rows(
                 &rows,
                 0.0,
                 ph2d_editor_core::screens::layout::INSPECTOR_W,
@@ -360,7 +353,7 @@ mod tests {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::without_system_fonts();
         let store = WidgetStore::default();
-        let (_, _, _, used) = paint_rows(
+        let (_, _, used) = paint_rows(
             &rows,
             0.0,
             ph2d_editor_core::screens::layout::INSPECTOR_W,
@@ -385,7 +378,7 @@ mod tests {
         let mut hit2 = HitIndex::default();
         let mut scene2 = VectorScene::new();
         let mut text2 = TextSystem::without_system_fonts();
-        let (_, _, _, half_used) = paint_rows(
+        let (_, _, half_used) = paint_rows(
             &half,
             0.0,
             ph2d_editor_core::screens::layout::INSPECTOR_W,

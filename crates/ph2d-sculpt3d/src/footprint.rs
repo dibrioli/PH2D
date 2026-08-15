@@ -181,7 +181,16 @@ impl Strip {
         // o ponto simplesmente não é barro que esta passada tenha de mover —
         // quem está ACIMA do plano já está no lugar, e quem está fundo demais
         // está longe.
-        let gate = (z * (1.0 - z)).max(0.0);
+        //
+        // ⚠️ **É a SUBIDA desta parábola que faz a faixa NIVELAR** — mais fundo
+        // recebe mais, até o pico. Onde a superfície em repouso pousa nela é o
+        // [`crate::STRIP_PLANE_FRACTION`], e é ele que decide se a passada fecha
+        // um vale ou o exagera (a tabela medida está no doc dele).
+        //
+        // ⚠️ **O ganho é uma CALIBRAÇÃO, não parte da lei:** ele repõe o pico na
+        // superfície em repouso para que mover o lift mude a FORMA sem mudar a
+        // força. Ver [`crate::STRIP_DEPTH_GAIN`].
+        let gate = crate::STRIP_DEPTH_GAIN * (z * (1.0 - z)).max(0.0);
         if gate <= 0.0 {
             // Fora da faixa em profundidade: o `t` não importa, mas devolvê-lo
             // fora do alcance mantém a leitura honesta para quem inspecionar.

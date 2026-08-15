@@ -66,8 +66,8 @@ pub use alpha::{
 };
 pub use brush::{
     Brush, CLAY_PLANE_FRACTION, CREASE_FRACTION, MAX_MASK_HARDNESS, PINCH_GAIN, Pass,
-    REACH_FRACTION, STRIP_PLANE_FRACTION, Symmetry, TAUBIN_LAMBDA, TAUBIN_MU, TAUBIN_PASS_BAND,
-    Verb,
+    REACH_FRACTION, STRIP_DEPTH_GAIN, STRIP_PLANE_FRACTION, Symmetry, TAUBIN_LAMBDA, TAUBIN_MU,
+    TAUBIN_PASS_BAND, Verb,
 };
 pub use falloff::Falloff;
 pub use grip::{Amount, Grip, GripLaw};

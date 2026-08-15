@@ -2061,3 +2061,107 @@ auditado e o Blender **não se testa contra ninguém**. Um oráculo executável 
 paridade ao ULP é raro — e é exatamente ele que torna seguro **trocar de alvo**,
 porque dá para adotar a curva do Blender, o HC e os Kelvinlets *sabendo qual bit
 deixou de ser idêntico e qual não foi tocado*.
+
+---
+
+### §7.20 — ✅ A FAIXA NIVELA: o lift do plano decide se ela FECHA ou EXAGERA o relevo (2026-08-15)
+
+**Report do Enio, na 2ª rodada de smoke da W6:** *"A forma está correta,
+retangular, mas o comportamento do tool não está idêntico. Num vale a tool
+correta tende a fechar o vale, mas na nossa implementação tende a aumentar o
+vale."*
+
+**Reproduzido antes de qualquer hipótese** (`tests/measure_valley.rs`: um vale
+liso de `0,40` de profundidade, pincel `r = 0,8`, nove dabs):
+
+| | profundidade | veredito |
+|---|---|---|
+| repouso | 0,4000 | — |
+| a faixa que shipava | **0,4269** | **AUMENTA (+0,0269)** |
+| o Draw, no mesmo traço | 0,1572 | fecha |
+
+E a crista subia **+0,0716** contra apenas **+0,0447** do chão: o depósito caía
+nos ombros, não no fundo.
+
+#### O mecanismo — e a lei do dab NÃO era o defeito
+
+O `clay_strips.cc` calcula `offset = plane_normal · bstrength · radius` e
+`translation = offset · factor`, com o `factor` a incluir `z·(1−z)` — **a mesma
+forma que a nossa** (`add(live, n_area, reach·w)` com o portão da
+[`Footprint::Strip`] dentro do `w`). O que difere é **onde o plano fica**.
+
+A parábola `z·(1−z)` **sobe** de `z = 0` (o plano) até `z = 0,5` e **desce**
+depois. Logo o depósito só cresce com a profundidade enquanto o ponto está a
+menos de meio raio abaixo do plano. Como a superfície em repouso fica a `lift`
+raios abaixo do plano, a faixa **enche** relevo até `(0,5 − lift)` raios abaixo
+da média e **exagera** o que passa disso.
+
+⚠️ **`STRIP_PLANE_FRACTION = 0,5` punha a superfície EXATAMENTE no pico — folga
+de enchimento ZERO.** Era o único valor da família em que nenhum vale enche.
+
+⚠️ **E o defeito era meu, pela mesma via da `tip_roundness` de ontem:** eu
+derivei `0,5` de *"pôr o pico na superfície em repouso"*, que é conveniência
+interna (o máximo depósito em chapa plana, e a cura do *"dab inerte"* que quatro
+varreduras da suíte reportaram), **não** da propriedade que decide.
+
+#### As duas propriedades puxam em sentidos opostos, e são a MESMA lei
+
+| lift | vale (Δ) | miolo ÷ aro numa CÚPULA |
+|---|---|---|
+| 0,10 | −0,212 | **0,009** (o miolo não recebe nada) |
+| 0,18 | −0,121 | 0,393 |
+| **0,25** | **−0,073** | **0,649** |
+| 0,30 | −0,048 | 0,756 |
+| 0,50 | **+0,027** | 0,971 |
+
+⚠️ **O "anel" da coluna direita NÃO é falha** — numa cúpula o miolo da pegada
+está acima do plano ajustado e o aro abaixo, então nivelar **é** depositar mais
+no aro: é o *"displaces vertices toward the brush plane"* do doc-header da
+referência, e é o que faz a ferramenta cortar planos. O que o lift baixo produz
+de errado é o miolo ficar **vazio** — o artista aponta e nada acontece ali.
+
+#### O número, e por que ele não é citável
+
+⚠️ **`0,25` é o MEIO da subida da parábola** (plano em `z = 0`, pico em
+`z = 0,5`): folga igual para acrescentar num calombo e para encher um buraco. É
+um marco da própria lei, e as duas medições o põem longe de qualquer extremo.
+
+⚠️ **NÃO é citável da referência.** O `clay_strips.cc` lê `brush.plane_offset` e
+o genérico do DNA é `0.0`; quem declara o valor por-tool é o
+`BKE_brush_sculpt_reset`, **ausente do clone** — a lacuna da §7.1 que já
+bloqueou a W1 e o Draw Sharp. O número é NOSSO, com a tabela ao lado (§4).
+
+#### `STRIP_DEPTH_GAIN` — o lift é forma, não força
+
+O portão vale `lift·(1 − lift)` na superfície em repouso, então baixar o lift
+emagreceria a banda **junto** com a mudança de forma, e um smoke que muda duas
+coisas ao mesmo tempo não é legível. O ganho `0,25 / (lift·(1 − lift))` repõe o
+pico onde a superfície está: chapa plana **0,0876 → 0,0823** (94 %, o resto é o
+re-ajuste vivo do plano). ⚠️ **DERIVADO da const, nunca um literal ao lado** —
+escrito à mão apodrece no dia em que o lift se mover, e a ferramenta mudaria de
+força em silêncio.
+
+#### Gates — três propriedades para UMA constante
+
+`the_strip_closes_a_valley_instead_of_deepening_it` (nasceu VERMELHO em
+`0,4269`) · `the_band_still_lands_under_the_cursor_on_a_convex_form` (o
+contra-peso, sem o qual "fecha o vale" é maximizado levando o lift a zero) ·
+`moving_the_plane_lift_does_not_change_how_much_the_strip_lays_on_flat_clay`.
+**3 mutações, 3 sangram**, cada uma no seu gate: lift `0,5` → o do vale · lift
+`0,05` → o da cúpula · ganho `1,0` → o da magnitude. Um gate só deixaria as
+outras duas livres para regredir em silêncio — foi assim que o `0,5` shipou.
+
+⚠️ **O oráculo do vale é a PROFUNDIDADE, não a altura do chão:** uma passada que
+levantasse a paisagem inteira subiria o chão sem nivelar nada, e é exatamente o
+que o `0,5` fazia.
+
+⚠️ **`measure_brush_kernel` é flake de CARGA** — falha na suíte cheia e passa
+isolado (três corridas seguidas); ele mede uma RAZÃO de wall-clock com os 32
+núcleos saturados. Re-rode sozinho antes de suspeitar de um merge.
+
+⚠️ **PENDENTE DE RE-SMOKE — `PH2D_SCULPT3D_SMOKE=29`.** As perguntas de olho:
+passe a faixa sobre um **vale** e ele tem de **fechar** · a banda continua a
+aparecer **sob o cursor** numa forma convexa (mais fina no miolo é a ferramenta
+a cortar plano, vazia é bug) · e a **espessura em barro liso não pode ter
+mudado** — é o que o ganho existe para segurar, e é o controle que torna o
+resto legível.

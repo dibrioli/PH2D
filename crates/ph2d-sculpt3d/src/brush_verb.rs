@@ -431,11 +431,52 @@ pub const PINCH_GAIN: f32 = 0.05;
 
 /// **Quanto o plano da FAIXA sobe acima da superfície**, em fração do raio.
 ///
-/// ⚠️ **O número sai da própria LEI, não de gosto:** o portão de profundidade da
-/// [`crate::Strip`] é `z·(1−z)`, cujo pico está a **meio raio** abaixo do plano.
-/// Erguer o plano por essa mesma meia-fração é o que põe o pico exatamente na
-/// superfície em repouso — ou seja, é o offset em que uma passada deposita o
-/// máximo que ela sabe depositar.
+/// ⚠️ **Este número decide se a faixa NIVELA ou COPIA o relevo, e é a coisa
+/// inteira que o report do Enio de 2026-08-15 nomeia** (*"num vale a tool
+/// correta tende a fechar o vale, na nossa tende a aumentá-lo"*).
+///
+/// O portão de profundidade da [`crate::Strip`] é `z·(1−z)`, que **sobe** de
+/// `z = 0` (o plano) até `z = 0,5` e **desce** depois. Logo o depósito só cresce
+/// com a profundidade enquanto o ponto está a menos de meio raio abaixo do
+/// plano; passado o pico, quanto mais fundo **menos** barro. Como a superfície
+/// em repouso fica a `lift` raios abaixo do plano, a faixa **enche** relevo até
+/// `(0,5 − lift)` raios abaixo da média e **exagera** o que passa disso.
+///
+/// ⚠️ **O valor anterior era `0,5`, e ele punha a superfície EXATAMENTE no pico
+/// — folga de enchimento ZERO.** Era o único valor da família em que nenhum vale
+/// enche: tudo abaixo da média recebia menos que a média, então a passada
+/// devolvia o relevo amplificado. ⚠️ E o defeito era MEU pela mesma via da
+/// `tip_roundness`: eu derivei `0,5` de *"pôr o pico na superfície em repouso"*,
+/// que é conveniência interna (o máximo depósito em chapa plana), e não da
+/// propriedade que decide.
+///
+/// **MEDIDO** (`tests/measure_valley.rs`, vale de 0,40 de profundidade, pincel
+/// `r = 0,8`, nove dabs, magnitude presa pelo [`STRIP_DEPTH_GAIN`]):
+///
+/// | lift | vale (Δ profundidade) | miolo ÷ aro numa CÚPULA |
+/// |---|---|---|
+/// | 0,10 | −0,212 | **0,009** (o miolo não recebe nada) |
+/// | 0,18 | −0,121 | 0,393 |
+/// | **0,25** | **−0,073** | **0,649** |
+/// | 0,30 | −0,048 | 0,756 |
+/// | 0,50 | **+0,027 (AUMENTA)** | 0,971 |
+///
+/// ⚠️ **As duas colunas puxam em sentidos OPOSTOS, e as duas são a mesma lei.**
+/// Numa cúpula o miolo da pegada está acima do plano ajustado e o aro abaixo,
+/// então nivelar É depositar mais no aro — o *"displaces vertices toward the
+/// brush plane"* do kernel da referência. Baixar o lift nivela mais forte e
+/// esvazia o miolo; subi-lo faz a banda ficar uniforme e parar de nivelar.
+///
+/// ⇒ **`0,25` é o MEIO da subida da parábola** (o plano em `z = 0`, o pico em
+/// `z = 0,5`), o que dá à ferramenta folga igual para acrescentar num calombo e
+/// para encher um buraco. É um marco da própria lei, não um gosto, e as duas
+/// medições o confirmam longe de qualquer extremo.
+///
+/// ⚠️ **NÃO é citável da referência.** O `clay_strips.cc` lê `brush.plane_offset`
+/// e o genérico do DNA é `0.0`; quem declara o valor por-tool é o
+/// `BKE_brush_sculpt_reset`, **ausente do clone** — a mesma lacuna da §7.1 do
+/// plano que bloqueou a W1 e o Draw Sharp. O número acima é NOSSO, e a tabela
+/// ao lado é a razão dele.
 ///
 /// ⚠️ **E ele existe porque sem ele a ferramenta nasce MORTA:** com o plano
 /// rente, `z = 0` em toda parte e o portão fecha — quatro varreduras da suíte
@@ -443,7 +484,24 @@ pub const PINCH_GAIN: f32 = 0.05;
 /// uma dizendo *"dab inerte"*. O [`Verb::Clay`] resolve o mesmo problema pela
 /// mesma via ([`CLAY_PLANE_FRACTION`]), e o `plane_offset` do artista SOMA a
 /// este em vez de o substituir.
-pub const STRIP_PLANE_FRACTION: f32 = 0.5;
+pub const STRIP_PLANE_FRACTION: f32 = 0.25;
+
+/// **O ganho que impede o lift de ser TAMBÉM um controle de força.**
+///
+/// O portão vale `lift·(1 − lift)` na superfície em repouso, então mover o
+/// [`STRIP_PLANE_FRACTION`] mudaria a espessura da banda junto com a forma dela
+/// — e um smoke que muda duas coisas ao mesmo tempo não é legível. Este ganho
+/// repõe o pico (`0,25`) exatamente onde a superfície está, de modo que **chapa
+/// plana recebe o que sempre recebeu** e a única coisa que o lift move é o que a
+/// faixa faz com o RELEVO.
+///
+/// ⚠️ **DERIVADO, nunca um literal ao lado** — escrito à mão ele apodrece no dia
+/// em que o lift se mover, e a ferramenta mudaria de força em silêncio. Com o
+/// lift em `0,25` ele vale exatamente `4/3`.
+///
+/// **MEDIDO** (mesma sonda, chapa plana, `r = 0,8`, nove dabs): `0,0876` antes,
+/// `0,0823` depois — `94 %`, dentro do que o re-ajuste vivo do plano explica.
+pub const STRIP_DEPTH_GAIN: f32 = 0.25 / (STRIP_PLANE_FRACTION * (1.0 - STRIP_PLANE_FRACTION));
 
 /// Quanto o plano do **Clay** sobe acima da superfície, em fração do raio.
 ///

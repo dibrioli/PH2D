@@ -131,9 +131,14 @@ fn the_depth_gate_is_a_parabola_that_ignores_what_is_above_the_plane() {
     assert_eq!(gate(0.5), 0.0, "acima do plano não é barro desta passada");
     assert_eq!(gate(0.0), 0.0, "na superfície o portão abre em zero");
     let peak = gate(-0.5);
+    // ⚠️ **A expectativa é DERIVADA da calibração, e não a função sob teste:** o
+    // pico da parábola crua vale `0,25`, e o [`crate::STRIP_DEPTH_GAIN`] o repõe
+    // onde a superfície em repouso está. Um literal aqui apodreceria no dia em
+    // que o [`crate::STRIP_PLANE_FRACTION`] se movesse.
+    let want = crate::STRIP_DEPTH_GAIN * 0.25;
     assert!(
-        (peak - 0.25).abs() < 1e-6,
-        "o pico da parábola vale 0,25 a meio raio: {peak}"
+        (peak - want).abs() < 1e-6,
+        "o pico da parábola vale {want} a meio raio: {peak}"
     );
     assert_eq!(gate(-1.0), 0.0, "um raio abaixo ele fecha");
     assert_eq!(gate(-2.0), 0.0, "e continua fechado");

@@ -390,3 +390,182 @@ fn the_shipped_default_lays_a_strip_with_parallel_sides() {
         "o controle tinha de afinar, senão este gate não separa nada: {w:?}"
     );
 }
+
+// --- O LIFT DO PLANO: nivelar, e não copiar o relevo -------------------------
+//
+// ⚠️ **Estes três gates medem UMA constante por TRÊS propriedades**, e é
+// deliberado: o [`crate::STRIP_PLANE_FRACTION`] decide sozinho se a faixa fecha
+// relevo, se ainda deposita sob o cursor numa forma convexa, e quanta tinta ela
+// deixa em chapa plana. Um gate só deixaria as outras duas livres para regredir
+// em silêncio — foi assim que o `0,5` shipou.
+
+/// Meia-largura e profundidade do vale das fixtures abaixo.
+const VALLEY_W: f32 = 0.5;
+const VALLEY_D: f32 = 0.4;
+
+/// `z` de um vale liso que corre ao longo de `x`.
+fn valley_z(y: f32) -> f32 {
+    if y.abs() >= VALLEY_W {
+        0.0
+    } else {
+        -VALLEY_D * 0.5 * (1.0 + (core::f32::consts::PI * y / VALLEY_W).cos())
+    }
+}
+
+/// Uma grade cuja altura é dada por `f(x, y)`.
+fn shaped_grid(f: impl Fn(f32, f32) -> f32) -> ph2d_mesh::Mesh {
+    let mut pos = Vec::with_capacity((N + 1) * (N + 1));
+    for j in 0..=N {
+        for i in 0..=N {
+            let g = |k: usize| (k as f32 / N as f32) * 2.0 * HALF - HALF;
+            let (x, y) = (g(i), g(j));
+            pos.push([x, y, f(x, y)]);
+        }
+    }
+    let at = |i: usize, j: usize| (j * (N + 1) + i) as u32;
+    let mut faces = Vec::with_capacity(N * N * 2);
+    for j in 0..N {
+        for i in 0..N {
+            faces.push(ph2d_mesh::Face::tri(
+                at(i, j),
+                at(i + 1, j),
+                at(i + 1, j + 1),
+            ));
+            faces.push(ph2d_mesh::Face::tri(
+                at(i, j),
+                at(i + 1, j + 1),
+                at(i, j + 1),
+            ));
+        }
+    }
+    ph2d_mesh::Mesh::from_parts(pos, faces).expect("índices válidos")
+}
+
+/// Um traço ao longo de `+x` sobre uma superfície dada, com o cursor pousando
+/// NELA.
+///
+/// ⚠️ **O raio é o da superfície, não o `R` das fixtures planas:** o vale mede
+/// `2 · VALLEY_W` de largura, e um pincel muito menor que ele nunca vê as
+/// cristas — a pegada ficaria inteira dentro do chão, onde não há relevo para
+/// nivelar, e a fixture não conteria o fenômeno.
+fn stroke_over(f: impl Fn(f32, f32) -> f32 + Copy, radius: f32, dabs: usize) -> ph2d_mesh::Mesh {
+    let mut mesh = shaped_grid(f);
+    let brush = Brush {
+        verb: Verb::ClayStrips,
+        radius,
+        strength: 0.5,
+        ..Brush::default()
+    };
+    let mut stroke = SculptStroke::default();
+    stroke.begin(&mesh);
+    for k in 0..dabs {
+        let x = (k as f32 - (dabs - 1) as f32 * 0.5) * 0.15 * radius;
+        stroke.dab(
+            &mut mesh,
+            &brush,
+            &Dab::at([x, 0.0, f(x, 0.0)], radius, [0.0, 0.0, -1.0]),
+            Symmetry::default(),
+        );
+    }
+    mesh
+}
+
+/// A profundidade do vale na secção central: crista menos chão.
+///
+/// ⚠️ **A secção é lida por ÍNDICE de linha, nunca por `x ≈ 0`** — os vértices
+/// andam ao longo da normal da área, que se inclina, então um filtro por
+/// coordenada perde parte da coluna (a lição que a sonda do Draw Sharp pagou).
+fn valley_depth(mesh: &ph2d_mesh::Mesh) -> f32 {
+    let col: Vec<[f32; 3]> = (0..=N)
+        .map(|j| mesh.positions()[j * (N + 1) + N / 2])
+        .collect();
+    let ridge = col
+        .iter()
+        .filter(|p| p[1].abs() <= 2.0 * VALLEY_W)
+        .map(|p| p[2])
+        .fold(f32::NEG_INFINITY, f32::max);
+    let floor = col.iter().map(|p| p[2]).fold(f32::INFINITY, f32::min);
+    ridge - floor
+}
+
+/// **A FAIXA FECHA UM VALE — ela não o exagera.**
+///
+/// É o report do Enio de 2026-08-15, e o gate nasceu VERMELHO: com o lift em
+/// `0,5` a mesma passada media `0,4269` contra os `0,4000` de repouso, ou seja
+/// **aprofundava** o vale em `+0,0269`.
+///
+/// ⚠️ **O oráculo é a PROFUNDIDADE, não a altura do chão.** Uma passada que
+/// levantasse a paisagem inteira subiria o chão sem nivelar nada, e um gate que
+/// olhasse só para o chão a chamaria de correta — é exatamente o que o `0,5`
+/// fazia (o chão subia `0,0447` e a crista `0,0716`).
+#[test]
+fn the_strip_closes_a_valley_instead_of_deepening_it() {
+    let rest = valley_depth(&shaped_grid(|_, y| valley_z(y)));
+    let after = valley_depth(&stroke_over(|_, y| valley_z(y), 0.8, 9));
+    assert!(
+        after < rest - 0.02,
+        "a faixa tinha de FECHAR o vale: {rest:.4} → {after:.4}"
+    );
+}
+
+/// **E ela ainda deposita SOB O CURSOR numa forma convexa** — o contra-peso.
+///
+/// ⚠️ **Sem este gate, "fecha o vale" é maximizado levando o lift a zero**, e
+/// aí o miolo da pegada — que numa cúpula está ACIMA do plano ajustado — recebe
+/// literalmente nada: medido, `0,009` do que o aro recebe. A faixa deixaria de
+/// ser uma banda e viraria um anel, e o artista apontaria para um sítio onde
+/// nada acontece.
+///
+/// ⚠️ **A banda ser MAIS FINA no miolo não é defeito** — é a mesma lei vista
+/// numa superfície convexa (*"displaces vertices toward the brush plane"*), e é
+/// o que faz a ferramenta cortar planos. O que o gate proíbe é o miolo ficar
+/// vazio.
+#[test]
+fn the_band_still_lands_under_the_cursor_on_a_convex_form() {
+    let dome = |x: f32, y: f32| {
+        let q = (x * x + y * y) / (1.5 * 1.5);
+        if q >= 1.0 { 0.0 } else { 0.5 * (1.0 - q) }
+    };
+    let rest = shaped_grid(dome);
+    let after = stroke_over(dome, 0.8, 9);
+    let disp = |j: usize| {
+        let i = j * (N + 1) + N / 2;
+        after.positions()[i][2] - rest.positions()[i][2]
+    };
+    let pick = |lo: f32, hi: f32| {
+        (0..=N)
+            .filter(|&j| {
+                let y = rest.positions()[j * (N + 1) + N / 2][1].abs();
+                (lo..=hi).contains(&y)
+            })
+            .map(disp)
+            .fold(f32::NEG_INFINITY, f32::max)
+    };
+    let (core, rim) = (pick(0.0, 0.15), pick(0.35, 0.85));
+    assert!(rim > 1e-4, "o aro tinha de receber barro: {rim:.4}");
+    assert!(
+        core > rim * 0.4,
+        "o miolo não pode ficar VAZIO: miolo {core:.4} contra aro {rim:.4}"
+    );
+}
+
+/// **MOVER O LIFT NÃO MOVE A FORÇA** — é para isto que o
+/// [`crate::STRIP_DEPTH_GAIN`] existe.
+///
+/// O portão vale `lift·(1 − lift)` na superfície em repouso, então sem o ganho
+/// baixar o lift emagreceria a banda junto — e um smoke que muda a forma **e** a
+/// espessura ao mesmo tempo não é legível.
+///
+/// ⚠️ **O oráculo é o PICO da parábola**, computado aqui e não pedido ao
+/// [`crate::Strip`]: o produto tem de pousar a superfície em repouso onde o
+/// depósito vale `0,25`, que é o número que a faixa depositava quando o lift era
+/// `0,5`.
+#[test]
+fn moving_the_plane_lift_does_not_change_how_much_the_strip_lays_on_flat_clay() {
+    let f = crate::STRIP_PLANE_FRACTION;
+    let at_rest = crate::STRIP_DEPTH_GAIN * f * (1.0 - f);
+    assert!(
+        (at_rest - 0.25).abs() < 1e-6,
+        "chapa plana tinha de receber o pico `0,25`: {at_rest}"
+    );
+}

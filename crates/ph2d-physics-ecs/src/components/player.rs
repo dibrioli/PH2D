@@ -17,8 +17,8 @@
 
 use bevy_ecs::component::Component;
 use ph2d_platformer::{
-    CrouchConfig, DashConfig, FallConfig, GlideConfig, JumpConfig, LedgeConfig, PlayerConfig, ReactionConfig,
-    RideConfig, SwimConfig, WalkConfig, WallConfig,
+    CrouchConfig, DashConfig, FallConfig, GlideConfig, JumpConfig, LedgeConfig, PlayerConfig,
+    ReactionConfig, RideConfig, SwimConfig, WalkConfig, WallConfig,
 };
 use serde::{Deserialize, Serialize};
 

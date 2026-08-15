@@ -52,7 +52,10 @@ fn with_both_laws_disabled_nothing_is_written() {
 #[test]
 fn without_the_finger_there_is_no_glide() {
     assert_eq!(glide_only(false), None);
-    assert_eq!(descent_motor(glide_only(false), -12.0, UP), Motor::default());
+    assert_eq!(
+        descent_motor(glide_only(false), -12.0, UP),
+        Motor::default()
+    );
 }
 
 /// **⚠️ E o TETO DE QUEDA não pergunta nada ao jogador** — é o discriminante

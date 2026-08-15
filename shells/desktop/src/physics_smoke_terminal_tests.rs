@@ -4,7 +4,7 @@
 //! gate que só afirmasse *"o do meio desce devagar"* passaria numa cena em que
 //! ninguém cai.
 
-use super::{CAP, DROP_TOP, FLOAT, GLIDE, GROUND_END, GROUND_TOP, LANES, LANE_SPAN, lane_x};
+use super::{CAP, DROP_TOP, FLOAT, GLIDE, GROUND_END, GROUND_TOP, LANE_SPAN, LANES, lane_x};
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_physics_ecs::{PhysicsBridge, PlayerInput};
 

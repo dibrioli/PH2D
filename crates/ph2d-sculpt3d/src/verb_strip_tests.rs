@@ -569,3 +569,110 @@ fn moving_the_plane_lift_does_not_change_how_much_the_strip_lays_on_flat_clay() 
         "chapa plana tinha de receber o pico `0,25`: {at_rest}"
     );
 }
+
+// --- A FAIXA É UMA TOOL DO BLENDER, e a lei dela vem de la' ------------------
+
+/// **A FAIXA NÃO DEPOSITA NO QUE O ARTISTA NÃO VÊ.**
+///
+/// Report do Enio de 2026-08-15 (com foto): lâminas a atravessar a silhueta de
+/// um membro. ⚠️ **Medido com o olho RASANTE — a situação da foto — a faixa
+/// punha `2,3×` mais barro nas costas do que na frente** (39,86 contra 17,18),
+/// e perto da silhueta isso empurra a superfície de trás para FORA do contorno:
+/// é a barbatana.
+///
+/// ⚠️ **A causa não era a silhueta nem o plano — era a REFERÊNCIA:** o
+/// `Brush::default()` shipa em [`crate::RefMode::S`], e o `S` declarava *todos*
+/// os verbos, incluindo um que o **SculptGL não tem**. O `front_face: Ignored`
+/// do `S` é fiel ao `Brush.js` (`if (this._culling)`, e o `_culling` nasce
+/// desligado), e simplesmente **não é a lei desta ferramenta**: o
+/// `clay_strips.cc::calc_faces` chama `calc_front_face` como terceira linha da
+/// cadeia de fatores.
+#[test]
+fn the_strip_does_not_lay_clay_on_what_the_artist_cannot_see() {
+    // Olhar quase de lado: é assim que a silhueta entra na pegada.
+    let eye = {
+        let v = [1.0f32, 0.0, -0.25];
+        let l = (v[0] * v[0] + v[2] * v[2]).sqrt();
+        [v[0] / l, 0.0, v[2] / l]
+    };
+    let dome = |x: f32, y: f32| {
+        let q = (x * x + y * y) / (1.5 * 1.5);
+        if q >= 1.0 { 0.0 } else { 0.5 * (1.0 - q) }
+    };
+    let rest = shaped_grid(dome);
+    let mut mesh = shaped_grid(dome);
+    let brush = Brush {
+        verb: Verb::ClayStrips,
+        radius: 0.8,
+        strength: 0.5,
+        ..Brush::default()
+    };
+    let mut stroke = SculptStroke::default();
+    stroke.begin(&mesh);
+    for k in 0..9 {
+        let y = (k as f32 - 4.0) * 0.15 * 0.8;
+        stroke.dab(
+            &mut mesh,
+            &brush,
+            &Dab::at([0.9, y, dome(0.9, y)], 0.8, eye),
+            Symmetry::default(),
+        );
+    }
+    let (mut front, mut back) = (0.0f32, 0.0f32);
+    for (i, p) in mesh.positions().iter().enumerate() {
+        let q = rest.positions()[i];
+        let moved = (p[0] - q[0]).abs() + (p[1] - q[1]).abs() + (p[2] - q[2]).abs();
+        if moved <= 1e-6 {
+            continue;
+        }
+        let n = rest.normals()[i];
+        if -(n[0] * eye[0] + n[1] * eye[1] + n[2] * eye[2]) >= 0.0 {
+            front += moved;
+        } else {
+            back += moved;
+        }
+    }
+    assert!(
+        front > 1e-3,
+        "a fixture tinha de depositar na FRENTE: {front:.4}"
+    );
+    assert!(
+        back < front * 0.01,
+        "a faixa depositou nas COSTAS: {back:.4} contra {front:.4} de frente"
+    );
+}
+
+/// **UMA REFERÊNCIA SÓ GOVERNA AS FERRAMENTAS QUE ELA TEM.**
+///
+/// ⚠️ **As duas tabelas do [`crate::RefMode`] discordavam, e só uma estava
+/// certa:** a de DEFAULTS já devolvia `None` para o `S` na faixa (o censo
+/// `the_census_of_offered_chips` até escreve *"todos menos o Sharpen e o Clay
+/// Strips"*), enquanto a da LEI dizia `S => true` para tudo. Este gate afirma o
+/// acordo, e a consequência que ele carrega — o produto pergunta a lei **por
+/// verbo**.
+#[test]
+fn sculptgl_does_not_declare_the_strip_so_it_does_not_govern_it() {
+    use crate::RefMode;
+    assert!(
+        !RefMode::S.declares(Verb::ClayStrips),
+        "o SculptGL não tem Clay Strips"
+    );
+    assert!(RefMode::B.declares(Verb::ClayStrips), "o Blender tem");
+    // O chip que o painel oferece para a faixa é UM, e é o da referência dela.
+    let offered: Vec<RefMode> = RefMode::offered_for(Verb::ClayStrips).collect();
+    assert_eq!(offered, vec![RefMode::B], "a faixa tem uma referência só");
+    // ⚠️ **E a lei que o produto usa segue a referência, não o modo guardado:**
+    // o `Brush::default()` shipa em `S`, e é isso que punha o `front_face`
+    // errado na ferramenta.
+    assert_eq!(
+        RefMode::S.kernel_for(Verb::ClayStrips).front_face,
+        crate::FrontFace::Continuous,
+        "a faixa herda a lei do Blender mesmo com o modo em S"
+    );
+    // O CONTROLE: um verbo que o `S` de facto tem continua com a lei dele.
+    assert_eq!(
+        RefMode::S.kernel_for(Verb::Draw).front_face,
+        crate::FrontFace::Ignored,
+        "o Draw é do SculptGL e a lei dele não pode ter mudado"
+    );
+}

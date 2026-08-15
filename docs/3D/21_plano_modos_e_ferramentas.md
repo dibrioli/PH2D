@@ -2165,3 +2165,98 @@ aparecer **sob o cursor** numa forma convexa (mais fina no miolo é a ferramenta
 a cortar plano, vazia é bug) · e a **espessura em barro liso não pode ter
 mudado** — é o que o ganho existe para segurar, e é o controle que torna o
 resto legível.
+
+---
+
+### §7.21 — ✅ A FAIXA É UMA TOOL DO BLENDER, e estava a correr a lei do SculptGL (2026-08-15)
+
+**Report do Enio, com foto:** *"errado. estude os códigos referência na fonte"* —
+lâminas finas a atravessar a silhueta de um membro.
+
+⚠️ **O §7.20 (o lift do plano) estava certo e era INSUFICIENTE.** Esta é outra
+causa, no mesmo verbo, e só a leitura da fonte a encontra.
+
+#### O que a fonte diz, e o que ela REFUTA
+
+`clay_strips.cc::calc_faces` monta o fator em treze passos; o **terceiro** é
+`calc_front_face`, que faz `factors[i] *= max(dot(view_normal, n), 0)`.
+
+E o `Brush.js:32-34` do SculptGL:
+
+```js
+var iVertsFront = this.getFrontVertices(iVertsInRadius, picking.getEyeDirection());
+if (this._culling) iVertsInRadius = iVertsFront;   // _culling nasce DESLIGADO
+```
+
+⚠️ **A fonte REFUTOU a minha primeira suspeita**, e é bom que a tenha lido: eu ia
+declarar que o nosso `RefMode::S` estava mal portado por ignorar o front-face no
+depósito. **Não está** — no SculptGL o filtro só alcança o depósito com o
+*culling* ligado, e alimenta **sempre** o `areaNormal`/`areaCenter`, que é
+exatamente o que o `fit_plane_over` faz. O port do `S` é fiel.
+
+#### A causa: uma referência a governar uma ferramenta que ela não tem
+
+O `Brush::default()` shipa em `RefMode::S`, e o `declares()` devolvia `S => true`
+para **todos** os verbos — inclusive o `ClayStrips`, que **o SculptGL não tem**.
+
+⚠️ **As duas tabelas do `RefMode` discordavam, e só uma estava certa:** a de
+DEFAULTS já devolvia `None` (o censo `the_census_of_offered_chips` escreve
+*"todos menos o Sharpen e o Clay Strips"*), enquanto a da LEI dizia que o `S`
+governava tudo. A faixa corria com `front_face: Ignored` — fiel ao `Brush.js`, e
+simplesmente **não é a lei desta ferramenta**.
+
+**MEDIDO** (`measure_whether_the_strip_deposits_on_back_facing_clay`, olho
+RASANTE, que é a situação da foto):
+
+| modo | depósito FRENTE | depósito COSTAS | costas ÷ frente |
+|---|---|---|---|
+| `S` (o que shipava) | 17,18 | **39,86** | **2,32** |
+| `B` | 1,21 | 0,00 | 0,00 |
+
+⇒ **a faixa punha mais do dobro do barro em geometria que o artista não vê**, e
+perto da silhueta isso empurra a superfície de trás para FORA do contorno: é a
+barbatana da foto. Depois do fix: **0,0000**.
+
+#### A cura — a lei é perguntada por VERBO
+
+`RefMode::S::declares(ClayStrips)` passa a ser `false` (as duas tabelas
+concordam) e nasce **`RefMode::kernel_for(verb)`**: um verbo que o modo não
+declara cai na lei da referência que o **TEM**.
+
+⚠️ **`kernel()` continua público e responde outra pergunta** — *que lei este modo
+declara* —, que é o que os gates comparam entre si. Quem esculpe pergunta por
+verbo.
+
+⚠️ **E o painel deixou de carimbar o default em todo verbo:** o
+`mode_by_verb` nascia `[RefMode::default(); 17]`, o que deixaria a faixa com um
+chip que o painel não oferece — **nenhum aceso**, a cicatriz da Faca do Painter.
+Agora cada verbo abre no primeiro modo que o declara, **derivado** do
+`offered_for`.
+
+#### O que a medição descartou pelo caminho
+
+⚠️ **Hipótese REFUTADA — o plano vivo NÃO produz crescimento sem limite.** O
+`calc_area_normal_and_center_node_mesh` ramifica em `!ss.cache->accum` e lê o
+pen-down congelado com o Accumulate desligado, e eu esperava runaway linear. A
+sonda diz **1,47× para 3× os dabs** (sub-linear): a chapa em volta ancora o
+ajuste. A divergência com a referência fica NOMEADA e **não** foi tocada.
+
+⚠️ **E o perfil da banda é uma MESA de parede vertical** (`0,000 → 0,026 →
+0,046` em duas células, platô, e desce igual), consequência do
+`tip_roundness = 0,25` que a §7.19 pôs medindo *lados paralelos em planta* e
+**nunca o perfil**. Numa laje de blocagem isso é o que a ferramenta é — a mesma
+cadeia da referência produz a mesma mesa —, então fica **medido e não mexido**:
+é decisão de LOOK, e o próximo smoke a julga sabendo que o número existe.
+
+#### Gates
+
+`the_strip_does_not_lay_clay_on_what_the_artist_cannot_see` (produto, olho
+rasante, costas < 1% da frente) · `sculptgl_does_not_declare_the_strip_so_it_does
+_not_govern_it` (as duas tabelas concordam, o chip oferecido é UM, e o
+**CONTROLE**: o Draw é do SculptGL e a lei dele não pode ter mudado). **2
+mutações, 2 sangram os DOIS gates** (o `S` voltar a declarar a faixa · o
+`kernel_for` ignorar o verbo).
+
+⚠️ **PENDENTE DE RE-SMOKE — `PH2D_SCULPT3D_SMOKE=29`.** A pergunta de olho é a da
+foto: passe a faixa **perto da silhueta** de uma forma curva e nada pode aparecer
+do outro lado do contorno.

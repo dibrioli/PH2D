@@ -150,7 +150,7 @@ impl SculptStroke {
             // `plane.cc` (Height acima, Depth abaixo).
             Verb::Flatten => {
                 let d = signed_distance(live, plane);
-                match brush.mode.kernel().plane {
+                match brush.mode.kernel_for(brush.verb).plane {
                     crate::PlaneReach::Bilateral => to_plane(live, n_area, d, w),
                     crate::PlaneReach::OneSided if d > 0.0 => to_plane(live, n_area, d, w),
                     crate::PlaneReach::OneSided => live,
@@ -246,7 +246,7 @@ impl SculptStroke {
                 ),
                 _ => add_vec(
                     live,
-                    lateral_pull(brush.mode.kernel(), live, dab.center, n_area),
+                    lateral_pull(brush.mode.kernel_for(brush.verb), live, dab.center, n_area),
                     w * crate::PINCH_GAIN,
                 ),
             },
@@ -270,7 +270,7 @@ impl SculptStroke {
                 }
                 _ => add_vec(
                     live,
-                    lateral_pull(brush.mode.kernel(), live, dab.center, n_area),
+                    lateral_pull(brush.mode.kernel_for(brush.verb), live, dab.center, n_area),
                     -w * crate::PINCH_GAIN,
                 ),
             },
@@ -334,7 +334,8 @@ impl SculptStroke {
                     )
                 }
                 _ => {
-                    let t = lateral_pull(brush.mode.kernel(), live, dab.center, n_area);
+                    let t =
+                        lateral_pull(brush.mode.kernel_for(brush.verb), live, dab.center, n_area);
                     let gain = w * crate::CREASE_FRACTION;
                     add(
                         add_vec(live, t, gain * brush.pinch),

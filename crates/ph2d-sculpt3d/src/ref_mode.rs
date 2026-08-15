@@ -241,7 +241,24 @@ impl RefMode {
     pub fn declares(self, verb: Verb) -> bool {
         match self {
             // A tabela lida das fontes (§7 do plano) e a lei de kernel.
-            Self::S => true,
+            //
+            // ⚠️ **MENOS o Clay Strips, e a incoerência era MEDÍVEL:** o
+            // SculptGL **não tem** esta ferramenta — o censo
+            // `the_census_of_offered_chips` já dizia isso pela tabela de
+            // DEFAULTS (`profile_s` devolve `None`) — e mesmo assim a tabela da
+            // LEI dizia que o `S` a governava. O preço, medido na sonda
+            // `measure_whether_the_strip_deposits_on_back_facing_clay` com o
+            // olho rasante: a faixa punha **2,3× mais barro nas costas do que
+            // na frente** (39,86 contra 17,18), porque o `front_face:
+            // Ignored` do `S` é fiel ao `Brush.js` (o `_culling` nasce
+            // desligado) e **não é a lei desta ferramenta**. O
+            // `clay_strips.cc::calc_faces` aplica o `calc_front_face` como
+            // terceira linha da cadeia de fatores.
+            //
+            // ⚠️ **A lei de uma referência só vale para as ferramentas que ela
+            // TEM** — é a mesma frase que a coluna de defaults já honrava, e
+            // agora as duas tabelas concordam.
+            Self::S => !matches!(verb, Verb::ClayStrips),
             // A lei de kernel (bilateral · tangencial · front-face contínuo) e
             // a `StrengthCurve::Squared` do E13.
             Self::B => true,
@@ -297,6 +314,27 @@ impl RefMode {
     /// Os modos que o painel deve pintar para este verbo, na ordem do `ALL`.
     pub fn offered_for(verb: Verb) -> impl Iterator<Item = Self> {
         Self::ALL.into_iter().filter(move |m| m.declares(verb))
+    }
+
+    /// **A lei que governa ESTE verbo sob este modo** — a porta do produto.
+    ///
+    /// ⚠️ **[`Self::kernel`] responde outra pergunta:** *que lei este modo
+    /// declara*. Ela continua pública porque os gates comparam leis entre si,
+    /// mas quem esculpe pergunta por VERBO — um modo não pode governar uma
+    /// ferramenta que a referência dele não tem.
+    ///
+    /// Um verbo que o modo não declara cai na lei da referência que o **TEM**.
+    /// Hoje o único caso é o [`Verb::ClayStrips`] sob o `S`, e o destino é o
+    /// `B` por ser a referência dele (`clay_strips.cc`); o `L` só é oferecido
+    /// onde declara, então o caminho dele aqui é inalcançável pelo produto e
+    /// existe para o `match` ser total.
+    #[must_use]
+    pub fn kernel_for(self, verb: Verb) -> KernelLaw {
+        if self.declares(verb) {
+            self.kernel()
+        } else {
+            Self::B.kernel()
+        }
     }
 
     /// A lei de kernel que este modo manda.

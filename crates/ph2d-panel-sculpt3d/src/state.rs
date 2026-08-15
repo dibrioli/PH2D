@@ -175,7 +175,23 @@ impl Default for Sculpt3dUi {
     fn default() -> Self {
         Self {
             brush: Brush::default(),
-            mode_by_verb: [RefMode::default(); Verb::ALL.len()],
+            // ⚠️ **DERIVADO, e não `[RefMode::default(); _]`:** o `S` não
+            // declara o [`Verb::ClayStrips`] — o SculptGL não tem essa
+            // ferramenta —, então carimbar o default em todo verbo deixava a
+            // faixa com um chip que o painel não oferece, ou seja **nenhum
+            // aceso**. Cada verbo abre no primeiro modo que o declara, que é o
+            // `S` onde ele existe e a referência da própria tool onde não.
+            mode_by_verb: {
+                let mut m = [RefMode::default(); Verb::ALL.len()];
+                let mut i = 0;
+                while i < Verb::ALL.len() {
+                    if let Some(first) = RefMode::offered_for(Verb::ALL[i]).next() {
+                        m[i] = first;
+                    }
+                    i += 1;
+                }
+                m
+            },
             // ⚠️ **BASIC, e a razão é a mesma do `RefMode::default() == S`:** a
             // tese deste módulo é que a referência do SculptGL é a linha de base
             // sã, e um painel que abre mostrando mais knobs do que a referência

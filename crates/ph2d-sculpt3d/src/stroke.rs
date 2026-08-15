@@ -435,7 +435,7 @@ impl SculptStroke {
                 // empurra pelo `base_nrm` — quatro respostas à mesma pergunta e
                 // uma delas divergindo, sem uma linha a justificar. *O peso é um
                 // fato sobre o `pre`*, e agora é uma frase só.
-                let facing = match brush.mode.kernel().front_face {
+                let facing = match brush.mode.kernel_for(brush.verb).front_face {
                     crate::FrontFace::Ignored => 1.0,
                     crate::FrontFace::Continuous => {
                         let n = me.base_nrm[s];

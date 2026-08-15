@@ -409,3 +409,203 @@ fn measure_whether_a_low_lift_turns_the_band_into_a_ring() {
         println!("{lift:.2}   {gain:.3}   {core:.4}   {rim:.4}   {ratio:.3}       {shape}");
     }
 }
+
+/// **A FAIXA SATURA, ou CRESCE SEM LIMITE?**
+///
+/// Com o plano ajustado sobre a superfície VIVA, cada dab levanta o barro, o
+/// plano sobe junto e o dab seguinte volta a levantar a partir do plano novo —
+/// a geometria relativa nunca muda, então o depósito é o mesmo outra vez e a
+/// crista cresce **linearmente com o número de dabs**. Com o plano do pen-down
+/// o barro sobe até ele e PARA.
+///
+/// A referência (`sculpt.cc::calc_area_normal_and_center_node_mesh`) escolhe
+/// entre os dois pelo `!ss.cache->accum`: **congelado com o Accumulate
+/// desligado**, vivo com ele ligado.
+#[test]
+#[ignore = "sonda de medição: roda sozinha"]
+fn measure_whether_the_strip_saturates_or_grows_without_bound() {
+    println!("verbo         accum   1 dab    3       9       27      81      27/9");
+    for verb in [Verb::ClayStrips, Verb::Clay, Verb::Draw] {
+        for accumulate in [false, true] {
+            let mut row = Vec::new();
+            for dabs in [1usize, 3, 9, 27, 81] {
+                let mut mesh = flat_grid();
+                let brush = Brush {
+                    verb,
+                    radius: 0.5,
+                    strength: 0.5,
+                    accumulate,
+                    ..Brush::default()
+                };
+                let mut s = SculptStroke::default();
+                s.begin(&mesh);
+                for k in 0..dabs {
+                    let x = (k as f32 - (dabs - 1) as f32 * 0.5) * 0.15 * 0.5;
+                    s.dab(
+                        &mut mesh,
+                        &brush,
+                        &Dab::at([x, 0.0, 0.0], 0.5, [0.0, 0.0, -1.0]),
+                        Symmetry::default(),
+                    );
+                }
+                row.push(
+                    mesh.positions()
+                        .iter()
+                        .map(|p| p[2])
+                        .fold(f32::NEG_INFINITY, f32::max),
+                );
+            }
+            let name = format!("{verb:?}");
+            println!(
+                "{name:<12}  {accumulate:<5}   {:.4}  {:.4}  {:.4}  {:.4}  {:.4}  {:.2}x",
+                row[0],
+                row[1],
+                row[2],
+                row[3],
+                row[4],
+                row[3] / row[2].max(1e-6)
+            );
+        }
+    }
+}
+
+fn flat_grid() -> ph2d_mesh::Mesh {
+    let mut pos = Vec::with_capacity((N + 1) * (N + 1));
+    for j in 0..=N {
+        for i in 0..=N {
+            let f = |k: usize| (k as f32 / N as f32) * 2.0 * HALF - HALF;
+            pos.push([f(i), f(j), 0.0]);
+        }
+    }
+    let at = |i: usize, j: usize| (j * (N + 1) + i) as u32;
+    let mut faces = Vec::with_capacity(N * N * 2);
+    for j in 0..N {
+        for i in 0..N {
+            faces.push(ph2d_mesh::Face::tri(
+                at(i, j),
+                at(i + 1, j),
+                at(i + 1, j + 1),
+            ));
+            faces.push(ph2d_mesh::Face::tri(
+                at(i, j),
+                at(i + 1, j + 1),
+                at(i, j + 1),
+            ));
+        }
+    }
+    ph2d_mesh::Mesh::from_parts(pos, faces).expect("indices validos")
+}
+
+/// **A SECÇÃO DA BANDA** — a forma que a faixa de facto deixa, atravessada.
+///
+/// Um clay strip é uma LAJE: topo chato, largura ~2 raios, altura pequena. Uma
+/// LÂMINA é o oposto — estreita, alta, de borda dura. A sonda imprime o perfil
+/// para se OLHAR, em vez de o inferir de um escalar.
+#[test]
+#[ignore = "sonda de medição: roda sozinha"]
+fn measure_the_band_cross_section_on_flat_and_curved_clay() {
+    for (nome, dabs) in [("9 dabs", 9usize), ("27 dabs", 27)] {
+        let mut mesh = flat_grid();
+        let brush = Brush {
+            verb: Verb::ClayStrips,
+            radius: 0.5,
+            strength: 0.5,
+            ..Brush::default()
+        };
+        let mut s = SculptStroke::default();
+        s.begin(&mesh);
+        for k in 0..dabs {
+            let x = (k as f32 - (dabs - 1) as f32 * 0.5) * 0.15 * 0.5;
+            s.dab(
+                &mut mesh,
+                &brush,
+                &Dab::at([x, 0.0, 0.0], 0.5, [0.0, 0.0, -1.0]),
+                Symmetry::default(),
+            );
+        }
+        let sec = section(&mesh);
+        let peak = sec.iter().map(|&(_, z)| z).fold(0.0f32, f32::max);
+        // A largura a meia altura, e a largura do PLATÔ (>= 90% do pico).
+        let w_half = sec
+            .iter()
+            .filter(|&&(_, z)| z >= peak * 0.5)
+            .map(|&(y, _)| y.abs())
+            .fold(0.0f32, f32::max);
+        let w_top = sec
+            .iter()
+            .filter(|&&(_, z)| z >= peak * 0.9)
+            .map(|&(y, _)| y.abs())
+            .fold(0.0f32, f32::max);
+        println!(
+            "{nome}: pico {peak:.4}  meia-largura {w_half:.3} ({:.2} r)  \
+             platô {w_top:.3} ({:.2} r)  razão altura/largura {:.3}",
+            w_half / 0.5,
+            w_top / 0.5,
+            peak / (2.0 * w_half.max(1e-6))
+        );
+        print!("  perfil:");
+        for &(y, z) in &sec {
+            if y.abs() <= 0.85 && (y * 100.0).round() as i32 % 5 == 0 {
+                print!(" {z:.3}");
+            }
+        }
+        println!();
+    }
+}
+
+/// **A FAIXA DEPOSITA NAS COSTAS?** — o terceiro termo da cadeia de fatores da
+/// referência (`clay_strips.cc::calc_faces` → `calc_front_face`).
+///
+/// O olho é RASANTE, que é a situação da foto: o artista olha um membro de lado
+/// e passa a faixa perto da silhueta. Um vértice de costas tem `n · (−eye) < 0`
+/// e a referência zera o fator dele (`factors[i] *= max(dot, 0)`).
+#[test]
+#[ignore = "sonda de medição: roda sozinha"]
+fn measure_whether_the_strip_deposits_on_back_facing_clay() {
+    // Olhar quase de lado: é assim que a silhueta entra na pegada.
+    let eye = {
+        let v = [1.0f32, 0.0, -0.25];
+        let l = (v[0] * v[0] + v[2] * v[2]).sqrt();
+        [v[0] / l, 0.0, v[2] / l]
+    };
+    println!("modo   deposito FRENTE   deposito COSTAS   costas/frente");
+    for mode in [ph2d_sculpt3d::RefMode::S, ph2d_sculpt3d::RefMode::B] {
+        let rest = dome_grid();
+        let mut mesh = dome_grid();
+        let brush = Brush {
+            verb: Verb::ClayStrips,
+            radius: 0.8,
+            strength: 0.5,
+            mode,
+            ..Brush::default()
+        };
+        let mut s = SculptStroke::default();
+        s.begin(&mesh);
+        // O traço corre pela LOMBADA, atravessando a silhueta vista do olho.
+        for k in 0..9 {
+            let y = (k as f32 - 4.0) * 0.15 * 0.8;
+            s.dab(
+                &mut mesh,
+                &brush,
+                &Dab::at([0.9, y, dome_z(0.9, y)], 0.8, eye),
+                Symmetry::default(),
+            );
+        }
+        let (mut front, mut back) = (0.0f32, 0.0f32);
+        for (i, p) in mesh.positions().iter().enumerate() {
+            let d = (p[0] - rest.positions()[i][0]).abs()
+                + (p[1] - rest.positions()[i][1]).abs()
+                + (p[2] - rest.positions()[i][2]).abs();
+            if d <= 1e-6 {
+                continue;
+            }
+            let n = rest.normals()[i];
+            let facing = -(n[0] * eye[0] + n[1] * eye[1] + n[2] * eye[2]);
+            if facing >= 0.0 { front += d } else { back += d }
+        }
+        println!(
+            "{mode:?}      {front:9.4}         {back:9.4}         {:.3}",
+            back / front.max(1e-9)
+        );
+    }
+}

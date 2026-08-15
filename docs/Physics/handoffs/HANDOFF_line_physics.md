@@ -10869,3 +10869,99 @@ que ele consegue.
 **A fila da auditoria está FECHADA:** A · C · B · D · E · J · G construídas,
 H e I recusadas com o número ao lado. O handoff de integração é o
 **[MESTRE de 2026-08-15](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-15.md)**.
+
+---
+
+## ⬛ W-WallNormal — a 2ª das três consultas de cauda, e o TETO medido como recusa ⟨2026-08-15⟩
+
+Reaberto por correção do Enio: *"não sei se vc lembra mas gelo e esteira já foi
+implementado"*. Ele estava certo, e a primeira coisa desta sessão foi medir em
+vez de aceitar.
+
+### ⚠️ O §3.B estava a prescrever o que a W-Surface já tinha construído
+
+`walk_grip_tests.rs` existe · `WalkSurface { grip, belt }` existe · o `git log`
+dá **três commits em 2026-08-13** (`df83abb88` kernel · `0229967c3` ponte ·
+`cc7268e37` UI). A minha nota de fecho da sessão anterior — *"§3.B ficou
+desbloqueada"* — **sobreviveu ao fato**, e a seção estava estagnada em TRÊS
+lugares: sem o marcador `FECHADO` que as irmãs C/G/H/I/J já tinham, e as duas
+linhas ❌ da tabela do §2.
+
+⚠️ **E a construção DESCARTOU a prescrição do item 1 daquela seção, com motivo.**
+Ela dizia *"o collider já carrega `friction` … a lei simplesmente nunca o lê"*, e
+a W-Surface recusou o acoplamento por razão **estrutural**: a perna FLUTUA, então
+o atrito de Coulomb do solver **nunca alcança este personagem, nem uma vez**;
+ligá-los faria *"esta rampa é escorregadia para o personagem"* significar também
+*"e todo caixote desliza nela"*, e uma esteira **não-escorregadia** ficaria
+inexprimível. *Uma seção de plano que descreve como aberto o que já shipou manda
+a próxima LLM construir duas vezes* — foi o que esta linha escreveu sobre a §3.C
+e reincidiu na §3.B.
+
+### O que foi construído: `PlayerView::wall_normal`
+
+O `get_wall_normal` do Godot, e **era de graça**: o `WallSample` — o veredito que
+a lei já toma para decidir que aquilo é parede — **carrega a normal**, e a vista
+publicava só o lado e a deitava fora.
+
+⚠️ **Não é derivável do lado, e é por isso que é um campo.** O `side` é o sinal do
+**GESTO** (a direção em que o jogador empurrou) e a normal é a da **SUPERFÍCIE**;
+numa parede inclinada as duas divergem, e sem o campo quem desenha inventaria
+`[-side, 0]` — errado em toda parede que não é vertical.
+
+⚠️ **Sai do VEREDITO, nunca do array cru do sensor:** o flanco casta várias
+alturas e é a lei quem escolhe qual delas *é* a parede, pela mesma régua de
+inclinação da perna. Ler o array aqui seria uma segunda régua ao lado dessa.
+
+**Zero fiação** — a ponte publica o `PlayerView` inteiro (`player_view(entity)`),
+então o campo chega a todo consumidor sem uma linha nova. **Metade VISÍVEL: nada,
+de propósito** — o readout vivo da §14 é um resumo de três linhas
+(Posture/Facing/Speed) sobre um `PlayerLive` encolhido, e normal de superfície é
+dado de CONSUMIDOR (animação/FX), não número que o artista afina.
+
+⚠️ **A fixture do gate é uma parede INCLINADA (60°), e é ela que o torna capaz de
+falhar:** numa parede vertical a normal **É** `[-side, 0]`, então o campo certo e
+o palpite errado são o MESMO vetor e um gate ali seria verde por vácuo. Mutação:
+derivar do lado sangra com `Some([-1, 0])` contra `Some([-0.866, 0.5])`.
+
+### ⛔ O TETO — MEDIDO e NÃO construído, com o preço nomeado
+
+`is_on_ceiling` **não tem fonte honesta hoje**, e a medição é o que decide:
+
+* O **`Headroom`** só é sondado **agachado + botão solto** — o doc dele diz
+  *"a resposta é `false` em quase todo tique"*.
+* O **`CeilingProbe`** só é sondado **subindo, no ar, e com `corner_reach > 0`**
+  (`corner_probe_wanted`) — ele é a porta do **ASSIST**, e um FATO não é opt-in.
+* **A lei não tem head-bonk** (grep = zero): hoje quem para o personagem é o
+  solver (rapier sob Spring, o move bloqueado sob Snap).
+
+⇒ Derivar o bit de qualquer um dos dois daria um teto **falso na maioria dos
+tiques, em silêncio** — a classe exata de *"funciona às vezes"* que esta linha já
+documentou. Ele custa um **sensor próprio**: uma `sweep_body` rasa para cima (o
+primitivo que o `probe_headroom` já usa, composite-safe), sob uma porta nova
+`ceiling_probe_wanted(grounded, rel_up) = !grounded && rel_up > 0` — **sem knob**,
+porque um fato não é opt-in.
+
+⚠️ **E ele NÃO cabe num campo, o que é a razão de não estar feito.** A vista é
+montada pela LEI (*"com os vereditos que a lei já tomou — nenhum deles é
+re-derivado"*), então a ponte não pode escrevê-la sem virar um segundo autor. As
+duas rotas honestas são:
+
+1. **Um 15º parâmetro** do `player_motor` — **50 sítios de chamada em 13
+   arquivos** (medido), e ele ficaria ao lado do `ceiling: Option<&CeilingProbe>`
+   que já existe, dois argumentos com o mesmo nome.
+2. **O bit dentro do `CeilingProbe`**, com o bridge a chamar `probe_ceiling` sob a
+   condição do FATO e a amostragem de N raios do assist a continuar sob o knob.
+   Sem parâmetro novo, ~6 literais de fixture. ⚠️ Mas alarga uma **porta única**
+   cujo doc avisa que *"a assistência não pode existir num lado e não no outro"*.
+
+**A rota 2 é a recomendada**, e ela é uma **wave com smoke próprio**: muda um
+sentido compartilhado, precisa da medição do custo da varredura (§0) antes de a
+tornar por-tique, e precisa de cena. *Não foi meio-construída de propósito.*
+
+### Superfície
+
+`PlayerView` ganha **um** campo (`wall_normal`), 2 gates, 1 mutação.
+`PROJECT_SCHEMA` **intocado** · registro intocado · nenhum id · nenhuma cena nova
+· nenhum `Cargo.toml`. A auditoria 09 fica com **oito + duas** linhas
+reconciliadas, e a linha do teto passa a carregar a medição acima em vez de um ❌
+sem explicação.

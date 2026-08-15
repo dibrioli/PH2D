@@ -108,7 +108,8 @@ Legenda: ✅ temos · 🟡 temos por outra via (com o porquê) · ❌ não temos
 | **`platform_on_leave` (3 modos)** | ✅ | **§3.J** — `PlatformLift` (`Full`/`Up Only`/`None`), 2026-08-14; ⚠️ o Snap **não divergia**, o que faltava era a política |
 | `slide_on_ceiling`, `wall_min_slide_angle`, `max_slides`, `floor_block_on_wall`, `safe_margin` | ⛔ | **§4.5** — são knobs do *solver de slide* do Godot; a nossa saída é força/velocidade para um solver, não uma iteração de deslize |
 | **`is_on_floor/wall`, `get_floor_normal`, `get_platform_velocity`, `get_real_velocity`** | ✅ | **W-PlayerOut** (2026-08-13) — o `PlayerView` carrega `footing`, `wall`, `ground_normal`, `ground_velocity`, `velocity` e mais seis regimes |
-| `is_on_ceiling`, `get_wall_normal`, `get_last_slide_collision` | ❌ | **§3.A** — o que SOBRA da superfície de consulta do Godot, e é a lista honesta |
+| `get_wall_normal` | ✅ | **W-WallNormal** (2026-08-15) — `PlayerView::wall_normal`, do VEREDITO da lei; era de graça (o `WallSample` já a carregava) e **não** é derivável do lado, que é o sinal do gesto |
+| `is_on_ceiling`, `get_last_slide_collision` | ❌ | **§3.A** — o que SOBRA da superfície de consulta do Godot, e é a lista honesta. ⚠️ **O teto NÃO tem fonte honesta hoje** (medido 2026-08-15): os dois sensores de cima são assistências CONDICIONAIS — o `Headroom` só é sondado *agachado + botão solto* e o `CeilingProbe` só *subindo, no ar, com `corner_reach > 0`* — e a lei **não tem head-bonk**; derivar o bit de qualquer um deles daria um teto falso na maioria dos tiques, em silêncio. Custa um sensor próprio (uma `sweep_body` rasa), não um campo |
 
 ### Unity — `CharacterController` + `Effector2D` + KCC
 

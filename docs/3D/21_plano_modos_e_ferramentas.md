@@ -1761,10 +1761,77 @@ CAMPO · a row perder a porta do NÍVEL.
 Sem schema, sem ADR, sem crate nova, sem dep nova, sem contrato tocado; os três
 ids são `hash_node_id`.
 
-⚠️ **PENDENTE DE SMOKE — `PH2D_SCULPT3D_SMOKE=28`.** Pegue o **Grab**, ponha o
-`Reference` em `L`, o painel em **Pro**, e puxe o barro com cada uma das três
-larguras: **a ponta tem de seguir o dedo igual nas três**, e o que muda é o
-quanto a vizinhança vem junto.
+✅ **SMOKE OK (2026-08-14).** `PH2D_SCULPT3D_SMOKE=28` — Grab em `L`, painel em
+**Pro**, o barro puxado com cada uma das três larguras: a ponta segue o dedo
+igual nas três e o que muda é o quanto a vizinhança vem junto.
+
+⇒ **A W5 está FECHADA.**
+
+### §7.18 — 📐 A W6 abriu, e a MEDIÇÃO re-escopou o item mais barato dela (2026-08-14)
+
+A W6 lista cinco tools e chama o **Draw Sharp** de *"custo quase nulo: o `pre`
+congelado já existe"*. Antes de escrever uma linha, a frase foi conferida contra
+o nosso motor — e ela descreve **metade do que já shipa**.
+
+O `draw_sharp.cc` da referência é o `draw.cc` com **um** troco: os fatores saem
+de `orig_data.positions/normals` onde o Draw usa `position_data.eval`. E o nosso
+[`crate::Grip::Stamp`] já carimba `from_live = accumulate` ⇒ **o Draw com
+Accumulate DESLIGADO já mede a distância no `pre` congelado**.
+
+⇒ A pergunta virou a do gate 2 do §8 (*nenhum chip morto*): quanto um verbo novo
+acrescentaria sobre um interruptor que o artista já tem? Medido
+(`tests/measure_draw_sharp.rs`, grade de 80², pincel `r = 0,5`, força 0,5,
+espaçamento do produto, secção transversal no meio do traço):
+
+| dabs | Accumulate | pico | meia-largura |
+|---|---|---|---|
+| 1 | ligado | 0,025000 | 0,3000 |
+| 1 | desligado | 0,025000 | 0,3000 |
+| 9 | ligado | 0,174057 | **0,2500** |
+| 9 | desligado | 0,184088 | **0,2500** |
+
+**A meia-largura é IDÊNTICA** e o pico difere **6 %**. ⇒ Um `Verb::DrawSharp`
+construído *só* sobre o dado congelado seria um chip cujo resultado o artista já
+alcança por um checkbox — e a palavra que o nome promete (*vinco duro em vez de
+domo*) **não estaria lá**: os dois perfis são o mesmo domo.
+
+⚠️ **Onde a palavra de facto mora é na CURVA** — o nome do tool é literal, e o
+que o separa do Draw no Blender é o preset de falloff, não o `orig_data`. E é
+exatamente aí que a §7.1 morde de novo: `BKE_brush_sculpt_reset` **continua fora
+do clone** (`grep -rn "BKE_brush_sculpt_reset" source/` devolve **vazio** hoje,
+mesmo depois de o `brush.cc` ter sido trazido), então escrever *"o Draw Sharp
+nasce com a curva Sharp"* seria inventar um número e shipá-lo com a autoridade de
+uma referência que não o declara — o que o §4 proíbe.
+
+⇒ **O Draw Sharp SAI da lista de itens baratos da W6.** Ele não é caro por
+kernel; ele está **bloqueado pela mesma tabela que bloqueou a W1**, e a decisão
+honesta é a mesma: ou o número aparece numa fonte, ou o chip não nasce.
+
+⚠️ **E a sonda ensinou uma coisa sobre a própria fixture, que fica escrita:** a
+1ª versão amostrava a secção por **coordenada** (`|x| < 1e-4`) e reportava pico
+**0,000** onde o máximo global era **0,184**. O Draw empurra pela normal da
+ÁREA, que se **inclina** à medida que o traço levanta a superfície ⇒ os vértices
+andam em `x` também, e o filtro perdia **19 dos 81**. A secção passou a ser
+tomada por **ÍNDICE**. *Uma coordenada que o próprio experimento move não é uma
+âncora.*
+
+⇒ **O que sobra da W6, re-ordenado pelo que a medição diz:** o **Clay Strips** é
+o item que carrega o refactor (o falloff receber coordenada local) e é o único
+cujo conteúdo não depende de tabela ausente — a lei dele é **algorítmica** e está
+inteira no clone (`clay_strips.cc` + `calc_brush_cube_distances`): moldura local
+a partir da normal do plano e da direção do traço, parábola `z·(1−z)` na
+profundidade, e a **distância de caixa arredondada** (`tip_roundness`), que em
+`roundness = 1` reduz **literalmente** à distância euclidiana de hoje. O
+**Multiplane Scrape** e o **Clay Thumb** reusam a moldura; o **Blob** é o Crease
+com o pinch invertido.
+
+⚠️ **E o pré-requisito que nenhum dos três tem hoje: a DIREÇÃO DO TRAÇO não
+chega ao dab.** O `Dab` carrega `center`/`eye`/`pull`/`amount` e mais nada, e a
+moldura do strip precisa saber para onde a mão ia. A lição já está paga neste
+repo — a `line/Painter` mediu **52,4° de atraso** num heading suavizado e a cura
+foi *o eixo vem dos CENTROS dos dabs*: o `SculptStroke` vê a sequência, então é
+ele que deriva, e o vetor entra no `Dab` para o espelho o tratar como trata o
+`pull` (a lei das espécies geométricas do `dab()`).
 
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 

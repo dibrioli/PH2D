@@ -154,6 +154,12 @@ pub fn unit_of(widget: ParamWidget, declared: Option<ParamUnit>) -> ParamUnit {
         | ParamWidget::Curve
         | ParamWidget::Gradient
         | ParamWidget::Palette => ParamUnit::None,
+        // ⚠️ Uma faixa de PASSOS carrega números, e ainda assim não tem unidade — e a
+        // razão é a fronteira, não a natureza: a lista mora num TEXT PARAM, então ela
+        // nunca vira o `ScalarRow` onde a face de DISPLAY converte (doc 88, Wave A).
+        // Declarar uma unidade aqui seria uma promessa que ninguém honra; o dia em que
+        // uma lista de COMPRIMENTOS existir, é a fronteira que ganha o braço, não isto.
+        ParamWidget::Steps => ParamUnit::None,
         ParamWidget::Slider => declared.unwrap_or_default(),
     }
 }

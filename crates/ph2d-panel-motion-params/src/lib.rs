@@ -22,6 +22,7 @@ mod palette_row;
 mod rows_paint;
 mod shaper_dispatch;
 mod snapshot;
+mod steps_row;
 mod text_rows;
 
 #[cfg(test)]
@@ -41,6 +42,11 @@ mod tests_gradient;
 #[cfg(test)]
 #[path = "lib_range_tests.rs"]
 mod tests_range;
+
+/// A COSTURA da row de passos — irmão do de gradiente, cortado pelo mesmo assunto.
+#[cfg(test)]
+#[path = "lib_steps_tests.rs"]
+mod tests_steps;
 
 /// A rolagem do corpo (doc 88 §B3) — irmão dos de faixa, cortado pelo mesmo assunto.
 #[cfg(test)]
@@ -73,7 +79,7 @@ use number_rows::{
 pub use snapshot::{
     AngleRow, ChannelsRow, ColorRow, CurveRow, EnumRow, GradientRow, MAX_ENUM_OPTIONS,
     MAX_PARAM_ROWS, MotionParamIntent, PaletteRow, ParamRow, ParamsSnapshot, RowDisplay, ScalarRow,
-    SeedRow, SourceRow, TextRow, ToggleRow, drain_param_intents, param_grad_swatch_id,
+    SeedRow, SourceRow, StepsRow, TextRow, ToggleRow, drain_param_intents, param_grad_swatch_id,
     param_pal_swatch_id, param_swatch_id, scalar_text, set_current_params,
 };
 use snapshot::{
@@ -168,7 +174,7 @@ impl Panel for MotionParamsPanel {
         // `paint_rows` draws + registers hit rects (it holds `hit_index`); a Curve row's
         // `CurvePoint`/`Button` STORE states cannot be registered through the immutable
         // store here, so they ride back in `curve_widgets` for Phase C below.
-        let (curve_widgets, gradient_widgets, content_h) = {
+        let (curve_widgets, gradient_widgets, steps_widgets, content_h) = {
             let scene = &mut *ctx.scene;
             let text_system = &mut *ctx.text_system;
             let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -251,6 +257,28 @@ impl Panel for MotionParamsPanel {
                     },
                 );
             }
+            // As BARRAS de uma row de passos são `CurvePoint` como as alças da curva — o
+            // que muda é o ENDEREÇO: a lista vai a 1024 e o par de `u8` a carrega partida
+            // em (página, resto), pela porta única `steps_row::pack`.
+            for &(id, parent, page, index, canvas) in &steps_widgets.points {
+                store.register(
+                    id,
+                    InteractiveState::CurvePoint {
+                        parent,
+                        channel: page,
+                        index,
+                        canvas,
+                    },
+                );
+            }
+            for &id in &steps_widgets.buttons {
+                store.register(
+                    id,
+                    InteractiveState::Button {
+                        state: ButtonState::Normal,
+                    },
+                );
+            }
             for &(sid, srgb) in &gradient_widgets.swatches {
                 store.register_picker_swatch(sid);
                 store.set_widget_color(sid, srgb);
@@ -279,11 +307,13 @@ impl Panel for MotionParamsPanel {
             // (the dispatch stashed the normalized point); else it is a scalar slider / chip.
             WidgetEvent::ValueChanged(id) => shaper_dispatch::on_gradient_drag(id, host, &snap)
                 .or_else(|| shaper_dispatch::on_curve_drag(id, host, &snap))
+                .or_else(|| shaper_dispatch::on_steps_drag(id, host, &snap))
                 .unwrap_or_else(|| on_value_changed(id, host, &snap)),
             WidgetEvent::Toggled(id) => on_toggled(id, host, &snap),
             // A Curve/Gradient +/−/interp button, else a segmented option / seed re-roll.
             WidgetEvent::Click(id) => shaper_dispatch::on_gradient_click(id, &snap)
                 .or_else(|| shaper_dispatch::on_curve_click(id, &snap))
+                .or_else(|| shaper_dispatch::on_steps_click(id, &snap))
                 .unwrap_or_else(|| on_click(id, &snap)),
             // A formula field commits on Enter (Submit) or focus-loss (Blur).
             WidgetEvent::Submit(id) | WidgetEvent::Blur(id) => on_text_commit(id, host, &snap),
@@ -456,6 +486,13 @@ fn seed_rows(store: &mut WidgetStore, rows: &[ParamRow]) {
         }
         // Text (formula) rows: mirror the doc formula into the field when unfocused.
         if let ParamRow::Text(t) = row {
+            mirror_text(store, param_text_id(i), &t.value);
+            continue;
+        }
+        // A row de PASSOS mora no MESMO id de texto do slot: a face crua do `Type` é um
+        // `TextInput`, e uma row ocupa um slot só. Espelhar aqui é o que mantém o campo em
+        // dia quando o artista volta a ele depois de arrastar as barras.
+        if let ParamRow::Steps(t) = row {
             mirror_text(store, param_text_id(i), &t.value);
             continue;
         }

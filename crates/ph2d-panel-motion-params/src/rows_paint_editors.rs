@@ -1,4 +1,4 @@
-//! Os três braços de **EDITOR** do `paint_rows` — curva, paleta e gradiente.
+//! Os quatro braços de **EDITOR** do `paint_rows` — curva, paleta, gradiente e passos.
 //!
 //! Eles são a família distinta do `match`: cada um desenha um editor de VÁRIAS linhas, devolve
 //! **a própria altura** (que é função do conteúdo — quantos pontos, quantas cores, quantos stops)
@@ -7,9 +7,10 @@
 //! corpo é o que levou o `paint_rows` ao teto de 200 LOC.
 
 use super::gradient_row::ColourRowWidgets;
-use super::{ParamRow, curve_row, gradient_row};
+use super::steps_row::StepsWidgets;
+use super::{ParamRow, curve_row, gradient_row, steps_row};
 use crate::curve_row::CurveWidgets;
-use ph2d_editor_core::interaction::HitIndex;
+use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
@@ -34,8 +35,10 @@ pub(crate) fn paint_editor_row(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    store: &WidgetStore,
     curve_widgets: &mut CurveWidgets,
     gradient_widgets: &mut ColourRowWidgets,
+    steps_widgets: &mut StepsWidgets,
 ) -> Option<f32> {
     let used = match row {
         ParamRow::Curve(row) => {
@@ -90,6 +93,26 @@ pub(crate) fn paint_editor_row(
                 text_system,
                 theme,
                 gradient_widgets,
+            )
+        }
+        ParamRow::Steps(row) => {
+            // A faixa de barras arrastáveis. ⚠️ É o único braço que LÊ o store no pintor: o
+            // checkbox `Type` decide qual FACE aparece (barras × texto cru), e a resposta
+            // tem de ser a mesma que o roteador de eventos dá — uma cópia local do estado
+            // seria a segunda porta que diverge no primeiro clique.
+            steps_row::paint_steps_row(
+                row,
+                i,
+                inner_x,
+                inner_w,
+                y,
+                label_font,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+                steps_widgets,
             )
         }
         _ => return None,

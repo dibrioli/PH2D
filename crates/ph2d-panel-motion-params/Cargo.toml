@@ -16,6 +16,10 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# A LEI da lista de números que a row de PASSOS desenha (gramática + a inversa exata que
+# um arrasto de barra usa para reescrever a string). Folha dep-free, o precedente do
+# `ph2d-color` para a paleta: o painel e o nó leem a MESMA gramática.
+ph2d-steps = { path = "../ph2d-steps" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 # The interactive Curve widget (A1): parse/serialize the curve text param + `eval`

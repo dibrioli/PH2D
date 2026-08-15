@@ -194,6 +194,32 @@ pub fn param_pal_swatch_id(name: &str, i: usize) -> NodeId {
     fnv_id(&format!("motion_param/pal_swatch/{name}/{i}"))
 }
 
+/// Stable widget id for a Steps row's `i`-th BAR, keyed by the text-param **name** +
+/// index (NOT positional).
+///
+/// ⚠️ **Derivado de uma string, então não há pool e não há teto** — a barra 900 tem id tão
+/// prontamente quanto a 2ª, e é isso que deixa a faixa não ter limite de comprimento
+/// próprio (o argumento do [`param_pal_swatch_id`], que é a irmã de cor).
+pub(crate) fn param_steps_bar_id(name: &str, i: usize) -> NodeId {
+    fnv_id(&format!("motion_param/steps_bar/{name}/{i}"))
+}
+
+/// O EDITOR da `slot`-ésima row de passos — o `parent` que todo `CurvePoint` de barra
+/// carrega, e o id que a dispatch emite como `ValueChanged` quando uma barra é arrastada.
+pub(crate) fn param_steps_editor_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/steps/{slot}/editor"))
+}
+
+/// O botão **acrescentar passo** da `slot`-ésima row de passos.
+pub(crate) fn param_steps_add_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/steps/{slot}/add"))
+}
+
+/// O botão **tirar passo** da `slot`-ésima row de passos (tira o ÚLTIMO).
+pub(crate) fn param_steps_remove_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/steps/{slot}/remove"))
+}
+
 /// The `slot`-th Palette row's **add-colour** button.
 pub(crate) fn param_pal_add_id(slot: usize) -> NodeId {
     fnv_id(&format!("motion_param/pal/{slot}/add"))

@@ -405,3 +405,132 @@ fn the_speed_floor_is_authored_and_its_default_is_the_old_constant() {
         "o default e' a const que sempre shipou"
     );
 }
+
+/// Os pesos que o ARTISTA recebe — lidos do `MANIFEST`, nunca re-digitados: uma
+/// 2ª cópia dos defaults faria a sonda medir um bando que o produto não entrega.
+fn product_params(count: usize, fov_deg: f32, seed: u32) -> Params {
+    let d = |name: &str| {
+        MANIFEST
+            .params
+            .iter()
+            .find(|p| p.name == name)
+            .expect("o param existe no manifesto")
+            .default
+    };
+    let radius = d("radius");
+    Params {
+        count,
+        seed,
+        radius_sq: radius * radius,
+        separation: d("separation"),
+        alignment: d("alignment"),
+        cohesion: d("cohesion"),
+        seek: d("seek"),
+        max_speed: d("max_speed"),
+        max_force: d("max_force"),
+        cos_half_fov: cos_half_fov(fov_deg),
+        min_speed_frac: d("speed_floor"),
+        spread: false,
+    }
+}
+
+/// Uma corrida: devolve `(polarização, churn deg/s, spread, velocidade)` na
+/// CAUDA, para o transiente do seed não contaminar a medida.
+fn measure(p: &Params) -> (f32, f64, f32, f32) {
+    const TICKS: usize = 600;
+    const DT: f32 = 1.0 / 60.0;
+    const TAIL: usize = 120;
+
+    let mut state = Stream::new(0);
+    let mut vels: Vec<Vec<[f32; 2]>> = Vec::with_capacity(TICKS);
+    let mut last_pos: Vec<[f32; 2]> = Vec::new();
+    for k in 0..TICKS {
+        let out = simulate([0.0, 0.0], &state, k as f32 * DT, p);
+        vels.push(vec2_col(&out, "vel"));
+        last_pos = vec2_col(&out, "P");
+        state = out;
+    }
+
+    let tail = &vels[TICKS - TAIL..];
+    let pol = tail.iter().map(|v| heading_coherence(v)).sum::<f32>() / TAIL as f32;
+    let (mut turn, mut n) = (0.0f64, 0usize);
+    for w in tail.windows(2) {
+        for (a, b) in w[0].iter().zip(&w[1]) {
+            let (ua, la) = norm(*a);
+            let (ub, lb) = norm(*b);
+            if la > EPS && lb > EPS {
+                let dot = (ua[0] * ub[0] + ua[1] * ub[1]).clamp(-1.0, 1.0);
+                turn += f64::from(libm::acosf(dot).to_degrees());
+                n += 1;
+            }
+        }
+    }
+    let churn = if n > 0 {
+        turn / n as f64 / f64::from(DT)
+    } else {
+        0.0
+    };
+    let speed = vels[TICKS - 1].iter().map(|v| norm(*v).1).sum::<f32>() / p.count as f32;
+    (pol, churn, spread(&last_pos), speed)
+}
+
+/// A média sobre SEMENTES. ⚠️ Um bando é um sistema caótico: numa semente só a
+/// polarização salta 0,16 → 0,78 entre pontos vizinhos de uma varredura, e um
+/// número que não reproduz não é achado — é ruído com casas decimais.
+fn measure_avg(count: usize, fov: f32, radius: f32, seeds: u32) -> (f32, f64, f32, f32) {
+    let mut acc = (0.0f32, 0.0f64, 0.0f32, 0.0f32);
+    for seed in 1..=seeds {
+        let mut p = product_params(count, fov, seed);
+        p.radius_sq = radius * radius;
+        let m = measure(&p);
+        acc = (acc.0 + m.0, acc.1 + m.1, acc.2 + m.2, acc.3 + m.3);
+    }
+    let k = seeds as f32;
+    (acc.0 / k, acc.1 / f64::from(seeds), acc.2 / k, acc.3 / k)
+}
+
+/// **SONDA — o que o cone faz ao bando, medido em vez de afirmado.**
+///
+/// O smoke reportou o OPOSTO do que a folha previa (*"coordenado com valores
+/// altos, agitado com valores baixos"*), então a pergunta é qual grandeza de
+/// facto se move com o ângulo. Três colunas, três perguntas distintas:
+///
+/// - **polariz** — o parâmetro de ordem de Vicsek, `|média das velocidades
+///   unitárias|`: 1 = todos voam para o mesmo lado (um BANDO), 0 = direções
+///   espalhadas (uma NUVEM). É a régua canônica de *"isto é um bando?"*.
+/// - **churn** — quantos graus por segundo um agente vira, na cauda da corrida.
+///   Alto = agitação, e é exactamente a palavra que o smoke usou.
+/// - **spread** — distância média ao centroide; separa *"não coordena"* de
+///   *"não se encontra"*.
+///
+/// ⚠️ **A segunda tabela é o CONTROLE, e é ela que decide.** Estreitar o cone
+/// tira vizinhos por DUAS vias ao mesmo tempo: há menos deles, e a fronteira que
+/// os corta **gira com o agente**. Encolher o RAIO tira vizinhos só pela
+/// primeira — uma borda de distância não se move quando o boid vira. Comparadas
+/// à MESMA vizinhança efetiva, as duas colunas de churn dizem qual via é a causa.
+///
+/// Roda com `cargo test -p ph2d-node-motion-boids --release -- --ignored --nocapture`.
+#[test]
+#[ignore = "sonda de medicao, nao gate"]
+fn measure_what_the_view_cone_does_to_the_flock() {
+    const N: usize = 48;
+    const SEEDS: u32 = 8;
+    let base_radius = MANIFEST
+        .params
+        .iter()
+        .find(|p| p.name == "radius")
+        .expect("o param existe")
+        .default;
+
+    println!("\n  fov   polariz   churn deg/s   spread   speed   ({SEEDS} sementes)");
+    for fov in [360.0f32, 270.0, 200.0, 150.0, 110.0, 80.0, 50.0, 30.0] {
+        let (pol, churn, spr, speed) = measure_avg(N, fov, base_radius, SEEDS);
+        println!("{fov:5.0}   {pol:7.4}   {churn:10.1}   {spr:6.3}  {speed:6.3}");
+    }
+
+    println!("\n  raio  polariz   churn deg/s   spread   speed   (cone OFF -- o CONTROLE)");
+    for radius in [2.0f32, 1.5, 1.2, 1.0, 0.8, 0.6, 0.5] {
+        let (pol, churn, spr, speed) = measure_avg(N, 360.0, radius, SEEDS);
+        println!("{radius:5.1}   {pol:7.4}   {churn:10.1}   {spr:6.3}  {speed:6.3}");
+    }
+}

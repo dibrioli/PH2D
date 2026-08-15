@@ -198,6 +198,30 @@ struct Params {
     /// custa uma raiz por vizinho, então deixá-la correr e sempre passar pagaria
     /// o preço do cone em toda cena que não o usa. O ramo é o que a mantém em
     /// zero.
+    ///
+    /// ⚠️ **O QUE ELE FAZ está MEDIDO, e não é o que a folha previa.** A célula
+    /// que abriu este P1 dizia *"um boid que enxerga atrás de si não vira bando,
+    /// vira nuvem"*, e a sonda `measure_what_the_view_cone_does_to_the_flock`
+    /// (48 agentes, 600 ticks, média de 8 SEMENTES) diz o contrário na régua
+    /// canônica de *"isto é um bando?"* — o parâmetro de ordem de Vicsek:
+    ///
+    /// | fov | polarização | agitação °/s | spread |
+    /// |----:|------------:|-------------:|-------:|
+    /// | 360 |      0,7145 |         60,0 |  2,280 |
+    /// | 110 |      0,2762 |        127,6 |  1,749 |
+    /// |  30 |      0,2238 |        135,4 |  1,121 |
+    ///
+    /// Estreitar o cone **APERTA o bando e o AGITA**; ele não o polariza. É o que
+    /// o smoke do Enio reportou (*"coordenado com valores altos, agitado com
+    /// valores baixos"*), e é a descrição honesta do controle.
+    ///
+    /// ⚠️ **A causa é a vizinhança que ele ENCOLHE, e o controle prova a maior
+    /// parte disso:** encolher o `radius` — uma borda de DISTÂNCIA, que não gira
+    /// com o agente — reproduz o mesmo movimento (churn 60,0 → 112,1 de `r` 2,0 a
+    /// 0,5). Não é a mesma coisa, e a diferença também está medida: à spread
+    /// casada (~1,75) o cone cobra **127,6** contra **81,2** do raio e polariza
+    /// **0,28 contra 0,45**, o resíduo que a borda ANGULAR acrescenta por girar
+    /// junto com quem olha.
     cos_half_fov: f32,
     /// O PISO de velocidade, como fração de [`Params::max_speed`].
     ///

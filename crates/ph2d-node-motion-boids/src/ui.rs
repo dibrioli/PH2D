@@ -237,6 +237,14 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // que o nó sempre teve, então o arrasto vai do útil para o neutro e nunca
     // para além dele. `Angle` porque o param guarda GRAUS, a unidade autorada do
     // app.
+    //
+    // ⚠️ **O rótulo diz o que o controle É, e o doc do nó diz o que ele FAZ** —
+    // e os dois não são a mesma frase: medido (`Params::cos_half_fov`), estreitar
+    // o cone APERTA e AGITA o bando em vez de o coordenar. O rótulo fica *View
+    // Cone* porque é isso que o número é (o ângulo que o boid enxerga); batizá-lo
+    // pelo EFEITO — *Tightness*, *Agitation* — seria nomear uma consequência
+    // emergente e amarrar o nome a uma medição que a próxima mudança de pesos
+    // move.
     ParamUiHint {
         param: "fov",
         label: "View Cone",

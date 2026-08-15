@@ -12,9 +12,12 @@
 //! the standard dope-sheet disambiguation. Delete is handled shell-side against
 //! the panel selection (no key channel here).
 //!
-//! View gestures (E6+): plain wheel = anchored time zoom, Ctrl+wheel = time pan,
-//! Shift+wheel = row scroll, **middle-drag = pan both axes** (Blender), and
-//! dragging any panel edge/corner resizes it. Right button is reserved.
+//! View gestures (E6+): **roda simples = ROLA as linhas de propriedade**, Ctrl+roda = zoom
+//! ancorado do tempo, Shift+roda = pan do tempo, **middle-drag = pan both axes** (Blender), e
+//! arrastar uma borda/canto do painel redimensiona-o. O botão direito é reservado.
+//!
+//! ⚠️ A roda simples ZOOMAVA até 2026-08-15 — a lei e o porquê da troca vivem numa porta só, o
+//! `dispatch/scroll.rs`; esta linha é o espelho, e espelho enverga.
 
 use ph2d_editor_core::interaction::{BufferAction, GesturePhase, TimelineGesture, TimelineHitKind};
 use ph2d_editor_core::panel::PaintCtx;

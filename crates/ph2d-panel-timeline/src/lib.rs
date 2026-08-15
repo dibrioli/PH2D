@@ -61,6 +61,11 @@ pub mod populate;
 mod resize;
 mod ruler;
 mod scale_drag;
+/// A roda simples rola as propriedades animadas, e a barra aparece quando elas transbordam — as
+/// duas metades do report de 2026-08-15, pela porta do produto.
+#[cfg(test)]
+#[path = "scroll_tests.rs"]
+mod scroll_tests;
 mod scrollbar;
 /// A barra do timeline e a SEGUNDA implementacao de scrollbar do app; estes gates provam que o
 /// espelho do modelo nao apaga o estado que o ponteiro escreveu.

@@ -498,8 +498,9 @@ pub const TIMELINE_STRIP_FADE_BAND_IN: u8 = 7;
 pub const TIMELINE_STRIP_FADE_BAND_OUT: u8 = 8;
 
 /// Accumulated wheel input over a timeline surface, drained by the panel. Three
-/// independent axes, split by modifier the way a dope sheet expects (plain =
-/// zoom, Ctrl = horizontal pan, Shift = vertical scroll):
+/// independent axes, split by modifier **da forma que o resto do app responde** (roda simples =
+/// rola o corpo, Ctrl = zoom, Shift = horizontal) — a tabela e o porquê vivem no
+/// [`crate::interaction::dispatch::dispatch_wheel`], que é quem a decide:
 ///
 /// - `zoom_delta` — anchored zoom of the time axis, holding the time under
 ///   `anchor_x` fixed.

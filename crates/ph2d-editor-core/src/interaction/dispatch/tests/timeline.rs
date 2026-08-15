@@ -202,8 +202,13 @@ fn wheel(x: f32, y: f32, delta_x: f32, delta_y: f32, shift: bool) -> WheelEvent 
     wheel_mod(x, y, delta_x, delta_y, shift, false)
 }
 
+/// **Ctrl+roda ZOOMA o eixo do tempo** — o modificador de zoom universal.
+///
+/// ⚠️ Ele *panhava* até 2026-08-15, quando a roda simples passou a rolar as linhas (ver o porquê
+/// no `dispatch/scroll.rs`). O pan mudou-se para o Shift, que e' o modificador de horizontal em
+/// toda a parte; nenhuma capacidade se perdeu, as tres trocaram de tecla.
 #[test]
-fn ctrl_wheel_pans_the_time_axis() {
+fn ctrl_wheel_zooms_the_time_axis() {
     let (mut store, _hits) = timeline_setup(TimelineHitKind::Lane);
     store.set_timeline_canvas(SURFACE, CANVAS);
     let arena = Bump::new();
@@ -216,28 +221,44 @@ fn ctrl_wheel_pans_the_time_axis() {
     let z = store
         .take_timeline_wheel(SURFACE)
         .expect("wheel accumulated");
-    assert_eq!(z.zoom_delta, 0.0, "Ctrl+wheel must not zoom");
-    assert_eq!(z.pan_delta, 5.0, "Ctrl+wheel pans the time axis");
-    assert_eq!(z.scroll_delta, 0.0);
+    assert_eq!(z.zoom_delta, 5.0, "Ctrl+wheel zooms the time axis");
+    assert_eq!(z.scroll_delta, 0.0, "Ctrl+wheel must not scroll the rows");
+    assert_eq!(z.pan_delta, 0.0);
+    assert_eq!(z.anchor_x, 100.0, "o zoom segura o tempo sob o cursor");
 }
 
 // ── Wheel → anchored zoom / pan (W2.E6) ──────────────────────────────────
 
+/// **A RODA SIMPLES ROLA AS LINHAS** — a lei do resto do app, e o report que a trouxe.
+///
+/// Enio, 2026-08-15: *«a timeline esta sem o scroll … para as propriedades animadas»*. Estava: a
+/// roda simples zoomava o eixo do tempo, e rolar as linhas era `Shift+roda` — descoberto por
+/// ninguem. Vinte e quatro paineis deste app respondem *«a roda rola o corpo»*; esta era a unica
+/// excepcao.
+///
+/// **Mutacao que deve sangrar:** devolver o `event.delta_y` ao `zoom` no ramo sem modificador.
 #[test]
-fn wheel_over_the_time_axis_accumulates_zoom_and_consumes() {
+fn a_plain_wheel_scrolls_the_property_rows_and_consumes() {
     let (mut store, _hits) = timeline_setup(TimelineHitKind::Lane);
     store.set_timeline_canvas(SURFACE, CANVAS);
     let arena = Bump::new();
 
     let ev = dispatch_wheel(&mut store, wheel(100.0, 120.0, 0.0, 3.0, false), &arena);
-    assert!(ev.is_empty(), "wheel over the timeline is consumed as zoom");
+    assert!(
+        ev.is_empty(),
+        "a roda sobre a timeline e' consumida por ela"
+    );
     let _ = dispatch_wheel(&mut store, wheel(110.0, 130.0, 0.0, 2.0, false), &arena);
 
     let z = store
         .take_timeline_wheel(SURFACE)
-        .expect("zoom accumulated");
-    assert_eq!(z.zoom_delta, 5.0, "notches sum (3 + 2)");
-    assert_eq!((z.pan_delta, z.scroll_delta), (0.0, 0.0));
+        .expect("wheel accumulated");
+    assert_eq!(z.scroll_delta, 5.0, "notches sum (3 + 2)");
+    assert_eq!(
+        (z.zoom_delta, z.pan_delta),
+        (0.0, 0.0),
+        "a roda simples nao zooma nem panha — foi isso que escondeu o scroll"
+    );
     assert_eq!(z.anchor_x, 110.0, "anchor follows the latest cursor");
     assert!(
         store.take_timeline_wheel(SURFACE).is_none(),
@@ -245,8 +266,9 @@ fn wheel_over_the_time_axis_accumulates_zoom_and_consumes() {
     );
 }
 
+/// **Shift+roda PANHA o eixo do tempo** — o modificador de horizontal, em toda a parte.
 #[test]
-fn shift_wheel_scrolls_the_rows_instead_of_zooming() {
+fn shift_wheel_pans_the_time_axis() {
     let (mut store, _hits) = timeline_setup(TimelineHitKind::Lane);
     store.set_timeline_canvas(SURFACE, CANVAS);
     let arena = Bump::new();
@@ -255,9 +277,9 @@ fn shift_wheel_scrolls_the_rows_instead_of_zooming() {
     let z = store
         .take_timeline_wheel(SURFACE)
         .expect("wheel accumulated");
+    assert_eq!(z.pan_delta, 4.0, "Shift+wheel pans the time axis");
     assert_eq!(z.zoom_delta, 0.0, "Shift+wheel must not zoom");
-    assert_eq!(z.scroll_delta, 4.0, "Shift+wheel scrolls the track rows");
-    assert_eq!(z.pan_delta, 0.0);
+    assert_eq!(z.scroll_delta, 0.0, "Shift+wheel must not scroll the rows");
 }
 
 #[test]

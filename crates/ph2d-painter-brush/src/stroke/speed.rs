@@ -68,6 +68,13 @@ impl Stroke {
     fn advance_speed(&mut self, arc: f32) {
         let ds = (arc - self.speed_dab_arc).max(0.0);
         self.speed_dab_arc = arc;
+        // ⚠️ **A RAMPA FICA, e o número que a manteve foi MEDIDO nesta wave.** A lei do Alchemy
+        // arremessa cada ponto pela velocidade DELE, sem rampa — e tirá-la aqui devolve exactamente o
+        // que ela curou: o maior vão entre dabs vizinhos vai a **2,77 diâmetros** num pincel de raio
+        // 4 (contra 0,13 do controle), que é *"uma fileira de arcos desconectados"* e é o look que o
+        // Enio **já reprovou uma vez**, em 2026-08-13, com as palavras *"speed não é igual o
+        // Alchemy"*. O Alchemy não paga esse preço porque o traço dele é um `GeneralPath`
+        // **percorrido** e PREENCHIDO: um degrau vira um espinho da forma, não um buraco na linha.
         if self.speed_ramp_len <= f32::EPSILON {
             self.throw_speed_px_s = self.speed_px_s;
             return;
@@ -129,6 +136,12 @@ impl Stroke {
         // fixa do diâmetro o `Δθ` tem de encolher como `1/k` ⇒ **a janela cresce com o arremesso**.
         // Quanto mais longe você joga, mais firme a mira precisa ser — e o número não é escolhido: é
         // a distância que a própria tinta vai percorrer.
+        // ⚠️ **A mira do gesto foi TENTADA e MEDIDA (W8) — e não entra.** No Alchemy o arremesso segue
+        // a direção instantânea de percurso, e trocar esta janela pelo `heading` cru muda o raio médio
+        // de um arco rápido de **260,6 para 229,8 px** e deixa o vão entre dabs **idêntico**
+        // (0,71/0,48/0,35 diâmetros nos raios 4/10/25). Ou seja: nenhum defeito de um lado, nenhum
+        // ganho do outro — e esta janela é a CURA medida de um tremor de 0,6° que vira ±5 px de
+        // ondulação lateral. Trocar uma cura medida por um empate é o palpite que a §0 proíbe.
         self.throw_dir = crate::heading::advance(self.throw_dir, self.heading, ds, k_now);
         let d = self.throw_dir;
         let thrown = if d[0] == 0.0 && d[1] == 0.0 {

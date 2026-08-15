@@ -21,6 +21,7 @@ use ph2d_editor_core::paint::{
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::text_elide::paint_text_elided;
+use ph2d_editor_core::widget::panel_chrome::clamp_menu_to_viewport;
 use ph2d_editor_core::widget::{Button, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{Extrap, SelectedKey, TimelineViewSnapshot};
@@ -77,14 +78,41 @@ pub(crate) fn paint_add_track(ctx: &mut PaintCtx, theme: Theme, header: Rect) {
         .register(ids::TIMELINE_ADD_TRACK, header);
 }
 
-/// Paint the property dropdown as an overlay below `anchor` (the +Track button)
-/// when open, and register each option's hit. Call LAST so it sits on top.
+/// Paint the property list as an overlay when open, and register each option's hit. Call LAST so
+/// it sits on top.
+///
+/// ⚠️ **Ela largava-se DIRECTO para baixo do botão, sem consciência nenhuma do viewport** — e a
+/// tabela cresceu para **treze** linhas (as seis da pose · Time · Position · Morph · as quatro do
+/// joint), o que são `13 × 28 = 364 px`. Numa janela baixa isso passa a borda de baixo e as
+/// últimas cinco ficam **inalcançáveis**: Enio reportou-o com uma foto em que a lista acaba no
+/// rodapé do ecrã (2026-08-15). Pior, elas eram **pintadas e HIT-REGISTADAS** lá fora — widgets
+/// vivos em coordenadas onde o rato não chega, que é a forma silenciosa deste defeito.
+///
+/// A cura é a lei que o app já tem para MENUS ([`clamp_menu_to_viewport`], a que todo menu de
+/// contexto usa): um menu não está preso a nada, então quando não cabe ele **DESLIZA** para
+/// dentro. ⚠️ Não é a lei do popover de um chip (`Dropdown::popover_rect_clamped`), que VIRA para
+/// cima e encolhe — virar não resolveria isto, porque aqui nem acima nem abaixo cabia (~239 e
+/// ~235 px contra 364).
+///
+/// ⚠️ **E o resto é NOMEADO em vez de escondido:** numa janela mais baixa que a própria lista não
+/// há deslize que a ponha inteira na tela. Ali ela encosta ao topo e o que sobra é **recusado** —
+/// nem pintado nem registado —, porque uma linha que existe onde o ponteiro não chega é pior que
+/// uma linha ausente: ela conta como oferta. A resposta completa para esse caso é a lista rolar,
+/// e ela não foi construída aqui de propósito (a roda sobre esta região é consumida pela timeline
+/// ANTES de qualquer popover, então dar-lhe scroll é mexer na ordem do despachante — wave própria,
+/// com o seu próprio smoke).
 pub(crate) fn paint_add_track_popover(ctx: &mut PaintCtx, theme: Theme, anchor: Rect, open: bool) {
     if !open {
         return;
     }
     let n = ids::ADDPROP_BUTTONS.len() as f32;
-    let list = Rect::new(anchor.x, anchor.y + anchor.h, anchor.w, ROW_H_PX * n);
+    let list = clamp_menu_to_viewport(
+        anchor.x,
+        anchor.y + anchor.h,
+        anchor.w,
+        ROW_H_PX * n,
+        ctx.viewport,
+    );
     fill_rounded_rect(
         ctx.scene,
         list,
@@ -101,11 +129,16 @@ pub(crate) fn paint_add_track_popover(ctx: &mut PaintCtx, theme: Theme, anchor: 
     let mut y = list.y;
     for (id, prop) in ids::ADDPROP_BUTTONS {
         let r = Rect::new(list.x, y, list.w, ROW_H_PX);
+        y += ROW_H_PX;
+        // A linha tem de caber INTEIRA na tela. Meia linha desenhada na borda é uma oferta que o
+        // artista lê e não consegue apertar.
+        if r.y < ctx.viewport.y || r.y + r.h > ctx.viewport.y + ctx.viewport.h {
+            continue;
+        }
         let state = ctx.host.store().button_visual(id);
         let btn = Button::new(id, prop_label(prop)).visual(state);
         paint_button(&btn, r, ctx.scene, ctx.text_system, theme);
         ctx.host.hit_index_mut().register(id, r);
-        y += ROW_H_PX;
     }
 }
 

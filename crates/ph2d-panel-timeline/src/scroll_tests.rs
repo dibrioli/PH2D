@@ -135,3 +135,76 @@ fn the_thumb_is_not_the_same_colour_as_the_track_it_sits_in() {
         );
     }
 }
+
+// ── A lista do "+ Track" cabe na tela ────────────────────────────────────────
+
+/// Abre o "+ Track" e devolve quantas das linhas da tabela ficaram alcançáveis (hit-registadas)
+/// numa janela de `vh` px de altura, e se alguma delas caiu FORA da janela.
+fn addprop_rows_reachable(vh: f32) -> (usize, bool) {
+    crate::state::set_current_timeline(Some(snap_with(3)));
+    let viewport = Rect::new(0.0, 0.0, 1600.0, vh);
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    // Abre a lista pela porta do produto — o clique no botão "+ Track".
+    let _ = host.paint::<crate::TimelinePanel>(&mut state, viewport);
+    let _ = host.apply_panel_event::<crate::TimelinePanel>(
+        &mut state,
+        ph2d_editor_core::interaction::WidgetEvent::Click(ids::TIMELINE_ADD_TRACK),
+    );
+    let hits = host.paint::<crate::TimelinePanel>(&mut state, viewport);
+    let rows: Vec<_> = hits
+        .iter()
+        .filter(|(id, _)| ids::ADDPROP_BUTTONS.iter().any(|(b, _)| b == id))
+        .collect();
+    let outside = rows
+        .iter()
+        .any(|(_, r)| r.y < viewport.y || r.y + r.h > viewport.y + viewport.h);
+    crate::state::set_current_timeline(None);
+    (rows.len(), outside)
+}
+
+/// **Numa janela baixa a lista DESLIZA para dentro, e as treze continuam alcançáveis.**
+///
+/// A janela da foto do Enio (2026-08-15) tinha ~500 px: a lista larga-se do botão a meia altura,
+/// `13 x 28 = 364 px` não cabem abaixo dele, e as últimas cinco — Morph e as quatro do joint —
+/// acabavam no rodapé do ecrã, **pintadas e hit-registadas fora da janela**.
+///
+/// **Mutação que deve sangrar:** voltar a `Rect::new(anchor.x, anchor.y + anchor.h, ..)`, o
+/// largar-direto-para-baixo.
+#[test]
+fn the_add_track_list_slides_into_a_short_window_and_stays_reachable() {
+    let (n, outside) = addprop_rows_reachable(500.0);
+    assert!(!outside, "uma linha do +Track ficou FORA da janela");
+    assert_eq!(
+        n,
+        ids::ADDPROP_BUTTONS.len(),
+        "so {n} das {} propriedades sao alcancaveis numa janela de 500 px",
+        ids::ADDPROP_BUTTONS.len()
+    );
+}
+
+/// **O CONTROLO: numa janela alta nada muda** — a lista continua a cair do botão para baixo, e as
+/// treze estão lá. Sem esta metade, «não pintar nada» satisfaria o gate acima.
+#[test]
+fn a_tall_window_still_shows_every_property() {
+    let (n, outside) = addprop_rows_reachable(1400.0);
+    assert!(!outside);
+    assert_eq!(n, ids::ADDPROP_BUTTONS.len());
+}
+
+/// **E uma janela mais baixa que a própria lista não oferece o que não alcança.**
+///
+/// O resto honesto: com 300 px não há deslize que ponha 364 px na tela. O que fica de fora tem de
+/// ficar de fora **inteiro** — nem pintado nem registado —, porque uma linha viva onde o ponteiro
+/// não chega conta como oferta e não é uma.
+#[test]
+fn a_window_shorter_than_the_list_offers_only_what_it_can_reach() {
+    let (n, outside) = addprop_rows_reachable(300.0);
+    assert!(!outside, "linha registada fora de uma janela de 300 px");
+    assert!(n > 0, "a lista desapareceu por inteiro");
+    assert!(
+        n < ids::ADDPROP_BUTTONS.len(),
+        "300 px nao podiam conter as {} linhas — a fixture nao contem o fenomeno",
+        ids::ADDPROP_BUTTONS.len()
+    );
+}

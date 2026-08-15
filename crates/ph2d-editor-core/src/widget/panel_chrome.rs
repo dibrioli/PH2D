@@ -140,6 +140,13 @@ pub fn paint_panel_title(
     size
 }
 
+/// **Onde um MENU cabe** — a lei de colocação que os menus de contexto e a lista do "+ Track" da
+/// timeline partilham. Fica num irmão porque o `panel_chrome.rs` bateu o tecto de 500 LOC, e o
+/// corte é por ASSUNTO: aquele ficheiro é a moldura de um painel, este é onde um menu pousa.
+#[path = "panel_chrome/menu.rs"]
+mod menu;
+pub use menu::clamp_menu_to_viewport;
+
 mod segmented;
 // ⚠️ Re-export PLANO: os chamadores dizem `panel_chrome::paint_segmented_button` em oito crates, e
 //    um caminho novo seria a segunda maneira de nomear a mesma porta.

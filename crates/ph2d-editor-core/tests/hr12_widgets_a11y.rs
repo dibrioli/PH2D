@@ -24,6 +24,14 @@ use std::path::{Path, PathBuf};
 /// Files that legitimately don't need a11y wiring of their own.
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
+    // A lei de COLOCAÇÃO de um menu: dado um âncora, um tamanho e o viewport, onde é que o rect
+    // pousa. Aritmética pura — não pinta, não regista, não conhece um `NodeId`. Quem anuncia é
+    // quem desenha as linhas DENTRO do rect que ela devolve (os menus de contexto, e a lista do
+    // "+ Track" da timeline), e cada um já constrói os seus nós.
+    (
+        "panel_chrome/menu.rs",
+        "placement arithmetic only; paints nothing, registers nothing — the caller owns a11y",
+    ),
     // The command palette's MEASURE half, split out for the widget LOC cap. It computes sizes and
     // placements and returns them — it never touches the scene nor the hit index, então não há o que
     // anunciar; quem pinta e registra é o pai (`command_palette.rs`), e é ele que constrói o nó.

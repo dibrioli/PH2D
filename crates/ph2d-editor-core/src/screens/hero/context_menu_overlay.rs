@@ -29,18 +29,16 @@ pub(super) const ROW_H: f32 = ROW_H_PX;
 pub(super) fn pad_y() -> f32 {
     Spacing::Sm.px()
 }
-const EDGE_INSET: f32 = 4.0; // LITERAL-PX-OK: keep the menu 4px away from the viewport edge
-
 /// Clamp a menu rect anchored at `(anchor_x, anchor_y)` so it stays
 /// inside `viewport`. Used by both the simple-row menu and the scene
 /// list — cascading submenus (Settings → PPM) anchored near the
 /// right edge would otherwise render off-screen.
+///
+/// ⚠️ **A lei mudou-se para o [`crate::widget::panel_chrome::clamp_menu_to_viewport`]** quando
+/// ganhou um consumidor numa crate de PAINEL (a lista do "+ Track" da timeline). Isto delega:
+/// duas cópias divergiriam, e o modo de falha seria *um* menu do app a sair da tela.
 fn clamp_to_viewport(anchor_x: f32, anchor_y: f32, w: f32, h: f32, viewport: Rect) -> Rect {
-    let max_x = (viewport.x + viewport.w - w - EDGE_INSET).max(viewport.x + EDGE_INSET);
-    let max_y = (viewport.y + viewport.h - h - EDGE_INSET).max(viewport.y + EDGE_INSET);
-    let x = anchor_x.min(max_x).max(viewport.x + EDGE_INSET);
-    let y = anchor_y.min(max_y).max(viewport.y + EDGE_INSET);
-    Rect::new(x, y, w, h)
+    crate::widget::panel_chrome::clamp_menu_to_viewport(anchor_x, anchor_y, w, h, viewport)
 }
 
 /// Five common highlighter colors used for note backgrounds and

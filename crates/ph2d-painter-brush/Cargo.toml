@@ -21,3 +21,13 @@ authors.workspace = true
 # byte texture-paint path, so no sRGB transfer is needed here).
 
 [dependencies]
+# ⚠️ **A EXCEÇÃO do `rayon`, e ela é ESTREITA** — ADR-0158, amparada no ADR-0109. Ela entra
+# EXCLUSIVAMENTE na soma corrida do `solid::fill_coverage`: a cobertura de uma linha é a soma da
+# derivada DAQUELA linha, nada atravessa a fronteira horizontal, e a ordem das somas dentro da linha
+# é a mesma nas duas rotas ⇒ byte-idêntico, MEDIDO e não argumentado.
+#
+# ⚠️ **O depósito das ARESTAS continua SERIAL, pelo mecanismo:** `acc[cell] += d` em `f32` não é
+# associativo e o `x` de uma aresta é caminhado incrementalmente linha a linha, então uma banda que
+# comece no meio de uma aresta recomputa `x` e sai um `f32` diferente. Todo uso novo desta dep exige
+# ADR novo (a cerca de contenção do ADR-0109).
+rayon = "1"

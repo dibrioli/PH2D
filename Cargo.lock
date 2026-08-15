@@ -6860,6 +6860,9 @@ dependencies = [
 [[package]]
 name = "ph2d-painter-brush"
 version = "0.0.0"
+dependencies = [
+ "rayon",
+]
 
 [[package]]
 name = "ph2d-painter-effects"

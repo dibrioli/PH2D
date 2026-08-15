@@ -238,3 +238,138 @@ fn the_bbox_is_the_loops_clipped_to_the_canvas() {
     let b = loops_bbox(&rect(90.0, 90.0, 500.0, 500.0), 100, 100).unwrap();
     assert_eq!(b, [90, 90, 10, 10], "caixa {b:?}");
 }
+
+/// **AS DUAS ROTAS DA SOMA CORRIDA ESCREVEM O MESMO** — a rede que torna o pool de threads uma
+/// escolha de agendamento em vez de uma segunda resposta (ADR-0158).
+///
+/// ⚠️ **Ele existe porque nenhum outro gate alcança a rota paralela:** o piso do pool é ~131 k
+/// texels e toda a fixture de Solid do repo roda muito abaixo dele, então a rota rápida shipava
+/// **sem um único teste** — o mesmo buraco que o irmão dela no tool já tinha.
+///
+/// ⚠️ **A fixture tem de conter ARESTAS QUE SE CRUZAM**, senão o `nonzero` nunca soma duas
+/// contribuições na mesma célula e a identidade sai verde por vácuo.
+///
+/// **Mutação que sangra:** trocar o `enumerate()` da rota paralela por um índice que não seja a
+/// linha (a cobertura sai deslocada).
+#[test]
+fn both_walkers_of_the_running_sum_write_the_same_bytes() {
+    // Uma estrela de cinco pontas: ela cruza a si mesma, então há células com duas derivadas.
+    let star: Vec<[f32; 2]> = (0..5)
+        .map(|k| {
+            #[allow(clippy::cast_precision_loss)]
+            let a = k as f32 * 4.0 * std::f32::consts::PI / 5.0;
+            [64.0 + 55.0 * a.cos(), 64.0 + 55.0 * a.sin()]
+        })
+        .collect();
+    // …e um losango que a atravessa, para haver laços sobrepostos de sentidos diferentes.
+    // ⚠️ **Ele é OBLÍQUO e de coordenada quebrada de propósito**: um retângulo alinhado ao eixo em
+    // coordenada inteira não tem borda anti-aliased nenhuma, e o controle desta fixture nasceu
+    // VERMELHO por isso (59 texels de meio-tom) — a identidade sairia verde sobre uma imagem
+    // praticamente binária.
+    let square = vec![[63.7, 12.3], [115.4, 64.1], [63.7, 115.8], [12.1, 64.1]];
+    let loops = vec![star, square];
+    let (w, h) = (128usize, 128usize);
+    let serial = super::fill_coverage_routed(&loops, w, h, [0.0, 0.0], false);
+    let parallel = super::fill_coverage_routed(&loops, w, h, [0.0, 0.0], true);
+    let painted = serial.iter().filter(|v| **v > 0).count();
+    assert!(
+        painted > 4_000,
+        "a fixture nao cobriu nada ({painted} texels): o oraculo nao mede nada"
+    );
+    let mid = serial
+        .iter()
+        .filter(|v| (1..255).contains(&i32::from(**v)))
+        .count();
+    assert!(
+        mid > 200,
+        "a fixture nao tem borda anti-aliased ({mid} texels de meio-tom): a identidade sairia \
+         verde sobre uma imagem binaria"
+    );
+    let diff = serial
+        .iter()
+        .zip(parallel.iter())
+        .filter(|(a, b)| a != b)
+        .count();
+    assert_eq!(
+        diff, 0,
+        "as duas rotas da soma corrida divergem em {diff} texels — o pool deixou de ser so' \
+         agendamento"
+    );
+}
+
+/// **O QUE A SOMA CORRIDA COBRA, E O QUE O POOL COMPRA** — as duas rotas cronometradas
+/// **costas-com-costas dentro da mesma corrida**, sobre a MESMA entrada.
+///
+/// ⚠️ **A forma do A/B é a lição do doc 28 §5.46:** esta workstation é compartilhada e o MESMO passe
+/// foi medido entre 1,01 e 1,43 ms sem uma linha de código mudar. Comparar duas corridas atribuiria
+/// a deriva da máquina ao ganho; comparar duas rotas dentro de uma corrida torna a carga um **fator
+/// comum**.
+///
+/// Rodar: `cargo test -p ph2d-painter-brush --release measure_what_the_running_sum -- --ignored
+/// --nocapture --test-threads=1`
+#[test]
+#[ignore = "medição, não gate — rode com --test-threads=1 na máquina calma"]
+fn measure_what_the_running_sum_costs_by_both_routes() {
+    // A rosácea que o produto de facto entrega: 12 cópias de um arco de ~1210 pontos, e 24 com o
+    // Tiling — os números que o `measure_solid_cost` mediu na porta do artista.
+    let arc: Vec<[f32; 2]> = (0..1210)
+        .map(|k| {
+            let a = k as f32 * 0.0052;
+            [512.0 + 300.0 * a.cos(), 512.0 + 300.0 * a.sin()]
+        })
+        .collect();
+    let rosette = |copies: usize| -> Vec<Vec<[f32; 2]>> {
+        (0..copies)
+            .map(|c| {
+                let t = c as f32 * std::f32::consts::TAU / copies as f32;
+                let (s, co) = (t.sin(), t.cos());
+                arc.iter()
+                    .map(|p| {
+                        let (x, y) = (p[0] - 512.0, p[1] - 512.0);
+                        [512.0 + x * co - y * s, 512.0 + x * s + y * co]
+                    })
+                    .collect()
+            })
+            .collect()
+    };
+    let tiny = vec![vec![[0.0, 0.0], [3.0, 0.0], [0.0, 3.0]]];
+    println!("\n=== A SOMA CORRIDA: SERIAL x PARALELA, costas-com-costas (janela 1024x1024) ===\n");
+    println!(
+        "{:<22} {:>8} {:>10} {:>10} {:>8}",
+        "conjunto", "pontos", "serial ms", "par ms", "ganho"
+    );
+    for (name, loops) in [
+        ("piso de AREA", tiny),
+        ("rosacea 12", rosette(12)),
+        ("rosacea 24 (tiling)", rosette(24)),
+    ] {
+        let n = 8;
+        let (mut ser, mut par) = (f64::MAX, f64::MAX);
+        // Alternado e por MÍNIMO: cada rota vê as mesmas janelas de contenção.
+        for _ in 0..n {
+            let a = std::time::Instant::now();
+            std::hint::black_box(super::fill_coverage_routed(
+                &loops,
+                1024,
+                1024,
+                [0.0, 0.0],
+                false,
+            ));
+            ser = ser.min(a.elapsed().as_secs_f64() * 1e3);
+            let b = std::time::Instant::now();
+            std::hint::black_box(super::fill_coverage_routed(
+                &loops,
+                1024,
+                1024,
+                [0.0, 0.0],
+                true,
+            ));
+            par = par.min(b.elapsed().as_secs_f64() * 1e3);
+        }
+        let pts: usize = loops.iter().map(Vec::len).sum();
+        println!(
+            "{name:<22} {pts:>8} {ser:>10.3} {par:>10.3} {:>7.2}x",
+            ser / par
+        );
+    }
+}

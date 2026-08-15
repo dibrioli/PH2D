@@ -41,6 +41,23 @@
 /// fantasma na borda esquerda. A folga é interna: a saída tem exatamente `w × h`.
 #[must_use]
 pub fn fill_coverage(loops: &[Vec<[f32; 2]>], w: usize, h: usize, origin: [f32; 2]) -> Vec<u8> {
+    // Piso do pool MEDIDO — ver [`PAR_MIN_AREA`]. A escolha mora AQUI, e a rota em
+    // [`fill_coverage_routed`], para um gate poder pedir as duas sobre a MESMA entrada.
+    fill_coverage_routed(loops, w, h, origin, w * h >= PAR_MIN_AREA)
+}
+
+/// [`fill_coverage`] com a rota da soma corrida ESCOLHIDA pelo chamador.
+///
+/// ⚠️ **Ela existe para o gate de identidade poder existir**, e não como knob: toda fixture de Solid
+/// do repo roda abaixo do piso do pool, então sem esta porta a rota paralela shipava **sem um único
+/// teste** — foi exactamente o buraco que o irmão dela no tool já tinha.
+fn fill_coverage_routed(
+    loops: &[Vec<[f32; 2]>],
+    w: usize,
+    h: usize,
+    origin: [f32; 2],
+    par: bool,
+) -> Vec<u8> {
     let mut out = vec![0u8; w * h];
     if w == 0 || h == 0 {
         return out;
@@ -61,20 +78,51 @@ pub fn fill_coverage(loops: &[Vec<[f32; 2]>], w: usize, h: usize, origin: [f32; 
             accumulate_edge(a, b, stride, h, &mut acc);
         }
     }
-    for y in 0..h {
-        let mut sum = 0.0f32;
-        let row = y * stride;
-        for x in 0..w {
-            sum += acc[row + x];
-            // Não-zero: o sinal diz o sentido, o módulo diz quanto, e `1` é cheio.
-            let c = sum.abs().min(1.0);
-            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            {
-                out[y * w + x] = (c * 255.0 + 0.5) as u8;
-            }
-        }
+    // ── A SOMA CORRIDA É POR LINHA, E AS LINHAS SÃO DISJUNTAS ───────────────────────────────────
+    // A cobertura de uma linha é a soma corrida da derivada DAQUELA linha: nada atravessa a
+    // fronteira horizontal, e a ordem das somas DENTRO de uma linha é a mesma nas duas rotas ⇒
+    // **byte-idêntico por construção**, e não por promessa (ADR-0158). Sem RNG e sem transcendental.
+    //
+    // ⚠️ **O depósito das ARESTAS fica SERIAL, e o mecanismo é aritmético:** `acc[cell] += d` em
+    // `f32` **não é associativo**, então duas arestas que caem na mesma célula têm de ser somadas na
+    // mesma ORDEM. Uma banda só preserva isso se a célula pertencer a uma banda só — o que vale — mas
+    // o `x` de uma aresta é caminhado INCREMENTALMENTE linha a linha (`x = x_next`), então uma banda
+    // que começasse no meio de uma aresta teria de recomputar `x` direto e sairia um `f32` diferente.
+    // Bandear as arestas exige que cada banda caminhe a aresta desde o começo dela, e o pré-filtro
+    // disso (29 k arestas × 32 bandas) foi MEDIDO como mais caro que o passe serial inteiro.
+    if par {
+        use rayon::prelude::*;
+        out.par_chunks_mut(w)
+            .enumerate()
+            .for_each(|(y, orow)| sum_row(&acc[y * stride..y * stride + w], orow));
+    } else {
+        out.chunks_mut(w)
+            .enumerate()
+            .for_each(|(y, orow)| sum_row(&acc[y * stride..y * stride + w], orow));
     }
     out
+}
+
+/// **Onde o pool de threads se paga na soma corrida**, em texels da janela — medido, não escolhido
+/// (`ph2d-tool-painter::tool::paint::measure_solid_cost`). É o MESMO piso do kernel de dab, porque a
+/// pergunta é a mesma: *quantos texels é preciso percorrer para o fork valer a pena?*
+const PAR_MIN_AREA: usize = crate::PARALLEL_MIN_AREA;
+
+/// A cobertura de UMA linha: a soma corrida da derivada, saturada, quantizada.
+///
+/// ⚠️ **Um corpo, dois walkers** — não existe versão paralela deste laço para divergir da serial; o
+/// `par` de [`fill_coverage`] escolhe só quem o percorre.
+fn sum_row(acc_row: &[f32], out_row: &mut [u8]) {
+    let mut sum = 0.0f32;
+    for (a, o) in acc_row.iter().zip(out_row.iter_mut()) {
+        sum += *a;
+        // Não-zero: o sinal diz o sentido, o módulo diz quanto, e `1` é cheio.
+        let c = sum.abs().min(1.0);
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        {
+            *o = (c * 255.0 + 0.5) as u8;
+        }
+    }
 }
 
 /// Deposita a derivada da cobertura de UMA aresta nas células que ela cruza.

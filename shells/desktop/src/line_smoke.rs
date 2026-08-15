@@ -183,6 +183,26 @@ pub(crate) fn spawn_if_enabled(
                  reaparece do outro lado."
             );
             println!(
+                "[line-smoke]     ⚠️ W8, AS DUAS PERGUNTAS NOVAS. (1) A MANCHA SEGUE A TINTA: com \
+                 Solid + SPEED, faca um laco RAPIDO. O contorno arremessado e a mancha tem de ser a \
+                 MESMA figura -- se o traco aparecer como um anel solto ao lado de uma mancha \
+                 menor, a mancha voltou a seguir o ponteiro (medido: 8,4% da tinta caia dentro \
+                 dela; agora 58,3%, o mesmo do gesto sem efeito). Vale igual para Ribbon."
+            );
+            println!(
+                "[line-smoke]     (2) A CORDA LEVA O PINCEL: desenhe um C (um gesto que NAO fecha). \
+                 A aresta reta que fecha a figura sozinha tem de ter a MESMA borda macia das \
+                 outras -- nao um corte duro. Compare os dois lados da mesma altura."
+            );
+            println!(
+                "[line-smoke]     ⚠️ E DUAS COISAS NOMEADAS, que nao sao defeito. Sob SKETCHY e \
+                 WIRE a teia cai DENTRO da mancha, e tinta da mesma cor dentro de uma regiao cheia \
+                 dessa cor e' invisivel por construcao -- so' o que cruza uma concavidade aparece. \
+                 E o SPEED nao ganhou espinhos: a lei do arremesso ja' e' a do Alchemy (medido), e \
+                 o que falta para os espinhos e' tirar a rampa, que devolve a linha PONTILHADA que \
+                 voce reprovou em 13/08 -- os numeros estao no commit, e a decisao e' sua."
+            );
+            println!(
                 "[line-smoke]     ⚠️ Duas consequencias NOMEADAS, nao defeitos: sob RIBBON a tinta \
                  fica ate' 800 px atras do dedo enquanto a mancha e' a regiao que o DEDO cercou (o \
                  Speed a joga a' frente -- e' a mesma familia); e com Strength < 1 a faixa onde a \

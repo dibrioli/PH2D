@@ -49,7 +49,9 @@ mod measure_route_cost; // quem RODA o deposito, e quanto essa escolha custa (do
 #[path = "measure_shape_cost.rs"]
 mod measure_shape_cost; // o que um MOVE de SHAPE EDITOR custa — o re-stamp da figura inteira
 #[path = "measure_shape_system.rs"]
-mod measure_shape_system; // …e quanto disso NÃO é o depósito — a máquina de shape sozinha
+mod measure_shape_system;
+#[path = "measure_solid_cost.rs"]
+mod measure_solid_cost; // AUDITORIA: o que o Solid cobra sob Symmetry Circular + Tiling (Enio 2026-08-15) // …e quanto disso NÃO é o depósito — a máquina de shape sozinha
 #[path = "measure_stroke_extent.rs"]
 mod measure_stroke_extent; // o pen-up é função do que o traço COBRE — a fixture que faltava (§5.65)
 #[path = "measure_stroke_owners.rs"]

@@ -20,8 +20,7 @@
 
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, TextInput, TextInputState, paint_button,
-    paint_text_input_with_buffer,
+    Button, ButtonKind, TextInput, TextInputState, paint_button, paint_text_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -66,16 +65,13 @@ impl BodyCtx<'_> {
         // um botão que falta, e o teto já é visível — as seis linhas estão na tela.
         if shown < ids::MAX_SIGNAL_BINDINGS {
             let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
-            let st = self
-                .store
-                .button_state(ids::VECTOR_STATE_SIGNAL_ADD)
-                .unwrap_or(ButtonState::Normal);
+            let st = self.store.button_visual(ids::VECTOR_STATE_SIGNAL_ADD);
             let btn = Button::new(
                 ids::VECTOR_STATE_SIGNAL_ADD,
                 tr("panel.vector.states.signals.add"),
             )
             .kind(ButtonKind::Default)
-            .state(st);
+            .visual(st);
             paint_button(&btn, rect, self.scene, self.text_system, self.theme);
             self.hit_index.register(ids::VECTOR_STATE_SIGNAL_ADD, rect);
             y = y + self.row_h + Spacing::Xs.px();
@@ -134,10 +130,10 @@ impl BodyCtx<'_> {
             REMOVE_W,
             self.row_h,
         );
-        let rst = self.store.button_state(rid).unwrap_or(ButtonState::Normal);
+        let rst = self.store.button_visual(rid);
         let rbtn = Button::new(rid, tr("panel.vector.states.signals.remove"))
             .kind(ButtonKind::Default)
-            .state(rst);
+            .visual(rst);
         paint_button(&rbtn, rrect, self.scene, self.text_system, self.theme);
         self.hit_index.register(rid, rrect);
 

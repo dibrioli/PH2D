@@ -35,7 +35,7 @@ impl BodyCtx<'_> {
         for (i, (id, label, t)) in verts.iter().enumerate() {
             let rx = self.inner_x + i as f32 * (vseg_w + vseg_gap);
             let rect = Rect::new(rx, y, vseg_w, self.row_h);
-            let bstate = self.store.button_state(*id).unwrap_or(ButtonState::Normal);
+            let bstate = self.store.button_visual(*id);
             paint_segmented_button(
                 rect,
                 label,

@@ -18,12 +18,8 @@
 
 #![doc(hidden)]
 
-use crate::interaction::HitIndex;
-use crate::paint::{
-    fill_rounded_rect, paint_text_centered, paint_text_title, resolve, stroke_rounded_rect,
-};
+use crate::paint::{fill_rounded_rect, paint_text_title, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
-use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{
     ColorToken, PANEL_HEAD_PAD_PX, PANEL_RADIUS_PX, PANEL_RESIZE_HANDLE_SIZE_PX, Radius, Spacing,
@@ -144,168 +140,12 @@ pub fn paint_panel_title(
     size
 }
 
-/// Canonical segmented / toggle-group button — **the single source of
-/// truth for grouped 2–3-way selectors** (Mode pickers, render-strategy
-/// switchers, etc.). Always draws a discrete outline so an UNSELECTED
-/// segment still reads as a button; the bare `paint_button(Default)`
-/// ghost look failed that (inactive halves looked like plain text).
-///
-/// Selected → `Bg2` fill + `Accent` outline + `Text1`. Unselected →
-/// `Bg3` fill + `Border` outline + `Text2`. Caller registers the hit
-/// rect against the segment's `NodeId`.
-pub fn paint_segmented_button(
-    rect: Rect,
-    label: &str,
-    selected: bool,
-    state: crate::widget::ButtonState,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-) {
-    use crate::widget::ButtonState;
-    let radius = Radius::Sm.px();
-    // Hover/press feedback (Enio 2026-07-04): segmented buttons used to render ONLY selected-vs-not, so
-    // hovering / pressing showed nothing. Read the widget `state` the dispatcher sets and deepen the fill.
-    let (bg, fg, border) = if selected {
-        // Selected: accent-outlined; a press deepens the fill for feedback.
-        let bg = if state == ButtonState::Pressed {
-            ColorToken::AccentSoft
-        } else {
-            ColorToken::Bg2
-        };
-        (bg, ColorToken::Text1, ColorToken::Accent)
-    } else {
-        // Unselected: flat surface — Normal → Bg3, Hovered → BgElev, Pressed → AccentSoft.
-        let bg = match state {
-            ButtonState::Pressed => ColorToken::AccentSoft,
-            ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,
-            _ => ColorToken::Bg3,
-        };
-        (bg, ColorToken::Text2, ColorToken::Border)
-    };
-    fill_rounded_rect(scene, rect, radius, resolve(bg, theme));
-    stroke_rounded_rect(
-        scene,
-        rect,
-        radius,
-        StrokeToken::Default.px(),
-        resolve(border, theme),
-    );
-    paint_text_centered(
-        text_system,
-        scene,
-        label,
-        rect,
-        TypeToken::Sm.px(),
-        resolve(fg, theme),
-    );
-}
-
-/// Canonical horizontal gap (px) between the segments of a
-/// toggle/segmented group. **Single source of truth** — both
-/// [`paint_segmented_group`] and the typed `RadioGroup` segmented
-/// painter read this so the spacing never diverges (some groups, e.g.
-/// the Widget Gallery's Low/Mid/High, previously had zero gap).
-pub fn segmented_gap() -> f32 {
-    Spacing::Xs.px()
-}
-
-/// Canonical segmented / toggle GROUP: lays out `segments` as N
-/// equal-width buttons across `rect` with [`segmented_gap`] between
-/// them, paints each via [`paint_segmented_button`], and registers each
-/// segment's hit rect. **The single source of truth for segmented-group
-/// layout** — call sites pass `(label, selected, node_id)` and never
-/// compute per-segment rects or gaps inline.
-pub fn paint_segmented_group(
-    rect: Rect,
-    segments: &[(&str, bool, NodeId)],
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    store: &crate::interaction::WidgetStore,
-    hit_index: &mut HitIndex,
-) {
-    use crate::widget::ButtonState;
-    let n = segments.len();
-    if n == 0 {
-        return;
-    }
-    let gap = segmented_gap();
-    let seg_w = ((rect.w - gap * (n as f32 - 1.0)) / n as f32).max(0.0);
-    for (i, (label, selected, id)) in segments.iter().enumerate() {
-        let seg = Rect::new(rect.x + (seg_w + gap) * i as f32, rect.y, seg_w, rect.h);
-        let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
-        paint_segmented_button(seg, label, *selected, state, scene, text_system, theme);
-        hit_index.register(*id, seg);
-    }
-}
-
-/// Like [`paint_segmented_group`] but **adaptive**: when the labels
-/// don't fit in `rect.w` at their natural width, demotes buttons
-/// from the END of the list to NEW ROWS below — each demoted button
-/// takes the full row width. Returns the total height used (≥ `rect.h`).
-///
-/// UI canon post-2026-05-24: instead of letting a button's label
-/// wrap inside the button (which the canonical button painter does
-/// not gracefully support — the `Hand-\npacked` artifact in the
-/// 2026-05-24 screenshot), the group reflows by stacking the
-/// overflow buttons vertically. Callers advance `cur_y` by the
-/// returned height instead of `rect.h`.
-///
-/// Demotion order: last button first, then next-to-last, etc., so
-/// the visual "primary" buttons (left) stay on the top row.
-pub fn paint_segmented_group_adaptive(
-    rect: Rect,
-    segments: &[(&str, bool, NodeId)],
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    store: &crate::interaction::WidgetStore,
-    hit_index: &mut HitIndex,
-) -> f32 {
-    use crate::widget::ButtonState;
-    let seg_state = |id: NodeId| store.button_state(id).unwrap_or(ButtonState::Normal);
-    let n = segments.len();
-    if n == 0 {
-        return 0.0;
-    }
-    let gap = segmented_gap();
-    let labels: Vec<&str> = segments.iter().map(|(l, _, _)| *l).collect();
-    let widths = super::segmented_adaptive::segmented_natural_widths(&labels, text_system);
-    // ONE answer to "how does this group wrap", shared with the measurer. See `segmented_row_counts`:
-    // greedy flow, so a long list packs every row instead of stacking one button per line.
-    let rows = super::segmented_adaptive::segmented_row_counts(rect.w, &widths);
-
-    let row_h = rect.h;
-    let row_gap = Spacing::Xs.px();
-    let mut y = rect.y;
-    let mut i = 0usize;
-    for (r, count) in rows.iter().enumerate() {
-        if r > 0 {
-            y += row_h + row_gap;
-        }
-        // Within a row the buttons share the width evenly — the canonical segmented look
-        // (`paint_segmented_group`), so a half-full last row reads as part of the same control.
-        let seg_w = ((rect.w - gap * (*count as f32 - 1.0)) / *count as f32).max(0.0);
-        for k in 0..*count {
-            let (label, selected, id) = segments[i + k];
-            let seg = Rect::new(rect.x + (seg_w + gap) * k as f32, y, seg_w, row_h);
-            paint_segmented_button(
-                seg,
-                label,
-                selected,
-                seg_state(id),
-                scene,
-                text_system,
-                theme,
-            );
-            hit_index.register(id, seg);
-        }
-        i += count;
-    }
-
-    y + row_h - rect.y
-}
+mod segmented;
+// ⚠️ Re-export PLANO: os chamadores dizem `panel_chrome::paint_segmented_button` em oito crates, e
+//    um caminho novo seria a segunda maneira de nomear a mesma porta.
+pub use segmented::{
+    paint_segmented_button, paint_segmented_group, paint_segmented_group_adaptive, segmented_gap,
+};
 
 /// Outer corner radius of every panel rect (Inspector, Hierarchy,
 /// floating panels). Mirrors `tokens.json::chrome.panel-radius`.

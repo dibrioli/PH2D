@@ -81,7 +81,6 @@ pub fn paint_onion_modal(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    motion: &crate::motion::UiMotion,
     viewport: Rect,
 ) {
     let Some((x, y)) = store.onion_modal_pos() else {
@@ -125,9 +124,8 @@ pub fn paint_onion_modal(
     );
     let close_rect = Rect::new(close_x, cy, CLOSE_W, row_h);
     hit_index.register(ids::TIMELINE_ONION_MODAL_CLOSE, close_rect);
-    let close = Button::new(ids::TIMELINE_ONION_MODAL_CLOSE, "X").visual(
-        crate::motion::button_visual(store, motion, ids::TIMELINE_ONION_MODAL_CLOSE),
-    );
+    let close = Button::new(ids::TIMELINE_ONION_MODAL_CLOSE, "X")
+        .visual(store.button_visual(ids::TIMELINE_ONION_MODAL_CLOSE));
     paint_button(&close, close_rect, scene, text_system, theme);
     cy += row_h + gap;
 
@@ -281,7 +279,6 @@ mod tests {
             hero.theme,
             &mut hero.hit_index,
             &hero.store,
-            &hero.motion,
             viewport,
         );
         for id in ids_all {
@@ -309,7 +306,6 @@ mod tests {
             hero.theme,
             &mut hero.hit_index,
             &hero.store,
-            &hero.motion,
             viewport,
         );
         for id in ids_all {

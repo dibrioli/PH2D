@@ -61,11 +61,7 @@ pub(super) fn paint_pair_rows(
     // from the case it is most useful in.
     let btn = Button::new(ids::INSP_JOINT_SWAP, "Swap A / B")
         .kind(ButtonKind::Default)
-        .state(
-            store
-                .button_state(ids::INSP_JOINT_SWAP)
-                .unwrap_or(ButtonState::Normal),
-        );
+        .visual(store.button_visual(ids::INSP_JOINT_SWAP));
     paint_button(&btn, btn_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_JOINT_SWAP, btn_rect);
     yy += h;

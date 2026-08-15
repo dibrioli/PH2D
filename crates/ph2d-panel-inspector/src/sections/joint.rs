@@ -342,11 +342,7 @@ pub(crate) fn paint_joint_section(
     let copy_rect = Rect::new(x, yy, w, h);
     let copy = Button::new(ids::INSP_JOINT_COPY, "Copy Properties")
         .kind(ButtonKind::Default)
-        .state(
-            store
-                .button_state(ids::INSP_JOINT_COPY)
-                .unwrap_or(ButtonState::Normal),
-        );
+        .visual(store.button_visual(ids::INSP_JOINT_COPY));
     paint_button(&copy, copy_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_JOINT_COPY, copy_rect);
     yy += h;
@@ -361,11 +357,7 @@ pub(crate) fn paint_joint_section(
         let paste_rect = Rect::new(x, yy, w, h);
         let paste = Button::new(ids::INSP_JOINT_PASTE, label)
             .kind(ButtonKind::Default)
-            .state(
-                store
-                    .button_state(ids::INSP_JOINT_PASTE)
-                    .unwrap_or(ButtonState::Normal),
-            );
+            .visual(store.button_visual(ids::INSP_JOINT_PASTE));
         paint_button(&paste, paste_rect, scene, text_system, theme);
         hit_index.register(ids::INSP_JOINT_PASTE, paste_rect);
         yy += h;
@@ -374,11 +366,7 @@ pub(crate) fn paint_joint_section(
     let btn_rect = Rect::new(x, yy, w, h);
     let btn = Button::new(ids::INSP_JOINT_REMOVE, "Delete Joint")
         .kind(ButtonKind::Default)
-        .state(
-            store
-                .button_state(ids::INSP_JOINT_REMOVE)
-                .unwrap_or(ButtonState::Normal),
-        );
+        .visual(store.button_visual(ids::INSP_JOINT_REMOVE));
     paint_button(&btn, btn_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_JOINT_REMOVE, btn_rect);
     yy + h + SECTION_BOTTOM_PAD_PX
@@ -542,11 +530,7 @@ fn paint_kind_params(
             format!("Add Wheel ({} on this rope)", info.wheel_count),
         )
         .kind(ButtonKind::Default)
-        .state(
-            store
-                .button_state(ids::INSP_JOINT_ADD_WHEEL)
-                .unwrap_or(ButtonState::Normal),
-        );
+        .visual(store.button_visual(ids::INSP_JOINT_ADD_WHEEL));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_JOINT_ADD_WHEEL, rect);
         yy += ROW_H_PX;

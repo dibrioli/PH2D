@@ -189,15 +189,7 @@ pub fn paint_context_menu_overlay(
         return;
     }
     // Centered single-panel dialogs all share one painter signature — dispatch by kind.
-    type DialogFn = fn(
-        &mut VectorScene,
-        &mut TextSystem,
-        Theme,
-        &mut HitIndex,
-        &WidgetStore,
-        &crate::motion::UiMotion,
-        Rect,
-    );
+    type DialogFn = fn(&mut VectorScene, &mut TextSystem, Theme, &mut HitIndex, &WidgetStore, Rect);
     let dialog: Option<DialogFn> = match req.kind {
         ContextMenuKind::RenamePaletteDialog => {
             Some(super::context_menu_dialogs::paint_palette_rename_dialog)
@@ -208,15 +200,7 @@ pub fn paint_context_menu_overlay(
         _ => None,
     };
     if let Some(paint_dialog) = dialog {
-        paint_dialog(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            motion,
-            viewport,
-        );
+        paint_dialog(scene, text_system, theme, hit_index, store, viewport);
         return;
     }
     let total_h = ROW_H * items.len() as f32 + pad_y() * 2.0;

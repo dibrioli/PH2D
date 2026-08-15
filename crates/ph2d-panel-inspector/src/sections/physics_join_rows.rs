@@ -81,12 +81,10 @@ pub(crate) fn paint_join_gesture(
     let rect = Rect::new(x, yy, w, ROW_H_PX);
     let btn = Button::new(ids::INSP_PHYS_JOIN_DRAW, draw_button_label(draw_armed))
         .kind(ButtonKind::Default)
-        .state(if draw_armed {
-            ButtonState::Pressed
+        .visual(if draw_armed {
+            (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
         } else {
-            store
-                .button_state(ids::INSP_PHYS_JOIN_DRAW)
-                .unwrap_or(ButtonState::Normal)
+            store.button_visual(ids::INSP_PHYS_JOIN_DRAW)
         });
     paint_button(&btn, rect, scene, text_system, theme);
     hit_index.register(ids::INSP_PHYS_JOIN_DRAW, rect);
@@ -97,11 +95,7 @@ pub(crate) fn paint_join_gesture(
         let rect = Rect::new(x, yy, w, ROW_H_PX);
         let btn = Button::new(ids::INSP_PHYS_JOIN, &label)
             .kind(ButtonKind::Default)
-            .state(
-                store
-                    .button_state(ids::INSP_PHYS_JOIN)
-                    .unwrap_or(ButtonState::Normal),
-            );
+            .visual(store.button_visual(ids::INSP_PHYS_JOIN));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PHYS_JOIN, rect);
         yy += ROW_H_PX + Spacing::Sm.px();
@@ -114,11 +108,7 @@ pub(crate) fn paint_join_gesture(
         let rect = Rect::new(x, yy, w, ROW_H_PX);
         let btn = Button::new(ids::INSP_PHYS_RIG, &label)
             .kind(ButtonKind::Default)
-            .state(
-                store
-                    .button_state(ids::INSP_PHYS_RIG)
-                    .unwrap_or(ButtonState::Normal),
-            );
+            .visual(store.button_visual(ids::INSP_PHYS_RIG));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PHYS_RIG, rect);
         yy += ROW_H_PX + Spacing::Sm.px();

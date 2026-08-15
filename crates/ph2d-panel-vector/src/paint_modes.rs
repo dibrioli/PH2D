@@ -29,7 +29,7 @@ use crate::state;
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
 use ph2d_editor_core::widget::showcase::read_number_input;
-use ph2d_editor_core::widget::{ButtonState, NumberInput, paint_number_input_with_buffer};
+use ph2d_editor_core::widget::{NumberInput, paint_number_input_with_buffer};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
@@ -279,7 +279,7 @@ impl BodyCtx<'_> {
             rect,
             current,
             false,
-            self.store.button_state(id).unwrap_or_default(),
+            self.store.button_visual(id),
             self.scene,
             self.text_system,
             self.theme,
@@ -307,7 +307,7 @@ impl BodyCtx<'_> {
             let rx = self.inner_x + (i % cols) as f32 * (w + gap);
             let ry = y + (i / cols) as f32 * (self.row_h + gap);
             let rect = Rect::new(rx, ry, w, self.row_h);
-            let st = self.store.button_state(id).unwrap_or(ButtonState::Normal);
+            let st = self.store.button_visual(id);
             paint_segmented_button(
                 rect,
                 label,

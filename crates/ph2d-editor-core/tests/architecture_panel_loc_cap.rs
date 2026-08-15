@@ -85,7 +85,7 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-hierarchy/src/paint.rs",
         "paint_hierarchy_body",
-        388,
+        386,
         "Wave 10 paint orchestrator; per-section split deferred (needs smoke)",
     ),
     (
@@ -144,7 +144,7 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-equalize-sizes/src/paint.rs",
         "paint_body_sections",
-        255,
+        249,
         "unmasked by the 2026-07-10 parser fix; per-section split deferred (needs smoke)",
     ),
     (

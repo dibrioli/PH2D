@@ -9,7 +9,7 @@ use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
 use ph2d_editor_core::paint::{paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{Button, ButtonKind, ButtonState, paint_button};
+use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::LayerId;
@@ -78,11 +78,7 @@ pub(crate) fn paint_mask_row(
     // Grayscale-view eye — Eye (open) = show the mask's grayscale, EyeClosed (default) = show the effect.
     let eye_id = painter_layer_widget_id(mask_id.0, PainterLayerWidget::MaskView);
     register_button(ctx.host.store_mut(), eye_id);
-    let eye_st = ctx
-        .host
-        .store()
-        .button_state(eye_id)
-        .unwrap_or(ButtonState::Normal);
+    let eye_st = ctx.host.store().button_visual(eye_id);
     let eye_icon = if view_open {
         IconId::Eye
     } else {
@@ -90,19 +86,15 @@ pub(crate) fn paint_mask_row(
     };
     let eye_btn = Button::new(eye_id, "Mask view")
         .icon_only(eye_icon)
-        .state(eye_st);
+        .visual(eye_st);
     paint_button(&eye_btn, eye_rect, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(eye_id, eye_rect);
 
     // Invert toggle — accent-filled when on (mirror of the modifier toolbar).
     let inv_id = painter_layer_widget_id(mask_id.0, PainterLayerWidget::MaskInvert);
     register_button(ctx.host.store_mut(), inv_id);
-    let inv_st = ctx
-        .host
-        .store()
-        .button_state(inv_id)
-        .unwrap_or(ButtonState::Normal);
-    let mut inv_btn = Button::new(inv_id, "Inv").state(inv_st);
+    let inv_st = ctx.host.store().button_visual(inv_id);
+    let mut inv_btn = Button::new(inv_id, "Inv").visual(inv_st);
     if inverted {
         inv_btn.kind = ButtonKind::Accent;
     }
@@ -112,12 +104,8 @@ pub(crate) fn paint_mask_row(
     // Apply — destructive bake into the parent alpha, then remove the mask.
     let apply_id = painter_layer_widget_id(mask_id.0, PainterLayerWidget::MaskApply);
     register_button(ctx.host.store_mut(), apply_id);
-    let apply_st = ctx
-        .host
-        .store()
-        .button_state(apply_id)
-        .unwrap_or(ButtonState::Normal);
-    let apply_btn = Button::new(apply_id, "Apply").state(apply_st);
+    let apply_st = ctx.host.store().button_visual(apply_id);
+    let apply_btn = Button::new(apply_id, "Apply").visual(apply_st);
     paint_button(&apply_btn, apply_rect, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(apply_id, apply_rect);
 

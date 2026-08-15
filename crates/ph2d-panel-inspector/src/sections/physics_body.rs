@@ -437,7 +437,7 @@ fn paint_body_actions(
         let rect = Rect::new(x, *yy, w, h);
         let btn = Button::new(id, label)
             .kind(ButtonKind::Default)
-            .state(store.button_state(id).unwrap_or(ButtonState::Normal));
+            .visual(store.button_visual(id));
         paint_button(&btn, rect, scene, text_system, theme);
         *yy += h + Spacing::Sm.px();
         rect

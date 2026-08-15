@@ -215,11 +215,9 @@ fn paint_body_sections(
     // Show-Mask toggle.
     let pivot_on = snapshot.recenter_pivot;
     let pivot_state = if pivot_on {
-        ButtonState::Pressed
+        (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
     } else {
-        store
-            .button_state(ids::PAD_PIVOT_RECENTER)
-            .unwrap_or(ButtonState::Normal)
+        store.button_visual(ids::PAD_PIVOT_RECENTER)
     };
     let pivot_kind = if pivot_on {
         ButtonKind::Accent
@@ -234,7 +232,7 @@ fn paint_body_sections(
     let pivot_rect = Rect::new(inner_x, y, inner_w, row_h);
     let pivot = Button::new(ids::PAD_PIVOT_RECENTER, pivot_label)
         .kind(pivot_kind)
-        .state(pivot_state);
+        .visual(pivot_state);
     paint_button(&pivot, pivot_rect, scene, text_system, theme);
     hit_index.register(ids::PAD_PIVOT_RECENTER, pivot_rect);
     y += row_h + row_gap;
@@ -244,12 +242,10 @@ fn paint_body_sections(
     // ── Reset (ghost, full width) row ──────────────────────────────
     let btn_gap = Spacing::Sm.px();
     let reset_rect = Rect::new(inner_x, y, inner_w, row_h);
-    let reset_state = store
-        .button_state(ids::PAD_RESET)
-        .unwrap_or(ButtonState::Normal);
+    let reset_state = store.button_visual(ids::PAD_RESET);
     let reset = Button::new(ids::PAD_RESET, "Reset to Defaults")
         .kind(ButtonKind::Default)
-        .state(reset_state);
+        .visual(reset_state);
     paint_button(&reset, reset_rect, scene, text_system, theme);
     hit_index.register(ids::PAD_RESET, reset_rect);
     y += row_h + row_gap;
@@ -257,21 +253,17 @@ fn paint_body_sections(
     // ── Cancel (ghost) + Apply (accent CTA) row ────────────────────
     let half_btn = ((inner_w - btn_gap) * 0.5).max(0.0);
     let cancel_rect = Rect::new(inner_x, y, half_btn, row_h);
-    let cancel_state = store
-        .button_state(ids::PAD_CANCEL)
-        .unwrap_or(ButtonState::Normal);
+    let cancel_state = store.button_visual(ids::PAD_CANCEL);
     let cancel = Button::new(ids::PAD_CANCEL, "Cancel")
         .kind(ButtonKind::Default)
-        .state(cancel_state);
+        .visual(cancel_state);
     paint_button(&cancel, cancel_rect, scene, text_system, theme);
     hit_index.register(ids::PAD_CANCEL, cancel_rect);
     let apply_rect = Rect::new(inner_x + half_btn + btn_gap, y, half_btn, row_h);
-    let apply_state = store
-        .button_state(ids::PAD_APPLY)
-        .unwrap_or(ButtonState::Normal);
+    let apply_state = store.button_visual(ids::PAD_APPLY);
     let apply = Button::new(ids::PAD_APPLY, "Apply")
         .kind(ButtonKind::Accent)
-        .state(apply_state);
+        .visual(apply_state);
     paint_button(&apply, apply_rect, scene, text_system, theme);
     hit_index.register(ids::PAD_APPLY, apply_rect);
     y += row_h;

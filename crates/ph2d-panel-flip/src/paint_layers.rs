@@ -155,14 +155,11 @@ pub(crate) fn layers_section(
         let rect = Rect::new(m.inner_x + (col_w + gap) * i as f32, y, col_w, m.row_h);
         button_absent(ctx, id);
         let st = if enabled {
-            ctx.host
-                .store()
-                .button_state(id)
-                .unwrap_or(ButtonState::Normal)
+            ctx.host.store().button_visual(id)
         } else {
-            ButtonState::Disabled
+            (ButtonState::Disabled, ph2d_editor_core::motion::SETTLED)
         };
-        let btn = Button::new(id, label).kind(ButtonKind::Default).state(st);
+        let btn = Button::new(id, label).kind(ButtonKind::Default).visual(st);
         paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
         // A disabled button is not hit-registered → it no-ops (mirror of painter).
         if enabled {

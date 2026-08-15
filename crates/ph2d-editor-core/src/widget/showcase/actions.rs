@@ -48,8 +48,8 @@ pub(super) fn paint_actions_section(
     for (i, (id, label, kind)) in trio.iter().enumerate() {
         let r = Rect::new(x + (trio_w + gap) * i as f32, y, trio_w, btn_h);
         hit_index.register(*id, r);
-        let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
-        let btn = Button::new(*id, *label).kind(*kind).state(state);
+        let state = store.button_visual(*id);
+        let btn = Button::new(*id, *label).kind(*kind).visual(state);
         paint_button(&btn, r, scene, text_system, theme);
     }
     y += btn_h + row_gap();
@@ -58,14 +58,12 @@ pub(super) fn paint_actions_section(
     let icon_size = Spacing::Xl3.px();
     let ir = Rect::new(x, y, icon_size, icon_size);
     hit_index.register(ids::INSP_SAMPLE_BTN_ICON, ir);
-    let icon_state = store
-        .button_state(ids::INSP_SAMPLE_BTN_ICON)
-        .unwrap_or(ButtonState::Normal);
+    let icon_state = store.button_visual(ids::INSP_SAMPLE_BTN_ICON);
     let icon_btn = Button::new(ids::INSP_SAMPLE_BTN_ICON, "")
         .kind(ButtonKind::IconOnly {
             icon: IconId::Settings,
         })
-        .state(icon_state);
+        .visual(icon_state);
     paint_button(&icon_btn, ir, scene, text_system, theme);
 
     let tag_w = 80.0_f32; // LITERAL-PX-OK: showcase tag chip width

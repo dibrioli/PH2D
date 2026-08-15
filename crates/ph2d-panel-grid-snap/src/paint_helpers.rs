@@ -112,9 +112,7 @@ pub(crate) fn paint_segmented_button(
     // Delegate to the canonical segmented painter (single source of
     // truth — `panel_chrome`) so every Grid-Snap toggle group (kind
     // grid, target stack, labeled rows) matches the rest of the app.
-    let state = store
-        .button_state(id)
-        .unwrap_or(ph2d_editor_core::widget::ButtonState::Normal);
+    let state = store.button_visual(id);
     ph2d_editor_core::widget::panel_chrome::paint_segmented_button(
         rect,
         label,

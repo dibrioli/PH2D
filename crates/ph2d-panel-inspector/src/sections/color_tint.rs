@@ -320,13 +320,11 @@ fn paint_per_corner_tab(
     // Equalize Corners — copies TL → the other three (spec §3.6).
     let btn_h = ROW_H_PX;
     let eq_rect = Rect::new(x, cur_y, w, btn_h);
-    let eq_state = store
-        .button_state(ids::INSP_SPRITE_CORNER_EQUALIZE)
-        .unwrap_or(ButtonState::Normal);
+    let eq_state = store.button_visual(ids::INSP_SPRITE_CORNER_EQUALIZE);
     hit_index.register(ids::INSP_SPRITE_CORNER_EQUALIZE, eq_rect);
     let eq = Button::new(ids::INSP_SPRITE_CORNER_EQUALIZE, "Equalize Corners")
         .kind(ButtonKind::Default)
-        .state(eq_state);
+        .visual(eq_state);
     paint_button(&eq, eq_rect, scene, text_system, theme);
     cur_y += btn_h + Spacing::Sm.px();
     cur_y

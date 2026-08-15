@@ -42,7 +42,6 @@ pub fn paint_fill_adjust_modal(
     // ⚠️ **Leitura pura.** O pintor NUNCA alveja — quem o faz é `HeroScreen::tick_motion`, uma vez
     // por quadro. Um pintor que alvejasse tornaria a animação função de *quantas vezes* algo foi
     // pintado, que é a doença que este repo já pagou quatro vezes no relevo do Painter.
-    motion: &crate::motion::UiMotion,
     tether: &crate::tether::Tether,
     viewport: Rect,
 ) {
@@ -128,20 +127,15 @@ pub fn paint_fill_adjust_modal(
     // ⚠️ **A porta ÚNICA** (`motion::button_visual`): o estado e o `t` numa pergunta só. Ela
     //    substituiu a cópia privada que vivia no fim deste arquivo -- e como estes botões NÃO estão
     //    registados como `Button` no store, é a metade `hot`/`active` da porta que os acende.
-    let cancel = Button::new(ids::PAINTER_FILL_MODAL_CANCEL, "Cancel").visual(
-        crate::motion::button_visual(store, motion, ids::PAINTER_FILL_MODAL_CANCEL),
-    );
+    let cancel = Button::new(ids::PAINTER_FILL_MODAL_CANCEL, "Cancel")
+        .visual(store.button_visual(ids::PAINTER_FILL_MODAL_CANCEL));
     paint_button(&cancel, cancel_rect, scene, text_system, theme);
 
     let done_rect = Rect::new(inner_x + bw + gap, cy, bw, row_h);
     hit_index.register(ids::PAINTER_FILL_MODAL_DONE, done_rect);
     let done = Button::new(ids::PAINTER_FILL_MODAL_DONE, "Done")
         .accent()
-        .visual(crate::motion::button_visual(
-            store,
-            motion,
-            ids::PAINTER_FILL_MODAL_DONE,
-        ));
+        .visual(store.button_visual(ids::PAINTER_FILL_MODAL_DONE));
     paint_button(&done, done_rect, scene, text_system, theme);
 }
 
@@ -212,7 +206,6 @@ mod tests {
             hero.theme,
             &mut hero.hit_index,
             &hero.store,
-            &hero.motion,
             &hero.tether,
             viewport,
         );
@@ -242,7 +235,6 @@ mod tests {
             hero.theme,
             &mut hero.hit_index,
             &hero.store,
-            &hero.motion,
             &hero.tether,
             viewport,
         );

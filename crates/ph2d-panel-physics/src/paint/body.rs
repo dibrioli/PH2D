@@ -249,12 +249,9 @@ fn toggle(
     let theme = ctx.host.theme();
     let rect = Rect::new(x, y, w, ROW_H_PX);
     let state = if on {
-        ButtonState::Pressed
+        (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
     } else {
-        ctx.host
-            .store()
-            .button_state(id)
-            .unwrap_or(ButtonState::Normal)
+        ctx.host.store().button_visual(id)
     };
     let kind = if on {
         ButtonKind::Accent
@@ -265,7 +262,7 @@ fn toggle(
     let text_system = &mut *ctx.text_system;
     let (_, hit_index) = ctx.host.store_and_hit_index_mut();
     paint_button(
-        &Button::new(id, label).kind(kind).state(state),
+        &Button::new(id, label).kind(kind).visual(state),
         rect,
         scene,
         text_system,
@@ -279,16 +276,12 @@ fn toggle(
 fn command(ctx: &mut PaintCtx, id: ph2d_a11y::NodeId, label: &str, x: f32, w: f32, y: f32) -> f32 {
     let theme = ctx.host.theme();
     let rect = Rect::new(x, y, w, ROW_H_PX);
-    let state = ctx
-        .host
-        .store()
-        .button_state(id)
-        .unwrap_or(ButtonState::Normal);
+    let state = ctx.host.store().button_visual(id);
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
     let (_, hit_index) = ctx.host.store_and_hit_index_mut();
     paint_button(
-        &Button::new(id, label).state(state),
+        &Button::new(id, label).visual(state),
         rect,
         scene,
         text_system,

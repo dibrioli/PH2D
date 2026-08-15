@@ -114,12 +114,10 @@ pub(crate) fn paint_mask_section(
     // ── Apply — bake the transient scratch mask into the current layer's alpha + clear it. ──
     let apply_id = core_ids::PAINTER_MASK_APPLY;
     let apply_rect = Rect::new(x, y, content_w, ROW_H_PX);
-    let apply_st = ctx
-        .host
-        .store()
-        .button_state(apply_id)
-        .unwrap_or(ButtonState::Normal);
-    let apply_btn = Button::new(apply_id, "Apply Mask").accent().state(apply_st);
+    let apply_st = ctx.host.store().button_visual(apply_id);
+    let apply_btn = Button::new(apply_id, "Apply Mask")
+        .accent()
+        .visual(apply_st);
     paint_button(&apply_btn, apply_rect, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(apply_id, apply_rect);
     y + ROW_H_PX + Spacing::Sm.px()

@@ -13,8 +13,7 @@ use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::panel_chrome::{SECTION_LABEL_TO_CONTROL_PX, paint_segmented_button};
 use ph2d_editor_core::widget::{
-    ButtonKind, ButtonState, ColorSwatch, SectionHeader, SwatchSize, paint_color_swatch,
-    paint_section_header,
+    ButtonKind, ColorSwatch, SectionHeader, SwatchSize, paint_color_swatch, paint_section_header,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;

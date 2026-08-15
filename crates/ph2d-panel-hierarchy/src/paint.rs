@@ -25,7 +25,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
 };
 use ph2d_editor_core::widget::{
-    self, ButtonState, HIERARCHY_SCROLLBAR_ID, SCROLLBAR_W, TextInput, TextInputState,
+    self, HIERARCHY_SCROLLBAR_ID, SCROLLBAR_W, TextInput, TextInputState,
     paint_text_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
@@ -129,12 +129,10 @@ fn paint_hierarchy_body(
     // Canonical icon button (same ghost-icon look as every other icon
     // button — e.g. panel Close). Was a one-off accent-circle that read
     // as "disabled" (AccentSoft) under the cursor.
-    let add_state = store
-        .button_state(ids::HIERARCHY_ADD)
-        .unwrap_or(ButtonState::Normal);
+    let add_state = store.button_visual(ids::HIERARCHY_ADD);
     let add_btn = widget::Button::new(ids::HIERARCHY_ADD, "Add")
         .icon_only(IconId::Add)
-        .state(add_state);
+        .visual(add_state);
     widget::paint_button(&add_btn, add_rect, scene, text_system, theme);
 
     let header_bottom = title_y + TypeToken::Md.px() + TypeToken::Xs.px() + 18.0; // LITERAL-PX-OK: header baseline composite

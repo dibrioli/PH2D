@@ -23,7 +23,7 @@
 //! result is invisible.
 
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{Button, ButtonState, paint_button};
+use ph2d_editor_core::widget::{Button, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::Theme;
 
@@ -67,13 +67,9 @@ pub(crate) fn paint_add_lane(ctx: &mut PaintCtx, theme: Theme, header: Rect, row
         return;
     };
     let (id, key) = kind.button();
-    let st = ctx
-        .host
-        .store()
-        .button_state(id)
-        .unwrap_or(ButtonState::Normal);
+    let st = ctx.host.store().button_visual(id);
     paint_button(
-        &Button::new(id, ph2d_i18n::tr(key).to_string()).state(st),
+        &Button::new(id, ph2d_i18n::tr(key).to_string()).visual(st),
         header,
         ctx.scene,
         ctx.text_system,

@@ -310,14 +310,14 @@ pub(crate) fn paint_render_source_section(
     let btn_rect = Rect::new(x, cur_y, w, reimport_h);
     let id = ids::INSP_RENDER_SOURCE_REIMPORT;
     let state = if !info.can_reimport {
-        ButtonState::Disabled
+        (ButtonState::Disabled, ph2d_editor_core::motion::SETTLED)
     } else {
-        store.button_state(id).unwrap_or(ButtonState::Normal)
+        store.button_visual(id)
     };
     hit_index.register(id, btn_rect);
     let btn = Button::new(id, "Reimport at current px/m")
         .kind(ButtonKind::Default)
-        .state(state);
+        .visual(state);
     paint_button(&btn, btn_rect, scene, text_system, theme);
     cur_y + reimport_h + SECTION_BOTTOM_PAD_PX
 }

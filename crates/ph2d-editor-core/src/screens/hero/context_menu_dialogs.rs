@@ -24,7 +24,6 @@ pub(super) fn paint_palette_rename_dialog(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    motion: &crate::motion::UiMotion,
     viewport: Rect,
 ) {
     paint_centered_input_dialog(
@@ -41,7 +40,6 @@ pub(super) fn paint_palette_rename_dialog(
         theme,
         hit_index,
         store,
-        motion,
         viewport,
     );
 }
@@ -59,11 +57,13 @@ struct CenteredInputDialog {
 /// Paint a centered, dialog-style popover: a title + a hint + a single `TextInput` + one accent CTA
 /// button. Shared by the API-key, vector-prompt and palette-rename popovers.
 ///
-/// ⚠️ **O 8º argumento é o RELÓGIO, e o lint que ele acorda é o sintoma medido da wave:** a rota
-/// para o `t` chegar a um pintor é somar um parâmetro a toda a corrente que já leva o `store`, e
-/// aqui a corrente tem dois elos. No `ph2d-panel-inspector` ela tem **56**, para 20 botões — é esse
-/// número que diz que a corrente é o lugar errado para o relógio viajar.
-#[allow(clippy::too_many_arguments)]
+/// ⚠️ **Esta assinatura teve um 8º argumento — o RELÓGIO — por um commit, e a medição que o tirou
+/// fica escrita:** levar o `t` de hover a um pintor por PARÂMETRO é somar um elo a toda a corrente
+/// que já leva o `store`, e aqui a corrente tem dois elos. No `ph2d-panel-inspector` ela tem **56**,
+/// para 20 botões. É esse número que diz que a corrente é o lugar errado para o relógio viajar — o
+/// `t` publicado passou a viajar DENTRO do `store` (`WidgetStore::button_visual`), o gêmeo exacto do
+/// `panel_scroll_live`, e o `#[allow(clippy::too_many_arguments)]` que o 8º argumento exigia morreu
+/// com ele.
 fn paint_centered_input_dialog(
     d: CenteredInputDialog,
     scene: &mut VectorScene,
@@ -71,7 +71,6 @@ fn paint_centered_input_dialog(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    motion: &crate::motion::UiMotion,
     viewport: Rect,
 ) {
     let menu_w = 320.0_f32; // LITERAL-PX-OK: dialog width (long key / prompt string)
@@ -166,7 +165,7 @@ fn paint_centered_input_dialog(
     hit_index.register(d.button_id, button_rect);
     let btn = Button::new(d.button_id, d.button_label)
         .accent()
-        .visual(crate::motion::button_visual(store, motion, d.button_id));
+        .visual(store.button_visual(d.button_id));
     paint_button(&btn, button_rect, scene, text_system, theme);
 }
 
@@ -179,14 +178,13 @@ fn paint_choice_button(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    motion: &crate::motion::UiMotion,
     id: NodeId,
     label: &str,
     rect: Rect,
     selected: bool,
 ) {
     hit_index.register(id, rect);
-    let st = crate::motion::button_visual(store, motion, id);
+    let st = store.button_visual(id);
     let btn = if selected {
         Button::new(id, label).accent().visual(st)
     } else {
@@ -205,7 +203,6 @@ pub(super) fn paint_new_image_dialog(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    motion: &crate::motion::UiMotion,
     viewport: Rect,
 ) {
     let row_h = ROW_H;
@@ -269,7 +266,6 @@ pub(super) fn paint_new_image_dialog(
             theme,
             hit_index,
             store,
-            motion,
             *id,
             &px.to_string(),
             r,
@@ -306,7 +302,6 @@ pub(super) fn paint_new_image_dialog(
             theme,
             hit_index,
             store,
-            motion,
             *id,
             label,
             r,
@@ -320,10 +315,6 @@ pub(super) fn paint_new_image_dialog(
     hit_index.register(ids::CTX_MENU_NEW_IMAGE_CREATE, create_rect);
     let btn = Button::new(ids::CTX_MENU_NEW_IMAGE_CREATE, "Create")
         .accent()
-        .visual(crate::motion::button_visual(
-            store,
-            motion,
-            ids::CTX_MENU_NEW_IMAGE_CREATE,
-        ));
+        .visual(store.button_visual(ids::CTX_MENU_NEW_IMAGE_CREATE));
     paint_button(&btn, create_rect, scene, text_system, theme);
 }

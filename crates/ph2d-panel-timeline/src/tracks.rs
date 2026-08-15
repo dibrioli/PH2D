@@ -21,7 +21,7 @@ use ph2d_editor_core::paint::{
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::text_elide::paint_text_elided;
-use ph2d_editor_core::widget::{Button, ButtonState, paint_button};
+use ph2d_editor_core::widget::{Button, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{Extrap, SelectedKey, TimelineViewSnapshot};
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
@@ -65,16 +65,12 @@ const EXTRAP_MARK_MIN_W: f32 = 6.0; // LITERAL-PX-OK: skip a region too small to
 /// aligned with the ruler strip). The property list opens as an overlay popover
 /// (see [`paint_add_track_popover`], painted last).
 pub(crate) fn paint_add_track(ctx: &mut PaintCtx, theme: Theme, header: Rect) {
-    let state = ctx
-        .host
-        .store()
-        .button_state(ids::TIMELINE_ADD_TRACK)
-        .unwrap_or(ButtonState::Normal);
+    let state = ctx.host.store().button_visual(ids::TIMELINE_ADD_TRACK);
     let btn = Button::new(
         ids::TIMELINE_ADD_TRACK,
         ph2d_i18n::tr("panel.timeline.add_track"),
     )
-    .state(state);
+    .visual(state);
     paint_button(&btn, header, ctx.scene, ctx.text_system, theme);
     ctx.host
         .hit_index_mut()
@@ -105,12 +101,8 @@ pub(crate) fn paint_add_track_popover(ctx: &mut PaintCtx, theme: Theme, anchor: 
     let mut y = list.y;
     for (id, prop) in ids::ADDPROP_BUTTONS {
         let r = Rect::new(list.x, y, list.w, ROW_H_PX);
-        let state = ctx
-            .host
-            .store()
-            .button_state(id)
-            .unwrap_or(ButtonState::Normal);
-        let btn = Button::new(id, prop_label(prop)).state(state);
+        let state = ctx.host.store().button_visual(id);
+        let btn = Button::new(id, prop_label(prop)).visual(state);
         paint_button(&btn, r, ctx.scene, ctx.text_system, theme);
         ctx.host.hit_index_mut().register(id, r);
         y += ROW_H_PX;

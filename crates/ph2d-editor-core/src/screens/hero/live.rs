@@ -10,6 +10,11 @@ use super::HeroScreen;
 
 /// **Anda o relógio da UI viva e re-alveja a partir do estado semântico.**
 ///
+/// ⚠️ **O resultado do `animate` é PUBLICADO no store**, e não descartado como era: é o gêmeo
+/// exacto do que o `tick_panel_scroll` faz logo abaixo, e a razão é a mesma medida — os pintores já
+/// perguntam ao `store`, e uma corrente de `motion` a par dela custaria **56 assinaturas só no
+/// `ph2d-panel-inspector`**, para 20 botões. Ver [`crate::interaction::WidgetStore::button_visual`].
+///
 /// ⚠️ **A ordem é load-bearing:** avançar PRIMEIRO (o tempo que passou desde o último quadro
 /// aplica-se ao alvo que estava em vigor) e só então ler os alvos novos do store, que os eventos de
 /// ponteiro deste quadro acabaram de mexer. Ao contrário, o primeiro quadro de um hover andaria com
@@ -17,7 +22,8 @@ use super::HeroScreen;
 pub(super) fn tick(hero: &mut HeroScreen, dt: f64) {
     hero.motion.advance(dt);
     for (id, target) in hero.store.hover_targets().collect::<Vec<_>>() {
-        hero.motion.animate(id, target, crate::motion::Role::Fade);
+        let live = hero.motion.animate(id, target, crate::motion::Role::Fade);
+        hero.store.set_hover_live(id, live);
     }
     tick_palette_cascade(hero, dt);
     tick_panel_scroll(hero);

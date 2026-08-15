@@ -14,21 +14,22 @@ use std::path::{Path, PathBuf};
 
 const WIDGET_LOC_CAP: usize = 500;
 
-/// Per-file overage allowance. `panel_chrome.rs` is the SHARED chrome
-/// library (not a single primitive) — drag/resize helpers + close
-/// button + corner dots + segmented-group adaptive layout + panel
-/// title helper all live here. The Wave-11 UI-canon push (2026-05-24)
-/// added ~6 new canonical helpers, pushing it past 500. Splitting
-/// into a folder of sub-files is a follow-up; for now keep the file
-/// cohesive with an overage entry.
-const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[(
-    "src/widget/panel_chrome.rs",
-    654,
-    "Wave 11 UI canon: shared chrome helpers (close button + close rect + BL resize/dot + \
-         adaptive segmented group + header constants). +14 (640→654): the segmented-button hover/press \
-         fix threads a `&WidgetStore` + per-segment `ButtonState` through the group painters (Enio \
-         2026-07-04; Coord sign-off — inline state read, not a splittable block). Sub-folder split is a follow-up.",
-)];
+/// Per-file overage allowance — **VAZIA, e é assim que ela fica**.
+///
+/// Ela carregou `src/widget/panel_chrome.rs` desde a Wave 11 (640 → 654),
+/// com a própria justificativa a prometer *"sub-folder split is a follow-up"*.
+/// O follow-up aconteceu: a família do selector segmentado saiu para o irmão
+/// `panel_chrome/segmented.rs` (o precedente do `command_palette.rs` +
+/// `command_palette/layout.rs`), e as duas metades ficaram sob o teto — o pai
+/// responde *que forma tem um painel*, o filho *como um grupo de opções se
+/// desenha*.
+///
+/// ⚠️ **Uma entrada aqui é uma dívida, nunca um ajuste de barra:** o gate
+/// existe para pedir o corte, e uma allowance que sobrevive ao corte permite
+/// o arquivo re-crescer até ela em silêncio. Se um arquivo passar de 500,
+/// **corte por responsabilidade primeiro** e só escreva aqui se o corte
+/// honesto não existir — com o motivo, não com o número.
+const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[];
 
 fn widget_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/widget")

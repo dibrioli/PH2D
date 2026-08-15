@@ -21,7 +21,7 @@ use ph2d_editor_core::paint::{
     token_to_vello,
 };
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{Button, ButtonKind, ButtonState, paint_button};
+use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{
     Color as TokenColor, ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken,
@@ -178,7 +178,14 @@ fn paint_cell(
             },
         },
     );
-    let st = surface_button_state(ctx, id);
+    // ⚠️ **A célula regista `FlipStripSurface`, não `InteractiveState::Button`** — trocar o estado
+    //    do widget pela superfície de gesto tira dela as transições automáticas de hover/press (o
+    //    `dispatch::hover` só as roda para os quatro primitivos). Elas não se perdem: o store sabe
+    //    quem está sob o ponteiro e quem está preso, que é *a mesma informação de onde as
+    //    transições saíam* — e é exactamente a fallback que a [`WidgetStore::button_visual`]
+    //    aplica quando não há registo de botão. Este sítio tinha uma CÓPIA privada dessa lei (a
+    //    quinta do app); a porta única a subsume e traz o `t` vivo junto.
+    let st = ctx.host.store().button_visual(id);
     let w = r.w;
     // O rótulo só entra quando cabe (numa tira longa a célula é uma lasca).
     let label = if w > font * LABEL_FIT {
@@ -199,7 +206,7 @@ fn paint_cell(
             ButtonKind::Default
         };
         paint_button(
-            &Button::new(id, label).state(st).kind(kind),
+            &Button::new(id, label).visual(st).kind(kind),
             r,
             ctx.scene,
             ctx.text_system,
@@ -279,24 +286,6 @@ fn paint_cell(
 
 /// Largura da barrinha que anuncia o pega-mão do hold sob o ponteiro.
 const GRIP_BAR_W: f32 = 2.0; // LITERAL-PX-OK: hold-grip hint bar
-
-/// **O estado visual de uma célula que virou superfície de gesto.**
-///
-/// Trocar `InteractiveState::Button` por `FlipStripSurface` tira do widget as transições
-/// automáticas de hover/press (o `dispatch::hover` só as roda para os quatro primitivos).
-/// Elas não se perdem: o store sabe quem está sob o ponteiro (`hot_id`) e quem está preso
-/// (`active_id`), que é *a mesma informação de onde as transições saíam*. Sem isto a célula
-/// ficaria visualmente morta sob o mouse — pintada, clicável e sem reagir.
-fn surface_button_state(ctx: &PaintCtx, id: ph2d_a11y::NodeId) -> ButtonState {
-    let store = ctx.host.store();
-    if store.active_id() == Some(id) {
-        ButtonState::Pressed
-    } else if store.hot_id() == Some(id) {
-        ButtonState::Hovered
-    } else {
-        ButtonState::Normal
-    }
-}
 
 /// Desenha o alvo do arrasto em curso: um contorno de acento onde a chave vai pousar — e,
 /// num arrasto de SELEÇÃO, um contorno por célula marcada (o gesto mostra tudo o que vai

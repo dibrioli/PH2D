@@ -229,7 +229,7 @@ pub(super) fn paint_enum_row(
         let rx = inner_x + (opt % cols) as f32 * (seg_w + gap);
         let ry = y + (opt / cols) as f32 * (ROW_H_PX + gap);
         let brect = Rect::new(rx, ry, seg_w, ROW_H_PX);
-        let bstate = store.button_state(bid).unwrap_or(ButtonState::Normal);
+        let bstate = store.button_visual(bid);
         paint_segmented_button(
             brect,
             caption,
@@ -289,7 +289,7 @@ pub(super) fn paint_channels_row(
         let rx = inner_x + (opt % cols) as f32 * (seg_w + gap);
         let ry = y + (opt / cols) as f32 * (ROW_H_PX + gap);
         let brect = Rect::new(rx, ry, seg_w, ROW_H_PX);
-        let bstate = store.button_state(bid).unwrap_or(ButtonState::Normal);
+        let bstate = store.button_visual(bid);
         paint_segmented_button(
             brect,
             caption,
@@ -330,7 +330,7 @@ pub(super) fn paint_channels_row(
                 let rx = inner_x + (j % ecols) as f32 * (ew + egap);
                 let ry = y + (j / ecols) as f32 * (ROW_H_PX + egap);
                 let brect = Rect::new(rx, ry, ew, ROW_H_PX);
-                let bstate = store.button_state(bid).unwrap_or(ButtonState::Normal);
+                let bstate = store.button_visual(bid);
                 paint_segmented_button(
                     brect,
                     &row.extra[j],
@@ -410,7 +410,7 @@ pub(super) fn paint_source_row(
             let rx = inner_x + (j % cols) as f32 * (seg_w + gap);
             let ry = y + (j / cols) as f32 * (ROW_H_PX + gap);
             let brect = Rect::new(rx, ry, seg_w, ROW_H_PX);
-            let bstate = store.button_state(bid).unwrap_or(ButtonState::Normal);
+            let bstate = store.button_visual(bid);
             paint_segmented_button(
                 brect,
                 &row.options[j],

@@ -360,16 +360,14 @@ pub(crate) fn paint_posterize_quantize_section(
         ButtonKind::Default
     };
     let dith_btn_state = if dith_active {
-        ButtonState::Pressed
+        (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
     } else {
-        store
-            .button_state(ids::CEQ_POSTERIZE_DITHERING)
-            .unwrap_or(ButtonState::Normal)
+        store.button_visual(ids::CEQ_POSTERIZE_DITHERING)
     };
     let dith_label = if dith_active { "Dither: On" } else { "Dither" };
     let dith_button = Button::new(ids::CEQ_POSTERIZE_DITHERING, dith_label)
         .kind(dith_kind)
-        .state(dith_btn_state);
+        .visual(dith_btn_state);
     paint_button(&dith_button, dith_rect, scene, text_system, theme);
     hit_index.register(ids::CEQ_POSTERIZE_DITHERING, dith_rect);
 
@@ -516,9 +514,9 @@ pub(crate) fn paint_auto_buttons_section(
         let by = y_in + row * (layout.row_h + layout.row_gap);
         let btn_rect = Rect::new(bx, by, half, layout.row_h);
         let state = if *on {
-            ButtonState::Pressed
+            (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
         } else {
-            store.button_state(*id).unwrap_or(ButtonState::Normal)
+            store.button_visual(*id)
         };
         let kind = if *on {
             ButtonKind::Accent
@@ -526,7 +524,7 @@ pub(crate) fn paint_auto_buttons_section(
             ButtonKind::Default
         };
         let label = if *on { *on_label } else { *off_label };
-        let button = Button::new(*id, label).kind(kind).state(state);
+        let button = Button::new(*id, label).kind(kind).visual(state);
         paint_button(&button, btn_rect, scene, text_system, theme);
         hit_index.register(*id, btn_rect);
     }
@@ -550,24 +548,20 @@ pub(crate) fn paint_apply_cta_section(
 ) -> f32 {
     let btn_gap = Spacing::Sm.px();
     let reset_rect = Rect::new(layout.inner_x, y_in, layout.inner_w, layout.row_h);
-    let reset_state = store
-        .button_state(ids::CEQ_RESET)
-        .unwrap_or(ButtonState::Normal);
+    let reset_state = store.button_visual(ids::CEQ_RESET);
     let reset = Button::new(ids::CEQ_RESET, "Reset to Defaults")
         .kind(ButtonKind::Default)
-        .state(reset_state);
+        .visual(reset_state);
     paint_button(&reset, reset_rect, scene, text_system, theme);
     hit_index.register(ids::CEQ_RESET, reset_rect);
     let mut y = y_in + layout.row_h + layout.row_gap;
 
     let half_btn = ((layout.inner_w - btn_gap) * 0.5).max(0.0);
     let cancel_rect = Rect::new(layout.inner_x, y, half_btn, layout.row_h);
-    let cancel_state = store
-        .button_state(ids::CEQ_CANCEL)
-        .unwrap_or(ButtonState::Normal);
+    let cancel_state = store.button_visual(ids::CEQ_CANCEL);
     let cancel = Button::new(ids::CEQ_CANCEL, "Cancel")
         .kind(ButtonKind::Default)
-        .state(cancel_state);
+        .visual(cancel_state);
     paint_button(&cancel, cancel_rect, scene, text_system, theme);
     hit_index.register(ids::CEQ_CANCEL, cancel_rect);
     let apply_rect = Rect::new(
@@ -576,12 +570,10 @@ pub(crate) fn paint_apply_cta_section(
         half_btn,
         layout.row_h,
     );
-    let apply_state = store
-        .button_state(ids::CEQ_APPLY)
-        .unwrap_or(ButtonState::Normal);
+    let apply_state = store.button_visual(ids::CEQ_APPLY);
     let apply = Button::new(ids::CEQ_APPLY, "Apply")
         .kind(ButtonKind::Accent)
-        .state(apply_state);
+        .visual(apply_state);
     paint_button(&apply, apply_rect, scene, text_system, theme);
     hit_index.register(ids::CEQ_APPLY, apply_rect);
     y += layout.row_h;

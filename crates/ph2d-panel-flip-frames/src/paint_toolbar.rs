@@ -88,11 +88,7 @@ fn icon(ctx: &mut PaintCtx, theme: Theme, r: Rect, id: NodeId, glyph: IconId) {
 /// Um toggle de texto — o botão segmentado (mesmo idioma do Mode row do painel de
 /// estilo): `active` acende.
 fn toggle(ctx: &mut PaintCtx, theme: Theme, r: Rect, id: NodeId, text: &str, active: bool) {
-    let st = ctx
-        .host
-        .store()
-        .button_state(id)
-        .unwrap_or(ButtonState::Normal);
+    let st = ctx.host.store().button_visual(id);
     paint_segmented_button(r, text, active, st, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(id, r);
 }

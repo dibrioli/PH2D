@@ -227,6 +227,21 @@ pub struct WidgetStore {
     pub(super) panel_scroll: BTreeMap<NodeId, f32>,
     /// O deslocamento VIVO; o alvo é o `panel_scroll`. Argumento na porta: `panel_scroll()`.
     pub(super) panel_scroll_live: BTreeMap<NodeId, f32>,
+    /// **Quanto do hover está PRESENTE**, por id — o `t` vivo que o tique da UI viva integra a
+    /// partir dos alvos que o [`WidgetStore::hover_targets`] publica.
+    ///
+    /// ⚠️ **Mora aqui pela razão EXACTA do `panel_scroll_live`, e o precedente é medido:** aquele
+    /// vivo deu suavidade a ~130 sítios sem uma linha de mudança, porque a porta que eles já
+    /// perguntavam passou a devolvê-lo. O `t` do hover tem a mesma forma — um escalar por id, um
+    /// escritor (o tique), muitos leitores (os pintores) — e a alternativa era somar um parâmetro
+    /// `motion` a toda a corrente que já leva o `store`: **56 assinaturas só no
+    /// `ph2d-panel-inspector`**, para 20 botões.
+    ///
+    /// ⚠️ **Não é uma segunda cópia do mesmo facto:** o alvo é *o rato está em cima?* e o vivo é
+    /// *quanto do aceso já chegou*. Quem os concilia é o [`crate::motion::UiMotion`], que continua
+    /// a ser o dono do relógio, do carácter e do *reduced motion* — o store carrega o NÚMERO, não
+    /// a lei que o produz.
+    pub(super) hover_live: BTreeMap<NodeId, f32>,
     /// Painter-published rect of each scrollable panel — populated
     /// every frame so the wheel dispatch can find which panel sits
     /// under the cursor. Cleared together with `clear_for_frame` on

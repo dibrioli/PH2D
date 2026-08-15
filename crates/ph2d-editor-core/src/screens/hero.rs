@@ -553,13 +553,6 @@ impl crate::panel::PanelHostInternal for HeroScreen {
         &self.store
     }
 
-    // O relógio da UI viva. É por aqui que o `t` de um hover alcança o pintor de um painel — ver o
-    // doc do `PanelHostInternal::motion`, que explica porque a ausência dele tornava a F2
-    // inexprimível em vez de meramente grande.
-    fn motion(&self) -> &crate::motion::UiMotion {
-        &self.motion
-    }
-
     fn store_mut(&mut self) -> &mut WidgetStore {
         &mut self.store
     }

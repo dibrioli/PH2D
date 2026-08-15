@@ -12,7 +12,7 @@ use super::paint_sections::{BodyCtx, LABEL_COL_W};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::showcase::{paint_section_separator, read_number_input};
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, Checkbox, CheckboxValue, ColorSwatch, NumberInput, SwatchSize,
+    Button, ButtonKind, Checkbox, CheckboxValue, ColorSwatch, NumberInput, SwatchSize,
     paint_button, paint_checkbox, paint_color_swatch, paint_number_input_with_buffer,
     paint_slider_with_chip_layout_adaptive,
 };
@@ -178,8 +178,8 @@ impl BodyCtx<'_> {
         y: f32,
     ) -> f32 {
         let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
-        let st = self.store.button_state(id).unwrap_or(ButtonState::Normal);
-        let btn = Button::new(id, label).kind(kind).state(st);
+        let st = self.store.button_visual(id);
+        let btn = Button::new(id, label).kind(kind).visual(st);
         paint_button(&btn, rect, self.scene, self.text_system, self.theme);
         self.hit_index.register(id, rect);
         y + self.row_h + Spacing::Xs.px()
@@ -292,10 +292,10 @@ impl BodyCtx<'_> {
         for (i, (id, label)) in items.iter().enumerate() {
             let rx = self.inner_x + i as f32 * (w + gap);
             let rect = Rect::new(rx, y, w, self.row_h);
-            let bstate = self.store.button_state(*id).unwrap_or(ButtonState::Normal);
+            let bstate = self.store.button_visual(*id);
             let btn = Button::new(*id, *label)
                 .kind(ButtonKind::Default)
-                .state(bstate);
+                .visual(bstate);
             paint_button(&btn, rect, self.scene, self.text_system, self.theme);
             self.hit_index.register(*id, rect);
         }

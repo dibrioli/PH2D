@@ -33,7 +33,7 @@ use ph2d_editor_core::paint::{paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
 use ph2d_editor_core::widget::{
-    ButtonState, DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, paint_dropdown_chip,
+    DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, paint_dropdown_chip,
     paint_dropdown_popover_scrolled, scrollbar_is_needed, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
@@ -264,7 +264,7 @@ impl BodyCtx<'_> {
             // Ativa = a forma DESTA célula é a do gesto armado. Fora do modo Shape nenhuma
             // acende (o usuário não está desenhando forma nenhuma).
             let active = snap.shape == d.kind && snap.mode == DrawMode::Shape;
-            let st = self.store.button_state(id).unwrap_or(ButtonState::Normal);
+            let st = self.store.button_visual(id);
             // Rótulo VAZIO: reaproveitamos a chrome canônica do botão segmentado (borda
             // Accent quando selecionado, BgElev no hover, AccentSoft no press) e desenhamos
             // o conteúdo — thumbnail + nome — por cima. Zero cor inventada.

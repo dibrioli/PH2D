@@ -574,7 +574,6 @@ pub fn paint_hero_screen(
         hero.theme,
         &mut hero.hit_index,
         &hero.store,
-        &hero.motion,
         &hero.tether,
         viewport,
     );
@@ -586,7 +585,6 @@ pub fn paint_hero_screen(
         hero.theme,
         &mut hero.hit_index,
         &hero.store,
-        &hero.motion,
         viewport,
     );
     // Command palette (Motion's "Add Node") — a full-screen dimmed modal painted over the whole app

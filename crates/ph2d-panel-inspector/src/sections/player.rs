@@ -101,11 +101,7 @@ pub(crate) fn paint_player_section(
         let rect = Rect::new(x, yy, w, h);
         let btn = Button::new(ids::INSP_PLAYER_ADD, "Make Platform Player")
             .kind(ButtonKind::Default)
-            .state(
-                store
-                    .button_state(ids::INSP_PLAYER_ADD)
-                    .unwrap_or(ButtonState::Normal),
-            );
+            .visual(store.button_visual(ids::INSP_PLAYER_ADD));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PLAYER_ADD, rect);
         return yy + h + Spacing::Sm.px();
@@ -283,11 +279,7 @@ fn paint_verbs(
         let rect = Rect::new(x, yy, w, h);
         let btn = Button::new(ids::INSP_PLAYER_FIT, &label)
             .kind(ButtonKind::Default)
-            .state(
-                store
-                    .button_state(ids::INSP_PLAYER_FIT)
-                    .unwrap_or(ButtonState::Normal),
-            );
+            .visual(store.button_visual(ids::INSP_PLAYER_FIT));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PLAYER_FIT, rect);
         yy += h + Spacing::Sm.px();
@@ -319,11 +311,7 @@ fn paint_verbs(
         let rect = Rect::new(x, yy, w, h);
         let btn = Button::new(ids::INSP_PLAYER_FIT_CROUCH, &label)
             .kind(ButtonKind::Default)
-            .state(
-                store
-                    .button_state(ids::INSP_PLAYER_FIT_CROUCH)
-                    .unwrap_or(ButtonState::Normal),
-            );
+            .visual(store.button_visual(ids::INSP_PLAYER_FIT_CROUCH));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PLAYER_FIT_CROUCH, rect);
         yy += h + Spacing::Sm.px();
@@ -362,7 +350,7 @@ fn paint_verbs(
         let rect = Rect::new(x, yy, w, h);
         let btn = Button::new(id, &label)
             .kind(ButtonKind::Default)
-            .state(store.button_state(id).unwrap_or(ButtonState::Normal));
+            .visual(store.button_visual(id));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(id, rect);
         yy += h + Spacing::Sm.px();
@@ -371,11 +359,7 @@ fn paint_verbs(
     let rect = Rect::new(x, yy, w, h);
     let btn = Button::new(ids::INSP_PLAYER_REMOVE, "Remove Platform Player")
         .kind(ButtonKind::Default)
-        .state(
-            store
-                .button_state(ids::INSP_PLAYER_REMOVE)
-                .unwrap_or(ButtonState::Normal),
-        );
+        .visual(store.button_visual(ids::INSP_PLAYER_REMOVE));
     paint_button(&btn, rect, scene, text_system, theme);
     hit_index.register(ids::INSP_PLAYER_REMOVE, rect);
     yy + h + Spacing::Sm.px()

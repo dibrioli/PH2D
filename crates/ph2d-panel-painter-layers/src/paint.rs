@@ -400,10 +400,9 @@ fn paint_dock_toggle(
     let st = ctx
         .host
         .store()
-        .button_state(core_ids::PAINTER_LAYERS_TOGGLE_DOCK)
-        .unwrap_or(ButtonState::Normal);
+        .button_visual(core_ids::PAINTER_LAYERS_TOGGLE_DOCK);
     let label = if shows_layers { "Brush" } else { "Layers" };
-    let btn = Button::new(core_ids::PAINTER_LAYERS_TOGGLE_DOCK, label).state(st);
+    let btn = Button::new(core_ids::PAINTER_LAYERS_TOGGLE_DOCK, label).visual(st);
     paint_button(&btn, btn_rect, ctx.scene, ctx.text_system, theme);
     ctx.host
         .hit_index_mut()
@@ -458,12 +457,8 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
     ];
     for (id, icon, label) in specs {
         let btn_rect = Rect::new(x, y, HEADER_ICON_W, HEADER_ICON_W);
-        let st = ctx
-            .host
-            .store()
-            .button_state(id)
-            .unwrap_or(ButtonState::Normal);
-        let btn = Button::new(id, label).icon_only(icon).state(st);
+        let st = ctx.host.store().button_visual(id);
+        let btn = Button::new(id, label).icon_only(icon).visual(st);
         paint_button(&btn, btn_rect, ctx.scene, ctx.text_system, theme);
         ctx.host.hit_index_mut().register(id, btn_rect);
         x += HEADER_ICON_W + Spacing::Xs.px();
@@ -501,14 +496,10 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
     x += HEADER_ICON_W + Spacing::Xs.px();
     let tex_id = core_ids::PAINTER_LAYERS_ADD_TEXTURE;
     let tex_rect = Rect::new(x, y, HEADER_ICON_W, HEADER_ICON_W);
-    let tex_st = ctx
-        .host
-        .store()
-        .button_state(tex_id)
-        .unwrap_or(ButtonState::Normal);
+    let tex_st = ctx.host.store().button_visual(tex_id);
     let tex_btn = Button::new(tex_id, "Add texture layer")
         .icon_only(IconId::Grid)
-        .state(tex_st);
+        .visual(tex_st);
     paint_button(&tex_btn, tex_rect, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(tex_id, tex_rect);
 }
@@ -550,14 +541,11 @@ fn paint_modifier_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_to
                 && (id == core_ids::PAINTER_LAYERS_MASK || id == core_ids::PAINTER_LAYERS_CLIP));
         let btn_rect = Rect::new(x, y, MOD_BTN_W, ROW_H_PX);
         let st = if eligible {
-            ctx.host
-                .store()
-                .button_state(id)
-                .unwrap_or(ButtonState::Normal)
+            ctx.host.store().button_visual(id)
         } else {
-            ButtonState::Disabled
+            (ButtonState::Disabled, ph2d_editor_core::motion::SETTLED)
         };
-        let mut btn = Button::new(id, label).state(st);
+        let mut btn = Button::new(id, label).visual(st);
         if on && eligible {
             btn.kind = ButtonKind::Accent; // toggle ON = filled accent
         }
@@ -572,14 +560,10 @@ fn paint_modifier_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_to
 /// "Apply" footer CTA — commits the live layer composite into the sprite
 /// (routes to `PainterTool::request_commit`). Accent-filled for prominence.
 fn paint_apply_button(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme) {
-    let st = ctx
-        .host
-        .store()
-        .button_state(core_ids::PAINTER_APPLY)
-        .unwrap_or(ButtonState::Normal);
+    let st = ctx.host.store().button_visual(core_ids::PAINTER_APPLY);
     let btn = Button::new(core_ids::PAINTER_APPLY, "Apply")
         .accent()
-        .state(st);
+        .visual(st);
     paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
     ctx.host
         .hit_index_mut()

@@ -10,7 +10,7 @@ use crate::paint_sections::BodyCtx;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, Dropdown, DropdownOption, paint_button, paint_dropdown_chip,
+    Button, ButtonKind, Dropdown, DropdownOption, paint_button, paint_dropdown_chip,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -280,8 +280,8 @@ impl BodyCtx<'_> {
     /// A small square action button (used by the font-picker `<` / `>`).
     fn arrow_button(&mut self, id: ph2d_a11y::NodeId, label: &str, x: f32, w: f32, y: f32) {
         let rect = Rect::new(x, y, w, self.row_h);
-        let st = self.store.button_state(id).unwrap_or(ButtonState::Normal);
-        let btn = Button::new(id, label).kind(ButtonKind::Default).state(st);
+        let st = self.store.button_visual(id);
+        let btn = Button::new(id, label).kind(ButtonKind::Default).visual(st);
         paint_button(&btn, rect, self.scene, self.text_system, self.theme);
         self.hit_index.register(id, rect);
     }

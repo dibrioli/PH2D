@@ -13,7 +13,7 @@
 //! papel vazio daria dois cliques que não fazem nada, que é como o artista aprende a não confiar
 //! nos botões desta janela — a mesma lei do *Wear a Widget* / *Back to Drawing*.
 
-use ph2d_editor_core::widget::{Button, ButtonKind, ButtonState, paint_button};
+use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::Spacing;
@@ -201,10 +201,7 @@ impl BodyCtx<'_> {
     /// É a mesma escolha dos toggles do rail.
     fn preview_row(&mut self, on: bool, y: f32) -> f32 {
         let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
-        let st = self
-            .store
-            .button_state(ids::VECTOR_STATE_PREVIEW)
-            .unwrap_or(ButtonState::Normal);
+        let st = self.store.button_visual(ids::VECTOR_STATE_PREVIEW);
         // ⚠️ O *ligado* é o **KIND**, não o `ButtonState`: o `ButtonState` descreve o rato (hover,
         // press) e o kind descreve o que o botão É. Escrever *ligado* no `ButtonState` faria o
         // aceso desaparecer no instante em que o cursor passasse por cima dele.
@@ -214,7 +211,7 @@ impl BodyCtx<'_> {
             } else {
                 ButtonKind::Default
             })
-            .state(st);
+            .visual(st);
         paint_button(&btn, rect, self.scene, self.text_system, self.theme);
         self.hit_index.register(ids::VECTOR_STATE_PREVIEW, rect);
         let y = y + self.row_h + Spacing::Xs.px();
@@ -275,8 +272,8 @@ impl BodyCtx<'_> {
         let mut bx = x0;
         let button = |ctx: &mut Self, id, lbl: &str, kind, x: f32| {
             let rect = Rect::new(x, y, bw, ctx.row_h);
-            let st = ctx.store.button_state(id).unwrap_or(ButtonState::Normal);
-            let btn = Button::new(id, lbl).kind(kind).state(st);
+            let st = ctx.store.button_visual(id);
+            let btn = Button::new(id, lbl).kind(kind).visual(st);
             paint_button(&btn, rect, ctx.scene, ctx.text_system, ctx.theme);
             ctx.hit_index.register(id, rect);
         };

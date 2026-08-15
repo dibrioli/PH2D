@@ -50,11 +50,7 @@ pub(super) fn paint_empty_face(
     let btn_rect = Rect::new(x, yy, w, h);
     let btn = Button::new(ids::INSP_PHYS_ADD, "Add Physics Body")
         .kind(ButtonKind::Default)
-        .state(
-            store
-                .button_state(ids::INSP_PHYS_ADD)
-                .unwrap_or(ButtonState::Normal),
-        );
+        .visual(store.button_visual(ids::INSP_PHYS_ADD));
     paint_button(&btn, btn_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_PHYS_ADD, btn_rect);
     yy += h;
@@ -70,11 +66,7 @@ pub(super) fn paint_empty_face(
             format!("Add Shape to {}", info.part_owner),
         )
         .kind(ButtonKind::Default)
-        .state(
-            store
-                .button_state(ids::INSP_PHYS_ADD_SHAPE)
-                .unwrap_or(ButtonState::Normal),
-        );
+        .visual(store.button_visual(ids::INSP_PHYS_ADD_SHAPE));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PHYS_ADD_SHAPE, rect);
         yy += h;
@@ -95,11 +87,7 @@ pub(super) fn paint_empty_face(
             super::physics_join_rows::rig_button_label(info.rig_parts),
         )
         .kind(ButtonKind::Default)
-        .state(
-            store
-                .button_state(ids::INSP_PHYS_RIG)
-                .unwrap_or(ButtonState::Normal),
-        );
+        .visual(store.button_visual(ids::INSP_PHYS_RIG));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PHYS_RIG, rect);
         yy += h;
@@ -142,7 +130,7 @@ pub(super) fn paint_part_doors(
         let rect = Rect::new(x, yy, w, h);
         let btn = Button::new(id, label)
             .kind(ButtonKind::Default)
-            .state(store.button_state(id).unwrap_or(ButtonState::Normal));
+            .visual(store.button_visual(id));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(id, rect);
         yy += h;

@@ -361,12 +361,10 @@ fn paint_body_sections(
     // ── Reset (ghost, full width) row ──────────────────────────────
     let btn_gap = Spacing::Sm.px();
     let reset_rect = Rect::new(inner_x, y, inner_w, row_h);
-    let reset_state = store
-        .button_state(ids::EQS_RESET)
-        .unwrap_or(ButtonState::Normal);
+    let reset_state = store.button_visual(ids::EQS_RESET);
     let reset = Button::new(ids::EQS_RESET, "Reset to Defaults")
         .kind(ButtonKind::Default)
-        .state(reset_state);
+        .visual(reset_state);
     paint_button(&reset, reset_rect, scene, text_system, theme);
     hit_index.register(ids::EQS_RESET, reset_rect);
     y += row_h + row_gap;
@@ -374,21 +372,17 @@ fn paint_body_sections(
     // ── Cancel + Apply row ─────────────────────────────────────────
     let half_btn = ((inner_w - btn_gap) * 0.5).max(0.0);
     let cancel_rect = Rect::new(inner_x, y, half_btn, row_h);
-    let cancel_state = store
-        .button_state(ids::EQS_CANCEL)
-        .unwrap_or(ButtonState::Normal);
+    let cancel_state = store.button_visual(ids::EQS_CANCEL);
     let cancel = Button::new(ids::EQS_CANCEL, "Cancel")
         .kind(ButtonKind::Default)
-        .state(cancel_state);
+        .visual(cancel_state);
     paint_button(&cancel, cancel_rect, scene, text_system, theme);
     hit_index.register(ids::EQS_CANCEL, cancel_rect);
     let apply_rect = Rect::new(inner_x + half_btn + btn_gap, y, half_btn, row_h);
-    let apply_state = store
-        .button_state(ids::EQS_APPLY)
-        .unwrap_or(ButtonState::Normal);
+    let apply_state = store.button_visual(ids::EQS_APPLY);
     let apply = Button::new(ids::EQS_APPLY, "Apply")
         .kind(ButtonKind::Accent)
-        .state(apply_state);
+        .visual(apply_state);
     paint_button(&apply, apply_rect, scene, text_system, theme);
     hit_index.register(ids::EQS_APPLY, apply_rect);
     y += row_h;
@@ -454,11 +448,11 @@ fn paint_radio_row(
             ButtonKind::Default
         };
         let btn_state = if *active {
-            ButtonState::Pressed
+            (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
         } else {
-            store.button_state(*id).unwrap_or(ButtonState::Normal)
+            store.button_visual(*id)
         };
-        let b = Button::new(*id, *label).kind(kind).state(btn_state);
+        let b = Button::new(*id, *label).kind(kind).visual(btn_state);
         paint_button(&b, item_rect, scene, text_system, theme);
         hit_index.register(*id, item_rect);
     }
@@ -483,11 +477,11 @@ fn paint_toggle_button(
         ButtonKind::Default
     };
     let btn_state = if on {
-        ButtonState::Pressed
+        (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
     } else {
-        store.button_state(id).unwrap_or(ButtonState::Normal)
+        store.button_visual(id)
     };
-    let b = Button::new(id, label).kind(kind).state(btn_state);
+    let b = Button::new(id, label).kind(kind).visual(btn_state);
     paint_button(&b, rect, scene, text_system, theme);
     hit_index.register(id, rect);
 }

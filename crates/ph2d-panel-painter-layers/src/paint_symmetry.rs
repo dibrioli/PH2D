@@ -9,9 +9,8 @@
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, DEFAULT_CHIP_W, DEFAULT_LABEL_W, RadioGroup, RadioOption,
-    RadioOrientation, paint_button, paint_radio_group_with_labels,
-    paint_slider_with_chip_layout_adaptive,
+    Button, ButtonKind, DEFAULT_CHIP_W, DEFAULT_LABEL_W, RadioGroup, RadioOption, RadioOrientation,
+    paint_button, paint_radio_group_with_labels, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
@@ -200,17 +199,13 @@ fn paint_pick_button(
     armed: bool,
 ) -> f32 {
     let rect = Rect::new(x, y, content_w, ROW_H_PX);
-    let state = ctx
-        .host
-        .store()
-        .button_state(id)
-        .unwrap_or(ButtonState::Normal);
+    let state = ctx.host.store().button_visual(id);
     let kind = if armed {
         ButtonKind::Accent
     } else {
         ButtonKind::Default
     };
-    let btn = Button::new(id, label).kind(kind).state(state);
+    let btn = Button::new(id, label).kind(kind).visual(state);
     {
         let scene = &mut *ctx.scene;
         let text_system = &mut *ctx.text_system;

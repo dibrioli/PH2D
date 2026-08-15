@@ -560,16 +560,12 @@ fn paint_item(
 /// "+Track" convention (the affordance that ADDS something).
 fn add_marker_button(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32) {
     let rect = Rect::new(x, y, ADD_MARKER_W, ROW_H_PX);
-    let state = ctx
-        .host
-        .store()
-        .button_state(ids::TIMELINE_ADD_MARKER)
-        .unwrap_or(ButtonState::Normal);
+    let state = ctx.host.store().button_visual(ids::TIMELINE_ADD_MARKER);
     let btn = Button::new(
         ids::TIMELINE_ADD_MARKER,
         ph2d_i18n::tr("panel.timeline.add_marker"),
     )
-    .state(state);
+    .visual(state);
     paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
     ctx.host
         .hit_index_mut()

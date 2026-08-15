@@ -9,7 +9,6 @@
 use crate::paint_sections::{BodyCtx, LABEL_COL_W};
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{paint_icon, paint_text, resolve};
-use ph2d_editor_core::widget::ButtonState;
 use ph2d_editor_core::widget::paint_slider_with_chip_layout_adaptive;
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
 use ph2d_editor_core::zones::Rect;
@@ -155,7 +154,7 @@ impl BodyCtx<'_> {
         for (i, (id, lbl, active)) in opts.iter().enumerate() {
             let rx = self.inner_x + i as f32 * (sd_w + sd_gap);
             let rect = Rect::new(rx, y, sd_w, self.row_h);
-            let st = self.store.button_state(*id).unwrap_or(ButtonState::Normal);
+            let st = self.store.button_visual(*id);
             paint_segmented_button(
                 rect,
                 lbl,

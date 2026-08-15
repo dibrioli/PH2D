@@ -557,3 +557,89 @@ fn the_parallel_dab_lays_the_same_clay_as_the_serial_one() {
          o map deixou de ser disjunto, ou alguma acumulação entrou no laço"
     );
 }
+
+/// **O A/B DAS DUAS ROTAS, NO MESMO BINÁRIO E INTERCALADO** — a sonda que
+/// responde *"o `rayon` do ADR-0158 paga?"* sem depender de um número medido
+/// noutro dia.
+///
+/// ⚠️ **Ela existe porque a medição original foi CROSS-RUN**, com `load average
+/// 5,11`, e este repo já mediu o MESMO binário movendo-se 3× sob carga
+/// (`docs/Painter/28_*` §5.49). Aqui as duas rotas correm **alternadas dentro
+/// da mesma corrida**, sobre a mesma fixture, então a carga da máquina é um
+/// fator COMUM e não pode ser confundida com o ganho.
+///
+/// ⚠️ **O que ela mede é o DAB INTEIRO**, não o laço: é o dab que o artista
+/// paga. As duas rotas partilham a consulta do octree, o `refresh_region`
+/// (que já é `rayon`) e — o ponto — a maquinaria nova do map (o `resize` do
+/// buffer e o espalhamento serial). Se o ganho do corpo for comido por ela, é
+/// aqui que aparece.
+///
+/// Rodar: `cargo test -p ph2d-sculpt3d --release --lib -- --ignored --nocapture
+/// --test-threads=1 measure_whether_threading_the_dab_pays`
+#[test]
+#[ignore = "sonda de medição: roda sozinha, com a máquina calma"]
+fn measure_whether_threading_the_dab_pays() {
+    use std::time::Instant;
+
+    // Um gesto de `Grip::Hold` na malha que o módulo ABRE, com o raio que põe a
+    // pegada acima do piso — abaixo dele as duas rotas são a mesma e a sonda
+    // não afirmaria nada.
+    let run = |floor: usize| -> (f64, usize) {
+        let mut mesh = ph2d_mesh::shapes::sculpt_sphere(1.0);
+        let radius = mesh.bounds().longest_edge() * 0.30;
+        let start = mesh.positions()[0];
+        let eye = [-start[0], -start[1], -start[2]];
+        let brush = crate::Brush {
+            verb: crate::Verb::Move,
+            mode: crate::RefMode::L,
+            radius,
+            strength: 1.0,
+            ..crate::Brush::default()
+        };
+        let mut stroke = crate::SculptStroke {
+            par_floor_override: Some(floor),
+            ..crate::SculptStroke::default()
+        };
+        stroke.begin(&mesh);
+        let mut touched = 0usize;
+        let t0 = Instant::now();
+        for k in 1..=8 {
+            let f = k as f32 / 8.0;
+            let c = [start[0] + radius * f, start[1] + radius * 0.3 * f, start[2]];
+            let dab = crate::Dab::at(c, radius, eye);
+            touched = touched.max(stroke.dab(&mut mesh, &brush, &dab, crate::Symmetry::default()));
+        }
+        (t0.elapsed().as_secs_f64() * 1e3 / 8.0, touched)
+    };
+
+    // Aquece: o 1º toque paga o first-touch das páginas dos buffers, e ele não
+    // é o que o artista paga no meio de um traço.
+    let (_, n) = run(0);
+    assert!(
+        n >= super::stroke_map::PAR_MIN_VERTS,
+        "CONTROLE VAZIO: pegada {n} sob o piso {}",
+        super::stroke_map::PAR_MIN_VERTS
+    );
+
+    let mut par = Vec::new();
+    let mut ser = Vec::new();
+    for _ in 0..5 {
+        par.push(run(0).0); // tudo paralelo
+        ser.push(run(usize::MAX).0); // tudo serial
+    }
+    par.sort_by(f64::total_cmp);
+    ser.sort_by(f64::total_cmp);
+    let (mp, ms) = (par[par.len() / 2], ser[ser.len() / 2]);
+
+    println!("\n=== o `rayon` do dab paga? (mesmo binário, intercalado) ===");
+    println!("pegada: {n} vértices (piso {})", super::stroke_map::PAR_MIN_VERTS);
+    println!("  paralelo  mediana {mp:>8.3} ms   min {:>8.3}  max {:>8.3}", par[0], par[par.len() - 1]);
+    println!("  serial    mediana {ms:>8.3} ms   min {:>8.3}  max {:>8.3}", ser[0], ser[ser.len() - 1]);
+    println!("  razão serial/paralelo: {:.3}x", ms / mp);
+    println!(
+        "\n  ⚠️ AS DUAS ROTAS PARTILHAM a maquinaria nova (resize + espalhamento\n  \
+         serial) e o `refresh_region`. Uma razão perto de 1,00x não diz que o\n  \
+         `rayon` é inútil — diz que o que ele ganha no CORPO é do tamanho do\n  \
+         que a maquinaria cobra, e aí a wave inteira é um empate."
+    );
+}

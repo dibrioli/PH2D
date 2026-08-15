@@ -18,6 +18,10 @@
 //! Both are intentional review gates — to fix, either wire a11y or
 //! add an explicit opt-out entry.
 
+#[path = "common/cfg_test_modules.rs"]
+mod cfg_test_modules;
+use cfg_test_modules::is_declared_under_cfg_test;
+
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -343,10 +347,10 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "add-menu draw — its rows are hit-tested against the Background shield and register \
          no ids anywhere (pre-existing M1.E7 gap, not introduced by the split)",
     ),
-    (
-        "ph2d-panel-motion-graph/src/paint_wire_tests.rs",
-        "the flattening guards for paint_wire.rs — a test module, it paints nothing",
-    ),
+    // ⚠️ **A entrada do `paint_wire_tests.rs` SAIU em 2026-08-15**, e o que a substituiu é a lei:
+    // um módulo de teste é reconhecido pelo PAI que o declara, não por uma linha escrita à mão.
+    // Ela era a prova de que o ponto cego existia — cada `<x>_tests.rs` novo pedia outra igual, ou
+    // passava por acidente ao mencionar um pintor canónico.
     (
         "ph2d-panel-motion-graph/src/paint_stamp.rs",
         "the card's postage stamp — pure drawing inside the CARD, whose AccessKit node is hits.rs's",
@@ -534,6 +538,14 @@ fn walk(root: &Path, dir: &Path, cb: &mut dyn FnMut(&Path, &Path)) {
         if path.is_dir() {
             walk(root, &path, cb);
         } else if let Ok(rel) = path.strip_prefix(root) {
+            // ⚠️ **Um módulo de TESTE não tem a11y a fiar — e passava por ACIDENTE.** Um
+            // `<x>_tests.rs` chama os pintores que testa, e um marcador canónico em QUALQUER
+            // ponto do ficheiro satisfazia esta varredura: verde pelo motivo errado. A pergunta
+            // é feita ao PAI (`tests/common/cfg_test_modules.rs`), a mesma lei que a `hr15`
+            // pagou primeiro — e cuja terceira grafia (o irmão PLANO) só apareceu aqui.
+            if is_declared_under_cfg_test(&path) {
+                continue;
+            }
             cb(rel, &path);
         }
     }

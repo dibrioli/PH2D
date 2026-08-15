@@ -416,14 +416,16 @@ fn paint_commit_row(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &
 /// A frameless icon button. Disabled ones are dimmed and — crucially — do **not**
 /// register a hit rect, so they cannot be clicked (2026-07-09 audit).
 fn icon_button(rect: Rect, glyph: IconId, enabled: bool, id: NodeId, ctx: &mut Ctx) {
-    // ⚠️ **Os dois ramos são estados DUROS declarados, e o motivo é um FACTO sobre esta rack:
-    //    ela pinta sem store.** O `paint_fx_section` recebe cena, texto, tema e hit index — não há
-    //    `WidgetStore` em lado nenhum do caminho —, então estes botões estão registados, clicáveis
-    //    e **inertes sob o rato** desde que nasceram, e continuam a estar: o par declara o neutro
-    //    em vez de o deixar acontecer por omissão, e não inventa um relógio que a rack não tem.
-    //    Acordá-los é uma wave própria (levar o store ao painter), não contrabando aqui.
+    // ⚠️ **A wave própria que o comentário anterior nomeava ACONTECEU (2026-08-15).** Ele dizia que
+    //    a rack «pinta sem store» e que estes botões estavam «registados, clicáveis e inertes sob o
+    //    rato desde que nasceram» — verdade, e a causa não era o pintor: os ids sempre estiveram
+    //    registados como `InteractiveState::Button` no `populate`, então o store SABIA o hover e
+    //    ninguém perguntava. O `ClippedHits` que este painter já recebia passou a carregar o store.
+    //
+    // ⚠️ **`Disabled` continua a ser DURO e vem primeiro:** um botão desactivado não regista hit,
+    //    mas o `state` guardado pode ter ficado `Hovered` do quadro em que ele ainda estava vivo.
     let state = if enabled {
-        (ButtonState::Normal, ph2d_editor_core::motion::SETTLED)
+        ctx.hit_index.visual(id)
     } else {
         (ButtonState::Disabled, ph2d_editor_core::motion::SETTLED)
     };

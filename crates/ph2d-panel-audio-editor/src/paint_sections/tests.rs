@@ -37,9 +37,10 @@ fn body(open: [bool; 8]) -> Body {
 fn height(open: [bool; 8]) -> f32 {
     let mut scene = VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
+    let store = ph2d_editor_core::interaction::WidgetStore::default();
     let mut hits = HitIndex::default();
     let clip = Rect::new(0.0, 0.0, 220.0, 40_000.0);
-    let mut ch = ClippedHits::new(&mut hits, clip);
+    let mut ch = ClippedHits::new(&store, &mut hits, clip);
     paint_body(
         0.0,
         0.0,
@@ -141,10 +142,11 @@ fn the_fold_state_follows_the_section_not_the_slot() {
 fn no_control_is_painted_twice() {
     let mut scene = VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
+    let store = ph2d_editor_core::interaction::WidgetStore::default();
     let mut hits = HitIndex::default();
     {
         let clip = Rect::new(0.0, 0.0, 220.0, 40_000.0);
-        let mut ch = ClippedHits::new(&mut hits, clip);
+        let mut ch = ClippedHits::new(&store, &mut hits, clip);
         paint_body(
             0.0,
             0.0,

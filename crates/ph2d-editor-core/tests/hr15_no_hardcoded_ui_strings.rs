@@ -25,6 +25,10 @@
 //! - Existing widget reduces violations below baseline (forces the
 //!   maintainer to drop the baseline entry, keeping the list honest).
 
+#[path = "common/cfg_test_modules.rs"]
+mod cfg_test_modules;
+use cfg_test_modules::is_declared_under_cfg_test;
+
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -273,80 +277,4 @@ fn walk(root: &Path, dir: &Path, cb: &mut dyn FnMut(&Path, &Path)) {
             cb(rel, &path);
         }
     }
-}
-
-/// **Este ficheiro é um módulo de TESTE inteiro?** — perguntado ao PAI, que é quem o gateia.
-///
-/// ⚠️ **É a mesma lei que o [`strip_test_modules`] já aplica, uma grafia depois.** Um
-/// `#[cfg(test)] mod tests { … }` inline é removido; um `#[cfg(test)] mod tests;` que resolve para
-/// `<slug>/tests.rs` era lido como PRODUÇÃO — e o ficheiro é literalmente o mesmo código, movido
-/// para o irmão pelo tecto de LOC. Medido em 2026-08-15: a `ph2d-editor-core` tem **onze** desses
-/// ficheiros, e **dez passavam por acidente** (nenhum deles usava `.label("`/`.placeholder("`); o
-/// décimo-primeiro — o `text_input/tests.rs` — nasceu de um split e trouxe um `.placeholder`
-/// consigo, virando o gate vermelho sobre código que nunca correu em produção.
-///
-/// ⚠️ **E a pergunta é feita ao PAI de propósito, nunca ao NOME do ficheiro.** Uma lista de nomes
-/// (`tests.rs`, `*_tests.rs`, …) é a enumeração que apodrece no dia em que alguém chamar o irmão
-/// de outra coisa — e, pior, isentaria um ficheiro de produção com nome parecido. Quem sabe se
-/// isto é teste é a declaração que o compila.
-fn is_declared_under_cfg_test(path: &Path) -> bool {
-    let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
-        return false;
-    };
-    let Some(dir) = path.parent() else {
-        return false;
-    };
-    // O pai de `<dir>/<stem>.rs` é o `<dir>/mod.rs` — ou, num módulo sem directório, o
-    // `<dir>.rs` um nível acima. Os dois podem declarar o filho.
-    let mut parents = vec![dir.join("mod.rs")];
-    if let (Some(gp), Some(dir_name)) = (dir.parent(), dir.file_name().and_then(|s| s.to_str())) {
-        parents.push(gp.join(format!("{dir_name}.rs")));
-    }
-    parents
-        .iter()
-        .any(|p| fs::read_to_string(p).is_ok_and(|src| declares_cfg_test_mod(&src, stem, path, p)))
-}
-
-/// O pai declara `mod <stem>;` (ou um `#[path = "…"] mod …;` que resolve para `path`) sob um
-/// `#[cfg(test)]`?
-fn declares_cfg_test_mod(src: &str, stem: &str, path: &Path, parent: &Path) -> bool {
-    let lines: Vec<&str> = src.lines().collect();
-    for (i, line) in lines.iter().enumerate() {
-        let t = line.trim();
-        if !t.starts_with("mod ") && !t.starts_with("pub mod ") && !t.starts_with("pub(") {
-            continue;
-        }
-        // As linhas de atributo IMEDIATAMENTE acima da declaração.
-        let mut cfg_test = false;
-        let mut declared: Option<PathBuf> = None;
-        let mut j = i;
-        while j > 0 {
-            let a = lines[j - 1].trim();
-            if !a.starts_with("#[") {
-                break;
-            }
-            if a.starts_with("#[cfg(test)]") {
-                cfg_test = true;
-            }
-            if let Some(rest) = a.strip_prefix("#[path = \"")
-                && let Some(rel) = rest.split('"').next()
-            {
-                declared = parent.parent().map(|d| d.join(rel));
-            }
-            j -= 1;
-        }
-        if !cfg_test {
-            continue;
-        }
-        let matches_by_name = t
-            .trim_end_matches(';')
-            .rsplit(' ')
-            .next()
-            .is_some_and(|name| name == stem);
-        let matches_by_path = declared.as_deref() == Some(path);
-        if matches_by_name || matches_by_path {
-            return true;
-        }
-    }
-    false
 }

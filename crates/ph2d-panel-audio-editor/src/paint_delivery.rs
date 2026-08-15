@@ -320,9 +320,10 @@ mod tests {
         delivery_state::set_cost("25 KB", ram, 0.07, false);
         let mut scene = VectorScene::new();
         let mut text = TextSystem::without_system_fonts();
+        let store = ph2d_editor_core::interaction::WidgetStore::default();
         let mut hits = HitIndex::default();
         let clip = Rect::new(0.0, 0.0, 220.0, 4_000.0);
-        let mut ch = ClippedHits::new(&mut hits, clip);
+        let mut ch = ClippedHits::new(&store, &mut hits, clip);
         paint_delivery_section(
             0.0,
             0.0,

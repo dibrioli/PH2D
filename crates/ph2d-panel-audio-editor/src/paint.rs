@@ -11,6 +11,7 @@ use crate::state::AudioEditorState;
 use crate::{AEDIT_CLOSE, AEDIT_FX_PARAMS, AEDIT_NAME, AEDIT_PANEL, AudioEditorPanel, snapshot};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::InteractiveState;
+use ph2d_editor_core::motion;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
@@ -19,13 +20,13 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_close_button_rect,
 };
 use ph2d_editor_core::widget::{
-    AUDIO_EDITOR_SCROLLBAR_ID, SCROLLBAR_W, TextInputState, paint_scrollbar, scrollbar_is_needed,
-    scrollbar_thumb_rect, scrollbar_track_rect,
+    AUDIO_EDITOR_SCROLLBAR_ID, ButtonState, SCROLLBAR_W, TextInputState, paint_scrollbar,
+    scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
-use ph2d_vector::VectorScene;
+use ph2d_vector::{Color as VelloColor, VectorScene};
 
 pub(crate) use crate::clipped_hits::ClippedHits;
 
@@ -132,7 +133,11 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     // Anything scrolled past the body's top/bottom is hidden — and, via
     // `ClippedHits`, unclickable.
     scene.push_clip(&rect_to_vello(body_rect));
-    let hit_index = &mut ClippedHits::new(ctx.host.hit_index_mut(), body_rect);
+    // ⚠️ **O empréstimo CONJUNTO existe para isto** (`PanelHostInternal::store_and_hit_index_mut`,
+    // e o doc dele diz-o): sem ele o `hit_index_mut` tranca o host e o corpo fica sem forma de
+    // perguntar como um widget se pinta — que foi exactamente por que este painel nasceu inerte.
+    let (store, hits) = ctx.host.store_and_hit_index_mut();
+    let hit_index = &mut ClippedHits::new(store, hits, body_rect);
 
     // The body is a stack of collapsible SECTIONS — see `paint_sections`.
     let body = crate::paint_sections::Body {
@@ -255,6 +260,51 @@ pub(crate) fn fmt_time(secs: f64) -> String {
     format!("{m}:{rem:04.1}") // LITERAL-PX-OK: mm:ss.d time format spec, not a UI metric
 }
 
+/// **A cor de fundo de um botão deste painel, no eixo do hover.**
+///
+/// ⚠️ **A lei é a do CATÁLOGO; o que é do painel é só o tom de REPOUSO.** Os tokens quentes
+/// (`BgElev` no hover, `AccentSoft` no press) e a *transição* saem exactamente de onde o
+/// `widget::Button` os tira — [`motion::hover_axis`], a porta única —, então isto não é uma segunda
+/// resposta a *«que cor tem um botão sob o rato?»*: é a mesma resposta com a superfície que este
+/// painel já pinta.
+///
+/// ⚠️ **`enabled == false` é um estado DURO e sai antes do eixo.** Um botão desactivado não regista
+/// hit, logo o ponteiro não o alcança — mas o `state` GUARDADO pode ter ficado `Hovered` do quadro
+/// em que ele ainda estava vivo, e sem esta saída ele acenderia sozinho ao ser desactivado sob o
+/// cursor.
+///
+/// ⚠️ **Em repouso o resultado é BYTE-IDÊNTICO ao que shipava:** `hover_axis` devolve `None` no
+/// neutro ([`motion::SETTLED`]) e o chamador cai no token duro — que para `Normal` é o `Bg3` de
+/// sempre.
+fn action_bg(
+    rest: ColorToken,
+    hot: ColorToken,
+    press: ColorToken,
+    v: (ButtonState, f32),
+    enabled: bool,
+    theme: Theme,
+) -> VelloColor {
+    let token = if !enabled {
+        rest.resolve(theme)
+    } else {
+        let (state, t) = v;
+        if state == ButtonState::Pressed {
+            press.resolve(theme)
+        } else {
+            let soft = matches!(state, ButtonState::Normal | ButtonState::Hovered);
+            motion::hover_axis(soft, t, Some(rest.resolve(theme)), Some(hot.resolve(theme)))
+                .unwrap_or_else(|| {
+                    if state == ButtonState::Hovered {
+                        hot.resolve(theme)
+                    } else {
+                        rest.resolve(theme)
+                    }
+                })
+        }
+    };
+    VelloColor::from_rgba8(token.r, token.g, token.b, token.a) // LITERAL-COLOR-OK: token-bridge — `token` já é ColorToken-resolvido
+}
+
 /// A labeled action button: `Bg3` + `Text1` when enabled, dimmed to `Text2` when
 /// not. Shared with the effects rack section (`paint_fx`).
 ///
@@ -264,6 +314,10 @@ pub(crate) fn fmt_time(secs: f64) -> String {
 /// selection fell through to `target()` and zeroed the WHOLE clip (2026-07-09
 /// audit). The panel dims and the seam refuses — two layers, since a dim alone is
 /// cosmetic.
+///
+/// ⚠️ **Ele reage ao ponteiro desde 2026-08-15, e o que faltava não era o pintor:** os ids deste
+/// painel sempre foram registados como `InteractiveState::Button` no `populate`, então o store
+/// SABIA o hover — ninguém perguntava. Ver [`action_bg`].
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn button(
     rect: Rect,
@@ -280,12 +334,15 @@ pub(crate) fn button(
     } else {
         ColorToken::Text2
     };
-    fill_rounded_rect(
-        scene,
-        rect,
-        Radius::Sm.px(),
-        resolve(ColorToken::Bg3, theme),
+    let bg = action_bg(
+        ColorToken::Bg3,
+        ColorToken::BgElev,
+        ColorToken::AccentSoft,
+        hit_index.visual(id),
+        enabled,
+        theme,
     );
+    fill_rounded_rect(scene, rect, Radius::Sm.px(), bg);
     paint_text_centered(
         text_system,
         scene,
@@ -299,12 +356,50 @@ pub(crate) fn button(
     }
 }
 
+/// **A que FAMÍLIA do catálogo um toggle pertence** — repouso, quente, pressionado, texto.
+///
+/// ⚠️ **É uma `fn` e não um `match` inline por uma razão medida:** enquanto a escolha vivia dentro
+/// do [`toggle`], a mutação que punha o toggle ACESO no eixo do solto **sobrevivia à suíte
+/// inteira** — os gates da lei de cor chamavam [`action_bg`] com os tokens à mão e nunca viam qual
+/// família o pintor escolhe. Separada, a escolha é ela própria afirmável.
+///
+/// ⚠️ **Desactivado colapsa os três tons no repouso**, e não é preguiça: um toggle inerte mantém a
+/// superfície (um estado engatado-mas-inerte continua a LER como engatado) e perde só o contraste
+/// do texto — a regra que já shipava, agora escrita onde se pode testar.
+fn toggle_tokens(active: bool, enabled: bool) -> (ColorToken, ColorToken, ColorToken, ColorToken) {
+    match (active, enabled) {
+        (true, true) => (
+            ColorToken::Accent,
+            ColorToken::AccentHover,
+            ColorToken::AccentPress,
+            ColorToken::AccentFg,
+        ),
+        (false, true) => (
+            ColorToken::Bg3,
+            ColorToken::BgElev,
+            ColorToken::AccentSoft,
+            ColorToken::Text1,
+        ),
+        (_, false) => (
+            ColorToken::Bg3,
+            ColorToken::Bg3,
+            ColorToken::Bg3,
+            ColorToken::Text2,
+        ),
+    }
+}
+
 /// A labeled toggle button: `Accent` tint + `AccentFg` when engaged, else `Bg3`
 /// + `Text1`.
 ///
 /// Like [`button`], a **disabled toggle registers no hit rect** — it keeps its
 /// surface (so an engaged-but-inert state still reads as engaged) but loses its
 /// text contrast, and cannot be clicked.
+///
+/// ⚠️ **Engatado e solto sobem eixos DIFERENTES, e é o que o catálogo faz:** solto é a família
+/// `Default` (`Bg3 → BgElev`), engatado é a família `Accent` (`Accent → AccentHover`, press
+/// `AccentPress`). Usar o eixo do solto num toggle aceso deixaria o hover a ESCURECER a peça mais
+/// clara da tela.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn toggle(
     rect: Rect,
@@ -317,12 +412,9 @@ pub(crate) fn toggle(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) {
-    let (bg, fg) = match (active, enabled) {
-        (true, true) => (ColorToken::Accent, ColorToken::AccentFg),
-        (false, true) => (ColorToken::Bg3, ColorToken::Text1),
-        _ => (ColorToken::Bg3, ColorToken::Text2),
-    };
-    fill_rounded_rect(scene, rect, Radius::Sm.px(), resolve(bg, theme));
+    let (rest, hot, press, fg) = toggle_tokens(active, enabled);
+    let bg = action_bg(rest, hot, press, hit_index.visual(id), enabled, theme);
+    fill_rounded_rect(scene, rect, Radius::Sm.px(), bg);
     paint_text_centered(
         text_system,
         scene,
@@ -335,3 +427,7 @@ pub(crate) fn toggle(
         hit_index.register(id, rect);
     }
 }
+
+#[cfg(test)]
+#[path = "paint_tests.rs"]
+mod paint_tests;

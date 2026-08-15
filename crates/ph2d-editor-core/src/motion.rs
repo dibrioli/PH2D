@@ -242,6 +242,62 @@ impl Track {
 /// que um estado **DURO** carrega (`Pressed`/`Focused`/`Disabled` não são uma *quantidade* de nada).
 pub const SETTLED: f32 = 1.0;
 
+/// **A GRADE DE PIXELS — onde uma superfície que carrega TEXTO tem o direito de pousar.**
+///
+/// # O defeito que ela existe para tornar impossível
+///
+/// O [`crate::paint_text`] **arredonda a origem do texto ao pixel inteiro**
+/// (`Affine::translate((x.round(), y.round()))`, e outra vez por glifo em `y.round()`) porque o
+/// *hinting* encaixa as hastes no grid do pixel: com a baseline numa fracção, o grid encaixado
+/// está ele próprio deslocado e a letra sai mole. Os retângulos, esses, vão para o Vello **sem
+/// arredondar**.
+///
+/// Parados, os dois concordam e o texto sai nítido — é para isso que o snap existe. Em movimento
+/// CONTÍNUO eles deixam de concordar: o fundo da linha desliza e a label **fica quieta** até o
+/// valor cruzar meio pixel, e então salta um pixel inteiro. Medido pela porta do produto
+/// (`measure_how_far_a_label_lags_its_row_while_a_panel_scrolls`), numa rolagem de 40 px:
+///
+/// | grandeza | valor |
+/// |---|---|
+/// | a label afasta-se da linha em | **0,481 px** |
+/// | o passo dela desencontra-se do da linha em | **0,820 px** |
+/// | quadros SEGUIDOS com a linha a andar e a label parada | **3** (50 ms) |
+///
+/// ⚠️ E os três números são **iguais nos dois carácteres**, porque a [`Role::Surface`] é
+/// criticamente amortecida em ambos — é por isso que a wave que matou a ultrapassagem (o report
+/// *«o balanço das labels ficou artificial»*) **não tocou nisto**: eram dois defeitos com o mesmo
+/// sintoma, e o segundo só ficou visível depois de o primeiro sair da frente.
+///
+/// # Porquê mover a SUPERFÍCIE e não desligar o snap
+///
+/// Há **duas** respostas coerentes, e o que produz o tremor é misturá-las:
+///
+/// 1. *a superfície anda contínua e o texto anda com ela* — o que o macOS e os browsers fazem, ao
+///    preço de o texto ficar **mole enquanto se move** e de haver um instante em que ele *encaixa*
+///    ao assentar. Todo o maquinário de `TextRendering` deste app existe para não pagar isso.
+/// 2. **a superfície anda em pixels inteiros** — e aí não há o que discordar: linha, moldura,
+///    filete e label movem-se no mesmo passo, sempre nítidos.
+///
+/// A (2) é a que este app escolhe, e ela é melhor por uma razão que a (1) não tem: ela cura, de
+/// graça, a **cintilação dos filetes** (uma linha de 1 px numa fracção reparte a cobertura entre
+/// dois pixels e muda de aparência a cada quadro).
+///
+/// # A lei
+///
+/// **O relógio integra contínuo; só o número PUBLICADO pousa na grade.** Arredondar dentro da
+/// [`Track`] daria à mola uma entrada quantizada — ela poderia estagnar perto do alvo, ou tremer
+/// à volta dele. E o **alvo** também nunca é arredondado: uma roda de *trackpad* entrega deltas
+/// fraccionários, e é somando-os EXATOS no alvo que dez toques de 0,3 px chegam a 3 px em vez de
+/// se perderem no arredondamento (gate `a_trackpad_nudge_accumulates_exactly_in_the_target`).
+///
+/// ⚠️ **Arredondar, não truncar.** O pouso é no pixel MAIS PRÓXIMO; truncar deslocaria toda
+/// superfície meio pixel para cima do que a roda pediu.
+#[must_use]
+#[inline]
+pub fn on_pixel_grid(px: f32) -> f32 {
+    px.round()
+}
+
 /// **Quanto um chip CRESCE quando o rato pousa nele**, no pico do hover.
 ///
 /// ⚠️ **Número de APARÊNCIA: sai do smoke, não de um teste.** Três px sobre um chip de 36 lê como
@@ -276,6 +332,11 @@ pub fn hover_lift(rect: crate::zones::Rect, t: f32, travels: bool) -> crate::zon
     }
     crate::zones::Rect::new(rect.x - d, rect.y - d, rect.w + d * 2.0, rect.h + d * 2.0)
 }
+
+// ⚠️ **E este NÃO pousa na [`on_pixel_grid`], de propósito.** Ele cresce o retângulo por `d` em
+//    TODOS os lados, então o CENTRO fica onde estava — e os dois consumidores (o rail e a barra)
+//    desenham um GLIFO centrado, que é geometria vetorial e não tem baseline a encaixar. Não há
+//    texto a discordar de nada aqui; quantizar só tornaria o crescimento aos degraus.
 
 /// O atraso entre dois cartões consecutivos na CASCATA de entrada.
 ///
@@ -329,6 +390,10 @@ pub fn cascade_target(open_secs: f64, index: usize) -> f32 {
     f32::from(u8::from(open_secs > due))
 }
 
+#[cfg(test)]
+#[path = "motion_grid_tests.rs"]
+mod motion_grid_tests;
+
 /// O deslocamento vertical que um cartão DESENHA com a entrada `t` presente.
 ///
 /// ⚠️ **O hit NÃO acompanha, e é a MESMA lei do [`hover_lift`]** — o alvo que o dedo procura não
@@ -339,7 +404,9 @@ pub fn cascade_rise(t: f32, travels: bool) -> f32 {
     if !travels {
         return 0.0;
     }
-    CASCADE_RISE_PX * (1.0 - t.clamp(0.0, 1.0))
+    // ⚠️ Pousa na grade porque o cartão TRANSLADA e leva a própria label consigo — a mesma
+    //    discordância da rolagem de painel, num percurso mais curto. Ver [`on_pixel_grid`].
+    on_pixel_grid(CASCADE_RISE_PX * (1.0 - t.clamp(0.0, 1.0)))
 }
 
 #[derive(Clone, Debug, Default)]

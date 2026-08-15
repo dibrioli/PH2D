@@ -51,7 +51,14 @@ fn tick_panel_scroll(hero: &mut HeroScreen) {
         let live = hero
             .motion
             .animate(scroll_track(panel), target, crate::motion::Role::Surface);
-        hero.store.set_panel_scroll_live(panel, live);
+        // ⚠️ **A superfície pousa na GRADE DE PIXELS, e é aqui — no PUBLICAR — que ela pousa.**
+        //    O relógio guarda o valor contínuo (uma mola alimentada com entrada quantizada pode
+        //    estagnar perto do alvo) e o ALVO guarda o valor exato (é ele que soma os deltas
+        //    fraccionários de um trackpad). Quantizar o número que os ~130 pintores leem é o que
+        //    põe a linha, o filete e a LABEL no mesmo passo — ver `motion::on_pixel_grid`, que
+        //    traz a medição do tremor que isto remove.
+        hero.store
+            .set_panel_scroll_live(panel, crate::motion::on_pixel_grid(live));
     }
 }
 

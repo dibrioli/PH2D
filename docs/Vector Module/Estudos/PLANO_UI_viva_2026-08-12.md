@@ -411,6 +411,40 @@ código:** ela pinta sem `WidgetStore` no caminho todo — acordá-la é wave pr
 ⚠️ **A wave 2 tem de trazer a R1 dentro dela.** Um efeito que nasce sem o interruptor nasce dívida —
 e a acessibilidade retro-encaixada é a que fica meio-feita.
 
+### 6.1 A GRADE DE PIXELS — o terceiro defeito com o mesmo sintoma (2026-08-14, pós-smoke)
+
+O smoke da F2 passou com um report ao lado: *«as labels ainda têm um movimento incómodo ao rolar
+os painéis»*. ⚠️ **É o TERCEIRO defeito distinto a produzir a mesma queixa**, e cada um só ficou
+visível depois de o anterior sair da frente:
+
+1. a rolagem shipou em `Role::Travel` ⇒ **ultrapassava 15,5%** (curado pelo `Role::Surface`);
+2. — nada, entre os dois, que a wave da F2 tenha tocado;
+3. **a label encaixa no pixel e a linha dela não.**
+
+O `paint_text` arredonda a origem do texto ao pixel inteiro (o *hinting* precisa da baseline no
+grid); os retângulos vão para o Vello sem arredondar. Parados concordam — é para isso que o snap
+existe. Em movimento contínuo, **a linha desliza e a label fica parada até cruzar meio pixel**.
+Medido pela porta do produto, numa rolagem de 40 px:
+
+| rota | a label afasta-se | o passo desencontra-se | quadros parada |
+|---|---|---|---|
+| **cru** (o que shipou) | 0,481 px | 0,820 px | **3** (50 ms) |
+| **grade** (a cura) | **0,000** | **0,000** | **0** |
+
+⚠️ **Os números do «cru» são IDÊNTICOS nos dois carácteres** — a `Role::Surface` é criticamente
+amortecida em ambos —, e é isso que explica por que o (1) não o tocou.
+
+**A cura é `motion::on_pixel_grid`, aplicada no PUBLICAR**: o relógio integra contínuo (uma mola
+alimentada com entrada quantizada pode estagnar) e o **alvo** guarda o valor exato (é ele que soma
+os deltas fraccionários de um trackpad). Dois consumidores, a mesma porta: a rolagem de painel e o
+`cascade_rise` (o cartão translada e **leva a própria label**). ⚠️ **O `hover_lift` fica de fora,
+com o motivo escrito no código:** ele cresce o retângulo por igual nos quatro lados ⇒ o centro não
+se move ⇒ o glifo centrado não viaja; quantizá-lo só tornaria o crescimento aos degraus.
+
+⚠️ **De graça, e por isso vale a pena nomear:** isto cura também a **cintilação dos filetes** —
+uma linha de 1 px numa fracção reparte a cobertura por dois pixels e muda de aparência a cada
+quadro.
+
 ⚠️ **A wave 4 não depende de nada** e pode correr em paralelo, ou primeiro se o objectivo for
 eficiência antes de encanto.
 

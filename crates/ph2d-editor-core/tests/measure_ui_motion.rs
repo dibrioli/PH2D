@@ -207,3 +207,79 @@ fn measure_the_overshoot_each_damping_buys() {
         );
     }
 }
+
+/// SONDA: **quanto a LABEL treme em relação à linha em que ela mora, durante uma rolagem.**
+///
+/// ⚠️ **A grandeza não é *onde a superfície está* — é a DIFERENÇA entre dois elementos da mesma
+/// linha.** O `paint_text_weighted` arredonda a origem do texto ao pixel inteiro
+/// (`Affine::translate((x.round(), y.round()))`, e outra vez por glifo em `y.round()`) porque o
+/// hinting precisa de uma baseline no grid; os retângulos vão para o Vello **sem arredondar**.
+/// Parados, os dois concordam e o texto sai nítido — é a razão de o snap existir. Em MOVIMENTO
+/// contínuo eles deixam de concordar: o fundo da linha desliza e a label **fica quieta** até o
+/// valor cruzar meio pixel, e então salta um pixel inteiro.
+///
+/// Rode: `cargo test -p ph2d-editor-core --release --test measure_ui_motion -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda: rode com --release -- --ignored"]
+fn measure_how_far_a_label_lags_its_row_while_a_panel_scrolls() {
+    const DT: f64 = 1.0 / 60.0;
+    println!("[scroll-judder] a label salta ao pixel; a linha desliza. Quanto se separam?");
+    println!(
+        "[scroll-judder] {:<10} {:>7} {:>9} {:>10} {:>12} {:>10}",
+        "rota", "curso", "quadros", "max |Δ|", "max desenc.", "parada"
+    );
+    for (rota, publish) in [
+        ("cru", (|v: f32| v) as fn(f32) -> f32),
+        (
+            "grade",
+            ph2d_editor_core::motion::on_pixel_grid as fn(f32) -> f32,
+        ),
+    ] {
+        for travel in [40.0_f32, 120.0, 400.0] {
+            // ⚠️ Expressivo nos DOIS: a `Role::Surface` é criticamente amortecida em ambos os
+            //    carácteres, e a 1ª corrida desta sonda mostrou-o — as seis linhas (três cursos ×
+            //    dois carácteres) davam números IDÊNTICOS. O eixo que separa é a ROTA, não o
+            //    carácter, e é por isso que este defeito sobreviveu à wave que curou a
+            //    ultrapassagem.
+            let character = UiCharacter::Expressive;
+            let mut m = UiMotion::default();
+            m.set_character(character);
+            let a = NodeId(7);
+            m.animate(a, 0.0, Role::Surface);
+
+            let (mut prev_row, mut prev_lab) = (0.0_f32, 0.0_f32);
+            let (mut max_rel, mut max_mismatch) = (0.0_f32, 0.0_f32);
+            let (mut frozen, mut worst_frozen, mut frames) = (0u32, 0u32, 0u32);
+            for _ in 0..600 {
+                m.advance(DT);
+                let row = publish(m.animate(a, travel, Role::Surface));
+                let lab = row.round();
+                frames += 1;
+                max_rel = max_rel.max((lab - row).abs());
+                let (row_step, lab_step) = (row - prev_row, lab - prev_lab);
+                max_mismatch = max_mismatch.max((lab_step - row_step).abs());
+                // A linha andou meio pixel e a label não saiu do sítio: um quadro de PARAGEM.
+                if row_step.abs() > 0.05 && lab_step == 0.0 {
+                    frozen += 1;
+                    worst_frozen = worst_frozen.max(frozen);
+                } else {
+                    frozen = 0;
+                }
+                prev_row = row;
+                prev_lab = lab;
+                if m.in_flight() == 0 {
+                    break;
+                }
+            }
+            println!(
+                "[scroll-judder] {:<10} {travel:>6.0}px {frames:>8} {max_rel:>9.3}px \
+                 {max_mismatch:>11.3}px {worst_frozen:>9} qd",
+                rota
+            );
+        }
+    }
+    println!(
+        "[scroll-judder] ⚠️ «parada» = quadros seguidos em que a linha se move e a label NÃO — \
+         é o que o olho lê como tremor, e cresce na CAUDA (a mola desacelera)."
+    );
+}

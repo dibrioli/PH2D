@@ -189,4 +189,40 @@ pub(crate) fn register_brush_slider_chips(store: &mut WidgetStore) {
         store.link_slider_number_mapped_integer(slider, chip, scale, offset);
         store.set_number_range(chip, min, max, step);
     }
+    register_spray_count_chip(store);
+}
+
+/// O chip do **Spray Count** — irmão exato do da Symmetry: um inteiro `1..=SPRAY_COUNT_MAX`
+/// projetado sobre a pista `0..1`. Helper próprio pelo teto de LOC por-fn do painel.
+///
+/// ⚠️ **A escala e o teto saem da MESMA const do motor**, nunca de um literal aqui: o teto é MEDIDO
+/// (`SPRAY_COUNT_MAX`), e uma cópia nesta casa passaria a mentir no dia em que a medição o movesse —
+/// com o polegar do slider a pousar num número e o chip a escrever outro.
+fn register_spray_count_chip(store: &mut WidgetStore) {
+    use ph2d_editor_core::ids as core_ids;
+    const SPRAY_MIN: f32 = 1.0; // LITERAL-PX-OK: uma marca por ponto do caminho = o traço de sempre
+    let spray_max = ph2d_tool_painter::SPRAY_COUNT_MAX as f32;
+    store.register(
+        core_ids::PAINTER_BRUSH_SPRAY_COUNT_CHIP,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: f64::from(SPRAY_MIN),
+            buffer: String::new(),
+            caret: 0,
+            last_committed: f64::from(SPRAY_MIN),
+            selection_anchor: None,
+        },
+    );
+    store.link_slider_number_mapped_integer(
+        core_ids::PAINTER_BRUSH_SPRAY_COUNT,
+        core_ids::PAINTER_BRUSH_SPRAY_COUNT_CHIP,
+        spray_max - SPRAY_MIN,
+        SPRAY_MIN,
+    );
+    store.set_number_range(
+        core_ids::PAINTER_BRUSH_SPRAY_COUNT_CHIP,
+        f64::from(SPRAY_MIN),
+        f64::from(spray_max),
+        1.0, // step by whole mark
+    );
 }

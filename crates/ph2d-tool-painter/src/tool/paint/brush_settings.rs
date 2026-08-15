@@ -377,6 +377,10 @@ pub struct BrushSettings {
     pub jitter_scale: f32,
     pub jitter_rotate: f32,
     pub jitter_spacing: f32,
+    /// **Count** — quantas marcas cada ponto do caminho deixa (`1` = o traço de sempre). É o único
+    /// número do *spray*; o alcance dele é o Jitter → Position, o tamanho é o Scale e o ângulo é o
+    /// Rotation, que são as três rows imediatamente abaixo desta.
+    pub spray_count: u32,
 
     /// The **Paint Mode** dropdown's current value — the paint's MEDIUM, as
     /// [`super::PaintMedia::to_u8`] (`0` Digital · `1` Watercolor · `2` Impasto · `3` Wet Paint).

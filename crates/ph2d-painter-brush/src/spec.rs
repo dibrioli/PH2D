@@ -242,6 +242,21 @@ pub struct BrushSpec {
     /// `0..1`. Each gap along the Space walk is multiplied by `1 ± amount` (clamped so it stays ≥ 1px),
     /// so dabs land irregularly instead of on a perfectly even grid. `0` = even spacing.
     pub jitter_spacing: f32,
+    /// **Count** — quantas MARCAS cada ponto do caminho deixa (o *spray / scatter*: Krita Spray,
+    /// Photoshop *Scattering → Count*, Painter *Image Hose*). `1` (o default) é o mundo de sempre,
+    /// **byte a byte**; acima disso o mesmo ponto do caminho emite `n` dabs, cada um sorteando o
+    /// SEU próprio jitter de posição / escala / rotação / cor.
+    ///
+    /// ⚠️ **É o único número que o spray traz, e a razão é que a outra metade já shipava:** o
+    /// [`Self::jitter`] (posição), o [`Self::jitter_scale`] e o [`Self::jitter_rotate`] são
+    /// exatamente o *Spread*, o *Size Jitter* e o *Angle Jitter* que um motor de spray pede — eles
+    /// deslocam **um** dab, e o que falta para virar nuvem é a CONTAGEM (doc 37 §3.4: *"é a
+    /// diferença entre tremer e espalhar"*). Dar-lhes gêmeos aqui seria a segunda porta para a
+    /// mesma pergunta, que é precisamente o que esta casa já removeu uma vez (o *Random Angle*
+    /// por-slot de Shape+Grain saiu porque o Jitter Rotate do traço já era o superset).
+    ///
+    /// Teto em [`crate::stroke::spray::SPRAY_COUNT_MAX`], **medido**.
+    pub spray_count: u32,
 
     // ── Drawing symmetry (mirror / radial; see [`crate::symmetry`]) ──────────────────────────────
     /// **Symmetry**: replicate every dab across a mirror line (X / Y / a custom line) or as N radial

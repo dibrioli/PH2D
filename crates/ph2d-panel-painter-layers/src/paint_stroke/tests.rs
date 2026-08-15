@@ -537,3 +537,30 @@ fn stroke_operation_segments_are_the_topmost_hit_at_their_centre() {
         );
     }
 }
+
+/// **A PISTA E A CONTAGEM SÃO INVERSAS, no domínio inteiro** — a metade que nenhum gate de costura
+/// consegue ver.
+///
+/// ⚠️ A projeção `contagem → pista` ([`super::jitter_card::spray_count_track`]) só sai da função como a POSIÇÃO
+/// desenhada do polegar: ela não entra no store, não move retângulo de hit e não publica evento —
+/// logo mutá-la deixa a workspace inteira verde. É o mesmo mecanismo que obrigou o anel do pincel a
+/// ter gate próprio (2026-07-19), e a cura é a mesma: afirmar a PROPRIEDADE aqui, onde ela mora.
+///
+/// A propriedade é o *seed == sample* desta casa: o painel projeta a contagem na pista e o tool
+/// projeta a pista de volta na contagem, e a volta tem de ser a identidade. Se divergirem, o polegar
+/// pousa num sítio e o pincel guarda outro número — a classe de defeito que o
+/// [[feedback_derived_coordinate_seed_must_match_sample]] nomeia.
+#[test]
+fn the_track_and_the_count_are_inverses_over_the_whole_span() {
+    use ph2d_tool_painter::SPRAY_COUNT_MAX;
+    for n in 1..=SPRAY_COUNT_MAX {
+        let mut tool = ph2d_tool_painter::PainterTool::default();
+        tool.set_brush_spray_count_norm(super::jitter_card::spray_count_track(n));
+        assert_eq!(
+            tool.brush_settings().spray_count,
+            n,
+            "a volta pela pista perdeu a contagem {n} (pista {})",
+            super::jitter_card::spray_count_track(n)
+        );
+    }
+}

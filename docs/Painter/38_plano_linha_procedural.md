@@ -46,9 +46,11 @@ Com **Type = Sketchy**, por exemplo:
 1. **O card pinta SÓ as rows do tipo escolhido.** É o `each_kind_paints_only_the_rows_it_uses` da
    §12 da física e o `knob_family()` do card do Sculpt. Row de outro tipo pintada aqui é knob morto.
 2. **O checkbox `Solid` só é pintado onde o tipo tem caminho fechado para preencher**
-   (`LineKind::honours_style()`). Sketchy/Wire/Spray produzem *muitos fios curtos*, não uma
+   (`LineKind::honours_style()`). Sketchy e Wire produzem *muitos fios curtos*, não uma
    silhueta — oferecer Solid neles seria um checkbox que não faz nada. Ver §5.1: isto é uma decisão
-   e não um detalhe.
+   e não um detalhe. ⚠️ **A frase dizia "Sketchy/Wire/Spray" e o Spray saiu dela na W5**: ele não é
+   um tipo de linha (não está no dropdown), e o que ele produz são **dabs** sobre o mesmo
+   caminho-base — a silhueta continua lá, só carimbada `n` vezes.
 3. **O dropdown não é pintado enquanto tiver uma opção só.** Na W1 o card tem apenas o checkbox; o
    dropdown nasce na W2, junto com o primeiro tipo. Um dropdown de uma linha é o mesmo controle
    morto com outra roupa.
@@ -598,16 +600,97 @@ existe para exercitar.
 
 ---
 
-### W5 — **Spray** (a contagem)
+### W5 — **Spray** (a contagem) — FECHADA (2026-08-14)
 
 ⚠️ **Temos a metade errada disto hoje:** `jitter`, `jitter_scale`, `jitter_rotate` deslocam **um**
 dab. Spray é **contagem** — `N` cópias no mesmo instante. É a diferença entre *tremer* e *espalhar*.
 
-Rows: `Count` · `Spread` · `Size Jitter` · `Angle Jitter`.
+⚠️ **E é essa frase que corrige as outras duas linhas que este plano escrevia aqui.** A wave foi
+construída como o plano manda e as duas notas dele caíram na leitura:
 
-**Onde:** o fan-out no `walk_dab` — a mesma porta única de Symmetry/Tiling ⇒ herda tudo de graça.
-Wave pequena, **e é o multiplicador**: com o Speed da W2 ela vira o **respingo** do Splatter (o
-escorrido nós já temos, e é físico — a gravidade do Wet Paint).
+**(1) As rows eram quatro; ela traz UMA.** `Spread`, `Size Jitter` e `Angle Jitter` **já shipam** —
+são o `jitter` (posição, uma fração do diâmetro), o `jitter_scale` e o `jitter_rotate` do card
+**Jitter**, e são a MESMA operação: o próprio §3.4 do doc 37 diz *"deslocam um dab"*. Construir
+gêmeos deles aqui seria a **segunda porta** para a mesma pergunta — e esta casa já removeu um caso
+idêntico, o *Random Angle* por-slot de Shape+Grain, em 2026-07-19, **porque o Jitter Rotate do traço
+era o superset**. Logo o spray traz **`Count`**, e mais nada.
+
+**(2) Ele NÃO é um `LineKind`.** `Speed`, `Sketchy` e `Wire` são leis **da linha** e mutuamente
+exclusivas — cada uma responde *que forma o traço tem*. Uma contagem de marcas é um **multiplicador
+da emissão** e **compõe com todas elas**: um chicote sprayado e um rabisco sprayado são pedidos
+legítimos, e pôr o spray naquele dropdown os tornaria **inexprimíveis**. É também o modelo do
+Photoshop (*Scattering* é um painel que empilha com o resto do pincel, não um modo) — o Krita só o
+faz motor próprio porque lá ele é uma ENGINE inteira, com o resto do pincel dentro.
+⚠️ E a §5.1 deste plano já tropeçava nisso: ela lista *"Sketchy/Wire/Spray produzem muitos fios
+curtos, não uma silhueta"*, o que é falso do Spray — ele produz **dabs**, sobre o mesmo caminho-base.
+
+**O que shipou:** `BrushSpec.spray_count` (default **1** = o mundo de sempre, byte a byte) e a row
+**Count** como a **PRIMEIRA** do card Jitter — a posição é a feature, porque é ela que transforma as
+três rows abaixo de *tremor* em *nuvem*.
+
+**Onde:** `crates/ph2d-painter-brush/src/stroke/spray.rs`. O fan-out mora em **`Stroke::stamp_at`**,
+a porta única por onde um ponto do CAMINHO vira marca — ela funde `dab_at` + `emit`, que eram
+adjacentes nos cinco sítios que as chamavam. ⚠️ **A fusão é o que dá ao spray um lugar onde
+*"quantas marcas este ponto deixa"* seja respondido uma vez:** o arremesso, os fios e o vão do
+arremesso são fatos do **caminho** (uma vez); o jitter e o carimbo são fatos da **marca** (`n` vezes).
+A alternativa era um canal de estado (`dab_at` guarda a posição pré-jitter, `emit` a lê) — o *um
+fato, duas cópias* que este módulo já pagou caro.
+
+⚠️ **A nuvem é centrada no ponto do CAMINHO, nunca na primeira marca dele.** O desenho barato
+(*"derive cada cópia do dab base por mais um deslocamento"*) espalha por **duas** vezes o raio que o
+slider promete e desloca a nuvem do caminho; ele tem gate próprio (`the_cloud_is_centred_on_the_path_
+point_not_on_its_first_mark`) e a mutação que o instala sangra só nele.
+
+⚠️ **As cópias não passam pelo `Stroke::emit`, e é correção e não economia** — aquela porta alimenta
+a memória dos fios e preenche o vão do arremesso, e as duas são do CAMINHO: uma nuvem de oito marcas
+empurraria oito pontos para a memória do Sketchy (o traço costurando-se ao próprio spray) e mandaria
+o preenchedor percorrer oito vezes o mesmo vão. O gate é `the_spray_does_not_feed_the_thread_memory`.
+
+⚠️ **O gate do fan-out é `allows_jitter()`, o MESMO do resto do sorteio por-dab** — Drag Dot,
+Anchored e Grid Stamp põem **uma** marca deliberada (o Anchored é um carimbo ancorado no clique; o
+Grid Stamp promete que todo carimbo pousa no centro de uma célula), e é por isso que eles já não
+sorteiam nada.
+
+**Symmetry e Tiling saem de graça:** toda cópia sai por `push_symmetric`, exatamente como o dab base
+⇒ o fan-out fica no mesmo estrangulamento onde a Symmetry já se pendura, e o Tiling é a jusante.
+
+⚠️ **A PRIMEIRA nuvem tem de PARECER uma nuvem, e sem isso o `Count` era um controle MORTO** — medido,
+não suposto: o pincel de fábrica tem `strength`/`flow` em `1,0`, então `n` marcas empilhadas pintam
+**exatamente** o que uma pinta, e o artista sobe a contagem para ver a tela não mudar. A cura é o
+molde do `toggle_brush_impasto`: ao pedir a **primeira** marca extra (`1 → n`), o tool arma
+`SPRAY_DEFAULT_SPREAD` no `Jitter → Position` **só se ele ainda estiver no zero de fábrica** — *arma
+um default, nunca impõe política*, e a metade que a torna segura é a segunda (um espalhamento
+escolhido pelo artista, inclusive um zero deliberado, nunca é reescrito). Quatro gates, quatro
+mutações.
+
+**Teto: `SPRAY_COUNT_MAX = 16`, MEDIDO** contra o kill de 8 ms/evento — a tabela de 27 células (três
+raios × nove contagens) mora no doc-comment da const, levantada por
+`measure_the_spray_budget_per_event`.
+
+⚠️ **A escolha do CANTO é a decisão da constante, e a tabela mostra por quê:** o custo é um PRODUTO
+(`contagem × área`), então um teto escalar tem de dizer onde mediu. No canto que os dois sliders
+alcançam **juntos** (`r = BRUSH_SIZE_MAX_PX`) o teto seria **4** — e a razão é que **um único dab ali
+já custa 2,582 ms**, um terço do orçamento *antes de existir spray nenhum*: derivar dali seria deixar
+um slider que **nunca foi capado por tempo** ditar o teto de um que é, a forma invertida do §0. No
+outro extremo, a referência r=24 das outras tabelas deste plano comporta **mais de 256**, o que daria
+uma pista cuja faixa útil vive nos primeiros 8% — legítimo pelo relógio, ilegítimo pelo controle. O
+`16` é o pincel GRANDE de verdade (r=200), e o preço de o número ser um está nomeado: 16× de margem
+no canto barato, e oito marcas estouram o quadro num pincel de 512 px.
+
+⚠️ **E a PRIMEIRA tabela desta wave era CEGA, pelo motivo mais fácil de não ver:** a sonda clampa em
+`SPRAY_COUNT_MAX`, então as linhas `24 / 32 / 48 / 64` mediram todas **a mesma nuvem de 16** — 0,309
+/ 0,310 / 0,318 / 0,312 ms, uma tabela **plana** que se lê como *"o custo satura"* e significa *"a
+sonda parou de medir"*. **A sonda que escolhe o teto não pode ser capada pelo teto.** A 2ª corrida,
+com a const levantada, também trouxe um artefato: a **primeira** espiral de uma corrida paga o
+*first-touch* e mediu o dobro das seguintes (`count 1` mais caro que `count 2`, não-monotônico onde a
+lei é linear) — hoje ela é descartada.
+
+**Gates:** 8 no motor (`spray_tests.rs`) + 3 de costura por PONTEIRO (`seam_spray.rs`) + 1 de
+round-trip no painel. ⚠️ **A projeção `contagem → pista` só sai da função como a posição DESENHADA do
+polegar** — não entra no store, não move retângulo de hit, não publica evento —, então mutá-la deixa
+a workspace inteira verde; é o mesmo mecanismo que obrigou o anel do pincel a ter gate próprio, e a
+cura é a mesma: afirmar a propriedade onde ela mora (`the_track_and_the_count_are_inverses_over_the_
+whole_span`, no crate do painel). **10 mutações, 10 sangram.**
 
 ---
 
@@ -700,7 +783,7 @@ porque *os três são o mesmo assunto*.
 | **W2** | o dropdown + **Speed** | média | W0 (1) |
 | **W3** | **Sketchy** | média | W0 (3) |
 | **W4** | **Wire** | pequena | W3 |
-| **W5** | **Spray** | pequena | — |
+| **W5** | **Spray** — só o `Count`, e fora do dropdown | pequena | — |
 | **W6** | Ribbon · Rough | — | só com pedido |
 
 ⚠️ **A W1 e a W2 são independentes** — se o Enio quiser ver o card mais cedo, a W1 sozinha já entrega

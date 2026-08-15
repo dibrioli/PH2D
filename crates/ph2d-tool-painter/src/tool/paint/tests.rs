@@ -16,10 +16,14 @@ mod measure_dirty_overclaim;
 mod measure_gpu_frontier; // o pool dos cinco planos do traço escreve o que a alocação escrevia
 #[path = "solid_deposit_tests.rs"]
 mod solid_deposit_tests;
+#[path = "spray_defaults_tests.rs"]
+mod spray_defaults_tests; // W5: a primeira nuvem parece uma nuvem
+#[path = "spray_probe.rs"]
+mod spray_probe; // W5 do plano 38: o custo por evento de `n` marcas — o teto do Count
 #[path = "thread_deposit_tests.rs"]
 mod thread_deposit_tests;
 #[path = "thread_probe.rs"]
-mod thread_probe; // W3 do plano 38: o custo por evento que o teto da densidade EXIGE // W3 do plano 38: o Sketchy no produto // o Style: Solid no produto (plano 38 §1.1)
+mod thread_probe; // W3/W4 do plano 38: o custo por evento que os tetos do Sketchy e do Wire EXIGEM
 
 #[path = "measure_penup_cost.rs"]
 mod measure_penup_cost; // o que custa FECHAR um traço — a irmã do `measure_pendown_cost`

@@ -202,6 +202,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     jitter_scale: 0.0,
     jitter_rotate: 0.0,
     jitter_spacing: 0.0,
+    spray_count: 1,
     // Watercolor section — the `watercolor` gate (off) guarantees neutrality; the params carry the
     // when-enabled defaults (mirrors BrushSpec::default).
     // The medium: `0` = Digital, matching the three master flags below being off. The fallback is what

@@ -265,8 +265,7 @@ impl Stroke {
             self.stamp_cell(self.spec.grid_cell_at(p.pos), out);
         } else if self.spec.stroke_method.emits_on_begin() {
             let pr = self.method_pressure(p.pressure);
-            let dab = self.dab_at(p.pos, pr, self.method_overlap(), self.arc_len);
-            self.emit(dab, out);
+            self.stamp_at(p.pos, pr, self.method_overlap(), self.arc_len, out);
             self.tot_samples = self.tot_samples.wrapping_add(1);
         }
         self.warmup_gate(out);
@@ -378,8 +377,7 @@ impl Stroke {
         self.accum = 0.0;
         if self.spec.dash_on(self.tot_samples) {
             let pr = self.method_pressure(pressure);
-            let d = self.dab_at(a, pr, self.method_overlap(), self.arc_len);
-            self.emit(d, out);
+            self.stamp_at(a, pr, self.method_overlap(), self.arc_len, out);
         }
         self.tot_samples = self.tot_samples.wrapping_add(1);
         self.walk_space(StrokePoint { pos: b, pressure }, out);
@@ -429,8 +427,8 @@ impl Stroke {
         while self.airbrush_accum_s >= rate {
             self.airbrush_accum_s -= rate;
             let pr = self.method_pressure(self.last_pressure);
-            let d = self.dab_at(self.last_pos, pr, 1.0, self.arc_len); // per-event: no spacing attenuation
-            self.emit(d, out);
+            // per-event: no spacing attenuation
+            self.stamp_at(self.last_pos, pr, 1.0, self.arc_len, out);
             self.tot_samples = self.tot_samples.wrapping_add(1);
             emitted += 1;
             // Stall guard: a frame-driven tick can hand us a huge `dt` after a hitch (GC/resize/
@@ -502,8 +500,7 @@ impl Stroke {
                 crate::heading::advance(self.heading, dir, traveled - advanced, smooth_len);
             advanced = traveled;
             if self.spec.dash_on(self.tot_samples) {
-                let d = self.dab_at(pos, pressure, overlap, base_arc + traveled);
-                self.emit(d, out);
+                self.stamp_at(pos, pressure, overlap, base_arc + traveled, out);
             }
             self.tot_samples = self.tot_samples.wrapping_add(1);
             self.accum = 0.0;
@@ -573,8 +570,7 @@ impl Stroke {
     /// Emit one dab at `pos`/`pressure` (the per-event methods). Per-event dabs carry no
     /// space-attenuation (that normalises *dense spacing*, which these don't have).
     fn emit_single(&mut self, pos: [f32; 2], pressure: f32, arc: f32, out: &mut Vec<Dab>) {
-        let d = self.dab_at(pos, pressure, 1.0, arc);
-        self.emit(d, out);
+        self.stamp_at(pos, pressure, 1.0, arc, out);
         self.tot_samples = self.tot_samples.wrapping_add(1);
     }
 
@@ -657,6 +653,8 @@ mod curve;
 mod dab_build;
 /// A INÉRCIA do gesto: a velocidade por tique e o arremesso do `Speed Shapes` (plano 38 W2).
 mod speed;
+/// **A PORTA ÚNICA** por onde um ponto do caminho vira marca, e o SPRAY que a multiplica (W5).
+pub mod spray;
 /// A MEMÓRIA do traço e os FIOS que ela costura — `Sketchy` (W3) e `Wire` (W4).
 pub mod threads;
 pub use curve::flatten_catmull_rom;

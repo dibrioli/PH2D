@@ -263,6 +263,11 @@ pub const PAINTER_BRUSH_JITTER_SCALE: NodeId = hash_node_id("painter_brush.jitte
 pub const PAINTER_BRUSH_JITTER_ROTATE: NodeId = hash_node_id("painter_brush.jitter_rotate");
 /// Brush "Jitter Spacing" slider (`0..1`; per-gap dab-spacing scatter, PH2D extra). `SetValue` → `set_brush_jitter_spacing`.
 pub const PAINTER_BRUSH_JITTER_SPACING: NodeId = hash_node_id("painter_brush.jitter_spacing");
+/// Brush "Count" slider — o SPRAY (a pista `0..1` mapeia no vão inteiro `1..=SPRAY_COUNT_MAX`):
+/// quantas marcas cada ponto do caminho deixa. `SetValue` → `set_brush_spray_count_norm`.
+pub const PAINTER_BRUSH_SPRAY_COUNT: NodeId = hash_node_id("painter_brush.spray_count");
+/// O chip numérico do Count (a contagem, escrita).
+pub const PAINTER_BRUSH_SPRAY_COUNT_CHIP: NodeId = hash_node_id("painter_brush.spray_count_chip");
 
 /// The per-dab randomize **slider** ids (Randomize-Color Hue/Sat/Value + Jitter Scale/Rotate/Spacing).
 /// Lets the panel dispatch forward them all with one `.contains` check (mirror of

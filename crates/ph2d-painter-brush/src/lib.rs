@@ -76,7 +76,7 @@ pub mod sampler;
 pub mod sculpt;
 #[cfg(test)]
 #[path = "sketchy_tests.rs"]
-mod sketchy_tests; // os gates do Sketchy (plano 38 W3)
+mod sketchy_tests; // os gates do Sketchy (W3) e do Wire (W4) — plano 38
 pub mod smear;
 pub mod smear_field;
 /// **A FORMA SÓLIDA** — o caminho fechado do gesto vira região preenchida, com cobertura exata
@@ -87,6 +87,9 @@ mod spec_default;
 mod spec_frame;
 #[cfg(test)]
 mod spec_tests;
+#[cfg(test)]
+#[path = "spray_tests.rs"]
+mod spray_tests; // os gates do Spray — a contagem de marcas (plano 38 W5)
 pub mod stamp;
 pub mod stamp_color;
 pub mod stamp_ramped;

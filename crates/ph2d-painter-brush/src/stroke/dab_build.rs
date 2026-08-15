@@ -11,7 +11,29 @@ use super::*;
 impl Stroke {
     /// Build a dab at `pos`/`pressure`, applying pressure dynamics, the space-attenuation
     /// `overlap` multiplier, and the per-dab jitter (scale / rotate / colour, then position).
+    ///
+    /// ⚠️ **Ela ARREMESSA e só então constrói**, e as duas metades estão separadas porque o
+    /// arremesso é um fato do CAMINHO (acontece uma vez por ponto) e a construção é um fato da
+    /// MARCA (acontece uma vez por cópia do spray) — ver [`mod@super::spray`].
     pub(super) fn dab_at(&mut self, pos: [f32; 2], pressure: f32, overlap: f32, arc: f32) -> Dab {
+        let thrown = self.throw(pos, arc);
+        self.dab_from(thrown, pressure, overlap, arc)
+    }
+
+    /// Constrói UMA marca na posição onde a tinta já caiu (pós-arremesso) — a metade de
+    /// [`Self::dab_at`] que o spray repete.
+    ///
+    /// ⚠️ **Cada chamada sorteia o SEU jitter** (escala → rotação → cor → posição, na ordem fixa de
+    /// sempre), e é exatamente isso que faz de `n` cópias uma nuvem em vez de `n` carimbos
+    /// empilhados. Um pincel sem jitter nenhum devolve `n` marcas idênticas — degenerado, honesto,
+    /// e o slider ao lado é a cura.
+    pub(super) fn dab_from(
+        &mut self,
+        thrown: [f32; 2],
+        pressure: f32,
+        overlap: f32,
+        arc: f32,
+    ) -> Dab {
         // Per-dab Scale / Rotate / Randomize-Color in a FIXED draw order, gated like position jitter
         // (Drag Dot / Anchored opt out). Drawn BEFORE the position jitter so it keeps its old slot
         // when these are off — an all-off brush draws nothing and matches the no-jitter baseline.
@@ -28,8 +50,7 @@ impl Stroke {
         // where along the stroke this dab happens to fall.
         //
         // O ARREMESSO entra antes do jitter — e a ordem NÃO é load-bearing; o porquê (medido) está
-        // no doc do [`Stroke::throw`].
-        let thrown = self.throw(pos, arc);
+        // no doc do [`Stroke::throw`], que o chamador já rodou.
         let center = self.apply_jitter(thrown, radius);
         let mut dab = Dab {
             center,

@@ -5,6 +5,7 @@
 
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::PanelEvent;
+use ph2d_painter_brush::stroke::spray::{SPRAY_COUNT_MAX, SPRAY_DEFAULT_SPREAD};
 use ph2d_painter_brush::{BrushSpec, MirrorAxis, TextureSettings};
 
 impl PainterTool {
@@ -164,6 +165,11 @@ impl PainterTool {
                     // Symmetry segment count: the `0..1` track maps onto the integer span 3..12.
                     x if x == core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS => {
                         self.set_symmetry_segments((3.0 + v * 9.0).round() as u32);
+                        true
+                    }
+                    // Spray Count: a pista `0..1` mapeia no vão inteiro `1..=SPRAY_COUNT_MAX`.
+                    x if x == core_ids::PAINTER_BRUSH_SPRAY_COUNT => {
+                        self.set_brush_spray_count_norm(v);
                         true
                     }
                     // Per-layer-colour opacity box (`0..100`) → the source document layer's opacity.
@@ -356,6 +362,28 @@ impl PainterTool {
         self.paint.brush.jitter_spacing = t.clamp(0.0, 1.0);
     }
 
+    /// Set o **Count** do spray — quantas marcas cada ponto do caminho deixa — a partir da pista
+    /// `0..1` do slider, mapeada no vão inteiro `1..=SPRAY_COUNT_MAX`.
+    ///
+    /// ⚠️ **A pista é INTEIRA e o mapeamento mora aqui**, como no `Symmetry → Segments`: o widget
+    /// fala `0..1` porque é um slider, e quem sabe que o número é uma contagem é o tool.
+    pub fn set_brush_spray_count_norm(&mut self, t: f32) {
+        let span = f32::from(u16::try_from(SPRAY_COUNT_MAX - 1).unwrap_or(u16::MAX));
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let n = (1.0 + t.clamp(0.0, 1.0) * span).round() as u32;
+        let n = n.clamp(1, SPRAY_COUNT_MAX);
+        let was_single = self.paint.brush.spray_count <= 1;
+        self.paint.brush.spray_count = n;
+        // ⚠️ **A PRIMEIRA nuvem tem de PARECER uma nuvem** — sem espalhamento as `n` marcas caem umas
+        // sobre as outras e, no pincel de fábrica (`strength`/`flow` em 1,0), pintam exatamente o que
+        // uma pinta: o slider seria um controle morto. Arma-se o default **uma vez**, na transição
+        // `1 → n`, e **só sobre o zero de fábrica** — é o molde do `toggle_brush_impasto`: arma um
+        // default, nunca impõe política, e um espalhamento que o artista escolheu fica onde está.
+        if was_single && n > 1 && self.paint.brush.jitter == BrushSpec::default().jitter {
+            self.paint.brush.jitter = SPRAY_DEFAULT_SPREAD;
+        }
+    }
+
     /// Reset the **Randomize Color** section to defaults (no per-dab colour scatter). Plain paint
     /// state — no undo / pixel touch. The Color-Ramp reset lives in [`super::ramp`], Tiling in
     /// [`super::tiling`].
@@ -403,6 +431,7 @@ impl PainterTool {
         b.jitter_scale = d.jitter_scale;
         b.jitter_rotate = d.jitter_rotate;
         b.jitter_spacing = d.jitter_spacing;
+        b.spray_count = d.spray_count;
         b.dash_ratio = d.dash_ratio;
         b.dash_samples = d.dash_samples;
         b.input_samples = d.input_samples;

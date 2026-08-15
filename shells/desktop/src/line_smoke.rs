@@ -14,7 +14,13 @@
 //! ```
 //!
 //! **O `--release` não é preferência:** a densidade cheia do Sketchy põe ~16 mil px de fio num traço
-//! de 312 px, e o Wire desenha quatro cordas por dab. Em debug isso lê como *"o pincel travou"*.
+//! de 312 px, o Wire desenha quatro cordas por dab, e o Spray multiplica cada dab por até dezasseis.
+//! Em debug isso lê como *"o pincel travou"*.
+//!
+//! ⚠️ **O SPRAY não mora no card Line, e isso é a decisão da W5** — ele não é um tipo de linha, é um
+//! multiplicador da emissão que compõe com todos eles (o *Scattering* do Photoshop, não um modo).
+//! Mora no card **Jitter** da seção Stroke, onde ficam as três rows que ele transforma de *tremor*
+//! em *nuvem*. A cena é a mesma porque o material é o mesmo: um canvas e um pincel grande.
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::Vec2;
@@ -78,8 +84,16 @@ pub(crate) fn spawn_if_enabled(
                  desaparece: fica so o arame."
             );
             println!(
-                "[line-smoke]   E o CONTROLE: com Type = None o pincel tem de pintar exatamente \
-                 como sempre pintou."
+                "[line-smoke]   SPRAY: nao e um Type -- ele MULTIPLICA qualquer um deles. Va a \
+                 secao STROKE -> card JITTER -> a PRIMEIRA row, 'Count'. Com 1 o traco e o de \
+                 sempre; ao pedir a SEGUNDA marca o 'Position' logo abaixo sai do zero sozinho \
+                 (senao as copias empilhariam e o slider pareceria morto) -- confira que ele mexeu, \
+                 e depois mande nele. O Scale e o Rotation ao lado dao tamanho e angulo a cada \
+                 marca. Combine com Speed ou Sketchy: eles compoem."
+            );
+            println!(
+                "[line-smoke]   E o CONTROLE: com Type = None e Count = 1 o pincel tem de pintar \
+                 exatamente como sempre pintou."
             );
             Some(bits)
         }

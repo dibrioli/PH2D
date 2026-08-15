@@ -12,17 +12,15 @@
 use crate::paint_brush_rows::paint_dropdown_row;
 use crate::paint_brush_top::{paint_checkbox_row, paint_slider_chip_row};
 use crate::state;
-use ph2d_editor_core::ids::{
-    self as core_ids, painter_brush_jitter_unit_option_id, painter_brush_stroke_method_option_id,
-};
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use ph2d_editor_core::ids::{self as core_ids, painter_brush_stroke_method_option_id};
+use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 use ph2d_tool_painter::{
-    BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
-    BRUSH_JITTER_ABS_MAX_PX, BrushSettings, JitterUnit, StrokeMethod,
+    BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX, BrushSettings,
+    StrokeMethod,
 };
 
 /// Paint the Stroke section starting at `y`, returning the next `y`. The two dropdowns (Method,
@@ -308,133 +306,6 @@ pub(crate) fn paint_stroke_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Them
     }
 }
 
-/// Paint the **Jitter** group inside a decorative rounded-rect card: a titled panel holding the
-/// per-dab **Position** scatter (unit-aware) + its Unit, the **Scale** scatter, and (texture only)
-/// the **Rotation** scatter — so the three jitter modes read clearly. The card background is drawn
-/// first (its height pre-computed from the row count), then the rows on top. Returns the next `y`.
-fn paint_jitter_card(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    y: f32,
-    brush: BrushSettings,
-) -> f32 {
-    let pad = Spacing::Sm.px();
-    let xs = Spacing::Xs.px();
-    let sm = Spacing::Sm.px();
-    let font = TypeToken::Sm.px();
-    let title_h = ROW_H_PX;
-    let inner_w = (content_w - pad * 2.0).max(0.0);
-    // Pre-compute the card height. The 4 slider rows (Position / Scale / Spacing / Rotation) use the
-    // ADAPTIVE slider-with-chip, which DEMOTES the label to its own row when the card's inner width is
-    // narrow — so each slider row is taller then. `slider_with_chip_height` reports that exact height, so
-    // the card background grows to contain them (the bug: a fixed `ROW_H` per row overflowed the card and
-    // the next section overlapped — Enio 2026-06-29). Unit is a (non-adaptive) dropdown row (ROW_H + Sm).
-    let slider_row_h = ph2d_editor_core::widget::slider_with_chip_height(ROW_H_PX, inner_w) + xs;
-    let rows_h = slider_row_h * 4.0 + (ROW_H_PX + sm); // LITERAL-PX-OK: 4 slider rows (Position/Scale/Spacing/Rotation)
-    let card_h = pad + title_h + rows_h + xs;
-    let card = Rect::new(x, y, content_w, card_h);
-    fill_rounded_rect(
-        ctx.scene,
-        card,
-        Radius::Md.px(),
-        resolve(ColorToken::Bg1, theme),
-    );
-    stroke_rounded_rect(
-        ctx.scene,
-        card,
-        Radius::Md.px(),
-        StrokeToken::Default.px(),
-        resolve(ColorToken::Border, theme),
-    );
-    let inner_x = x + pad;
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        "Jitter",
-        inner_x,
-        y + pad + (title_h - font) * 0.5,
-        font,
-        inner_w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let mut iy = y + pad + title_h;
-    // Position: the main per-dab position scatter. The slider track is `0..1` in BOTH units (View maps
-    // the absolute px onto the `0..MAX` track); the tool maps it back per the unit.
-    let jval = if brush.jitter_unit == JitterUnit::View.to_u8() {
-        brush.jitter_absolute_px / BRUSH_JITTER_ABS_MAX_PX
-    } else {
-        brush.jitter
-    };
-    iy = paint_slider_chip_row(
-        ctx,
-        theme,
-        inner_x,
-        inner_w,
-        iy,
-        "Position",
-        core_ids::PAINTER_BRUSH_JITTER,
-        core_ids::PAINTER_BRUSH_JITTER_CHIP,
-        jval,
-    );
-    // Unit (Brush / View) for the Position scatter.
-    let (ny, open) = paint_dropdown_row(
-        ctx,
-        theme,
-        inner_x,
-        inner_w,
-        iy,
-        "Unit",
-        core_ids::PAINTER_BRUSH_JITTER_UNIT,
-        brush.jitter_unit,
-        jitter_unit_name(brush.jitter_unit),
-    );
-    iy = ny;
-    if let Some(r) = open {
-        state::set_pending_brush_jitter_unit_dd(Some((r, brush.jitter_unit)));
-    }
-    // Scale: per-dab radius scatter.
-    iy = paint_slider_chip_row(
-        ctx,
-        theme,
-        inner_x,
-        inner_w,
-        iy,
-        "Scale",
-        core_ids::PAINTER_BRUSH_JITTER_SCALE,
-        core_ids::PAINTER_BRUSH_JITTER_SCALE_CHIP,
-        brush.jitter_scale,
-    );
-    // Spacing: per-gap scatter of the dab spacing (always relevant — placement, not appearance).
-    iy = paint_slider_chip_row(
-        ctx,
-        theme,
-        inner_x,
-        inner_w,
-        iy,
-        "Spacing",
-        core_ids::PAINTER_BRUSH_JITTER_SPACING,
-        core_ids::PAINTER_BRUSH_JITTER_SPACING_CHIP,
-        brush.jitter_spacing,
-    );
-    // Rotation: per-dab stamp-rotation scatter (Shape + Grain) — always shown (Enio 2026-06-28). The last
-    // row, so its returned `y` is unused (the card height is pre-computed above).
-    paint_slider_chip_row(
-        ctx,
-        theme,
-        inner_x,
-        inner_w,
-        iy,
-        "Rotation",
-        core_ids::PAINTER_BRUSH_JITTER_ROTATE,
-        core_ids::PAINTER_BRUSH_JITTER_ROTATE_CHIP,
-        brush.jitter_rotate,
-    );
-    let _ = iy;
-    y + card_h + Spacing::Sm.px()
-}
-
 /// Paint the **Method** dropdown row, returning the next `y`. When a curve with points is drawn on the
 /// canvas, a square **Save-As-Object** button (floppy icon, same size as the shape ✕ cancel button) sits at
 /// the right end of the row and the dropdown shrinks to make room. Split from [`paint_stroke_section`] for
@@ -534,14 +405,6 @@ fn stroke_method_name(m: u8) -> &'static str {
     }
 }
 
-/// Display name for a jitter-unit wire discriminant.
-fn jitter_unit_name(u: u8) -> &'static str {
-    match JitterUnit::from_u8(u) {
-        JitterUnit::Brush => "Brush",
-        JitterUnit::View => "View",
-    }
-}
-
 /// The stroke methods as dropdown options, in Blender's menu order (Dots, Drag Dot, Space, Airbrush,
 /// Anchored, Line, Arc), then the PH2D Ellipse + Polygon + Free Hand shape extensions last.
 fn stroke_method_options() -> Vec<DropdownOption<u8>> {
@@ -565,27 +428,18 @@ fn stroke_method_options() -> Vec<DropdownOption<u8>> {
         .collect()
 }
 
-/// The two jitter units as dropdown options.
-fn jitter_unit_options() -> Vec<DropdownOption<u8>> {
-    [0u8, 1]
-        .into_iter()
-        .map(|u| {
-            DropdownOption::new(
-                painter_brush_jitter_unit_option_id(u),
-                u,
-                jitter_unit_name(u),
-            )
-        })
-        .collect()
-}
-
 /// The Apply / Apply & Keep / Delete button row (split out for the LOC cap).
 mod apply;
 /// The Grid Stamp card (its own lattice's rows) — a child module, like the two beside it.
 mod grid_card;
+/// O card **Jitter** — o que RANDOMIZA uma marca (posição / escala / rotação) e, desde o plano 38
+/// W5, quantas MARCAS cada ponto do caminho deixa. Irmão dos dois ao lado, cortado por ASSUNTO: a
+/// seção percorre o TRAÇO, este card descreve a MARCA.
+mod jitter_card;
 mod op_card;
 use apply::{paint_apply_row, paint_merge_row, paint_offset_card, paint_simplify_row};
 use grid_card::paint_grid_stamp_card;
+use jitter_card::{jitter_unit_options, paint_jitter_card};
 
 #[cfg(test)]
 mod tests;

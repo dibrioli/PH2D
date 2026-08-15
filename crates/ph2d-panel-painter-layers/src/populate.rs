@@ -95,6 +95,8 @@ fn register_brush_inputs(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_SCALE,
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_ROTATE,
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_SPACING,
+        // Spray Count (`1..=SPRAY_COUNT_MAX`; o chip dele usa o link mapped-integer abaixo).
+        ph2d_editor_core::ids::PAINTER_BRUSH_SPRAY_COUNT,
         ph2d_editor_core::ids::PAINTER_BRUSH_DASH_RATIO,
         ph2d_editor_core::ids::PAINTER_BRUSH_DASH_LENGTH,
         ph2d_editor_core::ids::PAINTER_BRUSH_INPUT_SAMPLES,

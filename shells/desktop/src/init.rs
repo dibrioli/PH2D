@@ -426,6 +426,7 @@ pub(crate) fn build_initial_state(
         sim,
         present,
         camera,
+        canvas_zoom: crate::canvas_zoom::CanvasZoom::default(),
         asset_db,
         logical_texture_map,
         atlas_is_real,

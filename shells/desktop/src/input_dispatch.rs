@@ -3060,7 +3060,11 @@ impl App {
         if !over_panel && let Some(gfx) = self.gfx.as_mut() {
             // Wheel up (positive dy) zooms IN (smaller height_world).
             let factor = 0.9_f32.powf(dy / 16.0);
-            gfx.camera.zoom(factor);
+            // ⚠️ **A roda escreve o DESTINO; quem move a câmera é o quadro** (`crate::canvas_zoom`).
+            // O `camera.zoom(factor)` que morava aqui fazia do gesto mais repetido do app o único
+            // movimento da tela que salta.
+            gfx.canvas_zoom.wheel(gfx.camera.height_world, factor);
+            self.any_input_this_frame = true;
         } else {
             let evt = ph2d_host::WheelEvent {
                 x: self.last_pointer.0,

@@ -70,6 +70,8 @@ mod build_smoke_drive;
 /// A cena de smoke do **Expand** (Outline Stroke + Offset Path) — `PH2D_BUILD_SMOKE=17`.
 mod build_smoke_expand;
 mod build_smoke_router;
+/// A lei do **zoom do canvas** — a roda escreve um destino, o quadro publica o vivo.
+mod canvas_zoom;
 mod chrome_hit;
 /// Teclado do palette de "Add Node" (busca/filtro, Enter/Backspace/Esc).
 mod command_palette_input;

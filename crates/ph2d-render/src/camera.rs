@@ -62,12 +62,22 @@ impl Camera2d {
     /// `factor == 1.0` is a no-op. Non-finite factors are also no-ops
     /// (defensive against NaN coming from misconfigured trackpads).
     pub fn zoom(&mut self, factor: f32) {
+        self.height_world = Self::zoomed(self.height_world, factor);
+    }
+
+    /// **A LEI do zoom, sem a câmera** — `height_world` vezes `factor`, cravado no intervalo.
+    ///
+    /// ⚠️ Existe porque o zoom passou a ter **dois tempos**: a roda escreve um destino e o quadro
+    /// publica o vivo (`shells/desktop/src/canvas_zoom.rs`). Quem compõe o destino não tem uma
+    /// `Camera2d` para mutar, e uma segunda cópia do clamp seria a segunda resposta a *"até onde
+    /// se pode aproximar?"* — divergindo no dia em que um dos dois limites se mover. A
+    /// [`Self::zoom`] delega, então continua a existir **uma** lei.
+    #[must_use]
+    pub fn zoomed(height_world: f32, factor: f32) -> f32 {
         if !factor.is_finite() || factor <= 0.0 {
-            return;
+            return height_world;
         }
-        let next = (self.height_world * factor)
-            .clamp(Self::ZOOM_MIN_HEIGHT_WORLD, Self::ZOOM_MAX_HEIGHT_WORLD);
-        self.height_world = next;
+        (height_world * factor).clamp(Self::ZOOM_MIN_HEIGHT_WORLD, Self::ZOOM_MAX_HEIGHT_WORLD)
     }
 
     /// Pan the camera by a screen-pixel delta — interpreted as

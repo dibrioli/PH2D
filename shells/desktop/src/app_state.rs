@@ -54,6 +54,13 @@ pub(crate) struct AppGfx {
     pub(crate) sim: SimWorld,
     pub(crate) present: PresentWorld,
     pub(crate) camera: Camera2d,
+    /// **O destino do zoom da roda** (a UI viva no gesto mais repetido do app).
+    ///
+    /// ⚠️ Ele **não é uma segunda cópia do `camera.height_world`**: é um `Option` que só existe
+    /// enquanto um gesto está em voo, semeado a partir do vivo no primeiro entalhe. Fora disso a
+    /// câmera é de quem a escrever — o `View · All`, o load, as cenas de smoke. Ver
+    /// [`crate::canvas_zoom`].
+    pub(crate) canvas_zoom: crate::canvas_zoom::CanvasZoom,
     /// M6 — set when PNG fixtures loaded successfully; held so the
     /// AssetDb keeps `Arc<Asset>` alive for hot-reload follow-ups.
     pub(crate) asset_db: AssetDb,

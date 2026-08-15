@@ -965,6 +965,7 @@ impl crate::App {
             sim,
             present,
             camera,
+            canvas_zoom,
             asset_db,
             atlas_is_real: _,
             script,
@@ -1043,6 +1044,13 @@ impl crate::App {
         // errada. Sem consumidor de `hover_t` a chamada é neutra: o mapa fica vazio.
         if let Some(hero) = hero_screen.as_mut() {
             hero.tick_motion(wall_dt);
+            // ⚠️ **O zoom do canvas é publicado AQUI, e a posição é load-bearing:** depois do
+            // `tick_motion` (que é quem anda o relógio deste quadro) e **antes** de qualquer
+            // extract, pintura, gizmo ou picking. A câmera é lida por ~90 sítios; publicá-la no
+            // meio do quadro faria a imagem e o cursor discordarem sobre onde o mundo está.
+            if let Some(next) = canvas_zoom.tick(camera.height_world, &mut hero.motion) {
+                camera.height_world = next;
+            }
         }
         let prev_toasts = toasts.len();
         #[allow(clippy::cast_possible_truncation)]

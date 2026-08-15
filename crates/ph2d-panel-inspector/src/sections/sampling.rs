@@ -45,8 +45,8 @@ fn uv_pair_row(
         hit_index.register(id, rect);
         let (state, value, buffer, caret, anchor) = read_number_input(store, id);
         let input = NumberInput::new(id, "", value)
-            .step(0.1)
-            .visual((state, store.hover_live(id))); // LITERAL-PX-OK: UV step
+            .step(0.1) // LITERAL-PX-OK: UV step
+            .visual((state, store.hover_live(id)));
         paint_number_input_with_buffer(
             &input,
             Some(buffer),

@@ -482,4 +482,17 @@
 /// campo nasce em `Full`, onde a porta devolve `rel_up` VERBATIM ⇒ todo projeto
 /// salvo em v80 reabre a pular exactamente como pulava, e o `physics_ecs_c9` sai
 /// byte-identico.
-pub(crate) const PROJECT_SCHEMA: u32 = 81;
+/// v82 (physics, W-Brink — A TRAVA DE BEIRADA): o `PlatformPlayer` ganhou
+/// `walk_off_ledges` e `crouch_walk_off_ledges`, apendados ao FIM ⇒ quebra dura.
+/// O `bCanWalkOffLedges` do Unreal, que ele serve a IA e ao *andar com cuidado*.
+/// ⚠️ **Os campos guardam a CAPACIDADE, nunca a trava**, e a razao e' o postcard:
+/// num `stop_at_ledges` o `false` que todo arquivo antigo traz num campo novo
+/// significaria *trava armada*, e a capacidade nasceria ligada em toda arte ja'
+/// autorada. ⚠️ **E o degrau e' o UNICO preco:** os dois nascem em `true`, onde
+/// a lei devolve o alvo VERBATIM e o sensor nem sequer casta ⇒ todo projeto
+/// salvo em v81 reabre a andar exactamente como andava, e o `physics_ecs_c9` sai
+/// byte-identico. ⚠️ **O alcance NAO e' um degrau:** ele e' DERIVADO
+/// (`v²/2a` + meia-largura) porque o knob que ele substituiu tinha o valor certo
+/// em funcao de outros dois — medido, a 8 m/s um `0,30` deixava o personagem
+/// CAIR e um `0,60` o segurava, com a fronteira exactamente em `0,533`.
+pub(crate) const PROJECT_SCHEMA: u32 = 82;

@@ -40,6 +40,7 @@ fn floor_moving(gv: Vec2) -> GroundSample {
         normal: [0.0, 1.0],
         ground_velocity: gv,
         one_way: false,
+        brink: crate::Brink::NONE,
     }
 }
 

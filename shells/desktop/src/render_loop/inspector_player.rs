@@ -138,6 +138,15 @@ pub(crate) fn build_player_info(
         glide_fall_speed: p.glide_fall_speed,
         max_fall_speed: p.max_fall_speed,
         platform_lift: p.platform_lift.tag(),
+        // ⚠️ **O chip diz `0` = pode andar para fora**, e o campo guarda a
+        // CAPACIDADE — a inversão mora aqui, na fronteira, e em nenhum outro
+        // lugar (o `u8` é o índice do chip, o `bool` é a lei).
+        walk_off_ledges: u8::from(!p.walk_off_ledges),
+        crouch_walk_off_ledges: u8::from(!p.crouch_walk_off_ledges),
+        // ⚠️ O veredito é COMPARATIVO e mora na lei, não numa segunda regra
+        // aqui: agachar é ficar mais baixo, e *mais baixo* só existe contra a
+        // altura de pé.
+        crouch_armed: p.config().crouch.armed(&p.config().ride),
         ledge_speed: p.ledge_speed,
         reaction_support: p.reaction_support,
         reaction_movement: p.reaction_movement,
@@ -431,6 +440,8 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
                 p.platform_lift = l;
             }
         }
+        PlayerFieldEdit::WalkOffLedges(v) => p.walk_off_ledges = v,
+        PlayerFieldEdit::CrouchWalkOffLedges(v) => p.crouch_walk_off_ledges = v,
         PlayerFieldEdit::LedgeSpeed(v) => p.ledge_speed = v.max(0.0),
         PlayerFieldEdit::ReactionSupport(v) => p.reaction_support = v.max(0.0),
         PlayerFieldEdit::ReactionMovement(v) => p.reaction_movement = v.max(0.0),

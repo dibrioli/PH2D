@@ -65,6 +65,23 @@ pub struct CrouchConfig {
     /// que é uma escolha. Quem quer a capacidade desligada põe zero na
     /// [`Self::height`].
     pub speed: f32,
+    /// **Ele pode andar para fora de um patamar AGACHADO?** (`W-Brink` — o
+    /// `bCanWalkOffLedgesWhenCrouching` do Unreal.)
+    ///
+    /// ⚠️ **Existe porque a resposta de pé e a resposta agachado são
+    /// genuinamente diferentes**, e o caso canónico é o único que o Unreal cita:
+    /// aproximar-se de uma beirada **a espreitar**, sem cair dela, enquanto de pé
+    /// se anda normalmente. Com um knob só, esse pedido é inexprimível.
+    ///
+    /// ⚠️ **`true` é o mundo que já shipava** — a nossa política, e o oposto do
+    /// default do Unreal: lá ele nasce `false`, o que aqui faria todo personagem
+    /// já autorado ganhar uma trava ao agachar-se por ter sido aberto num build
+    /// mais recente.
+    ///
+    /// ⚠️ **Ele só é lido enquanto AGACHADO e com o agachar ARMADO** — a porta é
+    /// a [`walk_for`], que já existe exactamente para *"o dia em que um terceiro
+    /// termo tiver de encolher"*.
+    pub walk_off_ledges: bool,
 }
 
 impl CrouchConfig {
@@ -74,6 +91,9 @@ impl CrouchConfig {
     pub const STARTING_POINT: Self = Self {
         height: 0.0,
         speed: 2.0,
+        // ⚠️ **`true` = o mundo que já shipava** (ver o doc do campo), e não o
+        // `false` do Unreal.
+        walk_off_ledges: true,
     };
 
     /// **A capacidade está autorada?**
@@ -220,11 +240,21 @@ pub fn ride_for(cfg: &CrouchConfig, ride: &RideConfig, crouched: bool) -> RideCo
     }
 }
 
-/// **A caminhada deste tique** — só a velocidade de cruzeiro muda.
+/// **A caminhada deste tique** — a velocidade de cruzeiro e a trava de beirada.
 ///
 /// ⚠️ A aceleração fica: ela é o quão depressa o personagem RESPONDE, e agachar
 /// não o torna menos responsivo — torna-o mais lento. São duas grandezas, e
 /// mexer nas duas com um knob só seria escolher por quem autora.
+///
+/// ⚠️ **O segundo termo (`W-Brink`) entrou aqui, e o doc abaixo já o previa:**
+/// a [`effective_crouched`] existe para que *"o dia em que um terceiro termo
+/// tiver de encolher, ele encolhe aqui e não em três sítios"*. A trava agachado
+/// é o segundo, e não custou um sítio novo.
+///
+/// ⚠️ **Ele só APERTA, nunca solta:** `walk_off_ledges` agachado é lido com um
+/// `&&`, então autorar `true` ali não devolve a liberdade a quem já a perdeu de
+/// pé. Um `=` faria o agachar **ligar** a caminhada para fora do patamar num
+/// personagem cujo autor a proibiu, que é a trava a fazer o contrário do nome.
 #[must_use]
 pub fn walk_for(
     cfg: &CrouchConfig,
@@ -237,6 +267,7 @@ pub fn walk_for(
     }
     WalkConfig {
         speed: cfg.speed.max(0.0),
+        walk_off_ledges: walk.walk_off_ledges && cfg.walk_off_ledges,
         ..*walk
     }
 }

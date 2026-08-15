@@ -104,6 +104,36 @@ pub const INSP_PLAYER_LIFT_POLICY_IDS: [NodeId; 3] = [
     hash_node_id("insp_player_lift_policy_none"),
 ];
 
+/// **Ele pode andar para fora de um patamar?** (`W-Brink`) — o
+/// `bCanWalkOffLedges` do Unreal.
+///
+/// ⚠️ **A row diz a CAPACIDADE, não a trava**, e o rótulo tem de casar com o
+/// campo: guardando *pode andar*, o `false` que todo arquivo antigo traz num
+/// campo novo significaria *trava armada*, e a capacidade nasceria ligada em
+/// toda arte já autorada. Ver o doc do campo no componente.
+///
+/// ⚠️ **Fora dos cards**, como a irmã acima: um segmentado mede a própria
+/// altura e a moldura de um card é medida pela CONTAGEM de rows.
+pub const INSP_PLAYER_WALK_OFF: NodeId = hash_node_id("insp_player_walk_off");
+/// As opções do chip acima — `0` = pode andar para fora (o mundo que já
+/// shipava), `1` = pára na beirada.
+pub const INSP_PLAYER_WALK_OFF_IDS: [NodeId; 2] = [
+    hash_node_id("insp_player_walk_off_yes"),
+    hash_node_id("insp_player_walk_off_stop"),
+];
+
+/// **E AGACHADO?** (`W-Brink`) — o `bCanWalkOffLedgesWhenCrouching` do Unreal.
+///
+/// ⚠️ **Só é pintada com o AGACHAR autorado**, porque sem ele a row é um
+/// controle que não pode agir: a [`ph2d_platformer::walk_for`] devolve a config
+/// de pé quando o agachar não está armado, e este número nunca é lido.
+pub const INSP_PLAYER_CROUCH_WALK_OFF: NodeId = hash_node_id("insp_player_crouch_walk_off");
+/// As opções do chip acima — a mesma leitura da irmã de pé.
+pub const INSP_PLAYER_CROUCH_WALK_OFF_IDS: [NodeId; 2] = [
+    hash_node_id("insp_player_crouch_walk_off_yes"),
+    hash_node_id("insp_player_crouch_walk_off_stop"),
+];
+
 /// **Este player publica os eventos dele como SINAIS?** (`W-PlayerOut`, A3).
 ///
 /// ⚠️ **Nasce DESLIGADO**, e a razão é o custo de quem não pediu: sem isso toda

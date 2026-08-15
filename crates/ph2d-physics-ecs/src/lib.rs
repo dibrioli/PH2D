@@ -91,6 +91,11 @@ pub use ph2d_platformer::PlayerInput;
 // de perguntar os deslocamentos à porta da LEI, e a shell fala com esta crate —
 // não com a `ph2d-platformer`. Re-exportar em vez de acrescentar uma aresta de
 // `Cargo.toml` mantém a porta ÚNICA sem alargar o grafo de dependências.
+/// **A config EFETIVA do agachar** (`W-Brink`) — pela MESMA porta acima, e pelo
+/// mesmo motivo: quem pinta a row da trava de beirada agachado precisa de saber
+/// o que a lei vai de facto ler, e uma segunda cópia do `&&` na shell seria a
+/// segunda resposta a *"o agachar aperta ou solta?"*.
+pub use ph2d_platformer::walk_for;
 pub use ph2d_platformer::{
     CORNER_SAMPLES, MAX_CORNER_SAMPLES, MAX_WALL_SAMPLES, WALL_SAMPLES, corner_offsets,
     odd_samples, wall_offsets,

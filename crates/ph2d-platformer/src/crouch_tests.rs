@@ -15,6 +15,8 @@ fn armed() -> CrouchConfig {
     CrouchConfig {
         height: 0.6,
         speed: 2.0,
+        // A fixture DECLARA a premissa: agachar nao aperta a trava de beirada.
+        walk_off_ledges: true,
     }
 }
 

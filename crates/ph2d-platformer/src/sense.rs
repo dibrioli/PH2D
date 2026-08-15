@@ -75,6 +75,79 @@ impl Buoyed {
     }
 }
 
+/// **A QUINA** — o lado para o qual o chão ACABA (`W-Brink`, o
+/// `bCanWalkOffLedges` do Unreal).
+///
+/// # ⚠️ Ela é a PERNA perguntada mais à frente, e a medição é que a pôs assim
+///
+/// O primeiro corte desta wave lia a quina dos pés que PERDERAM — *o pé de fora
+/// não achou nada, logo o chão acaba* — e a sonda
+/// (`tests/measure_ledge_stop.rs`) refutou-o: sobre uma **fenda de 5 cm**, que o
+/// corpo de 40 cm atravessa sem esforço, o veredito acendia na mesma. O leque só
+/// amostra **dentro** da pegada, então *"o chão acaba"* e *"há um buraco à minha
+/// frente"* chegam-lhe idênticos — a informação que os separa está para lá do
+/// corpo, e nenhum arranjo dos pés que já existem a alcança.
+///
+/// ⚠️ **A cura não foi um sensor NOVO — foi a MESMA perna, `look` à frente:** a
+/// quina acende quando a perna inteira, castada na posição para onde o
+/// personagem anda, **não acha chão nenhum**. E é isso que torna a trava exacta
+/// em vez de aproximada: *a perna é quem o segura*, então recusar exactamente
+/// onde ela não o seguraria faz a trava e o leque concordarem **por
+/// construção** — ele pára onde de facto cairia, e atravessa tudo o que de facto
+/// atravessa.
+///
+/// # ⚠️ O limiar entre um DEGRAU e uma QUINA não é escolhido — é o alcance da perna
+///
+/// Um pé que ache chão mais abaixo, ainda dentro de `float_height +
+/// cling_distance`, responde e **não** faz quina: descer um degrau não é cair de
+/// um patamar. O papel que o `MaxStepHeight` faz no Unreal sai aqui de um número
+/// que o artista já autorou, sem um segundo knob para discordar dele.
+///
+/// # ⚠️ Ela é de UM lado por tique, e não é economia mal-feita
+///
+/// O sensor pergunta só para onde o dedo empurra — o mesmo desenho do flanco
+/// ([`crate::wall`], *"na direção em que o jogador empurra"*). E não se perde
+/// nada: a trava só sabe **cortar** um alvo, e o alvo do lado em que ninguém
+/// empurra já é zero.
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+pub struct Brink(pub Option<f32>);
+
+impl Brink {
+    /// Chão à frente — o neutro, e o que toda cena que não arma a trava produz.
+    pub const NONE: Self = Self(None);
+
+    /// A quina está à **direita** (`+1`).
+    pub const RIGHT: Self = Self(Some(1.0));
+
+    /// A quina está à **esquerda** (`−1`).
+    pub const LEFT: Self = Self(Some(-1.0));
+
+    /// **O alvo da caminhada, depois da quina** — a porta única da trava.
+    ///
+    /// ⚠️ **Ela CORTA um alvo, nunca o inverte:** o lado com quina fica limitado
+    /// a zero *naquele sentido*, e o sentido oposto passa intacto — é o que
+    /// permite **andar para longe** da beirada em que se parou, em vez de ficar
+    /// preso nela.
+    ///
+    /// ⚠️ **[`Self::NONE`] devolve o alvo VERBATIM**, e é isso — e não um `if`
+    /// no chamador — que mantém byte-idêntica toda cena que não arma a trava.
+    #[must_use]
+    pub fn clamp_target(self, target: f32) -> f32 {
+        match self.0 {
+            Some(s) if s > 0.0 => target.min(0.0),
+            Some(_) => target.max(0.0),
+            None => target,
+        }
+    }
+
+    /// **Há quina para o lado em que este `drive` empurra?** — a leitura, para
+    /// quem DESENHA e para quem reporta; a lei usa o [`Self::clamp_target`].
+    #[must_use]
+    pub fn toward(self, drive: f32) -> bool {
+        self.0.is_some_and(|s| s * drive > 0.0)
+    }
+}
+
 /// **O que o sensor de chão viu.** `None` no chamador significa *"nada ao
 /// alcance"*, e a lei lê isso como estar no ar.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -137,6 +210,17 @@ pub struct GroundSample {
     /// arrancar nem parar. Não é um valor inválido a rejeitar — é o limite que a
     /// escala descreve, e ele sai da própria aritmética sem um `if`.
     pub grip: f32,
+    /// **Para que lado o chão ACABA** (`W-Brink`) — ver [`Brink`] para o que a
+    /// pergunta é e por que ela é feita à frente do corpo.
+    ///
+    /// ⚠️ **[`Brink::NONE`] reduz LITERALMENTE ao mundo de antes desta wave**, e
+    /// é por isso que toda cena que não arma a trava fica byte-idêntica: ela
+    /// devolve o alvo verbatim, sem um ramo que alguém possa esquecer.
+    ///
+    /// ⚠️ **Sem a trava armada o sensor NÃO CASTA**, e é por isso que ela é um
+    /// campo aqui e não um argumento: quem decide se vale a pena perguntar é a
+    /// mesma config que a lei consome ([`crate::brink_probe_wanted`]).
+    pub brink: Brink,
 }
 
 impl GroundSample {

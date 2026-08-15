@@ -96,10 +96,10 @@ pub use react::{Reaction, ReactionConfig, push_transfer};
 pub use ride::{
     RideConfig, Support, damping_axis, ride_hold, ride_spring, ride_support_on_ground, within_reach,
 };
-pub use sense::{Buoyed, GroundSample, PlayerInput};
+pub use sense::{Brink, Buoyed, GroundSample, PlayerInput};
 pub use slope::{Footing, FootingKind, footing, footing_verdict, is_grounded, no_uphill};
 pub use swim::{SwimConfig, SwimState, swim_motor, swim_rise, swim_step, vertical_drive};
-pub use walk::{WalkConfig, facing_step, walk};
+pub use walk::{WalkConfig, brink_probe_wanted, facing_step, walk};
 pub use wall::{
     GrabState, MAX_WALL_SAMPLES, WALL_SAMPLES, WallConfig, WallHit, WallLaunch, WallProbe,
     WallSample, cling, grab_step, odd_samples, wall_launch, wall_offsets, wall_probe_wanted,
@@ -612,6 +612,10 @@ pub fn player_motor(
             // recusada não há plataforma que carregue ninguém.
             ground_velocity: footing.map_or([0.0, 0.0], |s| s.ground_velocity),
             ground_normal: footing.map(|s| s.normal),
+            // ⚠️ Do chão que a lei ACEITOU, pelo mesmo motivo da linha acima:
+            // sobre uma rampa recusada não se está em pé, logo não há quina de
+            // que se possa cair a andar.
+            brink: footing.map_or(Brink::NONE, |s| s.brink),
             air_jumps_left: jump.state.air_jumps_left,
             dash_charged: dash.state.charged,
             grab_left: (cfg.wall.grab_stamina - grab.spent).max(0.0),

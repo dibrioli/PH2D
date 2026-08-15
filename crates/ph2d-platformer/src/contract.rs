@@ -212,6 +212,11 @@ pub struct PlayerView {
     pub ground_velocity: Vec2,
     /// A normal do chão que a lei ACEITOU.
     pub ground_normal: Option<Vec2>,
+    /// **De que lado o chão acaba sob os pés** (`W-Brink`) — o FATO, e não
+    /// *"a trava está a agir"*: quem desenha quer a quina mesmo com a trava
+    /// desligada, e derivar *"agiu"* daqui é uma leitura do consumidor
+    /// ([`crate::Brink::toward`] mais o knob), nunca um segundo campo.
+    pub brink: crate::Brink,
     /// Quantos pulos do ar ainda restam.
     pub air_jumps_left: u32,
     /// O arranque está carregado.

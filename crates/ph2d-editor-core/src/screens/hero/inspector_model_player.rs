@@ -170,6 +170,18 @@ pub struct InspectorPlayerInfo {
     /// `PlatformLift::tag` da politica autorada (`0` Full · `1` UpOnly ·
     /// `2` Nothing), que E' o indice do chip.
     pub platform_lift: u8,
+    /// **Ele pode andar para fora de um patamar?** (`W-Brink`) — `0` pode (o
+    /// mundo que já shipava), `1` pára na beirada. O índice É o do chip.
+    pub walk_off_ledges: u8,
+    /// **E agachado?** — a mesma leitura. Só é PINTADA com o agachar autorado.
+    pub crouch_walk_off_ledges: u8,
+    /// **O agachar está autorado?** — o que decide se a row acima é oferecida.
+    ///
+    /// ⚠️ Não é um campo do artista: é o veredito da
+    /// [`ph2d_platformer::CrouchConfig::armed`], perguntado UMA vez pelo shell,
+    /// porque ele é comparativo (agachar é ficar mais baixo, e *mais baixo* só
+    /// existe contra a altura de pé, que é outro campo).
+    pub crouch_armed: bool,
     /// Quanto do peso volta ao chao (W6).
     pub reaction_support: f32,
     /// Quanto da caminhada volta ao chao (W6).
@@ -379,6 +391,11 @@ pub enum PlayerFieldEdit {
     /// **O que a plataforma da ao pulo ao larga-la** (`W-Leave`) — o `tag` da
     /// politica; ver `ids::INSP_PLAYER_LIFT_POLICY`.
     PlatformLift(u8),
+    /// **Ele pode andar para fora de um patamar?** (`W-Brink`) — `true` = pode,
+    /// que é o mundo que já shipava; ver `ids::INSP_PLAYER_WALK_OFF`.
+    WalkOffLedges(bool),
+    /// **E agachado?** — a lei lê os dois com um `&&`, então isto só APERTA.
+    CrouchWalkOffLedges(bool),
     /// Quanto do peso volta ao chao (W6).
     ReactionSupport(f32),
     /// Quanto da caminhada volta ao chao (W6).

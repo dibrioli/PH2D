@@ -218,6 +218,8 @@ impl crate::App {
             // que e' a fonte. O compilador e' o gate: um segundo braco com o
             // mesmo literal e' `unreachable`.
             "118" => self.physics_smoke_leave(),
+            // ⚠️ **O NUMERO E' CONTADO, nunca escolhido** — lido deste `match`.
+            "119" => self.physics_smoke_brink(),
             _ => self.physics_smoke_drop(),
         }
 

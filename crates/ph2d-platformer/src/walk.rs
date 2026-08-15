@@ -60,7 +60,7 @@
 //! contra "não consigo arrancar", e sem ele a razão entre os dois seria fixa. É
 //! por isso que esta lei chega DEPOIS daquela.
 
-use crate::{GroundSample, Motor, Vec2, perp_cw};
+use crate::{Brink, GroundSample, Motor, Vec2, perp_cw};
 
 /// **PARA ONDE ELE OLHA** — a direção que o eixo de caminhada deixou.
 ///
@@ -126,6 +126,26 @@ pub struct WalkConfig {
     /// rampa — a resposta do `slopeLimit` da Unity e do `floor_max_angle` do
     /// Godot, pela mesma razão.
     pub max_slope_deg: f32,
+    /// **Ele PODE andar para fora de um patamar?** (`W-Brink` — o
+    /// `bCanWalkOffLedges` do Unreal, que o serve para IA e para *andar com
+    /// cuidado*.)
+    ///
+    /// ⚠️ **`true` é o mundo que já shipava, e devolve o alvo VERBATIM** — sem
+    /// a trava armada o sensor nem sequer casta ([`crate::brink_probe_wanted`]),
+    /// então uma cena que nunca a autora não paga um raio nem um `if`.
+    ///
+    /// ⚠️ **Ela governa ANDAR, e só isso.** Pular da beirada continua a
+    /// funcionar (outra lei), ser LEVADO por uma esteira ou por uma plataforma
+    /// para fora dela também — a caminhada mede tudo *relativo ao chão*, e o que
+    /// esta trava corta é o alvo relativo, não o transporte. É o que o nome
+    /// promete, e a alternativa (cortar o transporte) faria a trava desmentir a
+    /// plataforma em que o personagem está de pé.
+    ///
+    /// ⚠️ **Ela NÃO alcança o arranque nem um empurrão** ([`crate::dash`],
+    /// `launch_player`): os dois escrevem velocidade por cima da caminhada, de
+    /// propósito, e um `bCanWalkOffLedges` que travasse um *dash* seria a trava
+    /// a decidir sobre um gesto que não é andar.
+    pub walk_off_ledges: bool,
 }
 
 impl WalkConfig {
@@ -140,20 +160,9 @@ impl WalkConfig {
         air_acceleration: 20.0,
         brake_scale: 1.0,
         max_slope_deg: 45.0,
+        // ⚠️ **O mundo que já shipava** — ver o doc do campo.
+        walk_off_ledges: true,
     };
-
-    /// O teto do fator de mudança de direção — 2×, o do `bevy-tnua` num 180°.
-    pub const MAX_TURN_BOOST: f32 = 2.0;
-
-    /// O cosseno do limite de rampa.
-    ///
-    /// ⚠️ **Por `libm`, nunca pelo `std`**: este número entra no `physics_ecs_c9`
-    /// pela W7, e a lei de determinismo do módulo é que 1 ulp de diferença entre
-    /// dois sistemas operacionais é um bug, não ruído.
-    #[must_use]
-    pub fn max_slope_cos(&self) -> f32 {
-        libm::cosf(self.max_slope_deg.clamp(0.0, 90.0) * core::f32::consts::PI / 180.0)
-    }
 }
 
 /// **A fração do orçamento que ESTE tique pode gastar** — `1` em toda a parte
@@ -259,7 +268,27 @@ pub fn walk(
         body_velocity[1] - ground_v[1],
     ];
     let rel_along = rel[0] * axis[0] + rel[1] * axis[1];
-    let delta = drive * cfg.speed - rel_along;
+
+    // ── A QUINA (`W-Brink`) ──────────────────────────────────────────────────
+    // ⚠️ **A trava mexe no ALVO, e mais nada** — nem num ramo, nem numa força,
+    // nem num limite de velocidade. E é isso que a torna correcta de graça: com
+    // o alvo em zero e o personagem já a correr para a beirada, `delta` fica
+    // negativo e a lei **trava com o orçamento inteiro**, que é exactamente o
+    // que travar é. Um `drive = 0` daria a mesma direcção com a fração de
+    // travagem, ou seja *mais devagar* justamente onde é preciso parar.
+    //
+    // ⚠️ **O `walk_off_ledges` devolve o alvo VERBATIM**, e é por isso que a
+    // wave inteira é byte-idêntica para quem não a arma — a quina nem sequer é
+    // castada nesse caso, mas a lei não depende disso para ser inerte.
+    let target = drive * cfg.speed;
+    let target = if cfg.walk_off_ledges {
+        target
+    } else {
+        footing
+            .map_or(Brink::NONE, |s| s.brink)
+            .clamp_target(target)
+    };
+    let delta = target - rel_along;
 
     // O fator de mudança de direção (ver o item 3 do topo).
     let turn = if cfg.speed > 0.0 {
@@ -299,6 +328,7 @@ mod tests {
             normal: [0.0, 1.0],
             ground_velocity: [0.0, 0.0],
             one_way: false,
+            brink: crate::Brink::NONE,
         }
     }
 
@@ -432,6 +462,7 @@ mod tests {
             normal: [-s, c],
             ground_velocity: [0.0, 0.0],
             one_way: false,
+            brink: crate::Brink::NONE,
         };
         let m = walk(&cfg, Some(&ramp), [0.0, 0.0], UP, 1.0, [0.0, 0.0], DT);
         assert!(m.accel[0] > 0.0, "vai para a direita: {:?}", m.accel);
@@ -459,6 +490,7 @@ mod tests {
             normal: [0.0, 1.0],
             ground_velocity: [4.0, 0.0],
             one_way: false,
+            brink: crate::Brink::NONE,
         };
         // Viajando com o vagão, sem input: nada a fazer.
         let riding = walk(&cfg, Some(&wagon), [4.0, 0.0], UP, 0.0, [0.0, 0.0], DT);
@@ -587,3 +619,13 @@ mod brake_tests;
 #[cfg(test)]
 #[path = "walk_grip_tests.rs"]
 mod grip_tests;
+
+#[cfg(test)]
+#[path = "walk_brink_tests.rs"]
+mod brink_tests;
+
+/// **A trava de beirada** (`W-Brink`) — irmã por RESPONSABILIDADE: aqui mora
+/// *quanto empurrar*, lá *até onde é seguro andar*.
+#[path = "walk_brink.rs"]
+mod brink;
+pub use brink::brink_probe_wanted;

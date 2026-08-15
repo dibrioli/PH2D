@@ -325,7 +325,12 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // QUE A PLATAFORMA DA AO PULO), apendado ao FIM. ⚠️ Nasce em `Full`,
         // onde a lei devolve o `rel_up` VERBATIM — o degrau e' so' o layout, e
         // nenhum player ja' salvo muda de comportamento.
-        (81, 13, 14),
+        // PROJECT 81→82: `PlatformPlayer` ganhou `walk_off_ledges` e
+        // `crouch_walk_off_ledges` (W-Brink — A TRAVA DE BEIRADA), apendados ao
+        // FIM. ⚠️ Nascem em `true`, onde a lei devolve o alvo VERBATIM e o
+        // sensor nem casta — o degrau e' so' o layout, e nenhum player ja' salvo
+        // muda de comportamento.
+        (82, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

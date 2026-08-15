@@ -34,6 +34,7 @@ pub(super) fn flat_at(distance: f32) -> GroundSample {
         normal: [0.0, 1.0],
         ground_velocity: [0.0, 0.0],
         one_way: false,
+        brink: crate::Brink::NONE,
         grip: GroundSample::NEUTRAL_GRIP,
     }
 }

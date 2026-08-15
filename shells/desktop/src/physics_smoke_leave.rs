@@ -35,7 +35,7 @@ use ph2d_physics_ecs::{
 /// ⚠️ **Ele é `Replace`, nunca `Combine`:** o arrasto de MUNDO é autorável no
 /// painel de física, e sob `Combine` um artista que o mexesse mudaria a
 /// velocidade desta cena sem saber que a tinha mexido.
-pub(crate) const LIFT_DRAG: f32 = 2.4525;
+pub(crate) const LIFT_DRAG: f32 = 9.81 / LIFT_SPEED;
 
 /// A velocidade que o elevador atinge — **medida** pelo gate
 /// (`the_lift_descends_at_the_speed_the_scene_claims`), não assumida.

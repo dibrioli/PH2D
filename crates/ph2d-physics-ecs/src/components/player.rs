@@ -22,73 +22,12 @@ use ph2d_platformer::{
 };
 use serde::{Deserialize, Serialize};
 
-/// **O que a plataforma dá ao pulo quando se larga ela** — o espelho serde-nativo
-/// do [`ph2d_platformer::PlatformLift`] (`W-Leave`).
-///
-/// O precedente é o [`super::CombineRule`]: a lei mora na crate pura, que **não
-/// fala serde**, e o componente carrega o espelho — uma porta de conversão, um
-/// discriminante pinado, e nenhuma tabela paralela.
-///
-/// **Append-only** — o discriminante É o valor de fio (o postcard codifica
-/// posicionalmente) e também o índice do controle segmentado da §14, sem remap.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PlatformLift {
-    /// Soma tudo: a altura autorada é medida contra a PLATAFORMA. O mundo de
-    /// antes desta wave, e o default do Godot.
-    #[default]
-    Full,
-    /// Soma só o que sobe — um elevador a descer deixa de roubar o pulo.
-    UpOnly,
-    /// Não soma nada: a altura autorada é sempre medida contra o MUNDO.
-    Nothing,
-}
-
-impl PlatformLift {
-    /// O `u8` com que esta política atravessa a fronteira da UI e volta. Uma
-    /// porta, as duas direções.
-    #[must_use]
-    pub fn tag(self) -> u8 {
-        match self {
-            PlatformLift::Full => 0,
-            PlatformLift::UpOnly => 1,
-            PlatformLift::Nothing => 2,
-        }
-    }
-
-    /// Recupera a política de um tag. `None` para um tag que nenhuma variante
-    /// reivindica — a disciplina do `BodyKind::from_tag`: quem chama decide o
-    /// que fazer com um valor que não esperava, em vez de receber um plausível.
-    #[must_use]
-    pub fn from_tag(tag: u8) -> Option<PlatformLift> {
-        match tag {
-            0 => Some(PlatformLift::Full),
-            1 => Some(PlatformLift::UpOnly),
-            2 => Some(PlatformLift::Nothing),
-            _ => None,
-        }
-    }
-
-    /// A política da LEI que este espelho descreve.
-    #[must_use]
-    pub fn law(self) -> ph2d_platformer::PlatformLift {
-        match self {
-            PlatformLift::Full => ph2d_platformer::PlatformLift::Full,
-            PlatformLift::UpOnly => ph2d_platformer::PlatformLift::UpOnly,
-            PlatformLift::Nothing => ph2d_platformer::PlatformLift::Nothing,
-        }
-    }
-
-    /// O espelho de uma política da lei — a direção inversa da [`Self::law`],
-    /// que o `PlatformPlayer::from_config` precisa.
-    #[must_use]
-    pub fn of_law(law: ph2d_platformer::PlatformLift) -> Self {
-        match law {
-            ph2d_platformer::PlatformLift::Full => PlatformLift::Full,
-            ph2d_platformer::PlatformLift::UpOnly => PlatformLift::UpOnly,
-            ph2d_platformer::PlatformLift::Nothing => PlatformLift::Nothing,
-        }
-    }
-}
+/// **Os espelhos serde-nativos das leis** — irmão por RESPONSABILIDADE: aqui
+/// mora *o que o artista autora*, lá *como uma lei da crate pura atravessa o
+/// arquivo*.
+#[path = "player_lift.rs"]
+mod lift;
+pub use lift::PlatformLift;
 
 /// **Este corpo é um player de plataforma.**
 ///
@@ -396,6 +335,24 @@ pub struct PlatformPlayer {
     /// ele se lê: o postcard é POSICIONAL, e apendar é a política de todos os
     /// degraus anteriores deste componente. A vizinhança semântica está na UI.
     pub platform_lift: PlatformLift,
+
+    /// **Ele pode andar para fora de um patamar?** (`W-Brink`) — o
+    /// `bCanWalkOffLedges` do Unreal. `true` é o mundo de antes desta wave AO
+    /// BIT, e é o valor que TODO projeto já salvo recebe.
+    ///
+    /// ⚠️ **O campo guarda a CAPACIDADE, nunca a trava**, e a razão é o postcard:
+    /// um `stop_at_ledges` faria o `false` — o default de todo arquivo antigo —
+    /// significar *trava desarmada* por acidente, mas também faria um artista
+    /// que lê o nome esperar que marcar a caixa fosse o gesto natural. Guardando
+    /// a capacidade, o gesto de LIGAR a trava é DESmarcar, e o default e o mundo
+    /// que já shipava coincidem sem um `!` em lugar nenhum.
+    pub walk_off_ledges: bool,
+    /// **Ele pode andar para fora de um patamar AGACHADO?** (`W-Brink`) — o
+    /// `bCanWalkOffLedgesWhenCrouching` do Unreal. `true` é o mundo de antes.
+    ///
+    /// ⚠️ **Ele só APERTA:** a lei lê os dois com um `&&`, então marcá-lo não
+    /// devolve a liberdade a quem a perdeu de pé — ver [`ph2d_platformer::walk_for`].
+    pub crouch_walk_off_ledges: bool,
 }
 
 impl PlatformPlayer {
@@ -421,6 +378,11 @@ impl PlatformPlayer {
                 air_acceleration: self.air_acceleration,
                 brake_scale: self.brake_scale,
                 max_slope_deg: self.max_slope_deg,
+                // ⚠️ O componente guarda *pode andar para fora*, e a lei também —
+                // um campo que guardasse a NEGAÇÃO faria o default do arquivo
+                // (`false`, o que todo projeto salvo traz) significar *trava
+                // armada*, ligando a capacidade em toda arte já autorada.
+                walk_off_ledges: self.walk_off_ledges,
             },
             jump: JumpConfig {
                 jump_height: self.jump_height,
@@ -458,6 +420,7 @@ impl PlatformPlayer {
             crouch: CrouchConfig {
                 height: self.crouch_height,
                 speed: self.crouch_speed,
+                walk_off_ledges: self.crouch_walk_off_ledges,
             },
             swim: SwimConfig {
                 speed: self.swim_speed,
@@ -546,6 +509,8 @@ impl Default for PlatformPlayer {
             glide_fall_speed: c.glide.fall_speed,
             max_fall_speed: c.fall.max_speed,
             platform_lift: PlatformLift::of_law(c.jump.platform_lift),
+            walk_off_ledges: c.walk.walk_off_ledges,
+            crouch_walk_off_ledges: c.crouch.walk_off_ledges,
         }
     }
 }

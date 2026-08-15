@@ -50,6 +50,16 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
                 .unwrap_or(0);
             Some(PlayerFieldEdit::PlatformLift(i as u8))
         }
+        WidgetEvent::Click(id) if ids::INSP_PLAYER_WALK_OFF_IDS.contains(&id) => {
+            // ⚠️ `0` = pode andar para fora (o mundo que já shipava), `1` = pára.
+            // O índice É a resposta, como nos irmãos acima.
+            Some(PlayerFieldEdit::WalkOffLedges(
+                id == ids::INSP_PLAYER_WALK_OFF_IDS[0],
+            ))
+        }
+        WidgetEvent::Click(id) if ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS.contains(&id) => Some(
+            PlayerFieldEdit::CrouchWalkOffLedges(id == ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS[0]),
+        ),
         WidgetEvent::Click(id) if id == ids::INSP_PLAYER_ADD => Some(PlayerFieldEdit::Add),
         WidgetEvent::Click(id) if id == ids::INSP_PLAYER_REMOVE => Some(PlayerFieldEdit::Remove),
         WidgetEvent::Click(id) if id == ids::INSP_PLAYER_FIT => {

@@ -253,7 +253,7 @@ impl PhysicsBridge {
             let leg_hits = leg.per_foot;
             let hit = leg.hit;
 
-            let sample = hit.as_ref().map(|h| {
+            let mut sample = hit.as_ref().map(|h| {
                 // ⚠️ **De que é feito este chão?** (W-Surface) — perguntado ao
                 // MESMO raio que ganhou o leque, senão o personagem andaria no
                 // gelo e derraparia na madeira dentro do mesmo tique. Uma cena
@@ -282,6 +282,11 @@ impl PhysicsBridge {
                         h.normal,
                         surface,
                     ),
+                    // ⚠️ **A QUINA é preenchida ADIANTE** (`W-Brink`), e não
+                    // aqui: ela é a única grandeza deste sample que não sai do
+                    // raio vencedor — ela precisa do `drive`, que só é lido
+                    // depois, e de um segundo cast que quase nenhum tique faz.
+                    brink: ph2d_platformer::Brink::NONE,
                 }
             });
 
@@ -291,6 +296,24 @@ impl PhysicsBridge {
             // ela toma saem das portas da lei — nunca de uma re-derivação aqui.
             // Sem sensor a lei devolve deslocamento zero, então o custo dos
             // raios só existe onde a assistência pode agir.
+            let input = self.player_input.get(&entity).copied().unwrap_or_default();
+
+            // ── A QUINA (`W-Brink`) ──────────────────────────────────────────
+            // ⚠️ A pergunta *"vale a pena castar?"* e o cast vivem no `player_leg`,
+            // que e' quem sabe COMO a perna responde — aqui so' se diz a quem.
+            player_leg::fill_brink(
+                &self.world,
+                b.handle,
+                &cfg,
+                origin,
+                reach,
+                passing,
+                b.rest.layer,
+                input.drive,
+                was.crouch.crouched,
+                sample.as_mut(),
+            );
+
             let stand = footing(&cfg, sample.as_ref(), UP);
 
             // ⚠️ **Sob Snap a velocidade é a NOSSA** (K5): um corpo cinemático
@@ -352,8 +375,6 @@ impl PhysicsBridge {
             } else {
                 None
             };
-
-            let input = self.player_input.get(&entity).copied().unwrap_or_default();
 
             // ── O SENSOR LATERAL (W13) ───────────────────────────────────────
             // ⚠️ A pergunta *"vale a pena castar?"* é a MESMA que a lei faz para
@@ -615,71 +636,20 @@ impl PhysicsBridge {
                 });
             }
         }
-        // ⚠️ O estado é gravado para TODO player, inclusive os cujo motor é zero
-        // — e isto é **defesa em camadas, não load-bearing HOJE**, medido: pôr o
-        // push dentro do guard de motor **sobrevive à suíte inteira**.
-        //
-        // O porquê é uma coincidência da lei atual, não um desenho: todo campo do
-        // `PlayerState.jump` menos o `airborne` é função pura da entrada DESTE tick
-        // (`was_held = held`, `cut` re-derivado de `!held`), e o `airborne` só
-        // vira em ticks que necessariamente carregam motor (a decolagem tem o
-        // boost; o pouso re-arma a perna). Com os defaults, a SUBIDA tem motor
-        // exatamente zero (`takeoff_gravity = 1.0` ⇒ `extra = 0`) e mesmo assim
-        // nada se perde.
-        //
-        // ⚠️ A coincidência MORRE na W8: coyote timer e jump buffer são contadores
-        // que andam por tick, e um deles congelado durante a subida é um bug **sem
-        // sintoma** — o pulo continua saindo, só a tolerância deixa de existir. É
-        // por isso que a linha nasce agora, e não quando alguém a perseguir.
-        for (entity, next) in states {
-            self.player_state.insert(entity, next);
-        }
-        // ⚠️ **ANTES do `step` deste tique**, que é o que torna a descida
-        // observável já na resolução de contatos que vem a seguir — armá-la
-        // depois daria um tique em que a plataforma ainda é sólida e o
-        // personagem seria empurrado de volta para cima antes de começar a cair.
-        for (entity, handle, platform) in drops {
-            self.player_drop.insert(entity, platform);
-            self.world.set_body_drop_through(handle, true);
-        }
-        // ⚠️ **O deslocamento vai ANTES dos motores, e a ordem é a lei da wave:**
-        // ele corrige ONDE o corpo está, e o motor age a partir dali. Depois, o
-        // impulso deste tique teria sido calculado numa posição que o corpo já
-        // não ocupa — pequeno hoje, e o tipo de discordância que ninguém acha
-        // quando um passe futuro passar a ler a pose entre os dois.
-        for (handle, delta) in nudges {
-            self.world.nudge_body(handle, delta);
-        }
-        for (handle, accel, boost) in motors {
-            self.world.apply_player_motor(handle, accel, boost);
-        }
-        // ⚠️ Lista separada dos motores pelo mesmo motivo que as reações: elas
-        // descrevem **quando** o impulso é pago, não só a quem. E o corpo segue
-        // a ser ACORDADO — quem o faz é o `wake_up` do `apply_impulse` lá dentro,
-        // não o `apply_player_motor`; um player em repouso perfeito pode ter o
-        // motor agrupado exactamente zero e mesmo assim ser segurado por este
-        // canal, e sem o despertar ele deixaria de ser integrado.
-        for (handle, hold) in holds {
-            self.world.queue_player_hold(handle, hold);
-        }
-        // ⚠️ **Depois dos motores, e a ordem não importa hoje** — os dois são
-        // impulsos e o solver os soma —, mas as listas são separadas porque
-        // descrevem corpos diferentes: um `retain` futuro que filtre players não
-        // pode levar as reações que eles devem ao chão junto.
-        for r in reactions {
-            self.world
-                .apply_player_reaction(r.ground, r.player, r.accel, r.boost, r.at);
-        }
-        // ── O MOVIMENTO CINEMÁTICO (W-KinMove) ───────────────────────────────
-        // O laço COLHEU; quem APLICA é o irmão `player_kinmove` — ver
-        // `Self::apply_kin_moves` para a ordem e o porquê dela.
-        self.apply_kin_moves(moves, dt);
-        // ── E A SAÍDA (`bridge::player_out`) ─────────────────────────────────
-        // ⚠️ **POR ÚLTIMO, e a ordem é a lei:** a tabela de vistas é a memória
-        // contra a qual o laço acabou de diferenciar, então reescrevê-la antes
-        // do fim faria os players seguintes deste MESMO tique compararem-se com
-        // uma vista já avançada.
-        self.publish_player_tick(views, events);
+        self.apply_player_results(
+            dt,
+            apply::PlayerResults {
+                states,
+                drops,
+                nudges,
+                motors,
+                holds,
+                reactions,
+                moves,
+                views,
+                events,
+            },
+        );
     }
 }
 
@@ -711,6 +681,11 @@ mod push;
 /// (o cast toma `&self`), lá a ponte APLICA (a pose toma `&mut self`).
 #[path = "player_kinmove.rs"]
 mod kinmove;
+
+/// **O QUE A PONTE ESCREVE** — a outra metade do mesmo corte: aqui o laço COLHE,
+/// lá ela APLICA. Ver o doc do módulo para a lei da ordem.
+#[path = "player_apply.rs"]
+mod apply;
 use push::Push;
 
 /// O handle do rapier, nomeado sem importar o rapier aqui — esta crate declara-se

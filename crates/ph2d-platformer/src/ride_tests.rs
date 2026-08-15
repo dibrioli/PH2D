@@ -45,6 +45,7 @@ fn flat(distance: f32) -> GroundSample {
         normal: [0.0, 1.0],
         ground_velocity: [0.0, 0.0],
         one_way: false,
+        brink: crate::Brink::NONE,
     }
 }
 
@@ -164,6 +165,7 @@ fn the_spring_damps_against_the_ground_not_the_world() {
         normal: [0.0, 1.0],
         ground_velocity: [0.0, 2.0],
         one_way: false,
+        brink: crate::Brink::NONE,
     };
     // O corpo já viaja com a plataforma: velocidade relativa ZERO.
     let m = ride_spring(&cfg, Some(&rising), [0.0, 2.0], G, UP);
@@ -227,6 +229,7 @@ fn sliding_along_the_ramp_is_not_approaching_it() {
         normal: n,
         ground_velocity: [0.0, 0.0],
         one_way: false,
+        brink: crate::Brink::NONE,
     };
     let along = [t[0] * 2.0, t[1] * 2.0];
     let m = ride_spring(&cfg, Some(&s), along, G, UP);
@@ -264,6 +267,7 @@ fn at_the_ceiling_the_leg_kills_the_whole_approach_in_one_tick() {
         normal: n,
         ground_velocity: [0.0, 0.0],
         one_way: false,
+        brink: crate::Brink::NONE,
     };
     let into = [-n[0] * 3.0, -n[1] * 3.0];
     cfg.spring_damping = RideConfig::MAX_DAMPING;

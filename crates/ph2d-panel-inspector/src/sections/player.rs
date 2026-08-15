@@ -181,6 +181,43 @@ pub(crate) fn paint_player_section(
         info.platform_lift,
     );
 
+    // **ELE PODE ANDAR PARA FORA DE UM PATAMAR?** (`W-Brink`) — fora dos cards
+    // pelo mesmo motivo da row acima.
+    yy = seg_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        "Walk Off Ledges",
+        ids::INSP_PLAYER_WALK_OFF,
+        &ids::INSP_PLAYER_WALK_OFF_IDS,
+        &["Yes", "Stop At Edge"],
+        info.walk_off_ledges,
+    );
+    // ⚠️ **Só com o AGACHAR autorado** — sem ele a `walk_for` devolve a config
+    // de pé e este número nunca é lido: a row seria um controle morto.
+    if info.crouch_armed {
+        yy = seg_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            "  ...When Crouching",
+            ids::INSP_PLAYER_CROUCH_WALK_OFF,
+            &ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS,
+            &["Yes", "Stop At Edge"],
+            info.crouch_walk_off_ledges,
+        );
+    }
+
     // **OS VERBOS da seção** — extraídos do `paint` por TETO DE LOC (o `Brake`
     // da W-Brake foi a row que o cruzou), e o corte é por responsabilidade: o pai
     // decide o que a seção MOSTRA, o filho pinta o que ela FAZ.

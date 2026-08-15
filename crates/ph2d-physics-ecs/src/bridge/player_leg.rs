@@ -118,3 +118,98 @@ pub(super) fn cast_leg(
     }
     LegRead { hit, per_foot }
 }
+
+/// **Onde a beirada está** (`W-Brink`) — a MESMA perna, castada `look` à frente.
+///
+/// ⚠️ **Nada aqui é uma segunda lei.** A pergunta é literalmente *"se eu estivesse
+/// ali, a perna acharia chão?"*, e quem a responde é a [`cast_leg`] verbatim, com
+/// as suas duas leis de redução intactas. É isso que faz a trava e o leque
+/// concordarem **por construção** — o personagem recusa andar exactamente onde
+/// deixaria de ser segurado, atravessa tudo o que o corpo de facto atravessa, e
+/// nenhum número novo decide *"isto é uma fenda ou um patamar?"*.
+///
+/// ⚠️ **A sonda MEDIU a alternativa e ela está refutada:** ler a quina dos pés
+/// que perderam acendia sobre uma **fenda de 5 cm** que o corpo de 40 cm
+/// atravessa — o leque só amostra dentro da pegada, e ali *"o chão acaba"* e
+/// *"há um buraco à frente"* são indistinguíveis (`measure_ledge_stop`).
+///
+/// ⚠️ **Um lado por tique**, o do `drive` — o desenho do flanco
+/// ([`super::player_probes::wall_rays`], *"na direção em que o jogador
+/// empurra"*), e não se perde nada porque a trava só sabe cortar um alvo.
+///
+/// ⚠️ **O alcance tem DUAS metades, e cada uma vem de quem a sabe:** a lei dá a
+/// distância de PARAGEM ([`ph2d_platformer::WalkConfig::ledge_look`], que é
+/// `v²/2a` e não conhece corpo nenhum) e a ponte soma a **meia-largura**, que é
+/// geometria que só o mundo tem. Sem a segunda parcela o alcance é o caso de
+/// fronteira e o personagem para EXACTAMENTE onde a perna o larga (medido:
+/// a 2 m/s ele caía na mesma).
+#[allow(clippy::too_many_arguments)]
+pub(super) fn brink_ahead(
+    world: &ph2d_physics::PhysicsWorld,
+    body: ph2d_physics::RigidBodyHandle,
+    cfg: &PlayerConfig,
+    origin: [f32; 2],
+    reach: f32,
+    passing: Option<ph2d_physics::ColliderHandle>,
+    layer: u8,
+    drive: f32,
+) -> ph2d_platformer::Brink {
+    let side = if drive > 0.0 { 1.0 } else { -1.0 };
+    let half_w = world
+        .body_aabb(body)
+        .map_or(0.0, |(mins, maxs)| (maxs[0] - mins[0]) * 0.5)
+        .max(0.0);
+    let ahead = [
+        origin[0] + side * (cfg.walk.ledge_look() + half_w),
+        origin[1],
+    ];
+    if cast_leg(world, body, cfg, ahead, reach, passing, layer)
+        .hit
+        .is_some()
+    {
+        ph2d_platformer::Brink::NONE
+    } else {
+        ph2d_platformer::Brink(Some(side))
+    }
+}
+
+/// **Preenche a quina na amostra**, se valer a pena perguntar (`W-Brink`).
+///
+/// ⚠️ **A pergunta *"vale a pena castar?"* é a MESMA que a lei faz**
+/// ([`ph2d_platformer::brink_probe_wanted`]), o molde exacto dos quatro sensores
+/// do `player.rs` — e ela é falsa em todo tique de todo player já autorado,
+/// porque a trava nasce desarmada.
+///
+/// ⚠️ **A config é a EFETIVA do agachar**, senão o `walk_off_ledges` agachado
+/// seria um knob que a ponte nunca consulta: pintado, guardado, e sem um raio a
+/// sustentá-lo. Ela lê a postura do tique ANTERIOR — o precedente exacto do
+/// sensor de teto —, então o primeiro tique de um agachar decide com a postura
+/// de pé. É um tique, e a alternativa seria a ponte a correr a lei do agachar
+/// por conta própria para depois a lei a correr outra vez.
+///
+/// ⚠️ **A MESMA porta ([`footing`]) é chamada aqui e logo a seguir no pai, e a
+/// resposta não pode diferir:** o único campo que muda entre as duas chamadas é
+/// a quina, que ela não lê. Guardar o veredito e reconstruí-lo seria a segunda
+/// cópia de um facto que custa duas multiplicações.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn fill_brink(
+    world: &ph2d_physics::PhysicsWorld,
+    body: ph2d_physics::RigidBodyHandle,
+    cfg: &PlayerConfig,
+    origin: [f32; 2],
+    reach: f32,
+    passing: Option<ph2d_physics::ColliderHandle>,
+    layer: u8,
+    drive: f32,
+    crouched: bool,
+    sample: Option<&mut ph2d_platformer::GroundSample>,
+) {
+    let walk_now = ph2d_platformer::walk_for(&cfg.crouch, &cfg.ride, &cfg.walk, crouched);
+    let Some(s) = sample else {
+        return;
+    };
+    let grounded = ph2d_platformer::footing(cfg, Some(&*s), [0.0, 1.0]).is_some();
+    if ph2d_platformer::brink_probe_wanted(&walk_now, grounded, drive) {
+        s.brink = brink_ahead(world, body, cfg, origin, reach, passing, layer, drive);
+    }
+}

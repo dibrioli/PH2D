@@ -26,6 +26,7 @@ fn at(dist: f32, normal: Vec2) -> GroundSample {
         normal,
         ground_velocity: [0.0, 0.0],
         one_way: false,
+        brink: crate::Brink::NONE,
     }
 }
 

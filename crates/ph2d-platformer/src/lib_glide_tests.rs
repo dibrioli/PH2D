@@ -63,6 +63,7 @@ fn on_ground() -> GroundSample {
         normal: UP,
         ground_velocity: [0.0, 0.0],
         one_way: false,
+        brink: crate::Brink::NONE,
     }
 }
 

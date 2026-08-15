@@ -208,7 +208,13 @@ pub(super) fn populate_wheel(store: &mut WidgetStore) {
 /// partida que o componente usa. Um segundo conjunto aqui seria a segunda
 /// resposta a *"com que números um player nasce?"*, e ela divergiria no dia em
 /// que a varredura da wave movesse um deles.
-pub(super) fn populate_player(store: &mut WidgetStore) {
+/// **Os CHIPS da §14** — os grupos segmentados e as dicas deles.
+///
+/// ⚠️ **Irmão de [`populate_player`] por TETO DE LOC, cortado por
+/// RESPONSABILIDADE:** aqui moram os controles que ESCOLHEM entre opções
+/// nomeadas, lá os que carregam um NÚMERO. As duas metades registam pelo mesmo
+/// `register_button_ids`, então nenhuma regra se duplica no corte.
+fn populate_player_chips(store: &mut WidgetStore) {
     // ⚠️ **O grupo do chip, registrado como os quinze da §11** — sem isto os dois
     // botões nascem pintados, no hit-index, e MORTOS sob o mouse (a cicatriz das
     // 36 células do W2c).
@@ -253,6 +259,32 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         "The platform never changes the jump: the authored height is always \
          measured against the world.",
     );
+    // O mesmo, para os dois chips da trava de beirada (`W-Brink`).
+    register_button_ids(store, &ids::INSP_PLAYER_WALK_OFF_IDS);
+    store.set_tooltip(
+        ids::INSP_PLAYER_WALK_OFF_IDS[0],
+        "He walks off ledges, like every character before this option existed.",
+    );
+    store.set_tooltip(
+        ids::INSP_PLAYER_WALK_OFF_IDS[1],
+        "He stops at the edge instead of walking off it. Jumping off still \
+         works, and so does being carried off by a platform or a belt. A gap \
+         wider than his leg can span reads as a ledge, so he stops there too.",
+    );
+    register_button_ids(store, &ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS);
+    store.set_tooltip(
+        ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS[0],
+        "Crouching does not change it: he walks off ledges if standing does.",
+    );
+    store.set_tooltip(
+        ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS[1],
+        "Crouched, he stops at the edge -- the sneak-to-the-brink move. It only \
+         tightens: it cannot give back what standing already refuses.",
+    );
+}
+
+pub(super) fn populate_player(store: &mut WidgetStore) {
+    populate_player_chips(store);
     register_button_ids(
         store,
         &[

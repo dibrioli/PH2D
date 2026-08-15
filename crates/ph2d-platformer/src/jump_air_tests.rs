@@ -20,6 +20,7 @@ fn ground() -> GroundSample {
         normal: [0.0, 1.0],
         ground_velocity: [0.0, 0.0],
         one_way: false,
+        brink: crate::Brink::NONE,
     }
 }
 

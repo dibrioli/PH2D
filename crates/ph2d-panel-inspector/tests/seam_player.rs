@@ -120,6 +120,12 @@ fn player() -> InspectorPlayerInfo {
         // herdar: um gate que chega ao estado por acidente inverte de sentido no
         // dia em que o default se move, e segue verde testando o oposto.
         platform_lift: 0,
+        // ⚠️ A fixture DECLARA a premissa em vez de a herdar: ele pode andar
+        // para fora de patamares (o mundo que já shipava), de pé e agachado, e
+        // o agachar está ARMADO para a row condicional ser alcançável.
+        walk_off_ledges: 0,
+        crouch_walk_off_ledges: 0,
+        crouch_armed: true,
         lift_momentum: 1.5,
         reaction_support: 1.0,
         reaction_movement: 0.0,
@@ -1152,6 +1158,60 @@ fn the_platform_lift_chip_reaches_the_bus_in_every_option() {
             tag,
         );
     }
+}
+
+/// **OS DOIS CHIPS DA TRAVA DE BEIRADA chegam ao barramento** (`W-Brink`).
+///
+/// ⚠️ **`0` é *pode andar para fora*, e o gate o afirma:** o campo guarda a
+/// CAPACIDADE, então o índice `0` do chip tem de mandar `true`. Uma tabela de
+/// rótulos que dissesse o contrário daria um chip que arma a trava quando o
+/// artista a desarma — pintado, vivo, e a fazer o oposto.
+#[test]
+fn the_walk_off_ledges_chips_reach_the_bus_in_every_option() {
+    for (i, allowed, tag) in [(0usize, true, "Yes"), (1, false, "Stop At Edge")] {
+        expect(
+            &click_real(player(), ids::INSP_PLAYER_WALK_OFF_IDS[i]),
+            PlayerFieldEdit::WalkOffLedges(allowed),
+            tag,
+        );
+        expect(
+            &click_real(player(), ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS[i]),
+            PlayerFieldEdit::CrouchWalkOffLedges(allowed),
+            tag,
+        );
+    }
+}
+
+/// **A row do AGACHAR só é oferecida com o agachar autorado** — sem ele a
+/// [`ph2d_platformer::walk_for`] devolve a config de pé e o número nunca é lido:
+/// a row seria um controle que não pode agir.
+///
+/// ⚠️ As duas metades no mesmo teste: a ausência sozinha passaria com uma row
+/// que nunca é pintada, e a presença sozinha com uma que é pintada sempre.
+#[test]
+fn the_crouching_row_is_offered_only_where_crouching_is_authored() {
+    let armed = painted(player());
+    let no_crouch = painted(InspectorPlayerInfo {
+        crouch_armed: false,
+        ..player()
+    });
+    let has = |rects: &[(ph2d_a11y::NodeId, Rect)]| {
+        rects
+            .iter()
+            .any(|(n, _)| *n == ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS[0])
+    };
+    assert!(has(&armed), "com o agachar autorado a row e' pintada");
+    assert!(
+        !has(&no_crouch),
+        "sem ele a row seria um controle que a lei nunca le'"
+    );
+    // E a row de PE' fica nas duas — ela nao depende do agachar.
+    let standing = |rects: &[(ph2d_a11y::NodeId, Rect)]| {
+        rects
+            .iter()
+            .any(|(n, _)| *n == ids::INSP_PLAYER_WALK_OFF_IDS[0])
+    };
+    assert!(standing(&armed) && standing(&no_crouch));
 }
 
 /// **O readout vive na face COM o comportamento, e some da face vazia.**

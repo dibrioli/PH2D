@@ -273,6 +273,51 @@ fn mix_mode(g: &mut Graph, ramp: NodeId, mode: f32) -> NodeId {
     m
 }
 
+/// **As COMPARAÇÕES** — a rampa contra um limiar constante, dobrada numa máscara.
+///
+/// ⚠️ **A fixture é escolhida pela regra que o cabeçalho deste arquivo pagou:** uma
+/// comparação é DESCONTÍNUA em valor, então um ulp de diferença no device vira um
+/// degrau inteiro de máscara e atravessa qualquer ε de valor. A rampa é `[−1, 1]`
+/// sobre 576 amostras (`t = i/575`) e o limiar é `0`, então o cruzamento cai em
+/// `i = 287,5` — **entre** duas amostras, nunca em cima de uma. As bandas de
+/// igualdade seguem a mesma regra: com `eps = 0,3` as fronteiras caem em `201,25`
+/// e `373,75`, com `0,5` em `143,75` e `431,25`. ⚠️ `eps = 0,6` foi **descartado
+/// por aritmética**: ele põe as fronteiras exatamente em `i = 115` e `i = 460`.
+///
+/// ⚠️ E o cruzamento é o que torna o par `Less`/`Greater` **não-vazio**: sem ele as
+/// duas máscaras seriam constantes e iguais, e o controle passaria sobre um kernel
+/// cego ao `op`.
+fn math_compare(g: &mut Graph, ramp: NodeId, op: f32, eps: f32) -> NodeId {
+    let signed = stretch(g, ramp, -1.0, 1.0);
+    let m = g.add_node("value.math");
+    g.set_param(m, "op", op);
+    g.set_param(m, "epsilon", eps);
+    connect(g, signed, m);
+    let t = constant(g, 0.0);
+    connect_to(g, t, m, 1);
+    m
+}
+
+fn math_less(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    math_compare(g, ramp, 8.0, 0.0)
+}
+
+fn math_greater(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    math_compare(g, ramp, 10.0, 0.0)
+}
+
+fn math_equal_narrow(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    math_compare(g, ramp, 12.0, 0.3)
+}
+
+fn math_equal_wide(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    math_compare(g, ramp, 12.0, 0.5)
+}
+
+fn math_not_equal_wide(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    math_compare(g, ramp, 13.0, 0.5)
+}
+
 fn mix_screen(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
     mix_mode(g, ramp, 4.0)
 }
@@ -340,6 +385,35 @@ static CASES: &[Case] = &[
     Case {
         label: "mix Overlay",
         build: mix_overlay,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "math Less (limiar 0)",
+        build: math_less,
+        differs_from_previous: false,
+    },
+    // O par que prova que o device LÊ o `op`: mesma entrada, máscaras opostas.
+    Case {
+        label: "math Greater (limiar 0)",
+        build: math_greater,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "math Equal (eps 0,3)",
+        build: math_equal_narrow,
+        differs_from_previous: true,
+    },
+    // ⚠️ **O par que prova que o device lê o `epsilon`**: MESMO op, MESMA entrada,
+    // só a tolerância difere. Um kernel que ignorasse `params.epsilon` passaria em
+    // todas as outras linhas desta tabela e falha nesta.
+    Case {
+        label: "math Equal (eps 0,5)",
+        build: math_equal_wide,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "math Not Equal (eps 0,5)",
+        build: math_not_equal_wide,
         differs_from_previous: true,
     },
 ];

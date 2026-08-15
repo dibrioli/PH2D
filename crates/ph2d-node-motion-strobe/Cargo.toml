@@ -18,3 +18,7 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 # MESMO pin `=0.2.16` de ph2d-ecs / physics / wet-paint / motion-trail: uma aresta, nao um
 # pacote novo.
 libm = { version = "=0.2.16", default-features = false }
+# ph2d-curve — a FOLHA que define o que uma curva desenhada e' (o mesmo motor do
+# `value.curve` e do contour Curve do `field.remap`). Uma segunda resposta a "como
+# esta curva e' amostrada?" divergiria do editor que a desenha. Folha dep-free.
+ph2d-curve = { path = "../ph2d-curve" }

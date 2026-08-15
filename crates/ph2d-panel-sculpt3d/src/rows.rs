@@ -154,6 +154,54 @@ static BRUSH: &[Row] = &[
         level: UiLevel::Pro,
         place: Place::Knobs,
     },
+    // **A PONTA DA FAIXA**, os dois knobs que fazem dela uma faixa.
+    //
+    // ⚠️ **A pergunta é a MESMA que o motor faz** (`verb == ClayStrips`, o que a
+    // [`ph2d_sculpt3d::Footprint`] consome) — uma segunda lista de verbos aqui
+    // seria um par de sliders que não move um vértice no dia em que a moldura
+    // ganhasse um segundo consumidor.
+    Row {
+        label: "panel.sculpt3d.tip_roundness",
+        slider: ids::SCULPT3D_TIP_ROUNDNESS,
+        chip: ids::SCULPT3D_TIP_ROUNDNESS_NUM,
+        min: 0.0,
+        // ⚠️ **UM é o disco, e é alcançável de propósito** — a caixa totalmente
+        // arredondada É a distância euclidiana, então o teto do knob é a
+        // ferramenta a colapsar no Clay com portão de profundidade. Quem quiser
+        // isso pode; o que ele não pode ser é o DEFAULT (foi, e o smoke o pegou:
+        // *"parece redondo"*).
+        max: 1.0,
+        step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
+        decimals: 2,
+        get: |u| u.brush.tip_roundness,
+        set: |u, v| u.brush.tip_roundness = v,
+        show: |u| u.brush.verb == Verb::ClayStrips,
+        level: UiLevel::Pro,
+        place: Place::Knobs,
+    },
+    Row {
+        label: "panel.sculpt3d.strip_length",
+        slider: ids::SCULPT3D_STRIP_LENGTH,
+        chip: ids::SCULPT3D_STRIP_LENGTH_NUM,
+        // ⚠️ **O piso é `1`, e não `0`:** o número é *quantos raios a faixa mede
+        // ao longo do caminho*, então abaixo de um a pegada seria mais CURTA que
+        // larga — uma faixa atravessada, que é o oposto do que o nome diz. O
+        // motor recusa `0` de qualquer forma (`Strip::new` devolve `None`), e um
+        // slider que alcança um valor que o motor recusa é um controle que
+        // mente.
+        min: 1.0,
+        // O teto é MEDIDO pela consulta que ele paga: a pegada alcança
+        // `√(1 + L²)` raios, então `4` já pede uma consulta de 4,1 raios — 17×
+        // a área de um disco. Além disso a tira deixa de caber num traço curto.
+        max: 4.0,
+        step: 0.25, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
+        decimals: 2,
+        get: |u| u.brush.strip_length,
+        set: |u, v| u.brush.strip_length = v,
+        show: |u| u.brush.verb == Verb::ClayStrips,
+        level: UiLevel::Pro,
+        place: Place::Knobs,
+    },
     // ⚠️ **Ela NÃO é um seletor de falloff, e a distinção é da REFERÊNCIA.** O
     // canal de máscara do original tem curva PRÓPRIA — `(1 − d)^{2(1 − hardness)}`
     // (`Masking.js:66`) — enquanto as dez tools de geometria multiplicam pela

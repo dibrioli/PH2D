@@ -1911,15 +1911,64 @@ vértice*).
 Sem schema, sem ADR, sem crate nova, sem dep nova; os ids dos verbos são
 `hash_node_id` e o array cresceu de 16 para 17 com o gate a cobrar.
 
-⚠️ **PENDENTE DE SMOKE — `PH2D_SCULPT3D_SMOKE=29`.** As perguntas de olho: a
-tira tem **topo chato** onde o Draw faz domo · ela **acompanha uma curva em S** ·
-um **toque** sai redondo (a decisão, não o bug) · e não há **canto comido** no
-fim de uma tira.
+⛔ **1º SMOKE REPROVOU: *"parece redondo"* (Enio) — e ele estava certo, com o §0
+a morder em casa.** O default que eu shipei era `tip_roundness = 1.0`, e nessa
+ponta a caixa arredondada **É** a distância euclidiana: a faixa saía disco.
+
+⚠️ **O número tinha fonte, e era a fonte ERRADA.** `DNA_brush_types.h:264` diz
+`tip_roundness = 1.0` — e esse é o default do pincel **GENÉRICO**, não o desta
+tool; o que declara por-tool é o `BKE_brush_sculpt_reset`, que **não está no
+clone** (a §7.1 outra vez). Eu peguei o único número citável e deixei-o definir o
+produto — *nunca deixe o fallback definir o produto*, na forma mais literal
+possível.
+
+⚠️ **E a byte-identidade nunca dependeu dele.** Quem a carrega é a
+[`Footprint::Disc`], que é a rota dos outros dezasseis verbos; a faixa é nova e
+não tem mundo anterior a preservar. Eu confundi *a âncora da MÁQUINA* com *o
+default do PRODUTO*.
+
+**A propriedade que decide foi MEDIDA** — um dab redondo arrastado deixa uma
+LENTE (afina nas pontas), um de quina reta deixa uma tira de **lados
+paralelos**. Largura do depósito em sete secções ao longo do caminho:
+
+| roundness | larguras | ponta ÷ meio |
+|---|---|---|
+| 0,00 | `0,8` nas sete | **1,00** |
+| 0,25 | `0,7` nas sete | **1,00** |
+| 1,00 | `0,5 0,5 0,6 0,6 0,6 0,5 0,5` | **0,83** |
+
+⇒ **`tip_roundness = 0.25`, declarado como NOSSO**: mesmo lado paralelo da quina
+viva, o maior platô da varredura (**23,7 %** dos vértices movidos contra 16,3 %
+em `0`), e a quina ainda arredondada o bastante para não virar degrau numa malha
+grossa. O `strip_length` fica em **1,0** — e a medição diz que é o certo: *a tira
+nasce do TRAÇO*, é a quina reta que faz os lados paralelos, e o esticão é um
+segundo eixo de estilo.
+
+⚠️ **E o default tinha passado por 214 gates.** Todas as fixtures deste arquivo
+passavam a dureza **explícita**, então nenhuma o exercitava — *um default só é
+testado por um teste que não o menciona*, a lei que a wave do Mirror já tinha
+escrito noutro módulo. O gate novo
+(`the_shipped_default_lays_a_strip_with_parallel_sides`) mede a LARGURA, não a
+altura, e traz o CONTROLE da ponta redonda ao lado.
+
+**E os dois knobs ganharam ROW** (`Tip roundness` · `Strip length`, Pro,
+oferecidos pela MESMA porta que o motor pergunta). ⚠️ **Duas mutações
+sobreviveram antes do gate delas existir** — tirar as rows da tabela e alargar o
+`show` para `always` deixavam a suíte do painel inteira verde: um motor com knobs
+inalcançáveis, e dois sliders mortos em dezasseis das dezassete ferramentas.
+⚠️ **O piso do `strip_length` é `1` e não `0`**, porque abaixo de um a pegada
+seria mais curta que larga — e porque o motor **recusa** `0`: *um slider que
+alcança um valor que o motor recusa é um controle que mente*.
+
+⚠️ **PENDENTE DE RE-SMOKE — `PH2D_SCULPT3D_SMOKE=29`.** As perguntas de olho: a
+tira tem **topo chato e lados paralelos** onde o Draw faz domo · ela **acompanha
+uma curva em S** · um **toque** sai redondo (a decisão, não o bug) · não há
+**canto comido** no fim de uma tira · e os dois knobs novos aparecem em **Pro com
+a faixa em mãos**, e em nenhum outro verbo.
 
 **Aberto na W6:** o **Multiplane Scrape** e o **Clay Thumb** reusam esta moldura;
 o **Blob** é o Crease com o pinch invertido; o **Draw Sharp** segue bloqueado
-pela tabela ausente (§7.18). E os dois knobs da faixa (`tip_roundness`,
-`strip_length`) **ainda não têm row no painel** — hoje só os defaults shipam.
+pela tabela ausente (§7.18).
 
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 

@@ -1685,3 +1685,40 @@ fn the_field_width_row_exists_only_where_the_field_does_and_the_chip_lands() {
         "a fileira é de Pro e está no Basic"
     );
 }
+
+/// **OS DOIS KNOBS DA FAIXA APARECEM COM A FAIXA, E COM MAIS NADA.**
+///
+/// ⚠️ **Este gate nasceu de DUAS mutações sobreviventes:** tirar as rows da
+/// tabela e alargar o `show` para `always` deixavam a suíte do painel inteira
+/// VERDE. O primeiro é um motor com knobs que o artista não alcança; o segundo
+/// são dois sliders mortos em dezasseis das dezassete ferramentas.
+///
+/// ⚠️ **Pro nas duas metades**, pela mesma razão que o
+/// `a_conditional_row_is_absent_with_the_wrong_tool` já documenta: em Basic a
+/// metade negativa passaria pelo motivo ERRADO.
+#[test]
+fn the_strip_knobs_are_painted_for_the_strip_and_for_nothing_else() {
+    let with = |verb: Verb| {
+        let mut ui = Sculpt3dUi::default();
+        ui.brush.verb = verb;
+        ui.ui_level = UiLevel::Pro;
+        let (mut host, mut state) = arrange(ui);
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        [ids::SCULPT3D_TIP_ROUNDNESS, ids::SCULPT3D_STRIP_LENGTH]
+            .map(|id| painted.iter().any(|(pid, _)| *pid == id))
+    };
+    assert_eq!(
+        with(Verb::ClayStrips),
+        [true, true],
+        "a faixa tem de oferecer a dureza da ponta e o comprimento"
+    );
+    // Os CONTROLES: os dois verbos mais próximos — o que deposita pelo mesmo
+    // `reach` (Draw) e o que também ergue um plano (Clay).
+    for verb in [Verb::Draw, Verb::Clay] {
+        assert_eq!(
+            with(verb),
+            [false, false],
+            "{verb:?} não lê a silhueta da faixa e mostrou os knobs dela"
+        );
+    }
+}

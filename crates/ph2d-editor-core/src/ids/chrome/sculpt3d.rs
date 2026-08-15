@@ -82,6 +82,15 @@ pub const SCULPT3D_REF_MODE: [NodeId; 3] = [
 /// é a MESMA porta que o motor pergunta antes de consumir o kernel. Uma fileira
 /// oferecida onde o campo não corre seria três chips que não movem um vértice —
 /// o controle morto que este painel varre a cada wave.
+/// **A DUREZA DA PONTA da faixa** — o slider e o chip numérico.
+pub const SCULPT3D_TIP_ROUNDNESS: NodeId = hash_node_id("sculpt3d.tip_roundness");
+/// O chip numérico da dureza da ponta.
+pub const SCULPT3D_TIP_ROUNDNESS_NUM: NodeId = hash_node_id("sculpt3d.tip_roundness.num");
+/// **O COMPRIMENTO da faixa**, em raios — o slider e o chip numérico.
+pub const SCULPT3D_STRIP_LENGTH: NodeId = hash_node_id("sculpt3d.strip_length");
+/// O chip numérico do comprimento da faixa.
+pub const SCULPT3D_STRIP_LENGTH_NUM: NodeId = hash_node_id("sculpt3d.strip_length.num");
+
 pub const SCULPT3D_ELASTIC_SCALES: [NodeId; 3] = [
     hash_node_id("sculpt3d.elastic_scales.0"),
     hash_node_id("sculpt3d.elastic_scales.1"),

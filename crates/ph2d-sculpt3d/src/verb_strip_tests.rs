@@ -330,3 +330,63 @@ fn the_mirrored_copy_lays_its_strip_along_its_own_path() {
         "a metade espelhada divergiu {worst:.6} sobre um pico de {peak:.6}"
     );
 }
+
+/// **O DEFAULT QUE SHIPA DEIXA UMA FAIXA, NÃO UMA LENTE** — os lados do depósito
+/// são paralelos.
+///
+/// ⚠️ **Este gate NÃO menciona `tip_roundness`, e é essa a razão de ele
+/// existir.** As outras fixtures deste arquivo passam a dureza explícita, então
+/// todas dodgeavam o default — e o default shipou **redondo**, com os 214 testes
+/// verdes e o artista a reportar *"parece redondo"* no primeiro smoke. *Um
+/// default só é testado por um teste que não o menciona* (a lei que a wave do
+/// Mirror já tinha escrito, num módulo que este não leu).
+///
+/// ⚠️ **O oráculo é a LARGURA em sete secções**, e não a altura: um dab redondo
+/// arrastado deixa uma LENTE (afina nas pontas), um dab de quina reta deixa uma
+/// tira de lados paralelos. Medido, `1,00` contra `0,83`.
+#[test]
+fn the_shipped_default_lays_a_strip_with_parallel_sides() {
+    let widths = |b: &Brush| {
+        let rest = plane_grid(N, HALF);
+        let m = stroke_along_x(b, 9);
+        let mut w = Vec::new();
+        for i in 0..7 {
+            let x = -0.3 + i as f32 * 0.1;
+            let (mut lo, mut hi) = (f32::MAX, -f32::MAX);
+            for (k, q) in rest.positions().iter().enumerate() {
+                if (q[0] - x).abs() < 0.03 && (m.positions()[k][2] - q[2]) > 0.01 {
+                    lo = lo.min(q[1]);
+                    hi = hi.max(q[1]);
+                }
+            }
+            w.push(if hi > lo { hi - lo } else { 0.0 });
+        }
+        w
+    };
+    // O pincel que SHIPA: só o verbo é escolhido, tudo o mais é default.
+    let shipped = Brush {
+        verb: Verb::ClayStrips,
+        radius: R,
+        strength: 1.0,
+        ..Brush::default()
+    };
+    let w = widths(&shipped);
+    let (mid, end) = (w[3], w[0].max(w[6]));
+    assert!(mid > 0.0, "o traço tem de depositar: {w:?}");
+    assert!(
+        end / mid > 0.95,
+        "o default tinha de deixar lados PARALELOS e afinou: {w:?}"
+    );
+
+    // O CONTROLE: uma ponta redonda é a lente, e é o que o default NÃO pode ser.
+    let round = Brush {
+        tip_roundness: 1.0,
+        ..shipped
+    };
+    let w = widths(&round);
+    let (mid, end) = (w[3], w[0].max(w[6]));
+    assert!(
+        end / mid < 0.9,
+        "o controle tinha de afinar, senão este gate não separa nada: {w:?}"
+    );
+}

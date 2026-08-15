@@ -251,13 +251,39 @@ impl Default for Brush {
             invert: false,
             plane_offset: 0.0,
             pinch: 0.5,
-            // ⚠️ **Ponta REDONDA por default, e é a âncora de identidade**: com
-            // `1` a caixa arredondada É a distância euclidiana, então o mundo
-            // que já shipa atravessa a camada da silhueta byte a byte.
-            tip_roundness: 1.0,
-            // Uma pegada QUADRADA por default. A tira é o que o artista pede
-            // esticando; nascer esticada seria escolher por ele o gesto de
-            // blocagem, e o número que a referência usa não está no clone (§7.1).
+            // ⚠️ **PONTA QUADRADA, e o `1.0` que eu shipei era o §0 mordendo em
+            // casa.** O único número citável — `DNA_brush_types.h:264`,
+            // `tip_roundness = 1.0` — é o default do pincel GENÉRICO, não o
+            // desta tool (a tabela por-tool é o `BKE_brush_sculpt_reset`, que
+            // não está no clone, §7.1). Deixei o fallback definir o produto, e o
+            // preço foi a ferramenta inteira: com `1` a caixa É a distância
+            // euclidiana, e a faixa saía redonda. *"parece redondo"* (Enio).
+            //
+            // ⚠️ **A byte-identidade nunca dependeu deste número.** Quem a
+            // carrega é a [`crate::Footprint::Disc`], que é a rota dos outros
+            // dezasseis verbos; a faixa é nova e não tem mundo anterior a
+            // preservar.
+            //
+            // ⚠️ **E o número é MEDIDO, declarado como NOSSO.** A propriedade que
+            // separa uma faixa de um domo é o traço ter **lados paralelos** —
+            // medida a largura do depósito em sete secções ao longo do caminho:
+            //
+            // | roundness | larguras | ponta ÷ meio |
+            // |---|---|---|
+            // | 0,00 | `0,8` nas sete | **1,00** |
+            // | 0,25 | `0,7` nas sete | **1,00** |
+            // | 1,00 | `0,5 0,5 0,6 0,6 0,6 0,5 0,5` | **0,83** |
+            //
+            // `0,25` dá o mesmo lado paralelo que a quina viva, o maior platô da
+            // varredura (**23,7 %** dos vértices movidos contra 16,3 % em `0`) e
+            // ainda arredonda a quina o bastante para ela não virar um degrau
+            // numa malha grossa.
+            tip_roundness: 0.25,
+            // ⚠️ **Uma pegada de LADOS IGUAIS por default, e a medição diz que
+            // é o certo:** a tira nasce do TRAÇO, não de um dab esticado — é a
+            // quina reta que faz os lados ficarem paralelos, e o esticão é um
+            // segundo eixo de estilo. `DNA_brush_types.h:265` diz `1.0` e aqui
+            // ele concorda com o que a sonda mostra.
             strip_length: 1.0,
             // O `_hardness` de fábrica da `Masking` do original.
             mask_hardness: 0.25,

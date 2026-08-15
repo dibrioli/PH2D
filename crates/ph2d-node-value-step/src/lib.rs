@@ -53,27 +53,54 @@ enum Mode {
     Hard,
     /// A smoothstep band of `width`, centred on the threshold.
     Smooth,
+    /// Perlin's **smootherstep** band — `6t⁵ − 15t⁴ + 10t³`, whose SECOND
+    /// derivative also vanishes at both ends (the Hermite cubic's does not).
+    /// Visible where the mask drives something that is itself differentiated
+    /// (a velocity, a normal): the cubic leaves a crease at the band edge that
+    /// the quintic does not.
+    Smoother,
 }
 
 impl Mode {
     fn from_param(p: f32) -> Self {
         match p.round() as i32 {
             1 => Mode::Smooth,
+            2 => Mode::Smoother,
             _ => Mode::Hard,
         }
     }
 }
 
-/// Smoothstep: the Hermite cubic `3t² − 2t³` over the band `[lo, hi]`, clamped to
-/// `[0,1]` outside it. A **degenerate band** (`hi ≤ lo`, i.e. `width = 0`)
-/// collapses to a hard step at `lo` — the same answer the Hard mode gives, so the
-/// two modes agree exactly at zero width. Transcendental-free.
-fn smoothstep(lo: f32, hi: f32, x: f32) -> f32 {
+/// The normalised position inside the band `[lo, hi]`, clamped to `[0,1]` — or,
+/// for a **degenerate band** (`hi ≤ lo`, i.e. `width = 0`), the hard answer
+/// itself.
+///
+/// ⚠️ The degenerate law lives HERE, in one place, and that is the point: *every*
+/// smooth mode has to collapse to the same hard step at zero width, not just the
+/// one that was written first. A second shaper that re-derived it would agree
+/// today and drift the day someone tunes the guard.
+fn band_t(lo: f32, hi: f32, x: f32) -> Result<f32, f32> {
     if hi <= lo {
-        return if x >= lo { 1.0 } else { 0.0 };
+        return Err(if x >= lo { 1.0 } else { 0.0 });
     }
-    let t = ((x - lo) / (hi - lo)).clamp(0.0, 1.0);
-    t * t * (3.0 - 2.0 * t)
+    Ok(((x - lo) / (hi - lo)).clamp(0.0, 1.0))
+}
+
+/// Smoothstep: the Hermite cubic `3t² − 2t³`. Transcendental-free.
+fn smoothstep(lo: f32, hi: f32, x: f32) -> f32 {
+    match band_t(lo, hi, x) {
+        Err(hard) => hard,
+        Ok(t) => t * t * (3.0 - 2.0 * t),
+    }
+}
+
+/// Smootherstep: Perlin's quintic `6t⁵ − 15t⁴ + 10t³`, in Horner form.
+/// Transcendental-free.
+fn smootherstep(lo: f32, hi: f32, x: f32) -> f32 {
+    match band_t(lo, hi, x) {
+        Err(hard) => hard,
+        Ok(t) => t * t * t * (t * (t * 6.0 - 15.0) + 10.0),
+    }
 }
 
 /// Gate one value into a `[0,1]` mask. The input is NOT clamped (a comparison is
@@ -91,6 +118,10 @@ fn step_one(v: f32, threshold: f32, width: f32, mode: Mode) -> f32 {
         Mode::Smooth => {
             let w = width.max(0.0);
             smoothstep(threshold - 0.5 * w, threshold + 0.5 * w, v)
+        }
+        Mode::Smoother => {
+            let w = width.max(0.0);
+            smootherstep(threshold - 0.5 * w, threshold + 0.5 * w, v)
         }
     }
 }
@@ -138,9 +169,11 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let vs_th = params.threshold;\n\
         let vs_x = read_v(i);\n\
         var vs_o: f32;\n\
+        let vs_w = max(params.width, 0.0);\n\
         if (vs_mode == 1) {\n\
-            let vs_w = max(params.width, 0.0);\n\
             vs_o = vs_smoothstep(vs_th - 0.5 * vs_w, vs_th + 0.5 * vs_w, vs_x);\n\
+        } else if (vs_mode == 2) {\n\
+            vs_o = vs_smootherstep(vs_th - 0.5 * vs_w, vs_th + 0.5 * vs_w, vs_x);\n\
         } else {\n\
             vs_o = select(0.0, 1.0, vs_x >= vs_th);\n\
         }\n\
@@ -154,6 +187,11 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             if (hi <= lo) { return select(0.0, 1.0, x >= lo); }\n\
             let t = clamp((x - lo) / (hi - lo), 0.0, 1.0);\n\
             return t * t * (3.0 - 2.0 * t);\n\
+        }\n\
+        fn vs_smootherstep(lo: f32, hi: f32, x: f32) -> f32 {\n\
+            if (hi <= lo) { return select(0.0, 1.0, x >= lo); }\n\
+            let t = clamp((x - lo) / (hi - lo), 0.0, 1.0);\n\
+            return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);\n\
         }\n",
     bindings: &[ColumnBinding {
         column: VALUE_COL,
@@ -225,7 +263,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.01,
         widget: ParamWidget::Slider,
     },
-    // The full width of the smooth band (Smooth mode only). `0` = a hard edge.
+    // The full width of the smooth band (Smooth/Smoother only). `0` = a hard edge.
     ParamUiHint {
         param: "width",
         label: "Width",
@@ -238,10 +276,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "mode",
         label: "Mode",
         min: 0.0,
-        max: 1.0,
+        max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Hard", "Smooth"],
+            labels: &["Hard", "Smooth", "Smoother"],
         },
     },
 ];
@@ -408,5 +446,42 @@ mod tests {
         let mut reg = NodeRegistry::new();
         register(&mut reg).unwrap();
         assert!(reg.resolve(MANIFEST.id).is_some());
+    }
+
+    /// **A quintica de Perlin acerta os mesmos tres pontos que a cubica e diverge
+    /// entre eles** -- `0`, `1/2` e `1` sao onde qualquer easing tem de coincidir
+    /// (senao nao e' a mesma rampa), e o quarto de caminho e' onde a segunda
+    /// derivada mora. Uma fixture que so' amostrasse os extremos nao distinguiria
+    /// os dois modos.
+    #[test]
+    fn smoother_agrees_at_the_ends_and_differs_in_between() {
+        let (th, w) = (0.5, 1.0); // banda [0,1]
+        for &x in &[0.0, 0.5, 1.0] {
+            let c = step_one(x, th, w, Mode::Smooth);
+            let q = step_one(x, th, w, Mode::Smoother);
+            assert!((c - q).abs() < 1e-6, "x={x}: {c} vs {q}");
+        }
+        let c = step_one(0.25, th, w, Mode::Smooth);
+        let q = step_one(0.25, th, w, Mode::Smoother);
+        assert!(
+            (c - q).abs() > 0.04,
+            "no quarto de caminho os dois tem de divergir: {c} vs {q}"
+        );
+        // A quintica e' a mais CHATA perto das pontas -- o que a torna util.
+        assert!(q < c, "a quintica sobe mais devagar no primeiro quarto");
+    }
+
+    /// **Largura zero colapsa no MESMO degrau duro nos tres modos.** A lei
+    /// degenerada mora numa funcao so' (`band_t`), e este gate e' o que prova que
+    /// o modo novo a HERDOU em vez de a re-derivar -- uma segunda copia
+    /// concordaria hoje e divergiria no dia em que alguem afinasse a guarda.
+    #[test]
+    fn a_zero_width_band_collapses_to_the_hard_step_in_every_mode() {
+        for k in -20..20 {
+            let x = k as f32 * 0.07;
+            let hard = step_one(x, 0.3, 0.0, Mode::Hard);
+            assert_eq!(step_one(x, 0.3, 0.0, Mode::Smooth), hard, "x={x}");
+            assert_eq!(step_one(x, 0.3, 0.0, Mode::Smoother), hard, "x={x}");
+        }
     }
 }

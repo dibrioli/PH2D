@@ -55,6 +55,12 @@ enum Mode {
     Floor,
     /// The multiple at or above `v` (snaps up).
     Ceil,
+    /// The multiple TOWARD ZERO — floor above zero, ceil below it (Blender
+    /// *Float to Integer > Truncate*, TD Math CHOP *Integer*). It is the one
+    /// mode that is **not** expressible as a single other mode, because it
+    /// CHANGES which one it is at the origin; the chain that fakes it is
+    /// `sign · floor(abs)` = three nodes.
+    Truncate,
 }
 
 impl Mode {
@@ -62,6 +68,7 @@ impl Mode {
         match p.round() as i32 {
             1 => Mode::Floor,
             2 => Mode::Ceil,
+            3 => Mode::Truncate,
             _ => Mode::Round,
         }
     }
@@ -80,6 +87,7 @@ fn quantize_one(v: f32, step: f32, mode: Mode) -> f32 {
         Mode::Round => n.round(),
         Mode::Floor => n.floor(),
         Mode::Ceil => n.ceil(),
+        Mode::Truncate => n.trunc(),
     };
     k * step
 }
@@ -127,6 +135,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20   var vq_k = vq_round(vq_n);\n\
         \x20   if (vq_mode == 1) { vq_k = floor(vq_n); }\n\
         \x20   else if (vq_mode == 2) { vq_k = ceil(vq_n); }\n\
+        \x20   else if (vq_mode == 3) { vq_k = trunc(vq_n); }\n\
         \x20   vq = vq_k * vq_step;\n\
         }\n\
         write_v(i, vq);\n",
@@ -205,10 +214,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "mode",
         label: "Mode",
         min: 0.0,
-        max: 2.0,
+        max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Round", "Floor", "Ceil"],
+            labels: &["Round", "Floor", "Ceil", "Truncate"],
         },
     },
 ];
@@ -359,5 +368,49 @@ mod tests {
         let mut reg = NodeRegistry::new();
         register(&mut reg).unwrap();
         assert!(reg.resolve(MANIFEST.id).is_some());
+    }
+
+    /// **Truncate e' Floor acima de zero e Ceil abaixo** -- a unica modalidade
+    /// que TROCA de identidade na origem, e por isso a unica que nenhuma das
+    /// outras exprime. Uma fixture so' com positivos nao a distinguiria do
+    /// Floor: e' por isso que ela atravessa o eixo.
+    #[test]
+    fn truncate_is_floor_above_zero_and_ceil_below() {
+        for k in 1..40 {
+            let v = k as f32 * 0.07;
+            assert_eq!(
+                quantize_one(v, 0.25, Mode::Truncate),
+                quantize_one(v, 0.25, Mode::Floor),
+                "acima de zero: v={v}"
+            );
+            assert_eq!(
+                quantize_one(-v, 0.25, Mode::Truncate),
+                quantize_one(-v, 0.25, Mode::Ceil),
+                "abaixo de zero: v={}",
+                -v
+            );
+        }
+        // E onde importa, ele DIFERE do Floor -- o par que o gate existe para
+        // separar.
+        assert_eq!(quantize_one(-0.6, 0.25, Mode::Truncate), -0.5);
+        assert_eq!(quantize_one(-0.6, 0.25, Mode::Floor), -0.75);
+    }
+
+    /// **Truncate nunca AUMENTA a magnitude** -- o que "snap para zero" promete,
+    /// afirmado como propriedade dos dois lados do eixo em vez de num ponto.
+    #[test]
+    fn truncate_never_grows_the_magnitude() {
+        for k in -60..60 {
+            let v = k as f32 * 0.037;
+            let q = quantize_one(v, 0.25, Mode::Truncate);
+            assert!(
+                q.abs() <= v.abs() + 1e-6,
+                "v={v} -> {q}: a magnitude cresceu"
+            );
+            assert!(
+                q == 0.0 || q.signum() == v.signum(),
+                "v={v} -> {q}: trocou de lado do eixo"
+            );
+        }
     }
 }

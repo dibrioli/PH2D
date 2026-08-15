@@ -78,9 +78,83 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "clamp",
             default: 1.0,
         },
+        // 0 Mix · 1 Add · 2 Subtract · 3 Multiply · 4 Screen · 5 Difference ·
+        // 6 Darken · 7 Lighten · 8 Overlay — Blender's Mix dropdown restricted to
+        // the modes that mean something on a SCALAR. `Mix` is the default and
+        // reduces literally to the lerp this node always was.
+        ParamSpec {
+            name: "blend",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// What `b` DOES to `a` before the crossfade weighs the two.
+///
+/// ⚠️ **This is not a second door onto `value.math`, and the difference is the
+/// factor.** `value.math(Multiply)` answers `a·b`; this answers `lerp(a, a·b, t)`
+/// — *`a` faded toward the product*, which is what a blend mode IS and what the
+/// arithmetic node cannot say without a second `value.mix` wired behind it. With
+/// `t = 1` the two do coincide, and that coincidence is the proof the law is the
+/// right one rather than a copy.
+///
+/// **The tonal modes assume the `[0,1]` convention** the value domain already
+/// documents (a normalised driver): `Screen` and `Overlay` are algebra about
+/// *how far from full* a number is, so on a `[0,100]` field they still compute,
+/// they just stop meaning what their names promise. Put a `value.map_range`
+/// before them, which is the same advice `value.step` gives about its threshold.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum BlendMode {
+    Mix,
+    Add,
+    Subtract,
+    Multiply,
+    Screen,
+    Difference,
+    Darken,
+    Lighten,
+    Overlay,
+}
+
+impl BlendMode {
+    fn from_param(p: f32) -> Self {
+        match p.round() as i32 {
+            1 => BlendMode::Add,
+            2 => BlendMode::Subtract,
+            3 => BlendMode::Multiply,
+            4 => BlendMode::Screen,
+            5 => BlendMode::Difference,
+            6 => BlendMode::Darken,
+            7 => BlendMode::Lighten,
+            8 => BlendMode::Overlay,
+            _ => BlendMode::Mix,
+        }
+    }
+
+    /// The target `a` is faded TOWARD. `Mix` returns `b` unchanged, so the whole
+    /// node reduces to `a + t·(b − a)` — byte-identical to the world before this
+    /// param existed. Transcendental-free (HR-5): `+ − ×` and one comparison.
+    fn apply(self, a: f32, b: f32) -> f32 {
+        match self {
+            BlendMode::Mix => b,
+            BlendMode::Add => a + b,
+            BlendMode::Subtract => a - b,
+            BlendMode::Multiply => a * b,
+            BlendMode::Screen => 1.0 - (1.0 - a) * (1.0 - b),
+            BlendMode::Difference => (a - b).abs(),
+            BlendMode::Darken => a.min(b),
+            BlendMode::Lighten => a.max(b),
+            BlendMode::Overlay => {
+                if a < 0.5 {
+                    2.0 * a * b
+                } else {
+                    1.0 - 2.0 * (1.0 - a) * (1.0 - b)
+                }
+            }
+        }
+    }
+}
 
 /// The sample of value field `v` at index `i` under the `1→N` broadcast rule: a
 /// length-1 field is held at every index; a length-N field is read element-wise;
@@ -105,7 +179,15 @@ fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
 /// `[0,1]`. Output length is `max` of the input lengths under the broadcast rule;
 /// a length that is neither 1 nor the max is read leniently (element-wise, `0.0`
 /// past the end).
-fn blend(a: &[f32], b: &[f32], t: &[f32], t_connected: bool, factor: f32, clamp: bool) -> Vec<f32> {
+fn blend(
+    a: &[f32],
+    b: &[f32],
+    t: &[f32],
+    t_connected: bool,
+    factor: f32,
+    clamp: bool,
+    mode: BlendMode,
+) -> Vec<f32> {
     let n = a.len().max(b.len()).max(t.len());
     (0..n)
         .map(|i| {
@@ -114,7 +196,7 @@ fn blend(a: &[f32], b: &[f32], t: &[f32], t_connected: bool, factor: f32, clamp:
                 tt = tt.clamp(0.0, 1.0);
             }
             let va = field_at(a, i);
-            let vb = field_at(b, i);
+            let vb = mode.apply(field_at(a, i), field_at(b, i));
             va + tt * (vb - va)
         })
         .collect()
@@ -131,9 +213,26 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         var vx_t = select(params.factor, read_t_v(i), HAS_t_v);\n\
         if (params.clamp >= 0.5) { vx_t = clamp(vx_t, 0.0, 1.0); }\n\
         let vx_a = read_a_v(i);\n\
-        let vx_b = read_b_v(i);\n\
+        let vx_raw = read_b_v(i);\n\
+        let vx_m = i32(vx_round(params.blend));\n\
+        var vx_b = vx_raw;\n\
+        if (vx_m == 1) { vx_b = vx_a + vx_raw; }\n\
+        else if (vx_m == 2) { vx_b = vx_a - vx_raw; }\n\
+        else if (vx_m == 3) { vx_b = vx_a * vx_raw; }\n\
+        else if (vx_m == 4) { vx_b = 1.0 - (1.0 - vx_a) * (1.0 - vx_raw); }\n\
+        else if (vx_m == 5) { vx_b = abs(vx_a - vx_raw); }\n\
+        else if (vx_m == 6) { vx_b = min(vx_a, vx_raw); }\n\
+        else if (vx_m == 7) { vx_b = max(vx_a, vx_raw); }\n\
+        else if (vx_m == 8) {\n\
+        \x20   if (vx_a < 0.5) { vx_b = 2.0 * vx_a * vx_raw; }\n\
+        \x20   else { vx_b = 1.0 - 2.0 * (1.0 - vx_a) * (1.0 - vx_raw); }\n\
+        }\n\
         write_v(i, vx_a + vx_t * (vx_b - vx_a));\n",
-    wgsl_lib: "",
+    wgsl_lib: "\
+        fn vx_round(x: f32) -> f32 {\n\
+            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
+            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n",
     bindings: &[
         ColumnBinding {
             column: VALUE_COL,
@@ -164,7 +263,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &["factor", "clamp"],
+    params: &["factor", "clamp", "blend"],
     count_law: Some(mix_count),
     variant_by_param: None,
     applicable: None,
@@ -191,9 +290,10 @@ impl NodeOp for ValueMix {
         let clamp = ctx.param("clamp") >= 0.5;
         let a = scalar_col(ctx.input(0), VALUE_COL);
         let b = scalar_col(ctx.input(1), VALUE_COL);
+        let mode = BlendMode::from_param(ctx.param("blend"));
         let t = scalar_col(ctx.input(2), VALUE_COL);
         // `t` connected == a non-empty field on port 2 (matches `HAS_t_v` on GPU).
-        let out = blend(&a, &b, &t, !t.is_empty(), factor, clamp);
+        let out = blend(&a, &b, &t, !t.is_empty(), factor, clamp, mode);
         ctx.emit(Stream::new(out.len()).with(VALUE_COL, Column::Scalar(out)));
     }
 }
@@ -242,6 +342,28 @@ static PARAM_HINTS: &[ParamUiHint] = &[
             labels: &["Off", "On"],
         },
     },
+    // What `b` does to `a` before the factor weighs them. `Mix` is the plain
+    // crossfade this node always was.
+    ParamUiHint {
+        param: "blend",
+        label: "Blend",
+        min: 0.0,
+        max: 8.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &[
+                "Mix",
+                "Add",
+                "Subtract",
+                "Multiply",
+                "Screen",
+                "Difference",
+                "Darken",
+                "Lighten",
+                "Overlay",
+            ],
+        },
+    },
 ];
 
 #[cfg(test)]
@@ -257,7 +379,7 @@ mod tests {
     fn the_factor_param_crossfades_when_t_is_unconnected() {
         let a = [2.0];
         let b = [10.0];
-        let mix = |f: f32| blend(&a, &b, &[], false, f, true)[0];
+        let mix = |f: f32| blend(&a, &b, &[], false, f, true, BlendMode::Mix)[0];
         assert_eq!(mix(0.0), 2.0, "factor 0 = all a");
         assert_eq!(mix(1.0), 10.0, "factor 1 = all b");
         assert_eq!(mix(0.5), 6.0, "factor 0.5 = midpoint");
@@ -273,7 +395,7 @@ mod tests {
         let a = [0.0, 0.0, 0.0];
         let b = [100.0, 100.0, 100.0];
         let t = [0.0, 0.5, 1.0];
-        let out = blend(&a, &b, &t, true, 0.9, true);
+        let out = blend(&a, &b, &t, true, 0.9, true, BlendMode::Mix);
         assert_eq!(out, vec![0.0, 50.0, 100.0], "the port drives the blend");
     }
 
@@ -285,22 +407,22 @@ mod tests {
         let b = [10.0];
         // t = 1.5 (past b) and t = -0.5 (before a).
         assert_eq!(
-            blend(&a, &b, &[1.5], true, 0.0, true)[0],
+            blend(&a, &b, &[1.5], true, 0.0, true, BlendMode::Mix)[0],
             10.0,
             "clamped to b"
         );
         assert_eq!(
-            blend(&a, &b, &[-0.5], true, 0.0, true)[0],
+            blend(&a, &b, &[-0.5], true, 0.0, true, BlendMode::Mix)[0],
             0.0,
             "clamped to a"
         );
         assert_eq!(
-            blend(&a, &b, &[1.5], true, 0.0, false)[0],
+            blend(&a, &b, &[1.5], true, 0.0, false, BlendMode::Mix)[0],
             15.0,
             "unclamped overshoots past b"
         );
         assert_eq!(
-            blend(&a, &b, &[-0.5], true, 0.0, false)[0],
+            blend(&a, &b, &[-0.5], true, 0.0, false, BlendMode::Mix)[0],
             -5.0,
             "unclamped undershoots before a"
         );
@@ -314,7 +436,7 @@ mod tests {
         let a = [0.0]; // one constant, broadcast
         let b = [8.0]; // one constant, broadcast
         let t = [0.0, 0.25, 0.5, 0.75, 1.0];
-        let out = blend(&a, &b, &t, true, 0.5, true);
+        let out = blend(&a, &b, &t, true, 0.5, true, BlendMode::Mix);
         assert_eq!(out.len(), 5, "output is as wide as the widest input");
         assert_eq!(out, vec![0.0, 2.0, 4.0, 6.0, 8.0], "the ramp blends a→b");
     }
@@ -397,5 +519,94 @@ mod tests {
         let mut reg = NodeRegistry::new();
         register(&mut reg).unwrap();
         assert!(reg.resolve(MANIFEST.id).is_some());
+    }
+
+    /// **`Mix` reduz LITERALMENTE ao crossfade que este no' sempre foi** -- o
+    /// default, byte a byte contra a expressao que shipava.
+    #[test]
+    fn the_mix_mode_is_the_old_crossfade_to_the_bit() {
+        for k in 0..80 {
+            let a = k as f32 * 0.031 - 0.5;
+            let b = 1.0 - a * 0.7;
+            let t = (k as f32 * 0.017) % 1.0;
+            let now = {
+                let vb = BlendMode::Mix.apply(a, b);
+                a + t * (vb - a)
+            };
+            let before = a + t * (b - a);
+            assert_eq!(now.to_bits(), before.to_bits(), "k={k}");
+        }
+    }
+
+    /// ⚠️ **Nao e' uma segunda porta do `value.math`, e o FACTOR e' a diferenca.**
+    /// Com `t = 1` os dois coincidem -- e essa coincidencia e' a prova de que a
+    /// lei e' `lerp(a, f(a,b), t)` e nao uma copia; a meio caminho este no' diz o
+    /// que a aritmetica nao sabe dizer sem um segundo no' atras dela.
+    #[test]
+    fn a_blend_is_the_arithmetic_faded_not_the_arithmetic() {
+        let (a, b) = (0.8_f32, 0.25_f32);
+        let full = BlendMode::Multiply.apply(a, b);
+        assert!((full - a * b).abs() < 1e-6, "com t=1 e' o produto: {full}");
+        let half = a + 0.5 * (full - a);
+        assert!((half - 0.5 * (a + a * b)).abs() < 1e-6, "half={half}");
+        assert!(
+            (half - a * b).abs() > 0.1,
+            "meio caminho NAO e' o produto: {half} vs {}",
+            a * b
+        );
+    }
+
+    /// **Os nove modos respondem DIFERENTE na mesma entrada.** O gate que impede
+    /// um braco copiado (ou um `else if` que cai no vizinho) de passar
+    /// despercebido; a rampa cruza `0,5`, entao os DOIS ramos do Overlay correm.
+    #[test]
+    fn every_blend_mode_answers_differently() {
+        const MODES: [BlendMode; 9] = [
+            BlendMode::Mix,
+            BlendMode::Add,
+            BlendMode::Subtract,
+            BlendMode::Multiply,
+            BlendMode::Screen,
+            BlendMode::Difference,
+            BlendMode::Darken,
+            BlendMode::Lighten,
+            BlendMode::Overlay,
+        ];
+        let sig: Vec<Vec<f32>> = MODES
+            .iter()
+            .map(|m| (0..=20).map(|k| m.apply(k as f32 / 20.0, 0.6)).collect())
+            .collect();
+        for i in 0..MODES.len() {
+            for j in (i + 1)..MODES.len() {
+                let d = sig[i]
+                    .iter()
+                    .zip(&sig[j])
+                    .map(|(x, y)| (x - y).abs())
+                    .fold(0.0f32, f32::max);
+                assert!(
+                    d > 1e-3,
+                    "{:?} e {:?} respondem igual (max |d| = {d:e})",
+                    MODES[i],
+                    MODES[j]
+                );
+            }
+        }
+    }
+
+    /// **O Overlay RAMIFICA em `a < 0,5`** -- a metade escura multiplica, a clara
+    /// faz screen. Um kernel que so' escrevesse um dos ramos passaria no gate de
+    /// distincao acima (ele ainda diferiria dos outros oito) e falha aqui.
+    #[test]
+    fn the_overlay_branches_at_the_midpoint() {
+        let b = 0.6_f32;
+        let dark = BlendMode::Overlay.apply(0.25, b);
+        assert!(
+            (dark - 2.0 * 0.25 * b).abs() < 1e-6,
+            "ramo Multiply: {dark}"
+        );
+        let light = BlendMode::Overlay.apply(0.75, b);
+        let want = 1.0 - 2.0 * (1.0 - 0.75) * (1.0 - b);
+        assert!((light - want).abs() < 1e-6, "ramo Screen: {light}");
+        assert!(dark < light, "os dois ramos nao podem colapsar");
     }
 }

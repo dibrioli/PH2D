@@ -68,9 +68,9 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     effect: Effect::Pure,
     clock: Clock::Frame,
     params: &[
-        // 0 Add · 1 Subtract · 2 Multiply · 3 Divide · 4 Min · 5 Max — the
-        // reference-convergent core (TD Math CHOP / Cavalry Math). Power/log are
-        // omitted by HR-5.
+        // 0 Add · 1 Subtract · 2 Multiply · 3 Divide · 4 Min · 5 Max · 6 Modulo ·
+        // 7 Floored Modulo — the reference-convergent core (TD Math CHOP / Cavalry
+        // Math / Blender Math). Power/log are omitted by HR-5.
         ParamSpec {
             name: "op",
             default: 0.0,
@@ -89,6 +89,14 @@ enum Op {
     Divide,
     Min,
     Max,
+    /// The remainder with the sign of the DIVIDEND (C `fmod`, Houdini `%`,
+    /// Blender *Modulo*): `−7 % 3 = −1`.
+    Modulo,
+    /// The remainder with the sign of the DIVISOR (Python `%`, GLSL `mod`,
+    /// Blender *Floored Modulo*): `−7 mod 3 = 2`. For a positive divisor the
+    /// result always lands in `[0, b)` — this is the one a WRAP wants, and the
+    /// reason both ship instead of one.
+    FlooredModulo,
 }
 
 impl Op {
@@ -99,11 +107,23 @@ impl Op {
             3 => Op::Divide,
             4 => Op::Min,
             5 => Op::Max,
+            6 => Op::Modulo,
+            7 => Op::FlooredModulo,
             _ => Op::Add,
         }
     }
     /// Combine one pair of samples. Division by a (near-)zero divisor collapses
-    /// to `0.0` rather than producing `inf`/`NaN` — the documented guard.
+    /// to `0.0` rather than producing `inf`/`NaN` — the documented guard, and the
+    /// two moduli share it (they divide too).
+    ///
+    /// ⚠️ **The two moduli are computed in DERIVED form** (`a − b·trunc(a/b)` and
+    /// `a − b·floor(a/b)`), never by Rust's `%`. Two reasons, both load-bearing:
+    /// `%` on `f32` lowers to a **`fmodf` call in the libm** (the same class of
+    /// cost the drying pass of the Wet Paint measured at 2.51 ns against 0.54),
+    /// and — the one that decides it — `fmod` is *exact* (computed as if in
+    /// infinite precision) while `trunc(a/b)` rounds, so an exact CPU against a
+    /// derived WGSL would disagree at the ulp on exactly the inputs a wrap lands
+    /// on. Deriving on BOTH sides makes the parity bit-for-bit by construction.
     fn apply(self, a: f32, b: f32) -> f32 {
         match self {
             Op::Add => a + b,
@@ -118,6 +138,20 @@ impl Op {
             }
             Op::Min => a.min(b),
             Op::Max => a.max(b),
+            Op::Modulo => {
+                if b.abs() < MIN_DIVISOR {
+                    0.0
+                } else {
+                    a - b * (a / b).trunc()
+                }
+            }
+            Op::FlooredModulo => {
+                if b.abs() < MIN_DIVISOR {
+                    0.0
+                } else {
+                    a - b * (a / b).floor()
+                }
+            }
         }
     }
 }
@@ -203,6 +237,10 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20   vm_r = min(vm_a, vm_b);\n\
         } else if (vm_op == 5) {\n\
         \x20   vm_r = max(vm_a, vm_b);\n\
+        } else if (vm_op == 6) {\n\
+        \x20   if (abs(vm_b) < 1e-9) { vm_r = 0.0; } else { vm_r = vm_a - vm_b * trunc(vm_a / vm_b); }\n\
+        } else if (vm_op == 7) {\n\
+        \x20   if (abs(vm_b) < 1e-9) { vm_r = 0.0; } else { vm_r = vm_a - vm_b * floor(vm_a / vm_b); }\n\
         }\n\
         write_v(i, vm_r);\n",
     wgsl_lib: "\
@@ -287,10 +325,19 @@ static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     param: "op",
     label: "Op",
     min: 0.0,
-    max: 5.0,
+    max: 7.0,
     step: 1.0,
     widget: ParamWidget::Enum {
-        labels: &["Add", "Subtract", "Multiply", "Divide", "Min", "Max"],
+        labels: &[
+            "Add",
+            "Subtract",
+            "Multiply",
+            "Divide",
+            "Min",
+            "Max",
+            "Modulo",
+            "Floored Mod",
+        ],
     },
 }];
 
@@ -468,5 +515,55 @@ mod tests {
         let mut reg = NodeRegistry::new();
         register(&mut reg).unwrap();
         assert!(reg.resolve(MANIFEST.id).is_some());
+    }
+
+    /// **Os dois modulos diferem no SINAL que seguem, e e' essa a razao de os
+    /// dois existirem.** O truncado segue o DIVIDENDO (`-7 mod 3 = -1`, o `%` do
+    /// C/Houdini), o aterrado segue o DIVISOR (`= 2`, o `%` do Python / o `mod`
+    /// do GLSL). Um modulo so' obrigaria metade dos usos a uma cadeia de
+    /// correcao de sinal -- e acima de zero eles COINCIDEM, que e' por que a
+    /// fixture tem de descer abaixo dele.
+    #[test]
+    fn the_two_moduli_differ_by_the_sign_they_follow() {
+        assert_eq!(Op::Modulo.apply(7.0, 3.0), 1.0);
+        assert_eq!(
+            Op::FlooredModulo.apply(7.0, 3.0),
+            1.0,
+            "acima de zero os dois coincidem"
+        );
+        assert_eq!(Op::Modulo.apply(-7.0, 3.0), -1.0, "sinal do DIVIDENDO");
+        assert_eq!(Op::FlooredModulo.apply(-7.0, 3.0), 2.0, "sinal do DIVISOR");
+        // Divisor negativo: o aterrado o segue, o truncado nao.
+        assert_eq!(Op::Modulo.apply(7.0, -3.0), 1.0);
+        assert_eq!(Op::FlooredModulo.apply(7.0, -3.0), -2.0);
+    }
+
+    /// **O aterrado aterra em `[0, b)` para todo `b > 0`** -- a propriedade que
+    /// faz dele o modulo que alguem quer ao escrever *"repita a cada N"*, e que
+    /// um ponto isolado nao afirma.
+    ///
+    /// A tolerancia de 1e-6 e' honesta e nao folga: o resultado e' `a - b·k`, e
+    /// para um `a/b` que roda para logo abaixo de um inteiro a subtracao pode
+    /// devolver um negativo do tamanho de um ulp de `a`.
+    #[test]
+    fn the_floored_modulo_wraps_into_the_half_open_range() {
+        let b = 0.75_f32;
+        for k in -40..40 {
+            let a = k as f32 * 0.13;
+            let m = Op::FlooredModulo.apply(a, b);
+            assert!(m > -1e-6 && m < b + 1e-6, "a={a} -> {m}, fora de [0,{b})");
+        }
+    }
+
+    /// FALSIFICACAO da guarda: um divisor (quase) nulo colapsa em `0.0` nos DOIS
+    /// modulos -- eles dividem, entao herdam a guarda do Divide, e um campo a
+    /// jusante nunca ve' `inf`/`NaN`.
+    #[test]
+    fn a_zero_divisor_collapses_both_moduli() {
+        for op in [Op::Modulo, Op::FlooredModulo] {
+            assert_eq!(op.apply(5.0, 0.0), 0.0);
+            assert_eq!(op.apply(5.0, 1e-12), 0.0);
+            assert!(op.apply(5.0, 0.0).is_finite());
+        }
     }
 }

@@ -98,9 +98,14 @@ alvo e volta; o estabilizador é média corrida e converge por baixo, com nenhum
 **fato do RELÓGIO** (`step_ribbon` lê o `last_raw_pos` uma vez por tique, então um mouse de 960 Hz
 desenha o que um de 125 Hz desenha). Cada metade tem gate próprio.
 
-**A cauda é metade da feature.** No pen-up a mão soltou e a fita ainda tem inércia; o traço acaba
-onde ela de facto parou, **nunca num salto até o cursor** — esse salto seria um gancho que a física
-não produziu (e com gravidade o repouso nem é o cursor: é `g·τ²` abaixo dele).
+**O PEN-UP NÃO ACRESCENTA NADA** (decisão do Enio, 2026-08-15: *"no mouse up o fim do traço cresce
+um segmento indesejado; iniba o traço residual no mouse up"*). A fita acaba exactamente onde o
+último tique a deixou — atrás do dedo, que é o que separa uma fita de um gancho, mas sem crescer
+depois de a mão soltar. ⚠️ **Isto REVOGA uma cerca de Chesterton e ela fica escrita:** havia uma
+CAUDA que soltava a coleira e corria até a ponta assentar — o *follow-through* da animação clássica,
+e o que o Alchemy e o Dyna do Krita fazem. Custava **71 dabs / 84 px** no peso que shipa (30/34,8 no
+0,20 · 77/91,2 no 1,00). O argumento contra o *salto até o cursor* continua de pé; o que morreu foi
+a ideia de que a tinta continua a **chegar** depois da soltura.
 
 ---
 
@@ -214,7 +219,8 @@ que importa, *escolher o tipo*, pulada em todas). A cena dá o material e **não
      fica mais esparsa, e isso é a lei (*a faixa avança o que os DOIS trilhos avançaram*), não um
      buraco.
 2. Um **S rápido**: o rastro corta a curva por dentro e **passa do ponto** onde a mão mudou de
-   direção.
+   direção. ⚠️ **E SOLTE olhando o fim:** o traço acaba onde está, **sem crescer um segmento** — é o
+   report de 2026-08-15, e a mutação que o reinstala mede **146 dabs** de crescimento.
 3. ⚠️ **PARE a mão no meio do gesto, com o botão preso — NADA pode ser desenhado.** É **o passo que
    reprovou duas vezes**, e são DUAS leis a segurá-lo, não uma:
    - *Sem gesto, sem tempo*: uma mola que converge para um alvo parado desenha uma **reta de largura

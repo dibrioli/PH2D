@@ -451,9 +451,20 @@ impl Stroke {
         out.clear();
         if self.started && self.spec.stroke_method == StrokeMethod::Space {
             if self.spec.ribbon_active() {
-                // A fita termina onde a FÍSICA a deixa, nunca num salto até o dedo — ver
-                // [`ribbon::finish_ribbon`], que é onde o porquê está escrito.
-                self.finish_ribbon(out);
+                // ⚠️ **O PEN-UP NÃO ACRESCENTA NADA, e é uma decisão de PRODUTO do Enio**
+                // (2026-08-15: *"no mouse up o fim do traço cresce um segmento indesejado; iniba o
+                // traço residual no mouse up"*). A fita termina exactamente onde o último tique a
+                // deixou.
+                //
+                // ⚠️ **Isto REVOGA uma cerca de Chesterton, e ela fica escrita em vez de apagada:**
+                // havia aqui uma CAUDA que soltava a coleira (o termo de mola saía e ficavam a
+                // inércia, o atrito e a gravidade) e percorria até a ponta assentar — o
+                // *follow-through* da animação clássica, e o que o Alchemy e o Dyna do Krita fazem.
+                // Ela custava **71 dabs / 84 px** no peso que shipa (30/34,8 no 0,20 · 77/91,2 no
+                // 1,00), e o artista lê esse crescimento pós-soltura como um segmento a mais, não
+                // como peso. O argumento contra o *salto até o cursor* continua de pé — a tinta
+                // **deve** ficar atrás; o que morreu foi a ideia de que ela continua a chegar
+                // depois de a mão soltar.
             } else {
                 self.walk_smoothed(
                     StrokePoint {

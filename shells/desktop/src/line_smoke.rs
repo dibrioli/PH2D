@@ -17,12 +17,12 @@
 //! de 312 px, o Wire desenha quatro cordas por dab, e o Spray multiplica cada dab por até dezasseis.
 //! Em debug isso lê como *"o pincel travou"*.
 //!
-//! ⚠️ **A FITA precisa que a mão SOLTE e ESPERE**, e é a metade dela que um roteiro apressado pula:
-//! ela percorre caminho no TIQUE, não no evento de ponteiro. No pen-up a mão **larga** a fita — a
-//! mola que a puxava para o cursor é cortada — e o que se vê é a inércia a esgotar-se: ela segue na
-//! direção em que ia, desacelera e para **antes** do dedo. ⚠️ **A 1ª versão corria até o cursor**, e
-//! como o alvo já estava parado essa corrida era uma **reta atravessando o desenho** (a espícula do
-//! report de 2026-08-15).
+//! ⚠️ **A FITA percorre caminho no TIQUE, não no evento de ponteiro** — e no PEN-UP ela **não
+//! acrescenta nada**: o traço acaba exactamente onde o último tique a deixou, atrás do dedo. ⚠️ **A
+//! 1ª versão corria até o cursor** (uma reta atravessando o desenho, porque o alvo já estava parado)
+//! e a 2ª soltava a coleira e deixava a inércia esgotar-se — o *follow-through*. O Enio reprovou as
+//! duas: *"no mouse up o fim do traço cresce um segmento indesejado"* (2026-08-15). O que fica é a
+//! tinta ATRÁS do dedo, sem crescer depois da soltura.
 //!
 //! ⚠️ **O SPRAY não mora no card Line, e isso é a decisão da W5** — ele não é um tipo de linha, é um
 //! multiplicador da emissão que compõe com todos eles (o *Scattering* do Photoshop, não um modo).
@@ -106,7 +106,8 @@ pub(crate) fn spawn_if_enabled(
             );
             println!(
                 "[line-smoke]     O traco tambem PESA: a tinta fica ATRAS do dedo, chicoteia na \
-                 saida da curva e -- com Gravity -- PENDE. ⚠️ PARE a mao no meio do gesto, com o \
+                 saida da curva e -- com Gravity -- PENDE. ⚠️ SOLTE: o traco acaba onde esta, sem \
+                 crescer nem um segmento. ⚠️ PARE a mao no meio do gesto, com o \
                  botao preso: NADA pode ser desenhado. Sao DUAS leis -- sem gesto nao ha tempo (a \
                  mola congela) E o settle e inerte com a fita armada (num traco de fita ha UM \
                  caminho e ele e o dela). Retome e o traco continua de onde parou, sem salto. O \

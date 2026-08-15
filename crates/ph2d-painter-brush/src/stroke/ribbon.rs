@@ -55,11 +55,32 @@
 //! que torna o desenho independente do dispositivo; *não integrar sem gesto* é o que o torna
 //! função do que a mão fez. O que morreu foi uma frase MINHA — *"solte no ar e a fita continua a
 //! chegar"* —, que a referência nunca prometeu.
+//!
+//! **O PEN-UP NÃO ACRESCENTA NADA** — a fita termina exactamente onde o último tique a deixou.
+//!
+//! ⚠️ **Aqui morava a CAUDA, e a remoção é uma decisão de PRODUTO do Enio** (2026-08-15: *"no
+//! mouse up o fim do traço cresce um segmento indesejado; iniba o traço residual no mouse up"*).
+//! Ela soltava a coleira — o termo de mola saía e ficavam a inércia, o atrito e a gravidade — e
+//! percorria até a ponta assentar: o *follow-through* da animação clássica, e o que o Alchemy (a
+//! forma termina no release) e o Dyna do Krita (a massa é solta) fazem. Medida no gesto que
+//! desacelera, custava **71 dabs / 84 px** no peso que shipa (30/34,8 no peso 0,20 · 77/91,2 no
+//! 1,00). O artista lê esse crescimento *depois* de soltar como um segmento a mais, não como
+//! peso — e é isso que decide, não o precedente.
+//!
+//! ⚠️ **O que NÃO morreu foi o argumento contra o salto até o cursor:** a fita nunca é encerrada
+//! percorrendo em linha reta até `last_raw_pos` (o que o estabilizador faz, *"para o traço
+//! acabar exactamente onde a caneta levantou"*). Numa fita esse salto é um artefacto — a tinta
+//! **deve** ficar atrás do dedo, e continua a ficar. O que morreu foi a outra metade: que ela
+//! continua a *chegar* depois de a mão soltar.
+//!
+//! ⚠️ **E é a SEGUNDA vez que esta cauda desenha uma reta indesejada, por mecanismos
+//! diferentes** — antes ela corria com a mola ainda presa ao cursor, e uma mola CONVERGE, então
+//! convergir era andar em linha reta até ele (369 px em 154 dabs, medido). Cortar a coleira
+//! curou aquele mecanismo e deixou o crescimento; inibir o percurso fecha os dois.
 
 use super::*;
 use crate::line_kind::{
     RIBBON_MAX_STEP_S, RIBBON_MAX_SUBSTEPS, RIBBON_PARK_EPS_PX, RIBBON_SUBSTEP_FRACTION,
-    RIBBON_TAIL_MAX_S, RIBBON_TAIL_REST_PX_S,
 };
 
 impl Stroke {
@@ -70,7 +91,7 @@ impl Stroke {
     /// média do `sampler`, crua. O estabilizador é uma etapa IRMÃ (o `stabilize` escreve o
     /// `stab_pos`, que a fita não lê) — encadeá-los faria a fita perseguir um alvo que já atrasa, e
     /// os dois atrasos se somariam sem ninguém ter pedido. Com a fita armada o caminho é o dela.
-    pub(super) fn step_ribbon(&mut self, dt: f32, leashed: bool) {
+    pub(super) fn step_ribbon(&mut self, dt: f32) {
         if dt <= 0.0 {
             return;
         }
@@ -81,19 +102,12 @@ impl Stroke {
         // ω = 1/τ é a rigidez da mola; c = 2ζω o amortecimento. A forma normalizada é o que torna os
         // dois knobs ORTOGONAIS: `weight` diz QUANTO TEMPO, `friction` diz COMO ASSENTA.
         let w = 1.0 / tau;
-        // ⚠️ **A COLEIRA é cortada no pen-up, e é o que separa uma fita de um gancho.** Enquanto a
-        // mão desenha, a mola puxa a ponta para o cursor (`leashed`). No pen-up a mão SOLTOU: o
-        // termo de mola sai e ficam a inércia, o atrito e a gravidade — a ponta segue na direção em
-        // que ia, desacelera e assenta. É o *follow-through* da animação clássica, e é o que o
-        // Alchemy (a forma termina no release) e o Dyna do Krita (a massa é solta) fazem.
-        //
-        // ⚠️ **Sem isto a cauda desenha uma ESPÍCULA, e não é opinião — foi medido:** uma mola
-        // CONVERGE para o alvo, e com o alvo já parado no dedo essa convergência é uma **reta**.
-        // Report do Enio (2026-08-15, com foto): a cauda levava a tinta de `x = 947,2` a
-        // `x = 1316,8` — **369 px em 154 dabs**, em linha reta, largura cheia, atravessando o
-        // desenho. Uma por traço. O doc abaixo argumentava contra *"um salto até o cursor"* e a
-        // física chegava ao mesmo lugar pelo outro caminho.
-        let k = if leashed { w * w } else { 0.0 };
+        // ⚠️ **A mola está SEMPRE presa, e o `leashed` que aqui esteve MORREU com a cauda.** Ele
+        // existia para o pen-up soltar a coleira (o termo de mola saía e ficavam a inércia, o atrito
+        // e a gravidade — o *follow-through*), e a cauda inteira foi inibida por ordem do Enio
+        // (2026-08-15). Um parâmetro com um só valor de chamada é código morto que mente, então ele
+        // sai junto; a história fica no doc de [`Stroke::finish_ribbon`], que é onde ela decide algo.
+        let k = w * w;
         let c = 2.0 * self.spec.ribbon_damping() * w;
         let g = self.spec.ribbon_gravity_px_s2();
         let target = self.last_raw_pos;
@@ -170,7 +184,7 @@ impl Stroke {
         if dist(fa, self.last_raw_pos) <= RIBBON_PARK_EPS_PX {
             return;
         }
-        self.step_ribbon(dt, true);
+        self.step_ribbon(dt);
         self.sew_rungs(a, self.ribbon_pos, fa, self.last_raw_pos);
         self.ribbon_prev_raw = self.last_raw_pos;
         self.walk_smoothed(
@@ -257,57 +271,5 @@ impl Stroke {
             self.ribbon_rung_far = Some(far);
         }
         self.ribbon_rung_accum += seg - traveled;
-    }
-
-    /// **A CAUDA** — no pen-up a mão soltou e a fita ainda tem inércia; a física corre até ela
-    /// assentar, e o traço termina onde a fita de facto parou.
-    ///
-    /// ⚠️ **Ela NÃO é encerrada por um salto até o cursor**, ao contrário do estabilizador (cujo
-    /// `finish` percorre em linha reta até `last_raw_pos`, *"para o traço acabar exactamente onde a
-    /// caneta levantou"*). Numa fita esse salto seria um artefacto: a tinta **deve** ficar atrás.
-    ///
-    /// ⚠️ **E a 1ª versão desta cauda chegava ao mesmo gancho pelo outro caminho.** Ela rodava a
-    /// física com a MOLA ainda presa ao cursor, e uma mola **CONVERGE** para o alvo — com o alvo
-    /// parado no dedo, convergir é andar em **linha reta** até ele. Medido no report do Enio
-    /// (2026-08-15, com foto): **369 px em 154 dabs**, largura cheia, uma espícula por traço
-    /// atravessando o desenho. *Argumentar contra o salto não impede a física de o desenhar.*
-    ///
-    /// **Hoje o pen-up CORTA A COLEIRA** ([`Stroke::step_ribbon`] com `leashed = false`): ficam a
-    /// inércia, o atrito e a gravidade. A ponta segue na direção em que ia, desacelera e assenta —
-    /// o *follow-through* da animação clássica, e o que o Alchemy (a forma termina no release) e o
-    /// Dyna do Krita (a massa é solta) fazem. Medido, o mesmo gesto: **156 px**, e a tinta **para
-    /// antes do dedo** em vez de o ultrapassar.
-    ///
-    /// O teto de tempo existe porque um `ζ` pequeno balança por muito tempo, e um traço não pode
-    /// continuar a crescer depois de o artista o ter terminado.
-    ///
-    /// ⚠️ **A cauda NÃO costura travessas, e é a mesma lei do leque.** Uma travessa liga os dois
-    /// trilhos *no mesmo instante*; no pen-up o trilho do dedo **acabou** — ele está parado onde a
-    /// caneta levantou — enquanto o da fita ainda corre. Costurar aqui ligaria dezenas de pontos da
-    /// cauda ao mesmo ponto parado, que é literalmente o leque que a interpolação de
-    /// [`Stroke::sew_rungs`] existe para não desenhar. A faixa termina onde a mão terminou; o que
-    /// sobra da cauda é o trilho de tinta sozinho.
-    pub(super) fn finish_ribbon(&mut self, out: &mut Vec<Dab>) {
-        let dt = 1.0 / 60.0; // o passo do relógio da cauda: um quadro nominal
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let steps = (RIBBON_TAIL_MAX_S / dt) as usize;
-        for _ in 0..steps {
-            self.step_ribbon(dt, false);
-            let speed = (self.ribbon_vel[0] * self.ribbon_vel[0]
-                + self.ribbon_vel[1] * self.ribbon_vel[1])
-                .sqrt();
-            // `walk_smoothed` ACRESCENTA (é o `walk_space` que empurra), então a cauda inteira cai
-            // no mesmo buffer que o chamador já limpou.
-            self.walk_smoothed(
-                StrokePoint {
-                    pos: self.ribbon_pos,
-                    pressure: self.last_raw_pressure,
-                },
-                out,
-            );
-            if speed <= RIBBON_TAIL_REST_PX_S {
-                break;
-            }
-        }
     }
 }

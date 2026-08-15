@@ -722,8 +722,9 @@ whole_span`, no crate do painel). **10 mutações, 10 sangram.**
     SÓLIDO (a primeira tentativa: um dab sai a cada ~1,2 px) e uma por QUADRO faria o número de
     travessas mudar com a taxa de quadros. O gate afirma as duas metades (taxa de eventos **e** taxa
     de tiques).
-  - ⚠️ **A CAUDA não costura**, pela mesma lei do leque: no pen-up o trilho do DEDO acabou, e ligar a
-    cauda ao ponto onde a caneta levantou é literalmente o leque. A faixa termina onde a mão terminou.
+  - ⚠️ **O PEN-UP não costura**, pela mesma lei do leque: ali o trilho do DEDO acabou, e ligar seja o
+    que for ao ponto onde a caneta levantou é literalmente o leque. A faixa termina onde a mão
+    terminou.
   - ⚠️ **`Rungs = 0` é uma DEGENERAÇÃO, não um modo** — uma faixa sem travessas é uma linha, e sobra
     o massa-mola sozinho (o *Dyna*). É por isso que a família **não** precisou de um segundo tipo nem
     de um interruptor: uma densidade cobre os dois looks, e um interruptor teria de escolher um nome
@@ -831,6 +832,38 @@ whole_span`, no crate do painel). **10 mutações, 10 sangram.**
       desacelera"* sobre uma fixture que é um arrasto **RETO a velocidade constante**. A frase estava
       certa sobre o fenômeno e errada sobre aquela régua; ele continua a guardar a interpolação, que
       é a outra metade e continua load-bearing (ele **passa** sob a mutação que sangra o irmão).
+  - ⚠️ **E A CAUDA DO PEN-UP FOI INIBIDA — decisão de PRODUTO do Enio** (2026-08-15: *"no mouse up o
+    fim do traço cresce um segmento indesejado; iniba o traço residual no mouse up"*). A fita acaba
+    exactamente onde o último tique a deixou.
+    - ⚠️ **Isto REVOGA uma cerca de Chesterton, e ela fica ESCRITA em vez de apagada:** a cauda
+      soltava a coleira (o termo de mola saía e ficavam a inércia, o atrito e a gravidade) e
+      percorria até a ponta assentar — o *follow-through* da animação clássica, e o que o Alchemy (a
+      forma termina no release) e o Dyna do Krita (a massa é solta) fazem. Custava **71 dabs / 84 px**
+      no peso que shipa (30/34,8 no 0,20 · 77/91,2 no 1,00), e o artista lê esse crescimento *depois*
+      de soltar como um segmento a mais, não como peso. **É isso que decide, não o precedente.**
+    - ⚠️ **O argumento contra o SALTO ATÉ O CURSOR continua de pé** — a fita nunca é encerrada
+      percorrendo em linha reta até `last_raw_pos` (o que o estabilizador faz *"para o traço acabar
+      exactamente onde a caneta levantou"*); a tinta **deve** ficar atrás. O que morreu foi a outra
+      metade: que ela continua a **chegar** depois da soltura. E é a **terceira** vez que este
+      pen-up desenha uma reta indesejada, cada vez por outro mecanismo — a mola presa ao cursor (369
+      px, curado cortando a coleira) · o cursor envenenado pelo `settle` · e o crescimento em si.
+    - **Higiene que a remoção arrastou, e nenhuma é opcional:** o parâmetro `leashed` do
+      `step_ribbon` ficou com um só valor de chamada ⇒ **morreu** (parâmetro morto é código que
+      mente) · os consts `RIBBON_TAIL_MAX_S`/`RIBBON_TAIL_REST_PX_S` ficaram `pub` **sem chamador**,
+      que é a *segunda resposta à espera* que este repo já nomeou ⇒ removidos, com a **tabela de
+      orçamento** que o primeiro hospedava mudando-se para o doc do `RIBBON_LAG_MAX_S` (ela mede o
+      ORÇAMENTO, não a cauda, e dois outros docs a citam) · e o doc do `RIBBON_DAMPING_MIN`, que
+      justificava o piso com *"a cauda ficaria a balançar"*, passou a dizer o que de facto sobra.
+    - ⚠️ **DOIS gates tinham a premissa dissolvida e foram ENCARADOS:** o `the_tail_does_not_run_to_
+      the_finger` exigia que a cauda **andasse** ≥ 100 px — afirmando o que o produto não faz mais —
+      e virou `the_pen_up_adds_nothing_because_the_ribbon_ends_where_it_is` (as duas metades que
+      sobrevivem: o pen-up não move um pixel **e** a tinta acaba atrás do dedo; mutação: **146 dabs**);
+      o `the_tail_sews_nothing…` passou a valer trivialmente e virou `the_pen_up_sews_nothing…`, mais
+      forte e no canal de FIOS, que é outra pergunta.
+    - ⚠️ **E é a TERCEIRA substituição desta linhagem de gate:** o primeiro
+      (`the_tail_arrives_when_the_pen_lifts`) afirmava o DEFEITO como lei (exigia pousar a 40 px do
+      dedo, que era a espícula); o segundo curou o mecanismo e exigiu que ela andasse; o terceiro
+      afirma que ela não anda. *Um gate escrito sobre uma feature herda a vida dela.*
   - ⚠️ **E o card Line não tinha seam nenhum** — os três sliders da W6 shiparam com id, row,
     `populate`, encaminhamento e setter, e **nenhum gate os exercitava** (um `grep` pelo id nos
     testes do repo devolvia nada). O `line_seam_tests.rs` fecha as duas condições que o

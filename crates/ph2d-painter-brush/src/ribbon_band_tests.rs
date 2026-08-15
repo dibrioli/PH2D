@@ -221,10 +221,17 @@ fn the_far_rail_joins_consecutive_rungs_into_an_edge() {
     );
 }
 
-/// **A CAUDA NÃO COSTURA** — no pen-up o trilho do DEDO acabou, e ligar a cauda ao ponto onde a
-/// caneta levantou é literalmente o leque que o gate acima existe para não desenhar.
+/// **O PEN-UP NÃO COSTURA** — no pen-up o trilho do DEDO acabou, e ligar seja o que for ao ponto
+/// onde a caneta levantou é literalmente o leque que o gate acima existe para não desenhar.
+///
+/// ⚠️ **O nome dizia CAUDA e a cauda já não existe** (inibida por ordem do Enio, 2026-08-15): a
+/// asserção continua a valer e mudou de dono — ela guardava *"a cauda não costura"* e guarda agora
+/// *"o pen-up não costura"*, que é mais forte e o subsume. A metade de DABS da mesma lei vive no
+/// [`crate::ribbon_tests`] (`the_pen_up_adds_nothing_because_the_ribbon_ends_where_it_is`); esta é a
+/// do canal de FIOS, e são perguntas diferentes — um pen-up que voltasse a percorrer poderia
+/// costurar sem carimbar.
 #[test]
-fn the_tail_sews_nothing_because_the_finger_rail_ended() {
+fn the_pen_up_sews_nothing_because_the_finger_rail_ended() {
     let mut s = Stroke::new(spec(LineKind::Ribbon, 1.0, 0.5), plain(), 7);
     let mut out = Vec::new();
     let mut buf = Vec::new();
@@ -245,7 +252,7 @@ fn the_tail_sews_nothing_because_the_finger_rail_ended() {
     s.take_threads(&mut buf);
     assert!(
         buf.is_empty(),
-        "a cauda costurou {} fios — eles apontariam todos para a caneta parada",
+        "o pen-up costurou {} fios — eles apontariam todos para a caneta parada",
         buf.len()
     );
 }

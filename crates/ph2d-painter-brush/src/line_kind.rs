@@ -268,10 +268,37 @@ pub const WIRE_CURVES_PER_DAB: usize = 4;
 /// separa a fita do estabilizador*, cujo atraso não responde à velocidade.
 ///
 /// ⚠️ **E o teto NÃO é de recurso — é de LOOK, e a medição é que o diz.** O orçamento por evento é
-/// PLANO no peso (`measure_the_ribbon_budget_per_event`, tabela no [`RIBBON_TAIL_MAX_S`]): nenhuma
+/// PLANO no peso (`measure_the_ribbon_budget_per_event`, a tabela abaixo): nenhuma
 /// combinação encosta no kill de 8 ms, e a fita chega a custar MENOS que o traço comum. O que um
 /// quarto de segundo escolhe é *quão longe a tinta pode ficar do dedo* — a 2 400 px/s são ~760 px —,
 /// e movê-lo é UMA linha. O que não se pode é escrevê-lo sem dizer de que ele é.
+///
+/// ⚠️ **A tabela abaixo morava no doc do `RIBBON_TAIL_MAX_S`, e mudou-se para cá quando a CAUDA foi
+/// inibida** (ordem do Enio, 2026-08-15): ela mede o ORÇAMENTO da fita, não a cauda, e um const que
+/// deixa de existir não pode ser a casa da medição que outros dois docs citam.
+///
+/// **O ORÇAMENTO DA FITA INTEIRA, medido pela porta do PRODUTO** (`measure_the_ribbon_budget_per_event`,
+/// traço reto de 2 s a 2 400 px/s, 2048², com a linha `None` como CONTROLE):
+///
+/// | raio | tipo | pior Move | pior tique | pen-up |
+/// |---:|---|---:|---:|---:|
+/// | 24 | *None (controle)* | **1,294** | 0,001 | 0,141 |
+/// | 24 | Ribbon 1,00 / 0,05 | 0,001 | 1,080 | 0,152 |
+/// | 100 | *None (controle)* | **1,183** | 0,001 | 0,453 |
+/// | 100 | Ribbon 1,00 / 0,30 | 0,000 | 1,092 | 0,214 |
+/// | 200 | *None (controle)* | **1,018** | 0,002 | 0,553 |
+/// | 200 | Ribbon 1,00 / 1,00 | 0,000 | 0,919 | **0,390** |
+///
+/// ⚠️ **Duas leituras, e as duas são achados:** (1) o custo **MIGRA do `Move` para o TIQUE**, que é
+/// exactamente o desenho (o `extend` não percorre, o tique percorre) — uma sonda que medisse só o
+/// movimento diria que a fita é de graça; (2) **o pen-up fica MAIS BARATO com a fita** (0,553 →
+/// 0,390 no pincel grande), porque ela atrasa, logo percorre menos caminho no mesmo tempo. ⚠️ A
+/// coluna do pen-up foi medida quando ainda havia CAUDA; hoje ela é ainda mais barata, porque o
+/// pen-up de uma fita não percorre nada.
+///
+/// ⚠️ **Nenhuma combinação encosta no kill de 8 ms** ⇒ **não há teto de recurso a derivar aqui**, e
+/// dizer isso é a metade honesta do §0: os três knobs da fita são limitados por LOOK, com a régua de
+/// cada um escrita no doc dele.
 pub const RIBBON_LAG_MAX_S: f32 = 0.25;
 
 /// **O PISO do amortecimento (`ζ`) — MEDIDO, e o recurso é TINTA, não tempo de quadro.**
@@ -308,9 +335,10 @@ pub const RIBBON_LAG_MAX_S: f32 = 0.25;
 /// para sempre com a mão parada* passou a ser **estruturalmente impossível**, não *caro*.
 ///
 /// **O piso FICA, e a justificação dele mudou de eixo:** ele já não bounda tinta, ele bounda o
-/// **LOOK** — `ζ = 0` faz a fita oscilar em torno do caminho *enquanto o artista desenha*, e a
-/// cauda do pen-up (que corre com a coleira cortada) ficaria a balançar até o
-/// [`RIBBON_TAIL_MAX_S`] a cortar. **A tabela continua válida como o que mediu**, e é por isso que
+/// **LOOK** — `ζ = 0` faz a fita oscilar em torno do caminho *enquanto o artista desenha*. ⚠️ A
+/// versão anterior desta frase acrescentava *"e a cauda do pen-up ficaria a balançar"*: **a cauda
+/// foi inibida** (ordem do Enio, 2026-08-15), então o que sobra é só o balanço em traço, que é o
+/// que o piso de facto bounda. **A tabela continua válida como o que mediu**, e é por isso que
 /// não foi apagada: ela é a razão de `0,15` e não de `0,04`, e quem a reler tem de saber que o
 /// número que ela conta hoje é outro. *Quem move o número que tornava algo caro tem de reconferir a
 /// nota.*
@@ -458,40 +486,6 @@ pub const RIBBON_MAX_STEP_S: f32 = 4.0 / 60.0;
 /// que a curava. É por isso que o gate afirma a ARITMÉTICA das três consts em vez de comparar o
 /// literal com um número escrito à mão — um número à mão erra junto com quem o escreveu.
 pub const RIBBON_MAX_SUBSTEPS: usize = 134;
-
-/// **Quanto tempo a CAUDA da fita tem para chegar, em segundos.**
-///
-/// No pen-up a mão soltou mas a fita ainda tem inércia: a cauda é a física a correr até ela assentar.
-/// O teto existe porque `ζ` pequeno faz uma fita balançar por muito tempo, e um traço não pode
-/// continuar a crescer depois de o artista o ter terminado.
-///
-/// **O ORÇAMENTO DA FITA INTEIRA, medido pela porta do PRODUTO** (`measure_the_ribbon_budget_per_event`,
-/// traço reto de 2 s a 2 400 px/s, 2048², com a linha `None` como CONTROLE):
-///
-/// | raio | tipo | pior Move | pior tique | pen-up |
-/// |---:|---|---:|---:|---:|
-/// | 24 | *None (controle)* | **1,294** | 0,001 | 0,141 |
-/// | 24 | Ribbon 1,00 / 0,05 | 0,001 | 1,080 | 0,152 |
-/// | 100 | *None (controle)* | **1,183** | 0,001 | 0,453 |
-/// | 100 | Ribbon 1,00 / 0,30 | 0,000 | 1,092 | 0,214 |
-/// | 200 | *None (controle)* | **1,018** | 0,002 | 0,553 |
-/// | 200 | Ribbon 1,00 / 1,00 | 0,000 | 0,919 | **0,390** |
-///
-/// ⚠️ **Duas leituras, e as duas são achados:** (1) o custo **MIGRA do `Move` para o TIQUE**, que é
-/// exactamente o desenho (o `extend` não percorre, o tique percorre) — uma sonda que medisse só o
-/// movimento diria que a fita é de graça; (2) **o pen-up fica MAIS BARATO com a fita** (0,553 →
-/// 0,390 no pincel grande), porque ela atrasa, logo percorre menos caminho no mesmo tempo.
-///
-/// ⚠️ **Nenhuma combinação encosta no kill de 8 ms** ⇒ **não há teto de recurso a derivar aqui**, e
-/// dizer isso é a metade honesta do §0: os três knobs da fita são limitados por LOOK, com a régua de
-/// cada um escrita no doc dele.
-pub const RIBBON_TAIL_MAX_S: f32 = 0.6;
-
-/// **A velocidade abaixo da qual a cauda considera a fita ASSENTADA, em px/s.**
-///
-/// Meio pixel por quadro a 60 fps — o mesmo limiar sub-pixel que o `SETTLE_EPS_PX` do estabilizador
-/// usa, dito em velocidade porque o que decide aqui é se ainda há movimento a pintar.
-pub const RIBBON_TAIL_REST_PX_S: f32 = 30.0;
 
 /// **Quanto o dedo tem de andar entre dois tiques para a fita ganhar TEMPO, em pixels.**
 ///

@@ -1,7 +1,8 @@
 //! Os gates da **FITA** — o `LineKind::Ribbon` do plano 38 W6.
 //!
 //! O que a feature promete: *o traço PESA*. Os gates perguntam pelo PESO — o atraso que cresce com a
-//! velocidade, o chicote que ultrapassa, o pendurar sob a gravidade e a cauda que chega —, nunca
+//! velocidade, o chicote que ultrapassa, o pendurar sob a gravidade e o pen-up que NÃO acrescenta
+//! nada (a cauda foi inibida por ordem do Enio em 2026-08-15) —, nunca
 //! pela fórmula.
 
 use crate::dynamics::Dynamics;
@@ -283,29 +284,24 @@ fn the_gravity_makes_the_ribbon_hang_by_g_tau_squared() {
     );
 }
 
-/// **A CAUDA NÃO CORRE ATÉ O DEDO** — a espícula do report de 2026-08-15.
+/// **O PEN-UP NÃO ACRESCENTA NADA** — a fita acaba exactamente onde o último tique a deixou.
 ///
-/// ⚠️ **O oráculo é a POSIÇÃO onde a tinta acaba, e não um salto entre dabs.** Uma espícula é uma
-/// corrida **reta de dabs normalmente espaçados** numa direção que o gesto não tem, então uma sonda
-/// de *salto* mede **zero** sobre ela — foi o que aconteceu, e custou três hipóteses.
+/// ⚠️ **Este gate SUBSTITUI o `the_tail_does_not_run_to_the_finger`, e a substituição é a segunda
+/// desta linhagem.** O primeiro (`the_tail_arrives_when_the_pen_lifts`) afirmava o DEFEITO como lei
+/// — exigia que a tinta pousasse a 40 px do dedo, que era a espícula. O segundo curou o mecanismo
+/// (a coleira cortada no pen-up) e passou a exigir que a cauda **andasse** ao menos 100 px. Agora o
+/// Enio inibiu o resíduo inteiro (2026-08-15: *"no mouse up o fim do traço cresce um segmento
+/// indesejado"*), e a metade *"ela anda"* daquele gate passou a afirmar o que o produto não faz
+/// mais.
 ///
-/// **O que a foto mostrava:** a cauda levava a tinta de `x = 947,2` a `x = 1316,8` — **369 px em
-/// 154 dabs**, largura cheia, atravessando o desenho, uma reta por traço. **Mecanismo:** a mola
-/// continuava presa ao cursor durante a cauda, e uma mola **CONVERGE** para o alvo; com o alvo
-/// parado no dedo, convergir é andar em linha reta até ele.
+/// **As duas metades que sobrevivem, e são as que importam:** a tinta acaba ATRÁS do dedo (a fita
+/// nunca salta para o cursor, ao contrário do estabilizador) **e** o pen-up não move um pixel. A
+/// segunda é a lei nova; a primeira é a que sempre separou uma fita de um gancho.
 ///
-/// ⚠️ **Ele SUBSTITUI o gate `the_tail_arrives_when_the_pen_lifts`, que eu escrevi na mesma wave e
-/// que afirmava o DEFEITO como lei** — a mensagem de falha dele era *"a cauda parou LONGE do
-/// dedo"*. As duas metades verdadeiras daquele gate (a cauda pinta, e ela ANDA) vivem aqui, com a
-/// barra no número medido; a terceira, *"para a menos de 40 px do dedo"*, era a espícula. ⚠️ E o
-/// **doc dele contradizia a própria asserção** (*"não é um salto até o dedo"* sobre um `assert` que
-/// exigia pousar a 40 px): quando as duas discordam, é o `assert` que shipa.
-///
-/// ⚠️ **A mola só é cortada no PEN-UP, nunca numa pausa.** Se a mão para sem levantar, a fita
-/// continua a ser puxada e alcança o dedo — que é o certo, e é o que o gate irmão
-/// `a_stalled_frame_does_not_blow_the_spring_up` afirma ao exigir que ela CHEGUE.
+/// ⚠️ **A PREMISSA é conferida**, senão o gate mede o vazio: a fita tem de estar de facto atrasada
+/// quando a caneta levanta.
 #[test]
-fn the_tail_does_not_run_to_the_finger() {
+fn the_pen_up_adds_nothing_because_the_ribbon_ends_where_it_is() {
     let dt = 1.0 / 60.0;
     let mut s = Stroke::new(spec(LineKind::Ribbon, 0.45, 0.30, 0.0), plain(), 7);
     let mut out = Vec::new();
@@ -341,20 +337,16 @@ fn the_tail_does_not_run_to_the_finger() {
     );
     out.clear();
     s.finish(&mut out);
-    let fim = out.last().map_or(antes, |d| d.center);
-    // A tinta acaba onde a FITA parou. Chegar ao dedo é o gancho que a física não produziu.
     assert!(
-        fim[0] < x - 100.0,
-        "a cauda correu ate o dedo: soltou em {x:.1}, a tinta acabou em {:.1}",
-        fim[0]
+        out.is_empty(),
+        "o pen-up acrescentou {} dabs: o traço cresce depois de a mão soltar",
+        out.len()
     );
-    // E ela ANDA -- uma cauda que não anda é um corte seco, e o traço perderia a inércia que a
-    // feature inteira promete.
+    // E a tinta acaba ATRÁS do dedo — a fita nunca é encerrada num salto até o cursor.
     assert!(
-        fim[0] > antes[0] + 100.0,
-        "a cauda nem andou: {:.1} -> {:.1}",
-        antes[0],
-        fim[0]
+        antes[0] < x - 100.0,
+        "a tinta acabou no dedo: soltou em {x:.1}, a fita estava em {:.1}",
+        antes[0]
     );
 }
 

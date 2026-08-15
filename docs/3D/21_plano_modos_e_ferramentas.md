@@ -1627,6 +1627,69 @@ mais a paridade ULP com o SculptGL), e a prova exigida é byte-identidade contra
 a rota serial CONGELADA — trabalho que não cabia com segurança no que restava
 desta sessão, e meio-feito ali é pior que não começado.
 
+### §7.16 — ✅ O VINCO GANHA `l-mode`, e a lei do suporte precisou de um segundo olhar (2026-08-14)
+
+O **Crease** é o único verbo COMPOSTO da matriz §3 (*Draw + Kelvinlets pinch*) e
+o último item aberto da W5. Os cinco verbos da W5-B têm o deslocamento INTEIRO
+vindo do kernel, então a lei *"com campo, a curva é o SUPORTE do campo"* os serve
+toda; aqui ela alcançaria também a metade que **não** é do campo — e a sonda
+`measure_the_crease_trench` diz o que isso faz:
+
+| banda | s-mode | campo **INGÊNUO** | composto |
+|---|---|---|---|
+| 0,25-0,50 r | 0,08594 | 0,18890 | 0,06751 |
+| 0,50-0,75 r | 0,00941 | 0,18370 | 0,01547 |
+| 1,00-1,50 r | 0,00000 | **0,15410** | −0,00077 |
+
+⇒ **com a indicadora no lugar da quártica o vinco vira CRATERA:** ele afunda
+**82 %** do bico a um raio e meio (contra **11 %** do s-mode) e 2,2× fundo demais
+no bico, sobre uma pegada 3× mais larga. Um vinco é fundo e ESTREITO.
+
+**A cura não pediu canal novo:** a metade estreita toma a estreiteza do **perfil
+do próprio Kelvinlet**, elevado à mesma quártica que o s-mode aplica à curva do
+pincel. O verbo composto fica inteiro na linguagem do campo, e o aperto lateral
+ganha o alcance elástico que era o ponto de ter um `l-mode` — medido, o aperto do
+`s-mode` para **morto** no anel do cursor (`0,00000` a partir de um raio) e o
+elástico ainda mede `0,0081` a um raio e meio: a vizinhança escoa para o vinco.
+
+⚠️ **E o meu gate mediu a PEGADA em vez da LEI — a armadilha da §7.12, no meu
+próprio arquivo.** A 1ª metade (*"o aperto passa do anel"*) ficou **VERDE** com a
+mutação que troca o kernel elástico pelo `lateral_pull` do s-mode: com um campo
+declarado a pegada já é 3× e o `w` já é a indicadora, então o puxão cru alcança
+dois raios **sozinho**. O que a pegada não finge é o **PERFIL**, e as duas leis
+são opostas nele:
+
+| banda | `lateral_pull` × indicadora | Kelvinlet |
+|---|---|---|
+| 0,50-0,75 r | 0,05708 | 0,01730 |
+| 1,50-2,00 r | **0,15174** | **0,00185** |
+
+O puxão cru é o delta ao centro, logo **CRESCE** com a distância até cair de um
+penhasco na borda da pegada; o campo **DECAI**. Razão longe÷perto: **2,66**
+contra **0,11**.
+
+**1 gate novo, 3 mutações, 3 sangram** (a quártica do perfil ⇒ cratera de 91 % ·
+o kernel elástico ⇒ razão 2,66 · o campo declarado ⇒ o aperto não passa do anel).
+
+⚠️ **E os DOIS censos que já existiam pegaram a fiação incompleta antes de mim** —
+o `every_declared_field_reaches_the_clay` (*"declara um campo e não tem gate de
+FORMA"*) e o `the_literature_mode_is_offered_exactly_where_it_declares_a_law`
+(*"a literatura portada até hoje"*). É exactamente o que a §7.12 os construiu
+para fazer: um sexto verbo entra por aquelas linhas ou não entra.
+
+**LOC:** `verb_field_tests.rs` cruzou o teto (712) e foi cortado pelo **paper**,
+não pelo tamanho — os cinco verbos cujo deslocamento é inteiro do kernel ficam no
+pai, o COMPOSTO sai para `verb_crease_field_tests.rs` (592 + 133).
+
+Sem schema, sem ADR, sem crate nova, sem dep nova, sem id novo.
+
+⚠️ **PENDENTE DE SMOKE — `PH2D_SCULPT3D_SMOKE=28`**, agora com o Crease no
+dropdown. A pergunta de olho: **o canal tem de continuar estreito** e a
+vizinhança tem de escoar para dentro dele.
+
+**Aberto na W5:** o pincel **Elastic Deform**, o único que pede `Verb` novo — e
+onde `b-mode ≡ l-mode` (o Blender *é* o paper), logo **um chip, sem dropdown**.
+
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 
 **Os defaults de fábrica do Blender não estão no clone.** Eles vivem em

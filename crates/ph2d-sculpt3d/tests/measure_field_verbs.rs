@@ -508,3 +508,67 @@ fn the_step_at_the_cut_in_a_thin_shell() {
         );
     }
 }
+
+/// **O PERFIL DO VINCO** — a sonda que decide se o `Crease` pode ter `l-mode`.
+///
+/// ⚠️ **O Crease é uma COMPOSIÇÃO** (a matriz §3 pede *Draw + Kelvinlets
+/// pinch*), e é isso que o separa dos cinco verbos da W5-B: metade dele é um
+/// APERTO lateral e a outra metade é um AFUNDAMENTO pela normal. A lei que os
+/// cinco usam — *"com campo, a curva é o SUPORTE do campo"* — foi escrita para
+/// quem tem o deslocamento INTEIRO vindo do kernel; num verbo composto ela
+/// alcança também a metade que **não** é do campo.
+///
+/// Por isso a sonda mede as duas metades SEPARADAS, ao longo de um raio:
+/// **quanto o vértice afundou** (a projeção na normal do polo) e **quanto ele
+/// andou de lado** (a componente no plano). Um vinco é FUNDO e ESTREITO; um
+/// vinco que afunda igual até três raios não é um vinco, é uma cratera.
+///
+/// Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_field_verbs
+/// -- --ignored --nocapture measure_the_crease_trench`
+#[test]
+#[ignore = "sonda de medição"]
+fn measure_the_crease_trench() {
+    // Anéis de distância ao bico, em fração do RAIO do pincel — até 3×, que é
+    // o que um campo pediria de pegada.
+    const BANDS: [f32; 7] = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 2.9];
+
+    for mode in [RefMode::S, RefMode::B, RefMode::L] {
+        let before = sphere();
+        let after = stroke(Verb::Crease, mode, 1.0, [0.0, 0.0, 0.0], 6);
+
+        println!("\n=== Crease {mode:?} ===");
+        println!("  banda(r)      n    afundou     lateral");
+        for w in BANDS.windows(2) {
+            let (lo, hi) = (w[0] * R, w[1] * R);
+            let mut n = 0usize;
+            let (mut dig, mut lat) = (0.0f64, 0.0f64);
+            for (i, p0) in before.positions().iter().enumerate() {
+                let d = [p0[0] - TIP[0], p0[1] - TIP[1], p0[2] - TIP[2]];
+                let dist = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+                if dist < lo || dist >= hi {
+                    continue;
+                }
+                let p1 = after.positions()[i];
+                let m = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
+                // A normal do polo é +z: afundar é andar em −z.
+                let along = -m[2];
+                let side = (m[0] * m[0] + m[1] * m[1]).sqrt();
+                n += 1;
+                dig += f64::from(along);
+                lat += f64::from(side);
+            }
+            if n == 0 {
+                continue;
+            }
+            let inv = 1.0 / n as f64;
+            println!(
+                "  {:.2}-{:.2} {:>6}  {:>9.5}  {:>9.5}",
+                w[0],
+                w[1],
+                n,
+                dig * inv,
+                lat * inv
+            );
+        }
+    }
+}

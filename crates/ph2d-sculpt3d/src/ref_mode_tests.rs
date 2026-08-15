@@ -459,6 +459,8 @@ fn the_literature_mode_is_offered_exactly_where_it_declares_a_law() {
             "Smooth",
             "Pinch",
             "Magnify",
+            // O único COMPOSTO: `Draw + Kelvinlets pinch` (a matriz §3).
+            "Crease",
             "Move / Grab",
             "Snake Hook",
             "Twist",

@@ -278,15 +278,62 @@ impl SculptStroke {
             // ⚠️ **A máscara entra DENTRO do expoente** (`Crease.js:67` roda
             // antes do `:68`): um vértice meio-mascarado leva `0,5⁵ = 3%` do
             // empurrão normal e `0,5` do lateral. A assimetria é da referência.
-            Verb::Crease => {
-                let t = lateral_pull(brush.mode.kernel(), live, dab.center, n_area);
-                let gain = w * crate::CREASE_FRACTION;
-                add(
-                    add_vec(live, t, gain * brush.pinch),
-                    n_area,
-                    -gain * shape.powi(4) * dab.radius * sign,
-                )
-            }
+            //
+            // ⚠️ **O `l-mode` dele é uma COMPOSIÇÃO, e é o único da tabela.** Os
+            // cinco verbos da W5-B têm o deslocamento INTEIRO vindo do kernel,
+            // então a lei *"com campo, a curva é o SUPORTE do campo"* os serve
+            // toda. Aqui ela alcançaria também a metade que **não** é do campo —
+            // e a medição (`measure_the_crease_trench`) diz o que isso faz:
+            //
+            // | banda | s-mode | campo INGÊNUO |
+            // |---|---|---|
+            // | 0,25-0,50 r | 0,08594 | 0,18890 |
+            // | 1,00-1,50 r | 0,00000 | 0,15410 |
+            //
+            // ⇒ o vinco vira **CRATERA**: com a indicadora no lugar da quártica
+            // ele afunda **82 %** do bico a um raio e meio (contra 11 % do
+            // s-mode) e 2,2× fundo demais no bico. Um vinco é fundo e ESTREITO.
+            //
+            // ⇒ A metade estreita toma a estreiteza do **perfil do próprio
+            // Kelvinlet** — a mesma quártica que o s-mode aplica à curva do
+            // pincel, aplicada ao perfil do campo. Não há canal novo: o verbo
+            // composto fica inteiro na linguagem do campo, e o aperto lateral
+            // ganha o alcance elástico que era o ponto de ter um `l-mode`.
+            Verb::Crease => match brush.mode.field(Verb::Crease) {
+                Some(_) => {
+                    let d = [
+                        live[0] - dab.center[0],
+                        live[1] - dab.center[1],
+                        live[2] - dab.center[2],
+                    ];
+                    let gain = w * crate::CREASE_FRACTION;
+                    let prof = crate::kelvinlet::rigid_profile(d, dab.radius, Scales::default());
+                    add(
+                        add_vec(
+                            live,
+                            crate::kelvinlet::pinch(
+                                d,
+                                dab.radius,
+                                n_area,
+                                gain * brush.pinch,
+                                Scales::default(),
+                            ),
+                            1.0,
+                        ),
+                        n_area,
+                        -gain * prof.powi(4) * dab.radius * sign,
+                    )
+                }
+                _ => {
+                    let t = lateral_pull(brush.mode.kernel(), live, dab.center, n_area);
+                    let gain = w * crate::CREASE_FRACTION;
+                    add(
+                        add_vec(live, t, gain * brush.pinch),
+                        n_area,
+                        -gain * shape.powi(4) * dab.radius * sign,
+                    )
+                }
+            },
             // O alvo de posição de um verbo de máscara é o próprio lugar: ele
             // não move geometria ([`crate::Grip::Paint`]), e `apply_mask` é quem
             // escreve o canal dele.

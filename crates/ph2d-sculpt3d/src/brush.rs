@@ -243,7 +243,7 @@ impl Verb {
             Self::Move | Self::SnakeHook => Some(crate::Field::Grab),
             Self::Twist => Some(crate::Field::Twist),
             Self::LocalScale | Self::Magnify => Some(crate::Field::Scale),
-            Self::Pinch => Some(crate::Field::Pinch),
+            Self::Pinch | Self::Crease => Some(crate::Field::Pinch),
             _ => None,
         }
     }

@@ -632,9 +632,20 @@ fn measure_whether_threading_the_dab_pays() {
     let (mp, ms) = (par[par.len() / 2], ser[ser.len() / 2]);
 
     println!("\n=== o `rayon` do dab paga? (mesmo binário, intercalado) ===");
-    println!("pegada: {n} vértices (piso {})", super::stroke_map::PAR_MIN_VERTS);
-    println!("  paralelo  mediana {mp:>8.3} ms   min {:>8.3}  max {:>8.3}", par[0], par[par.len() - 1]);
-    println!("  serial    mediana {ms:>8.3} ms   min {:>8.3}  max {:>8.3}", ser[0], ser[ser.len() - 1]);
+    println!(
+        "pegada: {n} vértices (piso {})",
+        super::stroke_map::PAR_MIN_VERTS
+    );
+    println!(
+        "  paralelo  mediana {mp:>8.3} ms   min {:>8.3}  max {:>8.3}",
+        par[0],
+        par[par.len() - 1]
+    );
+    println!(
+        "  serial    mediana {ms:>8.3} ms   min {:>8.3}  max {:>8.3}",
+        ser[0],
+        ser[ser.len() - 1]
+    );
     println!("  razão serial/paralelo: {:.3}x", ms / mp);
     println!(
         "\n  ⚠️ AS DUAS ROTAS PARTILHAM a maquinaria nova (resize + espalhamento\n  \

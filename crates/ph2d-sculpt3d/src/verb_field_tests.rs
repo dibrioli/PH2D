@@ -13,19 +13,19 @@
 
 use crate::{Brush, Dab, RefMode, SculptStroke, Symmetry, Verb};
 
-fn sphere() -> ph2d_mesh::Mesh {
+pub(super) fn sphere() -> ph2d_mesh::Mesh {
     ph2d_mesh::shapes::uv_sphere(32, 48, 1.0)
 }
 
-const TIP: [f32; 3] = [0.0, 0.0, 1.0];
+pub(super) const TIP: [f32; 3] = [0.0, 0.0, 1.0];
 const EYE: [f32; 3] = [0.0, 0.0, -1.0];
-const R: f32 = 0.5;
+pub(super) const R: f32 = 0.5;
 
 /// Um traço de doze eventos com o gesto a crescer — o caminho do produto.
 ///
 /// ⚠️ **Doze e não um**, e a razão é a §7.11: o defeito do `b-mode` do Grab só
 /// existia a partir do quinto evento, e um dab solto o teria declarado são.
-fn stroke(verb: Verb, mode: RefMode, amount: f32, pull: [f32; 3]) -> ph2d_mesh::Mesh {
+pub(super) fn stroke(verb: Verb, mode: RefMode, amount: f32, pull: [f32; 3]) -> ph2d_mesh::Mesh {
     let mut mesh = sphere();
     let b = Brush {
         verb,
@@ -59,7 +59,7 @@ fn stroke(verb: Verb, mode: RefMode, amount: f32, pull: [f32; 3]) -> ph2d_mesh::
 
 /// O gesto que faz cada verbo de campo mexer-se — o mínimo para o modo ser
 /// observável, e nada além.
-fn gesture(verb: Verb) -> (f32, [f32; 3]) {
+pub(super) fn gesture(verb: Verb) -> (f32, [f32; 3]) {
     match verb {
         Verb::Move | Verb::SnakeHook => (0.0, [0.35, 0.0, 0.0]),
         Verb::Twist => (1.2, [0.0; 3]),
@@ -174,6 +174,10 @@ const SHAPE_GATED: &[&str] = &[
     "Twist",
     // `the_elastic_scale_falls_off_from_the_tip_to_the_rim`
     "Local Scale",
+    // `the_creased_trench_stays_narrow_while_the_squeeze_reaches_out` — o único
+    // COMPOSTO da tabela, e por isso o único cujo gate tem de olhar as duas
+    // metades separadas.
+    "Crease",
     // `the_elastic_pinch_gives_back_along_the_normal_what_it_takes_from_the_plane`
     "Pinch",
     // `the_elastic_magnify_dilates_along_the_ray_not_across_the_plane`

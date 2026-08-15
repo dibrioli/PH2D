@@ -318,6 +318,10 @@ mod verb_move_field;
 #[path = "verb_field_tests.rs"]
 mod verb_field;
 
+/// O VINCO, o único COMPOSTO — ver o cabeçalho dele.
+#[path = "verb_crease_field_tests.rs"]
+mod verb_crease_field;
+
 /// A BORDA, que só uma malha ABERTA revela — ver o cabeçalho dele.
 #[path = "verb_border_tests.rs"]
 mod verb_border;

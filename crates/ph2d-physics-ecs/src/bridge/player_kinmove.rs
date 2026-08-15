@@ -12,6 +12,36 @@
 
 use super::*;
 
+/// **Um deslocamento cinemático devido** (W-KinMove) — colhido no laço do pai e
+/// aplicado aqui, pelo motivo de sempre: perguntar ao mundo toma `&self` e
+/// escrever a pose toma `&mut self`.
+///
+/// ⚠️ **Ela mudou-se para cá quando a `W-Ceiling` empurrou o pai contra o teto de
+/// LOC** (695 → 711), e o corte é o que o doc deste módulo já declarava: a lista
+/// é a fronteira entre COLHER e APLICAR, e quem a consome é este lado. ⚠️ **A
+/// mudança curou um doc-comment ÓRFÃO de carona:** o texto do `GroundPush`
+/// estava colado por cima desta struct sem linha em branco, então o rustdoc lia
+/// os dois como UM só — o `KinMove` anunciava-se como *"um empurrão devido ao
+/// chão (W6)"* e o `GroundPush` ficava sem doc nenhum.
+pub(super) struct KinMove {
+    pub(super) entity: Entity,
+    pub(super) handle: rapier2d_handle::Handle,
+    pub(super) layer: u8,
+    pub(super) passing: Option<ph2d_physics::ColliderHandle>,
+    pub(super) params: CharacterParams,
+    /// O deslocamento que a lei PEDIU.
+    pub(super) wanted: [f32; 2],
+    /// A velocidade depois do avanço e **antes** do assentamento.
+    pub(super) advanced: KinematicState,
+    /// Os escalares da 3ª lei — o EMPURRÃO (W-KinPush) lê o `push` daqui.
+    ///
+    /// ⚠️ Viaja na lista porque a config do player é lida no primeiro laço (com
+    /// `&self`) e o empurrão é aplicado no segundo (com `&mut self`): relê-la
+    /// depois seria uma segunda consulta ao mundo ECS a meio do tique, e as
+    /// duas divergiriam no frame em que o artista arrasta o slider.
+    pub(super) react: ReactionConfig,
+}
+
 impl PhysicsBridge {
     /// **Aplica os deslocamentos colhidos** — mover o personagem, empurrar quem
     /// ele encostou, escrever a pose e devolver-lhe o que o mundo recusou.

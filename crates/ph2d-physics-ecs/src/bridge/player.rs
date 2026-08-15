@@ -35,9 +35,9 @@ use ph2d_physics::{CharacterHit, CharacterParams};
 use ph2d_platformer::{
     Buoyed, CeilingProbe, Fluid, GroundSample, Headroom, KinematicState, MAX_CORNER_SAMPLES,
     MAX_WALL_SAMPLES, Motor, PlayerConfig, PlayerInput, PlayerState, ReactionConfig, WallHit,
-    WallProbe, corner_offsets, corner_probe_wanted, footing, headroom_probe_wanted,
-    kinematic_advance, kinematic_settle, odd_samples, player_motor, relative_rise, wall_offsets,
-    wall_probe_wanted,
+    WallProbe, ceiling_fact_wanted, corner_offsets, corner_probe_wanted, footing,
+    headroom_probe_wanted, kinematic_advance, kinematic_settle, odd_samples, player_motor,
+    relative_rise, wall_offsets, wall_probe_wanted,
 };
 
 use super::player_view::{ProbeKind, ProbeMark};
@@ -62,28 +62,6 @@ const UP: [f32; 2] = [0.0, 1.0];
 /// Uma struct e não uma tupla de cinco: os dois primeiros campos são handles do
 /// MESMO tipo, e trocá-los daria um mundo em que o chão empurra o personagem
 /// com a massa dele — compila, roda, e está errado.
-/// **Um deslocamento cinemático devido** (W-KinMove) — colhido no laço e
-/// aplicado depois, pelo motivo de sempre: perguntar ao mundo toma `&self` e
-/// escrever a pose toma `&mut self`.
-struct KinMove {
-    entity: Entity,
-    handle: rapier2d_handle::Handle,
-    layer: u8,
-    passing: Option<ph2d_physics::ColliderHandle>,
-    params: CharacterParams,
-    /// O deslocamento que a lei PEDIU.
-    wanted: [f32; 2],
-    /// A velocidade depois do avanço e **antes** do assentamento.
-    advanced: KinematicState,
-    /// Os escalares da 3ª lei — o EMPURRÃO (W-KinPush) lê o `push` daqui.
-    ///
-    /// ⚠️ Viaja na lista porque a config do player é lida no primeiro laço (com
-    /// `&self`) e o empurrão é aplicado no segundo (com `&mut self`): relê-la
-    /// depois seria uma segunda consulta ao mundo ECS a meio do tique, e as
-    /// duas divergiriam no frame em que o artista arrasta o slider.
-    react: ReactionConfig,
-}
-
 struct GroundPush {
     ground: rapier2d_handle::Handle,
     player: rapier2d_handle::Handle,
@@ -370,8 +348,24 @@ impl PhysicsBridge {
             };
 
             let rel_up = relative_rise(stand, vel, UP);
-            let ceiling = if corner_probe_wanted(&cfg.jump, stand.is_some(), rel_up) {
-                probe_ceiling(&self.world, b.handle, b.rest.layer, &cfg, rel_up, dt)
+            // ⚠️ **A condição é a do FATO, e o ASSIST entra como argumento.** As
+            // duas coincidem na configuração que shipa (`corner_reach = 0,12`),
+            // então o sensor roda exactamente onde rodava e o teto custa uma
+            // varredura a mais — nunca uma invocação nova. O que a separação
+            // compra é o caso em que o artista DESARMA a quina: ali o leque
+            // continua a não custar raio nenhum, e o `is_on_ceiling` continua a
+            // existir, porque um fato não é opt-in.
+            let assist = corner_probe_wanted(&cfg.jump, stand.is_some(), rel_up);
+            let ceiling = if ceiling_fact_wanted(stand.is_some(), rel_up) {
+                probe_ceiling(
+                    &self.world,
+                    b.handle,
+                    b.rest.layer,
+                    &cfg,
+                    rel_up,
+                    dt,
+                    assist,
+                )
             } else {
                 None
             };
@@ -681,6 +675,7 @@ mod push;
 /// (o cast toma `&self`), lá a ponte APLICA (a pose toma `&mut self`).
 #[path = "player_kinmove.rs"]
 mod kinmove;
+use kinmove::KinMove;
 
 /// **O QUE A PONTE ESCREVE** — a outra metade do mesmo corte: aqui o laço COLHE,
 /// lá ela APLICA. Ver o doc do módulo para a lei da ordem.

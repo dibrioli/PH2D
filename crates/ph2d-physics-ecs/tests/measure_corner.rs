@@ -135,12 +135,19 @@ fn measure_what_the_corner_assist_saves() {
 #[ignore = "sonda de medicao"]
 fn measure_what_the_probe_costs() {
     println!(
-        "\n=== O CUSTO do perfil ({CORNER_SAMPLES} raios + 2 laterais por tique de subida) ==="
+        "\n=== O CUSTO do LEQUE ({CORNER_SAMPLES} raios + 2 laterais por tique de subida) ==="
     );
+    // ⚠️ **O rótulo abaixo mede o LEQUE, não o sensor inteiro.** Desde a
+    // `W-Ceiling` a linha `reach 0` NÃO significa *"sensor nenhum"*: o fato do
+    // teto (`head_blocked`) é uma varredura sem knob e roda nas duas linhas, por
+    // ser um FATO e não uma assistência. A diferença aqui é, e sempre foi, o
+    // preço da ASSISTÊNCIA — e deixá-la rotulada como *"o sensor inteiro"*
+    // faria a próxima leitura precificar a coisa errada.
+    println!("     (a varredura do FATO roda nas DUAS linhas -- ela nao tem knob)");
     let mut rows = Vec::new();
     for (name, reach) in [
-        ("desligado (reach 0)", 0.0_f32),
-        ("ligado (reach 0,12)", 0.12),
+        ("so' o fato (reach 0)", 0.0_f32),
+        ("fato + leque (0,12)", 0.12),
     ] {
         // A mesma cena, o mesmo pulo — só o alcance muda.
         let (mut sim, mut bridge, player) = ledge_scene(0.05, reach);
@@ -171,7 +178,7 @@ fn measure_what_the_probe_costs() {
         println!("{n:>22}: {ms:.4} ms/tique");
     }
     let delta = rows[1].1 - rows[0].1;
-    println!("            diferenca: {delta:+.4} ms/tique (o sensor inteiro)");
+    println!("            diferenca: {delta:+.4} ms/tique (SO' o leque)");
 }
 
 /// **A CHAMINÉ** — a geometria da cena de smoke, medida antes de ser escrita.

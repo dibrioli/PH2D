@@ -160,7 +160,30 @@ pub struct CeilingProbe {
     /// comparável e o gate legível.
     pub side_clear: [f32; 2],
     /// Quantas das `blocked` este perfil de facto varreu.
+    ///
+    /// ⚠️ **`0` é legítimo e significa *"o leque não foi perguntado"***: com o
+    /// assist desarmado (`corner_reach == 0`) a ponte ainda constrói este sensor
+    /// para responder o [`Self::head_blocked`], que é um FATO e não uma
+    /// assistência. Quem lê o leque é o [`corner_escape`], e ele só é alcançado
+    /// sob o [`corner_probe_wanted`], que exige o alcance autorado — a razão de
+    /// um perfil meio-preenchido nunca chegar lá.
     pub samples: usize,
+    /// **A cabeça bate neste tique?** — o `is_on_ceiling` do Godot.
+    ///
+    /// ⚠️ **É um FATO, e é por isso que não tem knob** ([`ceiling_fact_wanted`]
+    /// não olha para config nenhuma). Os outros dois campos desta struct
+    /// descrevem uma ASSISTÊNCIA opcional; este descreve o mundo, e um readout
+    /// que existisse só quando uma ajuda está ligada seria um teto que aparece
+    /// *às vezes*, em silêncio.
+    ///
+    /// ⚠️ **A régua é o que a cabeça percorre NESTE tique** (`rel_up · dt`), sem
+    /// o [`JumpConfig::corner_lookahead`] que o leque usa: a antecipação é do
+    /// assist, e herdá-la faria o fato dizer *"bateu"* um tique antes de bater.
+    ///
+    /// ⚠️ **Varredura da FORMA, não um raio** — o corpo pode ser composto
+    /// (W-Compound), e um raio pelo centro atravessaria uma marquise que o ombro
+    /// encosta. É o mesmo primitivo que o [`crate::Headroom`] já usa.
+    pub head_blocked: bool,
 }
 
 impl CeilingProbe {
@@ -172,8 +195,32 @@ impl CeilingProbe {
             blocked: [false; MAX_CORNER_SAMPLES],
             side_clear: [reach, reach],
             samples: CORNER_SAMPLES,
+            head_blocked: false,
         }
     }
+}
+
+/// **Vale a pena perguntar se a cabeça bate?** — a porta do FATO.
+///
+/// ⚠️ **Ela NÃO é o [`corner_probe_wanted`], e a diferença é o knob.** Aquela é a
+/// porta de uma ASSISTÊNCIA e exige `corner_reach > 0`, porque uma ajuda
+/// desligada não deve custar um raio. Esta descreve o MUNDO, e um fato não é
+/// opt-in: um `is_on_ceiling` que só existisse com a assistência de quina armada
+/// seria um readout falso na maioria dos tiques, em silêncio.
+///
+/// ⚠️ **Ela é o SUPERCONJUNTO da outra** (`corner_probe_wanted` = isto **e**
+/// `corner_reach > 0`), e é isso que mantém o assist byte-idêntico: com o
+/// alcance no ponto de partida (`0,12`) as duas coincidem, então na configuração
+/// que shipa o sensor **já rodava** e o fato custa uma varredura a mais, nunca
+/// uma invocação nova.
+///
+/// - **Subindo**, porque uma cabeça que desce não bate em teto nenhum.
+/// - **No ar**, porque de pé sob uma marquise o personagem não está a subir
+///   contra ela — o que ele tem ali é falta de espaço, que é a pergunta do
+///   [`crate::Headroom`], não esta.
+#[must_use]
+pub fn ceiling_fact_wanted(grounded: bool, rel_up: f32) -> bool {
+    !grounded && rel_up > 0.0
 }
 
 /// **Vale a pena perguntar ao mundo?**
@@ -281,6 +328,10 @@ mod tests {
             blocked,
             side_clear: [REACH, REACH],
             samples: CORNER_SAMPLES,
+            // Parte da cabeça está tapada, então ela ESTÁ a bater — o valor que
+            // mantém a fixture coerente consigo mesma. O `corner_escape` não lê
+            // este campo; ele é do readout.
+            head_blocked: true,
         }
     }
 
@@ -377,6 +428,7 @@ mod tests {
             blocked: [true; MAX_CORNER_SAMPLES],
             side_clear: [REACH, REACH],
             samples: CORNER_SAMPLES,
+            head_blocked: true,
         };
         assert_eq!(corner_escape(&p, REACH), None);
     }

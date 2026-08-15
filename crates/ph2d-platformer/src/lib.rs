@@ -71,7 +71,7 @@ pub mod wall;
 
 pub use corner::{
     CORNER_LOOKAHEAD, CORNER_SAMPLES, CORNER_SEARCH_STEPS, CeilingProbe, MAX_CORNER_SAMPLES,
-    corner_escape, corner_nudge, corner_offsets, corner_probe_wanted,
+    ceiling_fact_wanted, corner_escape, corner_nudge, corner_offsets, corner_probe_wanted,
 };
 pub use crouch::{
     CrouchConfig, CrouchState, Headroom, crouch_step, effective_crouched, headroom_probe_wanted,
@@ -605,6 +605,12 @@ pub fn player_motor(
             gripping,
             crouching: crouch.crouched,
             swimming,
+            // ⚠️ **Do sensor, e sem re-perguntar nada** — o `head_blocked` é um
+            // fato que a ponte mediu, não um veredito da lei. Sem sensor não há
+            // teto a relatar, que é o mesmo `false` de uma cabeça livre: a
+            // distinção *não perguntei* × *não bateu* não é usável por quem
+            // desenha, e inventá-la seria um terceiro estado sem consumidor.
+            ceiling: ceiling.is_some_and(|c| c.head_blocked),
             ledging,
             dashing,
             // ⚠️ *Planar* é o TETO de descida a agir, e o motor dele é zero

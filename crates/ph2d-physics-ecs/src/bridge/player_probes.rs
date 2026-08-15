@@ -413,14 +413,37 @@ pub(super) fn probe_ceiling(
     cfg: &PlayerConfig,
     rel_up: f32,
     dt: f32,
+    assist: bool,
 ) -> Option<CeilingProbe> {
     let g = corner_geom(world, handle, cfg, corner_rise(rel_up, dt, cfg))?;
 
-    let n = odd_samples(cfg.jump.corner_samples, MAX_CORNER_SAMPLES);
+    // ── O FATO (W-Ceiling) ───────────────────────────────────────────────────
+    // ⚠️ **A régua é o que a cabeça percorre NESTE tique**, sem o
+    // `corner_lookahead` que o leque acima usa: a antecipação pertence à
+    // assistência, e um fato que a herdasse diria *"bateu"* um tique antes de
+    // bater. É por isso que o número sai daqui e não do `corner_rise`.
+    //
+    // ⚠️ **Varredura da FORMA, não um raio** — o corpo pode ser composto, e um
+    // raio pelo centro atravessaria uma marquise que só o ombro encosta. É o
+    // mesmo primitivo do `probe_headroom`, pela mesma razão.
+    let head_blocked = world
+        .sweep_body(handle, [0.0, 1.0], (rel_up * dt).max(0.0), layer)
+        .is_some();
+
+    // ⚠️ **O leque é da ASSISTÊNCIA e só é varrido sob o knob dela.** Com o
+    // alcance em zero o `samples` fica `0` — que o campo já documenta como *"não
+    // perguntei"* — e o `corner_escape` nunca é alcançado, porque quem o gateia
+    // é o `corner_probe_wanted`, que exige o mesmo alcance. Varrer aqui de
+    // qualquer maneira faria uma ajuda desligada custar N raios.
+    let n = if assist {
+        odd_samples(cfg.jump.corner_samples, MAX_CORNER_SAMPLES)
+    } else {
+        0
+    };
     let mut blocked = [false; MAX_CORNER_SAMPLES];
     for (slot, off) in blocked
         .iter_mut()
-        .zip(corner_offsets(g.half_width, g.reach, n).iter())
+        .zip(corner_offsets(g.half_width, g.reach, n.max(1)).iter())
         .take(n)
     {
         *slot = world
@@ -446,11 +469,21 @@ pub(super) fn probe_ceiling(
             .map_or(g.reach, |h| (h.distance - g.half_width).clamp(0.0, g.reach))
     };
 
+    // ⚠️ Os dois raios laterais são do ESCAPE (para onde livrar a cabeça), não do
+    // fato — com a assistência desarmada eles seriam custo por uma resposta que
+    // ninguém lê.
+    let side_clear = if assist {
+        [free(-1.0), free(1.0)]
+    } else {
+        [0.0, 0.0]
+    };
+
     Some(CeilingProbe {
         half_width: g.half_width,
         blocked,
-        side_clear: [free(-1.0), free(1.0)],
+        side_clear,
         samples: n,
+        head_blocked,
     })
 }
 

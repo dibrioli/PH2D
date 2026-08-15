@@ -213,6 +213,20 @@ pub struct PlayerView {
     pub crouching: bool,
     /// Nadando.
     pub swimming: bool,
+    /// **A cabeça bateu neste tique** — o `is_on_ceiling` do Godot, o
+    /// `collisionFlags.above` da Unity.
+    ///
+    /// ⚠️ **Ele é o que a SUBIDA deste tique encontrou, não *"há teto acima"***.
+    /// De pé sob uma marquise ele é `false`: o personagem não está a subir contra
+    /// nada. *Falta de espaço para levantar* é outra pergunta e tem outro sensor
+    /// (o [`crate::Headroom`], do agachar) — colapsá-las daria um bit verdadeiro
+    /// o tempo todo num corredor baixo, que é o oposto de um evento de batida.
+    ///
+    /// ⚠️ **A lei não age sobre ele** (não há head-bonk): quem pára o personagem
+    /// é o solver — o rapier sob `Spring`, o move bloqueado sob `Snap`. Este
+    /// campo é para quem DESENHA e SOA, e é por isso que ele nasceu no readout e
+    /// não num motor.
+    pub ceiling: bool,
     /// Pendurado numa beirada ou a subi-la.
     pub ledging: bool,
     /// Em arranque.

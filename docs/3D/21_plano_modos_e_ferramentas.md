@@ -1568,6 +1568,10 @@ pergunta com confiança.*
 
 #### ✅ A alavanca que sobra, com o teto
 
+⚠️ **ADR escrito e aceito: [ADR-0158](../architecture/decisions/0158-sculpt3d-the-dab-vertex-loop-is-a-row-disjoint-map-rayon-exception.md)**
+(número PROVISÓRIO — ele se re-conta na integração). A CONSTRUÇÃO está
+especificada e **não foi feita**: ver o fecho da §7.15.
+
 **O laço de vértices do `SculptStroke::dab` é 41 % e roda em UM núcleo de
 trinta e dois.** As escritas são disjuntas (cada vértice lê `pre` + vizinhança e
 escreve a própria posição) — a condição do ADR-0109, e o `rayon` na
@@ -1584,6 +1588,44 @@ está medido.** Os dois primeiros são **independentes do modo** (o `refine` usa
 `brush.radius`, não o `query_radius`), então a razão `l/s` que o report descreve
 está atribuída — mas o orçamento por QUADRO precisa dos outros dois, e quantos
 eventos o shell entrega por quadro é o número que falta.
+
+### §7.15 — ✅ O PUXÃO DO GRAB É CARIMBADO UMA VEZ POR QUADRO (2026-08-13)
+
+A primeira das duas metades do *"ambos"*. O `Grip::Hold` fazia **um dab por
+EVENTO de ponteiro** — o `walk`, que espaça dabs por distância percorrida, só
+cobre `Grip::Stamp | Paint` —, e a ~1000 Hz de mouse com 60 fps são **~16 dabs
+por quadro** a 1,05 ms cada.
+
+⚠️ **A minha ressalva caiu na medição, e eu a tinha escrito como bloqueio.** Eu
+disse que descartar dabs intermediários *"pode mudar quais vértices entram"*,
+porque a pegada é consultada nas posições VIVAS. Medido — 16/8/4/2/1 eventos,
+puxões de 50 %, 100 % e 200 % do raio — o desvio máximo é **0,000000** e a
+contagem de movidos é a MESMA: **17,9 ms viram 1,2**.
+
+O mecanismo já estava escrito no `touched`: o `Hold` é **frozen**, o laço
+percorre o conjunto congelado no pen-down e o alvo é medido contra o `pre`. A
+pegada viva só pode CRESCER, e o que ela acrescenta pesa zero contra a posição
+congelada.
+
+**O evento REGISTA, o QUADRO carimba, o pen-up DRENA antes de fechar** — sem a
+última o gesto perde a ponta, um erro que cresce com a velocidade da mão e some
+quando ela é lenta. O pen-down limpa o pendente pela razão do `twist` ao lado.
+
+⚠️ **E um gate MEU sobreviveu à mutação na 1ª rodada:** o da ordem no pen-up
+fazia `find` sobre o ARQUIVO, e o dreno de quadro chama a mesma função ~170
+linhas acima — `flush < close` era verdade **por construção**. A janela agora é
+o corpo do pen-up. **4 mutações, 4 sangram.**
+
+#### ⚠️ O que ficou por fazer, e por quê
+
+A **paralelização do laço de vértices** (1,6×) tem o [ADR-0158](../architecture/decisions/0158-sculpt3d-the-dab-vertex-loop-is-a-row-disjoint-map-rayon-exception.md)
+escrito e aceito, com as três condições do ADR-0109 **verificadas no código** —
+o laço não escreve posições, as leituras são puras dentro de um passe, os slots
+são disjuntos e o `compute_target` não lê o `accum`. **O código não foi
+escrito.** Ele é uma reestruturação do laço mais gateado da crate (196 gates
+mais a paridade ULP com o SculptGL), e a prova exigida é byte-identidade contra
+a rota serial CONGELADA — trabalho que não cabia com segurança no que restava
+desta sessão, e meio-feito ali é pior que não começado.
 
 ### §7.1 — ⛔ Por que a W1 trocou de lugar com a W3 (medido em 2026-08-12)
 

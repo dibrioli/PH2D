@@ -23,6 +23,13 @@
 > `no_two_smoke_scenes_claim_the_same_level`: escrevê-lo seria a segunda resposta a uma
 > pergunta que o `rustc` já responde.
 >
+> ⚠️ **A jornada de 2026-08-15 fechou com a AUDITORIA FINAL** (três blocos) — o
+> `pose_owner` publicado como `PlayerLiveness` e lido pela §14 · os três defeitos
+> isolados (o `Remove` que prendia o corpo, as frações da 3ª lei, o teto de
+> rigidez 27,8× acima do que o kernel honra) · e os gates/notas. **Sem smoke, com
+> o argumento escrito** no §2c do handoff MESTRE de hoje. `physics_ecs_c9`
+> **não se move** (`1699123f…`, 117 corpos): nenhum dos três toca o solver.
+>
 > ⚠️ **Jornada de 2026-08-12 FECHADA e SMOKADA, aguardando ordem de integração** — handoff
 > [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md).
 > **Seis waves**, as três últimas de REPORT do Enio e não de plano.

@@ -19,8 +19,8 @@
 | branch | `line/physics` |
 | HEAD | **o tip de `line/physics`** ⚠️ ver abaixo |
 | merge-base com `main` | `76788440adbabb0e5b12f8fdafecc6f1e1183e1a` |
-| commits | **96** |
-| diff | 204 arquivos, **+37.940 / −1.980** |
+| commits | **102** |
+| diff | 212 arquivos, **+39.708 / −2.293** |
 
 ⚠️ **O HEAD não é escrito aqui de propósito, e a razão é aritmética:** o commit
 que o escreve MUDA o HEAD, então um sha nesta tabela é falso no instante em que é
@@ -35,6 +35,11 @@ confira no dia, porque esta frase envelhece.
 ---
 
 ## 2. O que é NOVO nesta entrega
+
+A entrega tem **duas metades**, e elas se JULGAM de formas diferentes: a **fila
+da auditoria** (sete waves construídas, duas recusadas por medição — todas
+**smokadas pelo Enio**) e a **auditoria FINAL** dos três blocos do fim da
+jornada, que **não tem smoke** e cujo argumento está na §2b.
 
 **A fila da [auditoria 09](../09_auditoria_engines.md), desenhada no [plano
 10](../10_plano_fila_da_auditoria.md) e executada na ordem que ele fixou.** O
@@ -93,13 +98,82 @@ pausado"*, porque o estado da sim é função do TIQUE e não do botão de play)
 
 ---
 
+### 2b. ⚠️ A AUDITORIA FINAL — três blocos, e o mecanismo é UM
+
+Levantados vários agentes sob lentes independentes, **três delas convergiram na
+mesma causa estrutural**: o veredito do `bridge::pose_owner` **não alcançava a
+shell**, que respondia às mesmas quatro perguntas por conta própria a partir do
+`PlayerMode`. Isso é a segunda cópia de uma resposta que aquele módulo existe
+para dar **uma** vez.
+
+**O caso que decide:** um player **ASSADO** (`Kinematic` + `PlatformPlayer`, sem
+`PlayerMode` ⇒ `default()` é `Dynamic`) resolve para `PoseOwner::Scene` — a pose
+vem de uma curva, o `drive_players` nem entra no laço, e **nenhum** dos doze
+cards da §14 é lido por ninguém. O painel pintava os doze como se corresse.
+⚠️ **O `pose_owner_tests` já PINAVA esse fato desde a W-KinMove** — ninguém
+tinha ligado os dois lados.
+
+| bloco | o que é |
+|---|---|
+| **1** | `PlayerLiveness` nasce ao lado da lei, cada campo sendo a condição literal de um `if` do `drive_players`; `PhysicsBridge::player_liveness` é a porta, e a shell **lê** em vez de re-derivar. As três rows da MOLA (`Float Height`, `Leg Stiffness`, `Leg Damping`) e o botão *Fit to Collider* saem sob Snap |
+| **2** | `Remove Platform Player` **prendia** o corpo · as frações da 3ª lei não eram frações na caixa de texto · o slider da rigidez oferecia **27,8×** o que o kernel honra |
+| **3** | o gate de dicas era **auto-referente no conjunto** · seis linhas do `09_auditoria_engines.md` diziam ❌ sobre o que já shipa · as notas de cena de smoke |
+
+⚠️ **A `Cling Distance` FICA sob Snap, e é por isso que o card LEG não se esconde
+inteiro:** ali ela é o `snap_distance` **e** o `step_height` do controlador — o
+número mais vivo da seção —, e a cura preguiçosa (esconder o card, o precedente
+do `Pure`) o levaria junto.
+
+⚠️ **O `Remove` era um BECO SEM SAÍDA:** o gesto do modo escreve DUAS metades (o
+`PlayerMode` e o `RigidBody.kind`) e o `Remove` desfazia UMA. O que sobrava era um
+corpo `Kinematic` sem player — o estado que a §14 **não oferece** —, então o
+artista removia o comportamento e ficava preso, com o corpo a **deixar de cair**
+em silêncio e um `PlayerMode` órfão a viajar no arquivo.
+
+⚠️ **E o teto da rigidez é o §0 a morder em casa:** a linha do registro dizia
+*"sem teto medido"*, **verdade no dia em que foi escrita**, e a `W-Landing`
+(07/08) mediu o teto em `1/dt²` = 3600 e pôs o clamp na LEI sem ninguém
+reconferir a nota. A correção achou um **segundo** fato que ninguém procurava: a
+tabela de faixas do painel é a segunda cópia dos defaults da lei, e já divergira
+em dois campos (rigidez `400` contra `2000`, amortecimento `0,5` contra `1,0`) —
+invisível porque o `sync_physics` sobrescreve o store ao selecionar.
+
+⚠️ **E seis linhas da tabela do `09_auditoria_engines.md` diziam ❌ sobre o que a
+PRÓPRIA FILA construiu:** `LaunchCharacter` (W-Launch, 14/08) · `OnLanded` /
+`bNotifyApex` (W-PlayerOut, 13/08) · `TerminalVelocity` (W-Fall, 14/08) ·
+`is_on_floor/wall` + as três consultas do Godot (W-PlayerOut) · `isGrounded` /
+`velocity` · `BrakingDecelerationWalking` (W-Brake, 13/08). Elas estavam
+**certas em 12/08**. A §3.B prescrevia um bloqueador (*"depende do §3.C"*) que a
+W-Brake já pagou.
+
+⚠️ **Um número que a auditoria reportou NÃO reproduziu, e fica registado:** ela
+dizia *"seis controles da §14 sem tooltip"*; medido, a §14 pinta **70** ids
+próprios, a varredura cobria **57**, e os **três** sem dica são todos **chrome do
+painel** (o scrollbar, o cabeçalho da seção, o círculo de cor). *Nenhum controle
+da §14 está descoberto* — o defeito era o gate ser **cego a 15 dos 70**, e doze
+deles terem dica por sorte.
+
+### 2c. ⚠️ Por que os blocos da §2b NÃO têm smoke, e por que isso é defensável
+
+Dos itens, os que mudam o **produto** são: três controles que **desaparecem**
+onde já eram inertes, um botão que **desaparece** onde a lei apagava o efeito
+dele, um gesto que passa a **devolver o corpo** em vez de o prender, dois clamps
+e uma faixa de slider. **Todos são bugs a sumir**, e o oráculo de cada um já é um
+gate com mutação provada — pergunta mais afiada que a que o olho faz aqui.
+
+⚠️ **O que o smoke acrescentaria é a metade que o gate não vê:** *o card LEG com
+duas rows lê bem?* Isso é julgamento de LAYOUT, e o Enio o julga em qualquer
+cena de player cinemático (`=101`) sem roteiro novo.
+
+---
+
 ## 3. Superfície de colisão
 
 | | |
 |---|---|
 | `PROJECT_SCHEMA` | **70 → 82** ⚠️ **PROVISÓRIO — CONTE contra o `main` do dia** |
 | a tripla do pin | **`(70, 13, 14)` → `(82, 13, 14)`** em `shells/desktop/src/project_schema_tests.rs` ⚠️ *é `src/`, não `tests/`* |
-| registro `ph2d-physics-ecs` | **29 → 31** (`PlayerSignals` · `WalkSurface`) |
+| registro `ph2d-physics-ecs` | **29 → 31** (`PlayerSignals` · `WalkSurface`) — ⚠️ os blocos da §2b **não acrescentam nenhum** |
 | registro `ph2d-ecs` + os **dois** espelhos | **INTOCADOS** (`git diff` vazio em `crates/ph2d-ecs/`) |
 | gizmo ids | **nenhum novo** — o último segue **973**, próximo livre **974** |
 | ids novos | **todos `hash_node_id`** ⇒ fora de todo gate de contagem |
@@ -108,7 +182,7 @@ pausado"*, porque o estado da sim é função do TIQUE e não do botão de play)
 | `Cargo.toml` / `Cargo.lock` | **ZERO** — nenhuma crate nova, nenhuma dep nova |
 | `ph2d-i18n` | **INTOCADO** |
 | contrato congelado | **3/3 + 4/4 + 11/11**, rodados (nós · tools · vector) |
-| cenas de smoke | **105 → 119** (quinze novas); **próxima livre: 120** |
+| cenas de smoke | **105 → 119** (quinze novas); **próxima livre: 120** ⚠️ e o `CLAUDE.md` dizia `105` (o número do `main`, onde ele estava certo) — corrigido |
 
 ### 3a. ⚠️ O `PROJECT_SCHEMA` são DOZE degraus, e é aqui que a colisão mora
 
@@ -202,6 +276,19 @@ relógio deste repo significa coisa nenhuma com o load alto*).
 | `typos` | **limpo** |
 | `physics_ecs_c9` | hash acima, **debug ≡ release** |
 
+⚠️ **RE-RODADO depois dos três blocos da §2b, e o resultado é o que se esperava:**
+`1699123f9ed2844fa5159bc842a4e583f0675cdd88bb8895e2654ac706053787`, **117
+corpos**, 120 passos — **o mesmo hash**. Nenhum dos três blocos toca o solver:
+dois são a fronteira de AUTORIA (o painel e a escrita do Inspector) e o terceiro
+é gate e documento. `cargo clippy --workspace --all-targets` limpo,
+`cargo fmt --all --check` sem drift, e as suítes das crates tocadas verdes por
+**exit code**, não por `grep` (o pipe mascara o código de saída — a lição que
+esta linha já tem escrita).
+
+⚠️ **E pegou um TERCEIRO na varredura final:** o commit que trocou
+`slope.abs().tan()` por `libm::tanf(slope.abs())` deixou a chamada quebrada em
+três linhas, e com o nome mais curto ela cabe numa. **Quarta vez nesta linha.**
+
 ⚠️ **O `fmt` pegou dois arquivos VERMELHOS herdados da wave D**
 (`measure_terminal.rs` · `player_terminal.rs`) — corrigidos no último commit. É a
 **terceira vez nesta linha** que uma varredura de fecho acha fmt latente: um
@@ -250,6 +337,24 @@ ph2d-run cargo test -p ph2d-physics-ecs --release --test measure_air_control -- 
 * **O resto da lista aberta do módulo** (o horizonte do plano 02 §8, a paridade
   de arrasto do modo cinemático, o bobbing na poça) está onde estava: nada nesta
   entrega o toca.
+
+**E o que a auditoria final (§2b) deixou aberto, com o número ao lado:**
+
+* **Quatro consultas do Godot seguem em falta, e agora estão NOMEADAS** em vez de
+  escondidas num ❌ genérico: `is_on_ceiling`, `get_wall_normal`,
+  `get_last_slide_collision`, `collisionFlags`. As duas primeiras são um campo no
+  `PlayerView`; as duas últimas são o canal de *hits com estado* do KCC, que é
+  outra estrutura.
+* **A §3.B (gelo/esteira) está DESBLOQUEADA** — a dependência que ela declarava
+  (o §3.C) foi paga pela `W-Brake`. Ela não foi construída, e agora o preço dela
+  é o que a seção diz: um campo na `GroundSample` e um produto no `walk`.
+* **A guarda de LOC do `seam_player.rs`** (1399 linhas) é legítima: o
+  `architecture_workspace_file_loc_cap` isenta `**/tests/**` **de propósito**.
+  Não é dívida escondida — está medido.
+* **O `player_liveness` cai no recuo do `RigidBody` autorado** quando a ponte
+  ainda não construiu o corpo (o quadro do clique em *Add*). É deliberado e está
+  no doc-comment: sem ele a §14 piscaria inerte por um quadro, no gesto que a
+  acabou de criar.
 
 ---
 

@@ -66,6 +66,15 @@ pub struct SculptStroke {
     base_pos: Vec<[f32; 3]>,
     base_nrm: Vec<[f32; 3]>,
     base_mask: Vec<f32>,
+    /// **A saída por-índice do map do dab** — ver [`super::stroke_map`]. ⚠️
+    /// Campo e não local: alocar `count` entradas por dab devolveria ao
+    /// alocador o que o paralelismo economiza.
+    par_out: Vec<Option<DabOut>>,
+    /// **A porta de ABLAÇÃO do piso do pool** — só em teste. ⚠️ Sem ela os
+    /// gates ficariam verdes sobre uma rota que NUNCA roda: as fixtures deste
+    /// módulo ficam sob o piso (a armadilha do ADR-0120).
+    #[cfg(test)]
+    pub(crate) par_floor_override: Option<usize>,
     accum: Vec<f32>,
     target: Vec<[f32; 3]>,
     footprint: Vec<u32>,
@@ -347,19 +356,22 @@ impl SculptStroke {
         for (pi, pass) in passes.iter().enumerate() {
             let first = pi == 0;
             let count = if first { work } else { self.moved.len() };
-            for i in 0..count {
+            // ⚠️ **O LAÇO É UM MAP DISJUNTO** (ADR-0158): as três escritas que
+            // ele fazia viraram uma saída por índice. O porquê de ele poder ser
+            // dividido mora em [`super::stroke_map`].
+            self.run_dab_map(count, first, |me, i, out| {
                 let v = if first {
                     if frozen {
-                        self.touched[i]
+                        me.touched[i]
                     } else {
-                        self.footprint[i]
+                        me.footprint[i]
                     }
                 } else {
-                    self.moved[i]
+                    me.moved[i]
                 };
                 let vi = v as usize;
-                let s = self.slot[vi] as usize;
-                let base = self.base_pos[s];
+                let s = me.slot[vi] as usize;
+                let base = me.base_pos[s];
                 // ⚠️ **De ONDE se mede a distância, e as duas respostas são certas
                 // para leis diferentes.** No envelope o peso tem de ser função do
                 // estado CONGELADO: se ele fosse recomputado sobre a superfície que
@@ -390,7 +402,7 @@ impl SculptStroke {
                 // A máscara é lida do estado CONGELADO: um traço de Mask não pode
                 // mudar o quanto ele próprio já mascarou no meio do gesto.
                 let keep = if gated_by_mask {
-                    crate::mask_ops::free_weight(self.base_mask[s])
+                    crate::mask_ops::free_weight(me.base_mask[s])
                 } else {
                     1.0
                 };
@@ -479,7 +491,7 @@ impl SculptStroke {
                 let facing = match brush.mode.kernel().front_face {
                     crate::FrontFace::Ignored => 1.0,
                     crate::FrontFace::Continuous => {
-                        let n = self.base_nrm[s];
+                        let n = me.base_nrm[s];
                         (-(n[0] * dab.eye[0] + n[1] * dab.eye[1] + n[2] * dab.eye[2])).max(0.0)
                     }
                 };
@@ -521,7 +533,7 @@ impl SculptStroke {
                 // dab seguinte de um Grab **desfaria** o que a cópia espelhada
                 // acabou de fazer — as duas cópias compartilham o `touched`.
                 if w <= 0.0 {
-                    continue;
+                    return;
                 }
                 // **O CANAL SATURADO não tem o que receber.** É a última coisa que
                 // sobrou do early-out do envelope, e ela mudou de pergunta junto com
@@ -537,8 +549,8 @@ impl SculptStroke {
                 // controle que promete acumular e começa enfraquecendo. Hoje o
                 // Accumulate é `from_live`, que é o que ele é no original, e esta
                 // linha não tem mais braço que o consulte.
-                if additive && self.accum[s] >= 1.0 {
-                    continue;
+                if additive && me.accum[s] >= 1.0 {
+                    return;
                 }
                 // ⚠️ **Quem carrega o peso no ALVO carimba `accum = 1`**, e é isso
                 // que o faz caber no MESMO aplicador (`lerp(base, target, 1) ==
@@ -553,10 +565,10 @@ impl SculptStroke {
                 // early-out acima disparar cedo demais em dois dabs e tarde demais
                 // em vinte. Guardar o valor SATURADO é o que mantém as duas leituras
                 // — *quanto foi pintado* e *ainda cabe?* — respondendo o mesmo.
-                self.accum[s] = if unit_accum {
+                let new_accum = if unit_accum {
                     1.0
                 } else if additive {
-                    (self.accum[s] + w).min(1.0)
+                    (me.accum[s] + w).min(1.0)
                 } else {
                     w
                 };
@@ -567,7 +579,7 @@ impl SculptStroke {
                 // seria pulado em toda parte e o par nunca rodaria. E o `accum` é
                 // *quanto foi pintado*, não *para que lado*: os cinco grips o leem
                 // como fração em `[0, 1]`.
-                self.target[s] = self.compute_target(
+                let new_target = me.compute_target(
                     mesh,
                     brush,
                     dab,
@@ -578,10 +590,8 @@ impl SculptStroke {
                     v,
                     s,
                 );
-                if first {
-                    self.moved.push(v);
-                }
-            }
+                *out = Some((v, s, new_accum, new_target));
+            });
 
             if self.moved.is_empty() {
                 return 0;
@@ -623,6 +633,10 @@ impl SculptStroke {
 
 /// **O `pre` QUE O TRAÇO CONGELA** — ver [`freeze`]. Irmão dos três abaixo, e o
 /// assunto que os três já pressupunham sem ter casa própria.
+#[path = "stroke_map.rs"]
+mod stroke_map;
+pub(crate) use stroke_map::DabOut;
+
 #[path = "stroke_freeze.rs"]
 mod freeze;
 

@@ -478,3 +478,82 @@ fn a_hold_gesture_is_the_same_clay_however_finely_the_pointer_was_sampled() {
          é amostrado mais grosso, senão este gate não afirma nada sobre o `frozen`"
     );
 }
+
+/// **A ROTA PARALELA DO DAB PRODUZ O MESMO BARRO QUE A SERIAL, AO BIT** — a
+/// prova que o [ADR-0158] exige.
+///
+/// ⚠️ **Ele dirige a ablação do piso (`par_floor_override`), e sem ela seria
+/// verde por vácuo:** as fixtures deste módulo tocam ~121 a ~1500 vértices e
+/// ficam SOB o `PAR_MIN_VERTS`, então o caminho paralelo não roda em nenhum dos
+/// outros gates. O `radius` de 30 % aqui é o que põe 76 mil vértices na pegada
+/// — é o gesto que de fato divide trabalho.
+///
+/// ⚠️ **E o CONTROLE é a metade que o torna não-vazio:** ele afirma que a
+/// pegada passou do piso REAL. Sem isso, um `PAR_MIN_VERTS` subido para o
+/// infinito deixaria as duas rotas serem a mesma e o gate passaria provando
+/// nada.
+#[test]
+fn the_parallel_dab_lays_the_same_clay_as_the_serial_one() {
+    let run = |floor: usize| -> (Vec<[f32; 3]>, usize, Vec<u32>) {
+        let mut mesh = ph2d_mesh::shapes::sculpt_sphere(1.0);
+        let radius = mesh.bounds().longest_edge() * 0.30;
+        let start = mesh.positions()[0];
+        let eye = [-start[0], -start[1], -start[2]];
+        let brush = crate::Brush {
+            verb: crate::Verb::Move,
+            mode: crate::RefMode::L,
+            radius,
+            strength: 1.0,
+            ..crate::Brush::default()
+        };
+        let mut stroke = crate::SculptStroke {
+            par_floor_override: Some(floor),
+            ..crate::SculptStroke::default()
+        };
+        stroke.begin(&mesh);
+        let mut touched = 0usize;
+        for k in 1..=4 {
+            let f = k as f32 / 4.0;
+            let c = [start[0] + radius * f, start[1] + radius * 0.3 * f, start[2]];
+            let dab = crate::Dab::at(c, radius, eye);
+            touched = touched.max(stroke.dab(&mut mesh, &brush, &dab, crate::Symmetry::default()));
+        }
+        (mesh.positions().to_vec(), touched, stroke.moved.clone())
+    };
+
+    let (par, n, par_moved) = run(0); // tudo paralelo
+    let (ser, m, ser_moved) = run(usize::MAX); // tudo serial — a rota congelada
+    assert_eq!(n, m, "as duas rotas têm de tocar o mesmo conjunto");
+    assert!(
+        n >= super::stroke_map::PAR_MIN_VERTS,
+        "CONTROLE VAZIO: a fixture toca {n} vértices e o piso é {}; com a pegada \
+         sob o piso as duas rotas são a MESMA e este gate não afirma nada",
+        super::stroke_map::PAR_MIN_VERTS
+    );
+
+    // ⚠️ **A LISTA `moved`, em ORDEM** — e esta metade nasceu porque DUAS
+    // mutações sobreviveram sem ela: inverter o espalhamento e ler o índice
+    // errado no map. As duas deixam o BARRO igual (os slots são disjuntos e
+    // cada entrada carrega o próprio `s`), então comparar posições não as vê.
+    // O doc do espalhamento AFIRMA que a ordem é a dos índices; sem este
+    // `assert` a afirmação era inobservável, que é o mesmo que não estar lá.
+    assert_eq!(
+        par_moved, ser_moved,
+        "a lista publicada divergiu: a rota paralela tem de espalhar na ORDEM \
+         dos índices, com o mesmo conteúdo"
+    );
+
+    let worst = par
+        .iter()
+        .zip(&ser)
+        .map(|(a, b)| {
+            let d = [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+            (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt()
+        })
+        .fold(0.0f32, f32::max);
+    assert!(
+        worst == 0.0,
+        "a rota paralela divergiu da serial em {worst:e} sobre {n} vértices — \
+         o map deixou de ser disjunto, ou alguma acumulação entrou no laço"
+    );
+}

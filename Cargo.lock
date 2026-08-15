@@ -7322,6 +7322,7 @@ dependencies = [
  "libm",
  "ph2d-mesh",
  "ph2d-painter-brush",
+ "rayon",
 ]
 
 [[package]]

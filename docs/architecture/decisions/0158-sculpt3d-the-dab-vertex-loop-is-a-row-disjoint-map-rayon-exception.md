@@ -77,7 +77,13 @@ implementação.
 
 ## O preço e o teto
 
-Teto medido: dab **6,4 → ~4,0 ms (1,6×)** no raio de 30 %. ⚠️ **Menor que o
+Teto **estimado** era dab 6,4 → ~4,0 ms (1,6×). ⚠️ **CONSTRUÍDO E MEDIDO, o
+ganho é MENOR:** dab **6,406 → 5,607 ms (1,14×)**, com o laço em si em
+**2,649 → 2,045 (1,30×)**. A diferença é o que a estimativa não continha — o
+**espalhamento é serial** (76 mil entradas), o buffer de saída é redimensionado
+por dab, e o pool cobra o seu. *Quem move o número reconfere a nota, inclusive
+quando ela é a própria projeção.* (E a medição saiu com `load average 5,11`, no
+limite do que este repo aceita para acreditar num relógio.) ⚠️ **Menor que o
 coalescing** do `Grip::Hold` (15×, byte-idêntico, sem ADR — commit
 `63c856aa4`), que atacou o mesmo report por outro eixo: *quantos dabs*, em vez
 de *quanto custa um*. Os dois compõem.
@@ -89,6 +95,21 @@ precedente do `serial_side` do Painter e do `sim_step` do wet paint: comparar
 contra uma reimplementação seria razão entre dois doentes. Mais o gate de
 escalonamento (a mesma resposta com o pool em 1 e em N threads) e a suíte de
 paridade ULP com o SculptGL, que é o oráculo que já existe.
+
+## O que as mutações disseram
+
+**3 mutações, 2 sangram.** ⚠️ A que **não** sangra é o espalhamento invertido, e
+a razão é **estrutural, não um buraco**: o espalhamento é compartilhado pelas
+DUAS rotas, então invertê-lo inverte as duas e um gate rota-contra-rota é cego —
+*razão entre dois doentes*. A ordem continua sendo a dos índices por desenho
+(o `moved` é publicado), e hoje nenhum consumidor a observa; o precedente de
+registrar em vez de gatear é o do ADR-0145.
+
+⚠️ **E o gate nasceu fraco:** a 1ª versão comparava só POSIÇÕES, e tanto o
+espalhamento invertido quanto o índice errado no map deixam o barro igual (os
+slots são disjuntos e cada entrada carrega o próprio `s`). A metade que faltava
+era afirmar a **lista `moved`** — exatamente o que o doc do espalhamento já
+prometia e que nada observava.
 
 ## Alternativas recusadas
 

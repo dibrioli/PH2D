@@ -198,7 +198,8 @@ pub(crate) fn paint(
         // it seeded, so it never flashes empty.
         _ => (TextInputState::Focused, r.seed.clone(), 0, None),
     };
-    let input = ph2d_editor_core::widget::TextInput::new(rename_id(), "").state(fstate);
+    let input = ph2d_editor_core::widget::TextInput::new(rename_id(), "")
+        .visual((fstate, ctx.host.store().hover_live(rename_id())));
     ph2d_editor_core::widget::paint_text_input_with_buffer(
         &input,
         Some(&text),

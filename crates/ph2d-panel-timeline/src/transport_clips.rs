@@ -7,7 +7,7 @@
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{Dropdown, DropdownOption, DropdownState, paint_dropdown_chip};
+use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::TimelineViewSnapshot;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
@@ -61,14 +61,15 @@ pub(crate) fn cluster(
     ctx.host
         .hit_index_mut()
         .register(ids::TIMELINE_CLIP_DD, chip);
-    let (state, open) = match ctx.host.store().get(ids::TIMELINE_CLIP_DD) {
-        Some(InteractiveState::Dropdown { state, open, .. }) => (*state, *open),
-        _ => (DropdownState::Normal, false),
-    };
+    let open = matches!(
+        ctx.host.store().get(ids::TIMELINE_CLIP_DD),
+        Some(InteractiveState::Dropdown { open: true, .. })
+    );
+    let visual = ctx.host.store().dropdown_visual(ids::TIMELINE_CLIP_DD);
     let dd = Dropdown::new(ids::TIMELINE_CLIP_DD, "", source_options(snap, view.tab))
         .selected(selected_source(snap, view))
         .open(open)
-        .state(state);
+        .visual(visual);
     paint_dropdown_chip(&dd, chip, ctx.scene, ctx.text_system, theme);
     x += CLIP_DD_W + gap * 0.5;
 

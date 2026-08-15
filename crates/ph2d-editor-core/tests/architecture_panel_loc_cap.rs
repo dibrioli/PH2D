@@ -85,8 +85,8 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-hierarchy/src/paint.rs",
         "paint_hierarchy_body",
-        384,
-        "Wave 10 paint orchestrator; per-section split deferred (needs smoke)",
+        364,
+        "Wave 10 paint orchestrator; ratcheted 384->364 quando a wave do hover lhe acrescentou UMA linha e o tecto foi pago por extracção em vez de tolerância: a caixa de renomear saiu para `paint_rename_input`. As tolerâncias encolhem, nunca crescem.",
     ),
     (
         "ph2d-panel-hierarchy/src/row.rs",
@@ -117,8 +117,8 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-inspector/src/sections/render_source.rs",
         "paint_render_source_section",
-        305,
-        "unmasked by the 2026-07-10 parser fix; per-row split deferred (needs smoke)",
+        284,
+        "unmasked by the 2026-07-10 parser fix; ratcheted 305->284 quando a wave do hover a fez cruzar o tecto e o *per-row split* que esta nota dizia diferido foi FEITO para uma row: a closure `num_cell` saiu para `paint_region_num_cell`. As tolerâncias encolhem, nunca crescem.",
     ),
     (
         "ph2d-panel-inspector/src/sections/transform.rs",

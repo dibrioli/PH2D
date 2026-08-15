@@ -495,7 +495,7 @@ fn paint_weight(
     let buf = buf.to_string();
     let input = NumberInput::new(id, "", lane.weight)
         .step(WEIGHT_STEP)
-        .state(state);
+        .visual((state, ctx.host.store().hover_live(id)));
     paint_number_input_with_buffer(
         &input,
         Some(&buf),

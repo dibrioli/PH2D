@@ -20,8 +20,8 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, Dropdown, DropdownOption, DropdownState, paint_button,
-    paint_dropdown_chip, paint_slider_with_chip_layout_adaptive,
+    Button, ButtonKind, ButtonState, Dropdown, DropdownOption, paint_button, paint_dropdown_chip,
+    paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -250,18 +250,14 @@ pub(crate) fn paint_lut_section(
             store.get(*chip_id),
             Some(InteractiveState::Dropdown { open: true, .. })
         );
-        let state = if open {
-            DropdownState::Focused
-        } else {
-            DropdownState::Normal
-        };
+        let visual = store.dropdown_visual(*chip_id);
         let dd = Dropdown::new(
             *chip_id,
             slot_label.to_string(),
             lut_options_for_slot(*slot),
         )
         .selected(*preset)
-        .state(state)
+        .visual(visual)
         .open(open);
         paint_dropdown_chip(&dd, chip_rect, scene, text_system, theme);
         hit_index.register(*chip_id, chip_rect);
@@ -317,11 +313,7 @@ pub(crate) fn paint_posterize_quantize_section(
         store.get(ids::CEQ_POSTERIZE_DROPDOWN),
         Some(InteractiveState::Dropdown { open: true, .. })
     );
-    let post_state = if post_open {
-        DropdownState::Focused
-    } else {
-        DropdownState::Normal
-    };
+    let post_visual = store.dropdown_visual(ids::CEQ_POSTERIZE_DROPDOWN);
     let post_chip_rect = Rect::new(layout.inner_x, chip_y, half, layout.row_h);
     let post_dd = Dropdown::new(
         ids::CEQ_POSTERIZE_DROPDOWN,
@@ -329,7 +321,7 @@ pub(crate) fn paint_posterize_quantize_section(
         posterize_options(),
     )
     .selected(snapshot.posterize_levels)
-    .state(post_state)
+    .visual(post_visual)
     .open(post_open);
     paint_dropdown_chip(&post_dd, post_chip_rect, scene, text_system, theme);
     hit_index.register(ids::CEQ_POSTERIZE_DROPDOWN, post_chip_rect);
@@ -443,11 +435,7 @@ pub(crate) fn paint_posterize_quantize_section(
         store.get(ids::CEQ_QUANTIZE_DROPDOWN),
         Some(InteractiveState::Dropdown { open: true, .. })
     );
-    let quant_state = if quant_open {
-        DropdownState::Focused
-    } else {
-        DropdownState::Normal
-    };
+    let quant_visual = store.dropdown_visual(ids::CEQ_QUANTIZE_DROPDOWN);
     let quant_chip_rect = Rect::new(layout.inner_x, y, layout.inner_w, layout.row_h);
     let quant_dd = Dropdown::new(
         ids::CEQ_QUANTIZE_DROPDOWN,
@@ -455,7 +443,7 @@ pub(crate) fn paint_posterize_quantize_section(
         quantize_options(),
     )
     .selected(snapshot.quantize_colors)
-    .state(quant_state)
+    .visual(quant_visual)
     .open(quant_open);
     paint_dropdown_chip(&quant_dd, quant_chip_rect, scene, text_system, theme);
     hit_index.register(ids::CEQ_QUANTIZE_DROPDOWN, quant_chip_rect);

@@ -139,7 +139,7 @@ fn paint_centered_input_dialog(
     hit_index.register(d.input_id, field_rect);
     let ti = TextInput::new(d.input_id, "")
         .placeholder(d.placeholder)
-        .state(ti_state);
+        .visual((ti_state, store.hover_live(d.input_id)));
     let field_clip = ph2d_vector::Rect::new(
         field_rect.x as f64,
         field_rect.y as f64,

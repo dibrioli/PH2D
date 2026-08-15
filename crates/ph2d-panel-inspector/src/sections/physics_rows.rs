@@ -461,7 +461,9 @@ fn signal_row(
         }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
         _ => (TextInputState::Normal, None, 0, None),
     };
-    let input = TextInput::new(id, "").placeholder(placeholder).state(state);
+    let input = TextInput::new(id, "")
+        .placeholder(placeholder)
+        .visual((state, store.hover_live(id)));
     paint_text_input_with_buffer(
         &input,
         text,

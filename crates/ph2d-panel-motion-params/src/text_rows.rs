@@ -97,7 +97,9 @@ pub(crate) fn paint_text_row(
         }) => (*state, text.clone(), *caret, *selection_anchor),
         _ => (TextInputState::Normal, String::new(), 0, None),
     };
-    let input = TextInput::new(id, "").placeholder(placeholder).state(state);
+    let input = TextInput::new(id, "")
+        .placeholder(placeholder)
+        .visual((state, store.hover_live(id)));
     paint_text_input_with_buffer(
         &input,
         Some(&text),

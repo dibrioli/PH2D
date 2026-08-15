@@ -63,7 +63,9 @@ pub(crate) fn paint_sprite_sheet_section(
         let rect = Rect::new(field_x, row_y, field_w, field_h);
         hit_index.register(id, rect);
         let (state, value, buffer, caret, anchor) = read_number_input(store, id);
-        let input = NumberInput::new(id, "", value).step(1.0).state(state);
+        let input = NumberInput::new(id, "", value)
+            .step(1.0)
+            .visual((state, store.hover_live(id)));
         paint_number_input_with_buffer(
             &input,
             Some(buffer),

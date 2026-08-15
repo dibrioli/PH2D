@@ -191,71 +191,50 @@ pub(crate) fn paint_render_source_section(
             let field_h = ROW_H_PX;
             let cell_gap = Spacing::Md.px();
             let cell_w = ((w - cell_gap) * 0.5).max(0.0);
-            let axis_w = Spacing::Lg.px(); // mini X/Y/W/H label column
-            let num_cell = |scene: &mut VectorScene,
-                            text_system: &mut TextSystem,
-                            hit_index: &mut HitIndex,
-                            cell: Rect,
-                            axis: &str,
-                            id: NodeId| {
-                paint_text(
-                    text_system,
-                    scene,
-                    axis,
-                    cell.x,
-                    cell.y + (cell.h - label_font) * 0.5,
-                    label_font,
-                    axis_w,
-                    resolve(ColorToken::Text2, theme),
-                );
-                let input_rect =
-                    Rect::new(cell.x + axis_w, cell.y, (cell.w - axis_w).max(0.0), cell.h);
-                hit_index.register(id, input_rect);
-                let (state, value, buffer, caret, anchor) = read_number_input(store, id);
-                let input = NumberInput::new(id, "", value).step(1.0).state(state);
-                paint_number_input_with_buffer(
-                    &input,
-                    Some(buffer),
-                    caret,
-                    anchor,
-                    input_rect,
-                    scene,
-                    text_system,
-                    theme,
-                );
-            };
-            num_cell(
+            paint_region_num_cell(
                 scene,
                 text_system,
                 hit_index,
+                store,
                 Rect::new(x, cur_y, cell_w, field_h),
                 "X",
                 ids::INSP_REGION_X,
+                label_font,
+                theme,
             );
-            num_cell(
+            paint_region_num_cell(
                 scene,
                 text_system,
                 hit_index,
+                store,
                 Rect::new(x + cell_w + cell_gap, cur_y, cell_w, field_h),
                 "Y",
                 ids::INSP_REGION_Y,
+                label_font,
+                theme,
             );
             cur_y += field_h + row_gap;
-            num_cell(
+            paint_region_num_cell(
                 scene,
                 text_system,
                 hit_index,
+                store,
                 Rect::new(x, cur_y, cell_w, field_h),
                 "W",
                 ids::INSP_REGION_W,
+                label_font,
+                theme,
             );
-            num_cell(
+            paint_region_num_cell(
                 scene,
                 text_system,
                 hit_index,
+                store,
                 Rect::new(x + cell_w + cell_gap, cur_y, cell_w, field_h),
                 "H",
                 ids::INSP_REGION_H,
+                label_font,
+                theme,
             );
             cur_y += field_h + row_gap;
 
@@ -318,4 +297,51 @@ pub(crate) fn paint_render_source_section(
         .visual(state);
     paint_button(&btn, btn_rect, scene, text_system, theme);
     cur_y + reimport_h + SECTION_BOTTOM_PAD_PX
+}
+
+/// **Uma célula X/Y/W/H da região** — rótulo do eixo + o campo numérico.
+///
+/// ⚠️ Era uma closure DENTRO do `paint_render_source_section`, e sair paga o tecto de 200 LOC que
+/// a wave do hover fez a função cruzar. É também o *"per-row split"* que a tolerância dela nomeia
+/// como diferido desde 2026-07-10 — feito para UMA row.
+#[allow(clippy::too_many_arguments)]
+fn paint_region_num_cell(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    cell: Rect,
+    axis: &str,
+    id: NodeId,
+    label_font: f32,
+    theme: Theme,
+) {
+    // ⚠️ Lido AQUI e não recebido: é um TOKEN, e o chamador não tem opinião sobre ele.
+    let axis_w = Spacing::Lg.px(); // mini X/Y/W/H label column
+    paint_text(
+        text_system,
+        scene,
+        axis,
+        cell.x,
+        cell.y + (cell.h - label_font) * 0.5,
+        label_font,
+        axis_w,
+        resolve(ColorToken::Text2, theme),
+    );
+    let input_rect = Rect::new(cell.x + axis_w, cell.y, (cell.w - axis_w).max(0.0), cell.h);
+    hit_index.register(id, input_rect);
+    let (state, value, buffer, caret, anchor) = read_number_input(store, id);
+    let input = NumberInput::new(id, "", value)
+        .step(1.0)
+        .visual((state, store.hover_live(id)));
+    paint_number_input_with_buffer(
+        &input,
+        Some(buffer),
+        caret,
+        anchor,
+        input_rect,
+        scene,
+        text_system,
+        theme,
+    );
 }

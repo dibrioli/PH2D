@@ -115,6 +115,9 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
 
     // Read the name field's live buffer for painting (cloned so the scene borrow
     // below is free of the store).
+    // ⚠️ Lido AQUI, junto do estado: mais abaixo o `hit_index` já pegou o `ctx.host`
+    // emprestado como mutável.
+    let name_hover_t = ctx.host.store().hover_live(AEDIT_NAME);
     let (name_state, name_text, name_caret, name_anchor) = match ctx.host.store().get(AEDIT_NAME) {
         Some(InteractiveState::TextInput {
             state,
@@ -147,6 +150,7 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
         },
         name: crate::paint_sections::NameBox {
             state: name_state,
+            hover_t: name_hover_t,
             text: name_text,
             caret: name_caret,
             anchor: name_anchor,

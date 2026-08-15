@@ -265,7 +265,7 @@ fn paint_formula_field(
     };
     let input = TextInput::new(id, "")
         .placeholder(tr("panel.tokens.formula.hint"))
-        .state(state);
+        .visual((state, store.hover_live(id)));
     paint_text_input_with_buffer(
         &input,
         Some(&text),

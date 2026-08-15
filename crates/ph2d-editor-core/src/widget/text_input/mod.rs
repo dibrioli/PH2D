@@ -40,6 +40,9 @@ pub struct TextInput {
     /// are clamped at paint time. v1 draws the caret only when
     /// `state == Focused`.
     pub caret_byte: usize,
+    /// Quanto do hover está presente. [`crate::motion::SETTLED`] = assente no estado que o campo
+    /// diz ter, que é o mundo pré-UI-viva byte a byte.
+    pub hover_t: f32,
 }
 
 impl TextInput {
@@ -51,6 +54,7 @@ impl TextInput {
             placeholder: String::new(),
             state: TextInputState::Normal,
             caret_byte: 0,
+            hover_t: crate::motion::SETTLED,
         }
     }
 
@@ -67,6 +71,19 @@ impl TextInput {
 
     pub fn state(mut self, state: TextInputState) -> Self {
         self.state = state;
+        self
+    }
+
+    /// **O par que o store publica** — `(estado, quanto do hover está presente)`, numa pergunta só.
+    /// Irmão exacto do [`crate::widget::Button::visual`].
+    #[must_use]
+    pub fn visual(self, v: (TextInputState, f32)) -> Self {
+        self.state(v.0).hover_t(v.1)
+    }
+
+    #[must_use]
+    pub fn hover_t(mut self, t: f32) -> Self {
+        self.hover_t = t.clamp(0.0, 1.0);
         self
     }
 
@@ -97,6 +114,36 @@ pub(crate) fn fill_token(state: TextInputState) -> ColorToken {
         TextInputState::Disabled => ColorToken::Bg2,
         _ => ColorToken::Bg1,
     }
+}
+
+/// **A cor da borda de um campo, já com o eixo do hover** — a porta ÚNICA dos três pintores da
+/// família (`text_input` · `number_input` · `text_area`), pelo mesmo motivo que o
+/// [`border_token`] é livre: eles partilham a paleta, e uma segunda cópia da mistura divergiria
+/// no primeiro caso especial.
+///
+/// ⚠️ **Só o par `Normal ⇄ Hovered` interpola.** `Focused`, `Error` e `Disabled` nomeiam um
+/// ESTADO, não uma quantidade — um `Accent` a meio caminho leria como *meio-focado*, e meia
+/// desactivação não quer dizer nada. É a mesma cerca que o `Button::bg_color` planta.
+///
+/// ⚠️ **Quem escolhe a cor no eixo é o ESCALAR, não o estado**, e é isso que faz a SAÍDA
+/// funcionar: no quadro em que o rato sai, o estado já voltou a `Normal`, então se ele decidisse
+/// não haveria nada entre a cor de agora e a de repouso.
+pub(crate) fn border_color(
+    state: TextInputState,
+    hover_t: f32,
+    theme: Theme,
+) -> ph2d_vector::Color {
+    let soft = matches!(state, TextInputState::Normal | TextInputState::Hovered);
+    crate::motion::hover_axis(
+        soft,
+        hover_t,
+        Some(ColorToken::Border.resolve(theme)),
+        Some(ColorToken::BorderEmph.resolve(theme)),
+    )
+    .map_or_else(
+        || resolve(border_token(state), theme),
+        crate::paint::token_to_vello,
+    )
 }
 
 pub fn paint_text_input(
@@ -140,7 +187,7 @@ pub fn paint_text_input_with_buffer(
         rect,
         radius,
         stroke_w,
-        resolve(border_token(input.state), theme),
+        border_color(input.state, input.hover_t, theme),
     );
 
     let pad_x = Spacing::Lg.px();
@@ -280,153 +327,4 @@ fn caret_scroll(focused: bool, inner_w: f32, caret_w: f32) -> f32 {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn fixture() -> TextInput {
-        TextInput::new(NodeId(1), "Project name")
-    }
-
-    #[test]
-    fn defaults_match_spec() {
-        let t = fixture();
-        assert_eq!(t.value, "");
-        assert_eq!(t.placeholder, "");
-        assert_eq!(t.state, TextInputState::Normal);
-        assert_eq!(t.caret_byte, 0);
-    }
-
-    #[test]
-    fn value_seed_moves_caret_to_end() {
-        let t = fixture().value("hello");
-        assert_eq!(t.value, "hello");
-        assert_eq!(t.caret_byte, 5);
-    }
-
-    #[test]
-    fn a11y_role_is_text_input() {
-        let node = fixture().build_a11y(0.0, 0.0, 200.0, 32.0);
-        assert_eq!(node.role(), Role::TextInput);
-    }
-
-    fn smoke(t: TextInput, theme: Theme) {
-        let mut scene = VectorScene::new();
-        let mut text = TextSystem::without_system_fonts();
-        paint_text_input(
-            &t,
-            Rect::new(0.0, 0.0, 240.0, 32.0),
-            &mut scene,
-            &mut text,
-            theme,
-        );
-    }
-
-    /// Enio, 2026-07-16: renaming a clip to a long name drew a SECOND line that ran
-    /// out of the box and over the buttons below it. A single-line field clips —
-    /// and it must CLOSE what it opens, because an unbalanced layer would corrupt
-    /// everything painted after the field, not just the field.
-    #[test]
-    fn a_long_name_is_clipped_to_the_field_instead_of_spilling_out_of_it() {
-        let long = "L2 ldldll ldllld dhdhdhhhhd jjdjjjd jdjfjjd";
-        let mut scene = VectorScene::new();
-        let mut text = TextSystem::without_system_fonts();
-        let t = fixture().state(TextInputState::Focused);
-        paint_text_input_with_buffer(
-            &t,
-            Some(long),
-            Some(long.len()),
-            None,
-            Rect::new(0.0, 0.0, 140.0, 32.0),
-            &mut scene,
-            &mut text,
-            Theme::Forge,
-        );
-        let enc = scene.inner().encoding();
-        assert!(enc.n_clips >= 1, "the field must clip its text to its box");
-        assert_eq!(enc.n_open_clips, 0, "the clip must be closed");
-    }
-
-    #[test]
-    fn the_line_scrolls_only_far_enough_to_keep_the_caret_in_view() {
-        // A caret inside the box leaves the line where it is.
-        assert!((caret_scroll(true, 100.0, 40.0)).abs() < f32::EPSILON);
-        // Past the right edge it slides exactly as far as it overhangs, plus the
-        // caret's own width.
-        assert!((caret_scroll(true, 100.0, 140.0) - 41.0).abs() < f32::EPSILON);
-        // Unfocused: no caret to chase, so the name reads from its start.
-        assert!((caret_scroll(false, 100.0, 140.0)).abs() < f32::EPSILON);
-    }
-
-    #[test]
-    fn paint_smoke_empty_with_placeholder() {
-        smoke(fixture().placeholder("Untitled"), Theme::Forge);
-    }
-
-    #[test]
-    fn paint_smoke_filled_focused() {
-        smoke(
-            fixture()
-                .value("hello world")
-                .state(TextInputState::Focused),
-            Theme::Forge,
-        );
-    }
-
-    #[test]
-    fn paint_smoke_hovered() {
-        smoke(fixture().state(TextInputState::Hovered), Theme::Sunstone);
-    }
-
-    #[test]
-    fn paint_smoke_error() {
-        smoke(
-            fixture().value("oops").state(TextInputState::Error),
-            Theme::Blueprint,
-        );
-    }
-
-    #[test]
-    fn paint_smoke_disabled() {
-        smoke(
-            fixture().value("locked").state(TextInputState::Disabled),
-            Theme::Workshop,
-        );
-    }
-
-    #[test]
-    fn paint_with_buffer_overrides_value() {
-        let mut scene = VectorScene::new();
-        let mut text = TextSystem::without_system_fonts();
-        let t = fixture().value("stale").state(TextInputState::Focused);
-        // Pretend the WidgetStore has a freshly typed buffer.
-        paint_text_input_with_buffer(
-            &t,
-            Some("live edit"),
-            Some(4),
-            None,
-            Rect::new(0.0, 0.0, 240.0, 32.0),
-            &mut scene,
-            &mut text,
-            Theme::Forge,
-        );
-    }
-
-    #[test]
-    fn paint_with_buffer_handles_empty_caret_oob() {
-        // Caret beyond buffer length should still paint without
-        // panic (clamped at draw time).
-        let mut scene = VectorScene::new();
-        let mut text = TextSystem::without_system_fonts();
-        let t = fixture().state(TextInputState::Focused);
-        paint_text_input_with_buffer(
-            &t,
-            Some(""),
-            Some(99),
-            None,
-            Rect::new(0.0, 0.0, 240.0, 32.0),
-            &mut scene,
-            &mut text,
-            Theme::Sunstone,
-        );
-    }
-}
+mod tests;

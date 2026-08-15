@@ -151,6 +151,11 @@ pub fn paint_tag(
     let bg = resolve(tag.bg_token(), theme);
     let fg = resolve(tag.fg_token(), theme);
     fill_rounded_rect(scene, rect, radius, bg);
+    // ⚠️ **O anel não interpola, e a ausência é MEDIDA:** o único pintor de produção de uma tag é
+    // o `skin::paint_widget_skin_with`, que recebe `live: Option<&InteractiveState>` e **não tem
+    // store** — não há de onde tirar um `t`. O ESTADO chega (o `hover.rs` promove-o desde
+    // 2026-08-15) e o aro aparece; o desvanecer pede o par na assinatura daquele despachante,
+    // que é decisão de outra wave.
     if tag.state == TagState::Hovered {
         stroke_rounded_rect(scene, rect, radius, 1.0, fg); // LITERAL-PX-OK: tag hover ring stroke (geometry 1px)
     }

@@ -162,7 +162,7 @@ fn paint_hierarchy_body(
     };
     let search_input = TextInput::new(ids::HIER_SEARCH, "")
         .placeholder("Search\u{2026}")
-        .state(search_state);
+        .visual((search_state, store.hover_live(ids::HIER_SEARCH)));
     paint_text_input_with_buffer(
         &search_input,
         Some(search_text.as_str()),
@@ -370,27 +370,7 @@ fn paint_hierarchy_body(
                 (name_right - name_x + Spacing::Md.px()).max(80.0), // LITERAL-PX-OK: min rename input width
                 row_rect.h - 2.0,
             );
-            hit_index.register(ids::HIER_RENAME_INPUT, input_rect);
-            let (state, text, caret, anchor) = match store.get(ids::HIER_RENAME_INPUT) {
-                Some(InteractiveState::TextInput {
-                    state,
-                    text,
-                    caret,
-                    selection_anchor,
-                }) => (*state, text.clone(), *caret, *selection_anchor),
-                _ => (TextInputState::Focused, String::new(), 0, None),
-            };
-            let input = TextInput::new(ids::HIER_RENAME_INPUT, "").state(state);
-            paint_text_input_with_buffer(
-                &input,
-                Some(text.as_str()),
-                Some(caret),
-                anchor,
-                input_rect,
-                scene,
-                text_system,
-                theme,
-            );
+            paint_rename_input(scene, text_system, hit_index, store, input_rect, theme);
         }
         row_rects.push((*id, row_rect));
         if is_collapsed {
@@ -457,4 +437,40 @@ fn paint_hierarchy_body(
         hit_index.register(HIERARCHY_SCROLLBAR_ID, thumb);
     }
     order.iter().copied().collect()
+}
+
+/// **A caixa de renomear de uma linha da Hierarquia.**
+///
+/// ⚠️ Saiu do `paint_hierarchy_body` para pagar a linha que a wave do hover lhe acrescentou — o
+/// tecto de 200 LOC das `panel-*` cobra-se por extracção, e as tolerâncias encolhem, nunca crescem.
+fn paint_rename_input(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    input_rect: Rect,
+    theme: Theme,
+) {
+    hit_index.register(ids::HIER_RENAME_INPUT, input_rect);
+    let (state, text, caret, anchor) = match store.get(ids::HIER_RENAME_INPUT) {
+        Some(InteractiveState::TextInput {
+            state,
+            text,
+            caret,
+            selection_anchor,
+        }) => (*state, text.clone(), *caret, *selection_anchor),
+        _ => (TextInputState::Focused, String::new(), 0, None),
+    };
+    let input = TextInput::new(ids::HIER_RENAME_INPUT, "")
+        .visual((state, store.hover_live(ids::HIER_RENAME_INPUT)));
+    paint_text_input_with_buffer(
+        &input,
+        Some(text.as_str()),
+        Some(caret),
+        anchor,
+        input_rect,
+        scene,
+        text_system,
+        theme,
+    );
 }

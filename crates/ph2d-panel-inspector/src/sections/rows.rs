@@ -175,7 +175,7 @@ pub(super) fn num_row(
     let rect = Rect::new(x, row_y, w, ROW_H_PX);
     hit_index.register(id, rect);
     let (state, value, buffer, caret, anchor) = read_number_input(store, id);
-    let input = NumberInput::new(id, "", value).state(state);
+    let input = NumberInput::new(id, "", value).visual((state, store.hover_live(id)));
     paint_number_input_with_buffer(
         &input,
         Some(buffer),

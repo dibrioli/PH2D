@@ -186,13 +186,15 @@ impl BodyCtx<'_> {
             self.store.get(id),
             Some(InteractiveState::Dropdown { open: true, .. })
         );
+        let dd_visual = self.store.dropdown_visual(id);
         let dd = Dropdown::new(
             id,
             "",
             vec![DropdownOption::new(id, (), marker_of(snap, slot).label())],
         )
         .selected(())
-        .open(open);
+        .open(open)
+        .visual(dd_visual);
         paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
         self.hit_index.register(id, chip);
         if open {

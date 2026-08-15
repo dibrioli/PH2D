@@ -93,17 +93,16 @@ pub(crate) fn paint_dropdown_chip(
 
     let radius = Radius::Sm.px();
     fill_rounded_rect(ctx.scene, rect, radius, resolve(ColorToken::Bg1, theme));
-    let border = if open {
-        ColorToken::Accent
-    } else {
-        ColorToken::Border
-    };
+    // ⚠️ **Pela porta do widget, e não por uma quarta cópia da lei.** Este chip é desenhado à
+    // mão (não constrói um `Dropdown`) e por isso carregava a sua própria regra de borda — que
+    // não conhecia `BorderEmph` e portanto **nunca acendia sob o ponteiro**.
+    let (dd_state, dd_t) = ctx.host.store().dropdown_visual(id);
     stroke_rounded_rect(
         ctx.scene,
         rect,
         radius,
         StrokeToken::Default.px(),
-        resolve(border, theme),
+        ph2d_editor_core::widget::chip_border_color(dd_state, dd_t, theme),
     );
 
     let chevron = Spacing::Md.px();

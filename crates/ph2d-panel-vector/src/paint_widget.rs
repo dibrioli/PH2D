@@ -100,13 +100,15 @@ impl BodyCtx<'_> {
             self.store.get(ids::VECTOR_WIDGET_ICON_DD),
             Some(InteractiveState::Dropdown { open: true, .. })
         );
+        let dd_visual = self.store.dropdown_visual(ids::VECTOR_WIDGET_ICON_DD);
         let dd = Dropdown::new(
             ids::VECTOR_WIDGET_ICON_DD,
             "",
             vec![DropdownOption::new(ids::VECTOR_WIDGET_ICON_DD, (), label)],
         )
         .selected(())
-        .open(open);
+        .open(open)
+        .visual(dd_visual);
         paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
         self.hit_index.register(ids::VECTOR_WIDGET_ICON_DD, chip);
         if open {

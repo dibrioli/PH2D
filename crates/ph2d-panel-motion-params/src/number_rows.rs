@@ -198,7 +198,9 @@ pub(crate) fn paint_angle_row(
     let (state, value, buf, caret, anchor) = read_number_input(store, id);
     let buf = buf.to_string();
     let widget = NumericInputWithUnit::new(
-        NumberInput::new(id, "", value).step(step).state(state),
+        NumberInput::new(id, "", value)
+            .step(step)
+            .visual((state, store.hover_live(id))),
         Unit::Degrees,
     );
     paint_numeric_input_with_unit(
@@ -238,7 +240,9 @@ pub(crate) fn paint_seed_row(
     let (state, value, buf, caret, anchor) = read_number_input(store, id);
     let buf = buf.to_string();
     let field = Rect::new(fx, rect.y, field_w, ROW_H_PX);
-    let input = NumberInput::new(id, "", value).step(1.0).state(state);
+    let input = NumberInput::new(id, "", value)
+        .step(1.0)
+        .visual((state, store.hover_live(id)));
     paint_number_input_with_buffer(
         &input,
         Some(&buf),

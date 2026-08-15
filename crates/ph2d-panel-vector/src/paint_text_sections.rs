@@ -126,6 +126,7 @@ impl BodyCtx<'_> {
             self.store.get(ids::VECTOR_TEXT_FONT_DD),
             Some(InteractiveState::Dropdown { open: true, .. })
         );
+        let dd_visual = self.store.dropdown_visual(ids::VECTOR_TEXT_FONT_DD);
         let name = state::current_text_font().unwrap_or_default();
         let dd = Dropdown::new(
             ids::VECTOR_TEXT_FONT_DD,
@@ -133,7 +134,8 @@ impl BodyCtx<'_> {
             vec![DropdownOption::new(ids::VECTOR_TEXT_FONT_DD, (), name)],
         )
         .selected(())
-        .open(open);
+        .open(open)
+        .visual(dd_visual);
         paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
         self.hit_index.register(ids::VECTOR_TEXT_FONT_DD, chip);
         if open {

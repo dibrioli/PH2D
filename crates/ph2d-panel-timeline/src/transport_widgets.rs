@@ -128,7 +128,7 @@ pub(crate) fn chip(
     // focused); the finite store value above still drives editing when focused.
     let input = NumberInput::new(id, "", chip_display_value(value, unbounded))
         .step(step)
-        .state(state);
+        .visual((state, ctx.host.store().hover_live(id)));
     paint_number_input_with_buffer(
         &input,
         Some(&buf),

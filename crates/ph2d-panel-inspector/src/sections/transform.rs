@@ -177,7 +177,7 @@ pub(crate) fn paint_transform_section(
         let (state, value, buffer, caret, anchor) = read_number_input(store, left_id);
         let input = NumberInput::new(left_id, "", value)
             .step(left_step)
-            .state(state);
+            .visual((state, store.hover_live(left_id)));
         paint_number_input_with_buffer(
             &input,
             Some(buffer),
@@ -207,7 +207,7 @@ pub(crate) fn paint_transform_section(
                 read_number_input(store, right_id);
             let r_input = NumberInput::new(right_id, "", r_value)
                 .step(right_step)
-                .state(r_state);
+                .visual((r_state, store.hover_live(right_id)));
             paint_number_input_with_buffer(
                 &r_input,
                 Some(r_buffer),

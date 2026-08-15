@@ -28,7 +28,7 @@ pub(crate) fn paint_entity_name_row(
     };
     let input = TextInput::new(ids::INSP_ENTITY_NAME, "")
         .placeholder("Name\u{2026}")
-        .state(state);
+        .visual((state, store.hover_live(ids::INSP_ENTITY_NAME)));
     paint_text_input_with_buffer(
         &input,
         text,

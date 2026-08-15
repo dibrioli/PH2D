@@ -104,7 +104,10 @@ pub(crate) fn paint(
             }) => (*state, text.clone(), *caret, *selection_anchor),
             _ => (TextInputState::Focused, String::new(), 0, None),
         };
-    let input = TextInput::new(ids::TIMELINE_CLIP_RENAME_INPUT, "").state(ti_state);
+    let input = TextInput::new(ids::TIMELINE_CLIP_RENAME_INPUT, "").visual((
+        ti_state,
+        ctx.host.store().hover_live(ids::TIMELINE_CLIP_RENAME_INPUT),
+    ));
     paint_text_input_with_buffer(
         &input,
         Some(text.as_str()),

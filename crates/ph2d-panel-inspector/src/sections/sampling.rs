@@ -44,7 +44,9 @@ fn uv_pair_row(
         let rect = Rect::new(x + (cw + gap) * i as f32, row_y, cw, h);
         hit_index.register(id, rect);
         let (state, value, buffer, caret, anchor) = read_number_input(store, id);
-        let input = NumberInput::new(id, "", value).step(0.1).state(state); // LITERAL-PX-OK: UV step
+        let input = NumberInput::new(id, "", value)
+            .step(0.1)
+            .visual((state, store.hover_live(id))); // LITERAL-PX-OK: UV step
         paint_number_input_with_buffer(
             &input,
             Some(buffer),

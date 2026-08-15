@@ -257,10 +257,13 @@ pub(super) fn is_section_header_id(id: ph2d_a11y::NodeId) -> bool {
 /// caret + focus border once the widget loses focus. Combobox uses
 /// its own `ComboboxState` enum so it gets a separate match arm.
 pub(super) fn reset_focused_visual_state(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
+    // ⚠️ **`Normal` é a resposta errada com o rato ainda em cima** — ver
+    // [`hover::blurred_field_state`]. Lido ANTES do `get_mut`, que empresta o store inteiro.
+    let blurred = hover::blurred_field_state(store, id);
     match store.get_mut(id) {
         Some(InteractiveState::NumberInput { state, .. })
         | Some(InteractiveState::TextInput { state, .. }) => {
-            *state = crate::widget::TextInputState::Normal;
+            *state = blurred;
         }
         Some(InteractiveState::Combobox { state, .. }) => {
             *state = crate::widget::ComboboxState::Normal;

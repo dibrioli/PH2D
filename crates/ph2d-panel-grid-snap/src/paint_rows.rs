@@ -49,7 +49,7 @@ pub(crate) fn paint_number_row(
         Some(buffer),
         caret,
         anchor,
-        state,
+        (state, store.hover_live(id)),
         x,
         w,
         y,
@@ -94,7 +94,7 @@ pub(crate) fn paint_number_row_from_state(
         buffer_arg,
         caret,
         anchor,
-        state,
+        (state, store.hover_live(id)),
         x,
         w,
         y,
@@ -113,7 +113,10 @@ pub(crate) fn paint_number_row_value(
     buffer: Option<&str>,
     caret: usize,
     anchor: Option<usize>,
-    state: TextInputState,
+    // ⚠️ **O PAR na assinatura, e não um `TextInputState` solto** — este helper não tem store,
+    // então quem sabe quanto do hover está presente é o chamador; posto no tipo, esquecê-lo
+    // deixa de compilar (o precedente do `paint_icon_button`).
+    visual: (TextInputState, f32),
     x: f32,
     w: f32,
     y: f32,
@@ -133,7 +136,7 @@ pub(crate) fn paint_number_row_value(
         resolve(ColorToken::Text1, theme),
     );
     let input_rect = Rect::new(x + LABEL_COL_W, y, w - LABEL_COL_W, ROW_H);
-    let input = NumberInput::new(id, "", value).state(state);
+    let input = NumberInput::new(id, "", value).visual(visual);
     paint_number_input_with_buffer(
         &input,
         buffer,

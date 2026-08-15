@@ -79,6 +79,38 @@ pub enum DropdownState {
     Disabled,
 }
 
+/// **A cor da borda de um CHIP de dropdown, já com o eixo do hover** — a porta ÚNICA.
+///
+/// ⚠️ **Ela é `pub` porque um segundo chip existe:** o `ph2d-panel-painter-layers` desenha o dele
+/// à mão (não constrói um [`Dropdown`]) e carregava uma **quarta cópia** da lei — `if open {
+/// Accent } else { Border }`, sem `BorderEmph` nenhum. Duas cópias divergem no primeiro caso
+/// especial, e esta já tinha divergido: ele não sabia o que era estar sob o ponteiro.
+///
+/// ⚠️ **Só o par `Normal ⇄ Hovered` interpola** — o `Accent` do aberto nomeia um ESTADO, e um
+/// `Accent` a meio leria como *meio-aberto*. É a mesma cerca do `text_input::border_color`.
+#[must_use]
+pub fn chip_border_color(state: DropdownState, hover_t: f32, theme: Theme) -> ph2d_vector::Color {
+    crate::motion::hover_axis(
+        matches!(state, DropdownState::Normal | DropdownState::Hovered),
+        hover_t,
+        Some(ColorToken::Border.resolve(theme)),
+        Some(ColorToken::BorderEmph.resolve(theme)),
+    )
+    .map_or_else(
+        || {
+            resolve(
+                match state {
+                    DropdownState::Focused => ColorToken::Accent,
+                    DropdownState::Hovered => ColorToken::BorderEmph,
+                    _ => ColorToken::Border,
+                },
+                theme,
+            )
+        },
+        crate::paint::token_to_vello,
+    )
+}
+
 /// Vertical gap between the chip's bottom edge and the open
 /// popover panel's top edge. Keeps the two surfaces visually
 /// distinct (without it the chip's border merges into the panel
@@ -101,6 +133,8 @@ pub struct Dropdown<T: Clone + PartialEq> {
     pub placeholder: String,
     pub state: DropdownState,
     pub open: bool,
+    /// Quanto do hover está presente; ver [`crate::widget::TextInput::hover_t`].
+    pub hover_t: f32,
 }
 
 impl<T: Clone + PartialEq> Dropdown<T> {
@@ -113,6 +147,7 @@ impl<T: Clone + PartialEq> Dropdown<T> {
             placeholder: String::from("Select…"),
             state: DropdownState::Normal,
             open: false,
+            hover_t: crate::motion::SETTLED,
         }
     }
 
@@ -128,6 +163,19 @@ impl<T: Clone + PartialEq> Dropdown<T> {
 
     pub fn open(mut self, open: bool) -> Self {
         self.open = open;
+        self
+    }
+
+    /// **O par que o store publica** — `(estado, quanto do hover está presente)`.
+    /// Irmão exacto do [`crate::widget::TextInput::visual`].
+    #[must_use]
+    pub fn visual(self, v: (DropdownState, f32)) -> Self {
+        self.state(v.0).hover_t(v.1)
+    }
+
+    #[must_use]
+    pub fn hover_t(mut self, t: f32) -> Self {
+        self.hover_t = t.clamp(0.0, 1.0);
         self
     }
 
@@ -289,17 +337,18 @@ pub fn paint_dropdown_chip<T: Clone + PartialEq>(
         ColorToken::Bg1
     };
     fill_rounded_rect(scene, rect, radius, resolve(fill, theme));
-    let border = match dd.state {
-        DropdownState::Focused => ColorToken::Accent,
-        DropdownState::Hovered => ColorToken::BorderEmph,
-        _ => ColorToken::Border,
-    };
     let stroke_w = if dd.state == DropdownState::Focused {
         2.0
     } else {
         1.0
     };
-    stroke_rounded_rect(scene, rect, radius, stroke_w, resolve(border, theme));
+    stroke_rounded_rect(
+        scene,
+        rect,
+        radius,
+        stroke_w,
+        chip_border_color(dd.state, dd.hover_t, theme),
+    );
 
     let pad_x = Spacing::Lg.px();
     let chevron_size = (rect.h * 0.6).clamp(14.0, 20.0); // LITERAL-PX-OK: chevron sized 60% of host height with min/max

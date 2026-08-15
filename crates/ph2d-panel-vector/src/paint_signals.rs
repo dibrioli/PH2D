@@ -110,7 +110,7 @@ impl BodyCtx<'_> {
         };
         let input = TextInput::new(id, "")
             .placeholder(tr("panel.vector.states.signals.hint"))
-            .state(state);
+            .visual((state, self.store.hover_live(id)));
         paint_text_input_with_buffer(
             &input,
             Some(&text),

@@ -199,6 +199,32 @@ impl WidgetStore {
         }
     }
 
+    /// **O par visual de um CHIP DE DROPDOWN** — irmão do [`Self::text_input_visual`].
+    ///
+    /// ⚠️ **Ele SUBSUME uma derivação que estava escrita à mão em três painéis** (`if open {
+    /// Focused } else { Normal }`, em color-equalization · ordering · transport_clips) e
+    /// **cravada em `Normal`** nos outros doze: nenhum chip do app acendia sob o ponteiro, e os
+    /// três que sabiam algo sabiam só metade.
+    #[must_use]
+    pub fn dropdown_visual(&self, id: NodeId) -> (crate::widget::DropdownState, f32) {
+        use crate::widget::DropdownState as D;
+        let (stored, open) = match self.states.get(&id) {
+            Some(InteractiveState::Dropdown { state, open, .. }) => (Some(*state), *open),
+            _ => (None, false),
+        };
+        // ⚠️ **`Hovered` NÃO conta como estado guardado, e um gate pagou por isto.** Desde que o
+        // `hover.rs` passou a promover o chip no STORE, um dropdown ABERTO sob o rato lia
+        // `Hovered` e perdia o anel de `Accent` — as duas metades discordavam sobre qual estado é
+        // TRANSIENTE. Semântico aqui é `Focused` e `Disabled`; o resto é o ponteiro a falar.
+        let state = match stored {
+            Some(s @ (D::Focused | D::Disabled)) => s,
+            _ if open => D::Focused,
+            _ if stored == Some(D::Hovered) || self.hot_id() == Some(id) => D::Hovered,
+            _ => D::Normal,
+        };
+        (state, self.hover_live(id))
+    }
+
     /// Convenience: read text input contents.
     pub fn text(&self, id: NodeId) -> Option<&str> {
         match self.states.get(&id) {

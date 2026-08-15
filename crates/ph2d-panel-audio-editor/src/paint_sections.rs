@@ -452,6 +452,9 @@ pub(crate) struct Transport {
 /// borrow below is free of it.
 pub(crate) struct NameBox {
     pub state: TextInputState,
+    /// ⚠️ **Quanto do hover está presente.** Vem no snapshot e não é lido aqui do store porque
+    /// este pintor não tem um — quem sabe é quem monta o `NameBox`.
+    pub hover_t: f32,
     pub text: String,
     pub caret: usize,
     pub anchor: Option<usize>,
@@ -479,7 +482,7 @@ fn paint_transport_section(
     hit_index.register(AEDIT_NAME, name_rect);
     let input = TextInput::new(AEDIT_NAME, "")
         .placeholder("No clip loaded")
-        .state(name.state);
+        .visual((name.state, name.hover_t));
     // Clip to the field: the TextInput lays its text out with word-wrap at the inner
     // width, so a long filename spills onto a 2nd line below the box. A clip to the
     // single-line box crops that overflow instead of letting it extrapolate.

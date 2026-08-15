@@ -42,6 +42,7 @@ pub(super) fn dispatch_up<'frame>(
         // path mutates `value` + `buffer` only; the rollback
         // anchor lives until this release point so Esc
         // mid-drag can restore the pre-Down value.
+        let blurred = super::hover::blurred_field_state(store, drag.id);
         if let Some(InteractiveState::NumberInput {
             state,
             value,
@@ -51,7 +52,9 @@ pub(super) fn dispatch_up<'frame>(
         {
             *last_committed = *value;
             // Clear the focused state — drag-completed = no edit.
-            *state = crate::widget::TextInputState::Normal;
+            // ⚠️ ...mas o rato ACABOU de soltar em cima dele, então `Normal` seria escuro sob o
+            // ponteiro até alguém mexer: quem responde é a porta.
+            *state = blurred;
         }
         if store.focus_id() == Some(drag.id) {
             store.set_focus(None);

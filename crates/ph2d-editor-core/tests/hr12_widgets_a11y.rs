@@ -83,6 +83,11 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     // Unit tests for `tool_rail` (split out for the widget LOC cap) — no user-facing widget; the
     // parent `tool_rail.rs` owns the a11y wiring (build_a11y / build_entry_a11y).
     ("tool_rail/tests.rs", "test module; parent owns a11y"),
+    // ⚠️ O QUINTO irmão com a MESMA justificação — `<slug>/tests.rs` é o padrão, e uma lista
+    // que o enumera é uma lista que o sexto nasce sem. Flipar o gate para saltar todo
+    // `tests.rs` dentro de um directório de widget é a cura, e mexe num gate de que ~20
+    // ficheiros dependem: fica NOMEADO em vez de contrabandeado dentro desta wave.
+    ("text_input/tests.rs", "test module; parent owns a11y"),
     // Color-Harmonies engine gates — pure `partners()` math, no user-facing widget; the section is
     // painted by `harmony.rs` (which wires a11y) and the picker owns the announcements.
     (

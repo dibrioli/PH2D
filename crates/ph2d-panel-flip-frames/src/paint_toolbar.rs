@@ -104,7 +104,9 @@ fn number(ctx: &mut PaintCtx, theme: Theme, r: Rect, id: NodeId, doc_value: f64)
         ctx.host.store_mut().set_number_value(id, doc_value);
     }
     let buf = if focused { buf } else { fmt_num(doc_value) };
-    let input = NumberInput::new(id, "", shown).step(1.0).state(state);
+    let input = NumberInput::new(id, "", shown)
+        .step(1.0)
+        .visual((state, ctx.host.store().hover_live(id)));
     paint_number_input_with_buffer(
         &input,
         Some(&buf),
@@ -173,10 +175,11 @@ fn dropdown_chip(
         ctx.host.store().get(id),
         Some(InteractiveState::Dropdown { open: true, .. })
     );
+    let dd_visual = ctx.host.store().dropdown_visual(id);
     let dd = Dropdown::new(id, "", options_of(id))
         .selected(cur)
         .open(open)
-        .state(DropdownState::Normal);
+        .visual(dd_visual);
     paint_dropdown_chip(&dd, r, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(id, r);
     open.then_some(PendingCycle { id, chip: r })

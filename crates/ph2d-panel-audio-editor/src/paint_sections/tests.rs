@@ -25,6 +25,7 @@ fn body(open: [bool; 8]) -> Body {
         },
         name: NameBox {
             state: TextInputState::Normal,
+            hover_t: ph2d_editor_core::motion::SETTLED,
             text: "clip.wav".to_string(),
             caret: 0,
             anchor: None,

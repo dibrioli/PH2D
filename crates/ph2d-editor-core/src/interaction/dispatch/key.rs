@@ -122,9 +122,7 @@ pub fn dispatch_key<'frame>(
                     && store.blender_hex_parent(id).is_some()
                 {
                     commit_hex_buffer(store, id, &mut events);
-                    if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {
-                        *state = crate::widget::TextInputState::Normal;
-                    }
+                    super::reset_focused_visual_state(store, id);
                     store.set_focus(None);
                     events.push(WidgetEvent::Blur(id));
                     return events.into_bump_slice();
@@ -141,9 +139,7 @@ pub fn dispatch_key<'frame>(
                     store.blender_rename_active_palette(parent, &name);
                     store.sync_blender_palette_name_buffer(parent); // normalise (trim) the shown name
                     store.close_context_menu(); // Enter commits + closes the rename modal
-                    if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {
-                        *state = crate::widget::TextInputState::Normal;
-                    }
+                    super::reset_focused_visual_state(store, id);
                     store.set_focus(None);
                     events.push(WidgetEvent::Blur(id));
                     return events.into_bump_slice();
@@ -200,9 +196,7 @@ pub fn dispatch_key<'frame>(
                     && id == crate::ids::HIER_RENAME_INPUT
                     && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
                 {
-                    if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {
-                        *state = crate::widget::TextInputState::Normal;
-                    }
+                    super::reset_focused_visual_state(store, id);
                     store.set_focus(None);
                     events.push(WidgetEvent::Submit(id));
                     events.push(WidgetEvent::Blur(id));
@@ -229,9 +223,7 @@ pub fn dispatch_key<'frame>(
                             events.push(WidgetEvent::TextChanged(id));
                         }
                     } else {
-                        if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {
-                            *state = crate::widget::TextInputState::Normal;
-                        }
+                        super::reset_focused_visual_state(store, id);
                         store.set_focus(None);
                         events.push(WidgetEvent::Submit(id));
                         events.push(WidgetEvent::Blur(id));
@@ -271,9 +263,7 @@ pub fn dispatch_key<'frame>(
                 if store.is_cancel_on_escape(id)
                     && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
                 {
-                    if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {
-                        *state = crate::widget::TextInputState::Normal;
-                    }
+                    super::reset_focused_visual_state(store, id);
                     store.set_focus(None);
                     events.push(WidgetEvent::Cancel(id));
                     events.push(WidgetEvent::Blur(id));

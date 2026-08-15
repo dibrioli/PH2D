@@ -362,7 +362,7 @@ fn paint_scene_list(
     hit_index.register(ids::CTX_SCENE_SEARCH, search_rect);
     let ti = TextInput::new(ids::CTX_SCENE_SEARCH, "")
         .placeholder("Search scenes\u{2026}")
-        .state(ti_state);
+        .visual((ti_state, store.hover_live(ids::CTX_SCENE_SEARCH)));
     paint_text_input_with_buffer(
         &ti,
         Some(query),

@@ -310,7 +310,10 @@ fn paint_layer_block(
                 }) => (*state, text.clone(), *caret, *selection_anchor),
                 _ => (TextInputState::Focused, String::new(), 0, None),
             };
-        let input = TextInput::new(ids::FLIP_LAYER_RENAME_INPUT, "").state(ti_state);
+        let input = TextInput::new(ids::FLIP_LAYER_RENAME_INPUT, "").visual((
+            ti_state,
+            ctx.host.store().hover_live(ids::FLIP_LAYER_RENAME_INPUT),
+        ));
         paint_text_input_with_buffer(
             &input,
             Some(text.as_str()),
@@ -514,10 +517,11 @@ fn paint_blend_chip(
         *o = false;
     }
 
+    let dd_visual = ctx.host.store().dropdown_visual(id);
     let dd = Dropdown::new(id, "", blend_options(row.id))
         .selected(row.blend)
         .open(open)
-        .state(DropdownState::Normal);
+        .visual(dd_visual);
     paint_dropdown_chip(&dd, rect, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(id, rect);
     if open {

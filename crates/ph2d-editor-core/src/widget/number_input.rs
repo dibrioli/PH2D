@@ -8,7 +8,7 @@
 
 use crate::icons::IconId;
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
-use crate::widget::text_input::{TextInputState, border_token, fill_token};
+use crate::widget::text_input::{TextInputState, border_color, fill_token};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -24,6 +24,8 @@ pub struct NumberInput {
     pub min: Option<f64>,
     pub max: Option<f64>,
     pub state: TextInputState,
+    /// Quanto do hover está presente; ver [`super::TextInput::hover_t`].
+    pub hover_t: f32,
 }
 
 impl NumberInput {
@@ -36,6 +38,7 @@ impl NumberInput {
             min: None,
             max: None,
             state: TextInputState::Normal,
+            hover_t: crate::motion::SETTLED,
         }
     }
 
@@ -58,6 +61,19 @@ impl NumberInput {
 
     pub fn state(mut self, state: TextInputState) -> Self {
         self.state = state;
+        self
+    }
+
+    /// **O par que o store publica** — `(estado, quanto do hover está presente)`.
+    /// Irmão exacto do [`super::TextInput::visual`].
+    #[must_use]
+    pub fn visual(self, v: (TextInputState, f32)) -> Self {
+        self.state(v.0).hover_t(v.1)
+    }
+
+    #[must_use]
+    pub fn hover_t(mut self, t: f32) -> Self {
+        self.hover_t = t.clamp(0.0, 1.0);
         self
     }
 
@@ -191,7 +207,7 @@ pub fn paint_number_input_with_buffer(
         rect,
         radius,
         stroke_w,
-        resolve(border_token(input.state), theme),
+        border_color(input.state, input.hover_t, theme),
     );
 
     let chip_w = stepper_width(rect);

@@ -414,7 +414,8 @@ fn paint_probe_pair_row(
         } else {
             None
         };
-        let input = crate::widget::NumberInput::new(*id, "", v_disp).state(ti_state);
+        let input = crate::widget::NumberInput::new(*id, "", v_disp)
+            .visual((ti_state, store.hover_live(*id)));
         crate::widget::paint_number_input_with_buffer(
             &input,
             buffer_arg,

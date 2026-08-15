@@ -10,7 +10,7 @@
 //! between glyphs on proportional fonts.
 
 use crate::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve, stroke_rounded_rect};
-use crate::widget::text_input::{TextInputState, border_token, fill_token};
+use crate::widget::text_input::{TextInputState, border_color, fill_token};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -24,6 +24,8 @@ pub struct TextArea {
     pub value: String,
     pub placeholder: String,
     pub state: TextInputState,
+    /// Quanto do hover está presente; ver [`super::TextInput::hover_t`].
+    pub hover_t: f32,
 }
 
 impl TextArea {
@@ -34,6 +36,7 @@ impl TextArea {
             value: String::new(),
             placeholder: String::new(),
             state: TextInputState::Normal,
+            hover_t: crate::motion::SETTLED,
         }
     }
 
@@ -49,6 +52,19 @@ impl TextArea {
 
     pub fn state(mut self, state: TextInputState) -> Self {
         self.state = state;
+        self
+    }
+
+    /// **O par que o store publica** — `(estado, quanto do hover está presente)`.
+    /// Irmão exacto do [`super::TextInput::visual`].
+    #[must_use]
+    pub fn visual(self, v: (TextInputState, f32)) -> Self {
+        self.state(v.0).hover_t(v.1)
+    }
+
+    #[must_use]
+    pub fn hover_t(mut self, t: f32) -> Self {
+        self.hover_t = t.clamp(0.0, 1.0);
         self
     }
 
@@ -155,7 +171,7 @@ pub fn paint_text_area_with_state(
         rect,
         radius,
         stroke_w,
-        resolve(border_token(area.state), theme),
+        border_color(area.state, area.hover_t, theme),
     );
 
     // ⚠️ Pela porta ÚNICA, e não por uma segunda cópia da regra: o despacho de clique lê a MESMA,

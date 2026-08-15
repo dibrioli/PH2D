@@ -42,7 +42,9 @@ fn number_row(
     let rect = Rect::new(x, row_y, w, h);
     hit_index.register(id, rect);
     let (state, value, buffer, caret, anchor) = read_number_input(store, id);
-    let input = NumberInput::new(id, "", value).step(0.1).state(state); // LITERAL-PX-OK: cutoff/rect step
+    let input = NumberInput::new(id, "", value)
+        .step(0.1)
+        .visual((state, store.hover_live(id))); // LITERAL-PX-OK: cutoff/rect step
     paint_number_input_with_buffer(
         &input,
         Some(buffer),
@@ -253,16 +255,16 @@ pub(crate) fn paint_visibility_section(
             "Enabler Rect",
             NumberInput::new(ids::INSP_VIS_RECT_X, "", vx)
                 .step(RECT_STEP)
-                .state(sx),
+                .visual((sx, store.hover_live(ids::INSP_VIS_RECT_X))),
             NumberInput::new(ids::INSP_VIS_RECT_Y, "", vy)
                 .step(RECT_STEP)
-                .state(sy),
+                .visual((sy, store.hover_live(ids::INSP_VIS_RECT_Y))),
             NumberInput::new(ids::INSP_VIS_RECT_W, "", vw)
                 .step(RECT_STEP)
-                .state(sw),
+                .visual((sw, store.hover_live(ids::INSP_VIS_RECT_W))),
             NumberInput::new(ids::INSP_VIS_RECT_H, "", vh)
                 .step(RECT_STEP)
-                .state(sh),
+                .visual((sh, store.hover_live(ids::INSP_VIS_RECT_H))),
         )
         // 2×2 grid: the Inspector column is too narrow for four number
         // inputs in one row (each would fall below NumberInput's usable

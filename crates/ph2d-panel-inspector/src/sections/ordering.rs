@@ -6,7 +6,7 @@
 use super::*;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::screens::hero::InspectorOrderingInfo;
-use ph2d_editor_core::widget::{Dropdown, DropdownOption, DropdownState, paint_dropdown_chip};
+use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
 
 /// Canonical project sorting layers (spec §5.2 default set). Value ==
 /// label so the dropdown's `selected` matches by name. Custom project
@@ -77,7 +77,9 @@ fn number_row(
     let rect = Rect::new(chip_x, y, chip_w, h);
     hit_index.register(id, rect);
     let (state, value, buffer, caret, anchor) = read_number_input(store, id);
-    let input = NumberInput::new(id, "", value).step(1.0).state(state);
+    let input = NumberInput::new(id, "", value)
+        .step(1.0)
+        .visual((state, store.hover_live(id)));
     paint_number_input_with_buffer(
         &input,
         Some(buffer),
@@ -122,19 +124,20 @@ fn layer_row(
     let chip_w = (w - label_col_w - gap).max(0.0);
     let rect = Rect::new(chip_x, y, chip_w, h);
     hit_index.register(ids::INSP_ORDER_SORTING_LAYER, rect);
-    let (state, open, sel) = match store.get(ids::INSP_ORDER_SORTING_LAYER) {
+    let (open, sel) = match store.get(ids::INSP_ORDER_SORTING_LAYER) {
         Some(InteractiveState::Dropdown {
-            state,
             open,
             selected_index,
-        }) => (*state, *open, selected_index.unwrap_or(fallback_idx)),
-        _ => (DropdownState::Normal, false, fallback_idx),
+            ..
+        }) => (*open, selected_index.unwrap_or(fallback_idx)),
+        _ => (false, fallback_idx),
     };
+    let visual = store.dropdown_visual(ids::INSP_ORDER_SORTING_LAYER);
     let label = LAYER_LABELS.get(sel).copied().unwrap_or("Default");
     let dd = Dropdown::new(ids::INSP_ORDER_SORTING_LAYER, "", layer_options())
         .selected(label)
         .open(open)
-        .state(state);
+        .visual(visual);
     paint_dropdown_chip(&dd, rect, scene, text_system, theme);
     if open {
         crate::state::set_pending_ordering_dd(Some((sel, rect)));

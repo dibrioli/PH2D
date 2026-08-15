@@ -350,7 +350,9 @@ impl BodyCtx<'_> {
         let rect = Rect::new(field_x, y, field_w, self.row_h);
         self.hit_index.register(id, rect);
         let (st, value, buffer, caret, anchor) = read_number_input(self.store, id);
-        let input = NumberInput::new(id, "", value).step(step).state(st);
+        let input = NumberInput::new(id, "", value)
+            .step(step)
+            .visual((st, self.store.hover_live(id)));
         paint_number_input_with_buffer(
             &input,
             Some(buffer),

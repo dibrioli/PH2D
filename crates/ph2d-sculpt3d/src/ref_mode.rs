@@ -306,6 +306,9 @@ impl RefMode {
             // e o SculptGL não tem uma ferramenta de DOIS planos.
             // ⚠️ **E nem o Slide Relax**, a quinta: `relax.cc` é do Blender, e o
             // SculptGL não tem verbo que mexa na MALHA sem mexer na forma.
+            // ⚠️ **E nem o Surface Smooth**, a sexta: o `Smooth.js` é o
+            // laplaciano CRU — o que o HC acrescenta (o `b`, e a média dele) não
+            // tem uma linha de parente lá.
             Self::S => !matches!(
                 verb,
                 Verb::ClayStrips
@@ -313,6 +316,7 @@ impl RefMode {
                     | Verb::ClayThumb
                     | Verb::MultiplaneScrape
                     | Verb::SlideRelax
+                    | Verb::SurfaceSmooth
             ),
             // A lei de kernel (bilateral · tangencial · front-face contínuo) e
             // a `StrengthCurve::Squared` do E13.

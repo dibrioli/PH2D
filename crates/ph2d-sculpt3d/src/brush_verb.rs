@@ -251,11 +251,54 @@ pub enum Verb {
     /// ⚠️ **O SculptGL NÃO O TEM** — a quinta vez a mesma frase (ver
     /// [`crate::RefMode`]).
     SlideRelax,
+    /// **O ALISAMENTO QUE DEVOLVE O QUE TIROU** — o `SCULPT_TOOL_SMOOTH` com
+    /// `SCULPT_SMOOTH_DEFORM_SURFACE` (`surface_smooth.cc`), que é o **HC** de
+    /// Vollmer, Mencl & Müller (EG 1999, *Improved Laplacian Smoothing of Noisy
+    /// Surface Meshes*).
+    ///
+    /// **O defeito que ele existe para curar está MEDIDO neste repo** — o
+    /// [`Self::Smooth`] é um laplaciano *umbrella*, e ele **contrai o volume a
+    /// cada aplicação, para sempre**: 0,09 % numa passada, **3,58 % em quarenta**
+    /// (a tabela vive no [`crate::brush_pass`]). *Alisar até ficar liso é alisar
+    /// até sumir*, que é a objeção com que o paper abre.
+    ///
+    /// **A lei, em duas linhas:**
+    ///
+    /// ```text
+    /// b_i = média(q)_i − [α·o_i + (1−α)·q_i]        // o que o passo laplaciano TIROU
+    /// p_i = q_i + w·(média(q)_i − q_i) − w·[(1−β)·média(b)_i + β·b_i]
+    /// ```
+    ///
+    /// — caminhe para a média do anel (o Smooth), e depois **devolva o
+    /// deslocamento que isso custou**, suavizado sobre a vizinhança.
+    ///
+    /// ⚠️ **Ele NÃO é o `l-mode` do [`Self::Smooth`], e a distinção está escrita
+    /// no [`crate::brush_pass`] desde a wave do Taubin:** o `o` do HC é a pose
+    /// do **pen-down**, então com `α > 0` ele PUXA de volta para ela — o oposto
+    /// de *"passar de novo alisa mais"*, que é o que uma pincelada faz. Como
+    /// **ferramenta própria** isso deixa de ser um defeito e passa a ser a
+    /// feature: o knob chama-se *Shape Preservation* porque é exactamente o que
+    /// ele preserva.
+    ///
+    /// ⚠️ **O `b` obriga a um BUFFER, e é a única parte estrutural do verbo:**
+    /// `média(b)` é um operador de SEGUNDA ordem — ele precisa do `b` dos
+    /// VIZINHOS, e nenhum deles é derivável da posição depois de o passo
+    /// laplaciano ter corrido. Ver [`crate::stroke_hc`].
+    ///
+    /// ⚠️ **`b-mode ≡ l-mode`, então ele tem UM chip e não um dropdown** — o
+    /// Blender **é** o port do paper aqui, e um segundo chip que declarasse a
+    /// mesma lei seria o controle morto que esta casa varre a cada wave. É a
+    /// mesma coincidência que o plano §5.1 prevê para o Elastic Deform, e ela é
+    /// o teste de sanidade da matriz do §3.
+    ///
+    /// ⚠️ **O SculptGL NÃO O TEM** — a sexta vez a mesma frase (ver
+    /// [`crate::RefMode`]).
+    SurfaceSmooth,
 }
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 21] = [
+    pub const ALL: [Self; 22] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -277,6 +320,7 @@ impl Verb {
         Self::ClayThumb,
         Self::MultiplaneScrape,
         Self::SlideRelax,
+        Self::SurfaceSmooth,
     ];
 
     /// **Este verbo pode ACUMULAR?** — a porta única do `accumulate`.
@@ -377,9 +421,17 @@ impl Verb {
     /// Este verbo lê o anel de vizinhos? (Quem responde `true` custa a
     /// travessia do CSR por vértice, e é o que decide se o `vert_verts` pode um
     /// dia virar preguiçoso.)
+    ///
+    /// ⚠️ **O [`Self::SurfaceSmooth`] o percorre DUAS vezes** — uma para a média
+    /// das posições, outra para a média dos `b` —, e ele nasceu FORA desta
+    /// lista: a pergunta que ela responde é *quem precisa da adjacência*, e uma
+    /// resposta falsa aqui é como um `vert_verts` preguiçoso deixaria de
+    /// construí-la exatamente para o verbo que mais a usa. O gate irmão
+    /// `the_families_that_the_ui_asks_about_agree_with_the_verb_list` enumera
+    /// os nomes, e ficou VERDE sobre a omissão até alguém a procurar.
     #[must_use]
     pub fn uses_neighbours(self) -> bool {
-        matches!(self, Self::Smooth | Self::Sharpen)
+        matches!(self, Self::Smooth | Self::Sharpen | Self::SurfaceSmooth)
     }
 
     /// O nome que a UI mostra.
@@ -407,6 +459,7 @@ impl Verb {
             Self::ClayThumb => "Clay Thumb",
             Self::MultiplaneScrape => "Multiplane Scrape",
             Self::SlideRelax => "Slide Relax",
+            Self::SurfaceSmooth => "Surface Smooth",
         }
     }
 
@@ -526,130 +579,10 @@ impl Verb {
     pub fn anchors(self) -> bool {
         matches!(self.grip(), Grip::Hold | Grip::Hook | Grip::Turn(_))
     }
-
-    /// A força com que um pincel deste verbo **nasce**.
-    ///
-    /// ⚠️ **A máscara nasce em 1,0 e a geometria em 0,5, e a diferença é o
-    /// significado da força em cada canal.** Para geometria ela é *quão longe ao
-    /// longo do trajeto*, e meio caminho é um default são. Para a máscara o alvo
-    /// é um PLATÔ (protegido) e a lei do traço é um envelope, então a força vira
-    /// o **TETO** que um traço alcança: medido com 0,5, esfregar oito dabs no
-    /// mesmo lugar chega a **0,5000 e para** — e `keep = 1 − mask` deixa metade
-    /// de todo dab seguinte atravessar a proteção. O artista mascara, esculpe, e
-    /// o barro se move debaixo da máscara pela metade, que é indistinguível de
-    /// *"a máscara não funciona"*. Traços repetidos convergem geometricamente
-    /// (0,75 · 0,875 · 0,969), e depois de DEZ ainda são 31 texels acima de 0,99.
-    ///
-    /// ⚠️ **Divergência do original, e ela é sobre a LEI, não sobre o número:**
-    /// lá a força é uma TAXA (ele acumula sobre o estado vivo e satura dentro do
-    /// traço), aqui é um TETO (envelope sobre o `pre` congelado). Trocar a nossa
-    /// lei devolveria a dependência de espaçamento que o módulo inteiro existe
-    /// para não ter; trocar o DEFAULT entrega o gesto sem tocar em nada.
-    /// A proteção parcial continua exprimível — é o slider.
-    /// ⚠️ **E ela DELEGA à tabela dos modos** (`ref_mode`, 2026-08-12): a força
-    /// de fábrica é o que a referência `S` declara, tool a tool, e não uma
-    /// segunda cópia dela aqui. Antes disto o app shipava `0,5` em tudo — o
-    /// **D3** do doc 20 —, e o número que sobrevive à delegação é o do Draw
-    /// (`Brush.js:12`), o único que já batia.
-    ///
-    /// ⚠️ **Onde a fonte é SILENCIOSA o nosso número fica** (`0,5`): o
-    /// `Drag`/`Twist`/`LocalScale` não declaram `_intensity` e o SculptGL não
-    /// tem Sharpen. Um `unwrap_or` aqui é *"a referência não respondeu"*, nunca
-    /// um valor inventado com a autoridade dela.
-    #[must_use]
-    pub fn default_strength(self) -> f32 {
-        self.profile(crate::RefMode::S)
-            .and_then(|p| p.strength)
-            .unwrap_or(0.5)
-    }
-
-    /// **O Accumulate nasce ARMADO neste verbo?** — e a resposta é da
-    /// referência, tool a tool, não uma afinação.
-    ///
-    /// ⚠️ **O pedido original do Enio dizia isto e eu li como descrição de UI:**
-    /// *"Brush:Checkbox:Clay com accumulate **checado por padrão**"*. É o
-    /// `Brush.js:16` — `this._accumulate = true` —, e a tool `Brush` do original
-    /// é a nossa **Draw E Clay** (o `_clay` é um checkbox dela, ligado de
-    /// fábrica). Nós shipávamos os dois **desarmados**, então o artista pegava o
-    /// Clay e tinha outra ferramenta na mão.
-    ///
-    /// ⚠️ **E a família do PLANO é mais forte que um default:** o `Flatten.js`
-    /// **não declara `_accumulate`**, e o kernel dele pergunta
-    /// `this._accumulate === false` — que em `undefined` é FALSO. Ou seja
-    /// `Flatten`/`Fill`/`Scrape` leem o vivo **sempre**, sem checkbox. Nós temos
-    /// o interruptor, então o honesto é nascerem armados: é o comportamento
-    /// que a referência não deixa desligar.
-    ///
-    /// Os que ficam DESARMADOS não são omissão — são os que a referência não
-    /// arma: o `Smooth` e o `Mask` não têm o campo e não o leem, o `Pinch`, o
-    /// `Crease` e os quatro grips de gesto tampouco.
-    /// ⚠️ **E ela DELEGA à mesma tabela** que a força (`ref_mode`, 2026-08-12) —
-    /// duas portas para *"o que a referência arma neste verbo?"* divergiriam na
-    /// primeira wave que mexesse numa delas. O resultado é **byte-idêntico** ao
-    /// `matches!` que ela substituiu, e há gate afirmando isso.
-    /// **A LEI DE GRIP QUE GOVERNA ESTE VERBO** — a porta do produto.
-    ///
-    /// ⚠️ **[`crate::Grip::law`] responde outra pergunta:** *qual é a lei deste
-    /// grip*. É o mesmo par do [`crate::RefMode::kernel`] / `kernel_for`, e pela
-    /// mesma razão — um verbo pode ter uma referência que o grip não conhece.
-    ///
-    /// ⚠️ **O `from_live` do [`crate::Grip::Stamp`] é o Accumulate do
-    /// SCULPTGL**, e a faixa não é dele. O `clay_strips.cc::calc_faces` chama
-    /// `calc_local_positions(position_data.eval, …)` — a posição **VIVA**,
-    /// sempre —, e o que o `accum` da referência escolhe é a fonte do PLANO
-    /// (`sculpt.cc`, `!ss.cache->accum` ⇒ pen-down congelado).
-    ///
-    /// ⚠️ **E é a combinação que dá o auto-limite:** posição viva contra plano
-    /// congelado faz o `z` do portão `z·(1−z)` **encolher** à medida que o barro
-    /// sobe, até fechar no plano. Com as duas congeladas o `z` não se move e a
-    /// faixa cresce para sempre — medido, `27 → 81 dabs` dava `1,52×` em vez de
-    /// saturar.
-    #[must_use]
-    pub fn grip_law(self, accumulate: bool, carries_field: bool) -> crate::GripLaw {
-        let mut law = self.grip().law(accumulate, carries_field);
-        if self == Self::ClayStrips {
-            law.from_live = true;
-        }
-        law
-    }
-
-    #[must_use]
-    pub fn default_accumulate(self) -> bool {
-        self.profile(crate::RefMode::S)
-            .and_then(|p| p.accumulate)
-            .unwrap_or(false)
-    }
 }
-
-impl Verb {
-    /// A **CURVA** com que um pincel deste verbo nasce — o D1 do estudo, e o
-    /// único achado dele que o artista encontra sem tocar em nada.
-    ///
-    /// ⚠️ **Onde a fonte não tem resposta o nosso default fica** (o Sharpen, que
-    /// o SculptGL não tem) — a mesma lei do `unwrap_or` da força.
-    #[must_use]
-    pub fn default_falloff(self) -> Falloff {
-        self.profile(crate::RefMode::S)
-            .and_then(|p| p.falloff)
-            .unwrap_or(Falloff::Smooth)
-    }
-
-    /// O **RAIO** de fábrica em pixels de tela — o D4/E3.
-    ///
-    /// ⚠️ **A fração é da REFERÊNCIA e a base é NOSSA:** o perfil guarda
-    /// `_radius / 50` (o Crease do original é `25`, metade; o Move é `150`,
-    /// três vezes) e a base é o raio que o app oferece de fábrica. Guardar
-    /// pixels no perfil congelaria a escolha do artista no dia em que a base
-    /// mudasse — a mesma lei do `sss_scatter` e do próprio falloff.
-    #[must_use]
-    pub fn default_radius_px(self, base_px: f32) -> f32 {
-        base_px
-            * self
-                .profile(crate::RefMode::S)
-                .and_then(|p| p.radius_factor)
-                .unwrap_or(1.0)
-    }
-}
+/// **OS DEFAULTS** — com que números um verbo nasce. Ver [`defaults`].
+#[path = "brush_verb_defaults.rs"]
+mod defaults;
 
 /// **AS MAGNITUDES** — quanto cada família desloca. Ver [`magnitudes`].
 #[path = "brush_magnitudes.rs"]

@@ -244,6 +244,18 @@ pub struct Brush {
     /// **O default é [`Scales::Tri`]**, o que já shipava em todos os oito sítios
     /// do [`crate::stroke_target`] ⇒ o mundo pré-knob é **byte-idêntico**.
     pub elastic_scales: crate::kelvinlet::Scales,
+    /// **α do HC — *Shape Preservation*** ([`Verb::SurfaceSmooth`]): quanto o
+    /// ponto de referência da correção é a pose do **pen-down** em vez da de
+    /// agora. Ver [`crate::HC_SHAPE_DEFAULT`].
+    pub hc_shape: f32,
+    /// **β do HC — *Per Vertex Displacement*** ([`Verb::SurfaceSmooth`]): que
+    /// fração da correção vem do próprio vértice em vez da média dos vizinhos.
+    /// Ver [`crate::HC_VERTEX_DEFAULT`].
+    ///
+    /// ⚠️ **Os dois são INERTES em vinte e um dos vinte e dois verbos**, e é o
+    /// `fill_hc_disp` que os lê — nenhum outro braço do alvo os toca, então o
+    /// mundo pré-wave é byte-idêntico com eles em qualquer valor.
+    pub hc_vertex: f32,
 }
 
 impl Default for Brush {
@@ -346,6 +358,8 @@ impl Default for Brush {
             // fato em dois lugares — no dia em que a medição mudar de veredito,
             // este literal ficaria a contradizê-la em silêncio.
             elastic_scales: crate::kelvinlet::Scales::default(),
+            hc_shape: crate::HC_SHAPE_DEFAULT,
+            hc_vertex: crate::HC_VERTEX_DEFAULT,
         }
     }
 }

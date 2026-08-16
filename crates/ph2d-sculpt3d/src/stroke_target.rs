@@ -122,26 +122,15 @@ impl SculptStroke {
             // falloff** no kernel; aqui ele chega pelo `w`, que é o superconjunto
             // (o artista escolhe a curva, e `Falloff::Constant` reproduz a
             // referência). A forma é a dela: `pos·(1 − m) + média·m`.
-            Verb::Smooth => {
-                let avg = self.neighbour_average(mesh, v, live);
-                let m = 1.0 - w;
-                [
-                    live[0] * m + avg[0] * w,
-                    live[1] * m + avg[1] * w,
-                    live[2] * m + avg[2] * w,
-                ]
-            }
+            // A família que lê o ANEL vive no irmão [`ring`].
+            Verb::Smooth => self.target_smooth(mesh, v, live, w),
+
             // NOSSO, e a referência não tem: o laplaciano com o sinal trocado.
             // Reflete a média através do próprio vértice, com a mesma magnitude
             // que o Smooth teria.
-            Verb::Sharpen => {
-                let avg = self.neighbour_average(mesh, v, live);
-                [
-                    live[0] + (live[0] - avg[0]) * w,
-                    live[1] + (live[1] - avg[1]) * w,
-                    live[2] + (live[2] - avg[2]) * w,
-                ]
-            }
+            // A família que lê o ANEL vive no irmão [`ring`].
+            Verb::Sharpen => self.target_sharpen(mesh, v, live, w),
+
             // `Flatten.js:41-81` — o deslocamento é **proporcional à distância ao
             // plano**, não a uma constante do pincel: longe ele anda muito, perto
             // anda pouco. É isso que faz o verbo CONVERGIR em vez de oscilar, e é
@@ -430,14 +419,11 @@ impl SculptStroke {
             //
             // ⚠️ **Numa BORDA a normal vira a bissetriz**, e isso é o que impede
             // a beira de encolher — ver [`Self::relax_normal`].
-            Verb::SlideRelax => match self.relax_normal(mesh, v, live) {
-                Some(n) => {
-                    let avg = self.neighbour_average(mesh, v, live);
-                    let d = remove_along([avg[0] - live[0], avg[1] - live[1], avg[2] - live[2]], n);
-                    [live[0] + d[0] * w, live[1] + d[1] * w, live[2] + d[2] * w]
-                }
-                None => live,
-            },
+            // A família que lê o ANEL vive no irmão [`ring`].
+            Verb::SlideRelax => self.target_slide_relax(mesh, v, live, w),
+
+            // A família que lê o ANEL vive no irmão [`ring`].
+            Verb::SurfaceSmooth => self.target_surface_smooth(mesh, v, s, live, w, brush),
             // O alvo de posição de um verbo de máscara é o próprio lugar: ele
             // não move geometria ([`crate::Grip::Paint`]), e `apply_mask` é quem
             // escreve o canal dele.
@@ -684,3 +670,8 @@ pub(super) fn stroke_axis(normal: [f32; 3], path: [f32; 3]) -> Option<[f32; 3]> 
         None
     }
 }
+
+/// **AS LEIS QUE LEEM O ANEL** — a família que [`Verb::uses_neighbours`] nomeia.
+/// Ver [`ring`].
+#[path = "stroke_target_ring.rs"]
+mod ring;

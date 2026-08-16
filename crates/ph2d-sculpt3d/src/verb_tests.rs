@@ -168,7 +168,10 @@ fn invert_digs_where_the_verb_lifted() {
 fn invert_changes_the_result_of_exactly_the_verbs_that_have_an_opposite() {
     let centre = [0.0, 0.0, 1.0];
     let run = |brush: &Brush| -> (Vec<[f32; 3]>, Vec<f32>) {
-        let mut mesh = sphere();
+        // ⚠️ **A malha vem da PORTA, não da fixture do arquivo** — um verbo que
+        // lê o anel só age sobre irregularidade, e a esfera lisa é o caso
+        // degenerado dele (ver [`mesh_for`]).
+        let mut mesh = mesh_for(brush.verb);
         let mut s = SculptStroke::default();
         s.begin(&mesh);
         // ⚠️ **DOIS dabs, e o segundo é o que torna a fixture honesta.** O
@@ -213,8 +216,11 @@ fn invert_changes_the_result_of_exactly_the_verbs_that_have_an_opposite() {
             .fold(0.0, f32::max)
     };
 
-    let rest = snapshot(&sphere());
     for verb in Verb::ALL {
+        // A pose de repouso é a da malha que ESTE verbo recebe — tirá-la fora do
+        // laço a amarraria a uma fixture só, e a comparação seria contra a
+        // malha errada em quem lê o anel.
+        let rest = snapshot(&mesh_for(verb));
         let b = Brush {
             verb,
             radius: 0.6,

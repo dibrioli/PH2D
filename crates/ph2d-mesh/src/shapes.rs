@@ -437,6 +437,50 @@ pub fn uv_sphere_shuffled(rings: usize, segments: usize, radius: f32) -> Mesh {
     mesh
 }
 
+/// A [`uv_sphere`] com os vértices sacudidos **PARA FORA E PARA DENTRO** — o
+/// espaçamento é o da grade, a FORMA é que fica rugosa.
+///
+/// ⚠️ **Ela é o COMPLEMENTO EXACTO da [`uv_sphere_shuffled`], e o par é o que
+/// separa as duas perguntas que a família de alisamento faz:** ali a forma é
+/// exacta e a distribuição é torta (o que um *relax* conserta); aqui a
+/// distribuição é a da grade e a forma é que tem ruído (o que um *smooth*
+/// conserta). Um verbo medido na fixture errada parece não fazer nada.
+///
+/// ⚠️ **O ruído é RADIAL de propósito.** Um deslocamento livre moveria os
+/// vértices ao longo da superfície junto, e aí a coluna do raio médio deixaria
+/// de medir só a forma — que é precisamente o que o encolhimento do laplaciano
+/// precisa que ela meça (o `measure_smooth_shrinkage` a usa como oráculo, e
+/// numa esfera unitária intacta ela vale `1,0` por construção).
+///
+/// `amplitude` é a fração do raio: `0,02` sacode 2 % para cada lado.
+///
+/// ⚠️ **O gerador é o mesmo xorshift ESCRITO AQUI** da irmã, pela mesma razão —
+/// a fixture é determinista e a crate não ganha dependência por causa de um
+/// teste.
+#[must_use]
+pub fn uv_sphere_noisy(rings: usize, segments: usize, radius: f32, amplitude: f32) -> Mesh {
+    let mut mesh = uv_sphere(rings, segments, radius);
+    let mut state = 0x9E37_79B9_7F4A_7C15u64;
+    let mut rnd = move || {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        ((state >> 11) as f64 / (1u64 << 53) as f64) as f32 * 2.0 - 1.0
+    };
+    for p in mesh.positions_mut() {
+        let l = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
+        if l <= 1e-6 {
+            continue;
+        }
+        let k = (radius + rnd() * amplitude * radius) / l;
+        for v in p.iter_mut() {
+            *v *= k;
+        }
+    }
+    mesh.rebuild();
+    mesh
+}
+
 #[cfg(test)]
 #[path = "shapes_tests.rs"]
 mod tests;

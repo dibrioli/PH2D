@@ -63,6 +63,33 @@ fn dab_for(verb: Verb, center: [f32; 3], radius: f32) -> Dab {
     }
 }
 
+/// **A MALHA que ESTE verbo precisa** — a irmã do [`dab_for`], e pelo mesmo
+/// motivo: um gate que dá a MESMA malha a todo verbo mede vácuo em quem só age
+/// sobre irregularidade.
+///
+/// ⚠️ **A pergunta é feita ao motor** (`uses_neighbours`), não a uma lista de
+/// nomes: um verbo que LÊ o anel mede a irregularidade dele, e um anel
+/// perfeitamente regular é o caso DEGENERADO desse verbo. Enumerar
+/// `SurfaceSmooth` aqui apodreceria no dia em que o próximo verbo de anel
+/// nascesse — exactamente como o `dab_for` apodreceria com um `if
+/// verb.anchors()`.
+///
+/// ⚠️ **E o número que a torna necessária está MEDIDO:** na esfera lisa, dois
+/// dabs de [`Verb::SurfaceSmooth`] deslocam **8,5e-5** contra **1,3e-2** do
+/// [`Verb::Smooth`] — 150× menos, e abaixo da barra de `1e-4` que o anti-vácuo
+/// afirma. *Não é o verbo parado: é o verbo a preservar uma forma que já está
+/// lisa*, que é precisamente a razão de ele existir.
+fn mesh_for(verb: Verb) -> Mesh {
+    if verb.uses_neighbours() {
+        // Forma exacta, superfície RUGOSA — o que um alisamento conserta. (A
+        // irmã `uv_sphere_shuffled` é o contrário: forma exacta, ESPAÇAMENTO
+        // torto, que é o que um *relax* conserta.)
+        shapes::uv_sphere_noisy(32, 48, 1.0, 0.02)
+    } else {
+        sphere()
+    }
+}
+
 fn snapshot(mesh: &Mesh) -> Vec<[f32; 3]> {
     mesh.positions().to_vec()
 }
@@ -350,6 +377,11 @@ mod verb_border;
 /// cabeçalho dele.
 #[path = "verb_relax_tests.rs"]
 mod verb_relax;
+
+/// **O SURFACE SMOOTH (HC)**, o alisamento que devolve o que tirou — ver o
+/// cabeçalho dele.
+#[path = "verb_surface_smooth_tests.rs"]
+mod verb_surface_smooth;
 
 /// O Snake Hook, que é a OUTRA LEI e só um caminho arrastado revela — ver o
 /// cabeçalho dele.

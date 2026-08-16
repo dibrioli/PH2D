@@ -318,7 +318,7 @@ fn the_families_that_the_ui_asks_about_agree_with_the_verb_list() {
         .filter(|v| v.uses_neighbours())
         .map(Verb::label)
         .collect();
-    assert_eq!(ring, ["Smooth", "Sharpen"]);
+    assert_eq!(ring, ["Smooth", "Sharpen", "Surface Smooth"]);
     let mask: Vec<_> = Verb::ALL
         .into_iter()
         .filter(|v| v.paints_mask())

@@ -194,10 +194,14 @@ fn the_census_of_offered_chips() {
     // aritmética certa é `21 − 6 = 15`, e o número não se move pela quinta vez
     // seguida. *Duas tabelas com o mesmo aspecto e listas diferentes são
     // exactamente a razão de um censo de contagem precisar da frase ao lado.*
+    // ⚠️ O número NÃO se move com o Surface Smooth, e é isso que a frase tem de
+    // dizer: o catálogo cresceu de 21 para 22 e a lista de exclusões cresceu
+    // junto, então *um censo de contagem sozinho seria verde sobre um verbo que
+    // ninguém classificou*.
     assert_eq!(
         count(RefMode::S),
         15,
-        "S: todos menos o Sharpen, o Clay Strips, o Blob, o Clay Thumb, o Multiplane Scrape e o Slide Relax"
+        "S: todos menos o Sharpen, o Clay Strips, o Blob, o Clay Thumb, o Multiplane Scrape, o Slide Relax e o Surface Smooth"
     );
     // ⚠️ O `B` alcança TODO verbo com uma coisa só — o `alpha = root_alpha²` do
     // `brush_strength`, que é o funil de todas as tools.
@@ -208,12 +212,19 @@ fn the_census_of_offered_chips() {
     // (§7.0 do plano). Este número é sobre a LEI, não sobre os defaults.
     //
     // ⚠️ **17 desde a W6, 18 desde o Blob, 19 desde o Clay Thumb, 20 desde o
-    // Multiplane Scrape, 21 desde o Slide Relax:** os cinco são tools do BLENDER
-    // (`clay_strips.cc`, `crease.cc`, `clay_thumb.cc`, `multiplane_scrape.cc`,
-    // `relax.cc`), então o `alpha = root_alpha²` do `brush_strength` — que é o
-    // funil de todas elas — vale para os cinco por construção.
-    assert_eq!(count(RefMode::B), 21, "B: a lei da força vale para todos");
+    // Multiplane Scrape, 21 desde o Slide Relax, 22 desde o Surface Smooth:** os
+    // seis são tools do BLENDER (`clay_strips.cc`, `crease.cc`,
+    // `clay_thumb.cc`, `multiplane_scrape.cc`, `relax.cc`,
+    // `surface_smooth.cc`), então o `alpha = root_alpha²` do `brush_strength` —
+    // que é o funil de todas elas — vale para as seis por construção.
+    assert_eq!(count(RefMode::B), 22, "B: a lei da força vale para todos");
     // A literatura chega paper a paper, nas waves W4/W5/W7.
+    //
+    // ⚠️ **E o Surface Smooth NÃO o move, embora SEJA um paper** (Vollmer,
+    // Mencl & Müller, EG 1999): o que portámos é o `surface_smooth.cc`, ou seja
+    // *a rendição do Blender do próprio paper* — as duas leis são a MESMA, e um
+    // segundo chip declarando-a seria um controle que não muda um vértice.
+    // Declarar `L` ali afirmaria um porte a partir do artigo que não foi feito.
     assert_eq!(count(RefMode::L), 0, "L: nenhum paper portado ainda");
 }
 

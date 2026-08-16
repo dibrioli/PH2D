@@ -80,5 +80,5 @@ pub use preview::{NO_PREVIEW, preview_into, preview_verts};
 pub use ref_mode::{Field, FrontFace, KernelLaw, LateralPull, PlaneReach, RefMode};
 pub use ref_profiles::VerbProfile;
 pub use spacing::{MIN_SPACING_FRACTION, Walk, min_spacing, walk};
-pub use stroke::{Dab, SculptStroke};
+pub use stroke::{Dab, HC_SHAPE_DEFAULT, HC_VERTEX_DEFAULT, HC_VERTEX_MIN, SculptStroke};
 pub use transform::{Gesture, MIN_SCALE_FACTOR, MaskTransform, TransformKind};

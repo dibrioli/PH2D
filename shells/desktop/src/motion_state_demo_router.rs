@@ -322,6 +322,7 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
         Ok("47") => conferencia::velocity(doc, registry),
         Ok("48") => conferencia::collide(doc, registry),
         Ok("49") => conferencia::proximity(doc, registry),
+        Ok("50") => conferencia::pin(doc, registry),
         _ => Vec::new(),
     }
 }

@@ -310,3 +310,33 @@ pub(super) fn table_seed(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
     );
     sinks
 }
+
+/// O PINO alcanca as SIMULACOES (doc 89, o grupo J): tres pares, um por gerador,
+/// e em cada par so' uma coisa difere -- um `motion.pin_constraint` na cadeia de
+/// estado.
+pub(super) fn pin(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks = conferencia_demos_pin::build_pin_demo_document(doc, registry).unwrap_or_default();
+    eprintln!(
+        "[pin-demo] TRES PARES ({} bandas). Em cada par so' UMA coisa difere: um `motion.pin_constraint`
+  na CADEIA DE ESTADO do gerador.",
+        conferencia_demos_pin::PAIRS * 2,
+    );
+    for (i, label) in conferencia_demos_pin::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) DE' PLAY. As tres familias sao `Effect::Temporal`, e uma foto de um instante nao
+  distingue \"segurou\" de \"ainda nao caiu\".
+  (!) A cerca que esta cena derruba estava escrita em DOIS docs -- o do `motion.pin_constraint`
+  (\"um pino a montante nao tem fio por onde os alcancar\") e o doc 34 SS7 (\"nao ha' como um
+  stream entrar neles\"). As duas eram verdade sobre a porta `in` e FALSAS sobre a cadeia de
+  estado, que e' um fio -- e que ja' era o fio pelo qual o `accel` entra.
+  (!) As tres leituras, MEDIDAS: (1-2) a corda da direita DOBRA sobre o ponto 12, que nao
+  e' ponta nenhuma -- o maior desvio entre as duas e' 14,37, e aquele ponto sai de
+  [-6,71, 8,90] para [7,63, 9,00] - (3-4) o corpo da direita PENDE da primeira linha em
+  vez de cair (topo -11,57 contra 1,75) - (5-6) tres agentes da direita andam 0,000000
+  enquanto o resto do bando anda ate' 3,51, e o bando CONTORNA-OS: um agente de massa
+  infinita continua a ser VISTO pelos vizinhos."
+    );
+    sinks
+}

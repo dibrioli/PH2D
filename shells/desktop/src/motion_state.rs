@@ -97,6 +97,8 @@ pub(crate) mod conferencia_demos_velocity;
 
 #[path = "motion_state_conferencia_demos_collide.rs"]
 pub(crate) mod conferencia_demos_collide;
+#[path = "motion_state_conferencia_demos_pin.rs"]
+pub(crate) mod conferencia_demos_pin;
 #[path = "motion_state_conferencia_demos_proximity.rs"]
 pub(crate) mod conferencia_demos_proximity;
 #[path = "motion_state_conferencia_demos_text.rs"]

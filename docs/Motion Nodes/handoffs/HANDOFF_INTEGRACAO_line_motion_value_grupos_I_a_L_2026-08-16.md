@@ -17,10 +17,10 @@
 | **K** | o peso por partícula (`soft_body`) + os SUB-PASSOS (`verlet_rope`) | `=52` | ✅ |
 | **L** | o TETO DA TAXA (`motion.delay`: `max_step` + `max_accel`) | `=53` | ✅ |
 | **M** | a CONTAGEM da conferência deixa de ser escrita à mão (sem código de produto) | — | — |
-| **N** | o `motion.wiggle` ganha as OITAVAS, o multiplicador e o LAÇO | `=54` | ⏳ |
-| **O** | o `motion.oscillator` ganha o PULSE WIDTH e o `motion.stagger` o OFFSET | `=55` | ⏳ |
+| **N** | o `motion.wiggle` ganha as OITAVAS, o multiplicador e o LAÇO | `=54` | ✅ |
+| **O** | o `motion.oscillator` ganha o PULSE WIDTH e o `motion.stagger` o OFFSET | `=55` | ✅ |
 
-⚠️ **As cenas `=54` e `=55` (grupos N e O) NÃO foram smokadas** — *integrar não é aprovar*.
+✅ **As sete cenas foram smokadas e aprovadas pelo Enio** (`=49`..`=55`).
 
 ✅ **As cinco primeiras foram smokadas e aprovadas pelo Enio** — as três primeiras à medida
 que fecharam, e as duas últimas (`=49` e `=53`) em 2026-08-16, depois do fechamento da

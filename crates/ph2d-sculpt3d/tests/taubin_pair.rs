@@ -8,7 +8,80 @@
 //! shoelace 3D pediria a orientação das faces e mediria a tesselação junto.
 
 use ph2d_mesh::Mesh;
-use ph2d_sculpt3d::{Brush, Dab, Falloff, Pass, RefMode, SculptStroke, Symmetry, Verb};
+use ph2d_sculpt3d::{
+    Brush, Dab, Falloff, Pass, RefMode, SculptStroke, Symmetry, TAUBIN_LAMBDA, TAUBIN_MU,
+    TAUBIN_PASS_BAND, Verb,
+};
+
+/// A função de transferência do par: o ganho que UM dab dá à frequência `k`.
+fn transfer(k: f32) -> f32 {
+    (1.0 - TAUBIN_LAMBDA * k) * (1.0 - TAUBIN_MU * k)
+}
+
+/// **O `λ` É DERIVADO DO ESPECTRO, e o gate afirma a derivação — não o valor.**
+///
+/// `1/λ = 2` põe o zero do primeiro fator no topo do espectro do laplaciano, e
+/// `k = 2` é o **padrão alternado — a ruga de UM vértice**, exactamente o que um
+/// artista está a alisar. O zero é **EXACTO em `f32`** (`0.5 * 2.0` é `1.0` sem
+/// arredondamento), então a asserção é `== 0.0` e não um épsilon.
+///
+/// ⚠️ **Escrito assim, e não `assert_eq!(TAUBIN_LAMBDA, 0.5)`, de propósito:**
+/// um gate que repete o literal só sabe dizer *"alguém mudou o número"*; este diz
+/// **por que ele é esse**, e é o que impede a próxima wave de o mover para um
+/// valor bonito sem reconferir o espectro. O valor anterior — `0,33`, uma
+/// descrição (*"o Smooth de sempre com um terço do peso"*) e não uma derivação —
+/// falha aqui com `f(2) = 0,647`: ele guardava **65 % da ruga** a cada par, que
+/// é o *"quase imperceptível"* que o smoke reportou.
+#[test]
+fn the_lambda_annihilates_the_one_vertex_ripple() {
+    assert_eq!(
+        transfer(2.0),
+        0.0,
+        "λ = {TAUBIN_LAMBDA} tem de zerar f(2): o zero de (1 − λk) é k = 1/λ, e \
+         o topo do espectro do laplaciano é 2"
+    );
+    // O CONTROLE: um filtro que zerasse TUDO não é um passa-baixa, é uma
+    // borracha. A banda de passagem tem de sobreviver.
+    let pb = transfer(TAUBIN_PASS_BAND);
+    assert!(
+        (pb - 1.0).abs() < 1e-5,
+        "a banda de passagem tem de atravessar intacta: f({TAUBIN_PASS_BAND}) = {pb}"
+    );
+}
+
+/// **O PAR NÃO AMPLIFICA NENHUMA FREQUÊNCIA** — o critério de estabilidade do
+/// próprio paper, e o único teto legítimo que este número tem.
+///
+/// Se algum `k` da banda de corte tem `|f(k)| > 1`, aquela frequência é
+/// **devolvida com juros** a cada dab e o traço explode. A fronteira está medida
+/// por bisseção em **λ = 0,699984** (`tests/measure_taubin_lambda.rs`); o
+/// produto usa `0,5`, a **71 %** dela.
+///
+/// ⚠️ **A margem não é conservadorismo, é o espectro EFECTIVO:** a fronteira sai
+/// do espectro ideal `[0, 2]`, e no operador por cotangentes um triângulo mal
+/// formado pode dar peso de aresta negativo e empurrar o espectro para além de 2
+/// — o que move a fronteira para BAIXO, de malha para malha. O pico medido de
+/// suavização (λ = 0,65) fica a 93 % de um penhasco cuja posição exacta depende
+/// da malha, e é por isso que ele não é o ponto de operação.
+#[test]
+fn the_pair_attenuates_the_whole_stop_band_and_amplifies_nothing() {
+    let mut k = TAUBIN_PASS_BAND;
+    let mut worst = 0.0f32;
+    let mut worst_k = 0.0f32;
+    while k <= 2.0 {
+        let g = transfer(k).abs();
+        if g > worst {
+            worst = g;
+            worst_k = k;
+        }
+        k += 1e-3;
+    }
+    assert!(
+        worst <= 1.0 + 1e-4,
+        "o par AMPLIFICA k = {worst_k} por {worst}× — acima de 1 a ruga volta com \
+         juros a cada dab (λ = {TAUBIN_LAMBDA}, μ = {TAUBIN_MU})"
+    );
+}
 
 fn sphere() -> Mesh {
     ph2d_mesh::shapes::uv_sphere(64, 128, 1.0)
@@ -68,7 +141,15 @@ fn shrinkage_after(mode: RefMode, n: usize) -> f64 {
 /// mesma coisa. Sem ele, um `L` que não faz nada passaria por um `L` que cura.
 ///
 /// Medido (esfera unitária 64×128, `Constant`, força 1, 20 dabs):
-/// `S = 1,8062 %` · `L = −0,0206 %` ⇒ **87,7×**.
+/// `S = 1,8062 %` · `L = −0,0373 %` ⇒ **48,4×**.
+///
+/// ⚠️ **Este número já esteve ERRADO neste doc, e a causa é a que este repo
+/// documenta:** ele citou `−0,0206 % ⇒ 87,7×` — a medição de ANTES do operador
+/// por cotangentes — durante uma wave inteira, porque eu atualizei a tabela do
+/// cabeçalho do módulo e não a medição citada AQUI. *Um doc que cita um número
+/// medido tem de ser re-medido por quem move o número*, e é por isso que a sonda
+/// `measure_smoothing_power.rs::the_drift_table_the_gate_cites` existe: ela
+/// reproduz a fixture de um gate para a tabela dele não envelhecer sozinha.
 #[test]
 fn the_literature_smooth_holds_the_radius_where_the_reference_one_shrinks() {
     let s = shrinkage_after(RefMode::S, 20);

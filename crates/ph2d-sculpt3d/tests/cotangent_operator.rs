@@ -118,11 +118,18 @@ fn the_taubin_pair_runs_on_the_cotangent_operator() {
 ///
 /// | verbo | `S` | `B` | `L` |
 /// |---|---|---|---|
-/// | Smooth | 0,01227704 | 0,00272686 | **0,00002088** |
+/// | Smooth | 0,01227704 | 0,00272686 | **0,00004865** |
 /// | Sharpen | 0,01314242 | 0,00266994 | 0,00266994 |
 ///
 /// O `S/B` de ~4,8× aparece nos DOIS verbos e é a lei de kernel, que precede
-/// esta wave; o `B/L` de **130×** é o que o chip compra. A barra pede **8×**.
+/// esta wave; o `B/L` de **56,1×** é o que o chip compra. A barra pede **8×**.
+///
+/// ⚠️ **A coluna `L` era `0,00002088` (130×) e MOVEU com o `λ`** — ele saiu de
+/// `0,33` para `0,5` quando o smoke mediu o modo como *"quase imperceptível"*
+/// (ver [`ph2d_sculpt3d::TAUBIN_LAMBDA`]). Um filtro mais forte anda mais, logo
+/// desliza mais: é o preço, e ele está medido. A tabela é reproduzida pela sonda
+/// `measure_smoothing_power.rs::the_drift_table_the_gate_cites`, que roda a
+/// fixture DESTE gate exactamente para ela não envelhecer sozinha.
 #[test]
 fn the_literature_chip_slides_the_surface_far_less_than_the_blender_one() {
     let radius = 4.0;

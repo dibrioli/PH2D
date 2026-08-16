@@ -33,24 +33,31 @@
 //!
 //! | dabs | `S` | `L` |
 //! |---|---|---|
-//! | 1 | 0,0908 % | **−0,0008 %** |
-//! | 10 | 0,9076 % | −0,0079 % |
-//! | 20 | 1,8062 % | −0,0159 % |
-//! | 40 | 3,5754 % | −0,0318 % |
+//! | 1 | 0,0908 % | **−0,0019 %** |
+//! | 10 | 0,9076 % | −0,0186 % |
+//! | 20 | 1,8062 % | −0,0373 % |
+//! | 40 | 3,5754 % | −0,0746 % |
 //!
-//! ⚠️ **A coluna `L` MOVEU quando o par passou a correr sobre o operador que o
-//! paper nomeia** (o cotangente — ver [`RingOperator`]): ela era
-//! `−0,0011 / −0,0104 / −0,0206 / −0,0409` sobre o laplaciano uniforme. O
-//! resíduo encolheu **22 %** e o sinal não mudou. *O `S` é o contrato de
-//! paridade e não se move; o `L` é o que a literatura declara, e mover para mais
-//! perto do paper é o que ele existe para fazer.*
+//! ⚠️ **A coluna `L` já MOVEU DUAS vezes, e cada uma tem causa escrita.** Ela
+//! nasceu `−0,0011 / −0,0104 / −0,0206 / −0,0409` sobre o laplaciano uniforme;
+//! encolheu **22 %** quando o par passou a correr sobre o operador que o paper
+//! nomeia (o cotangente — ver [`RingOperator`]); e **cresceu 2,3×** quando o `λ`
+//! saiu de `0,33` para `0,5` (ver [`TAUBIN_LAMBDA`], que traz a varredura
+//! inteira). *O `S` é o contrato de paridade e NÃO se move; o `L` é o que a
+//! literatura declara, e cada movimento dele tem de vir com o número ao lado.*
 //!
-//! ⚠️ **A INCLINAÇÃO cai ~87×, e o resíduo NÃO é limitado — eu escrevi
+//! ⚠️ **O resíduo maior é o PREÇO MEDIDO de um filtro mais forte, e o trade
+//! está nomeado:** dobrar a queda de rugosidade por dab (15,3 % → 34,1 %) custou
+//! 2,3× no resíduo de raio — e a razão contra o `S` continua **plana em todo
+//! `n`** (47,8 · 48,9 · 48,8 · 48,4 · 47,9), que é a propriedade que o gate
+//! afirma, com barra em 40×.
+//!
+//! ⚠️ **A INCLINAÇÃO cai ~48×, e o resíduo NÃO é limitado — eu escrevi
 //! *"limitado"* primeiro e a tabela me desmentiu.** Deduzi o teto do SINAL ter
 //! invertido (o `μ` sobre-corrige, então a esfera cresce em vez de encolher) e
 //! isso não é um teto: as duas colunas são **lineares no número de dabs**, e o
-//! que muda é a taxa (0,0894 %/dab contra 0,00102 %/dab). Alisar para sempre
-//! ainda deriva — 87 vezes mais devagar, e para o outro lado.
+//! que muda é a taxa (0,0894 %/dab contra 0,00187 %/dab). Alisar para sempre
+//! ainda deriva — 48 vezes mais devagar, e para o outro lado.
 //!
 //! ⚠️ **E o par NÃO é afinado para anular o resíduo nesta esfera:** o `k_PB` é
 //! o do paper, e um `μ` ajustado até a coluna zerar seria um número ajustado a
@@ -73,7 +80,7 @@
 //!    oposto de *"passar de novo alisa mais"*, que é o que uma pincelada faz.
 //!
 //! ⇒ O HC fica **NOMEADO como a alternativa medida contra esta**, não
-//! esquecido. Se ele voltar à mesa, volta contra `0,0159 %` em vinte dabs, não
+//! esquecido. Se ele voltar à mesa, volta contra `0,0373 %` em vinte dabs, não
 //! contra `1,8062 %`.
 //!
 //! ⚠️ **E ele deixou de ser hipotético desde então:** o `SURFACE_SMOOTH` shipou
@@ -108,14 +115,72 @@ pub struct Pass {
     pub weight: f32,
 }
 
-/// **λ** — o passo que CONTRAI, o Smooth de sempre com um terço do peso.
+/// **λ** — o passo que CONTRAI, e o número dele é **DERIVADO do espectro**.
+///
+/// `1/λ = 2` põe o zero do primeiro fator da função de transferência
+/// exactamente no **topo do espectro do laplaciano**, e é isso que o meio
+/// significa: tanto o uniforme (`I − D⁻¹A`) como o cotangente normalizado pelo
+/// `Σ w` são médias de pesos que somam 1, logo os autovalores vivem em `[0, 2]`
+/// e o `k = 2` é o **padrão alternado — a ruga de UM vértice**, que é
+/// literalmente o que um artista está a alisar. Com λ = 0,5,
+///
+/// ```text
+/// f(2) = (1 − 0,5·2)·(1 − μ·2) = 0 · (…) = 0
+/// ```
+///
+/// e o zero é **EXACTO em `f32`** (`0.5 * 2.0` é `1.0` sem arredondamento) ⇒ a
+/// ruga de um vértice é aniquilada num par só, não atenuada.
+///
+/// # ⚠️ Ele era `0,33`, e o smoke derrubou o número
+///
+/// O doc antigo dizia *"o Smooth de sempre com um terço do peso"* — uma
+/// **descrição, não uma derivação** —, e o veredito do Enio foi *"o modo L é tão
+/// discreto que é quase imperceptível"*. Medido pela porta do produto
+/// (`tests/measure_smoothing_power.rs`, esfera com ruga 0,03, força cheia; a
+/// régua é a **rugosidade**, `|p − média do anel|`, que é o que todo filtro
+/// passa-baixa ataca):
+///
+/// | λ | queda num dab | a malha andou | queda em 4 dabs |
+/// |---|---|---|---|
+/// | **0,33** (o antigo) | **15,3 %** | 0,001958 | 41,5 % |
+/// | 0,40 | 22,4 % | 0,002928 | 50,3 % |
+/// | **0,50** | **34,1 %** | 0,004683 | 58,0 % |
+/// | 0,60 | 44,5 % | 0,006881 | 62,4 % |
+/// | 0,65 | 47,1 % | 0,008148 | 63,9 % |
+/// | 0,69 | 46,8 % ⬅ **CAI** | 0,009243 | 63,8 % ⬅ **CAI** |
+///
+/// ⚠️ **A curva tem MÁXIMO e ele foi medido**, não deduzido: entre 0,65 e 0,69 o
+/// par **anda mais e alisa menos**, que é a assinatura de já ter passado do
+/// ponto — perto da fronteira as frequências do topo voltam a ser devolvidas
+/// enquanto o deslocamento continua a crescer.
+///
+/// # De que recurso é o teto, e por que não paramos nele
+///
+/// O critério do próprio paper é `|f(k)| < 1` em toda a banda de corte: acima
+/// disso a frequência é **AMPLIFICADA** e o filtro explode ao longo do traço. A
+/// fronteira está medida por bisseção em **λ = 0,699984**
+/// (`tests/measure_taubin_lambda.rs`) — esse é o teto, e ele diz de que recurso
+/// é: **estabilidade**.
+///
+/// ⛔ **E é por isso que o pico medido (0,65) NÃO é o ponto de operação.** Ele
+/// fica a **93 %** de um penhasco cuja posição exacta é derivada do espectro
+/// IDEAL `[0, 2]`; num triângulo mal formado um peso de cotangente individual
+/// pode ser negativo e o espectro efectivo passar de 2, movendo a fronteira para
+/// baixo de mesh para mesh. λ = 0,5 fica a **71 %** dela e não depende de a
+/// fronteira estar onde a teoria a põe.
+///
+/// ⛔ **E o 0,60 foi recusado embora meça melhor:** ele iguala a força do
+/// `s-mode` (44,5 % contra 44,9 %) e é exactamente por isso que não serve — é um
+/// número escolhido por **casar uma coluna numa fixture**, que é o que este
+/// módulo já recusa por escrito para o `μ`. *Uma malha diferente move a coluna e
+/// o número passa a mentir.*
 ///
 /// ⚠️ **O par (λ, μ) não é ajustável pelo artista, e isso é deliberado:** ele é
 /// a *banda de passagem* do filtro, não uma força — quem controla o quanto é o
 /// slider de Strength, que multiplica os dois igualmente e preserva a razão.
 /// Um segundo knob aqui seria um número que o artista não tem como julgar e que
 /// quebra a propriedade no primeiro arrasto.
-pub const TAUBIN_LAMBDA: f32 = 0.33;
+pub const TAUBIN_LAMBDA: f32 = 0.5;
 
 /// **`k_PB`** — a frequência de passagem do filtro, o `0.1` do próprio paper
 /// (Taubin 1995, §5: *"we have used k_PB = 0.1 in all our experiments"*).

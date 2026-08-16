@@ -3102,3 +3102,135 @@ da curvatura, mesmo gather, mesmo CSR). Superfície pública nova: `RingWeights`
 **Mudança de comportamento — UMA:** o `l-mode` do Smooth desenha diferente (é a
 entrega). Todo outro pincel é **byte-idêntico**, e o gate que o afirma compara
 dois pincéis distintos em vez da função consigo mesma.
+
+---
+
+### §7.29 — ✅ O `λ` DO TAUBIN ERA UM PALPITE, e o smoke o derrubou (2026-08-16)
+
+**Report do Enio, no smoke da §7.28:** *"Smooth modo L é tão discreto que é quase
+imperceptível."*
+
+**Ele está certo, e o número é este** — sonda nova
+`tests/measure_smoothing_power.rs`, esfera com ruga 0,03, força cheia, UM dab, a
+régua sendo a **RUGOSIDADE** (`|p − média do anel|`, a grandeza que todo filtro
+passa-baixa ataca):
+
+| modo | queda de rugosidade | a malha andou |
+|---|---|---|
+| `S` | **44,9 %** | 0,016501 |
+| `B` | 21,5 % | 0,003458 |
+| `L` | **15,3 %** | **0,001958** |
+
+O `l-mode` movia **8,4× menos** que o `s-mode`, e o slider de força **já estava
+no topo** — não havia mais o que pedir.
+
+⚠️ **A fixture tem de conter o fenómeno, e a irmã não continha.** A
+`measure_smooth_shrinkage` mede uma esfera **LISA**: sobre ela não há alta
+frequência para atenuar, todo passa-baixa mede zero por construção, e o que se
+veria é o encolhimento. *Uma sonda que mede a coisa errada num caso onde a
+resposta certa é zero não reporta defeito nenhum.*
+
+#### De que recurso era o `0,33`? De nenhum.
+
+O `TAUBIN_PASS_BAND` cita o paper (*"we have used k_PB = 0.1"*), o `TAUBIN_MU` é
+**derivado** da relação — e o `λ` dizia, no próprio doc, *"o Smooth de sempre com
+um terço do peso"*. **Uma descrição, não uma derivação.** É o §0 do `CLAUDE.md`
+por inteiro: *um limite que não diz de que recurso é, é um palpite à espera de um
+smoke*.
+
+A varredura analítica (`tests/measure_taubin_lambda.rs`, a função de
+transferência `f(k) = (1 − λk)(1 − μk)`) dá o mapa:
+
+| λ | `f(2)` | veredito |
+|---|---|---|
+| 0,33 (o antigo) | **0,647** | estável, guarda 65 % da ruga |
+| **0,50** | **0,000** | estável, **aniquila** a ruga de um vértice |
+| 0,65 | −0,717 | estável |
+| **0,699984** | — | **a FRONTEIRA** (acima, `|f| > 1` e o par AMPLIFICA) |
+
+E a varredura pela **porta do produto** (a mesma sonda, editando a const e
+re-medindo):
+
+| λ | queda 1 dab | andou | queda 4 dabs |
+|---|---|---|---|
+| 0,33 | 15,3 % | 0,001958 | 41,5 % |
+| 0,40 | 22,4 % | 0,002928 | 50,3 % |
+| **0,50** | **34,1 %** | 0,004683 | 58,0 % |
+| 0,60 | 44,5 % | 0,006881 | 62,4 % |
+| 0,65 | **47,1 %** | 0,008148 | 63,9 % |
+| 0,69 | 46,8 % ⬅ **CAI** | 0,009243 | 63,8 % ⬅ **CAI** |
+
+⚠️ **A curva tem MÁXIMO e ele foi MEDIDO, não deduzido:** entre 0,65 e 0,69 o par
+**anda mais e alisa menos** — a assinatura de já ter passado do ponto.
+
+#### Por que 0,50 e não o pico
+
+**`λ = 0,5` é o único candidato com DERIVAÇÃO:** `1/λ = 2` põe o zero do primeiro
+fator exactamente no **topo do espectro** do laplaciano (tanto o uniforme como o
+cotangente normalizado são médias de pesos que somam 1 ⇒ autovalores em `[0, 2]`),
+e `k = 2` é o **padrão alternado — a ruga de UM vértice**, que é literalmente o
+que o artista está a alisar. O zero é **exacto em `f32`** (`0.5 * 2.0` é `1.0` sem
+arredondamento).
+
+⛔ **O pico medido (0,65) NÃO é o ponto de operação:** ele fica a **93 %** de um
+penhasco cuja posição sai do espectro **IDEAL**; num triângulo mal formado um peso
+de cotangente pode ser negativo e o espectro efectivo passar de 2, movendo a
+fronteira para baixo **de malha para malha**. λ = 0,5 fica a 71 % dela.
+
+⛔ **O 0,60 foi recusado embora meça melhor:** ele iguala a força do `s-mode`
+(44,5 % contra 44,9 %) e é **exactamente por isso** que não serve — é um número
+escolhido por **casar uma coluna numa fixture**, que é o que este módulo já recusa
+por escrito para o `μ` (*"um `μ` ajustado até a coluna zerar seria um número
+ajustado a UMA fixture, que passa a mentir na malha seguinte"*).
+
+#### O que a mudança compra, e o que ela custa
+
+| | antes | depois |
+|---|---|---|
+| queda de rugosidade / dab | 15,3 % | **34,1 %** |
+| contra o `b-mode` (21,5 %) | **mais fraco** | **mais forte** |
+| deriva tangencial | 0,00002088 | 0,00004865 (**56,1×** menos que o `B`) |
+| resíduo de raio em 20 dabs | −0,0159 % | −0,0373 % (**48,4×** menos que o `S`) |
+| raio médio em 32 dabs | 1,000742 | 1,001644 (o `S` mede **0,930**) |
+
+⚠️ **O `l-mode` era o mais FRACO dos três e passou a ser mais forte que o `B`** —
+a ordem que nenhum artista espera do chip que anuncia literatura. E a razão contra
+o `S` continua **plana em todo `n`** (47,8 · 48,9 · 48,8 · 48,4 · 47,9), que é a
+propriedade que o gate afirma.
+
+#### Os gates novos afirmam a DERIVAÇÃO, não o valor
+
+`the_lambda_annihilates_the_one_vertex_ripple` (`f(2) == 0.0`, com o CONTROLE de
+que a banda de passagem sobrevive) e
+`the_pair_attenuates_the_whole_stop_band_and_amplifies_nothing` (o critério do
+paper). ⚠️ **Escritos assim de propósito:** `assert_eq!(TAUBIN_LAMBDA, 0.5)` só
+sabe dizer *"alguém mudou o número"*; estes dizem **por que ele é esse**.
+
+**Mutações — 2, e elas DISCRIMINAM** (é o que prova que os dois gates não são
+redundantes):
+
+| mutação | derivação | estabilidade |
+|---|---|---|
+| λ = 0,33 (o antigo) | **RED** | ok |
+| λ = 0,75 (além da fronteira) | **RED** | **RED** |
+
+#### Duas notas que estavam ERRADAS e foram corrigidas
+
+⚠️ **O doc do gate `the_literature_smooth_holds_the_radius…` citava
+`L = −0,0206 % ⇒ 87,7×`** — a medição de **ANTES** do operador por cotangentes.
+Eu actualizei a tabela do cabeçalho do módulo na §7.28 e **esqueci a medição
+citada dentro do gate**, que atravessou uma wave inteira a mentir. *Um doc que
+cita um número medido tem de ser re-medido por quem move o número*, e é por isso
+que a sonda `the_drift_table_the_gate_cites` passou a reproduzir a fixture do
+gate.
+
+⚠️ **A sonda nova imprimia `0,01227699` onde o gate mede `0,01227704`** — ela
+somava em `f64` com `mul_add` e o gate em `f32` simples: **dois números para a
+mesma medição**, e o doc de um passaria a citar o do outro. A sonda foi alinhada à
+aritmética do gate e agora os dois batem **dígito a dígito**.
+
+**Suítes:** 588 verdes em release **e** em debug · fmt e clippy limpos · nenhum
+schema, nenhum contrato congelado, nenhum id/token · nenhuma dep nova.
+
+**Mudança de comportamento — UMA:** o `l-mode` do Smooth alisa **2,2× mais** por
+dab. Todo outro pincel é byte-idêntico.

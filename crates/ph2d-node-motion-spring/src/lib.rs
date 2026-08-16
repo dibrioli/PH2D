@@ -583,8 +583,10 @@ mod tests {
             let c = step(&base, &ctrl, 1, 30.0, 3.0, t);
 
             if k % 5 == 0 || k == 39 {
-                let (Some(Column::Vec2(v)), Some(Column::Vec2(cv))) =
-                    (b.get("P"), c.get("P")) else { panic!("P") };
+                let (Some(Column::Vec2(v)), Some(Column::Vec2(cv))) = (b.get("P"), c.get("P"))
+                else {
+                    panic!("P")
+                };
                 println!(
                     "{k:5} | {:14.4} | {:14.4} | {:10.4}",
                     v[0][1], v[1][1], cv[0][1]

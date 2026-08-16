@@ -465,6 +465,38 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
             );
             sinks
         }
+        // PARA ONDE ISTO VAI (doc 89, o grupo G): a coluna `vel` ganha um PRODUTOR,
+        // e os leitores que ja' existiam deixam de receber zeros.
+        Ok("47") => {
+            let sinks = conferencia_demos_velocity::build_velocity_demo_document(doc, registry)
+                .unwrap_or_default();
+            eprintln!(
+                "[velocity-demo] TRES PARES: cada par e' o MESMO rig com um NO' (ou um knob) de \
+                 diferenca. {cols} pecas por fileira.",
+                cols = conferencia_demos_velocity::COLS as u32,
+            );
+            for label in &conferencia_demos_velocity::BAND_LABELS {
+                eprintln!("  {label}");
+            }
+            eprintln!(
+                "  (!) DE' PLAY. Uma velocidade e' a diferenca entre DOIS instantes -- uma foto ja'
+      mostra a fileira variada (cada peca esta' num ponto distinto do percurso), mas so' o
+      movimento mostra a peca a INCHAR quando acelera.
+  (!) TAMANHO (1-2): a de cima tem UM tamanho so' (medido: 0,170 em toda peca); a de baixo
+      incha no MEIO do vaivem e encolhe nas pontas, onde a peca para para voltar
+      (0,203 .. 0,435 -- duas vezes e meia). A de cima e' literalmente o que o canal Speed
+      do `value.attribute` desenhava antes desta wave: ZEROS.
+  (!) DIRECAO (3-4): as pecas sao TRACOS, e as de baixo apontam para onde vao -- numa orbita,
+      a tangente, que varre o circulo (medido: -162,1 a +178,2 graus) contra um controle
+      que nao tem `rot` nenhuma. Se elas ficarem todas no mesmo angulo, o alinhamento
+      nao chegou.
+  (!) SMOOTH (5-6): o MESMO driver tremido. A de cima usa a diferenca crua e o tamanho
+      PISCA; a de baixo passa pelo one-pole e RESPIRA -- medida a agitacao de um tick para
+      o seguinte na MESMA peca, 0,0274 contra 0,0095 (tres vezes mais calma).
+  (!) Se a lista de 6 bandas acima nao aparecer, PARE: o resto da cena nao diz nada."
+            );
+            sinks
+        }
         // A TABELA E A SEMENTE (doc 89, o grupo D / W-E): a lista que o artista
         // DIGITA, sem o teto de oito, e a semente que a identidade do no separa.
         Ok("44") => {

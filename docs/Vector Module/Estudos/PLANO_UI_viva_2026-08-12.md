@@ -274,13 +274,53 @@ O piso em `step` impede que um campo de faixa minúscula fique morto.
 *restringir* em vários gestos. Proposta: **`Shift` = ×0,1 (precisão)** e **`Ctrl` = encaixa no
 `step`**; a varredura de colisão é parte da wave, não um detalhe.
 
-### 4.3 O ponteiro — três possibilidades, e a honesta é a primeira
+### 4.3 O ponteiro — SONDADO em 2026-08-16, e (B) é RECUSADA por medição
 
 | # | como | custo | veredito |
 |---|---|---|---|
-| A | o cursor **viaja** | zero | ✅ **v1.** O curso acaba ao fim de ~600 px; para 95% dos ajustes chega. |
-| B | `set_cursor_grab(Locked)` + esconder ⇒ arrasto **infinito** | ⚠️ **desconhecido** | a shell **nunca** prendeu um cursor; `Locked` **não é suportado em todas as plataformas** (X11/Wayland/macOS divergem). ⇒ **sonda primeiro**, promessa depois. |
+| A | o cursor **viaja** | zero | ✅ **v1, e FICA.** Ver a aritmética abaixo. |
+| B | `set_cursor_grab(Locked)` + esconder ⇒ arrasto **infinito** | ⚠️ real | ⛔ **recusada com número.** Não é portátil, e não compra nada onde o curso de facto se mede. |
 | C | dar a volta na borda do ecrã | médio | ⛔ pisca e confunde |
+
+**A sonda existe e é `shells/desktop/src/probe_cursor_grab.rs`** (`probe_can_the_cursor_be_locked`,
+`#[ignore]`, imprime e cala-se). Ela responde as **duas** metades que a pergunta tem, e a segunda
+tem **CONTROLE**: *nenhum evento cru* significa *o canal não existe* **ou** *ninguém mexeu o rato*,
+e sem separar as duas um zero é inatribuível — a corrida sem mão imprime **PARE** em vez de concluir.
+
+**Metade 1 — a chamada pega?** Medido nesta workstation (Wayland): `Confined` **Ok** · `Locked`
+**Ok** · esconder **Ok**. E a FONTE do winit 0.30.13 (`src/window.rs`) declara o mapa, que é
+**complementar** — nenhum dos dois modos existe em toda parte:
+
+| modo | X11 | Wayland | macOS | Windows |
+|---|---|---|---|---|
+| `Confined` | ✅ | ✅ | ⛔ *"Not implemented"* | ✅ |
+| `Locked` | ⛔ *"Not implemented"* | ✅ | ✅ | ✅ |
+
+⇒ **(B) nunca poderia ser uma promessa incondicional:** seria uma capacidade por-plataforma com
+recuo para (A) em X11, e o artista de X11 teria um gesto com outro alcance.
+
+**Metade 2 — e isto é o que mata a wave, não a portabilidade.** Rodado o censo
+`census_of_how_many_pixels_cross_a_whole_field` no tip de hoje: **322 campos com intervalo
+conhecido, TODOS a 250,00 px, ZERO abaixo de 20 px** (a wave 4 fechou os 43), e **146 sem intervalo
+nenhum**. O curso de (A) é ~600 px ⇒ **2,4× o que é preciso para atravessar um campo INTEIRO**, e
+metade disso para chegar a qualquer extremo a partir do meio. *O curso não aperta em nenhum dos 322.*
+
+⚠️ **E nos 146 restantes um cursor infinito piora o problema em vez de o curar:** o que lhes falta é
+uma **TAXA** (eles caem no atalho histórico, `DRAG_RATE_X · step`), não curso; dar-lhes arrasto sem
+fim é tornar mais fácil chegar a um número absurdo num campo que não tem fronteira para o clampar. A
+cura deles é o tecto MEDIDO que a §4 já nomeia, e o primitivo é o `set_number_drag_rate`.
+
+**O preço que (B) cobraria, agora nomeado:** preso, o cursor **não se move**, logo
+`WindowEvent::CursorMoved` **para de chegar** — e é dele que o gesto inteiro deste app se alimenta;
+o deslocamento passaria a vir de `DeviceEvent::MouseMotion`, um `device_event` que a shell **nunca**
+teve, mais o par prender/soltar no ciclo do gesto, mais o recuo de X11. Contra um (A) que já shipa e
+cujo vão real (a taxa) **já foi fechado**.
+
+⇒ **A recusa vale tanto quanto uma construção, e é o que impede o item de voltar.** A sonda fica no
+repo para quem quiser reabrir: ⚠️ ela é **Linux-only** e mede o loop numa thread de trabalho
+(`with_any_thread`), diferença de fixture nomeada no próprio arquivo — para *esta* pergunta ela não
+muda a resposta (o `pointer-constraints` do Wayland é por-SUPERFÍCIE), e seria inaceitável numa
+sonda de relógio.
 
 ### 4.4 Gates
 
@@ -615,8 +655,10 @@ eficiência antes de encanto.
 
 1. **`measure_ui_motion`** — o custo real da F0 pela porta do produto (§1.4). *Nenhum número de custo
    deste plano vale antes dela.*
-2. **A sonda de `set_cursor_grab`** por plataforma (§4.3) — decide se o scrub promete arrasto infinito
-   ou 600 px. **Segue por correr.**
+2. ~~**A sonda de `set_cursor_grab`** por plataforma (§4.3)~~ — **CORREU em 2026-08-16, e o veredito é
+   (A) FICA.** `shells/desktop/src/probe_cursor_grab.rs`; a decisão não veio do lock (que pega nesta
+   máquina) e sim do censo: **os 322 campos com intervalo cruzam inteiros em 250 px contra ~600 de
+   curso**, e nos 146 sem intervalo o arrasto infinito **piora** o problema. Ver a §4.3.
 3. ~~**A varredura de colisão de modificadores** (§4.2)~~ — **MOOT**: o `Shift` já é o multiplicador de
    precisão do scrub (`DRAG_SHIFT_MUL`) desde a M14.A, e a wave 4 não acrescentou modificador nenhum.
    O `Ctrl = encaixa no step` que a §4.2 propunha **não foi construído** e continua por decidir.

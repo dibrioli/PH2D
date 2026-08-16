@@ -3,7 +3,10 @@
 > **Estado:** linha FECHADA, gate completo VERDE, **aguardando ordem de integração do Enio.**
 > A linha não integra e não pusha (CLAUDE.md §0.7). Este documento é o que o **agente integrador** precisa.
 >
-> **Tip da linha:** `6515abcf4` · **53 commits** contra o `main`.
+> **Último commit de CÓDIGO:** `c71b880b5` · **53 commits** contra o `main`.
+> ⚠️ *A identidade é o último commit de CÓDIGO, nunca o tip* — o tip é um sha que este próprio
+> documento move a cada vez que é reescrito, e um handoff que se auto-nomeia mente na primeira
+> correção. O gate da §7 rodou sobre a árvore em `c71b880b5`; os commits acima dele são docs.
 
 ## §1 — O que entra
 
@@ -169,7 +172,7 @@ Mais **DOIS gates de higiene** que a varredura produziu:
   sem ordem*.
 - **a `=51`**: a banda tratada é byte-idêntica à aprovada; só o controle se moveu (§1.1).
 
-## §7 — Gate de fechamento (rodado na worktree, tip `6515abcf4`)
+## §7 — Gate de fechamento (rodado na worktree sobre `c71b880b5`)
 
 | gate | resultado |
 |---|---|

@@ -62,9 +62,16 @@ const _: () = assert!(SNAP_SUBDIVISIONS.0 <= SNAP_SUBDIVISIONS.1);
 
 /// Os campos cuja faixa este módulo possui, na forma que o `populate` regista.
 ///
-/// ⚠️ É uma tabela e não três chamadas soltas porque o `populate` e o gate a percorrem: um campo
-/// novo entra aqui e fica coberto pelos dois, que é o que uma lista escrita à mão em dois
-/// lugares não dá.
+/// ⚠️ É uma tabela e não três chamadas soltas porque **o `populate` a percorre**: um campo novo
+/// entra aqui e é registado sozinho, que é o que uma lista escrita à mão em dois lugares não dá.
+///
+/// ⚠️ **E ela NÃO alcança o gate — a versão anterior deste comentário afirmava que sim.** Isto é
+/// `pub(crate)` e o `grid_snap_scrub_law` vive em `tests/`, ou seja **outra crate**: ele carrega a
+/// própria `declared_fields()` escrita à mão, com os mesmos cinco ids duplicados. Um sexto campo
+/// entra aqui, é registado pelo `populate`, e **o gate não o vê**. Fechar isso é abrir a tabela
+/// (ou um `#[doc(hidden)] pub fn declared()`); até lá o comentário diz o que é verdade, porque uma
+/// promessa de cobertura que não existe é pior que cobertura nenhuma — ela faz a próxima varredura
+/// pular a linha.
 pub(crate) const DECLARED: [(ph2d_editor_core::NodeId, (f64, f64, f64)); 5] = [
     (crate::ids::GS_CFG_VORONOI_LLOYD_ITERS, LLOYD_ITERATIONS),
     (crate::ids::GS_CFG_COLOR_R, COLOR_COMPONENT),

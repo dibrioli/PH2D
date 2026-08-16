@@ -313,8 +313,22 @@ const WIDGET_DELEGATE_MARKERS: &[&str] = &[
     "paint_panel_surface",
 ];
 
-/// Panel files that paint via vector/text primitives only (no widget
-/// interaction → no a11y to wire). Each entry: (path key, why).
+/// Panel files that owe no a11y of their own. Each entry: (path key, why).
+///
+/// ⚠️ **Há DUAS categorias aqui, e o doc anterior só nomeava uma.** Ele dizia *"paint via
+/// vector/text primitives only (no widget interaction → no a11y to wire)"*, e essa frase é falsa
+/// para a primeira entrada da lista: o `paint_sections_chrome.rs` **regista um hit interactivo**
+/// (um cabeçalho dobrável é clicável). A entrada está **certa** — a a11y é do widget canónico
+/// `paint_section_header`, que a emite e tem gates próprios —, mas por **DELEGAÇÃO**, não por
+/// ausência de interacção.
+///
+/// - **(a) sem interacção nenhuma** — desenha vector/texto e não regista hit;
+/// - **(b) DELEGA a um widget canónico** — regista hit, e o nó de a11y é emitido pelo primitivo
+///   que ele chama.
+///
+/// A distinção importa para a entrada SEGUINTE: alguém que copie a categoria (a) sobre um arquivo
+/// da categoria (b) está a justificar a isenção com um facto que não se verifica, e o gate — que
+/// só lê o par `(caminho, razão)` — não sabe a diferença.
 const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
     (
         "ph2d-panel-audio-editor/src/paint_sections_chrome.rs",

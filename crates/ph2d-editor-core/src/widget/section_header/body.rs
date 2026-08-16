@@ -192,6 +192,13 @@ impl Drop for SectionFold {
 /// ⚠️ Nada aqui recorta — ele serve o caso em que o corpo **cabe inteiro dentro da banda** que a
 /// dobra deixa. Um corpo mais alto do que `body_h * t` transbordaria, e é por isso que o caminho
 /// normal é o [`SectionFold`].
+///
+/// ⚠️ **NENHUM pintor o chama hoje** (medido: as únicas ocorrências fora deste módulo são o
+/// re-export e uma sonda). Ele fica porque a pergunta é real, mas *um `pub` sem chamador é uma
+/// **segunda resposta** à espera de quem a chame* — e este traz, no parágrafo acima, um convite
+/// escrito a pintar um corpo **sem recorte**, que é exactamente a row invisível-e-clicável que o
+/// `a_row_below_the_fold_band_is_not_clickable` existe para apanhar. Quem o adoptar responde
+/// primeiro: *o meu corpo cabe MESMO na banda em todo `t`?* Se não couber, é [`SectionFold`].
 #[must_use]
 pub fn folded_gap(store: &WidgetStore, id: NodeId, gap: f32) -> f32 {
     gap * store.section_open_live(id).clamp(0.0, 1.0)
@@ -203,6 +210,10 @@ pub fn folded_gap(store: &WidgetStore, id: NodeId, gap: f32) -> f32 {
 /// ⚠️ Existe para os pintores cujo corpo NÃO é uma sequência de rows com um `cur_y` (uma grelha,
 /// uma tabela de altura fixa): eles perguntam isto em vez de `is_collapsed` e continuam a pintar
 /// enquanto a dobra corre.
+///
+/// ⚠️ **Também sem chamador hoje** — mesma leitura do [`folded_gap`] acima: fica pela pergunta, e
+/// quem o adoptar herda a obrigação do recorte, porque saber *que há corpo* não diz *onde ele
+/// pode ser desenhado*.
 #[must_use]
 pub fn has_body(store: &WidgetStore, id: NodeId) -> bool {
     store.section_open_live(id) > SHUT

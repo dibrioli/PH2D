@@ -203,8 +203,18 @@ fn the_gap_after_a_section_folds_with_it() {
 
 /// **As duas portas são UMA lei.** O `begin` é o `begin_at` com o `t` que ele mesmo busca no
 /// store — e é isso que impede o painel que fotografa a dobra de divergir do que não fotografa.
-/// *Mutação: `begin` a clampar o `t` antes de delegar (ou a lê-lo de outro campo) ⇒ os dois
-/// vereditos separam-se e o `assert_eq` sangra.*
+///
+/// ⚠️ **Este gate afirma só `is_some() == is_some()`, e o doc que estava aqui prometia mais do que
+/// ele entrega.** A prescrição antiga (*"`begin` a clampar o `t` antes de delegar ⇒ os dois
+/// vereditos separam-se"*) é **falsa para todo clamp que não cruze o [`SHUT`]**: as duas portas
+/// continuam a abrir e a não-abrir escopo nos mesmos instantes, e o que diverge é a banda de
+/// recorte e o `y` de saída — que esta projecção booleana não olha. Medido: com
+/// `clamp(0.0, 0.9)` no `begin`, **este gate passa** e quem sangra é o vizinho
+/// `an_open_section_at_rest_returns_the_cursor_verbatim`.
+///
+/// A suíte apanha o defeito; o que estava errado era a receita escrita ao lado, que é o que a
+/// próxima pessoa vai acreditar. *Mutação que de facto o sangra: `begin` a ler o `t` de outro
+/// campo do store (um que cruze o `SHUT`).*
 #[test]
 fn the_two_doors_are_one_law() {
     let mut scene = VectorScene::new();

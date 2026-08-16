@@ -577,7 +577,7 @@ python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"
 | 3 | SIMULAÇÃO | 0 | 3 | 5 | — | 25 | 10 | 43 |
 | 4 | DEFORMERS | 0 | **6** | 8 | — | 3 | 5 | 22 |
 | 5 | TRANSFORM | 0 | 4 | 3 | — | 1 | 8 | 16 |
-| 6 | ANIMADORES | **2** | **8** | 15 | — | 5 | 0 | 30 |
+| 6 | ANIMADORES | **1** | **8** | 15 | — | 6 | 0 | 30 |
 | 7 | TEMPO / ESTILÍSTICOS | 0 | 3 | 6 | — | 14 | 7 | 30 |
 | 8 | STREAM / UTILIDADE | 0 | **8** | 10 | — | 5 | 8 | 32 |
 | 9 | COR / APARÊNCIA | 0 | 3 | 3 | — | 7 | 6 | 19 |
@@ -589,7 +589,7 @@ python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"
 | 15 | VALUE | 0 | 2 | 18 | — | 31 | 19 | 72 |
 | 16 | RIG *(deferida)* | 0 | 0 | 0 | 18 | 1 | 4 | 23 |
 | 17 | ZERO-PARAM + DEBUG | 0 | 1 | 7 | — | 1 | 6 | 15 |
-| | **TOTAL** | **2** | **68** | **119** | **18** | **120** | **119** | **450** |
+| | **TOTAL** | **1** | **68** | **119** | **18** | **121** | **119** | **450** |
 
 ⚠️ **Este placar nasceu do grupo M, e o que ele achou vale mais que os números:** sete das
 dezassete folhas **não tinham contagem nenhuma**, a folha 13 dizia `3 P0 · 7 P1` com a própria
@@ -599,10 +599,15 @@ célula desta conferência a envelhecer. *A cura não é reconferir com mais cui
 deixar de ser escrita à mão.* A linha de `**Contagem:**` de cada folha passou a ser gerada por
 esta ferramenta, e diz isso de si mesma.
 
-⚠️ **A fila ACIONÁVEL de P0 está VAZIA.** Os dois que a tabela mostra são o `**P0/P1**` da folha
-06 — o `motion.wave` sem N produtores e o **`motion.drive` sem coluna nomeada** —, e o segundo é
-a metade que sobra da **§10.0**: *ler componente* fechou (as lanes do `value.attribute` e as do
-`motion.expression`), **escrever coluna arbitrária não**. Os 18 ⏸ são a família RIG, deferida.
+⚠️ **A fila ACIONÁVEL de P0 está VAZIA, e a §10.0 FECHOU.** O único `**P0/P1**` que a tabela
+ainda mostra é o `motion.wave` sem N produtores. A outra metade — o **`motion.drive` sem coluna
+nomeada** — fechou no **grupo P** (2026-08-16, cena `=56`): o canal `Custom…` escreve a coluna
+que o artista batiza, e o `value.attribute` a lê de volta pelo mesmo nome. ⚠️ **Ele RECUSA o
+device**, e é o preço nomeado: uma `ColumnBinding` precisa do nome ANTES do cook, e um nome
+digitado só existe DURANTE ele — o mesmo recuo da `Median`. *A W0-B-genérico deste plano previa
+«o análogo de ESCRITA do `StreamOp::Project`, maquinaria de sequenciador com pipes e paridade
+próprios»; medido, isso é o preço de o CUSTOM correr no DEVICE, e não o de ele existir.* Os 18
+⏸ são a família RIG, deferida.
 
 ---
 

@@ -475,6 +475,37 @@ pub(super) fn octave(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId
     sinks
 }
 
+/// **A FORMA DA ONDA E O DESLIZE DA RAMPA** — a cena `=55`, o grupo O.
+pub(super) fn shape(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_shape::build_shape_demo_document(doc, registry).unwrap_or_default();
+    let (pw, off) = conferencia_demos_shape::knobs();
+    eprintln!(
+        "[shape-demo] DOIS PARES ({} bandas). Cada par tem o seu CONTROLE ao lado.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_shape::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) ESTA CENA TEM DUAS NATUREZAS, de proposito.
+  (!) 1-2, O PULSE WIDTH ({pw:.2}) -- DE' PLAY: as duas sao a MESMA onda quadrada, e o que muda e'
+  quanto do ciclo ela passa em cima. Medido, o controle fica {DUTY_FREE:.3} do ciclo la' em cima e a
+  de baixo {DUTY_NARROW:.3}. Olhe o RITMO, nao a altura: a de baixo da' um pulo curto e volta.
+  (!) 3-4, O OFFSET ({off:.2}) -- julga-se PARADO (o stagger nao le' o relogio): a mesma rampa,
+  ROLADA. No controle a peca mais alta e' a ULTIMA (indice {TOP_FREE}); com o deslize ela passa a ser
+  a do indice {TOP_ROLLED}, e a rampa cai UMA vez -- a emenda. Se ela serrilhar, isto embaralhou em
+  vez de rolar.",
+    );
+    sinks
+}
+
+// Os numeros que a sonda da cena 55 imprime.
+const DUTY_FREE: f32 = 0.556;
+const DUTY_NARROW: f32 = 0.222;
+const TOP_FREE: usize = 23;
+const TOP_ROLLED: usize = 14;
+
 // Os numeros que a sonda `measure_what_the_scene_shows` da cena 54 imprime.
 const RUFF_FLAT: f32 = 0.00189;
 const RUFF_ROUGH: f32 = 0.01933;

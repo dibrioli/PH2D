@@ -11,10 +11,10 @@
 |---|---|
 | branch | `line/Vector` |
 | HEAD | o **tip de `line/Vector`** — ⚠️ **não um sha escrito aqui**: os últimos commits são este próprio documento, então um literal envelheceria a cada correcção dele |
-| último commit de **CÓDIGO** | **`c8b6276e9`** |
+| último commit de **CÓDIGO** | **`995520929`** |
 | merge-base com `main` | **`08e3c84c9`** |
-| commits de código | **12** (de **15** no total; os outros 3 são este documento e o plano) |
-| diff de **código** | **64 arquivos, +3.158 / −712** (`main...HEAD -- ':!docs'`) |
+| commits de código | **13** (de **17** no total; os outros 4 são este documento e o plano) |
+| diff de **código** | **66 arquivos, +3.361 / −712** (`main...HEAD -- ':!docs'`) |
 
 ⚠️ **Esta caixa já esteve errada duas vezes, e as duas por motivos que valem mais que o número.**
 A primeira dizia *"daí para cima é só `docs/`"* e o smoke produziu **dois commits de fonte** depois
@@ -153,7 +153,7 @@ no fecho**, não a acreditar agora"*. Conferida. Passa.
 
 ## 6. Ordem, dependências e **o que smoke-testar**
 
-### Os 11 commits, em ordem, e a dependência entre eles
+### Os 13 commits, em ordem, e a dependência entre eles
 
 | # | commit | depende do anterior? |
 |---|---|---|
@@ -169,6 +169,7 @@ no fecho**, não a acreditar agora"*. Conferida. Passa.
 | 10 | `c5f8aa8a5` o roteiro da DOBRA fala a língua do ARTISTA | **do 6** (é o texto da cena) |
 | 11 | `6f66a8554` o `reduced motion` **PARA** o roteiro | **do 6** |
 | 12 | `c8b6276e9` o roteiro **RESTAURA** o que manda ligar | **do 11** (a causa raiz do 11) |
+| 13 | `995520929` as duas SONDAS que refutam a atribuição dos 335 µs | independente |
 
 ⚠️ **Os commits 1-6 são uma cadeia**: um rebase que os reordene quebra a compilação (o 2 usa o que
 o 1 cria). Os 10-11 dependem do 6 (editam a cena que ele cria). Os 7-9 são independentes entre si
@@ -246,14 +247,14 @@ chrome do app) — não o "complete" sem trazer a F4a primeiro.
 
 ---
 
-## 7. Gate batched da linha (rodado no TIP, `6f66a8554`)
+## 7. Gate batched da linha (rodado no TIP, `995520929`)
 
 | gate | resultado |
 |---|---|
 | `cargo fmt --all -- --check` | **EXIT 0** |
 | `cargo check --workspace --all-targets` | **EXIT 0** |
 | `cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings` | **EXIT 0, zero warnings** |
-| `cargo nextest run --workspace --cargo-profile ci-test` | **16.115 de 16.115 passaram, 1.562 skipped — EXIT 0** |
+| `cargo nextest run --workspace --cargo-profile ci-test` | **16.117 de 16.117 passaram, 1.564 skipped — EXIT 0** |
 
 ⚠️ **A varredura é a WORKSPACE INTEIRA, de propósito.** Esta linha toca `ph2d-editor-core`, e os
 gates que moram em `ph2d-editor-core/tests/` e `shells/desktop/tests/` **só correm na varredura
@@ -315,10 +316,26 @@ bloqueado fora do repositório:
   de 12.500 unidades* (`50 × 250`), enquanto a receita para a qual este app convergiu é
   `rate = step`, ou seja **50× menos**. Mudá-lo é mudança de FEEL em 141 campos ⇒ **do Enio, com o
   número na mão**, não de uma wave de correcção.
-- ⏸️ **2,05% de um quadro é pago com o app PARADO, para sempre**, e a **PODA nunca dispara** no app
-  real (o `PRUNE_AFTER_S` promete despejar quem deixa de ser pintado, e o tique toca todos os ids
-  macios em todo quadro). Encolher isso é mexer no `tick_hover`, cujo publish atravessa nove
-  consumidores e tem histórico de defeito subtil de flash ⇒ **wave própria, com ordem**.
+- ⏸️ **2,0% de um quadro é pago com o app PARADO, para sempre** — e esta linha **decompôs o número
+  antes de abrir a wave**, com o resultado de que **não há onde construir ainda**. Duas sondas novas
+  (`measure_what_a_resting_frame_is_made_of` na `ph2d-editor-core` ·
+  `measure_which_half_of_the_resting_frame_is_the_store` na `ph2d-panel-registry-init`) medem as
+  cinco peças e **a soma não fecha**: o relógio custa **53 µs** (`advance` 7,6 · `animate × 4491`
+  44,8 · o `Vec` 1,0) e o store **56** (`hover_targets` 4,2 · `set_hover_live × POP` 52,1) ⇒ **110
+  contra 335, um terço**. ⚠️ **O que sobra é CACHE, e o censo prova-o sem instrumento nenhum:** ele
+  mede **162** widgets em **3,09 µs** e **4491** em **335** — *27,7× de população para 108× de
+  custo*, super-linear, onde uma soma de peças `O(n)` seria linear; as sondas isoladas sub-estimam
+  porque cada uma percorre a MESMA estrutura 200 vezes, residente. ⇒ **a cura não é micro-otimizar
+  uma peça** (nenhuma passa de 52 µs): é **não TOCAR** em 4491 entradas, o que é o desenho do
+  *conjunto sujo* e mexe no `tick_hover`, cujo publish atravessa nove consumidores e tem histórico
+  de defeito subtil de flash ⇒ **wave própria, com ordem — agora com a atribuição CERTA**.
+  ⚠️ **E a metade da nota que dizia *«a PODA nunca dispara»* estava errada:** ela dispara, mas só
+  quando um widget **sai do registo**; o que ela nunca vê é um widget registado que deixou de ser
+  **pintado**, porque o tique o alveja na mesma.
+  ⚠️ **E a sonda nova QUEBROU o censo ao nascer no mesmo binário** — o `register_all_panels` é
+  global e irreversível, e o censo mede o piso (`chrome`, 162) **antes** dele: juntas, o `chrome`
+  saltava para **4491 / 339,7 µs** e a linha de CONTROLO morria em silêncio. Elas vivem em
+  **binários separados** por isso, e o comentário do arquivo novo diz o mecanismo.
 - ⛔ **X1 pressão da caneta** — bloqueado **FORA do repositório** (winit 0.30.13 crava
   `force: None` nos três backends de desktop).
 - ⏸️ **ABRIR/FECHAR um painel não é animado, e nunca foi** — medido no smoke desta wave
@@ -337,5 +354,5 @@ bloqueado fora do repositório:
 
 ---
 
-*Linha `Vector` pronta (12 commits de código, o último `c8b6276e9`; **a cena `=3` foi smokada e
+*Linha `Vector` pronta (13 commits de código, o último `995520929`; **a cena `=3` foi smokada e
 aprovada**). Aguardo ordem de integração.*

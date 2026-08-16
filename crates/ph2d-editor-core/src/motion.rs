@@ -447,16 +447,33 @@ impl UiMotion {
     /// também o modo mais **barato**.
     #[must_use]
     pub fn law(&self, role: Role) -> Option<Spring> {
+        Self::law_of(role, self.character, self.reduced)
+    }
+
+    /// O corpo da [`Self::law`], sem o `&self`.
+    ///
+    /// ⚠️ **Existe por uma razão MEDIDA, não por gosto.** A lei é função de três coisas — o papel,
+    /// o carácter e o *reduced* —, e as duas últimas são [`Copy`]. Enquanto ela pedia `&self`, o
+    /// [`Self::advance`] não podia consultá-la enquanto iterava `self.tracks`, e contornava isso
+    /// **colectando um `Vec` do tamanho do mapa em cada quadro** e voltando a descer a árvore por
+    /// entrada (`get_mut`). Com a população real do app (4 491 tracks) isso é uma alocação de
+    /// ~72 kB e uma segunda travessia, 60 vezes por segundo, para calcular uma função de três
+    /// valores que cabem em registos.
+    ///
+    /// ⚠️ **UMA lei, dois chamadores** — o público delega neste, nunca o contrário. Duas cópias do
+    /// `match` divergiriam no primeiro caso especial, que é a cicatriz que o
+    /// `TimelineInterpScope::menu_table` e o `stroke_cover_wanted` já pagaram neste repositório.
+    fn law_of(role: Role, character: UiCharacter, reduced: bool) -> Option<Spring> {
         match role {
             Role::Number => None,
-            Role::Travel | Role::Surface if self.reduced => None,
-            Role::Decoration if self.reduced || self.character == UiCharacter::Discrete => None,
+            Role::Travel | Role::Surface if reduced => None,
+            Role::Decoration if reduced || character == UiCharacter::Discrete => None,
             // ⚠️ **Criticamente amortecida nos DOIS carácteres** — ver [`Role::Surface`]. E reusa a
             // `DISCRETE` em vez de cunhar rigidez própria: o joelho dela (t95 = 0,133 s) é o que uma
             // rolagem quer, e uma constante nova seria um segundo número a afinar sem ninguém saber
             // contra o quê. Se o smoke pedir outra, ela nasce AQUI, nomeada.
             Role::Surface => Some(DISCRETE),
-            Role::Travel | Role::Fade | Role::Decoration => Some(match self.character {
+            Role::Travel | Role::Fade | Role::Decoration => Some(match character {
                 UiCharacter::Discrete => DISCRETE,
                 UiCharacter::Expressive => EXPRESSIVE,
             }),
@@ -543,20 +560,18 @@ impl UiMotion {
     /// quadros (a lição que o `wall_dt` do `render_loop` já traz escrita, e que o `ToastQueue`
     /// passou anos sem aprender).
     pub fn advance(&mut self, dt: f64) {
-        let laws: Vec<(NodeId, Option<Spring>)> = self
-            .tracks
-            .iter()
-            .map(|(id, t)| (*id, self.law(t.role)))
-            .collect();
-        for (id, law) in laws {
-            let Some(t) = self.tracks.get_mut(&id) else {
-                continue;
-            };
+        // ⚠️ **Os dois eixos da lei saem ANTES do laço, e é isso que apaga uma travessia inteira.**
+        //    Eles são `Copy`, então copiá-los liberta o `&mut self.tracks` — e sem isso este laço
+        //    colectava um `Vec` do tamanho do mapa por quadro só para poder chamar `self.law`. Ver
+        //    [`Self::law_of`] para o número que mediu isto.
+        let (character, reduced) = (self.character, self.reduced);
+        for t in self.tracks.values_mut() {
             #[allow(clippy::cast_possible_truncation)]
             {
                 t.idle_s += dt as f32;
             }
-            if let (Some(s), Some(spring)) = (t.flight.as_mut(), law)
+            if let (Some(s), Some(spring)) =
+                (t.flight.as_mut(), Self::law_of(t.role, character, reduced))
                 && s.advance(dt, spring)
             {
                 // ⚠️ Assentar põe o valor EXACTO e larga o voo — a lei do `arrive`. Sem ela a mola

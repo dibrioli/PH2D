@@ -95,12 +95,36 @@ alegação `O(vivos)` vira falsa em silêncio.
 
 ### 1.4 O custo — e o que este plano NÃO sabe
 
-Afirmação: **`O(vivos)`**, com `vivos` ≈ 0-3 em uso normal e um pico no `stagger` de uma lista.
-Um passo de mola são ~4 flops × `dt/(1/240)` fatias ⇒ a 60 fps, **4 sub-passos** por track.
+~~Afirmação: **`O(vivos)`**, com `vivos` ≈ 0-3 em uso normal e um pico no `stagger` de uma lista.~~
 
-⚠️ **Não medido.** A sonda que decide chama-se `measure_ui_motion` e mede **pela porta do produto**
-(o `advance` do quadro real), com as colunas *parado* · *um hover* · *cascata de 40 rows*. Nenhum
-número deste plano vale antes dela.
+⚠️ **MEDIDO em 2026-08-16, e a afirmação estava sobre o EIXO ERRADO.** O `advance` percorre
+`tracks` **inteiro** e o `tick_hover` chama `animate` para **todo widget de estado macio do store**,
+não só para os que se movem ⇒ o custo por quadro é **`O(lembrado)`**, e `lembrado` é a população da
+UI. Medido pela porta do produto (`HeroScreen::tick_motion`, sonda
+`ui_motion_population_census` na `ph2d-panel-registry-init`):
+
+| regime | lembrado | em voo | µs/quadro | % de 16,6 ms |
+|---|---|---|---|---|
+| chrome (antes de registar painel) | 162 | 0 | 3,15 | 0,02% |
+| **⭐ repouso (o app inteiro, rato parado)** | **4 491** | **0** | **340** | **2,05%** |
+| hover | 4 494 | 3 | ~340 | ~2,05% |
+
+⇒ **a população decide e o voo não**: 0 → 3 em voo é ruído, 0 → 400 custa 11%, e a população custa
+**70×**. ⚠️ **A sonda irmã (`measure_ui_motion`) não conseguia ver isto, por FIXTURE:** ela
+re-alveja tudo a cada quadro, então lá dentro `lembrado == em voo` — ela reporta *0 em voo ⇒
+0,020 µs* sobre um mapa **VAZIO**, e o app em repouso tem 0 em voo sobre um mapa de milhares.
+
+**A cura que shipou não muda a lei, só o trabalho:** o `advance` colectava um `Vec` do tamanho do
+mapa por quadro (72 kB) e voltava a descer a árvore por entrada, só para poder chamar `self.law`
+enquanto iterava `self.tracks`; copiar os dois eixos da lei (`character`/`reduced`, ambos `Copy`)
+antes do laço apaga a alocação e a segunda travessia. **449 → 340 µs (1,32×)** no repouso,
+**3,80 → 3,15 (1,21×)** no chrome, byte-idêntico por construção (uma lei, dois chamadores).
+
+⚠️ **O que fica ABERTO, nomeado:** 2,05% de um quadro é pago **com o app parado**, para sempre; e a
+**PODA nunca dispara no app real** (o `PRUNE_AFTER_S` promete despejar quem *"deixa de ser
+pintado"*, e o tique toca **todos** os ids macios em todo quadro, pintados ou não). Encolher isso é
+mexer no `tick_hover` — o publish do eixo de hover atravessa nove consumidores e tem histórico de
+defeito subtil de *flash* —, então é **wave própria com ordem**, não rodapé.
 
 ### 1.5 O gate que carrega a wave
 
@@ -653,8 +677,16 @@ eficiência antes de encanto.
 
 ## §8 — O que este plano NÃO sabe (as sondas a correr ANTES de prometer)
 
-1. **`measure_ui_motion`** — o custo real da F0 pela porta do produto (§1.4). *Nenhum número de custo
-   deste plano vale antes dela.*
+1. ~~**`measure_ui_motion`** — o custo real da F0 pela porta do produto (§1.4).~~ — **CORREU, e a
+   nota estava DUAS vezes desactualizada.** A sonda `measure_ui_motion` **já existia e já tinha
+   escolhido uma constante que shipa** (a rigidez do Discreto, `DISCRETE = 40.0`, contra os 28 que
+   eu tinha cravado) — este item sobreviveu ao facto, como o item 5. ⚠️ **E ela mede pela porta do
+   produto uma grandeza que não governa:** a fixture dela re-alveja tudo por quadro, logo colapsa
+   *em voo* e *lembrado* no mesmo número, e reporta **0,020 µs para «0 em voo»** sobre um mapa
+   **vazio**. Sonda nova `ui_motion_population_census` (`ph2d-panel-registry-init`, a crate mais
+   barata que enxerga todos os painéis), que varre a **POPULAÇÃO** e não o voo: **4 491 tracks ·
+   340 µs/quadro · 2,05% de um quadro de 60 fps, com o app PARADO**. Números, cura e o que fica
+   aberto: §1.4.
 2. ~~**A sonda de `set_cursor_grab`** por plataforma (§4.3)~~ — **CORREU em 2026-08-16, e o veredito é
    (A) FICA.** `shells/desktop/src/probe_cursor_grab.rs`; a decisão não veio do lock (que pega nesta
    máquina) e sim do censo: **os 322 campos com intervalo cruzam inteiros em 250 px contra ~600 de

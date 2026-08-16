@@ -39,13 +39,26 @@
 //! é conhecida onde a unidade é (o `paint`), nunca no `populate`, que corre uma vez no boot.
 
 /// Iterações de relaxação de Lloyd do Voronoi — o commit faz `.min(8)`, e o piso é o `as u32`.
-pub(crate) const LLOYD_ITERATIONS: (f64, f64, f64) = (0.0, 8.0, 1.0);
+pub(crate) const LLOYD_ITERATIONS: (f64, f64, f64) = (0.0, 8.0, 1.0); // LITERAL-PX-OK: contagem de iteracoes do solver, nao metrica de UI
 
 /// Componente sRGB da cor da grade — o commit faz `.clamp(0.0, 255.0)`.
-pub(crate) const COLOR_COMPONENT: (f64, f64, f64) = (0.0, 255.0, 1.0);
+pub(crate) const COLOR_COMPONENT: (f64, f64, f64) = (0.0, 255.0, 1.0); // LITERAL-PX-OK: byte sRGB, nao metrica de UI
 
 /// Sub-grade do snap — o commit faz `.clamp(1, 64)`.
-pub(crate) const SNAP_SUBDIVISIONS: (f64, f64, f64) = (1.0, 64.0, 1.0);
+pub(crate) const SNAP_SUBDIVISIONS: (f64, f64, f64) = (1.0, 64.0, 1.0); // LITERAL-PX-OK: divisor da sub-grade, nao metrica de UI
+
+// ⚠️ **O par ORDENADO é garantido em tempo de COMPILAÇÃO, e isso é o que torna seguro o
+//    `.clamp(lo, hi)` do `event.rs`.** `f64::clamp` **PANICA** com `min > max`, e este arquivo
+//    existe precisamente para os números serem afinados aqui — então o modo de falha real não é
+//    um `NaN` vindo de fora, é alguém escrever o par ao contrário ao mexer numa faixa.
+//
+//    Um `debug_assert` no commit responderia tarde (o painel já estaria a correr) e um
+//    `safe_clamp` tolerante a troca responderia CALADO (a faixa errada passaria a valer, com a
+//    caixa a aceitar o intervalo invertido). Uma asserção de `const` transforma os dois numa
+//    falha de BUILD, no arquivo onde o número foi escrito.
+const _: () = assert!(LLOYD_ITERATIONS.0 <= LLOYD_ITERATIONS.1);
+const _: () = assert!(COLOR_COMPONENT.0 <= COLOR_COMPONENT.1);
+const _: () = assert!(SNAP_SUBDIVISIONS.0 <= SNAP_SUBDIVISIONS.1);
 
 /// Os campos cuja faixa este módulo possui, na forma que o `populate` regista.
 ///

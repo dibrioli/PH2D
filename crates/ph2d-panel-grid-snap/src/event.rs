@@ -175,7 +175,12 @@ fn apply_value_changed(state: &mut GridSnapState, id: NodeId, store: &WidgetStor
         // scrub. `v.clamp(lo, hi) as u32` é byte-idêntico ao `(v as u32).min(8)` de antes: um
         // `f64` negativo satura em 0 no `as u32`, que é exactamente o piso.
         let (lo, hi, _) = crate::limits::LLOYD_ITERATIONS;
-        state.voronoi_cfg.lloyd_iterations = v.clamp(lo, hi) as u32;
+        // CLAMP-OK: as duas metades que o `safe_clamp` cobre estão respondidas, e nenhuma por
+        // promessa. **Bounds trocados ou `NaN` reprovam o BUILD** (`const _: () = assert!` no
+        // `limits`; `NaN <= x` é falso, então a asserção apanha os dois). E um `v` não-finito
+        // **não chega aqui**: o commit de número filtra (`parsed.is_finite()` no
+        // `interaction::dispatch`) — medido, e é a razão de este `clamp` não precisar de ramo.
+        state.voronoi_cfg.lloyd_iterations = v.clamp(lo, hi) as u32; // CLAMP-OK: ver acima
         return true;
     }
     if id == ids::GS_CFG_CHUNKS_SIZE {
@@ -197,7 +202,8 @@ fn apply_value_changed(state: &mut GridSnapState, id: NodeId, store: &WidgetStor
     // O mesmo intervalo que o `populate` regista como faixa de scrub — ver `crate::limits`.
     let to_u8 = |v: f64| {
         let (lo, hi, _) = crate::limits::COLOR_COMPONENT;
-        v.clamp(lo, hi) as u8
+        // CLAMP-OK: ver o irmão do Lloyd acima — par ordenado no build, `NaN` satura no piso.
+        v.clamp(lo, hi) as u8 // CLAMP-OK: ver o irmao do Lloyd
     };
     if id == ids::GS_CFG_COLOR_R {
         state.color_rgba[0] = to_u8(v);
@@ -215,7 +221,15 @@ fn apply_value_changed(state: &mut GridSnapState, id: NodeId, store: &WidgetStor
         // Ver `crate::limits`: `v.clamp(1, 64) as u32` é byte-idêntico ao `(v as u32).clamp(1, 64)`
         // de antes — o `as u32` satura em 0 no negativo, e o piso 1 domina os dois.
         let (lo, hi, _) = crate::limits::SNAP_SUBDIVISIONS;
-        state.snap_subdivisions = v.clamp(lo, hi) as u32;
+        // CLAMP-OK: ver o irmão do Lloyd acima.
+        //
+        // ⚠️ **E este é o ÚNICO dos três em que a ordem `clamp`-depois-`cast` diverge da antiga**,
+        //    medido: com `v = NaN`, `(v as u32).clamp(1, 64)` dava **1** e `v.clamp(1.0, 64.0) as
+        //    u32` dá **0** — `f64::clamp` PROPAGA o NaN (não o levanta ao piso) e só então o cast
+        //    satura. Zero subdivisões é degenerado, e a única coisa que o torna inalcançável é o
+        //    filtro `is_finite` do commit, uma camada acima. *Se alguém algum dia relaxar aquele
+        //    filtro, esta linha volta a precisar do cast primeiro.*
+        state.snap_subdivisions = v.clamp(lo, hi) as u32; // CLAMP-OK: ver acima
         return true;
     }
     if id == ids::GS_CFG_SNAP_MAGNETISM_RADIUS {

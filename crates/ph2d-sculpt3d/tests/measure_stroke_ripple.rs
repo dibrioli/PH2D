@@ -321,11 +321,12 @@ fn profile(b: &Before, mesh: &Mesh, bin_arc: f64, radius_world: f64, period_worl
         // A média móvel centrada, encolhendo nas pontas em vez de inventar
         // valores fora do domínio.
         let (mut s, mut n) = (0.0f64, 0usize);
-        for j in k.saturating_sub(half)..(k + half + 1).min(nbins) {
-            if let Some(x) = val[j] {
-                s += x;
-                n += 1;
-            }
+        for x in val[k.saturating_sub(half)..(k + half + 1).min(nbins)]
+            .iter()
+            .flatten()
+        {
+            s += *x;
+            n += 1;
         }
         let smooth = s / n as f64;
         core_smooth.push(smooth);
@@ -416,6 +417,11 @@ fn stroke_arc_full(
     let mut stroke = SculptStroke::default();
     stroke.begin(mesh);
     let mut n = 0;
+    // ⚠️ **`enumerate` sobre `pinned` seria um BUG, não estilo.** Ele está VAZIO
+    // no braço `repick` (a coluna do produto), então iterar por ele daria zero
+    // dabs exatamente na metade que a tabela existe para medir; e o `k` também
+    // computa o `f` do percurso, que não sai de coleção nenhuma.
+    #[allow(clippy::needless_range_loop)]
     for k in 0..=steps {
         let f = k as f64 / steps as f64;
         let t = if reverse { 1.0 - f } else { f };
@@ -489,8 +495,10 @@ fn synthetic_ridge(
     let b = Before::of(&m);
     {
         let out = m.positions_mut();
-        for v in 0..b.pos.len() {
-            let p0 = b.pos[v];
+        // ⚠️ O `zip` triplo é seguro aqui porque `out` É `m.positions_mut()` e o
+        // `b` saiu de `Before::of(&m)` duas linhas acima — mesma malha, mesmo
+        // comprimento por construção.
+        for ((o, &p0), &n) in out.iter_mut().zip(&b.pos).zip(&b.nrm) {
             let t = f64::from(p0[1].abs()) / f64::from(RADIUS);
             if t >= 1.0 {
                 continue;
@@ -505,8 +513,7 @@ fn synthetic_ridge(
                 * (1.0
                     + ripple * (std::f64::consts::TAU * s / period).cos()
                     + slope * (s - mid) / half);
-            let n = b.nrm[v];
-            out[v] = [
+            *o = [
                 p0[0] + n[0] * h as f32,
                 p0[1] + n[1] * h as f32,
                 p0[2] + n[2] * h as f32,

@@ -59,6 +59,15 @@ fn depth(mesh: &Mesh) -> f32 {
 ///
 /// Devolve a profundidade depois de cada dab.
 fn hold(against: PickAgainst, events: usize) -> Vec<f32> {
+    hold_verb(against, events, Verb::Draw, Brush::default().accumulate)
+}
+
+/// O mesmo, com o VERBO e o Accumulate como parâmetros.
+///
+/// ⚠️ **A tabela 2×2 é a wave inteira**, e ela existe porque as duas colunas
+/// não são independentes: o auto-limite da referência precisa que **exactamente
+/// um** dos dois lados se mova.
+fn hold_verb(against: PickAgainst, events: usize, verb: Verb, accumulate: bool) -> Vec<f32> {
     let mut mesh = uv_sphere(24, 36, 1.0);
     mesh.triangulate();
     mesh.rebuild();
@@ -67,7 +76,8 @@ fn hold(against: PickAgainst, events: usize) -> Vec<f32> {
     let frozen = mesh.clone();
 
     let brush = Brush {
-        verb: Verb::Draw,
+        verb,
+        accumulate,
         falloff: Falloff::Smooth,
         radius: 0.25,
         strength: 0.5,
@@ -127,6 +137,278 @@ fn measure_what_freezing_the_pick_surface_costs() {
             mb
         );
     }
+    println!();
+}
+
+/// **A TABELA 2×2 — quem tem de se mover para o traço se auto-limitar.**
+///
+/// O peso de um dab é `f(|v − c| / r)`: `v` é a posição do vértice e `c` o
+/// centro do dab. **Cada um deles pode ser lido VIVO ou CONGELADO**, e as duas
+/// leituras são governadas por coisas diferentes:
+///
+/// - o `v` pelo `accumulate` do pincel (o `from_live` da [`ph2d_sculpt3d::GripLaw`],
+///   que é o `vProxy` do `Brush.js:57` da referência);
+/// - o `c` pela superfície contra a qual o PICK é resolvido — que hoje é sempre
+///   a viva.
+///
+/// ⚠️ **O auto-limite precisa que EXACTAMENTE UM dos dois se mova.** Se os dois
+/// sobem juntos, `|v − c|` fica constante e todo dab pesa o mesmo — o relevo
+/// cresce para sempre. Se nenhum se move, idem. A saturação vive na DIAGONAL:
+/// o vértice sai da pegada porque o centro ficou, ou porque ele andou.
+///
+/// *É por isso que congelar o pick não é uma cura que se possa aplicar sozinha:*
+/// com o `accumulate` armado ela cura, com ele desarmado ela **destrói** o
+/// auto-limite que já existe.
+#[test]
+#[ignore = "sonda: roda sob demanda"]
+fn measure_which_of_the_two_has_to_move() {
+    const N: usize = 40;
+    println!("\n  40 dabs no MESMO ponto -- quem se move contra quem");
+    println!("  (Draw, r=0.25, str=0.5, Smooth; relevo final e razao do ultimo incremento)\n");
+    println!(
+        "  {:<10} {:<12} {:>12} {:>14} {:>10}",
+        "pick", "accumulate", "relevo(40)", "inc40/inc1", "veredito"
+    );
+    for against in [PickAgainst::Live, PickAgainst::Frozen] {
+        for accum in [true, false] {
+            let v = hold_verb(against, N, Verb::Draw, accum);
+            if v.len() < N {
+                continue;
+            }
+            let (i1, i40) = (v[0], v[N - 1] - v[N - 2]);
+            let ratio = i40 / i1.max(1e-9);
+            println!(
+                "  {:<10} {:<12} {:>12.6} {:>14.4} {:>10}",
+                format!("{against:?}"),
+                accum,
+                v[N - 1],
+                ratio,
+                if ratio < 0.5 { "satura" } else { "SEM TETO" }
+            );
+        }
+    }
+
+    // O CONTROLE que separa *a lei* de *o verbo*: o Clay da referência flatten-a
+    // contra um plano, e um alvo que é um PLANO satura por construção -- ele não
+    // depende da diagonal acima. É o que torna o `_clay = true` do `Brush.js:18`
+    // load-bearing: a tool `Brush` do original NÃO é aditiva por default.
+    println!("\n  CONTROLE -- o mesmo com Verb::Clay (alvo = PLANO, satura por construcao):");
+    for accum in [true, false] {
+        let v = hold_verb(PickAgainst::Live, N, Verb::Clay, accum);
+        if v.len() < N {
+            continue;
+        }
+        let (i1, i40) = (v[0], v[N - 1] - v[N - 2]);
+        println!(
+            "  {:<10} {:<12} {:>12.6} {:>14.4}",
+            "Live",
+            accum,
+            v[N - 1],
+            i40 / i1.max(1e-9)
+        );
+    }
+    println!();
+}
+
+/// O desvio de guarda-chuva **sobre os vértices TOCADOS**: `(pior, p99)`.
+///
+/// ⚠️ **A primeira versão varria a malha INTEIRA e media a FIXTURE.** Os polos
+/// de uma `uv_sphere` são vértices de valência alta cujo guarda-chuva vale
+/// `0,3157` sem ninguém tocar neles, e o `max` pousava sempre lá: as seis linhas
+/// da tabela saíam com o MESMO número, com e sem o fenómeno. *Uma régua que
+/// inclui uma singularidade da fixture reporta a singularidade.*
+///
+/// Cópia local, irmã da do `measure_anchor_law`: as duas sondas são `#[ignore]`
+/// e partilhar exigiria uma crate de teste que nenhuma paga.
+fn umbrella_of(mesh: &Mesh, verts: &[u32]) -> (f32, f32) {
+    let (pos, adj) = (mesh.positions(), mesh.adjacency());
+    let mut all: Vec<f32> = Vec::with_capacity(verts.len());
+    for &vi in verts {
+        let i = vi as usize;
+        let p = pos[i];
+        let nb = adj.vert_verts.neighbours(i);
+        if nb.len() < 3 {
+            continue;
+        }
+        let (mut mid, mut len) = ([0.0f32; 3], 0.0f32);
+        for &j in nb {
+            let q = pos[j as usize];
+            let d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+            len += (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+            for k in 0..3 {
+                mid[k] += q[k];
+            }
+        }
+        let n = nb.len() as f32;
+        let d = [p[0] - mid[0] / n, p[1] - mid[1] / n, p[2] - mid[2] / n];
+        let edge = len / n;
+        if edge > 1e-9 {
+            all.push((d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt() / edge);
+        }
+    }
+    all.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    (
+        all.last().copied().unwrap_or(0.0),
+        all.get((all.len() as f32 * 0.99) as usize)
+            .copied()
+            .unwrap_or(0.0),
+    )
+}
+
+/// Um traço do produto, com o pincel dado. Devolve `(dabs, relevo, pior, p99)`.
+fn stroke_over(path: &[[f32; 2]], spacing: f32, brush: &Brush) -> (usize, f32, f32, f32) {
+    let mut mesh = uv_sphere(48, 72, 1.0);
+    mesh.triangulate();
+    mesh.rebuild();
+    let mut stroke = SculptStroke::default();
+    stroke.begin(&mesh);
+    let mut anchor = path[0];
+    let mut dabs = 0usize;
+    for &p in &path[1..] {
+        let Some(walk) = ph2d_sculpt3d::walk(anchor, p, spacing) else {
+            continue;
+        };
+        let end = walk.anchor();
+        for [sx, sy] in walk {
+            let ray = Ray::new([sx, sy, 5.0], [0.0, 0.0, -1.0]);
+            let Some(hit) = mesh.raycast(&ray) else { break };
+            stroke.dab(
+                &mut mesh,
+                brush,
+                &Dab::at(hit.point, brush.radius, [0.0, 0.0, -1.0]),
+                Symmetry::default(),
+            );
+            dabs += 1;
+        }
+        anchor = end;
+    }
+    let touched = stroke.touched().to_vec();
+    let (worst, p99) = umbrella_of(&mesh, &touched);
+    (dabs, depth(&mesh), worst, p99)
+}
+
+/// **O que o Accumulate faz a um TRAÇO** — a régua que casa com a foto.
+///
+/// A tabela acima mede o pincel PARADO, e o produto nunca o deixa parado: sem
+/// deslocamento o `walk` não emite dab nenhum. O regime em que o defeito
+/// alcança o artista é outro, e são dois:
+///
+/// - o traço **LENTO**, em que o espaçamento põe muitos dabs sobrepostos sobre
+///   o mesmo vértice;
+/// - o traço que **CRUZA A SI MESMO**, que é literalmente o que o checkbox
+///   promete somar duas vezes.
+///
+/// O oráculo é o **desvio de guarda-chuva** — a distância de um vértice à média
+/// dos vizinhos sobre a aresta local. Numa superfície lisa vale ~0,0x; numa
+/// AGULHA vale ~1. É a régua da foto, e não a profundidade: um relevo alto e
+/// LISO é o pincel a funcionar.
+#[test]
+#[ignore = "sonda: roda sob demanda"]
+fn measure_what_accumulate_does_to_a_stroke() {
+    // Um traco em X: a segunda perna cruza a primeira no centro.
+    let cross: Vec<[f32; 2]> = (0..2)
+        .flat_map(|leg| {
+            (0..40).map(move |k| {
+                let t = -0.5 + k as f32 / 39.0;
+                if leg == 0 {
+                    [t, t * 0.6]
+                } else {
+                    [t, -t * 0.6]
+                }
+            })
+        })
+        .collect();
+    let line: Vec<[f32; 2]> = (0..80).map(|k| [-0.5 + k as f32 / 79.0, 0.0]).collect();
+
+    for (name, path, spacing) in [
+        ("reta LENTA  (spacing 0.02)", &line, 0.02f32),
+        ("reta normal (spacing 0.10)", &line, 0.10),
+        ("X que cruza (spacing 0.10)", &cross, 0.10),
+    ] {
+        println!("\n  {name}");
+        println!(
+            "  {:<12} {:>7} {:>12} {:>12} {:>12}",
+            "accumulate", "dabs", "relevo", "umb pior", "umb p99"
+        );
+        for accum in [true, false] {
+            let brush = Brush {
+                verb: Verb::Draw,
+                accumulate: accum,
+                falloff: Falloff::Smooth,
+                radius: 0.22,
+                strength: 0.5,
+                ..Brush::default()
+            };
+            let (dabs, relief, worst, p99) = stroke_over(path, spacing, &brush);
+            println!(
+                "  {:<12} {:>7} {:>12.6} {:>12.4} {:>12.4}",
+                accum, dabs, relief, worst, p99
+            );
+        }
+    }
+    println!();
+}
+
+/// **O PINCEL DE FÁBRICA, e o que cada default que esta linha mexeu faz a ele.**
+///
+/// A pergunta do reporte — *"piorou"* — é sobre o pincel que o artista pega sem
+/// tocar em nada. Esta varredura parte do `Brush::default()` de HOJE e devolve
+/// **um default de cada vez** ao valor anterior, para atribuir a mudança a um
+/// canal em vez de a uma wave inteira.
+#[test]
+#[ignore = "sonda: roda sob demanda"]
+fn measure_which_factory_default_moves_the_stroke() {
+    let line: Vec<[f32; 2]> = (0..80).map(|k| [-0.5 + k as f32 / 79.0, 0.0]).collect();
+    let base = Brush {
+        radius: 0.22,
+        ..Brush::default()
+    };
+    println!("\n  o pincel de FABRICA de hoje, e um canal de cada vez de volta");
+    println!("  (Draw, r=0.22, reta de 1.0 unidade, spacing 0.10 -- o traco normal)\n");
+    println!(
+        "  {:<34} {:>7} {:>12} {:>12} {:>12}",
+        "pincel", "dabs", "relevo", "umb pior", "umb p99"
+    );
+    let row = |label: &str, b: &Brush| {
+        let (dabs, relief, worst, p99) = stroke_over(&line, 0.10, b);
+        println!(
+            "  {:<34} {:>7} {:>12.6} {:>12.4} {:>12.4}",
+            label, dabs, relief, worst, p99
+        );
+    };
+    row("FABRICA (hoje)", &base);
+    row(
+        "  accumulate = false",
+        &Brush {
+            accumulate: false,
+            ..base.clone()
+        },
+    );
+    row(
+        "  falloff = Smooth (o antigo)",
+        &Brush {
+            falloff: Falloff::Smooth,
+            ..base.clone()
+        },
+    );
+    row(
+        "  strength = 0.5 (o antigo)",
+        &Brush {
+            strength: 0.5,
+            ..base.clone()
+        },
+    );
+    row(
+        "  auto_smooth = 0",
+        &Brush {
+            auto_smooth: 0.0,
+            ..base.clone()
+        },
+    );
+    println!("\n  forca de fabrica de hoje: {:.4}", base.strength);
+    println!("  curva  de fabrica de hoje: {:?}", base.falloff);
+    println!("  accum  de fabrica de hoje: {}", base.accumulate);
+    println!("  auto_smooth de fabrica:    {:.4}", base.auto_smooth);
     println!();
 }
 

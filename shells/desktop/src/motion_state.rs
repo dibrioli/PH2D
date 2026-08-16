@@ -101,6 +101,8 @@ pub(crate) mod conferencia_demos_collide;
 pub(crate) mod conferencia_demos_pin;
 #[path = "motion_state_conferencia_demos_proximity.rs"]
 pub(crate) mod conferencia_demos_proximity;
+#[path = "motion_state_conferencia_demos_rate.rs"]
+pub(crate) mod conferencia_demos_rate;
 #[path = "motion_state_conferencia_demos_space.rs"]
 pub(crate) mod conferencia_demos_space;
 #[path = "motion_state_conferencia_demos_text.rs"]

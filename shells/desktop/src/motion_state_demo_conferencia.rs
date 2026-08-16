@@ -418,3 +418,42 @@ pub(super) fn weight(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId
     );
     sinks
 }
+
+/// **A CENA `=53` — O TETO DA TAXA** (grupo L).
+pub(super) fn rate(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks = conferencia_demos_rate::build_rate_demo_document(doc, registry).unwrap_or_default();
+    let (max_step, max_accel) = conferencia_demos_rate::ceilings();
+    eprintln!(
+        "[rate-demo] DOIS PARES ({} bandas). Cada par tem o seu CONTROLE ao lado.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_rate::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) DE' PLAY: a pergunta desta cena e' quao DEPRESSA, e uma foto de um instante mostra
+  quatro fileiras a alturas diferentes sem dizer porque.
+  (!) 1-2, O TETO DE PASSO ({max_step:.2} por tique): as duas seguem o MESMO vaivem, e a de baixo
+  NAO ALCANCA os picos -- medido, o maior passo cai de {:.4} para {:.4} e a excursao de {:.2} para
+  {:.2}. Olhe o CAMINHO, nao a altura: a de cima faz uma senoide, a de baixo um vaivem de lados
+  RETOS, porque uma taxa constante desenha uma reta.
+  (!) ABERTO e NOMEADO: o teto e' honrado ao digito na rampa (0,0800) e sobe a 0,1678 no tique da
+  INVERSAO -- um gate `#[ignore]` na cena carrega o numero e o mecanismo. Nao e' o kernel: os cinco
+  gates de unidade do no' clampam por construcao e sangram sob mutacao.
+  (!) 3-4, O TETO DE ACELERACAO ({max_accel:.3} por tique ao quadrado): a de baixo PARTE devagar e
+  depois acompanha -- {:.4} nos doze primeiros tiques contra {:.4} depois. E' a diferenca entre
+  partir devagar e IR devagar; se ela ficar lenta o tempo todo, isto virou um teto de passo.",
+        WORST_FREE, WORST_CAPPED, SPAN_FREE, SPAN_CAPPED, RAMP_EARLY, RAMP_LATE,
+    );
+    sinks
+}
+
+// Os numeros que a sonda `measure_what_the_scene_shows` imprime, medidos na
+// arvore. Eles vivem em consts para a mensagem citar a MEDICAO e nao um numero
+// que alguem lembrou.
+const WORST_FREE: f32 = 0.4188;
+const WORST_CAPPED: f32 = 0.1678;
+const SPAN_FREE: f32 = 9.6234;
+const SPAN_CAPPED: f32 = 3.2184;
+const RAMP_EARLY: f32 = 0.1200;
+const RAMP_LATE: f32 = 0.2600;

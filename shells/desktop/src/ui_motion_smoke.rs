@@ -127,6 +127,34 @@ impl crate::App {
             "[ui-motion-smoke] preferencias em ~/.ph2d/prefs.txt (ausente = os defaults, que \
              sao os de sempre: Discreto, sem reduced)"
         );
+
+        // ⚠️ **O `reduced motion` DESLIGA o que as tres cenas medem, e por isso e' um PARE e nao
+        //    um readout.** As tres familias que elas exercitam -- `Travel` (o carater), `Surface`
+        //    (a dobra e a rolagem) e `Decoration` (a corda) -- devolvem `None` do `law_of` com ele
+        //    ligado: sem mola, tudo CHEGA no quadro em que muda. O produto esta' certo e ha' gate
+        //    a pina'-lo (`reduced_motion_still_takes_the_surface`); o que estava errado era o
+        //    smoke deixar o artista medir a ausencia da feature e ler isso como a feature partida.
+        //
+        //    ⚠️ E o roteiro conspirava: o passo 3 de cada cena manda LIGAR o reduced. Quem o
+        //    deixou ligado de uma corrida anterior comeca no passo 3 a achar que esta' no 1 --
+        //    a preferencia sobrevive ao arranque (e' esse o ponto dela) e vem de um ficheiro FORA
+        //    do repositorio, logo e' invisivel a toda a varredura.
+        if reduced {
+            eprintln!(
+                "\n[ui-motion-smoke {level}] ⚠️ PARE -- o seu `reduced motion` esta' LIGADO.\n\n  \
+                 Ele DESLIGA, de proposito, exactamente o que estas cenas medem: sem mola, tudo\n  \
+                 aparece e desaparece no quadro em que muda. Nao ha' o que julgar -- e' a feature\n  \
+                 a obedecer-lhe, nao a feature partida.\n\n  \
+                 Desligue por um dos dois, e volte a correr:\n\n    \
+                   * na app: pill Settings > Motion > Reduced Motion (fica gravado); ou\n    \
+                   * no ficheiro: ~/.ph2d/prefs.txt, `reduced_motion=0`.\n\n  \
+                 O passo 3 do roteiro manda liga-lo OUTRA VEZ, no fim -- e' ai' que o salto e' a\n  \
+                 resposta certa. Comecar com ele ligado e' correr o passo 3 achando que se corre\n  \
+                 o passo 1.\n"
+            );
+            return;
+        }
+
         match level {
             1 => print_character_script(),
             2 => print_tether_script(),

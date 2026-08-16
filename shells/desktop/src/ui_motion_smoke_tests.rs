@@ -55,3 +55,42 @@ fn the_ceiling_is_reachable_and_the_step_above_it_is_not() {
     assert_eq!(level(&LAST_SCENE.to_string()), LAST_SCENE);
     assert_eq!(level(&(LAST_SCENE + 1).to_string()), 1);
 }
+
+/// **O `reduced motion` PARA o roteiro, e para-o ANTES de o despacho o imprimir.**
+///
+/// ⚠️ **A posição é load-bearing, e é por isso que este gate lê o fonte.** As três cenas medem
+/// famílias que o interruptor DESLIGA (`Travel` · `Surface` · `Decoration` devolvem `None` do
+/// `law_of`), então com ele ligado não há o que julgar. Um guard escrito **depois** do
+/// `match level` compilaria, passaria em toda a suíte e imprimiria o roteiro inteiro **e depois**
+/// o PARE — o artista leria os cinco passos e mediria a ausência da feature.
+///
+/// ⚠️ E ele afirma a **propriedade**, nunca o endereço: não conta bytes nem linhas entre os dois
+/// (a lição que os dois arch-gates da `line/Vector` pagaram em 23/07, quando um vizinho novo os
+/// empurrou para fora da janela) — pergunta só se o `return` do guard precede o despacho.
+///
+/// *Mutação: mover o bloco `if reduced { … return; }` para depois do `match level` ⇒ RED.*
+#[test]
+fn the_reduced_motion_guard_stops_the_script_before_the_dispatch() {
+    let src = include_str!("ui_motion_smoke.rs");
+
+    let guard = src
+        .find("if reduced {")
+        .expect("o guard do reduced motion sumiu do smoke");
+    let dispatch = src
+        .find("match level {")
+        .expect("o despacho de cena sumiu -- este gate deixou de medir o que afirma");
+
+    assert!(
+        guard < dispatch,
+        "o guard do `reduced motion` esta' DEPOIS do despacho: o roteiro seria impresso inteiro \
+         antes do PARE, e o artista mediria a ausencia da feature como se fosse a feature"
+    );
+
+    // O guard tem de SAIR, não apenas avisar: um `eprintln!` sem `return` deixa os cinco passos
+    // logo abaixo do PARE, que é a mesma leitura que ele existe para impedir.
+    let tail = &src[guard..dispatch];
+    assert!(
+        tail.contains("return;"),
+        "o guard avisa e nao SAI -- o roteiro segue impresso logo abaixo do proprio PARE"
+    );
+}

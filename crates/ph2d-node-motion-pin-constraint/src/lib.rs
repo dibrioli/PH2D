@@ -47,8 +47,20 @@
 //! The `pre` lives on the edge that ENTERS the pin — that is the one that breaks
 //! the cycle — and this node is `Effect::Pure`, so it does not stamp `sim_t` and
 //! the solver still sees its own clock next tick. Their INTRINSIC pins (the rope's
-//! head/tail, the body's top row) stay where they are and stack with this one: an
-//! intrinsic pin is clamped to an ANIMATED target, a generic one holds WHERE IT IS.
+//! head/tail, the body's top row) stack with this one.
+//!
+//! ⚠️ **What a pinned particle FOLLOWS is the generator's answer, not this node's,
+//! and the sentence that used to live here was wrong.** It read *"an intrinsic pin
+//! is clamped to an ANIMATED target, a generic one holds WHERE IT IS"* — and
+//! holding where it is turned out to be a world-space FREEZE, not a pin: with
+//! `motion.soft_body` neither `spacing` nor the live `anchor` could reach a
+//! generically pinned row (measured 2026-08-16: the anchor moved the intrinsic pin
+//! `3.0000` and the generic one `0.0000`). The law today is *a particle of infinite
+//! mass follows the pose the NODE knows how to PRESCRIBE*: the soft body knows
+//! (`anchor + rest[i]`), so it prescribes; the rope and the flock have no positional
+//! rest shape to prescribe from, so there `pos[i]` — hold where you are — remains the
+//! correct answer. This node is unchanged either way: it writes `inv_mass` and the
+//! generator decides what infinite mass MEANS for its own geometry.
 //!
 //! **Selection** is the index range `[first, first + count)` **times** the
 //! multiplicative `falloff` field the module's falloff nodes write (so a

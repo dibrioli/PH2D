@@ -174,7 +174,14 @@ demo, e não que a asserção passou por sorte.
   há como um stream entrar neles"*, e isso era **verdade sobre a porta `in` e FALSO sobre a CADEIA DE
   ESTADO** — que é um fio, e que já era o fio pelo qual o `accel` entra. Os três passaram a ler
   `inv_mass` de lá (`gen.out --pre--> motion.pin_constraint --> gen.state`), então o pino genérico
-  **alcança** os três sem porta nova. ⚠️ Ele **não substitui** os pins intrínsecos: eles são clampados
-  a um alvo **ANIMADO** (a âncora que uma `value.lfo` varre) e o genérico segura **onde está** — as
-  duas espécies coexistem e compõem. Medido antes de construir: com o pino no laço e os nós a
+  **alcança** os três sem porta nova. Medido antes de construir: com o pino no laço e os nós a
   ignorá-lo, o pior deslocamento era **`0,000000`** nos três.
+  ⚠️ **E a frase que este item trazia — *"o genérico segura ONDE ESTÁ"* — foi CORRIGIDA no smoke
+  seguinte (2026-08-16).** Segurar onde está é um **FREEZE de espaço de mundo**, não um pino: no
+  `motion.soft_body` nem o `spacing` nem a **ÂNCORA** alcançavam uma partícula genericamente pinada
+  (medido: a âncora movia o pino intrínseco **3,0000** e o genérico **0,0000** — o report do Enio era
+  sobre o `spacing`, e a âncora era a metade que ninguém tinha perguntado). A lei hoje é ***uma
+  partícula de massa infinita segue a pose que o NÓ sabe PRESCREVER***: o soft body sabe
+  (`anchor + rest[i]`) e prescreve; a corda e o bando **não têm forma de repouso posicional**, e lá
+  `pos[i]` continua correcto. **As duas espécies seguem a coexistir e a compor** — o que mudou é que
+  a genérica deixou de ser mais fraca por acidente de implementação.

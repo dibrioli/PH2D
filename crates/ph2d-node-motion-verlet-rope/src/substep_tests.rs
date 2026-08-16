@@ -45,7 +45,7 @@ fn one_substep_is_the_old_rope_to_the_bit() {
         pos = np;
         prev = pp;
     }
-    let (one_pos, one_prev) = step(
+    let (one_pos, _one_prev) = step(
         pos.clone(),
         &prev,
         &[],

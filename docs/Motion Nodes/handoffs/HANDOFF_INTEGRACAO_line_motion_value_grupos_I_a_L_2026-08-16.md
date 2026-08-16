@@ -5,7 +5,7 @@
 
 ## §1 — O que entra
 
-**41 commits**, quatro grupos da segunda volta da
+**52 commits**, oito grupos da segunda volta da
 [conferência dos nós](../89_plano_conferencia_dos_nos.md), cada um com a sua cena de smoke
 (ordem do Enio: *"a cada grupo uma cena de smoke"*).
 
@@ -19,11 +19,15 @@
 | **M** | a CONTAGEM da conferência deixa de ser escrita à mão (sem código de produto) | — | — |
 | **N** | o `motion.wiggle` ganha as OITAVAS, o multiplicador e o LAÇO | `=54` | ✅ |
 | **O** | o `motion.oscillator` ganha o PULSE WIDTH e o `motion.stagger` o OFFSET | `=55` | ✅ |
-| **P** | o `motion.drive` escreve uma COLUNA NOMEADA — a **§10.0 do plano FECHA** | `=56` | ⏳ |
+| **P** | o `motion.drive` escreve uma COLUNA NOMEADA — a **§10.0 do plano FECHA** | `=56` | ✅ |
 
-⚠️ **A cena `=56` (grupo P) NÃO foi smokada** — *integrar não é aprovar*.
+✅ **As OITO cenas foram smokadas e aprovadas pelo Enio** (`=49`..`=56`).
 
-✅ **As sete anteriores foram smokadas e aprovadas pelo Enio** (`=49`..`=55`).
+⚠️ **E a `=51` MUDOU depois de aprovada** — a auditoria (§8) achou que o par dela
+diferia em DUAS coisas. A banda TRATADA ficou **byte-idêntica à aprovada**
+(mediana 1,6137, 0/40 — os números que a mensagem cita); só o CONTROLE se moveu
+(0,803/34 → 1,182/11), porque era ele o confundidor. **Re-smoke é barato e o
+Enio decide se o quer.**
 
 ✅ **As cinco primeiras foram smokadas e aprovadas pelo Enio** — as três primeiras à medida
 que fecharam, e as duas últimas (`=49` e `=53`) em 2026-08-16, depois do fechamento da
@@ -117,3 +121,83 @@ env PH2D_GPU_COOK_DEMO=53 cargo run -p ph2d-host-desktop --release   # o teto da
 ⚠️ Toda cena **imprime as bandas nomeadas** — *se a lista não aparecer, PARE*.
 A `=53` **exige PLAY** (a pergunta é *quão DEPRESSA*, e uma foto não a responde).
 As cenas `=41..=48` e `=50..=52` **têm de continuar iguais**.
+
+## §8 — A AUDITORIA MULTIAGÊNTICA (ordem do Enio, 2026-08-16)
+
+Oito lentes de LEITURA em paralelo (disciplina de gate · correção de kernel · paridade
+CPU×GPU · neutro/byte-identidade · superfície de colisão · doc-contra-código · cenas de
+smoke · costura de UI) → barreira de dedup → **catorze céticos** com `refuted: true` por
+omissão → síntese.
+
+⚠️ **A divisão que fez a auditoria valer é *o que se LÊ* contra *o que só um build SERIAL
+mede*.** O fan-out achou 36 candidatos; as duas coisas que **nenhuma leitura podia achar**
+saíram da medição:
+
+- **o `--ignored` CANCELA na primeira falha**, então as duas suítes de GPU **novas** da
+  jornada (`gpu_proximity` / `gpu_boids`) **nunca tinham corrido**. Com
+  `--no-fail-fast --test <nome>`: **38/38**.
+- o `value_slope` vermelho é **pré-existente**, e agora está confirmado **a todos os
+  dígitos** (`1.05023384e-4`, o número que o `CLAUDE.md` já registra como reprovando no
+  `main`).
+
+### As QUATRO reais (corrigidas, cada uma com mutação provada)
+
+| # | o defeito | o mecanismo |
+|---|---|---|
+| 1 | o WGSL do `motion.boids` **elevava ao quadrado um param COM SINAL** que a CPU sanitiza | *o quadrado apaga o sinal*, logo a sanidade tem de vir **ANTES** dele — e o `applicable` que existia para impedir a divergência era cego a `sep_r` negativo |
+| 2 | o teto de taxa do `motion.delay` era **INERTE** numa posição alcançável do slider | ele só corria dentro do ramo do LAG; com `ticks = 0` o caminho transparente saltava o `rate_limit` inteiro |
+| 3 | o `motion.drive(Custom…)` podia **sobrescrever uma coluna de escrituração** | `is_bookkeeping_column`, porta nova na `ph2d-nodegraph` ao lado do `VALUE_COLUMN` — ⚠️ **NÃO** a lista `INTERNAL` do picker, que responde outra pergunta (`falloff` é lida **e** escrita) |
+| 4 | o gate de sub-passos da corda era **TAUTOLÓGICO** | comparava `Params { substeps: 1 }` consigo mesmo; agora passa pela porta de **LEITURA** (param AUSENTE contra `1` explícito), com dois controles |
+
+Mais **DOIS gates de higiene** que a varredura produziu:
+
+- **o sweep do naga DERIVA o registry** (`register_all_nodes`) em vez de o enumerar. A lista
+  à mão tinha 49 registros e **exatamente UMA crate com `gpu.rs` estava fora** — a mais nova,
+  `motion.proximity`, cuja paridade é `#[ignore]` ⇒ *o WGSL dela só encontrava um compilador
+  na máquina de quem tem placa*. Preço medido: **0,27 → 0,28 s**; `cargo machete` limpo.
+- a cena **`=51`** deixou de ter um par confundido (ver a tabela do §1).
+
+### As DUAS que DISSOLVERAM na verificação
+
+*É o resultado honesto de uma varredura, e fica escrito para ninguém as re-abrir:*
+
+- a sanitização do `inv_mass` no device é o **espelho exacto** da CPU (`w <= 0.0` → early-out
+  nos dois, negativo incluído). **Não há vão.**
+- as duas *"afirmações que contradizem o próprio gate"* eram (a) uma correção **já narrada**
+  no teste do `motion.stagger` — o nó em si está certo — e (b) uma *mola de compressão* que
+  **não existe** no fonte do `motion.boids`.
+
+### As DUAS MEDIDAS e NÃO curadas (a cura mudaria um smoke aprovado)
+
+- **os sub-passos compõem com o `damping`** da `motion.verlet_rope`. A cena `=52` **não
+  escreve `damping`**, então o smoke aprovado já continha a composição — a tabela medida e as
+  duas curas candidatas estão no doc-comment do param, com um ⛔ explícito de *não conserte
+  sem ordem*.
+- **o `=51`**: a banda tratada é byte-idêntica à aprovada; só o controle se moveu.
+
+## §9 — Gate de fechamento (re-rodado na worktree, tip `f0c4756e3`)
+
+| gate | resultado |
+|---|---|
+| `cargo fmt --all -- --check` | **EXIT 0** |
+| `cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings` | **EXIT 0, zero warnings** |
+| `cargo nextest run --workspace --cargo-profile ci-test --no-fail-fast` | **16.205 correram, 16.204 passaram, 1.587 skipped** |
+| gates de GPU (`--run-ignored all`, RTX) | **264 de 265** |
+| censo | **125 nós · 545 params · 526 com hint · 158 com unidade** |
+
+⚠️ **`--no-fail-fast` NÃO é opcional aqui, e a auditoria é a prova:** a primeira corrida
+cancelou **3418 testes** na primeira falha, e a falha era uma flake de carga.
+
+⚠️ **As flakes de relógio foram exoneradas por TRÊS testemunhas cada, nunca por opinião**
+(crate com `git diff` **VAZIO** contra o `main` · passa **isolada** · `load average` acima do
+limiar): `the_cost_of_depth_is_linear_not_explosive` (`ph2d-timeline`) e
+`the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke` (`flip_smooth`) — ⚠️ e **elas
+trocaram de lugar entre duas corridas do mesmo binário**, que é a assinatura da carga.
+
+⚠️ **E os gates de GPU só significam alguma coisa em SÉRIE:** rodados em paralelo, **três**
+morreram com `wgpu error: Out of Memory` (cada binário abre o próprio device) e um gate de
+razão disparou; com `--test-threads=1` e a máquina em `load 2,2` **os quatro passam**. O
+único vermelho constante entre as corridas é o `value_slope` pré-existente.
+
+⚠️ **Próxima cena livre: `57`** — e o número se **CONTA lendo o `match`** do
+`motion_state_demo_router.rs`, nunca uma nota.

@@ -20,6 +20,7 @@
 mod event;
 pub mod ids;
 mod layout;
+mod limits;
 mod paint;
 mod paint_body_sections;
 mod paint_helpers;

@@ -171,7 +171,11 @@ fn apply_value_changed(state: &mut GridSnapState, id: NodeId, store: &WidgetStor
         return true;
     }
     if id == ids::GS_CFG_VORONOI_LLOYD_ITERS {
-        state.voronoi_cfg.lloyd_iterations = (v as u32).min(8);
+        // O intervalo mora no `limits`, que é também quem o `populate` regista como faixa de
+        // scrub. `v.clamp(lo, hi) as u32` é byte-idêntico ao `(v as u32).min(8)` de antes: um
+        // `f64` negativo satura em 0 no `as u32`, que é exactamente o piso.
+        let (lo, hi, _) = crate::limits::LLOYD_ITERATIONS;
+        state.voronoi_cfg.lloyd_iterations = v.clamp(lo, hi) as u32;
         return true;
     }
     if id == ids::GS_CFG_CHUNKS_SIZE {
@@ -190,7 +194,11 @@ fn apply_value_changed(state: &mut GridSnapState, id: NodeId, store: &WidgetStor
         state.square_cfg.spacing_major = v_m.max(state.square_cfg.cell_size);
         return true;
     }
-    let to_u8 = |v: f64| v.clamp(0.0, 255.0) as u8; // LITERAL-PX-OK: sRGB byte upper-bound (color component, not a UI metric)
+    // O mesmo intervalo que o `populate` regista como faixa de scrub — ver `crate::limits`.
+    let to_u8 = |v: f64| {
+        let (lo, hi, _) = crate::limits::COLOR_COMPONENT;
+        v.clamp(lo, hi) as u8
+    };
     if id == ids::GS_CFG_COLOR_R {
         state.color_rgba[0] = to_u8(v);
         return true;
@@ -204,7 +212,10 @@ fn apply_value_changed(state: &mut GridSnapState, id: NodeId, store: &WidgetStor
         return true;
     }
     if id == ids::GS_CFG_SNAP_SUBDIVISIONS {
-        state.snap_subdivisions = (v as u32).clamp(1, 64);
+        // Ver `crate::limits`: `v.clamp(1, 64) as u32` é byte-idêntico ao `(v as u32).clamp(1, 64)`
+        // de antes — o `as u32` satura em 0 no negativo, e o piso 1 domina os dois.
+        let (lo, hi, _) = crate::limits::SNAP_SUBDIVISIONS;
+        state.snap_subdivisions = v.clamp(lo, hi) as u32;
         return true;
     }
     if id == ids::GS_CFG_SNAP_MAGNETISM_RADIUS {

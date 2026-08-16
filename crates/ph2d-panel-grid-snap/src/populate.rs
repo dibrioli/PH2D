@@ -145,6 +145,12 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             },
         );
     }
+    // A faixa que o COMMIT já enforça, entregue à lei do scrub — ver `crate::limits` para os
+    // números e para o que eles custavam enquanto o arrasto não os conhecia (uma componente de
+    // cor inteira em 5,1 px; as iterações de Lloyd em 0,16).
+    for (id, (min, max, step)) in crate::limits::DECLARED {
+        store.set_number_range(id, min, max, step);
+    }
 }
 
 /// The default `(NodeId, value)` pairs for every NumberInput slot in

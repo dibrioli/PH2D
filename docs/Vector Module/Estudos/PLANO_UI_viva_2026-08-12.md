@@ -662,9 +662,35 @@ eficiência antes de encanto.
 3. ~~**A varredura de colisão de modificadores** (§4.2)~~ — **MOOT**: o `Shift` já é o multiplicador de
    precisão do scrub (`DRAG_SHIFT_MUL`) desde a M14.A, e a wave 4 não acrescentou modificador nenhum.
    O `Ctrl = encaixa no step` que a §4.2 propunha **não foi construído** e continua por decidir.
-5. **O tecto dos 146 campos SEM intervalo** (§4, correcção da wave 4) — a sonda
-   `census_of_how_many_pixels_cross_a_whole_field` lista-os; o número de cada um tem de sair de uma
-   medição, e o primitivo é o `set_number_drag_rate`, que não inventa fronteira.
+5. ~~**O tecto dos 146 campos SEM intervalo**~~ — **MEDIDO em 2026-08-16, e a contagem estava
+   errada em duas frentes.** A sonda irmã **não os listava** (contava-os e seguia em frente), e o
+   total somava **duas causas de veredito oposto**. Sonda nova
+   `census_of_who_has_no_interval_and_why`, medido: **146 = 5 CALIBRADOS** (taxa registada de
+   propósito — a receita documentada em `set_number_drag_rate` para *piso sem tecto*, que a
+   roldana da física, o transporte da timeline e os chips de transform do Vector já usam; **nada
+   a fazer**) **+ 141 no ATALHO** (`DRAG_RATE_X · step`, 140 deles a **50 unidades/px**).
+   Segundo passo, o que o doc da sonda irmã prescreve: dos seis painéis, só **`grid_snap` (31)** e
+   **`equalize_sizes` (3)** não registam lei nenhuma em lugar nenhum — os outros quatro registam
+   algures e este instrumento não os julga. **O item real era 34, não 146.**
+   - ✅ **A metade do `grid_snap` que era CORREÇÃO fechou** (não decisão de feel): o
+     `apply_value_changed` **já declarava** o intervalo de cinco campos e a lei do scrub não sabia
+     de nenhum — `.min(8)` nas iterações de Lloyd (**0,16 px** para atravessar), `.clamp(1, 64)`
+     nas subdivisões (**1,26 px**), `.clamp(0, 255)` em cada componente de cor (**5,1 px**). É a
+     **mesma doença que a wave 4 curou**, uma camada mais fora: ali o intervalo vivia no slider
+     ligado, aqui na função de commit do painel. O intervalo ganhou **um dono** (`limits.rs`, lido
+     pelo commit E pelo `populate` — duas cópias seriam a próxima a divergir), e os cinco passam a
+     atravessar-se em **250,00 px**. O censo de travessia cai para **zero campos abaixo de 20 px**.
+   - ⏸️ **O que sobra é DECISÃO, não trabalho pendente**, e as três saídas estão medidas: os campos
+     com **piso e sem tecto** (contagens `.max(1)`, tamanhos `.max(MIN_CELL_SIZE_M)`) pedem a
+     receita *faixa + taxa calibrada*, e **a taxa é o número que ninguém mediu**; os **sem limite
+     nenhum** (origens, sondas, a semente do RNG) não podem ganhar fronteira sem inventar uma. E o
+     próprio `DRAG_RATE_X = 50` é um número **sem medição atrás** — a aritmética contra a lei irmã
+     diz que ele *supõe uma faixa de 12.500 unidades* (`50 × 250`), enquanto a receita para a qual
+     este app convergiu é `rate = step`, ou seja **50× menos**. Mudá-lo é uma mudança de FEEL em
+     141 campos ⇒ **do Enio, com o número na mão**, não de uma wave de correcção.
+   - ⚠️ **O raio de magnetismo fica de fora com motivo:** o commit clampa-o em `[0, 10]` **metros**
+     e a caixa mostra a **unidade do projecto**, então a faixa dele só é conhecida onde a unidade
+     é (o `paint`), nunca no `populate`, que corre uma vez no boot.
 4. **O `n` e a folga do tether** (§5.2) — são números de **aparência**, e o oráculo deles é o
    RENDER, não um teste. Saem do smoke, como o `RESAMPLE_STEP_FRACTION` do Flip saiu.
 5. **Nada aqui bumpa `PROJECT_SCHEMA`, toca contrato congelado ou acrescenta dep externa** — e isso

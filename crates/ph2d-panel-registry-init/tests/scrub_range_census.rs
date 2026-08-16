@@ -190,7 +190,150 @@ fn census_of_how_many_pixels_cross_a_whole_field() {
     );
     println!("[scrub-px] ⚠️ o alvo de desenho é {DRAG_RANGE_PX_H:.0} px (DRAG_RANGE_PX_H)");
     println!(
-        "[scrub-px] ⚠️ os {unbounded} sem intervalo continuam no atalho histórico, e são a pergunta \
-         SEGUINTE: um tecto por campo tem de ser MEDIDO, nunca inventado"
+        "[scrub-px] ⚠️ os {unbounded} sem intervalo NAO sao todos o mesmo caso -- rode a sonda \
+         `census_of_who_has_no_interval_and_why`, que separa CALIBRADO de ATALHO"
     );
+}
+
+/// **SONDA: dos campos sem intervalo, quantos foram CALIBRADOS e quantos caíram no atalho?**
+///
+/// ⚠️ **A contagem que a sonda irmã imprime soma duas causas de veredito OPOSTO**, e por isso
+/// não pode ser o tamanho de um item. [`WidgetStore::number_scrub_interval`] devolve `None` em
+/// dois mundos diferentes:
+///
+/// - **CALIBRADA** — alguém registou uma taxa (`set_number_drag_rate`), e o doc dela diz que é
+///   a receita CERTA para uma caixa com piso e sem tecto: *o alcance dá `step` e piso ao
+///   stepper, a taxa dá ao arrasto uma escala calibrada em vez de uma proporção sobre um
+///   intervalo que não termina*. A roldana da física, os chips do transporte da timeline e os
+///   de transform do Vector já vivem assim. Aqui **não há trabalho**: o número tem dono.
+/// - **ATALHO** — ninguém registou nada, e o arrasto cai em `DRAG_RATE_X · step`, com o `step`
+///   a sair do BUFFER (`1.0` sem casa decimal, `0.01` com). São **50 ou 0,5 unidades por
+///   pixel**, e nenhum dos dois foi medido por alguém.
+///
+/// Só a segunda linha é pergunta em aberto. E ela reparte outra vez pelo `step`, porque a
+/// severidade é dele e não do campo: a **GROSSA** move o valor 500 em dez pixels de arrasto,
+/// que é o defeito que a faixa foi criada para curar em 2026-06-25; a **FINA** move 5.
+///
+/// ⚠️ **O `step` do atalho não é propriedade do campo** — ele é lido do texto que a caixa
+/// calha de mostrar, então o MESMO campo troca de coluna no dia em que o valor renderiza sem
+/// casa decimal. O censo mede o que o artista encontra **ao abrir o painel**, que é o que o
+/// `populate` escreveu.
+///
+/// Rode: `cargo test -p ph2d-panel-registry-init --test scrub_range_census -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda: rode com -- --ignored --nocapture"]
+fn census_of_who_has_no_interval_and_why() {
+    use ph2d_editor_core::interaction::drag::DRAG_RATE_X;
+
+    let _ = ph2d_panel_registry_init::register_all_panels();
+
+    // (painel, calibrados, atalho GROSSO (step 1), atalho FINO (step 0,01))
+    let mut rows: Vec<(String, usize, usize, usize)> = Vec::new();
+    with_registry_ref(|reg| {
+        for panel in reg.panels() {
+            let mut store = WidgetStore::default();
+            panel.populate(&mut store);
+            let ids: Vec<_> = store.number_fields().map(|(id, _)| id).collect();
+            let (mut calib, mut coarse, mut fine) = (0usize, 0usize, 0usize);
+            for id in ids {
+                if store.number_scrub_interval(id).is_some() {
+                    continue; // tem intervalo: assunto da sonda irmã
+                }
+                if store.number_drag_rate(id).is_some() {
+                    calib += 1;
+                    continue;
+                }
+                let decimal = matches!(
+                    store.get(id),
+                    Some(ph2d_editor_core::interaction::InteractiveState::NumberInput {
+                        buffer,
+                        ..
+                    }) if buffer.contains('.')
+                );
+                if decimal {
+                    fine += 1;
+                } else {
+                    coarse += 1;
+                }
+            }
+            if calib + coarse + fine > 0 {
+                rows.push((panel.manifest.id.to_string(), calib, coarse, fine));
+            }
+        }
+    });
+
+    rows.sort_by(|a, b| (b.2 + b.3).cmp(&(a.2 + a.3)).then(a.0.cmp(&b.0)));
+    let calib: usize = rows.iter().map(|r| r.1).sum();
+    let coarse: usize = rows.iter().map(|r| r.2).sum();
+    let fine: usize = rows.iter().map(|r| r.3).sum();
+
+    println!("[scrub-why] campos SEM intervalo, por causa");
+    println!(
+        "[scrub-why] {:<28} {:>11} {:>10} {:>9}",
+        "painel", "calibrado", "atalho 50", "atalho .5"
+    );
+    for (id, c, g, f) in &rows {
+        println!("[scrub-why] {id:<28} {c:>11} {g:>10} {f:>9}");
+    }
+    println!(
+        "[scrub-why] {:<28} {calib:>11} {coarse:>10} {fine:>9}",
+        "TOTAL"
+    );
+    println!(
+        "[scrub-why] {} sem intervalo = {calib} CALIBRADOS (taxa registada, nada a fazer) + \
+         {} no ATALHO",
+        calib + coarse + fine,
+        coarse + fine
+    );
+    println!(
+        "[scrub-why] o atalho vale DRAG_RATE_X*step = {:.0} unidades/px (grosso) ou {:.1} (fino)",
+        DRAG_RATE_X,
+        DRAG_RATE_X * 0.01
+    );
+    println!(
+        "[scrub-why] ⚠️ o `step` sai do BUFFER, nao do campo: o mesmo campo muda de coluna no dia \
+         em que o valor renderizar sem casa decimal"
+    );
+
+    // A RÉGUA. `50 unidades/px` só é indefensável contra alguma coisa, e a coisa é o que este
+    // app JÁ escolheu em toda caixa cuja taxa alguém autorou — as com alcance (a taxa é
+    // `largura/250`) e as cinco calibradas. Nenhum destes números é meu.
+    let mut authored: Vec<f64> = Vec::new();
+    with_registry_ref(|reg| {
+        for panel in reg.panels() {
+            let mut store = WidgetStore::default();
+            panel.populate(&mut store);
+            let ids: Vec<_> = store.number_fields().map(|(id, _)| id).collect();
+            for id in ids {
+                let has_interval = store.number_scrub_interval(id).is_some();
+                if !has_interval && store.number_drag_rate(id).is_none() {
+                    continue; // o atalho não é autoria: é o que sobra
+                }
+                let step = match store.get(id) {
+                    Some(ph2d_editor_core::interaction::InteractiveState::NumberInput {
+                        buffer,
+                        ..
+                    }) if buffer.contains('.') => 0.01,
+                    _ => 1.0,
+                };
+                authored.push(store.number_scrub_law(id, step).rate_x);
+            }
+        }
+    });
+    authored.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    if let (Some(lo), Some(hi)) = (authored.first(), authored.last()) {
+        let mid = authored[authored.len() / 2];
+        println!(
+            "[scrub-why] REGUA: {} taxas AUTORADAS neste app -- min {lo:.4} / mediana {mid:.4} / \
+             max {hi:.4} unidades por pixel",
+            authored.len()
+        );
+        println!(
+            "[scrub-why] o atalho grosso ({:.0}/px) e' {:.0}x a mediana autorada e {:.1}x a MAIOR \
+             taxa que alguem escolheu",
+            DRAG_RATE_X,
+            DRAG_RATE_X / mid,
+            DRAG_RATE_X / hi
+        );
+    }
 }

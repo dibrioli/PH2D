@@ -121,7 +121,7 @@ fn the_rect_turns_too() {
 /// vinte e uma chances de uma. Unificá-las é wave própria; este gate pina o par
 /// que ESTE P0 tornou load-bearing.
 #[test]
-fn the_angle_means_the_same_thing_as_the_field_boxs() {
+fn the_angle_means_the_same_thing_as_the_field_box() {
     fn body(src: &str) -> String {
         // Só o código, e só até o módulo de testes (que difere de propósito).
         let code = src.split("#[cfg(test)]").next().unwrap_or(src);

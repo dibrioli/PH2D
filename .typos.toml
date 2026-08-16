@@ -65,6 +65,46 @@ extend-ignore-identifiers-re = [
     # comment quotes `=flase` as the example. Correcting it would delete the
     # case the gate exists to cover. Anchored (2026-07-31).
     "^flase$",
+    # ── PORTUGUÊS em prosa e em saída de sonda, e IDENTIFICADORES deliberados ──
+    # Varrida do primeiro `ship` depois das cinco integrações de 15-16/08: 36 dos
+    # 37 achados eram palavras portuguesas corretas lidas por um corretor de
+    # INGLÊS, espalhadas por TODAS as linhas da janela (motion-value, sculpt3d,
+    # Vector, Painter). O 37º era typo de verdade (`boxs` num nome de teste) e foi
+    # CORRIGIDO no texto — a lista abaixo não o cobre, de propósito: allowlist é
+    # para quando a palavra está certa e o dicionário é que não a tem.
+    # Todas ANCORADAS, a convenção deste arquivo.
+    "^adjectivos$",
+    "^alise$",        # "por mais que se alise" — do verbo alisar
+    "^ALTERNADOR$",   # o chip que ALTERNA (toggle), no `vec_layout_edit`
+    "^analise$",
+    "^analises$",
+    "^avance$",       # "para que um circuito sequencial avance"
+    "^caracter$",
+    "^computacional$",
+    "^consequente$",
+    "^cruze$",        # "que cruze uma delas acende o carry"
+    "^cursos$",       # o plural de CURSO (o alcance de um arrasto), não `cursors`
+    "^decorativos$",
+    "^DEFICE$",       # o défice do aro na quina (`crossing_scale_probe`)
+    "^defice$",
+    "^dependencias$",
+    "^direccional$",
+    "^projecto$",
+    "^reflecte$",
+    "^registe$",      # "um painel que registe os dois"
+    "^transito$",     # "como eu transito" (do verbo transitar)
+    # `aloc` — o cabeçalho ABREVIADO da coluna `(cob:aloc)` da sonda de pen-up do
+    # Painter: cobertura e alocação. Abreviação deliberada num readout alinhado,
+    # não um `alloc` mal escrito.
+    "^aloc$",
+    # `sur` — os SOBREVIVENTES no gate de réplica de morte
+    # (`ph2d-node-registry-init::death_replicates`). Identificador curto
+    # deliberado, não um `sure`.
+    "^sur$",
+    # `sc_pn` — a PERPENDICULAR do `sc_cs` no WGSL do `sim.collide`. O `^pn$` que
+    # já existe acima não a alcança: o identificador é `sc_pn`, e a âncora é o que
+    # torna a isenção estreita.
+    "^sc_pn$",
 ]
 
 [default.extend-identifiers]

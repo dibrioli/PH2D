@@ -78,6 +78,28 @@ pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
         param: "length",
         max: 1e20,
     },
+    // **O teto de `substeps` — MEDIDO, e o recurso é TEMPO** (`what_a_substep_costs`,
+    // um tique pela porta do `step`, com as 24 iterações de fábrica). O custo é
+    // EXACTAMENTE linear nos sub-passos, então o número honesto é o último que cabe
+    // no sub-orçamento de física suave do HR-4 (2,0 ms/tique) numa corda de tamanho
+    // sério:
+    //
+    // | pontos | ×1 | ×4 | ×8 | **×16** | ×32 |
+    // |---|---|---|---|---|---|
+    // | 24 | 0,014 | 0,027 | 0,053 | **0,134** (7%) | 0,213 |
+    // | 256 | 0,073 | 0,302 | 0,611 | **1,232** (62%) | 2,383 (**119%, estoura**) |
+    // | 2048 | 0,590 | 2,481 (**124%**) | 4,716 | 9,608 | 19,088 |
+    //
+    // ⚠️ **O teto NÃO desce quando o `count` sobe, e é deliberado** — o mesmo
+    // raciocínio que o `MAX_SIDE` do `motion.soft_body` escreve sobre os `clusters`:
+    // um teto que se movesse com o vizinho tiraria do artista uma corda que ele já
+    // autorou, e o valor certo passaria a ser função de OUTRO knob, que é a forma que
+    // esta casa chama de bug de ergonomia. Os dois números multiplicam, os dois estão
+    // no painel, e é aqui que o produto fica escrito.
+    ParamHardMax {
+        param: "substeps",
+        max: 16.0,
+    },
 ];
 
 pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
@@ -139,6 +161,17 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 1.0,
         step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    // ⚠️ O slider para em **8** e a caixa digita até **16**: o par soft/hard do
+    // doc 88 B2 — a faixa de arrasto é onde a mão trabalha, e o teto digitável é
+    // onde o disfuncional começa (a tabela está no `PARAM_HARD_MAX`).
+    ParamUiHint {
+        param: "substeps",
+        label: "Substeps",
+        min: 1.0,
+        max: 8.0,
+        step: 1.0,
         widget: ParamWidget::Slider,
     },
 ];

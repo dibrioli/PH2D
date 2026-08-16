@@ -63,6 +63,17 @@ const VALUE_COL: &str = "v";
 const MAX_DT: f32 = 0.1;
 /// Below this a segment length is treated as zero (skip the normalise).
 const EPS: f32 = 1e-6;
+
+/// O teto de sub-passos, e o recurso é **TEMPO**: cada sub-passo re-integra os
+/// `count` pontos e roda as `iterations` inteiras de relaxação, então o custo do
+/// tique é `substeps × iterations × (count − 1)` correções.
+///
+/// MEDIDO (`measure_substeps`, uma corda de 24 pontos com as 24 iterações de
+/// fábrica, um tique): ver a tabela no doc daquela sonda. O número aqui é o
+/// ponto em que uma corda de tamanho de fábrica passa do orçamento de física
+/// suave do HR-4; acima dele o artista compra estabilidade com quadros perdidos,
+/// e é por isso que ele é o teto DIGITÁVEL e não a faixa do slider.
+const MAX_SUBSTEPS: i64 = 16;
 /// With `pin_tail`, the far end is fixed at this fraction of the rope length from
 /// the head — leaving 25% slack so the span sags into a catenary instead of
 /// pulling taut into a straight line.
@@ -137,6 +148,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         ParamSpec {
             name: "bend",
             default: 0.0,
+        },
+        // Quantas vezes o tique é RE-INTEGRADO (Cavalry Forge *Time Step*,
+        // Vellum *substeps*). `1` = o passo único que sempre shipou, byte a byte.
+        ParamSpec {
+            name: "substeps",
+            default: 1.0,
         },
     ],
     lowerings: &[LoweringKind::Cpu],
@@ -251,6 +268,10 @@ struct Params {
     /// `0..1` é a fração da correção aplicada por passe — `1` com iterações
     /// suficientes converge para uma BARRA; valores baixos dão o cabo que cede.
     bend: f32,
+    /// **Quantos passos de integração o tique leva.** Não é `iterations`: aquele
+    /// propaga uma correção JÁ calculada sobre a mesma pose, este re-pergunta
+    /// onde a corda está. Ver `MAX_SUBSTEPS` para o preço.
+    substeps: usize,
 }
 
 /// Seed a straight, horizontal strand of `count` points from `anchor`, pinned at
@@ -302,14 +323,47 @@ fn step(
         })
         .collect();
     // Verlet's memory for the NEXT tick is this tick's entry positions.
-    let prev_out = pos.clone();
+    let tick_entry = pos.clone();
     let keep = 1.0 - p.damping;
+
+    // **OS SUB-PASSOS** (Cavalry Forge *Time Step* · Vellum *substeps*): o tique
+    // é RE-INTEGRADO `substeps` vezes com um `dt` menor, em vez de integrado uma
+    // vez e relaxado mais. As duas coisas NÃO são a mesma, e é essa a razão de o
+    // param existir: `iterations` propaga uma correção que já foi calculada, e um
+    // sub-passo re-pergunta onde a corda está.
+    //
+    // ⚠️ **A memória de Verlet fala em TIQUES, e o sub-passo em frações dele.** O
+    // `prev` que chega codifica o deslocamento de um tique inteiro, então o
+    // primeiro sub-passo tomaria uma inércia `N` vezes grande demais e a corda
+    // ganharia energia do nada. A entrada é re-escalada UMA vez (`v·dt/N`), e a
+    // saída continua a ser a pose de ENTRADA do tique — que é o deslocamento
+    // médio sobre o tique, exactamente o que o tique seguinte espera ler.
+    //
+    // ⚠️ **`substeps = 1` sai pelo caminho literal, e não pela aritmética.**
+    // `a − (a − b)` **não** devolve `b` em IEEE-754 quando `a` e `b` estão longe
+    // (o cancelamento arredonda), então re-escalar por `1` moveria os bits de
+    // toda corda que já pendeu. O `to_vec()` é a identidade.
+    let sub = p.substeps.max(1);
+    let dts = dt / sub as f32;
+    let mut prev_local: Vec<[f32; 2]> = if sub == 1 {
+        prev.to_vec()
+    } else {
+        let inv = 1.0 / sub as f32;
+        (0..n)
+            .map(|i| {
+                [
+                    pos[i][0] - (pos[i][0] - prev[i][0]) * inv,
+                    pos[i][1] - (pos[i][1] - prev[i][1]) * inv,
+                ]
+            })
+            .collect()
+    };
     // ⚠️ `ga` keeps its ORIGINAL association `(gravity·dt)·dt` — IEEE-754
     // multiplication is not associative, and re-grouping it as `gravity·dt²`
     // moves the ulp on every rope that ever hung. `dt2` is for the term that is
     // NEW here, where there is no earlier grouping to preserve.
-    let dt2 = dt * dt;
-    let ga = p.gravity * dt * dt; // a·dt² (downward, so subtract from y)
+    let dt2 = dts * dts;
+    let ga = p.gravity * dts * dts; // a·dt² (downward, so subtract from y)
 
     // Integrate every point; the pins are overwritten right after.
     //
@@ -318,78 +372,120 @@ fn step(
     // deles produzia. Para um pino GENÉRICO é a linha inteira: sem alvo a que o
     // clampar, *não se mover* É o pino, e `prev_out` já guardou a posição de
     // entrada ⇒ a velocidade dele fica zero e ele segura para sempre.
-    for i in 0..n {
-        if w[i] <= 0.0 {
-            continue;
-        }
-        let (c, pv) = (pos[i], prev[i]);
-        // The external `accel` enters exactly where the built-in gravity does —
-        // both are accelerations, and Verlet takes an acceleration as `a·dt²`.
-        let a = accel.get(i).copied().unwrap_or([0.0, 0.0]);
-        // ⚠️ **A massa inversa escala a ACELERAÇÃO e NÃO a inércia**, e a assimetria
-        // é o modelo: `a = F/m` com a gravidade e o `accel` lidos como forças por
-        // massa de referência (a leitura que o `motion.integrate` já faz e que o doc
-        // do pino promete — *"deixar um elemento mais pesado meramente RESISTIR"*),
-        // enquanto `(c − pv)` é MOMENTO, e escalá-lo faria um ponto pesado perder
-        // velocidade, que é o contrário de pesado.
-        //
-        // ⚠️ **Sem isto um pino parcial é INVISÍVEL numa corda em repouso**, e está
-        // medido: só a partilha de correções muda, e no equilíbrio as restrições já
-        // estão satisfeitas ⇒ `strength = 0,5` desenhava EXACTAMENTE o mesmo que
-        // `0,0` (y = −3,0688 nos dois). Peso `1` é byte-idêntico (`x · 1.0` é exacto).
-        let mut np = [
-            c[0] + (c[0] - pv[0]) * keep + a[0] * dt2 * w[i],
-            c[1] + (c[1] - pv[1]) * keep - ga * w[i] + a[1] * dt2 * w[i],
-        ];
-        // NaN/∞ guard (reference parity): a diverged point recovers at the anchor.
-        if !(np[0].is_finite() && np[1].is_finite()) {
-            np = anchor;
-        }
-        pos[i] = np;
-    }
-    pin(&mut pos, anchor, tail_pin, p);
-
-    // Relaxation: pull each segment back to its rest length. A pinned endpoint
-    // holds; a free one takes the full correction, else each takes half.
-    for _ in 0..p.iterations {
-        for i in 0..n.saturating_sub(1) {
-            let (a, b) = (pos[i], pos[i + 1]);
-            let d = [b[0] - a[0], b[1] - a[1]];
-            let dist = (d[0] * d[0] + d[1] * d[1]).sqrt();
-            if dist < EPS {
+    for _ in 0..sub {
+        let entry = pos.clone();
+        for i in 0..n {
+            if w[i] <= 0.0 {
                 continue;
             }
-            let diff = (dist - p.seg_rest) / dist;
-            let (wa, wb) = share(w[i], w[i + 1]);
-            pos[i] = [a[0] + d[0] * diff * wa, a[1] + d[1] * diff * wa];
-            pos[i + 1] = [b[0] - d[0] * diff * wb, b[1] - d[1] * diff * wb];
+            let (c, pv) = (pos[i], prev_local[i]);
+            // The external `accel` enters exactly where the built-in gravity does —
+            // both are accelerations, and Verlet takes an acceleration as `a·dt²`.
+            let a = accel.get(i).copied().unwrap_or([0.0, 0.0]);
+            // ⚠️ **A massa inversa escala a ACELERAÇÃO e NÃO a inércia**, e a assimetria
+            // é o modelo: `a = F/m` com a gravidade e o `accel` lidos como forças por
+            // massa de referência (a leitura que o `motion.integrate` já faz e que o doc
+            // do pino promete — *"deixar um elemento mais pesado meramente RESISTIR"*),
+            // enquanto `(c − pv)` é MOMENTO, e escalá-lo faria um ponto pesado perder
+            // velocidade, que é o contrário de pesado.
+            //
+            // ⚠️ **Sem isto um pino parcial é INVISÍVEL numa corda em repouso**, e está
+            // medido: só a partilha de correções muda, e no equilíbrio as restrições já
+            // estão satisfeitas ⇒ `strength = 0,5` desenhava EXACTAMENTE o mesmo que
+            // `0,0` (y = −3,0688 nos dois). Peso `1` é byte-idêntico (`x · 1.0` é exacto).
+            let mut np = [
+                c[0] + (c[0] - pv[0]) * keep + a[0] * dt2 * w[i],
+                c[1] + (c[1] - pv[1]) * keep - ga * w[i] + a[1] * dt2 * w[i],
+            ];
+            // NaN/∞ guard (reference parity): a diverged point recovers at the anchor.
+            if !(np[0].is_finite() && np[1].is_finite()) {
+                np = anchor;
+            }
+            pos[i] = np;
         }
-        // A restrição de FLEXÃO — a irmã `i↔i+2` da de distância, no MESMO passe
-        // de relaxação (Gauss-Seidel, como o Vellum resolve as suas). O repouso é
-        // a configuração RETA, então encurtar o vão de dois segmentos custa.
-        //
-        // ⚠️ **O early-out é o que torna `bend = 0` byte-idêntico**, e não a
-        // multiplicação por zero: `x + (-0.0)` devolve `x`, mas `(-0.0) + 0.0`
-        // devolve `+0.0` — um padrão de bits diferente. Uma corda cujo ponto
-        // pousa exatamente em `-0.0` (o topo pinado na origem é o caso comum)
-        // teria mudado de bits sem ninguém pedir nada.
-        if p.bend > 0.0 {
-            let bend_rest = p.seg_rest + p.seg_rest;
-            for i in 0..n.saturating_sub(2) {
-                let (a, b) = (pos[i], pos[i + 2]);
+        pin(&mut pos, anchor, tail_pin, p);
+
+        // Relaxation: pull each segment back to its rest length. A pinned endpoint
+        // holds; a free one takes the full correction, else each takes half.
+        for _ in 0..p.iterations {
+            for i in 0..n.saturating_sub(1) {
+                let (a, b) = (pos[i], pos[i + 1]);
                 let d = [b[0] - a[0], b[1] - a[1]];
                 let dist = (d[0] * d[0] + d[1] * d[1]).sqrt();
                 if dist < EPS {
                     continue;
                 }
-                let diff = (dist - bend_rest) / dist * p.bend;
-                let (wa, wb) = share(w[i], w[i + 2]);
+                let diff = (dist - p.seg_rest) / dist;
+                let (wa, wb) = share(w[i], w[i + 1]);
                 pos[i] = [a[0] + d[0] * diff * wa, a[1] + d[1] * diff * wa];
-                pos[i + 2] = [b[0] - d[0] * diff * wb, b[1] - d[1] * diff * wb];
+                pos[i + 1] = [b[0] - d[0] * diff * wb, b[1] - d[1] * diff * wb];
             }
+            // A restrição de FLEXÃO — a irmã `i↔i+2` da de distância, no MESMO passe
+            // de relaxação (Gauss-Seidel, como o Vellum resolve as suas). O repouso é
+            // a configuração RETA, então encurtar o vão de dois segmentos custa.
+            //
+            // ⚠️ **O early-out é o que torna `bend = 0` byte-idêntico**, e não a
+            // multiplicação por zero: `x + (-0.0)` devolve `x`, mas `(-0.0) + 0.0`
+            // devolve `+0.0` — um padrão de bits diferente. Uma corda cujo ponto
+            // pousa exatamente em `-0.0` (o topo pinado na origem é o caso comum)
+            // teria mudado de bits sem ninguém pedir nada.
+            if p.bend > 0.0 {
+                let bend_rest = p.seg_rest + p.seg_rest;
+                for i in 0..n.saturating_sub(2) {
+                    let (a, b) = (pos[i], pos[i + 2]);
+                    let d = [b[0] - a[0], b[1] - a[1]];
+                    let dist = (d[0] * d[0] + d[1] * d[1]).sqrt();
+                    if dist < EPS {
+                        continue;
+                    }
+                    let diff = (dist - bend_rest) / dist * p.bend;
+                    let (wa, wb) = share(w[i], w[i + 2]);
+                    pos[i] = [a[0] + d[0] * diff * wa, a[1] + d[1] * diff * wa];
+                    pos[i + 2] = [b[0] - d[0] * diff * wb, b[1] - d[1] * diff * wb];
+                }
+            }
+            pin(&mut pos, anchor, tail_pin, p);
         }
-        pin(&mut pos, anchor, tail_pin, p);
+        prev_local = entry;
     }
+    // ⚠️ **O caminho de `substeps = 1` é LITERAL, e a medição corrigiu o motivo.**
+    // Eu tinha escrito que `a − (a − b)` não devolve `b` em IEEE-754 — verdade,
+    // mas **não no regime da corda**: com `prev` a um deslocamento de tique de
+    // `pos` vale o lema de Sterbenz (`a − b` é EXATO quando os dois estão dentro
+    // de um factor de dois), e daí `a − exacto` devolve `b` ao bit. Medido, 144
+    // de 144 pares realistas concordam. Ele DIVERGE em dois sítios: um `prev`
+    // perto da ORIGEM com a pose longe dela (`a = 100, b = 1e-6` devolve **0**;
+    // `a = 1e6, b = 0,1` devolve **0,125**) e o **zero negativo**, cujos bits
+    // não sobrevivem. Nenhum dos dois é alcançável pelo caminho de hoje (o nó
+    // semeia `prev = pos` no primeiro tique), então **a mutação que troca este
+    // ramo pela fórmula SOBREVIVE à suíte** — ele fica pelo custo (uma alocação
+    // e um laço por tique que não fazem nada no default) e por ser a guarda que
+    // já está no sítio no dia em que um `prev` degenerado chegar.
+    //
+    // ⚠️ **A SAÍDA é re-escalada como a entrada, e a sonda achou este defeito.**
+    // Devolver a pose de entrada do TIQUE codifica o deslocamento MÉDIO sobre o
+    // tique, e sob aceleração a média é menor que a velocidade FINAL — então
+    // cada fronteira de tique comia a velocidade que os sub-passos tinham
+    // ganhado, e a corda caía cada vez menos: medido, um segundo de queda livre
+    // dava **−4,97 com um passo** (o `½at²(1+dt/t)` correcto) e **−2,65 com
+    // dezasseis**, quase metade. O que o tique seguinte tem de ler é a
+    // velocidade do ÚLTIMO sub-passo, esticada de volta a um tique.
+    //
+    // ⚠️ E `substeps = 1` sai pelo caminho literal pelo mesmo motivo da entrada,
+    // medido acima: custo no default, mais a guarda para o `prev` degenerado.
+    let prev_out = if sub == 1 {
+        tick_entry
+    } else {
+        let f = sub as f32;
+        (0..n)
+            .map(|i| {
+                [
+                    pos[i][0] - (pos[i][0] - prev_local[i][0]) * f,
+                    pos[i][1] - (pos[i][1] - prev_local[i][1]) * f,
+                ]
+            })
+            .collect()
+    };
     (pos, prev_out)
 }
 
@@ -460,6 +556,7 @@ impl NodeOp for MotionVerletRope {
             damping: ctx.param("damping").clamp(0.0, 0.99),
             pin_tail: ctx.param("pin_tail") >= 0.5,
             bend: ctx.param("bend").clamp(0.0, 1.0),
+            substeps: (ctx.param("substeps").round() as i64).clamp(1, MAX_SUBSTEPS) as usize,
         };
         let playhead = ctx.playhead() as f32;
         let anchor = [
@@ -510,3 +607,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[cfg(test)]
+#[path = "substep_tests.rs"]
+mod substep_tests;
+
+#[path = "substep_probe.rs"]
+mod substep_probe;

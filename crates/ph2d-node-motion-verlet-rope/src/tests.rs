@@ -14,9 +14,11 @@ fn params(count: usize, length: f32, gravity: f32, pin_tail: bool) -> Params {
         damping: 0.0,
         pin_tail,
         // A fixture DECLARA o neutro em vez de o herdar: `0` é *sem rigidez
-        // à flexão*, e escrevê-lo aqui é o que impede estes testes de
-        // mudarem de sentido em silêncio no dia em que o default se mover.
+        // à flexão* e `1` é *um passo de integração por tique*, e escrevê-los
+        // aqui é o que impede estes testes de mudarem de sentido em silêncio no
+        // dia em que um default se mover.
         bend: 0.0,
+        substeps: 1,
     }
 }
 
@@ -429,6 +431,7 @@ fn a_point_pinned_in_flight_stops_instead_of_coasting() {
         damping: 0.0,
         pin_tail: false,
         bend: 0.0,
+        substeps: 1,
     };
     // ⚠️ **O movimento é PERPENDICULAR à corda, e a primeira fixture não o era:**
     // ao longo do eixo a restrição de distância desfaz a inércia no mesmo passe (o

@@ -122,23 +122,23 @@ fn measure_what_the_scene_shows() {
     let mut up = [0usize; 2];
     for k in 0..TICKS {
         let p = at(k);
-        for b in 0..2 {
-            let mean = p[b].iter().sum::<f32>() / p[b].len() as f32;
-            if p[b][0] > mean {
+        for (b, band) in p.iter().take(2).enumerate() {
+            let mean = band.iter().sum::<f32>() / band.len() as f32;
+            if band[0] > mean {
                 up[b] += 1;
             }
         }
     }
-    for b in 0..2 {
+    for (b, n) in up.iter().enumerate() {
         println!(
             "  banda {}: em cima {:.3} do ciclo",
             b + 1,
-            up[b] as f32 / TICKS as f32
+            *n as f32 / TICKS as f32
         );
     }
     let p = at(0);
-    for b in 2..4 {
-        let top = p[b]
+    for (b, band) in p.iter().enumerate().skip(2) {
+        let top = band
             .iter()
             .enumerate()
             .fold((0usize, f32::NEG_INFINITY), |a, (i, x)| {
@@ -148,7 +148,7 @@ fn measure_what_the_scene_shows() {
             "  banda {}: topo no índice {} de {}",
             b + 1,
             top.0,
-            p[b].len()
+            band.len()
         );
     }
 }

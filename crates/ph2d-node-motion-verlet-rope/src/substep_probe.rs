@@ -217,3 +217,55 @@ fn can_iterations_alone_reach_it() {
         );
     }
 }
+
+/// **QUANTO O AMORTECIMENTO MUDA COM OS SUB-PASSOS.**
+///
+/// O `keep = 1 - damping` e' computado UMA vez e aplicado DENTRO do laco de
+/// sub-passos, entao um tique amortece `keep^N` em vez de `keep`. A pergunta que
+/// esta sonda responde nao e' *"isso existe?"* (a aritmetica ja' o diz) e sim
+/// *"quanto do desenho isso move no regime que o slider alcanca?"*.
+///
+/// Rodar: `cargo test -p ph2d-node-motion-verlet-rope --release -- --ignored
+/// measure_what_substeps_do_to_the_damping --nocapture`
+#[test]
+#[ignore = "sonda"]
+fn measure_what_substeps_do_to_the_damping() {
+    println!("amortecimento x sub-passos (corda de 24, ancora chicoteada, 120 tiques)");
+    println!("  damping | N |  keep^N  | excursao da cauda | vs N=1");
+    for damping in [0.0f32, 0.02, 0.10, 0.30] {
+        let mut base = None;
+        for n in [1usize, 2, 4, 8, 16] {
+            let p = Params {
+                count: 24,
+                seg_rest: 0.25,
+                gravity: 9.8,
+                iterations: 8,
+                damping,
+                pin_tail: false,
+                bend: 0.0,
+                substeps: n,
+            };
+            let mut pos: Vec<[f32; 2]> =
+                (0..p.count).map(|i| [i as f32 * p.seg_rest, 0.0]).collect();
+            let mut prev = pos.clone();
+            let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
+            for k in 0..120 {
+                let t = k as f32 / 60.0;
+                let a = [(t * 6.0).sin() * 1.5, 0.0];
+                let (np, pp) = step(pos.clone(), &prev, &[], &[], a, [0.0, 0.0], 1.0 / 60.0, &p);
+                pos = np;
+                prev = pp;
+                let y = pos[p.count - 1][1];
+                lo = lo.min(y);
+                hi = hi.max(y);
+            }
+            let span = hi - lo;
+            let keep_n = (1.0f32 - damping).powi(n as i32);
+            let rel = base.map_or(1.0, |b: f32| span / b);
+            if base.is_none() {
+                base = Some(span);
+            }
+            println!("     {damping:.2} | {n:2} | {keep_n:.6} | {span:17.4} | {rel:.4}x");
+        }
+    }
+}

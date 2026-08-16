@@ -56,10 +56,11 @@ fn one_substep_is_the_old_rope_to_the_bit() {
         &p,
     );
 
-    // O mesmo tique com o param AUSENTE do documento resolve a 1 e tem de dar
-    // exatamente os mesmos bits.
-    p.substeps = 1;
-    let (again_pos, again_prev) = step(
+    // O CONTROLE de que a fixture contém o fenômeno: com DOIS sub-passos o
+    // mesmo tique tem de dar OUTROS bits, senão o gate abaixo é satisfeito por
+    // o param não fazer nada.
+    p.substeps = 2;
+    let (two_pos, _) = step(
         pos.clone(),
         &prev,
         &[],
@@ -69,16 +70,86 @@ fn one_substep_is_the_old_rope_to_the_bit() {
         1.0 / 60.0,
         &p,
     );
-    for i in 0..count {
+    let moved = (0..count)
+        .flat_map(|i| (0..2).map(move |c| (i, c)))
+        .any(|(i, c)| one_pos[i][c].to_bits() != two_pos[i][c].to_bits());
+    assert!(
+        moved,
+        "o CONTROLE: dois sub-passos TÊM de dar outros bits, senão o param é inerte \
+         e a byte-identidade abaixo não prova nada"
+    );
+
+    // E o que o artista de facto recebe: **um documento que nunca escreveu o
+    // param** desenha a corda de sempre. Isto passa pela PORTA DE LEITURA
+    // (`ctx.param` → o default do manifesto → o clamp), que é onde o `1` mora —
+    // comparar `Params { substeps: 1 }` consigo mesmo seria `f(x) == f(x)`, um
+    // `assert_eq!` que não pode falhar.
+    let absent = cook_rope_pose(None);
+    let explicit_one = cook_rope_pose(Some(1.0));
+    assert_eq!(absent.len(), explicit_one.len(), "a mesma corda");
+    for (i, (a, b)) in absent.iter().zip(explicit_one.iter()).enumerate() {
         for c in 0..2 {
             assert_eq!(
-                one_pos[i][c].to_bits(),
-                again_pos[i][c].to_bits(),
-                "um sub-passo tem de ser o caminho literal, ao bit (ponto {i}, eixo {c})"
+                a[c].to_bits(),
+                b[c].to_bits(),
+                "o param AUSENTE resolve a 1, ao bit (ponto {i}, eixo {c})"
             );
-            assert_eq!(one_prev[i][c].to_bits(), again_prev[i][c].to_bits());
         }
     }
+
+    // ...e o mesmo documento com `4` NÃO pode dar os mesmos bits — senão a
+    // igualdade acima seria verde porque a porta de leitura ignora o param.
+    let four = cook_rope_pose(Some(4.0));
+    assert!(
+        absent
+            .iter()
+            .zip(four.iter())
+            .any(|(a, b)| a[1].to_bits() != b[1].to_bits()),
+        "o CONTROLE da porta: `substeps = 4` tem de mudar a pose"
+    );
+}
+
+/// Coze uma corda de 20 tiques e devolve a pose final, com o `substeps`
+/// **escrito ou AUSENTE** do documento — a distinção que o gate acima precisa e
+/// que uma `Params` construída à mão não sabe exprimir.
+fn cook_rope_pose(substeps: Option<f32>) -> Vec<[f32; 2]> {
+    use ph2d_nodegraph::cook::{Cook, OpResolver};
+    use ph2d_nodegraph::graph::{Edge, Graph};
+
+    struct Ops;
+    impl OpResolver for Ops {
+        fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+            (ty == MANIFEST.id).then_some(&MotionVerletRope as &dyn NodeOp)
+        }
+    }
+    let mut g = Graph::new();
+    let rope = g.add_node("motion.verlet_rope");
+    g.set_param(rope, "count", 12.0);
+    g.set_param(rope, "gravity", 9.8);
+    if let Some(s) = substeps {
+        g.set_param(rope, "substeps", s);
+    }
+    g.connect(Edge {
+        from: (rope, 0),
+        to: (rope, 2),
+        delayed: true,
+    })
+    .expect("o self-loop `pre`");
+
+    let mut cook = Cook::new();
+    let mut last = Vec::new();
+    // ⚠️ **O `advance_tick` é o que faz a aresta `pre` carregar estado.** Sem ele
+    // a corda fica em repouso e as duas colunas saem bit a bit iguais por a cena
+    // estar MORTA, não por a lei concordar.
+    for k in 0..20 {
+        let t = k as f64 / 60.0;
+        let out = cook.cook(&g, &Ops, rope, t).expect("coze");
+        if let Some(Column::Vec2(v)) = out[0].as_stream().get("P") {
+            last = v.clone();
+        }
+        cook.advance_tick(&g, &Ops, t).expect("tique");
+    }
+    last
 }
 
 /// **A ORÇAMENTO IGUAL, OS SUB-PASSOS CONVERGEM MELHOR QUE AS ITERAÇÕES.**

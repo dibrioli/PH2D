@@ -138,6 +138,39 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "damping",
             default: 0.02,
         },
+        // ⚠️ **ABERTO, MEDIDO E NAO CURADO: o `damping` COMPOE com os
+        // `substeps`, e a cura muda um look ja' aprovado.**
+        //
+        // O `keep = 1 - damping` e' computado UMA vez e aplicado DENTRO do laco
+        // de sub-passos, entao um tique amortece `keep^N` e nao `keep`. A sonda
+        // `measure_what_substeps_do_to_the_damping` mede a excursao da cauda:
+        //
+        // | damping | N=1 | N=8 | N=16 |
+        // |---|---|---|---|
+        // | 0,00 | 6,32 | 7,82 (**1,24x**) | 8,12 (1,29x) |
+        // | 0,02 (o default) | 4,18 | 1,94 (**0,46x**) | 0,99 (0,24x) |
+        // | 0,10 | 3,03 | 0,40 (**0,13x**) | 0,20 (0,07x) |
+        //
+        // ⚠️ **As duas colunas de cima dizem coisas opostas:** sem amortecimento
+        // os sub-passos fazem a corda balancar MAIS (e' a precisao a aparecer,
+        // que e' a razao de o param existir); com amortecimento eles a fazem
+        // balancar 15x MENOS, e o segundo efeito domina. Um artista que sobe os
+        // sub-passos para curar uma corda que ESTICA recebe uma corda que
+        // PARA — e nada na tela diz porque.
+        //
+        // ⚠️ **E' a assimetria dentro do proprio desenho:** o `prev_local` e' re-
+        // escalado com cuidado para a INERCIA ser invariante ao numero de sub-
+        // passos (o doc do `step` explica que sem isso *"a corda ganharia energia
+        // do nada"*), e o amortecimento ficou de fora dessa conta.
+        //
+        // ⛔ **Nao o conserte sem ordem, e o motivo e' medido:** a cena `=52`
+        // NAO escreve `damping`, logo correu no default `0,02` — o smoke que o
+        // Enio aprovou ja' continha o composto (ele julgou *"ela mantem o
+        // comprimento"*, que e' a afirmacao da cena, e ela mantem). Mudar a lei
+        // agora muda um desenho aprovado. As duas curas candidatas: `keep^(1/N)`
+        // por sub-passo (exacto, mas e' um `powf` no laco quente) ou
+        // `1 - damping/N` (aritmetica pura, exacto no limite de `damping -> 0`;
+        // medido, `d = 0,3` e `N = 16` daria 0,738 contra os 0,700 de um tique).
         // 0 = free tail (a whip); 1 = the far end is pinned too (a bridge/line).
         ParamSpec {
             name: "pin_tail",

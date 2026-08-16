@@ -257,8 +257,9 @@ mod tests {
     #[test]
     fn neighbouring_ids_do_not_share_a_track() {
         for base in [0u64, 1, 255, 1000, 50_000, 1 << 24] {
-            let seen: std::collections::BTreeSet<u64> =
-                (base..base + 512).map(|i| fold_track(NodeId(i)).0).collect();
+            let seen: std::collections::BTreeSet<u64> = (base..base + 512)
+                .map(|i| fold_track(NodeId(i)).0)
+                .collect();
             assert_eq!(
                 seen.len(),
                 512,

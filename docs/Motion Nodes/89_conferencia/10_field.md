@@ -185,7 +185,9 @@ custa tanto quanto o inverso):
 
 ## Contagem
 
-**P0 = 0** · **P1 = 9** · **P2 = 5** · **⛔ recusado-com-motivo = 8**.
+**Contagem (DERIVADA, reconciliada no grupo M em 2026-08-16):** 19 linhas — **P0 = 0** · **P1 = 6** · **P2 = 5** · ✅ fechadas **0** · ⛔ recusadas/refutadas **8**.
+
+Re-medir: `python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"` — ⚠️ **esta linha é DERIVADA da coluna `P` da tabela acima; não a edite à mão** (a contagem desta conferência envelheceu SEIS vezes, e a folha 13 chegou a contradizer a própria prosa três parágrafos abaixo).
 
 ⚠️ **Esta linha dizia `P0 = 3` até 2026-08-13, com os três já RISCADOS na tabela acima** —
 `field.noise` · `field.linear` · e a porta `value → falloff`, que era o destravador e virou o canal

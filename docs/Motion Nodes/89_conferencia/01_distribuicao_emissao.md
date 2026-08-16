@@ -56,7 +56,9 @@ Antes de qualquer proposta, três leituras de código que mudam o veredito de se
 | `motion.emitter` | idem | **`probability` de spawn** — Niagara: todo módulo de spawn a tem | **SIM** — `emitter → field.remap(probability, seed) → motion.cull(Falloff)` | ergonomia | **P2** | `probability=1` |
 | `motion.emitter` | idem | emissão por **DISTÂNCIA** percorrida — Niagara *Spawn Per Unit* (+`Movement Tolerance`, `Max Movement Threshold`); Cavalry `Emitter Type: Distance` | **NÃO** hoje — mas ver **`SUPERAR` §2.2**: a origem é função do playhead, logo o comprimento de arco é uma integral que temos em **forma fechada** | omissão | **P2** | `emit_mode=Time` |
 
-**Contagem:** 32 linhas — **P0 = 0** · **P1 = 13** · **P2 = 9** · **⛔ = 6**.
+**Contagem (DERIVADA, reconciliada no grupo M em 2026-08-16):** 33 linhas — **P0 = 0** · **P1 = 6** · **P2 = 9** · ✅ fechadas **4** · ⛔ recusadas/refutadas **13** · natureza **1**. **P0 = 0** · **P1 = 13** · **P2 = 9** · **⛔ = 6**.
+
+Re-medir: `python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"` — ⚠️ **esta linha é DERIVADA da coluna `P` da tabela acima; não a edite à mão** (a contagem desta conferência envelheceu SEIS vezes, e a folha 13 chegou a contradizer a própria prosa três parágrafos abaixo).
 
 > ⚠️ **Os quatro P0 desta folha já estavam FECHADOS quando alguém foi construí-los** (varrido em 2026-08-12). A **W5** — a wave de emissão/distribuição da mesma linha — shipou `align`, `start_angle`/`end_angle`, `speed_random` e `shape_mode` **no mesmo dia em que esta folha nasceu** (`5f7e717da`), e um dos commits chama-se literalmente *"a W5 fecha os quatro P0"*. As células nunca foram remarcadas.
 > 

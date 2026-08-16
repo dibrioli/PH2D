@@ -157,6 +157,10 @@ O parser oferece `+ − * /`, `< > ==`, `&& ||`, `sin cos abs sqrt floor fract m
 | `value.switch` | idem | **avaliação preguiçosa** — Blender documenta duas vezes: *"only the input that is passed through the node is computed"* | **NÃO** (o cook puxa as quatro) | propriedade de **escalonamento do cook**, não param | **P2** | — |
 | `value.switch` | idem | — | — | ✅ **A recusa do doc 88 (*"zero params é o contrato deles"*) SOBREVIVE aqui — e agora com referência em vez de raciocínio:** o seletor é uma **porta** e não um param **de propósito**, porque no Blender o Index Switch também recebe um *field* — é o que permite escolher por instância. Zero params é a forma certa | — | — |
 
+**Contagem (DERIVADA, reconciliada no grupo M em 2026-08-16):** 72 linhas — **P0 = 0** · **P1 = 2** · **P2 = 18** · ✅ fechadas **31** · ⛔ recusadas/refutadas **19** · natureza **1**.
+
+Re-medir: `python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"` — ⚠️ **esta linha é DERIVADA da coluna `P` da tabela acima; não a edite à mão** (a contagem desta conferência envelheceu SEIS vezes, e a folha 13 chegou a contradizer a própria prosa três parágrafos abaixo).
+
 ---
 
 ## §8 — `SUPERAR:` — o que só o nosso substrato torna barato

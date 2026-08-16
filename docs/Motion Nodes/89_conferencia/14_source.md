@@ -46,6 +46,10 @@ mesmo nó — ver §2).
 | `source.shape` | idem | **sem TRIM / dash** — Cavalry *Trim Path*; AE **Trim Paths** (o item mais usado de shape layer). `ph2d_vec_scene::trim_path(path, start, end)` **existe** (`marker.rs:395`) | **NÃO** — nenhum nó do grafo alcança `trim_path` | **omissão** | P1 | `start=0, end=1` ⇒ o path inteiro |
 | `source.shape` | idem | **`size` é GEOMETRIA, não coluna** — Blender GN separa geometria de instância; Cavalry escala a CÓPIA sem re-cozinhar. Aqui o `size` entra no `shape_key` ⇒ **um slider animado re-interna um `VecPath` por valor visitado** (o próprio doc do `VecPathStore` admite: *"an animated slider re-interns each value"*), e nada a jusante que leia a coluna `size` vê o tamanho da forma | **PARCIAL** — `motion.scale` a jusante escala a instância (barato, e é a rota certa); o que não é exprimível é *animar o `size` do nó sem crescer a store* | omissão de DESENHO (perf + contrato de coluna) | P1 | publicar `size` como coluna com o valor de hoje e construir a geometria em raio 1 ⇒ mesma imagem |
 
+**Contagem (DERIVADA, reconciliada no grupo M em 2026-08-16):** 13 linhas — **P0 = 0** · **P1 = 7** · **P2 = 3** · ✅ fechadas **3** · ⛔ recusadas/refutadas **0**.
+
+Re-medir: `python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"` — ⚠️ **esta linha é DERIVADA da coluna `P` da tabela acima; não a edite à mão** (a contagem desta conferência envelheceu SEIS vezes, e a folha 13 chegou a contradizer a própria prosa três parágrafos abaixo).
+
 ---
 
 ## §3 — `ESPÉCIES DE FONTE QUE FALTAM:`

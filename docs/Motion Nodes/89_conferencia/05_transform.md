@@ -52,7 +52,9 @@ O briefing desta família diz que ela *"foi recusada em atacado como ESTRUTURAL"
 | `motion.mirror` | idem | **espelhar `rot`/`vel` no gêmeo** (hoje são COPIADOS). C4D Symmetry / Blender *Mirror modifier* espelham orientação e normais | **NÃO** — nada a jusante sabe QUAIS elementos são gêmeos (o `id` também é duplicado), então a informação necessária deixa de existir no instante em que o nó emite. ⚠️ **Cerca no doc-comment:** *"é mudança de COMPORTAMENTO de uma sim espelhada, não um param: ela merece o seu próprio smoke"* — a cerca não recusa, ela **precifica** | **omissão** | **P1** | `flip_rot = 0` ⇒ o gêmeo copia `rot`/`vel` como hoje |
 | **`motion.orbit`** | `pivot_x` `pivot_y` `angle` `speed` | **Carregar a ORIENTAÇÃO** — o sprite VIRA ao percorrer a órbita. Blender *Rotate Instances* com `Pivot Point` + `Local Space` gira posição **e** orientação numa chamada [4.5]; C4D: a Rotation do effector sob *Transform Space* [dump §B2] | **SIM, a 3 nós + 2 fios:** `motion.orbit` + `motion.rotate`, com **um** `value.time` dirigindo os dois `angle` por **param dirigido** (doc 58) para não haver dois números a concordar. Preço: 3 nós e uma fiação não-óbvia para o que a referência resolve num bool — e ⚠️ o `motion.rotate` **não tem `speed`** (linha R1), então sem o `value.time` a órbita anima e o sprite fica parado | **omissão** | **P1** | `carry_rotation = 0` ⇒ `rot` não é tocado (hoje o nó só escreve `P`) |
 
-**Contagem:** **P0 = 0** · **P1 = 4** · **P2 = 4** · **⛔ = 6** (dos quais **4 REFUTADOS por composição verificada** e 2 recusados por mecanismo/cerca).
+**Contagem (DERIVADA, reconciliada no grupo M em 2026-08-16):** 16 linhas — **P0 = 0** · **P1 = 4** · **P2 = 3** · ✅ fechadas **1** · ⛔ recusadas/refutadas **8**.
+
+Re-medir: `python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"` — ⚠️ **esta linha é DERIVADA da coluna `P` da tabela acima; não a edite à mão** (a contagem desta conferência envelheceu SEIS vezes, e a folha 13 chegou a contradizer a própria prosa três parágrafos abaixo).
 
 ---
 

@@ -89,6 +89,10 @@ sink**, e um conserto tem de tocar os dois lados (a paridade CPU×GPU é gate).
 | `debug.wave` | **1** (`gain`) | **NADA.** Não existe nó equivalente em referência nenhuma: ele é o **template canônico de fan-out** (`docs/IntegracaoMultiAgente/DIRETRIZ.md:358` — *"Templates … `-debug-wave/` (Temporal + ph2d-expr + golden)"*; `examples-fan-out.md:31-32,57`) | n/a | **natureza** — e o `gain` existe para o template **demonstrar** um param, não para o artista | ⛔ | — |
 | `debug.wave` | 1 | — | — | — | **P2** | mesmo item de catálogo do `debug.const` |
 
+**Contagem (DERIVADA, reconciliada no grupo M em 2026-08-16):** 15 linhas — **P0 = 0** · **P1 = 1** · **P2 = 7** · ✅ fechadas **1** · ⛔ recusadas/refutadas **6**.
+
+Re-medir: `python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"` — ⚠️ **esta linha é DERIVADA da coluna `P` da tabela acima; não a edite à mão** (a contagem desta conferência envelheceu SEIS vezes, e a folha 13 chegou a contradizer a própria prosa três parágrafos abaixo).
+
 ### §1.B — TAMBÉM CONFERIDOS NOUTRA FAMÍLIA (só a metade *"zero params é o contrato deles?"*)
 
 | nó | params hoje | zero params é o contrato? (referência CITADA) | resíduo honesto |

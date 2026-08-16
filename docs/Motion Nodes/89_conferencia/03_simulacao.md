@@ -81,7 +81,9 @@ só o `spring` consome `falloff`. Conferido por grep em `register_couplings`.
 
 ⚠️ **E as DUAS últimas linhas desta tabela não vieram da referência — vieram de um REPORT do smoke da cena `=50`** (2026-08-16), e por isso não movem o placar: elas nascem `✅ FECHADO` sem P1 anterior. *Uma varredura que só lesse a coluna de referência as teria perdido: o Enio olhou para a tela e nomeou duas coisas que o catálogo não pede e o produto precisa.*
 
-**Placar (atualizado na execução do W1; o grupo H fechou dois P1 em 2026-08-15, o grupo I mais dois, o grupo J mais três, o grupo K mais dois e o grupo L mais dois em 2026-08-16):** **P0 = 8** → **ZERO abertos** · **P1 = 17 → 15 → 13 → 10 → 8 → 6** · **P2 = 6** · **⛔ refutados = 8**.
+**Contagem (DERIVADA, reconciliada no grupo M em 2026-08-16):** 43 linhas — **P0 = 0** · **P1 = 3** · **P2 = 5** · ✅ fechadas **25** · ⛔ recusadas/refutadas **10**.
+
+Re-medir: `python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"` — ⚠️ **esta linha é DERIVADA da coluna `P` da tabela acima; não a edite à mão** (a contagem desta conferência envelheceu SEIS vezes, e a folha 13 chegou a contradizer a própria prosa três parágrafos abaixo).
 
 > **O que o W1 fechou, e como:** o **`bend stiffness`** da corda e o **`pressure`** do soft body (as duas
 > últimas omissões de MODELO da família) · o **teto de `count`** do boids (medido no device: 1.048.576 em 14,283 ms contra os 10,392 ms que a CPU cobra por 2.000) · o **`max_force`** (o segundo clamp de Reynolds) · e ⚠️ **DOIS itens que DISSOLVERAM sem uma linha de feature** — as duas gravidades vetor, cujo mecanismo declarado era exatamente *"o nó não lê `accel`"*, removido pelo W1-A. O raio por-elemento do `motion.collide` virou a **W1-B** (a divergência CPU×GPU que ele escondia está FECHADA; o que falta é o `Max` reduce que o alcance da grade exige, máquina que nenhum kernel do repo tem).

@@ -77,7 +77,9 @@ numa delas, e o §4 SUPERAR propõe derrubar (4) com **um** nó.
 | `force.wind` | 5 | `Coordinate Space: Local \| World \| Simulation` (Niagara Linear Force, item 7) | ⛔ **RECUSADO:** não há hierarquia de espaço no stream de instâncias — "local" não tem referente | natureza | ⛔ | — |
 | `force.buoyancy` | 7 | corrente horizontal / `flowAngle` (Unity `BuoyancyEffector2D`) | ⛔ **RECUSADO com CERCA REGISTRADA:** o doc do nó diz *"A horizontal current is **not** a param here: that is `force.wind` with `angle = 0`, the same argument by which there is no separate gravity node."* | — | ⛔ | — |
 
-**Placar:** 6 nós · 29 params · **0 P0 · 5 P1 · 6 P2 · 10 recusados-com-motivo** · **13 gaps REFUTADOS por composição** (contados no §2).
+**Contagem (DERIVADA, reconciliada no grupo M em 2026-08-16):** 22 linhas — **P0 = 0** · **P1 = 5** · **P2 = 6** · ✅ fechadas **1** · ⛔ recusadas/refutadas **10**.
+
+Re-medir: `python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"` — ⚠️ **esta linha é DERIVADA da coluna `P` da tabela acima; não a edite à mão** (a contagem desta conferência envelheceu SEIS vezes, e a folha 13 chegou a contradizer a própria prosa três parágrafos abaixo).
 
 > ⚠️ **O único P0 desta folha FECHOU em 2026-08-12** (o cluster de ruído do `force.curl`/`force.wind`,
 > crate-folha `ph2d-fbm`) e este placar dizia **1** até 2026-08-13 — a linha de contagem sobreviveu ao

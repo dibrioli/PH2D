@@ -75,6 +75,10 @@ Um segundo fato transversal: **os cinco nós são `LoweringKind::Cpu`**. Nenhum 
 | `motion.morph` | idem | **easing** e **modo `switch`** ([minicavalry §morph](../referencia_catalogo_nodes_minicavalry.md): `t`·`easing`·`mode vertex/switch/crossfade`·resolution·threshold) | ⛔ **REFUTADO** — easing: `value.lfo → value.curve → morph.blend` (curva arbitrária, `ParamWidget::Curve`, LUT no device); switch: `value.step`/`value.quantize` no mesmo fio | — | ⛔ | — |
 | `motion.morph` | idem | pareamento por ROW ORDER + `min` de comprimento (C4D Inheritance tem *Step Gap* para o caso) | ⛔ **RECUSADO COM MOTIVO** — é a convenção Sequence-Blend do repo, a mesma do `motion.mixer` (*"o rabo do input mais longo é descartado"*), declarada no header do nó. Mudá-la num nó só criaria duas leis de pareamento | **natureza** | ⛔ | — |
 
+**Contagem (DERIVADA, reconciliada no grupo M em 2026-08-16):** 30 linhas — **P0 = 0** · **P1 = 3** · **P2 = 6** · ✅ fechadas **14** · ⛔ recusadas/refutadas **7**.
+
+Re-medir: `python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"` — ⚠️ **esta linha é DERIVADA da coluna `P` da tabela acima; não a edite à mão** (a contagem desta conferência envelheceu SEIS vezes, e a folha 13 chegou a contradizer a própria prosa três parágrafos abaixo).
+
 ---
 
 ## §2 — `SUPERAR:` (derivado do que só nós temos)

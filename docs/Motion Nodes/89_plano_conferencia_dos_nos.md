@@ -557,6 +557,55 @@ passa a ser **exprimível por composição** (uma `force.wind` em qualquer ângu
 **Os dois DEFEITOS (T5) não entram nesta fila** — eles são conserto e andam junto da wave que
 tocar o arquivo: a alfa da rampa no W3, o `spread` do `collide` no W1.
 
+## §11.0 — O PLACAR DE HOJE (derivado, 2026-08-16)
+
+⚠️ **A tabela da §11 abaixo é o ACHADO ORIGINAL da conferência, não o estado.** Ela registra o
+que as dezassete folhas encontraram no dia em que fecharam, e desde então doze grupos shiparam.
+Lida como estado, ela manda construir o construído — que é exactamente o erro que este plano
+existe para não repetir.
+
+**O estado é DERIVADO das folhas, num comando:**
+
+```
+python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"
+```
+
+| # | Família | P0 | P1 | P2 | ⏸ | ✅ fechadas | ⛔ recusadas | linhas |
+|---|---|---|---|---|---|---|---|---|
+| 1 | DISTRIBUIÇÃO + EMISSÃO | 0 | **6** | 9 | — | 4 | 13 | 33 |
+| 2 | FORCE | 0 | 5 | 6 | — | 1 | 10 | 22 |
+| 3 | SIMULAÇÃO | 0 | 3 | 5 | — | 25 | 10 | 43 |
+| 4 | DEFORMERS | 0 | **6** | 8 | — | 3 | 5 | 22 |
+| 5 | TRANSFORM | 0 | 4 | 3 | — | 1 | 8 | 16 |
+| 6 | ANIMADORES | **2** | **12** | 15 | — | 1 | 0 | 30 |
+| 7 | TEMPO / ESTILÍSTICOS | 0 | 3 | 6 | — | 14 | 7 | 30 |
+| 8 | STREAM / UTILIDADE | 0 | **8** | 10 | — | 5 | 8 | 32 |
+| 9 | COR / APARÊNCIA | 0 | 3 | 3 | — | 7 | 6 | 19 |
+| 10 | FIELD | 0 | **6** | 5 | — | 0 | 8 | 19 |
+| 11 | FX (raster) | 0 | **6** | 7 | — | 0 | 4 | 17 |
+| 12 | PULSE | 0 | 0 | 7 | — | 9 | 4 | 20 |
+| 13 | SIM.\* (o stack) | 0 | 0 | 7 | — | 10 | 7 | 24 |
+| 14 | SOURCE | 0 | **7** | 3 | — | 3 | 0 | 13 |
+| 15 | VALUE | 0 | 2 | 18 | — | 31 | 19 | 72 |
+| 16 | RIG *(deferida)* | 0 | 0 | 0 | 18 | 1 | 4 | 23 |
+| 17 | ZERO-PARAM + DEBUG | 0 | 1 | 7 | — | 1 | 6 | 15 |
+| | **TOTAL** | **2** | **72** | **119** | **18** | **116** | **119** | **450** |
+
+⚠️ **Este placar nasceu do grupo M, e o que ele achou vale mais que os números:** sete das
+dezassete folhas **não tinham contagem nenhuma**, a folha 13 dizia `3 P0 · 7 P1` com a própria
+prosa três parágrafos abaixo a dizer *"não tem item aberto"*, e a folha 06 carregava um
+`**P0/P1**` que o código já tinha fechado (as lanes `x`/`y` do `motion.expression`) — a **sexta**
+célula desta conferência a envelhecer. *A cura não é reconferir com mais cuidado: é a contagem
+deixar de ser escrita à mão.* A linha de `**Contagem:**` de cada folha passou a ser gerada por
+esta ferramenta, e diz isso de si mesma.
+
+⚠️ **A fila ACIONÁVEL de P0 está VAZIA.** Os dois que a tabela mostra são o `**P0/P1**` da folha
+06 — o `motion.wave` sem N produtores e o **`motion.drive` sem coluna nomeada** —, e o segundo é
+a metade que sobra da **§10.0**: *ler componente* fechou (as lanes do `value.attribute` e as do
+`motion.expression`), **escrever coluna arbitrária não**. Os 18 ⏸ são a família RIG, deferida.
+
+---
+
 ## §11 — Estado da conferência
 
 > ⚠️ **Cada agente ESCREVE o resultado num arquivo próprio** em

@@ -62,7 +62,9 @@ explica por que a vinheta foi **construída e removida** dias depois.
 | `fx.rgb_split` | idem | **Deslocamento por canal INDEPENDENTE** — Photoshop *Lens Correction* tem TRÊS eixos (Red/Cyan · Green/Magenta · Blue/Yellow); ours é o par complementar simétrico R ↔ G+B | **NÃO** — a estrutura de 2 fantasmas complementares é o que torna o efeito correto sob alpha-blend (doc 38 §2, com mutante provado). Um 3º eixo exigiria 3 fantasmas e **o miolo sairia errado** pelo motivo que o doc 38 já mede | **natureza** — a restrição vem do *over* do renderer, não de preguiça | ⛔ **recusado com motivo** | — |
 | `fx.rgb_split` | idem | `ParamUnit` ausente em `x`/`y` (comprimento de mundo) e `strength` (`Ratio`); sem `ParamHardMax` | **N/A** | **omissão** (idem `fx.drop_shadow`) | **P1** | metadado não move número |
 
-**Contagem da família:** 3 nós · 16 linhas · **P0 = 0** · **P1 = 6** · **P2 = 7** · **⛔ = 3**
+**Contagem (DERIVADA, reconciliada no grupo M em 2026-08-16):** 17 linhas — **P0 = 0** · **P1 = 6** · **P2 = 7** · ✅ fechadas **0** · ⛔ recusadas/refutadas **4**.
+
+Re-medir: `python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"` — ⚠️ **esta linha é DERIVADA da coluna `P` da tabela acima; não a edite à mão** (a contagem desta conferência envelheceu SEIS vezes, e a folha 13 chegou a contradizer a própria prosa três parágrafos abaixo).
 (dois refutados por cadeia que FUNCIONA, um recusado por natureza com mutante já provado).
 
 ⚠️ **Por que ZERO P0:** a régua do §7 do plano exige *"inexprimível **E** o artista vê na primeira

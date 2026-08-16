@@ -53,6 +53,10 @@ color info) é inexprimível por construção — não por falta de um knob.*
 | `motion.luminance` | idem | ⚠️ **DUAS PORTAS latente (correção, não feature):** o `motion.drive` escreve opacidade em **`tint[3]`** (`channel.rs:152-165`) e o picker do `value.attribute` oferece **"Opacity" → coluna `"opacity"`** (`value-attribute/src/lib.rs:117-120`) — **colunas diferentes**. Ler de volta a opacidade que o `drive` escreveu é inexprimível | ⚠️ **A leitura estava ERRADA e a medição a corrigiu:** não eram duas colunas divergindo — **ninguém escreve `"opacity"`**, e o renderer lê `tint[3]`. Era uma porta e um FANTASMA (ver §3) | omissão | ✅ **FEITO** (era P0-correção) | o picker aponta a lane (`tint`+`MODE_COMPONENT_BASE+3`); e o `luminance` ganhou o canal `Alpha` |
 | `motion.luminance` | idem | *(não-gap)* coeficientes alternativos (Rec.601/2020) | ⛔ **recusado com mecanismo:** a coluna `tint` é **RGB linear** e os pesos Rec.709 são os de **luminância relativa** nesse espaço — trocar por Rec.601 seria pedir a luma de um espaço que não é o nosso. É o único nó da família cujo "0 params" é **natureza** | natureza | ⛔ | — |
 
+**Contagem (DERIVADA, reconciliada no grupo M em 2026-08-16):** 19 linhas — **P0 = 0** · **P1 = 3** · **P2 = 3** · ✅ fechadas **7** · ⛔ recusadas/refutadas **6**.
+
+Re-medir: `python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"` — ⚠️ **esta linha é DERIVADA da coluna `P` da tabela acima; não a edite à mão** (a contagem desta conferência envelheceu SEIS vezes, e a folha 13 chegou a contradizer a própria prosa três parágrafos abaixo).
+
 ---
 
 ## `SUPERAR:`

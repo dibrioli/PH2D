@@ -48,6 +48,10 @@ Isso não é uma observação de estilo: é a causa mecânica de **seis** dos "i
 | `rig.skin_deformer` | idem | ⛔ **dual quaternion** (o *candy-wrapper* do LBS) | ⛔ **RECUSADO COM MOTIVO, medido no domínio**: doc 42 §2 — *"Em 2D, nos ângulos que uma mangueira ou um membro realmente atingem, não aparece"* | natureza | ⛔ | — |
 | `rig.skin_deformer` | idem | ⛔ **bone heat** (a outra opção do auto-bind do Blender) | ⛔ **RECUSADO COM MECANISMO**: doc 42 §2 — bone heat resolve um Laplaciano **sobre a superfície da malha**, e aqui não há malha, só pontos | natureza | ⛔ | — |
 
+**Contagem (DERIVADA, reconciliada no grupo M em 2026-08-16):** 23 linhas — **P0 = 0** · **P1 = 0** · **P2 = 0** · **⏸ deferidas = 18** · ✅ fechadas **1** · ⛔ recusadas/refutadas **4**.
+
+Re-medir: `python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"` — ⚠️ **esta linha é DERIVADA da coluna `P` da tabela acima; não a edite à mão** (a contagem desta conferência envelheceu SEIS vezes, e a folha 13 chegou a contradizer a própria prosa três parágrafos abaixo).
+
 ---
 
 ## `CONSTRAINTS QUE FALTAM:`

@@ -340,3 +340,44 @@ pub(super) fn pin(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
     );
     sinks
 }
+
+/// O PINO SEGUE A PRESCRICAO, E O BANDO GANHA ESPACO PESSOAL -- os dois reports do
+/// smoke da cena `=50`, que sao defeitos DIFERENTES e por isso vivem em dois pares.
+pub(super) fn space(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_space::build_space_demo_document(doc, registry).unwrap_or_default();
+    eprintln!(
+        "[space-demo] DOIS PARES ({} bandas). Cada par isola UM dos dois reports.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_space::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) DE' PLAY nas bandas 1-2 (o mastro varre com o tempo) e olhe as 3-4 PARADAS.
+  (!) 1-2, A BANDEIRA: as duas TEM de desenhar a mesma coisa. O pino da banda 2 vem de um
+  `motion.pin_constraint` e o da 1 e' o param `pin` do proprio no'; antes desta wave o
+  generico segurava ONDE ESTAVA, entao a banda 2 ficava PARADA enquanto o mastro varria
+  (medido: o pino generico andava 0,0000 contra 3,0000 do intrinseco) e mexer no `spacing`
+  deixava-a na largura antiga. Medido AGORA, as duas varrem {:.1} de ponta a ponta e a pose
+  relativa delas difere em menos de 0,001 -- se divergirem, a lei voltou a ser duas.
+  (!) 3-4, O BANDO: cada agente desenha a {:.1} de largura, e a de cima empacota-os a {:.3}
+  de mediana -- {}/{} SOBREPOSTOS -- porque o unico knob era um PESO cujo topo de slider
+  (6,0) fica 8,5x abaixo do que zerar a sobreposicao pedia (51,2). A de baixo tem
+  `separation_radius` {:.1} e mede {:.3} de mediana, {}/{} sobrepostos: ponha os olhos nos
+  VAOS, nao nas pecas.
+  (!) O preco da banda 4 esta NOMEADO: um espaco pessoal maior que a percepcao e' invisivel
+  a' grade do device, entao ela RECUSA a GPU e coze na CPU -- a alternativa era divergir em
+  silencio entre as duas rotas.",
+        5.0,
+        conferencia_demos_space::drawn_size(),
+        0.803,
+        34,
+        40,
+        4.0,
+        1.614,
+        0,
+        40,
+    );
+    sinks
+}

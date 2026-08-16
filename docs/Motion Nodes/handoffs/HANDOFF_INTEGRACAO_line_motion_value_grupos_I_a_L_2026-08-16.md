@@ -11,13 +11,17 @@
 
 | grupo | o que fecha | cena | smoke |
 |---|---|---|---|
-| **I** | a VIZINHANÇA vira um número (`motion.proximity`) — e *Scale*/*Hide* saem por COMPOSIÇÃO | `=49` | ⏳ |
+| **I** | a VIZINHANÇA vira um número (`motion.proximity`) — e *Scale*/*Hide* saem por COMPOSIÇÃO | `=49` | ✅ |
 | **J** | o PINO alcança as três simulações (`inv_mass` pela cadeia de estado) | `=50` | ✅ |
 | **J′** | o report do smoke: a prescrição do corpo mole + o espaço pessoal do bando | `=51` | ✅ |
 | **K** | o peso por partícula (`soft_body`) + os SUB-PASSOS (`verlet_rope`) | `=52` | ✅ |
-| **L** | o TETO DA TAXA (`motion.delay`: `max_step` + `max_accel`) | `=53` | ⏳ |
+| **L** | o TETO DA TAXA (`motion.delay`: `max_step` + `max_accel`) | `=53` | ✅ |
 
-⚠️ **Integrar não é aprovar:** as cenas **`=49` e `=53` não foram smokadas**.
+✅ **As cinco cenas foram smokadas e aprovadas pelo Enio** — as três primeiras à medida
+que fecharam, e as duas últimas (`=49` e `=53`) em 2026-08-16, depois do fechamento da
+linha. ⚠️ **O que a aprovação NÃO cobre está nomeado na §6:** o gate `#[ignore]` da `=53`
+(o teto sobe a `0,1678` no tique da inversão) segue **aberto** — um smoke aprova o que o
+olho vê, e aquele número é menor que a espessura de um traço na tela.
 
 O mecanismo de cada grupo está na **§5 do `CLAUDE.md`**, escrito no commit de cada um —
 não foi copiado para cá.

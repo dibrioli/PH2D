@@ -81,7 +81,12 @@ uma. É essa assimetria que mata os itens de speed-limit, de spin e de variânci
 | `sim.collide` | 7 | **`Restitution Randomness`** (por elemento) — Niagara §C.17 | **NÃO** (o kernel não faz leitura por-elemento de um jitter; `id` está lá, mas o hash não) | omissão | **P2** | `randomness = 0` ⇒ bit-idêntico |
 | `sim.collide` | 7→10 | **Nenhuma `ParamSection`** num nó de 7 params — o [doc 88](../88_plano_parametros_nos_unidades_e_slider.md) deu seções a 10 nós (*a parede de sliders vira três perguntas*) | **N/A** — lei de param. O corte natural é **Forma** (`shape`/`height`/`center_*`/`radius`) × **Resposta** (`restitution`/`friction`) | omissão (lei de param) | **P2**, e a metade que MORDIA caiu de carona no P0 do raio (2026-08-10): os **quatro knobs mortos** ganharam `ParamGate` — `height` só aparece no Floor, `center_*`/`radius` só no Disc/Bowl, e os dois números de raio só no modo que os lê. Um `Height` que o kernel de um Disc nunca olha é o knob-morto que esta casa recusa; o que resta em aberto é a AGRUPAÇÃO visual, que é cosmética | seção é metadado ⇒ zero efeito no cozido |
 
-**Contagem: 3 P0 · 7 P1 · 8 P2 · 6 REFUTADOS por composição** (⛔) — ⚠️ **e a varredura de
+**Contagem: 0 P0 · 0 P1 · 8 P2 · 6 REFUTADOS por composição** (⛔) — ⚠️ **esta linha dizia
+`3 P0 · 7 P1` até 2026-08-16, e a própria prosa abaixo dela já dizia o contrário**
+(*"a folha 13 não tem item aberto"*): os três P0 fecharam com o W7 e os sete P1 nas
+varreduras de 08-11 e 08-12, e **ninguém reconferiu o CABEÇALHO**. É a quinta vez que uma
+linha de contagem desta conferência envelhece — e a mais barata de detectar, porque ela
+contradiz a tabela que está três parágrafos acima. ⚠️ **e a varredura de
 2026-08-11 fechou mais TRÊS P1 e derrubou DUAS células por envelhecimento**: o **evento de
 contato** virou a coluna `hit` (construída), os **comportamentos nomeados** dissolveram nela
 (dois knobs que já existem, e o *die* virou composição), e o **BURST** já estava construído desde

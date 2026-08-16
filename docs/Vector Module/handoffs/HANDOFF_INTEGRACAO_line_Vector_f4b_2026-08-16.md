@@ -13,14 +13,16 @@
 | HEAD | o **tip de `line/Vector`** — ⚠️ **não um sha escrito aqui**: os últimos commits são este próprio documento, então um literal envelheceria a cada correcção dele |
 | último commit de **CÓDIGO** | **`995520929`** |
 | merge-base com `main` | **`08e3c84c9`** |
-| commits de código | **13** (de **17** no total; os outros 4 são este documento e o plano) |
-| diff de **código** | **66 arquivos, +3.361 / −712** (`main...HEAD -- ':!docs'`) |
+| commits de código | **17** (de **23** no total; os outros 6 são este documento e o plano) |
+| diff de **código** | **67 arquivos, +3.496 / −716** (`main...HEAD -- ':!docs'`) |
 
-⚠️ **Esta caixa já esteve errada duas vezes, e as duas por motivos que valem mais que o número.**
+⚠️ **Esta caixa já esteve errada TRÊS vezes, e as três por motivos que valem mais que o número.**
 A primeira dizia *"daí para cima é só `docs/`"* e o smoke produziu **dois commits de fonte** depois
 dela. A segunda rotulava a linha como *"diff de **código**"* medindo o total **com `docs/` dentro**
 (65 / +3.241 / −732 era `main...HEAD` sem pathspec) — *um rótulo que promete um recorte e mede
-outro é pior que um número velho, porque ninguém o vai reconferir.* **Re-meça no dia da ordem.**
+outro é pior que um número velho, porque ninguém o vai reconferir.* A terceira foi a **auditoria de
+fecho**: ela acrescentou cinco commits (um deles corrigindo um defeito de PRODUTO, §7.2.1), e os
+números de 13/17/66 descreviam a árvore de antes dela. **Re-meça no dia da ordem.**
 
 ⚠️ **O `main` NÃO andou desde o fork** (`merge-base == main == 08e3c84c9`), então **hoje** a
 integração é um `--ff-only` trivial. **Esta caixa envelhece.** É a mesma frase que os handoffs da
@@ -41,7 +43,7 @@ comm -12 /tmp/linha.txt /tmp/main.txt                    # a interseção REAL
 **Duas crates foundational e a shell.** Tudo **aditivo**; nenhuma assinatura pública existente
 mudou de forma.
 
-### `ph2d-editor-core` (12 arquivos)
+### `ph2d-editor-core` (14 arquivos)
 
 | arquivo | o que entrou | aditivo? |
 |---|---|---|
@@ -54,7 +56,9 @@ mudou de forma.
 | `interaction/state/store_core.rs` | a construção dele | ⚠️ **sítio de construção** — ver §3 |
 | `interaction/state/chrome_ops.rs` | `section_body_h` / `remember_section_body_h` | ✅ métodos novos |
 | `motion.rs` | **`law_of`** privado, e o `advance` deixa de colectar um `Vec` | ✅ corpo, sem API nova |
+| `screens/hero/live.rs` | ⚠️ **a semente de `fold_track`/`scroll_track` cancelava o byte BAIXO do id** — ver §7.2.1; + os dois gates | ✅ corpo, sem API nova |
 | `tests/ui_motion_no_alloc.rs` **(NOVO)** | o gate de contador (dhat) | ✅ |
+| `tests/measure_ui_motion.rs` | a sonda de atribuição dos 335 µs (`#[ignore]`) | ✅ |
 | `tests/architecture_panel_loc_cap.rs` | tolerâncias que **encolheram** | ✅ só desce |
 | `tests/hr12_widgets_a11y.rs` | ajuste da varredura | ✅ |
 
@@ -73,11 +77,26 @@ mudou de forma.
 | `probe_cursor_grab.rs` **(NOVO)** | a sonda do §4.3, `#[ignore]` |
 | `main.rs` | `mod` das duas acima |
 
-### Os dez painéis (39 arquivos)
+### Os dez painéis (40 arquivos) + `grid-snap` (5)
 
 `inspector` · `painter-layers` · `vector` · `sculpt3d` · `physics` · `audio-editor` ·
 `audio-mixer` · `wet-tuning` · `motion-params` · `authored` — todos **vestindo** a porta nova; e
-`grid-snap` (5 arquivos), que é **correção própria** (ver §5 do commit `c77af7cec`).
+`grid-snap`, que é **correção própria** (ver §5 do commit `c77af7cec`).
+
+### `ph2d-panel-registry-init` (3 arquivos) — **só `tests/`, nenhum `src/`**
+
+| arquivo | o que |
+|---|---|
+| `tests/ui_motion_population_census.rs` **(NOVO)** | o censo que mede **162 → 4491** widgets |
+| `tests/ui_motion_frame_halves.rs` **(NOVO)** | a sonda que parte o quadro parado em duas metades |
+| `tests/scrub_range_census.rs` | o censo de faixas, estendido |
+
+⚠️ **Esta crate é a que REGISTA os painéis, e é por isso que as sondas de população moram nela** —
+é o build mais barato que enxerga os 4491 widgets de uma vez. ⚠️ **E as duas sondas novas vivem em
+BINÁRIOS SEPARADOS de propósito:** `register_all_panels()` é **global e irreversível**, e o censo
+mede o piso (`chrome`, 162) **antes** dele — juntas no mesmo binário, o `chrome` saltava para
+**4491 / 339,7 µs** e a linha de CONTROLO morria em silêncio. ⚠️ **Corolário operacional: rode as
+duas UMA DE CADA VEZ** (`-E 'binary(...)'`), nunca as duas no mesmo comando.
 
 ---
 
@@ -153,7 +172,7 @@ no fecho**, não a acreditar agora"*. Conferida. Passa.
 
 ## 6. Ordem, dependências e **o que smoke-testar**
 
-### Os 13 commits, em ordem, e a dependência entre eles
+### Os 17 commits de código, em ordem, e a dependência entre eles
 
 | # | commit | depende do anterior? |
 |---|---|---|
@@ -170,10 +189,16 @@ no fecho**, não a acreditar agora"*. Conferida. Passa.
 | 11 | `6f66a8554` o `reduced motion` **PARA** o roteiro | **do 6** |
 | 12 | `c8b6276e9` o roteiro **RESTAURA** o que manda ligar | **do 11** (a causa raiz do 11) |
 | 13 | `995520929` as duas SONDAS que refutam a atribuição dos 335 µs | independente |
+| 14 | `93e684176` ⚠️ **a semente do track cancelava o byte BAIXO do id** (§7.2.1) — **defeito de PRODUTO** + 2 gates | **do 1** (é a porta que ele criou) |
+| 15 | `0d7c02029` `rustfmt` no gate do 14 | **do 14** |
+| 16 | `032e2ca29` dois gates MEUS que não podiam falhar pelo motivo que alegavam | **do 5 e do 12** |
+| 17 | `998d6f675` quatro afirmações que não sobreviviam a quem as lesse | independente |
 
 ⚠️ **Os commits 1-6 são uma cadeia**: um rebase que os reordene quebra a compilação (o 2 usa o que
 o 1 cria). Os 10-11 dependem do 6 (editam a cena que ele cria). Os 7-9 são independentes entre si
-e da cadeia.
+e da cadeia. **Os 14-17 são a auditoria de fecho** e vêm por último de propósito: o 14 corrige
+código que o 1 introduziu, e os 16-17 corrigem **gates e prosa** dos commits anteriores — um
+rebase que os puxe para cima quebra a premissa de que eles editam algo que já existe.
 
 ### ✅ **SMOKADO E APROVADO** (Enio, 2026-08-16)
 
@@ -247,14 +272,14 @@ chrome do app) — não o "complete" sem trazer a F4a primeiro.
 
 ---
 
-## 7. Gate batched da linha (rodado no TIP, `995520929`)
+## 7. Gate batched da linha (rodado no TIP, `998d6f675`)
 
 | gate | resultado |
 |---|---|
 | `cargo fmt --all -- --check` | **EXIT 0** |
 | `cargo check --workspace --all-targets` | **EXIT 0** |
 | `cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings` | **EXIT 0, zero warnings** |
-| `cargo nextest run --workspace --cargo-profile ci-test` | **16.117 de 16.117 passaram, 1.564 skipped — EXIT 0** |
+| `cargo nextest run --workspace --cargo-profile ci-test` | **16.118 de 16.119, 1.564 skipped** — ⚠️ **1 flake de CARGA, exonerada por três testemunhas (7.1)** |
 
 ⚠️ **A varredura é a WORKSPACE INTEIRA, de propósito.** Esta linha toca `ph2d-editor-core`, e os
 gates que moram em `ph2d-editor-core/tests/` e `shells/desktop/tests/` **só correm na varredura
@@ -268,9 +293,33 @@ gate correu com `load average 1,40`.
 ### 7.1 Resultado do nextest
 
 ```
-Summary [58.160s] 16115 tests run: 16115 passed, 1562 skipped
-[exited with code 0]
+tip=998d6f675  load=2.63  PSI avg10=0.00
+Summary [69.978s] 16119 tests run: 16118 passed, 1 failed, 1564 skipped
+  FAIL (3898/16119) ph2d-host-desktop  flip_smooth::…::the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke
 ```
+
+⚠️ **O número desta caixa já esteve errado UMA vez, e a contradição era interna ao próprio
+documento:** a tabela do §7 dizia **16.117** e este bloco dizia **16.115**. Medido no tip,
+`16.119 = 16.117 + 2` — os dois gates novos que a auditoria de fecho acrescentou
+(`neighbouring_ids_do_not_share_a_track` e `the_fold_and_the_scroll_families_never_collide`) ⇒
+**o 16.117 da tabela estava CERTO e quem estava velho era o bloco bruto colado sob ela.** *Duas
+cópias do mesmo facto a discordar não dizem qual delas mente — só que uma mente*, e a única forma
+de saber é re-medir.
+
+⚠️ **A ÚNICA falha é flake de CARGA, e é exonerada por TRÊS testemunhas — não por opinião:**
+
+1. **diff VAZIO** — `git diff main...HEAD -- '*flip_smooth*' 'crates/ph2d-flip*'` não devolve uma
+   linha; esta linha não alcança aquele código;
+2. **PASSA isolada em 0,010 s** com a máquina calma;
+3. **falhou na posição 3898 de 16119**, ou seja **a meio da suíte**, com os 32 núcleos saturados
+   pelos outros dezasseis mil testes — e ela é um **kill de relógio** (o próprio `CLAUDE.md`
+   regista que este gate já reprovou por PERFIL de build, em 21,65 contra 1,92 ms).
+
+⚠️ **A corrida anterior, com `load 5,67 / PSI 1,12`, tinha DUAS falhas** (esta e
+`a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs`); com `PSI 0,00` a segunda
+desapareceu sozinha. *Nenhuma leitura de relógio desta workstation significa coisa nenhuma acima
+de `load ~5`* — e ⚠️ **o `loadavg` ATRASA**: mediu-se `load 16,39` com `PSI avg10 = 0,12`. O
+detector honesto de contenção **instantânea** é `/proc/pressure/cpu`, não o `loadavg`.
 
 **Zero vermelho-latente**, incluindo os arch-gates de `ph2d-editor-core/tests/` e
 `shells/desktop/tests/` que a varredura por-crate não alcança.
@@ -286,6 +335,74 @@ integrador os rodar, **não os atribua a esta wave**.
 ⚠️ **Gates de GPU:** esta linha **não toca crate de GPU nenhuma** (`ph2d-render` ·
 `ph2d-flip-render` · `ph2d-paint-gpu` · `ph2d-mesh-render` · `ph2d-gpu-cook` com diff vazio), então
 os `--ignored` de adapter não a alcançam.
+
+---
+
+### 7.2 A auditoria multiagêntica de fecho — o que ela achou
+
+Seis lentes independentes sobre um escopo exacto de 66 arquivos (cinco delegadas + uma minha).
+**Quatro achados sobreviveram à verificação**, e o primeiro é de PRODUTO.
+
+#### ⭐ 7.2.1 A semente do track CANCELAVA o byte baixo do id (`93e684176`)
+
+`fold_track` e `scroll_track` (`screens/hero/live.rs`) mapeiam o `NodeId` de uma secção numa pista
+de movimento privada, para que *quanto desta secção está aberta* nunca partilhe pista com *quanto
+hover há aqui*. Os dois abriam a mistura assim:
+
+```rust
+let mut h = section.0 ^ 0x666f_6c64_5f74_7261; // "fold_tra"
+for b in section.0.to_le_bytes() { h ^= u64::from(b); h = h.wrapping_mul(FNV_PRIME_64); }
+```
+
+⚠️ **O `^ section.0` da semente e o primeiro `h ^= byte` do laço mordem o MESMO byte, e um XOR
+consigo mesmo é ZERO** — o byte baixo do id era cancelado antes de a mistura começar. Ids vizinhos
+que só diferem nesse byte (o caso comum: uma tabela de secções declaradas em sequência) entravam no
+FNV com o **mesmo** estado após a primeira volta.
+
+**Verificado num modelo independente antes de tocar em código** — não deduzido da leitura. A cura é
+tirar o `^ section.0` da semente (o laço já consome o id inteiro):
+
+```rust
+let mut h = 0x666f_6c64_5f74_7261; // "fold_tra"
+```
+
+Dois gates novos, os dois **não-ignorados** (são eles os `+2` do §7.1): 512 ids consecutivos a
+partir de seis bases têm de dar **512 pistas distintas**, e as duas famílias (`fold` × `scroll`)
+têm de ter **intersecção vazia** em 4096 ids cada.
+
+⚠️ **Porque nenhum gate o via:** a colisão exige **dois** ids vizinhos a dobrar-se ao mesmo tempo, e
+toda fixture de dobra deste repositório move **uma** secção. O sintoma no produto seria duas secções
+adjacentes a dobrar **em uníssono** — que lê como *"o painel inteiro respira"*, não como defeito.
+
+#### 7.2.2 Dois gates MEUS que não podiam falhar pelo motivo que alegavam (`032e2ca29`)
+
+- `folded_gap` a `t = 1` era afirmado com `x - 8.0 < 1e-6` — **unilateral**: qualquer valor ABAIXO
+  de 8 passa. Um `folded_gap` que devolvesse zero deixava o gate verde. Virou `.abs()`.
+- `every_step_that_arms_reduced_motion_also_disarms_it` contava as ocorrências no **arquivo
+  inteiro**, então um passo que arma e **outro** que desarma equilibravam-se. Passou a fatiar por
+  `fn` e a exigir o par **dentro de cada função**, com controlo positivo. ⚠️ **A mutação honesta
+  precisou de preservar a contagem global** (mover o `desarma` para outra função): com ela, o gate
+  velho fica **VERDE** e o novo sangra nomeando a função.
+
+#### 7.2.3 Quatro afirmações que não sobreviviam a quem as lesse (`998d6f675`)
+
+`DECLARED` prometia que o gate a percorre (não percorre — ele é `pub(crate)` e o gate vive noutra
+crate, com a lista duplicada à mão) · `PANEL_A11Y_DELEGATE_OK` descrevia **uma** categoria e a lista
+tem **duas** (sem interacção × DELEGA) · `folded_gap`/`has_body` não diziam que **não têm chamador
+hoje** nem a obrigação de recorte que quem os adoptar herda.
+
+#### 7.2.4 O que a auditoria RECUSOU, e vale tanto quanto o que ela achou
+
+- ⛔ **«a migração da dobra ficou pela metade»** — a lente apontou que a Hierarquia continua a
+  perguntar `is_collapsed`. **Refutado por medição:** aquele `is_collapsed` é de um **nó da árvore**,
+  não de uma secção de painel; é outra grandeza, com outro dono.
+- ⛔ **«o bloco bruto do §7.1 está certo e a tabela está velha»** — a lente viu a contradição
+  (mérito dela) e concluiu ao contrário; ver §7.1.
+
+⚠️ **E DUAS lentes sujaram a worktree contra instrução explícita** (uma deixou `motion.rs` a meio de
+uma mutação, outra um `#[ignore]` em `hero/tests.rs`). **Não restaurei enquanto a segunda ainda
+corria** — restaurar debaixo de uma lente fá-la medir uma coisa e reportar outra; o diff foi
+preservado para `/tmp/audit-dirt/` e ambas limparam o que sujaram antes de fechar.
 
 ---
 
@@ -327,6 +444,9 @@ bloqueado fora do repositório:
   custo*, super-linear, onde uma soma de peças `O(n)` seria linear; as sondas isoladas sub-estimam
   porque cada uma percorre a MESMA estrutura 200 vezes, residente. ⇒ **a cura não é micro-otimizar
   uma peça** (nenhuma passa de 52 µs): é **não TOCAR** em 4491 entradas, o que é o desenho do
+  ⚠️ **E os OUTROS quatro consumidores de `live::tick` estão fora da conta por MEDIÇÃO, não por
+  omissão:** dobra · rolagem · zoom · a barra abrem **~6 pistas no total** e custam **~0,1 µs** — o
+  eixo é a POPULAÇÃO de widgets, e nenhum deles a move.
   *conjunto sujo* e mexe no `tick_hover`, cujo publish atravessa nove consumidores e tem histórico
   de defeito subtil de flash ⇒ **wave própria, com ordem — agora com a atribuição CERTA**.
   ⚠️ **E a metade da nota que dizia *«a PODA nunca dispara»* estava errada:** ela dispara, mas só

@@ -2673,7 +2673,8 @@ alguém a chame.*
 | ~~**W1**~~ os defaults do `B` | ⛔ **sem cura em código** — §7.0; vira decisão de produto |
 | **W4** o Smooth que não encolhe | ✅ **FECHADA** — o `l-mode` (Taubin λ\|μ) · **Slide Relax** · o **Surface Smooth como pincel próprio** (HC) · e o **laplaciano por cotangentes**, que ⚠️ **não foi para onde esta tabela o mandava**: como direção do Inflate ele foi **RECUSADO por medição** (§7.28) e a casa dele é o operador sobre o qual o par λ\|μ corre — que é o que o §4 já dizia (*"o operador dos dois acima"*) |
 | **W6** os dabs que não são discos | ✅ **FECHADA** — **Clay Strips** · **Blob** · **Clay Thumb** (§7.26) · **Multiplane Scrape** (§7.27). O **Draw Sharp**, o 5º da lista dela, saiu com motivo na §7.18 (ele é o item da W1) |
-| **W7** o plano MLS · **W8** Layer · **W9** Mesh Filter · **W10** Cloth · **W11** handles · **W12** a geodésica | ⬜ **por abrir** |
+| **W8** a DEMÃO | ✅ **FECHADA** — o `layer.cc`: `disp += f·strength·(1,05 − |disp|)`, e ⚠️ **a lei tem conteúdo MEDIDO** (todo peso da pegada converge para `disp = 1` ⇒ a demão é um **PLATÔ**, e o falloff é uma TAXA e não um perfil). ⚠️ **E o custo estrutural que esta tabela previa NÃO existiu:** o `accum` **É** o `displacement_factor` da referência ⇒ zero plano por-vértice novo, zero rota de aplicador nova, zero campo no snapshot de undo — quem o removeu foi ler o tempo de vida do `ss.cache` (por-traço), não uma escolha de desenho. Cena `=33` |
+| **W7** o plano MLS · **W9** Mesh Filter · **W10** Cloth · **W11** handles · **W12** a geodésica | ⬜ **por abrir** |
 
 **Ferramentas** — a lista do §5.1 tem 16 itens:
 
@@ -2682,15 +2683,25 @@ alguém a chame.*
 | ✅ **feitos (4)** | Clay Strips · Blob · Clay Thumb · **Multiplane Scrape** |
 | ✅ **respondido SEM verbo novo (1)** | **Elastic Deform** — a §7.17 mediu que 3 dos 5 tipos dele são o mesmo verbo com outra família de escalas e os outros 2 já shipavam; o que faltava era o knob **Field width**. *Um sexto botão cujo conteúdo é um dropdown para verbos que a lista já tem é o item de menu morto que este plano recusa.* ⇒ **o alvo de 14 pincéis novos é de 13** |
 | ⛔ **fora, com motivo (1)** | Draw Sharp — §7.18 mediu que o que o nome promete mora na **CURVA**, e a curva de fábrica por-tool está no mesmo `.blend` binário da §7.0 ⇒ ele **é** o item da W1 |
-| ⬜ **faltam (10)** | Layer · Cloth · Pose · Boundary · Nudge · Thumb · Surface Smooth · Slide Relax · Mesh Filter (9 tipos) · Cloth Filter (5 tipos) |
+| ✅ **feitos na W4 (2)** | **Surface Smooth** · **Slide Relax** — ⚠️ esta linha os listava como pendentes enquanto a linha da W4, DUAS tabelas acima, já os dava por fechados: *duas contagens do mesmo fato divergem no dia em que só uma é atualizada* |
+| ✅ **feito na W8 (1)** | **Layer** — a DEMÃO |
+| ⬜ **faltam (7)** | Cloth · Pose · Boundary · Nudge · Thumb · Mesh Filter (9 tipos) · Cloth Filter (5 tipos) |
 
-⇒ **20 verbos hoje**, contra os 16 de que a linha partiu. O placar do §10 dizia
+⇒ **23 verbos hoje** — `Verb::ALL.len()`, que é a fonte —, contra os 16 de que a
+linha partiu. ⚠️ **Esta linha dizia 20, e o erro era a MESMA omissão da linha do
+`faltam` acima:** ela foi escrita depois da W6 (16 + os 4 dela) e nunca contou os
+**dois** que a W4 já tinha entregue. *Um número de contagem que não é derivado da
+lista drifta na primeira wave que alguém esquece — e aqui ele driftou duas vezes
+pelo mesmo esquecimento, em dois parágrafos vizinhos.* O placar do §10 dizia
 **32**; com o Elastic Deform respondido sem verbo e o Draw Sharp fora, o alvo
 honesto é **29** (16 + 11 pincéis + 2 filtros).
 
 ⚠️ **E os quatro que valem mais que a contagem, porque não são "mais um chip":**
-o **Layer** (W8) traz um plano por-vértice novo, e com ele a lei do repo — *ao
-adicionar um plano, adicione-o ao snapshot de undo no MESMO commit* · o **Mesh
+⚠️ o **Layer** (W8) foi previsto aqui como *"traz um plano por-vértice novo, e
+com ele a lei do repo — ao adicionar um plano, adicione-o ao snapshot de undo no
+MESMO commit"*, e a §7.31 mediu que **ele não traz plano nenhum** (o `accum` já
+é o `displacement_factor` da referência) — *a lei do repo continua de pé; o que
+estava errado era supor que esta wave a acionaria* · o **Mesh
 Filter** (W9) é o mais barato da lista inteira, porque o precedente do *Filter
 Layer* do Painter diz que **não há kernel novo** (só `Sphere` e `Random` o são) ·
 o **Cloth** (W10) é o único que traz um SOLVER, com cadência e undo próprios · e

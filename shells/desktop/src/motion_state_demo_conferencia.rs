@@ -361,18 +361,19 @@ pub(super) fn space(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId>
   (medido: o pino generico andava 0,0000 contra 3,0000 do intrinseco) e mexer no `spacing`
   deixava-a na largura antiga. Medido AGORA, as duas varrem {:.1} de ponta a ponta e a pose
   relativa delas difere em menos de 0,001 -- se divergirem, a lei voltou a ser duas.
-  (!) 3-4, O BANDO: cada agente desenha a {:.1} de largura, e a de cima empacota-os a {:.3}
-  de mediana -- {}/{} SOBREPOSTOS -- porque o unico knob era um PESO cujo topo de slider
-  (6,0) fica 8,5x abaixo do que zerar a sobreposicao pedia (51,2). A de baixo tem
-  `separation_radius` {:.1} e mede {:.3} de mediana, {}/{} sobrepostos: ponha os olhos nos
-  VAOS, nao nas pecas.
+  (!) 3-4, O BANDO: as DUAS bandas levam o peso de separacao no TOPO do slider (6,0), entao
+  a unica coisa em que elas diferem e' o ALCANCE. Cada agente desenha a {:.1} de largura, e
+  a de cima -- com o peso maximo -- ainda empacota-os a {:.3} de mediana, {}/{} SOBREPOSTOS,
+  porque um peso e' quao FIRME e' o empurrao e nao ate' ONDE ele chega (zerar a sobreposicao
+  so' com peso pedia 51,2, 8,5x acima do topo). A de baixo tem `separation_radius` {:.1} e
+  mede {:.3} de mediana, {}/{} sobrepostos: ponha os olhos nos VAOS, nao nas pecas.
   (!) O preco da banda 4 esta NOMEADO: um espaco pessoal maior que a percepcao e' invisivel
   a' grade do device, entao ela RECUSA a GPU e coze na CPU -- a alternativa era divergir em
   silencio entre as duas rotas.",
         5.0,
         conferencia_demos_space::drawn_size(),
-        0.803,
-        34,
+        1.182,
+        11,
         40,
         4.0,
         1.614,

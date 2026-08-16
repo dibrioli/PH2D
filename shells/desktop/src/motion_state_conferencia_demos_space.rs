@@ -31,6 +31,9 @@ const BODY_SIDE: f32 = 6.0;
 const BODY_PIN: f32 = 6.0;
 /// Agentes por bando.
 const FLOCK_COUNT: f32 = 40.0;
+
+/// O peso da separação, o MESMO nas duas bandas — ver o comentário no `flock`.
+const SEPARATION_WEIGHT: f32 = 6.0;
 /// O tamanho com que cada agente é DESENHADO (o `SIZE_IDENTITY` do shell) — o
 /// número contra o qual *"eles se sobrepõem"* se mede.
 const DRAWN_SIZE: f32 = 1.0;
@@ -114,19 +117,28 @@ fn flag(g: &mut Graph, generic: bool, x: f32, y: f32) -> Option<NodeId> {
     Some(b)
 }
 
-/// O BANDO, com ou sem espaço pessoal. As peças são DISCOS do tamanho desenhado —
-/// a cena escreve `size` para que a sobreposição seja a que o artista vê, e não a
-/// que uma fixture escolheu.
+/// O BANDO, com ou sem espaço pessoal.
+///
+/// ⚠️ **A cena NÃO escreve `size`, e o `DRAWN_SIZE` diz por quê:** um agente é
+/// desenhado a **1,0**, o `SIZE_IDENTITY` que o shell passa ao
+/// `lower_to_instances` quando a coluna está ausente. A régua da sobreposição é
+/// esse número — o que o artista vê —, não um que a cena escolheu; escrevê-lo
+/// aqui seria a segunda cópia de um fato que o lowering já decide.
 fn flock(g: &mut Graph, personal_space: bool, x: f32, y: f32) -> Option<NodeId> {
     let f = g.add_node("motion.boids");
     g.set_pos(f, Pos { x, y });
     g.set_param(f, "count", FLOCK_COUNT);
     g.set_param(f, "seed", 7.0);
+    // ⚠️ **O peso vai nos DOIS, e é o que faz deste par um PAR.** Ele mandava só
+    // na banda tratada, então ela diferia do controle em DUAS coisas — e um peso
+    // de separação 3,75× maior abre um bando SOZINHO. Medido com o par
+    // desconfundido (ablação do peso, os dois no default 1,6): o raio sozinho
+    // leva a mediana de 0,80 a 1,00 e os sobrepostos de 34 para **23** — real, e
+    // longe do `0/40` que a mensagem cita. A leitura honesta é dar o peso aos
+    // dois: o que sobra de diferente é o ALCANCE, que é a wave.
+    g.set_param(f, "separation", SEPARATION_WEIGHT);
     if personal_space {
         g.set_param(f, "separation_radius", PERSONAL_SPACE);
-        // ⚠️ O peso continua a mandar em quão FIRME é o empurrão; o que o raio
-        // mudou foi o ALCANCE, e é ele que o peso sozinho não alcançava.
-        g.set_param(f, "separation", 6.0);
     }
     wire_pre(g, f, 0, f, 2)?;
     Some(f)

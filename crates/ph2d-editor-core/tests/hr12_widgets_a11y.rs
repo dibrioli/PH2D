@@ -317,7 +317,7 @@ const WIDGET_DELEGATE_MARKERS: &[&str] = &[
 ///
 /// ⚠️ **Há DUAS categorias aqui, e o doc anterior só nomeava uma.** Ele dizia *"paint via
 /// vector/text primitives only (no widget interaction → no a11y to wire)"*, e essa frase é falsa
-/// para a primeira entrada da lista: o `paint_sections_chrome.rs` **regista um hit interactivo**
+/// para a primeira entrada da lista: o `paint_sections_chrome.rs` **regista um hit interativo**
 /// (um cabeçalho dobrável é clicável). A entrada está **certa** — a a11y é do widget canónico
 /// `paint_section_header`, que a emite e tem gates próprios —, mas por **DELEGAÇÃO**, não por
 /// ausência de interacção.

@@ -9,6 +9,10 @@ fn params(count: usize) -> Params {
         seed: 1,
         radius_sq: 4.0 * 4.0, // wide perception so the whole flock interacts
         separation: 0.0,
+        // O espaço pessoal DESLIGADO, declarado em vez de herdado: `0` é *a
+        // repulsão perceptual de sempre*, e escrevê-lo aqui é o que impede estes
+        // testes de mudarem de sentido em silêncio se o default se mover.
+        sep_radius_sq: 0.0,
         alignment: 0.0,
         cohesion: 0.0,
         seek: 0.0,
@@ -423,6 +427,10 @@ fn product_params(count: usize, fov_deg: f32, seed: u32) -> Params {
         seed,
         radius_sq: radius * radius,
         separation: d("separation"),
+        sep_radius_sq: {
+            let r = d("separation_radius");
+            r * r
+        },
         alignment: d("alignment"),
         cohesion: d("cohesion"),
         seek: d("seek"),
@@ -533,4 +541,181 @@ fn measure_what_the_view_cone_does_to_the_flock() {
         let (pol, churn, spr, speed) = measure_avg(N, 360.0, radius, SEEDS);
         println!("{radius:5.1}   {pol:7.4}   {churn:10.1}   {spr:6.3}  {speed:6.3}");
     }
+}
+
+// ---------------------------------------------------------------------------
+// O ESPAÇO PESSOAL (`separation_radius`) — o `desiredseparation` de Reynolds
+// ---------------------------------------------------------------------------
+
+/// A menor distância ao vizinho MAIS PRÓXIMO de cada agente, mediana — a régua
+/// que o artista lê como *"eles se sobrepõem?"*, e não o `min_pair` (que é UM
+/// par e salta).
+fn median_nearest(pos: &[[f32; 2]]) -> f32 {
+    let mut nn: Vec<f32> = pos
+        .iter()
+        .enumerate()
+        .map(|(i, a)| {
+            pos.iter()
+                .enumerate()
+                .filter(|(j, _)| *j != i)
+                .map(|(_, b)| {
+                    let d = [a[0] - b[0], a[1] - b[1]];
+                    (d[0] * d[0] + d[1] * d[1]).sqrt()
+                })
+                .fold(f32::MAX, f32::min)
+        })
+        .collect();
+    nn.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    nn[nn.len() / 2]
+}
+
+fn flock_pose(p: &Params) -> Vec<[f32; 2]> {
+    vec2_col(&run([0.0, 0.0], p, 180, 1.0 / 60.0), "P")
+}
+
+/// **UM ESPAÇO PESSOAL IGUAL À PERCEPÇÃO É O MUNDO DE HOJE, AO BIT.**
+///
+/// Este é o gate que torna o param seguro: com `separation_radius == radius` o
+/// gate novo selecciona exactamente o conjunto que o gate de percepção já
+/// seleccionava, e a lei dentro dele é a MESMA inverse-square. Ele prova o RAMO
+/// (que roda) e não só o `else` — mais forte que exigir que o desligado não mude
+/// nada.
+#[test]
+fn a_personal_space_the_size_of_perception_is_the_flock_that_shipped() {
+    let mut off = product_params(40, 360.0, 7);
+    off.sep_radius_sq = 0.0;
+    let mut on = product_params(40, 360.0, 7);
+    on.sep_radius_sq = off.radius_sq;
+
+    let a = flock_pose(&off);
+    let b = flock_pose(&on);
+    assert_eq!(a.len(), b.len());
+    for (i, (p, q)) in a.iter().zip(&b).enumerate() {
+        assert_eq!(
+            (p[0].to_bits(), p[1].to_bits()),
+            (q[0].to_bits(), q[1].to_bits()),
+            "o agente {i} tem de sair BYTE a byte igual: {p:?} contra {q:?}"
+        );
+    }
+}
+
+/// **UM ESPAÇO PESSOAL MAIOR QUE A PERCEPÇÃO ABRE O BANDO** — o desacoplamento,
+/// que é a razão de o param existir.
+///
+/// ⚠️ Ele mede a distância ao vizinho MAIS PRÓXIMO e não a dispersão: um bando
+/// que meramente inche (o `seek` mais fraco) espalha-se sem separar ninguém, e é
+/// exactamente essa confusão que o report do Enio pedia para desfazer.
+#[test]
+fn a_personal_space_wider_than_perception_opens_the_flock() {
+    let mut off = product_params(40, 360.0, 7);
+    off.sep_radius_sq = 0.0;
+    let mut on = product_params(40, 360.0, 7);
+    on.sep_radius_sq = 4.0 * 4.0; // o dobro do `radius` default (2,0)
+    on.separation = 6.0; // o topo do slider
+
+    let tight = median_nearest(&flock_pose(&off));
+    let open = median_nearest(&flock_pose(&on));
+    assert!(
+        open > tight * 1.5,
+        "o espaço pessoal tem de ABRIR o bando: {tight:.4} -> {open:.4}"
+    );
+    // E o CONTROLE que impede *"o bando explodiu"* de passar por separação: o
+    // `seek` continua a segurá-lo, então a dispersão fica na mesma ordem.
+    let s_off = spread(&flock_pose(&off));
+    let s_on = spread(&flock_pose(&on));
+    assert!(
+        s_on < s_off * 3.0,
+        "o bando tem de continuar um bando: dispersão {s_off:.4} -> {s_on:.4}"
+    );
+}
+
+/// **O ESPAÇO PESSOAL ATRAVESSA O CONE DE VISÃO** — ele é físico, não perceptual.
+///
+/// Dois agentes de costas um para o outro não se veem; encostados, empurram-se na
+/// mesma. Sem esta metade, um bando de cone estreito atravessa-se de frente.
+#[test]
+fn personal_space_is_felt_from_behind() {
+    // Um cone tão estreito que quase ninguém vê ninguém.
+    //
+    // ⚠️ **O par difere SÓ no raio, e é isso que isola o cone.** A minha primeira
+    // versão variava o raio **e** o peso, então uma mutação que pusesse o espaço
+    // pessoal atrás do cone passava por causa do peso — o gate estava a medir
+    // `separation`, não a posição do bloco.
+    let mut blind = product_params(40, 20.0, 7);
+    blind.sep_radius_sq = 0.0;
+    blind.separation = 6.0;
+    let mut spaced = product_params(40, 20.0, 7);
+    spaced.sep_radius_sq = 4.0 * 4.0;
+    spaced.separation = 6.0;
+
+    let tight = median_nearest(&flock_pose(&blind));
+    let open = median_nearest(&flock_pose(&spaced));
+    assert!(
+        open > tight * 1.3,
+        "o espaço pessoal tem de agir mesmo com o cone quase fechado: \
+         {tight:.4} -> {open:.4}"
+    );
+}
+
+/// **O DEVICE RECUSA UM ESPAÇO PESSOAL MAIOR QUE A PERCEPÇÃO.**
+///
+/// A grade do kernel tem célula `radius` e a varredura é 3×3 — exactamente o
+/// conjunto dentro do `radius` e nada além. Com `separation_radius > radius` a
+/// CPU (all-pairs) acha vizinhos que o device nem visita, e as duas rotas
+/// divergiriam **em silêncio** sobre uma cena que reivindica `fully_gpu`.
+///
+/// ⚠️ Este gate roda **sem adapter**, e é a metade mais importante: uma recusa não
+/// honrada não daria erro nenhum — o bando cozeria na GPU com menos separação, e o
+/// artista veria dois desenhos conforme o `PH2D_GPU_COOK` estivesse ligado.
+#[test]
+fn the_device_refuses_a_personal_space_it_cannot_see() {
+    let f = crate::gpu::GPU_KERNEL
+        .applicable
+        .expect("o kernel declara a recusa");
+    let with = |sep_r: f32, radius: f32| {
+        f(&move |name: &str| match name {
+            "separation_radius" => sep_r,
+            "radius" => radius,
+            _ => 0.0,
+        })
+    };
+    assert!(with(0.0, 2.0), "desligado: o device responde");
+    assert!(with(2.0, 2.0), "igual à percepção: a grade cobre, responde");
+    assert!(with(1.0, 2.0), "menor que a percepção: cobre, responde");
+    assert!(
+        !with(4.0, 2.0),
+        "MAIOR que a percepção: a grade não o vê, tem de RECUSAR"
+    );
+}
+
+/// **DOIS AGENTES QUE NÃO SE VEEM AINDA SE EMPURRAM.**
+///
+/// O caso que obrigou a soma da separação a sair de dentro do `neighbours > 0`:
+/// com um espaço pessoal maior que a percepção, um agente pode ter alguém
+/// encostado e NINGUÉM percebido — e ali a soma seria descartada, com os dois a
+/// atravessarem-se porque nenhum viu o outro.
+///
+/// ⚠️ **A fixture é montada à mão, e tem de ser:** o bando semeia por hash num
+/// aglomerado denso, onde todo agente tem vizinhos percebidos e o ramo é
+/// inalcançável — a mutação sobrevive à suíte inteira sobre uma cena que não
+/// contém o fenômeno.
+#[test]
+fn two_agents_that_cannot_see_each_other_still_push_apart() {
+    let mut p = params(2);
+    p.radius_sq = 1.0 * 1.0; // percepção 1,0: a 3,0 eles NÃO se veem
+    p.sep_radius_sq = 4.0 * 4.0; // espaço pessoal 4,0: eles SENTEM-se
+    p.separation = 2.0;
+    p.seek = 0.0; // sem mola, senão ela mascara o empurrão
+
+    let state = Stream::new(2)
+        .with("P", Column::Vec2(vec![[0.0, 0.0], [3.0, 0.0]]))
+        .with("vel", Column::Vec2(vec![[0.0, 0.0], [0.0, 0.0]]))
+        .with("sim_t", Column::Scalar(vec![0.0, 0.0]));
+    let out = simulate([0.0, 0.0], &state, 1.0 / 60.0, &p);
+    let pos = vec2_col(&out, "P");
+    let gap = (pos[1][0] - pos[0][0]).abs();
+    assert!(
+        gap > 3.0 + 1e-4,
+        "os dois têm de se afastar mesmo sem se verem; o vão foi {gap:.6}"
+    );
 }

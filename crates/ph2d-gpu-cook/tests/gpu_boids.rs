@@ -634,3 +634,56 @@ fn probe_what_the_steering_budget_changes() {
         }
     }
 }
+
+/// O bando com ESPAÇO PESSOAL — `separation_radius` dentro da percepção, que é
+/// onde a grade do kernel o cobre.
+///
+/// ⚠️ **Esta fixture existe porque as outras NÃO CONTÊM O FENÔMENO.** Todas
+/// deixam `separation_radius` no default `0`, então o ramo novo do WGSL **nunca
+/// roda** e as duas rotas concordam sobre um termo que nenhuma delas avalia:
+/// apagar o bloco do espaço pessoal do shader deixa as onze VERDES. É o modo de
+/// falha que a paridade do cone e a do `accel` já pagaram neste mesmo arquivo.
+fn boids_with_personal_space(count: f32, sep_radius: f32) -> (Graph, NodeId) {
+    let mut g = Graph::new();
+    let boids = g.add_node("motion.boids");
+    g.set_param(boids, "count", count);
+    g.set_param(boids, "seed", 1.0);
+    g.set_param(boids, "radius", 2.3);
+    g.set_param(boids, "separation", 1.4);
+    g.set_param(boids, "separation_radius", sep_radius);
+    g.set_param(boids, "alignment", 0.9);
+    g.set_param(boids, "cohesion", 0.7);
+    g.set_param(boids, "seek", 1.1);
+    g.set_param(boids, "max_speed", 4.0);
+    let out = g.add_node("motion.output");
+    g.connect(Edge {
+        from: (boids, 0),
+        to: (boids, 2),
+        delayed: true,
+    })
+    .unwrap();
+    g.connect(Edge {
+        from: (boids, 0),
+        to: (out, 0),
+        delayed: false,
+    })
+    .unwrap();
+    (g, out)
+}
+
+#[test]
+#[ignore = "needs a GPU adapter"]
+fn a_flock_with_personal_space_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping gpu_boids");
+        return;
+    };
+    let reg = registry();
+    // ⚠️ **1,7 é ESTRITAMENTE menor que o `radius` de 2,3, e é de propósito:** é o
+    // regime que a grade cobre e onde o device responde. O caso `> radius` é o que
+    // o `applicable` RECUSA, e ele tem gate próprio, sem adapter.
+    let (g, out) = boids_with_personal_space(400.0, 1.7);
+    let cpu = cpu_ticks(&g, &reg, out, 2);
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 2, 1);
+    parity("a flock with personal space", &cpu[2], &gpu_out, 2e-3);
+}

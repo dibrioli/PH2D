@@ -173,6 +173,7 @@ const WGSL: &str = r#"
     let vi = read_state_vel(i);
     let dt = clamp(params.playhead - read_state_sim_t(i), 0.0, BOIDS_MAX_DT);
     let r2 = params.radius * params.radius;
+    let sep_r2 = params.separation_radius * params.separation_radius;
     let cos_half = boids_cos_half_fov(params.fov);
     // MASSA INFINITA: o agente nao se move -- e continua a ser VISTO, porque o
     // laco de vizinhos le `read_state_P(j)`/`read_state_vel(j)`, o estado de
@@ -223,7 +224,14 @@ const WGSL: &str = r#"
                 if (cj.x != c.x || cj.y != c.y) { continue; }
                 let d = pi - pj;
                 let dsq = dot(d, d);
-                if (dsq > r2 || dsq < BOIDS_EPS) { continue; }
+                if (dsq < BOIDS_EPS) { continue; }
+                // O ESPACO PESSOAL -- fisico, nao perceptual: corre ANTES do gate
+                // de percepcao e do cone, o `crate::step` verbatim. O ramo mantem
+                // `separation_radius = 0` byte-identico.
+                if (sep_r2 > 0.0 && dsq < sep_r2) {
+                    sep = sep + d * (1.0 / dsq);
+                }
+                if (dsq > r2) { continue; }
                 // O CONE DE VISAO -- o `crate::step` verbatim, com o mesmo ramo:
                 // em 360 nada aqui roda, entao o disco de hoje nao paga a raiz.
                 if (cos_half > -1.0) {
@@ -234,8 +242,9 @@ const WGSL: &str = r#"
                         if (ahead < cos_half * sqrt(dsq * v_sq)) { continue; }
                     }
                 }
-                let inv = 1.0 / dsq;
-                sep = sep + d * inv;
+                if (sep_r2 <= 0.0) {
+                    sep = sep + d * (1.0 / dsq);
+                }
                 align = align + read_state_vel(j);
                 centroid = centroid + pj;
                 neighbours = neighbours + 1u;
@@ -247,8 +256,10 @@ const WGSL: &str = r#"
         let inv_n = 1.0 / f32(neighbours);
         accel = accel + (align * inv_n - vi) * params.alignment;
         accel = accel + (centroid * inv_n - pi) * params.cohesion;
-        accel = accel + sep * params.separation;
     }
+    // FORA do `neighbours > 0` -- o `crate::step` verbatim, e byte-identico com o
+    // espaco pessoal desligado (somar `0 * separation` e' somar zero).
+    accel = accel + sep * params.separation;
     accel = accel + (home - pi) * params.seek;
     // Reynolds' steering budget — the CPU's `norm()` verbatim: length, the EPS
     // early-out, then unit·budget in that order (divide, then multiply), so the
@@ -291,6 +302,7 @@ pub const GPU_KERNEL: GpuKernel = GpuKernel {
         "seed",
         "radius",
         "separation",
+        "separation_radius",
         "alignment",
         "cohesion",
         "seek",
@@ -306,7 +318,24 @@ pub const GPU_KERNEL: GpuKernel = GpuKernel {
     ],
     count_law: Some(count_law),
     variant_by_param: None,
-    applicable: None,
+    // ⚠️ **A RECUSA existe porque a GRADE é a PERCEPÇÃO, e um espaço pessoal maior
+    // que ela seria visto pela CPU e não pelo device.**
+    //
+    // O [`GRID`] declara `cell_param: "radius"`, e o kernel varre as 3×3 células em
+    // volta — exactamente o conjunto dentro do `radius`, e **nada além dele**. Com
+    // `separation_radius > radius` a CPU (all-pairs) acha vizinhos que a varredura
+    // do device nem visita, e as duas rotas divergiriam **em silêncio**, sobre uma
+    // cena que reivindica `fully_gpu`. É o mesmo modo de falha que o `inv_mass` do
+    // pino quase produziu, com os dez gates de paridade verdes porque nenhum deles
+    // punha o caso na fixture.
+    //
+    // ⚠️ **O preço está NOMEADO e é o caso útil:** medido, o que fecha a
+    // sobreposição de 40 agentes de tamanho 1,0 é `separation_radius ≈ 4` contra um
+    // `radius` de 2 — ou seja, exactamente a configuração que recua para a CPU.
+    // Alargar a célula da grade ao `max(radius, separation_radius)` é a cura, e é
+    // wave própria: o `GridSpec.cell_param` é UM param, e dar-lhe um segundo é
+    // side-metadata foundational que atravessa os seis declarantes de grade.
+    applicable: Some(|p| p("separation_radius") <= p("radius")),
 };
 
 /// The neighbourhood grid: over the state `P` (port 2, the `pre` feedback), cell

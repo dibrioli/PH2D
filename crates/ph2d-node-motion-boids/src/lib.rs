@@ -117,6 +117,14 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "separation",
             default: 1.6,
         },
+        // O `desiredseparation` de Reynolds — a SEGUNDA distância da vizinhança,
+        // que o modelo publicado tem e este nó não tinha. `0` é DESLIGADO (a
+        // repulsão inverse-square de sempre, sobre o raio de percepção), e é isso
+        // que mantém todo bando já autorado byte-idêntico.
+        ParamSpec {
+            name: "separation_radius",
+            default: 0.0,
+        },
         ParamSpec {
             name: "alignment",
             default: 1.0,
@@ -168,6 +176,32 @@ struct Params {
     seed: u32,
     radius_sq: f32,
     separation: f32,
+    /// **O `desiredseparation` de Reynolds** — a distância abaixo da qual dois
+    /// agentes se empurram, em unidades de MUNDO. `0` é desligado.
+    ///
+    /// ⚠️ **Ele existe porque o `radius` respondia a DUAS perguntas.** Reynolds
+    /// (*Steering Behaviors*, GDC 1999) e toda implementação canônica separam
+    /// *"quem eu vejo"* de *"quão perto é perto demais"* — Shiffman usa
+    /// `neighbordist = 50` com `desiredseparation = 25`, o POP Steer Separate do
+    /// Houdini tem raio próprio, os boids de Unity/Unreal têm `separationRadius`.
+    /// Aqui os dois eram o MESMO número, e o preço está medido: apertar o
+    /// `radius` para fazer um bando mais LOCAL (0,5) leva a sobreposição de 82%
+    /// para **100%** — a percepção e o espaço pessoal andavam juntos, e um deles
+    /// tinha de ir para o lado errado.
+    ///
+    /// ⚠️ **E a LEI muda com ele, de propósito.** Desligado, a repulsão é
+    /// `d̂/dist` sem escala própria (o `diff` do Shiffman), e o equilíbrio é um
+    /// balanço mole entre pesos: medido, `0,8 → 25,6` de `separation` — **32× o
+    /// peso** — compra **2,4×** de distância, e para 40 agentes de tamanho `1,0`
+    /// não se sobreporem é preciso `51,2`, contra um slider que para em `6,0`.
+    /// Ligado, a força é uma MOLA DE COMPRESSÃO (`(R − dist)/R`): zero na borda,
+    /// máxima no contacto, e o equilíbrio **tende a `R` quando o peso sobe** — que
+    /// é o que torna o número um alvo em vez de um coeficiente.
+    ///
+    /// ⚠️ Guardado **AO QUADRADO** e mais nada: o laço compara distâncias ao
+    /// quadrado, `0` é o sinal de *desligado* nos dois, e um segundo campo com o
+    /// valor cru seria a mesma grandeza em dois sítios.
+    sep_radius_sq: f32,
     alignment: f32,
     cohesion: f32,
     seek: f32,
@@ -388,7 +422,40 @@ fn step(
             }
             let d = [pi[0] - pos[j][0], pi[1] - pos[j][1]];
             let dist_sq = d[0] * d[0] + d[1] * d[1];
-            if dist_sq > p.radius_sq || dist_sq < EPS {
+            if dist_sq < EPS {
+                continue;
+            }
+            // **O ESPAÇO PESSOAL É FÍSICO, NÃO PERCEPTUAL** — e é por isso que ele
+            // corre ANTES do gate de percepção e do cone: um agente encostado nas
+            // suas costas empurra-o, veja-o ou não. Pô-lo depois do cone faria dois
+            // agentes num cone estreito atravessarem-se de frente, e pô-lo depois do
+            // `radius` faria um espaço pessoal maior que a percepção ser truncado
+            // **em silêncio** por outro slider.
+            //
+            // ⚠️ O ramo é o que mantém `separation_radius = 0` byte-idêntico, e é o
+            // mesmo desenho do cone de visão abaixo: o desligado não paga a raiz que
+            // a lei nova custa.
+            // ⛔ **MEDIDO E REJEITADO — não refaça: a MOLA DE COMPRESSÃO.** A minha
+            // primeira lei aqui foi `(R − dist)/R / dist`, escolhida para *"fazer de
+            // `R` um alvo"*: zero na borda, máxima no contacto. Medida com 40
+            // agentes, ela é **uniformemente PIOR** que a inverse-square (mediana
+            // 0,387 contra 0,748 no mesmo peso), e a razão é aritmética — perto do
+            // contacto `(R−d)/R → 1` e as duas colapsam em `1/d`, longe dele a nova
+            // é estritamente menor. Ela não é um alvo; é a lei antiga atenuada.
+            //
+            // ⚠️ **E a lição por trás dela é FÍSICA, não afinação:** um equilíbrio
+            // entre forças FINITAS cai sempre ABAIXO do raio onde a repulsão se
+            // anula. Para o espaçamento pousar num número é preciso repulsão
+            // infinita ali — que é uma RESTRIÇÃO, não um steering, e é exactamente o
+            // que o `motion.collide` na cadeia de estado entrega (medido: mediana
+            // **0,9878** de um diâmetro de 1,0). *Nenhum knob deste nó pode prometer
+            // não-sobreposição, e o doc do módulo diz para onde apontar quem a quer.*
+            if p.sep_radius_sq > 0.0 && dist_sq < p.sep_radius_sq {
+                let inv = 1.0 / dist_sq;
+                sep[0] += d[0] * inv;
+                sep[1] += d[1] * inv;
+            }
+            if dist_sq > p.radius_sq {
                 continue;
             }
             // O CONE DE VISÃO. ⚠️ O ramo é o que mantém 360° byte-idêntico: com
@@ -408,10 +475,16 @@ fn step(
                     }
                 }
             }
-            // Separation: inverse-square repulsion (bites hardest when closest).
-            let inv = 1.0 / dist_sq;
-            sep[0] += d[0] * inv;
-            sep[1] += d[1] * inv;
+            // Separation: inverse-square repulsion (bites hardest when closest) —
+            // o `diff` do Shiffman, **perceptual**, e a lei que shipa quando não há
+            // espaço pessoal autorado. Com ele autorado, a separação já correu lá em
+            // cima e este termo cala-se: dois autores da mesma força discordariam
+            // sobre o alvo.
+            if p.sep_radius_sq <= 0.0 {
+                let inv = 1.0 / dist_sq;
+                sep[0] += d[0] * inv;
+                sep[1] += d[1] * inv;
+            }
             // Alignment / cohesion accumulate neighbour heading / position.
             align[0] += vel[j][0];
             align[1] += vel[j][1];
@@ -429,10 +502,17 @@ fn step(
             // Cohesion: steer toward the centroid.
             accel[0] += (centroid[0] * inv_n - pi[0]) * p.cohesion;
             accel[1] += (centroid[1] * inv_n - pi[1]) * p.cohesion;
-            // Separation: push away (already an inverse-square sum).
-            accel[0] += sep[0] * p.separation;
-            accel[1] += sep[1] * p.separation;
         }
+        // Separation: push away.
+        //
+        // ⚠️ **FORA do `neighbours > 0`, e a diferença é load-bearing quando há
+        // espaço pessoal:** com `separation_radius > radius` um agente pode ter
+        // alguém encostado e NINGUÉM na percepção, e ali a soma seria descartada —
+        // dois corpos a atravessarem-se porque nenhum dos dois viu o outro. Com o
+        // param desligado `sep` só tem termos quando `neighbours > 0`, então mover
+        // isto para fora é **byte-idêntico** (somar `0 · separation` é somar zero).
+        accel[0] += sep[0] * p.separation;
+        accel[1] += sep[1] * p.separation;
         // Seek/home: a linear spring toward the target — herds AND bounds.
         accel[0] += (target[0] - pi[0]) * p.seek;
         accel[1] += (target[1] - pi[1]) * p.seek;
@@ -519,11 +599,13 @@ impl NodeOp for MotionBoids {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let count = param_as_count(ctx.param("count"), RECOMMENDED_MAX_ELEMENTS).max(1);
         let radius = ctx.param("radius").max(0.0);
+        let sep_r = ctx.param("separation_radius").max(0.0);
         let p = Params {
             count,
             seed: ctx.param("seed").max(0.0).round() as u32,
             radius_sq: radius * radius,
             separation: ctx.param("separation").max(0.0),
+            sep_radius_sq: sep_r * sep_r,
             alignment: ctx.param("alignment").max(0.0),
             cohesion: ctx.param("cohesion").max(0.0),
             seek: ctx.param("seek").max(0.0),

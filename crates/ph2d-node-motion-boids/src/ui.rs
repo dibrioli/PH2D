@@ -27,6 +27,13 @@ pub(super) static PARAM_UNITS: &[ParamUnitDecl] = &[
         param: "radius",
         unit: ParamUnit::Length,
     },
+    // A MESMA grandeza que o `radius`: uma distância entre agentes, em unidades de
+    // mundo — e é essa unidade partilhada que faz o artista poder casá-la com o
+    // tamanho com que desenha cada indivíduo.
+    ParamUnitDecl {
+        param: "separation_radius",
+        unit: ParamUnit::Length,
+    },
     ParamUnitDecl {
         param: "fov",
         unit: ParamUnit::Angle,
@@ -138,6 +145,7 @@ pub(super) static PARAM_GROUPS: &[ParamGroup] = &[
     // Quem é vizinho, e o que fazer com ele.
     ParamGroup::new("radius", "Flocking"),
     ParamGroup::new("separation", "Flocking"),
+    ParamGroup::new("separation_radius", "Flocking"),
     ParamGroup::new("alignment", "Flocking"),
     ParamGroup::new("cohesion", "Flocking"),
     // ⚠️ O cone vive em **Flocking** pela mesma razão do `radius`: ele é a outra
@@ -184,6 +192,24 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
         label: "Separation",
         min: 0.0,
         max: 6.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    // ⚠️ **O topo acompanha o `radius`** (os dois medem a MESMA grandeza — uma
+    // distância de mundo entre agentes), e o piso é `0` porque zero é o DESLIGADO:
+    // um piso de slider aqui esconderia o neutro, a mesma razão do `max_force`.
+    //
+    // ⚠️ **Sem `ParamHardMax`, e a ausência é MEDIDA:** o laço é `O(N²)` de
+    // qualquer maneira e o raio só decide quantos pares somam um termo — ele não
+    // compra iteração nenhuma. Medido a `separation_radius = 8` sobre um bando de
+    // raio 4,4 (ou seja, TODO par a repelir-se), a sim continua a correr e a dar um
+    // bando coeso (mediana 2,19). O que existe é o teto do DEVICE, e ele não é um
+    // número: é `radius`, e a recusa vive no `applicable` do kernel.
+    ParamUiHint {
+        param: "separation_radius",
+        label: "Separation Radius",
+        min: 0.0,
+        max: 10.0,
         step: 0.05,
         widget: ParamWidget::Slider,
     },

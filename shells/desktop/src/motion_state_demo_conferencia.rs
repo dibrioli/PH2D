@@ -1,0 +1,312 @@
+//! **As cenas de GRUPO da conferência** (doc 89, a segunda volta) — o documento que
+//! cada uma monta e a PROSA que ela imprime.
+//!
+//! ⚠️ **O corte é por RESPONSABILIDADE, a mesma série que o `motion_state_demo_router`
+//! já fez uma vez:** o construtor responde *como um `MotionState` nasce*, o roteador
+//! responde *que documento o ambiente pediu*, e este arquivo responde *o que o artista
+//! tem de OLHAR*. Cada grupo tem a mesma forma — o cabeçalho, as bandas nomeadas, as
+//! leituras e a linha do `PARE` — e é isso que o torna uma família, não uma pilha.
+//!
+//! ⚠️ **NÃO há um segundo `match` aqui, de propósito.** O roteador continua a ser a
+//! ÚNICA lista de níveis: dois `match` em dois arquivos deixariam um nível reivindicado
+//! duas vezes passar **em silêncio** (o compilador só vê `unreachable pattern` dentro de
+//! um mesmo `match`), que é exactamente o defeito que o cabeçalho do roteador nomeia.
+
+use super::*;
+
+/// A ARITMETICA do dominio de valor (doc 89, o grupo A): cinco nos irmaos,
+/// dez perfis, e cada modo NOVO ao lado do seu CONTROLE.
+pub(super) fn arith(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_arith::build_arith_demo_document(doc, registry).unwrap_or_default();
+    eprintln!(
+        "[arith-demo] CADA FILEIRA E' UM GRAFICO: {} pecas por fileira, e o Y de cada peca E' o valor.",
+        conferencia_demos_arith::COLS as u32,
+    );
+    for (i, label) in conferencia_demos_arith::row_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) Nenhuma fileira esta' sozinha -- cada modo NOVO tem o vizinho do MESMO no' ao lado,
+  sobre a MESMA entrada. A pergunta nao e' \"apareceu alguma coisa?\" e sim \"apareceu coisa
+  DIFERENTE?\": dois perfis identicos sao um param de modo que o kernel ignorou.
+  (!) As tres leituras que valem: os dois DENTES DE SERRA diferem so' na metade ESQUERDA (o
+  truncado mergulha abaixo do eixo, o aterrado nunca) - as duas ESCADAS diferem so' no MEIO
+  (o Truncate tem um degrau de largura DUPLA sobre a origem) - e as fileiras 5-7 sao a MESMA
+  rampa como reta, escada e S."
+    );
+    sinks
+}
+
+/// O RUIDO e o RELOGIO (doc 89, o grupo B): os dois geradores TEMPORAIS,
+/// dez perfis, e a unica leitura desta jornada que so' o PLAY responde.
+pub(super) fn noise_clock(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks = conferencia_demos_time::build_time_demo_document(doc, registry).unwrap_or_default();
+    eprintln!(
+        "[time-demo] CADA FILEIRA E' UM GRAFICO: {} pecas por fileira, e o Y de cada peca E' o valor.",
+        conferencia_demos_time::COLS as u32,
+    );
+    for (i, label) in conferencia_demos_time::row_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+            "  (!) DE' PLAY -- esta cena tem uma leitura que uma foto nao responde. Um campo que fecha
+  o laco e um que nao fecha sao INDISTINGUIVEIS parados, e o laco e' o item de maior valor
+  da familia (um ruido que nao fecha nao faz um GIF).
+  (!) As quatro leituras: (1-2) a de baixo volta a MESMA forma a cada {loop_s:.0}s, a de cima nunca -
+  (3-4) a mesma pilha de 5 oitavas com detalhe mais FINO em baixo - (5-7) a 6 e' a 5
+  DESLIZADA ao longo da fila (as mesmas feicoes, 0,4 de celula adiante) e a 7 e' outra
+  FATIA do campo, no eixo do TEMPO, onde nao existe seed nenhum - (8-10) a 9 anda em
+  LOCK-STEP com a 8 (0,5s por ciclo e 120 BPM sao o MESMO numero em duas reguas) e a 10
+  e' visivelmente mais rapida.
+  (!) As fileiras 3-7 estao CONGELADAS de proposito: uma comparacao de FORMA nao pode ser
+  tambem uma comparacao de instante.",
+            loop_s = conferencia_demos_time::loop_seconds(),
+        );
+    sinks
+}
+
+/// AS ESTATISTICAS (doc 89, o grupo C): os agregados novos do reduce, as
+/// duas portas que os escopam, e os pesos da janela do smooth.
+pub(super) fn stats(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_stats::build_stats_demo_document(doc, registry).unwrap_or_default();
+    eprintln!(
+        "[stats-demo] CADA BANDA E' UM GRAFICO: {} pecas, e o Y de cada peca E' o valor. \
+             As pecas PEQUENAS sao o campo; as GRANDES sao a estatistica sobre ele.",
+        conferencia_demos_stats::COLS as u32,
+    );
+    for (i, label) in conferencia_demos_stats::BAND_LABELS.iter().enumerate() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) Esta cena julga-se PARADA -- nada aqui depende do relogio.
+  (!) O campo das bandas 1-4 e' ENVIESADO de proposito (x^4: quase tudo perto do chao, uma
+  cauda alta). Num campo simetrico a media e a mediana cairiam no MESMO lugar e a banda 1
+  desenharia duas retas coincidentes -- verde por vacuo, no sentido visual.
+  (!) As quatro leituras: (1) as retas da Mean e da Median NAO coincidem - (2) ligar a mask
+  SOBE a reta da media, e ela continua a ser desenhada por TODAS as pecas (a mascara
+  escolhe quem e' CONTADO, nunca quem e' RESPONDIDO) - (3) ligar o group transforma a reta
+  numa ESCADA de {bins} degraus - (4) o Range mede o vao inteiro e o Std Dev a dispersao,
+  bem mais baixa. E as bandas 6-8 filtram o MESMO degrau com o mesmo raio: a de cima tem
+  rampa RETA com duas QUINAS, a de baixo e' um S sem quina nenhuma.
+  (!) Se a lista de 8 bandas acima nao aparecer, PARE: o resto da cena nao diz nada.",
+        bins = conferencia_demos_stats::group_bins() as u32,
+    );
+    sinks
+}
+
+/// A COMPARACAO E O NOME QUE NAO RESOLVE (doc 89, o grupo E): as duas
+/// perguntas que o grafo nao sabia fazer -- "a > b?" em um no' so', e
+/// "este nome nao resolve" em voz alta.
+pub(super) fn compare(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_compare::build_compare_demo_document(doc, registry).unwrap_or_default();
+    eprintln!(
+        "[compare-demo] CADA FILEIRA E' UM GRAFICO: {cols} pecas, e o Y de cada peca \
+             E' a MASCARA (0 em baixo, 1 em cima).",
+        cols = conferencia_demos_compare::COLS as u32,
+    );
+    for (i, label) in conferencia_demos_compare::BAND_LABELS.iter().enumerate() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) Esta cena julga-se PARADA -- nada aqui depende do relogio.
+  (!) O OP (bandas 1-2): a MESMA rampa contra o MESMO limiar ({thr}), uma com Greater e outra
+  com Less. Os dois degraus tem de ser COMPLEMENTARES (a de cima sobe onde a de baixo
+  desce). Medido: 24 levantadas de cada lado numa fileira de 48 -- eles PARTICIONAM a
+  fileira. Se desenharem o mesmo degrau, o kernel nao esta a ler o `op`.
+  (!) A TOLERANCIA (bandas 3-4): as duas em Equal contra o mesmo limiar, e SO' o epsilon difere
+  ({narrow} contra {wide}). Medido: 4 pecas levantadas contra 18 -- uma banda visivelmente
+  mais larga, e um kernel cego ao epsilon desenharia as duas IGUAIS.
+  (!) O NOME (banda 5): um `value.attribute` le' '{missing}' (o typo de `vel`) de uma GRADE, que
+  nao carrega nenhum dos dois. A fileira sai PLANA, e esse e' o desenho CERTO -- a escada
+  devolve zeros no comprimento certo. O QUE A WAVE ACRESCENTA NAO ESTA NO CANVAS: abra o
+  painel de GRAFO, e o no' tem um badge (!). Clique nele: ele diz o nome que voce escreveu.
+  (!) Se a lista de 5 bandas acima nao aparecer, PARE: o resto da cena nao diz nada.",
+        thr = conferencia_demos_compare::THRESHOLD,
+        narrow = conferencia_demos_compare::EPS_NARROW,
+        wide = conferencia_demos_compare::EPS_WIDE,
+        missing = conferencia_demos_compare::MISSING_NAME,
+    );
+    sinks
+}
+
+/// O ENVELOPE (doc 89, o grupo F): que FORMA tem uma coisa que acende e
+/// apaga -- do lado do PULSO (motion.strobe) e do lado do DEGRAU
+/// (motion.delay).
+pub(super) fn envelope(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_envelope::build_envelope_demo_document(doc, registry).unwrap_or_default();
+    eprintln!(
+        "[envelope-demo] CINCO PARES: cada par e' o MESMO rig com UM knob de diferenca. \
+             {cols} pecas por fileira.",
+        cols = conferencia_demos_envelope::COLS as u32,
+    );
+    for (i, label) in conferencia_demos_envelope::BAND_LABELS.iter().enumerate() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) DE' PLAY. Um envelope e' uma forma no TEMPO -- uma foto de um instante mostra
+  dois tamanhos e nao diz nada sobre como se chegou a eles. As batidas sao de {beat}s.
+  (!) ATTACK (1-2): a de cima POPA no instante da batida; a de baixo INCHA ao longo de {half}
+  ticks (meio segundo). Era o trecho que o no' nao tinha -- ele subia sempre em UM tick.
+  (!) HOLD (3-4): a de baixo fica CHEIA por meio segundo e SO' ENTAO cai. Se ela apenas cair
+  mais devagar, o plato' virou uma queda lenta e nao e' isto.
+  (!) SHAPE (5-6): a MESMA queda, uma exponencial e a outra atraves de um DEGRAU desenhado --
+  a de baixo fica cheia e CORTA, o que nenhuma exponencial faz.
+  (!) PROBABILITY (7-8): a de cima acende a fileira INTEIRA em toda batida; a de baixo acende
+  ~{some:.0}% das pecas -- e PECAS DIFERENTES a cada batida. Se forem sempre as mesmas, o
+  sorteio travou (a pista tem de avancar em todo pulso que CHEGA, nao so' nos aceitos).
+  (!) A CONTAGEM BALANCA, de proposito: um sorteio por-peca sobre {cols} pecas tem desvio
+  de ~2 pecas, entao 6 a 11 e' o que uma moeda justa entrega. E' a MEDIA que converge.
+  (!) RISE != FALL (9-10): as duas seguem o MESMO degrau quadrado. A de cima sobe e desce no
+  mesmo tempo; a de baixo SALTA (regua {fast}) e ESCORRE (regua {slow}).
+  (!) Se a lista de 10 bandas acima nao aparecer, PARE: o resto da cena nao diz nada.",
+        beat = conferencia_demos_envelope::BEAT,
+        cols = conferencia_demos_envelope::COLS as u32,
+        half = conferencia_demos_envelope::HALF_SECOND as u32,
+        some = conferencia_demos_envelope::SOME * 100.0,
+        fast = conferencia_demos_envelope::FAST,
+        slow = conferencia_demos_envelope::SLOW,
+    );
+    sinks
+}
+
+/// PARA ONDE ISTO VAI (doc 89, o grupo G): a coluna `vel` ganha um PRODUTOR,
+/// e os leitores que ja' existiam deixam de receber zeros.
+pub(super) fn velocity(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_velocity::build_velocity_demo_document(doc, registry).unwrap_or_default();
+    eprintln!(
+        "[velocity-demo] TRES PARES: cada par e' o MESMO rig com um NO' (ou um knob) de \
+             diferenca. {cols} pecas por fileira.",
+        cols = conferencia_demos_velocity::COLS as u32,
+    );
+    for label in &conferencia_demos_velocity::BAND_LABELS {
+        eprintln!("  {label}");
+    }
+    eprintln!(
+        "  (!) DE' PLAY. Uma velocidade e' a diferenca entre DOIS instantes -- uma foto ja'
+  mostra a fileira variada (cada peca esta' num ponto distinto do percurso), mas so' o
+  movimento mostra a peca a INCHAR quando acelera.
+  (!) TAMANHO (1-2): a de cima tem UM tamanho so' (medido: 0,170 em toda peca); a de baixo
+  incha no MEIO do vaivem e encolhe nas pontas, onde a peca para para voltar
+  (0,203 .. 0,435 -- duas vezes e meia). A de cima e' literalmente o que o canal Speed
+  do `value.attribute` desenhava antes desta wave: ZEROS.
+  (!) DIRECAO (3-4): as pecas sao TRACOS, e as de baixo apontam para onde vao -- numa orbita,
+  a tangente, que varre o circulo (medido: -162,1 a +178,2 graus) contra um controle
+  que nao tem `rot` nenhuma. Se elas ficarem todas no mesmo angulo, o alinhamento
+  nao chegou.
+  (!) SMOOTH (5-6): o MESMO driver tremido. A de cima usa a diferenca crua e o tamanho
+  PISCA; a de baixo passa pelo one-pole e RESPIRA -- medida a agitacao de um tick para
+  o seguinte na MESMA peca, 0,0274 contra 0,0095 (tres vezes mais calma).
+  (!) Se a lista de 6 bandas acima nao aparecer, PARE: o resto da cena nao diz nada."
+    );
+    sinks
+}
+
+/// O DISCO TEM O TAMANHO QUE SE VE (doc 89, o grupo H): o `motion.collide`
+/// passa a ler a coluna `size` -- a MESMA que o renderer desenha -- e o
+/// `falloff`, o peso que cinquenta nos ja honram.
+pub(super) fn collide(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_collide::build_collide_demo_document(doc, registry).unwrap_or_default();
+    eprintln!(
+        "[collide-demo] TRES PARES: a MESMA fileira apertada com uma COLUNA de \
+             diferenca. {cols} pecas por fileira.",
+        cols = conferencia_demos_collide::COLS,
+    );
+    for label in &conferencia_demos_collide::BAND_LABELS {
+        eprintln!("  {label}");
+    }
+    eprintln!(
+        "  (!) Esta cena julga-se PARADA. O `motion.collide` e' Pure: ele relaxa a
+  entrada a cada cook, e nada aqui depende do relogio.
+  (!) TAMANHO (1-2): as duas nascem no MESMO amontoado. Em cima o vao e' o mesmo em toda a
+  fileira (medido 0,4095 .. 0,4179, um alvo de 0,42) porque toda peca mede o mesmo; em
+  baixo o disco cresce da esquerda para a direita e o VAO CRESCE COM ELE (0,4441 ..
+  0,8851). Ponha os olhos nos vaos, nao nas pecas: e' `r_i + r_j`, e a fileira de baixo
+  mede 5,18 de ponta a ponta contra 3,31 da de cima.
+  (!) FALLOFF (3-4): a de cima empacota inteira. Na de baixo um `field.box` cobre o MIOLO --
+  as tres pecas de dentro se ATRAVESSAM (vao 0,22, meio diametro) e as de fora seguem
+  exatamente a tocar (0,42). Se a fileira inteira ficar amontoada, a caixa esta' grande
+  demais e engoliu todo par.
+  (!) MUTAR != PINAR (5-6): a MESMA peca do meio, o MESMO no' de constraint -- so' muda para
+  onde o numero vai. Em cima ela e' TRANSPARENTE e uma vizinha passa por dentro dela
+  (menor vao 0,2093); em baixo ela e' OBSTACULO, ninguem a atravessa, e a fileira
+  empacota em volta (0,4145 .. 0,4186). Sao coisas diferentes, e era essa a linha 62.
+  (!) Se a lista de 6 bandas acima nao aparecer, PARE: o resto da cena nao diz nada."
+    );
+    sinks
+}
+
+/// A VIZINHANCA VIRA UM NUMERO (doc 89, o grupo I): o `motion.proximity`
+/// publica `neighbours` e `overlap`, e os modos Scale/Hide do Push Apart do
+/// C4D passam a ser COMPOSICAO de nos que ja existem -- nao um param novo
+/// dentro do `motion.collide`, que era o que a folha 03 prescrevia.
+pub(super) fn proximity(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks = conferencia_demos_proximity::build_proximity_demo_document(doc, registry)
+        .unwrap_or_default();
+    eprintln!(
+        "[proximity-demo] TRES PARES: a MESMA fileira, e so' a de baixo mede a \
+             vizinhanca. {cols} pecas por fileira.",
+        cols = conferencia_demos_proximity::COLS,
+    );
+    for label in &conferencia_demos_proximity::BAND_LABELS {
+        eprintln!("  {label}");
+    }
+    eprintln!(
+        "  (!) Esta cena julga-se PARADA. O `motion.proximity` e' Pure: ele mede a entrada
+  a cada cook, e nada aqui depende do relogio.
+  (!) A FILEIRA TEM AS DUAS ESPECIES, e e' isso que torna as tres leituras validas: o
+  tamanho cresce de 0,40 a 2,40 sobre um passo FIXO, entao as QUATRO da esquerda
+  ficam livres (vaos +0,176 / +0,119 / +0,062 / +0,006) e as nove da direita se
+  amontoam, ate' -0,448 na ultima. Ponha os olhos nos VAOS, nao nas pecas.
+  (!) SCALE (1-2): o pior vao vai de -0,448 a -0,000 -- as sobrepostas encolhem ate'
+  APENAS SE TOCAR (a maior cai de 2,40 para 1,04) -- e os tres primeiros vaos saem
+  IDENTICOS aos de cima: quem ja' estava livre nao foi tocado. Se a fileira inteira
+  encolher, isso e' um `motion.scale` global, nao a composicao.
+  (!) HIDE (3-4): a de baixo fica com QUATRO pecas das treze, e sao exatamente as quatro
+  da esquerda -- a fileira encolhe de 4,08 para 1,02 de ponta a ponta. Se sobrar zero,
+  o limiar comeu ate' os livres; se sobrarem treze, o cull nao leu o `falloff`.
+  (!) CONTAGEM (5-6): em baixo o tamanho DEIXA de ser o gradiente e vira um medidor -- as
+  pecas passam a ter QUATRO tamanhos so' (0,60 · 1,00 · 1,40 · 1,80), um por numero de
+  vizinhos tocados, com a ponta livre no menor. E' a segunda coluna que a wave publica:
+  se a fileira 6 desenhar o mesmo gradiente da 5, o `neighbours` nao chegou.
+  (!) Se a lista de 6 bandas acima nao aparecer, PARE: o resto da cena nao diz nada."
+    );
+    sinks
+}
+
+/// A TABELA E A SEMENTE (doc 89, o grupo D / W-E): a lista que o artista
+/// DIGITA, sem o teto de oito, e a semente que a identidade do no separa.
+pub(super) fn table_seed(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks = conferencia_demos_table_seed::build_table_seed_demo_document(doc, registry)
+        .unwrap_or_default();
+    eprintln!(
+        "[table-seed-demo] CADA FILEIRA E' UM GRAFICO: {cols} pecas, e o Y de cada peca \
+             E' o valor.",
+        cols = conferencia_demos_table_seed::COLS as u32,
+    );
+    for (i, label) in conferencia_demos_table_seed::BAND_LABELS.iter().enumerate() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) Esta cena julga-se PARADA -- nada aqui depende do relogio.
+  (!) A TABELA (bandas 1-2): a de baixo autora {steps} passos por TEXT PARAM, acima do teto de
+  OITO que o nome `v0..v7` impunha. O dente de serra dela e' {ratio}x mais largo que o de
+  cima -- se os dois tiverem a MESMA largura, a tabela nao chegou ao cozido.
+  (!) A SEMENTE (bandas 3-6): as quatro tem a MESMA semente autorada (7). As DUAS DE CIMA tem
+  de ser IDENTICAS -- e' o defeito que a wave cura, e sem ele a vista `ligado eles diferem`
+  nao provaria nada. As DUAS DE BAIXO nao podem ser.
+  (!) Aqui o olho compara SILHUETA, nao altura -- por isso cada fileira tem a propria linha de
+  base, ao contrario da cena =43.
+  (!) Se a lista de {bands} fileiras acima nao aparecer, PARE: o resto da cena nao diz nada.",
+        steps = conferencia_demos_table_seed::TABLE_STEPS,
+        ratio = conferencia_demos_table_seed::TABLE_STEPS as f32
+            / conferencia_demos_table_seed::LEGACY_STEPS,
+        bands = conferencia_demos_table_seed::BANDS,
+    );
+    sinks
+}

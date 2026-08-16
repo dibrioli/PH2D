@@ -33,6 +33,11 @@
 #[path = "motion_demo_strobe.rs"]
 mod strobe;
 
+/// As cenas de GRUPO da conferência (doc 89, a segunda volta): o documento que cada uma
+/// monta e a PROSA que ela imprime. ⚠️ O roteador continua a ser a ÚNICA lista de níveis —
+/// este arquivo não tem `match` nenhum, de propósito (ver o cabeçalho dele).
+#[path = "motion_state_demo_conferencia.rs"]
+mod demo_conferencia;
 #[path = "motion_state_demo_router.rs"]
 mod demo_router;
 /// ⚠️ **`pub(crate)` e não privada como as irmãs**, e por um consumidor real: as cenas do
@@ -92,6 +97,8 @@ pub(crate) mod conferencia_demos_velocity;
 
 #[path = "motion_state_conferencia_demos_collide.rs"]
 pub(crate) mod conferencia_demos_collide;
+#[path = "motion_state_conferencia_demos_proximity.rs"]
+pub(crate) mod conferencia_demos_proximity;
 #[path = "motion_state_conferencia_demos_text.rs"]
 mod conferencia_demos_text;
 #[path = "motion_state_conferencia_demos_time.rs"]

@@ -11,10 +11,10 @@
 |---|---|
 | branch | `line/Vector` |
 | HEAD | o **tip de `line/Vector`** — ⚠️ **não um sha escrito aqui**: os últimos commits são este próprio documento, então um literal envelheceria a cada correcção dele |
-| último commit de **CÓDIGO** | **`6f66a8554`** |
+| último commit de **CÓDIGO** | **`c8b6276e9`** |
 | merge-base com `main` | **`08e3c84c9`** |
-| commits de código | **11** (de **14** no total; os outros 3 são este documento e o plano) |
-| diff de **código** | **64 arquivos, +3.113 / −712** (`main...HEAD -- ':!docs'`) |
+| commits de código | **12** (de **15** no total; os outros 3 são este documento e o plano) |
+| diff de **código** | **64 arquivos, +3.158 / −712** (`main...HEAD -- ':!docs'`) |
 
 ⚠️ **Esta caixa já esteve errada duas vezes, e as duas por motivos que valem mais que o número.**
 A primeira dizia *"daí para cima é só `docs/`"* e o smoke produziu **dois commits de fonte** depois
@@ -168,6 +168,7 @@ no fecho**, não a acreditar agora"*. Conferida. Passa.
 | 9 | `703c2d1a8` a POPULAÇÃO governa o custo, não o voo | independente |
 | 10 | `c5f8aa8a5` o roteiro da DOBRA fala a língua do ARTISTA | **do 6** (é o texto da cena) |
 | 11 | `6f66a8554` o `reduced motion` **PARA** o roteiro | **do 6** |
+| 12 | `c8b6276e9` o roteiro **RESTAURA** o que manda ligar | **do 11** (a causa raiz do 11) |
 
 ⚠️ **Os commits 1-6 são uma cadeia**: um rebase que os reordene quebra a compilação (o 2 usa o que
 o 1 cria). Os 10-11 dependem do 6 (editam a cena que ele cria). Os 7-9 são independentes entre si
@@ -191,12 +192,20 @@ PARAR sobre ele.* E a segunda: quem deixasse o interruptor ligado de uma corrida
 no passo 3 a achar que corria o passo 1** — a preferência é persistida fora do repo, logo invisível
 a toda varredura.
 
-**A cura (commit 11):** um **PARE** antes do despacho de cena, que nomeia o interruptor, dá os dois
-caminhos para o desligar e avisa que o passo 3 o religa no fim. O gate
-`the_reduced_motion_guard_stops_the_script_before_the_dispatch` lê o fonte — **a posição é
-load-bearing**: um guard depois do `match level` compilaria, passaria na suíte e imprimiria o
-roteiro inteiro **e depois** o PARE. Ele afirma a propriedade (o `return` precede o despacho), nunca
-uma distância em bytes. **2 mutações, 2 sangram.**
+**A cura tem DUAS metades, e a segunda é a que fecha o buraco.** O **commit 11** é a REDE: um
+**PARE** antes do despacho de cena, que nomeia o interruptor, dá os dois caminhos para o desligar e
+avisa que o passo 3 o religa. O gate `the_reduced_motion_guard_stops_the_script_before_the_dispatch`
+lê o fonte — **a posição é load-bearing**: um guard depois do `match level` compilaria, passaria na
+suíte e imprimiria o roteiro inteiro **e depois** o PARE. Ele afirma a propriedade (o `return`
+precede o despacho), nunca uma distância em bytes. **2 mutações, 2 sangram.**
+
+O **commit 12** é a CAUSA RAIZ: os roteiros **restauram** o interruptor que mandam ligar. ⚠️ **E na
+cena 3 isso já quebrava o passo SEGUINTE, não só a corrida futura** — o passo 4 manda comparar
+Discreto contra Expressivo, e com o reduced ligado os dois estão mortos. Gate
+`every_step_that_arms_reduced_motion_also_disarms_it`: propriedade de **CONTAGEM**, não de posição
+(um passo novo que o ligue entra no numerador sozinho), com **controlo positivo** contra a frase ser
+reescrita. A âncora é a forma imperativa `Settings > Motion > REDUCED MOTION` — o texto do PARE fala
+do interruptor em minúsculas e entre crases, logo não conta como instrução. **1 mutação, sangra.**
 
 ⚠️ **E a segunda metade do report é OUTRA pergunta, com resposta oposta:** *«nem abrindo o
 painel»*. Medido — `panel_open_t|panel_visible_t|visibility_live|panel_fade` devolve **vazio**:
@@ -328,5 +337,5 @@ bloqueado fora do repositório:
 
 ---
 
-*Linha `Vector` pronta (11 commits de código, o último `6f66a8554`; **a cena `=3` foi smokada e
+*Linha `Vector` pronta (12 commits de código, o último `c8b6276e9`; **a cena `=3` foi smokada e
 aprovada**). Aguardo ordem de integração.*

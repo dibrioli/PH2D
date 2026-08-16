@@ -557,6 +557,45 @@ mod tests {
         }
     }
 
+    /// **SONDA (folha 03, linha 65)** — *uma massa por elemento já é exprimível?*
+    ///
+    /// A célula diz *"POR ELEMENTO: gap real"*. A cadeia que a testa são DUAS
+    /// molas em série com `falloff` COMPLEMENTAR: cada nó tem os seus próprios
+    /// `tension`/`friction`, e o falloff 0 faz a mola ser transparente ali.
+    #[test]
+    #[ignore = "sonda"]
+    fn measure_whether_two_springs_give_two_effective_masses() {
+        const N: usize = 2;
+        let mut sa = Stream::new(N);
+        let mut sb = Stream::new(N);
+        let mut ctrl = Stream::new(N);
+        println!("alvo salta 0 -> 5 no tique 5; A: tension 30 | B: tension 3");
+        println!("tique |  elem0 (so' A)  |  elem1 (so' B)  |  controle (uma mola so')");
+        for k in 0..40 {
+            let t = k as f32 / 60.0;
+            let target = if k < 5 { 0.0 } else { 5.0 };
+            let base = Stream::new(N).with("P", Column::Vec2(vec![[0.0, target]; N]));
+
+            let a_in = base.clone().with("falloff", Column::Scalar(vec![1.0, 0.0]));
+            let a = step(&a_in, &sa, 1, 30.0, 3.0, t);
+            let b_in = a.clone().with("falloff", Column::Scalar(vec![0.0, 1.0]));
+            let b = step(&b_in, &sb, 1, 3.0, 1.0, t);
+            let c = step(&base, &ctrl, 1, 30.0, 3.0, t);
+
+            if k % 5 == 0 || k == 39 {
+                let (Some(Column::Vec2(v)), Some(Column::Vec2(cv))) =
+                    (b.get("P"), c.get("P")) else { panic!("P") };
+                println!(
+                    "{k:5} | {:14.4} | {:14.4} | {:10.4}",
+                    v[0][1], v[1][1], cv[0][1]
+                );
+            }
+            sa = a;
+            sb = b;
+            ctrl = c;
+        }
+    }
+
     #[test]
     fn registers_and_resolves() {
         let mut reg = NodeRegistry::new();

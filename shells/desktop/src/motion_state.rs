@@ -109,6 +109,9 @@ pub(crate) mod conferencia_demos_octave;
 
 #[path = "motion_state_conferencia_demos_shape.rs"]
 pub(crate) mod conferencia_demos_shape;
+
+#[path = "motion_state_conferencia_demos_column.rs"]
+pub(crate) mod conferencia_demos_column;
 #[path = "motion_state_conferencia_demos_space.rs"]
 pub(crate) mod conferencia_demos_space;
 #[path = "motion_state_conferencia_demos_text.rs"]

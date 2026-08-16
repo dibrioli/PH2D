@@ -500,6 +500,38 @@ pub(super) fn shape(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId>
     sinks
 }
 
+/// **A VOLTA COMPLETA DE UMA COLUNA NOMEADA** — a cena `=56`, o grupo P.
+pub(super) fn column(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_column::build_column_demo_document(doc, registry).unwrap_or_default();
+    let (col, wrong) = conferencia_demos_column::names();
+    eprintln!(
+        "[column-demo] DOIS PARES ({} bandas). Cada par tem o seu CONTROLE ao lado.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_column::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) ESTA CENA JULGA-SE PARADA -- nada aqui depende do relogio.
+  (!) E' um CIRCUITO, nao um efeito: o `motion.drive(Custom)` escreve um numero numa coluna que
+  VOCE batiza (`{col}`), o `value.attribute` a le' de volta pelo mesmo nome, e um segundo drive a
+  poe no TAMANHO. Se qualquer elo faltar, a fileira sai toda do mesmo tamanho.
+  (!) 1-2: a de cima e' a MESMA cadeia SEM o escritor -- plana (vao {FLAT:.4}); a de baixo cresce ao
+  longo do indice (vao {GROWN:.4}).
+  (!) 3-4: o par do NOME. A de cima le' `{col}` e cresce; a de baixo le' `{wrong}`, que ninguem
+  escreveu, e volta a ser plana -- uma coluna e' uma palavra, e a palavra errada nao e' um erro,
+  e' o SILENCIO.
+  (!) Este canal RECUSA o device de proposito (o nome so' existe em tempo de cook), entao esta
+  cadeia coza na CPU. E' o mesmo recuo da `Median` do `value.reduce`.",
+    );
+    sinks
+}
+
+// Os numeros que a sonda da cena 56 imprime.
+const FLAT: f32 = 0.0;
+const GROWN: f32 = 0.7;
+
 // Os numeros que a sonda da cena 55 imprime.
 const DUTY_FREE: f32 = 0.556;
 const DUTY_NARROW: f32 = 0.222;

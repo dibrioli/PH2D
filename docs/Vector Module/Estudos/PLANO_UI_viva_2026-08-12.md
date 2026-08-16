@@ -725,5 +725,15 @@ eficiência antes de encanto.
      é (o `paint`), nunca no `populate`, que corre uma vez no boot.
 4. **O `n` e a folga do tether** (§5.2) — são números de **aparência**, e o oráculo deles é o
    RENDER, não um teste. Saem do smoke, como o `RESAMPLE_STEP_FRACTION` do Flip saiu.
-5. **Nada aqui bumpa `PROJECT_SCHEMA`, toca contrato congelado ou acrescenta dep externa** — e isso
-   é afirmação a **conferir por `git diff` no fecho**, não a acreditar agora.
+5. ~~**Nada aqui bumpa `PROJECT_SCHEMA`, toca contrato congelado ou acrescenta dep externa**~~ — a
+   afirmação era para **conferir por `git diff` no fecho**, e foi: **CONFERIDA em 2026-08-16 e
+   passa**. `PROJECT_SCHEMA` **84 INTOCADO** (`project.rs` **e** `project_schema.rs` com diff
+   vazio; tripla `(84, 13, 14)`) · contrato congelado **intocado** (`ph2d-nodegraph/` e
+   `ph2d-core/src/tool.rs` com diff vazio) · **ZERO `Cargo.toml`/`Cargo.lock`** ⇒ nenhuma crate
+   nova e nenhuma dep externa nova · registro do `ph2d-ecs` e os **três** espelhos intocados ·
+   `ph2d-i18n` intocado · **nenhum ADR** ⇒ a linha fica **FORA de toda disputa de número**.
+   ⚠️ **E a varredura achou o que a afirmação não cobria:** o único ponto de merge sensível desta
+   wave é **ESTRUTURAL, não numérico** — o `WidgetStore` ganhou o campo `fold_body_h`, logo há um
+   **sítio de construção** onde uma linha que apende outro campo conflita (resolver é **união**;
+   ficar com um lado deixa o struct com um campo que o construtor não preenche, e isso **não
+   compila**). Está no §3 do handoff de integração.

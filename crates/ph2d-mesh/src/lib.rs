@@ -38,6 +38,7 @@
 mod aabb;
 mod adjacency;
 mod collapse;
+mod cotangent;
 mod curvature;
 mod dyntopo;
 mod dyntopo_flip;
@@ -68,6 +69,10 @@ mod volume;
 pub use aabb::Aabb;
 pub use adjacency::{Adjacency, Csr};
 pub use collapse::{Collapse, collapse_in_sphere, collapse_target};
+pub use cotangent::{
+    RingWeights, cotangent_ring_average_at, curvature_normal_dir_at, curvature_normals_of,
+    mean_curvature_normal_at, ring_weights_at,
+};
 pub use curvature::{
     curvature_at, curvature_of, curvature_pair_at, recompute_curvature, world_curvature_at,
 };

@@ -23,24 +23,49 @@
 use super::*;
 
 impl SculptStroke {
-    /// A média das posições **congeladas** do anel de `v`.
+    /// A média do anel de `v` — **pelo operador que o pincel manda**.
     ///
-    /// Ler o `pre` e não o vivo é o que torna o Smooth idempotente: um traço que
-    /// passa duas vezes no mesmo lugar suaviza uma vez, e a superfície não
-    /// derrete enquanto o artista segura o botão parado.
+    /// ⚠️ **A LEI mora em [`ph2d_mesh`], e não aqui.** O uniforme
+    /// ([`ph2d_mesh::ring_average`]) tem as duas regras de borda que uma malha
+    /// aberta exige, e ganhou um SEGUNDO consumidor quando o **extract** passou
+    /// a relaxar a costura de uma peça recém-cortada: duas cópias divergiriam
+    /// exatamente no lugar que já custou uma medição (a boca do `open_tube3`
+    /// sugada de 2 para 1,3597 em seis passes).
     ///
-    /// ⚠️ **A LEI mora em [`ph2d_mesh::ring_average`], e não aqui.** Ela tem as
-    /// duas regras de borda que uma malha aberta exige, e ganhou um SEGUNDO
-    /// consumidor quando o **extract** passou a relaxar a costura de uma peça
-    /// recém-cortada: é o mesmo laplaciano, e duas cópias divergiriam exatamente
-    /// no lugar que já custou uma medição (a boca do `open_tube3` sugada de 2
-    /// para 1,3597 em seis passes).
+    /// ⚠️ **O `l-mode` troca o OPERADOR, e a recusa dele CAI no uniforme** —
+    /// [`ph2d_mesh::cotangent_ring_average_at`] devolve `None` numa borda (a
+    /// construção pede dois ângulos por aresta e uma aresta de beira tem um
+    /// só), num canto degenerado e quando o `Σ w` não é divisor defensável. O
+    /// recuo não é conveniência: é a mesma frase que o módulo de lá escreve —
+    /// *a beira tem normal, ela só não tem CURVATURA que a aponte* — e é ele que
+    /// mantém o Taubin a funcionar numa malha aberta em vez de a congelar.
     ///
-    /// ⚠️ **O que fica AQUI é de onde a posição vem:** o traço lê o `pre`
-    /// CONGELADO no pen-down, e é isso que o torna idempotente — um pincel
-    /// parado suaviza uma vez, e a superfície não derrete enquanto o artista
-    /// segura o botão. O extract entrega a posição viva pela mesma porta.
-    pub(super) fn neighbour_average(&self, mesh: &Mesh, v: u32, at: [f32; 3]) -> [f32; 3] {
+    /// ⚠️ **A posição do anel é a VIVA, e o doc anterior dizia o contrário.**
+    /// Ele afirmava *"a média das posições CONGELADAS … ler o `pre` e não o
+    /// vivo é o que torna o Smooth idempotente"*, e a leitura é
+    /// `mesh.positions()`, como o próprio `live` do [`super::compute_target`].
+    /// O que de facto impede a superfície de derreter sob um pincel parado mora
+    /// no APLICADOR (`stroke_apply.rs`), que interpola de `base_pos` — a pose
+    /// congelada no pen-down — para o alvo, em vez de compor sobre o resultado
+    /// anterior. *Um doc que credita a idempotência ao lugar errado é como o
+    /// próximo a move para o lugar errado.*
+    pub(super) fn neighbour_average(
+        &self,
+        mesh: &Mesh,
+        brush: &Brush,
+        v: u32,
+        at: [f32; 3],
+    ) -> [f32; 3] {
+        if brush.ring_operator() == crate::RingOperator::Cotangent
+            && let Some(t) = ph2d_mesh::cotangent_ring_average_at(
+                mesh.positions(),
+                mesh.faces(),
+                mesh.adjacency(),
+                v as usize,
+            )
+        {
+            return t;
+        }
         ph2d_mesh::ring_average(mesh.adjacency(), v, at, |nb| mesh.positions()[nb as usize])
     }
 

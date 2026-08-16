@@ -21,8 +21,15 @@ impl SculptStroke {
     /// kernel; aqui ele chega pelo `w`, que é o superconjunto (o artista escolhe
     /// a curva, e `Falloff::Constant` reproduz a referência). A forma é a dela:
     /// `pos·(1 − m) + média·m`.
-    pub(super) fn target_smooth(&self, mesh: &Mesh, v: u32, live: [f32; 3], w: f32) -> [f32; 3] {
-        let avg = self.neighbour_average(mesh, v, live);
+    pub(super) fn target_smooth(
+        &self,
+        mesh: &Mesh,
+        brush: &Brush,
+        v: u32,
+        live: [f32; 3],
+        w: f32,
+    ) -> [f32; 3] {
+        let avg = self.neighbour_average(mesh, brush, v, live);
         let m = 1.0 - w;
         [
             live[0] * m + avg[0] * w,
@@ -34,8 +41,15 @@ impl SculptStroke {
     /// NOSSO, e a referência não tem: o laplaciano com o sinal trocado. Reflete
     /// a média através do próprio vértice, com a mesma magnitude que o
     /// [`Self::target_smooth`] teria.
-    pub(super) fn target_sharpen(&self, mesh: &Mesh, v: u32, live: [f32; 3], w: f32) -> [f32; 3] {
-        let avg = self.neighbour_average(mesh, v, live);
+    pub(super) fn target_sharpen(
+        &self,
+        mesh: &Mesh,
+        brush: &Brush,
+        v: u32,
+        live: [f32; 3],
+        w: f32,
+    ) -> [f32; 3] {
+        let avg = self.neighbour_average(mesh, brush, v, live);
         [
             live[0] + (live[0] - avg[0]) * w,
             live[1] + (live[1] - avg[1]) * w,
@@ -58,13 +72,14 @@ impl SculptStroke {
     pub(super) fn target_slide_relax(
         &self,
         mesh: &Mesh,
+        brush: &Brush,
         v: u32,
         live: [f32; 3],
         w: f32,
     ) -> [f32; 3] {
         match self.relax_normal(mesh, v, live) {
             Some(n) => {
-                let avg = self.neighbour_average(mesh, v, live);
+                let avg = self.neighbour_average(mesh, brush, v, live);
                 let d = remove_along([avg[0] - live[0], avg[1] - live[1], avg[2] - live[2]], n);
                 [live[0] + d[0] * w, live[1] + d[1] * w, live[2] + d[2] * w]
             }
@@ -95,7 +110,7 @@ impl SculptStroke {
         w: f32,
         brush: &Brush,
     ) -> [f32; 3] {
-        let avg = self.neighbour_average(mesh, v, live);
+        let avg = self.neighbour_average(mesh, brush, v, live);
         let own = self.hc_disp(s);
         let avg_b = self.hc_disp_average(mesh, v, own);
         // ⚠️ **O piso é do MOTOR, não do slider** — ver [`crate::HC_VERTEX_MIN`]:

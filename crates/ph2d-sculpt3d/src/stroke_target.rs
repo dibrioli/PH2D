@@ -123,13 +123,13 @@ impl SculptStroke {
             // (o artista escolhe a curva, e `Falloff::Constant` reproduz a
             // referência). A forma é a dela: `pos·(1 − m) + média·m`.
             // A família que lê o ANEL vive no irmão [`ring`].
-            Verb::Smooth => self.target_smooth(mesh, v, live, w),
+            Verb::Smooth => self.target_smooth(mesh, brush, v, live, w),
 
             // NOSSO, e a referência não tem: o laplaciano com o sinal trocado.
             // Reflete a média através do próprio vértice, com a mesma magnitude
             // que o Smooth teria.
             // A família que lê o ANEL vive no irmão [`ring`].
-            Verb::Sharpen => self.target_sharpen(mesh, v, live, w),
+            Verb::Sharpen => self.target_sharpen(mesh, brush, v, live, w),
 
             // `Flatten.js:41-81` — o deslocamento é **proporcional à distância ao
             // plano**, não a uma constante do pincel: longe ele anda muito, perto
@@ -420,7 +420,7 @@ impl SculptStroke {
             // ⚠️ **Numa BORDA a normal vira a bissetriz**, e isso é o que impede
             // a beira de encolher — ver [`Self::relax_normal`].
             // A família que lê o ANEL vive no irmão [`ring`].
-            Verb::SlideRelax => self.target_slide_relax(mesh, v, live, w),
+            Verb::SlideRelax => self.target_slide_relax(mesh, brush, v, live, w),
 
             // A família que lê o ANEL vive no irmão [`ring`].
             Verb::SurfaceSmooth => self.target_surface_smooth(mesh, v, s, live, w, brush),

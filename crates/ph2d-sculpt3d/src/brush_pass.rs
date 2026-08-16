@@ -33,10 +33,17 @@
 //!
 //! | dabs | `S` | `L` |
 //! |---|---|---|
-//! | 1 | 0,0908 % | **−0,0011 %** |
-//! | 10 | 0,9076 % | −0,0104 % |
-//! | 20 | 1,8062 % | −0,0206 % |
-//! | 40 | 3,5754 % | −0,0409 % |
+//! | 1 | 0,0908 % | **−0,0008 %** |
+//! | 10 | 0,9076 % | −0,0079 % |
+//! | 20 | 1,8062 % | −0,0159 % |
+//! | 40 | 3,5754 % | −0,0318 % |
+//!
+//! ⚠️ **A coluna `L` MOVEU quando o par passou a correr sobre o operador que o
+//! paper nomeia** (o cotangente — ver [`RingOperator`]): ela era
+//! `−0,0011 / −0,0104 / −0,0206 / −0,0409` sobre o laplaciano uniforme. O
+//! resíduo encolheu **22 %** e o sinal não mudou. *O `S` é o contrato de
+//! paridade e não se move; o `L` é o que a literatura declara, e mover para mais
+//! perto do paper é o que ele existe para fazer.*
 //!
 //! ⚠️ **A INCLINAÇÃO cai ~87×, e o resíduo NÃO é limitado — eu escrevi
 //! *"limitado"* primeiro e a tabela me desmentiu.** Deduzi o teto do SINAL ter
@@ -66,8 +73,16 @@
 //!    oposto de *"passar de novo alisa mais"*, que é o que uma pincelada faz.
 //!
 //! ⇒ O HC fica **NOMEADO como a alternativa medida contra esta**, não
-//! esquecido. Se ele voltar à mesa, volta contra `0,0206 %` em vinte dabs, não
+//! esquecido. Se ele voltar à mesa, volta contra `0,0159 %` em vinte dabs, não
 //! contra `1,8062 %`.
+//!
+//! ⚠️ **E ele deixou de ser hipotético desde então:** o `SURFACE_SMOOTH` shipou
+//! como VERBO próprio (o [`Verb::SurfaceSmooth`], que é o HC com o `b` num plano
+//! da sessão), então a razão 2 acima — *"o HC pede estado que este motor não
+//! tem"* — descreve o que era verdade quando o par foi escolhido, e o que mudou
+//! foi o motor. As razões 1 e 3 seguem de pé, e são elas que mantêm o par no
+//! `l-mode` do Smooth: um traço longo de HC PUXA de volta para a pose do
+//! pen-down, e o Taubin não.
 //!
 //! # O que a lei de um passe NÃO muda
 //!
@@ -127,7 +142,95 @@ const TAUBIN: [Pass; 2] = [
     Pass { weight: TAUBIN_MU },
 ];
 
+/// **SOBRE QUE OPERADOR o alvo do anel é construído** — a segunda metade
+/// imperativa do `l-mode` do Smooth.
+///
+/// ⚠️ **O §4 do plano 21 já dizia onde este operador vive, e eu li a linha ao
+/// contrário na primeira vez.** A tabela credita Meyer/Desbrun/Schröder/Barr
+/// 2003 com *"laplaciano por **cotangentes**, normal de curvatura média"* para
+/// **"Inflate · o operador dos dois acima"** — e *os dois acima* são o Taubin
+/// 1995 e o fairing implícito de Desbrun 1999. Ou seja: o cotangente é o
+/// **operador sobre o qual o par λ|μ deveria correr**, e o nosso corria sobre o
+/// uniforme.
+///
+/// # ⛔ A outra metade da mesma célula foi RECUSADA por medição
+///
+/// A célula do **Inflate** pede a *normal de curvatura média* como direção, e
+/// isso está medido em `tests/measure_curvature_normal.rs` — **não ship**:
+///
+/// | fixture | côncavos | eixo médio | eixo p95 |
+/// |---|---|---|---|
+/// | `sculpt_sphere` (a malha DEFAULT) | 0,0 % | **0,003°** | 0,020° |
+/// | `uv_sphere` 24×32 | 0,0 % | 0,213° | 0,933° |
+/// | depois de 4 traços | 3,3 % | **0,709°** | 2,030° |
+/// | `uv_sphere_shuffled` | 12,6 % | 26,3° | **87,9°** |
+///
+/// Duas leituras, e as duas recusam. **(1)** Na malha que o artista de facto tem
+/// o eixo diverge **três milésimos de grau** — um chip que não move um pixel.
+/// **(2)** Onde ele diverge, diverge **por não ser uma normal**: `p95 = 87,9°` é
+/// quase TANGENTE, porque numa malha ruidosa o vetor de curvatura segue a ruga e
+/// não a superfície. E a coluna *côncavos* nomeia o resto: `K = 2·κ_H·n` carrega
+/// a curvatura **com sinal**, então numa cova ele aponta para DENTRO —
+/// caminhar por ele não é inflar, é **afiar**, que é outro verbo e já tem
+/// l-mode próprio (o μ do Taubin). O mecanismo inteiro mora no módulo
+/// `ph2d_mesh::cotangent`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum RingOperator {
+    /// A média **não-ponderada** do anel — o `Smooth.js` da referência, e o que
+    /// o app sempre rodou. Todo peso vale 1, então ela nunca degenera.
+    #[default]
+    Uniform,
+    /// A média ponderada por **cotangentes** — o Laplace-Beltrami discreto.
+    ///
+    /// ⚠️ **O que ele compra está MEDIDO** (`ph2d-mesh`,
+    /// `tests/measure_cotangent_smoothing.rs`, `uv_sphere` 24×32, força cheia —
+    /// a *deriva tangencial* é quanto o vértice escorregou AO LONGO da
+    /// superfície, que é o que "a parametrização se distorce" significa em
+    /// número):
+    ///
+    /// | passes | operador | raio médio | deriva tangencial |
+    /// |---|---|---|---|
+    /// | 1 | uniforme | 0,990715 | 0,003164 |
+    /// | 1 | **cotangente** | **0,992060** | **0,000014** |
+    /// | 4 | uniforme | 0,963384 | 0,012277 |
+    /// | 4 | **cotangente** | **0,968796** | **0,000322** |
+    /// | 16 | uniforme | 0,864052 | 0,043883 |
+    /// | 16 | **cotangente** | **0,882856** | **0,004974** |
+    ///
+    /// **226× · 38× · 8,8× menos deriva**, e encolhe menos nos três. Numa malha
+    /// irregular (`uv_sphere_shuffled`, 4 passes) a deriva cai **0,047561 →
+    /// 0,007172**.
+    ///
+    /// ⚠️ **A fixture serve por ACIDENTE da própria construção, e é isso que a
+    /// torna honesta:** numa esfera de anéis quadrados os dois operadores
+    /// coincidem por SIMETRIA e a sonda mediria zero; na `uv_sphere` o passo em
+    /// longitude encolhe com `sin θ` e o em latitude não, então a anisotropia
+    /// aparece sem ninguém a fabricar.
+    Cotangent,
+}
+
 impl Brush {
+    /// **O OPERADOR DE ANEL DESTE PINCEL** — irmão do [`Self::passes`], com a
+    /// MESMA chave.
+    ///
+    /// ⚠️ **A chave tem de ser a mesma, e é o único jeito de o chip não
+    /// mentir:** o `L` do Smooth **é** o Taubin, e o Taubin só é o que o paper
+    /// descreve se correr sobre o operador que o paper nomeia. Chaveados
+    /// diferente, o par λ|μ rodaria sobre um operador e o chip anunciaria outro.
+    ///
+    /// ⚠️ **E é escrito, não DERIVADO de `passes().len() > 1`** — pela mesma
+    /// razão que o `RefMode::declares` recusa a derivada: *fazer dois passes* e
+    /// *usar o operador geométrico* são perguntas diferentes que hoje têm a
+    /// mesma resposta. O gate `the_taubin_pair_runs_on_the_cotangent_operator`
+    /// pina a coincidência em vez de a deixar como disciplina.
+    #[must_use]
+    pub fn ring_operator(&self) -> RingOperator {
+        match (self.verb, self.mode) {
+            (Verb::Smooth, crate::RefMode::L) => RingOperator::Cotangent,
+            _ => RingOperator::Uniform,
+        }
+    }
+
     /// **OS PASSES DESTE PINCEL** — a porta única de *quantas vezes o laço do
     /// dab roda*.
     ///

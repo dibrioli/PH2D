@@ -146,7 +146,7 @@ impl SculptStroke {
             let vi = v as usize;
             let s = self.slot[vi] as usize;
             let q = mesh.positions()[vi];
-            let avg = self.neighbour_average(mesh, v, q);
+            let avg = self.neighbour_average(mesh, brush, v, q);
             let o = self.base_pos[s];
             let mut b = [0.0f32; 3];
             for k in 0..3 {

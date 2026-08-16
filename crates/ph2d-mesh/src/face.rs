@@ -79,15 +79,38 @@ impl Face {
         if self.is_tri() { 1 } else { 2 }
     }
 
-    /// A face como triângulos, para o buffer de índices que a GPU consome.
+    /// **O `i`-ésimo triângulo desta face** — `i < [`Self::tri_count`]`.
+    ///
     /// Um quad `(a,b,c,d)` vira `(a,b,c)` e `(a,c,d)` — a diagonal `a-c`, a
     /// mesma escolha do SculptGL, para que o desenho não dependa de qual
     /// consumidor triangulou.
-    pub fn triangles(&self, out: &mut Vec<[u32; 3]>) {
+    ///
+    /// ⚠️ **Esta é a ÚNICA resposta a *"em que triângulos este quad se parte?"***
+    /// — a [`Self::triangles`] delega aqui. Ela existe porque um consumidor que
+    /// percorre os triângulos de UM vértice (o operador por cotangentes) não pode
+    /// pagar um `Vec` por vértice, e a alternativa — repetir a diagonal inline —
+    /// seria a segunda resposta, que diverge no dia em que alguém escolher a
+    /// outra diagonal por área ou por planaridade.
+    ///
+    /// # Panics
+    /// Se `i >= tri_count()`.
+    #[must_use]
+    pub const fn tri_at(&self, i: usize) -> [u32; 3] {
         let [a, b, c, d] = self.0;
-        out.push([a, b, c]);
-        if d != TRI {
-            out.push([a, c, d]);
+        match i {
+            0 => [a, b, c],
+            1 => {
+                assert!(d != TRI, "um triângulo não tem segundo triângulo");
+                [a, c, d]
+            }
+            _ => panic!("índice de triângulo fora da face"),
+        }
+    }
+
+    /// A face como triângulos, para o buffer de índices que a GPU consome.
+    pub fn triangles(&self, out: &mut Vec<[u32; 3]>) {
+        for i in 0..self.tri_count() {
+            out.push(self.tri_at(i));
         }
     }
 }

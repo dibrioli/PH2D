@@ -177,7 +177,7 @@ que já existe.
 | verbo | s-mode | b-mode | l-mode — **o mecanismo publicado** | chips |
 |---|---|---|---|---|
 | **Draw** | normal do PONTO · quártica · int. 1,0 | normal de ÁREA · curva · `strength²` · hardness · front-face contínuo | ⚠️ normal do ajuste **MLS/PCA** da pegada (Alexa 2003) — **o l-mode mais fraco da tabela**; se medir dentro do piso, o Draw shipa com **2** | 2 ou 3 |
-| **Inflate** | normal viva, int. 0,30 | normal viva, pressão assimétrica 0,25/0,125 | **normal de curvatura média por cotangentes** (Meyer/Desbrun/Schröder/Barr 2003) | 3 |
+| **Inflate** | normal viva, int. 0,30 | normal viva, pressão assimétrica 0,25/0,125 | ⛔ **RECUSADO por medição** — a *normal de curvatura média por cotangentes* diverge **0,003°** da que já shipa na malha default, e onde diverge (p95 **87,9°**) ela deixa de ser uma normal; §7.28 | **2** |
 | **Smooth** | laplaciano, **sem falloff**, `smoothTangent` OFF | Smooth + `SURFACE_SMOOTH` como pincel próprio | **HC-Laplacian** (Vollmer/Mencl/Müller, EG 1999) — o que **não encolhe** | 3 |
 | **Sharpen** | — (o SculptGL não tem) | Enhance Details | **passo μ do Taubin λ\|μ** (SIGGRAPH 1995) / fairing implícito (Desbrun 1999) | 2 |
 | **Flatten** | **unilateral** (negativo) | `height`/`depth`, dois números | **projeção MLS** (Alexa et al. 2003): a superfície acompanha a curvatura em vez de ser um plano | 3 |
@@ -2671,7 +2671,7 @@ alguém a chame.*
 |---|---|
 | **W0** a espinha · **W1'** a UI · **W2** os knobs de Pro · **W3** os kernels divergentes · **W5** Kelvinlets | ✅ **fechadas** |
 | ~~**W1**~~ os defaults do `B` | ⛔ **sem cura em código** — §7.0; vira decisão de produto |
-| **W4** o Smooth que não encolhe | 🟡 **metade** — o `l-mode` (Taubin λ\|μ) landou; faltam **Slide Relax**, o **Surface Smooth como pincel próprio** e o **laplaciano por cotangentes** (que é o `L` do Inflate na matriz do §3) |
+| **W4** o Smooth que não encolhe | ✅ **FECHADA** — o `l-mode` (Taubin λ\|μ) · **Slide Relax** · o **Surface Smooth como pincel próprio** (HC) · e o **laplaciano por cotangentes**, que ⚠️ **não foi para onde esta tabela o mandava**: como direção do Inflate ele foi **RECUSADO por medição** (§7.28) e a casa dele é o operador sobre o qual o par λ\|μ corre — que é o que o §4 já dizia (*"o operador dos dois acima"*) |
 | **W6** os dabs que não são discos | ✅ **FECHADA** — **Clay Strips** · **Blob** · **Clay Thumb** (§7.26) · **Multiplane Scrape** (§7.27). O **Draw Sharp**, o 5º da lista dela, saiu com motivo na §7.18 (ele é o item da W1) |
 | **W7** o plano MLS · **W8** Layer · **W9** Mesh Filter · **W10** Cloth · **W11** handles · **W12** a geodésica | ⬜ **por abrir** |
 
@@ -2972,3 +2972,133 @@ números derivados das constantes. As perguntas de olho: **o CONTROLE primeiro**
 um **toque parado faz NADA** · o **Ctrl** vira o telhado em vale · e com **Read
 the surface** marcado e o ângulo em zero ela **ainda corta**, porque leu a forma
 que está debaixo do pincel.
+
+---
+
+### §7.28 — ✅ O LAPLACIANO POR COTANGENTES, e a célula do Inflate RECUSADA (2026-08-16)
+
+O último item da **W4**. O §4 credita Meyer/Desbrun/Schröder/Barr 2003 com
+*"laplaciano por **cotangentes**, normal de curvatura média"* para **"Inflate ·
+o operador dos dois acima"** — e a wave descobriu, medindo, que as duas metades
+dessa célula têm **vereditos opostos**.
+
+#### O operador
+
+`ph2d-mesh::cotangent` — o Laplace-Beltrami discreto:
+
+```text
+K(x_i) = (1 / (2·A_mixed)) · Σ_j (cot α_ij + cot β_ij) · (x_i − x_j) = 2·κ_H·n
+```
+
+Gateado contra o número do **paper**, não contra o que saiu: numa esfera de raio
+`R` ele mede `2/R` com erro relativo **< 2 %** e desvio de direção **< 1e-3**,
+nos três raios. Sem transcendental — `cot θ = (u·v)/|u × v|`, então nenhum
+ângulo é materializado e a única raiz é a que a área do triângulo já precisa.
+
+⚠️ **A BORDA devolve `None`, e é uma AFIRMAÇÃO:** a construção pede os **dois**
+ângulos opostos a cada aresta e uma aresta de beira tem um só. Inventar o que
+falta seria pôr um número onde a fonte não tem nenhum — a regra do §4.
+
+#### ⛔ A célula do Inflate: RECUSADA, com número
+
+`tests/measure_curvature_normal.rs`, o eixo separado do sinal:
+
+| fixture | côncavos | eixo médio | eixo p95 |
+|---|---|---|---|
+| `sculpt_sphere` (a malha DEFAULT) | 0,0 % | **0,003°** | 0,020° |
+| `uv_sphere` 24×32 | 0,0 % | 0,213° | 0,933° |
+| depois de 4 traços | 3,3 % | **0,709°** | 2,030° |
+| `uv_sphere_shuffled` | 12,6 % | 26,3° | **87,9°** |
+
+Três razões, e cada uma bastaria:
+
+1. **Na malha que o artista tem, o eixo diverge três milésimos de grau** da
+   normal que já shipa. Um chip que não move um pixel.
+2. **Onde ele diverge, diverge por deixar de ser uma normal:** `p95 = 87,9°` é
+   quase TANGENTE — numa malha ruidosa o vetor de curvatura segue a ruga.
+3. **`K = 2·κ_H·n` carrega o sinal da curvatura:** numa cova ele aponta para
+   DENTRO. Caminhar por ele não é *inflar*, é **afiar** — outro verbo, que já
+   tem `l-mode` próprio (o μ do Taubin).
+
+⇒ O Inflate fica com **2 chips**, e a linha da matriz do §3 foi corrigida.
+
+#### ✅ A casa dele: o operador do `l-mode` do Smooth
+
+*"O operador dos dois acima"* são o Taubin 1995 e o Desbrun 1999 — ou seja, o
+cotangente é o laplaciano **sobre o qual o par λ|μ deveria correr**, e o nosso
+corria sobre o uniforme. A propriedade, medida porta contra porta
+(`ph2d-mesh::measure_cotangent_smoothing`, `uv_sphere` 24×32, força cheia; a
+*deriva tangencial* é quanto o vértice escorregou AO LONGO da superfície):
+
+| passes | operador | raio médio | deriva tangencial |
+|---|---|---|---|
+| 1 | uniforme | 0,990715 | 0,003164 |
+| 1 | **cotangente** | **0,992060** | **0,000014** |
+| 4 | uniforme | 0,963384 | 0,012277 |
+| 4 | **cotangente** | **0,968796** | **0,000322** |
+| 16 | uniforme | 0,864052 | 0,043883 |
+| 16 | **cotangente** | **0,882856** | **0,004974** |
+
+**226× · 38× · 8,8× menos deriva**, e encolhe menos nos três. E o resíduo do
+próprio par λ|μ encolheu **22 %**: a coluna `L` do `taubin_pair` era
+`−0,0011 / −0,0104 / −0,0206 / −0,0409 %` e é agora
+`−0,0008 / −0,0079 / −0,0159 / −0,0318 %`.
+
+⚠️ **A chave do operador é a MESMA do par** (`(Smooth, L)`), e é o único jeito de
+o chip não mentir: chaveados diferente, o Taubin rodaria sobre um operador e o
+chip anunciaria outro. Escrita e não derivada de `passes().len() > 1`, pela mesma
+razão que o `RefMode::declares` recusa a derivada.
+
+#### As três lições de gate, todas minhas
+
+1. **O primeiro gate de não-vazamento era AUTO-REFERENTE** — rodava o mesmo
+   pincel duas vezes e comparava os resultados. Testa determinismo e **não pode
+   falhar**. O oráculo honesto é `(Sharpen, B)` contra `(Sharpen, L)` **ao bit**:
+   dois pincéis DIFERENTES obrigados ao mesmo resultado, porque o `L` não declara
+   o Sharpen e `kernel_for` recua para o `B`.
+2. **O segundo usava o `s-mode` como controle e REPROVOU produto correto**
+   (`4,92×`): `S` contra `L` mede a lei de kernel **junto com** o operador. O
+   controle que isola é o `B` — e os quatro números o mostram, com o `S/B` de
+   ~4,8× a aparecer nos DOIS verbos.
+3. **E o gate de propriedade ficava VERDE com o operador desligado**, porque sob
+   o `L` entram DUAS coisas (o par e o operador) e o par sozinho já reduz a
+   deriva. A isolação foi para `ph2d-mesh`, onde as duas portas são públicas e
+   não há terceira variável.
+
+#### A mutação que sobreviveu, e o teorema que a explica
+
+**8 mutações, 7 sangram.** A que sobrevive apaga a guarda de `Σw ≤ 0` — e a
+explicação não é *"falta fixture"*: varrida uma grade de razão de aspecto **1 a
+1000**, a contagem de `Σw ≤ 0` foi **zero em todas**, porque
+
+```text
+cot q + cot r = sin(q + r) / (sin q · sin r) = sin p / (sin q · sin r) > 0
+```
+
+para todo triângulo não-degenerado — um triângulo tem no máximo **um** ângulo
+obtuso, e o par que entra na soma nunca é dominado por ele. ⚠️ A instabilidade
+real do operador mora nos pesos **individuais** por aresta, não na soma; o
+doc-comment do `RingWeights::weight` dizia o contrário e foi corrigido. Gate:
+`the_weight_sum_is_positive_by_identity_not_by_luck`.
+
+#### Um doc que creditava a idempotência ao lugar errado
+
+O `neighbour_average` afirmava *"a média das posições **CONGELADAS** … ler o
+`pre` e não o vivo é o que torna o Smooth idempotente"*, e a leitura é
+`mesh.positions()` — a viva, a mesma do `live` do `compute_target`. O que impede
+a superfície de derreter sob um pincel parado mora no **aplicador**, que
+interpola de `base_pos` para o alvo em vez de compor sobre o resultado anterior.
+Corrigido nos dois lugares.
+
+#### Superfície
+
+`PROJECT_SCHEMA` intocado · contrato congelado intocado · **nenhuma crate nova** ·
+**nenhuma dep nova** · nenhum ADR (o `rayon` da `ph2d-mesh` já é o das normais e
+da curvatura, mesmo gather, mesmo CSR). Superfície pública nova: `RingWeights` ·
+`ring_weights_at` · `mean_curvature_normal_at` · `curvature_normal_dir_at` ·
+`curvature_normals_of` · `cotangent_ring_average_at` · `Face::tri_at` ·
+`RingOperator` · `Brush::ring_operator`.
+
+**Mudança de comportamento — UMA:** o `l-mode` do Smooth desenha diferente (é a
+entrega). Todo outro pincel é **byte-idêntico**, e o gate que o afirma compara
+dois pincéis distintos em vez da função consigo mesma.

@@ -27,7 +27,7 @@
 //! not the other, which an artist reads as the body being broken rather than
 //! soft.
 
-use crate::shape::shape_goals;
+use crate::shape::shape_goals_weighted;
 
 /// Smallest span, in particles, that a cluster may cover on an axis. Below two
 /// there is nothing for a frame to be fitted to: a single particle gives
@@ -81,6 +81,10 @@ pub(crate) fn span(j: usize, n: usize, len: usize) -> (usize, usize) {
 /// inside a body is at one pressure everywhere. What differs between regions is
 /// how much each one has been squashed, and that is already carried by each
 /// cluster's own frame.
+/// A porta UNIFORME (ver `shape::shape_goals`): a lei com o peso neutro, falada
+/// pelos oráculos e por nenhum caminho de produção.
+#[cfg(test)]
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn cluster_goals(
     pred: &[[f32; 2]],
     rest: &[[f32; 2]],
@@ -90,6 +94,26 @@ pub(crate) fn cluster_goals(
     scale: f32,
     clusters: usize,
 ) -> Vec<[f32; 2]> {
+    cluster_goals_weighted(pred, rest, rows, cols, beta, scale, clusters, None)
+}
+
+/// A mesma partição, com o **peso por partícula** atravessando para cada região.
+///
+/// ⚠️ **O peso não pode entrar só no ajuste de cada região — ele tem de entrar na
+/// MÉDIA que junta as regiões também.** Uma partícula que não pertence ao corpo
+/// aparece em até quatro regiões vizinhas, e sem o peso na costura ela voltaria a
+/// arrastar o goal dos vizinhos pela porta de trás.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn cluster_goals_weighted(
+    pred: &[[f32; 2]],
+    rest: &[[f32; 2]],
+    rows: usize,
+    cols: usize,
+    beta: f32,
+    scale: f32,
+    clusters: usize,
+    w: Option<&[f32]>,
+) -> Vec<[f32; 2]> {
     let n = rows * cols;
     let (nr, nc) = counts(rows, cols, clusters);
     let mut sum = vec![[0.0f32; 2]; n];
@@ -98,6 +122,7 @@ pub(crate) fn cluster_goals(
     // Scratch reused across clusters: a 512² body at four clusters a side would
     // otherwise churn sixteen allocations per tick, per particle plane.
     let (mut sub_pred, mut sub_rest, mut idx) = (Vec::new(), Vec::new(), Vec::new());
+    let mut sub_w: Vec<f32> = Vec::new();
 
     for cj in 0..nc {
         let (c0, c1) = span(cj, nc, cols);
@@ -105,25 +130,33 @@ pub(crate) fn cluster_goals(
             let (r0, r1) = span(rj, nr, rows);
             sub_pred.clear();
             sub_rest.clear();
+            sub_w.clear();
             idx.clear();
             let mut centre = [0.0f32; 2];
+            let mut total = 0.0f32;
             for r in r0..r1 {
                 for c in c0..c1 {
                     let i = r * cols + c;
                     idx.push(i);
                     sub_pred.push(pred[i]);
                     sub_rest.push(rest[i]);
-                    centre[0] += rest[i][0];
-                    centre[1] += rest[i][1];
+                    let k = w.map_or(1.0, |w| w[i]);
+                    sub_w.push(k);
+                    centre[0] += k * rest[i][0];
+                    centre[1] += k * rest[i][1];
+                    total += k;
                 }
             }
-            let m = sub_rest.len() as f32;
-            centre = [centre[0] / m, centre[1] / m];
-            for q in &mut sub_rest {
-                q[0] -= centre[0];
-                q[1] -= centre[1];
+            // ⚠️ **O centro sai da MESMA divisão de sempre quando não há pesos** —
+            // `Σ 1.0` sobre `m` partículas é exactamente `m as f32` —, e o
+            // `shape_goals_weighted` passa a fazer a subtração que este laço fazia
+            // à mão. Mesma expressão, mesma ordem, mesmos bits.
+            if total <= 1e-6 {
+                continue; // região sem membro nenhum: nada a ajustar
             }
-            for (k, g) in shape_goals(&sub_pred, &sub_rest, beta, scale)
+            centre = [centre[0] / total, centre[1] / total];
+            let ws = w.map(|_| sub_w.as_slice());
+            for (k, g) in shape_goals_weighted(&sub_pred, &sub_rest, beta, scale, ws, centre)
                 .into_iter()
                 .enumerate()
             {
@@ -154,6 +187,7 @@ pub(crate) fn cluster_goals(
 mod tests {
     use super::*;
     use crate::shape::rest_shape;
+    use crate::shape::shape_goals;
 
     /// Bend the rest mesh around a circle of `radius`. ⚠️ `radius − q[0]`, not
     /// `+`: the Jacobian of the `+` version has determinant `−r/R`, so it turns the
@@ -309,5 +343,57 @@ mod tests {
                 "{a:?} vs {b:?}"
             );
         }
+    }
+
+    /// **O PESO ATRAVESSA A PARTIÇÃO TAMBÉM** — e é preciso dizê-lo, porque a
+    /// rota agrupada é a SEGUNDA porta do ajuste: ela ganha o peso no ajuste de
+    /// cada região **e** na média que junta as regiões.
+    ///
+    /// ⚠️ Um corpo LONGO com poucas regiões é a fixture: numa região só, a
+    /// partícula solta arrastaria o quadro global, e o gate não distinguiria as
+    /// duas rotas.
+    #[test]
+    fn the_weight_crosses_the_partition() {
+        let (rows, cols) = (4, 16);
+        let rest = crate::shape::rest_shape(rows, cols, 0.7);
+        let n = rest.len();
+        let mut w = vec![1.0f32; n];
+        w[n - 1] = 0.0;
+        let base: Vec<[f32; 2]> = rest.iter().map(|q| [q[0] * 1.05, q[1] * 0.95]).collect();
+
+        let goal_of = |runaway: [f32; 2]| {
+            let mut pred = base.clone();
+            pred[n - 1] = runaway;
+            cluster_goals_weighted(&pred, &rest, rows, cols, 0.0, 1.0, 4, Some(&w))
+        };
+        let near = goal_of(base[n - 1]);
+        let far = goal_of([120.0, 90.0]);
+        let worst = near
+            .iter()
+            .zip(&far)
+            .take(n - 1)
+            .map(|(a, b)| (a[0] - b[0]).abs().max((a[1] - b[1]).abs()))
+            .fold(0.0f32, f32::max);
+        assert!(
+            worst < 1e-4,
+            "a partícula solta não pode arrastar região nenhuma; {worst:.6}"
+        );
+
+        // CONTROLE: com peso cheio, a mesma fuga move o quadro da região dela.
+        let uniform = |runaway: [f32; 2]| {
+            let mut pred = base.clone();
+            pred[n - 1] = runaway;
+            cluster_goals(&pred, &rest, rows, cols, 0.0, 1.0, 4)
+        };
+        let moved = uniform(base[n - 1])
+            .iter()
+            .zip(&uniform([120.0, 90.0]))
+            .take(n - 1)
+            .map(|(a, b)| (a[0] - b[0]).abs().max((a[1] - b[1]).abs()))
+            .fold(0.0f32, f32::max);
+        assert!(
+            moved > 1.0,
+            "o controle tem de mover (senão o gate é vácuo); {moved:.4}"
+        );
     }
 }

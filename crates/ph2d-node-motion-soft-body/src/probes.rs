@@ -5,6 +5,7 @@
 //! written (CLAUDE.md §0). Split from `lib.rs` at the 700-LOC cap.
 
 use super::*;
+use crate::shape::shape_goals;
 
 /// MEASUREMENT, before a line of `pressure` is written: **does the body's area
 /// actually deviate from its rest area?** The plan calls `pressure` a term
@@ -318,6 +319,7 @@ fn what_does_the_shape_match_cost_per_tick() {
                 &vel,
                 &accel,
                 &[],
+                None,
                 [0.0, 0.0],
                 &rest,
                 1.0 / 60.0,
@@ -494,6 +496,7 @@ fn what_clusters_buy_and_what_they_cost() {
                     &vel,
                     &accel,
                     &[],
+                    None,
                     [0.0, 0.0],
                     &rest,
                     1.0 / 60.0,

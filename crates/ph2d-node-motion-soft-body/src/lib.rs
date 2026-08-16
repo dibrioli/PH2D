@@ -54,8 +54,10 @@ mod params_ui;
 use params_ui::{PARAM_HARD_MAX, PARAM_HINTS, PARAM_UNITS};
 mod cluster;
 mod shape;
-use cluster::cluster_goals;
-use shape::{boundary_area, pressure_scale, rest_shape, shape_goals};
+use cluster::cluster_goals_weighted;
+use shape::{
+    boundary_area, pressure_scale, rest_shape, shape_goals_weighted, weighted_rest_centroid,
+};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 /// The value type of the `anchor_*` inputs (mirror of `motion.look_at::VALUE`).
@@ -65,6 +67,9 @@ const VALUE_COL: &str = "v";
 /// pinada. Convenção de string partilhada pelos solvers do módulo, soletrada
 /// LOCALMENTE por cada leitor (como `P` / `accel`) em vez de acoplar as crates.
 const INV_MASS_COL: &str = "inv_mass";
+/// O peso por partícula (a espinha MOPs). Convenção de string partilhada,
+/// soletrada LOCALMENTE por cada leitor — como `P` / `accel` / `inv_mass`.
+const FALLOFF_COL: &str = "falloff";
 
 /// Ceiling on a single step (see `motion.integrate`): guards a playhead jump.
 const MAX_DT: f32 = 0.1;
@@ -283,6 +288,36 @@ fn inv_mass_col(s: &Stream, n: usize) -> Vec<f32> {
     }
 }
 
+/// **O PESO DE UMA PARTÍCULA NO CORPO** — o `wᵢ = mᵢ` de Müller 2005, que este
+/// arquivo declara ter fixado em `1` desde que nasceu (*"masses are uniform here
+/// — exact for this even grid, so the paper's mass-weighted centroid/`A_pq`
+/// reduce to the plain sums"*). O `falloff` é esse peso, e a folha 03 pedia-o
+/// como *goal/peso por partícula* (o **Goal** por vertex group do Blender
+/// Softbody · a espinha MOPs *todo modificador é modulado por `mops_falloff`*).
+///
+/// ⚠️ **Devolve `None` quando a coluna está AUSENTE, e não um vetor de uns** — e
+/// a distinção é byte-identidade, não gosto: com pesos o centroide de repouso
+/// deixa de ser zero e passa a ser subtraído, e medido (a sonda
+/// `is_the_rest_centroid_exactly_zero`) o centroide de uma malha real vale
+/// `−1,192e-7`, não `0`. `None` deixa a lei correr com `c₀ = [0,0]` literal, que
+/// é a identidade em IEEE-754 e é exactamente o corpo que sempre shipou.
+///
+/// ⚠️ **Consumida, nunca emitida**, a disciplina do `accel` e do `inv_mass`: o
+/// stream emitido carrega `P`/`sb_vel`/`sim_t`, então um corpo que a reemitisse
+/// faria um `field.*` no laço compor o peso consigo mesmo a cada tique — o
+/// *produto sobre a lista* que esta casa já curou quatro vezes.
+///
+/// Fora de faixa é clampado: um documento editado à mão não pode dar peso
+/// NEGATIVO a uma partícula e virar o ajuste do avesso.
+fn falloff_col(s: &Stream, n: usize) -> Option<Vec<f32>> {
+    match s.get(FALLOFF_COL) {
+        Some(Column::Scalar(v)) if v.len() == n => {
+            Some(v.iter().map(|f| f.clamp(0.0, 1.0)).collect())
+        }
+        _ => None,
+    }
+}
+
 fn accel_col(s: &Stream, n: usize) -> Vec<[f32; 2]> {
     match s.get("accel") {
         Some(Column::Vec2(v)) if v.len() == n => v.clone(),
@@ -305,6 +340,7 @@ fn step(
     vel: &[[f32; 2]],
     accel: &[[f32; 2]],
     inv_mass: &[f32],
+    falloff: Option<&[f32]>,
     anchor: [f32; 2],
     rest: &[[f32; 2]],
     dt: f32,
@@ -386,10 +422,19 @@ fn step(
     } else {
         1.0
     };
+    // ⚠️ **O peso entra no AJUSTE e no PUXÃO, e é UMA ideia com duas
+    // consequências:** o peso diz *quanto esta partícula PERTENCE ao corpo*, e
+    // pertencer é (a) definir a forma e (b) ser puxado de volta a ela. Peso zero
+    // ⇒ a partícula não define o quadro nem é puxada por ele: uma partícula
+    // LIVRE. Escrever só a metade (b) deixaria uma partícula que se solta ainda
+    // a arrastar o ajuste do corpo inteiro atrás dela.
     let goals = if p.clusters > 1 {
-        cluster_goals(&pred, rest, p.rows, p.cols, p.beta, scale, p.clusters)
+        cluster_goals_weighted(
+            &pred, rest, p.rows, p.cols, p.beta, scale, p.clusters, falloff,
+        )
     } else {
-        shape_goals(&pred, rest, p.beta, scale)
+        let c0 = weighted_rest_centroid(rest, falloff);
+        shape_goals_weighted(&pred, rest, p.beta, scale, falloff, c0)
     };
     let mut out_pos = vec![[0.0f32; 2]; n];
     let mut out_vel = vec![[0.0f32; 2]; n];
@@ -405,7 +450,9 @@ fn step(
         // zero a outra expressão vale `x + (g − x)·0`, que é `x` para todo `g`
         // FINITO e **NaN** para um `g` infinito. O ramo é o que impede um goal
         // degenerado de envenenar uma partícula que, por definição, nada move.
-        let pull = p.stiffness * inv_mass.get(i).copied().unwrap_or(1.0);
+        let pull = p.stiffness
+            * inv_mass.get(i).copied().unwrap_or(1.0)
+            * falloff.map_or(1.0, |f| f.get(i).copied().unwrap_or(1.0));
         let mut np = if p.is_pinned(i) || pull <= 0.0 {
             pred[i] // pinned particles stay exactly on the pin
         } else {
@@ -448,7 +495,18 @@ fn simulate(anchor: [f32; 2], state: &Stream, playhead: f32, p: &Params) -> Stre
         } else {
             let accel = accel_col(state, n);
             let w = inv_mass_col(state, n);
-            step(&s_pos, &s_vel, &accel, &w, anchor, &rest, dt, p)
+            let fall = falloff_col(state, n);
+            step(
+                &s_pos,
+                &s_vel,
+                &accel,
+                &w,
+                fall.as_deref(),
+                anchor,
+                &rest,
+                dt,
+                p,
+            )
         }
     } else {
         // Seed the rest mesh at the anchor, at rest (zero velocity).
@@ -521,6 +579,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         &[
             ph2d_node_registry::Coupling::Consumes("accel"),
             ph2d_node_registry::Coupling::Consumes("inv_mass"),
+            ph2d_node_registry::Coupling::Consumes("falloff"),
         ],
     );
     Ok(())

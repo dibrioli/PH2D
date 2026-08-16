@@ -148,12 +148,57 @@ fn consumes_falloff_in_source(name: &str) -> bool {
         .collect();
 
     let produces = files.iter().any(|s| s.contains("set(\"falloff\""));
-    let reads = files.iter().any(|s| {
+    let inline = files.iter().any(|s| {
         s.lines().any(|l| {
             l.contains("\"falloff\"")
                 && (l.contains("get(") || l.contains("_col("))
                 && !l.trim_start().starts_with("//")
         })
     });
-    reads && !produces
+    (inline || reads_via_const(&files)) && !produces
+}
+
+/// A SEGUNDA grafia de uma leitura, e ela é a CONVENÇÃO deste módulo: o nome da
+/// coluna numa `const` própria do leitor — *"soletrada LOCALMENTE por cada leitor
+/// (como `P` / `accel`) em vez de acoplar as crates"*, que é o que o
+/// `motion.collide`, o `motion.soft_body`, a `verlet_rope` e o `boids` fazem.
+///
+/// ⚠️ **Sem esta metade o scanner era CEGO a essa família inteira** — o literal
+/// mora na linha do `const` e o `get(` na linha da leitura, então a regra
+/// *"literal e `get(` na MESMA linha"* nunca casa, e o gate afirmava *"todo
+/// leitor CPU-only declara"* sobre um universo do qual todo leitor que segue a
+/// convenção estava fora. Achado quando o `motion.soft_body` passou a ler a
+/// coluna e a mutação que apaga a declaração dele **SOBREVIVEU**.
+///
+/// A regra continua sendo a do diagnoser e não uma heurística mais frouxa: uma
+/// `const` LIGADA ao literal, cujo identificador aparece numa CONSULTA a stream.
+/// Ela não alcança os três falsos positivos que o irmão nomeia — a lista de
+/// transientes do `sim.zone` é um ARRAY, o param do `rig.skin_deformer` sai de
+/// `ctx.param`, e a tabela de canais do `value.attribute` não liga uma const ao
+/// literal.
+fn reads_via_const(files: &[String]) -> bool {
+    let names: Vec<String> = files
+        .iter()
+        .flat_map(|s| s.lines())
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .filter_map(|l| {
+            let (head, tail) = l.split_once('=')?;
+            if !tail.trim_start().starts_with("\"falloff\"") {
+                return None;
+            }
+            let head = head.trim();
+            let idx = head.find("const ")? + "const ".len();
+            Some(head[idx..].split(':').next()?.trim().to_string())
+        })
+        .filter(|n| !n.is_empty())
+        .collect();
+    names.iter().any(|n| {
+        files.iter().any(|s| {
+            s.lines().any(|l| {
+                l.contains(n.as_str())
+                    && (l.contains("get(") || l.contains("_col("))
+                    && !l.trim_start().starts_with("//")
+            })
+        })
+    })
 }

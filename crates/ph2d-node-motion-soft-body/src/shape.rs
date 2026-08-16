@@ -244,42 +244,114 @@ pub(crate) fn pressure_scale(
 /// centred on the origin, so `Σ M·qᵢ = M·Σ qᵢ = 0` and the goal cloud's centroid
 /// IS `c`. A rest shape built off-centre would make these two differ, and the
 /// pressure would translate the body while inflating it.
+/// A porta UNIFORME — a lei com os argumentos neutros.
+///
+/// ⚠️ `#[cfg(test)]` de propósito: desde que o peso por partícula existe, **nenhum
+/// caminho de produção passa por aqui** (o `simulate` chama a lei ponderada com
+/// `None` quando a coluna está ausente), e um `pub(crate)` sem chamador é a
+/// segunda resposta à espera de alguém a chamar. Ela sobrevive como a voz que os
+/// oráculos falam, ao lado do `shape_goals_as_it_shipped`.
+#[cfg(test)]
 pub(crate) fn shape_goals(
     pred: &[[f32; 2]],
     rest: &[[f32; 2]],
     beta: f32,
     scale: f32,
 ) -> Vec<[f32; 2]> {
+    shape_goals_weighted(pred, rest, beta, scale, None, [0.0, 0.0])
+}
+
+/// O centroide de repouso PONDERADO — `[0, 0]` quando não há pesos, e é isso que
+/// faz a rota uniforme reduzir **ao bit**.
+///
+/// ⚠️ **O zero literal não é uma aproximação do valor verdadeiro, e a medição é
+/// que decide isto:** o `shape_goals` sempre assumiu *"o centroide de repouso é 0
+/// por construção"* e nunca o subtraiu — medido (`is_the_rest_centroid_exactly_zero`),
+/// a soma das coordenadas de uma malha 8×8 de espaçamento 0,7 vale **−1,192e-7**,
+/// não zero. Calcular o centroide de verdade no caso uniforme seria *mais
+/// correto* e moveria todo corpo já autorado por ~1e-7 a cada tique; devolver o
+/// zero literal mantém `q = rest − 0.0`, que é a **identidade** em IEEE-754 para
+/// todo finito (inclusive `−0,0`), e deixa a lei nova alcançar só quem tem peso.
+pub(crate) fn weighted_rest_centroid(rest: &[[f32; 2]], w: Option<&[f32]>) -> [f32; 2] {
+    let Some(w) = w else {
+        return [0.0, 0.0];
+    };
+    let mut sum = [0.0f32; 2];
+    let mut total = 0.0f32;
+    for (q, wi) in rest.iter().zip(w) {
+        sum[0] += wi * q[0];
+        sum[1] += wi * q[1];
+        total += wi;
+    }
+    if total <= EPS {
+        // Nenhuma partícula pertence ao corpo: não há forma a ajustar, e um
+        // centroide dividido por zero envenenaria o goal inteiro.
+        return [0.0, 0.0];
+    }
+    [sum[0] / total, sum[1] / total]
+}
+
+/// A lei do ajuste, com o **peso por partícula** de Müller 2005 (`wᵢ = mᵢ`).
+///
+/// ⚠️ **A versão ponderada é a lei, e a uniforme é ela com os argumentos
+/// neutros** — não há duas implementações do mesmo ajuste a divergir. E o neutro
+/// é exato por ARITMÉTICA, não por um ramo: `1.0 * x` é `x`, `x − 0.0` é `x`,
+/// `Σ 1.0` sobre `n` partículas é exactamente `n as f32` (para `n < 2²⁴`), e a
+/// divisão que sai disso é a MESMA que o corpo de sempre fazia.
+///
+/// ⚠️ **O peso entra no CENTROIDE também, e não só nas somas** — sem isso o
+/// `q` continuaria medido a partir do centro geométrico enquanto o `c` mede o
+/// centro de massa, e os dois desalinhados deslocam o corpo inteiro pelo próprio
+/// centroide de repouso ponderado, em repouso, sem ninguém tocar em nada.
+pub(crate) fn shape_goals_weighted(
+    pred: &[[f32; 2]],
+    rest: &[[f32; 2]],
+    beta: f32,
+    scale: f32,
+    w: Option<&[f32]>,
+    c0: [f32; 2],
+) -> Vec<[f32; 2]> {
     let n = pred.len();
     if n == 0 {
         return Vec::new();
     }
-    // Centroid of the deformed cloud (the rest centroid is 0 by construction).
+    let wi = |i: usize| w.map_or(1.0, |w| w[i]);
+    // Centroid of the deformed cloud, weighted by how much each particle belongs.
     let mut c = [0.0f32; 2];
-    for p in pred {
-        c[0] += p[0];
-        c[1] += p[1];
+    let mut total = 0.0f32;
+    for (i, p) in pred.iter().enumerate() {
+        let k = wi(i);
+        c[0] += k * p[0];
+        c[1] += k * p[1];
+        total += k;
     }
-    c = [c[0] / n as f32, c[1] / n as f32];
-    // A_pq = Σ (predᵢ − c)(qᵢ)ᵀ, and A_qq = Σ qᵢ qᵢᵀ (needed only for the linear mode).
+    if total <= EPS {
+        // Um corpo sem membro nenhum não tem forma a que voltar: o goal é a
+        // própria predição, que é o que "esta partícula é livre" significa.
+        return pred.to_vec();
+    }
+    c = [c[0] / total, c[1] / total];
+    // A_pq = Σ wᵢ (predᵢ − c)(qᵢ)ᵀ, and A_qq = Σ wᵢ qᵢ qᵢᵀ (linear mode only).
     let mut apq = [0.0f32; 4];
     let mut aqq = [0.0f32; 4];
     for i in 0..n {
-        let (dx, dy) = (pred[i][0] - c[0], pred[i][1] - c[1]);
-        let (qx, qy) = (rest[i][0], rest[i][1]);
+        let k = wi(i);
+        let (dx, dy) = (k * (pred[i][0] - c[0]), k * (pred[i][1] - c[1]));
+        let (qx, qy) = (rest[i][0] - c0[0], rest[i][1] - c0[1]);
         apq[0] += dx * qx;
         apq[1] += dx * qy;
         apq[2] += dy * qx;
         apq[3] += dy * qy;
-        aqq[0] += qx * qx;
-        aqq[1] += qx * qy;
-        aqq[2] += qy * qx;
-        aqq[3] += qy * qy;
+        aqq[0] += k * qx * qx;
+        aqq[1] += k * qx * qy;
+        aqq[2] += k * qy * qx;
+        aqq[3] += k * qy * qy;
     }
     let b = best_transform(apq, aqq, beta);
     let m = [b[0] * scale, b[1] * scale, b[2] * scale, b[3] * scale];
     rest.iter()
-        .map(|q| {
+        .map(|r| {
+            let q = [r[0] - c0[0], r[1] - c0[1]];
             [
                 m[0] * q[0] + m[1] * q[1] + c[0],
                 m[2] * q[0] + m[3] * q[1] + c[1],
@@ -625,6 +697,96 @@ mod tests {
                 assert_eq!(now, then, "beta={beta} offset={offset}");
             }
         }
+    }
+
+    /// **UMA PARTÍCULA DE PESO ZERO NÃO DEFINE A FORMA** — e o oráculo é a
+    /// INVARIÂNCIA, não um número: leve-a para onde quiser e o goal de quem
+    /// pertence ao corpo não se mexe.
+    ///
+    /// ⚠️ **É este gate que separa *o peso alcança o AJUSTE* de *o peso alcança só
+    /// o PUXÃO*.** Com os pesos ignorados no ajuste, arrastar a partícula solta
+    /// arrasta o quadro inteiro atrás dela — que é exactamente o corpo a derreter
+    /// para acompanhar quem se soltou dele.
+    #[test]
+    fn a_particle_of_zero_weight_does_not_define_the_shape() {
+        let rest = rest_shape(4, 4, 0.7);
+        let n = rest.len();
+        let mut w = vec![1.0f32; n];
+        w[0] = 0.0; // a partícula solta
+        let base: Vec<[f32; 2]> = rest.iter().map(|q| [q[0] * 1.1, q[1] * 0.9]).collect();
+
+        let goal_of = |runaway: [f32; 2]| {
+            let mut pred = base.clone();
+            pred[0] = runaway;
+            let c0 = weighted_rest_centroid(&rest, Some(&w));
+            shape_goals_weighted(&pred, &rest, 0.35, 1.0, Some(&w), c0)
+        };
+        let near = goal_of(base[0]);
+        let far = goal_of([90.0, -70.0]);
+        let worst = near
+            .iter()
+            .zip(&far)
+            .skip(1) // a própria solta: o goal dela existe, só não a puxa
+            .map(|(a, b)| (a[0] - b[0]).abs().max((a[1] - b[1]).abs()))
+            .fold(0.0f32, f32::max);
+        assert!(
+            worst < 1e-5,
+            "o goal dos membros tem de ser cego a onde a partícula solta está; pior desvio {worst:.6}"
+        );
+    }
+
+    /// **O CONTROLE do gate acima:** com peso CHEIO a mesma partícula arrasta o
+    /// quadro. Sem esta metade, *"o goal não se mexe"* seria satisfeito por um
+    /// ajuste que ignorasse a nuvem inteira.
+    #[test]
+    fn a_particle_of_full_weight_does_drag_the_shape() {
+        let rest = rest_shape(4, 4, 0.7);
+        let base: Vec<[f32; 2]> = rest.iter().map(|q| [q[0] * 1.1, q[1] * 0.9]).collect();
+        let goal_of = |runaway: [f32; 2]| {
+            let mut pred = base.clone();
+            pred[0] = runaway;
+            shape_goals(&pred, &rest, 0.35, 1.0)
+        };
+        let near = goal_of(base[0]);
+        let far = goal_of([90.0, -70.0]);
+        let worst = near
+            .iter()
+            .zip(&far)
+            .skip(1)
+            .map(|(a, b)| (a[0] - b[0]).abs().max((a[1] - b[1]).abs()))
+            .fold(0.0f32, f32::max);
+        assert!(
+            worst > 1.0,
+            "com peso cheio a fuga TEM de mover o quadro (senão o gate irmão é vácuo); {worst:.4}"
+        );
+    }
+
+    /// **O CENTROIDE DE REPOUSO É PONDERADO, e um corpo em repouso fica onde
+    /// está.** Sem a subtração de `c₀` o `q` mede a partir do centro GEOMÉTRICO
+    /// enquanto o `c` mede o centro de MASSA, e os dois desalinhados deslocam o
+    /// corpo inteiro — parado, sem ninguém tocar em nada.
+    #[test]
+    fn a_weighted_body_at_rest_stays_where_it_is() {
+        let rest = rest_shape(4, 4, 0.7);
+        let n = rest.len();
+        // Pesos deliberadamente enviesados para UM lado: o centroide ponderado
+        // sai longe do geométrico, que é onde o defeito é grande.
+        let w: Vec<f32> = (0..n).map(|i| if i % 4 == 0 { 1.0 } else { 0.1 }).collect();
+        let c0 = weighted_rest_centroid(&rest, Some(&w));
+        assert!(
+            c0[0].abs() > 0.05,
+            "a fixture tem de ter centroide ponderado LONGE do geométrico, senão nada prova; {c0:?}"
+        );
+        let goals = shape_goals_weighted(&rest, &rest, 0.0, 1.0, Some(&w), c0);
+        let worst = goals
+            .iter()
+            .zip(&rest)
+            .map(|(g, r)| (g[0] - r[0]).abs().max((g[1] - r[1]).abs()))
+            .fold(0.0f32, f32::max);
+        assert!(
+            worst < 1e-5,
+            "um corpo ponderado em repouso tem de ter goal == repouso; pior desvio {worst:.6}"
+        );
     }
 
     /// Area preservation: a big UNIFORM scale (which the linear map would happily

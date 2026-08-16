@@ -432,3 +432,134 @@ fn one_cluster_replays_the_body_that_shipped_to_the_bit() {
     // comparing the shipping path with itself.
     assert_ne!(one, run(&snake(4)));
 }
+
+/// Roda o corpo com uma coluna `falloff` injectada no estado a cada tique — que
+/// e' exactamente o que um `field.*` na cadeia de estado faz
+/// (`soft_body.out --pre--> field.box --> soft_body.state`), o mesmo fio pelo
+/// qual o `accel` e o `inv_mass` ja' entram.
+fn run_with_falloff(p: &Params, w: &[f32], ticks: usize, dt: f32) -> Vec<[f32; 2]> {
+    let mut state = Stream::new(0);
+    let mut last = Vec::new();
+    for k in 0..ticks {
+        let t = k as f32 * dt;
+        let mut out = simulate([0.0, 0.0], &state, t, p);
+        last = vec2_col(&out, "P");
+        if out.count() == w.len() {
+            out.set(FALLOFF_COL, Column::Scalar(w.to_vec()));
+        }
+        state = out;
+    }
+    last
+}
+
+/// **O PESO ALCANÇA O PUXÃO: uma partícula de peso zero é LIVRE.**
+///
+/// A metade de baixo do corpo perde o peso e cai; a de cima, pinada e com peso
+/// cheio, fica. ⚠️ O oráculo é a SEPARAÇÃO entre as duas metades e não a queda
+/// em si — um corpo inteiro a cair mediria a mesma coisa e não diria nada.
+#[test]
+fn a_particle_of_zero_weight_falls_free_of_the_body() {
+    let p = params(4, 4, 9.8, 0.4, true);
+    let n = p.rows * p.cols;
+    let free: Vec<f32> = (0..n).map(|i| if i >= n / 2 { 0.0 } else { 1.0 }).collect();
+    let held = vec![1.0f32; n];
+
+    let a = run_with_falloff(&p, &held, 90, 1.0 / 60.0);
+    let b = run_with_falloff(&p, &free, 90, 1.0 / 60.0);
+    let bottom = |v: &Vec<[f32; 2]>| v[n - 1][1];
+    let (ya, yb) = (bottom(&a), bottom(&b));
+    assert!(
+        yb < ya - 1.0,
+        "sem peso a partícula tem de cair LONGE do corpo: preso {ya:.4}, livre {yb:.4}"
+    );
+    // E o CONTROLE: a linha de topo, pinada, não se move em nenhum dos dois.
+    assert!(
+        (a[0][1] - b[0][1]).abs() < 1e-4,
+        "o pino não pode depender do peso de quem se soltou: {:.6} vs {:.6}",
+        a[0][1],
+        b[0][1]
+    );
+}
+
+/// **UM PESO CHEIO EM TODA PARTE É O CORPO QUE SEMPRE SHIPOU** — e a barra é
+/// `1e-4`, não zero, com o motivo escrito: com a coluna presente o centroide de
+/// repouso passa a ser CALCULADO em vez de assumido zero, e medido ele vale
+/// `~1e-7` numa malha real. É o número certo; o que ele não é, é o mesmo bit.
+#[test]
+fn a_falloff_of_one_everywhere_is_the_body_that_ships() {
+    let p = params(5, 4, 9.8, 0.4, true);
+    let n = p.rows * p.cols;
+    let ones = vec![1.0f32; n];
+    let with = run_with_falloff(&p, &ones, 60, 1.0 / 60.0);
+    let without = run(|_| [0.0, 0.0], &p, 60, 1.0 / 60.0);
+    let last = without.last().expect("frames");
+    let worst = with
+        .iter()
+        .zip(last)
+        .map(|(a, b)| (a[0] - b[0]).abs().max((a[1] - b[1]).abs()))
+        .fold(0.0f32, f32::max);
+    assert!(
+        worst < 1e-4,
+        "peso cheio tem de ser o corpo de sempre; {worst:.7}"
+    );
+}
+
+/// **UM PESO NEGATIVO NÃO INVERTE NADA** — um documento editado à mão pode
+/// escrever qualquer `f32` na coluna, e um peso negativo no ajuste vira o quadro
+/// do avesso. Clampado, ele lê como *"não pertence"*, que é a leitura honesta.
+#[test]
+fn a_negative_falloff_reads_as_no_membership() {
+    let p = params(4, 4, 9.8, 0.4, true);
+    let n = p.rows * p.cols;
+    let neg: Vec<f32> = (0..n)
+        .map(|i| if i >= n / 2 { -3.0 } else { 1.0 })
+        .collect();
+    let zero: Vec<f32> = (0..n).map(|i| if i >= n / 2 { 0.0 } else { 1.0 }).collect();
+    let a = run_with_falloff(&p, &neg, 60, 1.0 / 60.0);
+    let b = run_with_falloff(&p, &zero, 60, 1.0 / 60.0);
+    let worst = a
+        .iter()
+        .zip(&b)
+        .map(|(x, y)| (x[0] - y[0]).abs().max((x[1] - y[1]).abs()))
+        .fold(0.0f32, f32::max);
+    assert!(worst < 1e-5, "negativo tem de ler como zero; {worst:.6}");
+}
+
+/// **O CORPO NÃO SEGUE QUEM SE SOLTOU DELE — pela porta do PRODUTO.**
+///
+/// ⚠️ Este gate existe porque uma mutação passou: os dois gates da lei chamam o
+/// kernel do ajuste DIRETO, então *"o peso alcança o AJUSTE"* e *"o peso alcança
+/// só o PUXÃO"* eram indistinguíveis a partir do `simulate` — e a segunda
+/// metade é a que faz o corpo derreter atrás de quem caiu. A régua é a linha do
+/// MEIO (peso cheio, sem pino): ela mede o quadro, não a queda.
+#[test]
+fn the_body_does_not_follow_what_fell_off_it() {
+    let p = params(6, 6, 9.8, 0.4, true);
+    let (n, cols) = (p.rows * p.cols, p.cols);
+    // As duas últimas linhas soltam-se; as de cima ficam com peso cheio.
+    let free: Vec<f32> = (0..n)
+        .map(|i| if i >= n - 2 * cols { 0.0 } else { 1.0 })
+        .collect();
+    let held = vec![1.0f32; n];
+
+    let mid = |v: &[[f32; 2]]| v[2 * cols + cols / 2][1];
+    let a = run_with_falloff(&p, &held, 150, 1.0 / 60.0);
+    let b = run_with_falloff(&p, &free, 150, 1.0 / 60.0);
+
+    // O CONTROLE primeiro: as duas últimas linhas TÊM de se soltar, senão o
+    // gate mede um corpo que ninguém rasgou.
+    let tail = |v: &[[f32; 2]]| v[n - 1][1];
+    assert!(
+        tail(&b) < tail(&a) - 1.0,
+        "a fixture tem de conter o fenômeno: cauda presa {:.4}, solta {:.4}",
+        tail(&a),
+        tail(&b)
+    );
+    // E a linha do meio, que pertence ao corpo nos DOIS, tem de ficar no mesmo
+    // lugar: um ajuste cego ao peso a arrastaria atrás da cauda.
+    let d = (mid(&a) - mid(&b)).abs();
+    assert!(
+        d < 0.05,
+        "o quadro do corpo não pode seguir quem se soltou; a linha do meio andou {d:.4}"
+    );
+}

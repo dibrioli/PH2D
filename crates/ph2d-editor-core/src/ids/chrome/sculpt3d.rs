@@ -39,7 +39,12 @@ pub const SCULPT3D_SEC_SCENE: NodeId = hash_node_id("sculpt3d.sec.scene");
 pub const SCULPT3D_SEC_BAKE: NodeId = hash_node_id("sculpt3d.sec.bake");
 
 // ── A ferramenta ────────────────────────────────────────────────────────────
-/// Os 19 verbos, na ordem de `ph2d_sculpt3d::Verb::ALL`.
+/// Um chip por verbo, na ordem de `ph2d_sculpt3d::Verb::ALL`.
+///
+/// ⚠️ **A contagem NÃO é escrita aqui em prosa.** Ela já esteve — dizia
+/// *"os 19 verbos"* sobre um array de vinte, porque o polegar e a lâmina em V
+/// entraram e ninguém releu a linha de cima. O número que vale é o do `ALL`, e
+/// quem o afirma é o gate logo abaixo.
 ///
 /// ⚠️ **O tamanho é o do `Verb::ALL`, e o gate o compara** — um verbo novo sem
 /// chip aqui é uma ferramenta que o artista não alcança, que é exatamente o que

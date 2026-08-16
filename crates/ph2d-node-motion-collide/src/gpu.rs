@@ -33,6 +33,7 @@
 
 use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, GridSpec};
 use ph2d_nodegraph::port::Dim;
+use ph2d_nodegraph::reduce_meta::{ReduceOp, ReduceSpec};
 
 /// `P` rides port 0 (read + written); `inv_mass` is the PBD inverse mass on the
 /// same port (absent ⇒ its identity `1` = free, which is the CPU's default); `v`
@@ -62,7 +63,50 @@ static BINDINGS: &[ColumnBinding] = &[
         identity: [1.0, 0.0, 0.0, 0.0],
         port: 1,
     },
+    ColumnBinding {
+        // The per-element radius scale — the column the RENDERER draws with.
+        // Absent ⇒ `[1, 1]`, which is `radius_scale`'s own fallback, so a stream
+        // without `size` packs exactly as it always did.
+        column: "size",
+        dim: Dim::Vec2,
+        access: ColumnAccess::Read,
+        identity: [1.0, 1.0, 0.0, 0.0],
+        port: 0,
+    },
+    ColumnBinding {
+        // The MOPs effect weight. Absent ⇒ 1 = fully affected, matching
+        // `falloff_col`.
+        column: "falloff",
+        dim: Dim::Scalar,
+        access: ColumnAccess::Read,
+        identity: [1.0, 0.0, 0.0, 0.0],
+        port: 0,
+    },
 ];
+
+/// **The largest disc in the set**, which the sweep needs to bound its reach: disc
+/// `i` can touch `j` only within `r_i + r_j <= r_i + r_max`, so without this number
+/// a big neighbour two cells away would be silently missed.
+///
+/// ⚠️ **`Max` is BIT-EXACT in any order** (`ReduceOp`'s own doc: associative *and*
+/// exact over floats), so the device's fold and the CPU's `fold(max)` agree by
+/// mathematics rather than within an epsilon — which is what lets the parity gate
+/// assert equality on a set with mixed sizes.
+///
+/// ⚠️ The `value` expression carries the sanitiser INLINE because the reduce's map
+/// pass is its own generated module (`fn reduce_value(v) -> f32 { return <expr>; }`)
+/// and cannot call [`WGSL_LIB`]. A NaN component makes every comparison false, so it
+/// falls to `1.0` — the same answer `radius_scale` gives.
+pub static REDUCES: &[ReduceSpec] = &[ReduceSpec {
+    name: "rmax",
+    column: "size",
+    dim: Dim::Vec2,
+    port: 0,
+    identity: [1.0, 1.0, 0.0, 0.0],
+    op: ReduceOp::Max,
+    value: "select(1.0, max(abs(v.x), abs(v.y)), abs(v.x) < 3.4028235e38 && abs(v.y) < 3.4028235e38)",
+    params: &[],
+}];
 
 /// `EPS` and the inverse-mass sanitiser, both mirroring the CPU to the letter:
 /// a non-finite or negative weight reads as PINNED (`0`), never as an inverted push.
@@ -74,6 +118,16 @@ fn collide_w(x: f32) -> f32 {
         return max(x, 0.0);
     }
     return 0.0;
+}
+
+// O verbatim do `crate::radius_scale`: o disco que CONTEM a arte, sem sinal
+// (uma instancia espelhada tem o mesmo tamanho), e nao-finito lendo como a
+// identidade `1` -- ou seja, como se a coluna estivesse ausente.
+fn collide_scale(v: vec2<f32>) -> f32 {
+    if (abs(v.x) < 3.4028235e38 && abs(v.y) < 3.4028235e38) {
+        return max(abs(v.x), abs(v.y));
+    }
+    return 1.0;
 }
 "#;
 
@@ -89,28 +143,37 @@ const WGSL: &str = r#"
     // intocada (raio 0 vindo de `vals[0]`) e o device empurrava, `0,165` de
     // divergência de posição. Não era ε: eram dois desenhos.
     //
-    // O RAIO POR ELEMENTO é uma capacidade real e desejada (Houdini POP Interact
-    // por `pscale`), e ela **não é isto**: a lei honesta é `r_i + r_j` (simétrica,
-    // e byte-idêntica ao de hoje sob spread uniforme), que na grade exige limitar
-    // o alcance pelo raio MÁXIMO — um `Max` reduce sobre a coluna. Nenhum kernel
-    // do repo hoje combina `register_grid` com `reduces()`, então isso é wave
-    // própria, não uma linha. Ver o plano 89 §10.2 (W1-B).
-    let radius = params.radius * read_spread_v(0u);
-    let min_dist = 2.0 * radius;
-    // The CPU's early identity, to the letter: fewer than two discs, no radius,
-    // or no strength ⇒ the input is returned untouched.
-    if (min_dist <= 0.0 || params.strength <= 0.0 || params.count < 2u) {
+    // O RAIO POR ELEMENTO (Houdini POP Interact por `pscale`) **não é isto**, e
+    // hoje ele EXISTE logo abaixo: a lei é `r_i + r_j`, e na grade ela exige
+    // limitar o alcance pelo raio MÁXIMO — o `Max` reduce da `REDUCES`.
+    let base = params.radius * read_spread_v(0u);
+    // ⚠️ O RAIO E' POR ELEMENTO: `base` e' a respiracao global e cada disco traz a
+    // propria escala (a coluna `size`, a mesma que o renderer desenha). Com `size`
+    // ausente o `collide_scale` devolve 1 e isto reduz LITERALMENTE ao
+    // `2.0 * radius` de antes -- `x * 1.0` e `r + r` sao exatos em IEEE-754.
+    let ri = base * collide_scale(read_in_size(i));
+    // O maior disco do conjunto, do `Max` reduce -- sem ele um vizinho grande a
+    // duas celulas de distancia seria perdido em silencio.
+    let r_max = base * reduce_rmax();
+    // The CPU's early identity, to the letter: fewer than two discs, no radius
+    // anywhere, or no strength ⇒ the input is returned untouched.
+    if (r_max <= 0.0 || params.strength <= 0.0 || params.count < 2u) {
         write_P(i, pi);
         return;
     }
-    let min_d2 = min_dist * min_dist;
+    let fi = clamp(read_in_falloff(i), 0.0, 1.0);
     let wi = collide_w(read_in_inv_mass(i));
     var delta = vec2<f32>(0.0, 0.0);
     var contacts = 0u;
+    // O mais longe que ESTE disco pode tocar alguem: o proprio raio mais o maior do
+    // conjunto. Com tamanhos uniformes isto e' exatamente o `min_dist` de antes.
+    let reach_d = ri + r_max;
+    let reach_d2 = reach_d * reach_d;
     // Cells to sweep in each direction. The cell is `radius` and the contact
-    // distance is `2·radius·spread`, so this is 2 at spread 1 — and it GROWS with
-    // spread instead of quietly missing the contacts a fixed 3×3 would drop.
-    let reach = max(1, i32(ceil(min_dist / max(params.radius, 1e-20))));
+    // distance is `reach_d`, so this is 2 at spread 1 with uniform sizes — and it
+    // GROWS with spread and with the biggest disc instead of quietly missing the
+    // contacts a fixed 3×3 would drop.
+    let reach = max(1, i32(ceil(reach_d / max(params.radius, 1e-20))));
     let cell = params.grid_cell;
     let ci = grid_cell_of(pi);
     for (var dy = -reach; dy <= reach; dy = dy + 1) {
@@ -124,7 +187,7 @@ const WGSL: &str = r#"
             // this far, so nothing that could touch is ever dropped.
             let lo = vec2<f32>(f32(c.x), f32(c.y)) * cell;
             let gap = max(max(lo - pi, pi - (lo + vec2<f32>(cell, cell))), vec2<f32>(0.0, 0.0));
-            if (dot(gap, gap) >= min_d2) { continue; }
+            if (dot(gap, gap) >= reach_d2) { continue; }
             let b = grid_bucket_of(c);
             let hi = grid_starts[b + 1u];
             for (var s = grid_starts[b]; s < hi; s = s + 1u) {
@@ -139,6 +202,15 @@ const WGSL: &str = r#"
                 let sum_w = wi + wj;
                 // Two immovable discs have no correction to share.
                 if (sum_w <= 0.0) { continue; }
+                // O peso do PAR e' o produto: `falloff` 0 de qualquer lado faz o par
+                // desaparecer -- o disco fica TRANSPARENTE (nem empurra nem e'
+                // empurrado), que nao e' o que `inv_mass = 0` significa (pinado
+                // ainda e' obstaculo).
+                let fw = fi * clamp(read_in_falloff(j), 0.0, 1.0);
+                if (fw <= 0.0) { continue; }
+                let min_dist = ri + base * collide_scale(read_in_size(j));
+                if (min_dist <= 0.0) { continue; }
+                let min_d2 = min_dist * min_dist;
                 let d = pj - pi;
                 let d2 = dot(d, d);
                 if (d2 >= min_d2) { continue; }
@@ -158,13 +230,15 @@ const WGSL: &str = r#"
                     penetration = min_dist;
                 }
                 // What THIS disc is asked to move: its share of the penetration.
-                delta = delta - nrm * (penetration * (wi / sum_w) * params.strength);
+                delta = delta - nrm * (penetration * (wi / sum_w) * params.strength * fw);
                 contacts = contacts + 1u;
             }
         }
     }
     // The AVERAGE of what the contacts asked (mass splitting) — summing raw would
-    // launch a crowded disc across the scene.
+    // launch a crowded disc across the scene. A tally e' uma CONTAGEM: uma media
+    // PONDERADA cancelaria o `falloff` (o peso no numerador e no divisor), e o knob
+    // viraria um controle que quase nao faz nada -- medido, ver o `push_apart`.
     if (contacts > 0u) {
         write_P(i, pi + delta / f32(contacts));
     } else {

@@ -63,7 +63,11 @@ mod lifecycle;
 pub mod lower;
 pub mod plan;
 pub mod reduce;
-mod reduce_stage;
+// PUBLIC for one reason, written here so it is not "tidied" back: the naga sweep
+// needs `reduce_stage::map_module` to parse+validate the `value` expression of
+// every registered `ReduceSpec` WITHOUT a device. Before that gate existed those
+// expressions only ever met a compiler on a machine with an adapter.
+pub mod reduce_stage;
 pub mod ring;
 pub mod scan;
 pub mod shape;

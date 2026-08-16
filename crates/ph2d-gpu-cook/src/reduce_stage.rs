@@ -70,12 +70,30 @@ pub struct ReduceResults {
 /// write one `f32`. A pure function of `(spec, present)`, so it caches like a
 /// kernel.
 ///
-/// `present = false` is the absent-column form: the source binding stays (one
-/// bind-group shape, one code path) but is never read — every element folds
+/// `present = false` is the absent-column form: every element folds
 /// [`ReduceSpec::identity`], which is exactly what the CPU reduces over when it
-/// materialises the missing column. Cheaper and more honest than uploading `n`
+/// materialises the missing column — cheaper and more honest than uploading `n`
 /// copies of a constant.
-fn map_module(spec: &ReduceSpec, present: bool) -> String {
+///
+/// ⚠️ **The source binding is DROPPED in that form, and the doc used to claim the
+/// opposite** (*"the source binding stays — one bind-group shape, one code path"*).
+/// It cannot stay: `create_pipeline` passes `layout: None`, so wgpu DERIVES the
+/// layout by reflection, and a binding the shader never touches is not in it —
+/// the bind group then carries one entry too many and the device rejects the
+/// frame (`Number of bindings in bind group descriptor (3) does not match ... (2)`).
+/// The claim survived because the only reductions that existed folded `P`, which
+/// is never absent; `motion.collide`'s `size` is the first column of a reduction
+/// that a stream can legitimately lack. The two forms have two shapes, the cache
+/// key already distinguishes them, and [`GpuCook::run_reduces`] builds the entries
+/// from the SAME `present` flag.
+///
+/// ⚠️ **E a metade LOAD-BEARING e a lista de ENTRIES, nao esta declaracao**
+/// -- medido por mutacao: forcar o `if present` a `true` aqui deixa os oito gates
+/// de device VERDES, porque a reflexao descarta a binding nao-lida de qualquer
+/// jeito. A declaracao fica condicional por honestidade (as duas metades leem o
+/// MESMO flag, no mesmo arquivo, entao nao podem divergir), e nao porque o device
+/// a exija.
+pub fn map_module(spec: &ReduceSpec, present: bool) -> String {
     let ty = codegen::wgsl_type(spec.dim);
     let mut src = String::with_capacity(512);
     src.push_str("struct MapParams {\n    count: u32,\n");
@@ -84,14 +102,17 @@ fn map_module(spec: &ReduceSpec, present: bool) -> String {
     }
     src.push_str(
         "}\n\
-         @group(0) @binding(0) var<uniform> params: MapParams;\n\
-         @group(0) @binding(1) var<storage, read> src: array<",
+         @group(0) @binding(0) var<uniform> params: MapParams;\n",
     );
-    src.push_str(ty);
-    src.push_str(
-        ">;\n\
-         @group(0) @binding(2) var<storage, read_write> dst: array<f32>;\n\n",
-    );
+    // Declared ONLY in the present form — see the ⚠️ above: an unread binding is
+    // absent from the reflected layout, so declaring it here would put the module
+    // and the bind group one entry apart.
+    if present {
+        src.push_str("@group(0) @binding(1) var<storage, read> src: array<");
+        src.push_str(ty);
+        src.push_str(">;\n");
+    }
+    src.push_str("@group(0) @binding(2) var<storage, read_write> dst: array<f32>;\n\n");
     src.push_str(&format!(
         "fn reduce_value(v: {ty}) -> f32 {{ return {}; }}\n\n",
         spec.value
@@ -173,14 +194,6 @@ impl GpuCook {
             // Absent column: the pass still RUNS, folding the identity `n` times
             // (see [`map_module`]) — because the CPU materialises the column and
             // reduces over it, and skipping would answer a different question.
-            let src = src.unwrap_or_else(|| {
-                std::sync::Arc::new(gpu.device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("ph2d-reduce absent src"),
-                    size: 16,
-                    usage: wgpu::BufferUsages::STORAGE,
-                    mapped_at_creation: false,
-                }))
-            });
 
             let scratch_buf = self.pool.acquire(gpu, u64::from(n) * 4);
 
@@ -212,23 +225,27 @@ impl GpuCook {
                 .get(&key)
                 .expect("inserted above")
                 .pipeline;
+            let mut entries = vec![wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniform.as_entire_binding(),
+            }];
+            if let Some(src) = src.as_ref() {
+                entries.push(wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: src.as_entire_binding(),
+                });
+            }
+            entries.push(wgpu::BindGroupEntry {
+                binding: 2,
+                resource: scratch_buf.as_entire_binding(),
+            });
             let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("ph2d-reduce map"),
                 layout: &pipeline.get_bind_group_layout(0),
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: uniform.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: src.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: scratch_buf.as_entire_binding(),
-                    },
-                ],
+                // The entries follow `present`, exactly as `map_module`'s
+                // declarations do — the two are read from the same flag so they
+                // cannot drift.
+                entries: &entries,
             });
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {

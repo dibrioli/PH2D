@@ -458,9 +458,9 @@ fn crossing_the_reach_boundary_does_not_step_the_cost() {
 /// gate: as fixtures irmãs alimentam `spread` de comprimento 1 ou nenhum, então
 /// **não continham o fenômeno**.
 ///
-/// O raio POR ELEMENTO é capacidade real e desejada; ela **não é isto** (a lei
-/// certa é `r_i + r_j`, simétrica) e é wave própria — plano 89 §10.2, W1-B.
-/// FALSIFICADO por o WGSL voltar a ler `read_spread_v(i)`.
+/// O raio POR ELEMENTO **não é isto** (a lei é `r_i + r_j`, simétrica, e mora na
+/// coluna `size`) — ele existe desde a wave do grupo H, e o gate irmão abaixo é
+/// quem o mede. FALSIFICADO por o WGSL voltar a ler `read_spread_v(i)`.
 #[test]
 #[ignore = "needs a GPU adapter"]
 fn a_per_element_spread_reads_the_same_on_both_routes() {
@@ -518,4 +518,97 @@ fn a_per_element_spread_reads_the_same_on_both_routes() {
     // Zero, não ε: as duas rotas leem a MESMA linha da coluna, então não há
     // ordem de soma a divergir.
     parity("per-element spread", &cpu, &dev, 0.0);
+}
+
+/// **O RAIO É POR ELEMENTO NAS DUAS ROTAS** — a lei `r_i + r_j` do grupo H, com a
+/// grade E a redução a correr no MESMO estágio.
+///
+/// ⚠️ **Este gate existe porque o irmão acima seria VERDE POR VÁCUO:** toda fixture
+/// de paridade deste arquivo alimenta o `motion.collide` a partir de um
+/// `motion.grid` puro, que emite `size` nenhuma — então os dois lados leem a
+/// identidade `1`, a lei nova nunca é exercida, e um `collide_scale` trocado
+/// passaria despercebido. A cadeia aqui põe um `motion.drive(Size)` dirigido por
+/// um campo por-elemento no meio, e é ela que faz os discos terem tamanhos
+/// DIFERENTES.
+///
+/// ⚠️ **E é o primeiro kernel do repo com `register_grid` E `reduces()` juntos.**
+/// O sequenciador roda `run_reduces` DENTRO do laço de sweeps, ao lado do
+/// `build_grid`, e é isso que este gate prova de ponta a ponta: com 4 varreduras o
+/// `r_max` é re-dobrado quatro vezes contra posições que se moveram, e um fold
+/// içado para fora do laço responderia *"qual era o maior disco antes?"* — que num
+/// solver de raio fixo dá o mesmo número, e por isso a asserção é a PARIDADE, não
+/// o valor.
+///
+/// ⚠️ **A barra NÃO é zero, e a primeira versão deste gate afirmava que era** —
+/// eu escrevi *"`Max` é exato em qualquer ordem, e o resto é a mesma aritmética"*,
+/// e medido ele falha em **2,98e-8**, um ULP. A metade errada da frase é *"o
+/// resto"*: a redução de facto é bit-exata, mas o `delta` de cada disco é uma SOMA
+/// sobre vizinhos que as duas rotas visitam em ordens diferentes (a CPU por `j >
+/// i`, o device por células da grade), e a média é `delta * (1/c)` num lado e
+/// `delta / c` no outro. É o ε que o ADR-0140 D4 nomeia, e é por isso que o irmão
+/// de uma varredura já usa `1e-5`. A barra aqui é a dele.
+#[test]
+#[ignore = "needs a GPU adapter"]
+fn a_per_element_radius_packs_the_same_on_both_routes() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let mut reg = registry();
+    ph2d_node_value_instance_field::register(&mut reg).unwrap();
+    ph2d_node_motion_drive::register(&mut reg).unwrap();
+
+    let mut g = Graph::new();
+    let src = g.add_node("motion.grid");
+    g.set_param(src, "rows", 6.0);
+    g.set_param(src, "cols", 6.0);
+    g.set_param(src, "gap_x", 0.25);
+    g.set_param(src, "gap_y", 0.25);
+    let field = g.add_node("value.instance_field");
+    g.set_param(field, "mode", 1.0); // Ramp: i/(N−1) ∈ [0, 1]
+    let drive = g.add_node("motion.drive");
+    g.set_param(drive, "channel", 3.0); // Size
+    g.set_param(drive, "mode", 0.0); // Add, sobre a identidade [1, 1]
+    g.set_param(drive, "scale", 1.0);
+    let col = g.add_node("motion.collide");
+    g.set_param(col, "radius", 0.3);
+    g.set_param(col, "iterations", 4.0);
+    g.set_param(col, "strength", 0.85);
+    let out = g.add_node("motion.output");
+    for (from, to, port) in [
+        (src, field, 0u16),
+        (src, drive, 0u16),
+        (field, drive, 1u16),
+        (drive, col, 0u16),
+        (col, out, 0u16),
+    ] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed: false,
+        })
+        .unwrap();
+    }
+
+    let cpu = cpu_cook(&g, &reg, out);
+    // grid + field + drive + collide.
+    let dev = gpu_cook_stages(&gpu, &g, &reg, out, 4);
+
+    // ⚠️ O CONTROLE: os tamanhos TÊM de diferir, senão a lei nova não foi
+    // exercida e a paridade é a do mundo antigo com outro nome.
+    let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+    for inst in &cpu {
+        let m = inst.size[0].abs().max(inst.size[1].abs());
+        lo = lo.min(m);
+        hi = hi.max(m);
+    }
+    assert!(
+        hi - lo > 0.5,
+        "a fixture tem de conter o fenomeno: tamanhos em [{lo}, {hi}]"
+    );
+    eprintln!(
+        "raio por elemento: tamanhos em [{lo:.4}, {hi:.4}] sobre {} discos",
+        cpu.len()
+    );
+    parity("per-element radius", &cpu, &dev, 1e-5);
 }

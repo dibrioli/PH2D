@@ -189,6 +189,35 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
         "the compact predicates must be swept (cull 3 bindings + lifetime 3), got {predicates}"
     );
 
+    // A reduction's `value` is a WGSL EXPRESSION the node author writes by hand,
+    // pasted into a module of its own (`fn reduce_value(v) -> f32`) that the
+    // kernel sweep above never builds. Until this loop existed those expressions
+    // only ever met a compiler on a machine with an adapter — and the first one
+    // that is not a bare field access (`motion.collide`'s `rmax`, a `select` with
+    // a two-term `&&`) is exactly the shape a typo hides in.
+    //
+    // BOTH forms, because they are different source: `present = true` reads
+    // `src[i]`, `present = false` folds the spec's identity literal, and a
+    // mis-declared `dim`/`identity` pair only fails to compile in the second.
+    let mut reduces = 0usize;
+    for manifest in reg.manifests() {
+        for spec in reg.reduces(manifest.id) {
+            for present in [true, false] {
+                let src = ph2d_gpu_cook::reduce_stage::map_module(spec, present);
+                validate(
+                    &format!("{} reduce {} present={present}", manifest.name, spec.name),
+                    &src,
+                );
+                reduces += 1;
+            }
+        }
+    }
+    assert!(
+        reduces >= 16,
+        "the declared reductions must be swept (bend 2 + twist 2 + spherize 2 + \
+         four_point_warp 4 + collide 1, × 2 forms), got {reduces}"
+    );
+
     // Grid (3 bindings → 8) + oscillator (2 → 4) + move (2 → 4) + the Fase 2
     // deformers transform/rotate/scale (2 → 4 each). If a kernel is added or
     // gains a binding this grows — the assert is a floor, not a pin.

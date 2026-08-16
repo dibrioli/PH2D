@@ -17,10 +17,23 @@ fn dist(a: [f32; 2], b: [f32; 2]) -> f32 {
     (dx * dx + dy * dy).sqrt()
 }
 
+/// Relax with a UNIFORM radius and no falloff — the shape the node had before the
+/// per-element radius existed, and the fixture almost every gate below wants.
+fn push_apart_w(
+    p: &[[f32; 2]],
+    w: &[f32],
+    radius: f32,
+    iterations: usize,
+    strength: f32,
+) -> Vec<[f32; 2]> {
+    let n = p.len();
+    push_apart(p, w, &vec![radius; n], &vec![1.0; n], iterations, strength)
+}
+
 /// Relax with every element free (`w = 1`) — the no-pin case, which is what
 /// the packing behaved like before `motion.pin_constraint` existed.
 fn push_apart_free(p: &[[f32; 2]], radius: f32, iterations: usize, strength: f32) -> Vec<[f32; 2]> {
-    push_apart(p, &vec![1.0; p.len()], radius, iterations, strength)
+    push_apart_w(p, &vec![1.0; p.len()], radius, iterations, strength)
 }
 
 /// A crowded cloud: `n` discs on a jittered lattice far tighter than `2·radius`,
@@ -243,7 +256,7 @@ fn coincident_points_split_deterministically() {
 #[test]
 fn a_pinned_disc_does_not_move_and_the_free_one_takes_it_all() {
     let p = vec![[0.0, 0.0], [0.1, 0.0]];
-    let out = push_apart(&p, &[0.0, 1.0], 0.3, 8, 1.0);
+    let out = push_apart_w(&p, &[0.0, 1.0], 0.3, 8, 1.0);
     assert_eq!(out[0], [0.0, 0.0], "the pinned disc held its ground");
     assert!(
         (dist(out[0], out[1]) - 0.6).abs() < 1e-3,
@@ -257,7 +270,7 @@ fn a_pinned_disc_does_not_move_and_the_free_one_takes_it_all() {
 #[test]
 fn two_pinned_discs_have_no_correction_to_share() {
     let p = vec![[0.0, 0.0], [0.1, 0.0]];
-    assert_eq!(push_apart(&p, &[0.0, 0.0], 0.3, 8, 1.0), p);
+    assert_eq!(push_apart_w(&p, &[0.0, 0.0], 0.3, 8, 1.0), p);
 }
 
 /// `strength` 0 (or radius 0) is the identity.
@@ -297,7 +310,7 @@ fn registers_and_separates_through_the_cook() {
             ctx.emit(
                 Stream::new(2)
                     .with("P", Column::Vec2(vec![[0.0, 0.0], [0.1, 0.0]]))
-                    .with("size", Column::Vec2(vec![[0.4, 0.4], [0.4, 0.4]])),
+                    .with("size", Column::Vec2(vec![[1.0, 1.0], [1.0, 1.0]])),
             );
         }
     }
@@ -333,6 +346,8 @@ fn registers_and_separates_through_the_cook() {
     match s.get("P").unwrap() {
         Column::Vec2(v) => {
             let d = dist(v[0], v[1]);
+            // 2·radius·1 — o CONTROLE do raio por elemento: com `size` na
+            // identidade a lei e' a de sempre, byte a byte.
             assert!((d - 0.6).abs() < 1e-2, "separated through the cook: {d}");
         }
         _ => panic!("P"),

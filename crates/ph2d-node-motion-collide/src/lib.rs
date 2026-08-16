@@ -57,6 +57,13 @@ const VALUE_COL: &str = "v";
 /// `0` = pinned. A string convention shared by the module's solvers, spelled
 /// locally by each reader (like `P` / `falloff`) rather than coupling the crates.
 const INV_MASS_COL: &str = "inv_mass";
+/// The per-instance scale the RENDERER draws with (`lower_to_instances` reads it),
+/// identity `[1, 1]` when absent. This node's disc radius rides it — see
+/// [`radius_scale`].
+const SIZE_COL: &str = "size";
+/// The MOPs spine: how much this node acts on an element (`1` = fully, `0` = not
+/// at all). Absent reads as `1`, so every pre-falloff packing is unchanged.
+const FALLOFF_COL: &str = "falloff";
 
 /// Below this a pair is treated as coincident (the normal is undefined).
 const EPS: f32 = 1e-9;
@@ -119,14 +126,62 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 /// device empurrava: `0,165` de divergência de posição, com todos os gates verdes
 /// porque as fixtures alimentavam comprimento 1.
 ///
-/// **O raio POR ELEMENTO é capacidade real e desejada** (o `pscale` do Houdini POP
-/// Interact) e **não é isto**: a lei honesta é `r_i + r_j` — simétrica, e
-/// byte-idêntica à de hoje sob spread uniforme —, que na grade do device exige
-/// limitar o alcance pelo raio MÁXIMO, ou seja um `Max` reduce sobre a coluna.
-/// Nenhum kernel do repo combina `register_grid` com `reduces()` hoje, então é
-/// wave própria (plano 89 §10.2, W1-B), não uma linha.
+/// **O raio POR ELEMENTO não é isto, e hoje ele EXISTE** — ver [`radius_scale`]: ele
+/// mora na coluna `size`, a mesma que o renderer desenha, e este `spread` continua
+/// a ser o multiplicador GLOBAL que faz o empacotamento inteiro respirar. As duas
+/// perguntas são diferentes (*este disco é maior que aquele?* × *a nuvem inteira
+/// aperta?*) e compõem: `r_i = radius · spread · s_i`.
 fn spread_amount(vals: &[f32]) -> f32 {
     vals.first().copied().unwrap_or(1.0)
+}
+
+/// **O raio de CADA disco, lido da coluna que o renderer desenha** (o `pscale` do
+/// Houdini POP Interact — que lá também É a escala da instância).
+///
+/// ⚠️ **Isto não é uma capacidade nova; é o nó cumprindo a promessa que já faz.**
+/// O contrato deste arquivo diz *"cada instância é um disco de raio `radius`, e
+/// pares sobrepostos são afastados até apenas se tocarem"* — e o `lower_to_instances`
+/// escala cada instância por `size`. Um elemento desenhado com o dobro do tamanho e
+/// empacotado como se fosse unitário **sobrepõe visivelmente**, que é exatamente o
+/// que o nó existe para impedir.
+///
+/// ⚠️ **`max(|x|, |y|)` — o DISCO QUE CONTÉM a arte**, e a escolha tem consequência:
+/// um `size` de `[2, 1]` desenha uma instância larga, e um disco de raio `1·radius`
+/// deixaria as pontas dela invadirem a vizinha. `min` empacotaria mais apertado e
+/// mentiria sobre a sobreposição; a média mentiria menos e ainda mentiria.
+/// O `abs` é porque uma instância ESPELHADA (escala negativa) tem o mesmo tamanho —
+/// uma extensão não tem sinal (contraste com o `motion.collide`-vizinho `offset` da
+/// física, onde o sinal É a lateralidade porque ali o número é uma POSIÇÃO).
+///
+/// **Ausente ⇒ `1` em todo elemento ⇒ byte-idêntico ao que shipava** (`radius · 1.0`
+/// é `radius` exato, e `r + r` é `2.0 * radius` exato em IEEE-754 — as duas
+/// identidades que fazem esta wave não mover uma cena antiga).
+///
+/// ⚠️ Não-finito lê como `1` (a identidade, ou seja *como se ausente*), espelhando o
+/// que [`inv_mass`] faz com um peso envenenado: o WGSL usa `abs(x) < 3.4028235e38`,
+/// a convenção que este arquivo já carrega no `collide_w`, e as duas divergem só
+/// exatamente em `±f32::MAX`.
+fn radius_scale(s: &Stream, n: usize) -> Vec<f32> {
+    match s.get(SIZE_COL) {
+        Some(Column::Vec2(v)) if v.len() == n => v
+            .iter()
+            .map(|e| {
+                let m = e[0].abs().max(e[1].abs());
+                if m.is_finite() { m } else { 1.0 }
+            })
+            .collect(),
+        _ => vec![1.0; n],
+    }
+}
+
+/// The per-element effect weight (the MOPs spine), widened to `n`. Absent ⇒ all-`1`
+/// (byte-identical to the pre-falloff world); out of range is clamped, so a
+/// hand-edited document cannot INVERT a push.
+fn falloff_col(s: &Stream, n: usize) -> Vec<f32> {
+    match s.get(FALLOFF_COL) {
+        Some(Column::Scalar(v)) if v.len() == n => v.iter().map(|f| f.clamp(0.0, 1.0)).collect(),
+        _ => vec![1.0; n],
+    }
 }
 
 fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
@@ -136,9 +191,9 @@ fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
     }
 }
 
-/// Push apart the discs so no two are closer than `2·radius`, sweeping every pair
-/// `iterations` times. Returns the relaxed positions. A pure function — the whole
-/// node.
+/// Push apart the discs so no pair `(i, j)` is closer than `radii[i] + radii[j]`,
+/// sweeping every pair `iterations` times. Returns the relaxed positions. A pure
+/// function — the whole node.
 ///
 /// `w` is the per-element inverse mass (PBD's `w = 1/m`, written by
 /// `motion.pin_constraint`; all-`1` when no pin is wired). The contact correction
@@ -151,19 +206,37 @@ fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
 fn push_apart(
     p: &[[f32; 2]],
     w: &[f32],
-    radius: f32,
+    radii: &[f32],
+    falloff: &[f32],
     iterations: usize,
     strength: f32,
 ) -> Vec<[f32; 2]> {
     let n = p.len();
     let mut q = p.to_vec();
-    let min_dist = 2.0 * radius;
-    if n < 2 || min_dist <= 0.0 || strength <= 0.0 {
+    // The largest disc in the set. It is the early-out (no radius anywhere ⇒ the
+    // input is returned untouched, exactly as `2·radius <= 0` used to do) and it is
+    // what the device sweep needs to bound its reach — see `gpu::REDUCES`.
+    let r_max = radii.iter().fold(0.0f32, |a, r| a.max(*r));
+    if n < 2 || r_max <= 0.0 || strength <= 0.0 {
         return q;
     }
-    let min_d2 = min_dist * min_dist;
     // Averaged-Jacobi scratch, allocated ONCE: the summed correction each disc is
     // asked for this sweep, and how many contacts asked.
+    //
+    // ⚠️ **The tally is a COUNT, and a WEIGHTED average was measured and rejected.**
+    // Putting the pair weight in the divisor as well as the numerator makes it
+    // CANCEL: a lone pair at `falloff = 0.5` separates exactly as much as one at
+    // `1.0` (measured: 0.6 and 0.6), so the knob would be a control that mostly
+    // does nothing. Normalising by the count keeps the two jobs apart — the divisor
+    // stops a crowded disc from being launched, the weight says how hard the
+    // constraint is pushed.
+    //
+    // ⚠️ The residual, NAMED: a pair at a hair above zero still occupies a contact
+    // slot, so a disc with one live and one nearly-muted neighbour is corrected by
+    // half of what it would be with the muted one absent. It is a factor of
+    // `n/(n−1)` at exactly `falloff = 0` — the value at which the artist asked for
+    // *off* — and it moves in the harmless direction (slightly LESS separation just
+    // inside a field's edge).
     let mut delta = vec![[0.0f32; 2]; n];
     let mut contacts = vec![0u32; n];
     for _ in 0..iterations {
@@ -178,6 +251,25 @@ fn push_apart(
                 if sum_w <= 0.0 {
                     continue;
                 }
+                // ⚠️ The pair's weight is the PRODUCT, so a `falloff` of 0 on
+                // EITHER side makes the pair vanish — the disc is transparent, it
+                // is neither pushed nor pushes. That is what "this node does not
+                // act here" means, and it is precisely NOT what `inv_mass = 0`
+                // means (that one is pinned: immovable, and still an obstacle the
+                // others pack around). The product is also the reading the word
+                // *transparent* carries: two half-transparent panes pass a quarter.
+                let fw = falloff[i] * falloff[j];
+                if fw <= 0.0 {
+                    continue;
+                }
+                // Each disc brings its OWN radius (`r_i + r_j`, symmetric — and
+                // exactly `2·radius` when the sizes are uniform, since `x + x` is
+                // exact in IEEE-754).
+                let min_dist = radii[i] + radii[j];
+                if min_dist <= 0.0 {
+                    continue;
+                }
+                let min_d2 = min_dist * min_dist;
                 let dx = q[j][0] - q[i][0];
                 let dy = q[j][1] - q[i][1];
                 let d2 = dx * dx + dy * dy;
@@ -203,8 +295,8 @@ fn push_apart(
                 // Each disc is ASKED to move its SHARE of the penetration:
                 // w_i / (w_i + w_j). Both free = half each, so the pair's midpoint is
                 // preserved exactly as before.
-                let push_i = penetration * (w[i] / sum_w) * strength;
-                let push_j = penetration * (w[j] / sum_w) * strength;
+                let push_i = penetration * (w[i] / sum_w) * strength * fw;
+                let push_j = penetration * (w[j] / sum_w) * strength * fw;
                 delta[i][0] -= nx * push_i;
                 delta[i][1] -= ny * push_i;
                 delta[j][0] += nx * push_j;
@@ -254,7 +346,7 @@ impl NodeOp for MotionCollide {
         let iterations = (ctx.param("iterations").round() as i64).clamp(0, MAX_ITERATIONS) as usize;
         let strength = ctx.param("strength");
         let spread = spread_amount(&scalar_col(ctx.input(1), VALUE_COL));
-        let radius = base_radius * spread;
+        let base = base_radius * spread;
         let input = ctx.input(0);
         let n = input.count();
         let p: Vec<[f32; 2]> = match input.get("P") {
@@ -262,7 +354,12 @@ impl NodeOp for MotionCollide {
             _ => vec![[0.0, 0.0]; n],
         };
         let w = inv_mass(input, n);
-        let out_p = push_apart(&p, &w, radius, iterations, strength);
+        // `base · s_i` — the global breathing times this element's own size. With no
+        // `size` column every scale is `1` and `base * 1.0` is `base` exactly, which
+        // is what keeps every pre-existing packing byte-identical.
+        let radii: Vec<f32> = radius_scale(input, n).iter().map(|s| base * s).collect();
+        let fall = falloff_col(input, n);
+        let out_p = push_apart(&p, &w, &radii, &fall, iterations, strength);
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {
             if name != "P" {
@@ -281,13 +378,28 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // ADR-0155: the push-apart weights by `inv_mass` — another solver a pin can feed.
     reg.register_couplings(
         MANIFEST.id,
-        &[ph2d_node_registry::Coupling::Consumes("inv_mass")],
+        &[
+            ph2d_node_registry::Coupling::Consumes("inv_mass"),
+            // The MOPs spine (doc 89, folha 03 linha 62). Declared even though the
+            // kernel binding below would let the diagnoser derive it — the file's
+            // own precedent, and the derivation dies the day this node has a
+            // CPU-only variant.
+            ph2d_node_registry::Coupling::Consumes("falloff"),
+        ],
     );
     // GPU/M5 (ADR-0140 Fase 5): the push-apart on the device via the spatial grid,
     // swept `iterations` times. Only expressible because the reference became
     // averaged Jacobi — an in-place Gauss-Seidel sweep is sequential by definition.
     reg.register_gpu_kernel(MANIFEST.id, gpu::GPU_KERNEL);
     reg.register_grid(MANIFEST.id, gpu::GRID);
+    // ⚠️ The FIRST kernel in the repo to register a grid AND a reduction. The folha
+    // 03 called that combination a blocker ("nenhum kernel do repo combina
+    // `register_grid` com `reduces()`") — measured, that was a statement about the
+    // CATALOGUE, not about the machinery: `ph2d-gpu-cook`'s sequencer already runs
+    // `run_reduces` INSIDE the sweep loop, right beside the grid rebuild, and its
+    // comment says why (a sweep moves the very column a reduction reads, so a fold
+    // hoisted out would answer "how wide was the layout BEFORE you moved?").
+    reg.register_reduces(MANIFEST.id, gpu::REDUCES);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
@@ -406,3 +518,7 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "radius_tests.rs"]
+mod radius_tests;

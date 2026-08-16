@@ -5,7 +5,7 @@
 
 ## §1 — O que entra
 
-**24 commits · 55 arquivos · +8.105/−719**, quatro grupos da segunda volta da
+**41 commits**, quatro grupos da segunda volta da
 [conferência dos nós](../89_plano_conferencia_dos_nos.md), cada um com a sua cena de smoke
 (ordem do Enio: *"a cada grupo uma cena de smoke"*).
 
@@ -16,8 +16,13 @@
 | **J′** | o report do smoke: a prescrição do corpo mole + o espaço pessoal do bando | `=51` | ✅ |
 | **K** | o peso por partícula (`soft_body`) + os SUB-PASSOS (`verlet_rope`) | `=52` | ✅ |
 | **L** | o TETO DA TAXA (`motion.delay`: `max_step` + `max_accel`) | `=53` | ✅ |
+| **M** | a CONTAGEM da conferência deixa de ser escrita à mão (sem código de produto) | — | — |
+| **N** | o `motion.wiggle` ganha as OITAVAS, o multiplicador e o LAÇO | `=54` | ⏳ |
+| **O** | o `motion.oscillator` ganha o PULSE WIDTH e o `motion.stagger` o OFFSET | `=55` | ⏳ |
 
-✅ **As cinco cenas foram smokadas e aprovadas pelo Enio** — as três primeiras à medida
+⚠️ **As cenas `=54` e `=55` (grupos N e O) NÃO foram smokadas** — *integrar não é aprovar*.
+
+✅ **As cinco primeiras foram smokadas e aprovadas pelo Enio** — as três primeiras à medida
 que fecharam, e as duas últimas (`=49` e `=53`) em 2026-08-16, depois do fechamento da
 linha. ⚠️ **O que a aprovação NÃO cobre está nomeado na §6:** o gate `#[ignore]` da `=53`
 (o teto sobe a `0,1678` no tique da inversão) segue **aberto** — um smoke aprova o que o
@@ -38,7 +43,7 @@ não foi copiado para cá.
 | crates novas | **1** (`ph2d-node-motion-proximity`, folha drop-in, glob member) | |
 | pacotes externos novos | **ZERO** — o único `+name` do `Cargo.lock` é a própria crate | |
 | `Cargo.toml` | **3** (a nova + o glob do registry + `[dev-dependencies]` do `ph2d-gpu-cook`) | |
-| cenas de smoke | **1..53 contínuas** — ⚠️ **próxima livre: 54** | conte no `match` do roteador |
+| cenas de smoke | **1..53 contínuas** — ⚠️ **próxima livre: 56** | conte no `match` do roteador |
 
 ⚠️ **A crate-nó entra em `[dev-dependencies]` da `ph2d-gpu-cook`**, nunca em `[dependencies]`:
 ela só existe ali para o gate de paridade CPU×GPU e o `src/` não a usa ⇒ **machete-safe**
@@ -69,6 +74,12 @@ neste repo: o mesmo binário mede **11,36 ms** sob `load 41` e **5,50 ms** sob `
 
 ## §5 — Mudanças de comportamento (nomeadas)
 
+
+⚠️ **UMA MUDANÇA DE COMPORTAMENTO NO DEVICE, e ela é um CONSERTO:** até o grupo O, os
+variants de WGSL do `motion.oscillator` para `rot` e `size` **ignoravam `time_mode`/`bpm`**
+(só o de `P` os lia). Um grafo a dirigir a **rotação ou o tamanho em BPM** corria a uma taxa
+na CPU e a outra na GPU — sem erro e sem aviso. Agora as três rotas concordam, e o gate
+`the_bpm_ruler_reaches_every_oscillator_channel` (que nasceu VERMELHO) as pina.
 1. **`motion.collide` lê `size` e `falloff`** (grupo H, já integrado) — contexto para as de baixo.
 2. **`motion.verlet_rope` / `soft_body` / `boids` honram `inv_mass`** (grupo J) — um grafo com
    `motion.pin_constraint` no laço passa a segurar o que antes ignorava.

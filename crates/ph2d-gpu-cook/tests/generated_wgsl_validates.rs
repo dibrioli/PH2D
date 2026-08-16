@@ -30,83 +30,16 @@ fn validate(label: &str, src: &str) {
 
 #[test]
 fn every_registered_kernel_validates_across_the_whole_presence_space() {
+    // ⚠️ **O registry é DERIVADO, nunca enumerado — e a lista à mão já apodreceu.**
+    // Isto foi 49 chamadas `::register` escritas uma a uma, e a auditoria mediu o
+    // preço: de todas as crates-nó com `gpu.rs`, EXATAMENTE UMA estava fora — a
+    // mais nova (`motion.proximity`), cujo kernel só encontrava um compilador na
+    // máquina de quem tem adapter, porque a paridade dele é `#[ignore]`. *Um
+    // vermelho que só o device vê é invisível em toda lane sem placa.* Com o
+    // `register_all_nodes` o kernel que nascer amanhã entra sozinho, que é
+    // precisamente o que uma enumeração não faz.
     let mut reg = NodeRegistry::new();
-    ph2d_node_motion_grid::register(&mut reg).unwrap();
-    ph2d_node_motion_oscillator::register(&mut reg).unwrap();
-    ph2d_node_motion_move::register(&mut reg).unwrap();
-    ph2d_node_motion_output::register(&mut reg).unwrap();
-    // GPU/M5 Fase 2 nodes.
-    ph2d_node_motion_transform::register(&mut reg).unwrap();
-    ph2d_node_motion_rotate::register(&mut reg).unwrap();
-    ph2d_node_motion_scale::register(&mut reg).unwrap();
-    ph2d_node_motion_falloff::register(&mut reg).unwrap();
-    // The field.* focus-field family: an index-keyed mask + a spatial box, both
-    // writing `falloff`.
-    ph2d_node_field_index_range::register(&mut reg).unwrap();
-    ph2d_node_field_box::register(&mut reg).unwrap();
-    // The 2-input composer — port-qualified readers `read_a_falloff`/`read_b_falloff`.
-    ph2d_node_field_combine::register(&mut reg).unwrap();
-    ph2d_node_motion_tint::register(&mut reg).unwrap();
-    ph2d_node_motion_wiggle::register(&mut reg).unwrap();
-    ph2d_node_motion_noise::register(&mut reg).unwrap();
-    ph2d_node_value_lfo::register(&mut reg).unwrap();
-    ph2d_node_motion_look_at::register(&mut reg).unwrap();
-    ph2d_node_motion_drive::register(&mut reg).unwrap();
-    ph2d_node_value_instance_field::register(&mut reg).unwrap();
-    ph2d_node_motion_luminance::register(&mut reg).unwrap();
-    ph2d_node_value_map_range::register(&mut reg).unwrap();
-    ph2d_node_motion_orbit::register(&mut reg).unwrap();
-    ph2d_node_motion_pin_constraint::register(&mut reg).unwrap();
-    ph2d_node_motion_stagger::register(&mut reg).unwrap();
-    // GPU/M5 Fase 3 — the simulation loop.
-    ph2d_node_motion_integrate::register(&mut reg).unwrap();
-    ph2d_node_force_wind::register(&mut reg).unwrap();
-    ph2d_node_force_drag::register(&mut reg).unwrap();
-    ph2d_node_force_attractor::register(&mut reg).unwrap();
-    ph2d_node_force_vortex::register(&mut reg).unwrap();
-    ph2d_node_force_curl::register(&mut reg).unwrap();
-    ph2d_node_force_buoyancy::register(&mut reg).unwrap();
-    ph2d_node_motion_spring::register(&mut reg).unwrap();
-    ph2d_node_motion_emitter::register(&mut reg).unwrap();
-    ph2d_node_motion_color_ramp::register(&mut reg).unwrap();
-    // GPU/M5 (ADR-0140) — the grid-injected WGSL (the `target`/`out`/`in`
-    // reserved-word trap is caught here, device-free, per handoff §0.4).
-    ph2d_node_motion_boids::register(&mut reg).unwrap();
-    // The ITERATED grid kernel (Fase 5): 2 input ports ⇒ port-qualified readers.
-    ph2d_node_motion_collide::register(&mut reg).unwrap();
-    // GPU/M5 (ADR-0140) — the sim-zone family: the per-element integrator that
-    // reads its own clock column, and the static-shape collider.
-    ph2d_node_sim_step::register(&mut reg).unwrap();
-    ph2d_node_sim_collide::register(&mut reg).unwrap();
-    // The value-domain combiner + router. They were covered by the RTX parity
-    // gates and MISSING here — so a WGSL typo in them passed `cargo test` on
-    // every deviceless lane, which is the one failure this sweep exists to
-    // catch (found by the 2026-07-20 audit; the list is hand-enumerated, and a
-    // hand-enumerated list rots — [[feedback_a_condition_that_enumerates_its_readers_rots]]).
-    ph2d_node_value_math::register(&mut reg).unwrap();
-    ph2d_node_value_switch::register(&mut reg).unwrap();
-    // ADR-0136 — the count-changing family. `sim.spawn`'s rows kernel is its
-    // registered kernel (swept by the loop below); combine/attribute register
-    // passthroughs (nothing to sweep); cull/lifetime carry their real WGSL in
-    // the COMPACT PREDICATE, swept by the dedicated loop after this one.
-    ph2d_node_motion_cull::register(&mut reg).unwrap();
-    ph2d_node_sim_lifetime::register(&mut reg).unwrap();
-    ph2d_node_sim_spawn::register(&mut reg).unwrap();
-    ph2d_node_motion_combine::register(&mut reg).unwrap();
-    ph2d_node_value_attribute::register(&mut reg).unwrap();
-    // The deformer family — the first kernels that read a whole-stream
-    // reduction, so the first whose module gains `reduce_*` symbols.
-    ph2d_node_motion_bend::register(&mut reg).unwrap();
-    ph2d_node_motion_twist::register(&mut reg).unwrap();
-    // The first node with TWO reductions (the centroid) — the plural
-    // `reduce_cx`/`reduce_cy` symbols.
-    ph2d_node_motion_spherize::register(&mut reg).unwrap();
-    // The widest reduction consumer (FOUR: the bounding box) and the first
-    // node whose wgsl_lib returns a WGSL array — a naga-only failure mode.
-    ph2d_node_motion_four_point_warp::register(&mut reg).unwrap();
-    // The count-changing SourceRows kernel that READS its template (the first),
-    // via ColumnAccess::SourceRead.
-    ph2d_node_motion_kaleidoscope::register(&mut reg).unwrap();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).unwrap();
 
     let mut validated = 0usize;
     for manifest in reg.manifests() {

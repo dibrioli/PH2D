@@ -5306,6 +5306,7 @@ dependencies = [
  "ph2d-node-motion-voronoi",
  "ph2d-node-motion-wiggle",
  "ph2d-node-registry",
+ "ph2d-node-registry-init",
  "ph2d-node-sim-collide",
  "ph2d-node-sim-lifetime",
  "ph2d-node-sim-spawn",

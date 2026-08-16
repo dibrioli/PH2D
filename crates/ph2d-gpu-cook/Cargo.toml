@@ -16,6 +16,7 @@ ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-render = { path = "../ph2d-render" }
 
 [dev-dependencies]
+ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }  # o sweep do naga DERIVA o registry em vez de o enumerar
 # naga (same major as wgpu 28) — parse + validate every generated compute
 # module at `cargo test` time, no device needed (mirrors sprite_wgsl_valid).
 naga = { version = "28", features = ["wgsl-in"] }

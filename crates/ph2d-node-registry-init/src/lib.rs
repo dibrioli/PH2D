@@ -86,6 +86,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_motion_trail::register(reg)?;
     ph2d_node_motion_transform::register(reg)?;
     ph2d_node_motion_twist::register(reg)?;
+    ph2d_node_motion_velocity::register(reg)?;
     ph2d_node_motion_verlet_rope::register(reg)?;
     ph2d_node_motion_voronoi::register(reg)?;
     ph2d_node_motion_wave::register(reg)?;

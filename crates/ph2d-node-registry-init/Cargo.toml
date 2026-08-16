@@ -86,6 +86,7 @@ ph2d-node-motion-tint = { path = "../ph2d-node-motion-tint" }
 ph2d-node-motion-trail = { path = "../ph2d-node-motion-trail" }
 ph2d-node-motion-transform = { path = "../ph2d-node-motion-transform" }
 ph2d-node-motion-twist = { path = "../ph2d-node-motion-twist" }
+ph2d-node-motion-velocity = { path = "../ph2d-node-motion-velocity" }
 ph2d-node-motion-verlet-rope = { path = "../ph2d-node-motion-verlet-rope" }
 ph2d-node-motion-voronoi = { path = "../ph2d-node-motion-voronoi" }
 ph2d-node-motion-wave = { path = "../ph2d-node-motion-wave" }

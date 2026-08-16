@@ -6354,6 +6354,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-velocity"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-verlet-rope"
 version = "0.0.0"
 dependencies = [
@@ -6541,6 +6549,7 @@ dependencies = [
  "ph2d-node-motion-trail",
  "ph2d-node-motion-transform",
  "ph2d-node-motion-twist",
+ "ph2d-node-motion-velocity",
  "ph2d-node-motion-verlet-rope",
  "ph2d-node-motion-voronoi",
  "ph2d-node-motion-wave",

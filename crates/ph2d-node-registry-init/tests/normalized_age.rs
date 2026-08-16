@@ -81,7 +81,7 @@ fn chain(life: f32) -> (Graph, NodeId, NodeId, NodeId) {
 fn cook_v(g: &Graph, reg: &NodeRegistry, sink: NodeId) -> Vec<f32> {
     let mut cook = Cook::new();
     for i in 0..TICKS {
-        cook.advance_tick(g, reg, DT);
+        cook.advance_tick(g, reg, DT).expect("advance_tick");
         let t = (i + 1) as f64 * DT;
         cook.cook(g, reg, sink, t).expect("cook");
     }
@@ -110,7 +110,7 @@ fn normalised_age_is_three_nodes_and_the_lifespan_comes_from_the_emitter() {
     let (g, em, _, div) = chain(4.0);
     let mut cook = Cook::new();
     for i in 0..TICKS {
-        cook.advance_tick(&g, &reg, DT);
+        cook.advance_tick(&g, &reg, DT).expect("advance_tick");
         cook.cook(&g, &reg, div, (i + 1) as f64 * DT).expect("cook");
     }
     let emitted = cook
@@ -178,7 +178,7 @@ fn the_emitter_publishes_the_lifespan_as_a_readable_column() {
     let reg = registry();
     let (g, em, _, _) = chain(4.0);
     let mut cook = Cook::new();
-    cook.advance_tick(&g, &reg, DT);
+    cook.advance_tick(&g, &reg, DT).expect("advance_tick");
     let out = cook.cook(&g, &reg, em, DT).expect("cook");
     let s = out[0].as_stream();
     let lives = scalar(s, "life");

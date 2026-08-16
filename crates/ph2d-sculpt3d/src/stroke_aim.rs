@@ -84,7 +84,12 @@ pub(super) fn remove_along(d: [f32; 3], axis: [f32; 3]) -> [f32; 3] {
     ]
 }
 
-pub(super) fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+/// ⚠️ **Um degrau mais largo que os vizinhos, e é o mínimo:** o irmão
+/// [`crate::stroke_plane`] monta a dobradiça da lâmina em V e precisa deste
+/// produto vetorial. `pub(in crate::stroke)` o abre ao módulo do traço inteiro e
+/// **a nada mais** — a alternativa era uma segunda cópia de três linhas lá, que
+/// é como duas respostas à mesma pergunta nascem.
+pub(in crate::stroke) fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
     [
         a[1] * b[2] - a[2] * b[1],
         a[2] * b[0] - a[0] * b[2],

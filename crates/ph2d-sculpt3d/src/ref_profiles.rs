@@ -201,7 +201,12 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // mesma frase que os dois vizinhos carregam.
         // ⚠️ **Nem o Clay Thumb** — `clay_thumb.cc`, a mesma frase pela terceira
         // vez.
-        Verb::Sharpen | Verb::ClayStrips | Verb::Blob | Verb::ClayThumb => return None,
+        // ⚠️ **Nem o Multiplane Scrape** — `multiplane_scrape.cc`, a quarta.
+        Verb::Sharpen
+        | Verb::ClayStrips
+        | Verb::Blob
+        | Verb::ClayThumb
+        | Verb::MultiplaneScrape => return None,
     };
     Some(p)
 }

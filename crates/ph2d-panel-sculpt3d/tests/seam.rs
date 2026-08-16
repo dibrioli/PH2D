@@ -1035,6 +1035,57 @@ fn the_accumulate_switch_flips_the_brush_field() {
     }
 }
 
+/// **O INTERRUPTOR DA LÂMINA existe, e SÓ com a lâmina em mãos.**
+///
+/// ⚠️ **Perguntado por ID e não pela tabela** — ele não é uma `Row` (é um
+/// toggle, não um número), então a varredura genérica deste arquivo é cega a
+/// ele: sem este gate, apagar a metade que o pinta deixa os outros verdes.
+#[test]
+fn the_dynamic_switch_is_offered_only_with_the_blade_in_hand() {
+    for verb in Verb::ALL {
+        let mut ui = Sculpt3dUi::default();
+        ui.brush.verb = verb;
+        let (mut host, mut state) = arrange(ui.clone());
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        assert_eq!(
+            painted
+                .iter()
+                .any(|(pid, _)| *pid == ids::SCULPT3D_SCRAPE_DYNAMIC),
+            verb == Verb::MultiplaneScrape,
+            "com {verb:?} o interruptor de ler-a-superfície devia {}",
+            if verb == Verb::MultiplaneScrape {
+                "estar lá"
+            } else {
+                "sumir"
+            }
+        );
+    }
+}
+
+/// **E ele alterna o campo do PINCEL, não um estado paralelo.**
+#[test]
+fn the_dynamic_switch_flips_the_brush_field() {
+    for before in [false, true] {
+        let mut ui = Sculpt3dUi::default();
+        ui.brush.verb = Verb::MultiplaneScrape;
+        ui.brush.scrape_dynamic = before;
+        let (mut host, mut state) = arrange(ui.clone());
+        host.apply_panel_event::<Sculpt3dPanel>(
+            &mut state,
+            WidgetEvent::Click(ids::SCULPT3D_SCRAPE_DYNAMIC),
+        );
+        let Sculpt3dIntent::SetUi(got) = only_intent("scrape_dynamic") else {
+            panic!("o modo dinâmico enfileirou o tipo errado de intent");
+        };
+        let mut want = ui;
+        want.brush.scrape_dynamic = !before;
+        assert_eq!(
+            got, want,
+            "o modo dinâmico não alternou, ou levou um vizinho"
+        );
+    }
+}
+
 /// **AS DUAS PISTAS DO SSS EXISTEM** — por ID, e não por iteração da tabela.
 ///
 /// ⚠️ **Este gate nasceu de uma mutação SOBREVIVENTE, e ela expôs um oráculo

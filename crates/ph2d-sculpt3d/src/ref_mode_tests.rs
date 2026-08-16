@@ -188,7 +188,7 @@ fn the_census_of_offered_chips() {
     assert_eq!(
         count(RefMode::S),
         15,
-        "S: todos menos o Sharpen, o Clay Strips, o Blob e o Clay Thumb"
+        "S: todos menos o Sharpen, o Clay Strips, o Blob, o Clay Thumb e o Multiplane Scrape"
     );
     // ⚠️ O `B` alcança TODO verbo com uma coisa só — o `alpha = root_alpha²` do
     // `brush_strength`, que é o funil de todas as tools.
@@ -198,11 +198,12 @@ fn the_census_of_offered_chips() {
     // `BKE_brush_sculpt_reset` **não existe mais em C** desde o Blender 4.3
     // (§7.0 do plano). Este número é sobre a LEI, não sobre os defaults.
     //
-    // ⚠️ **17 desde a W6, 18 desde o Blob, 19 desde o Clay Thumb:** os três são
-    // tools do BLENDER (`clay_strips.cc`, `crease.cc`, `clay_thumb.cc`), então o
+    // ⚠️ **17 desde a W6, 18 desde o Blob, 19 desde o Clay Thumb, 20 desde o
+    // Multiplane Scrape:** os quatro são tools do BLENDER (`clay_strips.cc`,
+    // `crease.cc`, `clay_thumb.cc`, `multiplane_scrape.cc`), então o
     // `alpha = root_alpha²` do `brush_strength` — que é o funil de todas elas —
-    // vale para os três por construção.
-    assert_eq!(count(RefMode::B), 19, "B: a lei da força vale para todos");
+    // vale para os quatro por construção.
+    assert_eq!(count(RefMode::B), 20, "B: a lei da força vale para todos");
     // A literatura chega paper a paper, nas waves W4/W5/W7.
     assert_eq!(count(RefMode::L), 0, "L: nenhum paper portado ainda");
 }

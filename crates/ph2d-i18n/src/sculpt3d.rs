@@ -38,6 +38,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.elastic_scales" => "Field width",
         "panel.sculpt3d.tip_roundness" => "Tip roundness",
         "panel.sculpt3d.strip_length" => "Strip length",
+        "panel.sculpt3d.scrape_angle" => "Plane angle",
+        "panel.sculpt3d.scrape_dynamic" => "Read the surface",
         "panel.sculpt3d.ui_level" => "Detail",
         "panel.sculpt3d.ui_level.basic" => "Basic",
         "panel.sculpt3d.ui_level.pro" => "Pro",

@@ -156,7 +156,28 @@ impl SculptStroke {
         // ele também é do Blender e também ajusta um plano, mas hoje lê o vivo,
         // e trocá-lo mudaria o desenho de um verbo que esta wave não toca. Quem
         // o quiser dentro traz a medição junto.
-        let live = !matches!(brush.verb, Verb::ClayStrips | Verb::ClayThumb) || brush.accumulate;
+        // ⚠️ **E a [`Verb::MultiplaneScrape`] entra pela MESMA razão que o
+        // polegar:** o `multiplane_scrape.cc:572` chama o mesmo
+        // `calc_brush_plane`, logo herda o `!accum ⇒ orig`.
+        //
+        // ⚠️ **DOCUMENTADO em vez de gateado, e com o número:** a mutação que o
+        // tira desta lista **não sangra**, e a razão é GEOMETRIA — o V é
+        // simétrico em torno da dobradiça, então a normal média das duas facetas
+        // que ele deixa é a MESMA que ele encontrou, e a leitura viva não deriva.
+        // Medido num traço que insiste no mesmo lugar (a sonda
+        // `what_the_frozen_hinge_buys`): profundidade **0,08814 congelado contra
+        // 0,09477 vivo** a 20 dabs, e a diferença **não compõe** (0,10745 ×
+        // 0,11138 a 60 dabs · 0,11157 × 0,11474 a 120). Um gate sobre 7% seria
+        // um gate que alguém silencia; a regra fica por ser a da referência.
+        //
+        // ⚠️ **E a medição só existiu depois de a FIXTURE ser corrigida:** com o
+        // `accumulate` herdado do [`Verb::Draw`] (que é `true`) a condição abaixo
+        // devolve `live` sempre, e as duas rotas saíam **byte-idênticas** — o
+        // ramo do `pre` era inalcançável no teste inteiro.
+        let live = !matches!(
+            brush.verb,
+            Verb::ClayStrips | Verb::ClayThumb | Verb::MultiplaneScrape
+        ) || brush.accumulate;
         let nrm_of = |v: u32| {
             if live {
                 mesh.normals()[v as usize]
@@ -192,5 +213,212 @@ impl SculptStroke {
             point[k] += normal[k] * off;
         }
         Some(PlaneFit { point, normal })
+    }
+
+    /// **OS DOIS PLANOS DA LÂMINA EM V**, resolvidos uma vez por dab.
+    ///
+    /// ⚠️ **`&mut self` porque o modo dinâmico tem MEMÓRIA** — o ângulo lido é
+    /// interpolado contra o do dab anterior ([`crate::MULTIPLANE_ANGLE_SMOOTH`]),
+    /// e sem essa memória a abertura do V salta quando a lâmina cruza uma quina.
+    /// No modo fixo o campo é escrito na mesma, para que sair do modo dinâmico
+    /// não deixe um valor obsoleto a ressuscitar no traço seguinte.
+    ///
+    /// `None` = este dab não deposita, e são os **dois** `return` da referência:
+    /// sem direção não há dobradiça (`is_zero(grab_delta_symm)`, que é também o
+    /// *"delay the first daub"*), e no modo dinâmico um lado vazio não tem normal
+    /// (`if (!sample) return;`).
+    pub(super) fn scrape_planes(
+        &mut self,
+        mesh: &Mesh,
+        brush: &Brush,
+        dab: &Dab,
+        plane: &PlaneFit,
+    ) -> Option<ScrapePlanes> {
+        // ⚠️ **A MESMA porta do polegar**, e a dobradiça é o outro eixo: o
+        // `along` é o `Y` da moldura da referência (o que corre com o traço) e é
+        // em torno DELE que os dois planos giram, enquanto o
+        // [`Verb::ClayThumb`] gira em torno do `X`, que o atravessa. Um segundo
+        // `cross` com um segundo piso aqui seria a segunda resposta a *"este dab
+        // tem direção?"*.
+        let along = super::target::stroke_axis(plane.normal, dab.path)?;
+        let across = super::target::cross(along, plane.normal);
+        let flip = brush.invert;
+
+        let angle_deg = if brush.scrape_dynamic {
+            // ⚠️ **A amostragem é do VIVO**, e a divergência com a normal de
+            // área (congelada, logo acima) é da REFERÊNCIA: o
+            // `sample_node_surface_mesh` colhe de `vert_positions`/`vert_normals`
+            // — a superfície como ela está AGORA —, enquanto o `calc_brush_plane`
+            // que dá a dobradiça lê o `orig` do pen-down. São duas perguntas: *em
+            // que direção esta lâmina está deitada* (o gesto) e *que forma a
+            // superfície tem debaixo dela neste instante* (a leitura).
+            let side = |want_positive: bool| -> Option<([f32; 3], [f32; 3])> {
+                let w = |v: u32| {
+                    let p = mesh.positions()[v as usize];
+                    let u = (p[0] - dab.center[0]) * across[0]
+                        + (p[1] - dab.center[1]) * across[1]
+                        + (p[2] - dab.center[2]) * across[2];
+                    // ⚠️ **`u <= 0` cai no lado NEGATIVO**, e é o
+                    // `local_positions[i][0] <= 0.0f` da referência ao pé da
+                    // letra. O empate tem de morar num lado só: espalhado pelos
+                    // dois, um vértice exactamente sobre a dobradiça votaria
+                    // duas vezes.
+                    if (u > 0.0) != want_positive {
+                        return 0.0;
+                    }
+                    let n = mesh.normals()[v as usize];
+                    if n[0] * dab.eye[0] + n[1] * dab.eye[1] + n[2] * dab.eye[2] > 0.0 {
+                        return 0.0;
+                    }
+                    f64::from(crate::mask_ops::free_weight(
+                        self.base_mask[self.slot[v as usize] as usize],
+                    ))
+                };
+                let n = crate::ref_kernels::area_normal_with(&self.footprint, |v| {
+                    let n = mesh.normals()[v as usize];
+                    ([f64::from(n[0]), f64::from(n[1]), f64::from(n[2])], w(v))
+                })?;
+                let c = crate::ref_kernels::area_center_with(&self.footprint, |v| {
+                    let p = mesh.positions()[v as usize];
+                    ([f64::from(p[0]), f64::from(p[1]), f64::from(p[2])], w(v))
+                })?;
+                Some((
+                    [n[0] as f32, n[1] as f32, n[2] as f32],
+                    [c[0] as f32, c[1] as f32, c[2] as f32],
+                ))
+            };
+            let (n_pos, c_pos) = side(true)?;
+            let (n_neg, c_neg) = side(false)?;
+
+            // O ângulo entre as duas normais amostradas — a abertura que a
+            // SUPERFÍCIE já tem. `acos` de um produto escalar de unitários, com
+            // o clamp que o `f32` obriga (uma soma normalizada pode sair a
+            // `1 + 1e-7` e devolver `NaN`).
+            let cosine =
+                (n_pos[0] * n_neg[0] + n_pos[1] * n_neg[1] + n_pos[2] * n_neg[2]).clamp(-1.0, 1.0);
+            let mut rad = cosine.acos();
+            // ⚠️ **O knob VIRA UM ACRÉSCIMO aqui, e a pressão o escala** —
+            // `sampled_angle += DEG2RADF(brush.multiplane_scrape_angle) *
+            // ss.cache->pressure` (`:632`).
+            rad += brush.scrape_angle_deg.to_radians() * dab.pressure.clamp(0.0, 1.0);
+
+            // ⚠️ **CÔNCAVO INVERTE**, e o teste é geométrico: o ponto médio dos
+            // dois centros amostrados cai ATRÁS do cursor numa crista e À FRENTE
+            // dele num vale, então o sinal de `n · (cursor − meio)` diz de que
+            // lado da dobra a lâmina está (`:635`).
+            let mid = [
+                f32::midpoint(c_pos[0], c_neg[0]),
+                f32::midpoint(c_pos[1], c_neg[1]),
+                f32::midpoint(c_pos[2], c_neg[2]),
+            ];
+            let toward = [
+                dab.center[0] - mid[0],
+                dab.center[1] - mid[1],
+                dab.center[2] - mid[2],
+            ];
+            if plane.normal[0] * toward[0]
+                + plane.normal[1] * toward[1]
+                + plane.normal[2] * toward[2]
+                < 0.0
+            {
+                rad = -rad;
+            }
+            // ⚠️ **O Ctrl ZERA o V no modo dinâmico em vez de o inverter**, e a
+            // referência escreve o porquê: *"so you can trim plane surfaces
+            // without changing the brush"* (`:640`). Inverter é o que ele faz no
+            // modo FIXO — os dois são o mesmo gesto com significados diferentes,
+            // e é o modo que decide qual.
+            let sampled = if flip { 0.0 } else { rad.to_degrees() };
+            self.scrape_angle_deg = crate::MULTIPLANE_ANGLE_SMOOTH.mul_add(
+                self.scrape_angle_deg,
+                (1.0 - crate::MULTIPLANE_ANGLE_SMOOTH) * sampled,
+            );
+            self.scrape_angle_deg
+        } else {
+            let a = if flip {
+                -brush.scrape_angle_deg
+            } else {
+                brush.scrape_angle_deg
+            };
+            self.scrape_angle_deg = a;
+            a
+        };
+
+        // ⚠️ **A ORIGEM é o centro do DAB, e a exceção é do modo dinâmico
+        // invertido:** ali a referência NÃO reescreve o `area_position` (o
+        // `else` do `:643`), então o corte plano do Ctrl acontece contra o plano
+        // de ÁREA — o mesmo que os quatro verbos de plano usam, com o
+        // `plane_offset` do artista já dentro dele.
+        let origin = if brush.scrape_dynamic && flip {
+            plane.point
+        } else {
+            dab.center
+        };
+
+        let (sin_half, cos_half) = (angle_deg.to_radians() * 0.5).sin_cos();
+        Some(ScrapePlanes {
+            origin,
+            across,
+            normal: plane.normal,
+            sin_half,
+            cos_half,
+            // ⚠️ **O culling só existe com o V ABERTO** (`if (angle >= 0.0f)`,
+            // `:405`): ali a lâmina raspa e só o que está acima do próprio
+            // meio-plano é matéria a remover. Com o V fechado a projeção é
+            // bilateral, e é isso que faz a mesma ferramenta ENCHER uma dobra
+            // côncava.
+            cull: angle_deg >= 0.0,
+        })
+    }
+}
+
+/// **A LÂMINA EM V**, resolvida uma vez por dab — ver
+/// [`SculptStroke::scrape_planes`].
+///
+/// ⚠️ **Um par de planos guardado como UM objeto**, e não dois [`PlaneFit`]: os
+/// dois partilham a origem e a dobradiça, e diferem **apenas no sinal** com que
+/// a normal tomba. Guardá-los separados poria o mesmo fato em dois lugares, e
+/// nada impediria o dia em que um deles herdasse uma origem diferente do outro.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) struct ScrapePlanes {
+    /// O ponto por onde os DOIS planos passam.
+    pub(super) origin: [f32; 3],
+    /// O eixo unitário que ATRAVESSA o traço — é o sinal da coordenada ao longo
+    /// dele que escolhe qual meio-plano serve o vértice.
+    pub(super) across: [f32; 3],
+    /// A normal de área: a bissetriz do V.
+    pub(super) normal: [f32; 3],
+    /// `sin(θ/2)`, **com sinal** — negativo é o V fechado (a dobra côncava).
+    pub(super) sin_half: f32,
+    /// `cos(θ/2)`.
+    pub(super) cos_half: f32,
+    /// Só o que está ACIMA do próprio meio-plano é tocado?
+    pub(super) cull: bool,
+}
+
+impl ScrapePlanes {
+    /// A normal do meio-plano que serve este ponto.
+    ///
+    /// ⚠️ **UMA expressão para os dois planos, e é a representação a apagar o
+    /// caso especial:** a referência monta dois `float4` girando a normal de
+    /// `+θ/2` e `−θ/2` e depois escolhe entre eles por índice; num frame
+    /// ortonormal a rotação da normal em torno do eixo do traço é exactamente
+    /// `sin(θ/2)·across + cos(θ/2)·n`, então o índice vira o SINAL de um dos dois
+    /// termos. Cada meio-plano tomba **para o lado que ele serve** — é isso que
+    /// abre o V.
+    pub(super) fn normal_at(self, p: [f32; 3]) -> [f32; 3] {
+        let u = (p[0] - self.origin[0]) * self.across[0]
+            + (p[1] - self.origin[1]) * self.across[1]
+            + (p[2] - self.origin[2]) * self.across[2];
+        let s = if u > 0.0 {
+            self.sin_half
+        } else {
+            -self.sin_half
+        };
+        [
+            s * self.across[0] + self.cos_half * self.normal[0],
+            s * self.across[1] + self.cos_half * self.normal[1],
+            s * self.across[2] + self.cos_half * self.normal[2],
+        ]
     }
 }

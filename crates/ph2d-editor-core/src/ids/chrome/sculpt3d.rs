@@ -44,7 +44,7 @@ pub const SCULPT3D_SEC_BAKE: NodeId = hash_node_id("sculpt3d.sec.bake");
 /// ⚠️ **O tamanho é o do `Verb::ALL`, e o gate o compara** — um verbo novo sem
 /// chip aqui é uma ferramenta que o artista não alcança, que é exatamente o que
 /// aconteceu com o `Magnify` antes de ele ganhar a tecla `A`.
-pub const SCULPT3D_VERB: [NodeId; 19] = [
+pub const SCULPT3D_VERB: [NodeId; 20] = [
     hash_node_id("sculpt3d.verb.0"),
     hash_node_id("sculpt3d.verb.1"),
     hash_node_id("sculpt3d.verb.2"),
@@ -64,6 +64,7 @@ pub const SCULPT3D_VERB: [NodeId; 19] = [
     hash_node_id("sculpt3d.verb.16"),
     hash_node_id("sculpt3d.verb.17"),
     hash_node_id("sculpt3d.verb.18"),
+    hash_node_id("sculpt3d.verb.19"),
 ];
 
 /// **A REFERÊNCIA que o verbo corrente segue** — os chips `S` · `B` · `L`.
@@ -92,6 +93,12 @@ pub const SCULPT3D_TIP_ROUNDNESS_NUM: NodeId = hash_node_id("sculpt3d.tip_roundn
 pub const SCULPT3D_STRIP_LENGTH: NodeId = hash_node_id("sculpt3d.strip_length");
 /// O chip numérico do comprimento da faixa.
 pub const SCULPT3D_STRIP_LENGTH_NUM: NodeId = hash_node_id("sculpt3d.strip_length.num");
+/// **A ABERTURA DO V da lâmina** — o slider e o chip numérico.
+pub const SCULPT3D_SCRAPE_ANGLE: NodeId = hash_node_id("sculpt3d.scrape_angle");
+/// O chip numérico da abertura do V.
+pub const SCULPT3D_SCRAPE_ANGLE_NUM: NodeId = hash_node_id("sculpt3d.scrape_angle.num");
+/// **O V É LIDO DA SUPERFÍCIE** — o toggle do modo dinâmico.
+pub const SCULPT3D_SCRAPE_DYNAMIC: NodeId = hash_node_id("sculpt3d.scrape_dynamic");
 
 pub const SCULPT3D_ELASTIC_SCALES: [NodeId; 3] = [
     hash_node_id("sculpt3d.elastic_scales.0"),

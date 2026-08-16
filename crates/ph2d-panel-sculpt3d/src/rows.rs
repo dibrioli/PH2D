@@ -202,6 +202,33 @@ static BRUSH: &[Row] = &[
         level: UiLevel::Pro,
         place: Place::Knobs,
     },
+    // **A ABERTURA DO V**, o único knob que faz da lâmina uma lâmina.
+    Row {
+        label: "panel.sculpt3d.scrape_angle",
+        slider: ids::SCULPT3D_SCRAPE_ANGLE,
+        chip: ids::SCULPT3D_SCRAPE_ANGLE_NUM,
+        // ⚠️ **ZERO é alcançável e ali a ferramenta fica INERTE** — os dois
+        // meios-planos coincidem com o plano TANGENTE, e num convexo não há nada
+        // acima dele (medido: zero vértices movidos). Um piso acima de zero
+        // esconderia uma continuidade que a física tem; o que ele não pode ser é
+        // o default, e não é.
+        min: 0.0,
+        // ⚠️ **O teto é o da REFERÊNCIA** (`rna_brush.cc:3382`), não nosso — ver
+        // [`ph2d_sculpt3d::MULTIPLANE_ANGLE_MAX_DEG`], que traz a tabela do que
+        // de facto acontece lá em cima.
+        max: ph2d_sculpt3d::MULTIPLANE_ANGLE_MAX_DEG,
+        step: 5.0, // LITERAL-PX-OK: passo em GRAUS, não métrica de layout
+        decimals: 0,
+        get: |u| u.brush.scrape_angle_deg,
+        set: |u, v| u.brush.scrape_angle_deg = v,
+        show: |u| u.brush.verb == Verb::MultiplaneScrape,
+        // ⚠️ **Basic, e é a única row desta wave que não é Pro:** esconder este
+        // knob deixa a ferramenta sem o que o nome dela promete — *multiplane* É
+        // o ângulo entre os planos. O teste do nível é *"esconder deixa a
+        // ferramenta sem o que o nome dela promete?"*, e aqui a resposta é sim.
+        level: UiLevel::Basic,
+        place: Place::Knobs,
+    },
     // ⚠️ **Ela NÃO é um seletor de falloff, e a distinção é da REFERÊNCIA.** O
     // canal de máscara do original tem curva PRÓPRIA — `(1 − d)^{2(1 − hardness)}`
     // (`Masking.js:66`) — enquanto as dez tools de geometria multiplicam pela

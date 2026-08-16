@@ -27,7 +27,12 @@ use super::plane::PlaneFit;
 /// **A ARITMÉTICA** com que um alvo é escrito — ver [`aim`].
 #[path = "stroke_aim.rs"]
 mod aim;
-use aim::{add, add_vec, cross, remove_along, rotate_about, signed_distance, to_plane};
+use aim::{add, add_vec, remove_along, rotate_about, signed_distance, to_plane};
+// ⚠️ **O `cross` é re-exportado ao IRMÃO [`super::plane`]**, que monta a
+// dobradiça da lâmina em V. A alternativa era uma segunda cópia de três linhas
+// de aritmética lá — e o teto de LOC deste arquivo é exactamente o que não pode
+// decidir onde uma operação vetorial mora.
+pub(super) use aim::cross;
 
 impl SculptStroke {
     #[allow(clippy::too_many_arguments)]
@@ -257,6 +262,40 @@ impl SculptStroke {
                     };
                     let d = signed_distance(live, &tilt_plane);
                     to_plane(live, tilted, d, w)
+                }
+                None => live,
+            },
+            // **A LÂMINA EM V é o [`Verb::Scrape`] contra DOIS planos** —
+            // `multiplane_scrape.cc`. A aritmética do alvo é a mesma projeção
+            // dos outros cinco verbos de plano; o que a ferramenta acrescenta é
+            // inteiramente *qual* plano serve *qual* vértice, e isso mora na
+            // moldura que a [`super::plane::ScrapePlanes`] resolveu uma vez por
+            // dab.
+            //
+            // ⚠️ **O culling é `d <= 0`, não `d < 0`** — o
+            // `plane_point_side_v3(...) <= 0.0f → factor = 0` do `:85`. Um
+            // vértice exactamente sobre o meio-plano dele não é matéria a
+            // remover, e a diferença é o que impede o miolo do sulco de tremer
+            // entre dois dabs.
+            //
+            // ⚠️ **`self.scrape` é `None` quando este dab não deposita**, e é a
+            // mesma recusa do polegar por baixo: sem direção não há dobradiça, e
+            // no modo dinâmico um lado sem vértices não tem normal para medir.
+            Verb::MultiplaneScrape => match self.scrape {
+                Some(s) => {
+                    let n = s.normal_at(live);
+                    let d = signed_distance(
+                        live,
+                        &PlaneFit {
+                            point: s.origin,
+                            normal: n,
+                        },
+                    );
+                    if s.cull && d <= 0.0 {
+                        live
+                    } else {
+                        to_plane(live, n, d, w)
+                    }
                 }
                 None => live,
             },

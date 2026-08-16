@@ -13,7 +13,7 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
-use ph2d_sculpt3d::{Alpha, Falloff};
+use ph2d_sculpt3d::{Alpha, Falloff, Verb};
 use ph2d_tokens::Spacing;
 
 use super::body::paint_one_row;
@@ -191,6 +191,23 @@ pub(super) fn paint_brush_tail(
             ids::SCULPT3D_ACCUMULATE,
             tr("panel.sculpt3d.accumulate"),
             snap.ui.brush.accumulate,
+            x,
+            w,
+            y,
+        ) + Spacing::Sm.px()
+    } else {
+        y
+    };
+    // **A LÂMINA LÊ A SUPERFÍCIE**, e só onde há lâmina. ⚠️ A pergunta é ao
+    // VERBO, a mesma que o motor faz antes de amostrar os dois lados — uma lista
+    // paralela aqui seria um interruptor que aparece noutra ferramenta e não
+    // muda um vértice.
+    let y = if snap.ui.brush.verb == Verb::MultiplaneScrape {
+        toggle(
+            ctx,
+            ids::SCULPT3D_SCRAPE_DYNAMIC,
+            tr("panel.sculpt3d.scrape_dynamic"),
+            snap.ui.brush.scrape_dynamic,
             x,
             w,
             y,

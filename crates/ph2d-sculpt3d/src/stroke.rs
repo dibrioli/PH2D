@@ -119,6 +119,27 @@ pub struct SculptStroke {
     /// inclinação correr de duas a oito vezes mais rápido com o espelho armado,
     /// e o artista veria a ferramenta mudar de lei ao ligar a simetria.
     thumb_tilt_deg: f32,
+    /// **A ABERTURA DO V do [`Verb::MultiplaneScrape`]**, em graus — o
+    /// `cache->multiplane_scrape_angle`.
+    ///
+    /// ⚠️ **Ele é do TRAÇO porque o modo dinâmico o SUAVIZA contra o dab
+    /// anterior** ([`crate::MULTIPLANE_ANGLE_SMOOTH`]); no modo fixo ele é
+    /// simplesmente reescrito, e é isso que impede um valor lido numa passada
+    /// dinâmica de ressuscitar depois de o artista desmarcar o modo.
+    scrape_angle_deg: f32,
+    /// **A LÂMINA EM V deste dab** — hoisted, como o `alpha_frame` e a
+    /// silhueta.
+    ///
+    /// ⚠️ **Estado de DAB num campo de TRAÇO, e a razão é a assinatura:** ela
+    /// nasce de `&mut self` (o modo dinâmico tem memória) e é lida do `&self`
+    /// que o alvo por-vértice recebe — as duas metades não cabem no mesmo
+    /// empréstimo, e passá-la por argumento significaria enfiar um `Option` a
+    /// mais em `compute_target`, que dezanove verbos não leem. É a mesma rota
+    /// que o `thumb_tilt_deg` já usa.
+    ///
+    /// ⚠️ **`None` é *este dab não deposita*.** Ela é reescrita no topo de todo
+    /// dab, então nunca sobrevive ao seguinte.
+    scrape: Option<plane::ScrapePlanes>,
 }
 
 impl SculptStroke {
@@ -157,6 +178,11 @@ impl SculptStroke {
         // artista veria a mesma ferramenta cavar mais fundo por ter sido usada
         // antes.
         self.thumb_tilt_deg = 0.0;
+        // ⚠️ **Nem a abertura do V**, pela mesma razão — e no modo dinâmico ela
+        // é MEMÓRIA, então herdá-la faria o primeiro dab do traço novo raspar
+        // com o ângulo que a superfície tinha noutro lugar.
+        self.scrape_angle_deg = 0.0;
+        self.scrape = None;
     }
 
     fn dab_core(&mut self, mesh: &mut Mesh, brush: &Brush, dab: &Dab) -> usize {
@@ -187,37 +213,7 @@ impl SculptStroke {
         // derivado por vértice ele custaria mais que o padrão inteiro que
         // orienta. Ver `Brush::alpha_frame`.
         let alpha_frame = brush.alpha_frame();
-        // ⚠️ **A SILHUETA é hoisted, como o `alpha_frame`** — ver
-        // [`crate::Footprint`]. Ela depende do plano ajustado e da direção do
-        // traço, que são fatos do DAB; construí-la por vértice pagaria duas
-        // raízes quadradas em cada um.
-        //
-        // ⚠️ **O `None` do [`crate::Strip::new`] cai no disco**, e ele só
-        // acontece sem plano em que deitar a caixa. *Sem CAMINHO* é outra coisa
-        // e a faixa trata dela sozinha, nascendo redonda — a distinção custou um
-        // gate de produto (ver o doc de [`crate::Strip::new`]).
-        let footprint = if brush.verb == Verb::ClayStrips {
-            // ⚠️ **O plano da faixa SOBE**, e o `plane_offset` do artista já
-            // está dentro do `plane.point` — este termo soma ao dele. Ver
-            // [`crate::STRIP_PLANE_FRACTION`] para o porquê de o número sair da
-            // própria parábola.
-            let lift = dab.radius * crate::STRIP_PLANE_FRACTION;
-            crate::Strip::new(
-                [
-                    plane.point[0] + plane.normal[0] * lift,
-                    plane.point[1] + plane.normal[1] * lift,
-                    plane.point[2] + plane.normal[2] * lift,
-                ],
-                plane.normal,
-                dab.path,
-                dab.radius,
-                brush.strip_length,
-                brush.tip_roundness,
-            )
-            .map_or(crate::Footprint::Disc, crate::Footprint::Strip)
-        } else {
-            crate::Footprint::Disc
-        };
+        let footprint = self.dab_footprint(mesh, brush, dab, &plane);
         let reach = brush.reach(dab.radius);
         let inv_r = 1.0 / dab.radius;
         // ⚠️ **UMA vez por dab**, e as três perguntas que ele responde no laço
@@ -620,6 +616,10 @@ mod probe;
 /// os dezasseis, *que forma a superfície tem* é uma pergunta só.
 #[path = "stroke_plane.rs"]
 mod plane;
+
+/// **QUE SILHUETA ESTE DAB TEM** — ver [`shape`].
+#[path = "stroke_shape.rs"]
+mod shape;
 
 /// **A MALHA CRESCEU DEBAIXO DO TRAÇO** — o refino e a lei do `pre`.
 ///

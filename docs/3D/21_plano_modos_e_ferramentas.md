@@ -1970,7 +1970,7 @@ uma curva em S** · um **toque** sai redondo (a decisão, não o bug) · não h�
 **canto comido** no fim de uma tira · e os dois knobs novos aparecem em **Pro com
 a faixa em mãos**, e em nenhum outro verbo.
 
-**Aberto na W6:** o **Multiplane Scrape** e o **Clay Thumb** reusam esta moldura;
+**Aberto na W6** *(fechado — §7.26 e §7.27)*: o **Multiplane Scrape** e o **Clay Thumb** reusam esta moldura;
 o **Blob** é o Crease com o pinch invertido; o **Draw Sharp** segue bloqueado
 pela tabela ausente (§7.18).
 
@@ -2488,7 +2488,7 @@ alto, a passada tem de deixar um **monte REDONDO** onde o Crease deixa um sulco
 afiado — e o `Ctrl` tem de dar o oposto de cada um (poço redondo · crista afiada).
 Os dois chips ficam lado a lado no painel; **o `S` não é oferecido para o Blob**.
 
-**Aberto na W6:** o **Multiplane Scrape** e o **Clay Thumb** reusam a moldura da
+**Aberto na W6** *(fechado — §7.26 e §7.27)*: o **Multiplane Scrape** e o **Clay Thumb** reusam a moldura da
 faixa; o **Draw Sharp** segue bloqueado pela tabela ausente (§7.18).
 
 ---
@@ -2665,26 +2665,26 @@ alguém a chame.*
 
 ### §7.25 — 📊 O PLACAR: o que falta, medido contra a lista do §5.1 (2026-08-15)
 
-**Waves** — 5 fechadas, 2 pela metade, 6 por abrir, 1 sem cura em código:
+**Waves** — **6 fechadas**, 1 pela metade, 6 por abrir, 1 sem cura em código:
 
 | wave | estado |
 |---|---|
 | **W0** a espinha · **W1'** a UI · **W2** os knobs de Pro · **W3** os kernels divergentes · **W5** Kelvinlets | ✅ **fechadas** |
 | ~~**W1**~~ os defaults do `B` | ⛔ **sem cura em código** — §7.0; vira decisão de produto |
 | **W4** o Smooth que não encolhe | 🟡 **metade** — o `l-mode` (Taubin λ\|μ) landou; faltam **Slide Relax**, o **Surface Smooth como pincel próprio** e o **laplaciano por cotangentes** (que é o `L` do Inflate na matriz do §3) |
-| **W6** os dabs que não são discos | 🟡 **quase** — **Clay Strips**, **Blob** e **Clay Thumb** (§7.26) landaram; falta **um**, o **Multiplane Scrape** |
+| **W6** os dabs que não são discos | ✅ **FECHADA** — **Clay Strips** · **Blob** · **Clay Thumb** (§7.26) · **Multiplane Scrape** (§7.27). O **Draw Sharp**, o 5º da lista dela, saiu com motivo na §7.18 (ele é o item da W1) |
 | **W7** o plano MLS · **W8** Layer · **W9** Mesh Filter · **W10** Cloth · **W11** handles · **W12** a geodésica | ⬜ **por abrir** |
 
 **Ferramentas** — a lista do §5.1 tem 16 itens:
 
 | | itens |
 |---|---|
-| ✅ **feitos (3)** | Clay Strips · Blob · **Clay Thumb** |
+| ✅ **feitos (4)** | Clay Strips · Blob · Clay Thumb · **Multiplane Scrape** |
 | ✅ **respondido SEM verbo novo (1)** | **Elastic Deform** — a §7.17 mediu que 3 dos 5 tipos dele são o mesmo verbo com outra família de escalas e os outros 2 já shipavam; o que faltava era o knob **Field width**. *Um sexto botão cujo conteúdo é um dropdown para verbos que a lista já tem é o item de menu morto que este plano recusa.* ⇒ **o alvo de 14 pincéis novos é de 13** |
 | ⛔ **fora, com motivo (1)** | Draw Sharp — §7.18 mediu que o que o nome promete mora na **CURVA**, e a curva de fábrica por-tool está no mesmo `.blend` binário da §7.0 ⇒ ele **é** o item da W1 |
-| ⬜ **faltam (11)** | Multiplane Scrape · Layer · Cloth · Pose · Boundary · Nudge · Thumb · Surface Smooth · Slide Relax · Mesh Filter (9 tipos) · Cloth Filter (5 tipos) |
+| ⬜ **faltam (10)** | Layer · Cloth · Pose · Boundary · Nudge · Thumb · Surface Smooth · Slide Relax · Mesh Filter (9 tipos) · Cloth Filter (5 tipos) |
 
-⇒ **19 verbos hoje**, contra os 16 de que a linha partiu. O placar do §10 dizia
+⇒ **20 verbos hoje**, contra os 16 de que a linha partiu. O placar do §10 dizia
 **32**; com o Elastic Deform respondido sem verbo e o Draw Sharp fora, o alvo
 honesto é **29** (16 + 11 pincéis + 2 filtros).
 
@@ -2826,10 +2826,149 @@ e são citados de fora: descê-los obrigaria o `pub(super)` deles a virar
 censo do `B` **18 → 19** (o `S` fica em 15: são 19 menos os quatro que o SculptGL
 não tem). **Nenhum schema, nenhum ADR, nenhuma dep, nenhuma crate nova.**
 
-⚠️ **PENDENTE DE SMOKE: `PH2D_SCULPT3D_SMOKE=30`**, e o roteiro imprime os
+✅ **SMOKE OK (2026-08-15).** O roteiro imprime os
 números que ele manda contar (derivados das constantes, não escritos à mão). As
 perguntas de olho: **o CONTROLE primeiro** (o Flatten não deita ao longo do
 traço) · o polegar no mesmo gesto tem de ir **deitando** conforme a mão anda · um
 **toque parado faz NADA** · passando dos 75 dabs a superfície **para de mudar** ·
 o **traço seguinte nasce do zero** · e com o **espelho** os dois lados saem
 iguais entre si e iguais ao lado único.
+
+---
+
+### §7.27 — ✅ A LÂMINA EM V (W6): o único verbo com DOIS planos, e a wave que FECHA a W6 (2026-08-15)
+
+`Verb::MultiplaneScrape`, o **20º** — o `multiplane_scrape.cc`, o último item da
+W6 e o que a §7.18, a §7.19 e a §7.23 vinham deixando em aberto (*"o Multiplane
+Scrape e o Clay Thumb reusam esta moldura"*).
+
+**A LEI.** Em vez de raspar contra uma superfície, ele raspa contra um
+**TELHADO**: dois meios-planos partilham a origem (o centro do dab, como no
+polegar) e as normais deles são a normal de área girada de `±ângulo/2` **em torno
+do eixo que corre AO LONGO do caminho** — a rotação **ORTOGONAL** à do polegar,
+que gira em torno do eixo que o atravessa. Os dois verbos inclinam o mesmo plano;
+o que os separa é *em torno de quê*, e o que sobra do corte é um sulco de duas
+facetas planas com uma **aresta viva** no meio.
+
+**Qual dos dois um vértice consome sai do LADO em que ele caiu**
+(`local_positions[i][0] <= 0`), e cada meio-plano tomba **para o lado que ele
+serve** — é isso que abre o V em vez de o fechar. ⚠️ **UMA expressão para os dois
+planos:** num frame ortonormal a rotação da normal em torno do eixo do traço é
+exactamente `sin(θ/2)·across + cos(θ/2)·n`, então o *índice* da referência (que
+monta dois `float4` e escolhe entre eles) vira o **SINAL** de um termo. A
+representação a apagar o caso especial.
+
+⚠️ **DOIS erros de leitura da fonte que teriam shipado em silêncio**, os dois
+achados por ir ao código em vez de aos nomes: os locais do `clay_thumb`/`
+multiplane_scrape` chamados `area_position` e `sculpt_plane_normal` estão com os
+nomes **trocados** (o `calc_brush_plane(..., r_area_no, r_area_co)` devolve a
+**normal primeiro**), e o eixo chega ao `rotate_v3_v3v3fl` **escalado pelo raio**,
+com a função a **normalizar sozinha** — a segunda armadilha só apareceria com
+`raio ≠ 1`.
+
+**A PONTA NÃO É UM DISCO**, e a referência diz por quê no próprio comentário
+(*"deform the local space along the Y axis to avoid artifacts on curved strokes;
+this produces a not round brush tip"*). É a `Footprint::Blade`, e ⚠️ **ela é um
+produto escalar e mais nada:** escalar UMA componente ortonormal por `k` dá
+`|d'|² = |d|² + (k²−1)·(d·â)²`, então a decomposição inteira cancela — nem eixo
+transversal, nem normal, nem as três projeções que a referência computa para
+depois somar de volta.
+
+**O MODO DINÂMICO** (`BRUSH_MULTIPLANE_SCRAPE_DYNAMIC`) amostra a normal média
+dos **dois lados** da lâmina, mede o ângulo entre elas e usa isso como a abertura
+— a ferramenta encontra a dobra que já existe em vez de impor um vinco próprio —,
+com o knob a virar um **acréscimo** e o `0,2` do `interpolate` como única memória.
+⚠️ **O Ctrl MUDA DE SIGNIFICADO entre os modos:** no fixo ele inverte (telhado →
+vale), no dinâmico ele **zera** o ângulo, e a referência escreve o porquê — *"so
+you can trim plane surfaces without changing the brush"*.
+
+**A MEDIÇÃO, e é ela que decide o default** (`tests/measure_multiplane_scrape.rs`,
+esfera unitária, pincel `0,35`, traço de 20 dabs sobre um arco de círculo máximo):
+
+| autorado | diedro medido | fidelidade | crista (raios) | movidos |
+|---|---|---|---|---|
+| **0°** | 0,00° | — | **0,0000** | **0** |
+| 15° | 4,65° | 0,31 | 0,0076 | 584 |
+| 30° | 19,39° | 0,65 | 0,0677 | 837 |
+| 45° | 34,18° | 0,76 | 0,1182 | 848 |
+| **60°** | **46,85°** | **0,78** | **0,1739** | 855 |
+| 90° | 63,01° | 0,70 | 0,2175 | 864 |
+| 120° | 10,25° | 0,09 | 0,0908 | 871 |
+| 160° | — | — | 0,0084 | 871 |
+
+⚠️ **O `0` do `DNA_brush_types.h` é a ferramenta DESLIGADA, não *"um V
+estreito"***, e o mecanismo é a ORIGEM: os dois meios-planos passam pelo plano
+**TANGENTE** ao cursor, e acima de um plano tangente, num convexo, não há nada —
+**zero vértices movidos**, contra os 994 que o `Verb::Scrape` (que projeta no
+plano de ÁREA) move no mesmo traço. ⚠️ **Eu ia shipar a frase oposta** (*"`0` é o
+Scrape ao bit"*): ela está corrigida no doc do campo, com o número ao lado. ⇒
+`DEFAULT_MULTIPLANE_ANGLE_DEG = 60`, **NOSSO** (o valor de fábrica desta
+ferramenta vive no `.blend` binário da §7.0), escolhido no pico da fidelidade com
+uma crista que já vale **17% do raio**. O teto **fica onde a referência o pôs**
+(`160`, `rna_brush.cc:3382`), agora com a tabela do que de facto acontece lá em
+cima.
+
+**11 gates · 12 mutações · 12 sangram.** ⚠️ **DUAS sobreviveram e as duas eram
+achado, não ruído:**
+
+1. **As duas amostras do modo dinâmico lendo o MESMO lado** passavam por nove
+   gates — com o knob a somar 60°, *a ferramenta parece funcionar enquanto ignora
+   a superfície inteira*. O gate que faltava põe o **knob em ZERO**: ali tudo o
+   que sobra é a leitura, e o modo fixo é o CONTROLE que a torna visível (ele não
+   move um vértice; o dinâmico move **680**).
+2. **Tirar o verbo da lista de planos CONGELADOS** não sangra, e a razão é
+   **GEOMETRIA**: o V é simétrico em torno da dobradiça, então a normal média das
+   duas facetas que ele deixa é a MESMA que ele encontrou. Medido num traço que
+   insiste no mesmo lugar — **0,08814 congelado × 0,09477 vivo** a 20 dabs, e a
+   diferença **não compõe**. Fica **documentada em vez de gateada**: um gate sobre
+   7% é um gate que alguém silencia.
+
+⚠️ **E a segunda só foi mensurável depois de a FIXTURE ser corrigida:**
+`..Brush::default()` carrega o `accumulate` do **Draw** (que é `true`), e a lei do
+plano congelado é `!accumulate` ⇒ **o ramo do `pre` era inalcançável na suíte
+inteira**, e as duas rotas saíam byte-idênticas. As fixtures passaram a derivar o
+flag do VERBO, que é o que o painel faz ao trocar de ferramenta. ⚠️ **Os gates do
+polegar e da faixa herdam a mesma cegueira** — nomeado aqui, não corrigido nesta
+wave (mexer nas barras deles é wave de quem os fez).
+
+⚠️ **QUATRO defeitos de fixture na sonda, e o primeiro reprovava o próprio
+CONTROLE:** os dabs corriam numa RETA em `z = 1` (os de trás flutuavam **fora**
+da esfera, e o corte medido virava função de quão longe o dab tinha flutuado) ·
+o polo desta esfera é **+Y**, então `[0,0,1]` é um ponto do EQUADOR e a janela de
+amostragem caía numa coluna de longitude só (**2 pontos por banda**, a sonda
+inteira em `NaN`) · a malha de `96×144` **não resolve** as bandas do perfil (⇒
+`160×240`) · e a crista era lida em ABSOLUTO, o que media a curvatura da esfera
+(**0,0548 de crista num traço que moveu ZERO vértices**). ⚠️ **E o ajuste de
+plano 3D foi DESCARTADO como oráculo:** a superfície cortada **não é um plano em
+toda a pegada** (a projeção é ponderada pelo falloff), então ele media a mistura
+— `14,5° · 17,2° · 12,4°` para ângulos autorados de `15° · 30° · 45°`. O oráculo
+é o **PERFIL** da secção transversal, contra o repouso.
+
+**Sem tecla, e a ausência é DELIBERADA** (`CHIP_ONLY`): o catálogo já tem
+`Scrape` no `C`, e uma segunda tecla de *scrape* teria de ser sorteada — toda
+escolha desse tipo é uma regra falsa que o artista aprende. O Blender também não
+lhe dá atalho de fábrica. **A escolha é do Enio.**
+
+**LOC: dois cortes por ASSUNTO.** O `brush_verb.rs` cruzou 700 (837) ⇒ as
+constantes de magnitude saíram para `brush_magnitudes.rs` (610 + 250) — o arquivo
+tinha virado **três** coisas (o catálogo, as portas, os números), e as três
+crescem por razões diferentes: foi a terceira que o levou ao teto. O `stroke.rs`
+cruzou (713) ⇒ o hoist da silhueta saiu para `stroke_shape.rs` (666 + 77), *que
+FORMA este dab tem* contra *o que ele FAZ*.
+
+`Verb::ALL` **19 → 20** · `SCULPT3D_VERB` **19 → 20** (`sculpt3d.verb.19`) ·
+censo do `B` **19 → 20** (o `S` fica em 15: são 20 menos os cinco que o SculptGL
+não tem) · ids novos `SCULPT3D_SCRAPE_ANGLE`/`_NUM`/`SCULPT3D_SCRAPE_DYNAMIC`
+(hash de string) · 2 chaves i18n. **Nenhum schema, nenhum ADR, nenhuma dep,
+nenhuma crate nova.** ⚠️ O `#[allow(clippy::large_enum_variant)]` no
+`Sculpt3dIntent` nasceu de **crescer o `Brush`** — ele mede a largura do estado
+autorado, não um defeito da fila (o precedente é o `Step` do `ph2d-ui-state`).
+
+⚠️ **PENDENTE DE SMOKE: `PH2D_SCULPT3D_SMOKE=31`**, e o roteiro imprime os dois
+números derivados das constantes. As perguntas de olho: **o CONTROLE primeiro**
+(o Scrape deixa um canal de fundo chato) · a lâmina no mesmo gesto deixa uma
+**crista** com uma faceta de cada lado · com o ângulo em **ZERO** ela faz
+**NADA** (e isso não é bug) · num traço **VERTICAL** a crista corre na vertical ·
+um **toque parado faz NADA** · o **Ctrl** vira o telhado em vale · e com **Read
+the surface** marcado e o ângulo em zero ela **ainda corta**, porque leu a forma
+que está debaixo do pincel.

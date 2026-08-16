@@ -156,6 +156,20 @@ pub(crate) fn apply_event(
             state::push_intent(Sculpt3dIntent::SetUi(ui));
             true
         }
+        // ⚠️ **Gateado no VERBO, como a row que o pinta** — a mesma razão do
+        // vizinho acima: um clique sintético (ou um id que sobreviveu a uma
+        // troca de verbo no mesmo frame) armaria um modo que nenhum dab lê, e o
+        // painel voltaria a mostrá-lo marcado na próxima lâmina.
+        WidgetEvent::Click(id)
+            if id == ids::SCULPT3D_SCRAPE_DYNAMIC
+                && snapshot.ui.brush.verb == Verb::MultiplaneScrape =>
+        {
+            seam_reset_button(host, id);
+            let mut ui = snapshot.ui;
+            ui.brush.scrape_dynamic = !ui.brush.scrape_dynamic;
+            state::push_intent(Sculpt3dIntent::SetUi(ui));
+            true
+        }
         // ⚠️ **Gateado no padrão armado, como a row que o pinta.** Sem o guard
         // o clique chegaria a um interruptor que ninguém desenhou — e o estado
         // dele mudaria pelas costas do artista, que é a forma exata de um

@@ -13,7 +13,9 @@ use crate::{Alpha, AlphaStencil};
 mod verb;
 pub use verb::{
     CLAY_PLANE_FRACTION, CLAY_THUMB_TILT_MAX_DEG, CLAY_THUMB_TILT_STEP_DEG, CREASE_FRACTION,
-    PINCH_GAIN, REACH_FRACTION, STRIP_PLANE_FRACTION, STRIP_REACH_FRACTION, Verb,
+    DEFAULT_MULTIPLANE_ANGLE_DEG, MULTIPLANE_ANGLE_MAX_DEG, MULTIPLANE_ANGLE_SMOOTH,
+    MULTIPLANE_TIP_STRETCH, PINCH_GAIN, REACH_FRACTION, STRIP_PLANE_FRACTION, STRIP_REACH_FRACTION,
+    Verb,
 };
 
 /// A ferramenta na mão. Um traço inteiro corre contra um destes.
@@ -127,6 +129,47 @@ pub struct Brush {
     /// uma confusão: o eixo que o número estica é o que corre AO LONGO do
     /// caminho, e é isso que o artista vê.
     pub strip_length: f32,
+    /// **QUANTO O V DO MULTIPLANE SCRAPE ABRE**, em graus (`0..=`
+    /// [`MULTIPLANE_ANGLE_MAX_DEG`]). Só a [`Verb::MultiplaneScrape`] o lê.
+    ///
+    /// ⚠️ **Em `0` a ferramenta fica INERTE, e MEDIDO isso é mais forte do que
+    /// eu ia escrever.** A primeira versão deste doc dizia *"`0` é o
+    /// [`Verb::Scrape`] AO BIT"* — é falso, e a diferença é a ORIGEM: o Scrape
+    /// projeta no plano de ÁREA (a média da pegada, que numa superfície convexa
+    /// fica ABAIXO da superfície, então a crista sobra acima dele e é raspada),
+    /// e os dois meios-planos deste verbo passam pelo **centro do dab**, ou seja
+    /// pelo plano TANGENTE — e acima de um plano tangente, num convexo, não há
+    /// nada. Medido no mesmo traço: **994 vértices movidos pelo Scrape contra
+    /// ZERO** com o V fechado.
+    ///
+    /// ⚠️ **Ele fica alcançável na mesma**, e não por descuido: a continuidade é
+    /// real (o V fecha, o corte desaparece), e um piso acima de zero seria um
+    /// número nosso a esconder um degrau que a física não tem. O que zero não
+    /// pode ser é o **default** — ver [`DEFAULT_MULTIPLANE_ANGLE_DEG`].
+    ///
+    /// ⚠️ **No modo dinâmico ele deixa de ser o ângulo e passa a ser um
+    /// ACRÉSCIMO** ao que a superfície ditou (`sampled_angle += DEG2RADF(...) *
+    /// pressure`, `:632`) — o mesmo número com dois papéis, que é a referência
+    /// ao pé da letra e é por isso que o rótulo dela diz *"Plane Angle"* nos
+    /// dois modos.
+    pub scrape_angle_deg: f32,
+    /// **O V É LIDO DA SUPERFÍCIE** em vez de ser autorado — o
+    /// `BRUSH_MULTIPLANE_SCRAPE_DYNAMIC`.
+    ///
+    /// Armado, cada dab amostra a normal média dos DOIS lados da lâmina, mede o
+    /// ângulo entre elas e usa isso como a abertura do V — a ferramenta encontra
+    /// a dobra que já existe e raspa **ao longo dela** em vez de impor um vinco
+    /// próprio. O [`Brush::scrape_angle_deg`] passa a somar-se ao que foi lido.
+    ///
+    /// ⚠️ **Ele também sente o SINAL da dobra:** numa aresta côncava o V é
+    /// invertido (`:635`) e a ferramenta passa a ENCHER a dobra em vez de a
+    /// cavar. É o que faz um único pincel servir a crista e o vale.
+    ///
+    /// ⚠️ **Desarmado por default, e o motivo é o mesmo do resto deste módulo:**
+    /// o `flag2 = {}` do `DNA_brush_types.h:207` é o único valor citável, e um
+    /// modo que se arma sozinho é um pincel cujo desenho muda por uma razão que
+    /// o artista não vê. Quem o quer, marca.
+    pub scrape_dynamic: bool,
     /// **A dureza da borda do canal de MÁSCARA**, em `[0, 1]` — o `_hardness`
     /// da tool `Masking` do original (`Masking.js:14`).
     ///
@@ -286,6 +329,13 @@ impl Default for Brush {
             // segundo eixo de estilo. `DNA_brush_types.h:265` diz `1.0` e aqui
             // ele concorda com o que a sonda mostra.
             strip_length: 1.0,
+            // ⚠️ **DELEGA à constante MEDIDA**, e não repete o número: o dia em
+            // que a varredura mudar de veredito, um literal aqui ficaria a
+            // contradizê-la em silêncio — e o gate do V é escrito para não
+            // mencionar nenhum dos dois.
+            scrape_angle_deg: DEFAULT_MULTIPLANE_ANGLE_DEG,
+            // O `flag2 = {}` do `DNA_brush_types.h:207` — ver o campo.
+            scrape_dynamic: false,
             // O `_hardness` de fábrica da `Masking` do original.
             mask_hardness: 0.25,
             // O neutro do `apply_hardness_to_distances` — ver o campo.

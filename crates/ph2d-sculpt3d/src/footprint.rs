@@ -31,6 +31,9 @@ pub enum Footprint {
     /// A **FAIXA** do Clay Strips: caixa arredondada no plano e parábola na
     /// profundidade.
     Strip(Strip),
+    /// A **LÂMINA** do Multiplane Scrape: o disco espremido no sentido da
+    /// marcha — ver [`Blade`].
+    Blade(Blade),
 }
 
 /// A moldura local de uma [`Footprint::Strip`].
@@ -54,6 +57,36 @@ pub struct Strip {
     pub roundness: f32,
 }
 
+/// A moldura de uma [`Footprint::Blade`] — a ponta ACHATADA do Multiplane
+/// Scrape.
+///
+/// ⚠️ **É um ELIPSOIDE, não uma caixa**, e por isso ela não precisa de origem
+/// nem de base: a única coisa que a distingue de um disco é *quanto o eixo do
+/// traço conta a mais*, e isso se escreve num vetor só. A referência a monta
+/// transformando o ponto para a moldura local, multiplicando a componente `y`
+/// por [`crate::MULTIPLANE_TIP_STRETCH`] e tomando o comprimento
+/// (`multiplane_scrape.cc:98-104`); num frame ORTONORMAL isso é exatamente
+///
+/// ```text
+/// |d'|² = |d|² + (k² − 1)·(d · â)²
+/// ```
+///
+/// — a decomposição inteira cancela e sobra **um produto escalar**. É a
+/// representação a apagar o caso especial: nem eixo transversal, nem normal, nem
+/// as três projeções que a referência computa para depois as somar de volta.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Blade {
+    /// O centro do dab — a MESMA origem de que a distância euclidiana já é
+    /// medida, e é isso que deixa a lâmina reusar esse número em vez de o
+    /// recomputar.
+    pub origin: [f32; 3],
+    /// O eixo unitário que corre AO LONGO do traço.
+    pub along: [f32; 3],
+    /// `k² − 1`, com `k` = [`crate::MULTIPLANE_TIP_STRETCH`] — pré-computado
+    /// porque ele é o mesmo para todos os vértices do dab.
+    pub extra: f32,
+}
+
 impl Footprint {
     /// **A coordenada que a curva consome, e o portão que a profundidade
     /// impõe** — `(t, gate)`.
@@ -67,6 +100,16 @@ impl Footprint {
         match self {
             Self::Disc => (dist * inv_r, 1.0),
             Self::Strip(s) => s.at(p),
+            // ⚠️ **A distância euclidiana ENTRA em vez de ser recomputada**, e é
+            // ela que carrega as duas componentes que a lâmina não aperta. O que
+            // sobra é a componente do traço, contada `k²` vezes em vez de uma —
+            // daí o `+ extra · a²` com `extra = k² − 1`.
+            Self::Blade(b) => {
+                let a = (p[0] - b.origin[0]) * b.along[0]
+                    + (p[1] - b.origin[1]) * b.along[1]
+                    + (p[2] - b.origin[2]) * b.along[2];
+                ((dist * dist + b.extra * a * a).sqrt() * inv_r, 1.0)
+            }
         }
     }
 
@@ -83,6 +126,13 @@ impl Footprint {
         match self {
             Self::Disc => 1.0,
             Self::Strip(s) => Self::strip_query_factor(s.length()),
+            // ⚠️ **UM, e não `1/k`.** A lâmina é o disco ESPREMIDO — ela cabe
+            // inteira dentro dele, por construção (`|d'| >= |d|` para qualquer
+            // `k >= 1`) —, então a consulta que já servia o disco a serve com
+            // folga. Encolher a consulta aqui seria uma otimização a mudar a
+            // resposta: a folga é vértice que o falloff pesa em ZERO, e pesar
+            // zero custa menos que arriscar cortar a pegada.
+            Self::Blade(_) => 1.0,
         }
     }
 
@@ -96,6 +146,28 @@ impl Footprint {
     #[must_use]
     pub fn strip_query_factor(length: f32) -> f32 {
         (1.0 + length * length).sqrt()
+    }
+}
+
+impl Blade {
+    /// A lâmina deitada na direção do traço, ou `None` quando não há direção.
+    ///
+    /// ⚠️ **Sem caminho ela não nasce, e quem chama cai no [`Footprint::Disc`]**
+    /// — a mesma lei do [`Strip::new`], e pela mesma razão: um elipsoide sem eixo
+    /// não é *"uma lâmina mal orientada"*, é uma **esfera**, e a esfera É o
+    /// disco. ⚠️ Aqui o ramo é hoje inalcançável na prática (a
+    /// [`crate::Verb::MultiplaneScrape`] recusa o dab sem direção pela mesma
+    /// porta), e ele fica assim mesmo: a forma de uma pegada não pode depender
+    /// de o verbo que a pediu ter recusado o depósito.
+    #[must_use]
+    pub fn new(origin: [f32; 3], along: [f32; 3]) -> Option<Self> {
+        let a = unit(along)?;
+        let k = crate::MULTIPLANE_TIP_STRETCH;
+        Some(Self {
+            origin,
+            along: a,
+            extra: k * k - 1.0,
+        })
     }
 }
 

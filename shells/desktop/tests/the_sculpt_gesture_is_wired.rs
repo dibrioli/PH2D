@@ -593,6 +593,12 @@ fn every_verb_is_reachable_from_the_keyboard() {
         // shipa pelo chip, que o `every_verb_has_a_chip_that_selects_it`
         // garante.
         "ClayThumb",
+        // ⚠️ **A LÂMINA EM V, e a razão é a mesma um degrau adiante:** o
+        // catálogo já tem `Scrape` (tecla `C`) e agora tem *Multiplane Scrape* —
+        // uma segunda tecla de *scrape* teria de ser escolhida por sorteio, e
+        // toda escolha desse tipo é uma regra falsa que o artista aprende. O
+        // Blender também não lhe dá atalho de fábrica. **A escolha é do Enio.**
+        "MultiplaneScrape",
     ];
     let keys = function_body(&sculpt_src(), "sculpt3d_key");
     for v in &verbs {

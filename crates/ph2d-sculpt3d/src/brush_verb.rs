@@ -1,10 +1,16 @@
-//! **O CATÁLOGO** — os dezassete verbos e o que cada um significa, cortados por
-//! ASSUNTO do [`super`].
+//! **O CATÁLOGO** — os verbos e o que cada um significa, cortados por ASSUNTO
+//! do [`super`].
+//!
+//! ⚠️ **Quantos eles são não está escrito aqui, e é de propósito:** o cabeçalho
+//! já disse *"dezassete"* enquanto a [`Verb::ALL`] listava dezanove, e uma
+//! contagem em prosa é a primeira coisa que uma wave esquece. Quem quer o número
+//! conta a lista, que é a fonte.
 //!
 //! O pai responde *que pincel está na mão* (raio, força, curva, os knobs); aqui
-//! mora *que OPERAÇÃO ele executa*, mais as constantes de magnitude que cada
-//! família lê. As duas perguntas crescem por razões diferentes: o catálogo cresce
-//! quando entra uma ferramenta, o pincel quando entra um controle.
+//! mora *que OPERAÇÃO ele executa* e as portas que perguntam sobre ela. **Quanto
+//! cada família desloca** saiu para o irmão [`super::magnitudes`] — as três
+//! crescem por razões diferentes, e foi a terceira que levou este arquivo ao teto
+//! de LOC.
 
 use super::*;
 
@@ -158,11 +164,49 @@ pub enum Verb {
     /// ⚠️ **O SculptGL NÃO O TEM** — ver [`crate::RefMode`], como os dois
     /// vizinhos acima.
     ClayThumb,
+    /// **A LÂMINA EM V** — o `multiplane_scrape.cc`. O único verbo com **DOIS**
+    /// planos, e é isso que o nome diz: em vez de raspar contra uma superfície,
+    /// ele raspa contra um TELHADO, e o que sobra é um sulco de duas facetas
+    /// planas com uma aresta viva no meio.
+    ///
+    /// ⚠️ **A dobradiça é o TRAÇO.** Os dois planos partilham a origem (o centro
+    /// do dab, como no [`Self::ClayThumb`]) e as normais deles são a normal de
+    /// área girada de `±ângulo/2` em torno do eixo que corre **AO LONGO** do
+    /// caminho — a rotação ORTOGONAL à do polegar, que gira em torno do eixo que
+    /// o atravessa. Os dois verbos inclinam o mesmo plano; o que os separa é
+    /// **em torno de quê**.
+    ///
+    /// ⚠️ **Qual dos dois um vértice consome é decidido pelo LADO em que ele
+    /// caiu** (`local_positions[i][0] <= 0`, `multiplane_scrape.cc:84`), e cada
+    /// meio-plano se inclina **para o lado que ele serve** — é isso que abre o V
+    /// em vez de o fechar. Num ângulo negativo (a aresta CÔNCAVA) as normais
+    /// tombam ao contrário, o telhado vira vale, e a ferramenta **enche** a
+    /// dobra em vez de a cavar.
+    ///
+    /// ⚠️ **E o culling de lado é gateado no SINAL do ângulo** (`if (angle >=
+    /// 0.0f)`, `:405`): com o V aberto só o que está ACIMA do próprio meio-plano
+    /// é tocado — o que torna o verbo auto-limitado, como o [`Self::Scrape`] —,
+    /// e com ele fechado a projeção é bilateral e a dobra é preenchida dos dois
+    /// lados.
+    ///
+    /// ⚠️ **A PONTA NÃO É UM DISCO**, e a referência diz por quê no comentário
+    /// dela: *"deform the local space along the Y axis to avoid artifacts on
+    /// curved strokes; this produces a not round brush tip"* (`:101-104`). É a
+    /// [`crate::Footprint::Blade`], e sem ela um traço curvo deixa degraus onde
+    /// dois dabs vizinhos raspam com dobradiças que já não são paralelas.
+    ///
+    /// ⚠️ **Sem direção não há dobradiça, logo não há depósito** — a mesma
+    /// recusa do [`Self::ClayThumb`], pela MESMA porta ([`crate::stroke_axis`]),
+    /// e a referência a escreve com os mesmos dois `return` (*"delay the first
+    /// daub"* e `is_zero(grab_delta_symm)`).
+    ///
+    /// ⚠️ **O SculptGL NÃO O TEM** — ver [`crate::RefMode`].
+    MultiplaneScrape,
 }
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 19] = [
+    pub const ALL: [Self; 20] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -182,6 +226,7 @@ impl Verb {
         Self::LocalScale,
         Self::ClayStrips,
         Self::ClayThumb,
+        Self::MultiplaneScrape,
     ];
 
     /// **Este verbo pode ACUMULAR?** — a porta única do `accumulate`.
@@ -257,7 +302,18 @@ impl Verb {
     pub fn honours_invert(self) -> bool {
         matches!(
             self,
-            Self::Draw | Self::Inflate | Self::Clay | Self::Crease | Self::Blob | Self::Mask
+            Self::Draw
+                | Self::Inflate
+                | Self::Clay
+                | Self::Crease
+                | Self::Blob
+                | Self::Mask
+                // ⚠️ **O Ctrl VIRA O V**, e o oposto de cavar um vinco é
+                // enchê-lo: com o ângulo negativo as duas normais tombam ao
+                // contrário, o telhado vira vale e o culling de lado se desliga
+                // (`if (angle >= 0.0f)`). É o `if (flip) angle *= -1` do
+                // `multiplane_scrape.cc:657`, e não uma força negativa.
+                | Self::MultiplaneScrape
         )
     }
 
@@ -299,6 +355,7 @@ impl Verb {
             Self::LocalScale => "Local Scale",
             Self::ClayStrips => "Clay Strips",
             Self::ClayThumb => "Clay Thumb",
+            Self::MultiplaneScrape => "Multiplane Scrape",
         }
     }
 
@@ -543,146 +600,11 @@ impl Verb {
     }
 }
 
-/// Quanto do RAIO do pincel um dab de força cheia desloca.
-///
-/// ⚠️ **É fração do raio, nunca uma distância absoluta** — a lição que o impasto
-/// do Painter pagou em 2026-07-14: com altura absoluta, um pincel pequeno e um
-/// grande picam no mesmo valor, e o grande vira uma poça chata porque a razão
-/// *altura ÷ largura* despenca. Amarrando ao raio, a razão de aspecto do domo é
-/// constante em toda escala e o falloff lê igual com pincel de 1 mm e de 1 m.
-///
-/// O NÚMERO é decisão de **smoke**, como o `ORBIT_RAD_PER_PX` da câmera: ele não
-/// é teto de recurso nenhum, é o quanto de barro uma pincelada move.
-pub const REACH_FRACTION: f32 = 0.1;
-
-/// **Quanto do raio um dab da FAIXA desloca** — e não é o [`REACH_FRACTION`].
-///
-/// ⚠️ **`clay_strips.cc:327`, verbatim:**
-///
-/// ```text
-/// const float3 offset = plane_normal * ss.cache->bstrength * ss.cache->radius;
-/// ```
-///
-/// O deslocamento é `raio · força`, **fração 1,0** — o `0,1` do
-/// [`REACH_FRACTION`] é o `deform = intensidade · raio · 0,1` do `Brush.js`, do
-/// SculptGL, que **não tem esta ferramenta**. É a mesma classe do defeito que a
-/// §7.21 curou na lei de kernel, uma camada abaixo.
-///
-/// ⚠️ **MEDIDO, e é o que a foto do Enio mostra:** com `0,1` a faixa era
-/// **7,5× mais fraca por dab** que a referência, e por isso deixava estrias
-/// macias que ACOMPANHAM a forma em vez das placas chatas que a CORTAM.
-///
-/// ⚠️ **É por causa dele que o `STRIP_DEPTH_GAIN` morreu:** aquele ganho existia
-/// para preservar uma magnitude que era ela própria errada.
-pub const STRIP_REACH_FRACTION: f32 = 1.0;
-
-/// O ganho do **Crease**, e o do vinco é MENOR que o do Draw.
-///
-/// ⚠️ **Os três números desta família saem da referência, não de afinação:**
-/// `Brush.js` e `Inflate.js` usam `intensidade · raio · 0,1`, o `Crease.js` usa
-/// `intensidade · 0,07` e o `Pinch.js` usa `intensidade · 0,05`. Eles são o que
-/// separa *"a lei está certa"* de *"a ferramenta responde como a referência"* —
-/// e a sonda `measure_reference_divergence` é quem os cobra.
-pub const CREASE_FRACTION: f32 = 0.07;
-
-/// O ganho do **Pinch** e do **Magnify** — ver [`CREASE_FRACTION`].
-///
-/// ⚠️ **Ele não existia, e a ausência valia 20×:** o alvo era `base + tangente`
-/// atenuado pelo peso, ou seja o vértice caminhava até `w` da distância inteira
-/// ao centro **num dab**. Medido contra a referência, `16,88×`.
-pub const PINCH_GAIN: f32 = 0.05;
-
-/// **Quanto o plano da FAIXA sobe acima da superfície**, em fração do raio.
-///
-/// ⚠️ **Este número decide se a faixa NIVELA ou COPIA o relevo, e é a coisa
-/// inteira que o report do Enio de 2026-08-15 nomeia** (*"num vale a tool
-/// correta tende a fechar o vale, na nossa tende a aumentá-lo"*).
-///
-/// O portão de profundidade da [`crate::Strip`] é `z·(1−z)`, que **sobe** de
-/// `z = 0` (o plano) até `z = 0,5` e **desce** depois. Logo o depósito só cresce
-/// com a profundidade enquanto o ponto está a menos de meio raio abaixo do
-/// plano; passado o pico, quanto mais fundo **menos** barro. Como a superfície
-/// em repouso fica a `lift` raios abaixo do plano, a faixa **enche** relevo até
-/// `(0,5 − lift)` raios abaixo da média e **exagera** o que passa disso.
-///
-/// ⚠️ **O valor anterior era `0,5`, e ele punha a superfície EXATAMENTE no pico
-/// — folga de enchimento ZERO.** Era o único valor da família em que nenhum vale
-/// enche: tudo abaixo da média recebia menos que a média, então a passada
-/// devolvia o relevo amplificado. ⚠️ E o defeito era MEU pela mesma via da
-/// `tip_roundness`: eu derivei `0,5` de *"pôr o pico na superfície em repouso"*,
-/// que é conveniência interna (o máximo depósito em chapa plana), e não da
-/// propriedade que decide.
-///
-/// **MEDIDO** (`tests/measure_valley.rs`, vale de 0,40 de profundidade, pincel
-/// `r = 0,8`, nove dabs; a varredura prendeu a magnitude pela FORÇA, para que
-/// a única coisa a mover fosse a forma):
-///
-/// | lift | vale (Δ profundidade) | miolo ÷ aro numa CÚPULA |
-/// |---|---|---|
-/// | 0,10 | −0,212 | **0,009** (o miolo não recebe nada) |
-/// | 0,18 | −0,121 | 0,393 |
-/// | **0,25** | **−0,073** | **0,649** |
-/// | 0,30 | −0,048 | 0,756 |
-/// | 0,50 | **+0,027 (AUMENTA)** | 0,971 |
-///
-/// ⚠️ **A tabela foi medida com o `reach` do SculptGL, que era ele próprio
-/// errado** (ver [`STRIP_REACH_FRACTION`]). Com o `raio · força` da referência o
-/// vale FECHA muito mais forte — `0,4000 → 0,0406` em nove dabs a `r = 0,5` —,
-/// mas a FORMA da tabela é a que decide o lift e ela não muda: o enchimento
-/// segue monótono no lift, e o miolo segue a esvaziar-se quando ele baixa.
-///
-/// ⚠️ **As duas colunas puxam em sentidos OPOSTOS, e as duas são a mesma lei.**
-/// Numa cúpula o miolo da pegada está acima do plano ajustado e o aro abaixo,
-/// então nivelar É depositar mais no aro — o *"displaces vertices toward the
-/// brush plane"* do kernel da referência. Baixar o lift nivela mais forte e
-/// esvazia o miolo; subi-lo faz a banda ficar uniforme e parar de nivelar.
-///
-/// ⇒ **`0,25` é o MEIO da subida da parábola** (o plano em `z = 0`, o pico em
-/// `z = 0,5`), o que dá à ferramenta folga igual para acrescentar num calombo e
-/// para encher um buraco. É um marco da própria lei, não um gosto, e as duas
-/// medições o confirmam longe de qualquer extremo.
-///
-/// ⚠️ **NÃO é citável da referência.** O `clay_strips.cc` lê `brush.plane_offset`
-/// e o genérico do DNA é `0.0`; quem declarava o valor por-tool era o
-/// `BKE_brush_sculpt_reset`, que **não existe mais em C** (§7.0 do plano) — a
-/// mesma lacuna que bloqueou a W1 e o Draw Sharp. O número acima é NOSSO, e a
-/// tabela ao lado é a razão dele.
-///
-/// ⚠️ **E ele existe porque sem ele a ferramenta nasce MORTA:** com o plano
-/// rente, `z = 0` em toda parte e o portão fecha — quatro varreduras da suíte
-/// (o alpha, o invert, os dois do aplicador) reprovaram exatamente assim, cada
-/// uma dizendo *"dab inerte"*. O [`Verb::Clay`] resolve o mesmo problema pela
-/// mesma via ([`CLAY_PLANE_FRACTION`]), e o `plane_offset` do artista SOMA a
-/// este em vez de o substituir.
-pub const STRIP_PLANE_FRACTION: f32 = 0.25;
-
-/// Quanto o plano do **Clay** sobe acima da superfície, em fração do raio.
-///
-/// ⚠️ **É o literal `0.1` do `Brush.js:52`, e ele não é um knob no original.** O
-/// nosso `plane_offset` é um controle do artista e SOMA a este — o default dele
-/// (`0`) devolve a referência exata, e girá-lo levanta o plano a mais.
-pub const CLAY_PLANE_FRACTION: f32 = 0.1;
-
-/// Quanto o plano do **Clay Thumb** se inclina a MAIS a cada dab, em graus.
-///
-/// ✅ **É o literal `0.8f` do `clay_thumb.cc:173`**, lido da fonte — não é nosso.
-///
-/// ⚠️ **E é por DAB, o que torna a lei dependente do ESPAÇAMENTO** — a
-/// referência declara graus-por-amostra, e quantas amostras cabem num
-/// centímetro de traço é decisão de cada motor. ⇒ o que é citável é *quanto o
-/// plano gira por dab*; *quanto ele gira por comprimento de traço* é uma
-/// grandeza NOSSA, e o gate `the_thumb_tilt_accumulates_with_the_stroke` mede a
-/// nossa em vez de a afirmar.
-pub const CLAY_THUMB_TILT_STEP_DEG: f32 = 0.8;
-
-/// O TETO da inclinação do **Clay Thumb**, em graus.
-///
-/// ✅ **É o literal `60.0f` do `clay_thumb.cc:175`** (`std::clamp(front_angle,
-/// 0.0f, 60.0f)`).
-///
-/// ⚠️ **Ele é ALCANÇÁVEL, e é isso que o torna um teto e não um adorno:** a
-/// [`CLAY_THUMB_TILT_STEP_DEG`] o atinge em `60 / 0,8 = 75` dabs, que é um traço
-/// longo mas comum. Um teto que ninguém encosta seria um número sem
-/// consequência; este muda o desenho de todo traço a partir do 75º dab, e o
-/// gate afirma a saturação.
-pub const CLAY_THUMB_TILT_MAX_DEG: f32 = 60.0;
+/// **AS MAGNITUDES** — quanto cada família desloca. Ver [`magnitudes`].
+#[path = "brush_magnitudes.rs"]
+mod magnitudes;
+pub use magnitudes::{
+    CLAY_PLANE_FRACTION, CLAY_THUMB_TILT_MAX_DEG, CLAY_THUMB_TILT_STEP_DEG, CREASE_FRACTION,
+    DEFAULT_MULTIPLANE_ANGLE_DEG, MULTIPLANE_ANGLE_MAX_DEG, MULTIPLANE_ANGLE_SMOOTH,
+    MULTIPLANE_TIP_STRETCH, PINCH_GAIN, REACH_FRACTION, STRIP_PLANE_FRACTION, STRIP_REACH_FRACTION,
+};

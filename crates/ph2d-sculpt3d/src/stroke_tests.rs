@@ -333,6 +333,10 @@ mod verb_strip_law;
 #[path = "verb_thumb_tests.rs"]
 mod verb_thumb;
 
+/// **A LÂMINA EM V**, o único verbo com DOIS planos — ver [`verb_scrape`].
+#[path = "verb_scrape_tests.rs"]
+mod verb_scrape;
+
 /// As TRÊS famílias AFINS do paper (twist · scale · pinch) e o gancho que reusa
 /// o agarre — a W5-B. Ver o cabeçalho dele.
 #[path = "verb_field_tests.rs"]

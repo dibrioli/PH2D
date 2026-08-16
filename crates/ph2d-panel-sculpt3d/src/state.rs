@@ -339,6 +339,16 @@ pub struct Sculpt3dSnapshot {
 }
 
 /// Um gesto do artista, para o shell aplicar.
+///
+/// ⚠️ **O `SetUi` é MUITO maior que os irmãos, e a caixa não entra — o
+/// precedente é o `Step` do `ph2d-ui-state`.** Ele carrega o estado autorado
+/// inteiro de propósito (é *"substitua o pincel por este"*, não *"mude este
+/// campo"*), e a fila tem **um punhado de elementos por gesto**, drenada no mesmo
+/// frame: um `Box` compraria bytes numa fila efémera ao preço de uma indireção e
+/// de uma alocação por clique. ⚠️ E o aviso **nasceu de crescer o `Brush`** —
+/// a lâmina em V lhe acrescentou dois campos —, o que quer dizer que ele mede a
+/// LARGURA do estado autorado e não um defeito desta fila.
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Sculpt3dIntent {
     /// Substitui o estado autorado inteiro — ver [`Sculpt3dUi`].

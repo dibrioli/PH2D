@@ -36,7 +36,8 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod channel;
-use channel::{CH_FALLOFF, CH_HUE, CH_SAT, CH_VAL, Combine, drive_channel};
+pub use channel::DRIVE_COL_KEY;
+use channel::{CH_CUSTOM, CH_FALLOFF, CH_HUE, CH_SAT, CH_VAL, Combine, drive_channel, drive_named};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 /// The value type — the continuous per-instance scalar field on the `v` column
@@ -392,6 +393,11 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     bindings: DRIVE_P.bindings,
     params: DRIVE_PARAMS,
     count_law: None,
+    // ⚠️ **O CUSTOM RECUSA o device** — ver [`CH_CUSTOM`]: uma `ColumnBinding`
+    // carrega o nome como `&'static str`, e o nome que o artista digita só existe
+    // em tempo de cook. O sequenciador recua para o `eval` da CPU, que é a porta
+    // que a `Median` do `value.reduce` já usa.
+    applicable: Some(|param| param("channel").round() as i32 != CH_CUSTOM),
     variant_by_param: Some(|param| {
         // The same rounding and the same mapping as `channel_column`.
         match param("channel").round() as i32 {
@@ -403,7 +409,6 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             _ => &DRIVE_SIZE,
         }
     }),
-    applicable: None,
 };
 
 struct MotionDrive;
@@ -421,7 +426,15 @@ impl NodeOp for MotionDrive {
             Some(Column::Scalar(v)) => v.clone(),
             _ => Vec::new(),
         };
-        let out = drive_channel(ctx.input(0), channel, &vals, scale, mode);
+        // ⚠️ O canal CUSTOM pega o alvo do text param; os nove do enum pegam-no do
+        // `channel_column`. Uma porta por pergunta, e a LEI (blend · broadcast ·
+        // falloff) é a mesma nas duas.
+        let out = if channel == CH_CUSTOM {
+            let name = ctx.text_param(DRIVE_COL_KEY).unwrap_or("").to_string();
+            drive_named(ctx.input(0), &name, &vals, scale, mode)
+        } else {
+            drive_channel(ctx.input(0), channel, &vals, scale, mode)
+        };
         ctx.emit(out);
     }
 }
@@ -441,20 +454,30 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // ⚠️ A linha do nome só aparece no canal que a LÊ — um campo de texto
+    // visível sob "Rotation" seria o controle morto que esta casa recusa.
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_param_channel_range(MANIFEST.id, PARAM_CHANNEL_RANGE);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_hard_min(MANIFEST.id, PARAM_HARD_MIN);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGate, ParamUiHint, ParamWidget};
+
+/// A linha do NOME pertence ao canal Custom e a mais nenhum.
+static PARAM_GATES: &[ParamGate] = &[ParamGate {
+    param: DRIVE_COL_KEY,
+    when: "channel",
+    values: &[CH_CUSTOM],
+}];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "channel",
         label: "Channel",
         min: 0.0,
-        max: 8.0,
+        max: 9.0,
         step: 1.0,
         widget: ParamWidget::Enum {
             // ⚠️ **Apendados**, nunca inseridos: o índice é o que o grafo guarda, então uma
@@ -470,8 +493,21 @@ static PARAM_HINTS: &[ParamUiHint] = &[
                 "Hue",
                 "Saturation",
                 "Value",
+                "Custom…",
             ],
         },
+    },
+    // ⚠️ **O NOME da coluna é um TEXT param**, não um `ParamSpec`: o manifesto é
+    // f32-only por contrato congelado (ADR-0039), e o canal de texto do `Graph` é
+    // o padrão canônico para param não-f32 — o mesmo assento que a fórmula do
+    // `motion.expression` e a tabela do `value.pattern` ocupam.
+    ParamUiHint {
+        param: DRIVE_COL_KEY,
+        label: "Column",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Text,
     },
     ParamUiHint {
         param: "scale",
@@ -531,3 +567,7 @@ static PARAM_HARD_MIN: &[ph2d_node_registry::ParamHardMin] = &[ph2d_node_registr
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "custom_tests.rs"]
+mod custom_tests;

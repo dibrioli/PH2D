@@ -102,6 +102,30 @@ pub(crate) const CH_SAT: i32 = 7;
 /// Ver [`CH_HUE`].
 pub(crate) const CH_VAL: i32 = 8;
 
+/// **O canal CUSTOM — o ESCRITOR DE COLUNA NOMEADA.**
+///
+/// Ele fecha a metade que faltava da §10.0 do plano 89: o `value.attribute` **LÊ**
+/// qualquer coluna por nome (widget `Channels` + escape *"Custom…"*) e este nó só
+/// **ESCREVIA** nas nove que o enum conhece — a assimetria que seis famílias
+/// citaram, e que o doc 63 marcava como *"TEMOS"* apontando para o LEITOR.
+///
+/// ⚠️ **Ele é o ÚLTIMO índice, e isso não é arrumação:** o `channel` é um param
+/// que o **documento GUARDA**, então renumerar o que já existe re-aponta em
+/// silêncio todo grafo salvo. O espaço positivo cresce para cima, como o
+/// `CH_HUE` fez.
+///
+/// ⚠️ **Ele RECUSA o device** (`applicable`), e o motivo é estrutural e não
+/// preguiça: uma `ColumnBinding` carrega o nome da coluna como `&'static str` —
+/// o sequenciador precisa dele **antes** de cozer, para montar o bind group —, e
+/// um nome que o artista digita só existe em tempo de cook. O precedente é a
+/// `Median` do `value.reduce`, que recua pela mesma porta. *Um caminho mais
+/// lento é honesto; um nome escrito no buffer errado não é.*
+pub(crate) const CH_CUSTOM: i32 = 9;
+
+/// A chave do text param que carrega o NOME da coluna — o espelho exacto do
+/// `ATTR_KEY` do `value.attribute`, que é o leitor deste escritor.
+pub const DRIVE_COL_KEY: &str = "column";
+
 /// The stream column a channel index writes to: X/Y → `P`, Rotation → `rot`,
 /// Opacity → `tint` (its alpha), Hue/Saturation/Value → `tint` (its colour),
 /// Size (or any out-of-range value) → `size`.
@@ -113,6 +137,57 @@ pub(crate) fn channel_column(channel: i32) -> &'static str {
         CH_FALLOFF => "falloff",
         _ => "size",
     }
+}
+
+/// **Escreve uma coluna ESCALAR nomeada** — a lei do [`drive_channel`] com o
+/// alvo dado pelo artista em vez de pelo enum.
+///
+/// ⚠️ **Ela partilha os helpers e não a estrutura, de propósito:** o `blend`, o
+/// `value_at` e o `falloff_at` são os MESMOS, então a mistura por `falloff` e o
+/// broadcast do campo de valor não podem divergir do resto do nó; o que difere é
+/// só *onde o número pousa*.
+///
+/// **Duas recusas, e as duas devolvem a entrada verbatim:**
+/// - **nome vazio** — não há coluna a escrever, e cunhar uma chamada `""` seria
+///   uma coluna que ninguém consegue nomear de volta;
+/// - **a coluna existente não é ESCALAR** — ⚠️ e esta é a que importa: escrever
+///   um `Scalar` por cima de um `P` (`Vec2`) ou de um `tint` (`Vec4`) **muda o
+///   TIPO** da coluna, e quem a lê a jusante passa a ler outra coisa. A pergunta
+///   é feita ao STREAM e não a uma lista de nomes proibidos — *uma lista
+///   apodrece no dia em que nasce a décima convenção* (`texture_id`,
+///   `geometry_id`, `uv_rect`, `nrm` … esta casa já as tem).
+pub(crate) fn drive_named(
+    input: &Stream,
+    name: &str,
+    vals: &[f32],
+    scale: f32,
+    mode: Combine,
+) -> Stream {
+    let n = input.count();
+    if name.is_empty() || !matches!(input.get(name), None | Some(Column::Scalar(_))) {
+        return input.clone();
+    }
+    let mut out = Stream::new(n);
+    for (col_name, col) in input.columns() {
+        if col_name != name {
+            out.set(col_name.clone(), col.clone());
+        }
+    }
+    let blend = |orig: f32, driven: f32, f: f32| orig + (driven - orig) * f.clamp(0.0, 1.0);
+    // ⚠️ Coluna AUSENTE nasce em zero, e é o mesmo que o `base_vec2`/`base_vec4`
+    // fazem para os canais do enum: o identity de um escalar dirigido é `0`, e
+    // com `Combine::Add` isso faz o primeiro `drive` escrever o valor cru.
+    let mut v = match input.get(name) {
+        Some(Column::Scalar(v)) => v.clone(),
+        _ => Vec::new(),
+    };
+    v.resize(n, 0.0);
+    for (i, x) in v.iter_mut().enumerate() {
+        let driven = mode.apply(*x, value_at(vals, i) * scale);
+        *x = blend(*x, driven, falloff_at(input, i));
+    }
+    out.set(name.to_string(), Column::Scalar(v));
+    out
 }
 
 fn base_vec2(input: &Stream, name: &str, n: usize, identity: [f32; 2]) -> Vec<[f32; 2]> {

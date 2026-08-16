@@ -5293,6 +5293,7 @@ dependencies = [
  "ph2d-node-motion-oscillator",
  "ph2d-node-motion-output",
  "ph2d-node-motion-pin-constraint",
+ "ph2d-node-motion-proximity",
  "ph2d-node-motion-rotate",
  "ph2d-node-motion-scale",
  "ph2d-node-motion-sort",
@@ -6206,6 +6207,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-proximity"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-rotate"
 version = "0.0.0"
 dependencies = [
@@ -6531,6 +6540,7 @@ dependencies = [
  "ph2d-node-motion-output",
  "ph2d-node-motion-path",
  "ph2d-node-motion-pin-constraint",
+ "ph2d-node-motion-proximity",
  "ph2d-node-motion-rotate",
  "ph2d-node-motion-scale",
  "ph2d-node-motion-scatter",

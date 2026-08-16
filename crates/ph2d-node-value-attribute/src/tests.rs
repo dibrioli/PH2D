@@ -185,6 +185,34 @@ fn the_weight_a_field_leaves_is_readable_by_the_picker() {
     );
 }
 
+/// **A VIZINHANÇA é legível pelo picker** — as duas colunas que o `motion.proximity` deixa,
+/// e a metade sem a qual os modos *Scale* e *Hide* do Push Apart precisariam de um `Custom`
+/// com o nome digitado à mão.
+///
+/// Escrito contra o DADO, como os irmãos acima: a fixture é o stream que aquele nó produz
+/// (`neighbours` como CONTAGEM, `overlap` como fracção em `[0,1]`), e o gate lê de volta pela
+/// própria entrada do picker.
+#[test]
+fn the_neighbourhood_a_proximity_leaves_is_readable_by_the_picker() {
+    let measured = Stream::new(3)
+        .with("neighbours", Column::Scalar(vec![0.0, 2.0, 1.0]))
+        .with("overlap", Column::Scalar(vec![0.0, 0.75, 0.25]));
+    for (label, want) in [
+        ("Neighbours", vec![0.0, 2.0, 1.0]),
+        ("Overlap", vec![0.0, 0.75, 0.25]),
+    ] {
+        let ch = READ_CHANNELS
+            .iter()
+            .find(|c| c.label == label)
+            .unwrap_or_else(|| panic!("o picker oferece o canal {label}"));
+        assert_eq!(
+            field(&measured, ch.column, ch.mode),
+            want,
+            "escolher `{label}` tem de devolver o que o `motion.proximity` escreveu"
+        );
+    }
+}
+
 /// **A DIREÇÃO de uma coluna Vec2 — em GRAUS.** A linha da doc 89 §10.0 que CINCO famílias
 /// (1·4·5·6·15) citaram como inexprimível: `Speed` sempre respondeu *quão rápido* e descartou
 /// *para onde*, e nada no catálogo recuperava a segunda metade.

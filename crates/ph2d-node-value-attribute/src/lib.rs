@@ -320,6 +320,27 @@ const READ_CHANNELS: &[ReadChannel] = &[
         column: "hit",
         mode: 0,
     },
+    // ⚠️ **A VIZINHANÇA** — as duas colunas que o `motion.proximity` escreve (doc 89, folha
+    // 03 linhas 42 e 61). Elas são a metade que faltava para os três modos do *Push Apart*
+    // do C4D serem COMPOSIÇÃO em vez de um param `mode` dentro do solver: com `Overlap`,
+    // `proximity → value.attribute(Overlap) → value.math(Subtract) → motion.drive(Size,
+    // Multiply)` **é** o modo Scale, e `→ motion.drive(Falloff) → motion.cull(invert)` é o
+    // Hide. Sem estas entradas as colunas existiriam e só um `Custom` com o nome digitado à
+    // mão as alcançaria — a mesma metade faltante que o `Falloff` e o `Hit` tinham.
+    //
+    // `Neighbours` é uma CONTAGEM (não uma densidade normalizada): quem quiser a fracção
+    // compõe um `value.map_range`, e um número já dividido por um máximo que o nó escolheu
+    // seria uma decisão de apresentação assada no dado.
+    ReadChannel {
+        label: "Neighbours",
+        column: "neighbours",
+        mode: 0,
+    },
+    ReadChannel {
+        label: "Overlap",
+        column: "overlap",
+        mode: 0,
+    },
 ];
 
 static PARAM_HINTS: &[ParamUiHint] = &[

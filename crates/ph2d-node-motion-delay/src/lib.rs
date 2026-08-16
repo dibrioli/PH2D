@@ -40,6 +40,11 @@
 //! **`ticks = 0` is a byte-identical no-op** in every mode — the neutral point, so dropping the
 //! node into a chain changes nothing until you ask it to.
 //!
+//! ⚠️ **A frase acima vale para o LAG, e o teto da taxa e' um segundo pedido.** Armar um
+//! `max_step`/`max_accel` E' pedir alguma coisa, entao `ticks = 0` com um teto armado limita a
+//! saida sem a atrasar — que e' o *"so' quero um limite de velocidade"* que o *Max Slope* do Lag
+//! CHOP entrega. O ponto neutro do NO' e' *sem lag **e** sem teto*.
+//!
 //! ## Subir e descer são dois tempos (`ticks_down`)
 //!
 //! O **Lag CHOP** do TouchDesigner — a referência que o próprio `value.smooth` cita — tem *Lag
@@ -225,7 +230,9 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "mode",
             default: 2.0,
         },
-        // How late, in ticks. **0 is a byte-identical no-op** in every mode.
+        // How late, in ticks. **0 is a byte-identical no-op** in every mode — desde que
+        // nenhum teto de taxa esteja armado (ver o cabecalho: o teto e' um segundo pedido,
+        // e ele vale com lag zero).
         ParamSpec {
             name: "ticks",
             default: 8.0,
@@ -431,14 +438,33 @@ impl NodeOp for MotionDelay {
 
                     // **The neutral point is byte-identical.** No lag, no smoothing, nothing to
                     // compute — the node is transparent until it is asked for something.
+                    //
+                    // ⚠️ **`ticks == 0` NAO e' o ponto neutro quando ha' um TETO armado, e a
+                    // posicao e' alcancavel** (o slider do `ticks` comeca em 0). *So' quero um
+                    // limite de velocidade, sem atraso* e' o caso de uso mais obvio dos dois
+                    // params de taxa — e e' o que o *Max Slope* do Lag CHOP do TouchDesigner faz
+                    // por desenho: ele limita o sinal haja ou nao haja lag. Com a saida antiga
+                    // deste ramo os dois ficavam **pintados, registrados, vivos sob o rato e
+                    // INERTES**, que e' a forma de um controle morto que nenhum gate de UI ve.
+                    //
+                    // O early-out FICA para o caso genuinamente neutro (`sem lag E sem teto`),
+                    // e ele nao e' higiene: com `want == live` a mistura devolve
+                    // `live + (live - live) * f`, que e' `live + 0.0` — a identidade para todo
+                    // finito **menos o zero NEGATIVO**, onde `-0.0 + 0.0` e' `+0.0`. Um ramo
+                    // literal e' a unica forma de a byte-identidade nao depender disso.
                     let mut emitted_vel = None;
-                    let emitted: Vec<f32> = if ticks <= 0.0 {
+                    let emitted: Vec<f32> = if ticks <= 0.0 && !capped {
                         live.clone()
                     } else {
-                        // O valor com lag, efeito CHEIO.
-                        let mut want: Vec<f32> = (0..live.len())
-                            .map(|j| delayed(mode, ticks, ticks_down, j, live[j], &past, &prev))
-                            .collect();
+                        // O valor com lag, efeito CHEIO — ou o proprio valor vivo, quando o
+                        // artista pediu so' o teto.
+                        let mut want: Vec<f32> = if ticks <= 0.0 {
+                            live.clone()
+                        } else {
+                            (0..live.len())
+                                .map(|j| delayed(mode, ticks, ticks_down, j, live[j], &past, &prev))
+                                .collect()
+                        };
                         // O TETO, sobre o valor de efeito cheio. ⚠️ **Sem teto o
                         // passe nem corre**, então `want` chega ao blend abaixo
                         // com exatamente os bits que a expressão inline de antes

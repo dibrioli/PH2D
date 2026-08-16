@@ -306,3 +306,55 @@ fn a_newborn_starts_with_no_speed_of_its_own() {
     let v = crate::ring::prev_vel(&state, &rows, 4, 2);
     assert_eq!(v, vec![0.0; 4], "sem linha, sem velocidade");
 }
+
+/// **O TETO VALE SEM LAG NENHUM — `Rise = 0` E' UMA POSICAO DO SLIDER.**
+///
+/// ⚠️ *"So' quero um limite de velocidade, sem atraso"* e' o caso de uso mais
+/// obvio dos dois params de taxa, e e' o que o *Max Slope* do Lag CHOP do
+/// TouchDesigner entrega por desenho: ele limita o sinal haja ou nao haja lag.
+/// Com o early-out antigo (`ticks <= 0` devolvia o valor vivo antes de o passe
+/// do teto correr) os dois ficavam **pintados, registrados, vivos sob o rato e
+/// INERTES** — o controle morto que nenhum gate de UI enxerga, porque a UI
+/// estava toda certa.
+///
+/// ⚠️ **O CONTROLE e' a segunda metade e ele e' o que da' sentido a' primeira:**
+/// sem teto, `ticks = 0` tem de seguir o alvo **AO BIT** — senao *"a saida anda
+/// pouco"* teria sido satisfeito por o no' ter passado a atrasar sozinho.
+#[test]
+fn the_rate_ceiling_holds_with_no_lag_at_all() {
+    let path = step_path(40);
+
+    let free = run(&[("mode", 2.0), ("ticks", 0.0), ("channel", 1.0)], &path);
+    let capped = run(
+        &[
+            ("mode", 2.0),
+            ("ticks", 0.0),
+            ("channel", 1.0),
+            ("max_step", 0.25),
+        ],
+        &path,
+    );
+
+    // O CONTROLE: sem teto e sem lag o no' e' transparente, ao BIT.
+    for (k, (a, b)) in free.iter().zip(path.iter()).enumerate() {
+        assert_eq!(
+            a.to_bits(),
+            b.to_bits(),
+            "sem teto e sem lag o no' e' transparente (tique {k}): {a} contra {b}"
+        );
+    }
+
+    // E com o teto armado a saida NAO passa dele, mesmo com lag zero.
+    let worst = worst_step(&capped);
+    assert!(
+        worst <= 0.25 + 1e-5,
+        "o teto tem de valer com `ticks = 0`; o pior passo mede {worst:.4} contra 0,25"
+    );
+    // ...e o teto tem de estar de facto MORDENDO nesta fixture, senao a
+    // assercao acima e' verde por vacuo sobre um degrau que ninguem limitou.
+    assert!(
+        worst_step(&free) > 0.25 * 4.0,
+        "o CONTROLE tem de pedir mais taxa que o teto; ele mede {:.4}",
+        worst_step(&free)
+    );
+}

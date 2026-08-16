@@ -89,6 +89,9 @@ pub(crate) mod conferencia_demos_envelope;
 
 #[path = "motion_state_conferencia_demos_velocity.rs"]
 pub(crate) mod conferencia_demos_velocity;
+
+#[path = "motion_state_conferencia_demos_collide.rs"]
+pub(crate) mod conferencia_demos_collide;
 #[path = "motion_state_conferencia_demos_text.rs"]
 mod conferencia_demos_text;
 #[path = "motion_state_conferencia_demos_time.rs"]

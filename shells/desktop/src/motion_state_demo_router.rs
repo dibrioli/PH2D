@@ -497,6 +497,40 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
             );
             sinks
         }
+        // O DISCO TEM O TAMANHO QUE SE VE (doc 89, o grupo H): o `motion.collide`
+        // passa a ler a coluna `size` -- a MESMA que o renderer desenha -- e o
+        // `falloff`, o peso que cinquenta nos ja honram.
+        Ok("48") => {
+            let sinks = conferencia_demos_collide::build_collide_demo_document(doc, registry)
+                .unwrap_or_default();
+            eprintln!(
+                "[collide-demo] TRES PARES: a MESMA fileira apertada com uma COLUNA de \
+                 diferenca. {cols} pecas por fileira.",
+                cols = conferencia_demos_collide::COLS,
+            );
+            for label in &conferencia_demos_collide::BAND_LABELS {
+                eprintln!("  {label}");
+            }
+            eprintln!(
+                "  (!) Esta cena julga-se PARADA. O `motion.collide` e' Pure: ele relaxa a
+      entrada a cada cook, e nada aqui depende do relogio.
+  (!) TAMANHO (1-2): as duas nascem no MESMO amontoado. Em cima o vao e' o mesmo em toda a
+      fileira (medido 0,4095 .. 0,4179, um alvo de 0,42) porque toda peca mede o mesmo; em
+      baixo o disco cresce da esquerda para a direita e o VAO CRESCE COM ELE (0,4441 ..
+      0,8851). Ponha os olhos nos vaos, nao nas pecas: e' `r_i + r_j`, e a fileira de baixo
+      mede 5,18 de ponta a ponta contra 3,31 da de cima.
+  (!) FALLOFF (3-4): a de cima empacota inteira. Na de baixo um `field.box` cobre o MIOLO --
+      as tres pecas de dentro se ATRAVESSAM (vao 0,22, meio diametro) e as de fora seguem
+      exatamente a tocar (0,42). Se a fileira inteira ficar amontoada, a caixa esta' grande
+      demais e engoliu todo par.
+  (!) MUTAR != PINAR (5-6): a MESMA peca do meio, o MESMO no' de constraint -- so' muda para
+      onde o numero vai. Em cima ela e' TRANSPARENTE e uma vizinha passa por dentro dela
+      (menor vao 0,2093); em baixo ela e' OBSTACULO, ninguem a atravessa, e a fileira
+      empacota em volta (0,4145 .. 0,4186). Sao coisas diferentes, e era essa a linha 62.
+  (!) Se a lista de 6 bandas acima nao aparecer, PARE: o resto da cena nao diz nada."
+            );
+            sinks
+        }
         // A TABELA E A SEMENTE (doc 89, o grupo D / W-E): a lista que o artista
         // DIGITA, sem o teto de oito, e a semente que a identidade do no separa.
         Ok("44") => {

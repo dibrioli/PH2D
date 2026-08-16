@@ -133,7 +133,7 @@ impl SculptStroke {
             // quando a pegada é vazia, e nesse caminho ele não chega ao
             // `refresh_region` — a `region` fica com a lista da cópia anterior.
             // Ler o rascunho sem esta pergunta a contaria duas vezes.
-            let n = self.dab_core(mesh, brush, &mirrored);
+            let n = self.dab_core(mesh, brush, &mirrored, brush.passes());
             if n > 0 {
                 self.call_moved.extend_from_slice(&self.moved);
                 self.call_refreshed
@@ -155,8 +155,23 @@ impl SculptStroke {
             // este dab moveu*, e o alisamento percorre os MESMOS: somá-lo faria
             // um dab relatar até o dobro da própria pegada, e quem lê esse número
             // decide refino e orçamento por ele.
+            //
+            // ⚠️ **A FORÇA vive nas PASSADAS, não no `strength` do filho** — o
+            // `autosmooth_factor` é um ORÇAMENTO de até quatro laplacianos
+            // completos, não o coeficiente de um lerp
+            // ([`crate::auto_smooth`]). O filho nasce com `strength = 1,0` e
+            // quem escala é o `Pass::weight`, que é o
+            // `scale_factors(factors, strength)` da referência ao pé da letra.
+            //
+            // ⚠️ **E é por isso que o modo não contamina o número:** o
+            // `weight()` do filho passa pela curva do slider do modo vigente, e
+            // tanto `Linear` como `Squared` devolvem `1,0` para `1,0`. Pôr a
+            // força ali faria o `b-mode` elevá-la ao quadrado — e o autosmooth
+            // do Blender é **linear**, ao contrário da ferramenta Smooth, cujo
+            // `bstrength` traz `alpha = strength²`.
             if let Some(smoother) = brush.auto_smooth_brush() {
-                let m = self.dab_core(mesh, &smoother, &mirrored);
+                let budget = crate::auto_smooth::iteration_strengths(brush.auto_smooth);
+                let m = self.dab_core(mesh, &smoother, &mirrored, budget.as_slice());
                 if m > 0 {
                     self.call_moved.extend_from_slice(&self.moved);
                     self.call_refreshed

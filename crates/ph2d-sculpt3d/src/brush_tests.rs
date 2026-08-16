@@ -480,7 +480,7 @@ fn the_second_pass_skips_the_two_verbs_the_reference_skips() {
 /// O passe carrega o MESMO pincel — só o verbo e a força mudam —, e ele **não
 /// se pede a si mesmo**.
 #[test]
-fn the_second_pass_is_the_same_brush_with_the_verb_and_strength_swapped() {
+fn the_second_pass_is_the_same_brush_with_the_verb_swapped_and_the_force_in_the_budget() {
     let b = Brush {
         verb: Verb::Draw,
         auto_smooth: 0.4,
@@ -491,7 +491,18 @@ fn the_second_pass_is_the_same_brush_with_the_verb_and_strength_swapped() {
     };
     let s = b.auto_smooth_brush().expect("o Draw recebe o passe");
     assert_eq!(s.verb, Verb::Smooth);
-    assert_eq!(s.strength, 0.4, "a força do passe É o fator");
+    // ⚠️ **A força do filho é `1,0`, e o fator vive no ORÇAMENTO.** O
+    // `auto_smooth` do Blender é um número de PASSADAS
+    // ([`crate::auto_smooth`]), não o coeficiente de um lerp — quem o carrega é
+    // o `Pass::weight` no chamador. Pô-lo aqui reproduzia a referência só
+    // abaixo de `0,25` **e** passava pela curva do slider do modo, que no
+    // `b-mode` o elevaria ao quadrado.
+    assert_eq!(s.strength, 1.0, "a força vive nas PASSADAS, não aqui");
+    let budget = crate::auto_smooth::iteration_strengths(b.auto_smooth);
+    let budget = budget.as_slice();
+    assert_eq!(budget.len(), 2, "0,4 compra uma passada cheia e um resto");
+    assert!((budget[0].weight - 1.0).abs() < 1e-6);
+    assert!((budget[1].weight - 0.6).abs() < 1e-6, "{}", budget[1].weight);
     assert_eq!(s.auto_smooth, 0.0, "a recursão é impossível por construção");
     assert_eq!(s.hardness, b.hardness, "a dureza do artista vale no passe");
     assert_eq!(s.falloff, b.falloff, "e a curva dele também");

@@ -13,7 +13,19 @@
 use super::*;
 
 impl SculptStroke {
-    pub(super) fn dab_core(&mut self, mesh: &mut Mesh, brush: &Brush, dab: &Dab) -> usize {
+    /// ⚠️ **As PASSADAS chegam por parâmetro, e não de `brush.passes()`.** O
+    /// verbo do artista passa a tabela dele; o **autosmooth** passa o orçamento
+    /// de [`crate::auto_smooth::iteration_strengths`], que é dinâmico — o
+    /// `&'static` de `passes()` não o exprime. É a forma literal da referência:
+    /// o `do_smooth_brush` percorre as forças e escala os fatores
+    /// (`brushes/smooth.cc:113`), em vez de as ler do pincel.
+    pub(super) fn dab_core(
+        &mut self,
+        mesh: &mut Mesh,
+        brush: &Brush,
+        dab: &Dab,
+        passes: &[crate::Pass],
+    ) -> usize {
         self.moved.clear();
         if dab.radius <= 0.0 || brush.strength <= 0.0 || dab.pressure <= 0.0 {
             return 0;
@@ -142,7 +154,6 @@ impl SculptStroke {
         // `target`/`accum` dele guardam o que o passe anterior decidiu, e o
         // aplicador reescreve o MESMO valor sobre a posição que já o tem — um
         // no-op, não um passo perdido.
-        let passes = brush.passes();
         for (pi, pass) in passes.iter().enumerate() {
             let first = pi == 0;
             let count = if first { work } else { self.moved.len() };

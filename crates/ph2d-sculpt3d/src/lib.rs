@@ -35,6 +35,9 @@
 //! números da W1 foram **re-medidos** em vez de herdados.
 
 mod alpha;
+/// **O ORÇAMENTO DE ALISAMENTO** — quantas passadas do laplaciano um
+/// `auto_smooth` compra, e com que força cada uma. Ver [`auto_smooth`].
+pub mod auto_smooth;
 /// **A SILHUETA DE UM DAB** — ver [`footprint`].
 mod footprint;
 pub use footprint::{Blade, Footprint, Strip, rounded_box};

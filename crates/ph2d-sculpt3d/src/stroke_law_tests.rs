@@ -468,18 +468,37 @@ fn the_second_pass_runs_inside_the_stroke_and_it_is_the_rim_that_it_rounds() {
     // ⚠️ **E o ponto de operação é MEDIDO, não escolhido** — o mesmo traço
     // (Draw, raio 0,30, força 0,5, `Constant`, 12 dabs) varrido no knob:
     //
-    // | `auto_smooth` | crista | rugosidade |
-    // |---|---|---|
-    // | 0,00 | 0,11853 | 0,029113 |
-    // | 0,05 | 0,11568 | 0,026023 |
-    // | 0,10 | 0,11248 | 0,024232 |
-    // | **0,25** | **0,10158** | **0,021050** |
-    // | 0,50 | 0,08186 | 0,016140 |
-    // | 1,00 | 0,04286 | 0,014097 |
+    // ⚠️ **RE-MEDIDA quando o ORÇAMENTO entrou** (`probe_auto_smooth_budget`,
+    // ao lado). A tabela anterior descrevia um mundo em que o passe era um lerp
+    // único de força `auto_smooth`, e a lei da referência é um orçamento de até
+    // quatro laplacianos ([`crate::auto_smooth`]) — mover o número obrigou a
+    // reconferir as barras que saíam dele.
     //
-    // Em `0,25` o verbo sobrevive (**86%** do depósito) e o alisamento é
-    // inequívoco (**−28%** de rugosidade) — é a faixa em que a referência é de
-    // facto usada. As duas barras abaixo saem desta tabela.
+    // | `auto_smooth` | passadas | crista | rugosidade | razão crista | razão rug. |
+    // |---|---|---|---|---|---|
+    // | 0,00 | 1 | 0,11853 | 0,029113 | 1,000 | 1,000 |
+    // | 0,05 | 1 | 0,10536 | 0,022216 | 0,889 | 0,763 |
+    // | **0,10** | **1** | **0,08982** | **0,017534** | **0,758** | **0,602** |
+    // | 0,20 | 1 | 0,05810 | 0,014927 | 0,490 | 0,513 |
+    // | 0,25 | 2 | 0,04286 | 0,014097 | 0,362 | 0,484 |
+    // | 0,50 | 3 | 0,01317 | 0,008231 | 0,111 | 0,283 |
+    // | 1,00 | 5 | 0,04980 | 0,007003 | 0,420 | 0,241 |
+    //
+    // ⚠️ **O `0,25` de hoje é o `1,00` de ontem, ao número** (0,04286 e
+    // 0,014097 nas duas tabelas) — é a prova aritmética de que o orçamento é
+    // uma CONTAGEM: `0,25` compra uma substituição laplaciana completa, que era
+    // tudo o que o lerp único conseguia fazer no seu máximo.
+    //
+    // ⚠️ **E a crista NÃO é monotónica em `1,00`** (0,0498 contra 0,0132 em
+    // `0,50`): quatro laplacianos por dab, doze dabs, e o laplaciano uniforme
+    // **encolhe** — a região colapsa para dentro e o `max_shift`, que mede
+    // distância à base sem sinal, volta a subir. É o encolhimento que a
+    // referência assume de propósito (ela não projeta nem preserva volume), não
+    // um defeito do porte; e é a razão de o ponto de operação não viver ali.
+    //
+    // O ponto escolhido é **`0,10`**: o verbo sobrevive com folga (**76%** do
+    // depósito) e o alisamento é inequívoco (**−40%** de rugosidade). As duas
+    // barras abaixo saem desta linha.
     //
     // ⚠️ **Num TRAÇO o segundo passe custa depósito, e num toque único não** —
     // a sonda de um carimbo mede a crista indo de 0,1709 a 0,1692 (1%) com
@@ -489,7 +508,7 @@ fn the_second_pass_runs_inside_the_stroke_and_it_is_the_rim_that_it_rounds() {
     // outros, então ele compõe sobre os MESMOS vértices enquanto o depósito
     // envelopa. É por isto que o default da referência é **zero** e que a faixa
     // de trabalho dela é 0,1–0,3, e não um defeito do porte.
-    const AUTO_SMOOTH: f32 = 0.25;
+    const AUTO_SMOOTH: f32 = 0.10;
     let base_brush = crate::Brush {
         verb: Verb::Draw,
         radius: 0.30,
@@ -539,21 +558,85 @@ fn the_second_pass_runs_inside_the_stroke_and_it_is_the_rim_that_it_rounds() {
 
     // CONTROLE 2 — o passe ALISA, ele não APAGA. Um segundo passe que devolvesse
     // a esfera original seria "perfeitamente liso" e teria destruído o verbo. A
-    // barra sai da tabela acima (0,857 medido), não de gosto.
+    // barra sai da tabela acima (razão 0,758 medida), não de gosto.
     let shift_on = max_shift(&base, &on);
     assert!(
-        shift_on > shift_off * 0.80,
+        shift_on > shift_off * 0.60,
         "o segundo passe comeu o traço: {shift_on:.5} contra {shift_off:.5}"
     );
 
     let rough_off = ring_roughness(&off, &touched);
     let rough_on = ring_roughness(&on, &touched);
     assert!(
-        rough_on < rough_off * 0.85,
+        rough_on < rough_off * 0.75,
         "o segundo passe não alisou nada: rugosidade {rough_on:.6} com ele \
          contra {rough_off:.6} sem — se a razão for 1,000 exata, ele NÃO ESTÁ \
          SENDO CHAMADO (a mutação que este gate existe para matar)"
     );
+}
+
+/// **A SONDA que dá o ponto de operação do gate acima** — ela imprime e não
+/// afirma nada.
+///
+/// ⚠️ **Ela existe porque a lei do orçamento MOVEU os números**, e o §0 manda
+/// reconferir toda nota cujo número alguém mexeu: as barras do gate irmão foram
+/// derivadas de uma varredura feita quando o passe era um lerp único, e sob a
+/// lei correta (`0,25` é uma substituição COMPLETA) elas medem outra coisa.
+///
+/// `cargo test -p ph2d-sculpt3d --lib probe_auto_smooth_budget -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda: imprime a varredura, não afirma"]
+fn probe_auto_smooth_budget() {
+    // ⚠️ **A MESMA fixture do gate irmão, e isso é load-bearing:** as barras
+    // dele saem desta tabela, e duas fixtures dariam dois mundos — a sonda
+    // diria um número que o gate não pode reproduzir.
+    let base_brush = crate::Brush {
+        verb: crate::Verb::Draw,
+        radius: 0.30,
+        strength: 0.5,
+        falloff: crate::Falloff::Constant,
+        ..crate::Brush::default()
+    };
+    let (a, b) = ([0.0, -0.2, 1.0], [0.0, 0.2, 1.0]);
+
+    let mut off = sphere();
+    let base = snapshot(&off);
+    sweep(&mut off, &base_brush, a, b, 12);
+    let touched: Vec<usize> = base
+        .iter()
+        .zip(off.positions())
+        .enumerate()
+        .filter(|(_, (p0, p1))| {
+            let d = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
+            d[0] * d[0] + d[1] * d[1] + d[2] * d[2] > 1e-10
+        })
+        .map(|(i, _)| i)
+        .collect();
+    let shift_off = max_shift(&base, &off);
+    let rough_off = ring_roughness(&off, &touched);
+    println!("auto_smooth  passadas  crista    rugosidade  razao_crista  razao_rug");
+    println!("0.00 (ctrl)  1         {shift_off:.5}   {rough_off:.6}    1.000         1.000");
+    for f in [0.02f32, 0.05, 0.10, 0.15, 0.20, 0.25, 0.50, 1.00] {
+        let mut on = sphere();
+        sweep(
+            &mut on,
+            &crate::Brush {
+                auto_smooth: f,
+                ..base_brush.clone()
+            },
+            a,
+            b,
+            12,
+        );
+        let n = crate::auto_smooth::iteration_strengths(f).as_slice().len();
+        let s = max_shift(&base, &on);
+        let r = ring_roughness(&on, &touched);
+        println!(
+            "{f:.2}         {n}         {s:.5}   {r:.6}    {:.3}         {:.3}",
+            s / shift_off,
+            r / rough_off
+        );
+    }
 }
 
 #[test]

@@ -92,9 +92,16 @@ impl Brush {
         {
             return None;
         }
+        // ⚠️ **`strength: 1,0` e NÃO `self.auto_smooth`** — a força do
+        // alisamento é um ORÇAMENTO de passadas
+        // ([`crate::auto_smooth::iteration_strengths`]), não o coeficiente de
+        // um lerp; quem a carrega é o `Pass::weight`, no chamador. Pô-la aqui
+        // fazia duas coisas erradas de uma vez: reproduzia a referência só
+        // abaixo de `0,25` e ainda passava pela curva do slider do modo, que no
+        // `b-mode` a **elevaria ao quadrado**.
         Some(Self {
             verb: crate::Verb::Smooth,
-            strength: self.auto_smooth,
+            strength: 1.0,
             auto_smooth: 0.0,
             ..self.clone()
         })

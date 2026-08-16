@@ -337,8 +337,37 @@ impl RefMode {
             // ⚠️ **O Sharpen fica FORA de propósito:** o paper descreve um
             // passa-baixa que não encolhe, e não diz nada sobre afiar — dar-lhe
             // o par seria pôr o nome de uma fonte numa lei que ela não declara.
-            Self::L => matches!(verb, Verb::Smooth) || self.field(verb).is_some(),
+            Self::L => {
+                matches!(verb, Verb::Smooth)
+                    || self.field(verb).is_some()
+                    || self.fits_local_surface(verb)
+            }
         }
+    }
+
+    /// **ESTE MODO PROJECTA NUMA SUPERFÍCIE LOCAL EM VEZ DE NUM PLANO?** — o
+    /// `l-mode` da família que ACHATA (Alexa et al. 2003; ver
+    /// [`crate::stroke`]`::surface`).
+    ///
+    /// ⚠️ **Perguntada UMA vez por dab, no `fit_plane`, e nunca por vértice.**
+    /// A superfície entra no `PlaneFit` como dado, então o
+    /// `aim::signed_distance` — que corre uma vez por vértice da pegada — não
+    /// conhece modo nenhum. É o desenho do irmão [`Self::field`] com a mesma
+    /// razão: uma lei perguntada no laço interno é uma lei que o verbo seguinte
+    /// aplica duas vezes.
+    ///
+    /// ⚠️ **Os quatro, e mais nenhum.** O `Draw` é o candidato que a tabela do
+    /// §3 do plano nomeia — a normal de um ajuste MLS em vez da normal de área —
+    /// e ele é uma pergunta sobre a NORMAL, não sobre a altura; entra quando
+    /// for medido. Os verbos de plano DERIVADO ([`Verb::ClayThumb`], que
+    /// inclina, e [`Verb::MultiplaneScrape`], que dobra) ficam de fora porque o
+    /// plano deles não é o da pegada: é um plano construído, e uma superfície
+    /// curva por baixo de uma dobradiça seria uma segunda lei a discutir com a
+    /// primeira.
+    #[must_use]
+    pub const fn fits_local_surface(self, verb: Verb) -> bool {
+        matches!(self, Self::L)
+            && matches!(verb, Verb::Flatten | Verb::Fill | Verb::Scrape | Verb::Clay)
     }
 
     /// **QUE CAMPO ELÁSTICO este modo entrega a este verbo** — o `l-mode` da

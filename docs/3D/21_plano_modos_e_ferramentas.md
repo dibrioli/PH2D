@@ -3234,3 +3234,129 @@ schema, nenhum contrato congelado, nenhum id/token · nenhuma dep nova.
 
 **Mudança de comportamento — UMA:** o `l-mode` do Smooth alisa **2,2× mais** por
 dab. Todo outro pincel é byte-idêntico.
+
+---
+
+### §7.30 — ✅ W7: O PLANO VIRA UMA SUPERFÍCIE, e a medição decidiu a wave antes da primeira linha (2026-08-16)
+
+Com a fila de P0 vazia, a próxima da tabela do §7 é a **W7 — o plano MLS**: o
+`l-mode` de Flatten/Fill/Scrape/Clay, a **projeção MLS** de Alexa, Behr,
+Cohen-Or, Fleishman, Levin & Silva 2003 (*Computing and Rendering Point Set
+Surfaces*), que o §4 nomeia como *"a superfície local em vez de um plano"*.
+
+**A MEDIÇÃO PRIMEIRO** (`tests/measure_mls_plane.rs`), porque *"tem conteúdo?"*
+é uma afirmação sobre um número, e o §4 recusa chip sem conteúdo:
+
+| esfera r=1 | dab 0,2 | 0,3 | 0,4 | 0,6 |
+|---|---|---|---|---|
+| desvio ao PLANO | 0,006024 | 0,012960 | 0,023390 | 0,052149 |
+| resíduo do QUADRIC | 0,000017 | 0,000077 | **0,000256** | 0,001331 |
+| o alvo move `\|g\|/raio` | 5,07% | 7,58% | **10,31%** | 15,81% |
+
+O quadric explica **99% do desvio** e desloca o alvo em **10,3% do raio do
+pincel** — a distância entre uma faceta e uma carícia.
+
+⚠️ **E o CONTROLE que decidiu se a wave era segura de construir:** um Flatten
+existe para REMOVER detalhe, e um alvo que seguisse o detalhe destruiria o verbo
+com todos os números bonitos. Medido numa esfera com ruga `0,03`: **93,1% e
+101,9% da ruga SOBRA** — o quadric é de grau 2 sobre a pegada inteira, captura a
+curvatura e **deixa a ruga onde está**.
+
+⚠️ **A minha primeira coluna de resumo lia o número AO CONTRÁRIO.** Ela dizia
+*"o quadric capturou 41,6% do desvio"* e eu ia concluir que ele comia a ruga —
+o desvio ao plano numa esfera RUGOSA é **curvatura + ruga**, e a curvatura é
+exactamente o que ele deve capturar. *Só comparando o resíduo com a ruga MEDIDA
+as duas se separam.*
+
+#### O desenho, e o que ele apaga
+
+O `PlaneFit` ganha `surface: Option<Quadric>` e **o `signed_distance` não
+ramifica em modo nenhum**: ele subtrai uma altura que, sem quadric, é zero.
+`S` e `B` ficam byte-idênticos por construção, e os quatro verbos não sabem que
+existe um `l-mode` — a representação apaga o caso especial.
+
+Só a metade **(2)** do paper é portada (o polinómio); a **(1)** — a otimização
+não-linear do plano de referência — é substituída pelo `fit_plane` que os quatro
+verbos já usam. ⚠️ **Não é atalho de custo:** re-derivá-la seria a **segunda
+resposta** a *"que plano descreve esta pegada?"*, e o `l-mode` deixaria de ser
+*outra lei sobre a mesma superfície*. O passo continua a ser ao longo da normal
+do plano (`to_plane`, a porta única dos quatro) — **divergência declarada**.
+
+#### ⚠️ Uma MUTAÇÃO SOBREVIVENTE expôs um CONTROLE MORTO
+
+Ajustando o quadric contra o ponto **já deslocado**, o `c0` absorve o offset e o
+`signed_distance` subtrai-o de volta: o alvo sai o MESMO e **o knob
+`plane_offset` fica INERTE sob o `l-mode`** — que é um verbo inteiro a
+desaparecer, porque o `Verb::Clay` *é* o Flatten contra um plano levantado.
+Nenhuma fixture usava offset com o `L`, então o knob morto era invisível.
+
+**A cura é uma assimetria:** a ALTURA é medida do ponto **pré-offset** e o
+`(u, v)` do ponto final. O `(u, v)` não leva correção porque o offset corre ao
+longo da NORMAL — ele não move a origem tangencialmente.
+
+#### ⚠️ E a segunda sobrevivente derrubou uma justificativa MINHA
+
+O doc do `Quadric` afirmava que a normalização por raio evita
+mal-condicionamento *"exactamente onde o pincel é grande"*. Medido
+(`where_the_unnormalised_fit_starts_to_lie`), o `f64` do solver absorve tudo até
+um dab de raio **400 000**, com desvio de **2e-16**:
+
+| escala | raio do dab | desvio relativo |
+|---|---|---|
+| 1 | 0,4 | 2,255e-16 |
+| 100 | 40 | 3,331e-16 |
+| 10 000 | 4 000 | 4,832e-16 |
+| 1 000 000 | 400 000 | 3,274e-16 |
+
+⇒ **o que ela compra não é precisão, é o PISO DE PIVÔ ser livre de escala de
+cena**, e esse é o lado PEQUENO: sem normalizar, um pincel de raio `4e-4` põe os
+termos de quarta ordem em `2,5e-14`, abaixo do piso, o ajuste é **recusado**, e o
+`l-mode` colapsa no `s-mode` **em silêncio**. O gate foi re-apontado para BAIXO
+(×0,001) — a versão que ampliava deixava a mutação passar.
+
+#### Os gates, e os três que nasceram vermelhos sobre produto correto
+
+**6 gates, 5 mutações, 5 sangram.** ⚠️ **Três oráculos meus estavam errados:**
+
+1. *"a ruga tem de cair"* medida por `| |p| − raio |` **REPROVOU o `s-mode`**,
+   que esta wave não toca (0,016941 → 0,033543): achatar uma calote **tira os
+   vértices da esfera por construção**, então aquela régua soma a ruga com o
+   próprio achatamento. ⇒ magnitude do **laplaciano**, que é local e cega à forma
+   grande.
+2. *"numa superfície PLANA os dois modos concordam"* nasceu vermelha por
+   `0,007362` contra uma barra de `0,0016` que **eu** escolhera: uma esfera de
+   raio 20 vista por um dab de 0,8 **não é plana** (sagita `0,016`), e `0,007362`
+   é metade dela. *Não existe "plano o suficiente" que não seja um número
+   escolhido a dedo* ⇒ a propriedade sem limiar é a RELAÇÃO — a altura de um
+   quadric é `≈ κ·ρ²/2`, **linear na curvatura**, então quadruplicar o raio da
+   esfera divide a divergência por ~4.
+3. o gate do offset pousou **ZERO vértices**, e o controle é que o disse: um
+   Flatten `OneSided` morde o lado `d > 0`, ou seja RASPA, e levantar o alvo
+   acima da calote deixa-o sem nada para raspar ⇒ offset **negativo**, e a régua
+   é a **INTERSEÇÃO** dos movidos (só quem pousou nos dois alvos tem os dois
+   pousos a comparar).
+
+⚠️ **E os dois gates da lei anti-chip-morto dispararam pela razão certa** — o doc
+do `the_literature_mode_is_offered_exactly_where_it_declares_a_law` **previa este
+dia**: *"um paper cuja lei não seja nenhum dos dois faz este gate falhar — ele
+não sabe adivinhar o mecanismo do próximo"*. A superfície local é o **terceiro
+mecanismo**, e o censo passa de 6 para **10 verbos** com `L`.
+
+**Superfície de colisão:** `PROJECT_SCHEMA` **INTOCADO** (nada disto é
+serializado) · contrato congelado intacto · **zero `Cargo.toml`** · **nenhuma dep
+nova** · **nenhum ADR** (roda sob o ADR-0150) · registro do `ph2d-ecs`
+**intocado** · uma crate-módulo nova (`stroke_surface.rs`, filho do `stroke`) e
+uma cena, a **`=32`**.
+
+**Aberto, com o preço ao lado:** o **`Draw`** é o quinto candidato que o §3
+nomeia — *"a normal do ajuste MLS/PCA, o l-mode mais fraco da tabela; se medir
+dentro do piso, o Draw shipa com 2"* —, e ele é uma pergunta sobre a **NORMAL** e
+não sobre a altura: entra quando for medido · a projeção do paper caminha pela
+normal LOCAL e a nossa pela normal do plano (segunda ordem na curvatura,
+divergência declarada) · o peso é uniforme dentro da pegada, e o paper usa uma
+gaussiana `θ(d)` — o efeito é suavizar a fronteira do ajuste, e não foi medido.
+
+Smoke: **`env PH2D_SCULPT3D_SMOKE=32 cargo run -p ph2d-host-desktop --release`**
+— ⚠️ **a cena NÃO arma o modo** (o chip é a costura que ela existe para provar),
+e a pergunta de olho **não é *"mexeu?"***: os dois modos achatam, e o que os
+separa é a faceta contra a curva que fica.

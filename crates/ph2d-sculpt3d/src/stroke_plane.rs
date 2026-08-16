@@ -25,6 +25,14 @@ use super::*;
 pub(super) struct PlaneFit {
     pub(super) point: [f32; 3],
     pub(super) normal: [f32; 3],
+    /// **A superfície local do `l-mode`** — ver [`super::surface`].
+    ///
+    /// ⚠️ **`None` é o mundo inteiro que já shipava, e é isso que mantém o `S`
+    /// e o `B` byte-idênticos:** o [`super::aim::signed_distance`] não ramifica
+    /// em MODO nenhum — ele subtrai uma altura que, sem quadric, **é zero**. A
+    /// representação apaga o caso especial, e nenhum dos quatro verbos precisa
+    /// de saber que existe um `l-mode`.
+    pub(super) surface: Option<super::surface::Quadric>,
 }
 
 impl SculptStroke {
@@ -54,6 +62,7 @@ impl SculptStroke {
         fit.unwrap_or(PlaneFit {
             point: dab.center,
             normal: [0.0, 1.0, 0.0],
+            surface: None,
         })
     }
 
@@ -212,7 +221,62 @@ impl SculptStroke {
         for k in 0..3 {
             point[k] += normal[k] * off;
         }
-        Some(PlaneFit { point, normal })
+        let fit = PlaneFit {
+            point,
+            normal,
+            surface: None,
+        };
+        // ⚠️ **A ALTURA é medida do ponto PRÉ-OFFSET, e o `(u, v)` do ponto
+        // final — e a assimetria é o que mantém o offset VIVO.**
+        //
+        // A minha primeira versão ajustava tudo contra o ponto já deslocado, com
+        // o racional de que *"o `c0` absorve o `−off`"*. Absorve mesmo, e é
+        // exactamente esse o defeito: um quadric ajustado aos dados descreve a
+        // forma **onde quer que se ponha a origem**, então `c0` absorvia o
+        // offset, o `signed_distance` subtraía-o de volta, e o alvo saía o mesmo
+        // — **o knob `plane_offset` ficava INERTE sob o `l-mode`**, que é o
+        // controle morto que este módulo recusa. Ele era um verbo inteiro a
+        // desaparecer: o [`Verb::Clay`] *é* o Flatten contra um plano levantado.
+        //
+        // Somar o `off` de volta na altura faz o `c` guardar a superfície na
+        // origem PRÉ-offset; o `signed_distance` mede a partir da origem final,
+        // e a diferença entre as duas é o offset — que passa a levantar a
+        // superfície, exactamente como levantava o plano.
+        //
+        // ⚠️ **O `(u, v)` NÃO leva correção porque o offset corre ao longo da
+        // NORMAL** — ele não move a origem tangencialmente, e mexer nas duas
+        // coordenadas seria consertar o que não estava partido.
+        //
+        // ⚠️ **Uma mutação SOBREVIVEU até este gate existir**, e ela é
+        // literalmente a versão anterior: nenhuma fixture da suíte usava
+        // `plane_offset != 0` sob o `l-mode`, então o knob morto era invisível.
+        let surface = if brush.mode.fits_local_surface(brush.verb) {
+            let frame = super::surface::frame_of(&fit);
+            let inv_r = if dab.radius > 0.0 {
+                1.0 / dab.radius
+            } else {
+                0.0
+            };
+            super::surface::fit(
+                self.footprint.iter().map(|&v| {
+                    let p = pos_of(v);
+                    let d = [
+                        p[0] - fit.point[0],
+                        p[1] - fit.point[1],
+                        p[2] - fit.point[2],
+                    ];
+                    let u = (d[0] * frame.0[0] + d[1] * frame.0[1] + d[2] * frame.0[2]) * inv_r;
+                    let v2 = (d[0] * frame.1[0] + d[1] * frame.1[1] + d[2] * frame.1[2]) * inv_r;
+                    let h = d[0] * normal[0] + d[1] * normal[1] + d[2] * normal[2] + off;
+                    (u, v2, h, free(v) as f32)
+                }),
+                frame,
+                inv_r,
+            )
+        } else {
+            None
+        };
+        Some(PlaneFit { surface, ..fit })
     }
 
     /// **OS DOIS PLANOS DA LÂMINA EM V**, resolvidos uma vez por dab.

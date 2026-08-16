@@ -421,6 +421,7 @@ fn signature(
     StrengthCurve,
     &'static [Pass],
     Option<crate::Field>,
+    bool,
 ) {
     let brush = Brush {
         verb,
@@ -436,6 +437,7 @@ fn signature(
         curve,
         brush.passes(),
         mode.field(verb),
+        mode.fits_local_surface(verb),
     )
 }
 
@@ -504,7 +506,9 @@ fn the_literature_mode_is_offered_exactly_where_it_declares_a_law() {
         };
         // Os DOIS mecanismos pelos quais uma referência da literatura pode
         // governar o barro hoje: um par de passes, ou um campo elástico.
-        let has_law = brush.passes().len() > 1 || RefMode::L.field(verb).is_some();
+        let has_law = brush.passes().len() > 1
+            || RefMode::L.field(verb).is_some()
+            || RefMode::L.fits_local_surface(verb);
         assert_eq!(
             offered,
             has_law,
@@ -522,6 +526,10 @@ fn the_literature_mode_is_offered_exactly_where_it_declares_a_law() {
         declared,
         vec![
             "Smooth",
+            "Flatten",
+            "Fill",
+            "Scrape",
+            "Clay",
             "Magnify",
             "Move / Grab",
             "Snake Hook",

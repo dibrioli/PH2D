@@ -366,6 +366,10 @@ pub(crate) mod masked;
 /// **A CENA DA LÂMINA EM V** (`=31`) — irmã da [`thumb`] pela mesma linha de corte.
 #[path = "sculpt3d_scenes_scrape.rs"]
 pub(crate) mod scrape;
+/// **A CENA DA SUPERFÍCIE LOCAL** (`=32`) — irmã da [`scrape`] pela mesma linha
+/// de corte.
+#[path = "sculpt3d_scenes_surface.rs"]
+pub(crate) mod surface;
 /// **A CENA DO POLEGAR** (`=30`) — irmã da [`strip`] pela mesma linha de corte.
 #[path = "sculpt3d_scenes_thumb.rs"]
 pub(crate) mod thumb;

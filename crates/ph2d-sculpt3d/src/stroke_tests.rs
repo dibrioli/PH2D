@@ -373,6 +373,11 @@ mod verb_field;
 #[path = "verb_border_tests.rs"]
 mod verb_border;
 
+/// **A SUPERFÍCIE LOCAL** que o `l-mode` dos quatro verbos de plano projecta —
+/// ver o cabeçalho dele.
+#[path = "verb_surface_tests.rs"]
+mod verb_surface;
+
 /// **O SLIDE RELAX**, o único verbo que redistribui sem mudar a forma — ver o
 /// cabeçalho dele.
 #[path = "verb_relax_tests.rs"]

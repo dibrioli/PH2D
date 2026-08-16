@@ -63,10 +63,26 @@ pub(super) fn to_plane(p: [f32; 3], normal: [f32; 3], d: f32, w: f32) -> [f32; 3
     add(p, normal, -d * w)
 }
 
+/// A distância com sinal até o ALVO — o plano, ou a superfície local quando o
+/// `l-mode` a ajustou ([`super::surface`]).
+///
+/// ⚠️ **Ela NÃO ramifica em modo nenhum**, e é isso que mantém o `S` e o `B`
+/// byte-idênticos: sem quadric a altura da superfície **é zero**, então a
+/// expressão colapsa literalmente na de sempre e o `Option` custa um teste de
+/// tag. Um `match brush.mode` aqui poria a lei do modo no caminho por-VÉRTICE,
+/// onde ela seria re-perguntada uma vez por texel da pegada — e os quatro
+/// verbos passariam a saber que existe um `l-mode`.
 pub(super) fn signed_distance(p: [f32; 3], plane: &PlaneFit) -> f32 {
-    (p[0] - plane.point[0]) * plane.normal[0]
-        + (p[1] - plane.point[1]) * plane.normal[1]
-        + (p[2] - plane.point[2]) * plane.normal[2]
+    let d = [
+        p[0] - plane.point[0],
+        p[1] - plane.point[1],
+        p[2] - plane.point[2],
+    ];
+    let flat = d[0] * plane.normal[0] + d[1] * plane.normal[1] + d[2] * plane.normal[2];
+    match &plane.surface {
+        Some(q) => flat - q.height_at(d),
+        None => flat,
+    }
 }
 
 /// A parte de `d` que sobra depois de remover o que corre ao longo de `axis`.

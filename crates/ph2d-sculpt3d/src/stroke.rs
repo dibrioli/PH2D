@@ -235,6 +235,12 @@ mod probe;
 #[path = "stroke_plane.rs"]
 mod plane;
 
+/// **A SUPERFÍCIE LOCAL do `l-mode`** — ver [`surface`]. Irmão do [`plane`], e o
+/// corte são dois PAPERS: lá o `calc_area_normal_and_center` da referência, aqui
+/// a projeção MLS de Alexa et al. 2003.
+#[path = "stroke_surface.rs"]
+mod surface;
+
 /// **QUE SILHUETA ESTE DAB TEM** — ver [`shape`].
 #[path = "stroke_shape.rs"]
 mod shape;

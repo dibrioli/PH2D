@@ -245,9 +245,15 @@ impl SculptStroke {
                     // a borda dianteira do polegar a cortar mais fundo.
                     let tilted =
                         rotate_about(n_area, [0.0; 3], axis, -self.thumb_tilt_deg.to_radians());
+                    // ⚠️ **Sem superfície local, e não é omissão:** este plano é
+                    // CONSTRUÍDO (a normal de área INCLINADA em torno do eixo do
+                    // traço), não o da pegada — uma superfície curva ajustada ao
+                    // barro por baixo de uma dobradiça seria uma segunda lei a
+                    // discutir com a primeira sobre onde o alvo fica.
                     let tilt_plane = PlaneFit {
                         point: dab.center,
                         normal: tilted,
+                        surface: None,
                     };
                     let d = signed_distance(live, &tilt_plane);
                     to_plane(live, tilted, d, w)
@@ -275,9 +281,13 @@ impl SculptStroke {
                     let n = s.normal_at(live);
                     let d = signed_distance(
                         live,
+                        // ⚠️ **Sem superfície local, pela razão do polegar:** as
+                        // duas facetas do V são planos construídos, e a
+                        // dobradiça é a lei desta ferramenta.
                         &PlaneFit {
                             point: s.origin,
                             normal: n,
+                            surface: None,
                         },
                     );
                     if s.cull && d <= 0.0 {

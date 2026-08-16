@@ -15,6 +15,7 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
+pub(crate) use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::{SectionHeader, paint_section_header};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -33,11 +34,26 @@ pub(crate) fn section_id(title: &str) -> NodeId {
     NodeId(h)
 }
 
-/// Se uma seção começa na row `i`, desenha o cabeçalho dela e devolve `(altura usada, dobrada)`.
+/// **Uma seção começa na row `i`?** — a pergunta que o laço faz ANTES de pintar, porque a dobra
+/// da seção anterior tem de FECHAR antes de o cabeçalho novo ser desenhado (senão ele sai dentro
+/// do recorte dela).
 ///
-/// ⚠️ Devolve as DUAS coisas porque quem pergunta precisa das duas — a altura para avançar, o
-/// estado de dobra para pular as rows seguintes. Separá-las obrigaria o chamador a re-derivar o
-/// id a partir do título, que é a segunda cópia de *como se chama esta seção*.
+/// ⚠️ Mora aqui, ao lado do `header_at`, e ele a CHAMA: duas varreduras da mesma lista seriam
+/// duas respostas a *"há cabeçalho aqui?"*, e elas divergem no dia em que a ordenação mudar.
+pub(crate) fn has_header_at(section_at: &[(String, usize)], i: usize) -> bool {
+    section_at.iter().any(|(_, at)| *at == i)
+}
+
+/// Se uma seção começa na row `i`, desenha o cabeçalho dela e devolve `(altura usada, a dobra)`.
+///
+/// ⚠️ Devolve as DUAS coisas porque quem pergunta precisa das duas — a altura para avançar, e a
+/// dobra para (a) saber se pula as rows seguintes e (b) fechá-la no fim. Separá-las obrigaria o
+/// chamador a re-derivar o id a partir do título, que é a segunda cópia de *como se chama esta
+/// seção*.
+///
+/// ⚠️ **`Option<SectionFold>` e não o `bool` de antes** (F4b): o `bool` vinha do `is_collapsed`,
+/// que vira no quadro do clique enquanto o `t` ainda desce — as rows gateadas nele sumiriam de
+/// repente por baixo de um chevron a rodar.
 #[expect(
     clippy::too_many_arguments,
     reason = "espelha a porta de paint das rows deste painel"
@@ -53,7 +69,10 @@ pub(crate) fn header_at(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-) -> Option<(f32, bool)> {
+) -> Option<(f32, Option<SectionFold>)> {
+    if !has_header_at(section_at, i) {
+        return None;
+    }
     let (title, _) = section_at.iter().find(|(_, at)| *at == i)?;
     let dy = paint_header(
         title,
@@ -66,7 +85,17 @@ pub(crate) fn header_at(
         text_system,
         theme,
     );
-    Some((dy, store.is_collapsed(section_id(title))))
+    let body_top = y + dy;
+    let fold = SectionFold::begin(
+        store,
+        section_id(title),
+        inner_x,
+        inner_w,
+        body_top,
+        scene,
+        hit_index,
+    );
+    Some((dy, fold))
 }
 
 /// Desenha o cabeçalho e registra o hit-rect. Devolve a altura usada.

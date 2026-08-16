@@ -89,7 +89,33 @@ impl SectionFold {
         scene: &mut VectorScene,
         hit_index: &mut HitIndex,
     ) -> Option<Self> {
-        let t = store.section_open_live(id).clamp(0.0, 1.0);
+        let t = store.section_open_live(id);
+        Self::begin_at(store, id, t, x, w, body_top, scene, hit_index)
+    }
+
+    /// A MESMA lei, com o `t` VINDO DE FORA — para o painel que **fotografa** a dobra antes de o
+    /// paint tomar os empréstimos.
+    ///
+    /// ⚠️ Existe porque `begin` responderia a pergunta uma SEGUNDA vez: o `ph2d-panel-audio-editor`
+    /// lê os oito `t` do store num array antes de pintar (o corpo dele nunca alcança o store de
+    /// volta), e um `begin` que relesse o store daria à dobra um estado e ao chevron outro — as
+    /// duas metades a discordar sobre a mesma seção. Quem já tem a resposta passa-a; quem não
+    /// tem chama o `begin`, que a busca **uma** vez.
+    ///
+    /// O `store` continua a entrar porque a ALTURA lembrada é dele — ela é medição, não estado
+    /// autorado, e nenhum painel a fotografa.
+    #[allow(clippy::too_many_arguments)]
+    pub fn begin_at(
+        store: &WidgetStore,
+        id: NodeId,
+        t: f32,
+        x: f32,
+        w: f32,
+        body_top: f32,
+        scene: &mut VectorScene,
+        hit_index: &mut HitIndex,
+    ) -> Option<Self> {
+        let t = t.clamp(0.0, 1.0);
         if t <= SHUT {
             return None;
         }

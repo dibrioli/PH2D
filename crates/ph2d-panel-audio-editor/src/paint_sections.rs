@@ -21,7 +21,8 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::paint::{paint_text, paint_text_centered, rect_to_vello, resolve};
 use ph2d_editor_core::widget::showcase::paint_section_separator;
 use ph2d_editor_core::widget::{
-    SectionHeader, TextInput, TextInputState, paint_section_header, paint_text_input_with_buffer,
+    SectionFold, SectionHeader, TextInput, TextInputState, paint_section_header,
+    paint_text_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -63,6 +64,12 @@ impl Body {
 /// Walk the sections: header, then the block if it is open, then the accent separator.
 /// Returns the `y` at the bottom of the painted content.
 #[allow(clippy::too_many_arguments)]
+#[path = "paint_sections_chrome.rs"]
+mod chrome;
+#[cfg(test)]
+use chrome::section_h;
+use chrome::{end_fold, section, separator};
+
 pub(crate) fn paint_body(
     y: f32,
     x: f32,
@@ -93,7 +100,7 @@ fn paint_sound_sections(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    let (o, ny) = section(
+    let (fold, ny) = section(
         y,
         x,
         w,
@@ -107,7 +114,7 @@ fn paint_sound_sections(
         hit_index,
     );
     y = ny;
-    if o {
+    if let Some(fold) = fold {
         y = paint_transport_section(
             y,
             x,
@@ -119,11 +126,12 @@ fn paint_sound_sections(
             theme,
             hit_index,
         );
+        y = end_fold(fold, y, scene, hit_index);
     }
     y = separator(y, x, w, scene, theme);
 
     let loop_read = crate::paint_loop::loop_readout();
-    let (o, ny) = section(
+    let (fold, ny) = section(
         y,
         x,
         w,
@@ -137,7 +145,7 @@ fn paint_sound_sections(
         hit_index,
     );
     y = ny;
-    if o {
+    if let Some(fold) = fold {
         y = crate::paint_loop::paint_loop_section(
             y,
             x,
@@ -150,10 +158,11 @@ fn paint_sound_sections(
             theme,
             hit_index,
         );
+        y = end_fold(fold, y, scene, hit_index);
     }
     y = separator(y, x, w, scene, theme);
 
-    let (o, ny) = section(
+    let (fold, ny) = section(
         y,
         x,
         w,
@@ -167,7 +176,7 @@ fn paint_sound_sections(
         hit_index,
     );
     y = ny;
-    if o {
+    if let Some(fold) = fold {
         y = crate::paint_edit::paint_edit_section(
             y,
             x,
@@ -181,13 +190,14 @@ fn paint_sound_sections(
             theme,
             hit_index,
         );
+        y = end_fold(fold, y, scene, hit_index);
     }
     y = separator(y, x, w, scene, theme);
 
     // Spectral sits between Edit and Effects: it IS editing (destructive, undoable), it
     // just edits in a domain the waveform cannot show. Reach for it after the cuts and
     // before the rack.
-    let (o, ny) = section(
+    let (fold, ny) = section(
         y,
         x,
         w,
@@ -201,7 +211,7 @@ fn paint_sound_sections(
         hit_index,
     );
     y = ny;
-    if o {
+    if let Some(fold) = fold {
         y = crate::paint_spectral::paint_spectral_section(
             y,
             x,
@@ -214,10 +224,11 @@ fn paint_sound_sections(
             theme,
             hit_index,
         );
+        y = end_fold(fold, y, scene, hit_index);
     }
     y = separator(y, x, w, scene, theme);
 
-    let (o, ny) = section(
+    let (fold, ny) = section(
         y,
         x,
         w,
@@ -231,7 +242,7 @@ fn paint_sound_sections(
         hit_index,
     );
     y = ny;
-    if o {
+    if let Some(fold) = fold {
         y = crate::paint_fx::paint_fx_section(
             y,
             x,
@@ -243,6 +254,7 @@ fn paint_sound_sections(
             theme,
             hit_index,
         );
+        y = end_fold(fold, y, scene, hit_index);
     }
     y = separator(y, x, w, scene, theme);
 
@@ -264,7 +276,7 @@ fn paint_asset_sections(
     hit_index: &mut ClippedHits,
 ) -> f32 {
     let mark_read = crate::paint_loop::markers_readout();
-    let (o, ny) = section(
+    let (fold, ny) = section(
         y,
         x,
         w,
@@ -278,7 +290,7 @@ fn paint_asset_sections(
         hit_index,
     );
     y = ny;
-    if o {
+    if let Some(fold) = fold {
         y = crate::paint_loop::paint_markers_section(
             y,
             x,
@@ -290,11 +302,12 @@ fn paint_asset_sections(
             theme,
             hit_index,
         );
+        y = end_fold(fold, y, scene, hit_index);
     }
     y = separator(y, x, w, scene, theme);
 
     let var_read = crate::paint_variation::variation_readout();
-    let (o, ny) = section(
+    let (fold, ny) = section(
         y,
         x,
         w,
@@ -308,7 +321,7 @@ fn paint_asset_sections(
         hit_index,
     );
     y = ny;
-    if o {
+    if let Some(fold) = fold {
         y = crate::paint_variation::paint_variation_section(
             y,
             x,
@@ -319,11 +332,12 @@ fn paint_asset_sections(
             theme,
             hit_index,
         );
+        y = end_fold(fold, y, scene, hit_index);
     }
     y = separator(y, x, w, scene, theme);
 
     let del_read = crate::paint_delivery::delivery_readout();
-    let (o, ny) = section(
+    let (fold, ny) = section(
         y,
         x,
         w,
@@ -337,7 +351,7 @@ fn paint_asset_sections(
         hit_index,
     );
     y = ny;
-    if o {
+    if let Some(fold) = fold {
         y = crate::paint_delivery::paint_delivery_section(
             y,
             x,
@@ -349,6 +363,7 @@ fn paint_asset_sections(
             theme,
             hit_index,
         );
+        y = end_fold(fold, y, scene, hit_index);
     }
     y
 }
@@ -365,78 +380,6 @@ pub(crate) const SECTIONS: [NodeId; 8] = [
     AEDIT_SEC_VARIATIONS,
     AEDIT_SEC_DELIVERY,
 ];
-
-/// Height of a section header band (matches the Sprite Inspector's).
-fn section_h() -> f32 {
-    TypeToken::Md.px() + Spacing::Md.px()
-}
-
-/// Paint one collapsible section header — the app's canonical chrome: chevron +
-/// UPPERCASE label, and a darker plate when it is folded — with the block's readout
-/// right-aligned in the same band. Registers the click that folds it (the dispatch does
-/// the folding, via the `mark_collapsible_section` set) and returns `(open, y below)`.
-///
-/// The readout rides **in** the header rather than on a row of its own: "Variations" and
-/// "3 clips" are one fact, and a folded section still has to say what is inside it.
-#[allow(clippy::too_many_arguments)]
-fn section(
-    y: f32,
-    x: f32,
-    w: f32,
-    id: NodeId,
-    label: &str,
-    readout: Option<&str>,
-    // ⚠️ **O PAR, num argumento só** — o estado semântico e o `t` VIVO da dobra. É a lei que a
-    //    wave dos botões deixou (`visual: (ButtonState, f32)`): com duas entradas separadas, um
-    //    chamador esquece a segunda e a secção fica **silenciosamente discreta** no meio de
-    //    vizinhas que rodam, com a suíte inteira verde.
-    fold: (bool, f32),
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut ClippedHits,
-) -> (bool, f32) {
-    let h = section_h();
-    let rect = Rect::new(x, y, w, h);
-    paint_section_header(
-        &SectionHeader::new(id, label)
-            .collapsible(fold.0)
-            .open_t(fold.1),
-        rect,
-        scene,
-        text_system,
-        theme,
-    );
-    hit_index.register(id, rect);
-
-    if let Some(text) = readout.filter(|t| !t.is_empty()) {
-        // Right-aligned: the label grows from the left, so anything centred would sooner
-        // or later collide with it. Measure, then place against the right edge.
-        let font = TypeToken::Xs.px();
-        let tw = text_system.layout(text, font, w).width();
-        let pad = Spacing::Md.px();
-        paint_text(
-            text_system,
-            scene,
-            text,
-            (x + w - pad - tw).max(x),
-            y + (h - font) * 0.5,
-            font,
-            w,
-            resolve(ColorToken::Text2, theme),
-        );
-    }
-    (fold.0, y + h + Spacing::Xs.px())
-}
-
-/// The rule between two sections — `paint_section_separator`, the SAME one the Sprite
-/// Inspector and the Widget Gallery draw: a 1 px accent-coloured line, not the neutral
-/// `Divider`. The Gallery is the single source of truth for chrome (DIRETRIZ §5.2), and
-/// a panel that invents its own line is a panel that looks like it belongs to a
-/// different app (Enio, 2026-07-12).
-fn separator(y: f32, x: f32, w: f32, scene: &mut VectorScene, theme: Theme) -> f32 {
-    paint_section_separator(scene, theme, x, w, y)
-}
 
 /// The shell's live transport readout, bundled so the section fits one arg list.
 #[derive(Clone, Copy)]

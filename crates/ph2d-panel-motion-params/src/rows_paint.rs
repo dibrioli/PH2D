@@ -77,21 +77,28 @@ pub(crate) fn paint_rows(
     // `i` — os eventos enumeram a MESMA lista, então pular no pintor sem pular no roteador
     // desalinharia os slots (o bug clássico de lista filtrada).
     let mut collapsed = false;
+    // ⚠️ **A dobra do corpo atravessa ITERAÇÕES** (F4b), e é isso que a torna diferente de todo
+    // outro painel: aqui uma seção não é um escopo léxico, ela vai de um cabeçalho até o
+    // PRÓXIMO. Então a dobra vive num `Option` do laço, é FECHADA antes de o cabeçalho seguinte
+    // ser pintado — senão ele sairia dentro do recorte da seção anterior — e a última é fechada
+    // depois do laço.
+    let mut fold: Option<sections::SectionFold> = None;
     for (i, row) in rows.iter().enumerate().take(MAX_PARAM_ROWS) {
-        if let Some((dy, folded)) = sections::header_at(
-            section_at,
-            i,
-            inner_x,
-            inner_w + RESET_GUTTER_W,
-            y,
-            store,
-            hit_index,
-            scene,
-            text_system,
-            theme,
-        ) {
-            y += dy;
-            collapsed = folded;
+        if sections::has_header_at(section_at, i) {
+            y = turn_the_page(
+                &mut fold,
+                section_at,
+                i,
+                inner_x,
+                inner_w + RESET_GUTTER_W,
+                y,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+            );
+            collapsed = fold.is_none();
         }
         if collapsed {
             continue;
@@ -253,7 +260,53 @@ pub(crate) fn paint_rows(
             }
         }
     }
+    // A última seção não tem cabeçalho seguinte que a feche — o fim da lista é a fronteira dela.
+    if let Some(f) = fold {
+        y = f.finish(store, scene, hit_index, y);
+    }
     (curve_widgets, gradient_widgets, y - body_top)
+}
+
+/// **Fecha a seção anterior e abre a seguinte** — o par que uma lista PLANA de rows exige.
+///
+/// ⚠️ Extraído do `paint_rows` pelo cap de fn do painel, e a ordem dentro dele é load-bearing: a
+/// dobra da seção anterior FECHA antes de o cabeçalho novo ser pintado, senão ele sairia dentro
+/// do recorte dela.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "espelha a porta de paint das rows deste painel"
+)]
+fn turn_the_page(
+    fold: &mut Option<sections::SectionFold>,
+    section_at: &[(String, usize)],
+    i: usize,
+    inner_x: f32,
+    inner_w: f32,
+    mut y: f32,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) -> f32 {
+    if let Some(f) = fold.take() {
+        y = f.finish(store, scene, hit_index, y);
+    }
+    let (dy, opened) = sections::header_at(
+        section_at,
+        i,
+        inner_x,
+        inner_w,
+        y,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    )
+    .expect("o `has_header_at` e o `header_at` são a MESMA pergunta");
+    *fold = opened;
+    y + dy
 }
 
 #[cfg(test)]

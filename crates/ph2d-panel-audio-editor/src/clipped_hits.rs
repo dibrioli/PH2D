@@ -36,6 +36,16 @@ impl<'a> ClippedHits<'a> {
         }
     }
 
+    /// **O par que a dobra de secção quer** — `&WidgetStore` e `&mut HitIndex` ao mesmo tempo.
+    ///
+    /// ⚠️ Existe porque o [`SectionFold`](ph2d_editor_core::widget::SectionFold) precisa dos dois
+    /// numa chamada só, e este painel embrulha ambos num tipo. O recorte de hit do fold e o
+    /// `clip` deste envelope COMPÕEM (os dois intersectam) — não são duas respostas à mesma
+    /// pergunta: um é *o corpo do painel*, o outro *o corpo desta secção*.
+    pub(crate) fn store_and_index_mut(&mut self) -> (&WidgetStore, &mut HitIndex) {
+        (self.store, self.hit_index)
+    }
+
     /// **O par visual deste id** — o estado discreto e quanto do hover está presente.
     ///
     /// Delega à porta única do store ([`WidgetStore::button_visual`]); existe aqui só para o

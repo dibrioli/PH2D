@@ -117,16 +117,17 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-inspector/src/sections/render_source.rs",
         "paint_render_source_section",
-        284,
-        "unmasked by the 2026-07-10 parser fix; ratcheted 305->284 quando a wave do hover a fez cruzar o tecto e o *per-row split* que esta nota dizia diferido foi FEITO para uma row: a closure `num_cell` saiu para `paint_region_num_cell`. As tolerâncias encolhem, nunca crescem.",
+        211,
+        "unmasked by the 2026-07-10 parser fix; ratcheted 305->284->211 — a F4b (a dobra do CORPO) fez a fn cruzar a tolerância e o *per-row split* que esta nota prometia foi FEITO por inteiro: a proveniência saiu para `paint_storage_rows` e a amostragem de REGIÃO, o maior bloco e o único com vocabulário próprio, para `paint_region_rows`. As tolerâncias encolhem, nunca crescem.",
     ),
     (
         "ph2d-panel-inspector/src/sections/transform.rs",
         "paint_transform_section",
-        277,
+        268,
         "was frozen at a mis-measured 212; truly 281 → 279 quando o botão de reset passou a ler o \
-         par `(estado, t)` do store numa chamada em vez de três linhas. Per-row split deferred \
-         (needs smoke)",
+         par `(estado, t)` do store numa chamada em vez de três linhas → 277 → 268 quando a F4b \
+         a fez cruzar e a geometria partilhada por TODA row (a largura de um chip e o empilhar da \
+         seção) saiu para `chip_metrics`. Per-row split segue diferido (needs smoke)",
     ),
     (
         "ph2d-panel-inspector/src/sync.rs",

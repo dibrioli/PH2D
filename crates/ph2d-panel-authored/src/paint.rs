@@ -26,9 +26,9 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    AUTHORED_SCROLLBAR_ID, DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, SkinParam, icon_glyph,
-    inline_option_rect, paint_dropdown_popover_scrolled, paint_scrollbar, paint_widget_skin_with,
-    scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
+    AUTHORED_SCROLLBAR_ID, DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, SectionFold, SkinParam,
+    icon_glyph, inline_option_rect, paint_dropdown_popover_scrolled, paint_scrollbar,
+    paint_widget_skin_with, scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
@@ -265,6 +265,11 @@ fn paint_body(
 ) -> (f32, Vec<OpenList>) {
     let mut folded = false;
     let mut open_lists: Vec<OpenList> = Vec::new();
+    // ⚠️ **A dobra do corpo atravessa ITERAÇÕES** (F4b): aqui uma secção não é um escopo léxico
+    // — ela vai de uma row-cabeçalho até a PRÓXIMA. A dobra vive num `Option` do laço, fecha
+    // antes de o cabeçalho seguinte ser pintado (senão ele sai dentro do recorte da anterior) e
+    // a última fecha depois do laço.
+    let mut fold: Option<SectionFold> = None;
     // ⚠️ A tabela vem por CLOSURE porque a viva não é `'static` — ver `rows::with_rows`.
     crate::rows::with_rows(|table| {
         for row in table {
@@ -274,8 +279,13 @@ fn paint_body(
             // ainda não tem fica *pintada, com retângulo de hit, e morta sob o rato*. É a lei da
             // crate — *uma tabela, quatro consumidores* — aplicada ao consumidor que faltava.
             crate::populate::adopt(ctx.host.store_mut(), row);
-            if row.folds_a_section() {
-                folded = ctx.host.store().is_collapsed(row.id);
+            let opens_a_fold = row.folds_a_section();
+            if opens_a_fold {
+                if let Some(f) = fold.take() {
+                    let scene = &mut *ctx.scene;
+                    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+                    y = f.finish(store, scene, hit_index, y);
+                }
             } else if folded {
                 continue;
             }
@@ -343,8 +353,23 @@ fn paint_body(
                 theme,
             );
             y += ROW_H_PX + Spacing::Xs.px();
+            // A dobra abre DEPOIS de a row-cabeçalho estar pintada — ela é uma row como as
+            // outras, e o corpo dela começa onde ela acaba.
+            if opens_a_fold {
+                let scene = &mut *ctx.scene;
+                let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+                fold = SectionFold::begin(store, row.id, x, w, y, scene, hit_index);
+                // `None` é *fechada e parada* — é ele que pula as rows seguintes, e não o
+                // `is_collapsed`, que vira no quadro do clique com o `t` ainda a descer.
+                folded = fold.is_none();
+            }
         }
     });
+    if let Some(f) = fold {
+        let scene = &mut *ctx.scene;
+        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+        y = f.finish(store, scene, hit_index, y);
+    }
     (y, open_lists)
 }
 

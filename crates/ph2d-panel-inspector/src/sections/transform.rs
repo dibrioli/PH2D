@@ -99,30 +99,9 @@ pub(crate) fn paint_transform_section(
     let label_above_gap = SECTION_LABEL_TO_CONTROL_PX * 0.5;
     let chip_min_w = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX;
 
-    // Per-SECTION narrow check: if the WIDEST row (2-chip Position) wouldn't
-    // fit inline at MIN_W chips, the ENTIRE section uses stacked layout
-    // (label-above). Keeps Rotation aligned with Position/Scale — user
-    // feedback 2026-05-24: "a caixa única de Rotation deve se alinhar à
-    // caixa de X à esquerda e à direita". Per-row narrow would let Rotation
-    // go inline while Position stacks → misalignment.
-    let widest_chips_n_f = 2.0_f32;
-    let widest_inline_needed_w = label_col_w
-        + col_gap
-        + widest_chips_n_f * (axis_col_w + tag_box_gap + chip_min_w)
-        + (widest_chips_n_f - 1.0) * col_gap;
-    let section_narrow = w < widest_inline_needed_w;
-
-    // Two-chip equal-split width — single source of truth for ALL rows.
-    // Single-chip rows extend their chip to span (X start … Y end) =
-    // 2*two_chip_w + col_gap, so the lone Rotation chip lines up with
-    // X's left edge AND Y's right edge.
-    let chips_avail_w_section = if section_narrow {
-        w
-    } else {
-        w - label_col_w - col_gap
-    };
-    let two_chip_w =
-        ((chips_avail_w_section - 2.0 * (axis_col_w + tag_box_gap) - col_gap) / 2.0).max(0.0); // no MIN_W floor here — never overflow rect
+    // Quão largo é um chip, e a seção inteira empilha? — ver [`chip_metrics`].
+    let (section_narrow, two_chip_w) =
+        chip_metrics(w, label_col_w, col_gap, axis_col_w, tag_box_gap, chip_min_w);
 
     let paint_row = |scene: &mut VectorScene,
                      text_system: &mut TextSystem,
@@ -302,4 +281,44 @@ pub(crate) fn paint_transform_section(
     cur_y += h_skew + SECTION_BOTTOM_PAD_PX;
 
     fold.finish(store, scene, hit_index, cur_y)
+}
+
+/// **A largura de um chip, e se a seção inteira empilha** — a geometria que TODA row desta seção
+/// partilha.
+///
+/// Extraída do corpo de [`paint_transform_section`] pelo cap de fn do painel: é um bloco de
+/// aritmética pura que não pinta nada e não olha para o store.
+fn chip_metrics(
+    w: f32,
+    label_col_w: f32,
+    col_gap: f32,
+    axis_col_w: f32,
+    tag_box_gap: f32,
+    chip_min_w: f32,
+) -> (bool, f32) {
+    // Per-SECTION narrow check: if the WIDEST row (2-chip Position) wouldn't
+    // fit inline at MIN_W chips, the ENTIRE section uses stacked layout
+    // (label-above). Keeps Rotation aligned with Position/Scale — user
+    // feedback 2026-05-24: "a caixa única de Rotation deve se alinhar à
+    // caixa de X à esquerda e à direita". Per-row narrow would let Rotation
+    // go inline while Position stacks → misalignment.
+    let widest_chips_n_f = 2.0_f32;
+    let widest_inline_needed_w = label_col_w
+        + col_gap
+        + widest_chips_n_f * (axis_col_w + tag_box_gap + chip_min_w)
+        + (widest_chips_n_f - 1.0) * col_gap;
+    let section_narrow = w < widest_inline_needed_w;
+
+    // Two-chip equal-split width — single source of truth for ALL rows.
+    // Single-chip rows extend their chip to span (X start … Y end) =
+    // 2*two_chip_w + col_gap, so the lone Rotation chip lines up with
+    // X's left edge AND Y's right edge.
+    let chips_avail_w_section = if section_narrow {
+        w
+    } else {
+        w - label_col_w - col_gap
+    };
+    let two_chip_w =
+        ((chips_avail_w_section - 2.0 * (axis_col_w + tag_box_gap) - col_gap) / 2.0).max(0.0); // no MIN_W floor here — never overflow rect
+    (section_narrow, two_chip_w)
 }

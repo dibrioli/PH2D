@@ -160,114 +160,24 @@ pub(crate) fn paint_render_source_section(
     // Inter-row gap inside Render Source — matches Transform's row_gap
     // (SECTION_INNER_ROW_GAP_PX) so Render Source feels like Transform.
     cur_y += strategy_h + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX;
-    // Cleaner phrasing — strategy name + key/id separated by middle
-    // dot (the only ASCII-safe non-ASCII glyph allowed in UI strings;
-    // vide no_tofu_glyphs gate). Pre-canon was "Atlas key: 0" /
-    // "Texture id: 5" with the strategy redundantly named.
-    let storage_detail = match info.source_kind {
-        InspectorSpriteSource::Atlas { key } => format!("Atlas \u{00b7} key {}", key),
-        InspectorSpriteSource::Individual { texture_id } => {
-            format!("Individual \u{00b7} texture {}", texture_id)
-        }
-        InspectorSpriteSource::HandPacked => "Hand-packed".to_string(),
-        // W2.T2: tier-cooked KTX2 — read-only marker, no key/id shown.
-        InspectorSpriteSource::CookedTexture => "Cooked texture".to_string(),
-    };
-    cur_y = paint_pair(scene, text_system, "Storage", &storage_detail, cur_y);
-    if let Some((pw, ph)) = info.source_pixels {
-        let px_str = format!("{} \u{00d7} {} px", pw, ph);
-        cur_y = paint_pair(scene, text_system, "Source", &px_str, cur_y);
-    }
+    cur_y = paint_storage_rows(info, cur_y, |label, value, yy| {
+        paint_pair(scene, text_system, label, value, yy)
+    });
 
-    // Region sampling (spec §3.3) — hidden for Hand-packed (it brings its
-    // own rect from the asset). Toggle + (when on) X/Y/W/H px inputs +
-    // Filter Clip. Renders via the extract `region_subrect` (W2.T2.4).
-    if !matches!(info.source_kind, InspectorSpriteSource::HandPacked) {
-        let cb_h = 18.0_f32; // LITERAL-PX-OK: Checkbox visual height
-        let re_value = store
-            .checkbox(ids::INSP_REGION_ENABLED)
-            .map_or(CheckboxValue::Unchecked, |(_, v)| v);
-        let re_rect = Rect::new(x, cur_y, w, cb_h);
-        hit_index.register(ids::INSP_REGION_ENABLED, re_rect);
-        paint_checkbox(
-            &Checkbox::new(ids::INSP_REGION_ENABLED, "Region")
-                .visual(store.checkbox_visual(ids::INSP_REGION_ENABLED))
-                .value(re_value),
-            re_rect,
-            scene,
-            text_system,
-            theme,
-        );
-        cur_y += cb_h + row_gap;
-
-        if matches!(re_value, CheckboxValue::Checked) {
-            let field_h = ROW_H_PX;
-            let cell_gap = Spacing::Md.px();
-            let cell_w = ((w - cell_gap) * 0.5).max(0.0);
-            paint_region_num_cell(
-                scene,
-                text_system,
-                hit_index,
-                store,
-                Rect::new(x, cur_y, cell_w, field_h),
-                "X",
-                ids::INSP_REGION_X,
-                label_font,
-                theme,
-            );
-            paint_region_num_cell(
-                scene,
-                text_system,
-                hit_index,
-                store,
-                Rect::new(x + cell_w + cell_gap, cur_y, cell_w, field_h),
-                "Y",
-                ids::INSP_REGION_Y,
-                label_font,
-                theme,
-            );
-            cur_y += field_h + row_gap;
-            paint_region_num_cell(
-                scene,
-                text_system,
-                hit_index,
-                store,
-                Rect::new(x, cur_y, cell_w, field_h),
-                "W",
-                ids::INSP_REGION_W,
-                label_font,
-                theme,
-            );
-            paint_region_num_cell(
-                scene,
-                text_system,
-                hit_index,
-                store,
-                Rect::new(x + cell_w + cell_gap, cur_y, cell_w, field_h),
-                "H",
-                ids::INSP_REGION_H,
-                label_font,
-                theme,
-            );
-            cur_y += field_h + row_gap;
-
-            let fc_value = store
-                .checkbox(ids::INSP_REGION_FILTER_CLIP)
-                .map_or(CheckboxValue::Checked, |(_, v)| v);
-            let fc_rect = Rect::new(x, cur_y, w, cb_h);
-            hit_index.register(ids::INSP_REGION_FILTER_CLIP, fc_rect);
-            paint_checkbox(
-                &Checkbox::new(ids::INSP_REGION_FILTER_CLIP, "Filter Clip")
-                    .visual(store.checkbox_visual(ids::INSP_REGION_FILTER_CLIP))
-                    .value(fc_value),
-                fc_rect,
-                scene,
-                text_system,
-                theme,
-            );
-            cur_y += cb_h + row_gap;
-        }
-    }
+    // A amostragem de REGIÃO mora num irmão — ver [`paint_region_rows`].
+    cur_y = paint_region_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        info,
+        x,
+        w,
+        cur_y,
+        label_font,
+        row_gap,
+    );
 
     paint_text(
         text_system,
@@ -362,4 +272,151 @@ fn paint_region_num_cell(
         text_system,
         theme,
     );
+}
+
+/// As duas linhas de PROVENIÊNCIA — de onde os pixels vêm e que tamanho tinham na origem.
+///
+/// Saiu do corpo de [`paint_render_source_section`] pelo cap de fn do painel, e é o *per-row
+/// split* que a própria nota daquele allowlist prescreve: é um bloco que não olha para mais nada
+/// da seção (nem `x`, nem `w`, nem o store), só formata dois factos e avança o `y`.
+fn paint_storage_rows(
+    info: &InspectorSpriteInfo,
+    y: f32,
+    mut pair: impl FnMut(&str, &str, f32) -> f32,
+) -> f32 {
+    let mut cur_y = y;
+    // Cleaner phrasing — strategy name + key/id separated by middle
+    // dot (the only ASCII-safe non-ASCII glyph allowed in UI strings;
+    // vide no_tofu_glyphs gate). Pre-canon was "Atlas key: 0" /
+    // "Texture id: 5" with the strategy redundantly named.
+    let storage_detail = match info.source_kind {
+        InspectorSpriteSource::Atlas { key } => format!("Atlas \u{00b7} key {}", key),
+        InspectorSpriteSource::Individual { texture_id } => {
+            format!("Individual \u{00b7} texture {}", texture_id)
+        }
+        InspectorSpriteSource::HandPacked => "Hand-packed".to_string(),
+        // W2.T2: tier-cooked KTX2 — read-only marker, no key/id shown.
+        InspectorSpriteSource::CookedTexture => "Cooked texture".to_string(),
+    };
+    cur_y = pair("Storage", &storage_detail, cur_y);
+    if let Some((pw, ph)) = info.source_pixels {
+        let px_str = format!("{} \u{00d7} {} px", pw, ph);
+        cur_y = pair("Source", &px_str, cur_y);
+    }
+    cur_y
+}
+
+/// **A amostragem de REGIÃO** (spec §3.3) — o toggle + os quatro campos px + o Filter Clip.
+///
+/// Saiu do corpo de [`paint_render_source_section`] pelo cap de fn do painel, e é o *per-row
+/// split* que a nota do allowlist prescreve: é o maior bloco da seção e o único que fala um
+/// vocabulário próprio (um sub-retângulo do asset), enquanto o resto descreve a PROVENIÊNCIA.
+///
+/// ⚠️ Escondido para `HandPacked` — aquele traz o próprio rect do asset, então o controle aqui
+/// seria um knob que o extract ignora.
+#[allow(clippy::too_many_arguments)]
+fn paint_region_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    info: &InspectorSpriteInfo,
+    x: f32,
+    w: f32,
+    y: f32,
+    label_font: f32,
+    row_gap: f32,
+) -> f32 {
+    let mut cur_y = y;
+    // Region sampling (spec §3.3) — hidden for Hand-packed (it brings its
+    // own rect from the asset). Toggle + (when on) X/Y/W/H px inputs +
+    // Filter Clip. Renders via the extract `region_subrect` (W2.T2.4).
+    if !matches!(info.source_kind, InspectorSpriteSource::HandPacked) {
+        let cb_h = 18.0_f32; // LITERAL-PX-OK: Checkbox visual height
+        let re_value = store
+            .checkbox(ids::INSP_REGION_ENABLED)
+            .map_or(CheckboxValue::Unchecked, |(_, v)| v);
+        let re_rect = Rect::new(x, cur_y, w, cb_h);
+        hit_index.register(ids::INSP_REGION_ENABLED, re_rect);
+        paint_checkbox(
+            &Checkbox::new(ids::INSP_REGION_ENABLED, "Region")
+                .visual(store.checkbox_visual(ids::INSP_REGION_ENABLED))
+                .value(re_value),
+            re_rect,
+            scene,
+            text_system,
+            theme,
+        );
+        cur_y += cb_h + row_gap;
+
+        if matches!(re_value, CheckboxValue::Checked) {
+            let field_h = ROW_H_PX;
+            let cell_gap = Spacing::Md.px();
+            let cell_w = ((w - cell_gap) * 0.5).max(0.0);
+            paint_region_num_cell(
+                scene,
+                text_system,
+                hit_index,
+                store,
+                Rect::new(x, cur_y, cell_w, field_h),
+                "X",
+                ids::INSP_REGION_X,
+                label_font,
+                theme,
+            );
+            paint_region_num_cell(
+                scene,
+                text_system,
+                hit_index,
+                store,
+                Rect::new(x + cell_w + cell_gap, cur_y, cell_w, field_h),
+                "Y",
+                ids::INSP_REGION_Y,
+                label_font,
+                theme,
+            );
+            cur_y += field_h + row_gap;
+            paint_region_num_cell(
+                scene,
+                text_system,
+                hit_index,
+                store,
+                Rect::new(x, cur_y, cell_w, field_h),
+                "W",
+                ids::INSP_REGION_W,
+                label_font,
+                theme,
+            );
+            paint_region_num_cell(
+                scene,
+                text_system,
+                hit_index,
+                store,
+                Rect::new(x + cell_w + cell_gap, cur_y, cell_w, field_h),
+                "H",
+                ids::INSP_REGION_H,
+                label_font,
+                theme,
+            );
+            cur_y += field_h + row_gap;
+
+            let fc_value = store
+                .checkbox(ids::INSP_REGION_FILTER_CLIP)
+                .map_or(CheckboxValue::Checked, |(_, v)| v);
+            let fc_rect = Rect::new(x, cur_y, w, cb_h);
+            hit_index.register(ids::INSP_REGION_FILTER_CLIP, fc_rect);
+            paint_checkbox(
+                &Checkbox::new(ids::INSP_REGION_FILTER_CLIP, "Filter Clip")
+                    .visual(store.checkbox_visual(ids::INSP_REGION_FILTER_CLIP))
+                    .value(fc_value),
+                fc_rect,
+                scene,
+                text_system,
+                theme,
+            );
+            cur_y += cb_h + row_gap;
+        }
+    }
+    cur_y
 }

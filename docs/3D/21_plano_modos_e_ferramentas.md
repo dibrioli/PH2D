@@ -3572,3 +3572,78 @@ pina a cegueira num teste próprio.
 **Mudança de comportamento, nomeada:** os sete verbos do Blender passam a
 depositar **na metade da taxa** no mesmo slider — é a correção, e ela é visível
 em toda cena que os use.
+
+---
+
+### §7.33 — ✅ O SEGUNDO SMOKE DA DEMÃO: a curva não era ESCOLHÍVEL, e a premissa do `Basic` era emprestada (2026-08-16)
+
+> Enio, re-smoke do `=33`: *"funciona corretamente mas não dá a opção de escolher
+> o falloff e deveria dar"*.
+
+**A demão passou** — a §7.32 curou a taxa e o ombro apareceu. O que sobrou é
+outro eixo: o **seletor de curva** existia e o artista não o alcançava.
+
+**Medido antes de qualquer hipótese.** O `paint_brush_tail` pintava a fileira
+atrás de `ui_level.shows(UiLevel::Pro)`, e o `UiLevel::default()` é `Basic` ⇒ o
+painel abre sem ela. Gate red-first
+(`the_basic_level_never_hides_the_curve_that_shapes_the_dab`) nasceu **VERMELHO**
+com a mensagem *"o Basic escondeu o seletor de curva com o Draw em mãos"*, nos
+vinte verbos.
+
+**A decisão não é de gosto, e a REFERÊNCIA a decide.** Lido o
+`properties_paint_common.py` do Blender:
+
+| fato medido | onde |
+|---|---|
+| `FalloffPanel` **não** é desenhado por `brush_settings_advanced` | classe própria, linha 675 |
+| no cabeçalho de ferramenta ele é um **popover sempre visível** | `layout.popover("VIEW3D_PT_tools_brush_falloff")`, linha 1885 |
+| no painel estreito ele é `DEFAULT_CLOSED` — **com o cabeçalho à vista** | linha 677 |
+| e ali o widget é um **dropdown**, não a fileira expandida | `if region.type == 'TOOL_HEADER' … else col.prop(…, text="")` |
+
+⇒ no Blender a curva é **dobrada, nunca ausente**: o artista sempre vê que ela
+existe. O nosso `Pro` a tornava **invisível sem rastro**, e é a diferença entre
+dobrar e amputar.
+
+⚠️ **A regra do `UiLevel` não estava errada — ela é NECESSÁRIA e não suficiente.**
+Ela diz *"só uma row cujo valor alguém ARMOU pode ser `Pro`"*, e a curva é armada
+pelo `arm_verb_defaults`, logo ela **podia** ser `Pro`. Ser admissível não é ser
+certo; quem decide a segunda metade é a referência, medida e não lembrada. As
+duas metades estão escritas no doc do enum.
+
+⚠️ **E o que estava de facto errado era a PREMISSA do `Basic`:** o doc dele dizia
+*"o vocabulário do SculptGL"*, e o SculptGL **não tem** seletor de curva — a dele
+é fixa. Herdar aquele vocabulário apagava do Basic um controle que a nossa malha
+tem **doze** vezes. *Um vocabulário herdado descreve a ferramenta de onde veio,
+não a que se está a construir.* Corrigido no `state.rs`.
+
+⚠️ **Segue uma faixa que REFLUI, e não um dropdown**, pelo precedente que o
+`paint/tool.rs` já mediu para os vinte verbos (*"um dropdown esconde quinze
+ferramentas atrás de um clique para mostrar uma"*): quem escolhe uma curva a
+escolhe COMPARANDO. O Blender troca para dropdown no painel estreito porque a
+fileira dele **transborda**; o `seg` desta casa **reflui**, então a razão dele
+não se aplica aqui.
+
+**Gates:** o novo (`the_basic_level_never_hides_the_curve_that_shapes_the_dab`,
+irmão exacto do `the_basic_level_never_hides_the_two_knobs_every_brush_has`,
+varrendo os vinte verbos) — e a metade do falloff saiu do
+`a_pro_row_is_reachable_in_pro_and_absent_in_basic`, que segue a varrer a TABELA
+e continua verde. **1 mutação, 1 sangra** (reinstalar o `if shows(Pro)` ⇒ RED só
+no gate novo, que é o par certo).
+
+⚠️ **E um VERMELHO-LATENTE meu fechou junto, achado por rodar o gate que o
+fechamento por crate não alcança:** o `rows.rs` estava em **603 > 600** desde a
+própria wave da demão (§7.31) — o `architecture_panel_loc_cap` mora em
+`ph2d-editor-core/tests/`, e um `cargo test -p ph2d-panel-sculpt3d` **não o
+alcança** (a família estrutural que esta casa já registrou várias vezes). Cortado
+por **ASSUNTO** para o irmão `rows_alpha.rs` (549 + 83): a tabela diz *o que um
+knob É*, e o irmão responde as duas outras perguntas do PADRÃO — *quando uma
+pista dele APARECE* e *como um valor de pista ATRAVESSA para o motor*. ⚠️ O
+`always` **não veio junto**, e a ausência é o corte: ele é o predicado partilhado
+pelas três tabelas e não fala do padrão.
+
+**Superfície:** zero schema, zero id novo, zero `Cargo.toml`, zero dep, zero ADR,
+contrato congelado intocado.
+
+**Mudança de comportamento, nomeada:** o seletor de curva passa a ser pintado
+**sempre**, em todo verbo — o `Pro` deixa de o esconder. Nenhuma curva muda de
+valor (o `arm_verb_defaults` segue armando a da referência).

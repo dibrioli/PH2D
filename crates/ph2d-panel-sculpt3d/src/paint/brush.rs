@@ -72,31 +72,49 @@ pub(super) fn paint_brush_tail(
     // O falloff logo abaixo dos knobs: ele é a FORMA do peso, e a força é
     // quanto dele se aplica.
     //
-    // ⚠️ **PRO, e é o exemplo que dá nome à regra:** a curva é escolhida pelo
-    // `arm_verb_defaults` a cada troca de ferramenta (`VerbProfile::falloff`),
-    // então em Basic o artista está com a curva que a REFERÊNCIA escolheu para
-    // aquele verbo — não com um vazio. Em Pro ele ganha ACESSO ao número, não um
-    // número novo.
-    let y = if snap.ui.ui_level.shows(UiLevel::Pro) {
-        let selected = Falloff::ALL
-            .iter()
-            .position(|&f| f == snap.ui.brush.falloff)
-            .unwrap_or(0);
-        let labels: Vec<&str> = Falloff::ALL.iter().map(|f| f.label()).collect();
-        labelled_seg(
-            ctx,
-            tr("panel.sculpt3d.falloff"),
-            ids::SCULPT3D_SEC_BRUSH,
-            &ids::SCULPT3D_FALLOFF,
-            &labels,
-            selected,
-            x,
-            w,
-            y,
-        )
-    } else {
-        y
-    };
+    // ⚠️ **BASIC, e a premissa que ele era `Pro` foi REFUTADA pela referência.**
+    // O argumento antigo era que a curva já vem armada pelo `arm_verb_defaults`
+    // a cada troca de ferramenta (`VerbProfile::falloff`), logo esconder-lhe o
+    // acesso seria divulgação progressiva. A regra do [`UiLevel`] admite isso —
+    // *só uma row cujo valor alguém ARMOU pode ser `Pro`* —, mas ser ADMISSÍVEL
+    // não é ser certo, e a referência mede o contrário:
+    //
+    // * no `properties_paint_common.py` o `FalloffPanel` **não** é desenhado por
+    //   `brush_settings_advanced` — ele é painel de primeira classe;
+    // * no cabeçalho de ferramenta ele é um **popover sempre visível**
+    //   (`layout.popover("VIEW3D_PT_tools_brush_falloff")`).
+    //
+    // Ou seja: no Blender a curva é *dobrada*, nunca *ausente* — o artista vê um
+    // cabeçalho que diz que ela existe. O nosso `Pro` a tornava **invisível sem
+    // rastro**, e é a diferença entre dobrar e amputar. Reportado no smoke da
+    // demão: *"funciona corretamente mas não dá a opção de escolher o falloff"*.
+    //
+    // ⚠️ **E o que estava errado era a PREMISSA do Basic, não a lei dele:** o doc
+    // do [`UiLevel::Basic`] diz *"o vocabulário do SculptGL"*, e o SculptGL **não
+    // tem** seletor de curva — a dele é fixa. Herdar aquele vocabulário apagava
+    // um controle que a nossa malha tem **doze** vezes.
+    //
+    // ⚠️ **Segue uma faixa que REFLUI, e não um dropdown**, pelo precedente que o
+    // `tool.rs` já mediu para os vinte verbos: um dropdown esconde onze curvas
+    // atrás de um clique para mostrar uma, e quem escolhe uma curva a escolhe
+    // COMPARANDO. (O Blender troca para dropdown no painel estreito, mas o `seg`
+    // desta casa reflui em vez de transbordar — a razão dele não se aplica.)
+    let selected = Falloff::ALL
+        .iter()
+        .position(|&f| f == snap.ui.brush.falloff)
+        .unwrap_or(0);
+    let labels: Vec<&str> = Falloff::ALL.iter().map(|f| f.label()).collect();
+    let y = labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.falloff"),
+        ids::SCULPT3D_SEC_BRUSH,
+        &ids::SCULPT3D_FALLOFF,
+        &labels,
+        selected,
+        x,
+        w,
+        y,
+    );
     // **O PADRÃO**, logo abaixo do falloff — os dois moldam o MESMO peso: o
     // falloff diz como ele cai do centro à borda, o alpha diz onde ele age
     // dentro disso. A primeira opção é NENHUM, e o deslocamento de um é a mesma

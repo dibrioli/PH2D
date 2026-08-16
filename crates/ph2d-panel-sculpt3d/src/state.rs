@@ -49,12 +49,29 @@ thread_local! {
 /// é amputação — o artista ficaria com uma ferramenta que não faz o que o nome
 /// dela diz e sem nada na tela explicando por quê.
 ///
+/// ⚠️ **Ela é NECESSÁRIA e não suficiente, e é isso que o falloff custou:** a
+/// curva é armada pelo `arm_verb_defaults`, logo *podia* ser `Pro` — e era, e o
+/// smoke reprovou (*"não dá a opção de escolher o falloff e deveria dar"*).
+/// Quem decide a segunda metade é a REFERÊNCIA, medida e não lembrada: no
+/// Blender a curva é *dobrada* (`DEFAULT_CLOSED` com cabeçalho à vista, mais um
+/// popover no cabeçalho de ferramenta), nunca *ausente*. **Dobrar é divulgação
+/// progressiva; sumir sem rastro é amputação**, e o nosso `Pro` fazia o segundo.
+///
 /// ⚠️ **`Ord` é a lei inteira:** uma row aparece quando `nível do painel >=
 /// nível da row`. Escrito como dois `if`s (um por lado) o terceiro degrau nasce
 /// fora da regra.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum UiLevel {
-    /// O vocabulário do SculptGL: o que TODO pincel tem.
+    /// O que TODO pincel tem: o verbo, a referência, o raio, a força e a
+    /// **CURVA**.
+    ///
+    /// ⚠️ **Isto dizia *"o vocabulário do SculptGL"* e a frase custou um
+    /// smoke.** O SculptGL **não tem** seletor de curva — a dele é fixa —, então
+    /// herdar o vocabulário dele apagava do Basic um controle que a nossa malha
+    /// tem **doze** vezes e que a OUTRA referência trata como primeiro-classe (o
+    /// `FalloffPanel` do Blender não é `brush_settings_advanced`, e no cabeçalho
+    /// de ferramenta ele é um popover sempre visível). *Um vocabulário herdado
+    /// descreve a ferramenta de onde veio, não a que se está a construir.*
     #[default]
     Basic,
     /// Mais os knobs que o modo tinha armado.

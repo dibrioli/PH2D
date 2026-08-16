@@ -1590,17 +1590,6 @@ fn a_pro_row_is_reachable_in_pro_and_absent_in_basic() {
                 row.label
             );
         }
-        // E o seletor de curva, que não é uma row da tabela mas segue a mesma lei.
-        assert!(
-            in_pro.iter().any(|(id, _)| *id == ids::SCULPT3D_FALLOFF[0]),
-            "o Falloff é de Pro e o Pro não o pintou"
-        );
-        assert!(
-            !in_basic
-                .iter()
-                .any(|(id, _)| *id == ids::SCULPT3D_FALLOFF[0]),
-            "o Falloff é de Pro e o Basic o pintou assim mesmo"
-        );
     }
     assert!(
         seen.len() >= 3,
@@ -1832,4 +1821,37 @@ fn the_beta_slider_starts_where_the_engine_stops_amplifying() {
         row.min,
         ph2d_sculpt3d::HC_VERTEX_MIN
     );
+}
+
+/// **O Basic nunca esconde a CURVA que dá forma ao dab** — seja qual for o
+/// verbo.
+///
+/// ⚠️ **A régua é a REFERÊNCIA, não o gosto.** Medido no
+/// `properties_paint_common.py` do Blender: o `FalloffPanel` **não** é desenhado
+/// por `brush_settings_advanced` — ele é painel de primeira classe, e no
+/// cabeçalho de ferramenta ele é um **popover sempre visível**
+/// (`layout.popover("VIEW3D_PT_tools_brush_falloff")`). Ele é *dobrado*, nunca
+/// *ausente*: o artista SEMPRE vê que existe uma curva.
+///
+/// ⚠️ **E é por isso que a premissa do Basic estava errada, não a regra dele:**
+/// o doc do [`UiLevel::Basic`] diz *"o vocabulário do SculptGL"*, e o SculptGL
+/// **não tem** seletor de curva (a dele é fixa) — então herdar aquele
+/// vocabulário apagava um controle que a NOSSA malha tem doze vezes e que a
+/// outra referência trata como primeiro-classe.
+#[test]
+fn the_basic_level_never_hides_the_curve_that_shapes_the_dab() {
+    for v in Verb::ALL {
+        let mut ui = Sculpt3dUi::default();
+        ui.brush.verb = v;
+        ui.ui_level = UiLevel::Basic;
+        let (mut host, mut state) = arrange(ui);
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        assert!(
+            painted
+                .iter()
+                .any(|(id, _)| *id == ids::SCULPT3D_FALLOFF[0]),
+            "o Basic escondeu o seletor de curva com o {} em mãos",
+            v.label()
+        );
+    }
 }

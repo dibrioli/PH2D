@@ -39,6 +39,11 @@ mod shading;
 mod topology;
 pub use topology::TOPOLOGY;
 
+/// As perguntas que o PADRÃO faz — ver o doc do módulo.
+#[path = "rows_alpha.rs"]
+mod alpha;
+use alpha::{MAX_AXIS_ELEV_F32, degrees, directional_alpha, stamp_alpha};
+
 pub use types::{Place, Row, Section};
 
 /// O teto da pista de **Extract Smooth**, em passadas.
@@ -499,65 +504,6 @@ static BRUSH: &[Row] = &[
         place: Place::AfterExtract,
     },
 ];
-
-/// **Só com um CARIMBO armado** — as duas pistas de colocação.
-///
-/// ⚠️ **A pergunta é `is_image`, e não `is_directional`, e a diferença é o que
-/// separa um carimbo de um campo:** os três procedurais direcionais apontam para
-/// um lado e são HOMOGÊNEOS ao longo dele — um campo infinito não tem posição,
-/// só fase, e uma fase é outro controle (uma semente) que este módulo não tem.
-/// Oferecer o deslocamento ali seriam duas pistas que o Strata ignora por
-/// completo e que o Scratches e o Weave leem como um número sem significado.
-///
-/// ⚠️ E a neutralidade dos outros não depende desta função: quem a garante é o
-/// `Brush::alpha_frame`, que ZERA o deslocamento sem uma imagem armada. Esta
-/// decide o que APARECE; aquele decide o que o motor recebe — e é por isso que
-/// esconder a row aqui não pode deixar um valor autorado agindo em silêncio.
-fn stamp_alpha(u: &Sculpt3dUi) -> bool {
-    u.brush
-        .alpha
-        .as_ref()
-        .is_some_and(ph2d_sculpt3d::Alpha::is_image)
-}
-
-/// **Só com um padrão DIRECIONAL armado.**
-///
-/// ⚠️ A pergunta é feita à porta do MOTOR ([`ph2d_sculpt3d::Alpha::is_directional`]),
-/// nunca a uma lista de nomes aqui: sob um dos seis isotrópicos o eixo não move
-/// um bit — há gate provando —, e duas pistas que desenham e não fazem nada são
-/// o controle morto que esta casa varre a cada wave. É a mesma lei do
-/// `Plane Offset` e das duas pistas de lâmpada sob um matcap.
-fn directional_alpha(u: &Sculpt3dUi) -> bool {
-    u.brush
-        .alpha
-        .as_ref()
-        .is_some_and(ph2d_sculpt3d::Alpha::is_directional)
-}
-
-/// Um valor de pista → graus inteiros.
-///
-/// ⚠️ **A pista é `f32` e o ângulo é `u16`**, e a conversão mora AQUI, na
-/// fronteira, e não no motor: o rotor deste app anda de grau em grau, então um
-/// ângulo fracionário não teria como ser resolvido sem um segundo caminho. É a
-/// mesma travessia que o painel já faz para as duas pistas de lâmpada.
-/// ⚠️ **ARREDONDA, e o gate de costura pegou o truncamento na hora.** A row
-/// mostra zero casas, então `134,625` é lido como **135** no readout; truncando,
-/// o padrão iria para 134 e o número na tela discordaria do eixo que o pincel
-/// usa — a doença de *seed ≠ sample* que este repo já pagou em quatro módulos.
-/// A tolerância de `0,5` do gate `each_row_owns_exactly_one_field` é literalmente
-/// o arredondamento que ele espera encontrar aqui.
-///
-/// ⚠️ **`safe_clamp` e não `.clamp`**, e o `arch_safe_clamp_only` foi quem cobrou:
-/// o teto `f32::from(u16::MAX)` **não é um literal**, e o `.clamp` da `std`
-/// **panica** com bounds trocados e devolve o valor original com `NaN`. Aqui um
-/// `NaN` cairia no `as u16`, que é comportamento definido mas absurdo (zero) — a
-/// peneira tem de vir antes.
-fn degrees(v: f32) -> u16 {
-    ph2d_editor_core::math::safe_clamp(v.round(), 0.0, f32::from(u16::MAX)) as u16
-}
-
-/// O zênite do eixo, lido do dono dele.
-const MAX_AXIS_ELEV_F32: f32 = ph2d_sculpt3d::MAX_AXIS_ELEV_DEG as f32; // CLAMP-OK: teto do motor
 
 /// Toda seção que tem rows de slider, em ordem de pintura.
 ///

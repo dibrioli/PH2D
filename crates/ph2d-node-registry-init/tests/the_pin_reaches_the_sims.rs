@@ -395,3 +395,191 @@ fn the_flock_reads_what_a_force_writes() {
         worst(&calm, &wandering)
     );
 }
+
+// ---------------------------------------------------------------------------
+// O PINO SEGUE A PRESCRIÇÃO — a correção de 2026-08-16
+// ---------------------------------------------------------------------------
+//
+// ⚠️ **A lei que estes gates pinam substitui a que a wave anterior escreveu.** Ela
+// dizia que o pino genérico *"segura ONDE ESTÁ, que é o que pregar uma partícula
+// significa quando não há alvo nenhum a que a prender"* — e o smoke da cena `=50`
+// mediu o preço: nem o `spacing`, nem a âncora, **nem nada** alcançava o pinado
+// (`0,0000` nos dois), o que fazia do pino um congelamento no espaço do mundo e
+// tornava *uma bandeira num mastro que se move* inexprimível.
+//
+// A lei que fica: **uma partícula de massa infinita segue a pose que o NÓ sabe
+// prescrever para ela.** O corpo mole sabe (a malha de repouso ancorada); a corda
+// e o bando não sabem, e ali `onde está` continua a ser a única resposta.
+
+/// O corpo mole da cena `=50` com o pino genérico na PRIMEIRA LINHA e a âncora
+/// vinda de um `value.lfo` constante — a única forma de a mexer, porque
+/// `anchor_x`/`anchor_y` são **PORTAS** e um `set_param` com esses nomes é
+/// ignorado em silêncio (foi assim que a minha primeira sonda mediu zero dos dois
+/// lados e quase acusou o pino intrínseco).
+fn body_on_a_mast(intrinsic: bool, generic_pin: bool) -> (Graph, NodeId, NodeId) {
+    let mut g = Graph::new();
+    let b = g.add_node("motion.soft_body");
+    g.set_param(b, "rows", 6.0);
+    g.set_param(b, "cols", 6.0);
+    g.set_param(b, "spacing", 0.7);
+    g.set_param(b, "gravity", 9.8);
+    g.set_param(b, "pin", if intrinsic { 1.0 } else { 0.0 });
+    let mast = g.add_node("value.lfo");
+    g.set_param(mast, "amplitude", 0.0); // constante: a saída é o `offset`
+    g.set_param(mast, "offset", 0.0);
+    wire(&mut g, mast, 0, b, 0, false);
+    close_loop(
+        &mut g,
+        b,
+        if generic_pin {
+            Pin::At {
+                first: 0.0,
+                count: 6.0,
+                strength: 1.0,
+            }
+        } else {
+            Pin::None
+        },
+    );
+    (g, b, mast)
+}
+
+/// Assenta `TICKS` tiques, aplica `edit` ao grafo, e assenta outros `TICKS` — tudo
+/// **no MESMO `Cook`**.
+///
+/// ⚠️ **É esta a diferença entre o gate e uma fixture que não contém o fenômeno,
+/// e ela custou uma mutação sobrevivente.** O `pose()` constrói um `Cook` novo, e
+/// dois cooks são duas simulações do ZERO: com o param já mudado na semeadura, a
+/// malha nasce na forma nova e um pino que meramente CONGELA congela-a lá — o gate
+/// fica verde sobre a lei que ele existe para recusar. O report do Enio é sobre
+/// arrastar um slider com a cena a CORRER, e é isso que este harness reproduz.
+fn settle_edit_settle(
+    reg: &NodeRegistry,
+    g: &mut Graph,
+    node: NodeId,
+    edit: impl FnOnce(&mut Graph),
+) -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
+    let mut cook = Cook::new();
+    let sample = |g: &Graph, cook: &mut Cook, from: usize| {
+        let mut last = Stream::new(0);
+        for k in from..from + TICKS {
+            let playhead = k as f64 * DT;
+            cook.advance_tick(g, reg, playhead).expect("o tique avança");
+            let out = cook.cook(g, reg, node, playhead).expect("coze");
+            let CookValue::Instances(st) = &out[0] else {
+                panic!("a saída é um stream")
+            };
+            last = st.clone();
+        }
+        positions(&last)
+    };
+    let before = sample(g, &mut cook, 0);
+    edit(g);
+    let after = sample(g, &mut cook, TICKS);
+    (before, after)
+}
+
+/// **O MASTRO LEVA A BANDEIRA, E OS DOIS PINOS CONCORDAM AO BIT.**
+///
+/// A metade que importa não é *"o pinado se move"* — é que ele se move
+/// **exactamente como o intrínseco**. Duas espécies de pino que discordassem sobre
+/// onde uma partícula pregada fica seriam duas respostas à mesma pergunta, e o
+/// artista veria a linha de topo num lugar diferente conforme o caminho pelo qual
+/// a pregou.
+#[test]
+fn the_mast_carries_the_flag_and_both_pins_agree() {
+    let reg = registry();
+    let settle_moved = |intrinsic: bool, generic: bool| -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
+        let (mut g, b, mast) = body_on_a_mast(intrinsic, generic);
+        let (before, after) =
+            settle_edit_settle(&reg, &mut g, b, |g| g.set_param(mast, "offset", 3.0));
+        assert_eq!(before.len(), after.len());
+        (before, after)
+    };
+    let (intrinsic_before, by_intrinsic) = settle_moved(true, false);
+    let (generic_before, by_generic) = settle_moved(false, true);
+
+    // A linha de topo é a pinada nos dois casos.
+    for i in 0..6 {
+        assert_eq!(
+            (by_intrinsic[i][0].to_bits(), by_intrinsic[i][1].to_bits()),
+            (by_generic[i][0].to_bits(), by_generic[i][1].to_bits()),
+            "a partícula {i} tem de pousar no MESMO lugar pelos dois pinos: \
+             {:?} contra {:?}",
+            by_intrinsic[i],
+            by_generic[i],
+        );
+    }
+    // E o CONTROLE: ela de facto ANDOU o que o mastro andou, senão *"os dois
+    // concordam"* seria satisfeito por dois pinos igualmente congelados — que é
+    // exactamente o mundo que esta lei substitui.
+    //
+    // ⚠️ **A régua é o DESLOCAMENTO, nunca a posição crua**: a partícula 0 é o
+    // CANTO da malha (`rest[0].x = −1,75` numa 6×6 de espaçamento 0,7), então uma
+    // asserção sobre `x > 2` reprova produto correto por `3,0 − 1,75 = 1,2500` — o
+    // número exacto que este gate imprimiu na primeira corrida.
+    let moved = worst(&generic_before[..6], &by_generic[..6]);
+    assert!(
+        moved > 2.9,
+        "o pinado tem de seguir o mastro os 3,0; ele andou {moved:.4}"
+    );
+    assert!(
+        worst(&intrinsic_before[..6], &by_intrinsic[..6]) > 2.9,
+        "e o intrínseco também — é o CONTROLE do controle"
+    );
+}
+
+/// **O `spacing` ALCANÇA O PINADO.** O report do Enio, red-first: com a lei
+/// anterior este número era `0,0000`.
+#[test]
+fn the_rest_shape_reaches_a_generically_pinned_particle() {
+    let reg = registry();
+    let (mut g, b, _) = body_on_a_mast(false, true);
+    let (before, after) = settle_edit_settle(&reg, &mut g, b, |g| g.set_param(b, "spacing", 1.4));
+
+    let pinned = worst(&before[..6], &after[..6]);
+    assert!(
+        pinned > 0.5,
+        "mexer no `spacing` tem de mover a linha PINADA; ela andou {pinned:.4}"
+    );
+    // O CONTROLE, que é o que separa *"a lei chegou"* de *"tudo se mexeu"*: sem
+    // tocar em param nenhum o corpo assentado fica parado.
+    let (mut g2, b2, _) = body_on_a_mast(false, true);
+    let (a, bb) = settle_edit_settle(&reg, &mut g2, b2, |_| {});
+    assert!(
+        worst(&a, &bb) < 0.01,
+        "o controle tem de estar assentado; ele andou {:.4}",
+        worst(&a, &bb)
+    );
+}
+
+/// **A CORDA E O BANDO NÃO GANHAM PRESCRIÇÃO** — a outra metade da lei, e a que
+/// impede alguém de "completar" a simetria.
+///
+/// Uma corda tem restrições de DISTÂNCIA, não uma forma de repouso posicional; um
+/// bando não tem nem isso. Ali *onde está* é a única resposta, e mexer numa
+/// dimensão do nó não pode teletransportar um ponto pregado.
+#[test]
+fn a_rope_pin_still_holds_where_it_is() {
+    let reg = registry();
+    let (mut g, r) = rope(Pin::At {
+        first: ROPE_PIN as f32,
+        count: 1.0,
+        strength: 1.0,
+    });
+    let (before, after) = settle_edit_settle(&reg, &mut g, r, |g| g.set_param(r, "gravity", 2.0));
+    let moved = ((before[ROPE_PIN][0] - after[ROPE_PIN][0]).powi(2)
+        + (before[ROPE_PIN][1] - after[ROPE_PIN][1]).powi(2))
+    .sqrt();
+    assert!(
+        moved < 1e-4,
+        "o ponto pregado da corda tem de segurar onde está; ele andou {moved:.6}"
+    );
+    // E o CONTROLE: o resto da corda RESPONDE (senão o gate passaria sobre uma
+    // corda inteira congelada).
+    let free = worst(&before[..ROPE_PIN], &after[..ROPE_PIN]);
+    assert!(
+        free > 0.05,
+        "o resto da corda tem de responder à gravidade; ele andou {free:.6}"
+    );
+}

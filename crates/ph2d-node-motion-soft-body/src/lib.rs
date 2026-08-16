@@ -316,16 +316,32 @@ fn step(
     let mut pred = vec![[0.0f32; 2]; n];
     for i in 0..n {
         let w = inv_mass.get(i).copied().unwrap_or(1.0);
-        if p.is_pinned(i) {
+        // ⚠️ **UMA lei para as duas espécies de pino, e a correção é de 2026-08-16.**
+        // O intrínseco (a linha de topo, o param `pin`) sempre foi clampado ao alvo
+        // `âncora + repouso`; o genérico — a massa infinita que um
+        // `motion.pin_constraint` na cadeia de estado escreve — segurava **onde
+        // estava**, e eu escrevi isso como decisão (*"não há alvo nenhum a que o
+        // prender"*). **Medido, era um beco sem saída:** arrastar a âncora movia a
+        // linha intrínseca **3,0000** e a genérica **0,0000**, com o corpo inteiro
+        // preso em 0,0020 — a bandeira num mastro que se move era inexprimível, e
+        // mexer no `spacing` deixava a linha pinada na largura antiga (o report do
+        // Enio no smoke da cena `=50`).
+        //
+        // A lei que fica é a da referência (Blender Cloth segue a malha original ·
+        // Vellum `pintoanimation` segue a geometria animada · nCloth *constrain to
+        // transform*): **uma partícula de massa infinita segue a pose que o nó sabe
+        // PRESCREVER para ela.** Este nó sabe — é a malha de repouso ancorada, e é
+        // função de `anchor`/`rows`/`cols`/`spacing`, todos vivos. A corda e o bando
+        // **não** sabem (uma corda tem restrições de distância, não uma forma de
+        // repouso posicional), e é por isso que ali `pos[i]` continua a ser a única
+        // resposta — a mesma lei, com o nó a decidir se tem prescrição.
+        //
+        // ⚠️ O preço, nomeado: pinar uma partícula de um corpo JÁ ASSENTADO a
+        // clampa ao repouso em vez de a congelar onde ela está. É exactamente o que
+        // o pino intrínseco sempre cobrou, e quem quer uma partícula meramente mais
+        // pesada tem o `strength < 1` (que não entra neste ramo).
+        if p.is_pinned(i) || w <= 0.0 {
             pred[i] = pin_target(anchor, rest, i);
-        } else if w <= 0.0 {
-            // ⚠️ **Duas espécies de pino, e a diferença é o ALVO.** O intrínseco
-            // (a linha de topo) é clampado a um alvo derivado do repouso + âncora,
-            // que uma `value.lfo` pode varrer; o genérico — a massa infinita que um
-            // `motion.pin_constraint` na cadeia de estado escreve — segura **onde
-            // está**, que é o que *pregar uma partícula* significa quando não há
-            // alvo nenhum a que a prender.
-            pred[i] = pos[i];
         } else {
             // The external `accel` lands beside the built-in gravity: both are
             // accelerations, and a prediction takes one as `a·dt²`. A pinned
@@ -382,10 +398,15 @@ fn step(
         // O puxão para o goal é distribuído pela massa inversa, exactamente como
         // o `motion.integrate` escala a velocidade por ela: peso `1` é o corpo de
         // hoje **ao bit** (`x · 1.0` é exacto em IEEE-754) e peso `0` deixa a
-        // partícula onde a predição a pôs — que, para um pino genérico, é onde ela
-        // já estava.
+        // partícula onde a predição a pôs — que, para os DOIS pinos, é o alvo
+        // `âncora + repouso`.
+        //
+        // ⚠️ O ramo é `pull <= 0.0` e não `is_pinned`, e não é higiene: com peso
+        // zero a outra expressão vale `x + (g − x)·0`, que é `x` para todo `g`
+        // FINITO e **NaN** para um `g` infinito. O ramo é o que impede um goal
+        // degenerado de envenenar uma partícula que, por definição, nada move.
         let pull = p.stiffness * inv_mass.get(i).copied().unwrap_or(1.0);
-        let mut np = if p.is_pinned(i) {
+        let mut np = if p.is_pinned(i) || pull <= 0.0 {
             pred[i] // pinned particles stay exactly on the pin
         } else {
             [

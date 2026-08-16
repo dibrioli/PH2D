@@ -288,6 +288,13 @@ nem faz ship**; entrega este handoff e espera. Conteúdo mínimo (curto, factual
 5. **O que só o `ship.sh` pega** (o gate de integração NÃO roda): fmt/typos pré-fork, deps novas
    p/ machete, clippy latente, RUSTSEC ([[project_integration_prefork_lines_ship_drift]]).
 6. **Ordem/dependências** entre commits, se houver, e **o que smoke-testar** (o que NÃO foi smokado).
+7. ⚠️ **RECLAME o `incremental/` da sua worktree** — depois do gate batched e do handoff, antes de
+   parar: `rm -rf "$(git rev-parse --show-toplevel)"/target/*/incremental`. São **25 GB por
+   worktree** (medido 2026-08-16: 54% do target), risco **zero** (o cargo o recria) e **sem ship**.
+   Cinco linhas fechando assim tiram ~125 GB do pico. ⚠️ **Reclamar no FIM, nunca desligar no
+   COMEÇO:** durante a jornada o `incremental/` do `dev` é o que faz o `cargo check -p` voar; o que
+   ele não pode é sobreviver à linha que o criou. Tabela e as outras duas regras:
+   [`DIRETIVA_FIM_DE_DIA.md`](DIRETIVA_FIM_DE_DIA.md) §2-bis.
 
 Modelo de resumo no fim da linha: *"Linha `<módulo>` pronta (HEAD `<sha>`, N commits). Handoff
 de integração: <itens 2–6>. Aguardo ordem de integração."*
@@ -850,8 +857,14 @@ Separadas por confiança. Linux-benchmarks **não transferem direto** pro Apple 
   incremental. `mold` é **incompatível com macOS** (ELF-only, erro fatal) — não usar.
 - **Redução de debug-info = ✅ JÁ NO GATE.** `[profile.ci-test] debug = false`, e o gate
   (`nextest-impacted.sh` + `ship.sh`) roda `--cargo-profile ci-test` → debug-info já
-  cortado onde importa. O `[profile.dev] debug = true` só afeta `cargo check` (irrelevante —
-  não linka) e builds ad-hoc (que evitamos).
+  cortado onde importa. ⚠️ **E a frase que estava aqui — *"o `[profile.dev] debug = true` só afeta
+  `cargo check` (irrelevante — não linka) e builds ad-hoc (que evitamos)"* — era FALSA, medida em
+  2026-08-16:** o `cargo test -p`, que é o gate de fechamento que a CLAUDE.md §2 prescreve, LINKA
+  binários de teste sob o `dev` — e eles somavam **8,3 GB em 40 binários, 208 MB cada**, no target
+  do primário. Não eram *ad-hoc*: eram o fechamento. A cura shipou como
+  `split-debuginfo = "unpacked"` no `[profile.dev]` (**2,5× medido**, A/B na
+  [`DIRETIVA_FIM_DE_DIA.md`](DIRETIVA_FIM_DE_DIA.md) §2-bis Regra 3), e o preço é pequeno porque a
+  `.debug_line` sobrevive no binário — o backtrace mantém `file:line`.
 - **`prefer-dynamic` (dynamic-linking) = ❌ NÃO adotar.** Só ajuda LINK (gate infrequente),
   não o inner loop (check). Com lld + debug=false já ativos, o link deixou de ser dominante
   → ganho marginal. Custo: mudar RUSTFLAGS invalida a **base CoW warm** (rebuild completo) +

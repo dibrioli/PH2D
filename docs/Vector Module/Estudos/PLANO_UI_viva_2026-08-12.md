@@ -120,11 +120,21 @@ enquanto iterava `self.tracks`; copiar os dois eixos da lei (`character`/`reduce
 antes do laço apaga a alocação e a segunda travessia. **449 → 340 µs (1,32×)** no repouso,
 **3,80 → 3,15 (1,21×)** no chrome, byte-idêntico por construção (uma lei, dois chamadores).
 
-⚠️ **O que fica ABERTO, nomeado:** 2,05% de um quadro é pago **com o app parado**, para sempre; e a
-**PODA nunca dispara no app real** (o `PRUNE_AFTER_S` promete despejar quem *"deixa de ser
-pintado"*, e o tique toca **todos** os ids macios em todo quadro, pintados ou não). Encolher isso é
-mexer no `tick_hover` — o publish do eixo de hover atravessa nove consumidores e tem histórico de
-defeito subtil de *flash* —, então é **wave própria com ordem**, não rodapé.
+⚠️ **O que fica ABERTO, nomeado:** 2,0% de um quadro é pago **com o app parado**, para sempre. E a
+frase que este parágrafo trazia sobre a poda estava **meio errada**: ela **DISPARA** — só que para
+quem **sai do REGISTO**, nunca para quem deixa de ser pintado. O `animate` zera o `idle_s` de todo
+widget macio em todo quadro (pintado ou não), então o `PRUNE_AFTER_S` só alcança um id que
+`hover_targets()` deixou de listar; há gate a prová-lo (`ids_that_stop_being_painted_are_pruned`:
+50 tracks → `remembered() == 0`).
+
+⚠️ **E a ATRIBUIÇÃO dos 335 µs foi medida em vez de suposta, com duas hipóteses minhas a cair:**
+o relógio (`advance` + `animate × 4491` + o `Vec`) custa **53 µs** e as duas travessias do store
+(`hover_targets` + `set_hover_live × 4491`) custam **56** ⇒ **110 de 335, um terço**. O resíduo é
+**cache**, e o próprio censo o prova sem instrumento: **162 widgets custam 3,09 µs e 4491 custam
+335** — *27,7× de população para 108× de custo*, super-linear onde uma soma de peças `O(n)` seria
+linear. ⇒ **a cura não é micro-otimizar uma peça** (nenhuma passa de 52 µs): é **não TOCAR** em
+4491 entradas, o que é o desenho do *conjunto sujo* e mexe no `tick_hover`, cujo publish atravessa
+nove consumidores e tem histórico de defeito subtil de *flash* — **wave própria com ordem**.
 
 ### 1.5 O gate que carrega a wave
 
@@ -260,7 +270,7 @@ gate** se move.
 > nenhum** — faz a taxa ler a fronteira que o clamp ao lado dela já lia, que é o que separa esta
 > wave do *«inventar um tecto por campo»* que a sonda anterior proibiu.
 >
-> ⚠️ **Fica ABERTO, com o número:** **146** campos não têm intervalo nenhum (posição em px,
+> ⚠️ **Fica ABERTO, com o número:** **141** campos não têm intervalo nenhum (posição em px,
 > contagens sem tecto) e continuam no atalho histórico. Um tecto para eles tem de ser **MEDIDO**,
 > nunca escolhido; o primitivo para *«tem mínimo e não tem máximo»* é o `set_number_drag_rate`, que
 > já existe e não inventa fronteira.
@@ -324,12 +334,18 @@ e sem separar as duas um zero é inatribuível — a corrida sem mão imprime **
 recuo para (A) em X11, e o artista de X11 teria um gesto com outro alcance.
 
 **Metade 2 — e isto é o que mata a wave, não a portabilidade.** Rodado o censo
-`census_of_how_many_pixels_cross_a_whole_field` no tip de hoje: **322 campos com intervalo
-conhecido, TODOS a 250,00 px, ZERO abaixo de 20 px** (a wave 4 fechou os 43), e **146 sem intervalo
-nenhum**. O curso de (A) é ~600 px ⇒ **2,4× o que é preciso para atravessar um campo INTEIRO**, e
-metade disso para chegar a qualquer extremo a partir do meio. *O curso não aperta em nenhum dos 322.*
+`census_of_how_many_pixels_cross_a_whole_field`: **327 campos com intervalo conhecido, TODOS a
+250,00 px, ZERO abaixo de 20 px** (a wave 4 fechou os 43), e **141 sem intervalo nenhum**. O curso
+de (A) é ~600 px ⇒ **2,4× o que é preciso para atravessar um campo INTEIRO**, e metade disso para
+chegar a qualquer extremo a partir do meio. *O curso não aperta em nenhum dos 327.*
 
-⚠️ **E nos 146 restantes um cursor infinito piora o problema em vez de o curar:** o que lhes falta é
+> ⚠️ **Este parágrafo dizia `322` e `146` sob a etiqueta *"no tip de hoje"*, e a etiqueta deixou de
+> ser verdadeira UM COMMIT depois de ser escrita** — o commit seguinte (*o intervalo que o COMMIT
+> enforça chega à lei do arrasto*) registou a faixa de exactamente **cinco** campos do `grid_snap`,
+> e `322+5 = 327`, `146−5 = 141`. A conclusão fica **mais forte**, não mais fraca; o que estava
+> errado era carimbar uma data numa medição que o trabalho da própria sessão ia mover.
+
+⚠️ **E nos 141 restantes um cursor infinito piora o problema em vez de o curar:** o que lhes falta é
 uma **TAXA** (eles caem no atalho histórico, `DRAG_RATE_X · step`), não curso; dar-lhes arrasto sem
 fim é tornar mais fácil chegar a um número absurdo num campo que não tem fronteira para o clampar. A
 cura deles é o tecto MEDIDO que a §4 já nomeia, e o primitivo é o `set_number_drag_rate`.
@@ -689,21 +705,26 @@ eficiência antes de encanto.
    aberto: §1.4.
 2. ~~**A sonda de `set_cursor_grab`** por plataforma (§4.3)~~ — **CORREU em 2026-08-16, e o veredito é
    (A) FICA.** `shells/desktop/src/probe_cursor_grab.rs`; a decisão não veio do lock (que pega nesta
-   máquina) e sim do censo: **os 322 campos com intervalo cruzam inteiros em 250 px contra ~600 de
-   curso**, e nos 146 sem intervalo o arrasto infinito **piora** o problema. Ver a §4.3.
+   máquina) e sim do censo: **os 327 campos com intervalo cruzam inteiros em 250 px contra ~600 de
+   curso**, e nos 141 sem intervalo o arrasto infinito **piora** o problema. Ver a §4.3.
 3. ~~**A varredura de colisão de modificadores** (§4.2)~~ — **MOOT**: o `Shift` já é o multiplicador de
    precisão do scrub (`DRAG_SHIFT_MUL`) desde a M14.A, e a wave 4 não acrescentou modificador nenhum.
    O `Ctrl = encaixa no step` que a §4.2 propunha **não foi construído** e continua por decidir.
-5. ~~**O tecto dos 146 campos SEM intervalo**~~ — **MEDIDO em 2026-08-16, e a contagem estava
+5. ~~**O tecto dos 141 campos SEM intervalo**~~ — **MEDIDO em 2026-08-16, e a contagem estava
    errada em duas frentes.** A sonda irmã **não os listava** (contava-os e seguia em frente), e o
    total somava **duas causas de veredito oposto**. Sonda nova
-   `census_of_who_has_no_interval_and_why`, medido: **146 = 5 CALIBRADOS** (taxa registada de
+   `census_of_who_has_no_interval_and_why`, medido: **141 = 5 CALIBRADOS** (taxa registada de
    propósito — a receita documentada em `set_number_drag_rate` para *piso sem tecto*, que a
    roldana da física, o transporte da timeline e os chips de transform do Vector já usam; **nada
-   a fazer**) **+ 141 no ATALHO** (`DRAG_RATE_X · step`, 140 deles a **50 unidades/px**).
-   Segundo passo, o que o doc da sonda irmã prescreve: dos seis painéis, só **`grid_snap` (31)** e
+   a fazer**) **+ 136 no ATALHO** (`DRAG_RATE_X · step`, 135 deles a **50 unidades/px**).
+   Segundo passo, o que o doc da sonda irmã prescreve: dos seis painéis, só **`grid_snap` (26)** e
    **`equalize_sizes` (3)** não registam lei nenhuma em lugar nenhum — os outros quatro registam
-   algures e este instrumento não os julga. **O item real era 34, não 146.**
+   algures e este instrumento não os julga. **O item real era 29, não 141.**
+
+   > ⚠️ **Estes seis números foram escritos PRÉ-FIX, no MESMO bullet cujo sub-item descreve o fix
+   > que os moveu** (`146 / 141 / 140 / 31 / 34` contra os `141 / 136 / 135 / 26 / 29` que a sonda
+   > imprime hoje). É o §0 violado dentro de um parágrafo: *quem move o número que tornava algo
+   > verdadeiro tem de reconferir a nota*, e a nota estava a cinco linhas de distância.
    - ✅ **A metade do `grid_snap` que era CORREÇÃO fechou** (não decisão de feel): o
      `apply_value_changed` **já declarava** o intervalo de cinco campos e a lei do scrub não sabia
      de nenhum — `.min(8)` nas iterações de Lloyd (**0,16 px** para atravessar), `.clamp(1, 64)`

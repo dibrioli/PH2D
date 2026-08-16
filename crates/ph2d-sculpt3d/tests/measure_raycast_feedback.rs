@@ -96,6 +96,40 @@ fn hold(against: PickAgainst, events: usize) -> Vec<f32> {
     out
 }
 
+/// **O que a CURA custa** — congelar a superfície do pick no pen-down.
+///
+/// A forma mais simples de o produto responder *"onde a superfície estava
+/// quando o traço começou?"* é guardar uma cópia no pen-down. Isto mede o preço
+/// dela, porque o §0 manda medir antes de escrever qualquer limite — e porque a
+/// alternativa (testar triângulos com posições congeladas dentro do octree
+/// VIVO) é mais barata em memória e mais cara em desenho.
+#[test]
+#[ignore = "sonda: roda sob demanda"]
+fn measure_what_freezing_the_pick_surface_costs() {
+    use std::time::Instant;
+    println!("\n  o custo de UMA copia da malha, no pen-down:\n");
+    for (rings, segs) in [(24usize, 36usize), (64, 96), (128, 192), (222, 333)] {
+        let mut m = uv_sphere(rings, segs, 1.0);
+        m.triangulate();
+        m.rebuild();
+        // Aquece: a primeira copia paga o first-touch das paginas.
+        let _ = m.clone();
+        let t = Instant::now();
+        let c = m.clone();
+        let ms = t.elapsed().as_secs_f64() * 1e3;
+        // 12 B por posicao + 12 por normal -- o piso do que uma copia move.
+        let mb = (c.vert_count() * 24) as f64 / (1024.0 * 1024.0);
+        println!(
+            "  {:>8} verts / {:>8} faces -> {:>7.3} ms, >= {:>6.2} MB",
+            c.vert_count(),
+            c.face_count(),
+            ms,
+            mb
+        );
+    }
+    println!();
+}
+
 /// **Segurar o pincel no mesmo ponto: satura ou acelera?**
 #[test]
 #[ignore = "sonda: roda sob demanda"]

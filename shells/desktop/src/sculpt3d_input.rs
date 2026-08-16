@@ -297,58 +297,59 @@ impl App {
                 Grip::Stamp | Grip::Paint => {
                     let spacing = ph2d_sculpt3d::min_spacing(scene.radius_px());
                     if let Some(steps) = ph2d_sculpt3d::walk(scene.stroke_anchor, [x, y], spacing) {
-                        // ⚠️ **A âncora é o último dab APLICADO, e antes disto
-                        // era o último dab do WALK.** As duas só coincidem
-                        // enquanto nenhum passo erra — e errar é NORMAL (o doc
-                        // do `sculpt_at`: *"a mão sai do modelo o tempo todo"*).
+                        // Lido ANTES do laço: o `for` consome o iterador, e o
+                        // `anchor()` responde onde o walk PARA — que é o fato
+                        // que a âncora precisa, tenha o dab pousado ou não.
+                        let steps_anchor = steps.anchor();
+                        // ⚠️ **A ÂNCORA AVANÇA MESMO QUANDO O DAB É DESCARTADO,
+                        // e as DUAS referências concordam nisso.** O Blender
+                        // escreve `last_mouse_position = mval`
+                        // (`paint_stroke.cc:509`) **ANTES** do teste de acerto
+                        // (`:536-538`), então o passo é dado e só a aplicação é
+                        // suprimida; o SculptGL faz o mesmo pela outra ponta
+                        // (`SculptBase.js:151-152`, `_lastMouse = mouse`, que
+                        // descarta o resíduo inteiro). Nenhuma das duas deixa a
+                        // âncora para trás.
                         //
-                        // O `break` abaixo é fiel ao `SculptBase.js:141-146`,
-                        // que aborta o evento no primeiro passo sem superfície.
-                        // ⚠️ Mas lá ele vem PAREADO com `_lastMouse = mouse`
-                        // (`:151-152`): a referência joga o resíduo inteiro fora,
-                        // e por isso o par dela é coerente. **Nós tomámos metade
-                        // do par** — o `break` da referência com a nossa âncora
-                        // no último passo do walk (a divergência que o
-                        // `spacing.rs` mede em `6,485 % → 0,000 %`) —, e a
-                        // combinação avançava o caminho por cima de dabs que
-                        // nunca foram carimbados: o vão não era pulado, era
-                        // **APAGADO**, sem erro e sem aviso.
+                        // ⚠️ **E o artefato que isso previne está NOMEADO na
+                        // fonte:** com a âncora presa no último dab APLICADO, um
+                        // trecho fora da malha faz o `length` acumular, e ao
+                        // reencontrar a superfície o walk despeja a lacuna
+                        // inteira de uma vez sobre o ponto de reentrada —
+                        // cavando um buraco. Medido (`measure_anchor_law`, o
+                        // MESMO caminho em 3 eventos): **61 dabs contra 31**, o
+                        // dobro, e a rajada cresce com a velocidade da mão.
                         //
-                        // Com o último aplicado, as duas metades voltam a
-                        // concordar: o percurso retoma de onde a tinta parou.
-                        // ⚠️ E `None` mantém o carry — nenhum dab pousou, então
-                        // a âncora não anda (mover-la aqui apagaria o resíduo, e
-                        // é a mesma razão de o ramo inteiro viver dentro do
-                        // `if let Some(steps)`).
-                        let mut landed = None;
+                        // Eu escrevi a âncora-no-último-aplicado em 2026-08-16
+                        // lendo o `break` do SculptGL como *"metade de um par"*.
+                        // O par existe — mas a outra metade dele é a âncora
+                        // AVANÇANDO, não ficando. *Tomar a metade que falta pelo
+                        // seu oposto é como uma correção fiel à referência sai
+                        // ao contrário dela.*
+                        //
+                        // ⚠️ **A minha primeira sonda deu a rajada como RUÍDO
+                        // (2 passos) porque a fixture não continha o fenómeno:**
+                        // 60 eventos densos andam ~1 passo cada, então a âncora
+                        // atrasada nunca fica longe. O gesto que separa as leis
+                        // é o mouse a SALTAR.
                         for [sx, sy] in steps {
                             if !scene.sculpt_at(sx, sy) {
                                 break;
                             }
-                            landed = Some([sx, sy]);
                         }
-                        // ⚠️ **A âncora é o ÚLTIMO DAB, e o `walk` é quem
-                        // responde isso.** Duas coisas se perdem escrevendo
-                        // `= [x, y]` aqui, e as duas são silenciosas: o resíduo
-                        // ACIMA de um passo evapora (a dependência de amostragem
-                        // que a `measure_path_invariance` mede em 6,485%), e a
-                        // regra vira convenção que o terceiro sítio de chamada
-                        // não conhece.
+                        // ⚠️ **`steps.anchor()` e nunca `[x, y]`:** o resíduo
+                        // ACIMA de um passo evaporaria (a dependência de
+                        // amostragem que a `measure_path_invariance` mede em
+                        // `6,485 % → 0,000 %`), e é ele que faz um traço lento
+                        // depositar a mesma densidade que um rápido. É também o
+                        // que o Blender faz — lá a âncora caminha em passos
+                        // exatos de um espaçamento e para no último
+                        // (`paint_stroke.cc:822` + `:509`), nunca no ponteiro.
                         //
                         // Se o `walk` RECUSOU (o carry, `None`), a âncora fica
                         // onde está — o resíduo acumula até valer um passo, e
                         // movê-la fora deste ramo o apagaria.
-                        //
-                        // ⚠️ **`landed` e nunca `steps.anchor()`**: a posição
-                        // que o iterador entregou É a que o `anchor()` computa
-                        // (o doc dele diz que reusa a MESMA aritmética, e não
-                        // uma re-derivação `from + k·ms` — as duas concordam em
-                        // álgebra e não em ponto flutuante). Sem um miss elas
-                        // são o mesmo número; com um miss, `landed` é o único
-                        // que não passa por cima de tinta que ninguém pôs.
-                        if let Some(last) = landed {
-                            scene.stroke_anchor = last;
-                        }
+                        scene.stroke_anchor = steps_anchor;
                     }
                 }
             },

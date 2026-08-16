@@ -219,6 +219,48 @@ fn measure_what_the_anchor_law_does_when_a_step_misses() {
             [x, 0.15]
         })
         .collect();
+    // ⚠️ **A RAJADA só nasce com o ponteiro RÁPIDO, e a minha primeira fixture
+    // não continha o fenómeno.** Com 60 eventos densos cada um anda ~1 passo,
+    // então a ancora atrasada nunca fica longe e as tres leis empatam. O gesto
+    // que as separa é o mouse a saltar: poucos eventos, cada um andando MUITO.
+    // *Uma lei sobre o que acontece depois de um miss só é medível numa fixture
+    // em que o ponteiro viaja enquanto está fora.*
+    for events_n in [8usize, 5, 3] {
+        let fast: Vec<[f32; 2]> = (0..events_n)
+            .map(|k| {
+                let t = k as f32 / (events_n - 1) as f32;
+                let x = if t < 0.5 {
+                    -0.6 + 4.0 * t
+                } else {
+                    1.4 - 4.0 * (t - 0.5)
+                };
+                [x, 0.15]
+            })
+            .collect();
+        println!("\n  MOUSE RAPIDO -- o MESMO caminho em {events_n} eventos:");
+        println!(
+            "  {:<12} {:>6} {:>7} {:>7} {:>10} {:>10} {:>10}",
+            "lei", "dabs", "passos", "rajada", "umb pior", "umb p99", "umb media"
+        );
+        for law in [
+            AnchorLaw::Pointer,
+            AnchorLaw::WalkEnd,
+            AnchorLaw::LastLanded,
+        ] {
+            let r = sweep(law, &fast, spacing);
+            println!(
+                "  {:<12} {:>6} {:>7} {:>7} {:>10.4} {:>10.4} {:>10.4}",
+                format!("{law:?}"),
+                r.dabs,
+                r.steps,
+                r.worst_burst,
+                r.umbrella.0,
+                r.umbrella.1,
+                r.umbrella.2
+            );
+        }
+    }
+
     println!("\n  CONTROLE (o mesmo gesto SEM sair do modelo -- as tres tem de coincidir):");
     println!(
         "  {:<12} {:>6} {:>7} {:>7} {:>10} {:>10} {:>10}",

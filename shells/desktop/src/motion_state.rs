@@ -103,6 +103,8 @@ pub(crate) mod conferencia_demos_pin;
 pub(crate) mod conferencia_demos_proximity;
 #[path = "motion_state_conferencia_demos_space.rs"]
 pub(crate) mod conferencia_demos_space;
+#[path = "motion_state_conferencia_demos_weight.rs"]
+pub(crate) mod conferencia_demos_weight;
 #[path = "motion_state_conferencia_demos_text.rs"]
 mod conferencia_demos_text;
 #[path = "motion_state_conferencia_demos_time.rs"]

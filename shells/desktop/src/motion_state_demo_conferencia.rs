@@ -381,3 +381,40 @@ pub(super) fn space(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId>
     );
     sinks
 }
+
+/// O PESO POR PARTICULA E OS SUB-PASSOS (doc 89, o grupo K): duas waves
+/// independentes, dois pares, cada um com o seu CONTROLE ao lado.
+pub(super) fn weight(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_weight::build_weight_demo_document(doc, registry).unwrap_or_default();
+    eprintln!(
+        "[weight-demo] DOIS PARES ({} bandas). Cada par e' uma wave, e cada um tem o seu CONTROLE ao lado.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_weight::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) DE' PLAY: as duas metades sao simulacoes, e uma foto de um instante nao distingue
+  'ainda nao caiu' de 'nunca vai cair'.
+  (!) 1-2, O PESO POR PARTICULA: um `field.index_range` no laco de estado da' peso ZERO as duas
+  ultimas linhas do corpo de baixo. A cauda tem de DESPRENDER e o resto tem de FICAR -- medido, a
+  extensao do corpo vai de {:.2} para {:.2} e a linha do MEIO anda {:.4} relativa ao pino. Se o
+  corpo inteiro descer atras da cauda, o peso chegou ao puxao e nao ao ajuste da forma; se nada se
+  soltar, ele nao chegou a lado nenhum.
+  (!) A cauda cai RIGIDA, e isso e' correto: no shape matching nao ha restricao de distancia entre
+  particulas -- o unico fio e' o puxao ao goal, e peso zero e' fio nenhum. Ela nao se deforma, ela SAI.
+  (!) 3-4, OS SUB-PASSOS: a MESMA corda chicoteada, e so' muda quantas vezes por tique ela volta a
+  perguntar onde esta'. Ponha os olhos nos VAOS entre nos: a de cima ({} sub-passo) estica {:.0}% acima
+  do repouso e a de baixo ({}) estica {:.0}%. As duas correm as MESMAS 3 iteracoes -- se voce so' subir
+  as iteracoes, a de cima nao alcanca a de baixo, e e' esse o achado.",
+        3.53,
+        14.12,
+        0.0099,
+        1,
+        51.7,
+        conferencia_demos_weight::substeps(),
+        0.6,
+    );
+    sinks
+}

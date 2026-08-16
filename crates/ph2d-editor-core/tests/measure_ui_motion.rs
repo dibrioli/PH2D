@@ -283,3 +283,87 @@ fn measure_how_far_a_label_lags_its_row_while_a_panel_scrolls() {
          é o que o olho lê como tremor, e cresce na CAUDA (a mola desacelera)."
     );
 }
+
+/// **De QUE é feito o quadro em repouso** — a decomposição que o censo de população não dá.
+///
+/// O `ui_motion_population_census` mede **335 µs/quadro com ZERO em voo** e nomeia o eixo
+/// (*população*), mas não diz onde o tempo vai. São três candidatos, e a cura de cada um é
+/// diferente:
+///
+/// | peça | o que é |
+/// |---|---|
+/// | o **`Vec`** | o `tick_hover` colecta um par por widget macio **por quadro** |
+/// | o **`animate`** | uma consulta ao mapa por widget, para dizer o alvo que ele já tem |
+/// | o **`advance`** | percorre `tracks` inteiro, mesmo com tudo assente |
+///
+/// ⚠️ **A população é SETTLED de propósito** — é o regime em que o app vive, e é onde as duas
+/// grandezas do doc do módulo (*em voo* × *lembrado*) deixam de coincidir. Uma fixture que
+/// re-alveja tudo mede a irmã de cima, não esta.
+///
+/// ⚠️ **Sonda, não gate:** ela imprime e não afirma. O que decide se há wave é a coluna que sobra
+/// depois de somar as três — se ela reconciliar com os 335 µs do censo, a atribuição está fechada;
+/// se não, falta uma peça e a hipótese seguinte seria construída sobre um número incompleto.
+#[test]
+#[ignore = "sonda: rode com --release -- --ignored"]
+fn measure_what_a_resting_frame_is_made_of() {
+    const POP: u64 = 4491; // a população MEDIDA do app inteiro (censo de 2026-08-16)
+    println!("[ui-rest] de que e' feito um quadro com {POP} tracks ASSENTES (zero em voo)");
+
+    let mut m = UiMotion::default();
+    for i in 0..POP {
+        m.animate(NodeId(i + 1), 0.0, Role::Fade);
+    }
+    m.advance(DT);
+    assert_eq!(m.in_flight(), 0, "a fixture tem de estar em REPOUSO");
+    assert_eq!(m.remembered(), POP as usize, "a populacao tem de estar la'");
+
+    let med = |mut v: Vec<f64>| {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+
+    // (a) o `advance` sozinho — o laço sobre `tracks`.
+    let mut adv = Vec::with_capacity(200);
+    for _ in 0..200 {
+        let t0 = std::time::Instant::now();
+        m.advance(DT);
+        adv.push(t0.elapsed().as_secs_f64() * 1e6);
+        // Re-alveja para o `idle_s` nao crescer e a poda nao esvaziar o mapa a meio da medicao.
+        for i in 0..POP {
+            m.animate(NodeId(i + 1), 0.0, Role::Fade);
+        }
+    }
+
+    // (b) o `animate` × POP sozinho — a consulta ao mapa por widget.
+    let mut ani = Vec::with_capacity(200);
+    for _ in 0..200 {
+        let t0 = std::time::Instant::now();
+        for i in 0..POP {
+            m.animate(NodeId(i + 1), 0.0, Role::Fade);
+        }
+        ani.push(t0.elapsed().as_secs_f64() * 1e6);
+        m.advance(DT);
+    }
+
+    // (c) o `Vec` que o `tick_hover` colecta — medido pela mesma forma, sem o store.
+    let mut vec_us = Vec::with_capacity(200);
+    for _ in 0..200 {
+        let t0 = std::time::Instant::now();
+        let pending: Vec<(NodeId, f32)> = (0..POP).map(|i| (NodeId(i + 1), 0.0)).collect();
+        vec_us.push(t0.elapsed().as_secs_f64() * 1e6);
+        std::hint::black_box(&pending);
+    }
+
+    let (a, b, c) = (med(adv), med(ani), med(vec_us));
+    println!("[ui-rest] {:>28} {:>11.3}us", "advance (o laco)", a);
+    println!(
+        "[ui-rest] {:>28} {:>11.3}us",
+        "animate x POP (a consulta)", b
+    );
+    println!("[ui-rest] {:>28} {:>11.3}us", "o Vec do tick_hover", c);
+    println!("[ui-rest] {:>28} {:>11.3}us", "SOMA", a + b + c);
+    println!(
+        "[ui-rest] ⚠️ o censo mede 335us pela porta do produto -- se a SOMA nao reconciliar, \
+         falta uma peca"
+    );
+}

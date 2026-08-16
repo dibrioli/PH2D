@@ -46,6 +46,9 @@ pub struct Tag {
     pub state: TagState,
     pub tone: TagTone,
     pub removable: bool,
+    /// ⚠️ **Campo com NEUTRO** (`1.0`), o molde do [`crate::widget::Button::hover_t`]: quem não o
+    /// define não sabe que ele existe, e pinta o que pintava antes.
+    pub hover_t: f32,
 }
 
 impl Tag {
@@ -56,11 +59,26 @@ impl Tag {
             state: TagState::Normal,
             tone: TagTone::Neutral,
             removable: false,
+            hover_t: crate::motion::SETTLED,
         }
     }
 
     pub fn state(mut self, state: TagState) -> Self {
         self.state = state;
+        self
+    }
+
+    /// **As DUAS metades numa chamada** — o par que o store entrega, e o irmão exacto do
+    /// [`crate::widget::Button::visual`].
+    #[must_use]
+    pub fn visual(self, v: (TagState, f32)) -> Self {
+        self.state(v.0).hover_t(v.1)
+    }
+
+    /// **Quanto do hover está presente**, `0..1`. Neutro = [`crate::motion::SETTLED`].
+    #[must_use]
+    pub fn hover_t(mut self, t: f32) -> Self {
+        self.hover_t = t.clamp(0.0, 1.0);
         self
     }
 
@@ -135,6 +153,27 @@ impl Tag {
             TagTone::Danger => ColorToken::Danger,
         }
     }
+
+    /// **A cor do ANEL de hover** — `None` quando não há anel a desenhar.
+    ///
+    /// ⚠️ **O par é `rest = None` / `hot = fg`, e o primitivo já sabe o que isso significa:** o
+    /// [`crate::motion::blend_token_color`] trata um lado ausente como **transparente**, não como
+    /// a outra cor, *"para o hover EMERGIR do nada em vez de aparecer de repente"* — a lei que o
+    /// fundo de um botão *ghost* já usa. Uma tag em repouso não tem anel; o anel dela é
+    /// exactamente esse caso, e por isso esta wave **não escreve lei nova**.
+    ///
+    /// ⚠️ **`a == 0` devolve `None` de propósito:** um traço transparente ainda é um comando de
+    /// cena, e devolvê-lo faria toda tag PARADA pagar um stroke por quadro.
+    #[must_use]
+    pub fn ring_color(&self, theme: Theme) -> Option<ph2d_tokens::Color> {
+        let hot = self.fg_token().resolve(theme);
+        let soft = matches!(self.state, TagState::Normal | TagState::Hovered);
+        if let Some(c) = crate::motion::hover_axis(soft, self.hover_t, None, Some(hot)) {
+            return (c.a > 0).then_some(c);
+        }
+        // O token DURO: assente, quem manda é o estado.
+        (self.state == TagState::Hovered).then_some(hot)
+    }
 }
 
 /// Pill body + label + optional close icon. Label is centered when
@@ -151,13 +190,14 @@ pub fn paint_tag(
     let bg = resolve(tag.bg_token(), theme);
     let fg = resolve(tag.fg_token(), theme);
     fill_rounded_rect(scene, rect, radius, bg);
-    // ⚠️ **O anel não interpola, e a ausência é MEDIDA:** o único pintor de produção de uma tag é
-    // o `skin::paint_widget_skin_with`, que recebe `live: Option<&InteractiveState>` e **não tem
-    // store** — não há de onde tirar um `t`. O ESTADO chega (o `hover.rs` promove-o desde
-    // 2026-08-15) e o aro aparece; o desvanecer pede o par na assinatura daquele despachante,
-    // que é decisão de outra wave.
-    if tag.state == TagState::Hovered {
-        stroke_rounded_rect(scene, rect, radius, 1.0, fg); // LITERAL-PX-OK: tag hover ring stroke (geometry 1px)
+    // ⚠️ **Este comentário dizia o oposto, e foi a MINHA wave anterior que o falsificou:** ele
+    // afirmava que *"o `skin::paint_widget_skin_with` recebe `live: Option<&InteractiveState>` e
+    // não tem store — não há de onde tirar um `t`"*, e o passo que fez a pele receber o PAR
+    // apagou esse bloqueio sem ninguém reconferir a nota. É o §0 a morder em casa: *quem move o
+    // número que tornava algo inalcançável tem de reconferir a nota.*
+    if let Some(ring) = tag.ring_color(theme) {
+        let ring = crate::paint::token_to_vello(ring);
+        stroke_rounded_rect(scene, rect, radius, 1.0, ring); // LITERAL-PX-OK: tag hover ring stroke (geometry 1px)
     }
 
     let pad_x = (rect.h * 0.5).max(8.0); // LITERAL-PX-OK: pill horizontal pad scales with height (geometry)
@@ -191,6 +231,84 @@ pub fn paint_tag(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⭐ **O NEUTRO é o mundo pré-substrato, ao bit** — e é a metade do gate que impede a wave de
+    /// ter custo onde ninguém a pediu.
+    ///
+    /// Uma tag construída sem tocar no `hover_t` chega aqui com [`crate::motion::SETTLED`], e a
+    /// guarda do `hover_axis` manda-a para o token DURO: em repouso não há anel, em hover há um
+    /// anel cheio em `fg`. É exactamente o que o `if tag.state == Hovered` fazia antes.
+    ///
+    /// ⚠️ **A tag da HIERARQUIA é o consumidor que isto protege:** ela é pintada com `NodeId(0)` —
+    /// um crachá decorativo que nunca entra no store —, então ela nunca terá `t` nenhum, e tem de
+    /// continuar a pintar o que pintava.
+    ///
+    /// *Mutação que deve sangrar:* tirar a guarda `t >= SETTLED` do `hover_axis` (a tag em repouso
+    /// passa a pintar um anel cheio, porque `blend(None, fg, 1.0)` é `fg`).
+    #[test]
+    fn a_tag_that_never_met_the_clock_paints_the_hard_token() {
+        let theme = Theme::Forge;
+        let rest = Tag::new(NodeId(1), "x");
+        assert!(
+            rest.ring_color(theme).is_none(),
+            "uma tag em repouso ganhou anel — o neutro deixou de ser byte-identico"
+        );
+        let hot = Tag::new(NodeId(1), "x").state(TagState::Hovered);
+        assert_eq!(
+            hot.ring_color(theme),
+            Some(hot.fg_token().resolve(theme)),
+            "o anel assente tem de ser o `fg` CHEIO, como antes do substrato"
+        );
+        for hard in [TagState::Pressed, TagState::Disabled] {
+            assert!(
+                Tag::new(NodeId(1), "x")
+                    .state(hard)
+                    .hover_t(0.5)
+                    .ring_color(theme)
+                    .is_none(),
+                "{hard:?} nao e uma FRACCAO de nada — nao pode entrar no eixo"
+            );
+        }
+    }
+
+    /// **E meio caminho é meio anel** — o eixo existe e emerge do NADA.
+    ///
+    /// ⚠️ O par é `rest = None` / `hot = fg`, então o primitivo devolve `fade(fg, t)`: a mesma cor,
+    /// com alfa. Um anel que nascesse na cor da pílula deixaria meia-espessura visível sobre o
+    /// painel (o traço é centrado na fronteira), que é a razão de a resposta certa ser a que o
+    /// `blend_token_color` já dá a um botão *ghost*.
+    #[test]
+    fn half_a_hover_is_half_a_ring() {
+        let theme = Theme::Forge;
+        let full = Tag::new(NodeId(1), "x")
+            .state(TagState::Hovered)
+            .ring_color(theme)
+            .expect("assente no hover ha anel");
+        let mid = Tag::new(NodeId(1), "x")
+            .state(TagState::Hovered)
+            .hover_t(0.5)
+            .ring_color(theme)
+            .expect("a meio caminho ha anel");
+        assert_eq!(
+            (mid.r, mid.g, mid.b),
+            (full.r, full.g, full.b),
+            "o anel mudou de COR a meio caminho — ele so devia estar a emergir"
+        );
+        assert!(
+            mid.a > 0 && mid.a < full.a,
+            "alfa {} nao esta entre 0 e {} — o `t` foi deitado fora",
+            mid.a,
+            full.a
+        );
+        assert!(
+            Tag::new(NodeId(1), "x")
+                .state(TagState::Normal)
+                .hover_t(0.0)
+                .ring_color(theme)
+                .is_none(),
+            "frio e frio: um traco transparente e um comando de cena que ninguem ve"
+        );
+    }
 
     #[test]
     fn defaults_match_spec() {

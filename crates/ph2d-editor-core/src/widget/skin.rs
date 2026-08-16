@@ -259,13 +259,15 @@ pub fn paint_widget_skin_with(
             paint_progress_bar(&b, rect, scene, text_system, theme);
         }
         WidgetKind::Tag => {
-            let mut t = Tag::new(id, label);
-            // ⚠️ **O `Tag` não tem `hover_t`, então não há o que vestir** — o fade dele é wave
-            // própria (acrescentar o campo), e continua o adiamento que o `tag.rs` já nomeia.
-            if let Some((InteractiveState::Tag { state }, _)) = live {
-                t.state = *state;
+            let mut tag = Tag::new(id, label);
+            // ⚠️ **A cerca do `ListItem` NÃO alcança a tag, e o estudo é explícito:** *"ficam por
+            // avaliar `TextInput`/`Dropdown`/`Tag`, que **não têm esse risco** (ninguém varre
+            // dropdowns)"*. Medido, os outros dois já tinham eixo; a tag era a última superfície
+            // da F2 sem ele.
+            if let Some((InteractiveState::Tag { state }, t)) = live {
+                tag = tag.visual((*state, t));
             }
-            paint_tag(&t, rect, scene, text_system, theme);
+            paint_tag(&tag, rect, scene, text_system, theme);
         }
         WidgetKind::TextInput => {
             let mut i = TextInput::new(id, label);

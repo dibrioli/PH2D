@@ -18,10 +18,12 @@ use super::*;
 /// gerado **reagia e SALTAVA** enquanto os vinte e três painéis escritos à mão amaciavam — metade
 /// do app numa lei, metade noutra, que é o sintoma que a F2 existe para curar.
 ///
-/// ⚠️ **A lista é a dos tipos que TÊM o eixo, e ela não é escrita à mão duas vezes:** `Tag` e
-/// `ListItem` não têm campo `hover_t`, então não entram — e é por CONSTRUÇÃO que a cerca do estudo
-/// §6.5 (*«uma row de menu que amacia deixa rasto»*) fica honrada, sem uma guarda que alguém possa
-/// remover.
+/// ⚠️ **A lista é a dos tipos que TÊM o eixo, e a versão anterior desta nota ERRAVA:** ela dizia
+/// que `Tag` **e** `ListItem` ficavam de fora *"por construção"*, honrando a cerca do estudo §6.5
+/// (*«uma row de menu que amacia deixa rasto»*). O estudo isenta a tag **explicitamente** —
+/// *"ficam por avaliar `TextInput`/`Dropdown`/`Tag`, que **não têm esse risco** (ninguém varre
+/// dropdowns)"* —, e medido, os outros dois já tinham eixo. A cerca é do `ListItem`, e só dele;
+/// a tag entrou nesta lista.
 ///
 /// *Mutação que deve sangrar:* trocar `visual((*state, t))` por `state = *state` em qualquer arm
 /// ⇒ o meio passa a ser byte-idêntico a um dos extremos.
@@ -37,7 +39,13 @@ fn half_a_hover_is_neither_end_for_every_kind_that_has_the_axis() {
         icon: Some(IconGlyph::Path(&g)),
         ..SkinParam::default()
     };
-    let cases: [(WidgetKind, crate::interaction::InteractiveState); 6] = [
+    let cases: [(WidgetKind, crate::interaction::InteractiveState); 7] = [
+        (
+            WidgetKind::Tag,
+            crate::interaction::InteractiveState::Tag {
+                state: crate::widget::TagState::Hovered,
+            },
+        ),
         (
             WidgetKind::Button,
             crate::interaction::InteractiveState::Button {

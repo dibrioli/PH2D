@@ -26,6 +26,7 @@ pub use kinds::{InteractiveState, NamedPalette};
 mod graph_ops;
 mod number_scrub;
 mod panel_ops;
+mod store_census;
 mod store_core;
 mod store_hierarchy;
 mod timeline_ops;
@@ -41,7 +42,7 @@ use super::drag::{
 use super::types::{GraphGesture, GraphKey, GraphZoom, NoteData, TimelineGesture, TimelineWheel};
 use super::util::format_number;
 
-use crate::widget::{ButtonState, CheckboxState, ToggleState};
+use crate::widget::{ButtonState, CheckboxState, TagState, ToggleState};
 use crate::zones::Rect;
 
 #[derive(Debug, Default)]

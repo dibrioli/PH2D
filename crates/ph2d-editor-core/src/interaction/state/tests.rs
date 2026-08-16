@@ -198,6 +198,41 @@ fn the_tick_reaches_a_slider_and_the_visual_pair_comes_out_of_one_question() {
     );
 }
 
+/// ⭐ **O TIQUE alcança uma TAG** — sem isto o eixo dela compila, pinta e nunca se move.
+///
+/// ⚠️ **É o degrau que torna a wave real, e o mais fácil de esquecer:** o campo `hover_t`, a lei do
+/// anel e o arm da pele podem estar os três certos e a tag continua a SALTAR, porque ninguém
+/// publica o alvo — o `t` fica no neutro para sempre. O doc do `hover_targets` já o diz pelo outro
+/// lado (*"um tipo que não aparece aqui não ganha entrada nenhuma"*).
+///
+/// **Mutação que deve sangrar:** tirar o braço `Tag` do `hover_targets`.
+#[test]
+fn the_tick_reaches_a_tag() {
+    use crate::widget::TagState;
+    let id = NodeId(11);
+    let mut store = WidgetStore::with_capacity(2);
+    store.register(
+        id,
+        InteractiveState::Tag {
+            state: TagState::Hovered,
+        },
+    );
+    assert_eq!(
+        store.hover_targets().collect::<Vec<_>>(),
+        vec![(id, 1.0)],
+        "a tag acesa nao e alvo do relogio: o `t` dela nunca sobe"
+    );
+
+    if let Some(InteractiveState::Tag { state }) = store.get_mut(id) {
+        *state = TagState::Normal;
+    }
+    assert_eq!(
+        store.hover_targets().collect::<Vec<_>>(),
+        vec![(id, 0.0)],
+        "a tag em repouso tem de ser alvo ZERO — e o que faz a SAIDA desvanecer em vez de cortar"
+    );
+}
+
 /// **`set_slider_value` recentra o slider E o chip ligado.** É o que devolve o Offset ao
 /// "sem offset" após um commit: sem a segunda metade (o número), o chip mostraria o valor
 /// velho ao ser aberto para edição.

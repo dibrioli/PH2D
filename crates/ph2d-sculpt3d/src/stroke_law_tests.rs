@@ -414,3 +414,199 @@ fn a_new_stroke_forgets_the_previous_envelope_and_builds_on_top() {
         "dois traços deram {after_two:.4} contra {after_one:.4} de um só"
     );
 }
+
+/// A **rugosidade** do conjunto `of`: a magnitude do laplaciano em cada vértice,
+/// no pior caso.
+///
+/// ⚠️ **É exatamente a grandeza que um Smooth MINIMIZA**, e é também a que o
+/// matcap desenha: um vértice longe da média dos vizinhos é uma quina, e uma
+/// quina é o que a foto do report mostra. Medir "as duas malhas diferem" seria
+/// satisfeito por um passe que fizesse qualquer coisa; medir a rugosidade
+/// afirma a DIREÇÃO.
+fn ring_roughness(mesh: &Mesh, of: &[usize]) -> f32 {
+    let pos = mesh.positions();
+    let ring = &mesh.adjacency().vert_verts;
+    let mut worst = 0.0f32;
+    for &v in of {
+        let ns = ring.neighbours(v);
+        if ns.is_empty() {
+            continue;
+        }
+        let mut avg = [0.0f32; 3];
+        for &n in ns {
+            let p = pos[n as usize];
+            avg[0] += p[0];
+            avg[1] += p[1];
+            avg[2] += p[2];
+        }
+        let k = ns.len() as f32;
+        let p = pos[v];
+        let d = [p[0] - avg[0] / k, p[1] - avg[1] / k, p[2] - avg[2] / k];
+        worst = worst.max((d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt());
+    }
+    worst
+}
+
+#[test]
+fn the_second_pass_runs_inside_the_stroke_and_it_is_the_rim_that_it_rounds() {
+    // ⚠️ **Este gate existe porque uma MUTAÇÃO SOBREVIVEU.** Trocar
+    // `brush.auto_smooth_brush()` por `None::<Brush>` dentro do laço de simetria
+    // deixou a suíte inteira VERDE (280 de 280): os três gates que a wave tinha
+    // escrito perguntam à PORTA — *ela devolve `None` no neutro? pula os dois
+    // verbos que a referência pula? troca o verbo e a força e mais nada?* — e
+    // **nenhum exercitava a fiação dela**. Um pincel pode responder as três
+    // corretamente e ninguém chamá-lo. É a lição do repo na forma mais barata de
+    // a cometer: *sobrevivente = gate faltando*.
+    //
+    // ⚠️ **A falloff é `Constant` de propósito, e é o regime onde o passe tem o
+    // que fazer.** Ela deposita um PLATÔ — peso 1 dentro do raio, 0 fora —, logo
+    // um degrau discreto na borda; sob `Smooth` o depósito já chega afinado e o
+    // segundo passe mede quase nada (medido na sonda: `Plateau` praticamente
+    // inalterada, `Constant` p99 do diedro **79,22° → 34,05°**). Uma fixture com
+    // a curva macia deixaria este gate verde sobre um passe inerte.
+    //
+    // ⚠️ **E o ponto de operação é MEDIDO, não escolhido** — o mesmo traço
+    // (Draw, raio 0,30, força 0,5, `Constant`, 12 dabs) varrido no knob:
+    //
+    // | `auto_smooth` | crista | rugosidade |
+    // |---|---|---|
+    // | 0,00 | 0,11853 | 0,029113 |
+    // | 0,05 | 0,11568 | 0,026023 |
+    // | 0,10 | 0,11248 | 0,024232 |
+    // | **0,25** | **0,10158** | **0,021050** |
+    // | 0,50 | 0,08186 | 0,016140 |
+    // | 1,00 | 0,04286 | 0,014097 |
+    //
+    // Em `0,25` o verbo sobrevive (**86%** do depósito) e o alisamento é
+    // inequívoco (**−28%** de rugosidade) — é a faixa em que a referência é de
+    // facto usada. As duas barras abaixo saem desta tabela.
+    //
+    // ⚠️ **Num TRAÇO o segundo passe custa depósito, e num toque único não** —
+    // a sonda de um carimbo mede a crista indo de 0,1709 a 0,1692 (1%) com
+    // `auto_smooth` em 1,0, e aqui o mesmo 1,0 come 64%. O mecanismo é a
+    // sobreposição: o alisamento roda **uma vez por dab** (é a posição da
+    // referência, `sculpt.cc:3635`) e os dabs de um traço caem uns sobre os
+    // outros, então ele compõe sobre os MESMOS vértices enquanto o depósito
+    // envelopa. É por isto que o default da referência é **zero** e que a faixa
+    // de trabalho dela é 0,1–0,3, e não um defeito do porte.
+    const AUTO_SMOOTH: f32 = 0.25;
+    let base_brush = crate::Brush {
+        verb: Verb::Draw,
+        radius: 0.30,
+        strength: 0.5,
+        falloff: crate::Falloff::Constant,
+        ..crate::Brush::default()
+    };
+    let (a, b) = ([0.0, -0.2, 1.0], [0.0, 0.2, 1.0]);
+
+    let mut off = sphere();
+    let base = snapshot(&off);
+    sweep(&mut off, &base_brush, a, b, 12);
+
+    let mut on = sphere();
+    sweep(
+        &mut on,
+        &crate::Brush {
+            auto_smooth: AUTO_SMOOTH,
+            ..base_brush.clone()
+        },
+        a,
+        b,
+        12,
+    );
+
+    // O conjunto medido é o MESMO nos dois lados — quem o define é o traço SEM
+    // o passe, senão cada coluna mediria uma vizinhança diferente.
+    let touched: Vec<usize> = base
+        .iter()
+        .zip(off.positions())
+        .enumerate()
+        .filter(|(_, (p0, p1))| {
+            let d = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
+            d[0] * d[0] + d[1] * d[1] + d[2] * d[2] > 1e-10
+        })
+        .map(|(i, _)| i)
+        .collect();
+
+    // CONTROLE 1 — o traço aconteceu. Sem isto, *"mais liso"* é satisfeito por
+    // um pincel que não moveu nada: a esfera de fábrica já é lisa.
+    let shift_off = max_shift(&base, &off);
+    assert!(
+        shift_off > 1e-2 && touched.len() > 20,
+        "o traço não aconteceu: {shift_off:.5} em {} vértices",
+        touched.len()
+    );
+
+    // CONTROLE 2 — o passe ALISA, ele não APAGA. Um segundo passe que devolvesse
+    // a esfera original seria "perfeitamente liso" e teria destruído o verbo. A
+    // barra sai da tabela acima (0,857 medido), não de gosto.
+    let shift_on = max_shift(&base, &on);
+    assert!(
+        shift_on > shift_off * 0.80,
+        "o segundo passe comeu o traço: {shift_on:.5} contra {shift_off:.5}"
+    );
+
+    let rough_off = ring_roughness(&off, &touched);
+    let rough_on = ring_roughness(&on, &touched);
+    assert!(
+        rough_on < rough_off * 0.85,
+        "o segundo passe não alisou nada: rugosidade {rough_on:.6} com ele \
+         contra {rough_off:.6} sem — se a razão for 1,000 exata, ele NÃO ESTÁ \
+         SENDO CHAMADO (a mutação que este gate existe para matar)"
+    );
+}
+
+#[test]
+fn the_second_pass_reaches_every_mirrored_copy_not_just_the_last_one() {
+    // O irmão do gate acima para a POSIÇÃO do passe, e ele existe porque aquele
+    // não a enxerga: com `Symmetry::default()` o laço de espelho dá uma volta só,
+    // e *dentro* e *fora* dele são a mesma coisa. A afirmação do doc — que a
+    // referência o chama no fim do `do_brush_action`, **uma vez por cópia**
+    // (`sculpt.cc:3635`) — só é observável quando há mais de uma.
+    //
+    // ⚠️ **O oráculo é a APARÊNCIA das duas metades, não um pareamento de
+    // índices.** Se o passe rodasse fora do laço, ele alisaria a última cópia e
+    // deixaria a primeira crua — uma metade lisa e a outra facetada, que é o que
+    // o artista veria. Comparar as duas rugosidades pergunta isso direto.
+    let brush = crate::Brush {
+        verb: Verb::Draw,
+        radius: 0.30,
+        strength: 0.5,
+        falloff: crate::Falloff::Constant,
+        auto_smooth: 0.25,
+        ..crate::Brush::default()
+    };
+    // FORA do plano do espelho, senão as duas cópias caem uma sobre a outra e
+    // não há duas metades para comparar.
+    let (a, b) = ([0.55, -0.15, 0.82], [0.55, 0.15, 0.82]);
+
+    let mut mesh = sphere();
+    let base = snapshot(&mesh);
+    sweep_sym(&mut mesh, &brush, a, b, 12, crate::Symmetry::MIRROR_X);
+
+    let (mut left, mut right) = (Vec::new(), Vec::new());
+    for (i, (p0, p1)) in base.iter().zip(mesh.positions()).enumerate() {
+        let d = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
+        if d[0] * d[0] + d[1] * d[1] + d[2] * d[2] > 1e-10 {
+            if p0[0] < 0.0 { &mut left } else { &mut right }.push(i);
+        }
+    }
+    // CONTROLE — as DUAS metades foram tocadas. Sem isto o gate ficaria verde
+    // sobre um espelho que não expandiu nada (0 contra 0, e `0 < 0 * k` falso,
+    // mas a razão de duas rugosidades vazias é `0/0`).
+    assert!(
+        left.len() > 20 && right.len() > 20,
+        "o espelho não produziu duas metades: {} e {}",
+        left.len(),
+        right.len()
+    );
+
+    let (rl, rr) = (ring_roughness(&mesh, &left), ring_roughness(&mesh, &right));
+    let ratio = if rl > rr { rl / rr } else { rr / rl };
+    assert!(
+        ratio < 1.10,
+        "as duas metades não receberam o mesmo tratamento: rugosidade \
+         {rl:.6} × {rr:.6} ({ratio:.3}×) — um passe que roda FORA do laço de \
+         simetria alisa só a última cópia"
+    );
+}

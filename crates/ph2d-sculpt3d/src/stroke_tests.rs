@@ -123,6 +123,21 @@ fn max_shift(before: &[[f32; 3]], mesh: &Mesh) -> f32 {
 /// `verb_hook_tests::drag_hook` aprendeu antes dela: *um gate com driver próprio
 /// mede a re-expressão, não o produto*.
 fn sweep(mesh: &mut Mesh, brush: &Brush, a: [f32; 3], b: [f32; 3], events: usize) {
+    sweep_sym(mesh, brush, a, b, events, Symmetry::default());
+}
+
+/// O mesmo traço, com o espelho **escolhido pelo chamador**.
+///
+/// ⚠️ [`sweep`] delega — não há um segundo laço. Um gate que precisa de simetria
+/// e escreve o próprio driver mede a re-expressão dele, não o produto.
+fn sweep_sym(
+    mesh: &mut Mesh,
+    brush: &Brush,
+    a: [f32; 3],
+    b: [f32; 3],
+    events: usize,
+    sym: Symmetry,
+) {
     let mut stroke = SculptStroke::default();
     stroke.begin(mesh);
     let spacing = crate::min_spacing(brush.radius);
@@ -147,7 +162,7 @@ fn sweep(mesh: &mut Mesh, brush: &Brush, a: [f32; 3], b: [f32; 3], events: usize
         };
         for step in steps {
             let c = at(step[0] / len);
-            stroke.dab(mesh, brush, &dab_at(c, brush.radius), Symmetry::default());
+            stroke.dab(mesh, brush, &dab_at(c, brush.radius), sym);
         }
         anchor = steps.anchor();
     }

@@ -126,6 +126,44 @@ static BRUSH: &[Row] = &[
         level: UiLevel::Pro,
         place: Place::Knobs,
     },
+    // **O ALISAMENTO DE CADA DAB** — logo abaixo da dureza, que é onde o Blender
+    // o põe (`rna_brush.cc:3450` contra `:3457`), e pelo mesmo motivo que pôs a
+    // dureza abaixo da força: os dois trocam **borda dura** por **superfície que
+    // a malha consegue carregar**, e é ao lado um do outro que a troca se lê.
+    //
+    // ⚠️ **Ele não é oferecido no Smooth nem na Máscara**, e as duas exclusões
+    // são do original: alisar um alisamento é o mesmo verbo duas vezes, e um
+    // passe que mexesse na posição durante um gesto de MÁSCARA moveria o barro
+    // num gesto cuja razão de existir é não movê-lo. A pergunta é feita à PORTA
+    // do motor ([`ph2d_sculpt3d::Brush::auto_smooth_brush`], que devolve `None`
+    // nos dois casos) e não a uma lista de nomes aqui — duas cópias divergiriam
+    // num knob que aparece e não muda um vértice.
+    Row {
+        label: "panel.sculpt3d.auto_smooth",
+        slider: ids::SCULPT3D_AUTO_SMOOTH,
+        chip: ids::SCULPT3D_AUTO_SMOOTH_NUM,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
+        decimals: 2,
+        get: |u| u.brush.auto_smooth,
+        set: |u, v| u.brush.auto_smooth = v,
+        show: |u| {
+            ph2d_sculpt3d::Brush {
+                auto_smooth: 1.0,
+                ..u.brush.clone()
+            }
+            .auto_smooth_brush()
+            .is_some()
+        },
+        // ⚠️ **Pro pela MESMA razão que a dureza, e a regra é a mesma:** o valor
+        // de fábrica é `0`, que é o neutro do próprio Blender, então escondê-lo
+        // não tira capacidade de ninguém — ele some de vista com o pincel
+        // exactamente como estava. (O falloff saiu do Pro em 2026-08-16 porque a
+        // REFERÊNCIA o mostra sempre; aqui ela o guarda no avançado.)
+        level: UiLevel::Pro,
+        place: Place::Knobs,
+    },
     Row {
         label: "panel.sculpt3d.plane_offset",
         slider: ids::SCULPT3D_PLANE_OFFSET,

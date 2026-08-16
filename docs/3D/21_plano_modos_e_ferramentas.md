@@ -3647,3 +3647,65 @@ contrato congelado intocado.
 **Mudança de comportamento, nomeada:** o seletor de curva passa a ser pintado
 **sempre**, em todo verbo — o `Pro` deixa de o esconder. Nenhuma curva muda de
 valor (o `arm_verb_defaults` segue armando a da referência).
+
+---
+
+## §11 — O REPORT DO HARDNESS E DOS FALLOFFS: a atribuição (2026-08-16)
+
+> Enio, com foto de uma esfera onde metade dos traços sai lisa e metade sai
+> **rasgada**: *"tanto hardness como falloffs apresenta problemas graves. vá ao
+> código original blender"*.
+
+Fui ao Blender. **E a medição ABSOLVEU as duas leis que o report nomeia.**
+
+### §11.1 — O que foi medido, contra a referência
+
+| pergunta | veredito | número |
+|---|---|---|
+| a lei de UM dab reproduz a curva analítica? | **sim** | Smooth · Constant · Sphere · Pow4 batem a **três decimais**; o `Constant` mede `1.000` nas dezesseis faixas |
+| o `hardness` é o do Blender? | **sim, verbatim** | `apply_hardness_to_distances` (`sculpt.cc:7549`) — mesma escada, mesmo ponto do pipeline, mesma faixa `0..1`, mesmo default `0` |
+| o Blender tem uma guarda que nós não temos? | **não** | sem clamp de translação · `autosmooth` default **0** · o restore por-passo dele não cobre o Draw |
+| o freio do `accumulate` funciona? | **sim, e é do SculptGL** | mas ele é carregado pelo **gradiente** do falloff ⇒ sob `Constant` (platô) ele é **inerte**: 16 dabs medem **16,00×** com o flag ligado e desligado |
+
+⚠️ **O `accumulate` do SculptGL não multiplica nada** — ele troca de onde a
+distância é medida (`crate::ref_kernels::Origin`), e o `stroke_accum_tests.rs`
+já guardava isso num TIPO justamente para ninguém supor o contrário.
+
+### §11.2 — O que RASGA a malha: a topologia dinâmica
+
+Colapso + refino repetidos ao longo de um caminho, **sem um único dab**, deixam:
+
+| | pior diedro | p99 | vértices |
+|---|---|---|---|
+| esfera intocada | 0,89° | — | 13.682 |
+| um colapso sozinho | 4,66° | 0,34 | — |
+| **a caminhada que o produto roda** | **179,91°** | 0,87 | **−4.782** |
+
+179,91° é um triângulo **dobrado sobre si mesmo** — exatamente o que o matcap
+desenha como estilhaço. E o alvo é calibrado contra o **raio do pincel**
+(`edge_target = radius · sqrt((1.1 − detail) · 0.2)`), então em **todo** ajuste
+de detalhe ele é mais grosso que a aresta da esfera de fábrica (3,7× a 12,3×):
+*ligar a topologia dinâmica sempre decima a malha sob o pincel.*
+
+⚠️ **Isto é uma wave própria e NÃO foi construída** — a atribuição está aqui
+para que a próxima não recomece pelo hardness.
+
+### §11.3 — O que foi construído: o `autosmooth_factor`
+
+O knob do Blender que faltava (RNA `rna_brush.cc:3457`, sete linhas do
+`hardness`): um **segundo passe de Smooth depois de cada dab**, dentro da
+passada de simetria (`sculpt.cc:3635`), pulando SMOOTH e MASK.
+
+Medido no traço (Draw, raio 0,30, força 0,5, `Constant`, 12 dabs):
+
+| `auto_smooth` | crista | rugosidade |
+|---|---|---|
+| 0,00 | 0,11853 | 0,029113 |
+| **0,25** | **0,10158** | **0,021050** |
+| 1,00 | 0,04286 | 0,014097 |
+
+E num toque único (`Constant`), o p99 do diedro cai **79,22° → 34,05°**.
+
+⚠️ **Ele não cura o rasgo, e a razão é estrutural:** o passe herda a curva DURA
+do artista, logo é cego exatamente na borda — como no Blender. O default é
+**0,0**, e a faixa de trabalho é 0,1–0,3.

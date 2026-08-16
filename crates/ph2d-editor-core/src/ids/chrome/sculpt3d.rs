@@ -200,6 +200,16 @@ pub const SCULPT3D_HC_VERTEX_NUM: NodeId = hash_node_id("sculpt3d.hc_vertex_num"
 pub const SCULPT3D_HARDNESS: NodeId = hash_node_id("sculpt3d.hardness");
 /// Chip ligado a [`SCULPT3D_HARDNESS`].
 pub const SCULPT3D_HARDNESS_NUM: NodeId = hash_node_id("sculpt3d.hardness_num");
+/// **O alisamento que corre depois de cada dab** — o `autosmooth_factor` do
+/// Blender (`sculpt.cc:3636`), e o VIZINHO do [`SCULPT3D_HARDNESS`] no RNA dele
+/// (`rna_brush.cc:3450` contra `:3457`).
+///
+/// ⚠️ A adjacência não é acaso e a fileira a honra: são os dois knobs que trocam
+/// **borda dura** por **superfície que a malha consegue carregar**, e lê-los
+/// juntos é o que faz o segundo ser aprendido quando o primeiro morde.
+pub const SCULPT3D_AUTO_SMOOTH: NodeId = hash_node_id("sculpt3d.auto_smooth");
+/// Chip ligado a [`SCULPT3D_AUTO_SMOOTH`].
+pub const SCULPT3D_AUTO_SMOOTH_NUM: NodeId = hash_node_id("sculpt3d.auto_smooth_num");
 /// A dureza da borda do canal de MÁSCARA — o `_hardness` da tool `Masking` do
 /// SculptGL. ⚠️ Ele NÃO é um falloff: o canal tem curva própria
 /// (`(1 − d)^{2(1 − hardness)}`), e o seletor de [`Falloff`] governa a

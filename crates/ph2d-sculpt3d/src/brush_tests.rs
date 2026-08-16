@@ -441,3 +441,63 @@ fn one_full_strength_stroke_protects_completely() {
         "esfregar a meia força tem de chegar ao teto, e parou em {many}"
     );
 }
+
+// ── O SEGUNDO PASSE (o `autosmooth_factor` do Blender) ───────────────────────
+
+/// O neutro é o do original, e ele é o de fábrica.
+#[test]
+fn the_auto_smooth_is_off_by_default_like_the_reference() {
+    let b = Brush::default();
+    assert_eq!(b.auto_smooth, 0.0, "o default é o do Blender");
+    assert!(
+        b.auto_smooth_brush().is_none(),
+        "no neutro a porta não devolve passe nenhum — é isso que o torna \
+         invisível no produto até alguém o pedir"
+    );
+}
+
+/// As DUAS exclusões do `sculpt.cc:3635`, e elas são por VERBO.
+#[test]
+fn the_second_pass_skips_the_two_verbs_the_reference_skips() {
+    for verb in Verb::ALL {
+        let b = Brush {
+            verb,
+            auto_smooth: 0.5,
+            ..Brush::default()
+        };
+        let got = b.auto_smooth_brush().is_some();
+        let want = !matches!(verb, Verb::Smooth | Verb::Mask);
+        assert_eq!(
+            got,
+            want,
+            "o {} devia {} um passe de alisamento",
+            verb.label(),
+            if want { "receber" } else { "recusar" }
+        );
+    }
+}
+
+/// O passe carrega o MESMO pincel — só o verbo e a força mudam —, e ele **não
+/// se pede a si mesmo**.
+#[test]
+fn the_second_pass_is_the_same_brush_with_the_verb_and_strength_swapped() {
+    let b = Brush {
+        verb: Verb::Draw,
+        auto_smooth: 0.4,
+        strength: 0.9,
+        hardness: 0.3,
+        falloff: crate::Falloff::Constant,
+        ..Brush::default()
+    };
+    let s = b.auto_smooth_brush().expect("o Draw recebe o passe");
+    assert_eq!(s.verb, Verb::Smooth);
+    assert_eq!(s.strength, 0.4, "a força do passe É o fator");
+    assert_eq!(s.auto_smooth, 0.0, "a recursão é impossível por construção");
+    assert_eq!(s.hardness, b.hardness, "a dureza do artista vale no passe");
+    assert_eq!(s.falloff, b.falloff, "e a curva dele também");
+    assert_eq!(s.radius, b.radius);
+    assert!(
+        s.auto_smooth_brush().is_none(),
+        "e o filho não gera um neto"
+    );
+}

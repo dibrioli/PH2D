@@ -231,6 +231,40 @@ pub struct Brush {
     /// nasce no neutro e o número passa a ser do ARTISTA — nunca uma tabela
     /// inventada com o nome de outro produto.
     pub hardness: f32,
+    /// **O ALISAMENTO QUE CORRE DEPOIS DE CADA DAB**, em `[0, 1]` — o
+    /// `autosmooth_factor` do Blender (`sculpt.cc:3636`), e **`0` é o neutro**.
+    ///
+    /// ⚠️ **Ele é o que faltava, e a medição é que o nomeia.** O report de
+    /// 2026-08-16 (*"tanto hardness como falloffs apresenta problemas graves"*,
+    /// com foto de traços em escamas) foi atribuído medindo, e a atribuição
+    /// ABSOLVEU as duas leis: um dab só reproduz a curva analítica a três
+    /// decimais nas doze, e o `hardness` é o `apply_hardness_to_distances`
+    /// verbatim, no mesmo ponto do pipeline. O que a foto mostra é o **degrau**
+    /// que uma curva de PLATÔ necessariamente escreve, e nenhuma das duas
+    /// referências o limita na aritmética — o Blender o limita **noutro passe**.
+    ///
+    /// Medido num traço de raio `0,30` e força `0,5` sobre a esfera de fábrica
+    /// (98 306 vértices), o pior diedro entre triângulos vizinhos:
+    ///
+    /// | curva | diedro |
+    /// |---|---|
+    /// | esfera intocada (controle) | 0,89° |
+    /// | `Plateau` (o de fábrica) | 4,88° |
+    /// | `Smooth` | 4,52° |
+    /// | `Sphere` | 41,79° |
+    /// | `Constant` | **90,93°** |
+    ///
+    /// e pela dureza, com a curva de fábrica: `0` → 4,52° · `0,5` → 11,56° ·
+    /// `0,75` → 30,23° · `0,9` → 55,99° · `1,0` → **90,93°**. Acima de 90° a
+    /// superfície não é um penhasco, é uma **dobra**.
+    ///
+    /// ⚠️ **É o vizinho do `hardness` no RNA do Blender** (`rna_brush.cc:3450`
+    /// contra `:3457`), e a adjacência não é acaso: são os dois knobs que trocam
+    /// **borda dura** por **superfície que a malha consegue carregar**.
+    ///
+    /// ⚠️ **Nasce em `0`, que é o default do Blender** — subir isto mudaria o
+    /// desenho de todo traço de todo documento, e é decisão de produto.
+    pub auto_smooth: f32,
     /// **QUÃO LARGO é o campo elástico** — a família de escalas do
     /// [`crate::kelvinlet`], e o único knob que o `l-mode` tinha e não oferecia.
     ///
@@ -379,6 +413,8 @@ impl Default for Brush {
             mask_hardness: 0.25,
             // O neutro do `apply_hardness_to_distances` — ver o campo.
             hardness: 0.0,
+            // O default do Blender, e o neutro deste passe — ver o campo.
+            auto_smooth: 0.0,
             // ⚠️ **DELEGA, e não repete a palavra `Tri`:** a família que shipa
             // é a que a MEDIÇÃO escolheu (o resíduo de borda, em
             // [`crate::kelvinlet::Scales`]), e escrevê-la aqui poria o mesmo

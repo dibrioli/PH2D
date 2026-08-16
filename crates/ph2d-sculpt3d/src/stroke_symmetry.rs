@@ -140,6 +140,29 @@ impl SculptStroke {
                     .extend_from_slice(self.region.refreshed());
             }
             total += n;
+            // ⚠️ **O SEGUNDO PASSE — o `autosmooth_factor` do Blender**, e a
+            // posição é a dele: **depois** do verbo e **dentro** da passada de
+            // simetria (`sculpt.cc:3635`, no fim do `do_brush_action`, que é
+            // chamado uma vez por cópia). Fora do laço ele alisaria só a última
+            // cópia; antes do verbo ele alisaria a superfície que o verbo está
+            // prestes a substituir.
+            //
+            // ⚠️ **A porta devolve `None` no neutro** ([`Brush::auto_smooth_brush`]),
+            // então com o default de fábrica nem uma consulta à árvore acontece —
+            // é isso que torna este passe invisível no produto até alguém o pedir.
+            //
+            // ⚠️ **Ele NÃO entra no `total`.** O contador diz *quantos vértices
+            // este dab moveu*, e o alisamento percorre os MESMOS: somá-lo faria
+            // um dab relatar até o dobro da própria pegada, e quem lê esse número
+            // decide refino e orçamento por ele.
+            if let Some(smoother) = brush.auto_smooth_brush() {
+                let m = self.dab_core(mesh, &smoother, &mirrored);
+                if m > 0 {
+                    self.call_moved.extend_from_slice(&self.moved);
+                    self.call_refreshed
+                        .extend_from_slice(self.region.refreshed());
+                }
+            }
         }
         total
     }

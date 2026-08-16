@@ -51,6 +51,56 @@ impl Brush {
     }
 }
 
+impl Brush {
+    /// **O PINCEL DO SEGUNDO PASSE**, ou `None` quando ele não corre — a porta
+    /// única do [`Brush::auto_smooth`].
+    ///
+    /// Porte do bloco de `sculpt.cc:3635-3647`, que roda **depois** do verbo, em
+    /// cada passada de simetria:
+    ///
+    /// ```text
+    /// if (!ELEM(type, SMOOTH, MASK) && brush.autosmooth_factor > 0)
+    ///     do_smooth_brush(…, brush.autosmooth_factor);
+    /// ```
+    ///
+    /// ⚠️ **As duas exclusões são do original e cada uma tem um motivo
+    /// diferente.** Alisar um alisamento é o mesmo verbo duas vezes com pesos
+    /// que ninguém pediu; e o canal de MÁSCARA não é geometria — um passe que
+    /// mexesse na posição enquanto o artista pinta uma máscara moveria o barro
+    /// num gesto cuja razão de existir é **não** mover o barro.
+    ///
+    /// ⚠️ **O pincel do passe é o MESMO, com o verbo e a força trocados**, e não
+    /// um pincel montado do zero: no original o `do_smooth_brush` recebe o
+    /// `Brush` inteiro e só o `strength` vem do fator, então a dureza, a curva,
+    /// o padrão e a simetria do artista **valem também no alisamento**. Montar
+    /// um pincel neutro aqui seria uma segunda resposta a *"que forma tem este
+    /// dab?"*, e ela divergiria da primeira exactamente na borda, que é onde o
+    /// passe existe para agir.
+    ///
+    /// ⚠️ **`auto_smooth: 0.0` no filho é o que impede a recursão**, e ele é
+    /// estrutural em vez de uma guarda no chamador: um passe que se pedisse a si
+    /// mesmo não daria erro nenhum — daria um laço.
+    #[must_use]
+    pub fn auto_smooth_brush(&self) -> Option<Self> {
+        // ⚠️ **`is_finite` E `<= 0` — o par, não a negação de `> 0`.** Um
+        // `NaN` que chegasse por um param mal carregado passaria por
+        // `<= 0.0` (toda comparação com NaN é falsa) e viraria a FORÇA de um
+        // pincel de Smooth, que é a forma mais barata de envenenar a malha.
+        if !self.auto_smooth.is_finite()
+            || self.auto_smooth <= 0.0
+            || matches!(self.verb, crate::Verb::Smooth | crate::Verb::Mask)
+        {
+            return None;
+        }
+        Some(Self {
+            verb: crate::Verb::Smooth,
+            strength: self.auto_smooth,
+            auto_smooth: 0.0,
+            ..self.clone()
+        })
+    }
+}
+
 /// A dureza do canal em `1.0` dá expoente **zero**, e `x^0 == 1` em toda a
 /// pegada — o disco duro. É o topo da faixa da tool do original, e o nome existe
 /// para o painel não repetir o literal.

@@ -44,8 +44,11 @@ pub(crate) fn paint_texture_section(
 ) -> f32 {
     // Collapsible section (default expanded) on the brush; the inline Texture-LAYER editor keeps the
     // plain divider (it's always-on, nested under the active layer row).
-    let (mut y, collapsed) = if compact {
-        (section_header(ctx, theme, x, content_w, y, "Grain"), false)
+    // ⚠️ `None` aqui significa DUAS coisas, e a distincao decide o corpo: em `compact` o editor
+    // inline da CAMADA nao e' dobravel (nao ha seccao a fechar), enquanto no painel de pincel um
+    // `None` e' a seccao FECHADA e parada. O `compact` e' quem as separa.
+    let (mut y, fold) = if compact {
+        (section_header(ctx, theme, x, content_w, y, "Grain"), None)
     } else {
         crate::paint_brush_top::paint_collapsible_section(
             ctx,
@@ -59,7 +62,7 @@ pub(crate) fn paint_texture_section(
             core_ids::PAINTER_BRUSH_TEXTURE_RESET,
         )
     };
-    if collapsed {
+    if !compact && fold.is_none() {
         return y;
     }
     // Watercolor mode: the Grain slot IS the granulation map — show the "Same as Paper" toggle + the
@@ -228,7 +231,11 @@ pub(crate) fn paint_texture_section(
     // Color Ramp is meaningless — hide it (the Paper section carries the colour). A Texture LAYER
     // (`compact`) keeps its ramp regardless. Params still show either way.
     let show_ramp = !brush.watercolor || compact;
-    paint_texture_params_and_ramp(ctx, theme, x, content_w, y, brush, kind, show_ramp)
+    let out = paint_texture_params_and_ramp(ctx, theme, x, content_w, y, brush, kind, show_ramp);
+    match fold {
+        Some(f) => crate::paint_brush_top::end_fold(ctx, f, out),
+        None => out,
+    }
 }
 
 /// Paint the Grain section's tail — the per-pattern params + (when `show_ramp`) the Color Ramp sub-editor.

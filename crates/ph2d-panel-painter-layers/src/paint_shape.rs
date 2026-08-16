@@ -5,7 +5,7 @@
 //! helpers; all controls are fixed-id, tool-global widgets registered in [`crate::populate`].
 
 use crate::paint_brush_rows::paint_dropdown_row;
-use crate::paint_brush_top::{paint_checkbox_row, paint_collapsible_section};
+use crate::paint_brush_top::{end_fold, paint_checkbox_row, paint_collapsible_section};
 use crate::state;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{resolve, stroke_rounded_rect};
@@ -35,7 +35,7 @@ pub(crate) fn paint_shape_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let (mut y, collapsed) = paint_collapsible_section(
+    let (mut y, fold) = paint_collapsible_section(
         ctx,
         theme,
         x,
@@ -46,9 +46,9 @@ pub(crate) fn paint_shape_section(
         core_ids::PAINTER_SHAPE_SECTION_COLOR,
         core_ids::PAINTER_SHAPE_RESET,
     );
-    if collapsed {
+    let Some(fold) = fold else {
         return y;
-    }
+    };
     // ── Watercolor "Automatic" (doc 13 #1): in watercolor mode the stamp defaults to the built-in
     //    feather silhouette — the section's items don't apply, so they HIDE behind the checked box.
     //    Unchecking opens them AND routes them into the watercolor coverage stamp (the tool also
@@ -65,7 +65,7 @@ pub(crate) fn paint_shape_section(
             brush.watercolor_shape_auto,
         );
         if brush.watercolor_shape_auto {
-            return y;
+            return end_fold(ctx, fold, y);
         }
     }
     let kind = TextureKind::from_u8(brush.shape_kind);
@@ -159,7 +159,8 @@ pub(crate) fn paint_shape_section(
     // sozinho já é uma silhueta (mesmo que uma que quase não tem o que revelar — 0,21 nível medido).
     y = paint_shape_deposit_rows(ctx, theme, x, content_w, y, brush);
     // None ⇒ nothing more: the Falloff dropdown + its curve preview above ARE the silhouette.
-    y
+    let out = y;
+    end_fold(ctx, fold, out)
 }
 
 /// As rows do **DEPÓSITO** — o relevo que esta silhueta deixa na tinta, e o material dessa tinta.

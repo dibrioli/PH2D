@@ -13,10 +13,10 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionHeader, WET_TUNING_SCROLLBAR_ID,
-    paint_checkbox, paint_icon_button, paint_scrollbar, paint_section_header,
-    paint_slider_with_chip_layout_adaptive, scrollbar_is_needed, scrollbar_thumb_rect,
-    scrollbar_track_rect,
+    Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionFold, SectionHeader,
+    WET_TUNING_SCROLLBAR_ID, paint_checkbox, paint_icon_button, paint_scrollbar,
+    paint_section_header, paint_slider_with_chip_layout_adaptive, scrollbar_is_needed,
+    scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -171,16 +171,21 @@ fn paint_body(
             tr(section.label),
             fold,
         );
-        if !open {
+        // ⚠️ **A DOBRA do corpo (F4b)** — o escopo é aberto DEPOIS do cabeçalho (que já pintou)
+        //    e fechado logo abaixo; o `is_collapsed` deixa de gatear o corpo, porque ele vira no
+        //    quadro do clique enquanto o `t` ainda desce.
+        let Some(scope) = open_fold(ctx, section.header, x, w, y) else {
             continue;
-        }
+        };
+        let mut inner = y;
         for row in rows::rows().iter().filter(|r| r.group == section.group) {
             if artist_paper_armed && rows::is_engine_paper_physical(row.key) {
                 continue;
             }
             let value = brush.wet_knobs.knobs[row.knob];
-            y = paint_row(ctx, row, value, x, w, y, theme);
+            inner = paint_row(ctx, row, value, x, w, inner, theme);
         }
+        y = close_fold(ctx, scope, inner);
     }
     // EXPERIMENTAL — the two K–M checkboxes + the note.
     y = header_row(
@@ -202,11 +207,7 @@ fn paint_body(
                 .section_open_live(ids::WET_TUNING_GROUP_HEADERS[5]),
         ),
     );
-    if !ctx
-        .host
-        .store()
-        .is_collapsed(ids::WET_TUNING_GROUP_HEADERS[5])
-    {
+    if let Some(scope) = open_fold(ctx, ids::WET_TUNING_GROUP_HEADERS[5], x, w, y) {
         y = checkbox_row(
             ctx,
             theme,
@@ -228,8 +229,30 @@ fn paint_body(
             brush.wet_km_glaze,
         );
         y = note_text(ctx, theme, x, w, y, tr("panel.wet_tuning.note"));
+        y = close_fold(ctx, scope, y);
     }
     y
+}
+
+/// **Abre a dobra do corpo de uma secção** (F4b) — `None` quando ela está fechada **e parada**,
+/// o único caso em que o corpo não é pintado.
+fn open_fold(
+    ctx: &mut PaintCtx,
+    id: ph2d_a11y::NodeId,
+    x: f32,
+    w: f32,
+    body_top: f32,
+) -> Option<SectionFold> {
+    let scene = &mut *ctx.scene;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    SectionFold::begin(store, id, x, w, body_top, scene, hit_index)
+}
+
+/// Fecha a dobra e devolve o `y` de saída — ver [`open_fold`].
+fn close_fold(ctx: &mut PaintCtx, fold: SectionFold, y: f32) -> f32 {
+    let scene = &mut *ctx.scene;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    fold.finish(store, scene, hit_index, y)
 }
 
 /// One slider+chip row from the table, with its per-knob reset at the right.

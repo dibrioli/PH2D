@@ -41,7 +41,7 @@ pub(crate) fn paint_watercolor_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let (mut y, collapsed) = crate::paint_brush_top::paint_collapsible_section(
+    let (mut y, fold) = crate::paint_brush_top::paint_collapsible_section(
         ctx,
         theme,
         x,
@@ -52,16 +52,16 @@ pub(crate) fn paint_watercolor_section(
         core_ids::PAINTER_WATERCOLOR_SECTION_COLOR,
         core_ids::PAINTER_WATERCOLOR_RESET,
     );
-    if collapsed {
+    let Some(fold) = fold else {
         return y;
-    }
+    };
 
     // ⚠️ The master enable is the **Paint Mode** dropdown at the head of the appearance half
     // (2026-07-22): this section is painted only while Watercolor is the selected medium, so a checkbox
     // here would be a second door to the same fact. The guard stays as the belt to that braces —
     // `paint_media` derives the medium from this flag, so they cannot disagree.
     if !brush.watercolor {
-        return y;
+        return crate::paint_brush_top::end_fold(ctx, fold, y);
     }
 
     // Three technique cards — each paints its rows off the snapshot and returns
@@ -71,7 +71,8 @@ pub(crate) fn paint_watercolor_section(
     y = paint_water_card(ctx, theme, x, content_w, y, &brush);
     y = paint_wetness_card(ctx, theme, x, content_w, y, &brush);
 
-    y
+    let out = y;
+    crate::paint_brush_top::end_fold(ctx, fold, out)
 }
 
 /// Card 4: WETNESS — canvas-level moisture controls (doc 13 #9-#11), NOT brush params: the

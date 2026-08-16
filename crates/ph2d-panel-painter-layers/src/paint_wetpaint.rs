@@ -42,7 +42,7 @@ pub(crate) fn paint_wetpaint_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let (mut y, collapsed) = crate::paint_brush_top::paint_collapsible_section(
+    let (mut y, fold) = crate::paint_brush_top::paint_collapsible_section(
         ctx,
         theme,
         x,
@@ -53,9 +53,9 @@ pub(crate) fn paint_wetpaint_section(
         core_ids::PAINTER_WETPAINT_SECTION_COLOR,
         core_ids::PAINTER_WETPAINT_RESET,
     );
-    if collapsed {
+    let Some(fold) = fold else {
         return y;
-    }
+    };
     // The W3 knobs — only while ARMED (a knob for an engine that is not running is a dead
     // control wearing a live one's clothes). Ranges mirror the tool's clamps (SPEC §16 /
     // `KNOB_DEFS` slider ranges); decimals sized to each knob's granularity.
@@ -228,7 +228,8 @@ pub(crate) fn paint_wetpaint_section(
             brush.wet_tuning_open,
         );
     }
-    y
+    let out = y;
+    crate::paint_brush_top::end_fold(ctx, fold, out)
 }
 
 /// **O GRUPO DE RESOLUÇÃO** — os dois números que decidem de que tamanho é cada

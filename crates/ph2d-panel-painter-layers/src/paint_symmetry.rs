@@ -16,7 +16,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 use ph2d_tool_painter::BrushSettings;
 
-use crate::paint_brush_top::{paint_checkbox_row, paint_collapsible_section};
+use crate::paint_brush_top::{end_fold, paint_checkbox_row, paint_collapsible_section};
 
 /// Radial segment-count UI range (mirrors `ph2d_painter_brush::SYMMETRY_{MIN,MAX}_SEGMENTS`).
 const SEG_MIN: f32 = 3.0; // LITERAL-PX-OK: radial-symmetry segment count, not a design value
@@ -34,7 +34,7 @@ pub(crate) fn paint_symmetry_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let (mut y, collapsed) = paint_collapsible_section(
+    let (mut y, fold) = paint_collapsible_section(
         ctx,
         theme,
         x,
@@ -45,9 +45,9 @@ pub(crate) fn paint_symmetry_section(
         core_ids::PAINTER_BRUSH_SYMMETRY_SECTION_COLOR,
         core_ids::PAINTER_BRUSH_SYMMETRY_RESET,
     );
-    if collapsed {
+    let Some(fold) = fold else {
         return y;
-    }
+    };
     y = paint_checkbox_row(
         ctx,
         theme,
@@ -60,7 +60,7 @@ pub(crate) fn paint_symmetry_section(
     );
     // The rest of the controls only make sense once symmetry is on.
     if !brush.symmetry_enabled {
-        return y;
+        return end_fold(ctx, fold, y);
     }
     y = paint_checkbox_row(
         ctx,
@@ -101,7 +101,8 @@ pub(crate) fn paint_symmetry_section(
             );
         }
     }
-    y
+    let out = y;
+    end_fold(ctx, fold, out)
 }
 
 /// The X / Y / Custom mirror-axis **segmented** control (the canonical `RadioGroup::Segmented`, as in

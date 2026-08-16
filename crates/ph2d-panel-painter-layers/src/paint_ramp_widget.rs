@@ -95,7 +95,7 @@ pub(crate) fn paint_color_ramp_section(
     ids: &RampIds,
     view: RampView,
 ) -> f32 {
-    let (mut y, collapsed) = crate::paint_brush_top::paint_collapsible_section(
+    let (mut y, fold) = crate::paint_brush_top::paint_collapsible_section(
         ctx,
         theme,
         x,
@@ -106,9 +106,9 @@ pub(crate) fn paint_color_ramp_section(
         ids.section_color,
         ids.reset,
     );
-    if collapsed {
+    let Some(fold) = fold else {
         return y;
-    }
+    };
     y = crate::paint_brush_top::paint_checkbox_row(
         ctx,
         theme,
@@ -120,7 +120,7 @@ pub(crate) fn paint_color_ramp_section(
         view.enabled,
     );
     if !view.enabled {
-        return y; // hide the editor when off (no dead controls)
+        return crate::paint_brush_top::end_fold(ctx, fold, y); // hide the editor when off (no dead controls)
     }
     let sel = view
         .stops
@@ -151,7 +151,8 @@ pub(crate) fn paint_color_ramp_section(
     ) {
         (ids.set_pending_alpha)(Some((alpha_rect, view.alpha_mode)));
     }
-    y + ROW_H_PX + Spacing::Xs.px()
+    let out = y + ROW_H_PX + Spacing::Xs.px();
+    crate::paint_brush_top::end_fold(ctx, fold, out)
 }
 
 /// The controls line: `+ − I [B&W]` square/toggle buttons, then the Mode / Interp dropdowns. When the

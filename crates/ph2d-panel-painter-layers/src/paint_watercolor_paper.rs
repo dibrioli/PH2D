@@ -116,7 +116,7 @@ pub(crate) fn paint_paper_section(
 ) -> f32 {
     // Quem consome o papel como META do fluido — o único dono das três rows de aguada.
     let wash = brush.watercolor || brush.wetpaint;
-    let (mut y, collapsed) = crate::paint_brush_top::paint_collapsible_section(
+    let (mut y, fold) = crate::paint_brush_top::paint_collapsible_section(
         ctx,
         theme,
         x,
@@ -127,9 +127,9 @@ pub(crate) fn paint_paper_section(
         core_ids::PAINTER_WATERCOLOR_PAPER_SECTION_COLOR,
         core_ids::PAINTER_WATERCOLOR_PAPER_RESET,
     );
-    if collapsed {
+    let Some(fold) = fold else {
         return y;
-    }
+    };
     // ── Paper COLOUR — the document ground the watercolor optics see where nothing is painted
     //    below the active layer (Rebelle: canvas colour is a user-pickable document property).
     //    Painted before the Kind gate: the ground matters even with no paper texture set. ──
@@ -165,7 +165,7 @@ pub(crate) fn paint_paper_section(
     // ── O SUBSTRATO: o dente do papel e o filme de pigmento (as três rows abaixo). ──
     y = paint_substrate_rows(ctx, theme, x, content_w, y, brush);
     if kind == TextureKind::None {
-        return y;
+        return crate::paint_brush_top::end_fold(ctx, fold, y);
     }
     // ── Live preview of the paper pattern (grayscale; reads the Paper slot via a texture-field view) ──
     y = crate::paint_texture::paint_texture_preview(
@@ -273,7 +273,8 @@ pub(crate) fn paint_paper_section(
             )
         })
         .collect();
-    number_field::paint_num_params(ctx, theme, x, content_w, y, &pp)
+    let out = number_field::paint_num_params(ctx, theme, x, content_w, y, &pp);
+    crate::paint_brush_top::end_fold(ctx, fold, out)
 }
 
 /// sRGB `f32` triple → 8-bit (mirror of `paint_brush::encode_rgb`, private there).

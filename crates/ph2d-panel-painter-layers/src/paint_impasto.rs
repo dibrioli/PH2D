@@ -77,7 +77,7 @@ pub(crate) fn paint_impasto_section(
     if !brush.impasto_section_applies {
         return y;
     }
-    let (mut y, collapsed) = crate::paint_brush_top::paint_collapsible_section(
+    let (mut y, fold) = crate::paint_brush_top::paint_collapsible_section(
         ctx,
         theme,
         x,
@@ -88,9 +88,9 @@ pub(crate) fn paint_impasto_section(
         core_ids::PAINTER_IMPASTO_SECTION_COLOR,
         core_ids::PAINTER_IMPASTO_RESET,
     );
-    if collapsed {
+    let Some(fold) = fold else {
         return y;
-    }
+    };
 
     // ⚠️ **Enable** used to be painted here, first, as the section's master (Enio, 2026-07-19: *"é quem
     // habilita esse modo de pintura"*). Since 2026-07-22 that switch is the **Paint Mode** dropdown at
@@ -108,7 +108,7 @@ pub(crate) fn paint_impasto_section(
         // whether any relief exists, never `brush.impasto`. So relief already on the canvas stays lit —
         // only its CONTROLS are hidden until Impasto is switched back on. Hiding the card is not the same
         // as putting the light out, and the engine keeps them separate.
-        return y;
+        return crate::paint_brush_top::end_fold(ctx, fold, y);
     }
     // Governs every slider below it, so it sits outside the boxes rather than inside one: a control that
     // reaches across every card does not belong in any of them. Unticked by default (Enio 2026-07-19) —
@@ -142,7 +142,8 @@ pub(crate) fn paint_impasto_section(
     y = paint_material_card(ctx, theme, x, content_w, y, &brush);
     // Lighting is last: it is the canvas's, not the brush's — one light for the whole document, like the
     // paper colour.
-    paint_lighting_card(ctx, theme, x, content_w, y, &brush)
+    let out = paint_lighting_card(ctx, theme, x, content_w, y, &brush);
+    crate::paint_brush_top::end_fold(ctx, fold, out)
 }
 
 /// Wire index of the Knife on the TOOL list — mirrors `ph2d_tool_painter`'s `IMPASTO_TOOL_KNIFE`

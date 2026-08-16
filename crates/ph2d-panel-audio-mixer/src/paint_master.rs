@@ -17,7 +17,7 @@ use crate::{
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text_centered, resolve};
-use ph2d_editor_core::widget::{SectionHeader, paint_section_header};
+use ph2d_editor_core::widget::{SectionFold, SectionHeader, paint_section_header};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
@@ -108,7 +108,7 @@ fn slider_row(ctx: &mut Ctx, y: f32, label: &str, id: NodeId, value: f32) -> f32
 
 /// Paint a collapsible section header (chevron + uppercase label). Returns
 /// `(open, next_y)`; the dispatch flips `is_collapsed` on click.
-fn section_header(ctx: &mut Ctx, y: f32, id: NodeId, label: &str) -> (bool, f32) {
+fn section_header(ctx: &mut Ctx, y: f32, id: NodeId, label: &str) -> (Option<SectionFold>, f32) {
     let open = !ctx.store.is_collapsed(id);
     let rect = Rect::new(ctx.x, y, ctx.w, MUTE_H);
     let header = SectionHeader::new(id, label)
@@ -116,7 +116,22 @@ fn section_header(ctx: &mut Ctx, y: f32, id: NodeId, label: &str) -> (bool, f32)
         .open_t(ctx.store.section_open_live(id));
     paint_section_header(&header, rect, ctx.scene, ctx.text_system, ctx.theme);
     ctx.hit_index.register(id, rect);
-    (open, y + MUTE_H + Spacing::Sm.px())
+    let body_top = y + MUTE_H + Spacing::Sm.px();
+    let fold = SectionFold::begin(
+        ctx.store,
+        id,
+        ctx.x,
+        ctx.w,
+        body_top,
+        ctx.scene,
+        ctx.hit_index,
+    );
+    (fold, body_top)
+}
+
+/// Fecha a dobra aberta pelo [`section_header`] e devolve o `y` de saida.
+fn end_fold(ctx: &mut Ctx, fold: SectionFold, y: f32) -> f32 {
+    fold.finish(ctx.store, ctx.scene, ctx.hit_index, y)
 }
 
 /// Per-sub-bus labeled rows (used by the Reverb/Delay sends + Comp knobs).
@@ -169,30 +184,32 @@ fn paint_limiter(ctx: &mut Ctx, y: f32) -> f32 {
 }
 
 fn paint_eq(ctx: &mut Ctx, y: f32) -> f32 {
-    let (open, mut y) = section_header(ctx, y, AMIX_SEC_EQ, "EQ");
-    if open {
+    let (fold, mut y) = section_header(ctx, y, AMIX_SEC_EQ, "EQ");
+    if let Some(fold) = fold {
         let eq = snapshot::eq();
         y = slider_row(ctx, y, "Low", AMIX_EQ_LOW, eq[0]);
         y = slider_row(ctx, y, "Mid", AMIX_EQ_MID, eq[1]);
         y = slider_row(ctx, y, "High", AMIX_EQ_HIGH, eq[2]);
+        y = end_fold(ctx, fold, y);
     }
     y + Spacing::Sm.px()
 }
 
 fn paint_reverb(ctx: &mut Ctx, y: f32) -> f32 {
-    let (open, mut y) = section_header(ctx, y, AMIX_SEC_REVERB, "Reverb");
-    if open {
+    let (fold, mut y) = section_header(ctx, y, AMIX_SEC_REVERB, "Reverb");
+    if let Some(fold) = fold {
         y = toggle_row(ctx, y, "Reverb", snapshot::reverb_on(), AMIX_REVERB);
         y = slider_row(ctx, y, "Size", AMIX_REVERB_SIZE, snapshot::reverb_size());
         y = slider_row(ctx, y, "Return", AMIX_REVERB_MIX, snapshot::reverb_mix());
         y = sub_bus_rows(ctx, y, &SUB_SEND, snapshot::sub_send());
+        y = end_fold(ctx, fold, y);
     }
     y + Spacing::Sm.px()
 }
 
 fn paint_delay(ctx: &mut Ctx, y: f32) -> f32 {
-    let (open, mut y) = section_header(ctx, y, AMIX_SEC_DELAY, "Delay");
-    if open {
+    let (fold, mut y) = section_header(ctx, y, AMIX_SEC_DELAY, "Delay");
+    if let Some(fold) = fold {
         y = toggle_row(ctx, y, "Delay", snapshot::delay_on(), AMIX_DELAY);
         y = slider_row(ctx, y, "Time", AMIX_DELAY_TIME, snapshot::delay_time());
         y = slider_row(
@@ -204,21 +221,23 @@ fn paint_delay(ctx: &mut Ctx, y: f32) -> f32 {
         );
         y = slider_row(ctx, y, "Return", AMIX_DELAY_MIX, snapshot::delay_mix());
         y = sub_bus_rows(ctx, y, &SUB_DELAY_SEND, snapshot::sub_delay_send());
+        y = end_fold(ctx, fold, y);
     }
     y + Spacing::Sm.px()
 }
 
 fn paint_comp(ctx: &mut Ctx, y: f32) -> f32 {
-    let (open, mut y) = section_header(ctx, y, AMIX_SEC_COMP, "Comp");
-    if open {
+    let (fold, mut y) = section_header(ctx, y, AMIX_SEC_COMP, "Comp");
+    if let Some(fold) = fold {
         y = sub_bus_rows(ctx, y, &SUB_COMP, snapshot::sub_comp());
+        y = end_fold(ctx, fold, y);
     }
     y + Spacing::Sm.px()
 }
 
 fn paint_ducking(ctx: &mut Ctx, y: f32) -> f32 {
-    let (open, mut y) = section_header(ctx, y, AMIX_SEC_DUCK, "Ducking");
-    if open {
+    let (fold, mut y) = section_header(ctx, y, AMIX_SEC_DUCK, "Ducking");
+    if let Some(fold) = fold {
         y = toggle_row(ctx, y, "Ducking", snapshot::ducking(), AMIX_DUCK);
         // Key selector (a plain button — cycles the sidechain key sub-bus).
         let key_label = format!(
@@ -239,6 +258,7 @@ fn paint_ducking(ctx: &mut Ctx, y: f32) -> f32 {
         );
         y += MUTE_H + Spacing::Sm.px();
         y = slider_row(ctx, y, "Depth", AMIX_DUCK_DEPTH, snapshot::duck_depth());
+        y = end_fold(ctx, fold, y);
     }
     y + Spacing::Sm.px()
 }

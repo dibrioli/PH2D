@@ -33,7 +33,7 @@ pub(crate) fn paint_stroke_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let (mut y, collapsed) = crate::paint_brush_top::paint_collapsible_section(
+    let (mut y, fold) = crate::paint_brush_top::paint_collapsible_section(
         ctx,
         theme,
         x,
@@ -44,9 +44,9 @@ pub(crate) fn paint_stroke_section(
         core_ids::PAINTER_BRUSH_STROKE_SECTION_COLOR,
         core_ids::PAINTER_BRUSH_STROKE_RESET,
     );
-    if collapsed {
+    let Some(fold) = fold else {
         return y;
-    }
+    };
 
     // Each param is gated by the method that actually consumes it — Blender hides
     // the irrelevant rows rather than showing dead controls. A row that is not
@@ -219,7 +219,8 @@ pub(crate) fn paint_stroke_section(
         );
     }
 
-    y
+    let out = y;
+    crate::paint_brush_top::end_fold(ctx, fold, out)
 }
 
 /// Paint the **Tiling** section — its own collapsible section (default collapsed), the last one in the
@@ -233,7 +234,7 @@ pub(crate) fn paint_tiling_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let (mut y, collapsed) = crate::paint_brush_top::paint_collapsible_section(
+    let (mut y, fold) = crate::paint_brush_top::paint_collapsible_section(
         ctx,
         theme,
         x,
@@ -244,9 +245,9 @@ pub(crate) fn paint_tiling_section(
         core_ids::PAINTER_BRUSH_TILING_SECTION_COLOR,
         core_ids::PAINTER_BRUSH_TILING_RESET,
     );
-    if collapsed {
+    let Some(fold) = fold else {
         return y;
-    }
+    };
     y = paint_checkbox_row(
         ctx,
         theme,
@@ -278,7 +279,8 @@ pub(crate) fn paint_tiling_section(
         "Repeat Image",
         brush.repeat_image,
     );
-    y
+    let out = y;
+    crate::paint_brush_top::end_fold(ctx, fold, out)
 }
 
 /// Deferred paint of the Stroke section's open dropdown popovers (Method + Jitter Unit), drained

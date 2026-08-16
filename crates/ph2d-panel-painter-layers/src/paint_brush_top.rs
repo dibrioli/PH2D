@@ -7,8 +7,9 @@ use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionHeader, color_circle_hit_rect,
-    paint_checkbox, paint_icon_button, paint_section_header, paint_slider_with_chip,
+    Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionFold, SectionHeader,
+    color_circle_hit_rect, paint_checkbox, paint_icon_button, paint_section_header,
+    paint_slider_with_chip,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
@@ -113,7 +114,7 @@ pub(crate) fn paint_collapsible_section(
     section_id: ph2d_a11y::NodeId,
     color_id: ph2d_a11y::NodeId,
     reset_id: ph2d_a11y::NodeId,
-) -> (f32, bool) {
+) -> (f32, Option<SectionFold>) {
     let header_h = TypeToken::Md.px() + Spacing::Md.px();
     let collapsed = ctx.host.store().is_collapsed(section_id);
     let rgba = ctx
@@ -154,7 +155,21 @@ pub(crate) fn paint_collapsible_section(
         theme,
     );
     ctx.host.hit_index_mut().register(reset_id, reset_rect);
-    (y + header_h + Spacing::Xs.px(), collapsed)
+    let body_top = y + header_h + Spacing::Xs.px();
+    let scene = &mut *ctx.scene;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let fold = SectionFold::begin(store, section_id, x, content_w, body_top, scene, hit_index);
+    (body_top, fold)
+}
+
+/// Fecha a dobra aberta por [`paint_collapsible_section`] e devolve o `y` de saida.
+///
+/// Vive aqui, ao lado de quem a abre, porque o `finish` quer `&WidgetStore`, `&mut VectorScene` e
+/// `&mut HitIndex` ao mesmo tempo, e num `PaintCtx` os tres saem de campos disjuntos.
+pub(crate) fn end_fold(ctx: &mut PaintCtx, fold: SectionFold, y: f32) -> f32 {
+    let scene = &mut *ctx.scene;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    fold.finish(store, scene, hit_index, y)
 }
 
 /// Paint the collapsible "Randomize Color" section: ALL-CAPS header + collapse chevron + assignable
@@ -168,7 +183,7 @@ pub(crate) fn paint_randomize_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let (mut y, collapsed) = paint_collapsible_section(
+    let (mut y, fold) = paint_collapsible_section(
         ctx,
         theme,
         x,
@@ -179,9 +194,9 @@ pub(crate) fn paint_randomize_section(
         core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION_COLOR,
         core_ids::PAINTER_BRUSH_RANDOMIZE_RESET,
     );
-    if collapsed {
+    let Some(fold) = fold else {
         return y;
-    }
+    };
     for (slot, label) in ["Hue", "Saturation", "Value"].into_iter().enumerate() {
         y = paint_slider_chip_row(
             ctx,
@@ -195,5 +210,6 @@ pub(crate) fn paint_randomize_section(
             brush.color_jitter[slot],
         );
     }
-    y
+    let out = y;
+    end_fold(ctx, fold, out)
 }

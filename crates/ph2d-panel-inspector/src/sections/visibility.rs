@@ -8,6 +8,7 @@
 
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorVisibilitySectionInfo;
+use ph2d_editor_core::widget::SectionFold;
 
 /// Label-above row with a single NumberInput. Returns the next `y`.
 /// Mirrors §9 Sampling's `uv_pair_row` but for one value (cutoff, a rect
@@ -134,7 +135,6 @@ pub(crate) fn paint_visibility_section(
     // `is_collapsed(INSP_VIS_LAYER_HEADER)` via `apply_click` (the id is
     // marked collapsible). Bit `n` = layer `n+1`; absent component → ALL.
     yy = paint_section_separator(scene, theme, x, w, yy);
-    let layer_collapsed = store.is_collapsed(ids::INSP_VIS_LAYER_HEADER);
     let layer_header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
     let layer_header = section_header(store, ids::INSP_VIS_LAYER_HEADER, "Visibility Layer")
         .open_t(store.section_open_live(ids::INSP_VIS_LAYER_HEADER));
@@ -142,20 +142,33 @@ pub(crate) fn paint_visibility_section(
     paint_section_header(&layer_header, layer_header_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_VIS_LAYER_HEADER, layer_header_rect);
     yy += layer_header_h;
-    if layer_collapsed {
-        yy += row_gap;
-    } else {
-        let grid = BitmaskGrid32::new(
-            ids::INSP_LIVE_VISIBILITY_SECTION,
-            "Visibility Layer",
-            ids::INSP_VIS_LAYER_BIT,
-            info.layer_mask,
-        );
-        for (bit, id) in ids::INSP_VIS_LAYER_BIT.iter().enumerate() {
-            hit_index.register(*id, BitmaskGrid32::cell_rect(x, yy, w, h, bit));
+    // ⚠️ A grade de 32 bits e' ALTA, entao ela e' a sub-seccao onde a dobra do corpo mais se ve'.
+    // O `begin` devolve `None` so' quando a seccao esta' fechada **e parada** — e' ai' que o corpo
+    // nao e' percorrido de todo, exactamente o `if layer_collapsed` de sempre.
+    match SectionFold::begin(
+        store,
+        ids::INSP_VIS_LAYER_HEADER,
+        x,
+        w,
+        yy,
+        scene,
+        hit_index,
+    ) {
+        None => yy += row_gap,
+        Some(fold) => {
+            let grid = BitmaskGrid32::new(
+                ids::INSP_LIVE_VISIBILITY_SECTION,
+                "Visibility Layer",
+                ids::INSP_VIS_LAYER_BIT,
+                info.layer_mask,
+            );
+            for (bit, id) in ids::INSP_VIS_LAYER_BIT.iter().enumerate() {
+                hit_index.register(*id, BitmaskGrid32::cell_rect(x, yy, w, h, bit));
+            }
+            paint_bitmask_grid32(&grid, x, yy, w, h, scene, text_system, theme);
+            let inner = yy + BitmaskGrid32::grid_height(h) + row_gap;
+            yy = fold.finish(store, scene, hit_index, inner);
         }
-        paint_bitmask_grid32(&grid, x, yy, w, h, scene, text_system, theme);
-        yy += BitmaskGrid32::grid_height(h) + row_gap;
     }
 
     // Clip Children — Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).

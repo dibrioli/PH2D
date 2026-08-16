@@ -613,5 +613,6 @@ mod tests;
 #[path = "substep_tests.rs"]
 mod substep_tests;
 
+#[cfg(test)]
 #[path = "substep_probe.rs"]
 mod substep_probe;

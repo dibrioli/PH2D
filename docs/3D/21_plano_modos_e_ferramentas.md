@@ -1568,7 +1568,7 @@ pergunta com confiança.*
 
 #### ✅ A alavanca que sobra, com o teto
 
-⚠️ **ADR escrito e aceito: [ADR-0158](../architecture/decisions/0158-sculpt3d-the-dab-vertex-loop-is-a-row-disjoint-map-rayon-exception.md)**
+⚠️ **ADR escrito e aceito: [ADR-0159](../architecture/decisions/0159-sculpt3d-the-dab-vertex-loop-is-a-row-disjoint-map-rayon-exception.md)**
 (número PROVISÓRIO — ele se re-conta na integração). A CONSTRUÇÃO está
 especificada e **não foi feita**: ver o fecho da §7.15.
 
@@ -1618,7 +1618,7 @@ o corpo do pen-up. **4 mutações, 4 sangram.**
 
 #### ⚠️ O que ficou por fazer, e por quê
 
-A **paralelização do laço de vértices** (1,6×) tem o [ADR-0158](../architecture/decisions/0158-sculpt3d-the-dab-vertex-loop-is-a-row-disjoint-map-rayon-exception.md)
+A **paralelização do laço de vértices** (1,6×) tem o [ADR-0159](../architecture/decisions/0159-sculpt3d-the-dab-vertex-loop-is-a-row-disjoint-map-rayon-exception.md)
 escrito e aceito, com as três condições do ADR-0109 **verificadas no código** —
 o laço não escreve posições, as leituras são puras dentro de um passe, os slots
 são disjuntos e o `compute_target` não lê o `accum`. **O código não foi

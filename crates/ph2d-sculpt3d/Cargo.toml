@@ -14,7 +14,7 @@ authors.workspace = true
 # TRACO (o `pre` congelado no pen-down + envelope, docs/3D/04.1), a mascara, a
 # simetria e os outros 19 verbos sao a W2, e cada um chega com o gate dele.
 [dependencies]
-# rayon: EXCEÇÃO sancionada pelo ADR-0158, restrita ao map de vértices do
+# rayon: EXCEÇÃO sancionada pelo ADR-0159, restrita ao map de vértices do
 # `SculptStroke::dab`. ⚠️ A cerca do ADR-0109 vale: **todo sítio novo exige ADR
 # novo** — não é licença geral para a crate.
 rayon = "1"

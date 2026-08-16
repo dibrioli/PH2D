@@ -480,7 +480,7 @@ fn a_hold_gesture_is_the_same_clay_however_finely_the_pointer_was_sampled() {
 }
 
 /// **A ROTA PARALELA DO DAB PRODUZ O MESMO BARRO QUE A SERIAL, AO BIT** — a
-/// prova que o [ADR-0158] exige.
+/// prova que o [ADR-0159] exige.
 ///
 /// ⚠️ **Ele dirige a ablação do piso (`par_floor_override`), e sem ela seria
 /// verde por vácuo:** as fixtures deste módulo tocam ~121 a ~1500 vértices e
@@ -559,7 +559,7 @@ fn the_parallel_dab_lays_the_same_clay_as_the_serial_one() {
 }
 
 /// **O A/B DAS DUAS ROTAS, NO MESMO BINÁRIO E INTERCALADO** — a sonda que
-/// responde *"o `rayon` do ADR-0158 paga?"* sem depender de um número medido
+/// responde *"o `rayon` do ADR-0159 paga?"* sem depender de um número medido
 /// noutro dia.
 ///
 /// ⚠️ **Ela existe porque a medição original foi CROSS-RUN**, com `load average

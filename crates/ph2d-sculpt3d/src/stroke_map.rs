@@ -1,5 +1,5 @@
 //! **COMO O MAP DE UM DAB É DIVIDIDO E RECOLHIDO** — o outro lado do
-//! [ADR-0158](../../../docs/architecture/decisions/0158-sculpt3d-the-dab-vertex-loop-is-a-row-disjoint-map-rayon-exception.md).
+//! [ADR-0159](../../../docs/architecture/decisions/0159-sculpt3d-the-dab-vertex-loop-is-a-row-disjoint-map-rayon-exception.md).
 //!
 //! ⚠️ **A linha de corte é *como o trabalho é dividido* × *o que um dab
 //! computa*.** O corpo do laço — a lei do pincel — fica no `stroke.rs`, ao lado
@@ -27,7 +27,7 @@ use super::SculptStroke;
 /// que o espalhamento vai escrever.
 ///
 /// ⚠️ **Ela existe para o laço não escrever em `self`** — cada índice devolve o
-/// que ia escrever, e o espalhamento roda serial depois. Ver o ADR-0158.
+/// que ia escrever, e o espalhamento roda serial depois. Ver o ADR-0159.
 pub(crate) type DabOut = (u32, usize, f32, [f32; 3]);
 
 /// **O piso do pool para o map do dab** — abaixo dele o `rayon` custa mais que
@@ -51,7 +51,7 @@ impl SculptStroke {
     }
 
     /// **RODA O MAP DE UM DAB e espalha o resultado** — a porta única da
-    /// maquinaria do ADR-0158, para que o `stroke.rs` fique com a LEI e não com
+    /// maquinaria do ADR-0159, para que o `stroke.rs` fique com a LEI e não com
     /// o agendamento.
     ///
     /// O `body` recebe `&SculptStroke` (leitura pura), o índice, e a saída
@@ -62,7 +62,7 @@ impl SculptStroke {
     /// O `Vec<Option<DabOut>>` existe porque o `rayon` precisa de slots
     /// DISJUNTOS para escrever; quem corre num núcleo só pode espalhar cada
     /// índice na hora, que é literalmente o que o laço fazia antes do
-    /// ADR-0158. A 1ª versão desta porta cobrava as três passadas do buffer
+    /// ADR-0159. A 1ª versão desta porta cobrava as três passadas do buffer
     /// (preencher de `None`, escrever, reler) das DUAS rotas — e num pincel
     /// de detalhe a pegada fica **sob** o piso do pool, então o caminho mais
     /// comum pagava a maquinaria de uma otimização que ele nunca corre.

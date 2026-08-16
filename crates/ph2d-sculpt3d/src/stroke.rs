@@ -312,7 +312,7 @@ impl SculptStroke {
         for (pi, pass) in passes.iter().enumerate() {
             let first = pi == 0;
             let count = if first { work } else { self.moved.len() };
-            // ⚠️ **O LAÇO É UM MAP DISJUNTO** (ADR-0158): as três escritas que
+            // ⚠️ **O LAÇO É UM MAP DISJUNTO** (ADR-0159): as três escritas que
             // ele fazia viraram uma saída por índice. O porquê de ele poder ser
             // dividido mora em [`super::stroke_map`].
             self.run_dab_map(count, first, |me, i, out| {

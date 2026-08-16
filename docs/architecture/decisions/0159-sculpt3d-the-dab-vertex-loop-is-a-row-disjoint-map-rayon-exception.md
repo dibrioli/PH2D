@@ -1,4 +1,4 @@
-# ADR-0158 — O laço de vértices de um dab é um MAP disjunto: exceção `rayon` na `ph2d-sculpt3d`
+# ADR-0159 — O laço de vértices de um dab é um MAP disjunto: exceção `rayon` na `ph2d-sculpt3d`
 
 - **Status:** aceito (ordem do Enio, 2026-08-13: *"ambos"*, sobre a avaliação que
   nomeou esta alavanca e a cerca que a bloqueava).

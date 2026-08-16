@@ -12,9 +12,9 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 
 /// A source whose position (and, optionally, ids) the test drives tick by tick. Interior mutability
 /// because `NodeOp::eval` takes `&self` — the whole point is to move it between cooks.
-struct Src {
-    pos: std::sync::Mutex<Vec<[f32; 2]>>,
-    ids: std::sync::Mutex<Option<Vec<f32>>>,
+pub(crate) struct Src {
+    pub(crate) pos: std::sync::Mutex<Vec<[f32; 2]>>,
+    pub(crate) ids: std::sync::Mutex<Option<Vec<f32>>>,
 }
 static SRC_MAN: NodeManifest = NodeManifest {
     id: NodeTypeId::of("motion.delay.test.src"),
@@ -42,7 +42,7 @@ impl NodeOp for Src {
         ctx.emit(s);
     }
 }
-struct Ops(Src);
+pub(crate) struct Ops(pub(crate) Src);
 impl OpResolver for Ops {
     fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
         if ty == MANIFEST.id {
@@ -56,7 +56,7 @@ impl OpResolver for Ops {
 }
 
 /// The `src -> delay` chain, with the `pre` self-loop the editor plumbs on drop.
-fn rig(params: &[(&str, f32)]) -> (Graph, NodeId, NodeId) {
+pub(crate) fn rig(params: &[(&str, f32)]) -> (Graph, NodeId, NodeId) {
     let mut g = Graph::new();
     let src = g.add_node("motion.delay.test.src");
     let dly = g.add_node("motion.delay");
@@ -80,7 +80,7 @@ fn rig(params: &[(&str, f32)]) -> (Graph, NodeId, NodeId) {
 
 /// Run `n` ticks, moving the source to `path[t]` on tick `t`, and return what the node emitted
 /// each tick (element 0's y).
-fn run(params: &[(&str, f32)], path: &[f32]) -> Vec<f32> {
+pub(crate) fn run(params: &[(&str, f32)], path: &[f32]) -> Vec<f32> {
     let (g, _src, dly) = rig(params);
     let ops = Ops(Src {
         pos: std::sync::Mutex::new(vec![[0.0, path[0]]]),
@@ -141,7 +141,7 @@ impl OpResolver for OpsAny {
 /// Run `frames` ticks over the flexible source, handing tick `t` the stream `at` returns, and
 /// collect what the node emitted each tick. `at` also gets the graph and the delay's id, so a gate
 /// can change a param mid-run (which is exactly what switching the channel is).
-fn run_any(
+pub(crate) fn run_any(
     params: &[(&str, f32)],
     frames: usize,
     mut at: impl FnMut(&mut Graph, NodeId, usize) -> Stream,

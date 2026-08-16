@@ -107,7 +107,8 @@
 //! fingerprint through the consumed `pre` edge), HR-5: arithmetic only.
 
 use ph2d_node_registry::{
-    NodeRegistry, ParamGate, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget, RegistryError,
+    NodeRegistry, ParamChannelRange, ParamGate, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
+    RegistryError,
 };
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
@@ -115,7 +116,9 @@ use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
+mod rate;
 mod ring;
+use rate::rate_limit;
 use ring::MAX_LAG;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -232,6 +235,18 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         // o cabeçalho para por que a sentinela não torna nada inalcançável.
         ParamSpec {
             name: "ticks_down",
+            default: 0.0,
+        },
+        // O teto da TAXA e o da ACELERAÇÃO, na unidade do canal por tique (e por
+        // tique²). **`0` = sem teto**, e é literalmente o mundo pré-teto: o passe
+        // nem corre. Ver [`rate_limit`] para por que a magnitude e não a
+        // componente, e por que a aceleração vem ANTES do passo.
+        ParamSpec {
+            name: "max_step",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "max_accel",
             default: 0.0,
         },
     ],
@@ -371,6 +386,10 @@ impl NodeOp for MotionDelay {
         // 0 = a sentinela "o mesmo da subida"; negativo é lixo de documento e cai
         // nela também.
         let ticks_down = ctx.param("ticks_down").clamp(0.0, MAX_LAG as f32); // CLAMP-OK: the ring's depth
+        // Um teto negativo é lixo de documento e cai no "sem teto".
+        let max_step = ctx.param("max_step").max(0.0);
+        let max_accel = ctx.param("max_accel").max(0.0);
+        let capped = max_step > 0.0 || max_accel > 0.0;
 
         let out = {
             let input = ctx.input(0);
@@ -412,23 +431,42 @@ impl NodeOp for MotionDelay {
 
                     // **The neutral point is byte-identical.** No lag, no smoothing, nothing to
                     // compute — the node is transparent until it is asked for something.
+                    let mut emitted_vel = None;
                     let emitted: Vec<f32> = if ticks <= 0.0 {
                         live.clone()
                     } else {
+                        // O valor com lag, efeito CHEIO.
+                        let mut want: Vec<f32> = (0..live.len())
+                            .map(|j| delayed(mode, ticks, ticks_down, j, live[j], &past, &prev))
+                            .collect();
+                        // O TETO, sobre o valor de efeito cheio. ⚠️ **Sem teto o
+                        // passe nem corre**, então `want` chega ao blend abaixo
+                        // com exatamente os bits que a expressão inline de antes
+                        // produzia — o mundo pré-teto é byte-idêntico por
+                        // CONSTRUÇÃO, não por uma identidade aritmética que
+                        // alguém teria de conferir.
+                        if capped {
+                            let pv = ring::prev_vel(hist, &rows, live.len(), c.dim);
+                            emitted_vel = Some(rate_limit(
+                                &mut want, &prev, &pv, c.dim, max_step, max_accel,
+                            ));
+                        }
+                        // The field gates the EFFECT, not the state: the line keeps
+                        // filling regardless, so a falloff that opens later does not
+                        // start from nothing.
                         (0..live.len())
                             .map(|j| {
-                                let d = delayed(mode, ticks, ticks_down, j, live[j], &past, &prev);
-                                // The field gates the EFFECT, not the state: the line keeps
-                                // filling regardless, so a falloff that opens later does not
-                                // start from nothing.
                                 let f = falloff_at(input, j / c.dim);
-                                live[j] + (d - live[j]) * f
+                                live[j] + (want[j] - live[j]) * f
                             })
                             .collect()
                     };
 
                     write_channel(&mut out, input, &c, &emitted);
                     ring::push(&mut out, past, &live, &emitted, c.dim, channel);
+                    if let Some(v) = emitted_vel {
+                        ring::push_vel(&mut out, v, c.dim);
+                    }
                     out
                 }
             }
@@ -452,6 +490,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_channel_range(MANIFEST.id, PARAM_CHANNEL_RANGE);
     // CPU-only: this node reads `falloff` only at eval runtime (no GPU kernel), so the
     // diagnoser cannot derive the role from a `ColumnBinding` — declare it (ADR-0155).
     reg.register_couplings(
@@ -507,6 +546,51 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.5,
         widget: ParamWidget::Slider,
     },
+    // ⚠️ **Os dois tetos valem nos TRÊS modos**, e por isso não têm `ParamGate`:
+    // o `Delay` consulta o passado e o `Average` é um boxcar, mas os dois
+    // produzem uma saída que muda de tique para tique, e é essa taxa que o teto
+    // governa. Só a régua de DESCIDA é do `Blend`.
+    ParamUiHint {
+        param: "max_step",
+        label: "Max Step",
+        min: 0.0,
+        max: 2.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "max_accel",
+        label: "Max Accel",
+        min: 0.0,
+        max: 1.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+];
+
+/// **A faixa dos dois tetos SEGUE O CANAL** — e o doc do [`PARAM_UNITS`] abaixo é
+/// quem prescreve isto: uma DURAÇÃO não muda de unidade com o que ela atrasa,
+/// mas uma MAGNITUDE muda. Num canal de Rotation o teto é em graus por tique, e
+/// um slider que parasse em `2` deixaria inalcançável tudo o que o artista de
+/// facto quer ali (uma volta inteira por tique são 360).
+///
+/// ⚠️ **Sem `ParamHardMax`, e a ausência é deliberada** (o precedente é o
+/// `radius` do `motion.collide`): um teto de taxa é uma magnitude pura — o
+/// kernel não o clampa, não há recurso que ele consuma, e o §0 proíbe escrever
+/// um número sem nomear de que recurso ele é.
+static PARAM_CHANNEL_RANGE: &[ParamChannelRange] = &[
+    ParamChannelRange {
+        param: "max_step",
+        min: 0.0,
+        max: 360.0,
+        step: 1.0,
+    },
+    ParamChannelRange {
+        param: "max_accel",
+        min: 0.0,
+        max: 360.0,
+        step: 1.0,
+    },
 ];
 
 /// **A descida só existe no `Blend`.** O `Delay` consulta o passado e o `Average`
@@ -531,8 +615,28 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
         param: "ticks_down",
         unit: ParamUnit::Count,
     },
+    // ⚠️ **E estes DOIS são o caso que o parágrafo acima descreve** — a magnitude
+    // deles muda de unidade com o canal (unidades de mundo em Position, graus em
+    // Rotation, um fator em Size), que é a definição de [`ParamUnit::FromChannel`].
+    // Um nó, duas espécies de número, e a distinção estava escrita aqui antes de
+    // o segundo existir.
+    ParamUnitDecl {
+        param: "max_step",
+        unit: ParamUnit::FromChannel,
+    },
+    ParamUnitDecl {
+        param: "max_accel",
+        unit: ParamUnit::FromChannel,
+    },
 ];
 
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+// ⚠️ Irmão e não filho: o `tests.rs` está no teto de LOC, e o harness dele
+// (`rig`/`run`/`Src`) ganhou um SEGUNDO consumidor — que é a razão de ele ser
+// `pub(crate)` em vez de uma segunda fixture aqui, divergindo em silêncio.
+#[cfg(test)]
+#[path = "clamp_tests.rs"]
+mod clamp_tests;

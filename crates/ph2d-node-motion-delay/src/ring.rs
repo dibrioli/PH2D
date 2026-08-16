@@ -55,6 +55,17 @@ const SLOTS: [&str; MAX_LAG] = [
 /// the recurrence exact and costs one column.
 const PREV_OUT: &str = "dl_out";
 
+/// **A VELOCIDADE que este nó emitiu no tique anterior** — o estado do teto de
+/// aceleração, e só dele.
+///
+/// ⚠️ **Ela é GUARDADA e não derivada de duas saídas passadas.** Derivá-la
+/// pediria uma segunda linha de `PREV_OUT`, e as duas responderiam *"a que
+/// velocidade isto ia?"* — a segunda resposta divergiria no primeiro tique em
+/// que alguém mexesse no teto, que é precisamente quando a pergunta importa. Ela
+/// só é escrita com um teto ARMADO: sem ele a coluna não existe e o stream de
+/// estado é o de sempre, byte a byte.
+const PREV_VEL: &str = "dl_vel";
+
 /// **Which channel this line is the history OF.**
 ///
 /// A line is only history if it is history of the *same quantity*. Without this tag, switching the
@@ -72,7 +83,7 @@ pub(crate) fn slot(k: usize) -> &'static str {
 /// Whether `name` is one of this node's own state columns — the caller strips them before
 /// rewriting, so they never accumulate stale duplicates.
 pub(crate) fn is_state(name: &str) -> bool {
-    name == PREV_OUT || name == CHANNEL_TAG || SLOTS.contains(&name)
+    name == PREV_OUT || name == PREV_VEL || name == CHANNEL_TAG || SLOTS.contains(&name)
 }
 
 /// Whether `state` is the history of `channel`. A line built for another channel is **not** old
@@ -181,6 +192,23 @@ pub(crate) fn prev_out(
     dim: usize,
 ) -> Vec<f32> {
     gather(state, PREV_OUT, rows, live, dim)
+}
+
+/// A velocidade que este nó emitiu no tique anterior, reunida nas linhas vivas.
+///
+/// ⚠️ **O recém-nascido entra com velocidade ZERO, não com a dele** — ao
+/// contrário de [`prev_out`], cujo fallback é o valor vivo (um recém-nascido já
+/// está onde está). Uma velocidade herdada faria um elemento novo arrancar com o
+/// impulso de um estranho, que é exatamente o que um teto de aceleração existe
+/// para impedir.
+pub(crate) fn prev_vel(state: &Stream, rows: &[Option<usize>], len: usize, dim: usize) -> Vec<f32> {
+    let zeros = vec![0.0; len];
+    gather(state, PREV_VEL, rows, &zeros, dim)
+}
+
+/// Escreve a velocidade emitida — chamado **só com um teto armado**.
+pub(crate) fn push_vel(out: &mut Stream, vel: Vec<f32>, dim: usize) {
+    out.set(PREV_VEL, unflat(vel, dim));
 }
 
 /// Advance the line one tick and write it (plus this tick's output and the channel it belongs to)

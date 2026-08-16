@@ -32,6 +32,15 @@ authors = ["Enio Oliveira Dias Brito <dibrioli@gmail.com>"]
 [profile.dev]
 opt-level = 0
 debug = true
+# ⚠️ **O DWARF fica nos `.o`/`.dwo` em vez de ser COPIADO para dentro de cada artefato.** Medido em
+# 2026-08-16 (A/B sobre `cargo build --tests -p ph2d-anim -p ph2d-timeline`, targets separados):
+# `off` = 11 GB · `unpacked` = 4,4 GB, com os 6.479 `.dwo` JÁ contados — **2,5×, 60% a menos**.
+# O preço foi medido e é pequeno: a `.debug_line` SOBREVIVE no binário (conferido por `readelf -S`),
+# que é a seção de onde um backtrace tira `file:line`, e a mensagem de pânico nem depende de DWARF
+# (vem do `core::panic::Location`). O binário encolhe só 26% — o ganho não está nele, está em não
+# duplicar a informação de depuração por toda a árvore. Racional e tabela:
+# `docs/IntegracaoMultiAgente/DIRETIVA_FIM_DE_DIA.md` §2-bis, Regra 3.
+split-debuginfo = "unpacked"
 
 # The watercolor render-path is real per-pixel math (Beer–Lambert LUTs, box blurs, procedural paper,
 # rayon fan-out) — at opt-0 it is ~4× slower (measured 10.9 vs 2.9 ms/frame at max knobs), which pushed

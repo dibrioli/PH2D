@@ -154,6 +154,102 @@ terminou antes do build começar.
 O `target/` do **primário** vive em tmpfs (RAM) e **evapora no reboot** — deixe-o. Só limpe se ele
 tiver crescido demais **e** o primário estiver ocioso (é o checkout de dev ativo).
 
+
+---
+
+## §2-bis — DE QUE o target é feito, e as duas regras que atacam o PICO *(emenda 2026-08-16)*
+
+> **A pergunta do Enio, no fim da jornada de cinco linhas:** *"por que o HD enche tão rápido? Quase
+> 1 TB num dia de trabalho no target."* A limpeza desta diretiva ataca o **depois**; estas duas regras
+> atacam o **durante**, que é onde o pico mora.
+
+### A decomposição, MEDIDA (não estimada)
+
+Amostra: o `target/` do primário no fim da jornada de 2026-08-16, **46 GB** em dois perfis
+(`debug` + `ci-test`). ⚠️ É o primário, não uma worktree em jornada — os targets das worktrees já
+tinham sido limpos quando a pergunta foi feita, e o tmpfs do primário **evaporou no reboot** logo
+depois, então esta amostra não é re-medível sem um build completo.
+
+| Componente | Tamanho | Fração |
+|---|---:|---|
+| **`incremental/`** (14 GB `debug` + 11 GB `ci-test`) | **25 GB** | **54%** |
+| 40 binários de teste (`--all-targets`, `debug = true`) | 8,3 GB | 18% — **208 MB cada** |
+| `rlib`/`rmeta` | 3,3 GB | 7% — dos quais 2,6 GB de terceiros |
+| resto (`.o`, `.d`, build scripts) | ~1,7 GB | 4% |
+
+⚠️ **DUAS hipóteses intuitivas morreram na medição, e ficam escritas para ninguém as re-propor:**
+
+- **"É lixo acumulado."** O `cargo` de facto **nunca** coleta `deps/` — cada rebuild com fingerprint
+  novo escreve um arquivo novo e o antigo fica para sempre, e a assinatura é visível (`libseam` com
+  **78** cópias, várias crates com 10-13). Mas medido, guardar só a cópia mais nova de cada artefato
+  poupa **1,5 de 12,3 GB = 12%**. O mecanismo é real; o termo é pequeno.
+- **"São os terceiros duplicados entre as worktrees."** Os `rlib`/`rmeta` de terceiros somam
+  **2,6 GB** por target ⇒ **13 GB nas cinco linhas**, não os ~65 que a intuição sugere. O `sccache`
+  já partilha a COMPILAÇÃO; o que não se partilha é o armazenamento, e ele é pequeno.
+
+**O achado estrutural:** um build não é grande — ele é **~46 GB**. O que enche o disco é *cinco
+worktrees manterem um build multi-perfil vivo ao mesmo tempo, sem nada reclamar até o fim do dia*.
+
+### Regra 1 — `CARGO_INCREMENTAL=0` no gate de fechamento
+
+O perfil `ci-test` existe para **uma** coisa: o `cargo nextest run --workspace --cargo-profile ci-test`
+do fechamento e do `ship.sh`. Ele roda em **BATCH**, sobre a workspace inteira, uma ou duas vezes por
+jornada. Compilação incremental existe para tornar a *próxima edição* barata — um gate que varre tudo
+de uma vez não colhe quase nada dela e paga **11 GB**.
+
+```bash
+CARGO_INCREMENTAL=0 cargo nextest run --workspace --cargo-profile ci-test
+```
+
+⚠️ **Não é o mesmo que desligar incremental no `Cargo.toml`**, e a diferença é o inner loop: o
+`cargo check -p <crate>` da DIRETRIZ §2 é exactamente o caso em que incremental paga, e ele corre no
+perfil `dev`. A regra é estreita de propósito — ela nomeia o perfil de BATCH e deixa o de EDIÇÃO em paz.
+
+### Regra 2 — a linha reclama o próprio `incremental/` ao FECHAR
+
+Depois do gate batched e do handoff (DIRETRIZ §1.5.9), antes de a linha parar:
+
+```bash
+rm -rf "$(git rev-parse --show-toplevel)"/target/*/incremental
+```
+
+**25 GB por worktree**, risco **zero** (o cargo recria), e **sem ship** — não é mudança de config.
+Cinco linhas fechando assim tiram **~125 GB** do pico sem tocar em nada que alguém vá ler.
+
+⚠️ **Reclamar no FIM, nunca desligar no COMEÇO:** durante a jornada o `incremental/` do `dev` é o que
+faz o inner loop voar. O que ele não pode é sobreviver à linha que o criou.
+
+### Regra 3 — `split-debuginfo = "unpacked"` no `[profile.dev]` — **2,5×, MEDIDO**
+
+Cada um dos 40 binários de teste liga estaticamente a workspace inteira **com DWARF completo**, e por
+isso pesa 208 MB. O `unpacked` mantém a informação de depuração nos `.o`/`.dwo` em vez de a **COPIAR**
+para dentro de cada artefato que a consome.
+
+**A/B sobre a mesma árvore** (`cargo build --tests -p ph2d-anim -p ph2d-timeline`, targets separados,
+2026-08-16):
+
+| | total | `deps/` | `.dwo` |
+|---|---:|---:|---:|
+| `off` (o que shipa hoje) | **11 GB** | 9,4 GB | 0 |
+| `unpacked` | **4,4 GB** | 3,6 GB | 6.479 |
+
+**60% a menos, 2,5×** — e os 6.479 `.dwo` **já estão contados** nos 4,4 GB.
+
+⚠️ **O PREÇO foi medido, e é pequeno:** a seção **`.debug_line` SOBREVIVE no binário nos dois braços**
+(conferido por `readelf -S`), e ela é a que dá `file:line` a um backtrace; a mensagem de pânico nem
+depende de DWARF (vem do `core::panic::Location`, que é dado estático). O binário em si encolhe apenas
+26% (12 → 8,9 MB) — *o ganho não está no binário, está em não duplicar o DWARF por toda a árvore*. O
+que passa a exigir os `.dwo` ao lado é a depuração de nível `gdb`, e eles ficam onde o cargo os escreve.
+
+⚠️ **A amostra é uma SUB-ÁRVORE, não a workspace** (duas crates e as suas dependências). A fração pode
+diferir no todo; o que a medição estabelece é a ordem de grandeza e o sinal.
+
+⚠️ **E a primeira tentativa de medir isto foi INCONCLUSIVA por defeito da FERRAMENTA, não do produto:**
+`objdump -h` num `.rlib` não soma as seções de todos os membros (um `.rlib` é um archive `ar`), e
+reportou **`0,0%` de DWARF** para dependências que certamente o carregam. *Um instrumento que responde
+com confiança à pergunta errada é pior que nenhum* — a medição honesta foi o **A/B**, que constrói o
+mesmo alvo dos dois modos e compara a pegada real.
+
 ---
 
 ## §3 — O que NUNCA tocar (o "liberar memória" que SABOTA o dia seguinte)

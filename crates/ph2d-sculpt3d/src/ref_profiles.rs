@@ -202,11 +202,18 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // ⚠️ **Nem o Clay Thumb** — `clay_thumb.cc`, a mesma frase pela terceira
         // vez.
         // ⚠️ **Nem o Multiplane Scrape** — `multiplane_scrape.cc`, a quarta.
+        // ⚠️ **Nem o Slide Relax** — `relax.cc`, a quinta. E aqui o `None` custa
+        // mais que nos outros: o SculptGL não tem verbo NENHUM que redistribua a
+        // malha sem mexer na forma, então não há sequer um parente de quem herdar
+        // força ou curva — os quatro defaults deste verbo são NOSSOS, e o
+        // `unwrap_or` do [`Verb::default_strength`] é literalmente *"a referência
+        // não respondeu"*.
         Verb::Sharpen
         | Verb::ClayStrips
         | Verb::Blob
         | Verb::ClayThumb
-        | Verb::MultiplaneScrape => return None,
+        | Verb::MultiplaneScrape
+        | Verb::SlideRelax => return None,
     };
     Some(p)
 }

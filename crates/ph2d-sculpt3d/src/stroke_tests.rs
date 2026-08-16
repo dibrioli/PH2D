@@ -346,6 +346,11 @@ mod verb_field;
 #[path = "verb_border_tests.rs"]
 mod verb_border;
 
+/// **O SLIDE RELAX**, o único verbo que redistribui sem mudar a forma — ver o
+/// cabeçalho dele.
+#[path = "verb_relax_tests.rs"]
+mod verb_relax;
+
 /// O Snake Hook, que é a OUTRA LEI e só um caminho arrastado revela — ver o
 /// cabeçalho dele.
 #[path = "verb_hook_tests.rs"]

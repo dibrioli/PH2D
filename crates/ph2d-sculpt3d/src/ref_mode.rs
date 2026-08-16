@@ -304,9 +304,15 @@ impl RefMode {
             // `clay_thumb.cc` é do Blender e o SculptGL não tem parente dele.
             // ⚠️ **E nem o Multiplane Scrape**, a quarta: `multiplane_scrape.cc`,
             // e o SculptGL não tem uma ferramenta de DOIS planos.
+            // ⚠️ **E nem o Slide Relax**, a quinta: `relax.cc` é do Blender, e o
+            // SculptGL não tem verbo que mexa na MALHA sem mexer na forma.
             Self::S => !matches!(
                 verb,
-                Verb::ClayStrips | Verb::Blob | Verb::ClayThumb | Verb::MultiplaneScrape
+                Verb::ClayStrips
+                    | Verb::Blob
+                    | Verb::ClayThumb
+                    | Verb::MultiplaneScrape
+                    | Verb::SlideRelax
             ),
             // A lei de kernel (bilateral · tangencial · front-face contínuo) e
             // a `StrengthCurve::Squared` do E13.

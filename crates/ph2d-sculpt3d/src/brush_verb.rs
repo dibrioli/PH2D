@@ -202,11 +202,60 @@ pub enum Verb {
     ///
     /// ⚠️ **O SculptGL NÃO O TEM** — ver [`crate::RefMode`].
     MultiplaneScrape,
+    /// **O ÚNICO VERBO QUE NÃO MUDA A FORMA** — ele redistribui os vértices
+    /// SOBRE a superfície (`SCULPT_TOOL_SLIDE_RELAX`, `relax.cc` +
+    /// `sculpt_smooth.cc::calc_relaxed_translations_faces`).
+    ///
+    /// Todos os outros vinte respondem *para onde este vértice vai*; este
+    /// responde *este vértice está no lugar errado DA MALHA*. Um traço que
+    /// esticou um trecho deixa triângulos compridos e finos, e nenhum dos
+    /// dezanove verbos de geometria os conserta — o Smooth alisa a FORMA e leva
+    /// a estrutura junto.
+    ///
+    /// **A lei, em duas linhas:** caminhe para a média do anel, e depois
+    /// **remova a componente ao longo da normal**
+    /// (`translation_to_plane(pos, n, smoothed)`, `sculpt_smooth.cc:458`). O que
+    /// sobra é tangencial ⇒ o vértice desliza pela superfície e a silhueta fica
+    /// onde estava. É a única linha que separa este verbo do [`Self::Smooth`],
+    /// que é a mesma média SEM a subtração.
+    ///
+    /// ⚠️ **A normal é a VIVA, e o contraste com o [`Self::Inflate`] é o ponto:**
+    /// lá ela é congelada porque é uma **DIREÇÃO PARA ANDAR**, e um traço parado
+    /// arrastaria o empurrão consigo (medido: 53,4° em 64 dabs). Aqui ela é o
+    /// **PLANO EM QUE FICAR**, e o verbo nunca anda ao longo dela — congelá-la
+    /// prenderia o vértice ao plano tangente do pen-down e ele sairia da
+    /// superfície que o traço acabou de mover. *A mesma grandeza, dois papéis
+    /// opostos.*
+    ///
+    /// ⚠️ **Numa BORDA a normal é outra, e este ramo é o caso NORMAL e não a
+    /// exceção:** a referência troca a normal do vértice pela **bissetriz** das
+    /// arestas de borda quando um vértice de beira ficou com exactamente dois
+    /// vizinhos (`calc_boundary_normal_corner`, `:471`) — e numa malha manifold
+    /// a curva de borda é um LOOP FECHADO, logo **todo** vértice dela tem
+    /// exactamente dois vizinhos de borda (medido: 12 de 12 no `open_tube3`, o
+    /// número que o [`ph2d_mesh::ring_average`] já regista). Sem a bissetriz o
+    /// vértice desliza no plano tangente da SUPERFÍCIE, que contém a direção da
+    /// corda entre os dois vizinhos — e a beira encolhe para dentro dela a cada
+    /// dab.
+    ///
+    /// ⚠️ **APROXIMAÇÃO NOMEADA, não escondida:** a referência tem um terceiro
+    /// filtro (`filter_boundary_face_sets`, `:553`) que impede um vértice de
+    /// atravessar a fronteira de um *face set*. **Nós não temos face sets**
+    /// (decisão do Enio, doc 21 §5.2), então esse filtro não tem análogo aqui e
+    /// o verbo relaxa através de uma fronteira que o Blender respeitaria.
+    ///
+    /// ⚠️ **Sem inverso**, e não é omissão: o oposto de *distribuir* não é
+    /// *concentrar* — é o estado anterior, que o Ctrl não sabe reconstruir. A
+    /// referência também não o oferece.
+    ///
+    /// ⚠️ **O SculptGL NÃO O TEM** — a quinta vez a mesma frase (ver
+    /// [`crate::RefMode`]).
+    SlideRelax,
 }
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 20] = [
+    pub const ALL: [Self; 21] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -227,6 +276,7 @@ impl Verb {
         Self::ClayStrips,
         Self::ClayThumb,
         Self::MultiplaneScrape,
+        Self::SlideRelax,
     ];
 
     /// **Este verbo pode ACUMULAR?** — a porta única do `accumulate`.
@@ -356,6 +406,7 @@ impl Verb {
             Self::ClayStrips => "Clay Strips",
             Self::ClayThumb => "Clay Thumb",
             Self::MultiplaneScrape => "Multiplane Scrape",
+            Self::SlideRelax => "Slide Relax",
         }
     }
 

@@ -362,6 +362,81 @@ pub fn torus(major_segments: usize, minor_segments: usize, major: f32, minor: f3
     Mesh::from_parts(positions, faces).expect("o toro é construído aqui e é válido")
 }
 
+/// A [`uv_sphere`] com os vértices embaralhados **AO LONGO DELA** — a forma é
+/// exactamente a de raio `radius`, a DISTRIBUIÇÃO é que fica torta.
+///
+/// ⚠️ **Ela existe porque a `uv_sphere` NÃO contém o fenômeno, e isso foi MEDIDO
+/// antes de o gate existir** (sonda `measure_slide_relax`): o anel de um vértice
+/// ali é simétrico em torno dele, então a média cai directamente por baixo
+/// (radialmente) e a componente TANGENCIAL — a única que um relax deixa passar —
+/// é **zero por construção**. Medido: o coeficiente de variação das arestas vai
+/// de `0,132178` a `0,131972` em 32 dabs, **0,016%**. Um gate escrito sobre a
+/// esfera lisa teria afirmado *"o relax preserva a forma"* sobre um verbo que
+/// também não redistribuía nada.
+///
+/// ⚠️ **E o jitter é RE-PROJECTADO ao raio de propósito:** um deslocamento livre
+/// moveria a FORMA, e aí a coluna do raio deixaria de separar as duas perguntas
+/// que o relax existe para responder — a fixture tem de conter *malha torta*,
+/// nunca *forma torta*. O gate irmão afirma exactamente isso.
+///
+/// ⚠️ **O gerador é um xorshift ESCRITO AQUI**, não `rand`: a fixture é
+/// determinista e a crate não ganha dependência por causa de um teste.
+#[must_use]
+pub fn uv_sphere_shuffled(rings: usize, segments: usize, radius: f32) -> Mesh {
+    /// Quanto do espaçamento de um segmento o jitter pode andar, por eixo.
+    const JITTER_FRACTION: f32 = 0.35;
+
+    let mut mesh = uv_sphere(rings, segments, radius);
+    let mut state = 0x2545_F491_4F6C_DD1Du64;
+    let mut rnd = move || {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        ((state >> 11) as f64 / (1u64 << 53) as f64) as f32 * 2.0 - 1.0
+    };
+    let step = JITTER_FRACTION * core::f32::consts::TAU * radius / (segments.max(3) as f32);
+    for p in mesh.positions_mut() {
+        // Uma base TANGENTE qualquer no ponto — o jitter anda nela, e só nela.
+        let n = *p;
+        let helper = if n[2].abs() < 0.9 * radius {
+            [0.0, 0.0, 1.0]
+        } else {
+            [1.0, 0.0, 0.0]
+        };
+        let t = [
+            n[1] * helper[2] - n[2] * helper[1],
+            n[2] * helper[0] - n[0] * helper[2],
+            n[0] * helper[1] - n[1] * helper[0],
+        ];
+        let tl = (t[0] * t[0] + t[1] * t[1] + t[2] * t[2]).sqrt();
+        if tl <= 1e-6 {
+            continue;
+        }
+        let t = [t[0] / tl, t[1] / tl, t[2] / tl];
+        let u = [
+            n[1] * t[2] - n[2] * t[1],
+            n[2] * t[0] - n[0] * t[2],
+            n[0] * t[1] - n[1] * t[0],
+        ];
+        let ul = (u[0] * u[0] + u[1] * u[1] + u[2] * u[2]).sqrt();
+        if ul <= 1e-6 {
+            continue;
+        }
+        let u = [u[0] / ul, u[1] / ul, u[2] / ul];
+        let (a, b) = (rnd() * step, rnd() * step);
+        for k in 0..3 {
+            p[k] += t[k] * a + u[k] * b;
+        }
+        // E a re-projecção, que é o que mantém a FORMA exacta.
+        let l = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
+        for v in p.iter_mut() {
+            *v *= radius / l;
+        }
+    }
+    mesh.rebuild();
+    mesh
+}
+
 #[cfg(test)]
 #[path = "shapes_tests.rs"]
 mod tests;

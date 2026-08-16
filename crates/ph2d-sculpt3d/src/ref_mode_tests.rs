@@ -185,10 +185,19 @@ fn the_census_of_offered_chips() {
     // CONTEÚDO**: quem o move é o `B` logo abaixo, e quem diria o resto seria a
     // lista por nome que o gate da literatura carrega. A frase fica porque a
     // coincidência já reincidiu.
+    //
+    // ⚠️ **E ela reincidiu de novo, com o Slide Relax — a QUINTA vez, e a
+    // primeira em que eu escrevi o número errado antes de o gate me corrigir.**
+    // Eu contei `21 − 5` pela lista do `declares` e este censo mede outra
+    // tabela: ele conta PERFIS (`profile(m).is_some()`), e o `profile_s` cala
+    // sobre **seis** verbos, porque o Sharpen entra nele e não na outra lista. A
+    // aritmética certa é `21 − 6 = 15`, e o número não se move pela quinta vez
+    // seguida. *Duas tabelas com o mesmo aspecto e listas diferentes são
+    // exactamente a razão de um censo de contagem precisar da frase ao lado.*
     assert_eq!(
         count(RefMode::S),
         15,
-        "S: todos menos o Sharpen, o Clay Strips, o Blob, o Clay Thumb e o Multiplane Scrape"
+        "S: todos menos o Sharpen, o Clay Strips, o Blob, o Clay Thumb, o Multiplane Scrape e o Slide Relax"
     );
     // ⚠️ O `B` alcança TODO verbo com uma coisa só — o `alpha = root_alpha²` do
     // `brush_strength`, que é o funil de todas as tools.
@@ -199,11 +208,11 @@ fn the_census_of_offered_chips() {
     // (§7.0 do plano). Este número é sobre a LEI, não sobre os defaults.
     //
     // ⚠️ **17 desde a W6, 18 desde o Blob, 19 desde o Clay Thumb, 20 desde o
-    // Multiplane Scrape:** os quatro são tools do BLENDER (`clay_strips.cc`,
-    // `crease.cc`, `clay_thumb.cc`, `multiplane_scrape.cc`), então o
-    // `alpha = root_alpha²` do `brush_strength` — que é o funil de todas elas —
-    // vale para os quatro por construção.
-    assert_eq!(count(RefMode::B), 20, "B: a lei da força vale para todos");
+    // Multiplane Scrape, 21 desde o Slide Relax:** os cinco são tools do BLENDER
+    // (`clay_strips.cc`, `crease.cc`, `clay_thumb.cc`, `multiplane_scrape.cc`,
+    // `relax.cc`), então o `alpha = root_alpha²` do `brush_strength` — que é o
+    // funil de todas elas — vale para os cinco por construção.
+    assert_eq!(count(RefMode::B), 21, "B: a lei da força vale para todos");
     // A literatura chega paper a paper, nas waves W4/W5/W7.
     assert_eq!(count(RefMode::L), 0, "L: nenhum paper portado ainda");
 }

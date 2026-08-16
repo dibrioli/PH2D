@@ -202,3 +202,73 @@ fn the_sculpt_sphere_is_a_rounded_cube_and_that_is_the_point() {
          acima de 5% a suavização mudou"
     );
 }
+
+/// **A fixture do relax:** a forma tem de ser EXACTA e a distribuição TORTA.
+///
+/// ⚠️ **As duas metades são o teste, e nenhuma basta sozinha.** Sem a primeira,
+/// um gate de relax que medisse *"o raio não mudou"* estaria a medir uma esfera
+/// que já nasceu amassada; sem a segunda, ele estaria a medir uma esfera cuja
+/// componente tangencial é zero por construção — que é exactamente o defeito da
+/// [`uv_sphere`] lisa que esta função existe para não ter.
+#[test]
+fn the_shuffled_sphere_keeps_the_shape_and_ruins_the_spacing() {
+    let smooth = super::uv_sphere(24, 32, 1.0);
+    let rough = super::uv_sphere_shuffled(24, 32, 1.0);
+    assert_eq!(rough.vert_count(), smooth.vert_count());
+    assert_eq!(rough.face_count(), smooth.face_count());
+
+    // A FORMA: todo vértice continua na esfera unitária.
+    let worst = rough
+        .positions()
+        .iter()
+        .map(|p| {
+            (f64::from(p[0])
+                .hypot(f64::from(p[1]))
+                .hypot(f64::from(p[2]))
+                - 1.0)
+                .abs()
+        })
+        .fold(0.0f64, f64::max);
+    assert!(
+        worst < 1e-5,
+        "o jitter é re-projectado ao raio; pior desvio {worst:.3e}"
+    );
+
+    // A DISTRIBUIÇÃO: as arestas ficam desiguais. O oráculo é a RAZÃO contra a
+    // esfera lisa — um número absoluto seria função das dimensões escolhidas.
+    // ⚠️ **A BANDA EQUATORIAL, e não a malha inteira.** Medido, a `uv_sphere`
+    // lisa tem `cv = 0,300548` global — não porque a grade seja irregular, mas
+    // porque as CALOTAS convergem num polo e as arestas de lá são curtas por
+    // construção. Sobre esse fundo o embaralhado mede 0,412, uma razão de 1,37
+    // que diz mais sobre os polos que sobre o jitter. Fora deles a grade lisa é
+    // quase perfeita, e é ali que a pergunta *"a distribuição está torta?"* tem
+    // resposta.
+    let cv = |m: &Mesh| {
+        let adj = m.adjacency();
+        let mut lens = Vec::new();
+        for v in 0..m.vert_count() {
+            if m.positions()[v][1].abs() > 0.6 {
+                continue;
+            }
+            for &nb in adj.vert_verts.neighbours(v) {
+                if (nb as usize) < v {
+                    continue;
+                }
+                let (a, b) = (m.positions()[v], m.positions()[nb as usize]);
+                lens.push(
+                    f64::from(b[0] - a[0])
+                        .hypot(f64::from(b[1] - a[1]))
+                        .hypot(f64::from(b[2] - a[2])),
+                );
+            }
+        }
+        let n = lens.len() as f64;
+        let mean = lens.iter().sum::<f64>() / n;
+        (lens.iter().map(|l| (l - mean) * (l - mean)).sum::<f64>() / n).sqrt() / mean
+    };
+    let (a, b) = (cv(&smooth), cv(&rough));
+    assert!(
+        b > a * 1.5,
+        "a fixture tem de estar mais torta que a lisa: lisa {a:.6} contra {b:.6}"
+    );
+}

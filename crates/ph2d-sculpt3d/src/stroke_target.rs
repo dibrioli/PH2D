@@ -415,6 +415,29 @@ impl SculptStroke {
                     gain * shape.powi(4) * dab.radius * sign,
                 )
             }
+            // **O RELAX** — a mesma média do [`Verb::Smooth`] com **uma** linha a
+            // mais, e essa linha é a ferramenta inteira: o que corre ao longo da
+            // normal é REMOVIDO, então o que sobra desliza pela superfície e a
+            // forma não se mexe (`translation_to_plane`, `sculpt_smooth.cc:458`).
+            //
+            // ⚠️ **A normal é a VIVA (`mesh.normals()`), ao contrário do
+            // [`Verb::Inflate`]** — e as duas escolhas estão certas porque a
+            // grandeza tem papéis opostos nos dois: lá ela é a direção em que se
+            // ANDA (congelar impede o empurrão de girar sob um traço parado),
+            // aqui ela é o plano em que se FICA (congelar prenderia o vértice ao
+            // plano tangente do pen-down, e ele sairia da superfície que os dabs
+            // anteriores moveram). Ver o doc de [`Verb::SlideRelax`].
+            //
+            // ⚠️ **Numa BORDA a normal vira a bissetriz**, e isso é o que impede
+            // a beira de encolher — ver [`Self::relax_normal`].
+            Verb::SlideRelax => match self.relax_normal(mesh, v, live) {
+                Some(n) => {
+                    let avg = self.neighbour_average(mesh, v, live);
+                    let d = remove_along([avg[0] - live[0], avg[1] - live[1], avg[2] - live[2]], n);
+                    [live[0] + d[0] * w, live[1] + d[1] * w, live[2] + d[2] * w]
+                }
+                None => live,
+            },
             // O alvo de posição de um verbo de máscara é o próprio lugar: ele
             // não move geometria ([`crate::Grip::Paint`]), e `apply_mask` é quem
             // escreve o canal dele.
@@ -596,28 +619,6 @@ impl SculptStroke {
                 add_vec(dab.center, d, f)
             }
         }
-    }
-
-    /// A média das posições **congeladas** do anel de `v`.
-    ///
-    /// Ler o `pre` e não o vivo é o que torna o Smooth idempotente: um traço que
-    /// passa duas vezes no mesmo lugar suaviza uma vez, e a superfície não
-    /// derrete enquanto o artista segura o botão parado.
-    /// A média do anel — o alvo do Smooth, e o **oposto** do Sharpen.
-    ///
-    /// ⚠️ **A LEI mora em [`ph2d_mesh::ring_average`], e não aqui.** Ela tem as
-    /// duas regras de borda que uma malha aberta exige, e ganhou um SEGUNDO
-    /// consumidor quando o **extract** passou a relaxar a costura de uma peça
-    /// recém-cortada: é o mesmo laplaciano, e duas cópias divergiriam exatamente
-    /// no lugar que já custou uma medição (a boca do `open_tube3` sugada de 2
-    /// para 1,3597 em seis passes).
-    ///
-    /// ⚠️ **O que fica AQUI é de onde a posição vem:** o traço lê o `pre`
-    /// CONGELADO no pen-down, e é isso que o torna idempotente — um pincel
-    /// parado suaviza uma vez, e a superfície não derrete enquanto o artista
-    /// segura o botão. O extract entrega a posição viva pela mesma porta.
-    fn neighbour_average(&self, mesh: &Mesh, v: u32, at: [f32; 3]) -> [f32; 3] {
-        ph2d_mesh::ring_average(mesh.adjacency(), v, at, |nb| mesh.positions()[nb as usize])
     }
 }
 

@@ -68,6 +68,73 @@ pub fn open_tube3() -> Mesh {
     Mesh::from_parts(positions, faces).expect("o tubo é construído aqui e é válido")
 }
 
+/// Um disco PLANO de três anéis, com o anel de fora **desigualmente espaçado** —
+/// a fixture da BORDA CURVA.
+///
+/// V=19, F=24 triângulos, 12 vértices de borda e 7 de interior; todos em
+/// `z = 0`, logo a normal da superfície é `±z` em toda parte.
+///
+/// ⚠️ **Ela existe porque o [`open_tube3`] NÃO contém o fenômeno, e isso foi
+/// MEDIDO antes de o gate existir** (sonda `measure_slide_relax`): o
+/// `SlideRelax` troca, numa beira, a normal do vértice pela **bissetriz das
+/// arestas de borda**, e as duas só divergem onde a curva de borda **não** é
+/// perpendicular à superfície. Num tubo as duas são radiais — o ângulo entre
+/// elas mede **0,015°** nos 12 vértices de beira —, então um gate escrito ali
+/// teria passado com a bissetriz trocada pela normal e não diria nada.
+///
+/// Num disco plano elas são **ortogonais**: a normal é `+z` e a bissetriz aponta
+/// para o centro. Com a normal errada, a média dos dois vizinhos de beira (que é
+/// o ponto médio da corda, dentro do círculo) sobrevive INTEIRA à subtração e a
+/// borda é sugada para dentro dab a dab; com a bissetriz, o que sobra é só o
+/// deslize AO LONGO da beira, que é redistribuir sem encolher.
+///
+/// ⚠️ **O anel de fora é desigual DE PROPÓSITO** (as pás alternam
+/// `±ANGULAR_SKEW`): num polígono regular cada vértice já está no ponto de menor
+/// energia do próprio par, então a componente tangencial é zero por construção e
+/// a fixture voltaria a não conter o fenômeno — o mesmo defeito que a `uv_sphere`
+/// tem para o miolo, e que a sonda também mediu (`cv` de arestas movendo 0,016%).
+///
+/// ⚠️ **Três anéis, e dois não servem** — a mesma razão que o [`open_tube3`]
+/// escreve: a regra de borda só morde onde a beira **encosta em interior**.
+#[must_use]
+pub fn open_disc() -> Mesh {
+    const SEGMENTS: usize = 12;
+    /// Quanto cada pá alternada foge do espaçamento regular, em fração de setor.
+    const ANGULAR_SKEW: f32 = 0.3;
+
+    let mut positions = vec![[0.0, 0.0, 0.0]];
+    let sector = core::f32::consts::TAU / SEGMENTS as f32;
+    // O anel de dentro tem metade das pás — é ele que dá INTERIOR à fixture.
+    for j in 0..SEGMENTS / 2 {
+        let theta = sector * 2.0 * (j as f32);
+        let (st, ct) = theta.sin_cos();
+        positions.push([ct * 0.5, st * 0.5, 0.0]);
+    }
+    for j in 0..SEGMENTS {
+        let skew = if j % 2 == 0 { ANGULAR_SKEW } else { 0.0 };
+        let theta = sector * (j as f32 + skew);
+        let (st, ct) = theta.sin_cos();
+        positions.push([ct, st, 0.0]);
+    }
+
+    let inner = |j: usize| (1 + (j % (SEGMENTS / 2))) as u32;
+    let outer = |j: usize| (1 + SEGMENTS / 2 + (j % SEGMENTS)) as u32;
+
+    let mut faces = Vec::with_capacity(SEGMENTS / 2 + SEGMENTS);
+    // O leque do centro.
+    for j in 0..SEGMENTS / 2 {
+        faces.push(Face::tri(0, inner(j), inner(j + 1)));
+    }
+    // A coroa: cada pá de dentro cobre DUAS de fora.
+    for j in 0..SEGMENTS / 2 {
+        faces.push(Face::tri(inner(j), outer(2 * j), outer(2 * j + 1)));
+        faces.push(Face::tri(inner(j), outer(2 * j + 1), outer(2 * j + 2)));
+        faces.push(Face::tri(inner(j), outer(2 * j + 2), inner(j + 1)));
+    }
+
+    Mesh::from_parts(positions, faces).expect("o disco é construído aqui e é válido")
+}
+
 /// Duas faces sobre os MESMOS três vértices, com winding oposto — a fixture da
 /// VALÊNCIA BAIXA.
 ///

@@ -144,6 +144,78 @@ fn the_open_tube_has_a_border_that_touches_an_interior() {
     assert_eq!(degenerate_faces(&m).len(), 0);
 }
 
+/// **A fixture da BORDA CURVA** — o censo dela, e o número que a torna
+/// necessária.
+///
+/// ⚠️ **A última asserção é a razão de a fixture existir:** ela mede o ângulo
+/// entre a normal da SUPERFÍCIE e a **bissetriz das arestas de beira**, que é a
+/// troca que o `SlideRelax` faz numa borda. No [`open_tube3`] esse ângulo é
+/// **0,015°** (medido) — as duas coincidem e um gate ali passaria com a
+/// bissetriz apagada. Aqui elas são ORTOGONAIS.
+#[test]
+fn the_open_disc_has_a_curved_border_whose_bisector_is_not_the_surface_normal() {
+    let m = open_disc();
+    assert_eq!(m.vert_count(), 19);
+    assert_eq!(m.face_count(), 24);
+    assert_eq!(border_count(&m), 12, "só o anel de fora é beira");
+    assert_eq!(
+        m.vert_count() - border_count(&m),
+        7,
+        "o centro e o anel do meio são o interior que faz a regra de borda morder"
+    );
+    assert_eq!(
+        low_valence_count(&m),
+        0,
+        "o disco não é a fixture de valência"
+    );
+    assert_eq!(degenerate_faces(&m).len(), 0);
+
+    let adj = m.adjacency();
+    let mut worst_deg: f64 = 0.0;
+    for v in 0..m.vert_count() {
+        if !adj.is_border(v) {
+            continue;
+        }
+        let at = m.positions()[v];
+        let mut acc = [0.0f64; 3];
+        let mut n = 0;
+        for &nb in adj.vert_verts.neighbours(v) {
+            if !adj.is_border(nb as usize) {
+                continue;
+            }
+            let p = m.positions()[nb as usize];
+            let d = [
+                f64::from(p[0] - at[0]),
+                f64::from(p[1] - at[1]),
+                f64::from(p[2] - at[2]),
+            ];
+            let l = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+            for k in 0..3 {
+                acc[k] += d[k] / l;
+            }
+            n += 1;
+        }
+        assert_eq!(
+            n, 2,
+            "beira manifold tem exactamente dois vizinhos de beira"
+        );
+        let l = (acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]).sqrt();
+        assert!(
+            l > 1e-3,
+            "beira CURVA: a bissetriz não pode degenerar (|s| = {l})"
+        );
+        let sn = m.normals()[v];
+        let dot = (acc[0] / l) * f64::from(sn[0])
+            + (acc[1] / l) * f64::from(sn[1])
+            + (acc[2] / l) * f64::from(sn[2]);
+        worst_deg = worst_deg.max(dot.abs());
+    }
+    assert!(
+        worst_deg < 1e-4,
+        "a bissetriz é ORTOGONAL à normal num disco plano; pior |cos| = {worst_deg}"
+    );
+}
+
 #[test]
 fn the_pillow_has_low_valence_and_no_border() {
     let m = pillow();

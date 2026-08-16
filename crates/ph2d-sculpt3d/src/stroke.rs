@@ -635,6 +635,11 @@ mod growth;
 #[path = "stroke_target.rs"]
 mod target;
 
+/// **O QUE O ANEL DIZ** — a média congelada e a normal que o relax remove.
+/// Filho pelo mesmo motivo do [`target`]: os dois leem o `pre`.
+#[path = "stroke_ring.rs"]
+mod ring;
+
 /// **O QUE O TRAÇO ESCREVE** — os dois aplicadores. Filho pela mesma razão do
 /// [`target`]: eles leem os planos congelados. O corte é *a LEI* (aqui) contra
 /// *a ESCRITA* (lá).

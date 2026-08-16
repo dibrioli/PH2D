@@ -24,10 +24,15 @@ outro é pior que um número velho, porque ninguém o vai reconferir.* A terceir
 fecho**: ela acrescentou cinco commits (um deles corrigindo um defeito de PRODUTO, §7.2.1), e os
 números de 13/17/66 descreviam a árvore de antes dela. **Re-meça no dia da ordem.**
 
-⚠️ **O `main` NÃO andou desde o fork** (`merge-base == main == 08e3c84c9`), então **hoje** a
-integração é um `--ff-only` trivial. **Esta caixa envelhece.** É a mesma frase que os handoffs da
-`line/sculpt3d` (08-09) e da `line/physics` (08-12) traziam e que a ordem encontrou falsa — num
-caso o `main` tinha andado **298** commits. **Re-meça no dia da ordem**, não acredite nesta linha:
+⚠️ **O `main` NÃO andou desde o fork** — re-medido **na entrega deste handoff**:
+`merge-base == main == 08e3c84c9`, `rev-list --count` = **0**, e a interseção *arquivos da linha ∩
+arquivos que o `main` moveu* é **VAZIA**. Então **hoje** a integração é um `--ff-only` trivial e
+**não há rebase a fazer**.
+
+⚠️ **Esta caixa envelhece, e o repositório tem DOIS precedentes de ela ter envelhecido antes da
+ordem chegar:** a `line/sculpt3d` (08-09) e a `line/physics` (08-12) traziam a mesma frase, e a
+ordem encontrou o `main` **298** e **85** commits à frente. **Re-meça no dia da ordem** — não
+acredite nesta linha, rode isto:
 
 ```bash
 git rev-list --count $(git merge-base main HEAD)..main   # zero = ff-only
@@ -343,6 +348,10 @@ os `--ignored` de adapter não a alcançam.
 Seis lentes independentes sobre um escopo exacto de 66 arquivos (cinco delegadas + uma minha).
 **Quatro achados sobreviveram à verificação**, e o primeiro é de PRODUTO.
 
+⚠️ **66 e não 67, e a diferença não é contagem esquecida:** a auditoria correu sobre o diff de
+ANTES dela, e o 67º arquivo é `screens/hero/live.rs` — que entrou no diff **por causa** do achado
+7.2.1. *A varredura não podia incluir o arquivo que ela própria fez nascer.*
+
 #### ⭐ 7.2.1 A semente do track CANCELAVA o byte baixo do id (`93e684176`)
 
 `fold_track` e `scroll_track` (`screens/hero/live.rs`) mapeiam o `NodeId` de uma secção numa pista
@@ -408,8 +417,12 @@ preservado para `/tmp/audit-dirt/` e ambas limparam o que sujaram antes de fecha
 
 ## 8. Reclamar o `incremental/`
 
-Feito no fecho, conforme o §1.5.9 item 7 — **20 GB medidos** nesta worktree (`target/debug`; o
-`release` e o `ci-test` estavam a zero):
+Feito **DUAS vezes**, conforme o §1.5.9 item 7:
+
+| quando | medido | `target/` depois |
+|---|---|---|
+| no fecho da wave | **20 GB** (`debug`; `release` e `ci-test` a zero) | — |
+| depois da **auditoria** | **13 GB** (a auditoria recompilou a workspace duas vezes) | 52 → **41 GB** |
 
 ```bash
 rm -rf "$(git rev-parse --show-toplevel)"/target/*/incremental
@@ -418,6 +431,12 @@ rm -rf "$(git rev-parse --show-toplevel)"/target/*/incremental
 ⚠️ **Reclamar no FIM, nunca desligar no COMEÇO:** durante a jornada o `incremental/` do `dev` é o
 que faz o `cargo check -p` voar; o que ele não pode é sobreviver à linha que o criou. Risco zero
 (o cargo o recria) e **sem ship**.
+
+⚠️ **E ele RE-CRESCE a cada gate batched**, que é o que a segunda linha da tabela mede — *"feito no
+fecho"* não é um estado, é um gesto: toda corrida de `nextest --workspace` posterior o traz de
+volta. ⚠️ **E o número não é abstrato nesta máquina:** o `target/` é um **symlink para
+`/dev/shm`** (tier `workstation`, DIRETRIZ §6), então **o diretório de build É RAM** — os 13 GB
+saíram do mesmo orçamento em que o app corre.
 
 ---
 
@@ -444,11 +463,11 @@ bloqueado fora do repositório:
   custo*, super-linear, onde uma soma de peças `O(n)` seria linear; as sondas isoladas sub-estimam
   porque cada uma percorre a MESMA estrutura 200 vezes, residente. ⇒ **a cura não é micro-otimizar
   uma peça** (nenhuma passa de 52 µs): é **não TOCAR** em 4491 entradas, o que é o desenho do
+  *conjunto sujo* e mexe no `tick_hover`, cujo publish atravessa nove consumidores e tem histórico
+  de defeito subtil de flash ⇒ **wave própria, com ordem — agora com a atribuição CERTA**.
   ⚠️ **E os OUTROS quatro consumidores de `live::tick` estão fora da conta por MEDIÇÃO, não por
   omissão:** dobra · rolagem · zoom · a barra abrem **~6 pistas no total** e custam **~0,1 µs** — o
   eixo é a POPULAÇÃO de widgets, e nenhum deles a move.
-  *conjunto sujo* e mexe no `tick_hover`, cujo publish atravessa nove consumidores e tem histórico
-  de defeito subtil de flash ⇒ **wave própria, com ordem — agora com a atribuição CERTA**.
   ⚠️ **E a metade da nota que dizia *«a PODA nunca dispara»* estava errada:** ela dispara, mas só
   quando um widget **sai do registo**; o que ela nunca vê é um widget registado que deixou de ser
   **pintado**, porque o tique o alveja na mesma.
@@ -474,5 +493,12 @@ bloqueado fora do repositório:
 
 ---
 
-*Linha `Vector` pronta (13 commits de código, o último `995520929`; **a cena `=3` foi smokada e
-aprovada**). Aguardo ordem de integração.*
+*Linha `Vector` pronta — **17 commits de código** (23 no total), o último de código `998d6f675`;
+**a cena `=3` foi smokada e aprovada** pelo Enio, e a **auditoria multiagêntica de fecho** correu
+depois dela (§7.2). Aguardo ordem de integração.*
+
+⚠️ **O que a auditoria mudou no PRODUTO depois do smoke, e o integrador tem de saber:** um
+**defeito de hash** (§7.2.1) que fazia secções vizinhas partilharem pista de movimento. A cena
+`=3` foi julgada **antes** dessa correção — ela move **uma** secção, e o defeito precisa de
+**duas**, então o veredito do Enio continua válido para o que ele viu. *Integrar isto é integrar
+uma cena aprovada mais uma correção que a cena não conseguia exercitar.*

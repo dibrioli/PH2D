@@ -567,6 +567,33 @@ e um self-test só afirmaria o que o método literalmente faz.
 dobra, **nomeando o sítio exacto**. Um recorte de cena pendurado não dá erro: ele corta o resto
 do painel em silêncio.
 
+**O SMOKE é a cena `=3` do `PH2D_UI_MOTION_SMOKE`, e ela não monta nada.** ⚠️ **A F4b é chrome:
+não há secção a inventar**, e um painel de demonstração pintaria a dobra num sítio que nenhum
+artista visita — a cena **abre o painel de FÍSICA** (global: não pede ferramenta nem selecção) e
+manda dobrar. Ela existe em vez de um parágrafo no `=1` porque os **quatro** modos de falha da
+tabela acima têm causas diferentes: um roteiro que dissesse *«veja se desliza»* deixaria três
+passar, e o do recorte de HIT **não se vê** — só se apanha procurando-o (passar o rato onde uma
+row ainda não chegou, a meio da abertura).
+
+⚠️ **A cena espera o painel PINTAR, e o mecanismo é diferente do da cena 2:** o conjunto de
+secções dobráveis é semeado pelo `populate`, que corre **dentro** do paint, e o smoke corre no
+prólogo do quadro — contar no mesmo instante dá **zero**, que é indistinguível de *«o painel não
+montou»*. Ela imprime os **dois** números lado a lado (o que o painel `rows::SECTIONS` **declara**
+contra o que o `collapsible_ids` **tem**), porque uma secção declarada que o `populate` esqueceu
+aparece exactamente na diferença — e o **PARE** é `tem < declara`.
+
+⚠️ **E o roteiro tem CONTROLE, que é a metade que não se vê:** com tudo parado o painel tem de
+estar **exactamente** como sempre esteve — é a neutralidade dos dois repousos, e é ela que deixou
+isto entrar em dez painéis de uma vez. Mais o **reduced motion**, onde a dobra tem de **SALTAR**:
+o corpo de um painel a deslizar É área a deslocar-se, e a dobra é `Role::Surface`.
+
+⚠️ **E o `=1` carregava uma nota que ENVELHECEU** (§0 do `CLAUDE.md`): ela dizia *«catorze tipos de
+widget têm eixo de hover e **três** o leem hoje — a varredura dos restantes é a próxima wave»*.
+Medido, são **SEIS** famílias com porta no store (`button` · `checkbox` · `toggle` · `slider` ·
+`dropdown` · `scrollbar`) mais o `IconButton`, que fechou a estrada pelo próprio TIPO. A varredura
+aconteceu nas waves seguintes e ninguém reconferiu a frase; o roteiro agora manda o artista passar
+o rato num slider **dentro** de um painel.
+
 ⚠️ **A wave 4 não depende de nada** e pode correr em paralelo, ou primeiro se o objectivo for
 eficiência antes de encanto.
 

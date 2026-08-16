@@ -1,7 +1,7 @@
-//! **Smoke da UI VIVA** — `PH2D_UI_MOTION_SMOKE=<1|2>`.
+//! **Smoke da UI VIVA** — `PH2D_UI_MOTION_SMOKE=<1|2|3>`.
 //!
 //! O eixo que o estudo de 2026-08-12 abriu: *o app paga um laço contínuo e desenha uma função
-//! escada*. Duas cenas, uma por metade do que landou.
+//! escada*. Uma cena por metade do que landou.
 //!
 //! ⚠️ **O smoke NÃO arma o carácter.** Ele monta a cena e **manda o artista escolher** em
 //! `Settings ▸ Motion` — que é o controlo real, e o único caminho que exercita o menu, a porta
@@ -29,15 +29,38 @@
 //! Painter, que é meia dúzia de gestos antes do assunto; o que esta wave construiu é a corda, e o
 //! gesto que a exercita é **arrastar o card**. O arrasto é o caminho real e completo (o
 //! `arm_fill_modal_drag_if_on_handle` do shell, sem atalhos).
+//!
+//! # `=3` — A DOBRA
+//!
+//! Abre o painel de **física** e manda dobrar uma secção. A F4a deu o `t` ao CABEÇALHO; a F4b
+//! deu-o ao CORPO, e a cena existe porque a segunda metade tem **quatro** modos de falha com
+//! causas diferentes — o corpo a saltar, o que está por baixo a não subir junto, uma row a
+//! transbordar por cima da secção seguinte, e uma row invisível a continuar a responder ao rato.
+//! Um roteiro que dissesse só *«veja se desliza»* deixaria três deles passar.
+//!
+//! ⚠️ **A cena não monta uma secção — ela abre um painel que já as tem.** É a mesma leitura do
+//! `=1`: o assunto é chrome, e inventar um painel de demonstração pintaria a dobra num sítio que
+//! nenhum artista visita. O painel de física é o escolhido por ser **global** (não pede ferramenta
+//! nem selecção) e por trazer secções de altura desigual, que é onde o deslize se lê.
+//!
+//! ⚠️ **E ela imprime a CONTAGEM que a torna válida**, resolvida do painel (`rows::SECTIONS`) e
+//! medida no store (`collapsible_ids`) — nunca um literal aqui, que seria a segunda cópia de um
+//! número que o painel declara.
 
 use ph2d_editor::ids;
 
-/// Que cena o valor pede. ⚠️ Um valor que não parseia cai em **1** — o default de um smoke é a
-/// cena mais antiga, nunca a mais nova (`=sim` não pode virar a demo da corda por engano).
+/// A cena mais nova. ⚠️ **Bumpar isto é o único sítio a tocar quando uma cena entra** — e é ele
+/// que impede um `=4` de cair na demo mais recente.
+const LAST_SCENE: u32 = 3;
+
+/// Que cena o valor pede. ⚠️ Um valor que não parseia **ou que nomeia uma cena que não existe**
+/// cai em **1** — o default de um smoke é a cena mais antiga, nunca a mais nova (`=sim` não pode
+/// virar a demo da corda por engano, e um `=4` a caminho de uma cena futura não pode virar a da
+/// dobra em silêncio).
 fn smoke_level(raw: &std::ffi::OsStr) -> u32 {
     raw.to_str()
         .and_then(|s| s.trim().parse().ok())
-        .filter(|n| *n >= 1)
+        .filter(|n| (1..=LAST_SCENE).contains(n))
         .unwrap_or(1)
 }
 
@@ -62,9 +85,25 @@ impl crate::App {
         // recusar, e o card escondido atrás da barra. **O smoke não ficava vermelho — ele
         // montava a cena que não tem o fenómeno**, que é a doença de fixture que este repo já
         // pagou seis vezes. Não marcar `done` é o que o faz tentar de novo no quadro seguinte.
-        if level >= 2 && !self.viewport_is_measured() {
+        if level == 2 && !self.viewport_is_measured() {
             return;
         }
+
+        // ⚠️ **A cena 3 espera o painel PINTAR, e o mecanismo é OUTRO.** O conjunto de secções
+        // dobráveis é semeado pelo `populate`, que corre dentro do paint, e o smoke corre no
+        // PRÓLOGO do quadro: abrir o painel e contar no mesmo instante dá **zero**, que é
+        // indistinguível de *«o painel não montou»* — exactamente o número que a mensagem trata
+        // como PARE. Não marcar `done` é o que o faz tentar de novo no quadro seguinte.
+        let folds = if level == LAST_SCENE {
+            self.open_physics_for_smoke();
+            let n = self.collapsible_section_count();
+            if n == 0 {
+                return;
+            }
+            n
+        } else {
+            0
+        };
         self.ui_motion_smoke_done = true;
 
         // O estado ACTUAL, lido do produto — é ele que prova que a wave 3 devolveu a escolha do
@@ -76,7 +115,7 @@ impl crate::App {
             .map(|h| (h.motion.character(), h.motion.reduced_motion()))
             .unwrap_or_default();
 
-        if level >= 2 {
+        if level == 2 {
             self.open_fill_card_for_smoke();
         }
 
@@ -90,8 +129,40 @@ impl crate::App {
         );
         match level {
             1 => print_character_script(),
-            _ => print_tether_script(),
+            2 => print_tether_script(),
+            _ => print_fold_script(folds),
         }
+    }
+
+    /// Quantas secções o despacho sabe dobrar **agora** — o conjunto que o `populate` semeou,
+    /// somado sobre todos os painéis que já pintaram.
+    ///
+    /// ⚠️ **Não é `ph2d_panel_physics::rows::SECTIONS.len()`**, e a diferença é o que a torna
+    /// oráculo: aquele número diz o que o painel *declara*, este diz o que o store *tem*. Uma
+    /// secção declarada que o `populate` esqueceu aparece na diferença entre os dois — e a
+    /// mensagem imprime os dois lado a lado por isso.
+    fn collapsible_section_count(&self) -> usize {
+        self.gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .map_or(0, |h| h.store.collapsible_ids().len())
+    }
+
+    /// Abre o painel de FÍSICA — global, logo alcançável sem ferramenta nem selecção.
+    ///
+    /// ⚠️ **A chave é RESOLVIDA do painel** (`<PhysicsPanel as Panel>::ID`) e não escrita à mão: o
+    /// shell já carrega duas cópias do literal `"physics"` no atalho do `W`, e uma terceira aqui
+    /// seria a que sobrevive ao dia em que o id mudar — com o smoke a alternar a visibilidade de
+    /// um painel que não existe e todos os gates verdes (a cicatriz que o `visibility_key` do
+    /// painel autorado documenta).
+    fn open_physics_for_smoke(&mut self) {
+        let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
+            return;
+        };
+        hero.panel_visibility.insert(
+            <ph2d_panel_physics::PhysicsPanel as ph2d_editor::panel::Panel>::ID,
+            true,
+        );
     }
 
     /// O layout já foi medido pelo menos uma vez? (Ver o `return` acima.)
@@ -125,8 +196,10 @@ impl crate::App {
 fn print_character_script() {
     eprintln!(
         "\n[ui-motion-smoke 1] O CARATER — o chrome ganhou um relogio, e ele tem duas vozes.\n\
-         \n  ONDE OLHAR (e so' aqui, por enquanto): os CHIPS DO RAIL, na coluna da esquerda,\n  \
-           e as PILLS DA BARRA DE TOPO. Sao as duas superficies ligadas ao relogio.\n\
+         \n  ONDE OLHAR: os CHIPS DO RAIL, na coluna da esquerda, e as PILLS DA BARRA DE\n  \
+           TOPO. Nao sao as unicas -- hoje o hover interpola no app inteiro --, mas sao\n  \
+           as que carregam o CARATER, porque nelas o realce e' TAMANHO. Uma fracao de\n  \
+           tinta e' clampada em 1,0, entao a ultrapassagem nao tem onde aparecer numa cor.\n\
          \n  1. Passe o rato POR CIMA de um chip do rail e SAIA, devagar. Duas coisas\n     \
               mudam: o chip CRESCE 3 px e o tint do glifo aquece. E' o crescimento que\n     \
               carrega o carater -- uma fracao de tinta e' clampada em 1,0, entao a\n     \
@@ -151,10 +224,13 @@ fn print_character_script() {
               de dizer o carater que voce escolheu. Se disser Discreto, a wave 3 falhou.\n"
     );
     eprintln!(
-        "[ui-motion-smoke 1] (!) O QUE AINDA NAO SE MOVE, e e' esperado: os widgets DENTRO\n  \
-         dos paineis (sliders, checkboxes, dropdowns, rows de lista). Catorze tipos de\n  \
-         widget tem eixo de hover e tres o leem hoje -- a varredura dos restantes e' a\n  \
-         proxima wave, nao um defeito desta. Se o rail e a barra respondem, ela funciona.\n"
+        "[ui-motion-smoke 1] (!) A VARREDURA JA' ACONTECEU, e esta nota dizia o contrario\n  \
+         ate' 2026-08-16: ela afirmava que 'tres tipos leem o eixo hoje' e mandava esperar\n  \
+         a proxima wave. Medido, sao SEIS familias com porta no store (button, checkbox,\n  \
+         toggle, slider, dropdown, scrollbar) mais o IconButton, que fechou a estrada pelo\n  \
+         proprio TIPO. Passe o rato por um slider, um checkbox e um polegar de barra de\n  \
+         rolagem DENTRO de um painel: eles respondem. Quem moveu o numero que tornava algo\n  \
+         inalcancavel tinha de reconferir a nota, e nao reconferiu.\n"
     );
     eprintln!(
         "[ui-motion-smoke 1] (!) O que NAO tem de mudar: um clique durante uma transicao e'\n  \
@@ -193,3 +269,65 @@ fn print_tether_script() {
          distingue 1 px numa corda a balancar -- e era 29,7 px antes da correcao.\n"
     );
 }
+
+/// O roteiro da dobra. `folds` é a contagem MEDIDA no store; ver [`super::App::collapsible_section_count`].
+fn print_fold_script(folds: usize) {
+    let declared = ph2d_panel_physics::rows::SECTIONS.len();
+    eprintln!(
+        "\n[ui-motion-smoke 3] A DOBRA — o corpo de uma seccao interpola.\n\
+         \n  O painel de FISICA esta' aberto: ele declara {declared} seccoes, e o store tem\n  \
+           {folds} dobra(s) semeada(s) (a soma de TODOS os paineis ja' pintados, logo >= {declared}).\n"
+    );
+    if folds < declared {
+        eprintln!(
+            "[ui-motion-smoke 3] ⚠️ ha' menos dobras semeadas do que o painel declara — PARE.\n  \
+             O `populate` esqueceu uma seccao, e nenhum passo abaixo diz alguma coisa.\n"
+        );
+        return;
+    }
+    eprintln!(
+        "  1. Settings > Motion > EXPRESSIVE. Clique no CABECALHO da primeira seccao para\n     \
+              FECHAR, e julgue QUATRO coisas de uma vez -- sao quatro causas diferentes,\n     \
+              e um roteiro que dissesse so' 'veja se desliza' deixava tres passar:\n\
+         \n       (a) o CORPO encolhe, em vez de desaparecer de repente;\n\
+         \n       (b) o que esta' ABAIXO sobe JUNTO. Se as seccoes de baixo so' saltarem\n           \
+                   no fim, o 'y' de saida nao esta' escalado: a dobra ficou decorativa\n           \
+                   e o painel nao encolheu com ela;\n\
+         \n       (c) nada TRANSBORDA -- nenhuma row aparece por cima da seccao seguinte\n           \
+                   enquanto a de cima fecha. Isso e' o recorte da CENA;\n\
+         \n       (d) o chevron RODA no mesmo compasso. As duas metades do cabecalho tem\n           \
+                   de contar a mesma historia sobre o mesmo instante; ate' esta wave o\n           \
+                   chevron rodava e o corpo saltava debaixo dele.\n\
+         \n  2. Reabra e, A MEIO da abertura, passe o rato onde uma row AINDA NAO chegou.\n     \
+              Nada pode acender. Uma row invisivel que responde ao rato e' o recorte de\n     \
+              HIT em falta -- e essa metade NAO se ve': so' se apanha procurando-a.\n\
+         \n  3. Settings > Motion > REDUCED MOTION. Dobre outra vez: ela tem de SALTAR.\n     \
+              O corpo de um painel a deslizar E' area a deslocar-se, que e' o gatilho\n     \
+              vestibular -- a dobra e' Role::Surface, e reduced mata-a. O tint de hover\n     \
+              ao lado continua a desvanecer: sao dois eixos, nao um interruptor so'.\n\
+         \n  4. DISCRETE e depois EXPRESSIVE, dobrando em cada um. Muda o PESO da chegada,\n     \
+              e mais nada: ela nao ultrapassa em nenhum dos dois. Uma seccao que passasse\n     \
+              do fim e voltasse mostraria conteudo para alem do fim -- exactamente o que o\n     \
+              clamp de cada painel existe para proibir.\n\
+         \n  5. ⭐ O CONTROLE, e e' a metade que NAO se ve: com tudo PARADO, o painel tem de\n     \
+              estar exactamente como sempre esteve. Aberta e quieta, nenhum recorte e'\n     \
+              empurrado e o 'y' sai verbatim; fechada e quieta, o corpo nao e' medido nem\n     \
+              pintado. Se um painel parado ficar 1 px diferente, a neutralidade quebrou --\n     \
+              e e' ela que deixou isto entrar em dez paineis de uma vez.\n"
+    );
+    eprintln!(
+        "[ui-motion-smoke 3] (!) A LEI E' A MESMA nos dez paineis (inspector, vector,\n  \
+         painter-layers, physics, audio-editor, audio-mixer, sculpt3d, wet-tuning,\n  \
+         motion-params, authored). Este smoke abre UM porque o roteiro precisa de um sitio,\n  \
+         nao porque a dobra seja dele -- dobre noutro painel e tem de ser identico.\n"
+    );
+    eprintln!(
+        "[ui-motion-smoke 3] (!) O QUE FICA DE FORA, de proposito: a galeria de widgets\n  \
+         (widget/showcase). Ela nunca recebeu a F4a -- o cabecalho dela nao le o 't' -- e e'\n  \
+         ferramenta de dev, nao chrome do app. Migra-la pedia a F4a primeiro.\n"
+    );
+}
+
+#[cfg(test)]
+#[path = "ui_motion_smoke_tests.rs"]
+mod tests;

@@ -23,6 +23,7 @@ use custom::{paint_axis_rows, paint_motor_axis_row};
 use super::rows::{num_row, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorJointInfo;
+use ph2d_editor_core::widget::SectionFold;
 
 /// Joint-kind labels, indexed by the tag the snapshot carries. Hardcoded here
 /// (not read from `ph2d-physics-ecs`) so the panel stays loose-coupled, like
@@ -236,7 +237,6 @@ pub(crate) fn paint_joint_section(
     info: &InspectorJointInfo,
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let collapsed = store.is_collapsed(ids::INSP_LIVE_JOINT_SECTION);
     let color_id = ids::INSP_LIVE_JOINT_COLOR;
     let rgba = store
         .widget_color(color_id)
@@ -248,9 +248,22 @@ pub(crate) fn paint_joint_section(
     {
         hit_index.register(color_id, circle_rect);
     }
-    if collapsed {
+    // ⚠️ **A DOBRA do corpo** — o escopo recorta a cena E o hit, e escala o `y` de saída, para
+    //    que tudo o que está por baixo suba junto. Ver `SectionFold`.
+    // ⚠️ **Pergunta o `t`, e NUNCA o `is_collapsed`:** ao clicar para fechar o flag semântico vira
+    //    neste mesmo quadro enquanto o `t` ainda desce, então um corpo gateado no flag sumiria de
+    //    repente por baixo de um chevron a rodar — as duas metades a discordar outra vez.
+    let Some(fold) = SectionFold::begin(
+        store,
+        ids::INSP_LIVE_JOINT_SECTION,
+        x,
+        w,
+        y + header_h,
+        scene,
+        hit_index,
+    ) else {
         return y + header_h;
-    }
+    };
 
     let mut yy = y + header_h;
     let h = ROW_H_PX;
@@ -367,7 +380,7 @@ pub(crate) fn paint_joint_section(
         .visual(store.button_visual(ids::INSP_JOINT_REMOVE));
     paint_button(&btn, btn_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_JOINT_REMOVE, btn_rect);
-    yy + h + SECTION_BOTTOM_PAD_PX
+    fold.finish(store, scene, hit_index, yy + h + SECTION_BOTTOM_PAD_PX)
 }
 
 /// **Os parâmetros do TIPO escolhido** — limites, mola e comprimento.

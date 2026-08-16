@@ -48,6 +48,7 @@ impl WidgetStore {
             panel_scroll: BTreeMap::new(),
             panel_scroll_live: BTreeMap::new(),
             fold_live: BTreeMap::new(),
+            fold_body_h: core::cell::RefCell::new(BTreeMap::new()),
             hover_live: BTreeMap::new(),
             panel_rects: BTreeMap::new(),
             panel_content_h: BTreeMap::new(),

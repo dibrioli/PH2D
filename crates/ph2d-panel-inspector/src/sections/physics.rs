@@ -13,6 +13,7 @@
 use super::rows::num_row;
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
+use ph2d_editor_core::widget::SectionFold;
 
 /// Collider-shape labels, indexed by `ColliderShape` tag.
 ///
@@ -64,7 +65,7 @@ pub(crate) fn paint_physics_section(
     info: &InspectorPhysicsInfo,
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let collapsed = store.is_collapsed(ids::INSP_LIVE_PHYSICS_SECTION);
+
     let color_id = ids::INSP_LIVE_PHYSICS_COLOR;
     let rgba = store
         .widget_color(color_id)
@@ -76,19 +77,32 @@ pub(crate) fn paint_physics_section(
     {
         hit_index.register(color_id, circle_rect);
     }
-    if collapsed {
+    // ⚠️ **A DOBRA do corpo** — ver `SectionFold`, e o `t` no lugar do `is_collapsed`.
+    let Some(fold) = SectionFold::begin(
+        store,
+        ids::INSP_LIVE_PHYSICS_SECTION,
+        x,
+        w,
+        y + header_h,
+        scene,
+        hit_index,
+    ) else {
         return y + header_h;
-    }
+    };
 
     let yy = y + header_h;
 
+    // ⚠️ **As três faces viram UMA expressão, e não três `return`s**, porque a dobra é um ESCOPO:
+    //    um `return` a meio saltaria o `fold.finish` e deixaria o recorte pendurado na cena — o
+    //    `Drop` do `SectionFold` grita em debug precisamente por isto.
+    //
     // **TRÊS faces, não duas** (W-PartFace). Um `Collider` sem `RigidBody` é uma
     // PEÇA — mais uma forma do corpo ancestral (W-Compound) — e ela é simulada;
     // mandá-la para a face vazia era o §11 dizendo *"Not simulated"* sobre algo
     // que o solver está de fato integrando, com a forma autorada invisível e a
     // porta que a criou re-oferecida.
-    if info.has_collider && !info.has_body {
-        return super::physics_part::paint_part_face(
+    let out = if info.has_collider && !info.has_body {
+        super::physics_part::paint_part_face(
             scene,
             text_system,
             theme,
@@ -98,10 +112,9 @@ pub(crate) fn paint_physics_section(
             x,
             w,
             yy,
-        );
-    }
-    if !info.has_body {
-        return super::physics_doors::paint_empty_face(
+        )
+    } else if !info.has_body {
+        super::physics_doors::paint_empty_face(
             scene,
             text_system,
             theme,
@@ -111,20 +124,21 @@ pub(crate) fn paint_physics_section(
             x,
             w,
             yy,
-        );
-    }
-
-    super::physics_body::paint_body_face(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        info,
-        x,
-        w,
-        yy,
-    )
+        )
+    } else {
+        super::physics_body::paint_body_face(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            info,
+            x,
+            w,
+            yy,
+        )
+    };
+    fold.finish(store, scene, hit_index, out)
 }
 
 /// The dimension rows of the SELECTED shape, and only those.

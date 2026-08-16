@@ -2,6 +2,7 @@
 //! architecture_panel_loc_cap). Logic verbatim; behavior unchanged.
 
 use super::*;
+use ph2d_editor_core::widget::SectionFold;
 
 /// Paint one labeled tint swatch (label left, swatch right) inside
 /// `cell`. The swatch fill reads `widget_color(swatch_id)` (kept in
@@ -114,7 +115,6 @@ pub(crate) fn paint_color_tint_section(
     let field_h = ROW_H_PX;
     let row_gap = Spacing::Sm.px();
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let collapsed = store.is_collapsed(ids::INSP_LIVE_COLOR_SECTION);
     let color_id = ids::INSP_LIVE_COLOR_COLOR;
     let rgba = store
         .widget_color(color_id)
@@ -126,9 +126,22 @@ pub(crate) fn paint_color_tint_section(
     {
         hit_index.register(color_id, circle_rect);
     }
-    if collapsed {
+    // ⚠️ **A DOBRA do corpo** — o escopo recorta a cena E o hit, e escala o `y` de saída, para
+    //    que tudo o que está por baixo suba junto. Ver `SectionFold`.
+    // ⚠️ **Pergunta o `t`, e NUNCA o `is_collapsed`:** ao clicar para fechar o flag semântico vira
+    //    neste mesmo quadro enquanto o `t` ainda desce, então um corpo gateado no flag sumiria de
+    //    repente por baixo de um chevron a rodar — as duas metades a discordar outra vez.
+    let Some(fold) = SectionFold::begin(
+        store,
+        ids::INSP_LIVE_COLOR_SECTION,
+        x,
+        w,
+        y + header_h,
+        scene,
+        hit_index,
+    ) else {
         return y + header_h;
-    }
+    };
     let mut cur_y = y + header_h;
 
     let sp = crate::state::current_inspector_sprite();
@@ -230,7 +243,7 @@ pub(crate) fn paint_color_tint_section(
     );
     cur_y += cb_h + row_gap;
 
-    cur_y + SECTION_BOTTOM_PAD_PX
+    fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX)
 }
 
 /// Per-corner tint sub-tab: a 2×2 swatch grid (`TL TR` / `BL BR`), a live

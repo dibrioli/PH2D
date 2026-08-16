@@ -121,6 +121,7 @@ pub use scrollbar::{
     is_needed as scrollbar_is_needed, paint_scrollbar, thumb_color as scrollbar_thumb_color,
     thumb_rect as scrollbar_thumb_rect, track_rect as scrollbar_track_rect,
 };
+pub use section_header::body::{SectionFold, folded_gap, has_body as section_has_body};
 pub use section_header::{SectionHeader, color_circle_hit_rect, paint_section_header};
 pub use segmented_adaptive::{
     SegmentedAdaptive, SegmentedOption, measure_segmented_adaptive, paint_segmented_adaptive,

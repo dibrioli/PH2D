@@ -2,6 +2,7 @@
 //! architecture_panel_loc_cap). Logic verbatim; behavior unchanged.
 
 use super::*;
+use ph2d_editor_core::widget::SectionFold;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_render_source_section(
@@ -22,7 +23,6 @@ pub(crate) fn paint_render_source_section(
     let row_gap = Spacing::Xs.px();
     let row_h = line_font + row_gap;
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let collapsed = store.is_collapsed(ids::INSP_LIVE_RENDER_SECTION);
     let color_id = ids::INSP_LIVE_RENDER_COLOR;
     let rgba = store
         .widget_color(color_id)
@@ -34,9 +34,22 @@ pub(crate) fn paint_render_source_section(
     {
         hit_index.register(color_id, circle_rect);
     }
-    if collapsed {
+    // ⚠️ **A DOBRA do corpo** — o escopo recorta a cena E o hit, e escala o `y` de saída, para
+    //    que tudo o que está por baixo suba junto. Ver `SectionFold`.
+    // ⚠️ **Pergunta o `t`, e NUNCA o `is_collapsed`:** ao clicar para fechar o flag semântico vira
+    //    neste mesmo quadro enquanto o `t` ainda desce, então um corpo gateado no flag sumiria de
+    //    repente por baixo de um chevron a rodar — as duas metades a discordar outra vez.
+    let Some(fold) = SectionFold::begin(
+        store,
+        ids::INSP_LIVE_RENDER_SECTION,
+        x,
+        w,
+        y + header_h,
+        scene,
+        hit_index,
+    ) else {
         return y + header_h;
-    }
+    };
     // No inner separator — orchestrator draws it AFTER section content.
     let mut cur_y = y + header_h;
 
@@ -296,7 +309,12 @@ pub(crate) fn paint_render_source_section(
         .kind(ButtonKind::Default)
         .visual(state);
     paint_button(&btn, btn_rect, scene, text_system, theme);
-    cur_y + reimport_h + SECTION_BOTTOM_PAD_PX
+    fold.finish(
+        store,
+        scene,
+        hit_index,
+        cur_y + reimport_h + SECTION_BOTTOM_PAD_PX,
+    )
 }
 
 /// **Uma célula X/Y/W/H da região** — rótulo do eixo + o campo numérico.

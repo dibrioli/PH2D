@@ -6,6 +6,7 @@
 use super::*;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::screens::hero::InspectorOrderingInfo;
+use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
 
 /// Canonical project sorting layers (spec §5.2 default set). Value ==
@@ -229,7 +230,6 @@ pub(crate) fn paint_ordering_section(
     info: &InspectorOrderingInfo,
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let collapsed = store.is_collapsed(ids::INSP_LIVE_ORDERING_SECTION);
     let color_id = ids::INSP_LIVE_ORDERING_COLOR;
     let rgba = store
         .widget_color(color_id)
@@ -241,9 +241,22 @@ pub(crate) fn paint_ordering_section(
     {
         hit_index.register(color_id, circle_rect);
     }
-    if collapsed {
+    // ⚠️ **A DOBRA do corpo** — o escopo recorta a cena E o hit, e escala o `y` de saída, para
+    //    que tudo o que está por baixo suba junto. Ver `SectionFold`.
+    // ⚠️ **Pergunta o `t`, e NUNCA o `is_collapsed`:** ao clicar para fechar o flag semântico vira
+    //    neste mesmo quadro enquanto o `t` ainda desce, então um corpo gateado no flag sumiria de
+    //    repente por baixo de um chevron a rodar — as duas metades a discordar outra vez.
+    let Some(fold) = SectionFold::begin(
+        store,
+        ids::INSP_LIVE_ORDERING_SECTION,
+        x,
+        w,
+        y + header_h,
+        scene,
+        hit_index,
+    ) else {
         return y + header_h;
-    }
+    };
     let mut yy = y + header_h;
     let live =
         |store: &WidgetStore, id: NodeId, snap: bool| match store.checkbox(id).map(|(_, v)| v) {
@@ -315,5 +328,10 @@ pub(crate) fn paint_ordering_section(
     }
     yy = cb!(yy, ids::INSP_ORDER_TOP_LEVEL, "Top Level");
 
-    yy - Spacing::Sm.px() + SECTION_BOTTOM_PAD_PX
+    fold.finish(
+        store,
+        scene,
+        hit_index,
+        yy - Spacing::Sm.px() + SECTION_BOTTOM_PAD_PX,
+    )
 }

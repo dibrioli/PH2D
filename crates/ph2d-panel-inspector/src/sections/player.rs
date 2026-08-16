@@ -19,6 +19,7 @@
 use super::rows::{card_frame, num_row, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPlayerInfo;
+use ph2d_editor_core::widget::SectionFold;
 
 /// Uma row: **rótulo · id · a dica de hover**.
 ///
@@ -76,7 +77,6 @@ pub(crate) fn paint_player_section(
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
     let h = TypeToken::Md.px() + Spacing::Sm.px(); // LITERAL-PX-OK: control row height
-    let collapsed = store.is_collapsed(ids::INSP_LIVE_PLAYER_SECTION);
     let color_id = ids::INSP_LIVE_PLAYER_COLOR;
     let rgba = store
         .widget_color(color_id)
@@ -89,9 +89,18 @@ pub(crate) fn paint_player_section(
     {
         hit_index.register(color_id, circle_rect);
     }
-    if collapsed {
+    // ⚠️ **A DOBRA do corpo** — ver `SectionFold`, e o `t` no lugar do `is_collapsed`.
+    let Some(fold) = SectionFold::begin(
+        store,
+        ids::INSP_LIVE_PLAYER_SECTION,
+        x,
+        w,
+        y + header_h,
+        scene,
+        hit_index,
+    ) else {
         return y + header_h;
-    }
+    };
 
     let mut yy = y + header_h;
 
@@ -103,7 +112,9 @@ pub(crate) fn paint_player_section(
             .visual(store.button_visual(ids::INSP_PLAYER_ADD));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PLAYER_ADD, rect);
-        return yy + h + Spacing::Sm.px();
+        // ⚠️ **Fecha o escopo ANTES de sair** — um `return` cru saltaria o `finish` e deixaria o
+        //    recorte pendurado na cena (o `Drop` do `SectionFold` grita em debug por isto).
+        return fold.finish(store, scene, hit_index, yy + h + Spacing::Sm.px());
     }
 
     // **COMO ele é movido** (W-KinMove) — a primeira coisa da seção, porque toda
@@ -217,7 +228,7 @@ pub(crate) fn paint_player_section(
     // **OS VERBOS da seção** — extraídos do `paint` por TETO DE LOC (o `Brake`
     // da W-Brake foi a row que o cruzou), e o corte é por responsabilidade: o pai
     // decide o que a seção MOSTRA, o filho pinta o que ela FAZ.
-    paint_verbs(
+    let out = paint_verbs(
         scene,
         text_system,
         theme,
@@ -228,7 +239,8 @@ pub(crate) fn paint_player_section(
         yy,
         h,
         info,
-    )
+    );
+    fold.finish(store, scene, hit_index, out)
 }
 
 /// **Os quatro botões da §14** — os dois `Fit`, o da corrida gravada e o

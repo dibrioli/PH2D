@@ -22,6 +22,8 @@ pub struct HitIndex {
     /// Painted in z-order (back→front). Iteration for `hit` reverses
     /// so first match is the top-most widget.
     rects: SmallVec<[(NodeId, Rect); INLINE_CAPACITY]>,
+    /// Pilha de RECORTES abertos. Ver [`HitIndex::push_clip`].
+    clips: SmallVec<[Rect; 4]>,
 }
 
 impl HitIndex {
@@ -33,6 +35,11 @@ impl HitIndex {
     /// per frame before the paint pass re-registers everything.
     pub fn clear_for_frame(&mut self) {
         self.rects.clear();
+        // ⚠️ **Um recorte por fechar não pode atravessar o quadro.** Se um pintor entrar em
+        // pânico ou sair por um caminho que salta o `pop_clip`, o quadro SEGUINTE herdaria a
+        // janela e o painel inteiro ficaria mudo sob o rato — um defeito que se cura sozinho
+        // por um quadro e nunca se reproduz. O limpar é aqui porque é aqui que o quadro começa.
+        self.clips.clear();
     }
 
     /// Register a widget's rect. Paint pass calls this for each
@@ -45,7 +52,49 @@ impl HitIndex {
     /// (see `docs/UI_Bugs/README.md` §1.1). When a parent only acts
     /// through its children, don't register the parent at all.
     pub fn register(&mut self, id: NodeId, rect: Rect) {
-        self.rects.push((id, rect));
+        let Some(visible) = self.clipped(rect) else {
+            return;
+        };
+        self.rects.push((id, visible));
+    }
+
+    /// **Abre um RECORTE: daqui até ao [`Self::pop_clip`], o que for registado fora deste
+    /// rectângulo não é clicável.**
+    ///
+    /// ⚠️ **O NEUTRO é não chamar** — sem recorte aberto o `register` é byte a byte o de sempre,
+    /// e é isso que torna esta porta segura de adoptar num sítio de cada vez.
+    ///
+    /// ⚠️ **Existe porque um corpo a dobrar-se é pintado inteiro e mostrado em parte.** Sem ele,
+    /// as rows que o recorte da CENA esconde continuavam registadas na posição natural — e como
+    /// a secção seguinte já subiu por cima delas, uma row invisível continuava a responder ao
+    /// rato nos vãos entre os widgets de baixo. O recorte da cena e o do hit têm de dizer a
+    /// mesma coisa, senão *o que se vê* e *o que se clica* discordam durante a transição.
+    pub fn push_clip(&mut self, rect: Rect) {
+        let clipped = self
+            .clipped(rect)
+            .unwrap_or(Rect::new(rect.x, rect.y, 0.0, 0.0));
+        self.clips.push(clipped);
+    }
+
+    /// Fecha o recorte mais recente. Sem par aberto é um no-op.
+    pub fn pop_clip(&mut self) {
+        self.clips.pop();
+    }
+
+    /// A parte de `rect` que sobrevive ao recorte vigente. `None` quando nada sobrevive.
+    ///
+    /// ⚠️ **Uma intersecção VAZIA devolve `None`, e não um rectângulo de área zero:** um rect
+    /// degenerado ainda passa no `contains` de quem está exactamente na sua borda, o que é a
+    /// diferença entre *não clicável* e *clicável numa linha de um pixel*.
+    fn clipped(&self, rect: Rect) -> Option<Rect> {
+        let Some(clip) = self.clips.last() else {
+            return Some(rect);
+        };
+        let x0 = rect.x.max(clip.x);
+        let y0 = rect.y.max(clip.y);
+        let x1 = (rect.x + rect.w).min(clip.x + clip.w);
+        let y1 = (rect.y + rect.h).min(clip.y + clip.h);
+        (x1 > x0 && y1 > y0).then(|| Rect::new(x0, y0, x1 - x0, y1 - y0))
     }
 
     /// Find the topmost widget under the cursor. Returns `None` if

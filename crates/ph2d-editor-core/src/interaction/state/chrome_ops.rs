@@ -158,6 +158,21 @@ impl WidgetStore {
         self.fold_live.insert(id, t);
     }
 
+    /// **Quão alto o CORPO desta secção mediu da última vez que foi pintado**, ou `None` se ela
+    /// nunca foi pintada aberta. Alimenta o RECORTE da dobra e mais nada — ver
+    /// [`super::WidgetStore::fold_body_h`] para o porquê de ser um valor lembrado e não medido
+    /// no próprio quadro.
+    #[must_use]
+    pub fn section_body_h(&self, id: NodeId) -> Option<f32> {
+        self.fold_body_h.borrow().get(&id).copied()
+    }
+
+    /// **O pintor publica o que acabou de medir.** ⚠️ `&self` de propósito — ver
+    /// [`super::WidgetStore::fold_body_h`].
+    pub fn remember_section_body_h(&self, id: NodeId, h: f32) {
+        self.fold_body_h.borrow_mut().insert(id, h.max(0.0));
+    }
+
     /// As secções que o tique tem de animar: **as que o utilizador tocou**.
     ///
     /// ⚠️ Uma secção nunca tocada não está no mapa e **não custa nada** — ela está aberta, o

@@ -281,6 +281,23 @@ pub struct WidgetStore {
     /// depender de *quando* foi lido — o mesmo argumento que mantém o `UiMotion` fora do
     /// `InteractiveState`.
     pub(super) fold_live: BTreeMap<NodeId, f32>,
+    /// **A altura que o CORPO de cada secção mediu da última vez que foi pintado.**
+    ///
+    /// ⚠️ **É a única coisa neste store escrita através de um `&self`, e a razão é ESTRUTURAL,
+    /// não conveniência:** o recorte da dobra precisa da altura **antes** de pintar (a altura só
+    /// se sabe depois de percorrer as rows), e quem a mede é o pintor — que, pela API do próprio
+    /// host, **nunca** pode segurar `&mut WidgetStore` e `&mut HitIndex` ao mesmo tempo
+    /// (`PanelHostInternal::store_and_hit_index_mut` devolve o par `(&, &mut)` de propósito, para
+    /// a dança de borrows sobre um `dyn`). As alternativas medidas eram: um parâmetro `&mut` a
+    /// cascatear por ~40 assinaturas em 10 crates, ou um mapa global fora do store — que
+    /// vazaria medições entre dois `WidgetStore` do mesmo processo de teste.
+    ///
+    /// ⚠️ **Um valor velho por um quadro é INOFENSIVO por construção:** ele alimenta **só** o
+    /// recorte, nunca o `y` de saída (esse sai da medição FRESCA do próprio quadro), e a altura
+    /// de um corpo não muda enquanto ele se dobra — o que muda é o `t`. Ausente ⇒ recorte zero:
+    /// a secção que nunca foi pintada aberta não aparece no primeiro quadro da estreia e mede-se
+    /// nele, o que é invisível porque a mola parte de `t ≈ 0`.
+    pub(super) fold_body_h: core::cell::RefCell<BTreeMap<NodeId, f32>>,
     /// Pending right-click context menu. `Some` when a Secondary
     /// Down landed somewhere a menu should appear (e.g. an empty
     /// inspector panel or a section header); `None` when no menu

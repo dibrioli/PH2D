@@ -6,6 +6,7 @@
 //! Used by the editor Inspector to break a body into "Params (12)",
 //! "Advanced (7)", "Inputs (24)" etc.
 
+pub mod body;
 mod fold;
 use fold::{paint_chevron, plate_color};
 

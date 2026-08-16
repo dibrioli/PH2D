@@ -7,6 +7,7 @@
 
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorSamplingInfo;
+use ph2d_editor_core::widget::SectionFold;
 
 /// Label-above row with two NumberInputs (X / Y) for a UV scale/offset
 /// pair. Returns the next `y`.
@@ -74,7 +75,6 @@ pub(crate) fn paint_sampling_section(
     info: &InspectorSamplingInfo,
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let collapsed = store.is_collapsed(ids::INSP_LIVE_SAMPLING_SECTION);
     let color_id = ids::INSP_LIVE_SAMPLING_COLOR;
     let rgba = store
         .widget_color(color_id)
@@ -86,9 +86,22 @@ pub(crate) fn paint_sampling_section(
     {
         hit_index.register(color_id, circle_rect);
     }
-    if collapsed {
+    // ⚠️ **A DOBRA do corpo** — o escopo recorta a cena E o hit, e escala o `y` de saída, para
+    //    que tudo o que está por baixo suba junto. Ver `SectionFold`.
+    // ⚠️ **Pergunta o `t`, e NUNCA o `is_collapsed`:** ao clicar para fechar o flag semântico vira
+    //    neste mesmo quadro enquanto o `t` ainda desce, então um corpo gateado no flag sumiria de
+    //    repente por baixo de um chevron a rodar — as duas metades a discordar outra vez.
+    let Some(fold) = SectionFold::begin(
+        store,
+        ids::INSP_LIVE_SAMPLING_SECTION,
+        x,
+        w,
+        y + header_h,
+        scene,
+        hit_index,
+    ) else {
         return y + header_h;
-    }
+    };
     let mut yy = y + header_h;
     let h = ROW_H_PX;
     let row_gap = Spacing::Sm.px();
@@ -201,5 +214,5 @@ pub(crate) fn paint_sampling_section(
         resolve(ColorToken::Text3, theme),
     );
     yy += h + SECTION_BOTTOM_PAD_PX;
-    yy
+    fold.finish(store, scene, hit_index, yy)
 }

@@ -115,9 +115,17 @@ fn tick_section_fold(hero: &mut HeroScreen) {
 /// (o cabeçalho é clicável) e o `hover_targets` pode animá-lo; partilhá-lo poria *quanto do hover
 /// está presente* e *quanto da secção está aberta* no MESMO track. O mesmo argumento do
 /// `scroll_track`, e a constante de mistura é outra para os dois nunca colidirem.
+/// ⚠️ **A semente é a constante SOZINHA — misturar o id nela CANCELA o byte baixo dele.** A
+/// primeira volta do laço faz `h ^= id.to_le_bytes()[0]`, que é exactamente o byte que um
+/// `id ^ K` acabou de injectar: os dois XOR anulam-se e o resultado fica **constante em cada
+/// bloco de 256 ids consecutivos**. Medido na forma anterior: `0..100 000` produzia **391**
+/// tracks distintas, `NodeId(1)` e `NodeId(2)` partilhavam uma, e duas secções irmãs partilhando
+/// track fazem a que está ABERTA dobrar-se sozinha quando a vizinha é fechada. Com a semente
+/// pura é FNV-1a canónico com *offset basis* próprio: `0..100 000` → **100 000** distintas, e as
+/// duas famílias (`fold`/`scroll`) não partilham um único valor.
 fn fold_track(section: ph2d_a11y::NodeId) -> ph2d_a11y::NodeId {
     const FNV_PRIME_64: u64 = 0x0000_0100_0000_01b3;
-    let mut h = section.0 ^ 0x666f_6c64_5f74_7261; // "fold_tra"
+    let mut h = 0x666f_6c64_5f74_7261; // "fold_tra"
     for b in section.0.to_le_bytes() {
         h ^= u64::from(b);
         h = h.wrapping_mul(FNV_PRIME_64);
@@ -160,9 +168,12 @@ fn tick_panel_scroll(hero: &mut HeroScreen) {
 /// O id de motion da rolagem de um painel. ⚠️ **Não é o id do painel** — aquele já é o alvo de hit
 /// do chrome e do `hover_targets`, e partilhá-lo poria duas grandezas (*quanto do hover está
 /// presente* e *onde a superfície está*) no MESMO track.
+///
+/// ⚠️ A semente é a constante SOZINHA, pela razão medida no doc do [`fold_track`] — misturar o id
+/// nela cancela o byte baixo e colapsa 256 ids num track só.
 fn scroll_track(panel: ph2d_a11y::NodeId) -> ph2d_a11y::NodeId {
     const FNV_PRIME_64: u64 = 0x0000_0100_0000_01b3;
-    let mut h = panel.0 ^ 0x7363_726f_6c6c_5f74; // "scroll_t"
+    let mut h = 0x7363_726f_6c6c_5f74; // "scroll_t"
     for b in panel.0.to_le_bytes() {
         h ^= u64::from(b);
         h = h.wrapping_mul(FNV_PRIME_64);
@@ -225,5 +236,54 @@ fn tick_fill_tether(hero: &mut HeroScreen, dt: f64) {
         // Card fechado: a corda ESQUECE a pose. Sem isto, a próxima largada noutro canto do ecrã
         // faria a corda voar do sítio onde a anterior morreu — um rasto de um gesto que já acabou.
         _ => hero.tether.reset(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{fold_track, scroll_track};
+    use ph2d_a11y::NodeId;
+
+    /// **Ids VIZINHOS têm tracks distintas** — a propriedade que a forma anterior perdia.
+    ///
+    /// ⚠️ **A fixture são ids CONSECUTIVOS, e é isso que a torna capaz de falhar.** O defeito
+    /// cancelava o byte BAIXO do id, logo era invisível a qualquer amostra espalhada: os 72 ids de
+    /// secção que o app regista hoje são todos tipo-hash (`≥ 2^24`) e nenhum par dista menos de
+    /// 4096, então **a população real não continha o fenómeno** e a suíte inteira ficava verde. Um
+    /// gate que amostrasse ids reais herdaria essa cegueira.
+    ///
+    /// *Mutação: `let mut h = section.0 ^ 0x666f…` (a forma anterior) ⇒ `1` e `2` colidem e este
+    /// gate nomeia o par.*
+    #[test]
+    fn neighbouring_ids_do_not_share_a_track() {
+        for base in [0u64, 1, 255, 1000, 50_000, 1 << 24] {
+            let seen: std::collections::BTreeSet<u64> =
+                (base..base + 512).map(|i| fold_track(NodeId(i)).0).collect();
+            assert_eq!(
+                seen.len(),
+                512,
+                "512 ids a partir de {base} colapsaram em {} tracks de dobra: dois ids que \
+                 diferem so' no byte baixo partilham a mola, e a seccao ABERTA dobra-se sozinha \
+                 quando a vizinha e' fechada",
+                seen.len()
+            );
+        }
+    }
+
+    /// **As duas famílias não se cruzam.** É a promessa literal do doc do [`fold_track`]
+    /// (*"a constante de mistura é outra para os dois nunca colidirem"*) — e ela vale pela
+    /// SEMENTE, que é a única coisa que os separa agora que o id entra só pelo laço.
+    #[test]
+    fn the_fold_and_the_scroll_families_never_collide() {
+        let folds: std::collections::BTreeSet<u64> =
+            (0..4096u64).map(|i| fold_track(NodeId(i)).0).collect();
+        let scrolls: std::collections::BTreeSet<u64> =
+            (0..4096u64).map(|i| scroll_track(NodeId(i)).0).collect();
+        assert_eq!(
+            folds.intersection(&scrolls).count(),
+            0,
+            "uma dobra e uma rolagem partilham track: *quanto da seccao esta' aberta* e *onde a \
+             superficie esta'* passam a ser o mesmo numero"
+        );
     }
 }

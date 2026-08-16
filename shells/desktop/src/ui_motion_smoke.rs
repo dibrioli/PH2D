@@ -275,6 +275,16 @@ fn print_fold_script(folds: usize) {
     let declared = ph2d_panel_physics::rows::SECTIONS.len();
     eprintln!(
         "\n[ui-motion-smoke 3] A DOBRA — o corpo de uma seccao interpola.\n\
+         \n  O VOCABULARIO primeiro, porque o resto nao se le sem ele:\n\
+         \n    seccao = cada faixa com TITULO e uma setinha. O painel de FISICA tem cinco:\n             \
+                       World · Solver · Air · Damping · Sleep.\n    \
+               corpo  = o monte de controles DEBAIXO do titulo (os sliders, os chips).\n    \
+               dobrar = clicar no TITULO para fechar/abrir. E' o gesto de sempre.\n\
+         \n  O QUE MUDA: ate' agora, clicar no titulo fazia o corpo SUMIR de um quadro para o\n  \
+           outro, e as seccoes de baixo SALTAVAM para cima. A setinha ja' girava suave (isso\n  \
+           landou em 15/08) e o conteudo debaixo dela pulava -- as duas metades do mesmo\n  \
+           cabecalho contavam historias diferentes sobre o mesmo instante. Agora o corpo\n  \
+           ENCOLHE e o que esta' abaixo acompanha.\n\
          \n  O painel de FISICA esta' aberto: ele declara {declared} seccoes, e o store tem\n  \
            {folds} dobra(s) semeada(s) (a soma de TODOS os paineis ja' pintados, logo >= {declared}).\n"
     );
@@ -286,24 +296,26 @@ fn print_fold_script(folds: usize) {
         return;
     }
     eprintln!(
-        "  1. Settings > Motion > EXPRESSIVE. Clique no CABECALHO da primeira seccao para\n     \
-              FECHAR, e julgue QUATRO coisas de uma vez -- sao quatro causas diferentes,\n     \
-              e um roteiro que dissesse so' 'veja se desliza' deixava tres passar:\n\
+        "  1. Settings > Motion > EXPRESSIVE. Clique no titulo WORLD para FECHAR, e julgue\n     \
+              QUATRO coisas de uma vez -- sao quatro causas diferentes, e um roteiro que\n     \
+              dissesse so' 'veja se desliza' deixava tres passar:\n\
          \n       (a) o CORPO encolhe, em vez de desaparecer de repente;\n\
-         \n       (b) o que esta' ABAIXO sobe JUNTO. Se as seccoes de baixo so' saltarem\n           \
-                   no fim, o 'y' de saida nao esta' escalado: a dobra ficou decorativa\n           \
-                   e o painel nao encolheu com ela;\n\
-         \n       (c) nada TRANSBORDA -- nenhuma row aparece por cima da seccao seguinte\n           \
-                   enquanto a de cima fecha. Isso e' o recorte da CENA;\n\
-         \n       (d) o chevron RODA no mesmo compasso. As duas metades do cabecalho tem\n           \
-                   de contar a mesma historia sobre o mesmo instante; ate' esta wave o\n           \
-                   chevron rodava e o corpo saltava debaixo dele.\n\
-         \n  2. Reabra e, A MEIO da abertura, passe o rato onde uma row AINDA NAO chegou.\n     \
-              Nada pode acender. Uma row invisivel que responde ao rato e' o recorte de\n     \
-              HIT em falta -- e essa metade NAO se ve': so' se apanha procurando-a.\n\
+         \n       (b) SOLVER, AIR, DAMPING e SLEEP sobem JUNTO, acompanhando o encolhimento.\n           \
+                   Se elas so' saltarem no fim, o painel nao encolheu com a dobra: ela\n           \
+                   ficou decorativa (o 'y' de saida nao esta' escalado);\n\
+         \n       (c) nada TRANSBORDA -- nenhum controle do World aparece por cima do titulo\n           \
+                   SOLVER enquanto o World fecha (o recorte da CENA);\n\
+         \n       (d) a SETINHA do World roda no mesmo compasso do corpo dele. As duas\n           \
+                   metades do mesmo cabecalho tem de contar a mesma historia sobre o mesmo\n           \
+                   instante; ate' esta wave a setinha rodava e o corpo saltava debaixo dela.\n\
+         \n  2. Reabra o World e, A MEIO da abertura, passe o rato na banda que um controle\n     \
+              AINDA NAO ocupou -- onde ele vai estar, antes de la' chegar. Nada pode\n     \
+              acender. Um controle invisivel que responde ao rato e' o recorte de HIT em\n     \
+              falta -- e essa metade NAO se ve': so' se apanha procurando-a.\n\
          \n  3. Settings > Motion > REDUCED MOTION. Dobre outra vez: ela tem de SALTAR.\n     \
-              O corpo de um painel a deslizar E' area a deslocar-se, que e' o gatilho\n     \
-              vestibular -- a dobra e' Role::Surface, e reduced mata-a. O tint de hover\n     \
+              O corpo de um painel a deslizar E' area grande a deslocar-se, que e' o\n     \
+              gatilho vestibular -- a dobra entra na familia da SUPERFICIE (a mesma da\n     \
+              rolagem de painel), e reduced mata-a. O tint de hover\n     \
               ao lado continua a desvanecer: sao dois eixos, nao um interruptor so'.\n\
          \n  4. DISCRETE e depois EXPRESSIVE, dobrando em cada um. Muda o PESO da chegada,\n     \
               e mais nada: ela nao ultrapassa em nenhum dos dois. Uma seccao que passasse\n     \

@@ -577,7 +577,7 @@ python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"
 | 3 | SIMULAÇÃO | 0 | 3 | 5 | — | 25 | 10 | 43 |
 | 4 | DEFORMERS | 0 | **6** | 8 | — | 3 | 5 | 22 |
 | 5 | TRANSFORM | 0 | 4 | 3 | — | 1 | 8 | 16 |
-| 6 | ANIMADORES | **2** | **10** | 15 | — | 3 | 0 | 30 |
+| 6 | ANIMADORES | **2** | **8** | 15 | — | 5 | 0 | 30 |
 | 7 | TEMPO / ESTILÍSTICOS | 0 | 3 | 6 | — | 14 | 7 | 30 |
 | 8 | STREAM / UTILIDADE | 0 | **8** | 10 | — | 5 | 8 | 32 |
 | 9 | COR / APARÊNCIA | 0 | 3 | 3 | — | 7 | 6 | 19 |
@@ -589,7 +589,7 @@ python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"
 | 15 | VALUE | 0 | 2 | 18 | — | 31 | 19 | 72 |
 | 16 | RIG *(deferida)* | 0 | 0 | 0 | 18 | 1 | 4 | 23 |
 | 17 | ZERO-PARAM + DEBUG | 0 | 1 | 7 | — | 1 | 6 | 15 |
-| | **TOTAL** | **2** | **70** | **119** | **18** | **118** | **119** | **450** |
+| | **TOTAL** | **2** | **68** | **119** | **18** | **120** | **119** | **450** |
 
 ⚠️ **Este placar nasceu do grupo M, e o que ele achou vale mais que os números:** sete das
 dezassete folhas **não tinham contagem nenhuma**, a folha 13 dizia `3 P0 · 7 P1` com a própria

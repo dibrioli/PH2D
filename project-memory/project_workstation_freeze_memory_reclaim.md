@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 9a6dfcf7-82e6-4724-98ca-49062b0eb660
-  modified: 2026-08-09T01:37:33.780Z
+  modified: 2026-08-15T12:09:11.747Z
 ---
 
 A workstation (9950X, 123 GiB, CachyOS 7.1.6) **travou duas vezes**, a 2ª em
@@ -55,5 +55,18 @@ separada** — o byte zerado é assinatura mais de barramento DDR5 marginal (4 D
 no AM5, sem ECC, EDAC sem contadores) que de célula, e há `rustc` SIGSEGV +
 `mold` SIGBUS ×2 no histórico. Só um **memtest86+ overnight** responde; o A/B do
 kernel é o `linux-cachyos-lts` 6.18.42, já instalado. Ver
+
+⚠️ **MAIS UM evento em 2026-08-15, e ele APERTA a hipótese:** `rustc interrupted
+by SIGSEGV` compilando `ph2d-asset-cooker`, com o backtrace **dentro do LLVM**
+(`SCCPInstVisitor::handleCallArguments` ← `IPSCCPPass::run`) — fase de
+otimização, não do frontend. **Não reproduziu em 4 recompilações do MESMO input
+com o MESMO toolchain**, e a máquina estava a 55% de disco, 95 GB de RAM livre e
+sem nada mais rodando.
+
+*Não-determinismo sobre input idêntico é o que separa as duas hipóteses*: um bug
+de compilador falharia sempre no mesmo ponto. Com este, a família chega a
+**quatro** eventos (2 × `mold` SIGBUS, 2 × `rustc` SIGSEGV) — e nenhum deles é
+explicável por memória cheia. O memtest86+ deixou de ser "quando der" e é o
+próximo passo que muda alguma coisa. Ver
 [[project_modo_l_speed_hole_worktree_targets_slow_path]] e
 [[feedback_a_ship_x_can_be_the_environment_not_the_code]].

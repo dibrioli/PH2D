@@ -9,6 +9,7 @@
 - [GPU tests headless](reference_gpu_tests_run_headless_metal.md) — `--features gpu -- --ignored` roda no sandbox
 - [Monitores da workstation](reference_display_topology_workstation.md) — perf no LG (RTX); AOC read-only
 - [A workstation travou 2× (08/08)](project_workstation_freeze_memory_reclaim.md) — livelock de reclaim, não bug do PH2D; 577 GB de `target/` é o combustível
+- [O VSCode morre por POLÍTICA, não por escolha (14/08)](project_vscode_dies_by_oompolicy_not_by_choice.md) — `OOMPolicy=stop` derruba o scope; o AND do earlyoom nunca fecha quando é o swap que acaba
 - [Prompt Deck](reference_prompt_deck_app.md) — apps pessoais em "Meus Apps"; fonte única `prompts.json`, 3 saídas geradas
 - [Atalho global no Plasma 6](reference_kde_plasma6_global_shortcut.md) — `[services][x.desktop]` + o grab que falta após o login
 - [HISTÓRICO: aquarela/wash](reference_topic_watercolor_historical.md) — ADR-0096/0099/0108; 17 memórias da era
@@ -34,6 +35,8 @@
 - [Comentário velho e código morto MENTEM](feedback_stale_comment_and_dead_code_lie.md)
 - ["O design rejeita X"? grepe o gate](feedback_before_declaring_the_design_rejects_an_invariant_grep_for_its_gate.md)
 - [Nota de diferido não é spec](feedback_a_deferral_notes_bar_may_exceed_the_projects_policy.md) — confira e corrija a nota
+- ["NÃO toque neste arquivo" é uma AFIRMAÇÃO](feedback_a_handoff_can_be_wrong_about_its_own_dirty_file.md) — o handoff errou sobre a própria crate; meça antes de honrar
+- [A regra tem de estar no CAMINHO de quem a executa](feedback_a_rule_only_exists_if_it_is_on_the_path_of_who_executes_it.md) — doc órfão do roteador = regra inexistente
 - [Mecanismo certo, cura errada](feedback_a_correct_mechanism_can_prescribe_the_wrong_cure.md) — meça o mecanismo antes de construir o que a nota prescreve
 - [Cerca de Chesterton](feedback_documented_decision_chesterton_fence.md) — "intentionally NOT X" = decisão
 - [Revert pode diferir só no TEMPO DE VIDA](feedback_a_reverted_attempt_may_differ_only_in_lifetime_read_the_revert_reason.md) — leia o MOTIVO do revert, não o diff; escopo é o que mata tentativa boa
@@ -60,6 +63,7 @@
 - [Ship do integrador drena latentes](project_integrator_ship_catches_latents_budget_iterations.md) — 2-4 iterações
 - [Ordem de integração se MEDE](feedback_integration_order_comes_from_measured_overlap.md) — sobreposição par-a-par
 - [✗ do ship pode ser AMBIENTE](feedback_a_ship_x_can_be_the_environment_not_the_code.md) — tmpfs evapora · disco cheio vira "linking failed"
+- ["Está em uso?" → config GLOBAL](feedback_in_use_is_answered_by_the_global_config_and_a_probe_can_start_what_it_measures.md) — apaguei 101 GB de sccache ATIVO; e `sccache -s` SOBE o servidor que ele mede
 - [Pipe mascara exit code](feedback_pipe_masks_script_exit_code.md) — verifique o ESTADO
 - [Crase em msg de commit executa](feedback_backticks_in_commit_message_are_command_substitution.md) — `git commit -F`
 - [Merge limpo pode estar quebrado](feedback_clean_text_merge_can_be_semantically_broken.md) — `check --workspace`
@@ -83,6 +87,7 @@
 - [Ofício de gate (31)](reference_topic_gate_discipline.md) — ausência+presença · razão doente · verde por acidente · paridade CPU/GPU · fixture contém o fenômeno
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) — seed=sample · âncora · id-counter · load adota · ponto fixo · unidades mistas
 - [Costura de UI (13)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
+- [O seed é dono do VALOR, o dispatch do ESTADO](feedback_the_seed_owns_the_value_the_dispatch_owns_the_state.md) — espelho por-quadro REMENDA; `register` inteiro apaga o hover, e fica inerte até alguém dar cor ao estado
 - [Provas de mutação (6)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando
 - [Disciplina de oráculo (9)](reference_topic_oracle_discipline.md) — aparência, não regra
 - [Disciplina de fixture (6)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem

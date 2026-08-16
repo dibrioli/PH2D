@@ -16,6 +16,7 @@ metadata:
 - [[feedback_a_ratio_between_two_sick_channels_is_green_by_construction]] — razão entre dois canais doentes é verde; ancore no que o produto promete
 - [[feedback_a_green_gate_may_be_green_by_accident]] — verde de 1ª pode ser acidente; suspeite do fixture
 - [[feedback_a_fixture_can_land_in_a_chaotic_regime]] — Δ enorme? compare com quantidade física
+- [[feedback_an_arch_gate_anchored_on_a_file_fails_when_the_loc_cap_moves_the_code]] — arch-gate ancorado num ARQUIVO morre no corte de LOC; leia a FAMÍLIA por porta única
 - [[feedback_a_seam_fixture_must_rest_on_something_uncoverable]] — fixture de costura pede âncora incobrível
 - [[feedback_moving_the_law_is_half_the_fix_the_fixture_must_contain_it]] — mover a lei é metade; a fixture tem de conter o fenômeno
 - [[feedback_comparing_two_routes_requires_the_same_art]] — comparar duas rotas exige a MESMA arte

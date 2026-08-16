@@ -73,6 +73,17 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.05,
         widget: ParamWidget::Slider,
     },
+    // ⚠️ **O rótulo é o do TouchDesigner** (*Pulse Width*), e o doc do nó explica
+    // por que ele também é o *Bias*: são o mesmo número, a fatia do ciclo gasta
+    // na primeira metade.
+    ParamUiHint {
+        param: "pulse_width",
+        label: "Pulse Width",
+        min: 0.05,
+        max: 0.95,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
     ParamUiHint {
         param: "phase",
         label: "Phase",

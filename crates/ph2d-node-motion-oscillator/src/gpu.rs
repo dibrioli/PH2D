@@ -30,6 +30,7 @@ use ph2d_nodegraph::port::Dim;
 /// variants exist and not a body-level branch.
 const OSC_PARAMS: &[&str] = &[
     "channel",
+    "pulse_width",
     "wave",
     "amplitude",
     "frequency",
@@ -52,17 +53,16 @@ const OSC_FALLOFF: ColumnBinding = ColumnBinding {
 /// **X / Y** — adds the delta to one component of `P`. The channel test is
 /// `< 0.5`, which agrees with the CPU's `round()` for both values this variant
 /// is selected for.
-pub(crate) const OSC_P: GpuKernel = GpuKernel {
-    wgsl: "\
-        let osc_d = osc_delta(i, params.playhead);\n\
-        var osc_p = read_P(i);\n\
-        if (params.channel < 0.5) {\n\
-            osc_p.x = osc_p.x + osc_d;\n\
-        } else {\n\
-            osc_p.y = osc_p.y + osc_d;\n\
-        }\n\
-        write_P(i, osc_p);\n",
-    wgsl_lib: "\
+/// **A biblioteca WGSL que os TRES variants compartilham.**
+///
+/// AVISO: ela era LITERAL em cada um deles, e as tres copias JA TINHAM
+/// DIVERGIDO -- medido em 2026-08-16, so o variant de `P` tinha o
+/// `osc_cycles_per_second`, e os de `rot` e `size` liam `params.frequency`
+/// direto: um grafo a dirigir a rotacao em BPM corria a uma taxa no device
+/// e a outra na CPU, sem erro e sem aviso. Os variants existem pela COLUNA
+/// que cada um escreve; a aritmetica e a MESMA nos tres, e mante-la em tres
+/// lugares foi o que produziu o defeito.
+const OSC_LIB: &str = "\
         fn osc_delta(i: u32, t: f32) -> f32 {\n\
             let cps = osc_cycles_per_second();\n\
             let phase = t * cps + f32(i) * params.phase_stagger + params.phase;\n\
@@ -78,8 +78,14 @@ pub(crate) const OSC_P: GpuKernel = GpuKernel {
             // Rust f32::round = half away from zero (WGSL round is half-even).\n\
             return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
         }\n\
+        fn osc_skew(f: f32, pw: f32) -> f32 {\n\
+            // O warp de fase: pw = 0.5 e a IDENTIDADE (0.5/0.5 == 1.0).\n\
+            let p = clamp(pw, 0.05, 0.95);\n\
+            if (f < p) { return f * (0.5 / p); }\n\
+            return 0.5 + (f - p) * (0.5 / (1.0 - p));\n\
+        }\n\
         fn osc_wave(kind: i32, phase: f32) -> f32 {\n\
-            let f = phase - floor(phase);\n\
+            let f = osc_skew(phase - floor(phase), params.pulse_width);\n\
             if (kind == 1) {\n\
                 // Triangle: 0 at 0, +1 at 1/4, 0 at 1/2, -1 at 3/4.\n\
                 if (f < 0.25) { return 4.0 * f; }\n\
@@ -106,7 +112,19 @@ pub(crate) const OSC_P: GpuKernel = GpuKernel {
                 p = -4.0 * u * (1.0 - u);\n\
             }\n\
             return 0.225 * (p * abs(p) - p) + p;\n\
-        }\n",
+        }\n";
+
+pub(crate) const OSC_P: GpuKernel = GpuKernel {
+    wgsl: "\
+        let osc_d = osc_delta(i, params.playhead);\n\
+        var osc_p = read_P(i);\n\
+        if (params.channel < 0.5) {\n\
+            osc_p.x = osc_p.x + osc_d;\n\
+        } else {\n\
+            osc_p.y = osc_p.y + osc_d;\n\
+        }\n\
+        write_P(i, osc_p);\n",
+    wgsl_lib: OSC_LIB,
     bindings: &[
         // The target channel is materialized from its identity when absent —
         // the CPU's `apply_channel_delta` does the same (`base_vec2`).
@@ -129,46 +147,7 @@ pub(crate) const OSC_P: GpuKernel = GpuKernel {
 pub(crate) const OSC_ROT: GpuKernel = GpuKernel {
     wgsl: "\
         write_rot(i, read_rot(i) + osc_delta(i, params.playhead));\n",
-    wgsl_lib: "\
-        fn osc_delta(i: u32, t: f32) -> f32 {\n\
-            let phase = t * params.frequency + f32(i) * params.phase_stagger\n\
-            \x20   + params.phase;\n\
-            let w = osc_wave(i32(osc_round(params.wave)), phase);\n\
-            return (w * params.amplitude + params.offset) * read_falloff(i);\n\
-        }\n\
-        fn osc_round(x: f32) -> f32 {\n\
-            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
-            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
-        }\n\
-        fn osc_wave(kind: i32, phase: f32) -> f32 {\n\
-            let f = phase - floor(phase);\n\
-            if (kind == 1) {\n\
-                // Triangle: 0 at 0, +1 at 1/4, 0 at 1/2, -1 at 3/4.\n\
-                if (f < 0.25) { return 4.0 * f; }\n\
-                if (f < 0.75) { return 2.0 - 4.0 * f; }\n\
-                return 4.0 * f - 4.0;\n\
-            }\n\
-            if (kind == 2) {\n\
-                if (f < 0.5) { return 1.0; }\n\
-                return -1.0;\n\
-            }\n\
-            if (kind == 3) { return 2.0 * f - 1.0; }\n\
-            if (kind == 4) {\n\
-                if (f < 0.08) { return 1.0; }\n\
-                return 0.0;\n\
-            }\n\
-            // Parabolic sine-approximation + Capens correction (~0.09% off a\n\
-            // true sine, transcendental-free) — the port of `waveform`'s default.\n\
-            var p: f32;\n\
-            if (f < 0.5) {\n\
-                let u = f * 2.0;\n\
-                p = 4.0 * u * (1.0 - u);\n\
-            } else {\n\
-                let u = (f - 0.5) * 2.0;\n\
-                p = -4.0 * u * (1.0 - u);\n\
-            }\n\
-            return 0.225 * (p * abs(p) - p) + p;\n\
-        }\n",
+    wgsl_lib: OSC_LIB,
     bindings: &[
         ColumnBinding {
             column: "rot",
@@ -192,46 +171,7 @@ pub(crate) const OSC_SIZE: GpuKernel = GpuKernel {
         let osc_d = osc_delta(i, params.playhead);\n\
         let osc_s = read_size(i);\n\
         write_size(i, vec2<f32>(osc_s.x + osc_d, osc_s.y + osc_d));\n",
-    wgsl_lib: "\
-        fn osc_delta(i: u32, t: f32) -> f32 {\n\
-            let phase = t * params.frequency + f32(i) * params.phase_stagger\n\
-            \x20   + params.phase;\n\
-            let w = osc_wave(i32(osc_round(params.wave)), phase);\n\
-            return (w * params.amplitude + params.offset) * read_falloff(i);\n\
-        }\n\
-        fn osc_round(x: f32) -> f32 {\n\
-            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
-            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
-        }\n\
-        fn osc_wave(kind: i32, phase: f32) -> f32 {\n\
-            let f = phase - floor(phase);\n\
-            if (kind == 1) {\n\
-                // Triangle: 0 at 0, +1 at 1/4, 0 at 1/2, -1 at 3/4.\n\
-                if (f < 0.25) { return 4.0 * f; }\n\
-                if (f < 0.75) { return 2.0 - 4.0 * f; }\n\
-                return 4.0 * f - 4.0;\n\
-            }\n\
-            if (kind == 2) {\n\
-                if (f < 0.5) { return 1.0; }\n\
-                return -1.0;\n\
-            }\n\
-            if (kind == 3) { return 2.0 * f - 1.0; }\n\
-            if (kind == 4) {\n\
-                if (f < 0.08) { return 1.0; }\n\
-                return 0.0;\n\
-            }\n\
-            // Parabolic sine-approximation + Capens correction (~0.09% off a\n\
-            // true sine, transcendental-free) — the port of `waveform`'s default.\n\
-            var p: f32;\n\
-            if (f < 0.5) {\n\
-                let u = f * 2.0;\n\
-                p = 4.0 * u * (1.0 - u);\n\
-            } else {\n\
-                let u = (f - 0.5) * 2.0;\n\
-                p = -4.0 * u * (1.0 - u);\n\
-            }\n\
-            return 0.225 * (p * abs(p) - p) + p;\n\
-        }\n",
+    wgsl_lib: OSC_LIB,
     bindings: &[
         ColumnBinding {
             column: "size",

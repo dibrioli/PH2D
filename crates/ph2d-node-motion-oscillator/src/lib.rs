@@ -90,6 +90,15 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "time_mode",
             default: 0.0,
         },
+        // ⚠️ **UM knob para o que a referência dá em DOIS.** O TouchDesigner tem
+        // *Pulse Width* (a fração do período em que a Square fica em cima) e
+        // *Bias* (onde o pico da Triangle/Saw se senta) — e eles são **o mesmo
+        // número**: a fatia do ciclo gasta na primeira metade. Dois nomes para um
+        // número é como um artista aprende que são coisas diferentes.
+        ParamSpec {
+            name: "pulse_width",
+            default: 0.5,
+        },
         ParamSpec {
             name: "bpm",
             default: 120.0,
@@ -107,8 +116,44 @@ fn frac(p: f32) -> f32 {
 /// A periodic waveform at `phase` (in cycles, period 1) — bipolar `[-1,1]` except
 /// **Spike** (a unipolar `[0,1]` pulse). All shapes are piecewise polynomial →
 /// transcendental-free (HR-5). Unknown / `0` is the parabolic sine-approximation.
-fn waveform(kind: i32, phase: f32) -> f32 {
-    let f = frac(phase);
+/// O piso/teto do `pulse_width`.
+///
+/// ⚠️ **Ele NÃO é uma guarda contra divisão por zero, e a mutação me corrigiu:**
+/// eu escrevera que *"a lei divide por `p` e por `1 − p`, então os extremos são
+/// uma divisão por zero"* — a estrutura dos ramos já protege (com `p = 0` o
+/// ramo que divide por `p` é inalcançável, e com `p = 1` o outro também), e
+/// apagar o clamp deixava tudo FINITO e os quatro gates VERDES.
+///
+/// O que ele compra é a onda continuar a ser uma onda: este param é `f32`, logo
+/// **dirigível por fio** (doc 58), e um `pw = 7` sem clamp comprime o ciclo
+/// inteiro nos primeiros 7% do domínio da forma — a excursão colapsa e a saída
+/// fica quase plana. A 5% de um ciclo a onda já é uma agulha, e é aí que o
+/// disfuncional começa.
+const PW_MIN: f32 = 0.05;
+
+/// **O WARP DE FASE** — o que faz *Pulse Width* e *Bias* serem um knob só.
+///
+/// Ele estica a primeira fatia do ciclo (`[0, pw]`) sobre a primeira metade
+/// (`[0, ½]`) e comprime o resto na segunda. A forma que vem depois não sabe que
+/// isto aconteceu: a Square ganha o ciclo de trabalho, a Triangle e a Saw ganham
+/// o *bias* (o pico anda), e a senoide ganha a versão enviesada dela — **cinco
+/// formas de uma lei**.
+///
+/// ⚠️ **`pw = 0.5` é a IDENTIDADE, e por ARITMÉTICA:** `0.5 / 0.5` é exactamente
+/// `1.0`, então o primeiro ramo é `f * 1.0 = f`; e no segundo `f − 0.5` é exacto
+/// (Sterbenz, os dois estão dentro de um fator de dois) e `0.5 + (f − 0.5)`
+/// reconstrói `f` ao bit. É isto que faz o default não mover um pixel.
+fn skew(f: f32, pulse_width: f32) -> f32 {
+    let p = pulse_width.clamp(PW_MIN, 1.0 - PW_MIN); // CLAMP-OK: ver `PW_MIN`
+    if f < p {
+        f * (0.5 / p)
+    } else {
+        0.5 + (f - p) * (0.5 / (1.0 - p))
+    }
+}
+
+fn waveform(kind: i32, phase: f32, pulse_width: f32) -> f32 {
+    let f = skew(frac(phase), pulse_width);
     match kind {
         1 => {
             // Triangle: 0 at 0, +1 at ¼, 0 at ½, −1 at ¾.
@@ -204,6 +249,8 @@ impl NodeOp for MotionOscillator {
             ctx.param("bpm"),
         );
         let amplitude = ctx.param("amplitude");
+        // ⚠️ Lido AQUI e não dentro do laço: ele é uniforme no dispatch inteiro.
+        let pulse_width = ctx.param("pulse_width");
         let out = {
             let input = ctx.input(0);
             let n = input.count();
@@ -213,7 +260,7 @@ impl NodeOp for MotionOscillator {
                 let phase = t * cps + i as f32 * phase_stagger + phase0;
                 // DC `offset` shifts the oscillation centre; the whole
                 // contribution is falloff-masked (like every behaviour).
-                (waveform(wave, phase) * amplitude + offset) * falloff_at(input, i)
+                (waveform(wave, phase, pulse_width) * amplitude + offset) * falloff_at(input, i)
             });
             apply_channel_delta(input, channel, &deltas)
         };
@@ -473,21 +520,21 @@ mod tests {
         for kind in 0..=4 {
             for step in 0..40 {
                 let p = step as f32 * 0.1;
-                let v = waveform(kind, p);
+                let v = waveform(kind, p, 0.5);
                 assert!((-1.0..=1.0).contains(&v), "wave {kind} at {p} = {v}");
                 assert!(
-                    (waveform(kind, p) - waveform(kind, p + 1.0)).abs() < 1e-5,
+                    (waveform(kind, p, 0.5) - waveform(kind, p + 1.0, 0.5)).abs() < 1e-5,
                     "wave {kind} periodic at {p}"
                 );
             }
         }
         // Anchor points of the corrected sine approximation (preserved).
-        assert_eq!(waveform(0, 0.0), 0.0);
-        assert_eq!(waveform(0, 0.25), 1.0);
-        assert_eq!(waveform(0, 0.75), -1.0);
+        assert_eq!(waveform(0, 0.0, 0.5), 0.0);
+        assert_eq!(waveform(0, 0.25, 0.5), 1.0);
+        assert_eq!(waveform(0, 0.75, 0.5), -1.0);
         // Spike: a narrow unipolar pulse — 1 at the cycle start, 0 through most.
-        assert_eq!(waveform(4, 0.0), 1.0);
-        assert_eq!(waveform(4, 0.5), 0.0);
+        assert_eq!(waveform(4, 0.0, 0.5), 1.0);
+        assert_eq!(waveform(4, 0.5, 0.5), 0.0);
     }
 
     #[test]
@@ -529,7 +576,7 @@ mod tests {
         for k in 0..64 {
             let f = k as f32 / 64.0;
             let truth = (f * TAU).sin();
-            worst_corrected = worst_corrected.max((waveform(0, f) - truth).abs());
+            worst_corrected = worst_corrected.max((waveform(0, f, 0.5) - truth).abs());
             worst_bare = worst_bare.max((bare(f) - truth).abs());
         }
         assert!(
@@ -547,3 +594,7 @@ mod tests {
         assert!(reg.resolve(MANIFEST.id).is_some());
     }
 }
+
+#[cfg(test)]
+#[path = "skew_tests.rs"]
+mod skew_tests;

@@ -2155,6 +2155,43 @@ fn noise_kernel_matches_the_cpu_within_epsilon() {
 /// `assert_gpu_parity` compares INSTANCES, and `rot`/`size` both reach them (the
 /// lowering folds `rot` into the basis and `size` into the quad), so a variant
 /// that wrote its delta to the wrong column shows up as a moved sprite.
+/// **A RÉGUA DE BPM VALE EM TODO CANAL, e este gate nasceu VERMELHO.**
+///
+/// ⚠️ O `motion.oscillator` tem TRÊS variants de WGSL, um por coluna escrita, e
+/// cada um carregava a biblioteca **LITERAL**. Medido em 2026-08-16: só o
+/// variant de `P` tinha o `osc_cycles_per_second` — os de `rot` e `size` liam
+/// `params.frequency` **direto** e ignoravam `time_mode`/`bpm`, que estão no
+/// uniforme dos três. Na CPU a régua vale para todo canal.
+///
+/// ⇒ um grafo a dirigir a ROTAÇÃO em BPM corria a `frequency` no device e a
+/// `bpm/60` na CPU, **sem erro e sem aviso**. Nenhum gate o via porque o sweep de
+/// canais ao lado nunca liga o `time_mode`, e os gates de matemática só usam o
+/// canal `P`. É o preço exacto dos três blocos byte-idênticos, e a cura foi
+/// extrair a biblioteca para UM lugar.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_bpm_ruler_reaches_every_oscillator_channel() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    for (channel, label) in [(1.0, "Y"), (2.0, "Rotation"), (3.0, "Size")] {
+        let mut g = Graph::new();
+        let (node, out) = deformer_chain(&mut g, 40.0, "motion.oscillator");
+        g.set_param(node, "channel", channel);
+        g.set_param(node, "amplitude", 1.9);
+        // ⚠️ A fixture TEM de conter o fenômeno: `time_mode = 1` (BPM) e um
+        // `bpm` cuja frequência equivalente (147/60 = 2,45 Hz) está LONGE do
+        // `frequency` que o variant defeituoso leria.
+        g.set_param(node, "time_mode", 1.0);
+        g.set_param(node, "bpm", 147.0);
+        g.set_param(node, "frequency", 0.3);
+        eprintln!("  oscillator BPM on {label}");
+        assert_gpu_parity(&gpu, &reg, &g, out, 2);
+    }
+}
+
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
 fn the_rotation_and_size_variants_match_the_cpu() {

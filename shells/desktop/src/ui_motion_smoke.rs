@@ -248,6 +248,10 @@ fn print_character_script() {
               o fade sobrevive de proposito, e nao por esquecimento.\n\
          \n     Na cena 2 o mesmo toggle faz a CORDA desaparecer inteira -- decoracao em\n     \
               reduced e' AUSENTE, nao atenuada.\n\
+         \n     ⚠️ E DESLIGUE-O de volta antes de seguir. Esta preferencia e' PERSISTIDA\n     \
+              (~/.ph2d/prefs.txt), entao ela sobrevive a fechar o app -- e todo smoke que\n     \
+              voce rodar depois deste comeca onde este acabou. Deixa'-lo ligado faz a\n     \
+              proxima cena medir a AUSENCIA do movimento achando que mede o movimento.\n\
          \n  5. ⭐ FECHE O APP e rode este smoke outra vez. A primeira linha do terminal tem\n     \
               de dizer o carater que voce escolheu. Se disser Discreto, a wave 3 falhou.\n"
     );
@@ -345,6 +349,10 @@ fn print_fold_script(folds: usize) {
               gatilho vestibular -- a dobra entra na familia da SUPERFICIE (a mesma da\n     \
               rolagem de painel), e reduced mata-a. O tint de hover\n     \
               ao lado continua a desvanecer: sao dois eixos, nao um interruptor so'.\n\
+         \n     ⚠️ DESLIGUE-O de volta agora -- o passo 4 nao tem o que comparar com ele\n     \
+              ligado (os dois carateres ficam mortos), e a preferencia e' PERSISTIDA\n     \
+              (~/.ph2d/prefs.txt): todo smoke que voce rodar depois deste comeca onde\n     \
+              este acabou.\n\
          \n  4. DISCRETE e depois EXPRESSIVE, dobrando em cada um. Muda o PESO da chegada,\n     \
               e mais nada: ela nao ultrapassa em nenhum dos dois. Uma seccao que passasse\n     \
               do fim e voltasse mostraria conteudo para alem do fim -- exactamente o que o\n     \

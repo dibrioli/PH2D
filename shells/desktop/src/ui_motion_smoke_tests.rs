@@ -94,3 +94,40 @@ fn the_reduced_motion_guard_stops_the_script_before_the_dispatch() {
         "o guard avisa e nao SAI -- o roteiro segue impresso logo abaixo do proprio PARE"
     );
 }
+
+/// **Todo passo que manda LIGAR o `reduced motion` manda DESLIGÁ-LO de volta.**
+///
+/// ⚠️ **Esta é a causa RAIZ do smoke reprovado de 2026-08-16**, e o PARE do gate acima é só a
+/// rede. A preferência é persistida em `~/.ph2d/prefs.txt`, então um roteiro que a liga e não a
+/// restaura **envenena toda corrida seguinte** — inclusive de outras cenas e de outras linhas, que
+/// não sabem que esta preferência existe. O Enio correu o passo 3 da cena 3 acreditando correr o
+/// passo 1.
+///
+/// ⚠️ **E na cena 3 isso já quebrava o passo SEGUINTE, não só o futuro:** o passo 4 manda comparar
+/// Discreto contra Expressivo, e com o interruptor ligado os dois estão mortos.
+///
+/// A âncora é a FORMA IMPERATIVA (`Settings > Motion > REDUCED MOTION`) — o texto do PARE fala do
+/// interruptor em minúsculas e entre crases, então ele não conta como instrução. É uma propriedade
+/// de CONTAGEM e não de posição: um passo novo que o ligue entra no numerador sozinho.
+///
+/// *Mutação: apagar uma das linhas `DESLIGUE-O de volta` ⇒ RED, nomeando a diferença.*
+#[test]
+fn every_step_that_arms_reduced_motion_also_disarms_it() {
+    let src = include_str!("ui_motion_smoke.rs");
+
+    let arms = src.matches("Settings > Motion > REDUCED MOTION").count();
+    let disarms = src.matches("DESLIGUE-O de volta").count();
+
+    assert!(
+        arms > 0,
+        "o controlo positivo caiu: nenhum roteiro manda ligar o reduced motion, entao este \
+         gate deixou de medir o que afirma (a frase foi reescrita?)"
+    );
+    assert_eq!(
+        arms, disarms,
+        "{arms} passo(s) mandam LIGAR o reduced motion e {disarms} mandam desliga'-lo de volta. \
+         A preferencia e' PERSISTIDA: o que sobra ligado envenena a proxima corrida -- de \
+         qualquer cena, de qualquer linha -- que passara' a medir a AUSENCIA do movimento \
+         achando que mede o movimento"
+    );
+}

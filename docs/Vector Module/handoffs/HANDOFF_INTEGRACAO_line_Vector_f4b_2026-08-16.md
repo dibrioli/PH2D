@@ -11,10 +11,16 @@
 |---|---|
 | branch | `line/Vector` |
 | HEAD | o **tip de `line/Vector`** — ⚠️ **não um sha escrito aqui**: os últimos commits são este próprio documento, então um literal envelheceria a cada correcção dele |
-| último commit de **CÓDIGO** | **`703c2d1a8`** — daí para cima é só `docs/` |
+| último commit de **CÓDIGO** | **`6f66a8554`** |
 | merge-base com `main` | **`08e3c84c9`** |
-| commits de código | **9** |
-| diff de código | **65 arquivos, +3.241 / −732** |
+| commits de código | **11** (de **14** no total; os outros 3 são este documento e o plano) |
+| diff de **código** | **64 arquivos, +3.113 / −712** (`main...HEAD -- ':!docs'`) |
+
+⚠️ **Esta caixa já esteve errada duas vezes, e as duas por motivos que valem mais que o número.**
+A primeira dizia *"daí para cima é só `docs/`"* e o smoke produziu **dois commits de fonte** depois
+dela. A segunda rotulava a linha como *"diff de **código**"* medindo o total **com `docs/` dentro**
+(65 / +3.241 / −732 era `main...HEAD` sem pathspec) — *um rótulo que promete um recorte e mede
+outro é pior que um número velho, porque ninguém o vai reconferir.* **Re-meça no dia da ordem.**
 
 ⚠️ **O `main` NÃO andou desde o fork** (`merge-base == main == 08e3c84c9`), então **hoje** a
 integração é um `--ff-only` trivial. **Esta caixa envelhece.** É a mesma frase que os handoffs da
@@ -147,7 +153,7 @@ no fecho**, não a acreditar agora"*. Conferida. Passa.
 
 ## 6. Ordem, dependências e **o que smoke-testar**
 
-### Os 9 commits, em ordem, e a dependência entre eles
+### Os 11 commits, em ordem, e a dependência entre eles
 
 | # | commit | depende do anterior? |
 |---|---|---|
@@ -160,14 +166,42 @@ no fecho**, não a acreditar agora"*. Conferida. Passa.
 | 7 | `6e20b7155` a sonda do `set_cursor_grab` (§4.3) — **(B) recusada por medição** | independente |
 | 8 | `c77af7cec` o intervalo que o COMMIT enforça chega à lei do arrasto | independente |
 | 9 | `703c2d1a8` a POPULAÇÃO governa o custo, não o voo | independente |
+| 10 | `c5f8aa8a5` o roteiro da DOBRA fala a língua do ARTISTA | **do 6** (é o texto da cena) |
+| 11 | `6f66a8554` o `reduced motion` **PARA** o roteiro | **do 6** |
 
 ⚠️ **Os commits 1-6 são uma cadeia**: um rebase que os reordene quebra a compilação (o 2 usa o que
-o 1 cria). Os 7-9 são independentes entre si e da cadeia.
+o 1 cria). Os 10-11 dependem do 6 (editam a cena que ele cria). Os 7-9 são independentes entre si
+e da cadeia.
 
-### ⚠️ **O QUE NÃO FOI SMOKADO: TUDO.**
+### ✅ **SMOKADO E APROVADO** (Enio, 2026-08-16)
 
-Nenhum dos 9 commits tem veredito do Enio. **Integrar isto é integrar trabalho medido e não
-julgado** — e a wave tem **mudança de comportamento visível em dez painéis**.
+A cena **`=3`** foi julgada e passou. **Mas a primeira corrida REPROVOU**, e a causa não estava no
+produto — está aqui porque ela mudou código e é a razão de os commits 10-11 existirem.
+
+**O veredito foi *«não há transições, aparecem e desaparecem subitamente»*, e o produto estava
+CERTO:** o `~/.ph2d/prefs.txt` do Enio tinha **`reduced_motion=1`**. A dobra é `Role::Surface`, e
+`Surface` + reduced devolve `None` do `law_of` — **sem mola, tudo chega no quadro em que muda, por
+projecto**, pinado pelo gate pré-existente `reduced_motion_still_takes_the_surface`. E o **passo 3
+do meu próprio roteiro manda ligá-lo**, para provar exactamente isso.
+
+⚠️ **O defeito era meu, e tinha duas metades.** A cena **já imprimia `reduced motion: true`** — como
+*readout* neutro, no meio de outras linhas. Ela parava quando faltavam dobras (defeito estrutural) e
+**não parava quando a preferência desliga a coisa inteira que ela mede**. *Imprimir um facto não é
+PARAR sobre ele.* E a segunda: quem deixasse o interruptor ligado de uma corrida anterior **começava
+no passo 3 a achar que corria o passo 1** — a preferência é persistida fora do repo, logo invisível
+a toda varredura.
+
+**A cura (commit 11):** um **PARE** antes do despacho de cena, que nomeia o interruptor, dá os dois
+caminhos para o desligar e avisa que o passo 3 o religa no fim. O gate
+`the_reduced_motion_guard_stops_the_script_before_the_dispatch` lê o fonte — **a posição é
+load-bearing**: um guard depois do `match level` compilaria, passaria na suíte e imprimiria o
+roteiro inteiro **e depois** o PARE. Ele afirma a propriedade (o `return` precede o despacho), nunca
+uma distância em bytes. **2 mutações, 2 sangram.**
+
+⚠️ **E a segunda metade do report é OUTRA pergunta, com resposta oposta:** *«nem abrindo o
+painel»*. Medido — `panel_open_t|panel_visible_t|visibility_live|panel_fade` devolve **vazio**:
+**abrir/fechar um painel nunca foi animado**. Não é regressão desta wave; é uma feature que não
+existe, e construí-la é decisão do Enio (está na §9).
 
 **Smokes** (`ph2d-run cargo run -p ph2d-host-desktop --release`, ou o `cargo run` equivalente):
 
@@ -203,7 +237,7 @@ chrome do app) — não o "complete" sem trazer a F4a primeiro.
 
 ---
 
-## 7. Gate batched da linha (rodado no tip, `703c2d1a8`)
+## 7. Gate batched da linha (rodado no TIP, `6f66a8554`)
 
 | gate | resultado |
 |---|---|
@@ -278,6 +312,12 @@ bloqueado fora do repositório:
   consumidores e tem histórico de defeito subtil de flash ⇒ **wave própria, com ordem**.
 - ⛔ **X1 pressão da caneta** — bloqueado **FORA do repositório** (winit 0.30.13 crava
   `force: None` nos três backends de desktop).
+- ⏸️ **ABRIR/FECHAR um painel não é animado, e nunca foi** — medido no smoke desta wave
+  (`panel_open_t|panel_visible_t|visibility_live|panel_fade` devolve **vazio**). Não é regressão:
+  é ausência. ⚠️ **E ela não é o gêmeo da dobra** — a dobra move o corpo **dentro** de um painel
+  cujo rectângulo não muda; abrir um painel move o **dock**, e todo vizinho do dock re-flui. A
+  metade cara é a mesma que a F4b pagou (medir-lembrar-recortar), só que a herdar o layout de
+  fora. **Feature, com ordem.**
 - ⛔ **E4 menu radial · C2 realce de proveniência · D1 som · D2 partículas** são **FEATURES**, não
   polimento.
 - ⚠️ **Resíduo estrutural NOMEADO, sem gate:** o eixo do hover está fechado para tudo o que hoje o
@@ -288,4 +328,5 @@ bloqueado fora do repositório:
 
 ---
 
-*Linha `Vector` pronta (HEAD `703c2d1a8`, 9 commits). Aguardo ordem de integração.*
+*Linha `Vector` pronta (11 commits de código, o último `6f66a8554`; **a cena `=3` foi smokada e
+aprovada**). Aguardo ordem de integração.*

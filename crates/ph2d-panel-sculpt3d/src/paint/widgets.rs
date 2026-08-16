@@ -10,13 +10,20 @@
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, SectionHeader, SegmentedAdaptive, SegmentedOption,
-    paint_button, paint_section_header, paint_segmented_adaptive,
+    Button, ButtonKind, ButtonState, SectionFold, SectionHeader, SegmentedAdaptive,
+    SegmentedOption, paint_button, paint_section_header, paint_segmented_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 
-/// Um cabeçalho dobrável. Devolve `(está_aberto, y_depois)`.
+/// Um cabeçalho dobrável. Devolve `(a_dobra, y_depois)` — `None` quando a secção está fechada
+/// **e parada**, que é o único caso em que o corpo não é pintado.
+///
+/// ⚠️ **`Option<SectionFold>` e não o `bool` de antes**, e a diferença é o que a F4b entrega: o
+/// `bool` vinha do `is_collapsed`, que vira no quadro do clique enquanto o `t` ainda desce — um
+/// corpo gateado nele sumiria de repente por baixo de um chevron a rodar. Quem devolve a dobra
+/// devolve também o escopo que a fecha, então esquecer o `finish` deixou de ser possível sem o
+/// compilador (ou o `Drop` em debug) reclamar.
 pub(super) fn header(
     ctx: &mut PaintCtx,
     id: ph2d_a11y::NodeId,
@@ -24,7 +31,7 @@ pub(super) fn header(
     x: f32,
     w: f32,
     y: f32,
-) -> (bool, f32) {
+) -> (Option<SectionFold>, f32) {
     let theme = ctx.host.theme();
     let h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: altura da faixa de cabeçalho
     let collapsed = ctx.host.store().is_collapsed(id);
@@ -32,12 +39,24 @@ pub(super) fn header(
     let head = SectionHeader::new(id, title)
         .collapsible(!collapsed)
         .open_t(ctx.host.store().section_open_live(id));
+    let body_top = y + h + Spacing::Sm.px();
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
-    let (_, hit_index) = ctx.host.store_and_hit_index_mut();
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     paint_section_header(&head, rect, scene, text_system, theme);
     hit_index.register(id, rect);
-    (!collapsed, y + h + Spacing::Sm.px())
+    let fold = SectionFold::begin(store, id, x, w, body_top, scene, hit_index);
+    (fold, body_top)
+}
+
+/// Fecha a dobra aberta pelo [`header`] e devolve o `y` de saída.
+///
+/// ⚠️ Existe porque o `finish` quer `&WidgetStore`, `&mut VectorScene` e `&mut HitIndex` ao mesmo
+/// tempo, e num `PaintCtx` os três saem de campos disjuntos — a mesma dança que o `header` faz.
+pub(super) fn end_fold(ctx: &mut PaintCtx, fold: SectionFold, y: f32) -> f32 {
+    let scene = &mut *ctx.scene;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    fold.finish(store, scene, hit_index, y)
 }
 
 /// Um grupo segmentado sem rótulo (a lista de ferramentas).

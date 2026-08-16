@@ -17,7 +17,7 @@ use ph2d_tokens::{ROW_H_PX, Spacing};
 
 use super::brush::{paint_brush_tail, paint_level_row};
 use super::tool::paint_tool;
-use super::widgets::{command, header, labelled_seg, readout, row_of_two, toggle};
+use super::widgets::{self, command, header, labelled_seg, readout, row_of_two, toggle};
 
 use crate::rows;
 use crate::state::Sculpt3dSnapshot;
@@ -96,7 +96,7 @@ fn no_head(_: &mut PaintCtx, _: &Sculpt3dSnapshot, _: f32, _: f32, y: f32) -> f3
 /// em dois eixos ao mesmo tempo.
 fn paint_symmetry(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
     let gap = Spacing::Sm.px();
-    let (open, y) = header(
+    let (fold, y) = header(
         ctx,
         ids::SCULPT3D_SEC_SYMMETRY,
         tr("panel.sculpt3d.section.symmetry"),
@@ -104,9 +104,9 @@ fn paint_symmetry(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
         w,
         y,
     );
-    if !open {
+    let Some(fold) = fold else {
         return y;
-    }
+    };
     let third = (w - gap * 2.0) / 3.0; // LITERAL-PX-OK: sao TRES eixos de espelho, nao uma metrica
     for (i, (id, key, on)) in [
         (
@@ -131,7 +131,7 @@ fn paint_symmetry(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
         let bx = (third + gap).mul_add(i as f32, x);
         toggle(ctx, id, tr(key), on, bx, third, y);
     }
-    y + ROW_H_PX + Spacing::Md.px()
+    widgets::end_fold(ctx, fold, y + ROW_H_PX + Spacing::Md.px())
 }
 
 /// **COM QUE LUZ, e COM OU SEM A MALHA** — a cauda da seção de sombreamento.
@@ -198,7 +198,7 @@ fn paint_shading_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f3
 /// **A TOPOLOGIA** — a resolução do barro.
 fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
     let gap = Spacing::Sm.px();
-    let (open, mut y) = header(
+    let (fold, mut y) = header(
         ctx,
         ids::SCULPT3D_SEC_TOPOLOGY,
         tr("panel.sculpt3d.section.topology"),
@@ -206,9 +206,9 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
         w,
         y,
     );
-    if !open {
+    let Some(fold) = fold else {
         return y;
-    }
+    };
     y = toggle(
         ctx,
         ids::SCULPT3D_DYNTOPO,
@@ -290,13 +290,13 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
     for row in rows::TOPOLOGY {
         y = paint_one_row(ctx, snap, row, x, w, y);
     }
-    y + Spacing::Md.px()
+    widgets::end_fold(ctx, fold, y + Spacing::Md.px())
 }
 
 /// **A CENA** — a lista de peças e os verbos que a mexem.
 fn paint_scene(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
     let gap = Spacing::Sm.px();
-    let (open, mut y) = header(
+    let (fold, mut y) = header(
         ctx,
         ids::SCULPT3D_SEC_SCENE,
         tr("panel.sculpt3d.section.scene"),
@@ -304,9 +304,9 @@ fn paint_scene(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f
         w,
         y,
     );
-    if !open {
+    let Some(fold) = fold else {
         return y;
-    }
+    };
     let add: Vec<&str> = ADD_LABELS.iter().map(|k| tr(k)).collect();
     y = labelled_seg(
         ctx,
@@ -361,7 +361,7 @@ fn paint_scene(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f
         w,
         y,
     );
-    y + gap
+    widgets::end_fold(ctx, fold, y + gap)
 }
 
 /// Uma seção de knobs da tabela, com um sufixo opcional (o falloff, a máscara).
@@ -396,10 +396,10 @@ fn knob_section(
     head: impl Fn(&mut PaintCtx, &Sculpt3dSnapshot, f32, f32, f32) -> f32,
     tail: impl Fn(&mut PaintCtx, &Sculpt3dSnapshot, f32, f32, f32) -> f32,
 ) -> f32 {
-    let (open, mut y) = header(ctx, section.id, tr(section.title), x, w, y_in);
-    if !open {
+    let (fold, mut y) = header(ctx, section.id, tr(section.title), x, w, y_in);
+    let Some(fold) = fold else {
         return y;
-    }
+    };
     y = head(ctx, snap, x, w, y);
     for row in section.rows {
         // ⚠️ A row condicional é PULADA, não desenhada apagada: um controle
@@ -413,7 +413,7 @@ fn knob_section(
         y = paint_one_row(ctx, snap, row, x, w, y);
     }
     y = tail(ctx, snap, x, w, y);
-    y + Spacing::Md.px()
+    widgets::end_fold(ctx, fold, y + Spacing::Md.px())
 }
 
 /// Ver [`crate::paint::readout_at`] — a porta única do readout para o preview.
@@ -438,7 +438,7 @@ pub(super) fn readout_for(ctx: &mut PaintCtx, text: &str, x: f32, w: f32, y: f32
 /// condição é DITA, no molde do `ao_stale`: a linha só existe quando há o que
 /// avisar, porque um aviso permanente vira moldura.
 fn paint_bake(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
-    let (open, mut y) = header(
+    let (fold, mut y) = header(
         ctx,
         ids::SCULPT3D_SEC_BAKE,
         tr("panel.sculpt3d.section.bake"),
@@ -446,9 +446,9 @@ fn paint_bake(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f3
         w,
         y,
     );
-    if !open {
+    let Some(fold) = fold else {
         return y;
-    }
+    };
     y = command(
         ctx,
         ids::SCULPT3D_BAKE_SPRITE,
@@ -460,5 +460,5 @@ fn paint_bake(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f3
     if !snap.has_bake_target {
         y = readout(ctx, tr("panel.sculpt3d.bake_sprite.hint"), x, w, y);
     }
-    y + Spacing::Md.px()
+    widgets::end_fold(ctx, fold, y + Spacing::Md.px())
 }

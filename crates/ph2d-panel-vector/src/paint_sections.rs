@@ -13,7 +13,8 @@ use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::panel_chrome::{SECTION_LABEL_TO_CONTROL_PX, paint_segmented_button};
 use ph2d_editor_core::widget::{
-    ButtonKind, ColorSwatch, SectionHeader, SwatchSize, paint_color_swatch, paint_section_header,
+    ButtonKind, ColorSwatch, SectionFold, SectionHeader, SwatchSize, paint_color_swatch,
+    paint_section_header,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -47,6 +48,14 @@ pub(crate) struct BodyCtx<'a> {
     pub row_gap: f32,
     pub chip_w: f32,
     pub font: f32,
+    /// **A dobra da secção que está a ser pintada AGORA** (F4b), guardada entre o
+    /// [`BodyCtx::section_header`] que a abre e o [`BodyCtx::step`] que a fecha.
+    ///
+    /// ⚠️ **Fica aqui e não é devolvida ao pintor** porque este painel tem **35** secções e um
+    /// orquestrador só: pedir a cada uma que carregasse o escopo custaria 35 sítios onde a única
+    /// coisa que pode acontecer é esquecer o `finish`. O `step` já é a porta por onde toda secção
+    /// passa — é lá que ela fecha.
+    pub open_fold: Option<SectionFold>,
 }
 
 /// A seção **States** (plano UI/UX W7) — módulo irmão (teto de 600 LOC).
@@ -131,7 +140,21 @@ impl BodyCtx<'_> {
         let rect = Rect::new(self.inner_x, y, self.inner_w, header_h);
         paint_section_header(&header, rect, self.scene, self.text_system, self.theme);
         self.hit_index.register(id, rect);
-        (y + header_h + SECTION_LABEL_TO_CONTROL_PX, collapsed)
+        let body_top = y + header_h + SECTION_LABEL_TO_CONTROL_PX;
+        // ⚠️ **A DOBRA (F4b)** — o `bool` devolvido deixou de ser o `is_collapsed` e passou a ser
+        //    *fechada **E PARADA***. A distinção é o que a wave entrega: ao clicar para fechar, o
+        //    flag semântico vira neste quadro e o `t` ainda desce, então um corpo gateado nele
+        //    sumiria de repente por baixo de um chevron a rodar. Quem fecha o escopo é o `step`.
+        self.open_fold = SectionFold::begin(
+            self.store,
+            id,
+            self.inner_x,
+            self.inner_w,
+            body_top,
+            self.scene,
+            self.hit_index,
+        );
+        (body_top, self.open_fold.is_none())
     }
 
     /// **A ordem do corpo.** "O que estou fazendo" (modo · forma · parâmetros da forma)
@@ -211,7 +234,22 @@ impl BodyCtx<'_> {
         y = self.step(y, Self::filters_section);
         y = self.step(y, Self::align_section);
         y = self.step(y, Self::arrange_section);
-        self.path_section(y)
+        // ⚠️ **A última NÃO passa pelo `step`** (ela fecha sem separador de rodapé), então a dobra
+        //    dela fecha aqui — pela MESMA porta, nunca por uma cópia. Sem esta linha o escopo
+        //    ficaria pendurado e o `Drop` do `SectionFold` gritaria em debug.
+        self.open_fold = None;
+        let after = self.path_section(y);
+        self.close_fold(after)
+    }
+
+    /// **Fecha a dobra que o [`BodyCtx::section_header`] abriu**, se houver — a porta única do
+    /// fecho, com DOIS consumidores (o [`BodyCtx::step`] e a última secção, que não passa por ele).
+    /// Sem dobra em voo é a identidade.
+    fn close_fold(&mut self, after: f32) -> f32 {
+        match self.open_fold.take() {
+            Some(fold) => fold.finish(self.store, self.scene, self.hit_index, after),
+            None => after,
+        }
     }
 
     /// Um passo do corpo: pinta a seção e, **se ela pintou** (o `y` andou), fecha com o
@@ -219,7 +257,13 @@ impl BodyCtx<'_> {
     /// sem deixar uma linha órfã boiando no painel — que é o motivo de o separador ser
     /// decidido AQUI, no orquestrador, e não dentro de cada seção.
     pub(crate) fn step(&mut self, y: f32, f: impl FnOnce(&mut Self, f32) -> f32) -> f32 {
+        // ⚠️ **LIMPA ANTES, e não é higiene:** uma secção condicional sai sem chamar o
+        //    `section_header`, e sem isto ela herdaria a dobra da anterior — que já foi fechada.
+        self.open_fold = None;
         let after = f(self, y);
+        // ⚠️ **Fecha a dobra que a secção abriu** (F4b). Aqui, e não em cada uma das 35: este é o
+        //    único ponto por onde todas passam, então uma secção nova nasce com a dobra fechada.
+        let after = self.close_fold(after);
         if after > y {
             self.separator(after)
         } else {

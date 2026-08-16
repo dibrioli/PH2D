@@ -14,7 +14,7 @@ use ph2d_i18n::tr;
 use ph2d_sculpt3d::{RefMode, Verb, kelvinlet::Scales};
 use ph2d_tokens::Spacing;
 
-use super::widgets::{command, header, labelled_seg, seg};
+use super::widgets::{self, command, header, labelled_seg, seg};
 use crate::state::{Sculpt3dSnapshot, UiLevel};
 
 /// **A FERRAMENTA** — os dezesseis verbos numa faixa que REFLUI.
@@ -29,7 +29,7 @@ pub(super) fn paint_tool(
     w: f32,
     y: f32,
 ) -> f32 {
-    let (open, mut y) = header(
+    let (fold, mut y) = header(
         ctx,
         ids::SCULPT3D_SEC_TOOL,
         tr("panel.sculpt3d.section.tool"),
@@ -37,9 +37,9 @@ pub(super) fn paint_tool(
         w,
         y,
     );
-    if !open {
+    let Some(fold) = fold else {
         return y;
-    }
+    };
     let selected = Verb::ALL
         .iter()
         .position(|&v| v == snap.ui.brush.verb)
@@ -56,7 +56,7 @@ pub(super) fn paint_tool(
         y,
     );
     y = paint_reference_row(ctx, snap, x, w, y);
-    y + Spacing::Md.px()
+    widgets::end_fold(ctx, fold, y + Spacing::Md.px())
 }
 
 /// **A REFERÊNCIA que este verbo segue** — a row `S` · `B` · `L`.

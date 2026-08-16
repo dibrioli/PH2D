@@ -353,6 +353,7 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
             row_gap,
             chip_w,
             font,
+            open_fold: None,
         };
         // A ORDEM das seções (e os separadores entre elas) vive em
         // `BodyCtx::paint_body` — o orquestrador aqui só monta o contexto e mede.

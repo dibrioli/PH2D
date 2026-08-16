@@ -7,7 +7,7 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, SectionHeader, paint_button, paint_section_header,
+    Button, ButtonKind, ButtonState, SectionFold, SectionHeader, paint_button, paint_section_header,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -28,14 +28,16 @@ pub(super) fn paint_sections(
     let row_gap = Spacing::Sm.px();
 
     for section in rows::SECTIONS {
-        let (open, next_y) = header(ctx, section.id, tr(section.title), x, w, y);
+        let (fold, next_y) = header(ctx, section.id, tr(section.title), x, w, y);
         y = next_y;
-        if open {
+        if let Some(fold) = fold {
+            let mut inner = y;
             for row in section.rows {
                 let value = (row.get)(&snapshot.settings);
-                let used = super::paint_row(ctx, row, value, x, w, y);
-                y += used + row_gap;
+                let used = super::paint_row(ctx, row, value, x, w, inner);
+                inner += used + row_gap;
             }
+            y = end_fold(ctx, fold, inner);
         }
         y += Spacing::Md.px();
     }
@@ -43,7 +45,7 @@ pub(super) fn paint_sections(
     // The Interaction tool (W-Hand). BEFORE the layer matrix and after the world
     // sliders, on purpose: it is the section an artist reaches for while a scene
     // is RUNNING, so it should not sit under a 36-cell grid.
-    let (open, next_y) = header(
+    let (fold, next_y) = header(
         ctx,
         ids::PHYSICS_SEC_INTERACT,
         tr("panel.physics.section.interact"),
@@ -52,16 +54,17 @@ pub(super) fn paint_sections(
         y,
     );
     y = next_y;
-    if open {
-        y = super::interact::paint_interact(ctx, &snapshot.interaction, x, w, y);
-        y += Spacing::Md.px();
+    if let Some(fold) = fold {
+        let mut inner = super::interact::paint_interact(ctx, &snapshot.interaction, x, w, y);
+        inner += Spacing::Md.px();
+        y = end_fold(ctx, fold, inner);
     }
 
     // The Joint tool (W-JointTools). Right after Interaction because the two are
     // the same question asked of opposite transport states — what the POINTER
     // does — and a reader who found one should find the other without scrolling
     // past a 36-cell grid.
-    let (open, next_y) = header(
+    let (fold, next_y) = header(
         ctx,
         ids::PHYSICS_SEC_JOINT,
         tr("panel.physics.section.joint"),
@@ -70,14 +73,15 @@ pub(super) fn paint_sections(
         y,
     );
     y = next_y;
-    if open {
-        y = super::joint::paint_joint(ctx, &snapshot.interaction, x, w, y);
-        y += Spacing::Md.px();
+    if let Some(fold) = fold {
+        let mut inner = super::joint::paint_joint(ctx, &snapshot.interaction, x, w, y);
+        inner += Spacing::Md.px();
+        y = end_fold(ctx, fold, inner);
     }
 
     // Collision layers. Its own section because the matrix is a different KIND
     // of control from the sliders above — and because it is tall.
-    let (open, next_y) = header(
+    let (fold, next_y) = header(
         ctx,
         ids::PHYSICS_SEC_LAYERS,
         tr("panel.physics.section.layers"),
@@ -86,17 +90,18 @@ pub(super) fn paint_sections(
         y,
     );
     y = next_y;
-    if open {
-        y = super::matrix::paint(
+    if let Some(fold) = fold {
+        let mut inner = super::matrix::paint(
             ctx,
             ph2d_physics_ecs::LayerMatrix::from_rows(snapshot.settings.layer_matrix),
             x,
             y,
         );
-        y += Spacing::Md.px();
+        inner += Spacing::Md.px();
+        y = end_fold(ctx, fold, inner);
     }
 
-    let (open, next_y) = header(
+    let (fold, next_y) = header(
         ctx,
         ids::PHYSICS_SEC_DEBUG,
         tr("panel.physics.section.debug"),
@@ -105,9 +110,9 @@ pub(super) fn paint_sections(
         y,
     );
     y = next_y;
-    if !open {
+    let Some(fold) = fold else {
         return y;
-    }
+    };
 
     // "Show Colliders" mirrors the shell's flag — the same one the `B` key
     // owns. The pressed state comes from the SNAPSHOT, never from a local
@@ -207,10 +212,15 @@ pub(super) fn paint_sections(
         w,
         y,
     );
-    y + row_gap
+    end_fold(ctx, fold, y + row_gap)
 }
 
-/// A collapsible section header. Returns `(is_open, y_after)`.
+/// A collapsible section header. Returns `(the_fold, y_after)` — `None` when the section is shut
+/// **and still**, the only case in which the body is not painted at all.
+///
+/// ⚠️ **`Option<SectionFold>` rather than the old `bool`** (F4b): the bool came from
+/// `is_collapsed`, which flips on the frame of the click while the fold's `t` is still falling —
+/// a body gated on it would vanish at once under a chevron that is still turning.
 fn header(
     ctx: &mut PaintCtx,
     id: ph2d_a11y::NodeId,
@@ -218,7 +228,7 @@ fn header(
     x: f32,
     w: f32,
     y: f32,
-) -> (bool, f32) {
+) -> (Option<SectionFold>, f32) {
     let theme = ctx.host.theme();
     let h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
     let collapsed = ctx.host.store().is_collapsed(id);
@@ -226,12 +236,24 @@ fn header(
     let header = SectionHeader::new(id, title)
         .collapsible(!collapsed)
         .open_t(ctx.host.store().section_open_live(id));
+    let body_top = y + h + Spacing::Sm.px();
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
-    let (_, hit_index) = ctx.host.store_and_hit_index_mut();
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     paint_section_header(&header, rect, scene, text_system, theme);
     hit_index.register(id, rect);
-    (!collapsed, y + h + Spacing::Sm.px())
+    let fold = SectionFold::begin(store, id, x, w, body_top, scene, hit_index);
+    (fold, body_top)
+}
+
+/// Closes the fold opened by [`header`] and hands back the outgoing `y`.
+///
+/// ⚠️ Exists because `finish` wants `&WidgetStore`, `&mut VectorScene` and `&mut HitIndex` at
+/// once, and in a `PaintCtx` the three come from disjoint fields — the same dance `header` does.
+fn end_fold(ctx: &mut PaintCtx, fold: SectionFold, y: f32) -> f32 {
+    let scene = &mut *ctx.scene;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    fold.finish(store, scene, hit_index, y)
 }
 
 /// A Button used as a toggle.

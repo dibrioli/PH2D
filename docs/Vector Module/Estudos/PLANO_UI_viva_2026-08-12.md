@@ -501,11 +501,71 @@ independentes, e cada mutação sangra só o seu.
   `section_fold.rs` solto em `src/widget/` viraria um **widget** para o `ph2d-widget-sync` — a
   cicatriz que o `command_palette_tests.rs` pagou.
 
-⚠️ **O CORPO fica por fazer, e o número está aqui para a próxima decisão o usar:** ele precisa de
-`body_h` **antes** de pintar (a altura só se sabe depois de percorrer as rows), logo de
-medir-lembrar-e-recortar por painel; o clip existe (`push_layer`/`pop_layer`, 10+ consumidores) e
-o neutro do `open_t` torna a migração parcial segura. **O smoke decide se ele é sentido em falta**
-— um chevron que roda sobre um corpo que salta é o que várias ferramentas de referência shipam.
+### 6.2-bis F4b — o CORPO interpola (2026-08-16, por ordem do Enio)
+
+A nota que aqui estava dizia *"o corpo fica por fazer … o smoke decide se ele é sentido em falta"*.
+O Enio mandou construí-lo, e a previsão dela — *precisa de `body_h` **antes** de pintar, logo de
+medir-lembrar-e-recortar por painel* — estava certa; o que ela não previa é que a memória cabe
+numa porta só.
+
+**A porta é `widget::SectionFold`** (`section_header/body.rs`), e ela precisa de **TRÊS** coisas ao
+mesmo tempo, não de uma:
+
+| metade | sem ela |
+|---|---|
+| recorte de **CENA** (`push_clip`) | o corpo desenha inteiro por fora da banda |
+| recorte de **HIT** (`HitIndex::push_clip`, novo) | uma row invisível responde nos vãos entre os widgets da secção de baixo, que já subiu por cima dela |
+| `y` de saída **ESCALADO** | tudo o que está por baixo não sobe junto — a dobra não move nada |
+
+⚠️ **A altura é MEDIDA num quadro e LEMBRADA para o recorte do seguinte** (`WidgetStore.fold_body_h`,
+uma `RefCell`) — e a interior mutability é **ESTRUTURAL, não conveniência**: quem mede é o pintor,
+e a API do próprio host (`store_and_hit_index_mut`) garante que ele **nunca** segura
+`&mut WidgetStore` e `&mut HitIndex` juntos. Uma medição obsoleta é inofensiva por construção: ela
+alimenta **só o recorte**, e o layout usa sempre a fresca. Memória ausente ⇒ recorta a zero **e
+mede na mesma** — a estreia de uma secção custa um quadro invisível, não um salto de corpo inteiro.
+
+⚠️ **Os dois repousos são byte a byte o mundo pré-wave:** aberto não empurra camada nenhuma e
+devolve o `y` **verbatim** (não `body_top + medido·1.0`, que arredonda); fechado e parado devolve
+`None` e o pintor devolve o `body_top`, exactamente o `if collapsed { return y + header_h; }` de
+sempre.
+
+⚠️ **E o `t` substitui o `is_collapsed` nos pintores, o que é load-bearing:** o flag semântico vira
+no quadro do clique enquanto o `t` ainda desce, então um corpo gateado nele sumiria de repente por
+baixo de um chevron a rodar.
+
+⚠️ **Duas entradas, uma lei** (`begin` · `begin_at`): o `ph2d-panel-audio-editor` **fotografa** os
+oito `t` num array antes de o paint tomar os empréstimos, e um `begin` que relesse o store daria à
+dobra um estado e ao chevron outro. Medido pelo gate daquele painel: aberto e fechado davam a
+**mesma altura** (1842,62). Quem já tem a resposta passa-a; quem não tem chama o `begin`.
+
+**Dez painéis migrados.** As contagens **estáticas**, medidas por chamador da porta: inspector
+**12** (as 11 secções + a grade de 32 bits da §8) · vector **35** · painter-layers **11** (mais o
+`paint_texture`, que é o caso especial) · audio-editor **8** · physics **7** · audio-mixer **5**.
+⚠️ **Nos outros quatro a contagem é do DOCUMENTO ABERTO, não do código** — sculpt3d, wet-tuning,
+motion-params e authored abrem a dobra dentro de um **laço**, então quantas secções dobram depende
+do que o artista tem na tela; um número escrito aqui seria afirmação, não medição.
+
+⚠️ **motion-params · authored · audio-editor são laços PLANOS** — ali uma secção não é escopo
+léxico, vai de um cabeçalho até o **próximo** —, então a dobra vive num `Option` do laço e fecha
+**antes** de o cabeçalho seguinte ser pintado.
+
+⛔ **O `widget/showcase` fica DE FORA com motivo:** ele nunca recebeu a F4a (o cabeçalho dele não lê
+`open_t`), é galeria de dev e não chrome do app. Migrá-lo pediria a F4a primeiro.
+
+⚠️ **E a wave achou TRÊS gates que passaram a medir a coisa errada, todos da mesma família:** um
+gate de dobra afirmava *"depois do clique a row não está pintada"*, o que era verdade quando a
+dobra era binária e passou a ser verdade **só depois de a animação acabar** — e um harness de
+painel não tem o tique do `HeroScreen`. Sem cura eles reprovariam a animação em vez de a medir.
+A porta nova é **`MockPanelHost::settle_section_folds()`** (o relógio correu até ao fim), método
+**NOMEADO** e nunca um `store_mut()` — o mesmo argumento do `set_panel_scroll`: ela responde a
+UMA pergunta (*e se o artista esperar?*) em vez de abrir o store para um gate semear o que depois
+vai "provar". ⚠️ Ela não tem gate próprio **de propósito**: os três consumidores reprovam sem ela,
+e um self-test só afirmaria o que o método literalmente faz.
+
+⚠️ **E o `Drop` do `SectionFold` pagou-se sozinho:** ele apanhou um `return` no `paint_texture`
+— o *"esconde os controlos quando não há textura atribuída"* — que a migração deixou sem fechar a
+dobra, **nomeando o sítio exacto**. Um recorte de cena pendurado não dá erro: ele corta o resto
+do painel em silêncio.
 
 ⚠️ **A wave 4 não depende de nada** e pode correr em paralelo, ou primeiro se o objectivo for
 eficiência antes de encanto.

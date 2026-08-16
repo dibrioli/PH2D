@@ -17,7 +17,7 @@ use ph2d_editor_core::ids::{
 };
 use ph2d_editor_core::paint::{resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::DropdownOption;
+use ph2d_editor_core::widget::{DropdownOption, SectionFold};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing};
 use ph2d_tool_painter::{
@@ -96,8 +96,10 @@ pub(crate) fn paint_texture_section(
     }
 
     // Everything below modulates an assigned texture — hide it when there is none (no dead controls).
+    // ⚠️ Esta saída fecha a dobra: uma que a esquecesse deixaria o recorte da cena PENDURADO, e é
+    // literalmente o que o `Drop` do `SectionFold` apanhou aqui.
     if kind == TextureKind::None {
-        return y;
+        return close(ctx, fold, y);
     }
 
     // ── Live preview of the current texture pattern, right below the Texture dropdown (Enio 2026-06-24) ──
@@ -232,10 +234,7 @@ pub(crate) fn paint_texture_section(
     // (`compact`) keeps its ramp regardless. Params still show either way.
     let show_ramp = !brush.watercolor || compact;
     let out = paint_texture_params_and_ramp(ctx, theme, x, content_w, y, brush, kind, show_ramp);
-    match fold {
-        Some(f) => crate::paint_brush_top::end_fold(ctx, f, out),
-        None => out,
-    }
+    close(ctx, fold, out)
 }
 
 /// Paint the Grain section's tail — the per-pattern params + (when `show_ramp`) the Color Ramp sub-editor.
@@ -558,3 +557,15 @@ fn texture_mapping_options() -> Vec<DropdownOption<u8>> {
 
 #[cfg(test)]
 mod tests;
+
+/// Fecha a dobra desta seção — ou não, se `compact` nunca abriu uma.
+///
+/// ⚠️ Uma porta e não duas cópias do `match`: a seção tem DOIS pontos de saída (o
+/// *"não há textura atribuída"* e o fim), e um deles a esquecer deixa o recorte da cena
+/// pendurado — foi o `Drop` do `SectionFold` que apanhou exatamente isso aqui.
+fn close(ctx: &mut PaintCtx, fold: Option<SectionFold>, y: f32) -> f32 {
+    match fold {
+        Some(f) => crate::paint_brush_top::end_fold(ctx, f, y),
+        None => y,
+    }
+}

@@ -45,9 +45,9 @@ use ph2d_a11y::NodeId;
 use ph2d_vector::VectorScene;
 
 /// Acima disto a secção conta como ABERTA e parada: sem recorte, `y` verbatim.
-const FULL: f32 = 0.999;
+const FULL: f32 = 0.999; // LITERAL-PX-OK: epsilon sobre um `t` NORMALIZADO, não medida de design
 /// Abaixo disto a secção conta como FECHADA e parada: nada é pintado.
-const SHUT: f32 = 0.001;
+const SHUT: f32 = 0.001; // LITERAL-PX-OK: epsilon sobre um `t` NORMALIZADO, não medida de design
 
 /// **O escopo da dobra do corpo de UMA secção.** Ver o módulo para o desenho.
 ///

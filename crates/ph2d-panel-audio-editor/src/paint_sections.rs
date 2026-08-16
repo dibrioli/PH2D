@@ -61,15 +61,15 @@ impl Body {
     }
 }
 
-/// Walk the sections: header, then the block if it is open, then the accent separator.
-/// Returns the `y` at the bottom of the painted content.
-#[allow(clippy::too_many_arguments)]
 #[path = "paint_sections_chrome.rs"]
 mod chrome;
 #[cfg(test)]
 use chrome::section_h;
 use chrome::{end_fold, section, separator};
 
+/// Walk the sections: header, then the block if it is open, then the accent separator.
+/// Returns the `y` at the bottom of the painted content.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_body(
     y: f32,
     x: f32,

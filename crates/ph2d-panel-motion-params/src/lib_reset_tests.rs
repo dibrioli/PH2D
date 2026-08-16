@@ -197,6 +197,11 @@ fn a_section_header_is_reachable_and_folding_it_hides_its_rows() {
         .map(|(_, r)| *r)
         .expect("pintado");
     let _ = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+    // ⚠️ **A dobra é ANIMADA (F4b)**: o flag semântico vira no quadro do clique, mas o `t` ainda
+    // desce, e um harness de painel não tem o tique do `HeroScreen`. Sem isto o gate afirmaria
+    // *"a row sumiu"* sobre um produto que a está a esconder **gradualmente** — reprovaria a
+    // animação em vez de a medir.
+    host.settle_section_folds();
     let painted = host.paint::<MotionParamsPanel>(&mut state, viewport());
     assert!(
         !painted.iter().any(|(w, _)| *w == param_slider_id(1)),

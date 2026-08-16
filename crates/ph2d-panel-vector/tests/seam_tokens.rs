@@ -264,10 +264,19 @@ fn choosing_a_token_closes_the_chip() {
 /// A geometria em si é gateada onde ela vive (`paint_shapes::fill_slash`).
 #[test]
 fn the_slash_is_painted_for_every_covered_control_and_only_when_bound() {
-    const SOURCES: [(&str, &str); 2] = [
+    // ⚠️ **A lista é o ENDEREÇO, e um dono que se muda a deixa a olhar para menos produto** — foi
+    // o que aconteceu quando o cap de LOC partiu o `paint_sections.rs` e as duas rachuras do TRAÇO
+    // foram com ele para o irmão: a varredura passou a achar 3 de 5. Quem a salvou foi o controle
+    // positivo (`total >= 5`) lá em baixo — sem ele o gate teria ficado VERDE sobre metade do
+    // painel, que é o modo de falha que uma varredura silenciosa tem.
+    const SOURCES: [(&str, &str); 3] = [
         (
             "paint_sections.rs",
             include_str!("../src/paint_sections.rs"),
+        ),
+        (
+            "paint_sections_stroke.rs",
+            include_str!("../src/paint_sections_stroke.rs"),
         ),
         ("paint_layout.rs", include_str!("../src/paint_layout.rs")),
     ];

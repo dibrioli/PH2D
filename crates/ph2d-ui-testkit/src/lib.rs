@@ -141,6 +141,29 @@ impl MockPanelHost {
         self.store.set_panel_scroll(panel, y);
     }
 
+    /// **O relógio de movimento correu até ao fim** — toda dobra de secção salta para o seu
+    /// alvo semântico (`is_collapsed` ⇒ 0, senão 1).
+    ///
+    /// ⚠️ Existe porque a F4b fez o CORPO de uma secção interpolar: depois de um clique no
+    /// cabeçalho o flag semântico já virou, mas o `t` ainda desce, e o painel de um harness
+    /// headless — que não tem o tique do `HeroScreen` — nunca o veria chegar a zero. Sem esta
+    /// porta um gate de dobra afirmaria *"a row sumiu"* sobre um produto que a está a esconder
+    /// **gradualmente**, e reprovaria a animação em vez de a medir.
+    ///
+    /// ⚠️ Método NOMEADO, nunca um `store_mut()`: ele responde a UMA pergunta — *e se o artista
+    /// esperar a animação acabar?* — em vez de abrir o store para um gate semear o que depois
+    /// vai "provar" (o mesmo argumento do [`Self::set_panel_scroll`]).
+    pub fn settle_section_folds(&mut self) {
+        for id in self.store.collapsible_ids() {
+            let target = if self.store.is_collapsed(id) {
+                0.0
+            } else {
+                1.0
+            };
+            self.store.set_section_open_live(id, target);
+        }
+    }
+
     pub fn set_slider_value(&mut self, id: NodeId, value: f32) {
         match self.store.get_mut(id) {
             Some(InteractiveState::Slider { value: v, .. }) => *v = value,

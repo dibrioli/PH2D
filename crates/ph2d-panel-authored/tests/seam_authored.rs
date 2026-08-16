@@ -175,6 +175,11 @@ fn clicking_a_section_header_folds_the_rows_under_it() {
     let (cx, cy) = (hr.x + hr.w * 0.5, hr.y + hr.h * 0.5);
     h.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
     h.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+    // ⚠️ **A dobra é ANIMADA (F4b)**, então o flag semântico virar não é o corpo ter sumido: o
+    // `t` ainda desce, e um harness de painel não tem o tique do `HeroScreen`. Sem isto o gate
+    // afirmaria *"a row sumiu"* sobre um produto que a está a esconder **gradualmente** — ele
+    // reprovaria a animação em vez de a medir.
+    h.settle_section_folds();
 
     assert!(
         h.painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, header.id)
@@ -213,6 +218,8 @@ fn folding_a_section_shrinks_the_reported_height() {
     let (cx, cy) = (hr.x + hr.w * 0.5, hr.y + hr.h * 0.5);
     h.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
     h.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+    // Ver o gate irmão: a dobra é ANIMADA, e a altura só chega ao alvo quando o `t` chega.
+    h.settle_section_folds();
     h.painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, header.id);
     let folded_h = h
         .store()

@@ -152,6 +152,16 @@ impl WidgetStore {
             .unwrap_or(if self.is_collapsed(id) { 0.0 } else { 1.0 })
     }
 
+    /// **Toda secção que o despacho sabe dobrar** — o conjunto que o `populate` semeou.
+    ///
+    /// ⚠️ Existe para o TIQUE e para o harness: os dois precisam de percorrer *quem tem dobra*,
+    /// e a alternativa (iterar o `fold_live`) veria só as que já se mexeram — a secção que o
+    /// artista acabou de fechar e que nunca animou ficaria de fora, que é exactamente a que
+    /// interessa.
+    pub fn collapsible_ids(&self) -> Vec<NodeId> {
+        self.collapsible_sections.iter().copied().collect()
+    }
+
     /// **O tique publica aqui.** Único escritor — o gêmeo exacto do
     /// [`super::WidgetStore::set_hover_live`] e do `set_panel_scroll_live`.
     pub fn set_section_open_live(&mut self, id: NodeId, t: f32) {

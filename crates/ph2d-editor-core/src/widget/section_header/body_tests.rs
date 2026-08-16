@@ -194,3 +194,47 @@ fn the_gap_after_a_section_folds_with_it() {
     assert!(folded_gap(&store_with(id, 0.0, None), id, 8.0).abs() < 1e-6);
     assert!((folded_gap(&store_with(id, 0.5, None), id, 8.0) - 4.0).abs() < 1e-6);
 }
+
+/// **As duas portas são UMA lei.** O `begin` é o `begin_at` com o `t` que ele mesmo busca no
+/// store — e é isso que impede o painel que fotografa a dobra de divergir do que não fotografa.
+/// *Mutação: `begin` a clampar o `t` antes de delegar (ou a lê-lo de outro campo) ⇒ os dois
+/// vereditos separam-se e o `assert_eq` sangra.*
+#[test]
+fn the_two_doors_are_one_law() {
+    let mut scene = VectorScene::new();
+    let mut hit = HitIndex::new();
+    for (i, t) in [0.0, 0.0005, 0.05, 0.5, 1.0].into_iter().enumerate() {
+        let id = NodeId(200 + i as u64);
+        let store = store_with(id, t, Some(120.0));
+        let a = SectionFold::begin(&store, id, X, W, TOP, &mut scene, &mut hit);
+        let looked_up = store.section_open_live(id);
+        let b = SectionFold::begin_at(&store, id, looked_up, X, W, TOP, &mut scene, &mut hit);
+        assert_eq!(
+            a.is_some(),
+            b.is_some(),
+            "t = {t}: a porta que BUSCA e a que RECEBE têm de dar o mesmo veredito"
+        );
+        if let Some(f) = a {
+            f.finish(&store, &mut scene, &mut hit, BOTTOM);
+        }
+        if let Some(f) = b {
+            f.finish(&store, &mut scene, &mut hit, BOTTOM);
+        }
+    }
+}
+
+/// **O `t` que vem de fora é o que MANDA** — o store pode dizer outra coisa e a dobra honra o
+/// argumento. É a propriedade inteira do `begin_at`: sem ela o painel que fotografa continuaria
+/// a ver o veredito do store, que é o defeito que o gate do audio-editor mediu (aberto e fechado
+/// com a MESMA altura). *Mutação: `begin_at` a reler o store ⇒ RED.*
+#[test]
+fn the_caller_supplied_t_wins_over_the_store() {
+    let id = NodeId(210);
+    let store = store_with(id, 1.0, Some(120.0)); // o STORE diz ABERTA
+    let mut scene = VectorScene::new();
+    let mut hit = HitIndex::new();
+    assert!(
+        SectionFold::begin_at(&store, id, 0.0, X, W, TOP, &mut scene, &mut hit).is_none(),
+        "o `t` do chamador diz FECHADA e parada — nenhum corpo é percorrido"
+    );
+}

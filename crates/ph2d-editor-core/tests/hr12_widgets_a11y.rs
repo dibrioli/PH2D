@@ -316,6 +316,10 @@ const WIDGET_DELEGATE_MARKERS: &[&str] = &[
 /// Panel files that paint via vector/text primitives only (no widget
 /// interaction → no a11y to wire). Each entry: (path key, why).
 const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
+    (
+        "ph2d-panel-audio-editor/src/paint_sections_chrome.rs",
+        "chrome de secção extraído do `paint_sections.rs` pelo cap de LOC — pinta pelo `paint_section_header` canónico e regista o hit pelo `ClippedHits` do painel; sem semântica própria",
+    ),
     // Motion graph wire drawing — split from `paint.rs` for the 600-LOC cap. It owns no
     // widget and registers nothing: it flattens and strokes the wire splines, while every
     // a11y node for a wire (and for its routing waypoints) is registered by `hits.rs`,

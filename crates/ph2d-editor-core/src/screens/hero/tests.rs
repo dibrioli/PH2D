@@ -2216,3 +2216,149 @@ fn the_seam_asks_the_character_it_does_not_hardcode_the_rope() {
         );
     }
 }
+
+// ---------------------------------------------------------------------------
+// O POLEGAR de uma scrollbar — o eixo que estava inteiro e nunca se movia.
+// ---------------------------------------------------------------------------
+
+/// ⭐ **O POLEGAR DESVANECE nos DOIS sentidos, em vez de saltar.**
+///
+/// Medido antes da cura, com o produto: `t = 1` nos **quatro** instantes — nunca tocado, sob o
+/// ponteiro, assente, e cem quadros depois de sair. As 22 barras do app reagiam e SALTAVAM, com a
+/// suíte inteira verde, porque o `hover_targets` deriva o *aceso* do estado GUARDADO e um polegar
+/// guarda `Plain` — *nenhuma opinião*.
+///
+/// ⚠️ **O CONTROLO é a primeira asserção**, e é ela que mantém todo gate de painel a medir o que
+/// media: um id que o relógio nunca viu publica [`crate::motion::SETTLED`], o token duro, o mundo
+/// pré-substrato byte a byte.
+///
+/// *Mutação: tirar o `scrollbar_hover_targets` do `tick_hover` ⇒ `t = 1` outra vez e este gate
+/// sangra na primeira metade.*
+#[test]
+fn a_scrollbar_thumb_fades_in_and_out_instead_of_snapping() {
+    crate::test_support::ensure_panel_registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.motion
+        .set_character(crate::motion::UiCharacter::Expressive);
+    let thumb = crate::widget::INSPECTOR_SCROLLBAR_ID;
+
+    // CONTROLO: nunca tocado ⇒ o neutro, sem o relógio ter corrido.
+    let (_, cold) = hero.store.scrollbar_visual(thumb);
+    assert!(
+        (cold - crate::motion::SETTLED).abs() < f32::EPSILON,
+        "um polegar que o relogio nunca viu tem de publicar o NEUTRO: {cold}"
+    );
+
+    hero.store.set_hot(Some(thumb));
+    hero.tick_motion(1.0 / 60.0);
+    hero.tick_motion(1.0 / 60.0);
+    let (state, t) = hero.store.scrollbar_visual(thumb);
+    assert_eq!(state, crate::widget::ScrollbarState::Hovered);
+    assert!(
+        t > 0.0 && t < 1.0,
+        "o polegar SALTOU ao acender: t = {t} (esperado entre 0 e 1)"
+    );
+
+    for _ in 0..120 {
+        hero.tick_motion(1.0 / 60.0);
+    }
+    assert!(
+        (hero.store.scrollbar_visual(thumb).1 - 1.0).abs() < 1e-3,
+        "o polegar nao chegou ao extremo quente: {}",
+        hero.store.scrollbar_visual(thumb).1
+    );
+
+    // E a metade que um id só-quente NAO teria: ele APAGA.
+    hero.store.set_hot(None);
+    hero.tick_motion(1.0 / 60.0);
+    hero.tick_motion(1.0 / 60.0);
+    let leaving = hero.store.scrollbar_visual(thumb).1;
+    assert!(
+        leaving < 1.0,
+        "o polegar acendeu e ficou preso no quente: t = {leaving}"
+    );
+    for _ in 0..120 {
+        hero.tick_motion(1.0 / 60.0);
+    }
+    let rest = hero.store.scrollbar_visual(thumb).1;
+    assert!(
+        rest.abs() < f32::EPSILON,
+        "o voo de saida nao chegou ao ZERO exacto: t = {rest} \n\
+         (a mola Expressiva ULTRAPASSA — se a condicao de paragem for `> 0.0` ela e largada em \n\
+         −0,0109 e a track e podada a meio do caminho)"
+    );
+}
+
+/// **RE-ENTRAR anima outra vez** — a lei da PARTIDA fria.
+///
+/// A lei do substrato é *a primeira vista de um id CHEGA ao alvo*, então depois de um desvanecer
+/// completo a track foi podada e o quadro em que o rato volta veria o polegar pela primeira vez
+/// **já aceso**. É um defeito de uma-vez-por-re-entrada: o primeiro hover anima e o segundo salta.
+///
+/// *Mutação: tirar a semente `animate(id, 0.0)` do `tick_hover` ⇒ o `t` do primeiro quadro é `1.0`
+/// e este gate sangra.*
+#[test]
+fn re_entering_a_thumb_animates_again_instead_of_snapping() {
+    crate::test_support::ensure_panel_registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.motion
+        .set_character(crate::motion::UiCharacter::Expressive);
+    let thumb = crate::widget::HIERARCHY_SCROLLBAR_ID;
+
+    hero.store.set_hot(Some(thumb));
+    for _ in 0..120 {
+        hero.tick_motion(1.0 / 60.0);
+    }
+    hero.store.set_hot(None);
+    for _ in 0..240 {
+        hero.tick_motion(1.0 / 60.0);
+    }
+
+    // Re-entra.
+    hero.store.set_hot(Some(thumb));
+    hero.tick_motion(1.0 / 60.0);
+    let t = hero.store.scrollbar_visual(thumb).1;
+    assert!(
+        t > 0.0 && t < 1.0,
+        "a RE-ENTRADA saltou: t = {t} no primeiro quadro"
+    );
+}
+
+/// **E um polegar que arrefeceu é ESQUECIDO pelo relógio, sem ficar quente.**
+///
+/// Duas metades que se contradizem se qualquer uma faltar: a track tem de sair do mapa (senão a
+/// alegação de custo do substrato — *lembrar é O(widgets tocados recentemente)* — passa a ser
+/// falsa, porque conduzir um id todo quadro reinicia o `idle_s` e ele nunca é podado) **e** o
+/// `hover_live` tem de guardar o `0.0` (apagar a entrada devolveria [`crate::motion::SETTLED`],
+/// e o polegar ficaria a pintar o token QUENTE para sempre).
+///
+/// *Mutação: trocar a paragem por «conduzir sempre que estiver no mapa» ⇒ a track nunca é podada e
+/// a primeira metade sangra.*
+#[test]
+fn a_thumb_that_cooled_is_forgotten_by_the_clock_but_not_by_the_painter() {
+    crate::test_support::ensure_panel_registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.motion
+        .set_character(crate::motion::UiCharacter::Expressive);
+    let thumb = crate::widget::INSPECTOR_SCROLLBAR_ID;
+
+    hero.store.set_hot(Some(thumb));
+    for _ in 0..120 {
+        hero.tick_motion(1.0 / 60.0);
+    }
+    hero.store.set_hot(None);
+    for _ in 0..240 {
+        hero.tick_motion(1.0 / 60.0);
+    }
+
+    assert!(
+        hero.motion.get(thumb).is_none(),
+        "a track do polegar ficou no mapa para sempre — o `remembered` do substrato mente"
+    );
+    let (state, t) = hero.store.scrollbar_visual(thumb);
+    assert_eq!(state, crate::widget::ScrollbarState::Normal);
+    assert!(
+        t.abs() < f32::EPSILON,
+        "o polegar arrefecido publica {t}, e nao o `0.0` que faz o pintor ficar no repouso"
+    );
+}

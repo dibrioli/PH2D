@@ -428,3 +428,98 @@ fn an_unregistered_checkbox_still_follows_the_pointer() {
     // E o `t` neutro mantém o mundo pré-substrato byte a byte.
     assert_eq!(store.checkbox_visual(id).1, crate::motion::SETTLED);
 }
+
+/// **O censo dos polegares nomeia SÓ um polegar** — e é isto que impede a cura de virar
+/// *«amacie tudo o que é `Plain`»*.
+///
+/// As rows da Hierarquia são registadas `Plain` exactamente como um polegar, então um corte por
+/// tipo apanharia as duas famílias — e uma lista que se varre com o cursor **não** deve amaciar
+/// (estudo §6.2: *descer oito rows deixa-as todas meio-acesas ao mesmo tempo*). A régua é o mapa
+/// do despachante (`scrollbar_panel_for_id`), uma propriedade que um polegar novo **já tem de**
+/// satisfazer para o próprio arrasto funcionar.
+///
+/// *Mutação: trocar o predicado por `matches!(st, InteractiveState::Plain)` ⇒ a row entra na lista
+/// e este gate sangra.*
+#[test]
+fn the_thumb_census_names_the_thumb_and_leaves_the_list_row_alone() {
+    let thumb = crate::widget::INSPECTOR_SCROLLBAR_ID;
+    let row = NodeId(0x00fe_0001); // um `Plain` qualquer que NÃO é polegar
+    let mut store = store_with(&[(row.0, InteractiveState::Plain)]);
+    store.register(thumb, InteractiveState::Plain);
+
+    // Nada quente, nada publicado ⇒ o censo está vazio.
+    assert!(store.scrollbar_hover_targets().next().is_none());
+
+    // A ROW sob o ponteiro não entra — o cursor manda nela, não uma mola.
+    store.set_hot(Some(row));
+    assert!(
+        store.scrollbar_hover_targets().next().is_none(),
+        "uma row `Plain` entrou no censo dos polegares"
+    );
+
+    // O POLEGAR entra, aceso.
+    store.set_hot(Some(thumb));
+    assert_eq!(
+        store.scrollbar_hover_targets().collect::<Vec<_>>(),
+        vec![(thumb, 1.0)]
+    );
+
+    // Saiu de baixo do cursor mas ainda tem tinta ⇒ segue conduzido, agora para BAIXO.
+    store.set_hot(None);
+    store.set_hover_live(thumb, 0.4);
+    assert_eq!(
+        store.scrollbar_hover_targets().collect::<Vec<_>>(),
+        vec![(thumb, 0.0)]
+    );
+
+    // ⚠️ E ao CHEGAR ao zero exacto ele sai da lista — é isso que deixa a track ser podada.
+    store.set_hover_live(thumb, 0.0);
+    assert!(
+        store.scrollbar_hover_targets().next().is_none(),
+        "um polegar assente em zero continua a ser conduzido — a track nunca sera podada"
+    );
+}
+
+/// **O polegar fica ACESO enquanto o dedo o arrasta, mesmo com o cursor longe dele.**
+///
+/// Um arrasto de barra leva o rato para fora do polegar a toda a hora — é o gesto. Se o censo
+/// contasse só o `Hovered`, o eixo arrefeceria por baixo do dedo que comanda a superfície, e ao
+/// SOLTAR sobre o polegar ele teria de reacender do zero: um desvanecer que o artista nunca pediu,
+/// no fim de um gesto que ele nunca interrompeu.
+///
+/// ⚠️ **A lei é DERIVADA, não escolhida:** o *aceso* sai do [`WidgetStore::scrollbar_visual`], a
+/// MESMA porta que o pintor consulta — e ela já diz que arrastar é um dos três degraus.
+///
+/// *Mutação: contar só `Hovered` no censo ⇒ o alvo cai a `0.0` a meio do arrasto e este gate
+/// sangra.*
+#[test]
+fn a_thumb_stays_lit_while_the_finger_drags_it() {
+    use crate::interaction::drag::ScrollbarDragAnchor;
+    let thumb = crate::widget::INSPECTOR_SCROLLBAR_ID;
+    let mut store = store_with(&[]);
+    store.register(thumb, InteractiveState::Plain);
+    store.set_hover_live(thumb, 1.0);
+
+    // O cursor SAIU do polegar — mas o dedo continua a arrastá-lo.
+    store.set_hot(None);
+    store.begin_scrollbar_drag(ScrollbarDragAnchor {
+        panel: crate::ids::INSP_PANEL,
+        cursor_y_at_down: 0.0,
+        scroll_at_down: 0.0,
+        track_h: 100.0,
+        content_h: 400.0,
+        visible_h: 100.0,
+    });
+    assert_eq!(
+        store.scrollbar_hover_targets().collect::<Vec<_>>(),
+        vec![(thumb, 1.0)],
+        "o polegar arrefeceu debaixo do dedo que o arrasta"
+    );
+
+    // Solto o botao: o cursor esta longe ⇒ agora sim, ele desce.
+    store.end_scrollbar_drag();
+    assert_eq!(
+        store.scrollbar_hover_targets().collect::<Vec<_>>(),
+        vec![(thumb, 0.0)]
+    );
+}

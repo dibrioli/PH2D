@@ -55,10 +55,26 @@ pub(super) fn tick(hero: &mut HeroScreen, dt: f64) {
 /// congelados no último valor publicado, para sempre.
 fn tick_hover(hero: &mut HeroScreen, dt: f64) {
     let mut pending: Vec<(ph2d_a11y::NodeId, f32)> = hero.store.hover_targets().collect();
+    let thumbs: Vec<(ph2d_a11y::NodeId, f32)> = hero.store.scrollbar_hover_targets().collect();
     for slot in &mut pending {
         slot.1 = hero
             .motion
             .animate(slot.0, slot.1, crate::motion::Role::Fade);
+    }
+    // ⚠️ **A PARTIDA é FRIA, e só para estes** — a lei do substrato é *a primeira vista de um id
+    //    CHEGA ao alvo*, então sem semear, o quadro em que o rato entra num polegar publicaria
+    //    `1.0` e ele SALTARIA. E o `0.0` não é palpite: um polegar só é conduzido enquanto está
+    //    quente ou a arrefecer, logo *track ausente* significa **frio**, sempre.
+    //
+    //    ⚠️ E a semente NÃO pode alcançar o `pending` de cima: um widget REGISTADO que nasce sob
+    //    o cursor (um painel que abre debaixo da mão) deve chegar ao alvo, não desvanecer para
+    //    dentro dele — é a metade oposta que o `a_section_born_collapsed_…` já pina na dobra.
+    for (id, target) in thumbs {
+        if hero.motion.get(id).is_none() {
+            hero.motion.animate(id, 0.0, crate::motion::Role::Fade);
+        }
+        let live = hero.motion.animate(id, target, crate::motion::Role::Fade);
+        pending.push((id, live));
     }
     hero.motion.advance(dt);
     for (id, seeded) in pending {

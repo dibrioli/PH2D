@@ -101,17 +101,103 @@ impl WidgetStore {
                 // Os restantes tipos não têm eixo de hover HOJE. ⚠️ Um tipo que não aparece aqui
                 // não ganha entrada nenhuma — é o que mantém o mapa do tamanho do que se move.
                 //
-                // ⚠️ **E "os restantes" inclui quem NÃO É REGISTADO, que é outra classe.** O
-                // polegar de uma scrollbar e um botão de modal vivem só no `hit_index`, então o
-                // ponteiro (`hot_id`/`active_id`) é a única coisa que sabe deles — e emitir os ids
-                // do ponteiro aqui NÃO bastaria: quando o cursor sai, o id **desaparece da lista**,
-                // o tique deixa de o conduzir, e o `hover_live` congela no último valor publicado
-                // (medido: `button_visual` de um id não-registado devolve `(Hovered, 1.0)`), o que
-                // faz RE-ENTRAR não animar. Conduzi-los exige uma lista de quem está a APAGAR-SE,
-                // que é estado novo — wave própria, não um braço a mais neste `match`.
+                // ⚠️ **E "os restantes" inclui `Plain`, que é outra classe: nenhuma OPINIÃO.** Um
+                // polegar de scrollbar cai aqui, e derivar o *aceso* dele deste `match` é
+                // impossível — quem sabe se um polegar está quente é o PONTEIRO. Ele é conduzido
+                // pelo [`Self::scrollbar_hover_targets`], que existe precisamente por isso.
+                //
+                // ⚠️ **E este comentário JÁ MENTIU duas vezes, o que é a razão de estar reescrito
+                // com o número ao lado.** Ele dizia *"vivem só no `hit_index`"* — medido em
+                // 2026-08-15, **3 dos 22** polegares estão registados (`Plain`) e 19 não; e dizia
+                // que conduzi-los *"exige uma lista de quem está a APAGAR-SE, que é estado novo"* —
+                // **não é**: o `hover_live` já é o registo de todo id a que o tique publicou um
+                // `t`, e foi essa medição que fez a wave caber num censo irmão em vez de num campo.
+                //
+                // ⛔ E **não** puxe os outros `Plain` para cá: as rows da Hierarquia também o são,
+                // e amaciá-las revive a cerca do estudo §6.2 (*o realce de uma lista OBEDECE ao
+                // cursor; oito rows meio-acesas ao mesmo tempo é rasto, não vida*).
                 _ => return None,
             };
             Some((*id, if lit { 1.0 } else { 0.0 }))
+        })
+    }
+
+    /// **O POLEGAR de uma scrollbar** — o eixo dele estava inteiro e nunca se moveu.
+    ///
+    /// # O defeito, medido antes de uma linha
+    ///
+    /// A `scrollbar::thumb_color` chama [`crate::motion::hover_axis`] há muito, o par
+    /// `(estado, t)` está na **ASSINATURA** do `paint_scrollbar` (o compilador é o gate) e os 21
+    /// painéis passam-no pelo [`Self::scrollbar_visual`]. E o `t` valia
+    /// [`crate::motion::SETTLED`] nos **quatro** instantes — nunca tocado · sob o ponteiro ·
+    /// assente · e cem quadros depois de sair: *as 22 barras do app reagiam e SALTAVAM*.
+    ///
+    /// A causa é a mesma da família do texto e do chip, por uma via estrutural diferente: o
+    /// [`Self::hover_targets`] deriva o *aceso* do estado GUARDADO, e um polegar guarda
+    /// `InteractiveState::Plain` — *nenhuma opinião* —, então ele cai no braço `_` e nunca é
+    /// publicado. Quem sabe se um polegar está quente é o PONTEIRO.
+    ///
+    /// # Porque a régua é o mapa do DESPACHANTE, e não «é `Plain`» nem «não está registado»
+    ///
+    /// ⛔ **`Plain` é largo demais, e foi medido:** as rows da Hierarquia são registadas `Plain`,
+    /// e amaciá-las revive exactamente a cerca que o estudo plantou (§6.2) — *descer oito rows em
+    /// 200 ms deixa-as todas meio-acesas ao mesmo tempo; o realce de uma lista OBEDECE ao cursor*.
+    ///
+    /// ⛔ **«não está registado» também não serve:** medido, **só 3 dos 22** polegares estão no
+    /// store; os outros **19** vivem só no `hit_index`. Um `InteractiveState::Scrollbar` custaria
+    /// **19 registos** espalhados por 19 painéis — a enumeração que apodrece, e o 23º nasceria sem
+    /// ela — e poria o hover em DOIS sítios (o estado guardado contra o `hot_id`).
+    ///
+    /// ✅ **`scrollbar_panel_for_id` é uma propriedade que um polegar já TEM de satisfazer:** sem
+    /// o braço dele o arrasto da barra não funciona, e o
+    /// `shells/desktop/tests/scrollable_panels_intercept_the_wheel.rs` nomeia-o como uma das
+    /// quatro edições obrigatórias. *Uma barra nova nasce coberta porque já tinha de nascer ali.*
+    ///
+    /// ⚠️ **O polegar do popover de um dropdown fica de FORA, e é nomeado:** ele é chaveado pelo
+    /// CHIP, não por um painel (o motivo de o [`Self::scrollbar_visual_for`] existir), então não
+    /// está no mapa; e ele nasce e morre com o popover, logo a track dele seria criada e podada
+    /// sem parar.
+    ///
+    /// # As duas metades do ciclo
+    ///
+    /// ⚠️ **Emitir só o id QUENTE não basta:** quando o cursor sai, o id **desaparece** da lista,
+    /// o tique deixa de o conduzir, a track assenta no último alvo — e o polegar acenderia para
+    /// **nunca mais apagar**. A metade que falta é a lista de quem ARREFECE, e ⚠️ **ela não é
+    /// estado novo:** o `hover_live` já é o registo de todo id a que o tique publicou um `t`, e um
+    /// polegar com `t > 0` é, por construção, um que ainda tem de descer.
+    ///
+    /// ⚠️ **Aceso é `Hovered` ou `Dragging`, e a lei é DERIVADA — a pergunta é feita à MESMA
+    /// porta que o pintor faz** ([`Self::scrollbar_visual`]). Contar só o `Hovered` faria o
+    /// polegar arrefecer **debaixo do dedo que o arrasta**, e ao soltar ele teria de reacender.
+    ///
+    /// ⚠️ **E quem CHEGA a zero sai da lista**, o que mantém verdadeira a alegação de custo do
+    /// substrato (*lembrar é O(widgets tocados recentemente)*): a track fica ociosa e é podada, e
+    /// o `hover_live` guarda o `0.0` — que é precisamente o que faz o pintor continuar no token de
+    /// repouso. **Apagar a entrada** devolveria [`crate::motion::SETTLED`] e deixaria o polegar
+    /// **quente para sempre**.
+    pub fn scrollbar_hover_targets(&self) -> impl Iterator<Item = (NodeId, f32)> + '_ {
+        use crate::interaction::dispatch::scroll::scrollbar_panel_for_id;
+        use crate::widget::ScrollbarState as S;
+        let hot = self
+            .hot_id()
+            .filter(|id| scrollbar_panel_for_id(*id).is_some());
+        // ⚠️ **`!= 0.0`, e NÃO `> 0.0`** — a mola do carácter Expressivo ULTRAPASSA: medido, o
+        //    voo de saída passa por **−0,0109** antes de voltar. Com `> 0.0` o tique largava-o ali,
+        //    a track era podada a meio do caminho e o `hover_live` guardava um negativo para
+        //    sempre. O pintor clampa, então nada se vê — e um valor publicado que ninguém pode
+        //    explicar é como o próximo leitor herda um bug.
+        //
+        // ⚠️ E a comparação exacta é SÓ segura porque a chegada escreve o literal: o `arrive` da
+        //    mola larga o voo e põe `to` (que é `0.0`) no valor, em vez de convergir para perto.
+        //
+        // ⚠️ `t` PRIMEIRO: quase toda entrada do mapa está fria, e assim o predicado caro (o mapa
+        //    do despachante) quase nunca corre.
+        let cooling = self.hover_live.iter().filter_map(move |(id, t)| {
+            (*t != 0.0 && Some(*id) != hot && scrollbar_panel_for_id(*id).is_some()).then_some(*id)
+        });
+        hot.into_iter().chain(cooling).map(|id| {
+            let lit = matches!(self.scrollbar_visual(id).0, S::Hovered | S::Dragging);
+            (id, if lit { 1.0 } else { 0.0 })
         })
     }
 }

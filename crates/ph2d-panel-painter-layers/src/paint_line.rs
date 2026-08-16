@@ -14,7 +14,7 @@ use ph2d_editor_core::paint::paint_text;
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Checkbox, CheckboxValue, DropdownOption, Slider, SliderState, paint_checkbox, paint_slider,
+    Checkbox, CheckboxValue, DropdownOption, Slider, paint_checkbox, paint_slider,
 };
 use ph2d_editor_core::zones::Rect;
 
@@ -354,13 +354,12 @@ fn paint_param_row(
         LABEL_W,
         resolve(ColorToken::Text1, theme),
     );
-    let st = ctx
-        .host
-        .store()
-        .slider(sid)
-        .map(|(s, _)| s)
-        .unwrap_or(SliderState::Normal);
-    let mut slider = Slider::new(sid, "").accent(true).state(st);
+    // ⚠️ Pela porta do `slider_visual` como os irmãos desta crate — UMA pergunta, o estado
+    // e o `t` juntos. O `.state()` sozinho entrega o extremo DURO: o slider fica pintado,
+    // vivo sob o mouse e **nunca acende**.
+    let mut slider = Slider::new(sid, "")
+        .accent(true)
+        .visual(ctx.host.store().slider_visual(sid));
     slider.value = track.clamp(0.0, 1.0);
     let slider_rect = Rect::new(slider_x, y, slider_w, ROW_H_PX);
     paint_slider(&slider, slider_rect, ctx.scene, theme);

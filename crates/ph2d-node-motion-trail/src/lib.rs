@@ -120,11 +120,43 @@ fn materialize_render_columns(s: &mut Stream) {
 const MAX_LENGTH: usize = 32;
 
 /// Hard ceiling on the emitted element count. `length × live` is an allocation
-/// size driven by an untrusted param times an untrusted upstream: 4096 live
-/// particles × 32 echoes is already 131k quads. The trail is CLAMPED (fewer
-/// generations), never truncated mid-generation — a half-drawn echo reads as a
-/// bug, a shorter tail reads as a setting.
-const MAX_INSTANCES: usize = 65_536;
+/// size driven by an untrusted param times an untrusted upstream. The trail is
+/// CLAMPED (fewer generations), never truncated mid-generation — a half-drawn
+/// echo reads as a bug, a shorter tail reads as a setting.
+///
+/// # O RECURSO É **TEMPO**, e o número é MEDIDO (CLAUDE.md §0)
+///
+/// ⚠️ **O valor que shipava era `65_536` e a justificativa era uma CONTAGEM**, não um custo
+/// (*"4096 vivas × 32 ecos já é 131k quads"*) — no módulo cuja `line/gpu-nodes` mediu **4,19 M
+/// partículas em 3,6 ms**. Medido pela porta do produto
+/// (`ph2d-node-registry-init/tests/measure_instance_ceiling.rs`, fonte a MEXER-SE), o custo é
+/// **linear na linha emitida** e não tem joelho:
+///
+/// | linhas emitidas | ms/tick | % de um quadro de 60 fps |
+/// |---|---|---|
+/// | 65 536 (o teto antigo) | 1,24–1,83 | 7–11 % |
+/// | 262 144 (este teto) | ~4–5 | ~30 % |
+/// | 1 048 576 | ~21 | **acima de um quadro inteiro** |
+///
+/// ⇒ o teto antigo estava a um **décimo** do que um nó pode gastar, e o novo é onde **um** nó
+/// passa a ocupar cerca de um terço do quadro. Acima dele o próximo degrau de potência de dois
+/// custa dois terços, que é um nó a ser dono do quadro.
+///
+/// ⚠️ **E a consequência prática é o caso que o comentário antigo citava:** 4096 vivas × 32
+/// ecos = 131 072 linhas, que o teto de `65_536` **CLAMPAVA em silêncio para 16 gerações** — o
+/// artista pedia 32 e recebia metade, sem nada na tela a dizer porquê. Sob este teto o pedido
+/// é HONRADO.
+///
+/// ⚠️ **A memória é o outro recurso e é o folgado:** o stream emitido mede **16 bytes por
+/// linha** de `P` + `size` (mais `tint`/`trail_age` quando existem) — 262 144 linhas são
+/// ~4,2 MB, contra os ~16,8 MB de um milhão.
+///
+/// ⚠️ **Este número é COMPARTILHADO com `fx.drop_shadow` e `fx.rgb_split`**, que carregam o
+/// mesmo teto pelo mesmo recurso (linhas emitidas no caminho de CPU) — o gate
+/// `the_three_instance_ceilings_agree` da `ph2d-node-registry-init` recusa que um deles se
+/// mova sozinho. Os três são drop-crates e não podem depender uns dos outros (ADR-0075), então
+/// a const é copiada como o `falloff_at` das behaviours; o que a mantém honesta é o gate.
+pub const MAX_INSTANCES: usize = 262_144;
 
 /// Teto do espaçamento: `length × spacing` é a janela de IDADE que o nó carrega, e um
 /// `f32` vindo de um documento é intocado. 16 ticks entre ecos já é um rastro de flip-book.

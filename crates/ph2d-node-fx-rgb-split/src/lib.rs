@@ -67,7 +67,20 @@ const COPIES: usize = 3;
 /// by an untrusted upstream. Over budget the FX **turns itself off** (the input,
 /// verbatim) rather than half-drawing: a scene missing a third of its fringes reads
 /// as a bug, an un-aberrated scene reads as "the effect is off".
-const MAX_INSTANCES: usize = 65_536;
+///
+/// ⚠️ **O RECURSO É TEMPO, e o número é MEDIDO** — o mesmo teto do `motion.trail`, pelo mesmo
+/// motivo (linhas emitidas no caminho de CPU) e com a mesma tabela ao lado dele. Medido pela
+/// porta do produto (`ph2d-node-registry-init/tests/measure_instance_ceiling.rs`): este nó
+/// custa **~9–13 ns por linha emitida**, então o teto antigo de `65_536` valia ~0,6 ms — um
+/// vigésimo de um quadro de 60 fps —, e este vale ~2,5 ms. ⚠️ **Nenhum dos três nós que
+/// carregavam este literal trazia uma medição**, e a justificativa escrita era uma CONTAGEM
+/// (*"131k quads"*), não um custo.
+///
+/// ⚠️ **Os três têm de andar juntos** — gate `the_three_instance_ceilings_agree` na
+/// `ph2d-node-registry-init`, a única crate que vê os três. Drop-crates não podem depender umas
+/// das outras (ADR-0075), então a const é copiada como o `falloff_at` das behaviours; o que a
+/// mantém honesta é o gate.
+pub const MAX_INSTANCES: usize = 262_144;
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {

@@ -492,8 +492,16 @@ fn the_instance_budget_clamps_generations_not_rows() {
     assert_eq!(generations(999.0, 1), MAX_LENGTH, "hard ceiling");
     assert_eq!(generations(f32::NAN, 10), 1, "junk → the identity");
     assert_eq!(generations(-5.0, 10), 1);
-    // 32 generations × 4096 live = 131k > the 65_536 budget → 16 kept.
-    assert_eq!(generations(32.0, 4096), MAX_INSTANCES / 4096);
+    // ⚠️ A fixture tem de conter o CLAMP, e a que estava aqui deixou de o conter quando o
+    // teto foi MEDIDO (65_536 → 262_144): 32 × 4096 = 131k **cabe** hoje, e é precisamente o
+    // caso que o comentário antigo do teto citava como o motivo dele existir.
+    assert_eq!(
+        generations(32.0, 4096),
+        32,
+        "o pedido cabe: nada e clampado"
+    );
+    // 32 gerações × 16384 vivas = 524k > o orçamento → 16 mantidas.
+    assert_eq!(generations(32.0, 16_384), MAX_INSTANCES / 16_384);
     assert_eq!(generations(32.0, 999_999), 1, "never zero rows");
 }
 

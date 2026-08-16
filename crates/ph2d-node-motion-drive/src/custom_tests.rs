@@ -242,3 +242,65 @@ fn the_custom_channel_refuses_the_device_and_the_others_keep_it() {
         assert!(f(&ch(other)), "o canal {other} continua no device");
     }
 }
+
+/// Uma fonte que CARREGA as colunas de escrituracao — sem elas a recusa seria
+/// verde por vacuo (nao ha' o que preservar).
+fn source_with_bookkeeping() -> Stream {
+    Stream::new(4)
+        .with("P", Column::Vec2(vec![[0.0, 0.0]; 4]))
+        .with("heat", Column::Scalar(vec![10.0, 20.0, 30.0, 40.0]))
+        .with("id", Column::Scalar(vec![1.0, 2.0, 3.0, 4.0]))
+        .with("sim_t", Column::Scalar(vec![0.5; 4]))
+        .with("sim_d", Column::Scalar(vec![0.25; 4]))
+        .with("dl_1", Column::Scalar(vec![7.0; 4]))
+}
+
+/// **O CANAL NOMEADO RECUSA AS COLUNAS DE ESCRITURACAO.**
+///
+/// A recusa por TIPO nao as cobre, e e' esse o ponto: `id` e `sim_t` sao
+/// `Column::Scalar`, exactamente a forma que o canal aceita — o que os separa e'
+/// o PAPEL. Um `sim_t` sobrescrito faz `dt = (playhead - sim_t).clamp(0, MAX)`
+/// devolver zero e a simulacao CONGELA, sem erro e sem badge; um `id`
+/// sobrescrito faz o pareamento por identidade entregar a linha de historia ao
+/// elemento errado. Os dois modos de falha sao MUDOS.
+///
+/// E o picker do painel OFERECE `id` ao artista (ele e' um nome legitimo de
+/// LEITURA), entao o artista o aprende ali e depois o digita aqui: o campo do
+/// nome e' texto livre, sem lista.
+#[test]
+fn the_named_channel_refuses_the_bookkeeping_columns() {
+    for name in ["id", "sim_t", "sim_d", "dl_1"] {
+        let src = source_with_bookkeeping();
+        let Some(Column::Scalar(before)) = src.get(name).cloned() else {
+            panic!("a fixture tem de CONTER a coluna, senao a recusa e' verde por vacuo");
+        };
+        let out = drive_named(&src, name, &[9.0, 9.0, 9.0, 9.0], 1.0, Combine::Set);
+        let Some(Column::Scalar(after)) = out.get(name).cloned() else {
+            panic!("a recusa devolve a entrada verbatim, com a coluna intacta");
+        };
+        for (i, (a, b)) in before.iter().zip(after.iter()).enumerate() {
+            assert_eq!(
+                a.to_bits(),
+                b.to_bits(),
+                "`{name}` e' escrituracao e nao pode ser escrita (elemento {i})"
+            );
+        }
+    }
+}
+
+/// **E O CONTROLE: um nome ORDINARIO da MESMA forma continua a ser escrito.**
+///
+/// Sem esta metade, *"a recusa funciona"* seria satisfeito por o canal ter
+/// parado de escrever seja onde for.
+#[test]
+fn an_ordinary_scalar_of_the_same_shape_is_still_written() {
+    let src = source_with_bookkeeping();
+    let out = drive_named(&src, "heat", &[9.0, 9.0, 9.0, 9.0], 1.0, Combine::Set);
+    let Some(Column::Scalar(v)) = out.get("heat").cloned() else {
+        panic!("o canal escreve a coluna nomeada");
+    };
+    assert!(
+        v.iter().all(|x| (*x - 9.0).abs() < 1e-6),
+        "um nome ordinario continua escrevivel: {v:?}"
+    );
+}

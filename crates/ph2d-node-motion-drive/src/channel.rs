@@ -164,7 +164,18 @@ pub(crate) fn drive_named(
     mode: Combine,
 ) -> Stream {
     let n = input.count();
-    if name.is_empty() || !matches!(input.get(name), None | Some(Column::Scalar(_))) {
+    // ⚠️ **DUAS recusas, e elas perguntam coisas diferentes.** A do TIPO impede
+    // que um `Scalar` mude a FORMA de uma coluna que já existe (escrever sobre
+    // `P` faria todo leitor a jusante ler outra coisa). A da ESCRITURAÇÃO impede
+    // que ele acerte uma coluna cuja FORMA está certa e cujo PAPEL não é dado —
+    // `id` e `sim_t` são escalares, então o teste de tipo os deixa passar, e um
+    // `sim_t` no futuro faz `dt` clampar em zero e **congela a simulação**, sem
+    // erro e sem badge. A porta é do substrato (`ph2d_nodegraph::attr`) porque
+    // uma crate-nó não pode depender de outra (ADR-0075).
+    if name.is_empty()
+        || ph2d_nodegraph::attr::is_bookkeeping_column(name)
+        || !matches!(input.get(name), None | Some(Column::Scalar(_)))
+    {
         return input.clone();
     }
     let mut out = Stream::new(n);

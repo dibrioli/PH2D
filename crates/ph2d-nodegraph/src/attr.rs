@@ -75,6 +75,33 @@ pub const SIZE_IDENTITY: [f32; 2] = [1.0, 1.0];
 /// letter in 30 crates is churn without a gate — but anything NEW reads it from here.)
 pub const VALUE_COLUMN: &str = "v";
 
+/// As colunas de **ESCRITURAÇÃO** — aquelas cuja máquina de estado de um nó a
+/// jusante lê, e que por isso um escritor genérico não pode sobrescrever.
+///
+/// ⚠️ **Esta NÃO é a pergunta que o picker do painel faz.** O `INTERNAL` do shell
+/// responde *"o que a lista OFERECE ao artista para LER?"*, e as duas respostas
+/// divergem de propósito: `falloff` é lido e **escrito** (a família `field.*`
+/// inteira existe para o escrever), enquanto `id` é lido e nunca escrito.
+/// Colapsá-las tornaria o `falloff` inescrevível.
+///
+/// ⚠️ **A pergunta não é derivável, e a alternativa foi MEDIDA:** perguntar ao
+/// TIPO (*"a coluna que já está lá é escalar?"*) não protege nada aqui — `id` e
+/// `sim_t` **são** escalares, tal como `texture_id` e `geometry_id`. O que os
+/// separa não é a forma, é o PAPEL, e nenhuma varredura do substrato sabe que
+/// um `sim_t` no futuro faz `dt` clampar em zero e **congelar a simulação em
+/// silêncio**, ou que trocar um `id` faz o pareamento por identidade entregar a
+/// linha de história ao elemento errado. Os dois modos de falha são MUDOS, que é
+/// o que justifica um nome escrito à mão em vez de um palpite estrutural.
+///
+/// ⚠️ **O prefixo `dl_` é do RING do `motion.delay`** e entra aqui pelo mesmo
+/// motivo, apesar de aquela crate ter o `is_state` dela: uma crate-nó não pode
+/// depender de outra (ADR-0075), então a pergunta *"posso escrever aqui?"* só
+/// tem uma casa possível — esta.
+#[must_use]
+pub fn is_bookkeeping_column(name: &str) -> bool {
+    matches!(name, "id" | "sim_t" | "sim_d") || name.starts_with("dl_")
+}
+
 /// A typed column of per-element values, stored SoA.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Column {

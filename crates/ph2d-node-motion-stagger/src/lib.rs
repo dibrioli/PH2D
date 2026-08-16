@@ -74,6 +74,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "ease_dir",
             default: 0.0,
         },
+        // O *Offset* da Cavalry: desliza a rampa ao longo do índice, ciclicamente.
+        ParamSpec {
+            name: "offset",
+            default: 0.0,
+        },
         ParamSpec {
             name: "reverse",
             default: 0.0,
@@ -103,6 +108,7 @@ impl NodeOp for MotionStagger {
         let curve = ctx.param("ease_curve").round() as i32;
         let dir = ctx.param("ease_dir").round() as i32;
         let reverse = ctx.param("reverse") >= 0.5;
+        let offset = ctx.param("offset");
         let out = {
             let input = ctx.input(0);
             let n = input.count();
@@ -115,6 +121,16 @@ impl NodeOp for MotionStagger {
                         i as f32 / (n as f32 - 1.0)
                     };
                     let raw = if reverse { 1.0 - raw } else { raw };
+                    // ⚠️ **O `frac` só corre com o knob armado, e a razão é a
+                    // PONTA da rampa:** o último elemento senta exactamente em
+                    // `1.0`, e `frac(1.0)` é `0.0` — aplicado sempre, o neutro
+                    // mandaria a última peça para o começo da rampa.
+                    let raw = if offset != 0.0 {
+                        let s = raw + offset;
+                        s - s.floor()
+                    } else {
+                        raw
+                    };
                     stagger_delta(min, max, curve, dir, raw, falloff_at(input, i))
                 })
                 .collect();
@@ -199,6 +215,17 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Enum {
             labels: &["In", "Out", "In-Out"],
         },
+    },
+    // ⚠️ **A faixa é um ciclo INTEIRO** (`0..1`): a rampa fecha em si mesma, e um
+    // deslize de `1` é o mesmo que nenhum. Um teto maior seria uma volta a mais
+    // que o artista não distingue.
+    ParamUiHint {
+        param: "offset",
+        label: "Offset",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
     },
     ParamUiHint {
         param: "reverse",
@@ -425,3 +452,7 @@ mod tests {
         assert!(reg.resolve(MANIFEST.id).is_some());
     }
 }
+
+#[cfg(test)]
+#[path = "offset_tests.rs"]
+mod offset_tests;

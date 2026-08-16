@@ -29,7 +29,15 @@
 use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::port::Dim;
 
-const SG_PARAMS: &[&str] = &["channel", "min", "max", "ease_curve", "ease_dir", "reverse"];
+const SG_PARAMS: &[&str] = &[
+    "channel",
+    "min",
+    "max",
+    "ease_curve",
+    "ease_dir",
+    "reverse",
+    "offset",
+];
 
 /// The falloff mask, bound identically by every variant.
 const SG_FALLOFF: ColumnBinding = ColumnBinding {
@@ -94,6 +102,12 @@ const SG_LIB: &str = "\
         \x20   raw = f32(i) / (f32(params.count) - 1.0);\n\
         }\n\
         if (params.reverse >= 0.5) { raw = 1.0 - raw; }\n\
+        if (params.offset != 0.0) {\n\
+        \x20   // Ver o `eval`: com o knob no neutro o `frac` nem corre,\n\
+        \x20   // senao a ponta da rampa (exactamente 1.0) iria para 0.\n\
+        \x20   let sg_s = raw + params.offset;\n\
+        \x20   raw = sg_s - floor(sg_s);\n\
+        }\n\
         let e = sg_ease(i32(sg_round(params.ease_curve)),\n\
         \x20   i32(sg_round(params.ease_dir)), raw);\n\
         return (params.min + e * (params.max - params.min)) * read_falloff(i);\n\

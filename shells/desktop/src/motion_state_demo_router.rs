@@ -425,6 +425,46 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
             );
             sinks
         }
+        // O ENVELOPE (doc 89, o grupo F): que FORMA tem uma coisa que acende e
+        // apaga -- do lado do PULSO (motion.strobe) e do lado do DEGRAU
+        // (motion.delay).
+        Ok("46") => {
+            let sinks = conferencia_demos_envelope::build_envelope_demo_document(doc, registry)
+                .unwrap_or_default();
+            eprintln!(
+                "[envelope-demo] CINCO PARES: cada par e' o MESMO rig com UM knob de diferenca. \
+                 {cols} pecas por fileira.",
+                cols = conferencia_demos_envelope::COLS as u32,
+            );
+            for (i, label) in conferencia_demos_envelope::BAND_LABELS.iter().enumerate() {
+                eprintln!("  {}. {label}", i + 1);
+            }
+            eprintln!(
+                "  (!) DE' PLAY. Um envelope e' uma forma no TEMPO -- uma foto de um instante mostra
+      dois tamanhos e nao diz nada sobre como se chegou a eles. As batidas sao de {beat}s.
+  (!) ATTACK (1-2): a de cima POPA no instante da batida; a de baixo INCHA ao longo de {half}
+      ticks (meio segundo). Era o trecho que o no' nao tinha -- ele subia sempre em UM tick.
+  (!) HOLD (3-4): a de baixo fica CHEIA por meio segundo e SO' ENTAO cai. Se ela apenas cair
+      mais devagar, o plato' virou uma queda lenta e nao e' isto.
+  (!) SHAPE (5-6): a MESMA queda, uma exponencial e a outra atraves de um DEGRAU desenhado --
+      a de baixo fica cheia e CORTA, o que nenhuma exponencial faz.
+  (!) PROBABILITY (7-8): a de cima acende a fileira INTEIRA em toda batida; a de baixo acende
+      ~{some:.0}% das pecas -- e PECAS DIFERENTES a cada batida. Se forem sempre as mesmas, o
+      sorteio travou (a pista tem de avancar em todo pulso que CHEGA, nao so' nos aceitos).
+      (!) A CONTAGEM BALANCA, de proposito: um sorteio por-peca sobre {cols} pecas tem desvio
+      de ~2 pecas, entao 6 a 11 e' o que uma moeda justa entrega. E' a MEDIA que converge.
+  (!) RISE != FALL (9-10): as duas seguem o MESMO degrau quadrado. A de cima sobe e desce no
+      mesmo tempo; a de baixo SALTA (regua {fast}) e ESCORRE (regua {slow}).
+  (!) Se a lista de 10 bandas acima nao aparecer, PARE: o resto da cena nao diz nada.",
+                beat = conferencia_demos_envelope::BEAT,
+                cols = conferencia_demos_envelope::COLS as u32,
+                half = conferencia_demos_envelope::HALF_SECOND as u32,
+                some = conferencia_demos_envelope::SOME * 100.0,
+                fast = conferencia_demos_envelope::FAST,
+                slow = conferencia_demos_envelope::SLOW,
+            );
+            sinks
+        }
         // A TABELA E A SEMENTE (doc 89, o grupo D / W-E): a lista que o artista
         // DIGITA, sem o teto de oito, e a semente que a identidade do no separa.
         Ok("44") => {

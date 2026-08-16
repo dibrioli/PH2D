@@ -83,6 +83,9 @@ mod conferencia_demos_table_seed;
 // do `build_compare_demo_document`).
 #[path = "motion_state_conferencia_demos_compare.rs"]
 pub(crate) mod conferencia_demos_compare;
+// O grupo F — o ENVELOPE: que forma tem uma coisa que acende e apaga (cena `=46`).
+#[path = "motion_state_conferencia_demos_envelope.rs"]
+pub(crate) mod conferencia_demos_envelope;
 #[path = "motion_state_conferencia_demos_text.rs"]
 mod conferencia_demos_text;
 #[path = "motion_state_conferencia_demos_time.rs"]

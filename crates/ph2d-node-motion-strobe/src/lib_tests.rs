@@ -605,3 +605,31 @@ fn the_authored_length_reaches_the_node_through_the_cook() {
         "a duracao autorada nao chegou ao no: curta {short}, longa {long}"
     );
 }
+
+/// **QUEM NUNCA ACENDEU NÃO ACENDE SOZINHO** — o defeito que a cena `=46`
+/// mostrou antes do smoke.
+///
+/// ⚠️ Um estado recém-nascido é zero em toda coluna, e `age = 0` significa *"um
+/// pulso acabou de chegar"*. Com `attack = 0` os dois casos colapsam e o defeito
+/// é invisível — é por isso que ele só nasceu com esta wave, e é por isso que a
+/// fixture TEM de ter attack: sem ele o gate é verde por vácuo.
+#[test]
+fn an_instance_that_never_fired_does_not_swell_on_its_own() {
+    let mut p = params();
+    p.attack = 8.0;
+    let mut st = Stream::new(1);
+    for t in 0..12 {
+        st = step(&dot(), &fire(0.0), &st, &p);
+        assert_eq!(
+            glow(&st),
+            0.0,
+            "tick {t}: sem pulso nenhum, o brilho tem de ser ZERO"
+        );
+        assert_eq!(size_x(&st), 1.0, "e o tamanho fica no de repouso");
+    }
+    // E o CONTROLE: um pulso ainda ACENDE — a sentinela não matou a feature.
+    let lit = step(&dot(), &fire(1.0), &st, &p);
+    assert_eq!(glow(&lit), 0.0, "a rampa começa em zero");
+    let up = step(&dot(), &fire(0.0), &lit, &p);
+    assert!(glow(&up) > 0.0, "e no tick seguinte ela SOBE: {}", glow(&up));
+}

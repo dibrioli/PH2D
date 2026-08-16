@@ -118,6 +118,20 @@ const AGE_COL: &str = "glow_age";
 /// **Quantos pulsos esta instância já VIU** — a pista do sorteio da
 /// probabilidade. Avança em todo pulso que chega (ver o cabeçalho).
 const SEQ_COL: &str = "glow_seq";
+/// **A idade de quem NUNCA acendeu.**
+///
+/// ⚠️ Um estado recém-nascido é `0` em toda coluna, e `age = 0` significa *"um
+/// pulso acabou de acender esta instância"* — indistinguível de *"nenhum pulso
+/// jamais chegou"*. Com `attack = 0` os dois colapsam (a idade 1 já cai na
+/// recorrência, sobre um brilho zero), e é por isso que o defeito não existia
+/// antes desta wave; com `attack > 0` a fileira **INCHAVA SOZINHA no nascimento**,
+/// sem que nada a tivesse disparado. Foi a cena `=46` que o mostrou, antes do
+/// smoke.
+///
+/// `f32::MAX` é a sentinela porque ela **satura**: `MAX + 1.0` é `MAX` (o `1.0`
+/// está abaixo do ULP dali), então quem nunca acendeu fica para sempre no ramo da
+/// queda, sobre um brilho zero — que é exatamente o que *"não há flash"* é.
+const NEVER: f32 = f32::MAX;
 /// The text-param key carrying the envelope's shape (a `ph2d-curve` serialized
 /// string, authored by the `ParamWidget::Curve` editor). NOT a `ParamSpec` — a
 /// curve is not one number (the `value.curve` / `field.remap` precedent).
@@ -276,9 +290,8 @@ fn step(input: &Stream, pulse: &Stream, state: &Stream, p: &Params) -> Stream {
     let pulses = scalar_col(pulse, PULSE_COL, n, 0.0);
     let prev_glow = scalar_col(state, GLOW_COL, n, 0.0);
     // A fase e a pista do sorteio. Um estado ausente (o 1º tick, ou um `pre` que
-    // ninguém plumbou) nasce em zero: idade 0 com `attack = 0` é o pico, que é
-    // exatamente o que um pulso no tick 0 significa.
-    let prev_age = scalar_col(state, AGE_COL, n, 0.0);
+    // ninguém plumbou) nasce em [`NEVER`] — ver lá por que zero seria errado.
+    let prev_age = scalar_col(state, AGE_COL, n, NEVER);
     let prev_seq = scalar_col(state, SEQ_COL, n, 0.0);
     // The focus field masks the APPLICATION (like every behaviour): a dot at
     // falloff 0 never visibly flashes. The envelope itself stays unmasked so a

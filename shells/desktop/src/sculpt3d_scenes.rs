@@ -349,6 +349,9 @@ pub(crate) mod elastic;
 #[path = "sculpt3d_scenes_strip.rs"]
 pub(crate) mod strip;
 
+/// **A CENA DA DEMÃO** (`=33`) — irmã da [`surface`] pela mesma linha de corte.
+#[path = "sculpt3d_scenes_layer.rs"]
+pub(crate) mod layer;
 /// `=22` — a cena do **EXTRACT**: a máscara vira uma PEÇA.
 ///
 /// ⚠️ **Duas esferas, e a assimetria é o smoke inteiro.** A da DIREITA já vem

@@ -40,6 +40,7 @@ mod footprint;
 pub use footprint::{Blade, Footprint, Strip, rounded_box};
 
 mod brush;
+mod coat;
 /// **A CURVA DO PINCEL** — o falloff, irmão do [`brush`]. Ver [`falloff`].
 mod falloff;
 mod grip;
@@ -68,11 +69,12 @@ pub use alpha::{
 };
 pub use brush::{
     Brush, CLAY_PLANE_FRACTION, CLAY_THUMB_TILT_MAX_DEG, CLAY_THUMB_TILT_STEP_DEG, CREASE_FRACTION,
-    DEFAULT_MULTIPLANE_ANGLE_DEG, MAX_MASK_HARDNESS, MULTIPLANE_ANGLE_MAX_DEG,
-    MULTIPLANE_ANGLE_SMOOTH, MULTIPLANE_TIP_STRETCH, PINCH_GAIN, Pass, REACH_FRACTION,
-    RingOperator, STRIP_PLANE_FRACTION, STRIP_REACH_FRACTION, Symmetry, TAUBIN_LAMBDA, TAUBIN_MU,
-    TAUBIN_PASS_BAND, Verb,
+    DEFAULT_MULTIPLANE_ANGLE_DEG, LAYER_HEIGHT_HARD_MAX, LAYER_HEIGHT_UI_MAX, MAX_MASK_HARDNESS,
+    MULTIPLANE_ANGLE_MAX_DEG, MULTIPLANE_ANGLE_SMOOTH, MULTIPLANE_TIP_STRETCH, PINCH_GAIN, Pass,
+    REACH_FRACTION, RingOperator, STRIP_PLANE_FRACTION, STRIP_REACH_FRACTION, Symmetry,
+    TAUBIN_LAMBDA, TAUBIN_MU, TAUBIN_PASS_BAND, Verb,
 };
+pub use coat::{COAT_HEAD, coat_step};
 pub use falloff::Falloff;
 pub use grip::{Amount, Grip, GripLaw};
 pub use kelvinlet::KELVINLET_REACH;

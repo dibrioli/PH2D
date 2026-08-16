@@ -176,6 +176,25 @@ pub struct GripLaw {
     /// para os cinco seria uma coluna morta. O que sobrou dela é o oposto — a
     /// única lei que ainda acumula ao longo da lista de dabs.
     pub additive: bool,
+    /// O acúmulo satura **ASSINTOTICAMENTE** — o `d + f·força·(1,05 − |d|)` do
+    /// `layer.cc` — em vez de somar linearmente, e o teto é a máscara livre em
+    /// vez de `1`.
+    ///
+    /// ⚠️ **É a TERCEIRA lei de acumulação, e as três são mutuamente
+    /// exclusivas** ([`Self::unit_accum`] · [`Self::additive`] · esta). Elas são
+    /// três booleanos e não um enum porque cada uma nasceu numa wave diferente e
+    /// um enum churnaria os quatro sítios que já as leem; o que as mantém
+    /// honestas é o gate `the_three_accumulation_laws_are_mutually_exclusive`,
+    /// que varre TODO verbo contra TODA combinação das duas flags.
+    ///
+    /// ⚠️ **Nenhum [`Grip`] a declara** — ela é do VERBO, e chega pela porta
+    /// [`crate::Verb::grip_law`], que é onde a faixa já sobrescreve o
+    /// `from_live`. Um `Grip::Coat` teria sido a leitura errada: os grips
+    /// respondem *o que o GESTO faz*, e o gesto de uma demão é um carimbo — pô-la
+    /// num grip próprio faria o [`crate::Verb::has_anchor`], que é *"uma leitura
+    /// de `grip` em vez de um segundo predicado"*, passar a dizer que a demão
+    /// tem âncora.
+    pub coat: bool,
 }
 
 impl Grip {
@@ -234,6 +253,8 @@ impl Grip {
             from_live,
             unit_accum,
             additive,
+            // ⚠️ **Nenhum grip a declara, de propósito** — ver o doc do campo.
+            coat: false,
         }
     }
 }

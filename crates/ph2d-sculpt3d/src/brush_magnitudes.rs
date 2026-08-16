@@ -248,3 +248,21 @@ pub const MULTIPLANE_TIP_STRETCH: f32 = 2.0;
 /// ângulo amostrado salta quando a lâmina cruza uma quina, e um V que muda de
 /// abertura entre dois dabs deixa um degrau no sulco.
 pub const MULTIPLANE_ANGLE_SMOOTH: f32 = 0.2;
+
+/// **Onde o slider da DEMÃO para** — a faixa de UI que o `rna_brush.cc:3235`
+/// declara (`RNA_def_property_ui_range(prop, 0, 0.2f, 1, 3)`).
+///
+/// ⚠️ **É a faixa da referência, não um teto de recurso** — uma demão mais alta
+/// não custa nada e não degenera nada; o que ela deixa de ser é uma demão. E é
+/// por isso que ela é acompanhada do [`LAYER_HEIGHT_HARD_MAX`], que é onde a
+/// mesma fonte diz que o número deixa de fazer sentido.
+pub const LAYER_HEIGHT_UI_MAX: f32 = 0.2;
+
+/// **O maior valor que a caixa de texto da demão aceita** — a faixa DURA do
+/// `rna_brush.cc:3234` (`RNA_def_property_range(prop, 0, 1.0f)`).
+///
+/// ⚠️ **Na nossa escala isso é o RAIO INTEIRO da esfera de fábrica** (medido,
+/// extensão `2,0`): uma demão de `1,0` empurra a superfície pela própria
+/// dimensão do modelo. A referência o declara alcançável e nós honramos; o que
+/// nenhum dos dois oferece é o *slider* a chegar lá.
+pub const LAYER_HEIGHT_HARD_MAX: f32 = 1.0;

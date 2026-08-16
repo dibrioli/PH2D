@@ -283,6 +283,33 @@ static BRUSH: &[Row] = &[
         level: UiLevel::Basic,
         place: Place::Knobs,
     },
+    // **A ESPESSURA DA DEMÃO** — ver [`ph2d_sculpt3d::Brush::layer_height`],
+    // onde o default e as duas faixas têm a fonte e a medição ao lado.
+    Row {
+        label: "panel.sculpt3d.layer_height",
+        slider: ids::SCULPT3D_LAYER_HEIGHT,
+        chip: ids::SCULPT3D_LAYER_HEIGHT_NUM,
+        // ⚠️ **ZERO é alcançável e ali a demão é INERTE** — uma camada de
+        // espessura nenhuma não move um vértice —, e é a faixa da referência
+        // (`RNA_def_property_range(prop, 0, 1.0f)`). Um piso acima de zero
+        // esconderia uma continuidade que a lei tem.
+        min: 0.0,
+        // ⚠️ **O slider para na faixa de UI da referência e a caixa alcança a
+        // DURA** — os dois números saem dela e nenhum é nosso; ver
+        // [`ph2d_sculpt3d::LAYER_HEIGHT_UI_MAX`].
+        max: ph2d_sculpt3d::LAYER_HEIGHT_UI_MAX,
+        step: 0.01, // LITERAL-PX-OK: passo em unidades de OBJETO, não de layout
+        decimals: 3,
+        get: |u| u.brush.layer_height,
+        set: |u, v| u.brush.layer_height = v,
+        show: |u| u.brush.verb == Verb::Layer,
+        // ⚠️ **Basic, pelo mesmo teste do ângulo do V:** esconder este knob
+        // deixa a ferramenta sem o que o nome dela promete — uma *demão* É a
+        // espessura, e sem ela sobra um Draw que satura num número que o artista
+        // não escolheu.
+        level: UiLevel::Basic,
+        place: Place::Knobs,
+    },
     // ⚠️ **Ela NÃO é um seletor de falloff, e a distinção é da REFERÊNCIA.** O
     // canal de máscara do original tem curva PRÓPRIA — `(1 − d)^{2(1 − hardness)}`
     // (`Masking.js:66`) — enquanto as dez tools de geometria multiplicam pela

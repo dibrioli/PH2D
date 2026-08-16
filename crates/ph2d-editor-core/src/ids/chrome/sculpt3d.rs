@@ -49,7 +49,7 @@ pub const SCULPT3D_SEC_BAKE: NodeId = hash_node_id("sculpt3d.sec.bake");
 /// ⚠️ **O tamanho é o do `Verb::ALL`, e o gate o compara** — um verbo novo sem
 /// chip aqui é uma ferramenta que o artista não alcança, que é exatamente o que
 /// aconteceu com o `Magnify` antes de ele ganhar a tecla `A`.
-pub const SCULPT3D_VERB: [NodeId; 22] = [
+pub const SCULPT3D_VERB: [NodeId; 23] = [
     hash_node_id("sculpt3d.verb.0"),
     hash_node_id("sculpt3d.verb.1"),
     hash_node_id("sculpt3d.verb.2"),
@@ -72,6 +72,7 @@ pub const SCULPT3D_VERB: [NodeId; 22] = [
     hash_node_id("sculpt3d.verb.19"),
     hash_node_id("sculpt3d.verb.20"),
     hash_node_id("sculpt3d.verb.21"),
+    hash_node_id("sculpt3d.verb.22"),
 ];
 
 /// **A REFERÊNCIA que o verbo corrente segue** — os chips `S` · `B` · `L`.
@@ -100,6 +101,11 @@ pub const SCULPT3D_SCRAPE_ANGLE: NodeId = hash_node_id("sculpt3d.scrape_angle");
 pub const SCULPT3D_SCRAPE_ANGLE_NUM: NodeId = hash_node_id("sculpt3d.scrape_angle.num");
 /// **O V É LIDO DA SUPERFÍCIE** — o toggle do modo dinâmico.
 pub const SCULPT3D_SCRAPE_DYNAMIC: NodeId = hash_node_id("sculpt3d.scrape_dynamic");
+/// **A ESPESSURA DA DEMÃO** — o slider e o chip numérico do
+/// `ph2d_sculpt3d::Verb::Layer`.
+pub const SCULPT3D_LAYER_HEIGHT: NodeId = hash_node_id("sculpt3d.layer_height");
+/// O chip numérico da espessura da demão.
+pub const SCULPT3D_LAYER_HEIGHT_NUM: NodeId = hash_node_id("sculpt3d.layer_height.num");
 
 /// **QUÃO LARGO é o campo elástico** — os chips `Mono` · `Bi` · `Tri`.
 ///

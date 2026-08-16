@@ -3360,3 +3360,158 @@ Smoke: **`env PH2D_SCULPT3D_SMOKE=32 cargo run -p ph2d-host-desktop --release`**
 — ⚠️ **a cena NÃO arma o modo** (o chip é a costura que ela existe para provar),
 e a pergunta de olho **não é *"mexeu?"***: os dois modos achatam, e o que os
 separa é a faceta contra a curva que fica.
+
+---
+
+### §7.31 — ✅ W8: A DEMÃO, e o plano por-vértice que a medição REMOVEU (2026-08-16)
+
+O §5.1 item 6 pede *"uma demão de **altura constante**, saturante e apagável"*, e
+traz um custo escrito ao lado: *"ela introduz um plano por-vértice novo
+(`displacement`), e a lei do repo para isso está escrita — ao adicionar um plano,
+adicione-o ao snapshot de undo no MESMO commit"*.
+
+⚠️ **O custo não existe, e quem o removeu foi a leitura da referência.** No
+`layer.cc` o `layer_displacement_factor` mora no **`ss.cache`** — o Blender
+constrói o `StrokeCache` no pen-down (`sculpt.cc:5148`, `MEM_new<StrokeCache>`) e
+o **destrói no pen-up** (`sculpt.cc:6021`, `MEM_delete`) —, logo ele é estado de
+**TRAÇO**, irmão do nosso `pre` congelado e não da máscara. Nada disto viaja num
+documento, e nada disto entra num snapshot de undo.
+
+⚠️ **E do nosso lado ele nem sequer é um plano.** O aplicador já anda
+`lerp(pre, alvo, accum)`; pondo o alvo na altura **CHEIA**, o `accum` que o motor
+guarda desde sempre passa a ser exactamente o `displacement_factor` da
+referência. *A wave que o plano precificava como estrutural custou um `bool` numa
+tabela.*
+
+#### A lei, e a medição que a validou antes de uma linha ser escrita
+
+```text
+d ← clamp(d + w·força·(1,05 − |d|),  0, 1−máscara)   // satura
+alvo = pre + normal_pre · sinal · altura              // a demão CHEIA
+pos  = lerp(pre, alvo, d)                             // o aplicador de sempre
+```
+
+A sonda `measure_layer_law` fez três perguntas antes de a wave abrir.
+
+**P1 — para onde cada peso converge?** É a pergunta que decide se o chip tem
+conteúdo: se cada vértice parasse numa altura proporcional ao seu peso, o verbo
+seria um Draw com teto. Medido, **todo peso converge para `d = 1,0000`** — a
+demão é um **PLATÔ** e o falloff é uma **TAXA**:
+
+| peso | d₁ | d₂ | d₄ | d₈ | d₁₆ | d₃₂ | d₂₅₆ | dabs até 99 % |
+|---|---|---|---|---|---|---|---|---|
+| 1,00 | 1,0000 | 1,0000 | 1,0000 | 1,0000 | 1,0000 | 1,0000 | 1,0000 | **1** |
+| 0,50 | 0,5250 | 0,7875 | 0,9844 | 1,0000 | 1,0000 | 1,0000 | 1,0000 | 5 |
+| 0,25 | 0,2625 | 0,4594 | 0,7178 | 0,9449 | 1,0000 | 1,0000 | 1,0000 | 10 |
+| 0,10 | 0,1050 | 0,1995 | 0,3611 | 0,5980 | 0,8554 | 1,0000 | 1,0000 | 28 |
+| 0,02 | 0,0210 | 0,0416 | 0,0815 | 0,1567 | 0,2900 | 0,4999 | 1,0000 | 142 |
+
+⚠️ **O `1,05` é o que faz o platô FECHAR.** Fosse `1,0`, o incremento seria
+`1 − d` e a demão aproximar-se-ia do teto por metades, para sempre; com `1,05` o
+centro do pincel (peso 1) chega ao teto **num dab**, e o clamp corta o resto.
+
+**P4 — a nossa recorrência contra a do Blender.** Lá a escrita é
+`pos += (alvo − pos)·f` sobre a posição **VIVA**; o nosso aplicador anda do `pre`
+**CONGELADO**. Medido com altura unitária:
+
+| peso | vivo (Blender) | nosso (`accum = 1`) | nosso, **se** copiasse o `·f` |
+|---|---|---|---|
+| 1,00 | 1,000000 | 1,000000 | 1,000000 |
+| 0,50 | 1,000000 | 1,000000 | **0,500000** |
+| 0,25 | 1,000000 | 1,000000 | **0,250000** |
+| 0,10 | 1,000000 | 1,000000 | **0,100000** |
+
+⇒ **as duas recorrências pousam no mesmo lugar, e portar o segundo `f` para o
+nosso aplicador QUEBRARIA o verbo** — o falloff vazaria para dentro da única
+propriedade que a demão entrega. ⚠️ **E o `f` da referência ali não é um
+amortecimento da demão:** é a atenuação genérica de borda que *todo* pincel do
+Blender multiplica no `calc_translations`. No nosso motor essa atenuação **é** o
+`accum`, e aplicá-la duas vezes é o perfil-em-dobro que o `Grip::Hold` já
+documenta ter pago uma vez.
+
+**Divergência declarada — o TRANSIENTE.** As duas recorrências separam-se no
+meio do traço: pior separação **0,26–0,37** da altura, fechada em **8–55 dabs**
+conforme o peso. A nossa chega ao platô mais depressa.
+
+#### O default, e o número da referência que foi RECUSADO
+
+O `rna_brush.cc:3230-3239` declara **três** números para o `height`: faixa dura
+`[0, 1]`, faixa de UI `[0, 0,2]` e default **`0,5`**.
+
+⚠️ **O terceiro cai FORA do segundo.** Copiá-lo shiparia um slider encostado no
+máximo, com o artista só podendo descer — e o §7.0 desta linha já mediu que os
+defaults **por-ferramenta** do Blender vivem num `.blend` binário desde o 4.3,
+então esse `0,5` é o default do **campo**, não o da demão. ⇒ ficam as duas faixas
+(que a fonte declara) e o default sai do **meio da que ela chama de
+trabalhável**: `0,1`.
+
+E ele tem um número no nosso mundo: a esfera de fábrica tem raio `1,0` (extensão
+medida **2,0**), então `0,1` é **10 % do raio** — da ordem de **2,5 dabs de Draw
+a raio 0,4** (`reach = 0,04` cada). Uma camada que se vê, não um bloco.
+
+#### A cerca de Chesterton, e o que a medição fez com ela
+
+O doc do `Verb` registava que Draw e Layer *"colapsavam"* sob a lei do envelope e
+que a wave do accumulate (2026-08-11) os separou. ⚠️ **A minha primeira versão do
+gate pediu que o Draw passasse MUITO do teto da demão, e a medição a derrubou:**
+com Accumulate ele **para no RAIO** (`0,4000` num pincel de raio `0,4`), porque o
+`from_live` mede a distância em 3-D da posição viva e o vértice **sai da pegada
+ao subir**. Os dois verbos têm teto. O que difere é **de que grandeza cada teto é
+função** — medido, varrendo o raio:
+
+| raio | teto da DEMÃO | teto do Draw+Accum |
+|---|---|---|
+| 0,2 | 0,1000 | ~0,20 |
+| 0,8 | 0,1000 | ~0,80 |
+
+*Um teto maior era um número que eu escolhi; de que grandeza ele é função é o que
+a lei diz.*
+
+#### Os dois defeitos de GATE que a wave achou, os dois na mesma classe
+
+⚠️ **Dois gates liam a porta ERRADA — a do GRIP em vez da do VERBO** — e os dois
+eram verdes por acidente, porque até hoje nenhum verbo sobrescrevia a coluna que
+eles consultavam:
+
+* `stroke_apply_tests::unit_accum_verbs` derivava a lista de `Grip::law`. O
+  doc-comment dele **já contava** a história de uma lista escrita à mão que ficou
+  incompleta em silêncio — e ele então leu a tabela errada, um nível abaixo. (A
+  faixa já sobrescrevia o `from_live` por `Verb::grip_law` desde 2026-08-13; o
+  gate nunca perguntou por aquela coluna.)
+* `seam::the_accumulate_switch_is_offered_only_where_it_does_something` derivava
+  o esperado de `matches!(verb.grip(), Grip::Stamp)`, enquanto o painel pergunta
+  a `Verb::accumulates()`. A demão é um carimbo que **não** oferece o
+  interruptor, e foi ela que os separou.
+
+*`Grip::law` responde qual é a lei deste GRIP; `Verb::grip_law` responde qual é a
+lei deste VERBO. Um gate que julga o produto tem de perguntar pela porta que o
+produto usa.*
+
+#### O que ficou
+
+**12 gates, 10 mutações, 10 sangram.** ⚠️ **Uma delas sobreviveu à primeira
+rodada e o buraco era real:** trocar o teto do early-out (`accum >= keep`) por
+`accum >= 1.0` deixa o resultado **byte-idêntico**, porque o `coat_step` já
+clampa — o que muda é que todo vértice mascarado volta a ser reescrito, para
+sempre, e vai ao refit do octree e ao upload por nada. O gate que a mata mede
+**TRABALHO** (quantos vértices o dab moveu), não pixels, com o controle ao lado
+para não estar a medir *"a máscara zerou o peso"*.
+
+⚠️ **E três dos meus gates nasceram reprovando produto correto, os três por
+fixture:** a idempotência entre traços (importei do Painter a frase *"um shape
+editor re-carimba a figura a cada quadro"*, e este módulo não tem shape editors —
+entre traços a demão **empilha**, que é a referência); o controle da chatice
+(pedi ao Draw uma razão `< 0,5` que ele não tem depois de 512 dabs a saturar — a
+régua certa é a **mesma** que a demão passa, 2 %); e o teto do Draw, acima.
+
+Superfície: `Verb::ALL` **22 → 23** · `GripLaw` ganha a coluna `coat` (a terceira
+lei de acumulação, com gate de exclusividade mútua sobre todo verbo × toda
+combinação de flags) · `SCULPT3D_VERB` **22 → 23** · dois ids novos, os dois por
+`hash_node_id` · uma chave i18n · **zero `PROJECT_SCHEMA`** · **zero ADR** ·
+**zero `Cargo.toml`** · **zero dep**.
+
+Smoke: **`env PH2D_SCULPT3D_SMOKE=33 cargo run -p ph2d-host-desktop --release`**
+— ⚠️ **a cena NÃO arma o verbo nem a altura** (o chip e a row são a costura que
+ela existe para provar), e a pergunta de olho **não é *"levantou barro?"***: o
+Draw também levanta. É que a demão **PARA**, o topo dela é um **PLATÔ**, e o teto
+não se move quando o pincel muda de tamanho.

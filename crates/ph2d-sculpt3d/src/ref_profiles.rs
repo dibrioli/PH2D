@@ -217,7 +217,8 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // ⚠️ **Nem o Surface Smooth** — `surface_smooth.cc`, a sexta. E aqui o
         // `None` cobra o mesmo que no vizinho: o SculptGL tem o laplaciano cru e
         // nada que devolva o volume, então força e curva de fábrica são NOSSAS.
-        | Verb::SurfaceSmooth => return None,
+        | Verb::SurfaceSmooth
+        | Verb::Layer => return None,
     };
     Some(p)
 }

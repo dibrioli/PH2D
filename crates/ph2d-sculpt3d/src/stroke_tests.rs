@@ -378,6 +378,11 @@ mod verb_border;
 #[path = "verb_surface_tests.rs"]
 mod verb_surface;
 
+/// **A DEMÃO** — a camada de altura escolhida, e o que a separa do Draw; ver o
+/// cabeçalho dele.
+#[path = "verb_layer_tests.rs"]
+mod verb_layer;
+
 /// **O SLIDE RELAX**, o único verbo que redistribui sem mudar a forma — ver o
 /// cabeçalho dele.
 #[path = "verb_relax_tests.rs"]

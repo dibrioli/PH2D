@@ -99,6 +99,24 @@ impl Verb {
         if self == Self::ClayStrips {
             law.from_live = true;
         }
+        // ⚠️ **A DEMÃO sobrescreve TRÊS colunas, e cada uma tem um motivo do
+        // `layer.cc`:**
+        //
+        // * `coat` — a saturação assintótica, que é a lei dela;
+        // * `unit_accum` **falso** — o `accum` da demão **é** o
+        //   `displacement_factor` da referência, então o aplicador tem de o
+        //   multiplicar (um alvo que já trouxesse o peso levaria a demão inteira
+        //   no primeiro dab);
+        // * `from_live` **falso sempre** — o `calc_faces` do `layer.cc` mede as
+        //   distâncias contra `orig_data.positions` incondicionalmente, e o
+        //   [`Self::accumulates`] já tira o interruptor da tela pelo mesmo
+        //   motivo. Sem esta linha um documento salvo com o checkbox armado
+        //   noutro verbo mudaria a lei da demão em silêncio.
+        if self == Self::Layer {
+            law.coat = true;
+            law.unit_accum = false;
+            law.from_live = false;
+        }
         law
     }
 

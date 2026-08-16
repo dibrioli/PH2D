@@ -13,9 +13,9 @@ use crate::{Alpha, AlphaStencil};
 mod verb;
 pub use verb::{
     CLAY_PLANE_FRACTION, CLAY_THUMB_TILT_MAX_DEG, CLAY_THUMB_TILT_STEP_DEG, CREASE_FRACTION,
-    DEFAULT_MULTIPLANE_ANGLE_DEG, MULTIPLANE_ANGLE_MAX_DEG, MULTIPLANE_ANGLE_SMOOTH,
-    MULTIPLANE_TIP_STRETCH, PINCH_GAIN, REACH_FRACTION, STRIP_PLANE_FRACTION, STRIP_REACH_FRACTION,
-    Verb,
+    DEFAULT_MULTIPLANE_ANGLE_DEG, LAYER_HEIGHT_HARD_MAX, LAYER_HEIGHT_UI_MAX,
+    MULTIPLANE_ANGLE_MAX_DEG, MULTIPLANE_ANGLE_SMOOTH, MULTIPLANE_TIP_STRETCH, PINCH_GAIN,
+    REACH_FRACTION, STRIP_PLANE_FRACTION, STRIP_REACH_FRACTION, Verb,
 };
 
 /// A ferramenta na mão. Um traço inteiro corre contra um destes.
@@ -106,6 +106,30 @@ pub struct Brush {
     pub radius: f32,
     /// Intensidade em `[0, 1]` — o que multiplica o falloff para virar o peso.
     pub strength: f32,
+    /// **A ESPESSURA da demão**, em unidades de OBJETO — o `brush.height` do
+    /// `layer.cc`, e só o [`crate::Verb::Layer`] o lê.
+    ///
+    /// ⚠️ **ABSOLUTO, e é o que separa a demão do [`crate::Verb::Draw`]:** o
+    /// depósito do Draw é `força · RAIO · 0,1`, então mudar o pincel muda a
+    /// altura; aqui o número é uma altura escolhida e um pincel maior só cobre
+    /// mais área com a **mesma** espessura. A referência declara-o
+    /// `PROP_DISTANCE` pela mesma razão.
+    ///
+    /// ⚠️ **O DEFAULT é nosso, e o da referência foi RECUSADO com medição.** O
+    /// `rna_brush.cc` declara três números para este campo — faixa dura
+    /// `[0, 1]`, faixa de UI `[0, 0,2]` e default `0,5` — e o terceiro cai
+    /// **FORA** do segundo: copiá-lo shiparia um slider encostado no máximo, com
+    /// o artista só podendo descer. (E o §7.0 deste plano já mediu que os
+    /// defaults por-ferramenta do Blender vivem num `.blend` binário, não no
+    /// código, então este `0,5` é o default do CAMPO e não o da demão.) Ficam as
+    /// duas faixas, que a fonte declara, e o default sai do meio da que ela
+    /// chama de trabalhável.
+    ///
+    /// ⚠️ **E o `0,1` tem um número no NOSSO mundo:** a esfera de fábrica tem
+    /// raio `1,0` (extensão medida `2,0`), então uma demão de `0,1` é **10 % do
+    /// raio** — da ordem de **2,5 dabs de Draw a raio 0,4** (`reach` `0,04`
+    /// cada). É uma camada que se vê e não um bloco.
+    pub layer_height: f32,
     /// O `Ctrl` de todo app de escultura: cava em vez de levantar.
     pub invert: bool,
     /// Desloca o plano ao longo da normal da área, em fração do raio. Positivo
@@ -304,6 +328,9 @@ impl Default for Brush {
             alpha_stencil_scale: 0.25,
             radius: 0.25,
             strength: 0.5,
+            // O meio da faixa que a referência declara trabalhável — ver o doc
+            // do campo, e a medição que recusou o `0,5` dela.
+            layer_height: 0.1,
             invert: false,
             plane_offset: 0.0,
             pinch: 0.5,

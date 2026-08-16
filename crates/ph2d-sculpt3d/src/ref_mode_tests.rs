@@ -212,12 +212,13 @@ fn the_census_of_offered_chips() {
     // (§7.0 do plano). Este número é sobre a LEI, não sobre os defaults.
     //
     // ⚠️ **17 desde a W6, 18 desde o Blob, 19 desde o Clay Thumb, 20 desde o
-    // Multiplane Scrape, 21 desde o Slide Relax, 22 desde o Surface Smooth:** os
-    // seis são tools do BLENDER (`clay_strips.cc`, `crease.cc`,
-    // `clay_thumb.cc`, `multiplane_scrape.cc`, `relax.cc`,
-    // `surface_smooth.cc`), então o `alpha = root_alpha²` do `brush_strength` —
-    // que é o funil de todas elas — vale para as seis por construção.
-    assert_eq!(count(RefMode::B), 22, "B: a lei da força vale para todos");
+    // Multiplane Scrape, 21 desde o Slide Relax, 22 desde o Surface Smooth, 23
+    // desde a DEMÃO:** os sete são tools do BLENDER (`clay_strips.cc`,
+    // `crease.cc`, `clay_thumb.cc`, `multiplane_scrape.cc`, `relax.cc`,
+    // `surface_smooth.cc`, `layer.cc`), então o `alpha = root_alpha²` do
+    // `brush_strength` — que é o funil de todas elas — vale para as sete por
+    // construção.
+    assert_eq!(count(RefMode::B), 23, "B: a lei da força vale para todos");
     // A literatura chega paper a paper, nas waves W4/W5/W7.
     //
     // ⚠️ **E o Surface Smooth NÃO o move, embora SEJA um paper** (Vollmer,

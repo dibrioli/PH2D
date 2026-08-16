@@ -81,6 +81,7 @@ impl SculptStroke {
             from_live,
             unit_accum,
             additive,
+            coat,
         } = brush.verb.grip_law(brush.accumulate, field.is_some());
         // ⚠️ **Quem SEGURA trabalha sobre o que já TOCOU, não sobre a consulta
         // deste dab — e sem isto o Grab PERDE barro.** A consulta sai das
@@ -347,6 +348,14 @@ impl SculptStroke {
                 if additive && me.accum[s] >= 1.0 {
                     return;
                 }
+                // **A DEMÃO CHEIA não tem o que receber** — o irmão exacto do
+                // early-out acima, com o teto que a lei dela usa: a máscara
+                // livre, não `1`. Comparar contra `1` deixaria todo vértice
+                // mascarado a ser reescrito para sempre com o mesmo número, e a
+                // mandá-lo ao refit do octree e ao upload por nada.
+                if coat && me.accum[s] >= keep {
+                    return;
+                }
                 // ⚠️ **Quem carrega o peso no ALVO carimba `accum = 1`**, e é isso
                 // que o faz caber no MESMO aplicador (`lerp(base, target, 1) ==
                 // target`). Sem essa identidade haveria um segundo caminho de
@@ -360,10 +369,21 @@ impl SculptStroke {
                 // early-out acima disparar cedo demais em dois dabs e tarde demais
                 // em vinte. Guardar o valor SATURADO é o que mantém as duas leituras
                 // — *quanto foi pintado* e *ainda cabe?* — respondendo o mesmo.
+                // ⚠️ **A DEMÃO satura AQUI pela mesma razão que a aditiva**, e os
+                // dois fatores chegam SEPARADOS porque é assim que a referência
+                // os escreve: `offset_displacement_factors(disp, factors,
+                // cache.bstrength)`. O `factors` do Blender é *curva × máscara*
+                // — o nosso `shape` — e o `bstrength` é *o slider × a pressão* —
+                // o nosso `intensity`, que já traz a curva de força do `B` (o
+                // E13). Passar o `w` (que é o produto dos dois) e um `1.0` daria
+                // o mesmo número hoje; passar `brush.strength` cru daria outro,
+                // porque perderia a pressão E a curva.
                 let new_accum = if unit_accum {
                     1.0
                 } else if additive {
                     (me.accum[s] + w).min(1.0)
+                } else if coat {
+                    crate::coat_step(me.accum[s], shape * pass.weight, intensity, keep)
                 } else {
                     w
                 };

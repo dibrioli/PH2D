@@ -16,31 +16,28 @@ use super::*;
 
 /// O que o pincel FAZ. Ver `docs/3D/04.1` para a família de cada um.
 ///
-/// ⚠️ **`Layer` não está aqui, e a PREMISSA que o mantinha fora MORREU**
-/// (conferido em 2026-08-12). A nota antiga dizia, e estava certa no dia em que
-/// foi escrita: *"sob a lei do traço (`accum` é um ENVELOPE em `[0,1]`, nunca
-/// uma soma) o Draw já é limitado a um `reach` por traço — que é exatamente o
-/// que o Layer do ZBrush existe para garantir; os dois colapsam"*.
+/// ⚠️ **O [`Verb::Layer`] ESTÁ aqui desde a W8** — esta caixa dizia *"não está,
+/// e a premissa que o mantinha fora morreu"*, e ela descrevia o mundo de
+/// 2026-08-12. O que sobrevive dela é o argumento, porque é ele que separa os
+/// dois verbos hoje: a wave da paridade (2026-08-11) fez o
+/// [`crate::Grip::Stamp`] **COMPOR** e **matou o envelope**, então
 ///
-/// **Não há mais envelope.** A wave da paridade (2026-08-11) fez o
-/// [`crate::Grip::Stamp`] **COMPOR** — cada dab soma o próprio incremento sobre
-/// o que o anterior deixou, que é a estrutura do kernel da referência —, e o
-/// doc da [`crate::GripLaw::additive`] diz a frase inteira: *"nenhum grip é mais
-/// um envelope"*. Com isso o Draw deixou de saturar num `reach`:
+/// - **Draw + Accumulate** (`from_live`) — o vértice e o centro sobem juntos, o
+///   pincel **não se esgota**, e um traço demorado empilha sem teto;
+/// - **Draw sem Accumulate** — o vértice atravessa `dist >= 1` e **sai da
+///   pegada sozinho**, o que auto-limita por GEOMETRIA (*o vértice andou mais
+///   que o raio*), um número que muda quando o artista muda o pincel;
+/// - **a DEMÃO** para numa **ALTURA escolhida**, que não muda com o raio.
 ///
-/// - **Accumulate ON** (`from_live`) — o vértice e o centro sobem juntos, o
-///   pincel **não se esgota**, e um traço demorado empilha sem teto.
-/// - **Accumulate OFF** — o vértice atravessa `dist >= 1` e **sai da pegada
-///   sozinho**, o que auto-limita por GEOMETRIA. ⚠️ E isso não é a mesma coisa
-///   que o Layer: o teto dele é uma **ALTURA escolhida**, o deste é *"o vértice
-///   andou mais que o raio"* — um número que muda quando o artista muda o raio.
-///
-/// ⇒ **os dois deixaram de colapsar, e o Layer é hoje uma ferramenta distinta**
-/// (altura constante, saturante, persistente por vértice e **apagável**). Ele é
-/// a wave W8 do [`plano dos modos`](../../../docs/3D/21_plano_modos_e_ferramentas.md),
-/// e o que ele traz de novo é a ideia 3 do doc 20 §10: **estado persistente por
-/// vértice** — que é também o que obriga um plano novo a entrar no
-/// `ModelSnapshot` do undo **no mesmo commit** que o cria.
+/// ⚠️ **E a segunda metade daquela nota foi REFUTADA por medição, não
+/// construída:** ela prometia *"estado persistente por vértice, que obriga um
+/// plano novo a entrar no `ModelSnapshot` do undo no mesmo commit"*. Medido no
+/// `layer.cc`, o `layer_displacement_factor` da referência mora no `ss.cache` —
+/// construído no pen-down, **destruído no pen-up** —, logo é estado de TRAÇO e
+/// não do documento; e do nosso lado ele nem sequer é um plano novo, porque o
+/// `accum` que o motor já guarda **é** ele (ver [`crate::GripLaw::coat`]).
+/// *Um custo nomeado num plano é uma afirmação sobre um número que a medição
+/// pode remover.*
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Verb {
     /// Empurra ao longo da normal **da ÁREA** (uma direção para o dab inteiro) —
@@ -294,11 +291,66 @@ pub enum Verb {
     /// ⚠️ **O SculptGL NÃO O TEM** — a sexta vez a mesma frase (ver
     /// [`crate::RefMode`]).
     SurfaceSmooth,
+    /// **A DEMÃO** — uma camada de espessura ESCOLHIDA, saturante e apagável
+    /// (`layer.cc`, o `SCULPT_BRUSH_TYPE_LAYER` do Blender).
+    ///
+    /// **A lei, em três linhas:**
+    ///
+    /// ```text
+    /// d ← clamp(d + w·força·(1,05 − |d|),  0, 1−máscara)   // satura
+    /// alvo = pre + normal_pre · sinal · altura              // a demão CHEIA
+    /// pos  = lerp(pre, alvo, d)                             // o aplicador de sempre
+    /// ```
+    ///
+    /// ⚠️ **A propriedade que o define é o PLATÔ, e ela está MEDIDA:** *todo*
+    /// peso da pegada converge para `d = 1,0000` — o falloff é uma **TAXA**
+    /// (quão depressa cada vértice lá chega), nunca um perfil. Medido em
+    /// `measure_layer_law`, dabs até 99 % do teto: peso `1,00` → **1** dab ·
+    /// `0,50` → 5 · `0,25` → 10 · `0,10` → 28 · `0,02` → 142. É isso que faz de
+    /// uma demão uma demão em vez de um [`Self::Draw`] com teto.
+    ///
+    /// ⚠️ **E é isso que o separa do [`Self::Draw`], depois de a cerca de
+    /// Chesterton ter caído:** o doc do plano 21 §5.1 registrava que os dois
+    /// *"colapsavam"* sob a lei do envelope, e a wave do accumulate (2026-08-11)
+    /// **matou o envelope** — hoje o Draw com Accumulate empilha sem teto, e sem
+    /// ele auto-limita-se por GEOMETRIA (*o vértice andou mais que o raio*), que
+    /// é uma grandeza do PINCEL. O teto da demão é uma **ALTURA**, um número que
+    /// não se move quando o artista muda o raio.
+    ///
+    /// ⚠️ **O `accum` É a fração da demão, e é isso que dispensa um plano
+    /// novo.** O aplicador já anda `lerp(pre, alvo, accum)`; pondo o alvo na
+    /// altura CHEIA, o `accum` que o motor já guarda passa a ser exactamente o
+    /// `displacement_factor` da referência. O plano por-vértice que o plano 21
+    /// prometia — e a lei do repo que ele arrastava (*ao adicionar um plano,
+    /// adicione-o ao snapshot de undo no MESMO commit*) — **não existe**: medido
+    /// no `layer.cc`, o `layer_displacement_factor` mora no `ss.cache`, que o
+    /// Blender constrói no pen-down e **destrói no pen-up** (`MEM_delete`), logo
+    /// ele é estado de TRAÇO, irmão do nosso `pre` congelado e não da máscara.
+    ///
+    /// ⚠️ **DIVERGÊNCIA DECLARADA — o segundo `f` do Blender não é portado, e a
+    /// medição diz que portá-lo QUEBRARIA o verbo.** Lá a escrita é `pos +=
+    /// (alvo − pos)·f` sobre a posição VIVA; o nosso aplicador anda do `pre`
+    /// CONGELADO, então o mesmo `·f` seria re-aplicado do base a cada dab e o
+    /// platô convergido passaria a valer `f · altura` — o falloff a vazar para
+    /// dentro da única propriedade que o verbo entrega (medido: `1,000000`
+    /// contra `0,500000` no peso 0,5). As duas recorrências **pousam no mesmo
+    /// lugar**; o que difere é o transiente (pior separação `0,26–0,37` da
+    /// altura, fechada em 8–55 dabs conforme o peso).
+    ///
+    /// ⚠️ **E o `f` da referência ali é a atenuação GENÉRICA de borda**, a mesma
+    /// que todo pincel do Blender multiplica no `calc_translations` — não um
+    /// amortecimento próprio da demão. No nosso motor essa atenuação **é** o
+    /// `accum`, e aplicá-la duas vezes é o perfil-em-dobro que o
+    /// [`crate::Grip::Hold`] já documenta ter pago uma vez.
+    ///
+    /// ⚠️ **O SculptGL NÃO O TEM** — a sétima vez a mesma frase (ver
+    /// [`crate::RefMode`]).
+    Layer,
 }
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 22] = [
+    pub const ALL: [Self; 23] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -321,6 +373,7 @@ impl Verb {
         Self::MultiplaneScrape,
         Self::SlideRelax,
         Self::SurfaceSmooth,
+        Self::Layer,
     ];
 
     /// **Este verbo pode ACUMULAR?** — a porta única do `accumulate`.
@@ -335,9 +388,17 @@ impl Verb {
     /// ⚠️ Porta e não um `matches!` no sítio de uso: o painel pergunta para
     /// OFERECER o interruptor e o aplicador pergunta para HONRAR o clique, e
     /// duas cópias divergiriam num controle que aparece e não faz nada.
+    ///
+    /// ⚠️ **A DEMÃO fica de fora, e é a referência que a tira:** o `layer.cc`
+    /// mede as distâncias contra `orig_data.positions` **incondicionalmente** —
+    /// ele não consulta o `BRUSH_ACCUMULATE`, ao contrário dos irmãos de
+    /// carimbo. E há razão para isso: o que o Accumulate compra num Draw é
+    /// *deixar o pincel não se esgotar*, e a demão já tem o próprio motor de
+    /// saturação no [`crate::GripLaw::coat`]. Oferecer o interruptor aqui seria
+    /// um segundo controle sobre a mesma pergunta.
     #[must_use]
     pub fn accumulates(self) -> bool {
-        matches!(self.grip(), Grip::Stamp)
+        matches!(self.grip(), Grip::Stamp) && self != Self::Layer
     }
 
     /// Este verbo escreve na MÁSCARA em vez da posição?
@@ -408,6 +469,12 @@ impl Verb {
                 // (`if (angle >= 0.0f)`). É o `if (flip) angle *= -1` do
                 // `multiplane_scrape.cc:657`, e não uma força negativa.
                 | Self::MultiplaneScrape
+                // ⚠️ **A DEMÃO cava, e é o `brush.direction` da referência** —
+                // no `layer.cc` o sinal viaja no `cache.bstrength`, que o
+                // Blender já entrega negativo. Aqui ele viaja no alvo (o `sign`
+                // do `compute_target`), porque o nosso `accum` é a MAGNITUDE da
+                // demão e uma magnitude não tem lado.
+                | Self::Layer
         )
     }
 
@@ -460,6 +527,7 @@ impl Verb {
             Self::MultiplaneScrape => "Multiplane Scrape",
             Self::SlideRelax => "Slide Relax",
             Self::SurfaceSmooth => "Surface Smooth",
+            Self::Layer => "Layer",
         }
     }
 
@@ -589,6 +657,7 @@ mod defaults;
 mod magnitudes;
 pub use magnitudes::{
     CLAY_PLANE_FRACTION, CLAY_THUMB_TILT_MAX_DEG, CLAY_THUMB_TILT_STEP_DEG, CREASE_FRACTION,
-    DEFAULT_MULTIPLANE_ANGLE_DEG, MULTIPLANE_ANGLE_MAX_DEG, MULTIPLANE_ANGLE_SMOOTH,
-    MULTIPLANE_TIP_STRETCH, PINCH_GAIN, REACH_FRACTION, STRIP_PLANE_FRACTION, STRIP_REACH_FRACTION,
+    DEFAULT_MULTIPLANE_ANGLE_DEG, LAYER_HEIGHT_HARD_MAX, LAYER_HEIGHT_UI_MAX,
+    MULTIPLANE_ANGLE_MAX_DEG, MULTIPLANE_ANGLE_SMOOTH, MULTIPLANE_TIP_STRETCH, PINCH_GAIN,
+    REACH_FRACTION, STRIP_PLANE_FRACTION, STRIP_REACH_FRACTION,
 };

@@ -1003,14 +1003,21 @@ fn the_accumulate_switch_is_offered_only_where_it_does_something() {
         ui.brush.verb = verb;
         let (mut host, mut state) = arrange(ui.clone());
         let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
-        let stamps = matches!(verb.grip(), ph2d_sculpt3d::Grip::Stamp);
+        // ⚠️ **A porta é `Verb::accumulates()`, e não o GRIP** — a segunda vez
+        // que este repo paga a mesma lição na mesma janela (o
+        // `stroke_apply_tests` a pagou com o `unit_accum`). `Grip::Stamp` diz
+        // *que gesto é este*; quem responde *este verbo lê o interruptor?* é a
+        // porta, e a demão é um carimbo que **não** o lê (o `layer.cc` mede
+        // contra o `orig` incondicionalmente). Enquanto os dois concordassem, o
+        // gate era verde por acidente.
+        let offers = verb.accumulates();
         assert_eq!(
             painted
                 .iter()
                 .any(|(pid, _)| *pid == ids::SCULPT3D_ACCUMULATE),
-            stamps,
+            offers,
             "com {verb:?} o interruptor devia {}",
-            if stamps { "estar lá" } else { "sumir" }
+            if offers { "estar lá" } else { "sumir" }
         );
     }
 }

@@ -309,6 +309,9 @@ impl RefMode {
             // ⚠️ **E nem o Surface Smooth**, a sexta: o `Smooth.js` é o
             // laplaciano CRU — o que o HC acrescenta (o `b`, e a média dele) não
             // tem uma linha de parente lá.
+            // ⚠️ **E nem a DEMÃO**, a sétima: `layer.cc` é do Blender, e o
+            // SculptGL não tem ferramenta com estado por-vértice ao longo do
+            // traço — que é a lei inteira deste verbo.
             Self::S => !matches!(
                 verb,
                 Verb::ClayStrips
@@ -317,6 +320,7 @@ impl RefMode {
                     | Verb::MultiplaneScrape
                     | Verb::SlideRelax
                     | Verb::SurfaceSmooth
+                    | Verb::Layer
             ),
             // A lei de kernel (bilateral · tangencial · front-face contínuo) e
             // a `StrengthCurve::Squared` do E13.

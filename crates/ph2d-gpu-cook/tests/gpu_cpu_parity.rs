@@ -672,6 +672,15 @@ fn wiggle_kernel_matches_the_cpu_within_epsilon() {
     g.set_param(node, "amplitude", 1.7);
     g.set_param(node, "frequency", 0.9);
     g.set_param(node, "seed", 3.0);
+    // ⚠️ **A fixture TEM de conter a lei nova, senão a paridade é VERDE POR
+    // VÁCUO.** Até 2026-08-16 este gate cozinhava `octaves = 1` (o default), e o
+    // laço fBm e a costura do laço no tempo — que o kernel passou a ter — não
+    // eram percorridos por lado nenhum: os dois concordariam por não correrem.
+    // É a mesma armadilha que a fixture do `value.noise` documentou quando ela
+    // cozinhava `kernel = 0`.
+    g.set_param(node, "octaves", 4.0);
+    g.set_param(node, "amp_mult", 0.63);
+    g.set_param(node, "loop_len", 3.7);
     assert_gpu_parity(&gpu, &reg, &g, out, 2);
 }
 
@@ -3721,9 +3730,15 @@ fn drive_kernel_matches_the_cpu_across_channels_modes_and_both_value_lengths() {
 /// **`value.noise` on the device — the coherent-noise producer, fBm and all.**
 /// `grid → value.noise → motion.drive(Y) → output`, no CPU seam. The noise's
 /// lattice hash + fade are byte-mirrors of `motion.wiggle` (whose kernel already
-/// has a device parity gate), so what THIS test adds is the piece wiggle never
-/// exercises: the **fBm octave loop** (`octaves = 3`, so three layers sum and
-/// normalize on the GPU) reaching the screen through a value→drive chain.
+/// has a device parity gate), so what THIS test adds is the fBm loop reaching the
+/// screen through a **value→drive chain** (`octaves = 3`, three layers summing and
+/// normalizing on the GPU).
+///
+/// ⚠️ **Esta frase dizia "the piece wiggle never exercises" e deixou de ser
+/// verdade em 2026-08-16**, quando o `motion.wiggle` ganhou as próprias oitavas
+/// (doc 89 folha 06, grupo N) e a fixture dele passou a cozinhar `octaves = 4`.
+/// O que sobra de exclusivo aqui é a ROTA (um produtor de valor a alimentar o
+/// `motion.drive`), não o laço.
 ///
 /// Non-round params so a unit slip can't hide behind a tidy number; the integer
 /// hash must land bit-exact per lattice cell or the offset diverges by

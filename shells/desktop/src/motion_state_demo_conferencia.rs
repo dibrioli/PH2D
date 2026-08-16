@@ -448,6 +448,41 @@ pub(super) fn rate(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> 
     sinks
 }
 
+/// **O TREMOR GANHA TEXTURA (e uma volta)** — a cena `=54`, o grupo N.
+pub(super) fn octave(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_octave::build_octave_demo_document(doc, registry).unwrap_or_default();
+    let (oct, amp_mult, loop_len) = conferencia_demos_octave::knobs();
+    eprintln!(
+        "[octave-demo] DOIS PARES ({} bandas). Cada par tem o seu CONTROLE ao lado.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_octave::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) DE' PLAY: as quatro tem a MESMA amplitude e a MESMA frequencia de proposito -- o que
+  muda e' a FORMA do tremor, e uma foto de um instante nao a mostra.
+  (!) 1-2, AS OITAVAS ({oct:.0}, com peso {amp_mult:.2} por oitava): a de cima ondula LISA, a de
+  baixo ondula E TREME -- a mesma onda com detalhe empilhado em cima. Medido, a rugosidade sobe de
+  {RUFF_FLAT:.5} para {RUFF_ROUGH:.5} e a excursao FICA na mesma ordem ({SPAN_FLAT:.2} contra
+  {SPAN_ROUGH:.2}): se a de baixo so' parecer MAIOR, isto virou um segundo controle de amplitude.
+  (!) 3-4, O LACO ({loop_len:.0}s): olhe a de baixo por uns segundos -- o mesmo tremor VOLTA. Medido
+  na volta de {loop_len:.0}s, o controle desvia {LOOP_OPEN:.3} e a fileira com laco {LOOP_CLOSED:.6}.
+  E' o unico par desta cena que precisa de PACIENCIA: um campo que fecha e um que nao fecha sao
+  indistinguiveis num instante.",
+    );
+    sinks
+}
+
+// Os numeros que a sonda `measure_what_the_scene_shows` da cena 54 imprime.
+const RUFF_FLAT: f32 = 0.00189;
+const RUFF_ROUGH: f32 = 0.01933;
+const SPAN_FLAT: f32 = 3.887;
+const SPAN_ROUGH: f32 = 2.494;
+const LOOP_OPEN: f32 = 3.855;
+const LOOP_CLOSED: f32 = 0.000002;
+
 // Os numeros que a sonda `measure_what_the_scene_shows` imprime, medidos na
 // arvore. Eles vivem em consts para a mensagem citar a MEDICAO e nao um numero
 // que alguem lembrou.

@@ -39,6 +39,46 @@ pub(crate) fn value_noise_2d(x: f32, y: f32) -> f32 {
     nx0 + v * (nx1 - nx0)
 }
 
+/// **O deslocamento de OITAVA — e o que ele de facto compra, medido.**
+///
+/// ⚠️ **A minha primeira justificativa era mais forte que o facto, e a mutação
+/// me corrigiu.** Ela dizia que sem o deslocamento no eixo X — ou com ele no
+/// eixo Y — dois elementos tremeriam *exactamente juntos*, porque `y` aqui é a
+/// IDENTIDADE do elemento (`i + seed`, uma linha de ruído por instância). Medido:
+/// **não**. O `eval` da folha escala as DUAS coordenadas por oitava
+/// (`px *= lac; py *= lac`), então a linha de cada elemento já se separa sozinha
+/// e a mutação do eixo **sobreviveu aos cinco gates**.
+///
+/// ⚠️ **O que o deslocamento compra é o CANTO DEGENERADO**, e ali ele é grande:
+/// em `t = 0` com `seed = 0`, o elemento `0` tem `px = 0` **e** `py = 0`, e
+/// multiplicar zero por dois é zero — todas as oitavas caem no MESMO canto da
+/// grade, a soma colapsa numa oitava só e o valor fica preso em **`-1.000000`**,
+/// o extremo do alcance (é literalmente `hash2(0, 0)`). Com o deslocamento,
+/// **`-0.521581`**. Uma peça atirada ao extremo no instante zero de toda
+/// reprodução é visível, e é o que o gate do canto degenerado pina.
+///
+/// ⚠️ **O eixo é o X por CONVENÇÃO com motivo, não por correção:** X é o tempo,
+/// que é o que este nó rola, e Y é a identidade, que ele não deve mexer. Os dois
+/// eixos curam o canto; escolher o que não carrega identidade é a escolha que
+/// não precisa de ser re-explicada.
+///
+/// ⚠️ **`o = 0` soma `0.0` e `x + 0.0` é `x` em IEEE-754** ⇒ com uma oitava o
+/// campo é BIT A BIT o de sempre, que é o que faz o default reduzir.
+pub(crate) fn octave(x: f32, y: f32, o: u32) -> f32 {
+    value_noise_2d(x + o as f32 * OCTAVE_X_STEP, y)
+}
+
+/// O passo do deslocamento de oitava ao longo do tempo. Um número grande e sem
+/// relação com a grade — o que ele precisa é de não ser uma vizinhança.
+const OCTAVE_X_STEP: f32 = 1013.0;
+
+/// **A composição deste nó**: a lei da folha `ph2d_fbm` sobre o ruído de VALOR
+/// dele. Uma porta, dois chamadores — o `eval` e os gates —, senão o que os
+/// gates medem deixa de ser o que o produto faz.
+pub(crate) fn fbm(x: f32, y: f32, spec: ph2d_fbm::Spec) -> f32 {
+    ph2d_fbm::eval(spec, x, y, octave)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

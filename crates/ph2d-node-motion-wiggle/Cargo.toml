@@ -12,3 +12,8 @@ authors.workspace = true
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
+# A LEI fractal, não o ruído — a folha carrega como as oitavas se somam e
+# recebe o ruído de base por closure, então adotá-la NÃO muda a aparência
+# deste nó (o `hash2` daqui continua sendo o daqui). É o quarto consumidor,
+# depois do `motion.noise`, do `force.curl` e do `force.wind`.
+ph2d-fbm = { path = "../ph2d-fbm" }

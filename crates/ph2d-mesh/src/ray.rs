@@ -128,12 +128,50 @@ pub struct Hit {
     pub normal: [f32; 3],
 }
 
+/// A folga das barycêntricas — **a MESMA de [`crate::tri_geom`]**, e pela mesma
+/// razão de tipo: `f32::EPSILON` é `1,19e-7` e as barycêntricas são O(1), então
+/// `1e-6` são umas oito casas de ruído.
+///
+/// ⚠️ **Ela nasceu aqui em 2026-08-16, e o que a trouxe foi a REFUTAÇÃO da
+/// justificativa que o irmão escrevia.** O cabeçalho do `tri_geom.rs` defendia a
+/// estreiteza deste teste assim:
+///
+/// > *"um falso positivo na aresta partilhada elege o triângulo vizinho, e o
+/// > artista não distingue"*
+///
+/// A frase raciocina sobre os DOIS triângulos aceitarem — e **nunca sobre
+/// NENHUM aceitar**. Um teste estrito numa aresta exata recusa dos dois lados, e
+/// o resultado não é uma escolha ambígua: é um **BURACO**. E o buraco não é
+/// hipotético nesta malha — [`Mesh::raycast`] parte cada QUAD em `(0,1,2)` e
+/// `(0,2,3)`, que partilham a diagonal e a testam com **ordens de vértice
+/// diferentes**, então cada uma das 98.304 faces da esfera de fábrica carrega
+/// uma aresta interna por onde vazar.
+///
+/// ⚠️ **MEDIDO antes de mudar, porque a magnitude decide se vale o risco:** um
+/// leque de 4096 raios apontados ao centro **não vazava** (0 misses nas duas
+/// esferas), e o que vazava era a ESTABILIDADE — perturbar a direção em **um
+/// ULP** trocava acerto por erro em `1 de 6144` empurrões. É pouco, e é o
+/// bastante: um pick que muda de resposta no último bit da direção é um pick que
+/// pisca sob a mão do artista.
+///
+/// ⚠️ **A folga não pode fabricar um acerto onde não há superfície**, e é a
+/// geometria que garante isso: `1e-6` de barycêntrica sobre um triângulo de
+/// aresta `e` alcança `~e·1e-6` de mundo — quatro ordens abaixo de um texel de
+/// qualquer malha que este módulo esculpe. Ela alarga a aceitação **para dentro
+/// da vizinhança do próprio triângulo**, nunca para o vazio.
+const BARY_SLACK: f32 = 1e-6;
+
 /// Möller–Trumbore. Devolve a distância ao longo de `dir` (unitária), ou `None`.
 ///
-/// ⚠️ **Estrito nas bordas**, e o irmão [`crate::TriEdges::ray_hit`] é
-/// tolerante — leia o cabeçalho do `tri_geom.rs` para o porquê. `pub(crate)`
-/// só para o gate que pina a divergência entre os dois: sem ele, o par pode
-/// convergir sem ninguém notar que uma das duas perguntas mudou de resposta.
+/// ⚠️ **Tolerante nas bordas, como o irmão [`crate::TriEdges::ray_hit`]** — ver
+/// [`BARY_SLACK`] para a medição que juntou os dois. `pub(crate)` só para o gate
+/// que compara o par: sem ele, um deles pode mudar de resposta sem ninguém
+/// notar.
+///
+/// ⚠️ **O `t` NÃO ganha folga.** As barycêntricas dizem *o raio passa por dentro
+/// do triângulo?* e é ali que a aresta partilhada mora; o `t` diz *a que
+/// distância, e para que lado?* — afrouxá-lo aceitaria superfície **ATRÁS** da
+/// origem do raio, que é o cursor a agarrar o outro lado do modelo.
 pub(crate) fn ray_triangle(
     origin: [f32; 3],
     dir: [f32; 3],
@@ -151,12 +189,12 @@ pub(crate) fn ray_triangle(
     let inv_det = 1.0 / det;
     let tv = [origin[0] - a[0], origin[1] - a[1], origin[2] - a[2]];
     let u = dot(tv, p) * inv_det;
-    if !(0.0..=1.0).contains(&u) {
+    if !(-BARY_SLACK..=1.0 + BARY_SLACK).contains(&u) {
         return None;
     }
     let q = cross(tv, e1);
     let v = dot(dir, q) * inv_det;
-    if v < 0.0 || u + v > 1.0 {
+    if v < -BARY_SLACK || u + v > 1.0 + BARY_SLACK {
         return None;
     }
     let t = dot(e2, q) * inv_det;

@@ -14,19 +14,25 @@
 //! vez — que é exatamente o que a referência faz à mão, com cinco variáveis
 //! locais recicladas no laço de fora.
 //!
-//! # ⚠️ Já existe um Möller–Trumbore nesta crate, e o VIÉS deles é OPOSTO
+//! # ⚠️ Já existe um Möller–Trumbore nesta crate, e o VIÉS deles era OPOSTO
 //!
-//! O [`crate::ray::ray_triangle`] (privado, o do *picking*) recusa em bordas
-//! exatas: `u` e `v` são testados contra `0.0..=1.0` sem folga. Isso é o certo
-//! **para um cursor** — um falso positivo na aresta partilhada elege o triângulo
-//! vizinho, e o artista não distingue.
+//! ⚠️ **Esta seção afirmava o contrário até 2026-08-16, e a medição a
+//! derrubou.** Ela dizia que o [`crate::ray::ray_triangle`] (o do *picking*)
+//! recusava em bordas exatas *"e isso é o certo para um cursor — um falso
+//! positivo na aresta partilhada elege o triângulo vizinho, e o artista não
+//! distingue"*. A frase raciocina sobre os DOIS triângulos aceitarem e **nunca
+//! sobre NENHUM aceitar**: um teste estrito numa aresta exata recusa dos dois
+//! lados, e isso não é uma escolha ambígua — é um **buraco**. Medido, ele custa
+//! `1 em 6144` empurrões de **um ULP** a trocar acerto por erro no pick da
+//! esfera de fábrica. Hoje os dois carregam folga, pelo mesmo número; o porquê
+//! completo está em [`crate::ray::BARY_SLACK`].
 //!
-//! Aqui o custo é o oposto e não é cosmético. Um falso **negativo** na aresta
-//! partilhada deixa de marcar uma travessia de aresta de voxel, e o *flood fill*
-//! que decide o SINAL do campo escapa por esse furo: a malha inteira sai do
-//! avesso. A referência diz isso no próprio comentário — *"we favor false
-//! positive just in case... mainly because of the voxel-remesh"* — então
-//! [`TriEdges::ray_hit`] carrega folga nas barycêntricas.
+//! O custo AQUI segue sendo o que sempre foi, e continua decidindo: um falso
+//! **negativo** na aresta partilhada deixa de marcar uma travessia de aresta de
+//! voxel, e o *flood fill* que decide o SINAL do campo escapa por esse furo — a
+//! malha inteira sai do avesso. A referência diz isso no próprio comentário —
+//! *"we favor false positive just in case... mainly because of the
+//! voxel-remesh"*.
 //!
 //! ⚠️ **E a folga NÃO pode ser copiada da referência.** Lá ela é `1e-15`, num
 //! motor de `f64`, onde vale uns 5 ulp perto de 1.0. Em `f32` a nossa precisão

@@ -136,10 +136,21 @@ fn a_point_on_the_triangle_is_at_zero_distance() {
     assert!((q[0] - 0.25).abs() < 1e-5 && (q[1] - 0.25).abs() < 1e-5);
 }
 
-/// O gate do VIÉS: é ele que torna visível que existem dois Möller–Trumbore
-/// nesta crate e por que eles discordam.
+/// **OS DOIS MÖLLER–TRUMBORE CONCORDAM NA ARESTA PARTILHADA** — e este gate
+/// nasceu afirmando o CONTRÁRIO.
+///
+/// ⚠️ Ele chamava-se `the_lenient_ray_hits_the_shared_edge_that_the_strict_one_misses`
+/// e pinava a estreiteza do irmão de picking como decisão, com a justificativa
+/// do cabeçalho do módulo. A medição de 2026-08-16 derrubou a justificativa (ver
+/// [`crate::ray::BARY_SLACK`]): recusar dos DOIS lados não é uma escolha
+/// ambígua, é um buraco, e ele custava `1 em 6144` empurrões de um ULP a trocar
+/// acerto por erro no pick.
+///
+/// **A metade que sobrevive é a que sempre importou** — *o ruído de `f32` na
+/// borda não pode apagar uma superfície* —, e ela passou a ser exigida dos dois.
+/// A mutação que re-estreita qualquer um deles sangra aqui.
 #[test]
-fn the_lenient_ray_hits_the_shared_edge_that_the_strict_one_misses() {
+fn both_rays_hit_the_shared_edge_and_absorb_f32_noise() {
     // Dois triângulos que partilham a aresta de x = 0 a x = 1 em y = 0. Um raio
     // que sobe exatamente por cima dessa aresta tem de acertar ALGUÉM — no
     // voxelizador, errar os dois é um furo por onde o flood fill escapa.
@@ -152,9 +163,8 @@ fn the_lenient_ray_hits_the_shared_edge_that_the_strict_one_misses() {
     assert!(lenient.is_some(), "o tolerante recusou a aresta partilhada");
     assert!((lenient.unwrap() - 1.0).abs() < 1e-4);
 
-    // E o estrito — o do picking — é o controle: ele aceita ESTE caso (t = 0
-    // satisfaz `0.0..=1.0`), então o par só diverge quando o arredondamento
-    // empurra a barycêntrica para fora por uma fração de ulp.
+    // O de PICKING acerta o mesmo caso — o controle de que o par não divergiu
+    // no lado fácil (t = 0 satisfaz qualquer das duas leis).
     let strict = crate::ray::ray_triangle(
         origin,
         dir,
@@ -162,14 +172,17 @@ fn the_lenient_ray_hits_the_shared_edge_that_the_strict_one_misses() {
         [1.0, 0.0, 0.0],
         [0.0, 1.0, 0.0],
     );
-    assert!(strict.is_some(), "o controle mudou de comportamento");
+    assert!(strict.is_some(), "o de picking recusou a aresta partilhada");
 
-    // O caso que os separa é o que sai por pouco: uma barycêntrica em −1e-7,
-    // dentro do ruído de `f32` e fora do intervalo fechado.
+    // ⚠️ **O caso que DECIDE**: uma barycêntrica em −3e-7 — dentro do ruído de
+    // `f32`, fora do intervalo fechado. Era aqui que os dois divergiam, e é aqui
+    // que a malha de QUADS vazava: cada face é partida em `(0,1,2)` e `(0,2,3)`,
+    // que testam a diagonal com ordens de vértice diferentes, então uma recusa
+    // por ruído acontece nos DOIS e o raio atravessa a superfície.
     let just_outside = [0.5, -3e-7, -1.0];
     assert!(
         a.ray_hit(just_outside, dir).is_some(),
-        "o tolerante tem de absorver ruído de f32 na borda"
+        "o do remesh tem de absorver ruído de f32 na borda"
     );
     assert!(
         crate::ray::ray_triangle(
@@ -179,8 +192,8 @@ fn the_lenient_ray_hits_the_shared_edge_that_the_strict_one_misses() {
             [1.0, 0.0, 0.0],
             [0.0, 1.0, 0.0]
         )
-        .is_none(),
-        "o estrito tem de recusar — é isto que a folga do remesh compra"
+        .is_some(),
+        "o de PICKING também — recusar aqui é o buraco de 1-em-6144 ULPs"
     );
 }
 

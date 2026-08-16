@@ -10,10 +10,10 @@
 | | |
 |---|---|
 | branch | `line/Vector` |
-| HEAD | **`703c2d1a8`** |
+| HEAD | **`d1d4e1112`** — este documento; o último commit de CÓDIGO é `703c2d1a8` |
 | merge-base com `main` | **`08e3c84c9`** |
-| commits | **9** |
-| diff | **65 arquivos, +3.241 / −732** |
+| commits | **10** (9 de código + este handoff) |
+| diff de código | **65 arquivos, +3.241 / −732** |
 
 ⚠️ **O `main` NÃO andou desde o fork** (`merge-base == main == 08e3c84c9`), então **hoje** a
 integração é um `--ff-only` trivial. **Esta caixa envelhece.** É a mesma frase que os handoffs da
@@ -246,11 +246,16 @@ os `--ignored` de adapter não a alcançam.
 
 ## 8. Reclamar o `incremental/`
 
-Feito no fecho, conforme o §1.5.9 item 7:
+Feito no fecho, conforme o §1.5.9 item 7 — **20 GB medidos** nesta worktree (`target/debug`; o
+`release` e o `ci-test` estavam a zero):
 
 ```bash
 rm -rf "$(git rev-parse --show-toplevel)"/target/*/incremental
 ```
+
+⚠️ **Reclamar no FIM, nunca desligar no COMEÇO:** durante a jornada o `incremental/` do `dev` é o
+que faz o `cargo check -p` voar; o que ele não pode é sobreviver à linha que o criou. Risco zero
+(o cargo o recria) e **sem ship**.
 
 ---
 

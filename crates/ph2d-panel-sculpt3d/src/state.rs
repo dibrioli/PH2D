@@ -560,8 +560,8 @@ pub fn arm_verb_defaults(ui: &mut Sculpt3dUi, verb: Verb) {
     if ui.brush.accumulate == from.default_accumulate() {
         ui.brush.accumulate = verb.default_accumulate();
     }
-    if ui.brush.falloff == from.default_falloff() {
-        ui.brush.falloff = verb.default_falloff();
+    if ui.brush.falloff == from.default_falloff(ui.brush.mode) {
+        ui.brush.falloff = verb.default_falloff(ui.brush.mode);
     }
     if (ui.radius_px - from.default_radius_px(BASE_RADIUS_PX)).abs() < 1e-6 {
         ui.radius_px = verb.default_radius_px(BASE_RADIUS_PX);

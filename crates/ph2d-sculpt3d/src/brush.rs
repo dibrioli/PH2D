@@ -342,7 +342,7 @@ impl Default for Brush {
             // com o que o verbo que SAI declara, então um pincel de fábrica em
             // `Smooth` contra uma tabela que diz `Plateau` parece *mexido* e
             // nunca mais seria armado por ninguém.
-            falloff: Verb::Draw.default_falloff(),
+            falloff: Verb::Draw.default_falloff(crate::RefMode::S),
             alpha: None,
             alpha_scale: crate::DEFAULT_ALPHA_SCALE,
             // ⚠️ **O eixo nasce em +Y — as camadas saem HORIZONTAIS**, que é a

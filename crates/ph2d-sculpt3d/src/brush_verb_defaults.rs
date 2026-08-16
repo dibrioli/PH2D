@@ -134,9 +134,16 @@ impl Verb {
     ///
     /// ⚠️ **Onde a fonte não tem resposta o nosso default fica** (o Sharpen, que
     /// o SculptGL não tem) — a mesma lei do `unwrap_or` da força.
+    ///
+    /// ⚠️ **O MODO é parâmetro, e até 2026-08-16 ele era `S` cravado** — então
+    /// escolher `b-mode` no painel deixava o pincel com a quártica do SculptGL,
+    /// e a curva que o Blender de facto veste era **inalcançável pelo produto**
+    /// por mais que o perfil dele a declarasse. É o mesmo defeito que o
+    /// [`crate::RefMode`] existe para não ter: *um modo que governa a LEI do
+    /// kernel e não governa o que o pincel nasce vestindo escolhe metade*.
     #[must_use]
-    pub fn default_falloff(self) -> Falloff {
-        self.profile(crate::RefMode::S)
+    pub fn default_falloff(self, mode: crate::RefMode) -> Falloff {
+        self.profile(mode)
             .and_then(|p| p.falloff)
             .unwrap_or(Falloff::Smooth)
     }

@@ -32,7 +32,7 @@
 //! decisão.
 
 use ph2d_mesh::{Face, Mesh, shapes};
-use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry, Verb};
+use ph2d_sculpt3d::{Brush, Dab, RefMode, SculptStroke, Symmetry, Verb};
 
 /// A recorrência do `offset_displacement_factors`, verbatim.
 fn step(disp: f32, f: f32, strength: f32) -> f32 {
@@ -229,7 +229,7 @@ fn the_radial_profile_of_a_coat() {
         verb: Verb::Layer,
         radius: r,
         strength: Verb::Layer.default_strength(),
-        falloff: Verb::Layer.default_falloff(),
+        falloff: Verb::Layer.default_falloff(RefMode::S),
         ..Brush::default()
     };
     println!(
@@ -319,7 +319,7 @@ fn the_mode_the_coat_is_born_in() {
             mode: m,
             radius: r,
             strength: 0.5,
-            falloff: Verb::Layer.default_falloff(),
+            falloff: Verb::Layer.default_falloff(RefMode::S),
             ..Brush::default()
         };
         for dabs in [8usize, 16, 64] {

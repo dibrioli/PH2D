@@ -47,7 +47,7 @@ fn the_smooth_falloff_lands_on_the_rim_with_zero_slope() {
     // envelhece calada.
     //
     // ⚠️ E ela envelheceu OUTRA VEZ, agora com as seis do Blender: `Sharp`,
-    // `Pow4`, `Smoothstep` e `Smoother` também aterrissam planas. **A lista
+    // `Sharper`, `Smooth` e `Smoother` também aterrissam planas. **A lista
     // abaixo não é o conjunto de quem pousa plano — é o conjunto de quem
     // PRECISA pousar plano**: a curva de FÁBRICA (nada de degrau no default) e
     // a da referência (a paridade se apoia nela). Quem mais tiver a
@@ -75,12 +75,12 @@ fn the_smooth_falloff_lands_on_the_rim_with_zero_slope() {
 /// *silhueta* errada.
 #[test]
 fn the_reference_curve_is_fuller_than_the_smooth_and_by_how_much() {
-    // A meio raio: `3/16 − 4/8 + 1` contra `(1 − 1/4)²`.
+    // A meio raio: `3/16 − 4/8 + 1` contra `3/4 − 1/4` (a smoothstep em `u = 1/2`).
     let (plateau, smooth) = (Falloff::Plateau.weight(0.5), Falloff::Smooth.weight(0.5));
     assert!((plateau - 0.687_5).abs() < 1e-6, "meio raio = {plateau}");
-    assert!((smooth - 0.562_5).abs() < 1e-6, "meio raio = {smooth}");
+    assert!((smooth - 0.5).abs() < 1e-6, "meio raio = {smooth}");
     assert!(
-        (plateau / smooth - 1.222_2).abs() < 1e-3,
+        (plateau / smooth - 1.375).abs() < 1e-3,
         "a razão a meio raio é o número da tabela: {}",
         plateau / smooth
     );
@@ -118,7 +118,7 @@ fn every_blender_preset_is_the_formula_the_reference_writes() {
         ("BRUSH_CURVE_CONSTANT", Falloff::Constant, |_u| 1.0),
         ("BRUSH_CURVE_LIN", Falloff::Linear, |u| u),
         ("BRUSH_CURVE_SHARP", Falloff::Sharp, |u| u * u),
-        ("BRUSH_CURVE_POW4", Falloff::Pow4, |u| u * u * u * u),
+        ("BRUSH_CURVE_POW4", Falloff::Sharper, |u| u * u * u * u),
         ("BRUSH_CURVE_ROOT", Falloff::Root, f32::sqrt),
         // ⚠️ A transcrição do C, NÃO a nossa forma reduzida.
         ("BRUSH_CURVE_SPHERE", Falloff::Sphere, |u| {
@@ -127,7 +127,7 @@ fn every_blender_preset_is_the_formula_the_reference_writes() {
         ("BRUSH_CURVE_INVSQUARE", Falloff::InvSquare, |u| {
             u * (2.0 - u)
         }),
-        ("BRUSH_CURVE_SMOOTH", Falloff::Smoothstep, |u| {
+        ("BRUSH_CURVE_SMOOTH", Falloff::Smooth, |u| {
             3.0 * u * u - 2.0 * u * u * u
         }),
         ("BRUSH_CURVE_SMOOTHER", Falloff::Smoother, |u| {

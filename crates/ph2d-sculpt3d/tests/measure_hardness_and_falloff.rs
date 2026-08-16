@@ -306,7 +306,7 @@ fn measure_one_dab_against_the_curve() {
         Falloff::Smooth,
         Falloff::Constant,
         Falloff::Sphere,
-        Falloff::Pow4,
+        Falloff::Sharper,
     ] {
         let brush = Brush {
             verb: Verb::Draw,

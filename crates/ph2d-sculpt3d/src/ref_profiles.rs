@@ -263,9 +263,26 @@ impl Verb {
 /// make lower values more sensitive"*. Vale para TODA tool: ele mora no
 /// `brush_strength`, que é o funil de todas elas — e é por isso que este `match`
 /// não tem braços por verbo.
+///
+/// ✅ **E a CURVA de fábrica também é lida — não da fonte, do Blender A CORRER.**
+/// A leitura estática dizia que o pincel de fábrica veste uma *curvemapping*
+/// custom (*"nenhuma das nove"*); o oráculo executável
+/// (`docs/3D/ferramentas/blender_sculpt_oracle.py`, Blender 5.2 com GUI —
+/// em `--background` o `region.data` é nulo e o sculpt segfaulta) reporta
+/// `curve_distance_falloff_preset = SMOOTH` e **deposita a analítica**: a
+/// `r/R = 0,258` o vértice move `0,417503` de um pico de `0,5` ⇒ razão
+/// **0,835**, contra **0,8348** de `3u² − 2u³` e **0,94** do spline de quatro
+/// pontos que a leitura estática previa. ⇒ [`Falloff::Smooth`], que desde
+/// 2026-08-16 **é** a smoothstep.
+///
+/// ⚠️ **O `accumulate` fica `None` aqui, e a assimetria é MEDIDA, não esquecida:**
+/// a curva o oráculo respondeu, os defaults por-tool ele não pode responder —
+/// eles moram no `.blend` binário (§7.0), e um valor inventado aqui seria pior
+/// que a ausência.
 const fn profile_b(_verb: Verb) -> Option<VerbProfile> {
     Some(VerbProfile {
         strength_curve: StrengthCurve::Squared,
+        falloff: Some(Falloff::Smooth),
         ..VerbProfile::SILENT
     })
 }

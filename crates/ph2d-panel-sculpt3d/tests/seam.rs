@@ -1514,7 +1514,7 @@ fn the_detail_chip_discloses_and_never_decides() {
     before.brush.plane_offset = -0.4;
     before.brush.pinch = 0.9;
     before.brush.hardness = 0.6;
-    before.brush.falloff = Falloff::Pow4;
+    before.brush.falloff = Falloff::Sharper;
     before.ui_level = UiLevel::Basic;
 
     // ⚠️ **As DUAS direções, e a primeira mutação provou que uma só não basta:**

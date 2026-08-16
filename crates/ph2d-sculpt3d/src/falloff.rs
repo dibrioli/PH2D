@@ -27,11 +27,11 @@
 /// | `CONSTANT`  | `1`                  | `1`           | [`Falloff::Constant`] |
 /// | `LIN`       | `u`                  | `1 − t`       | [`Falloff::Linear`] |
 /// | `SHARP`     | `u²`                 | `(1 − t)²`    | [`Falloff::Sharp`] |
-/// | `POW4`      | `u⁴`                 | `(1 − t)⁴`    | [`Falloff::Pow4`] |
+/// | `POW4`      | `u⁴`                 | `(1 − t)⁴`    | [`Falloff::Sharper`] |
 /// | `ROOT`      | `√u`                 | `√(1 − t)`    | [`Falloff::Root`] |
 /// | `SPHERE`    | `√(2u − u²)`         | `√(1 − t²)`   | [`Falloff::Sphere`] |
 /// | `INVSQUARE` | `u(2 − u)`           | `1 − t²`      | [`Falloff::InvSquare`] |
-/// | `SMOOTH`    | `3u² − 2u³`          | smoothstep    | [`Falloff::Smoothstep`] |
+/// | `SMOOTH`    | `3u² − 2u³`          | smoothstep    | [`Falloff::Smooth`] |
 /// | `SMOOTHER`  | `u³(6u² − 15u + 10)` | quíntica      | [`Falloff::Smoother`] |
 ///
 /// ⚠️ **A `Sphere` é a MESMA curva, e eu tinha escrito o contrário.** A nota da
@@ -40,24 +40,42 @@
 /// `(1 − t)(1 + t) = 1 − t²`. Uma diferença de FORMA não é uma diferença de
 /// CURVA, e um par de expressões só se compara depois de reduzido.
 ///
-/// ⚠️ **DUAS armadilhas de NOME, e as duas mordem em silêncio.** O Blender
-/// rotula o `POW4` de **"Sharper"** e o nosso [`Falloff::Sharper`] é
-/// `(1 − t²)⁴`, outra curva — por isso a nova se chama [`Falloff::Pow4`], o
-/// identificador dele. E ele rotula o `SMOOTH` de **"Smooth"**, enquanto o
-/// nosso [`Falloff::Smooth`] é `(1 − t²)²` — daí [`Falloff::Smoothstep`], que é
-/// o nome matemático e não colide. *Duas entradas com o mesmo rótulo são dois
-/// botões que o painel pinta lado a lado.*
+/// ⚠️ **DUAS armadilhas de NOME, e a cura foi APAGAR a curva inventada, não
+/// batizá-la de outra coisa.** O Blender rotula o `POW4` de **"Sharper"** e o
+/// `SMOOTH` de **"Smooth"**, e até 2026-08-16 este enum gastava esses dois
+/// nomes em curvas que **referência nenhuma tem** — `(1 − t²)⁴` e `(1 − t²)²` —
+/// com as leis do Blender escondidas sob [`Falloff::Pow4`] e
+/// [`Falloff::Smoothstep`], os identificadores dele. A wave anterior leu isso
+/// como uma colisão de RÓTULO e resolveu inventando um segundo nome; ⚠️ **o
+/// que ela não perguntou é de onde vinham as duas curvas ocupantes.** Elas não
+/// estão no `brush.cc`, não estão no SculptGL (que é o [`Falloff::Plateau`],
+/// `3d⁴ − 4d³ + 1`) e não trazem medição nenhuma atrás — *uma entrada de
+/// catálogo sem referência e sem número é um botão que ninguém pode julgar*.
+/// Apagadas as duas, a colisão **dissolve**: sobra um nome por lei, e o nome é
+/// o que o Blender escreve na tela.
 ///
-/// ⚠️ **E o que NÃO se lê no `brush.cc` é qual delas um pincel VESTE:** o
-/// `curve_preset` de um `Brush` zero-inicializado é `BRUSH_CURVE_CUSTOM = 0`, e
-/// o `brush_init_data` semeia a *curvemapping* dele com `CURVE_PRESET_SMOOTH` —
-/// uma bézier editável, **nenhuma das nove**. As nove são o que o artista pode
-/// ESCOLHER; a de fábrica é outra coisa. É por isso que
-/// `VerbProfile::falloff` do modo `B` continua `None`.
+/// ⚠️ **E o que o `brush.cc` NÃO diz é qual delas um pincel VESTE — a fonte
+/// não responde e o ORÁCULO respondeu.** A leitura estática era que o
+/// `curve_preset` de um `Brush` zero-inicializado é `BRUSH_CURVE_CUSTOM = 0` e
+/// que o `brush_init_data` semeia a *curvemapping* com `CURVE_PRESET_SMOOTH`,
+/// logo *"uma bézier editável, nenhuma das nove"*. **Medido no Blender 5.2 a
+/// correr** (`docs/3D/ferramentas/blender_sculpt_oracle.py`), o pincel de
+/// fábrica reporta `curve_distance_falloff_preset = SMOOTH`, e o perfil que ele
+/// deposita é a **analítica**: a `r/R = 0,258` ele move `0,417503` de um pico de
+/// `0,5` ⇒ razão **0,835**, contra **0,8348** de `3u² − 2u³` e **0,94** do
+/// spline de quatro pontos. *Um pincel não nasce zero-inicializado; ele nasce do
+/// arquivo de startup.* É por isso que o perfil do modo `B` declara
+/// [`Falloff::Smooth`] em vez de `None`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Falloff {
-    /// `(1 − t²)²` — **C¹ na borda** (valor e derivada zeram em `t = 1`), e é
-    /// isso que faz um traço não deixar degrau na fronteira do pincel.
+    /// `3u² − 2u³` com `u = 1 − t` — a **smoothstep**, e o `BRUSH_CURVE_SMOOTH`
+    /// do Blender, que é o preset do pincel de fábrica dele.
+    ///
+    /// ⚠️ **Ela SUBSTITUIU uma curva inventada que vestia este nome** (`(1 − t²)²`,
+    /// escolhida por desenho e que referência nenhuma tem). O nome é do Blender,
+    /// então a lei tem de ser a dele: um artista que escolhe *Smooth* aqui e no
+    /// Blender tem de receber o mesmo peso — medido, as duas divergiam **3,5% a
+    /// meio raio** (0,8789 contra 0,84375) e o nome não dizia isso.
     #[default]
     Smooth,
     /// `√(1 − t²)` — o perfil de uma esfera: cheio no miolo, tangente vertical
@@ -66,8 +84,13 @@ pub enum Falloff {
     /// ⚠️ **É o `BRUSH_CURVE_SPHERE` do Blender, ao pé da letra** — ele o
     /// escreve `√(2u − u²)`, que reduz a esta expressão (tabela acima).
     Sphere,
-    /// `(1 − t²)⁴` — pico estreito, ombro que morre cedo. É o falloff de quem
-    /// quer detalhe pequeno com pincel grande.
+    /// `(1 − t)⁴` — o `BRUSH_CURVE_POW4`, que o Blender **rotula "Sharper"**.
+    /// A mais estreita das nove.
+    ///
+    /// ⚠️ **Ela SUBSTITUIU uma segunda curva inventada** (`(1 − t²)⁴`), e aqui a
+    /// divergência era grande: a meio raio a nossa dava **0,7725** contra os
+    /// **0,3164** do Blender — **2,4×** —, ou seja *Sharper* era o nome de uma
+    /// curva GORDA num menu cujo dono a usa para detalhe fino.
     Sharper,
     /// `1` até a borda, e nada além. Um disco duro; o degrau é a feature.
     ///
@@ -108,21 +131,11 @@ pub enum Falloff {
     /// ⚠️ **Não confundir com [`Falloff::Sharper`]** (`(1 − t²)⁴`, da família do
     /// Painter): esta cai reto do centro, aquela tem platô e ombro curto.
     Sharp,
-    /// `(1 − t)⁴` — o `BRUSH_CURVE_POW4`, que o Blender **rotula "Sharper"**.
-    ///
-    /// ⚠️ O nome dele já é nosso e significa outra curva, então esta veste o
-    /// identificador em vez do rótulo. É a mais estreita das nove.
-    Pow4,
     /// `1 − t²` — o `BRUSH_CURVE_INVSQUARE`, escrito lá como `u(2 − u)`.
     ///
     /// É a [`Falloff::Sphere`] ao quadrado, ou a [`Falloff::Smooth`] pela raiz:
     /// as três são a mesma parábola vista com expoentes diferentes.
     InvSquare,
-    /// `3u² − 2u³` com `u = 1 − t` — a **smoothstep**, e o `BRUSH_CURVE_SMOOTH`.
-    ///
-    /// ⚠️ **O Blender a rotula "Smooth"**, que aqui já é `(1 − t²)²`; o nome
-    /// matemático desempata sem inventar nada.
-    Smoothstep,
     /// `u³(6u² − 15u + 10)` com `u = 1 − t` — a **smootherstep** de Perlin, o
     /// `BRUSH_CURVE_SMOOTHER`.
     ///
@@ -138,7 +151,7 @@ impl Falloff {
     /// `the_panel_offers_every_falloff_the_engine_has` compara este `ALL` com o
     /// array de ids do painel, então uma curva que entre aqui e não lá nasce
     /// inalcançável e o gate fica vermelho em vez de o chip sumir em silêncio.
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 10] = [
         Self::Smooth,
         Self::Sphere,
         Self::Sharper,
@@ -147,9 +160,7 @@ impl Falloff {
         Self::Plateau,
         Self::Linear,
         Self::Sharp,
-        Self::Pow4,
         Self::InvSquare,
-        Self::Smoothstep,
         Self::Smoother,
     ];
 
@@ -169,12 +180,12 @@ impl Falloff {
         let t = t.max(0.0);
         match self {
             Self::Smooth => {
-                let u = 1.0 - t * t;
-                u * u
+                let u = 1.0 - t;
+                3.0 * u * u - 2.0 * u * u * u
             }
             Self::Sphere => (1.0 - t * t).sqrt(),
             Self::Sharper => {
-                let u = 1.0 - t * t;
+                let u = 1.0 - t;
                 let u2 = u * u;
                 u2 * u2
             }
@@ -194,18 +205,9 @@ impl Falloff {
                 let u = 1.0 - t;
                 u * u
             }
-            Self::Pow4 => {
-                let u = 1.0 - t;
-                let u2 = u * u;
-                u2 * u2
-            }
             Self::InvSquare => {
                 let u = 1.0 - t;
                 u * (2.0 - u)
-            }
-            Self::Smoothstep => {
-                let u = 1.0 - t;
-                3.0 * u * u - 2.0 * u * u * u
             }
             Self::Smoother => {
                 let u = 1.0 - t;
@@ -226,10 +228,12 @@ impl Falloff {
             Self::Plateau => "Plateau",
             Self::Linear => "Linear",
             Self::Sharp => "Sharp",
-            Self::Pow4 => "Pow4",
-            Self::InvSquare => "Inv Square",
-            Self::Smoothstep => "Smoothstep",
-            Self::Smoother => "Smoother",
+                Self::InvSquare => "Inv Square",
+                Self::Smoother => "Smoother",
         }
     }
 }
+
+#[cfg(test)]
+#[path = "falloff_tests.rs"]
+mod tests;

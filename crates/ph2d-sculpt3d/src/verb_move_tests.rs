@@ -199,7 +199,17 @@ fn the_grab_applies_its_falloff_once_not_twice() {
         Symmetry::default(),
     );
 
-    let curve = crate::Falloff::default();
+    // ⚠️ **O falloff é o que o PINCEL declara, e até 2026-08-16 esta linha lia
+    // `Falloff::default()`** — a curva do enum, não a da ferramenta. Elas são
+    // coisas diferentes desde que `Brush::default()` passou a semear o falloff
+    // pelo perfil de referência (`Verb::Draw.default_falloff()` ⇒
+    // [`Falloff::Plateau`], a quártica do SculptGL), e o gate sobrevivia por um
+    // fio: com a `Smooth` antiga (`(1 − t²)²`) o erro contra `f` media `0,050`
+    // contra `0,148` do `f²`, e a barra pede `3×`. Trocar a lei da `Smooth`
+    // pela do Blender levou o par a `0,075 · 0,175` e o gate **caiu** — sobre um
+    // Grab correto. *A prescrição já estava escrita no doc acima; o código é
+    // que não a seguia.*
+    let curve = grab().falloff;
     let (mut worst_single, mut worst_double, mut checked) = (0.0f32, 0.0f32, 0);
     for (i, b) in before.iter().enumerate() {
         let d = ((b[0] - at[0]).powi(2) + (b[1] - at[1]).powi(2) + (b[2] - at[2]).powi(2)).sqrt()

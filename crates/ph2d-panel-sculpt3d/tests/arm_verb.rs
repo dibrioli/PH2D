@@ -37,7 +37,7 @@ fn switching_to_a_verb_wears_the_reference_of_that_verb() {
     assert!(!ui.brush.accumulate, "Crease.js não declara accumulate");
     assert_eq!(
         ui.brush.falloff,
-        Verb::Crease.default_falloff(),
+        Verb::Crease.default_falloff(ui.brush.mode),
         "a CURVA é a do verbo, e era ela que este seam não armava"
     );
 }
@@ -59,8 +59,8 @@ fn switching_to_a_verb_wears_the_reference_of_that_verb() {
 #[test]
 fn the_curve_is_armed_and_the_verb_without_a_reference_is_what_proves_it() {
     let mut ui = Sculpt3dUi::default();
-    let quartic = Verb::Draw.default_falloff();
-    let ours = Verb::Sharpen.default_falloff();
+    let quartic = Verb::Draw.default_falloff(ui.brush.mode);
+    let ours = Verb::Sharpen.default_falloff(ui.brush.mode);
     assert_ne!(
         quartic, ours,
         "o fixture só distingue se os dois verbos declararem curvas DIFERENTES"

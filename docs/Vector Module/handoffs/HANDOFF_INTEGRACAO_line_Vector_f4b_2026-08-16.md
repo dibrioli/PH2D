@@ -10,9 +10,10 @@
 | | |
 |---|---|
 | branch | `line/Vector` |
-| HEAD | **`d1d4e1112`** — este documento; o último commit de CÓDIGO é `703c2d1a8` |
+| HEAD | o **tip de `line/Vector`** — ⚠️ **não um sha escrito aqui**: os últimos commits são este próprio documento, então um literal envelheceria a cada correcção dele |
+| último commit de **CÓDIGO** | **`703c2d1a8`** — daí para cima é só `docs/` |
 | merge-base com `main` | **`08e3c84c9`** |
-| commits | **10** (9 de código + este handoff) |
+| commits de código | **9** |
 | diff de código | **65 arquivos, +3.241 / −732** |
 
 ⚠️ **O `main` NÃO andou desde o fork** (`merge-base == main == 08e3c84c9`), então **hoje** a

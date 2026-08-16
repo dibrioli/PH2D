@@ -107,27 +107,49 @@ fn the_reduced_motion_guard_stops_the_script_before_the_dispatch() {
 /// Discreto contra Expressivo, e com o interruptor ligado os dois estão mortos.
 ///
 /// A âncora é a FORMA IMPERATIVA (`Settings > Motion > REDUCED MOTION`) — o texto do PARE fala do
-/// interruptor em minúsculas e entre crases, então ele não conta como instrução. É uma propriedade
-/// de CONTAGEM e não de posição: um passo novo que o ligue entra no numerador sozinho.
+/// interruptor em minúsculas e entre crases, então ele não conta como instrução.
 ///
-/// *Mutação: apagar uma das linhas `DESLIGUE-O de volta` ⇒ RED, nomeando a diferença.*
+/// ⚠️ **A contagem é POR FUNÇÃO, e a versão que contava o arquivo inteiro era vácuo:** com
+/// `arms == disarms` medido globalmente, **migrar** um desarme de uma cena para a outra mantém
+/// `2 == 2` e o gate fica verde **com a cena de origem a deixar o interruptor ligado ao sair** —
+/// literalmente o defeito que ele existe para impedir. Cada roteiro é uma `fn` própria, então a
+/// propriedade posicional custa uma fatia do fonte e nada mais.
+///
+/// *Mutação: mover o `DESLIGUE-O de volta` da cena 3 para a cena 1 (contagem global intacta) ⇒
+/// RED, nomeando a função que arma sem restaurar.*
 #[test]
 fn every_step_that_arms_reduced_motion_also_disarms_it() {
     let src = include_str!("ui_motion_smoke.rs");
 
-    let arms = src.matches("Settings > Motion > REDUCED MOTION").count();
-    let disarms = src.matches("DESLIGUE-O de volta").count();
+    // Fatia o fonte por definição de `fn` no topo do arquivo — cada roteiro é uma delas.
+    let starts: Vec<usize> = src.match_indices("\nfn ").map(|(i, _)| i).collect();
+    assert!(
+        starts.len() > 2,
+        "o controlo positivo caiu: o fonte deixou de ter funcoes de topo, entao a fatia por \
+         funcao nao mede nada (o arquivo foi reestruturado?)"
+    );
+
+    let mut armed_anywhere = 0usize;
+    for (n, &lo) in starts.iter().enumerate() {
+        let hi = starts.get(n + 1).copied().unwrap_or(src.len());
+        let body = &src[lo..hi];
+        let arms = body.matches("Settings > Motion > REDUCED MOTION").count();
+        let disarms = body.matches("DESLIGUE-O de volta").count();
+        armed_anywhere += arms;
+
+        let name: String = body[4..].chars().take_while(|c| *c != '(').collect();
+        assert_eq!(
+            arms, disarms,
+            "`{name}` manda LIGAR o reduced motion {arms}x e desliga'-lo de volta {disarms}x. \
+             A preferencia e' PERSISTIDA (~/.ph2d/prefs.txt): o que sobra ligado envenena a \
+             proxima corrida -- de qualquer cena, de qualquer linha -- que passara' a medir a \
+             AUSENCIA do movimento achando que mede o movimento"
+        );
+    }
 
     assert!(
-        arms > 0,
+        armed_anywhere > 0,
         "o controlo positivo caiu: nenhum roteiro manda ligar o reduced motion, entao este \
          gate deixou de medir o que afirma (a frase foi reescrita?)"
-    );
-    assert_eq!(
-        arms, disarms,
-        "{arms} passo(s) mandam LIGAR o reduced motion e {disarms} mandam desliga'-lo de volta. \
-         A preferencia e' PERSISTIDA: o que sobra ligado envenena a proxima corrida -- de \
-         qualquer cena, de qualquer linha -- que passara' a medir a AUSENCIA do movimento \
-         achando que mede o movimento"
     );
 }

@@ -187,10 +187,16 @@ fn has_body_agrees_with_whether_begin_opens_a_scope() {
 
 /// **O vão que segue uma secção dobra com ela.** *Mutação: devolver `gap` cru ⇒ uma secção
 /// fechada continua a reservar o seu separador e a lista fica com um buraco.*
+///
+/// ⚠️ **A linha do `t = 1` nasceu UNILATERAL (`x - 8.0 < 1e-6`, sem o `.abs()`), e isso a tornava
+/// satisfazível por QUALQUER valor abaixo de oito.** Com as outras duas a pinar só `t = 0` e
+/// `t = 0,5`, um `clamp(0.0, 0.5)` no produto passava nos três — e os **onze** gates deste módulo
+/// ficavam verdes com o vão a dobrar metade errado. A assimetria é o cheiro: as duas linhas
+/// seguintes já traziam o `.abs()`, e a primeira era a que faltava.
 #[test]
 fn the_gap_after_a_section_folds_with_it() {
     let id = NodeId(8);
-    assert!(folded_gap(&store_with(id, 1.0, None), id, 8.0) - 8.0 < 1e-6);
+    assert!((folded_gap(&store_with(id, 1.0, None), id, 8.0) - 8.0).abs() < 1e-6);
     assert!(folded_gap(&store_with(id, 0.0, None), id, 8.0).abs() < 1e-6);
     assert!((folded_gap(&store_with(id, 0.5, None), id, 8.0) - 4.0).abs() < 1e-6);
 }

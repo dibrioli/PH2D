@@ -61,6 +61,10 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 /// The value type of the `anchor_*` inputs (mirror of `motion.look_at::VALUE`).
 const VALUE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
 const VALUE_COL: &str = "v";
+/// A massa INVERSA por partícula (`motion.pin_constraint`): `1` = livre, `0` =
+/// pinada. Convenção de string partilhada pelos solvers do módulo, soletrada
+/// LOCALMENTE por cada leitor (como `P` / `accel`) em vez de acoplar as crates.
+const INV_MASS_COL: &str = "inv_mass";
 
 /// Ceiling on a single step (see `motion.integrate`): guards a playhead jump.
 const MAX_DT: f32 = 0.1;
@@ -262,6 +266,23 @@ fn value_head(vals: &[f32]) -> f32 {
 /// ⚠️ **Consumed, never emitted** (the stream carries `P`/`sb_vel`/`sim_t`), so
 /// every tick starts from zero acceleration; and zeros are the IDENTITY, so a
 /// body no force reaches is byte-identical to the one that shipped.
+/// A massa inversa por partícula, alargada a `n` e tornada segura — o espelho
+/// exacto do leitor do `motion.collide`: **ausente lê como livre (`1`)**, e um
+/// peso negativo ou não-finito lê como **pinado (`0`)** em vez de inverter o puxão.
+///
+/// ⚠️ **Consumida, nunca emitida**, a mesma disciplina do `accel` — o
+/// `motion.pin_constraint` MULTIPLICA no que já está no stream, então um corpo que
+/// a reemitisse faria um pino parcial decair a cada tique.
+fn inv_mass_col(s: &Stream, n: usize) -> Vec<f32> {
+    match s.get(INV_MASS_COL) {
+        Some(Column::Scalar(v)) if v.len() == n => v
+            .iter()
+            .map(|w| if w.is_finite() { w.max(0.0) } else { 0.0 })
+            .collect(),
+        _ => vec![1.0; n],
+    }
+}
+
 fn accel_col(s: &Stream, n: usize) -> Vec<[f32; 2]> {
     match s.get("accel") {
         Some(Column::Vec2(v)) if v.len() == n => v.clone(),
@@ -278,10 +299,12 @@ fn pin_target(anchor: [f32; 2], rest: &[[f32; 2]], i: usize) -> [f32; 2] {
 
 /// One shape-matching step as a pure function. `pos`/`vel` are this tick's entry
 /// state; returns the new `(pos, vel)`.
+#[allow(clippy::too_many_arguments)]
 fn step(
     pos: &[[f32; 2]],
     vel: &[[f32; 2]],
     accel: &[[f32; 2]],
+    inv_mass: &[f32],
     anchor: [f32; 2],
     rest: &[[f32; 2]],
     dt: f32,
@@ -292,17 +315,29 @@ fn step(
     // Predict under inertia + gravity; pinned particles jump to their pin target.
     let mut pred = vec![[0.0f32; 2]; n];
     for i in 0..n {
+        let w = inv_mass.get(i).copied().unwrap_or(1.0);
         if p.is_pinned(i) {
             pred[i] = pin_target(anchor, rest, i);
+        } else if w <= 0.0 {
+            // ⚠️ **Duas espécies de pino, e a diferença é o ALVO.** O intrínseco
+            // (a linha de topo) é clampado a um alvo derivado do repouso + âncora,
+            // que uma `value.lfo` pode varrer; o genérico — a massa infinita que um
+            // `motion.pin_constraint` na cadeia de estado escreve — segura **onde
+            // está**, que é o que *pregar uma partícula* significa quando não há
+            // alvo nenhum a que a prender.
+            pred[i] = pos[i];
         } else {
             // The external `accel` lands beside the built-in gravity: both are
             // accelerations, and a prediction takes one as `a·dt²`. A pinned
             // particle is unmoved by it ON PURPOSE — a pin is a constraint, and
             // a force that could drag the pin would make the pin a suggestion.
             let a = accel.get(i).copied().unwrap_or([0.0, 0.0]);
+            // A massa inversa escala a ACELERAÇÃO e não a inércia (`vel · dt`), o
+            // espelho exacto do que a corda faz: `a = F/m` com o `gravity` lido como
+            // força por massa de referência. Peso `1` é byte-idêntico.
             pred[i] = [
-                pos[i][0] + vel[i][0] * dt + a[0] * dt2,
-                pos[i][1] + vel[i][1] * dt - p.gravity * dt * dt + a[1] * dt2,
+                pos[i][0] + vel[i][0] * dt + a[0] * dt2 * w,
+                pos[i][1] + vel[i][1] * dt - p.gravity * dt * dt * w + a[1] * dt2 * w,
             ];
         }
     }
@@ -344,12 +379,18 @@ fn step(
     let mut out_vel = vec![[0.0f32; 2]; n];
     let keep = 1.0 - p.damping;
     for i in 0..n {
+        // O puxão para o goal é distribuído pela massa inversa, exactamente como
+        // o `motion.integrate` escala a velocidade por ela: peso `1` é o corpo de
+        // hoje **ao bit** (`x · 1.0` é exacto em IEEE-754) e peso `0` deixa a
+        // partícula onde a predição a pôs — que, para um pino genérico, é onde ela
+        // já estava.
+        let pull = p.stiffness * inv_mass.get(i).copied().unwrap_or(1.0);
         let mut np = if p.is_pinned(i) {
             pred[i] // pinned particles stay exactly on the pin
         } else {
             [
-                pred[i][0] + (goals[i][0] - pred[i][0]) * p.stiffness,
-                pred[i][1] + (goals[i][1] - pred[i][1]) * p.stiffness,
+                pred[i][0] + (goals[i][0] - pred[i][0]) * pull,
+                pred[i][1] + (goals[i][1] - pred[i][1]) * pull,
             ]
         };
         // Velocity from the position change (this is what jiggles).
@@ -385,7 +426,8 @@ fn simulate(anchor: [f32; 2], state: &Stream, playhead: f32, p: &Params) -> Stre
             (s_pos, s_vel) // loop-wrap / same tick → hold
         } else {
             let accel = accel_col(state, n);
-            step(&s_pos, &s_vel, &accel, anchor, &rest, dt, p)
+            let w = inv_mass_col(state, n);
+            step(&s_pos, &s_vel, &accel, &w, anchor, &rest, dt, p)
         }
     } else {
         // Seed the rest mesh at the anchor, at rest (zero velocity).
@@ -455,7 +497,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // on the way past, handing this node `dt = 0` and FREEZING it.
     reg.register_couplings(
         MANIFEST.id,
-        &[ph2d_node_registry::Coupling::Consumes("accel")],
+        &[
+            ph2d_node_registry::Coupling::Consumes("accel"),
+            ph2d_node_registry::Coupling::Consumes("inv_mass"),
+        ],
     );
     Ok(())
 }

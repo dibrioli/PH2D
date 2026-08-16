@@ -317,6 +317,7 @@ fn what_does_the_shape_match_cost_per_tick() {
                 &pred,
                 &vel,
                 &accel,
+                &[],
                 [0.0, 0.0],
                 &rest,
                 1.0 / 60.0,
@@ -488,7 +489,16 @@ fn what_clusters_buy_and_what_they_cost() {
             const REPS: u32 = 10;
             let t0 = std::time::Instant::now();
             for _ in 0..REPS {
-                std::hint::black_box(step(&pred, &vel, &accel, [0.0, 0.0], &rest, 1.0 / 60.0, &p));
+                std::hint::black_box(step(
+                    &pred,
+                    &vel,
+                    &accel,
+                    &[],
+                    [0.0, 0.0],
+                    &rest,
+                    1.0 / 60.0,
+                    &p,
+                ));
             }
             let ms = t0.elapsed().as_secs_f64() * 1e3 / f64::from(REPS);
             line.push_str(&format!(" {n}:{ms:>7.3}"));

@@ -33,9 +33,22 @@
 //! stream and moves it. A missing column reads as `1.0` (free), so every graph
 //! authored before this node behaves exactly as it did.
 //! `motion.verlet_rope` / `motion.soft_body` / `motion.boids` are *generators*
-//! (they mint their own points from params and carry state; no instance stream
-//! flows in), so their intrinsic pins — the rope's head/tail, the body's top row
-//! — stay where they are: an upstream pin has no wire to reach them through.
+//! (they mint their own points from params and carry state), and this doc used to
+//! close with *"an upstream pin has no wire to reach them through"*. ⚠️ That was
+//! true of the `in` port and **false of the STATE CHAIN**, which is a wire — and
+//! which was already the wire `accel` comes in through. Wire this node into a
+//! generator's feedback loop and the pin lands:
+//!
+//! ```text
+//! rope.out --pre--> pin_constraint --> rope.state      (nails point 12 of 24;
+//!                                                       `first = 12, count = 1`)
+//! ```
+//!
+//! The `pre` lives on the edge that ENTERS the pin — that is the one that breaks
+//! the cycle — and this node is `Effect::Pure`, so it does not stamp `sim_t` and
+//! the solver still sees its own clock next tick. Their INTRINSIC pins (the rope's
+//! head/tail, the body's top row) stay where they are and stack with this one: an
+//! intrinsic pin is clamped to an ANIMATED target, a generic one holds WHERE IT IS.
 //!
 //! **Selection** is the index range `[first, first + count)` **times** the
 //! multiplicative `falloff` field the module's falloff nodes write (so a

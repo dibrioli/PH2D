@@ -68,6 +68,11 @@ const EPS: f32 = 1e-6;
 /// pulling taut into a straight line.
 const PINNED_SPAN: f32 = 0.75;
 
+/// A massa INVERSA por ponto (`motion.pin_constraint`): `1` = livre, `0` = pinado.
+/// Convenção de string partilhada pelos solvers do módulo, soletrada LOCALMENTE
+/// por cada leitor (como `P` / `accel`) em vez de acoplar as crates.
+const INV_MASS_COL: &str = "inv_mass";
+
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("motion.verlet_rope"),
@@ -175,6 +180,49 @@ fn vec2_col(s: &Stream, name: &str) -> Vec<[f32; 2]> {
 /// ⚠️ **Zeros are the IDENTITY, so a rope no force reaches is byte-identical to
 /// the one that shipped**: `x + 0.0 * dt²` is `x`. That is a property of the
 /// arithmetic, not a fast path to keep in step with a slow one.
+/// A massa inversa por ponto, alargada a `n` e tornada segura — o espelho exacto
+/// do leitor do `motion.collide`: **ausente lê como livre (`1`)**, e um peso
+/// negativo ou não-finito de um documento editado à mão lê como **pinado (`0`)**
+/// em vez de INVERTER a correção.
+///
+/// ## O que esta coluna compra, e por que é a MESMA porta do `accel`
+///
+/// Um `motion.pin_constraint` na cadeia de estado desta corda
+/// (`rope.out --pre--> pin --> rope.state`) prega um ÍNDICE ARBITRÁRIO — a
+/// capacidade que a folha 03 pedia (linha 51) e que o doc do pino declarava
+/// inalcançável (*"um pino a montante não tem fio por onde os alcançar"*). O fio
+/// é a cadeia de estado, e ela já era o fio pelo qual o `accel` entra.
+///
+/// ⚠️ **Consumida, nunca emitida** — a mesma disciplina do `accel`, e aqui a razão
+/// é MEDÍVEL: o `motion.pin_constraint` MULTIPLICA no que já está no stream, então
+/// uma corda que reemitisse `inv_mass` faria um pino parcial de `0,5` decair
+/// `0,5 → 0,25 → 0,125` a cada tique — o *produto sobre a lista* que este módulo
+/// já pagou noutro lugar. Emitida uma vez por tique pelo pino, lida uma vez.
+fn inv_mass_col(s: &Stream, n: usize) -> Vec<f32> {
+    match s.get(INV_MASS_COL) {
+        Some(Column::Scalar(v)) if v.len() == n => v
+            .iter()
+            .map(|w| if w.is_finite() { w.max(0.0) } else { 0.0 })
+            .collect(),
+        _ => vec![1.0; n],
+    }
+}
+
+/// A fração da correção que cabe a cada ponta de uma restrição — a fórmula PBD
+/// `w_i / (w_i + w_j)`, a MESMA que o `motion.collide` usa no seu empurrão.
+///
+/// ⚠️ **Ela REDUZ LITERALMENTE à tabela de quatro braços que shipava** quando os
+/// pesos são `{0, 1}`: `0/1 = 0`, `1/1 = 1` e `1/2 = 0,5` são todos EXACTOS em
+/// IEEE-754, e o par degenerado `(0, 0)` cai no guard. É por isso que uma corda
+/// que nenhum pino alcança é byte-idêntica — por ARITMÉTICA, não por promessa.
+fn share(wa: f32, wb: f32) -> (f32, f32) {
+    let sum = wa + wb;
+    if sum <= 0.0 {
+        return (0.0, 0.0);
+    }
+    (wa / sum, wb / sum)
+}
+
 fn accel_col(s: &Stream, n: usize) -> Vec<[f32; 2]> {
     match s.get("accel") {
         Some(Column::Vec2(v)) if v.len() == n => v.clone(),
@@ -221,16 +269,38 @@ fn seed(anchor: [f32; 2], p: &Params) -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
 /// new `(pos, prev)`: `prev_out` = the entry `pos` (Verlet's memory), `pos_out` =
 /// the integrated + relaxed positions. Pinned points (head, and tail if
 /// `pin_tail`) are clamped to their fixed targets every pass.
+///
+/// ## Duas espécies de pino, e a diferença é o ALVO
+///
+/// O peso efectivo é `0` para os pinos INTRÍNSECOS (a cabeça, e a cauda com
+/// `pin_tail`) e a massa inversa lida do stream para todos os outros. Os dois são
+/// massa infinita e tomam `0` de toda correção; o que os separa é para ONDE
+/// olham — o intrínseco é clampado a um alvo **animado** (a âncora que uma
+/// `value.lfo` varre) e o genérico segura **onde está**, que é o que *pinar um
+/// índice* significa quando não há alvo nenhum a que o prender.
+#[allow(clippy::too_many_arguments)]
 fn step(
     mut pos: Vec<[f32; 2]>,
     prev: &[[f32; 2]],
     accel: &[[f32; 2]],
+    inv_mass: &[f32],
     anchor: [f32; 2],
     tail_pin: [f32; 2],
     dt: f32,
     p: &Params,
 ) -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
     let n = pos.len();
+    // O peso efectivo: os pinos intrínsecos são massa infinita, o resto é o que a
+    // cadeia de estado trouxe (ausente ⇒ `1`, livre).
+    let w: Vec<f32> = (0..n)
+        .map(|i| {
+            if is_pinned(i, n, p) {
+                0.0
+            } else {
+                inv_mass.get(i).copied().unwrap_or(1.0)
+            }
+        })
+        .collect();
     // Verlet's memory for the NEXT tick is this tick's entry positions.
     let prev_out = pos.clone();
     let keep = 1.0 - p.damping;
@@ -242,14 +312,34 @@ fn step(
     let ga = p.gravity * dt * dt; // a·dt² (downward, so subtract from y)
 
     // Integrate every point; the pins are overwritten right after.
+    //
+    // ⚠️ Massa infinita não integra — e para os pinos INTRÍNSECOS isto é um no-op
+    // byte-idêntico, porque o `pin()` logo abaixo sobrescrevia o que a integração
+    // deles produzia. Para um pino GENÉRICO é a linha inteira: sem alvo a que o
+    // clampar, *não se mover* É o pino, e `prev_out` já guardou a posição de
+    // entrada ⇒ a velocidade dele fica zero e ele segura para sempre.
     for i in 0..n {
+        if w[i] <= 0.0 {
+            continue;
+        }
         let (c, pv) = (pos[i], prev[i]);
         // The external `accel` enters exactly where the built-in gravity does —
         // both are accelerations, and Verlet takes an acceleration as `a·dt²`.
         let a = accel.get(i).copied().unwrap_or([0.0, 0.0]);
+        // ⚠️ **A massa inversa escala a ACELERAÇÃO e NÃO a inércia**, e a assimetria
+        // é o modelo: `a = F/m` com a gravidade e o `accel` lidos como forças por
+        // massa de referência (a leitura que o `motion.integrate` já faz e que o doc
+        // do pino promete — *"deixar um elemento mais pesado meramente RESISTIR"*),
+        // enquanto `(c − pv)` é MOMENTO, e escalá-lo faria um ponto pesado perder
+        // velocidade, que é o contrário de pesado.
+        //
+        // ⚠️ **Sem isto um pino parcial é INVISÍVEL numa corda em repouso**, e está
+        // medido: só a partilha de correções muda, e no equilíbrio as restrições já
+        // estão satisfeitas ⇒ `strength = 0,5` desenhava EXACTAMENTE o mesmo que
+        // `0,0` (y = −3,0688 nos dois). Peso `1` é byte-idêntico (`x · 1.0` é exacto).
         let mut np = [
-            c[0] + (c[0] - pv[0]) * keep + a[0] * dt2,
-            c[1] + (c[1] - pv[1]) * keep - ga + a[1] * dt2,
+            c[0] + (c[0] - pv[0]) * keep + a[0] * dt2 * w[i],
+            c[1] + (c[1] - pv[1]) * keep - ga * w[i] + a[1] * dt2 * w[i],
         ];
         // NaN/∞ guard (reference parity): a diverged point recovers at the anchor.
         if !(np[0].is_finite() && np[1].is_finite()) {
@@ -270,13 +360,7 @@ fn step(
                 continue;
             }
             let diff = (dist - p.seg_rest) / dist;
-            let (pa, pb) = (is_pinned(i, n, p), is_pinned(i + 1, n, p));
-            let (wa, wb) = match (pa, pb) {
-                (true, true) => (0.0, 0.0),
-                (true, false) => (0.0, 1.0),
-                (false, true) => (1.0, 0.0),
-                (false, false) => (0.5, 0.5),
-            };
+            let (wa, wb) = share(w[i], w[i + 1]);
             pos[i] = [a[0] + d[0] * diff * wa, a[1] + d[1] * diff * wa];
             pos[i + 1] = [b[0] - d[0] * diff * wb, b[1] - d[1] * diff * wb];
         }
@@ -299,13 +383,7 @@ fn step(
                     continue;
                 }
                 let diff = (dist - bend_rest) / dist * p.bend;
-                let (pa, pb) = (is_pinned(i, n, p), is_pinned(i + 2, n, p));
-                let (wa, wb) = match (pa, pb) {
-                    (true, true) => (0.0, 0.0),
-                    (true, false) => (0.0, 1.0),
-                    (false, true) => (1.0, 0.0),
-                    (false, false) => (0.5, 0.5),
-                };
+                let (wa, wb) = share(w[i], w[i + 2]);
                 pos[i] = [a[0] + d[0] * diff * wa, a[1] + d[1] * diff * wa];
                 pos[i + 2] = [b[0] - d[0] * diff * wb, b[1] - d[1] * diff * wb];
             }
@@ -351,7 +429,8 @@ fn simulate(anchor: [f32; 2], state: &Stream, playhead: f32, p: &Params) -> Stre
             .unwrap_or(playhead);
         let dt = (playhead - t_prev).clamp(0.0, MAX_DT);
         let accel = accel_col(state, p.count);
-        step(s_pos, &s_prev, &accel, anchor, tail_pin, dt, p)
+        let w = inv_mass_col(state, p.count);
+        step(s_pos, &s_prev, &accel, &w, anchor, tail_pin, dt, p)
     } else {
         // Tick 0 (Empty state) or a count change → re-seed the strand.
         seed(anchor, p)
@@ -416,9 +495,14 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // be poison here: an integrator is `Temporal`, it stamps `sim_t = playhead`
     // on the way past, and this node derives `dt` from the state's own `sim_t`
     // — so the "cure" would hand the rope `dt = 0` and FREEZE it.
+    // E CONSOME `inv_mass`, o que faz um `motion.pin_constraint` na cadeia de
+    // estado prender um índice arbitrário (folha 03, linha 51 / 77).
     reg.register_couplings(
         MANIFEST.id,
-        &[ph2d_node_registry::Coupling::Consumes("accel")],
+        &[
+            ph2d_node_registry::Coupling::Consumes("accel"),
+            ph2d_node_registry::Coupling::Consumes("inv_mass"),
+        ],
     );
     Ok(())
 }

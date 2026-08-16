@@ -273,6 +273,23 @@ fn vec2_col(s: &Stream, name: &str) -> Vec<[f32; 2]> {
 /// ⚠️ **Consumed, never emitted** (the stream carries `P`/`vel`/`sim_t`), so
 /// every tick starts from zero acceleration; and zeros are the IDENTITY, so a
 /// flock no force reaches is byte-identical to the one that shipped.
+/// A massa INVERSA por agente (`motion.pin_constraint`): `1` = livre, `0` =
+/// pinado. **Ausente lê como livre**, e um peso negativo ou não-finito lê como
+/// pinado — o espelho exacto do leitor do `motion.collide`. Convenção de string
+/// soletrada LOCALMENTE (como `P` / `accel`), sem acoplar as crates.
+///
+/// ⚠️ **Consumida, nunca emitida** — a disciplina do `accel`, e pelo mesmo motivo
+/// medível: o pino MULTIPLICA no que já está no stream.
+fn inv_mass_col(s: &Stream, n: usize) -> Vec<f32> {
+    match s.get("inv_mass") {
+        Some(Column::Scalar(v)) if v.len() == n => v
+            .iter()
+            .map(|w| if w.is_finite() { w.max(0.0) } else { 0.0 })
+            .collect(),
+        _ => vec![1.0; n],
+    }
+}
+
 fn accel_col(s: &Stream, n: usize) -> Vec<[f32; 2]> {
     match s.get("accel") {
         Some(Column::Vec2(v)) if v.len() == n => v.clone(),
@@ -334,6 +351,7 @@ fn step(
     pos: &[[f32; 2]],
     vel: &[[f32; 2]],
     ext_accel: &[[f32; 2]],
+    inv_mass: &[f32],
     target: [f32; 2],
     dt: f32,
     p: &Params,
@@ -345,6 +363,20 @@ fn step(
 
     for i in 0..n {
         let (pi, vi) = (pos[i], vel[i]);
+        // ⚠️ **MASSA INFINITA: o agente não se move — e continua a ser VISTO.** O
+        // laço de vizinhos lê `pos[j]`/`vel[j]` das arrays de ENTRADA, então um
+        // agente pinado por um `motion.pin_constraint` na cadeia de estado segue
+        // a repelir os outros pela separação: é o *obstáculo em torno do qual a
+        // multidão tem de passar* que o doc do pino nomeia, sem um kernel novo.
+        // A velocidade dele vai a ZERO de propósito — um obstáculo parado que
+        // guardasse heading faria o alinhamento dos vizinhos apontar para uma
+        // direção que ninguém exibe.
+        let w = inv_mass.get(i).copied().unwrap_or(1.0);
+        if w <= 0.0 {
+            out_pos[i] = pi;
+            out_vel[i] = [0.0, 0.0];
+            continue;
+        }
         // Accumulate the three Reynolds urges over neighbours within the radius.
         let mut sep = [0.0f32; 2];
         let mut align = [0.0f32; 2];
@@ -425,6 +457,12 @@ fn step(
         let ext = ext_accel.get(i).copied().unwrap_or([0.0, 0.0]);
         accel[0] += ext[0];
         accel[1] += ext[1];
+        // A massa inversa escala TUDO o que chega ao agente — o impulso próprio e
+        // o do mundo —, exactamente como o `motion.integrate` escala a velocidade
+        // por ela: um agente pesado vira devagar e resiste ao vento. Peso `1` é o
+        // bando de hoje **ao bit** (`x · 1.0` é exacto em IEEE-754).
+        accel[0] *= w;
+        accel[1] *= w;
 
         // Integrate, then clamp the speed into [min, max] so the flock glides.
         let mut nv = [vi[0] + accel[0] * dt, vi[1] + accel[1] * dt];
@@ -459,7 +497,8 @@ fn simulate(target: [f32; 2], state: &Stream, playhead: f32, p: &Params) -> Stre
             .unwrap_or(playhead);
         let dt = (playhead - t_prev).clamp(0.0, MAX_DT);
         let accel = accel_col(state, p.count);
-        step(&s_pos, &s_vel, &accel, target, dt, p)
+        let w = inv_mass_col(state, p.count);
+        step(&s_pos, &s_vel, &accel, &w, target, dt, p)
     } else {
         seed(target, p)
     };
@@ -534,7 +573,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // on the way past, handing this node `dt = 0` and FREEZING the flock.
     reg.register_couplings(
         MANIFEST.id,
-        &[ph2d_node_registry::Coupling::Consumes("accel")],
+        &[
+            ph2d_node_registry::Coupling::Consumes("accel"),
+            ph2d_node_registry::Coupling::Consumes("inv_mass"),
+        ],
     );
     Ok(())
 }

@@ -35,6 +35,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_boids::register(&mut reg).unwrap();
     ph2d_node_motion_output::register(&mut reg).unwrap();
     ph2d_node_force_wind::register(&mut reg).unwrap();
+    ph2d_node_motion_pin_constraint::register(&mut reg).unwrap();
     reg
 }
 
@@ -381,6 +382,144 @@ fn the_wind_fixture_actually_moves_the_flock() {
 /// nem entra no ramo, então as paridades existentes concordam sobre um termo que
 /// nenhuma das duas avalia — apagar o bloco do WGSL as deixaria todas VERDES,
 /// com a CPU truncando a aceleração e o device não.
+/// O MESMO bando com um `motion.pin_constraint` na CADEIA DE ESTADO — a topologia
+/// que a fixture do vento tem, com o pino no lugar da força.
+///
+/// ⚠️ **Esta fixture não existia, e a ausência dela era a divergência:** o
+/// `motion.boids` passou a ler `inv_mass` (grupo J), e um bando pinado **SEGUE
+/// reivindicando o device** (medido: `fully_gpu = true`, `boundaries = []`) — então
+/// sem o porte do WGSL o agente seguraria na CPU e voaria na GPU, *dois produtores
+/// lendo dados diferentes*, com todo gate existente verde porque **nenhum deles põe
+/// um pino no laço**.
+fn boids_with_a_pin(count: f32, pinned: f32, strength: f32) -> (Graph, NodeId) {
+    let mut g = Graph::new();
+    let boids = g.add_node("motion.boids");
+    g.set_param(boids, "count", count);
+    g.set_param(boids, "seed", 1.0);
+    g.set_param(boids, "radius", 2.3);
+    g.set_param(boids, "separation", 1.4);
+    g.set_param(boids, "alignment", 0.9);
+    g.set_param(boids, "cohesion", 0.7);
+    g.set_param(boids, "seek", 1.1);
+    g.set_param(boids, "max_speed", 4.0);
+    let pin = g.add_node("motion.pin_constraint");
+    g.set_param(pin, "first", 0.0);
+    g.set_param(pin, "count", pinned);
+    g.set_param(pin, "strength", strength);
+    let out = g.add_node("motion.output");
+    for (from, to, port, delayed) in [
+        (boids, pin, 0u16, true),
+        (pin, boids, 2u16, false),
+        (boids, out, 0u16, false),
+    ] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed,
+        })
+        .unwrap();
+    }
+    (g, out)
+}
+
+/// **UM BANDO PINADO CONCORDA COM A CPU.**
+#[test]
+#[ignore = "needs a GPU adapter"]
+fn a_pinned_boids_run_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping gpu_boids");
+        return;
+    };
+    let reg = registry();
+    let (g, out) = boids_with_a_pin(400.0, 40.0, 1.0);
+    let cpu = cpu_ticks(&g, &reg, out, 2);
+    // DOIS estágios: o flock e o pino que alimenta a cadeia de estado dele.
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 2, 2);
+    parity("a pinned flock", &cpu[2], &gpu_out, 2e-3);
+}
+
+/// **UM PINO PARCIAL CONCORDA COM A CPU — o caso que a fixture cheia não contém.**
+///
+/// ⚠️ **Este gate nasceu de uma MUTAÇÃO SOBREVIVENTE:** com `strength = 1` o peso é
+/// **0 ou 1**, então o early-out apanha o zero e a multiplicação por um é a
+/// identidade — neutralizar `accel = accel * w_i` no WGSL passava com `2,38e-7`.
+/// Só um peso FRACIONÁRIO torna a escala observável, e ela é a metade da lei que o
+/// doc do pino promete (*"deixar um elemento mais pesado meramente RESISTIR"*).
+#[test]
+#[ignore = "needs a GPU adapter"]
+fn a_partially_pinned_boids_run_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping gpu_boids");
+        return;
+    };
+    let reg = registry();
+    let (g, out) = boids_with_a_pin(400.0, 40.0, 0.5);
+    let cpu = cpu_ticks(&g, &reg, out, 2);
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 2, 2);
+    parity("a half-pinned flock", &cpu[2], &gpu_out, 2e-3);
+}
+
+/// **O CONTROLE dela: meio-pino desenha diferente de pino nenhum E de pino cheio.**
+///
+/// Sem as duas metades, *"o parcial concorda"* passaria sobre um peso que o kernel
+/// arredonda para 0 ou para 1 — que é precisamente o defeito que a mutação achou.
+#[test]
+fn a_half_pin_is_neither_free_nor_nailed() {
+    let reg = registry();
+    let pose = |s: f32| {
+        let (g, out) = boids_with_a_pin(400.0, 40.0, s);
+        cpu_ticks(&g, &reg, out, 2)[2].clone()
+    };
+    let (free, half, nailed) = (pose(0.0), pose(0.5), pose(1.0));
+    let gap = |a: &[RenderInstance], b: &[RenderInstance]| {
+        a.iter()
+            .zip(b)
+            .take(40)
+            .map(|(p, q)| {
+                ((p.world_pos[0] - q.world_pos[0]).powi(2)
+                    + (p.world_pos[1] - q.world_pos[1]).powi(2))
+                .sqrt()
+            })
+            .fold(0.0f32, f32::max)
+    };
+    assert!(
+        gap(&half, &free) > 1e-4 && gap(&half, &nailed) > 1e-4,
+        "meio-pino tem de ficar entre os dois: contra livre {:.6} · contra pregado {:.6}",
+        gap(&half, &free),
+        gap(&half, &nailed)
+    );
+}
+
+/// **O CONTROLE da fixture acima: o pino de facto SEGURA na rota da CPU.**
+///
+/// Sem ele a paridade seria verde por vácuo — duas rotas a concordar sobre um
+/// termo que nenhuma avalia. Roda sem adapter de propósito: é uma afirmação sobre a
+/// FIXTURE, não sobre o dispositivo.
+#[test]
+fn the_pin_fixture_actually_holds_agents() {
+    let reg = registry();
+    let (g_free, out_free) = boids_with_a_pin(400.0, 0.0, 1.0);
+    let (g_held, out_held) = boids_with_a_pin(400.0, 40.0, 1.0);
+    let free = cpu_ticks(&g_free, &reg, out_free, 2);
+    let held = cpu_ticks(&g_held, &reg, out_held, 2);
+    // Os quarenta primeiros seguram: a pose do tique 2 é a do tique 1.
+    let moved = |v: &[Vec<RenderInstance>], i: usize| {
+        let (a, b) = (&v[1][i], &v[2][i]);
+        ((b.world_pos[0] - a.world_pos[0]).powi(2) + (b.world_pos[1] - a.world_pos[1]).powi(2))
+            .sqrt()
+    };
+    let worst_held = (0..40).map(|i| moved(&held, i)).fold(0.0f32, f32::max);
+    let worst_free = (0..40).map(|i| moved(&free, i)).fold(0.0f32, f32::max);
+    assert!(
+        worst_held < 1e-6,
+        "os pinados têm de segurar; o maior deslocamento foi {worst_held:.6}"
+    );
+    assert!(
+        worst_free > 1e-3,
+        "controle: sem pino os mesmos agentes andam; o maior foi {worst_free:.6}"
+    );
+}
+
 fn boids_graph_clamped(count: f32, max_force: f32) -> (Graph, NodeId) {
     let (mut g, _boids, out) = boids_graph_spread(count, false);
     let boids = g

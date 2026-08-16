@@ -287,10 +287,10 @@ fn a_narrow_cone_ignores_the_neighbour_behind() {
     p.max_speed = 100.0;
     p.min_speed_frac = 0.0;
 
-    let wide = step(&pos, &vel, &zero, [0.0, 0.0], 0.1, &p).1[0];
+    let wide = step(&pos, &vel, &zero, &[], [0.0, 0.0], 0.1, &p).1[0];
     let mut narrow = p;
     narrow.cos_half_fov = super::cos_half_fov(90.0);
-    let cone = step(&pos, &vel, &zero, [0.0, 0.0], 0.1, &narrow).1[0];
+    let cone = step(&pos, &vel, &zero, &[], [0.0, 0.0], 0.1, &narrow).1[0];
 
     assert!(
         wide[0] < vel[0][0],
@@ -314,7 +314,7 @@ fn the_same_cone_still_sees_the_neighbour_ahead() {
     p.max_speed = 100.0;
     p.min_speed_frac = 0.0;
     p.cos_half_fov = super::cos_half_fov(90.0);
-    let v = step(&pos, &vel, &zero, [0.0, 0.0], 0.1, &p).1[0];
+    let v = step(&pos, &vel, &zero, &[], [0.0, 0.0], 0.1, &p).1[0];
     assert!(
         v[0] > vel[0][0],
         "o vizinho a FRENTE puxa para a frente: {v:?}"
@@ -339,7 +339,7 @@ fn a_motionless_agent_is_not_blind() {
     p.max_speed = 100.0;
     p.min_speed_frac = 0.0;
     p.cos_half_fov = super::cos_half_fov(30.0); // um cone bem estreito
-    let v = step(&pos, &vel, &zero, [0.0, 0.0], 0.1, &p).1[0];
+    let v = step(&pos, &vel, &zero, &[], [0.0, 0.0], 0.1, &p).1[0];
     assert!(
         v[0] < 0.0,
         "parado, ele ainda e' puxado pelo vizinho atras: {v:?}"
@@ -381,7 +381,7 @@ fn the_speed_floor_is_authored_and_its_default_is_the_old_constant() {
     let vel = [[0.01f32, 0.0]]; // bem abaixo do piso
     let zero = [[0.0f32, 0.0]; 1];
     let p = params(1);
-    let held = step(&pos, &vel, &zero, [0.0, 0.0], 0.1, &p).1[0];
+    let held = step(&pos, &vel, &zero, &[], [0.0, 0.0], 0.1, &p).1[0];
     let want = p.max_speed * MIN_SPEED_FRAC;
     assert!(
         (held[0] - want).abs() < 1e-5,
@@ -392,7 +392,7 @@ fn the_speed_floor_is_authored_and_its_default_is_the_old_constant() {
     // tornava inalcançável.
     let mut free = p;
     free.min_speed_frac = 0.0;
-    let slow = step(&pos, &vel, &zero, [0.0, 0.0], 0.1, &free).1[0];
+    let slow = step(&pos, &vel, &zero, &[], [0.0, 0.0], 0.1, &free).1[0];
     assert!(slow[0] < 0.1, "com piso 0 ele fica lento: {slow:?}");
     assert_eq!(
         MANIFEST

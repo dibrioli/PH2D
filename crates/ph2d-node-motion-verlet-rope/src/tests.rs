@@ -359,3 +359,116 @@ fn registers_and_steps_through_the_cook() {
         _ => panic!("P"),
     }
 }
+
+/// **A FÓRMULA PBD REDUZ LITERALMENTE À TABELA DE QUATRO BRAÇOS QUE SHIPAVA.**
+///
+/// A relaxação carregava um `match (pinado_a, pinado_b)` com quatro braços; ela é a
+/// forma booleana de `w_i/(w_i+w_j)` com pesos em `{0, 1}`, e a substituição é
+/// **byte-idêntica por ARITMÉTICA e não por promessa**: `0/1`, `1/1` e `1/2` são
+/// todos exactamente representáveis em IEEE-754, e o par degenerado `(0,0)` — que
+/// a fórmula levaria a `0/0 = NaN` — cai no guard.
+///
+/// É este gate que torna seguro apagar o caso especial: a tabela morreu, e o que
+/// ficou no lugar dela responde o mesmo em todo ponto onde ela respondia.
+#[test]
+fn the_pbd_share_reduces_to_the_four_arm_table() {
+    // A tabela EXACTA que shipava, escrita à mão como oráculo — chamar a função sob
+    // teste para computar o que se espera dela é o gate sempre-verde.
+    let shipped = |pa: bool, pb: bool| match (pa, pb) {
+        (true, true) => (0.0f32, 0.0f32),
+        (true, false) => (0.0, 1.0),
+        (false, true) => (1.0, 0.0),
+        (false, false) => (0.5, 0.5),
+    };
+    for pa in [false, true] {
+        for pb in [false, true] {
+            let w = |pinned: bool| if pinned { 0.0f32 } else { 1.0f32 };
+            let (ga, gb) = super::share(w(pa), w(pb));
+            let (wa, wb) = shipped(pa, pb);
+            assert_eq!(
+                (ga.to_bits(), gb.to_bits()),
+                (wa.to_bits(), wb.to_bits()),
+                "({pa}, {pb}): a fórmula tem de dar os MESMOS bits da tabela",
+            );
+        }
+    }
+}
+
+/// **E um peso FRACIONÁRIO parte a correção na proporção certa** — a metade que a
+/// tabela booleana não sabia exprimir.
+#[test]
+fn the_share_splits_a_fractional_weight_in_proportion() {
+    let (a, b) = super::share(1.0, 0.5);
+    assert!(
+        (a - 2.0 / 3.0).abs() < 1e-6 && (b - 1.0 / 3.0).abs() < 1e-6,
+        "{a} {b}"
+    );
+    // E a soma é a unidade: a correção é INTEIRA, só muda quem a paga.
+    assert!((a + b - 1.0).abs() < 1e-6);
+}
+
+/// **UM PONTO PREGADO EM VOO PARA — não coasta.**
+///
+/// ⚠️ Este gate existe porque uma MUTAÇÃO sobreviveu: apagar o early-out de massa
+/// infinita deixava os seis gates de cadeia VERDES, e a razão é **defesa em
+/// camadas** — com a aceleração já escalada por `w`, um ponto que chega ao pino
+/// PARADO não se move de qualquer maneira, e na fixture de cadeia o pino chega no
+/// tique 1, logo a seguir à semeadura, onde `pos == prev`.
+///
+/// A camada só é observável quando o ponto **já tem momento** — o caso de produto
+/// em que o artista arma o pino a meio do voo —, e ali a inércia de Verlet
+/// (`(c − pv)·keep`, que NÃO é escalada, e correctamente) o levaria a deslizar para
+/// sempre. *Pinado* significa que ele para.
+#[test]
+fn a_point_pinned_in_flight_stops_instead_of_coasting() {
+    let p = super::Params {
+        count: 3,
+        seg_rest: 1.0,
+        gravity: 0.0,
+        iterations: 1,
+        damping: 0.0,
+        pin_tail: false,
+        bend: 0.0,
+    };
+    // ⚠️ **O movimento é PERPENDICULAR à corda, e a primeira fixture não o era:**
+    // ao longo do eixo a restrição de distância desfaz a inércia no mesmo passe (o
+    // controle mediu `x = 1` EXACTO, com o ponto livre a acabar onde começou), e um
+    // gate assim não pode falhar pelo motivo que alega. Através do eixo a corda mal
+    // resiste, e o ponto livre de facto viaja.
+    let pos = vec![[0.0f32, 0.0], [1.0, 0.0], [2.0, 0.0]];
+    let prev = vec![[0.0f32, 0.0], [1.0, -1.0], [2.0, 0.0]];
+    let dt = 1.0 / 60.0;
+    // CONTROLE: livre, a inércia leva-o adiante.
+    let (free, _) = super::step(
+        pos.clone(),
+        &prev,
+        &[],
+        &[1.0, 1.0, 1.0],
+        [0.0, 0.0],
+        [0.0, 0.0],
+        dt,
+        &p,
+    );
+    assert!(
+        free[1][1] > 0.3,
+        "controle: livre a inércia leva o ponto adiante, e ele mediu y = {}",
+        free[1][1]
+    );
+    // PREGADO EM VOO: ele para exactamente onde estava.
+    let (held, _) = super::step(
+        pos,
+        &prev,
+        &[],
+        &[1.0, 0.0, 1.0],
+        [0.0, 0.0],
+        [0.0, 0.0],
+        dt,
+        &p,
+    );
+    assert_eq!(
+        held[1][1].to_bits(),
+        0.0f32.to_bits(),
+        "pregado em voo, o ponto tem de PARAR; ele mediu y = {}",
+        held[1][1]
+    );
+}

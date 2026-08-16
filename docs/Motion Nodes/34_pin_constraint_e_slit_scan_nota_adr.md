@@ -169,5 +169,12 @@ demo, e não que a asserção passou por sorte.
 - `motion.path` (A2 da fila) segue **não decidido** — o plano diz "integra `vector.*`", mas os nós
   vetoriais foram retirados (ADR-0108) e a geometria vive em `ph2d-vec-scene`. É cross-module: ou
   crate satélite que só LÊ, ou defere. **Decisão do Enio.**
-- `motion.verlet_rope` / `soft_body` / `boids` ganharem porta `in` (aí o pin genérico substitui os
-  pins intrínsecos deles). Não é urgente e não foi feito: hoje não há como um stream entrar neles.
+- ~~`motion.verlet_rope` / `soft_body` / `boids` ganharem porta `in`~~ — ✅ **RESOLVIDO POR OUTRO
+  CAMINHO em 2026-08-16** (grupo J da conferência, folha 03 linhas 51 e 77). A cerca dizia *"hoje não
+  há como um stream entrar neles"*, e isso era **verdade sobre a porta `in` e FALSO sobre a CADEIA DE
+  ESTADO** — que é um fio, e que já era o fio pelo qual o `accel` entra. Os três passaram a ler
+  `inv_mass` de lá (`gen.out --pre--> motion.pin_constraint --> gen.state`), então o pino genérico
+  **alcança** os três sem porta nova. ⚠️ Ele **não substitui** os pins intrínsecos: eles são clampados
+  a um alvo **ANIMADO** (a âncora que uma `value.lfo` varre) e o genérico segura **onde está** — as
+  duas espécies coexistem e compõem. Medido antes de construir: com o pino no laço e os nós a
+  ignorá-lo, o pior deslocamento era **`0,000000`** nos três.

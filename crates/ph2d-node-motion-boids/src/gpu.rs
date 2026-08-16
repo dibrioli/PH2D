@@ -73,6 +73,20 @@ static BINDINGS: &[ColumnBinding] = &[
         identity: [0.0; 4],
         port: 2,
     },
+    // ⚠️ **A massa INVERSA, e a identidade dela NÃO é zero.** Ausente lê como `1`
+    // (livre) — pôr `[0.0; 4]` aqui congelaria TODO bando que nenhum pino alcança,
+    // que é o modo de falha mais caro que uma binding pode ter.
+    //
+    // `Consume` e não `Read` pela MESMA disciplina do `accel` acima: o pino
+    // MULTIPLICA no que já está no stream, então um bando que reemitisse
+    // `inv_mass` faria um pino parcial decair a cada tique.
+    ColumnBinding {
+        column: "inv_mass",
+        dim: Dim::Scalar,
+        access: ColumnAccess::Consume,
+        identity: [1.0, 0.0, 0.0, 0.0],
+        port: 2,
+    },
     ColumnBinding {
         column: "v",
         dim: Dim::Scalar,
@@ -160,6 +174,16 @@ const WGSL: &str = r#"
     let dt = clamp(params.playhead - read_state_sim_t(i), 0.0, BOIDS_MAX_DT);
     let r2 = params.radius * params.radius;
     let cos_half = boids_cos_half_fov(params.fov);
+    // MASSA INFINITA: o agente nao se move -- e continua a ser VISTO, porque o
+    // laco de vizinhos le `read_state_P(j)`/`read_state_vel(j)`, o estado de
+    // ENTRADA. O espelho exacto do `crate::step`, incluindo a velocidade a ZERO.
+    let w_i = read_state_inv_mass(i);
+    if (w_i <= 0.0) {
+        write_P(i, pi);
+        write_vel(i, vec2<f32>(0.0, 0.0));
+        write_sim_t(i, params.playhead);
+        return;
+    }
     var sep = vec2<f32>(0.0, 0.0);
     var align = vec2<f32>(0.0, 0.0);
     var centroid = vec2<f32>(0.0, 0.0);
@@ -237,6 +261,9 @@ const WGSL: &str = r#"
         }
     }
     accel = accel + read_state_accel(i);
+    // A massa inversa escala TUDO o que chega -- o impulso proprio e o do mundo --,
+    // o espelho do `crate::step`. Peso `1` e' o bando de hoje AO BIT.
+    accel = accel * w_i;
     var nv = vi + accel * dt;
     let speed = sqrt(dot(nv, nv));
     let min_speed = params.max_speed * clamp(params.speed_floor, 0.0, 1.0);

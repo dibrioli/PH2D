@@ -686,7 +686,23 @@ fn the_device_refuses_a_personal_space_it_cannot_see() {
         !with(4.0, 2.0),
         "MAIOR que a percepção: a grade não o vê, tem de RECUSAR"
     );
+    // ⚠️ **O NEGATIVO é o caso em que a guarda é load-bearing, e ele estava fora
+    // da fixture.** A CPU lê o param com `.max(0.0)`, então `-4` DESLIGA o espaço
+    // pessoal; o kernel eleva ao quadrado, e o quadrado apaga o sinal ⇒ sem o
+    // espelho do `max` o device LIGAVA com raio `|−4| = 4` sobre uma grade de
+    // célula `2`. E a comparação com sinal deixava a recusa passar (`-4 <= 2`),
+    // ou seja a guarda ficava aberta exactamente onde ela existe para fechar.
+    assert!(
+        with(-4.0, 2.0),
+        "negativo é DESLIGADO nas duas rotas ⇒ a grade cobre, e o device responde"
+    );
+    assert!(with(-1.0, 2.0), "idem, sem depender da magnitude");
 }
+
+// ⚠️ A outra metade — *o device lê o mesmo número que a CPU* — **não cabe neste
+// nível**: a `Params` que estes gates constroem já traz o quadrado feito, e o
+// quadrado apaga o sinal. Ela vive com adapter, em
+// `ph2d-gpu-cook/tests/gpu_boids.rs::a_negative_personal_space_matches_the_cpu`.
 
 /// **DOIS AGENTES QUE NÃO SE VEEM AINDA SE EMPURRAM.**
 ///

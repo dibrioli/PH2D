@@ -687,3 +687,38 @@ fn a_flock_with_personal_space_matches_the_cpu_within_epsilon() {
     let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 2, 1);
     parity("a flock with personal space", &cpu[2], &gpu_out, 2e-3);
 }
+
+/// **UM ESPAÇO PESSOAL NEGATIVO É DESLIGADO NAS DUAS ROTAS.**
+///
+/// ⚠️ **O quadrado apaga o sinal, então a sanidade tem de vir antes dele — e ela
+/// vinha só de um lado.** A CPU lê o param com `.max(0.0)` (`eval`), logo `−4`
+/// desliga o espaço pessoal; o WGSL fazia `sep_r * sep_r` cru, o que ressuscita
+/// `|−4| = 4` e LIGA o que o artista desligou. As duas rotas corriam leis
+/// diferentes sobre o mesmo documento, sem erro e sem badge.
+///
+/// ⚠️ E a guarda que existe para impedir exactamente isso — o `applicable`, cuja
+/// razão de existir é que a grade tem célula `radius` — comparava o valor **com
+/// sinal**: `-4.0 <= 2.3` é verdadeiro, então ela ficava ABERTA no único caso em
+/// que era load-bearing, e o device procurava vizinhos a 4 numa grade de 2,3.
+///
+/// ⚠️ **A fixture tem de trazer `|sep_r| > radius`**: com `|sep_r|` pequeno o
+/// device acharia o mesmo conjunto por acidente da grade, e o gate ficaria verde
+/// sobre a lei errada. Aqui `|−4| = 4` contra `radius = 2,3`.
+#[test]
+#[ignore = "precisa de adapter"]
+fn a_negative_personal_space_matches_the_cpu() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping gpu_boids");
+        return;
+    };
+    let reg = registry();
+    let (g, out) = boids_with_personal_space(400.0, -4.0);
+    let cpu = cpu_ticks(&g, &reg, out, 2);
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 2, 1);
+    parity(
+        "a flock with a negative personal space",
+        &cpu[2],
+        &gpu_out,
+        2e-3,
+    );
+}

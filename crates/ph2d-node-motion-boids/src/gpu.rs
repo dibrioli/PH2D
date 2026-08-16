@@ -173,7 +173,12 @@ const WGSL: &str = r#"
     let vi = read_state_vel(i);
     let dt = clamp(params.playhead - read_state_sim_t(i), 0.0, BOIDS_MAX_DT);
     let r2 = params.radius * params.radius;
-    let sep_r2 = params.separation_radius * params.separation_radius;
+    // ⚠️ **O `max(_, 0.0)` e o espelho do `.max(0.0)` que a CPU aplica ao LER o
+    // param** (`crate::eval`), e sem ele as duas rotas correm LEIS diferentes: um
+    // raio negativo e' DESLIGADO na CPU (`sep_r2 = 0`, nenhum vizinho entra na
+    // banda) e LIGADO no device, que eleva ao quadrado e ressuscita `|sep_r|`.
+    // O quadrado apaga o sinal, entao a sanidade tem de vir ANTES dele.
+    let sep_r2 = max(params.separation_radius, 0.0) * max(params.separation_radius, 0.0);
     let cos_half = boids_cos_half_fov(params.fov);
     // MASSA INFINITA: o agente nao se move -- e continua a ser VISTO, porque o
     // laco de vizinhos le `read_state_P(j)`/`read_state_vel(j)`, o estado de
@@ -335,7 +340,14 @@ pub const GPU_KERNEL: GpuKernel = GpuKernel {
     // Alargar a célula da grade ao `max(radius, separation_radius)` é a cura, e é
     // wave própria: o `GridSpec.cell_param` é UM param, e dar-lhe um segundo é
     // side-metadata foundational que atravessa os seis declarantes de grade.
-    applicable: Some(|p| p("separation_radius") <= p("radius")),
+    // ⚠️ **A recusa pergunta o NUMERO QUE O KERNEL USA, nao o que o documento
+    // guarda.** Os dois lados sao sanados por `max(_, 0.0)` — exactamente o que a
+    // CPU faz ao ler os dois params — porque comparar o valor COM SINAL deixa a
+    // guarda passar no unico caso em que ela e' load-bearing: `-4.0 <= 2.0` e'
+    // verdadeiro, e o kernel entao procura vizinhos a `|sep_r| = 4` numa grade de
+    // celula `2`. *Uma guarda que existe para impedir a divergencia das duas rotas
+    // tem de ler a mesma grandeza que elas.*
+    applicable: Some(|p| p("separation_radius").max(0.0) <= p("radius").max(0.0)),
 };
 
 /// The neighbourhood grid: over the state `P` (port 2, the `pre` feedback), cell

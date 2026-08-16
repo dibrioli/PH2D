@@ -59,7 +59,17 @@ impl Sculpt3dScene {
             matcap: ph2d_mesh_render::DEFAULT_MATCAP,
             wireframe: false,
             brush: Brush::default(),
-            mode_by_verb: [ph2d_sculpt3d::RefMode::default(); ph2d_sculpt3d::Verb::ALL.len()],
+            // ⚠️ **DERIVADO do que cada verbo DECLARA**, e não um `S` chapado: o
+            // `[RefMode::default(); N]` que morava aqui fazia **7 dos 23**
+            // verbos nascerem num modo que não os declara — os sete do Blender
+            // —, com o chip da faixa **apagado** (o painel só pinta os
+            // oferecidos) e, pior, com o [`ph2d_sculpt3d::Brush::weight`] a
+            // devolver o slider CRU onde a referência deles o eleva ao quadrado.
+            // O `Sculpt3dUi::default()` do painel já derivava isto e **não é
+            // quem faz o estado nascer**: a segunda resposta era esta linha.
+            mode_by_verb: std::array::from_fn(|i| {
+                ph2d_sculpt3d::RefMode::birth_for(ph2d_sculpt3d::Verb::ALL[i])
+            }),
             ui_level: ph2d_panel_sculpt3d::UiLevel::default(),
             alpha_preview: true,
             alpha_image: None,

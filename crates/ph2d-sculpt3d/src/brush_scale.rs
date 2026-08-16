@@ -27,10 +27,26 @@ impl Brush {
     /// values more sensitive"*) e o SculptGL não; um `brush.strength` cru no
     /// sítio de uso seria a segunda resposta que ignora o modo **em silêncio**,
     /// e o `stroke.rs` tem UM consumidor — é ele que pergunta aqui.
+    ///
+    /// ⚠️ **E ela pergunta pelo [`RefMode::for_verb`], não pelo modo cru.** Um
+    /// modo que não DECLARA o verbo devolve `profile == None`, e o `map_or` caía
+    /// no slider cru — o peso do SculptGL numa ferramenta que o SculptGL **não
+    /// tem**. Os outros dois consumidores da lei de referência
+    /// ([`RefMode::kernel_for`] e [`RefMode::lateral_for`]) já recuavam para a
+    /// referência que TEM a tool; esta era a porta que ficou de fora, e era a
+    /// única das três cujo erro muda a forma do barro.
+    ///
+    /// ⚠️ **Medido, e o número é o dobro:** com a demão nascida em `S` (a shell
+    /// escrevia `[RefMode::default(); N]` — ver [`RefMode::birth_for`]), o
+    /// slider de fábrica `0,50` entregava peso **0,5000** onde o `layer.cc`
+    /// pede **0,2500**. Numa lei que satura isso não deposita mais alto: ela
+    /// fecha o platô no dobro da velocidade e **o ombro que o falloff desenha
+    /// desaparece** — a parede vira um degrau que a malha só sabe desenhar como
+    /// escada. Os sete verbos do Blender pagavam o mesmo.
     #[must_use]
     pub fn weight(&self) -> f32 {
         self.verb
-            .profile(self.mode)
+            .profile(self.mode.for_verb(self.verb))
             .map_or(self.strength, |p| p.strength_curve.resolve(self.strength))
     }
 }

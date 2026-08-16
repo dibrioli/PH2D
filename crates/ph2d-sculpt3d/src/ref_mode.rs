@@ -408,6 +408,69 @@ impl RefMode {
         Self::ALL.into_iter().filter(move |m| m.declares(verb))
     }
 
+    /// **O MODO EM QUE ESTE VERBO NASCE** — o primeiro que o declara.
+    ///
+    /// ⚠️ **Ela existe porque a resposta estava escrita em DOIS lugares e o que
+    /// shipava era o errado.** O `Sculpt3dUi::default()` do painel já a derivava
+    /// (com o porquê no doc dele), e a shell — que é quem de facto faz o estado
+    /// nascer — escrevia `[RefMode::default(); N]`, um `S` chapado em todo
+    /// verbo. Medido em `tests/measure_layer_law.rs` (P8): **7 dos 23 verbos**
+    /// nasciam num modo que **não os declara** (os sete do Blender: `Blob`,
+    /// `ClayStrips`, `ClayThumb`, `MultiplaneScrape`, `SlideRelax`,
+    /// `SurfaceSmooth`, `Layer`).
+    ///
+    /// ⚠️ **E o preço não era só o chip apagado.** O [`crate::Brush::weight`]
+    /// perguntava `profile(mode)` sem o recuo que o [`Self::kernel_for`] tem, e
+    /// `profile(S, Layer)` é `None` ⇒ o slider virava o peso CRU onde a
+    /// referência deste verbo o eleva ao QUADRADO. No slider de fábrica isso é
+    /// **0,5000 contra 0,2500 — o dobro da taxa de depósito** —, e numa lei que
+    /// SATURA o dobro da taxa não deposita mais alto: ele **colapsa o ombro**
+    /// que o falloff desenha, que é a forma exacta do report do smoke
+    /// (*"falloff provavelmente errado"*).
+    ///
+    /// ⚠️ **É outra pergunta que o [`Self::for_verb`]**: aquela é *quem governa
+    /// este verbo sob este modo* (e recua para a referência que o TEM); esta é
+    /// *que chip acende quando o artista escolhe o verbo*. Elas concordam hoje e
+    /// divergiriam no dia em que um verbo fosse declarado só pelo `L`.
+    #[must_use]
+    pub const fn birth_for(verb: Verb) -> Self {
+        // ⚠️ **Um laço `const` e não `offered_for(..).next()`**, porque o
+        // [`Self::for_verb`] é `const` e o [`Self::lateral_for`] o chama de
+        // dentro de um `const fn`. As duas formas devolvem o mesmo, e há gate.
+        let mut i = 0;
+        while i < Self::ALL.len() {
+            if Self::ALL[i].declares(verb) {
+                return Self::ALL[i];
+            }
+            i += 1;
+        }
+        // Inalcançável por construção — todo verbo é declarado por pelo menos
+        // um modo, e há gate afirmando isso.
+        Self::B
+    }
+
+    /// **QUEM DE FACTO GOVERNA ESTE VERBO** — `self` quando ele o declara, e a
+    /// referência que o TEM quando não.
+    ///
+    /// ⚠️ **Era o mesmo `if` escrito à mão em dois sítios** ([`Self::kernel_for`]
+    /// e [`Self::lateral_for`]) e **ausente num terceiro** — o
+    /// [`crate::Brush::weight`], que é onde ele mudava o desenho. Uma lei
+    /// copiada é uma lei que a próxima porta nasce sem: agora ela tem nome.
+    ///
+    /// ⚠️ **O destino continua o `B` LITERAL, e eu tentei derivá-lo.** Trocá-lo
+    /// pelo [`Self::birth_for`] parece a mesma frase (*"a referência que TEM a
+    /// ferramenta"*) e **não é**: o `Sharpen` é declarado pelos DOIS, então o
+    /// derivado o manda para o `S` e o literal para o `B`, e o gate
+    /// `the_geometric_operator_does_not_leak_into_the_verb_next_door` (W4)
+    /// reprovou sobre produto correto. O par `(L, verbo que o L não declara)`
+    /// é **inalcançável pelo produto** — o painel só oferece quem declara —, e
+    /// mudar o destino dele seria re-decidir uma wave vizinha dentro de um fix
+    /// de outra. Fica o literal, agora com o motivo escrito.
+    #[must_use]
+    pub const fn for_verb(self, verb: Verb) -> Self {
+        if self.declares(verb) { self } else { Self::B }
+    }
+
     /// **A lei que governa ESTE verbo sob este modo** — a porta do produto.
     ///
     /// ⚠️ **[`Self::kernel`] responde outra pergunta:** *que lei este modo
@@ -422,11 +485,7 @@ impl RefMode {
     /// existe para o `match` ser total.
     #[must_use]
     pub fn kernel_for(self, verb: Verb) -> KernelLaw {
-        if self.declares(verb) {
-            self.kernel()
-        } else {
-            Self::B.kernel()
-        }
+        self.for_verb(verb).kernel()
     }
 
     /// **COMO ESTE MODO APERTA ESTE VERBO** — a porta do puxão lateral, e a
@@ -461,9 +520,8 @@ impl RefMode {
     #[must_use]
     pub const fn lateral_for(self, verb: Verb) -> LateralPull {
         // Um verbo que o modo não declara cai na lei da referência que o TEM —
-        // a mesma regra do [`Self::kernel_for`], e por isso é o mesmo `if`.
-        let m = if self.declares(verb) { self } else { Self::B };
-        match m {
+        // a mesma regra do [`Self::kernel_for`], e por isso é a mesma PORTA.
+        match self.for_verb(verb) {
             Self::S | Self::L => LateralPull::Direct,
             Self::B => match verb {
                 // `pinch.cc` — a ferramenta **Pinch** do Blender.

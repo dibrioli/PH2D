@@ -181,17 +181,14 @@ impl Default for Sculpt3dUi {
             // faixa com um chip que o painel não oferece, ou seja **nenhum
             // aceso**. Cada verbo abre no primeiro modo que o declara, que é o
             // `S` onde ele existe e a referência da própria tool onde não.
-            mode_by_verb: {
-                let mut m = [RefMode::default(); Verb::ALL.len()];
-                let mut i = 0;
-                while i < Verb::ALL.len() {
-                    if let Some(first) = RefMode::offered_for(Verb::ALL[i]).next() {
-                        m[i] = first;
-                    }
-                    i += 1;
-                }
-                m
-            },
+            //
+            // ⚠️ **E a derivação mudou-se para o motor** ([`RefMode::birth_for`])
+            // porque este `Default` **não era o que shipava**: a shell nascia com
+            // o `[RefMode::default(); N]` que este comentário recusa, e sete
+            // verbos rodavam a lei de força de uma referência que não os tem.
+            // Dois lugares respondendo a mesma pergunta, e quem ganhava era o
+            // que ninguém tinha escrito de propósito.
+            mode_by_verb: std::array::from_fn(|i| RefMode::birth_for(Verb::ALL[i])),
             // ⚠️ **BASIC, e a razão é a mesma do `RefMode::default() == S`:** a
             // tese deste módulo é que a referência do SculptGL é a linha de base
             // sã, e um painel que abre mostrando mais knobs do que a referência
@@ -554,3 +551,7 @@ pub fn arm_verb_defaults(ui: &mut Sculpt3dUi, verb: Verb) {
     }
     ui.brush.verb = verb;
 }
+
+#[cfg(test)]
+#[path = "state_tests.rs"]
+mod tests;

@@ -212,3 +212,177 @@ fn what_an_object_unit_is_worth_here() {
         println!("    raio {r:>4.2}: reach {:.4}", r * 0.1);
     }
 }
+
+/// **P6 — O PERFIL RADIAL: o falloff pousa na SUPERFÍCIE, ou só na taxa?**
+///
+/// ⚠️ **É a pergunta que o smoke devolveu** (*"falloff provavelmente errado,
+/// resultado muito diferente e pior"*): a demão saía com uma parede quase
+/// vertical e um topo chato até a borda do círculo, onde a referência entrega
+/// um ombro. A P1 já dizia que todo peso converge para `disp = 1` — o que esta
+/// mede é **quantos dabs um traço de facto entrega**, e portanto qual metade da
+/// curva o artista vê: o transiente (um ombro) ou o limite (um top-hat).
+#[test]
+#[ignore = "sonda"]
+fn the_radial_profile_of_a_coat() {
+    let r = 0.4f32;
+    let b = Brush {
+        verb: Verb::Layer,
+        radius: r,
+        strength: Verb::Layer.default_strength(),
+        falloff: Verb::Layer.default_falloff(),
+        ..Brush::default()
+    };
+    println!(
+        "== P6: perfil radial (forca {:.2}, falloff {:?}, altura {:.2}, raio {r})",
+        b.strength, b.falloff, b.layer_height
+    );
+    println!("   dabs |  t=0,1  t=0,3  t=0,5  t=0,7  t=0,8  t=0,9  t=0,95   (fracao da altura)");
+    for dabs in [1usize, 2, 4, 8, 16, 32, 64, 256] {
+        let mut mesh = grid(240, 0.55);
+        let mut s = SculptStroke::default();
+        s.begin(&mesh);
+        for _ in 0..dabs {
+            s.dab(
+                &mut mesh,
+                &b,
+                &Dab::at([0.0, 0.0, 0.0], r, [0.0, 0.0, -1.0]),
+                Symmetry::default(),
+            );
+        }
+        print!("  {dabs:>5} |");
+        for t in [0.1f32, 0.3, 0.5, 0.7, 0.8, 0.9, 0.95] {
+            // média dos vértices num anel fino em torno de t·r
+            let (mut sum, mut n) = (0.0f32, 0usize);
+            for p in mesh.positions() {
+                let d = (p[0] * p[0] + p[1] * p[1]).sqrt() / r;
+                if (d - t).abs() < 0.02 {
+                    sum += p[2];
+                    n += 1;
+                }
+            }
+            let frac = if n == 0 {
+                f32::NAN
+            } else {
+                sum / n as f32 / b.layer_height
+            };
+            print!(" {frac:6.3}");
+        }
+        println!();
+    }
+    println!();
+    println!("  ⇒ uma linha que sai `1,000` em toda coluna e' um TOP-HAT: a parede");
+    println!("    e' vertical e o falloff nao esta' na superficie, so' no caminho.");
+}
+
+/// **P7 — O MODO EM QUE A DEMÃO NASCE, e o que ele faz com a força.**
+///
+/// ⚠️ **O `S` não declara este verbo** ([`ph2d_sculpt3d::RefMode::declares`]) e
+/// mesmo assim é o modo em que a shell o faz nascer. O
+/// [`ph2d_sculpt3d::Brush::weight`] pergunta `profile(mode)` **sem** o recuo que
+/// o `kernel_for` tem, então um modo que não declara o verbo devolve `None` e o
+/// slider vira o peso CRU — onde a referência deste verbo o eleva ao QUADRADO
+/// (`sculpt.cc:2337-2339`).
+#[test]
+#[ignore = "sonda"]
+fn the_mode_the_coat_is_born_in() {
+    use ph2d_sculpt3d::RefMode;
+    println!("== P7: quem declara a DEMAO, e o peso que cada modo entrega");
+    for m in RefMode::ALL {
+        println!(
+            "  {m:?}: declara={} peso(slider 0,50)={:.4}",
+            m.declares(Verb::Layer),
+            Brush {
+                verb: Verb::Layer,
+                mode: m,
+                strength: 0.5,
+                ..Brush::default()
+            }
+            .weight()
+        );
+    }
+    println!(
+        "  nascimento da shell: RefMode::default() = {:?}",
+        RefMode::default()
+    );
+    println!(
+        "  oferecidos no painel: {:?}",
+        RefMode::offered_for(Verb::Layer).collect::<Vec<_>>()
+    );
+
+    let r = 0.4f32;
+    println!();
+    println!("  perfil radial por MODO (mesmo slider 0,50, mesmos dabs):");
+    println!("   modo | dabs |  t=0,5  t=0,7  t=0,8  t=0,9  t=0,95");
+    for m in [RefMode::S, RefMode::B] {
+        let b = Brush {
+            verb: Verb::Layer,
+            mode: m,
+            radius: r,
+            strength: 0.5,
+            falloff: Verb::Layer.default_falloff(),
+            ..Brush::default()
+        };
+        for dabs in [8usize, 16, 64] {
+            let mut mesh = grid(240, 0.55);
+            let mut s = SculptStroke::default();
+            s.begin(&mesh);
+            for _ in 0..dabs {
+                s.dab(
+                    &mut mesh,
+                    &b,
+                    &Dab::at([0.0, 0.0, 0.0], r, [0.0, 0.0, -1.0]),
+                    Symmetry::default(),
+                );
+            }
+            print!("     {m:?} | {dabs:>4} |");
+            for t in [0.5f32, 0.7, 0.8, 0.9, 0.95] {
+                let (mut sum, mut n) = (0.0f32, 0usize);
+                for p in mesh.positions() {
+                    let d = (p[0] * p[0] + p[1] * p[1]).sqrt() / r;
+                    if (d - t).abs() < 0.02 {
+                        sum += p[2];
+                        n += 1;
+                    }
+                }
+                print!(" {:6.3}", sum / n as f32 / b.layer_height);
+            }
+            println!();
+        }
+    }
+}
+
+/// **P8 — O CENSO: quantos verbos a shell faz nascer num modo que não os
+/// declara?** A demão é o que o smoke pegou; a pergunta é de quantos ela é.
+#[test]
+#[ignore = "sonda"]
+fn the_census_of_verbs_born_in_a_mode_that_does_not_declare_them() {
+    use ph2d_sculpt3d::RefMode;
+    println!("== P8: nascimento `[RefMode::default(); N]` contra o que declara");
+    let mut wrong = 0usize;
+    for v in Verb::ALL {
+        let born = RefMode::default();
+        if !born.declares(v) {
+            wrong += 1;
+            let first = RefMode::offered_for(v).next();
+            println!(
+                "  {v:?}: nasce {born:?} (nao declara) -> deveria {first:?}; \
+                 peso(0,50) {:.4} contra {:.4}",
+                Brush {
+                    verb: v,
+                    mode: born,
+                    strength: 0.5,
+                    ..Brush::default()
+                }
+                .weight(),
+                Brush {
+                    verb: v,
+                    mode: first.unwrap(),
+                    strength: 0.5,
+                    ..Brush::default()
+                }
+                .weight(),
+            );
+        }
+    }
+    println!("  ⇒ {wrong} de {} verbos", Verb::ALL.len());
+}

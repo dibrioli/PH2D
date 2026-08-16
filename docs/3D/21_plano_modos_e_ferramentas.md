@@ -3526,3 +3526,49 @@ Smoke: **`env PH2D_SCULPT3D_SMOKE=33 cargo run -p ph2d-host-desktop --release`**
 ela existe para provar), e a pergunta de olho **não é *"levantou barro?"***: o
 Draw também levanta. É que a demão **PARA**, o topo dela é um **PLATÔ**, e o teto
 não se move quando o pincel muda de tamanho.
+
+---
+
+### §7.32 — ✅ O SMOKE DA DEMÃO REPROVOU O FALLOFF, e o falloff estava certo: SETE verbos nasciam com a força da referência ERRADA (2026-08-16)
+
+Report do Enio com dois screenshots, no smoke da `=33`: *"Falloff provavelmente
+errado. resultado muito diferente e pior"* — a camada saía com **parede quase
+vertical** e borda **escadeada**.
+
+**O falloff foi inocentado por MEDIÇÃO, e a régua não é o kernel — é o perfil
+radial do PRODUTO** (`measure_layer_law::the_radial_profile_of_a_coat`). A lei
+satura, então todo peso converge para `disp = 1` e o falloff decide **quão
+depressa**, nunca **até onde**: a 64 dabs a fração da altura em
+`t = 0,5 … 0,95` mede `1,000 1,000 1,000 0,715 0,277`. *Nenhuma curva impede um
+top-hat numa lei que satura.* O que decide se o artista vê ombro ou degrau é a
+**TAXA** — e a taxa estava dobrada.
+
+**A causa.** `Brush::weight` perguntava `verb.profile(self.mode)` **sem o recuo**
+que o `kernel_for` e o `lateral_for` têm; o `S` não declara a demão, `profile`
+devolve `None`, e o `map_or` caía no slider CRU onde o `layer.cc` eleva ao
+quadrado. **`0,5000` contra `0,2500`.** E não era da demão: a **shell** nascia
+com `[RefMode::default(); N]` enquanto o `Sculpt3dUi::default()` do painel **já**
+derivava — **7 dos 23 verbos** num modo que não os declara.
+
+**A cura tem duas metades, e cada uma cobre uma superfície diferente:**
+`RefMode::birth_for` (o chip da faixa e o gesto de carimbar) e `RefMode::for_verb`
+no `weight()` (a lei de força, que é a que muda a forma do barro).
+
+⚠️ **E o destino do recuo continua o `Self::B` literal porque a MEDIÇÃO travou a
+derivação:** o `Sharpen` é declarado pelos dois modos, então o derivado o manda
+para o `S` e o gate `the_geometric_operator_does_not_leak_into_the_verb_next_door`
+da W4 reprovou **sobre produto correto**.
+
+⚠️ **Por que 277 gates ficaram verdes:** **64 das 86 fixtures** desta crate usam
+`strength: 1.0`, e `1² == 1`. A suíte era cega **por escolha de fixture** — a
+mesma lição que o `lateral_for` já tinha pago (BUGS #2). O gate novo usa `0,40` e
+pina a cegueira num teste próprio.
+
+**Superfície:** `RefMode` ganha `birth_for` + `for_verb` (as duas `const`, e o
+`kernel_for`/`lateral_for` passam a delegar) · **zero componente, zero id, zero
+`PROJECT_SCHEMA`, zero `Cargo.toml`, zero dep, zero ADR**. Detalhe e tabelas:
+[`BUGS_sculpt3d.md` #4](BUGS_sculpt3d.md).
+
+**Mudança de comportamento, nomeada:** os sete verbos do Blender passam a
+depositar **na metade da taxa** no mesmo slider — é a correção, e ela é visível
+em toda cena que os use.

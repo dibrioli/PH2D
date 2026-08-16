@@ -575,3 +575,99 @@ fn the_literature_law_differs_from_its_neighbours_only_where_the_paper_speaks() 
         "sem o par λ|μ o chip L seria o S com outro nome"
     );
 }
+
+/// **TODO VERBO NASCE NUM MODO QUE O DECLARA** — a porta única do nascimento.
+///
+/// ⚠️ **Red-first:** com o `[RefMode::default(); N]` que a shell escrevia, sete
+/// dos vinte e três caem aqui (os do Blender). A lista está na sonda
+/// `tests/measure_layer_law.rs` (P8).
+#[test]
+fn every_verb_is_born_in_a_mode_that_declares_it() {
+    for v in Verb::ALL {
+        let born = RefMode::birth_for(v);
+        assert!(
+            born.declares(v),
+            "{v:?} nasce em {born:?}, que não o declara — o chip da faixa nasce \
+             APAGADO e a lei de força vem de uma referência que não tem a tool"
+        );
+    }
+    // O CONTROLE: a porta não pode ser *"devolva sempre o B"*.
+    assert_eq!(
+        RefMode::birth_for(Verb::Draw),
+        RefMode::S,
+        "onde o S declara, é ele que nasce — senão o `birth_for` seria um literal"
+    );
+}
+
+/// **O PESO PERGUNTA À REFERÊNCIA QUE TEM A FERRAMENTA** — o recuo que o
+/// [`RefMode::kernel_for`] sempre teve e o [`Brush::weight`] não tinha.
+///
+/// ⚠️ **O slider é 0,40 de propósito, e é a metade que faz o gate existir:** em
+/// `1,00` o quadrado do Blender é a IDENTIDADE, e **64 das 86 fixtures desta
+/// crate usam `strength: 1.0`** — é por isso que a suíte inteira ficou verde
+/// sobre este defeito até um smoke o encontrar na forma do barro.
+#[test]
+fn the_weight_asks_the_reference_that_has_the_tool() {
+    const SLIDER: f32 = 0.4;
+    let weight_of = |v: Verb, mode: RefMode| {
+        Brush {
+            verb: v,
+            mode,
+            strength: SLIDER,
+            ..Brush::default()
+        }
+        .weight()
+    };
+    for v in Verb::ALL {
+        let born = RefMode::birth_for(v);
+        // A metade de PRODUTO: no modo em que o verbo nasce, o peso é o que a
+        // referência DELE declara — quadrado no Blender, o slider no SculptGL.
+        let want = if born == RefMode::B {
+            SLIDER * SLIDER
+        } else {
+            SLIDER
+        };
+        assert!(
+            (weight_of(v, born) - want).abs() < 1e-6,
+            "{v:?} nasce em {born:?} e pesa {} contra {want}",
+            weight_of(v, born)
+        );
+        // A metade de DEFESA EM PROFUNDIDADE, e ela é o defeito reproduzido: o
+        // `RefMode::default()` é literalmente o que a shell carimbava em todo
+        // verbo. Perguntar nele tem de dar o MESMO — senão o conserto vive num
+        // sítio de nascimento e o próximo caminho até o `mode` nasce sem ele.
+        assert!(
+            (weight_of(v, RefMode::default()) - want).abs() < 1e-6,
+            "{v:?} perguntado no default {:?}: peso {} contra {want} — um modo \
+             que não declara a tool não pode escolher a lei de força",
+            RefMode::default(),
+            weight_of(v, RefMode::default())
+        );
+    }
+}
+
+/// **A CEGUEIRA, pinada** — para ninguém "simplificar" o gate acima de volta
+/// para a força cheia, onde ele não pode falhar.
+#[test]
+fn at_full_strength_the_square_is_the_identity_and_proves_nothing() {
+    let at = |mode: RefMode, s: f32| {
+        Brush {
+            verb: Verb::Layer,
+            mode,
+            strength: s,
+            ..Brush::default()
+        }
+        .weight()
+    };
+    assert_eq!(at(RefMode::S, 1.0), at(RefMode::B, 1.0), "1² == 1");
+    assert_ne!(
+        at(RefMode::S, 0.4),
+        RefMode::S.for_verb(Verb::Layer).kernel().plane as u8 as f32,
+        "guarda contra um assert vazio"
+    );
+    // E a separação que o slider baixo entrega, com número.
+    assert!(
+        (at(RefMode::B, 0.5) - 0.25).abs() < 1e-6,
+        "o `layer.cc` pede o QUADRADO: 0,50 → 0,2500, não 0,5000"
+    );
+}

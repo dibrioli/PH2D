@@ -62,6 +62,38 @@ fn the_scene_builds_every_band_the_log_names() {
     assert_eq!(sinks.len(), BANDS);
 }
 
+/// **TODA BANDA ACABA NUM `motion.output` — senão a cena não desenha NADA.**
+///
+/// ⚠️ O laço de render **não usa** a lista que `build_collide_demo_document`
+/// devolve: ele re-resolve os sinks a cada quadro a partir dos nós de saída do
+/// grafo (`motion_bridge.rs`: `motion.sinks = output_nodes(&doc.graph)`). Uma
+/// cadeia terminada no `motion.collide` cozinha certo, satisfaz todos os gates
+/// abaixo — e a tela fica **VAZIA**, que é indistinguível da feature quebrada.
+///
+/// Foi assim que esta cena nasceu, e é a única das onze cenas de conferência que
+/// o fez.
+#[test]
+fn every_band_ends_in_an_output_node() {
+    let mut reg = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).unwrap();
+    let mut doc = MotionDoc::default();
+    let sinks = build_collide_demo_document(&mut doc, &reg).expect("a cena monta");
+    for (b, sink) in sinks.iter().enumerate() {
+        let ty = doc
+            .graph
+            .nodes()
+            .iter()
+            .find(|n| n.id == *sink)
+            .map(|n| n.type_name.clone())
+            .expect("o sink e' um no' do grafo");
+        assert_eq!(
+            ty, "motion.output",
+            "a banda {b} termina em `{ty}` -- o render colhe os `motion.output`, entao esta \
+             fileira nao chega a' tela"
+        );
+    }
+}
+
 /// **A FIXTURE CONTÉM O FENÔMENO: a fileira nasce SOBREPOSTA e o nó a desfaz.**
 ///
 /// Sem isto todo par abaixo compararia dois empacotamentos que nunca precisaram

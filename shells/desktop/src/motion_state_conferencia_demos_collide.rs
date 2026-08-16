@@ -250,7 +250,18 @@ fn build_band(g: &mut Graph, row: usize, kind: Kind) -> Option<NodeId> {
     g.set_param(collide, "iterations", SWEEPS);
     g.set_param(collide, "strength", 1.0);
     wire(g, head, 0, collide, 0)?;
-    Some(collide)
+
+    // ⚠️ **A CADEIA TEM DE ACABAR NUM `motion.output`, e não é decoração.** O
+    // laço de render **re-resolve os sinks a cada quadro** a partir dos nós de
+    // saída (`motion_bridge.rs`: `motion.sinks = output_nodes(&doc.graph)`), então
+    // o que esta função devolve serve aos GATES e é descartado pelo app. Uma cena
+    // sem Output cozinha certo, passa em toda a suíte e **desenha NADA na tela** —
+    // o modo de falha que uma cena de smoke não pode ter, porque ele é
+    // indistinguível da feature quebrada.
+    let out = g.add_node("motion.output");
+    g.set_pos(out, Pos { x: x + 1200.0, y });
+    wire(g, collide, 0, out, 0)?;
+    Some(out)
 }
 
 /// Monta as seis fileiras e devolve os nós de saída, de cima para baixo.

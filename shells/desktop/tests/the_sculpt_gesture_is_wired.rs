@@ -267,9 +267,22 @@ fn a_pointer_event_is_walked_at_the_brushes_spacing_and_stops_where_the_ray_miss
     // esses só correm na varredura IMPACTADA — um fechamento por
     // `cargo test -p ph2d-sculpt3d` não os alcança. É a mesma causa estrutural
     // que a `line/Vector` e a `line/physics` já registaram.
+    // ⚠️ **`landed`, e não `steps.anchor()` — a metade do par que faltava.**
+    // O `break` acima é fiel ao `SculptBase.js:141-146`, mas lá ele vem PAREADO
+    // com `_lastMouse = mouse` (`:151-152`): a referência descarta o resíduo
+    // inteiro, e por isso o par dela é coerente. Com o `break` da referência e a
+    // NOSSA âncora (o último passo do walk — a divergência que o `spacing.rs`
+    // mede em `6,485 % → 0,000 %`), o caminho avançava por cima de dabs que
+    // nunca foram carimbados: o vão era APAGADO, não pulado.
     assert!(
-        deposited.contains("stroke_anchor = steps.anchor()"),
-        "a âncora avança para o último DAB dentro do ramo que carimbou"
+        deposited.contains("landed = Some([sx, sy])")
+            && deposited.contains("scene.stroke_anchor = last"),
+        "a âncora avança para o último dab APLICADO dentro do ramo que carimbou"
+    );
+    assert!(
+        !deposited.contains("stroke_anchor = steps.anchor()"),
+        "`steps.anchor()` é o último passo do WALK, e com um miss ele passa por \
+         cima de tinta que ninguém pôs"
     );
     assert!(
         !arm.replace(&deposited, "").contains("stroke_anchor ="),
@@ -779,5 +792,49 @@ fn the_pen_up_closes_the_transform_and_that_is_where_the_undo_step_is_written() 
     assert!(
         body.contains("Drag::Transform") && body.contains("scene.close_transform()"),
         "o pen-up não fecha a sessão do transform -- o gesto não teria undo"
+    );
+}
+
+/// **UM DAB QUE ERRA NÃO APAGA O RESTO DO PERCURSO.**
+///
+/// ⚠️ Este gate nasceu de um defeito medido: o laço do `walk` fazia `break` no
+/// primeiro `sculpt_at` que devolvia `false`, **enquanto a âncora avançava para
+/// o fim do lote** (`steps.anchor()`, a linha logo abaixo). Errar é NORMAL — o
+/// doc do `sculpt_at` diz *"a mão sai do modelo o tempo todo"* —, e o gesto que
+/// o produz é o mais banal que existe: cruzar a silhueta e voltar dentro de UM
+/// evento de ponteiro. Os dabs seguintes, que estavam sobre barro, morriam com
+/// os do vazio, e o vão não era pulado: era **apagado**.
+///
+/// ⚠️ **A âncora é o que torna o `break` pior que uma parada honesta:** ela é
+/// função da GEOMETRIA do percurso e não de quantos dabs pousaram, então parar
+/// cedo não a segura — o traço perdia comprimento *e* seguia em frente.
+///
+/// O oráculo é a FONTE porque a cena 3D exige um `wgpu::Device` vivo (ver o
+/// cabeçalho deste arquivo). A mutação que reinstala o `break` sangra aqui.
+#[test]
+fn a_missed_dab_does_not_abandon_the_rest_of_the_walk() {
+    let src = sculpt_src();
+    let arm = grip_arm(&src, "Grip::Stamp");
+    // O CONTROLE: sem isto a varredura poderia estar vazia e o gate verde por
+    // vácuo — é o braço certo, e ele de facto percorre o `walk`.
+    assert!(
+        arm.contains("ph2d_sculpt3d::walk(") && arm.contains("scene.sculpt_at("),
+        "o braço do carimbo tem de percorrer o walk e carimbar; achei:\n{arm}"
+    );
+    let body = braced_block(&arm, "for [sx, sy] in steps");
+    assert!(
+        body.contains("landed = Some([sx, sy])"),
+        "o laço tem de LEMBRAR o último dab que de facto pousou:\n{body}"
+    );
+    assert!(
+        arm.contains("if let Some(last) = landed") && arm.contains("stroke_anchor = last"),
+        "e a âncora tem de vir dele — sem isso o `break` avança o caminho por \
+         cima de tinta que ninguém pôs"
+    );
+    // ⚠️ O CONTROLE da outra ponta: sem dab nenhum a âncora NÃO anda. É o carry,
+    // e é o que impede um gesto lento de depositar dez vezes mais dabs.
+    assert!(
+        !arm.contains("scene.stroke_anchor = steps.anchor()"),
+        "o último passo do WALK não é o último dab APLICADO"
     );
 }

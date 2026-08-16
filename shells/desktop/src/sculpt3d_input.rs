@@ -297,10 +297,35 @@ impl App {
                 Grip::Stamp | Grip::Paint => {
                     let spacing = ph2d_sculpt3d::min_spacing(scene.radius_px());
                     if let Some(steps) = ph2d_sculpt3d::walk(scene.stroke_anchor, [x, y], spacing) {
+                        // ⚠️ **A âncora é o último dab APLICADO, e antes disto
+                        // era o último dab do WALK.** As duas só coincidem
+                        // enquanto nenhum passo erra — e errar é NORMAL (o doc
+                        // do `sculpt_at`: *"a mão sai do modelo o tempo todo"*).
+                        //
+                        // O `break` abaixo é fiel ao `SculptBase.js:141-146`,
+                        // que aborta o evento no primeiro passo sem superfície.
+                        // ⚠️ Mas lá ele vem PAREADO com `_lastMouse = mouse`
+                        // (`:151-152`): a referência joga o resíduo inteiro fora,
+                        // e por isso o par dela é coerente. **Nós tomámos metade
+                        // do par** — o `break` da referência com a nossa âncora
+                        // no último passo do walk (a divergência que o
+                        // `spacing.rs` mede em `6,485 % → 0,000 %`) —, e a
+                        // combinação avançava o caminho por cima de dabs que
+                        // nunca foram carimbados: o vão não era pulado, era
+                        // **APAGADO**, sem erro e sem aviso.
+                        //
+                        // Com o último aplicado, as duas metades voltam a
+                        // concordar: o percurso retoma de onde a tinta parou.
+                        // ⚠️ E `None` mantém o carry — nenhum dab pousou, então
+                        // a âncora não anda (mover-la aqui apagaria o resíduo, e
+                        // é a mesma razão de o ramo inteiro viver dentro do
+                        // `if let Some(steps)`).
+                        let mut landed = None;
                         for [sx, sy] in steps {
                             if !scene.sculpt_at(sx, sy) {
                                 break;
                             }
+                            landed = Some([sx, sy]);
                         }
                         // ⚠️ **A âncora é o ÚLTIMO DAB, e o `walk` é quem
                         // responde isso.** Duas coisas se perdem escrevendo
@@ -313,7 +338,17 @@ impl App {
                         // Se o `walk` RECUSOU (o carry, `None`), a âncora fica
                         // onde está — o resíduo acumula até valer um passo, e
                         // movê-la fora deste ramo o apagaria.
-                        scene.stroke_anchor = steps.anchor();
+                        //
+                        // ⚠️ **`landed` e nunca `steps.anchor()`**: a posição
+                        // que o iterador entregou É a que o `anchor()` computa
+                        // (o doc dele diz que reusa a MESMA aritmética, e não
+                        // uma re-derivação `from + k·ms` — as duas concordam em
+                        // álgebra e não em ponto flutuante). Sem um miss elas
+                        // são o mesmo número; com um miss, `landed` é o único
+                        // que não passa por cima de tinta que ninguém pôs.
+                        if let Some(last) = landed {
+                            scene.stroke_anchor = last;
+                        }
                     }
                 }
             },

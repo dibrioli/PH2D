@@ -59,7 +59,8 @@ impl BrushSpec {
     #[must_use]
     pub fn rough_pass_count(&self) -> u32 {
         if self.rough_active() {
-            self.rough_passes.clamp(1, crate::line_kind::ROUGH_PASSES_MAX)
+            self.rough_passes
+                .clamp(1, crate::line_kind::ROUGH_PASSES_MAX)
         } else {
             1
         }
@@ -189,5 +190,4 @@ impl BrushSpec {
     pub fn sketchy_reach_px(&self) -> f32 {
         self.sketchy_reach * 2.0 * self.clamped_radius()
     }
-
 }

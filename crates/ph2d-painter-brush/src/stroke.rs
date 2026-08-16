@@ -611,10 +611,10 @@ mod curve;
 mod dab_build;
 /// **A FITA** — a massa presa ao cursor por uma mola com atrito e peso (W6).
 pub mod ribbon;
-/// A INÉRCIA do gesto: a velocidade por tique e o arremesso do `Speed Shapes` (plano 38 W2).
-mod speed;
 /// O DESVIO COERENTE do `Rough` — a linha que vagueia, e por que ela nao e o jitter (W6).
 pub mod roughen;
+/// A INÉRCIA do gesto: a velocidade por tique e o arremesso do `Speed Shapes` (plano 38 W2).
+mod speed;
 /// **A PORTA ÚNICA** por onde um ponto do caminho vira marca, e o SPRAY que a multiplica (W5).
 pub mod spray;
 /// A MEMÓRIA do traço e os FIOS que ela costura — `Sketchy` (W3) e `Wire` (W4).

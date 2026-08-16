@@ -19,8 +19,11 @@
 | **M** | a CONTAGEM da conferência deixa de ser escrita à mão (sem código de produto) | — | — |
 | **N** | o `motion.wiggle` ganha as OITAVAS, o multiplicador e o LAÇO | `=54` | ✅ |
 | **O** | o `motion.oscillator` ganha o PULSE WIDTH e o `motion.stagger` o OFFSET | `=55` | ✅ |
+| **P** | o `motion.drive` escreve uma COLUNA NOMEADA — a **§10.0 do plano FECHA** | `=56` | ⏳ |
 
-✅ **As sete cenas foram smokadas e aprovadas pelo Enio** (`=49`..`=55`).
+⚠️ **A cena `=56` (grupo P) NÃO foi smokada** — *integrar não é aprovar*.
+
+✅ **As sete anteriores foram smokadas e aprovadas pelo Enio** (`=49`..`=55`).
 
 ✅ **As cinco primeiras foram smokadas e aprovadas pelo Enio** — as três primeiras à medida
 que fecharam, e as duas últimas (`=49` e `=53`) em 2026-08-16, depois do fechamento da

@@ -60,10 +60,18 @@ run_optional "cargo-audit (CVE scan)" cargo-audit cargo audit
 run_optional "typos (project-wide typo scan)" typos typos
 
 # ── CI `test` job parity (nextest covers arch gates + cook-hash) ─────────
+# ⚠️ `CARGO_INCREMENTAL=0` nos DOIS: o perfil `ci-test` só roda em BATCH, então
+# incremental não colhe nada ali e paga 11 GB (CLAUDE.md §2, medido 2026-08-16).
+# O `env` é por-comando de propósito — o clippy acima roda no perfil `dev`, cujo
+# `incremental/` é o que faz o `cargo check -p` do inner loop voar no dia
+# seguinte; um `export` no topo o mataria junto. A §2 protege essa metade
+# explicitamente ("o `cargo check -p` do inner loop fica em paz, de propósito").
 if command -v cargo-nextest >/dev/null 2>&1; then
-    run "nextest run --workspace (ci-test)" cargo nextest run --workspace --cargo-profile ci-test
+    run "nextest run --workspace (ci-test)" \
+        env CARGO_INCREMENTAL=0 cargo nextest run --workspace --cargo-profile ci-test
 else
-    run "cargo test --workspace (ci-test)" cargo test --workspace --profile ci-test
+    run "cargo test --workspace (ci-test)" \
+        env CARGO_INCREMENTAL=0 cargo test --workspace --profile ci-test
 fi
 
 # ── summary ─────────────────────────────────────────────────────────────

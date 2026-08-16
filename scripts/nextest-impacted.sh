@@ -10,6 +10,19 @@
 #         BASE=<ref> ./scripts/nextest-impacted.sh # vs custom ref
 set -uo pipefail
 
+# `ci-test` só roda em BATCH (uma ou duas vezes por jornada, sobre a workspace
+# inteira), então compilação incremental não colhe nada ali e paga 11 GB — o
+# número que o CLAUDE.md §2 nomeia, MEDIDO em 2026-08-16. Esta é a única coisa
+# que este script executa, então o `export` é seguro: o `cargo check -p` do
+# inner loop (perfil `dev`, outro processo) fica em paz, de propósito.
+#
+# ⚠️ A regra vivia SÓ no CLAUDE.md, e o integrador de 16/08 a seguiu à mão e
+# viu os 11 GB aparecerem na mesma — porque quem compila é ESTE script. Uma
+# regra fora do caminho de quem a executa é uma regra que não existe.
+# ⚠️ E nesta workstation o `target/` é symlink para /dev/shm: o diretório de
+# build É RAM, e o número sai do mesmo orçamento em que o app corre.
+export CARGO_INCREMENTAL=0
+
 BASE="${BASE:-origin/main}"
 
 # Changed crate DIR names under crates/ (dir == package name by ph2d-* convention).

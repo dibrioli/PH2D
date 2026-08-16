@@ -54,8 +54,9 @@ fn o_nome_nao_e_um_param_do_manifesto() {
         "o nome viaja pelo canal de TEXTO do Graph, nao pelo manifesto"
     );
     assert!(
-        PARAM_HINTS.iter().any(|h| h.param == NAME_KEY
-            && matches!(h.widget, ParamWidget::Text)),
+        PARAM_HINTS
+            .iter()
+            .any(|h| h.param == NAME_KEY && matches!(h.widget, ParamWidget::Text)),
         "e o painel o desenha como campo de texto"
     );
 }

@@ -111,7 +111,10 @@ fn an_integrator_downstream_makes_the_acceleration_healthy() {
         })
         .is_ok()
     });
-    assert!(wired, "o integrador tem de aceitar o stream em alguma porta");
+    assert!(
+        wired,
+        "o integrador tem de aceitar o stream em alguma porta"
+    );
     assert!(
         !inert_accel(&g, &reg, mp),
         "com um consumidor a jusante a producao e saudavel: {:?}",
@@ -140,7 +143,9 @@ fn an_untouched_param_reads_the_manifest_default() {
     })
     .expect("in");
     assert!(
-        !g.node_params().get(&mp).is_some_and(|m| m.contains_key("target")),
+        !g.node_params()
+            .get(&mp)
+            .is_some_and(|m| m.contains_key("target")),
         "a premissa do gate: o param nao foi tocado"
     );
     assert!(

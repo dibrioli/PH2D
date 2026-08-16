@@ -594,6 +594,21 @@ fn every_verb_is_reachable_from_the_keyboard() {
     // deixar o outro sem seria pior que a ausência nomeada: o artista aprenderia
     // uma regra que não existe. A escolha de atalho é do Enio.
     const CHIP_ONLY: &[&str] = &[
+        // ⚠️ **O SLIDE RELAX (W4), e ele é o mais VELHO da lista.** Ele shipou
+        // completo — alvo, perfis de referência, gates e sonda própria — e a
+        // decisão de atalho nunca foi escrita em lugar nenhum; foi a W6, dois
+        // waves depois, que estabeleceu esta lista, e ele ficou de fora dela.
+        // *Uma ausência não-declarada e uma ausência declarada leem igual no
+        // produto e são opostas no repositório*: a segunda é uma escolha que
+        // alguém fez, a primeira é um esquecimento à espera de ser descoberto —
+        // e este foi descoberto pelo gate, não por um artista.
+        //
+        // A ausência de TECLA é real e o aperto é o mesmo do parágrafo acima:
+        // sobra o `L`, e ele tem quatro pretendentes (este, o Blob, o Clay
+        // Thumb e a Lâmina em V). **A escolha é do Enio**, e até ela o verbo
+        // shipa pelo chip — que o `every_verb_has_a_chip_that_selects_it`
+        // (`ph2d-panel-sculpt3d/tests/seam.rs`) garante, medido: ele passa.
+        "SlideRelax",
         // A faixa (W6). Entrou sem tecla e a ausência nunca foi escrita.
         "ClayStrips",
         // O Blob, pelo mesmo motivo e no mesmo aperto de teclado.
@@ -612,15 +627,47 @@ fn every_verb_is_reachable_from_the_keyboard() {
         // toda escolha desse tipo é uma regra falsa que o artista aprende. O
         // Blender também não lhe dá atalho de fábrica. **A escolha é do Enio.**
         "MultiplaneScrape",
+        // ⚠️ **O SURFACE SMOOTH (W4), irmão do Slide Relax e pelo mesmo
+        // esquecimento.** Os dois shiparam na mesma wave, os dois completos, e
+        // nenhum dos dois foi declarado; foi o gate que os achou, um de cada
+        // vez — ver o comentário do laço abaixo, que é a razão de terem sido
+        // dois e não um.
+        //
+        // ⚠️ E aqui a ausência de tecla é a que menos custa do catálogo: o
+        // `Smooth` já tem o dígito `3`, e este é *o mesmo alisamento com a lei
+        // de referência que devolve o volume* — dar-lhe uma segunda tecla de
+        // *smooth* ensina que são ferramentas distintas quando a diferença é o
+        // MODO. **A escolha é do Enio**, e o chip já o entrega.
+        "SurfaceSmooth",
+        // ⚠️ **A DEMÃO (W8), e ela tem a MELHOR reivindicação do `L` que sobra.**
+        // Os outros quatro pretendentes precisam de um mnemônico de segunda letra
+        // (*"cLay"*, *"bLob"*) — este começa por `L`. *A escolha continua sendo do
+        // Enio*, e a razão de o verbo entrar aqui em vez de levar a tecla é que
+        // com quatro candidatos a uma tecla quem escolhe não pode ser quem passou
+        // por último: o `L` é o ÚLTIMO livre, e gastá-lo é uma decisão de uma via.
+        "Layer",
     ];
     let keys = function_body(&sculpt_src(), "sculpt3d_key");
-    for v in &verbs {
-        assert!(
-            keys.contains(&format!("Verb::{v}")) || CHIP_ONLY.contains(v),
-            "o verbo {v} não tem tecla NEM está na lista dos que shipam só com \
-             chip: ele existe, tem alvo, e ninguém decidiu como o artista o pega"
-        );
-    }
+    // ⚠️ **O gate COLETA em vez de abortar no primeiro, e isso não é estilo.**
+    // A 1ª versão era um `assert!` DENTRO do laço, então ela nomeava UM ofensor
+    // por corrida: com dois verbos por declarar (`SlideRelax` e `SurfaceSmooth`,
+    // os dois da W4), consertar o primeiro só revelava o segundo — uma volta de
+    // build por nome. *Um gate que varre uma lista tem de reportar a lista.*
+    let undeclared: Vec<_> = verbs
+        .iter()
+        .filter(|v| !keys.contains(&format!("Verb::{v}")) && !CHIP_ONLY.contains(v))
+        .collect();
+    assert!(
+        undeclared.is_empty(),
+        "{} verbo(s) sem tecla E fora da lista dos que shipam só com chip: {}\n\
+         eles existem, têm alvo, e ninguém decidiu como o artista os pega",
+        undeclared.len(),
+        undeclared
+            .iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
     // O CONTROLE da lista: um nome que deixou de existir no catálogo é uma
     // isenção que sobrevive ao verbo — e ela esconderia o verbo SEGUINTE.
     for c in CHIP_ONLY {

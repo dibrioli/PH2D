@@ -46,6 +46,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.hardness" => "Hardness",
         "panel.sculpt3d.plane_offset" => "Plane Offset",
         "panel.sculpt3d.pinch" => "Pinch",
+        "panel.sculpt3d.hc_shape" => "Shape Preservation",
+        "panel.sculpt3d.hc_vertex" => "Per Vertex Displacement",
         "panel.sculpt3d.mask_hardness" => "Hardness",
         "panel.sculpt3d.alpha" => "Alpha",
         "panel.sculpt3d.alpha.none" => "None",

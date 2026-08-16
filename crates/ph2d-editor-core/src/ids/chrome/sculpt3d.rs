@@ -49,7 +49,7 @@ pub const SCULPT3D_SEC_BAKE: NodeId = hash_node_id("sculpt3d.sec.bake");
 /// ⚠️ **O tamanho é o do `Verb::ALL`, e o gate o compara** — um verbo novo sem
 /// chip aqui é uma ferramenta que o artista não alcança, que é exatamente o que
 /// aconteceu com o `Magnify` antes de ele ganhar a tecla `A`.
-pub const SCULPT3D_VERB: [NodeId; 21] = [
+pub const SCULPT3D_VERB: [NodeId; 22] = [
     hash_node_id("sculpt3d.verb.0"),
     hash_node_id("sculpt3d.verb.1"),
     hash_node_id("sculpt3d.verb.2"),
@@ -71,6 +71,7 @@ pub const SCULPT3D_VERB: [NodeId; 21] = [
     hash_node_id("sculpt3d.verb.18"),
     hash_node_id("sculpt3d.verb.19"),
     hash_node_id("sculpt3d.verb.20"),
+    hash_node_id("sculpt3d.verb.21"),
 ];
 
 /// **A REFERÊNCIA que o verbo corrente segue** — os chips `S` · `B` · `L`.
@@ -85,12 +86,6 @@ pub const SCULPT3D_REF_MODE: [NodeId; 3] = [
     hash_node_id("sculpt3d.ref_mode.1"),
     hash_node_id("sculpt3d.ref_mode.2"),
 ];
-/// **QUÃO LARGO é o campo elástico** — os chips `Mono` · `Bi` · `Tri`.
-///
-/// ⚠️ **Só existe onde o campo existe** (`RefMode::field(verb).is_some()`), que
-/// é a MESMA porta que o motor pergunta antes de consumir o kernel. Uma fileira
-/// oferecida onde o campo não corre seria três chips que não movem um vértice —
-/// o controle morto que este painel varre a cada wave.
 /// **A DUREZA DA PONTA da faixa** — o slider e o chip numérico.
 pub const SCULPT3D_TIP_ROUNDNESS: NodeId = hash_node_id("sculpt3d.tip_roundness");
 /// O chip numérico da dureza da ponta.
@@ -106,6 +101,12 @@ pub const SCULPT3D_SCRAPE_ANGLE_NUM: NodeId = hash_node_id("sculpt3d.scrape_angl
 /// **O V É LIDO DA SUPERFÍCIE** — o toggle do modo dinâmico.
 pub const SCULPT3D_SCRAPE_DYNAMIC: NodeId = hash_node_id("sculpt3d.scrape_dynamic");
 
+/// **QUÃO LARGO é o campo elástico** — os chips `Mono` · `Bi` · `Tri`.
+///
+/// ⚠️ **Só existe onde o campo existe** (`RefMode::field(verb).is_some()`), que
+/// é a MESMA porta que o motor pergunta antes de consumir o kernel. Uma fileira
+/// oferecida onde o campo não corre seria três chips que não movem um vértice —
+/// o controle morto que este painel varre a cada wave.
 pub const SCULPT3D_ELASTIC_SCALES: [NodeId; 3] = [
     hash_node_id("sculpt3d.elastic_scales.0"),
     hash_node_id("sculpt3d.elastic_scales.1"),
@@ -166,6 +167,23 @@ pub const SCULPT3D_PLANE_OFFSET_NUM: NodeId = hash_node_id("sculpt3d.plane_offse
 pub const SCULPT3D_PINCH: NodeId = hash_node_id("sculpt3d.pinch");
 /// Chip ligado a [`SCULPT3D_PINCH`].
 pub const SCULPT3D_PINCH_NUM: NodeId = hash_node_id("sculpt3d.pinch_num");
+/// **α do Surface Smooth** — quanto o `b` se ancora na pose do PEN-DOWN em vez
+/// da posição de agora (`surface_smooth_shape_preservation`).
+pub const SCULPT3D_HC_SHAPE: NodeId = hash_node_id("sculpt3d.hc_shape");
+/// Chip ligado a [`SCULPT3D_HC_SHAPE`].
+pub const SCULPT3D_HC_SHAPE_NUM: NodeId = hash_node_id("sculpt3d.hc_shape_num");
+/// **β do Surface Smooth** — que fração da correção vem do `b` do PRÓPRIO
+/// vértice em vez da média dos vizinhos (`surface_smooth_current_vertex`).
+///
+/// ⚠️ **A faixa deste knob começa em `0,5` e o piso NÃO é dele** — ver
+/// `ph2d_sculpt3d::HC_VERTEX_MIN`: abaixo disso o operador AMPLIFICA (medido,
+/// `β = 0,3` leva a rugosidade a 43,8× a da base em dezasseis dabs), e quem
+/// impede a malha de rebentar é o clamp no MOTOR. O `min` da row existe para o
+/// artista não alcançar o disfuncional com o dedo; o clamp existe para um
+/// documento que traga o valor errado ser corrigido em vez de explodir.
+pub const SCULPT3D_HC_VERTEX: NodeId = hash_node_id("sculpt3d.hc_vertex");
+/// Chip ligado a [`SCULPT3D_HC_VERTEX`].
+pub const SCULPT3D_HC_VERTEX_NUM: NodeId = hash_node_id("sculpt3d.hc_vertex_num");
 /// **A DUREZA DO DAB** — o platô de peso cheio no miolo da pegada.
 ///
 /// ⚠️ Ele NÃO é o [`SCULPT3D_MASK_HARDNESS`], embora os nomes se pareçam: aquele

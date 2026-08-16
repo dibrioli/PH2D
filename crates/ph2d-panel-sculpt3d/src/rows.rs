@@ -33,6 +33,12 @@ mod types;
 /// Os knobs da LEITURA da forma — ver o doc do módulo.
 #[path = "rows_shading.rs"]
 mod shading;
+
+/// Os knobs da RESOLUÇÃO da malha — ver o doc do módulo.
+#[path = "rows_topology.rs"]
+mod topology;
+pub use topology::TOPOLOGY;
+
 pub use types::{Place, Row, Section};
 
 /// O teto da pista de **Extract Smooth**, em passadas.
@@ -151,6 +157,54 @@ static BRUSH: &[Row] = &[
         // ⚠️ **Pro sobre um valor ARMADO**: o `Brush::default().pinch` nasce em
         // `0,5` e o Crease aperta desde o primeiro traço. Um knob que nascesse
         // em zero seria amputação — o verbo se chamaria *vincar* e só cavaria.
+        level: UiLevel::Pro,
+        place: Place::Knobs,
+    },
+    // **OS DOIS KNOBS DO HC** — o que ele DEVOLVE, e de onde a devolução vem.
+    //
+    // ⚠️ **A pergunta é `verb == SurfaceSmooth`, e não `uses_neighbours()`** — o
+    // irmão [`Verb::Smooth`] também lê o anel e não tem `b` nenhum para
+    // devolver; oferecer-lhe estes dois seria um par de sliders que não move um
+    // vértice, que é exactamente o knob morto que este arquivo evita.
+    Row {
+        label: "panel.sculpt3d.hc_shape",
+        slider: ids::SCULPT3D_HC_SHAPE,
+        chip: ids::SCULPT3D_HC_SHAPE_NUM,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
+        decimals: 2,
+        get: |u| u.brush.hc_shape,
+        set: |u, v| u.brush.hc_shape = v,
+        show: |u| u.brush.verb == Verb::SurfaceSmooth,
+        // ⚠️ **Pro, e o default está no MEIO de um fator** — a varredura mediu
+        // uma troca monótona e SUAVE em toda a faixa (segurar mais a pose custa
+        // 1,6× menos deriva por 7% menos alisamento, sem joelho e sem cliff),
+        // então não há óptimo a escolher: o `0,5` é o meio, dito e não vestido
+        // de medição. Ver `ph2d_sculpt3d::HC_SHAPE_DEFAULT`.
+        level: UiLevel::Pro,
+        place: Place::Knobs,
+    },
+    Row {
+        label: "panel.sculpt3d.hc_vertex",
+        slider: ids::SCULPT3D_HC_VERTEX,
+        chip: ids::SCULPT3D_HC_VERTEX_NUM,
+        // ⚠️ **O piso é `0,5` e ele NÃO é gosto:** abaixo dele o operador
+        // AMPLIFICA em vez de contrair, e a faixa do Blender (`[0, 1]`) alcança
+        // o disfuncional. A forma fechada e a tabela medida vivem em
+        // `ph2d_sculpt3d::HC_VERTEX_DEFAULT`; aqui fica só a consequência — o
+        // dedo não chega lá, e o clamp do MOTOR cobre o que um documento traga.
+        min: ph2d_sculpt3d::HC_VERTEX_MIN,
+        max: 1.0,
+        step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
+        decimals: 2,
+        get: |u| u.brush.hc_vertex,
+        set: |u, v| u.brush.hc_vertex = v,
+        show: |u| u.brush.verb == Verb::SurfaceSmooth,
+        // ⚠️ **O default É o piso**, e é onde ele alisa MAIS (0,6806 da
+        // rugosidade removível contra 0,6903 em 0,650). O outro extremo, `1`, é
+        // o `strength = 0` deste verbo escrito no outro eixo: a correção passa a
+        // ser exactamente o que o passo laplaciano somou.
         level: UiLevel::Pro,
         place: Place::Knobs,
     },
@@ -478,41 +532,6 @@ fn degrees(v: f32) -> u16 {
 /// O zênite do eixo, lido do dono dele.
 const MAX_AXIS_ELEV_F32: f32 = ph2d_sculpt3d::MAX_AXIS_ELEV_DEG as f32; // CLAMP-OK: teto do motor
 
-/// **A TOPOLOGIA** — hoje uma row só, a resolução do remesh.
-///
-/// ⚠️ **A FAIXA É MEDIDA, e o recurso é a memória do campo TRANSIENTE**
-/// (`ph2d-sdf/tests/measure_remesh.rs`, esfera `uv(96,144)`):
-///
-/// | resolução | células | campo | malha de saída |
-/// |---|---|---|---|
-/// | 16 | 9.261 | 0,1 MB | 1.250 v |
-/// | 150 | 3,7 M | 24,9 MB | 106.052 v |
-/// | **512** | 138 M | **922,5 MB** | 1,23 M v |
-/// | 640 | 268 M | 1791,3 MB | 1,93 M v |
-/// | 768 | 462 M | **3083,4 MB** | 2,78 M v |
-///
-/// O teto **não foi escolhido**: o HR-13 declara **3500 MB para o app inteiro**,
-/// e a 768 o campo *transiente* sozinho come **3083 MB — 88% de tudo**, para um
-/// rascunho que é jogado fora no fim. A 640 já são 51%. **512 é o último degrau
-/// que cabe**, a 26%.
-///
-/// ⚠️ E o piso é 16 porque abaixo dele a saída deixa de ser uma forma (1.250
-/// vértices já é blocagem grossa), não porque algum recurso acabe.
-pub static TOPOLOGY: &[Row] = &[Row {
-    label: "panel.sculpt3d.remesh_res",
-    slider: ids::SCULPT3D_REMESH_RES,
-    chip: ids::SCULPT3D_REMESH_RES_NUM,
-    min: 16.0,  // LITERAL-PX-OK: resolucao de voxel, nao metrica de layout
-    max: 512.0, // LITERAL-PX-OK: idem -- o teto medido, ver a tabela acima
-    step: 1.0,
-    decimals: 0,
-    get: |u| u.remesh_res,
-    set: |u, v| u.remesh_res = v,
-    show: |_| true,
-    level: UiLevel::Basic,
-    place: Place::Knobs,
-}];
-
 /// Toda seção que tem rows de slider, em ordem de pintura.
 ///
 /// ⚠️ **Nem toda seção do painel está aqui** — Tool, Symmetry e Scene são botões
@@ -541,7 +560,7 @@ pub static SECTIONS: &[Section] = &[
     Section {
         id: ids::SCULPT3D_SEC_TOPOLOGY,
         title: "panel.sculpt3d.section.topology",
-        rows: TOPOLOGY,
+        rows: topology::TOPOLOGY,
     },
 ];
 

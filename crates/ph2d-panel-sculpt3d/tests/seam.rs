@@ -1773,3 +1773,56 @@ fn the_strip_knobs_are_painted_for_the_strip_and_for_nothing_else() {
         );
     }
 }
+
+/// **OS DOIS KNOBS DO HC existem, e SÓ com o Surface Smooth em mãos.**
+///
+/// ⚠️ **A varredura genérica deste arquivo é CEGA a isto**, e a mutação prova:
+/// apagar as duas rows da tabela deixa os quarenta e cinco gates VERDES. Elas
+/// são `Row`s bem-formadas — pintadas, registradas, clicáveis —, e todo gate
+/// genérico pergunta *"o que está na tabela funciona?"*; nenhum pergunta *"o
+/// que a LEI lê está na tabela?"*. Um verbo cujo kernel consome um número que
+/// nenhuma row oferece é uma lei que o artista não alcança — a quarta condição
+/// de fechamento, e a única que não é implicada pelas outras três.
+///
+/// ⚠️ **E as DUAS metades são precisas:** o irmão [`Verb::Smooth`] também lê o
+/// anel e **não tem `b` nenhum para devolver**, então oferecer-lhe estes dois
+/// seria um par de sliders que não move um vértice. Sem a metade da AUSÊNCIA um
+/// `show: always` passaria aqui.
+#[test]
+fn the_hc_knobs_are_offered_only_with_the_surface_smooth_in_hand() {
+    for verb in Verb::ALL {
+        let mut ui = Sculpt3dUi::default();
+        ui.brush.verb = verb;
+        ui.ui_level = UiLevel::Pro;
+        let (mut host, mut state) = arrange(ui.clone());
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        let want = verb == Verb::SurfaceSmooth;
+        for id in [ids::SCULPT3D_HC_SHAPE, ids::SCULPT3D_HC_VERTEX] {
+            assert_eq!(
+                painted.iter().any(|(pid, _)| *pid == id),
+                want,
+                "com {verb:?} o knob do HC devia {}",
+                if want { "estar la" } else { "sumir" }
+            );
+        }
+    }
+}
+
+/// **E o piso do β vem do MOTOR, nunca de um literal nesta tabela.**
+///
+/// ⚠️ Abaixo de `0,5` o operador AMPLIFICA em vez de contrair (a forma fechada
+/// está em `ph2d_sculpt3d::HC_VERTEX_DEFAULT`), então uma segunda cópia do
+/// número aqui divergiria no dia em que a lei o movesse — e o slider passaria a
+/// oferecer com o dedo exactamente a faixa que rebenta a malha.
+#[test]
+fn the_beta_slider_starts_where_the_engine_stops_amplifying() {
+    let row = rows::rows()
+        .find(|r| r.slider == ids::SCULPT3D_HC_VERTEX)
+        .expect("a row do beta sumiu da tabela");
+    assert!(
+        (row.min - ph2d_sculpt3d::HC_VERTEX_MIN).abs() < f32::EPSILON,
+        "o piso da row ({}) não é o do motor ({})",
+        row.min,
+        ph2d_sculpt3d::HC_VERTEX_MIN
+    );
+}

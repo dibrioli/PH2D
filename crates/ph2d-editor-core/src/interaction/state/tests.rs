@@ -233,6 +233,79 @@ fn the_tick_reaches_a_tag() {
     );
 }
 
+/// ⭐ **O TIQUE alcança a FAMÍLIA DO TEXTO E DO CHIP** — campo, chip numérico e dropdown.
+///
+/// ⚠️ **Os dois extremos da corrente já existiam e só o elo do MEIO faltava:** o `hover.rs`
+/// promovia os três, os pintores misturavam `Border → BorderEmph` pelo eixo, os painéis passavam
+/// `(estado, hover_live(id))` — e sem alvo publicado o `hover_live` devolvia `SETTLED` **para
+/// sempre**, entregando o NEUTRO a cada uma dessas chamadas. Eles reagiam e SALTAVAM.
+///
+/// ⚠️ **Este gate é o irmão COMPORTAMENTAL do
+/// `the_pointer_and_the_clock_agree_on_who_lights_up`**, que lê o FONTE. Os dois não são
+/// redundantes: aquele mata a classe (um tipo novo promovido sem braço no relógio), este prova
+/// que a lei destes três está certa — que aceso é `Hovered` e que `Focused` **não** o é.
+///
+/// **Mutação que deve sangrar:** tirar qualquer um dos dois braços do `hover_targets`.
+#[test]
+fn the_tick_reaches_the_text_and_chip_family() {
+    use crate::widget::{DropdownState, TextInputState};
+    let (field, chip, drop) = (NodeId(21), NodeId(22), NodeId(23));
+    let mut store = WidgetStore::with_capacity(4);
+    store.register(
+        field,
+        InteractiveState::TextInput {
+            state: TextInputState::Hovered,
+            text: String::new(),
+            caret: 0,
+            selection_anchor: None,
+        },
+    );
+    store.register(
+        chip,
+        InteractiveState::NumberInput {
+            state: TextInputState::Hovered,
+            value: 0.0,
+            buffer: String::new(),
+            caret: 0,
+            last_committed: 0.0,
+            selection_anchor: None,
+        },
+    );
+    store.register(
+        drop,
+        InteractiveState::Dropdown {
+            state: DropdownState::Hovered,
+            open: false,
+            selected_index: None,
+        },
+    );
+    assert_eq!(
+        store.hover_targets().collect::<Vec<_>>(),
+        vec![(field, 1.0), (chip, 1.0), (drop, 1.0)],
+        "um destes tres nao e alvo do relogio: o `t` dele nunca sobe e o pintor recebe o NEUTRO"
+    );
+
+    // ⚠️ **`Focused` NAO conta, e a lei e DERIVADA:** o `soft` dos dois pintores e
+    // `Normal | Hovered`, entao ali o foco e estado DURO (a borda vira `Accent`, nasce um caret).
+    // Conta-lo faria o relogio conduzir um id cujo `t` o pintor ignora enquanto o foco dura.
+    if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(field) {
+        *state = TextInputState::Focused;
+    }
+    if let Some(InteractiveState::Dropdown { state, .. }) = store.get_mut(drop) {
+        *state = DropdownState::Focused;
+    }
+    let targets: Vec<_> = store.hover_targets().collect();
+    assert_eq!(
+        targets
+            .iter()
+            .filter(|(_, t)| *t > 0.0)
+            .map(|(id, _)| *id)
+            .collect::<Vec<_>>(),
+        vec![chip],
+        "o FOCO acendeu no relogio — mas o pintor trata-o como estado DURO e ignora o `t`"
+    );
+}
+
 /// **`set_slider_value` recentra o slider E o chip ligado.** É o que devolve o Offset ao
 /// "sem offset" após um commit: sem a segunda metade (o número), o chip mostraria o valor
 /// velho ao ser aberto para edição.

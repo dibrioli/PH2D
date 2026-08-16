@@ -42,7 +42,9 @@ use super::drag::{
 use super::types::{GraphGesture, GraphKey, GraphZoom, NoteData, TimelineGesture, TimelineWheel};
 use super::util::format_number;
 
-use crate::widget::{ButtonState, CheckboxState, TagState, ToggleState};
+use crate::widget::{
+    ButtonState, CheckboxState, DropdownState, TagState, TextInputState, ToggleState,
+};
 use crate::zones::Rect;
 
 #[derive(Debug, Default)]

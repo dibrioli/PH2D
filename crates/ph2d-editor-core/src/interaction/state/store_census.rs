@@ -69,6 +69,26 @@ impl WidgetStore {
                 InteractiveState::Tag { state } => {
                     matches!(state, TagState::Hovered | TagState::Pressed)
                 }
+                // ⚠️ **A FAMÍLIA DO TEXTO E DO CHIP — os dois extremos da corrente existiam e só
+                // o elo do MEIO faltava.** O `hover.rs` promove os três (entrada e saída), os
+                // pintores já misturam `Border → BorderEmph` pelo eixo, os painéis já passam
+                // `(estado, hover_live(id))` e o `dropdown_visual` já devolve o par — e o alvo
+                // nunca era publicado, então o `hover_live` devolvia [`crate::motion::SETTLED`]
+                // para sempre e cada uma dessas chamadas entregava o NEUTRO. Quatro famílias de
+                // widget (campo, área de texto, chip numérico, dropdown) reagiam e SALTAVAM.
+                //
+                // ⚠️ **Aceso é `Hovered` e SÓ ele, e a lei é DERIVADA, não escolhida:** é
+                // exactamente o extremo quente que o `soft` de cada pintor já declara
+                // (`text_input::border_color`, `dropdown::chip_border_color`). `Focused` ali é
+                // estado DURO — a borda vira `Accent` e nasce um caret —, e contá-lo faria o
+                // relógio conduzir um id cujo `t` o pintor ignora enquanto o foco dura.
+                InteractiveState::TextInput { state, .. }
+                | InteractiveState::NumberInput { state, .. } => {
+                    matches!(state, TextInputState::Hovered)
+                }
+                InteractiveState::Dropdown { state, .. } => {
+                    matches!(state, DropdownState::Hovered)
+                }
                 // ⚠️ **O `Dragging` conta, e é o que separa um slider de um botão.** Um botão é
                 // premido e solto; uma trilha é AGARRADA e o dedo fica lá — se o arrasto não
                 // acendesse, a superfície apagaria debaixo da mão que a comanda.

@@ -199,16 +199,25 @@ impl Brush {
         } else {
             1.0
         };
-        // ⚠️ **A FAIXA NÃO USA A CONSTANTE DO SCULPTGL** — ela é uma tool do
-        // Blender, e o `REACH_FRACTION` é o `deform = intensidade · raio · 0,1`
-        // do `Brush.js`. É a MESMA classe do defeito que a §7.21 curou na lei
-        // de kernel, uma camada abaixo: um verbo a herdar um número de uma
-        // referência que não tem a ferramenta. Ver [`crate::STRIP_REACH_FRACTION`].
-        let f = if self.verb == crate::Verb::ClayStrips {
-            crate::STRIP_REACH_FRACTION
-        } else {
-            REACH_FRACTION
-        };
+        // ⚠️ **A FRAÇÃO É DO MODO, e era uma constante para o catálogo todo.**
+        // Aqui morava `if verb == ClayStrips { 1,0 } else { 0,1 }` — o `0,1` é
+        // o `deform = intensidade · raio · 0,1` do `Brush.js:62`, do SculptGL, e
+        // a exceção nasceu de um smoke que mediu a faixa **7,5× mais fraca**.
+        // Medido em 2026-08-16, **sete** verbos só existem no Blender e **seis**
+        // seguiam com o número do SculptGL: o `if` era a primeira linha de uma
+        // enumeração, não um caso especial. Hoje quem responde é o perfil da
+        // referência que o modo escolhe, então um verbo do Blender nasce com
+        // `1,0` **por declaração** e a exceção dissolve.
+        // ⚠️ **`for_verb`, nunca `self.mode` cru** — o recuo que o
+        // [`Self::weight`] já documenta: um pincel pode carregar um modo que o
+        // verbo NÃO declara, e ali `profile` devolve `None`. Medido: com o modo
+        // cru o Clay Strips voltava a `0,1` (a fixture nasce em `S` e ele só
+        // existe em `B`), que é a regressão exacta que esta wave cura.
+        let f = self
+            .verb
+            .profile(self.mode.for_verb(self.verb))
+            .and_then(|p| p.reach)
+            .unwrap_or(REACH_FRACTION);
         radius * f * s
     }
 

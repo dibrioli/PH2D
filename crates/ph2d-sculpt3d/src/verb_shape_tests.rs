@@ -181,10 +181,17 @@ fn in_b_mode_a_grazing_vertex_weighs_nothing_and_the_ramp_has_no_step() {
         "em `B` o deslocamento tinha de ser proporcional ao cosseno ({r_min} .. {r_max})"
     );
     // E o de PERFIL não anda: é a metade que dá nome à lei.
+    // ⚠️ **A régua é o pico do PRÓPRIO `B`, e era o do `S`.** Comparar com o
+    // outro modo só era exprimível enquanto os dois partilhavam o alcance; com
+    // ele a seguir a referência o `B` desloca 10× mais, e o gate passaria a
+    // reprovar um `B` correto. O que a lei afirma é *o vértice de perfil é
+    // segurado pelo próprio cosseno* — uma propriedade do modo, não uma razão
+    // com o vizinho.
     let grazing = b_rows[0];
+    let b_max = b_rows.iter().map(|r| r.1).fold(0.0f32, f32::max);
     assert!(
-        grazing.1 < s_max * 0.35,
-        "o vértice de perfil (cos {}) andou {} contra os {s_max} de `S`",
+        grazing.1 < b_max * 0.35,
+        "o vértice de perfil (cos {}) andou {} contra o pico {b_max} do próprio `B`",
         grazing.0,
         grazing.1
     );

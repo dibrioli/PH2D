@@ -278,7 +278,7 @@ fn sculptgl_does_not_declare_the_strip_so_it_does_not_govern_it() {
 
 /// **O BARRO SOBE ATÉ O PLANO E PARA** — o auto-limite que É um clay strip.
 ///
-/// ⚠️ **Este gate nasceu porque a mutação do [`crate::STRIP_REACH_FRACTION`]
+/// ⚠️ **Este gate nasceu porque a mutação do [`crate::BLENDER_REACH_FRACTION`]
 /// SOBREVIVEU aos 219:** devolver à faixa o `0,1` do SculptGL deixava tudo
 /// verde. O número que fazia a ferramenta parecer certa não era afirmado por
 /// ninguém.

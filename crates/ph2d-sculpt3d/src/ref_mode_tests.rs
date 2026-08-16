@@ -369,9 +369,26 @@ fn the_mode_reaches_the_clay() {
     let s = travel(RefMode::S);
     let b = travel(RefMode::B);
     assert!(s > 1e-6, "o controle tem de mover barro; veio {s}");
+    // ⚠️ **Cada lado é a LEI da própria referência, e não uma razão entre os
+    // dois.** Até 2026-08-16 este gate pedia `b < s · 0,75`, o que só era
+    // exprimível enquanto os dois modos partilhavam o alcance (`0,1`, do
+    // `Brush.js:62`): ali a única diferença era o `s²` do Blender, então o `B`
+    // depositava METADE. Com o alcance a seguir o modo o `B` deposita CINCO
+    // VEZES mais, e uma razão entre dois números não diz qual deles é o certo.
+    //
+    // ✅ SculptGL: `deform = intensidade · raio · 0,1`, força LINEAR.
+    // ✅ Blender: `offset = normal · raio · bstrength`, com `alpha = raiz²`
+    //    (`sculpt.cc:2337`) — e o ORÁCULO executável mediu exactamente isto:
+    //    força {0,25 · 0,5 · 1,0} ⇒ pico {0,03125 · 0,125 · 0,5} com `R = 0,5`.
+    let (r, k) = (0.5f32, 0.5f32);
     assert!(
-        b < s * 0.75,
-        "o B deposita MENOS a meio curso: S={s} contra B={b}"
+        (s - r * crate::REACH_FRACTION * k).abs() < 1e-4,
+        "o `S` tem de ser `raio · 0,1 · forca` do SculptGL: veio {s}"
+    );
+    assert!(
+        (b - r * k * k).abs() < 1e-4,
+        "o `B` tem de ser `raio · forca²` do Blender — o pico que o oraculo \
+         mediu em 0,125: veio {b}"
     );
 }
 

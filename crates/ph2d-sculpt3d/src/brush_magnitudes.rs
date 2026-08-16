@@ -20,11 +20,21 @@
 /// *altura ÷ largura* despenca. Amarrando ao raio, a razão de aspecto do domo é
 /// constante em toda escala e o falloff lê igual com pincel de 1 mm e de 1 m.
 ///
-/// O NÚMERO é decisão de **smoke**, como o `ORBIT_RAD_PER_PX` da câmera: ele não
-/// é teto de recurso nenhum, é o quanto de barro uma pincelada move.
+/// ✅ **`Brush.js:62` do SculptGL, verbatim** — `deformIntensityBrush =
+/// intensity * radius * 0.1`. ⚠️ **E esta linha faltava:** o cabeçalho deste
+/// módulo exige que toda constante diga DE ONDE VEM, e esta dizia só *"decisão
+/// de smoke"* — a etiqueta que o próprio arquivo chama de *"palpite à espera de
+/// um smoke"*. A proveniência estava escrita, mas na constante VIZINHA.
+///
+/// ⚠️ **Ele é o RECUO, não a lei do catálogo.** Quem responde é o perfil da
+/// referência que o modo escolhe ([`crate::VerbProfile::reach`]); esta constante
+/// só é alcançada por um verbo cuja referência não declara alcance nenhum.
 pub const REACH_FRACTION: f32 = 0.1;
 
-/// **Quanto do raio um dab da FAIXA desloca** — e não é o [`REACH_FRACTION`].
+/// **Quanto do raio um dab desloca no BLENDER** — e não é o [`REACH_FRACTION`].
+///
+/// ⚠️ **Ela chamava-se `STRIP_REACH_FRACTION` e o nome estreitava o fato:** este
+/// é o alcance de TODA tool do Blender, e a faixa era só a que um smoke pegou.
 ///
 /// ⚠️ **`clay_strips.cc:327`, verbatim:**
 ///
@@ -43,7 +53,7 @@ pub const REACH_FRACTION: f32 = 0.1;
 ///
 /// ⚠️ **É por causa dele que o `STRIP_DEPTH_GAIN` morreu:** aquele ganho existia
 /// para preservar uma magnitude que era ela própria errada.
-pub const STRIP_REACH_FRACTION: f32 = 1.0;
+pub const BLENDER_REACH_FRACTION: f32 = 1.0;
 
 /// O ganho do **Crease**, e o do vinco é MENOR que o do Draw.
 ///
@@ -95,7 +105,7 @@ pub const PINCH_GAIN: f32 = 0.05;
 /// | 0,50 | **+0,027 (AUMENTA)** | 0,971 |
 ///
 /// ⚠️ **A tabela foi medida com o `reach` do SculptGL, que era ele próprio
-/// errado** (ver [`STRIP_REACH_FRACTION`]). Com o `raio · força` da referência o
+/// errado** (ver [`BLENDER_REACH_FRACTION`]). Com o `raio · força` da referência o
 /// vale FECHA muito mais forte — `0,4000 → 0,0406` em nove dabs a `r = 0,5` —,
 /// mas a FORMA da tabela é a que decide o lift e ela não muda: o enchimento
 /// segue monótono no lift, e o miolo segue a esvaziar-se quando ele baixa.

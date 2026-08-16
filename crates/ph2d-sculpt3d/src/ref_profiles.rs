@@ -33,16 +33,15 @@ pub struct VerbProfile {
     ///
     /// ⚠️ **`None` é uma AFIRMAÇÃO, e ela ficou mais forte quando o `brush.cc`
     /// foi lido** (§7.0 do plano). As nove fórmulas do `BRUSH_CURVE_*` são
-    /// legíveis e **já estão todas em [`Falloff`]** — mas elas são o que o
-    /// artista pode ESCOLHER, não o que um pincel VESTE: o `curve_preset` de um
-    /// `Brush` zero-inicializado é `BRUSH_CURVE_CUSTOM = 0`, e o
-    /// `brush_init_data` semeia a *curvemapping* dele com `CURVE_PRESET_SMOOTH`
-    /// — uma bézier editável, **nenhuma das nove**.
-    ///
-    /// ⇒ Declarar aqui *"o Blender usa a Smooth"* seria inventar um número e
-    /// vesti-lo com o nome de outro produto. E a tabela por-TOOL (a força e o
-    /// raio de fábrica do Clay Strips) não é lida de fonte nenhuma: desde o 4.3
-    /// ela vive dentro de um `.blend` binário de assets.
+    /// legíveis e **já estão todas em [`Falloff`]** — e por muito tempo esta
+    /// linha afirmava que declarar uma aqui *"seria inventar um número"*,
+    /// porque o `curve_preset` de um `Brush` zero-inicializado é
+    /// `BRUSH_CURVE_CUSTOM = 0`. ⚠️ **O oráculo executável refutou a premissa:**
+    /// um pincel não nasce zero-inicializado, nasce do arquivo de startup, e o
+    /// Blender 5.2 a correr reporta `curve_distance_falloff_preset = SMOOTH`
+    /// depositando a analítica (ver [`super::profile_b`]). A tabela por-TOOL —
+    /// a força e o raio de fábrica do Clay Strips — essa **continua** sem fonte:
+    /// desde o 4.3 ela vive num `.blend` binário de assets.
     pub falloff: Option<Falloff>,
     /// A força de fábrica — D3/E2. `None` = a fonte não declara.
     pub strength: Option<f32>,
@@ -63,6 +62,16 @@ pub struct VerbProfile {
     /// referência transforma o slider de ALGUMA maneira — e *"linearmente"* é
     /// uma resposta, não uma omissão.
     pub strength_curve: StrengthCurve,
+    /// **Quanto do RAIO um dab de força cheia desloca** — `None` = o número da
+    /// crate ([`crate::REACH_FRACTION`], que é o do SculptGL).
+    ///
+    /// ⚠️ **Ele é por MODO, e era uma constante para o catálogo inteiro.** O
+    /// `reach()` tinha o `0,1` do `Brush.js:62` mais um `if verb == ClayStrips`
+    /// a corrigi-lo para `1,0` — a exceção que um smoke pagou (*"7,5× mais
+    /// fraca"*). Medido, **SETE** verbos só existem no Blender e **seis** ainda
+    /// herdavam o número do SculptGL: o `if` não era um caso especial, era a
+    /// primeira linha de uma enumeração.
+    pub reach: Option<f32>,
 }
 
 impl VerbProfile {
@@ -74,6 +83,7 @@ impl VerbProfile {
         radius_factor: None,
         accumulate: None,
         strength_curve: StrengthCurve::Linear,
+        reach: None,
     };
 }
 
@@ -279,10 +289,38 @@ impl Verb {
 /// a curva o oráculo respondeu, os defaults por-tool ele não pode responder —
 /// eles moram no `.blend` binário (§7.0), e um valor inventado aqui seria pior
 /// que a ausência.
-const fn profile_b(_verb: Verb) -> Option<VerbProfile> {
+/// **O ALCANCE, e só onde a fonte o ESCREVE.**
+///
+/// ⚠️ **A primeira versão desta wave declarou `1,0` para o catálogo inteiro, e a
+/// medição a derrubou.** Ela partia de UMA leitura (`clay_strips.cc:328`) mais o
+/// oráculo do Draw e tratava a fração como universal; lidas as outras, a
+/// magnitude do Blender **não é um fração do raio na maioria das tools**:
+///
+/// | tool | o que o Blender escreve | fração de raio? |
+/// |---|---|---|
+/// | `draw.cc:196` | `normal · radius · scale · bstrength` | ✅ **1,0** |
+/// | `clay_strips.cc:328` | `plane_normal · bstrength · radius` | ✅ **1,0** |
+/// | `layer.cc:101` | `orig_normal · **brush.height** · factor` | ⛔ é outro KNOB |
+/// | `multiplane_scrape.cc:116` | `closest − position` | ⛔ move para um PLANO |
+/// | `surface_smooth.cc:106` | `scale_factors(factors, bstrength)` | ⛔ é um alisamento |
+/// | `clay_thumb.cc:205` | `bstrength · pressão estabilizada` | ⛔ não medido |
+///
+/// ⇒ Quem a fonte não declara fica `None` e cai no [`crate::REACH_FRACTION`] —
+/// o número que já shipava e que os smokes `=30`/`=31` aprovaram. *Declarar
+/// `1,0` neles seria inventar um número e vesti-lo com o nome de outro produto*,
+/// que é literalmente o que o cabeçalho do `brush_magnitudes` proíbe.
+const fn blender_reach(verb: Verb) -> Option<f32> {
+    match verb {
+        Verb::Draw | Verb::ClayStrips => Some(crate::BLENDER_REACH_FRACTION),
+        _ => None,
+    }
+}
+
+const fn profile_b(verb: Verb) -> Option<VerbProfile> {
     Some(VerbProfile {
         strength_curve: StrengthCurve::Squared,
         falloff: Some(Falloff::Smooth),
+        reach: blender_reach(verb),
         ..VerbProfile::SILENT
     })
 }

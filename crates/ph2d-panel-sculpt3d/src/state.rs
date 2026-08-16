@@ -546,6 +546,15 @@ pub fn verb_index(verb: Verb) -> usize {
 /// que sai, então a troca de `verb` acontece **por último**.
 pub fn arm_verb_defaults(ui: &mut Sculpt3dUi, verb: Verb) {
     let from = ui.brush.verb;
+    // ⚠️ **O MODO que sai também é lido antes de ser sobrescrito**, e não é
+    // simetria: desde que a curva de fábrica passou a seguir o modo
+    // (`default_falloff(mode)`), *"o default do verbo que sai"* é uma função de
+    // DOIS argumentos, e computá-lo com o modo que ENTRA responde outra
+    // pergunta. Medido no par que a torna visível — Draw nasce em `S`, Blob só
+    // existe em `B`: `Draw.default_falloff(B)` é a smoothstep e o pincel carrega
+    // a quártica, então o teste conclui *"o artista mexeu"* sobre um pincel
+    // intocado e o Blob nasce vestindo a curva do SculptGL.
+    let from_mode = ui.brush.mode;
     // ⚠️ **A REFERÊNCIA é RESOLVIDA, nunca preservada.** Ela é por verbo, então
     // trocar de ferramenta tem de trazer a escolha DAQUELA ferramenta — e é por
     // isso que ela não passa pelo teste de *"o artista mexeu?"* que os quatro
@@ -560,7 +569,7 @@ pub fn arm_verb_defaults(ui: &mut Sculpt3dUi, verb: Verb) {
     if ui.brush.accumulate == from.default_accumulate() {
         ui.brush.accumulate = verb.default_accumulate();
     }
-    if ui.brush.falloff == from.default_falloff(ui.brush.mode) {
+    if ui.brush.falloff == from.default_falloff(from_mode) {
         ui.brush.falloff = verb.default_falloff(ui.brush.mode);
     }
     if (ui.radius_px - from.default_radius_px(BASE_RADIUS_PX)).abs() < 1e-6 {

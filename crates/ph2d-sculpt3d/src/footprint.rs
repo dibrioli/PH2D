@@ -261,7 +261,7 @@ impl Strip {
         //
         // ⚠️ **CRUA, sem ganho nenhum** — o `factors[i] *= max(0, z·(1−z))` do
         // `clay_strips.cc` não tem termo de calibração, e a magnitude vem do
-        // [`crate::STRIP_REACH_FRACTION`], que é `raio · força`. Houve aqui um
+        // [`crate::BLENDER_REACH_FRACTION`], que é `raio · força`. Houve aqui um
         // `STRIP_DEPTH_GAIN` por umas horas: ele existia para preservar uma
         // magnitude que era ela própria errada (o `0,1` do SculptGL).
         let gate = (z * (1.0 - z)).max(0.0);

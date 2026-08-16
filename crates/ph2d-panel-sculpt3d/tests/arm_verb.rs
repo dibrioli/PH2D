@@ -148,3 +148,35 @@ fn two_switches_in_a_row_still_wear_the_reference() {
         ui.brush.strength
     );
 }
+
+/// **O DEFAULT QUE SAI É LIDO NO MODO QUE SAI.**
+///
+/// ⚠️ Desde que a curva de fábrica segue o modo, *"o artista mexeu no falloff?"*
+/// é uma pergunta de DOIS argumentos. O par que a torna visível é `Draw` (nasce
+/// em `S`, quártica do SculptGL) para `Blob` (só existe em `B`, smoothstep do
+/// Blender): computar o default do Draw com o modo do Blob devolve a smoothstep,
+/// que **não** é o que o pincel carrega ⇒ o teste conclui *"mexeu"* sobre um
+/// pincel intocado, e o verbo novo nasce vestindo a curva da referência errada.
+#[test]
+fn the_outgoing_default_is_read_in_the_outgoing_mode() {
+    let mut ui = Sculpt3dUi::default();
+    arm_verb_defaults(&mut ui, Verb::Draw);
+    let untouched = ui.brush.falloff;
+    assert_eq!(
+        untouched,
+        Verb::Draw.default_falloff(ui.brush.mode),
+        "a fixture tem de partir de um pincel INTOCADO"
+    );
+
+    arm_verb_defaults(&mut ui, Verb::Blob);
+    assert_eq!(
+        ui.brush.falloff,
+        Verb::Blob.default_falloff(ui.brush.mode),
+        "o Blob nasceu com a curva do verbo anterior: o teste de \"mexeu?\" \
+         leu o modo errado"
+    );
+    assert_ne!(
+        ui.brush.falloff, untouched,
+        "o par so' discrimina se as duas curvas diferirem"
+    );
+}

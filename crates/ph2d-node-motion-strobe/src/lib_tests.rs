@@ -631,5 +631,9 @@ fn an_instance_that_never_fired_does_not_swell_on_its_own() {
     let lit = step(&dot(), &fire(1.0), &st, &p);
     assert_eq!(glow(&lit), 0.0, "a rampa começa em zero");
     let up = step(&dot(), &fire(0.0), &lit, &p);
-    assert!(glow(&up) > 0.0, "e no tick seguinte ela SOBE: {}", glow(&up));
+    assert!(
+        glow(&up) > 0.0,
+        "e no tick seguinte ela SOBE: {}",
+        glow(&up)
+    );
 }

@@ -77,6 +77,7 @@
 - [Cap de FN e cap de ARQUIVO são grandezas diferentes](feedback_a_fn_cap_and_a_file_cap_measure_different_things.md) — extrair no mesmo arquivo cura um e estoura o outro; corte para o IRMÃO
 - [CI cold-build drift](project_ci_rustcache_stable_drift_pin.md) — pin `@1.95`
 - [ship.sh ≠ paridade CI](feedback_ship_parity_gaps_ci_only.md) — bindgen/advisory-db escapam
+- [`rustup default` PERDE para o `rust-toolchain.toml`](feedback_rustup_default_loses_to_the_toolchain_file.md) — o job de MSRV testava o PIN; meça com `RUSTUP_TOOLCHAIN`
 - [Números que SOMAM: conte](feedback_numbers_that_sum_across_lines_count_dont_pick.md)
 - [Allowlist duplicada mata o gate](feedback_duplicate_allowlist_key_kills_the_gate_at_parse.md) — TOML morre no parse
 - [Integrar pré-cutover = drift](project_integration_prefork_lines_ship_drift.md)

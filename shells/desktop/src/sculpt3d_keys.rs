@@ -438,23 +438,22 @@ impl App {
             return true;
         }
         if let Some(v) = verb {
-            // ⚠️ **Arma o default do verbo, e só se o artista ainda não mexeu.**
-            // O precedente é o `arm_inflate_defaults` do Painter: um verbo pode
-            // querer nascer diferente (a máscara nasce em força cheia, senão ela
-            // protege pela metade e o barro se move por baixo), e nenhum verbo
-            // pode APAGAR uma escolha deliberada. "Não mexeu" é a força ser
-            // exatamente o default do verbo que está saindo.
-            // ⚠️ **A LEI é a do motor** (`Brush::arm_verb_defaults`), e o
-            // painel chama a MESMA porta: estes `if` eram uma segunda cópia e
-            // ela já divergia — o painel armava quatro campos e aqui eram dois.
+            // ⚠️ **O ATALHO E O CHIP PASSAM PELA MESMA PORTA.** Trocar de
+            // ferramenta é guardar o pincel vivo no slot do verbo que sai e
+            // carregar o do que entra — a lei inteira, e ela mora na
+            // `ph2d_panel_sculpt3d::state`, ao lado da tabela que ela move.
             //
-            // ⚠️ **O que continua a divergir está NOMEADO:** o *falloff*, a
-            // *referência* e o *raio* seguem armados só pela rota do painel,
-            // porque os três precisam do `Sculpt3dUi` (a tabela `mode_by_verb`,
-            // o modo que entra, os pixels de tela). Trocar de verbo pelo
-            // teclado deixa esses três como estavam.
-            scene.brush.arm_verb_defaults(v);
-            scene.brush.verb = v;
+            // ⚠️ **A divergência que isto FECHA estava escrita aqui:** a rota
+            // do teclado chamava `Brush::arm_verb_defaults`, que armava DOIS
+            // campos, e o comentário confessava que *"o falloff, a referência e
+            // o raio seguem armados só pela rota do painel"* — trocar de verbo
+            // pelo atalho e pelo chip davam pincéis diferentes.
+            ph2d_panel_sculpt3d::state::switch_verb_parts(
+                &mut scene.verb_slots,
+                &mut scene.brush,
+                &mut scene.radius_px,
+                v,
+            );
             eprintln!(
                 "[sculpt3d] verbo: {} (forca {:.2})",
                 v.label(),

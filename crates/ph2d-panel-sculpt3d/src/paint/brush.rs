@@ -73,10 +73,10 @@ pub(super) fn paint_brush_tail(
     // quanto dele se aplica.
     //
     // ⚠️ **BASIC, e a premissa que ele era `Pro` foi REFUTADA pela referência.**
-    // O argumento antigo era que a curva já vem armada pelo `arm_verb_defaults`
-    // a cada troca de ferramenta (`VerbProfile::falloff`), logo esconder-lhe o
-    // acesso seria divulgação progressiva. A regra do [`UiLevel`] admite isso —
-    // *só uma row cujo valor alguém ARMOU pode ser `Pro`* —, mas ser ADMISSÍVEL
+    // O argumento antigo era que a curva já vem escolhida a cada troca de
+    // ferramenta (`VerbProfile::falloff`), logo esconder-lhe o acesso seria
+    // divulgação progressiva. A regra do [`UiLevel`] admite isso — *só uma row
+    // cujo valor a ferramenta já traz pode ser `Pro`* —, mas ser ADMISSÍVEL
     // não é ser certo, e a referência mede o contrário:
     //
     // * no `properties_paint_common.py` o `FalloffPanel` **não** é desenhado por

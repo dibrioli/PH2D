@@ -116,6 +116,89 @@ fn a_scaled_piece_wears_the_same_stamp_on_screen() {
     );
 }
 
+/// **O QUE O ZOOM FAZ COM A DEMÃO, PELA PORTA DO PRODUTO** — a `Camera3d` de
+/// verdade, o `DEFAULT_RADIUS_PX` de verdade, a `world_radius_for_screen_px` que
+/// o `armed_brush` chama.
+///
+/// ```text
+/// cargo test -p ph2d-host-desktop --bins sculpt3d::space::tests::measure_what_the_zoom_does_to_the_brush \
+///   -- --ignored --nocapture
+/// ```
+///
+/// ⚠️ **A régua da esbeltez é `layer_height ÷ raio`**, e o `layer_height` é uma
+/// DISTÂNCIA de mundo nos dois lados da referência (`rna_brush.cc:3230` declara
+/// `PROP_DISTANCE`; o `layer.cc:101` lê `brush.height` cru). Se ela cresce sem
+/// teto quando a câmera aproxima, *"quanto mais perto, pior"* é literalmente uma
+/// demão que vira espigão — e o número certo sai daqui, não de uma fixture que
+/// dirige o `Engine` direto.
+#[test]
+#[ignore]
+fn measure_what_the_zoom_does_to_the_brush() {
+    let mesh = ph2d_mesh::shapes::sculpt_sphere(1.0);
+    let aspect = {
+        let (w, h) = VIEWPORT;
+        w as f32 / h as f32
+    };
+    let mut cam = Camera3d::default();
+    cam.frame(mesh.bounds(), aspect);
+    let framed = cam.distance;
+
+    // A aresta mediana da esfera de fábrica — a régua da malha.
+    let (pos, adj) = (mesh.positions(), mesh.adjacency());
+    let mut e: Vec<f32> = Vec::new();
+    for (i, p) in pos.iter().enumerate().step_by(11) {
+        for &j in adj.vert_verts.neighbours(i) {
+            let q = pos[j as usize];
+            let d = [p[0] - q[0], p[1] - q[1], p[2] - q[2]];
+            e.push((d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt());
+        }
+    }
+    e.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let edge = e[e.len() / 2];
+
+    // O ponto que um clique no meio da tela atinge: o mais próximo da câmera.
+    let at = mesh
+        .positions()
+        .iter()
+        .copied()
+        .fold([0.0f32, 0.0, f32::NEG_INFINITY], |a, p| {
+            if p[2] > a[2] { p } else { a }
+        });
+
+    println!("\n  == O ZOOM, PELA PORTA DO PRODUTO ==");
+    println!(
+        "  viewport {VIEWPORT:?} · raio do pincel {} px · esfera {} vertices",
+        super::super::DEFAULT_RADIUS_PX,
+        mesh.vert_count()
+    );
+    println!("  aresta mediana {edge:.5} · a camera ENQUADRA em distancia {framed:.3}\n");
+    println!(
+        "  {:>9}  {:>9}  {:>9}  {:>10}",
+        "distancia", "raio", "r/aresta", "alt/raio"
+    );
+    println!("  {:->9}  {:->9}  {:->9}  {:->10}", "", "", "", "");
+
+    for f in [4.0f32, 2.0, 1.0, 0.5, 0.25, 0.15] {
+        cam.distance = framed * f;
+        let r = cam.world_radius_for_screen_px(at, super::super::DEFAULT_RADIUS_PX, VIEWPORT);
+        if r <= 0.0 {
+            println!("  {:>9.3}  (a camera nao devolveu raio)", cam.distance);
+            continue;
+        }
+        println!(
+            "  {:>9.3}  {r:>9.4}  {:>9.2}  {:>10.3}",
+            cam.distance,
+            r / edge,
+            0.1 / r
+        );
+    }
+    println!(
+        "\n  LEITURA: `alt/raio` e' a ESBELTEZ da demao com o default de hoje\n  \
+         (layer_height 0,1 de MUNDO). Um numero constante = o zoom nao a move;\n  \
+         crescendo = aproximar transforma a demao num espigao."
+    );
+}
+
 /// **E DUAS PERGUNTAS COM A MESMA POSE DÃO O MESMO ESTÊNCIL** — a âncora não
 /// existe mais, e este gate é o que impede que ela volte por um parâmetro.
 ///

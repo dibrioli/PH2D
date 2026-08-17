@@ -28,21 +28,37 @@ fn every_verb_is_born_in_a_mode_that_declares_it() {
     let src = std::fs::read_to_string(&path)
         .unwrap_or_else(|e| panic!("o dono do nascimento mudou-se: {} ({e})", path.display()));
 
-    // CONTROLE POSITIVO: sem ele, um arquivo renomeado deixaria as duas
-    // asserções abaixo verdes sobre uma varredura vazia.
+    // CONTROLE POSITIVO: sem ele, um arquivo renomeado deixaria as asserções
+    // abaixo verdes sobre uma varredura vazia.
     assert!(
-        src.contains("mode_by_verb"),
-        "o campo saiu deste arquivo — reaponte o gate antes de confiar nele"
+        src.contains("Sculpt3dScene {"),
+        "o dono do nascimento mudou-se — reaponte o gate antes de confiar nele"
     );
 
+    // ⚠️ **A PORTA mudou de nome em 2026-08-17 e a PROPRIEDADE não.** Antes o
+    // nascimento chamava `RefMode::birth_for` direto; hoje ele semeia a tabela
+    // POR VERBO (`VerbSlot::for_verb`), que é quem pergunta àquela porta — o
+    // modo deixou de ser o único fato que um verbo lembra, e passou a viajar
+    // dentro do pincel dele. O que este gate afirma continua sendo *a shell
+    // DELEGA*, e a metade comportamental (*o que a porta devolve declara o
+    // verbo?*) mora onde é alcançável sem device:
+    // `ph2d-panel-sculpt3d::state_tests::the_panel_opens_every_verb_in_a_mode_that_declares_it`.
     assert!(
-        src.contains("RefMode::birth_for"),
-        "o nascimento tem de PERGUNTAR a porta (`RefMode::birth_for`), e não \
-         escolher um modo por conta própria"
+        src.contains("VerbSlot::for_verb"),
+        "o nascimento tem de PERGUNTAR a porta (`VerbSlot::for_verb`), e não \
+         escolher um estado de fábrica por conta própria"
     );
     assert!(
         !src.contains("[ph2d_sculpt3d::RefMode::default();"),
         "o `[RefMode::default(); N]` é exactamente o defeito: ele carimba o `S` \
          em sete verbos que o `S` não declara"
+    );
+    // ⚠️ **E o `Brush::default()` chapado é o MESMO defeito uma camada acima:**
+    // ele daria a TODO verbo a força, a curva e a dureza do Draw, que é o
+    // estado de onde a propagação entre ferramentas nasce.
+    assert!(
+        !src.contains("[Brush::default();"),
+        "um `[Brush::default(); N]` faria os 23 verbos nascerem com o pincel do \
+         Draw — a tabela existe justamente para eles nascerem diferentes"
     );
 }

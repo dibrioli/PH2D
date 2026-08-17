@@ -384,7 +384,7 @@ pub(crate) struct Sculpt3dScene {
     /// uma contagem que o [`ph2d_sculpt3d::Verb::ALL`] já responde. Ela sobreviveu
     /// enquanto o catálogo não crescia, e o dia em que a W6 acrescentou a faixa
     /// ela virou erro de tipo em dois arquivos do shell.
-    mode_by_verb: [ph2d_sculpt3d::RefMode; ph2d_sculpt3d::Verb::ALL.len()],
+    verb_slots: [ph2d_panel_sculpt3d::state::VerbSlot; ph2d_sculpt3d::Verb::ALL.len()],
     /// **COM QUE PROFUNDIDADE O PAINEL SE MOSTRA** — ver
     /// [`ph2d_panel_sculpt3d::UiLevel`].
     ///

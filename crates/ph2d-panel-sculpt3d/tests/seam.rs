@@ -259,54 +259,74 @@ fn every_verb_has_a_chip_that_selects_it() {
     }
 }
 
-/// **Escolher um verbo arma o default DELE, e nunca apaga uma escolha
-/// deliberada.** A mesma lei do teclado, e o precedente é o
-/// `arm_inflate_defaults` do Painter.
+/// **Escolher um verbo traz o pincel DAQUELE verbo — e a afinação do anterior
+/// fica com o anterior.**
+///
+/// ⚠️ **Este gate afirmava o OPOSTO até 2026-08-17** (*"pegar um verbo APAGOU a
+/// força que o artista tinha escolhido"*), e ele estava fiel à lei de então: a
+/// troca re-armava campo a campo *"se o artista ainda não mexeu"*, então uma
+/// força autorada atravessava para o verbo novo. Era exactamente o report do
+/// Enio — *"as configurações de cada tool não devem se propagar para outra"*.
+///
+/// ⚠️ **E ele roda pelo CLIQUE REAL, que é o que o irmão de unidade não faz:**
+/// o `tests/verb_slots.rs` dirige a porta (`switch_verb`) direto; aqui o
+/// caminho inteiro é exercitado — o id do chip, o roteador, o intent. Um dos
+/// dois pode ficar verde sobre o outro quebrado.
 #[test]
-fn picking_a_verb_arms_its_default_but_never_overwrites_the_artist() {
-    // 1. Do default do verbo saindo → o default do verbo entrando.
+fn picking_a_verb_brings_that_verbs_brush_and_leaves_the_previous_tuning_behind() {
     let base = Sculpt3dUi::default();
     assert!(
         (base.brush.strength - base.brush.verb.default_strength()).abs() < 1e-6,
         "a fixture tem de começar NO default, senão ela testa o outro ramo"
     );
-    let mask = Verb::ALL
-        .iter()
-        .position(|v| *v == Verb::Mask)
-        .expect("Mask está no ALL");
-    let (mut host, mut state) = arrange(base.clone());
-    host.apply_panel_event::<Sculpt3dPanel>(
-        &mut state,
-        WidgetEvent::Click(ids::SCULPT3D_VERB[mask]),
-    );
-    let Sculpt3dIntent::SetUi(got) = only_intent("Mask") else {
-        panic!("intent errado")
+    let idx = |v: Verb| {
+        Verb::ALL
+            .iter()
+            .position(|x| *x == v)
+            .expect("o verbo está no ALL")
     };
+    let click = |ui: Sculpt3dUi, v: Verb| -> Sculpt3dUi {
+        let (mut host, mut state) = arrange(ui);
+        host.apply_panel_event::<Sculpt3dPanel>(
+            &mut state,
+            WidgetEvent::Click(ids::SCULPT3D_VERB[idx(v)]),
+        );
+        let Sculpt3dIntent::SetUi(got) = only_intent("verbo") else {
+            panic!("intent errado")
+        };
+        got
+    };
+
+    // 1. Um verbo nunca tocado traz o default DELE.
+    let got = click(base.clone(), Verb::Mask);
     assert!(
         (got.brush.strength - Verb::Mask.default_strength()).abs() < 1e-6,
-        "pegar a máscara não armou a força cheia dela — ela protegeria pela \
+        "pegar a máscara não trouxe a força cheia dela — ela protegeria pela \
          metade e o barro se moveria por baixo"
     );
 
-    // 2. Com uma força AUTORADA, o verbo novo não a toca.
+    // 2. Uma força autorada no Draw NÃO atravessa para a máscara...
     let authored = Sculpt3dUi {
         brush: ph2d_sculpt3d::Brush {
             strength: 0.123,
-            ..base.brush
+            ..base.brush.clone()
         },
         ..base
     };
-    let (mut host, mut state) = arrange(authored);
-    host.apply_panel_event::<Sculpt3dPanel>(
-        &mut state,
-        WidgetEvent::Click(ids::SCULPT3D_VERB[mask]),
-    );
-    let Sculpt3dIntent::SetUi(got) = only_intent("Mask") else {
-        panic!("intent errado")
-    };
+    let got = click(authored, Verb::Mask);
     assert!(
-        (got.brush.strength - 0.123).abs() < 1e-6,
-        "pegar um verbo APAGOU a força que o artista tinha escolhido"
+        (got.brush.strength - Verb::Mask.default_strength()).abs() < 1e-6,
+        "a força do Draw atravessou para a máscara: veio {}",
+        got.brush.strength
+    );
+
+    // 3. ...e ela está lá quando o artista VOLTA. Sem esta metade, um `switch`
+    // que jogasse o slot fora passaria pelas duas de cima.
+    let back = click(got, Verb::Draw);
+    assert!(
+        (back.brush.strength - 0.123).abs() < 1e-6,
+        "o Draw esqueceu a força que o artista lhe deu: veio {}",
+        back.brush.strength
     );
 }
 
@@ -499,8 +519,8 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
     // O modo é escrito na TABELA DO VERBO e re-resolvido, que é a porta que o
     // roteador usa — pôr `ui.brush.mode` direto seria a segunda porta que este
     // arquivo já documenta no `event.rs`.
-    ui.mode_by_verb[ph2d_panel_sculpt3d::state::verb_index(Verb::Crease)] = RefMode::L;
-    ph2d_panel_sculpt3d::state::arm_verb_defaults(&mut ui, Verb::Crease);
+    ui.set_mode_of(Verb::Crease, RefMode::L);
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Crease);
     let (mut host, mut state) = arrange(ui.clone());
     let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
 
@@ -1428,7 +1448,7 @@ fn every_offered_reference_has_a_chip_that_selects_it_for_that_verb() {
     for verb in [Verb::Draw, Verb::Smooth, Verb::Crease] {
         for want in RefMode::offered_for(verb) {
             let mut ui = Sculpt3dUi::default();
-            ph2d_panel_sculpt3d::state::arm_verb_defaults(&mut ui, verb);
+            ph2d_panel_sculpt3d::state::switch_verb(&mut ui, verb);
             let (mut host, mut state) = arrange(ui);
             host.apply_panel_event::<Sculpt3dPanel>(
                 &mut state,
@@ -1439,7 +1459,7 @@ fn every_offered_reference_has_a_chip_that_selects_it_for_that_verb() {
             };
             assert_eq!(got.brush.mode, want, "{} em {}", want.label(), verb.label());
             let i = ph2d_panel_sculpt3d::state::verb_index(verb);
-            assert_eq!(got.mode_by_verb[i], want, "a tabela do verbo");
+            assert_eq!(got.mode_of(Verb::ALL[i]), want, "a tabela do verbo");
         }
     }
 }
@@ -1453,16 +1473,16 @@ fn every_offered_reference_has_a_chip_that_selects_it_for_that_verb() {
 fn the_reference_is_remembered_per_verb_across_a_tool_switch() {
     let mut ui = Sculpt3dUi::default();
     // O Draw vai para `B`; o Smooth fica no default.
-    ui.mode_by_verb[ph2d_panel_sculpt3d::state::verb_index(Verb::Draw)] = RefMode::B;
-    ph2d_panel_sculpt3d::state::arm_verb_defaults(&mut ui, Verb::Draw);
+    ui.set_mode_of(Verb::Draw, RefMode::B);
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Draw);
     assert_eq!(ui.brush.mode, RefMode::B, "o Draw veste o que a tabela diz");
-    ph2d_panel_sculpt3d::state::arm_verb_defaults(&mut ui, Verb::Smooth);
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Smooth);
     assert_eq!(
         ui.brush.mode,
         RefMode::default(),
         "o Smooth tem escolha PRÓPRIA"
     );
-    ph2d_panel_sculpt3d::state::arm_verb_defaults(&mut ui, Verb::Draw);
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Draw);
     assert_eq!(ui.brush.mode, RefMode::B, "e a do Draw volta");
 }
 
@@ -1471,8 +1491,8 @@ fn the_reference_is_remembered_per_verb_across_a_tool_switch() {
 #[test]
 fn apply_to_all_stamps_the_current_reference_onto_every_verb() {
     let mut ui = Sculpt3dUi::default();
-    ui.mode_by_verb[ph2d_panel_sculpt3d::state::verb_index(Verb::Draw)] = RefMode::B;
-    ph2d_panel_sculpt3d::state::arm_verb_defaults(&mut ui, Verb::Draw);
+    ui.set_mode_of(Verb::Draw, RefMode::B);
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Draw);
     let (mut host, mut state) = arrange(ui);
     host.apply_panel_event::<Sculpt3dPanel>(
         &mut state,
@@ -1482,9 +1502,9 @@ fn apply_to_all_stamps_the_current_reference_onto_every_verb() {
         panic!("intent errado")
     };
     assert!(
-        got.mode_by_verb.iter().all(|&m| m == RefMode::B),
+        Verb::ALL.iter().all(|&v| got.mode_of(v) == RefMode::B),
         "o carimbo tinha de alcançar os dezasseis: {:?}",
-        got.mode_by_verb
+        Verb::ALL.map(|v| got.mode_of(v))
     );
 }
 
@@ -1504,13 +1524,11 @@ fn apply_to_all_stamps_the_current_reference_onto_every_verb() {
 /// artista carimbou uma escolha; ele não pediu um reset das que não cabem.
 #[test]
 fn apply_to_all_only_reaches_the_verbs_that_declare_the_mode() {
-    let smooth = ph2d_panel_sculpt3d::state::verb_index(Verb::Smooth);
-    let draw = ph2d_panel_sculpt3d::state::verb_index(Verb::Draw);
     let mut ui = Sculpt3dUi::default();
     // O Draw tem uma escolha DELIBERADA que o carimbo não pode alcançar.
-    ui.mode_by_verb[draw] = RefMode::B;
-    ui.mode_by_verb[smooth] = RefMode::L;
-    ph2d_panel_sculpt3d::state::arm_verb_defaults(&mut ui, Verb::Smooth);
+    ui.set_mode_of(Verb::Draw, RefMode::B);
+    ui.set_mode_of(Verb::Smooth, RefMode::L);
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Smooth);
     assert_eq!(ui.brush.mode, RefMode::L, "a premissa: o Smooth está no L");
     let (mut host, mut state) = arrange(ui);
     host.apply_panel_event::<Sculpt3dPanel>(
@@ -1520,13 +1538,13 @@ fn apply_to_all_only_reaches_the_verbs_that_declare_the_mode() {
     let Sculpt3dIntent::SetUi(got) = only_intent("apply to all") else {
         panic!("intent errado")
     };
-    assert_eq!(got.mode_by_verb[smooth], RefMode::L, "onde ele declara");
+    assert_eq!(got.mode_of(Verb::Smooth), RefMode::L, "onde ele declara");
     assert_eq!(
-        got.mode_by_verb[draw],
+        got.mode_of(Verb::Draw),
         RefMode::B,
         "onde ele NÃO declara, a escolha do artista fica de pé"
     );
-    for (i, &m) in got.mode_by_verb.iter().enumerate() {
+    for (i, m) in Verb::ALL.map(|v| got.mode_of(v)).into_iter().enumerate() {
         assert!(
             RefMode::offered_for(Verb::ALL[i]).any(|o| o == m),
             "{}: ficou com um modo que ele não oferece ({})",
@@ -1740,8 +1758,8 @@ fn the_field_width_row_exists_only_where_the_field_does_and_the_chip_lands() {
             ui_level: UiLevel::Pro,
             ..Default::default()
         };
-        ui.mode_by_verb[ph2d_panel_sculpt3d::state::verb_index(Verb::Move)] = RefMode::L;
-        ph2d_panel_sculpt3d::state::arm_verb_defaults(&mut ui, Verb::Move);
+        ui.set_mode_of(Verb::Move, RefMode::L);
+        ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Move);
         assert!(
             ui.brush.mode.field(ui.brush.verb).is_some(),
             "a fixture não contém o fenômeno: o Move em L tem de declarar campo"
@@ -1777,8 +1795,8 @@ fn the_field_width_row_exists_only_where_the_field_does_and_the_chip_lands() {
 
     // CONTROLE 1 — o mesmo verbo em `S`: o campo não corre, a fileira não existe.
     let mut ui = armed();
-    ui.mode_by_verb[ph2d_panel_sculpt3d::state::verb_index(Verb::Move)] = RefMode::S;
-    ph2d_panel_sculpt3d::state::arm_verb_defaults(&mut ui, Verb::Move);
+    ui.set_mode_of(Verb::Move, RefMode::S);
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Move);
     let (mut host, mut state) = arrange(ui);
     let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
     assert!(

@@ -371,35 +371,3 @@ fn the_front_face_switch_is_offered_where_the_law_exists_in_either_position() {
         "a porta ofereceu o interruptor num modo cuja lei é Ignored"
     );
 }
-
-/// **TROCAR DE VERBO TRAZ O DEFAULT DO VERBO, e só se o artista não mexeu.**
-///
-/// ⚠️ **A porta é do MOTOR e os dois chamadores a partilham** (o painel e o
-/// atalho de teclado da shell) — antes dela a lei tinha duas cópias, e elas já
-/// divergiam em dois campos.
-#[test]
-fn arming_a_verb_brings_its_front_face_default_but_never_erases_a_choice() {
-    // Intocado: a faixa traz o `true` dela, e voltar traz o `false` da demão.
-    let mut b = hard_coat(Verb::Layer.default_front_faces_only());
-    b.verb = Verb::Layer;
-    b.arm_verb_defaults(Verb::ClayStrips);
-    assert!(
-        b.front_faces_only,
-        "a faixa não trouxe o default dela ao entrar"
-    );
-    b.verb = Verb::ClayStrips;
-    b.arm_verb_defaults(Verb::Layer);
-    assert!(
-        !b.front_faces_only,
-        "a demão não trouxe o default dela ao entrar"
-    );
-
-    // Tocado: o artista marcou a caixa na demão, e a troca a PRESERVA.
-    let mut b = hard_coat(true);
-    b.verb = Verb::Layer;
-    b.arm_verb_defaults(Verb::Draw);
-    assert!(
-        b.front_faces_only,
-        "a troca de verbo APAGOU uma escolha deliberada"
-    );
-}

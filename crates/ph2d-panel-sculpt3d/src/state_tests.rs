@@ -15,8 +15,8 @@ use super::*;
 #[test]
 fn the_panel_opens_every_verb_in_a_mode_that_declares_it() {
     let ui = Sculpt3dUi::default();
-    for (i, &m) in ui.mode_by_verb.iter().enumerate() {
-        let v = Verb::ALL[i];
+    for v in Verb::ALL {
+        let m = ui.mode_of(v);
         assert!(
             m.declares(v),
             "{v:?} abre em {m:?}, que não o declara — a faixa de modo nasce com \
@@ -31,9 +31,11 @@ fn the_panel_opens_every_verb_in_a_mode_that_declares_it() {
     // CONTROLE POSITIVO: a lista não pode ser vazia nem uniforme por acidente —
     // se todo verbo abrisse no mesmo modo, as duas asserções acima passariam
     // sobre um `Default` que não deriva coisa nenhuma.
-    assert_eq!(ui.mode_by_verb.len(), Verb::ALL.len());
+    assert_eq!(ui.slots.len(), Verb::ALL.len());
     assert!(
-        ui.mode_by_verb.iter().any(|&m| m != ui.mode_by_verb[0]),
+        Verb::ALL
+            .iter()
+            .any(|&v| ui.mode_of(v) != ui.mode_of(Verb::ALL[0])),
         "sete verbos são do Blender e o resto do SculptGL: a lista TEM de ter \
          dois modos diferentes, senão ela não está derivando nada"
     );

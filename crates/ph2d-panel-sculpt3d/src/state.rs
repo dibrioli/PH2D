@@ -23,7 +23,16 @@
 //! de decidir se o remesh já rodou.
 
 use ph2d_mesh::Extract;
-use ph2d_sculpt3d::{Brush, RefMode, Symmetry, Verb};
+use ph2d_sculpt3d::{Brush, Symmetry, Verb};
+
+/// ⚠️ **A memória por-verbo mudou-se para o irmão [`crate::slots`], e o caminho
+/// NÃO mudou.** O shell endereça `state::VerbSlot` e `state::switch_verb_parts`,
+/// e um arch-gate lê o fonte do nascimento atrás de `VerbSlot::for_verb`;
+/// re-exportar mantém os dois honestos e deixa o corte ser sobre
+/// responsabilidade em vez de sobre quem tem de reescrever um `use`.
+pub use crate::slots::{
+    VerbSlot, arm_mode_defaults, reconcile_mode, switch_verb, switch_verb_parts, verb_index,
+};
 use std::cell::{Cell, RefCell};
 
 thread_local! {
@@ -44,13 +53,14 @@ thread_local! {
 /// verbo e o modo já haviam armado por ele.
 ///
 /// ⚠️ **A regra de quem pode ser `Pro`, e ela é testável:** só uma row cujo
-/// valor alguém ARMOU. Esconder um número que o `arm_verb_defaults` escolheu bem
-/// é divulgação progressiva; esconder um que nasce neutro e tem de ser fornecido
-/// é amputação — o artista ficaria com uma ferramenta que não faz o que o nome
-/// dela diz e sem nada na tela explicando por quê.
+/// valor **o slot do verbo já traz** ([`VerbSlot::for_verb`]). Esconder um
+/// número que a ferramenta escolheu bem é divulgação progressiva; esconder um
+/// que nasce neutro e tem de ser fornecido é amputação — o artista ficaria com
+/// uma ferramenta que não faz o que o nome dela diz e sem nada na tela
+/// explicando por quê.
 ///
 /// ⚠️ **Ela é NECESSÁRIA e não suficiente, e é isso que o falloff custou:** a
-/// curva é armada pelo `arm_verb_defaults`, logo *podia* ser `Pro` — e era, e o
+/// curva nasce no slot do verbo, logo *podia* ser `Pro` — e era, e o
 /// smoke reprovou (*"não dá a opção de escolher o falloff e deveria dar"*).
 /// Quem decide a segunda metade é a REFERÊNCIA, medida e não lembrada: no
 /// Blender a curva é *dobrada* (`DEFAULT_CLOSED` com cabeçalho à vista, mais um
@@ -108,14 +118,30 @@ pub struct Sculpt3dUi {
     /// ajusta é o [`Sculpt3dUi::radius_px`] logo abaixo. Guardar os dois num
     /// campo só seria a segunda resposta a *"que tamanho tem o pincel?"*.
     pub brush: Brush,
-    /// **A REFERÊNCIA de cada verbo** — o artista quer o Clay do Blender e o
-    /// Smooth do SculptGL, então a escolha é por ferramenta (§1.3 do plano).
+    /// **O QUE CADA VERBO LEMBRA** — o pincel INTEIRO daquela ferramenta.
     ///
-    /// ⚠️ **O `Brush::mode` é o DERIVADO**, como o `Brush::radius` é derivado do
-    /// [`Sculpt3dUi::radius_px`]: quem o artista edita é esta tabela, e trocar de
-    /// verbo o re-resolve pela porta única [`arm_verb_defaults`]. Guardar a
-    /// escolha só no pincel a perderia na primeira troca de ferramenta.
-    pub mode_by_verb: [RefMode; Verb::ALL.len()],
+    /// ⚠️ **Um ajuste é da FERRAMENTA, nunca do módulo** (ordem do Enio,
+    /// 2026-08-17: *"as configurações dos parâmetros de cada tool não devem se
+    /// propagar para outra tool"*). Afinar a força do Smooth e pegar o Clay não
+    /// pode mover o Clay: o artista calibrou uma ferramenta, não o painel.
+    ///
+    /// ⚠️ **A tabela guarda o `Brush` INTEIRO, e não uma lista de campos.** Ela
+    /// nasceu como `mode_by_verb` — só a referência por verbo — e a lista do que
+    /// *também* devia lembrar (força, curva, dureza, alisamento, altura, raio…)
+    /// é exatamente a que apodrece: o campo que a próxima wave acrescentar ao
+    /// `Brush` nasce lembrado, sem ninguém o registar aqui. É o preço de um
+    /// `clone()` por troca de ferramenta, num gesto que o artista faz com a mão.
+    ///
+    /// ⚠️ **O `radius_px` viaja JUNTO** porque ele é o tamanho do pincel medido
+    /// na régua que o artista vê (pixels de tela) e o `Brush::radius` é o
+    /// derivado de mundo: separá-los faria a ferramenta lembrar tudo menos o
+    /// próprio tamanho.
+    ///
+    /// ⚠️ **O slot do verbo VIVO é uma cópia MORTA** — a verdade dele é o
+    /// [`Sculpt3dUi::brush`], e o slot só é reescrito quando o artista SAI
+    /// daquela ferramenta ([`switch_verb`]). Ler o slot do verbo atual responde
+    /// *"como ele estava quando eu o larguei"*, que é a pergunta errada.
+    pub slots: [VerbSlot; Verb::ALL.len()],
     /// **COM QUE PROFUNDIDADE O PAINEL SE MOSTRA** — ver [`UiLevel`].
     ///
     /// ⚠️ **Ele mora aqui, e não numa célula do painel, pela razão do `matcap`
@@ -205,14 +231,14 @@ impl Default for Sculpt3dUi {
             // verbos rodavam a lei de força de uma referência que não os tem.
             // Dois lugares respondendo a mesma pergunta, e quem ganhava era o
             // que ninguém tinha escrito de propósito.
-            mode_by_verb: std::array::from_fn(|i| RefMode::birth_for(Verb::ALL[i])),
+            slots: std::array::from_fn(|i| VerbSlot::for_verb(Verb::ALL[i])),
             // ⚠️ **BASIC, e a razão é a mesma do `RefMode::default() == S`:** a
             // tese deste módulo é que a referência do SculptGL é a linha de base
             // sã, e um painel que abre mostrando mais knobs do que a referência
             // que o kernel roda é o painel discordando do motor. O que o Basic
-            // esconde é exatamente o conjunto de rows cujo valor o
-            // `arm_verb_defaults` escolheu — e o chip que as revela fica no topo
-            // da própria seção, a um clique e nomeando-se.
+            // esconde é exatamente o conjunto de rows cujo valor o slot do
+            // verbo já traz — e o chip que as revela fica no topo da própria
+            // seção, a um clique e nomeando-se.
             ui_level: UiLevel::default(),
             radius_px: 50.0, // LITERAL-PX-OK: espelha o DEFAULT_RADIUS_PX do shell (raio de pincel, medido)
             symmetry: Symmetry::default(),
@@ -516,71 +542,3 @@ pub fn alpha_chip_index(snap: &Sculpt3dSnapshot) -> usize {
 /// deste verbo?"*, e um literal `50.0` no meio dessa comparação seria a segunda
 /// resposta que a próxima wave esquece de mover.
 pub const BASE_RADIUS_PX: f32 = 50.0; // LITERAL-PX-OK: raio de pincel, espelha o default do shell
-
-/// A posição de um verbo no [`Verb::ALL`] — o índice da tabela
-/// [`Sculpt3dUi::mode_by_verb`].
-///
-/// ⚠️ **`Verb` não é `usize`**, e uma segunda tabela `verbo -> índice` seria a
-/// cópia que diverge no dia em que a lista crescer no meio.
-#[must_use]
-pub fn verb_index(verb: Verb) -> usize {
-    Verb::ALL.iter().position(|&v| v == verb).unwrap_or(0)
-}
-
-/// **ARMA os defaults do verbo que está ENTRANDO — a porta única.**
-///
-/// A lei é a mesma de sempre e vale para os quatro campos: *arma se, e só se, o
-/// artista ainda não mexeu*, onde **"não mexeu" é o valor estar exatamente no
-/// default do verbo que está SAINDO**. Nenhum verbo pode APAGAR uma escolha
-/// deliberada — é o precedente do `arm_inflate_defaults` do Painter.
-///
-/// ⚠️ **Ela existe porque a lista estava INCOMPLETA, e a ausência era o achado
-/// mais caro do estudo.** Este seam armava dois campos (força e accumulate) e
-/// **não armava a CURVA** — o D1 do `docs/3D/20_divergencias_tools.md`, que
-/// muda o pincel em `1,08× a 1,44×` ao longo do raio — nem o **RAIO**, cuja
-/// fração é o que faz um vinco ser fino (o Crease do original é metade) e um
-/// puxão alcançar (o Move é o triplo). Quatro `if` copiados no sítio de uso é
-/// como o quinto campo nasce esquecido; uma porta é onde ele nasce coberto.
-///
-/// ⚠️ **A ordem importa:** os quatro comparam contra `ui.brush.verb`, o verbo
-/// que sai, então a troca de `verb` acontece **por último**.
-pub fn arm_verb_defaults(ui: &mut Sculpt3dUi, verb: Verb) {
-    let from = ui.brush.verb;
-    // ⚠️ **O MODO que sai também é lido antes de ser sobrescrito**, e não é
-    // simetria: desde que a curva de fábrica passou a seguir o modo
-    // (`default_falloff(mode)`), *"o default do verbo que sai"* é uma função de
-    // DOIS argumentos, e computá-lo com o modo que ENTRA responde outra
-    // pergunta. Medido no par que a torna visível — Draw nasce em `S`, Blob só
-    // existe em `B`: `Draw.default_falloff(B)` é a smoothstep e o pincel carrega
-    // a quártica, então o teste conclui *"o artista mexeu"* sobre um pincel
-    // intocado e o Blob nasce vestindo a curva do SculptGL.
-    let from_mode = ui.brush.mode;
-    // ⚠️ **A REFERÊNCIA é RESOLVIDA, nunca preservada.** Ela é por verbo, então
-    // trocar de ferramenta tem de trazer a escolha DAQUELA ferramenta — e é por
-    // isso que ela não passa pelo teste de *"o artista mexeu?"* que os quatro
-    // knobs abaixo fazem: aqui não há um número a proteger, há uma tabela a
-    // consultar.
-    ui.brush.mode = ui.mode_by_verb[verb_index(verb)];
-    // ⚠️ **Os três que dependem SÓ do pincel são da porta do motor**
-    // (`Brush::arm_verb_defaults`), e o atalho de teclado da shell chama a
-    // MESMA — as duas rotas divergiam em silêncio antes dela existir. A
-    // máscara nasce em força cheia; sem isto ela protege pela metade e o barro
-    // se move por baixo dela.
-    ui.brush.arm_verb_defaults(verb);
-    // ⚠️ **Os dois abaixo NÃO cabem na porta, e a ausência tem preço:** o
-    // falloff é função de verbo **e** modo (e o modo que entra acabou de ser
-    // resolvido, três linhas acima) e o raio mora em pixels de TELA, num campo
-    // que não é do pincel. É por isso que a rota do teclado ainda não os arma —
-    // divergência REAL e nomeada, não esquecimento.
-    if ui.brush.falloff == from.default_falloff(from_mode) {
-        ui.brush.falloff = verb.default_falloff(ui.brush.mode);
-    }
-    if (ui.radius_px - from.default_radius_px(BASE_RADIUS_PX)).abs() < 1e-6 {
-        ui.radius_px = verb.default_radius_px(BASE_RADIUS_PX);
-    }
-    ui.brush.verb = verb;
-}
-
-#[cfg(test)]
-#[path = "state_tests.rs"]
-mod tests;

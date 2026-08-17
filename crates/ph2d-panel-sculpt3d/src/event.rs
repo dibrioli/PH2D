@@ -124,9 +124,9 @@ pub(crate) fn apply_event(
             seam_reset_button(host, id);
             let mut ui = snapshot.ui;
             let stamp = ui.brush.mode;
-            for (i, slot) in ui.mode_by_verb.iter_mut().enumerate() {
-                if stamp.declares(Verb::ALL[i]) {
-                    *slot = stamp;
+            for verb in Verb::ALL {
+                if stamp.declares(verb) {
+                    ui.set_mode_of(verb, stamp);
                 }
             }
             state::push_intent(Sculpt3dIntent::SetUi(ui));
@@ -341,25 +341,27 @@ fn group_chip_ui(
 ) -> Option<crate::state::Sculpt3dUi> {
     let mut ui = snapshot.ui.clone();
     if let Some(i) = index_of(&ids::SCULPT3D_VERB, id) {
-        crate::state::arm_verb_defaults(&mut ui, Verb::ALL[i]);
+        // ⚠️ **TROCAR DE FERRAMENTA é guardar e carregar, e nada mais** — o
+        // pincel vivo vai para o slot do verbo que sai e o do verbo que entra
+        // toma o lugar dele. Nenhum knob é re-armado, porque a força que o
+        // artista afinou no Smooth **não é** a força do Clay.
+        crate::state::switch_verb(&mut ui, Verb::ALL[i]);
     } else if let Some(i) = index_of(&ids::SCULPT3D_REF_MODE, id) {
-        ui.mode_by_verb[crate::state::verb_index(ui.brush.verb)] = RefMode::ALL[i];
-        // ⚠️ **O pincel é RE-RESOLVIDO da tabela**, não escrito direto: um
-        // `ui.brush.mode = …` aqui seria a segunda porta, e ela diverge no dia em
-        // que resolver passar a fazer mais alguma coisa.
-        let verb = ui.brush.verb;
-        crate::state::arm_verb_defaults(&mut ui, verb);
+        // ⚠️ **A REFERÊNCIA não é a ferramenta:** ela muda a LEI do kernel
+        // dentro do verbo que já está em mãos, então quem re-resolve é a porta
+        // do MODO — e ela só toca o que depende dele (a curva), preservando
+        // toda escolha deliberada.
+        crate::state::arm_mode_defaults(&mut ui, RefMode::ALL[i]);
     } else if let Some(i) = index_of(&ids::SCULPT3D_ELASTIC_SCALES, id) {
-        // ⚠️ **Sem `arm_verb_defaults`, e a razão é a do vizinho de baixo:** a
-        // largura do campo é uma escolha DO ARTISTA sobre o modo que ele já
-        // escolheu, não a escolha de uma ferramenta. Re-armar aqui devolveria a
-        // família que a medição elegeu, apagando o gesto no instante em que ele
-        // acontece.
+        // ⚠️ **Sem re-armar nada, e a razão é a do vizinho de baixo:** a largura
+        // do campo é uma escolha DO ARTISTA sobre o modo que ele já escolheu,
+        // não a escolha de uma ferramenta. Re-resolver aqui devolveria a família
+        // que a medição elegeu, apagando o gesto no instante em que ele acontece.
         ui.brush.elastic_scales = ph2d_sculpt3d::kelvinlet::Scales::ALL[i];
     } else if let Some(i) = index_of(&ids::SCULPT3D_UI_LEVEL, id) {
-        // ⚠️ **Sem `arm_verb_defaults`:** mudar o nível não é escolher uma
-        // ferramenta, é escolher quanto dela ver — re-armar jogaria fora os
-        // quatro knobs que o artista ajustou, no gesto que ele fez só para OLHAR.
+        // ⚠️ **Sem trocar de slot:** mudar o nível não é escolher uma
+        // ferramenta, é escolher quanto dela ver — passar pela porta de troca
+        // aqui recarregaria o pincel no gesto que o artista fez só para OLHAR.
         ui.ui_level = state::UiLevel::ALL[i];
     } else if let Some(i) = index_of(&ids::SCULPT3D_FALLOFF, id) {
         ui.brush.falloff = Falloff::ALL[i];

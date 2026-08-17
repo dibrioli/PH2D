@@ -45,11 +45,21 @@ impl Verb {
     /// `Drag`/`Twist`/`LocalScale` não declaram `_intensity` e o SculptGL não
     /// tem Sharpen. Um `unwrap_or` aqui é *"a referência não respondeu"*, nunca
     /// um valor inventado com a autoridade dela.
+    ///
+    /// ⚠️ **E o fallback é POR VERBO desde 2026-08-17, porque um deles foi
+    /// MEDIDO:** a demão sai `0,7` por veredito de smoke do Enio (*"temos bom
+    /// resultado para Layer com Strength 0.7, Hardness 0.4 e Auto Smooth 0.0"*),
+    /// e o `0,5` continua sendo a resposta para todo verbo que ninguém julgou
+    /// ainda. Os dois são *nossos*; o que os separa é ter um humano tido o
+    /// produto na mão, e é essa distinção que o `unwrap_or` guarda.
     #[must_use]
     pub fn default_strength(self) -> f32 {
         self.profile(crate::RefMode::S)
             .and_then(|p| p.strength)
-            .unwrap_or(0.5)
+            .unwrap_or(match self {
+                Self::Layer => 0.7,
+                _ => 0.5,
+            })
     }
 
     /// **O Accumulate nasce ARMADO neste verbo?** — e a resposta é da
@@ -214,4 +224,53 @@ impl Verb {
     pub const fn default_front_faces_only(self) -> bool {
         matches!(self, Self::ClayStrips)
     }
+
+    /// A **DUREZA DO DAB** com que um pincel deste verbo nasce.
+    ///
+    /// ⚠️ **A referência é MUDA aqui, e a mudez é dos DOIS lados:** o
+    /// `hardness` é o `apply_hardness_to_distances` do Blender, que o SculptGL
+    /// não tem — logo o [`crate::ref_profiles`] nunca poderia respondê-lo —, e
+    /// os defaults por-tool do Blender moram num `.blend` **binário** (o §7.0 do
+    /// plano mediu isso). Então este número **não pode** vir de tabela nenhuma:
+    /// ele vem de quem olhou para o barro.
+    ///
+    /// ⚠️ **`0` é o NEUTRO e é o default de todo verbo menos um** — o
+    /// `apply_hardness_to_distances` abre com `if (hardness == 0.0f) return;`,
+    /// então o zero não é *"pouca dureza"*, é *"a etapa não corre"*.
+    ///
+    /// ⚠️ **O `0,4` da demão é veredito de SMOKE** (Enio, 2026-08-17: *"temos
+    /// bom resultado para Layer com Strength 0.7, Hardness 0.4 e Auto Smooth
+    /// 0.0"*), e ele carrega o mecanismo que o report anterior tinha nomeado:
+    /// com `hardness = h` toda distância `t < h` vira zero, e ali a demão pousa
+    /// na altura CHEIA — é o platô que faz uma demão parecer uma demão em vez de
+    /// um domo. O que a tornava *"muito ruim"* com dureza alta era o `facing` do
+    /// [`Self::default_front_faces_only`], já corrigido; o número que sobrou é o
+    /// que o artista aprovou depois disso.
+    #[must_use]
+    pub const fn default_hardness(self) -> f32 {
+        match self {
+            Self::Layer => 0.4,
+            _ => 0.0,
+        }
+    }
+
+    /// O **ALISAMENTO AUTOMÁTICO** com que um pincel deste verbo nasce.
+    ///
+    /// ⚠️ **Zero em toda parte, e isso é uma afirmação e não uma omissão:** o
+    /// `auto_smooth` é o vizinho do `hardness` no RNA do Blender e nasce em `0`
+    /// lá também; um verbo que quisesse outro número teria de o MEDIR, como a
+    /// demão mediu a dureza dela. A função existe — em vez de o slot ler
+    /// [`crate::Brush::default`] — porque é ela que torna a pergunta
+    /// *"com que alisamento este verbo nasce?"* respondível **por verbo** no dia
+    /// em que o primeiro deles precisar de outra resposta, sem que a tabela do
+    /// [`crate::VerbSlot`] tenha de aprender um caso especial.
+    #[must_use]
+    pub const fn default_auto_smooth(self) -> f32 {
+        let _ = self;
+        0.0
+    }
 }
+
+#[cfg(test)]
+#[path = "brush_verb_defaults_tests.rs"]
+mod tests;

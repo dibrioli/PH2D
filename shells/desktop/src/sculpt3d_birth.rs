@@ -67,8 +67,8 @@ impl Sculpt3dScene {
             // devolver o slider CRU onde a referência deles o eleva ao quadrado.
             // O `Sculpt3dUi::default()` do painel já derivava isto e **não é
             // quem faz o estado nascer**: a segunda resposta era esta linha.
-            mode_by_verb: std::array::from_fn(|i| {
-                ph2d_sculpt3d::RefMode::birth_for(ph2d_sculpt3d::Verb::ALL[i])
+            verb_slots: std::array::from_fn(|i| {
+                ph2d_panel_sculpt3d::state::VerbSlot::for_verb(ph2d_sculpt3d::Verb::ALL[i])
             }),
             ui_level: ph2d_panel_sculpt3d::UiLevel::default(),
             alpha_preview: true,

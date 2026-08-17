@@ -32,6 +32,7 @@ mod paint;
 mod populate;
 mod preview;
 pub mod rows;
+pub mod slots;
 pub mod state;
 
 mod event;

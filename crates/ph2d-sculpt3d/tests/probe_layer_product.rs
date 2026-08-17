@@ -7,7 +7,7 @@
 //!
 //! Os doze gates do `verb_layer_tests` passam e o artista reporta *"nada
 //! mudou"*. Um gate de kernel é cego à fiação, então esta sonda arma o pincel
-//! pelas MESMAS portas que o `arm_verb_defaults` do painel chama
+//! pelas MESMAS portas que o slot de fábrica do painel lê
 //! (`birth_for` · `default_strength` · `default_falloff`) e percorre o traço
 //! pelo `walk`, que é o que a shell faz.
 

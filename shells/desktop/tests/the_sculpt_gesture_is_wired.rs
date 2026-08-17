@@ -214,12 +214,32 @@ fn the_brush_radius_is_screen_pixels_converted_against_the_camera() {
         1,
         "a razão do frustum (o estêncil) tem de sair da câmera UMA vez"
     );
+    // ⚠️ **São DOIS sítios, e o segundo tem nome e linha aqui — que é o que a
+    // própria mensagem deste gate prescrevia.** A wave do anel conformado deu
+    // ao CURSOR um leitor de raio de mundo, e a distinção que o torna legítimo é
+    // o CONSUMIDOR, não a pergunta: o dab pede o raio de mundo e o **divide pela
+    // escala da pose** (ele mede na régua da MALHA), o anel o consome em MUNDO
+    // porque é projetado. Mesma ajudante, mesmo ponto de acerto, mesmo
+    // `radius_px()` ⇒ eles concordam **por construção**, que é a propriedade que
+    // este gate existe para defender; um TERCEIRO sítio volta a reprovar.
     assert_eq!(
         src.matches("world_radius_for_screen_px(").count(),
-        1,
-        "apareceu um SEGUNDO sítio convertendo pixels→mundo: ou é uma pergunta \
+        2,
+        "apareceu um TERCEIRO sítio convertendo pixels→mundo: ou é uma pergunta \
          nova (e ela precisa de nome e de linha aqui), ou é a segunda resposta \
          a uma que já tem dono"
+    );
+    // E a metade que a CONTAGEM não sabe afirmar: o anel tem de perguntar com o
+    // MESMO tamanho de pincel que o dab. Sem isto os dois sítios podem divergir
+    // sem mover o número acima — e o cursor passaria a desenhar uma pegada que a
+    // tinta não deposita, que é o defeito inteiro.
+    let call = src
+        .find("ring_on_surface(&")
+        .expect("a chamada do anel conformado");
+    assert!(
+        src[call..][..src[call..].find(')').map_or(0, |e| e + 1)].contains("self.radius_px()"),
+        "o anel pergunta o raio de mundo com um tamanho de pincel que não é o \
+         do dab — o cursor deixa de descrever a tinta"
     );
     assert_eq!(
         src.matches("view_height_per_depth(").count(),

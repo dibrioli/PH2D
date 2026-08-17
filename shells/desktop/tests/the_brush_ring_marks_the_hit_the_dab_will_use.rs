@@ -49,8 +49,15 @@ fn the_ring_is_centred_on_the_reprojected_hit() {
     );
     // E o fallback existe, com a semântica certa: no vazio o anel fica no pixel
     // cru, que é onde a ÓRBITA vai começar.
+    //
+    // ⚠️ **A âncora é a FAMÍLIA de combinadores, não um deles** — este gate
+    // pedia `hit.unwrap_or((x, y))` e ficou VERMELHO sobre produto correto
+    // quando a wave do anel conformado reescreveu o centro como
+    // `landed.as_ref().map_or((x, y), …)`: o recuo continuava exactamente onde
+    // estava, só mudou de combinador. *Afirme a PROPRIEDADE, nunca a grafia* —
+    // `_or((x, y)` casa com `unwrap_or`, `map_or` e o que vier depois deles.
     assert!(
-        src.contains("hit.unwrap_or((x, y))"),
+        src.contains("_or((x, y)"),
         "o anel não tem fallback para o vazio — ou ele some (escondendo que o \
          gesto mudou de significado) ou ele mente sobre um acerto que não houve"
     );

@@ -524,3 +524,53 @@ fn the_coat_does_not_offer_accumulate() {
         "o CONTROLE não distingue: o Accumulate ficou inerte em toda parte"
     );
 }
+
+/// **A ALTURA DA DEMÃO É UMA DISTÂNCIA DE MUNDO, NUNCA UMA FRAÇÃO DO RAIO** —
+/// a lei do Blender, pinada contra a tentação de a "consertar".
+///
+/// ⚠️ **Este gate existe por causa de um REPORT que ele NÃO deve fazer sumir**
+/// (Enio, 2026-08-17: *"quanto mais se aproxima do objeto (zoom), pior o
+/// resultado"*). Medido pela porta do produto, a esbeltez `altura ÷ raio` vai de
+/// **0,135** com a câmera longe a **5,857** a 4× de zoom — o raio nasce dos
+/// PIXELS e encolhe, a altura é de MUNDO e não encolhe, então a demão vira
+/// espigão. É real, e é **o comportamento da referência**:
+/// `rna_brush.cc:3230` declara `height` como `PROP_DISTANCE`, `layer.cc:101` o
+/// multiplica cru, e o `cache.radius` de lá também sai dos pixels. ⚠️ **O
+/// default do Blender é `0.5` contra o nosso `0.1`** — no mesmo zoom o Layer
+/// dele espiga cinco vezes mais.
+///
+/// ⇒ A cura que achataria a curva é a lei do SculptGL (`Brush.js:62`, o
+/// deslocamento escalando com o raio), e ela **DIVERGE da referência**: é
+/// decisão do Enio com o número na mão, não uma correção silenciosa de quem
+/// passar por aqui. Enquanto a ordem for *idêntico ao Blender*, esta é a lei.
+///
+/// A sonda que produz os números:
+/// ```text
+/// cargo test -p ph2d-host-desktop --bins \
+///   sculpt3d::space::tests::measure_what_the_zoom_does_to_the_brush -- --ignored --nocapture
+/// ```
+#[test]
+fn the_coat_height_is_a_world_distance_and_does_not_follow_the_radius() {
+    const HEIGHT: f32 = 0.3;
+    let mut peaks = Vec::new();
+    // ⚠️ Os dois raios cobrem vértices de sobra (aresta 0,1): o gate mede a LEI,
+    // e um raio mais estreito que a malha mediria a resolução — a OUTRA causa.
+    for radius in [0.5f32, 1.5] {
+        let mut mesh = grid(40, 2.0);
+        let b = coat_brush(radius, HEIGHT);
+        lay(&mut mesh, &b, 24);
+        peaks.push(peak(&mesh));
+    }
+    let (narrow, wide) = (peaks[0], peaks[1]);
+    assert!(
+        (narrow - HEIGHT).abs() < 0.02 && (wide - HEIGHT).abs() < 0.02,
+        "a demão satura na ALTURA autorada, seja qual for o raio: {narrow:.4} e \
+         {wide:.4} contra {HEIGHT:.4}"
+    );
+    assert!(
+        (narrow - wide).abs() < 0.01,
+        "triplicar o raio não pode mover a altura da demão ({narrow:.4} contra \
+         {wide:.4}) — se moveu, o deslocamento passou a escalar com o raio, que é \
+         a lei do SculptGL e não a do Blender"
+    );
+}

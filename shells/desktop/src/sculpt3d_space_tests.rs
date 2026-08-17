@@ -131,6 +131,28 @@ fn a_scaled_piece_wears_the_same_stamp_on_screen() {
 /// teto quando a câmera aproxima, *"quanto mais perto, pior"* é literalmente uma
 /// demão que vira espigão — e o número certo sai daqui, não de uma fixture que
 /// dirige o `Engine` direto.
+///
+/// ## ⛔ O VEREDITO, MEDIDO: a curva é a da REFERÊNCIA, não um defeito do porte
+///
+/// Medido (esfera de fábrica, raio 50 px), `alt/raio` vai de **0,135** com a
+/// câmera longe a **5,857** a 4× de zoom: a demão de fato vira espigão. E a
+/// varredura do Blender diz que **ele faz o mesmo**, em três fatos do fonte:
+/// `rna_brush.cc:3230` declara `height` como `PROP_DISTANCE`, `layer.cc:101` o
+/// multiplica CRU (`orig_normals[i] * height * displacement_factors[i]`), e o
+/// `cache.radius` dele nasce dos PIXELS como o nosso. ⚠️ **E o default dele é
+/// `0.5` contra o nosso `0.1`** — no mesmo zoom o Layer do Blender espiga
+/// **cinco vezes** mais que o nosso.
+///
+/// ⇒ *"quanto mais perto, pior"* é comportamento HERDADO, e a ordem permanente
+/// é **idêntico ao Blender**. A cura que achataria a curva é a lei do SculptGL
+/// (`Brush.js:62`, `intensity * radius * 0.1` — o deslocamento escala com o
+/// raio), e adotá-la é **divergir de propósito da referência**: decisão do
+/// Enio, com este número na mão, nunca uma correção silenciosa.
+///
+/// ⚠️ **E a segunda causa não é de LEI nenhuma:** a 4× de zoom o pincel cobre
+/// **1,45** arestas medianas. Nenhuma lei de deslocamento conserta um pincel
+/// mais estreito que a malha — quem conserta é subdividir, e o gesto já shipa.
+/// Confundir as duas faria trocar a lei e continuar sem resolução.
 #[test]
 #[ignore]
 fn measure_what_the_zoom_does_to_the_brush() {

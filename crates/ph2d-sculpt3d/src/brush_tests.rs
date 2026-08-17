@@ -502,7 +502,11 @@ fn the_second_pass_is_the_same_brush_with_the_verb_swapped_and_the_force_in_the_
     let budget = budget.as_slice();
     assert_eq!(budget.len(), 2, "0,4 compra uma passada cheia e um resto");
     assert!((budget[0].weight - 1.0).abs() < 1e-6);
-    assert!((budget[1].weight - 0.6).abs() < 1e-6, "{}", budget[1].weight);
+    assert!(
+        (budget[1].weight - 0.6).abs() < 1e-6,
+        "{}",
+        budget[1].weight
+    );
     assert_eq!(s.auto_smooth, 0.0, "a recursão é impossível por construção");
     assert_eq!(s.hardness, b.hardness, "a dureza do artista vale no passe");
     assert_eq!(s.falloff, b.falloff, "e a curva dele também");

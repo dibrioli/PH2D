@@ -35,7 +35,9 @@ fn measure_reach_by_mode() {
         let declared = v
             .profile(RefMode::B)
             .and_then(|p| p.reach)
-            .map_or("--  (nao e' fracao de raio)".to_string(), |f| format!("{f:.4}"));
+            .map_or("--  (nao e' fracao de raio)".to_string(), |f| {
+                format!("{f:.4}")
+            });
         let b_only = modes == ["B"];
         if b_only {
             only_b += 1;

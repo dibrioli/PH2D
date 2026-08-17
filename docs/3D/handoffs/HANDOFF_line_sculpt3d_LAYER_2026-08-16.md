@@ -73,92 +73,109 @@ Sonda: [`tests/probe_layer_product.rs`](../../../crates/ph2d-sculpt3d/tests/prob
 
 ---
 
-## §3 — ⭐ O DEFEITO, MEDIDO (comece aqui)
+## §3 — ⭐ O DEFEITO, E A CAUSA: o nosso alvo divergia do `calc_translations`
 
-Mesma sonda, teste `probe_hardness_and_auto_smooth_on_the_coat`.
-Régua do espeto = **desvio de guarda-chuva sobre os vértices TOCADOS**, em fração de aresta.
-⚠️ Varrer a malha inteira mede os **polos** da `uv_sphere` e não o traço — foi assim que
-uma tabela minha saiu com seis linhas idênticas.
+**FECHADO em 2026-08-16.** O report do Enio era de dois eixos (*"se aumentar
+hardness ou Auto Smooth, Layer fica muito ruim"*) e a causa dos dois era UMA.
 
-### (A) AUTO SMOOTH aniquila a demão — o achado principal
+### A divergência
 
-```
-  auto_sm    relevo    espeto   espeto/relevo
-  0.00       0.07707   0.12122          1.573
-  0.25       0.00935   0.07721          8.260     <- 8x menos relevo
-  0.50       0.00517   0.07771         15.036
-  0.75       0.00261   0.08271         31.683
-  1.00       0.00164   0.08735         53.375
+`layer.cc:99-103` (`calc_translations`):
 
-  CONTROLE (Draw)
-  0.00       0.08738   0.13844          1.584
-  0.50       0.02072   0.06257          3.020
-  1.00       0.00016   0.06100        392.990
+```cpp
+const float3 offset      = orig_normals[i] * height * displacement_factors[i];
+const float3 translation = orig_positions[i] + offset - positions[i];
+r_translations[i]        = translation * factors[i];
 ```
 
-**A leitura:** a `0,50` o Draw perde **4,2×** de relevo e a demão perde **14,9×** —
-⚠️ **a demão é 3,5× mais destruída pelo mesmo knob**, e a razão espeto/relevo dela
-sai de 1,57 para **15,0**.
+ou seja **`live + (meta − live) · factors`** — a translação sai do **VIVO** e leva
+o **PESO**. O nosso kernel escrevia a meta de forma **ABSOLUTA a partir do
+`base`** e **SEM** o peso, com um doc-comment a justificar as duas coisas (*"o
+peso NÃO entra aqui"*, *"um alvo ancorado no VIVO subiria a cada passada"*).
 
-**HIPÓTESE (não confirmada — meça antes de construir):** a demão escreve
-`lerp(base, target, accum)` **absolutamente a partir do `base` CONGELADO**, e o passe
-de auto-smooth roda **depois** dela, no mesmo dab
-([`stroke_symmetry.rs:172`](../../../crates/ph2d-sculpt3d/src/stroke_symmetry.rs)).
-O alisador achata o que a demão acabou de levantar, e como a demão **não lê o vivo**
-(`from_live = false`, e é o `layer.cc` que o exige) ela **não recupera** o que foi
-achatado — ela só reafirma a mesma altura, que o alisador achata de novo.
-Em Blender essa composição **não colapsa**, e é aí que a paridade tem de ser lida.
+⚠️ **As duas justificativas eram falsas contra a referência:**
 
-### (B) HARDNESS espeta a demão mais que o Draw
+- o `disp` **SATURA** (`clamp_displacement_factors`), então ancorar no vivo
+  **não** deixa a meta crescer — a meta é `orig + n·altura·disp`, e `disp ≤ 1`;
+- o Blender aplica o `factors` nos **DOIS** lugares porque eles respondem
+  perguntas **diferentes** — dentro do `offset_displacement_factors` ele é a
+  **TAXA** com que aquele vértice enche a demão, e no `calc_translations` é a
+  **FRACÇÃO do caminho até a meta** que este dab anda.
 
-```
-  hardness   relevo    espeto   espeto/relevo
-  0.00       0.07707   0.12122          1.573
-  0.25       0.08622   0.13724          1.592
-  0.50       0.09224   0.15855          1.719
-  0.75       0.09632   0.26931          2.796     <- pico
-  0.90       0.09737   0.22283          2.289     <- NAO-MONOTONICO
+### E o `factors` é o nosso `shape`, não o `w`
 
-  CONTROLE (Draw)
-  0.00       0.08738   0.13844          1.584
-  0.50       0.11578   0.18906          1.633
-  0.90       0.13420   0.23999          1.788
-```
+`calc_brush_strength_factors` (`sculpt.cc:7577`) chama **só** o
+`BKE_brush_calc_curve_factors` — a curva, sem a força. A força vive no
+`cache.bstrength`, que é o nosso `intensity` e já entra na recorrência do
+`coat_step`.
 
-⚠️ **O `0,75 → 0,90` NÃO É MONOTÔNICO** — o espeto cai quando a dureza sobe.
-Isso é assinatura de descontinuidade, não de afinação. Suspeito nomeado:
-`apply_hardness_to_distances` ([`brush_scale.rs:117`](../../../crates/ph2d-sculpt3d/src/brush_scale.rs)),
-que zera `t` abaixo de `hardness` — e **num verbo cuja curva é uma TAXA e não um
-perfil** (gate `the_falloff_is_a_rate_and_not_a_profile`) isso faz a pegada inteira
-saturar de uma vez, em vez de desenhar um ombro.
+### O EARLY-OUT tinha de morrer junto, e sozinho ele valia mais que o resto
 
----
+`if coat && me.accum[s] >= keep { return; }` era **correcto** sob a lei absoluta
+(chegado à demão cheia, re-escrever era um no-op) e sob a lei da referência ele
+**DESTRÓI a feature**: `disp` cheio não quer dizer *o vértice está na meta*,
+quer dizer *a demão já foi depositada* — se o auto-smooth o tirou de lá, é o dab
+seguinte que o traz de volta. **O `calc_faces` do Blender não tem early-out.**
 
-## §4 — A PERGUNTA DE PARIDADE que ninguém respondeu
+### MEDIDO (uma pincelada, esfera de fábrica)
 
-**Nenhuma das duas composições foi conferida contra o Blender A CORRER.** Antes de
-mexer no kernel, responda com a referência na mão:
+| `auto_smooth` | relevo ANTES | relevo AGORA | espeto/relevo |
+|---|---|---|---|
+| 0,00 | 0,07707 | 0,07356 | 2,01 |
+| 0,25 | 0,00935 | 0,09198 | 1,64 |
+| 0,50 | 0,00517 | 0,08394 | 1,57 |
+| 1,00 | **0,00164** | **0,06940** | **1,68** (era 53,4) |
 
-1. O `SCULPT_do_layer_brush` do Blender passa pelo `apply_hardness_to_distances`?
-   (Se **não**, o `hardness` não devia alcançar a demão — e o eixo (B) fecha sem
-   tocar na lei.)
-2. Como o Blender compõe **auto-smooth com um brush que satura**? A ordem, a força,
-   e contra que posições o smooth mede (vivo ou `orig_data`).
-3. O `layer.cc` mede as distâncias contra `orig_data.positions`
-   **incondicionalmente** — isso já está portado e gateado. O que **não** está
-   conferido é o que acontece **depois**, no passe de alisamento.
+O espeto **CAI** conforme o Auto Smooth sobe e o relevo **se mantém** — que é o
+que a palavra promete. ⚠️ O **Draw** continua a ser aniquilado
+(0,08738 → 0,00016) e isso está **CERTO**: ele é aditivo puro e não tem meta
+para onde voltar.
 
-⚠️ **O oráculo EXTERNO já existe e é o padrão desta linha:**
-[`docs/3D/ferramentas/blender_sculpt_oracle.py`](../ferramentas/blender_sculpt_oracle.py)
-roda o **Blender 5.2 de verdade** e imprime a tabela `(r, dz)` que o gate
-`the_factory_curve_is_what_blender_running_deposits` consome. **Estenda-o para o
-Layer com hardness e com auto-smooth** — é o único caminho para "bit-idêntico" que
-não é uma leitura estática do `.cc`.
-⚠️ Uma leitura estática **já enganou esta linha uma vez**: ela previa
-`BRUSH_CURVE_CUSTOM` e o Blender a correr reporta `SMOOTH` (*um pincel não nasce
-zero-inicializado; ele nasce do arquivo de startup*).
+### O eixo HARDNESS — a lei está portada, e o que resta é o Blender
 
----
+Conferido **linha a linha contra a fonte**, os quatro passos estão no nosso
+kernel, na ordem do `calc_faces`:
+
+| passo | Blender | nosso |
+|---|---|---|
+| dureza antes da curva | `apply_hardness_to_distances` (`sculpt.cc:7549`) | `Brush::shaped_distance` |
+| a curva é o `factors` | `calc_brush_strength_factors` | `shape = fall · keep` |
+| acúmulo assintótico | `offset_displacement_factors` + `clamp` | `coat_step` |
+| a translação | `calc_translations` | o braço `Verb::Layer` |
+
+E a distância sai do **`pre`** nos dois (`calc_brush_distances(ss,
+orig_data.positions, …)` ⇔ o nosso `from_live = false`).
+
+⚠️ **O que sobra com dureza alta é o que a ferramenta É:** o `disp` satura em
+`1` em **todo** vértice de peso não-nulo, dado tempo, então o regime permanente
+de uma demão é uma **MESA de espessura constante** com a parede na borda da
+pegada — a curva decide só a **TAXA**. Dureza alta encurta a subida da parede;
+ela não a inventa.
+
+⚠️ **E a não-monotonia medida (0,75 → 2,989 · 0,90 → 2,507) é DISCRETIZAÇÃO, não
+defeito de lei:** a parede fica em `h · r`, e mover uma parede vertical 15% do
+raio troca **quais** vértices a atravessam. Um espeto medido *por vértice* é
+quantizado por isso. O `height` também já é o da referência (default `0,1` nosso
+com o motivo escrito, faixas `[0, 1]` dura e `[0, 0,2]` de slider, as duas do
+`rna_brush.cc:3230-3234`).
+
+## §4 — O gate que MORREU, e por quê
+
+O `a_finished_coat_stops_asking_for_work` afirmava *"o 64.º dab move ZERO
+vértices"* — a premissa do early-out. Sob a lei da referência ela é falsa **por
+desenho**: a demão **tem** de continuar a escrever, e é isso que a deixa
+conviver com um alisador.
+
+Substituído (não recalibrado) por `a_finished_coat_stops_growing`, que afirma a
+propriedade que sobrevive e é a única que o artista vê — a **CONVERGÊNCIA**: a
+demão para de subir, e para na fracção que a máscara deixa livre, com CONTROLE
+sem máscara. Os outros **onze** gates do arquivo passam sem uma edição de
+asserção, e é isso que prova que a troca só alcança o ramo da demão.
+
+⚠️ **O que se perde é a defesa de CUSTO, e ela fica NOMEADA:** a demão volta a
+mandar ao refit do octree e ao upload vértices que não se moveram. Se um dia
+doer, a cura é comparar a **POSIÇÃO** com a meta (barato e correcto), **nunca**
+voltar a comparar o `disp`.
 
 ## §5 — Armadilhas desta linha (pagas, não repita)
 

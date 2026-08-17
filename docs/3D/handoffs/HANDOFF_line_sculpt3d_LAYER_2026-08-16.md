@@ -60,7 +60,7 @@ de uma prova.
 
 E `Falloff::Constant` é, literalmente, `=> 1.0` (`falloff.rs:235`).
 
-**As duas consequências, e cada uma sozinha já bastaria:**
+**As TRÊS consequências, e cada uma sozinha já bastaria:**
 
 1. **O `hardness` é remapeado e depois JOGADO FORA.** A cadeia é
    `shaped_distance(t, h)` → `falloff.weight(t')` → `shape`. Com `Constant` o
@@ -68,10 +68,33 @@ E `Falloff::Constant` é, literalmente, `=> 1.0` (`falloff.rs:235`).
    único vértice de um único gate. **O eixo que o Enio nomeou na primeira
    mensagem nunca esteve sob teste.**
 
+   ⚠️ **E o `Constant` não é sequer o falloff do PRODUTO:** `Verb::Layer` nasce
+   com **`Falloff::Smooth`** nos dois modos (`brush_verb_defaults.rs:145-149` →
+   `profile_s(Layer) == None` ⇒ `unwrap_or(Smooth)`; `profile_b` declara
+   `Some(Smooth)`). *Os gates medem uma curva que a demão nunca usa.*
+
 2. **Numa grade plana o kernel do Layer é uma TRANSLAÇÃO VERTICAL.** Toda normal
    é `+z`, então `orig + n·altura·disp` move todo mundo no mesmo eixo: **não há
    parede, não há leque de normais, não há curvatura.** E a parede é *exatamente*
    o que a foto do Enio mostra.
+
+3. ⭐ **O termo `facing` é IDENTICAMENTE 1 numa grade plana, e ele mora DENTRO do
+   `shape`.** A cadeia real é
+   `fall = curve · alpha_weight · facing` → `shape = fall · keep`
+   (`stroke_dab_core.rs:305,317`), com
+   `facing = max(−(base_nrm · dab.eye), 0)` (`:300-303`) — um multiplicador
+   **CONTÍNUO**, não um corte binário. Numa grade de frente para a câmera ele
+   vale `1.0` em todo vértice; **numa esfera ele varia pela pegada inteira**.
+
+   ⚠️ **E isto interage com o eixo do report de um jeito que nenhum gate vê:** com
+   dureza alta o `curve` satura em `1` em quase toda a pegada, então **o `facing`
+   passa a ser o ÚNICO termo espacial do `shape`** — a forma da demão a hardness
+   alto é, hoje, decidida pelo ângulo com a câmera. Se a referência usa
+   `use_frontface` como **teste binário** (o `sculpt_brush_test` do Blender) e nós
+   usamos um `cos` contínuo, a divergência é invisível em plano, invisível a
+   dureza baixa, e **domina exactamente onde o Enio reclama**. ⚠️ *Confirme na
+   fonte antes de mexer* — a pergunta é se algo equivalente entra no `factors` do
+   `layer.cc`.
 
 ⚠️ **E é por isso que o meu porte de hoje passou "sem uma edição de asserção", o
 que eu reportei como PROVA de que a troca era cirúrgica:** a lei nova é
@@ -178,13 +201,19 @@ está **CERTO** — ele é aditivo puro e não tem meta para onde voltar.
 2. **Meça a ALTURA contra a dureza** — a divergência (a) da §3, que é a única com
    um número. Nós temos `spike/relevo`; **não temos o relevo ABSOLUTO por
    hardness**, e é ele que a foto acusa.
-3. **Confirme as UNIDADES do `height` na fonte.** O nosso é **ABSOLUTO** (não
-   escala com o raio — está escrito e justificado em `brush.rs:110-132`). Se o do
-   Blender for multiplicado pelo raio do pincel (ou por `ss.cache->scale`),
-   **isso sozinho explica a faixa 3 achatada** e a cura é uma multiplicação, não
-   um redesenho. *Esta é a hipótese mais barata da lista — teste-a primeiro.*
-4. **Derrube ou confirme o pente** (§3.1): período do pente contra passo da grade.
-5. **Só então** volte ao kernel.
+3. **Confirme as UNIDADES do `height` na fonte.** ⚠️ O nosso está **MEDIDO e é
+   ABSOLUTO**: `layer_height` entra em **um único sítio do `src/` inteiro**
+   (`stroke_target.rs:499-500`), multiplicado só por `sign` (±1) e pelo `disp`
+   adimensional — **nenhum raio, nenhuma escala, nenhuma pose** (`grep` por
+   `pose`/`.scale` no caminho do traço volta **vazio**). Se o do Blender for
+   multiplicado pelo raio do pincel (ou por `ss.cache->scale`), **isso sozinho
+   explica a faixa 3 achatada** e a cura é uma multiplicação, não um redesenho.
+   *Esta é a hipótese mais barata da lista — teste-a primeiro.*
+4. **Decida o `facing`** (§2.3): o `use_frontface` da referência é **teste
+   binário** ou **peso contínuo**? Se for binário, o nosso `cos` é uma segunda
+   curva de falloff que o Blender não tem, e ela **domina a hardness alto**.
+5. **Derrube ou confirme o pente** (§3.1): período do pente contra passo da grade.
+6. **Só então** volte ao kernel.
 
 ⚠️ **E acrescente à cena `=33` os dois passos que faltam** (subir o hardness ·
 subir o Auto Smooth). Hoje o roteiro tem oito passos e **nenhum exercita o defeito
@@ -195,6 +224,11 @@ reportado** — o Enio está a produzir a evidência à mão porque a cena não 
 ## §6 — Armadilhas desta linha (pagas, não repita)
 
 - ⚠️ **A cwd volta ao primário** (§1). Custou-me um veredito errado contra um agente correto.
+- ⚠️ **`brush.weight()` da demão é `strength²`, em TODO modo** — `profile_s(Layer)`
+  devolve `None`, o `for_verb` cai no `B`, e o `B` declara
+  `StrengthCurve::Squared`. Com o default `strength = 0,5` a força efetiva é
+  **0,25**, e a demão fecha em ~10 dabs, não em 1. Toda medição que conte dabs
+  tem de saber disto antes de chamar um resultado de lento.
 - ⚠️ **Gate de kernel é CEGO à fiação; gate de seam é cego à LEI.** Precisa dos dois.
 - ⚠️ **Fixture que não contém o fenômeno** é a doença desta linha, e a §2 é o caso mais caro dela.
 - ⚠️ **Oráculo byte-a-byte tem de reproduzir a ASSOCIAÇÃO:** `u*u*u*u` diverge de `(u*u)*(u*u)` por **um ULP** já em `t = 0,02`.

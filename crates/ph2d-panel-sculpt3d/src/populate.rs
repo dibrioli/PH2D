@@ -122,6 +122,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::SCULPT3D_ALPHA_PREVIEW,
         ids::SCULPT3D_WIREFRAME,
         ids::SCULPT3D_ACCUMULATE,
+        ids::SCULPT3D_FRONT_FACES,
         ids::SCULPT3D_SCRAPE_DYNAMIC,
         ids::SCULPT3D_CLOSE,
     ] {

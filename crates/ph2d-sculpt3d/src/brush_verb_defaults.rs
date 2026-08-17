@@ -163,4 +163,55 @@ impl Verb {
                 .and_then(|p| p.radius_factor)
                 .unwrap_or(1.0)
     }
+
+    /// **SÓ AS FACES DE FRENTE** — o `use_frontface` da referência, e o que o
+    /// pincel nasce vestindo.
+    ///
+    /// ⚠️ **O front-face do Blender é um CHECKBOX do artista, e nós o
+    /// aplicávamos incondicionalmente.** Toda tool dele abre a cadeia de fatores
+    /// com `if (brush.flag & BRUSH_FRONTFACE) calc_front_face(...)`
+    /// (`layer.cc:149` · `clay_strips.cc` · `sculpt_cloth.cc` · `paint_color.cc`
+    /// · `draw_face_sets.cc`), a UI o expõe como *"Front Faces Only"*
+    /// (`properties_paint_common.py:1354`), e **nenhuma linha do Blender inteiro
+    /// LIGA o bit** — varrido: o único hit fora de leitura é
+    /// `use_front_face_ = brush_->flag & BRUSH_FRONTFACE`, que também lê. O
+    /// [`crate::KernelLaw`] continua dizendo QUAL lei o modo aplica; este flag
+    /// diz se ela é aplicada.
+    ///
+    /// ⚠️ **O preço de não ter o flag estava MEDIDO no report do Enio** (*"se
+    /// aumentar hardness, Layer fica muito ruim"*), e o mecanismo é o
+    /// `apply_hardness_to_distances`: com `hardness = h` toda distância `t < h`
+    /// vira zero, e zero é onde a curva vale **um** — a `0,90` a curva satura em
+    /// **90,5 %** do raio. Ali `shape = curva · alpha · facing · keep` colapsa
+    /// em `facing`, o cosseno da CÂMERA, e a demão passa a vestir o perfil de
+    /// quem olha em vez de subir à meta. Medido numa esfera, dab de raio `0,9`,
+    /// hardness `0,90`, **1 dab** — a coluna é o deslocamento radial por `t`:
+    ///
+    /// ```text
+    ///                t=0,1   t=0,3   t=0,5   t=0,7   t=0,9   borda/centro
+    ///   com facing  0,0260  0,0248  0,0221  0,0179  0,0099       0,3793
+    ///   sem facing  0,0262  0,0262  0,0262  0,0262  0,0205       0,7828
+    /// ```
+    ///
+    /// O artista pede uma MESA de bordas duras e recebe uma RAMPA; a borda perde
+    /// **2,1×**. A sonda é a `measure_layer_front_face`.
+    ///
+    /// ⚠️ **`false` é a regra — cada `true` é uma DÍVIDA nomeada contra a
+    /// referência**, não uma escolha de desenho. Os defaults por-tool do Blender
+    /// moram num `.blend` **binário** (o §7.0 do plano já o mediu, e é por isso
+    /// que a W1 e o Draw Sharp são decisão de produto), então esta coluna é a
+    /// mesma tabela que [`Self::default_falloff`] e [`Self::default_strength`]
+    /// já mantêm: o mecanismo vem da fonte, o número vem de quem o mediu.
+    ///
+    /// ⚠️ **E a única exceção de hoje foi MEDIDA, não herdada:** com o flag
+    /// desligado em toda parte, a suíte sangra em **três** gates e dois são do
+    /// [`Self::ClayStrips`] — `the_strip_does_not_lay_clay_on_what_the_artist_cannot_see`
+    /// mede a faixa a depositar **117,2 nas costas contra 97,8 de frente**, e
+    /// aquele desenho foi smokado. Desligá-lo é fiel à referência **de fábrica**
+    /// e re-decide uma wave vizinha dentro de um fix de outra: fica ligado, com
+    /// o motivo escrito, e a mudança é wave própria com smoke próprio.
+    #[must_use]
+    pub const fn default_front_faces_only(self) -> bool {
+        matches!(self, Self::ClayStrips)
+    }
 }

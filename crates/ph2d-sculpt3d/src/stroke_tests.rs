@@ -398,6 +398,12 @@ mod verb_surface;
 #[path = "verb_layer_tests.rs"]
 mod verb_layer;
 
+/// **O FRONT-FACE COMO FLAG DO PINCEL** — irmão do acima, e separado porque a
+/// FIXTURE é outra: a grade plana daquele arquivo tem `facing ≡ 1` e não
+/// consegue ver esta lei. Ver o cabeçalho dele.
+#[path = "verb_layer_front_face_tests.rs"]
+mod verb_layer_front_face;
+
 /// **O SLIDE RELAX**, o único verbo que redistribui sem mudar a forma — ver o
 /// cabeçalho dele.
 #[path = "verb_relax_tests.rs"]

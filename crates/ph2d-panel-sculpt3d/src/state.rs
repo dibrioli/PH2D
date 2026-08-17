@@ -561,14 +561,17 @@ pub fn arm_verb_defaults(ui: &mut Sculpt3dUi, verb: Verb) {
     // knobs abaixo fazem: aqui não há um número a proteger, há uma tabela a
     // consultar.
     ui.brush.mode = ui.mode_by_verb[verb_index(verb)];
-    // A máscara nasce em força cheia; sem isto ela protege pela metade e o
-    // barro se move por baixo dela.
-    if (ui.brush.strength - from.default_strength()).abs() < 1e-6 {
-        ui.brush.strength = verb.default_strength();
-    }
-    if ui.brush.accumulate == from.default_accumulate() {
-        ui.brush.accumulate = verb.default_accumulate();
-    }
+    // ⚠️ **Os três que dependem SÓ do pincel são da porta do motor**
+    // (`Brush::arm_verb_defaults`), e o atalho de teclado da shell chama a
+    // MESMA — as duas rotas divergiam em silêncio antes dela existir. A
+    // máscara nasce em força cheia; sem isto ela protege pela metade e o barro
+    // se move por baixo dela.
+    ui.brush.arm_verb_defaults(verb);
+    // ⚠️ **Os dois abaixo NÃO cabem na porta, e a ausência tem preço:** o
+    // falloff é função de verbo **e** modo (e o modo que entra acabou de ser
+    // resolvido, três linhas acima) e o raio mora em pixels de TELA, num campo
+    // que não é do pincel. É por isso que a rota do teclado ainda não os arma —
+    // divergência REAL e nomeada, não esquecimento.
     if ui.brush.falloff == from.default_falloff(from_mode) {
         ui.brush.falloff = verb.default_falloff(ui.brush.mode);
     }

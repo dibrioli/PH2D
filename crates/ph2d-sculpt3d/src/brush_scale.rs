@@ -52,6 +52,68 @@ impl Brush {
 }
 
 impl Brush {
+    /// **ESTE INTERRUPTOR FAZ ALGUMA COISA AQUI?** — a porta única do
+    /// [`Brush::front_faces_only`].
+    ///
+    /// ⚠️ **A pergunta é do PAR, e é por isso que ela não mora no `Verb` nem no
+    /// `RefMode` sozinhos:** a *lei* é do modo ([`crate::FrontFace`], que o
+    /// `S` deixa `Ignored` e o `B` deixa `Continuous`) e o *interruptor* é do
+    /// pincel — o Blender tem as duas metades pelo mesmo motivo, com o
+    /// `calc_front_face` a existir sempre e o `if (brush.flag &
+    /// BRUSH_FRONTFACE)` a decidir se ele corre (`layer.cc:149`).
+    ///
+    /// ⚠️ **Porta e não um `matches!` no sítio de uso:** o painel pergunta para
+    /// OFERECER a caixa e o roteador pergunta para HONRAR o clique — duas
+    /// cópias divergiriam num controle que aparece e não move um vértice, que
+    /// é exactamente o que o irmão [`crate::Verb::accumulates`] existe para
+    /// impedir. O KERNEL não a chama: ele lê o `front_faces_only` dentro do
+    /// `match` sobre a lei, onde o braço `Ignored` já o torna inalcançável.
+    ///
+    /// ⚠️ **Ela responde *"a lei existe"*, nunca *"o flag está ligado"*** — uma
+    /// caixa que se escondesse quando desmarcada seria uma caixa que ninguém
+    /// consegue marcar.
+    #[must_use]
+    pub fn offers_front_faces(&self) -> bool {
+        matches!(
+            self.mode.kernel_for(self.verb).front_face,
+            crate::FrontFace::Continuous
+        )
+    }
+
+    /// **OS DEFAULTS QUE UM VERBO TRAZ AO ENTRAR**, e só onde o artista não
+    /// mexeu — a metade desta lei que é do PINCEL.
+    ///
+    /// ⚠️ **Ela nasceu porque a lei tinha DUAS cópias e elas já divergiam.** O
+    /// painel (`state::arm_verb_defaults`) armava quatro campos e o atalho de
+    /// teclado da shell armava **dois** — e o doc do primeiro já nomeava o
+    /// perigo (*"quatro `if` copiados no sítio de uso é como o quinto campo
+    /// nasce esquecido"*) no mesmo dia em que o quinto ia nascer. Os três que
+    /// dependem **só do pincel** moram aqui, e os dois chamadores os herdam.
+    ///
+    /// ⚠️ **O que NÃO está aqui é o que precisa do `Sculpt3dUi`, e a ausência é
+    /// deliberada:** a *referência* sai de `mode_by_verb`, o *falloff* é função
+    /// de DOIS argumentos (verbo **e** modo, e o modo que entra tem de ser
+    /// resolvido antes) e o *raio* mora em pixels de tela. Trazê-los para cá
+    /// exigiria dar a esta crate um tipo de painel; deixá-los no chamador é o
+    /// preço, e a divergência que resta está NOMEADA lá.
+    ///
+    /// ⚠️ **"Não mexeu" é o valor ser exactamente o default do verbo que SAI**,
+    /// nunca um `Default::default()` — um verbo pode nascer diferente (a
+    /// máscara em força cheia, senão ela protege pela metade), e nenhum verbo
+    /// pode apagar uma escolha deliberada.
+    pub fn arm_verb_defaults(&mut self, verb: Verb) {
+        let from = self.verb;
+        if (self.strength - from.default_strength()).abs() < 1e-6 {
+            self.strength = verb.default_strength();
+        }
+        if self.accumulate == from.default_accumulate() {
+            self.accumulate = verb.default_accumulate();
+        }
+        if self.front_faces_only == from.default_front_faces_only() {
+            self.front_faces_only = verb.default_front_faces_only();
+        }
+    }
+
     /// **O PINCEL DO SEGUNDO PASSE**, ou `None` quando ele não corre — a porta
     /// única do [`Brush::auto_smooth`].
     ///

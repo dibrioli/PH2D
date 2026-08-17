@@ -427,6 +427,10 @@ pub const SCULPT3D_MATCAP: [NodeId; 11] = [
 /// **ACUMULAR na mesma pincelada** — o `BRUSH_ACCUMULATE` do Blender.
 pub const SCULPT3D_ACCUMULATE: NodeId = hash_node_id("sculpt3d.accumulate");
 
+/// **SÓ AS FACES DA FRENTE** — o `BRUSH_FRONTFACE` do Blender
+/// (`use_frontface`, `properties_paint_common.py:1354`).
+pub const SCULPT3D_FRONT_FACES: NodeId = hash_node_id("sculpt3d.front_faces");
+
 /// A malha de arestas desenhada por cima da forma.
 pub const SCULPT3D_WIREFRAME: NodeId = hash_node_id("sculpt3d.wireframe");
 /// Azimute da lâmpada selecionada, em graus.

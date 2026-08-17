@@ -231,6 +231,25 @@ pub struct Brush {
     /// nasce no neutro e o número passa a ser do ARTISTA — nunca uma tabela
     /// inventada com o nome de outro produto.
     pub hardness: f32,
+    /// **SÓ AS FACES DE FRENTE** — o `use_frontface` do Blender
+    /// (`DNA_brush_types.h::BRUSH_FRONTFACE`), o checkbox *"Front Faces Only"*.
+    ///
+    /// Ligado, o fator de cada vértice é escalado por `max(n · olho, 0)` — o
+    /// [`crate::FrontFace::Continuous`] que o modo declara. Desligado, a linha
+    /// **não corre**, que é o que toda tool da referência faz por omissão:
+    /// `if (brush.flag & BRUSH_FRONTFACE) calc_front_face(...)`.
+    ///
+    /// ⚠️ **A lei e o interruptor são coisas diferentes, e é por isso que são
+    /// dois campos.** O [`crate::KernelLaw::front_face`] responde *qual* lei a
+    /// referência deste modo aplica quando o artista a pede — o `S` não tem
+    /// nenhuma (o `_culling` do SculptGL é outro eixo, binário e no PLANO), o
+    /// `B` tem a contínua. Colapsar os dois num só faria *escolher a referência*
+    /// e *marcar um checkbox* serem o mesmo gesto.
+    ///
+    /// ⚠️ **O default vem do VERBO** ([`Verb::default_front_faces_only`]), a
+    /// mesma tabela de `falloff`/`strength`/`accumulate`, e ela diz `false` para
+    /// tudo menos a faixa — com o número da medição ao lado.
+    pub front_faces_only: bool,
     /// **O ALISAMENTO QUE CORRE DEPOIS DE CADA DAB**, em `[0, 1]` — o
     /// `autosmooth_factor` do Blender (`sculpt.cc:3636`), e **`0` é o neutro**.
     ///
@@ -413,6 +432,12 @@ impl Default for Brush {
             mask_hardness: 0.25,
             // O neutro do `apply_hardness_to_distances` — ver o campo.
             hardness: 0.0,
+            // ⚠️ **DERIVADO do verbo, como o `accumulate` e o `falloff` logo
+            // acima** — e pela mesma razão: um literal aqui seria o MESMO fato
+            // em dois lugares, e no dia em que a tabela do verbo mudasse ele
+            // ficaria a contradizê-la em silêncio. Ele também TRAVARIA o arming,
+            // que compara com o que o verbo que sai declara.
+            front_faces_only: Verb::Draw.default_front_faces_only(),
             // O default do Blender, e o neutro deste passe — ver o campo.
             auto_smooth: 0.0,
             // ⚠️ **DELEGA, e não repete a palavra `Tri`:** a família que shipa

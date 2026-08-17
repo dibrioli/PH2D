@@ -216,6 +216,28 @@ pub(super) fn paint_brush_tail(
     } else {
         y
     };
+    // **SÓ AS FACES DA FRENTE**, e só onde a lei existe. ⚠️ A pergunta é à
+    // PORTA do motor (`Brush::offers_front_faces`) e não a uma lista de modos
+    // aqui: o roteador pergunta à mesma para honrar o clique, e o kernel lê o
+    // flag dentro do `match` sobre a lei. Um modo cuja lei é `Ignored` não tem
+    // o que ligar, e a caixa lá seria um interruptor de coisa nenhuma.
+    //
+    // ⚠️ **Ela pergunta se a LEI existe, nunca se o flag está LIGADO** — o
+    // default é desmarcado (é o do Blender, `DNA_brush_types.h:206`), e uma
+    // caixa que se escondesse no default seria uma caixa que ninguém marca.
+    let y = if snap.ui.brush.offers_front_faces() {
+        toggle(
+            ctx,
+            ids::SCULPT3D_FRONT_FACES,
+            tr("panel.sculpt3d.front_faces"),
+            snap.ui.brush.front_faces_only,
+            x,
+            w,
+            y,
+        ) + Spacing::Sm.px()
+    } else {
+        y
+    };
     // **A LÂMINA LÊ A SUPERFÍCIE**, e só onde há lâmina. ⚠️ A pergunta é ao
     // VERBO, a mesma que o motor faz antes de amostrar os dois lados — uma lista
     // paralela aqui seria um interruptor que aparece noutra ferramenta e não

@@ -156,6 +156,20 @@ pub(crate) fn apply_event(
             state::push_intent(Sculpt3dIntent::SetUi(ui));
             true
         }
+        // ⚠️ **Gateado na LEI, como a caixa que o pinta.** Sem o guard um
+        // clique sintético (ou um id que sobreviveu a uma troca de modo no
+        // mesmo frame) armaria um flag que nenhum dab consulta — o braço
+        // `Ignored` do kernel nem o lê —, e o painel o mostraria marcado no
+        // próximo modo que oferece a lei.
+        WidgetEvent::Click(id)
+            if id == ids::SCULPT3D_FRONT_FACES && snapshot.ui.brush.offers_front_faces() =>
+        {
+            seam_reset_button(host, id);
+            let mut ui = snapshot.ui;
+            ui.brush.front_faces_only = !ui.brush.front_faces_only;
+            state::push_intent(Sculpt3dIntent::SetUi(ui));
+            true
+        }
         // ⚠️ **Gateado no VERBO, como a row que o pinta** — a mesma razão do
         // vizinho acima: um clique sintético (ou um id que sobreviveu a uma
         // troca de verbo no mesmo frame) armaria um modo que nenhum dab lê, e o

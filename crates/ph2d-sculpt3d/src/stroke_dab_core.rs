@@ -295,12 +295,29 @@ impl SculptStroke {
                 // empurra pelo `base_nrm` — quatro respostas à mesma pergunta e
                 // uma delas divergindo, sem uma linha a justificar. *O peso é um
                 // fato sobre o `pre`*, e agora é uma frase só.
+                //
+                // ⚠️ **E ele é CONDICIONAL, porque na referência sempre foi.**
+                // Toda tool do Blender abre esta linha com
+                // `if (brush.flag & BRUSH_FRONTFACE)` (`layer.cc:149` ·
+                // `clay_strips.cc` · `sculpt_cloth.cc` · `paint_color.cc`), e
+                // **nenhuma linha do Blender inteiro LIGA o bit** — é o checkbox
+                // *"Front Faces Only"*. Nós o aplicávamos incondicionalmente, e
+                // o preço estava no report do Enio: com `hardness` alto a curva
+                // satura em 90 % do raio, `shape` colapsa em `facing`, e a demão
+                // veste o cosseno da CÂMERA (borda/centro `0,3793` contra
+                // `0,7828`, medido em `measure_layer_front_face`).
+                //
+                // ⚠️ **Duas perguntas, dois campos:** a LEI é do modo (que
+                // referência governa este verbo) e o INTERRUPTOR é do pincel
+                // (o artista pediu?). Um `&&` aqui, não um enum com três
+                // variantes: colapsá-los faria *escolher a referência* e
+                // *marcar um checkbox* serem o mesmo gesto.
                 let facing = match brush.mode.kernel_for(brush.verb).front_face {
-                    crate::FrontFace::Ignored => 1.0,
-                    crate::FrontFace::Continuous => {
+                    crate::FrontFace::Continuous if brush.front_faces_only => {
                         let n = me.base_nrm[s];
                         (-(n[0] * dab.eye[0] + n[1] * dab.eye[1] + n[2] * dab.eye[2])).max(0.0)
                     }
+                    crate::FrontFace::Ignored | crate::FrontFace::Continuous => 1.0,
                 };
                 let fall = curve * brush.alpha_weight(base, &alpha_frame) * facing;
                 // ⚠️ **O `w` fica VERBATIM — mesma ordem, mesmos bits.** A forma

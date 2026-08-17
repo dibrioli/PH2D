@@ -1042,6 +1042,74 @@ fn the_accumulate_switch_flips_the_brush_field() {
     }
 }
 
+/// **O FRONT FACES ONLY é oferecido — e SÓ — onde a LEI existe.**
+///
+/// ⚠️ **A varredura é por MODO e não por verbo**, e é essa a pergunta: a lei
+/// (`FrontFace`) é do modo de referência, o interruptor é do pincel, e o
+/// Blender tem as duas metades pela mesma razão (`calc_front_face` existe
+/// sempre; o `if (brush.flag & BRUSH_FRONTFACE)` decide se corre).
+///
+/// ⚠️ **Ele não é uma `Row`** (é um toggle, não um número), então a varredura
+/// genérica deste arquivo é cega a ele — sem este gate, apagar a metade que o
+/// pinta deixa os outros verdes.
+#[test]
+fn the_front_face_switch_is_offered_only_where_the_law_exists() {
+    let mut seen = (false, false);
+    for verb in Verb::ALL {
+        for mode in RefMode::ALL {
+            let mut ui = Sculpt3dUi::default();
+            ui.brush.verb = verb;
+            ui.brush.mode = mode;
+            let offers = ui.brush.offers_front_faces();
+            let (mut host, mut state) = arrange(ui.clone());
+            let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+            assert_eq!(
+                painted
+                    .iter()
+                    .any(|(pid, _)| *pid == ids::SCULPT3D_FRONT_FACES),
+                offers,
+                "com {verb:?} em {mode:?} o interruptor devia {}",
+                if offers { "estar lá" } else { "sumir" }
+            );
+            if offers {
+                seen.0 = true;
+            } else {
+                seen.1 = true;
+            }
+        }
+    }
+    // ⚠️ **O CONTROLE das duas pontas:** um `offers` constante deixaria o laço
+    // acima verde afirmando nada.
+    assert!(
+        seen.0 && seen.1,
+        "a varredura não achou os dois casos: {seen:?}"
+    );
+}
+
+/// **E ele alterna o campo do PINCEL, não um estado paralelo.**
+#[test]
+fn the_front_face_switch_flips_the_brush_field() {
+    for before in [false, true] {
+        let mut ui = Sculpt3dUi::default();
+        // ⚠️ **O modo tem de DECLARAR a lei**, senão o roteador recusa o clique
+        // (e com razão) e o gate mediria a recusa em vez do interruptor.
+        ui.brush.mode = RefMode::B;
+        ui.brush.front_faces_only = before;
+        assert!(ui.brush.offers_front_faces(), "a fixture perdeu a premissa");
+        let (mut host, mut state) = arrange(ui.clone());
+        host.apply_panel_event::<Sculpt3dPanel>(
+            &mut state,
+            WidgetEvent::Click(ids::SCULPT3D_FRONT_FACES),
+        );
+        let Sculpt3dIntent::SetUi(got) = only_intent("front_faces") else {
+            panic!("o front-face enfileirou o tipo errado de intent");
+        };
+        let mut want = ui;
+        want.brush.front_faces_only = !before;
+        assert_eq!(got, want, "o front-face não alternou, ou levou um vizinho");
+    }
+}
+
 /// **O INTERRUPTOR DA LÂMINA existe, e SÓ com a lâmina em mãos.**
 ///
 /// ⚠️ **Perguntado por ID e não pela tabela** — ele não é uma `Row` (é um

@@ -204,6 +204,15 @@ fn the_strip_does_not_lay_clay_on_what_the_artist_cannot_see() {
         verb: Verb::ClayStrips,
         radius: 0.8,
         strength: 0.5,
+        // ⚠️ **DERIVADO da tabela do verbo, nunca `true` literal**, e é isso que
+        // faz deste gate a sentinela daquela célula: o front-face passou a ser
+        // um flag do pincel (o `use_frontface` da referência) e o
+        // `Brush::default()` carrega o default do **Draw**, que é `false`. Um
+        // literal aqui deixaria o gate verde no dia em que alguém pusesse a
+        // faixa em `false` na tabela — que é precisamente a mudança que este
+        // número (117,2 nas costas contra 97,8 de frente, medido com o flag
+        // fora) existe para tornar visível.
+        front_faces_only: Verb::ClayStrips.default_front_faces_only(),
         ..Brush::default()
     };
     let mut stroke = SculptStroke::default();

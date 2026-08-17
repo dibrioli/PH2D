@@ -444,13 +444,16 @@ impl App {
             // protege pela metade e o barro se move por baixo), e nenhum verbo
             // pode APAGAR uma escolha deliberada. "Não mexeu" é a força ser
             // exatamente o default do verbo que está saindo.
-            let old = scene.brush.verb;
-            if (scene.brush.strength - old.default_strength()).abs() < 1e-6 {
-                scene.brush.strength = v.default_strength();
-            }
-            if scene.brush.accumulate == old.default_accumulate() {
-                scene.brush.accumulate = v.default_accumulate();
-            }
+            // ⚠️ **A LEI é a do motor** (`Brush::arm_verb_defaults`), e o
+            // painel chama a MESMA porta: estes `if` eram uma segunda cópia e
+            // ela já divergia — o painel armava quatro campos e aqui eram dois.
+            //
+            // ⚠️ **O que continua a divergir está NOMEADO:** o *falloff*, a
+            // *referência* e o *raio* seguem armados só pela rota do painel,
+            // porque os três precisam do `Sculpt3dUi` (a tabela `mode_by_verb`,
+            // o modo que entra, os pixels de tela). Trocar de verbo pelo
+            // teclado deixa esses três como estavam.
+            scene.brush.arm_verb_defaults(v);
             scene.brush.verb = v;
             eprintln!(
                 "[sculpt3d] verbo: {} (forca {:.2})",

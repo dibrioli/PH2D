@@ -50,6 +50,32 @@ pub(crate) fn announce() {
          [sculpt3d]        que `demao` quer dizer, e e' a referencia (o estado dela morre no\n\
          [sculpt3d]        pen-up). Dentro de UM traco, insistir nao passa do teto.\n\
          [sculpt3d]    (8) A MASCARA e' um TETO e nao so' um freio. Mascare meia pegada e deite:\n\
-         [sculpt3d]        o lado protegido para numa FRACAO da camada e fica la'."
+         [sculpt3d]        o lado protegido para numa FRACAO da camada e fica la'.\n\
+         [sculpt3d]    (9) A DUREZA -- o eixo do report, e ele agora tem numero. Suba o\n\
+         [sculpt3d]        `Hardness` (a row e' `Pro`: o chip de nivel fica no topo). A demao\n\
+         [sculpt3d]        vira uma MESA com PAREDE, nao um domo mais alto: medido, esfregando\n\
+         [sculpt3d]        com h=0,90 o plato fecha em 99,9% da altura autorada e ondula 0,9%\n\
+         [sculpt3d]        de UMA aresta da malha -- ele e' chato.\n\
+         [sculpt3d]        AVISO: as listras na PAREDE sao a GRADE de quads da esfera, nao o\n\
+         [sculpt3d]        pincel. O Blender escadeia igual na topologia dele, e a missao e'\n\
+         [sculpt3d]        ser identico a ele: nao reporte a escada como defeito.\n\
+         [sculpt3d]   (10) O AUTO SMOOTH -- o outro eixo do report. Suba-o ate' o fim e deite\n\
+         [sculpt3d]        de novo: a demao SOBREVIVE (medido, relevo 0,0735 -> 0,0698 com o\n\
+         [sculpt3d]        alisamento no maximo). Faca o CONTROLE ao lado com o DRAW no mesmo\n\
+         [sculpt3d]        valor: ele e' ANIQUILADO (0,0874 -> 0,0002), e isso esta' CERTO --\n\
+         [sculpt3d]        ele e' aditivo puro e nao tem meta para onde voltar.\n\
+         [sculpt3d]   (11) FRONT FACES ONLY -- a caixa nova, abaixo do Accumulate. Ela e' o\n\
+         [sculpt3d]        `use_frontface` do Blender e nasce DESMARCADA, como la'.\n\
+         [sculpt3d]        Com dureza ALTA, deite uma demao larga sobre a CURVATURA da peca\n\
+         [sculpt3d]        (nao no topo achatado) e compare marcada contra desmarcada:\n\
+         [sculpt3d]        desmarcada e' uma MESA (a borda sobe tanto quanto o centro),\n\
+         [sculpt3d]        marcada e' uma RAMPA que morre onde a peca vira de lado.\n\
+         [sculpt3d]        Medido, UM dab: borda/centro 0,7828 desmarcada contra 0,3793\n\
+         [sculpt3d]        marcada. Se as duas desenharem a mesma coisa, o interruptor nao\n\
+         [sculpt3d]        chegou ao kernel -- reporte.\n\
+         [sculpt3d]        AVISO: e' um dab, e o numero de dabs importa. O facing e' uma TAXA\n\
+         [sculpt3d]        nesta lei, nao um perfil: esfregue trinta vezes e as duas CONVERGEM\n\
+         [sculpt3d]        (medido, 0,9824 contra 0,9831) -- a demao para na altura autorada\n\
+         [sculpt3d]        de qualquer maneira, e o facing so' decide quao depressa ela chega."
     );
 }

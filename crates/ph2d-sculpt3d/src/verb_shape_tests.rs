@@ -123,6 +123,17 @@ fn in_b_mode_a_grazing_vertex_weighs_nothing_and_the_ramp_has_no_step() {
             strength: 1.0,
             falloff: Falloff::Constant,
             mode,
+            // ⚠️ **A lei do front-face tem DUAS metades desde 2026-08-16, e
+            // este gate mede a de baixo.** O modo diz QUAL lei a referência
+            // aplica (o `B` tem a contínua, o `S` nenhuma) e o pincel diz se o
+            // artista a PEDIU — `if (brush.flag & BRUSH_FRONTFACE)`, que toda
+            // tool do Blender escreve e **nada lá liga**. Sem armar o
+            // interruptor aqui os dois modos ficam byte-idênticos e o gate
+            // passa a medir nada; armá-lo é declarar a premissa, não afrouxar
+            // a régua. O irmão que cobre a metade de CIMA — *o interruptor
+            // desligado apaga a lei* — é o `the_front_face_is_a_brush_flag…`
+            // do [`crate::verb_layer_tests`].
+            front_faces_only: true,
             ..Brush::default()
         };
         let mut s = SculptStroke::default();

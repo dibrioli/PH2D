@@ -17,11 +17,18 @@ use ph2d_tokens::Spacing;
 use super::widgets::{self, command, header, labelled_seg, seg};
 use crate::state::{Sculpt3dSnapshot, UiLevel};
 
-/// **A FERRAMENTA** — os dezesseis verbos numa faixa que REFLUI.
+/// **A FERRAMENTA** — os verbos do [`Verb::ALL`] numa faixa que REFLUI.
 ///
 /// É a mesma decisão que a lista de dez ferramentas do Impasto tomou: um grupo
 /// segmentado com muitas opções quebra em linhas, e a alternativa (um dropdown)
-/// esconde quinze ferramentas atrás de um clique para mostrar uma.
+/// esconde todas menos uma atrás de um clique.
+///
+/// ⚠️ **A CONTAGEM não é citada aqui de propósito.** Este doc dizia *"os
+/// dezesseis verbos"* e *"esconde quinze ferramentas"* sobre uma lista que já
+/// tinha **23** — a wave que acrescentou os quatro dabs que não são discos, a da
+/// demão e as do campo elástico passaram por cima dele sem ninguém reconferir a
+/// frase. Um número escrito à mão ao lado de uma lista que cresce é uma nota que
+/// envelhece calada; a lista é a fonte.
 pub(super) fn paint_tool(
     ctx: &mut PaintCtx,
     snap: &Sculpt3dSnapshot,

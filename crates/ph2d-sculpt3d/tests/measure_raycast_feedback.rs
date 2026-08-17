@@ -469,3 +469,60 @@ fn measure_whether_the_pick_sinks_into_its_own_crater() {
     }
     println!();
 }
+
+/// **A CURVA E A AGULHA** — qual falloff deixa a malha espetada.
+///
+/// A wave de paridade trocou a LEI de duas curvas do catálogo (`Smooth` saiu de
+/// `(1−t²)²` para a smoothstep do Blender; `Sharper` saiu de `(1−t²)⁴` para
+/// `(1−t)⁴`) e apagou `Pow4`/`Smoothstep`, que eram os nomes que já carregavam
+/// as leis novas. ⚠️ **A diferença que importa não é a largura, é a INCLINAÇÃO
+/// NO CENTRO:** `(1−t²)ⁿ` tem derivada ZERO em `t = 0` — ela pousa como um
+/// domo, e o vértice do meio sobe quase igual aos vizinhos. `(1−t)⁴` tem
+/// derivada **−4** — ela pousa como um CONE, e sobre uma malha discreta um
+/// ápice de cone é literalmente um vértice puxado para longe do anel dele.
+///
+/// O oráculo é o desvio de guarda-chuva sobre os vértices TOCADOS, e a régua
+/// que o torna comparável entre curvas é o RELEVO ao lado: uma curva que
+/// deposita menos também espeta menos, e sem a segunda coluna a tabela
+/// premiaria a mais fraca.
+#[test]
+#[ignore = "sonda: roda sob demanda"]
+fn measure_which_falloff_spikes() {
+    let line: Vec<[f32; 2]> = (0..80).map(|k| [-0.5 + k as f32 / 79.0, 0.0]).collect();
+    println!("\n  a curva contra a AGULHA (Draw, r=0.22, str=0.5, spacing 0.10)");
+    println!("  f'(0) e' a inclinacao no centro do dab: 0 = domo, negativa = CONE\n");
+    println!(
+        "  {:<12} {:>9} {:>12} {:>11} {:>11} {:>9}",
+        "falloff", "f'(0)", "relevo", "umb pior", "umb p99", "espeto"
+    );
+    for f in Falloff::ALL {
+        // A inclinacao no centro, por diferenca finita sobre a porta unica.
+        let h = 1e-4f32;
+        let slope = (f.weight(h) - f.weight(0.0)) / h;
+        let brush = Brush {
+            verb: Verb::Draw,
+            falloff: f,
+            radius: 0.22,
+            strength: 0.5,
+            ..Brush::default()
+        };
+        let (_, relief, worst, p99) = stroke_over(&line, 0.10, &brush);
+        // O espeto POR UNIDADE de relevo: uma curva fraca espeta menos so' por
+        // depositar menos, e a tabela premiaria a mais rala sem esta coluna.
+        let per = if relief > 1e-6 { worst / relief } else { 0.0 };
+        println!(
+            "  {:<12} {:>9.3} {:>12.6} {:>11.4} {:>11.4} {:>9.2}",
+            f.label(),
+            slope,
+            relief,
+            worst,
+            p99,
+            per
+        );
+    }
+    println!(
+        "\n  de FABRICA o Draw veste: {:?}",
+        Brush::default().falloff
+    );
+    println!();
+}

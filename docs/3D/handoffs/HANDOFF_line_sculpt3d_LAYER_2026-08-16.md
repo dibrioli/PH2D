@@ -165,13 +165,57 @@ do `layer.cc` foi feito hoje** (`135b5e754`).
 | 16 gates | `verb_layer_tests.rs` | **verdes, e cegos** — §2 |
 | cena de smoke | `sculpt3d_scenes_layer.rs`, **`=33`** | 8 passos, e **nenhum toca hardness ou auto_smooth** |
 
-**Conferido linha a linha contra a fonte hoje** (não re-derive): os quatro passos
-estão na ordem do `calc_faces`; a distância sai do `pre` nos dois lados
-(`from_live = false` ⇔ `calc_brush_distances(ss, orig_data.positions, …)`); o
-auto-smooth roda **depois** do pincel, uma vez por cópia de simetria
-(`sculpt.cc:3635`); e `factors` é **só a curva** (`calc_brush_strength_factors`
-chama apenas o `BKE_brush_calc_curve_factors` — a força vive no `cache.bstrength`,
-que é o nosso `intensity`).
+### §4.1 — O que já foi CONFERIDO contra o `layer.cc` (não re-derive)
+
+Varredura completa da fonte feita hoje. Estes onze pontos estão **certos**:
+
+| lei | fonte | nós |
+|---|---|---|
+| a translação é um **LERP do VIVO até um alvo ABSOLUTO** | `layer.cc:100-104` | `stroke_target.rs`, portado hoje |
+| `height` é **object-space ABSOLUTO** (`scale` tem **zero** ocorrências no arquivo) | `layer.cc:101` · `rna_brush.cc:3230` `PROP_DISTANCE` | `stroke_target.rs:499`, um único sítio |
+| o `1,05` é um **ease-out** (com `1,0` o acumulador nunca chega) | `layer.cc:51` | `coat.rs::COAT_HEAD` |
+| o clamp usa `1 − mask` ⇒ a **máscara entra DUAS vezes** | `layer.cc:85-86` | `coat_step(.., keep)` |
+| `bstrength` **NÃO** está no `factors` | `sculpt.cc:7577-7586` | `intensity` separado |
+| `alpha = root_alpha²` ⇒ a força é **quadrática** | `sculpt.cc:2338` | `StrengthCurve::Squared` |
+| dureza **antes** da curva, reescalando a DISTÂNCIA | `layer.cc:158` · `sculpt.cc:7549-7570` | `shaped_distance` |
+| distância sai das posições **ORIGINAIS** | `layer.cc:155` | `from_live = false` |
+| auto-smooth **depois** do verbo, **dentro** do laço de simetria | `sculpt.cc:3635-3647` | `stroke_symmetry.rs:172` |
+| `BRUSH_ACCUMULATE` é **INERTE** para o Layer | `brush.cc:1823-1838` | gate `the_coat_does_not_offer_accumulate` |
+| **sem early-out** no `calc_faces` | `layer.cc:124-222` | removido hoje |
+
+### §4.2 — ⭐ A DIVERGÊNCIA que a varredura achou: o FRONT-FACE
+
+| | Blender | nós |
+|---|---|---|
+| lei | `factors[i] *= max(dot(view_normal, n), 0)` — **contínua** | idêntica |
+| **quando** | `if (brush.flag & BRUSH_FRONTFACE)` — `layer.cc:149-151` | **sempre** |
+| **default** | **DESLIGADO** — `DNA_brush_types.h:206` dá `flag = BRUSH_ALPHA_PRESSURE \| BRUSH_SPACE_ATTEN`, e o `BRUSH_FRONTFACE` **não está lá** | `FrontFace::Continuous`, `ref_mode.rs:577-583` |
+
+⚠️ **A lei é a mesma; o que diverge é ela existir.** No Blender é um *checkbox que o
+artista liga*; aqui é uma **lei de MODO**, e o doc-comment do próprio
+`ref_mode.rs:580-582` o admite: *"é o único dos três eixos em que o `B`
+ACRESCENTA … liga uma lei que ninguém tinha"*.
+
+⚠️ **E o `Verb::Layer` cai no modo `B` por ACIDENTE:** `profile_s(Layer)` devolve
+`None` (`ref_profiles.rs:231`), o `for_verb` cai no `B` (`ref_mode.rs:471`), e o
+`B` liga o facing. **A demão herda um `cos` de um modo em que ela nunca esteve.**
+
+**Por que isto encaixa no report, e por que ninguém o viu — as três travas:**
+
+1. numa **grade plana** o `facing` é identicamente `1` ⇒ **nenhum dos 16 gates o vê**;
+2. a **dureza baixa** (o default `0,0`) deixa o `curve` variar por toda a pegada ⇒ o
+   `cos` é uma perturbação pequena e some no meio;
+3. a **dureza alta** satura o `curve` em `1` em ~`h` da pegada ⇒ **o `facing` vira o
+   ÚNICO termo espacial do `shape`**, e a demão passa a ter o perfil do ângulo com
+   a câmera em vez de uma mesa.
+
+⇒ No Blender, a hardness alto `factors ≈ 1` na pegada inteira e o vértice vai à
+meta **num dab**: uma mesa com **parede vertical** — que é exactamente o aspecto
+*espetado* da foto dele. Aqui ele vai a `cos(θ)` da meta: **um domo baixo**, que é
+exactamente o aspecto *chato* da nossa.
+
+⛔ **NÃO desligue o facing sem medir.** Ele é a hipótese líder, não um veredito: a
+foto é evidência circunstancial e o número não existe. Meça primeiro (§5.2).
 
 **O early-out da demão MORREU hoje, e não o traga de volta:**
 `if coat && accum >= keep { return }` era correto sob a lei absoluta e sob a lei da
@@ -201,19 +245,45 @@ está **CERTO** — ele é aditivo puro e não tem meta para onde voltar.
 2. **Meça a ALTURA contra a dureza** — a divergência (a) da §3, que é a única com
    um número. Nós temos `spike/relevo`; **não temos o relevo ABSOLUTO por
    hardness**, e é ele que a foto acusa.
-3. **Confirme as UNIDADES do `height` na fonte.** ⚠️ O nosso está **MEDIDO e é
-   ABSOLUTO**: `layer_height` entra em **um único sítio do `src/` inteiro**
-   (`stroke_target.rs:499-500`), multiplicado só por `sign` (±1) e pelo `disp`
-   adimensional — **nenhum raio, nenhuma escala, nenhuma pose** (`grep` por
-   `pose`/`.scale` no caminho do traço volta **vazio**). Se o do Blender for
-   multiplicado pelo raio do pincel (ou por `ss.cache->scale`), **isso sozinho
-   explica a faixa 3 achatada** e a cura é uma multiplicação, não um redesenho.
-   *Esta é a hipótese mais barata da lista — teste-a primeiro.*
-4. **Decida o `facing`** (§2.3): o `use_frontface` da referência é **teste
-   binário** ou **peso contínuo**? Se for binário, o nosso `cos` é uma segunda
-   curva de falloff que o Blender não tem, e ela **domina a hardness alto**.
-5. **Derrube ou confirme o pente** (§3.1): período do pente contra passo da grade.
-6. **Só então** volte ao kernel.
+2b. ⭐ **Meça o FACING** (§4.2) — a hipótese líder. Numa **esfera**, com dureza
+   alta: rode a demão com `FrontFace::Continuous` e com `Ignored`, e compare o
+   **perfil** (altura ao longo de um corte da pegada), não o pico. A previsão é
+   *domo* contra *mesa com parede*. ⚠️ Se a mesa aparecer, a cura **não** é
+   apagar o `FrontFace::Continuous` do modo `B` — é que ele deixe de ser lei de
+   modo e vire o **flag por-pincel** que a fonte tem, com o default **desligado**
+   (`layer.cc:149-151` + `DNA_brush_types.h:206`). Apagá-lo do `B` mudaria em
+   silêncio os **outros** verbos que caem lá.
+3. ⛔ **As UNIDADES do `height` estão FECHADAS — não as reabra.** Os dois lados
+   são **object-space absoluto**: o nosso tem um único sítio de multiplicação
+   (`stroke_target.rs:499-500`, só `sign` e `disp`; `grep` por `pose`/`.scale` no
+   caminho do traço volta vazio) e o do Blender tem `scale` com **zero
+   ocorrências no `layer.cc` inteiro**, com o RNA a tipá-lo `PROP_DISTANCE`
+   (`rna_brush.cc:3230`) e o cursor a desenhá-lo no espaço do objeto
+   (`paint_cursor.cc:716`). *Era a minha hipótese mais barata e ela MORREU
+   medida.*
+4. **Derrube ou confirme o pente** (§3.1): período do pente contra passo da grade.
+5. **Só então** volte ao kernel.
+
+### §5.1 — Os outros dois candidatos, com o mecanismo ao lado
+
+- **`space attenuation`** está **LIGADO** no default do Blender (`BRUSH_SPACE_ATTEN`
+  em `DNA_brush_types.h:206`) e escala o `bstrength` por
+  `overlap = 1/max_overlap` quando `spacing < 100` (`paint_stroke.cc:692-712`,
+  default `spacing = 10`). É **TAXA, não forma** — muda em quantos dabs a demão
+  fecha, nunca a espessura final. Confira se temos, mas não espere que explique a
+  foto.
+- **`use_original_normal` / `use_original_plane` / `sculpt_plane` / `plane_trim`
+  são INERTES para o Layer no Blender** (o `layer.cc` nunca chama
+  `calc_brush_plane`; `cache.plane_trim_squared` não aparece lá) — e o
+  `sculpt_brush_needs_normal` lista o LAYER (`sculpt.cc:953`), computando um
+  `cache.sculpt_normal` que **o kernel nunca lê**. ⛔ Não porte isso.
+
+### §5.2 — A régua para qualquer medição desta fila
+
+⚠️ **Meça o PERFIL, nunca o pico.** As três hipóteses vivas (facing · pente ·
+mesa) diferem em **forma** e podem coincidir em **altura máxima**: `peak()` — que
+é o que os 16 gates usam — não distingue um domo de uma mesa. O oráculo é a
+**altura ao longo de um corte** da pegada, sobre uma malha **CURVA**.
 
 ⚠️ **E acrescente à cena `=33` os dois passos que faltam** (subir o hardness ·
 subir o Auto Smooth). Hoje o roteiro tem oito passos e **nenhum exercita o defeito

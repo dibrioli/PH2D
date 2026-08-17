@@ -359,14 +359,25 @@ impl SculptStroke {
                 if additive && me.accum[s] >= 1.0 {
                     return;
                 }
-                // **A DEMÃO CHEIA não tem o que receber** — o irmão exacto do
-                // early-out acima, com o teto que a lei dela usa: a máscara
-                // livre, não `1`. Comparar contra `1` deixaria todo vértice
-                // mascarado a ser reescrito para sempre com o mesmo número, e a
-                // mandá-lo ao refit do octree e ao upload por nada.
-                if coat && me.accum[s] >= keep {
-                    return;
-                }
+                // ⚠️ **A DEMÃO NÃO TEM EARLY-OUT, e o `calc_faces` do `layer.cc`
+                // também não tem.** Aqui morava um `if coat && accum >= keep`,
+                // irmão do de cima, e ele era CORRECTO sob a lei antiga: o alvo
+                // era escrito de forma ABSOLUTA a partir do `base`, então
+                // re-escrever um vértice já com a demão cheia era um no-op caro.
+                //
+                // Sob a lei da referência ele destrói a feature. A translação
+                // sai do VIVO, então `disp` cheio **não** quer dizer que o
+                // vértice ESTÁ na meta — quer dizer que a demão já foi toda
+                // depositada. Se o passe de auto-smooth (ou qualquer coisa que
+                // corra depois do dab) o tirou de lá, quem o traz de volta é o
+                // dab SEGUINTE, e um early-out o impede de o fazer.
+                //
+                // MEDIDO: com ele, `auto_smooth = 0,75` deixava relevo
+                // **0,00000** — a demão inteira aniquilada em silêncio.
+                //
+                // O custo que ele poupava (refit do octree e upload de um
+                // vértice que não se moveu) volta, e é o preço de a demão
+                // conviver com um alisador.
                 // ⚠️ **Quem carrega o peso no ALVO carimba `accum = 1`**, e é isso
                 // que o faz caber no MESMO aplicador (`lerp(base, target, 1) ==
                 // target`). Sem essa identidade haveria um segundo caminho de
@@ -413,6 +424,7 @@ impl SculptStroke {
                     reach,
                     shape * pass.weight,
                     w * pass.weight,
+                    new_accum,
                     v,
                     s,
                 );
@@ -429,7 +441,7 @@ impl SculptStroke {
                 // vazio, não a lista do dab anterior.
                 self.region.forget();
             } else {
-                self.apply_positions(mesh);
+                self.apply_positions(mesh, coat);
                 // ⚠️ **Por PASSE, e é uma DEFESA INERTE hoje — dito em vez de
                 // afirmado ao contrário.** Escrevi primeiro que *"o passe
                 // seguinte relaxaria contra a vizinhança de antes"*, e isso é

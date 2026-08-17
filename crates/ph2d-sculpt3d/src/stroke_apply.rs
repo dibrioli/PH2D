@@ -21,17 +21,36 @@
 use super::*;
 
 impl SculptStroke {
-    pub(super) fn apply_positions(&self, mesh: &mut Mesh) {
+    /// ⚠️ **`coat` é a DEMÃO, e ali o alvo já é a posição FINAL.**
+    ///
+    /// Os outros quinze verbos compõem o alvo SEM peso e é o `accum` que os
+    /// atenua (`toward(base, alvo, accum)`). A demão não cabe nisso porque o
+    /// `accum` dela **não é um peso** — é o `displacement_factors` do
+    /// `layer.cc`, a fração da camada já depositada, e a referência o consome
+    /// DENTRO do alvo (`orig + n·altura·disp`) e depois anda até lá por
+    /// `factors`, a partir do VIVO. Rodar o `toward` por cima disso aplicaria o
+    /// `disp` uma segunda vez.
+    ///
+    /// ⚠️ **Um `bool` e não `accum = 1` carimbado**, que é como os quatro grips
+    /// de gesto resolvem o mesmo problema: aqui o `accum` **tem de continuar
+    /// sendo o `disp`**, porque é o que o dab seguinte lê para saber quanto da
+    /// demão ainda cabe. As duas leituras — *onde este vértice vai parar* e
+    /// *quanto já foi depositado* — deixaram de ser o mesmo número.
+    pub(super) fn apply_positions(&self, mesh: &mut Mesh, coat: bool) {
         let out = mesh.positions_mut();
         for &v in &self.moved {
             let vi = v as usize;
             let s = self.slot[vi] as usize;
             let (b, t, a) = (self.base_pos[s], self.target[s], self.accum[s]);
-            out[vi] = [
-                toward(b[0], t[0], a),
-                toward(b[1], t[1], a),
-                toward(b[2], t[2], a),
-            ];
+            out[vi] = if coat {
+                t
+            } else {
+                [
+                    toward(b[0], t[0], a),
+                    toward(b[1], t[1], a),
+                    toward(b[2], t[2], a),
+                ]
+            };
         }
     }
 

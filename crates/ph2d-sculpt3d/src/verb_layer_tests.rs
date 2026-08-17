@@ -413,17 +413,29 @@ fn a_second_stroke_lays_a_second_coat() {
     );
 }
 
-/// **UMA DEMÃO FECHADA PARA DE DAR TRABALHO** — e o teto do early-out é a
-/// MÁSCARA, não `1`.
+/// **UMA DEMÃO FECHADA PARA DE CRESCER** — e o teto dela é a MÁSCARA, não `1`.
 ///
-/// ⚠️ **Este gate mede TRABALHO, não pixels, e é de propósito.** O `coat_step`
-/// já corta em `keep`, então comparar o early-out contra `1` deixa o resultado
-/// **byte-idêntico** — a mutação sobreviveu a todos os outros dez gates. O que
-/// muda é que todo vértice mascarado volta a ser escrito, para sempre, e vai ao
-/// refit do octree e ao upload por nada. *Uma defesa que só se vê no relógio
-/// precisa de um oráculo que não seja a tela.*
+/// ⚠️ **Este gate media TRABALHO e a premissa dele MORREU com o porte do
+/// `calc_translations`.** Ele afirmava *"o 64.º dab move ZERO vértices"*, o que
+/// era verdade enquanto o alvo da demão era escrito de forma ABSOLUTA a partir
+/// do `base`: chegado à demão cheia, re-escrever era um no-op, e um early-out o
+/// poupava.
+///
+/// Sob a lei da referência a demão **tem de continuar a escrever** — a
+/// translação sai do VIVO, e é o dab seguinte que traz de volta o vértice que
+/// o auto-smooth (ou qualquer passe posterior) tirou da meta. Manter aquela
+/// asserção teria prendido o produto a um early-out que ANIQUILAVA a demão
+/// sob o Auto Smooth (medido: relevo `0,00000` em `auto_smooth = 0,75`).
+///
+/// ⚠️ **O que se perde é a defesa de CUSTO, e ela fica NOMEADA:** a demão volta
+/// a mandar ao refit do octree e ao upload vértices que não se moveram. É o
+/// preço de ela conviver com um alisador; se um dia doer, a cura é comparar a
+/// POSIÇÃO com a meta (barato e correcto), nunca voltar a comparar o `disp`.
+///
+/// A propriedade que sobrevive — e a única que o artista vê — é a CONVERGÊNCIA:
+/// a demão para de subir, e para na fração que a máscara deixa livre.
 #[test]
-fn a_finished_coat_stops_asking_for_work() {
+fn a_finished_coat_stops_growing() {
     let h = 0.1f32;
     let b = coat_brush(0.4, h);
     let mut mesh = grid(60, 1.0);
@@ -437,33 +449,38 @@ fn a_finished_coat_stops_asking_for_work() {
     let mut s = SculptStroke::default();
     s.begin(&mesh);
     let d = Dab::at([0.0, 0.0, 0.0], b.radius, [0.0, 0.0, -1.0]);
-    let mut moved = 0usize;
-    for _ in 0..64 {
-        moved = s.dab(&mut mesh, &b, &d, Symmetry::default());
+    for _ in 0..32 {
+        s.dab(&mut mesh, &b, &d, Symmetry::default());
     }
-    println!("depois de 64 dabs sobre máscara 0,6, o 64.º moveu {moved} vértices");
-    assert_eq!(
-        moved, 0,
-        "a demão fechada continua a pedir trabalho: o early-out compara contra \
-         o teto errado"
+    let half = peak(&mesh);
+    for _ in 0..32 {
+        s.dab(&mut mesh, &b, &d, Symmetry::default());
+    }
+    let full = peak(&mesh);
+    println!("demão protegida: 32 dabs -> {half}, 64 dabs -> {full}");
+    assert!(
+        (full - half).abs() < 1e-4,
+        "a demão fechada continuou a crescer entre o 32.º e o 64.º dab: \
+         {half} -> {full}"
     );
-    // O CONTROLE: sem máscara, o mesmo gesto também fecha — senão este gate
-    // estaria a medir *"a máscara zerou o peso"* em vez do early-out.
+    assert!(
+        (full - 0.4 * h).abs() < 0.02 * h,
+        "a demão protegida não parou na fração da máscara: {full}"
+    );
+    // O CONTROLE: sem máscara ela para NOUTRA altura — senão este gate estaria
+    // a medir *"nada se move"* em vez de *"ela converge no teto da máscara"*.
     let mut clean = grid(60, 1.0);
     let mut s2 = SculptStroke::default();
     s2.begin(&clean);
-    let mut first = 0usize;
-    for k in 0..64 {
-        let n = s2.dab(&mut clean, &b, &d, Symmetry::default());
-        if k == 0 {
-            first = n;
-        }
+    for _ in 0..64 {
+        s2.dab(&mut clean, &b, &d, Symmetry::default());
     }
-    assert!(first > 0, "o CONTROLE não moveu nada nem no primeiro dab");
+    let open = peak(&clean);
+    println!("demão livre: 64 dabs -> {open}");
     assert!(
-        (peak(&mesh) - 0.4 * h).abs() < 0.02 * h,
-        "a demão protegida não parou na fração da máscara: {}",
-        peak(&mesh)
+        open > full + 0.02 * h,
+        "o CONTROLE sem máscara parou na mesma altura da protegida: \
+         {open} contra {full}"
     );
 }
 

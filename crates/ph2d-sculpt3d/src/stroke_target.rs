@@ -59,6 +59,16 @@ impl SculptStroke {
         // peso sem geometria*, ao bit. O parâmetro `flat` que existia para eles
         // morreu com essa troca — ver o sítio que constrói o `w`.
         w: f32,
+        // **A demão JÁ acumulada depois deste dab** — o `displacement_factors`
+        // do `layer.cc`, depois do `offset_displacement_factors`.
+        //
+        // ⚠️ **Só a família do `GripLaw::coat` o lê**, e ele é PASSADO em vez de
+        // lido de `self.accum[s]` por uma razão de ORDEM: o `accum[s]` ainda
+        // guarda o valor do dab ANTERIOR quando esta função corre (quem o
+        // escreve é o `scatter_one`, depois), e a referência compõe a translação
+        // com o valor NOVO. Ler o campo aqui atrasaria a demão em um dab — o
+        // defeito que não aparece num traço longo e aparece num toque.
+        disp: f32,
         v: u32,
         s: usize,
     ) -> [f32; 3] {
@@ -445,15 +455,54 @@ impl SculptStroke {
             // re-emite a lista inteira de dabs a cada quadro tem de chegar ao
             // mesmo lugar, e um alvo ancorado no VIVO subiria a cada passada.
             //
-            // ⚠️ **O peso NÃO entra aqui** — a mesma frase que o Grab escreve
-            // três braços abaixo, e pela mesma razão: o aplicador multiplica
-            // `(alvo − base)` pelo `accum`, que **é** a fração da demão. Um alvo
-            // já pesado aplicaria o perfil duas vezes e a demão deixaria de ser
-            // um platô.
+            // ⚠️ **O PESO ENTRA AQUI, e o alvo é a POSIÇÃO FINAL** — o
+            // `calc_translations` do `layer.cc:99-103`, verbatim:
+            //
+            // ```text
+            // offset      = orig_normals[i] * height * displacement_factors[i];
+            // translation = orig_positions[i] + offset - positions[i];
+            // r_translations[i] = translation * factors[i];
+            // ```
+            //
+            // Isto é `live + (meta − live) · factors`, com `meta =
+            // base + normal_base · altura · disp`. Duas coisas que esta linha
+            // corrige de uma vez, e as duas estavam escritas aqui como decisão:
+            //
+            // ⚠️ **(1) A translação sai do VIVO, não do `base`.** A frase antiga
+            // dizia *"um alvo ancorado no VIVO subiria a cada passada"* — falso,
+            // e o `disp` é o motivo: ele SATURA (`coat_step`), então a meta é
+            // limitada por construção e ancorar no vivo não a deixa crescer. O
+            // que o `base` congelado governa é a META e a DISTÂNCIA da curva
+            // (`orig_data.positions`, e isso continua), nunca de onde se anda.
+            //
+            // ⚠️ **(2) O peso multiplica, e não é dobrar o perfil.** A frase
+            // antiga dizia *"o aplicador multiplica pelo `accum`, um alvo já
+            // pesado aplicaria o perfil duas vezes"* — e a referência de facto
+            // o aplica nos DOIS lugares, porque eles respondem perguntas
+            // diferentes: dentro do `offset_displacement_factors` o `factors` é
+            // a TAXA com que aquele vértice enche a demão, e aqui ele é a
+            // FRAÇÃO do caminho até a meta que este dab anda. Sem o segundo a
+            // demão escreve a meta de forma ABSOLUTA — e aí ela sobrescreve o
+            // que o Auto Smooth acabou de alisar (medido: `auto_smooth 0,5`
+            // tirava **14,9×** do relevo da demão contra **4,2×** do Draw) e o
+            // Hardness deixa de ter forma, porque a única coisa que ele muda é
+            // a taxa. Era o report do Enio, nos dois eixos.
+            //
+            // ⚠️ **`factors` é o `shape` e NÃO o `w`** — o
+            // `calc_brush_strength_factors` do `sculpt.cc:7577` chama só o
+            // `BKE_brush_calc_curve_factors`, ou seja **a curva, sem a força**;
+            // a força vive no `cache.bstrength`, que é o nosso `intensity` e já
+            // entra na recorrência. Passar o `w` aqui aplicaria a força duas
+            // vezes.
             Verb::Layer => {
                 let n = self.base_nrm[s];
-                let h = sign * brush.layer_height;
-                [base[0] + n[0] * h, base[1] + n[1] * h, base[2] + n[2] * h]
+                let h = sign * brush.layer_height * disp;
+                let goal = [base[0] + n[0] * h, base[1] + n[1] * h, base[2] + n[2] * h];
+                [
+                    live[0] + (goal[0] - live[0]) * shape,
+                    live[1] + (goal[1] - live[1]) * shape,
+                    live[2] + (goal[2] - live[2]) * shape,
+                ]
             }
             // O alvo de posição de um verbo de máscara é o próprio lugar: ele
             // não move geometria ([`crate::Grip::Paint`]), e `apply_mask` é quem

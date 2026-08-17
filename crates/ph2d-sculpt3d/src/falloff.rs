@@ -142,6 +142,47 @@ pub enum Falloff {
     /// C² nas duas pontas: é a curva que um escultor reconhece como *o pincel
     /// do Blender* quando quer que a pressão suba e desça sem quina nenhuma.
     Smoother,
+
+    // ── As duas que a wave de paridade tinha DESALOJADO ──────────────────────
+    //
+    // ⚠️ **Elas voltam com nome PRÓPRIO, e é o ponto inteiro.** Os rótulos
+    // `Smooth` e `Sharper` são do Blender e a wave de paridade fez a coisa
+    // certa ao pôr as leis dele por baixo deles. O que ela não fez foi guardar
+    // as leis que saíram — e elas não eram redundantes com nada do catálogo:
+    // *nenhuma* das dez de hoje é `(1 − t²)ⁿ`.
+    //
+    // ⚠️ **O que essa família tem, e a razão de o artista sentir falta:
+    // DERIVADA ZERO no centro.** `d/dt (1 − t²)ⁿ = −2nt(1 − t²)ⁿ⁻¹`, que é
+    // exatamente `0` em `t = 0` — o dab pousa como um DOMO, e o vértice do meio
+    // sobe quase igual aos vizinhos. As de `u = 1 − t` do Blender caem retas do
+    // centro (`Sharper` a **−4**), e sobre uma malha discreta um ápice de cone
+    // *é* um vértice puxado para longe do anel dele. Medido em
+    // `measure_raycast_feedback::measure_which_falloff_spikes` (guarda-chuva
+    // sobre os vértices tocados, dividido pelo relevo para não premiar a curva
+    // mais rala): `Sharper` **10,77** contra **3,43** do `Plateau` de fábrica.
+    //
+    // Apendadas ao FIM pelo motivo dos seis irmãos acima: os chips que o
+    // artista já aprendeu não mudam de lugar na fileira.
+    /// `(1 − t²)²` — o **domo**: topo chato, ombro largo, pouso liso.
+    ///
+    /// ⚠️ **É a lei que o rótulo `Smooth` carregava até 2026-08-15**, e é por
+    /// isso que ela existe: a wave de paridade não a substituiu por uma
+    /// equivalente, ela a apagou. A `Smooth` de hoje (a smoothstep do Blender)
+    /// é próxima em VALOR — 0,5625 contra 0,5 a meio raio — e a diferença que
+    /// importa é de FORMA, não de altura.
+    ///
+    /// ⚠️ **Não confundir com [`Falloff::InvSquare`]** (`1 − t²`), que é esta
+    /// pela raiz: aquela chega à borda com derivada `−2`, esta com `0`.
+    Dome,
+    /// `(1 − t²)⁴` — o domo APERTADO: o mesmo topo chato num ombro curto.
+    ///
+    /// ⚠️ **É a lei que o rótulo `Sharper` carregava até 2026-08-15** — a curva
+    /// que o artista pedia quando queria detalhe *sem* espetar. Ela é a razão
+    /// de esta família voltar: a `Sharper` de hoje é a mais AGUDA das doze
+    /// (`f'(0) = −4`) e esta é a mais CHEIA de topo chato depois da `Dome`,
+    /// então trocar uma pela outra sob o mesmo nome não trocou a intensidade,
+    /// trocou o que o dab É.
+    Dome4,
 }
 
 impl Falloff {
@@ -151,7 +192,7 @@ impl Falloff {
     /// `the_panel_offers_every_falloff_the_engine_has` compara este `ALL` com o
     /// array de ids do painel, então uma curva que entre aqui e não lá nasce
     /// inalcançável e o gate fica vermelho em vez de o chip sumir em silêncio.
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 12] = [
         Self::Smooth,
         Self::Sphere,
         Self::Sharper,
@@ -162,6 +203,8 @@ impl Falloff {
         Self::Sharp,
         Self::InvSquare,
         Self::Smoother,
+        Self::Dome,
+        Self::Dome4,
     ];
 
     /// O peso a uma distância normalizada `t`. **Porta única** — todo verbo, a
@@ -213,6 +256,19 @@ impl Falloff {
                 let u = 1.0 - t;
                 u * u * u * (u * (u * 6.0 - 15.0) + 10.0)
             }
+
+            // ⚠️ **Escritas em `u = 1 − t²`, e não em `1 − t`** — é o que as
+            // separa das seis do Blender acima e o que lhes dá a derivada zero
+            // no centro. Ver o doc das variantes.
+            Self::Dome => {
+                let u = 1.0 - t * t;
+                u * u
+            }
+            Self::Dome4 => {
+                let u = 1.0 - t * t;
+                let u2 = u * u;
+                u2 * u2
+            }
         }
     }
 
@@ -228,8 +284,10 @@ impl Falloff {
             Self::Plateau => "Plateau",
             Self::Linear => "Linear",
             Self::Sharp => "Sharp",
-                Self::InvSquare => "Inv Square",
-                Self::Smoother => "Smoother",
+            Self::InvSquare => "Inv Square",
+            Self::Smoother => "Smoother",
+            Self::Dome => "Dome",
+            Self::Dome4 => "Dome 4",
         }
     }
 }

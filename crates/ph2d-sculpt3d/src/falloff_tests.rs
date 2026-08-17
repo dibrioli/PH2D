@@ -139,3 +139,75 @@ fn the_factory_curve_follows_the_mode() {
         "o perfil do `b-mode` tem de DECLARAR a curva, não herdá-la do recuo"
     );
 }
+
+/// **O que a família `(1 − t²)ⁿ` TEM e as do Blender não: derivada zero no
+/// centro.**
+///
+/// ⚠️ **A propriedade, nunca um número escolhido.** Um dab pousa como DOMO
+/// quando `f'(0) = 0` (o vértice do meio sobe quase igual aos vizinhos) e como
+/// CONE quando não (um vértice puxado para longe do anel dele — a definição de
+/// espetado sobre malha discreta). Este gate divide as doze por essa fronteira
+/// e afirma que as duas metades existem: um catálogo só de cones não tem o que
+/// o artista pedia, e um só de domos perde o detalhe fino do Blender.
+///
+/// A derivada é por diferença finita **para a frente** de propósito: `weight`
+/// devolve `0` fora de `[0, 1)`, então a central atravessaria a guarda em `t=0`.
+#[test]
+fn the_dome_family_lands_flat_and_the_blender_family_lands_on_a_point() {
+    const H: f32 = 1e-4;
+    let slope = |f: Falloff| (f.weight(H) - f.weight(0.0)) / H;
+
+    // Os domos: derivada indistinguível de zero na régua da própria diferença.
+    for f in [
+        Falloff::Dome,
+        Falloff::Dome4,
+        Falloff::Sphere,
+        Falloff::Plateau,
+        Falloff::InvSquare,
+    ] {
+        assert!(
+            slope(f).abs() < 0.01,
+            "{} devia pousar CHATO e tem f'(0) = {}",
+            f.label(),
+            slope(f)
+        );
+    }
+    // E os cones, com o `Sharper` — o mais agudo das doze — nomeado.
+    assert!(
+        slope(Falloff::Sharper) < -3.5,
+        "o `Sharper` de hoje é `(1 − t)⁴` e cai a −4 do centro; medido {}",
+        slope(Falloff::Sharper)
+    );
+    assert!(slope(Falloff::Sharp) < -1.5, "o `Sharp` cai a −2");
+    assert!(slope(Falloff::Linear) < -0.9, "a rampa cai a −1");
+}
+
+/// **As duas leis que voltaram são EXATAMENTE as que saíram.**
+///
+/// O oráculo é a expressão escrita à mão — chamar a função sob teste para
+/// computar o que se espera é o gate sempre-verde que esta casa já documentou.
+///
+/// ⚠️ **E ele tem de reproduzir a ASSOCIAÇÃO, não só a álgebra.** A primeira
+/// versão escreveu `u*u*u*u` — três multiplicações da esquerda para a direita —
+/// contra o `(u*u)*(u*u)` da lei, e as duas divergem por **um ULP** já em
+/// `t = 0,02` (1065326389 contra 1065326388). *Num gate byte-a-byte a ordem dos
+/// produtos é parte do oráculo*, e foi a lei que estava certa.
+#[test]
+fn the_dome_curves_are_the_laws_the_parity_wave_displaced() {
+    for k in 0..=100 {
+        let t = k as f32 / 100.0;
+        let u = 1.0 - t * t;
+        let u2 = u * u;
+        let (want2, want4) = if t >= 1.0 { (0.0, 0.0) } else { (u2, u2 * u2) };
+        assert_eq!(
+            Falloff::Dome.weight(t).to_bits(),
+            want2.to_bits(),
+            "Dome em t={t}"
+        );
+        assert_eq!(
+            Falloff::Dome4.weight(t).to_bits(),
+            want4.to_bits(),
+            "Dome 4 em t={t}"
+        );
+    }
+}

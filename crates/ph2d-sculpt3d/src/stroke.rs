@@ -149,6 +149,16 @@ pub struct SculptStroke {
     /// que o dimensiona: um plano por-slot a mais no `capture` cobraria 12 bytes
     /// por vértice tocado a quem nunca escolheu este pincel.
     hc_b: Vec<[f32; 3]>,
+    /// **A curvatura normalizada de cada vértice**, o `sharpen_factors` da
+    /// referência. Campo e não local porque um arrasto o reconstrói a cada
+    /// quadro (e a cada sub-passo dentro dele) — uma alocação por quadro numa
+    /// malha grande é o custo que o `hc_b` ao lado já paga para não pagar.
+    sharp_f: Vec<f32>,
+    /// **O deslocamento laplaciano de cada vértice**, o `detail_directions` da
+    /// referência — a MESMA grandeza que a [`crate::FilterKind::EnhanceDetails`]
+    /// consome inteira. Aqui ele é medido no pré-passe e relido no gather, e é
+    /// isso que o torna um buffer em vez de uma expressão.
+    sharp_d: Vec<[f32; 3]>,
 }
 
 impl SculptStroke {
@@ -302,6 +312,12 @@ mod apply;
 #[path = "stroke_filter.rs"]
 mod mesh_filter;
 pub use mesh_filter::FILTER_DRAG_PER_PX;
+
+/// **O SHARPEN** — o único filtro com PRÉ-PASSE, e por isso o único que não
+/// cabe no `match` por-vértice do [`mesh_filter`]. Filho pela mesma razão dos
+/// outros: ele lê os planos congelados. Ver [`sharpen`].
+#[path = "stroke_filter_sharpen.rs"]
+mod sharpen;
 
 /// **AS JANELAS QUE UM TRAÇO PUBLICA** — ver [`windows`].
 #[path = "stroke_windows.rs"]

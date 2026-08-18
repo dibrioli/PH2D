@@ -161,7 +161,7 @@ pub const SCULPT3D_FILTER: NodeId = hash_node_id("sculpt3d.filter");
 /// convenção que coincide com esta só enquanto o `ALL` estiver em ordem de
 /// declaração — e o dia em que ele for reordenado, um chip rotulado `Sphere`
 /// escreveria `Relax`, pintado, vivo sob o mouse e mentindo.
-pub const SCULPT3D_FILTER_KIND: [NodeId; 8] = [
+pub const SCULPT3D_FILTER_KIND: [NodeId; 9] = [
     hash_node_id("sculpt3d.filter.kind.smooth"),
     hash_node_id("sculpt3d.filter.kind.scale"),
     hash_node_id("sculpt3d.filter.kind.inflate"),
@@ -170,6 +170,7 @@ pub const SCULPT3D_FILTER_KIND: [NodeId; 8] = [
     hash_node_id("sculpt3d.filter.kind.relax"),
     hash_node_id("sculpt3d.filter.kind.surface_smooth"),
     hash_node_id("sculpt3d.filter.kind.enhance_details"),
+    hash_node_id("sculpt3d.filter.kind.sharpen"),
 ];
 
 /// **COM QUE PROFUNDIDADE OLHAR** — os chips `Basic` · `Pro` (§2 do plano).

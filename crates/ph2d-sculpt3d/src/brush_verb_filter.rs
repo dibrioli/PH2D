@@ -135,7 +135,54 @@ pub enum FilterKind {
     /// assim no Blender — cada um e' uma entrada propria do
     /// `prop_mesh_filter_types`.
     EnhanceDetails,
+    /// `calc_sharpen_filter` — **a única lei desta família que nenhum outro
+    /// verbo exprime**, e a única com PRÉ-PASSE: o deslocamento de um vértice é
+    /// pesado pela curvatura dos VIZINHOS, então nenhum pode ser escrito antes
+    /// de todos serem medidos.
+    ///
+    /// ⚠️ **Ela não desloca uma feição, ela muda o CONTRASTE entre a feição e a
+    /// vizinhança** — onde há detalhe o vértice alisa, onde não há ele é puxado
+    /// pelos que têm. É por isso que ela não é exprimível compondo as outras
+    /// oito: nenhuma delas lê a curvatura de um vizinho.
+    ///
+    /// ⚠️ **É a única cuja força é FATIADA em iterações**, porque a referência
+    /// a clampa em `0,5` com o motivo escrito num comentário (*"needs multiple
+    /// iterations to reach a stable state"*) — e porque a lei DELA depende da
+    /// taxa de polling do rato, que esta casa recusa. O mecanismo inteiro está
+    /// no cabeçalho do `stroke_filter_sharpen.rs`.
+    Sharpen,
 }
+
+/// **O TETO DA FORÇA TOTAL DO SHARPEN — `4,0`, e o recurso é a CONVERGÊNCIA.**
+///
+/// ⚠️ **Ele NÃO é o `0,5` da referência:** aquele limita uma ITERAÇÃO (e
+/// sobrevive intacto como o teto de cada fatia — ver `MAX_STEP`), este limita a
+/// força TOTAL que o arrasto pede.
+///
+/// ⚠️ **O número é MEDIDO, e o que ele nomeia é onde o gesto para de
+/// responder** (`tests/measure_sharpen_law.rs`, esfera de 3010 vértices com uma
+/// crista gaussiana):
+///
+/// | força | fatias | excursão | degrau | curvatura de pico |
+/// |---|---|---|---|---|
+/// | 1,0 | 2 | 0,015792 | 0,025719 | 0,009231 |
+/// | 2,0 | 4 | 0,033897 | 0,032442 | 0,031231 |
+/// | **4,0** | **8** | **0,032153** | **0,023300** | **0,015836** |
+/// | 8,0 | 16 | 0,032153 | 0,023300 | 0,015836 |
+/// | 16,0 | 32 | 0,032153 | 0,023300 | 0,015836 |
+/// | 32,0 | 64 | 0,032153 | 0,023300 | 0,015836 |
+///
+/// De `4,0` para cima os três números são **idênticos a todos os dígitos**: o
+/// processo chegou ao ponto fixo que a referência chama de *stable state*, e
+/// dali para a frente o artista continua a arrastar e nada acontece — que é
+/// exactamente o defeito que a [`FilterKind::EnhanceDetails`] acabou de curar
+/// no filtro vizinho. *Um teto posto onde o gesto já não responde não tira
+/// nada de ninguém; ele só deixa de prometer.*
+///
+/// ⚠️ **E a lei NUNCA diverge** (`finito` em toda a varredura, até 32,0), então
+/// este teto **não** é uma guarda de estabilidade — essa é o `MAX_STEP`, e ela
+/// mora dentro da fatia.
+const SHARPEN_MAX: f32 = 4.0;
 
 impl FilterKind {
     /// **A lista que o artista escolhe**, na ordem da referência.
@@ -143,7 +190,7 @@ impl FilterKind {
     /// ⚠️ **Esta é a fonte da UI, e a contagem NÃO é citada em prosa nenhuma** —
     /// o `Verb::ALL` já pagou essa lição duas vezes em dois parágrafos vizinhos
     /// do plano.
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 9] = [
         Self::Smooth,
         Self::Scale,
         Self::Inflate,
@@ -152,6 +199,7 @@ impl FilterKind {
         Self::Relax,
         Self::SurfaceSmooth,
         Self::EnhanceDetails,
+        Self::Sharpen,
     ];
 
     /// O rótulo que o painel mostra — os nomes do `prop_mesh_filter_types`.
@@ -169,6 +217,7 @@ impl FilterKind {
             Self::Relax => "Relax",
             Self::SurfaceSmooth => "Surface Smooth",
             Self::EnhanceDetails => "Enhance Details",
+            Self::Sharpen => "Sharpen",
         }
     }
 
@@ -202,6 +251,19 @@ impl FilterKind {
             // existe a operação inversa de redistribuir —, e o HC negativo
             // amplificaria o próprio erro que ele existe para devolver.
             Self::Relax | Self::SurfaceSmooth => (0.0, 1.0),
+            // ⚠️ **O teto NÃO é o `0,5` da referência, e a diferença é a wave.**
+            // Aquele número é `clamp_factors(factors, 0.0f, 0.5f)` (`:1662`) e
+            // ele limita **uma ITERAÇÃO**, com o motivo escrito ao lado dele no
+            // fonte (*"needs multiple iterations to reach a stable state"*); a
+            // referência alcança forças maiores acumulando um passo por evento
+            // de rato. Nós entregamos a mesma força em sub-passos
+            // determinísticos (ver `steps_for`), então o teto aqui é o da FORÇA
+            // TOTAL e o `0,5` sobrevive intacto como o teto de cada fatia.
+            //
+            // ⚠️ **E arrastar para trás não faz NADA, como nos dois acima:** o
+            // `clamp` da referência começa em ZERO, e um *desafiar* não existe
+            // — a lei mede contraste e o inverso dela seria outro kernel.
+            Self::Sharpen => (0.0, SHARPEN_MAX),
             // ⚠️ **SEM teto, e aqui a ausencia e' a FEATURE inteira** — ao
             // contrario dos tres acima, esta lei tem uma irma CLAMPADA que roda
             // o mesmo kernel (o [`Self::Smooth`]). O `calc_enhance_details_filter`

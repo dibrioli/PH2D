@@ -19,7 +19,10 @@ use super::*;
 /// razão entre os dois campos ser **um** escalar e não um por vértice), o
 /// front-face mataria metade da esfera pelo olho (que um filtro não tem), e o
 /// auto-smooth é um passe que corre DEPOIS do dab e que o filtro não roda.
-fn filter_brush(verb: Verb) -> Brush {
+/// ⚠️ **`pub(super)` porque o irmão do Sharpen o consome** — uma segunda
+/// cópia lá seria a segunda fixture da mesma suíte, e os três desarmes acima
+/// divergiriam no dia em que um deles mudasse.
+pub(super) fn filter_brush(verb: Verb) -> Brush {
     Brush {
         verb,
         radius: 10.0,
@@ -62,7 +65,7 @@ fn deltas(before: &[[f32; 3]], mesh: &Mesh) -> Vec<[f32; 3]> {
         .collect()
 }
 
-fn norm(v: [f32; 3]) -> f32 {
+pub(super) fn norm(v: [f32; 3]) -> f32 {
     (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt()
 }
 

@@ -126,7 +126,12 @@ impl SculptStroke {
     /// grande, a cura NOMEADA é uma porta de escrita que copie o `base_nrm`,
     /// que já está na mão — mas ela abre a possibilidade de normal que mente, e
     /// só se paga com um número ao lado.*
-    fn restore_frozen_pose(&mut self, mesh: &mut Mesh) {
+    /// ⚠️ **`pub(in crate::stroke)` porque tem DOIS consumidores** — este
+    /// filtro e o [`super::sharpen`], que é um filtro com pré-passe e portanto
+    /// vive noutro arquivo. A alternativa (uma segunda restauração lá) seria a
+    /// segunda resposta a *"o que um filtro faz antes de tudo?"*, divergindo no
+    /// dia em que a captura ganhasse um plano.
+    pub(in crate::stroke) fn restore_frozen_pose(&mut self, mesh: &mut Mesh) {
         let out = mesh.positions_mut();
         // `touched[i]` e `base_pos[i]` são paralelos POR CONSTRUÇÃO — o
         // `capture` empurra os dois no mesmo passo, e o `slot` que ele escreve
@@ -166,6 +171,15 @@ impl SculptStroke {
     ) -> usize {
         if self.touched.len() != mesh.vert_count() {
             return 0;
+        }
+        // ⚠️ **A ÚNICA lei que não cabe no laço abaixo, e a bifurcação é
+        // estrutural:** o alvo de um vértice do Sharpen é pesado pela curvatura
+        // dos VIZINHOS, então ele precisa de um passe que meça a malha inteira
+        // antes de escrever o primeiro ponto. Um braço no `match` que às vezes
+        // dependesse de um pré-passe seria a porta pela qual o próximo caso
+        // especial entra sem ninguém ver.
+        if kind == FilterKind::Sharpen {
+            return self.filter_sharpen(mesh, brush, amount);
         }
         let (lo, hi) = kind.range();
         // ⚠️ **A ORDEM é load-bearing:** o `fill_hc_disp` lê `mesh.positions()`,
@@ -227,6 +241,12 @@ impl SculptStroke {
                 // expressao da referencia torna a paridade uma identidade em vez
                 // de um epsilon.
                 FilterKind::EnhanceDetails => self.target_sharpen(mesh, brush, v, base, f),
+                // ⚠️ **A guarda no topo já o consumiu, e este braço é a PROVA
+                // de que o `match` continua exaustivo** — foi ele que apanhou a
+                // lei nova em tempo de compilação, que é exactamente o que o
+                // comentário acima promete. Um `_ => ` genérico aqui apagaria
+                // essa propriedade para todas as leis futuras.
+                FilterKind::Sharpen => unreachable!("o pré-passe corre antes do laço"),
             };
             // ⚠️ **`accum = 1`, e o alvo é a posição FINAL** — a lei que os
             // quatro gestos com âncora já usam (`GripLaw::unit_accum`), e a

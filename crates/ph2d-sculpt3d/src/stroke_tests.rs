@@ -447,6 +447,13 @@ mod stroke_apply;
 /// do acima: a `mesh_for` deste arquivo é a fixture que contém o fenômeno (três
 /// dos quatro filtros são de anel, e uma esfera lisa é o caso degenerado
 /// deles). Ver o cabeçalho dele.
+/// **O SHARPEN** — irmão do [`filter_tests`] pelo mesmo corte que o kernel: ele
+/// é o único filtro com PRÉ-PASSE, e os gates dele defendem um PORTE (contra a
+/// lei escrita à mão) em vez da aparência, que é do smoke.
+#[cfg(test)]
+#[path = "stroke_filter_sharpen_tests.rs"]
+mod filter_sharpen_tests;
+
 #[path = "stroke_filter_tests.rs"]
 mod stroke_filter;
 

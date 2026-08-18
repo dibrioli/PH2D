@@ -62,7 +62,21 @@ reference/
 # Claude Code session-local artifacts: agent worktrees (isolated git
 # checkouts spawned by the Agent tool) and any other harness state
 # under .claude/. These are per-machine and should never enter repo.
-.claude/
+# ⚠️ `.claude/*` e não `.claude/` — o git NÃO desce num diretório excluído, então
+# um `!.claude/commands/` sob a forma de pasta nunca é alcançado. Excluir o
+# CONTEÚDO é o que deixa a reinclusão abaixo funcionar.
+.claude/*
+# ...EXCETO os comandos de fluxo. Eles não são estado de harness nem são
+# per-máquina: são PROTOCOLO AUTORADO, igual a `docs/IntegracaoMultiAgente/` —
+# `/pd-linha-fechar` é a DIRETRIZ §1.5.9 destilada, `/pd-integracao` é a §1.5.3.
+# ⚠️ Medido 2026-08-18: os 14 viviam em `~/.claude/commands/` (fora do repo),
+# nenhum doc os apontava, e foram usados ZERO vezes em 101 sessões. Este projeto
+# é multi-máquina por desenho (Mac testa · Linux desenvolve · Windows compila) e
+# o GitHub é a fonte única: um protocolo no `$HOME` de UMA máquina não existe nas
+# outras duas. `settings.local.json` e `worktrees/` continuam ignorados — esses
+# SÃO per-máquina, e é deles que a cerca acima trata.
+!.claude/commands/
+!.claude/commands/*.md
 
 # Wave 10 / slot-env.sh — per-session cargo target dirs (never committed)
 target-slots/

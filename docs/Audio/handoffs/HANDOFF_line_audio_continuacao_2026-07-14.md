@@ -19,7 +19,7 @@
 | Estado | **417/417** verdes na árvore combinada · worktree limpa |
 
 **A rack tem 42 efeitos e 23 presets.** O que fechou na última jornada está no
-[registro de integração](../../IntegracaoMultiAgente/REGISTRO_integracao_jornada_2026-07-13.md) e no
+[registro de integração](../../archive/integracao-jornadas/REGISTRO_integracao_jornada_2026-07-13.md) e no
 [handoff de integração da linha](HANDOFF_INTEGRACAO_line_audio_2026-07-13.md) (apêndices §7–§9 —
 leia antes de mexer no código).
 

@@ -203,7 +203,7 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && cargo run 
 
 ## 7. O que a integração de 2026-07-13 ensinou (leia antes do próximo fechamento)
 
-O [registro da jornada](../../IntegracaoMultiAgente/REGISTRO_integracao_jornada_2026-07-13.md) (6 linhas → `main`) tem duas
+O [registro da jornada](../../archive/integracao-jornadas/REGISTRO_integracao_jornada_2026-07-13.md) (6 linhas → `main`) tem duas
 lições que **te atingem**:
 
 1. **A integração causou 2 bugs que o `merge-tree` não viu** — e **um deles envolveu esta linha**:

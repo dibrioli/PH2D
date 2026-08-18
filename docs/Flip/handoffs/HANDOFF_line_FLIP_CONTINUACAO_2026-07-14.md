@@ -12,7 +12,7 @@
 ## 1. Estado (2026-07-14)
 
 A jornada anterior **integrou** (6 linhas, `--ff-only`; registro em
-[`docs/IntegracaoMultiAgente/REGISTRO_integracao_jornada_2026-07-13.md`](../../IntegracaoMultiAgente/REGISTRO_integracao_jornada_2026-07-13.md)).
+[`docs/archive/integracao-jornadas/REGISTRO_integracao_jornada_2026-07-13.md`](../../archive/integracao-jornadas/REGISTRO_integracao_jornada_2026-07-13.md)).
 A branch da linha foi **resetada ao `main` integrado** — não há nada pendente de merge.
 
 - **Base:** `main` (`4d203d48`) + 1 commit local (`ace54f41`, o teto do `pack_perf` por perfil).

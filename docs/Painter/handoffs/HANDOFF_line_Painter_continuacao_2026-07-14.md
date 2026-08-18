@@ -8,7 +8,7 @@
 > [`HANDOFF_line_Painter_sculpt_2026-07-13.md`](HANDOFF_line_Painter_sculpt_2026-07-13.md).
 >
 > Plano vivo: [`docs/Painter/18_plano_sculpt_relevo.md`](../18_plano_sculpt_relevo.md).
-> Registro da integração: [`REGISTRO_integracao_jornada_2026-07-13.md`](../../IntegracaoMultiAgente/REGISTRO_integracao_jornada_2026-07-13.md).
+> Registro da integração: [`REGISTRO_integracao_jornada_2026-07-13.md`](../../archive/integracao-jornadas/REGISTRO_integracao_jornada_2026-07-13.md).
 
 ---
 

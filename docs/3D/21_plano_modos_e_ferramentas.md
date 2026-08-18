@@ -402,7 +402,15 @@ deixou de ser idêntico e qual não foi tocado*.
 
 ### §7.25 — 📊 O PLACAR: o que falta, medido contra a lista do §5.1 (2026-08-15)
 
-**Waves** — **6 fechadas**, 1 pela metade, 6 por abrir, 1 sem cura em código:
+**Waves** — **9 fechadas**, 4 por abrir, 1 sem cura em código.
+
+⚠️ **Este cabeçalho dizia *"6 fechadas … 6 por abrir"* e já divergia da TABELA
+LOGO ABAIXO dele** (que mostrava oito), e depois a **W7 fechou** (2026-08-17,
+`23913321b`) sem ninguém voltar aqui. É a doença que o parágrafo do `faltam`,
+quinze linhas adiante, nomeia para si mesmo — *duas contagens do mesmo fato
+divergem no dia em que só uma é atualizada* — e ela reincidiu **duas vezes na
+mesma seção**. O que não drifta é a tabela; o cabeçalho é derivado dela e foi
+recontado.
 
 | wave | estado |
 |---|---|
@@ -411,7 +419,8 @@ deixou de ser idêntico e qual não foi tocado*.
 | **W4** o Smooth que não encolhe | ✅ **FECHADA** — o `l-mode` (Taubin λ\|μ) · **Slide Relax** · o **Surface Smooth como pincel próprio** (HC) · e o **laplaciano por cotangentes**, que ⚠️ **não foi para onde esta tabela o mandava**: como direção do Inflate ele foi **RECUSADO por medição** (§7.28) e a casa dele é o operador sobre o qual o par λ\|μ corre — que é o que o §4 já dizia (*"o operador dos dois acima"*) |
 | **W6** os dabs que não são discos | ✅ **FECHADA** — **Clay Strips** · **Blob** · **Clay Thumb** (§7.26) · **Multiplane Scrape** (§7.27). O **Draw Sharp**, o 5º da lista dela, saiu com motivo na §7.18 (ele é o item da W1) |
 | **W8** a DEMÃO | ✅ **FECHADA** — o `layer.cc`: `disp += f·strength·(1,05 − |disp|)`, e ⚠️ **a lei tem conteúdo MEDIDO** (todo peso da pegada converge para `disp = 1` ⇒ a demão é um **PLATÔ**, e o falloff é uma TAXA e não um perfil). ⚠️ **E o custo estrutural que esta tabela previa NÃO existiu:** o `accum` **É** o `displacement_factor` da referência ⇒ zero plano por-vértice novo, zero rota de aplicador nova, zero campo no snapshot de undo — quem o removeu foi ler o tempo de vida do `ss.cache` (por-traço), não uma escolha de desenho. Cena `=33` |
-| **W7** o plano MLS · **W9** Mesh Filter · **W10** Cloth · **W11** handles · **W12** a geodésica | ⬜ **por abrir** |
+| **W7** o plano MLS | ✅ **FECHADA** (2026-08-17, `23913321b`) — `stroke_surface.rs`, a projeção MLS de Alexa, Behr, Cohen-Or, Fleishman, Levin & Silva 2003, com sonda `measure_mls_plane` e os gates em `verb_surface_tests`. ⚠️ **E a wave achou um knob MORTO ao lado:** o `offset` do plano não chegava a lugar nenhum |
+| **W9** Mesh Filter · **W10** Cloth · **W11** handles · **W12** a geodésica | ⬜ **por abrir** |
 
 **Ferramentas** — a lista do §5.1 tem 16 itens:
 

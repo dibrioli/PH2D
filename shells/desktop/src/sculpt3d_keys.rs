@@ -20,6 +20,17 @@ impl App {
         shift: bool,
     ) -> bool {
         use winit::keyboard::KeyCode as K;
+        // ⚠️ **UM CAMPO FOCADO É DONO DO TECLADO — e esta é a metade GERAL da cura.**
+        //
+        // Vale para as DUAS camadas abaixo, e por isso mora aqui em cima: enquanto ela
+        // não existia, um chip numérico focado em QUALQUER painel do app não recebia um
+        // dígito, porque os dez são verbos deste teclado e ele corre antes do store
+        // (Enio, 2026-08-17: *"nem mesmo digitar um número no painel motion"*). É a
+        // mesma pergunta que o `motion_keys_live`/`vector_keys_live` já compunham — a
+        // porta é `text_entry_focused`, e ela não é de módulo nenhum.
+        if self.text_entry_focused() {
+            return false;
+        }
         // **ASSAR A FORMA NUM SPRITE** (`docs/3D/02.2`) — o objetivo 2.
         //
         // ⚠️ A tecla **ARMA e sai**, em vez de fazer: o bake precisa do mundo, do renderizador, do
@@ -62,6 +73,38 @@ impl App {
                 );
             }
             return true;
+        }
+        // **O INTERRUPTOR DA DOAÇÃO** — barro ⇄ luz ⇄ desligada.
+        //
+        // ⚠️ **Ele sobe para a camada do MÓDULO junto com o bake e o painel, e não é
+        // arrumação:** ele é o único caminho até `FormRole::Off`, e o pill é binário
+        // por desenho (de qualquer papel ele ENTRA no barro). Deixá-lo debaixo da
+        // guarda do barro faria `Clay --D--> Light` e ali parava — `Off` viraria
+        // inalcançável, uma regressão que a cura não pede.
+        //
+        // ⚠️ **O hoist preserva o comportamento ao bit:** o `ctrl` já saiu no braço
+        // logo abaixo (só o `Ctrl+Z` é desta cena) e o `Shift+D` é capturado mais
+        // acima (duplicar peça), então o braço que este código substitui só era
+        // alcançado com `!ctrl && !shift` — que é exatamente o que a guarda diz.
+        //
+        // ⚠️ E ele custa ZERO ao Motion, medido: o `D` do grafo exige **cmd**
+        // (`KEY_KEY_D if cmd`), então o `D` nu não colide com atalho nenhum de lá.
+        if code == K::KeyD && !ctrl && !shift {
+            let Some(scene) = self.sculpt3d_scene_mut() else {
+                return false;
+            };
+            let label = scene.cycle_role();
+            eprintln!("[sculpt3d] a forma agora e: {label}");
+            return true;
+        }
+        // ⚠️ **DAQUI PARA BAIXO O TECLADO É DA ESCULTURA — e ele exige o barro NA TELA.**
+        //
+        // A guarda pergunta o que o PONTEIRO desta cena já perguntava
+        // (`FormRole::draws_clay`), e a assimetria entre as duas portas ERA o bug: o
+        // clique cedia ao sair do modo, a tecla não. Ver [`App::sculpt3d_keys_live`]
+        // para o mecanismo e os números.
+        if !self.sculpt3d_keys_live() {
+            return false;
         }
         let Some(scene) = self.sculpt3d_scene_mut() else {
             return false;
@@ -476,19 +519,12 @@ impl App {
                 eprintln!("[sculpt3d] raio: {:.0} px de tela", scene.radius_px);
                 true
             }
-            // **O INTERRUPTOR DA DOAÇÃO** — barro ⇄ luz ⇄ desligada.
-            //
-            // ⚠️ Gesto de SMOKE, como o `Q`/`E`/`R`/`F` da luz: a UI final é o
-            // toggle *"iluminada pela forma abaixo"* na pilha de camadas
-            // (`docs/3D/05.2`), e ele espera a escultura ser uma CAMADA do
-            // documento. Enquanto ela é um viewport solto, uma tecla é a única
-            // porta honesta — um checkbox num painel diria que a forma pertence
-            // a um documento a que ela ainda não pertence.
-            K::KeyD => {
-                let label = scene.cycle_role();
-                eprintln!("[sculpt3d] a forma agora e: {label}");
-                true
-            }
+            // ⚠️ **O `D` (o interruptor da doação) MUDOU-SE para a camada do módulo**,
+            // no topo desta função, junto com o bake e o painel — ele é o único caminho
+            // até `FormRole::Off` e por isso não pode viver debaixo da guarda do barro.
+            // Gesto de SMOKE, como o `Q`/`E`/`R`/`F` da luz: a UI final é o toggle
+            // *"iluminada pela forma abaixo"* na pilha de camadas (`docs/3D/05.2`), e
+            // ele espera a escultura ser uma CAMADA do documento.
             K::KeyX | K::KeyY | K::KeyZ => {
                 let axis = match code {
                     K::KeyX => &mut scene.symmetry.x,

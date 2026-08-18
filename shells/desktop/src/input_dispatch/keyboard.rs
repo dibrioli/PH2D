@@ -58,9 +58,20 @@ impl App {
             (ElementState::Pressed, true) => KeyKind::Repeat,
             (ElementState::Released, _) => KeyKind::Up,
         };
-        // ADR-0150 W2: a cena 3D toma as teclas dela ANTES do store. Inerte (e
-        // portanto invisível) sem cena armada — num run normal `sculpt3d` é
-        // `None` e esta porta devolve `false` no primeiro `if`.
+        // ADR-0150 W2: a cena 3D toma as teclas dela ANTES do store.
+        //
+        // ⚠️ **A justificativa que morava aqui ENVELHECEU, e a nota virou o bug.** Ela
+        // dizia *"inerte (e portanto invisível) sem cena armada — num run normal
+        // `sculpt3d` é `None`"*, o que era verdade enquanto o módulo vivia atrás de uma
+        // variável de ambiente, e ficou **falso no dia do pill** (W-Pill, 2026-08-10):
+        // num run normal a cena passa a existir ao primeiro clique, e **sair do modo
+        // nunca a destrói**. Como este `return` corre ANTES do `handler.on_key` logo
+        // abaixo, uma porta que só perguntava *"a cena existe?"* passou a comer os dez
+        // dígitos e ~26 letras de todo painel do app, para sempre.
+        //
+        // Quem responde agora é [`Self::sculpt3d_keys_live`] (dentro da porta), pela
+        // MESMA pergunta que o ponteiro daquela cena já fazia. *Quem move o número que
+        // tornava uma nota verdadeira tem de reconferir a nota.*
         #[cfg(feature = "sculpt3d")]
         if state == ElementState::Pressed
             && let PhysicalKey::Code(code) = physical_key

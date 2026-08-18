@@ -1665,7 +1665,7 @@ impl App {
     /// [`Self::vector_keys_live`] / [`Self::motion_keys_live`], não a esta —
     /// compor `tool_active && !text_entry_focused` em cada braço é a enumeração
     /// que o BUGS #25 documenta apodrecendo.
-    fn text_entry_focused(&self) -> bool {
+    pub(crate) fn text_entry_focused(&self) -> bool {
         let Some(h) = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref()) else {
             return false;
         };
@@ -1839,6 +1839,71 @@ impl App {
                 .active()
                 .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("vector"))
         })
+    }
+
+    /// **O barro está na tela?** — a pergunta que o PONTEIRO da cena 3D já fazia.
+    ///
+    /// Delega ao papel da forma (`FormRole::draws_clay`), que é o mesmo fato que
+    /// decide o passe de cor e a posse do clique no canvas. Sem cena (ou sem a
+    /// feature) ela é `false`, e o resto do app nem sabe que este módulo existe.
+    #[cfg(feature = "sculpt3d")]
+    pub(crate) fn sculpt3d_clay_on_screen(&self) -> bool {
+        self.gfx
+            .as_ref()
+            .and_then(|g| g.sculpt3d.as_ref())
+            .is_some_and(crate::sculpt3d::Sculpt3dScene::clay_on_screen)
+    }
+
+    /// **As teclas da ESCULTURA estão vivas?** — o irmão de [`Self::motion_keys_live`]
+    /// e [`Self::vector_keys_live`], e a cura do report do Enio (2026-08-17:
+    /// *"depois de abrir outros módulos como Sculpt, o Motion não consegue usar os
+    /// atalhos nem digitar um número"*).
+    ///
+    /// ⚠️ **A pergunta ERRADA era *«existe uma cena?»***. O teclado do 3D consome
+    /// os **dez dígitos** e ~26 letras (o próprio módulo o escreve: *"com uma cena
+    /// armada este teclado consome quase toda letra"*), e o portão dele era
+    /// `sculpt3d_scene_mut().is_some()` — que fica verdadeiro **para sempre** depois
+    /// do primeiro clique no pill, porque **sair do modo nunca destrói a cena**. A
+    /// partir dali toda letra e todo dígito eram comidos ANTES do `handler.on_key`,
+    /// então o painel do Motion não via nem atalho nem texto. Medido, o que morria
+    /// era exatamente o conjunto NU do grafo (`F` Fit · `A` Add · `H` Bypass ·
+    /// `K` Knife · `P` Probe) mais os dígitos — os `Ctrl+…` já passavam, porque o
+    /// braço de `ctrl` só reclama o `Ctrl+Z`.
+    ///
+    /// ⚠️ **É uma assimetria entre duas portas que respondem à MESMA pergunta:** o
+    /// ponteiro já cedia (ele pergunta `draws_clay`), o teclado não. Agora os dois
+    /// perguntam o mesmo — *o barro está na tela?* —, que é o que "estou esculpindo"
+    /// significa neste módulo, do mesmo jeito que *ter a ferramenta em mãos* é o que
+    /// significa nos irmãos.
+    /// ⚠️ **E o barro sozinho não bastava**, porque *sair do modo* não é o único jeito de
+    /// ir trabalhar noutro lugar: pegar a ferramenta **Motion** no rail deixa o barro na
+    /// tela e põe o artista num PAINEL, que foi o segundo caso do report (*"faça com que
+    /// os atalhos motion funcionem no painel motion logo que ele for aberto"*). Uma
+    /// ferramenta EM MÃOS ganha as teclas nuas — ver [`Self::a_tool_owns_the_bare_keys`].
+    #[cfg(feature = "sculpt3d")]
+    pub(crate) fn sculpt3d_keys_live(&self) -> bool {
+        self.sculpt3d_clay_on_screen()
+            && !self.text_entry_focused()
+            && !self.a_tool_owns_the_bare_keys()
+    }
+
+    /// **Uma FERRAMENTA está em mãos reivindicando as teclas NUAS?**
+    ///
+    /// ⚠️ **Por que uma lista, e onde ela apodrece — dito na cara:** a cena 3D **não é uma
+    /// `Tool`** (ADR-0150: a navegação orbital mora no shell justamente para manter a
+    /// superfície congelada `Tool=12` fora do caminho), então ela **não participa** da
+    /// arbitragem normal de ferramenta ativa — não há `ToolId` dela para o rail comparar. E
+    /// o `Tool` é contrato CONGELADO (§6), logo não dá para perguntar à ferramenta *"você
+    /// quer o teclado?"* sem um ADR.
+    ///
+    /// Enquanto isso, a precedência é expressa contra as ferramentas que de facto reclamam
+    /// tecla NUA — hoje o Motion (`F`/`A`/`H`/`K`/`P`) e o Vector. ⚠️ **Uma terceira nasce
+    /// fora desta lista**, e o sintoma será o mesmo report: atalhos mudos com o barro na
+    /// tela. A cura definitiva é o 3D virar camada do documento (`docs/3D/05.2`), quando a
+    /// pergunta deixa de precisar de lista.
+    #[cfg(feature = "sculpt3d")]
+    fn a_tool_owns_the_bare_keys(&self) -> bool {
+        self.motion_tool_active() || self.vector_tool_active()
     }
 
     /// Motion Nodes M1: is the Motion Nodes tool the active tool? Gates the graph

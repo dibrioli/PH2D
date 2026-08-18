@@ -349,6 +349,10 @@ pub(crate) mod elastic;
 #[path = "sculpt3d_scenes_strip.rs"]
 pub(crate) mod strip;
 
+/// **A CENA DO FILTRO** (`=34`) — irmã da [`layer`] pela mesma linha de corte.
+#[path = "sculpt3d_scenes_filter.rs"]
+pub(crate) mod filter;
+
 /// **A CENA DA DEMÃO** (`=33`) — irmã da [`surface`] pela mesma linha de corte.
 #[path = "sculpt3d_scenes_layer.rs"]
 pub(crate) mod layer;
@@ -408,7 +412,13 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     // sulcos que a luz já mostra e sulcos que ela quase não mostra. Com uma
     // profundidade só, ligar o canal daria *uma imagem diferente* — e diferente
     // não é a pergunta.
-    if cavity_scene() {
+    // ⚠️ A `=34` abre com as CRISTAS porque a sonda `measure_sharpen_law.rs`
+    // mediu que a lei do Sharpen precisa de FEIÇÃO e não de ruído: com a
+    // curvatura comparável em todo vértice o `f` do pré-passe fica alto em toda
+    // parte, o gather é anulado por `(1 − f)` e a lei degenera num alisador.
+    // Sobre uma esfera lisa é pior — sem contraste não há o que contrastar, e os
+    // dois chips novos leriam como controles mortos.
+    if cavity_scene() || filter::filter_scene() {
         return wrinkled_sphere();
     }
     // ⚠️ **A `=16` abre DENSA, e a densidade é o que o smoke julga.** O tamanho

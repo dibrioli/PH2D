@@ -5,8 +5,8 @@
 
 ## Perfil & referência
 - [User: Enio (dibrioli)](user_role.md) — dono/decisor; o único dev é a LLM
-- [Paths canônicos](reference_canonical_files.md) — SKILL, HANDOFF, ADRs
-- [GPU tests headless](reference_gpu_tests_run_headless_metal.md) — `--features gpu -- --ignored` roda no sandbox
+- [Onde mora cada coisa](reference_canonical_files.md) — a tabela verificada; ⛔ não guarda versão nem contagem (foi assim que apodreceu)
+- [GPU tests headless](reference_gpu_tests_run_headless_metal.md) — `--features gpu -- --ignored` roda no sandbox (⚠️ evidência é de Mac/Metal sobre crate já removida; o dev hoje é Linux/RTX)
 - [Transcripts são INSTRUMENTO](reference_session_transcripts_are_a_measurable_instrument.md) — `~/.claude/projects/*.jsonl` mede o comportamento do agente; sonda: `scripts/agent-loop-profile.sh`
 - [Monitores da workstation](reference_display_topology_workstation.md) — perf no LG (RTX); AOC read-only
 - [A workstation travou 2× (08/08)](project_workstation_freeze_memory_reclaim.md) — livelock de reclaim, não bug do PH2D; 577 GB de `target/` é o combustível
@@ -17,7 +17,7 @@
 
 ## Comunicação & decisão
 - [Decida, não pergunte](feedback_decide_dont_ask_gold_standard.md) — padrão-ouro, execute, reporte
-- [Estilo](feedback_communication_style.md) + [simplicidade](feedback_communication_simplicity.md) — pt-BR direto; recomendação primeiro
+- [Estilo](feedback_communication_style.md) + [simplicidade](feedback_communication_simplicity.md) — ⚠️ **corrigidas 18/08**: ao Enio, curto e sem jargão (§0.8); denso só para a próxima LLM
 - ["Difícil de ajustar" = bug de DESIGN](feedback_ergonomics_verdict_is_a_design_bug.md) — questione o modelo
 - [Knob por-passo é ALVO, não taxa](feedback_a_knob_consumed_as_a_per_step_rate_is_a_target_not_a_rate.md) — resposta exponencial e composta por OUTRO knob; meça a fração ÚTIL do curso
 - [Remédio novo → velho é CONTAGEM DUPLA](feedback_a_new_remedy_makes_the_old_one_double_counting.md) — 3º ajuste da mesma constante = modelo errado
@@ -38,6 +38,8 @@
 - [Nota de diferido não é spec](feedback_a_deferral_notes_bar_may_exceed_the_projects_policy.md) — confira e corrija a nota
 - ["NÃO toque neste arquivo" é uma AFIRMAÇÃO](feedback_a_handoff_can_be_wrong_about_its_own_dirty_file.md) — o handoff errou sobre a própria crate; meça antes de honrar
 - [A regra tem de estar no CAMINHO de quem a executa](feedback_a_rule_only_exists_if_it_is_on_the_path_of_who_executes_it.md) — doc órfão do roteador = regra inexistente
+- [Ferramenta só é adotada se um PASSO a chama pelo nome](feedback_a_tool_is_adopted_only_when_a_written_step_names_it.md) — medido: 5 usos contra 13.791 do comando cru; ponteiro ≠ adoção
+- [Arquivar sem indexar as RECUSAS é apagá-las](feedback_archiving_without_indexing_the_refusals_deletes_them.md) — e a cura de um doc inchado pode REALOCAR a doença; o teto se mede (80-110 KB)
 - [Mecanismo certo, cura errada](feedback_a_correct_mechanism_can_prescribe_the_wrong_cure.md) — meça o mecanismo antes de construir o que a nota prescreve
 - [Cerca de Chesterton](feedback_documented_decision_chesterton_fence.md) — "intentionally NOT X" = decisão
 - [Revert pode diferir só no TEMPO DE VIDA](feedback_a_reverted_attempt_may_differ_only_in_lifetime_read_the_revert_reason.md) — leia o MOTIVO do revert, não o diff; escopo é o que mata tentativa boa
@@ -82,18 +84,18 @@
 - [Números que SOMAM: conte](feedback_numbers_that_sum_across_lines_count_dont_pick.md)
 - [Allowlist duplicada mata o gate](feedback_duplicate_allowlist_key_kills_the_gate_at_parse.md) — TOML morre no parse
 - [Integrar pré-cutover = drift](project_integration_prefork_lines_ship_drift.md)
-- [Cadência de processo (10)](reference_topic_process_cadence.md) — gist em CLAUDE.md §2-§3
+- [Cadência de processo (10)](reference_topic_process_cadence.md) — gist em CLAUDE.md §2-§3. ⚠️ o babysit do CI É polling de 15 min (§3)
 
 ## Auditoria (famílias — 2 saltos)
-- [Reprodução/diagnóstico (17)](reference_topic_repro_discipline.md) — harness/mecanismo · cursor real · não-repro ≠ fix · escala antes de causa · controle positivo
-- [Ofício de gate (31)](reference_topic_gate_discipline.md) — ausência+presença · razão doente · verde por acidente · paridade CPU/GPU · fixture contém o fenômeno
+- [Reprodução/diagnóstico (18)](reference_topic_repro_discipline.md) — harness/mecanismo · cursor real · não-repro ≠ fix · escala antes de causa · controle positivo
+- [Ofício de gate (32)](reference_topic_gate_discipline.md) — ausência+presença · razão doente · verde por acidente · paridade CPU/GPU · fixture contém o fenômeno
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) — seed=sample · âncora · id-counter · load adota · ponto fixo · unidades mistas
 - [Costura de UI (13)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
 - [O seed é dono do VALOR, o dispatch do ESTADO](feedback_the_seed_owns_the_value_the_dispatch_owns_the_state.md) — espelho por-quadro REMENDA; `register` inteiro apaga o hover, e fica inerte até alguém dar cor ao estado
 - [Provas de mutação (6)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando
 - [Disciplina de oráculo (9)](reference_topic_oracle_discipline.md) — aparência, não regra
 - [Disciplina de fixture (6)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem
-- [Protocolo de auditoria (5)](reference_topic_audit_protocol.md) — lentes · claims · state-grep
+- [Protocolo de auditoria (6)](reference_topic_audit_protocol.md) — lentes · claims · state-grep
 - [Física do impasto/sculpt (8)](reference_topic_impasto_physics.md)
 - [Tornar um nó elegível pode REGREDIR um claim parcial — RECUE, não refute inteiro](feedback_making_a_node_eligible_can_regress_a_partial_claim_retreat_dont_refuse_whole.md) — re-meça o doc REAL; regra tudo-ou-nada vira regressão; a cura é un-claim, não refutar o plano
 
@@ -139,5 +141,5 @@
 - [Gates de velocidade](project_perf_audit_2026_05_19.md) — `without_system_fonts()`
 - [Perf do Painter (3)](reference_topic_painter_perf.md)
 - [Spatial GPU reconcilia vs CPU](project_painter_w4_spatial_gpu_bloom_sh.md)
-- [Painter core NO TETO](project_painter_core_files_at_loc_cap.md) — 600 LOC
+- [HISTÓRICO: Painter no teto](project_painter_core_files_at_loc_cap.md) — ⚠️ **premissa dissolvida**: cap é 700, os arquivos medem 315/621/650/627. Sobra a técnica de split
 - [8GB RAM = full-gate ~10min](project_solo_coord_backlog_ship_2026_05_29.md)

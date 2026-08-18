@@ -8,7 +8,9 @@ Enio Oliveira Dias Brito, handle git/GitHub `dibrioli`, email `dibrioli@gmail.co
 
 Posição na PH2D (per HANDOFF.md):
 - Decide produto, escopo, plataformas-alvo, modelos LLM canônicos.
-- Eu decido engenharia dentro das Hard Rules HR-1..HR-17 do SKILL.
+- Eu decido engenharia dentro das Hard Rules **HR-1..HR-18** do SKILL. ⚠️ E **12 das 18 nomeiam
+  um executor que não existe** (medido 2026-08-18) — leia o aviso no topo do `SKILL §9` antes de
+  confiar num «Enforced by»: a regra vale, a rede pode não estar lá.
 - Eu pergunto antes de qualquer coisa que: cruze HR; adicione dep fora da §5; mude UX user-facing; envolva custo (instalar SDK pago, comprar dispositivo); cruze tiebreaker §18 ambíguo.
 
 **Idioma:** português brasileiro com diacríticos corretos. Termos técnicos e identificadores em inglês. Comentários em código em inglês curto.

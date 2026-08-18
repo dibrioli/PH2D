@@ -80,7 +80,15 @@ teclado**.
 
 ### Trabalho de engenharia (1-4)
 
-**1 — W9 · MESH FILTER (9 tipos).** ⭐ **O mais barato da lista inteira, e há
+**1 — W9 · MESH FILTER (9 tipos).** 🔄 **7 dos 9 hoje** — a **W9a** deu a fiação e os
+4 tipos que reusam verbo, a **W9b** deu os 3 que **não têm verbo nenhum** (Scale ·
+Sphere · Random) e o **selector** que os torna alcançáveis. ⚠️ **As duas metades da
+W9b não podiam shipar separadas:** enquanto a lei era derivada do verbo em mãos, um
+kernel novo sem a row de escolha seria código que nenhum gesto percorre. **Falta a
+W9c** (Sharpen de dois passes · Enhance Details) — e a referência já está lida: o
+`sculpt_filter_mesh.cc` precomputa um `sharpen_factor` por vértice **mais** as
+`detail_directions` (o deslocamento laplaciano), e o *Enhance Details* é o segundo
+passo sozinho. ⭐ **O mais barato da lista inteira, e há
 precedente executável:** o *Filter Layer* do Painter mostrou que **não há kernel
 novo** — o filtro preenche o `amount` **uniforme** e chama o MESMO render dos verbos,
 o que faz a máscara, a simetria, o `pre` congelado e o undo virem de graça. Depende
@@ -180,6 +188,34 @@ que **subdividem mal**.
 - ⚠️ **A tabela de cronometragem contra ZBrush/Blender NÃO EXISTE.** Enquanto ela não
   existir, a frase de performance fica **entre aspas no pedido, nunca no nosso
   relatório**.
+
+### ⛔ UM VERMELHO DO `main`, achado pelo `--ignored` da W9b-b (2026-08-18)
+
+`sculpt3d::bake::light_measure::the_two_lights_agree_where_the_form_turns_away`
+(`sculpt3d_bake_light.rs:509`) mede **0,3370** contra uma barra de `0,01` — *"o aro
+divergiu no balde 0"*. Ele afirma que **a luz do BARRO e a da TINTA concordam onde a
+forma vira**, e é a carta da `ph2d-light` em forma executável.
+
+⚠️ **NÃO é desta linha, e não é opinião — são QUATRO testemunhas medidas:** a cadeia
+inteira da luz assada tem **diff VAZIO** contra o `main` (o gate · `baked_form_planes.rs`
+· `baked_form.rs` · `sculpt3d_bake*.rs` · `ph2d-render` · `ph2d-painter-brush` ·
+`ph2d-gpu` · `ph2d-light` · `ph2d-mesh-render`) · o `baked_form_planes.rs` **não depende
+da `ph2d-sculpt3d`**, a única crate que esta linha mudou e que a shell consome · ele
+falha no **HEAD** com o número **idêntico a quatro casas** · e falha no **`main` limpo**,
+rodado na árvore primária. ⚠️ **E falha ISOLADO em 0,25 s**, logo não é a classe de
+flake de carga desta workstation.
+
+⚠️ **O número NOMEIA o mecanismo, e o próprio doc do gate traz a tabela:** as duas
+mutações que ele documenta medem **0,3002** (*o `resolved_lamps` larga a `dir`*) e
+**0,3514** (*o `build_input` manda `form: None`*). O medido, **0,3370**, cai entre as
+duas e muito longe do verde de **0,0020** — ou seja, a assinatura é *o bake perdeu a
+tradução do rig ou da forma*, não uma deriva numérica. ⚠️ **A premissa `DEFAULT_ENV = 0`
+foi conferida e está de pé** (o plano avisa que levantá-la separa as duas luzes **por
+desenho**), então não é o slider de ambiente.
+
+⚠️ **Ele é invisível entre integrações:** mora num `--ignored`, e nem o `ship.sh` nem um
+fechamento por `cargo test -p` o alcançam. **Wave própria, de outro dono** — não o
+conserte dentro de uma wave de filtro.
 
 ---
 

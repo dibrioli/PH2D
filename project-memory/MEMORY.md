@@ -7,6 +7,7 @@
 - [User: Enio (dibrioli)](user_role.md) — dono/decisor; o único dev é a LLM
 - [Paths canônicos](reference_canonical_files.md) — SKILL, HANDOFF, ADRs
 - [GPU tests headless](reference_gpu_tests_run_headless_metal.md) — `--features gpu -- --ignored` roda no sandbox
+- [Transcripts são INSTRUMENTO](reference_session_transcripts_are_a_measurable_instrument.md) — `~/.claude/projects/*.jsonl` mede o comportamento do agente; sonda: `scripts/agent-loop-profile.sh`
 - [Monitores da workstation](reference_display_topology_workstation.md) — perf no LG (RTX); AOC read-only
 - [A workstation travou 2× (08/08)](project_workstation_freeze_memory_reclaim.md) — livelock de reclaim, não bug do PH2D; 577 GB de `target/` é o combustível
 - [O VSCode morre por POLÍTICA, não por escolha (14/08)](project_vscode_dies_by_oompolicy_not_by_choice.md) — `OOMPolicy=stop` derruba o scope; o AND do earlyoom nunca fecha quando é o swap que acaba

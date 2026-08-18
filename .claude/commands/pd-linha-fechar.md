@@ -21,4 +21,13 @@ Feche a linha `$1`.
    (o que está ABERTO / o smoke novo) — nunca acrescenta um parágrafo. Foi o append
    por-jornada que levou o §5 a 868 KB, injetados em todo agente e toda worktree,
    antes da primeira palavra do Enio (DIRETRIZ §1.5.9 item 8).
-5. PARE. Não integre, não pushe.
+5. **`wc -c` no tracker/handoff do módulo. Passou de ~100 KB? CORTE-O agora:**
+   `python3 scripts/doc-split.py <doc> --keep <faixas> --archive docs/archive/docs-<data>/<mod>/<doc>`
+   depois `python3 scripts/archive-index.py docs/archive/docs-<data>`.
+   ⚠️ Mandar a narrativa para o handoff **realocou** a doença: o tracker da física chegou a
+   **710 KB** — 77% do que o §5 chegou a ser — com **1 `Read` para 407 comandos de shell** e
+   **89% dele nunca lido**. O joelho medido é **80–110 KB**.
+   ⛔ **E indexe as recusas:** arquivar um `⛔ MEDIDO E REJEITADO` sem o índice no doc vivo é
+   apagá-lo (o log de perf do Painter guardava 47; o §5 citava cinco). As mais duras são
+   **títulos de seção** — um extrator que só lê o corpo perde 31 de 126.
+6. PARE. Não integre, não pushe.

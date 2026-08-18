@@ -103,4 +103,11 @@ pub(super) const SCALE_PER_PX: f32 = 0.01;
 /// Mora aqui, e não no [`super::filter`], porque é **a mesma espécie** dos
 /// vizinhos acima: pixel de arrasto → grandeza do gesto. O módulo do filtro
 /// guarda o que o gesto FAZ.
-pub(super) const FILTER_DRAG_PER_PX: f32 = 0.001;
+// ⚠️ **A régua é a da ENGINE, e esta linha já foi uma SEGUNDA CÓPIA.** A
+// `ph2d-sculpt3d` exporta `FILTER_DRAG_PER_PX` e documenta-a como a calibração
+// autoritativa do gesto — mas o shell declarava a sua, e o `use super::*` fazia
+// o `sculpt3d_filter.rs` resolver para a LOCAL. As duas valiam `0,001`, então
+// nada estava observavelmente errado; o que estava era que re-calibrar na crate
+// (o sítio que a doc dela manda) deixaria a suíte da crate verde sobre um número
+// que o app não usa. Precedente da própria linha: o `DEFAULT_ALPHA_SCALE`.
+pub(super) use ph2d_sculpt3d::FILTER_DRAG_PER_PX;

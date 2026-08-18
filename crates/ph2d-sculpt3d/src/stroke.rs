@@ -318,6 +318,7 @@ pub use mesh_filter::FILTER_DRAG_PER_PX;
 /// outros: ele lê os planos congelados. Ver [`sharpen`].
 #[path = "stroke_filter_sharpen.rs"]
 mod sharpen;
+pub use sharpen::sharpen_total_for_measurement;
 
 /// **AS JANELAS QUE UM TRAÇO PUBLICA** — ver [`windows`].
 #[path = "stroke_windows.rs"]

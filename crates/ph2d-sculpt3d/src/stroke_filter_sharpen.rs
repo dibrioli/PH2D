@@ -11,7 +11,10 @@
 //!
 //! # A lei, do `calc_sharpen_filter` (`sculpt_filter_mesh.cc:1590-1712`)
 //!
-//! **O pré-passe**, uma vez por sub-passo:
+//! **O pré-passe**, uma vez por **GESTO** (o `filter_cache` da referência é
+//! construído no `sculpt_filter_specific_init`) — ⚠️ **este cabeçalho já disse
+//! *"por sub-passo"*, que era a lei ERRADA que a wave existiu para corrigir**;
+//! o item 1 é o único VIVO a cada sub-passo:
 //!
 //! 1. `d[i] = média_do_anel(i) − p[i]` — o deslocamento laplaciano, que é a
 //!    mesma grandeza que o [`crate::FilterKind::EnhanceDetails`] usa inteira
@@ -103,6 +106,53 @@ pub(super) const MAX_STEP: f32 = 0.5;
 /// que um smoke pedir, com o custo de uma row.
 const SMOOTH_RATIO: f32 = 0.35;
 
+/// **Quanto o realce de detalhe pesa** — o `sharpen_intensify_detail_strength`.
+///
+/// ⚠️ **O valor é o da referência, e a minha teoria sobre ele foi REFUTADA por
+/// medição.** Quando o smoke reprovou o Sharpen (*"parece alisar o mesh"*) eu
+/// escrevi que a causa era ter omitido este termo — ele chama-se *"Intensify
+/// Details"* na UI do Blender, e os outros dois apontam ambos para a média.
+/// Construí-o e varri o valor (`measure_sharpen_intensify.rs`):
+///
+/// | INTENSIFY | degrau a força 4 |
+/// |---|---|
+/// | 0,0 (a referência) | 1,046× |
+/// | 0,25 | 1,048× |
+/// | 1,0 | 1,057× |
+/// | 2,0 | 1,069× |
+///
+/// **Ele compra 2% de degrau a oito vezes o default.** Não é ele que faz a lei
+/// afiar, e a hipótese ficou registada aqui em vez de virar um knob que não
+/// resolve nada. O termo FICA porque é a lei da referência e o neutro é exacto
+/// (`blend − 0,0·f` é `blend` em IEEE-754); o que a wave aprendeu está no
+/// cabeçalho, na secção *O QUE ESTA LEI NÃO FAZ*.
+const INTENSIFY: f32 = 0.0;
+
+/// **A porta que NÃO passa pelo clamp da faixa** — só para medição.
+///
+/// ⚠️ **Ela existe porque a tabela que justificava o `SHARPEN_MAX` mediu-se a si
+/// mesma.** O [`SculptStroke::filter_sharpen`] clampa a entrada pelo próprio
+/// teto ANTES de qualquer aritmética, então toda observação acima dele — de
+/// sonda, de gate ou de doc — via o clamp e não a lei: a "saturação em 4,0" que
+/// o doc afirmava era o teto a devolver o mesmo número para qualquer entrada
+/// maior. Erguer o teto mostra que a lei **não satura** (a excursão quase dobra
+/// de 4 para 8 e continua a subir).
+///
+/// ⚠️ **`doc(hidden)` e não `cfg(test)`:** as sondas desta linha vivem em
+/// `tests/`, que é outra crate — sob `cfg(test)` elas não a alcançariam, e a
+/// alternativa seria uma segunda cópia da lei na sonda, que é exactamente o que
+/// deixou a tabela antiga descrever outro produto. ⛔ **Um caminho de produto
+/// que a chamasse estaria a ignorar a faixa que o artista vê.**
+#[doc(hidden)]
+pub fn sharpen_total_for_measurement(
+    stroke: &mut SculptStroke,
+    mesh: &mut Mesh,
+    brush: &Brush,
+    total: f32,
+) -> usize {
+    stroke.filter_sharpen_unclamped(mesh, brush, total)
+}
+
 /// **A valência que a lei da referência pressupõe** — a de um quad (4) ou de um
 /// triângulo regular (6), com folga para o maior dos dois.
 ///
@@ -123,7 +173,20 @@ impl SculptStroke {
     /// existe para ter.
     pub(super) fn filter_sharpen(&mut self, mesh: &mut Mesh, brush: &Brush, amount: f32) -> usize {
         let (lo, hi) = crate::FilterKind::Sharpen.range();
-        let total = amount.clamp(lo, hi);
+        // ⚠️ **O clamp é a ÚNICA coisa que esta porta acrescenta**, e é por isso
+        // que a de medição pode delegar: uma segunda cópia da lei divergiria da
+        // que shipa, que é precisamente o defeito que a medição existe para não
+        // repetir.
+        self.filter_sharpen_unclamped(mesh, brush, amount.clamp(lo, hi))
+    }
+
+    /// A lei, sem a faixa. Ver [`sharpen_total_for_measurement`].
+    pub(crate) fn filter_sharpen_unclamped(
+        &mut self,
+        mesh: &mut Mesh,
+        brush: &Brush,
+        total: f32,
+    ) -> usize {
         self.restore_frozen_pose(mesh);
 
         // ⚠️ **A lista de escritos é a de TOCADOS e é montada uma vez:** um
@@ -216,8 +279,19 @@ impl SculptStroke {
             let hold = (1.0 - fi) * scale;
             let blend = SMOOTH_RATIO * fi * fi;
             let d = self.sharp_d[i];
+            // ⚠️ **O TERMO QUE FAZ DELE UM AFIADOR** — `detail_directions ×
+            // −intensify × f` (`:1605-1609`). Os outros dois apontam AMBOS para
+            // a média (o topo da feição desce, a borda é puxada para dentro
+            // dela), então sem este a lei só ESTREITA a feição: medido, **4,6%**
+            // de degrau no teto do arrasto, invisível — e foi o que o smoke
+            // reprovou (*"sharpen filter parece alisar o mesh"*).
+            //
+            // ⚠️ **Ele SUBTRAI o laplaciano** — é o `calc_enhance_details_filter`
+            // escalado pela curvatura —, e é por isso que ele é o único dos três
+            // que empurra o detalhe para FORA.
+            let push = INTENSIFY * fi;
             for k in 0..3 {
-                acc[k] = acc[k] * hold + d[k] * blend;
+                acc[k] = acc[k] * hold + d[k] * (blend - push);
             }
 
             // ⚠️ **A ORDEM é a da referência** (`scale_factors` e só então

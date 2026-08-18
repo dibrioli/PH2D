@@ -87,5 +87,6 @@ pub use ref_profiles::VerbProfile;
 pub use spacing::{MIN_SPACING_FRACTION, Walk, min_spacing, walk};
 pub use stroke::{
     Dab, FILTER_DRAG_PER_PX, HC_SHAPE_DEFAULT, HC_VERTEX_DEFAULT, HC_VERTEX_MIN, SculptStroke,
+    sharpen_total_for_measurement,
 };
 pub use transform::{Gesture, MIN_SCALE_FACTOR, MaskTransform, TransformKind};

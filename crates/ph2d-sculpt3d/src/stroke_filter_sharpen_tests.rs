@@ -407,18 +407,62 @@ fn no_slice_of_a_sharpen_drag_exceeds_the_reference_ceiling() {
 #[test]
 fn the_sharpen_saturates_where_its_ceiling_sits() {
     let (_, hi) = crate::FilterKind::Sharpen.range();
-    let at = sharpened(hi);
-    let over = sharpened(hi * 4.0);
-    assert_eq!(
-        at.positions(),
-        over.positions(),
-        "quatro vezes o teto ainda move a malha: o teto está cedo demais"
-    );
 
-    let half = sharpened(hi * 0.25);
-    let gap = worst_gap(at.positions(), half.positions());
+    // ⚠️ **Este gate já foi TAUTOLÓGICO, e a auditoria pegou-o.** Ele comparava
+    // `sharpened(hi)` com `sharpened(hi*4)` e dizia *"quatro vezes o teto ainda
+    // move a malha"* — mas o `filter_sharpen` CLAMPA a entrada pelo próprio teto
+    // antes de qualquer aritmética, então os dois colapsavam no mesmo `total` e
+    // a igualdade era verdadeira **por construção, para qualquer valor de
+    // `SHARPEN_MAX`**. Ele guardava a existência do clamp, nunca o valor: com o
+    // teto cortado a um quarto a suíte inteira ficava verde.
+    //
+    // ⚠️ **A pergunta certa é sobre o clamp, e é assim que ela se afirma:** que
+    // a porta do PRODUTO apara, medido contra a porta que **não** apara. É a
+    // única forma de a asserção poder falhar pelo motivo que ela alega.
+    // ⚠️ **As duas metades correm na MESMA malha, e a primeira versão deste gate
+    // não corria** — ela comparava a fixture do `sharpened` (esfera UV) com o
+    // toro do `regular_mesh`, e o `zip` de dois arrays de tamanhos diferentes
+    // trunca em silêncio: o número saía grande **por acidente** e a mutação que
+    // apaga o clamp não o movia. *Uma comparação entre duas malhas diferentes
+    // não mede o que as separa, mede que elas são diferentes.*
+    let clamped = sharpen_on(regular_mesh(), hi * 4.0);
+    let mut raw = regular_mesh();
+    let mut s = SculptStroke::default();
+    s.filter_begin(&raw);
+    crate::sharpen_total_for_measurement(&mut s, &mut raw, &sharpen_brush(), hi * 4.0);
+    assert_eq!(
+        clamped.vert_count(),
+        raw.vert_count(),
+        "as duas metades saíram de malhas diferentes"
+    );
+    let gap = worst_gap(clamped.positions(), raw.positions());
     assert!(
         gap > 1e-4,
-        "um quarto do teto já dá o mesmo que o teto ({gap:e}): a faixa é decorativa"
+        "a porta do produto NÃO aparou uma força de {}× o teto ({gap:e}): \
+         o clamp desapareceu",
+        4.0
+    );
+
+    // ⚠️ **A segunda metade: a FAIXA tem de fazer alguma coisa.** Sem ela o gate
+    // acima estaria satisfeito por um teto de zero — que apara tudo e não deixa
+    // o artista fazer nada. As duas juntas dizem *o clamp existe* E *o que ele
+    // deixa passar não é decorativo*.
+    let half = sharpen_on(regular_mesh(), hi * 0.25);
+    let full = sharpen_on(regular_mesh(), hi);
+    let span = worst_gap(full.positions(), half.positions());
+    assert!(
+        span > 1e-4,
+        "um quarto do teto já dá o mesmo que o teto ({span:e}): a faixa é decorativa"
+    );
+
+    // ⚠️ **E a TERCEIRA: o teto tem de estar onde o doc diz.** É esta que o
+    // torna um número defendido em vez de um literal — com o teto cortado a um
+    // quarto, a lei entrega menos excursão do que a faixa promete, e a auditoria
+    // mediu que o corte passava com a suíte INTEIRA verde.
+    let (_, hi_now) = crate::FilterKind::Sharpen.range();
+    assert!(
+        (hi_now - 4.0).abs() < 1e-6,
+        "o teto mudou para {hi_now}: a tabela do doc e o custo medido \
+         (17,17 ms em 8 fatias) descrevem 4,0 — mova os dois juntos ou nenhum"
     );
 }

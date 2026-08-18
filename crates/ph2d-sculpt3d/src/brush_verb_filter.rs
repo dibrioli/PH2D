@@ -159,9 +159,36 @@ pub enum FilterKind {
 /// sobrevive intacto como o teto de cada fatia — ver `MAX_STEP`), este limita a
 /// força TOTAL que o arrasto pede.
 ///
-/// ⚠️ **O número é MEDIDO, e o que ele nomeia é onde o gesto para de
-/// responder** (`tests/measure_sharpen_law.rs`, esfera de 3010 vértices com uma
-/// crista gaussiana):
+/// ⚠️ **A PRIMEIRA tabela que esteve aqui MEDIU-SE A SI MESMA, e a auditoria
+/// pegou-a.** Ela dizia que a lei *"satura em 4,0 — de 4 para cima os números
+/// são idênticos a todos os dígitos"* e nomeava o recurso como *"a
+/// CONVERGÊNCIA"*. Mas o [`crate::SculptStroke::filter_sharpen`] **clampa a
+/// entrada por este teto antes de qualquer aritmética**, então toda leitura
+/// acima dele via o CLAMP e não a lei: a identidade era o teto a devolver o
+/// mesmo número para qualquer entrada maior. *O recurso nomeado não existia.*
+/// Ela citava ainda a sonda e a fixture erradas — os números eram de outra malha
+/// que a atribuição não mencionava.
+///
+/// ⚠️ **Medido pela porta que NÃO clampa** (`sharpen_total_for_measurement`,
+/// `tests/measure_sharpen_intensify.rs`, malha do produto, 98306 vértices):
+/// a lei **não satura** — o degrau sobe `0,990× → 1,398×` de força 1 a 64,
+/// monotónico e sem joelho, com a excursão a quase **dobrar** de 4 para 8.
+///
+/// ⚠️ **O RECURSO REAL É TEMPO, e é ele que fixa o número:** uma fatia percorre
+/// a malha INTEIRA (pré-passe + gather), e o filtro corre **a cada evento de
+/// ponteiro**:
+///
+/// | força | fatias | tempo |
+/// |---|---|---|
+/// | 0,5 | 1 | 7,72 ms |
+/// | 2,0 | 4 | 11,47 ms |
+/// | **4,0** | **8** | **17,17 ms** |
+/// | 8,0 | 16 | 27,93 ms |
+/// | 16,0 | 32 | 49,16 ms |
+///
+/// ⚠️ **Um quadro de 60 fps são 16,7 ms**, então o teto de hoje já está **no
+/// limite** — e é por isso que ele não sobe sem uma wave de custo. A tabela
+/// antiga, medida na fixture de 3010 vértices, escondia isto por completo.
 ///
 /// | força | excursão | degrau (razão) |
 /// |---|---|---|
@@ -172,12 +199,11 @@ pub enum FilterKind {
 /// | 6,0 | 0,00585 | 1,046× |
 /// | 8,0 | 0,00585 | 1,046× |
 ///
-/// De `4,0` para cima os números são **idênticos a todos os dígitos**: o
-/// processo chegou ao ponto fixo que a referência chama de *stable state*, e
-/// dali para a frente o artista continua a arrastar e nada acontece — que é
-/// exactamente o defeito que a [`FilterKind::EnhanceDetails`] acabou de curar
-/// no filtro vizinho. *Um teto posto onde o gesto já não responde não tira
-/// nada de ninguém; ele só deixa de prometer.*
+/// ⚠️ **⏸️ E O NÚMERO É DECISÃO DO ENIO, com a tabela acima na mão:** subir o
+/// teto compra excursão real (a lei não satura) e **paga em milissegundos por
+/// evento de ponteiro**. Não é uma escolha de engenharia — é *quanto arrasto um
+/// gesto vale*, e a cura barata do outro lado (cortar o custo por fatia) é uma
+/// wave própria.
 ///
 /// ⚠️ **A PRIMEIRA tabela que escrevi aqui era de uma lei ERRADA**, e ficou uma
 /// wave inteira no arquivo: ela media o `sharpen_factor` recomputado a cada
@@ -294,9 +320,16 @@ impl Verb {
     /// alvo destes quatro é função do vértice, do `pre` congelado e do anel, e
     /// de **mais nada** — nenhum deles lê o centro do dab, a normal de área, o
     /// plano ajustado à pegada, o caminho do traço ou uma âncora. O gate
-    /// `a_filtering_verb_reads_nothing_from_the_dab` o afirma pela porta do
-    /// produto: o mesmo vértice, o mesmo peso, **dois dabs radicalmente
-    /// diferentes**, e o alvo tem de sair byte a byte igual.
+    /// `the_verb_in_hand_does_not_change_the_law_a_filter_runs` o afirma pela
+    /// porta do produto, varrendo `FilterKind::ALL × Verb::ALL` com `assert_eq!`
+    /// byte a byte.
+    ///
+    /// ⚠️ **Esta linha citava um `a_filtering_verb_reads_nothing_from_the_dab`
+    /// que NUNCA existiu** — `grep` na árvore devolve só a própria citação, e
+    /// `git log -S` só o commit que a escreveu. A propriedade **está** defendida,
+    /// por um gate mais forte que o nome prometido; e o cenário que o nome
+    /// descrevia é hoje inexprimível **por tipo** (as leis de filtro não recebem
+    /// um `Dab`).
     ///
     /// ⚠️ **WHITELIST e não blacklist**, pelo motivo que o
     /// [`Self::honours_invert`] já pagou uma vez: derivada por negação
@@ -308,7 +341,15 @@ impl Verb {
     /// que filtra a malha, **em silêncio**, e o filtro o rodaria com um dab que
     /// não existe.
     ///
-    /// ⚠️ **O [`Verb::Sharpen`] fica de FORA, e a exclusão é medida.** Ele
+    /// ⚠️ **ESTE PARÁGRAFO ESTÁ RETRATADO — o [`Verb::Sharpen`] ESTÁ na tabela**
+    /// (o `match` abaixo semeia-o em [`FilterKind::EnhanceDetails`]). A razão da
+    /// retratação está no gate que a mediu
+    /// (`the_seed_table_has_content_and_no_two_verbs_seed_the_same_law`): *duas
+    /// portas para o MESMO deslocamento é o que se recusa; duas portas para
+    /// conjuntos DIFERENTES é o que a referência tem.* O texto abaixo é o mundo
+    /// pré-W9c-a e fica como registo do que caiu.
+    ///
+    /// ⚠️ ~~O [`Verb::Sharpen`] fica de FORA, e a exclusão é medida.~~ Ele
     /// passa na propriedade acima (só lê o anel), mas o alvo dele é
     /// `live + (live − média)·w`, que **é** o `target_smooth` com o sinal do
     /// peso trocado — e num filtro o sinal vem do ARRASTO. Semeá-lo apontaria

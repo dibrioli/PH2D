@@ -253,6 +253,26 @@ o ship vê é invisível entre integrações*, a mesma causa estrutural que a in
 16/08 achou em quatro arquivos do `main`. **A cura é do dono do `ph2d-render`:** ou o pino
 sobe para 184 com a medição ao lado, ou o `RenderInstance` volta a 176.
 
+### §7-bis — O batch de FECHO da linha (depois de §9-bis e §9-ter)
+
+- `cargo fmt --all -- --check` **EXIT 0** · clippy `--all-targets --workspace` **zero**.
+- `cargo nextest run --workspace --cargo-profile ci-test --no-fail-fast`:
+  **16 377 testes, 16 375 verdes**, e as duas falhas são **gates de RAZÃO sob carga**, não
+  código:
+  `ph2d-timeline::the_cost_of_depth_is_linear_not_explosive` (a flake **nomeada no
+  CLAUDE.md §5** desta exacta classe) e
+  `ph2d-host-desktop::the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke`.
+  ⚠️ **Re-rodadas SOZINHAS, as duas passam** — a corrida partilhou a máquina com duas
+  suítes de GPU e o `load average` estava em **14,8**; o CLAUDE.md §5.0 já diz que *nenhuma
+  leitura de relógio desta workstation vale nada acima de `load ~5`*.
+- Paridade de GPU, suíte `--ignored` inteira: **76 de 77 verdes** em `gpu_cpu_parity` e
+  **29/29** em `gpu_cpu_parity_sim`. A única vermelha é
+  `value_slope_kernel_matches_the_cpu_on_the_device`, **PRÉ-EXISTENTE** e fora desta linha.
+- **LOC (HR-18):** o gate `workspace_src_files_under_loc_cap` apanhou `noise/lib.rs` (706) e
+  `wiggle/lib.rs` (702) depois da porta. **Split para o irmão**, na costura que o
+  `motion.oscillator` já tinha (`gpu.rs` no wiggle, `params_ui.rs` no noise) — **nada de
+  allowlist**. Ficaram em 464 e 565.
+
 ---
 
 ## §8 — O smoke

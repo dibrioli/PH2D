@@ -103,6 +103,14 @@ pub(super) const MAX_STEP: f32 = 0.5;
 /// que um smoke pedir, com o custo de uma row.
 const SMOOTH_RATIO: f32 = 0.35;
 
+/// **A valência que a lei da referência pressupõe** — a de um quad (4) ou de um
+/// triângulo regular (6), com folga para o maior dos dois.
+///
+/// ⚠️ **É o ponto em que a guarda de valência começa a morder, e abaixo dele ela
+/// é a IDENTIDADE** — `min(1, 6/n) == 1` para todo `n <= 6` em aritmética exacta,
+/// então nenhuma malha regular vê um bit diferente.
+pub(super) const VALENCE_REGIME: usize = 6;
+
 impl SculptStroke {
     /// **O SHARPEN, com o arrasto fatiado em iterações estáveis.**
     ///
@@ -130,6 +138,15 @@ impl SculptStroke {
         // sub-passo anterior a pôs, e o gesto deixaria de ser reversível. Com o
         // `restore` acima já feito, o caminho certo é simplesmente não iterar.
         if total > 0.0 {
+            // ⚠️ **O `f` é CONGELADO e corre UMA vez, e a distinção custou um
+            // smoke.** No fonte o `sharpen_factor` vive no `filter_cache` —
+            // construído no `sculpt_filter_specific_init`, ou seja **uma vez por
+            // GESTO** — e toda iteração seguinte reusa o MESMO array. Eu
+            // recomputava-o por sub-passo, e a consequência não é sutil: a lei
+            // passa a perseguir o próprio rasto (a curvatura que ela acabou de
+            // achatar deixa de a marcar como detalhe) e converge para um estado
+            // **ALISADO**, que é exactamente o que o smoke reprovou.
+            self.sharpen_freeze(mesh, brush);
             let n = steps_for(total);
             let per = total / n as f32;
             for _ in 0..n {
@@ -141,9 +158,16 @@ impl SculptStroke {
         self.moved.len()
     }
 
-    /// **UM sub-passo:** o pré-passe sobre a pose VIVA, depois o gather.
+    /// **UM sub-passo:** a média VIVA do anel, depois o gather.
+    ///
+    /// ⚠️ **As duas metades do pré-passe têm tempos de vida DIFERENTES, e
+    /// colapsá-las era o defeito.** O `sharpen_factor` é congelado no init do
+    /// gesto; o `smooth_positions` que alimenta o termo médio é recomputado a
+    /// cada evento (`neighbor_data_average_mesh_check_loose(position_data.eval,
+    /// …)`, `:1673`) — ele mede a pose de AGORA. *Uma delas descreve onde o
+    /// detalhe ESTAVA, a outra onde a superfície ESTÁ.*
     fn sharpen_step(&mut self, mesh: &mut Mesh, brush: &Brush, per: f32) {
-        self.sharpen_prepass(mesh, brush);
+        self.sharpen_live_average(mesh, brush);
 
         let pos = mesh.positions();
         for i in 0..self.touched.len() {
@@ -154,14 +178,42 @@ impl SculptStroke {
             // O gather sobre o anel, pesado pela curvatura de CADA VIZINHO —
             // é esta leitura que obriga o pré-passe a existir.
             let mut acc = [0.0f32; 3];
-            for &nb in mesh.adjacency().vert_verts.neighbours(v) {
+            let ring = mesh.adjacency().vert_verts.neighbours(v);
+            for &nb in ring {
                 let fs = self.sharp_f[self.slot[nb as usize] as usize];
                 let q = pos[nb as usize];
                 for k in 0..3 {
                     acc[k] += (q[k] - p[k]) * fs;
                 }
             }
-            let hold = 1.0 - fi;
+            // ⚠️ **A GUARDA DE VALÊNCIA — divergência DECLARADA, e ela nasceu de
+            // a malha do smoke explodir.** O gather da referência é uma SOMA
+            // sobre o anel, **não normalizada pela contagem**: com `f[i]` baixo e
+            // os vizinhos altos ele vale `valência × laplaciano`, e um passo de
+            // alisamento de fator maior que um OVERSHOOTA. A referência vive com
+            // isso porque as malhas dela são regulares; a nossa importa OBJ/PLY/
+            // STL, e uma esfera UV tem polos de valência igual ao número de
+            // segmentos. Medido na crista, com o teto de fatia da referência:
+            //
+            // | malha | valência máx | degrau a força 4 |
+            // |---|---|---|
+            // | cubo subdividido (a do produto) | 4 | **1,046×** |
+            // | esfera UV 48×64 | 64 | **1098×** (excursão 33 num raio 1) |
+            //
+            // ⚠️ **Ela é IDENTIDADE no regime da referência** (`min(1, 6/n)` vale
+            // exactamente `1` para todo `n <= 6`, que é a valência de um quad ou
+            // de um triângulo regular) ⇒ **a malha do produto é byte-idêntica** e
+            // a divergência só existe onde a lei já não era utilizável.
+            //
+            // ⛔ **Normalizar pela valência SEMPRE foi a alternativa e está
+            // recusada:** ela divide o efeito por ~4 no caso comum, onde ele já é
+            // discreto, para curar um regime que a referência nem alcança.
+            let scale = if ring.len() > VALENCE_REGIME {
+                VALENCE_REGIME as f32 / ring.len() as f32
+            } else {
+                1.0
+            };
+            let hold = (1.0 - fi) * scale;
             let blend = SMOOTH_RATIO * fi * fi;
             let d = self.sharp_d[i];
             for k in 0..3 {
@@ -202,20 +254,15 @@ impl SculptStroke {
     /// laplaciano.* A guarda vale para o caso exacto (`max` abaixo do épsilon,
     /// que uma malha construída à mão pode ter) e devolve zero, que já é a
     /// resposta certa; o que ela **não** é, é a explicação de um produto calmo.
-    fn sharpen_prepass(&mut self, mesh: &Mesh, brush: &Brush) {
+    fn sharpen_freeze(&mut self, mesh: &Mesh, brush: &Brush) {
+        self.sharpen_live_average(mesh, brush);
+
         let n = self.touched.len();
         self.sharp_f.clear();
         self.sharp_f.resize(n, 0.0);
-        self.sharp_d.clear();
-        self.sharp_d.resize(n, [0.0; 3]);
-
         let mut max = 0.0f32;
         for i in 0..n {
-            let v = self.touched[i];
-            let p = mesh.positions()[v as usize];
-            let avg = self.neighbour_average(mesh, brush, v, p);
-            let d = [avg[0] - p[0], avg[1] - p[1], avg[2] - p[2]];
-            self.sharp_d[i] = d;
+            let d = self.sharp_d[i];
             let mag = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
             self.sharp_f[i] = mag;
             if mag > max {
@@ -229,6 +276,25 @@ impl SculptStroke {
             // `1 − (1 − t)²`, a curva da referência (`:2085`).
             let u = 1.0 - t;
             *f = 1.0 - u * u;
+        }
+    }
+
+    /// **A média do anel na pose de AGORA** — o `smooth_positions` da
+    /// referência, guardado como o deslocamento até ela.
+    ///
+    /// ⚠️ **Ele é VIVO, ao contrário do `sharp_f`**: a referência o recomputa a
+    /// cada evento, e é por isso que o termo médio continua a puxar o vértice
+    /// para a média do anel que ele tem AGORA em vez de para a que ele tinha no
+    /// pen-down.
+    fn sharpen_live_average(&mut self, mesh: &Mesh, brush: &Brush) {
+        let n = self.touched.len();
+        self.sharp_d.clear();
+        self.sharp_d.resize(n, [0.0; 3]);
+        for i in 0..n {
+            let v = self.touched[i];
+            let p = mesh.positions()[v as usize];
+            let avg = self.neighbour_average(mesh, brush, v, p);
+            self.sharp_d[i] = [avg[0] - p[0], avg[1] - p[1], avg[2] - p[2]];
         }
     }
 }

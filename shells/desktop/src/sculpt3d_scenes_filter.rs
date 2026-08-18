@@ -1,5 +1,5 @@
-//! **A CENA DO FILTRO** (`=34`) — a W9 inteira, e a única cena desta linha que
-//! leva uma pergunta que os gates **não conseguem** responder.
+//! **A CENA DO FILTRO** (`=34`) — a W9 inteira, e a cena que achou os dois
+//! defeitos do Sharpen que nenhum gate desta linha tinha visto.
 //!
 //! ⚠️ **Irmã das outras cenas e não parte delas**, pelo teto de LOC da shell e
 //! pela mesma linha de corte: cada arquivo é a história de uma wave.
@@ -23,15 +23,20 @@ pub(crate) fn filter_scene() -> bool {
 
 /// O roteiro da `=34`.
 ///
-/// ⚠️ **O passo 4 é uma pergunta ABERTA, e está escrito como tal.** Os gates
-/// desta wave provam que o kernel é o `calc_sharpen_filter` (paridade contra a
-/// lei escrita à mão, `< 1e-6`), que o gesto é reversível ao byte e que ele não
-/// depende da taxa de eventos do rato. O que eles **não** provam é que a lei
-/// desenha o que se quer de um afiador: as duas réguas geométricas óbvias — o
-/// degrau entre vizinhos e a largura da crista — **caem ou oscilam** sobre a lei
-/// correcta, porque metade do mecanismo é achatar o pico e a outra metade é
-/// puxar o terreno até ele. *Um gate escrito sobre uma delas não poderia falhar
-/// pelo motivo que alegasse.* Este passo é o instrumento que decide.
+/// ⚠️ **Este doc dizia que o passo 4 era uma pergunta ABERTA, e o smoke fechou-a
+/// pelo pior caminho: reprovando.** Eu tinha escrito que *"as duas réguas
+/// geométricas óbvias caem ou oscilam sobre a lei correcta"* e concluído que só
+/// o olho podia decidir — o Enio olhou, disse *"Sharpen não parece correto"*, e
+/// a causa era minha: o `sharpen_factor` era recomputado a cada sub-passo
+/// quando no fonte ele vive no `filter_cache`, construído **uma vez por gesto**.
+/// *A régua não discriminava porque a lei alisava.* Corrigida, ela discrimina, e
+/// os passos 4 e 5 passaram de perguntas a **conferências** — cada um com o
+/// sintoma do defeito antigo escrito ao lado, para o smoke saber o que procurar.
+///
+/// ⚠️ **E o passo 5 guarda a segunda metade do mesmo report:** os polos desta
+/// esfera têm valência 144 e o gather da referência não é normalizado pela
+/// contagem, então a malha **explodia** (degrau a 1098×). A guarda de valência é
+/// divergência declarada e é identidade em malha regular.
 pub(crate) fn announce() {
     if !filter_scene() {
         return;
@@ -58,18 +63,17 @@ pub(crate) fn announce() {
          [sculpt3d]        tem de CONTINUAR a realcar muito depois de o Smooth ter parado.\n\
          [sculpt3d]        Medido: o Smooth prende em 0,0726 e a referencia alcanca 0,2179.\n\
          [sculpt3d]        Se os dois pararem juntos, o teto voltou: reporte.\n\
-         [sculpt3d]    (4) *** O SHARPEN -- E ESTE PASSO E' UMA PERGUNTA, NAO UMA CONFERENCIA.\n\
-         [sculpt3d]        Pegue o SHARPEN e arraste. A lei e' a do Blender, conferida contra o\n\
-         [sculpt3d]        fonte a menos de 1e-6 -- o que NAO sei dizer e' se ela desenha o que\n\
-         [sculpt3d]        voce quer de um afiador. Ela nao desloca uma feicao: ela muda o\n\
-         [sculpt3d]        CONTRASTE entre a crista e o terreno em volta (o topo achata, a volta\n\
-         [sculpt3d]        e' puxada ate' ele). Olhe para as QUINAS das cristas e diga se elas\n\
-         [sculpt3d]        ficam mais definidas ou apenas diferentes. As duas reguas geometricas\n\
-         [sculpt3d]        que tentei nao separam as duas coisas -- por isso a pergunta e' sua.\n\
-         [sculpt3d]    (5) O TETO DELE. O arrasto do Sharpen SATURA em 4,0 (medido: 4 / 8 / 16 /\n\
-         [sculpt3d]        32 dao numeros identicos a todos os digitos -- e' o *stable state* que\n\
-         [sculpt3d]        a referencia nomeia). Arraste MUITO: a peca tem de parar de mudar sem\n\
-         [sculpt3d]        nunca explodir nem inverter. Se ela virar do avesso, reporte.\n\
+         [sculpt3d]    (4) *** O SHARPEN. Pegue-o e arraste. Ele NAO desloca uma crista: ele muda\n\
+         [sculpt3d]        o CONTRASTE entre ela e o terreno em volta -- o topo achata um pouco e\n\
+         [sculpt3d]        a volta e' puxada ate' ele, o que deixa a transicao mais CURTA. Olhe\n\
+         [sculpt3d]        para as QUINAS das cristas: elas tem de ficar mais definidas.\n\
+         [sculpt3d]        (No 1o smoke ele ALISAVA -- eu recomputava a curvatura a cada passo e\n\
+         [sculpt3d]        a lei perseguia o proprio rasto. Agora ela e' medida uma vez, como no\n\
+         [sculpt3d]        Blender. Se ainda parecer que ele alisa, reporte.)\n\
+         [sculpt3d]    (5) A PECA NAO PODE EXPLODIR. Arraste MUITO: ela tem de parar de mudar e\n\
+         [sculpt3d]        ficar parada (o arrasto satura). No 1o smoke a bola virava do avesso --\n\
+         [sculpt3d]        os polos desta esfera tem 144 vizinhos e a conta do Blender supoe ~4.\n\
+         [sculpt3d]        Se algo esticar para fora de quadro, reporte NA HORA.\n\
          [sculpt3d]    (6) E O SHARPEN DEIXA A MALHA INTEIRA. Ele NAO e' o Enhance Details com\n\
          [sculpt3d]        outro nome: passe os dois no mesmo gesto e compare. Se sairem iguais,\n\
          [sculpt3d]        a bifurcacao do kernel nao chegou ao alvo: reporte."

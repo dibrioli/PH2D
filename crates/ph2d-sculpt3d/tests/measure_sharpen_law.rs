@@ -183,7 +183,9 @@ fn measure_what_the_sharpen_does_and_where_it_breaks() {
     println!("\n=== A VARREDURA — a força total cresce até quebrar ===");
     println!("\n  força | fatias | excursão | degrau    | Δdegrau | largura | curv. pico | finito");
     let step0 = max_step(&base);
-    for f in [0.1f32, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0] {
+    for f in [
+        0.1f32, 0.25, 0.5, 0.75, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.75, 2.0, 3.0, 4.0,
+    ] {
         let m = filtered(FilterKind::Sharpen, f);
         let finite = m
             .positions()

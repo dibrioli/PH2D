@@ -163,25 +163,32 @@ pub enum FilterKind {
 /// responder** (`tests/measure_sharpen_law.rs`, esfera de 3010 vértices com uma
 /// crista gaussiana):
 ///
-/// | força | fatias | excursão | degrau | curvatura de pico |
-/// |---|---|---|---|---|
-/// | 1,0 | 2 | 0,015792 | 0,025719 | 0,009231 |
-/// | 2,0 | 4 | 0,033897 | 0,032442 | 0,031231 |
-/// | **4,0** | **8** | **0,032153** | **0,023300** | **0,015836** |
-/// | 8,0 | 16 | 0,032153 | 0,023300 | 0,015836 |
-/// | 16,0 | 32 | 0,032153 | 0,023300 | 0,015836 |
-/// | 32,0 | 64 | 0,032153 | 0,023300 | 0,015836 |
+/// | força | excursão | degrau (razão) |
+/// |---|---|---|
+/// | 1,0 | 0,00154 | 0,990× |
+/// | 2,0 | 0,00303 | 1,003× |
+/// | 3,0 | 0,00446 | 1,021× |
+/// | **4,0** | **0,00585** | **1,046×** |
+/// | 6,0 | 0,00585 | 1,046× |
+/// | 8,0 | 0,00585 | 1,046× |
 ///
-/// De `4,0` para cima os três números são **idênticos a todos os dígitos**: o
+/// De `4,0` para cima os números são **idênticos a todos os dígitos**: o
 /// processo chegou ao ponto fixo que a referência chama de *stable state*, e
 /// dali para a frente o artista continua a arrastar e nada acontece — que é
 /// exactamente o defeito que a [`FilterKind::EnhanceDetails`] acabou de curar
 /// no filtro vizinho. *Um teto posto onde o gesto já não responde não tira
 /// nada de ninguém; ele só deixa de prometer.*
 ///
-/// ⚠️ **E a lei NUNCA diverge** (`finito` em toda a varredura, até 32,0), então
-/// este teto **não** é uma guarda de estabilidade — essa é o `MAX_STEP`, e ela
-/// mora dentro da fatia.
+/// ⚠️ **A PRIMEIRA tabela que escrevi aqui era de uma lei ERRADA**, e ficou uma
+/// wave inteira no arquivo: ela media o `sharpen_factor` recomputado a cada
+/// sub-passo, e nesse regime a lei ALISA (o degrau caía a `0,667×`). Com o
+/// factor congelado — como no `filter_cache` da referência — ele **sobe**, que é
+/// o que a coluna acima mostra. *Uma tabela medida sobre um produto que mudou é
+/// pior que tabela nenhuma: ela justifica o número com o fenómeno errado.*
+///
+/// ⚠️ **E a divergência mora no `MAX_STEP` mais a guarda de valência**, não
+/// aqui: sem a guarda esta mesma varredura numa esfera UV chega a **1098×** de
+/// degrau e a uma excursão de **33** num raio um.
 const SHARPEN_MAX: f32 = 4.0;
 
 impl FilterKind {

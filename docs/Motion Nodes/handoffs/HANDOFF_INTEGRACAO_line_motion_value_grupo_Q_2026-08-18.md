@@ -256,15 +256,16 @@ sobe para 184 com a medição ao lado, ou o `RenderInstance` volta a 176.
 ### §7-bis — O batch de FECHO da linha (depois de §9-bis e §9-ter)
 
 - `cargo fmt --all -- --check` **EXIT 0** · clippy `--all-targets --workspace` **zero**.
-- `cargo nextest run --workspace --cargo-profile ci-test --no-fail-fast`:
-  **16 377 testes, 16 375 verdes**, e as duas falhas são **gates de RAZÃO sob carga**, não
-  código:
+- `cargo nextest run --workspace --cargo-profile ci-test --no-fail-fast`, depois de tudo
+  (§9-bis + §9-ter + §9-quater): **16 380 testes, 16 380 verdes, `EXIT 0`**.
+  ⚠️ **Uma corrida ANTERIOR marcou duas falhas, e as duas eram CARGA, não código:**
   `ph2d-timeline::the_cost_of_depth_is_linear_not_explosive` (a flake **nomeada no
   CLAUDE.md §5** desta exacta classe) e
-  `ph2d-host-desktop::the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke`.
-  ⚠️ **Re-rodadas SOZINHAS, as duas passam** — a corrida partilhou a máquina com duas
-  suítes de GPU e o `load average` estava em **14,8**; o CLAUDE.md §5.0 já diz que *nenhuma
-  leitura de relógio desta workstation vale nada acima de `load ~5`*.
+  `ph2d-host-desktop::the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke` — aquela
+  corrida partilhou a máquina com duas suítes de GPU, com `load average` em **14,8**, e as
+  duas passam sozinhas e passaram nesta. O CLAUDE.md §5.0 já diz que *nenhuma leitura de
+  relógio desta workstation vale nada acima de `load ~5`*; fica o registo de que **a suíte
+  inteira é um desses relógios**.
 - Paridade de GPU, suíte `--ignored` inteira: **76 de 77 verdes** em `gpu_cpu_parity` e
   **29/29** em `gpu_cpu_parity_sim`. A única vermelha é
   `value_slope_kernel_matches_the_cpu_on_the_device`, **PRÉ-EXISTENTE** e fora desta linha.

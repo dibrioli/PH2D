@@ -29,7 +29,19 @@
 //! nothing else; the curve's own revision rides in the cook's fingerprint, so editing the shape
 //! re-cooks this node and *only* the nodes downstream of it.
 
-use ph2d_node_registry::{NodeRegistry, ParamHardMax, ParamUiHint, ParamWidget, RegistryError};
+use ph2d_node_registry::{
+    NodeRegistry, ParamGate, ParamHardMax, ParamUiHint, ParamWidget, RegistryError,
+};
+
+/// `mode`: quem responde **"quantos?"**.
+const MODE_COUNT: f32 = 0.0;
+const MODE_SPACING: f32 = 1.0;
+
+/// O piso do espaçamento. Não é gosto: `count = comprimento / spacing`, então um
+/// `spacing` que chega a zero pede uma contagem infinita — e o clamp que a apara
+/// devolveria o teto em silêncio, com o slider a dizer outra coisa. O piso é o
+/// menor passo que o `ParamUiHint` oferece, e abaixo dele a pergunta degenera.
+const MIN_SPACING: f32 = 0.01;
 
 /// O teto que a MÁQUINA (ou o bom senso) impõe, alcançável por DIGITAÇÃO — o slider fica
 /// onde a MÃO trabalha (soft/hard do Blender; doc 88 §11). O curso de antes é este número:
@@ -91,6 +103,32 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "align",
             default: 1.0,
         },
+        // **Quem responde "quantos?"** — `0` a CONTAGEM, `1` o ESPAÇAMENTO.
+        //
+        // ⚠️ Um modo e não uma sentinela, e é a lei do `time_mode` do
+        // `motion.oscillator`/`value.lfo`: `count` e `spacing` são **dois números
+        // sobre a mesma grandeza**, e dois deles na tela é pior que um botão morto.
+        // A sentinela (`spacing = 0` ⇒ usa `count`) foi considerada e **não cabe
+        // aqui**: o `ParamGate` decide por um valor INTEIRO, então ela deixaria
+        // `spacing ∈ (0, 0,5)` a pintar os dois controles com só um a mandar —
+        // um knob que mente, que é o que esta casa recusa.
+        ParamSpec {
+            name: "mode",
+            default: MODE_COUNT,
+        },
+        // A distância de ARCO entre vizinhos, em unidades de MUNDO.
+        //
+        // ⚠️ **Diverge do irmão no mesmo app, e a divergência é NOMEADA:** o
+        // `pattern_along_path` do módulo Vector mede o espaçamento como FRAÇÃO da
+        // largura do motivo (`1.0` encaixa borda-a-borda) porque lá o que se
+        // repete é uma FORMA, que tem tamanho. Aqui o nó emite **instâncias**, e
+        // ele não sabe o tamanho de nenhuma — o `size` é escrito depois, por
+        // quem quiser. Uma fração de uma largura que este nó não conhece seria
+        // um número sem referente; a distância de arco é o que ele pode honrar.
+        ParamSpec {
+            name: "spacing",
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -104,6 +142,49 @@ fn polyline(s: &Stream) -> Vec<[f32; 2]> {
     }
 }
 
+/// Qual das duas réguas responde *"quantos?"*.
+///
+/// O índice de um enum chega como `f32`, então a fronteira é o **ponto médio**
+/// entre os dois — escrita a partir das duas constantes, e não como um `0.5`
+/// solto que deixaria de ser o meio no dia em que um terceiro modo nascesse.
+fn counts_by_spacing(mode: f32) -> bool {
+    mode >= (MODE_COUNT + MODE_SPACING) * 0.5
+}
+
+/// Quantas cópias **CABEM** num arco de comprimento `length` a cada `spacing`.
+///
+/// ⚠️ **FLOOR, e a lei é a do irmão no mesmo app:** o `pattern_along_path` do
+/// módulo Vector só coloca a cópia cuja FATIA cabe no que resta do arco
+/// (`k_hi = floor(…)`), então o espaçamento entregue nunca é mais APERTADO que o
+/// pedido. Com o enrolamento deste nó o vão de volta ao começo é o mesmo
+/// `length / count`, então o conjunto sai uniforme e a garantia vale na volta
+/// inteira.
+///
+/// ⚠️ **Um espaçamento maior que a curva devolve ZERO**, não uma cópia — é o
+/// mesmo veredito do irmão (`if k_hi < k_lo { return Vec::new() }`), e é honesto:
+/// nada cabe. O nó já trata contagem zero como *forma ausente* e emite vazio.
+/// Repare que isso **cai do `floor`**, não de um caso especial.
+///
+/// ⚠️ **A primeira versão tinha um guard a mais (`n >= 1.0`) e a MUTAÇÃO o
+/// derrubou:** trocá-lo por `n >= 0.0` não movia um número, porque `floor` de
+/// qualquer coisa menor que 1 **já é 0**. Ele foi removido em vez de ganhar um
+/// gate — *um guard que não consegue mudar resposta nenhuma é ruído, e um gate
+/// escrito para o defender teria de mentir sobre o que prova*. O que sobra é o
+/// `is_finite`, que é **defesa em camadas MEDIDA**: o `length` vem de geometria
+/// real e o `spacing` já passou pelo piso, então nenhum chamador de hoje o
+/// alcança — ele fica porque o param é dirigível por fio (doc 58) e custa nada.
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn copies_that_fit(length: f32, spacing: f32) -> usize {
+    let n = (length / spacing).floor();
+    if n.is_finite() {
+        // Um negativo satura em 0 no `as usize` (definido desde o Rust 1.45), e
+        // um `length` negativo não existe: o `lut` é soma de comprimentos.
+        (n as usize).min(RECOMMENDED_MAX_ELEMENTS)
+    } else {
+        0
+    }
+}
+
 struct MotionPath;
 
 impl NodeOp for MotionPath {
@@ -112,7 +193,6 @@ impl NodeOp for MotionPath {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        let count = param_as_count(ctx.param("count"), RECOMMENDED_MAX_ELEMENTS);
         let align = ctx.param("align") >= 0.5;
         // The offset is the param PLUS whatever a wire is putting on the `offset` input — one
         // number, so an LFO makes the set flow. (A stream with no value reads as 0.)
@@ -129,6 +209,20 @@ impl NodeOp for MotionPath {
         let name = ctx.text_param(PATH_PARAM).unwrap_or_default().to_string();
         let pts = polyline(ctx.external(&ph2d_nodegraph::external::curve_of(&name)));
         let lut = ph2d_arc_length::lut(&pts);
+
+        // **Quantos?** — o número que o artista digitou, ou o que o ESPAÇAMENTO
+        // deriva do comprimento que o `lut` já tem na mão (`lut.last()` **É** o
+        // total; o contrato está escrito na folha `ph2d-arc-length`). Nada de
+        // canal novo, nada de segunda travessia: a wave inteira é uma divisão
+        // sobre um número que este `eval` já calculou para amostrar.
+        let count = if counts_by_spacing(ctx.param("mode")) {
+            copies_that_fit(
+                lut.last().copied().unwrap_or(0.0),
+                ctx.param("spacing").max(MIN_SPACING),
+            )
+        } else {
+            param_as_count(ctx.param("count"), RECOMMENDED_MAX_ELEMENTS)
+        };
 
         // A shape that is not there (not drawn yet, renamed, deleted) is an EMPTY stream — the same
         // thing an unconnected input is. A node that cannot find its curve emits nothing; it does
@@ -181,8 +275,25 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
+
+/// **Só a régua escolhida aparece.** `count` e `spacing` respondem à MESMA
+/// pergunta, e pintar os dois faria o artista perguntar qual deles manda — o
+/// precedente exacto é o `time_mode` do `motion.oscillator` (Seconds × BPM).
+static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: "count",
+        when: "mode",
+        values: &[0],
+    },
+    ParamGate {
+        param: "spacing",
+        when: "mode",
+        values: &[1],
+    },
+];
 
 /// Param UI hints (M1.P1). The **path name** is a `ParamWidget::Source` — a picker of the
 /// shapes the app has published (doc 65), so the artist picks the shape they drew by NAME
@@ -198,12 +309,32 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Source,
     },
     ParamUiHint {
+        param: "mode",
+        label: "Count By",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Number", "Spacing"],
+        },
+    },
+    ParamUiHint {
         param: "count",
         label: "Count",
         min: 1.0,
         max: 240.0,
         step: 1.0,
         widget: ParamWidget::IntSlider,
+    },
+    // A faixa é a que a MÃO percorre; o teto digitável é o `ParamHardMax`, e
+    // acima dele nada quebra — só não cabe cópia nenhuma, que é a resposta certa.
+    ParamUiHint {
+        param: "spacing",
+        label: "Spacing",
+        min: MIN_SPACING,
+        max: 4.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
     },
     ParamUiHint {
         param: "offset",

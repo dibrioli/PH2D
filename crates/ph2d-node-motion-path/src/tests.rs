@@ -177,3 +177,122 @@ fn dragging_the_shape_moves_the_set() {
         _ => panic!("P"),
     }
 }
+
+// ---------------------------------------------------------------------------
+// A CONTAGEM DERIVADA DO ESPAÇAMENTO (folha 06 linha 46)
+//
+// A célula pedia CINCO controles que o `pattern_along_path` do módulo Vector
+// shipa e este nó não tinha. ⚠️ Medido (`measure_path_controls`), QUATRO deles
+// já eram alcançáveis — o `Slide` **é** o `offset` deste nó, e Start/End,
+// perpendicular e Side saem do irmão `motion.spline_wrap`, que lê a MESMA curva
+// desenhada e cuja `frame_at` chama a MESMA `ph2d_arc_length::at`. Sobrou este.
+// ---------------------------------------------------------------------------
+
+/// Uma reta de comprimento 10.
+const LINE10: [[f32; 2]; 2] = [[0.0, 0.0], [10.0, 0.0]];
+
+/// **O espaçamento decide quantos.** Numa reta de 10, um passo de 2 dá cinco.
+///
+/// O oráculo é a GEOMETRIA e não a contagem: as cinco pousam de dois em dois,
+/// que é o número pedido — uma contagem certa com posições erradas passaria por
+/// um `assert_eq!(len, 5)` sozinho.
+#[test]
+fn the_spacing_decides_how_many_and_they_land_that_far_apart() {
+    let (pos, _) = walk(
+        &LINE10,
+        "Track",
+        &[
+            ("mode", MODE_SPACING),
+            ("spacing", 2.0),
+            ("align", 0.0),
+            // ⚠️ O `count` fica no default (24) DE PROPÓSITO: se ele ainda
+            // mandasse, este gate leria 24 e não 5.
+        ],
+    );
+    assert_eq!(pos.len(), 5, "10 / 2 = 5 cópias");
+    for (i, p) in pos.iter().enumerate() {
+        let want = i as f32 * 2.0;
+        assert!(
+            (p[0] - want).abs() < 1e-3,
+            "a cópia {i} pousa em x = {want}, não em {}",
+            p[0]
+        );
+    }
+}
+
+/// **O modo `Number` é BYTE-IDÊNTICO ao nó que shipava** — o default reduz.
+///
+/// Não é uma promessa: as duas rotas são cozidas e comparadas com `to_bits()`.
+/// A metade que carrega o peso é o `spacing` estar ARMADO num valor que mudaria
+/// tudo se ele fosse lido; sem isso o gate ficaria verde sobre um param inerte.
+#[test]
+fn the_number_mode_is_byte_identical_to_the_node_that_shipped() {
+    let base = walk(&LINE10, "Track", &[("count", 7.0)]);
+    let armed = walk(
+        &LINE10,
+        "Track",
+        &[("count", 7.0), ("mode", MODE_COUNT), ("spacing", 0.37)],
+    );
+    assert_eq!(base.0.len(), 7);
+    for (a, b) in base.0.iter().zip(&armed.0) {
+        assert_eq!(a[0].to_bits(), b[0].to_bits(), "x ao bit");
+        assert_eq!(a[1].to_bits(), b[1].to_bits(), "y ao bit");
+    }
+    for (a, b) in base.1.iter().zip(&armed.1) {
+        assert_eq!(a.to_bits(), b.to_bits(), "rot ao bit");
+    }
+}
+
+/// **Um espaçamento maior que a curva devolve ZERO, não uma cópia.**
+///
+/// É o veredito do irmão (`if k_hi < k_lo { return Vec::new() }`) e é o honesto:
+/// nada cabe. Arredondar para uma cópia seria o nó a inventar um encaixe.
+#[test]
+fn a_spacing_longer_than_the_curve_fits_nothing() {
+    let (pos, _) = walk(
+        &LINE10,
+        "Track",
+        &[("mode", MODE_SPACING), ("spacing", 25.0)],
+    );
+    assert!(pos.is_empty(), "nada cabe, e o nó emite vazio: {pos:?}");
+}
+
+/// **FLOOR: o entregue nunca é mais APERTADO que o pedido.**
+///
+/// ⚠️ É a metade que um `round` quebraria, e o caso que a separa é o RESTO: numa
+/// reta de 10 com passo 3 cabem 3 (resto 1), e o vão real vira `10/3 = 3,33`.
+/// Um `round` daria 3 aqui também — o discriminante é o passo 2,2 (`10/2,2 =
+/// 4,54`): FLOOR dá 4 e vão 2,50 (≥ 2,2 ✔), ROUND daria 5 e vão 2,00 (< 2,2 ✘).
+#[test]
+fn the_gap_delivered_is_never_tighter_than_the_gap_asked() {
+    for spacing in [2.2f32, 3.0, 0.7, 1.3] {
+        let (pos, _) = walk(
+            &LINE10,
+            "Track",
+            &[("mode", MODE_SPACING), ("spacing", spacing), ("align", 0.0)],
+        );
+        assert!(!pos.is_empty(), "spacing {spacing} deveria caber");
+        let gap = 10.0 / pos.len() as f32;
+        assert!(
+            gap >= spacing - 1e-4,
+            "pedido {spacing}, entregue {gap} com {} cópias — mais apertado que o pedido",
+            pos.len()
+        );
+    }
+}
+
+/// **O piso do espaçamento é load-bearing**, e o que ele guarda é o clamp que
+/// mentiria: sem ele `spacing = 0` pede uma contagem infinita e o teto devolve
+/// `RECOMMENDED_MAX_ELEMENTS` em silêncio, com o slider a dizer zero.
+#[test]
+fn the_spacing_floor_keeps_a_zero_from_asking_for_everything() {
+    assert_eq!(copies_that_fit(10.0, MIN_SPACING), 1000);
+    // E o piso é aplicado na LEI, não só no slider: um documento pode carregar
+    // um `spacing` menor (o param é f32 e um fio pode dirigi-lo, doc 58).
+    let (pos, _) = walk(&LINE10, "Track", &[("mode", MODE_SPACING), ("spacing", 0.0)]);
+    assert_eq!(
+        pos.len(),
+        1000,
+        "o piso responde, e a resposta é finita e nomeada"
+    );
+}

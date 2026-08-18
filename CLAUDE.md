@@ -182,14 +182,21 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   — ⚠️ *derivado, não auto-escrito*: a ferramenta **IMPRIME e sai vermelha**, `--write` **não existe**,
   e quem reconcilia a linha `Contagem` de cada folha é **quem roda**.
   ⚠️ **Todo canal novo é side-metadata no REGISTRY, nunca o contrato** (`NodeOp`/`OpResolver`/`NodeManifest` — §6).
-  **Aberto:** os P1 restantes da folha 03 (simulação) · o gate `#[ignore]`
+  **Aberto:** os P1 restantes da folha 03 (simulação) · a folha 06 tem **4 P1**, e **três são a PORTA DE TEMPO**
+  (o `SUPERAR 1` dela) — ⚠️ medido em 18/08: o maquinário existe (os kernels já leem coluna por-elemento, com
+  identidade materializada quando ausente), mas a identidade de uma porta de **TEMPO não é constante** (o neutro é
+  `ctx.playhead()`) e o `applicable` só enxerga **params**, nunca conectividade ⇒ as três saídas medidas (a porta
+  carregar um **offset** · um **sentinela** na identidade · um **opt-in** que recusa o device) são **decisão de
+  desenho**, não trabalho mecânico · o gate `#[ignore]`
   `the_ceiling_is_honoured_on_every_tick_including_the_turn` (cena `=53`) — ⛔ **não afrouxe a barra** · a composição
   sub-passos × `damping` da `motion.verlet_rope`, **medida e não curada de propósito** · ⛔ a faixa de barras do
   `value.pattern` foi **revertida por veredito de produto sem mecanismo nomeado**: uma 2ª tentativa começa perguntando
   *o que ficou pior*, não reconstruindo (a árvore sobrevive em `ae35416bd`).
   **Smokes:** `PH2D_GPU_COOK_DEMO=<n>` · `PH2D_SPLICE_SMOKE` · `PH2D_ADAPTER_SMOKE` · `PH2D_ATTR_SMOKE` ·
   `PH2D_PICKER_SMOKE` · `PH2D_GRADIENT_SMOKE` · `PH2D_AUTOFIX_SMOKE=1..7` · `PH2D_SHAPE_SMOKE` · `PH2D_LENS_SMOKE` ·
-  `PH2D_MOTION_OBJ_SMOKE`.
+  `PH2D_MOTION_OBJ_SMOKE` · `PH2D_MOTION_NODE_PATH_SMOKE=1|2` (⚠️ o `=2` é um **modo** de uma env que já existia,
+  não um nível novo do roteador de `GPU_COOK_DEMO`: um nó que anda numa forma **desenhada** precisa do documento
+  vetorial, que só aquele smoke encena).
   **Ler:** [índice do módulo](docs/Motion%20Nodes/README.md) · ⚠️ [`BUGS_motion_nodes.md`](docs/Motion%20Nodes/BUGS_motion_nodes.md)
   (**o único `BUGS_*` que esta seção não listava**, e foi lido 22×) · [as 17 folhas](docs/Motion%20Nodes/89_conferencia/README.md)
   — a **folha 03** é [`03_simulacao.md`](docs/Motion%20Nodes/89_conferencia/03_simulacao.md) · [handoffs](docs/Motion%20Nodes/handoffs/README.md) ·

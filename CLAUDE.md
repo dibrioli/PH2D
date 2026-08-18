@@ -178,7 +178,9 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   default** (`PH2D_GPU_COOK=0` volta à CPU, útil para bissecar). Editor completo (palette `A`, splice, bypass, clipboard,
   grupos, adapters). O catálogo é conferido nó a nó pelo [plano 89](docs/Motion%20Nodes/89_plano_conferencia_dos_nos.md)
   + as 17 folhas em [`89_conferencia/`](docs/Motion%20Nodes/89_conferencia/); o placar é **derivado** por
-  [`placar_conferencia.py`](docs/Motion%20Nodes/ferramentas/placar_conferencia.py), nunca escrito à mão.
+  [`placar_conferencia.py`](docs/Motion%20Nodes/ferramentas/placar_conferencia.py), nunca escrito à mão
+  — ⚠️ *derivado, não auto-escrito*: a ferramenta **IMPRIME e sai vermelha**, `--write` **não existe**,
+  e quem reconcilia a linha `Contagem` de cada folha é **quem roda**.
   ⚠️ **Todo canal novo é side-metadata no REGISTRY, nunca o contrato** (`NodeOp`/`OpResolver`/`NodeManifest` — §6).
   **Aberto:** os P1 restantes da folha 03 (simulação) · o gate `#[ignore]`
   `the_ceiling_is_honoured_on_every_tick_including_the_turn` (cena `=53`) — ⛔ **não afrouxe a barra** · a composição

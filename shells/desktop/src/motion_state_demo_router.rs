@@ -11,6 +11,7 @@
 //! existe por isso.
 
 use super::demo_conferencia as conferencia;
+use super::demo_conferencia_animadores as animadores;
 use super::*;
 
 /// Os sinks da cena que o ambiente pediu — vazio quando ele não pediu nada, que é a TELA
@@ -326,10 +327,11 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
         Ok("51") => conferencia::space(doc, registry),
         Ok("52") => conferencia::weight(doc, registry),
         Ok("53") => conferencia::rate(doc, registry),
-        Ok("54") => conferencia::octave(doc, registry),
-        Ok("55") => conferencia::shape(doc, registry),
-        Ok("56") => conferencia::column(doc, registry),
-        Ok("57") => conferencia::wave(doc, registry),
+        Ok("54") => animadores::octave(doc, registry),
+        Ok("55") => animadores::shape(doc, registry),
+        Ok("56") => animadores::column(doc, registry),
+        Ok("57") => animadores::wave(doc, registry),
+        Ok("58") => animadores::axes(doc, registry),
         _ => Vec::new(),
     }
 }

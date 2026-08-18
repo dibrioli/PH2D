@@ -38,6 +38,10 @@ mod strobe;
 /// este arquivo não tem `match` nenhum, de propósito (ver o cabeçalho dele).
 #[path = "motion_state_demo_conferencia.rs"]
 mod demo_conferencia;
+/// As cenas de grupo da família ANIMADORES (folha 06) — o irmão do acima, cortado por
+/// ASSUNTO quando aquele arquivo cruzou o teto de LOC. Também sem `match`.
+#[path = "motion_state_demo_conferencia_animadores.rs"]
+mod demo_conferencia_animadores;
 #[path = "motion_state_demo_router.rs"]
 mod demo_router;
 /// ⚠️ **`pub(crate)` e não privada como as irmãs**, e por um consumidor real: as cenas do
@@ -110,6 +114,8 @@ pub(crate) mod conferencia_demos_octave;
 #[path = "motion_state_conferencia_demos_shape.rs"]
 pub(crate) mod conferencia_demos_shape;
 
+#[path = "motion_state_conferencia_demos_axes.rs"]
+pub(crate) mod conferencia_demos_axes;
 #[path = "motion_state_conferencia_demos_column.rs"]
 pub(crate) mod conferencia_demos_column;
 #[path = "motion_state_conferencia_demos_space.rs"]

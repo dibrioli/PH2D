@@ -5382,6 +5382,7 @@ dependencies = [
  "ph2d-audio-spectral",
  "ph2d-color",
  "ph2d-core",
+ "ph2d-curve",
  "ph2d-ecs",
  "ph2d-editor",
  "ph2d-eval-motion",
@@ -6326,6 +6327,7 @@ dependencies = [
 name = "ph2d-node-motion-time-remap"
 version = "0.0.0"
 dependencies = [
+ "ph2d-curve",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]

@@ -53,6 +53,9 @@ bytemuck = { version = "1", features = ["extern_crate_alloc"] }
 # the graph per frame and lowers its stream to `RenderInstance`s via
 # `ph2d-eval-motion`. (Replaced the retired PH2D_MOTION_SMOKE debug scene.)
 ph2d-nodegraph = { path = "../../crates/ph2d-nodegraph" }
+# A cena `=58` desenha a curva do relogio pela MESMA porta que o editor autora --
+# um segundo serializador divergiria do que o painel escreve no documento.
+ph2d-curve = { path = "../../crates/ph2d-curve" }
 ph2d-node-registry = { path = "../../crates/ph2d-node-registry" }
 ph2d-eval-motion = { path = "../../crates/ph2d-eval-motion" }
 # ADR-0155: the setup diagnoser — the shell runs `diagnose` after a constructive

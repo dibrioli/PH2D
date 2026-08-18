@@ -13,7 +13,51 @@ description: Onboarding completo para a PH2D — Power House Game Engine, uma en
 > Norte de arquitetura multi-agente: [ADR-0075](docs/architecture/decisions/0075-multiagent-parallelism-ecs-decoupling-not-runtime-plugins.md).
 > O resto é consulta sob demanda pela tarefa.
 
-**Versão deste documento:** 2.14 — 2026-05-19 (**Wave 9 fechada — Multi-Agent UI Hardening**: arquitetura entrega "perfeição" pelos 2 critérios operacionais do Enio — (1) multi-agente paralelo sem colisão de fluxo crítico, (2) UI núcleo único de source-of-truth. **Eixo A**: `hero.rs::apply_event` (412 LOC inline) decomposto em [`screens/hero/chrome/`](crates/ph2d-editor-core/src/screens/hero/chrome/) com 11 handlers (theme/radius/view_toggles/rail_tools/rail_panels/io_menu/settings_ppm/settings_unit/scene_picker/image_tools_toggle/image_actions) + `dispatch_all`; hero.rs 1334→976 LOC; adicionar TopBar action = drop arquivo + 2 linhas em `chrome/mod.rs`, zero edit em hero.rs [SUPERSEDED por ADR-0107 Camada 0: `dispatch_all` virou GERADO de marcadores `// ph2d-chrome-sync:z=NN` via `cargo run -p ph2d-chrome-sync` — não edite `chrome/mod.rs` à mão]. `architecture_register_all_alphabetical` gateia ordem em Cargo.toml + `register_all()` de `ph2d-tool-registry-init`. **Eixo B**: [DIRETRIZ §4.2](docs/IntegracaoMultiAgente/DIRETRIZ.md) reescrita com cookbook completo de widget (template Rust + 5 mandamentos gateados); `architecture_widget_showcase_coverage` força todo widget aparecer no showcase ou opt-out justificado; `architecture_widget_loc_cap` cap 500 LOC por widget. **Eixo C**: `mockup_tokens_exist` em ph2d-tokens — todo `var(--*)` em mockups resolve via `docs/design/styles/*.css` ou `tokens.json`; descobriu gap real `--border-soft`, adicionado em `tokens.css` como `color-mix` cascade-derived. **Bug fix bônus** (pré-existente): submenu Display Unit dead code — faltavam `CTX_MENU_SETTINGS_UNIT` + `CTX_MENU_UNIT_METERS/PIXELS` em `populate_global_context_menu` → Click event nunca emitido; registrados. Smart cascade: `cascade_anchor()` em `chrome/mod.rs` usa `HeroScreen::last_viewport` para flipar submenu pra esquerda quando direita não cabe. Clamp viewport no painter (`context_menu_overlay::clamp_to_viewport`) como safety net. Workspace cargo test verde; smoke do Enio OK. Baseline anterior: 2.13 — 2026-05-19 — ADR-0029 Wave 8 fechado)
+
+> ## 📍 Índice endereçável — salte, não leia
+>
+> ⚠️ **Medido 2026-08-18:** as buscas neste arquivo são quase todas por IDENTIFICADOR
+> (`HR-5`, `HR-4`, `HR-15`, `HR-13`) — ele é usado como **tabela de consulta**, não como leitura.
+> É por isso que ele não tem história para arquivar (0%) e o que lhe faltava era endereço.
+>
+> | § | assunto | | § | assunto |
+> |---:|---|---|---:|---|
+> | **§1** | Visão em uma frase | | **§11** | Subsistemas — pontos críticos |
+> | **§2** | Glossário e termos-chave | | **§12** | Cross-cutting concerns |
+> | **§3** | Não-objetivos (importante) | | **§13** | Fronteira Rust ↔ Shell — eventos e callbacks |
+> | **§4** | Plataformas mínimas e GPU alvo | | **§14** | Padrões para tasks comuns |
+> | **§5** | Stack canônico (versões pinadas) | | **§15** | Anti-patterns (NÃO faça) |
+> | **§6** | Arquitetura: 1 core + 3 shells + 1 web targe | | **§16** | Estratégia de testes |
+> | **§7** | Layout do repositório | | **§17** | Definition of done |
+> | **§8** | Feature flags canônicas | | **§18** | Quando ficar em dúvida |
+> | **§9** | Hard rules — invariantes inegociáveis | | **§19** | ADRs — política e índice |
+> | **§10** | Convenções de código | | **§20** | Última nota para a LLM lendo isso |
+>
+> **Hard Rules (§9)** — cite por ID em commit/PR/ADR:
+>
+> - **HR-1** — Core é platform-agnostic
+> - **HR-2** — `unsafe` requer justificativa escrita
+> - **HR-3** — Sem alocação dinâmica no hot path
+> - **HR-4** — Frame budget é sagrado
+> - **HR-5** — Determinismo onde prometido
+> - **HR-6** — Asset = hash blake3
+> - **HR-7** — Editor é a engine
+> - **HR-8** — Scripts e MCP só falam handles opacos
+> - **HR-9** — GC em janelas explícitas
+> - **HR-10** — MCP é first-class
+> - **HR-11** — Mutações destrutivas via MCP exigem confirmação
+> - **HR-12** — UI custom popula árvore de acessibilidade
+> - **HR-13** — Subsistemas declaram memory budget **e MEDEM o que gastam**
+> - **HR-14** — Save format é versionado e migrável
+> - **HR-15** — Strings de UI passam por i18n
+> - **HR-16** — Storage lateral é serializável e determinístico, ou não existe
+> - **HR-17** — Examples canônicos compilam em CI
+> - **HR-18** — Crescimento bounded em shell binaries
+>
+> ⚠️ **Antes de confiar num «Enforced by» de qualquer HR, leia o aviso no topo do §9:**
+> **12 das 18** nomeiam um executor que não existe com aquele nome (auditoria 2026-08-18).
+
+**Versão deste documento:** 2.15 — 2026-08-18 (auditoria multiagêntica: índice endereçável, os «Enforced by» conferidos contra o disco, os 4 tetos de LOC separados, 56 caminhos reapontados). O histórico das versões está no `git log` deste arquivo.
 
 **Operação multi-agente:** o modo é **função do hardware** (DIRETRIZ v8.2; `bash scripts/hw-profile.sh` decide): tier `workstation` (Linux 128 GB) = **Modo L** — N linhas paralelas por `git worktree`, sem Coordenador de plantão (DIRETRIZ §1.5). **Integração e ship NÃO são autônomos — só por ordem EXPLÍCITA do Enio:** cada linha fecha o módulo, escreve um **handoff de integração** (§1.5.9) e PARA; o Enio junta os handoffs e abre **um agente integrador dedicado** que resolve todos os conflitos e funde via `--ff-only` + gate testado (§1.5.3–1.5.4). No Modo L, **foundational deixou de ser serial** ([ADR-0107](docs/architecture/decisions/0107-concurrent-foundational-lines-tested-gate-syntactic-merge.md)): qualquer linha toca foundational (com cuidado) sob merge sintático (Mergiraf, `scripts/mergiraf-setup.sh`) + **gate da árvore combinada** (`scripts/foundational-integrate.sh`) — e **ao CRIAR foundational novo, projete-o para isolamento** (módulo irmão / ponto de extensão append-only) pra várias linhas estenderem sem colidir; só contrato congelado e mesmo-símbolo de tipo-núcleo seguem seriais. tier `constrained` (Mac mini 8 GiB, sessões de smoke/hotfix) = **Modo C** — 1 Coordenador único + N Implementadores em shared tree (DIRETRIZ §1.1–1.4 + §7). Detalhe completo em [`docs/IntegracaoMultiAgente/DIRETRIZ.md`](docs/IntegracaoMultiAgente/DIRETRIZ.md). Narrativa histórica completa do problema multi-agente e as 4 waves de solução em [`docs/archive/multi-agente-pre-v6.0/Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md`](docs/archive/multi-agente-pre-v6.0/Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md).
 **Idioma canônico do projeto:** português brasileiro (código em inglês, comentários em inglês curto, conversa de design em pt-BR).

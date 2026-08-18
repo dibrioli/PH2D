@@ -124,13 +124,155 @@ pub(crate) fn name_and_wire(
     Some(out)
 }
 
+// ---------------------------------------------------------------------------------------------
+// A CENA DO ESPAÇAMENTO (`=2`) — a contagem segue o COMPRIMENTO
+// ---------------------------------------------------------------------------------------------
+//
+// ⚠️ **Ela vive AQUI e não no roteador de `PH2D_GPU_COOK_DEMO`, e o motivo é estrutural:** as
+// cenas de conferência montam um `MotionDoc` puro, e um nó que anda numa forma DESENHADA precisa
+// do documento vetorial — a forma, a entidade que a nomeia e o publisher, que é exactamente o
+// roteiro de dois frames que este arquivo já executa. Uma segunda encenação disso seria a segunda
+// resposta a *"como uma curva chega ao grafo?"*.
+
+/// Os quatro nomes, na ordem em que as formas entram na cena.
+const SPACING_TRACKS: [&str; 4] = ["Count Short", "Count Long", "Spacing Short", "Spacing Long"];
+
+/// Um segmento RETO de comprimento `len`, começando em `x = -4`, na altura `y`.
+///
+/// ⚠️ **Reto de propósito.** A cena `=1` já responde *"o conjunto percorre uma curva?"*; esta
+/// responde *"quantos, e a que distância?"*, e num segmento o vão entre duas peças é o número que
+/// o olho lê sem descontar curvatura. A reta é a cúbica DEGENERADA do documento (handles sobre as
+/// âncoras), que é como a Pen a deixa.
+fn straight(len: f64, y: f64) -> ph2d_vec_scene::VecPath {
+    use ph2d_vec_scene::{VecPath, VecVertex, VertexKind};
+    let v = |x: f64| VecVertex {
+        anchor: [x, y],
+        in_handle: [x, y],
+        out_handle: [x, y],
+        kind: VertexKind::Corner,
+        corner_radius: 0.0,
+    };
+    VecPath {
+        verts: vec![v(-4.0), v(-4.0 + len)],
+        closed: false,
+        stroke: Some(ph2d_vec_scene::StrokeSpec::new(
+            ph2d_vec_scene::Rgba8::new(150, 160, 180, 255),
+            0.02,
+        )),
+        ..VecPath::default()
+    }
+}
+
+/// Frame 3: as QUATRO trilhas entram, duas curtas e duas longas.
+///
+/// ⚠️ **Duas trilhas por lei, e não uma trilha com dois grafos:** duas cadeias sobre a MESMA curva
+/// desenhariam as peças umas por cima das outras, e o vão — que é a coisa que a cena existe para
+/// mostrar — ficaria ilegível.
+pub(crate) fn push_spacing_shapes(scene: &mut ph2d_vec_scene::VecScene) {
+    for (len, y) in [(4.0, 3.0), (8.0, 1.0), (4.0, -1.0), (8.0, -3.0)] {
+        scene.push_path(straight(len, y));
+    }
+}
+
+/// Frame 6: cada trilha ganha o NOME e a cadeia que a percorre.
+///
+/// As duas de cima contam por NÚMERO (o mundo que sempre shipou) e as duas de baixo por
+/// ESPAÇAMENTO. As quatro carregam a mesma peça, então a única coisa que difere entre as linhas é
+/// o que a wave acrescenta.
+fn name_and_wire_spacing(
+    sim: &mut ph2d_ecs::SimWorld,
+    map: &crate::vec_entities::VecEntityMap,
+    graph: &mut Graph,
+) -> Vec<NodeId> {
+    // O `VecEntityMap` é um `BTreeMap` por id de path, e o `push_path` os cunha em ordem ⇒ a
+    // ordem de iteração é a ordem em que as trilhas foram empurradas.
+    let bits: Vec<u64> = map.values().copied().collect();
+    if bits.len() < SPACING_TRACKS.len() {
+        eprintln!(
+            "[motion.path spacing] PARE: esperava {} trilhas na cena e achei {}.",
+            SPACING_TRACKS.len(),
+            bits.len()
+        );
+        return Vec::new();
+    }
+    for (name, &b) in SPACING_TRACKS.iter().zip(&bits) {
+        let e = ph2d_ecs::Entity::from_bits(b);
+        if let Ok(mut ent) = sim.world_mut().get_entity_mut(e) {
+            ent.insert(Name((*name).to_string()));
+        }
+    }
+
+    let mut outs = Vec::new();
+    for (row, name) in SPACING_TRACKS.iter().enumerate() {
+        let path = graph.add_node("motion.path");
+        let scale = graph.add_node("motion.scale");
+        let out = graph.add_node("motion.output");
+        for (i, n) in [path, scale, out].iter().enumerate() {
+            graph.set_pos(
+                *n,
+                Pos {
+                    #[expect(clippy::cast_precision_loss, reason = "índice de layout do grafo")]
+                    x: i as f32 * 190.0,
+                    #[expect(clippy::cast_precision_loss, reason = "índice de layout do grafo")]
+                    y: row as f32 * 130.0 - 220.0,
+                },
+            );
+        }
+        for (a, b) in [(path, scale), (scale, out)] {
+            if graph
+                .connect(Edge {
+                    from: (a, 0),
+                    to: (b, 0),
+                    delayed: false,
+                })
+                .is_err()
+            {
+                return outs;
+            }
+        }
+        graph.set_text_param(path, "path", *name);
+        graph.set_param(path, "align", 0.0);
+        if row < 2 {
+            graph.set_param(path, "count", 9.0);
+        } else {
+            graph.set_param(path, "mode", 1.0);
+            graph.set_param(path, "spacing", 0.5);
+        }
+        graph.set_param(scale, "amount", 0.14);
+        graph.set_label(path, *name);
+        outs.push(out);
+    }
+
+    eprintln!(
+        "[motion.path spacing] Quatro trilhas RETAS, duas curtas (4) e duas longas (8):\n\
+         \x20 1 Count Short    len 4  count 9        -> 9 pecas,  vao 0,444\n\
+         \x20 2 Count Long     len 8  count 9        -> 9 pecas,  vao 0,889\n\
+         \x20 3 Spacing Short  len 4  spacing 0,50   -> 8 pecas,  vao 0,500\n\
+         \x20 4 Spacing Long   len 8  spacing 0,50   -> 16 pecas, vao 0,500\n\
+         A cena julga-se PARADA. As duas leituras: (1) as de CIMA tem o MESMO numero de pecas e\n\
+         vaos DIFERENTES -- a de baixo do par espalha o dobro; (2) as de BAIXO tem o MESMO vao e\n\
+         numeros diferentes -- a longa cabe o dobro de pecas. Se as quatro linhas tiverem a mesma\n\
+         contagem, o modo Spacing nao chegou."
+    );
+    outs
+}
+
 /// O frame corrente do roteiro (o hook não pode acrescentar campo em `App`).
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-/// Ligado? Lido UMA vez (o prólogo do frame não paga um `getenv` por quadro).
-fn on() -> bool {
-    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ON.get_or_init(|| std::env::var("PH2D_MOTION_NODE_PATH_SMOKE").is_ok_and(|v| v != "0"))
+/// Qual cena? `0`/ausente = nenhuma · `2` = o ESPAÇAMENTO · qualquer outra = a original.
+///
+/// Lido UMA vez (o prólogo do frame não paga um `getenv` por quadro). ⚠️ **O braço `_` mantém
+/// `=1` — e todo valor que não seja `0` nem `2` — na cena que o Enio já smokou:** um modo novo
+/// não pode mudar o que a env que já existe significa.
+fn mode() -> u8 {
+    static MODE: std::sync::OnceLock<u8> = std::sync::OnceLock::new();
+    *MODE.get_or_init(|| match std::env::var("PH2D_MOTION_NODE_PATH_SMOKE") {
+        Ok(v) if v == "0" => 0,
+        Ok(v) if v == "2" => 2,
+        Ok(_) => 1,
+        Err(_) => 0,
+    })
 }
 
 impl crate::App {
@@ -141,20 +283,30 @@ impl crate::App {
     /// Nomear antes seria nomear algo que ainda não existe, e o publisher não veria curva nenhuma.
     pub(crate) fn motion_node_path_smoke(&mut self) {
         use std::sync::atomic::Ordering;
-        if !on() || self.gfx.is_none() {
+        let mode = mode();
+        if mode == 0 || self.gfx.is_none() {
             return;
         }
         match FRAME.fetch_add(1, Ordering::Relaxed) {
             3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
-                push_shape(&mut gfx.vec_scene);
+                if mode == 2 {
+                    push_spacing_shapes(&mut gfx.vec_scene);
+                } else {
+                    push_shape(&mut gfx.vec_scene);
+                }
             }
             6 => {
                 // O mapa path↔entidade vive no `App` (o `sync` do frame o preenche); o mundo, a
                 // cena e o grafo vivem no `AppGfx`.
                 let map = self.vec_entities.clone();
                 let gfx = self.gfx.as_mut().expect("gfx");
-                if let Some(out) = name_and_wire(&mut gfx.sim, &map, &mut gfx.motion.doc.graph) {
+                if mode == 2 {
+                    let outs = name_and_wire_spacing(&mut gfx.sim, &map, &mut gfx.motion.doc.graph);
+                    gfx.motion.sinks.extend(outs);
+                } else if let Some(out) =
+                    name_and_wire(&mut gfx.sim, &map, &mut gfx.motion.doc.graph)
+                {
                     gfx.motion.sinks.push(out);
                 }
                 let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));

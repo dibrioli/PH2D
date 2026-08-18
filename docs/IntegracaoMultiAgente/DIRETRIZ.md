@@ -180,7 +180,28 @@ funde ao main, **uma de cada vez**, com o mecanismo abaixo (inalterado, ADR-0107
 de 1 linha só, o próprio operador pode ser o integrador — mas ainda por decisão do Enio, nunca a
 linha se auto-fundindo no meio do trabalho.)*
 
-**Um comando faz tudo:** de dentro da worktree da linha, com o gate batched do módulo verde:
+**ANTES de integrar, leia o MAPA — uma chamada, não mil greps:**
+
+```bash
+bash scripts/collision-surface.sh            # a linha contra main
+```
+
+Ele mede de uma vez o que o integrador redescobre a cada vez: os **schemas nos TRÊS sítios**
+(`PROJECT_SCHEMA` + a escada + a tripla), o **registro de componentes e os DOIS espelhos**, o
+**contrato congelado** (§4), **ADR** novo e o próximo livre, **`Cargo.lock`** (pacote externo
+contra aresta interna), **marcadores de conflito incluindo `|||||||`** e os **tetos de LOC** dos
+arquivos que a linha tocou — cada número com o da base ao lado, porque *um número que soma entre
+linhas se CONTA, nunca se escolhe*, e a colisão passa **MUDA** quando as duas escrevem o mesmo literal.
+
+> ⚠️ **Por que existe (medido 2026-08-18):** nas 6 maiores sessões de integração o integrador
+> gastava **~1.000 `grep`/`sed` por integração** exatamente nessas perguntas (LOC 2.388× ·
+> `PROJECT_SCHEMA` 717× · contratos 402× · ADR 360×), num total de 36 mil chamadas de navegação
+> e **62 MB puxados para o contexto**. Uma integração arrastava **~8,4 M tokens** para uma janela
+> de 1 M — **~8 compactações por construção**, e o integrador re-descobria tudo depois de cada uma.
+> Isso é conferência **repetitiva**, não investigação: a mesma lista, toda vez.
+
+**Depois do mapa, um comando faz o gate:** de dentro da worktree da linha, com o gate batched do
+módulo verde:
 
 ```bash
 bash scripts/foundational-integrate.sh
@@ -284,6 +305,12 @@ nem faz ship**; entrega este handoff e espera. Conteúdo mínimo (curto, factual
 3. **Símbolos que podem COLIDIR com outra linha** — ids/consts/variants/tokens novos com seus
    valores literais (ex.: `NodeId(832)`, variant de enum, entrada em lista ordenada, chave de
    token). É o que o integrador grepa pra detectar mesmo-símbolo (§1.5.5).
+   ⚠️ **Cole a saída de `bash scripts/collision-surface.sh` aqui, não a escreva de memória.**
+   Ela já traz schemas (nos três sítios), registro + os dois espelhos, contrato congelado, ADR,
+   `Cargo.lock`, marcadores e LOC — cada um com o valor da base ao lado. *Um handoff que erra
+   aqui manda o integrador procurar o conflito no lugar errado*, e esta §5 registra isso
+   acontecendo mais de uma vez (a tabela que "envelheceu entre o fechamento e a ordem", o degrau
+   contado a menos, o componente dado como pré-existente e que era novo).
 4. **Contratos congelados encostados** (§4) — deve ser **nenhum**; se sim, exige ADR (pare e reporte).
 5. **O que só o `ship.sh` pega** (o gate de integração NÃO roda): fmt/typos pré-fork, deps novas
    p/ machete, clippy latente, RUSTSEC ([[project_integration_prefork_lines_ship_drift]]).

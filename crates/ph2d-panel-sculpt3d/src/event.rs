@@ -4,7 +4,7 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal, seam_reset_button};
-use ph2d_sculpt3d::{Alpha, Falloff, RefMode, TransformKind, Verb};
+use ph2d_sculpt3d::{Alpha, Falloff, FilterKind, RefMode, TransformKind, Verb};
 
 use crate::rows;
 use crate::state::{self, Sculpt3dIntent};
@@ -357,6 +357,13 @@ fn group_chip_ui(
         // do MODO — e ela só toca o que depende dele (a curva), preservando
         // toda escolha deliberada.
         crate::state::arm_mode_defaults(&mut ui, RefMode::ALL[i]);
+    } else if let Some(i) = index_of(&ids::SCULPT3D_FILTER_KIND, id) {
+        // ⚠️ **Sem tocar no verbo, e é a wave inteira numa linha:** a lei do
+        // filtro deixou de ser derivada da ferramenta em mãos, então escolher
+        // uma não muda o que o pincel faz sob o cursor. Re-armar o verbo aqui
+        // trocaria a ferramenta do artista por um clique que ele deu noutra
+        // pergunta.
+        ui.filter_kind = FilterKind::ALL[i];
     } else if let Some(i) = index_of(&ids::SCULPT3D_ELASTIC_SCALES, id) {
         // ⚠️ **Sem re-armar nada, e a razão é a do vizinho de baixo:** a largura
         // do campo é uma escolha DO ARTISTA sobre o modo que ele já escolheu,

@@ -97,7 +97,7 @@ pub(super) const SCALE_PER_PX: f32 = 0.01;
 ///
 /// ⚠️ **Não é um teto nem um ajuste de gosto: é a régua da referência.** Ela
 /// decide quantos pixels o artista percorre para atravessar a faixa útil de cada
-/// lei (`FilterLaw::lo`/`hi`), e mudá-la muda o quanto a mão anda para o mesmo
+/// lei (`FilterKind::range`), e mudá-la muda o quanto a mão anda para o mesmo
 /// resultado — nunca o resultado que uma dada força produz.
 ///
 /// Mora aqui, e não no [`super::filter`], porque é **a mesma espécie** dos

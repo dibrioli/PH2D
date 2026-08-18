@@ -36,6 +36,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.reference" => "Reference",
         "panel.sculpt3d.reference_all" => "Apply to all tools",
         "panel.sculpt3d.filter" => "Filter Whole Mesh",
+        "panel.sculpt3d.filter_kind" => "Filter",
         "panel.sculpt3d.elastic_scales" => "Field width",
         "panel.sculpt3d.tip_roundness" => "Tip roundness",
         "panel.sculpt3d.strip_length" => "Strip length",

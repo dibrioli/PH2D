@@ -30,17 +30,18 @@
 use super::{FILTER_DRAG_PER_PX, Sculpt3dScene};
 
 impl Sculpt3dScene {
-    /// **O filtro está armado E vivo?**
+    /// **O filtro está armado?**
     ///
-    /// ⚠️ **A pergunta inclui o VERBO, e é o que mantém *visível ⇔ vivo*.** O
-    /// painel só oferece o interruptor a um verbo que filtra, então um arm que
-    /// sobrevivesse a `1` (pegar o Draw) ficaria **aceso e invisível**: o botão
-    /// esquerdo pararia de esculpir sem nada na tela dizendo por quê. Perguntar
-    /// as duas metades numa porta só é o que impede o painel e o gesto de
-    /// discordarem — e é por isso que o flag **não** é apagado na troca de
-    /// verbo: voltar ao Smooth devolve a escolha que o artista fez.
+    /// ⚠️ **A PREMISSA MUDOU com a W9b, e a metade do VERBO saiu.** Ela existia
+    /// porque a lei era DERIVADA do verbo em mãos: sem um verbo que filtrasse
+    /// não havia lei, então um arm que sobrevivesse a pegar o Draw ficava
+    /// **aceso e invisível** — o botão esquerdo parava de esculpir sem nada na
+    /// tela dizendo por quê. Com a lei ESCOLHIDA ([`Sculpt3dScene::filter_kind`])
+    /// ela existe sempre, a row é sempre pintada, e *visível ⇔ vivo* passa a
+    /// valer por outra via: **um arm aceso é sempre visível**, então a
+    /// preocupação some e o mecanismo que a resolvia sai com ela.
     pub(crate) fn filter_arm(&self) -> bool {
-        self.filter_arm && self.brush.verb.filters_mesh()
+        self.filter_arm
     }
 
     /// **Arma ou desarma** — clicar o aceso desliga, a lei de todo toggle deste
@@ -56,6 +57,16 @@ impl Sculpt3dScene {
         self.filter_arm = !self.filter_arm;
         if self.filter_arm {
             self.transform_arm = None;
+            // ⚠️ **O verbo SEMEIA a escolha, e só ao ARMAR.** Quem pega o Smooth
+            // e liga o filtro quer alisar — fazer o artista escolher de novo o
+            // que a ferramenta na mão dele já diz seria um passo a mais em todo
+            // gesto. E é semente e não amarra: trocar de verbo com o filtro já
+            // aceso **não** re-escreve a lei, senão a escolha do selector seria
+            // apagada por um gesto que não fala sobre ela. Um verbo sem lei
+            // própria (Grab, Twist, …) deixa a última escolha de pé.
+            if let Some(kind) = self.brush.verb.filter_kind() {
+                self.filter_kind = kind;
+            }
         }
         self.filter_arm
     }
@@ -91,24 +102,13 @@ impl Sculpt3dScene {
         // um filtro não tem cursor nem pegada. O que a lei lê daqui é o verbo, a
         // referência e os dois `hc_*` — todos autorados —, então pedir um pincel
         // ancorado num ponto seria inventar o ponto que o gesto não tem.
-        // ⚠️ **A LEI vem do verbo, e é uma SEMENTE, não a porta final.** O
-        // catálogo de filtros deixou de ser a projecção dos verbos quando as
-        // três leis sem verbo entraram (`Scale`, `Sphere`, `Random`), então o
-        // motor recebe um [`ph2d_sculpt3d::FilterKind`]; enquanto o artista não
-        // tem onde escolher um, o verbo em mãos responde — que é exactamente o
-        // que o [`Self::filter_arm`] já pergunta para oferecer o gesto.
-        // *Quando o selector nascer, ele substitui esta leitura e mais nada.*
-        //
-        // ⚠️ **O `else` é DEFESA EM CAMADAS, e não é gateado de propósito:**
-        // através dos chamadores de hoje ele é inalcançável — o `filter_arm`
-        // acima já recusou todo verbo sem lei, e o gate
-        // `the_arm_goes_dark_without_a_law_and_comes_back_with_one` prova a
-        // camada de fora. Ele fica porque a alternativa é um `expect` num
-        // handler de ponteiro, e *um pânico é pior falha que um no-op* — mas a
-        // afirmação honesta é que nenhuma fixture o alcança.
-        let Some(kind) = self.brush.verb.filter_kind() else {
-            return;
-        };
+        // ⚠️ **A LEI é a ESCOLHIDA, nunca a do verbo em mãos** — o selector do
+        // painel é a autoridade, e o verbo apenas a semeou no
+        // [`Self::arm_filter`]. Ler o verbo aqui reinstalaria a derivação e
+        // tornaria as três leis sem verbo (`Scale`, `Sphere`, `Random`)
+        // inalcançáveis outra vez, com o chip aceso a mentir sobre qual delas
+        // corre.
+        let kind = self.filter_kind;
         let brush = self.brush.clone();
         let mesh = self.objects[self.active].stack.mesh_mut();
         let moved = self.stroke.filter(mesh, &brush, kind, amount);

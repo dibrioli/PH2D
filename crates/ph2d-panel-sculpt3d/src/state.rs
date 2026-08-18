@@ -23,7 +23,7 @@
 //! de decidir se o remesh já rodou.
 
 use ph2d_mesh::Extract;
-use ph2d_sculpt3d::{Brush, Symmetry, Verb};
+use ph2d_sculpt3d::{Brush, FilterKind, Symmetry, Verb};
 
 /// ⚠️ **A memória por-verbo mudou-se para o irmão [`crate::slots`], e o caminho
 /// NÃO mudou.** O shell endereça `state::VerbSlot` e `state::switch_verb_parts`,
@@ -111,6 +111,20 @@ impl UiLevel {
 /// rádio deste painel escreve.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Sculpt3dUi {
+    /// **QUAL LEI o filtro roda** — e ela **não é o verbo em mãos**.
+    ///
+    /// ⚠️ **Um VALOR e não um fato, ao contrário do `filter_armed`:** armar
+    /// muda o que o botão esquerdo FAZ (uma consequência, que por isso viaja
+    /// fora deste struct), e escolher a lei muda só qual campo o gesto já
+    /// armado aplica. Ela viaja aqui, com os outros valores que todo arrasto de
+    /// slider reenvia inteiro.
+    ///
+    /// ⚠️ **E ela é GLOBAL, não por-verbo:** o [`Self::slots`] guarda o pincel
+    /// de cada ferramenta porque *afinar a força do Smooth não é afinar a do
+    /// Clay*, e uma lei de filtro não pertence a ferramenta nenhuma — três das
+    /// sete não têm verbo. O modelo é o do operador *Mesh Filter* da
+    /// referência: um Type, escolhido uma vez.
+    pub filter_kind: FilterKind,
     /// O verbo, a curva, a força e os dois knobs condicionais.
     ///
     /// ⚠️ O `Brush::radius` é de MUNDO e **derivado por dab** (contra a câmera e
@@ -217,6 +231,13 @@ pub struct Sculpt3dUi {
 impl Default for Sculpt3dUi {
     fn default() -> Self {
         Self {
+            // ⚠️ **O default é o `Smooth`, e ele é DERIVADO** do primeiro do
+            // `FilterKind::ALL` em vez de escrito: a lista é a ordem em que os
+            // chips aparecem, e o chip aceso ao abrir tem de ser o primeiro
+            // dela. Escrever o nome aqui seria a segunda resposta a *"qual lei
+            // abre selecionada?"*, que diverge no dia em que a lista for
+            // reordenada.
+            filter_kind: FilterKind::ALL[0],
             brush: Brush::default(),
             // ⚠️ **DERIVADO, e não `[RefMode::default(); _]`:** o `S` não
             // declara o [`Verb::ClayStrips`] — o SculptGL não tem essa

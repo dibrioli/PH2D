@@ -21,7 +21,7 @@ use ph2d_panel_sculpt3d::{
     Sculpt3dIntent, Sculpt3dPanel, Sculpt3dPanelState, Sculpt3dSnapshot, Sculpt3dUi, UiLevel,
     drain_intents, ids, rows, set_current_sculpt3d,
 };
-use ph2d_sculpt3d::{Alpha, Falloff, RefMode, TransformKind, Verb, kelvinlet::Scales};
+use ph2d_sculpt3d::{Alpha, Falloff, FilterKind, RefMode, TransformKind, Verb, kelvinlet::Scales};
 use ph2d_ui_testkit::MockPanelHost;
 
 /// A escala que a fixture finge que o modelo comporta.
@@ -1945,35 +1945,45 @@ fn the_basic_level_never_hides_the_curve_that_shapes_the_dab() {
     }
 }
 
-/// **O FILTRO só existe onde há uma LEI** — presença E ausência.
+/// **O FILTRO é oferecido a TODO verbo, e o SELECTOR só com ele armado.**
 ///
-/// ⚠️ **A metade da AUSÊNCIA é a que carrega o gate.** O `SculptStroke::filter`
-/// devolve `0` a um verbo sem [`Verb::filter_law`], então um interruptor
-/// oferecido ao Draw seria armado, mudaria o que o botão esquerdo faz, e o gesto
-/// não moveria um vértice — a forma mais cara de um controle estar errado, e
-/// exactamente a que um sweep de clicabilidade não pega.
+/// ⚠️ **A PREMISSA ANTERIOR foi derrubada pela W9b, e o gate anterior a
+/// afirmava** (*"o filtro só existe onde há uma LEI"*): a lei era DERIVADA do
+/// verbo em mãos, então oferecer o interruptor ao Draw daria um controle que
+/// arma, muda o que o botão esquerdo faz e não move um vértice. Com a lei
+/// **escolhida** três delas (`Scale`, `Sphere`, `Random`) não têm verbo nenhum,
+/// e o critério antigo as tornava inalcançáveis por gesto — o filtro passa a ser
+/// oferecido **sempre**.
 ///
-/// ⚠️ **E ele NÃO cita os quatro verbos que filtram**: a fixture pergunta ao
-/// motor (`Verb::filters_mesh`) e escolhe o primeiro que responde. Uma lista à
-/// mão aqui seria a segunda cópia da tabela do `brush_verb_filter`, e a que
-/// envelhece calada no dia em que um quinto verbo entrar nela.
+/// ⚠️ **A metade da AUSÊNCIA mudou de sujeito, não sumiu:** o que não pode
+/// aparecer desarmado é o SELECTOR — sete chips a escolher uma lei que nada
+/// consome são sete controles mortos.
 #[test]
-fn the_filter_toggle_exists_only_where_the_verb_has_a_law() {
-    let filtering = Verb::ALL
-        .into_iter()
-        .find(|v| v.filters_mesh())
-        .expect("algum verbo filtra a malha");
-
-    // Com um verbo que filtra: pintado, clicável e despacha.
+fn the_filter_is_offered_to_every_verb_and_the_picker_only_when_armed() {
+    // O CONTROLE de antes vira a asserção principal: um verbo SEM lei própria.
+    assert!(
+        !Verb::Draw.filters_mesh(),
+        "a fixture perdeu a premissa: o Draw passou a ter lei de filtro"
+    );
     let mut ui = Sculpt3dUi::default();
-    ui.brush.verb = filtering;
+    ui.brush.verb = Verb::Draw;
     let (mut host, mut state) = arrange(ui);
     let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
     let rect = painted
         .iter()
         .find(|(id, _)| *id == ids::SCULPT3D_FILTER)
         .map(|(_, r)| *r)
-        .unwrap_or_else(|| panic!("{filtering:?} filtra a malha e o interruptor não foi pintado"));
+        .expect("o interruptor do filtro não foi oferecido a um verbo sem lei própria");
+
+    // Desarmado: nenhum chip de lei na tela.
+    for id in ids::SCULPT3D_FILTER_KIND {
+        assert!(
+            !painted.iter().any(|(pid, _)| *pid == id),
+            "o selector de lei foi pintado com o filtro DESARMADO"
+        );
+    }
+
+    // E o interruptor despacha.
     let evs = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
     assert!(
         evs.iter()
@@ -1988,18 +1998,62 @@ fn the_filter_toggle_exists_only_where_the_verb_has_a_law() {
         vec![Sculpt3dIntent::ArmFilter],
         "o clique no filtro não chegou ao shell"
     );
+}
 
-    // CONTROLE: um verbo SEM lei não o oferece.
-    let mut ui = Sculpt3dUi::default();
-    ui.brush.verb = Verb::Draw;
-    assert!(
-        !Verb::Draw.filters_mesh(),
-        "a fixture do controle perdeu a premissa: o Draw passou a filtrar"
+/// ⭐ **AS SETE LEIS SÃO ESCOLHÍVEIS** — pintadas, vivas sob o mouse, e cada
+/// chip escreve a SUA.
+///
+/// ⚠️ **A metade que carrega o gate é a ÚLTIMA:** um selector cujos sete chips
+/// despachem o mesmo índice é pintado, clicável e passa em todo sweep de
+/// clicabilidade — e o artista escolhe `Random` para receber `Smooth`.
+#[test]
+fn every_filter_law_is_pickable_and_writes_its_own() {
+    assert_eq!(
+        ids::SCULPT3D_FILTER_KIND.len(),
+        FilterKind::ALL.len(),
+        "a lista de chips e a lista de leis têm tamanhos diferentes — alguma lei é \
+         inalcançável, ou algum chip nomeia uma lei que não existe"
     );
-    let (mut host, mut state) = arrange(ui);
-    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
-    assert!(
-        !painted.iter().any(|(id, _)| *id == ids::SCULPT3D_FILTER),
-        "o interruptor do filtro foi oferecido a um verbo que não tem lei de filtro"
-    );
+    for (i, kind) in FilterKind::ALL.into_iter().enumerate() {
+        let mut ui = Sculpt3dUi::default();
+        // Um verbo SEM lei própria de propósito: as três leis sem verbo só são
+        // alcançáveis se o selector não depender de quem está em mãos.
+        ui.brush.verb = Verb::Draw;
+        // ⚠️ **A fixture começa numa lei DIFERENTE da que o chip escreve**,
+        // senão a iteração `i = 0` é verde por vácuo: o `default()` já vale
+        // `ALL[0]`, e um chip que não escrevesse nada passaria a asserção.
+        ui.filter_kind = FilterKind::ALL[(i + 1) % FilterKind::ALL.len()];
+        // ⚠️ **O retrato chega ARMADO**, e o gate acima é que prova que o
+        // interruptor leva até aqui: o `filter_armed` é campo do SNAPSHOT (o
+        // que a cena responde), não do `Sculpt3dUi` que o painel devolve, então
+        // clicar o toggle nesta fixture não o move -- ele enfileira o intent e
+        // a cena é quem decide.
+        let mut snap = snapshot(ui, true);
+        snap.filter_armed = true;
+        let (mut host, mut state) = arrange_with(snap);
+
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        let rect = painted
+            .iter()
+            .find(|(id, _)| *id == ids::SCULPT3D_FILTER_KIND[i])
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("{kind:?}: o chip não foi pintado com o filtro armado"));
+        let evs = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        assert!(
+            evs.iter().any(
+                |e| matches!(e, WidgetEvent::Click(id) if *id == ids::SCULPT3D_FILTER_KIND[i])
+            ),
+            "{kind:?}: o chip está pintado e morto sob o mouse"
+        );
+        for e in evs {
+            let _ = host.apply_panel_event::<Sculpt3dPanel>(&mut state, e);
+        }
+        let Sculpt3dIntent::SetUi(got) = only_intent("chip de lei") else {
+            panic!("{kind:?}: o chip enfileirou o intent errado");
+        };
+        assert_eq!(
+            got.filter_kind, kind,
+            "{kind:?}: o chip escreveu OUTRA lei -- o artista escolhe uma e recebe outra"
+        );
+    }
 }

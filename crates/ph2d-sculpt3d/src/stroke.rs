@@ -174,7 +174,7 @@ impl SculptStroke {
     /// do shell.
     ///
     /// ⚠️ **E ela é MENOS necessária aqui do que na referência**, pelo motivo
-    /// que o [`crate::stroke_filter`] mede: o sorteio hasheia os BITS DA
+    /// que o `stroke_filter.rs` mede: o sorteio hasheia os BITS DA
     /// POSIÇÃO congelada, então um segundo gesto sobre uma malha já perturbada
     /// re-sorteia sozinho. Ela cobre só o caso de re-rolar a MESMA pose.
     pub fn set_filter_seed(&mut self, seed: u32) {

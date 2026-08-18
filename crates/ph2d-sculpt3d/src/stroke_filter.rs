@@ -189,7 +189,7 @@ impl SculptStroke {
             let f = (amount * crate::mask_ops::free_weight(self.base_mask[s])).clamp(lo, hi);
             // ⚠️ **O `match` é sobre a LEI e não sobre o verbo, e é isso que o
             // torna exaustivo:** uma lei nova na tabela do
-            // [`Verb::filter_law`] que não seja implementada aqui é um erro de
+            // [`Verb::filter_kind`] que não seja implementada aqui é um erro de
             // COMPILAÇÃO, e não um chip que aparece na lista e não move um
             // vértice.
             //

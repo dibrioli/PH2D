@@ -56,6 +56,7 @@ impl Sculpt3dScene {
                 // `[`/`]` imprime, para os dois não discordarem.
                 radius_px: self.radius_px(),
                 symmetry: self.symmetry,
+                filter_kind: self.filter_kind,
                 matcap: self.matcap,
                 alpha_preview: self.alpha_preview,
                 wireframe: self.wireframe,
@@ -196,6 +197,7 @@ impl Sculpt3dScene {
         // mais voltaria quando ela crescesse.
         self.radius_px = ui.radius_px;
         self.symmetry = ui.symmetry;
+        self.filter_kind = ui.filter_kind;
         self.matcap = ui.matcap;
         self.alpha_preview = ui.alpha_preview;
         self.wireframe = ui.wireframe;

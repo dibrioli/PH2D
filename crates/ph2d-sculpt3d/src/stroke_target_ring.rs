@@ -17,7 +17,7 @@
 //!
 //! ⚠️ **E o [`Self::target_sharpen`] fica `pub(super)`**, porque o filtro não o
 //! chama: `sharpen(w)` **é** `smooth(−w)` e num arrasto o sinal já existe — ver
-//! [`Verb::filter_law`].
+//! [`Verb::filter_kind`].
 //!
 //! ⚠️ **E o `w` continua a chegar por ARGUMENTO, nunca a ser re-derivado:** ele
 //! é o peso que o `compute_target` já resolveu (falloff × máscara × alpha), e

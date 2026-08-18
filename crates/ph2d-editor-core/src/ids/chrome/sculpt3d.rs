@@ -139,6 +139,34 @@ pub const SCULPT3D_REF_MODE_ALL: NodeId = hash_node_id("sculpt3d.ref_mode.all");
 /// isso é o interruptor, que acende quando armado.
 pub const SCULPT3D_FILTER: NodeId = hash_node_id("sculpt3d.filter");
 
+/// **QUAL LEI o filtro roda** — os sete chips do `FilterKind`.
+///
+/// ⚠️ **O catálogo NÃO é a projecção dos verbos, e é isso que o justifica.**
+/// Quatro das sete leis são verbos que o filtro reusa (Smooth, Inflate, Relax,
+/// Surface Smooth) e três **não têm carimbo nenhum** — não existe pincel de
+/// Scale, de Sphere nem de Random. Enquanto a lei era derivada do verbo em
+/// mãos, essas três eram inalcançáveis por qualquer gesto; a fileira É a porta
+/// delas.
+///
+/// ⚠️ **Grupo e não `toggle`, pelo motivo inverso ao do vizinho de cima:** aqui
+/// há sete irmãos mutuamente exclusivos, que é a definição de um rádio.
+///
+/// ⚠️ **UMA convenção, e a ordem desta lista É ela:** o id em `i` nomeia
+/// `FilterKind::ALL[i]`, e é assim que o painter, o roteador e o gate a leem.
+/// Indexar por DISCRIMINANTE em qualquer um dos três seria uma segunda
+/// convenção que coincide com esta só enquanto o `ALL` estiver em ordem de
+/// declaração — e o dia em que ele for reordenado, um chip rotulado `Sphere`
+/// escreveria `Relax`, pintado, vivo sob o mouse e mentindo.
+pub const SCULPT3D_FILTER_KIND: [NodeId; 7] = [
+    hash_node_id("sculpt3d.filter.kind.smooth"),
+    hash_node_id("sculpt3d.filter.kind.scale"),
+    hash_node_id("sculpt3d.filter.kind.inflate"),
+    hash_node_id("sculpt3d.filter.kind.sphere"),
+    hash_node_id("sculpt3d.filter.kind.random"),
+    hash_node_id("sculpt3d.filter.kind.relax"),
+    hash_node_id("sculpt3d.filter.kind.surface_smooth"),
+];
+
 /// **COM QUE PROFUNDIDADE OLHAR** — os chips `Basic` · `Pro` (§2 do plano).
 ///
 /// ⚠️ **O nome não é `DETAIL` de propósito:** [`SCULPT3D_DETAIL`] já existe e é

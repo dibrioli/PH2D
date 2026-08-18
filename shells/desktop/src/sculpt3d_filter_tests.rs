@@ -15,7 +15,7 @@
 //! ```
 
 use ph2d_mesh::shapes::uv_sphere;
-use ph2d_sculpt3d::{TransformKind, Verb};
+use ph2d_sculpt3d::{FilterKind, TransformKind, Verb};
 
 use super::super::Sculpt3dScene;
 
@@ -139,42 +139,111 @@ fn the_two_arms_never_claim_the_left_button_together() {
     assert!(!s.filter_arm(), "o desarme nao pegou");
 }
 
-/// ⭐ **VISÍVEL ⇔ VIVO** — o arm apaga com um verbo sem lei, e SOBREVIVE à volta.
+/// ⭐ **O VERBO SEMEIA A LEI, E NUNCA A REESCREVE** — a premissa que a W9b
+/// derrubou, com a metade que sobreviveu a ela.
 ///
-/// O painel só oferece o interruptor a `Verb::filters_mesh`. Um arm que
-/// sobrevivesse a pegar o Draw ficaria **aceso e invisível**: o botão esquerdo
-/// pararia de esculpir sem nada na tela dizendo por quê.
+/// ⚠️ **O gate ANTERIOR afirmava o oposto** (*"o arm apaga com um verbo sem
+/// lei"*), e estava certo enquanto a lei era DERIVADA do verbo em mãos: sem
+/// verbo que filtrasse não havia lei, então um arm aceso ficava **invisível**.
+/// Com a lei ESCOLHIDA num selector isso deixa de valer — a row é sempre
+/// pintada, um arm aceso é sempre visível, e o que resta a defender é o
+/// contrário: **pegar outra ferramenta não pode apagar a escolha do artista.**
 ///
-/// ⚠️ **A segunda metade é a que impede a cura preguiçosa.** Apagar o flag na
-/// troca de verbo satisfaria a primeira asserção e esqueceria a escolha do
-/// artista — voltar ao Smooth teria de re-armar à mão.
+/// ⚠️ **A metade do SEED é a que impede as duas curas preguiçosas:** re-semear
+/// a cada troca de verbo faria o selector ser sobrescrito por um gesto que não
+/// fala sobre ele, e não semear nunca obrigaria a escolher de novo o que a
+/// ferramenta na mão já diz.
 #[test]
 #[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
-fn the_arm_goes_dark_without_a_law_and_comes_back_with_one() {
+fn the_verb_seeds_the_law_and_never_rewrites_it() {
     let gpu = gpu_or_skip!();
-    let mut s = scene(&gpu.device, Verb::Smooth);
-    assert!(s.arm_filter() && s.filter_arm(), "armado com o Smooth");
 
+    // Armar com um verbo que TEM lei semeia com a dele.
+    let mut s = scene(&gpu.device, Verb::Smooth);
+    s.filter_kind = FilterKind::Sphere;
+    assert!(s.arm_filter() && s.filter_arm(), "armado com o Smooth");
+    assert_eq!(
+        s.filter_kind,
+        Verb::Smooth.filter_kind().expect("o Smooth filtra"),
+        "armar com um verbo que filtra tinha de semear a lei DELE"
+    );
+
+    // Trocar de verbo com o filtro ACESO nao mexe em nada.
     s.brush.verb = Verb::Draw;
     assert!(
         !Verb::Draw.filters_mesh(),
         "a fixture perdeu a premissa: o Draw passou a filtrar"
     );
     assert!(
-        !s.filter_arm(),
-        "o arm ficou VIVO com um verbo que nao filtra -- o botao esquerdo pararia de esculpir com \
-         o painel sem mostrar por que"
+        s.filter_arm(),
+        "o arm apagou ao pegar outro verbo -- a lei e ESCOLHIDA, nao derivada"
     );
     assert!(
-        !s.begin_filter(100.0),
-        "o gesto abriu sobre um verbo sem lei"
+        s.begin_filter(100.0),
+        "o gesto recusou sobre um verbo sem lei propria, e a lei nao vem dele"
+    );
+    assert_eq!(
+        s.filter_kind,
+        Verb::Smooth.filter_kind().expect("o Smooth filtra"),
+        "trocar de verbo com o filtro aceso REESCREVEU a escolha do artista"
     );
 
-    s.brush.verb = Verb::Smooth;
-    assert!(
-        s.filter_arm(),
-        "voltar ao verbo que filtra tinha de devolver a escolha do artista"
+    // E armar com um verbo SEM lei deixa a ultima escolha de pe.
+    let mut s = scene(&gpu.device, Verb::Draw);
+    s.filter_kind = FilterKind::Random;
+    assert!(s.arm_filter());
+    assert_eq!(
+        s.filter_kind,
+        FilterKind::Random,
+        "um verbo sem lei propria apagou a escolha ao armar"
     );
+}
+
+/// ⭐ **AS TRÊS LEIS SEM VERBO SÃO ALCANÇÁVEIS** — a razão de a wave existir.
+///
+/// ⚠️ Não há pincel de `Scale`, de `Sphere` nem de `Random`, então enquanto a
+/// lei vinha do verbo elas eram **inexprimíveis por gesto nenhum**. O oráculo é
+/// o produto: cada uma tem de MOVER a malha por um caminho que o artista de
+/// facto percorre (armar → escolher → arrastar).
+#[test]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+fn the_verbless_laws_are_reachable_from_a_gesture() {
+    let gpu = gpu_or_skip!();
+    for kind in [FilterKind::Scale, FilterKind::Sphere, FilterKind::Random] {
+        // O verbo em maos e o Draw: ele NAO filtra, e e esse o ponto.
+        //
+        // ⚠️ **A malha e um ELIPSOIDE, e nao a esfera das outras fixtures:** o
+        // `Sphere` puxa cada ponto para a esfera unitaria, e sobre uma esfera
+        // unitaria centrada na origem ele e a IDENTIDADE -- a fixture nao
+        // conteria o fenomeno, e o gate acusaria a lei de nao chegar ao motor
+        // sobre um produto correto. Achatar em X da-lhe o que corrigir; para o
+        // `Scale` e o `Random` a troca e inofensiva.
+        let mut s = scene(&gpu.device, Verb::Draw);
+        for p in s.objects[s.active].stack.mesh_mut().positions_mut() {
+            p[0] *= 3.0;
+        }
+        let before: Vec<[f32; 3]> = s.mesh().positions().to_vec();
+
+        assert!(s.arm_filter(), "{kind:?}: o arm recusou");
+        s.filter_kind = kind;
+        assert!(s.begin_filter(400.0), "{kind:?}: o gesto recusou");
+        s.filter_at(700.0);
+
+        let worst = s
+            .mesh()
+            .positions()
+            .iter()
+            .zip(&before)
+            .map(|(a, b)| {
+                let d = [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+                (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt()
+            })
+            .fold(0.0f32, f32::max);
+        assert!(
+            worst > 1e-3,
+            "{kind:?} nao moveu a malha ({worst:.6}) -- a lei escolhida nao chegou ao motor"
+        );
+    }
 }
 
 /// **O gesto inteiro custa UM passo de undo, e ele DESFAZ.**

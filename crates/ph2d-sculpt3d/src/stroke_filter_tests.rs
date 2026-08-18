@@ -297,18 +297,38 @@ fn the_mask_holds_the_filter_back() {
 /// passar). A recusa mudou de casa: quem a faz é o shell, no
 /// `filter_at`, e ela tem gate PRÓPRIO lá.
 ///
-/// ⚠️ **O que sobra aqui é a metade que o crate PODE afirmar, e ela é
-/// load-bearing:** o [`Verb::filters_mesh`] é lido pelo painel para OFERECER o
-/// gesto e o [`Verb::filter_kind`] pelo shell para o HONRAR — dois leitores de
-/// uma resposta. Se eles divergirem, o artista vê um botão que não faz nada,
-/// ou perde um que faria.
+/// ⚠️ **A justificação que estava escrita aqui MORREU na W9b-b, e as duas
+/// metades dela morreram por motivos diferentes.** Ela dizia *"o
+/// [`Verb::filters_mesh`] é lido pelo painel para OFERECER o gesto e o
+/// [`Verb::filter_kind`] pelo shell para o HONRAR — dois leitores de uma
+/// resposta"*. A primeira metade é **falsa desde o selector**: a row do filtro
+/// é oferecida a TODO verbo (três das sete leis não têm verbo nenhum, e o
+/// critério antigo as tornava inalcançáveis por gesto nenhum), então o painel
+/// não lê este predicado — ele pinta o catálogo. E o que o shell lê ao armar
+/// deixou de ser a lei: é a **SEMENTE** de uma escolha que o artista pode
+/// trocar depois.
+///
+/// ⚠️ **A segunda metade morreu antes, e por CONSTRUÇÃO:** o
+/// [`Verb::filters_mesh`] **é** `filter_kind().is_some()` numa linha só — a
+/// asserção abaixo é `x.is_some() == x.is_some()` e **não pode falhar**. Isto
+/// não é defeito de quem a escreveu: ela nasceu sobre duas tabelas, e o dia em
+/// que uma virou leitura da outra ela deixou de perguntar sem que nada
+/// mudasse de cor.
+///
+/// ⚠️ **Ele FICA como regressão-guard da DERIVAÇÃO, que é a única coisa que
+/// ele ainda pode dizer:** no dia em que alguém reescrever o `filters_mesh`
+/// como um `match` próprio, as duas respostas voltam a ser duas — e é
+/// exactamente aí que ele volta a morder. É o mesmo tratamento que as quatro
+/// cercas da bola limitada do Inflate receberam quando a representação apagou
+/// o caso especial.
 #[test]
-fn the_seed_and_the_offer_agree_on_every_verb() {
+fn the_seed_and_the_predicate_agree_on_every_verb() {
     for verb in Verb::ALL {
         assert_eq!(
             verb.filter_kind().is_some(),
             verb.filters_mesh(),
-            "{verb:?}: o que o painel OFERECE e o que o shell HONRA divergem"
+            "{verb:?}: o predicado deixou de ser uma LEITURA da semente -- \
+             duas respostas para uma pergunta, e elas divergiram"
         );
     }
 }

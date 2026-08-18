@@ -14,7 +14,7 @@
 use ph2d_light::LightRig;
 use ph2d_mesh::{Hit, Mesh, Multires, Pose, Ray};
 use ph2d_mesh_render::{Camera3d, MeshRenderer};
-use ph2d_sculpt3d::{Brush, Dab, Grip, SculptStroke, Symmetry, Verb};
+use ph2d_sculpt3d::{Brush, Dab, FilterKind, Grip, SculptStroke, Symmetry, Verb};
 
 /// **A DOAÇÃO** — o carimbo, a rasterização e o interruptor de três posições.
 /// Filho (`#[path]`) para alcançar os campos privados da cena; o corte é *o que
@@ -428,6 +428,14 @@ pub(crate) struct Sculpt3dScene {
     /// referência (`sculpt_filter_mesh.cc:2299`). Guardar o `y` seria carregar
     /// um número que ninguém lê.
     filter_from_x: f32,
+    /// **QUAL lei o filtro roda** — escolhida no painel, não derivada do verbo.
+    ///
+    /// ⚠️ **É a mudança de premissa da W9b, e ela é visível:** enquanto a lei
+    /// vinha de [`Verb::filter_kind`], três das sete eram INALCANÇÁVEIS por
+    /// gesto nenhum (não existe pincel de Scale, de Sphere nem de Random). O
+    /// verbo em mãos passa a apenas SEMEAR esta escolha ao armar — quem manda
+    /// é o artista, e um verbo sem lei própria deixa a última escolha de pé.
+    filter_kind: FilterKind,
     symmetry: Symmetry,
     /// **O rig de luz do artista** — as mesmas quatro lâmpadas que acendem a tinta
     /// do Painter (`ph2d-light`).

@@ -83,6 +83,10 @@ impl Sculpt3dScene {
             transform_from: (0.0, 0.0),
             filter_arm: false,
             filter_from_x: 0.0,
+            // ⚠️ **DERIVADO do catálogo, e não um literal:** o `Sculpt3dUi`
+            // nasce com o mesmo primeiro elemento, e um default escrito duas
+            // vezes é o que diverge no dia em que a ordem da lista mudar.
+            filter_kind: ph2d_sculpt3d::FilterKind::ALL[0],
             // ⚠️ **DESLIGADA por default, e é decisão do smoke.** O ZBrush
             // nasce com espelho ligado — e MOSTRA isso. Aqui o artista clicava
             // de um lado e via uma segunda protuberância do outro, sem nada na

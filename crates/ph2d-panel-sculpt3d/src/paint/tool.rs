@@ -11,7 +11,7 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
-use ph2d_sculpt3d::{RefMode, Verb, kelvinlet::Scales};
+use ph2d_sculpt3d::{FilterKind, RefMode, Verb, kelvinlet::Scales};
 use ph2d_tokens::Spacing;
 
 use super::widgets::{self, command, header, labelled_seg, seg};
@@ -67,26 +67,64 @@ pub(super) fn paint_tool(
     widgets::end_fold(ctx, fold, y + Spacing::Md.px())
 }
 
-/// **O FILTRO** — o verbo corrente na malha INTEIRA, com o arrasto a dar a força.
+/// **O FILTRO** — uma LEI na malha INTEIRA, com o arrasto a dar a força.
 ///
-/// ⚠️ **Ele é oferecido pela porta que o MOTOR pergunta** (`Verb::filters_mesh`),
-/// nunca por uma lista de verbos escrita aqui: o `SculptStroke::filter` só aceita
-/// quem tem `filter_law`, então uma fileira desenhada noutro critério seria um
-/// interruptor que arma um gesto que a cena recusa. É a mesma lei do
-/// `RefMode::field` na row de escalas, uma função acima.
+/// ⚠️ **A PREMISSA DESTA ROW MUDOU com a W9b, e a mudança é visível.** Ela era
+/// oferecida só a `Verb::filters_mesh`, porque a lei era DERIVADA do verbo em
+/// mãos; três das sete leis não têm verbo nenhum (não existe pincel de Scale,
+/// de Sphere nem de Random), então esse critério as tornava inalcançáveis por
+/// qualquer gesto. O filtro passa a ser oferecido **sempre**, e o verbo em mãos
+/// deixa de decidir — ele apenas SEMEIA a escolha ao armar.
 ///
-/// ⚠️ **BASIC, e não Pro:** o filtro não é afinação do verbo — ele é o verbo
-/// aplicado de outra maneira, e o precedente é o *Filter Layer* do Painter, que
-/// vive no card do próprio Sculpt.
+/// ⚠️ **E *visível ⇔ vivo* continua de pé por outra via:** antes o arm morria
+/// com o verbo, e a razão escrita era que um arm aceso e invisível pararia o
+/// botão esquerdo sem nada na tela dizer por quê. Com a row sempre pintada, um
+/// arm aceso é sempre **visível** — a preocupação some, e o mecanismo que a
+/// resolvia sai com ela.
+///
+/// ⚠️ **BASIC, e não Pro:** o filtro não é afinação do verbo — ele é uma lei
+/// aplicada de uma vez, e o precedente é o *Filter Layer* do Painter, que vive
+/// no card do próprio Sculpt.
 fn paint_filter_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
-    if !snap.ui.brush.verb.filters_mesh() {
-        return y;
-    }
-    widgets::toggle(
+    let y = widgets::toggle(
         ctx,
         ids::SCULPT3D_FILTER,
         tr("panel.sculpt3d.filter"),
         snap.filter_armed,
+        x,
+        w,
+        y,
+    );
+    if !snap.filter_armed {
+        // ⚠️ **O selector só existe ARMADO, e isto NÃO é esconder um
+        // controle** — é o inverso: desarmado, escolher a lei não muda coisa
+        // nenhuma, e sete chips que não produzem nada são a definição do botão
+        // que o artista descobre vazio clicando. Armado, cada um muda o que o
+        // próximo arrasto vai fazer.
+        return y;
+    }
+    // ⚠️ **UMA convenção: o id é a POSIÇÃO no `FilterKind::ALL`**, e nunca o
+    // discriminante. O roteador (`event.rs`) devolve `ALL[i]` a partir do
+    // índice do id, então indexar aqui por `*k as usize` seria uma segunda
+    // convenção que **coincide com a primeira só enquanto o `ALL` estiver em
+    // ordem de discriminante** — reordená-lo faria um chip rotulado `Sphere`
+    // escrever `Relax`, com a fileira pintada, viva sob o mouse e mentindo.
+    let (kind_ids, labels): (Vec<_>, Vec<&str>) = FilterKind::ALL
+        .iter()
+        .enumerate()
+        .map(|(i, k)| (ids::SCULPT3D_FILTER_KIND[i], k.label()))
+        .unzip();
+    let selected = FilterKind::ALL
+        .iter()
+        .position(|&k| k == snap.ui.filter_kind)
+        .unwrap_or(0);
+    labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.filter_kind"),
+        ids::SCULPT3D_SEC_TOOL,
+        &kind_ids,
+        &labels,
+        selected,
         x,
         w,
         y,

@@ -24,7 +24,13 @@ exclude = [
 [workspace.package]
 version = "0.0.0"
 edition = "2024"
-rust-version = "1.92"
+# MSRV = o piso MEDIDO, e ele é o próprio pin (2026-08-18). O `1.92` que morava
+# aqui era FALSO por dois mecanismos independentes: as deps (cranelift/pulley/
+# wasmtime exigem 1.94) e o nosso código (dois `if let` guards em
+# `input_dispatch.rs`, estáveis só em 1.95). O gate que devia pegar isto nunca
+# rodou 1.92 — `rust-toolchain.toml` vence `rustup default` —, então ele media o
+# PIN e ficava verde. Ver `tests/msrv_is_the_pinned_toolchain.rs`.
+rust-version = "1.95"
 publish = false
 license = "LicenseRef-Proprietary"
 authors = ["Enio Oliveira Dias Brito <dibrioli@gmail.com>"]

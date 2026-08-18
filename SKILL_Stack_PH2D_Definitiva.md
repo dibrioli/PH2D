@@ -43,7 +43,7 @@ Lido cedo porque o resto do documento usa.
 - **IME** — Input Method Editor. Composição de texto para CJK, indispensável em produtos sérios.
 - **Lockstep** — modo de netcode determinístico onde todos clientes simulam o mesmo input, peer-to-peer.
 - **MCP** — Model Context Protocol (Anthropic). Servidor embutido que expõe operações da engine a LLMs.
-- **MSRV** — Minimum Supported Rust Version. Aqui: **1.92** (toolchain pinada em 1.95; bumped em M11 para vello 0.8 + wgpu 28).
+- **MSRV** — Minimum Supported Rust Version. Aqui: **1.95**, que é a própria toolchain pinada. ⚠️ O `1.92` que esta linha declarou por meses era FALSO: as deps (cranelift/wasmtime) exigem 1.94 e o nosso código usa `if let` guards, estáveis em 1.95 — e o job de CI que devia pegar isso **nunca rodou 1.92** (o `rust-toolchain.toml` vence o `rustup default`). Medido e corrigido em 2026-08-18; o invariante *MSRV == pin* é hoje o gate `architecture_msrv_is_the_pinned_toolchain`.
 - **MSL/SPIR-V** — Metal Shading Language e SPIR-V (alvos de compilação a partir de WGSL via naga).
 - **Platform-agnostic** — código que não conhece o SO. Toda interação com SO passa por trait `PlatformHost`.
 - **PlatformHost** — trait expondo serviços do SO (FS, IME, file picker, gamepad, áudio device, etc.) para o core.
@@ -89,11 +89,11 @@ Tabela definitiva. Hardware abaixo disso não é alvo — feature won't fix.
 
 ## 5. Stack canônico (versões pinadas)
 
-Versões verificadas em **2026-05-09** (pós-M11). Toolchain: `rust-toolchain.toml` channel `1.95`, MSRV `1.92`, resolver `"3"`. Adicionar dep fora desta tabela exige justificativa em PR + ADR se for não-trivial.
+Versões verificadas em **2026-05-09** (pós-M11). Toolchain: `rust-toolchain.toml` channel `1.95`, MSRV `1.95` (= o pin, medido em 2026-08-18), resolver `"3"`. Adicionar dep fora desta tabela exige justificativa em PR + ADR se for não-trivial.
 
 | Camada | Tecnologia | Crate / Lib | Versão | Status / Notas |
 |---|---|---|---|---|
-| Linguagem core | Rust 2024 edition | — | MSRV **1.92** (toolchain pinada em 1.95) | `unsafe` requer justificativa em comentário; resolver = "3" |
+| Linguagem core | Rust 2024 edition | — | MSRV **1.95** (= a toolchain pinada) | `unsafe` requer justificativa em comentário; resolver = "3" |
 | GPU abstração | wgpu | `wgpu` | `28` | **Downgrade de 29 → 28 em M11** para alinhar com vello 0.8. Único path; sem fallback OpenGL |
 | GPU baixo nível (interop shell) | wgpu-hal | `wgpu-hal` | `28` | Apenas em FFI shell↔core, isolado em `ph2d-gpu::interop` (não wired ainda; M14+) |
 | Shading runtime | WGSL via naga | `naga` | acompanha `wgpu 28` | Backends: SPIR-V, MSL, HLSL, GLSL |
@@ -176,7 +176,7 @@ Estado real verificado em **2026-05-09**. Legenda: ✅ implementado e wired no s
 
 ```
 _PH2D_definitiva/
-├── Cargo.toml                    # workspace (resolver "3", edition 2024, MSRV 1.92)
+├── Cargo.toml                    # workspace (resolver "3", edition 2024, MSRV 1.95)
 ├── rust-toolchain.toml           # toolchain channel 1.95
 ├── clippy.toml                   # workspace lints (HashMap ban per ADR-0022)
 ├── deny.toml                     # cargo-deny licenses + bans + advisories

@@ -551,3 +551,37 @@ fn the_offset_moves_the_stamp_and_zero_is_byte_identical() {
         "um deslocamento autorado com uma imagem vazou para um padrão procedural"
     );
 }
+
+/// **A PISTA DA SEMENTE É DE GRAÇA QUANDO ELA É ZERO** — `hash4(x, y, z, 0)` é
+/// `hash3(x, y, z)` **AO BIT**.
+///
+/// ⚠️ **Não é promessa, é aritmética:** `0u32.wrapping_mul(k)` é `0` e `a ^ 0`
+/// é `a`, então o termo novo desaparece da soma antes da avalanche. É isso que
+/// deixa o [`crate::FilterKind::Random`] reusar o hash desta crate **sem mover
+/// um pixel** de nenhum alpha procedural — e é a razão de o [`hash3`] delegar
+/// em vez de os dois viverem lado a lado, onde divergiriam ao primeiro ajuste.
+#[test]
+fn the_fourth_lane_is_free_when_the_seed_is_zero() {
+    for &(x, y, z) in &[
+        (0, 0, 0),
+        (1, -7, 913),
+        (i32::MIN, i32::MAX, -1),
+        (12345, 67890, -424242),
+    ] {
+        assert_eq!(
+            hash4(x, y, z, 0),
+            hash3(x, y, z),
+            "a pista da semente cobrou em ({x}, {y}, {z})"
+        );
+    }
+}
+
+/// **E A SEMENTE MUDA O NÚMERO** — o controle sem o qual o gate acima é
+/// satisfeito por um `hash4` que ignora o 4º argumento.
+#[test]
+fn a_seed_that_is_not_zero_changes_the_hash() {
+    let base = hash4(3, 5, 8, 0);
+    for w in [1, 2, -1, 7777] {
+        assert_ne!(hash4(3, 5, 8, w), base, "a semente {w} nao mudou nada");
+    }
+}

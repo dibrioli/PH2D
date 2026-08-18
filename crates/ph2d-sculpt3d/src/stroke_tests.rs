@@ -450,6 +450,13 @@ mod stroke_apply;
 #[path = "stroke_filter_tests.rs"]
 mod stroke_filter;
 
+/// **AS TRÊS LEIS SEM VERBO** — `Scale`, `Sphere` e `Random`. Irmão do acima e
+/// não parte dele: aqueles gates perguntam ao VERBO (é a rota que eles sempre
+/// mediram) e estes falam com o [`crate::FilterKind`] direto, porque não há
+/// verbo por onde passar. Ver o cabeçalho dele.
+#[path = "stroke_filter_laws_tests.rs"]
+mod stroke_filter_laws;
+
 /// ⚠️ **RED-FIRST da W4.2, e o defeito é de COSTURA e não de kernel.** Um traço
 /// de máscara escreve um canal por vértice e **não move geometria**, então ele
 /// esquece a região refrescada de propósito (não há normal nova a subir). Quem

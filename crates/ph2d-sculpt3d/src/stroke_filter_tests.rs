@@ -31,6 +31,18 @@ fn filter_brush(verb: Verb) -> Brush {
     }
 }
 
+/// **A lei que o VERBO semeia** — a mesma porta que o editor usa ao soltar o
+/// gesto ([`Verb::filter_kind`]).
+///
+/// ⚠️ **O motor recebe a LEI, não o verbo**, desde que o catálogo de filtros
+/// deixou de ser a projecção dos verbos (o `Scale`, o `Sphere` e o `Random`
+/// não têm verbo nenhum). Estes gates continuam a exercitar a rota do verbo
+/// porque é a que eles sempre mediram; as três leis sem verbo têm gates
+/// próprios.
+fn seeded(b: &Brush) -> crate::FilterKind {
+    b.verb.filter_kind().expect("o verbo deste gate filtra")
+}
+
 /// Os verbos que a tabela nomeia como filtros — perguntados ao motor, nunca
 /// escritos aqui.
 ///
@@ -68,7 +80,7 @@ fn the_filter_table_names_the_four_laws_and_nothing_else() {
     // deslocamento, que é exactamente por que o Sharpen e o Layer ficaram fora.
     let mut kinds: Vec<crate::FilterKind> = verbs
         .iter()
-        .map(|v| v.filter_law().expect("lei").kind)
+        .map(|v| v.filter_kind().expect("lei"))
         .collect();
     let n = kinds.len();
     kinds.dedup();
@@ -106,7 +118,7 @@ fn the_filter_runs_the_same_law_as_the_brush() {
         let mut m_filter = mesh_for(verb);
         let mut s_filter = SculptStroke::default();
         s_filter.filter_begin(&m_filter);
-        let wrote = s_filter.filter(&mut m_filter, &brush, 0.5);
+        let wrote = s_filter.filter(&mut m_filter, &brush, seeded(&brush), 0.5);
         assert_eq!(
             wrote,
             m_filter.vert_count(),
@@ -162,12 +174,12 @@ fn the_drag_back_returns_the_pose_exactly() {
         let mut stroke = SculptStroke::default();
         stroke.filter_begin(&mesh);
 
-        stroke.filter(&mut mesh, &brush, 0.6);
+        stroke.filter(&mut mesh, &brush, seeded(&brush), 0.6);
         let moved = max_shift(&before, &mesh);
         assert!(moved > 1e-5, "{verb:?}: a ida não moveu nada");
         // Um passo intermédio, para o caminho de volta não ser o mesmo da ida.
-        stroke.filter(&mut mesh, &brush, 0.2);
-        stroke.filter(&mut mesh, &brush, 0.0);
+        stroke.filter(&mut mesh, &brush, seeded(&brush), 0.2);
+        stroke.filter(&mut mesh, &brush, seeded(&brush), 0.0);
 
         for (i, (b, p)) in before.iter().zip(mesh.positions()).enumerate() {
             assert!(
@@ -188,9 +200,9 @@ fn applying_the_same_amount_twice_is_applying_it_once() {
         let mut mesh = mesh_for(verb);
         let mut stroke = SculptStroke::default();
         stroke.filter_begin(&mesh);
-        stroke.filter(&mut mesh, &brush, 0.4);
+        stroke.filter(&mut mesh, &brush, seeded(&brush), 0.4);
         let once = snapshot(&mesh);
-        stroke.filter(&mut mesh, &brush, 0.4);
+        stroke.filter(&mut mesh, &brush, seeded(&brush), 0.4);
         for (i, (a, p)) in once.iter().zip(mesh.positions()).enumerate() {
             assert!(
                 a[0] == p[0] && a[1] == p[1] && a[2] == p[2],
@@ -221,7 +233,7 @@ fn a_ramped_drag_lands_where_a_single_step_lands() {
         let mut direct = mesh_for(verb);
         let mut a = SculptStroke::default();
         a.filter_begin(&direct);
-        a.filter(&mut direct, &brush, 0.4);
+        a.filter(&mut direct, &brush, seeded(&brush), 0.4);
         let target = snapshot(&direct);
 
         let mut ramped = mesh_for(verb);
@@ -229,7 +241,7 @@ fn a_ramped_drag_lands_where_a_single_step_lands() {
         let mut b = SculptStroke::default();
         b.filter_begin(&ramped);
         for f in [0.1, 0.25, 0.4] {
-            b.filter(&mut ramped, &brush, f);
+            b.filter(&mut ramped, &brush, seeded(&brush), f);
         }
 
         // CONTROLE: sem isto, um filtro que não movesse nada satisfaria a
@@ -265,7 +277,7 @@ fn the_mask_holds_the_filter_back() {
         let before = snapshot(&mesh);
         let mut stroke = SculptStroke::default();
         stroke.filter_begin(&mesh);
-        stroke.filter(&mut mesh, &brush, 0.6);
+        stroke.filter(&mut mesh, &brush, seeded(&brush), 0.6);
 
         let d = deltas(&before, &mesh);
         let masked = d[..split].iter().map(|v| norm(*v)).fold(0.0f32, f32::max);
@@ -275,25 +287,29 @@ fn the_mask_holds_the_filter_back() {
     }
 }
 
-/// **Um verbo que não é filtro não faz nada** — e a resposta é `0`, não um
-/// deslocamento parcial.
+/// **Um verbo que não é filtro não SEMEIA lei nenhuma** — e as duas metades
+/// têm de concordar.
+///
+/// ⚠️ **A PREMISSA DESTE GATE MUDOU com a W9b, e a mudança está escrita em vez
+/// de escondida.** Ele afirmava *"o motor devolve `0` para um verbo que não
+/// filtra"*, e o motor deixou de ter opinião sobre verbos quando passou a
+/// receber a LEI (o `Scale`, o `Sphere` e o `Random` não têm verbo por onde
+/// passar). A recusa mudou de casa: quem a faz é o shell, no
+/// `filter_at`, e ela tem gate PRÓPRIO lá.
+///
+/// ⚠️ **O que sobra aqui é a metade que o crate PODE afirmar, e ela é
+/// load-bearing:** o [`Verb::filters_mesh`] é lido pelo painel para OFERECER o
+/// gesto e o [`Verb::filter_kind`] pelo shell para o HONRAR — dois leitores de
+/// uma resposta. Se eles divergirem, o artista vê um botão que não faz nada,
+/// ou perde um que faria.
 #[test]
-fn a_verb_that_is_not_a_filter_does_nothing() {
+fn the_seed_and_the_offer_agree_on_every_verb() {
     for verb in Verb::ALL {
-        if verb.filters_mesh() {
-            continue;
-        }
-        let brush = filter_brush(verb);
-        let mut mesh = sphere();
-        let before = snapshot(&mesh);
-        let mut stroke = SculptStroke::default();
-        stroke.filter_begin(&mesh);
         assert_eq!(
-            stroke.filter(&mut mesh, &brush, 0.7),
-            0,
-            "{verb:?} não é filtro e mesmo assim escreveu"
+            verb.filter_kind().is_some(),
+            verb.filters_mesh(),
+            "{verb:?}: o que o painel OFERECE e o que o shell HONRA divergem"
         );
-        assert_eq!(max_shift(&before, &mesh), 0.0, "{verb:?} moveu a malha");
     }
 }
 
@@ -311,7 +327,7 @@ fn the_filter_refuses_a_stroke_that_did_not_freeze_the_whole_mesh() {
 
     // (a) traço nunca começado.
     let mut fresh = SculptStroke::default();
-    assert_eq!(fresh.filter(&mut mesh, &brush, 0.5), 0);
+    assert_eq!(fresh.filter(&mut mesh, &brush, seeded(&brush), 0.5), 0);
 
     // (b) um traço NORMAL, cuja pegada é uma calota.
     let mut stroke = SculptStroke::default();
@@ -327,7 +343,7 @@ fn the_filter_refuses_a_stroke_that_did_not_freeze_the_whole_mesh() {
         after_dab.len() > stroke.footprint_len(),
         "a fixture não contém o fenômeno: o dab cobriu a malha inteira"
     );
-    assert_eq!(stroke.filter(&mut mesh, &brush, 0.5), 0);
+    assert_eq!(stroke.filter(&mut mesh, &brush, seeded(&brush), 0.5), 0);
     for (a, p) in after_dab.iter().zip(mesh.positions()) {
         assert!(a[0] == p[0] && a[1] == p[1] && a[2] == p[2]);
     }
@@ -351,7 +367,12 @@ fn the_sharpen_filter_is_the_smooth_filter_dragged_backwards() {
     let mut back = mesh0.clone();
     let mut s = SculptStroke::default();
     s.filter_begin(&back);
-    s.filter(&mut back, &filter_brush(Verb::Smooth), -1.0);
+    s.filter(
+        &mut back,
+        &filter_brush(Verb::Smooth),
+        seeded(&filter_brush(Verb::Smooth)),
+        -1.0,
+    );
 
     // (b) O PINCEL do Sharpen, com peso cheio — `accum = 1` nos dois, então o
     // alvo é a posição final dos dois lados.
@@ -366,7 +387,12 @@ fn the_sharpen_filter_is_the_smooth_filter_dragged_backwards() {
     let mut fwd = mesh0.clone();
     let mut u = SculptStroke::default();
     u.filter_begin(&fwd);
-    u.filter(&mut fwd, &filter_brush(Verb::Smooth), 1.0);
+    u.filter(
+        &mut fwd,
+        &filter_brush(Verb::Smooth),
+        seeded(&filter_brush(Verb::Smooth)),
+        1.0,
+    );
 
     let d_back = deltas(&before, &back);
     let d_sharp = deltas(&before, &sharp);
@@ -406,13 +432,13 @@ fn the_one_sided_filters_ignore_a_backwards_drag() {
         let mut stroke = SculptStroke::default();
         stroke.filter_begin(&mesh);
 
-        stroke.filter(&mut mesh, &brush, -1.0);
+        stroke.filter(&mut mesh, &brush, seeded(&brush), -1.0);
         assert_eq!(
             max_shift(&before, &mesh),
             0.0,
             "{verb:?} andou para o lado que a referência clampa"
         );
-        stroke.filter(&mut mesh, &brush, 1.0);
+        stroke.filter(&mut mesh, &brush, seeded(&brush), 1.0);
         assert!(
             max_shift(&before, &mesh) > 1e-5,
             "{verb:?}: o CONTROLE não andou"

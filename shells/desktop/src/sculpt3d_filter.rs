@@ -91,9 +91,27 @@ impl Sculpt3dScene {
         // um filtro não tem cursor nem pegada. O que a lei lê daqui é o verbo, a
         // referência e os dois `hc_*` — todos autorados —, então pedir um pincel
         // ancorado num ponto seria inventar o ponto que o gesto não tem.
+        // ⚠️ **A LEI vem do verbo, e é uma SEMENTE, não a porta final.** O
+        // catálogo de filtros deixou de ser a projecção dos verbos quando as
+        // três leis sem verbo entraram (`Scale`, `Sphere`, `Random`), então o
+        // motor recebe um [`ph2d_sculpt3d::FilterKind`]; enquanto o artista não
+        // tem onde escolher um, o verbo em mãos responde — que é exactamente o
+        // que o [`Self::filter_arm`] já pergunta para oferecer o gesto.
+        // *Quando o selector nascer, ele substitui esta leitura e mais nada.*
+        //
+        // ⚠️ **O `else` é DEFESA EM CAMADAS, e não é gateado de propósito:**
+        // através dos chamadores de hoje ele é inalcançável — o `filter_arm`
+        // acima já recusou todo verbo sem lei, e o gate
+        // `the_arm_goes_dark_without_a_law_and_comes_back_with_one` prova a
+        // camada de fora. Ele fica porque a alternativa é um `expect` num
+        // handler de ponteiro, e *um pânico é pior falha que um no-op* — mas a
+        // afirmação honesta é que nenhuma fixture o alcança.
+        let Some(kind) = self.brush.verb.filter_kind() else {
+            return;
+        };
         let brush = self.brush.clone();
         let mesh = self.objects[self.active].stack.mesh_mut();
-        let moved = self.stroke.filter(mesh, &brush, amount);
+        let moved = self.stroke.filter(mesh, &brush, kind, amount);
         if moved == 0 {
             return;
         }

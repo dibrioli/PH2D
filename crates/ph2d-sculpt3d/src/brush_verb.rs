@@ -655,7 +655,7 @@ mod defaults;
 /// **QUEM PODE SER UM FILTRO** — a lei e a faixa. Ver [`filter`].
 #[path = "brush_verb_filter.rs"]
 mod filter;
-pub use filter::{FilterKind, FilterLaw};
+pub use filter::FilterKind;
 
 /// **AS MAGNITUDES** — quanto cada família desloca. Ver [`magnitudes`].
 #[path = "brush_magnitudes.rs"]

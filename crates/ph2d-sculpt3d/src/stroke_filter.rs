@@ -44,6 +44,7 @@ use super::*;
 // `base + n·f` aqui seria a segunda resposta a *"como se soma um vetor a um
 // ponto"*, e é o mesmo motivo pelo qual o `cross` já é re-exportado de lá.
 use super::target::add;
+use crate::FilterKind;
 
 /// **QUANTO UM PIXEL DE ARRASTO VALE**, em unidades de mundo por pixel.
 ///
@@ -156,13 +157,17 @@ impl SculptStroke {
     /// (a captura cobre a malha?) em vez de um flag: um segundo campo dizendo
     /// *"estou em modo filtro"* seria um fato guardado duas vezes, e o dia em
     /// que os dois discordassem o filtro rodaria sobre um `pre` de outro gesto.
-    pub fn filter(&mut self, mesh: &mut Mesh, brush: &Brush, amount: f32) -> usize {
-        let Some(law) = brush.verb.filter_law() else {
-            return 0;
-        };
+    pub fn filter(
+        &mut self,
+        mesh: &mut Mesh,
+        brush: &Brush,
+        kind: FilterKind,
+        amount: f32,
+    ) -> usize {
         if self.touched.len() != mesh.vert_count() {
             return 0;
         }
+        let (lo, hi) = kind.range();
         // ⚠️ **A ORDEM é load-bearing:** o `fill_hc_disp` lê `mesh.positions()`,
         // então ele tem de ver a pose JÁ restaurada — senão o `b` do HC seria o
         // deslocamento medido contra a saída da chamada anterior.
@@ -181,8 +186,7 @@ impl SculptStroke {
             // é escalado pelo arrasto e **então** é aparado. Clampar antes
             // deixaria um vértice meio-mascarado receber mais que um livre no
             // extremo da faixa.
-            let f =
-                (amount * crate::mask_ops::free_weight(self.base_mask[s])).clamp(law.lo, law.hi);
+            let f = (amount * crate::mask_ops::free_weight(self.base_mask[s])).clamp(lo, hi);
             // ⚠️ **O `match` é sobre a LEI e não sobre o verbo, e é isso que o
             // torna exaustivo:** uma lei nova na tabela do
             // [`Verb::filter_law`] que não seja implementada aqui é um erro de
@@ -202,13 +206,18 @@ impl SculptStroke {
             // degeneração correcta do knob, não um controle que se perdeu: quem
             // o torna vivo é a iteração, e a iteração é a divergência que o
             // cabeçalho declara.
-            let t = match law.kind {
-                crate::FilterKind::Inflate => add(base, self.base_nrm[s], f),
-                crate::FilterKind::Smooth => self.target_smooth(mesh, brush, v, base, f),
-                crate::FilterKind::Relax => self.target_slide_relax(mesh, brush, v, base, f),
-                crate::FilterKind::SurfaceSmooth => {
-                    self.target_surface_smooth(mesh, v, s, base, f, brush)
-                }
+            let t = match kind {
+                FilterKind::Inflate => add(base, self.base_nrm[s], f),
+                FilterKind::Smooth => self.target_smooth(mesh, brush, v, base, f),
+                FilterKind::Relax => self.target_slide_relax(mesh, brush, v, base, f),
+                FilterKind::SurfaceSmooth => self.target_surface_smooth(mesh, v, s, base, f, brush),
+                FilterKind::Scale => add(base, base, f),
+                FilterKind::Sphere => sphere_target(base, f),
+                FilterKind::Random => add(
+                    base,
+                    self.base_nrm[s],
+                    f * random_unit(base, self.filter_seed),
+                ),
             };
             // ⚠️ **`accum = 1`, e o alvo é a posição FINAL** — a lei que os
             // quatro gestos com âncora já usam (`GripLaw::unit_accum`), e a
@@ -222,4 +231,70 @@ impl SculptStroke {
         mesh.refresh_region(&self.moved, &mut self.region);
         self.moved.len()
     }
+}
+
+/// **A ESFERA** — `midpoint(normalize(p), −p) · |f|`, somado à pose congelada.
+///
+/// ⚠️ **A lei é a do `calc_sphere_translations`, verbatim**, e o que ela faz não
+/// é óbvio pelo nome: `normalize(p)` é o ponto projectado na esfera UNITÁRIA e
+/// `−p` é o espelho pela origem, então o ponto médio dos dois é
+/// `(unit(p) − p)/2` — *metade do caminho até a esfera de raio um*. Um vértice
+/// que já está a distância 1 da origem não se move, um que está longe vem para
+/// dentro, um que está perto sai. É por isso que o verbo se chama Sphere e não
+/// *"projectar numa esfera"*: ele **aproxima**, e a magnitude do arrasto diz
+/// quanto.
+///
+/// ⚠️ **O `|f|` é da referência e NÃO é um descuido a corrigir:** arrastar para
+/// os dois lados esferiza igual. Escrever `f` cru daria a metade que a
+/// referência não tem — *afastar-se da esfera* —, e seria uma lei nossa a
+/// vestir o nome dela.
+///
+/// ⚠️ **A guarda da ORIGEM é NOSSA, e a única resposta finita:** um vértice
+/// exactamente na origem não tem direcção para uma esfera, então ele fica onde
+/// está. Sem ela, `normalize` de um vector nulo entra no alvo e a malha inteira
+/// herda o `NaN` pela recomputação de normais.
+fn sphere_target(base: [f32; 3], f: f32) -> [f32; 3] {
+    let len = (base[0] * base[0] + base[1] * base[1] + base[2] * base[2]).sqrt();
+    if len <= f32::EPSILON {
+        return base;
+    }
+    let a = f.abs() * 0.5;
+    let mut t = base;
+    for i in 0..3 {
+        // `unit − p` na mesma expressão: `p/len − p`, sem materializar o
+        // versor, porque a soma seguinte é a única leitora dele.
+        t[i] += (base[i] / len - base[i]) * a;
+    }
+    t
+}
+
+/// **O SORTEIO por vértice**, em `[−0,5, 0,5)` — o `randomize_factors` da
+/// referência.
+///
+/// ⚠️ **A entrada são os BITS da POSIÇÃO, e é isso que dá a propriedade:**
+/// dois vértices vizinhos têm coordenadas quase iguais e bits completamente
+/// diferentes, então o campo é branco POR VÉRTICE em vez de suave no espaço —
+/// o oposto de um ruído espacial, e é o que um *jitter* quer.
+///
+/// ⚠️ **E é isso que torna a SEMENTE quase supérflua, medido no desenho:** cada
+/// gesto re-congela a pose, então um segundo Random sobre uma malha já
+/// perturbada hasheia posições **outras** e sorteia de novo sozinho. A semente
+/// só serve para re-sortear **sem mover nada**, e por isso nasce em `0` — o
+/// crate fica determinista e a variação é uma escolha do shell.
+///
+/// ⚠️ **DIVERGÊNCIA DECLARADA, e ela não é afinável:** a referência mistura com
+/// o `BLI_hash_int_2d`, cuja definição **não está neste clone** (medido: só o
+/// arquivo que a chama). Usamos o hash desta crate ([`crate::alpha::hash4`], o
+/// mesmo dos alphas procedurais) — *um crate, um hash* — e o que os gates
+/// afirmam são as quatro propriedades que fazem de um ruído um ruído
+/// (determinismo · a faixa · estabilidade ao longo do arrasto · vizinhos
+/// descorrelacionados), nunca uma paridade bit-a-bit que não temos como medir.
+fn random_unit(base: [f32; 3], seed: u32) -> f32 {
+    let h = crate::alpha::hash4(
+        base[0].to_bits() as i32,
+        base[1].to_bits() as i32,
+        base[2].to_bits() as i32,
+        seed as i32,
+    );
+    crate::alpha::unit(h) - 0.5
 }

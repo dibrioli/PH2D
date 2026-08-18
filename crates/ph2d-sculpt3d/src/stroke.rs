@@ -59,6 +59,9 @@ fn mirror(v: [f32; 3], s: &[f32; 3]) -> [f32; 3] {
 /// gesto proporcional ao que o artista tocou e não ao que ele abriu.
 #[derive(Clone, Debug, Default)]
 pub struct SculptStroke {
+    /// **A semente do [`crate::FilterKind::Random`]** — ver
+    /// [`Self::set_filter_seed`].
+    filter_seed: u32,
     slot: Vec<u32>,
     stamp: Vec<u32>,
     epoch: u32,
@@ -163,6 +166,21 @@ impl SculptStroke {
     ///
     /// Não copia a malha — a captura é **preguiçosa, por vértice tocado**. Um
     /// traço numa malha de 5 M vértices que toca 20 mil paga 20 mil, não 5 M.
+    /// **Re-sorteia o [`crate::FilterKind::Random`] sem mover nada.**
+    ///
+    /// ⚠️ **Nasce em `0` e o crate nunca a move**, de propósito: a semente da
+    /// referência é `rand()` por invocação, o que faria de todo gate deste
+    /// verbo uma medição de sorte. O determinismo é a decisão; variar é gesto
+    /// do shell.
+    ///
+    /// ⚠️ **E ela é MENOS necessária aqui do que na referência**, pelo motivo
+    /// que o [`crate::stroke_filter`] mede: o sorteio hasheia os BITS DA
+    /// POSIÇÃO congelada, então um segundo gesto sobre uma malha já perturbada
+    /// re-sorteia sozinho. Ela cobre só o caso de re-rolar a MESMA pose.
+    pub fn set_filter_seed(&mut self, seed: u32) {
+        self.filter_seed = seed;
+    }
+
     pub fn begin(&mut self, mesh: &Mesh) {
         let n = mesh.vert_count();
         if self.slot.len() != n {

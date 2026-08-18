@@ -538,9 +538,24 @@ fn contrast(v: f32, lo: f32, hi: f32) -> f32 {
 /// espelhado em torno da diagonal — visível como uma simetria que ninguém
 /// autorou. O avalanche final é o do `splitmix`.
 fn hash3(x: i32, y: i32, z: i32) -> u32 {
+    hash4(x, y, z, 0)
+}
+
+/// O mesmo hash com uma QUARTA entrada — a semente.
+///
+/// ⚠️ **`hash4(x, y, z, 0)` é `hash3(x, y, z)` AO BIT**, e não por promessa:
+/// `0u32.wrapping_mul(k)` é `0` e `a ^ 0` é `a`, então o termo novo desaparece
+/// da soma. É isso que deixa o [`crate::FilterKind::Random`] usar o hash desta
+/// crate **sem mover um pixel** de nenhum alpha procedural (gate
+/// `the_fourth_lane_is_free_when_the_seed_is_zero`).
+///
+/// ⚠️ **O multiplicador do 4º eixo é DIFERENTE dos outros três** pelo motivo que
+/// o [`hash3`] já nomeia: com um repetido, trocar duas entradas colidiria.
+pub(crate) fn hash4(x: i32, y: i32, z: i32, w: i32) -> u32 {
     let mut h = (x as u32).wrapping_mul(0x8da6_b343)
         ^ (y as u32).wrapping_mul(0xd816_3841)
-        ^ (z as u32).wrapping_mul(0xcb1a_b31f);
+        ^ (z as u32).wrapping_mul(0xcb1a_b31f)
+        ^ (w as u32).wrapping_mul(0xa341_316c);
     h ^= h >> 15;
     h = h.wrapping_mul(0x2c1b_3c6d);
     h ^= h >> 12;
@@ -554,7 +569,7 @@ fn hash3(x: i32, y: i32, z: i32) -> u32 {
 /// ⚠️ Os altos e não os baixos: um multiplicador ímpar preserva perfeitamente os
 /// bits baixos de uma soma, então `hash & 0xFF` de células vizinhas anda em
 /// passos regulares — o padrão sairia listrado.
-fn unit(h: u32) -> f32 {
+pub(crate) fn unit(h: u32) -> f32 {
     (h >> 8) as f32 * (1.0 / 16_777_216.0)
 }
 

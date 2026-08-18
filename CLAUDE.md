@@ -5,7 +5,7 @@
 > (HR-1..HR-18, stack). Processo → [`DIRETRIZ.md`](docs/IntegracaoMultiAgente/DIRETRIZ.md).
 > Não leia esses dois inteiros — use o roteador §1.
 
-## §0 — Inegociáveis (memorize os 8)
+## §0 — Inegociáveis (memorize os 9)
 
 0. **O alvo é o EXTRAORDINÁRIO, e o teto é o do HARDWARE — nunca o do caminho lento.** Esta engine não busca "bom o suficiente": ela busca o que a máquina de fato faz. Antes de escrever qualquer limite (cap, teto, ceiling, `MAX_*`, faixa de slider, "por ora", "razoável"), **MEÇA** — e depois escreva o número que a MEDIÇÃO deu, com a tabela ao lado dele.
    - ⚠️ **Nunca deixe o fallback definir o produto.** Caso real (GPU/M5, 2026-07-17): a sim de partículas rodava **4,19 M partículas em 3,6 ms na GPU** (22% de um frame de 60 fps) e o teto foi posto em **16.384** — 256× abaixo — porque a *CPU* seria lenta a 262k. O caminho mais lento definiu o teto do mais rápido, no módulo cuja razão de existir é o mais rápido. O caminho de referência (CPU) só precisa **computar a mesma resposta**; quem manda no teto é o dispositivo.
@@ -21,6 +21,11 @@
 5. **Velocidade (§2):** inner loop = **SÓ `cargo check -p`**; teste/clippy/auditoria **1× no fechamento do módulo**, nunca por task. Concorrência **é função do hardware** — `bash scripts/hw-profile.sh` (≤3 agentes só no tier `constrained`/Mac 8 GiB; `workstation` voa). O tier também define o **MODO de operação** ([ADR-0106](docs/architecture/decisions/0106-parallel-dev-lines-worktrees-workstation.md)): `workstation` = **Modo L** (linhas paralelas por worktree, DIRETRIZ §1.5) · `constrained` = **Modo C** (shared tree + Coordenador). Detalhe: §2 + DIRETRIZ §6.0.
 6. **Padrão-ouro sem custo:** a melhor opção técnica vence custo de build/cronograma ([feedback-perfection-no-deferrals](project-memory/feedback_perfection_no_deferrals.md)); gaps in-scope fecham na sessão atual.
 7. **Push é 1× por jornada — e NUNCA é seu por conta própria.** Modo C: você NÃO pusha — reporta commit local; o **Coordenador** faz ship + push + babysit CI (§3). **Modo L: integração E ship só por ordem EXPLÍCITA do Enio** (nunca autônomos), via um **agente integrador dedicado** munido do handoff de cada linha (DIRETRIZ §1.5.3–1.5.4). A linha NÃO integra nem pusha sozinha — fecha, entrega o handoff (§1.5.9) e espera. Integrar/pushar sem ordem = **violação do protocolo**.
+8. **O Enio é o DONO do produto, não um engenheiro acompanhando o desenvolvimento.** Ele decide e ele testa — mas **não conhece as ferramentas que estamos construindo**: o smoke é onde ele as **APRENDE**. Toda resposta a ele (Enio, 2026-08-18):
+   - **Curta. Só o essencial.** Se ele quiser o detalhe técnico, ele pede.
+   - **Sem jargão.** Nada de gate, schema, crate, ADR, contagem de mutação, nome de arquivo ou de função — a menos que ele pergunte. Diga **o que ele consegue FAZER agora**, não o que foi construído.
+   - **Smoke em PASSOS NUMERADOS, escritos para quem nunca viu aquilo:** (1) o comando **completo, com o `cd`**, copiável de uma vez · (2) onde clicar / o que pegar, com o nome que aparece **na tela** · (3) o que tem de acontecer · (4) **como saber que deu errado**. Nunca só o nome da variável de ambiente.
+   - ⚠️ **Isto vale para a resposta AO ENIO.** Handoff, ADR, doc-comment, gate e mensagem de commit continuam **técnicos e densos** — o leitor deles é a próxima LLM, não ele. Baixar o rigor deles não é o pedido.
 
 ## §1 — Roteador leia-por-tarefa (leia SÓ o que sua tarefa exige)
 
@@ -102,6 +107,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   Motion envelheceram antes de alguém voltar a elas: *o que se perde ao não reconferir não é tempo, é construir o que já existe.*
 - **⛔ O que foi MEDIDO E REJEITADO não se reconstrói** — está no handoff da wave que o mediu e na história arquivada.
 - **Integrar não é aprovar.** Smoke é do Enio; integrar e shipar só por ordem explícita dele (§0.7).
+- ⚠️ **As listas de `Smokes:` abaixo são NOMES de variável, não o comando.** Ao passar um smoke ao Enio, escreva-o **inteiro e copiável de uma vez**, com o caminho absoluto da árvore em que você trabalha (§0.8):
+  ```
+  cd /home/enio/Documentos/Projetos/PH2D && env PH2D_<NOME>=<n> cargo run -p ph2d-host-desktop --release
+  ```
+  ⚠️ **Modo L: o caminho é o da SUA worktree** (`.../PH2D/Worktrees/line-<módulo>`), não o do primário — o Enio roda de outro diretório, e sem o `cd` o comando falha ou testa a árvore errada.
 - ⚠️ **Nenhuma leitura de relógio desta workstation vale nada acima de `load ~5`** (medido: o mesmo binário deu 11,36 e
   5,50 ms para o mesmo passe). Gates de razão reprovam sob carga sem que uma linha de código tenha mudado.
 - ⚠️ **Gates de GPU são `#[ignore]`** e precisam de adapter — *skip gracioso não é verde*; e o `nextest` **cancela na

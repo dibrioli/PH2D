@@ -101,6 +101,11 @@ Um controle interativo atravessa o **seam painel↔tool**, no mínimo **7 sites*
       `architecture_interactive_crate_has_behavioral_test` (e a dívida vive em
       `BEHAVIORAL_TEST_DEBT`, drive-to-zero — não é exceção permanente).
 - [ ] Grep dos ids nos 8 sites. Grep `pub struct <Tipo>` — **um dono só** (não recrie modelo paralelo).
+- [ ] **O relatório ao Enio é CURTO, sem jargão, e o smoke vem em PASSOS numerados** (`CLAUDE.md §0.8`):
+      comando inteiro **com o `cd`** → onde clicar (o nome que aparece **na tela**) → o que tem de
+      acontecer → como saber que deu errado. Ele é o dono do produto, **não** um engenheiro
+      acompanhando o desenvolvimento, e o smoke é onde ele **aprende a ferramenta**. O handoff, esse,
+      continua técnico e denso — é a próxima LLM que o lê.
 - [ ] **Não entregue incremento que o Enio precise QA na mão pra descobrir que está morto.**
       DEFER **nomeia** a capacidade exata faltante + abre handoff + **não conta** como fechamento.
       Veredito é **condicional** ("APPROVE pending smoke S1") até o smoke manual voltar.

@@ -13,6 +13,21 @@ Ao entregar um nó/feature nova, **autore um exemplo que a exercita já no docum
 
 **How to apply:** feature nova → autore o exemplo mínimo que a exercita no grafo default/demo (ou preset carregável) + o comando `cd <worktree> && cargo run -p ph2d-host-desktop` copiável ([[feedback_run_command_include_cd]]). Combine com o teste headless irrefutável ([[feedback_painter_inefficiency_4_causes]]): o teste prova a costura, o exemplo deixa o smoke instantâneo. Vale pro smoke 1× no fim ([[feedback_smoke_at_end]]).
 
+## O smoke é onde o Enio APRENDE a ferramenta (2026-08-18)
+
+*"Muitas das ferramentas que estamos implementando eu ainda não conheço e devo aprender a
+usá-las nos testes."* ⇒ a instrução de smoke não é um lembrete para quem já sabe: é o
+**primeiro contato** dele com aquilo. Escreva em **passos numerados**:
+
+1. o **comando inteiro, com o `cd`** ([[feedback_run_command_include_cd]]) — copiável de uma vez;
+2. **onde clicar / o que pegar**, com o nome que aparece **na tela** (não o identificador do código);
+3. **o que tem de acontecer** — a frase que descreve o que ele vai ver;
+4. **como saber que deu errado**, e o que fazer então (parar, ou o que reportar).
+
+⚠️ **A cena imprime o que montou**, e a instrução manda **PARAR** se a linha não aparecer — sem
+isso o resto do smoke não significa nada (padrão já usado nas cenas de conferência do Motion e
+nas do Vector). A lei geral da comunicação está no `CLAUDE.md §0.8`.
+
 ## Áudio: **você cria o material de teste** (Enio, 2026-07-13)
 
 *"Para os smokes desse módulo vc deve criar o audio para testes e montar no app. Então eu testo."*

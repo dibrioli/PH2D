@@ -5,6 +5,14 @@
 > isolamento que fabrica fios órfãos, alvo irrefutável. Esta diretiva é o antídoto **operacional**.
 > Não é opcional. Verde-de-compilação é sinal de VELOCIDADE; no fechamento/audit vale **ZERO**.
 
+> ⚠️ **As três leis do LOOP estão no [`CLAUDE.md §2`](../../CLAUDE.md), que você já tem carregado —
+> não são repetidas aqui de propósito** (duas portas para a mesma regra divergem em silêncio).
+> Em uma linha cada: **um turno, N chamadas** (medido: o paralelismo estava em **1,00**, sobre
+> **991 turnos por sessão**) · **edite pela ferramenta `Edit`** (52% ia por script, e um
+> `str.replace()` que não casa é **no-op silencioso**) · **`check -p` no loop, `test -p` só no
+> gate red-first, na mutação e no fechamento** (a razão real era **4,3:1 na direção errada**;
+> `test` custa 2× a 20× o `check`). Sonda: `bash scripts/agent-loop-profile.sh`.
+
 ## 1 — Antes de codar
 - [ ] **Sabe seu MODO?** `bash scripts/hw-profile.sh` — `workstation` (Linux 128 GB) = **Modo L**:
       você trabalha DENTRO do worktree da sua linha (`line/<módulo>`), `git rebase main` antes de

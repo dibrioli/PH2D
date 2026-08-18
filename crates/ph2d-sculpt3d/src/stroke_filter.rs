@@ -218,6 +218,15 @@ impl SculptStroke {
                     self.base_nrm[s],
                     f * random_unit(base, self.filter_seed),
                 ),
+                // ⚠️ **O [`Self::target_sharpen`] e nao um `target_smooth(-f)`,
+                // e a escolha vale um ULP:** a expressao daquele kernel
+                // (`live + (live - avg)*w`) **e'** a do
+                // `calc_enhance_details_filter`, enquanto o `target_smooth`
+                // escreve a mesma lei como `live*(1-w) + avg*w` — algebricamente
+                // igual, e em `f32` a 1,2e-7 de distancia (medido). Rotear pela
+                // expressao da referencia torna a paridade uma identidade em vez
+                // de um epsilon.
+                FilterKind::EnhanceDetails => self.target_sharpen(mesh, brush, v, base, f),
             };
             // ⚠️ **`accum = 1`, e o alvo é a posição FINAL** — a lei que os
             // quatro gestos com âncora já usam (`GripLaw::unit_accum`), e a

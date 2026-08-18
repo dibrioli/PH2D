@@ -67,17 +67,26 @@ fn norm(v: [f32; 3]) -> f32 {
 }
 
 /// **A tabela tem conteúdo** — o anti-vácuo de todo gate abaixo que a varre.
+///
+/// ⚠️ **A contagem MUDOU de 4 para 5 e a razão escrita aqui era a que caiu.**
+/// Ela dizia que *"o Sharpen ficou fora porque duas entradas com a mesma lei
+/// seriam duas portas para o mesmo deslocamento"* — e a
+/// [`crate::FilterKind::EnhanceDetails`] mostra que as duas leis **não
+/// expressam o mesmo conjunto**: dentro de `|f| <= 1` elas concordam a um ULP
+/// (gate próprio) e fora dele só uma existe, porque a irmã CLAMPA. *Duas portas
+/// para o mesmo deslocamento é o que se recusa; duas portas para conjuntos
+/// diferentes de deslocamento é o que a referência tem.*
 #[test]
-fn the_filter_table_names_the_four_laws_and_nothing_else() {
+fn the_seed_table_has_content_and_no_two_verbs_seed_the_same_law() {
     let verbs = filtering_verbs();
     assert_eq!(
         verbs.len(),
-        4,
+        5,
         "a tabela do filtro mudou de tamanho: {verbs:?}"
     );
-    // ⚠️ A lei de cada um é perguntada, e a asserção é que as QUATRO são
-    // DISTINTAS: duas entradas com a mesma lei seriam duas portas para o mesmo
-    // deslocamento, que é exactamente por que o Sharpen e o Layer ficaram fora.
+    // ⚠️ A lei de cada um é perguntada, e a asserção é que as CINCO são
+    // DISTINTAS: dois VERBOS a semear a mesma lei seriam duas sementes para o
+    // mesmo chip, e aí a semente deixaria de dizer alguma coisa.
     let mut kinds: Vec<crate::FilterKind> = verbs
         .iter()
         .map(|v| v.filter_kind().expect("lei"))
@@ -85,6 +94,133 @@ fn the_filter_table_names_the_four_laws_and_nothing_else() {
     let n = kinds.len();
     kinds.dedup();
     assert_eq!(kinds.len(), n, "duas entradas do filtro rodam a MESMA lei");
+}
+
+/// **A barra de um ULP, na escala em que estes gates medem.**
+///
+/// ⚠️ **Absoluta e não relativa à excursão, e a fixture é a razão:** a
+/// `mesh_for` é uma esfera de raio um, então uma coordenada vale `~1` e o ULP
+/// dela é o `f32::EPSILON`. Uma barra relativa à excursão diria coisas
+/// diferentes em forças diferentes (a sonda mediu `1,65e-6` a `1,69e-5` de
+/// razão para o MESMO erro absoluto de `1,2e-7`), o que é a assinatura de uma
+/// régua ligada à grandeza errada.
+const ULP_BAR: f32 = 8.0 * f32::EPSILON;
+
+/// O maior deslocamento que um filtro produziu.
+fn max_excursion(before: &[[f32; 3]], mesh: &Mesh) -> f32 {
+    deltas(before, mesh)
+        .into_iter()
+        .map(norm)
+        .fold(0.0, f32::max)
+}
+
+/// A maior distância entre duas poses.
+fn max_dev(a: &Mesh, b: &Mesh) -> f32 {
+    a.positions()
+        .iter()
+        .zip(b.positions())
+        .map(|(p, q)| norm([p[0] - q[0], p[1] - q[1], p[2] - q[2]]))
+        .fold(0.0, f32::max)
+}
+
+/// Roda UM filtro sobre a fixture e devolve a malha.
+fn filtered(kind: crate::FilterKind, amount: f32) -> Mesh {
+    let mut mesh = mesh_for(Verb::Smooth);
+    let mut s = SculptStroke::default();
+    s.filter_begin(&mesh);
+    s.filter(&mut mesh, &filter_brush(Verb::Smooth), kind, amount);
+    mesh
+}
+
+/// **A metade VERDADEIRA da premissa que o teto revogou.**
+///
+/// O doc do [`crate::SculptStroke::target_sharpen`] dizia *"o filtro não o
+/// chama: `sharpen(w)` **é** `smooth(−w)`"*, e dentro da faixa clampada isso é
+/// exacto. Este gate mede-o em vez de o afirmar — e é ele que impede a
+/// [`crate::FilterKind::EnhanceDetails`] de ser um chip que faz outra coisa
+/// qualquer.
+///
+/// ⚠️ **O resíduo é de EXPRESSÃO, não de modelo:** o `target_sharpen` escreve
+/// `live + (live − avg)·w` (a forma do `calc_enhance_details_filter`) e o
+/// `target_smooth` escreve `live·(1 − w) + avg·w` — a mesma lei em duas contas,
+/// e em `f32` elas caem a um ou dois ULP uma da outra. A sonda
+/// `tests/measure_sharpen_filter.rs` mediu **1,2e-7 a 2,4e-7** contra a
+/// referência.
+#[test]
+fn the_enhance_details_filter_is_the_smooth_filter_dragged_backwards() {
+    const F: f32 = 0.6;
+    let before = snapshot(&mesh_for(Verb::Smooth));
+
+    let back = filtered(crate::FilterKind::Smooth, -F);
+    let enh = filtered(crate::FilterKind::EnhanceDetails, F);
+
+    // ⚠️ O ANTI-VÁCUO: sem excursão as duas poses seriam a de entrada, e a
+    // igualdade abaixo seria verdadeira sobre uma malha que ninguém tocou.
+    let exc = max_excursion(&before, &back);
+    assert!(
+        exc > 1e-3,
+        "a fixture não contém o fenômeno: excursão {exc:e}"
+    );
+
+    let dev = max_dev(&back, &enh);
+    assert!(
+        dev < ULP_BAR,
+        "as duas leis divergiram por {dev:e}, acima do ULP ({ULP_BAR:e})"
+    );
+}
+
+/// ⭐ **O GATE DA WAVE: a irmã CLAMPA e esta não.**
+///
+/// É a única coisa que a [`crate::FilterKind::EnhanceDetails`] acrescenta, e
+/// por isso é a única coisa que a justifica. As três asserções são as três
+/// metades do argumento:
+///
+/// 1. **o CONTROLE** — em força 1 as duas concordam (é o gate acima, no ponto
+///    exacto onde o teto morde);
+/// 2. **o Smooth SATURA** — três vezes o arrasto e a pose sai **byte a byte
+///    idêntica**, porque `clamp(−3, −1, 1)` e `clamp(−1, −1, 1)` são o MESMO
+///    número e o kernel é determinístico. Não é uma tolerância: é uma
+///    identidade;
+/// 3. **e esta CONTINUA** — a lei é linear em `f`, então o triplo do arrasto é
+///    o triplo do deslocamento, e o gate afirma o **3,0** em vez de um *"maior
+///    que"* frouxo.
+///
+/// ⚠️ **E o teto é ALCANÇÁVEL, que é o que o torna um defeito e não uma
+/// curiosidade:** o arrasto não tem clamp próprio
+/// ([`crate::FILTER_DRAG_PER_PX`] vale `0,001`), então 1000 px de arrasto são
+/// força 1 — e dali para a frente o artista continua a arrastar e nada acontece.
+#[test]
+fn the_enhance_details_filter_has_no_ceiling_and_the_smooth_one_does() {
+    let before = snapshot(&mesh_for(Verb::Smooth));
+
+    let s1 = filtered(crate::FilterKind::Smooth, -1.0);
+    let s3 = filtered(crate::FilterKind::Smooth, -3.0);
+    let e1 = filtered(crate::FilterKind::EnhanceDetails, 1.0);
+    let e3 = filtered(crate::FilterKind::EnhanceDetails, 3.0);
+
+    // (1) O CONTROLE.
+    let at_one = max_dev(&s1, &e1);
+    assert!(
+        at_one < ULP_BAR,
+        "as duas leis já divergiam em força 1: {at_one:e}"
+    );
+
+    // (2) O Smooth satura AO BIT.
+    assert_eq!(
+        s1.positions(),
+        s3.positions(),
+        "o Smooth deixou de saturar: o clamp de (−1, 1) é a lei da referência"
+    );
+
+    // (3) E esta continua, linearmente.
+    let a = max_excursion(&before, &e1);
+    let b = max_excursion(&before, &e3);
+    assert!(a > 1e-3, "a fixture não contém o fenômeno: {a:e}");
+    let ratio = b / a;
+    assert!(
+        (ratio - 3.0).abs() < 0.01,
+        "o triplo do arrasto deu {ratio:.4}× o deslocamento — o teto voltou"
+    );
 }
 
 /// ⭐ **O gate da wave: o filtro e o pincel rodam a MESMA LEI.**

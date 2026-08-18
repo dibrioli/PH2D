@@ -96,6 +96,45 @@ pub enum FilterKind {
     /// `calc_surface_smooth_filter` — o HC (Vollmer et al.), que devolve parte
     /// do que o laplaciano tirou.
     SurfaceSmooth,
+    /// `calc_enhance_details_filter` — **o MESMO kernel do [`Self::Smooth`],
+    /// com o sinal trocado e SEM teto**.
+    ///
+    /// ⚠️ **Ela nao e' lei nova, e isso foi MEDIDO antes de existir** (a sonda
+    /// `tests/measure_sharpen_filter.rs`): contra a lei da referencia escrita a`
+    /// mao, o nosso [`Self::Smooth`] em forca NEGATIVA concorda a **1,2e-7 a`
+    /// 2,4e-7** — um a dois ULP de `f32` (`2^-23 = 1,2e-7`) — em toda a faixa
+    /// `0,10..1,00`, com o CONTROLE em forca zero a dar `0,000e0`. *Duas
+    /// expressoes da mesma lei, nao dois modelos.*
+    ///
+    /// ⚠️ **Entao o que ela ACRESCENTA e' exactamente o TETO, e ele e'
+    /// ALCANCAVEL.** O `calc_smooth_filter` chama `clamp_factors(factors, -1,
+    /// 1)` (`sculpt_filter_mesh.cc:375`) e o `calc_enhance_details_filter`
+    /// **nao passa pelo `clamp_factors`** (conferido no fonte, `:1885-1925`: a
+    /// cadeia e' `fill_factor_from_hide_and_mask` -> `auto_mask::calc_vert_factors`
+    /// -> `scale_factors` -> `gather_data_mesh(detail_directions)` ->
+    /// `scale_translations` -> `zero_disabled_axis_components` ->
+    /// `clip_and_lock_translations`). Medido nas forcas 1,5 / 2,0 / 3,0: o
+    /// [`Self::Smooth`] fica preso em **0,072617** e a referencia alcanca
+    /// **0,108926 / 0,145235 / 0,217852**.
+    ///
+    /// ⚠️ **E o teto e' alcancavel porque o ARRASTO nao tem clamp proprio:**
+    /// [`crate::FILTER_DRAG_PER_PX`] vale `0,001`, entao 1000 px de arrasto sao
+    /// forca 1 e, dali para a frente, o kernel satura em silencio — *o filtro
+    /// para de responder*. Sem esta lei, `|f| > 1` e' um gesto que o artista faz
+    /// e que nada honra.
+    ///
+    /// ⚠️ **NAO se alarga a faixa do [`Self::Smooth`] em vez disto**, e a razao
+    /// e' fidelidade: a referencia clampa o `SMOOTH` dela, e alargar o nosso
+    /// seria a nossa lei a vestir o nome dela. As duas leis existem **na
+    /// referencia** precisamente para separar *o alisamento com teto* de *o
+    /// realce sem teto*.
+    ///
+    /// ⚠️ **O SINAL e' o da referencia** (`t = detail_directions x -strength`):
+    /// arrastar para a DIREITA realca, ao contrario do [`Self::Smooth`], que
+    /// alisa. Os dois chips respondem em sentidos opostos ao mesmo gesto, e e'
+    /// assim no Blender — cada um e' uma entrada propria do
+    /// `prop_mesh_filter_types`.
+    EnhanceDetails,
 }
 
 impl FilterKind {
@@ -104,7 +143,7 @@ impl FilterKind {
     /// ⚠️ **Esta é a fonte da UI, e a contagem NÃO é citada em prosa nenhuma** —
     /// o `Verb::ALL` já pagou essa lição duas vezes em dois parágrafos vizinhos
     /// do plano.
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::Smooth,
         Self::Scale,
         Self::Inflate,
@@ -112,6 +151,7 @@ impl FilterKind {
         Self::Random,
         Self::Relax,
         Self::SurfaceSmooth,
+        Self::EnhanceDetails,
     ];
 
     /// O rótulo que o painel mostra — os nomes do `prop_mesh_filter_types`.
@@ -128,6 +168,7 @@ impl FilterKind {
             Self::Random => "Random",
             Self::Relax => "Relax",
             Self::SurfaceSmooth => "Surface Smooth",
+            Self::EnhanceDetails => "Enhance Details",
         }
     }
 
@@ -161,6 +202,12 @@ impl FilterKind {
             // existe a operação inversa de redistribuir —, e o HC negativo
             // amplificaria o próprio erro que ele existe para devolver.
             Self::Relax | Self::SurfaceSmooth => (0.0, 1.0),
+            // ⚠️ **SEM teto, e aqui a ausencia e' a FEATURE inteira** — ao
+            // contrario dos tres acima, esta lei tem uma irma CLAMPADA que roda
+            // o mesmo kernel (o [`Self::Smooth`]). O `calc_enhance_details_filter`
+            // nao chama `clamp_factors` (`:1885-1925`), e e' so' isso que o
+            // separa do `calc_smooth_filter` negado. Ver o doc do variant.
+            Self::EnhanceDetails => (f32::MIN, f32::MAX),
         }
     }
 }
@@ -217,6 +264,13 @@ impl Verb {
             Self::Inflate => FilterKind::Inflate,
             Self::SlideRelax => FilterKind::Relax,
             Self::SurfaceSmooth => FilterKind::SurfaceSmooth,
+            // ⚠️ **O verbo que ja' rodava esta lei.** O
+            // [`crate::SculptStroke::target_sharpen`] e' o kernel deste pincel
+            // desde que ele nasceu, e e' *a mesma expressao* do
+            // `calc_enhance_details_filter`; ate' a
+            // [`FilterKind::EnhanceDetails`] existir, ele era o unico verbo cuja
+            // lei nao tinha filtro correspondente.
+            Self::Sharpen => FilterKind::EnhanceDetails,
             _ => return None,
         })
     }

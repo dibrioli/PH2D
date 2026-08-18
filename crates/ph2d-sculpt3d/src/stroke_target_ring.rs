@@ -15,9 +15,19 @@
 //! alternativa era pendurar o motor do filtro dentro do [`super`], cujo assunto
 //! declarado é *para onde cada verbo aponta* e não *quem dirige o gesto*.
 //!
-//! ⚠️ **E o [`Self::target_sharpen`] fica `pub(super)`**, porque o filtro não o
-//! chama: `sharpen(w)` **é** `smooth(−w)` e num arrasto o sinal já existe — ver
-//! [`Verb::filter_kind`].
+//! ⚠️ **O [`Self::target_sharpen`] FICOU `pub(super)` por uma premissa que o
+//! teto revogou.** Ela dizia *"o filtro nao o chama: `sharpen(w)` **e**
+//! `smooth(-w)` e num arrasto o sinal ja' existe"* — verdade **dentro da faixa
+//! clampada**, e so' la'. O `FilterKind::Smooth` clampa em `(-1, 1)` porque a
+//! referencia clampa o `SMOOTH` dela, entao passado esse ponto o sinal **nao**
+//! basta: o kernel satura e o gesto deixa de responder. A
+//! [`FilterKind::EnhanceDetails`] e' a metade que continua, e ela chama esta
+//! funcao — dai o `pub(in crate::stroke)`.
+//!
+//! ⚠️ **A metade VERDADEIRA da premissa sobrevive e esta' gateada:** dentro de
+//! `|f| <= 1` as duas leis concordam, e o
+//! `the_enhance_details_filter_is_the_smooth_filter_dragged_backwards` mede-o em
+//! vez de o afirmar.
 //!
 //! ⚠️ **E o `w` continua a chegar por ARGUMENTO, nunca a ser re-derivado:** ele
 //! é o peso que o `compute_target` já resolveu (falloff × máscara × alpha), e
@@ -49,10 +59,22 @@ impl SculptStroke {
         ]
     }
 
-    /// NOSSO, e a referência não tem: o laplaciano com o sinal trocado. Reflete
-    /// a média através do próprio vértice, com a mesma magnitude que o
-    /// [`Self::target_smooth`] teria.
-    pub(super) fn target_sharpen(
+    /// **O laplaciano com o sinal trocado** — reflete a media atraves do
+    /// proprio vertice, com a mesma magnitude que o [`Self::target_smooth`]
+    /// teria.
+    ///
+    /// ⚠️ **Este doc dizia *"NOSSO, e a referencia nao tem"*, e era FALSO** — a
+    /// referencia tem-no com outro nome: `calc_enhance_details_filter`
+    /// (`sculpt_filter_mesh.cc:1885`), cuja lei e' `t = detail_directions x
+    /// -strength`, ou seja **esta expressao, verbatim**. A sonda
+    /// `tests/measure_sharpen_filter.rs` mediu a concordancia em **1,2e-7 a
+    /// 2,4e-7** (um a dois ULP de `f32`) contra a referencia escrita a` mao.
+    /// *A afirmacao nasceu de nao se ter procurado pelo nome que ela usa.*
+    ///
+    /// ⚠️ **Dois consumidores, e e' por isso que a visibilidade abriu:** o
+    /// [`Verb::Sharpen`] (o pincel) e a [`FilterKind::EnhanceDetails`] (o
+    /// filtro), que sao a mesma lei em dois gestos.
+    pub(in crate::stroke) fn target_sharpen(
         &self,
         mesh: &Mesh,
         brush: &Brush,

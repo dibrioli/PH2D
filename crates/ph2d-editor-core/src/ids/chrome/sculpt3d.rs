@@ -139,7 +139,7 @@ pub const SCULPT3D_REF_MODE_ALL: NodeId = hash_node_id("sculpt3d.ref_mode.all");
 /// isso é o interruptor, que acende quando armado.
 pub const SCULPT3D_FILTER: NodeId = hash_node_id("sculpt3d.filter");
 
-/// **QUAL LEI o filtro roda** — os sete chips do `FilterKind`.
+/// **QUAL LEI o filtro roda** — um chip por lei do `FilterKind`.
 ///
 /// ⚠️ **O catálogo NÃO é a projecção dos verbos, e é isso que o justifica.**
 /// Quatro das sete leis são verbos que o filtro reusa (Smooth, Inflate, Relax,
@@ -149,7 +149,11 @@ pub const SCULPT3D_FILTER: NodeId = hash_node_id("sculpt3d.filter");
 /// delas.
 ///
 /// ⚠️ **Grupo e não `toggle`, pelo motivo inverso ao do vizinho de cima:** aqui
-/// há sete irmãos mutuamente exclusivos, que é a definição de um rádio.
+/// há irmãos mutuamente exclusivos, que é a definição de um rádio.
+///
+/// ⚠️ **A CONTAGEM não é citada em prosa** — ela é o comprimento deste array e
+/// o do `FilterKind::ALL`, que um gate compara. Um número escrito aqui
+/// envelheceria na wave seguinte, como o `Verb::ALL` já pagou duas vezes.
 ///
 /// ⚠️ **UMA convenção, e a ordem desta lista É ela:** o id em `i` nomeia
 /// `FilterKind::ALL[i]`, e é assim que o painter, o roteador e o gate a leem.
@@ -157,7 +161,7 @@ pub const SCULPT3D_FILTER: NodeId = hash_node_id("sculpt3d.filter");
 /// convenção que coincide com esta só enquanto o `ALL` estiver em ordem de
 /// declaração — e o dia em que ele for reordenado, um chip rotulado `Sphere`
 /// escreveria `Relax`, pintado, vivo sob o mouse e mentindo.
-pub const SCULPT3D_FILTER_KIND: [NodeId; 7] = [
+pub const SCULPT3D_FILTER_KIND: [NodeId; 8] = [
     hash_node_id("sculpt3d.filter.kind.smooth"),
     hash_node_id("sculpt3d.filter.kind.scale"),
     hash_node_id("sculpt3d.filter.kind.inflate"),
@@ -165,6 +169,7 @@ pub const SCULPT3D_FILTER_KIND: [NodeId; 7] = [
     hash_node_id("sculpt3d.filter.kind.random"),
     hash_node_id("sculpt3d.filter.kind.relax"),
     hash_node_id("sculpt3d.filter.kind.surface_smooth"),
+    hash_node_id("sculpt3d.filter.kind.enhance_details"),
 ];
 
 /// **COM QUE PROFUNDIDADE OLHAR** — os chips `Basic` · `Pro` (§2 do plano).

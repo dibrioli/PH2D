@@ -33,12 +33,26 @@ SPLIT = re.compile(r'(?<!\\)\|')
 
 # As linhas cujo veredito não está na coluna `P` — lidas uma a uma. Todas são
 # natureza / fechado / fora de escopo; NENHUMA é célula viva.
+#
+# ⚠️ **A chave é um TRECHO DA LINHA, não o número dela — e a troca foi paga.**
+# Enquanto a chave era `(arquivo, nº)`, **inserir uma linha acima desalinhava a
+# tabela em silêncio**: em 2026-08-18 uma linha nova na folha 15 empurrou a
+# exceção `141` para cima da vizinha, que passou a ser contada como *fora* em vez
+# de ✅ — o placar imprimiu **um ✅ a menos** e o único sintoma foi um `!!` numa
+# linha que ninguém tinha tocado. Um número de linha é uma referência que o
+# próprio ato de editar invalida; um trecho do texto viaja com a linha.
+#
+# ⚠️ E a troca só é segura porque ela se VERIFICA: cada chave tem de casar
+# **exactamente uma** linha da sua folha, e o `sweep` sai vermelho quando não
+# casa (chave morta = exceção que deixou de se aplicar; chave ambígua = duas
+# linhas a disputá-la). Sem esse par, um trecho renomeado seria a mesma falha
+# silenciosa noutra roupa.
 HAND = {
-    ('01_distribuicao_emissao.md', 36): 'natureza',
-    ('08_stream_utilidade.md', 56): 'natureza',   # "ACHADO, não gap"
-    ('15_value.md', 89): 'natureza',              # decisão de produto
-    ('15_value.md', 141): 'fora',                 # nó novo, fora desta conferência
-    ('17_zero_param_debug.md', 78): 'fech',
+    ('01_distribuicao_emissao.md', '`motion.lattice` | idem | (nada mais com citação)'): 'natureza',
+    ('08_stream_utilidade.md', 'É A SEGUNDA PORTA — ver §2.'): 'natureza',
+    ('15_value.md', 'observação estrutural, não gap'): 'natureza',
+    ('15_value.md', 'blur ESPACIAL'): 'fora',     # nó novo, fora desta conferência
+    ('17_zero_param_debug.md', '**`motion.output`** | 1 | **BLEND MODE.**'): 'fech',
 }
 
 
@@ -68,7 +82,9 @@ def classify(v):
 def sweep(path):
     base = os.path.basename(path)
     lines = open(path, encoding='utf-8').read().split('\n')
-    acc, unknown = {}, []
+    acc, unknown, problems = {}, [], []
+    mine = [k for (f, k) in HAND if f == base]
+    hits = dict.fromkeys(mine, 0)
     for i, ln in enumerate(lines):
         if not SEP.fullmatch(ln.strip()):
             continue
@@ -76,9 +92,13 @@ def sweep(path):
             continue
         j = i + 1
         while j < len(lines) and lines[j].lstrip().startswith('|'):
-            key = HAND.get((base, j + 1))
-            if key is None:
-                key = ''
+            hand = [k for k in mine if k in lines[j]]
+            for k in hand:
+                hits[k] += 1
+            if len(hand) > 1:
+                problems.append(f'{base}:{j + 1} casa {len(hand)} excecoes: {hand}')
+            key = HAND[(base, hand[0])] if hand else ''
+            if not key:
                 for field in cells(lines[j])[4:]:
                     key = classify(field)
                     if key:
@@ -88,7 +108,13 @@ def sweep(path):
                     key = 'OUTRO'
             acc[key] = acc.get(key, 0) + 1
             j += 1
-    return acc, unknown
+    # ⚠️ A metade que torna a chave-trecho segura: uma exceção que não casa NADA é
+    # uma linha que mudou de texto (ou saiu da folha) e uma classificação que
+    # deixou de se aplicar — silenciosa, como o número de linha era.
+    for k, n in hits.items():
+        if n != 1:
+            problems.append(f'{base}: a excecao {k!r} casa {n} linhas, tem de casar 1')
+    return acc, unknown, problems
 
 
 def main():
@@ -97,12 +123,13 @@ def main():
     if not files:
         print('nenhuma folha encontrada em', root)
         return 1
-    tot, bad = {}, 0
+    tot, bad, broken = {}, 0, []
     head = f"{'folha':<28} {'P0':>3} {'P0/P1':>6} {'P1':>3} {'P2':>3} | {'⏸':>3} {'✅':>3} {'⛔':>3} {'nat':>4}"
     print(head)
     print('-' * len(head))
     for f in files:
-        acc, unknown = sweep(f)
+        acc, unknown, problems = sweep(f)
+        broken += problems
         for k, v in acc.items():
             tot[k] = tot.get(k, 0) + v
         bad += len(unknown)
@@ -120,9 +147,12 @@ def main():
     print(f"{'TOTAL':<28} {g('P0',0):>3} {g('P0/P1',0):>6} {g('P1',0):>3} "
           f"{g('P2',0):>3} | {defer:>3} {g('fech',0):>3} {g('refut',0):>3} {g('natureza',0):>4}")
     print(f"\n{sum(tot.values())} linhas de conferência em {len(files)} folhas.")
+    for p in broken:
+        print(f"!! {p}")
     # ⚠️ Sair vermelho é o ponto: uma linha que a varredura não sabe ler é uma
-    # linha que a próxima contagem vai errar em silêncio.
-    return 1 if bad else 0
+    # linha que a próxima contagem vai errar em silêncio — e uma exceção que não
+    # casa exactamente uma linha é a MESMA falha, um passo antes.
+    return 1 if bad or broken else 0
 
 
 if __name__ == '__main__':

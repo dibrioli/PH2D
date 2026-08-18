@@ -156,6 +156,10 @@ pub(crate) fn build_clock_demo_document(
     let c = clock(g, src, 0.0, 220.0, 460.0)?;
     let dist = g.add_node("value.attribute");
     g.set_pos(dist, Pos { x: 220.0, y: 540.0 });
+    // ⚠️ Isto é EXACTAMENTE o que o chip **`Radius`** do picker escreve — a coluna `P` lida
+    // pelo comprimento. Escrever os dois à mão aqui é só o construtor a não ter painel; o
+    // gesto do artista existe. (Antes de o chip existir não existia: o `Custom…` escreve o
+    // nome com o modo ESCALAR, e uma `Vec2` em modo escalar lê **zeros**.)
     g.set_param(dist, "mode", 1.0); // Length — |P|
     g.set_text_param(dist, ph2d_node_value_attribute::ATTR_KEY, "P".to_string());
     wire(g, src, 0, dist, 0)?;

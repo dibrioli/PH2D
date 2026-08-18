@@ -234,6 +234,50 @@ impl NodeOp for ValueAttribute {
 /// The gate that holds this builds the stream a producer leaves and reads it back through
 /// the entry itself, rather than comparing the table against a second list of names.
 const READ_CHANNELS: &[ReadChannel] = &[
+    // ⚠️ **A POSIÇÃO — a coluna mais básica do stream, e a ÚNICA que não tinha entrada.**
+    // Todo gerador escreve `P` e todo transform a lê; ela estava ausente desta lista por
+    // omissão, não por decisão (nenhuma cerca a mencionava). O relato veio do Enio a olhar
+    // o painel: *"em Custom temos um P — de onde vem e o que significa?"*.
+    //
+    // ⚠️ **E o `Custom…` NÃO a alcançava, o que é a metade que faz destas linhas uma cura e
+    // não um atalho.** O picker de coluna viva escreve o nome com o **modo 0** (escalar), e
+    // uma `Vec2` lida em modo 0 cai no `_` da escada: **zeros no comprimento cheio**, em
+    // silêncio, indistinguível de um nome mal digitado. Ou seja: quem digitasse `P` à mão
+    // recebia zeros e nada na tela dizia porquê. É exactamente por isso que `Speed`, `Size`
+    // e `Direction` são entradas — **uma coluna `Vec2` só é alcançável POR UMA ENTRADA**, e
+    // uma que não tenha é inalcançável pelo artista, ainda que o cook a leia.
+    //
+    // As quatro são as duas leituras que um vetor tem, nas duas bases: cartesiana (as
+    // lanes) e polar. ⚠️ `Angle` é *onde a peça ESTÁ* (em torno da origem do mundo);
+    // `Direction`, ali abaixo, é *para onde ela VAI*. E `Radius`/`Angle` dizem no rótulo o
+    // que `Distance` esconderia: a referência é a **origem**, porque não há segunda entrada
+    // de onde ser distante.
+    //
+    // ⚠️ Trap 1 medido antes de escrever: as lanes a composição **não dá** (o `Custom` é
+    // escalar-only); o `Radius` daria em **seis** nós (`X·X + Y·Y → value.unary(Sqrt)`); e o
+    // `Angle` a composição **não consegue de todo** — `ph2d-expr` está FROZEN sem `atan2` e
+    // nada no domínio de valor computa uma tangente inversa (a mesma razão que fez o
+    // `MODE_ANGLE` nascer).
+    ReadChannel {
+        label: "Position X",
+        column: "P",
+        mode: MODE_COMPONENT_BASE,
+    },
+    ReadChannel {
+        label: "Position Y",
+        column: "P",
+        mode: MODE_COMPONENT_BASE + 1,
+    },
+    ReadChannel {
+        label: "Radius",
+        column: "P",
+        mode: MODE_LENGTH,
+    },
+    ReadChannel {
+        label: "Angle",
+        column: "P",
+        mode: MODE_ANGLE,
+    },
     ReadChannel {
         label: "Speed",
         column: "vel",

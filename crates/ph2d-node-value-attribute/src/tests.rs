@@ -316,3 +316,94 @@ fn the_new_rung_does_not_move_the_rungs_that_ship() {
         vec![3.0, 0.0, -1.0]
     );
 }
+
+/// **A POSIÇÃO é legível pelo picker — nas duas bases.**
+///
+/// Escrito contra o DADO, como os irmãos acima: a fixture é o stream que um gerador deixa
+/// (`P` como `Vec2`), e o gate lê de volta **pela própria entrada do picker**, nunca
+/// comparando `column` com o literal `"P"`.
+///
+/// O oráculo são posições cujo raio e ângulo se sabem de cor: `(3,4)` é o triângulo 3-4-5, e
+/// `(0,2)` separa `atan2(y,x)` do seu inverso.
+#[test]
+fn the_position_a_generator_leaves_is_readable_by_the_picker() {
+    let laid = Stream::new(3).with("P", Column::Vec2(vec![[3.0, 4.0], [0.0, 2.0], [-1.0, 0.0]]));
+    for (label, want) in [
+        ("Position X", vec![3.0, 0.0, -1.0]),
+        ("Position Y", vec![4.0, 2.0, 0.0]),
+        ("Radius", vec![5.0, 2.0, 1.0]),
+        ("Angle", vec![53.130_1, 90.0, 180.0]),
+    ] {
+        let ch = READ_CHANNELS
+            .iter()
+            .find(|c| c.label == label)
+            .unwrap_or_else(|| panic!("o picker oferece o canal {label}"));
+        let got = field(&laid, ch.column, ch.mode);
+        for (i, (g, w)) in got.iter().zip(&want).enumerate() {
+            assert!(
+                (g - w).abs() < 1e-3,
+                "elemento {i} de `{label}`: esperado {w}, medido {g}"
+            );
+        }
+    }
+}
+
+/// **POR QUE as quatro entradas acima TÊM de existir: o `Custom…` não alcança uma `Vec2`.**
+///
+/// ⚠️ Este é o gate do MECANISMO, e sem ele as linhas novas leem como conveniência. O picker
+/// de coluna viva escreve o nome **com o modo 0** (o painel: *"clicking a real upstream column
+/// writes its name + the scalar mode (0)"*), e uma `Vec2` em modo 0 cai no `_` da escada:
+/// **zeros no comprimento cheio**, indistinguível de um nome mal digitado.
+///
+/// Logo: **uma coluna `Vec2` sem entrada no picker é INALCANÇÁVEL pelo artista**, por mais que
+/// o cook a leia — *o valor existe no modelo e não há gesto que chegue lá*. O gate prende as
+/// duas metades: o modo que o `Custom` escreve dá zeros, e a entrada dá o número.
+#[test]
+fn a_vec2_column_is_unreachable_without_a_picker_entry() {
+    let laid = Stream::new(2).with("P", Column::Vec2(vec![[3.0, 4.0], [0.0, 2.0]]));
+    // O que o `Custom…` escreve: o nome + modo 0.
+    assert_eq!(
+        field(&laid, "P", 0),
+        vec![0.0, 0.0],
+        "o modo escalar sobre uma Vec2 e' o MISS ORDINARIO -- se isto mudar, a razao de as \
+         entradas de posicao existirem mudou com ele"
+    );
+    // CONTROLE: a MESMA coluna, pela entrada, responde.
+    let ch = READ_CHANNELS
+        .iter()
+        .find(|c| c.label == "Radius")
+        .expect("o picker oferece o canal Radius");
+    assert_eq!(field(&laid, ch.column, ch.mode), vec![5.0, 2.0]);
+}
+
+/// **Toda coluna `Vec2` que este picker nomeia é nomeada por uma entrada NÃO-escalar.**
+///
+/// O gate de CLASSE do irmão acima: uma entrada futura que aponte uma `Vec2` com `mode = 0`
+/// nasce vermelha, porque entregaria zeros sob um rótulo que promete um número. Ele varre a
+/// tabela contra uma fixture que carrega **as duas formas**, então não é um espelho da
+/// correção — é a escada a responder.
+#[test]
+fn no_entry_reads_a_vec2_column_in_the_scalar_mode() {
+    let both = Stream::new(2)
+        .with("P", Column::Vec2(vec![[3.0, 4.0], [0.0, 2.0]]))
+        .with("vel", Column::Vec2(vec![[1.0, 0.0], [0.0, 1.0]]))
+        .with("age", Column::Scalar(vec![1.0, 2.0]));
+    for ch in READ_CHANNELS {
+        if let Some(Column::Vec2(_)) = both.get(ch.column) {
+            assert_ne!(
+                ch.mode, 0,
+                "a entrada `{}` le' a coluna Vec2 `{}` em modo escalar -- isso e' zeros",
+                ch.label, ch.column
+            );
+        }
+    }
+    // CONTROLE POSITIVO: a varredura enxergou colunas Vec2 nesta fixture.
+    assert!(
+        READ_CHANNELS
+            .iter()
+            .filter(|c| matches!(both.get(c.column), Some(Column::Vec2(_))))
+            .count()
+            >= 5,
+        "a fixture tem de CONTER colunas Vec2 nomeadas pela tabela"
+    );
+}

@@ -443,6 +443,61 @@ repetia, medindo 1,9e-6 contra 7,6e-6 — a cena teria "provado" o que a aritmé
 
 ---
 
+## §9-quater — A POSIÇÃO não tinha chip, e o `Custom…` não a alcançava
+
+**Veio de uma pergunta do Enio a olhar o painel da cena `=59`:** *"em Custom temos um P —
+de onde vem esse P e o que significa?"*. `P` é a coluna de POSIÇÃO do stream (o `(x, y)` de
+cada peça, nome herdado do Houdini) — e a resposta completa é que ela **não tinha entrada no
+picker do `value.attribute`**, então eu tive de a digitar à mão no `Custom…`.
+
+⚠️ **E o `Custom…` NÃO a alcança.** O picker de coluna viva escreve o nome **com o modo 0**
+(escalar), e uma `Vec2` em modo 0 cai no `_` da escada do `field()`: **zeros no comprimento
+cheio**, em silêncio, indistinguível de um nome mal digitado. A cena `=59` só funciona porque
+o construtor escreve `mode = 1` em código. *O valor existia no modelo, o cook o lia, e não
+havia gesto que chegasse lá* — a frase que o `snapshot_ids.rs` já tinha escrito para outro
+caso.
+
+⚠️ **A célula 121 da folha 15 marcava isto ✅ FECHADO**, e estava certa **sobre o mecanismo**:
+o degrau `MODE_COMPONENT_BASE` existe desde 12/08. O que ninguém reconferiu é que um degrau
+sem chip **não é alcançável**. *Um ✅ de mecanismo e um ✅ de artista leem igual numa tabela.*
+
+**Quatro chips**, as duas leituras de um vetor nas duas bases:
+`Position X` · `Position Y` (lanes) · `Radius` · `Angle` (polar, em torno da origem do mundo —
+o rótulo diz a referência, que um `Distance` esconderia).
+
+**Trap 1, medido antes de escrever:** as lanes a composição **não dá**; o `Radius` daria em
+**seis** nós; o `Angle` é **inexprimível** (sem `atan2` no domínio de valor, `ph2d-expr`
+FROZEN). ⇒ nenhum dos quatro é conveniência.
+
+**Gates (3 novos, 2 mutações, 2 sangram):** o oráculo é o triângulo 3-4-5 · o gate do
+MECANISMO (`a_vec2_column_is_unreachable_without_a_picker_entry`: o modo que o `Custom`
+escreve dá zeros, a entrada dá o número) · e o gate de **CLASSE**
+(`no_entry_reads_a_vec2_column_in_the_scalar_mode`, com controle positivo) — *uma coluna
+`Vec2` sem entrada no picker é inalcançável pelo artista, por mais que o cook a leia*.
+
+**Fica P2, medido e nomeado na folha 15:** as lanes de `vel` e `size` também não existem
+(elas têm reach polar, então não é o silêncio que o `P` tinha) — ⚠️ e essa é uma assimetria
+que **esta mesma jornada** criou do outro lado: o `motion.drive` ganhou `Size X`/`Size Y` e o
+valor não lê de volta por eixo. Quem as acrescentar orça a **altura** da row (o picker já paga
+5 linhas de chips), não só o cap de 48.
+
+### ⚠️ E o placar tinha uma exceção por NÚMERO DE LINHA
+
+Acrescentar uma linha à folha 15 **desalinhou o `placar_conferencia.py` em silêncio**: a
+tabela `HAND` das cinco linhas cujo veredito não está na coluna `P` era chaveada por
+`(arquivo, nº)`, a exceção da linha 141 caiu sobre a vizinha, e o placar imprimiu **um ✅ a
+menos** — o único sintoma foi um `!!` numa linha que ninguém tinha tocado.
+
+A chave passou a ser um **TRECHO DA LINHA**, que viaja com ela. E a troca só é segura porque
+se **verifica**: cada exceção tem de casar **exactamente uma** linha da sua folha, senão a
+ferramenta sai **vermelha** com o nome da chave (mutação: uma chave morta ⇒ `EXIT 1`).
+*Um número de linha é uma referência que o próprio ato de editar invalida.*
+
+**Placar depois de tudo:** folha 15 **P1 2 · P2 19 · ✅ 31**; TOTAL **P0 0 · P1 61 · P2 123 ·
+✅ 126**, `EXIT 0`.
+
+---
+
 ## §9 — O que fica ABERTO
 
 - ✅ **A PORTA DE TEMPO foi construída** — ver §9-ter. Os três P1 que ela fecha eram o

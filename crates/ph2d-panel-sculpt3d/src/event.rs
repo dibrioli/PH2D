@@ -21,6 +21,11 @@ fn index_of(group: &[ph2d_a11y::NodeId], id: ph2d_a11y::NodeId) -> Option<usize>
 /// a LISTA e uma cascata é o formato que apodrece calado.
 pub(crate) const COMMANDS: &[(ph2d_a11y::NodeId, Sculpt3dIntent)] = &[
     (ids::SCULPT3D_DYNTOPO, Sculpt3dIntent::ToggleDyntopo),
+    // ⚠️ **O filtro cabe AQUI e o transform não**, e a diferença não é arbitrária:
+    // um comando desta tabela é `id → intent` sem operando, e o transform manda
+    // QUAL das três espécies armar. Pôr o filtro numa cascata própria seria a
+    // segunda lista que o `populate` teria de conhecer.
+    (ids::SCULPT3D_FILTER, Sculpt3dIntent::ArmFilter),
     (ids::SCULPT3D_LEVEL_DOWN, Sculpt3dIntent::ChangeLevel(false)),
     (ids::SCULPT3D_LEVEL_UP, Sculpt3dIntent::ChangeLevel(true)),
     (ids::SCULPT3D_SUBDIVIDE, Sculpt3dIntent::Subdivide),

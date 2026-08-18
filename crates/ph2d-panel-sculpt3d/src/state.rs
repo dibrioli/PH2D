@@ -296,6 +296,15 @@ pub struct Sculpt3dSnapshot {
     /// consequência dessas não pode viajar dentro do struct de valores que todo
     /// arrasto de slider reenvia inteiro.
     pub transform: Option<ph2d_sculpt3d::TransformKind>,
+    /// **O FILTRO está armado?** — armado, o botão esquerdo roda o verbo
+    /// corrente na malha INTEIRA em vez de esculpir sob o cursor.
+    ///
+    /// ⚠️ **Um FATO pelo mesmo motivo do [`Self::transform`] logo acima**, e os
+    /// dois são **mutuamente exclusivos** por construção na cena: eles armam o
+    /// MESMO botão, e um gesto que significasse as duas coisas não teria como
+    /// escolher. Guardá-los como dois `bool` independentes aqui seria dar ao
+    /// painel a chance de pintar um estado que a cena não sabe representar.
+    pub filter_armed: bool,
     /// A topologia dinâmica está armada? **Lido, nunca escrito por `SetUi`** —
     /// ligá-la TRIANGULA a malha, e uma consequência dessas não pode viajar
     /// dentro de um struct de valores que todo arrasto de slider reenvia.
@@ -400,6 +409,13 @@ pub enum Sculpt3dIntent {
     /// guardasse uma segunda cópia do arm para decidir. Clicar o aceso desarma —
     /// e quem faz essa conta é `Sculpt3dScene::arm_transform`, uma vez.
     ArmTransform(ph2d_sculpt3d::TransformKind),
+    /// **Arma (ou desarma) o FILTRO** — o verbo corrente na malha inteira.
+    ///
+    /// ⚠️ **Sem operando, e a assimetria com o irmão acima é REAL, não
+    /// descuido:** o transform tem três espécies e por isso manda qual; o filtro
+    /// tem uma só, porque *qual lei ele roda* já está respondido pelo verbo na
+    /// mão. Um operando aqui seria uma segunda porta para escolher a ferramenta.
+    ArmFilter,
     /// **Re-arma a IMAGEM que a cena lembra** — o chip do slot de imagem.
     ///
     /// ⚠️ **Um intent e não um `SetUi`**, porque o painel **não tem** a imagem:

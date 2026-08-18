@@ -1,8 +1,8 @@
 //! **O ALVO DOS QUATRO GESTOS COM ÂNCORA** — a família que a
-//! [`Verb::has_anchor`] nomeia, cortada por ASSUNTO do irmão [`super::target`].
+//! [`Verb::anchors`] nomeia, cortada por ASSUNTO do irmão [`super::target`].
 //!
 //! ⚠️ **A linha de corte é uma porta que já existia, não uma inventada para
-//! caber no teto de LOC:** `has_anchor()` responde *este verbo escolhe um ponto
+//! caber no teto de LOC:** `anchors()` responde *este verbo escolhe um ponto
 //! no pen-down e só anda quando o dedo anda?*, e é exatamente esse o conjunto
 //! que vive aqui. Os doze verbos que ficaram no pai são carimbos — o alvo deles
 //! é função do dab, não de um gesto acumulado desde o toque.

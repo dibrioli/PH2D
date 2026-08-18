@@ -34,6 +34,13 @@ mod input;
 #[path = "sculpt3d_transform.rs"]
 mod transform;
 
+/// **O FILTRO** — o verbo corrente na malha INTEIRA, com o arrasto a dar a
+/// força. Irmão do [`transform`], e o corte é o mesmo: a LEI mora no kernel
+/// (`ph2d_sculpt3d::stroke_filter`), e o que mora aqui é *o que a mão na tela
+/// quer dizer*.
+#[path = "sculpt3d_filter.rs"]
+mod filter;
+
 /// **O TECLADO** — que tecla escolhe o quê. Irmão do [`input`], e o corte é
 /// entre *o que a mão faz com o PONTEIRO* e *o que ela ESCOLHE com o teclado*;
 /// ele nasceu quando a tabela de teclas levou o arquivo do gesto ao teto de LOC.
@@ -78,75 +85,16 @@ use history::{Entry, RemeshRefusal, StrokeUndo};
 use donation::FormRole;
 use donation::FormStamp;
 
-/// Quantos radianos um pixel de arrasto vale.
+/// **AS RÉGUAS DO GESTO** — quanto um pixel de arrasto vale, e onde uma
+/// grandeza deixa de existir. Filho (`#[path]`) pelo motivo dos vizinhos: o
+/// corte é de ASSUNTO, e este arquivo passa a dizer *o que a CENA é* enquanto
+/// aquele diz *com que régua a mão fala com ela*.
 ///
-/// Decisão de **smoke**, como a tolerância do RDP do Flip: 0,01 dá meia volta a
-/// cada ~314 px, que é uma varredura confortável de trackpad. Não é um teto de
-/// recurso, então não tem tabela de medição ao lado — tem o olho do Enio.
-const ORBIT_RAD_PER_PX: f32 = 0.01;
-
-/// O raio do pincel, em **pixels de tela**.
-///
-/// ⚠️ **Pixels, não fração do modelo** — o raio de MUNDO é derivado por dab
-/// (`Camera3d::world_radius_for_screen_px`), então o pincel mantém o tamanho
-/// aparente quando a câmera aproxima. É o `computeWorldRadius2` do SculptGL, e
-/// é o que Blender e ZBrush entregam: aproximar É como se alcança detalhe fino,
-/// e um raio ancorado no modelo tornava isso impossível (o pincel crescia junto
-/// com a imagem).
-///
-/// **50 px é MEDIDO, não escolhido:** é o que reproduz o tamanho aparente do
-/// default anterior (0,12 do span) na cena do smoke a 720p — ver
-/// `ph2d-mesh-render/tests/measure_screen_radius.rs`.
-const DEFAULT_RADIUS_PX: f32 = 50.0;
-
-/// Passo das teclas de LUZ (`Q`/`E` giram, `R`/`F` sobem e descem), em graus
-/// inteiros — que é a unidade em que o rig é autorado. Quinze graus porque o
-/// gesto é *"ver a forma reacender"*, não afinar: um passo de 1° pediria vinte
-/// toques para a mudança ficar óbvia.
-const LIGHT_STEP_DEG: u16 = 15;
-
-/// Passo do `[` / `]`. Multiplicativo pelo motivo do `dolly`: o gesto tem o
-/// mesmo efeito *aparente* com pincel grande e pequeno.
-const RADIUS_STEP: f32 = 1.15;
-
-/// O piso do raio, em pixels. **Quem aperta é a TELA, não a malha** — e isso é
-/// medição, não herança: a régua antiga dizia *"menor que uma aresta não pega
-/// vértice"*, e na cena do smoke um disco de **0,5 px já pega um vértice**
-/// (`measure_screen_radius.rs`), porque a malha é densa. O que de fato quebra
-/// abaixo de um pixel é o artista **ver onde está mirando**.
-/// Quantos passos um clique de blur/sharpen dá.
-///
-/// ⚠️ **Número de SMOKE, não teto de recurso.** Um passo é pequeno de propósito
-/// (`BLUR_MIX = 0,5`, para o gesto não apagar a própria borda de uma vez), então
-/// o clique precisa de vários para o artista ver a diferença — e clicar de novo
-/// borra mais, que é o que o gesto significa.
-const MASK_OP_PASSES: u32 = 6;
-
-const RADIUS_MIN_PX: f32 = 1.0;
-
-/// O teto do raio, em fração da ALTURA do viewport.
-///
-/// ⚠️ **Fração da tela, e não um número fixo de pixels, porque um teto fixo muda
-/// de SIGNIFICADO com a resolução:** medido, 160 px cobre **91% da altura do
-/// modelo a 1280×720 e 45% a 2560×1440**. `0,125` é a mesma promessa do teto
-/// antigo (*acima de meio modelo o "pincel" é um deformador global, que é outra
-/// ferramenta*) escrita no recurso que de fato aperta — com o enquadramento
-/// padrão o modelo ocupa 49% da altura, então 1/8 de tela é meio modelo.
-const RADIUS_MAX_FRAC_OF_HEIGHT: f32 = 0.125;
-
-/// A zona morta do **Twist**, em pixels de tela.
-///
-/// ⚠️ **Ela não é conforto, é a fronteira onde a grandeza deixa de existir:**
-/// perto da âncora a direção *âncora → cursor* é RUÍDO, e um tremor de um pixel
-/// a um pixel de distância vale meio radiano. Trinta é o número do SculptGL
-/// (`Twist.js:92`), e como todo número de gesto deste arquivo ele é decisão de
-/// **smoke** — não é teto de recurso nenhum.
-const TWIST_DEADZONE_PX: f32 = 30.0;
-
-/// Quanto de escala vale um pixel de arrasto horizontal no **Local Scale**
-/// (`+1` dobra o raio da pegada). Cem pixels dobram; decisão de smoke, como o
-/// [`ORBIT_RAD_PER_PX`].
-const SCALE_PER_PX: f32 = 0.01;
+/// O `use` é de glob de propósito: os filhos leem `super::ORBIT_RAD_PER_PX` como
+/// sempre leram, então o corte não move um caminho.
+#[path = "sculpt3d_rulers.rs"]
+mod rulers;
+use rulers::*;
 
 /// **AS CENAS DO SMOKE** — a fixture de cada uma. Filho (`#[path]`) pelo motivo
 /// dos outros três: o corte é de responsabilidade, e a lista de cenas cresce uma
@@ -183,6 +131,9 @@ enum Drag {
     /// **O TRANSFORM ARMADO** — o botão esquerdo move/gira/escala a parte livre
     /// em vez de esculpir. Ver `sculpt3d_transform`.
     Transform,
+    /// **O FILTRO ARMADO** — o arrasto horizontal dá a força com que o verbo
+    /// corrente roda na malha INTEIRA. Ver `sculpt3d_filter`.
+    Filter,
 }
 
 /// **O ângulo VARRIDO desde o pen-down**, acumulado evento a evento.
@@ -463,6 +414,20 @@ pub(crate) struct Sculpt3dScene {
     transform: Option<ph2d_sculpt3d::MaskTransform>,
     /// Onde o dedo pousou: a âncora contra a qual todo gesto é medido.
     transform_from: (f32, f32),
+    /// **O FILTRO está armado?** — o botão esquerdo roda o verbo corrente na
+    /// malha INTEIRA em vez de esculpir sob o cursor.
+    ///
+    /// ⚠️ Estado de FERRAMENTA, como o [`Self::transform_arm`] acima, e
+    /// **mutuamente exclusivo** com ele: os dois armam o MESMO botão, e um gesto
+    /// que significasse as duas coisas não teria como escolher. Quem garante a
+    /// exclusão são as duas portas de armar, uma vez cada.
+    filter_arm: bool,
+    /// **Onde o dedo pousou**, em x — a âncora da força.
+    ///
+    /// ⚠️ Só o eixo X, e não o par: a força é o arrasto HORIZONTAL, a lei da
+    /// referência (`sculpt_filter_mesh.cc:2299`). Guardar o `y` seria carregar
+    /// um número que ninguém lê.
+    filter_from_x: f32,
     symmetry: Symmetry,
     /// **O rig de luz do artista** — as mesmas quatro lâmpadas que acendem a tinta
     /// do Painter (`ph2d-light`).

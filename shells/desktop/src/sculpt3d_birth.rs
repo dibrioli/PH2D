@@ -81,6 +81,8 @@ impl Sculpt3dScene {
             transform_arm: None,
             transform: None,
             transform_from: (0.0, 0.0),
+            filter_arm: false,
+            filter_from_x: 0.0,
             // ⚠️ **DESLIGADA por default, e é decisão do smoke.** O ZBrush
             // nasce com espelho ligado — e MOSTRA isso. Aqui o artista clicava
             // de um lado e via uma segunda protuberância do outro, sem nada na

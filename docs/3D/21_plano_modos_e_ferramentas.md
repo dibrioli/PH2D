@@ -420,7 +420,8 @@ recontado.
 | **W6** os dabs que não são discos | ✅ **FECHADA** — **Clay Strips** · **Blob** · **Clay Thumb** (§7.26) · **Multiplane Scrape** (§7.27). O **Draw Sharp**, o 5º da lista dela, saiu com motivo na §7.18 (ele é o item da W1) |
 | **W8** a DEMÃO | ✅ **FECHADA** — o `layer.cc`: `disp += f·strength·(1,05 − |disp|)`, e ⚠️ **a lei tem conteúdo MEDIDO** (todo peso da pegada converge para `disp = 1` ⇒ a demão é um **PLATÔ**, e o falloff é uma TAXA e não um perfil). ⚠️ **E o custo estrutural que esta tabela previa NÃO existiu:** o `accum` **É** o `displacement_factor` da referência ⇒ zero plano por-vértice novo, zero rota de aplicador nova, zero campo no snapshot de undo — quem o removeu foi ler o tempo de vida do `ss.cache` (por-traço), não uma escolha de desenho. Cena `=33` |
 | **W7** o plano MLS | ✅ **FECHADA** (2026-08-17, `23913321b`) — `stroke_surface.rs`, a projeção MLS de Alexa, Behr, Cohen-Or, Fleishman, Levin & Silva 2003, com sonda `measure_mls_plane` e os gates em `verb_surface_tests`. ⚠️ **E a wave achou um knob MORTO ao lado:** o `offset` do plano não chegava a lugar nenhum |
-| **W9** Mesh Filter · **W10** Cloth · **W11** handles · **W12** a geodésica | ⬜ **por abrir** |
+| **W9** Mesh Filter | 🔄 **W9a FECHADA** (2026-08-18) — a FIAÇÃO e os **4** tipos que reusam verbo: `Verb::filter_law()`/`filters_mesh()` (a porta única que o §6 já prescrevia: *o painel pergunta para OFERECER, o motor para HONRAR*) · o driver `stroke_filter.rs` · o interruptor no card TOOL · o gesto (arrasto horizontal = força e SINAL, a régua `0,001/px` de `sculpt_filter_mesh.cc:2301`) · **UM** passo de undo. ⚠️ **E o driver achou um defeito que o §6 não previa:** as três leis de ANEL leem a malha VIVA, o que num traço é correcto (o freio é o aplicador a interpolar de `base_pos`) e num filtro **não existe** — com `accum = 1` duas chamadas na mesma força COMPÕEM, e *o desenho passaria a depender de quantos eventos o rato mandou*. A cura é o `reset_translations_to_original` da referência: a pose congelada é REPOSTA antes de cada chamada, e as três leis são invocadas **verbatim**. ⚠️ **Consequência honesta e NOMEADA:** o `α` do `hc_shape` fica **INERTE** num filtro (com `q == o` ele interpola entre o mesmo ponto) — a degeneração correcta do knob, não um controle perdido. **5 mutações, 5 sangram** (o sinal do arrasto · o `filter_arm()` a esquecer a metade do VERBO · o `arm_filter` a não desarmar o transform · a row pintada sem o `filters_mesh()` · o `filter_at(dx)` em vez do `x` cru), e ⚠️ **a metade que faltava foi achada por um gate MEU sobre produto MEU:** a exclusão mútua estava escrita numa porta só, então **a ordem dos cliques decidia** o que o botão esquerdo faz — um `enum` de modo seria mais limpo e obrigaria a reescrever os cinco leitores do `transform_arm`; a exclusão por porta custa duas linhas em cada uma **e tem gate**. **LOC:** o `sculpt3d.rs` cruzou 600 (589 → 613) com os dois campos, o `Drag::Filter` e o `mod filter` ⇒ corte por ASSUNTO em **`sculpt3d_rulers.rs`** (*com que régua a mão fala com a cena* contra *o que a cena É*), 554 + 106 — ⚠️ e ele **absorve o `FILTER_DRAG_PER_PX`**, que é a mesma espécie dos vizinhos (pixel de arrasto → grandeza do gesto). ⚠️ **E o corte achou um doc-comment ORFANADO que já shipava:** o do `RADIUS_MIN_PX` tinha escorregado para cima do `MASK_OP_PASSES` (que abria descrevendo o piso do raio) e a const ficara NUA — *um `mod` novo entre uma doc e o item dela não dá erro: ela apenas passa a documentar o vizinho*, a família que o split do `paint.rs` do Painter já pagou em 2026-07-19. ⚠️ **E o `cargo fmt --all --check` por EXIT CODE achou a metade do motor da W9a fmt-VERMELHA no commit anterior** (`ph2d-sculpt3d/src/lib.rs`, o `pub use` re-embrulhado pelos dois tipos novos) — *um vermelho que só o ship vê é invisível entre integrações*. ⬜ **Falta a W9b** (Random · Sphere · Scale, os três kernels novos) **e a W9c** (Sharpen de dois passes · Enhance Details) |
+| **W10** Cloth · **W11** handles · **W12** a geodésica | ⬜ **por abrir** |
 
 **Ferramentas** — a lista do §5.1 tem 16 itens:
 
@@ -431,7 +432,8 @@ recontado.
 | ⛔ **fora, com motivo (1)** | Draw Sharp — §7.18 mediu que o que o nome promete mora na **CURVA**, e a curva de fábrica por-tool está no mesmo `.blend` binário da §7.0 ⇒ ele **é** o item da W1 |
 | ✅ **feitos na W4 (2)** | **Surface Smooth** · **Slide Relax** — ⚠️ esta linha os listava como pendentes enquanto a linha da W4, DUAS tabelas acima, já os dava por fechados: *duas contagens do mesmo fato divergem no dia em que só uma é atualizada* |
 | ✅ **feito na W8 (1)** | **Layer** — a DEMÃO |
-| ⬜ **faltam (7)** | Cloth · Pose · Boundary · Nudge · Thumb · Mesh Filter (9 tipos) · Cloth Filter (5 tipos) |
+| 🔄 **em curso (1)** | **Mesh Filter** — **4 dos 9** tipos hoje (Smooth · Surface Smooth · Relax · Inflate, todos por reuso de verbo); faltam Random · Sphere · Scale (W9b) e Sharpen · Enhance Details (W9c) |
+| ⬜ **faltam (6)** | Cloth · Pose · Boundary · Nudge · Thumb · Cloth Filter (5 tipos) |
 
 ⇒ **23 verbos hoje** — `Verb::ALL.len()`, que é a fonte —, contra os 16 de que a
 linha partiu. ⚠️ **Esta linha dizia 20, e o erro era a MESMA omissão da linha do
@@ -448,8 +450,11 @@ com ele a lei do repo — ao adicionar um plano, adicione-o ao snapshot de undo 
 MESMO commit"*, e a §7.31 mediu que **ele não traz plano nenhum** (o `accum` já
 é o `displacement_factor` da referência) — *a lei do repo continua de pé; o que
 estava errado era supor que esta wave a acionaria* · o **Mesh
-Filter** (W9) é o mais barato da lista inteira, porque o precedente do *Filter
-Layer* do Painter diz que **não há kernel novo** (só `Sphere` e `Random` o são) ·
+Filter** (W9) era previsto aqui como *o mais barato da lista inteira, porque o
+precedente do Filter Layer do Painter diz que não há kernel novo* — e a W9a
+**mediu que a previsão estava certa e incompleta**: os quatro tipos que reusam
+verbo custaram fiação, e o que ela NÃO previu foi a lei do anel a ler a malha
+viva (acima), que é uma correcção de CORRECÇÃO e não de custo ·
 o **Cloth** (W10) é o único que traz um SOLVER, com cadência e undo próprios · e
 a **geodésica** (W12) troca o falloff da família inteira de uma vez.
 

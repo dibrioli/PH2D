@@ -98,6 +98,26 @@ impl App {
                 // vezes gira a câmera — conforme o que estava sob o cursor —
                 // seria o mesmo gesto significando duas coisas. A órbita
                 // continua inteira no botão direito.
+                // ⚠️ **Com o FILTRO armado o esquerdo filtra**, pelo mesmo
+                // argumento do transform logo abaixo — e os dois nunca estão
+                // armados juntos (as portas de armar se excluem). A ordem aqui
+                // não escolhe um vencedor: ela é a rede que torna a exclusão
+                // observável se algum dia falhar.
+                if scene.filter_arm() {
+                    // Mirar antes de começar, pelo motivo dos dois vizinhos: o
+                    // `begin_filter` congela a foto da malha ATIVA.
+                    scene.aim(pos.0, pos.1);
+                    if scene.begin_filter(pos.0) {
+                        scene.drag = Some(Drag::Filter);
+                    } else {
+                        eprintln!(
+                            "[sculpt3d] filter: o verbo em maos nao filtra a malha -- escolha Smooth, Inflate, Slide Relax ou Surface Smooth"
+                        );
+                        scene.drag = Some(Drag::Orbit);
+                    }
+                    scene.last = pos;
+                    return true;
+                }
                 if scene.transform_arm().is_some() {
                     // ⚠️ **MIRAR VEM ANTES DE COMEÇAR**, a mesma ordem (e o
                     // mesmo motivo) do traço logo abaixo: o `begin_transform`
@@ -201,6 +221,12 @@ impl App {
         if was == Some(Drag::Transform) {
             scene.close_transform();
         }
+        // ⚠️ **O filtro fecha pela porta do TRAÇO**, e não por uma sua: o
+        // `filter_begin` preenche os mesmos dois arrays que o `close_stroke`
+        // grava. Ver o cabeçalho do `sculpt3d_filter`.
+        if was == Some(Drag::Filter) {
+            scene.close_stroke();
+        }
         was.is_some()
     }
 
@@ -236,6 +262,9 @@ impl App {
             // do evento. Interpolar entre eventos daria o mesmo total em N
             // parcelas, e a lei já é função do total.
             Drag::Transform => scene.transform_at(x, y),
+            // ⚠️ **O `x` CRU pelo mesmo motivo do transform**: a força é o
+            // arrasto TOTAL desde o pen-down, e a lei já é função do total.
+            Drag::Filter => scene.filter_at(x),
             // ⚠️ **Um evento de ponteiro NÃO é um dab.** O caminho entre a
             // âncora e o cursor é percorrido a passos de
             // [`ph2d_sculpt3d::min_spacing`], senão um gesto rápido deixa um vão

@@ -512,7 +512,7 @@ impl SculptStroke {
             // escreve o canal dele.
             Verb::Mask => base,
             // **OS QUATRO GESTOS COM ÂNCORA** vivem no irmão [`gripped`] — a
-            // família que a [`Verb::has_anchor`] nomeia.
+            // família que a [`Verb::anchors`] nomeia.
             Verb::Move | Verb::SnakeHook | Verb::Twist | Verb::LocalScale => {
                 self.target_gripped(brush, dab, w, base, live)
             }
@@ -588,7 +588,7 @@ pub(super) fn stroke_axis(normal: [f32; 3], path: [f32; 3]) -> Option<[f32; 3]> 
 #[path = "stroke_target_ring.rs"]
 mod ring;
 
-/// **OS QUATRO GESTOS COM ÂNCORA** — a família que [`Verb::has_anchor`] nomeia.
+/// **OS QUATRO GESTOS COM ÂNCORA** — a família que [`Verb::anchors`] nomeia.
 /// Ver [`gripped`].
 #[path = "stroke_target_grip.rs"]
 mod gripped;

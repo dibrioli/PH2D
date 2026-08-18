@@ -124,6 +124,21 @@ pub const SCULPT3D_ELASTIC_SCALES: [NodeId; 3] = [
 /// verbo, e um seletor global ao lado dele seriam duas portas para o mesmo fato.
 pub const SCULPT3D_REF_MODE_ALL: NodeId = hash_node_id("sculpt3d.ref_mode.all");
 
+/// **O FILTRO** — arma o botão esquerdo para rodar o verbo corrente na MALHA
+/// INTEIRA, com o arrasto horizontal a dar a força.
+///
+/// ⚠️ **Ele mora no card da FERRAMENTA, ao lado do verbo e da referência, e não
+/// junto do transform:** o transform é a sexta coisa que se faz com uma
+/// *máscara pintada* e por isso vive lá; o filtro não tem operando próprio — ele
+/// **É** a ferramenta na mão, aplicada de uma vez. Quem procura *"e se eu
+/// quisesse isto na peça toda?"* procura onde escolheu a ferramenta.
+///
+/// ⚠️ **`toggle` e não um grupo de um**, e a distinção é a cerca que o
+/// [`SCULPT3D_REF_MODE`] já escreve: *um modo só não é uma escolha*. Aqui não há
+/// escolha entre irmãos — há um estado ligado ou desligado, e o widget que diz
+/// isso é o interruptor, que acende quando armado.
+pub const SCULPT3D_FILTER: NodeId = hash_node_id("sculpt3d.filter");
+
 /// **COM QUE PROFUNDIDADE OLHAR** — os chips `Basic` · `Pro` (§2 do plano).
 ///
 /// ⚠️ **O nome não é `DETAIL` de propósito:** [`SCULPT3D_DETAIL`] já existe e é

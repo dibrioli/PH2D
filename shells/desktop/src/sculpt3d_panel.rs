@@ -43,6 +43,7 @@ impl Sculpt3dScene {
         let light = self.rig.current();
         Sculpt3dSnapshot {
             transform: self.transform_arm(),
+            filter_armed: self.filter_arm(),
             ui: Sculpt3dUi {
                 brush: self.brush.clone(),
                 slots: self.verb_slots.clone(),
@@ -270,6 +271,18 @@ impl Sculpt3dScene {
                     kind.label(),
                     if on {
                         "ARMADO -- o botao esquerdo move a parte LIVRE (clique de novo para desarmar)"
+                    } else {
+                        "desarmado -- o botao esquerdo volta a esculpir"
+                    }
+                );
+            }
+            Sculpt3dIntent::ArmFilter => {
+                let on = self.arm_filter();
+                eprintln!(
+                    "[sculpt3d] filtro: {} -- {}",
+                    self.brush.verb.label(),
+                    if on {
+                        "ARMADO -- arraste na horizontal para dar a forca (clique de novo para desarmar)"
                     } else {
                         "desarmado -- o botao esquerdo volta a esculpir"
                     }

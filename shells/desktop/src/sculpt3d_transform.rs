@@ -60,6 +60,21 @@ impl Sculpt3dScene {
     pub(crate) fn arm_transform(&mut self, kind: TransformKind) -> bool {
         let on = self.transform_arm != Some(kind);
         self.transform_arm = if on { Some(kind) } else { None };
+        if on {
+            // ⚠️ **A EXCLUSÃO tem DUAS metades, e a primeira versão só tinha
+            // esta ausente.** O filtro (`sculpt3d_filter`) reivindica o MESMO
+            // botão esquerdo, e com a exclusão escrita só do outro lado a ORDEM
+            // dos cliques decidia o que ele faz — armar o transform sobre um
+            // filtro aceso deixava os dois vivos e o `pointer_down` escolhia
+            // pela ordem em que os dois `if` estão escritos. Quem pegou foi o
+            // gate `the_two_arms_never_claim_the_left_button_together`, que
+            // afirma os dois sentidos de propósito.
+            //
+            // ⚠️ **Um `enum` de modo seria a resposta mais limpa** e obrigaria
+            // a reescrever os cinco leitores do `transform_arm`; a exclusão por
+            // porta custa duas linhas em cada uma e tem gate.
+            self.filter_arm = false;
+        }
         on
     }
 

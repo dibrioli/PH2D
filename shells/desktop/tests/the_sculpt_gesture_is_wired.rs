@@ -936,3 +936,55 @@ fn a_missed_dab_does_not_hold_the_anchor_back() {
          resíduo se acumula"
     );
 }
+
+/// **O FILTRO ARMADO toma o botão esquerdo ANTES do traço** (W9a).
+///
+/// ⚠️ **É a ORDEM que carrega o gate, e ela não é observável de um teste de
+/// unidade:** com o interruptor aceso, um `pointer_down` que chegasse primeiro
+/// ao `stroke.begin(` abriria uma pincelada e o filtro nunca correria — um
+/// controle que acende no painel e não muda o que o botão faz, que é a forma
+/// mais cara de um arm estar errado.
+///
+/// ⚠️ **E ele usa `.expect()` em vez de `contains`**, pelo motivo que o
+/// `keyboard.rs` desta casa já pagou: um dono que se muda tem de virar falha
+/// ALTA, e não uma varredura vazia que passa sobre um produto correto.
+#[test]
+fn the_armed_filter_claims_the_left_button_before_the_stroke() {
+    let src = sculpt_src();
+    let down = function_body(&src, "sculpt3d_pointer_down");
+    let filter = down
+        .find("scene.filter_arm()")
+        .expect("o Down tem de perguntar se o filtro está armado");
+    let begin = down
+        .find("scene.begin_filter(")
+        .expect("o ramo do filtro tem de CONGELAR a pose antes do arrasto");
+    let stroke = down
+        .find("stroke.begin(")
+        .expect("o Down abre um traço quando nada está armado");
+    assert!(
+        filter < begin && begin < stroke,
+        "o filtro armado tem de tomar o esquerdo ANTES do traço: com ele aceso o \
+         botão abriria uma pincelada e o interruptor do painel seria decorativo"
+    );
+
+    // O fecho é o do TRAÇO — o `filter_begin` preenche os mesmos dois arrays.
+    let up = function_body(&src, "sculpt3d_pointer_up");
+    let filter_up = up
+        .find("Some(Drag::Filter)")
+        .expect("o pen-up tem de reconhecer o arrasto do filtro");
+    assert!(
+        up[filter_up..].contains("close_stroke()"),
+        "o filtro tem de fechar pela porta do traço -- uma sua seria a segunda \
+         resposta a 'como se desfaz um punhado de vertices deslocados'"
+    );
+
+    // ⚠️ **A força é o `x` CRU** — o arrasto TOTAL desde o pen-down. Com o `dx`
+    // do evento a força seria o último movimento do rato, e voltar com o dedo
+    // deixaria de desfazer.
+    let mv = function_body(&src, "sculpt3d_pointer_move");
+    let arm = match_arm(&mv, "Drag::Filter");
+    assert!(
+        arm.contains("filter_at(x)") && !arm.contains("dx"),
+        "o braço do filtro tem de passar o x CRU, nunca o delta do evento: {arm}"
+    );
+}

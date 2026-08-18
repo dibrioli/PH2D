@@ -63,6 +63,9 @@ fn snapshot(ui: Sculpt3dUi, has_bake_target: bool) -> Sculpt3dSnapshot {
         // sentido no dia em que o default se movesse, e seguiria verde testando
         // o oposto. E o gate do transform arma o outro.
         transform: None,
+        // ⚠️ **DESARMADO pelo mesmo motivo do vizinho acima**, e o gate do
+        // filtro arma o outro.
+        filter_armed: false,
         // O AO fresco e' o caso comum; o gate do aviso arma o outro.
         ao_stale: false,
         ui,
@@ -1940,4 +1943,63 @@ fn the_basic_level_never_hides_the_curve_that_shapes_the_dab() {
             v.label()
         );
     }
+}
+
+/// **O FILTRO só existe onde há uma LEI** — presença E ausência.
+///
+/// ⚠️ **A metade da AUSÊNCIA é a que carrega o gate.** O `SculptStroke::filter`
+/// devolve `0` a um verbo sem [`Verb::filter_law`], então um interruptor
+/// oferecido ao Draw seria armado, mudaria o que o botão esquerdo faz, e o gesto
+/// não moveria um vértice — a forma mais cara de um controle estar errado, e
+/// exactamente a que um sweep de clicabilidade não pega.
+///
+/// ⚠️ **E ele NÃO cita os quatro verbos que filtram**: a fixture pergunta ao
+/// motor (`Verb::filters_mesh`) e escolhe o primeiro que responde. Uma lista à
+/// mão aqui seria a segunda cópia da tabela do `brush_verb_filter`, e a que
+/// envelhece calada no dia em que um quinto verbo entrar nela.
+#[test]
+fn the_filter_toggle_exists_only_where_the_verb_has_a_law() {
+    let filtering = Verb::ALL
+        .into_iter()
+        .find(|v| v.filters_mesh())
+        .expect("algum verbo filtra a malha");
+
+    // Com um verbo que filtra: pintado, clicável e despacha.
+    let mut ui = Sculpt3dUi::default();
+    ui.brush.verb = filtering;
+    let (mut host, mut state) = arrange(ui);
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    let rect = painted
+        .iter()
+        .find(|(id, _)| *id == ids::SCULPT3D_FILTER)
+        .map(|(_, r)| *r)
+        .unwrap_or_else(|| panic!("{filtering:?} filtra a malha e o interruptor não foi pintado"));
+    let evs = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+    assert!(
+        evs.iter()
+            .any(|e| matches!(e, WidgetEvent::Click(id) if *id == ids::SCULPT3D_FILTER)),
+        "o interruptor do filtro está pintado e morto sob o mouse"
+    );
+    for e in evs {
+        let _ = host.apply_panel_event::<Sculpt3dPanel>(&mut state, e);
+    }
+    assert_eq!(
+        drain_intents(),
+        vec![Sculpt3dIntent::ArmFilter],
+        "o clique no filtro não chegou ao shell"
+    );
+
+    // CONTROLE: um verbo SEM lei não o oferece.
+    let mut ui = Sculpt3dUi::default();
+    ui.brush.verb = Verb::Draw;
+    assert!(
+        !Verb::Draw.filters_mesh(),
+        "a fixture do controle perdeu a premissa: o Draw passou a filtrar"
+    );
+    let (mut host, mut state) = arrange(ui);
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    assert!(
+        !painted.iter().any(|(id, _)| *id == ids::SCULPT3D_FILTER),
+        "o interruptor do filtro foi oferecido a um verbo que não tem lei de filtro"
+    );
 }

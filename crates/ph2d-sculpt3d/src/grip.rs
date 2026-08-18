@@ -191,7 +191,7 @@ pub struct GripLaw {
     /// [`crate::Verb::grip_law`], que é onde a faixa já sobrescreve o
     /// `from_live`. Um `Grip::Coat` teria sido a leitura errada: os grips
     /// respondem *o que o GESTO faz*, e o gesto de uma demão é um carimbo — pô-la
-    /// num grip próprio faria o [`crate::Verb::has_anchor`], que é *"uma leitura
+    /// num grip próprio faria o [`crate::Verb::anchors`], que é *"uma leitura
     /// de `grip` em vez de um segundo predicado"*, passar a dizer que a demão
     /// tem âncora.
     pub coat: bool,

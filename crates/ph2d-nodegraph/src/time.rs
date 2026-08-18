@@ -44,11 +44,23 @@ pub enum TimeMode {
     Freeze,
     /// `t' = offset - t·scale`. Runs the subtree backwards.
     Reverse,
-    /// **A curva AUTORADA** — `t' = offset + duration · curva(t·scale / duration)`,
+    /// **A curva AUTORADA** — `t' = offset + duration · curva(frac(t·scale / duration))`,
     /// o *Time Remapping* do AE, que é uma propriedade **desenhada** e não um
     /// `scale + offset`. Os cinco modos acima são fechados: compô-los dá mapas
     /// afins por pedaços (o `Loop`/`PingPong` dobram), e **nenhuma composição tem
     /// CURVATURA** — que é exactamente o que um ease é.
+    ///
+    /// ⚠️ **A janela REPETE, e isso não é um detalhe de conveniência — é a razão
+    /// de este modo ser o SUPERSET dos dois cíclicos.** Com a tabela da identidade
+    /// ele é `Loop` **exacto** (a rampa é o que a tabela representa sem erro); com
+    /// uma tabela triangular ele é `PingPong` **à resolução da tabela** (a quina em
+    /// `u = 0,5` cai entre duas amostras — dois gates medem cada igualdade e dizem
+    /// qual é qual). A primeira versão **clampava**
+    /// `u` em `[0,1]`, e o defeito foi apanhado no smoke: a sub-árvore andava durante
+    /// `duration` segundos e **congelava para sempre** depois. Isso é a mesma classe
+    /// que o `fade` do `motion.oscillator`, construído e removido no mesmo dia — um
+    /// controle cuja unidade é *"segundos desde um zero que ninguém vê"*, que na tela
+    /// lê como *"travou tudo"*. Um relógio autorado **não expira**.
     ///
     /// ⚠️ **O substrato fica AGNÓSTICO de curva** (o precedente do `LutSpec`): o
     /// que viaja aqui é uma **tabela de `f32`** que a crate do NÓ preenche a partir
@@ -191,7 +203,9 @@ impl TimeMap {
             // ida-e-volta pela divisão — a byte-identidade do mundo que já shipava
             // é garantida pelo MODO, que continua a ser `Scale`.
             TimeMode::Curve if looping => {
-                let u = (scaled / self.duration).clamp(0.0, 1.0);
+                // A janela REPETE (`rem_euclid`, a mesma volta do `Loop` logo abaixo) —
+                // ver a nota do variant: clampar aqui fazia a sub-árvore expirar.
+                let u = (scaled / self.duration).rem_euclid(1.0);
                 self.offset + self.duration * f64::from(sample_curve_lut(&self.curve, u as f32))
             }
             TimeMode::Loop if looping => self.offset + scaled.rem_euclid(self.duration),
@@ -330,11 +344,37 @@ mod tests {
         );
     }
 
-    /// **Uma curva não desenhada é a identidade** — a lei do `value.curve`, e a
-    /// razão de a tabela neutra ser a RAMPA e não zeros (zeros congelariam a
-    /// sub-árvore no `offset`, que é outro modo).
+    /// A tabela de um relógio com uma PAUSA desenhada no meio — a forma da cena
+    /// `=58`, e a mais dura das fixtures (um patamar tem derivada zero de um lado
+    /// e não-zero do outro).
+    fn paused_lut() -> [f32; TIME_CURVE_SAMPLES] {
+        let mut out = [0.0f32; TIME_CURVE_SAMPLES];
+        let last = (TIME_CURVE_SAMPLES - 1) as f32;
+        for (k, o) in out.iter_mut().enumerate() {
+            let u = k as f32 / last;
+            *o = if u < 0.40 {
+                u * (0.42 / 0.40)
+            } else if u < 0.60 {
+                0.42
+            } else {
+                0.42 + (u - 0.60) * (0.58 / 0.40)
+            };
+        }
+        out
+    }
+
+    /// **Uma curva não desenhada é EXACTAMENTE o `Loop`** — e é isso que faz deste
+    /// modo o superset dos dois cíclicos, não uma sexta opção ao lado deles.
+    ///
+    /// ⚠️ Este gate **substituiu** um que pedia igualdade com o `Scale`, e a troca é
+    /// a correcção que o smoke do Enio forçou: a lei antiga clampava a janela, então
+    /// a curva neutra era um `Scale` que **parava** no fim dela. A lei do
+    /// `value.curve` (*uma curva não-desenhada é a identidade*) continua de pé — o
+    /// que mudou é que a identidade é lida DENTRO de uma janela que repete, e a
+    /// identidade repetida chama-se `Loop`. A varredura cobre **cinco** janelas de
+    /// propósito: uma só provaria a forma e não a repetição.
     #[test]
-    fn an_undrawn_curve_is_the_scale_it_replaces() {
+    fn an_undrawn_curve_is_exactly_the_loop_it_generalises() {
         let curved = TimeMap {
             mode: TimeMode::Curve,
             scale: 1.0,
@@ -342,15 +382,110 @@ mod tests {
             duration: 4.0,
             ..TimeMap::default()
         };
-        let plain = map(TimeMode::Scale, 1.0, 0.25, 4.0);
-        for k in 0..=40 {
-            let t = k as f64 * 0.1;
-            let (c, p) = (curved.apply(t), plain.apply(t));
-            assert!(
-                (c - p).abs() < 1e-6,
-                "em t={t} a curva neutra da {c} e o Scale da {p}"
-            );
+        let looped = map(TimeMode::Loop, 1.0, 0.25, 4.0);
+        let mut worst = 0.0f64;
+        for k in 0..=400 {
+            let t = k as f64 * 0.05; // 0 .. 20 s = cinco janelas
+            worst = worst.max((curved.apply(t) - looped.apply(t)).abs());
         }
+        assert!(
+            worst < 1e-6,
+            "a curva neutra tem de SER o Loop em cinco janelas, e diverge {worst}"
+        );
+    }
+
+    /// **Uma curva triangular é o `PingPong`, à resolução da tabela.**
+    ///
+    /// ⚠️ A barra **não** é zero, e o motivo é geométrico e não numérico: a quina do
+    /// triângulo mora em `u = 0,5`, e com 128 amostras `0,5 = 63,5/127` cai **entre**
+    /// duas delas — a tabela corta o bico. O erro é o da célula
+    /// (`duration/(N−1) ≈ 0,047 s` aqui), e pedir zero seria pedir que uma tabela
+    /// representasse exactamente uma função que ela não pode.
+    #[test]
+    fn a_triangle_curve_is_the_pingpong_it_generalises_to_table_resolution() {
+        let mut tri = [0.0f32; TIME_CURVE_SAMPLES];
+        let last = (TIME_CURVE_SAMPLES - 1) as f32;
+        for (k, o) in tri.iter_mut().enumerate() {
+            let u = k as f32 / last;
+            *o = (1.0 - (2.0 * u - 1.0).abs()) * 0.5;
+        }
+        // Uma volta do PingPong dura `2·duration`; a mesma volta como curva é UMA janela.
+        let curved = TimeMap {
+            mode: TimeMode::Curve,
+            scale: 1.0,
+            offset: 0.0,
+            duration: 6.0,
+            curve: tri,
+        };
+        let pinged = map(TimeMode::PingPong, 1.0, 0.0, 3.0);
+        let mut worst = 0.0f64;
+        for k in 0..=600 {
+            let t = k as f64 * 0.05; // 0 .. 30 s = cinco voltas
+            worst = worst.max((curved.apply(t) - pinged.apply(t)).abs());
+        }
+        let cell = 6.0 / (TIME_CURVE_SAMPLES - 1) as f64;
+        assert!(
+            worst < cell,
+            "a curva triangular tem de ser o PingPong a menos da celula ({cell}), e diverge {worst}"
+        );
+        // CONTROLE: a divergência é a QUINA, não um desalinhamento — longe dela o
+        // erro cai para o ULP da tabela.
+        let far = (curved.apply(1.0) - pinged.apply(1.0)).abs();
+        assert!(
+            far < 1e-6,
+            "longe da quina os dois tem de coincidir, e medem {far} de diferenca"
+        );
+    }
+
+    /// **NENHUM relógio autorado EXPIRA** — o gate de classe, irmão do
+    /// `no_control_of_this_oscillator_expires_with_the_clock`.
+    ///
+    /// ⚠️ Este é o defeito que o smoke do Enio apanhou e que a suíte não apanhava: a
+    /// cena `=58` andava durante `duration` segundos e **congelava para sempre**, e o
+    /// gate que existia media o movimento DENTRO da janela — verde sobre produto
+    /// morto. A cura é a lei (`rem_euclid` no lugar do `clamp`); este gate é a prova
+    /// de que ela vale, e traz o **CONTROLE NEGATIVO dentro de si**: a lei antiga,
+    /// escrita à mão aqui, morre onde a nova vive. Sem essa metade, um `clamp` que
+    /// voltasse passaria despercebido de novo.
+    #[test]
+    fn no_authored_clock_expires_the_curve_still_moves_far_past_its_window() {
+        let m = TimeMap {
+            mode: TimeMode::Curve,
+            scale: 1.0,
+            offset: 0.0,
+            duration: 6.0,
+            curve: paused_lut(),
+        };
+        // A 37ª janela — bem longe de qualquer coisa que um autor tenha desenhado.
+        let base = 36.0 * m.duration;
+        let step = 0.05;
+        let mut moved = 0.0f64;
+        for k in 0..(m.duration / step) as i32 {
+            let t = base + f64::from(k) * step;
+            moved = moved.max((m.apply(t + step) - m.apply(t)).abs());
+        }
+        assert!(
+            moved > 0.02,
+            "na 37a janela o relogio tem de andar, e o maior passo mede {moved}"
+        );
+
+        // E a PAUSA desenhada continua lá — repetir não é ignorar a forma.
+        let held = (m.apply(base + 0.50 * m.duration) - m.apply(base + 0.45 * m.duration)).abs();
+        assert!(
+            held < 1e-3,
+            "a pausa desenhada tem de valer na 37a janela tambem, e o relogio anda {held}"
+        );
+
+        // CONTROLE NEGATIVO — a lei ANTIGA (clamp) no mesmo instante: morta.
+        let clamped = |t: f64| {
+            let u = (t / m.duration).clamp(0.0, 1.0);
+            m.duration * f64::from(sample_curve_lut(&m.curve, u as f32))
+        };
+        let old = (clamped(base + step) - clamped(base)).abs();
+        assert!(
+            old < 1e-9,
+            "o controle negativo tem de estar CONGELADO na 37a janela, e anda {old}"
+        );
     }
 
     /// **Uma janela degenerada degrada para `Scale`** — o guard que o `Loop` já

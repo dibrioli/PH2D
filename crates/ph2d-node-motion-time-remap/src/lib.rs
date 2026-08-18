@@ -264,8 +264,8 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         },
     },
     // A FORMA — um TEXT param (`CURVE_KEY`), o editor arrastável do A1. Não
-    // desenhada = identidade, e aí o modo `Curve` é o `Scale` a menos do
-    // arredondamento da ida-e-volta pela janela.
+    // desenhada = identidade, e aí o modo `Curve` é o `Loop` (a janela repete),
+    // a menos do arredondamento da ida-e-volta pela tabela.
     ParamUiHint {
         param: CURVE_KEY,
         label: "Curve",
@@ -398,13 +398,23 @@ mod tests {
             (b - f).abs() > 0.05,
             "a curva autorada tem de mover o relogio: {b} contra {f}"
         );
-        // E o CONTROLE: sem texto, o mapa e' a rampa — o `Scale` que ele substitui.
-        for k in 0..=20 {
+        // E o CONTROLE: sem texto, o mapa é a rampa — e a rampa lida numa janela que
+        // REPETE é o `Loop`, não o `Scale`. ⚠️ A varredura passa da janela de
+        // propósito (0 .. 6 s sobre uma de 2 s): parar em `t = duration` é o que
+        // fazia a suíte inteira ficar verde sobre um relógio que expirava.
+        let looped = TimeMap {
+            mode: TimeMode::Loop,
+            scale: 1.0,
+            offset: 0.0,
+            duration: 2.0,
+            ..TimeMap::default()
+        };
+        for k in 0..=60 {
             let t = k as f64 * 0.1;
+            let (a, b) = (flat.apply(t), looped.apply(t));
             assert!(
-                (flat.apply(t) - t).abs() < 1e-6,
-                "sem forma autorada o modo Curve e' a identidade, e em {t} da {}",
-                flat.apply(t)
+                (a - b).abs() < 1e-6,
+                "sem forma autorada o modo Curve e' o Loop, e em {t} da {a} contra {b}"
             );
         }
     }

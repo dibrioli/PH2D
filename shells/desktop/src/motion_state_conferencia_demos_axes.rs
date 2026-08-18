@@ -21,9 +21,16 @@
 //! no meio. ⚠️ A leitura é *quando ela para*, não *quão longe ela vai*: as duas têm a
 //! mesma amplitude porque o remap reescreve o **relógio**, nunca a amplitude.
 //!
-//! ⚠️ **Fora da janela o relógio SEGURA**, e isso é a semântica, não um defeito: a
-//! curva é lida em `t·scale / duration` clampado a `[0,1]`, como o `ph2d_curve::eval`
-//! já segura fora do próprio vão autorado. Depois de `WINDOW_S` a banda 4 congela.
+//! ⚠️ **A janela REPETE** — a pausa volta a cada `WINDOW_S` segundos, para sempre.
+//! A primeira versão desta cena clampava fora da janela: a banda 4 andava seis
+//! segundos e **morria**, e foi assim que o Enio a viu (*"não há movimento usando
+//! Curve, tudo parado"*). A cura foi na LEI, não aqui — `TimeMode::Curve` é o
+//! superset cíclico do `Loop`/`PingPong`, e um relógio autorado não expira.
+//!
+//! ⚠️ **`FREQ · WINDOW_S` é um INTEIRO de propósito** (3 ciclos): na volta da janela
+//! o relógio salta de `WINDOW_S` para `0`, como todo `Loop` faz, e com um número
+//! inteiro de ciclos as duas pontas têm a mesma fase — a emenda some. Com os 0,35 Hz
+//! originais o salto era visível e lia-se como um tranco, não como a pausa.
 
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
@@ -40,9 +47,12 @@ const BAND_DY: f32 = 3.2;
 /// Quanto o campo acrescenta ao tamanho unitário. Com `Add` sobre a identidade `1`,
 /// as peças medem `1,0 .. 2,2` — grandes o bastante para a razão x/y se ver.
 const SIZE_GAIN: f32 = 1.2;
-/// A janela que a curva do relógio mapeia, em segundos. Ver a nota do cabeçalho: fora
-/// dela o relógio segura.
+/// A janela que a curva do relógio mapeia, em segundos — e o PERÍODO com que a pausa
+/// volta. Ver a nota do cabeçalho.
 const WINDOW_S: f32 = 6.0;
+/// A frequência das bandas 3-4. ⚠️ Escolhida para que `FREQ · WINDOW_S` seja INTEIRO
+/// (3 ciclos) — é isso que faz a volta da janela ser invisível (nota do cabeçalho).
+const FREQ: f32 = 0.5;
 
 /// A forma que a banda 4 desenha no relógio: sobe, **PARA** no meio, e volta a subir.
 /// ⚠️ O `Interp::Hold` segura o valor DESTE ponto até o próximo — é o par
@@ -171,7 +181,7 @@ pub(crate) fn build_axes_demo_document(
         g.set_pos(osc, Pos { x: 220.0, y: gy });
         g.set_param(osc, "channel", 1.0); // Y — a fileira sobe e desce
         g.set_param(osc, "amplitude", 1.1);
-        g.set_param(osc, "frequency", 0.35);
+        g.set_param(osc, "frequency", FREQ);
         // ⚠️ **SEM defasagem, de propósito.** Com um `phase_stagger` a fileira vira uma
         // onda a viajar, e a MÉDIA dela sobre um ciclo é **constante** — o oráculo
         // cancelaria exactamente o movimento que ele existe para medir (a sonda

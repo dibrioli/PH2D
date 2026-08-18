@@ -46,6 +46,61 @@ fn cook_at(t_seconds: f64) -> Vec<Band> {
         .collect()
 }
 
+/// A altura média de UMA banda em cada tique pedido, com **um pump só**.
+///
+/// ⚠️ Existe por causa do custo: `cook_at` remonta a cena e marcha as quatro bandas
+/// do tique zero a cada chamada, e a pergunta *"ela ainda anda na terceira janela?"*
+/// precisa de dezenas de instantes tarde no relógio. O pump é monotônico, então uma
+/// marcha só responde a todos — desde que `ticks` venha ordenado.
+fn mean_y_track(band: usize, ticks: &[u64]) -> Vec<f32> {
+    let mut reg = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("todo nó registra");
+    let mut doc = MotionDoc::default();
+    let sinks = build_axes_demo_document(&mut doc, &reg).expect("a cena monta");
+    let scopes = ph2d_node_motion_time_remap::time_scopes(&doc.graph, &reg);
+    let sink = std::slice::from_ref(&sinks[band]);
+
+    let mut pump = MotionCookPump::new();
+    let mut out = Vec::with_capacity(ticks.len());
+    let last = ticks.last().copied().unwrap_or(0);
+    let mut next = 0usize;
+    for k in 0..=last {
+        pump.advance_or_scrub_scoped(
+            &doc.graph,
+            &reg,
+            sink,
+            k,
+            |k| k as f64 / 60.0,
+            [0.0, 0.0, 1.0, 1.0],
+            [1.0, 1.0],
+            &scopes,
+        );
+        while next < ticks.len() && ticks[next] == k {
+            let p: Vec<[f32; 2]> = pump.instances.iter().map(|i| i.world_pos).collect();
+            out.push(mean_y(&p));
+            next += 1;
+        }
+    }
+    out
+}
+
+/// A TERCEIRA volta da janela, medida na banda 4: `(maior passo, maior passo dentro
+/// da pausa desenhada)`. Uma função só porque o gate a **afirma** e a mensagem da
+/// cena a **cita** — os dois têm de ler o mesmo número.
+fn third_window_steps() -> (f32, f32) {
+    let w = f64::from(window_seconds());
+    // 21 instantes, de 0,05 em 0,05 da janela, começando na terceira volta.
+    let ticks: Vec<u64> = (0..=20)
+        .map(|k| ((2.0 * w + k as f64 * w / 20.0) * 60.0).round() as u64)
+        .collect();
+    let y = mean_y_track(3, &ticks);
+    let step = |k: usize| (y[k + 1] - y[k]).abs();
+    let moved = (0..y.len() - 1).fold(0.0f32, |m, k| m.max(step(k)));
+    // A pausa desenhada vai de 0,40 a 0,60 da janela — os índices 8..12 da amostragem.
+    let held = (8..12).fold(0.0f32, |m, k| m.max(step(k)));
+    (moved, held)
+}
+
 /// O pior `|x − y|` de uma banda — zero significa *toda peça é quadrada*.
 fn worst_aspect(size: &[[f32; 2]]) -> f32 {
     size.iter().fold(0.0f32, |m, s| m.max((s[0] - s[1]).abs()))
@@ -135,6 +190,31 @@ fn the_curved_clock_pauses_in_the_middle_and_the_plain_one_does_not() {
     eprintln!("[=58] na pausa: de sempre move {plain:.4}, curvado move {curved:.4}");
 }
 
+/// **A BANDA 4 CONTINUA VIVA MUITO DEPOIS DA JANELA — e a pausa volta com ela.**
+///
+/// ⚠️ Este gate nasceu de um smoke reprovado, e é a metade que faltava: o gate irmão
+/// media a pausa **dentro** da primeira janela e ficava verde enquanto a banda morria
+/// logo a seguir (*"não há movimento usando Curve, tudo parado"*). Um gate que só
+/// olha para dentro da janela não pode ver uma janela que não repete.
+///
+/// Ele mede a **TERCEIRA** volta (12–18 s) e pede as duas coisas ao mesmo tempo:
+/// que a fileira ande em algum ponto dela, e que **pare** exactamente onde a curva
+/// tem o patamar desenhado. Só a primeira metade ficaria verde sobre um relógio
+/// linear que ignorasse a curva.
+#[test]
+fn the_curved_band_still_moves_two_windows_after_the_first_and_still_pauses() {
+    let (moved, held) = third_window_steps();
+    assert!(
+        moved > 0.05,
+        "na TERCEIRA janela a banda curvada tem de andar, e o maior passo mede {moved}"
+    );
+    assert!(
+        held < moved * 0.1,
+        "a pausa tem de valer na terceira janela: anda {held} contra {moved} do resto"
+    );
+    eprintln!("[=58] 3a janela: maior passo {moved:.4}, dentro da pausa {held:.4}");
+}
+
 /// **A sonda que a mensagem cita** — ela imprime, não afirma.
 #[test]
 #[ignore = "sonda: imprime os numeros que a mensagem da cena cita"]
@@ -189,11 +269,14 @@ fn the_printed_numbers_are_the_ones_the_scene_produces() {
     let (ba, bb) = (cook_at(0.45 * w), cook_at(0.55 * w));
     let plain = (mean_y(&bb[2].1) - mean_y(&ba[2].1)).abs();
 
+    let (late, late_held) = third_window_steps();
     for claim in [
         format!("const AXES_WORST: f32 = {axes:.4};"),
         format!("const AXES_RATIOS: usize = {ratios};"),
         format!("const PLAIN_MOVE: f32 = {plain:.4};"),
         format!("const PIECES_PER_ROW: usize = {};", bands[1].0.len()),
+        format!("const LATE_MOVE: f32 = {late:.4};"),
+        format!("const LATE_HELD: f32 = {late_held:.4};"),
     ] {
         assert!(
             NARRATION.contains(&claim),

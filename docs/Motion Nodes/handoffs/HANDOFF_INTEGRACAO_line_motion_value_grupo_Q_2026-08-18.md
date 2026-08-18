@@ -267,14 +267,53 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && \
    retângulos, a cena perdeu o controle e não prova nada.
 2. **3-4 — DÊ PLAY e olhe QUANDO a fileira de baixo para.** As duas oscilam com a MESMA
    amplitude de propósito (o remap reescreve o **relógio**, nunca a amplitude). A pausa
-   desenhada vai de **2,4 a 3,6 s**; medido no meio dela, a de cima move **1,2824** e a de
+   desenhada vai de **2,4 a 3,6 s**; medido no meio dela, a de cima move **1,7815** e a de
    baixo **0,0000**.
-   ⚠️ **Depois de 6 s a banda 4 CONGELA, e isso é a semântica** — a curva é lida em
-   `t/duração` clampado a `[0,1]`, como o próprio `ph2d_curve` segura fora do vão autorado.
+   ⚠️ **A pausa VOLTA a cada 6 s, para sempre** — medido na TERCEIRA volta: maior passo
+   **1,8243**, dentro da pausa **0,0001**. A primeira versão desta cena **clampava** a
+   janela e a banda morria depois de 6 s; ver §9-bis.
 3. **Abra o painel de PARAMS na banda 4:** o editor de curva só aparece no modo `Curve`.
 
 **Controles que têm de continuar iguais:** as cenas **`=54`..`=57`** (elas mudaram de
 ARQUIVO, não de comportamento) e o `PH2D_MOTION_NODE_PATH_SMOKE=1`/`=2` da wave anterior.
+
+---
+
+## §9-bis — A CORREÇÃO pós-smoke: `TimeMode::Curve` REPETE (foundational)
+
+O Enio smokou a `=58` e reportou *"não há movimento usando Curve, tudo parado"*. Medido: a
+banda 4 andava, mas **só nos primeiros 6 s** — a lei clampava `u = t·scale/duration` em
+`[0,1]`, então depois da janela o relógio ficava cravado no último valor da curva, **para
+sempre**. Os gates existentes mediam a pausa **dentro** da primeira janela: verdes sobre
+produto morto.
+
+**A cura é a lei, não a cena** — `crates/ph2d-nodegraph/src/time.rs`, uma linha:
+`clamp(0.0, 1.0)` → `rem_euclid(1.0)`. Com ela o `Curve` deixa de ser uma sexta opção ao
+lado dos cíclicos e passa a ser o **superset dos dois**:
+
+| tabela | é, exactamente | gate |
+|---|---|---|
+| identidade (rampa) | `Loop` | `an_undrawn_curve_is_exactly_the_loop_it_generalises` (5 janelas, `< 1e-6`) |
+| triangular | `PingPong`, à resolução da célula | `a_triangle_curve_is_the_pingpong_it_generalises_to_table_resolution` (a quina em `u=0,5` cai entre duas das 128 amostras ⇒ a barra é a célula, `6/127`; e um CONTROLE longe da quina pede `< 1e-6`) |
+| qualquer | não expira | `no_authored_clock_expires_the_curve_still_moves_far_past_its_window` (37ª janela; **traz o controle negativo — a lei antiga escrita à mão — dentro de si**) |
+
+**Prova de mutação:** repor o `clamp` faz sangrar **3 de 3** dos gates novos (medido).
+
+⚠️ **É a mesma classe do `fade` do `motion.oscillator`** (cerca 1 da folha 06), construído e
+removido no mesmo dia: um controle cuja unidade é *"segundos desde um zero que ninguém vê"*.
+O gate irmão daquele (`no_control_of_this_oscillator_expires_with_the_clock`) guarda a classe
+num nó; este guarda-a no substrato.
+
+**Arrasto nos consumidores** (dois testes que afirmavam a lei antiga, ambos corrigidos para
+a nova e **alargados para além da janela**, que é o que os fazia cegos):
+`ph2d-node-motion-time-remap::the_authored_shape_reaches_the_map_the_cook_applies` (controle
+passou de `Scale` para `Loop`, varredura 0..6 s sobre uma janela de 2 s) e a `=58`.
+
+**Na cena `=58`:** `frequency` 0,35 → **0,5 Hz**, para que `FREQ · WINDOW_S` seja **inteiro**
+(3 ciclos) — na volta da janela o relógio salta de 6 s para 0 como todo `Loop`, e com um
+número inteiro de ciclos as duas pontas têm a mesma fase, então a emenda **some**. Gate novo:
+`the_curved_band_still_moves_two_windows_after_the_first_and_still_pauses` (3ª volta: maior
+passo **1,8243**, dentro da pausa **0,0001**).
 
 ---
 

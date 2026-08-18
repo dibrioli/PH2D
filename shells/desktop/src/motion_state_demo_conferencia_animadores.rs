@@ -172,8 +172,9 @@ pub(super) fn axes(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> 
   amplitude de proposito -- o remap reescreve o RELOGIO, nunca a amplitude.
   (!) A pausa desenhada vai de 40% a 60% da janela de {w:.1} s, ou seja de {p0:.1} a {p1:.1} s.
   Medido no meio dela, a de cima move {plain:.4} e a de baixo {curved:.4}.
-  (!) Depois de {w:.1} s a banda 4 CONGELA, e isso e' a semantica: a curva e' lida em
-  t/duracao clampado a [0,1], como o proprio `ph2d_curve` segura fora do vao autorado.
+  (!) A pausa VOLTA a cada {w:.1} s, para sempre -- fique olhando. A janela repete, e e'
+  isso que faz o modo `Curve` ser o `Loop` e o `PingPong` desenhados a mao, e nao uma
+  sexta opcao ao lado deles (medido na TERCEIRA volta: passo {late:.4}, na pausa {late_held:.4}).
   (!) Abra o painel de PARAMS na banda 4: o editor de curva so' aparece no modo `Curve`
   -- sob `Loop` ele seria um controle que nao move um quadro.",
         ctrl = CTRL_WORST,
@@ -186,6 +187,8 @@ pub(super) fn axes(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> 
         p1 = 0.60 * w,
         plain = PLAIN_MOVE,
         curved = CURVED_MOVE,
+        late = LATE_MOVE,
+        late_held = LATE_HELD,
     );
     sinks
 }
@@ -197,5 +200,8 @@ const AXES_WORST: f32 = 1.0843;
 const CTRL_RATIOS: usize = 1;
 const AXES_RATIOS: usize = 24;
 const PIECES_PER_ROW: usize = 25;
-const PLAIN_MOVE: f32 = 1.2824;
+const PLAIN_MOVE: f32 = 1.7815;
 const CURVED_MOVE: f32 = 0.0000;
+// A TERCEIRA volta da janela — o par que prova que o relogio autorado nao expira.
+const LATE_MOVE: f32 = 1.8243;
+const LATE_HELD: f32 = 0.0001;

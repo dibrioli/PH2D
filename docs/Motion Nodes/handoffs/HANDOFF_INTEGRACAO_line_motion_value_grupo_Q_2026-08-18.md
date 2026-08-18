@@ -1,9 +1,14 @@
-# HANDOFF DE INTEGRAÇÃO — `line/motion-value`, **GRUPO Q: a folha 06 fica com QUATRO P1**
+# HANDOFF DE INTEGRAÇÃO — `line/motion-value`, **GRUPO Q + a PORTA DE TEMPO: a folha 06 fica com UM P1**
 
 **Data:** 2026-08-18 · **Linha:** `line/motion-value` · **Worktree:** `Worktrees/line-motion-value`
 **Commits desta wave:** `11130adcd` · `75c8bb5dd` · `d74360575` · `103f6a3d0` · `a060eacd6`
-**Cena de smoke:** `PH2D_GPU_COOK_DEMO=58` · **Sondas:** `measure_wave_edges` · `measure_preroll` ·
-`measure_size_axes` · `measure_curve_lut`
+· `699895771` (§9-bis, o relógio que expirava) · `3fd0f29d6` (§9-ter, a porta de tempo)
+**Cenas de smoke:** `PH2D_GPU_COOK_DEMO=59` (a porta) e `=58` (re-smoke pós-correção)
+**Sondas:** `measure_wave_edges` · `measure_preroll` · `measure_size_axes` · `measure_curve_lut`
+
+> ⚠️ **A ordem de leitura NÃO é a numérica.** As §1..§8 são o grupo Q como ele fechou;
+> **§9-bis** é a correção que o smoke do Enio forçou (foundational, `ph2d-nodegraph`) e
+> **§9-ter** é a wave da porta de tempo, que veio depois. Quem integra precisa das três.
 
 > ⚠️ **A linha NÃO integra e NÃO pusha.** Ordem explícita do Enio ⇒ agente integrador
 > dedicado (DIRETRIZ §1.5.3). Este documento é o que ele precisa ter na mão.
@@ -21,9 +26,10 @@ conferência), **um pedido foi refutado com número** e **dois vãos fecharam**.
 | **36** | Reflect Edges · Pre-roll · falloff · Narrowness | **P2 (três) + ⛔ NATUREZA (o Pre-roll)** | `measure_wave_edges` · `measure_preroll` |
 | **39** | `Size X ≠ Size Y` | ✅ **FECHADO** (os canais 10 e 11) | `measure_size_axes` |
 | **45** | curva arbitrária tempo→tempo | ✅ **FECHADO** (o 6º modo `Curve`) | `measure_curve_lut` |
+| **23 · 28 · 44** | a **PORTA DE TEMPO** (`SUPERAR 1`) | ✅ **FECHADAS** — §9-ter | `time_port.rs` + paridade GPU |
 
-**Placar da folha 06, DERIVADO** (`placar_conferencia.py`): **P1 7 → 4** · P2 17 → 18 ·
-✅ 6 → 8. Placar da conferência inteira: **P0 = 0 · P0/P1 = 0 · P1 = 64**.
+**Placar da folha 06, DERIVADO** (`placar_conferencia.py`): **P1 7 → 1** · P2 17 → 18 ·
+✅ 6 → 11. Placar da conferência inteira: **P0 = 0 · P0/P1 = 0 · P1 = 61**.
 
 ---
 
@@ -250,6 +256,30 @@ sobe para 184 com a medição ao lado, ou o `RenderInstance` volta a 176.
 ---
 
 ## §8 — O smoke
+
+**São DOIS.** O `=59` é a wave da porta de tempo; o `=58` é o re-smoke da wave anterior,
+depois da correção do §9-bis (o relógio que expirava).
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && \
+  env PH2D_GPU_COOK_DEMO=59 cargo run -p ph2d-host-desktop --release
+```
+
+⚠️ **DÊ PLAY — as quatro bandas só existem em movimento.** A cena imprime os quatro rótulos;
+se a lista não aparecer, PARE.
+
+1. **A de cima é UMA BARRA** (a fileira inteira sobe e desce junta) e a **segunda é uma ONDA
+   QUE VIAJA**. O nó é o mesmo e os knobs são os mesmos — muda **um fio**. Se as duas
+   ondularem, a cena perdeu o controle e não prova nada.
+2. **A terceira é um bloco**, e a animação sai **do meio para fora** como uma ondulação. A
+   leitura é *as peças à mesma distância do centro andam JUNTAS* — inclusive em cantos
+   opostos, que é o que faz o relógio um CAMPO e não uma defasagem por índice.
+3. **A quarta vai e volta e não deriva**, para sempre. Fique olhando um minuto: ela tem de
+   continuar exactamente no mesmo laço.
+4. **Puxe o fio da porta `time`** de qualquer banda: ela vira a banda 1. Desligada, a porta é
+   o relógio global — byte-idêntico ao que o nó sempre fez.
+
+⚠️ Se a banda 4 **congelar** em vez de vaivém, é o defeito do §9-bis a voltar.
 
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && \

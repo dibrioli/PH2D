@@ -289,7 +289,11 @@ fn the_spacing_floor_keeps_a_zero_from_asking_for_everything() {
     assert_eq!(copies_that_fit(10.0, MIN_SPACING), 1000);
     // E o piso é aplicado na LEI, não só no slider: um documento pode carregar
     // um `spacing` menor (o param é f32 e um fio pode dirigi-lo, doc 58).
-    let (pos, _) = walk(&LINE10, "Track", &[("mode", MODE_SPACING), ("spacing", 0.0)]);
+    let (pos, _) = walk(
+        &LINE10,
+        "Track",
+        &[("mode", MODE_SPACING), ("spacing", 0.0)],
+    );
     assert_eq!(
         pos.len(),
         1000,

@@ -137,7 +137,10 @@ fn span(pts: &[[f32; 2]]) -> f32 {
 /// poderia ser satisfeito por uma rota que simplesmente não pousa na curva.
 #[test]
 fn both_routes_walk_the_very_same_drawn_curve() {
-    for (tag, pts) in [("controle", path_chain(0.0)), ("composto", wrap_chain(0.0, 1.0, 0.0))] {
+    for (tag, pts) in [
+        ("controle", path_chain(0.0)),
+        ("composto", wrap_chain(0.0, 1.0, 0.0)),
+    ] {
         assert_eq!(pts.len(), N, "{tag}: {N} elementos");
         let worst = pts.iter().fold(0.0f32, |m, q| m.max(project(*q).0.abs()));
         assert!(worst < 1e-3, "{tag} pousa na curva (pior desvio {worst})");

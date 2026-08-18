@@ -132,8 +132,7 @@ fn span(pts: &[[f32; 2]]) -> (f32, f32) {
 }
 
 fn worst_off_curve(pts: &[[f32; 2]]) -> f32 {
-    pts.iter()
-        .fold(0.0f32, |m, q| m.max(project(*q).0.abs()))
+    pts.iter().fold(0.0f32, |m, q| m.max(project(*q).0.abs()))
 }
 
 #[test]
@@ -165,13 +164,19 @@ fn measure_what_composition_already_expresses() {
     for (f, t) in [(0.0, 1.0), (0.25, 0.75), (0.5, 1.0)] {
         let c = wrap_chain(N, f, t, 0.0, 0.0);
         let (lo, hi) = span(&c);
-        println!("   composto from={f:.2} to={t:.2}  ⇒  arco [{lo:.3} .. {hi:.3}]  vao {:.3}", hi - lo);
+        println!(
+            "   composto from={f:.2} to={t:.2}  ⇒  arco [{lo:.3} .. {hi:.3}]  vao {:.3}",
+            hi - lo
+        );
     }
     println!("   — e o CONTROLE, varrendo o unico knob que ele tem:");
     for off in [0.0f32, 0.25, 0.5] {
         let c = path_chain(N, off);
         let (lo, hi) = span(&c);
-        println!("   controle offset={off:.2}          ⇒  arco [{lo:.3} .. {hi:.3}]  vao {:.3}", hi - lo);
+        println!(
+            "   controle offset={off:.2}          ⇒  arco [{lo:.3} .. {hi:.3}]  vao {:.3}",
+            hi - lo
+        );
     }
 
     // ---- 3. OFFSET PERPENDICULAR e LADO ----
@@ -205,5 +210,7 @@ fn measure_what_composition_already_expresses() {
     // ---- 5. SPACING: a CONTAGEM automatica ----
     println!("\n5. SPACING — a contagem derivada do comprimento");
     println!("   o comprimento do arco NAO e publicado por nenhuma coluna nem canal:");
-    println!("   as duas rotas pedem a CONTAGEM em numero, e nenhum `value.*` sabe o tamanho da curva.");
+    println!(
+        "   as duas rotas pedem a CONTAGEM em numero, e nenhum `value.*` sabe o tamanho da curva."
+    );
 }

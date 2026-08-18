@@ -45,7 +45,10 @@ fn walk(name: &str, len: f32, set: impl FnOnce(&mut Graph, NodeId)) -> Vec<[f32;
 
 /// O vão entre duas peças vizinhas de uma trilha reta: a distância no eixo que ela ocupa.
 fn gap(pts: &[[f32; 2]]) -> f32 {
-    assert!(pts.len() >= 2, "uma trilha com menos de duas peças não tem vão");
+    assert!(
+        pts.len() >= 2,
+        "uma trilha com menos de duas peças não tem vão"
+    );
     (pts[1][0] - pts[0][0]).abs()
 }
 

@@ -63,7 +63,12 @@ fn the_spacing_scene_arms_the_mode_and_the_spacing_it_prints() {
 #[test]
 fn the_printed_table_says_the_numbers_the_scene_produces() {
     let body = spacing_scene_body();
-    for claim in ["9 pecas,  vao 0,444", "9 pecas,  vao 0,889", "8 pecas,  vao 0,500", "16 pecas, vao 0,500"] {
+    for claim in [
+        "9 pecas,  vao 0,444",
+        "9 pecas,  vao 0,889",
+        "8 pecas,  vao 0,500",
+        "16 pecas, vao 0,500",
+    ] {
         assert!(
             body.contains(claim),
             "a tabela impressa perdeu a linha {claim:?} — os números dela são gateados em \

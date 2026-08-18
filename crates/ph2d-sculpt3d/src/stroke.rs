@@ -278,6 +278,13 @@ pub use hc::{HC_SHAPE_DEFAULT, HC_VERTEX_DEFAULT, HC_VERTEX_MIN};
 #[path = "stroke_apply.rs"]
 mod apply;
 
+/// **O FILTRO** — o verbo aplicado à malha inteira, sem dab. Filho pela mesma
+/// razão do [`apply`], e o corte é o GESTO: lá um carimbo enche o `accum` dab a
+/// dab, aqui um arrasto o enche de uma vez. Ver [`mesh_filter`].
+#[path = "stroke_filter.rs"]
+mod mesh_filter;
+pub use mesh_filter::FILTER_DRAG_PER_PX;
+
 /// **AS JANELAS QUE UM TRAÇO PUBLICA** — ver [`windows`].
 #[path = "stroke_windows.rs"]
 mod windows;

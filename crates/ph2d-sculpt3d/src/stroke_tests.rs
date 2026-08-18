@@ -443,6 +443,13 @@ mod stroke_law;
 #[path = "stroke_apply_tests.rs"]
 mod stroke_apply;
 
+/// **O FILTRO** — o verbo aplicado à malha inteira. Fica AQUI pela mesma razão
+/// do acima: a `mesh_for` deste arquivo é a fixture que contém o fenômeno (três
+/// dos quatro filtros são de anel, e uma esfera lisa é o caso degenerado
+/// deles). Ver o cabeçalho dele.
+#[path = "stroke_filter_tests.rs"]
+mod stroke_filter;
+
 /// ⚠️ **RED-FIRST da W4.2, e o defeito é de COSTURA e não de kernel.** Um traço
 /// de máscara escreve um canal por vértice e **não move geometria**, então ele
 /// esquece a região refrescada de propósito (não há normal nova a subir). Quem

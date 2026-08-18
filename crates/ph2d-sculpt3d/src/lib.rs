@@ -72,8 +72,9 @@ pub use alpha::{
 };
 pub use brush::{
     BLENDER_REACH_FRACTION, Brush, CLAY_PLANE_FRACTION, CLAY_THUMB_TILT_MAX_DEG,
-    CLAY_THUMB_TILT_STEP_DEG, CREASE_FRACTION, DEFAULT_MULTIPLANE_ANGLE_DEG, LAYER_HEIGHT_HARD_MAX,
-    LAYER_HEIGHT_UI_MAX, MAX_MASK_HARDNESS, MULTIPLANE_ANGLE_MAX_DEG, MULTIPLANE_ANGLE_SMOOTH,
+    CLAY_THUMB_TILT_STEP_DEG, CREASE_FRACTION, DEFAULT_MULTIPLANE_ANGLE_DEG, FilterKind, FilterLaw,
+    LAYER_HEIGHT_HARD_MAX, LAYER_HEIGHT_UI_MAX, MAX_MASK_HARDNESS, MULTIPLANE_ANGLE_MAX_DEG,
+    MULTIPLANE_ANGLE_SMOOTH,
     MULTIPLANE_TIP_STRETCH, PINCH_GAIN, Pass, REACH_FRACTION, RingOperator, STRIP_PLANE_FRACTION,
     Symmetry, TAUBIN_LAMBDA, TAUBIN_MU, TAUBIN_PASS_BAND, Verb,
 };
@@ -85,5 +86,7 @@ pub use preview::{NO_PREVIEW, preview_into, preview_verts};
 pub use ref_mode::{Field, FrontFace, KernelLaw, LateralPull, PlaneReach, RefMode};
 pub use ref_profiles::VerbProfile;
 pub use spacing::{MIN_SPACING_FRACTION, Walk, min_spacing, walk};
-pub use stroke::{Dab, HC_SHAPE_DEFAULT, HC_VERTEX_DEFAULT, HC_VERTEX_MIN, SculptStroke};
+pub use stroke::{
+    Dab, FILTER_DRAG_PER_PX, HC_SHAPE_DEFAULT, HC_VERTEX_DEFAULT, HC_VERTEX_MIN, SculptStroke,
+};
 pub use transform::{Gesture, MIN_SCALE_FACTOR, MaskTransform, TransformKind};

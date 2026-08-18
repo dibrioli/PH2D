@@ -27,12 +27,15 @@ use super::plane::PlaneFit;
 /// **A ARITMÉTICA** com que um alvo é escrito — ver [`aim`].
 #[path = "stroke_aim.rs"]
 mod aim;
-use aim::{add, add_vec, remove_along, rotate_about, signed_distance, to_plane};
+use aim::{add_vec, remove_along, rotate_about, signed_distance, to_plane};
 // ⚠️ **O `cross` é re-exportado ao IRMÃO [`super::plane`]**, que monta a
 // dobradiça da lâmina em V. A alternativa era uma segunda cópia de três linhas
 // de aritmética lá — e o teto de LOC deste arquivo é exactamente o que não pode
 // decidir onde uma operação vetorial mora.
-pub(super) use aim::cross;
+// ⚠️ **O `add` vai junto, e pelo IRMÃO [`super::mesh_filter`]**: o filtro
+// desloca `base + n·f`, que é literalmente esta operação — e uma segunda cópia
+// dela lá seria a segunda resposta a *"como se soma um vetor a um ponto"*.
+pub(super) use aim::{add, cross};
 
 impl SculptStroke {
     #[allow(clippy::too_many_arguments)]

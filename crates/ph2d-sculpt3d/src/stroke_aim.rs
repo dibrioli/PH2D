@@ -16,7 +16,7 @@
 
 use super::PlaneFit;
 
-pub(super) fn add(p: [f32; 3], dir: [f32; 3], k: f32) -> [f32; 3] {
+pub(in crate::stroke) fn add(p: [f32; 3], dir: [f32; 3], k: f32) -> [f32; 3] {
     [p[0] + dir[0] * k, p[1] + dir[1] * k, p[2] + dir[2] * k]
 }
 

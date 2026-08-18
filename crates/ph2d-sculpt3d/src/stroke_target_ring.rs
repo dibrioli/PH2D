@@ -8,6 +8,17 @@
 //! estes quatro e separa os outros dezoito. Um verbo de anel novo entra aqui, e
 //! a pergunta *"quem precisa da adjacência?"* segue tendo **uma** resposta.
 //!
+//! ⚠️ **TRÊS destas leis são `pub(in crate::stroke)` e não `pub(super)`**, e a
+//! abertura tem nome: o [`super::super::mesh_filter`] as chama, e ele é IRMÃO do
+//! [`super`], não descendente. É a mesma conta que o [`super::cross`] já paga —
+//! estritamente mais estreita que o `pub(crate)` que um irmão pediria, e a
+//! alternativa era pendurar o motor do filtro dentro do [`super`], cujo assunto
+//! declarado é *para onde cada verbo aponta* e não *quem dirige o gesto*.
+//!
+//! ⚠️ **E o [`Self::target_sharpen`] fica `pub(super)`**, porque o filtro não o
+//! chama: `sharpen(w)` **é** `smooth(−w)` e num arrasto o sinal já existe — ver
+//! [`Verb::filter_law`].
+//!
 //! ⚠️ **E o `w` continua a chegar por ARGUMENTO, nunca a ser re-derivado:** ele
 //! é o peso que o `compute_target` já resolveu (falloff × máscara × alpha), e
 //! uma segunda derivação aqui seria a segunda resposta a *"quanto este vértice
@@ -21,7 +32,7 @@ impl SculptStroke {
     /// kernel; aqui ele chega pelo `w`, que é o superconjunto (o artista escolhe
     /// a curva, e `Falloff::Constant` reproduz a referência). A forma é a dela:
     /// `pos·(1 − m) + média·m`.
-    pub(super) fn target_smooth(
+    pub(in crate::stroke) fn target_smooth(
         &self,
         mesh: &Mesh,
         brush: &Brush,
@@ -69,7 +80,7 @@ impl SculptStroke {
     /// que se FICA (congelar prenderia o vértice ao plano tangente do pen-down,
     /// e ele sairia da superfície que os dabs anteriores moveram). Ver o doc de
     /// [`Verb::SlideRelax`].
-    pub(super) fn target_slide_relax(
+    pub(in crate::stroke) fn target_slide_relax(
         &self,
         mesh: &Mesh,
         brush: &Brush,
@@ -101,7 +112,7 @@ impl SculptStroke {
     /// [`Self::fill_hc_disp`] já escreveu para a pegada inteira antes de
     /// qualquer escrita. Recomputá-lo por vértice daria o `b` do próprio e zero
     /// para todo vizinho — um HC sem a metade que o define.
-    pub(super) fn target_surface_smooth(
+    pub(in crate::stroke) fn target_surface_smooth(
         &self,
         mesh: &Mesh,
         v: u32,

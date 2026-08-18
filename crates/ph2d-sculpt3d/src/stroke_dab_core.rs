@@ -52,7 +52,8 @@ impl SculptStroke {
         // vez por dab, antes de qualquer escrita, porque as duas linhas da lei
         // dele só leem o estado de ANTES do dab. No-op para os outros vinte e um
         // verbos — ver [`super::stroke_hc`].
-        self.fill_hc_disp(mesh, brush);
+        // O dab: quem lê o `hc_b` é o VERBO em mãos.
+        self.fill_hc_disp(mesh, brush, brush.verb == Verb::SurfaceSmooth);
         // ⚠️ **UMA vez por dab, e a assinatura é o que garante isso.** O frame do
         // padrão sai do rotor de um grau ACUMULADO deste app, que é `O(graus)`:
         // derivado por vértice ele custaria mais que o padrão inteiro que

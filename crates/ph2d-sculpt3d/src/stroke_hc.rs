@@ -132,8 +132,25 @@ impl SculptStroke {
     /// não escolheu. A `resize` com zeros faz as duas coisas de que a lei
     /// precisa — cresce com o `touched` e dá `[0,0,0]` a quem nunca foi
     /// processado, que é o *"array zerado no início do traço"* do original.
-    pub(super) fn fill_hc_disp(&mut self, mesh: &Mesh, brush: &Brush) {
-        if brush.verb != Verb::SurfaceSmooth {
+    /// ⚠️ **O `needed` é do CHAMADOR porque a pergunta é DIFERENTE nos dois, e
+    /// esta função já respondeu a errada uma vez.** Ela perguntava
+    /// `brush.verb != Verb::SurfaceSmooth`, o que era exacto enquanto a LEI de
+    /// um filtro fosse derivada do verbo em mãos — a W9b pôs um picker, o
+    /// artista passou a escolher a lei com qualquer pincel, e o early-out
+    /// deixou o `hc_b` **vazio** debaixo de um leitor: `index out of bounds:
+    /// the len is 0 but the index is 1` (reportado no smoke da `=34`).
+    ///
+    /// O dab pergunta *"o verbo em mãos lê isto?"*, o filtro pergunta *"a lei
+    /// escolhida lê isto?"*, e **as duas respostas vivem em sítios diferentes**
+    /// — uma condição que enumera os seus leitores apodrece no dia em que o
+    /// segundo nasce, que é literalmente o que aconteceu.
+    ///
+    /// ⛔ **A cura preguiçosa era recuar no LEITOR** (devolver zeros com o
+    /// buffer vazio) e ela é pior que o panic: o chip ficaria pintado, vivo sob
+    /// o rato e **inerte**, que é um controle morto que ninguém vê. O buffer
+    /// segue **preguiçoso** — só que agora a preguiça é função de quem lê.
+    pub(super) fn fill_hc_disp(&mut self, mesh: &Mesh, brush: &Brush, needed: bool) {
+        if !needed {
             return;
         }
         self.hc_b.resize(self.touched.len(), [0.0; 3]);

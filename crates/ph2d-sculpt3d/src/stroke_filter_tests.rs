@@ -69,6 +69,89 @@ pub(super) fn norm(v: [f32; 3]) -> f32 {
     (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt()
 }
 
+/// ⭐ **TODA LEI roda com TODO VERBO, e nenhuma delas fica inerte.**
+///
+/// ⚠️ **Gate red-first, e ele nasceu de um PANIC no smoke da `=34`:** a lei
+/// `SurfaceSmooth` com um pincel de outro verbo estourava com `index out of
+/// bounds: the len is 0 but the index is 1`. A causa era um early-out que
+/// perguntava pelo **VERBO** (`fill_hc_disp`) para decidir se enchia um buffer
+/// que a **LEI** lê — exacto enquanto a lei de um filtro fosse derivada do verbo
+/// em mãos, e falso desde que a W9b pôs um picker.
+///
+/// ⚠️ **A varredura é a MATRIZ inteira de propósito.** O defeito não vivia numa
+/// lei nem num verbo: vivia num PAR, e nenhum gate que fixasse um dos dois lados
+/// o teria percorrido. É a mesma forma do que o `hot_path_no_alloc` da física
+/// pagou — *uma premissa que só é verdade porque ninguém montou a outra metade*.
+///
+/// ⚠️ **E a segunda asserção é a que impede a cura preguiçosa:** recuar no
+/// LEITOR (devolver zeros com o buffer vazio) mataria o panic e deixaria o chip
+/// pintado, vivo sob o rato e **inerte**. Um controle morto não estoura — ele
+/// mente.
+#[test]
+fn every_filter_law_runs_with_every_verb_and_none_of_them_is_inert() {
+    for kind in crate::FilterKind::ALL {
+        for verb in Verb::ALL {
+            let mut mesh = mesh_for(Verb::Smooth);
+            let before = snapshot(&mesh);
+            let mut s = SculptStroke::default();
+            s.filter_begin(&mesh);
+            s.filter(&mut mesh, &filter_brush(verb), kind, 0.4);
+
+            let moved = deltas(&before, &mesh)
+                .into_iter()
+                .map(norm)
+                .fold(0.0f32, f32::max);
+            assert!(
+                moved > 1e-5,
+                "a lei {kind:?} ficou INERTE com o verbo {verb:?} (deslocamento {moved:e})"
+            );
+            assert!(
+                mesh.positions()
+                    .iter()
+                    .all(|p| p.iter().all(|c| c.is_finite())),
+                "a lei {kind:?} com o verbo {verb:?} pôs um não-finito na malha"
+            );
+        }
+    }
+}
+
+/// ⭐ **O VERBO NÃO MUDA A LEI** — a propriedade que o gate acima era fraco
+/// demais para defender.
+///
+/// ⚠️ **Ele nasceu de uma MUTAÇÃO QUE SOBREVIVEU, e o achado foi meu.** Eu
+/// escrevi o irmão acima a afirmar *"nenhuma lei fica INERTE"*, e a cura
+/// preguiçosa que eu tinha recusado por escrito — recuar no LEITOR, devolvendo
+/// zeros com o `hc_b` vazio — **passou nele**: sob ela a lei `SurfaceSmooth`
+/// não fica inerte, ela fica **ERRADA** (roda sem o termo HC e ainda move a
+/// malha). *Um gate que só pede movimento não distingue a lei certa da lei
+/// mutilada*, e foi preciso aplicar as duas mutações JUNTAS para ver isso.
+///
+/// ⚠️ **A propriedade é sobre o PINCEL, não sobre o verbo:** o que o `brush`
+/// legitimamente decide num filtro é a REFERÊNCIA (o `RefMode` governa o
+/// operador do anel), e esta fixture mantém tudo isso igual — só o `verb` muda.
+/// Duas leis iguais sobre a mesma malha com o mesmo pincel têm de dar a mesma
+/// pose, **ao byte**.
+#[test]
+fn the_verb_in_hand_does_not_change_the_law_a_filter_runs() {
+    for kind in crate::FilterKind::ALL {
+        let mut reference: Option<Vec<[f32; 3]>> = None;
+        for verb in Verb::ALL {
+            let mut mesh = mesh_for(Verb::Smooth);
+            let mut s = SculptStroke::default();
+            s.filter_begin(&mesh);
+            s.filter(&mut mesh, &filter_brush(verb), kind, 0.4);
+            let got = mesh.positions().to_vec();
+            match &reference {
+                None => reference = Some(got),
+                Some(want) => assert_eq!(
+                    want, &got,
+                    "a lei {kind:?} desenhou coisa diferente com o verbo {verb:?} em mãos"
+                ),
+            }
+        }
+    }
+}
+
 /// **A tabela tem conteúdo** — o anti-vácuo de todo gate abaixo que a varre.
 ///
 /// ⚠️ **A contagem MUDOU de 4 para 5 e a razão escrita aqui era a que caiu.**

@@ -187,7 +187,11 @@ impl SculptStroke {
         // deslocamento medido contra a saída da chamada anterior.
         self.restore_frozen_pose(mesh);
         // O `b` do HC, pela MESMA porta do dab — no-op para os outros três.
-        self.fill_hc_disp(mesh, brush);
+        // ⚠️ **O filtro: quem lê o `hc_b` é a LEI, nunca o verbo.** Desde o
+        // picker da W9b o artista escolhe a lei com o pincel que estiver em
+        // mãos, e perguntar pelo verbo aqui deixava o buffer vazio debaixo do
+        // leitor — o panic que o smoke da `=34` reportou.
+        self.fill_hc_disp(mesh, brush, kind == FilterKind::SurfaceSmooth);
 
         self.moved.clear();
         self.moved.reserve(self.touched.len());

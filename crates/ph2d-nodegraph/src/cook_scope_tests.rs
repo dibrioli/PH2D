@@ -13,6 +13,7 @@ use crate::time::{TimeMap, TimeMode};
 
 fn tmap(mode: TimeMode, duration: f64, offset: f64) -> TimeMap {
     TimeMap {
+        curve: crate::time::identity_curve_lut(),
         mode,
         scale: 1.0,
         offset,

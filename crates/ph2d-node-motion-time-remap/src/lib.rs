@@ -25,19 +25,28 @@
 
 #![forbid(unsafe_code)]
 
-use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamGate, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
-use ph2d_nodegraph::time::{TimeMap, TimeMode};
+use ph2d_nodegraph::time::{TimeMap, TimeMode, identity_curve_lut};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
 /// Option order of the `mode` enum param — mirrors [`TimeMode`]'s declaration
 /// order (`TimeMode::from_index`) and the panel's segmented selector labels.
 /// Changing one without the others silently re-labels every saved document.
-pub const MODE_LABELS: &[&str] = &["Scale", "Loop", "Ping Pong", "Freeze", "Reverse"];
+pub const MODE_LABELS: &[&str] = &["Scale", "Loop", "Ping Pong", "Freeze", "Reverse", "Curve"];
+
+/// A chave do text param que carrega a FORMA da curva (uma string do
+/// `ph2d-curve`, autorada pelo editor arrastável `ParamWidget::Curve`).
+///
+/// ⚠️ **NÃO é um `ParamSpec`** — o manifesto é f32-only por contrato congelado
+/// (ADR-0039), e uma curva não é um número; o canal de texto do `Graph` é o
+/// padrão canônico (o assento da fórmula do `motion.expression`, da tabela do
+/// `value.pattern` e do próprio `value.curve`).
+pub const CURVE_KEY: &str = "curve";
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -86,13 +95,38 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 /// place: a rename that misses this function is a compile-time-silent, but the
 /// node's own golden test below catches it.
 #[must_use]
-pub fn time_map_from(param: impl Fn(&str) -> f32) -> TimeMap {
+pub fn time_map_from<'t>(
+    param: impl Fn(&str) -> f32,
+    text: impl Fn(&str) -> Option<&'t str>,
+) -> TimeMap {
     TimeMap {
         mode: TimeMode::from_index(param("mode")),
         scale: f64::from(param("scale")),
         offset: f64::from(param("offset")),
         duration: f64::from(param("duration")),
+        curve: curve_lut(text(CURVE_KEY)),
     }
+}
+
+/// Amostra a forma autorada na tabela que o substrato transporta — a metade do
+/// NÓ do canal, exactamente como o `fill` de um `LutSpec`.
+///
+/// ⚠️ **String ausente ou malformada é a IDENTIDADE** (a lei do `value.curve`:
+/// *uma curva não-desenhada é um passthrough*), e a identidade da tabela é a
+/// rampa, não zeros — zeros no modo `Curve` congelariam a sub-árvore no `offset`,
+/// que é outro modo.
+#[must_use]
+pub fn curve_lut(text: Option<&str>) -> [f32; ph2d_nodegraph::time::TIME_CURVE_SAMPLES] {
+    let Some(curve) = text.and_then(ph2d_curve::parse) else {
+        return identity_curve_lut();
+    };
+    let n = ph2d_nodegraph::time::TIME_CURVE_SAMPLES;
+    let last = (n - 1) as f32;
+    let mut out = [0.0f32; ph2d_nodegraph::time::TIME_CURVE_SAMPLES];
+    for (k, o) in out.iter_mut().enumerate() {
+        *o = curve.eval(k as f32 / last);
+    }
+    out
 }
 
 /// Collect the time scopes a motion graph declares: one [`TimeMap`] per
@@ -121,12 +155,16 @@ pub fn time_scopes(
             continue;
         };
         let overrides = graph.node_param_overrides(inst.id);
-        let map = time_map_from(|name| {
-            overrides
-                .and_then(|o| o.get(name).copied())
-                .or_else(|| manifest.param_default(name))
-                .unwrap_or(0.0)
-        });
+        let texts = graph.node_text_param_overrides(inst.id);
+        let map = time_map_from(
+            |name| {
+                overrides
+                    .and_then(|o| o.get(name).copied())
+                    .or_else(|| manifest.param_default(name))
+                    .unwrap_or(0.0)
+            },
+            |name| texts.and_then(|t| t.get(name)).map(String::as_str),
+        );
         if !map.is_identity() {
             scopes.insert(inst.id, map);
         }
@@ -196,11 +234,21 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
+
+/// A linha da CURVA pertence ao modo que a lê, e a mais nenhum — o precedente do
+/// `column` do `motion.drive`. Um editor de curva pintado sob `Loop` seria um
+/// controle que não move um quadro.
+static PARAM_GATES: &[ParamGate] = &[ParamGate {
+    param: CURVE_KEY,
+    when: "mode",
+    values: &[5], // Curve
+}];
 
 /// Param rows: a named mode selector (never a number the artist must decode),
 /// then the three scalars the modes read. Seconds, matching the playhead.
@@ -209,11 +257,22 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "mode",
         label: "Mode",
         min: 0.0,
-        max: 4.0,
+        max: 5.0,
         step: 1.0,
         widget: ParamWidget::Enum {
             labels: MODE_LABELS,
         },
+    },
+    // A FORMA — um TEXT param (`CURVE_KEY`), o editor arrastável do A1. Não
+    // desenhada = identidade, e aí o modo `Curve` é o `Scale` a menos do
+    // arredondamento da ida-e-volta pela janela.
+    ParamUiHint {
+        param: CURVE_KEY,
+        label: "Curve",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Curve,
     },
     ParamUiHint {
         param: "scale",
@@ -271,6 +330,7 @@ mod tests {
             TimeMode::PingPong,
             TimeMode::Freeze,
             TimeMode::Reverse,
+            TimeMode::Curve,
         ];
         assert_eq!(MODE_LABELS.len(), modes.len());
         for (i, mode) in modes.into_iter().enumerate() {
@@ -288,21 +348,101 @@ mod tests {
     /// (A default `duration` of 0 would also be a latent divide-by-zero.)
     #[test]
     fn the_default_params_build_the_identity_map() {
-        let map = time_map_from(|name| MANIFEST.param_default(name).expect("declared param"));
+        let map = time_map_from(
+            |name| MANIFEST.param_default(name).expect("declared param"),
+            |_| None,
+        );
         assert!(map.is_identity(), "a fresh Time Remap warps time: {map:?}");
         assert_eq!(map.apply(1.25), 1.25);
         assert!(map.duration > 0.0);
     }
 
+    /// **A FORMA autorada chega ao mapa** — a metade que só o NÓ pode responder.
+    ///
+    /// ⚠️ O gate da lei mora no substrato (`ph2d-nodegraph::time`) e monta o
+    /// `TimeMap` **à mão**, logo é **CEGO à fiação**: se o `time_map_from`
+    /// esquecer o text param, a curva do artista nunca sai do documento e os
+    /// gates da lei seguem VERDES sobre um relógio que ninguém dobrou.
+    #[test]
+    fn the_authored_shape_reaches_the_map_the_cook_applies() {
+        let params = |name: &str| match name {
+            "mode" => 5.0, // Curve
+            "duration" => 2.0,
+            "scale" => 1.0,
+            "offset" => 0.0,
+            _ => panic!("undeclared param {name}"),
+        };
+        // Um ease de dois pontos com tangentes chatas, na serializacao do editor.
+        let drawn = ph2d_curve::serialize(&ph2d_curve::Curve {
+            points: vec![
+                ph2d_curve::Point {
+                    x: 0.0,
+                    y: 0.0,
+                    interp: ph2d_curve::Interp::Smooth,
+                },
+                ph2d_curve::Point {
+                    x: 1.0,
+                    y: 1.0,
+                    interp: ph2d_curve::Interp::Smooth,
+                },
+            ],
+        });
+        let bent = time_map_from(params, |k| (k == CURVE_KEY).then_some(drawn.as_str()));
+        let flat = time_map_from(params, |_| None);
+
+        assert_eq!(bent.mode, TimeMode::Curve);
+        // No MEIO da janela um ease pousa no meio; o que muda e' o CAMINHO ate' la'.
+        // A um quarto, o ease ja' esta' visivelmente ATRAS da reta.
+        let (b, f) = (bent.apply(0.5), flat.apply(0.5));
+        assert!(
+            (b - f).abs() > 0.05,
+            "a curva autorada tem de mover o relogio: {b} contra {f}"
+        );
+        // E o CONTROLE: sem texto, o mapa e' a rampa — o `Scale` que ele substitui.
+        for k in 0..=20 {
+            let t = k as f64 * 0.1;
+            assert!(
+                (flat.apply(t) - t).abs() < 1e-6,
+                "sem forma autorada o modo Curve e' a identidade, e em {t} da {}",
+                flat.apply(t)
+            );
+        }
+    }
+
+    /// **A linha da curva é gateada no MODO que a lê, e o índice é o do enum.**
+    ///
+    /// Duas grafias do mesmo vocabulário (o valor do `ParamGate` e o
+    /// `TimeMode::index()`) moram em crates diferentes; se derivarem, o editor de
+    /// curva aparece sob `Reverse` e some sob `Curve`, sem ninguém reclamar.
+    #[test]
+    fn the_curve_row_is_gated_on_the_mode_that_reads_it() {
+        let gate = PARAM_GATES
+            .iter()
+            .find(|g| g.param == CURVE_KEY)
+            .expect("a curva e' gateada");
+        assert_eq!(gate.when, "mode");
+        assert_eq!(gate.values, &[i32::from(TimeMode::Curve.index())]);
+    }
+
+    /// **Uma string malformada é a identidade, nunca um relógio inventado.**
+    #[test]
+    fn a_malformed_curve_is_the_identity() {
+        let lut = curve_lut(Some("isto nao e' uma curva"));
+        assert_eq!(lut, ph2d_nodegraph::time::identity_curve_lut());
+    }
+
     #[test]
     fn params_decode_into_the_map_the_cook_applies() {
-        let map = time_map_from(|name| match name {
-            "mode" => 1.0, // Loop
-            "scale" => 2.0,
-            "offset" => 0.5,
-            "duration" => 3.0,
-            _ => panic!("undeclared param {name}"),
-        });
+        let map = time_map_from(
+            |name| match name {
+                "mode" => 1.0, // Loop
+                "scale" => 2.0,
+                "offset" => 0.5,
+                "duration" => 3.0,
+                _ => panic!("undeclared param {name}"),
+            },
+            |_| None,
+        );
         assert_eq!(map.mode, TimeMode::Loop);
         // t=2 → scaled 4 → 4 mod 3 = 1 → +0.5.
         assert_eq!(map.apply(2.0), 1.5);

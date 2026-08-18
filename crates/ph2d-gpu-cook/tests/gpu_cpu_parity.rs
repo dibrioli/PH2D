@@ -788,7 +788,7 @@ fn the_two_size_axis_arms_match_the_cpu_on_the_device() {
     let mut g = Graph::new();
     let grid = grid_node(&mut g, 40.0);
 
-    let mut axis = |g: &mut Graph, src: NodeId, channel: f32, seed: f32| {
+    let axis = |g: &mut Graph, src: NodeId, channel: f32, seed: f32| {
         let f = g.add_node("value.instance_field");
         g.set_param(f, "mode", 3.0); // Random — dois campos que nao sao multiplos
         g.set_param(f, "seed", seed);

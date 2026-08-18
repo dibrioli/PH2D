@@ -329,6 +329,7 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
         Ok("54") => conferencia::octave(doc, registry),
         Ok("55") => conferencia::shape(doc, registry),
         Ok("56") => conferencia::column(doc, registry),
+        Ok("57") => conferencia::wave(doc, registry),
         _ => Vec::new(),
     }
 }

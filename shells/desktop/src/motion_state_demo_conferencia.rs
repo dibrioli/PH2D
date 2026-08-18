@@ -556,3 +556,38 @@ const SPAN_FREE: f32 = 9.6234;
 const SPAN_CAPPED: f32 = 3.2184;
 const RAMP_EARLY: f32 = 0.1200;
 const RAMP_LATE: f32 = 0.2600;
+
+/// **N PRODUTORES NUM CAMPO DE ONDA** — a cena `=57`, a folha 06 linha 35.
+pub(super) fn wave(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks = conferencia_demos_wave::build_wave_demo_document(doc, registry).unwrap_or_default();
+    let col = conferencia_demos_wave::state_column();
+    eprintln!(
+        "[wave-demo] DUAS BANDAS ({} montadas). O MESMO campo; so' a de baixo tem a cadeia.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_wave::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) DE' PLAY. Um campo de onda so' existe INTEGRANDO -- parado as duas grades ficam
+  chatas e identicas, e a cena nao diz nada.
+  (!) A leitura e' DE ONDE AS ONDAS NASCEM, nunca 'a de baixo mexe mais': um campo mais
+  agitado tambem mexeria mais e nao seria um produtor.
+  (!) 1: os aneis saem do MEIO da grade -- a fonte de Dirichlet que o no' sempre teve
+  (medido: pico em x = -0,50, o centro).
+  (!) 2: um segundo berco nasce a' ESQUERDA e as duas frentes se cruzam no caminho
+  (medido: pico em x = -3,00, EXATAMENTE onde a caixa esta').
+  (!) As duas tem amplitude COMPARAVEL de proposito -- 0,2231 contra 0,2770, razao 1,24, e a
+  de baixo tem ate' MENOS pecas estouradas (18 contra 21). Se uma fosse muito maior, 'a de
+  baixo mexe mais' responderia por qualquer coisa, e a cena provaria um segundo controle de
+  amplitude em vez de um segundo PRODUTOR.
+  (!) O que ele deposita PROPAGA: 440 das 441 celulas se movem. Um numero escrito na coluna
+  de altura que ficasse parado ali seria tinta, nao uma fonte.
+  (!) A cadeia sao QUATRO nos e TRES arestas, a mao:
+        wave.out --pre--> field.box --> value.attribute(\"falloff\")
+          --> motion.drive(Custom \"{col}\", Add) --> wave.state
+  (!) Abra o painel de GRAFO na banda de baixo: o nome da coluna e' um TEXT PARAM, e
+  saber digitar `{col}` e' o que separa 'da' para fazer' de 'e' facil'."
+    );
+    sinks
+}

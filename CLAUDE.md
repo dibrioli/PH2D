@@ -41,6 +41,9 @@
 | **Foundational (Modo L)** | [ADR-0107](docs/architecture/decisions/0107-concurrent-foundational-lines-tested-gate-syntactic-merge.md) — editável pela sua linha; integra por `scripts/foundational-integrate.sh` (DIRETRIZ §1.5.3). Só contrato congelado (§6) e mesmo-símbolo escapam |
 | **Foundational (Modo C) / contrato congelado** | DIRETRIZ §3.C + §4 (**Coord-only + ADR**) |
 | **Trabalhar em linha paralela (Modo L / workstation)** | DIRETRIZ §1.5 (worktrees, integração `--ff-only` + gate testado, briefing §1.5.8) |
+| **ABRIR uma linha nova** | [MODELO_ABERTURA_LINHA.md](docs/IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md) — o bloco colável da 1ª mensagem (`/pd-linha-abrir`) |
+| **FECHAR a sua linha** | DIRETRIZ §1.5.9 — gate batched 1× · handoff · `rm -rf target/*/incremental` · **UMA LINHA** no §5 (`/pd-linha-fechar`) |
+| **Você é o agente INTEGRADOR** (só por ordem do Enio) | ⚠️ **`bash scripts/collision-surface.sh` em cada worktree ANTES do primeiro grep** — ele responde de uma vez a lista que a integração redescobre ~1.000 vezes. Depois DIRETRIZ §1.5.3 + `scripts/foundational-integrate.sh` (`/pd-integracao`) |
 | **Rodar uma jornada Modo L (você, operador)** | [GUIA_JORNADA_MODO_L.md](docs/IntegracaoMultiAgente/GUIA_JORNADA_MODO_L.md) — abrir linhas, quando intervir, quem faz o ship (sem coordenador) |
 | **Você ASSUMIU uma linha que já existe** (troca de janela / retomada pós-integração) | [MODELO_TROCA_DE_AGENTE_NA_LINHA.md](docs/IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md) — **`cd` + `pwd` + `git branch --show-current` ANTES de ler qualquer arquivo.** A janela abre na raiz (=`main`) e o mesmo path relativo existe nas 2 árvores: editar a errada compila e commita **sem erro** |
 | **Build lento / quero voar** | DIRETRIZ §6 (stack de velocidade) — §2 abaixo é o resumo |
@@ -49,13 +52,26 @@
 | **Fim de dia · o disco encheu · "por que o target é tão grande?"** | [DIRETIVA_FIM_DE_DIA.md](docs/IntegracaoMultiAgente/DIRETIVA_FIM_DE_DIA.md) — os 3 portões antes de apagar, e a **§2-bis** com a decomposição MEDIDA do target (54% é `incremental/`) e as 3 regras que atacam o pico |
 | **Quem é o Enio / estado do projeto** | [project-memory/MEMORY.md](project-memory/MEMORY.md) |
 | **Quem possui o quê agora** | [SESSION_ACTIVE.md](docs/SESSION_ACTIVE.md) |
+| **Achar um ADR pelo número** | [`decisions/README.md`](docs/architecture/decisions/README.md) — índice **derivado** (`bash scripts/adr-index.sh`), com o `Status:` e quem alega supersedê-lo |
+
+> **Os 14 comandos de fluxo vivem em [`.claude/commands/`](.claude/commands/) e são versionados** —
+> `/pd-feature` · `/pd-linha-abrir` · `/pd-linha-assumir` · `/pd-linha-fechar` · `/pd-integracao` ·
+> `/pd-ship` · `/pd-auditoria` · `/pd-mutacao` · `/pd-gate-fechamento` · `/pd-bug-causa` · `/pd-perf` ·
+> `/pd-adr` · `/pd-smoke-report` · `/pd-livre`. Cada um é o protocolo desta tabela já destilado.
+> ⚠️ **Medido 2026-08-18: existiam há semanas em `~/.claude/commands/` (fora do repo), nenhum doc os
+> apontava, e foram usados ZERO vezes em 101 sessões** — enquanto a compactação disparou 1.777 vezes.
+> *Uma ferramenta fora do repo não existe nas outras máquinas, e uma que o roteador não aponta não existe em nenhuma.*
 
 ## §2 — Velocidade ("agents flying"), resumo (detalhe + configs: DIRETRIZ §6)
 
 - **PRIMEIRO: `bash scripts/hw-profile.sh`** — a estratégia é função do hardware, não fixa. Os bullets abaixo são o baseline `constrained` (Mac 8 GiB); tier `workstation` (desktop 128 GB) sobrescreve (RA full, muitos cargos, slots opcionais, tmpfs, sccache). Tabela: DIRETRIZ §6.0. Racional: [ADR-0104](docs/architecture/decisions/0104-hardware-tiered-speed-strategy.md).
 - **UM TURNO, N CHAMADAS.** Chamadas independentes — ler 3 arquivos · 2 greps · medir 2 números · rodar 2 sondas — vão na **MESMA** mensagem. ⚠️ **Medido 2026-08-18: 279.566 turnos com 1,00 chamada cada** (oito em 279 mil usaram duas), sobre uma mediana de **991 turnos por sessão**, cada um um round trip completo. É a **maior alavanca de relógio deste repo** e não muda processo nenhum. Só serialize o que **depende** do resultado anterior.
 - **EDITE pela ferramenta `Edit`, não por `python3`/`sed`.** ⚠️ Medido: **52% das edições iam por script**, ~93 k tokens de geração a mais por sessão — e o modo de falha é o caro: um `str.replace()` que não casa é **no-op SILENCIOSO e o script imprime sucesso**, enquanto o `Edit` **falha alto** quando `old_string` não casa. Script só onde ele é a forma CERTA (mutação: backup → mutar → testar → restaurar · renomeação em N arquivos · edição derivada de medição), e aí **sempre com `assert` de contagem** ([`project-memory`](project-memory/feedback_python_replace_silent_noop_after_fmt.md)).
-- **Inner loop = `cargo check -p <crate>`** (ou `scripts/cargo-check-narrow.sh <crate>` p/ cortar tokens de erro). Nada de test/clippy/auditor por task. ⚠️ **Gate red-first e prova de mutação NÃO são o inner loop** — eles rodam `test -p` de propósito, uma vez cada, e é assim que tem de ser; o que não pode é `test -p` responder ***"minha edição entrou?"***, que é pergunta de `check`. Medido: `test -p` custa **2× a 20×** o `check -p` (0,4 / 17,7 / 38,8 s contra 0,2 / 6,2 / 2,0 em três crates), e a razão real era **4,3:1 na direção errada**.
+- **Inner loop = `bash scripts/cargo-check-narrow.sh <crate>`.** Nada de test/clippy/auditor por task. ⚠️ **Gate red-first e prova de mutação NÃO são o inner loop** — eles rodam teste de propósito, uma vez cada; o que não pode é o teste responder ***"minha edição entrou?"***, que é pergunta de `check`. Razão medida: **4,3:1 na direção errada**.
+- **Corrida dirigida de teste = `bash scripts/cargo-test-narrow.sh <crate>`** (red-first, mutação, "este teste passou?"). Ele roda `check --all-targets` **na frente** e sai cedo se não compilar, e devolve **exit code distinto**: `0` verde · `1` teste vermelho · `2` não compilou.
+  ⚠️ **Medido 2026-08-18: `cargo test` é 80,5% de TODO o relógio de shell do repo** (59.215 corridas, 340,6 h) — e **4.414 delas (44 por sessão, 6,3 h) nunca chegaram a rodar um teste**, porque o crate não compilava. **98,9%** das corridas carregavam filtro escrito à mão (**177.063 usos, 19.760 formas distintas** — cada uma reescrita ~9×), e o filtro é onde a resposta se perdia: **797 corridas devolveram literalmente NADA**. ⛔ Um `| head` também **destrói o exit code** — é por isso que os dois scripts preservam o do cargo.
+- **Comando pesado vai por `bash scripts/ph2d-run.sh <cmd>`** (scope próprio, teto de RAM, **sem swap**). Não é conforto: um teste alocou **90,2 GB** e o `OOMPolicy=stop` derrubou a janela inteira do agente — e o earlyoom não podia salvar, porque havia 27,6 GB de RAM livres e o que acabara era o **swap** ([memória](project-memory/project_vscode_dies_by_oompolicy_not_by_choice.md)).
+- ⚠️ **Ferramenta que nenhum passo escrito chama pelo NOME morre.** Medido: `cargo-check-narrow.sh` está nesta seção há semanas, faz exatamente a coisa certa — e foi invocado **5 vezes em 101 sessões**, contra **13.791** `cargo check` digitados à mão. `git-stage-guard.sh` tem 5 docs a apontá-lo e **zero** invocações, contra 8.439 `git status` à mão. Os quatro scripts realmente vivos (`nextest-impacted`, `ship`, `foundational-integrate`, `hw-profile`) têm em comum **uma coisa só**: um passo obrigatório de protocolo os invoca pelo nome. *Ponteiro não é adoção.*
 - **A sonda destas três leis é `bash scripts/agent-loop-profile.sh`** — ela lê os transcripts e imprime paralelismo · turnos/sessão · `test:check` · % de edições pela ferramenta, cada um com o baseline de 2026-08-18 ao lado. *Uma regra sem instrumento é uma nota que envelhece.*
 - **Slot warm por CoW** (só `constrained`): `bash scripts/slot-seed.sh <slot>` → prefixe cada cargo com o `CARGO_TARGET_DIR` impresso. No `workstation` os slots são opcionais (`target/` único basta).
 - **Diagnóstico via LSP (maior alavanca):** `constrained` = `cargo-check-narrow.sh` on-demand (RA é RAM-blocked); `workstation` = **rust-analyzer full como oráculo**, não leia saída crua do cargo.
@@ -107,6 +123,21 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   Motion envelheceram antes de alguém voltar a elas: *o que se perde ao não reconferir não é tempo, é construir o que já existe.*
 - **⛔ O que foi MEDIDO E REJEITADO não se reconstrói** — está no handoff da wave que o mediu e na história arquivada.
 - **Integrar não é aprovar.** Smoke é do Enio; integrar e shipar só por ordem explícita dele (§0.7).
+- ⚠️ **O TRACKER também é roteador — e mandar a narrativa para ele só REALOCOU a doença.** A regra
+  «uma linha no §5» funcionou para o `CLAUDE.md` e criou o `HANDOFF_line_physics.md` a **710 KB**,
+  77% do que o §5 chegou a ser. Medido 2026-08-18: **4,12 MB de história em 206 docs vivos** (42%),
+  e o joelho está entre **80 e 110 KB** — a `DIRETRIZ.md` (86 KB) é o doc mais lido do repo e ainda
+  cabe num `Read`; acima disso o `Read` **desaparece** e o acesso vira raspagem por shell (o tracker
+  de física teve **1 `Read` para 407 comandos**, e **89% dele nunca entrou em contexto nenhum**).
+  ⛔ Uma regra enterrada na linha 8.000 não é «difícil de achar»: ela **não é lida por ninguém**
+  (667 marcadores `⚠️/⛔` lá dentro, 558 além da linha 2.000). O tracker recebe **uma linha por wave
+  com link** para o handoff datado — que **já existe** em `docs/<Módulo>/handoffs/`, com índice
+  cronológico. A história vai **verbatim** para `docs/archive/`, no formato de
+  [`estado-2026-08-18/README.md`](docs/archive/estado-2026-08-18/README.md).
+- ⚠️ **O que fica vivo tem de ser ENDEREÇÁVEL.** Medido: o agente não lê estes docs, ele os **navega** —
+  o padrão de busca nº 1 em todos eles é reconstruir o sumário (`'^## '`), depois saltar para um
+  endereço (`HR-5`, `Bug #17`, `W6.2`, `§1.5.9`) e ler ~70 linhas. É por isso que o `SKILL_Stack`
+  (0% de história, consultado por `HR-N`) funciona e um diário numerado fora de ordem não.
 - ⚠️ **As listas de `Smokes:` abaixo são NOMES de variável, não o comando.** Ao passar um smoke ao Enio, escreva-o **inteiro e copiável de uma vez**, com o caminho absoluto da árvore em que você trabalha (§0.8):
   ```
   cd /home/enio/Documentos/Projetos/PH2D && env PH2D_<NOME>=<n> cargo run -p ph2d-host-desktop --release
@@ -142,16 +173,16 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `ph2d-timeline` + `ph2d-anim`): curvas com handles bézier e weighted tangents, roving keys, time remap, record,
   clips + **composição** ([ADR-0115](docs/architecture/decisions/0115-clip-composition-sequencer-overlap-crossfade-sparse-lanes.md)),
   **nesting** ([ADR-0133](docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md)),
-  duração explícita, motion path ([ADR-0141](docs/architecture/decisions/)), onion ([ADR-0142](docs/architecture/decisions/)),
-  retiming, extrapolação, **sinais** ([ADR-0143](docs/architecture/decisions/)) e expressões
-  ([ADR-0144](docs/architecture/decisions/) / [0151](docs/architecture/decisions/) / [0152](docs/architecture/decisions/)).
+  duração explícita, motion path ([ADR-0141](docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md)), onion ([ADR-0142](docs/architecture/decisions/0142-timeline-onion-ghost-poses-non-destructive-pose-at.md)),
+  retiming, extrapolação, **sinais** ([ADR-0143](docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md)) e expressões
+  ([ADR-0144](docs/architecture/decisions/0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md) / [0151](docs/architecture/decisions/0151-timeline-expressions-are-per-clip-so-a-strip-windows-them.md) / [0152](docs/architecture/decisions/0152-timeline-expressions-are-a-first-class-lane-source-that-fades.md)).
   ⚠️ O `TimelineDoc` viaja como **blob dentro do `ProjectFile` e carrega a própria versão** — é por isso que ele evolui
   sem mover o `PROJECT_SCHEMA`. ⚠️ A **AUTORIA** de expressões foi **retirada** (o motor ficou; registro em
   [doc 14](docs/Timeline/14_a_autoria_de_expressoes_foi_retirada.md)) — remover a feature **não** removeu o schema.
   **Aberto:** a expressão **PURA** (sem keys) extrapola a strip — ligar exige vínculo autorado (produto + provável
   `DOC_VERSION`) · **W4.T4** (o dock da timeline dentro do Motion) aguarda re-smoke: duas linhas discordaram, o código
   do `main` shipou com cap e gates, e a nota da rejeição saiu do `layout.rs` · o catálogo de receitas morreu, a pesquisa não.
-  **Smokes:** `PH2D_NEST_SMOKE=1..3` · `PH2D_MOTION_PATH_SMOKE` · `PH2D_ONION_SMOKE` · `PH2D_TIMESCALE_SMOKE` ·
+  **Smokes:** `PH2D_NEST_SMOKE=1..3` · `PH2D_PATH_SMOKE=1|2` · `PH2D_ONION_SMOKE` · `PH2D_TIMESCALE_SMOKE` ·
   `PH2D_STAGGER_SMOKE` (⚠️ **Ctrl**+drag, o KDE rouba o Alt) · `PH2D_BUFFER_SMOKE` · `PH2D_EXTRAP_SMOKE` ·
   `PH2D_SIGNAL_SMOKE` · `PH2D_EXPR_BLEND_SMOKE` · `PH2D_MORPH_FADE_SMOKE`. ⚠️ `PH2D_EXPR_SMOKE` **morreu** com o card.
   ⚠️ **Flake conhecida e PRÉ-EXISTENTE:** `the_cost_of_depth_is_linear_not_explosive` é gate de RAZÃO sensível a carga —
@@ -160,14 +191,14 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   [handoffs](docs/Timeline/handoffs/README.md) · [história](docs/archive/estado-2026-08-18/timeline.md)
 
 - **Áudio** — rack com **42 efeitos + 23 presets** e cadeia editável (`ph2d-audio-edit` + painéis
-  `audio-editor`/`audio-mixer`), espectral ([ADR-0122](docs/architecture/decisions/)), export Ogg/Opus
-  ([ADR-0113](docs/architecture/decisions/) / [0116](docs/architecture/decisions/)), streaming de vozes
-  ([ADR-0118](docs/architecture/decisions/)) e **AI denoise nativo** via `tract`
-  ([ADR-0123](docs/architecture/decisions/), feature **`audio-ml` OFF por default**).
+  `audio-editor`/`audio-mixer`), espectral ([ADR-0122](docs/architecture/decisions/0122-audio-spectral-fft-via-realfft.md)), export Ogg/Opus
+  ([ADR-0113](docs/architecture/decisions/0113-audio-export-ogg-vorbis-via-vorbis-rs-opus-deferred.md) / [0116](docs/architecture/decisions/0116-audio-export-opus-isolated-unsafe-crate.md)), streaming de vozes
+  ([ADR-0118](docs/architecture/decisions/0118-audio-streaming-voices-residency.md)) e **AI denoise nativo** via `tract`
+  ([ADR-0123](docs/architecture/decisions/0123-audio-w7-ml-boundary-tract-native-denoise-reject-ort.md), feature **`audio-ml` OFF por default**).
   ⚠️ **Invariante da rack:** todo efeito é **no-op byte-idêntico no ponto neutro** e o painel **se auto-popula** da
   tabela `KINDS` — efeito novo = variant + braços + row, **zero mudança de painel**.
   ⚠️ **Fronteiras duras, com gate:** nenhum **codec** e nenhum **runtime de ML** alcança o mixer RT.
-  ⚠️ **HR-13 emendado** ([ADR-0117](docs/architecture/decisions/)): *quem declara budget possui um gate que **MEDE*** (dhat).
+  ⚠️ **HR-13 emendado** ([ADR-0117](docs/architecture/decisions/0117-audio-editor-memory-is-measured-not-declared.md)): *quem declara budget possui um gate que **MEDE*** (dhat).
   ⚠️ `fx.rs` está **no teto de LOC** — o 43º efeito tem de orçar o split.
   **Aberto:** o backlog do módulo vive em [`docs/Audio/03_o_que_falta.md`](docs/Audio/03_o_que_falta.md), **com o
   gatilho que acorda cada item** — é lá que se olha, não aqui. Cercas de Chesterton conhecidas: seek/scrub num stream ·
@@ -181,7 +212,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **mais** um motor de pintura clean-room do Blender Texture Paint (ref vendorizada, GPL ⇒ só comportamento). Quatro
   **meios** num dropdown (`Digital` é o default) — Digital · Watercolor · **Impasto** (relevo com material por-pixel e
   luz na GPU) · **Wet Paint** (sim de fluido, [ADR-0134](docs/architecture/decisions/0134-wet-paint-fluid-sim-returns-cpu-first-parity-tested.md),
-  solver independente de ordem [ADR-0147](docs/architecture/decisions/), row-parallel [ADR-0145](docs/architecture/decisions/)).
+  solver independente de ordem [ADR-0147](docs/architecture/decisions/0147-wet-paint-order-invariant-solver.md), row-parallel [ADR-0145](docs/architecture/decisions/0145-wet-paint-solver-row-parallel-passes-rayon-exception.md)).
   Mais **sculpt do relevo** (8 verbos), **liquify** ([ADR-0157](docs/architecture/decisions/0157-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md)),
   **substrato/papel**, **taper**, **grid stamp**, seleção com caneta, e o carimbo no device (`ph2d-paint-gpu`).
   ⚠️ **A lei que este módulo pagou seis vezes:** *o traço é fato do **CAMINHO**, nunca de quão fino o motor amostrou o
@@ -208,11 +239,13 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
 
 - **Vector** — motor GPU-first, editor-first, **referenciado** no runtime MIT do Rive (reimplemento nativo kurbo/Vello,
   *não* vendoriza rive-rs; [ADR-0108](docs/architecture/decisions/0108-vector-reposition-rive-referenced-native-editor-first.md)).
-  Todo path é **entidade ECS** com pose no `Transform` ([ADR-0110](docs/architecture/decisions/) /
-  [0111](docs/architecture/decisions/)); 13 modos (Select/Node/Pen/Build/Width/Tesoura/…,
-  [ADR-0112](docs/architecture/decisions/)); **Live Corners** ([ADR-0121](docs/architecture/decisions/)) e a costura
-  **fonte ≠ cozido** que destravou os **Live Path Effects** ([ADR-0132](docs/architecture/decisions/)); blend
-  ([ADR-0128](docs/architecture/decisions/)); largura viva ([ADR-0148](docs/architecture/decisions/)); **auto layout**
+  Todo path é **entidade ECS** com pose no `Transform` ([ADR-0110](docs/architecture/decisions/0110-vector-nodes-are-ecs-entities-one-hierarchy.md) /
+  [0111](docs/architecture/decisions/0111-vector-shapes-have-transforms-and-use-the-sprite-gizmo.md)); **14** modos — o `DrawMode` em
+  [`params_mode.rs`](crates/ph2d-tool-vector/src/params_mode.rs) é a fonte, e ⚠️ **não há
+  «Tesoura»**: ela e a Faca viraram **`Cut`**, e o **`Frame`** entrou depois sem ninguém recontar
+  ([ADR-0112](docs/architecture/decisions/0112-vector-select-node-pen-are-three-tools.md)); **Live Corners** ([ADR-0121](docs/architecture/decisions/0121-vector-live-corners-authored-source-cooked-geometry.md)) e a costura
+  **fonte ≠ cozido** que destravou os **Live Path Effects** ([ADR-0132](docs/architecture/decisions/0132-vector-live-path-effects-are-a-per-path-stack-not-a-node-graph.md)); blend
+  ([ADR-0128](docs/architecture/decisions/0128-vector-blend-object-live-virtual-steps-editable-spine.md)); largura viva ([ADR-0148](docs/architecture/decisions/0148-vector-live-width-profile-is-an-ecs-component-and-one-baker-serves-preview-and-apply.md)); **auto layout**
   via `taffy` atrás de uma crate-folha ([ADR-0153](docs/architecture/decisions/0153-vector-auto-layout-is-taffy-behind-one-leaf-crate-and-the-pose-is-derived.md)).
   Mais guias/régua, simetria como modo, booleana viva, moldura, **tokens no documento**, **estados de UI + Smart
   Animate**, e a **árvore autorada como painel vivo** (o app escreve o código do painel).
@@ -290,7 +323,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   [história](docs/archive/estado-2026-08-18/flip.md)
 
 - **Runtime — a saída de sinais (R0)** — crate-folha `ph2d-runtime` (`Signal`/`SignalOrigin`/`SignalOutbox`/`SignalReader`),
-  onde a **timeline** ([ADR-0143](docs/architecture/decisions/)) e a **física** (`SignalOnHit`) se encontram: os produtores
+  onde a **timeline** ([ADR-0143](docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md)) e a **física** (`SignalOnHit`) se encontram: os produtores
   **publicam** e cada consumidor lê com o próprio cursor (ADR-0075 — o produtor não chama ninguém).
   ⚠️ **A ordem no quadro é load-bearing e tem gate:** o quadro vira **antes** do primeiro produtor, o dreno roda **depois**
   dos dois — fora dessa janela o sinal chega um quadro atrasado (invisível num toast, visível quando o consumidor for **som**).
@@ -331,14 +364,14 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ([ADR-0042](docs/architecture/decisions/0042-wave-10-closure.md)) ·
   [história](docs/archive/estado-2026-08-18/planos-de-nos.md).
   Fechados sem pendência: **Sprite Inspector v2** ([ADR-0069..0074](docs/architecture/decisions/)) · **KTX2 Fase 2**
-  ([ADR-0055](docs/architecture/decisions/), W3 = integração com o Painter) · **imageio AVIF**
-  ([ADR-0054](docs/architecture/decisions/)).
+  ([ADR-0055](docs/architecture/decisions/0055-cooked-texture-compression-pipeline.md), W3 = integração com o Painter) · **imageio AVIF**
+  ([ADR-0054](docs/architecture/decisions/0054-imageio-pipeline.md)).
 
 ## §6 — Contratos congelados (mexer = Coord-only + ADR; DIRETRIZ §4)
 
 - **Nodes** ([ADR-0039](docs/architecture/decisions/0039-nodegraph-contract-freeze-w2t4.md)): `NodeOp=2`/`OpResolver=1`/`NodeManifest=8` — gate `architecture_contract_surface`.
 - **Tools** ([ADR-0040](docs/architecture/decisions/0040-tool-as-isolated-feature-crate.md)+[0041](docs/architecture/decisions/0041-rasteredit-rename-and-deactivate.md)): `Tool=12`/`RasterEditTool=5`/`CanvasPaintTool=1`/`PanelEvent=4` — gate `architecture_tool_contract_surface`. (`Tool` 10→11 em [ADR-0040-amendment-2](docs/architecture/decisions/0040-tool-as-isolated-feature-crate.md): `on_tick` heartbeat p/ aquarela live, ADR-0049/0077-D11. `Tool` 11→12 + sub-trait `CanvasPaintTool` em ADR-0040-amendment-3: `as_canvas_paint_mut`/`on_canvas_pointer` p/ entrega de ponteiro de canvas ao novo Painter, `docs/Painter/`.)
-- ~~**Painter (pintura)** (ADR-0043..0053)~~ — **REVOGADO** por [ADR-0099](docs/architecture/decisions/0099-remove-painting-brush-engine-preserve-layers-effects.md): os ABIs de pintura (`PainterUiEdit`/`Brush`/`Stamp=96B`/`RenderingMode=6`/`PointerSource`/`DeviceTier`…) e o gate `architecture_painter_contract_surface` (crate `ph2d-painter-contracts`) foram **removidos** junto com a pintura. A superfície de **efeitos** que sobrevive (`AdjustmentKind≤32`/`AdjustmentParams`/`BlendMode`+`MAX_BLEND_MODES`/`apply_blend`) vive agora em **`ph2d-painter-effects`** (não-gateada; re-capear é follow-up). `ColorProfile` segue em `ph2d-color`.
+- ~~**Painter (pintura)** (ADR-0043..0053)~~ — **REVOGADO** por [ADR-0099](docs/architecture/decisions/0099-remove-painting-brush-engine-preserve-layers-effects.md): os ABIs de pintura (`PainterUiEdit`/`Brush`/`Stamp=96B`/`RenderingMode=6`/`PointerSource`/`DeviceTier`…) e o gate `architecture_painter_contract_surface` (crate `ph2d-painter-contracts`) foram **removidos** junto com a pintura. A superfície de **efeitos** que sobrevive (`AdjustmentKind≤32`/`AdjustmentParams`/`BlendMode`+`MAX_BLEND_MODES`/`apply_blend`) vive agora em **`ph2d-painter-effects`** (não-gateada; re-capear é follow-up). `ColorProfile` vive em **`ph2d-imageio`** ([`color.rs`](crates/ph2d-imageio/src/color.rs), com gate `architecture_imageio_contract_surface`) — ⚠️ **não** em `ph2d-color`, que nunca o teve.
 - ~~**Watercolor (física)** (ADR-0049/0078-0084)~~ — **REVOGADO** por [ADR-0096](docs/architecture/decisions/0096-remove-watercolor-fluid-pivot-mixer-brush.md): a sim de aquarela e seus gates (`gpu_parity`/`composite_parity`) foram removidos junto com a crate `ph2d-painter-wash`. O modelo K–M espectral é histórico (backup); o pivot para mixer-brush usa Kubelka–Munk/Mixbox no blend do pigmento, não shallow-water. Nada congelado aqui.
 - **Vector (data-model foundational)** ([ADR-0056..0068](docs/architecture/decisions/)): `VectorOp≤16`/`Vertex`SmallVec32/`Segment`64/`Region.segments`16/`AnimValue` enum/`sample(t:f64)`/`MAX_SPIRAL_TURNS=64`/`MAX_POLYGON_SIDES=128`/`MAX_VERTICES_PER_LLM_GEN=1000` — gate `architecture_vector_contract_surface` (escaneia só `ph2d-vector-doc`+`-traits`). **PERMANECE congelado** e o gate FICA — mesmo após [ADR-0108](docs/architecture/decisions/0108-vector-reposition-rive-referenced-native-editor-first.md) ter **retirado** as tools/nodes/panels de edição vetorial (o cutover mexe só em crates satélite, não na superfície do doc). O **motor novo** (`ph2d-vec-*`, §5) tem contrato **próprio, ainda NÃO congelado** (re-congelar é follow-up). Gate `vello_kurbo_only_in_ph2d_vector` nunca existiu (era W2-deferred).
 

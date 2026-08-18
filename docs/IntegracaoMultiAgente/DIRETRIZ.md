@@ -380,7 +380,7 @@ TRIAGEM
 | **Painel novo** (`ph2d-panel-<slug>`) | **(B) §3.B.1** | Coord plumba feature flag + `register_all_panels` ANTES. |
 | **Widget primitive novo** | **(B) §3.B.2** | Cria o arquivo + `cargo run -p ph2d-widget-sync` (bloco `mod` GERADO); `pub use` + showcase à mão. |
 | **Chrome handler novo** | **(B) §3.B.3** | Cria stub `chrome/<slug>.rs` + marcador `z=NN` + `cargo run -p ph2d-chrome-sync` (`mod` + `dispatch_all` GERADOS). |
-| **Avaliador novo (Wave-neck)** — Shader/Som/Gameplay | **(C)** durante neck → (A) depois | Trabalho "tipo W2" serial; abre fan-out só após o neck. Tracker em [`docs/HANDOFF_node_system.md`](../HANDOFF_node_system.md). |
+| **Avaliador novo (Wave-neck)** — Shader/Som/Gameplay | **(C)** durante neck → (A) depois | Trabalho "tipo W2" serial; abre fan-out só após o neck. Tracker em [`docs/HANDOFF_node_system.md`](docs/archive/handoffs-2026-06-16/HANDOFF_node_system.md). |
 | **Mudar tokens / editor-core (não-contrato) / shells / arch tests** | **(C)** | Foundational. Modo C: não paraleliza (Coord). Modo L: sua linha + gate testado (ADR-0107, vide nota abaixo). |
 | **Mudar contrato de nós** (porta, EvalCtx, motor) | **(C) + ADR** | Bump cap em `architecture_contract_surface.rs` + ADR estendendo 0039. |
 | **Mudar contrato de tools** (método em `Tool`/`RasterEditTool`, variant em `PanelEvent`) | **(C) + ADR** | Bump cap em `architecture_tool_contract_surface.rs` + amendment de ADR-0040 §7. |
@@ -1158,7 +1158,7 @@ gh run watch <id> --exit-status
 - **Stack + Hard Rules + "Adicionar uma tool":** [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md)
 - **Operacional dia-a-dia + CI:** [`CLAUDE.md`](../../CLAUDE.md)
 - **Exemplos fan-out 100% paste-ready:** [`examples-fan-out.md`](examples-fan-out.md)
-- **Tracker vivo do fan-out de nodes:** [`docs/HANDOFF_node_system.md`](../HANDOFF_node_system.md)
+- **Tracker vivo do fan-out de nodes:** [`docs/HANDOFF_node_system.md`](docs/archive/handoffs-2026-06-16/HANDOFF_node_system.md)
 - **Plano de nodes (W1+W2 fechados, W3+ aberto):** [`docs/plans/2026-05-node-waves.md`](../plans/2026-05-node-waves.md)
 - **Plano Wave 11 carry-overs:** [`docs/plans/2026-05-wave-11-carry-overs.md`](../plans/2026-05-wave-11-carry-overs.md)
 

@@ -30,8 +30,25 @@
 //! re-cooks this node and *only* the nodes downstream of it.
 
 use ph2d_node_registry::{
-    NodeRegistry, ParamGate, ParamHardMax, ParamUiHint, ParamWidget, RegistryError,
+    NodeRegistry, ParamGate, ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
+    RegistryError,
 };
+
+/// **O `spacing` é uma DISTÂNCIA, e é a única deste nó que é.**
+///
+/// A unidade diz *o que o número É*, nunca como ele se mostra (doc 88), e um espaçamento de arco
+/// é medido nas mesmas unidades de mundo em que a curva foi desenhada — logo `Length`, exactamente
+/// como o irmão `motion.spline_wrap` declara as coordenadas dos pontos de controle dele.
+///
+/// ⚠️ **E os outros três ficam SEM unidade, o que é a decisão e não a omissão:** `count` é uma
+/// contagem que o `ParamWidget::Int` já apresenta, `align` é um interruptor, e o `offset` é uma
+/// FRAÇÃO do percurso (`0..1`, com volta) — o `spline_wrap`, que lê a mesma curva desenhada, deixa
+/// as frações dele (`from`/`to`/`offset`) igualmente sem unidade, e divergir aqui faria dois nós
+/// da mesma família apresentarem a mesma grandeza de dois jeitos.
+static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
+    param: "spacing",
+    unit: ParamUnit::Length,
+}];
 
 /// `mode`: quem responde **"quantos?"**.
 const MODE_COUNT: f32 = 0.0;
@@ -276,6 +293,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 

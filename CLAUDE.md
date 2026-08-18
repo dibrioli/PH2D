@@ -121,7 +121,17 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   [`physics_smoke.rs`](shells/desktop/src/physics_smoke.rs) · os gates `no_two_*_scenes_claim_the_same_level`.
 - **Antes de construir um item de lista aberta, MEÇA se a composição já o exprime.** Seis células da conferência do
   Motion envelheceram antes de alguém voltar a elas: *o que se perde ao não reconferir não é tempo, é construir o que já existe.*
-- **⛔ O que foi MEDIDO E REJEITADO não se reconstrói** — está no handoff da wave que o mediu e na história arquivada.
+- **⛔ O que foi MEDIDO E REJEITADO não se reconstrói** — e desde 2026-08-18 ele tem **endereço**:
+  cada doc cortado leva no fim uma tabela **`⛔ Recusas MEDIDAS`**, derivada do arquivo, uma linha
+  por recusa com o link para a linha exata. São **126** hoje. ⚠️ **Consulte-a ANTES de propor
+  qualquer otimização ou mudança de desenho no módulo** — uma recusa medida diz *o que foi tentado,
+  medido e rejeitado, com o mecanismo*, e é a única coisa que impede refazer trabalho já pago.
+  *Arquivar sem indexar as recusas seria apagá-las* (o log de perf do Painter guardava **47**, e o
+  §5 citava cinco).
+- ⚠️ **Cortar um doc é uma operação com PROVA, nunca à mão:** `python3 scripts/doc-split.py <doc>
+  --keep <faixas> --archive <destino>`. Ela recusa faixas sobrepostas ou fora de alcance e **aborta
+  se as duas metades não remontarem o original byte-a-byte (sha256)**. A história vai **verbatim**;
+  o doc vivo fica sendo um roteador.
 - **Integrar não é aprovar.** Smoke é do Enio; integrar e shipar só por ordem explícita dele (§0.7).
 - ⚠️ **O TRACKER também é roteador — e mandar a narrativa para ele só REALOCOU a doença.** A regra
   «uma linha no §5» funcionou para o `CLAUDE.md` e criou o `HANDOFF_line_physics.md` a **710 KB**,

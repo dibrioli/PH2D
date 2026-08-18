@@ -167,4 +167,4 @@ Caps ADR-0039 inalterados (§2.6). Gate `architecture_contract_surface` permanec
 - [ADR-0030/0031/0032 — Nodegraph substrate, FBP black box, typed membranes](0030-nodegraph-substrate.md).
 - [ADR-0065 — Vector-SDF Hybrid GPU](0065-vector-sdf-hybrid.md) (cross-domain Field→vector preview).
 - Spec normativa: [`02_geometry_graph.md`](../Vector%20Module/02_geometry_graph.md) §2.1.2 + §2.2.1 (pseudocódigo a atualizar).
-- Memory: [`feedback-perfection-no-deferrals`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md) (padrão-ouro vence custo), [`feedback-tool-unit-green-integration-dead`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_tool_unit_green_integration_dead.md) (traçar caminho produtor→consumidor completo).
+- Memory: [`feedback-perfection-no-deferrals`](../../../project-memory/feedback_perfection_no_deferrals.md) (padrão-ouro vence custo), [`feedback-tool-unit-green-integration-dead`](../../../project-memory/feedback_tool_unit_green_integration_dead.md) (traçar caminho produtor→consumidor completo).

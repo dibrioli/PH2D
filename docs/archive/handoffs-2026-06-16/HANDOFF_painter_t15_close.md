@@ -28,7 +28,7 @@ rotacionadas → 75 findings (12C + 16H + 32M + 15L)** todos remediados
 em código OU documentados como W2 follow-ups. Round 6 com lentes NOVAS
 (M thread-safety + N spec compliance) primeira round com ZERO
 Critical/High = padrão-ouro threshold per regra
-[`feedback-audit-lens-diversity`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_lens_diversity.md).
+[`feedback-audit-lens-diversity`](../../../project-memory/feedback_audit_lens_diversity.md).
 
 | Round | Lentes | Findings (C/H/M/L) |
 |---|---|---:|
@@ -231,7 +231,7 @@ Outras sessões committaram em paralelo durante a sessão T1.5:
 Crit/High que as anteriores não viram. Padrão-ouro NÃO é "audit
 múltiplos rounds da mesma lente" — é "rotacionar lentes até uma round
 com ZERO Crit/High". Memory
-[`feedback-audit-lens-diversity`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_lens_diversity.md)
+[`feedback-audit-lens-diversity`](../../../project-memory/feedback_audit_lens_diversity.md)
 codifica.
 
 **Para T1.6:** lance ≥2 lentes paralelas por round, rotacione de A-N
@@ -320,11 +320,11 @@ NÃO criar memória nova; update existing.
      — 74 gates ativos
 8. **Memórias:**
    - [`project_painter_t15_complete_2026_05_26.md`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/project_painter_t15_complete_2026_05_26.md)
-   - [`feedback_audit_lens_diversity.md`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_lens_diversity.md)
-   - [`feedback_perfection_no_deferrals.md`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md)
-   - [`feedback_fanout_registry_init_friction.md`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_fanout_registry_init_friction.md)
-   - [`feedback_scoped_commit_shared_index.md`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_scoped_commit_shared_index.md)
-   - [`feedback_communication_style.md`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_communication_style.md)
+   - [`feedback_audit_lens_diversity.md`](../../../project-memory/feedback_audit_lens_diversity.md)
+   - [`feedback_perfection_no_deferrals.md`](../../../project-memory/feedback_perfection_no_deferrals.md)
+   - [`feedback_fanout_registry_init_friction.md`](../../../project-memory/feedback_fanout_registry_init_friction.md)
+   - [`feedback_scoped_commit_shared_index.md`](../../../project-memory/feedback_scoped_commit_shared_index.md)
+   - [`feedback_communication_style.md`](../../../project-memory/feedback_communication_style.md)
 
 ---
 

@@ -20,7 +20,7 @@ Cada item tem um link pra memória que documenta o incidente.
 
 🛑 **Regra absoluta:** UI strings do PH2D ficam SEMPRE em inglês,
 mesmo que o Enio escreva o pedido em pt-BR. Sem exceção. Vide
-[`feedback_app_ui_english_only`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_app_ui_english_only.md).
+[`feedback_app_ui_english_only`](../../../project-memory/feedback_app_ui_english_only.md).
 
 **O que cometi em T1.6 (NÃO repita):**
 - R7 lens J1 marcou toasts EN do `painter.rs` drain como "HR-15
@@ -59,7 +59,7 @@ usuário.
 
 🛑 **Regra:** auditor adversarial acha bug em crate adjacent →
 **handoff** pro owner, NÃO fixo eu mesmo. Vide
-[`feedback_audit_scope_discipline`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_scope_discipline.md).
+[`feedback_audit_scope_discipline`](../../../project-memory/feedback_audit_scope_discipline.md).
 
 **O que cometi em T1.6:**
 - R7 auditores adversariais acharam achados em `bgremoval/algorithm`,
@@ -102,7 +102,7 @@ Se achado de auditor for fora dessa lista: HANDOFF, não fix.
 (com `--`) que é **stage+commit atômico**. NÃO faça `git add` + `cargo
 check --workspace` (5min) + `git commit` — outro agente paralelo pode
 pegar seus arquivos staged durante a janela. Vide
-[`feedback-parallel-agent-collision`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_parallel_agent_collision.md).
+[`feedback-parallel-agent-collision`](../../../project-memory/feedback_parallel_agent_collision.md).
 
 **Aconteceu em T1.6 R8:** stagiei 7 arquivos via `git add`, rodei
 `cargo check --workspace` (4m07s), depois `git commit` retornou "no
@@ -233,7 +233,7 @@ preferidas dependendo do estado do projeto.
 
 ## 4. Memórias acionadas em T1.6 (leia o índice antes de começar)
 
-[`MEMORY.md`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/MEMORY.md)
+[`MEMORY.md`](../../../project-memory/MEMORY.md)
 é carregado automaticamente em toda sessão; varra antes de codar.
 Especialmente relevantes pra T1.7+:
 

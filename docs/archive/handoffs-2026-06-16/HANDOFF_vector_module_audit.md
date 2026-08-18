@@ -379,11 +379,11 @@ ADRs especialmente importantes:
 
 Antes de tomar ações, ler:
 
-- [`feedback-perfection-no-deferrals`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md) — não shippa "deferral aceitável"; fix tudo na sessão
-- [`feedback-audit-lens-diversity`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_lens_diversity.md) — rotaciona lentes entre rounds
-- [`feedback-no-industrial-claims-without-verification`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_no_industrial_claims_without_verification.md) — toda afirmação técnica = verify
-- [`feedback-audit-internal-state-grep`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_internal_state_grep.md) — preventive sweep-grep de symbols mencionados
-- [`feedback-audit-scope-discipline`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_scope_discipline.md) — bug em crate adjacente = handoff, não fix
+- [`feedback-perfection-no-deferrals`](../../../project-memory/feedback_perfection_no_deferrals.md) — não shippa "deferral aceitável"; fix tudo na sessão
+- [`feedback-audit-lens-diversity`](../../../project-memory/feedback_audit_lens_diversity.md) — rotaciona lentes entre rounds
+- [`feedback-no-industrial-claims-without-verification`](../../../project-memory/feedback_no_industrial_claims_without_verification.md) — toda afirmação técnica = verify
+- [`feedback-audit-internal-state-grep`](../../../project-memory/feedback_audit_internal_state_grep.md) — preventive sweep-grep de symbols mencionados
+- [`feedback-audit-scope-discipline`](../../../project-memory/feedback_audit_scope_discipline.md) — bug em crate adjacente = handoff, não fix
 
 ---
 

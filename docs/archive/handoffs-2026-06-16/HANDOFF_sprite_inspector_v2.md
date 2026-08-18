@@ -25,10 +25,10 @@ Para CADA task do plano ([`docs/Sprite_projeto/15_plano_de_implementacao.md`](Sp
 2. **Build isolado:** sempre `CARGO_TARGET_DIR="$PWD/target/slot-coord-sprite" cargo ...` (não contende no lock do `target/`).
 3. **Implemente no padrão-ouro** (§0). Cite o princípio no código quando ajudar a próxima LLM.
 4. **Auto-verifique, tudo verde:** `cargo test -p <crate>` + `cargo clippy -p <crate> --all-targets -- -D warnings` + `cargo fmt -p <crate> -- --check`.
-5. **AUDITE — adversarial e independente.** Lance **≥2 auditores em paralelo** com lentes rotacionadas (memory [`feedback-audit-lens-diversity`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_lens_diversity.md)). 5 lentes canônicas: A escopo · B ABI/grep · C determinism/HR-5 · D UX/a11y/i18n · E security/perf/test-coverage. Instrua-os a serem **duros, caçar bugs/lacunas, dar severidade, NÃO validar por cortesia**.
+5. **AUDITE — adversarial e independente.** Lance **≥2 auditores em paralelo** com lentes rotacionadas (memory [`feedback-audit-lens-diversity`](../../../project-memory/feedback_audit_lens_diversity.md)). 5 lentes canônicas: A escopo · B ABI/grep · C determinism/HR-5 · D UX/a11y/i18n · E security/perf/test-coverage. Instrua-os a serem **duros, caçar bugs/lacunas, dar severidade, NÃO validar por cortesia**.
 6. **CORRIJA TODOS os achados** (Crítico→Baixo). **Nada adiado** — exceto follow-ups genuinamente não-bloqueantes em §9.
 7. **RE-AUDITE até erro zero.**
-8. **Commit** (`git commit --no-verify` em background; local; commit limpo por task). **Stage explícito com paths específicos** (`git add -- <my-paths>`) para fence contra reset de outros agentes (memory [`feedback-destructive-reset-collision`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_destructive_reset_collision_2026_05_28.md)).
+8. **Commit** (`git commit --no-verify` em background; local; commit limpo por task). **Stage explícito com paths específicos** (`git add -- <my-paths>`) para fence contra reset de outros agentes (memory [`feedback-destructive-reset-collision`](../../../project-memory/feedback_destructive_reset_collision_2026_05_28.md)).
 9. **Próxima task.** Volte ao 1.
 
 ### Quando PARAR (e só então)
@@ -79,11 +79,11 @@ CARGO_TARGET_DIR="$PWD/target/slot-coord-sprite" \
 
 ### Memory canônica a consultar antes do audit
 
-- [`feedback-determinism-sweep-grep-all-transcendentals`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_determinism_sweep_grep_all_transcendentals.md) — por que o grep R1 do `5974a84` falhou.
-- [`feedback-exact-pin-needs-substring-gate`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_exact_pin_needs_substring_gate.md) — disciplina de pinagem.
-- [`feedback-audit-commit-msg-claim-verification`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_commit_msg_claim_verification.md) — re-verificar claims numéricos contra grep ampliado.
-- [`feedback-audit-lens-diversity`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_lens_diversity.md) — rotação de lentes (B/C/D/E/A + meta).
-- [`feedback-audit-scope-discipline`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_scope_discipline.md) — bug em crate adjacent → handoff/issue pro owner, NÃO fixo.
+- [`feedback-determinism-sweep-grep-all-transcendentals`](../../../project-memory/feedback_determinism_sweep_grep_all_transcendentals.md) — por que o grep R1 do `5974a84` falhou.
+- [`feedback-exact-pin-needs-substring-gate`](../../../project-memory/feedback_exact_pin_needs_substring_gate.md) — disciplina de pinagem.
+- [`feedback-audit-commit-msg-claim-verification`](../../../project-memory/feedback_audit_commit_msg_claim_verification.md) — re-verificar claims numéricos contra grep ampliado.
+- [`feedback-audit-lens-diversity`](../../../project-memory/feedback_audit_lens_diversity.md) — rotação de lentes (B/C/D/E/A + meta).
+- [`feedback-audit-scope-discipline`](../../../project-memory/feedback_audit_scope_discipline.md) — bug em crate adjacent → handoff/issue pro owner, NÃO fixo.
 
 ### Saída esperada
 
@@ -279,8 +279,8 @@ Painter active no momento da ratificação (T1.8 Stroke Vector History). Discipl
 
 1. **SESSION_ACTIVE primeiro.** Antes de qualquer burst em `crates/ph2d-{render,ecs,host,asset}/`, verifique se Coord-A liberou.
 2. **`git status` antes de stage.** Outros agentes podem ter arquivos staged; coletar só seus paths via `git add -- <paths>`.
-3. **`git commit -m "msg" -- <paths>`** scoped — não use `-A` ou `-a` (memory [`feedback-scoped-commit-shared-index`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_scoped_commit_shared_index.md)).
-4. **Stage cedo** para fence contra `git reset --hard` de outros agentes (memory [`feedback-destructive-reset-collision`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_destructive_reset_collision_2026_05_28.md)).
+3. **`git commit -m "msg" -- <paths>`** scoped — não use `-A` ou `-a` (memory [`feedback-scoped-commit-shared-index`](../../../project-memory/feedback_scoped_commit_shared_index.md)).
+4. **Stage cedo** para fence contra `git reset --hard` de outros agentes (memory [`feedback-destructive-reset-collision`](../../../project-memory/feedback_destructive_reset_collision_2026_05_28.md)).
 
 ---
 

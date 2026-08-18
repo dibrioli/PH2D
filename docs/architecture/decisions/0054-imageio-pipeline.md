@@ -347,7 +347,7 @@ build C de 26 MB (libaom) + nasm, sem ganho de qualidade necessário pra um
 exporter de editor; rav1e é pure-Rust, menor superfície unsafe, HR-1-friendly.
 
 **Verification protocol (scratch `/tmp/avif-c-verify`, per
-[`feedback-no-industrial-claims-without-verification`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_no_industrial_claims_without_verification.md))**:
+[`feedback-no-industrial-claims-without-verification`](../../../project-memory/feedback_no_industrial_claims_without_verification.md))**:
 - `cargo audit`: **0 RUSTSEC**. Único warning `paste 1.0.15` unmaintained
   (RUSTSEC-2024-0436) — **já no `ignore` do `deny.toml`**.
 - `cargo tree -e normal`: 68 crates; **zero `owning_ref`** (a classe que
@@ -463,7 +463,7 @@ Auditoria adversarial 6-lente sobre commits `272d99d` + `82d503e` (AVIF real dec
 - **QQ** transmute lifetime extension em avif-decode é unsafe upstream OK (não nosso código).
 - **WW** Tests + arch gates verdes pós-revert.
 
-**DECISÃO: REVERT** per [`feedback-no-industrial-claims-without-verification`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_no_industrial_claims_without_verification.md) + [`feedback-perfection-no-deferrals`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md). 1 unfixable RUSTSEC + 1 unfixable upstream math bug + asymmetry HDR-vs-JXL é UNSHIPPABLE. `git revert 272d99d` (não-destrutivo) executado em `f034e9a`. Magic-only stub restaurado com nota crate-level listando 15 findings + 3 candidate re-evaluation paths:
+**DECISÃO: REVERT** per [`feedback-no-industrial-claims-without-verification`](../../../project-memory/feedback_no_industrial_claims_without_verification.md) + [`feedback-perfection-no-deferrals`](../../../project-memory/feedback_perfection_no_deferrals.md). 1 unfixable RUSTSEC + 1 unfixable upstream math bug + asymmetry HDR-vs-JXL é UNSHIPPABLE. `git revert 272d99d` (não-destrutivo) executado em `f034e9a`. Magic-only stub restaurado com nota crate-level listando 15 findings + 3 candidate re-evaluation paths:
 
 1. **`image = { features = ["avif-native"] }`** — different dep tree (uses `mp4parse` + Rust dav1d?); needs verification que `owning_ref` NÃO está no path.
 2. **Wait `avif-decode 2.x`** — quando upstream migrar para `safer_owning_ref` + fix `unprem()`.
@@ -552,7 +552,7 @@ Substitui os magic-only-stubs de `cc97cd4` (W3.T1..T5 fan-out) por implementaç�
 Auditoria adversarial 5-lente sobre commits `cc97cd4` + `084b914` (W3 fan-out shipping). Lentes especializadas em ângulos novos: FF stub honesty / vapor detection · GG registry dispatch correctness (14 importers) · HH SVG real-parse security · II codegen sanity post-fan-out · JJ ship.sh + docs coherence. **Total: 1 CRITICAL + 3 HIGH + 3 MEDIUM + 1 P1 ship-blocker + 0 LOW**. Lens GG retornou **GREEN** (dispatch é confidence-aware, zero collision entre 14 importers). Lens II retornou **GREEN** (codegen glob-based + alphabetical gates). Fechados nesta sessão:
 
 **CRITICAL (Lens FF F1) — doc honesty vapor**:
-- `crates/ph2d-imageio-exr/src/lib.rs:13` afirmava `exr = "1"` está em Cargo.toml — falso (Cargo.toml só lista `ph2d-imageio`). Violação verificável-em-segundos per [`feedback-no-industrial-claims-without-verification`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_no_industrial_claims_without_verification.md). Fix: docstring corrigida — `"NOT yet in Cargo.toml — added together with wire-up to avoid dep-bloat"`. Error message do `Unsupported` também corrigida (`"add exr=\"1\" to Cargo.toml when wiring up"`).
+- `crates/ph2d-imageio-exr/src/lib.rs:13` afirmava `exr = "1"` está em Cargo.toml — falso (Cargo.toml só lista `ph2d-imageio`). Violação verificável-em-segundos per [`feedback-no-industrial-claims-without-verification`](../../../project-memory/feedback_no_industrial_claims_without_verification.md). Fix: docstring corrigida — `"NOT yet in Cargo.toml — added together with wire-up to avoid dep-bloat"`. Error message do `Unsupported` também corrigida (`"add exr=\"1\" to Cargo.toml when wiring up"`).
 
 **HIGH (3)**:
 - **FF F2** AVIF Cargo.toml comment prometia `avif-native` feature + `avif-serialize` + `dav1d`-equivalent paths em deps — todos falsos (deps real = só `ph2d-imageio`). Fix: comment alinhado ao padrão dos outros stubs ("Magic-only stub per ADR-0054 §3.8 ... pure-Rust candidate deps added with wire-up").
@@ -621,7 +621,7 @@ Fechamento do **X-HIGH-1** (gap arquitetural flagado por audits 7-12): `AssetDb:
 PNG/WEBP/JPEG continuam no legacy `image` 0.25 fast path (back-compat byte-exact; imageio crates upstream usam o MESMO `image` 0.25 transitive — zero duplicação de codec).
 
 **Não tocado**:
-- `shells/desktop/src/render_loop/mod.rs` linhas 108-112 (`imageio_importers: _, imageio_exporters: _` destructure dead-vars): outra sessão tinha modificações em progress no arquivo (Merge Sprites feature) — evitar conflito merge per [`feedback-parallel-agent-collision`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_parallel_agent_collision.md). Wire-up funcionalmente correto via `ph2d-asset` path = NÃO precisa do shell agora (registries lá ficam dead-vars até alguém querer usar `find_for(MagicHint::Extension(...))` direto, o que NÃO é o padrão recomendado per ADR §2.4).
+- `shells/desktop/src/render_loop/mod.rs` linhas 108-112 (`imageio_importers: _, imageio_exporters: _` destructure dead-vars): outra sessão tinha modificações em progress no arquivo (Merge Sprites feature) — evitar conflito merge per [`feedback-parallel-agent-collision`](../../../project-memory/feedback_parallel_agent_collision.md). Wire-up funcionalmente correto via `ph2d-asset` path = NÃO precisa do shell agora (registries lá ficam dead-vars até alguém querer usar `find_for(MagicHint::Extension(...))` direto, o que NÃO é o padrão recomendado per ADR §2.4).
 
 **Colisão multi-agente (registro)**: ao stage meus 3 arquivos (`Cargo.lock`, `ph2d-asset/Cargo.toml`, `loader.rs`), a sessão KTX2 paralela commitou `e54d41a` (docs adr-0055 + plan-vivo) e ABSORVEU 2 dos meus 3 arquivos staged. Conteúdo correto, atribuição confusa. Meu commit subsequente `52ee9d6` pegou só `Cargo.lock` que reverteu 1-line do staging duplo. Lição: per memory `feedback-parallel-agent-collision` — sempre `git status` ANTES de stage + commit cirurgicamente com paths explícitos, e EVITAR janelas longas entre stage e commit em sessões multi-agentes.
 
@@ -682,7 +682,7 @@ Auditoria adversarial 3-lente sobre commits `cde3e44` + `952c020` (W3.T0.4 remed
 
 ### 5.9 Remediação pós-auditoria W3.T0.4 (2026-05-26)
 
-Auditoria adversarial 7-lente sobre commits `2a41a0b` + `64f54d9` (W3.T0.3 remediation). Lentes rotacionadas (per [`feedback-audit-lens-diversity`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_lens_diversity.md)): Q regressão dos fixes audit-8 · R workspace integration / consumer-side impact · S code maturity / 9-impl consistency · T adversarial deep-dive (red team) · U manutenibilidade longo prazo · V typos+lint config sanity · W ship.sh dry-run final. **Total: 1 CRITICAL + 6 HIGH + 6 MEDIUM + 10 LOW + 2 INFO arquitetural**. Fechados nesta sessão:
+Auditoria adversarial 7-lente sobre commits `2a41a0b` + `64f54d9` (W3.T0.3 remediation). Lentes rotacionadas (per [`feedback-audit-lens-diversity`](../../../project-memory/feedback_audit_lens_diversity.md)): Q regressão dos fixes audit-8 · R workspace integration / consumer-side impact · S code maturity / 9-impl consistency · T adversarial deep-dive (red team) · U manutenibilidade longo prazo · V typos+lint config sanity · W ship.sh dry-run final. **Total: 1 CRITICAL + 6 HIGH + 6 MEDIUM + 10 LOW + 2 INFO arquitetural**. Fechados nesta sessão:
 
 **CRITICAL** (Lens T red team #1):
 - ORA `parse_stack` (importer) + `collect_pixel_layers` (exporter) recursavam em `<stack>` nested **sem cap de profundidade**. Hostile `stack.xml` com 50K nested `<stack>` → stack overflow → SIGSEGV uncatchable por `catch_unwind` (process inteiro morre). Fix: `MAX_LAYER_DEPTH = 64` + `MAX_LAYER_COUNT = 4096` hoisted para contract `crates/ph2d-imageio/src/limits.rs`; `parse_stack` ganha `depth` + `total_layers` params com early-return em violation; `collect_pixel_layers` ganha `depth` simétrico (self-DoS defence em LayerStacks construídas pelo Painter). 2 tests novos: `import_rejects_deep_stack_nesting`, `import_rejects_src_with_path_traversal`.
@@ -773,7 +773,7 @@ Auditoria adversarial 5-lente sobre commits `fd34240` + `1f94c1d` (W3.T0.1 remed
 - G-F4 ORA zip-bomb / G-F5 TIFF pages — J-2 já cobriu pages; ORA zip-bomb fica MEDIUM defer (`MAX_ORA_ENTRIES` ~256 + `Read::take` cap por entry).
 - E-2 HR-1/HR-5 enforcement gate files do workspace — gap pre-existing, não escopo.
 
-**LOW**: 15 entradas — 12 cosméticos absorvidos sub-threshold (nomenclatura, helpers cosméticos, fluent_key cross-crate, typos sub-threshold) + 3 deferidos com entry-points: ImportOpts trait doc drift (LOW), PNGs regex sem âncora (LOW), MissingLayer genérico (LOW). Convenção audit-7+ (per [`feedback-perfection-no-deferrals`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md)): X cosméticos absorvidos disclosure obrigatório.
+**LOW**: 15 entradas — 12 cosméticos absorvidos sub-threshold (nomenclatura, helpers cosméticos, fluent_key cross-crate, typos sub-threshold) + 3 deferidos com entry-points: ImportOpts trait doc drift (LOW), PNGs regex sem âncora (LOW), MissingLayer genérico (LOW). Convenção audit-7+ (per [`feedback-perfection-no-deferrals`](../../../project-memory/feedback_perfection_no_deferrals.md)): X cosméticos absorvidos disclosure obrigatório.
 
 **Total Onda 2 pós-W3.T0.2**: 131 testes verdes Mac aarch64 (127 cross-OS, 4 goldens cfg-gated). 11 crates `ph2d-imageio-*` na CI matrix.
 
@@ -784,7 +784,7 @@ Auditoria adversarial 5-lente sobre commits `fd34240` + `1f94c1d` (W3.T0.1 remed
 
 ### 5.6 Remediação pós-auditoria W3.T0.1 (2026-05-26)
 
-Auditoria adversarial 5-lente sobre commits `35cc149` + `a5edbf1` (W3.T0 remediation) entregou 1 CRITICAL + 7 HIGH + 11 MEDIUM + 13 LOW. Lentes rotacionadas (per [`feedback-audit-lens-diversity`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_lens_diversity.md)): regressão da remediação · CI matrix simulation · rigor de assertions · consistência docs · HR coverage pós-demote. Fechados nesta sessão:
+Auditoria adversarial 5-lente sobre commits `35cc149` + `a5edbf1` (W3.T0 remediation) entregou 1 CRITICAL + 7 HIGH + 11 MEDIUM + 13 LOW. Lentes rotacionadas (per [`feedback-audit-lens-diversity`](../../../project-memory/feedback_audit_lens_diversity.md)): regressão da remediação · CI matrix simulation · rigor de assertions · consistência docs · HR coverage pós-demote. Fechados nesta sessão:
 
 **CRITICAL** (Lens B — descoberta arquitetural):
 - `ph2d-imageio-*` estava FORA do bloco `cargo nextest` da CI matrix em `.github/workflows/spike.yml`. **ZERO cobertura CI** dos 9 format crates desde W0 — o gate `#[cfg]` do round anterior era cosmético (protegia contra falha que jamais aconteceria). Fix: adicionados 11 crates (`ph2d-imageio` contract + 9 format crates + `ph2d-imageio-registry-init`) à lista de `-p` no nextest. Agora o `#[cfg]` de Mac aarch64 faz trabalho real: em Mac valida hash, em Linux/Windows pula 4 goldens mas roda os outros 60 testes (round-trip semântico, CMYK arms, RGBA16 sweep).

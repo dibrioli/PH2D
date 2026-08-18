@@ -2,7 +2,7 @@
 
 > **Você é o Implementador do Painter, sozinho.** Não há ninguém para te responder durante
 > esta sessão. **NÃO peça autorização para nada** — decida no padrão-ouro e execute (CLAUDE.md §0.6,
-> [feedback-decide-dont-ask](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_decide_dont_ask_gold_standard.md)).
+> [feedback-decide-dont-ask](../../../project-memory/feedback_decide_dont_ask_gold_standard.md)).
 > Leia `CLAUDE.md` (raiz) inteiro primeiro. Este doc é a sua missão.
 
 ---
@@ -41,7 +41,7 @@ Leia, nesta ordem, e tome notas do que é **spec aspiracional vs implementado vs
    — os 12 sub-structs do `Brush` (§1.3.x), pipeline de stroke (§1.2), rendering modes (§1.5.2),
    pigment (§1.5), grain (§1.3.5), taper (§1.3.3), wet mix (§1.3.7). **CUIDADO:** partes são
    pseudocódigo aspiracional (memória
-   [project-vector-node-opaque-carrier](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/project_vector_node_opaque_carrier.md)
+   [project-vector-node-opaque-carrier](../../../project-memory/project_vector_node_opaque_carrier.md)
    — "construa contra o substrato real, não a spec"). Ex.: a spec descreve `falloff` como "desvanece
    até o fim" (normalizado ao comprimento total), o que é **impossível ao vivo** (não sabemos o fim do
    stroke). Onde a spec divergir da física real / do que dá pra fazer ao vivo, **corrija a spec** e
@@ -145,7 +145,7 @@ Para cada melhoria, repita até o padrão-ouro:
    (`stamp.wgsl`) p/ paridade.
 4. **Verifique adversarialmente**: teste unitário que prova a física (não só "compila"); compare
    com a referência; **simule o resultado visual mentalmente / com asserts de pixel** (memória
-   [feedback-visual-bug-debug](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_visual_bug_debug.md)).
+   [feedback-visual-bug-debug](../../../project-memory/feedback_visual_bug_debug.md)).
    Pergunte-se: "isto parece com a mídia real ou é um artefato?" Se houver dúvida, é artefato.
 5. **Itere** até não haver artefato. **Não exponha no painel um efeito que não passa no seu próprio
    olho** (lição: eu expus dois efeitos artificiais).
@@ -169,7 +169,7 @@ Determinismo (**HR-5**): tudo no scheduler/render deve ser função determiníst
   falloff — ficou "não funciona").
 - **LOC gate** (`architecture_panel_loc_cap`): arquivos panel ≤600, fns ≤200. **O parser tem bug**:
   conta `'`/`"`/`{}` dentro de `//` comments → contagem inflada (memória
-  [panel-loc-gate-parser](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/project_panel_loc_gate_parser_masked_debt.md));
+  [panel-loc-gate-parser](../../../project-memory/project_panel_loc_gate_parser_masked_debt.md));
   evite apóstrofos em comentários dentro de fns. `rustfmt` expande chamadas multi-arg → divida em
   arquivos irmãos (ex.: `paint.rs` + `sections.rs`, como já está).
 - **Git anti-colisão** (CLAUDE.md §0.4): `git add -- <seus paths>`; `--no-verify`; **você NÃO pusha** —
@@ -179,7 +179,7 @@ Determinismo (**HR-5**): tudo no scheduler/render deve ser função determiníst
 - **UI canônica** (HR-15): zero hex/f32-literal-de-UI/string hardcoded; labels em **inglês**; espelhe
   `ph2d-panel-widget-gallery` + `ph2d-panel-inspector`.
 - **Não invente claims** (memória
-  [no-industrial-claims](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_no_industrial_claims_without_verification.md)):
+  [no-industrial-claims](../../../project-memory/feedback_no_industrial_claims_without_verification.md)):
   todo número/algoritmo em ADR exige grep/cargo-search/WebFetch.
 
 ---

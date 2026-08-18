@@ -34,7 +34,7 @@ implementação → auditoria, SEM PARAR.** Concretamente:
 4. **NÃO PARE pra perguntar nem pra esperar validação visual.** Você tem o plano completo aqui.
    Não use `AskUserQuestion`. **O smoke (validação visual do Enio) fica pra AMANHÃ** — não tente
    rodar o app nem pedir confirmação; só deixe o handoff de smoke pronto (P6). Decida no
-   padrão-ouro e siga ([feedback-decide-dont-ask](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_decide_dont_ask_gold_standard.md)).
+   padrão-ouro e siga ([feedback-decide-dont-ask](../../../project-memory/feedback_decide_dont_ask_gold_standard.md)).
 5. **Só PARE se:** (a) todas as 7 fases estiverem implementadas + auditadas + commitadas, OU
    (b) você bater num bloqueador REAL fora da sua pasta que exija coordenação (regra de isolamento
    §0.5.2 — aí reporte e pare). Caso contrário, **continue até o fim**.
@@ -61,7 +61,7 @@ implementação → auditoria, SEM PARAR.** Concretamente:
 5. **NÃO regrida o look validado (S0–S5c).** Um traço de UMA cor deve continuar com a aparência
    que o Enio ratificou (value-opacity ADR-0079, edge-darkening, capilaridade transparente,
    sharpness). O multi-pigmento ADICIONA mistura; o caminho single-pigmento deve reproduzir o look
-   atual (ver §2.3 — é o maior risco). [Cerca de Chesterton](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_documented_decision_chesterton_fence.md):
+   atual (ver §2.3 — é o maior risco). [Cerca de Chesterton](../../../project-memory/feedback_documented_decision_chesterton_fence.md):
    comentário "intentionally X" = decisão ratificada, não sobrescreva.
 6. **Git anti-colisão.** `git add -- <suas paths>` (NUNCA `-A`/`.`); `git status` antes. **Há WIP
    ALHEIO no working tree** — `shells/desktop/src/input_dispatch/gizmo_drag.rs`,
@@ -124,7 +124,7 @@ A escolha-chave do P0. **Recomendado** (auto-contido, sem assets, determinístic
 `github.com/scrtwpns/mixbox`: RGB→4 coeffs latentes via LUT→mix linear→RGB). Mixbox é perceptual-
 mente mais preciso mas precisa do LUT (~asset binário) — só adote se a integração for limpa e o
 Enio aceitar a dependência. **Default: constante única, auto-contido.** Documente a escolha + o
-trade-off no ADR-0080 ([no-industrial-claims](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_no_industrial_claims_without_verification.md):
+trade-off no ADR-0080 ([no-industrial-claims](../../../project-memory/feedback_no_industrial_claims_without_verification.md):
 nada de claim sem grep/teste).
 
 ### §2.2 — Camadas que viram K/S
@@ -143,7 +143,7 @@ modelo K/S DEVE reproduzir esse look pra um único pigmento** (senão regride tu
 `mass` ≡ o `dens`/cobertura de hoje (mesma deposição + value-opacity), e `(K/S)` do único pigmento
 = `prepare_pigment(cor)` → `R = cor`. Valide CEDO (P1/P2) que single-pigmento = look atual (gate de
 paridade do composite ≤ tolerância). **Não avance pro multi sem isso verde.** Veja
-[unit-verde≠funciona-no-produto](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_tool_unit_green_integration_dead.md).
+[unit-verde≠funciona-no-produto](../../../project-memory/feedback_tool_unit_green_integration_dead.md).
 
 ### §2.4 — Cross-stroke wet-on-wet (P4)
 

@@ -48,7 +48,7 @@ Cada task começa com **triagem do caminho** per [DIRETRIZ v7.0 §2](../Integrac
 
 ### 0.8 Auditoria adversarial obrigatória ≥2 lentes paralelas + critérios quantificáveis
 
-Cada wave fecha com **≥2 agentes auditores em paralelo** (lente distinta: corretude/edge-cases · paridade/determinismo · consistência docs↔código · qualidade gold-standard · perf/budget · cross-platform). Findings → fix → re-audit → erro-zero. Espelha loop §1 do [`HANDOFF_node_system.md`](../HANDOFF_node_system.md). Memory: rotacionar lentes per [`feedback-audit-lens-diversity`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_lens_diversity.md).
+Cada wave fecha com **≥2 agentes auditores em paralelo** (lente distinta: corretude/edge-cases · paridade/determinismo · consistência docs↔código · qualidade gold-standard · perf/budget · cross-platform). Findings → fix → re-audit → erro-zero. Espelha loop §1 do [`HANDOFF_node_system.md`](../HANDOFF_node_system.md). Memory: rotacionar lentes per [`feedback-audit-lens-diversity`](../../project-memory/feedback_audit_lens_diversity.md).
 
 **Critérios QUANTIFICÁVEIS obrigatórios** (revisado Antigravity L8F1 2ª iteração 2026-05-28) — em vez de "findings → fix" genérico, cada audit wave fechamento precisa de **gates programáticos**:
 

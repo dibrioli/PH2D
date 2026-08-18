@@ -7,7 +7,7 @@ metadata:
   originSessionId: f278e60f-d10d-4a34-b6e9-83d47d4db46e
 ---
 
-Em 2026-05-21 o Enio decidiu que a implementação futura da PH2D gira em torno de um **sistema de nós multi-domínio** (modelo Houdini/Unreal/Blender), referenciando o protótipo MiniCavalryV2 (não é port). Arquitetura definida em 4 rodadas de opinião + investigação, documentada em [`docs/Migracao/2026-05-node-centric-architecture.md`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/docs/Migracao/2026-05-node-centric-architecture.md). Doc irmão (substrato multi-agente, pré-requisito): [`docs/Migracao/2026-05-foundational-parallelism-three-bottlenecks.md`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/docs/Migracao/2026-05-foundational-parallelism-three-bottlenecks.md).
+Em 2026-05-21 o Enio decidiu que a implementação futura da PH2D gira em torno de um **sistema de nós multi-domínio** (modelo Houdini/Unreal/Blender), referenciando o protótipo MiniCavalryV2 (não é port). Arquitetura definida em 4 rodadas de opinião + investigação, documentada em [`docs/Migracao/2026-05-node-centric-architecture.md`](../docs/Migracao/2026-05-node-centric-architecture.md). Doc irmão (substrato multi-agente, pré-requisito): [`docs/Migracao/2026-05-foundational-parallelism-three-bottlenecks.md`](../docs/Migracao/2026-05-foundational-parallelism-three-bottlenecks.md).
 
 **Decisões-chave (a virar ADR-0030..0038):**
 - **Houdini NÃO é padrão-ouro** — é referência de poder. A arquitetura é síntese: modelo de atributos (Houdini) + Fields/atributos anônimos (Blender) + compile-to-shader/MetaSounds (Unreal) + UX result-named/viewport-first (Substance/TouchDesigner).

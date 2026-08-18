@@ -40,7 +40,7 @@ deny = [
 ]
 ```
 
-Esta sessão escreveu nomes plausíveis sem `cargo search` — exatamente o anti-pattern do feedback [`no-industrial-claims-without-verification`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_no_industrial_claims_without_verification.md) aplicado a INTERNAL state (memory `audit_internal_state_grep`).
+Esta sessão escreveu nomes plausíveis sem `cargo search` — exatamente o anti-pattern do feedback [`no-industrial-claims-without-verification`](../../project-memory/feedback_no_industrial_claims_without_verification.md) aplicado a INTERNAL state (memory `audit_internal_state_grep`).
 
 ---
 

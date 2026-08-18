@@ -119,4 +119,4 @@ Total LOC delta: ~80 lines (production + tests).
 - [ADR-0056 — Vector Network data model](0056-vector-network-data-model.md) (parent).
 - Round 1 audit (4 lenses paralelas) — captured pré-fix em commit `38e6868`..`ee001e7` review.
 - Round 2 audit (Lens E + Lens F) — captured pós-R1 em commit `8e723b5` review.
-- Memory: [`feedback-perfection-no-deferrals`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md), [`feedback-audit-lens-diversity`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_lens_diversity.md), [`feedback-audit-internal-state-grep`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_internal_state_grep.md).
+- Memory: [`feedback-perfection-no-deferrals`](../../../project-memory/feedback_perfection_no_deferrals.md), [`feedback-audit-lens-diversity`](../../../project-memory/feedback_audit_lens_diversity.md), [`feedback-audit-internal-state-grep`](../../../project-memory/feedback_audit_internal_state_grep.md).

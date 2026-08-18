@@ -30,7 +30,7 @@ Antes de tocar código (W1+), **a anatomia do Sprite struct + a fronteira Sprite
 
 3. **Fan-out paralelo só funciona com escopo definido.** Cada Component ECS novo (~20 candidatos: ZIndexOverride, SortingLayer, SliceNine, NamedAnchorList, etc.) pode virar drop-crate isolado (DIRETRIZ §3.A) DESDE QUE a interface com `Sprite` esteja congelada.
 
-4. **Padrão-ouro absoluto** ([feedback-perfection-no-deferrals](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md)). Sprite é objeto central; precedente Painter (11 ADRs Accepted) + Vector Module (13 ADRs Accepted) estabelece a barra.
+4. **Padrão-ouro absoluto** ([feedback-perfection-no-deferrals](../../../project-memory/feedback_perfection_no_deferrals.md)). Sprite é objeto central; precedente Painter (11 ADRs Accepted) + Vector Module (13 ADRs Accepted) estabelece a barra.
 
 ### 1.1 O que diferencia esta ADR
 
@@ -229,4 +229,4 @@ W0 fechada quando:
 - 4 agentes paralelos pesquisa (2026-05-27): Godot 4 · Unity 2D/URP · Unreal Paper 2D + Defold + GameMaker + Construct + LÖVE + Phaser + Aseprite · Community forums + GitHub Issues + Reddit + Godot Proposals.
 - ADR Painter precedente: [ADR-0043](0043-painter-contract.md).
 - ADR Vector Module precedente: [ADR-0056](0056-vector-network-data-model.md).
-- Memory: [feedback-perfection-no-deferrals](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md), [feedback-audit-lens-diversity](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_lens_diversity.md).
+- Memory: [feedback-perfection-no-deferrals](../../../project-memory/feedback_perfection_no_deferrals.md), [feedback-audit-lens-diversity](../../../project-memory/feedback_audit_lens_diversity.md).

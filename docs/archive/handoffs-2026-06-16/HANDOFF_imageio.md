@@ -11,7 +11,7 @@ commits local (this session).
 > 1. This file.
 > 2. [`docs/architecture/decisions/0054-imageio-pipeline.md`](architecture/decisions/0054-imageio-pipeline.md) — §1 (context), §2 (caps + variant policy + golden-hash scope amendments), §5 (full execution history 5.1–5.17).
 > 3. [`docs/plans/2026-05-imageio-waves.md`](plans/2026-05-imageio-waves.md) — current wave map.
-> 4. Memory entries: [`feedback-perfection-no-deferrals`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md), [`feedback-no-industrial-claims-without-verification`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_no_industrial_claims_without_verification.md), [`feedback-audit-internal-state-grep`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_internal_state_grep.md), [`feedback-audit-lens-diversity`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_lens_diversity.md), [`feedback-parallel-agent-collision`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_parallel_agent_collision.md).
+> 4. Memory entries: [`feedback-perfection-no-deferrals`](../../../project-memory/feedback_perfection_no_deferrals.md), [`feedback-no-industrial-claims-without-verification`](../../../project-memory/feedback_no_industrial_claims_without_verification.md), [`feedback-audit-internal-state-grep`](../../../project-memory/feedback_audit_internal_state_grep.md), [`feedback-audit-lens-diversity`](../../../project-memory/feedback_audit_lens_diversity.md), [`feedback-parallel-agent-collision`](../../../project-memory/feedback_parallel_agent_collision.md).
 
 ---
 
@@ -156,7 +156,7 @@ not collide):
 **Conflict avoidance rules for imageio sessions:**
 
 1. `git status --short` before EVERY `git add`.
-2. `git add <explicit paths only>` — never `git add docs/` wholesale (per [`feedback-destructive-git-outside-pasta`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_destructive_git_outside_pasta.md)).
+2. `git add <explicit paths only>` — never `git add docs/` wholesale (per [`feedback-destructive-git-outside-pasta`](../../../project-memory/feedback_destructive_git_outside_pasta.md)).
 3. Stage → commit window must be **short** — long windows let parallel sessions absorb your staged files (see `feedback-parallel-agent-collision` lesson: `e54d41a` absorbed our X-HIGH-1 wire-up files into a KTX2 commit).
 4. Never modify `shells/desktop/src/render_loop/mod.rs` from an imageio session — Merge Sprites lives there. If you need destructure changes, coordinate via the user.
 5. Cargo.lock churn: new deps in `ph2d-imageio-*` crates re-resolve transitives in parallel sessions' next `cargo build`. Acceptable; if parallel session is mid-staging, defer your commit.

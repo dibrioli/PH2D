@@ -1574,8 +1574,8 @@ Havia **duas** causas, em camadas:
 **A lição-mãe:** "distância visualmente correta" **não** é prova de que o algoritmo está certo. As tentativas 4 e 5
 acertavam a distância e ainda assim estavam erradas na **topologia** (sem cruzamento). Só o sintoma reformulado
 pelo Enio — *"não se cruzam"* — revelou que o problema era de **estrutura de saída** (1 ponto vs. 2), não de
-posição. Ver [feedback_measure_perf_symptom_scale](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_measure_perf_symptom_scale.md)
-e [feedback_tool_unit_green_integration_dead](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_tool_unit_green_integration_dead.md).
+posição. Ver [feedback_measure_perf_symptom_scale](../../project-memory/feedback_measure_perf_symptom_scale.md)
+e [feedback_tool_unit_green_integration_dead](../../project-memory/feedback_tool_unit_green_integration_dead.md).
 
 ### A solução final (offset-then-trim, padrão CAD)
 
@@ -1771,7 +1771,7 @@ deterministicamente), não lixo.
 4. **"Primeira vez, depois nunca" = leitura não-inicializada.** Escrito-uma-vez-fica-válido aponta direto pra um
    buffer sem clear-on-alloc (foi a pista que cravou o slot).
 5. **Meça antes de culpar (perf).** O split de fases (96.5% num kernel) refutou a teoria do handoff em uma medição.
-   Ver [feedback_measure_perf_symptom_scale](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_measure_perf_symptom_scale.md).
+   Ver [feedback_measure_perf_symptom_scale](../../project-memory/feedback_measure_perf_symptom_scale.md).
 
 ---
 

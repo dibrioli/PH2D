@@ -16,4 +16,4 @@ Investigação forense 2026-06-16 (7 agentes, evidência file:line) achou por qu
 
 **Why:** verde-de-compilação foi treinado como sinal de sucesso (§0.5 "inner loop = SÓ cargo check"); testes/audit/DoD herdaram isso. O Enio perdeu uma semana e a confiança por causa disso, não por bug isolado.
 
-**How to apply:** leia [`docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md) a CADA passo. Separe velocidade (cargo check) de evidência (audit = ler código + trace file:line + asserção falsificável + render→imagem→olhar). Veja [[feedback_audit_lens_diversity]], [[feedback_measure_perf_symptom_scale]], [[feedback_perfection_no_deferrals]].
+**How to apply:** leia [`docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md`](../docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md) a CADA passo. Separe velocidade (cargo check) de evidência (audit = ler código + trace file:line + asserção falsificável + render→imagem→olhar). Veja [[feedback_audit_lens_diversity]], [[feedback_measure_perf_symptom_scale]], [[feedback_perfection_no_deferrals]].

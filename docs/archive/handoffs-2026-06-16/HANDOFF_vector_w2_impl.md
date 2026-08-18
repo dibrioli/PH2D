@@ -130,12 +130,12 @@ cubic_fit que já existe. T2.2/T2.3 são paralelizáveis depois (mas você é 1 
 ---
 
 ## §6 — Memória que você DEVE ler antes de agir
-- [`feedback-perfection-no-deferrals`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md) — gaps in-scope fecham na sessão; padrão-ouro vence cronograma.
-- [`feedback-audit-lens-diversity`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_lens_diversity.md) — rotacione lentes adversariais entre rounds (T2.6).
-- [`feedback-documented-decision-chesterton-fence`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_documented_decision_chesterton_fence.md) — comentário "intentionally NOT X" = decisão ratificada; não sobrescreva por primeiros-princípios.
-- [`feedback-audit-scope-discipline`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_scope_discipline.md) — bug em crate alheio = handoff, não fix.
-- [`feedback-app-ui-english-only`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_app_ui_english_only.md) — UI strings em inglês.
-- [`feedback-new-tool-icon-needs-iconid`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_new_tool_icon_needs_iconid.md) — SVG novo exige IconId.
+- [`feedback-perfection-no-deferrals`](../../../project-memory/feedback_perfection_no_deferrals.md) — gaps in-scope fecham na sessão; padrão-ouro vence cronograma.
+- [`feedback-audit-lens-diversity`](../../../project-memory/feedback_audit_lens_diversity.md) — rotacione lentes adversariais entre rounds (T2.6).
+- [`feedback-documented-decision-chesterton-fence`](../../../project-memory/feedback_documented_decision_chesterton_fence.md) — comentário "intentionally NOT X" = decisão ratificada; não sobrescreva por primeiros-princípios.
+- [`feedback-audit-scope-discipline`](../../../project-memory/feedback_audit_scope_discipline.md) — bug em crate alheio = handoff, não fix.
+- [`feedback-app-ui-english-only`](../../../project-memory/feedback_app_ui_english_only.md) — UI strings em inglês.
+- [`feedback-new-tool-icon-needs-iconid`](../../../project-memory/feedback_new_tool_icon_needs_iconid.md) — SVG novo exige IconId.
 
 ---
 

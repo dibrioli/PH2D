@@ -82,7 +82,7 @@ PRONTO pra smoke. Não tente uma validação "extra" pra ter certeza —
 isso só atrasa. Se algo quebrou em outro crate downstream, o smoke
 ou o ship pega.
 
-**Doc canônico:** [`docs/IntegracaoMultiAgente/DIRETRIZ.md`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/docs/IntegracaoMultiAgente/DIRETRIZ.md) §5 (v6.1+).
+**Doc canônico:** [`docs/IntegracaoMultiAgente/DIRETRIZ.md`](../docs/IntegracaoMultiAgente/DIRETRIZ.md) §5 (v6.1+).
 Standalone `docs/DIRETRIZ_CODIFICACAO_RAPIDA.md` foi arquivado em
 2026-05-19 — consolidado dentro da DIRETRIZ universal. CLAUDE.md
 §"Cadência de validação" aponta pra lá. LLM lê antes de começar

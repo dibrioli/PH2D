@@ -11,10 +11,10 @@
 [`docs/Painter_projeto/15_plano_de_implementacao.md`](Painter_projeto/15_plano_de_implementacao.md) §0 — **padrão-ouro absoluto, sem gambiarras**. Toda task fecha com ≥2 auditorias paralelas → findings remediadas → re-audit erro-zero. Lente diversity per `feedback_audit_lens_diversity`: rotacionar canon S/T/U/V/W e variantes (sem reusar lentes da sessão anterior).
 
 **Memory feedback que GOVERNA esta sessão:**
-- [`feedback_perfection_no_deferrals`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md) — deferral aceitável proibido
-- [`feedback_audit_lens_diversity`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_lens_diversity.md) — rotacionar lentes
-- [`feedback_destructive_reset_collision_2026_05_28`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_destructive_reset_collision_2026_05_28.md) — stage com `git add -- <paths>` após bloco foundational
-- [`feedback_parallel_agent_collision`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_parallel_agent_collision.md) — `git commit -- <paths>` atômico, nunca `git add -A`
+- [`feedback_perfection_no_deferrals`](../../../project-memory/feedback_perfection_no_deferrals.md) — deferral aceitável proibido
+- [`feedback_audit_lens_diversity`](../../../project-memory/feedback_audit_lens_diversity.md) — rotacionar lentes
+- [`feedback_destructive_reset_collision_2026_05_28`](../../../project-memory/feedback_destructive_reset_collision_2026_05_28.md) — stage com `git add -- <paths>` após bloco foundational
+- [`feedback_parallel_agent_collision`](../../../project-memory/feedback_parallel_agent_collision.md) — `git commit -- <paths>` atômico, nunca `git add -A`
 
 ---
 
@@ -153,7 +153,7 @@ Sem audit completo + remediação, T2.2 não abre. Mandato §0.
 - **9 commits locais não pushados** (T1.9 + T2.1 chain).
 - Working tree tem WIP de outros agentes (Sprite Inspector v2, Vector W1.T1.7 R3, asset-cooker, render):
   - `M Cargo.lock`, `M crates/ph2d-asset/`, `M crates/ph2d-editor-core/src/interaction/dispatch/{number_input,tick}.rs`, etc.
-  - **NÃO TOQUE** esses paths (vide [`feedback_destructive_reset_collision_2026_05_28`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_destructive_reset_collision_2026_05_28.md)).
+  - **NÃO TOQUE** esses paths (vide [`feedback_destructive_reset_collision_2026_05_28`](../../../project-memory/feedback_destructive_reset_collision_2026_05_28.md)).
 - Use SEMPRE `git commit -- <paths>` atômico após `git add -- <paths>`.
 
 ---

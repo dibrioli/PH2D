@@ -2,7 +2,7 @@
 
 ## 15.0 Princípios
 
-- **Padrão-ouro absoluto.** Nada de "v1 que dá pro gasto" ([feedback-perfection-no-deferrals](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md)). Cada wave fecha a erro-zero após auditoria adversarial rotacionada.
+- **Padrão-ouro absoluto.** Nada de "v1 que dá pro gasto" ([feedback-perfection-no-deferrals](../../project-memory/feedback_perfection_no_deferrals.md)). Cada wave fecha a erro-zero após auditoria adversarial rotacionada.
 - **Forma: funnel** (como Painter, Vector, Node). Neck serial (Coord-A only, foundational) → FREEZE → fan-out paralelo (Implementadores).
 - **Smoke do Enio em cada wave.** Critério visual concreto, não verbal.
 - **Sem deferral.** Gaps conhecidos viram trabalho na sessão atual antes de ratificar.
@@ -334,7 +334,7 @@ Mudanças pós-FREEZE = ADR-amendment (custo deliberado).
 | **Skew additive em cascade aproximação (Lens C C5)** | Médio | Convenção leaf-only documentada em ADR-0025-amendment-1 §2.2.1; sem enforcement (custo runtime); doc UX no slider hint |
 | **Postcard back-compat assumption (Lens C C3)** | **Alto** | Wrapper enum `*Versioned` PRIMARY path; `#[serde(default)]` defesa-em-profundidade; W0.T0.13 empirical test obrigatório |
 | Bulk-edit explodir em complexidade Inspector | Médio | Restringir W2 a Color & Tint section; expandir gradualmente W3-W6 |
-| Audit lenses convergindo (mesma lente N rounds) | Médio | Rotação canônica documentada em [feedback-audit-lens-diversity](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_lens_diversity.md); Lens C aplicada com 82% findings originais |
+| Audit lenses convergindo (mesma lente N rounds) | Médio | Rotação canônica documentada em [feedback-audit-lens-diversity](../../project-memory/feedback_audit_lens_diversity.md); Lens C aplicada com 82% findings originais |
 
 ## 15.11 Coord assignments (após W0)
 
@@ -356,7 +356,7 @@ Enio responde:
 - ✅ "Todos OK" → wave fecha.
 - ⚠️ "Item N quebrado" → Coord diagnostica + fix + re-smoke.
 
-Memória [feedback-smoke-at-end](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_smoke_at_end.md): smoke é UMA vez no fim da wave, não a cada commit.
+Memória [feedback-smoke-at-end](../../project-memory/feedback_smoke_at_end.md): smoke é UMA vez no fim da wave, não a cada commit.
 
 ## 15.13 Anti-padrões observados em planos anteriores (Painter, Vector)
 

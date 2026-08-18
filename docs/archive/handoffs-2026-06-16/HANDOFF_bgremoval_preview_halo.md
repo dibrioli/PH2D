@@ -43,8 +43,8 @@ Lançados 3 agentes `general-purpose` em paralelo com lentes distintas:
 
 | Path | Texture format | Sample behavior | Bilinear space | Compose |
 |---|---|---|---|---|
-| **Sprite (Apply)** | `Rgba8UnormSrgb` ([individual.rs:326](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/crates/ph2d-render/src/individual.rs#L326)) | Hardware sRGB→linear no `textureSample` ([sprite.wgsl:82](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/crates/ph2d-render/src/shaders/sprite.wgsl#L82)) | **LINEAR** | `PREMULTIPLIED_ALPHA_BLENDING` em `Rgba16Float` game_rt ([pipeline.rs:101](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/crates/ph2d-render/src/pipeline.rs#L101)) |
-| **Vello (overlay)** | `Rgba8Unorm` ([vello_pass.rs:302](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/crates/ph2d-render/src/vello_pass.rs#L302)) | Raw bytes / 255 sem decode | **sRGB-as-linear** (gamma-incorreto) | Porter-Duff "over" em sRGB-as-linear ([compositor.wgsl:85](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/crates/ph2d-render/src/shaders/compositor.wgsl#L85)) |
+| **Sprite (Apply)** | `Rgba8UnormSrgb` ([individual.rs:326](../../../crates/ph2d-render/src/individual.rs#L326)) | Hardware sRGB→linear no `textureSample` ([sprite.wgsl:82](../../../crates/ph2d-render/src/shaders/sprite.wgsl#L82)) | **LINEAR** | `PREMULTIPLIED_ALPHA_BLENDING` em `Rgba16Float` game_rt ([pipeline.rs:101](../../../crates/ph2d-render/src/pipeline.rs#L101)) |
+| **Vello (overlay)** | `Rgba8Unorm` ([vello_pass.rs:302](../../../crates/ph2d-render/src/vello_pass.rs#L302)) | Raw bytes / 255 sem decode | **sRGB-as-linear** (gamma-incorreto) | Porter-Duff "over" em sRGB-as-linear ([compositor.wgsl:85](../../../crates/ph2d-render/src/shaders/compositor.wgsl#L85)) |
 
 ### Walkthrough de pixel concreto (Agente C)
 
@@ -67,7 +67,7 @@ Edge pixel com `alpha=128, RGB=(80,80,80)` straight + adjacente transparente ble
 
 ### Fix C aplicado (commit `7cb95d4`)
 
-Novo `ph2d_render::premultiply_rgba8_in_linear` ([premul.rs:142+](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/crates/ph2d-render/src/premul.rs#L142)):
+Novo `ph2d_render::premultiply_rgba8_in_linear` ([premul.rs:142+](../../../crates/ph2d-render/src/premul.rs#L142)):
 ```
 sRGB-decode each channel → multiply by linear alpha → sRGB-encode
 ```
@@ -94,7 +94,7 @@ Mas o sprite path teria dado: linear 0.0107 / 0.251 = 0.0426 linear → linear_t
 
 ### Hipótese H2 — Compositor blend equation diverge
 
-[compositor.wgsl:1-19](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/crates/ph2d-render/src/shaders/compositor.wgsl#L1-L19) documenta a escolha deliberada de blend em "designer space" (sRGB-as-linear) para parity com Figma/browsers (UI tokens). Sprite path blend em linear (game_rt Rgba16Float). Mesmo com inputs gamma-correct, os dois blend operators dão visuais diferentes em transições parciais-alpha.
+[compositor.wgsl:1-19](../../../crates/ph2d-render/src/shaders/compositor.wgsl#L1-L19) documenta a escolha deliberada de blend em "designer space" (sRGB-as-linear) para parity com Figma/browsers (UI tokens). Sprite path blend em linear (game_rt Rgba16Float). Mesmo com inputs gamma-correct, os dois blend operators dão visuais diferentes em transições parciais-alpha.
 
 ### Hipótese H3 — Arquitetural: usar sprite pipeline pro preview (Agente A Fix 2)
 
@@ -114,7 +114,7 @@ Em vez de Vello, criar uma `Individual` texture transient + render via sprite sh
 - Output esperado: definitiva resposta — "Fix C completa não é possível com a API Vello atual" OU "passar bytes em formato X faz o round-trip preservar gamma".
 
 **Lente E — Compositor blend space override:**
-- Ler [compositor.wgsl](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/crates/ph2d-render/src/shaders/compositor.wgsl) inteiro.
+- Ler [compositor.wgsl](../../../crates/ph2d-render/src/shaders/compositor.wgsl) inteiro.
 - Avaliar se há uma forma de **gate por feature** (e.g., uniform flag) para fazer o blend do bgremoval preview em linear, mantendo UI tokens em sRGB.
 - Custos: 1 uniform flag, 1 branch no shader. Cheap. Mas precisa ser threaded do shell até o shader binding.
 
@@ -143,26 +143,26 @@ Em vez de Vello, criar uma `Individual` texture transient + render via sprite sh
 
 ### Tool side
 - [`crates/ph2d-tool-bgremoval/src/tool.rs`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/crates/ph2d-tool-bgremoval/src/tool.rs) — `run_canvas_preview`, `run_full_resolution`, `prepare_combined_protect_*`, `cached_auto_protect_source`.
-- [`crates/ph2d-tool-bgremoval/src/algorithm/compose.rs`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/crates/ph2d-tool-bgremoval/src/algorithm/compose.rs) — `write_output`, `bleed_edges`, `force_keep_protected`. **Não tocar.**
-- [`crates/ph2d-tool-bgremoval/src/algorithm/silhouette.rs`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/crates/ph2d-tool-bgremoval/src/algorithm/silhouette.rs) — Detect-subject + soft falloff. **Não tocar.**
+- [`crates/ph2d-tool-bgremoval/src/algorithm/compose.rs`](../../../crates/ph2d-tool-bgremoval/src/algorithm/compose.rs) — `write_output`, `bleed_edges`, `force_keep_protected`. **Não tocar.**
+- [`crates/ph2d-tool-bgremoval/src/algorithm/silhouette.rs`](../../../crates/ph2d-tool-bgremoval/src/algorithm/silhouette.rs) — Detect-subject + soft falloff. **Não tocar.**
 
 ### Render side
-- [`crates/ph2d-render/src/premul.rs`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/crates/ph2d-render/src/premul.rs) — `premultiply_rgba8` (byte-space) + `premultiply_rgba8_in_linear` (gamma-correct, novo).
-- [`crates/ph2d-render/src/individual.rs:326`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/crates/ph2d-render/src/individual.rs#L326) — sprite texture format `Rgba8UnormSrgb`.
-- [`crates/ph2d-render/src/vello_pass.rs:302`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/crates/ph2d-render/src/vello_pass.rs#L302) — Vello intermediate `Rgba8Unorm`.
-- [`crates/ph2d-render/src/shaders/sprite.wgsl`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/crates/ph2d-render/src/shaders/sprite.wgsl) — sprite shader (sample + premul check).
-- [`crates/ph2d-render/src/shaders/compositor.wgsl`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/crates/ph2d-render/src/shaders/compositor.wgsl) — blend final game_rt + vello_rt. **Lente E olha aqui.**
-- [`crates/ph2d-render/src/pipeline.rs:101`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/crates/ph2d-render/src/pipeline.rs#L101) — `PREMULTIPLIED_ALPHA_BLENDING` para sprite.
+- [`crates/ph2d-render/src/premul.rs`](../../../crates/ph2d-render/src/premul.rs) — `premultiply_rgba8` (byte-space) + `premultiply_rgba8_in_linear` (gamma-correct, novo).
+- [`crates/ph2d-render/src/individual.rs:326`](../../../crates/ph2d-render/src/individual.rs#L326) — sprite texture format `Rgba8UnormSrgb`.
+- [`crates/ph2d-render/src/vello_pass.rs:302`](../../../crates/ph2d-render/src/vello_pass.rs#L302) — Vello intermediate `Rgba8Unorm`.
+- [`crates/ph2d-render/src/shaders/sprite.wgsl`](../../../crates/ph2d-render/src/shaders/sprite.wgsl) — sprite shader (sample + premul check).
+- [`crates/ph2d-render/src/shaders/compositor.wgsl`](../../../crates/ph2d-render/src/shaders/compositor.wgsl) — blend final game_rt + vello_rt. **Lente E olha aqui.**
+- [`crates/ph2d-render/src/pipeline.rs:101`](../../../crates/ph2d-render/src/pipeline.rs#L101) — `PREMULTIPLIED_ALPHA_BLENDING` para sprite.
 
 ### Vector / Vello wrapper
-- [`crates/ph2d-vector/src/scene.rs`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/crates/ph2d-vector/src/scene.rs) — `draw_image_rgba_premultiplied_transformed` (nova fn passing `AlphaPremultiplied`).
+- [`crates/ph2d-vector/src/scene.rs`](../../../crates/ph2d-vector/src/scene.rs) — `draw_image_rgba_premultiplied_transformed` (nova fn passing `AlphaPremultiplied`).
 - `~/.cargo/registry/src/index.crates.io-*/vello_shaders-0.8.0/shader/fine.wgsl:1253-1281` — Vello fine kernel. **Lente D ler aqui.**
 
 ### Shell
-- [`shells/desktop/src/render_loop/bgremoval_preview.rs`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/shells/desktop/src/render_loop/bgremoval_preview.rs) — bridge, overlay paint, `sprite_image_to_screen_affine`, current `premultiply_rgba8_in_linear` call.
-- [`shells/desktop/src/render_loop/mod.rs:223-231`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/shells/desktop/src/render_loop/mod.rs#L223) — `bgremoval_preview_entity` suppression gate (sprite extract).
-- [`shells/desktop/src/hero_intents/image_edit/bgremoval.rs`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/shells/desktop/src/hero_intents/image_edit/bgremoval.rs) — `drain_bgremoval` (Apply path; `into_premultiplied` byte-space).
-- [`shells/desktop/src/hero_intents/texture_edit.rs:105`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/shells/desktop/src/hero_intents/texture_edit.rs#L105) — `commit_edited_texture` (acquire_individual).
+- [`shells/desktop/src/render_loop/bgremoval_preview.rs`](../../../shells/desktop/src/render_loop/bgremoval_preview.rs) — bridge, overlay paint, `sprite_image_to_screen_affine`, current `premultiply_rgba8_in_linear` call.
+- [`shells/desktop/src/render_loop/mod.rs:223-231`](../../../shells/desktop/src/render_loop/mod.rs#L223) — `bgremoval_preview_entity` suppression gate (sprite extract).
+- [`shells/desktop/src/hero_intents/image_edit/bgremoval.rs`](../../../shells/desktop/src/hero_intents/image_edit/bgremoval.rs) — `drain_bgremoval` (Apply path; `into_premultiplied` byte-space).
+- [`shells/desktop/src/hero_intents/texture_edit.rs:105`](../../../shells/desktop/src/hero_intents/texture_edit.rs#L105) — `commit_edited_texture` (acquire_individual).
 
 ---
 

@@ -13,7 +13,7 @@ Diretório raiz: `/Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/`.
 
 ### Operacional / processo
 
-1. **[`docs/IntegracaoMultiAgente/DIRETRIZ.md`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/docs/IntegracaoMultiAgente/DIRETRIZ.md)** — Diretriz de Implementação Universal v6.1 (~833 LOC).
+1. **[`docs/IntegracaoMultiAgente/DIRETRIZ.md`](../docs/IntegracaoMultiAgente/DIRETRIZ.md)** — Diretriz de Implementação Universal v6.1 (~833 LOC).
    - §0 sanity check
    - §1 modelo 2 papéis (Coord + Implementador) + fluxo invertido + 3 obrigações
    - §2 comunicação Coord ↔ Implementador (Enio relay mecânico, briefing template)
@@ -26,11 +26,11 @@ Diretório raiz: `/Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/`.
 
    **Substituiu em 2026-05-19** 8 docs anteriores (DIRETRIZ v5.0, 01-04 docs operacionais, STATE.md, DIRETRIZ_CODIFICACAO_RAPIDA, PARALLEL_AGENTS_PROBLEM) — todos arquivados em `docs/archive/multi-agente-pre-v6.0/`.
 
-2. **[`CLAUDE.md`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/CLAUDE.md)** — workflow operacional curto (~80 LOC). CI section + Cadência de validação atualizadas pra v6.0+. Aponta pra DIRETRIZ §5 e §7.
+2. **[`CLAUDE.md`](../CLAUDE.md)** — workflow operacional curto (~80 LOC). CI section + Cadência de validação atualizadas pra v6.0+. Aponta pra DIRETRIZ §5 e §7.
 
 ### Stack / arquitetura técnica
 
-3. **[`SKILL_Stack_PH2D_Definitiva.md`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/SKILL_Stack_PH2D_Definitiva.md)** — fonte de verdade técnica (~1050 LOC, v2.14 — Wave 9 cravada).
+3. **[`SKILL_Stack_PH2D_Definitiva.md`](../SKILL_Stack_PH2D_Definitiva.md)** — fonte de verdade técnica (~1050 LOC, v2.14 — Wave 9 cravada).
    - §HR-1..HR-18+ Hard Rules (citáveis por ID; gated por arch tests)
    - Stack canônico (wgpu, vello, kurbo, parley, harfrust, skrifa, rapier, bevy_ecs, mlua, etc.) com versões pinadas
    - Arquitetura 1 core + 4 shells (PC/Mac/iPad/Web)
@@ -38,7 +38,7 @@ Diretório raiz: `/Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/`.
    - Tiebreakers (perf hot path > determinismo > segurança > a11y > UX iPad > APIs estáveis > LLM-friendly)
    - Linha 12 aponta pra DIRETRIZ.md + archive narrativa multi-agente.
 
-4. **[`docs/architecture/decisions/`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/docs/architecture/decisions/)** — ADRs (snapshots históricos de decisão):
+4. **[`docs/architecture/decisions/`](../docs/architecture/decisions)** — ADRs (snapshots históricos de decisão):
    - 0003 ecs-choice (bevy_ecs 0.18)
    - 0019-0026 spike output + GPU lifecycle + sim/presentation boundary + sprite strategies + UI baseline + editor input + GameObject model
    - **0027 convention-by-discovery** (Wave 1) — tool-as-crate
@@ -49,7 +49,7 @@ Diretório raiz: `/Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/`.
 
 ### Design system
 
-5. **[`docs/design/`](file:///Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/docs/design/)** — fonte canonical de UI:
+5. **[`docs/design/`](../docs/design)** — fonte canonical de UI:
    - `tokens.json` — fonte raw de 4 temas OKLCH + spacing/radius/typography/stroke/chrome
    - `styles/tokens.css` — aliases CSS pra mockups (var(--*))
    - `screens/*.html` — mockups (gated por `mockup_tokens_exist` test)

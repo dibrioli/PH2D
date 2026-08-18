@@ -230,7 +230,7 @@ acima. O script é a fonte única — não duplique a lista aqui.)*
 | `ph2d-{tool,node}-registry-init/` (GERADO) | NUNCA na mão: aceite qualquer lado, re-rode o sync; o staleness gate confirma |
 | `chrome/mod.rs` blocos GERADOS (`mod` + `dispatch_all`, ADR-0107) | NUNCA na mão: `cargo run -p ph2d-chrome-sync` regenera dos `chrome/*.rs` (ordem = marcador `z=NN`); gate `architecture_chrome_dispatch_in_sync` confirma |
 | `ph2d-editor-core/src/icons.rs` (IconId) · `color_tokens!` list (ColorToken) | Mergiraf mantém AMBAS as entradas; se cair na mão, união trivial (dois lados); gates `enum_order_matches_svgs` / testes de `ph2d-tokens` confirmam |
-| SESSION_ACTIVE / `CLAUDE.md §5` / trackers | Só na integração, no primário, uma linha por vez; cada linha edita só o SEU `HANDOFF_*` |
+| SESSION_ACTIVE / `CLAUDE.md §5` / trackers | Só na integração, no primário, **uma linha de trabalho por vez**; cada linha edita só o SEU `HANDOFF_*`. ⚠️ E o que se escreve no §5 é **uma linha de TEXTO** (a de `Aberto`, e a de estado se o módulo mudou de natureza) — a narrativa da jornada é do handoff, §1.5.9 item 8 |
 | **Mesmo símbolo** fora dos arquivos do seu módulo | Conflito aqui = duas linhas reescrevendo a mesma função/assinatura de núcleo (colisão de *design*, não de texto). Mergiraf não decide, você não resolve na mão → **reporte ao Enio** (1.5.2.1). É o núcleo irredutivelmente serial (ADR-0107) |
 
 #### 1.5.6 Proibições (Modo L)
@@ -295,6 +295,22 @@ nem faz ship**; entrega este handoff e espera. Conteúdo mínimo (curto, factual
    COMEÇO:** durante a jornada o `incremental/` do `dev` é o que faz o `cargo check -p` voar; o que
    ele não pode é sobreviver à linha que o criou. Tabela e as outras duas regras:
    [`DIRETIVA_FIM_DE_DIA.md`](DIRETIVA_FIM_DE_DIA.md) §2-bis.
+8. ⚠️ **A NARRATIVA da jornada vai no HANDOFF; o `CLAUDE.md §5` recebe UMA LINHA.** O §5 é o
+   **roteador de estado** (o que o módulo é, o que está **aberto**, como smokar, onde ler) — o
+   *mecanismo* de cada wave é exatamente o que este handoff existe para guardar. Ao integrar,
+   edite a linha **Aberto** do módulo e, quando a wave muda o que o módulo *é*, a linha de estado;
+   **não acrescente um parágrafo de jornada.**
+
+   > ⚠️ **Por que a regra existe (medido em 2026-08-18):** o §5 crescia por acréscimo e levou o
+   > `CLAUDE.md` de **1,7 KB** (2026-05-08) a **917 KB** em 326 commits — 94,6% dele era o §5, com
+   > **um único bullet de 155 KB**. O custo não é estético: este arquivo é injetado **por inteiro**
+   > em todo agente, todo subagente e toda worktree, **antes da primeira palavra do Enio** — medidos
+   > **466 k tokens de contexto inicial, ~47% da janela de 1 M** —, e **a compactação não o alcança**
+   > (ele é re-injetado inteiro em toda janela nova, então o custo fixo é pago de novo a cada
+   > compactação). A história até 2026-08-18 foi arquivada verbatim em
+   > [`docs/archive/estado-2026-08-18/`](../archive/estado-2026-08-18/) e o §5 voltou a **41 KB**.
+   > É a mesma lição da parede de 208 handoffs, um nível acima: **acrescentar é barato para quem
+   > escreve e caro para todos os que leem, sempre.**
 
 Modelo de resumo no fim da linha: *"Linha `<módulo>` pronta (HEAD `<sha>`, N commits). Handoff
 de integração: <itens 2–6>. Aguardo ordem de integração."*

@@ -15,6 +15,38 @@
 //! is driven to the `drive` value input (a Dirichlet source — wire a `value.lfo`
 //! and it emits continuous ripples). Pure arithmetic (HR-5: no `sqrt`, no trig).
 //!
+//! ## N PRODUTORES — por COMPOSIÇÃO, e está MEDIDO
+//!
+//! Este nó tem **uma** fonte embutida: a célula do centro. Um segundo produtor, em
+//! qualquer posição e com qualquer forma, sai da cadeia que o **Grupo P** abriu —
+//! `motion.drive(Custom…)` escreve numa coluna que o artista batiza, e `wave_h` é
+//! uma coluna `Scalar` que o `is_bookkeeping_column` **não** protege:
+//!
+//! ```text
+//! wave.out --pre--> field.box --> value.attribute("falloff") -->
+//!     motion.drive(Custom "wave_h", Add) --> wave.state
+//! ```
+//!
+//! Medido (`ph2d-node-registry-init/tests/measure_wave_producers.rs`, 21×21, 240
+//! tiques): o campo passa de `max |h| = 0,2231` para `0,8056`, com um segundo pico
+//! exactamente sobre a caixa, e **419 das 441 células fora da máscara se movem** —
+//! o bump **propaga**, que é o que separa um PRODUTOR de tinta pintada no campo de
+//! altura. Os cinco knobs de um *Producer* do AE Wave World saem dos nós que já
+//! existem: **Position/Width/Height/Angle** são o `field.box`, e **Amplitude** é o
+//! `scale` do `drive` (com uma `value.lfo` no valor, também Frequency e Phase).
+//!
+//! ⚠️ **O `pre` mora na aresta que ENTRA na cadeia**, nunca na que volta ao `state`:
+//! é ela que quebra o ciclo, e os três nós são `Effect::Pure` ⇒ não carimbam
+//! `sim_t`, então a onda ainda vê o `dt` do próprio relógio no tique seguinte.
+//!
+//! ⛔ **MEDIDO E REJEITADO, não refaça: encadear `wave A --> wave B.state`.** É a
+//! tentativa natural de *"dois produtores"* e ela é um **no-op SILENCIOSO** — B lê
+//! o `sim_t` que A acabou de carimbar, `dt` dá zero, o ramo de *hold* devolve o
+//! campo intacto e o `drive` de B **nunca é aplicado**. Medido com o drive de B
+//! cinco vezes mais forte que o de A: as duas saídas são **bit a bit idênticas**.
+//! E fazer B dar um passo seria pior — dois passos por tique correm a física ao
+//! dobro da velocidade, o que não é *"dois produtores"*, é o timestep quebrado.
+//!
 //! ## Topology (the `pre` self-loop)
 //!
 //! Sequential like the other sims: the height field `wave_h` and its previous frame
@@ -51,8 +83,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("motion.wave"),
     name: "motion.wave",
     inputs: &[
-        // The source amplitude driven into the centre cell (animatable). Optional:
-        // unconnected reads as 0 → a still field.
+        // The source amplitude driven into the centre cell (animatable). Optional —
+        // e desligada significa **fonte NENHUMA**, não uma fonte de valor zero: sem
+        // ela o pino de Dirichlet não corre (ver `step`). Num campo que ninguém mais
+        // excita as duas leituras coincidem (cravar zero num campo plano é a
+        // identidade); elas divergem quando um produtor entra pelo laço de estado.
         PortSpec {
             name: "drive",
             ty: VALUE,
@@ -131,8 +166,15 @@ fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
     }
 }
 
-fn value_head(vals: &[f32]) -> f32 {
-    vals.first().copied().unwrap_or(0.0)
+/// O valor de fonte deste tique, ou **`None` quando não chegou nenhum**.
+///
+/// ⚠️ **Ausente não é zero, e a distinção decide o pino de Dirichlet.** A porta
+/// `drive` é opcional; desligada, a coluna `v` **não existe** e este `Option` é
+/// `None`. Colapsá-lo num `0.0` faria a célula central ser *cravada em zero* por
+/// uma fonte que ninguém ligou — a mesma leitura que o `falloff` ausente recusa
+/// (ele lê `1.0`, o neutro do produto, e não `0.0`).
+fn drive_value(vals: &[f32]) -> Option<f32> {
+    vals.first().copied()
 }
 
 /// The fixed world positions of the grid, centred on `center`, row 0 at the top.
@@ -155,7 +197,7 @@ fn grid_positions(p: &Params) -> Vec<[f32; 2]> {
 
 /// One leapfrog wave step over the height field. Reflecting (Neumann) edges: an
 /// out-of-grid neighbour reads as the centre cell, so it contributes no gradient.
-fn step(h: &[f32], h_prev: &[f32], drive: f32, p: &Params) -> (Vec<f32>, Vec<f32>) {
+fn step(h: &[f32], h_prev: &[f32], drive: Option<f32>, p: &Params) -> (Vec<f32>, Vec<f32>) {
     let (rows, cols) = (p.rows, p.cols);
     let coeff = p.speed.clamp(0.0, CFL_MAX);
     let keep = 1.0 - p.damping;
@@ -177,15 +219,29 @@ fn step(h: &[f32], h_prev: &[f32], drive: f32, p: &Params) -> (Vec<f32>, Vec<f32
             next[i] = v;
         }
     }
-    // Dirichlet source: the centre cell is driven to `drive`.
-    next[p.source()] = drive;
+    // Dirichlet source: the centre cell is driven to `drive` — e **só quando um
+    // valor de fonte de facto chegou**.
+    //
+    // ⚠️ **Sem esta guarda o centro é um BURACO em todo campo que a fonte não
+    // dirige.** Medido (`measure_wave_producers`, 21×21 com um produtor injectado
+    // no laço de estado): a célula central lia `+0,000000` EXACTO entre vizinhas
+    // de `+0,062` e `+0,020` — o número redondo que só uma atribuição produz.
+    // Enquanto `drive` era o único jeito de excitar o campo isso era invisível
+    // (um campo que ninguém dirige é plano, e cravar zero num campo já plano é a
+    // identidade); o **Grupo P** mudou isso ao deixar um `motion.drive(Custom…)`
+    // escrever `wave_h` de dentro do laço, e aí a cravação passou a apagar tinta
+    // que outra pessoa pôs. *Quem move o número que tornava algo inalcançável tem
+    // de reconferir a nota.*
+    if let Some(d) = drive {
+        next[p.source()] = d;
+    }
     (next, h.to_vec())
 }
 
 /// The whole node as a pure function: seed a flat field on the first tick / a grid
 /// change, else step. Emits `P` (fixed grid) + `size` (from |height|) + the
 /// `wave_h`/`wave_prev`/`sim_t` state.
-fn simulate(drive: f32, state: &Stream, playhead: f32, p: &Params) -> Stream {
+fn simulate(drive: Option<f32>, state: &Stream, playhead: f32, p: &Params) -> Stream {
     let n = p.count();
     let s_h = scalar_col(state, "wave_h");
     let s_prev = scalar_col(state, "wave_prev");
@@ -238,7 +294,7 @@ impl NodeOp for MotionWave {
             center: [ctx.param("center_x"), ctx.param("center_y")],
         };
         let playhead = ctx.playhead() as f32;
-        let drive = value_head(&scalar_col(ctx.input(0), VALUE_COL));
+        let drive = drive_value(&scalar_col(ctx.input(0), VALUE_COL));
         let state = ctx.input(1);
         let out = simulate(drive, state, playhead, &p);
         ctx.emit(out);
@@ -348,194 +404,5 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
 ];
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn params(rows: usize, cols: usize, speed: f32, damping: f32) -> Params {
-        Params {
-            rows,
-            cols,
-            spacing: 0.5,
-            speed,
-            damping,
-            center: [0.0, 0.0],
-        }
-    }
-
-    /// Run `drive(t)` for `ticks` fixed steps, returning each frame's height field.
-    fn run(drive: impl Fn(f32) -> f32, p: &Params, ticks: usize, dt: f32) -> Vec<Vec<f32>> {
-        let mut state = Stream::new(0);
-        let mut frames = Vec::new();
-        for k in 0..ticks {
-            let t = k as f32 * dt;
-            let out = simulate(drive(t), &state, t, p);
-            state = out.clone();
-            frames.push(scalar_col(&out, "wave_h"));
-        }
-        frames
-    }
-
-    /// Tick 0 seeds a flat field: `rows·cols` cells, every height 0 and every dot at
-    /// the baseline size.
-    #[test]
-    fn seeds_a_flat_field() {
-        let p = params(5, 5, 0.3, 0.0);
-        let out = simulate(0.0, &Stream::new(0), 0.0, &p);
-        assert_eq!(out.count(), 25);
-        assert!(scalar_col(&out, "wave_h").iter().all(|&z| z == 0.0), "flat");
-        match out.get("size").unwrap() {
-            Column::Vec2(v) => assert!(v.iter().all(|s| (s[0] - SIZE_BASE).abs() < 1e-6)),
-            _ => panic!("size"),
-        }
-    }
-
-    /// The disturbance PROPAGATES outward: a driven centre eventually lifts a cell far
-    /// from the source. FALSIFIED at speed 0 — only the driven centre ever moves, the
-    /// rim stays flat (no propagation).
-    #[test]
-    fn a_driven_source_propagates_outward() {
-        let p = params(11, 11, 0.35, 0.0);
-        let corner = 0usize; // top-left, far from the centre
-        let live = run(|t| (t * 30.0).clamp(-1.0, 1.0), &p, 120, 1.0 / 60.0);
-        let dead = run(
-            |t| (t * 30.0).clamp(-1.0, 1.0),
-            &params(11, 11, 0.0, 0.0),
-            120,
-            1.0 / 60.0,
-        );
-        let live_corner = live.last().unwrap()[corner].abs();
-        let dead_corner = dead.last().unwrap()[corner].abs();
-        assert!(
-            live_corner > 0.02,
-            "the ripple reached the corner: {live_corner}"
-        );
-        assert!(
-            dead_corner < 1e-6,
-            "speed 0 never propagates: {dead_corner}"
-        );
-    }
-
-    /// The wave travels at a FINITE speed: one tick after the first impulse only the
-    /// source's immediate neighbours have moved — a cell two rings out is still flat.
-    /// FALSIFIED by instantaneous coupling (the far cell would already be non-zero).
-    #[test]
-    fn propagation_is_finite_speed_not_instant() {
-        let p = params(11, 11, 0.4, 0.0);
-        // Tick 0 seeds flat; tick 1 drives the centre; tick 2 spreads to the 4
-        // immediate neighbours only — a cell three away is still untouched.
-        let frames = run(|_| 1.0, &p, 3, 1.0 / 60.0);
-        let h2 = &frames[2];
-        let src = p.source();
-        let neighbour = src - 1; // same row, one cell left (adjacent to the source)
-        let two_out = src - 3; // three cells left — beyond the first ring's reach
-        assert!(h2[neighbour].abs() > 1e-4, "the near neighbour moved");
-        assert!(
-            h2[two_out].abs() < 1e-9,
-            "a far cell has not been reached yet"
-        );
-    }
-
-    /// Damping keeps a continuously-driven field BOUNDED and shrinks the far-field:
-    /// heavier damping leaves the rim quieter. FALSIFIED if damping did nothing (the
-    /// two rim amplitudes would match).
-    #[test]
-    fn damping_bounds_and_quiets_the_field() {
-        // A bounded sawtooth oscillation in [-1, 1] (no trig, no TAU).
-        let drive = |t: f32| 2.0 * (t * 5.0 - (t * 5.0).floor()) - 1.0;
-        let soft = run(drive, &params(11, 11, 0.35, 0.12), 300, 1.0 / 60.0);
-        let hard = run(drive, &params(11, 11, 0.35, 0.28), 300, 1.0 / 60.0);
-        let rim = 0usize;
-        let soft_rim = soft.iter().map(|f| f[rim].abs()).fold(0.0, f32::max);
-        let hard_rim = hard.iter().map(|f| f[rim].abs()).fold(0.0, f32::max);
-        // Everything stays finite (bounded), and heavier damping is quieter.
-        assert!(
-            soft.last().unwrap().iter().all(|z| z.is_finite()),
-            "bounded"
-        );
-        assert!(
-            hard_rim < soft_rim,
-            "heavier damping quiets the rim (hard {hard_rim} < soft {soft_rim})"
-        );
-    }
-
-    /// Deterministic replay (HR-5: pure arithmetic): two runs match bit-for-bit.
-    #[test]
-    fn replay_is_deterministic() {
-        let p = params(9, 9, 0.35, 0.02);
-        let a = run(|t| (t * 5.0).sin_cos_free(), &p, 90, 1.0 / 60.0);
-        let b = run(|t| (t * 5.0).sin_cos_free(), &p, 90, 1.0 / 60.0);
-        assert_eq!(a, b);
-    }
-
-    /// Without the state loop it re-seeds every tick → a flat field forever.
-    #[test]
-    fn without_the_state_loop_it_stays_flat() {
-        let p = params(7, 7, 0.35, 0.0);
-        for k in 0..20 {
-            let out = simulate(1.0, &Stream::new(0), k as f32 / 60.0, &p);
-            // Only the driven centre is non-zero; everything else is flat (no history).
-            let h = scalar_col(&out, "wave_h");
-            for (i, &z) in h.iter().enumerate() {
-                if i != p.source() {
-                    assert_eq!(z, 0.0, "no propagation without feedback at {i}");
-                }
-            }
-        }
-    }
-
-    /// Cooks through the registry with the `pre` self-loop, emitting `P` + `size`.
-    #[test]
-    fn registers_and_ripples_through_the_cook() {
-        use ph2d_nodegraph::cook::{Cook, OpResolver};
-        use ph2d_nodegraph::graph::{Edge, Graph};
-
-        struct Ops;
-        impl OpResolver for Ops {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                (ty == MANIFEST.id).then_some(&MotionWave as &dyn NodeOp)
-            }
-        }
-        let mut reg = NodeRegistry::new();
-        register(&mut reg).unwrap();
-
-        let mut g = Graph::new();
-        let wave = g.add_node("motion.wave");
-        g.set_param(wave, "rows", 9.0);
-        g.set_param(wave, "cols", 9.0);
-        g.connect(Edge {
-            from: (wave, 0),
-            to: (wave, 1),
-            delayed: true,
-        })
-        .unwrap();
-
-        // Drive stays unconnected (→ 0); the field still steps through the pre loop.
-        let mut cook = Cook::new();
-        let out0 = cook.cook(&g, &Ops, wave, 0.0).unwrap();
-        assert!(matches!(out0[0].as_stream().get("P"), Some(Column::Vec2(v)) if v.len() == 81));
-        assert!(
-            out0[0].as_stream().get("size").is_some(),
-            "emits a size column"
-        );
-        for k in 0..30 {
-            let t = k as f64 / 60.0;
-            cook.cook(&g, &Ops, wave, t).unwrap();
-            cook.advance_tick(&g, &Ops, t).unwrap();
-        }
-        let out = cook.cook(&g, &Ops, wave, 0.5).unwrap();
-        assert!(matches!(out[0].as_stream().get("P"), Some(Column::Vec2(v)) if v.len() == 81));
-    }
-
-    // A tiny transcendental-free stand-in for a bounded oscillator in the determinism
-    // test (keeps the test itself HR-5-clean).
-    trait BoundedOsc {
-        fn sin_cos_free(self) -> f32;
-    }
-    impl BoundedOsc for f32 {
-        fn sin_cos_free(self) -> f32 {
-            // Triangle wave in [-1, 1] from the fractional part — no trig.
-            let f = self - self.floor();
-            (2.0 * (2.0 * f - 1.0).abs() - 1.0).clamp(-1.0, 1.0)
-        }
-    }
-}
+#[path = "lib_tests.rs"]
+mod tests;

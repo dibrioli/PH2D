@@ -317,21 +317,89 @@ passo **1,8243**, dentro da pausa **0,0001**).
 
 ---
 
+## §9-ter — A PORTA DE TEMPO (`SUPERAR 1` da folha 06) — três P1 de uma vez
+
+Uma porta `time` **opcional**, de tipo VALUE, em `motion.oscillator` · `motion.noise` ·
+`motion.wiggle`. Desligada ⇒ `ctx.playhead()`, **bit-a-bit**. Ligada ⇒ **um relógio por
+elemento**, e o relógio pode ser qualquer stream de valor.
+
+### O que a medição mudou no orçamento
+
+O §9 desta linha tinha orçado **três saídas, todas com preço** (offset · sentinela NaN ·
+opt-in com `applicable`), porque *"a identidade de uma porta de TEMPO não é uma constante e
+o seletor de variante só enxerga params"*. As duas premissas são **verdadeiras** e a
+conclusão era **falsa**: o substrato já tinha o canal certo.
+
+| a pergunta | quem já a responde | onde |
+|---|---|---|
+| *"a porta está ligada?"* | `const HAS_<porta>_<col>: bool`, emitido pelo codegen ao lado de cada leitor — **fixo por pipeline compilado** (a cache é chaveada na assinatura), logo ramificar nele é de graça | `ph2d-gpu-cook/src/codegen.rs` |
+| *"1 valor ou N?"* | `ColumnAccess::ReadBroadcast` (a regra 1→N do `motion.drive`, doc 12) | `ph2d-nodegraph/src/gpu.rs` |
+| *"uma 2ª porta VALUE cabe num nó com kernel?"* | o `motion.drive` já é isso desde sempre — `read_in_P` / `read_value_v` | `ph2d-node-motion-drive` |
+| *"o planeador aceita porta 1 vazia?"* | `GpuSource::Empty` | `ph2d-gpu-cook/src/plan.rs` |
+
+⇒ **`VariantFn`, `GpuKernel` e `ph2d-nodegraph` ficaram INTOCADOS.** O diff é 3 crates-folha
++ os gates. *A lei: antes de orçar um mecanismo novo, meça se o substrato já o exprime — o
+TRAP 1 da conferência vale para a foundation, não só para o catálogo.*
+
+### O que mudou em cada nó
+
+- **Manifesto:** `PortSpec { name: "time", ty: VALUE }` **apendado** no índice 1 — aresta de
+  documento salvo guarda o índice, então a porta 0 continua a 0 e um doc de ontem abre igual.
+- **CPU:** `clock_at(times, i, playhead)` em cada `channel.rs` (cópia por drop-crate, como o
+  `falloff_at`): `0 ⇒ playhead` · `1 ⇒ broadcast` · `N ⇒ por elemento`. ⚠️ **Ausente não é
+  zero — é o relógio global**; um `0.0` cravado congelaria a behaviour no instante zero.
+- **GPU:** um binding `v`/`ReadBroadcast`/porta 1 em **todo** variant, mais
+  `fn <ns>_time(i) { if (HAS_time_v) { return read_time_v(i); } return params.playhead; }`.
+  Os leitores da porta 0 passaram a ser qualificados (`read_in_P`, `read_in_falloff`, …),
+  que é o que o codegen faz assim que o nó tem 2 entradas.
+- **`noise` e `wiggle`:** o wrap do `loop_len` (`ph2d_fbm::loop_times`) mudou-se para **dentro**
+  do laço, nos dois lados — com a porta ligada cada elemento fecha o **próprio** ciclo; sem
+  ela os `n` cálculos partem do mesmo número e dão o mesmo resultado.
+
+### Os gates (7 novos) e as 5 mutações
+
+`crates/ph2d-node-registry-init/tests/time_port.rs`, os três nós num laço:
+
+| gate | o que prende |
+|---|---|
+| `an_unconnected_time_port_is_bit_identical_to_a_neutral_clock` | `==` sobre `f32`, em 3 instantes. O oráculo é o próprio catálogo: um `value.time` neutro ligado à porta tem de dar o MESMO que porta nenhuma |
+| `a_staggered_time_field_gives_each_element_its_own_clock` | + **o CONTROLE**: com `phase_stagger = 0` a fileira sem porta tem UM valor — sem isso, *"as peças diferem"* provaria o knob que o nó já tinha |
+| `a_wrapped_ramp_closes_the_cycle_exactly_where_a_cross_fade_only_approximates` | `value.time → value.wrap(Repeat) → time`: `y(t) == y(t+L)`, e o controle SEM wrap muda |
+| `a_single_clock_value_is_held_across_every_element` | a regra 1→N, e que o relógio é o do `value.time` (`rate = 2`) e não o playhead por outra via |
+| `the_time_port_is_a_column_not_a_cook_scope` | a resposta à **cerca 6**: um `motion.spring` a montante coze sem `CookError::SequentialInTimeScope` |
+| `the_time_port_matches_the_cpu_on_the_device_for_every_animator` | paridade CPU×GPU **ligada**, 3 nós, com a contagem de estágios a provar que o planeador não recuou |
+| `an_unconnected_time_port_still_matches_the_cpu_on_the_device` | paridade **desligada** — o caminho que TODO documento existente percorre |
+
+Paridade medida (adapter local): pior `|Δpos|` **7,6e-5 · 1,2e-5 · 9,1e-6** ligada e
+**7,5e-5 · 9,5e-7 · 4,8e-7** desligada, em 1600 instâncias.
+
+**Mutações — 5 lançadas, 5 sangram:** `clock_at` a ignorar o campo · sem broadcast ·
+ausente⇒`0.0` · `HAS_time_v`⇒`false` · `read_time_v(0u)` (bug de broadcast).
+
+### A cena `=59` — «o relógio é um campo»
+
+Quatro bandas, e **entre uma e a seguinte muda UM FIO**; o nó e os knobs são os mesmos.
+1. CONTROLE (porta desligada): a fileira é **uma barra** (1 altura medida em 21 peças).
+2. `value.time(stagger)` → **onda que viaja** (21 alturas distintas).
+3. Um bloco 9×9 com relógio `t + |P|` → **ondulação radial**. O gate prova que o relógio é
+   função do **RAIO** e não do índice (quinas opostas partilham o instante a `< 1e-5`).
+4. `value.wrap(Mirror)` → o ciclo fecha: resíduo **1,9e-6** a uma volta e **7,6e-6** a dez
+   (não cresce), contra **1,80** de deriva da banda 2.
+
+⚠️ **Dois números da cena são MEDIDOS e o comentário diz porquê:** `STAGGER = 0,24` (com
+`0,25` o passo é `1/8` exacto e a fileira exibe só **8** alturas — um carimbo) e
+`WRAP_S = 2,5` (com `3,0` o período eram 3 ciclos exactos e o **controle** do gate também se
+repetia, medindo 1,9e-6 contra 7,6e-6 — a cena teria "provado" o que a aritmética já dava).
+
+---
+
 ## §9 — O que fica ABERTO
 
-- **A folha 06 tem 4 P1**, e três deles são a **PORTA DE TEMPO** (`SUPERAR 1`): o
+- ✅ **A PORTA DE TEMPO foi construída** — ver §9-ter. Os três P1 que ela fecha eram o
   `stagger` do `motion.noise`, o *Time* do `motion.oscillator` e o retiming por-INSTÂNCIA
-  do `motion.time_remap`. ⚠️ **Medido nesta sessão e nomeado para a próxima:** a porta é
-  mecanicamente alcançável (os kernels já leem uma coluna por-elemento — o `falloff` é
-  `ColumnBinding` com identidade **materializada quando ausente**), mas a **identidade de
-  uma porta de TEMPO não é uma constante** (o neutro é `ctx.playhead()`), e o `applicable`
-  só enxerga **params**, nunca conectividade. As saídas medidas são três, cada uma com
-  preço: a porta carregar um **OFFSET** (identidade `0`, byte-idêntica, mas o *loop por
-  construção* do SUPERAR não sai dela) · um **sentinela NaN** na identidade (o kernel
-  detecta e cai no `params.playhead`) · ou um **param de opt-in** com `applicable`
-  recusando o device (o precedente do `Custom…`). **Decisão de desenho, não trabalho
-  mecânico.**
-- O 4º P1 é o `motion.noise` **transform do CAMPO** (rotation/scale do espaço do ruído).
+  do `motion.time_remap`. **A folha 06 passou de 4 P1 para 1.**
+- O P1 que RESTA é o `motion.noise` **transform do CAMPO** (rotation/scale do espaço do
+  ruído — o `offset` já sai de `motion.move(+d) → noise → motion.move(−d)`).
 - ⛔ **O GESTO das três metades P2 da célula 36** — a cadeia da esponja são quatro nós e o
   nome de uma coluna de **ESTADO** que nenhum picker oferece. Fechar isso é **UI** (um
   preset de cadeia, ou o picker aprender colunas de estado), não motor — e é o mesmo

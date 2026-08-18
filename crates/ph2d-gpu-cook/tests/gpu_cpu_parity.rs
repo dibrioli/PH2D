@@ -814,6 +814,88 @@ fn the_two_size_axis_arms_match_the_cpu_on_the_device() {
     assert_gpu_parity(&gpu, &reg, &g, out, 5); // grid + 2 campos + 2 drives
 }
 
+/// **A PORTA DE TEMPO no device, nos três animadores** (folha 06, `SUPERAR 1`).
+///
+/// ⚠️ Este é o gate que sustenta a promessa da wave: *ligar a porta não troca a placa
+/// pela CPU*. A cadeia é `grid → value.time(stagger) → {oscillator, noise, wiggle}`, e
+/// a contagem de estágios pedida ao `assert_gpu_parity` é a prova estrutural — se o
+/// planeador recuasse para a CPU por causa da segunda porta, o número não bateria e o
+/// teste falharia **antes** de comparar um único pixel.
+///
+/// ⚠️ O `stagger` é o que faz a coluna de tempo ser um CAMPO e não um número: com
+/// `stagger = 0` o `value.time` emite N cópias do mesmo relógio, e um kernel que
+/// lesse a linha 0 para toda peça (o bug de broadcast) sairia verde.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_time_port_matches_the_cpu_on_the_device_for_every_animator() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    for (ty, freq_param) in [
+        ("motion.oscillator", "frequency"),
+        ("motion.noise", "speed"),
+        ("motion.wiggle", "frequency"),
+    ] {
+        let mut g = Graph::new();
+        let grid = grid_node(&mut g, 40.0);
+        let clock = g.add_node("value.time");
+        g.set_param(clock, "stagger", 0.037); // um relógio por elemento
+        g.set_param(clock, "rate", 1.3);
+        connect(&mut g, grid, clock);
+
+        let node = g.add_node(ty);
+        g.set_param(node, "channel", 1.0); // Y
+        g.set_param(node, "amplitude", 0.8);
+        g.set_param(node, freq_param, 0.9);
+        connect(&mut g, grid, node);
+        g.connect(Edge {
+            from: (clock, 0),
+            to: (node, 1),
+            delayed: false,
+        })
+        .unwrap();
+
+        let out = g.add_node("motion.output");
+        connect(&mut g, node, out);
+        assert_gpu_parity(&gpu, &reg, &g, out, 3); // grid + value.time + animador
+    }
+}
+
+/// **A porta DESLIGADA continua a cozinhar no device** — a outra metade, e a que um
+/// grafo de ontem exercita.
+///
+/// ⚠️ Sem ela o gate acima ficaria verde sobre um kernel que só funciona LIGADO: a
+/// coluna ausente é um caminho de código diferente (o `HAS_time_v` do módulo gerado
+/// vira `false`, e o corpo passa a ler `params.playhead`), e é o caminho que **todo
+/// documento que já existe** percorre.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn an_unconnected_time_port_still_matches_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    for (ty, freq_param) in [
+        ("motion.oscillator", "frequency"),
+        ("motion.noise", "speed"),
+        ("motion.wiggle", "frequency"),
+    ] {
+        let mut g = Graph::new();
+        let grid = grid_node(&mut g, 40.0);
+        let node = g.add_node(ty);
+        g.set_param(node, "channel", 1.0);
+        g.set_param(node, "amplitude", 0.8);
+        g.set_param(node, freq_param, 0.9);
+        connect(&mut g, grid, node);
+        let out = g.add_node("motion.output");
+        connect(&mut g, node, out);
+        assert_gpu_parity(&gpu, &reg, &g, out, 2); // grid + animador
+    }
+}
+
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
 fn field_box_kernel_matches_the_cpu_within_epsilon() {

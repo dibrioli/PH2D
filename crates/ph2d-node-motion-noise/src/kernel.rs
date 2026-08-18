@@ -25,6 +25,19 @@ pub(crate) const NS_PARAMS: &[&str] = &[
     "lacunarity",
 ];
 
+/// **A PORTA DE TEMPO** — ligada por todo variant, `ReadBroadcast` para herdar a regra
+/// 1→N do `motion.drive`. A `identity` é inerte: o neutro desta porta é
+/// `params.playhead`, que não é constante de compilação, então quem responde *"a porta
+/// está ligada?"* é o `const HAS_time_v` do módulo gerado (fixo por pipeline, logo
+/// ramificar nele é de graça).
+const NS_TIME: ColumnBinding = ColumnBinding {
+    column: "v",
+    dim: Dim::Scalar,
+    access: ColumnAccess::ReadBroadcast,
+    identity: [0.0; 4],
+    port: 1,
+};
+
 /// **X / Y** — adds the delta to one component of `P`. The channel test is
 /// `< 0.5`, which agrees with the CPU's `round()` for both values this variant
 /// is selected for.
@@ -35,17 +48,26 @@ pub(crate) const NS_PARAMS: &[&str] = &[
 /// duas. Os variants existem pela COLUNA que cada um escreve; a aritmética é a MESMA nos três,
 /// então ela mora num lugar (o padrão que o `motion.oscillator` já usa).
 const NS_LIB: &str = "\
+        fn ns_time(i: u32) -> f32 {\n\
+            // A porta `time` DESLIGADA e' o relogio global -- ver o binding NS_TIME.\n\
+            if (HAS_time_v) { return read_time_v(i); }\n\
+            return params.playhead;\n\
+        }\n\
         fn ns_delta(i: u32) -> f32 {\n\
-            let p = read_P(i);\n\
+            let p = read_in_P(i);\n\
             let seed = i32(ns_round(params.seed));\n\
             let oct = min(max(i32(ns_round(params.octaves)), 1), 8);\n\
             let ty = i32(ns_round(params.type_));\n\
             // O tempo WRAPA antes de entrar no campo -- ver `loop_times` no lib.rs.\n\
-            var ta = params.playhead;\n\
+            // ⚠️ Por ELEMENTO, porque o relogio agora pode ser um campo: com uma porta\n\
+            // ligada cada peca fecha o PROPRIO ciclo, e com ela desligada os N calculos\n\
+            // partem do mesmo numero e dao o mesmo resultado (byte-identico).\n\
+            let ns_t = ns_time(i);\n\
+            var ta = ns_t;\n\
             var tb = ta;\n\
             var w = 0.0;\n\
             if (params.loop_len > 0.0) {\n\
-            \x20   let u0 = params.playhead / params.loop_len;\n\
+            \x20   let u0 = ns_t / params.loop_len;\n\
             \x20   let u = u0 - floor(u0);\n\
             \x20   ta = u * params.loop_len;\n\
             \x20   tb = ta - params.loop_len;\n\
@@ -61,7 +83,7 @@ const NS_LIB: &str = "\
             \x20       seed, oct, params.roughness, ty, params.lacunarity);\n\
             \x20   s = sa + (sb - sa) * w;\n\
             }\n\
-            return s * params.amplitude * read_falloff(i);\n\
+            return s * params.amplitude * read_in_falloff(i);\n\
         }\n\
         const NS_NORM: f32 = 1.0 / 1.5;\n\
         fn ns_round(x: f32) -> f32 {\n\
@@ -139,7 +161,7 @@ const NS_LIB: &str = "\
 const NS_P: GpuKernel = GpuKernel {
     wgsl: "\
         let d = ns_delta(i);\n\
-        var p = read_P(i);\n\
+        var p = read_in_P(i);\n\
         if (params.channel < 0.5) { p.x = p.x + d; } else { p.y = p.y + d; }\n\
         write_P(i, p);\n",
     wgsl_lib: NS_LIB,
@@ -160,6 +182,7 @@ const NS_P: GpuKernel = GpuKernel {
             identity: [1.0; 4],
             port: 0,
         },
+        NS_TIME,
     ],
     params: NS_PARAMS,
     count_law: None,
@@ -170,7 +193,7 @@ const NS_P: GpuKernel = GpuKernel {
 /// **Rotation** — adds the delta to `rot`.
 const NS_ROT: GpuKernel = GpuKernel {
     wgsl: "\
-        write_rot(i, read_rot(i) + ns_delta(i));\n",
+        write_rot(i, read_in_rot(i) + ns_delta(i));\n",
     wgsl_lib: NS_LIB,
     bindings: &[
         ColumnBinding {
@@ -194,6 +217,7 @@ const NS_ROT: GpuKernel = GpuKernel {
             identity: [1.0; 4],
             port: 0,
         },
+        NS_TIME,
     ],
     params: NS_PARAMS,
     count_law: None,
@@ -206,7 +230,7 @@ const NS_ROT: GpuKernel = GpuKernel {
 const NS_SIZE: GpuKernel = GpuKernel {
     wgsl: "\
         let d = ns_delta(i);\n\
-        let s = read_size(i);\n\
+        let s = read_in_size(i);\n\
         write_size(i, vec2<f32>(s.x + d, s.y + d));\n",
     wgsl_lib: NS_LIB,
     bindings: &[
@@ -231,6 +255,7 @@ const NS_SIZE: GpuKernel = GpuKernel {
             identity: [1.0; 4],
             port: 0,
         },
+        NS_TIME,
     ],
     params: NS_PARAMS,
     count_law: None,

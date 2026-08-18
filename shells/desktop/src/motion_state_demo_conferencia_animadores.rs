@@ -193,6 +193,56 @@ pub(super) fn axes(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> 
     sinks
 }
 
+/// **O RELÓGIO É UM CAMPO** — a cena `=59`, o `SUPERAR 1` da folha 06.
+pub(super) fn clock(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_clock::build_clock_demo_document(doc, registry).unwrap_or_default();
+    eprintln!(
+        "[clock-demo] QUATRO BANDAS ({} montadas). Entre uma e a seguinte muda UM FIO.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_clock::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) DE' PLAY -- as quatro bandas so' existem em movimento.
+  (!) O NO' e' o MESMO nas quatro, e os knobs tambem. So' muda o que esta' ligado 'a
+  porta `time`, que e' nova. Nao ha' knob novo nenhum -- confira no painel de PARAMS.
+  (!) 1 vs 2: a de cima e' UMA BARRA -- {bar} altura na fileira inteira, medido; a de
+  baixo tem {wave} alturas distintas. Se as DUAS ondularem, a cena perdeu o controle e
+  nao prova nada: o oscilador sempre teve um `phase_stagger`, e o ponto e' que ele
+  esta' em ZERO nas quatro bandas.
+  (!) 3: o bloco de {block} pecas ({side}x{side}) tem o relogio `t + |P|`. Olhe a ONDULACAO sair do
+  meio: as pecas 'a mesma distancia do centro andam JUNTAS mesmo estando em cantos
+  opostos -- e' isso que faz o relogio um CAMPO, e nao uma defasagem por indice.
+  (!) 4: a mesma onda da banda 2, com o relogio ESPELHADO numa janela de {w:.1} s. Ela
+  vai e volta para sempre e NAO deriva: `t` e `t + {p:.1}` sao o mesmo numero a entrar
+  no no'. Medido: uma volta depois o quadro repete a {m1:.0e} de unidade de mundo, e DEZ
+  voltas depois a {m10:.0e} -- o residuo nao cresce, que e' o que 'nao deriva' quer dizer.
+  A banda 2, sem o espelho, ja' derivou {mdrift:.2} no mesmo tempo.
+  (!) Puxe o fio da porta `time` de qualquer banda e ela vira a banda 1 -- desligada,
+  a porta e' o relogio global, byte-identico ao que o no' sempre fez.",
+        bar = BAR_HEIGHTS,
+        wave = WAVE_HEIGHTS,
+        block = BLOCK_PIECES,
+        side = conferencia_demos_clock::block_side(),
+        m1 = MIRROR_ONE,
+        m10 = MIRROR_TEN,
+        mdrift = MIRROR_DRIFT,
+        w = conferencia_demos_clock::wrap_seconds(),
+        p = 2.0 * conferencia_demos_clock::wrap_seconds(),
+    );
+    sinks
+}
+
+// Os numeros que a sonda `measure_what_the_scene_shows` da cena 59 imprime.
+const BAR_HEIGHTS: usize = 1;
+const WAVE_HEIGHTS: usize = 21;
+const BLOCK_PIECES: usize = 81;
+const MIRROR_ONE: f32 = 0.0000019073486;
+const MIRROR_TEN: f32 = 0.0000076293945;
+const MIRROR_DRIFT: f32 = 1.7996;
+
 // Os numeros que a sonda `measure_what_the_scene_shows` da cena 58 imprime. Eles
 // vivem em consts para a mensagem citar a MEDICAO, nunca um numero lembrado.
 const CTRL_WORST: f32 = 0.0000;

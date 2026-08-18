@@ -50,6 +50,23 @@ const OSC_FALLOFF: ColumnBinding = ColumnBinding {
     port: 0,
 };
 
+/// **A PORTA DE TEMPO** — ligada por todo variant, `ReadBroadcast` para herdar a regra
+/// 1→N do `motion.drive` (um `value.time` desligado emite UM valor, e ele vale para
+/// toda a instância).
+///
+/// ⚠️ A `identity` aqui é **inerte**: o corpo nunca a lê, porque o neutro desta porta é
+/// `params.playhead` e uma identidade é uma constante de compilação. Quem responde
+/// *"a porta está ligada?"* é o `const HAS_time_v` que o codegen emite ao lado do
+/// leitor — fixo por pipeline compilado (a cache é chaveada exactamente nessa
+/// assinatura), logo ramificar nele **não custa nada** no device.
+const OSC_TIME: ColumnBinding = ColumnBinding {
+    column: "v",
+    dim: Dim::Scalar,
+    access: ColumnAccess::ReadBroadcast,
+    identity: [0.0; 4],
+    port: 1,
+};
+
 /// **X / Y** — adds the delta to one component of `P`. The channel test is
 /// `< 0.5`, which agrees with the CPU's `round()` for both values this variant
 /// is selected for.
@@ -63,11 +80,19 @@ const OSC_FALLOFF: ColumnBinding = ColumnBinding {
 /// que cada um escreve; a aritmetica e a MESMA nos tres, e mante-la em tres
 /// lugares foi o que produziu o defeito.
 const OSC_LIB: &str = "\
-        fn osc_delta(i: u32, t: f32) -> f32 {\n\
+        fn osc_time(i: u32) -> f32 {\n\
+            // A porta `time` DESLIGADA e' o relogio global. O neutro nao pode viajar\n\
+            // na `identity` do binding (ela e' constante de compilacao e o playhead\n\
+            // nao e'), entao a lei RAMIFICA na presenca -- e `HAS_time_v` e' const no\n\
+            // modulo gerado, fixo por pipeline compilado.\n\
+            if (HAS_time_v) { return read_time_v(i); }\n\
+            return params.playhead;\n\
+        }\n\
+        fn osc_delta(i: u32) -> f32 {\n\
             let cps = osc_cycles_per_second();\n\
-            let phase = t * cps + f32(i) * params.phase_stagger + params.phase;\n\
+            let phase = osc_time(i) * cps + f32(i) * params.phase_stagger + params.phase;\n\
             let w = osc_wave(i32(osc_round(params.wave)), phase);\n\
-            return (w * params.amplitude + params.offset) * read_falloff(i);\n\
+            return (w * params.amplitude + params.offset) * read_in_falloff(i);\n\
         }\n\
         fn osc_cycles_per_second() -> f32 {\n\
             // BPM: a MESMA grandeza noutra regua (batidas por minuto).\n\
@@ -116,8 +141,8 @@ const OSC_LIB: &str = "\
 
 pub(crate) const OSC_P: GpuKernel = GpuKernel {
     wgsl: "\
-        let osc_d = osc_delta(i, params.playhead);\n\
-        var osc_p = read_P(i);\n\
+        let osc_d = osc_delta(i);\n\
+        var osc_p = read_in_P(i);\n\
         if (params.channel < 0.5) {\n\
             osc_p.x = osc_p.x + osc_d;\n\
         } else {\n\
@@ -136,6 +161,7 @@ pub(crate) const OSC_P: GpuKernel = GpuKernel {
             port: 0,
         },
         OSC_FALLOFF,
+        OSC_TIME,
     ],
     params: OSC_PARAMS,
     count_law: None,
@@ -146,7 +172,7 @@ pub(crate) const OSC_P: GpuKernel = GpuKernel {
 /// **Rotation** — adds the delta to `rot`.
 pub(crate) const OSC_ROT: GpuKernel = GpuKernel {
     wgsl: "\
-        write_rot(i, read_rot(i) + osc_delta(i, params.playhead));\n",
+        write_rot(i, read_in_rot(i) + osc_delta(i));\n",
     wgsl_lib: OSC_LIB,
     bindings: &[
         ColumnBinding {
@@ -157,6 +183,7 @@ pub(crate) const OSC_ROT: GpuKernel = GpuKernel {
             port: 0,
         },
         OSC_FALLOFF,
+        OSC_TIME,
     ],
     params: OSC_PARAMS,
     count_law: None,
@@ -168,8 +195,8 @@ pub(crate) const OSC_ROT: GpuKernel = GpuKernel {
 /// `[0,0]`: unit scale is what "no size" means).
 pub(crate) const OSC_SIZE: GpuKernel = GpuKernel {
     wgsl: "\
-        let osc_d = osc_delta(i, params.playhead);\n\
-        let osc_s = read_size(i);\n\
+        let osc_d = osc_delta(i);\n\
+        let osc_s = read_in_size(i);\n\
         write_size(i, vec2<f32>(osc_s.x + osc_d, osc_s.y + osc_d));\n",
     wgsl_lib: OSC_LIB,
     bindings: &[
@@ -181,6 +208,7 @@ pub(crate) const OSC_SIZE: GpuKernel = GpuKernel {
             port: 0,
         },
         OSC_FALLOFF,
+        OSC_TIME,
     ],
     params: OSC_PARAMS,
     count_law: None,

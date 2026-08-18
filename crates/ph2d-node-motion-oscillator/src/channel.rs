@@ -21,6 +21,38 @@ pub(crate) fn falloff_at(stream: &Stream, i: usize) -> f32 {
     }
 }
 
+/// **O relógio do elemento `i`** — a porta `time` quando ligada, o `playhead` quando
+/// não. A lei de largura é a do `motion.drive` (doc 12): **1 valor é HELD** sobre toda
+/// a instância (broadcast 1→N), N valores são lidos elemento a elemento.
+///
+/// ⚠️ **AUSENTE NÃO É ZERO — é o relógio global**, e a distinção é a razão de a porta
+/// poder ser opcional. Um `0.0` cravado congelaria a behaviour no instante zero (que
+/// é o defeito que o modo `Freeze` existe para pedir de propósito), e um
+/// `ColumnBinding::identity` não pode carregar o playhead: a identidade é uma
+/// constante de compilação e o relógio não é. É por isso que o kernel de GPU ramifica
+/// no `HAS_time_v` em vez de materializar um neutro — a única forma de exprimir uma
+/// lei que **ramifica na ausência** em vez de substituir um valor.
+///
+/// Um comprimento que não é 1 nem `n` é um descasamento — `debug_assert`ado alto e
+/// depois lido com clemência (o relógio global no que passar do fim), como o
+/// `value_at` do `motion.drive` faz.
+pub(crate) fn clock_at(times: &[f32], i: usize, playhead: f32) -> f32 {
+    match times.len() {
+        0 => playhead,
+        1 => times[0], // broadcast: um relógio → toda instância (a regra 1→N)
+        _ => times.get(i).copied().unwrap_or(playhead),
+    }
+}
+
+/// A coluna de valor de um stream, ou vazio quando a porta está desligada — a
+/// entrada do [`clock_at`].
+pub(crate) fn scalar_values(stream: &Stream, column: &str) -> Vec<f32> {
+    match stream.get(column) {
+        Some(Column::Scalar(v)) => v.clone(),
+        _ => Vec::new(),
+    }
+}
+
 /// The stream column a channel index writes to: X/Y → `P`, Rotation → `rot`,
 /// Size (or any out-of-range value) → `size`.
 fn channel_column(channel: i32) -> &'static str {

@@ -36,19 +36,50 @@ use gpu::GPU_KERNEL;
 mod params_ui;
 use params_ui::{PARAM_GATES, PARAM_GROUPS, PARAM_HARD_MAX, PARAM_HINTS, PARAM_UNITS};
 mod channel;
-use channel::{apply_channel_delta, falloff_at};
+use channel::{apply_channel_delta, clock_at, falloff_at, scalar_values};
 use ph2d_nodegraph::attr::par_build;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+/// O tipo da porta `time` — espelho local do `VALUE` do `motion.drive`. Esta é uma
+/// crate-folha: o vocabulário partilhado é a **porta**, nunca um símbolo importado.
+const VALUE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
+/// A coluna que um stream de valor carrega (o que o `value.time` emite).
+const VALUE_COL: &str = "v";
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("motion.oscillator"),
     name: "motion.oscillator",
-    inputs: &[PortSpec {
-        name: "in",
-        ty: INST_VEC2,
-    }],
+    inputs: &[
+        PortSpec {
+            name: "in",
+            ty: INST_VEC2,
+        },
+        // ⚠️ **A PORTA DE TEMPO, e ela é per-ELEMENTO** (folha 06, `SUPERAR 1`).
+        // Desligada ⇒ `ctx.playhead()`, **byte-idêntico** — o precedente exacto é a
+        // porta `drive` do `motion.wave` e a `offset` do `motion.path`.
+        //
+        // ⚠️ **APENDADA, nunca inserida.** As arestas de um documento salvo guardam o
+        // ÍNDICE da porta; a porta 0 continua a 0, e um doc de ontem abre igual. É a
+        // mesma lei do enum de canal do `motion.drive`.
+        //
+        // Ela entrega de uma vez o *Time* / *Time Offset* / *Time Scale* do Cavalry
+        // **sem um knob novo** — o `value.time` já tem `rate`/`offset`/`stagger` —, e
+        // faz o LOOP ser fechado **por construção** (`value.time → value.wrap → time`:
+        // `t` e `t+L` passam a ser o mesmo número, em vez de um cross-fade que
+        // aproxima). E revoga a cerca 2 da folha: *sem uma porta de tempo externa,
+        // `sin(2π(s·t)f) ≡ sin(2π·t·(s·f))`* — com ela, escalar o CAMPO a montante
+        // deixa de ser identidade algébrica com `frequency`.
+        //
+        // ⚠️ **Não é o escopo de tempo do `motion.time_remap`** (cerca 6): aquele
+        // recozinha uma sub-árvore e por isso **recusa** um nó sequencial a montante
+        // (`CookError::SequentialInTimeScope`). Isto é uma COLUNA — o nó lê um número
+        // por elemento, não há segundo cozimento, e nada é recusado.
+        PortSpec {
+            name: "time",
+            ty: VALUE,
+        },
+    ],
     outputs: &[PortSpec {
         name: "out",
         ty: INST_VEC2,
@@ -251,13 +282,20 @@ impl NodeOp for MotionOscillator {
         let amplitude = ctx.param("amplitude");
         // ⚠️ Lido AQUI e não dentro do laço: ele é uniforme no dispatch inteiro.
         let pulse_width = ctx.param("pulse_width");
+        // A porta de TEMPO (opcional): vazia ⇒ `t` para toda instância.
+        let times = scalar_values(ctx.input(1), VALUE_COL);
         let out = {
             let input = ctx.input(0);
             let n = input.count();
+            debug_assert!(
+                matches!(times.len(), 0 | 1) || times.len() == n,
+                "a porta `time` tem {} valores para {n} instancias",
+                times.len()
+            );
             // Pure per-instance map → parallel above the threshold (bit-identical,
             // no reduction). GPU/M5 Fase 0.
             let deltas: Vec<f32> = par_build(n, |i| {
-                let phase = t * cps + i as f32 * phase_stagger + phase0;
+                let phase = clock_at(&times, i, t) * cps + i as f32 * phase_stagger + phase0;
                 // DC `offset` shifts the oscillation centre; the whole
                 // contribution is falloff-masked (like every behaviour).
                 (waveform(wave, phase, pulse_width) * amplitude + offset) * falloff_at(input, i)

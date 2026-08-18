@@ -21,9 +21,7 @@
 //! `delta_i = fbm(P_i·scale, seed, octaves, roughness, type @ t·speed) ·
 //! amplitude · falloff_i`, added to the chosen channel.
 
-use ph2d_node_registry::{
-    NodeRegistry, ParamChannelRange, ParamGroup, ParamUnit, ParamUnitDecl, RegistryError,
-};
+use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -32,12 +30,19 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod channel;
 mod kernel;
+mod params_ui;
 use kernel::GPU_KERNEL;
+use params_ui::{PARAM_CHANNEL_RANGE, PARAM_GROUPS, PARAM_HINTS, PARAM_UNITS};
 mod noise;
-use channel::{apply_channel_delta, falloff_at};
+use channel::{apply_channel_delta, clock_at, falloff_at, scalar_values};
 use noise::{NoiseType, fbm};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+/// O tipo da porta `time` — espelho local do `VALUE` do `motion.drive`. Esta é uma
+/// crate-folha: o vocabulário partilhado é a **porta**, nunca um símbolo importado.
+const VALUE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
+/// A coluna que um stream de valor carrega (o que o `value.time` emite).
+const VALUE_COL: &str = "v";
 
 /// Hard ceiling on octaves — an untrusted `f32` param drives the fBm loop count.
 /// 8 is past the point of visible return (each octave halves the feature size).
@@ -47,10 +52,29 @@ const MAX_OCTAVES: u32 = 8;
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("motion.noise"),
     name: "motion.noise",
-    inputs: &[PortSpec {
-        name: "in",
-        ty: INST_VEC2,
-    }],
+    inputs: &[
+        PortSpec {
+            name: "in",
+            ty: INST_VEC2,
+        },
+        // ⚠️ **A PORTA DE TEMPO, e ela é per-ELEMENTO** (folha 06, `SUPERAR 1`).
+        // Desligada ⇒ `ctx.playhead()`, **byte-idêntico**; APENDADA, nunca inserida
+        // (as arestas de um doc salvo guardam o ÍNDICE da porta).
+        //
+        // ⚠️ **Aqui ela é a resposta ao `stagger` que a folha pedia** (linha 23) —
+        // e resposta MELHOR do que o knob: o `motion.noise` é o de CAMPO e o
+        // `motion.wiggle` é o de ÍNDICE (cerca 5), então um `stagger` por-índice
+        // *dentro* do noise apagaria a razão de os dois existirem. Uma porta não
+        // apaga nada: o campo continua espacial, e quem quiser defasar o TEMPO por
+        // índice liga um `value.time(stagger)` — a mesma peça que serve os irmãos.
+        //
+        // ⚠️ E o `loop_len` deste nó passa a fechar o ciclo **por elemento**: o wrap
+        // (`ph2d_fbm::loop_times`) mudou-se para dentro do laço.
+        PortSpec {
+            name: "time",
+            ty: VALUE,
+        },
+    ],
     outputs: &[PortSpec {
         name: "out",
         ty: INST_VEC2,
@@ -145,11 +169,23 @@ impl NodeOp for MotionNoise {
         // forças herda o `loop_period` no doc 89 folha 02). O raciocínio inteiro
         // (por que o tempo tem de WRAPAR primeiro, e por que o peso é smoothstep
         // e não linear) viajou com ela.
-        let (t_a, t_b, w) = ph2d_fbm::loop_times(ctx.playhead() as f32, ctx.param("loop_len"));
+        //
+        // ⚠️ **Ela é chamada DENTRO do laço agora**, porque o relógio pode ser um
+        // campo: com a porta ligada cada elemento fecha o PRÓPRIO ciclo. Com ela
+        // desligada os `n` cálculos partem do mesmo número e dão o mesmo resultado —
+        // byte-idêntico ao que se calculava uma vez.
+        let playhead = ctx.playhead() as f32;
+        let loop_len = ctx.param("loop_len");
+        let times = scalar_values(ctx.input(1), VALUE_COL);
 
         let out = {
             let input = ctx.input(0);
             let n = input.count();
+            debug_assert!(
+                matches!(times.len(), 0 | 1) || times.len() == n,
+                "a porta `time` tem {} valores para {n} instancias",
+                times.len()
+            );
             // Each element's own world position is the sample point, so the field
             // is spatially coherent; the playhead scrolls it along Y (the field
             // "flows" through the elements).
@@ -157,6 +193,8 @@ impl NodeOp for MotionNoise {
             let deltas: Vec<f32> = (0..n)
                 .map(|i| {
                     let (px, py) = pos[i];
+                    let (t_a, t_b, w) =
+                        ph2d_fbm::loop_times(clock_at(&times, i, playhead), loop_len);
                     let sample = |tt: f32| fbm(px * scale, py * scale + tt * speed, seed, spec);
                     // `w == 0` é o caminho de sempre: a segunda amostra nem é avaliada.
                     let s = if w == 0.0 {
@@ -206,147 +244,6 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     Ok(())
 }
-
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
-
-/// **O que o `loop_len` É** (doc 88, Wave A): uma DURAÇÃO. É a única unidade deste nó — a
-/// `amplitude` é `FromChannel` como a do oscilador seria, mas aqui ela não é declarada porque
-/// este nó ainda não passou pela varredura de unidades; o `loop_len` entra declarado para não
-/// nascer com a dívida.
-static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
-    param: "loop_len",
-    unit: ParamUnit::Seconds,
-}];
-
-/// As SEÇÕES deste nó (doc 88 B3). Nove controles respondem a três perguntas.
-///
-/// ⚠️ **"Timing" é o MESMO título do `motion.oscillator`, de propósito** — os dois respondem
-/// *em que relógio isto anda*, e dois nomes para a mesma pergunta ensinariam que são coisas
-/// diferentes (o precedente dos dois nós de curva, que partilham "Curve").
-///
-/// Ficam SOLTOS `channel`, `amplitude` e `type`: onde o ruído escreve, quanto ele vale, e que
-/// ruído ele é.
-static PARAM_GROUPS: &[ParamGroup] = &[
-    // A FORMA do campo.
-    ParamGroup::new("scale", "Field"),
-    ParamGroup::new("octaves", "Field"),
-    ParamGroup::new("roughness", "Field"),
-    ParamGroup::new("seed", "Field"),
-    // Em que relógio ele anda.
-    ParamGroup::new("speed", "Timing"),
-    ParamGroup::new("loop_len", "Timing"),
-];
-
-static PARAM_HINTS: &[ParamUiHint] = &[
-    // ⚠️ A faixa começa em 1: lacunarity < 1 faz as oitavas ficarem mais GRANDES
-    // que a base — o campo perde a leitura fractal e vira um borrão de baixa
-    // frequência. `2` é o universal, e `1,5..3` é onde a mão trabalha.
-    ParamUiHint {
-        param: "lacunarity",
-        label: "Lacunarity",
-        min: 1.0,
-        max: 4.0,
-        step: 0.05,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "channel",
-        label: "Channel",
-        min: 0.0,
-        max: 3.0,
-        step: 1.0,
-        widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rotation", "Size"],
-        },
-    },
-    ParamUiHint {
-        param: "amplitude",
-        label: "Amplitude",
-        min: 0.0,
-        max: 10.0,
-        step: 0.05,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "scale",
-        label: "Scale",
-        min: 0.02,
-        max: 2.0,
-        step: 0.02,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "octaves",
-        label: "Octaves",
-        min: 1.0,
-        max: MAX_OCTAVES as f32,
-        step: 1.0,
-        widget: ParamWidget::IntSlider,
-    },
-    ParamUiHint {
-        param: "roughness",
-        label: "Roughness",
-        min: 0.0,
-        max: 1.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "type",
-        label: "Type",
-        min: 0.0,
-        max: 2.0,
-        step: 1.0,
-        widget: ParamWidget::Enum {
-            labels: &["fBm", "Turbulence", "Ridged"],
-        },
-    },
-    ParamUiHint {
-        param: "speed",
-        label: "Speed",
-        min: 0.0,
-        max: 3.0,
-        step: 0.05,
-        widget: ParamWidget::Slider,
-    },
-    // A faixa de um loop é a de um take de motion graphics: 0 (nunca fecha) até 30 s.
-    // ⚠️ **CORRIGIDO (doc 89, grupo B):** este comentário dizia que *"a caixa aceita
-    // além dele pelo `ParamHardMax`"* e isso é FALSO — este nó nunca chamou
-    // `register_param_hard_max`, e o shell resolve `param_hard_max(..).unwrap_or(max)`,
-    // logo a caixa PARA nos 30 s. Um ciclo mais longo é hoje inalcançável neste nó.
-    // O irmão `value.noise` declara o dele (2²⁴, precisão de representação); subir
-    // este muda o que a caixa aceita e é decisão do dono deste nó.
-    ParamUiHint {
-        param: "loop_len",
-        label: "Loop Length",
-        min: 0.0,
-        max: 30.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "seed",
-        label: "Seed",
-        min: 0.0,
-        max: 100.0,
-        step: 1.0,
-        widget: ParamWidget::Seed,
-    },
-];
-
-/// **A faixa que estas magnitudes querem quando o canal é ANGULAR** — graus, não
-/// unidades de mundo. Uma volta para cada lado, discada em graus inteiros.
-///
-/// ⚠️ Ela mora AQUI e não numa tabela do shell porque a tabela apodreceu: medida,
-/// ela cobria três dos seis nós que precisavam dela, e cada um dos três ausentes
-/// esperava o próprio report do artista.
-const TURN: f32 = 360.0;
-static PARAM_CHANNEL_RANGE: &[ParamChannelRange] = &[ParamChannelRange {
-    param: "amplitude",
-    min: 0.0,
-    max: TURN,
-    step: 1.0,
-}];
 
 #[cfg(test)]
 mod tests {

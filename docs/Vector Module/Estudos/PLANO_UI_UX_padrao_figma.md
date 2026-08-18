@@ -1,5 +1,13 @@
 # Plano — o Vector vira a ferramenta de UI/UX do PH2D
 
+> ⚠️ **Cortado em 2026-08-18.** A narrativa foi **verbatim** para
+> [`PLANO_UI_UX_padrao_figma.md`](../../archive/docs-2026-08-18/Vector%20Module/PLANO_UI_UX_padrao_figma.md) (remontagem confere sha256 com o original).
+>
+> ⚠️ **Uma referência `§N` que você não encontrar aqui está LÁ** — o corte manteve a
+> numeração original de propósito, para que os ponteiros internos continuem a resolver
+> num `grep` sobre o arquivo. ⛔ E as **recusas medidas** têm índice no fim deste doc:
+> consulte-o **antes** de propor qualquer otimização ou mudança de desenho aqui.
+
 > **Volume de PLANO**, não de estudo. Os três manuais desta pasta (`_vetoriais`, `_figma`, `_rive`)
 > dizem *o que existe no mundo*; este diz **o que construir aqui, em que ordem, com que porta única,
 > e com que número ao lado**. Ele consome o Vol. 2 (Figma) inteiro, mais o §7 do Vol. 3 (Rive:

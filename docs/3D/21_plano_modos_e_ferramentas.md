@@ -1,5 +1,13 @@
 # Plano — OS TRÊS MODOS DE REFERÊNCIA, o Basic/Pro, e as ferramentas que faltam
 
+> ⚠️ **Cortado em 2026-08-18.** A narrativa foi **verbatim** para
+> [`21_plano_modos_e_ferramentas.md`](../archive/docs-2026-08-18/3D/21_plano_modos_e_ferramentas.md) (remontagem confere sha256 com o original).
+>
+> ⚠️ **Uma referência `§N` que você não encontrar aqui está LÁ** — o corte manteve a
+> numeração original de propósito, para que os ponteiros internos continuem a resolver
+> num `grep` sobre o arquivo. ⛔ E as **recusas medidas** têm índice no fim deste doc:
+> consulte-o **antes** de propor qualquer otimização ou mudança de desenho aqui.
+
 *Ordem do Enio, 2026-08-12: cada tool que não é idêntica nas três referências
 ganha um dropdown de três modos (**l-mode** = literatura · **b-mode** = Blender ·
 **s-mode** = SculptGL); todo tool ganha dois níveis de UI (**Basic** sem ajustes

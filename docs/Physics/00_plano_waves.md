@@ -1,5 +1,13 @@
 # 00 · Plano de waves — o motor de física global (`line/physics`)
 
+> ⚠️ **Cortado em 2026-08-18.** A narrativa foi **verbatim** para
+> [`00_plano_waves.md`](../archive/docs-2026-08-18/Physics/00_plano_waves.md) (remontagem confere sha256 com o original).
+>
+> ⚠️ **Uma referência `§N` que você não encontrar aqui está LÁ** — o corte manteve a
+> numeração original de propósito, para que os ponteiros internos continuem a resolver
+> num `grep` sobre o arquivo. ⛔ E as **recusas medidas** têm índice no fim deste doc:
+> consulte-o **antes** de propor qualquer otimização ou mudança de desenho aqui.
+
 > Normativo. Companheiro da [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md)
 > (decide o *quê* e o *porquê*); este plano decide o *como*, wave a wave. Visão:
 > [`01_visao.md`](01_visao.md). Estado vivo: [`HANDOFF_line_physics.md`](handoffs/HANDOFF_line_physics.md).

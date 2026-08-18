@@ -1,5 +1,13 @@
 # 28 — Otimizações do Painter: o que funcionou, o que NÃO funcionou, e o que serve aos outros modos
 
+> ⚠️ **Cortado em 2026-08-18.** A narrativa foi **verbatim** para
+> [`28_otimizacoes_o_que_funcionou.md`](../archive/docs-2026-08-18/Painter/28_otimizacoes_o_que_funcionou.md) (remontagem confere sha256 com o original).
+>
+> ⚠️ **Uma referência `§N` que você não encontrar aqui está LÁ** — o corte manteve a
+> numeração original de propósito, para que os ponteiros internos continuem a resolver
+> num `grep` sobre o arquivo. ⛔ E as **recusas medidas** têm índice no fim deste doc:
+> consulte-o **antes** de propor qualquer otimização ou mudança de desenho aqui.
+
 > **Este doc é o registro de uma jornada de perf inteira** (2026-07-26, `line/Painter`), escrito para que
 > ninguém reconstrua o que já foi medido e reprovado. O plano operacional vive no
 > [26_plano_performance_procreate.md](26_plano_performance_procreate.md); aqui está o **saldo**: cada

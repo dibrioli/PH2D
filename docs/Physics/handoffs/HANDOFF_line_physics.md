@@ -1,5 +1,13 @@
 # HANDOFF / Tracker — `line/physics` (o motor de física global)
 
+> ⚠️ **Cortado em 2026-08-18.** A narrativa foi **verbatim** para
+> [`HANDOFF_line_physics.md`](../../archive/tracker-physics-2026-08-18/HANDOFF_line_physics.md) (remontagem confere sha256 com o original).
+>
+> ⚠️ **Uma referência `§N` que você não encontrar aqui está LÁ** — o corte manteve a
+> numeração original de propósito, para que os ponteiros internos continuem a resolver
+> num `grep` sobre o arquivo. ⛔ E as **recusas medidas** têm índice no fim deste doc:
+> consulte-o **antes** de propor qualquer otimização ou mudança de desenho aqui.
+
 > ⚠️ **VAI ASSUMIR ESTA LINHA? Comece por
 > [`HANDOFF_REABERTURA_line_physics_2026-08-10.md`](HANDOFF_REABERTURA_line_physics_2026-08-10.md)** —
 > a linha foi **REABERTA DO ZERO em 2026-08-10** (worktree nova, HEAD = `main`, **zero commits**,

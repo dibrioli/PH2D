@@ -37,7 +37,10 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod channel;
 pub use channel::DRIVE_COL_KEY;
-use channel::{CH_CUSTOM, CH_FALLOFF, CH_HUE, CH_SAT, CH_VAL, Combine, drive_channel, drive_named};
+use channel::{
+    CH_CUSTOM, CH_FALLOFF, CH_HUE, CH_SAT, CH_SIZE_X, CH_SIZE_Y, CH_VAL, Combine, drive_channel,
+    drive_named,
+};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 /// The value type — the continuous per-instance scalar field on the `v` column
@@ -210,6 +213,43 @@ const DRIVE_SIZE: GpuKernel = GpuKernel {
             dim: Dim::Vec2,
             access: ColumnAccess::ReadWrite,
             // An element with no size starts UNIT, not zero (`base_vec2`).
+            identity: [1.0, 1.0, 0.0, 0.0],
+            port: 0,
+        },
+        drive_common!()[0],
+        drive_common!()[1],
+    ],
+    params: DRIVE_PARAMS,
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
+};
+
+/// **Size X / Size Y** — writes ONE component of `size`, from the unit identity.
+///
+/// ⚠️ **Um kernel para os dois eixos, ramificando em `params.channel`** — o molde exacto
+/// do [`DRIVE_P`], e pelo mesmo motivo: os dois escrevem a MESMA coluna com a MESMA
+/// binding, então dois kernels seriam duas cópias de uma lei que não difere.
+const DRIVE_SIZE_AXIS: GpuKernel = GpuKernel {
+    wgsl: "\
+        let dr_comp = i32(drive_round(params.channel)) - 10;\n\
+        let dr_mode = i32(drive_round(params.mode));\n\
+        let dr_s = read_in_size(i);\n\
+        var dr_cur = dr_s.x;\n\
+        if (dr_comp == 1) { dr_cur = dr_s.y; }\n\
+        let dr_v = read_value_v(i) * params.scale;\n\
+        let dr_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
+        let dr_out = dr_cur + (drive_combine(dr_cur, dr_v, dr_mode) - dr_cur) * dr_f;\n\
+        var dr_next = dr_s;\n\
+        if (dr_comp == 1) { dr_next.y = dr_out; } else { dr_next.x = dr_out; }\n\
+        write_size(i, dr_next);\n",
+    wgsl_lib: DRIVE_LIB,
+    bindings: &[
+        ColumnBinding {
+            column: "size",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            // A MESMA identidade unitaria do `DRIVE_SIZE`: uma peca sem tamanho parte de 1.
             identity: [1.0, 1.0, 0.0, 0.0],
             port: 0,
         },
@@ -406,6 +446,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             CH_FALLOFF => &DRIVE_FALLOFF,
             CH_HUE | CH_SAT | CH_VAL => &DRIVE_HSV,
             0 | 1 => &DRIVE_P,
+            CH_SIZE_X | CH_SIZE_Y => &DRIVE_SIZE_AXIS,
             _ => &DRIVE_SIZE,
         }
     }),
@@ -477,7 +518,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "channel",
         label: "Channel",
         min: 0.0,
-        max: 9.0,
+        max: 11.0,
         step: 1.0,
         widget: ParamWidget::Enum {
             // ⚠️ **Apendados**, nunca inseridos: o índice é o que o grafo guarda, então uma
@@ -494,6 +535,8 @@ static PARAM_HINTS: &[ParamUiHint] = &[
                 "Saturation",
                 "Value",
                 "Custom…",
+                "Size X",
+                "Size Y",
             ],
         },
     },

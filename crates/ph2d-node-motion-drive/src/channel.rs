@@ -122,6 +122,24 @@ pub(crate) const CH_VAL: i32 = 8;
 /// lento é honesto; um nome escrito no buffer errado não é.*
 pub(crate) const CH_CUSTOM: i32 = 9;
 
+/// **UM EIXO do tamanho** — o *Scale + S.XYZ* do C4D, contra o *Uniform Scale* que o
+/// canal `Size` (3) sempre foi.
+///
+/// ⚠️ **Metade do pedido já era exprimível e a outra metade não, e a medição separou as
+/// duas** (`measure_size_axes`): `drive(Size) → motion.scale(uniform=0, amount≠amount_y)`
+/// dá **anisotropia FIXA sobre uma magnitude DIRIGIDA** (medido, pior `|x−y| = 1,500000`
+/// com razão 4:1 em todo elemento) — que é o squash-and-stretch inteiro. O que ela **não**
+/// dá é **DOIS campos independentes**, um por eixo: o `motion.scale` escala com um PARAM,
+/// que é o mesmo número para todas as peças. E o `Custom…` também não — escrever um
+/// `Scalar` por cima de um `Vec2` mudaria o TIPO da coluna, então ele **recusa** e devolve
+/// a entrada verbatim (medido: `|x−y| = 0,000000`).
+///
+/// ⚠️ **Apendados, nunca inseridos** — o `channel` é um param que o **documento GUARDA**,
+/// e o `CH_CUSTOM` já pagou essa lição: renumerar re-aponta em silêncio todo grafo salvo.
+pub(crate) const CH_SIZE_X: i32 = 10;
+/// Ver [`CH_SIZE_X`].
+pub(crate) const CH_SIZE_Y: i32 = 11;
+
 /// A chave do text param que carrega o NOME da coluna — o espelho exacto do
 /// `ATTR_KEY` do `value.attribute`, que é o leitor deste escritor.
 pub const DRIVE_COL_KEY: &str = "column";
@@ -335,6 +353,18 @@ pub(crate) fn drive_channel(
             }
             out.set("falloff", Column::Scalar(f));
         }
+        // **UM eixo do tamanho** ([`CH_SIZE_X`]) — o espelho EXACTO do braço `0 | 1` do
+        // `P`: a mesma lei, a mesma mistura, a mesma identidade unitária do braço `Size`
+        // logo abaixo; o que muda é **qual componente** recebe.
+        CH_SIZE_X | CH_SIZE_Y => {
+            let comp = (channel - CH_SIZE_X) as usize; // 0 = X, 1 = Y
+            let mut s = base_vec2(input, "size", n, [1.0, 1.0]);
+            for (i, si) in s.iter_mut().enumerate() {
+                let driven = mode.apply(si[comp], value_at(vals, i) * scale);
+                si[comp] = blend(si[comp], driven, falloff_at(input, i));
+            }
+            out.set("size", Column::Vec2(s));
+        }
         _ => {
             let mut s = base_vec2(input, "size", n, [1.0, 1.0]);
             for (i, si) in s.iter_mut().enumerate() {
@@ -352,6 +382,137 @@ pub(crate) fn drive_channel(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **Todo canal que o nó ROTEIA tem um chip no menu.**
+    ///
+    /// ⚠️ **Achado por mutação em 2026-08-18:** apagar um rótulo da lista deixa a suíte
+    /// inteira VERDE e o canal do fim **inalcançável** — ele continua a existir no
+    /// `channel_column`, no braço da CPU e no `variant_by_param`, e nenhuma superfície o
+    /// oferece. ⚠️ E o `max` do hint **não** é quem o guarda: medido, a row de enum do
+    /// painel clampa por `labels.len()` e **ignora `min`/`max`**, então para um enum
+    /// aquela faixa é decorativa — um gate sobre ela pinaria uma lei que o produto não
+    /// consome (foi escrito, medido e descartado, e ele acusava três nós corretos).
+    ///
+    /// A régua é o **ÚLTIMO índice implementado**, o único número que cresce quando um
+    /// canal nasce.
+    #[test]
+    fn every_channel_the_node_routes_has_a_chip_in_the_menu() {
+        let hint = crate::PARAM_HINTS
+            .iter()
+            .find(|h| h.param == "channel")
+            .expect("o canal tem hint");
+        let ph2d_node_registry::ParamWidget::Enum { labels } = hint.widget else {
+            panic!("o canal e' um enum");
+        };
+        // CONTROLE: a varredura achou a lista do CANAL, e nao uma vazia.
+        assert!(labels.contains(&"Custom…"), "os rotulos sao os do canal");
+        assert_eq!(
+            labels.len() as i32,
+            CH_SIZE_Y + 1,
+            "a lista de chips tem de cobrir 0..={}; ela oferece {}",
+            CH_SIZE_Y,
+            labels.len()
+        );
+    }
+
+    fn sizes(out: &Stream) -> Vec<[f32; 2]> {
+        match out.get("size").unwrap() {
+            Column::Vec2(v) => v.clone(),
+            _ => panic!("size e' Vec2"),
+        }
+    }
+
+    /// Uma fileira com tamanhos NÃO-uniformes e NÃO-unitários de propósito: com
+    /// `[1,1]` o eixo intocado seria indistinguível da identidade que o
+    /// `base_vec2` inventa, e com `x == y` a troca de eixo passaria.
+    fn sized_row() -> Stream {
+        Stream::new(3).with(
+            "size",
+            Column::Vec2(vec![[0.5, 2.0], [1.5, 0.25], [3.0, 0.75]]),
+        )
+    }
+
+    /// **Dirigir UM eixo deixa o outro exactamente onde estava.**
+    #[test]
+    fn driving_one_size_axis_leaves_the_other_alone() {
+        let input = sized_row();
+        let before = sizes(&input);
+
+        let x = sizes(&drive_channel(&input, CH_SIZE_X, &[7.0], 1.0, Combine::Set));
+        for (i, s) in x.iter().enumerate() {
+            assert_eq!(s[0], 7.0, "o eixo X recebe (elemento {i})");
+            assert_eq!(
+                s[1].to_bits(),
+                before[i][1].to_bits(),
+                "o eixo Y fica AO BIT (elemento {i})"
+            );
+        }
+
+        let y = sizes(&drive_channel(&input, CH_SIZE_Y, &[7.0], 1.0, Combine::Set));
+        for (i, s) in y.iter().enumerate() {
+            assert_eq!(s[1], 7.0, "o eixo Y recebe (elemento {i})");
+            assert_eq!(
+                s[0].to_bits(),
+                before[i][0].to_bits(),
+                "o eixo X fica AO BIT (elemento {i})"
+            );
+        }
+    }
+
+    /// **O canal `Size` de sempre continua a escrever os DOIS**, ao bit.
+    ///
+    /// ⚠️ Este é o CONTROLE que impede a wave de mudar o mundo que já shipava: sem ele,
+    /// um braço novo que roubasse o `Size` passaria pelos gates dos eixos.
+    #[test]
+    fn the_uniform_size_channel_still_writes_both_axes() {
+        let out = sizes(&drive_channel(&sized_row(), 3, &[7.0], 1.0, Combine::Set));
+        for (i, s) in out.iter().enumerate() {
+            assert_eq!((s[0], s[1]), (7.0, 7.0), "os dois eixos (elemento {i})");
+        }
+    }
+
+    /// **DOIS campos independentes, um por eixo — o que a composição NÃO dava.**
+    ///
+    /// Medido antes de construir (`measure_size_axes`): `drive(Size) → motion.scale`
+    /// dá anisotropia com razão FIXA (o `motion.scale` escala com um PARAM, igual para
+    /// toda peça) e o `Custom…` **recusa** escrever um escalar sobre um `Vec2`. Aqui
+    /// os dois eixos recebem campos que **não são múltiplos um do outro**, e nenhuma
+    /// razão constante reproduz isso.
+    #[test]
+    fn two_independent_fields_can_drive_the_two_axes() {
+        let input = Stream::new(3).with("size", Column::Vec2(vec![[1.0, 1.0]; 3]));
+        let step1 = drive_channel(&input, CH_SIZE_X, &[1.0, 2.0, 3.0], 1.0, Combine::Set);
+        let out = sizes(&drive_channel(
+            &step1,
+            CH_SIZE_Y,
+            &[3.0, 1.0, 2.0],
+            1.0,
+            Combine::Set,
+        ));
+        assert_eq!(out, vec![[1.0, 3.0], [2.0, 1.0], [3.0, 2.0]]);
+        // O discriminante: a razão x/y MUDA de peça para peça. Uma anisotropia fixa
+        // (o que o `motion.scale` dá) teria a MESMA razão nas três.
+        let r: Vec<f32> = out.iter().map(|s| s[0] / s[1]).collect();
+        assert!(
+            (r[0] - r[1]).abs() > 0.1 && (r[1] - r[2]).abs() > 0.1,
+            "as razoes tem de diferir entre pecas, e medem {r:?}"
+        );
+    }
+
+    /// **A máscara alcança o eixo** — `falloff = 0` deixa o tamanho onde estava, ao bit.
+    #[test]
+    fn a_masked_element_keeps_its_size_axis() {
+        let input = Stream::new(2)
+            .with("size", Column::Vec2(vec![[0.5, 2.0], [1.5, 0.25]]))
+            .with("falloff", Column::Scalar(vec![1.0, 0.0]));
+        let out = sizes(&drive_channel(&input, CH_SIZE_X, &[9.0], 1.0, Combine::Set));
+        assert_eq!(out[0][0], 9.0, "falloff 1 leva o drive inteiro");
+        assert_eq!(
+            out[1][0].to_bits(),
+            1.5f32.to_bits(),
+            "falloff 0 nao deixa o drive tocar o eixo"
+        );
+    }
 
     #[test]
     fn a_length_one_value_broadcasts_to_every_instance() {

@@ -109,6 +109,14 @@ fn clamp_channel_ranged_params(
 /// `0` X, `1` Y, `2` Rotation, `3` Size).
 pub(super) const CHANNEL_ROTATION: i32 = 2;
 
+/// Os dois eixos do tamanho do `motion.drive` (`CH_SIZE_X`/`CH_SIZE_Y`, apendados
+/// em 2026-08-18). ⚠️ **Eles são a MESMA grandeza que o `Size` (3)** — um eixo de
+/// um tamanho não muda de unidade por ser um eixo —, e é por isso que os três
+/// entram no mesmo braço em vez de o par cair no `_`.
+const CHANNEL_SIZE: i32 = 3;
+const CHANNEL_SIZE_X: i32 = 10;
+const CHANNEL_SIZE_Y: i32 = 11;
+
 /// **What a magnitude MEANS on the channel it drives** (doc 88) — the resolution
 /// of [`ParamUnit::FromChannel`], living next to the ranges and presets that
 /// already answer the same question for their own halves.
@@ -126,7 +134,8 @@ pub(super) fn channel_unit(channel: i32) -> ParamUnit {
     match channel {
         0 | 1 => ParamUnit::Length,           // Position X / Y: world metres
         CHANNEL_ROTATION => ParamUnit::Angle, // the `rot` column: degrees
-        3 => ParamUnit::Ratio,                // Size: a scale delta, dimensionless
+        // Size e os DOIS eixos dele: um delta de escala, adimensional.
+        CHANNEL_SIZE | CHANNEL_SIZE_X | CHANNEL_SIZE_Y => ParamUnit::Ratio,
         _ => ParamUnit::None,
     }
 }
@@ -149,5 +158,51 @@ fn wave_channel_amplitude(channel: i32) -> f32 {
         CHANNEL_ROTATION => 30.0, // ±30 degrees
         3 => 0.3,                 // Size: ±0.3 scale
         _ => 1.0,                 // Position: ±1 world unit
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// **Os dois eixos de um tamanho são a MESMA grandeza que o tamanho.**
+    ///
+    /// ⚠️ Esta tabela **ENUMERA canais**, e um canal novo cai no `_` em silêncio — foi
+    /// exactamente o que aconteceu com a faixa por-canal em 2026-08-14, e o par
+    /// `Size X`/`Size Y` de 18/08 é a segunda oportunidade de o repetir. O gate não
+    /// afirma *qual* é a unidade (isso é decisão de produto e muda com ela): afirma que
+    /// os três **concordam**, que é a propriedade que um eixo novo tem de herdar.
+    #[test]
+    fn the_two_size_axes_carry_the_same_unit_as_the_size_itself() {
+        let size = channel_unit(CHANNEL_SIZE);
+        assert_eq!(
+            channel_unit(CHANNEL_SIZE_X),
+            size,
+            "o eixo X de um tamanho tem de ler a unidade do tamanho"
+        );
+        assert_eq!(
+            channel_unit(CHANNEL_SIZE_Y),
+            size,
+            "o eixo Y de um tamanho tem de ler a unidade do tamanho"
+        );
+        // E o CONTROLE: a tabela ainda DISCRIMINA. Sem isto, uma tabela que
+        // devolvesse a mesma coisa para tudo satisfaria as duas linhas acima.
+        assert_ne!(
+            channel_unit(CHANNEL_ROTATION),
+            size,
+            "a rotacao nao pode ler a mesma unidade que o tamanho"
+        );
+    }
+
+    /// ⚠️ **Os dois consumidores desta tabela perguntam UMA coisa** — *este canal é
+    /// ANGULAR?* — e um eixo de tamanho não é. O gate existe porque a resposta certa
+    /// aqui é a mesma com `Ratio` e com o antigo `None`, então a linha acima poderia
+    /// mudar sem ninguém notar que ela alcança a conversão de graus.
+    #[test]
+    fn no_size_channel_is_angular() {
+        for ch in [CHANNEL_SIZE, CHANNEL_SIZE_X, CHANNEL_SIZE_Y] {
+            assert_ne!(channel_unit(ch), ParamUnit::Angle, "canal {ch}");
+        }
+        assert_eq!(channel_unit(CHANNEL_ROTATION), ParamUnit::Angle);
     }
 }

@@ -769,6 +769,51 @@ fn the_projection_angle_arm_matches_the_cpu_within_epsilon() {
     assert_gpu_parity(&gpu, &reg, &g, out, 2); // grid + drive
 }
 
+/// **Os DOIS eixos do tamanho, no device** (folha 06 linha 39) — e a cadeia exercita as
+/// duas metades do `DRIVE_SIZE_AXIS`, que é UM kernel a ramificar em `params.channel`.
+///
+/// ⚠️ **Dois campos INDEPENDENTES, um por eixo**, e é isso que a wave acrescenta: o
+/// `motion.scale` dá anisotropia com razão FIXA (ele escala com um param, igual para toda
+/// peça) e o `Custom…` recusa escrever um escalar sobre um `Vec2`. Com sementes
+/// diferentes as duas rampas não são múltiplas uma da outra, então um kernel que
+/// escrevesse o eixo errado — ou os dois — sai da paridade.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_two_size_axis_arms_match_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 40.0);
+
+    let mut axis = |g: &mut Graph, src: NodeId, channel: f32, seed: f32| {
+        let f = g.add_node("value.instance_field");
+        g.set_param(f, "mode", 3.0); // Random — dois campos que nao sao multiplos
+        g.set_param(f, "seed", seed);
+        connect(g, grid, f);
+        let d = g.add_node("motion.drive");
+        g.set_param(d, "channel", channel);
+        g.set_param(d, "mode", 0.0); // Add, sobre a identidade unitaria
+        g.set_param(d, "scale", 0.7);
+        connect(g, src, d);
+        g.connect(Edge {
+            from: (f, 0),
+            to: (d, 1),
+            delayed: false,
+        })
+        .unwrap();
+        d
+    };
+    let dx = axis(&mut g, grid, 10.0, 0.0);
+    let dy = axis(&mut g, dx, 11.0, 7.0);
+
+    let out = g.add_node("motion.output");
+    connect(&mut g, dy, out);
+    assert_gpu_parity(&gpu, &reg, &g, out, 5); // grid + 2 campos + 2 drives
+}
+
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
 fn field_box_kernel_matches_the_cpu_within_epsilon() {

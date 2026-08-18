@@ -33,5 +33,5 @@ integration test passou 7/7 cobrindo todos os encoders enquanto o lib unit test 
 mesmo encoder flakava). (3) Ainda assim rode UM cargo de cada vez (sequencie
 `cmd1; cmd2`) pra não AGRAVAR. (4) Pro CI: precisa retry-on-SIGBUS no job de cook,
 ou nextest com retries — senão o job vai flakar ~50%. Generaliza
-[[feedback-parallel-agent-commit-collision]] pro eixo build/test. Vide armadilha #1
+[[feedback_parallel_agent_collision]] pro eixo build/test. Vide armadilha #1
 do [[project-ktx2-phase2-v4-accepted-2026-05-27]].

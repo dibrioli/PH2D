@@ -7,6 +7,12 @@ metadata:
   originSessionId: 72e6898d-e3df-4276-8ee8-f05e2d2ee259
 ---
 
+> ⚠️ **MODO C APENAS (shared tree).** Esta memória descreve a colisão de índice/commit entre
+> agentes que partilham UMA árvore. No **Modo L** (workstation, [ADR-0106](../docs/architecture/decisions/0106-parallel-dev-lines-worktrees-workstation.md))
+> cada linha tem worktree e índice PRÓPRIOS e esta classe inteira de perigo não existe — valem
+> só os conflitos de merge (DIRETRIZ §1.5.5–1.5.6). ⚠️ O tier decide: `bash scripts/hw-profile.sh`.
+> Sem este aviso, o comportamento por omissão era executar Modo C dentro de uma linha Modo L.
+
 Em 2026-05-28 durante T1.9 Painter wire (Coord-A), outro agente (provavelmente asset-cooker W1.T6 / commit `2ab3fac`) fez `git reset --hard HEAD` após committar SEU trabalho, obliterando ~800 LOC do meu WIP UNCOMMITTED em arquivos tracked:
 
 - `crates/ph2d-tool-painter/src/tool.rs` (T1.9 wire completo + 14 remediações: 9 fields, begin/queue/end_stroke, attach/detach_journal, 4 helper free-fns, R-9 threading doc)

@@ -38,5 +38,5 @@ próxima LLM não achar o arquivo e concluir que o assunto não tem dono. Os tr�
   de outro módulo que não o destino? Uma em 257 estava errada.
 
 Ver [[feedback_python_replace_silent_noop_after_fmt]] (o `assert old in s` que salvou o 3º
-link), [[feedback_a_token_rewrite_scopes_to_the_changed_files_not_the_whole_tree]] e
+link), [[feedback_a_token_rewrite_scopes_to_changed_files_not_the_whole_tree]] e
 [[reference_topic_gate_discipline]].

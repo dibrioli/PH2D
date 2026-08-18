@@ -7,6 +7,12 @@ metadata:
   originSessionId: 3ddadfd6-3d6c-449e-88a1-41bdaa4c7fc9
 ---
 
+> ⚠️ **MODO C APENAS (shared tree).** Esta memória descreve a colisão de índice/commit entre
+> agentes que partilham UMA árvore. No **Modo L** (workstation, [ADR-0106](../docs/architecture/decisions/0106-parallel-dev-lines-worktrees-workstation.md))
+> cada linha tem worktree e índice PRÓPRIOS e esta classe inteira de perigo não existe — valem
+> só os conflitos de merge (DIRETRIZ §1.5.5–1.5.6). ⚠️ O tier decide: `bash scripts/hw-profile.sh`.
+> Sem este aviso, o comportamento por omissão era executar Modo C dentro de uma linha Modo L.
+
 Quando várias sessões Claude Code compartilham o mesmo working tree e UMA delas tem arquivos no índice (ex.: Implementador mid-commit) OU mudanças unstaged em **arquivos compartilhados**, um `git add <meus> && git commit` normal **agarra os arquivos staged da outra sessão** no meu commit (a colisão de [[feedback_parallel_agent_collision]]).
 
 **Solução para arquivos DISJUNTOS** (cada sessão mexe em files diferentes): commit escopado por pathspec —

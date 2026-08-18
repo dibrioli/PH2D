@@ -10,7 +10,14 @@ Ao pedir decisão ao Enio, apresentar **2-3 opções concretas** com trade-offs 
 
 **How to apply:** usar `AskUserQuestion` com 2-4 opções; primeira opção é a recomendada com label terminando em "(Recomendado)" quando for de fato a melhor escolha técnica; descrição concisa do trade-off em cada opção. Evitar perguntas vagas. Para decisões dentro de Hard Rules + tiebreakers do SKILL, decidir solo sem perguntar.
 
-**Formato de resposta** (não pergunta): markdown estruturado, headers, tabelas, listas; código em blocos com linguagem; pt-BR direto sem floreio. Usar links markdown clicáveis para arquivos (formato VSCode: `[file.md](path/file.md)`).
+**Formato de resposta** (não pergunta): pt-BR direto sem floreio; código em blocos com linguagem.
+
+⚠️ **Esta linha dizia também "headers, tabelas" e "links markdown para arquivos", e isso ficou
+para trás da correção de 2026-08-18 abaixo** — sobreviveu na mesma frase, a prescrever o
+oposto. Para o **ENIO**: nada de nome de arquivo nem link de código, a menos que ele peça
+(`CLAUDE.md §0.8`). Tabela só quando ela for a coisa mais **clara** para um leigo (uma tabela
+de 12 colunas com nomes de crate não é). Para **handoff/ADR/gate/commit**, cujo leitor é a
+próxima LLM: markdown denso, tabelas e links continuam certos e exigidos.
 
 ⚠️ **CORRIGIDO em 2026-08-18 — esta linha dizia "densidade alta", e o Enio pediu o OPOSTO:**
 

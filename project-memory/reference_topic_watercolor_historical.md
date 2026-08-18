@@ -15,11 +15,11 @@ supersedidas — mantidas como arquivos, fora do índice principal:
 - [[project_wash_undo_event_driven_rebuild]] — write parcial: atualize AMBOS gêmeos
 - [[project_wash_pigment_color_mixbox_residual]] — c=unmix + residual r=rgb−mix(c)
 - [[project_wash_gpu_resident_reimpl]] — portar física B1-B9; zero fallback CPU
-- [[project_wash_curtis_gd_migration]] — divergiram por NÃO implementar Curtis
+- [[project_wash_curtis_gd_migration_2026_06_15]] — divergiram por NÃO implementar Curtis
 - [[project_aquarela_paper_ramp_broken]] — REVERTIDA; não reconstrua sem pedir
 - [[project_painter_fluid_4k_perf_architecture]] — hot loop CPU + readback é o gargalo
 - [[project_painter_rendering_modes_research]] — design NÃO implementado (era watercolor)
-- [[project_painter_w3_audit2_perf]] — audit-2 W3 (tracker velho; partial GPU upload)
+- [[project_painter_w3_audit2_perf_2026_06_01]] — audit-2 W3 (tracker velho; partial GPU upload)
 - [[project_wos_diffusion_over_budget_2026_06_06]] — vector W7 (sistema retirado por ADR-0108)
 - [[project_vector_node_opaque_carrier]] — nodes de vector retirados (ADR-0108)
 - [[project_brush_along_path_satellite_not_node]] — crates removidas (ADR-0099); lição na DIRETRIZ §2

@@ -1,11 +1,22 @@
 ---
 name: project-painter-core-files-at-loc-cap
-description: Painter core state files (paint.rs / brush_settings.rs / stroke.rs / trait_impls.rs) sit at EXACTLY 600 LOC — any feature touching PaintState/BrushSettings/stroke emission overflows the cap; budget a split
+description: HISTÓRICO — a premissa (arquivos do Painter no teto de 600) DISSOLVEU-SE em 2026-08-18; o que sobrevive são os movimentos de split de baixo risco
 metadata: 
   node_type: memory
   type: project
   originSessionId: b76ad54d-f3ea-4098-9378-ab19bd9a93eb
 ---
+
+> ⚠️ **A PREMISSA DESTA MEMÓRIA DISSOLVEU-SE — não orce split por causa dela.** Medido em
+> 2026-08-18: o cap do workspace é **700**, não 600 ([ADR-0105](../docs/architecture/decisions/0105-file-loc-cap-600-to-700.md)),
+> e os quatro arquivos medem **315 · 621 · 650 · 627** — nenhum no teto, nenhum a estourar.
+> O que sobrevive é a **técnica** (os movimentos de split abaixo, verificados) e a razão de
+> fundo: *uma struct não se parte entre arquivos, então a adição de campo é irredutível — a
+> folga tem de vir de outro lugar*. ⚠️ E há **quatro caps distintos** neste repo — workspace
+> **700** · painel **600** arquivo / **200** função · shell **600** · widget **500** — confundi-los
+> é erro recorrente. A fonte é o gate, nunca uma nota: [`architecture_workspace_file_loc_cap.rs`](../crates/ph2d-editor-core/tests/architecture_workspace_file_loc_cap.rs).
+>
+> *Registro do texto original, para quem quiser a história:*
 
 Several **painter core files are pinned at EXACTLY 600 LOC** (the `architecture_workspace_file_loc_cap` ceiling, NOT allowlisted): `ph2d-tool-painter/src/tool/paint.rs`, `tool/paint/brush_settings.rs`, `ph2d-painter-brush/src/stroke.rs`, `ph2d-tool-painter/src/tool/trait_impls.rs`. So ANY feature that adds a `PaintState` field, a `BrushSettings` snapshot field, a stroke-emission hook, or a `set_source`/trait line **overflows the cap** and the build goes red on the LOC gate. Budget a split into the work — don't discover it at ship.
 

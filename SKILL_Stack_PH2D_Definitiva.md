@@ -256,6 +256,39 @@ Cargo features são explosivas em combinação. Esta é a lista canônica; combi
 
 **Cada hard rule é citável por ID (`HR-N`).** Cada uma carrega `Rule | Rationale | Enforced by`.
 
+> ## ⚠️ LEIA ANTES DE CONFIAR NUM «Enforced by» DESTA SEÇÃO
+>
+> **Auditoria de 2026-08-18, cada linha verificada contra o disco:** de 18 Hard Rules, **12
+> nomeiam um executor que NÃO EXISTE com aquele nome**. A regra segue válida — o que não
+> existe é a rede. E confiar numa rede ausente é pior do que saber que não há rede: foi
+> exatamente isto que criou o gate irmão `architecture_docs_reference_live_gates`, depois de
+> um subagente atento ler a doc e reportar como vivos dois gates apagados.
+>
+> A causa é uma só e é estrutural: **a raiz `tests/` do repo só tem `fixtures/` e `spike/`.**
+> Todo caminho `tests/<domínio>/...` abaixo é de uma árvore que nunca existiu aqui.
+>
+> **Quatro têm executor REAL, com outro nome** — use estes:
+>
+> | HR | o que a seção diz | o que de facto executa |
+> |---|---|---|
+> | HR-3 | `tests/budget/no_alloc_hot_path.rs` | [`ph2d-audio/tests/no_alloc_render.rs`](crates/ph2d-audio/tests/no_alloc_render.rs) · [`ph2d-ecs/tests/propagate_no_alloc.rs`](crates/ph2d-ecs/tests/propagate_no_alloc.rs) · [`ph2d-editor-core/tests/interaction_no_alloc.rs`](crates/ph2d-editor-core/tests/interaction_no_alloc.rs) |
+> | HR-5 | `tests/determinism/replay_cross_platform.rs` | os jobs `determinism` + `determinism-compare` do [`spike.yml`](.github/workflows/spike.yml), sobre os bins `c9` ([`ph2d-physics/src/bin/c9.rs`](crates/ph2d-physics/src/bin/c9.rs), `physics_ecs_c9`) — matriz 3-OS |
+> | HR-11 | `tests/security/mcp_governance.rs`, macro `#[mcp_destructive]`, `governance::Guard` | [`ph2d-mcp/src/governance.rs`](crates/ph2d-mcp/src/governance.rs) — e o mecanismo é `ConfirmationToken`/`ConfirmationStore`, **não** um `Guard` |
+> | HR-16 | `tests/determinism/lateral_storage_replay.rs` + lint `pairs_sorted()` | [`ph2d-script/tests/lateral_storage_determinism.rs`](crates/ph2d-script/tests/lateral_storage_determinism.rs) + [`lateral_storage_rejects_non_pod.rs`](crates/ph2d-script/tests/lateral_storage_rejects_non_pod.rs) |
+>
+> **Oito NÃO TÊM executor nenhum** — a regra é boa, mas nada a cobra, então ela depende de
+> disciplina e de revisão: **HR-1** (`no_os_in_core.rs`) · **HR-2** (a crate `ph2d-clippy` e a
+> lint `undocumented-unsafe` **não existem**) · **HR-4** (não há job `frame-budget-bench` no
+> CI) · **HR-7** (`editor_feature_isolation.rs`) · **HR-8** (`SAFE_TYPES.md`) · **HR-9**
+> (`luau_gc.rs`) · **HR-14** (`migration_chain.rs`) · **HR-17** (`examples_compile.rs`).
+>
+> **E uma tem gate e a seção não o nomeia:** **HR-12** é cobrada por
+> [`hr12_widgets_a11y.rs`](crates/ph2d-editor-core/tests/hr12_widgets_a11y.rs).
+>
+> ⚠️ **Ao escrever um `Enforced by` novo, aponte um caminho que existe** — o gate
+> `architecture_docs_paths_and_smokes_resolve` cobra os links deste arquivo, mas um caminho
+> em crase solta ainda passa por ele. *Prometer gate é barato; a conta é de quem confia.*
+
 ### HR-1 — Core é platform-agnostic
 **Rule:** zero `#[cfg(target_os)]` em `ph2d-*` exceto `ph2d-host` e `ph2d-net::transport`. Nada de `std::fs::File`, `std::env`, sockets diretos no core. Tudo passa pela trait `PlatformHost`.
 **Rationale:** permite iPad sandbox, Android SAF, Web OPFS, server auth headless — sem fork.
@@ -401,13 +434,32 @@ Toda mutação destrutiva grava em `audit.log` (JSON Lines, append-only): timest
 **Rule:** Arquivos em `shells/<plataforma>/src/` respeitam caps de tamanho:
 - Qualquer arquivo `.rs`: **≤ 600 LOC** (excluindo `tests/` e arquivos declarados como tabelas em comentário `// ph2d-loc-cap: table`).
 - Qualquer função: **≤ 200 LOC** (corpo entre `{` e `}` do top-level fn).
-- `main.rs` de qualquer shell: **≤ 400 LOC** — contém apenas struct App, impl ApplicationHandler, fn main, e tests inline.
+- `main.rs` de qualquer shell: **≤ 400 LOC** — contém apenas struct App, impl ApplicationHandler, fn main, e tests inline. ⚠️ **ASPIRAÇÃO, não regra vigente:** nenhum gate implementa este cap, e `shells/desktop/src/main.rs` mede **1.161 LOC** (medido 2026-08-18) sob o marcador `// ph2d-loc-cap: crate-root module hub`. O gate diz o mesmo de si próprio (`file_loc_caps.rs:21`: *"os caps de função/corpo (200/400) vivem num arquivo separado **quando ativados**"*).
 
 Crescimento de funcionalidade acontece por adição de módulo `mod X;` (arquivo novo abaixo do cap), nunca por inflação de função ou arquivo existente.
 
 **Rationale:** god-files são hostis a multi-agente (superfície de conflito), a LLM (excesso de contexto por janela), e a auditoria (complexidade ciclomática inauditável). Bound estrito força decomposição contínua por responsabilidade. Pré-migração 2026-05-16, `shells/desktop/src/main.rs` tinha 3463 LOC com `render_frame()` (1825 LOC) e `window_event()` (706 LOC) violando todos os caps — o PR de decomposição (ADR-0027) extraiu `init.rs`, `input_dispatch.rs`, `hero_intents.rs` reduzindo `main.rs` a 2421 LOC (transitional; cap ativa quando dispatcher genérico full landar).
 
-**Enforced by:** `shells/desktop/tests/file_loc_caps.rs` (Wave 2 PR 11.9, **ativo** desde 2026-05-16). File-level cap (600 LOC) ativo; function-level cap (200 LOC) pendente parser real. Exceções por `// ph2d-loc-cap: <razão>` no topo do arquivo (primeiras 20 linhas; uso raro, requer justificativa em PR). **Exceções ativas hoje (pós Wave 3.2, 2026-05-17 noite): ZERO.** Test secundário `loc_cap_exceptions_inventory` imprime `HR-18 loc-cap exceptions inventory: NONE (cap fully active)` em CI logs. Histórico: pre-Wave-3.1 carregava 2 exceções (`main.rs` 2421 LOC, `hero_intents.rs` 696 LOC); Wave 3.1 stage A retirou hero_intents marker via split em directory module; Wave 3.1 stage C lifted render_frame body criando 3º marker temporário (`render_loop.rs` 1603 LOC); Wave 3.2 retirou OS DOIS markers restantes: stage A splitou render_loop em 7 sub-files, stage B splitou main.rs em `app_state.rs` (struct defs) + `input_handlers.rs` (3 grandes impl App methods).
+**Enforced by:** `shells/desktop/tests/file_loc_caps.rs` (**ativo** desde 2026-05-16), com `FILE_LOC_CAP = 600`. ⚠️ Este 600 é do **shell**; o cap do **workspace** é **700** (`architecture_workspace_file_loc_cap.rs`, [ADR-0105](docs/architecture/decisions/0105-file-loc-cap-600-to-700.md)), o de **painel** 600 arquivo / 200 função, e o de **widget** 500 — quatro caps distintos, e confundi-los é erro recorrente. O cap de função **existe e roda**, mas só no escopo `ph2d-panel-*` (`PANEL_FN_LOC_CAP = 200`).
+
+Exceções por `// ph2d-loc-cap: <razão>` nas primeiras 20 linhas — a janela é curta de propósito, para que quem abre o arquivo **veja a declaração de dívida**.
+
+⚠️ **MEDIDO EM 2026-08-18: são DEZ exceções ativas, não zero.** A frase anterior desta seção dizia *"Exceções ativas hoje: **ZERO** … `NONE (cap fully active)`"* — era verdade em 2026-05-17 e envelheceu em silêncio por três meses:
+
+| LOC | ×cap | arquivo |
+|---:|---:|---|
+| **9.517** | **15,9×** | `render_loop/mod.rs` |
+| 6.408 | 10,7× | `input_dispatch.rs` |
+| 1.597 | 2,7× | `app_state.rs` |
+| 1.161 | 1,9× | `main.rs` |
+| 1.048 | 1,7× | `render_loop/painter_bridge.rs` |
+| 936 | 1,6× | `render_loop/snapshots.rs` |
+| 798 | 1,3× | `input_dispatch/gizmo_drag.rs` |
+| 770 | 1,3× | `render_loop/sim_extract.rs` |
+| 713 | 1,2× | `render_loop/inspector_commits.rs` |
+| 636 | 1,1× | `audio/fx_presets.rs` |
+
+⛔ **O defeito não é o número de exceções — é que o escape NÃO É NUMERADO.** `loc_cap_exceptions_inventory` **imprime e não falha** (é inventário, por desenho), e o marcador não congela o LOC do dia em que foi concedido. Um arquivo com marcador pode portanto crescer para sempre: quatro deles trazem no próprio comentário o LOC de quando foram escritos (735, 651, 631, "mid-refactor") e **já cresceram desde então**. Compare com o cap do workspace, cuja allowlist **congela o valor** (`FILE_OVERAGE_OK`) e por isso está verde com 19 entradas e zero violações. *Um teto sem número é um teto que não existe.*
 
 ## 10. Convenções de código
 

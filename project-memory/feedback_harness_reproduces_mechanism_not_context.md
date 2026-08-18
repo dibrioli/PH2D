@@ -22,4 +22,4 @@ nenhuma questionou SE o caminho rodava.
 a DECISÃO-PORTÃO no app real (1 eprintln por evento com cada condição do guard, ex.
 `[wet-diag] continua=false | wet_rect=false ...`), peça pro usuário colar o terminal, remova o
 diag depois. Uma linha do terminal real vale mais que outra rodada de lentes. Ligado:
-[[tool-unit-green-integration-dead]], [[visual-bug-debug]].
+[[feedback_tool_unit_green_integration_dead]], [[feedback_visual_bug_debug]].

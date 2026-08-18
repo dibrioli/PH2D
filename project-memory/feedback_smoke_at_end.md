@@ -28,14 +28,33 @@ a cada milestone pra rodar play.command. Prefere fazer UMA smoke
 abrangente quando ele decide, depois que a LLM entregou tudo.
 Pedir smoke a cada phase quebra o fluxo dele.
 
+> ⚠️ **CORRIGIDO em 2026-08-18 — duas frases desta memória contradiziam o `CLAUDE.md` e eram
+> as únicas do corpus a autorizar push autónomo.**
+>
+> 1. **«push direto, CI verde» está REVOGADO.** `CLAUDE.md §0.7`: *"Push é 1× por jornada — e
+>    NUNCA é seu por conta própria … Integrar/pushar sem ordem = **violação do protocolo**"*.
+>    O override que esta memória declara cobria o **SMOKE**, e passou a ser lido como licença
+>    de **PUSH** — que nunca foi. Ver [[feedback_ship_only_enio_end_of_all_lines]] e
+>    [[feedback_integration_only_enio_command_end_of_all_lines]].
+> 2. **«nunca escrever smoke checklist no relatório» está INVERTIDO.** `CLAUDE.md §0.8` manda
+>    o oposto, e é lei do Enio: o smoke vai em **passos numerados**, porque é onde ele
+>    **aprende a ferramenta** ([[feedback_ready_to_smoke_example]]).
+>
+> **O que continua válido, e é a lição real:** não **PEDIR** smoke a cada fase. Entregue tudo,
+> depois entregue o smoke — de uma vez, escrito para quem nunca viu aquilo.
+
 **How to apply:**
 - Diretriz "implemente X" / "siga até o fim" / "complete tudo" →
-  fazer TODAS as phases planejadas, push direto, CI verde,
-  reportar conclusão sem mencionar smoke.
+  fazer TODAS as phases planejadas, **commit local**, e reportar conclusão
+  **com o smoke em passos numerados** (§0.8). ⛔ Sem push: quem pusha é o Enio,
+  ou o integrador sob ordem explícita dele.
 - Bug fix reportado durante o trabalho → fixar + continuar (não
   "fixar + pedir smoke do fix").
-- Nunca escrever "smoke checklist" ou "quando rodar play.command,
-  teste X" no relatório de conclusão.
+- ⚠️ **REVOGADO** (ver o bloco acima): o relatório de conclusão **LEVA** o smoke, em passos
+  numerados, com o comando inteiro e o `cd` (§0.8). O que não se faz é **interromper** o
+  trabalho a pedir smoke por fase. ⚠️ E o comando **não** é `play.command`: ele faz `cd` para
+  a árvore **primária** e fixa um `CARGO_TARGET_DIR` de uma linha morta — em Modo L testa a
+  árvore errada **em silêncio** ([[feedback_run_command_include_cd]]).
 - Nunca usar "deferred" / "Wave 7 candidato" pra phases planejadas
   sem permissão explícita do Enio. Se a phase exige refactor
   difícil, fazer o refactor, não punt.

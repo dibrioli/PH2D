@@ -7,6 +7,12 @@ metadata:
   originSessionId: 46e3e7df-13b7-4cb0-83a5-1aa650dcd862
 ---
 
+> ⚠️ **MODO C APENAS (shared tree).** Esta memória descreve a colisão de índice/commit entre
+> agentes que partilham UMA árvore. No **Modo L** (workstation, [ADR-0106](../docs/architecture/decisions/0106-parallel-dev-lines-worktrees-workstation.md))
+> cada linha tem worktree e índice PRÓPRIOS e esta classe inteira de perigo não existe — valem
+> só os conflitos de merge (DIRETRIZ §1.5.5–1.5.6). ⚠️ O tier decide: `bash scripts/hw-profile.sh`.
+> Sem este aviso, o comportamento por omissão era executar Modo C dentro de uma linha Modo L.
+
 When the PH2D project runs the multi-agent model (Coordenador +
 Agentes Periféricos + multiple Claude sessions in parallel), **only
 one session can hold the index at a time**. If session A has files

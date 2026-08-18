@@ -7,6 +7,12 @@ metadata:
   originSessionId: 08f6a613-4a63-4a4e-8305-1b658212543e
 ---
 
+> ⚠️ **MODO C APENAS (shared tree).** Esta memória descreve a colisão de índice/commit entre
+> agentes que partilham UMA árvore. No **Modo L** (workstation, [ADR-0106](../docs/architecture/decisions/0106-parallel-dev-lines-worktrees-workstation.md))
+> cada linha tem worktree e índice PRÓPRIOS e esta classe inteira de perigo não existe — valem
+> só os conflitos de merge (DIRETRIZ §1.5.5–1.5.6). ⚠️ O tier decide: `bash scripts/hw-profile.sh`.
+> Sem este aviso, o comportamento por omissão era executar Modo C dentro de uma linha Modo L.
+
 `rustup run <pin> cargo fmt -p <crate>` reformats **every file in that crate**, not just the ones you edited — including another agent's **uncommitted WIP** in the same crate. In the shared multi-agent tree this silently modifies foreign files (e.g. fmt'ing the shell crate touched the Vector impl's live `vector_scene.rs` / `vector_inspector_bridge.rs`).
 
 **Why:** rustfmt operates per-crate (per the crate's module tree), not per-file-list. There's no built-in "format only my staged files."

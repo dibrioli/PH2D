@@ -244,7 +244,32 @@ impl SculptStroke {
                 // igual, e em `f32` a 1,2e-7 de distancia (medido). Rotear pela
                 // expressao da referencia torna a paridade uma identidade em vez
                 // de um epsilon.
-                FilterKind::EnhanceDetails => self.target_sharpen(mesh, brush, v, base, f),
+                // ⚠️ **O `f.abs()` é o `-std::abs(strength)` da referência
+                // (`sculpt_filter_mesh.cc:1883`, a PRIMEIRA linha do
+                // `calc_enhance_details_filter`), e sem ele esta lei fazia o
+                // OPOSTO do que o chip promete para metade do gesto.**
+                //
+                // A referência realça nos DOIS sentidos do arrasto: `t =
+                // detail_directions × −|s|` é *afastar da média com |força|*,
+                // e o sinal do que o artista arrasta não entra. Sem o `abs`, um
+                // arrasto para trás dava `live + (live − avg)·(−2)` — o vértice
+                // ATRAVESSA a média do próprio anel e sai do outro lado ao dobro
+                // da distância, invertendo a curvatura local.
+                //
+                // ⚠️ **Medido, e o número é o pior possível:** com `f = −1` o
+                // resultado era **byte-idêntico** ao `Smooth(+1)` — o chip dizia
+                // *Enhance Details* e a malha ALISAVA à força total; com `−2`,
+                // **os 830 vértices** da sonda atravessavam a média.
+                //
+                // ⚠️ **E o gesto o alcança sem esforço:** esta é a única das nove
+                // leis cuja `range()` é `(f32::MIN, f32::MAX)` — o clamp que
+                // apararia o negativo é, aqui, deliberadamente inerte (é a
+                // entrega da W9c-a), então o arrasto chega cru ao kernel.
+                //
+                // ⚠️ **A máscara não estraga a identidade:** `free_weight >= 0`,
+                // logo `|amount·w| == |amount|·w` e aparar aqui é exactamente o
+                // que a referência faz um passo antes.
+                FilterKind::EnhanceDetails => self.target_sharpen(mesh, brush, v, base, f.abs()),
                 // ⚠️ **A guarda no topo já o consumiu, e este braço é a PROVA
                 // de que o `match` continua exaustivo** — foi ele que apanhou a
                 // lei nova em tempo de compilação, que é exactamente o que o

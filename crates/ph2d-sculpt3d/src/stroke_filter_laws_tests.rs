@@ -13,6 +13,7 @@
 //! chamasse o kernel devolveria a nossa resposta com outro nome — o gate
 //! sempre-verde que esta casa já documentou.
 
+use super::stroke_filter::{deltas, norm};
 use super::*;
 use crate::FilterKind;
 
@@ -392,4 +393,92 @@ fn every_new_law_is_one_step_from_the_frozen_pose() {
             worst(once.positions(), twice.positions())
         );
     }
+}
+
+/// ⭐ **O `ENHANCE_DETAILS` REALÇA NOS DOIS SENTIDOS DO ARRASTO** — o
+/// `-std::abs(strength)` que abre o `calc_enhance_details_filter`
+/// (`sculpt_filter_mesh.cc:1883`, a PRIMEIRA linha da função).
+///
+/// ⚠️ **Gate red-first, e ele nasceu de uma auditoria — não de um smoke.** O
+/// porte encaminhava o arrasto ASSINADO, e um gesto para trás fazia o vértice
+/// **atravessar a média do próprio anel** e sair do outro lado ao dobro da
+/// distância, invertendo a curvatura local. Medido antes da cura: com `f = −1`
+/// o resultado era **byte-idêntico ao `Smooth(+1)`** — o chip dizia *Enhance
+/// Details* e a malha ALISAVA à força total; com `f = −2`, **todos** os
+/// vértices da fixture atravessavam.
+///
+/// ⚠️ **A fixture da wave não continha o fenómeno, e é por isso que ele shipou:**
+/// os gates do EnhanceDetails varriam `0,6 / 1,0 / 3,0` — **todos positivos** —,
+/// o `the_one_sided_filters_ignore_a_backwards_drag` cobre só o Relax e o HC, e
+/// a sonda de paridade da wave escreveu o oráculo **também sem o `abs`** e mediu
+/// só o lado positivo. *Um oráculo que herda a omissão do produto concorda com
+/// ele em toda parte.*
+///
+/// ⚠️ **A simetria é afirmada AO BYTE**, e não por épsilon: `|−f| == |f|` é
+/// exacto em IEEE-754 para todo `f` finito, então as duas chamadas percorrem
+/// aritmética idêntica. Um épsilon aqui esconderia um `abs` aplicado no lugar
+/// errado da cadeia.
+#[test]
+fn the_enhance_details_filter_sharpens_both_ways_like_the_reference() {
+    for f in [0.4f32, 1.0, 2.0, 3.0] {
+        let mut fwd = mesh_for(Verb::Smooth);
+        let before = snapshot(&fwd);
+        let mut s = SculptStroke::default();
+        s.filter_begin(&fwd);
+        s.filter(&mut fwd, &any_brush(), FilterKind::EnhanceDetails, f);
+
+        let mut back = mesh_for(Verb::Smooth);
+        let mut s2 = SculptStroke::default();
+        s2.filter_begin(&back);
+        s2.filter(&mut back, &any_brush(), FilterKind::EnhanceDetails, -f);
+
+        // ⚠️ **O ANTI-VÁCUO:** sem deslocamento os dois lados seriam a pose de
+        // entrada, e a igualdade abaixo passaria sobre uma malha intocada.
+        let moved = deltas(&before, &fwd)
+            .into_iter()
+            .map(norm)
+            .fold(0.0f32, f32::max);
+        assert!(
+            moved > 1e-3,
+            "a fixture não contém o fenómeno em f={f}: {moved:e}"
+        );
+
+        assert_eq!(
+            fwd.positions(),
+            back.positions(),
+            "o arrasto para trás não realçou em f={f}: a lei da referência é \
+             `× −|strength|`, e sem o `abs` ela INVERTE a curvatura"
+        );
+    }
+}
+
+/// **O CONTROLE do gate acima — o `Smooth` NÃO é simétrico, e tem de não ser.**
+///
+/// ⚠️ **Sem ele, *"os dois sentidos dão o mesmo"* seria compatível com um filtro
+/// que ignora o sinal do arrasto inteiro** — e essa é uma lei diferente (a dos
+/// unilaterais, `Relax` e `SurfaceSmooth`, que clampam em `(0, 1)`). O
+/// `Smooth` clampa em `(−1, 1)` **de propósito**: nele o sinal é a metade da
+/// ferramenta, e é o que o `EnhanceDetails` existe para continuar sem teto.
+#[test]
+fn the_smooth_filter_is_not_symmetric_and_that_is_the_point() {
+    let mut fwd = mesh_for(Verb::Smooth);
+    let mut s = SculptStroke::default();
+    s.filter_begin(&fwd);
+    s.filter(&mut fwd, &any_brush(), FilterKind::Smooth, 1.0);
+
+    let mut back = mesh_for(Verb::Smooth);
+    let mut s2 = SculptStroke::default();
+    s2.filter_begin(&back);
+    s2.filter(&mut back, &any_brush(), FilterKind::Smooth, -1.0);
+
+    let gap = fwd
+        .positions()
+        .iter()
+        .zip(back.positions())
+        .map(|(p, q)| norm([p[0] - q[0], p[1] - q[1], p[2] - q[2]]))
+        .fold(0.0f32, f32::max);
+    assert!(
+        gap > 1e-3,
+        "o Smooth ficou simétrico ({gap:e}): o sinal dele é METADE da ferramenta"
+    );
 }

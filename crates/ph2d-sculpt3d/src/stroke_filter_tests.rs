@@ -57,7 +57,10 @@ fn filtering_verbs() -> Vec<Verb> {
 }
 
 /// O deslocamento de cada vértice contra `before`.
-fn deltas(before: &[[f32; 3]], mesh: &Mesh) -> Vec<[f32; 3]> {
+/// ⚠️ **`pub(super)` pelo mesmo motivo do [`norm`]:** o arquivo das LEIS o
+/// consome, e uma segunda cópia seria a segunda resposta a *"quanto cada
+/// vértice andou"*.
+pub(super) fn deltas(before: &[[f32; 3]], mesh: &Mesh) -> Vec<[f32; 3]> {
     before
         .iter()
         .zip(mesh.positions())

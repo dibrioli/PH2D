@@ -65,8 +65,16 @@ impl SculptStroke {
     ///
     /// ⚠️ **Este doc dizia *"NOSSO, e a referencia nao tem"*, e era FALSO** — a
     /// referencia tem-no com outro nome: `calc_enhance_details_filter`
-    /// (`sculpt_filter_mesh.cc:1885`), cuja lei e' `t = detail_directions x
-    /// -strength`, ou seja **esta expressao, verbatim**. A sonda
+    /// (`sculpt_filter_mesh.cc:1878`), cuja lei e' `t = detail_directions x
+    /// **-|strength|**` (`:1883`) — ou seja esta expressao com o peso em VALOR
+    /// ABSOLUTO.
+    ///
+    /// ⚠️ **A primeira versao deste doc dizia `x -strength`, sem as barras, e a
+    /// omissao shipou:** o filtro encaminhava o `f` assinado, e um arrasto para
+    /// tras fazia o vertice ATRAVESSAR a media do proprio anel em vez de se
+    /// afastar dela. Quem aplica o `abs` e' o chamador do filtro
+    /// (`stroke_filter.rs`), porque o `Verb::Sharpen` — o outro consumidor —
+    /// recebe um `w` que ja' e' um peso de pincel, nao um arrasto com sinal. A sonda
     /// `tests/measure_sharpen_filter.rs` mediu a concordancia em **1,2e-7 a
     /// 2,4e-7** (um a dois ULP de `f32`) contra a referencia escrita a` mao.
     /// *A afirmacao nasceu de nao se ter procurado pelo nome que ela usa.*

@@ -191,7 +191,7 @@ primeira coisa a guardar.
 
 ---
 
-## 6. O smoke
+## 6. O smoke — **APROVADO pelo Enio em 2026-08-18**
 
 ```
 env PH2D_GPU_COOK_DEMO=57 cargo run -p ph2d-host-desktop --release
@@ -243,4 +243,6 @@ dois campos ondulados sem dizer *onde eles nascem*.
 - [x] Superfície de colisão medida (§3)
 - [x] Handoff escrito (este arquivo)
 - [x] `rm -rf target/*/incremental`
+- [x] **Smoke da cena `=57` aprovado pelo Enio** (2026-08-18)
+- [ ] Ordem de integração do Enio ⇒ agente integrador dedicado (DIRETRIZ §1.5.3)
 - [ ] **Integração e ship — ordem do Enio, por agente integrador dedicado**

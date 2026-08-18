@@ -173,10 +173,13 @@ fn walk_rs(dir: &Path, f: &mut impl FnMut(&str)) {
                 continue;
             }
             walk_rs(&p, f);
-        } else if p.extension().and_then(|s| s.to_str()) == Some("rs") {
-            if let Ok(body) = std::fs::read_to_string(&p) {
-                f(&body);
-            }
+            continue;
+        }
+        if p.extension().and_then(|s| s.to_str()) != Some("rs") {
+            continue;
+        }
+        if let Ok(body) = std::fs::read_to_string(&p) {
+            f(&body);
         }
     }
 }

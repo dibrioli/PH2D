@@ -11,7 +11,10 @@ use ph2d_eval_motion::MotionCookPump;
 /// harness cozia sem eles e mediu as duas bandas do relógio **idênticas** — a
 /// fixture não continha o fenômeno, e o gate teria ficado verde sobre um remap
 /// inerte.
-fn cook_at(t_seconds: f64) -> Vec<(Vec<[f32; 2]>, Vec<[f32; 2]>)> {
+/// O que uma banda mostra num instante: o `size` e a posição de MUNDO de cada peça.
+type Band = (Vec<[f32; 2]>, Vec<[f32; 2]>);
+
+fn cook_at(t_seconds: f64) -> Vec<Band> {
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("todo nó registra");
     let mut doc = MotionDoc::default();

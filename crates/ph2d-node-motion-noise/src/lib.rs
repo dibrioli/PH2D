@@ -31,8 +31,9 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 mod channel;
 mod kernel;
 mod params_ui;
+mod trig;
 use kernel::GPU_KERNEL;
-use params_ui::{PARAM_CHANNEL_RANGE, PARAM_GROUPS, PARAM_HINTS, PARAM_UNITS};
+use params_ui::{PARAM_CHANNEL_RANGE, PARAM_GATES, PARAM_GROUPS, PARAM_HINTS, PARAM_UNITS};
 mod noise;
 use channel::{apply_channel_delta, clock_at, falloff_at, scalar_values};
 use noise::{NoiseType, fbm};
@@ -138,6 +139,41 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "lacunarity",
             default: 2.0,
         },
+        // ── O ESPAÇO do campo (folha 06 linha 20) ────────────────────────────────
+        //
+        // ⚠️ **A célula pedia três eixos e a MEDIÇÃO (`measure_noise_space`) deixou
+        // dois.** O *offset* já saía do sanduíche `motion.move(+d) → noise →
+        // motion.move(−d)` (medido: a pose volta com `|Δx| = 0` e o campo desloca-se
+        // `0,63`), e o *scale UNIFORME* **já era este `scale` aqui**: o sanduíche
+        // `motion.transform(s) … (1/s)` é, **bit-a-bit**, `scale·s` com a amplitude
+        // dividida por `s` (pior `|Δy|` entre as duas rotas: **0,000000**).
+        //
+        // ⚠️ **A rotação, essa, o sanduíche NÃO dá — e o número diz porquê.** Com
+        // `motion.orbit(+90°) → noise → orbit(−90°)` o segundo nó roda o **DELTA** que
+        // o ruído acabou de somar: o `y` sai **exactamente zero** e o deslocamento
+        // inteiro vai parar ao X (`|Δx| = 0,436`). Não é um espaço rodado; é um
+        // deslocamento rodado. *Uma translação comuta com «somar δ a um canal»; uma
+        // rotação não.*
+        //
+        // O PIVÔ é a origem do mundo, de propósito: é a mesma factorização que o
+        // `motion.transform` e o `motion.orbit` já escreveram um nível acima — o
+        // centro vem do sanduíche de offset, a rotação vem daqui.
+        ParamSpec {
+            name: "rotation",
+            default: 0.0,
+        },
+        // Escala NÃO-uniforme (AE *Fractal Noise* → Scale Width/Height). O trio é o
+        // do `motion.scale` (`amount`/`uniform`/`amount_y`), que é o precedente vivo
+        // deste módulo: com `uniform ≠ 0` o `scale_y` **não é lido**, e o `ParamGate`
+        // nem o pinta.
+        ParamSpec {
+            name: "uniform",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "scale_y",
+            default: 0.4,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -152,7 +188,12 @@ impl NodeOp for MotionNoise {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let channel = ctx.param("channel").round() as i32;
         let amplitude = ctx.param("amplitude");
-        let scale = ctx.param("scale");
+        let space = FieldSpace::of(
+            ctx.param("scale"),
+            ctx.param("scale_y"),
+            ctx.param("uniform"),
+            ctx.param("rotation"),
+        );
         let octaves = (ctx.param("octaves").round().max(1.0) as u32).min(MAX_OCTAVES);
         let roughness = ctx.param("roughness");
         let ty = NoiseType::from_index(ctx.param("type"));
@@ -195,7 +236,12 @@ impl NodeOp for MotionNoise {
                     let (px, py) = pos[i];
                     let (t_a, t_b, w) =
                         ph2d_fbm::loop_times(clock_at(&times, i, playhead), loop_len);
-                    let sample = |tt: f32| fbm(px * scale, py * scale + tt * speed, seed, spec);
+                    // ⚠️ O espaço é transformado ANTES de o tempo entrar: o `speed`
+                    // rola o campo pelo eixo Y **do próprio campo**, e rodá-lo junto
+                    // com o espaço faria o `rotation` mudar a DIREÇÃO da rolagem — um
+                    // knob a mexer no que o outro promete.
+                    let (sx, sy) = space.at(px, py);
+                    let sample = |tt: f32| fbm(sx, sy + tt * speed, seed, spec);
                     // `w == 0` é o caminho de sempre: a segunda amostra nem é avaliada.
                     let s = if w == 0.0 {
                         sample(t_a)
@@ -211,6 +257,57 @@ impl NodeOp for MotionNoise {
         ctx.emit(out);
     }
 }
+
+/// **O ESPAÇO do campo** — o ponto de amostragem, já escalado por eixo e rodado.
+///
+/// ⚠️ Resolvido UMA vez por dispatch e não por elemento: os quatro params são
+/// uniformes, e o `(cos, sin)` é a única aritmética cara do nó. O corpo WGSL faz o
+/// mesmo, e é isso que mantém os dois lados a pagar o mesmo preço.
+struct FieldSpace {
+    sx: f32,
+    sy: f32,
+    cos: f32,
+    sin: f32,
+}
+
+impl FieldSpace {
+    /// ⚠️ **`uniform ≠ 0` ignora o `scale_y`** — a lei do `motion.scale`
+    /// (`amount`/`uniform`/`amount_y`), o precedente vivo deste módulo. Com o default
+    /// (`uniform = 1`, `rotation = 0`) o `at` devolve `(px·scale, py·scale)`, que é
+    /// **exactamente** a expressão que estava escrita aqui antes desta wave.
+    fn of(scale: f32, scale_y: f32, uniform: f32, rotation_deg: f32) -> Self {
+        let sy = if uniform != 0.0 { scale } else { scale_y };
+        let (cos, sin) = trig::cos_sin_cycles(rotation_deg / DEG_PER_TURN);
+        Self {
+            sx: scale,
+            sy,
+            cos,
+            sin,
+        }
+    }
+
+    /// O ponto `(x, y)` do mundo, no espaço do campo.
+    ///
+    /// ⚠️ **Escala PRIMEIRO, roda depois.** A outra ordem faria o `scale_y` esticar
+    /// um eixo que a rotação já virou, e aí girar o campo mudaria também a forma
+    /// dele — dois knobs a responder pela mesma coisa.
+    ///
+    /// ⚠️ **Quem GUARDA esta ordem é o gate de paridade CPU×GPU**, e a mutação
+    /// mediu-o: inverter as duas linhas aqui **não** move nenhum gate desta crate
+    /// (qualquer ordem é *um* espaço, e os gates de rotação e de eixo continuam
+    /// verdes) — o que reprova é
+    /// `the_noise_field_space_matches_the_cpu_on_the_device`, porque o corpo WGSL
+    /// tem a ordem escrita do outro lado. *Uma lei sem gate próprio às vezes já tem
+    /// um dono; o que ela não pode é não ter nenhum.*
+    fn at(&self, px: f32, py: f32) -> (f32, f32) {
+        let (x, y) = (px * self.sx, py * self.sy);
+        (x * self.cos - y * self.sin, x * self.sin + y * self.cos)
+    }
+}
+
+/// Graus por volta — a unidade autorada da casa, convertida para ciclos na borda
+/// (`deg / 360`, uma divisão IEEE exacta; HR-5).
+const DEG_PER_TURN: f32 = 360.0;
 
 /// Each element's `P` (absent → origin), the field's sample points.
 fn positions(input: &Stream, n: usize) -> Vec<(f32, f32)> {
@@ -242,6 +339,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_channel_range(MANIFEST.id, PARAM_CHANNEL_RANGE);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
 
@@ -279,6 +377,37 @@ mod tests {
                     ctx.emit(Stream::new(8).with("P", Column::Vec2(p)));
                 }
             }
+            // ⚠️ **Um BLOCO, e ele existe por uma medição.** A fileira acima tem
+            // `y = 0` em toda peça, e um `scale_y` multiplica exactamente esse zero:
+            // o primeiro gate do eixo Y reprovou com `move 0` sobre código CORRECTO.
+            // *Uma fixture só prova o que ela contém* — e a rotação, essa, mostra-se
+            // numa fileira (rodar `(x, 0)` por 90° dá `(0, x)`), que é o que esconde
+            // o buraco de quem só olha para um dos dois.
+            static BLOCK: NodeManifest = NodeManifest {
+                id: NodeTypeId::of("test.block"),
+                name: "test.block",
+                inputs: &[],
+                outputs: &[PortSpec {
+                    name: "out",
+                    ty: INST_VEC2,
+                }],
+                effect: Effect::Pure,
+                clock: Clock::Frame,
+                params: &[],
+                lowerings: &[LoweringKind::Cpu],
+            };
+            struct Block;
+            impl NodeOp for Block {
+                fn manifest(&self) -> &'static NodeManifest {
+                    &BLOCK
+                }
+                fn eval(&self, ctx: &mut EvalCtx<'_>) {
+                    let p: Vec<[f32; 2]> = (0..3)
+                        .flat_map(|r| (0..3).map(move |c| [c as f32, r as f32]))
+                        .collect();
+                    ctx.emit(Stream::new(9).with("P", Column::Vec2(p)));
+                }
+            }
             match ty {
                 t if t == MANIFEST.id => {
                     static N: MotionNoise = MotionNoise;
@@ -287,6 +416,10 @@ mod tests {
                 t if t == SRC.id => {
                     static S: Src = Src;
                     Some(&S)
+                }
+                t if t == BLOCK.id => {
+                    static B: Block = Block;
+                    Some(&B)
                 }
                 _ => None,
             }
@@ -543,6 +676,122 @@ mod tests {
             fine < coarse * 0.25,
             "o salto de inclinacao NAO converge ({coarse} em d=0.02 contra {fine} em d=0.001) \
              -- a costura tem QUINA, e nao erro de amostragem"
+        );
+    }
+
+    /// Uma fileira sob o ruído, com os params que a chamada pedir.
+    fn field_with(setup: impl FnOnce(&mut Graph, GNodeId)) -> Vec<f32> {
+        field_on("test.grid", setup)
+    }
+
+    /// O mesmo, sobre o BLOCO 3×3 — a fixture que **contém** o eixo Y (ver o `Reg`).
+    fn block_with(setup: impl FnOnce(&mut Graph, GNodeId)) -> Vec<f32> {
+        field_on("test.block", setup)
+    }
+
+    fn field_on(source: &str, setup: impl FnOnce(&mut Graph, GNodeId)) -> Vec<f32> {
+        let mut g = Graph::new();
+        let src = g.add_node(source);
+        let noise = g.add_node("motion.noise");
+        g.connect(ph2d_nodegraph::graph::Edge {
+            from: (src, 0),
+            to: (noise, 0),
+            delayed: false,
+        })
+        .unwrap();
+        // Campo ESTÁTICO: sem o relógio a rolar, o que muda é só o espaço.
+        g.set_param(noise, "speed", 0.0);
+        setup(&mut g, noise);
+        cook_y(&g, noise, 0.0)
+    }
+
+    /// **OS DEFAULTS DO ESPAÇO SÃO A IDENTIDADE, BIT-A-BIT.**
+    ///
+    /// ⚠️ A metade que decide se esta wave pode ser integrada: `rotation = 0` e
+    /// `uniform = 1` têm de devolver **o mesmo `f32`** que a expressão que estava
+    /// escrita aqui antes (`fbm(px·scale, py·scale + …)`). A barra é `==`, não um ε —
+    /// *byte-idêntico* é a promessa que a coluna de risco da folha escreveu, e um ε
+    /// aceitaria uma promessa mais fraca sem ninguém reparar.
+    #[test]
+    fn the_field_space_defaults_are_the_identity() {
+        let plain = field_with(|_, _| {});
+        // Escritos À MÃO, não omitidos: um default que o manifesto mudasse por baixo
+        // passaria despercebido se o gate só omitisse os params.
+        let explicit = field_with(|g, n| {
+            g.set_param(n, "rotation", 0.0);
+            g.set_param(n, "uniform", 1.0);
+            g.set_param(n, "scale_y", 999.0); // ignorado sob `uniform`
+        });
+        assert_eq!(
+            plain, explicit,
+            "com os defaults do espaço o campo tem de ser o de sempre"
+        );
+    }
+
+    /// **A ROTAÇÃO roda o ESPAÇO, e a volta completa devolve o campo.**
+    ///
+    /// Duas metades, e a segunda é o controle: se só se pedisse *"90° muda alguma
+    /// coisa"*, um `rotation` que multiplicasse o campo por qualquer coisa passaria.
+    /// **360° tem de voltar** — é o que separa *rodar o espaço* de *estragar o campo*.
+    #[test]
+    fn a_rotation_turns_the_space_and_a_full_turn_returns_it() {
+        let plain = field_with(|_, _| {});
+        let turned = field_with(|g, n| g.set_param(n, "rotation", 90.0));
+        let worst = plain
+            .iter()
+            .zip(&turned)
+            .fold(0.0f32, |m, (a, b)| m.max((a - b).abs()));
+        assert!(
+            worst > 0.05,
+            "90° tem de amostrar o campo noutro sítio, e move {worst}"
+        );
+        let full = field_with(|g, n| g.set_param(n, "rotation", 360.0));
+        let back = plain
+            .iter()
+            .zip(&full)
+            .fold(0.0f32, |m, (a, b)| m.max((a - b).abs()));
+        assert!(
+            back < 1e-5,
+            "uma volta completa tem de devolver o campo, e desvia {back} \
+             (contra {worst} de 90°)"
+        );
+    }
+
+    /// **O `scale_y` estica UM eixo, e o `uniform` é quem o deixa falar.**
+    ///
+    /// ⚠️ As duas metades outra vez: sob `uniform = 1` o `scale_y` tem de ser **inerte**
+    /// (senão o trio do `motion.scale` não foi respeitado e um documento antigo muda de
+    /// aparência), e sob `uniform = 0` ele tem de MUDAR o campo.
+    #[test]
+    fn scale_y_stretches_one_axis_only_when_uniform_is_off() {
+        let plain = block_with(|_, _| {});
+        let gated = block_with(|g, n| {
+            g.set_param(n, "uniform", 1.0);
+            g.set_param(n, "scale_y", 3.0);
+        });
+        assert_eq!(plain, gated, "sob `uniform` o `scale_y` é inerte");
+
+        let stretched = block_with(|g, n| {
+            g.set_param(n, "uniform", 0.0);
+            g.set_param(n, "scale_y", 3.0);
+        });
+        let worst = plain
+            .iter()
+            .zip(&stretched)
+            .fold(0.0f32, |m, (a, b)| m.max((a - b).abs()));
+        assert!(
+            worst > 0.05,
+            "com `uniform = 0` o `scale_y` tem de mudar o campo, e move {worst}"
+        );
+        // E o CONTROLE do próprio `scale_y`: repô-lo no valor do `scale` volta ao campo
+        // isotrópico — é isso que prova que ele é o eixo Y e não um multiplicador solto.
+        let same = block_with(|g, n| {
+            g.set_param(n, "uniform", 0.0);
+            g.set_param(n, "scale_y", 0.4); // o default do `scale`
+        });
+        assert_eq!(
+            plain, same,
+            "`scale_y` igual ao `scale` com `uniform = 0` é o campo isotrópico"
         );
     }
 

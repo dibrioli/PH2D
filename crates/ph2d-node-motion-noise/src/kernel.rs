@@ -23,6 +23,11 @@ pub(crate) const NS_PARAMS: &[&str] = &[
     "roughness",
     "type",
     "lacunarity",
+    // O ESPAÇO do campo — apendados, e os defaults (`rotation = 0`, `uniform = 1`)
+    // devolvem a expressão que estava aqui antes.
+    "rotation",
+    "uniform",
+    "scale_y",
 ];
 
 /// **A PORTA DE TEMPO** — ligada por todo variant, `ReadBroadcast` para herdar a regra
@@ -53,8 +58,33 @@ const NS_LIB: &str = "\
             if (HAS_time_v) { return read_time_v(i); }\n\
             return params.playhead;\n\
         }\n\
+        fn ns_sin_cycles(phase: f32) -> f32 {\n\
+            // A senoide parabolica corrigida (Capens/devmaster) -- o port linha-a-linha\n\
+            // do `trig.rs`. HR-5: o `sin` do WGSL nao tem garantia cross-vendor.\n\
+            let f = phase - floor(phase);\n\
+            var p: f32;\n\
+            if (f < 0.5) {\n\
+            \x20   let u = f * 2.0;\n\
+            \x20   p = 4.0 * u * (1.0 - u);\n\
+            } else {\n\
+            \x20   let u = (f - 0.5) * 2.0;\n\
+            \x20   p = -4.0 * u * (1.0 - u);\n\
+            }\n\
+            return 0.225 * (p * abs(p) - p) + p;\n\
+        }\n\
+        fn ns_space(p: vec2<f32>) -> vec2<f32> {\n\
+            // ESCALA primeiro, roda depois -- a ordem do `FieldSpace::at` do lib.rs.\n\
+            var sy = params.scale;\n\
+            if (params.uniform == 0.0) { sy = params.scale_y; }\n\
+            let x = p.x * params.scale;\n\
+            let y = p.y * sy;\n\
+            let ph = params.rotation / 360.0;\n\
+            let c = ns_sin_cycles(ph + 0.25);\n\
+            let s = ns_sin_cycles(ph);\n\
+            return vec2<f32>(x * c - y * s, x * s + y * c);\n\
+        }\n\
         fn ns_delta(i: u32) -> f32 {\n\
-            let p = read_in_P(i);\n\
+            let p = ns_space(read_in_P(i));\n\
             let seed = i32(ns_round(params.seed));\n\
             let oct = min(max(i32(ns_round(params.octaves)), 1), 8);\n\
             let ty = i32(ns_round(params.type_));\n\
@@ -73,13 +103,13 @@ const NS_LIB: &str = "\
             \x20   tb = ta - params.loop_len;\n\
             \x20   w = u * u * (3.0 - 2.0 * u);\n\
             }\n\
-            let sa = ns_fbm(p.x * params.scale,\n\
-            \x20   p.y * params.scale + ta * params.speed,\n\
+            let sa = ns_fbm(p.x,\n\
+            \x20   p.y + ta * params.speed,\n\
             \x20   seed, oct, params.roughness, ty, params.lacunarity);\n\
             var s = sa;\n\
             if (w != 0.0) {\n\
-            \x20   let sb = ns_fbm(p.x * params.scale,\n\
-            \x20       p.y * params.scale + tb * params.speed,\n\
+            \x20   let sb = ns_fbm(p.x,\n\
+            \x20       p.y + tb * params.speed,\n\
             \x20       seed, oct, params.roughness, ty, params.lacunarity);\n\
             \x20   s = sa + (sb - sa) * w;\n\
             }\n\

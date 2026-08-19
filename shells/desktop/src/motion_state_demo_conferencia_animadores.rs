@@ -255,3 +255,36 @@ const CURVED_MOVE: f32 = 0.0000;
 // A TERCEIRA volta da janela — o par que prova que o relogio autorado nao expira.
 const LATE_MOVE: f32 = 1.8243;
 const LATE_HELD: f32 = 0.0001;
+
+/// **O ESPAÇO DO CAMPO** — a cena `=60`, a folha 06 linha 20 (o último P1 dela).
+pub(super) fn field_space(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks = conferencia_demos_field_space::build_field_space_demo_document(doc, registry)
+        .unwrap_or_default();
+    let (turn, scale, scale_y) = conferencia_demos_field_space::knobs();
+    eprintln!(
+        "[field-space-demo] QUATRO BLOCOS ({} montados). O MESMO ruido; muda o ESPACO.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_field_space::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) ESTA CENA JULGA-SE PARADA -- o `speed` e' zero nos quatro. Um campo a rolar
+  mostraria movimento e esconderia a FORMA, que e' o que a cena existe para mostrar.
+  (!) Mesma semente, mesma amplitude, mesma oitava, mesma escala ({scale:.2}). Se um bloco
+  parecer MAIS AGITADO que os outros, a cena perdeu o controle -- o que muda e' ONDE o
+  campo e' amostrado, nunca quanto ele vale.
+  (!) 2: as manchas viraram {turn:.0} graus. Nao procure «mais movimento»; procure a
+  DIRECAO em que elas se alinham.
+  (!) 3: `Uniform` desligado e `Scale Y` em {scale_y:.2} (contra {scale:.2} no X) -- as
+  manchas viram LISTRAS DEITADAS. Escala MAIOR num eixo = feicao MENOR nele: o mesmo
+  passo de mundo cobre mais campo.
+  (!) 4: os dois juntos, e a ORDEM e' esticar e DEPOIS rodar. E' por isso que as listras
+  daqui saem inclinadas, e nao alinhadas com a tela como as da banda 3.
+  (!) Abra o painel de PARAMS num deles: ha' uma secao `Space` nova, e o `Scale Y` so'
+  aparece com o `Uniform` desligado -- sob ele seria um controle que nao move um quadro.
+  (!) O que NAO esta' aqui e' medido: o *offset* do campo ja' sai de
+  `motion.move(+d) -> noise -> motion.move(-d)`, e o *scale uniforme* E' o `Scale`."
+    );
+    sinks
+}

@@ -7,16 +7,34 @@
 
 use super::MAX_OCTAVES;
 use ph2d_node_registry::{
-    ParamChannelRange, ParamGroup, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
+    ParamChannelRange, ParamGate, ParamGroup, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
 };
 
 /// **O que o `loop_len` É** (doc 88, Wave A): uma DURAÇÃO. É a única unidade deste nó — a
 /// `amplitude` é `FromChannel` como a do oscilador seria, mas aqui ela não é declarada porque
 /// este nó ainda não passou pela varredura de unidades; o `loop_len` entra declarado para não
 /// nascer com a dívida.
-pub(crate) static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
-    param: "loop_len",
-    unit: ParamUnit::Seconds,
+pub(crate) static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "loop_len",
+        unit: ParamUnit::Seconds,
+    },
+    // ⚠️ **`Angle` (graus), e não «o que o canal falar».** Esta rotação gira o ESPAÇO
+    // do campo — ela não tem nada a ver com o canal em que o ruído escreve, e um
+    // `FromChannel` aqui faria a faixa dela mudar quando o artista trocasse de canal.
+    ParamUnitDecl {
+        param: "rotation",
+        unit: ParamUnit::Angle,
+    },
+];
+
+/// A linha do eixo Y pertence ao modo que a lê, e a mais nenhum — o precedente do
+/// `column` do `motion.drive` e do `curve` do `motion.time_remap`. Um slider de
+/// `Scale Y` pintado sob `uniform` seria um controle que não move um quadro.
+pub(crate) static PARAM_GATES: &[ParamGate] = &[ParamGate {
+    param: "scale_y",
+    when: "uniform",
+    values: &[0],
 }];
 
 /// As SEÇÕES deste nó (doc 88 B3). Nove controles respondem a três perguntas.
@@ -36,6 +54,10 @@ pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
     // Em que relógio ele anda.
     ParamGroup::new("speed", "Timing"),
     ParamGroup::new("loop_len", "Timing"),
+    // O ESPAÇO em que ele é amostrado — a seção nova (folha 06 linha 20).
+    ParamGroup::new("rotation", "Space"),
+    ParamGroup::new("uniform", "Space"),
+    ParamGroup::new("scale_y", "Space"),
 ];
 
 pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
@@ -132,6 +154,36 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 100.0,
         step: 1.0,
         widget: ParamWidget::Seed,
+    },
+    // ── O ESPAÇO ────────────────────────────────────────────────────────────────
+    // ⚠️ Uma volta para cada lado, discada em graus inteiros — a mesma régua do
+    // `angle` do `motion.orbit`, que é a outra rotação de ESPAÇO da casa.
+    ParamUiHint {
+        param: "rotation",
+        label: "Rotation",
+        min: -360.0,
+        max: 360.0,
+        step: 1.0,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "uniform",
+        label: "Uniform",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
+    },
+    // A MESMA faixa do `scale`: os dois eixos são a mesma grandeza, e duas réguas
+    // diferentes para o mesmo número é como um artista aprende que são coisas
+    // diferentes.
+    ParamUiHint {
+        param: "scale_y",
+        label: "Scale Y",
+        min: 0.02,
+        max: 2.0,
+        step: 0.02,
+        widget: ParamWidget::Slider,
     },
 ];
 

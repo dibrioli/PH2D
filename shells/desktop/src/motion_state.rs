@@ -120,6 +120,8 @@ pub(crate) mod conferencia_demos_axes;
 pub(crate) mod conferencia_demos_clock;
 #[path = "motion_state_conferencia_demos_column.rs"]
 pub(crate) mod conferencia_demos_column;
+#[path = "motion_state_conferencia_demos_field_space.rs"]
+pub(crate) mod conferencia_demos_field_space;
 #[path = "motion_state_conferencia_demos_space.rs"]
 pub(crate) mod conferencia_demos_space;
 #[path = "motion_state_conferencia_demos_text.rs"]

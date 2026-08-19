@@ -184,8 +184,10 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **Todo canal novo é side-metadata no REGISTRY, nunca o contrato** (`NodeOp`/`OpResolver`/`NodeManifest` — §6).
   ⚠️ **`oscillator`/`noise`/`wiggle` têm uma porta `time` opcional** — desligada ⇒ `ctx.playhead()` byte-idêntico,
   ligada ⇒ **um relógio por ELEMENTO** (mecanismo: [handoff do FECHO](docs/Motion%20Nodes/handoffs/HANDOFF_INTEGRACAO_line_motion_value_FECHO_2026-08-18.md)).
-  **Aberto:** os P1 restantes da folha 03 (simulação) · a folha 06 tem **1 P1** (transform do CAMPO do
-  `motion.noise`) · ⚠️ o diagnóstico de nome do `value.attribute` **não olha o MODO**, então uma coluna `Vec2`
+  ⚠️ **O `motion.noise` tem o ESPAÇO do campo** (`rotation` + `uniform`/`scale_y`) — e *escala maior num eixo
+  = feição MENOR nele*; o **offset** e o **scale uniforme** NÃO são params, saem da composição e do próprio `scale`.
+  **Aberto:** os P1 restantes da folha 03 (simulação) · ✅ **a folha 06 FECHOU** (0 P1; restam 18 P2) ·
+  ⚠️ o diagnóstico de nome do `value.attribute` **não olha o MODO**, então uma coluna `Vec2`
   digitada à mão lê **zeros sem badge** (medido 18/08; os `Vec2` conhecidos têm chip, o buraco é o caso geral) ·
   o gate `#[ignore]`
   `the_ceiling_is_honoured_on_every_tick_including_the_turn` (cena `=53`) — ⛔ **não afrouxe a barra** · a composição

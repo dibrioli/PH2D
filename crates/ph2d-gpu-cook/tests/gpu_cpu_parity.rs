@@ -814,6 +814,43 @@ fn the_two_size_axis_arms_match_the_cpu_on_the_device() {
     assert_gpu_parity(&gpu, &reg, &g, out, 5); // grid + 2 campos + 2 drives
 }
 
+/// **O ESPAÇO do campo no device** (folha 06 linha 20) — rotação e escala por eixo.
+///
+/// ⚠️ **A rotação é a única trig deste nó, e é por isso que ela precisa deste gate.** O
+/// corpo WGSL não pode usar o `sin` do dispositivo (HR-5: sem garantia cross-vendor), então
+/// `ns_sin_cycles` é o port linha-a-linha do `trig.rs` do lado da CPU — e o que impede as
+/// duas cópias de divergirem não é a disciplina de quem as escreveu, é esta comparação.
+///
+/// ⚠️ A grade é **2D** de propósito: numa fileira `y = 0`, o `scale_y` multiplica zero e o
+/// gate ficaria verde sobre um kernel que o ignorasse (foi exactamente assim que o gate
+/// irmão do lado da CPU reprovou primeiro).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_noise_field_space_matches_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    // Três espaços: só rotação · só escala por eixo · os dois juntos (a composição é
+    // onde a ORDEM «escala primeiro, roda depois» se prova, e ela vive nos dois lados).
+    for (rotation, uniform, scale_y) in [(37.0, 1.0, 0.4), (0.0, 0.0, 1.1), (37.0, 0.0, 1.1)] {
+        let mut g = Graph::new();
+        let grid = grid_node(&mut g, 40.0);
+        let node = g.add_node("motion.noise");
+        g.set_param(node, "channel", 1.0);
+        g.set_param(node, "amplitude", 0.8);
+        g.set_param(node, "speed", 0.0);
+        g.set_param(node, "rotation", rotation);
+        g.set_param(node, "uniform", uniform);
+        g.set_param(node, "scale_y", scale_y);
+        connect(&mut g, grid, node);
+        let out = g.add_node("motion.output");
+        connect(&mut g, node, out);
+        assert_gpu_parity(&gpu, &reg, &g, out, 2); // grid + noise
+    }
+}
+
 /// **A PORTA DE TEMPO no device, nos três animadores** (folha 06, `SUPERAR 1`).
 ///
 /// ⚠️ Este é o gate que sustenta a promessa da wave: *ligar a porta não troca a placa

@@ -139,12 +139,28 @@ Sonda fora do repo (`cargo generate-lockfile` + `cargo metadata` sobre
 `FilletOptions`/`FilletProfile`/`RadiusSpec`/`FilletError`, **por aresta individual** (que é
 exatamente o modelo que a medição do original forçou, §1.3).
 
-### §3.3 — ⚠️ O que eu **não** consegui confirmar, e por isso a W0 existe
+### §3.3 — ⚠️ O buraco real: **uma** operação falta, e é a da definição de pronto
 
-`monstertruck-modeling` documenta `builder::extrude` e os traits `Sweep`/`ClosedSweep`, mas a
-docs.rs **não confirma** publicamente **revolve, loft, sweep-por-trilho, shell e offset** — que o
-README afirma. São **5 das 19 operações** do §1.1. Some-se a isto que a **0.4.0 foi publicada em
-2026-08-17, dois dias atrás**, por um mantenedor único.
+A primeira leitura (docs.rs) deixou 5 das 19 operações do §1.1 sem confirmação. **Lendo o fonte
+publicado** (`~/.cargo/registry`, 0.4.0, com **controle positivo** em `extrude`), quatro fecharam
+e uma não existe:
+
+| Operação | Evidência no fonte | Veredito |
+|---|---|---|
+| revolve | `builder::revolve`, `builder::revolve_wire` | ✅ existe |
+| loft | `builder::homotopy`, `try_skin_wires`, `try_wire_homotopy` | ✅ existe |
+| sweep por trilho | `sweep` · `multi_sweep` · `closed_sweep` | ✅ existe |
+| planar | `builder::try_attach_plane` | ✅ existe |
+| offset | `curve_offset_2d` · `curve_offset_3d` · `surface_offset` | ✅ existe |
+| **shell (casca)** | ⛔ **nenhuma.** *Todo* acerto de "shell" no fonte é o **Shell topológico** (o conjunto de faces do B-Rep), não a operação de esvaziar sólido. Não há `hollow` nem `thicken` | ❌ **NÃO EXISTE** |
+
+⚠️ **Isto pesa mais do que "1 de 19" sugere:** a casca é o **passo 3 da definição de pronto** do
+original (a taça: revolve → **casca 2 mm** → fillet → furos). É construível sobre o que existe
+(`surface_offset` + remoção da face + costura pelo `-healing`), mas isso é **trabalho de kernel**,
+não uma chamada — e é justamente a operação que o OCCT mediu em 133 ms e que falha em geometria
+complexa. **A W0 tem de provar esse caminho, não presumi-lo.**
+
+Some-se que a **0.4.0 saiu em 2026-08-17, dois dias atrás**, com mantenedor único.
 
 *Um plano cuja peça central está na palavra de um README é um plano com um buraco.* É por isso que a
 W0 é um **spike medido com kill-criterion**, e não a primeira wave de implementação — exatamente o
@@ -234,11 +250,14 @@ fillet na borda → matriz circular de 6 recortes booleanos → export).
   memória residente (HR-13 emendado pelo ADR-0117: quem declara budget possui um gate que **mede**).
 - **Entrega:** `docs/3DModeling/01_resultados_spike.md`, no formato do `RESULTADOS_SPIKE.md` do
   original — tabela de medição, e **as decisões que os números forçarem**.
-- ⛔ **Kill-criterion (congelado agora, antes do build):** se **booleana + fillet + shell** não
-  fecharem a taça após **2 tentativas**, o kernel está **reprovado** — a linha PARA e reporta ao
-  Enio com as duas saídas que sobram (comprar licença comercial do `brepkit`, ou abrir exceção de
-  LGPL no `deny.toml` + assumir o build nativo do OCCT em 3 SOs). **Não há terceira tentativa**
-  (regra two-strikes, DIRETIVA §5).
+- **A casca é item próprio da W0** (§3.3): não existe no kernel e tem de ser **construída** sobre
+  `surface_offset` + remoção de face + `-healing`. A W0 entrega o caminho provado na taça, ou o
+  declara inviável — ⛔ **não** o assume nem o adia para a W4.
+- ⛔ **Kill-criterion (congelado agora, antes do build):** se **booleana + fillet** não fecharem a
+  taça, **ou** se a casca construída não fechar, após **2 tentativas cada**, o kernel está
+  **reprovado** — a linha PARA e reporta ao Enio com as duas saídas que sobram (comprar licença
+  comercial do `brepkit`, ou abrir exceção de LGPL no `deny.toml` + assumir o build nativo do OCCT
+  em 3 SOs). **Não há terceira tentativa** (regra two-strikes, DIRETIVA §5).
 
 ### W1 — Fundação: `ph2d-brep` + a ponte ECS + o ADR
 
@@ -277,7 +296,8 @@ e o `PROJECT_SCHEMA` é número que **soma entre linhas: conta-se, nunca se esco
 | Risco | Mitigação |
 |---|---|
 | **O kernel tem 2 dias de idade** (0.4.0, 2026-08-17, mantenedor único) | W0 mede antes de tudo; `ph2d-brep` isola o nome; Apache-2.0 permite vendorizar se o upstream morrer |
-| 5 das 19 ops não confirmadas (§3.3) | É literalmente o que a W0 mede |
+| **A casca (shell) não existe no kernel** (§3.3) — e é o passo 3 da definição de pronto | Construída sobre `surface_offset` + `-healing`; é item próprio da W0, com kill-criterion. As outras 4 ops duvidosas foram **confirmadas no fonte** |
+| Escrever o kernel do zero (a pergunta do Enio, 2026-08-19) | ⛔ **Descartado por medição, não por preferência** — ver §7 |
 | **Determinismo** (HR-5): `chacha20`/`rand` no grafo | Item explícito da W0; se uma op amostrar RNG, ela não entra no caminho do replay-hash |
 | Contrato `Tool=12` congelado | §4.3 — caminho do `sculpt3d`, e PARA se não der |
 | ⚠️ **`line/sculpt3d` está VIVA e toca `shells/desktop/src/`** | A costura de shell deste módulo cai na mesma pasta. Anotar cada arquivo novo no handoff (§1.5.9 item 3) e preferir **arquivo irmão novo** a engordar compartilhado (DIRETRIZ §1.5.2.1) |
@@ -285,7 +305,79 @@ e o `PROJECT_SCHEMA` é número que **soma entre linhas: conta-se, nunca se esco
 
 ---
 
-## §7 — O que é decisão do Enio, não minha
+## §7 — "E escrever o motor do zero, quanto custa?" (pergunta do Enio, 2026-08-19)
+
+⛔ **Descartado — e por medição, não por preferência.** As quatro evidências, da mais forte para a
+mais fraca:
+
+### §7.1 — Alguém competente já tentou exatamente isto, em Rust, e falhou
+
+O [**fornjot**](https://github.com/hannobraun/fornjot) foi um kernel B-Rep em Rust, com um
+mantenedor dedicado, patrocínio e anos de desenvolvimento. Foi **arquivado em 2026-06-19** com esta
+frase no próprio README:
+
+> *"This project has been shut down. Its goals were never reached."*
+> *"Fornjot lacks the features for anything more advanced, making it unsuited for real-world use cases."*
+
+*Este é o dado mais importante desta seção*: não é uma estimativa de esforço, é um resultado
+observado — o custo foi pago por outra pessoa, e não deu.
+
+### §7.2 — O tamanho do menor kernel que existe, medido
+
+`monstertruck` 0.4.0, **medido no fonte publicado** (`~/.cargo/registry`), 14 crates:
+
+| Peça | LOC | O que é |
+|---|---:|---|
+| `-geometry` | **29.046** | NURBS (base, curva, superfície), T-spline, **curva de intersecção**, offset, fillet por bola rolante |
+| `-io` | 13.836 | STEP (leitura e escrita) |
+| `-meshing` | 10.372 | Tesselação |
+| `-topology` | 8.292 | Vértice/aresta/wire/face/shell/solid |
+| `-modeling` | 7.745 | extrude, revolve, homotopy (loft), sweep, primitivas, perfis |
+| `-healing` | **5.956** | Reparar o que booleana e fillet sujam |
+| `-fillet` | 5.193 | Fillet e chanfro |
+| `-solid` | 2.784 | As booleanas |
+| resto (core, traits, mesh, assembly, derive, umbrella) | 13.436 | — |
+| **TOTAL** | **96.660** | |
+
+Para comparar: **o módulo inteiro do port** (ponte, ECS, snap 3D, ferramentas, painel, viewport) é
+estimado em **15-25 k LOC** — porque render, malha, órbita e export **já existem** na PH2D (§2).
+Escrever o kernel é, portanto, **~4× a 6× todo o resto do módulo somado**, e é a parte com a maior
+taxa de fracasso conhecida.
+
+### §7.3 — Onde o custo se concentra (não é uniforme)
+
+Três subsistemas comem a maior parte, e são exatamente os que fazem kernel morrer:
+
+1. **Intersecção superfície-superfície** robusta (dentro dos 29 k de `-geometry`). Toda booleana é
+   uma consequência dela; quando ela erra, o erro aparece longe, na booleana.
+2. **Fillet/blend** (5,2 k + `rolling_ball_fillet`/`edge_blend`/`approximate_fillet_surface` na
+   geometria). É a operação que o **próprio original mediu falhando** na taça (§1.3).
+3. **Healing** (6 k). ⚠️ *Esta crate existir é a prova do problema*: ela só é necessária porque as
+   duas de cima produzem geometria inválida com regularidade. É o imposto de **modelagem
+   tolerante** — o que separa demo de ferramenta — e é invisível em qualquer estimativa ingênua.
+
+### §7.4 — O referencial da indústria, para calibrar
+
+O **OCCT** (que o original usa) tem **~2 milhões de linhas**, nasceu na Matra Datavision no início
+dos anos 1990 e foi aberto em 1999 — **mais de 30 anos** de desenvolvimento, boa parte com uma
+empresa de CAD por trás. Os kernels comerciais (Parasolid, ACIS) são da mesma ordem.
+
+Em Rust, o [`truck`](https://github.com/ricosjp/truck) (Yoshinori Tanimura / ricosjp) publicou
+`truck-modeling` em **2020-12-28** e chegou à 0.6.0 em **2024-09-20**: ~4 anos, e o upstream **ainda
+não tem fillet** — que é precisamente a razão de o `monstertruck` ter forkado.
+
+### §7.5 — Veredito
+
+Escrever do zero **não é uma wave, é um projeto próprio de anos**, com um precedente recente de
+fracasso em Rust e uma taxa de risco que se concentra em três subsistemas. A decisão certa é a
+inversa: **usar o que existe e pagar o preço do isolamento** — `ph2d-brep` é a única crate que
+nomeia o kernel (§4.1), o que torna trocá-lo depois um trabalho de **uma crate**, e não do módulo.
+⚠️ O que **é** nosso, e onde o esforço deve ir, é a **casca** (§3.3) — uma operação faltante sobre
+um kernel que existe, não um kernel.
+
+---
+
+## §8 — O que é decisão do Enio, não minha
 
 1. **Se a W0 reprovar o kernel** (§5 kill-criterion): comprar licença comercial do `brepkit` ou
    abrir exceção LGPL + build nativo do OCCT. Ambas são política de produto.

@@ -59,6 +59,7 @@
 - [Rewrite de token = só arquivos MUDADOS](feedback_a_token_rewrite_scopes_to_changed_files_not_the_whole_tree.md) — `git grep` corrompeu .ttf
 - [Mover doc = RESOLVER link, não casar string](feedback_moving_a_doc_means_resolving_links_not_matching_strings.md) — gate antes/depois por path resolvido; `ls-files` pós-`mv` mente
 - [Mais perigos de git (6)](reference_topic_git_hazards.md) — stash · reset alheio · fence · worktree-base · mojibake
+- [O symlink da MEMÓRIA aponta para o primário](feedback_the_memory_symlink_points_at_the_primary_tree_not_your_worktree.md) — Modo L: salvar pelo caminho do Claude Code escreve no `main`
 
 ## Ship / CI / cadência
 - [Multi-máquina](project_multi_machine_setup.md) — GitHub fonte única; memória via symlink
@@ -83,6 +84,7 @@
 - [Cap de FN e cap de ARQUIVO são grandezas diferentes](feedback_a_fn_cap_and_a_file_cap_measure_different_things.md) — extrair no mesmo arquivo cura um e estoura o outro; corte para o IRMÃO
 - [CI cold-build drift](project_ci_rustcache_stable_drift_pin.md) — pin `@1.95`
 - [ship.sh ≠ paridade CI](feedback_ship_parity_gaps_ci_only.md) — bindgen/advisory-db escapam
+- [O seletor de impacto é CEGO fora de `crates/`](feedback_an_impacted_test_selector_that_maps_paths_by_prefix_is_blind_outside_it.md) — diff só em `shells/` roda 4 testes e sai verde
 - [`rustup default` PERDE para o `rust-toolchain.toml`](feedback_rustup_default_loses_to_the_toolchain_file.md) — o job de MSRV testava o PIN; meça com `RUSTUP_TOOLCHAIN`
 - [Números que SOMAM: conte](feedback_numbers_that_sum_across_lines_count_dont_pick.md)
 - [Allowlist duplicada mata o gate](feedback_duplicate_allowlist_key_kills_the_gate_at_parse.md) — TOML morre no parse

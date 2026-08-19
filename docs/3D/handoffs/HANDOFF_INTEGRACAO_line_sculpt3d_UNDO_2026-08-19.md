@@ -189,6 +189,58 @@ mutações registadas no doc-comment dele.
 
 ---
 
+## §6-bis — ⚠️ O `nextest-impacted.sh` NÃO VÊ `shells/`, `tools/` nem `tests/`
+
+**Achado desta sessão, com reprodução.** O conjunto impactado sai de uma linha só
+(`scripts/nextest-impacted.sh:29-30`):
+
+```bash
+CHANGED=$(git diff --name-only "${BASE}"... \
+  | sed -n 's#^crates/\([^/]*\)/.*#\1#p' | sort -u)
+```
+
+⇒ **um diff inteiramente em `shells/desktop/src/` produz `CHANGED` VAZIO**, o
+script cai no ramo *"no crate changes"* e roda **só o golden de determinismo (4
+testes)**. Medido neste diff:
+
+```
+BASE=main bash scripts/nextest-impacted.sh
+  → Starting 4 tests across 1 binary (1306 binaries skipped)
+  → 4 passed   (ph2d-ecs::transform_determinism)
+```
+
+⚠️ **Isto é um gate verde por acidente, e o alvo não é pequeno:** `shells/desktop`
+é onde vivem o shell inteiro do sculpt3d, o undo, a persistência e o
+`input_dispatch`. Todo fechamento de linha cujo diff seja só de shell tem corrido
+com esta cobertura.
+
+⚠️ **O comentário do próprio script diz o contrário do que ele faz:** *"If a
+changed dir name is not a real package, the filterset errors out — that surfaces
+the dir→package mismatch rather than silently under-testing."* Isso vale para um
+nome ERRADO dentro de `crates/`; um caminho FORA de `crates/` não gera nome
+nenhum, e o silêncio é total.
+
+**Não foi corrigido nesta linha, de propósito:** a cura (derivar o pacote do
+`cargo metadata` em vez do prefixo do caminho) muda o que **toda** linha roda ao
+fechar — há **5 worktrees vivas** —, e isso é decisão de processo, não um
+detalhe que deva viajar dentro de um conserto de undo.
+
+**A cobertura desta linha foi obtida à mão, e é maior que a do script:**
+
+| corrida | resultado |
+|---|---|
+| `cargo test -p ph2d-host-desktop --release --bins` (a crate INTEIRA) | **2696 passaram · 0 falharam** · 189 ignorados |
+| `… --bins sculpt3d -- --include-ignored` (os gates de GPU do módulo) | **91 passaram** · 1 falhou (o §5, pré-existente) |
+| a mesma em **DEBUG** (precedente do módulo) | **91 passaram** · o mesmo 1 |
+| `cargo clippy -p ph2d-host-desktop --all-targets` | limpo |
+| `rustfmt --edition 2024 --check` (toolchain **1.95**, o pin) | limpo |
+| `typos` nos arquivos tocados | limpo |
+
+⚠️ O `debug_assert!(false, …)` do §3 **nunca disparou** na corrida de DEBUG — é a
+prova executável de que aquele ramo é inalcançável, e não só um argumento.
+
+---
+
 ## §7 — O gate de fechamento e o smoke
 
 ```

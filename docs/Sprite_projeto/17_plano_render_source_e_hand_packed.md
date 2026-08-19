@@ -148,19 +148,36 @@ RGBA16 agora seria construir a promessa antes do modelo.
 de proveniência (`Storage`, `Source`) — não um par de botões que mente. RGBA16 real é wave própria,
 com a medição de banda ao lado, e só quando houver quem peça.
 
-## §6 — W4 · Hand-packed: a representação e o import
+## §6 — W4 · Hand-packed: a representação e o import ✅ FEITO
 
-1. **Variant novo:** `SpriteSource::HandPacked { sheet: u32, region: u32 }` — **payload durável**
-   (índices no doc), nunca um id de runtime. É o precedente do `CookedTexture { logical_id }`.
-   Discriminante postcard **3**, apendado ⇒ blobs v4 existentes continuam a ler e `Sprite::VERSION`
-   **fica 4** (a contagem de campos do `Sprite` não se move, então o gate
-   `architecture_sprite_inspector_surface` não é tocado — ⚠️ conferido no fonte do gate, que é um
-   destructuring exaustivo).
-   **Custo medido:** 25 sítios em 16 arquivos casam `SpriteSource` exaustivamente; a quebra é
-   **de compilação** e o próprio `component.rs` diz que exaustivo é o que se quer.
-2. **A folha vive no blob do W1** — agora com `regions: Vec<Region { name, rect }>`.
-3. **Runtime:** um mapa `sheet → texture_id` no `AppGfx`, irmão de `atlas_asset_map`. O extract
-   resolve a região por `region_subrect` — a função que já existe e já é testada.
+> ### ⛔ Recusa MEDIDA — o variante de `SpriteSource` foi projetado e REVERTIDO
+>
+> Este §6 prescrevia, na v1 do plano, um `SpriteSource::HandPacked { sheet, region }` novo —
+> como o [ADR-0026] manda. Ele **chegou a ser escrito**, e o custo foi medido no compilador:
+> **25 sítios em 16 arquivos**, mais um parâmetro no extract, mais uma tabela de resolução.
+>
+> Foi revertido por [[feedback_widely_constructed_type_favors_optional_component_over_appended_field]]
+> — *tipo construído em N sítios → componente opcional*, a lição registada para exatamente esta
+> situação. E porque o §2.1 já dizia a resposta: **a composição exprime uma folha**.
+>
+> ⛔ **Não reconstrua o variante.** Com `ph2d_ecs::SpriteSheetRef { sheet, region }` a autoria
+> viaja no snapshot, o `Sprite` fica com `Individual { texture_id } + region_rect` (o **cozido**),
+> e **o caminho de render não muda uma linha**. ⛔ E, pelo mesmo motivo, o `HandPackedAtlasStore`
+> que o ADR-0026 §«Próximos passos» prescreve **não foi construído e não deve ser** — seria uma
+> segunda resposta a *"que textura este id nomeia?"*, e o `renderer_draw` diz por escrito que ela
+> tem uma porta só.
+
+1. **Componente `ph2d_ecs::SpriteSheetRef { sheet: u32, region: u32 }`** — payload **durável**
+   (id de documento + índice), nunca um id de runtime. Mutuamente exclusivo com `SpritePixels`.
+2. **A folha vive no blob do W1** — `AuthoredSheet`, com `regions`. `SHEET_DOC_VERSION` 1→2 e o
+   **`PROJECT_SCHEMA` não se moveu**: era exatamente para isto que o campo nasceu auto-versionado.
+3. **Runtime:** `sheets` + `sheet_textures` no `AppGfx`, irmãos de `atlas_asset_map`. O extract
+   resolve a região por `region_subrect` — a função que já existia e já era testada.
+   ⚠️ O id da folha é um `u32` estável e **não** o `AssetId` dos pixels próprios: uma folha é um
+   documento *autorado* que muda a cada arrasto, e um hash de conteúdo obrigaria a re-carimbar
+   todo sprite a cada gesto (§3.1).
+
+[ADR-0026]: ../architecture/decisions/0026-sprite-source-strategies.md
 4. **Import pela porta que existe: drag & drop.** ⚠️ **Não há diálogo de arquivo neste app** (o
    `io_menu` é stub, `CLAUDE.md §5`), e `handle_dropped_files` hoje filtra por
    `is_supported_image_extension`, então um `.json` largado é ignorado. Largar `folha.png` +
@@ -168,7 +185,18 @@ com a medição de banda ao lado, e só quando houver quem peça.
    É aqui que `parse_atlas_meta` (Aseprite Hash + TexturePacker) **ganha o primeiro consumidor da
    sua vida** — ele tem **um** commit, de 2026-05-12, e nunca foi chamado por nada.
 
-## §7 — W5 · A ferramenta que CRIA uma folha (o pedido do Enio)
+## §7 — W5 · A ferramenta que CRIA uma folha (o pedido do Enio) — ⏳ metade feita
+
+> **O núcleo já existe e é puro** (`ph2d-sprite-sheet::pack` + `::to_aseprite_json`, 28 testes):
+> N imagens nomeadas → uma folha determinística, e a folha → `.png` + `.json` do Aseprite, com
+> round-trip provado contra o **nosso próprio leitor**. Ele serve **qualquer** resposta à
+> pergunta de UX abaixo, e por isso foi construído primeiro.
+>
+> ⏸️ **O que falta é a metade de PRODUTO, e é decisão do Enio:** como ele escolhe o que entra na
+> folha e como rearranja o que o empacotador propôs. As opções mudam o que se constrói:
+> um pill de um clique sobre a seleção (barato, sem arranjo manual) · um painel docado com
+> pré-visualização e arrasto das regiões (é o que *hand*-packed sugere) · ou um modo de canvas.
+> Perguntar custa uma frase; construir o errado custa a wave.
 
 > *"não temos nenhuma ferramenta para criar um Hand-packed"* — Enio, 2026-08-19.
 

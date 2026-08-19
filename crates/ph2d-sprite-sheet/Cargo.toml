@@ -18,3 +18,11 @@ ph2d-asset = { path = "../ph2d-asset" }
 serde = { version = "1", features = ["derive"] }
 # O MESMO formato de fio canônico do resto do projeto (ProjectFile, PrefabDoc, ComponentBlob).
 postcard = { version = "1", features = ["alloc"] }
+# O MESMO empacotador (Skyline) que o atlas dinâmico usa desde o M14.4d. Um segundo algoritmo
+# aqui seria uma segunda resposta a "como o PH2D arruma retângulos", e as duas divergiriam no dia
+# em que uma fosse afinada.
+rect_packer = "0.2"
+# A ESCRITA do formato do artista (Aseprite "Hash"). Os nomes das regiões vêm do utilizador e
+# podem trazer aspas e barras — montar o JSON com `format!` produziria um arquivo inválido no
+# ficheiro de outra pessoa. Mesma major que o `ph2d-asset` usa para o LEITOR do mesmo formato.
+serde_json = "1"

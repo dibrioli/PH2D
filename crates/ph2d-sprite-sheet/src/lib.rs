@@ -42,6 +42,11 @@
 //! abriu, mentiu e salvou. O parse acontece **antes** de qualquer mutação da sessão, então recusar
 //! não custa nada ao documento aberto.
 
+pub mod aseprite;
+pub mod pack;
+pub use aseprite::to_aseprite_json;
+pub use pack::{PackError, PackInput, PackOptions, pack};
+
 use ph2d_asset::AssetId;
 use serde::{Deserialize, Serialize};
 
@@ -286,7 +291,7 @@ pub fn encode(
         return Ok(Vec::new());
     }
     let mut pixels = pixels.to_vec();
-    pixels.sort_by(|a, b| a.id.cmp(&b.id));
+    pixels.sort_by_key(|a| a.id);
     pixels.dedup_by(|a, b| a.id == b.id);
     for p in &pixels {
         p.validate()?;

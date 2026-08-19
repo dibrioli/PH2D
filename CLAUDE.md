@@ -332,11 +332,21 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   tinta 2D chapada sai acesa pela forma (`ph2d-light` é o dono do rig de luz, e por isso **não é removível**).
   ⚠️ **A navegação orbital mora no SHELL, nunca numa `Tool`** — é isso que mantém `Tool=12` (§6) fora do caminho.
   ⚠️ Sem a env var o `AppGfx.sculpt3d` é `None` e **o frame 2D é byte-idêntico**.
+  ⚠️ **A W7 (plano MLS) e a W9 (Mesh Filter) FECHARAM** — o filtro tem as **9** leis (Smooth · Relax · SurfaceSmooth ·
+  Inflate · Scale · Sphere · Random · Enhance Details · Sharpen), e a contagem é do `FilterKind::ALL`, **que é a fonte**.
+  *O picker é o que as torna alcançáveis*: enquanto a lei era derivada do verbo em mãos, três delas eram inexprimíveis
+  por gesto nenhum — o verbo passa a **SEMEAR e nunca a mandar**. ⚠️ O `Sharpen` é o único filtro com **PRÉ-PASSE**, e a
+  lei da referência **depende da taxa de polling** (ela não repõe a pose entre eventos) — a nossa entrega a força em
+  sub-passos **determinísticos**.
   **Aberto:** ⛔ os defaults do `b-mode` e o *Draw Sharp* são **decisão de produto** (os do Blender moram num `.blend`
   **binário**) · ⛔ a lei do zoom (adotar a do SculptGL **diverge da referência**; o número está numa cerca executável) ·
   ⛔ as três divergências **declaradas** da referência, cada uma com gate defendendo a nossa posição · a outra metade da
-  **W4**, **W7** (plano MLS), **W9** (Mesh Filter — *o mais barato: não há kernel novo*), **W10-W12**, e o **marching cubes**.
-  **Smokes:** `PH2D_SCULPT3D_SMOKE=<n>`. ⚠️ **Rode uma vez SEM a env var** — é a metade que prova a inércia.
+  **W4**, **W10-W12**, e o **marching cubes** · ⛔ **duas perguntas do Enio, já devolvidas com a tabela**: se a lei da
+  referência é o afiador que se quer (ela alisa detalhe fino e mal toca feição grande) e onde fica o teto do `Sharpen`
+  (subir compra excursão real e paga **17,17 ms** por evento de ponteiro contra um quadro de 16,7) · ⏸️ o undo do filtro
+  pela rota do **PONTEIRO** segue por investigar.
+  **Smokes:** `PH2D_SCULPT3D_SMOKE=<n>` (a W9 é a cena **`=34`**). ⚠️ **Rode uma vez SEM a env var** — é a metade que
+  prova a inércia.
   **Ler:** [porta do cofre](docs/3D/README.md) · [00-INDEX](docs/3D/00-INDEX.md) · [handoffs](docs/3D/handoffs/README.md) ·
   [história](docs/archive/estado-2026-08-18/sculpt3d.md)
 

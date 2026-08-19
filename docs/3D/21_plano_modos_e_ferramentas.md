@@ -112,6 +112,20 @@ hoje arma `strength` e `accumulate` (`Verb::default_*`). Hoje ela **não arma o
 falloff**, e é por isso que o D1 atravessa o app inteiro: o seletor de verbo é a
 porta e ela estava incompleta.
 
+⚠️⚠️ **A PORTA descrita acima MORREU em 2026-08-17 (`1e03095b1`), e a
+PROPRIEDADE ficou.** O `Brush::arm_verb_defaults` re-resolvia os campos **em
+tempo de troca**, sob o teste *"o artista mexeu?"*; hoje cada verbo tem um
+**`VerbSlot`** que guarda o pincel dele, e trocar de ferramenta é **salvar o que
+sai e carregar o que entra**. O estado de fábrica é construído **uma vez** por
+`VerbSlot::for_verb`, que consulta as mesmas tabelas `Verb::default_*` — então
+tudo o que este §1.3 e o §2 afirmam sobre *qual* valor cada verbo recebe
+continua verdade, por outro mecanismo. ⚠️ **O nome antigo sobrevive só em
+comentários** que dizem que ele foi substituído (`crates/ph2d-panel-sculpt3d/src/slots.rs`),
+e **cinco passagens do [arquivo](../archive/docs-2026-08-18/3D/21_plano_modos_e_ferramentas.md)
+ainda o nomeiam no presente** — elas ficam **verbatim** de propósito: o arquivo
+regista o que se sabia naquela data, e esta nota é o único sítio que precisa de
+estar em dia.
+
 **Um estado, um gesto de massa:** o dropdown por-verbo é o **estado**; ao lado
 dele um botão **"Apply to all tools"** carimba o modo corrente nos demais. Um
 seletor global *e* um por-verbo seriam duas portas para o mesmo fato — a falha

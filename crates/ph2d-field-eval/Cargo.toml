@@ -1,0 +1,41 @@
+[package]
+name = "ph2d-field-eval"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A PONTE do módulo de modelagem 3D (ADR-0161): documento autorado -> árvore de
+# avaliação -> malha.
+#
+# ⚠️ **Esta é a ÚNICA crate do repositório que nomeia o motor de avaliação.**
+# Não é organização: é o preço combinado por entrar num motor que o próprio
+# autor chama de experimental. Se ele mudar, morrer ou for forkado, o que se
+# reescreve é UMA crate — e nenhum arquivo salvo pelo utilizador quebra, porque
+# o documento (`ph2d-field`) não sabe que ele existe.
+[dependencies]
+# O documento. A dependência aponta nesta direção e nunca na inversa.
+ph2d-field = { path = "../ph2d-field" }
+
+# A malha da casa — o destino da extração. Medido no spike da W0: a ponte
+# `fidget::mesh::Mesh -> ph2d_mesh::Mesh` passa pela validação de `from_parts`
+# nas quatro cenas.
+ph2d-mesh = { path = "../ph2d-mesh" }
+
+# O motor. MPL-2.0 (já na allowlist do `deny.toml`), Rust puro, sem C/C++ e sem
+# `wgpu` — os quatro medidos na W0.
+#
+# ⚠️ `default-features = false`: o default dela traz `gui`, `rhai` e `raster`,
+# que são do app-demo do autor, e `wgpu`, que colidiria com o lockstep 28 da
+# casa. Ficam `mesh` (a extração) e `jit`.
+#
+# ⚠️ **O `jit` é `unsafe` (assembly escrita à mão) e está LIGADO por MEDIÇÃO,
+# como o HR-2 exige:** 5,3x no traçado do campo — que é o caminho pelo qual o
+# artista vê a peça — e 1,6x na malhagem. A primeira medição dizia "ganho zero"
+# e estava errada: comparava `VmShape` com `VmShape` (registro em
+# `docs/3DModeling/01_resultados_spike.md` §6).
+fidget = { version = "0.5", default-features = false, features = ["mesh", "jit"] }

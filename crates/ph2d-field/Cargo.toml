@@ -1,0 +1,35 @@
+[package]
+name = "ph2d-field"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O DOCUMENTO do módulo de modelagem 3D (ADR-0161): a árvore autorada de
+# primitivas, transformações e operações com raio. `f(p)` responde "esta forma
+# existe aqui?" — mas **não aqui**: esta crate não avalia nada.
+#
+# ⚠️ A fronteira é o ponto inteiro dela. O motor de avaliação (`fidget`) vive na
+# `ph2d-field-eval`, e nenhuma linha desta crate o nomeia. É isso que faz trocar
+# de motor ser trabalho de UMA crate — e, sobretudo, é isso que garante que
+# **nenhum arquivo salvo quebre** quando isso acontecer. O documento do
+# utilizador não pode ter a forma que um terceiro escolheu para o tape dele.
+[dependencies]
+# serde: a crate SERIALIZA A SI MESMA, e é o que dá undo e persistência de graça
+# (ADR-0161 §Consequências). Sem `postcard` aqui: só os TIPOS são serializáveis;
+# quem escolhe o formato e grava o arquivo é o shell — o mesmo corte da
+# `ph2d-mesh` e da `ph2d-guides`.
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+# postcard: SÓ no gate `the_shape_of_a_saved_field_is_pinned`. O `src/` não o
+# toca ⇒ machete-safe, o padrão que a `ph2d-mesh` já usa.
+#
+# ⚠️ Ele mora AQUI e não só no shell de propósito: um gate de forma tem de tocar
+# na crate onde a forma muda, senão ele só corre na varredura impactada e o
+# vermelho fica latente — este repositório já pagou isso três vezes.
+postcard = { version = "1", features = ["alloc"] }

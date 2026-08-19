@@ -1,0 +1,307 @@
+//! `ph2d-field` — **o documento** do módulo de modelagem 3D ([ADR-0161]).
+//!
+//! O modelo não é uma malha nem um grid de voxels: é uma **árvore de expressão autorada**.
+//! Primitivas, transformações e operações com raio. Perguntar *"esta forma existe no ponto p?"* é
+//! avaliar `f(p)` — e é dessa escolha que decorrem, como consequência e não como promessa:
+//!
+//! - **booleana não pode falhar** (união é `min(a, b)`: não existe geometria degenerada para uma
+//!   comparação de dois números);
+//! - **o arredondamento não pode falhar**, e funciona onde três ou mais formas se encontram — o
+//!   caso que quebra o `Bevel` do Blender e o rolling-ball do CAD;
+//! - **o raio fica editável para sempre**, porque é parâmetro da operação e não geometria assada.
+//!   ⭐ Nem o Blender nem o MoI dão isto.
+//!
+//! # ⚠️ Esta crate NÃO avalia
+//!
+//! Nenhuma linha aqui nomeia o motor de avaliação. Ele vive na `ph2d-field-eval`, e a fronteira é a
+//! razão de existir desta crate: trocar de motor tem de ser trabalho de **uma** crate, e — o que
+//! importa mais — **nenhum arquivo salvo pode quebrar** quando isso acontecer. O documento do
+//! utilizador não pode ter a forma que um terceiro escolheu para a estrutura interna dele.
+//!
+//! # A arena é ORDENADA POR CONSTRUÇÃO
+//!
+//! Os nós vivem num `Vec` e referem-se por índice. A invariante é dura: **todo filho tem índice
+//! estritamente menor que o do pai**. Isso não é estilo — é o que torna ciclo uma
+//! **impossibilidade** em vez de um erro a detectar, e faz a avaliação ser uma passagem de baixo
+//! para cima sem recursão nem pilha de visitados.
+//!
+//! [ADR-0161]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
+
+use serde::{Deserialize, Serialize};
+
+/// Versão do formato serializado (**HR-14**: save format é versionado e migrável).
+///
+/// ⚠️ **Este número SOMA entre linhas** — se duas o incrementarem em paralelo, o git funde os dois
+/// lados sem saber que são o mesmo degrau. Ao mexer, **conte**, não escolha
+/// ([`CLAUDE.md §5.0`]).
+///
+/// [`CLAUDE.md §5.0`]: ../../../CLAUDE.md
+pub const FIELD_DOC_VERSION: u32 = 1;
+
+/// Índice de um nó na arena.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct NodeId(pub u32);
+
+/// As primitivas. Cada uma é **distância exata** — dentro e fora.
+///
+/// ⚠️ O `round` de uma primitiva é o **arredondamento da aresta convexa** dela, e ele é feito por
+/// **deslocamento da superfície** com a fonte encolhida na mesma medida (ADR-0161 §3). É por isso
+/// que ele vive na primitiva e não numa operação: arredondar a aresta de uma caixa não envolve
+/// segunda forma nenhuma.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub enum Primitive {
+    /// Caixa de meias-extensões `half`, com as 12 arestas arredondadas em `round`.
+    Box { half: [f32; 3], round: f32 },
+    /// Esfera. Não tem aresta, logo não tem `round`.
+    Sphere { radius: f32 },
+    /// Cilindro no eixo **Z** (outro eixo se obtém pela rotação do nó), com o aro das tampas
+    /// arredondado em `round`.
+    Cylinder {
+        radius: f32,
+        half_height: f32,
+        round: f32,
+    },
+    /// Toro no plano XY: `major` é o raio do anel, `minor` a espessura do tubo.
+    Torus { major: f32, minor: f32 },
+}
+
+/// O **caráter** do arredondamento de uma operação.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub enum Blend {
+    /// Aresta viva.
+    Sharp,
+    /// Raio **constante de verdade** — o *look* de produto, e o default do módulo.
+    /// Medido: entrega o raio pedido com **0,00 %** de erro (ADR-0161 §3).
+    Exact { radius: f32 },
+    /// Transição contínua ("derretida").
+    ///
+    /// ⚠️ **`k` NÃO é um raio.** Medido: entrega **exatamente 3/4** do número, em todos os raios
+    /// testados. Quem o mostrar na UI com a etiqueta "raio" mente 25 % ao utilizador, sempre — ou
+    /// calibra (×4/3), ou lhe dá outro nome.
+    Organic { k: f32 },
+}
+
+impl Blend {
+    /// O raio (ou alcance) desta mistura, ou `0.0` se for viva.
+    #[must_use]
+    pub fn amount(self) -> f32 {
+        match self {
+            Blend::Sharp => 0.0,
+            Blend::Exact { radius } => radius,
+            Blend::Organic { k } => k,
+        }
+    }
+}
+
+/// As três operações booleanas.
+///
+/// ⚠️ Só a **união** precisa de fórmula própria: intersecção e subtração saem por **De Morgan**
+/// (`A ∩ B = ¬(¬A ∪ ¬B)`), sem fórmula nova. Duplicar a fórmula seria uma segunda resposta à mesma
+/// pergunta, com uma chance a mais de divergir — e quem avalia (`ph2d-field-eval`) faz exatamente
+/// essa derivação.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub enum Op {
+    Union(Blend),
+    Intersection(Blend),
+    /// `children[0]` menos todos os seguintes.
+    Difference(Blend),
+}
+
+impl Op {
+    #[must_use]
+    pub fn blend(self) -> Blend {
+        match self {
+            Op::Union(b) | Op::Intersection(b) | Op::Difference(b) => b,
+        }
+    }
+}
+
+/// Pose de um nó: translação, rotação e escala **uniforme**.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Xform {
+    pub translation: [f32; 3],
+    /// Quaternion `(x, y, z, w)`.
+    pub rotation: [f32; 4],
+    /// ⛔ **UNIFORME de propósito.** Escala não-uniforme **destrói a propriedade de distância**
+    /// (‖∇f‖ = 1), que é a fundação de tudo neste módulo: sem ela o raio deixa de ser o raio, a
+    /// casca perde a espessura e a marcha de raios atravessa a superfície. Quem quer um elipsoide
+    /// usa uma primitiva de elipsoide — não uma esfera esticada (ADR-0161 §6).
+    pub scale: f32,
+}
+
+impl Default for Xform {
+    fn default() -> Self {
+        Self::IDENTITY
+    }
+}
+
+impl Xform {
+    pub const IDENTITY: Self = Self {
+        translation: [0.0; 3],
+        rotation: [0.0, 0.0, 0.0, 1.0],
+        scale: 1.0,
+    };
+
+    #[must_use]
+    pub fn at(x: f32, y: f32, z: f32) -> Self {
+        Self {
+            translation: [x, y, z],
+            ..Self::IDENTITY
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum NodeKind {
+    Leaf(Primitive),
+    Combine { op: Op, children: Vec<NodeId> },
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Node {
+    pub xform: Xform,
+    pub kind: NodeKind,
+}
+
+/// O documento: a arena de nós e a raiz.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FieldDoc {
+    pub version: u32,
+    nodes: Vec<Node>,
+    root: NodeId,
+}
+
+/// Por que um documento foi recusado.
+///
+/// ⚠️ Cada variante corresponde a um jeito de o campo **deixar de ser uma distância** ou de a
+/// árvore deixar de ser uma árvore. Nenhuma é zelo: um documento inválido não produz um erro — ele
+/// produz uma forma errada, em silêncio, três waves adiante.
+// ⚠️ Sem `Eq`: `RoundTooLarge` carrega os `f32` que explicam a recusa (o raio pedido e o limite),
+// e `f32` não é `Eq` por causa do NaN. Guardar os números vale mais do que a igualdade total —
+// uma recusa que diz *"0,08 não cabe em 0,06"* poupa a próxima pessoa de ir medir.
+#[derive(Clone, Debug, PartialEq)]
+pub enum FieldError {
+    /// A arena está vazia, ou a raiz aponta para fora dela.
+    BadRoot,
+    /// Um filho tem índice ≥ o do pai — a invariante topológica (ver o doc da crate).
+    ForwardReference { parent: u32, child: u32 },
+    /// Uma operação sem filhos não tem o que combinar.
+    EmptyCombine { node: u32 },
+    /// Dimensão não-positiva (raio, altura, escala).
+    NonPositive { node: u32, what: &'static str },
+    /// O arredondamento não cabe na forma: a fonte encolhida ficaria negativa.
+    RoundTooLarge { node: u32, round: f32, limit: f32 },
+    /// Escala não-uniforme, ou não-finita (ver [`Xform::scale`]).
+    BadScale { node: u32 },
+}
+
+impl FieldDoc {
+    /// Constrói e **valida**. Só há esta porta: um `FieldDoc` que exista está válido.
+    ///
+    /// # Errors
+    /// Ver [`FieldError`].
+    pub fn new(nodes: Vec<Node>, root: NodeId) -> Result<Self, FieldError> {
+        let doc = Self {
+            version: FIELD_DOC_VERSION,
+            nodes,
+            root,
+        };
+        doc.validate()?;
+        Ok(doc)
+    }
+
+    #[must_use]
+    pub fn nodes(&self) -> &[Node] {
+        &self.nodes
+    }
+
+    #[must_use]
+    pub fn root(&self) -> NodeId {
+        self.root
+    }
+
+    #[must_use]
+    pub fn node(&self, id: NodeId) -> Option<&Node> {
+        self.nodes.get(id.0 as usize)
+    }
+
+    fn validate(&self) -> Result<(), FieldError> {
+        if self.nodes.is_empty() || self.root.0 as usize >= self.nodes.len() {
+            return Err(FieldError::BadRoot);
+        }
+        for (i, node) in self.nodes.iter().enumerate() {
+            let idx = i as u32;
+            if !node.xform.scale.is_finite() || node.xform.scale <= 0.0 {
+                return Err(FieldError::BadScale { node: idx });
+            }
+            match &node.kind {
+                NodeKind::Combine { children, .. } => {
+                    if children.is_empty() {
+                        return Err(FieldError::EmptyCombine { node: idx });
+                    }
+                    for c in children {
+                        // A invariante topológica: filho SEMPRE antes do pai.
+                        if c.0 >= idx {
+                            return Err(FieldError::ForwardReference {
+                                parent: idx,
+                                child: c.0,
+                            });
+                        }
+                    }
+                }
+                NodeKind::Leaf(p) => validate_primitive(idx, *p)?,
+            }
+        }
+        Ok(())
+    }
+}
+
+fn validate_primitive(idx: u32, p: Primitive) -> Result<(), FieldError> {
+    let positive = |v: f32, what: &'static str| -> Result<(), FieldError> {
+        if !v.is_finite() || v <= 0.0 {
+            Err(FieldError::NonPositive { node: idx, what })
+        } else {
+            Ok(())
+        }
+    };
+    let round_fits = |round: f32, limit: f32| -> Result<(), FieldError> {
+        if !round.is_finite() || round < 0.0 || round >= limit {
+            Err(FieldError::RoundTooLarge {
+                node: idx,
+                round,
+                limit,
+            })
+        } else {
+            Ok(())
+        }
+    };
+    match p {
+        Primitive::Box { half, round } => {
+            for h in half {
+                positive(h, "half")?;
+            }
+            // ⚠️ O limite é a MENOR meia-extensão: a receita do arredondamento encolhe a caixa em
+            // `round` nos três eixos, e uma delas ficando ≤ 0 não é "quase" — é uma caixa que
+            // deixou de existir naquele eixo, e o campo que sai disso não é uma distância.
+            let min_half = half[0].min(half[1]).min(half[2]);
+            round_fits(round, min_half)
+        }
+        Primitive::Sphere { radius } => positive(radius, "radius"),
+        Primitive::Cylinder {
+            radius,
+            half_height,
+            round,
+        } => {
+            positive(radius, "radius")?;
+            positive(half_height, "half_height")?;
+            round_fits(round, radius.min(half_height))
+        }
+        Primitive::Torus { major, minor } => {
+            positive(major, "major")?;
+            positive(minor, "minor")
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests;

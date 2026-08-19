@@ -592,7 +592,7 @@ dependencies = [
  "nonmax",
  "serde",
  "slotmap",
- "smallvec",
+ "smallvec 1.15.1",
  "thiserror 2.0.18",
  "variadics_please",
 ]
@@ -665,7 +665,7 @@ dependencies = [
  "glam 0.30.10",
  "indexmap",
  "serde",
- "smallvec",
+ "smallvec 1.15.1",
  "smol_str",
  "thiserror 2.0.18",
  "uuid",
@@ -990,7 +990,7 @@ version = "0.15.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d067ad48b8650848b989a59a86c6c36a995d02d2bf778d45c3c5d57bc2718f02"
 dependencies = [
- "smallvec",
+ "smallvec 1.15.1",
  "target-lexicon 0.12.16",
 ]
 
@@ -1005,6 +1005,17 @@ name = "cfg_aliases"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
+
+[[package]]
+name = "chacha20"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d524456ba66e72eb8b115ff89e01e497f8e6d11d78b70b1aa13c0fbd97540a81"
+dependencies = [
+ "cfg-if",
+ "cpufeatures 0.3.0",
+ "rand_core 0.10.1",
+]
 
 [[package]]
 name = "ciborium"
@@ -1184,6 +1195,12 @@ dependencies = [
  "libc",
  "windows-sys 0.61.2",
 ]
+
+[[package]]
+name = "const-fnv1a-hash"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32b13ea120a812beba79e34316b3942a857c86ec1593cb34f27bb28272ce2cca"
 
 [[package]]
 name = "const-random"
@@ -1425,7 +1442,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "sha2",
- "smallvec",
+ "smallvec 1.15.1",
  "target-lexicon 0.13.5",
  "wasmtime-internal-core",
 ]
@@ -1479,7 +1496,7 @@ dependencies = [
  "cranelift-codegen",
  "hashbrown 0.17.1",
  "log",
- "smallvec",
+ "smallvec 1.15.1",
  "target-lexicon 0.13.5",
 ]
 
@@ -1968,6 +1985,33 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
+name = "dynasm"
+version = "5.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd358e74d2f8d71a11b7a2c51c67ad5df3de06003b0596875e47bc09126c894e"
+dependencies = [
+ "bitflags 2.11.1",
+ "byteorder",
+ "lazy_static",
+ "proc-macro-error3",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "dynasmrt"
+version = "5.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6efe03f6bd356ae85eeea7ee14c2bf54e664a949d089d238364b5a99afbc4116"
+dependencies = [
+ "byteorder",
+ "dynasm",
+ "fnv",
+ "memmap2 0.9.10",
+]
+
+[[package]]
 name = "educe"
 version = "0.4.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2165,7 +2209,7 @@ dependencies = [
  "half",
  "lebe",
  "miniz_oxide",
- "smallvec",
+ "smallvec 1.15.1",
  "zune-inflate",
 ]
 
@@ -2174,6 +2218,97 @@ name = "extended"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af9673d8203fcb076b19dfd17e38b3d4ae9f44959416ea532ce72415a6020365"
+
+[[package]]
+name = "facet"
+version = "0.46.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df488bcda61dde160301ee6bce43d42397db599ffc689381a1873b5f035135f9"
+dependencies = [
+ "autocfg",
+ "facet-core",
+ "facet-macros",
+ "facet-reflect",
+]
+
+[[package]]
+name = "facet-core"
+version = "0.46.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c33cf9d80307e9a29f93e5a65ddb65b227b5fa082d649c65d4083345f5d398d0"
+dependencies = [
+ "autocfg",
+ "const-fnv1a-hash",
+ "iddqd",
+ "impls",
+]
+
+[[package]]
+name = "facet-macro-parse"
+version = "0.46.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c5ab349bd1823fbfa129e595a826ef7fb4d1b9c7215428b28de18044d009dbc1"
+dependencies = [
+ "facet-macro-types",
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
+name = "facet-macro-types"
+version = "0.46.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79622a74665b47d1744998dd0d15b73eb0eecdfeb16630b436c5f03365b02e55"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "unsynn",
+]
+
+[[package]]
+name = "facet-macros"
+version = "0.46.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6656fc7457975f5e1c86791b7a810c40ba53993823ae655f7c331e808c4b5ff"
+dependencies = [
+ "facet-macros-impl",
+]
+
+[[package]]
+name = "facet-macros-impl"
+version = "0.46.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f462bad2b5a574b2c94e9ad54162704ceacf3200741b4f0fb88020936b9003ec"
+dependencies = [
+ "facet-macro-parse",
+ "facet-macro-types",
+ "proc-macro2",
+ "quote",
+ "strsim",
+ "unsynn",
+]
+
+[[package]]
+name = "facet-path"
+version = "0.46.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20670a58be24eb604b76ed3a9ca719e5cc5e11b0885dc3847ebb899aa95bf1bc"
+dependencies = [
+ "facet-core",
+]
+
+[[package]]
+name = "facet-reflect"
+version = "0.46.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "399876f2bded4a572385dc414336aad0002ce4b4154cd0d1cfe9d1881243c400"
+dependencies = [
+ "facet-core",
+ "facet-path",
+ "hashbrown 0.17.1",
+ "regex",
+ "smallvec 2.0.0-alpha.12",
+]
 
 [[package]]
 name = "fast_image_resize"
@@ -2206,6 +2341,69 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e6853b52649d4ac5c0bd02320cddc5ba956bdb407c4b75a2c6b75bf51500f8c"
 dependencies = [
  "simd-adler32",
+]
+
+[[package]]
+name = "fidget"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6214a9d3f6f2fd6cb5f119cfd3d496d9c562f0fda41c286265a6d1ca0db3d050"
+dependencies = [
+ "document-features",
+ "fidget-core",
+ "fidget-jit",
+ "fidget-mesh",
+ "workspace-hack",
+]
+
+[[package]]
+name = "fidget-core"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ed4b64729148d4d56f5216bcf48c1fb8e8c24876faeb9b8efe415f573aba93c"
+dependencies = [
+ "facet",
+ "getrandom 0.2.17",
+ "getrandom 0.3.4",
+ "getrandom 0.4.2",
+ "nalgebra 0.35.0",
+ "ordered-float",
+ "rand 0.10.2",
+ "rayon",
+ "serde",
+ "strum",
+ "thiserror 2.0.18",
+ "workspace-hack",
+]
+
+[[package]]
+name = "fidget-jit"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0533d5aa80773945f73d1d9e7e0fd0ceb55a0eb5c2d3ede0b6d46d910d084e4d"
+dependencies = [
+ "arrayvec",
+ "dynasmrt",
+ "fidget-core",
+ "libc",
+ "static_assertions",
+ "windows 0.62.2",
+ "workspace-hack",
+]
+
+[[package]]
+name = "fidget-mesh"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9d1c394abca268c1821951668d64087942e4e6b6cd39dc194ba1aa61a4581b2"
+dependencies = [
+ "arrayvec",
+ "fidget-core",
+ "nalgebra 0.35.0",
+ "ordered-float",
+ "rayon",
+ "static_assertions",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -2258,7 +2456,7 @@ dependencies = [
  "flecs_ecs_sys",
  "hashbrown 0.16.1",
  "libc",
- "smallvec",
+ "smallvec 1.15.1",
 ]
 
 [[package]]
@@ -2343,7 +2541,7 @@ dependencies = [
  "objc2-foundation 0.3.2",
  "read-fonts 0.35.0",
  "roxmltree",
- "smallvec",
+ "smallvec 1.15.1",
  "windows 0.58.0",
  "windows-core 0.58.0",
  "yeslogic-fontconfig-sys",
@@ -2535,8 +2733,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff2abc00be7fca6ebc474524697ae276ad847ad0a6b3faa4bcb027e9a4614ad0"
 dependencies = [
  "cfg-if",
+ "js-sys",
  "libc",
  "wasi",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -2546,9 +2746,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "899def5c37c4fd7b2664648c28120ecec138e4d395b459e5ca34f9cce2dd77fd"
 dependencies = [
  "cfg-if",
+ "js-sys",
  "libc",
  "r-efi 5.3.0",
  "wasip2",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -2558,10 +2760,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0de51e6874e94e7bf76d726fc5d13ba782deca734ff60d5bb2fb2607c7406555"
 dependencies = [
  "cfg-if",
+ "js-sys",
  "libc",
  "r-efi 6.0.0",
+ "rand_core 0.10.1",
  "wasip2",
  "wasip3",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -2801,6 +3006,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glam"
+version = "0.33.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c426daf70099baff33fac0ba85151c42424861c56828cef9ba02dacb78eb6b26"
+
+[[package]]
 name = "glob"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2900,7 +3111,7 @@ dependencies = [
  "bytemuck",
  "core_maths",
  "read-fonts 0.35.0",
- "smallvec",
+ "smallvec 1.15.1",
 ]
 
 [[package]]
@@ -2966,6 +3177,8 @@ version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
 dependencies = [
+ "allocator-api2",
+ "equivalent",
  "foldhash 0.2.0",
  "serde",
  "serde_core",
@@ -3058,7 +3271,7 @@ dependencies = [
  "icu_normalizer_data",
  "icu_properties",
  "icu_provider",
- "smallvec",
+ "smallvec 1.15.1",
  "zerovec",
 ]
 
@@ -3110,13 +3323,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d3067d79b975e8844ca9eb072e16b31c3c1c36928edf9c6789548c524d0d954"
 
 [[package]]
+name = "iddqd"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8450e1521a7518a32addf0b805ffcfbc8f9c558d2ad5769f068f2aeef5a81126"
+dependencies = [
+ "allocator-api2",
+ "equivalent",
+ "foldhash 0.2.0",
+ "hashbrown 0.17.1",
+]
+
+[[package]]
 name = "idna"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b0875f23caa03898994f6ddc501886a45c7d3d62d04d2d90788d47be1b1e4de"
 dependencies = [
  "idna_adapter",
- "smallvec",
+ "smallvec 1.15.1",
  "utf8_iter",
 ]
 
@@ -3165,6 +3390,12 @@ name = "imagesize"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edcd27d72f2f071c64249075f42e205ff93c9a4c5f6c6da53e79ed9f9832c285"
+
+[[package]]
+name = "impls"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a46645bbd70538861a90d0f26c31537cdf1e44aae99a794fb75a664b70951bc"
 
 [[package]]
 name = "indexmap"
@@ -3614,7 +3845,7 @@ checksum = "c62026ae44756f8a599ba21140f350303d4f08dcdcc71b5ad9c9bb8128c13c62"
 dependencies = [
  "arrayvec",
  "euclid",
- "smallvec",
+ "smallvec 1.15.1",
 ]
 
 [[package]]
@@ -3626,7 +3857,7 @@ dependencies = [
  "arrayvec",
  "euclid",
  "serde",
- "smallvec",
+ "smallvec 1.15.1",
 ]
 
 [[package]]
@@ -3738,7 +3969,7 @@ dependencies = [
  "kurbo 0.13.0",
  "polycool",
  "rustc-hash 2.1.2",
- "smallvec",
+ "smallvec 1.15.1",
 ]
 
 [[package]]
@@ -4022,6 +4253,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "mutants"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc0287524726960e07b119cebd01678f852f147742ae0d925e6a520dca956126"
+
+[[package]]
 name = "naga"
 version = "28.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4077,7 +4314,28 @@ dependencies = [
  "num-complex",
  "num-rational",
  "num-traits",
- "simba",
+ "simba 0.9.1",
+ "typenum",
+]
+
+[[package]]
+name = "nalgebra"
+version = "0.35.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "adc43a60c217b0c6ff46e47f26911015ad8d2e5a8be1af668c67e370d99a4346"
+dependencies = [
+ "approx",
+ "glam 0.30.10",
+ "glam 0.31.1",
+ "glam 0.32.1",
+ "glam 0.33.5",
+ "matrixmultiply",
+ "nalgebra-macros",
+ "num-complex",
+ "num-rational",
+ "num-traits",
+ "serde",
+ "simba 0.10.2",
  "typenum",
 ]
 
@@ -4797,7 +5055,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "redox_syscall 0.5.18",
- "smallvec",
+ "smallvec 1.15.1",
  "windows-link",
 ]
 
@@ -4830,13 +5088,13 @@ dependencies = [
  "hashbrown 0.15.5",
  "indexmap",
  "log",
- "nalgebra",
+ "nalgebra 0.34.2",
  "num-derive",
  "num-traits",
  "ordered-float",
- "simba",
+ "simba 0.9.1",
  "slab",
- "smallvec",
+ "smallvec 1.15.1",
  "spade",
  "thiserror 2.0.18",
 ]
@@ -4856,7 +5114,7 @@ dependencies = [
  "color",
  "kurbo 0.13.0",
  "linebender_resource_handle",
- "smallvec",
+ "smallvec 1.15.1",
 ]
 
 [[package]]
@@ -5160,7 +5418,7 @@ dependencies = [
  "ph2d-tool-trim-transparency",
  "ph2d-vector",
  "ph2d-widget-sync",
- "smallvec",
+ "smallvec 1.15.1",
 ]
 
 [[package]]
@@ -5199,6 +5457,23 @@ dependencies = [
 [[package]]
 name = "ph2d-fbm"
 version = "0.0.0"
+
+[[package]]
+name = "ph2d-field"
+version = "0.0.0"
+dependencies = [
+ "postcard",
+ "serde",
+]
+
+[[package]]
+name = "ph2d-field-eval"
+version = "0.0.0"
+dependencies = [
+ "fidget",
+ "ph2d-field",
+ "ph2d-mesh",
+]
 
 [[package]]
 name = "ph2d-flip"
@@ -7983,7 +8258,7 @@ dependencies = [
  "ph2d-vector-traits",
  "postcard",
  "serde",
- "smallvec",
+ "smallvec 1.15.1",
  "walkdir",
 ]
 
@@ -7995,7 +8270,7 @@ dependencies = [
  "ph2d-vector-doc",
  "ph2d-vector-traits",
  "skrifa 0.40.0",
- "smallvec",
+ "smallvec 1.15.1",
 ]
 
 [[package]]
@@ -8237,6 +8512,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc-macro-error-attr3"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0084e6206a967a2dad822180626b2f6b07a3b379325e8f1ec0438e33a469ba7"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
+name = "proc-macro-error3"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cf066225f2373bc711684792b69bdeac0356019b007e721090c24d92d5d5a50"
+dependencies = [
+ "proc-macro-error-attr3",
+ "proc-macro2",
+ "quote",
+ "syn 3.0.3",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8417,6 +8714,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7f5fa3a058cd35567ef9bfa5e75732bee0f9e4c55fa90477bef2dfcdbc4be80"
+dependencies = [
+ "chacha20",
+ "getrandom 0.4.2",
+ "rand_core 0.10.1",
+]
+
+[[package]]
 name = "rand_chacha"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8455,6 +8763,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand_core"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63b8176103e19a2643978565ca18b50549f6101881c443590420e4dc998a3c69"
+
+[[package]]
 name = "rand_distr"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8491,14 +8805,14 @@ dependencies = [
  "bitflags 2.11.1",
  "downcast-rs 2.0.2",
  "log",
- "nalgebra",
+ "nalgebra 0.34.2",
  "num-derive",
  "num-traits",
  "ordered-float",
  "parry2d",
  "profiling",
  "rustc-hash 2.1.2",
- "simba",
+ "simba 0.9.1",
  "thiserror 2.0.18",
 ]
 
@@ -8657,7 +8971,7 @@ dependencies = [
  "log",
  "rustc-hash 2.1.2",
  "serde",
- "smallvec",
+ "smallvec 1.15.1",
 ]
 
 [[package]]
@@ -8854,6 +9168,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "safe_arch"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42c6efa15875e6ecb39ca61fb0b0c1a40b84fac5a5ffe71eef7d1000c8eb3f5f"
+dependencies = [
+ "bytemuck",
+]
+
+[[package]]
 name = "same-file"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9027,7 +9350,19 @@ dependencies = [
  "num-complex",
  "num-traits",
  "paste",
- "wide",
+ "wide 0.7.33",
+]
+
+[[package]]
+name = "simba"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1a7200d82ff1c7b4235efd12f11e2537a402c91cf83a5cb97ce80eef787fde7"
+dependencies = [
+ "approx",
+ "num-complex",
+ "num-traits",
+ "wide 1.6.1",
 ]
 
 [[package]]
@@ -9127,6 +9462,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "smallvec"
+version = "2.0.0-alpha.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef784004ca8777809dcdad6ac37629f0a97caee4c685fcea805278d81dd8b857"
+
+[[package]]
 name = "smithay-client-toolkit"
 version = "0.19.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9169,7 +9510,7 @@ dependencies = [
  "hashbrown 0.16.1",
  "num-traits",
  "robust",
- "smallvec",
+ "smallvec 1.15.1",
 ]
 
 [[package]]
@@ -9242,6 +9583,27 @@ name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
+
+[[package]]
+name = "strum"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9628de9b8791db39ceda2b119bbe13134770b56c138ec1d3af810d045c04f9bd"
+dependencies = [
+ "strum_macros",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab85eea0270ee17587ed4156089e10b9e6880ee688791d45a905f5b1ca36f664"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
 
 [[package]]
 name = "svg_fmt"
@@ -9421,6 +9783,16 @@ checksum = "e665b8803e7b1d2a727f4023456bbbbe74da67099c585258af0ad9c5013b9b99"
 dependencies = [
  "proc-macro2",
  "quote",
+ "unicode-ident",
+]
+
+[[package]]
+name = "syn"
+version = "3.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53e9bae58849f64dfa4f5d5ae372c8341f7305f82a3868709269343628b659a3"
+dependencies = [
+ "proc-macro2",
  "unicode-ident",
 ]
 
@@ -9830,7 +10202,7 @@ dependencies = [
  "num-integer",
  "num-traits",
  "rustfft",
- "smallvec",
+ "smallvec 1.15.1",
  "tract-data",
  "tract-linalg",
 ]
@@ -9853,7 +10225,7 @@ dependencies = [
  "num-integer",
  "num-traits",
  "scan_fmt",
- "smallvec",
+ "smallvec 1.15.1",
  "string-interner",
 ]
 
@@ -9887,7 +10259,7 @@ dependencies = [
  "num-traits",
  "paste",
  "scan_fmt",
- "smallvec",
+ "smallvec 1.15.1",
  "tract-data",
  "unicode-normalization",
  "walkdir",
@@ -9921,7 +10293,7 @@ dependencies = [
  "memmap2 0.5.10",
  "num-integer",
  "prost",
- "smallvec",
+ "smallvec 1.15.1",
  "tract-hir",
  "tract-nnef",
  "tract-onnx-opl",
@@ -10061,6 +10433,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "unsynn"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "501a7adf1a4bd9951501e5c66621e972ef8874d787628b7f90e64f936ef7ec0a"
+dependencies = [
+ "mutants",
+ "proc-macro2",
+ "rustc-hash 2.1.2",
+]
+
+[[package]]
 name = "url"
 version = "2.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10182,7 +10565,7 @@ dependencies = [
  "guillotiere",
  "peniko",
  "skrifa 0.40.0",
- "smallvec",
+ "smallvec 1.15.1",
 ]
 
 [[package]]
@@ -10333,7 +10716,7 @@ dependencies = [
  "indexmap",
  "log",
  "petgraph",
- "smallvec",
+ "smallvec 1.15.1",
  "wasm-encoder 0.252.0",
  "wasmparser 0.252.0",
  "wat",
@@ -10459,7 +10842,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "smallvec",
+ "smallvec 1.15.1",
  "target-lexicon 0.13.5",
  "tempfile",
  "wasm-compose",
@@ -10503,7 +10886,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "sha2",
- "smallvec",
+ "smallvec 1.15.1",
  "target-lexicon 0.13.5",
  "wasm-encoder 0.252.0",
  "wasmparser 0.252.0",
@@ -10582,7 +10965,7 @@ dependencies = [
  "log",
  "object 0.39.1",
  "pulley-interpreter",
- "smallvec",
+ "smallvec 1.15.1",
  "target-lexicon 0.13.5",
  "thiserror 2.0.18",
  "wasmparser 0.252.0",
@@ -10700,7 +11083,7 @@ dependencies = [
  "downcast-rs 1.2.1",
  "rustix 1.1.4",
  "scoped-tls",
- "smallvec",
+ "smallvec 1.15.1",
  "wayland-sys",
 ]
 
@@ -10845,7 +11228,7 @@ dependencies = [
  "portable-atomic",
  "profiling",
  "raw-window-handle",
- "smallvec",
+ "smallvec 1.15.1",
  "static_assertions",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -10878,7 +11261,7 @@ dependencies = [
  "profiling",
  "raw-window-handle",
  "rustc-hash 1.1.0",
- "smallvec",
+ "smallvec 1.15.1",
  "thiserror 2.0.18",
  "wgpu-core-deps-apple",
  "wgpu-core-deps-emscripten",
@@ -10953,7 +11336,7 @@ dependencies = [
  "range-alloc",
  "raw-window-handle",
  "renderdoc-sys",
- "smallvec",
+ "smallvec 1.15.1",
  "thiserror 2.0.18",
  "wasm-bindgen",
  "web-sys",
@@ -10997,7 +11380,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ce5da8ecb62bcd8ec8b7ea19f69a51275e91299be594ea5cc6ef7819e16cd03"
 dependencies = [
  "bytemuck",
- "safe_arch",
+ "safe_arch 0.7.4",
+]
+
+[[package]]
+name = "wide"
+version = "1.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de2aaf408e58689c2096682331b1f42bb2d9f2ed6b11560407d023cd0a6c634e"
+dependencies = [
+ "bytemuck",
+ "safe_arch 1.2.0",
 ]
 
 [[package]]
@@ -11647,6 +12040,12 @@ dependencies = [
  "unicode-ident",
  "wasmparser 0.252.0",
 ]
+
+[[package]]
+name = "workspace-hack"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "beffa227304dbaea3ad6a06ac674f9bc83a3dec3b7f63eeb442de37e7cb6bb01"
 
 [[package]]
 name = "writeable"

@@ -193,6 +193,12 @@ impl SculptStroke {
         // leitor — o panic que o smoke da `=34` reportou.
         self.fill_hc_disp(mesh, brush, kind == FilterKind::SurfaceSmooth);
 
+        // ⚠️ **UMA vez por gesto, nunca por vértice** — o rotor deste app é a
+        // rotação de um grau ACUMULADA (O(graus)), e por vértice ele custaria
+        // mais que o campo que orienta. É a mesma hoist que o `dab_core` faz, e
+        // a assinatura do [`Brush::alpha_weight`] existe para a impor.
+        let alpha_frame = brush.alpha_frame();
+
         self.moved.clear();
         self.moved.reserve(self.touched.len());
         for i in 0..self.touched.len() {
@@ -204,7 +210,25 @@ impl SculptStroke {
             // é escalado pelo arrasto e **então** é aparado. Clampar antes
             // deixaria um vértice meio-mascarado receber mais que um livre no
             // extremo da faixa.
-            let f = (amount * crate::mask_ops::free_weight(self.base_mask[s])).clamp(lo, hi);
+            // ⚠️ **O ALPHA É MAIS UM PESO POR-VÉRTICE, exactamente como a
+            // máscara** — mesmo produto, mesma posição na ordem da referência,
+            // antes do clamp. Não há semântica nova: um [`crate::Alpha`] é um
+            // CAMPO avaliado num ponto, e ele nunca precisou de um dab para
+            // existir. O gesto de malha inteira recebia o `brush` e simplesmente
+            // nunca lhe perguntava — a seção Alpha do painel não tinha efeito
+            // nenhum sobre ele (report do Enio, 2026-08-19).
+            //
+            // ⚠️ **Avaliado no `base`, a pose CONGELADA** — e não na viva, pela
+            // razão do `the_weight_is_a_fact_about_the_frozen_surface`: um campo
+            // lido na pose que ele próprio deformou escorrega debaixo do gesto.
+            //
+            // ⚠️ **Sem alpha armado a porta devolve `1.0` EXATO**, e `x * 1.0`
+            // é `x` ao bit no IEEE-754 — o mundo pré-alpha não perde um bit, e
+            // há gate a medir isso (`an_unarmed_alpha_moves_no_bit_of_the_filter`).
+            let f = (amount
+                * crate::mask_ops::free_weight(self.base_mask[s])
+                * brush.alpha_weight(base, &alpha_frame))
+            .clamp(lo, hi);
             // ⚠️ **O `match` é sobre a LEI e não sobre o verbo, e é isso que o
             // torna exaustivo:** uma lei nova na tabela do
             // [`Verb::filter_kind`] que não seja implementada aqui é um erro de

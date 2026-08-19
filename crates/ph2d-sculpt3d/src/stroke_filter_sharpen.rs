@@ -210,10 +210,16 @@ impl SculptStroke {
             // achatar deixa de a marcar como detalhe) e converge para um estado
             // **ALISADO**, que é exactamente o que o smoke reprovou.
             self.sharpen_freeze(mesh, brush);
+            // ⚠️ **Irmão do `sharpen_freeze`: UMA vez por GESTO.** O frame do
+            // alpha é derivado dos ângulos autorados por um rotor O(graus), e
+            // ele não muda entre sub-passos — construí-lo dentro do laço seria
+            // pagar `n` vezes por um valor congelado, e dentro do laço de
+            // vértices seria pagar mais que o campo que ele orienta.
+            let alpha_frame = brush.alpha_frame();
             let n = steps_for(total);
             let per = total / n as f32;
             for _ in 0..n {
-                self.sharpen_step(mesh, brush, per);
+                self.sharpen_step(mesh, brush, per, &alpha_frame);
             }
         }
 
@@ -229,7 +235,13 @@ impl SculptStroke {
     /// cada evento (`neighbor_data_average_mesh_check_loose(position_data.eval,
     /// …)`, `:1673`) — ele mede a pose de AGORA. *Uma delas descreve onde o
     /// detalhe ESTAVA, a outra onde a superfície ESTÁ.*
-    fn sharpen_step(&mut self, mesh: &mut Mesh, brush: &Brush, per: f32) {
+    fn sharpen_step(
+        &mut self,
+        mesh: &mut Mesh,
+        brush: &Brush,
+        per: f32,
+        alpha_frame: &crate::AlphaFrame,
+    ) {
         self.sharpen_live_average(mesh, brush);
 
         let pos = mesh.positions();
@@ -298,7 +310,21 @@ impl SculptStroke {
             // `clamp_factors`), a mesma do laço genérico: o fator parte da
             // máscara, é escalado, e **então** é aparado. Clampar antes daria a
             // um vértice meio-mascarado mais que a um livre no extremo.
-            let w = (per * crate::mask_ops::free_weight(self.base_mask[i])).clamp(0.0, MAX_STEP);
+            // ⚠️ **E o ALPHA no mesmo produto** — ele é mais um peso por-vértice,
+            // como a máscara, avaliado na pose CONGELADA (`base_pos`) e não na
+            // viva, que este laço acabou de mover. Sem isto, oito leis honravam
+            // a seção Alpha e ESTA a ignorava: *um `match` exaustivo não guarda
+            // a lista que um laço itera*, e o Sharpen é justamente quem bifurca
+            // do `match`.
+            //
+            // ⚠️ **Por SUB-PASSO, e é a composição certa:** o peso freia cada
+            // passo encadeado, exactamente como o `free_weight` da máscara ao
+            // lado dele. Aplicá-lo uma vez no total seria a segunda lei de
+            // composição no mesmo produto.
+            let w = (per
+                * crate::mask_ops::free_weight(self.base_mask[i])
+                * brush.alpha_weight(self.base_pos[i], alpha_frame))
+            .clamp(0.0, MAX_STEP);
             let s = self.slot[v] as usize;
             self.target[s] = [p[0] + acc[0] * w, p[1] + acc[1] * w, p[2] + acc[2] * w];
         }

@@ -457,6 +457,13 @@ mod filter_sharpen_tests;
 #[path = "stroke_filter_tests.rs"]
 mod stroke_filter;
 
+/// **O ALPHA E O FILTRO** — irmão dos dois acima, e o corte é o ASSUNTO: aqueles
+/// perguntam *o que cada lei faz*, este *o que a seção Alpha faz sobre todas
+/// elas*. Ver o cabeçalho dele — o oráculo é a LINEARIDADE das leis, não a
+/// fórmula que o motor escreve.
+#[path = "stroke_filter_alpha_tests.rs"]
+mod filter_alpha;
+
 /// **AS TRÊS LEIS SEM VERBO** — `Scale`, `Sphere` e `Random`. Irmão do acima e
 /// não parte dele: aqueles gates perguntam ao VERBO (é a rota que eles sempre
 /// mediram) e estes falam com o [`crate::FilterKind`] direto, porque não há

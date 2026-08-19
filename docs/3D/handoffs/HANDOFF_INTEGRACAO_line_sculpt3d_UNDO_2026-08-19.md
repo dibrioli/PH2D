@@ -153,25 +153,90 @@ sculpt3d::bake::light_measure::the_two_lights_agree_where_the_form_turns_away
 **Reproduzido na árvore PRIMÁRIA, em `main` limpo (`ee1432203`), sem uma linha
 deste diff.** Ele é `#[ignore]` (precisa de adapter) ⇒ **o CI nunca o roda**.
 
-**A janela, por leitura do log:**
+**A janela:** o gate nasce em `13f0a5e35` (**2026-08-03**) medindo **0,0020**;
+entre 05/08 e 10/08 os dois lados da comparação ganham 734 linhas (barro) e 71
+(tinta).
 
-| commit | data | o quê |
-|---|---|---|
-| `13f0a5e35` | **2026-08-03** | o gate NASCE, medindo **0,0020** |
-| `232de15c7` | 2026-08-09 | **W16 — o ambiente ganha DIREÇÃO** (o piso da difusa deixa de ser um número para toda direção) |
-| `bf560cb6b` | 2026-08-09 | a fixture do ambiente traz a própria luz |
-| `89d4f7e11` | 2026-08-09 | a luz assada só é re-autorada por um GESTO |
+### ⛔ QUATRO causas REFUTADAS por medição — não as repita
 
-⚠️ **A hipótese que a tabela sugere — e que NÃO foi confirmada por bisect:** o
-gate mede o **ARO**, que é exactamente onde o ambiente domina (a lâmpada não
-alcança). A W16 mudou o modelo do ambiente; se a direção chegou a **um** dos dois
-caminhos de luz e não ao outro, o aro diverge muito enquanto o miolo continua a
-concordar — que é a assinatura observada. **Confirmar custa um bisect de 3
-builds release**; curar exige decidir **qual dos dois lados está certo**, que é
-pergunta de produto/arquitetura, não de conserto.
+| hipótese | como morreu |
+|---|---|
+| **W16, o ambiente direcional** (`232de15c7`) | `DEFAULT_ENV = 0.0` — o termo está **desligado por default**, e o doc dele diz por quê (*"a adoção pela tinta é o follow-up"*). Com `env = 0` os dois lados usam o mesmo piso plano |
+| **SSAO** (`DEFAULT_SSAO_STRENGTH = 1.0`, e só o barro o tem) | desligado na corrida viva ⇒ os números saíram **idênticos**, dígito a dígito |
+| **SSS** | `strength = 0` por default, e `sss_diffuse` degenera em `max(n·l, 0)` **exactamente** |
+| **a forma não chegar ao passe** (`has_form == 0`) | sonda: a normal do aro chega com `w = 1.0` e o valor certo; os dois structs do uniform batem campo a campo |
+
+### O que a MEDIÇÃO diz (sonda em texels do aro, `depth == 0`)
+
+```
+normal da forma (-0.058, -0.972, 0.227)   lampada (-0.557, -0.663, 0.500)
+  ⇒ n·l = 0,790  — este pedaço do aro esta' ACESO, nao virado de costas
+vivo   0.6104   (= o esperado para n·l alto: correto)
+assado 1.0000   (SATURADO)
+```
+
+| dist | 0 | 1 | 2 | 3 | 4-7 | 8-15 | 16-31 | 32+ |
+|---|---|---|---|---|---|---|---|---|
+| vivo | 0,2447 | 0,2502 | 0,2536 | 0,2564 | 0,2655 | 0,2846 | 0,3162 | 0,4060 |
+| assado | 0,5385 | 0,5461 | 0,5508 | 0,5545 | 0,5614 | 0,5732 | 0,5910 | 0,6506 |
+
+⭐ **O barro está CERTO e o assado está claro demais**, e a aritmética o prende:
+no aro `vivo/albedo = 0,346 ≈ AMBIENT (0,35)` — a resposta exacta de uma face
+virada de costas. O assado dá **0,7615** do albedo.
+
+Os dois shaders escrevem a **mesma** lei — `m = piso + (1−piso)·clamp(diffuse/flat, 0, 2)`,
+com `flat = Σ tint·max(l.dir.z, 0) = 0,500` (`mesh.wgsl:861-891` ·
+`impasto_light.wgsl:173-177`). Com `n·l = 0,790` isso dá `ratio = 1,58` e
+`m = 1,377` — que é o que a TINTA calcula (e por isso satura). O BARRO chega a
+`m ≈ 0,82`.
+
+⇒ **Mesma fórmula, entradas que deviam ser as mesmas, resultados que diferem por
+~1,6×.** O próximo passo é UM: imprimir o `nc` que o barro usa para o mesmo texel
+e compará-lo com a normal da forma — se os dois viverem em espaços diferentes
+(mundo vs vista/canvas), a causa está achada. Isso precisa de saída de debug do
+lado do shader, que é apparato próprio.
+
+⚠️ **Curar exige decidir qual das duas luzes é a certa** — e isso muda **todo
+sprite já assado**. É pergunta de produto, não de conserto.
 
 ⛔ **Não baixe a barra do gate.** Ela foi medida (0,0020 / pico 0,0049) com três
 mutações registadas no doc-comment dele.
+
+---
+
+## §5-bis — O que mais entrou nesta linha (ordem do Enio: *"corrija tudo"*)
+
+**(a) O ALPHA vale para o FILTRO** (report: *"filter com alpha ligado desconsidera
+alpha"*). O `filter` recebia o `brush` e nunca lhe perguntava pelo alpha. A cura
+não inventa semântica: um [`Alpha`] é um **campo avaliado num ponto**, e ele
+nunca precisou de um dab — ele entra no **mesmo produto da máscara**, na mesma
+posição da ordem da referência, avaliado na pose **congelada**. Dois sítios,
+porque o `Sharpen` bifurca do laço genérico.
+
+⚠️ **Consequências honestas, nomeadas:** o alpha é um campo **infinito** (a
+imagem de carimbo faz `wrap`), então num gesto de malha inteira ele **ladrilha** o
+modelo — num dab isso nunca aparece porque o falloff limita a pegada. E um
+carimbo é projetado em **tela**, então ele alcança a frente e o verso igualmente.
+As duas são propriedades do **alpha**, não do filtro, e são o modelo do estêncil
+do ZBrush. *Se o Enio quiser um carimbo com borda, isso é uma opção do alpha.*
+
+Gates: `the_alpha_scales_every_law_of_the_generic_loop` (8 leis × 2 alphas,
+RED-FIRST) · `the_sharpen_honours_the_alpha_too` (RED-FIRST) ·
+`an_unarmed_alpha_moves_no_bit_of_the_filter` (verde antes **e** depois). ⚠️ **O
+oráculo é a LINEARIDADE das leis**, não a fórmula: duas corridas idênticas — uma
+com alpha, outra sem — e o quociente entre elas tem de ser o peso do alpha
+naquele ponto. Nenhuma constante escrita no teste.
+
+**(b) O `nextest-impacted.sh`** — §6-bis, corrigido. O seletor passou a derivar o
+pacote do `cargo metadata`. Conferido no diff desta linha: **de 4 testes para
+3 774**.
+
+**(c) O QUAD REMESH** — [ADR-0160](../../architecture/decisions/0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md)
+(pesquisa, três famílias, alternativas recusadas com o motivo, conjunto de
+aceitação e kill-criterion congelados) + a **Q1** na crate-folha nova
+`ph2d-quadflow`: o campo de orientação 4-RoSy, seis gates, e a tabela de
+convergência **medida**. ⚠️ **Q2..Q5 abertas; nada é alcançável pelo produto
+ainda** — dívida DECLARADA no doc-comment da crate e no ADR §5.
 
 ---
 

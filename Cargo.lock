@@ -7377,6 +7377,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-quadflow"
+version = "0.0.0"
+dependencies = [
+ "ph2d-mesh",
+]
+
+[[package]]
 name = "ph2d-render"
 version = "0.0.0"
 dependencies = [

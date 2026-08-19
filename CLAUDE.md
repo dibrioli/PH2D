@@ -369,9 +369,16 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   referência é o afiador que se quer (ela alisa detalhe fino e mal toca feição grande) e onde fica o teto do `Sharpen`
   (subir compra excursão real e paga **17,17 ms** por evento de ponteiro contra um quadro de 16,7) · ✅ **o undo do
   filtro FECHOU** (o registo pergunta um FATO, não o verbo em mãos — [handoff](docs/3D/handoffs/HANDOFF_INTEGRACAO_line_sculpt3d_UNDO_2026-08-19.md);
-  e a rota do PONTEIRO **não é alcançável de um teste**, o `AppGfx` segura uma surface de janela real) · ⚠️ **VERMELHO
-  PRÉ-EXISTENTE no `main`:** `the_two_lights_agree_where_the_form_turns_away` mede **0,3370** contra a barra de **0,01**
-  (o gate nasceu em 03/08 a 0,0020; a luz mudou em 09/08 na **W16**) — é `#[ignore]`, então **o CI nunca o rodou**.
+  e a rota do PONTEIRO **não é alcançável de um teste**, o `AppGfx` segura uma surface de janela real) · ✅ **o ALPHA
+  vale para o FILTRO** (é mais um peso por-vértice, como a máscara — nos 9, o Sharpen incluído; ⚠️ o alpha é um campo
+  **infinito**, então num gesto de malha inteira um carimbo **ladrilha**) · ⚠️ **VERMELHO PRÉ-EXISTENTE no `main`:**
+  `the_two_lights_agree_where_the_form_turns_away` mede **0,3370** contra a barra de **0,01** — é `#[ignore]`, então o
+  **CI nunca o rodou**, e ⛔ **quatro causas já foram REFUTADAS por medição** (a W16/ambiente direcional, o SSAO, o SSS,
+  a forma não chegar): o barro está **certo** no aro (0,2447 = ambiente × albedo) e é o assado que satura — diagnóstico
+  numérico no [handoff](docs/3D/handoffs/HANDOFF_INTEGRACAO_line_sculpt3d_UNDO_2026-08-19.md) §5 · **quad remesh por
+  campo cruzado** ([ADR-0160](docs/architecture/decisions/0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md)):
+  a **Q1** (campo de orientação 4-RoSy) está na `ph2d-quadflow`; Q2..Q5 abertas, e ⚠️ **nada disso é alcançável pelo
+  produto ainda** (a costura é a Q5).
   **Smokes:** `PH2D_SCULPT3D_SMOKE=<n>` (a W9 é a cena **`=34`**). ⚠️ **Rode uma vez SEM a env var** — é a metade que
   prova a inércia.
   **Ler:** [porta do cofre](docs/3D/README.md) · [00-INDEX](docs/3D/00-INDEX.md) · [handoffs](docs/3D/handoffs/README.md) ·

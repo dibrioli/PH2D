@@ -169,10 +169,11 @@
 | [0157](0157-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md) | Aceito (linha `line/Painter`, integrada 2026-08-08). … | Uma deformação de Liquify é uma LISTA DE DABS autorada, cozida no device; o campo denso é cache, nunca estado |
 | [0158](0158-solid-fill-running-sum-is-row-disjoint-rayon-exception.md) | **ACEITO** pelo Enio em 2026-08-15 (*"siga e corrija os abertos"*), sobre o item 1 da | A soma corrida do preenchimento é POR LINHA, e por isso o `rayon` entra na `ph2d-painter-brush` |
 | [0159](0159-sculpt3d-the-dab-vertex-loop-is-a-row-disjoint-map-rayon-exception.md) | aceito (ordem do Enio, 2026-08-13: *"ambos"*, sobre a avaliação que | O laço de vértices de um dab é um MAP disjunto: exceção `rayon` na `ph2d-sculpt3d` |
+| [0160](0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md) | aceito (ordem do Enio, 2026-08-19: *"investigue o melhor algoritmo | O quad remesh é um porte NATIVO de campo cruzado, QuadriFlow referenciado |
 
 ---
 
-**160 ADRs** · **59** marcados ⛔ · **3** sem linha `Status:` no próprio texto.
+**161 ADRs** · **59** marcados ⛔ · **3** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

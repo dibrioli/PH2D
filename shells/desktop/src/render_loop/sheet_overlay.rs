@@ -36,10 +36,15 @@ use ph2d_vector::{Affine, BezPath, Brush, Color, Fill, Point, Stroke, VectorScen
 const BAND_PX: f64 = 14.0;
 
 /// Distância entre hachuras, em pixels de tela.
-const HATCH_STEP_PX: f64 = 7.0;
+const HATCH_STEP_PX: f64 = 8.0;
 
 /// Espessura de cada hachura, em pixels de tela.
-const HATCH_PX: f64 = 1.5;
+///
+/// ⚠️ **Grossa de propósito** (Enio 2026-08-19: *"com listras como a minha imagem"*). A 1ª
+/// tentativa usou `1.5` sobre fundo nenhum e o resultado leu-se como sujidade, não como padrão:
+/// uma listra tem de ocupar uma fração VISÍVEL do vão para o olho a ler como listra. Aqui é
+/// ~⅜ do passo, a proporção da fita de obra que este desenho cita.
+const HATCH_PX: f64 = 3.0;
 
 /// Espessura das duas linhas que fecham a faixa (a de fora e a de dentro).
 const EDGE_PX: f64 = 1.0;
@@ -90,26 +95,47 @@ pub(crate) fn draw(
         let band_x = BAND_PX / (px_per_world * sx);
         let band_y = BAND_PX / (px_per_world * sy);
         let (hw, hh) = (w * 0.5, h * 0.5);
-        // Uma folha mais estreita que duas faixas não tem "dentro": a faixa colapsaria e as duas
-        // linhas ficariam por cima uma da outra. Aí desenha-se só o contorno.
-        let solid = band_x * 2.0 >= w || band_y * 2.0 >= h;
-
-        let outer = rect_path(-hw, -hh, hw, hh);
-        let border = resolve(ColorToken::BorderStrong, theme);
-        if solid {
-            stroke(scene, &outer, xf, border, EDGE_PX / px_per_world);
-        } else {
-            let inner = rect_path(-hw + band_x, -hh + band_y, hw - band_x, hh - band_y);
-            // A faixa = externo ⊖ interno, pela regra even-odd. É este caminho que recorta as
-            // hachuras — elas são traçadas de lado a lado e o clip fica com o que interessa.
-            let mut band = outer.clone();
-            band.extend(inner.iter());
-            scene.push_clip_with_rule(&band, Fill::EvenOdd);
-            hatch(scene, xf, hw, hh, px_per_world, sx, sy, border);
-            scene.pop_layer();
-            stroke(scene, &outer, xf, border, EDGE_PX / px_per_world);
-            stroke(scene, &inner, xf, border, EDGE_PX / px_per_world);
-        }
+        // ⚠️ **A faixa cresce para FORA** (Enio 2026-08-19: *"a decoração deveria ficar fora do
+        // gizmo"*). Ela ocupava a borda interna, e isso custava duas coisas ao mesmo tempo: as
+        // alças do gizmo — que pousam nos cantos e nos meios das arestas, ou seja, exatamente
+        // sobre a borda — ficavam POR CIMA dela, e a primeira peça (o empacotador põe a maior no
+        // canto superior-esquerdo) tapava-a. Fora, a faixa emoldura sem disputar pixel nenhum:
+        // o interior inteiro é conteúdo, e o gizmo continua a ser a coisa mais externa que se
+        // agarra.
+        let outer = rect_path(-hw - band_x, -hh - band_y, hw + band_x, hh + band_y);
+        let inner = rect_path(-hw, -hh, hw, hh);
+        let edge = resolve(ColorToken::BorderStrong, theme);
+        // A faixa = externo ⊖ interno, pela regra even-odd. É este caminho que recorta as
+        // hachuras — elas são traçadas de lado a lado e o clip fica com o que interessa.
+        let mut band = outer.clone();
+        band.extend(inner.iter());
+        scene.push_clip_with_rule(&band, Fill::EvenOdd);
+        // ⚠️ **Um FUNDO por baixo das listras**, e é ele que as torna listras. Sem fundo, as
+        // diagonais ficavam a flutuar sobre o canvas e liam-se como ruído — foi o que a 1ª
+        // tentativa entregou. O par fundo-claro + traço-escuro é o que faz a faixa ser uma
+        // *superfície* com um padrão, e não um punhado de riscos.
+        // ⚠️ Preenche o retângulo EXTERNO, não o `band` de dois sub-caminhos: o `fill_path` usa
+        // a regra *non-zero*, e os dois retângulos giram no mesmo sentido — o buraco não seria
+        // buraco, e o fundo taparia o conteúdo inteiro. Quem recorta é o clip já empilhado, que
+        // é *even-odd* de propósito. **Uma regra por pergunta.**
+        scene.fill_path(
+            &outer,
+            &Brush::Solid(resolve(ColorToken::BgElev, theme)),
+            xf,
+        );
+        hatch(
+            scene,
+            xf,
+            hw + band_x,
+            hh + band_y,
+            px_per_world,
+            sx,
+            sy,
+            resolve(ColorToken::Text2, theme),
+        );
+        scene.pop_layer();
+        stroke(scene, &outer, xf, edge, EDGE_PX / px_per_world);
+        stroke(scene, &inner, xf, edge, EDGE_PX / px_per_world);
         // **O NOME, no topo à esquerda** — fora da folha, apoiado na quina, como o rótulo de uma
         // prancheta. Fora e não dentro porque dentro ele cobriria a primeira peça, que é
         // exatamente onde o empacotador põe a maior.
@@ -118,8 +144,17 @@ pub(crate) fn draw(
             .get::<Name>(entity)
             .map(|n| n.0.clone())
             .unwrap_or_else(|| "Sprite Sheet".to_string());
-        // A quina superior-esquerda em LOCAL: `+y` é para cima, então o topo é `+hh`.
-        draw_label(scene, text_system, &label, xf, (-hw, hh), theme);
+        // A quina superior-esquerda da FAIXA em LOCAL (`+y` é para cima, então o topo é `+hh`).
+        // ⚠️ Da faixa, e não do conteúdo: com a decoração agora por fora, ancorar no conteúdo
+        // punha o nome em cima da própria faixa.
+        draw_label(
+            scene,
+            text_system,
+            &label,
+            xf,
+            (-hw - band_x, hh + band_y),
+            theme,
+        );
     }
 }
 

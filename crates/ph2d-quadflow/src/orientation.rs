@@ -189,17 +189,54 @@ pub fn compat_orientation_extrinsic_4(
 #[must_use]
 pub fn solve_orientation(mesh: &Mesh, iterations: usize) -> OrientationField {
     let normals = mesh.normals();
-    let adj = mesh.adjacency();
-    let count = mesh.vert_count();
+    let adj: Vec<Vec<u32>> = (0..mesh.vert_count())
+        .map(|v| mesh.adjacency().vert_verts.neighbours(v).to_vec())
+        .collect();
+    let mut dirs = seed_dirs(normals);
+    smooth_on(&mut dirs, normals, &adj, iterations);
+    OrientationField { dirs }
+}
 
-    let mut dirs: Vec<[f32; 3]> = normals.iter().map(|n| seed_tangent(*n)).collect();
+/// **A SEMENTE de um conjunto de normais** — a porta única, para que a
+/// hierarquia semeie exatamente como o caminho direto.
+#[must_use]
+pub fn seed_dirs(normals: &[[f32; 3]]) -> Vec<[f32; 3]> {
+    normals.iter().map(|n| seed_tangent(*n)).collect()
+}
 
+/// **O CAMPO, a partir de direções já resolvidas** — a porta por onde a
+/// hierarquia devolve o resultado do nível 0.
+#[must_use]
+pub fn field_from(dirs: Vec<[f32; 3]>) -> OrientationField {
+    OrientationField { dirs }
+}
+
+/// **A projeção de uma direção no plano tangente de `n`**, re-normalizada — o que
+/// a PROLONGAÇÃO faz ao dar ao filho a direção do pai.
+#[must_use]
+pub fn project_tangent(d: [f32; 3], n: [f32; 3]) -> [f32; 3] {
+    normalize_or(reject(d, n), seed_tangent(n))
+}
+
+/// **O NÚCLEO da suavização, sobre slices** — o mesmo laço, sem a [`Mesh`].
+///
+/// ⚠️ **Existe para a HIERARQUIA poder correr a MESMA lei nos níveis grossos**,
+/// que não são malhas: eles são posições, normais e uma vizinhança induzida. Uma
+/// segunda cópia do laço lá seria a segunda resposta a *"como um campo 4-RoSy
+/// suaviza"*, e as duas divergiriam no dia em que uma delas ganhasse um peso.
+pub fn smooth_on(
+    dirs: &mut [[f32; 3]],
+    normals: &[[f32; 3]],
+    adjacency: &[Vec<u32>],
+    iterations: usize,
+) {
+    let count = dirs.len();
     for _ in 0..iterations {
         for v in 0..count {
             let nv = normals[v];
             let mut sum = dirs[v];
             let mut weight = 1.0f32;
-            for &w in adj.vert_verts.neighbours(v) {
+            for &w in &adjacency[v] {
                 let (a, b) =
                     compat_orientation_extrinsic_4(sum, nv, dirs[w as usize], normals[w as usize]);
                 // O acumulador cresce com o peso já absorvido: é uma média
@@ -218,8 +255,6 @@ pub fn solve_orientation(mesh: &Mesh, iterations: usize) -> OrientationField {
             dirs[v] = sum;
         }
     }
-
-    OrientationField { dirs }
 }
 
 /// **A SEMENTE: uma tangente qualquer, mas SEMPRE a mesma.**

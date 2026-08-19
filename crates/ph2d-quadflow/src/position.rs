@@ -98,28 +98,46 @@ pub fn solve_position(
     iterations: usize,
 ) -> PositionField {
     let (p, n) = (mesh.positions(), mesh.normals());
-    let adj = mesh.adjacency();
-    let count = mesh.vert_count();
+    let adj: Vec<Vec<u32>> = (0..mesh.vert_count())
+        .map(|v| mesh.adjacency().vert_verts.neighbours(v).to_vec())
+        .collect();
+    let dirs: Vec<[f32; 3]> = (0..mesh.vert_count()).map(|v| orient.dir(v)).collect();
+    let scales: Vec<f32> = (0..mesh.vert_count()).map(|v| scale.at(v)).collect();
     let mut pos: Vec<[f32; 3]> = p.to_vec();
+    smooth_on(&mut pos, p, n, &dirs, &scales, &adj, iterations);
+    PositionField { pos }
+}
 
+/// **O CAMPO, a partir de origens já resolvidas** — a porta da hierarquia.
+#[must_use]
+pub fn field_from(pos: Vec<[f32; 3]>) -> PositionField {
+    PositionField { pos }
+}
+
+/// **O NÚCLEO da suavização do campo de posição, sobre slices.**
+///
+/// ⚠️ Irmão do [`crate::orientation::smooth_on`] e pelo mesmo motivo: a
+/// hierarquia corre a MESMA lei sobre níveis que não são malhas.
+#[allow(clippy::too_many_arguments)]
+pub fn smooth_on(
+    pos: &mut [[f32; 3]],
+    p: &[[f32; 3]],
+    n: &[[f32; 3]],
+    dirs: &[[f32; 3]],
+    scales: &[f32],
+    adjacency: &[Vec<u32>],
+    iterations: usize,
+) {
+    let count = pos.len();
     for _ in 0..iterations {
         for v in 0..count {
-            let (pv, nv, qv, sv) = (p[v], n[v], orient.dir(v), scale.at(v));
+            let (pv, nv, qv, sv) = (p[v], n[v], dirs[v], scales[v]);
             let mut sum = pos[v];
             let mut weight = 1.0f32;
-            for &w in adj.vert_verts.neighbours(v) {
+            for &w in &adjacency[v] {
                 let w = w as usize;
                 let (a, b) = compat_position_extrinsic_4(
-                    pv,
-                    nv,
-                    qv,
-                    sum,
-                    sv,
-                    p[w],
-                    n[w],
-                    orient.dir(w),
-                    pos[w],
-                    scale.at(w),
+                    pv, nv, qv, sum, sv, p[w], n[w], dirs[w], pos[w], scales[w],
                 );
                 sum = [
                     a[0].mul_add(weight, b[0]),
@@ -148,8 +166,6 @@ pub fn solve_position(
             pos[v] = position_round_4(sum, qv, nv, pv, sv);
         }
     }
-
-    PositionField { pos }
 }
 
 /// **O PONTO DA RETÍCULA de `o` mais próximo de `p`.**

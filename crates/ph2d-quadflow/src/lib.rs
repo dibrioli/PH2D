@@ -40,14 +40,20 @@
 
 /// **A EXTRAÇÃO — os dois campos viram malha** — ver [`extract`].
 pub mod extract;
+/// **A HIERARQUIA multirresolução** — ver [`hierarchy`].
+pub mod hierarchy;
 /// **O CAMPO DE ORIENTAÇÃO** — ver [`orientation`].
 pub mod orientation;
 /// **O CAMPO DE POSIÇÃO** — ver [`position`].
 pub mod position;
 /// **A ESCALA, uniforme ou adaptativa** — ver [`scale`].
 pub mod scale;
+/// **OS CAMPOS resolvidos de cima para baixo** — ver [`solve`].
+pub mod solve;
 
-pub use extract::{Quadrangulation, extract};
+pub use extract::{Clustering, Quadrangulation, extract, extract_with};
+pub use hierarchy::Hierarchy;
 pub use orientation::{OrientationField, compat_orientation_extrinsic_4, solve_orientation};
 pub use position::{PositionField, compat_position_extrinsic_4, position_round_4, solve_position};
 pub use scale::{MAX_ADAPTIVE_RATIO, ScaleField};
+pub use solve::solve_fields;

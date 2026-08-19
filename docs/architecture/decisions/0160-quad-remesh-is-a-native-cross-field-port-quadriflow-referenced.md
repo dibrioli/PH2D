@@ -234,6 +234,51 @@ quad-dominante mas não all-quad.
 
 ---
 
+## §5-bis — ⛔ Q3.5 CONSTRUÍDA, MEDIDA e REJEITADA do caminho do produto
+
+A hierarquia foi construída (`hierarchy.rs` + `solve.rs`, 3 gates verdes) e **a
+medição refutou a conclusão da Q3 que a pediu**.
+
+| campo × células | esfera | toro |
+|---|---|---|
+| **plano + semente** (o produto) | **60,9 %** | **51,9 %** |
+| hierarquia + semente | 48,8 % | 50,2 % |
+| plano + **retícula** | 0 % (**1** célula) | 0 % (5 células) |
+| hierarquia + **retícula** | 0 % (**2** células) | 0 % (9 células) |
+
+E a varredura de `(topo × varreduras)` — **24 combinações** — nunca passou de
+**52,3 %**: nenhum ajuste faz a hierarquia ganhar.
+
+⚠️ **Por que a conclusão da Q3 estava errada, e a lição vale mais que a wave:**
+ela supôs que a extração **usava** a retícula, e que por isso um campo com platôs
+a ajudaria. Ela **não usa** — o crescimento por semente lê o campo como uma
+DISTÂNCIA, e um campo mais suave não muda distância nenhuma. *A hipótese não era
+sobre a hierarquia: era sobre a extração, e a Q3.5 testou a metade errada.*
+
+⚠️ **E o quociente pela retícula — a leitura NATURAL da referência — colapsa por
+aritmética**, não por afinação: o campo fica a menos de `s/√2` do seu vértice
+(gate) e os vértices da entrada distam **muito menos que uma célula** (0,098
+contra 0,18 na fixture), então o passo inteiro entre duas retículas vizinhas é
+`(0,0)` em toda parte e o `union-find` funde tudo.
+
+⇒ **O lever da Q4 é a EXTRAÇÃO, não os campos.** A hierarquia fica no repo
+gateada e correta — ela é o andaime de que uma extração baseada em retícula vai
+precisar —, **fora do caminho do produto**, e o gate
+`the_hierarchy_does_not_pay_yet_and_the_gate_says_so` impede que alguém a ligue
+sem re-medir.
+
+### ⛔ Recusas MEDIDAS desta wave
+
+| # | recusa | número |
+|---|---|---|
+| 1 | células por `union-find` sobre limiar de distância | esfera → **4 células** |
+| 2 | arestas de saída = arestas da entrada | **7,2 %** de quads |
+| 3 | coarsening por **média** de posição/normal | encolhe o modelo; perde em **24/24** combinações |
+| 4 | **hierarquia** no caminho do produto | **48,8 %** contra 60,9 % |
+| 5 | células pelo **quociente da retícula** | **1** célula na esfera |
+
+---
+
 ## §6 — O que este ADR NÃO decide
 
 - ⛔ **Não substitui o `surface_nets`** (§1): as duas operações ficam, e a UI as

@@ -86,7 +86,48 @@ pub fn extract(
     pos: &PositionField,
     scale: &ScaleField,
 ) -> Result<Quadrangulation, MeshError> {
-    let cells = cluster(mesh, pos, scale);
+    // ⚠️ **`Seed`, e a alternativa está MEDIDA e REJEITADA** — ver o doc da
+    // [`Clustering::Lattice`].
+    extract_with(mesh, orient, pos, scale, Clustering::Seed)
+}
+
+/// **Como os vértices viram células** — as duas leis, medidas uma contra a outra.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Clustering {
+    /// Bola no campo em torno de uma semente. Não precisa de platôs.
+    Seed,
+    /// **O QUOCIENTE PELA RETÍCULA** — dois vizinhos são a mesma célula quando o
+    /// passo inteiro entre as retículas deles é `(0,0)`.
+    ///
+    /// ⛔ **MEDIDO E REJEITADO (2026-08-19).** Ele COLAPSA: a esfera de 3 072
+    /// vértices sai com **1 célula**, o toro com **5** — e a hierarquia não muda
+    /// isso (2 e 9). A razão é aritmética e mata a ideia inteira: o campo fica a
+    /// menos de `s/√2` do seu vértice (gate `the_field_never_leaves_its_own_cell`)
+    /// e os vértices vizinhos distam **muito menos que uma célula** (0,098 contra
+    /// 0,18 na fixture) — então o passo inteiro entre duas retículas vizinhas é
+    /// `(0,0)` em toda parte, a relação é universal, e o `union-find` funde tudo.
+    ///
+    /// ⚠️ **Fica no código como recusa com ENDEREÇO**, não como opção: quem
+    /// voltar a esta ideia — e ela é a leitura natural da referência — encontra o
+    /// número antes de a reconstruir.
+    Lattice,
+}
+
+/// A extração com a lei de agrupamento aberta — a porta da sonda.
+///
+/// # Erros
+/// Ver [`extract`].
+pub fn extract_with(
+    mesh: &Mesh,
+    orient: &OrientationField,
+    pos: &PositionField,
+    scale: &ScaleField,
+    how: Clustering,
+) -> Result<Quadrangulation, MeshError> {
+    let cells = match how {
+        Clustering::Seed => cluster(mesh, pos, scale),
+        Clustering::Lattice => cluster_lattice(mesh, orient, pos, scale),
+    };
     let c = collapse(mesh, pos, orient, &cells);
     let graph = neighbour_graph(mesh, &c, scale);
     let cycles = trace_faces(&graph, &c.verts, &c.normals, orient);
@@ -209,6 +250,63 @@ struct Cells {
     dirs: Vec<[f32; 3]>,
     /// Vértice da ENTRADA → célula de saída.
     of: Vec<u32>,
+}
+
+/// **AS CÉLULAS pelo QUOCIENTE DA RETÍCULA** — a lei da referência.
+///
+/// Dois vértices vizinhos são a **mesma** célula quando o passo inteiro entre as
+/// retículas deles é `(0,0)` — ou seja, quando `position_round_4` do campo de um,
+/// ancorado no campo do outro, **não anda**. É uma relação de equivalência, e o
+/// `union-find` a fecha.
+///
+/// ⚠️ **Ela SÓ funciona sobre um campo com PLATÔS**, e é essa dependência que
+/// liga esta função à hierarquia: sem platôs a relação é *"os campos estão
+/// perto"*, que é transitiva e funde o modelo inteiro (medido: 4 células numa
+/// esfera de 3 072 vértices). Com platôs, as células são limitadas pelos degraus
+/// do próprio campo.
+fn cluster_lattice(
+    mesh: &Mesh,
+    orient: &OrientationField,
+    pos: &PositionField,
+    scale: &ScaleField,
+) -> Vec<u32> {
+    let n = mesh.vert_count();
+    let normals = mesh.normals();
+    let adj = mesh.adjacency();
+    let mut uf: Vec<u32> = (0..n as u32).collect();
+    for (v, nv) in normals.iter().enumerate().take(n) {
+        for &w in adj.vert_verts.neighbours(v) {
+            let w = w as usize;
+            if w <= v {
+                continue;
+            }
+            // O campo de `w`, reduzido à retícula de `v`: se ele não andou, os
+            // dois descrevem o MESMO nó.
+            let snapped = crate::position::position_round_4(
+                pos.at(v),
+                orient.dir(v),
+                *nv,
+                pos.at(w),
+                scale.at(v),
+            );
+            if dist(snapped, pos.at(v)) < 1.0e-4 * scale.at(v).max(1.0) {
+                let (a, b) = (uf_find(&mut uf, v as u32), uf_find(&mut uf, w as u32));
+                if a != b {
+                    let (lo, hi) = if a < b { (a, b) } else { (b, a) };
+                    uf[hi as usize] = lo;
+                }
+            }
+        }
+    }
+    (0..n as u32).map(|v| uf_find(&mut uf, v)).collect()
+}
+
+fn uf_find(uf: &mut [u32], mut x: u32) -> u32 {
+    while uf[x as usize] != x {
+        uf[x as usize] = uf[uf[x as usize] as usize];
+        x = uf[x as usize];
+    }
+    x
 }
 
 /// **O NÓ DE CADA CÉLULA** — a média das origens que caíram nela, e a normal

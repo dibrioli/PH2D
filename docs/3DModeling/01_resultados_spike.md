@@ -18,7 +18,8 @@ Reprodução: `cd spikes/field-spike && cargo run --release` (e `--features jit`
 |---|---|
 | 1. Quina viva | ⭐ **PERFEITA no campo** (§1c) · ❌ **quebrada na malha** (§2). Duas respostas porque são duas perguntas |
 | 2. Os dois caracteres de fillet | ✅ entregues, e **visivelmente diferentes** (§1) |
-| 3. O raio pedido é o entregue? | ✅ **exato: erro 0,00 %**. ⚠️ orgânico: **entrega 75 % do pedido**, sempre (§4) |
+| 3. O raio pedido é o entregue? | ⭐ **0,00 % de erro nos DOIS lados** — filete interno (§4) e aresta externa (§1d). ⚠️ orgânico: **entrega 75 % do pedido**, sempre (§4) |
+| *(smoke 2)* arredondamento externo | ✅ **era feature faltando, não defeito** — família completa em §1d |
 | 4. Resolução × tempo × memória | ✅ malha 128³ em **21 ms**; traçado do campo em **57 ms**, um núcleo (§5) |
 | 5. Intérprete × JIT | ⚠️ **CORRIGIDO — o JIT PAGA: 5,3× no traçado, 1,6× na malha** (§6) |
 | 6. Determinismo (HR-5) | ✅ **byte-idêntico** entre corridas (§7) |
@@ -99,6 +100,54 @@ círculo.** Mesma câmera, mesma função de sombreamento, mesmas árvores — m
 ⚠️ **57 ms num núcleo, sem GPU nenhuma.** Esta máquina tem **32**, e o traçado é o trabalho mais
 paralelizável que existe (um raio não fala com o vizinho). Interatividade em tempo real com a
 **geometria verdadeira** não é aposta — é aritmética a partir deste número.
+
+---
+
+## §1d — O arredondamento **EXTERNO**: era feature faltando, não defeito
+
+> **2º smoke do Enio (2026-08-19), sobre a imagem da §1c:**
+> *"arredondamentos internos perfeitos. externos inexistentes."*
+
+Ele está certo, e o diagnóstico é preciso: o spike só tinha o operador de **junção**, que arredonda
+a quina **côncava** onde duas peças se encontram. Arredondar uma aresta **convexa** é **outro
+operador**, e ele não existia aqui. Não era o motor falhando — era a família de operadores
+incompleta.
+
+### A assimetria que explica por que são dois operadores, e não um com o sinal trocado
+
+| | quina **côncava** (junção) | quina **convexa** (aresta externa) |
+|---|---|---|
+| Operador | `union_round(a, b, r)` | `offset(a, r)` — uma **subtração** |
+| Centro do arco | **fora** do sólido | **dentro** do sólido |
+| O que o deslocamento faz | — | desloca a superfície: convexo vira arco de raio `r`, côncavo **fica vivo** |
+
+⚠️ Deslocar **cresce** a peça em `r`. A receita canônica encolhe a fonte antes —
+`caixa(h − r)` deslocada de `r` — e o resultado é **distância exata** com o tamanho pedido.
+
+A família ficou completa, e as três que faltavam **saíram de graça por De Morgan**
+(`A ∩ B = ¬(¬A ∪ ¬B)`), sem fórmula nova: `intersection_round`, `difference_round` (a boca de um
+furo) e `offset`. *Uma fórmula a mais seria uma segunda resposta à mesma pergunta.*
+
+![externo](imagens/w0_externo.png)
+
+*Cubo de aresta viva (referência) · **cubo arredondado (r = 0,08)** · junção com filete interno 0,12
+**e aros externos 0,05** · caixa menos cilindro com a **boca do furo arredondada**.*
+
+E a 7× de aproximação:
+
+![externo de perto](imagens/w0_externo_zoom.png)
+
+### O raio externo é exato, como o interno
+
+| meia-aresta | raio pedido | raio entregue | erro |
+|---:|---:|---:|---:|
+| 0,45 | 0,04 | **0,0400** | **0,00 %** |
+| 0,45 | 0,08 | **0,0800** | **0,00 %** |
+| 0,45 | 0,20 | **0,2000** | **0,00 %** |
+| 0,50 | 0,12 | **0,1200** | **0,00 %** |
+
+⭐ **Os dois lados do arredondamento — interno e externo — entregam exatamente o raio pedido.**
+Custo do traçado das quatro cenas: **46 a 56 ms**, um núcleo.
 
 ---
 

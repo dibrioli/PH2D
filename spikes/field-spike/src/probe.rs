@@ -143,6 +143,23 @@ pub fn radius_error(op: &dyn Fn(&Tree, &Tree) -> Tree, r: f64) -> f64 {
     field.at(r, r, 0.0) - r
 }
 
+/// **O raio EXTERNO pedido é o entregue?** — o espelho exato de [`radius_error`].
+///
+/// Numa caixa arredondada de meia-aresta `half` e raio `r`, o canto é um oitavo de esfera de centro
+/// `(half−r, half−r, half−r)` e raio `r`.
+///
+/// ⚠️ **E aqui o centro fica DENTRO do sólido** — ao contrário do filete, cujo centro fica fora
+/// ([`radius_error`]). É a mesma assimetria que faz arredondar por fora e por dentro serem
+/// operações diferentes: convexo guarda o centro no material, côncavo guarda-o no vazio. Logo o
+/// campo no centro vale `−r`.
+///
+/// Devolve `f(c) + r`: zero é perfeito.
+pub fn outer_radius_error(half: f64, r: f64) -> f64 {
+    let field = Field::new(&crate::sdf::sd_round_box(half, r));
+    let c = half - r;
+    field.at(c, c, c) + r
+}
+
 /// Erro da malha medido **nos vértices** — a pergunta "a malha está sobre a superfície?".
 ///
 /// ⚠️ **Substitui o baricentro como medida primária.** Um triângulo que atravessa uma quina viva

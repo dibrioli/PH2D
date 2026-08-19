@@ -120,6 +120,67 @@ pub fn union_round(a: &Tree, b: &Tree, r: f64) -> Tree {
     a.min(b.clone()).max(r) - length2(&ux, &uy)
 }
 
+/// `−a` — o **complemento** do sólido. Dentro vira fora, e a distância troca de sinal.
+fn neg(a: &Tree) -> Tree {
+    Tree::constant(0.0) - a.clone()
+}
+
+/// **Deslocamento** (offset) da superfície por `r`. É o operador mais barato que existe: uma
+/// subtração.
+///
+/// ⚠️ **É ele que arredonda ARESTA EXTERNA (convexa)** — e a razão é geométrica, não algébrica:
+/// deslocar a superfície para fora por `r` faz cada quina convexa virar um arco de raio
+/// **exatamente** `r`, enquanto uma quina côncava permanece viva. Deslocar para dentro faz o
+/// inverso. *É por isso que arredondar por fora e por dentro são operações diferentes, e não a
+/// mesma com sinal trocado.*
+///
+/// Ele **cresce** a peça por `r`. Quem quiser manter o tamanho encolhe a fonte antes — é o que
+/// [`sd_round_box`] faz, e é a receita canônica.
+pub fn offset(a: &Tree, r: f64) -> Tree {
+    a.clone() - Tree::constant(r)
+}
+
+/// Caixa de meia-aresta `half` com as arestas arredondadas em raio `r`, **do tamanho pedido**.
+///
+/// A receita é `caixa(half − r)` deslocada de `r`: encolhe-se a fonte exatamente o quanto o
+/// deslocamento vai crescer. O resultado é **distância exata**, e o raio entregue é o raio pedido —
+/// o que [`crate::probe::outer_radius_error`] verifica.
+pub fn sd_round_box(half: f64, r: f64) -> Tree {
+    offset(&sd_box(half - r, half - r, half - r), r)
+}
+
+/// Cilindro em Z com o **aro das tampas** arredondado em `rr`, mantendo raio e altura.
+pub fn sd_round_cylinder_z(radius: f64, h: f64, rr: f64) -> Tree {
+    offset(&sd_capped_cylinder_z(radius - rr, h - rr), rr)
+}
+/// Idem, eixo X.
+pub fn sd_round_cylinder_x(radius: f64, h: f64, rr: f64) -> Tree {
+    offset(&sd_capped_cylinder_x(radius - rr, h - rr), rr)
+}
+/// Idem, eixo Y.
+pub fn sd_round_cylinder_y(radius: f64, h: f64, rr: f64) -> Tree {
+    offset(&sd_capped_cylinder_y(radius - rr, h - rr), rr)
+}
+
+/// Intersecção com a aresta (convexa) arredondada em `r`.
+///
+/// ⚠️ **Derivada por De Morgan, não copiada:** intersectar é unir os complementos e complementar o
+/// resultado — `A ∩ B = ¬(¬A ∪ ¬B)`. Logo `intersection_round(a,b,r) = −union_round(−a,−b,r)`, e o
+/// arredondamento acompanha a dualidade sem precisar de fórmula nova. Uma fórmula a mais seria uma
+/// segunda resposta à mesma pergunta, com uma chance a mais de divergir.
+pub fn intersection_round(a: &Tree, b: &Tree, r: f64) -> Tree {
+    neg(&union_round(&neg(a), &neg(b), r))
+}
+
+/// Subtração (`a` menos `b`) com a **aresta do corte** arredondada em `r`.
+///
+/// Retirar `b` de `a` é intersectar `a` com o complemento de `b` — daí sair de graça da mesma
+/// dualidade acima. É a operação que dá a boca arredondada de um furo, e é das mais usadas em arte
+/// hard-surface.
+pub fn difference_round(a: &Tree, b: &Tree, r: f64) -> Tree {
+    intersection_round(a, &neg(b), r)
+}
+
 /// União **suave** (smooth-min polinomial de Quilez), parâmetro `k`.
 ///
 /// ```text

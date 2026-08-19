@@ -282,6 +282,100 @@ fn main() {
         "\n→ `out/01_campo.png` e `out/01_campo_zoom.png` — **a mesma cena, a mesma luz, sem malha**\n"
     );
 
+    // ── 1d. O ARREDONDAMENTO EXTERNO ────────────────────────────────────────────────
+    // Segundo smoke do Enio (2026-08-19): "arredondamentos internos perfeitos, externos
+    // INEXISTENTES". Ele está certo, e não era defeito: o spike só tinha o operador de JUNÇÃO
+    // (côncavo). Arredondar aresta convexa é OUTRO operador — `sdf::offset` — e não existia aqui.
+    println!("## 1d. Arredondamento EXTERNO — a família completa de operadores\n");
+    let outer: Vec<(&str, &str, Tree, [f64; 3])> = vec![
+        (
+            "5_cubo_vivo",
+            "cubo de aresta viva (referência)",
+            sdf::sd_box(0.45, 0.45, 0.45),
+            [0.30, 0.30, 0.22],
+        ),
+        (
+            "6_cubo_arredondado",
+            "cubo com aresta ARREDONDADA (r = 0,08)",
+            sdf::sd_round_box(0.45, 0.08),
+            [0.30, 0.30, 0.22],
+        ),
+        (
+            "7_juncao_completa",
+            "junção: filete interno 0,12 + aros externos 0,05",
+            {
+                let r = 0.12;
+                let a = sdf::sd_round_cylinder_x(0.22, 0.78, 0.05);
+                let b = sdf::sd_round_cylinder_y(0.22, 0.78, 0.05);
+                let c = sdf::sd_round_cylinder_z(0.22, 0.78, 0.05);
+                sdf::union_round(&sdf::union_round(&a, &b, r), &c, r)
+            },
+            [0.62, 0.10, 0.10],
+        ),
+        (
+            "8_furo_arredondado",
+            "caixa MENOS cilindro, boca do furo arredondada (0,05)",
+            sdf::difference_round(
+                &sdf::sd_round_box(0.5, 0.06),
+                &sdf::sd_capped_cylinder_y(0.24, 1.2),
+                0.05,
+            ),
+            [0.0, 0.5, 0.24],
+        ),
+    ];
+
+    println!("| cena | tempo do traçado |");
+    println!("|---|---:|");
+    let mut outer_panels = Vec::new();
+    let mut outer_zooms = Vec::new();
+    for (key, label, tree, zt) in &outer {
+        let view = render::View::default();
+        let t0 = Instant::now();
+        let (rgba, _) = raymarch::trace(&view, tree);
+        println!(
+            "| {label} | {:.0} ms |",
+            t0.elapsed().as_secs_f64() * 1000.0
+        );
+        render::write_png(
+            &out.join(format!("{key}_campo.png")),
+            view.width,
+            view.height,
+            &rgba,
+        )
+        .expect("png");
+        outer_panels.push((view.width, view.height, rgba));
+
+        let zoom = render::View {
+            scale: 7.0,
+            target: *zt,
+            ..Default::default()
+        };
+        let (rgba_z, _) = raymarch::trace(&zoom, tree);
+        outer_zooms.push((zoom.width, zoom.height, rgba_z));
+    }
+    let (ow, oh, osheet) = render::contact_sheet(&outer_panels, 10);
+    render::write_png(&out.join("02_externo.png"), ow, oh, &osheet).expect("folha externa");
+    let (ozw, ozh, ozsheet) = render::contact_sheet(&outer_zooms, 10);
+    render::write_png(&out.join("02_externo_zoom.png"), ozw, ozh, &ozsheet).expect("folha");
+    println!("\n→ `out/02_externo.png` e `out/02_externo_zoom.png`\n");
+
+    println!("**O raio externo pedido é o entregue?** (sonda analítica, espelho da §3)\n");
+    println!("| meia-aresta | raio pedido | raio entregue | erro relativo |");
+    println!("|---:|---:|---:|---:|");
+    for (half, r) in [
+        (0.45_f64, 0.04_f64),
+        (0.45, 0.08),
+        (0.45, 0.20),
+        (0.5, 0.12),
+    ] {
+        let e = probe::outer_radius_error(half, r);
+        println!(
+            "| {half} | {r:.2} | {:.4} | {:.2} % |",
+            r - e,
+            (e / r).abs() * 100.0
+        );
+    }
+
     // ── 1b. A quina viva, em número ─────────────────────────────────────────────────
     println!("## 1b. A quina viva do cubo, medida\n");
     println!("Tudo em **frações de célula** — é a unidade que diz se refinar cura.\n");

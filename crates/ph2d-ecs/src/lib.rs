@@ -54,6 +54,7 @@ pub mod sim;
 pub mod sort_key;
 pub mod sorting;
 pub mod sprite_pixels;
+pub mod sprite_sheet_ref;
 pub mod transform;
 pub mod transform_inverse;
 pub mod transform_versioned;
@@ -80,6 +81,7 @@ pub use sampling::{
 };
 pub use sim::{SimComponent, SimWorld};
 pub use sprite_pixels::SpritePixels;
+pub use sprite_sheet_ref::SpriteSheetRef;
 pub use sort_key::{SortInput, SortKey, compute_sort_ranks, effective_z_index};
 pub use sorting::{
     LayerId, OrderInLayer, ShowBehindParent, SortPoint, SortingGroup, SortingLayer, SortingLayers,

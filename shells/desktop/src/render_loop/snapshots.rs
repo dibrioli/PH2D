@@ -81,6 +81,9 @@ pub(super) fn publish(
     camera: &Camera2d,
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
+    // As FOLHAS hand-packed da sessao, para a linha Storage nomear a regiao em vez de
+    // mostrar dois indices crus (plano `docs/Sprite_projeto/17` §8).
+    sheets: &BTreeMap<u32, ph2d_sprite_sheet::AuthoredSheet>,
     renderer: &ph2d_render::SpriteRenderer,
     window_size: WindowSize,
     last_pointer: (f32, f32),
@@ -659,13 +662,28 @@ pub(super) fn publish(
                 // "Source W×H" and seed `region_rect` to the full source —
                 // the extract already supports Individual region sampling.
                 let dims = renderer.individual().dims(texture_id);
-                (
-                    ph2d_editor::InspectorSpriteSource::Individual { texture_id },
-                    dims,
-                    // Reimport recomputes world size from an Atlas asset's
-                    // px/m; Individual bakes have no atlas asset to re-decode.
-                    false,
-                )
+                // ⚠️ **A ESTRATÉGIA é uma pergunta de AUTORIA, não de armazenamento.** No
+                // armazenamento um sprite hand-packed É uma textura individual com um retângulo
+                // — é essa composição que faz o extract não precisar de saber que ele existe
+                // (plano `docs/Sprite_projeto/17` §2.1). Quem sabe de que FOLHA ele é, é o
+                // `SpriteSheetRef`, e por isso o painel pergunta ao componente, não ao `source`.
+                match world.get::<ph2d_ecs::SpriteSheetRef>(entity) {
+                    Some(r) => (
+                        ph2d_editor::InspectorSpriteSource::HandPacked {
+                            sheet: r.sheet,
+                            region: r.region,
+                        },
+                        dims,
+                        false,
+                    ),
+                    None => (
+                        ph2d_editor::InspectorSpriteSource::Individual { texture_id },
+                        dims,
+                        // Reimport recomputes world size from an Atlas asset's
+                        // px/m; Individual bakes have no atlas asset to re-decode.
+                        false,
+                    ),
+                }
             }
             // W2.T2: a cooked KTX2 source — read-only display marker. Dims
             // come from the W2.T4 loader (logical_id → tier asset); unknown
@@ -676,11 +694,20 @@ pub(super) fn publish(
                 false,
             ),
         };
+        // O rótulo legível de uma origem hand-packed. Derivado AQUI (e não no painel) porque o
+        // painel é chrome e não pode depender do documento de folhas sem inverter a seta.
+        let sheet_label = match source_kind {
+            ph2d_editor::InspectorSpriteSource::HandPacked { sheet, region } => sheets
+                .get(&sheet)
+                .and_then(|s| s.region(region).map(|r| format!("{} \u{00b7} {}", s.name, r.name))),
+            _ => None,
+        };
         let world_size = [
             sprite.size[0] * transform.scale.x,
             sprite.size[1] * transform.scale.y,
         ];
         Some(ph2d_editor::InspectorSpriteInfo {
+            sheet_label,
             entity_bits: bits,
             name,
             world_size,

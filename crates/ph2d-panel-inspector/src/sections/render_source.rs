@@ -147,7 +147,7 @@ pub(crate) fn paint_render_source_section(
             ),
             (
                 "Hand-packed",
-                matches!(info.source_kind, InspectorSpriteSource::HandPacked),
+                matches!(info.source_kind, InspectorSpriteSource::HandPacked { .. }),
                 ids::INSP_RENDER_STRATEGY_HANDPACKED,
             ),
         ],
@@ -282,7 +282,13 @@ fn paint_storage_rows(
         InspectorSpriteSource::Individual { texture_id } => {
             format!("Individual \u{00b7} texture {}", texture_id)
         }
-        InspectorSpriteSource::HandPacked => "Hand-packed".to_string(),
+        // ⚠️ O NOME, não os índices: é por ele que o artista reencontra o desenho no
+        // Aseprite. Os números só aparecem se o rótulo faltar (uma folha que o projeto trouxe
+        // mas a sessão não tem), e aí eles são a informação honesta que sobra.
+        InspectorSpriteSource::HandPacked { sheet, region } => match &info.sheet_label {
+            Some(label) => format!("Hand-packed \u{00b7} {label}"),
+            None => format!("Hand-packed \u{00b7} sheet {sheet} \u{00b7} region {region}"),
+        },
         // W2.T2: tier-cooked KTX2 — read-only marker, no key/id shown.
         InspectorSpriteSource::CookedTexture => "Cooked texture".to_string(),
     };
@@ -320,7 +326,7 @@ fn paint_region_rows(
     // Region sampling (spec §3.3) — hidden for Hand-packed (it brings its
     // own rect from the asset). Toggle + (when on) X/Y/W/H px inputs +
     // Filter Clip. Renders via the extract `region_subrect` (W2.T2.4).
-    if !matches!(info.source_kind, InspectorSpriteSource::HandPacked) {
+    if !matches!(info.source_kind, InspectorSpriteSource::HandPacked { .. }) {
         let cb_h = 18.0_f32; // LITERAL-PX-OK: Checkbox visual height
         let re_value = store
             .checkbox(ids::INSP_REGION_ENABLED)

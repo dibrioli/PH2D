@@ -479,6 +479,9 @@ pub(crate) fn build_initial_state(
         sort_inputs: Vec::new(),
         hero_live,
         next_import_cell: ph2d_render::FIRST_IMPORT_KEY,
+        sheets: std::collections::BTreeMap::new(),
+        sheet_textures: std::collections::BTreeMap::new(),
+        next_sheet_id: 0,
         next_painted_doc: 1, // 0 fica livre como "nenhum"
         next_baked_form: 1,  // idem: 0 fica livre como "nenhum"
         atlas_asset_map: BTreeMap::new(),

@@ -1025,6 +1025,12 @@ impl crate::App {
             // A identidade estável do documento pintado é carimbada no SAVE (`project_painter`), que é
             // o único momento em que ela precisa existir — o loop de render não a lê.
             next_painted_doc: _,
+            // As folhas hand-packed: o loop de render não as lê. O que ele desenha é o COZIDO
+            // (`Sprite.source` + `region_rect`), que o import e o load já escreveram — é
+            // exatamente essa separação fonte-≠-cozido que faz o extract não mudar uma linha.
+            sheets,
+            sheet_textures: _,
+            next_sheet_id: _,
             atlas_asset_map,
             logical_texture_map,
             component_registry,
@@ -2281,6 +2287,7 @@ impl crate::App {
                 camera,
                 asset_db,
                 atlas_asset_map,
+                sheets,
                 renderer,
                 window_size,
                 self.last_pointer,

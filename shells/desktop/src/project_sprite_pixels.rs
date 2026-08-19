@@ -100,8 +100,24 @@ impl crate::App {
                 premultiplied,
             });
         }
-        // O `encode` ordena e deduplica — dois sprites com os mesmos pixels custam uma entrada.
-        match ph2d_sprite_sheet::encode(&docs) {
+        // 3. E as FOLHAS hand-packed que algum sprite ainda nomeia (plano §6). Uma folha que
+        //    nenhum sprite usa NÃO entra: o documento guarda o que a cena mostra, não um
+        //    histórico de tudo o que já foi importado.
+        let mut used: std::collections::BTreeSet<u32> = std::collections::BTreeSet::new();
+        {
+            let world = gfx.sim.world_mut();
+            let mut q = world.query::<&ph2d_ecs::SpriteSheetRef>();
+            for r in q.iter(world) {
+                used.insert(r.sheet);
+            }
+        }
+        let sheets: Vec<ph2d_sprite_sheet::AuthoredSheet> = used
+            .iter()
+            .filter_map(|id| gfx.sheets.get(id).cloned())
+            .collect();
+        // O `encode` ordena e deduplica os dois lados — dois sprites com os mesmos pixels custam
+        // uma entrada, e N sprites da mesma folha custam uma folha.
+        match ph2d_sprite_sheet::encode(&docs, &sheets) {
             Ok(bytes) => bytes,
             Err(e) => {
                 eprintln!("[proj] pixels de sprite nao serializaram: {e}");
@@ -109,6 +125,7 @@ impl crate::App {
             }
         }
     }
+
 
     /// Re-materializa os pixels e re-aponta cada sprite que os nomeia.
     ///
@@ -164,6 +181,72 @@ impl crate::App {
             }
         }
     }
+
+    /// Re-materializa as **folhas hand-packed** e reata cada sprite que nomeia uma região.
+    ///
+    /// Mesmo gesto do irmão acima, e pela mesma razão — o `texture_id` do save morreu com o
+    /// processo. O que muda é o **cozido**: uma folha é *uma textura partilhada* + *um retângulo
+    /// por sprite*, então o reatar escreve os dois. É aqui que a autoria (`SpriteSheetRef`) vira
+    /// a forma que o extract já sabe desenhar, sem que o extract mude uma linha.
+    pub(super) fn restore_sprite_sheets(&mut self, sheets: Vec<ph2d_sprite_sheet::AuthoredSheet>) {
+        if sheets.is_empty() {
+            return;
+        }
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        // 1. Cada folha sobe UMA vez para uma textura própria, partilhada por todos os sprites
+        //    dela — é a razão de existir do hand-packed (uma textura, N sprites, um draw call).
+        for sheet in sheets {
+            match gfx
+                .renderer
+                .acquire_individual(sheet.width, sheet.height, &sheet.rgba)
+            {
+                Ok(texture_id) => {
+                    gfx.sheet_textures.insert(sheet.id, texture_id);
+                }
+                Err(e) => {
+                    eprintln!("[proj] textura da folha {} falhou: {e}", sheet.id);
+                    continue;
+                }
+            }
+            // Ids futuros nesta sessão não podem colidir com os do projeto (o mesmo contrato do
+            // `next_import_cell`).
+            gfx.next_sheet_id = gfx.next_sheet_id.max(sheet.id.saturating_add(1));
+            gfx.sheets.insert(sheet.id, sheet);
+        }
+        // 2. Que sprite (bits NOVOS) é que região de que folha?
+        let mut targets: Vec<(u64, ph2d_ecs::SpriteSheetRef)> = Vec::new();
+        {
+            let world = gfx.sim.world_mut();
+            let mut q = world.query::<(Entity, &ph2d_ecs::SpriteSheetRef)>();
+            for (e, r) in q.iter(world) {
+                targets.push((e.to_bits(), *r));
+            }
+        }
+        // 3. Cozinha: textura da folha + o retângulo da região.
+        for (bits, r) in targets {
+            let Some(&texture_id) = gfx.sheet_textures.get(&r.sheet) else {
+                continue; // referência a uma folha que o arquivo não trouxe
+            };
+            let Some(rect) = gfx
+                .sheets
+                .get(&r.sheet)
+                .and_then(|s| s.region(r.region))
+                .map(|reg| reg.rect)
+            else {
+                eprintln!(
+                    "[proj] sprite aponta para a regiao {} da folha {}, que nao existe",
+                    r.region, r.sheet
+                );
+                continue;
+            };
+            if let Some(mut sprite) = gfx.sim.world_mut().get_mut::<Sprite>(Entity::from_bits(bits))
+            {
+                bind_sheet_region(&mut sprite, texture_id, rect);
+            }
+        }
+    }
 }
 
 /// **Quem entra no arquivo** — a regra de posse, isolada porque é onde os bugs de lógica moram.
@@ -195,6 +278,37 @@ fn should_collect(source: &SpriteSource, has_painted: bool, has_baked: bool) -> 
 fn reattach_pixels(sprite: &mut Sprite, texture_id: u32, premultiplied: bool) {
     sprite.source = SpriteSource::Individual { texture_id };
     sprite.premultiplied = premultiplied;
+}
+
+/// **A COZEDURA de uma região de folha** — a porta ÚNICA que transforma a autoria
+/// (`SpriteSheetRef`) na forma que o extract já sabe desenhar.
+///
+/// É aqui que a decisão do plano §2.1 se paga: uma folha hand-packed não precisa de um variante
+/// de `SpriteSource` nem de um store novo, porque a composição já a exprime —
+///
+/// - **a textura partilhada** é uma entrada do `IndividualTextureStore` (que já tem refcount, e
+///   por isso já suporta N sprites a olharem para a mesma);
+/// - **o retângulo** é o `region_rect` + `region_enabled` que o `region_subrect()` já converte em
+///   UV, com testes, usando as dimensões que o store devolve.
+///
+/// ⚠️ **`region_filter_clip = true` não é conforto:** numa folha há vizinhos de verdade a um
+/// texel de distância, e sem o clamp a amostragem bilinear puxa o desenho ao lado pela borda. É a
+/// mesma razão pela qual o construtor `Sprite::atlas` o traz ligado.
+///
+/// ⚠️ E **não se toca no `size`** — ele é a pose em METROS e já veio do snapshot. O retângulo é
+/// em pixels da folha; confundir os dois é o canvas de 1024 metros do Painter outra vez.
+pub(crate) fn bind_sheet_region(sprite: &mut Sprite, texture_id: u32, rect: [u32; 4]) {
+    sprite.source = SpriteSource::Individual { texture_id };
+    // Uma folha do artista é alfa reto (é um PNG); a nossa ferramenta de empacotar grava igual.
+    sprite.premultiplied = false;
+    sprite.region_enabled = true;
+    sprite.region_rect = [
+        rect[0] as f32,
+        rect[1] as f32,
+        rect[2] as f32,
+        rect[3] as f32,
+    ];
+    sprite.region_filter_clip = true;
 }
 
 #[cfg(test)]

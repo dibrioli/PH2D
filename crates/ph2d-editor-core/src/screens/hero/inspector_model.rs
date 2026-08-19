@@ -16,6 +16,15 @@ pub struct InspectorSpriteInfo {
     /// / Individual). Surfaced as a read-only display for now;
     /// switching strategies is M14.5 follow-up.
     pub source_kind: InspectorSpriteSource,
+    /// **O nome legível** de uma origem hand-packed: `Some("folha · região")`.
+    ///
+    /// ⚠️ Vem pronto do host porque o painel **não conhece o documento de folhas** — ele não pode
+    /// depender do `ph2d-sprite-sheet` sem inverter a seta (o painel é chrome; o documento é
+    /// arquivo). E é o que faz a linha Storage dizer *"Hand-packed · hero · idle_0"* em vez de
+    /// dois números crus que não ajudam ninguém a encontrar o desenho no Aseprite.
+    ///
+    /// `None` para toda outra estratégia.
+    pub sheet_label: Option<String>,
     /// Source-image dimensions (pixels). `None` for procedural /
     /// generated sprites that don't trace back to an `AssetId`.
     pub source_pixels: Option<(u32, u32)>,
@@ -411,7 +420,14 @@ pub enum InspectorSpriteSource {
     Individual {
         texture_id: u32,
     },
-    HandPacked,
+    /// Uma região de uma **folha hand-packed** — o par `(folha, região)` que o
+    /// `ph2d_ecs::SpriteSheetRef` do sprite carrega.
+    ///
+    /// ⚠️ **No armazenamento este sprite É um `Individual` com um retângulo** — a estratégia é
+    /// uma pergunta de AUTORIA, e é o componente que a responde. Foi essa composição que
+    /// permitiu ao hand-packed não custar um variante de `SpriteSource` (25 sítios em 16
+    /// arquivos) nem um store novo no renderer — plano `docs/Sprite_projeto/17` §2.1.
+    HandPacked { sheet: u32, region: u32 },
     /// A tier-cooked KTX2 texture (KTX2 Fase 2, W2.T2). A read-only
     /// display marker — the inspector shows "Cooked texture" but offers
     /// no authoring radio (cooked sources come from the asset pipeline,
@@ -433,7 +449,7 @@ impl InspectorSpriteSource {
     pub fn pixel_format(self) -> &'static str {
         match self {
             // O atlas e o store individual criam ambos `Rgba8UnormSrgb`.
-            Self::Atlas { .. } | Self::Individual { .. } | Self::HandPacked => "RGBA8",
+            Self::Atlas { .. } | Self::Individual { .. } | Self::HandPacked { .. } => "RGBA8",
             // Comprimida no dispositivo; o formato concreto depende do tier resolvido, e o
             // Inspector não o tem em mãos (o `snapshot` também não traz dimensões por isso).
             Self::CookedTexture => "GPU compressed",
@@ -573,7 +589,10 @@ mod pixel_format_tests {
             InspectorSpriteSource::Individual { texture_id: 1 }.pixel_format(),
             "RGBA8"
         );
-        assert_eq!(InspectorSpriteSource::HandPacked.pixel_format(), "RGBA8");
+        assert_eq!(
+            InspectorSpriteSource::HandPacked { sheet: 0, region: 0 }.pixel_format(),
+            "RGBA8"
+        );
     }
 
     /// ⚠️ **A mentira que este método existe para acabar.** O par segmentado trazia o aceso como

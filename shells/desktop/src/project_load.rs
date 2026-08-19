@@ -97,7 +97,7 @@ impl crate::App {
         // pareceria um bug de render, e o próximo Ctrl+S gravaria o vazio por cima da arte. O
         // parse vem ANTES de qualquer mutação da sessão, então recusar não custa nada ao
         // documento aberto.
-        let sprite_pixels = match ph2d_sprite_sheet::decode(&file.sprite_pixels) {
+        let (sprite_pixels, sprite_sheets) = match ph2d_sprite_sheet::decode(&file.sprite_pixels) {
             Ok(v) => v,
             Err(e) => {
                 eprintln!("[proj] pixels de sprite ilegiveis — load RECUSADO: {e}");
@@ -203,6 +203,9 @@ impl crate::App {
         // deste. (A colheita já os salta, então na prática não há duplo trabalho — mas a ordem é
         // o que torna isso verdade mesmo para um arquivo salvo por um binário anterior.)
         self.restore_sprite_pixels(sprite_pixels);
+        // As FOLHAS hand-packed, pelo mesmo motivo e na mesma janela: uma folha sobe UMA vez
+        // e os N sprites dela reatam a textura partilhada + o retangulo da regiao.
+        self.restore_sprite_sheets(sprite_sheets);
         // Depois do mundo: os sprites já existem (com bits novos), e é pelo `PaintedDoc` que cada um
         // reencontra o documento que era dele.
         self.restore_painted_docs(file.painted);

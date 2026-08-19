@@ -242,6 +242,21 @@ pub(crate) struct AppGfx {
     /// (`insert_atlas_sprite_with_regrow`) uses `atlas_asset_map` to
     /// recover each existing region's source bytes from `asset_db`.
     pub(crate) next_import_cell: u32,
+    /// **AS FOLHAS hand-packed da sessão**, por id estável (plano `docs/Sprite_projeto/17` §6).
+    ///
+    /// A folha é um documento AUTORADO — os pixels mudam quando o artista rearranja uma região —,
+    /// e por isso a identidade é um `u32` estável e não o hash do conteúdo que os pixels próprios
+    /// de um sprite usam. Os sprites apontam para uma região dela pelo `ph2d_ecs::SpriteSheetRef`.
+    pub(crate) sheets: std::collections::BTreeMap<u32, ph2d_sprite_sheet::AuthoredSheet>,
+    /// `id da folha → texture_id` na sessão corrente.
+    ///
+    /// ⚠️ **Runtime puro, e é essa a divisão que este módulo inteiro existe para manter:** o
+    /// `texture_id` é uma alocação da GPU que morre com o processo, então ele NUNCA entra no
+    /// arquivo — quem viaja é o `sheets` acima, e este mapa é reconstruído no load.
+    pub(crate) sheet_textures: std::collections::BTreeMap<u32, u32>,
+    /// Próximo id livre de folha (mesmo contrato do `next_import_cell`: o load empurra-o para
+    /// além dos ids do projeto, para um import novo não se sentar em cima de uma folha carregada).
+    pub(crate) next_sheet_id: u32,
     /// Próximo `ph2d_ecs::PaintedDoc(u32)` livre — a identidade ESTÁVEL de um documento do Painter.
     ///
     /// Os bits de entidade (a chave do `doc_cache` do Painter) são id de ALOCAÇÃO do ECS: morrem no

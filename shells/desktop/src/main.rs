@@ -362,6 +362,9 @@ mod project_settings;
 /// irmão do `project_painter`, e o chão que faltava debaixo dele: cobre o funil que TODAS as
 /// ferramentas de imagem atravessam, não um produtor só.
 mod project_sprite_pixels;
+/// **O import de uma folha hand-packed** (`folha.png` + `folha.json`) — irmão do
+/// `image_import`, e o primeiro consumidor que o `parse_atlas_meta` tem desde 2026-05-12.
+mod sheet_import;
 /// **A tabela de COR autorada viaja no arquivo** (plano UI/UX W6) — irmão de `project`
 /// pelo teto de LOC, cortado por assunto.
 mod project_tokens;

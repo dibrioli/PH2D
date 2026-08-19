@@ -45,12 +45,19 @@
 use ph2d_asset::AssetId;
 use serde::{Deserialize, Serialize};
 
-/// A versão do documento de pixels próprios.
+/// A versão do documento.
 ///
 /// ⚠️ **Bumpe-a quando qualquer tipo dentro do blob mudar de forma.** O postcard é POSICIONAL: um
 /// campo novo lido por um binário velho não falha — devolve lixo bem-formado. Aqui esse lixo
 /// seriam *pixels*, então esta versão é a única coisa entre um artista e uma imagem embaralhada.
-pub const SHEET_DOC_VERSION: u32 = 1;
+///
+/// - **v1** — só [`SpritePixelDoc`] (os pixels próprios de um sprite `Individual`).
+/// - **v2** — junta [`AuthoredSheet`]: as FOLHAS hand-packed, com as regiões nomeadas.
+///
+/// ⚠️ **E este bump é a prova do desenho, não uma nota:** ele acrescentou uma capacidade inteira
+/// ao formato de arquivo e o `PROJECT_SCHEMA` **não se moveu** — logo nenhum projeto já salvo foi
+/// recusado. Era exatamente para isto que o campo nasceu como blob auto-versionado.
+pub const SHEET_DOC_VERSION: u32 = 2;
 
 /// Os pixels próprios de um sprite, como o arquivo os guarda.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -95,11 +102,113 @@ impl SpritePixelDoc {
     }
 }
 
+/// Uma região nomeada dentro de uma folha, em **pixels da folha**, com `(0, 0)` no canto
+/// superior-esquerdo — a mesma convenção do `Asset::ImageRgba8` e do `Sprite::region_rect`, para
+/// que o retângulo viaje até o extract sem nenhuma conversão pelo caminho.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SheetRegion {
+    /// O nome que o artista deu (a chave do `frames` no JSON do Aseprite/TexturePacker),
+    /// preservado verbatim. É o que o Inspector mostra; o que o `Sprite` guarda é o ÍNDICE.
+    pub name: String,
+    /// `[x, y, w, h]` em pixels da folha.
+    pub rect: [u32; 4],
+}
+
+/// Uma **folha hand-packed**: uma imagem partilhada por N sprites, com as regiões que cada um usa.
+///
+/// ## Por que o id é um `u32` e não o [`AssetId`] dos pixels próprios
+///
+/// Uma folha é um **documento AUTORADO**: o artista arrasta uma região, e os pixels mudam. Um id
+/// de conteúdo mudaria a cada gesto e obrigaria a re-carimbar todo sprite que a usa. O `u32` é
+/// caller-supplied e estável ao longo da edição — exatamente o espírito do `ph2d_ecs::PaintedDoc`.
+/// *Dois tempos de vida diferentes, não uma inconsistência* (plano `docs/Sprite_projeto/17` §3.1).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AuthoredSheet {
+    /// Identidade estável da folha. É o que `SpriteSource::HandPacked { sheet, .. }` guarda.
+    pub id: u32,
+    /// Nome legível (o do arquivo importado, ou o que a ferramenta de empacotar deu). Só para o
+    /// Inspector — a identidade é o `id`.
+    pub name: String,
+    pub width: u32,
+    pub height: u32,
+    /// RGBA8 justo: exatamente `width * height * 4` bytes.
+    pub rgba: Vec<u8>,
+    /// As regiões, **ordenadas por nome** — vide [`AuthoredSheet::new`]. O índice nesta lista é a
+    /// referência durável que o `Sprite` guarda.
+    pub regions: Vec<SheetRegion>,
+}
+
+impl AuthoredSheet {
+    /// Constrói a partir de pares `(nome, [x, y, w, h])`.
+    ///
+    /// ⚠️ **Ordena por nome, e é isso que torna o índice uma referência estável:** o parser do
+    /// Aseprite entrega um `BTreeMap` (já ordenado) e a ferramenta de empacotar entrega o que o
+    /// artista arranjou — passar as duas por esta porta faz o mesmo `.json` produzir sempre a
+    /// mesma folha, byte-a-byte (HR-5). É o que o teste de round-trip afirma.
+    pub fn new(
+        id: u32,
+        name: String,
+        width: u32,
+        height: u32,
+        rgba: Vec<u8>,
+        regions: impl IntoIterator<Item = (String, [u32; 4])>,
+    ) -> Self {
+        let mut regions: Vec<SheetRegion> = regions
+            .into_iter()
+            .map(|(name, rect)| SheetRegion { name, rect })
+            .collect();
+        regions.sort_by(|a, b| a.name.cmp(&b.name));
+        Self {
+            id,
+            name,
+            width,
+            height,
+            rgba,
+            regions,
+        }
+    }
+
+    /// A região de índice `i`, ou `None`. O Inspector usa isto para NOMEAR o que o sprite mostra —
+    /// `Hand-packed · hero · idle_0` em vez de dois números crus.
+    pub fn region(&self, index: u32) -> Option<&SheetRegion> {
+        self.regions.get(index as usize)
+    }
+
+    fn validate(&self) -> Result<(), SheetDocError> {
+        let expected = (self.width as usize)
+            .saturating_mul(self.height as usize)
+            .saturating_mul(4);
+        if self.rgba.len() != expected {
+            return Err(SheetDocError::SheetPixelCountMismatch {
+                sheet: self.id,
+                expected,
+                found: self.rgba.len(),
+            });
+        }
+        for r in &self.regions {
+            let [x, y, w, h] = r.rect;
+            // Soma em `u64` de propósito: `x + w` em `u32` daria a volta e um retângulo absurdo
+            // passaria a "caber" dentro da folha.
+            if u64::from(x) + u64::from(w) > u64::from(self.width)
+                || u64::from(y) + u64::from(h) > u64::from(self.height)
+            {
+                return Err(SheetDocError::RegionOutsideSheet {
+                    sheet: self.id,
+                    name: r.name.clone(),
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
 /// O documento como o arquivo o guarda.
 #[derive(Serialize, Deserialize)]
 struct SheetDoc {
     version: u32,
     pixels: Vec<SpritePixelDoc>,
+    /// v2: as folhas hand-packed.
+    sheets: Vec<AuthoredSheet>,
 }
 
 /// Por que um documento não pôde ser lido ou escrito.
@@ -115,6 +224,15 @@ pub enum SheetDocError {
         expected: usize,
         found: usize,
     },
+    /// O mesmo, para uma folha autorada.
+    SheetPixelCountMismatch {
+        sheet: u32,
+        expected: usize,
+        found: usize,
+    },
+    /// Uma região aponta para fora da folha — quase sempre um `.json` e um `.png` que divergiram
+    /// (o artista editou um sem re-exportar o outro).
+    RegionOutsideSheet { sheet: u32, name: String },
 }
 
 impl std::fmt::Display for SheetDocError {
@@ -134,6 +252,18 @@ impl std::fmt::Display for SheetDocError {
                 "sprite pixels {} declare {expected} bytes but carry {found}",
                 id.to_hex()
             ),
+            Self::SheetPixelCountMismatch {
+                sheet,
+                expected,
+                found,
+            } => write!(
+                f,
+                "sheet {sheet} declares {expected} pixel bytes but carries {found}"
+            ),
+            Self::RegionOutsideSheet { sheet, name } => write!(
+                f,
+                "region '{name}' extends past sheet {sheet} — image and metadata out of sync?"
+            ),
         }
     }
 }
@@ -148,8 +278,11 @@ impl std::error::Error for SheetDocError {}
 ///
 /// Uma lista vazia devolve `Vec` vazio — um projeto sem pixels próprios não paga bytes nem
 /// versão, e o [`decode`] devolve vazio para vazio (é o que faz um projeto anterior carregar).
-pub fn encode(pixels: &[SpritePixelDoc]) -> Result<Vec<u8>, SheetDocError> {
-    if pixels.is_empty() {
+pub fn encode(
+    pixels: &[SpritePixelDoc],
+    sheets: &[AuthoredSheet],
+) -> Result<Vec<u8>, SheetDocError> {
+    if pixels.is_empty() && sheets.is_empty() {
         return Ok(Vec::new());
     }
     let mut pixels = pixels.to_vec();
@@ -158,9 +291,16 @@ pub fn encode(pixels: &[SpritePixelDoc]) -> Result<Vec<u8>, SheetDocError> {
     for p in &pixels {
         p.validate()?;
     }
+    let mut sheets = sheets.to_vec();
+    sheets.sort_by_key(|s| s.id);
+    sheets.dedup_by_key(|s| s.id);
+    for s in &sheets {
+        s.validate()?;
+    }
     let doc = SheetDoc {
         version: SHEET_DOC_VERSION,
         pixels,
+        sheets,
     };
     postcard::to_allocvec(&doc).map_err(|_| SheetDocError::Postcard)
 }
@@ -170,9 +310,9 @@ pub fn encode(pixels: &[SpritePixelDoc]) -> Result<Vec<u8>, SheetDocError> {
 /// ⚠️ **Todo erro daqui tem de RECUSAR o load inteiro** (vide o módulo): devolver uma lista vazia
 /// abriria uma cena que parece certa com os sprites em branco, e o próximo `Ctrl+S` gravaria esse
 /// vazio por cima do arquivo do artista.
-pub fn decode(bytes: &[u8]) -> Result<Vec<SpritePixelDoc>, SheetDocError> {
+pub fn decode(bytes: &[u8]) -> Result<(Vec<SpritePixelDoc>, Vec<AuthoredSheet>), SheetDocError> {
     if bytes.is_empty() {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), Vec::new()));
     }
     let doc: SheetDoc = postcard::from_bytes(bytes).map_err(|_| SheetDocError::Postcard)?;
     if doc.version != SHEET_DOC_VERSION {
@@ -184,7 +324,10 @@ pub fn decode(bytes: &[u8]) -> Result<Vec<SpritePixelDoc>, SheetDocError> {
     for p in &doc.pixels {
         p.validate()?;
     }
-    Ok(doc.pixels)
+    for s in &doc.sheets {
+        s.validate()?;
+    }
+    Ok((doc.pixels, doc.sheets))
 }
 
 #[cfg(test)]
@@ -209,14 +352,14 @@ mod tests {
     #[test]
     fn round_trip_is_byte_identical() {
         let d = doc(4, 3, 0);
-        let bytes = encode(std::slice::from_ref(&d)).expect("encode");
-        assert_eq!(decode(&bytes).expect("decode"), vec![d]);
+        let bytes = encode(std::slice::from_ref(&d), &[]).expect("encode");
+        assert_eq!(decode(&bytes).expect("decode").0, vec![d]);
     }
 
     #[test]
     fn empty_encodes_to_nothing_and_decodes_back() {
-        assert!(encode(&[]).expect("encode").is_empty());
-        assert_eq!(decode(&[]).expect("decode"), Vec::new());
+        assert!(encode(&[], &[]).expect("encode").is_empty());
+        assert_eq!(decode(&[]).expect("decode").0, Vec::new());
     }
 
     /// O dedup é a razão de a identidade ser o CONTEÚDO: dois sprites com os mesmos pixels
@@ -224,8 +367,8 @@ mod tests {
     #[test]
     fn identical_pixels_cost_one_entry() {
         let d = doc(4, 4, 7);
-        let bytes = encode(&[d.clone(), d.clone()]).expect("encode");
-        assert_eq!(decode(&bytes).expect("decode"), vec![d]);
+        let bytes = encode(&[d.clone(), d.clone()], &[]).expect("encode");
+        assert_eq!(decode(&bytes).expect("decode").0, vec![d]);
     }
 
     /// A ordem é contrato: a MESMA cena declarada ao contrário grava os MESMOS bytes.
@@ -234,8 +377,8 @@ mod tests {
         let a = doc(2, 2, 1);
         let b = doc(2, 2, 9);
         assert_eq!(
-            encode(&[a.clone(), b.clone()]).expect("encode"),
-            encode(&[b, a]).expect("encode")
+            encode(&[a.clone(), b.clone()], &[]).expect("encode"),
+            encode(&[b, a], &[]).expect("encode")
         );
     }
 
@@ -244,7 +387,7 @@ mod tests {
         let mut bad = doc(4, 4, 0);
         bad.rgba.truncate(8);
         assert_eq!(
-            encode(std::slice::from_ref(&bad)),
+            encode(std::slice::from_ref(&bad), &[]),
             Err(SheetDocError::PixelCountMismatch {
                 id: bad.id,
                 expected: 64,
@@ -261,6 +404,7 @@ mod tests {
         let bytes = postcard::to_allocvec(&SheetDoc {
             version: SHEET_DOC_VERSION + 1,
             pixels: vec![d],
+            sheets: Vec::new(),
         })
         .expect("encode");
         assert_eq!(
@@ -270,6 +414,73 @@ mod tests {
                 expected: SHEET_DOC_VERSION,
             })
         );
+    }
+
+    fn sheet(id: u32, w: u32, h: u32, regions: &[(&str, [u32; 4])]) -> AuthoredSheet {
+        AuthoredSheet::new(
+            id,
+            format!("sheet{id}"),
+            w,
+            h,
+            rgba(w, h, 0),
+            regions.iter().map(|(n, r)| (n.to_string(), *r)),
+        )
+    }
+
+    #[test]
+    fn a_sheet_round_trips_byte_identical() {
+        let sh = sheet(1, 8, 8, &[("idle_0", [0, 0, 4, 4]), ("idle_1", [4, 0, 4, 4])]);
+        let bytes = encode(&[], std::slice::from_ref(&sh)).expect("encode");
+        let (pixels, sheets) = decode(&bytes).expect("decode");
+        assert!(pixels.is_empty());
+        assert_eq!(sheets, vec![sh]);
+    }
+
+    /// ⚠️ **A lei que torna o ÍNDICE uma referência durável.** Um sprite hand-packed guarda
+    /// `region: u32`; se a ordem dependesse de como o `.json` foi lido, re-importar a mesma folha
+    /// re-apontaria cada sprite para o desenho errado — em silêncio.
+    #[test]
+    fn regions_are_sorted_by_name_so_the_index_is_stable() {
+        let a = sheet(1, 8, 8, &[("zulu", [4, 0, 4, 4]), ("alpha", [0, 0, 4, 4])]);
+        let b = sheet(1, 8, 8, &[("alpha", [0, 0, 4, 4]), ("zulu", [4, 0, 4, 4])]);
+        assert_eq!(a, b, "a mesma folha, declarada ao contrario, e' a mesma folha");
+        assert_eq!(a.region(0).map(|r| r.name.as_str()), Some("alpha"));
+        assert_eq!(a.region(1).map(|r| r.name.as_str()), Some("zulu"));
+        assert_eq!(a.region(2), None);
+    }
+
+    /// Um `.png` e um `.json` que divergiram: o retangulo sai da folha.
+    #[test]
+    fn a_region_outside_the_sheet_is_refused() {
+        let bad = sheet(9, 4, 4, &[("huge", [2, 2, 8, 8])]);
+        assert_eq!(
+            encode(&[], std::slice::from_ref(&bad)),
+            Err(SheetDocError::RegionOutsideSheet {
+                sheet: 9,
+                name: "huge".to_string(),
+            })
+        );
+    }
+
+    /// ⚠️ `x + w` em `u32` daria a volta e o retangulo absurdo passaria a "caber".
+    #[test]
+    fn a_region_whose_rect_would_overflow_u32_is_refused() {
+        let bad = sheet(11, 4, 4, &[("wrap", [u32::MAX, 0, 8, 4])]);
+        assert!(matches!(
+            encode(&[], std::slice::from_ref(&bad)),
+            Err(SheetDocError::RegionOutsideSheet { .. })
+        ));
+    }
+
+    /// As duas metades do documento viajam juntas e nao se confundem.
+    #[test]
+    fn pixels_and_sheets_coexist_in_one_document() {
+        let d = doc(2, 2, 5);
+        let sh = sheet(3, 4, 4, &[("a", [0, 0, 2, 2])]);
+        let bytes = encode(std::slice::from_ref(&d), std::slice::from_ref(&sh)).expect("encode");
+        let (pixels, sheets) = decode(&bytes).expect("decode");
+        assert_eq!(pixels, vec![d]);
+        assert_eq!(sheets, vec![sh]);
     }
 
     #[test]
@@ -283,8 +494,8 @@ mod tests {
     fn the_premultiplied_flag_survives_the_round_trip() {
         let mut d = doc(2, 2, 3);
         d.premultiplied = true;
-        let bytes = encode(std::slice::from_ref(&d)).expect("encode");
-        let back = decode(&bytes).expect("decode");
+        let bytes = encode(std::slice::from_ref(&d), &[]).expect("encode");
+        let back = decode(&bytes).expect("decode").0;
         assert!(back[0].premultiplied, "o flag tem de voltar `true`");
         assert_eq!(back, vec![d]);
     }

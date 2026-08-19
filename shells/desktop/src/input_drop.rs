@@ -74,6 +74,56 @@ impl App {
         } else {
             drop_world_raw
         };
+        // **AS FOLHAS hand-packed saem da fila antes do filtro de imagem**, pela MESMA razão que
+        // as malhas 3D acima: o filtro emite *"Skipped non-image"* por arquivo que não reconhece,
+        // e um `.json` de folha largado com a folha produziria um aviso de que foi ignorado.
+        //
+        // ⚠️ E a imagem que a folha referencia é retirada da leva também — senão largar
+        // `folha.png` + `folha.json` daria a folha **e** um sprite avulso com a folha inteira
+        // desenhada nele, os dois no mesmo sítio, um por cima do outro.
+        let (sheet_metas, rest) = crate::sheet_import::partition_sheet_metadata(paths);
+        let mut sheet_bits: Vec<u64> = Vec::new();
+        let paths: Vec<std::path::PathBuf> = if sheet_metas.is_empty() {
+            rest
+        } else {
+            let consumed: Vec<std::path::PathBuf> = sheet_metas
+                .iter()
+                .filter_map(|j| crate::sheet_import::referenced_image(j))
+                .collect();
+            for json in &sheet_metas {
+                match crate::sheet_import::import_sheet(
+                    &mut gfx.sim,
+                    &mut gfx.renderer,
+                    &gfx.asset_db,
+                    &mut gfx.sheets,
+                    &mut gfx.sheet_textures,
+                    &mut gfx.next_sheet_id,
+                    json,
+                    drop_world,
+                    pixels_per_meter,
+                ) {
+                    crate::sheet_import::SheetImportResult::Ok {
+                        name,
+                        regions,
+                        bits,
+                    } => {
+                        gfx.toasts.push(Toast::success(format!(
+                            "Sheet {name}: {regions} sprites"
+                        )));
+                        sheet_bits.extend(bits);
+                    }
+                    crate::sheet_import::SheetImportResult::Err { name, error } => {
+                        gfx.toasts
+                            .push(Toast::error(format!("Sheet {name}: {error}")));
+                    }
+                }
+                self.title_dirty = true;
+            }
+            rest.into_iter()
+                .filter(|p| !consumed.iter().any(|c| c == p))
+                .collect()
+        };
+        let paths: &[std::path::PathBuf] = &paths;
         // Filter to image files up front (warning toast per skip), then
         // hand the survivors to the batch importer, which lays them out
         // in a near-square grid anchored at the drop point (`drop_world`
@@ -92,6 +142,21 @@ impl App {
                 gfx.toasts
                     .push(Toast::warning(format!("Skipped non-image: {name}")));
                 self.title_dirty = true;
+            }
+        }
+        // ⚠️ A seleção nasce com os sprites da FOLHA (quando houve uma) — e é por isso que o
+        // retorno antecipado abaixo só acontece depois: largar só `folha.png` + `folha.json`
+        // deixa `valid_paths` vazio, e voltar antes daqui devolveria N sprites novos sem nenhum
+        // selecionado, ao contrário de todo outro import.
+        let mut selected_any = false;
+        for bits in std::mem::take(&mut sheet_bits) {
+            if let Some(hero) = gfx.hero_screen.as_mut() {
+                if selected_any {
+                    hero.gizmo.add_to_selection(bits);
+                } else {
+                    hero.gizmo.replace_selection(Some(bits));
+                    selected_any = true;
+                }
             }
         }
         if valid_paths.is_empty() {
@@ -114,7 +179,6 @@ impl App {
         // (render_loop/snapshots.rs) derives both the canvas gizmo view
         // and the Hierarchy row highlight from `hero.gizmo`, so this one
         // write covers both surfaces.
-        let mut selected_any = false;
         for r in results {
             match r {
                 ImportItemResult::Ok { label, bits } => {

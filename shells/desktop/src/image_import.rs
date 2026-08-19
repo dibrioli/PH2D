@@ -25,7 +25,7 @@ use crate::SimWorld;
 /// 4K photos and a grid of 64px icons both read as a tidy grid rather
 /// than "touching" or "lost in whitespace". Not a UI token (HR-15) —
 /// this is world-space scene layout, same class as `MIN_SPRITE_SIZE`.
-const IMPORT_GRID_GAP_FRAC: f32 = 0.08;
+pub(crate) const IMPORT_GRID_GAP_FRAC: f32 = 0.08;
 
 /// Outcome of importing one file in a batch, returned in input order so
 /// the host can surface a per-file toast and seat the selection.

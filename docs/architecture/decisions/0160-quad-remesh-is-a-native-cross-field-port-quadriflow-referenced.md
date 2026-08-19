@@ -277,6 +277,7 @@ sem re-medir.
 | 4 | **hierarquia** no caminho do produto | **38,9 %** contra 53,3 % |
 | 5 | células pelo **quociente da retícula** | **1** célula na esfera |
 | 6 | arestas por escolha **MÚTUA** (valência ≤ 4 por construção) | remove arestas de mais: ciclos de **31** lados, **53,3 % → 35,0 %** |
+| 7 | semeadura de **POISSON** (ponto mais distante) | células regulares ≠ grade melhor: **53,3 % → 48,9 %** |
 
 ---
 

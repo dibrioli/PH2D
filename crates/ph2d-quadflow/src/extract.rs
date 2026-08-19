@@ -212,6 +212,13 @@ fn cluster(mesh: &Mesh, pos: &PositionField, scale: &ScaleField) -> Vec<u32> {
     let mut next = 0u32;
     let mut queue: Vec<usize> = Vec::new();
 
+    // ⚠️ **Ordem de índice — e a amostragem de POISSON foi MEDIDA e REJEITADA.**
+    // Semear pelo ponto mais DISTANTE das sementes já postas espalha-as por
+    // construção e dá células de tamanhos parecidos; parecia a cura da valência
+    // irregular. Medido: **48,9 %** de quads na esfera contra 53,3 %, e 38,5 %
+    // contra 39,7 % no toro. Células mais regulares não são grades melhores —
+    // o que a grade quer é que as vizinhas caiam nas QUATRO direções da cruz, e a
+    // regularidade métrica não fala sobre isso.
     for seed in 0..n {
         if cell[seed] != u32::MAX {
             continue;

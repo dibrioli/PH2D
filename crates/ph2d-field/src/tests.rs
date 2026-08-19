@@ -201,3 +201,43 @@ fn serialising_twice_gives_identical_bytes() {
     let b = postcard::to_allocvec(&doc).expect("serializa");
     assert_eq!(a, b);
 }
+
+/// Unir documentos preserva a invariante topológica **sem ordenar nada** — o deslocamento de
+/// índice basta, e este gate é o que impede alguém de "otimizar" a concatenação para uma ordem
+/// que a quebraria em silêncio (a arena aceitaria, e o campo sairia errado três waves depois).
+#[test]
+fn union_all_keeps_every_child_before_its_parent() {
+    let a = two_boxes();
+    let b = FieldDoc::new(vec![cube(0.2, 0.05)], NodeId(0)).expect("cubo");
+    let merged = FieldDoc::union_all(&[a.clone(), b.clone()], Blend::Exact { radius: 0.03 })
+        .expect("dois documentos")
+        .expect("a união de documentos válidos é válida");
+
+    assert_eq!(merged.nodes().len(), a.nodes().len() + b.nodes().len() + 1);
+    assert_eq!(merged.root(), NodeId(merged.nodes().len() as u32 - 1));
+    for (i, node) in merged.nodes().iter().enumerate() {
+        if let NodeKind::Combine { children, .. } = &node.kind {
+            for c in children {
+                assert!(
+                    (c.0 as usize) < i,
+                    "nó {i} aponta para {} — a invariante caiu na união",
+                    c.0
+                );
+            }
+        }
+    }
+}
+
+/// Lista vazia devolve `None`, e um documento só volta **ele mesmo**.
+/// ⚠️ A segunda metade não é trivialidade: embrulhar um documento único numa união de um filho
+/// acrescentaria um nó a cada salvamento, e um arquivo que engorda ao ser reaberto é o tipo de
+/// bug que só aparece no décimo `abrir` do utilizador.
+#[test]
+fn union_all_is_identity_for_one_and_nothing_for_none() {
+    assert!(FieldDoc::union_all(&[], Blend::Sharp).is_none());
+    let one = two_boxes();
+    let same = FieldDoc::union_all(std::slice::from_ref(&one), Blend::Sharp)
+        .expect("um documento")
+        .expect("válido");
+    assert_eq!(same, one);
+}

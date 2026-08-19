@@ -510,6 +510,10 @@ pub(crate) fn build_initial_state(
             // ADR-0131 W1: RigidBody/Collider — without this the
             // WorldSnapshot (undo + save) silently drops them.
             ph2d_physics_ecs::register_physics_components(&mut reg);
+            // ADR-0161 — o objeto de modelagem 3D. Sem esta linha o WorldSnapshot
+            // descarta o componente EM SILENCIO, e o sintoma e o objeto sumir ao
+            // desfazer. `field3d_snapshot_tests` prova os dois lados disso.
+            ph2d_field_ecs::register_field_components(&mut reg);
             reg
         },
         editor_queue: EditorCommandQueue::new(),

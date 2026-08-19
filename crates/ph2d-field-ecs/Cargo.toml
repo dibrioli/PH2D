@@ -1,0 +1,38 @@
+[package]
+name = "ph2d-field-ecs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A PONTE ECS do módulo de modelagem 3D (ADR-0161): o que faz um documento de
+# campo ser um objeto do projeto — salvo, desfeito e selecionável — em vez de uma
+# cena embutida num smoke.
+[dependencies]
+# O documento. ⚠️ O componente CARREGA o documento inteiro, e isso é a decisão:
+# ele é dado AUTORADO e pequeno, exatamente o que o `WorldSnapshot` quer. O que
+# NÃO entra em componente nenhum é o derivado — a árvore compilada, a malha, o
+# quadro traçado —, pela mesma lei que o ADR-0131 escreveu para a física: o undo
+# ordena por BYTES, e um componente que mudasse a cada quadro faria todo quadro
+# virar um passo espúrio de undo.
+ph2d-field = { path = "../ph2d-field" }
+
+# O ECS da casa: o `derive(Component)`, o marcador `SimComponent` e o registro
+# que dá persistência e undo de graça.
+ph2d-ecs = { path = "../ph2d-ecs" }
+
+# ⚠️ `bevy_ecs` DIRETO, na mesma 0.18 da `ph2d-ecs`, e não por gosto: o
+# `derive(Component)` expande para caminhos `bevy_ecs::…`, então a crate tem de
+# o ter em escopo. É a mesma razão pela qual a `ph2d-physics-ecs` o declara.
+bevy_ecs = "0.18"
+
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+# postcard SÓ no gate de ida-e-volta do componente — o `src/` não o toca
+# (machete-safe), e é o mesmo formato que a `ph2d-field` usa para pinar a forma.
+postcard = { version = "1", features = ["alloc"] }

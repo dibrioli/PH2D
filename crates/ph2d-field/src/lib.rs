@@ -225,6 +225,51 @@ impl FieldDoc {
         self.nodes.get(id.0 as usize)
     }
 
+    /// Une vários documentos num só — **uma cena É a união dos seus objetos**.
+    ///
+    /// As arenas são concatenadas com deslocamento de índice e um nó de combinação novo recebe as
+    /// raízes. ⚠️ **A invariante topológica sobrevive de graça**: cada arena já vem ordenada, o
+    /// deslocamento preserva a ordem relativa, e a raiz nova é o último índice — logo todo filho
+    /// continua vindo antes do pai, sem precisar de ordenação nem de verificação extra.
+    ///
+    /// Devolve `None` para uma lista vazia: uma cena sem objetos não tem campo, e um documento
+    /// vazio inventado aqui seria uma forma que ninguém pediu.
+    ///
+    /// # Errors
+    /// Só se o resultado violar a validação — o que, dadas entradas válidas, não pode acontecer;
+    /// o `Result` existe para que isso seja verificado e não assumido.
+    pub fn union_all(docs: &[FieldDoc], blend: Blend) -> Option<Result<Self, FieldError>> {
+        match docs.len() {
+            0 => return None,
+            1 => return Some(Ok(docs[0].clone())),
+            _ => {}
+        }
+        let mut nodes: Vec<Node> = Vec::new();
+        let mut roots: Vec<NodeId> = Vec::new();
+        for doc in docs {
+            let base = nodes.len() as u32;
+            for node in &doc.nodes {
+                let mut node = node.clone();
+                if let NodeKind::Combine { children, .. } = &mut node.kind {
+                    for c in children.iter_mut() {
+                        c.0 += base;
+                    }
+                }
+                nodes.push(node);
+            }
+            roots.push(NodeId(doc.root.0 + base));
+        }
+        let root = NodeId(nodes.len() as u32);
+        nodes.push(Node {
+            xform: Xform::IDENTITY,
+            kind: NodeKind::Combine {
+                op: Op::Union(blend),
+                children: roots,
+            },
+        });
+        Some(Self::new(nodes, root))
+    }
+
     fn validate(&self) -> Result<(), FieldError> {
         if self.nodes.is_empty() || self.root.0 as usize >= self.nodes.len() {
             return Err(FieldError::BadRoot);

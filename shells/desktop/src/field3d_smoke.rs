@@ -285,3 +285,9 @@ pub(crate) fn draw(area: EditorRect, scene_out: &mut VectorScene) {
         }
     });
 }
+
+/// ⚠️ A metade de shell da ponte ECS vive num arquivo irmão, pendurada aqui pelo padrão do
+/// `joint_rig`: o que ela prova — que o componente sobrevive ao snapshot real — só o shell sabe.
+#[cfg(test)]
+#[path = "field3d_snapshot_tests.rs"]
+mod snapshot_tests;

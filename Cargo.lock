@@ -5467,6 +5467,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-field-ecs"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "ph2d-ecs",
+ "ph2d-field",
+ "postcard",
+ "serde",
+]
+
+[[package]]
 name = "ph2d-field-eval"
 version = "0.0.0"
 dependencies = [
@@ -5692,6 +5703,7 @@ dependencies = [
  "ph2d-editor",
  "ph2d-eval-motion",
  "ph2d-field",
+ "ph2d-field-ecs",
  "ph2d-field-render",
  "ph2d-flip",
  "ph2d-flip-colorize",

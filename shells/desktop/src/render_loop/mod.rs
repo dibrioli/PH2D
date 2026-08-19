@@ -99,6 +99,9 @@ mod inspector_player_leave_tests;
 /// **A conversão entre estratégias de origem** (Render Source → Strategy) — irmão do
 /// `inspector_commits`, e o corte que o marcador de exceção de LOC daquele arquivo pedia.
 mod inspector_strategy;
+/// **A decoração da folha** — a faixa hachurada e o nome, em pixels de TELA. Chrome, nunca estilo
+/// do documento: ela diz o que a folha É, e o que se assa são os filhos.
+mod sheet_overlay;
 
 #[cfg(test)]
 mod inspector_player_brink_tests;
@@ -8236,6 +8239,21 @@ impl crate::App {
                     cam_affine,
                     px_per_world,
                     ph2d_editor::LengthDisplay::of(&hero.project),
+                    hero.theme,
+                    paint_ctx.text,
+                    vector_scene,
+                );
+            }
+            // **A DECORAÇÃO DA FOLHA** (Enio 2026-08-19) — a faixa hachurada e o nome. Fica FORA
+            // do bloco das guias de propósito: aquele é gateado pelo toggle de snap, e a folha
+            // tem de se ler como folha esteja o encaixe ligado ou não.
+            {
+                let c = cam_affine.as_coeffs();
+                let px_per_world = (c[0] * c[0] + c[1] * c[1]).sqrt();
+                super::render_loop::sheet_overlay::draw(
+                    sim,
+                    cam_affine,
+                    px_per_world,
                     hero.theme,
                     paint_ctx.text,
                     vector_scene,

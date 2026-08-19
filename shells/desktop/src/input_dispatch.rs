@@ -5272,6 +5272,12 @@ impl App {
                                 .get::<ph2d_ecs::VecBlend>(ph2d_ecs::Entity::from_bits(bits))
                                 .is_none()
                         });
+                        // **UM CONTÊINER NÃO ROUBA O CLIQUE DOS FILHOS** (Enio 2026-08-19): a
+                        // lista acima é montada por camada de desenho, e uma moldura — ou uma
+                        // folha de sprites — cobre por definição tudo o que tem dentro, então
+                        // ficava sempre no índice 0 e a peça de dentro era inalcançável. O
+                        // ancestral é ADIADO, não descartado: o segundo clique ainda o alcança.
+                        crate::pick_order::descendants_first(gfx.sim.world(), &mut hits);
                         // Uma forma ABERTA (linha/arco) não é pega pelo interior — só
                         // pelo traço. Mas clicar no INTERIOR do gizmo dela (hit
                         // Translate) É o pedido de mover: a bbox inteira é área de

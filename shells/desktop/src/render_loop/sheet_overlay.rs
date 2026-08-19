@@ -1,0 +1,242 @@
+//! **A DECORAÇÃO DA FOLHA** — a moldura hachurada e o nome, desenhados sobre o canvas.
+//!
+//! Pedido do Enio (2026-08-19), com exemplo: *"Falta a decoração da folha… e coloque o nome da
+//! folha no topo à esquerda do objeto."*
+//!
+//! ## Por que é CHROME e não estilo do documento
+//!
+//! A folha é um retângulo vivo, então dar-lhe um preenchimento e um traço no documento seria o
+//! caminho mais curto — e o errado. Três razões, em ordem de força:
+//!
+//! 1. **Ela diz o que a folha É, não como ela se parece.** Um preenchimento autorado é do artista:
+//!    ele pode trocá-lo, e nesse dia a folha deixaria de se ler como folha. Chrome não é editável
+//!    porque não é conteúdo.
+//! 2. **Ela não pode entrar no bake.** O que se assa são os FILHOS; uma decoração no documento
+//!    seria um convite permanente a alguém a incluir por engano.
+//! 3. **Ela tem de ser legível em qualquer zoom.** As hachuras são desenhadas em **pixels de
+//!    TELA** — afastar o canvas não as engrossa nem as some, como aconteceria a um traço em metros.
+//!
+//! ## A hachura é recortada, não calculada
+//!
+//! Desenhar só as porções de reta que caem na faixa exigiria intersectar cada diagonal com um anel
+//! retangular — quatro casos por linha, e a aritmética de bordas é onde este tipo de desenho
+//! costuma partir-se. Em vez disso a cena recebe um **clip** com a forma da faixa (regra
+//! *even-odd*: retângulo externo menos interno) e as diagonais são traçadas de lado a lado. O
+//! recorte é o mesmo que os painéis roláveis do editor usam.
+
+use ph2d_ecs::{Name, SimWorld, SpriteSheetFrame, VecShape};
+use ph2d_text::TextSystem;
+use ph2d_tokens::{ColorToken, Theme, TypeToken};
+use ph2d_vector::{Affine, BezPath, Brush, Color, Fill, Point, Stroke, VectorScene};
+
+/// Largura da faixa hachurada, em **pixels de tela**.
+///
+/// ⚠️ Em pixels de tela, e não em metros, porque ela é uma legenda e não uma medida: a faixa diz
+/// *"isto é uma folha"*, e essa frase tem de ser igualmente legível com o canvas afastado ou perto.
+const BAND_PX: f64 = 14.0;
+
+/// Distância entre hachuras, em pixels de tela.
+const HATCH_STEP_PX: f64 = 7.0;
+
+/// Espessura de cada hachura, em pixels de tela.
+const HATCH_PX: f64 = 1.5;
+
+/// Espessura das duas linhas que fecham a faixa (a de fora e a de dentro).
+const EDGE_PX: f64 = 1.0;
+
+/// Folga entre o topo da folha e a linha de base do nome, em pixels de tela.
+const LABEL_GAP_PX: f64 = 4.0;
+
+/// Largura máxima do rótulo, em pixels de tela — o `paint_text` corta o que exceder.
+///
+/// ⚠️ Existe porque o nome é do artista: um nome longo sem teto atravessaria a tela e cobriria a
+/// arte que ele está a tentar ver.
+const LABEL_MAX_W_PX: f32 = 240.0;
+
+/// Desenha a decoração de cada folha da cena.
+///
+/// `px_per_world` é a escala do afim da câmara — é ela que converte as constantes de TELA acima
+/// para o espaço em que a cena é montada.
+pub(crate) fn draw(
+    sim: &mut SimWorld,
+    cam: Affine,
+    px_per_world: f64,
+    theme: Theme,
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+) {
+    if px_per_world <= 0.0 {
+        return;
+    }
+    for (entity, _cfg) in sheets(sim) {
+        let Some((w, h)) = sheet_size_world(sim, entity) else {
+            continue;
+        };
+        // A pose de MUNDO — a folha pode ter sido movida, escalada e rodada, e a decoração tem de
+        // ir com ela. O mesmo `world_transform` que o gizmo usa: uma porta só para "onde isto
+        // está", senão a moldura e as alças discordam no primeiro arrasto.
+        let Some(wt) = ph2d_ecs::world_transform(sim.world(), entity) else {
+            continue;
+        };
+        let local_to_world = Affine::translate((wt.translation.x as f64, wt.translation.y as f64))
+            * Affine::rotate(wt.rotation as f64)
+            * Affine::scale_non_uniform(wt.scale.x as f64, wt.scale.y as f64);
+        let xf = cam * local_to_world;
+        // As constantes são de TELA; aqui elas voltam ao espaço local, onde a geometria vive.
+        // ⚠️ A escala do objeto entra na conta: uma folha escalada a 2× encolheria a faixa pela
+        // metade se só se dividisse pelo zoom da câmara.
+        let sx = (wt.scale.x.abs() as f64).max(f64::EPSILON);
+        let sy = (wt.scale.y.abs() as f64).max(f64::EPSILON);
+        let band_x = BAND_PX / (px_per_world * sx);
+        let band_y = BAND_PX / (px_per_world * sy);
+        let (hw, hh) = (w * 0.5, h * 0.5);
+        // Uma folha mais estreita que duas faixas não tem "dentro": a faixa colapsaria e as duas
+        // linhas ficariam por cima uma da outra. Aí desenha-se só o contorno.
+        let solid = band_x * 2.0 >= w || band_y * 2.0 >= h;
+
+        let outer = rect_path(-hw, -hh, hw, hh);
+        let border = resolve(ColorToken::BorderStrong, theme);
+        if solid {
+            stroke(scene, &outer, xf, border, EDGE_PX / px_per_world);
+        } else {
+            let inner = rect_path(-hw + band_x, -hh + band_y, hw - band_x, hh - band_y);
+            // A faixa = externo ⊖ interno, pela regra even-odd. É este caminho que recorta as
+            // hachuras — elas são traçadas de lado a lado e o clip fica com o que interessa.
+            let mut band = outer.clone();
+            band.extend(inner.iter());
+            scene.push_clip_with_rule(&band, Fill::EvenOdd);
+            hatch(scene, xf, hw, hh, px_per_world, sx, sy, border);
+            scene.pop_layer();
+            stroke(scene, &outer, xf, border, EDGE_PX / px_per_world);
+            stroke(scene, &inner, xf, border, EDGE_PX / px_per_world);
+        }
+        // **O NOME, no topo à esquerda** — fora da folha, apoiado na quina, como o rótulo de uma
+        // prancheta. Fora e não dentro porque dentro ele cobriria a primeira peça, que é
+        // exatamente onde o empacotador põe a maior.
+        let label = sim
+            .world()
+            .get::<Name>(entity)
+            .map(|n| n.0.clone())
+            .unwrap_or_else(|| "Sprite Sheet".to_string());
+        // A quina superior-esquerda em LOCAL: `+y` é para cima, então o topo é `+hh`.
+        draw_label(scene, text_system, &label, xf, (-hw, hh), theme);
+    }
+}
+
+/// As folhas da cena, com a configuração de cada uma.
+fn sheets(sim: &mut SimWorld) -> Vec<(ph2d_ecs::Entity, SpriteSheetFrame)> {
+    // ⚠️ `Option<&Visibility>` vai na QUERY: uma folha escondida não decora. Esconder é uma das
+    // coisas que o Enio pediu que funcionasse, e uma moldura que continuasse a desenhar-se depois
+    // de escondida diria que o botão não fez nada.
+    let world = sim.world_mut();
+    let mut q = world.query::<(
+        ph2d_ecs::Entity,
+        &SpriteSheetFrame,
+        Option<&ph2d_ecs::Visibility>,
+    )>();
+    q.iter(world)
+        .filter(|(_, _, vis)| !vis.is_some_and(|v| v.hidden))
+        .map(|(e, cfg, _)| (e, *cfg))
+        .collect()
+}
+
+/// O tamanho da folha em unidades locais — o `w`/`h` do `VecShape`, que É o tamanho (a folha
+/// recusa ter um campo próprio; vide `SpriteSheetFrame`).
+fn sheet_size_world(sim: &SimWorld, entity: ph2d_ecs::Entity) -> Option<(f64, f64)> {
+    match sim.world().get::<VecShape>(entity)? {
+        VecShape::Param { w, h, .. } => Some((w.abs(), h.abs())),
+        VecShape::Text(_) => None,
+    }
+}
+
+fn rect_path(x0: f64, y0: f64, x1: f64, y1: f64) -> BezPath {
+    let mut p = BezPath::new();
+    p.move_to(Point::new(x0, y0));
+    p.line_to(Point::new(x1, y0));
+    p.line_to(Point::new(x1, y1));
+    p.line_to(Point::new(x0, y1));
+    p.close_path();
+    p
+}
+
+fn stroke(scene: &mut VectorScene, path: &BezPath, xf: Affine, color: Color, width: f64) {
+    scene.inner_mut().stroke(
+        &Stroke::new(width.max(f64::EPSILON)),
+        xf,
+        &Brush::Solid(color),
+        None,
+        path,
+    );
+}
+
+/// As diagonais. Traçadas de lado a lado sobre a folha inteira — quem as recorta à faixa é o clip
+/// que o chamador já empilhou.
+#[allow(clippy::too_many_arguments)]
+fn hatch(
+    scene: &mut VectorScene,
+    xf: Affine,
+    hw: f64,
+    hh: f64,
+    px_per_world: f64,
+    sx: f64,
+    sy: f64,
+    color: Color,
+) {
+    let step = HATCH_STEP_PX / (px_per_world * sx.min(sy));
+    if !step.is_finite() || step <= 0.0 {
+        return;
+    }
+    // A 45°, uma reta que entra pelo topo sai pela lateral: varrer de `-(w+h)` a `+(w+h)` em x
+    // garante que toda a caixa é coberta, sem contas de canto.
+    let span = (hw + hh) * 2.0;
+    let mut x = -span;
+    let mut path = BezPath::new();
+    let mut guard = 0usize;
+    while x <= span && guard < 4096 {
+        path.move_to(Point::new(x, -hh));
+        path.line_to(Point::new(x + hh * 2.0, hh));
+        x += step;
+        guard += 1;
+    }
+    stroke(
+        scene,
+        &path,
+        xf,
+        color,
+        HATCH_PX / (px_per_world * sx.min(sy)),
+    );
+}
+
+/// O nome, apoiado na quina superior-esquerda — **em espaço de TELA**.
+///
+/// ⚠️ Na tela, e não no espaço da folha, por duas razões que apontam para o mesmo lado: um rótulo
+/// segue a leitura do humano, não a pose do objeto (uma folha rodada 30° não tem por que dar um
+/// nome deitado — é a lei do rótulo de moldura no Figma), e o texto fica nítido em qualquer zoom
+/// porque é rasterizado ao tamanho em que é lido. O que a pose decide é apenas ONDE ele pousa: a
+/// quina superior-esquerda, projetada pelo mesmo afim que desenhou a faixa.
+fn draw_label(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    label: &str,
+    xf: Affine,
+    corner_local: (f64, f64),
+    theme: Theme,
+) {
+    let p = xf * Point::new(corner_local.0, corner_local.1);
+    let size_px = TypeToken::Sm.px();
+    ph2d_editor::paint_text(
+        text_system,
+        scene,
+        label,
+        p.x as f32,
+        p.y as f32 - size_px - LABEL_GAP_PX as f32,
+        size_px,
+        LABEL_MAX_W_PX,
+        resolve(ColorToken::Text2, theme),
+    );
+}
+
+fn resolve(token: ColorToken, theme: Theme) -> Color {
+    let c = token.resolve(theme);
+    Color::from_rgba8(c.r, c.g, c.b, c.a)
+}

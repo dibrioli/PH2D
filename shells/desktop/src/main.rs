@@ -339,6 +339,14 @@ mod physics_smoke_wheel;
 mod physics_smoke_world_pin;
 mod physics_smoke_zone_force;
 mod physics_smoke_zones;
+/// **O import de uma folha hand-packed** (`folha.png` + `folha.json`) — irmão do
+/// `image_import`, e o primeiro consumidor que o `parse_atlas_meta` tem desde 2026-05-12.
+/// **A folha como OBJETO** (plano `docs/Sprite_projeto/17` §7) — criar uma a partir da seleção e
+/// arranjar as peças dentro dela. Quase nada aqui é código novo: a folha é um retângulo vivo que
+/// ganhou um componente, como a moldura.
+/// **Um contêiner não rouba o clique dos próprios filhos** — a lei que faz um filho de moldura
+/// (ou de folha) ser agarrável no canvas. Pura, e por isso testada.
+mod pick_order;
 mod picker_smoke;
 mod player_input;
 mod prefs;
@@ -371,11 +379,6 @@ mod scroll_smoke;
 mod sculpt3d;
 mod shape_build;
 mod shape_build_gesture;
-/// **O import de uma folha hand-packed** (`folha.png` + `folha.json`) — irmão do
-/// `image_import`, e o primeiro consumidor que o `parse_atlas_meta` tem desde 2026-05-12.
-/// **A folha como OBJETO** (plano `docs/Sprite_projeto/17` §7) — criar uma a partir da seleção e
-/// arranjar as peças dentro dela. Quase nada aqui é código novo: a folha é um retângulo vivo que
-/// ganhou um componente, como a moldura.
 mod sheet_frame;
 mod sheet_import;
 /// `PH2D_SHEET_SMOKE` — a cena que exerce a folha como OBJETO (plano `docs/Sprite_projeto/17` §7).

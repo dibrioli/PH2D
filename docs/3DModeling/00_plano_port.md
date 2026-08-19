@@ -7,6 +7,15 @@
 > Este doc é o **roteador** do módulo: o que o original é, o que a PH2D já tem, qual stack Rust
 > ganhou e **por qual medição**, e as waves. O mecanismo de cada wave vai para o handoff dela.
 
+> ⚠️ **O ALVO FOI REFORMULADO em 2026-08-19, DEPOIS deste plano — leia
+> [`02_o_que_torna_boolean_e_fillet_extraordinarios.md`](02_o_que_torna_boolean_e_fillet_extraordinarios.md)
+> ANTES de executar qualquer wave daqui.** O Enio nomeou o que o atrai: **booleana que nunca falha e
+> arredondamento bonito** — não NURBS, que é só *um* caminho até isso. A pesquisa mediu que **metade
+> da queixa já está resolvida** (o Blender 4.5 adotou o Manifold nas booleanas) e que o buraco real é
+> o **arredondamento**. Ela abre uma segunda família candidata (**implícito/SDF**) da qual a PH2D já
+> tem 60% construído. As §§1-2 deste doc (estudo do original, as 9 leis, a superfície de operações)
+> **continuam válidas**; a escolha de stack do §3 e as waves do §5 estão **sub judice**.
+
 ---
 
 ## §1 — O que o original é (estudo)

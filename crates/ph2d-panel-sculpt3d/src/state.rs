@@ -306,7 +306,7 @@ impl Default for Sculpt3dUi {
             // LITERAL-PX-OK: lado de quad em unidades de OBJETO, nao metrica de
             // layout. O default e' o da fixture dos gates da `ph2d-quadflow`,
             // onde 0,18 sobre um raio 1 da' ~430 celulas.
-            quad_edge: 0.18,
+            quad_edge: 0.18, // LITERAL-PX-OK: lado de quad em unidades de OBJETO
             quad_adapt: 0.0, // LITERAL-PX-OK: fracao, nao metrica de layout
 
             extract: Extract::default(),

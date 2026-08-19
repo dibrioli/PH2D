@@ -59,9 +59,9 @@ pub static TOPOLOGY: &[Row] = &[
         // um modelo de raio 1 a saída passa de 100 k células e o passe deixa de
         // ser *sob comando*; acima de 1,0 o quad é do tamanho do modelo e a grade
         // deixa de descrever a forma.
-        min: 0.02,
-        max: 1.0,
-        step: 0.01,
+        min: 0.02, // LITERAL-PX-OK: lado de quad em unidades de OBJETO
+        max: 1.0,  // LITERAL-PX-OK: idem
+        step: 0.01, // LITERAL-PX-OK: idem
         decimals: 2,
         get: |u| u.quad_edge,
         set: |u, v| u.quad_edge = v,
@@ -75,7 +75,7 @@ pub static TOPOLOGY: &[Row] = &[
         chip: ids::SCULPT3D_QUAD_ADAPT_NUM,
         min: 0.0,
         max: 1.0,
-        step: 0.05,
+        step: 0.05, // LITERAL-PX-OK: fracao de adaptacao, nao metrica de layout
         decimals: 2,
         get: |u| u.quad_adapt,
         set: |u, v| u.quad_adapt = v,

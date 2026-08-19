@@ -113,13 +113,30 @@ hit=$(git diff --name-only "$MB"..HEAD | while read -r f; do
 [ -n "$hit" ] && { echo "  ✗ ENCONTRADOS:"; echo "$hit" | sed 's/^/      /'; } || echo "    nenhum nos arquivos da linha"
 
 echo
-echo "▸ TETOS DE LOC nos arquivos que a linha tocou (700 workspace · 600 painel/shell)"
+echo "▸ TETOS DE LOC nos arquivos que a linha tocou (700 workspace · 600 painel/shell · 500 widget · 650 tool-runtime)"
+# ⚠️ ESPELHA `is_excluded()` do gate real (architecture_workspace_file_loc_cap.rs).
+# Sem isto o script grita sobre arquivos que o gate NUNCA cobra — medido em
+# 2026-08-18: acusou `ph2d-gpu-cook/tests/gpu_cpu_parity.rs` (6.247 linhas) como
+# violação, e `tests/` é a PRIMEIRA exclusão do gate. Um mapa que inventa alarme
+# gasta o mesmo tempo que o grep que ele veio poupar, e ensina a ignorá-lo.
 over=0
 while read -r f; do
   [ -f "$f" ] || continue
   case "$f" in *.rs) ;; *) continue ;; esac
+  case "$f" in
+    */tests/*|*/tests.rs|crates/ph2d-tool-runtime/src/*|*registry-init*) continue ;;
+  esac
   n=$(wc -l < "$f")
-  cap=700; case "$f" in crates/ph2d-panel-*|shells/desktop/*) cap=600 ;; esac
+  cap=700
+  case "$f" in
+    crates/ph2d-editor-core/src/widget/*) cap=500 ;;
+    crates/ph2d-panel-*|shells/desktop/*)  cap=600 ;;
+  esac
+  # o escape numerado do gate: uma entrada na allowlist congela o valor daquele dia
+  if grep -qE "^\s*\(\"${f#crates/}\"|// ph2d-loc-cap:" "$f" 2>/dev/null; then
+    printf "    %5d / %d   %s  (tem marcador/allowlist — confira o valor congelado)\n" "$n" "$cap" "$f"
+    continue
+  fi
   [ "$n" -gt "$cap" ] && { printf "  ✗ %5d / %d   %s\n" "$n" "$cap" "$f"; over=$((over+1)); }
 done < <(git diff --name-only "$MB"..HEAD)
 [ "$over" -eq 0 ] && echo "    nenhum arquivo da linha passa do teto"

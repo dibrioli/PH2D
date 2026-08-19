@@ -349,8 +349,17 @@ passo concreto que resta é o porte da extração REAL do QuadriFlow
 (`extract_graph`/`extract_faces` + o fluxo de custo mínimo) — trabalho grande e
 cuidadoso, e é ele que move A2/A3/A4.
 
-⚠️ **Nada é alcançável pelo produto ainda** — dívida DECLARADA no doc-comment da
-crate e no ADR §5.
+⭐ **E ele é ALCANÇÁVEL PELO ARTISTA (Q5):** botão **`Quad Retopology`** na seção
+*Topology*, ao lado do `Remesh`, com `Quad Size` e `Follow Curvature`; undo pela
+mesma entrada do voxel remesh; recusa com a pilha montada; smoke **`=35`**.
+
+**Na malha que o módulo de facto abre** (`sculpt_sphere`, 98 306 vértices):
+**96,4 % de quads em 2,06 s**.
+
+⚠️ **O kill-criterion do ADR §4 (3 s) DISPAROU a 7,51 s, e a cura foi MEDIR** em
+vez de afrouxar: a qualidade satura na primeira varredura (a hierarquia entrega a
+cada nível um campo já quase certo), então `SWEEPS_PER_LEVEL` caiu de **8 para
+2** — 7× menos tempo por −0,1 pp.
 
 ---
 

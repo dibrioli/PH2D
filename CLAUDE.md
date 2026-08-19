@@ -378,9 +378,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   doc dela já chamava de *"outra luz inteira"*. A vista agora é escrita **por nome, os 7 campos**, então um termo novo é
   **erro de compilação** ali. Voltou a **0,0020** — o número exato do autor · **quad remesh por
   campo cruzado** ([ADR-0160](docs/architecture/decisions/0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md)):
-  **Q1..Q3 na `ph2d-quadflow`** (orientação 4-RoSy · posição + escala adaptativa · extração). **A2/A3/A4 VERDES** — χ=2 na esfera e χ=0 no toro,
-  manifold, forma a **0,23%** da diagonal (barra 1%); **89,0%/92,6%** de quads (a **A1 é a única aberta**, e o resto
-  dela é o fluxo de custo mínimo). ⚠️ **Duas recusas MEDIDAS foram REFUTADAS por um porte fiel** — o
+  **Q1..Q3 na `ph2d-quadflow`** (orientação 4-RoSy · posição + escala adaptativa · extração). ✅ **ALCANÇÁVEL PELO ARTISTA** — botão
+  **`Quad Retopology`** na seção Topology, undo pela entrada do voxel remesh, smoke **`=35`**. Medido na malha que o
+  módulo abre (98 306 vértices): **96,4% de quads em 2,06 s**; χ e manifold corretos, forma a **0,23%** da diagonal
+  (barra 1%). ⚠️ **O kill-criterion do ADR disparou a 7,51 s e a cura foi MEDIR**: a qualidade satura na 1ª varredura,
+  então `SWEEPS_PER_LEVEL` caiu de 8 para **2** (tabela no doc-comment). ⚠️ **Duas recusas MEDIDAS foram REFUTADAS por um porte fiel** — o
   `compat_position_extrinsic_4` enumera as 4 quinas de cada lado e escolhe o PAR mais próximo (16 combinações);
   *uma medição só refuta o que ela exercitou*. ⚠️ E **três vezes a RÉGUA se corrigiu antes do algoritmo** (fração
   por ciclos · convergência sobre um passe inerte · Hausdorff ponto-a-vértice). ⚠️ **A2/A3/A4 do ADR NÃO estão verdes** — os 3 gates ficam com a barra intacta e

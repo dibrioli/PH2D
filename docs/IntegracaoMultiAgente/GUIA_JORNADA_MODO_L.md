@@ -14,7 +14,8 @@
 
 `bash scripts/hw-profile.sh` tem que dizer **`workstation`**. Se disser `constrained`,
 esta máquina é **Modo C** (Coordenador + Implementadores, shared tree) — este guia não
-vale; veja DIRETRIZ §1.1–1.4. Modo L é só no desktop 128 GB.
+vale; veja DIRETRIZ §1 (e o detalhe do Modo C no arquivo que ela aponta). Modo L é só no
+desktop 128 GB.
 
 ## Papéis: só você + N linhas. Zero coordenador.
 
@@ -52,9 +53,8 @@ Repita por linha. Cada janela é independente; podem rodar em paralelo.
 ⚠️ **Trocando de agente numa linha que JÁ existe** (a janela de contexto acabou, ou a linha
 volta a ser trabalhada depois de integrar): **não** use o bloco de abertura — a worktree já
 existe. Cole o de [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](MODELO_TROCA_DE_AGENTE_NA_LINHA.md).
-É o caso em que agentes já trabalharam no `main` por engano várias vezes: a janela abre na
-raiz, o mesmo path relativo existe nas duas árvores, e editar a errada **não dá erro** —
-só aparece na integração, quando a linha não tem o trabalho.
+É o caso em que agentes já trabalharam no `main` por engano várias vezes; **o porquê está no
+topo daquele doc**, e é a razão de o bloco existir separado.
 
 ### 3. Durante a jornada — você quase não intervém
 - Cada linha commita local (`--no-verify`, fast mode), fecha o gate batched, **escreve o

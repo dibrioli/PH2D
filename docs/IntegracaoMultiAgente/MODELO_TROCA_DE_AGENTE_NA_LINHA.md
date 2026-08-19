@@ -80,11 +80,11 @@ FASE 2 — ESTADO (leia, nesta ordem, DENTRO da worktree):
    <1 linha do estado>. Aguardo a tarefa." — e PARE.
 
 COMO ESTA SESSÃO TERMINA:
-   O fechamento é o da DIRETRIZ §1.5.9 e nao muda por voce ter assumido a
-   linha no meio: gate batched 1x sobre o diff ACUMULADO, handoff de
-   integracao em docs/<Modulo>/handoffs/, e o item 7 -- reclamar o
+   O fechamento é o da DIRETRIZ §1.5.9 e não muda por você ter assumido a
+   linha no meio: gate batched 1× sobre o diff ACUMULADO, handoff de
+   integração em docs/<Módulo>/handoffs/, e o item 7 — reclamar o
    `target/*/incremental` da worktree (25 GB, risco zero, o cargo recria).
-   Voce NAO integra e NAO pusha: entrega o handoff e PARA (CLAUDE.md §0.7).
+   Você NÃO integra e NÃO pusha: entrega o handoff e PARA (CLAUDE.md §0.7).
 
 REGRA DE OURO DESTA SESSÃO (além das A–H):
 ⛔ Na dúvida sobre onde você está, `pwd`. Antes de qualquer commit,

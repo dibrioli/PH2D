@@ -80,13 +80,11 @@ B. Edite a(s) pasta(s) do novo módulo à vontade. Foundational
    for contrato congelado (§4, exige ADR), ou (b) o rebase conflitar em
    código FORA dos seus arquivos (colisão de mesmo-símbolo com outra
    linha). Nunca negocie com outra linha.
-B'. Ao CRIAR arquivo foundational novo, projete-o para ISOLAMENTO (a
-   foundation tem arquitetura de isolamento de propósito, pra várias
-   linhas estenderem sem colidir): prefira módulo/arquivo IRMÃO novo a
-   engordar um arquivo compartilhado; use ponto de extensão append-only
-   (lista ordenada, marcador de codegen, mod por responsabilidade). Todo
-   id/const/variant novo = pegue o próximo livre e ANOTE no handoff
-   (regra H) pro integrador detectar colisão.
+B'. Ao CRIAR arquivo foundational NOVO, projete-o para ISOLAMENTO —
+   módulo/arquivo IRMÃO em vez de engordar um compartilhado, ponto de
+   extensão append-only, id/const/variant novo = próximo livre + ANOTE
+   no handoff (regra H). O desenho completo está numa porta só:
+   DIRETRIZ §1.5.2.1, que o passo 8 já te manda ler.
 C. Commits locais frequentes: git commit --no-verify (fast mode).
    NUNCA push. NUNCA --force. NUNCA git add -A.
 D. git rebase main no início de cada jornada e antes de integrar.

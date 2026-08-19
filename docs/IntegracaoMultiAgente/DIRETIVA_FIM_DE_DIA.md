@@ -15,16 +15,50 @@
 
 ## §1 — Os 3 portões (TODOS passam, ou não apague)
 
-1. **Nenhum build rodando.** `pgrep cargo|rustc|mold|cc1|ld` vazio. Apagar o `target/` de um build
-   em curso o quebra. Portão **global e duro** no modo padrão: um build ativo aborta a limpeza
-   inteira. ⚠️ **Exceção nomeada — o MODO PARCIAL (§1-bis):** quando há agentes trabalhando e o Enio
-   manda limpar mesmo assim, este portão vira **por-worktree**. É a única flexibilização permitida, e
-   ela tem regras próprias.
+1. **Ninguém está usando a worktree** — e isso são **duas** perguntas, nunca uma:
+   - **(1a) alguém CONSTRÓI aqui?** `pgrep -x` sobre a lista **`$BUILDERS`**, que é declarada
+     **uma vez só, no topo do §4**. ⚠️ **Não redigite a lista** — três variantes dela já
+     conviveram neste doc, e a mais curta (`cargo rustc mold cc1`, sem `ld` nem `rustdoc`) era
+     justamente a do bloco colável, isto é, a única que alguém de facto executa. Apagar o
+     `target/` de um build em curso o quebra. Portão **global e duro** no modo padrão: um build
+     ativo aborta a limpeza inteira. ⚠️ **Exceção nomeada — o MODO PARCIAL (§1-bis):** quando há
+     agentes trabalhando e o Enio manda limpar mesmo assim, este portão vira **por-worktree**. É
+     a única flexibilização permitida, e ela tem regras próprias.
+   - **(1b) alguém EXECUTA de dentro dele?** Algum processo vivo cujo `/proc/<pid>/exe` esteja
+     **dentro** do target. Portão **incondicional — modo padrão E modo parcial**, e está no
+     script do §4. O (1a) enumera **construtores** e é cego a quem *roda*; o gesto que fecha toda
+     wave do Modo L é o **smoke**, que não compila nada — ele executa o binário que mora dentro
+     do `target/`. Medido em 2026-08-04: sem este portão o runbook teria apagado **197 GB debaixo
+     de um smoke em andamento** (§1-bis).
 2. **A worktree está limpa de FONTE.** `git status` sem `M`/`A`/`D` (ignore o `?? target`). Worktree
    suja = alguém deixou trabalho não-commitado ali → **pule essa worktree** e sinalize; não nuke o
    target quente de quem está no meio de algo.
 3. **O alvo é um dir REAL sob `Worktrees/*/target`, não symlink.** O `target/` do **primário** é um
    symlink pra tmpfs (`/dev/shm`) — apagar *através* dele é outra coisa. Nunca `rm -rf` num symlink.
+
+### ⚠️ As duas leis do INSTRUMENTO (pagas em 04/08 e 08/08, e simétricas)
+
+Os portões medem o mundo; as **sondas** que os confirmam são instrumentos — e um instrumento
+avariado não avisa que está avariado, ele apenas **responde**. Duas rodadas deste runbook
+produziram as duas metades da mesma lei, e elas apontam em direções opostas de propósito:
+
+1. **Quando um portão e a sua rede de segurança discordam do mundo na MESMA worktree, desconfie
+   do instrumento antes de confiar no portão.** *(04/08: a única worktree que os três portões
+   liberaram era a única com um processo vivo dentro do alvo — e a sonda de frescor, que existia
+   exatamente para pegar isso, dizia «fria» por estar morta em silêncio.)*
+2. **Um instrumento que só sabe dizer «quente» paralisa o runbook tão certamente quanto um que só
+   sabia dizer «fria»** — e este segundo modo de falha é mais fácil de aceitar, porque parece
+   prudência. *(08/08: a sonda recém-consertada respondeu QUENTE para as cinco worktrees porque a
+   jornada terminara às 01:48 do mesmo dia; limpar era o veredito certo.)*
+
+⛔ **Corolário operacional:** quem decide é **o que os portões MEDEM sobre o mundo agora** — processo
+vivo (1a/1b) e fonte não-commitada (2) —, **nunca a idade de um arquivo**. E um runbook de segurança
+se valida **EXERCITANDO-o**, não revisando-o no olho: os quatro defeitos que este doc já corrigiu
+(o `grep -vq` que pulava worktrees limpas, a mtime de diretório que mente, o portão cego a quem
+executa, a sonda morta em silêncio) apareceram **todos** ao rodar, **nenhum** ao ler.
+
+*A narrativa jornada-a-jornada que produziu estas leis está arquivada em
+[`docs/archive/processo-2026-08-18/DIRETIVA_FIM_DE_DIA.md`](../archive/processo-2026-08-18/DIRETIVA_FIM_DE_DIA.md).*
 
 ---
 
@@ -45,7 +79,8 @@ construtores" logo abaixo.
 ```bash
 ativo=""
 # (a) quem CONSTRÓI: cwd dentro da worktree.
-for p in cargo rustc mold cc1 ld rustdoc; do
+#     $BUILDERS vem do topo do §4 — FONTE ÚNICA, nunca uma cópia desta lista.
+for p in $BUILDERS; do
   for pid in $(pgrep -x "$p" 2>/dev/null); do
     cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null) || continue
     case "$cwd" in "$wt"|"$wt"/*) ativo="build $p($pid)";; esac
@@ -62,7 +97,7 @@ done
 
 ### ⚠️ O portão que enumera CONSTRUTORES é cego a quem EXECUTA
 
-A lista `cargo rustc mold cc1 ld rustdoc` responde *"alguém está compilando aqui?"*. Ela **não**
+A lista `$BUILDERS` (§4) responde *"alguém está compilando aqui?"*. Ela **não**
 responde *"alguém está usando isto?"* — e o gesto que fecha toda wave do Modo L é o **smoke**, que
 não compila nada: ele **roda o binário que mora dentro do `target/`**.
 
@@ -272,8 +307,14 @@ Roda da **raiz do repo**. Não apaga nada até os portões passarem; pula worktr
 cd "$(git rev-parse --show-toplevel)"
 primary="$(git rev-parse --show-toplevel)"
 
-# Portão 1 (duro): build ativo aborta a limpeza INTEIRA.
-for p in cargo rustc mold cc1; do
+# ══ FONTE ÚNICA da lista de construtores ═══════════════════════════════════
+# O §1 e o §1-bis referem-se a ESTA variável. NUNCA redigite a lista noutro
+# lugar: três variantes dela já conviveram neste doc e a mais curta era a
+# colável — quem executava o runbook rodava o portão mais fraco dos três.
+BUILDERS="cargo rustc mold cc1 ld rustdoc"
+
+# Portão 1a (duro, GLOBAL): build ativo aborta a limpeza INTEIRA.
+for p in $BUILDERS; do
   pgrep -x "$p" >/dev/null && { echo "✗ '$p' rodando — ABORTADO, nada apagado."; exit 1; }
 done
 
@@ -285,11 +326,25 @@ git worktree list --porcelain | awk '/^worktree /{print $2}' | while read -r wt;
   t="$wt/target"
   [ -e "$t" ] || continue
   [ -L "$t" ] && { echo "· $(basename "$wt"): target é symlink — PULADO (§1.3)"; continue; }
+
   # Portão 2: QUALQUER mudança não-commitada? (target é gitignored → não aparece aqui.)
   # Teste por string vazia, NÃO por exit-code de `grep -v` (que sobre entrada vazia mente).
   if [ -n "$(git -C "$wt" status --porcelain)" ]; then
     echo "· $(basename "$wt"): TRABALHO NÃO-COMMITADO — PULADO (§1.2)"; continue
   fi
+
+  # Portão 1b (INCONDICIONAL — vale no modo padrão tanto quanto no parcial):
+  # alguém EXECUTA de dentro deste target? O portão 1a enumera CONSTRUTORES e é
+  # cego a quem RODA, e o gesto que fecha toda wave é o smoke, que não compila
+  # nada. Pergunta pelo `exe`, nunca por uma lista de nomes — senão a lista
+  # apodrece no dia em que nascer o segundo binário. (§1-bis, medido 2026-08-04.)
+  ocupado=""
+  for pid in $(ls /proc 2>/dev/null | grep -E '^[0-9]+$'); do
+    exe=$(readlink -f "/proc/$pid/exe" 2>/dev/null) || continue
+    case "$exe" in "$t"/*) ocupado="pid=$pid ($exe)"; break;; esac
+  done
+  [ -n "$ocupado" ] && { echo "· $(basename "$wt"): APP RODANDO — $ocupado — PULADO (§1b)"; continue; }
+
   sz=$(du -sh "$t" 2>/dev/null | cut -f1)
   rm -rf "$t" && mkdir -p "$t" && chattr +C "$t" 2>/dev/null
   echo "✓ $(basename "$wt"): liberado $sz, target recriado nocow"
@@ -303,9 +358,12 @@ echo "— não-pushado em HEAD: $(git rev-list --count @{u}..HEAD 2>/dev/null ||
 
 O `~/.cache/sccache` **não aparece** no script — de propósito. Ele fica.
 
-> **Com agentes vivos, este script aborta na 1ª linha** (portão 1 global). Use o **modo parcial**:
-> troque o `for p in … exit 1` do topo pelo teste **por-worktree** de [§1-bis](#1-bis--modo-parcial-limpar-com-agentes-vivos-emenda-2026-07-30),
-> movido para **dentro** do laço, e acrescente a sonda `find -newermt` como terceira confirmação.
+> **Com agentes vivos, este script aborta no portão 1a** (global). Para o **modo parcial**, a troca
+> é **uma só**: apague o `for p in $BUILDERS … exit 1` do topo e ponha o teste **por-cwd** de
+> [§1-bis](#1-bis--modo-parcial-limpar-com-agentes-vivos-emenda-2026-07-30) **dentro** do laço,
+> logo acima do portão 1b. O portão **1b não muda** — ele já está no laço, e é o mesmo nos dois
+> modos. A sonda `find -newermt` entra como **terceira confirmação** só no modo parcial (no modo
+> padrão ela responde QUENTE para tudo, por construção — §1-bis).
 
 > **Por que o teste é `[ -n "$(git status --porcelain)" ]` e não `grep -vq`:** `grep -v` sobre
 > entrada vazia devolve exit-code ambíguo (depende do shell) — a 1ª versão desta diretiva usava
@@ -335,35 +393,8 @@ O `~/.cache/sccache` **não aparece** no script — de propósito. Ele fica.
 - **Diagnóstico que originou esta diretiva:**
   [`project-memory/project_modo_l_speed_hole_worktree_targets_slow_path.md`](../../project-memory/project_modo_l_speed_hole_worktree_targets_slow_path.md)
   — a lentidão do Modo L não era RAM, era disco + recompilação 6×; o cache quente é o herói, não o vilão.
-- **Emenda 2026-07-30 (§1-bis) — a 2ª vez que rodar o runbook o corrigiu.** Jornada com 8 worktrees e
-  agentes vivos, disco a **85%** (798 G de 950 G). O portão 1 global teria abortado tudo por causa de
-  um `cargo test` no `line-Painter`; o modo por-worktree liberou **464 GB** (→ 36%) limpando
-  `line-anim` (221 G), `line-physics` (203 G) e `line-FLIP` (42 G), e pulando as três worktrees com
-  trabalho não-commitado. Dois achados vieram de *exercitar*, não de revisar: a **mtime de diretório
-  mente** (o `line-Painter` marcava 2 dias enquanto compilava) e a **corrida é real** (o `line-anim`
-  começou um build 30 s depois da limpeza — sem dano, mas com rebuild frio a reportar). Mesma lição do
-  achado do `grep -vq` acima: *um runbook de segurança tem de ser EXERCITADO*
-  ([[feedback_render_and_look_when_a_green_gate_is_contradicted]]).
-- **Emenda 2026-08-04 (§1-bis) — a 3ª vez, e a 1ª em que o runbook teria DESTRUÍDO trabalho.** Jornada
-  com 8 worktrees e disco a **69%** (651 G de 950 G — sem pressão). **Nada foi apagado, e esse é o
-  resultado certo:** das 5 worktrees com target não-vazio, 4 tinham fonte não-commitada (`line-physics`
-  217 G/23 arquivos · `line-Painter` 42 G/4 · `line-motion-value` 31 G/5 · `line-sculpt3d` 23 G/8) e a
-  5ª (`line-Vector`, 197 G) estava **limpa e passou os três portões** — com um smoke rodando de dentro
-  do próprio target. Dois defeitos independentes, os dois achados **exercitando**, nunca revisando:
-  o portão 1 **enumera construtores** e é cego a quem *executa*; e a sonda de frescor estava **morta em
-  silêncio** (`bfs` recusa a data relativa → exit 1, stdout vazio → *"fria"* para todas, sempre).
-  Sozinho, cada um é um buraco; **juntos, eles compõem exatamente o pior caso** — a única worktree que
-  os portões liberaram foi a única com um processo vivo dentro do alvo, e o instrumento que existia
-  para pegar isso respondeu *fria*. Corolário para a próxima emenda: **quando um portão e sua rede de
-  segurança discordam do mundo na MESMA worktree, desconfie do instrumento antes de confiar no portão.**
-- **Emenda 2026-08-08 (§1-bis) — a 4ª vez, e o modo de falha SIMÉTRICO ao da anterior.** Fim de dia com
-  8 worktrees, disco a **72%** (672 G de 950 G), **nenhum** agente vivo. As cinco worktrees com target
-  passaram os três portões (todas com `git status --porcelain` vazio; nenhum construtor, nenhum `exe`,
-  FD ou mapa de memória dentro dos alvos) e a limpeza liberou **518 GB** (→ 17%): `line-motion-value`
-  172 G · `line-Vector` 136 G · `line-physics` 105 G · `line-sculpt3d` 61 G · `line-Painter` 46 G. **A
-  sonda de frescor — a rede de segurança que a emenda anterior acabara de consertar — disse QUENTE para
-  as cinco**, porque a jornada terminara às 01:48 do mesmo dia. Onde 04/08 ensinou *desconfie do
-  instrumento antes de confiar no portão*, esta rodada ensina o inverso exato: **um instrumento que só
-  sabe dizer *quente* paralisa o runbook tão certamente quanto um que só sabia dizer *fria*** — e o
-  segundo modo de falha é mais fácil de aceitar, porque parece prudência. Nos dois casos quem decide é o
-  que os portões MEDEM sobre o mundo agora, nunca a idade de um arquivo.
+- **As 3 emendas narradas jornada-a-jornada (30/07 · 04/08 · 08/08)** foram arquivadas **verbatim** em
+  [`docs/archive/processo-2026-08-18/DIRETIVA_FIM_DE_DIA.md`](../archive/processo-2026-08-18/DIRETIVA_FIM_DE_DIA.md).
+  ⚠️ **O que elas ENSINARAM não foi arquivado:** as duas leis do instrumento subiram para o §1 e o
+  portão 1b entrou no script do §4. Leia a narrativa para responder *"por que isto ficou assim?"* —
+  nunca para decidir a próxima ação.

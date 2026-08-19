@@ -1,10 +1,20 @@
 # Diretriz de Implementação — PH2D
 
-**Versão:** 8.2 — 2026-07-07 (**integração + ship = ordem EXPLÍCITA do Enio, nunca autônomos**: no Modo L a linha fecha o módulo, escreve o **handoff de integração** (§1.5.9) e PARA; o Enio junta os handoffs e abre **um agente integrador dedicado** que resolve todos os conflitos (§1.5.3–1.5.4). Reforçado: **foundational é editável, mas ao CRIAR arquivo foundational projete-o para isolamento** (§1.5.2.1). Só edições pontuais — o mecanismo (`foundational-integrate.sh` + `--ff-only` + Mergiraf) é o mesmo. Baseline: 8.1 — 2026-07-05 — **foundational deixou de ser serial no Modo L** — [ADR-0107](../architecture/decisions/0107-concurrent-foundational-lines-tested-gate-syntactic-merge.md): qualquer linha toca foundational sob 3 camadas — pontos de extensão append-only, Mergiraf (merge sintático) no resíduo textual, e o **gate da árvore combinada** `scripts/foundational-integrate.sh` no resíduo semântico; só contrato congelado (§4) e mesmo-símbolo de tipo-núcleo seguem seriais. v8.0 — 2026-07-05: **o modo de operação virou função do hardware** — [ADR-0106](../architecture/decisions/0106-parallel-dev-lines-worktrees-workstation.md); `bash scripts/hw-profile.sh` decide: tier `workstation` (Linux 128 GB) = **Modo L**, linhas paralelas por `git worktree` sem Coordenador de plantão, §1.5; tier `constrained` (Mac mini 8 GiB, sessões de smoke/hotfix) = **Modo C**, o modelo v7.1 de 1 Coordenador único + N Implementadores em shared tree, §1.1–1.4 + §7. Baseline anterior: 7.1 — 2026-05-28, papéis consolidados).
+**Versão:** 8.3 — 2026-08-18. O **modo de operação é função do hardware** ([ADR-0106](../architecture/decisions/0106-parallel-dev-lines-worktrees-workstation.md)) e **foundational não é serial no Modo L** ([ADR-0107](../architecture/decisions/0107-concurrent-foundational-lines-tested-gate-syntactic-merge.md)); **integração e ship só por ordem explícita do Enio** (§1.5.3–1.5.4). *O histórico de versões vive no `git log` deste arquivo — não é re-narrado aqui.*
+
 **Audiência:** **toda LLM que entra no projeto.** Este doc é **referência** — **NÃO
 leia inteiro**; use o roteador leia-por-tarefa em [`CLAUDE.md §1`](../../CLAUDE.md) e
-leia só a(s) seção(ões) que sua tarefa exige. Obrigatório p/ todos: §0 (sanity), §1
-(papéis), §2 (triagem), §6 (velocidade), §7 (git). O resto é por-tarefa.
+leia só a(s) seção(ões) que sua tarefa exige.
+
+⚠️ **A leitura obrigatória é função do TIER — `bash scripts/hw-profile.sh` decide, antes de tudo.**
+Ler a lista do outro modo é o desperdício que esta linha existe para cortar:
+
+| `hw-profile.sh` diz | Seu modo | Leia (e só) |
+|---|---|---|
+| `workstation` (Linux 128 GB) | **L** — linhas por worktree | §0 (sanity) · **§1.5** (o protocolo que você de facto executa) · §2 (triagem) · §6 (velocidade) |
+| `constrained` (Mac 8 GiB) | **C** — shared tree + Coordenador | §0 · §1 (papéis, resumo) · §2 · §6 · §7 (git) — o detalhe de ambos está no [arquivo de processo](../archive/processo-2026-08-18/DIRETRIZ.md) |
+
+O resto é por-tarefa.
 
 > **Seu primeiro output sempre = TRIAGEM (§2).** Classifique a tarefa do Enio
 > e diga **como proceder** antes de codar.
@@ -34,8 +44,12 @@ bash scripts/hw-profile.sh       # seu tier → seu MODO (L ou C — vide TL;DR)
 git log --oneline -5             # confirma HEAD
 git branch --show-current        # Modo C: main · Modo L: line/<seu-módulo> (NUNCA main)
 git status -sb                   # working tree limpo?
-cargo check --workspace 2>&1 | tail -5    # baseline compila?
 ```
+
+⚠️ **`cargo check --workspace` NÃO é passo de abertura por omissão** — §6.3 lista *"validar
+baseline no início da sessão se o último commit já está verde"* entre os desperdícios, e um
+`--workspace` frio custa minutos. Rode-o **só** quando o baseline está sob suspeita: HEAD
+inesperado, working tree suja, rebase acabado de resolver, ou primeira jornada numa worktree nova.
 
 Algo divergente (HEAD inesperado, working dirty, build quebrado) → **pare e reporte ao Enio.**
 
@@ -46,55 +60,24 @@ Algo divergente (HEAD inesperado, working dirty, build quebrado) → **pare e re
 
 ---
 
-## 1. Papéis + infra multi-agente
+## 1. Papéis (resumo — o detalhe do Modo C está no arquivo)
 
-> **Todo o §1 (papéis abaixo) + §1.1–1.4 descrevem o Modo C** (tier `constrained` — Mac mini
-> 8 GiB): o "Coordenador (único)" só existe no Modo C. No tier `workstation` vale o **Modo L
-> (§1.5)** — SEM Coordenador de plantão; a infra anti-colisão (slots CoW, arbitragem de posse,
-> índice compartilhado) é substituída por isolamento físico de `git worktree`.
-
-**Coordenador (único).** Um só por jornada. Absorve o que antes eram Coord-A (foundational) e Coord-B (baldes). Autoridade **exclusiva** sobre: contratos congelados, arch-gates, foundational crates (`ph2d-render`, `ph2d-editor-core`, `ph2d-host`, `ph2d-tokens`, …), codegen tools, `shells/*` plumbing compartilhado, scaffolds de painel/widget/chrome, ADRs, `CLAUDE.md`/DIRETRIZ, `.github/workflows/`. É o **único** que toca arquivo foundational/compartilhado — isso serializa a superfície de colisão (causa-raiz dos incidentes que motivaram o modelo). Mexe nos 2 contratos congelados (§4) só via amendment ADR, nunca cap-bust ad-hoc. Responsabilidades do modelo multi-implementador:
-- (a) escrever um **sub-handoff focado por implementador** (estado + pasta exclusiva + task + anti-colisão);
-- (b) manter o **mapa de posse** em SESSION_ACTIVE (§1.1) — quem é dono de quê;
-- (c) **arbitrar colisões** e **sequenciar dependências** entre implementadores (ex.: liberar `ph2d-render` ao módulo B só quando o módulo A soltar);
-- (d) **ship-de-jornada** (ship.sh + commit + push + babysit CI — §8), incluindo limpar fmt-drift e ship-blockers cross-session no fim.
-
-Não implementa feature de módulo — **coordena**.
-
-**Implementador (sempre vários).** Sessão isolada, **uma por módulo físicamente disjunto** (uma crate-pasta ou um cluster de crates do mesmo módulo). Caminho **(A)**: cria pasta + roda sync + testa, sem Coordenador. Caminho **(D)**: edita dentro de pasta de módulo existente. Caminho **(B)**: recebe pasta já scaffoldada pelo Coordenador, edita **só** dentro dela. A não-colisão é garantida pela arquitetura física (glob `workspace.members` + codegen splice em marcadores) **somada** à regra de posse exclusiva arbitrada pelo Coordenador. **Precisou de QUALQUER coisa fora da sua pasta** (foundational, shell plumbing, contrato congelado, outro módulo)? **PARA e reporta ao Coordenador** — não edita, e **nunca renegocia direto com outro implementador**.
-
-**Enio.** Humano que orquestra: abre sessões Claude Code, cola mensagens entre elas, roda smoke visual quando Coord pede. **Não decide nada operacional.**
-
-### 1.1 Protocolo SESSION_ACTIVE (mapa de posse mantido pelo Coordenador)
-
-[`docs/SESSION_ACTIVE.md`](../SESSION_ACTIVE.md) é o post-it vivo da orquestração. **Só o Coordenador escreve;** os implementadores **leem antes de cada burst** e não editam. O Coordenador mantém ali:
-
-1. O **mapa de posse**: qual implementador é dono de qual pasta/módulo (escrita exclusiva) + seu slot.
-2. Os **pontos compartilhados** e como estão resolvidos (ex.: crate X é escrita do Impl-N, leitura dos demais).
-3. Os **itens que o Coordenador segura** (ship-blockers, foundational, sequenciamento de dependências).
-4. **Pre-existing failures cross-session** a NÃO fixar (com owner identificado).
-
-Implementador que precise tocar pasta fora da sua: **PARA e reporta ao Coordenador** — nunca renegocia direto com outro implementador. O Coordenador limpa os itens concluídos ao encerrar a jornada.
-
-### 1.2 Isolamento físico — `scripts/slot-env.sh`
-
-Cada sessão roda `source scripts/slot-env.sh <slot-id>` no início para isolar `CARGO_TARGET_DIR` por slot. Sem isso, dois agentes paralelos serializam no lock de `target/`. Slot IDs: `coord` + um por implementador nomeado pelo módulo (`impl-sprite`, `impl-painter`, `impl-vector`, …).
-
-**RAM 8 GiB → máximo realista = 2-3 slots cargo-ativos simultâneos.** Com N implementadores, isso NÃO autoriza N cargos simultâneos: o Coordenador **escalona quem compila quando** (lê SESSION_ACTIVE). 4º cargo ativo causa swap thrashing.
-
-*(Modo L: slots dispensáveis — cada worktree já tem `target/` próprio; vide §1.5.1.)*
-
-### 1.3 Anti-colisão git — `scripts/git-stage-guard.sh`
-
-Pre-commit roda o guard que **rejeita stage fora da pasta declarada** (env `PH2D_SLOT_FOLDER`). Coords legítimos exportam `COORD_OVERRIDE=1` na sessão pra bypass. Padroniza a disciplina §7 sem depender de memória humana.
-
-### 1.4 As 3 obrigações do Implementador (sempre)
-
-1. **ISOLAMENTO.** Edita **só** dentro da pasta exclusiva. Precisa algo fora? **Reporta** — não edita.
-2. **UI canônica.** Toda cor/espaço/raio/tipografia/stroke passa por tokens. Zero hex, zero `f32` literal de UI (§5).
-3. **Codificação rápida.** `cargo check -p <crate>` no editing burst. Sem `--workspace` em loop (§6).
-
-Pra violar uma? **Pare e reporte.** Quase certo o Coord não fez scaffold direito.
+- **Modo L** (`workstation`) = **§1.5, abaixo.** Não há Coordenador: cada linha é um agente
+  autónomo na sua worktree; o operador humano é o Enio ([`GUIA_JORNADA_MODO_L.md`](GUIA_JORNADA_MODO_L.md)).
+  ⚠️ **Se o seu tier é `workstation`, pule para §1.5 — o resto deste §1 não descreve a sua máquina.**
+- **Modo C** (`constrained`, Mac 8 GiB — smoke/hotfix): **um Coordenador único** (dono exclusivo de
+  foundational, contratos congelados, scaffolds, ADRs, `.github/`, e do ship) + **N Implementadores**,
+  cada um numa pasta fisicamente disjunta, que **param e reportam ao Coordenador** ao precisar de
+  qualquer coisa fora dela — e nunca renegoceiam entre si.
+- A infra que só existe no Modo C — mapa de posse em [`SESSION_ACTIVE.md`](../SESSION_ACTIVE.md),
+  slots CoW (`scripts/slot-env.sh`), `scripts/git-stage-guard.sh` — e as **3 obrigações do
+  Implementador** estão **verbatim** em
+  [`docs/archive/processo-2026-08-18/DIRETRIZ.md`](../archive/processo-2026-08-18/DIRETRIZ.md).
+  No Modo L o worktree substitui as três por isolamento físico (§1.5.1).
+  ⚠️ **A NUMERAÇÃO foi preservada:** onde este doc ainda diz *§1.1* (SESSION_ACTIVE), *§1.2* (slots),
+  *§1.3* (stage-guard) ou *§1.4* (as 3 obrigações), é **naquele arquivo** que a seção está, com o
+  mesmo número. O mesmo vale para *§7.1–§7.4* (§7 abaixo).
+- **Enio.** Dono do produto e único decisor: ele manda integrar, manda shipar e faz o smoke.
 
 ### 1.5 Modo L — linhas paralelas por `git worktree` (tier `workstation`)
 
@@ -104,17 +87,15 @@ Pra violar uma? **Pare e reporte.** Quase certo o Coord não fez scaffold direit
 > (índice, HEAD, working tree e `target/` próprios por linha — a classe inteira de
 > incidentes que o §7 legisla vira impossibilidade física); a **pasta disjunta**, que já
 > era regra, elimina o conflito de **merge** nos drop-crates. Juntos = integração fast-forward
-> na prática, **sem Coordenador de plantão** — mas **a integração e o ship são disparados por
-> ordem EXPLÍCITA do Enio** (nunca autônomos): cada linha fecha o módulo, escreve o **handoff de
-> integração** (§1.5.9) e PARA; o Enio junta os handoffs e abre **um agente integrador dedicado**
-> que resolve TODOS os conflitos (§1.5.3). As 3 obrigações do §1.4 valem dentro de cada linha,
-> **com uma emenda (ADR-0107): a obrigação 1 (ISOLAMENTO) NÃO proíbe mais foundational no Modo L**
-> — foundational é editável por qualquer linha sob o protocolo testado (1.5.2.1 + 1.5.3), **mas
-> a própria foundation tem arquitetura de isolamento de propósito: ao CRIAR arquivo foundational
-> novo, projete-o para várias linhas o estenderem sem colidir** (§1.5.2.1, último parágrafo);
-> permanecem-fora-de-limite só os contratos congelados (§4) e mesmo-símbolo de tipo-núcleo.
-> Triagem §2, receitas §3, contratos §4, UI §5 e a DIRETIVA_IMPLEMENTACAO idem.
-> **Proibido no tier `constrained`** — N worktrees × `target/` não cabem em 8 GiB (vide 1.5.6).
+> na prática, **sem Coordenador de plantão**.
+>
+> - **Integrar e pushar não é seu:** a regra é o [`CLAUDE.md §0.7`](../../CLAUDE.md) (que você já
+>   tem carregado); o **mecanismo** é §1.5.3–1.5.4 e o **entregável** é §1.5.9.
+> - **Foundational é editável pela sua linha** (ADR-0107) — a regra e o desenho-para-isolamento
+>   estão em **§1.5.2.1**, uma vez só.
+> - As 3 obrigações do §1.4 valem dentro de cada linha, com essa emenda. Triagem §2, receitas §3,
+>   contratos §4, UI §5 e a DIRETIVA_IMPLEMENTACAO idem.
+> - **Proibido no tier `constrained`** — N worktrees × `target/` não cabem em 8 GiB (vide 1.5.6).
 
 #### 1.5.1 Setup de linha (o PRÓPRIO agente faz, guiado pelo modelo)
 
@@ -158,10 +139,8 @@ cd Worktrees/line-<módulo>                                 # TODO o trabalho a 
    central que todas editam. Pegue um **id/const/variant único** e some-o a uma lista ordenada
    (ex.: `NodeId(NNN)` no próximo livre, variant de enum, token) — e **anote-o no handoff (§1.5.9)**
    para o integrador detectar colisão. Menos superfície compartilhada = menos conflito de merge.
-2. Commits locais frequentes (`--no-verify` de dia, fast mode §8.1). **NUNCA push.**
-   **NUNCA integre nem faça ship por conta própria** — quem funde as linhas é o **agente
-   integrador dedicado**, e só por ordem EXPLÍCITA do Enio (1.5.3–1.5.4). Você fecha a linha,
-   entrega o handoff (§1.5.9) e espera.
+2. Commits locais frequentes (`--no-verify` de dia, fast mode §8.1) — e **não integre nem pushe**
+   ([`CLAUDE.md §0.7`](../../CLAUDE.md)): você fecha, entrega o handoff (§1.5.9) e espera.
 3. **`git rebase main` no início de CADA jornada e antes de integrar** (refs compartilhadas
    entre worktrees — sem fetch). Conflito em arquivo GERADO ou `Cargo.lock` → NUNCA resolva
    na mão (tabela 1.5.5). Conflito em código fora da sua pasta → você violou o item 1.
@@ -183,8 +162,14 @@ linha se auto-fundindo no meio do trabalho.)*
 **ANTES de integrar, leia o MAPA — uma chamada, não mil greps:**
 
 ```bash
-bash scripts/collision-surface.sh            # a linha contra main
+bash scripts/collision-surface.sh            # a linha contra main — AGORA, de dentro da worktree
 ```
+
+⚠️ **Rode-o você, em cada worktree, imediatamente antes de fundir aquela linha — inclusive depois
+de cada fusão anterior.** A tabela que veio no handoff (§1.5.9 item 3) mede a linha contra o `main`
+do dia em que ela FECHOU; entre esse dia e a sua ordem de integração o `main` andou (e cada linha
+que você já fundiu nesta sessão o moveu de novo). O handoff diz o que a linha *achava* que estava
+tocando — **a evidência é a leitura de agora**, e a diferença entre as duas nomeia quem mexeu no meio.
 
 Ele mede de uma vez o que o integrador redescobre a cada vez: os **schemas nos TRÊS sítios**
 (`PROJECT_SCHEMA` + a escada + a tripla), o **registro de componentes e os DOIS espelhos**, o
@@ -235,7 +220,7 @@ acima. O script é a fonte única — não duplique a lista aqui.)*
 | Arbitragem de posse / anti-colisão git (§7) | **Extinta** — worktree isola git; pasta disjunta isola merge; `--ff-only` serializa a integração |
 | Foundational (não-contrato) | **Não é mais serial** (ADR-0107): qualquer linha toca foundational e integra pelo gate testado (1.5.3). A não-colisão vem de 3 camadas — pontos de extensão append-only onde couber (Camada 0), Mergiraf no resíduo textual (1.5.5), gate da árvore combinada no resíduo semântico (1.5.3). A `line/foundational` dedicada vira **opcional** (útil só p/ um refactor foundational grande e coeso), não mais a única porta |
 | Contratos congelados / scaffolds (B) | Seguem **seriais por natureza** (decisão de design com um dono): contrato congelado exige ADR (§4); mesmo-símbolo de tipo-núcleo = reporte (1.5.2.1). Estes NÃO passam pela Camada 0/1 |
-| Ship + push + babysit CI (§8) | **SÓ por ordem EXPLÍCITA do Enio** (nunca autônomo — nem "o último apaga a luz"): quando o Enio manda "ship/push", o **agente integrador** (ou uma sessão-ship dedicada que ele abre) roda `./scripts/ship.sh` + push + babysit, 1× por jornada sobre o main integrado. Uma linha/agente que integra ou pusha sem ordem explícita **violou o protocolo** ([[feedback_ship_only_enio_end_of_all_lines]] + [[feedback_integration_only_enio_command_end_of_all_lines]]) |
+| Ship + push + babysit CI (§8) | **Quem** o faz: o **agente integrador** (ou uma sessão-ship dedicada), 1× por jornada sobre o main integrado — `./scripts/ship.sh` + push + babysit. **Quando** ele pode fazê-lo é a regra do [`CLAUDE.md §0.7`](../../CLAUDE.md), não desta tabela |
 
 #### 1.5.5 Conflitos de rebase/merge esperados (os ÚNICOS legítimos)
 
@@ -287,7 +272,7 @@ Tracker/docs do módulo nascem depois, **dentro da própria worktree**.
 
 **Operador (Enio):** o passo a passo do SEU lado (planejar linhas → abrir cada uma → intervir só nos 2 casos irredutíveis → **coletar o handoff de cada linha e, por ordem sua, abrir o agente integrador + mandar o ship**) está em [`GUIA_JORNADA_MODO_L.md`](GUIA_JORNADA_MODO_L.md).
 
-**Agente NOVO numa linha que já existe** (troca de janela de contexto, ou retomada depois de a linha ter integrado): o bloco é OUTRO — [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](MODELO_TROCA_DE_AGENTE_NA_LINHA.md). A worktree já existe (não se cria), e o risco específico dessa troca é o agente trabalhar no **primário** em vez da linha: toda janela abre na raiz, que está em `main`, e **o mesmo path relativo existe nas duas árvores** — editar `crates/…` da raiz compila e commita sem erro nenhum, e só aparece na integração. Por isso aquele bloco começa por `cd` + `pwd` + `git branch --show-current` **antes de ler qualquer arquivo**, e traz o procedimento de resgate para quando já escreveram no main.
+**Agente NOVO numa linha que já existe** (troca de janela de contexto, ou retomada depois de a linha ter integrado): o bloco é OUTRO — [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](MODELO_TROCA_DE_AGENTE_NA_LINHA.md). A worktree já existe (não se cria). **O modo de falha dessa troca — e o procedimento de resgate — estão escritos uma vez só, no topo daquele doc** (`§Por que este doc existe`); é ele que manda o `cd` + `pwd` + `git branch --show-current` **antes de ler qualquer arquivo**.
 
 Você é `workstation`, sem bloco colado, e `git branch --show-current` devolve `main`?
 Você é uma sessão do **primário** (setup/integração/ship) — **não code em `main` no
@@ -296,8 +281,8 @@ Modo L**; pergunte ao Enio qual é a sua linha.
 #### 1.5.9 Handoff de integração (cada linha entrega; o Enio passa ao integrador)
 
 Antes de integrar, o **Enio pede a cada linha um handoff de integração** — o documento que
-passa ao **agente integrador** os pontos que evitam conflito/regressão. A linha **NÃO integra
-nem faz ship**; entrega este handoff e espera. Conteúdo mínimo (curto, factual):
+passa ao **agente integrador** os pontos que evitam conflito/regressão. É o **entregável** que
+fecha a linha ([`CLAUDE.md §0.7`](../../CLAUDE.md)). Conteúdo mínimo (curto, factual):
 
 1. **Identidade:** branch `line/<módulo>`, HEAD, base do fork (merge-base com main), nº de commits.
 2. **Foundational/compartilhado tocado + por quê** — todo arquivo fora da sua pasta de módulo
@@ -311,6 +296,15 @@ nem faz ship**; entrega este handoff e espera. Conteúdo mínimo (curto, factual
    aqui manda o integrador procurar o conflito no lugar errado*, e esta §5 registra isso
    acontecendo mais de uma vez (a tabela que "envelheceu entre o fechamento e a ordem", o degrau
    contado a menos, o componente dado como pré-existente e que era novo).
+
+   ⚠️ **PRAZO DE VALIDADE — a tabela colada é REFERÊNCIA, nunca EVIDÊNCIA.** Ela mede a sua linha
+   **contra o `main` do dia em que você fechou**. Se a linha fecha na segunda e o Enio manda
+   integrar na quinta, com duas linhas fundidas no meio, todo número da coluna "base" mudou e o
+   handoff descreve um `main` que já não existe — **e ele não reclama**, porque uma tabela colada
+   não sabe que envelheceu. Por isso: **o integrador RE-RODA `collision-surface.sh` em cada
+   worktree imediatamente antes de fundir** (§1.5.3), e usa a tabela do handoff só para *saber o
+   que a linha ACHAVA que estava tocando* — a divergência entre as duas leituras é ela própria um
+   achado, e aponta para a linha que integrou no meio.
 4. **Contratos congelados encostados** (§4) — deve ser **nenhum**; se sim, exige ADR (pare e reporte).
 5. **O que só o `ship.sh` pega** (o gate de integração NÃO roda): fmt/typos pré-fork, deps novas
    p/ machete, clippy latente, RUSTSEC ([[project_integration_prefork_lines_ship_drift]]).
@@ -380,7 +374,7 @@ TRIAGEM
 | **Painel novo** (`ph2d-panel-<slug>`) | **(B) §3.B.1** | Coord plumba feature flag + `register_all_panels` ANTES. |
 | **Widget primitive novo** | **(B) §3.B.2** | Cria o arquivo + `cargo run -p ph2d-widget-sync` (bloco `mod` GERADO); `pub use` + showcase à mão. |
 | **Chrome handler novo** | **(B) §3.B.3** | Cria stub `chrome/<slug>.rs` + marcador `z=NN` + `cargo run -p ph2d-chrome-sync` (`mod` + `dispatch_all` GERADOS). |
-| **Avaliador novo (Wave-neck)** — Shader/Som/Gameplay | **(C)** durante neck → (A) depois | Trabalho "tipo W2" serial; abre fan-out só após o neck. Tracker em [`docs/HANDOFF_node_system.md`](docs/archive/handoffs-2026-06-16/HANDOFF_node_system.md). |
+| **Avaliador novo (Wave-neck)** — Shader/Som/Gameplay | **(C)** durante neck → (A) depois | Trabalho "tipo W2" serial; abre fan-out só após o neck. Tracker **histórico** (arquivado): [`HANDOFF_node_system.md`](../archive/handoffs-2026-06-16/HANDOFF_node_system.md). |
 | **Mudar tokens / editor-core (não-contrato) / shells / arch tests** | **(C)** | Foundational. Modo C: não paraleliza (Coord). Modo L: sua linha + gate testado (ADR-0107, vide nota abaixo). |
 | **Mudar contrato de nós** (porta, EvalCtx, motor) | **(C) + ADR** | Bump cap em `architecture_contract_surface.rs` + ADR estendendo 0039. |
 | **Mudar contrato de tools** (método em `Tool`/`RasterEditTool`, variant em `PanelEvent`) | **(C) + ADR** | Bump cap em `architecture_tool_contract_surface.rs` + amendment de ADR-0040 §7. |
@@ -517,7 +511,7 @@ O `ph2d-tool-sync` é configurado pelas needles `"pub fn register("` (manifest) 
 
 #### 3.A.4 Trait `RasterEditTool` (heads-up importante)
 
-Sub-trait com 5 métodos (`set_source` / `current_preview` / `take_pending_commit` / `run_full` / `deactivate`), congelado em ADR-0041. **3 tools de produção implementam** (BgRemoval, Color Equalization, Upscale). Padding e Equalize Sizes são exceção documentada (geométrico-only / multi-sprite-required).
+Sub-trait com 5 métodos (`set_source` / `current_preview` / `take_pending_commit` / `run_full` / `deactivate`), congelado em ADR-0041. **4 tools de produção implementam** — BgRemoval, Color Equalization, Upscale e **Painter** (`ph2d-tool-painter/src/tool/trait_impls_raster.rs`, num arquivo próprio por causa do teto de LOC da workspace). Padding e Equalize Sizes são exceção documentada (geométrico-only / multi-sprite-required). *A conta se faz com `git grep -l "impl RasterEditTool for" crates/ph2d-tool-*`, nunca de memória: o gate `architecture_image_tool_kind_contract` lê o mesmo fonte.*
 
 **Padrão pra tool stateful que produz raster:**
 
@@ -871,61 +865,16 @@ por-agente**. Norte: [ADR-0075](../architecture/decisions/0075-multiagent-parall
 5. **Concorrência:** **≤3 `cargo` simultâneos** — Coordenador escalona via
    SESSION_ACTIVE (§1.1). CoW barateia criar slots, NÃO levanta esse teto.
 
-#### B. Alavancas (deep-research 2026-05-29, verificada 3-votos; run `wf_8d23212a-39e`)
+#### B. Alavancas — *arquivada*
 
-Separadas por confiança. Linux-benchmarks **não transferem direto** pro Apple Silicon
-8 GiB → as marcadas "pilotar" exigem medição local antes de virar mandato.
-
-**🥇 Tier 1 — diagnóstico via LSP (MEDIDO 2026-05-29 — leia o veredito):**
-- **Diagnóstico via LSP, não saída crua.** O agente NÃO deve ler output bruto do cargo
-  e adivinhar tipos (desperdício de token + erro).
-- **⛔ FULL rust-analyzer / MCP type-query = BLOQUEADO por RAM nesta máquina.** Spike de
-  medição: 8 GiB físicos, **swap 5187/6144 MiB usados, ~89 MiB livres** com editores +
-  1 agente e os rust-analyzers dos editores **dormentes (3 MiB)**. Um RA *indexando* o
-  workspace (~30 crates wgpu/vello/bevy) custa ~1.5–4 GB → **não cabe nem ×1, quanto mais
-  ×3**. Só viável num Mac de 32 GB (dispensado). NÃO adotar rust-analyzer-as-oracle / MCP
-  de tipo aqui.
-- **✅ Caminho viável nesta máquina = `scripts/cargo-check-narrow.sh` ON-DEMAND.** O
-  agente checa quando quer, recebe só os erros (corta tokens), **zero processo residente**.
-  É o Tier-1 prático no teto de 8 GiB.
-- **⚠️ `bacon-ls` (backend cargo) — pesar, não adotar cego:** dá diagnósticos via LSP sem
-  o índice do RA, MAS roda `cargo check`/clippy **continuamente** em background; com ≤3
-  agentes = 3 loops de check contínuos = pressão constante numa máquina já em swap. Pode
-  ser PIOR que o check on-demand. Só vale se medido folgado.
-  *(MCP de terceiros rust-mcp/cursor-rust-tools = EXPERIMENTAL hobby E type-query = RAM-blocked.)*
-
-**🥈 Tier 2 — build/test loop (PILOTADO 2026-05-29: já capturado, ver status):**
-- **Linker rápido = ✅ JÁ ATIVO.** `~/.cargo/config.toml` global usa
-  `-fuse-ld=/opt/homebrew/bin/ld64.lld` (lld para Mach-O) — corta ~30-50% do link
-  incremental. `mold` é **incompatível com macOS** (ELF-only, erro fatal) — não usar.
-- **Redução de debug-info = ✅ JÁ NO GATE.** `[profile.ci-test] debug = false`, e o gate
-  (`nextest-impacted.sh` + `ship.sh`) roda `--cargo-profile ci-test` → debug-info já
-  cortado onde importa. ⚠️ **E a frase que estava aqui — *"o `[profile.dev] debug = true` só afeta
-  `cargo check` (irrelevante — não linka) e builds ad-hoc (que evitamos)"* — era FALSA, medida em
-  2026-08-16:** o `cargo test -p`, que é o gate de fechamento que a CLAUDE.md §2 prescreve, LINKA
-  binários de teste sob o `dev` — e eles somavam **8,3 GB em 40 binários, 208 MB cada**, no target
-  do primário. Não eram *ad-hoc*: eram o fechamento. A cura shipou como
-  `split-debuginfo = "unpacked"` no `[profile.dev]` (**2,5× medido**, A/B na
-  [`DIRETIVA_FIM_DE_DIA.md`](DIRETIVA_FIM_DE_DIA.md) §2-bis Regra 3), e o preço é pequeno porque a
-  `.debug_line` sobrevive no binário — o backtrace mantém `file:line`.
-- **`prefer-dynamic` (dynamic-linking) = ❌ NÃO adotar.** Só ajuda LINK (gate infrequente),
-  não o inner loop (check). Com lld + debug=false já ativos, o link deixou de ser dominante
-  → ganho marginal. Custo: mudar RUSTFLAGS invalida a **base CoW warm** (rebuild completo) +
-  quirks de prefer-dynamic no macOS. Net-negativo nesta máquina. (O ~5× do `bevy_dylib` é da
-  feature whole-Bevy, que não usamos — só `bevy_ecs` standalone.)
-
-**🥉 Tier 3 — pilotar + medir (ganho real M-series incerto):**
-- **`cargo-hakari`** (workspace-hack): mata a **cascata de recompile por feature-unification**
-  ("check ganha mais que build"; até 100× em comando isolado, ~1.7× cumulativo em Linux).
-  Custo: crate central novo (acoplamento leve) + entrada em `cargo-machete` ignore. Medir
-  ganho no nosso slot CoW antes de adotar.
-
-**🚫 NÃO fazer (achados contrários verificados):**
-- **Cranelift:** irrelevante ao inner loop (check já não faz codegen); no macOS unwinding
-  de panic **não-suportado** (força `-Cpanic=abort`) + `std::arch` SIMD parcial = ruim p/
-  wgpu/vello/rapier. Experimental.
-- **`mold`:** incompatível com macOS.
-- **`-Zthreads`** (frontend paralelo): não-provado em RAM-bound; aumenta pico de memória.
+A pesquisa de alavancas de build de **2026-05-29** foi **verbatim** para
+[`docs/archive/processo-2026-08-18/DIRETRIZ.md`](../archive/processo-2026-08-18/DIRETRIZ.md).
+⚠️ **Ela é um veredito sobre um Mac**: o que ela apurou foi que o rust-analyzer full não cabe em
+8 GiB, que o linker é o `ld64.lld` do `/opt/homebrew`, e que **"`mold` é incompatível"** — três
+frases que, lidas numa workstation Linux com mold e 128 GiB, dizem o **oposto** do que vale aqui.
+Os vereditos ainda vivos (Cranelift ❌, `-Zthreads` ❌, `prefer-dynamic` ❌, hakari = medir antes)
+estão condensados no [`CLAUDE.md §2`](../../CLAUDE.md) e em §6.0. **Não a leia para decidir stack
+nesta máquina** — leia-a só para não re-fazer a pesquisa.
 
 #### C. Anti-padrão que matou a velocidade (não repita)
 
@@ -935,58 +884,20 @@ fechado**, não por micro-task (vide §6.6.A.2).
 
 ---
 
-## 7. Anti-colisão git (Modo C — shared tree)
+## 7. Git — o que sobrou aqui
 
-> **Modo L:** esta seção inteira descreve o problema que o worktree elimina — cada linha tem
-> índice/HEAD/tree próprios. No Modo L valem só as tabelas 1.5.5 (conflitos de merge) e
-> 1.5.6 (proibições). No Mac (Modo C), esta seção vale INTEIRA.
+**No Modo L a colisão de git não existe:** índice, HEAD, working tree e `target/` são próprios de
+cada worktree, e o que resta são os **conflitos de merge (§1.5.5)** e as **proibições (§1.5.6)** —
+é lá que se olha, não aqui. O protocolo `stage→commit` do Modo C (nunca `git add -A`, `git status`
+antes de estagiar, os sintomas de colisão e a recuperação de cada um) foi **verbatim** para
+[`docs/archive/processo-2026-08-18/DIRETRIZ.md`](../archive/processo-2026-08-18/DIRETRIZ.md), e
+vale INTEIRO quando a jornada é no Mac — **com a numeração intacta**: *§7.1* (stage→commit),
+*§7.2* (proibições), *§7.3* (sintomas de colisão) e *§7.4* (armadilhas) estão lá, com esses números.
 
-`git commit` é serializado pelo índice global do git. Duas sessões com arquivos staged ao mesmo tempo: uma roda commit e agarra os arquivos da outra junto.
+Uma armadilha sobrevive aqui porque **morde nos dois modos** — o gate de `typos` roda no
+`ship.sh` e no CI, escreva você de que árvore escrever:
 
-### 7.1 Protocolo atômico stage→commit
-
-```bash
-# 1) Antes de stage: confira working tree
-git status
-#    Há M/?? que não são seus? PARE. Outro agente em vôo.
-
-# 2) Stage só os seus. NUNCA -A / -a / git add .
-git add <arquivos-específicos>
-
-# 3) Antes de commit: confere índice
-git status --cached
-#    Arquivo que não estagiou? Vazamento.
-#    git restore --staged <não-meus>
-
-# 4) Commit. Hook tiered roda automaticamente.
-git commit -m "<descrição em inglês, imperativo, <70 char>"
-```
-
-Stage→commit é **operação contínua**. Não pause entre os dois passos.
-
-### 7.2 Proibições
-
-- **Nunca** `git push --force` em main
-- **Nunca** `--no-verify` (se hook falha, fix root cause)
-- **Nunca** `git commit --amend` (sempre novo commit)
-- **Nunca** `git config` mudando settings do repo
-- **Nunca** `git restore --staged --worktree` em path fora da sua pasta sem coordenar
-
-### 7.3 Sintomas de colisão
-
-| Sintoma | Recuperação |
-|---|---|
-| `fatal: cannot lock ref 'HEAD'` no commit | Outra sessão commitou no meio. `git status` → diagnose |
-| `git status` mostra M que você não tocou | Outro agente paralelo. NÃO comite. Reporte |
-| `git log -1` mostra mensagem fundida (2 títulos) | Colisão. Se NÃO pushado: `git reset --soft HEAD~1` + split + recommit |
-| Hook trigga T2 quando esperava T1 | `git status --cached` — vazamento de outro agente |
-
-### 7.4 Armadilhas conhecidas
-
-**Typos engine bloqueia palavras pt-BR ambíguas.** `erros` (typo de `errors`), `usso` (typo de `use`), `nao` sem acento (typo de `not`). Solução: prefira sinônimos ou use acento; se necessária, adicione exceção em `.typos.toml` `[default.extend-words]` **com justificativa no commit**, não esconda com `--no-verify`.
-
-**Cargo lock entre sessões.** Se rodar `cargo` enquanto outra sessão Claude Code paralela está rodando, a 2ª **espera silenciosamente** pelo lock. Não é crash, só lentidão. Use `slot-env.sh` pra isolar (§1.2).
-
+**Typos engine bloqueia palavras pt-BR ambíguas.** `erros` (typo de `errors`), `usso` (typo de `use`), `nao` sem acento (typo de `not`). Solução: prefira sinônimos ou use acento; se necessária, adicione exceção em `.typos.toml` `[default.extend-words]` **com justificativa no commit** — nunca esconda um typo real atrás do `--no-verify` do fast mode (§8.1). ⚠️ **A allowlist é uma lista que SOMA entre linhas:** uma chave duplicada mata o gate **no parse**, e ele para de escanear sem falhar — apende ao fim da seção e confira se outra linha tocou o mesmo bloco.
 ---
 
 ## 8. Ship + Push + CI (Modo C: Coordenador absorve PRCI · Modo L: SÓ por ordem explícita do Enio, via o agente integrador — §1.5.4)
@@ -1042,9 +953,20 @@ gh run list --workflow=spike.yml --limit=1 --json databaseId,url
 
 Polling **15min** (`gh run watch <id>` ou Monitor com `sleep 900`).
 
+⚠️ **Não espere por um NÚMERO de checks — o `spike.yml` define 5 jobs e quantos deles CORREM
+depende do evento e da ref.** Medido no run `32158997562` (push a `main`, `success`): **9 jobs
+listados — 8 `success` + 1 `skipped`**, porque `bench` tem `if: github.event_name ==
+'pull_request'` e `test`/`determinism` são matrizes de 3 OS. Num push a `feat/**`, `test` também
+é pulado e sobra só o `lint`. Um agente esperando *"9/9 success"* espera para sempre: o critério é
+**nenhum job em `failure`**, e `skipped` é resultado legítimo.
+
+```bash
+gh run view <id> --json jobs -q '.jobs[] | "\(.conclusion)\t\(.name)"'
+```
+
 | Resultado | Resposta |
 |---|---|
-| Success 9/9 | Reporta link + sha bom ao Enio. Ciclo fechado |
+| **Todos os jobs verdes** (nenhum `failure`) | Reporta link + sha bom ao Enio. Ciclo fechado |
 | Falha de código | `gh run view --log-failed`, fix local, commit, push, re-watch |
 | Falha de infra (cache/network/rustup flaky) | `gh run rerun --failed` + re-watch |
 | 3 falhas consecutivas do mesmo job | Escala pro Enio com diagnose |
@@ -1061,7 +983,7 @@ Entrei em babysit. Reporto quando concluir.
 E ao terminar:
 
 ```
-✓ CI verde 9/9 em <duração>. sha bom novo: <sha>.
+✓ CI verde (todos os jobs, nenhum failure) em <duração>. sha bom novo: <sha>.
 Ciclo fechado. Disponível para próxima ordem.
 ```
 
@@ -1075,7 +997,7 @@ Ciclo fechado. Disponível para próxima ordem.
 |---|---|
 | Não sabe o que fazer | Releia §0 + §1 + pergunte ao Enio |
 | Arquivo que não tocou em `git status` | §7.3 (colisão) — **Modo C only** (Modo L isola por worktree) |
-| Hook falha em fmt/clippy/test | Fix root cause; nunca `--no-verify` |
+| Hook falha em fmt/clippy/test | Fix root cause. O `--no-verify` do fast mode (§8.1) salva o **checkpoint**; ele não conserta o **ship** |
 | Hook trigga T2 quando esperava T1 | `git status --cached` — vazamento |
 | Smoke quebrou em `./play.command` | Implementador (Modo C) / a linha (Modo L) diagnostica + fix local |
 | CI failure cíclico (3× mesmo job) | Escala pro Enio (Modo C: Coord; Modo L: quem shippa) |
@@ -1102,6 +1024,25 @@ Ciclo fechado. Disponível para próxima ordem.
 | (Wave 9) | Widget aparece no showcase | `architecture_widget_showcase_coverage` |
 
 Completo em [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md) §HR-1..HR-18.
+
+#### ⚠️ Os caps de LOC são CINCO, e confundi-los é erro recorrente
+
+Não existe "o cap de 600" nem "o cap de 700": **cada um cobre uma árvore diferente**, e o que vale
+para o seu arquivo é o do gate cuja árvore o contém. Duas auditorias já "corrigiram" um pelo outro.
+Os números abaixo saem do fonte do gate — se divergirem dele, **o fonte está certo**:
+
+| Árvore coberta | Cap | Gate (a fonte do número) |
+|---|---:|---|
+| `crates/**` (workspace inteira) | **700** | `ph2d-editor-core/tests/architecture_workspace_file_loc_cap.rs` (`FILE_LOC_CAP`) — ADR-0105 subiu 600→700; existentes acima ficam **congelados** numa allowlist (podem encolher, nunca crescer) |
+| `shells/<plat>/src/**` | **600** | `shells/desktop/tests/file_loc_caps.rs` (`FILE_LOC_CAP`) — HR-18 |
+| `ph2d-panel-*/src/**` | **600** arquivo · **200** função | `ph2d-editor-core/tests/architecture_panel_loc_cap.rs` (`PANEL_FILE_LOC_CAP` / `PANEL_FN_LOC_CAP`) |
+| `ph2d-editor-core/src/widget/**` | **500** | `ph2d-editor-core/tests/architecture_widget_loc_cap.rs` (`WIDGET_LOC_CAP`) |
+| `ph2d-tool-runtime/src/**` | **650** | `ph2d-tool-runtime/tests/architecture_runtime_loc_cap.rs` (`CAP`) |
+
+⚠️ **Cap de FUNÇÃO e cap de ARQUIVO são grandezas diferentes:** extrair um corpo grande para uma
+função irmã **no mesmo arquivo** cura o de função e estoura o de arquivo. Corte para o **arquivo
+irmão** ([[feedback_a_fn_cap_and_a_file_cap_measure_different_things]]), e rode `cargo fmt` **antes**
+de medir — a re-quebra de linhas do fmt reexpande o arquivo depois do corte.
 
 ### 10.2 Caminhos canônicos
 
@@ -1158,7 +1099,7 @@ gh run watch <id> --exit-status
 - **Stack + Hard Rules + "Adicionar uma tool":** [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md)
 - **Operacional dia-a-dia + CI:** [`CLAUDE.md`](../../CLAUDE.md)
 - **Exemplos fan-out 100% paste-ready:** [`examples-fan-out.md`](examples-fan-out.md)
-- **Tracker vivo do fan-out de nodes:** [`docs/HANDOFF_node_system.md`](docs/archive/handoffs-2026-06-16/HANDOFF_node_system.md)
+- **Tracker do fan-out de nodes — HISTÓRICO, não estado atual:** [`HANDOFF_node_system.md`](../archive/handoffs-2026-06-16/HANDOFF_node_system.md) (o estado vivo dos módulos é o `CLAUDE.md §5`)
 - **Plano de nodes (W1+W2 fechados, W3+ aberto):** [`docs/plans/2026-05-node-waves.md`](../plans/2026-05-node-waves.md)
 - **Plano Wave 11 carry-overs:** [`docs/plans/2026-05-wave-11-carry-overs.md`](../plans/2026-05-wave-11-carry-overs.md)
 
@@ -1185,8 +1126,18 @@ gh run watch <id> --exit-status
 
 ---
 
-## 12. Quando esta diretriz fica obsoleta
+## 12. Quem mantém estes docs
 
-Se a arquitetura mudar materialmente (3º papel surge, fluxo invertido vira lateral, contrato 3 surge), atualize **in-place** e bump versão. **Não fragmente em múltiplos docs** — lição dos 4 docs antigos que dessincronizaram é que doc único é mais fácil de manter.
+**Doc único é falso: a regra é UMA porta por regra + ponteiro.** *(Esta seção mandava o contrário
+— "não fragmente em múltiplos docs" — enquanto a própria pasta tinha nove; o que dessincroniza não
+é ter vários arquivos, é a **mesma regra escrita em dois deles**, porque a próxima emenda acerta um
+e deixa o outro mentindo em silêncio. A cura é escrever a regra **uma vez** e apontar de todo lugar
+que precisa dela.)*
 
-LLM lendo isto depois de mudança arquitetural maior e diretriz contradiz código: **confie no código**, reporte ao Enio com diagnose, atualize quando autorizado.
+**Quem atualiza:** ⚠️ **a linha que muda um mecanismo do processo atualiza o doc de processo no
+MESMO commit** — se o mecanismo mudou e o doc não, a próxima linha executa o mecanismo antigo, e
+descobre na integração. E o **handoff de integração (§1.5.9) lista o que mudou aqui**, para o
+integrador não fundir uma regra nova por cima de outra regra nova sem reparar.
+
+**Diretriz contradiz o código:** **confie no código**, reporte ao Enio com diagnose, corrija o doc
+quando autorizado.

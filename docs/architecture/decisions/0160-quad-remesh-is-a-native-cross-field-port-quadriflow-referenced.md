@@ -168,6 +168,22 @@ repo quase declarou sucesso sobre uma casca murcha.
 |---|---|---|
 | **Q1** | a crate-folha + o **campo de ORIENTAÇÃO** 4-RoSy, suavizado | A8 + convergência + determinismo |
 | **Q2** | o **campo de POSIÇÃO** + a escala **adaptativa** por curvatura | A6 |
+
+> ⚠️ **CORREÇÃO MEDIDA (Q2, 2026-08-19) — a nota da hierarquia estava errada para
+> metade dos campos.** Este ADR dizia que a hierarquia multirresolução é *"um
+> acelerador de convergência, não uma lei diferente"*. Para o campo de
+> **orientação** é verdade (a tabela de convergência está no doc-comment do
+> `solve_orientation`). Para o de **posição** a frase é **vacuosa**: o campo
+> atinge um ponto FIXO em dezenas de varreduras — medido imóvel entre **32 e
+> 2 048** —, e o resíduo entre vizinhos fica em **0,205 célula**. Não há
+> convergência lenta a acelerar; o que a hierarquia compra ali é **coerência de
+> longo alcance**, e é a Q3 que a mede.
+>
+> ⚠️ **E o contrato do campo de posição é mais fraco do que este ADR sugeria:**
+> ele coloca uma origem de retícula por vértice, consistente **a menos de passos
+> inteiros** — quem quocienta pela retícula e forma os platôs é a **EXTRAÇÃO**. O
+> invariante que a Q3 pode usar é `|o_v − p_v| ≤ s/√2` (a meia-diagonal da
+> célula), derivado da construção e gateado.
 | **Q3** | a **EXTRAÇÃO** ingênua (Instant Meshes) | A1..A4, com os não-quads CONTADOS e nomeados |
 | **Q4** | o **fluxo de custo mínimo** (QuadriFlow) | A1 vira exato, A5 |
 | **Q5** | a costura no shell: verbo, painel, undo, smoke | o smoke do Enio |

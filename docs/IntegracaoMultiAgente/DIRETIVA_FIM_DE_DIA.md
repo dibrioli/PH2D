@@ -57,6 +57,39 @@ se valida **EXERCITANDO-o**, não revisando-o no olho: os quatro defeitos que es
 (o `grep -vq` que pulava worktrees limpas, a mtime de diretório que mente, o portão cego a quem
 executa, a sonda morta em silêncio) apareceram **todos** ao rodar, **nenhum** ao ler.
 
+### ⚠️ A terceira lei, de outra espécie: **um laço que nunca itera é um portão que sempre passa** *(2026-08-19)*
+
+As duas leis acima são sobre uma sonda que **lê errado**. Esta é sobre um portão que **nunca chega
+a perguntar** — e por isso é mais silenciosa que ambas: não há resposta errada a inspecionar, há
+uma pergunta que não foi feita.
+
+> **Medido ao rodar este runbook em 2026-08-19:** o portão 1a — o portão **duro e global**, o que
+> aborta a limpeza inteira se alguém estiver a construir — executou **uma** iteração em vez de seis,
+> com `p` igual à string inteira `cargo rustc mold cc1 ld rustdoc` (31 caracteres). O `pgrep -x`
+> recusa padrões acima de 15 caracteres, escreveu um aviso em **stderr** e devolveu **zero
+> correspondências**. ⇒ **O portão 1a passava sempre, e passava por avaria.**
+
+**O mecanismo, e ele generaliza:** `BUILDERS="a b c"` + `for p in $BUILDERS` é idioma **bash**, que
+faz *word splitting* em expansão não-citada. O bloco do §4 é, por desenho, **colado no shell** — e o
+shell desta máquina é **zsh**, que **não** faz word splitting (é a diferença clássica entre os dois).
+Um script com shebang `#!/usr/bin/env bash` corre sob bash e está a salvo; **o bloco colável não**.
+*O defeito mora exatamente no único formato que alguém de facto executa* — a mesma família do achado
+anterior deste doc, em que a variante mais fraca da lista era a colável.
+
+**A cura tem duas metades, e a segunda é a que impede a reincidência:**
+
+1. **`BUILDERS=(cargo rustc mold cc1 ld rustdoc)`** — um array expande citado (`"${BUILDERS[@]}"`) e é
+   imune ao IFS **e** ao shell.
+2. **Um CONTROLE POSITIVO no topo do §4:** o script pergunta ao `pgrep` se ele consegue ver **o
+   próprio shell que o executa**, e aborta se não conseguir. Um portão que enumera não pode provar a
+   sua própria negativa; só um controle positivo distingue *"ninguém está a construir"* de
+   *"eu não consigo ver ninguém"*.
+
+⚠️ **E a limpeza daquele dia foi segura por ACIDENTE de método, não pelo portão:** os construtores
+tinham sido medidos **num comando à parte**, um turno antes, e por isso o veredito estava certo. *Um
+resultado correto obtido com um instrumento morto não valida o instrumento* — é a mesma frase do §1.1,
+vista do outro lado.
+
 *A narrativa jornada-a-jornada que produziu estas leis está arquivada em
 [`docs/archive/processo-2026-08-18/DIRETIVA_FIM_DE_DIA.md`](../archive/processo-2026-08-18/DIRETIVA_FIM_DE_DIA.md).*
 
@@ -80,7 +113,8 @@ construtores" logo abaixo.
 ativo=""
 # (a) quem CONSTRÓI: cwd dentro da worktree.
 #     $BUILDERS vem do topo do §4 — FONTE ÚNICA, nunca uma cópia desta lista.
-for p in $BUILDERS; do
+#     ⚠️ É ARRAY e expande CITADO — `for p in $BUILDERS` morre em zsh (§4).
+for p in "${BUILDERS[@]}"; do
   for pid in $(pgrep -x "$p" 2>/dev/null); do
     cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null) || continue
     case "$cwd" in "$wt"|"$wt"/*) ativo="build $p($pid)";; esac
@@ -311,10 +345,30 @@ primary="$(git rev-parse --show-toplevel)"
 # O §1 e o §1-bis referem-se a ESTA variável. NUNCA redigite a lista noutro
 # lugar: três variantes dela já conviveram neste doc e a mais curta era a
 # colável — quem executava o runbook rodava o portão mais fraco dos três.
-BUILDERS="cargo rustc mold cc1 ld rustdoc"
+#
+# ⚠️⚠️ É UM ARRAY, e isso é LOAD-BEARING (medido 2026-08-19, ver §1).
+# `BUILDERS="a b c"` + `for p in $BUILDERS` é idioma BASH, e este bloco é
+# COLADO no shell interativo — que aqui é **zsh**, e o zsh **não faz word
+# splitting** em expansão não-citada. O laço corria UMA vez com o padrão
+# inteiro (31 chars), o `pgrep -x` recusava-o por passar de 15 e devolvia
+# zero — o portão 1a passava SEMPRE, por avaria. Um array é imune ao IFS e
+# ao shell.
+BUILDERS=(cargo rustc mold cc1 ld rustdoc)
+
+# ⚠️ CONTROLE POSITIVO do instrumento — sem ele o portão 1a não pode afirmar
+# NADA. Se o `pgrep -x` não consegue ver nem o processo que o executa, ele
+# também não veria um `cargo`, e "ninguém constrói" seria silêncio, não
+# medição. É a lei do §1 aplicada ao próprio script: *zero não é o mesmo que
+# não-medido.*
+_self=$(basename "$(readlink -f /proc/$$/exe 2>/dev/null)" 2>/dev/null)
+if [ -z "$_self" ] || ! pgrep -x "$_self" >/dev/null 2>&1; then
+  echo "✗ CONTROLE POSITIVO FALHOU: o pgrep não enxerga o próprio shell ('$_self')."
+  echo "  O portão 1a seria cego. ABORTADO, nada apagado."
+  exit 1
+fi
 
 # Portão 1a (duro, GLOBAL): build ativo aborta a limpeza INTEIRA.
-for p in $BUILDERS; do
+for p in "${BUILDERS[@]}"; do
   pgrep -x "$p" >/dev/null && { echo "✗ '$p' rodando — ABORTADO, nada apagado."; exit 1; }
 done
 

@@ -68,6 +68,7 @@
 - [✗ do ship pode ser AMBIENTE](feedback_a_ship_x_can_be_the_environment_not_the_code.md) — tmpfs evapora · disco cheio vira "linking failed"
 - ["Está em uso?" → config GLOBAL](feedback_in_use_is_answered_by_the_global_config_and_a_probe_can_start_what_it_measures.md) — apaguei 101 GB de sccache ATIVO; e `sccache -s` SOBE o servidor que ele mede
 - [Pipe mascara exit code](feedback_pipe_masks_script_exit_code.md) — verifique o ESTADO
+- [Laço colável em idioma bash NÃO itera em zsh](feedback_a_pastable_bash_loop_never_iterates_under_zsh.md) — `for p in $VAR` roda 1× com a string inteira; portão que ENUMERA exige array citado + controle positivo
 - [Crase em msg de commit executa](feedback_backticks_in_commit_message_are_command_substitution.md) — `git commit -F`
 - [Merge limpo pode estar quebrado](feedback_clean_text_merge_can_be_semantically_broken.md) — `check --workspace`
 - [Resolva pelos ESTÁGIOS do índice](feedback_resolve_conflicts_from_index_stages_not_markers.md) — `:1`base `:2`ours `:3`theirs

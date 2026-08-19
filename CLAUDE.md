@@ -197,7 +197,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `value.pattern` foi **revertida por veredito de produto sem mecanismo nomeado**: uma 2ª tentativa começa perguntando
   *o que ficou pior*, não reconstruindo (a árvore sobrevive em `ae35416bd`).
   **Smokes:** `PH2D_GPU_COOK_DEMO=<n>` · `PH2D_SPLICE_SMOKE` · `PH2D_ADAPTER_SMOKE` · `PH2D_ATTR_SMOKE` ·
-  `PH2D_PICKER_SMOKE` · `PH2D_GRADIENT_SMOKE` · `PH2D_AUTOFIX_SMOKE=1..7` · `PH2D_SHAPE_SMOKE` · `PH2D_LENS_SMOKE` ·
+  `PH2D_PICKER_SMOKE` · `PH2D_GRADIENT_SMOKE` · `PH2D_AUTOFIX_SMOKE=1..8` · `PH2D_SHAPE_SMOKE` · `PH2D_LENS_SMOKE` ·
   `PH2D_MOTION_OBJ_SMOKE` · `PH2D_MOTION_NODE_PATH_SMOKE=1|2` (⚠️ o `=2` é um **modo** de uma env que já existia,
   não um nível novo do roteador de `GPU_COOK_DEMO`: um nó que anda numa forma **desenhada** precisa do documento
   vetorial, que só aquele smoke encena).

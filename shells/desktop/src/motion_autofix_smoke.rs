@@ -513,7 +513,12 @@ impl crate::App {
             // =7 (A FORMA APROPRIADA): a cena da foto (Shape × Boids -> Oscillator ->
             // Output) sem o ⚠ falso na fonte-com-estado. O corpo mora no irmão
             // motion_autofix_smoke_appropriate.rs (teto de 600 LOC do shell).
-            _ => self.motion_autofix_smoke_appropriate(mode(), f),
+            // =8 (A RAMIFICAÇÃO MORTA): um `value.switch` com a `in1` vazia e uma serra a
+            // varrer o `select` — a fileira AFUNDA no degrau do meio. Irmão próprio.
+            _ => {
+                self.motion_autofix_smoke_appropriate(mode(), f);
+                self.motion_autofix_smoke_dead_branch(mode(), f);
+            }
         }
     }
 }

@@ -1,0 +1,50 @@
+# Spike da W0 — mede a `fidget` contra o conjunto de aceitação de
+# `docs/3DModeling/03_plano_implicito.md` §6.
+#
+# ⚠️ **Workspace PRÓPRIA, de propósito.** Os membros da workspace da PH2D são
+# glob de `crates/*` e `tools/*`, então `spikes/` já fica de fora — mas um
+# pacote aninhado sem `[workspace]` faz o cargo recusar ("believes it's in a
+# workspace when it's not"). O `[workspace]` vazio abaixo o torna raiz própria.
+#
+# A consequência é a que se quer: o `Cargo.lock` da PH2D **não é tocado** por um
+# spike. Quem decide se a `fidget` entra na workspace é a W1, com estes números
+# na mão — não o ato de medir.
+[workspace]
+
+[package]
+name = "field-spike"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+# O motor sob medição. ⚠️ `default-features = false`: o default dela é
+# `[bytecode, gui, jit, mesh, raster, rhai, shapes, solver, wgpu]`, e `gui`,
+# `rhai` e `raster` são do app-demo dela.
+#
+# `jit` fica DESLIGADO por omissão (03_plano_implicito §2.2): é assembly escrita
+# à mão, logo `unsafe`, logo HR-2 exige justificativa MEDIDA. O spike roda o
+# intérprete por padrão e o JIT sob `--features jit` — a comparação dos dois É
+# um dos números que ele existe para produzir.
+fidget = { version = "0.5", default-features = false, features = ["mesh"] }
+
+# A malha da casa — o destino real da extração (03_plano_implicito §5.2). Usá-la
+# aqui não é conveniência: é o que prova que a ponte `fidget -> ph2d_mesh::Mesh`
+# existe, que é o núcleo da W2. E ela já escreve STL/OBJ/PLY.
+ph2d-mesh = { path = "../../crates/ph2d-mesh" }
+
+# ⚠️ PNG cru, e NÃO a porta `ph2d-imageio`, **só aqui**: a porta da casa é um
+# registro (`register_exporter`) desenhado para o app, e um spike que a montasse
+# estaria medindo a cerimônia dela em vez do motor. A versão é a MESMA que o
+# `Cargo.lock` da PH2D já fixa (0.18.1), então isto não introduz uma segunda
+# resposta a "que PNG este repositório escreve".
+# ⛔ O módulo de produção usa `ph2d-imageio` — este atalho morre com o spike.
+png = "0.18"
+
+[features]
+# Liga o JIT da fidget para a medição do §6.5. Ver o comentário da dep acima.
+jit = ["fidget/jit"]
+
+# O spike mede tempo; medir tempo num build de debug mede o perfil do build.
+[profile.release]
+debug = true

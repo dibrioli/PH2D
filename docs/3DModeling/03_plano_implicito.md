@@ -104,8 +104,12 @@ O operador famoso (`opSmoothUnion`) mistura dois campos e produz um resultado qu
 distância**: ele viola a condição de Eikonal (`‖∇f‖ = 1`) e a 1-Lipschitz. Consequências reais, e é
 por aqui que implementações ingênuas ficam com cara de brinquedo:
 
-- **o raio deixa de ser o raio** — encadeie dois arredondamentos e o segundo sai errado, porque a
-  entrada dele já não mede distância;
+- **o raio deixa de ser o raio** — ⚠️ **MEDIDO E CORRIGIDO pela W0**
+  ([`01_resultados_spike.md`](01_resultados_spike.md) §3): a previsão era que **encadear** degradaria.
+  **Errado.** Uma aplicação degrada exatamente o mesmo que duas (desvio 0,4132 contra 0,4142), e a
+  degradação é **local**, onde duas superfícies se tocam quase **tangentes**. O operador exato
+  entrega o raio pedido com **0,00 %** de erro num filete transversal. *Mecanismo certo, cura errada
+  — e a cura que esta linha prescrevia (rastrear Lipschitz pela cadeia) mirava o alvo errado.*
 - **offset e casca erram** (`f(p) − t` só é espessura se `f` for distância de verdade);
 - a marcha de raios (§5.3) **atravessa a superfície**, porque o passo seguro deixou de ser seguro.
 
@@ -207,7 +211,14 @@ escreve é o que a W0 tem de medir:
 
 ## §6 — Waves
 
-### W0 — Spike medido + **a primeira imagem** (bloqueia tudo)
+### W0 — Spike medido + **a primeira imagem** ✅ **FEITA (2026-08-19)**
+
+> **Resultados: [`01_resultados_spike.md`](01_resultados_spike.md).** Nenhum kill-criterion disparou.
+> Em uma linha: **o arredondamento exato entrega o raio pedido com 0,00 % de erro** e o vértice
+> triplo fecha sem falhar (era a promessa do caminho) · **a quina viva REPROVOU** — a aresta é
+> quantizada à grade, com o mecanismo já nomeado · **o JIT não se paga** (ganho −2 % a −11 %, fica
+> desligado) · **64³ malha em 9,9 ms** num núcleo, então nenhuma GPU entra sem número novo.
+> O código vive em [`spikes/field-spike/`](../../spikes/field-spike/) e re-roda com um comando.
 
 Prova o mecanismo e produz os números que viram teto. **Entregável duplo: uma tabela e uma imagem.**
 

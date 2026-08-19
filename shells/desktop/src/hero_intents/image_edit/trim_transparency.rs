@@ -82,7 +82,7 @@ pub(crate) fn drain_trim_transparency(
         result.pixels,
         src.image.alpha,
     );
-    match texture_edit::commit_edited_texture(entity, sim, renderer, &edited, new_size) {
+    match texture_edit::commit_edited_texture(entity, sim, renderer, asset_db, &edited, new_size) {
         Err(err) => {
             toasts.push(Toast::error(format!("Trim failed: {err}")));
             true

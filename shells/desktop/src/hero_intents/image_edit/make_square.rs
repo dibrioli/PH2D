@@ -87,7 +87,7 @@ pub(crate) fn drain_make_square(
         result.pixels,
         src.image.alpha,
     );
-    match texture_edit::commit_edited_texture(entity, sim, renderer, &edited, [new_side, new_side])
+    match texture_edit::commit_edited_texture(entity, sim, renderer, asset_db, &edited, [new_side, new_side])
     {
         Err(err) => {
             toasts.push(Toast::error(format!("Make Square failed: {err}")));

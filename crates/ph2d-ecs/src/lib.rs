@@ -53,6 +53,7 @@ pub mod scene;
 pub mod sim;
 pub mod sort_key;
 pub mod sorting;
+pub mod sprite_pixels;
 pub mod transform;
 pub mod transform_inverse;
 pub mod transform_versioned;
@@ -78,6 +79,7 @@ pub use sampling::{
     resolve_texture_repeat,
 };
 pub use sim::{SimComponent, SimWorld};
+pub use sprite_pixels::SpritePixels;
 pub use sort_key::{SortInput, SortKey, compute_sort_ranks, effective_z_index};
 pub use sorting::{
     LayerId, OrderInLayer, ShowBehindParent, SortPoint, SortingGroup, SortingLayer, SortingLayers,

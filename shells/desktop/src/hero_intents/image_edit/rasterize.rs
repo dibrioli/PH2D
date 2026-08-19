@@ -95,7 +95,7 @@ pub(crate) fn drain_rasterize(
         result.width as f32 / px_per_m,
         result.height as f32 / px_per_m,
     ];
-    match texture_edit::commit_edited_texture(entity, sim, renderer, &edited, new_size_world) {
+    match texture_edit::commit_edited_texture(entity, sim, renderer, asset_db, &edited, new_size_world) {
         Err(err) => {
             toasts.push(Toast::error(format!("Rasterize failed: {err}")));
             true

@@ -121,6 +121,23 @@ struct ProjectFile {
     /// relógio andasse, então TODO projeto do app carregaria uma corrida de
     /// ninguém. Ver `render_loop::physics_bridge::dispatch`.
     player_tape: ph2d_physics_ecs::TapeWire,
+    /// **OS PIXELS PRÓPRIOS** (plano [`docs/Sprite_projeto/17`] §3) — os bytes de todo sprite
+    /// `SpriteSource::Individual`, nomeados pelo `ph2d_ecs::SpritePixels` que ele carrega.
+    /// Ver [`crate::project_sprite_pixels`].
+    ///
+    /// ⚠️ **Ele fecha uma perda de dados que já acontecia**, e não é uma capacidade nova: o
+    /// `texture_id` do `Individual` é um id de alocação da GPU, e o store recomeça em `1` a cada
+    /// processo — um sprite tocado por qualquer ferramenta de imagem reabria **invisível**, ou a
+    /// exibir os pixels de outro sprite. O `painted` (v3) e o `baked_forms` resolveram isto para
+    /// os DOIS produtores ricos; este campo é o chão que faltava debaixo deles, e cobre o funil
+    /// que todas as ferramentas atravessam (`commit_edited_texture`).
+    ///
+    /// ⚠️ **`Vec<u8>` opaco, e carrega a própria versão lá dentro** (`SHEET_DOC_VERSION`) — o
+    /// precedente literal do `timeline` e do `sculpt`. É o que faz as REGIÕES do hand-packed,
+    /// que entram neste mesmo documento, não voltarem a bumpar o `PROJECT_SCHEMA`.
+    ///
+    /// Vazio num projeto sem sprites individuais.
+    sprite_pixels: Vec<u8>,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que

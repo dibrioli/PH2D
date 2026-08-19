@@ -105,7 +105,7 @@ pub(crate) fn drain_upscale(
     };
     // Sprite.size GROWS by the upscale factor (in world meters).
     let new_size_world = [out_w as f32 / px_per_m, out_h as f32 / px_per_m];
-    match texture_edit::commit_edited_texture(entity, sim, renderer, &edited, new_size_world) {
+    match texture_edit::commit_edited_texture(entity, sim, renderer, asset_db, &edited, new_size_world) {
         Err(err) => {
             toasts.push(Toast::error(format!("Upscale failed: {err}")));
             true

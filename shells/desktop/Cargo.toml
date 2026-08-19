@@ -42,6 +42,11 @@ ph2d-panel-authored = { path = "../../crates/ph2d-panel-authored" }
 ph2d-panel-sculpt3d = { path = "../../crates/ph2d-panel-sculpt3d" }
 ph2d-panel-wet-tuning = { path = "../../crates/ph2d-panel-wet-tuning" }
 ph2d-render = { path = "../../crates/ph2d-render" }
+# Os PIXELS PRÓPRIOS de um sprite dentro do arquivo de projeto (plano `docs/Sprite_projeto/17`
+# §3). Crate fina, ao lado da `ph2d-render` porque é a mesma matéria vista do lado do disco: ela
+# é dona do `SpriteSource`, esta é dona dos bytes que o `Individual` deixava morrer com o
+# processo. Consumida por `project_sprite_pixels`.
+ph2d-sprite-sheet = { path = "../../crates/ph2d-sprite-sheet" }
 # Wave 11 color-space migration (ADR-0042 §6 #2): typed color wrappers
 # (SrgbRgba) at the IO boundary. The shell casts between the existing
 # Vec<u8> pixel buffers and the tools' typed signatures via

@@ -46,7 +46,7 @@ pub(crate) fn auto_commit_painter(
     let edited =
         ph2d_render::SpriteImage::from_bytes(w, h, canvas, ph2d_render::AlphaMode::Straight)
             .into_premultiplied();
-    if texture_edit::commit_edited_texture(entity, sim, renderer, &edited, old_size_world).is_ok() {
+    if texture_edit::commit_edited_texture(entity, sim, renderer, asset_db, &edited, old_size_world).is_ok() {
         painter.mark_baked();
         true
     } else {
@@ -97,7 +97,7 @@ pub(crate) fn drain_painter(
     let edited =
         ph2d_render::SpriteImage::from_bytes(w, h, canvas, ph2d_render::AlphaMode::Straight)
             .into_premultiplied();
-    match texture_edit::commit_edited_texture(entity, sim, renderer, &edited, old_size_world) {
+    match texture_edit::commit_edited_texture(entity, sim, renderer, asset_db, &edited, old_size_world) {
         Err(err) => {
             toasts.push(Toast::error(format!("Painter failed: {err}")));
             true

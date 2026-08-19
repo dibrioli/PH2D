@@ -91,6 +91,22 @@ impl crate::App {
                 }
             }
         };
+        // **E OS PIXELS PRÓPRIOS DOS SPRITES, pela MESMÍSSIMA lei** (plano
+        // `docs/Sprite_projeto/17` §3). Aqui ela é ainda mais afiada, porque isto **são os
+        // pixels**: abrir sem eles mostraria a cena com os sprites em branco — ou invisíveis —,
+        // pareceria um bug de render, e o próximo Ctrl+S gravaria o vazio por cima da arte. O
+        // parse vem ANTES de qualquer mutação da sessão, então recusar não custa nada ao
+        // documento aberto.
+        let sprite_pixels = match ph2d_sprite_sheet::decode(&file.sprite_pixels) {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("[proj] pixels de sprite ilegiveis — load RECUSADO: {e}");
+                self.toast(format!(
+                    "Project refused: its sprite images are from another version ({e})"
+                ));
+                return;
+            }
+        };
         // ---- Daqui pra baixo o arquivo foi ACEITO. ----
         //
         // **A SESSÃO ESQUECE O DOCUMENTO ANTERIOR.** Este bloco fica colado na decisão de
@@ -177,6 +193,16 @@ impl crate::App {
         self.autokey = Default::default(); // pins/baselines de pose keyados por bits mortos
         self.materialize_assets(&file.assets);
         self.apply_project(&file.state);
+        // **OS PIXELS PRÓPRIOS** (plano `docs/Sprite_projeto/17` §3) — depois do mundo, porque é
+        // pelo `SpritePixels` (que viaja no snapshot) que cada sprite reencontra os bytes que
+        // eram dele. Fecha a perda que atingia TODA ferramenta de imagem: o `texture_id` do save
+        // é um id de alocação da GPU e o store recomeça em `1` a cada processo.
+        //
+        // ⚠️ **A ORDEM É A PRECEDÊNCIA, e é de propósito que ele vem PRIMEIRO:** um sprite
+        // pintado ou assado tem documento mais rico, e os dois restores abaixo escrevem por cima
+        // deste. (A colheita já os salta, então na prática não há duplo trabalho — mas a ordem é
+        // o que torna isso verdade mesmo para um arquivo salvo por um binário anterior.)
+        self.restore_sprite_pixels(sprite_pixels);
         // Depois do mundo: os sprites já existem (com bits novos), e é pelo `PaintedDoc` que cada um
         // reencontra o documento que era dele.
         self.restore_painted_docs(file.painted);

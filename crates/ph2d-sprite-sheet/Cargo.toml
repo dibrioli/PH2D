@@ -1,0 +1,20 @@
+[package]
+name = "ph2d-sprite-sheet"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# A ÚNICA dep do PH2D, e é a identidade: `AssetId` é o blake3 do conteúdo (HR-6), o mesmo que o
+# `AssetDb` cunha — usar outro tipo aqui criaria um segundo nome para a mesma coisa. Crate fina de
+# propósito (plano `docs/Sprite_projeto/17` §3): a shell, o painel e a ferramenta de empacotar
+# consomem este documento, e nenhum dos três conhece os outros.
+ph2d-asset = { path = "../ph2d-asset" }
+serde = { version = "1", features = ["derive"] }
+# O MESMO formato de fio canônico do resto do projeto (ProjectFile, PrefabDoc, ComponentBlob).
+postcard = { version = "1", features = ["alloc"] }

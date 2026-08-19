@@ -8565,6 +8565,7 @@ impl crate::App {
                         copy,
                         sim,
                         renderer,
+                        asset_db,
                         &read.image,
                         read.old_size_world,
                     );

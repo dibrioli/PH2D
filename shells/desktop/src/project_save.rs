@@ -40,6 +40,12 @@ impl crate::App {
         // da captura — senão o `PaintedDoc` recém-inserido ficaria de fora do snapshot e o load não
         // teria a quem devolver o documento.
         let painted = self.collect_painted_docs();
+        // Os pixels próprios de todo sprite Individual (plano `docs/Sprite_projeto/17` §3).
+        // ⚠️ DEPOIS do `collect_painted_docs`: é ele que carimba o `PaintedDoc`, e a colheita
+        // daqui SALTA quem o tem — um sprite pintado tem dono mais rico, e guardar as duas
+        // coisas seria gravar duas verdades sobre o mesmo sprite. Antes dele, o carimbo ainda
+        // não existiria e o achatado entraria no arquivo à socapa.
+        let sprite_pixels = self.collect_sprite_pixels();
         // A animação. O `serialize` carimba em cada binding o hash do NOME do objeto — é por
         // ele que a track reencontra o objeto do outro lado do arquivo (os bits de entidade
         // não sobrevivem a um respawn). Precisa do mundo, então vem antes da captura.
@@ -89,6 +95,7 @@ impl crate::App {
             // A corrida que o artista jogou (W17). O `to_wire` é a única tradução
             // — o `PlayerInput` da crate da LEI não conhece serde de propósito.
             player_tape: self.player_tape.to_wire(),
+            sprite_pixels,
         };
         let bytes = match postcard::to_allocvec(&(PROJECT_SCHEMA, &file)) {
             Ok(b) => b,

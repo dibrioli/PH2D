@@ -106,20 +106,44 @@ pub(crate) fn read_sprite_source(
 /// THE single place an image-tool result writes `Sprite.premultiplied`
 /// — derived from the bytes' actual [`AlphaMode`], so the flag can never
 /// drift from the representation (the original Trim/Make-Square bug).
+///
+/// ## It is also where the pixels get a DURABLE NAME
+///
+/// `texture_id` is a GPU allocation id and the store restarts numbering at `1` every process, so
+/// a sprite that only carried it came back **invisible** — or showing another sprite's pixels —
+/// after save/load. The same bytes therefore also go into the [`AssetDb`] (blake3 content hash,
+/// HR-6) and the entity is stamped with [`ph2d_ecs::SpritePixels`], which travels in the
+/// `WorldSnapshot` and is what `project_sprite_pixels` writes to (and restores from) the file.
+///
+/// Doing it HERE is the whole point: an arch gate pins this function as the single door every
+/// image tool leaves through, so eight tools are covered by one stamp rather than eight.
 pub(crate) fn commit_edited_texture(
     entity: Entity,
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
     img: &SpriteImage,
     new_size_world: [f32; 2],
 ) -> Result<u32, String> {
     let texture_id = renderer
         .acquire_individual(img.width, img.height, &img.pixels)
         .map_err(|e| e.to_string())?;
+    // The durable name of these exact bytes. `insert_image_rgba8` takes `&self` (interior
+    // mutability) and hashes dims + content, so re-committing an identical edit is idempotent
+    // and two sprites that end up with the same pixels share one entry in the project file.
+    let pixels_id = asset_db.insert_image_rgba8(img.width, img.height, img.pixels.clone());
     if let Some(mut sprite) = sim.world_mut().get_mut::<Sprite>(entity) {
         sprite.source = SpriteSource::Individual { texture_id };
         sprite.size = new_size_world;
         sprite.premultiplied = img.alpha.is_premultiplied();
+    }
+    // Stamped AFTER the sprite write and unconditionally: an entity whose `Sprite` vanished
+    // mid-frame gets no stamp because `insert` on a dead entity is the caller's bug, so guard on
+    // the same lookup the write used.
+    if sim.world().get::<Sprite>(entity).is_some() {
+        sim.world_mut()
+            .entity_mut(entity)
+            .insert(ph2d_ecs::SpritePixels(pixels_id));
     }
     Ok(texture_id)
 }

@@ -512,4 +512,17 @@
 /// ⚠️ A contagem mora no `VecLayout` e **não** dentro do variante, para sobreviver a uma
 /// troca de direção: ir a `Row` e voltar devolve a grade intacta, como o vão e o recuo já
 /// fazem.
-pub(crate) const PROJECT_SCHEMA: u32 = 84;
+/// v85 (`line/Sprite`, plano [`docs/Sprite_projeto/17`] §3 — OS PIXELS GANHAM NOME): o
+/// `ProjectFile` ganhou **`sprite_pixels`**, o documento do `ph2d-sprite-sheet`. Campo
+/// apendado ⇒ bump pelo motivo posicional de sempre.
+/// ⚠️ **O que este degrau CONSERTA é perda de dados em produção, não uma capacidade nova.**
+/// `SpriteSource::Individual { texture_id }` guarda um id de alocação da GPU, e o
+/// `IndividualTextureStore` recomeça a numerar em `1` a cada processo: um sprite tocado por
+/// QUALQUER ferramenta de imagem (trim · bgremoval · make-square · padding · upscale ·
+/// rasterize · equalize) reabria **invisível**, ou a exibir os pixels de outro sprite que
+/// ficou com aquele id no restore. O Painter (v3) e o bake 3D (`baked_forms`) já tinham sido
+/// resgatados um a um; este degrau é o **chão** que faltava debaixo dos dois.
+/// ⚠️ **E ele bumpa UMA vez.** O blob carrega a própria versão (`SHEET_DOC_VERSION`), como o
+/// `TimelineDoc` e o `sculpt` — então as regiões do hand-packed, que entram neste MESMO
+/// documento, não voltarão a recusar projeto salvo nenhum.
+pub(crate) const PROJECT_SCHEMA: u32 = 85;

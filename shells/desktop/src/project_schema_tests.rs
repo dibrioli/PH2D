@@ -343,7 +343,13 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // do `columns` como o comeco do que vem a seguir. A contagem mora no
         // struct e nao dentro da variante, para o numero sobreviver a uma troca de
         // direcao — ir a `Row` e voltar devolve a grade intacta.
-        (84, 13, 14),
+        // PROJECT 84→85: o `ProjectFile` ganhou `sprite_pixels` (o documento do
+        // `ph2d-sprite-sheet`). Campo APENDADO ⇒ bump posicional de sempre. ⚠️ Nem
+        // o `FlipDoc` nem a `VecScene` mudam de forma aqui — os outros dois numeros
+        // ficam onde estao, e este degrau so' toca o primeiro. ⚠️ O blob carrega a
+        // PROPRIA versao (`SHEET_DOC_VERSION`), como o `TimelineDoc` e o `sculpt`:
+        // as regioes do hand-packed entram no MESMO documento sem outro bump.
+        (85, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

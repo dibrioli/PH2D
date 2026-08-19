@@ -379,6 +379,12 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // autorados, e o que sobra é um caminho vazio no lugar onde havia uma cópia.
     reg.register::<crate::VecComponentMain>("ph2d::ecs::VecComponentMain");
     reg.register::<crate::VecInstance>("ph2d::ecs::VecInstance");
+    // O NOME DURÁVEL dos pixels próprios de um sprite (plano 17 §3). Mesma razão de todos os
+    // irmãos, e o modo de falha aqui já estava a acontecer em produção: `SpriteSource::Individual`
+    // guarda um id de alocação da GPU, que recomeça em `1` a cada processo — sem esta identidade no
+    // snapshot, reabrir o projeto devolve o sprite INVISÍVEL (o `bind_group` não resolve) ou a
+    // exibir os pixels de OUTRO sprite que ficou com aquele id no restore.
+    reg.register::<crate::SpritePixels>("ph2d::ecs::SpritePixels");
 }
 
 #[cfg(test)]
@@ -430,7 +436,8 @@ mod tests {
         // + 1 pele por-widget (VecWidget, plano UI/UX W6.2)
         // + 1 vinculo row -> forma (VecWidgetBind, plano UI/UX W8b.3)
         // + 1 posicao do controle (VecWidgetValue, plano UI/UX W8b.4)
-        // + 1 icone escolhido (VecWidgetIcon, plano UI/UX W8b §6.2).
+        // + 1 icone escolhido (VecWidgetIcon, plano UI/UX W8b §6.2)
+        // + 1 nome duravel dos pixels proprios (SpritePixels, plano Sprite 17 §3).
         //
         // **Este número existe para doer.** Um componente que não passa por aqui é
         // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só
@@ -442,7 +449,8 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 57);
+        assert_eq!(reg.len(), 58);
+        assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecAnchors").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecResizeBox").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecWidget").is_some());

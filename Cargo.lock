@@ -5465,6 +5465,7 @@ dependencies = [
  "ph2d-script",
  "ph2d-sculpt3d",
  "ph2d-sdf",
+ "ph2d-sprite-sheet",
  "ph2d-text",
  "ph2d-timeline",
  "ph2d-token-math",
@@ -7504,6 +7505,15 @@ dependencies = [
 name = "ph2d-spring"
 version = "0.0.0"
 dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "ph2d-sprite-sheet"
+version = "0.0.0"
+dependencies = [
+ "ph2d-asset",
+ "postcard",
  "serde",
 ]
 

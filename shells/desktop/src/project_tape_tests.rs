@@ -70,6 +70,7 @@ fn a_recorded_run_survives_the_file() {
         sculpt: Vec::new(),
         baked_forms: Vec::new(),
         player_tape: saved.to_wire(),
+        sprite_pixels: Vec::new(),
     };
     std::fs::write(
         &path,

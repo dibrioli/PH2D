@@ -358,6 +358,10 @@ mod project_schema;
 /// **As settings do PROJETO viajam no arquivo** (doc 88, D3) — a escala do mundo e a
 /// unidade que o artista lê; irmão de `project` pelo teto de LOC.
 mod project_settings;
+/// **Os pixels próprios de um sprite dentro do arquivo** (plano `docs/Sprite_projeto/17` §3) —
+/// irmão do `project_painter`, e o chão que faltava debaixo dele: cobre o funil que TODAS as
+/// ferramentas de imagem atravessam, não um produtor só.
+mod project_sprite_pixels;
 /// **A tabela de COR autorada viaja no arquivo** (plano UI/UX W6) — irmão de `project`
 /// pelo teto de LOC, cortado por assunto.
 mod project_tokens;

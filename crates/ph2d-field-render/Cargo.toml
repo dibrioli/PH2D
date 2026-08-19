@@ -1,0 +1,39 @@
+[package]
+name = "ph2d-field-render"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O TRAÇADOR do módulo de modelagem 3D (ADR-0161 §2): marcha raios contra o
+# campo e devolve o que a superfície É — máscara, normal e profundidade.
+#
+# ⚠️ **É este o caminho pelo qual o artista vê a peça, e não a malha.** Medido na
+# W0: o campo traçado dá quina de navalha e filete liso; a mesma cena extraída em
+# malha serrilha. A malha continua existindo — para EXPORTAR.
+[dependencies]
+# A árvore de avaliação e o documento que a origina.
+ph2d-field = { path = "../ph2d-field" }
+ph2d-field-eval = { path = "../ph2d-field-eval" }
+
+# A porta sRGB da casa. ⚠️ Escrever a curva aqui seria a segunda resposta: a sRGB
+# tem JOELHO, e um `x^(1/2.2)` à mão erra no escuro — que é metade de um matcap.
+ph2d-color = { path = "../ph2d-color" }
+
+# rayon: a EXCEÇÃO é autorizada pela forma exata do ADR-0109, e um traçador é o
+# caso canônico dela — cada pixel é um GATHER puro contra uma árvore IMUTÁVEL,
+# escreve só o próprio slot, não soma nada com o vizinho, não sorteia e não muda
+# de ordem. Byte-identidade contra o serial é GATE
+# (`the_threaded_trace_is_byte_identical_to_the_serial_one`), medida por número
+# de threads, não afirmada.
+rayon = "1"
+
+# ⚠️ **NÃO há dependência da `ph2d-mesh-render` aqui, e é deliberado.** Os
+# matcaps vivem lá (com os assets e a licença), mas aquela crate carrega o
+# `wgpu`, e um traçador de CPU não tem por que arrastar um renderizador de GPU.
+# Quem tem o matcap PASSA os texels (`Matcap` abaixo). A lei de amostragem — a
+# normal em espaço de VISTA — mora aqui, junto de quem produz a normal.

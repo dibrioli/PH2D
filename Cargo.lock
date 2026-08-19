@@ -5476,6 +5476,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-field-render"
+version = "0.0.0"
+dependencies = [
+ "ph2d-color",
+ "ph2d-field",
+ "ph2d-field-eval",
+ "rayon",
+]
+
+[[package]]
 name = "ph2d-flip"
 version = "0.0.0"
 dependencies = [
@@ -5661,6 +5671,7 @@ dependencies = [
  "cpal",
  "fontique",
  "gilrs",
+ "half",
  "image",
  "libm",
  "ph2d-anim",
@@ -5680,6 +5691,8 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-editor",
  "ph2d-eval-motion",
+ "ph2d-field",
+ "ph2d-field-render",
  "ph2d-flip",
  "ph2d-flip-colorize",
  "ph2d-flip-fill",

@@ -311,6 +311,15 @@ ph2d-vec-connect = { path = "../../crates/ph2d-vec-connect" }
 ph2d-flip = { path = "../../crates/ph2d-flip" }
 # ADR-0114 W1: pipeline wgpu dedicado do traço do Flip (passe no present.rs).
 ph2d-flip-render = { path = "../../crates/ph2d-flip-render" }
+# ADR-0161 — o tracador do modulo de modelagem 3D. E o caminho pelo qual o artista
+# ve a peca: medido na W0, o campo tracado da quina de navalha e filete liso,
+# enquanto a mesma cena extraida em malha serrilha. A malha fica para EXPORTAR.
+ph2d-field-render = { path = "../../crates/ph2d-field-render" }
+ph2d-field = { path = "../../crates/ph2d-field" }
+# `half`: SO para converter os texels f16 de um matcap da casa
+# (`ph2d-mesh-render::matcap::decode`) em f32 linear, no smoke do campo. Ja esta
+# no `Cargo.lock` — e aresta, nao pacote novo.
+half = "2"
 # ADR-0150 — a malha residente e o passe wgpu dela. `optional`: e o que torna a
 # feature `sculpt3d` uma promessa de remocao verificavel, e nao uma opiniao.
 ph2d-mesh = { path = "../../crates/ph2d-mesh", optional = true }

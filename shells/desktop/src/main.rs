@@ -110,6 +110,9 @@ mod envelope_smoke;
 mod expr_blend_smoke;
 mod extrap_smoke;
 mod falloff_smoke;
+/// ADR-0161 — o smoke do módulo de modelagem 3D (`PH2D_FIELD_SMOKE=1..3`): o **campo traçado** na
+/// tela, que é o caminho pelo qual o artista vê a peça (a malha é só para exportar).
+mod field3d_smoke;
 /// Motion Nodes: o gizmo de canvas de um field espacial (`field.box`, …). Espelho do
 /// `flip_selection_gizmo` — `GizmoTarget::MotionField`, apply nos params do NÓ.
 mod field_gizmo;

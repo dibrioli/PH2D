@@ -8877,6 +8877,13 @@ impl crate::App {
                     paint_ctx.text,
                 );
             }
+            // ADR-0161 — o smoke do módulo de modelagem 3D (`PH2D_FIELD_SMOKE=1..3`). No-op
+            // silencioso sem a variável; todo o estado vive no próprio módulo, de propósito
+            // (`field3d_smoke`, §"Estado contido").
+            crate::field3d_smoke::draw(
+                ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
+                vector_scene,
+            );
             // Fase 0f: overlay the active rubber-band rect on top of
             // everything (panels, gizmo, hero chrome). Pure shell
             // concern — coords stay in screen space so the rect

@@ -123,13 +123,55 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
     let corner = f64::from(p.corner.clamp(0.0, 1.0)) * s;
     let sq = ([-s, -s], [s, s]);
     let box_ = ([-s, -ry], [s, ry]);
+    // ⚠️ **A SENTINELA do `sweep`** (doc 89 folha 14): `0` quer dizer *"como a forma nasce"*,
+    // e não *"uma fatia de zero graus"*. Sem ela o default não reduz — o círculo passa `0`
+    // (que a biblioteca lê como volta inteira) e a `Pie` passa o ângulo canónico dela.
+    let swept = |k: VecKind, i: usize| {
+        let v = f64::from(p.sweep);
+        if v == 0.0 { k.defaults()[i] } else { v }
+    };
+    let start = f64::from(p.start);
+    let inner = f64::from(p.inner.clamp(0.0, 0.99));
+    // Os três desvios por canto, em unidades de MUNDO como o `corner` — a fracção é a
+    // mesma escada, então mexer no `size` leva os quatro juntos.
+    let off = |k: usize| f64::from(p.corner_offsets[k].clamp(-1.0, 1.0)) * s;
+    let smoothing = f64::from(p.smoothing.clamp(0.0, 1.0));
     match p.kind {
         // ——— the eight that shipped, reproduced exactly ———
         // `ellipse_sweep` with sweep/start/inner all zero is the plain ellipse: the
         // sweep field reads "unset" as a full turn, which is what makes the legacy
         // circle survive the move.
-        ShapeKind::Circle => (VecKind::Ellipse, sq.0, sq.1, vec![0.0, 0.0, 0.0]),
-        ShapeKind::Ellipse => (VecKind::Ellipse, box_.0, box_.1, vec![0.0, 0.0, 0.0]),
+        // ⚠️ O `defaults()[0]` da `Ellipse` é a volta INTEIRA, e a receita passava `0` —
+        // que a biblioteca lê como o mesmo. A sentinela devolve `0` aqui, então o círculo
+        // de todo documento anterior cozinha os MESMOS bits.
+        ShapeKind::Circle => (
+            VecKind::Ellipse,
+            sq.0,
+            sq.1,
+            vec![
+                if p.sweep == 0.0 {
+                    0.0
+                } else {
+                    f64::from(p.sweep)
+                },
+                start,
+                inner,
+            ],
+        ),
+        ShapeKind::Ellipse => (
+            VecKind::Ellipse,
+            box_.0,
+            box_.1,
+            vec![
+                if p.sweep == 0.0 {
+                    0.0
+                } else {
+                    f64::from(p.sweep)
+                },
+                start,
+                inner,
+            ],
+        ),
         // The three per-corner offsets and the smoothing were APPENDED to the
         // round-rect's values and are all neutral at zero, so `[r, 0, 0, 0, 0]` is
         // the uniform round-rect the node always built.
@@ -137,13 +179,13 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
             VecKind::RoundRect,
             sq.0,
             sq.1,
-            vec![corner.min(s), 0.0, 0.0, 0.0, 0.0],
+            vec![corner.min(s), off(0), off(1), off(2), smoothing],
         ),
         ShapeKind::Rectangle => (
             VecKind::RoundRect,
             box_.0,
             box_.1,
-            vec![corner.min(s.min(ry)), 0.0, 0.0, 0.0, 0.0],
+            vec![corner.min(s.min(ry)), off(0), off(1), off(2), smoothing],
         ),
         ShapeKind::Polygon => (VecKind::Polygon, sq.0, sq.1, vec![sides, corner]),
         ShapeKind::Star => (
@@ -216,7 +258,25 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
                 // appended.
                 _ => unreachable!("as oito primeiras tem braco proprio"),
             };
-            (k, box_.0, box_.1, k.defaults().to_vec())
+            // ⚠️ **A pizza e a corda deixam de correr no default.** Elas são a MESMA forma
+            // da elipse com outros números (`ellipse_sweep`/`ellipse_chord`), e a folha 14
+            // dizia exactamente isto: *"a FORMA chegou, o CONTROLO não"*. A `Segment` não
+            // tem miolo — a corda não o computa —, então o `inner` fica de fora dela e é o
+            // gate da tabela que o prova, mexendo no número.
+            let mut v = k.defaults().to_vec();
+            match k {
+                VecKind::Pie => {
+                    v[0] = swept(k, 0);
+                    v[1] = start;
+                    v[2] = inner;
+                }
+                VecKind::Segment => {
+                    v[0] = swept(k, 0);
+                    v[1] = start;
+                }
+                _ => {}
+            }
+            (k, box_.0, box_.1, v)
         }
     }
 }

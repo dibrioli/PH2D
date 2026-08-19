@@ -7,6 +7,17 @@
 //! `#[path]`, então `super` é `render_loop::motion_shape_gen`.
 
 use super::*;
+
+/// O descritor NEUTRO — lido do MANIFESTO, nunca escrito à mão.
+///
+/// ⚠️ **Um literal aqui é a forma exacta de um param novo escapar a estes gates:** ele
+/// compila até alguém acrescentar um campo, e nesse dia a correcção mais rápida é copiar
+/// um número, o que prende o teste a um valor que o manifesto pode ter mudado. Lido pela
+/// `ShapeParams::read` — a mesma porta do nó e do shell — o neutro é, por construção, o
+/// que um documento sem nada autorado cozinha.
+fn neutral() -> ShapeParams {
+    ShapeParams::read(manifest_default)
+}
 use ph2d_node_motion_shape::{ALL_KINDS, KIND_LABELS, ShapeKind, ShapeParams};
 
 /// **A que decide se a wave pode existir.** Rotear tudo pelo `cook()` só é seguro se
@@ -53,16 +64,12 @@ fn the_eight_that_shipped_cook_exactly_what_they_cooked() {
                 for sides in [3u32, 6, 32] {
                     for corner in [0.0f32, 0.37, 1.0] {
                         let p = ShapeParams {
-                            stroke: None,
                             kind,
                             size,
                             aspect,
                             sides,
                             corner,
-                            star_depth: 0.45,
-                            cleft: 0.2,
-                            tooth_depth: 0.35,
-                            hole: 0.45,
+                            ..neutral()
                         };
                         let now = build_shape_path(&p);
                         let then = build_shape_path_as_it_shipped(&p);
@@ -141,16 +148,10 @@ fn every_label_names_a_kind_and_every_kind_draws() {
         );
         assert_eq!(k.index(), i, "e a volta tem de fechar");
         let p = ShapeParams {
-            stroke: None,
             kind: *k,
-            size: 1.0,
             aspect: 1.3,
-            sides: 6,
             corner: 0.2,
-            star_depth: 0.45,
-            cleft: 0.2,
-            tooth_depth: 0.35,
-            hole: 0.45,
+            ..neutral()
         };
         let path = build_shape_path(&p);
         assert!(
@@ -187,39 +188,46 @@ fn every_label_names_a_kind_and_every_kind_draws() {
 /// ajusta); se não mudou, não pode estar (o botão morto que este codebase recusa).
 #[test]
 fn no_kind_hides_a_live_knob_or_shows_a_dead_one() {
-    let base = |kind: ShapeKind| ShapeParams {
-        stroke: None,
-        kind,
-        size: 1.0,
-        aspect: 1.0,
-        sides: 6,
-        corner: 0.0,
-        star_depth: 0.45,
-        cleft: 0.2,
-        tooth_depth: 0.35,
-        hole: 0.45,
-    };
+    let base = |kind: ShapeKind| ShapeParams { kind, ..neutral() };
     // Um valor claramente diferente por param — o suficiente para a geometria
     // responder se ela responde de todo.
     /// O nome do param e o empurrão que ele leva — nomeado porque a tupla crua
     /// dispara o `type_complexity` do clippy, e um `✗` de lint bloqueia o ship.
-    type Nudge = (&'static str, fn(&mut ShapeParams));
+    /// O nome do param, o CONTEXTO em que ele é medido, e o empurrão que ele leva.
+    ///
+    /// ⚠️ **O contexto corre nos DOIS lados da comparação, e sem ele o gate atribui mal.**
+    /// A suavização só tem o que suavizar sobre um canto REDONDO, então o empurrão dela
+    /// precisa de um `corner > 0` ao lado — mas se esse `corner` entrasse só no lado
+    /// empurrado, o gate mediria *"corner + smoothing"* e concluía que a suavização muda o
+    /// POLÍGONO (que responde ao `corner` e não a ela). Foi exactamente o que ele acusou.
+    /// Nomeado porque a tupla crua dispara o `type_complexity` do clippy.
+    type Nudge = (&'static str, fn(&mut ShapeParams), fn(&mut ShapeParams));
+    fn nothing(_: &mut ShapeParams) {}
     let nudge: &[Nudge] = &[
-        ("aspect", |p| p.aspect = 2.5),
-        ("sides", |p| p.sides = 11),
-        ("corner", |p| p.corner = 0.6),
-        ("star_depth", |p| p.star_depth = 0.85),
-        ("cleft", |p| p.cleft = 0.42),
-        ("tooth_depth", |p| p.tooth_depth = 0.55),
-        ("hole", |p| p.hole = 0.9),
+        ("aspect", nothing, |p| p.aspect = 2.5),
+        ("sides", nothing, |p| p.sides = 11),
+        ("corner", nothing, |p| p.corner = 0.6),
+        ("star_depth", nothing, |p| p.star_depth = 0.85),
+        ("cleft", nothing, |p| p.cleft = 0.42),
+        ("tooth_depth", nothing, |p| p.tooth_depth = 0.55),
+        ("hole", nothing, |p| p.hole = 0.9),
+        ("sweep", nothing, |p| p.sweep = 140.0),
+        ("start", nothing, |p| p.start = 55.0),
+        ("inner", nothing, |p| p.inner = 0.5),
+        ("corner_tr", nothing, |p| p.corner_offsets[0] = 0.4),
+        ("corner_br", nothing, |p| p.corner_offsets[1] = 0.4),
+        ("corner_bl", nothing, |p| p.corner_offsets[2] = 0.4),
+        ("smoothing", |p| p.corner = 0.5, |p| p.smoothing = 0.8),
     ];
     let same = |a: &ph2d_vec_scene::VecPath, b: &ph2d_vec_scene::VecPath| {
         all_geometry(a) == all_geometry(b)
     };
     for (i, kind) in ALL_KINDS.iter().enumerate() {
-        let untouched = build_shape_path(&base(*kind));
-        for (name, apply) in nudge {
-            let mut p = base(*kind);
+        for (name, context, apply) in nudge {
+            let mut before = base(*kind);
+            context(&mut before);
+            let untouched = build_shape_path(&before);
+            let mut p = before;
             apply(&mut p);
             let live = !same(&build_shape_path(&p), &untouched);
             let shown = param_gate_shows(name, i);
@@ -277,5 +285,75 @@ fn param_gate_shows(name: &str, idx: usize) -> bool {
         // Sem porta = sempre visível.
         None => true,
         Some(g) => g.values.contains(&(idx as i32)),
+    }
+}
+
+/// **OS SETE KNOBS NOVOS, INTOCADOS, COZINHAM O QUE A BIBLIOTECA JÁ COZINHAVA** (doc 89
+/// folha 14 — as linhas do *sweep/start/inner* e do *raio por canto*).
+///
+/// ⚠️ **A byte-identidade não é automática aqui, e é por isso que este gate existe:** o
+/// `sweep` tem uma SENTINELA (`0` = *"como a forma nasce"*) porque as espécies discordam
+/// sobre o que é neutro — a elipse passava `0` (que a biblioteca lê como volta inteira) e a
+/// pizza passava o ângulo canónico dela. Um default único teria quebrado uma das duas, **e
+/// em silêncio**: uma pizza que vira círculo continua a desenhar uma forma bonita.
+///
+/// O oráculo é a própria biblioteca: para toda espécie do catálogo, os valores que a receita
+/// monta a partir do descritor NEUTRO têm de ser exactamente os `defaults()` daquela espécie.
+#[test]
+fn the_seven_new_knobs_are_neutral_at_their_defaults() {
+    for kind in ALL_KINDS {
+        let (vk, _, _, v) = vec_recipe(&ShapeParams {
+            kind: *kind,
+            ..neutral()
+        });
+        // As oito primeiras têm braço próprio na receita (a `Circle` passa `[0,0,0]`, que a
+        // biblioteca lê como volta inteira, e o round-rect passa `[r,0,0,0,0]`); o gate
+        // `the_eight_that_shipped_cook_exactly_what_they_cooked` é quem as prende, contra o
+        // construtor congelado. Aqui interessam as do CATÁLOGO, que corriam nos `defaults()`.
+        if matches!(
+            kind,
+            ShapeKind::Circle
+                | ShapeKind::Ellipse
+                | ShapeKind::Square
+                | ShapeKind::Rectangle
+                | ShapeKind::Polygon
+                | ShapeKind::Star
+                | ShapeKind::Heart
+                | ShapeKind::Gear
+        ) {
+            continue;
+        }
+        assert_eq!(
+            v,
+            vk.defaults().to_vec(),
+            "{kind:?} deixou de correr nos valores canonicos da biblioteca"
+        );
+    }
+}
+
+/// **E o CONTROLE de que os knobs novos não são inertes na pizza e na corda** — sem ele o
+/// gate acima é satisfeito por uma receita que ignora os params por completo.
+///
+/// ⚠️ É o par exigido pela lei desta casa: *ausência E presença*. A folha 14 dizia
+/// *"a FORMA chegou, o CONTROLO não"*, e é precisamente a metade "controlo" que este mede.
+#[test]
+fn the_pie_and_the_segment_answer_to_the_new_knobs() {
+    /// O nome do knob e o empurrão — nomeado porque a tupla crua dispara o `type_complexity`.
+    type Move = (&'static str, fn(&mut ShapeParams));
+    for kind in [ShapeKind::Pie, ShapeKind::Segment] {
+        let base = build_shape_path(&ShapeParams { kind, ..neutral() });
+        let moves: &[Move] = &[
+            ("sweep", |p| p.sweep = 200.0),
+            ("start", |p| p.start = 70.0),
+        ];
+        for (name, apply) in moves {
+            let mut p = ShapeParams { kind, ..neutral() };
+            apply(&mut p);
+            assert_ne!(
+                all_geometry(&build_shape_path(&p)),
+                all_geometry(&base),
+                "{kind:?}: o `{name}` tem de mover a forma"
+            );
+        }
     }
 }

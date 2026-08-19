@@ -234,6 +234,7 @@ mod motion_object_bake;
 mod motion_object_smoke;
 mod motion_path_smoke;
 mod motion_shape_smoke;
+mod motion_shape_smoke_knobs;
 mod motion_state;
 mod multi_node_smoke;
 mod name_unique;

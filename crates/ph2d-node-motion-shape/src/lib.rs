@@ -35,7 +35,7 @@
 //! content-revision rides in the cook fingerprint, so editing a slider re-cooks
 //! this node and only what is downstream of it.
 
-use ph2d_node_registry::{NodeRegistry, ParamGate, ParamUnit, ParamUnitDecl, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -263,6 +263,17 @@ pub struct ShapeParams {
     /// um traço que herdasse essa cor seria **invisível** — a mesma tinta por cima
     /// dela mesma. É o controle que separa *forma* de *silhueta*.
     pub stroke: Option<Stroke>,
+    /// A abertura do arco em graus — **`0` é a sentinela *"como a forma nasce"***
+    /// (ver [`param::SWEEP`]).
+    pub sweep: f32,
+    /// Onde o arco começa, em graus (`0` = o default da biblioteca).
+    pub start: f32,
+    /// O raio interno como fracção do externo (`0` = maciço).
+    pub inner: f32,
+    /// Os três desvios de raio por canto, somados ao `corner` — `[TR, BR, BL]`.
+    pub corner_offsets: [f32; 3],
+    /// A suavização do canto (`0..1`, o *corner smoothing*).
+    pub smoothing: f32,
 }
 
 /// A largura e a cor do traço de uma forma.
@@ -293,6 +304,38 @@ pub mod param {
     pub const STROKE_B: &str = "stroke_b";
     pub const STROKE_A: &str = "stroke_a";
 
+    /// **A ABERTURA do arco**, em graus (doc 89 folha 14, a linha do *sweep / start /
+    /// inner*). A família do círculo (`Ellipse`/`Circle`/`Pie`/`Segment`) é uma só forma na
+    /// biblioteca; o que a faz pizza, rosquinha ou anel parcial são estes três números, que
+    /// a receita passava **fixos**.
+    ///
+    /// ⚠️ **`0` é SENTINELA: *"como a forma nasce"***, e não *"uma fatia de zero graus"*.
+    /// Sem ela o default não reduz: um círculo passa `0` hoje (a biblioteca lê isso como
+    /// volta inteira) mas uma `Pie` passa `k.defaults()`, o ângulo canónico dela — um
+    /// default único quebraria uma das duas. O que se perde é autorar uma fatia de
+    /// exactamente 0°, que não desenha nada.
+    pub const SWEEP: &str = "sweep";
+    /// **Onde o arco COMEÇA**, em graus. `0` é o default da biblioteca para as três formas,
+    /// então aqui ele é o valor neutro de verdade, não uma sentinela.
+    pub const START: &str = "start";
+    /// **O RAIO INTERNO** como fracção do externo (`0` = maciço, o default da biblioteca).
+    /// É o que leva a pizza a rosquinha e o arco a anel parcial.
+    ///
+    /// ⚠️ Não vale para a `Segment`: a corda (`ellipse_chord`) não tem miolo — e o gate
+    /// `no_kind_hides_a_live_knob_or_shows_a_dead_one` é quem o prova, mexendo no número.
+    pub const INNER: &str = "inner";
+
+    /// **Os três DESVIOS de raio por canto** (doc 89 folha 14, a linha do *raio por canto*),
+    /// somados ao `corner` — `[TL, TR, BR, BL]` e o `corner` é o TL. `0` em todos ⇒ o
+    /// round-rect uniforme, e a `rounded_rect_corners` desvia literalmente para a
+    /// `rounded_rect` de sempre quando os quatro raios são iguais e a suavização é zero.
+    pub const CORNER_TR: &str = "corner_tr";
+    pub const CORNER_BR: &str = "corner_br";
+    pub const CORNER_BL: &str = "corner_bl";
+    /// **A SUAVIZAÇÃO do canto** (`0..1`, o *corner smoothing* do Figma / o squircle do
+    /// iOS). `0` = o arco circular de sempre.
+    pub const SMOOTHING: &str = "smoothing";
+
     /// **TODOS eles, na ordem do manifesto.**
     ///
     /// ⚠️ Ela existe para a CHAVE do cache ser derivada em vez de enumerada. A
@@ -317,6 +360,13 @@ pub mod param {
         STROKE_G,
         STROKE_B,
         STROKE_A,
+        SWEEP,
+        START,
+        INNER,
+        CORNER_TR,
+        CORNER_BR,
+        CORNER_BL,
+        SMOOTHING,
     ];
 }
 
@@ -351,6 +401,15 @@ impl ShapeParams {
                     get(param::STROKE_A),
                 ],
             }),
+            sweep: get(param::SWEEP),
+            start: get(param::START),
+            inner: get(param::INNER),
+            corner_offsets: [
+                get(param::CORNER_TR),
+                get(param::CORNER_BR),
+                get(param::CORNER_BL),
+            ],
+            smoothing: get(param::SMOOTHING),
         }
     }
 }
@@ -445,6 +504,37 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: param::STROKE_A,
             default: 1.0,
         },
+        // ⚠️ **Apendados** (doc 89 folha 14, as linhas do *sweep/start/inner* e do *raio
+        // por canto*). Todos neutros no default — o `sweep = 0` pela sentinela documentada
+        // no [`param::SWEEP`], os outros seis porque `0` já é o valor que a biblioteca usa.
+        ParamSpec {
+            name: param::SWEEP,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::START,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::INNER,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::CORNER_TR,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::CORNER_BR,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::CORNER_BL,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::SMOOTHING,
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -507,102 +597,9 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
     unit: ParamUnit::Length,
 }];
 
-/// **Per-kind visibility** — a param appears only when `kind` is one of the listed
-/// values (the enum indices from [`ShapeKind`]). `kind` and `size` have no gate
-/// (always shown). This is the SAME per-kind truth the builder keys off, so a
-/// shown control is a control that does something.
-static PARAM_GATES: &[ParamGate] = &[
-    // ⚠️ `aspect` vale para TUDO que é cortado de uma caixa, e as trinta e cinco
-    // formas do catálogo são: a receita as corta de `[-s,-ry]..[s,ry]`. Deixá-las
-    // de fora esconderia um controlo VIVO — o inverso exato do botão morto, e o
-    // gate `no_kind_hides_a_live_knob_or_shows_a_dead_one` recusa os dois sentidos.
-    ParamGate {
-        param: param::ASPECT,
-        when: param::KIND,
-        values: &[
-            ShapeKind::Ellipse as i32,
-            ShapeKind::Rectangle as i32,
-            ShapeKind::Pie as i32,
-            ShapeKind::Segment as i32,
-            ShapeKind::ArrowRight as i32,
-            ShapeKind::ArrowDouble as i32,
-            ShapeKind::ArrowBent as i32,
-            ShapeKind::Chevron as i32,
-            ShapeKind::Diamond as i32,
-            ShapeKind::Pill as i32,
-            ShapeKind::Parallelogram as i32,
-            ShapeKind::Trapezoid as i32,
-            ShapeKind::TrapezoidFlip as i32,
-            ShapeKind::HexagonFlat as i32,
-            ShapeKind::Cylinder as i32,
-            ShapeKind::Document as i32,
-            ShapeKind::Delay as i32,
-            ShapeKind::Display as i32,
-            ShapeKind::PredefinedProcess as i32,
-            ShapeKind::OffPage as i32,
-            ShapeKind::Junction as i32,
-            ShapeKind::SpeechRect as i32,
-            ShapeKind::SpeechOval as i32,
-            ShapeKind::Thought as i32,
-            ShapeKind::Burst as i32,
-            ShapeKind::Cloud as i32,
-            ShapeKind::Bolt as i32,
-            ShapeKind::Moon as i32,
-            ShapeKind::Drop as i32,
-            ShapeKind::Shield as i32,
-            ShapeKind::Tag as i32,
-            ShapeKind::Cross as i32,
-            ShapeKind::Check as i32,
-            ShapeKind::Banner as i32,
-            ShapeKind::IsoCube as i32,
-            ShapeKind::IsoCone as i32,
-            ShapeKind::IsoPyramid as i32,
-        ],
-    },
-    ParamGate {
-        param: param::SIDES,
-        when: param::KIND,
-        values: &[
-            ShapeKind::Polygon as i32,
-            ShapeKind::Star as i32,
-            ShapeKind::Gear as i32,
-        ],
-    },
-    ParamGate {
-        param: param::CORNER,
-        when: param::KIND,
-        values: &[
-            ShapeKind::Square as i32,
-            ShapeKind::Rectangle as i32,
-            ShapeKind::Polygon as i32,
-            ShapeKind::Star as i32,
-        ],
-    },
-    ParamGate {
-        param: param::STAR_DEPTH,
-        when: param::KIND,
-        values: &[ShapeKind::Star as i32],
-    },
-    ParamGate {
-        param: param::CLEFT,
-        when: param::KIND,
-        values: &[ShapeKind::Heart as i32],
-    },
-    ParamGate {
-        param: param::TOOTH_DEPTH,
-        when: param::KIND,
-        values: &[ShapeKind::Gear as i32],
-    },
-    ParamGate {
-        param: param::HOLE,
-        when: param::KIND,
-        values: &[ShapeKind::Gear as i32],
-    },
-];
-
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
 
 mod hints;
-use hints::PARAM_HINTS;
+use hints::{PARAM_GATES, PARAM_HINTS};

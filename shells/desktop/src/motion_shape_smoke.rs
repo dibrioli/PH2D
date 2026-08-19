@@ -224,7 +224,9 @@ impl crate::App {
                     );
                 }
             }
-            _ => {}
+            // =3 (OS KNOBS DE FORMA): a fileira de seis, cada uma exercendo um knob que
+            // nao existia. Irmao proprio pelo teto de 600 LOC do shell.
+            _ => self.motion_shape_smoke_knobs(mode(), f),
         }
     }
 }

@@ -32,6 +32,7 @@ pub(crate) const COMMANDS: &[(ph2d_a11y::NodeId, Sculpt3dIntent)] = &[
     (ids::SCULPT3D_REVERSE, Sculpt3dIntent::ReverseLevel),
     (ids::SCULPT3D_FLATTEN, Sculpt3dIntent::Flatten),
     (ids::SCULPT3D_REMESH, Sculpt3dIntent::Remesh),
+    (ids::SCULPT3D_QUAD_REMESH, Sculpt3dIntent::QuadRemesh),
     (ids::SCULPT3D_CLOSE_HOLES, Sculpt3dIntent::CloseHoles),
     (ids::SCULPT3D_BAKE_AO, Sculpt3dIntent::BakeAo),
     (ids::SCULPT3D_BAKE_SPRITE, Sculpt3dIntent::BakeToSprite),

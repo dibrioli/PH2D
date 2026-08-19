@@ -73,6 +73,8 @@ impl Sculpt3dScene {
                 // Contagem de células vira `f32` só para a pista; a fronteira de
                 // volta (`apply_ui`) arredonda e clampa.
                 remesh_res: self.remesh_res as f32,
+                quad_edge: self.quad_edge,
+                quad_adapt: self.quad_adapt,
             },
             dyntopo: self.dyntopo.armed,
             level: self.level(),
@@ -221,6 +223,11 @@ impl Sculpt3dScene {
         // cujo teto é medido (o campo transiente a 768 come 88% do orçamento do
         // app inteiro).
         self.remesh_res = (ui.remesh_res.round().max(0.0) as u32).clamp(16, 512);
+        // ⚠️ **Os mesmos limites da row**, e não porque a row já os aplique: o
+        // painel é UMA porta para estes campos, e um `ProjectFile` antigo ou um
+        // smoke que escreva direto entram por outra.
+        self.quad_edge = ui.quad_edge.clamp(0.02, 1.0);
+        self.quad_adapt = ui.quad_adapt.clamp(0.0, 1.0);
     }
 
     /// **Um gesto do painel**, traduzido para a cena — os mesmos desfechos que as
@@ -354,7 +361,35 @@ impl Sculpt3dScene {
                 Err(RemeshRefusal::Engine(e)) => eprintln!(
                     "[sculpt3d] nao' reconstroi, e a escultura fica como esta': {e} -- tente outra resolucao"
                 ),
+                // ⚠️ **INALCANÇÁVEL: o voxel remesh não fala esta recusa.** Ela é
+                // da retopologia por campo cruzado, e o braço existe porque o
+                // `match` é exaustivo — foi ele que obrigou este sítio a
+                // decidir quando a variante nasceu, que é o ponto.
+                Err(RemeshRefusal::Quad(e)) => {
+                    debug_assert!(
+                        false,
+                        "o voxel remesh devolveu a recusa da retopologia: {e}"
+                    );
+                }
             },
+            Sculpt3dIntent::QuadRemesh => {
+                match self.quad_remesh(self.quad_edge, self.quad_adapt) {
+                    Ok((v, q, nq, ms)) => eprintln!(
+                        "[sculpt3d] retopologia: {v} vertices, {q} quads e {nq} nao-quads em {ms:.0} ms"
+                    ),
+                    Err(RemeshRefusal::MultiresStack) => {
+                        eprintln!("[sculpt3d] nao' retopologiza com a pilha montada: ACHATE antes")
+                    }
+                    Err(RemeshRefusal::EmptyScene) => {
+                        eprintln!("[sculpt3d] nao' retopologiza: nao ha' peca na cena")
+                    }
+                    // ⚠️ A escultura CONTINUA na tela — a mesma lei do irmão.
+                    Err(RemeshRefusal::Quad(e)) => eprintln!(
+                        "[sculpt3d] a retopologia nao fechou uma malha, e a escultura fica como esta': {e}"
+                    ),
+                    Err(RemeshRefusal::Engine(e)) => eprintln!("[sculpt3d] retopologia: {e}"),
+                }
+            }
             Sculpt3dIntent::BakeAo => {
                 let r = self.bake_ao();
                 eprintln!("[sculpt3d] AO assado: {} vertices em {:.0} ms", r.0, r.1);

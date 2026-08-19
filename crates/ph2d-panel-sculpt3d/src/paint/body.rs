@@ -283,6 +283,18 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
         w,
         y,
     ) + gap;
+    // ⚠️ **A retopologia fica ao LADO do voxel remesh de propósito:** as duas
+    // reconstroem a malha, e o artista escolhe entre elas pela pergunta que faz —
+    // *arrumar o que a escultura destruiu* contra *pôr a grade a correr ao longo
+    // da forma* (ADR-0160 §1).
+    y = command(
+        ctx,
+        ids::SCULPT3D_QUAD_REMESH,
+        tr("panel.sculpt3d.quad_remesh"),
+        x,
+        w,
+        y,
+    ) + gap;
     // ⚠️ **A pista fica LOGO ABAIXO do botão que a lê**, e não no alto da seção:
     // ela é argumento do Remesh, e separá-los faria dela um número que aparece
     // do nada e não se liga ao gesto que o artista acabou de dar — a mesma

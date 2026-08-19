@@ -61,6 +61,14 @@ pub(super) enum RemeshRefusal {
     EmptyScene,
     /// O motor recusou — hoje, o campo sem interior.
     Engine(ph2d_sdf::RemeshError),
+    /// **A RETOPOLOGIA não fechou uma malha bem formada.**
+    ///
+    /// ⚠️ Caso próprio e não um `Engine` reaproveitado: as duas reconstruções
+    /// falham por motivos que não se parecem — aquela por um campo sem interior,
+    /// esta por um grafo de células degenerado —, e uma variante só faria o
+    /// chamador eleger UMA mensagem para as duas. É a mesma lição que partiu o
+    /// `Option` original em três casos.
+    Quad(ph2d_mesh::MeshError),
 }
 
 pub(super) enum StrokeUndo {
@@ -408,6 +416,51 @@ impl Sculpt3dScene {
         self.stroke = SculptStroke::default();
         self.mesh_rebuilt();
         Ok(report)
+    }
+
+    /// **A RETOPOLOGIA por campo cruzado** (ADR-0160) — a grade corre AO LONGO
+    /// da forma. Devolve `(vértices, quads, não-quads, ms)`.
+    ///
+    /// ⚠️ **Irmã do [`Self::remesh`] e NÃO substituta**, e as duas ficam porque
+    /// respondem a perguntas diferentes: o voxel remesh re-amostra um campo (a
+    /// arrumação destrutiva depois de uma booleana, os quads seguindo os eixos da
+    /// grade), esta **preserva a topologia** da entrada e alinha a grade às
+    /// direções principais da forma. O ADR-0160 §1 traz a tabela.
+    ///
+    /// ⚠️ **A mesma recusa de PILHA do irmão**, e pelo mesmo motivo: a saída é
+    /// uma malha com outra contagem de vértices, e um nível de multires é uma
+    /// subdivisão da base — as duas coisas não coexistem.
+    ///
+    /// ⚠️ **E ela entra na história pela MESMA entrada** (`StrokeUndo::Remeshed`,
+    /// que carrega a malha inteira de antes). Não há representação mais barata: um
+    /// remesh não partilha estrutura nenhuma com o que estava lá, nem a contagem
+    /// de vértices nem a correspondência entre eles.
+    pub(super) fn quad_remesh(
+        &mut self,
+        edge: f32,
+        adaptive: f32,
+    ) -> Result<(usize, usize, usize, f64), RemeshRefusal> {
+        if self.level_count() != 1 {
+            return Err(RemeshRefusal::MultiresStack);
+        }
+        let t = std::time::Instant::now();
+        let mesh = self.mesh();
+        let scale = ph2d_quadflow::ScaleField::adaptive(mesh, edge, adaptive);
+        let (orient, pos) = ph2d_quadflow::solve_fields(mesh, &scale);
+        let q = ph2d_quadflow::extract(mesh, &orient, &pos, &scale).map_err(RemeshRefusal::Quad)?;
+        let out = (
+            q.mesh.vert_count(),
+            q.quads,
+            q.non_quads,
+            t.elapsed().as_secs_f64() * 1000.0,
+        );
+        let previous =
+            core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, q.mesh);
+        self.record(StrokeUndo::Remeshed(Box::new(previous)));
+        // A malha é OUTRA: o traço em voo fala de vértices que não existem mais.
+        self.stroke = SculptStroke::default();
+        self.mesh_rebuilt();
+        Ok(out)
     }
 
     /// **ASSA O AO** — mede quanto do céu cada vértice enxerga e instala o canal.

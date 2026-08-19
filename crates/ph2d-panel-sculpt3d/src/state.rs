@@ -218,6 +218,10 @@ pub struct Sculpt3dUi {
     /// SculptGL — e agora é um ponto de partida, não um teto: até esta wave ele
     /// era o único valor alcançável, cravado nos dois chamadores.
     pub remesh_res: f32,
+    /// O lado do quad que a retopologia persegue, em unidades de objeto.
+    pub quad_edge: f32,
+    /// Quanto a densidade segue a curvatura — `0` uniforme, `1` a faixa inteira.
+    pub quad_adapt: f32,
     /// **O que o botão de extract vai fazer** — a espessura da casca e quantas
     /// passadas a costura recebe.
     ///
@@ -299,6 +303,12 @@ impl Default for Sculpt3dUi {
             detail: 1,
             // A fonte é a const do motor, não uma cópia dela.
             remesh_res: 150.0, // LITERAL-PX-OK: resolucao de voxel, nao metrica de layout
+            // LITERAL-PX-OK: lado de quad em unidades de OBJETO, nao metrica de
+            // layout. O default e' o da fixture dos gates da `ph2d-quadflow`,
+            // onde 0,18 sobre um raio 1 da' ~430 celulas.
+            quad_edge: 0.18,
+            quad_adapt: 0.0, // LITERAL-PX-OK: fracao, nao metrica de layout
+
             extract: Extract::default(),
         }
     }
@@ -453,6 +463,10 @@ pub enum Sculpt3dIntent {
     /// Achata a pilha de multiresolução numa malha só.
     Flatten,
     Remesh,
+    /// **RETOPOLOGIA por campo cruzado** (ADR-0160). Irmã do [`Self::Remesh`] e
+    /// não substituta: aquele re-amostra um campo de voxels (a arrumação
+    /// destrutiva), esta preserva a topologia e alinha a grade à FORMA.
+    QuadRemesh,
     CloseHoles,
     /// Mede quanto do céu cada vértice enxerga e instala o canal.
     ///

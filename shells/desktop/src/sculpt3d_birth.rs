@@ -106,6 +106,12 @@ impl Sculpt3dScene {
             extract: ph2d_mesh::Extract::default(),
             // A fonte é a const do motor, e não uma cópia dela.
             remesh_res: ph2d_sdf::DEFAULT_RESOLUTION,
+            // ⚠️ **Os dois defaults são os da fixture dos gates da
+            // `ph2d-quadflow`**, onde 0,18 sobre um modelo de raio 1 dá ~430
+            // células — e o `0,0` abre UNIFORME, que é o modo cujo resultado o
+            // artista consegue prever antes de clicar.
+            quad_edge: 0.18,
+            quad_adapt: 0.0,
             stroke: SculptStroke::default(),
             undo: Vec::new(),
             redo: Vec::new(),

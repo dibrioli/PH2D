@@ -31,17 +31,56 @@ use ph2d_editor_core::ids;
 ///
 /// ⚠️ E o piso é 16 porque abaixo dele a saída deixa de ser uma forma (1.250
 /// vértices já é blocagem grossa), não porque algum recurso acabe.
-pub static TOPOLOGY: &[Row] = &[Row {
-    label: "panel.sculpt3d.remesh_res",
-    slider: ids::SCULPT3D_REMESH_RES,
-    chip: ids::SCULPT3D_REMESH_RES_NUM,
-    min: 16.0,  // LITERAL-PX-OK: resolucao de voxel, nao metrica de layout
-    max: 512.0, // LITERAL-PX-OK: idem -- o teto medido, ver a tabela acima
-    step: 1.0,
-    decimals: 0,
-    get: |u| u.remesh_res,
-    set: |u, v| u.remesh_res = v,
-    show: |_| true,
-    level: UiLevel::Basic,
-    place: Place::Knobs,
-}];
+pub static TOPOLOGY: &[Row] = &[
+    Row {
+        label: "panel.sculpt3d.remesh_res",
+        slider: ids::SCULPT3D_REMESH_RES,
+        chip: ids::SCULPT3D_REMESH_RES_NUM,
+        min: 16.0,  // LITERAL-PX-OK: resolucao de voxel, nao metrica de layout
+        max: 512.0, // LITERAL-PX-OK: idem -- o teto medido, ver a tabela acima
+        step: 1.0,
+        decimals: 0,
+        get: |u| u.remesh_res,
+        set: |u, v| u.remesh_res = v,
+        show: |_| true,
+        level: UiLevel::Basic,
+        place: Place::Knobs,
+    },
+    // ⚠️ **A RETOPOLOGIA tem duas pistas, e elas são de espécie diferente da de
+    // cima:** aquela é a resolução de um VOXEL (quantas células o campo tem),
+    // estas são o tamanho de um QUAD na malha de saída. Partilhar um slider
+    // seria a mesma pergunta a responder duas coisas.
+    Row {
+        label: "panel.sculpt3d.quad_edge",
+        slider: ids::SCULPT3D_QUAD_EDGE,
+        chip: ids::SCULPT3D_QUAD_EDGE_NUM,
+        // LITERAL-PX-OK (as quatro): unidades de OBJETO e fração, não métrica de
+        // layout. ⚠️ **A faixa é do RECURSO, não de gosto:** abaixo de 0,02 sobre
+        // um modelo de raio 1 a saída passa de 100 k células e o passe deixa de
+        // ser *sob comando*; acima de 1,0 o quad é do tamanho do modelo e a grade
+        // deixa de descrever a forma.
+        min: 0.02,
+        max: 1.0,
+        step: 0.01,
+        decimals: 2,
+        get: |u| u.quad_edge,
+        set: |u, v| u.quad_edge = v,
+        show: |_| true,
+        level: UiLevel::Basic,
+        place: Place::Knobs,
+    },
+    Row {
+        label: "panel.sculpt3d.quad_adapt",
+        slider: ids::SCULPT3D_QUAD_ADAPT,
+        chip: ids::SCULPT3D_QUAD_ADAPT_NUM,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05,
+        decimals: 2,
+        get: |u| u.quad_adapt,
+        set: |u, v| u.quad_adapt = v,
+        show: |_| true,
+        level: UiLevel::Basic,
+        place: Place::Knobs,
+    },
+];

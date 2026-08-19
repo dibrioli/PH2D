@@ -513,6 +513,11 @@ pub(crate) struct Sculpt3dScene {
     /// contínua porque pistas são contínuas, e a grandeza é um número de células.
     /// O arredondamento e o clamp moram na fronteira (`apply_ui`), não aqui.
     remesh_res: u32,
+    /// O lado do quad que a retopologia persegue, em unidades de objeto — ver
+    /// [`Sculpt3dScene::quad_remesh`].
+    quad_edge: f32,
+    /// Quanto a densidade da retopologia segue a curvatura.
+    quad_adapt: f32,
     stroke: SculptStroke,
     undo: Vec<Entry>,
     /// **O futuro guardado** — o que um Ctrl+Z tirou e um Ctrl+Shift+Z devolve.

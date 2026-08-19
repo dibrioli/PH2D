@@ -384,6 +384,7 @@ fn every_command_reaches_the_shell() {
         (ids::SCULPT3D_REVERSE, Sculpt3dIntent::ReverseLevel),
         (ids::SCULPT3D_FLATTEN, Sculpt3dIntent::Flatten),
         (ids::SCULPT3D_REMESH, Sculpt3dIntent::Remesh),
+        (ids::SCULPT3D_QUAD_REMESH, Sculpt3dIntent::QuadRemesh),
         (ids::SCULPT3D_CLOSE_HOLES, Sculpt3dIntent::CloseHoles),
         (ids::SCULPT3D_DUPLICATE, Sculpt3dIntent::Duplicate),
         (ids::SCULPT3D_DELETE, Sculpt3dIntent::Delete),

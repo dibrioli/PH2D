@@ -23,13 +23,25 @@ use crate::orientation::{self, OrientationField};
 use crate::position::{self, PositionField};
 use crate::scale::ScaleField;
 
-/// Quantas varreduras por nível.
+/// Quantas varreduras por nível — **MEDIDO, não escolhido** (`CLAUDE.md` §0.0).
 ///
-/// ⚠️ **É pequeno de propósito, e a hierarquia é a razão:** cada nível herda um
-/// campo já quase certo do pai, então ele só precisa de se acomodar. As dezenas
-/// de varreduras da Q1 eram o preço de partir da semente **em cada** ponto do
-/// modelo. O número tem tabela ao lado no gate `the_hierarchy_beats_the_flat_solve`.
-pub const SWEEPS_PER_LEVEL: usize = 8;
+/// Sobre a malha que o módulo abre (`sculpt_sphere`, **98 306 vértices**), com
+/// `edge = 0,05`, pelo gate `measure_the_kill_criterion`:
+///
+/// | varreduras | 1 | **2** | 4 | 8 |
+/// |---|---|---|---|---|
+/// | tempo | 1,10 s | **2,04 s** | 3,87 s | 7,52 s |
+/// | quads | 95,9 % | **96,4 %** | 96,7 % | 96,5 % |
+///
+/// ⚠️ **A qualidade SATURA na primeira varredura**, e a hierarquia é a razão:
+/// cada nível herda do pai um campo já quase certo, e só precisa de se acomodar.
+/// Oito varreduras custam **7×** o tempo por **+0,6 pp** — e a 8 o número é
+/// *pior* que a 4, que é ruído a dizer que ali não há sinal.
+///
+/// ⚠️ **E o 2 é o último degrau que cabe no KILL-CRITERION do ADR-0160 §4**
+/// (3 s): a 4 o passe custa 3,87 s. O limite é de RELÓGIO e o ADR o congelou
+/// **antes** do build — não é conforto.
+pub const SWEEPS_PER_LEVEL: usize = 2;
 
 /// **RESOLVE os dois campos pela hierarquia.**
 ///

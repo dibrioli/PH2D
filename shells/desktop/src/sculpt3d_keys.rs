@@ -399,6 +399,16 @@ impl App {
                 Err(RemeshRefusal::Engine(e)) => eprintln!(
                     "[sculpt3d] nao' reconstroi, e a escultura fica como esta': {e} -- tente outra resolucao"
                 ),
+                // ⚠️ **INALCANÇÁVEL: o voxel remesh não fala esta recusa.** Ela é
+                // da retopologia por campo cruzado, e o braço existe porque o
+                // `match` é exaustivo — foi ele que obrigou este sítio a
+                // decidir quando a variante nasceu, que é o ponto.
+                Err(RemeshRefusal::Quad(e)) => {
+                    debug_assert!(
+                        false,
+                        "o voxel remesh devolveu a recusa da retopologia: {e}"
+                    );
+                }
             }
             return true;
         }

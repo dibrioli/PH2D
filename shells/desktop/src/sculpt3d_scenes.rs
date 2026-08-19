@@ -353,6 +353,11 @@ pub(crate) mod strip;
 #[path = "sculpt3d_scenes_filter.rs"]
 pub(crate) mod filter;
 
+/// **A CENA DA RETOPOLOGIA** (`=35`) — irmã da [`filter`] pela mesma linha de
+/// corte: cada arquivo é a história de uma wave.
+#[path = "sculpt3d_scenes_quad.rs"]
+pub(crate) mod quad;
+
 /// **A CENA DA DEMÃO** (`=33`) — irmã da [`surface`] pela mesma linha de corte.
 #[path = "sculpt3d_scenes_layer.rs"]
 pub(crate) mod layer;
@@ -418,7 +423,9 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     // parte, o gather é anulado por `(1 − f)` e a lei degenera num alisador.
     // Sobre uma esfera lisa é pior — sem contraste não há o que contrastar, e os
     // dois chips novos leriam como controles mortos.
-    if cavity_scene() || filter::filter_scene() {
+    // ⚠️ A `=35` abre na MESMA malha rugosa: uma retopologia só se distingue de
+    // um voxel remesh se houver FORMA para a grade seguir.
+    if cavity_scene() || filter::filter_scene() || quad::quad_scene() {
         return wrinkled_sphere();
     }
     // ⚠️ **A `=16` abre DENSA, e a densidade é o que o smoke julga.** O tamanho

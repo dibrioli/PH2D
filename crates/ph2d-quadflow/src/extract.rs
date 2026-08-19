@@ -173,32 +173,27 @@ pub fn extract_with(
         })
         .collect();
 
-    let (mut faces, mut quads, mut non_quads, mut max_sides) =
-        (Vec::<Face>::new(), 0usize, 0usize, 0usize);
+    // ⚠️ **A contagem NÃO é acumulada aqui**, e o clippy o disse: ela sai da
+    // lista FINAL, depois do emparelhamento (ver abaixo). Duas contagens da mesma
+    // coisa divergem; uma derivada da fonte, não.
+    let (mut faces, mut max_sides) = (Vec::<Face>::new(), 0usize);
     for c in &cycles {
         max_sides = max_sides.max(c.len());
         match c.len() {
-            4 => {
-                quads += 1;
-                faces.push(Face::quad(c[0], c[1], c[2], c[3]));
-            }
-            3 => {
-                non_quads += 1;
-                faces.push(Face::tri(c[0], c[1], c[2]));
-            }
+            4 => faces.push(Face::quad(c[0], c[1], c[2], c[3])),
+            3 => faces.push(Face::tri(c[0], c[1], c[2])),
             n if n > 4 => {
                 // ⚠️ **O leque é HONESTO e não uma cura:** um n-gon vira `n−2`
                 // triângulos porque a [`Face`] só carrega tri e quad, e cada um
                 // deles CONTA como não-quad. Escondê-lo (descartar o ciclo)
                 // deixaria um buraco na malha e um número bonito ao lado.
-                non_quads += 1;
                 for k in 1..c.len() - 1 {
                     faces.push(Face::tri(c[0], c[k], c[k + 1]));
                 }
             }
             // Um ciclo de 2 ou menos não delimita área: ele é um artefato da
             // fusão, e entrar na malha seria uma face degenerada.
-            _ => non_quads += 1,
+            _ => {}
         }
     }
 
@@ -210,10 +205,18 @@ pub fn extract_with(
     //
     // ⚠️ **A operação preserva χ por construção**: some uma aresta e some uma
     // face, e `V − (E−1) + (F−1)` é `V − E + F`.
-    let (paired, merged) = pair_triangles(&faces, &verts);
+    let (paired, _merged) = pair_triangles(&faces, &verts);
     faces = paired;
-    quads += merged;
-    non_quads -= merged * 2;
+
+    // ⚠️ **A CONTAGEM SAI DA LISTA FINAL, e não de aritmética sobre os ciclos.**
+    // A primeira versão fazia `quads += pares; non_quads -= pares * 2` — e
+    // `non_quads` contava CICLOS enquanto os pares consomem TRIÂNGULOS. Um ciclo
+    // de `n` lados vira `n − 2` triângulos, então as duas grandezas nunca foram
+    // a mesma, e o `usize` deu a volta: **18 446 744 073 709 551 613**
+    // não-quads num gate. *Duas contagens da mesma coisa divergem no dia em que
+    // uma delas ganha um consumidor novo; uma contagem derivada da fonte, não.*
+    let quads = faces.iter().filter(|f| f.verts().len() == 4).count();
+    let non_quads = faces.len() - quads;
 
     Ok(Quadrangulation {
         mesh: Mesh::from_parts(verts, faces)?,

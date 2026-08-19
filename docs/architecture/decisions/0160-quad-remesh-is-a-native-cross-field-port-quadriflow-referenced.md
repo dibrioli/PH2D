@@ -188,6 +188,45 @@ repo quase declarou sucesso sobre uma casca murcha.
 | **Q4** | o **fluxo de custo mínimo** (QuadriFlow) | A1 vira exato, A5 |
 | **Q5** | a costura no shell: verbo, painel, undo, smoke | o smoke do Enio |
 
+---
+
+## §5-quinquies — ✅ Q5 FECHADA, e o KILL-CRITERION cobrado
+
+O botão **`Quad Retopology`** vive na seção *Topology*, ao lado do `Remesh`, com
+duas pistas próprias (`Quad Size`, `Follow Curvature`). Ele entra na história
+pela **mesma** entrada do voxel remesh (`StrokeUndo::Remeshed`), recusa com a
+pilha de multires montada, e tem cena de smoke própria: **`=35`**.
+
+⚠️ **O kill-criterion do §4 disparou, e a cura foi MEDIR** em vez de afrouxar.
+Sobre a malha que o módulo abre (`sculpt_sphere`, **98 306 vértices**),
+`edge = 0,05`:
+
+| varreduras por nível | 1 | **2** | 4 | 8 |
+|---|---|---|---|---|
+| tempo | 1,10 s | **2,04 s** | 3,87 s | 7,52 s |
+| quads | 95,9 % | **96,4 %** | 96,7 % | 96,5 % |
+
+⇒ A qualidade **satura na primeira varredura** — a hierarquia entrega a cada
+nível um campo já quase certo. Oito custavam **7×** por **+0,6 pp**, e a 8 o
+número é *pior* que a 4 (ruído a dizer que ali não há sinal). **`SWEEPS_PER_LEVEL`
+passou de 8 para 2**, e o passe custa **2,06 s** — o último degrau que cabe nos
+3 s que este ADR congelou **antes** do build.
+
+⚠️ **E o produto mede MELHOR que as fixtures dos gates:** **96,4 %** de quads na
+malha real contra 85,3 % na esfera 24×36. As fixtures pequenas dão poucas células
+por feição e o resíduo de borda pesa mais — o piso do gate sai da pior delas, de
+propósito.
+
+### ⛔ Uma oitava recusa MEDIDA
+
+A contagem de quads era acumulada durante a construção das faces **e** corrigida
+depois do emparelhamento (`non_quads -= pares * 2`). As duas grandezas nunca
+foram a mesma — `non_quads` contava **ciclos** e os pares consomem **triângulos**
+—, e o `usize` deu a volta: **18 446 744 073 709 551 613** não-quads num gate.
+*Duas contagens da mesma coisa divergem no dia em que uma ganha um consumidor
+novo; uma contagem derivada da fonte, não.* A contagem passou a sair da lista
+final de faces.
+
 ⚠️ **A Q3 fecha com um número de não-quads, não com um zero.** Ele é a medida do
 que a Q4 existe para curar — declarar zero antes do fluxo seria declarar que a
 técnica base não tem o defeito que a literatura inteira nomeia.

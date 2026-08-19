@@ -163,3 +163,75 @@ fn a_geometry_stroke_leaves_the_mask_channel_alone() {
         "o desfazer INVENTOU um plano de mascara numa malha que nunca teve um"
     );
 }
+
+/// ⭐ **A RETOPOLOGIA MUDA A MALHA, DÁ QUADS, E DESFAZ INTEIRA.**
+///
+/// O gesto da Q5 do [ADR-0160], pela porta que o botão do painel chama.
+///
+/// ⚠️ **As três metades juntas de propósito.** Um remesh que rodasse e não
+/// mudasse nada passaria por *"não deu erro"*; um que desse triângulos passaria
+/// por *"mudou"*; e um que não gravasse undo só se descobre quando o artista
+/// perde o trabalho. A terceira é a que este arquivo existe para guardar: a
+/// retopologia entra na história pela MESMA entrada do voxel remesh
+/// (`StrokeUndo::Remeshed`, que carrega a malha inteira de antes), porque um
+/// remesh não partilha estrutura nenhuma com o que estava lá.
+#[test]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+fn the_quad_retopology_changes_the_mesh_and_undoes_whole() {
+    let gpu = gpu_or_skip!();
+    let mut s = scene(&gpu.device, Verb::Draw);
+    let before: Vec<[f32; 3]> = s.mesh().positions().to_vec();
+    let before_faces = s.mesh().faces().len();
+
+    let (verts, quads, non_quads, ms) = s
+        .quad_remesh(0.18, 0.0)
+        .expect("a retopologia correu sobre uma peca de um nivel");
+    eprintln!(
+        "[sculpt3d] retopologia: {verts} vertices, {quads} quads, {non_quads} nao-quads, {ms:.0} ms"
+    );
+
+    assert!(verts > 0, "a retopologia devolveu uma malha vazia");
+    assert!(
+        quads > non_quads,
+        "sairam {quads} quads contra {non_quads} nao-quads: a maioria das faces tinha de ter \
+         QUATRO lados, senao isto e' uma triangulacao com outro nome"
+    );
+    assert_ne!(
+        s.mesh().positions(),
+        &before[..],
+        "a retopologia nao mudou a malha"
+    );
+
+    assert!(
+        s.undo_stroke(),
+        "a retopologia nao gravou passo de undo: o artista perde a peca"
+    );
+    assert_eq!(
+        s.mesh().positions(),
+        &before[..],
+        "o Ctrl+Z nao devolveu a malha de antes"
+    );
+    assert_eq!(
+        s.mesh().faces().len(),
+        before_faces,
+        "o Ctrl+Z devolveu outra contagem de faces"
+    );
+}
+
+/// **COM A PILHA MONTADA ELA RECUSA, e diz o que fazer.**
+///
+/// ⚠️ **A recusa é a mesma do voxel remesh e pelo mesmo motivo:** a saída tem
+/// outra contagem de vértices, e um nível de multires é uma subdivisão da base —
+/// as duas coisas não coexistem. Um gesto que não faz nada e não diz nada é
+/// indistinguível de um botão que não chegou.
+#[test]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+fn the_quad_retopology_refuses_a_multires_stack() {
+    let gpu = gpu_or_skip!();
+    let mut s = scene(&gpu.device, Verb::Draw);
+    assert!(s.subdivide(), "premissa: a peca subdividiu");
+    assert!(
+        s.quad_remesh(0.18, 0.0).is_err(),
+        "a retopologia correu com a pilha montada: os indices da saida nao nomeiam o nivel de baixo"
+    );
+}

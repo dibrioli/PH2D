@@ -320,6 +320,7 @@ ph2d-sculpt3d = { path = "../../crates/ph2d-sculpt3d", optional = true }
 # quarta crate do modulo, e a promessa de removibilidade so e verificavel se
 # todas elas caírem com a feature.
 ph2d-sdf = { path = "../../crates/ph2d-sdf", optional = true }
+ph2d-quadflow = { path = "../../crates/ph2d-quadflow" }
 # O balde (ADR-0114 W4) — solver CPU puro; o shell é a fronteira modelo↔solver.
 ph2d-flip-fill = { path = "../../crates/ph2d-flip-fill" }
 ph2d-flip-colorize = { path = "../../crates/ph2d-flip-colorize" }

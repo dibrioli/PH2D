@@ -375,6 +375,9 @@ pub const SCULPT3D_FLATTEN: NodeId = hash_node_id("sculpt3d.flatten");
 pub const SCULPT3D_REMESH: NodeId = hash_node_id("sculpt3d.remesh");
 /// Tapa os buracos.
 pub const SCULPT3D_CLOSE_HOLES: NodeId = hash_node_id("sculpt3d.close_holes");
+/// **RETOPOLOGIA por campo cruzado** (ADR-0160) — a grade corre AO LONGO da
+/// forma, ao contrário do voxel remesh, cujos quads seguem os eixos da grade.
+pub const SCULPT3D_QUAD_REMESH: NodeId = hash_node_id("sculpt3d.quad_remesh");
 
 // ── O sombreamento ──────────────────────────────────────────────────────────
 /// **A CAVIDADE** — quanto a curvatura escurece a fresta e clareia a crista.
@@ -540,6 +543,14 @@ pub const SCULPT3D_EXTRACT_THICK_NUM: NodeId = hash_node_id("sculpt3d.extract_th
 pub const SCULPT3D_REMESH_RES: NodeId = hash_node_id("sculpt3d.remesh_res");
 /// O chip numérico da resolução do remesh.
 pub const SCULPT3D_REMESH_RES_NUM: NodeId = hash_node_id("sculpt3d.remesh_res_num");
+/// O lado do quad que a retopologia persegue, em unidades de objeto.
+pub const SCULPT3D_QUAD_EDGE: NodeId = hash_node_id("sculpt3d.quad_edge");
+/// A pista do lado do quad.
+pub const SCULPT3D_QUAD_EDGE_NUM: NodeId = hash_node_id("sculpt3d.quad_edge_num");
+/// Quanto a densidade segue a curvatura — `0` uniforme, `1` a faixa inteira.
+pub const SCULPT3D_QUAD_ADAPT: NodeId = hash_node_id("sculpt3d.quad_adapt");
+/// A pista da adaptação.
+pub const SCULPT3D_QUAD_ADAPT_NUM: NodeId = hash_node_id("sculpt3d.quad_adapt_num");
 /// Quantas passadas de relaxamento a costura do extract recebe.
 pub const SCULPT3D_EXTRACT_SMOOTH: NodeId = hash_node_id("sculpt3d.extract_smooth");
 /// Chip ligado a [`SCULPT3D_EXTRACT_SMOOTH`].

@@ -285,10 +285,34 @@ pacote do `cargo metadata`. Conferido no diff desta linha: **de 4 testes para
 
 **(c) O QUAD REMESH** — [ADR-0160](../../architecture/decisions/0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md)
 (pesquisa, três famílias, alternativas recusadas com o motivo, conjunto de
-aceitação e kill-criterion congelados) + a **Q1** na crate-folha nova
-`ph2d-quadflow`: o campo de orientação 4-RoSy, seis gates, e a tabela de
-convergência **medida**. ⚠️ **Q2..Q5 abertas; nada é alcançável pelo produto
-ainda** — dívida DECLARADA no doc-comment da crate e no ADR §5.
+aceitação e kill-criterion congelados) + **Q1, Q2 e Q3** na crate-folha nova
+`ph2d-quadflow`: campo de orientação 4-RoSy · campo de posição + escala
+adaptativa · **extração**. **18 gates verdes**, 3 alvos com o número medido.
+
+| | esfera 48×64 | toro 64×32 |
+|---|---|---|
+| **quads** | **664 (60,9 %)** | **454 (51,9 %)** |
+| χ (alvo) | 5 (2) | 2 (0) |
+| Hausdorff (barra 1 %) | 3,14 % | — |
+
+⚠️ **A2/A3/A4 NÃO estão verdes**, e os três gates ficam com a **barra do §4
+intacta** + `#[ignore]` carregando o número medido. ⛔ **Não os afrouxe:** eles
+são a definição de pronto, e afrouxá-los trocaria o alvo pela medição de hoje.
+
+⚠️ **Quatro caminhos morreram MEDIDOS nestas ondas** — a régua euclidiana no
+lugar da decomposição por eixo · *"vizinhos partilham a mesma retícula"* (0,205
+célula, imóvel entre 32 e 2 048 varreduras) · o `union-find` transitivo (a esfera
+de 3 072 vértices em **4 células**) · as arestas da entrada como arestas de saída
+(**7,2 %** de quads, porque a entrada é uma triangulação).
+
+⚠️ **E a Q3 REFUTOU o plano de ondas do próprio ADR:** a hierarquia
+multirresolução é **pré-requisito** da extração, não enfeite da Q2 — sem platôs
+no campo de posição não há retícula partilhada a que agarrar. Plano corrigido no
+ADR: **Q3.5** = a hierarquia · **Q4** = o fluxo de custo mínimo (e só então
+A2/A3/A4 são exigíveis) · **Q5** = a costura.
+
+⚠️ **Nada é alcançável pelo produto ainda** — dívida DECLARADA no doc-comment da
+crate e no ADR §5.
 
 ---
 

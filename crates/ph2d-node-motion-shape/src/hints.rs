@@ -249,6 +249,18 @@ pub(crate) static PARAM_GATES: &[ParamGate] = &[
             ShapeKind::Gear as i32,
         ],
     },
+    // ⚠️ **O `corner` deixou de ser da caixa e passou a ser do CATÁLOGO** (feedback do Enio,
+    // 2026-08-19: *"senti falta de controle das quinas de uma rosca cortada e formas
+    // similares"*). Quatro espécies o recebem DENTRO da receita (round-rect, polígono,
+    // estrela); nas outras o shell aplica as Live Corners depois do `cook`, carimbando o raio
+    // em todos os vértices — o motor recusa uma quina colinear, então um vértice de arco fica
+    // intacto por construção.
+    //
+    // ⚠️ **A lista é DERIVADA, não escrita de cabeça:** a sonda
+    // `which_kinds_the_corner_moves` empurra o número em cada espécie e imprime quem responde.
+    // São **36** — as 7 de fora (Circle · Ellipse · Heart · Pill · Cylinder · Junction ·
+    // Moon) não têm quina nenhuma, e mostrar-lhes o slider seria o botão morto que o gate
+    // `no_kind_hides_a_live_knob_or_shows_a_dead_one` recusa nos dois sentidos.
     ParamGate {
         param: param::CORNER,
         when: param::KIND,
@@ -257,6 +269,38 @@ pub(crate) static PARAM_GATES: &[ParamGate] = &[
             ShapeKind::Rectangle as i32,
             ShapeKind::Polygon as i32,
             ShapeKind::Star as i32,
+            ShapeKind::Gear as i32,
+            ShapeKind::Pie as i32,
+            ShapeKind::Segment as i32,
+            ShapeKind::ArrowRight as i32,
+            ShapeKind::ArrowDouble as i32,
+            ShapeKind::ArrowBent as i32,
+            ShapeKind::Chevron as i32,
+            ShapeKind::Diamond as i32,
+            ShapeKind::Parallelogram as i32,
+            ShapeKind::Trapezoid as i32,
+            ShapeKind::TrapezoidFlip as i32,
+            ShapeKind::HexagonFlat as i32,
+            ShapeKind::Document as i32,
+            ShapeKind::Delay as i32,
+            ShapeKind::Display as i32,
+            ShapeKind::PredefinedProcess as i32,
+            ShapeKind::OffPage as i32,
+            ShapeKind::SpeechRect as i32,
+            ShapeKind::SpeechOval as i32,
+            ShapeKind::Thought as i32,
+            ShapeKind::Burst as i32,
+            ShapeKind::Cloud as i32,
+            ShapeKind::Bolt as i32,
+            ShapeKind::Drop as i32,
+            ShapeKind::Shield as i32,
+            ShapeKind::Tag as i32,
+            ShapeKind::Cross as i32,
+            ShapeKind::Check as i32,
+            ShapeKind::Banner as i32,
+            ShapeKind::IsoCube as i32,
+            ShapeKind::IsoCone as i32,
+            ShapeKind::IsoPyramid as i32,
         ],
     },
     ParamGate {

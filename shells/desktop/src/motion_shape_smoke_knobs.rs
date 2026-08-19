@@ -9,7 +9,7 @@
 //! muito, com raio POR CANTO e o *corner smoothing* do Figma, e o nó passava sempre
 //! `[r, 0, 0, 0, 0]`.
 //!
-//! A cena põe **seis** formas lado a lado, cada uma exercendo um knob que até agora não
+//! A cena põe **sete** formas lado a lado, cada uma exercendo um knob que até agora não
 //! existia (a primeira é o CONTROLE: o círculo inteiro, com nada tocado). ⚠️ **Nenhuma delas é uma espécie NOVA** — é a mesma família do círculo e a mesma
 //! caixa que já estavam ali, com números que o artista agora alcança.
 
@@ -99,7 +99,22 @@ pub(crate) fn build_knob_row(g: &mut Graph) -> NodeId {
             ("corner_bl", -0.2),
         ],
     );
-    let b = merge(g, &[a, shapes[4], uneven], -60.0);
+    // 7 — o MESMO anel parcial do slot 3, agora com as QUATRO quinas arredondadas. É o par
+    // que responde ao feedback do Enio (2026-08-19): a rosca cortada tinha quatro quinas
+    // vivas e nenhum knob — e, medido, ela não tinha quina NENHUMA para o motor ver, porque
+    // o handle do arco sobrava na ponta e curvava a borda radial.
+    let round_ring = placed(
+        g,
+        6,
+        CIRCLE,
+        &[
+            ("inner", 0.5),
+            ("sweep", 220.0),
+            ("start", 30.0),
+            ("corner", 0.18),
+        ],
+    );
+    let b = merge(g, &[a, shapes[4], uneven, round_ring], -60.0);
     let out = g.add_node("motion.output");
     g.set_pos(
         out,
@@ -129,15 +144,21 @@ impl crate::App {
         gfx.motion.sinks.push(out);
         let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
         eprintln!(
-            "[shape smoke =3] SEIS formas lado a lado, e nenhuma especie nova: (1) circulo \
+            "[shape smoke =3] SETE formas lado a lado, e nenhuma especie nova: (1) circulo \
              INTEIRO, o controle · (2) o MESMO circulo com Inner 0,55 = uma ROSQUINHA · (3) o \
              mesmo com Inner + Sweep 220 + Start 30 = um ANEL PARCIAL girado · (4) a PIZZA com \
              Sweep 70 (ela nascia num angulo fixo que nenhum slider movia) · (5) um SQUIRCLE \
              (Corner 0,55 + Smoothing 0,85 — o corner smoothing do Figma) · (6) uma caixa de \
              cantos DESIGUAIS (Corner 0,25, canto de cima-direita +0,45, o de baixo-esquerda \
-             AFIADO por -0,2). SE AS SEIS PARECEREM A MESMA COISA, PARE. Clique qualquer uma: o \
-             painel mostra SO os knobs daquela especie — a rosquinha tem Sweep/Start/Inner e a \
-             caixa tem os quatro cantos + Smoothing, e nenhuma mostra os da outra."
+             AFIADO por -0,2) · (7) O MESMO anel parcial do (3), agora com Corner 0,18: as \
+             QUATRO quinas dele ARREDONDADAS. SE AS SETE PARECEREM A MESMA COISA, PARE. \
+             ⚠️ COMPARE O (3) COM O (7): e' o par que responde ao seu smoke — a rosca cortada \
+             nao tinha knob de quina, e a medicao achou o porque: o handle do arco sobrava na \
+             ponta, a borda radial ABAULAVA (0,1865 de desvio num raio 1) e o motor de quinas \
+             lia a ponta como curva CONTINUA, entao nao havia quina para arredondar. Agora a \
+             borda e' reta ao bit e as quatro quinas existem. Clique qualquer forma: o painel \
+             mostra SO os knobs daquela especie, e o Corner aparece em 36 das 43 (as 7 de fora \
+             — circulo, elipse, coracao, pilula, cilindro, juncao, lua — nao tem quina nenhuma)."
         );
     }
 }

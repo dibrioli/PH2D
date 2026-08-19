@@ -1,6 +1,6 @@
 //! Os gates da cena `=3` — os knobs de forma.
 //!
-//! ⚠️ **A cena promete que as seis são DIFERENTES**, e é isso que se prova. Uma fileira em que
+//! ⚠️ **A cena promete que as sete são DIFERENTES**, e é isso que se prova. Uma fileira em que
 //! duas formas coincidem é pior que uma cena vazia: ela diz *"o knob funciona"* sobre um
 //! número que o cozimento ignorou.
 
@@ -22,7 +22,7 @@ fn registry() -> NodeRegistry {
 /// descritores distintos — o oráculo mais barato de *"as seis são diferentes"* que existe,
 /// e ele não precisa da geometria nem do shell.
 #[test]
-fn the_row_builds_six_shapes_with_six_distinct_descriptors() {
+fn the_row_builds_seven_shapes_with_seven_distinct_descriptors() {
     let reg = registry();
     let mut g = Graph::new();
     let out = build_knob_row(&mut g);
@@ -42,8 +42,8 @@ fn the_row_builds_six_shapes_with_six_distinct_descriptors() {
         .collect();
     assert_eq!(
         keys.len(),
-        6,
-        "seis formas, seis descritores — duas iguais partilhariam o geometry_id e a fileira \
+        7,
+        "sete formas, sete descritores — duas iguais partilhariam o geometry_id e a fileira \
          mostraria a mesma coisa duas vezes"
     );
 
@@ -59,8 +59,8 @@ fn the_row_builds_six_shapes_with_six_distinct_descriptors() {
             .iter()
             .filter(|n| n.type_name == "source.shape")
             .count(),
-        6,
-        "seis formas na fileira"
+        7,
+        "sete formas na fileira"
     );
     assert!(
         g.nodes()

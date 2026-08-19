@@ -18,7 +18,7 @@
 //! por segmento de ≤90°) — o mesmo motor do `arc`, então o contorno é liso ao renderizar
 //! e continua editável ponto a ponto depois de um "Convert to Curves".
 
-use crate::{Contour, FillRule, VecPath, VecVertex};
+use crate::{Contour, FillRule, VecPath, VecVertex, VertexKind};
 
 /// Uma volta inteira, em graus.
 pub const FULL_TURN: f64 = 360.0;
@@ -125,11 +125,15 @@ pub fn ellipse_sweep(
 
     // PARCIAL. Sem furo, fecha pelo CENTRO (pizza); com furo, pelo arco interno (o
     // contorno vai: arco externo → borda radial → arco interno de volta → borda radial).
-    let mut verts = arc_verts(center, rx, ry, start_deg, sweep, false);
+    let mut outer_arc = arc_verts(center, rx, ry, start_deg, sweep, false);
+    cap_arc_ends(&mut outer_arc);
+    let mut verts = outer_arc;
     if inner <= 0.0 {
         verts.push(VecVertex::corner(center));
     } else {
-        verts.extend(arc_verts(center, irx, iry, start_deg, sweep, true));
+        let mut inner_arc = arc_verts(center, irx, iry, start_deg, sweep, true);
+        cap_arc_ends(&mut inner_arc);
+        verts.extend(inner_arc);
     }
     VecPath {
         verts,
@@ -149,11 +153,45 @@ pub fn ellipse_chord(
     sweep_deg: f64,
 ) -> VecPath {
     let sweep = full_if_unset(sweep_deg);
-    let verts = arc_verts(center, rx, ry, start_deg, sweep, false);
+    let mut verts = arc_verts(center, rx, ry, start_deg, sweep, false);
+    cap_arc_ends(&mut verts);
     VecPath {
         verts,
         closed: true, // o fechamento É a corda
         ..VecPath::default()
+    }
+}
+
+/// **Fecha as duas pontas de um arco contra uma aresta RETA** — o handle que aponta para
+/// fora do arco é do ARCO, e não tem o que fazer numa reta.
+///
+/// ⚠️ **Isto é correção de GEOMETRIA, não uma preparação para o knob de quina.** O
+/// `arc_verts` dá a cada vértice handles simétricos, *como se o arco continuasse*; num arco
+/// PARCIAL o primeiro e o último vértice têm um lado que já não é arco — é a borda radial da
+/// fatia, ou a corda. Deixar o handle ali faz a aresta **abaular**: medido
+/// (`measure_corner_on_arcs::is_the_radial_edge_of_a_slice_actually_straight`), a aresta que
+/// fecha uma pizza desviava **0,1865** da reta num raio 1 — quase **19% do raio** —, e a de um
+/// anel parcial **0,2545**, numa aresta que a referência desenha reta. Depois: **0,0000**.
+///
+/// ⚠️ **A primeira medição dessa aresta usou o oráculo ERRADO e dizia `0,0960` sobre uma reta
+/// perfeita.** Uma aresta reta é uma cúbica degenerada (`[a, a, b, b]`): ela percorre a mesma
+/// reta com outra PARAMETRIZAÇÃO, então comparar o ponto em `t` com `lerp(a, b, t)` mede o
+/// relógio e não a forma — a assinatura foi o número sair **igual** para 70° e 180°. O oráculo
+/// é a distância PERPENDICULAR.
+///
+/// ⚠️ **E é o mesmo defeito que fazia a fatia não ter QUINA nenhuma.** Com o handle a sobrar,
+/// a tangente atravessa a ponta do arco de forma CONTÍNUA, então
+/// [`crate::corner_live::corner_at`] a lê como colinear e devolve `None`: uma pizza reportava
+/// **1** quina (o bico do centro) e um anel parcial reportava **zero**, quando têm 3 e 4.
+/// Um artista que pedisse raio de quina ali não recebia nada, e nada na tela dizia porquê.
+fn cap_arc_ends(verts: &mut [VecVertex]) {
+    if let Some(f) = verts.first_mut() {
+        f.in_handle = f.anchor;
+        f.kind = VertexKind::Corner;
+    }
+    if let Some(l) = verts.last_mut() {
+        l.out_handle = l.anchor;
+        l.kind = VertexKind::Corner;
     }
 }
 
@@ -259,5 +297,104 @@ mod tests {
             !s.verts.iter().any(|v| v.anchor == c),
             "nao passa pelo centro"
         );
+    }
+}
+
+#[cfg(test)]
+mod cap_tests {
+    use super::*;
+    use crate::corner_live::corner_at;
+
+    /// O ponto de uma cúbica em `t` (de Casteljau, escrito aqui para o gate não depender de
+    /// um privado de outro módulo).
+    fn at(c: [[f64; 2]; 4], t: f64) -> [f64; 2] {
+        let u = 1.0 - t;
+        let w = [u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t];
+        [
+            c[0][0] * w[0] + c[1][0] * w[1] + c[2][0] * w[2] + c[3][0] * w[3],
+            c[0][1] * w[0] + c[1][1] * w[1] + c[2][1] * w[2] + c[3][1] * w[3],
+        ]
+    }
+
+    /// A pior distância **PERPENDICULAR** entre uma aresta e a reta que liga as suas pontas,
+    /// olhando só as arestas que ligam dois raios DIFERENTES (as radiais / a corda).
+    ///
+    /// ⚠️ **Perpendicular, e não contra `lerp(a, b, t)`:** uma aresta reta é a cúbica
+    /// degenerada `[a, a, b, b]`, que percorre a mesma reta com outra parametrização — o
+    /// oráculo ingénuo reporta ~0,096 sobre geometria perfeita.
+    fn worst_bow(p: &VecPath) -> f64 {
+        let n = p.verts.len();
+        let mut worst: f64 = 0.0;
+        for i in 0..n {
+            let (a, b) = (p.verts[i], p.verts[(i + 1) % n]);
+            let ra = a.anchor[0].hypot(a.anchor[1]);
+            let rb = b.anchor[0].hypot(b.anchor[1]);
+            if (ra - rb).abs() < 1e-6 {
+                continue; // pedaço de arco, não a aresta que fecha
+            }
+            let c = [a.anchor, a.out_handle, b.in_handle, b.anchor];
+            let d = [b.anchor[0] - a.anchor[0], b.anchor[1] - a.anchor[1]];
+            let len = d[0].hypot(d[1]);
+            if len < 1e-12 {
+                continue;
+            }
+            for k in 1..20 {
+                let q = at(c, f64::from(k) / 20.0);
+                let w = [q[0] - a.anchor[0], q[1] - a.anchor[1]];
+                worst = worst.max((w[0] * d[1] - w[1] * d[0]).abs() / len);
+            }
+        }
+        worst
+    }
+
+    /// **A ARESTA QUE FECHA UMA FATIA É RETA.**
+    ///
+    /// Medido antes da correcção: a pizza de 70° abaulava **0,1865** num raio 1 (19%), a de
+    /// 180° **0,2450**, e o anel parcial **0,2545** — o handle do arco sobrava na ponta e
+    /// curvava a borda radial. FALSIFICADO por remover o [`cap_arc_ends`].
+    #[test]
+    fn the_edge_that_closes_a_slice_is_straight() {
+        let c = [0.0, 0.0];
+        for (name, path) in [
+            ("pizza 70", ellipse_sweep(c, 1.0, 1.0, 0.0, 70.0, 0.0)),
+            ("pizza 180", ellipse_sweep(c, 1.0, 1.0, 0.0, 180.0, 0.0)),
+            ("anel parcial", ellipse_sweep(c, 1.0, 1.0, 30.0, 220.0, 0.5)),
+            ("corda", ellipse_chord(c, 1.0, 1.0, 0.0, 120.0)),
+        ] {
+            assert!(
+                worst_bow(&path) < 1e-9,
+                "{name}: a aresta que fecha desviou {:.4} da reta",
+                worst_bow(&path)
+            );
+        }
+    }
+
+    /// **E AGORA A FATIA TEM QUINAS** — o motor de quinas vivas as vê, que é o que faz um raio
+    /// de canto ter onde pousar.
+    ///
+    /// ⚠️ **A segunda metade é o CONTROLE, e é ela que impede a cura de ir longe demais:** a
+    /// elipse inteira e a rosquinha não podem ganhar quina nenhuma — os vértices delas são de
+    /// ARCO, e arredondá-los deformaria a curva.
+    #[test]
+    fn a_slice_has_corners_and_a_full_ellipse_has_none() {
+        let c = [0.0, 0.0];
+        let count = |p: &VecPath| {
+            (0..p.verts.len())
+                .filter(|&i| corner_at(&p.verts, p.closed, i).is_some())
+                .count()
+        };
+        for (name, want, path) in [
+            ("pizza", 3, ellipse_sweep(c, 1.0, 1.0, 0.0, 70.0, 0.0)),
+            (
+                "anel parcial",
+                4,
+                ellipse_sweep(c, 1.0, 1.0, 30.0, 220.0, 0.5),
+            ),
+            ("corda", 2, ellipse_chord(c, 1.0, 1.0, 0.0, 120.0)),
+            ("elipse", 0, ellipse_sweep(c, 1.0, 1.0, 0.0, 360.0, 0.0)),
+            ("rosquinha", 0, ellipse_sweep(c, 1.0, 1.0, 0.0, 360.0, 0.55)),
+        ] {
+            assert_eq!(count(&path), want, "{name}: quinas que o motor VÊ");
+        }
     }
 }

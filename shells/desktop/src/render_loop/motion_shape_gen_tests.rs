@@ -192,10 +192,14 @@ fn the_params_panel_shows_only_the_shapes_kind_params() {
         .graph
         .set_param(n, "kind", ShapeKind::Gear as u32 as f32);
     let gear = names(&motion);
-    for p in ["kind", "size", "sides", "tooth_depth", "hole"] {
+    // ⚠️ **O `corner` entrou na lista da engrenagem em 2026-08-19** — ele deixou de ser da
+    // caixa e passou a ser do CATÁLOGO (as Live Corners aplicadas depois do `cook`), e uma
+    // engrenagem tem 3·`sides` quinas para arredondar. Antes disso ele era **inerte e
+    // escondido** nela, que é por que nenhum documento pôde autorá-lo.
+    for p in ["kind", "size", "sides", "tooth_depth", "hole", "corner"] {
         assert!(gear.contains(&p), "a gear shows {p}");
     }
-    for p in ["aspect", "corner", "star_depth", "cleft"] {
+    for p in ["aspect", "star_depth", "cleft"] {
         assert!(!gear.contains(&p), "a gear hides {p}");
     }
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());

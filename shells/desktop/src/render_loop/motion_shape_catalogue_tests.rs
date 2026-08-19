@@ -59,10 +59,26 @@ fn the_eight_that_shipped_cook_exactly_what_they_cooked() {
         ShapeKind::Heart,
         ShapeKind::Gear,
     ] {
-        for size in [0.01f32, 1.0, 7.5] {
+        // ⚠️ **O `3.0` entrou quando a engrenagem passou a varrer só `corner = 0`** (a nota
+        // acima): sem ele a varredura caía de 648 para 594 células e o piso de 600 reprovava —
+        // e baixar o piso teria trocado uma perda de cobertura por um número menor. Um eixo a
+        // mais custa nada e devolve mais do que a nota tirou.
+        for size in [0.01f32, 1.0, 3.0, 7.5] {
             for aspect in [0.05f32, 1.0, 3.25] {
                 for sides in [3u32, 6, 32] {
-                    for corner in [0.0f32, 0.37, 1.0] {
+                    // ⚠️ **A engrenagem varre só `corner = 0`, e isso é uma NOTA, não uma
+                    // folga.** Até 2026-08-19 o `corner` era inerte nela **e escondido pelo
+                    // painel**, então nenhum documento pôde autorá-lo — a única rota era
+                    // trocar o `kind` de uma caixa que já o tinha. Com o arredondamento geral
+                    // ele passou a mover a engrenagem, e varrê-lo aqui seria comparar contra
+                    // um construtor congelado que nunca soube dele. O que continua prendido
+                    // é o que o artista de facto tinha: `corner = 0`.
+                    let corners: &[f32] = if kind == ShapeKind::Gear {
+                        &[0.0]
+                    } else {
+                        &[0.0, 0.37, 1.0]
+                    };
+                    for &corner in corners {
                         let p = ShapeParams {
                             kind,
                             size,
@@ -356,4 +372,40 @@ fn the_pie_and_the_segment_answer_to_the_new_knobs() {
             );
         }
     }
+}
+
+/// **SONDA — em que espécies o `corner` de facto MEXE?** É de onde sai a lista do
+/// `ParamGate` dele, e ela é grande demais para se escrever de cabeça: a rota geral de
+/// arredondamento (as Live Corners aplicadas depois do `cook`) tornou o knob vivo em quase
+/// todo o catálogo, mas **não em todo** — uma elipse, uma rosquinha e uma pílula não têm
+/// quina nenhuma.
+///
+/// Imprime `SIM`/`nao` por espécie. Rode com
+/// `cargo test -p ph2d-host-desktop --bin ph2d-host-desktop -- which_kinds_the_corner_moves --ignored --nocapture`.
+#[test]
+#[ignore = "sonda: imprime a tabela de que o ParamGate do `corner` e' derivado"]
+fn which_kinds_the_corner_moves() {
+    let mut live: Vec<&str> = Vec::new();
+    let mut dead: Vec<&str> = Vec::new();
+    for (i, kind) in ALL_KINDS.iter().enumerate() {
+        let base = ShapeParams {
+            kind: *kind,
+            ..neutral()
+        };
+        let bumped = ShapeParams {
+            corner: 0.4,
+            ..base
+        };
+        if all_geometry(&build_shape_path(&bumped)) == all_geometry(&build_shape_path(&base)) {
+            dead.push(KIND_LABELS[i]);
+        } else {
+            live.push(KIND_LABELS[i]);
+        }
+    }
+    eprintln!("\n[corner] VIVO em {} especies:\n  {live:?}", live.len());
+    eprintln!("\n[corner] morto em {} especies:\n  {dead:?}", dead.len());
+    eprintln!(
+        "\n  LEITURA: a lista MORTA e' a que o `ParamGate` do `corner` tem de EXCLUIR — e ela
+  e' curta de proposito: sao as formas sem quina nenhuma."
+    );
 }

@@ -289,9 +289,46 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
 /// os dois por aqui"* — and until now this node was the one caller that did not.
 /// That is why 35 shapes the editor could already draw were unreachable from a
 /// graph: not geometry missing, wiring missing.
+/// As espécies cuja RECEITA já consome o `corner` (o raio entra nos `values` que o `cook`
+/// recebe: os quatro raios do round-rect, o do polígono, a ponta e o vale da estrela).
+///
+/// ⚠️ **A lista existe para o arredondamento GERAL não passar duas vezes por elas** — o raio
+/// já está na geometria quando ela sai do `cook`, e aplicá-lo outra vez comeria a quina que
+/// acabou de nascer. Para as outras ~37 o `corner` era **inerte**, e é isso que a rota geral
+/// cura (feedback do Enio, 2026-08-19: *"senti falta de controle das quinas de uma rosca
+/// cortada e formas similares"*).
+const CORNER_IN_THE_RECIPE: &[ShapeKind] = &[
+    ShapeKind::Square,
+    ShapeKind::Rectangle,
+    ShapeKind::Polygon,
+    ShapeKind::Star,
+];
+
 pub(crate) fn build_shape_path(p: &ShapeParams) -> VecPath {
     let (kind, a, b, v) = vec_recipe(p);
     let mut path = cook(kind, a, b, &v);
+    // ⚠️ **O ARREDONDAMENTO GERAL** — a mesma máquina das Live Corners (ADR-0121), aplicada
+    // depois do `cook` para as espécies cuja receita não tem onde receber um raio.
+    //
+    // ⚠️ **O raio é carimbado em TODOS os vértices, e isso é DERIVADO, não descuido:** o
+    // `corner_setback` recusa uma quina colinear, e um vértice do meio de um arco é colinear
+    // por construção — medido, a rosquinha e a elipse inteira saem com **zero** quinas
+    // arredondadas enquanto a seta ganha 7 e a cruz 12. Uma lista de índices por espécie
+    // apodreceria na primeira forma nova; esta regra não tem o que envelhecer.
+    if !CORNER_IN_THE_RECIPE.contains(&p.kind) {
+        let r = f64::from(p.corner.clamp(0.0, 1.0)) * f64::from(p.size.max(0.01));
+        if r > 0.0 {
+            let mut verts = path.verts.clone();
+            for vt in &mut verts {
+                vt.corner_radius = r;
+            }
+            if let Some(rounded) =
+                ph2d_vec_scene::corner_live::round_authored_corners(&verts, path.closed)
+            {
+                path.verts = rounded;
+            }
+        }
+    }
     // ⚠️ **O TRAÇO** (doc 89 folha 14, P0). O renderer já o desenha — o
     // `tessellate_shape_instance` ramifica em `fill.is_some() || stroke.is_some()`
     // desde sempre —, e o que faltava era o shell PÔ-LO aqui: o `cook` devolve o

@@ -11,6 +11,10 @@
 > recusa com medição atrás não volta à fila por ter mudado de arquivo.
 >
 > Recorte: linhas fora de `1-54,152-706,1548-1627,2735-2907` do original.
+> ⚠️ **A única alteração ao corpo:** 4 alvo(s) de link relativo foram **reancorados**
+> para apontarem ao MESMO arquivo de antes — o corpo desceu de pasta e todo `../x`
+> passaria a resolver noutro sítio. Texto, números e estrutura são byte-idênticos; a
+> partição foi provada por sha256 **antes** desta reancoragem.
 
 ---
 
@@ -2581,7 +2585,7 @@ Canvas **4096**, pincel grande, Wet Paint no dropdown. O que olhar:
 > pigmento e wetness na resolução da tela. Mas que cada ajuste desses seja
 > colocado na UI junto ao nosso slider."*
 >
-> Plano: [`30_plano_multiresolucao.md`](30_plano_multiresolucao.md).
+> Plano: [`30_plano_multiresolucao.md`](../../../Painter/30_plano_multiresolucao.md).
 
 ### O que ficou
 
@@ -2962,7 +2966,7 @@ ADR-0146 já descreve como *um segundo modelo, não o mesmo mais rápido*.
 
 ## §5.45 — O SOLVER FICOU INDEPENDENTE DE ORDEM: 52,1 → 11,0 ms/passo, e a água a 90,8 Hz
 
-**Ordem do Enio: *"GPU do Wet Paint"***. O [ADR-0146](../architecture/decisions/0146-wet-paint-gpu-solver-is-a-second-model-not-a-faster-one.md)
+**Ordem do Enio: *"GPU do Wet Paint"***. O [ADR-0146](../../../architecture/decisions/0146-wet-paint-gpu-solver-is-a-second-model-not-a-faster-one.md)
 tinha medido que `advect` (70,4%) + `drying_pass` (21,9%) somam ~92% do passo, que os dois são
 Gauss-Seidel, e que portá-los seria *"um segundo modelo, não o mesmo mais rápido"*.
 
@@ -4384,7 +4388,7 @@ gates, o arredondamento), e a fatoração só toca a amostragem.
 
 ## §5.56 — O item 3 (a GPU do solver): os dois gatilhos MENSURÁVEIS do ADR-0146 fecharam (2026-08-01)
 
-O terceiro item da fila era *"a GPU do solver"* — o [ADR-0146](../architecture/decisions/0146-wet-paint-gpu-solver-is-a-second-model-not-a-faster-one.md),
+O terceiro item da fila era *"a GPU do solver"* — o [ADR-0146](../../../architecture/decisions/0146-wet-paint-gpu-solver-is-a-second-model-not-a-faster-one.md),
 em proposta desde 2026-07-29 com quatro emendas, cada uma re-precificando-o para
 baixo. A regra do CLAUDE.md §0 corta nos dois sentidos: *quem move o número que
 tornava algo inalcançável tem de reconferir a nota* — e quem move o número que
@@ -6449,7 +6453,7 @@ formas  raio    MOVE (antes → depois)      SOLTAR
 ⚠️ **O custo não sumiu — ele mudou de lugar, e isso está nomeado:** soltar custa
 **370 ms** nessa cena, uma vez por gesto em vez de por quadro. É a diferença
 entre *inutilizável* e *uma pausa ao largar*, e a cura da pausa é a **rota
-analítica** do [doc 35 §4](35_boolean_o_que_o_vector_ensina.md) — o booleano
+analítica** do [doc 35 §4](../../../Painter/35_boolean_o_que_o_vector_ensina.md) — o booleano
 sobre CURVAS em vez de sobre pixels, `O(segmentos)` em vez de `O(área)`. A wave
 de 06/08 já havia levado a rota de raster ao piso do método; esta lei é o que
 torna a cena usável enquanto aquela decisão não é tomada.

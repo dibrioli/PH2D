@@ -11,6 +11,10 @@
 > recusa com medição atrás não volta à fila por ter mudado de arquivo.
 >
 > Recorte: linhas fora de `1-195,1431-1625` do original.
+> ⚠️ **A única alteração ao corpo:** 1 alvo(s) de link relativo foram **reancorados**
+> para apontarem ao MESMO arquivo de antes — o corpo desceu de pasta e todo `../x`
+> passaria a resolver noutro sítio. Texto, números e estrutura são byte-idênticos; a
+> partição foi provada por sha256 **antes** desta reancoragem.
 
 ---
 
@@ -882,7 +886,7 @@ ao vivo, e o gate de parser independente prova que o número que o widget usa é
 > **esta wave é o primeiro chamador que dá ao pintor uma moldura arbitrária** — até aqui quem a dava
 > era o layout, no tamanho natural do widget. A bifurcação (escalar o fragmento × declarar o tamanho
 > intrínseco × dar canal de tamanho aos 44 pintores) é decisão de PRODUTO e está em
-> [`BUGS_vector.md` #26](../BUGS_vector.md) com o preço de cada saída. Seja qual for, a resposta é
+> [`BUGS_vector.md` #26](../../../Vector%20Module/BUGS_vector.md) com o preço de cada saída. Seja qual for, a resposta é
 > **por-tipo e mora numa porta só** — e ela responde uma pergunta nova: *a moldura de uma pele é uma
 > **CAIXA** (o widget preenche) ou um **SLOT** (o widget assenta no tamanho natural)?*
 

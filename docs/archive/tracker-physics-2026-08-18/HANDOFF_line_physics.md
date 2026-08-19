@@ -11,6 +11,10 @@
 > recusa com medição atrás não volta à fila por ter mudado de arquivo.
 >
 > Recorte: linhas fora de `1-231,1680-1885` do original.
+> ⚠️ **A única alteração ao corpo:** 29 alvo(s) de link relativo foram **reancorados**
+> para apontarem ao MESMO arquivo de antes — o corpo desceu de pasta e todo `../x`
+> passaria a resolver noutro sítio. Texto, números e estrutura são byte-idênticos; a
+> partição foi provada por sha256 **antes** desta reancoragem.
 
 ---
 
@@ -38,7 +42,7 @@
 | **W-Offset — Offset do collider por corpo** | ✅ **INTEGRÁVEL** — smoke `=17` (2026-07-20) | ver §W-Offset | Offset X/Y; collider nos pés, não no centro; campo no `Collider`; **bump 28→29** |
 
 **W0 entregou:** [ADR-0131](../../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) ·
-[`00_plano_waves.md`](../00_plano_waves.md) · [`01_visao.md`](../01_visao.md) · este tracker. Nenhuma linha de
+[`00_plano_waves.md`](../../Physics/00_plano_waves.md) · [`01_visao.md`](../../Physics/01_visao.md) · este tracker. Nenhuma linha de
 código, nenhum contrato tocado, nenhum foundational tocado.
 
 ---
@@ -1357,7 +1361,7 @@ bola em LOCAL (0, 4) sob um pai em (5, 0)  ⇒  desenhada em (5, 4)
 ```
 
 O collider não estava onde o sprite estava. Detalhe completo, com as cinco lições:
-[`BUGS_physics.md`](../BUGS_physics.md) **#2**.
+[`BUGS_physics.md`](../../Physics/BUGS_physics.md) **#2**.
 
 ⚠️ **O `readback` prometia isto desde o W1** — *"child bodies land in W2"*. O W2 shipou
 em três pedaços e nenhum tocou nisto. Nota que promete wave futura apodrece pior que nota
@@ -1522,9 +1526,9 @@ verde. Smoke pendente: `PH2D_PHYSICS_SMOKE=1`. Aguardo ordem de integração / W
 ## §W6 — A ESCALA ALCANÇA O COLLIDER (2026-07-19, smokada pelos gates)
 
 **Reaberta a linha pós-integração** (o plano original acabou; ver
-[`HANDOFF_CONTINUACAO_line_physics_2026-07-19.md`](HANDOFF_CONTINUACAO_line_physics_2026-07-19.md)).
+[`HANDOFF_CONTINUACAO_line_physics_2026-07-19.md`](../../Physics/handoffs/HANDOFF_CONTINUACAO_line_physics_2026-07-19.md)).
 O Enio escolheu do cardápio o item **(A)** — *a escala não alcança o collider*, a única
-CORREÇÃO da lista. A causa e as lições estão em [`BUGS_physics.md`](../BUGS_physics.md) **#3**;
+CORREÇÃO da lista. A causa e as lições estão em [`BUGS_physics.md`](../../Physics/BUGS_physics.md) **#3**;
 o resumo de produto está na entrada de física do `CLAUDE.md` §5. Aqui, só o essencial de
 integração.
 
@@ -1580,7 +1584,7 @@ física; a cena é para o olho.
 
 ## §W7 — SENSORES / TRIGGERS (2026-07-19, smokada pelos gates + smoke `=10`)
 
-**Item (B) do cardápio** ([`HANDOFF_CONTINUACAO_line_physics_2026-07-19.md`](HANDOFF_CONTINUACAO_line_physics_2026-07-19.md)),
+**Item (B) do cardápio** ([`HANDOFF_CONTINUACAO_line_physics_2026-07-19.md`](../../Physics/handoffs/HANDOFF_CONTINUACAO_line_physics_2026-07-19.md)),
 pedido pelo Enio. O `is_sensor` era só um esboço no ADR-0131 (*"waits for a consumer of its
 own"*); esta wave constrói o **primitivo de trigger**.
 
@@ -3999,7 +4003,7 @@ muda o quique. Se a bola ignora os sliders até um Reset, o fix regrediu.
 
 ### Padrão-ouro: waves 2-5 — **ABSORVIDAS pelo plano 02 (2026-07-25)**
 
-⚠️ **Esta lista foi SUPERSEDIDA por [`02_plano_joints_ui_authoring.md`](../02_plano_joints_ui_authoring.md)**
+⚠️ **Esta lista foi SUPERSEDIDA por [`02_plano_joints_ui_authoring.md`](../../Physics/02_plano_joints_ui_authoring.md)**
 — o plano pós-pesquisa (Unity/Unreal/Godot/Fyrox/RUBE/Algodoo/Newton + a superfície nativa do rapier
 lida do source + 44 screenshots em `~/Documentos/Recursos/UI_Reference/`). O mapa de absorção:
 W2-grupo → **W-JG** · W3-alças+snap → **W-J2** · W4-limite/motor visuais → **W-J1 + W-J3** (e o
@@ -4043,7 +4047,7 @@ seleção "Join As", a §12 abre já selecionada).
 
 ## W-J1 (plano 02) — O JOINT DESENHA O QUE ELE É (2026-07-25, `line/physics`, cena `=43`, pendente de smoke)
 
-A 1ª wave do [plano 02](../02_plano_joints_ui_authoring.md), e a que a pesquisa
+A 1ª wave do [plano 02](../../Physics/02_plano_joints_ui_authoring.md), e a que a pesquisa
 apontou como a maior distância entre nós e todo o mercado exceto o RUBE: até
 aqui os **quatro tipos desenhavam a MESMA figura** (segmento + dois anéis), então
 o canvas dizia *"há um joint aqui"* e mais nada — tipo, alcance, comprimento,
@@ -4134,7 +4138,7 @@ par · W-JG grupo carrega o rig.
 
 ## W-J2 — A âncora tem DUAS alças, e um ímã (2026-07-25, cena `=44`)
 
-A wave seguinte do [plano 02](../02_plano_joints_ui_authoring.md). Um joint liga
+A wave seguinte do [plano 02](../../Physics/02_plano_joints_ui_authoring.md). Um joint liga
 **dois** corpos e cada ponta prende em algum lugar do seu; até aqui só a ponta A
 tinha alça, e a de B era o que a política de semeadura produzisse — o mesmo ponto
 num Pin/Weld, o **centro do corpo** numa Spring/Rope — sem nenhum gesto do editor
@@ -4344,7 +4348,7 @@ nunca pegaria — é decisão de produto, não mecânica. E: quem assume, siga c
 
 ## W-J3 — Pose, não digite: o limite e o comprimento no canvas (2026-07-25, cena `=45`)
 
-A wave seguinte do [plano 02](../02_plano_joints_ui_authoring.md), e a que o arco da
+A wave seguinte do [plano 02](../../Physics/02_plano_joints_ui_authoring.md), e a que o arco da
 W-J1 desbloqueou. Até aqui o canvas MOSTRAVA o alcance de uma dobradiça e o
 comprimento de uma mola, e para MUDÁ-los o artista voltava ao §12 e digitava um
 número — olhando para o efeito num lugar e escrevendo a causa noutro.
@@ -5425,7 +5429,7 @@ está inativo além do próprio chip (o overlay diz, e é onde o artista está o
 
 ## W-JG — O GRUPO CARREGA O RIG (2026-07-26, cena `=51`, **smoke APROVADO** 2026-07-26)
 
-A última linha do [plano 02](../02_plano_joints_ui_authoring.md), e a conclusão
+A última linha do [plano 02](../../Physics/02_plano_joints_ui_authoring.md), e a conclusão
 natural da **W-AnchorFollow**: ela tornou a âncora de um joint **body-local**
 (ela segue o corpo por construção), o que fechou o *slide* do pivô e, no mesmo
 movimento, abriu o preço — se o corpo carrega a âncora, mover **um** corpo de um
@@ -5603,7 +5607,7 @@ diz, e é onde o artista está olhando).
 
 ## W-Grab — A MÃO: pegar o corpo no PLAY (2026-07-26, cena `=52`, **smoke APROVADO** 2026-07-26)
 
-O primeiro item do **§8 Horizonte** do [plano 02](../02_plano_joints_ui_authoring.md)
+O primeiro item do **§8 Horizonte** do [plano 02](../../Physics/02_plano_joints_ui_authoring.md)
 (*"Pin-to-world / Target joint — carregar no play"*), e o buraco mais alcançável
 que o módulo tinha: **durante o Play a cena era só de LEITURA.** A pose de um
 corpo dinâmico é escrita pelo `readback` a cada dispatch, então um arrasto de
@@ -6022,7 +6026,7 @@ arrastar o muro estático *"não faz nada"*, o que esta wave tornou FALSO.
 ## W-IK — POSAR ARRASTANDO A PONTA (2026-07-27, cena `=54`, pendente de smoke)
 
 > **Arquitetura:** [ADR-0149](../../architecture/decisions/0149-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md).
-> **Plano/estado:** [`03_plano_ik.md`](../03_plano_ik.md). Aqui fica só o que um agente que
+> **Plano/estado:** [`03_plano_ik.md`](../../Physics/03_plano_ik.md). Aqui fica só o que um agente que
 > RETOMA a linha precisa saber e não deve re-derivar.
 
 O horizonte do plano 02 §8, escalonado pelo Enio em 2026-07-27. Autorar a pose de uma cadeia era
@@ -6096,7 +6100,7 @@ de um vizinho).
 
 ### Aberto
 
-Ver [`03_plano_ik.md`](../03_plano_ik.md) §5 — limites de Slider ao posar · joint criado no mesmo
+Ver [`03_plano_ik.md`](../../Physics/03_plano_ik.md) §5 — limites de Slider ao posar · joint criado no mesmo
 frame do gesto · sem marca de overlay para a pose (decisão, com o porquê) · sem ghost da pose
 anterior · nada liga posar a keyframe (a timeline já tem AutoKey).
 
@@ -6109,7 +6113,7 @@ um FK… FK também é extremamente útil. Isso é tão importante que merece um
 Painel Physics. Deixe a seção Interaction para a simulação da física. Crie outra seção de interação
 exclusiva para Joints. Coloque botões para 5 tipos de interação (3 nós já temos)."*
 
-Plano: [`04_plano_fk_e_modos_de_joint.md`](../04_plano_fk_e_modos_de_joint.md).
+Plano: [`04_plano_fk_e_modos_de_joint.md`](../../Physics/04_plano_fk_e_modos_de_joint.md).
 Arquitetura: [ADR-0149 §10](../../architecture/decisions/0149-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md)
 (emenda — a FK não pede ADR próprio, ela é o outro lado da mesma decisão).
 
@@ -6207,7 +6211,7 @@ os cinco modos lado a lado; os números da mensagem saem de `probe_smoke_55`.
 
 O `ratio` da v1 prometia vantagem mecânica e **descrevia uma corda que não existe**: numa corda
 única sobre roldanas livres a tensão é **uniforme**, então os dois corpos sentem a MESMA força e a
-vantagem é **1**, quaisquer que sejam os diâmetros (§3 do [plano 03](../03_plano_polia.md)). A vantagem
+vantagem é **1**, quaisquer que sejam os diâmetros (§3 do [plano 03](../../Physics/03_plano_polia.md)). A vantagem
 verdadeira volta por onde ela vem no mundo — uma roldana **montada num corpo que se move** é a
 cadernal móvel de uma talha, e o corpo passa a ser sustentado por **DOIS ramos** da mesma corda.
 
@@ -6351,7 +6355,7 @@ no bloco. Medido por `probe_smoke_61`: a talha SEGURA (**0,008 m** em 2 s) e o c
 ## W-Pulley W4 — O TAMBOR DIFERENCIAL: a vantagem mecânica CONTÍNUA (2026-07-28, cena `=62`, pendente de smoke)
 
 O `ratio` que o W1 aposentou descrevia *"uma talha diferencial com o eixo invisível"* (§3 do
-[plano 03](../03_plano_polia.md)): um número sem peça na cena. O W4 põe a peça — e a forma dela foi
+[plano 03](../../Physics/03_plano_polia.md)): um número sem peça na cena. O W4 põe a peça — e a forma dela foi
 decidida por uma **impossibilidade geométrica**, não por gosto.
 
 ⚠️ **Duas roldanas CONCÊNTRICAS não têm tangente comum.** A existência exige `|C₂−C₁| > |s₂r₂ −
@@ -7118,7 +7122,7 @@ separados na rota, uma 2ª restrição por corda; não é afinação e não foi 
 ## W-Weston — a talha DIFERENCIAL (2026-07-29, cena `=64`, ordem do Enio)
 
 Detalhe completo (derivação, tabelas, as duas notas corrigidas) no
-[plano 03 §11](../03_plano_polia.md). Aqui o resumo de handoff.
+[plano 03 §11](../../Physics/03_plano_polia.md). Aqui o resumo de handoff.
 
 ### A investigação virou wave, e por um motivo de CUSTO
 
@@ -7176,8 +7180,8 @@ amarre que **sobreviveu** porque a montagem natural já resolvia os dois lados i
 ⚠️ **A jornada da POLIA + o PINO DE MUNDO INTEGRARAM ao `main`** (2026-07-30, 70
 commits). A worktree foi rebaseada e está **em cima do `main`** — `ahead=0`,
 `behind=0`. Os dois handoffs de integração daquele dia
-([`..._pulley_...`](HANDOFF_INTEGRACAO_line_physics_pulley_2026-07-30.md) e
-[`..._world_pin_...`](HANDOFF_INTEGRACAO_line_physics_world_pin_2026-07-30.md))
+([`..._pulley_...`](../../Physics/handoffs/HANDOFF_INTEGRACAO_line_physics_pulley_2026-07-30.md) e
+[`..._world_pin_...`](../../Physics/handoffs/HANDOFF_INTEGRACAO_line_physics_world_pin_2026-07-30.md))
 viram **históricos**: não integre por nenhum dos dois.
 
 ### Os pins DEPOIS da integração — lidos da FONTE, não de memória
@@ -7211,7 +7215,7 @@ linha bumpou oito vezes. Quarta vez que estas duas linhas disputam este número
 
 | wave | o que | cena |
 |---|---|---|
-| **W-JointCopy** | **copiar/colar as propriedades de um joint** — o item 5 do §8. Porta única `PhysicsJoint::with_properties_of` (destructuring EXAUSTIVO da fonte: um campo novo não compila até ser classificado); o **tipo viaja** porque metade dos números não tem unidade própria; `active` e as âncoras **não** viajam; e é o **único fan-out da §12**, com a contagem no rótulo. Detalhe no [plano 02 §10](../02_plano_joints_ui_authoring.md). **11 mutações, 11 sangram.** Zero componente, zero id de física, **zero bump** | `=66` |
+| **W-JointCopy** | **copiar/colar as propriedades de um joint** — o item 5 do §8. Porta única `PhysicsJoint::with_properties_of` (destructuring EXAUSTIVO da fonte: um campo novo não compila até ser classificado); o **tipo viaja** porque metade dos números não tem unidade própria; `active` e as âncoras **não** viajam; e é o **único fan-out da §12**, com a contagem no rótulo. Detalhe no [plano 02 §10](../../Physics/02_plano_joints_ui_authoring.md). **11 mutações, 11 sangram.** Zero componente, zero id de física, **zero bump** | `=66` |
 
 ⚠️ **Dois SPLITS de LOC vieram junto, os dois por RESPONSABILIDADE:**
 `inspector_joint.rs` (shell, 631 > 600) cedeu o **gesto que CRIA** para
@@ -7261,7 +7265,7 @@ o **§10** (bias com raio + o custo contra o HR-4) · o **ÍMÃ** do eixo montad
 **W-WESTON** (o eixo composto atravessado duas vezes, `2R/(R−r)`). **Smokes aprovados:
 `=61`, `=63`, `=64`, `=65`** (2026-07-30). **A linha está FECHADA; o handoff de
 integração é
-[`HANDOFF_INTEGRACAO_line_physics_world_pin_2026-07-30.md`](HANDOFF_INTEGRACAO_line_physics_world_pin_2026-07-30.md)**
+[`HANDOFF_INTEGRACAO_line_physics_world_pin_2026-07-30.md`](../../Physics/handoffs/HANDOFF_INTEGRACAO_line_physics_world_pin_2026-07-30.md)**
 — o `..._pulley_...` do mesmo dia está **SUPERSEDED** (a linha reabriu para a wave
 do pino de mundo, e o `main` andou 186 commits depois que ele afirmou o
 contrário).
@@ -7269,7 +7273,7 @@ contrário).
 ⚠️ **A W-JointWorld fechou o item 3 do horizonte do plano 02 §8** (a metade
 autorável do *Pin-to-world*): um joint cujo lado B é um PONTO DO CENÁRIO, o que
 remove o corpo estático inventado. Marcador `JointWorldAnchor`, **zero bump de
-schema**, registro 23→24, cena **`=65`**. Detalhe: [plano 02 §9](../02_plano_joints_ui_authoring.md).
+schema**, registro 23→24, cena **`=65`**. Detalhe: [plano 02 §9](../../Physics/02_plano_joints_ui_authoring.md).
 ⚠️ **Dois relatos de smoke a corrigiram**: o gesto de canvas recusava o vazio (e
 a recusa DIZIA que pinos de mundo não existiam — frase que a própria wave
 falsificara), e o dot âmbar escrevia `local_a` em vez da âncora, então arrastar
@@ -7345,7 +7349,7 @@ novo, nenhum gizmo id, nenhuma dep, contrato congelado intacto. **c9 byte-idênt
 
 **⚠️ E ela consertou um defeito PRÉ-EXISTENTE que alcançava as TRÊS rotas de
 criação** — a âncora de um joint entre corpos parenteados nascia em espaço LOCAL,
-1,65 m fora. Mecanismo, repro e lições: [`BUGS_physics.md`](../BUGS_physics.md) #4.
+1,65 m fora. Mecanismo, repro e lições: [`BUGS_physics.md`](../../Physics/BUGS_physics.md) #4.
 
 **LOC:** `sections/physics_rows.rs` bateu 626 > 600 (cap de PAINEL, distinto dos 700
 de `crates/`) ⇒ split por responsabilidade em **`physics_join_rows.rs`** — *o que
@@ -7377,7 +7381,7 @@ O Enio aprovou o gesto e reprovou o **Reset**; e mandou fechar os dois itens abe
 | **o rig nasce com batentes** de ±60° | `rig::RIG_LIMIT_DEG` (tabela medida no doc) | sem batente a cabeça dobra **176°** |
 
 ⚠️ **O Reset e a emenda são defeitos PRÉ-EXISTENTES**, não regressões da wave —
-[BUGS #5](../BUGS_physics.md) e [#6](../BUGS_physics.md). O do Reset vinha do W5 e valia
+[BUGS #5](../../Physics/BUGS_physics.md) e [#6](../../Physics/BUGS_physics.md). O do Reset vinha do W5 e valia
 3,2 mm no play, o que é como ele sobreviveu um ano.
 
 ⚠️ **`ColliderPose`/`seam_point`/`seam_between` e `RIG_LIMIT_DEG`/`rig_limits` são
@@ -8989,7 +8993,7 @@ ADR** · **zero `Cargo.toml`** · contrato congelado intacto.
 
 
 O player de plataforma ganhou o modo **cinemático**: a pose é escrita, e o mundo
-só diz **quanto coube**. Plano: [`07_plano_player_kinematico.md`](../07_plano_player_kinematico.md)
+só diz **quanto coube**. Plano: [`07_plano_player_kinematico.md`](../../Physics/07_plano_player_kinematico.md)
 §6 (a seção da wave foi reescrita com o que a medição decidiu).
 
 ### O desenho, em quatro peças
@@ -10382,7 +10386,7 @@ a linha não aparecer, o resto não significa nada.
 
 ## ⛔ H e I — RECUSADAS por MEDIÇÃO, e a fila da auditoria FECHOU (2026-08-15)
 
-Os dois últimos itens do [plano 10](../10_plano_fila_da_auditoria.md) são
+Os dois últimos itens do [plano 10](../../Physics/10_plano_fila_da_auditoria.md) são
 respondidos por **sonda, não por código**. As duas sondas ficam no repo
 (`--ignored`, imprimem e não afirmam, cada uma com o seu **CONTROLE**): elas são o
 que impede o item de voltar.
@@ -10460,7 +10464,7 @@ que ele consegue.
 
 **A fila da auditoria está FECHADA:** A · C · B · D · E · J · G construídas,
 H e I recusadas com o número ao lado. O handoff de integração é o
-**[MESTRE de 2026-08-15](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-15.md)**.
+**[MESTRE de 2026-08-15](../../Physics/handoffs/HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-15.md)**.
 
 ---
 

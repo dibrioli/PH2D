@@ -11,6 +11,10 @@
 > recusa com medição atrás não volta à fila por ter mudado de arquivo.
 >
 > Recorte: linhas fora de `1-337,2014-2070,2666-2716` do original.
+> ⚠️ **A única alteração ao corpo:** 3 alvo(s) de link relativo foram **reancorados**
+> para apontarem ao MESMO arquivo de antes — o corpo desceu de pasta e todo `../x`
+> passaria a resolver noutro sítio. Texto, números e estrutura são byte-idênticos; a
+> partição foi provada por sha256 **antes** desta reancoragem.
 
 ---
 
@@ -1247,7 +1251,7 @@ pergunta com confiança.*
 
 #### ✅ A alavanca que sobra, com o teto
 
-⚠️ **ADR escrito e aceito: [ADR-0159](../architecture/decisions/0159-sculpt3d-the-dab-vertex-loop-is-a-row-disjoint-map-rayon-exception.md)**
+⚠️ **ADR escrito e aceito: [ADR-0159](../../../architecture/decisions/0159-sculpt3d-the-dab-vertex-loop-is-a-row-disjoint-map-rayon-exception.md)**
 (número PROVISÓRIO — ele se re-conta na integração). A CONSTRUÇÃO está
 especificada e **não foi feita**: ver o fecho da §7.15.
 
@@ -1297,7 +1301,7 @@ o corpo do pen-up. **4 mutações, 4 sangram.**
 
 #### ⚠️ O que ficou por fazer, e por quê
 
-A **paralelização do laço de vértices** (1,6×) tem o [ADR-0159](../architecture/decisions/0159-sculpt3d-the-dab-vertex-loop-is-a-row-disjoint-map-rayon-exception.md)
+A **paralelização do laço de vértices** (1,6×) tem o [ADR-0159](../../../architecture/decisions/0159-sculpt3d-the-dab-vertex-loop-is-a-row-disjoint-map-rayon-exception.md)
 escrito e aceito, com as três condições do ADR-0109 **verificadas no código** —
 o laço não escreve posições, as leituras são puras dentro de um passe, os slots
 são disjuntos e o `compute_target` não lê o `accum`. **O código não foi
@@ -3138,7 +3142,7 @@ pina a cegueira num teste próprio.
 **Superfície:** `RefMode` ganha `birth_for` + `for_verb` (as duas `const`, e o
 `kernel_for`/`lateral_for` passam a delegar) · **zero componente, zero id, zero
 `PROJECT_SCHEMA`, zero `Cargo.toml`, zero dep, zero ADR**. Detalhe e tabelas:
-[`BUGS_sculpt3d.md` #4](BUGS_sculpt3d.md).
+[`BUGS_sculpt3d.md` #4](../../../3D/BUGS_sculpt3d.md).
 
 **Mudança de comportamento, nomeada:** os sete verbos do Blender passam a
 depositar **na metade da taxa** no mesmo slider — é a correção, e ela é visível

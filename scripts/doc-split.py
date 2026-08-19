@@ -41,7 +41,46 @@ O script preserva as faixas mantidas; o cabeçalho vem por `Edit` depois.
 import argparse
 import hashlib
 import os
+import re
 import sys
+
+LINK = re.compile(r'\]\(([^)]+)\)')
+
+
+def reancorar(corpo: str, dir_orig: str, dir_arq: str, raiz: str) -> tuple[str, int]:
+    """Reescreve os ALVOS de link relativos para apontarem ao MESMO arquivo de antes.
+
+    ⚠️ Por que isto existe: o corpo arquivado desce de pasta, e todo `../x` passa a
+    resolver noutro sítio. Medido em 2026-08-18, foi o defeito da 1ª versão desta
+    ferramenta — **50 links** que resolviam no original quebraram ao ser arquivados
+    (e numa pasta de arquivo anterior, feita à mão, eram 245 de 271, 90%).
+
+    ⚠️ A PROVA DE PARTIÇÃO acontece ANTES disto e não é afetada: as duas metades
+    remontam o original por sha256. O que muda aqui é só o ALVO de N links, cada um
+    para apontar ao mesmo arquivo; o número vai declarado no cabeçalho. Um arquivo
+    cujos links não resolvem responde pior a *"por que isto ficou assim?"*, que é a
+    única razão de ele existir.
+    """
+    n = 0
+
+    def sub(m):
+        nonlocal n
+        bruto = m.group(1)
+        alvo = bruto.split(" ")[0]
+        sufixo = bruto[len(alvo):]
+        caminho, sep, ancora = alvo.partition("#")
+        if not caminho or caminho.startswith(("http", "mailto:", "file:", "/")):
+            return m.group(0)
+        antes = os.path.normpath(os.path.join(dir_orig, caminho.replace("%20", " ")))
+        if not os.path.exists(os.path.join(raiz, antes)):
+            return m.group(0)  # já estava quebrado no original — não é dano nosso
+        novo = os.path.relpath(antes, dir_arq).replace(os.sep, "/")
+        if novo == caminho:
+            return m.group(0)
+        n += 1
+        return f"]({novo.replace(' ', '%20')}{sep}{ancora}{sufixo})"
+
+    return LINK.sub(sub, corpo), n
 
 
 def parse_ranges(spec: str, n: int) -> list[tuple[int, int]]:
@@ -113,6 +152,10 @@ def main() -> None:
         return
 
     os.makedirs(os.path.dirname(args.archive), exist_ok=True)
+    raiz = os.getcwd()
+    corpo, n_links = reancorar(
+        "".join(arquivo), os.path.dirname(args.arquivo), os.path.dirname(args.archive), raiz
+    )
     rel_vivo = os.path.relpath(args.arquivo, os.path.dirname(args.archive))
     cab = (
         f"# ARQUIVO — {os.path.basename(args.arquivo)} (história, {len(arquivo)} linhas)\n\n"
@@ -126,11 +169,17 @@ def main() -> None:
         f"> ⛔ O que estiver aqui marcado **«medido e REJEITADO»** continua rejeitado: uma\n"
         f"> recusa com medição atrás não volta à fila por ter mudado de arquivo.\n"
         f">\n"
-        f"> Recorte: linhas fora de `{args.keep}` do original.\n\n"
+        f"> Recorte: linhas fora de `{args.keep}` do original.\n"
+        f">\n"
+        f"> ⚠️ **A única alteração ao corpo:** {n_links} alvo(s) de link relativo foram\n"
+        f"> **reancorados** para apontarem ao MESMO arquivo de antes — o corpo desceu de pasta e\n"
+        f"> todo `../x` passaria a resolver noutro sítio. Texto, números e estrutura são\n"
+        f"> byte-idênticos; a partição foi provada por sha256 **antes** desta reancoragem.\n\n"
         f"---\n\n"
     )
-    open(args.archive, "w", encoding="utf-8").write(cab + "".join(arquivo))
+    open(args.archive, "w", encoding="utf-8").write(cab + corpo)
     open(args.arquivo, "w", encoding="utf-8").write("".join(vivo))
+    print(f"  links reancorados: {n_links}")
     print(f"  → {args.archive}")
     print(f"  → {args.arquivo}")
 

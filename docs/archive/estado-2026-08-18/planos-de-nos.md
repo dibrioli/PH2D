@@ -7,5 +7,5 @@
 
 ---
 
-- [`docs/plans/2026-05-node-waves.md`](docs/plans/2026-05-node-waves.md) — sistema de nós ([ADR-0030..0039](docs/architecture/decisions/)): W1+W2 fechados + contrato CONGELADO; fan-out aberto. Tracker: [`docs/archive/handoffs-2026-06-16/HANDOFF_node_system.md`](docs/archive/handoffs-2026-06-16/HANDOFF_node_system.md) (**arquivado** em 2026-06-16 — histórico, não o estado de hoje).
-- [`docs/plans/2026-05-wave-11-carry-overs.md`](docs/plans/2026-05-wave-11-carry-overs.md) — carry-overs pós-Wave 10 ([ADR-0042](docs/architecture/decisions/0042-wave-10-closure.md)).
+- [`docs/plans/2026-05-node-waves.md`](../../plans/2026-05-node-waves.md) — sistema de nós ([ADR-0030..0039](../../architecture/decisions)): W1+W2 fechados + contrato CONGELADO; fan-out aberto. Tracker: [`docs/archive/handoffs-2026-06-16/HANDOFF_node_system.md`](../handoffs-2026-06-16/HANDOFF_node_system.md) (**arquivado** em 2026-06-16 — histórico, não o estado de hoje).
+- [`docs/plans/2026-05-wave-11-carry-overs.md`](../../plans/2026-05-wave-11-carry-overs.md) — carry-overs pós-Wave 10 ([ADR-0042](../../architecture/decisions/0042-wave-10-closure.md)).

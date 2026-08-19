@@ -367,8 +367,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⛔ as três divergências **declaradas** da referência, cada uma com gate defendendo a nossa posição · a outra metade da
   **W4**, **W10-W12**, e o **marching cubes** · ⛔ **duas perguntas do Enio, já devolvidas com a tabela**: se a lei da
   referência é o afiador que se quer (ela alisa detalhe fino e mal toca feição grande) e onde fica o teto do `Sharpen`
-  (subir compra excursão real e paga **17,17 ms** por evento de ponteiro contra um quadro de 16,7) · ⏸️ o undo do filtro
-  pela rota do **PONTEIRO** segue por investigar.
+  (subir compra excursão real e paga **17,17 ms** por evento de ponteiro contra um quadro de 16,7) · ✅ **o undo do
+  filtro FECHOU** (o registo pergunta um FATO, não o verbo em mãos — [handoff](docs/3D/handoffs/HANDOFF_INTEGRACAO_line_sculpt3d_UNDO_2026-08-19.md);
+  e a rota do PONTEIRO **não é alcançável de um teste**, o `AppGfx` segura uma surface de janela real) · ⚠️ **VERMELHO
+  PRÉ-EXISTENTE no `main`:** `the_two_lights_agree_where_the_form_turns_away` mede **0,3370** contra a barra de **0,01**
+  (o gate nasceu em 03/08 a 0,0020; a luz mudou em 09/08 na **W16**) — é `#[ignore]`, então **o CI nunca o rodou**.
   **Smokes:** `PH2D_SCULPT3D_SMOKE=<n>` (a W9 é a cena **`=34`**). ⚠️ **Rode uma vez SEM a env var** — é a metade que
   prova a inércia.
   **Ler:** [porta do cofre](docs/3D/README.md) · [00-INDEX](docs/3D/00-INDEX.md) · [handoffs](docs/3D/handoffs/README.md) ·

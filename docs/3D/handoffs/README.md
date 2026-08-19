@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**16 handoffs** · **8** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**20 handoffs** · **9** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 | Data | | Arquivo | Papel | Assunto |
@@ -28,7 +28,10 @@
 | 2026-08-16 | ▣ | [HANDOFF_line_sculpt3d_LAYER_2026-08-16.md](HANDOFF_line_sculpt3d_LAYER_2026-08-16.md) | diagnóstico | o `Verb::Layer` contra o `layer.cc` — **as onze leis, uma a uma** |
 | 2026-08-16 | ▣ | [HANDOFF_INTEGRACAO_line_sculpt3d_LAYER_2026-08-16.md](HANDOFF_INTEGRACAO_line_sculpt3d_LAYER_2026-08-16.md) | integração | a DEMÃO — UMA divergência curada, DUAS refutadas |
 | 2026-08-17 | ◆ | [HANDOFF_INTEGRACAO_line_sculpt3d_MESTRE_2026-08-17.md](HANDOFF_INTEGRACAO_line_sculpt3d_MESTRE_2026-08-17.md) | integração | MESTRE — a jornada de 39 commits + os cinco pedidos |
-| 2026-08-18 | ★ | [HANDOFF_CONTINUACAO_line_sculpt3d_2026-08-18.md](HANDOFF_CONTINUACAO_line_sculpt3d_2026-08-18.md) | continuação | **COMECE AQUI** — a FILA na ordem, com o preço, e as cercas |
+| 2026-08-18 |  | [HANDOFF_CONTINUACAO_line_sculpt3d_2026-08-18.md](HANDOFF_CONTINUACAO_line_sculpt3d_2026-08-18.md) | continuação | *(superseded)* — a FILA na ordem, com o preço, e as cercas |
+| 2026-08-18 | ◆ | [HANDOFF_INTEGRACAO_line_sculpt3d_W9_2026-08-18.md](HANDOFF_INTEGRACAO_line_sculpt3d_W9_2026-08-18.md) | integração | W9 — o **Mesh Filter**: as 9 leis + o picker que as torna alcançáveis |
+| 2026-08-19 | ★ | [HANDOFF_CONTINUACAO_line_sculpt3d_2026-08-19.md](HANDOFF_CONTINUACAO_line_sculpt3d_2026-08-19.md) | continuação | **COMECE AQUI** — a fila depois da W9, e as duas decisões do Enio |
+| 2026-08-19 | ▣ | [HANDOFF_INTEGRACAO_line_sculpt3d_UNDO_2026-08-19.md](HANDOFF_INTEGRACAO_line_sculpt3d_UNDO_2026-08-19.md) | integração | o **UNDO do filtro** — o registo pergunta um FATO, não o verbo em mãos |
 
 ---
 

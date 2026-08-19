@@ -110,8 +110,24 @@ impl App {
                     if scene.begin_filter(pos.0) {
                         scene.drag = Some(Drag::Filter);
                     } else {
-                        eprintln!(
-                            "[sculpt3d] filter: o verbo em maos nao filtra a malha -- escolha Smooth, Inflate, Slide Relax ou Surface Smooth"
+                        // ⚠️ **Este ramo é uma CONTRADIÇÃO, não um caso.** A
+                        // única recusa do `begin_filter` é o arm apagado, e ele
+                        // está aceso três linhas acima — ao contrário do
+                        // transform logo abaixo, cuja recusa (peça toda
+                        // mascarada) é um estado real que o artista alcança.
+                        //
+                        // ⚠️ A mensagem que vivia aqui nomeava QUATRO verbos e
+                        // mentia desde a W9b: o picker desacoplou a lei do
+                        // verbo em mãos, então *"o verbo em mãos não filtra"*
+                        // deixou de ser uma frase verdadeira sobre este app —
+                        // e ela nunca teve como ser impressa para alguém a
+                        // desmentir. A rede de release fica (o gesto vira
+                        // órbita em vez de um botão morto); quem grita é o
+                        // debug.
+                        debug_assert!(
+                            false,
+                            "o begin_filter recusou com o arm ACESO: a exclusão dos dois arms \
+                             deixou de valer, ou ele ganhou uma segunda recusa sem chamador"
                         );
                         scene.drag = Some(Drag::Orbit);
                     }

@@ -289,3 +289,112 @@ fn the_whole_drag_is_one_undo_step() {
         "o gesto gravou MAIS de um passo: o artista teria de desfazer N vezes um arrasto so'"
     );
 }
+
+/// ⭐ **O FILTRO DESFAZ COM QUALQUER VERBO EM MÃOS** — o report do Enio de
+/// 2026-08-18 (*"não temos undo para Filter"*).
+///
+/// ⚠️ **O que a fixture do irmão [`the_whole_drag_is_one_undo_step`] não continha
+/// era o VERBO, e não a porta de entrada.** Ele arrasta com o `Inflate` em mãos e
+/// fica verde; o que quebra é o `Mask`, porque o registo perguntava *"o verbo
+/// pinta máscara?"* em vez de *"este gesto mudou máscaras?"* — e um filtro só
+/// escreve POSIÇÕES, seja qual for o pincel que estava na mão quando o artista
+/// armou. Com o `Verb::Mask` a entrada saía gravada como se fosse um gesto de
+/// máscara: o Ctrl+Z trocava o canal errado, a geometria ficava onde estava, e
+/// do lado do artista isso é exactamente *não tem undo*.
+///
+/// ⚠️ **E ele é alcançável de propósito**: desde o picker da W9b a lei do filtro
+/// não vem do verbo — quem tem o `Mask` na mão pode armar o filtro e escolher
+/// `Inflate`, e é o caminho que o smoke `=34` percorre.
+///
+/// ⚠️ **A rota do PONTEIRO (`sculpt3d_pointer_down/move/up`) NÃO é alcançável de
+/// um teste**, e a nota que pedia este gate ali estava errada sobre o preço:
+/// aquelas três funções vivem no `App`, cujo `AppGfx` segura um
+/// `SurfaceContext` (uma surface wgpu presa a uma janela real,
+/// `app_state.rs:51`). O que elas fazem com o filtro em voo é literalmente esta
+/// sequência — `aim` + `begin_filter` no braço `if scene.filter_arm()`
+/// (`sculpt3d_input.rs:106-111`), `filter_at` no move, e `close_stroke` no
+/// `was == Some(Drag::Filter)` do up (`sculpt3d_input.rs:243-244`) —, e é ela
+/// que este gate dirige.
+#[test]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+fn the_filter_undoes_the_geometry_whatever_verb_is_in_hand() {
+    let gpu = gpu_or_skip!();
+    // O pincel de MÁSCARA em mãos, e a lei do filtro escolhida no picker.
+    let mut s = scene(&gpu.device, Verb::Mask);
+    let before: Vec<[f32; 3]> = s.mesh().positions().to_vec();
+    let masks_before = s.mesh().masks().map(<[f32]>::to_vec);
+
+    assert!(s.arm_filter(), "a fixture nao conseguiu armar o filtro");
+    s.filter_kind = FilterKind::Inflate;
+    assert!(
+        s.begin_filter(400.0),
+        "o begin recusou: a lei do filtro voltou a vir do verbo em maos"
+    );
+    for k in 1..=5 {
+        s.filter_at(400.0 + DRAG_PX * k as f32 / 5.0);
+    }
+    s.close_stroke();
+
+    let moved = s
+        .mesh()
+        .positions()
+        .iter()
+        .zip(&before)
+        .filter(|(a, b)| a != b)
+        .count();
+    assert!(
+        moved > 0,
+        "premissa: o gesto nao moveu vertice nenhum, e sem isso o resto nao afirma nada"
+    );
+
+    assert!(s.undo_stroke(), "o gesto nao gravou passo de undo");
+    assert_eq!(
+        s.mesh().positions(),
+        &before[..],
+        "o Ctrl+Z NAO devolveu a geometria: a entrada foi gravada como gesto de MASCARA porque o \
+         pincel em maos era o Mask, e o desfazer trocou o canal que o filtro nunca escreveu"
+    );
+    // ⚠️ **E o canal de máscara não pode ter sido tocado** — inclusive não pode
+    // ter NASCIDO: `masks_mut()` cria o plano, então o desfazer errado inventava
+    // uma máscara numa malha que nunca teve uma.
+    assert_eq!(
+        s.mesh().masks().map(<[f32]>::to_vec),
+        masks_before,
+        "o desfazer mexeu no canal de MASCARA, que este gesto nunca escreveu"
+    );
+}
+
+/// **Desfazer o filtro AVISA A TELA** — o segundo defeito do mesmo braço.
+///
+/// ⚠️ **Ele é independente do irmão acima, e é a mutação que o separa:** tirar o
+/// `mesh_rebuilt()` do desfazer deixa a malha certa na memória e a GPU a mostrar
+/// a de antes. O artista aperta Ctrl+Z e **nada acontece na tela** — que é a
+/// forma do report, e a razão de o defeito ter passado por *"não tem undo"* em
+/// vez de *"o undo desfaz a coisa errada"*.
+#[test]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+fn undoing_a_filter_tells_the_screen() {
+    let gpu = gpu_or_skip!();
+    let mut s = scene(&gpu.device, Verb::Mask);
+
+    assert!(s.arm_filter(), "a fixture nao conseguiu armar o filtro");
+    s.filter_kind = FilterKind::Inflate;
+    assert!(s.begin_filter(400.0), "o begin recusou");
+    s.filter_at(400.0 + DRAG_PX);
+    s.close_stroke();
+
+    // A subida do gesto já aconteceu; o que se mede é a do DESFAZER.
+    s.objects[s.active].uploaded = true;
+    let edits = s.edits;
+
+    assert!(s.undo_stroke(), "o gesto nao gravou passo de undo");
+    assert!(
+        !s.objects[s.active].uploaded,
+        "o desfazer nao invalidou o upload: a malha voltou na memoria e a tela continua a mostrar \
+         a de antes"
+    );
+    assert_ne!(
+        s.edits, edits,
+        "o desfazer nao contou como edicao: a doacao ao Painter serve um carimbo velho"
+    );
+}

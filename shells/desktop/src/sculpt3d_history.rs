@@ -527,12 +527,38 @@ impl Sculpt3dScene {
             verts: self.stroke.touched().to_vec(),
             positions: self.stroke.base_positions().to_vec(),
             masks: self
-                .brush
-                .verb
-                .paints_mask()
+                .mask_window_changed()
                 .then(|| self.stroke.base_masks().to_vec()),
         };
         self.record(entry);
+    }
+
+    /// **Este gesto mudou o canal de MÁSCARA?**
+    ///
+    /// ⚠️ **É um FATO sobre a janela, e a pergunta anterior era uma INFERÊNCIA
+    /// sobre o verbo em mãos** (`brush.verb.paints_mask()`). As duas deram a
+    /// mesma resposta enquanto a lei do gesto vinha do verbo — e o picker da W9b
+    /// desacoplou exactamente isso: com o `Verb::Mask` na mão, um gesto de
+    /// FILTRO escreve POSIÇÕES, e a entrada saía gravada como se fosse máscara.
+    /// O Ctrl+Z trocava o canal errado, a geometria ficava onde estava, e o
+    /// artista lia *"não temos undo para Filter"* (Enio, 2026-08-18).
+    ///
+    /// ⚠️ **É a TERCEIRA vez que inferir o gesto a partir do verbo morde** — o
+    /// `fill_hc_disp` (o pânico do Surface Smooth) e a mensagem de recusa do
+    /// `begin_filter` foram as outras duas. *Uma condição que enumera os seus
+    /// leitores apodrece no dia em que o segundo nasce.*
+    ///
+    /// Sem plano vivo não há o que ter mudado: o `capture` congela
+    /// [`ph2d_mesh::DEFAULT_MASK`] onde ele não existe, e é isso que continua lá.
+    fn mask_window_changed(&self) -> bool {
+        let Some(live) = self.mesh().masks() else {
+            return false;
+        };
+        self.stroke
+            .touched()
+            .iter()
+            .zip(self.stroke.base_masks())
+            .any(|(&v, &m)| live[v as usize] != m)
     }
 }
 

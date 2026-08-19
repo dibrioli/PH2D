@@ -354,40 +354,58 @@ impl Sculpt3dScene {
                 positions,
                 masks,
             } => {
-                if let Some(masks) = masks {
-                    let now = swap_window(
-                        self.piece_mut().stack.mesh_mut().masks_mut(),
-                        &verts,
-                        &masks,
-                    );
-                    StrokeUndo::Stroke {
-                        level,
-                        verts,
-                        positions,
-                        masks: Some(now),
+                // ⚠️ **DOIS CANAIS INDEPENDENTES, e não um `if/else`.** A versão
+                // anterior tratava a entrada como *ou* máscara *ou* geometria, e
+                // quem escolhia o ramo era a presença do plano de máscaras — que
+                // por sua vez saía de uma pergunta ao VERBO em mãos. Um gesto que
+                // mexesse nos dois canais desfazia METADE, em silêncio. Aqui cada
+                // canal se desfaz por si, e a pergunta *"qual dos dois foi?"*
+                // deixa de existir: a representação apaga o caso especial.
+                let masks_now = match masks {
+                    Some(m) => {
+                        let was =
+                            swap_window(self.piece_mut().stack.mesh_mut().masks_mut(), &verts, &m);
+                        // A máscara não move geometria: a octree fica de pé e o
+                        // que muda é o que a GPU tem de re-ler. É o mesmo par que
+                        // o braço do [`StrokeUndo::Mask`] escreve um degrau
+                        // acima, e não uma segunda lei.
+                        self.piece_mut().uploaded = false;
+                        self.edits += 1;
+                        Some(was)
                     }
-                } else {
-                    let now = swap_window(
-                        self.piece_mut().stack.mesh_mut().positions_mut(),
-                        &verts,
-                        &positions,
-                    );
-                    // ⚠️ O `rebuild` inteiro, e não um `refresh_region`:
-                    // desfazer devolve posições que o refit incremental já
-                    // tinha "seguido" para outro lugar, e um refit sobre a
-                    // volta deixaria caixas frouxas grandes demais acumulando a
-                    // cada Ctrl+Z. Um undo é user-paced — é o lugar certo para
-                    // pagar a resposta exata.
+                    None => None,
+                };
+                let positions_now = swap_window(
+                    self.piece_mut().stack.mesh_mut().positions_mut(),
+                    &verts,
+                    &positions,
+                );
+                // ⚠️ **A pergunta é se a GEOMETRIA de facto voltou**, e não se a
+                // entrada tinha máscaras: um traço de máscara não move vértice
+                // nenhum, e pagar a octree inteira por ele seria cobrar o preço
+                // do canal errado.
+                //
+                // ⚠️ O `rebuild` inteiro, e não um `refresh_region`: desfazer
+                // devolve posições que o refit incremental já tinha "seguido"
+                // para outro lugar, e um refit sobre a volta deixaria caixas
+                // frouxas grandes demais acumulando a cada Ctrl+Z. Um undo é
+                // user-paced — é o lugar certo para pagar a resposta exata.
+                if positions_now != positions {
                     self.piece_mut().stack.mesh_mut().rebuild();
                     self.mesh_rebuilt();
-                    StrokeUndo::Stroke {
-                        level,
-                        verts,
-                        positions: now,
-                        masks: None,
-                    }
+                }
+                StrokeUndo::Stroke {
+                    level,
+                    verts,
+                    positions: positions_now,
+                    masks: masks_now,
                 }
             }
         }
     }
 }
+
+/// **Os dois canais de uma entrada de traço** — ver [`tests`].
+#[cfg(test)]
+#[path = "sculpt3d_undo_tests.rs"]
+mod tests;

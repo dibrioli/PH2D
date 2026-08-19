@@ -567,3 +567,6 @@ fn a_duplicator_missing_an_input_badges_and_only_explains() {
 // module — shell LOC cap. A child so `use super::*` reaches these fixtures.
 #[path = "motion_bridge_heal_toggle_tests.rs"]
 mod toggle;
+
+#[path = "motion_bridge_heal_advisory_tests.rs"]
+mod advisory;

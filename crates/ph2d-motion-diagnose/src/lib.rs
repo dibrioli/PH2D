@@ -125,7 +125,31 @@ pub enum Deficit {
     /// nothing to copy, or nowhere to put it, the node is a silent no-op. Always a
     /// [`Fix::Offer`]: WHAT to wire into it is the artist's choice. Carries the PORT NAME.
     MissingInput(&'static str),
+    /// **Outro nó do MESMO tipo já ocupa o único lugar que ele tem** — este é inerte.
+    ///
+    /// Os outros três déficits são sobre a POSIÇÃO de um nó no grafo; este é sobre a
+    /// EXISTÊNCIA de um irmão. Ele existe para os nós que não são passos de um fluxo mas
+    /// **configuram um passe de tela inteira**, lido uma vez a partir do grafo — para esses
+    /// o segundo nó não compõe, ele é ignorado. Carrega o NOME DO TIPO.
+    ///
+    /// ⚠️ **Sempre [`Fix::Offer`]**: apagar qual dos dois é decisão do artista, e um
+    /// auto-heal que apagasse um nó seria a única cura desta casa que destrói trabalho.
+    Shadowed(&'static str),
 }
+
+/// Os tipos cujo nó configura um **passe de tela inteira**, lido UMA vez do grafo — para
+/// eles o segundo nó não compõe, é ignorado.
+///
+/// ⚠️ **Medido em 2026-08-19, e é UM.** O `fx.glow` é o único `fx.*` com um `from_graph`
+/// (`present.rs` chama-o por quadro); os irmãos `fx.drop_shadow` e `fx.rgb_split` fazem o
+/// trabalho no `eval`, por nó, e por isso **compõem** — dois deles aplicam duas vezes.
+/// A sonda `measure_second_glow` mostra o defeito: com 1, 2 ou 3 nós, o passe lê sempre o
+/// primeiro (`intensity 1.0`), e os outros **pintam, aceitam clique, entram no undo e não
+/// mudam um pixel**.
+///
+/// A lista existe em vez de o nome estar cravado porque o próximo passe de tela deste tipo
+/// tem de ser **uma linha**, e não uma regra nova a redescobrir.
+const SINGLETON_SCREEN_PASSES: &[&str] = &["fx.glow"];
 
 /// The suggested cure, carrying how confidently the editor may apply it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -152,8 +176,26 @@ pub enum Fix {
 #[must_use]
 pub fn diagnose(graph: &Graph, reg: &NodeRegistry) -> Vec<Diagnostic> {
     let mut out = Vec::new();
+    let mut claimed: Vec<&str> = Vec::new();
     for inst in graph.nodes() {
         let ty = NodeTypeId::of(&inst.type_name);
+        // Um passe de tela cujo lugar outro nó já tomou. ⚠️ Vem PRIMEIRO e com `continue`,
+        // pela mesma lei dos dois déficits abaixo: um nó ignorado não tem output para ser
+        // inerte, e dois avisos sobre o mesmo nó ensinam que há dois problemas.
+        if let Some(&ty_name) = SINGLETON_SCREEN_PASSES
+            .iter()
+            .find(|t| **t == inst.type_name)
+        {
+            if claimed.contains(&ty_name) {
+                out.push(Diagnostic {
+                    node: inst.id,
+                    deficit: Deficit::Shadowed(ty_name),
+                    fix: Fix::Offer,
+                });
+                continue;
+            }
+            claimed.push(ty_name);
+        }
         // A node that READS a required-upstream column with nothing wired into it has no
         // stream to act on — the ROOT cause, and it subsumes any inert output it might
         // otherwise produce (no input → no live output), so it is reported alone.

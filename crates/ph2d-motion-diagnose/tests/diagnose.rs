@@ -561,3 +561,74 @@ fn a_force_in_a_sims_state_chain_is_clean_because_the_sim_consumes_accel() {
         );
     }
 }
+
+/// **UM SEGUNDO PASSE DE TELA É DIAGNOSTICADO, E O PRIMEIRO NÃO.**
+///
+/// ⚠️ O defeito que este gate fecha estava na folha 11 como `P1` e é da lei anti-knob-morto
+/// (doc 88 — *"botão que não faz nada é pior que botão que falta"*): o `fx.glow` é lido UMA
+/// vez do grafo (`from_graph`, chamado por `present.rs`), então o segundo nó **pinta, aceita
+/// clique, entra no undo e não muda um pixel**. Medido pela sonda `measure_second_glow`: com
+/// 1, 2 ou 3 nós o passe lê sempre `intensity 1.0`, o primeiro.
+///
+/// ⚠️ **As duas metades são necessárias.** *"O segundo é acusado"* ficaria verde numa regra
+/// que acusasse TODOS — e aí o caso de um nó só, que é o único que existe hoje em qualquer
+/// documento salvo, nasceria com um aviso falso.
+#[test]
+fn the_second_screen_pass_is_diagnosed_and_the_first_is_not() {
+    let reg = registry();
+    // CONTROLE: um só — nada a dizer.
+    let mut g = Graph::new();
+    let first = g.add_node("fx.glow");
+    assert!(
+        !diagnose(&g, &reg)
+            .iter()
+            .any(|d| matches!(d.deficit, Deficit::Shadowed(_))),
+        "um unico passe de tela nao pode ser acusado de nada"
+    );
+
+    // Dois: o SEGUNDO é o inerte, e o primeiro fica limpo.
+    let second = g.add_node("fx.glow");
+    let third = g.add_node("fx.glow");
+    let found: Vec<_> = diagnose(&g, &reg)
+        .into_iter()
+        .filter(|d| matches!(d.deficit, Deficit::Shadowed(_)))
+        .collect();
+    let nodes: Vec<_> = found.iter().map(|d| d.node).collect();
+    assert_eq!(
+        nodes,
+        vec![second, third],
+        "todo no' DEPOIS do primeiro e' o inerte -- e o primeiro nunca"
+    );
+    assert!(
+        !nodes.contains(&first),
+        "o primeiro e' quem o passe le': ele nao tem defeito"
+    );
+    // ⚠️ E o `Fix` é sempre OFFER: apagar qual dos dois é decisão do artista, e um auto-heal
+    // que apagasse um nó seria a única cura desta casa que destrói trabalho.
+    assert!(
+        found.iter().all(|d| d.fix == Fix::Offer),
+        "a cura de um passe sombreado nunca e' automatica"
+    );
+    assert_eq!(found[0].deficit, Deficit::Shadowed("fx.glow"));
+}
+
+/// **UM NÓ QUE COMPÕE NÃO É ACUSADO** — o controle que separa *"passe de tela"* de *"passo
+/// de fluxo"*.
+///
+/// ⚠️ Sem ele, a regra poderia acusar qualquer tipo repetido e o gate acima ficaria verde:
+/// dois `fx.drop_shadow` **aplicam duas vezes** (eles trabalham no `eval`, por nó), e dizer
+/// ao artista que o segundo é inerte seria mentir na direção oposta.
+#[test]
+fn a_node_that_composes_is_never_called_shadowed() {
+    let reg = registry();
+    let mut g = Graph::new();
+    for _ in 0..3 {
+        g.add_node("fx.drop_shadow");
+    }
+    assert!(
+        !diagnose(&g, &reg)
+            .iter()
+            .any(|d| matches!(d.deficit, Deficit::Shadowed(_))),
+        "o drop_shadow COMPOE: tres deles aplicam tres vezes, nenhum e' sombreado"
+    );
+}

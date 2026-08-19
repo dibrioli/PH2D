@@ -290,6 +290,12 @@ fn explain(d: &Diagnostic) -> String {
         (Deficit::MissingInput(port), _) => {
             format!("This node needs a stream wired into its '{port}' input")
         }
+        // ⚠️ **Um irmão já ocupa o passe de tela.** A mensagem nomeia o TIPO porque é o que
+        // o artista tem de procurar no grafo, e diz qual dos dois manda (o primeiro) — sem
+        // isso ele apaga o errado e o efeito muda de aparência.
+        (Deficit::Shadowed(ty), _) => {
+            format!("Another '{ty}' already drives this screen pass — only the first one in the graph has any effect")
+        }
         _ => "This node produces data nothing downstream consumes, so it does nothing".into(),
     }
 }

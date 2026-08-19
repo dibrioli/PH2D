@@ -22,7 +22,17 @@ são `min` e um operador sobre dois números, e o **raio do fillet fica editáve
 |---|---|---|
 | **W0** — spike + imagem | ✅ | Os dois arredondamentos exatos a **0,00 %**; vértice triplo fecha; JIT **5,3×**; a aresta viva da **malha** serrilha (item aberto, mecanismo nomeado) |
 | **W1** — documento + ADR | 🔶 | [ADR-0161](../architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md) · [`ph2d-field`](../../crates/ph2d-field/) (o documento, 10 gates) · [`ph2d-field-eval`](../../crates/ph2d-field-eval/) (a ponte, 9 gates). **Falta:** a ponte ECS |
-| **W2** — ver a coisa | ⬜ | O traçado do campo no viewport |
+| **W2** — ver a coisa | 🔶 | [`ph2d-field-render`](../../crates/ph2d-field-render/) (o traçado, 6 gates) + o smoke no shell. **Medido: 25 ms a 640×480**, 14× o serial. **Falta:** órbita por mouse e perspectiva |
+
+**Smoke (roda agora):**
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-3DModeling && env PH2D_FIELD_SMOKE=1 cargo run -p ph2d-host-desktop --release
+```
+`=1` junção de 3 com filete interno e aros externos · `=2` cubo arredondado · `=3` caixa furada com
+a boca arredondada. A peça gira sozinha (prato giratório).
+⚠️ **O terminal imprime três linhas** — a cena montada, o traçado, e *"primeiro quadro desenhado —
+N pixels de peça"*. **Se a terceira não aparecer, PARE**: a janela vazia é falha de caminho, não de
+geometria.
 
 ⭐ **As medições da W0 viraram GATES**, não anedota: `an_exact_internal_fillet_delivers_the_radius_asked`
 e `an_exact_external_round_delivers_the_radius_asked` afirmam o raio exato a cada corrida.

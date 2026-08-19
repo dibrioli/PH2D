@@ -124,6 +124,14 @@ fn the_shape_survives_within_one_percent() {
 /// gate ficaria vermelho sobre um porte correto.
 ///
 /// O que se pina é o **piso**: uma regressão que afundasse a fração cai aqui.
+///
+/// ⚠️ **O piso foi RE-DERIVADO depois de a RÉGUA se corrigir.** A primeira
+/// versão media `quads / (quads + ciclos não-quad)` — e um ciclo de 31 lados
+/// contava como **um** não-quad enquanto virava 29 triângulos na malha. Sob
+/// aquela régua a esfera dava **60,9 %** e o toro **51,9 %**; sob a régua honesta
+/// (sobre as faces EMITIDAS) eles são **53,3 %** e **39,7 %**. O piso abaixo sai
+/// do número honesto — ⛔ e não é um afrouxamento: a barra antiga nunca foi
+/// cumprida, ela era medida por um instrumento errado.
 #[test]
 fn the_quad_fraction_is_measured_and_pinned() {
     for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
@@ -139,9 +147,12 @@ fn the_quad_fraction_is_measured_and_pinned() {
             q.quads > 0,
             "{name}: a extracao nao produziu um unico quad -- o passeio de faces nao esta' a fechar"
         );
+        // Piso MEDIDO (2026-08-19): esfera 53,3 %, toro 39,7 %. A margem é o que
+        // separa uma regressão de ruído de fixture.
         assert!(
-            q.quad_fraction() > 0.5,
-            "{name}: so' {:.1}% das faces sairam quad -- abaixo do piso desta onda",
+            q.quad_fraction() > 0.35,
+            "{name}: so' {:.1}% das faces sairam quad -- abaixo do piso MEDIDO desta onda \
+             (esfera 53,3 / toro 39,7)",
             q.quad_fraction() * 100.0
         );
     }
@@ -195,4 +206,32 @@ fn one_sided(from: &Mesh, to: &Mesh) -> f32 {
         worst = worst.max(best.sqrt());
     }
     worst
+}
+
+/// **A SONDA DA PERDA** — onde os não-quads nascem. ⚠️ `#[ignore]`: é medição.
+#[test]
+#[ignore = "sonda -- o histograma que diz onde a extracao perde"]
+fn measure_where_the_quads_are_lost() {
+    for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
+        let q = run(&mesh, 0.18);
+        // Valência de cada vértice de saída, pelas ARESTAS das faces.
+        let mut deg: BTreeMap<u32, usize> = BTreeMap::new();
+        for (a, b) in edge_use(&q.mesh).keys() {
+            *deg.entry(*a).or_insert(0) += 1;
+            *deg.entry(*b).or_insert(0) += 1;
+        }
+        let mut hist: BTreeMap<usize, usize> = BTreeMap::new();
+        for d in deg.values() {
+            *hist.entry(*d).or_insert(0) += 1;
+        }
+        let orphan = q.mesh.vert_count() - deg.len();
+        eprintln!("[quadflow] {name}: valencias {hist:?} | {orphan} celulas sem aresta nenhuma");
+
+        // E o tamanho das células: uma grade quer células parecidas.
+        let mut sides: BTreeMap<usize, usize> = BTreeMap::new();
+        for f in q.mesh.faces() {
+            *sides.entry(f.verts().len()).or_insert(0) += 1;
+        }
+        eprintln!("[quadflow] {name}: lados das faces {sides:?}");
+    }
 }

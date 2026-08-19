@@ -55,11 +55,19 @@ pub struct Quadrangulation {
 }
 
 impl Quadrangulation {
-    /// A fração de faces que saiu quad — a régua de uma corrida contra a
-    /// seguinte.
+    /// A fração das FACES DA MALHA que saiu quad — a régua de uma corrida contra
+    /// a seguinte.
+    ///
+    /// ⚠️ **Sobre as faces EMITIDAS, e não sobre os ciclos, e a diferença já
+    /// mentiu uma vez.** A primeira versão dividia `quads / (quads + ciclos
+    /// não-quad)` — e um ciclo de **31 lados** contava como **um** não-quad
+    /// enquanto virava **29 triângulos** na malha. A régua *melhorava* quando as
+    /// falhas ficavam maiores: uma mudança que trocou 582 triângulos por 918
+    /// aparecia como uma subida de 60,9 % para 71,9 %. *Uma régua que premeia o
+    /// defeito por ele ser grande é pior que nenhuma.*
     #[must_use]
     pub fn quad_fraction(&self) -> f64 {
-        let total = self.quads + self.non_quads;
+        let total = self.mesh.faces().len();
         if total == 0 {
             0.0
         } else {
@@ -428,7 +436,13 @@ fn neighbour_graph(mesh: &Mesh, c: &Cells, scale: &ScaleField) -> Vec<BTreeSet<u
         }
     }
 
-    let mut g = vec![BTreeSet::new(); k];
+    // ⚠️ **Primeiro cada célula ESCOLHE, e só depois as escolhas se confrontam.**
+    // A versão anterior inseria a aresta nos dois lados assim que UM deles a
+    // queria — e a valência estourava: medido na esfera, **390 células com 5 ou
+    // mais vizinhas** (até 11), sobre uma grade cujo nó tem quatro. Uma célula
+    // com 8 vizinhas não delimita quads: o passeio de faces sai em triângulos, e
+    // era daí que vinham os **582** deles.
+    let mut choice: Vec<Vec<u32>> = vec![Vec::new(); k];
     for c in 0..k {
         let (o, n, q) = (verts[c], normals[c], dirs[c]);
         let t = cross(n, q);
@@ -454,9 +468,28 @@ fn neighbour_graph(mesh: &Mesh, c: &Cells, scale: &ScaleField) -> Vec<BTreeSet<u
                 }
             }
             if let Some((_, w)) = best {
-                g[c].insert(w);
-                g[w as usize].insert(c as u32);
+                choice[c].push(w);
             }
+        }
+    }
+
+    // ⚠️ **A aresta vale se UM dos lados a escolheu — a MUTUALIDADE foi MEDIDA e
+    // REJEITADA.** Exigir que as duas pontas se escolhessem limita a valência a
+    // quatro por construção, o que parecia a cura do histograma (390 células com
+    // 5+ vizinhas). Medido: ela **remove** arestas de mais, o passeio de faces
+    // passa a atravessar os buracos, e os ciclos chegam a **31 lados** — a malha
+    // sai com **918** triângulos contra 582, e a fração honesta de quads cai de
+    // **53,3 % para 35,0 %**.
+    //
+    // ⚠️ E ela quase passou por melhoria: a régua de então contava CICLOS, e um
+    // ciclo de 31 lados contava como **um** não-quad enquanto virava 29
+    // triângulos — a métrica subia de 60,9 % para 71,9 % enquanto a malha
+    // piorava. *Foi a régua que se corrigiu primeiro, não o algoritmo.*
+    let mut g = vec![BTreeSet::new(); k];
+    for c in 0..k {
+        for &w in &choice[c] {
+            g[c].insert(w);
+            g[w as usize].insert(c as u32);
         }
     }
     g

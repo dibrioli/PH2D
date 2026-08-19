@@ -197,7 +197,7 @@ técnica base não tem o defeito que a literatura inteira nomeia.
 | | esfera 48×64 | toro 64×32 |
 |---|---|---|
 | células (vértices de saída) | 957 | 799 |
-| **quads** | **664 (60,9 %)** | **454 (51,9 %)** |
+| **quads** | **664 de 1 246 faces (53,3 %)** | **454 de 1 144 (39,7 %)** |
 | não-quads | 426 | 420 |
 | maior ciclo | 4 | 10 |
 | χ (alvo) | **5** (2) | **2** (0) |
@@ -241,8 +241,8 @@ medição refutou a conclusão da Q3 que a pediu**.
 
 | campo × células | esfera | toro |
 |---|---|---|
-| **plano + semente** (o produto) | **60,9 %** | **51,9 %** |
-| hierarquia + semente | 48,8 % | 50,2 % |
+| **plano + semente** (o produto) | **53,3 %** | **39,7 %** |
+| hierarquia + semente | 38,9 % | 37,2 % |
 | plano + **retícula** | 0 % (**1** célula) | 0 % (5 células) |
 | hierarquia + **retícula** | 0 % (**2** células) | 0 % (9 células) |
 
@@ -274,8 +274,28 @@ sem re-medir.
 | 1 | células por `union-find` sobre limiar de distância | esfera → **4 células** |
 | 2 | arestas de saída = arestas da entrada | **7,2 %** de quads |
 | 3 | coarsening por **média** de posição/normal | encolhe o modelo; perde em **24/24** combinações |
-| 4 | **hierarquia** no caminho do produto | **48,8 %** contra 60,9 % |
+| 4 | **hierarquia** no caminho do produto | **38,9 %** contra 53,3 % |
 | 5 | células pelo **quociente da retícula** | **1** célula na esfera |
+| 6 | arestas por escolha **MÚTUA** (valência ≤ 4 por construção) | remove arestas de mais: ciclos de **31** lados, **53,3 % → 35,0 %** |
+
+---
+
+## §5-ter — ⚠️ A RÉGUA MENTIU, e ela se corrigiu antes do algoritmo
+
+A `quad_fraction` media `quads / (quads + ciclos não-quad)` — e um ciclo de **31
+lados** contava como **UM** não-quad enquanto virava **29 triângulos** na malha.
+
+⇒ **Ela melhorava quando as falhas ficavam maiores.** A tentativa da escolha
+mútua trocou 582 triângulos por 918 e a métrica **subiu de 60,9 % para 71,9 %**.
+Sob a régua honesta — sobre as faces EMITIDAS — aquela mudança era **53,3 % →
+35,0 %**.
+
+⚠️ **Todos os números deste ADR anteriores a esta nota foram re-medidos.** O que
+a Q3 entregou não é 60,9 %/51,9 %: é **53,3 %/39,7 %**. A direção das cinco
+recusas não mudou (as duas pontas de cada comparação usavam a mesma régua), mas
+os valores absolutos sim.
+
+*Uma régua que premeia o defeito por ele ser grande é pior que nenhuma.*
 
 ---
 

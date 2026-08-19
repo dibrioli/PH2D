@@ -378,8 +378,9 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   doc dela já chamava de *"outra luz inteira"*. A vista agora é escrita **por nome, os 7 campos**, então um termo novo é
   **erro de compilação** ali. Voltou a **0,0020** — o número exato do autor · **quad remesh por
   campo cruzado** ([ADR-0160](docs/architecture/decisions/0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md)):
-  **Q1..Q3 na `ph2d-quadflow`** (orientação 4-RoSy · posição + escala adaptativa · extração). Medido: **60,9%** de
-  quads na esfera, **51,9%** no toro. ⚠️ **A2/A3/A4 do ADR NÃO estão verdes** — os 3 gates ficam com a barra intacta e
+  **Q1..Q3 na `ph2d-quadflow`** (orientação 4-RoSy · posição + escala adaptativa · extração). Medido (⚠️ **régua corrigida**, sobre as faces
+  emitidas): **53,3%** de quads na esfera, **39,7%** no toro — a régua antiga contava CICLOS e premiava o defeito
+  por ele ser grande. ⚠️ **A2/A3/A4 do ADR NÃO estão verdes** — os 3 gates ficam com a barra intacta e
   o número medido no `#[ignore]`; ⛔ **não os afrouxe**. ⚠️ A Q3 **refutou o plano do próprio ADR**: a hierarquia
   multirresolução é **pré-requisito** da extração, não enfeite da Q2 (Q3.5). E ⚠️ **nada disso é alcançável pelo
   produto ainda** — a costura é a Q5.

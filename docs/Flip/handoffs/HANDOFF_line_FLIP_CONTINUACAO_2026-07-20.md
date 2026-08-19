@@ -1,5 +1,7 @@
 # Handoff de CONTINUAÇÃO — `line/FLIP` (2026-07-20)
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-20 (`885d19627`).
+
 > **Para o agente que assume a linha FLIP.** A linha está **VIVA e NÃO integrada**: 16
 > commits à frente do `main` (HEAD `d0c05a5c`), árvore limpa. Este doc é o item 5 da FASE 2
 > do [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md):

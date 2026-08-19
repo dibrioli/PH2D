@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector` (MESTRE, 2026-08-02)
 
+**Status:** FECHADO 2026-08-02 · no `main` em `84040d5cf` (o commit que trouxe este arquivo).
+
 > **Este documento SUPERSEDE** os dois handoffs parciais da linha
 > ([`_guides_2026-08-01`](HANDOFF_INTEGRACAO_line_Vector_guides_2026-08-01.md) e
 > [`_2026-08-01`](HANDOFF_INTEGRACAO_line_Vector_2026-08-01.md)): eles descrevem os primeiros

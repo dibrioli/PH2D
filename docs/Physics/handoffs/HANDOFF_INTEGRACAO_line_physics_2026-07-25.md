@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/physics` → `main` (2026-07-25)
 
+**Status:** FECHADO 2026-07-25 · no `main` em `ff0bf9fc6` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador**, sob ordem EXPLÍCITA do Enio. A linha está FECHADA,
 > todos os smokes aprovados. O implementador **não integra nem pusha** (§0.7); este
 > handoff é o que o integrador executa. **PARE antes do push — o ship é do Enio.**

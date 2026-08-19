@@ -1,5 +1,7 @@
 # Handoff de INTEGRAÇÃO — linha `line/FLIP` (2026-07-13)
 
+**Status:** FECHADO 2026-07-13 · no `main` em `387c0fac0` (o commit que trouxe este arquivo).
+
 > **Para o agente integrador** (DIRETRIZ §1.5.9). A linha está **fechada e PARADA**: não integra,
 > não pusha, não roda ship. O smoke do Enio das 3 últimas entregas (W7 · W7.1 · W7.2) acontece
 > **amanhã** — ver §6.

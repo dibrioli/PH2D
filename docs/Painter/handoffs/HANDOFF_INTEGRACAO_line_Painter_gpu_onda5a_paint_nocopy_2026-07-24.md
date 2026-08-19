@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Painter` · Onda 5a (a pintura para de copiar o canvas por movimento)
 
+**Status:** FECHADO 2026-07-24 · no `main` em `434651fcb` (o commit que trouxe este arquivo).
+
 **Para:** o agente integrador (DIRETRIZ §1.5.9). **Data:** 2026-07-24.
 
 > ⚠️ **Esta branch já carrega as Ondas 1 e 2** (compositor GPU — handoff

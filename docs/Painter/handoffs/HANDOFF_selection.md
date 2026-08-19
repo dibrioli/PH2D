@@ -1,5 +1,7 @@
 # HANDOFF — Painter Selection system (tracker vivo)
 
+**Status:** FECHADO 2026-07-02 · no `main` em `cd4c1f6e7` (o commit que trouxe este arquivo).
+
 > Tracker único do sistema de seleção (paridade Procreate). Arquitetura + decisões congeladas:
 > [ADR-0103](../../architecture/decisions/0103-selection-system-procreate-parity.md). Histórico → git log.
 

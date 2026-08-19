@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector`: O ATLAS DE RASTER (plano 24 W10)
 
+**Status:** FECHADO 2026-07-29 · no `main` em `b2b137f47` (o commit que trouxe este arquivo).
+
 **Linha:** `line/Vector` · **Worktree:** `Worktrees/line-Vector` · **Base:** `78d770370`
 **Estado:** fechada, **pendente de smoke**
 

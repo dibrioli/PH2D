@@ -1,5 +1,7 @@
 # HANDOFF — `line/Vector`: assumir a linha e construir **Envelope / Puppet Warp**
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-16 (`268c25bf4`).
+
 **Para:** o agente que vai assumir esta linha (contexto novo).
 **De:** o agente da sessão de 2026-07-16.
 **Estado:** a linha está **limpa e toda smokada**. O próximo item da fila é o teu: envelope / warp.

@@ -1,5 +1,7 @@
 # HANDOFF — Painter / Brush Engine (tracker ÚNICO do módulo)
 
+**Status:** FECHADO 2026-06-16 · no `main` em `75c59db6c` (o commit que trouxe este arquivo).
+
 > ⚠️ **SUPERSEDED (2026-06-20, [ADR-0099](../../architecture/decisions/0099-remove-painting-brush-engine-preserve-layers-effects.md)).**
 > A ferramenta de **pintura / brush engine foi DELETADA por completo** (8 crates removidas). O que
 > sobrevive é o **host de Layers + Efeitos** (`ph2d-tool-painter` slim + `ph2d-panel-painter-layers` +

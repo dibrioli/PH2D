@@ -1,5 +1,7 @@
 # HANDOFF — `line/Painter`: continuação do Impasto (2026-07-13)
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-13 (`2c25d7166`).
+
 > **Para o agente NOVO que vai tocar esta linha.** A jornada anterior fechou e **a integração já foi
 > feita** (`main` contém tudo). Este documento te dá: **como se trabalha aqui** (Modo L), **o estado
 > real**, e **a fila de implementação, em ordem, com detalhe**.

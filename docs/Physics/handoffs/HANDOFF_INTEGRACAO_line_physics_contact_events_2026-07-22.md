@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/physics` · W-ContactEvents + W-ImpactForce + W-TickContacts + W-AreaTorque (2026-07-22)
 
+**Status:** FECHADO 2026-07-22 · no `main` em `0847e8a2b` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador**, sob ordem explícita do Enio (DIRETRIZ §1.5.9).
 > A linha **não** integrou, **não** pushou e **não** rodou `ship.sh`.
 >
@@ -133,7 +135,6 @@ o norte do ADR-0131 não muda).
 > **Status:** cenas **29, 30, 31 e 32 SMOKADAS pelo Enio (OK, 2026-07-22)**. A cena **33**
 > (autoria pela UI) e o **fix de sync das rows de área** (commit `9ec4b43b`) são desta rodada e
 > estão **pendentes de smoke** — o núcleo (o torque) está aprovado; o fix é de display + gated.
-
 
 **Wave A — `env PH2D_PHYSICS_SMOKE=29 cargo run -p ph2d-host-desktop --release`** (a mensagem da cena explica; aperte **L** para a timeline):
 1. Bola (esquerda) pisca um `×` a cada pouso; entre quiques a cruz `+` **some**.

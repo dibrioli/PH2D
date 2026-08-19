@@ -1,5 +1,7 @@
 # HANDOFF — `line/Vector`, continuação (2026-07-13, 2ª passagem)
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-13 (`10584c2ac`).
+
 > ⚠ **SUPERADO** por [`HANDOFF_line_vector_continuacao_2026-07-13c.md`](HANDOFF_line_vector_continuacao_2026-07-13c.md)
 > (o Shape Builder foi consertado, commit `7aa9fc7d`). Este arquivo fica como HISTÓRICO — e
 > vale a leitura pela §3 e pela §9, que são as lições. Mas o **diagnóstico** dele está errado:

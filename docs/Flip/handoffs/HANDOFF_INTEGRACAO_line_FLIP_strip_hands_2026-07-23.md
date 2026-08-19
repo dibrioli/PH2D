@@ -1,5 +1,7 @@
 # Handoff de INTEGRAÇÃO — `line/FLIP` → `main` (a tira ganha MÃOS, 2026-07-23)
 
+**Status:** FECHADO 2026-07-23 · no `main` em `034536263` (o commit que trouxe este arquivo).
+
 ## §0 — 🟢 GO: LUZ VERDE PARA MESCLAR (Enio, 2026-07-25)
 
 **Ordem explícita do Enio:** *"smoke ok. Vamos integrar tudo ao main."* Todos os smokes

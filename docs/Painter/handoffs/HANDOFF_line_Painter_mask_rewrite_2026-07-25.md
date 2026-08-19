@@ -1,5 +1,7 @@
 # Handoff — REESCREVER a máscara de proteção do zero (com referência de alta qualidade)
 
+**Status:** FECHADO 2026-07-25 · no `main` em `b97533606` (o commit que trouxe este arquivo).
+
 > ## ⚠️ EXECUTADA E REPROVADA NO SMOKE (2026-07-25) — leia a §13.10 do doc 25 antes de qualquer coisa
 >
 > A tarefa deste handoff foi executada. **Não a reconstrua**; leia

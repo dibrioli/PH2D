@@ -1,5 +1,7 @@
 # Handoff — linha `line/FLIP`, continuação (2026-07-15)
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-15 (`cae7c8494`).
+
 > **Para o próximo implementador que pega a linha.** Modo L: worktree
 > `Worktrees/line-FLIP`, branch `line/FLIP`. **Você NÃO integra nem pusha**
 > (§0.7 do CLAUDE.md) — fecha, escreve o handoff e o Enio ordena a integração via agente

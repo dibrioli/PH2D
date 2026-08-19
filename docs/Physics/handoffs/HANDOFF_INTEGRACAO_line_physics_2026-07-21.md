@@ -1,5 +1,7 @@
 # HANDOFF de INTEGRAÇÃO — `line/physics` (jornada completa, 2026-07-21)
 
+**Status:** FECHADO 2026-07-21 · no `main` em `05ecb2bb6` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador**, por ordem EXPLÍCITA do Enio. A linha **não integra nem pusha
 > sozinha** (CLAUDE.md §0.7): ela fechou, entregou isto, e parou.
 >

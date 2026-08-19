@@ -1,5 +1,7 @@
 # HANDOFF de INTEGRAÇÃO — `line/Vector`, sessão de 2026-07-18
 
+**Status:** FECHADO 2026-07-18 · no `main` em `77bc7c9d2` (o commit que trouxe este arquivo).
+
 **Para:** o agente integrador (DIRETRIZ §1.5.3–1.5.4), quando o Enio mandar.
 **Estado:** ✅ linha **fechada e verde**, **27 commits** sobre a `main`. **NÃO integrei e NÃO
 pushei** — a linha fecha, entrega o handoff e para (CLAUDE.md §0.7).

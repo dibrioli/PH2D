@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector`: as GUIAS e a RÉGUA (W6.2) + o MIRROR (W6.3)
 
+**Status:** FECHADO 2026-08-01 · no `main` em `f9346fad5` (o commit que trouxe este arquivo).
+
 > **2026-08-01.** Fecha o **único item `G`** da tabela do plano 25 §9 (W6.2) e o **mirror
 > vivo** (W6.3). Nove commits sobre
 > `3197c5c9e` (o `main` de 2026-08-01, já com a integração anterior desta linha).

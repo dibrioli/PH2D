@@ -1,5 +1,7 @@
 # HANDOFF — troca de agente na `line/physics` · missão NOVA: **o PLAYER DE PLATAFORMA**
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-08-03 (`c250da781`).
+
 > Escrito em 2026-08-03 pelo agente que fechou as seis waves da jornada (HEAD `6b80645ac`).
 > O destinatário é o **próximo agente da MESMA linha**, em janela de contexto nova.
 > Rota: [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md).

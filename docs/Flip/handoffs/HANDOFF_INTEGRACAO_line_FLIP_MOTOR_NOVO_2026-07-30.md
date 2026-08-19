@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/FLIP`: O MOTOR NOVO DE TRAÇO (2026-07-30)
 
+**Status:** FECHADO 2026-07-30 · no `main` em `6cd7be787` (o commit que trouxe este arquivo).
+
 > **Para o agente integrador.** Este é o handoff **mestre** da linha: ele supersede os dois
 > handoffs de integração parciais que estão dentro dela (`..._crossing_curves_2026-07-28.md` e
 > `..._neighbour_cap_2026-07-28.md` — aquelas waves **nunca foram integradas**, então elas viajam

@@ -1,5 +1,7 @@
 # HANDOFF — `line/Vector`, continuação (2026-07-13)
 
+**Status:** FECHADO 2026-07-13 · no `main` em `8399684e8` (o commit que trouxe este arquivo).
+
 > Do agente que fechou a wave anterior, para **você**, o próximo.
 > A wave passada foi **INTEGRADA no main** e **pushada**. Você começa do zero de trabalho,
 > mas não de contexto — e este doc é o contexto.

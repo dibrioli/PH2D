@@ -1,5 +1,7 @@
 # HANDOFF — Selection curve = IDENTICAL to the stroke Shape curve system
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-03 (`3f536707d`).
+
 > **STATUS 2026-07-03 — LANDED (local, pending Enio smoke).** Unified via the shared `CurveModel`
 > (`crates/ph2d-tool-painter/src/tool/paint/curve_model.rs`): the pure editing ops (hit / insert / drag /
 > delete / set-kind / select / from_fit) now live in ONE place, owned by BOTH the stroke `CurveEditor`
@@ -13,7 +15,6 @@
 > LOC. NOT committed (main branch; awaiting Enio's manual smoke, then commit/ship). Original spec below.
 
 ---
-
 
 > **Owner mandate (Enio, 2026-07-03):** "Por várias vezes eu disse que deveria ser como nas shapes do
 > stroke." The selection **Convert to Curve** editor must be an *equivalent, identical* version of the

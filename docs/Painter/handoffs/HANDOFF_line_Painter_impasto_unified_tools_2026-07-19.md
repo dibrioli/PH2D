@@ -1,5 +1,7 @@
 # Handoff — Impasto: uma casa só para as dez ferramentas (`line/Painter`, 2026-07-19)
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-19 (`7c90985b3`).
+
 > **NÃO integrado, NÃO pushado.** Linha fechada, handoff escrito, PARADO (CLAUDE.md §0.7).
 
 ## §0 — O pedido

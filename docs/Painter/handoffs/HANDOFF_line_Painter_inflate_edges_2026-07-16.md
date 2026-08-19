@@ -2,6 +2,8 @@
 
 # HANDOFF — a borda do Inflate (`line/Painter`, 2026-07-16)
 
+**Status:** FECHADO 2026-07-16 · no `main` em `c24e662f2` (o commit que trouxe este arquivo).
+
 > ## ⚠️ LEIA ISTO PRIMEIRO — o 2º smoke do Enio REPROVOU a borda de novo, e o fix abaixo NÃO a alcança
 >
 > **Medido, não teorizado:** na cena do Enio o render é **byte-IDÊNTICO** com e sem o fix desta linha.

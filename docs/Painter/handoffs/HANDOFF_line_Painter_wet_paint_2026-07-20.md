@@ -1,5 +1,7 @@
 # HANDOFF — line/Painter: integração do módulo WET PAINT (física real, estilo Rebelle)
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-20 (`a6444df39`).
+
 > **Para o agente que assume esta linha.** Você chegou aqui pelo bloco de TROCA DE AGENTE
 > ([`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md)).
 > Se ainda não executou a FASE 0 dele (`cd Worktrees/line-Painter && pwd && git branch --show-current`),

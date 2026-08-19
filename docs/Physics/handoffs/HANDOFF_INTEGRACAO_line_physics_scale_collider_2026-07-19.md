@@ -1,5 +1,7 @@
 # HANDOFF de INTEGRAÇÃO — `line/physics` · jornada REABERTA (2026-07-19)
 
+**Status:** FECHADO 2026-07-19 · no `main` em `1a13cb542` (o commit que trouxe este arquivo).
+
 > ⚠️ **SUPERSEDIDO por [`HANDOFF_INTEGRACAO_line_physics_2026-07-21.md`](HANDOFF_INTEGRACAO_line_physics_2026-07-21.md).**
 > A linha continuou por mais 17 waves depois deste arquivo, e os números aqui (schema, registro, `body_count`)
 > estão VELHOS — integrar por eles quebraria a contagem. Este fica como registro do que W6/W7/Weld/BakeChannels

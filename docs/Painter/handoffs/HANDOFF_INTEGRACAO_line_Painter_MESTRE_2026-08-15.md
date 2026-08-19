@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter` MESTRE (2026-08-15)
 
+**Status:** FECHADO 2026-08-15 · no `main` em `8ee50cf37` (o commit que trouxe este arquivo).
+
 > **Estado:** linha **FECHADA**, aguardando **ordem explícita do Enio** para integrar.
 > A linha não pusha, não integra, não roda `scripts/foundational-integrate.sh`.
 >

@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector`: a TURBULÊNCIA (plano 24 W6b)
 
+**Status:** FECHADO 2026-07-28 · no `main` em `c2adeca78` (o commit que trouxe este arquivo).
+
 **Linha:** `line/Vector` · **Worktree:** `Worktrees/line-Vector` · **Base:** `78d770370`
 **Commits desta wave:** 4 (`29edb4380` · `15c3bdd52` · `489be1ba7` · `0d0d319a8`)
 **Estado:** fechada, **pendente de smoke**

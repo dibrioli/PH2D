@@ -1,5 +1,7 @@
 # HANDOFF — `line/Painter`: Shape **FLOW** (o padrão segue o traço) — 2026-07-19
 
+**Status:** FECHADO 2026-07-19 · no `main` em `e1f104af8` (o commit que trouxe este arquivo).
+
 > Continuação da mesma linha (lag do Rake + remoção do Random Angle). Um commit novo.
 > **Pendente de smoke do Enio.** A linha NÃO integra nem pusha sozinha (§0.7 / §0.2).
 

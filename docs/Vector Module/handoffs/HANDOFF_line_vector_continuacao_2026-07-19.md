@@ -1,5 +1,7 @@
 # HANDOFF de CONTINUAÇÃO — `line/Vector` (para o próximo implementador)
 
+**Status:** FECHADO 2026-07-19 · no `main` em `11198e53e` (o commit que trouxe este arquivo).
+
 **Para:** a LLM que assume a linha `line/Vector` daqui pra frente.
 **De:** a sessão de 2026-07-18/19, que fechou os **Live Path Effects** ([ADR-0132](../../architecture/decisions/0132-vector-live-path-effects-are-a-per-path-stack-not-a-node-graph.md)).
 **Estado:** ✅ **a linha INTEGROU e está RE-PREPARADA** — o worktree foi fast-forwardado para a

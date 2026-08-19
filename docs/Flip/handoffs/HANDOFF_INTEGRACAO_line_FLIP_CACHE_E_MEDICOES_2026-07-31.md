@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/FLIP`: O CACHE DO AJUSTE E AS MEDIÇÕES QUE FECHARAM ITENS (2026-07-31)
 
+**Status:** FECHADO 2026-07-31 · no `main` em `ed832dcaf` (o commit que trouxe este arquivo).
+
 > ⚠️ **SUPERSEDED por [`HANDOFF_INTEGRACAO_line_FLIP_PONTAS_2026-08-01.md`](HANDOFF_INTEGRACAO_line_FLIP_PONTAS_2026-08-01.md)**,
 > que é o handoff MESTRE da linha (10 commits). Este cobre só os **5 primeiros** e **não** menciona o
 > bump de schema nem as pontas do traço — integrar por ele deixaria `PROJECT_SCHEMA` para trás.

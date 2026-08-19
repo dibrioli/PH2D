@@ -1,5 +1,7 @@
 # HANDOFF — o Smear virou um campo (2026-07-18)
 
+**Status:** FECHADO 2026-07-18 · no `main` em `ce6f09d96` (o commit que trouxe este arquivo).
+
 > Sucessor do [`HANDOFF_line_Painter_TAKEOVER_2026-07-18.md`](HANDOFF_line_Painter_TAKEOVER_2026-07-18.md).
 > **A fila dele fechou inteira** — as três primeiras tarefas, duas delas por MEDIÇÃO em vez de código:
 >

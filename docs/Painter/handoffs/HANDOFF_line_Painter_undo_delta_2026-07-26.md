@@ -1,5 +1,7 @@
 # HANDOFF — `line/Painter`: **o histórico de undo guarda um DOCUMENTO por passo**
 
+**Status:** FECHADO 2026-07-26 · no `main` em `3cb5b5bb1` (o commit que trouxe este arquivo).
+
 > **Para o agente que assume a linha.** Este doc é a FASE 2 item 5 do
 > [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md):
 > o que já foi **decidido, medido e REPROVADO**. Ler antes de escrever evita reconstruir o que já

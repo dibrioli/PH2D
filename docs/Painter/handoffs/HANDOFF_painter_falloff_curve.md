@@ -1,5 +1,7 @@
 # HANDOFF — Painter Custom Falloff curve + a dispatch regression + an FPS drop
 
+**Status:** FECHADO 2026-06-21 · no `main` em `d72873af6` (o commit que trouxe este arquivo).
+
 > ## ✅ UPDATE — sessão 2 (2026-06-21, commit `c32608a7`)
 >
 > **Vector handle: RESOLVIDO** — e a §3 abaixo estava com a causa-raiz ERRADA.

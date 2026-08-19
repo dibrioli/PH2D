@@ -1,5 +1,7 @@
 # HANDOFF — **DESCARTAR o rasterizador de traço do Flip e construir um novo, padrão-ouro**
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-28 (`dacfd9ad1`).
+
 **Data:** 2026-07-28 · **Linha:** `line/FLIP` · **Autor:** o agente que passou a jornada tentando
 consertar o motor atual · **Decisão:** do Enio.
 

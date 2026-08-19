@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter`: lag do Rake + remoção do Random Angle (2026-07-19)
 
+**Status:** FECHADO 2026-07-19 · no `main` em `f84a315b9` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador** (por ordem EXPLÍCITA do Enio — a linha NÃO integra sozinha).
 > Duas mudanças, dois commits, sobre `origin/main` integrada. **Pendente de smoke do Enio.**
 

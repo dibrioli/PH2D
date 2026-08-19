@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector`: GROW / SHRINK (plano 24 W7)
 
+**Status:** FECHADO 2026-07-28 · no `main` em `4226ed222` (o commit que trouxe este arquivo).
+
 **Linha:** `line/Vector` · **Worktree:** `Worktrees/line-Vector` · **Base:** `78d770370`
 **Commits desta wave:** 2 (`0f729608e` · `6c3359f4d`)
 **Estado:** fechada, **pendente de smoke**

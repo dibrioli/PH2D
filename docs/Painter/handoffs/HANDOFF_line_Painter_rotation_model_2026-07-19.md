@@ -1,5 +1,7 @@
 # HANDOFF — `line/Painter`: **o modelo de rotação** (Blender × nosso) — 2026-07-19
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-19 (`fb0606b7e`).
+
 > Continuação da mesma linha (Rake lag · Random Angle · Shape FLOW). **Pendente de smoke do Enio.**
 > A linha NÃO integra nem pusha sozinha (§0.7 / §0.2).
 

@@ -1,5 +1,7 @@
 # Handoff — `line/Painter`: levar o Painter para a GPU (continuação)
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-25 (`e9d7c911c`).
+
 **Para:** o agente NOVO que assume a linha. **De:** o agente anterior, 2026-07-25, logo após a
 integração da jornada de 23–25/07. **Ordem do Enio:** *"continuar a tarefa de levar o painter para o GPU
 o máximo que for possível"*.

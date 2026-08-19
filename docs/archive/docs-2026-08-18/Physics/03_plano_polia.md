@@ -5,12 +5,17 @@
 > linha foi editada, e a remontagem das duas metades bate sha256 com o original.
 >
 > Use para responder *"por que isto ficou assim?"* — **nunca** para decidir a próxima
-> ação. O que vale hoje está no doc vivo e no [`CLAUDE.md §5`](../../../CLAUDE.md).
+> ação. O que vale hoje está no doc vivo e no [`CLAUDE.md §5`](../../../../CLAUDE.md).
 >
 > ⛔ O que estiver aqui marcado **«medido e REJEITADO»** continua rejeitado: uma
 > recusa com medição atrás não volta à fila por ter mudado de arquivo.
 >
 > Recorte: linhas fora de `1-171,250-259,693-702,718-742,783-785,889-961,1027-1032,1329-1348,1422-1428` do original.
+>
+> ⚠️ **A única alteração ao corpo:** 0 alvo(s) de link relativo foram
+> **reancorados** para apontarem ao MESMO arquivo de antes — o corpo desceu de pasta e
+> todo `../x` passaria a resolver noutro sítio. Texto, números e estrutura são
+> byte-idênticos; a partição foi provada por sha256 **antes** desta reancoragem.
 
 ---
 

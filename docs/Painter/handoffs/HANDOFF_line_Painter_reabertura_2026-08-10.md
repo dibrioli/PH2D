@@ -1,5 +1,7 @@
 # HANDOFF — `line/Painter` REABERTA (2026-08-10)
 
+**Status:** FECHADO 2026-08-10 · no `main` em `36c3597d5` (o commit que trouxe este arquivo).
+
 > Para o agente que **assume** esta linha. Ela foi reaberta do zero sobre o `main` do dia,
 > **logo depois** de a jornada anterior integrar. Leia isto ANTES de tocar em código — ele
 > existe para você não reconstruir o que já foi construído nem re-derivar o que já foi medido.

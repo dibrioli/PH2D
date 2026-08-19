@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector` · W7h, **a HIERARQUIA**
 
+**Status:** FECHADO 2026-08-08 · no `main` em `a2ec39c69` (o commit que trouxe este arquivo).
+
 > **Data:** 2026-08-08 · **Branch:** `line/Vector` · **Wave:** W7h (o item aberto do W7)
 > **Estado:** fechada, gates verdes, **PENDENTE DE SMOKE** e de ordem de integração do Enio.
 

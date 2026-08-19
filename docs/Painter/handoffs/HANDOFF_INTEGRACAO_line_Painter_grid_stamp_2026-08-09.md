@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter`, 2026-08-09
 
+**Status:** FECHADO 2026-08-09 · no `main` em `0e93f9e4b` (o commit que trouxe este arquivo).
+
 > **O CARIMBO EM GRADE, A PILHA QUE VOLTOU A PINTAR, E A SHAPE QUE SAI COZIDA**
 >
 > | | |

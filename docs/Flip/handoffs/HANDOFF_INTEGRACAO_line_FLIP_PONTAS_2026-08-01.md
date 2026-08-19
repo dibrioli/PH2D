@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/FLIP`: AS PONTAS DO TRAÇO (2026-08-01)
 
+**Status:** FECHADO 2026-08-01 · no `main` em `364f802e6` (o commit que trouxe este arquivo).
+
 > **Para o agente integrador.** Este é o handoff **MESTRE** da continuação e **supersede**
 > [`HANDOFF_INTEGRACAO_line_FLIP_CACHE_E_MEDICOES_2026-07-31.md`](HANDOFF_INTEGRACAO_line_FLIP_CACHE_E_MEDICOES_2026-07-31.md),
 > que descreve só os **5 primeiros** commits. O conteúdo daquele segue válido como detalhe das

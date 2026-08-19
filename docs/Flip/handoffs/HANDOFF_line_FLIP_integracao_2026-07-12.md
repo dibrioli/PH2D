@@ -1,5 +1,7 @@
 # Handoff de integração — linha `line/FLIP` (2026-07-12)
 
+**Status:** FECHADO 2026-07-12 · no `main` em `52d890ac9` (o commit que trouxe este arquivo).
+
 > **Para o agente integrador** (DIRETRIZ §1.5.9). A linha está FECHADA: gates batched verdes,
 > smokes do Enio aprovados (traço/mordida · W3 · W4/âncora). A linha **não integra nem pusha** —
 > este documento é o insumo; a integração roda `scripts/foundational-integrate.sh` + merge

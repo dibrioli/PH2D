@@ -1,5 +1,7 @@
 # HANDOFF de integração — `line/Vector` (2026-07-13)
 
+**Status:** FECHADO 2026-07-13 · no `main` em `5715aac1a` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador**, sob ordem explícita do Enio. A linha está **fechada**: não
 > integrei, não pushei, não fiz ship (DIRETRIZ §1.5.9 / CLAUDE.md §0.7).
 >

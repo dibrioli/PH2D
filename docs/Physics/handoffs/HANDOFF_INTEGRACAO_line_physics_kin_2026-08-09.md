@@ -1,5 +1,7 @@
 # Handoff de integração — `line/physics` (2026-08-09)
 
+**Status:** FECHADO 2026-08-09 · no `main` em `ae29c9870` (o commit que trouxe este arquivo).
+
 > **A linha NÃO integra nem faz ship** (CLAUDE.md §0.7). Este documento é o que o
 > integrador precisa para não colidir nem regredir. DIRETRIZ §1.5.9.
 

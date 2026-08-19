@@ -1,5 +1,7 @@
 # HANDOFF — Per-Layer Color (layers-as-brush): slowness + rectangular stripe artifacts
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-06-28 (`e8da99b76`).
+
 > **UPDATE 2026-07-04 (2ª rodada) — a causa LIVE era o caminho DINÂMICO (Texture Color, o default) +
 > o preview composite; ambos fechados em CPU.** O smoke do Enio reprovou a 1ª rodada ("FPS 60→10 com
 > Line/Arc/Ellipse/Polygon/Freehand") porque o harness anterior setava cores custom → media o caminho

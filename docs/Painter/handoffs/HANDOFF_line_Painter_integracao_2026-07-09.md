@@ -1,5 +1,7 @@
 # HANDOFF de integração — linha `line/Painter` (aquarela: junções + sessão molhada) — 2026-07-09
 
+**Status:** FECHADO 2026-07-09 · no `main` em `3a2aed5fd` (o commit que trouxe este arquivo).
+
 > Documento do protocolo DIRETRIZ §1.5.9: a linha fechou, **não integra nem pusha** — este handoff
 > vai pro **agente integrador dedicado** que o Enio abrir. Worktree:
 > `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter`.

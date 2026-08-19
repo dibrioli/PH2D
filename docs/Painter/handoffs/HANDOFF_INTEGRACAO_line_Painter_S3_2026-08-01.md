@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter` · 2026-08-01
 
+**Status:** FECHADO 2026-08-01 · no `main` em `aa40acd1b` (o commit que trouxe este arquivo).
+
 > ⚠️ **SUPERSEDIDO para a INTEGRAÇÃO pelo [handoff MESTRE](HANDOFF_INTEGRACAO_line_Painter_MESTRE_2026-08-02.md)** — este cobre só a
 > metade **A (o motor de undo/journal)**. Ele segue válido no DETALHE de cada wave; o mestre é o que a integração precisa
 > (colisão, ADRs, schema, os dois arquivos de alta colisão e o ponteiro de memória pendurado).

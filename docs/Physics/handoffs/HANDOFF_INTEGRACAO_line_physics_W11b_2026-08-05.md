@@ -1,5 +1,7 @@
 # HANDOFF — `line/physics` → `main` (2026-08-05) · **W11b, o ajuste diferido**
 
+**Status:** FECHADO 2026-08-05 · no `main` em `857772eec` (o commit que trouxe este arquivo).
+
 > ⚠️ **SUPERSEDIDO por [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-05.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-05.md)**
 > — a jornada continuou com a **W12** (descer da plataforma) e a **W13** (as
 > paredes), e o título deste arquivo deixou de descrever o que a linha entrega.

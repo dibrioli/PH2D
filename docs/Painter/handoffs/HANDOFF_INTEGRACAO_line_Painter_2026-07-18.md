@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter` (2026-07-18, 2ª rodada)
 
+**Status:** FECHADO 2026-07-18 · no `main` em `823064363` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador**. DIRETRIZ §1.5.9. A linha está **fechada e parada**; não integrou nem
 > pushou nada.
 >

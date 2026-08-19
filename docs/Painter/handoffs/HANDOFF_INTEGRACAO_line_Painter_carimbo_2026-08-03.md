@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Painter`, o CARIMBO (2026-08-03 · 2026-08-04)
 
+**Status:** FECHADO 2026-08-03 · no `main` em `23b4484c7` (o commit que trouxe este arquivo).
+
 > **29 commits.** ⚠️ **PENDENTE DE SMOKE** — nada aqui foi aprovado na tela. A jornada tem três
 > metades: o depósito de pigmento fica **10-13× mais rápido na CPU** e depois passa a rodar **no
 > dispositivo** quando vale; o Enter do Wet Paint ganhou o gate da metade que ninguém tinha pinado; e

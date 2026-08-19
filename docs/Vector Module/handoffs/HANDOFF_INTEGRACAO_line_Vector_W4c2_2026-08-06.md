@@ -1,9 +1,11 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Vector`, **a escala fica VIVA** (W4c.2, 2026-08-06)
 
+**Status:** FECHADO 2026-08-06 · no `main` em `6a5aa61b9` (o commit que trouxe este arquivo).
+
 > **Branch:** `line/Vector` · **HEAD:** `01bbe2485` · **base:** `main` (rebased, `--ff-only` limpo)
 > **Commits desta wave:** 2 (`4204b330b` o motor, `01bbe2485` o roteiro de smoke)
 > **⚠️ PENDENTE DE SMOKE.** A W4c.1 (`af5ab7cec`) foi aprovada e está na mesma branch.
-> Plano-mãe: [`PLANO_UI_UX_padrao_figma.md`](PLANO_UI_UX_padrao_figma.md) · estado e fila:
+> Plano-mãe: [`PLANO_UI_UX_padrao_figma.md`](../Estudos/PLANO_UI_UX_padrao_figma.md) · estado e fila:
 > [`HANDOFF_line_Vector_tokens_2026-08-06.md`](HANDOFF_line_Vector_tokens_2026-08-06.md)
 
 ---

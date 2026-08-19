@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Vector`, os ESTADOS DE UI (W7)
 
+**Status:** FECHADO 2026-08-05 · no `main` em `684e16294` (o commit que trouxe este arquivo).
+
 **Data:** 2026-08-05 · **Branch:** `line/Vector` · **Tip:** `c74c2e434` · **17 commits**
 **Estado:** FECHADA. Todos os smokes **aprovados pelo Enio**. Aguardando ordem explícita de integração.
 

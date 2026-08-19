@@ -1,5 +1,7 @@
 # Handoff — linha `line/FLIP`, continuação (2026-07-15c) · **HISTÓRICO**
 
+**Status:** FECHADO 2026-07-15 · no `main` em `5e191df67` (o commit que trouxe este arquivo).
+
 > ⚠️ **O COMECE AQUI é o [`HANDOFF_line_FLIP_CONTINUACAO_2026-07-16.md`](HANDOFF_line_FLIP_CONTINUACAO_2026-07-16.md).**
 > Este arquivo é o **registro detalhado do §4.A e dos 6 achados do smoke** — leia-o quando
 > for mexer no gizmo da seleção. **Todos os smokes marcados "PENDENTE" abaixo voltaram OK**

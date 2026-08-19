@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector`: a LEI DE MISTURA por degrau (plano 24 W6a)
 
+**Status:** FECHADO 2026-07-28 · no `main` em `b9f7c4d22` (o commit que trouxe este arquivo).
+
 **Linha:** `line/Vector` · **Worktree:** `Worktrees/line-Vector` · **Base:** `7ec917506`
 **Commits desta wave:** 4 (`09cf3e7fe` · `e9a63bed0` · `2f94b0705` · a cena + os splits de LOC)
 **Estado:** fechada, **pendente de smoke**

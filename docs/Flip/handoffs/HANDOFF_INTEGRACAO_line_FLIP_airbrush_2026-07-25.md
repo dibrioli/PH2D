@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/FLIP` · AIRBRUSH + REAMOSTRAGEM (2026-07-25)
 
+**Status:** FECHADO 2026-07-25 · no `main` em `95106a3d1` (o commit que trouxe este arquivo).
+
 > **Para o AGENTE INTEGRADOR.** Este é o handoff do **tip atual** da `line/FLIP`. A linha traz
 > agora **10 commits** sobre o `main` de hoje (ff-only): o multiplano 2.5D + o polish dos sliders +
 > o Self Overlap (detalhe em [`HANDOFF_INTEGRACAO_line_FLIP_self_overlap_2026-07-25.md`](HANDOFF_INTEGRACAO_line_FLIP_self_overlap_2026-07-25.md))

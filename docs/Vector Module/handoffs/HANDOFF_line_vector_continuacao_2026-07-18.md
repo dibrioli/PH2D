@@ -1,5 +1,7 @@
 # HANDOFF de CONTINUAÇÃO — `line/Vector` (para o próximo implementador)
 
+**Status:** FECHADO 2026-07-18 · no `main` em `6270568df` (o commit que trouxe este arquivo).
+
 **Para:** a LLM que assume a linha `line/Vector` daqui pra frente.
 **De:** a sessão de 2026-07-18, que fechou o **ADR-0129 inteiro** (Envelope: Fatias 1–5 + C + D + E).
 **Estado:** ✅ **a linha está RE-PREPARADA e sincronizada com a `main`.** O envelope INTEGROU. Você

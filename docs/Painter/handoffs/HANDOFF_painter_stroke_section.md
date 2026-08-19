@@ -1,5 +1,7 @@
 # HANDOFF — Painter "Stroke" section (Blender clean-room) — landed, but 4 behavioral gaps open
 
+**Status:** FECHADO 2026-06-21 · no `main` em `6ec286dc4` (o commit que trouxe este arquivo).
+
 > Status: **a seção Stroke inteira foi implementada e está VIVA** (engine + seam + painel UI),
 > mas o Enio testou e apontou gaps de comportamento vs Blender que **NÃO estão fechados**. Tudo
 > committado local, **nada pushado**. Seja cético: o engine é fiel ao Blender e bem testado, mas

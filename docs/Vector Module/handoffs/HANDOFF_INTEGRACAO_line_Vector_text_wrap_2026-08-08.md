@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector` · W2a, **o texto REFLUI**
 
+**Status:** FECHADO 2026-08-08 · no `main` em `9ff1f294e` (o commit que trouxe este arquivo).
+
 > **Data:** 2026-08-08 · **Branch:** `line/Vector` · **Wave:** W2a (a fila dos Estudos)
 > **Estado:** fechada, gates verdes, **SMOKE APROVADO pelo Enio (2026-08-08)** — aguarda
 > ordem de integração.

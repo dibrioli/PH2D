@@ -1,5 +1,7 @@
 # Handoff — linha `line/FLIP`, continuação (2026-07-17) · **COMECE AQUI**
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-16 (`8573abfd7`).
+
 > **Para o próximo agente-de-linha do Flip** (o 4º meio do PH2D: animação quadro-a-quadro,
 > fork 2D clean-room do Grease Pencil — [ADR-0114](../../architecture/decisions/0114-grease-pencil-as-native-2d-medium-flip-no-3d-viewport.md)).
 > **Regime:** Modo L (workstation), worktree `Worktrees/line-FLIP`, branch `line/FLIP`.
@@ -284,7 +286,6 @@ Qualquer um serve de tarefa curta entre smokes:
 > Estas notas foram para o agente integrador e **já foram aplicadas**. Ficam aqui só como
 > histórico do que este delta tocou (os sítios foundational append-only, os contadores). Uma
 > rodada nova NÃO age sobre esta seção — a base já é a main integrada.
-
 
 - **`ph2d-editor-core` tocada append-only** (foundational) — **5 sítios** (4 antigos + 1 do §4.B):
   - variantes **`GizmoTarget::FlipPose`** (W7.5) e **`GizmoTarget::FlipSelection`** (§4.A) em

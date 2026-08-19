@@ -1,5 +1,7 @@
 # HANDOFF de CONTINUAÇÃO — `line/Vector` (2026-07-14, 6ª passagem)
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-14 (`44e0cea81`).
+
 > **Para:** o **próximo implementador** da linha `line/Vector`.
 > **De:** o agente que auditou o algoritmo de Blend — o giro do quadrado, os defeitos que ele
 > escondia, a costura do 2º Blend, e as regressões que uma 2ª lente adversarial pegou.

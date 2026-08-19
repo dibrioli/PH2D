@@ -1,5 +1,7 @@
 # HANDOFF do SCULPT — detalhe técnico (W1 + W2 + W3, 2026-07-13)
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-13 (`d5d3bf63d`).
+
 > ⛔ **HISTÓRICO — a linha foi INTEGRADA na `main` em 2026-07-13.**
 > O documento vivo é [`HANDOFF_line_Painter_continuacao_2026-07-14.md`](HANDOFF_line_Painter_continuacao_2026-07-14.md).
 > **O smoke do Enio segue PENDENTE** — é o item nº 1, antes de W4.

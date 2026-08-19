@@ -1,5 +1,7 @@
 # HANDOFF de INTEGRAÇÃO — `line/Vector`: Envelope / Warp (ADR-0129, Fatias A + B)
 
+**Status:** FECHADO 2026-07-17 · no `main` em `ac49b4a9c` (o commit que trouxe este arquivo).
+
 **Para:** o **agente integrador** (e o próximo implementador da linha).
 **De:** a sessão de 2026-07-17 (assumiu a linha para construir o envelope/puppet warp).
 **Estado:** a fatia está **fechada e smokada pelo Enio**. **NÃO integrei nem fiz ship** (Modo L,

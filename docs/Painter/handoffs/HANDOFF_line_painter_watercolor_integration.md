@@ -1,5 +1,7 @@
 # Handoff de integração — linha `line/Painter` (Watercolor, jornada 2026-07-10/11)
 
+**Status:** FECHADO 2026-07-11 · no `main` em `1551d0d82` (o commit que trouxe este arquivo).
+
 > **DIRETRIZ §1.5.9.** A linha está FECHADA. NÃO integrei nem fiz ship. Este doc passa ao **agente
 > integrador** (quando o Enio ordenar) os pontos que evitam conflito/regressão. Aguardo ordem de integração.
 

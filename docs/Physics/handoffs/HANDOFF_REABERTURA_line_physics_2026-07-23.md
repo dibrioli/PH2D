@@ -1,5 +1,7 @@
 # HANDOFF de REABERTURA — `line/physics` (para o agente que assume, 2026-07-23)
 
+**Status:** FECHADO 2026-07-23 · no `main` em `159b27d51` (o commit que trouxe este arquivo).
+
 > Você está assumindo uma linha **já integrada ao `main`**. A jornada anterior fechou
 > QUATRO waves (a trilogia de contatos + a mesa giratória) e todos os smokes do núcleo
 > foram aprovados pelo Enio. Este documento diz **como reabrir**, **o que já existe** (para

@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter`: **o histórico de undo guarda a JANELA** (U1)
 
+**Status:** FECHADO 2026-07-26 · no `main` em `ffb0c68dc` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador**, munido pelo Enio. DIRETRIZ §1.5.9.
 > O handoff de **tarefa** que abriu esta wave é
 > [`HANDOFF_line_Painter_undo_delta_2026-07-26.md`](HANDOFF_line_Painter_undo_delta_2026-07-26.md);

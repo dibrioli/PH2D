@@ -1,5 +1,7 @@
 # HANDOFF de REABERTURA — `line/physics` (para o agente que assume, 2026-07-22)
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-22 (`2a1445fba`).
+
 > Escrito pelo agente que fechou a jornada de 21/07. A linha **integrou** — está a **zero
 > commits** de `main`. Você não está herdando trabalho pendente; está herdando um **módulo
 > vivo com plano**.

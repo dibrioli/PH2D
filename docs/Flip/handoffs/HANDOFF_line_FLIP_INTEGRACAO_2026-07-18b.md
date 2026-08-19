@@ -1,5 +1,7 @@
 # Handoff de INTEGRAÇÃO — `line/FLIP` → `main` (2026-07-18, 2ª rodada do dia)
 
+**Status:** FECHADO 2026-07-19 · no `main` em `ad50915d6` (o commit que trouxe este arquivo).
+
 > **Para o agente INTEGRADOR.** Ordem do Enio: integrar esta linha ao `main`.
 > A linha está **fechada e smokada** (*"SMoke OK"*, 2026-07-18); o implementador parou aqui
 > (§0.7 do CLAUDE.md).

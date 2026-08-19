@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/physics` (2026-08-01)
 
+**Status:** FECHADO 2026-08-01 · no `main` em `527d0b51a` (o commit que trouxe este arquivo).
+
 > **Para o agente integrador.** A linha está **FECHADA**. Sete commits, quatro
 > waves, **todos os smokes aprovados pelo Enio**. Ela **não** integrou e **não**
 > pushou — DIRETRIZ §1.5.9.

@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector`: COLOR ADJUST (plano 24 W8)
 
+**Status:** FECHADO 2026-07-28 · no `main` em `a49ee175e` (o commit que trouxe este arquivo).
+
 **Linha:** `line/Vector` · **Worktree:** `Worktrees/line-Vector` · **Base:** `78d770370`
 **Estado:** fechada, **pendente de smoke**
 

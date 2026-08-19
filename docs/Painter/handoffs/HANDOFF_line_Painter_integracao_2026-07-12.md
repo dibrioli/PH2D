@@ -1,5 +1,7 @@
 # HANDOFF de integração — `line/Painter` (2026-07-12)
 
+**Status:** FECHADO 2026-07-12 · no `main` em `63199ef8b` (o commit que trouxe este arquivo).
+
 > **Para o agente integrador.** A linha está **FECHADA**. Não integrei, não pushei, não rodei ship —
 > isso é ordem explícita do Enio (CLAUDE.md §0.7 · DIRETRIZ §1.5.9).
 > Worktree: `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter` · branch `line/Painter`

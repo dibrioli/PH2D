@@ -1,5 +1,7 @@
 # HANDOFF MESTRE — `line/physics` → `main` (2026-08-08)
 
+**Status:** FECHADO 2026-08-08 · no `main` em `baef22db5` (o commit que trouxe este arquivo).
+
 **A linha está FECHADA e PARADA.** 47 commits, 148 arquivos, +23.072/−1.227.
 Nada integrado, nada pushado. Base: `a4018d203` (= o `main` de hoje).
 

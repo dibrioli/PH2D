@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/physics` (MESTRE, 2026-08-02)
 
+**Status:** FECHADO 2026-08-02 · no `main` em `fcc8f145f` (o commit que trouxe este arquivo).
+
 **38 commits, 123 arquivos, +12.200/−975.** Todos os smokes **APROVADOS pelo Enio**
 (o último, `=75`, em 2026-08-02: *"Smoke OK"*).
 

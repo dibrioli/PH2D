@@ -1,5 +1,7 @@
 # HANDOFF — Stroke Multi-Shape (Enio 2026-07-04)
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-04 (`b16ae065c`).
+
 Multiple **simultaneously-editable stroke shapes** on one canvas, mirroring the Selection subsystem, with a
 per-shape **Operation** (Overlay / Add / Remove). Landed as a tested interactive system; the boolean-region
 *render* (Add/Remove combination) is the one scoped follow-up (see §Deferred).

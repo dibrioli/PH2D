@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector`: Sketch + Hatch (Live Path Effects)
 
+**Status:** FECHADO 2026-07-25 · no `main` em `dc7254981` (o commit que trouxe este arquivo).
+
 **Data:** 2026-07-25 · **Branch:** `line/Vector` · **Estado:** fechado, **pendente de smoke do Enio**.
 
 Increment sobre a linha REABERTA (depois de Falloff/Twist/Knot e de Color Harmonies — este é o

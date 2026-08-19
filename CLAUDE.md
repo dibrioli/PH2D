@@ -132,6 +132,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   --keep <faixas> --archive <destino>`. Ela recusa faixas sobrepostas ou fora de alcance e **aborta
   se as duas metades não remontarem o original byte-a-byte (sha256)**. A história vai **verbatim**;
   o doc vivo fica sendo um roteador.
+- **Índice de diretório se GERA, não se escreve** — `bash scripts/doc-index.sh` (14 diretórios,
+  `--check` no `ship.sh`). Medido: `docs/Motion Nodes/` tinha **99 arquivos e zero índice**, e **45%**
+  dos markdowns eram inalcançáveis a partir deste roteador. ⛔ `docs/Pixel Art/` e `docs/Tilling/`
+  ficam de fora **por decisão do Enio** (estão no `.gitignore`: MVPs paralelos ainda sem associação
+  com o PH2D) — o §5 não as mencionar **não é buraco, é o produto de uma decisão**.
 - **Integrar não é aprovar.** Smoke é do Enio; integrar e shipar só por ordem explícita dele (§0.7).
 - ⚠️ **O TRACKER também é roteador — e mandar a narrativa para ele só REALOCOU a doença.** A regra
   «uma linha no §5» funcionou para o `CLAUDE.md` e criou o `HANDOFF_line_physics.md` a **710 KB**,
@@ -176,7 +181,9 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **Smokes:** `PH2D_GPU_COOK_DEMO=<n>` · `PH2D_SPLICE_SMOKE` · `PH2D_ADAPTER_SMOKE` · `PH2D_ATTR_SMOKE` ·
   `PH2D_PICKER_SMOKE` · `PH2D_GRADIENT_SMOKE` · `PH2D_AUTOFIX_SMOKE=1..7` · `PH2D_SHAPE_SMOKE` · `PH2D_LENS_SMOKE` ·
   `PH2D_MOTION_OBJ_SMOKE`.
-  **Ler:** [`docs/Motion Nodes/`](docs/Motion%20Nodes/) · [handoffs](docs/Motion%20Nodes/handoffs/README.md) ·
+  **Ler:** [índice do módulo](docs/Motion%20Nodes/README.md) · ⚠️ [`BUGS_motion_nodes.md`](docs/Motion%20Nodes/BUGS_motion_nodes.md)
+  (**o único `BUGS_*` que esta seção não listava**, e foi lido 22×) · [as 17 folhas](docs/Motion%20Nodes/89_conferencia/README.md)
+  — a **folha 03** é [`03_simulacao.md`](docs/Motion%20Nodes/89_conferencia/03_simulacao.md) · [handoffs](docs/Motion%20Nodes/handoffs/README.md) ·
   [história](docs/archive/estado-2026-08-18/motion-nodes.md)
 
 - **Timeline** — dope-sheet + graph editor + transporte sobre `ph2d-core::Playhead` (`ph2d-panel-timeline` +
@@ -265,9 +272,14 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **Aberto:** ⏸️ o `n`/folga do *tether* e o `DRAG_RATE_X = 50` são números de **FEEL sem medição atrás** (a lei irmã diz
   `rate = step`, **50× menos**, em **141 campos**) — do Enio, com o número na mão · ⏸️ abrir/fechar painel **nunca** foi
   animado (ausência, não regressão; e **não** é o gêmeo da dobra) · a cascata da **F5**, o menu radial (**E4**), o realce
-  de proveniência (**C2**), som de UI (**D1**, ⛔ nunca ligado por omissão) e partículas (**D2**) · o **hit-test só
-  recebe o produtor de OFFSET** — os outros seis produtores de `LiveGeometry` não chegam ao pick (a cura é o pick ler o
-  mapa **fundido**; wave própria) · ⚠️ uma superfície `Plain` **nova** que leia `hover_live` sem estar no mapa nasce muda,
+  de proveniência (**C2**), som de UI (**D1**, ⛔ nunca ligado por omissão) e partículas (**D2**) ·
+  ✅ **o hit-test já lê o mapa fundido — este item FECHOU** e a nota envelheceu aqui por semanas:
+  `App::vec_live_drawn` é a `LiveGeometry` fundida e **6 sítios de pick** a consomem
+  ([`input_dispatch.rs`](shells/desktop/src/input_dispatch.rs)). *Confira o código antes de abrir a
+  wave que esta linha pedia* · ⏸️ **o tablet está MAL PRECIFICADO** («custa uma função»): o `winit`
+  escreve `force: None` nos três backends e o Wayland não tem `zwp_tablet_v2` nenhum
+  ([`vec_pencil_input.rs`](shells/desktop/src/vec_pencil_input.rs)) — o preço é outro · ⚠️ uma
+  superfície `Plain` **nova** que leia `hover_live` sem estar no mapa nasce muda,
   e ⛔ **não alargue o censo a todo `Plain`** (revive a cerca do estudo §6.2, e há gate).
   **Smokes:** `PH2D_BUILD_SMOKE=<n>` (⚠️ várias cenas **imprimem o que montaram** — *se a linha não aparecer, PARE*) ·
   `PH2D_UI_MOTION_SMOKE=1..3`. Diagnóstico: `PH2D_BUILD_LOG=1`.
@@ -309,7 +321,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⛔ as três divergências **declaradas** da referência, cada uma com gate defendendo a nossa posição · a outra metade da
   **W4**, **W7** (plano MLS), **W9** (Mesh Filter — *o mais barato: não há kernel novo*), **W10-W12**, e o **marching cubes**.
   **Smokes:** `PH2D_SCULPT3D_SMOKE=<n>`. ⚠️ **Rode uma vez SEM a env var** — é a metade que prova a inércia.
-  **Ler:** [`docs/3D/`](docs/3D/) · [handoffs](docs/3D/handoffs/README.md) ·
+  **Ler:** [porta do cofre](docs/3D/README.md) · [00-INDEX](docs/3D/00-INDEX.md) · [handoffs](docs/3D/handoffs/README.md) ·
   [história](docs/archive/estado-2026-08-18/sculpt3d.md)
 
 - **Flip** — animação 2D no idioma do Grease Pencil: tira de quadros, onion, tween v2 (correspondência por atribuição
@@ -368,7 +380,9 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   e três implementam `RasterEditTool` — ⚠️ **quatro**, contando o Painter: quem escrever a 5ª herda essa conta.
   Vizinhos sem entrada própria: `ph2d-inpaint` (2.140) · `ph2d-grid` + `ph2d-panel-grid-snap` (7.012) ·
   `ph2d-tokens` (5.141, o design system do §7) · `docs/Deform/` · `docs/Pixel Art/`.
-  **Ler:** [`docs/Image Tools Bugs/`](docs/Image%20Tools%20Bugs/) · [`docs/Inpaint/`](docs/Inpaint/)
+  **Ler:** [`Image Tools Bugs`](docs/Image%20Tools%20Bugs/README.md) · **Inpaint** = PatchMatch multiescala CPU+GPU
+  ([ADR-0102](docs/architecture/decisions/0102-inpaint-multiscale-patchmatch-cpu-gpu.md), [plano](docs/Inpaint/01_pesquisa_design_plano.md)) ·
+  **Deform** = transformação/deformação do Painter, com [tracker único](docs/Deform/00_README.md) e [índice](docs/Deform/README.md)
 - ⚠️ **As duas maiores crates do repo não eram nomeadas em lugar nenhum deste arquivo:**
   [`ph2d-tool-painter`](crates/ph2d-tool-painter/) (**136.093 LOC** — é onde o módulo Painter de facto
   vive; o §5 nomeava só `ph2d-paint-gpu`) e [`ph2d-editor-core`](crates/ph2d-editor-core/) (**84.015** —

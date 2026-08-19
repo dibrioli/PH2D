@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/FLIP`: o teto de vizinhos era uma CONTAGEM para cobrir um ALCANCE
 
+**Status:** FECHADO 2026-07-28 · no `main` em `aa943e5a9` (o commit que trouxe este arquivo).
+
 **Data:** 2026-07-28 · **Branch:** `line/FLIP` · **Commits desta rodada:** `c0d88eaed` ·
 `f09bbbc28` · `e583bbf03` · `8c377ce73` · **`7ca83d6fb`** (o conserto).
 

@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector` (Contour + rotação do Pattern), 2026-07-23
 
+**Status:** FECHADO 2026-07-23 · no `main` em `d9b363498` (o commit que trouxe este arquivo).
+
 **11 commits**, base `df91ef6ec`. Duas entregas independentes: a **rotação do Pattern on Path**
 (smoke aprovado pelo Enio) e o **CONTOUR** (pesquisa `20_*` item #9, **pendente de smoke**).
 

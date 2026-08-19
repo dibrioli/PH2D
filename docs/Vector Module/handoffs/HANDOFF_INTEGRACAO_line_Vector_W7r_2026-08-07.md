@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector` · **W7r: o modo de PREVIEW**
 
+**Status:** FECHADO 2026-08-07 · no `main` em `335b0ae98` (o commit que trouxe este arquivo).
+
 *2026-08-07 · 4 commits de código: `319a62552` o modelo · `68e3b78bd` a fiação ·
 `e467ced79` o bug do gizmo · `cb9768de0` o Move All States*
 

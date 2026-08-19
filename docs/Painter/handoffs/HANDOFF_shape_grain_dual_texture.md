@@ -1,5 +1,7 @@
 # HANDOFF — Dois slots de textura no Painter: **Shape** + **Grain** (paridade Procreate)
 
+**Status:** FECHADO 2026-06-25 · no `main` em `4b508f43b` (o commit que trouxe este arquivo).
+
 > **Para:** um novo agente (contexto fresco).
 > **De:** sessão de 2026-06-24 (a pedido do Enio).
 > **Tipo:** pesquisa → entendimento → mapeamento → **design + plano** (NÃO é para implementar ainda — ver §0 e §8).

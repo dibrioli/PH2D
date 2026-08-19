@@ -1,5 +1,7 @@
 # HANDOFF — TAKEOVER da `line/Painter` (2026-07-19)
 
+**Status:** FECHADO 2026-07-19 · no `main` em `bf4b36730` (o commit que trouxe este arquivo).
+
 > Você assume a `line/Painter` **depois de ela ter integrado ao main**. Este documento mostra **onde
 > paramos** e **os planos a seguir**. Ele é o passo 5 da FASE 2 do
 > [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md) — leia o

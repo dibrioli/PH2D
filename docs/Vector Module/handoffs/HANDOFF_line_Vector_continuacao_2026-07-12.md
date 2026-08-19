@@ -1,5 +1,7 @@
 # HANDOFF de CONTINUAÇÃO — linha `line/Vector` (Live Shapes: fechar o ciclo paramétrico)
 
+**Status:** FECHADO 2026-07-12 · no `main` em `0aed17417` (o commit que trouxe este arquivo).
+
 > **Para o agente que assume a linha.** A rodada anterior **foi integrada no `main`** e a linha foi
 > **re-preparada** (branch = tip do `main`, worktree limpa). Este doc é o teu ponto de partida:
 > como operar (Modo L), o que já landou, e as **etapas planejadas** na ordem.

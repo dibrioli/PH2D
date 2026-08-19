@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector` · W7m, **a MOLA**
 
+**Status:** FECHADO 2026-08-08 · no `main` em `394bf9b80` (o commit que trouxe este arquivo).
+
 > **Data:** 2026-08-08 · **Branch:** `line/Vector` · **Wave:** W7m (ordem do Enio)
 > **Estado:** fechada, gates verdes, **PENDENTE DE SMOKE** e de ordem de integração.
 

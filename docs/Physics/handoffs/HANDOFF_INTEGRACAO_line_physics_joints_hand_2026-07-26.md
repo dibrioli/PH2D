@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/physics`, jornada de 2026-07-26
 
+**Status:** FECHADO 2026-07-26 · no `main` em `f178bd3c2` (o commit que trouxe este arquivo).
+
 > **Para o agente INTEGRADOR.** A linha está FECHADA. Todos os smokes foram
 > aprovados pelo Enio. Este documento é a única coisa que você precisa ler para
 > integrar; o detalhe por-wave vive no tracker

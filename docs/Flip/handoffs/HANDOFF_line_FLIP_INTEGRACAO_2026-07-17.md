@@ -1,5 +1,7 @@
 # Handoff de INTEGRAÇÃO — linha `line/FLIP` (2026-07-17) · ✅ **CONCLUÍDO**
 
+**Status:** FECHADO 2026-07-17 · no `main` em `d7ab61436` (o commit que trouxe este arquivo).
+
 > **✅ INTEGRAÇÃO REALIZADA (2026-07-17).** O delta (W7.5 + W8 + §4.A + §4.B) está na `main`
 > (o `segment.rs` = `8775a027`); a branch foi fast-forwardada para a main integrada. Este doc
 > fica como **registro** de como a integração foi feita — não re-execute nada aqui. A próxima

@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector`: a ROTAÇÃO do motivo no Pattern on Path
 
+**Status:** FECHADO 2026-07-23 · no `main` em `e937d10a8` (o commit que trouxe este arquivo).
+
 > DIRETRIZ §1.5.9. A linha **não integra e não faz ship** — entrega isto e espera ordem do Enio.
 > Supersede nada: é a wave seguinte ao `HANDOFF_INTEGRACAO_line_Vector_2026-07-23.md`, que já integrou.
 

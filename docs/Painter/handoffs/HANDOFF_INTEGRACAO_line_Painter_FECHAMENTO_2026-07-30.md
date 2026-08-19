@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter` FECHADA (2026-07-30)
 
+**Status:** FECHADO 2026-07-30 · no `main` em `49df3e79f` (o commit que trouxe este arquivo).
+
 > **Para o agente integrador**, munido pelo Enio (DIRETRIZ §1.5.9).
 > Este é o documento **MESTRE** da linha: ele cobre os **74 commits** à frente do `main` e
 > **indexa os dois handoffs parciais que ainda não foram integrados**. Leia este primeiro; os

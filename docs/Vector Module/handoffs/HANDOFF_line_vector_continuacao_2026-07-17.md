@@ -1,5 +1,7 @@
 # HANDOFF de CONTINUAÇÃO — `line/Vector` (para o próximo implementador)
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-17 (`2ed0ce8c6`).
+
 **Para:** a LLM que assume a linha `line/Vector` daqui pra frente.
 **De:** a sessão de 2026-07-17 (construiu o Envelope/Warp — Fatias A+B do ADR-0129).
 **Estado:** **a linha está RE-PREPARADA e sincronizada com a `main`.** O envelope já INTEGROU.

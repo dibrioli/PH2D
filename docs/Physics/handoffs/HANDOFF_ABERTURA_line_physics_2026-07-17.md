@@ -1,4 +1,7 @@
 # HANDOFF — Abertura de linha: `line/physics`
+
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-17 (`52e62bdfa`).
+
 ## O motor global de física da engine
 
 > **Data:** 2026-07-17 · **Autor:** Coordenador (sessão de planejamento com o Enio)

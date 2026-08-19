@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector` · **W4c.3, a MATH dos tokens** (2026-08-06)
 
+**Status:** FECHADO 2026-08-07 · no `main` em `7f5e1b6d2` (o commit que trouxe este arquivo).
+
 > **2 commits** (`ae56c1abd` o motor · `1754f14e2` a camada). Um token numérico passa a poder valer
 > uma **fórmula** — `{spacing.md} * 2` —, e ela resolve **viva**: mudar o `spacing.md` move quem o lê.
 >

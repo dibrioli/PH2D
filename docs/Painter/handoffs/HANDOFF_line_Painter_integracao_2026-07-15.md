@@ -1,5 +1,7 @@
 # HANDOFF de INTEGRAÇÃO — `line/Painter` (2026-07-15)
 
+**Status:** FECHADO 2026-07-15 · no `main` em `74d1cd132` (o commit que trouxe este arquivo).
+
 > **Para o agente INTEGRADOR** (DIRETRIZ §1.5.9). A linha está FECHADA e **parada**: integração e ship
 > só por ordem explícita do Enio. Jornada de hoje: **P0 (retângulo residual do Inflate) + W4 (família
 > advectiva do Deform)** — **ambos SMOKADOS OK pelo Enio** — **+ W5 (Conserve, a bow wave)**, a

@@ -1,5 +1,7 @@
 # Handoff — `line/FLIP`, continuação (2026-07-18 **b**) · **COMECE AQUI**
 
+**Status:** FECHADO 2026-07-18 · no `main` em `73bd92e49` (o commit que trouxe este arquivo).
+
 > Sucessor do [`…2026-07-18`](HANDOFF_line_FLIP_CONTINUACAO_2026-07-18.md) (aquele descreve
 > o estado *antes* desta rodada; este é o delta).
 > **Regime:** Modo L, worktree `Worktrees/line-FLIP`, branch `line/FLIP`.

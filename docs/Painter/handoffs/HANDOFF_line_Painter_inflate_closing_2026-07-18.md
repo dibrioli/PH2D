@@ -1,5 +1,7 @@
 # HANDOFF — Inflate: o footprint virou um FECHAMENTO MORFOLÓGICO (2026-07-18)
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-18 (`8a4860578`).
+
 **Linha:** `line/Painter` (Modo L). **Estado:** fechado, **pendente smoke do Enio**. NÃO integrado (aguarda ordem
 explícita). Continuação de [`HANDOFF_line_Painter_inflate_edges_2026-07-16.md`](HANDOFF_line_Painter_inflate_edges_2026-07-16.md)
 e do trabalho da bola limitada exata (`e167926d`).

@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter`, MESTRE (2026-08-08)
 
+**Status:** FECHADO 2026-08-08 · no `main` em `127bf12f5` (o commit que trouxe este arquivo).
+
 > **67 commits · 179 arquivos · +18.829/−1.581.**
 >
 > ⚠️ O par `commits · arquivos` **se CONTA**, não se copia:

@@ -1,5 +1,7 @@
 # HANDOFF — `line/Vector`, continuação (2026-07-13, 3ª passagem)
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-13 (`1f9763d6b`).
+
 > ⚠ **Há um handoff MAIS NOVO:** [`HANDOFF_line_vector_continuacao_2026-07-14.md`](HANDOFF_line_vector_continuacao_2026-07-14.md)
 > — ele carrega o **bug aberto do undo** (causa provada + repro) e a fila. Este aqui continua
 > válido pelo que descreve (o Shape Builder e as lições), e o 14 o referencia.

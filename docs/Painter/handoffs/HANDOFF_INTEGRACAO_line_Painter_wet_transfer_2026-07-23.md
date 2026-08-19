@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Painter` · transferência sRGB tabelada
 
+**Status:** FECHADO 2026-07-23 · no `main` em `b013abaa2` (o commit que trouxe este arquivo).
+
 **Para:** o agente integrador (DIRETRIZ §1.5.9). **Data:** 2026-07-23.
 
 ## 1. Identidade

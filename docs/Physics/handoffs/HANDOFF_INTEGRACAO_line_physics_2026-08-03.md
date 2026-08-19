@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/physics`, jornada de 2026-08-03
 
+**Status:** FECHADO 2026-08-03 · no `main` em `87e8cba6a` (o commit que trouxe este arquivo).
+
 > **A linha está FECHADA e NÃO integrou.** 10 commits, 6 waves, **gate impactado
 > verde (7541/7541, 0 falhas)**. Aguarda ordem explícita do Enio.
 

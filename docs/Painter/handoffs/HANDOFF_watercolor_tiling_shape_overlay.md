@@ -1,5 +1,7 @@
 # HANDOFF — Watercolor Tiling: shape overlay/edit na costura + fila pendente
 
+**Status:** FECHADO 2026-07-11 · no `main` em `0f9ab9750` (o commit que trouxe este arquivo).
+
 > Escrito 2026-07-11 (Enio pediu handoff após o problema do overlay de forma no tiling persistir).
 > **Modo L** (worktree isolado `Worktrees/line-Painter`). **TUDO É COMMIT LOCAL — nada pushado/integrado.**
 > Base de integração = `1c7c9a22` (origin/main). Não integre nem faça ship sem ordem EXPLÍCITA do Enio

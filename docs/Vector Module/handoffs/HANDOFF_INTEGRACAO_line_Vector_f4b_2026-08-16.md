@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Vector`, a DOBRA e as três medições (2026-08-16)
 
+**Status:** FECHADO 2026-08-16 · no `main` em `d1d4e1112` (o commit que trouxe este arquivo).
+
 > **A linha NÃO integra e NÃO faz ship.** Este documento passa ao **agente integrador** o que
 > evita conflito e regressão. Formato: [DIRETRIZ §1.5.9](../../IntegracaoMultiAgente/DIRETRIZ.md).
 

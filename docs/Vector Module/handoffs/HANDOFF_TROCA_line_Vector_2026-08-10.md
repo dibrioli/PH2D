@@ -1,5 +1,7 @@
 # HANDOFF DE TROCA — `line/Vector` (2026-08-10)
 
+**Status:** FECHADO 2026-08-10 · no `main` em `cc20cdbff` (o commit que trouxe este arquivo).
+
 > Para o agente que **assume** esta linha. O bloco de abertura da sessão é o
 > [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md);
 > este documento é o item 5 da FASE 2 dele — *o estado que o agente anterior deixou*.
@@ -60,9 +62,9 @@ A última jornada da `line/Vector` **integrou em 2026-08-10** (48 commits, 100 a
 
 **A fonte** (leia esta, nesta ordem, se a sua tarefa tocar o que ela mexeu):
 
-1. [`Estudos/HANDOFF_INTEGRACAO_line_Vector_painel_vivo_2026-08-09.md`](../Estudos/HANDOFF_INTEGRACAO_line_Vector_painel_vivo_2026-08-09.md)
+1. [`Estudos/HANDOFF_INTEGRACAO_line_Vector_painel_vivo_2026-08-09.md`](HANDOFF_INTEGRACAO_line_Vector_painel_vivo_2026-08-09.md)
    — a última entrega, com as leis (§2) e o aberto (§5).
-2. [`Estudos/HANDOFF_INTEGRACAO_line_Vector_MESTRE_2026-08-08.md`](../Estudos/HANDOFF_INTEGRACAO_line_Vector_MESTRE_2026-08-08.md)
+2. [`Estudos/HANDOFF_INTEGRACAO_line_Vector_MESTRE_2026-08-08.md`](HANDOFF_INTEGRACAO_line_Vector_MESTRE_2026-08-08.md)
    — a jornada da UI/UX (tokens · estados · painel autorado), onze waves.
 3. [`Estudos/AUDITORIA_widgets_achados_2026-08-09.md`](../Estudos/AUDITORIA_widgets_achados_2026-08-09.md)
    — os dezoito achados e o mecanismo único deles (*um fato com duas cópias que discordam*).

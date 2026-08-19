@@ -1,5 +1,7 @@
 # HANDOFF — `line/Painter` · S3: o journal vira a fonte do `before` do RELEVO
 
+**Status:** FECHADO 2026-08-01 · no `main` em `2988c0b6e` (o commit que trouxe este arquivo).
+
 > **Para o agente que assume a linha.** Antes de ler qualquer código, execute a **FASE 0** do
 > [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md)
 > — o bloco pronto para esta linha está no §0 abaixo.

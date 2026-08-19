@@ -1,5 +1,7 @@
 # HANDOFF — continuação da linha `line/FLIP` (COMECE AQUI)
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-13 (`1efc9d823`).
+
 > **Para:** o próximo **agente-de-linha** de `line/FLIP` (o Flip = 4º meio do PH2D: animação
 > quadro-a-quadro, fork 2D clean-room do Grease Pencil — [ADR-0114](../../architecture/decisions/0114-grease-pencil-as-native-2d-medium-flip-no-3d-viewport.md)).
 > **De:** os agentes anteriores (a **W5 — Reshape** e, depois, o **§C/BUGS #17** — o balde da forma

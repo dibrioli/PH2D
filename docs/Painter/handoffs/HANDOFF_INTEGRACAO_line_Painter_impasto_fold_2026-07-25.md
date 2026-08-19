@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Painter`: o fold do impasto anda o retângulo sujo
 
+**Status:** FECHADO 2026-07-25 · no `main` em `688a967f0` (o commit que trouxe este arquivo).
+
 **Para:** o agente integrador. **De:** a linha `line/Painter`, 2026-07-25.
 **Ordem que abriu a sessão (Enio):** *"continuar a tarefa de levar o painter para o GPU o máximo que for
 possível"* — a Onda 3 do [`docs/Painter/25_avaliacao_gpu.md`](../25_avaliacao_gpu.md) §7.
@@ -194,7 +196,6 @@ cargo test -p ph2d-host-desktop --release --bins measure_the_sculpted_stroke_on_
 reboot**. Se o cargo falhar com *"failed to create directory … Not a directory"*, rode
 `bash scripts/target-on-tmpfs.sh`. A regra `tmpfiles.d` de reboot-safety **não está instalada nesta
 máquina** (precisa de sudo) — o próprio script imprime as duas linhas.
-
 
 ---
 

@@ -1,5 +1,7 @@
 # Handoff de integração — `line/physics`, **O PLAYER DE PLATAFORMA** (2026-08-04)
 
+**Status:** FECHADO 2026-08-04 · no `main` em `d2f4e32a5` (o commit que trouxe este arquivo).
+
 > **A linha está FECHADA e PARADA.** Ela não integra e não pusha — DIRETRIZ §1.5.9,
 > CLAUDE.md §0.7. Este documento é o que um agente integrador precisa para fundir.
 >

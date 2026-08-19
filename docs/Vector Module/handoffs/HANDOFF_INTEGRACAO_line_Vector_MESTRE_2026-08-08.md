@@ -1,5 +1,7 @@
 # Handoff de integração **MESTRE** — `line/Vector`, a jornada da UI/UX
 
+**Status:** FECHADO 2026-08-08 · no `main` em `c3d07d560` (o commit que trouxe este arquivo).
+
 > **Para o agente integrador.** Esta linha fechou **84 commits** (`864229887..c3a1cef43`),
 > **315 arquivos**, **+30.963 / −1.093**, em **onze waves** que já têm handoff próprio.
 > Este documento **não os repete**: ele traz a **tabela de colisão**, os **pontos de merge
@@ -20,7 +22,7 @@
 
 Mais **dois documentos de medição** que não movem código e são a razão de eles existirem:
 
-- [`LEVANTAMENTO_vector_para_a_UI_do_app_2026-08-08.md`](LEVANTAMENTO_vector_para_a_UI_do_app_2026-08-08.md) — **438 construções de widget** contadas em 23 painéis; cobertura **67,1%**, e o buraco tem **duas naturezas** (18,3% é OMISSÃO — fiação; 14,6% é ESTRUTURAL — pede filhos autorados).
+- [`LEVANTAMENTO_vector_para_a_UI_do_app_2026-08-08.md`](../Estudos/LEVANTAMENTO_vector_para_a_UI_do_app_2026-08-08.md) — **438 construções de widget** contadas em 23 painéis; cobertura **67,1%**, e o buraco tem **duas naturezas** (18,3% é OMISSÃO — fiação; 14,6% é ESTRUTURAL — pede filhos autorados).
 - [`docs/Runtime/`](../../Runtime/) — o plano do runtime, a medição do formato de arquivo resgatada da `line/runtime` (descartada), e o handoff da R0. **São docs, e viajam com esta linha** porque foi aqui que foram escritos.
 
 ---
@@ -299,7 +301,7 @@ abertura dele manda fazer, e é por isso que ele proíbe copiá-los (uma cópia 
 | 11 | [`HANDOFF_INTEGRACAO_line_Vector_hierarquia_2026-08-08.md`](HANDOFF_INTEGRACAO_line_Vector_hierarquia_2026-08-08.md) | o menu que não foge do cursor |
 | 12 | [`HANDOFF_INTEGRACAO_line_Vector_mola_2026-08-08.md`](HANDOFF_INTEGRACAO_line_Vector_mola_2026-08-08.md) | ⭐ W7m — **a MOLA** e a lei por canal (§7.1) |
 
-O plano-mãe é [`PLANO_UI_UX_padrao_figma.md`](PLANO_UI_UX_padrao_figma.md) — a tabela de waves
+O plano-mãe é [`PLANO_UI_UX_padrao_figma.md`](../Estudos/PLANO_UI_UX_padrao_figma.md) — a tabela de waves
 dele (§ perto do fim) diz o que cada uma entregou e o que ficou.
 
 ---

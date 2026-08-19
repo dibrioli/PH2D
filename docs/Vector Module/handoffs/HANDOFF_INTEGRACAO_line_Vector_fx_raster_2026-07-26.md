@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector`: a PILHA de FX RASTER (9 tipos, GPU-resident)
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-26 (`093ccbc8f`).
+
 **Plano:** [`docs/Vector Module/24_plano_fx_raster.md`](../24_plano_fx_raster.md) ·
 **Data:** 2026-07-26 · **W1..W8** na `line/Vector` · bugs em
 [`BUGS_vector.md`](../BUGS_vector.md) **#20-#23**.

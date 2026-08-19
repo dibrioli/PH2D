@@ -1,5 +1,7 @@
 # HANDOFF — REABERTURA da `line/physics` (2026-08-10)
 
+**Status:** FECHADO 2026-08-10 · no `main` em `21c7d4c17` (o commit que trouxe este arquivo).
+
 > **Você é o agente que assume esta linha.** Ela foi **reaberta do zero** hoje, depois de a
 > jornada do modo cinemático integrar ao `main`. Este doc diz **o que existe** (para você não
 > reconstruir), **o que está aberto com o preço ao lado**, e os **gotchas operacionais** que já

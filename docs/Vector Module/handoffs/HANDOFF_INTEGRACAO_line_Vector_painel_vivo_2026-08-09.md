@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Vector`: o painel autorado fica VIVO, e o sistema de widgets é AUDITADO (2026-08-09)
 
+**Status:** FECHADO 2026-08-09 · no `main` em `7a998424e` (o commit que trouxe este arquivo).
+
 > **A LINHA ESTÁ FECHADA e pede ordem de integração.**
 > **47 commits · 100 arquivos · +9.420/−917**, sobre `17a0f6d6d`.
 > Supersede nada: é a continuação da jornada de UI/UX que integrou em 08/08.
@@ -14,7 +16,7 @@
 > A metade B **não tem cena própria de propósito**: catorze das correções são de geometria e
 > de gate, e as que o artista veria são *bugs a desaparecer*, não features a demonstrar. O que
 > ela pede do integrador é a **varredura**, não o olho. O inventário fechado vive ao lado, em
-> [`AUDITORIA_widgets_achados_2026-08-09.md`](AUDITORIA_widgets_achados_2026-08-09.md).
+> [`AUDITORIA_widgets_achados_2026-08-09.md`](../Estudos/AUDITORIA_widgets_achados_2026-08-09.md).
 >
 > ⚠️ **O plano que esta linha executava está FECHADO** — `WidgetKind::ALL` mede **20**, e as
 > quatro waves do levantamento de 08/08 saíram todas (cobertura 67,1% → ~100%). A linha está

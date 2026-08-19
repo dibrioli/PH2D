@@ -1,5 +1,7 @@
 # HANDOFF — linha `line/Vector`, continuação (2026-07-16)
 
+**Status:** FECHADO 2026-07-16 · no `main` em `f5a6b1769` (o commit que trouxe este arquivo).
+
 **Para:** o próximo agente (contexto novo) **e** o agente integrador.
 **Estado:** o **Blend Object vivo (ADR-0128) está COMPLETO** — Fases A, B, C1, C2a, C2b e D fechadas.
 **+ os itens #2 e #1 da fila FECHARAM** — o buraco do compound path (`62c93fa7`, §8) e o
@@ -426,7 +428,6 @@ forma real cujo `t` a timeline keya. Dentro do Blend, ele parecia um *modo* dele
 e mais uma **conta que soma** (§3.2).
 
 ---
-
 
 ### O stroke width chega a ZERO (mesmo smoke)
 

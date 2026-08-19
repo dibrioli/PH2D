@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/physics` (W-AreaFrame + W-AreaFalloff + W-AreaMirror + W-BakeRange, 2026-07-23/24)
 
+**Status:** FECHADO 2026-07-23 · no `main` em `3279aff1d` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador**, por ordem do Enio (DIRETRIZ §1.5.9). A linha **não integrou e
 > não pushou**: fechou a wave, rodou o gate batched e parou.
 

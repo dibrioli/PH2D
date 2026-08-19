@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter` · Wet Paint (doc 22/23) + reorg do Impasto + o modo de pintura
 
+**Status:** FECHADO 2026-07-22 · no `main` em `06eb5eb88` (o commit que trouxe este arquivo).
+
 > DIRETRIZ §1.5.9. A linha está FECHADA e **NÃO integra nem faz ship** (o Enio cancelou
 > explicitamente a integração/ship/CI desta jornada em 2026-07-22 — outros agentes vão
 > trabalhar em suas linhas; este handoff espera o integrador da próxima janela).

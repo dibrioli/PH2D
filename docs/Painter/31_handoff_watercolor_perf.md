@@ -1,5 +1,7 @@
 # 31 — Handoff: avaliar e otimizar o modo **Watercolor**
 
+**Status:** FECHADO 2026-08-02 · no `main` em `63227da32` (o commit que trouxe este arquivo).
+
 > ⚠️ **CUMPRIDO em 2026-08-02 — o retrato final está no [doc 32](32_aquarela_o_que_custa_hoje.md)**
 > (o MAPA: o que cada peça custa hoje, as sete soluções, as cinco tentativas medidas em ~1,00×, e as
 > duas alavancas que sobraram). O log cronológico é o [doc 28](28_otimizacoes_o_que_funcionou.md)

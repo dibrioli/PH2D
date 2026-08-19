@@ -1,5 +1,7 @@
 # HANDOFF de INTEGRAÇÃO — `line/Vector`: Envelope COMPLETO — Fatias 1–5 + C + D + E (ADR-0129)
 
+**Status:** FECHADO 2026-07-18 · no `main` em `6ef6f7ade` (o commit que trouxe este arquivo).
+
 **Para:** o **agente integrador** (e o próximo implementador da linha).
 **De:** a sessão de 2026-07-17/18 que assumiu a linha pelo `HANDOFF_line_vector_continuacao_2026-07-17.md`
 (§4.A itens 1–5 do Envelope).

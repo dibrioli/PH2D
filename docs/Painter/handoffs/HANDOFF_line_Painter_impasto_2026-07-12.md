@@ -1,5 +1,7 @@
 # HANDOFF — `line/Painter` · Impasto (#16) · 2026-07-12
 
+**Status:** FECHADO 2026-07-12 · no `main` em `8956d6e73` (o commit que trouxe este arquivo).
+
 > ✅ **CUMPRIDO (mesmo dia, dono novo).** A pesquisa do §4 foi feita (5 varreduras primárias →
 > [`docs/Painter/17_impasto_deposito_pesquisa2.md`](../17_impasto_deposito_pesquisa2.md)), a
 > hipótese do §2 **confirmada por medição e pela indústria inteira**, o plano atualizado

@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Vector`, W4c.4: os tokens de ESCALA chegam ao DOCUMENTO
 
+**Status:** FECHADO 2026-08-07 · no `main` em `47ada453a` (o commit que trouxe este arquivo).
+
 > **Data:** 2026-08-06 · **Branch:** `line/Vector` · **Commit:** `ba37d0725`
 > **Estado:** fechada, **pendente de smoke** e de ordem de integração.
 > Waves anteriores desta jornada: [W4c.1](HANDOFF_INTEGRACAO_line_Vector_W4c1_2026-08-06.md) ·

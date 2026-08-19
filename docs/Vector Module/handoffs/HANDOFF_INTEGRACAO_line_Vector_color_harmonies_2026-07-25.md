@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector`: Color Harmonies no picker compartilhado
 
+**Status:** FECHADO 2026-07-25 · no `main` em `6360aab5f` (o commit que trouxe este arquivo).
+
 **Data:** 2026-07-25 · **Branch:** `line/Vector` · **Commit:** `746afdfbd` · **Estado:** fechado, **pendente de smoke do Enio**.
 
 Increment sobre a linha REABERTA (depois da integração de Falloff/Twist/Knot). Um único

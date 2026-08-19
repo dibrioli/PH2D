@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/physics`, jornada da POLIA + o PINO DE MUNDO
 
+**Status:** FECHADO 2026-07-30 · no `main` em `dc5b05463` (o commit que trouxe este arquivo).
+
 > **Para o agente INTEGRADOR.** A linha está FECHADA e todos os smokes foram
 > aprovados pelo Enio. Este documento é a única coisa que você precisa ler; o
 > detalhe por-wave vive no tracker ([`HANDOFF_line_physics.md`](HANDOFF_line_physics.md)),

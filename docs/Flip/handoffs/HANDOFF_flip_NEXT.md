@@ -1,5 +1,7 @@
 # HANDOFF — linha `line/FLIP` (⚠️ HISTÓRICO — a porta de entrada agora é outra)
 
+**Status:** FECHADO 2026-07-11 · no `main` em `e348d7c42` (o commit que trouxe este arquivo).
+
 > **⚠️ NÃO COMECE POR AQUI.** A linha foi **integrada ao `main` em 2026-07-12** e o ponto de entrada
 > do próximo agente é **[`HANDOFF_line_FLIP_CONTINUACAO_2026-07-12.md`](HANDOFF_line_FLIP_CONTINUACAO_2026-07-12.md)**
 > (estado pós-integração, a fila, as armadilhas). Este arquivo vira **registro histórico**: vale pelo

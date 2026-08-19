@@ -1,5 +1,7 @@
 # HANDOFF — Rendering Modes + Wet Mix (PH2D Painter)
 
+**Status:** FECHADO 2026-06-27 · no `main` em `b2128599f` (o commit que trouxe este arquivo).
+
 > **Para:** o próximo implementador (contexto fresco).
 > **Design canônico:** [`docs/Painter/07_rendering_modes_wet_mix.md`](../07_rendering_modes_wet_mix.md) — leia-o INTEIRO antes de codar. Este handoff é o **roteiro operacional** (checkpoint, ordem, anchors, gotchas, aceite); o design tem a math e a justificativa de cada decisão.
 > **Regra-mãe do projeto:** `cargo check -p` verde é VELOCIDADE, não prova de nada. O que prova é o **teste e2e + a verificação visual no canvas demo**. (feedback_tool_unit_green_integration_dead / project_painter_canvas_res_64.)

@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter`, o bow wave gateado no knob + as bandas por trabalho (2026-08-06)
 
+**Status:** FECHADO 2026-08-06 · no `main` em `c9195928a` (o commit que trouxe este arquivo).
+
 > **33 commits · 50 arquivos · nenhum `Cargo.toml` · nenhum ADR · `project.rs` intocado.**
 >
 > ⚠️ O par `commits · arquivos` deste cabeçalho **se CONTA** (`git log --oneline origin/main..HEAD | wc -l`
@@ -596,4 +598,3 @@ caía no caminho genérico do hero e apagava a **ENTIDADE**). Detalhe no
 **O que o smoke julga:** com várias figuras na tela, `Delete` tira **a última que você tocou** e deixa
 as outras; `Ctrl+Z` a traz de volta. Numa curva **com um nó selecionado**, `Delete` tira o **nó** — não
 a curva.
-

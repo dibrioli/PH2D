@@ -1,5 +1,7 @@
 # HANDOFF — continuação da linha `line/FLIP` (⚠️ SUPERSEDIDO)
 
+**Status:** FECHADO 2026-07-13 · no `main` em `c930a6c0d` (o commit que trouxe este arquivo).
+
 > **⚠️ NÃO COMECE POR AQUI.** A porta de entrada é
 > **[`HANDOFF_line_FLIP_CONTINUACAO_2026-07-13.md`](HANDOFF_line_FLIP_CONTINUACAO_2026-07-13.md)** —
 > a W5 fechou, e há um **bug aberto com causa provada** que é a 1ª tarefa. Este arquivo vira

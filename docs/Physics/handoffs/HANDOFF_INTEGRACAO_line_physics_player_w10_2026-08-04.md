@@ -1,5 +1,7 @@
 # Handoff de integração — `line/physics`, W10: a quina e o vagão (2026-08-04)
 
+**Status:** FECHADO 2026-08-04 · no `main` em `b5005e7f7` (o commit que trouxe este arquivo).
+
 > **A linha FECHA aqui e PARA.** Integração e ship só por ordem EXPLÍCITA do Enio
 > (CLAUDE.md §0.7), por um agente integrador dedicado munido deste documento.
 

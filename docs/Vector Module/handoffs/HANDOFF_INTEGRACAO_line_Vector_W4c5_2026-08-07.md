@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Vector`, **W4c.5: a tabela sai e entra em DTCG** (2026-08-07)
 
+**Status:** FECHADO 2026-08-07 · no `main` em `82da03d34` (o commit que trouxe este arquivo).
+
 > **Para o integrador.** HEAD desta wave: **`85056908a`** (1 commit).
 > Worktree: `Worktrees/line-Vector/`. Branch: `line/Vector`.
 > ⚠️ **PENDENTE DE SMOKE** — a linha fecha, entrega isto e **PARA**.

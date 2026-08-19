@@ -1,5 +1,7 @@
 # HANDOFF de CONTINUAÇÃO — `line/physics`, pós-integração (2026-07-19)
 
+**Status:** FECHADO 2026-07-19 · no `main` em `5cc549419` (o commit que trouxe este arquivo).
+
 > ⚠️ **VENCIDO (2026-07-22).** O plano deste doc foi todo executado — 21 waves, W6 → W-FormDrag,
 > integradas ao `main`. Quem assume a linha começa por
 > [`HANDOFF_REABERTURA_line_physics_2026-07-22.md`](HANDOFF_REABERTURA_line_physics_2026-07-22.md).

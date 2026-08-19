@@ -1,5 +1,7 @@
 # Handoff de INTEGRAÇÃO — `line/FLIP` → `main` (2026-07-21)
 
+**Status:** FECHADO 2026-07-21 · no `main` em `579d74a40` (o commit que trouxe este arquivo).
+
 > **Para o agente INTEGRADOR.** A linha está **fechada e smokada** — todos os smokes desta
 > jornada foram aprovados pelo Enio (o último: *"smoke ok"*, sobre o ajuste ao vivo
 > assíncrono). O implementador parou aqui (CLAUDE.md §0.7).

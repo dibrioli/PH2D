@@ -1,5 +1,7 @@
 # HANDOFF de INTEGRAÇÃO — `line/Painter` (2026-07-17)
 
+**Status:** FECHADO 2026-07-17 · no `main` em `91a1b0e57` (o commit que trouxe este arquivo).
+
 > **Para o agente INTEGRADOR** (DIRETRIZ §1.5.9). A linha está **FECHADA e PARADA**: integração e ship só
 > por **ordem explícita do Enio** (§0.7) — que já a deu para esta rodada. O implementador **não** integra,
 > **não** pusha, **não** monitora CI.

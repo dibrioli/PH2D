@@ -1,5 +1,7 @@
 # Handoff de CONTINUAÇÃO — `line/FLIP` (2026-07-19)
 
+**Status:** FECHADO 2026-07-19 · no `main` em `e16b12189` (o commit que trouxe este arquivo).
+
 > **Para o agente que assume a linha FLIP.** A rodada anterior FECHOU e **INTEGROU ao
 > `main`**. Você reabre a linha do ponto integrado. Este doc é o item 5 da FASE 2 do
 > [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md):

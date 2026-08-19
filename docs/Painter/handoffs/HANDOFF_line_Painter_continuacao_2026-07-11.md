@@ -1,5 +1,7 @@
 # HANDOFF — continuação da linha `line/Painter` (pós-integração 2026-07-11)
 
+**Status:** FECHADO 2026-07-12 · no `main` em `a523307aa` (o commit que trouxe este arquivo).
+
 > **Para o próximo agente-de-linha.** A jornada anterior fechou e **já foi integrada ao `main`**.
 > A worktree está **pronta e sincronizada** — você NÃO precisa rodar o setup do
 > [`MODELO_ABERTURA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md) (já rodei).

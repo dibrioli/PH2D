@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector`: DUOTONE + LUMA TO ALPHA (plano 24 W9)
 
+**Status:** FECHADO 2026-07-29 · no `main` em `ffea3828f` (o commit que trouxe este arquivo).
+
 **Linha:** `line/Vector` · **Worktree:** `Worktrees/line-Vector` · **Base:** `78d770370`
 **Estado:** fechada, **pendente de smoke**
 

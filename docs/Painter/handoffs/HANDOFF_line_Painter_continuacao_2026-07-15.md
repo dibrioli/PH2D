@@ -1,5 +1,7 @@
 # HANDOFF de CONTINUAÇÃO — `line/Painter` (2026-07-15)
 
+**Status:** FECHADO 2026-07-15 · no `main` em `bf57276a8` (o commit que trouxe este arquivo).
+
 > **Para o PRÓXIMO IMPLEMENTADOR da linha (cold start).** Substitui o
 > [`HANDOFF_line_Painter_continuacao_2026-07-14.md`](HANDOFF_line_Painter_continuacao_2026-07-14.md)
 > como documento vivo — aquele continua valendo para tudo que NÃO for o Inflate/Sculpt (leia-o para o

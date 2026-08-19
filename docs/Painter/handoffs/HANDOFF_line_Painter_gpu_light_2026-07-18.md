@@ -1,5 +1,7 @@
 # HANDOFF — a LUZ do impasto roda na GPU (2026-07-18)
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-18 (`6bee2ac09`).
+
 **Linha:** `line/Painter` (Modo L). **Estado:** fechado, **pendente smoke do Enio**. NÃO integrado (aguarda
 ordem explícita). Continuação de [`HANDOFF_line_Painter_inflate_closing_2026-07-18.md`](HANDOFF_line_Painter_inflate_closing_2026-07-18.md).
 

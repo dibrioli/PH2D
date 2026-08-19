@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector`: a forma com TRAÇO ganha silhueta EXATA
 
+**Status:** FECHADO 2026-07-28 · no `main` em `ee6ca25cc` (o commit que trouxe este arquivo).
+
 **Linha:** `line/Vector` · **Worktree:** `Worktrees/line-Vector` · **Base:** `7ec917506`
 **Commits:** 3 (`69e12a078` · `631dc58ec` · `d11d7be51`) · **Pendente de smoke**
 

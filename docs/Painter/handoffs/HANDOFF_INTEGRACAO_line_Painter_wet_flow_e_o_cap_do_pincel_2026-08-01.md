@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Painter` · o campo de fluxo, os três instrumentos e o CAP DO PINCEL
 
+**Status:** FECHADO 2026-08-01 · no `main` em `3f1faea49` (o commit que trouxe este arquivo).
+
 **Data:** 2026-08-01 · **Branch:** `line/Painter` · **Base:** `98eb502a2` (tip do `main` no fechamento)
 **Commits:** 27 · **Arquivos:** 33 · **Worktree:** `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter`
 

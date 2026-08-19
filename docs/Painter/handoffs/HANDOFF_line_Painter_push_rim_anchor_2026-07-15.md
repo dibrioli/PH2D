@@ -1,5 +1,7 @@
 # HANDOFF — o aro do Push ancora no CORPO da tinta, não no círculo do gizmo (`line/Painter`, 2026-07-15)
 
+**Status:** FECHADO 2026-07-15 · no `main` em `da68a9c66` (o commit que trouxe este arquivo).
+
 > **FECHADO (`fd77f9c5`, pendente smoke do Enio).** O smoke REPROVOU o desenho do bow wave: *"é usada
 > a circunferência do gizmo do brush para empurrar a massa e não o alpha do falloff"*. A mecânica da
 > onda estava certa; **a ÂNCORA do aro estava errada** — nascia em `t = 1` (círculo geométrico) e num

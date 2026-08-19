@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/FLIP`: o cruzamento e a curva (2026-07-28)
 
+**Status:** FECHADO 2026-07-28 · no `main` em `05e8af69e` (o commit que trouxe este arquivo).
+
 > **Missão do Enio** (com 5 screenshots): *"Nosso Flip desenha horrivelmente seus traços. Cria
 > horrivelmente seus vértices. Nosso traço com hardness < 1 — veja onde se cruzam. Muito ruim."*
 > Mais: ir ao fonte do Blender 5.2 e apps GP-like, e estudar os 13 pincéis para trazê-los.
@@ -369,7 +371,6 @@ por `walked` o devolve à própria passagem.
 defeito**. Um gate para cada (`a_sharp_corner_that_crosses_itself_never_loses_ink` ·
 `a_dense_soft_ribbon_that_never_crosses_itself_is_exactly_the_union`); **2 mutações, cada uma
 derruba só o SEU gate**. Corolário: o teto do laço do fragment é a SOMA dos dois orçamentos (32).
-
 
 ---
 

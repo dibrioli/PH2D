@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Painter`, a frente de PERFORMANCE do Wet Paint (2026-07-30)
 
+**Status:** FECHADO 2026-07-30 · no `main` em `89d2688ae` (o commit que trouxe este arquivo).
+
 > **Para o agente integrador.** Este handoff cobre os **44 commits** desde o
 > [handoff de 28-29/07](HANDOFF_INTEGRACAO_line_Painter_undo_journal_2026-07-28.md)
 > (que fechou na doc 28 §5.30). Tudo aqui é **uma frente só**: *quem paga o
@@ -121,7 +123,6 @@ nada). O que olhar:
 * **⛔ Não refaça** (medidos e rejeitados, cada um com o parágrafo): tabular a
   razão K/S (§5.41 do doc 24) · reusar a moldura bilinear do `advect` (§5.44) ·
   paralelizar `advect`/`build_flow_field`/`drying_pass` (ADR-0145 §2).
-
 
 ---
 

@@ -1,5 +1,7 @@
 # HANDOFF — troca de agente na `line/Vector` (2026-07-20): Offset AO VIVO — o bug FECHADO e a fila
 
+**Status:** FECHADO 2026-07-20 · no `main` em `8c5457e46` (o commit que trouxe este arquivo).
+
 > **Você assumiu esta linha pelo bloco do
 > [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md).**
 > FASE 0 primeiro: `cd Worktrees/line-Vector && pwd && git branch --show-current` —
@@ -195,7 +197,6 @@ roteiro seria verde sem provar nada.
 - `ph2d-vec-boolean/src/expand.rs` estava em **783/700 LOC desde `6831b43d`** (dívida desta
   linha — o gate mora na `editor-core` e não roda com `cargo test -p`). Fechada aqui pelo split
   `expand_ribbon.rs` (a fita do Power Stroke).
-
 
 ## §1 — HISTÓRICO (o modelo DESTRUTIVO, superado pelo §0) — o bug do Offset ao vivo: **FECHADO em DUAS metades** (`6831b43d` fantasma + `ada45fac` lei da forma, 2026-07-20) — leia antes de re-litigar
 
@@ -485,7 +486,6 @@ A fila grande da linha (CLAUDE.md §5 "Vector Module", handoffs
   `shells/desktop/tests/the_live_offset_preview_is_a_gesture_to_the_settle.rs`.
 
 **Janelas anteriores:**
-
 
 - `ph2d-editor-core`: `WidgetStore::set_slider_value` (append) · ids
   `VECTOR_EXPAND_SIDE_OUTER/INNER/BOTH`.

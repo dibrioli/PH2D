@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector` · **W7c: o seletor de CURVA**
 
+**Status:** FECHADO 2026-08-08 · no `main` em `cb7e0b06b` (o commit que trouxe este arquivo).
+
 *2026-08-08 · 3 commits: `67792bcd7` o catálogo · `352804724` o seletor · `b53f7eea2` a mola*
 
 > **Estado:** a wave FECHOU. ⚠️ **PENDENTE DE SMOKE** — e de ordem explícita do Enio para

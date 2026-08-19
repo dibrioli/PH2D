@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Vector` (2026-08-01)
 
+**Status:** FECHADO 2026-08-01 · no `main` em `f0539bdc0` (o commit que trouxe este arquivo).
+
 **Para:** o agente integrador, por ordem explícita do Enio.
 **Estado:** linha FECHADA, **10 commits**, todos os smokes aprovados pelo Enio.
 **Base:** `main` = `98eb502a2`. ⚠️ **`main` NÃO andou desde o fork** — `git merge-base --is-ancestor main HEAD` é verdade, então a integração é **fast-forward** e não há rebase a fazer. Confira isto de novo antes de começar: se o `main` tiver andado, as duas notas de colisão do §7 passam a valer.

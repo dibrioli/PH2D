@@ -1,5 +1,7 @@
 # Handoff de INTEGRAÇÃO — `line/FLIP` → `main` (Tween v2, 2026-07-22)
 
+**Status:** FECHADO 2026-07-22 · no `main` em `1b172bcab` (o commit que trouxe este arquivo).
+
 > **Para o agente INTEGRADOR.** A linha fechou a wave do **Tween v2**. O implementador parou
 > aqui (CLAUDE.md §0.7).
 >

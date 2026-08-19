@@ -1,5 +1,7 @@
 # HANDOFF MESTRE — `line/physics` → `main` (2026-08-05)
 
+**Status:** FECHADO 2026-08-05 · no `main` em `5e8ffd2f5` (o commit que trouxe este arquivo).
+
 > ⛔ **SUPERSEDED pelo [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-08.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-08.md).**
 > Este documento para na **W23**, e a jornada seguiu (W24..W27 + o plano 07
 > inteiro + o segundo modo). **Os NÚMEROS daqui estão velhos** — o
@@ -237,7 +239,6 @@ pathfinder, e um **modificador** seria pior do que uma tecla ocupada — `Shift`
 qualifica meia dúzia de handlers deste app, e um botão de jogo que também
 qualifica outros é um botão com dois donos.
 
-
 ## §5c — W15: o agachar (cena `=94`)
 
 **O que ele é:** segurar BAIXO baixa o personagem e o deixa passar por onde não
@@ -468,7 +469,6 @@ projeto).
 `ids::INSP_PLAYER_CLEAR_RUN`. `c9` **byte-idêntico**, zero `Cargo.toml`, nenhum
 ADR.
 
-
 ---
 
 ## §5f — W18: o piso do agachar é dito em voz alta (sem cena própria)
@@ -532,7 +532,6 @@ essa a medição), então uma cena que o *mostrasse* teria de mostrar o painel, 
 que se julga é o rótulo do botão — a `=94` (o corredor baixo) já monta o agachar,
 e o passo é abrir a §14 e ler o número. **Nenhum bump** (`PROJECT_SCHEMA` fica
 **59**), `c9` byte-idêntico, zero `Cargo.toml`, nenhum ADR.
-
 
 ---
 

@@ -1,5 +1,7 @@
 # Handoff de INTEGRAÇÃO — `line/Painter`, a jornada de 2026-07-23..25
 
+**Status:** FECHADO 2026-07-25 · no `main` em `8a521a5ac` (o commit que trouxe este arquivo).
+
 **Para:** o agente integrador (por ordem EXPLÍCITA do Enio, dada em 2026-07-25).
 **De:** a `line/Painter`. **Estado:** ✅ fechada, **todos os smokes aprovados pelo Enio**.
 

@@ -1,5 +1,7 @@
 # Handoff de INTEGRAÇÃO — `line/physics` (DIRETRIZ §1.5.9)
 
+**Status:** FECHADO 2026-07-18 · no `main` em `720e9079d` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador**. A linha está fechada e **não integra nem faz ship** por conta própria.
 > Estado técnico completo do módulo: [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md) ·
 > decisão: [ADR-0131](../../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md).

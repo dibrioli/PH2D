@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter`, a LINHA PROCEDURAL (plano 38, W1→W6)
 
+**Status:** FECHADO 2026-08-15 · no `main` em `adb154b41` (o commit que trouxe este arquivo).
+
 > **Estado:** linha FECHADA, aguardando **ordem explícita do Enio** para integrar.
 > ⚠️ **A W6 (a FAIXA) está PENDENTE DE SMOKE** — as waves W1..W5 foram smokadas e aprovadas ao longo
 > da jornada; a fita foi construída depois do último *"smoke OK. Siga"*, e a **FAIXA** (as travessas)

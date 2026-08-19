@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/physics` · a água, medida (2026-08-10)
 
+**Status:** FECHADO 2026-08-10 · no `main` em `aafba0513` (o commit que trouxe este arquivo).
+
 > **Jornada curta e de MEDIÇÃO, não de feature.** Ela fecha os dois itens
 > mensuráveis da frente A da reabertura, e o resultado principal é um
 > **negativo**: o defeito que a nota registava **não existe**. O entregável são

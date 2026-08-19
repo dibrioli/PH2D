@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Vector`, a W4c.1 (a CAMADA NUMÉRICA)
 
+**Status:** FECHADO 2026-08-06 · no `main` em `0015befbf` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador**. Branch `line/Vector`, HEAD **`7c2ab764c`**, base `main` (a linha
 > estava em dia: `git rebase main` disse *"up to date"* no início da jornada).
 > 4 commits desde `e0f44d1b2`. **Pendente de smoke** — integrar não é aprovar.
@@ -8,7 +10,7 @@
 
 ## 1. O que entra
 
-A **W4c.1** do [`PLANO_UI_UX_padrao_figma.md`](PLANO_UI_UX_padrao_figma.md) §W4c: *a escala do
+A **W4c.1** do [`PLANO_UI_UX_padrao_figma.md`](../Estudos/PLANO_UI_UX_padrao_figma.md) §W4c: *a escala do
 design system passa a ser autorável*, no molde exacto da camada de cor que a W4b deixou.
 
 O artista abre o painel de Tokens (`T` ou o pill **TOK**), rola até **Scale (px)**, e cada token de

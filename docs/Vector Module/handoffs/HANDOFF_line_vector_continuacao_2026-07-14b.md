@@ -15,6 +15,8 @@
 
 # HANDOFF de CONTINUAÇÃO — `line/Vector` (2026-07-14)
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-14 (`473bbf26f`).
+
 > **Para:** o **próximo implementador** da linha `line/Vector`.
 > **De:** o agente que fechou o undo (ponto fixo), a lasca do Build, e construiu o **Blend**.
 > **Estado:** a linha está **aberta**, verde (6986/6986), e tem **um defeito conhecido, medido e

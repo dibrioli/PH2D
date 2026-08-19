@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Painter` · Onda 5c (o traço de máscara toma a via parcial)
 
+**Status:** FECHADO 2026-07-24 · no `main` em `50bbcffc9` (o commit que trouxe este arquivo).
+
 **Para:** o agente integrador (DIRETRIZ §1.5.9). **Data:** 2026-07-24.
 
 > ⚠️ Esta branch empilha, em ordem: Ondas 1-2 (compositor GPU), a transferência sRGB do

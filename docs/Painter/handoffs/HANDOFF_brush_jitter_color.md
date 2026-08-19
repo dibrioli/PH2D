@@ -1,5 +1,7 @@
 # HANDOFF — Brush: Randomize Color + Jitter Scale + Jitter Rotate
 
+**Status:** INDETERMINADO — ver o corpo (diz "ship pendente") · no `main` desde 2026-06-23 (`dbfe9848a`).
+
 > ## ✅ STATUS: IMPLEMENTADO (2026-06-23) — commit local, ship pendente
 >
 > As três features estão prontas, testadas e auditadas e2e. **O que landou:**

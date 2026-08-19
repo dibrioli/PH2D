@@ -1,12 +1,14 @@
 # HANDOFF — `line/Vector`, a reforma dos TOKENS (2026-08-06)
 
+**Status:** FECHADO 2026-08-06 · no `main` em `7e8081763` (o commit que trouxe este arquivo).
+
 > **Para quem assume a linha.** Faça a **FASE 0** do
 > [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md)
 > **antes de abrir qualquer arquivo** — a janela abre na raiz (que é `main`) e os mesmos paths
 > relativos existem nas duas árvores: editar a errada **compila e commita sem um único erro**.
 > Módulo = `Vector`. Worktree: `Worktrees/line-Vector/`. HEAD deste handoff: **`85056908a`**.
 >
-> O plano-mãe é [`PLANO_UI_UX_padrao_figma.md`](PLANO_UI_UX_padrao_figma.md); este doc é o
+> O plano-mãe é [`PLANO_UI_UX_padrao_figma.md`](../Estudos/PLANO_UI_UX_padrao_figma.md); este doc é o
 > **estado** e a **ordem**, não a especificação.
 
 ---

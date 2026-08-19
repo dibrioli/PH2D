@@ -1,5 +1,7 @@
 # HANDOFF — line/Painter: Wet Paint, W0 FECHADO → continuação (W1..W3)
 
+**Status:** FECHADO 2026-07-20 · no `main` em `a20082787` (o commit que trouxe este arquivo).
+
 > Continuação de [`HANDOFF_line_Painter_wet_paint_2026-07-20.md`](HANDOFF_line_Painter_wet_paint_2026-07-20.md)
 > (a tarefa, as regras do Enio, o mapa de integração — **releia o §4 e o §5 de lá antes do W1**).
 > Protocolo de troca: `cd Worktrees/line-Painter && pwd && git branch --show-current` ANTES de tudo.

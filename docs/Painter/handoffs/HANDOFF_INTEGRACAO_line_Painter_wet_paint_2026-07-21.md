@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter`: a jornada WET PAINT (2026-07-21)
 
+**Status:** FECHADO 2026-07-21 · no `main` em `14282386a` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador** (por ordem EXPLÍCITA do Enio — a linha NÃO integra sozinha,
 > §0.7). Cobre a jornada Wet Paint inteira (ADR-0134 → doc 21), **49 commits**, todos os
 > smokes aprovados pelo Enio. Os chunks ANTERIORES desta mesma linha (lag do Rake · Shape

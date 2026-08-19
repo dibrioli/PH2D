@@ -1,5 +1,7 @@
 # HANDOFF de integração — linha `line/Vector` (texto vetorial + tipografia + **Live Shapes**) — smoke aprovado 2026-07-11
 
+**Status:** FECHADO 2026-07-11 · no `main` em `b74b9863b` (o commit que trouxe este arquivo).
+
 > Documento do protocolo DIRETRIZ §1.5.9: a linha fechou, **não integra nem pusha** — este handoff
 > vai pro **agente integrador dedicado** que o Enio abrir. Worktree:
 > `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector`.

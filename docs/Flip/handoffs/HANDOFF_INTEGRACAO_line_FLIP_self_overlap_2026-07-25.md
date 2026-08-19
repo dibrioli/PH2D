@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/FLIP` · SELF OVERLAP (2026-07-25)
 
+**Status:** FECHADO 2026-07-25 · no `main` em `a32cad022` (o commit que trouxe este arquivo).
+
 > ⚠️ **DESATUALIZADO como visão-geral da linha:** a `line/FLIP` recebeu depois o **Airbrush**
 > (`0443f98c2`) e está agora **8 commits** à frente do main. O handoff do TIP atual (contagem de
 > schema `(34,12,13)`, o GO das 8) é

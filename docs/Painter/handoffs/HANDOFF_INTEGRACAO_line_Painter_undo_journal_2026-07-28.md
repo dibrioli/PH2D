@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter`: **o journal por tile** (S3, degraus 1–3b) + **o Wet Paint a 4 FPS**
 
+**Status:** FECHADO 2026-07-28 · no `main` em `42abc6575` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador**, munido pelo Enio. DIRETRIZ §1.5.9.
 > O handoff da leva anterior (já no `main`) é
 > [`HANDOFF_INTEGRACAO_line_Painter_undo_delta_2026-07-26.md`](HANDOFF_INTEGRACAO_line_Painter_undo_delta_2026-07-26.md).

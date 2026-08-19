@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/physics` (2026-08-01, 2ª jornada do dia)
 
+**Status:** FECHADO 2026-08-01 · no `main` em `8cabda9a3` (o commit que trouxe este arquivo).
+
 > ⚠️ **SUPERSEDIDO por [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-02.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-02.md)**, que cobre os **38**
 > commits da linha inteira. Este aqui cobria só os 24 primeiros, e **os números de
 > identidade dele estão DESATUALIZADOS** — a linha ganhou mais uma wave (W-LeadDrag)

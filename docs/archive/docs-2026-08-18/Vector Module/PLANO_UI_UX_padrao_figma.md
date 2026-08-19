@@ -5,7 +5,7 @@
 > linha foi editada, e a remontagem das duas metades bate sha256 com o original.
 >
 > Use para responder *"por que isto ficou assim?"* — **nunca** para decidir a próxima
-> ação. O que vale hoje está no doc vivo e no [`CLAUDE.md §5`](../../../CLAUDE.md).
+> ação. O que vale hoje está no doc vivo e no [`CLAUDE.md §5`](../../../../CLAUDE.md).
 >
 > ⛔ O que estiver aqui marcado **«medido e REJEITADO»** continua rejeitado: uma
 > recusa com medição atrás não volta à fila por ter mudado de arquivo.

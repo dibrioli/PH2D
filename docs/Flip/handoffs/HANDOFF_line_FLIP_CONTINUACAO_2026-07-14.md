@@ -1,5 +1,7 @@
 # Handoff de CONTINUAÇÃO — linha `line/FLIP` (a partir de 2026-07-14)
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-14 (`3050ce647`).
+
 > **Você é o agente da linha `line/FLIP`.** Modo L (ADR-0106/0107): trabalhe **dentro da worktree**
 > `Worktrees/line-FLIP` (branch `line/FLIP`). Você **não integra, não pusha, não roda ship** — fecha
 > o bloco, escreve o handoff de integração (DIRETRIZ §1.5.9) e **PARA**.

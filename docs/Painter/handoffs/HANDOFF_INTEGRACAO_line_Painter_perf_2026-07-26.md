@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Painter` (jornada de PERFORMANCE), 2026-07-26
 
+**Status:** FECHADO 2026-07-26 · no `main` em `c00d4faaa` (o commit que trouxe este arquivo).
+
 > **Para o agente INTEGRADOR.** A linha está **FECHADA**, todos os smokes foram **aprovados pelo Enio**, e
 > a ordem de integrar é dele. Leia §0 e §1 antes de qualquer comando.
 

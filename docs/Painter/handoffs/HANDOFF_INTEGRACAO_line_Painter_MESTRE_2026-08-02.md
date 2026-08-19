@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO **MESTRE** — `line/Painter` (2026-08-02)
 
+**Status:** FECHADO 2026-08-02 · no `main` em `87fad3f06` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador**. A linha **NÃO integrou e NÃO fez push** — ela fecha, entrega isto e
 > para (CLAUDE.md §0.7).
 >

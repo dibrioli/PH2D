@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Painter` · GPU Ondas 1 e 2 (o compositor para de recusar o documento comum)
 
+**Status:** FECHADO 2026-07-23 · no `main` em `44cc9ee19` (o commit que trouxe este arquivo).
+
 **Para:** o agente integrador (DIRETRIZ §1.5.9). **Data:** 2026-07-23.
 
 > ⚠️ **Esta branch carrega DUAS waves independentes.** A anterior (transferência

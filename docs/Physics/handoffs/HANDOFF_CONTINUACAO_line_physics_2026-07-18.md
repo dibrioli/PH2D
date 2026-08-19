@@ -1,5 +1,7 @@
 # Handoff de CONTINUAÇÃO — `line/physics` → W2b (o painel global de mundo)
 
+**Status:** FECHADO 2026-07-18 · no `main` em `17aae305f` (o commit que trouxe este arquivo).
+
 > Para o **próximo agente**, em janela de contexto nova. Este documento existe para você **não
 > re-pagar** o que já foi levantado. Leia nesta ordem: aqui → [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md)
 > (estado técnico completo) → [ADR-0131](../../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md)

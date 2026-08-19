@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Vector` · FALLOFF + TWIST + KNOT (2026-07-25)
 
+**Status:** FECHADO 2026-07-25 · no `main` em `c0a737ab6` (o commit que trouxe este arquivo).
+
 **Estado:** linha FECHADA, **TODOS os 3 smokes APROVADOS pelo Enio** (2026-07-25). Tip da branch:
 **`d38cae8f2`** (feature) / **`<este handoff>`**. **A integração será feita por um agente integrador
 DEDICADO, fundindo TODAS as linhas da jornada juntas** (decisão do Enio) — esta linha só entrega o

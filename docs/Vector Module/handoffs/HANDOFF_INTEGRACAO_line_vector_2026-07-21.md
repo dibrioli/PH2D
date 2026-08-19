@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Vector` (2026-07-21)
 
+**Status:** FECHADO 2026-07-21 · no `main` em `c5771748b` (o commit que trouxe este arquivo).
+
 **Para:** o agente INTEGRADOR (DIRETRIZ §1.5.3–1.5.4).
 **De:** a linha `line/Vector`, que fechou o **Expand** (Outline Stroke · Power Stroke · **Offset
 vivo**), o **Chamfer**, e o **undo da pilha de efeitos**.

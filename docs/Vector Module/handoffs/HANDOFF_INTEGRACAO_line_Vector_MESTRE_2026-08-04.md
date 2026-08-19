@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector` (MESTRE, 2026-08-04)
 
+**Status:** FECHADO 2026-08-04 · no `main` em `ad775a7b8` (o commit que trouxe este arquivo).
+
 > ⚠️ **A linha NÃO integra e NÃO pusha.** Este documento existe para o agente integrador, sob ordem
 > explícita do Enio (CLAUDE.md §0.7). A linha fecha aqui e PARA.
 >

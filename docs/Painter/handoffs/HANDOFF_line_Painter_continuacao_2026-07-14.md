@@ -1,5 +1,7 @@
 # HANDOFF de CONTINUAÇÃO — `line/Painter` (2026-07-14)
 
+**Status:** FECHADO 2026-07-14 · no `main` em `182a0c6aa` (o commit que trouxe este arquivo).
+
 > **Para o PRÓXIMO IMPLEMENTADOR da linha.** A linha foi **INTEGRADA na `main`** (2026-07-13,
 > `--ff-only`, ADR-0107). Este documento substitui os três handoffs anteriores do sculpt, que viram
 > **histórico**:

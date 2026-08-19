@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Vector`: O GRADIENT MAP de N stops (plano 24 W11)
 
+**Status:** FECHADO 2026-07-29 · no `main` em `9372ca2c1` (o commit que trouxe este arquivo).
+
 **Linha:** `line/Vector` · **Worktree:** `Worktrees/line-Vector` · **Base:** `78d770370`
 **Estado:** fechada, **pendente de smoke**
 

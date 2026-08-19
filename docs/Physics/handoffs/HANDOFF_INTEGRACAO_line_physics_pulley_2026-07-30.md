@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/physics`, jornada da POLIA (2026-07-27 → 2026-07-30)
 
+**Status:** FECHADO 2026-07-30 · no `main` em `6f97a688c` (o commit que trouxe este arquivo).
+
 > ⚠️ **SUPERSEDED (2026-07-30, mesmo dia).** Não integre por este documento. A
 > linha REABRIU depois dele (a wave do **pino de mundo**) e — pior — ele afirma
 > que *"o `main` NÃO andou"*, o que deixou de ser verdade: o `main` andou **186

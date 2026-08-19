@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Vector` · Texto em caminho (W0–W5)
 
+**Status:** FECHADO 2026-07-22 · no `main` em `bf51926c1` (o commit que trouxe este arquivo).
+
 > **Regra H.** Entregável de fechamento. A linha está **FECHADA**; NÃO integra nem faz ship
 > sozinha. Aguarda ordem EXPLÍCITA do Enio, via agente integrador dedicado.
 

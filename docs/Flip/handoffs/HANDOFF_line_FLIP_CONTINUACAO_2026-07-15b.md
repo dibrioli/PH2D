@@ -1,5 +1,7 @@
 # Handoff — linha `line/FLIP`, continuação (2026-07-15b) · **COMECE AQUI**
 
+**Status:** FECHADO 2026-07-15 · no `main` em `649b2c0d6` (o commit que trouxe este arquivo).
+
 > **Para o próximo agente-de-linha do Flip** (o 4º meio do PH2D: animação quadro-a-quadro,
 > fork 2D clean-room do Grease Pencil — [ADR-0114](../../architecture/decisions/0114-grease-pencil-as-native-2d-medium-flip-no-3d-viewport.md)).
 > **Regime:** Modo L (workstation), worktree `Worktrees/line-FLIP`, branch `line/FLIP`.

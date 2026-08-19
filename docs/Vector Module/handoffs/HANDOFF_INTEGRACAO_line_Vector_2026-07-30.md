@@ -1,5 +1,7 @@
 # Handoff de INTEGRAÇÃO — `line/Vector` → `main` (2026-07-30)
 
+**Status:** FECHADO 2026-07-30 · no `main` em `070d51c54` (o commit que trouxe este arquivo).
+
 > **Para o agente integrador.** Este documento é o **consolidado da linha inteira**: 57 commits,
 > duas metades (o **plano 24** — FX raster — e o **plano 25** — ferramentas de desenho). A metade do
 > FX já tem **nove handoffs por-wave** (listados na §2); esta é a única fonte para a metade do

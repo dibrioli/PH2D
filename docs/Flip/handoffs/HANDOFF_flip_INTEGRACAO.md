@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — linha `line/FLIP` (DIRETRIZ §1.5.9)
 
+**Status:** FECHADO 2026-07-11 · no `main` em `b84fe6e61` (o commit que trouxe este arquivo).
+
 > **Para o agente integrador.** Este é o documento de fusão da linha FLIP ao `main`.
 > Tracker técnico do módulo: [`HANDOFF_flip_impl.md`](HANDOFF_flip_impl.md).
 > Guia do próximo implementador do módulo: [`HANDOFF_flip_NEXT.md`](HANDOFF_flip_NEXT.md).

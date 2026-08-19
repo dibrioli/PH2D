@@ -1,5 +1,7 @@
 # HANDOFF de INTEGRAÇÃO — `line/Painter` (fechamento, 2026-07-12)
 
+**Status:** FECHADO 2026-07-12 · no `main` em `ce356fce5` (o commit que trouxe este arquivo).
+
 > **Para o agente INTEGRADOR.** A linha está **FECHADA**. Não integrei, não pushei, não rodei `ship.sh`
 > — por protocolo (CLAUDE.md §0.7). Este documento é o que você precisa para integrar `line/Painter`
 > em `main` **por ordem explícita do Enio**.

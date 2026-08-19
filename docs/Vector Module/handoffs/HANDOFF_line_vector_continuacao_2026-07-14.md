@@ -1,5 +1,7 @@
 # HANDOFF — `line/Vector` → próximo implementador (2026-07-13, 4ª passagem)
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-13 (`d5ffcadab`).
+
 > Do agente que consertou o Shape Builder e os botões de Undo/Redo, para **você**.
 >
 > **Tem um bug ABERTO e ele é crítico** (§2) — a causa está **provada e medida**, e a repro é

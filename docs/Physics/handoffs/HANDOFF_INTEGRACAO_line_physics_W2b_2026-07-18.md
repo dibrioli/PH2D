@@ -1,5 +1,7 @@
 # Handoff de INTEGRAÇÃO — `line/physics` **W2b + W2c** (DIRETRIZ §1.5.9)
 
+**Status:** FECHADO 2026-07-18 · no `main` em `5b1b1818a` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador**, por ordem explícita do Enio. A linha fechou e PAROU:
 > não integrei, não pushei.
 >

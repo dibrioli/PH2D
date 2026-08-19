@@ -1,5 +1,7 @@
 # HANDOFF — assumindo a `line/Painter` (2026-07-18)
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-18 (`a8574a9d6`).
+
 > Para o **agente que assume a linha**. Contém: o estado, **o bug aberto com duas tentativas falhas
 > documentadas** (não as repita — a segunda é matematicamente impossível e eu perdi um ciclo nela), e a
 > fila de tarefas com gatilho.

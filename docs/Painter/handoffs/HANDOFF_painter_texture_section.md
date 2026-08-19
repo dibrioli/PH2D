@@ -1,5 +1,7 @@
 # HANDOFF — Painter **Texture** section (Brush texture, Blender-parity, 2D-adapted)
 
+**Status:** FECHADO 2026-06-22 · no `main` em `aabcf756b` (o commit que trouxe este arquivo).
+
 > **Atualização 2026-06-23** — P0-P3 + follow-ups FECHADOS. Pós-entrega:
 > - **Size corrigido p/ paridade Blender** (MTex `texvec = size·co`): **maior número = textura MENOR**
 >   (antes estava invertido). Afeta `texture::sample`/`sample_unit`.
@@ -308,7 +310,6 @@ A capacidade existe e é testada; o P2 só **liga**. Pontos exatos:
 > `PaintState` + request-flag que o shell pollla → rfd + decode (`AssetDb`) + luminância Rec.601.
 > **O texto histórico abaixo era o plano dos follow-ups** (mantido p/ referência + os refinamentos
 > ainda em aberto: stencil fixo-à-tela; máscara alpha-aware em vez de só luminância).
-
 
 **Decisão de arquitetura do Stencil (feita no P3):** Stencil é **espaço de IMAGEM**, não de tela. O
 engine `ph2d-painter-brush` é puro (sem UI/tela/GPU); threadear o transform de viewport nele

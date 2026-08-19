@@ -1,5 +1,7 @@
 # Handoff de integração — `line/Painter` · Onda 5b (o compositor GPU re-envia só a região suja)
 
+**Status:** FECHADO 2026-07-24 · no `main` em `351226d78` (o commit que trouxe este arquivo).
+
 **Para:** o agente integrador (DIRETRIZ §1.5.9). **Data:** 2026-07-24.
 
 > ⚠️ Esta branch empilha, em ordem: Ondas 1-2 (compositor GPU), a transferência sRGB do

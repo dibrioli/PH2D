@@ -291,9 +291,13 @@ adaptativa · **extração**. **18 gates verdes**, 3 alvos com o número medido.
 
 | | esfera 48×64 | toro 64×32 |
 |---|---|---|
-| **quads** (das faces emitidas) | **380 / 494 = 76,9 %** | **415 / 479 = 86,6 %** |
-| χ (alvo) | 12 (2) | — |
-| Hausdorff (barra 1 %) | 4,22 % | — |
+| **quads** (das faces emitidas) | **404 / 454 = 89,0 %** | **423 / 457 = 92,6 %** |
+| **χ** (alvo) | **2** (2) ✅ | **0** (0) ✅ |
+| **manifold** | ✅ | ✅ |
+| **Hausdorff** (barra 1 %) | **0,23 %** ✅ | **0,24 %** ✅ |
+
+⭐ **O conjunto de aceitação do ADR-0160 §4 está VERDE menos a A1** (all-quad), e
+a A1 está a **~90 %** — o resto dela é o fluxo de custo mínimo (Q4).
 
 ⭐ **O número saltou de 53,3 % para 76,9 % com UMA peça**, lida no
 `src/field.cpp` da referência em vez de inferida: o

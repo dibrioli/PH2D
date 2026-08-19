@@ -129,8 +129,9 @@ fn the_shape_survives_within_one_percent() {
 /// EMITIDAS) ela era **53,3 %**.
 ///
 /// ⭐ **Com o pipeline completo — porte fiel do operador + hierarquia + quociente
-/// da retícula + poda dos pendentes + partição dos pinçamentos — o número MEDIDO
-/// é `80,6 %` (esfera) e `90,5 %` (toro).** O piso abaixo sai daí.
+/// da retícula + poda dos pendentes + partição dos pinçamentos + emparelhamento
+/// de triângulos — o número MEDIDO é `89,0 %` (esfera) e `92,6 %` (toro).** O
+/// piso abaixo sai daí.
 ///
 /// ⚠️ **A1 é a ÚNICA asserção do ADR-0160 §4 que continua aberta**, e ela é o
 /// alvo do fluxo de custo mínimo (Q4). A2, A3, A4, A6, A7 e A8 estão verdes.
@@ -149,12 +150,12 @@ fn the_quad_fraction_is_measured_and_pinned() {
             q.quads > 0,
             "{name}: a extracao nao produziu um unico quad -- o passeio de faces nao esta' a fechar"
         );
-        // Piso MEDIDO (2026-08-19, pipeline completo): esfera **80,6 %**, toro
-        // **90,5 %**. A margem é o que separa uma regressão de ruído de fixture.
+        // Piso MEDIDO (2026-08-19, pipeline completo): esfera **89,0 %**, toro
+        // **92,6 %**. A margem é o que separa uma regressão de ruído de fixture.
         assert!(
-            q.quad_fraction() > 0.78,
+            q.quad_fraction() > 0.86,
             "{name}: so' {:.1}% das faces sairam quad -- abaixo do piso MEDIDO desta onda \
-             (esfera 80,6 / toro 90,5)",
+             (esfera 89,0 / toro 92,6)",
             q.quad_fraction() * 100.0
         );
     }

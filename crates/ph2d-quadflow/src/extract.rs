@@ -173,7 +173,8 @@ pub fn extract_with(
         })
         .collect();
 
-    let (mut faces, mut quads, mut non_quads, mut max_sides) = (Vec::new(), 0usize, 0usize, 0usize);
+    let (mut faces, mut quads, mut non_quads, mut max_sides) =
+        (Vec::<Face>::new(), 0usize, 0usize, 0usize);
     for c in &cycles {
         max_sides = max_sides.max(c.len());
         match c.len() {
@@ -201,12 +202,108 @@ pub fn extract_with(
         }
     }
 
+    // ⚠️ **O EMPARELHAMENTO: dois triângulos vizinhos SÃO um quad com uma
+    // diagonal a mais.** Os não-quads que sobram não são singularidades do campo
+    // — as singularidades de uma grade vivem na VALÊNCIA dos vértices (3 ou 5),
+    // nunca no número de lados de uma face. Eles são resíduo da extração, e um
+    // par que partilha aresta reconstitui o quad que a diagonal partiu.
+    //
+    // ⚠️ **A operação preserva χ por construção**: some uma aresta e some uma
+    // face, e `V − (E−1) + (F−1)` é `V − E + F`.
+    let (paired, merged) = pair_triangles(&faces, &verts);
+    faces = paired;
+    quads += merged;
+    non_quads -= merged * 2;
+
     Ok(Quadrangulation {
         mesh: Mesh::from_parts(verts, faces)?,
         quads,
         non_quads,
         max_sides,
     })
+}
+
+/// **JUNTA PARES DE TRIÂNGULOS VIZINHOS NUM QUAD.** Devolve `(faces, quantos
+/// pares)`.
+///
+/// ⚠️ **Guloso e por ordem de face — determinístico.** Um emparelhamento ÓTIMO
+/// (o casamento de peso máximo no grafo dual) daria alguns quads a mais e um
+/// solver a justificar; o guloso resolve a esmagadora maioria porque os
+/// triângulos aqui vêm **aos pares**, das mesmas células.
+///
+/// ⚠️ **A recusa por NORMAL é a guarda que impede um quad dobrado:** dois
+/// triângulos que se encontram em ângulo agudo formam um quadrilátero não-planar
+/// que a subdivisão e a iluminação leem como um vinco. O limiar é o cosseno de
+/// 45°, e ele diz de que recurso é: a planaridade que um quad promete a quem o
+/// subdivide.
+fn pair_triangles(faces: &[Face], verts: &[[f32; 3]]) -> (Vec<Face>, usize) {
+    // Aresta → as faces triangulares que a usam.
+    let mut owner: BTreeMap<(u32, u32), Vec<usize>> = BTreeMap::new();
+    for (i, f) in faces.iter().enumerate() {
+        let v = f.verts();
+        if v.len() != 3 {
+            continue;
+        }
+        for k in 0..3 {
+            let (a, b) = (v[k], v[(k + 1) % 3]);
+            let key = if a < b { (a, b) } else { (b, a) };
+            owner.entry(key).or_default().push(i);
+        }
+    }
+
+    let mut taken = vec![false; faces.len()];
+    let mut out: Vec<Face> = Vec::with_capacity(faces.len());
+    let mut merged = 0usize;
+    let mut replacement: BTreeMap<usize, Face> = BTreeMap::new();
+
+    for (&(a, b), who) in &owner {
+        if who.len() != 2 {
+            continue;
+        }
+        let (i, j) = (who[0], who[1]);
+        if taken[i] || taken[j] {
+            continue;
+        }
+        // Os dois vértices opostos à aresta partilhada.
+        let opp = |f: &Face| -> u32 {
+            *f.verts()
+                .iter()
+                .find(|v| **v != a && **v != b)
+                .expect("um triangulo tem um vertice fora da aresta")
+        };
+        let (c, d) = (opp(&faces[i]), opp(&faces[j]));
+        if c == d {
+            continue;
+        }
+        // ⚠️ As normais têm de concordar: um par em ângulo agudo daria um quad
+        // dobrado.
+        let n0 = tri_normal(verts[a as usize], verts[b as usize], verts[c as usize]);
+        let n1 = tri_normal(verts[b as usize], verts[a as usize], verts[d as usize]);
+        if dot(n0, n1) < core::f32::consts::FRAC_1_SQRT_2 {
+            continue;
+        }
+        taken[i] = true;
+        taken[j] = true;
+        merged += 1;
+        // A ordem `c, a, d, b` percorre o quad: o oposto de um lado, a aresta, o
+        // oposto do outro, e de volta.
+        replacement.insert(i, Face::quad(c, a, d, b));
+    }
+
+    for (i, f) in faces.iter().enumerate() {
+        if let Some(q) = replacement.get(&i) {
+            out.push(*q);
+        } else if !taken[i] {
+            out.push(*f);
+        }
+    }
+    (out, merged)
+}
+
+fn tri_normal(a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> [f32; 3] {
+    let ab = sub(b, a);
+    let ac = sub(c, a);
+    normalize_or(cross(ab, ac), [0.0, 0.0, 1.0])
 }
 
 /// **AS CÉLULAS** — crescimento por SEMENTE, com diâmetro limitado.

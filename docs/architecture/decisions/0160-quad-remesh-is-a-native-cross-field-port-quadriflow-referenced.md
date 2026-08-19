@@ -196,7 +196,7 @@ técnica base não tem o defeito que a literatura inteira nomeia.
 
 | # | asserção | esfera 48×64 | toro 64×32 | estado |
 |---|---|---|---|---|
-| **A1** | all-quad | **80,6 %** | **90,5 %** | ⏳ **a única aberta** — é o alvo do fluxo (Q4) |
+| **A1** | all-quad | **89,0 %** | **92,6 %** | ⏳ **a única aberta** — o resto é o alvo do fluxo (Q4) |
 | **A2** | manifold | ✓ | ✓ | ✅ |
 | **A3** | gênero preservado | **χ = 2** (alvo 2) | **χ = 0** (alvo 0) | ✅ |
 | **A4** | forma ≤ 1 % da diagonal | **0,23 %** | **0,24 %** | ✅ |
@@ -204,7 +204,8 @@ técnica base não tem o defeito que a literatura inteira nomeia.
 | **A7** | determinístico | ✓ | ✓ | ✅ |
 | **A8** | simetria 4-RoSy | ✓ | — | ✅ |
 
-**As três peças que fecharam A2/A3/A4, todas achadas por medição:**
+**As QUATRO peças que fecharam A2/A3/A4 e levaram a A1 a ~90 %, todas achadas
+por medição:**
 
 1. **A PODA DOS PENDENTES.** Um nó de grau 1 faz o passeio ir `a→b` e voltar
    `b→a` — um ciclo de DOIS, que não delimita área. Ele é descartado, mas as duas
@@ -222,6 +223,15 @@ técnica base não tem o defeito que a literatura inteira nomeia.
    saída mais próximo — **por construção**. A régua media a densidade da saída, não
    a fidelidade da forma. Com a distância **ponto-a-SUPERFÍCIE** (as sete regiões
    de Voronoi do triângulo), a mesma malha mede **0,23 %** em vez de 4,22 %.
+
+4. **O EMPARELHAMENTO DE TRIÂNGULOS.** Os não-quads que sobravam **não são
+   singularidades do campo** — as singularidades de uma grade vivem na VALÊNCIA
+   dos vértices (3 ou 5), nunca no número de lados de uma face. Eles são resíduo
+   da extração, e dois triângulos vizinhos **são** um quad com uma diagonal a
+   mais. A operação preserva χ por construção (some uma aresta e some uma face),
+   e a recusa por **normal** (cos 45°) impede um quad dobrado — o limiar diz de
+   que recurso é: *a planaridade que um quad promete a quem o subdivide*.
+   Medido: **80,6 % → 89,0 %** na esfera, **90,5 % → 92,6 %** no toro.
 
 ⚠️ **Três vezes nesta jornada a RÉGUA se corrigiu antes do algoritmo** (a fração
 de quads por ciclos · a convergência do campo de posição · a Hausdorff por

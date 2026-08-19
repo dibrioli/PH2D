@@ -53,7 +53,9 @@ struct Smoke {
     cam: Orbit,
     /// O último quadro pronto, guardado para desenhar enquanto o próximo não chega.
     frame: Option<Arc<Vec<u8>>>,
-    inflight: Option<Receiver<Vec<u8>>>,
+    inflight: Option<Receiver<(usize, Vec<u8>)>>,
+    /// Já anunciou o primeiro quadro? Ver a nota do `boot`.
+    announced: bool,
 }
 
 struct MatcapTexels {
@@ -199,6 +201,7 @@ fn boot() -> Option<Smoke> {
         cam: Orbit::default(),
         frame: None,
         inflight: None,
+        announced: false,
     })
 }
 
@@ -214,7 +217,15 @@ pub(crate) fn draw(area: EditorRect, scene_out: &mut VectorScene) {
         // Colhe o traçado que ficou pronto, se ficou.
         if let Some(rx) = &smoke.inflight {
             match rx.try_recv() {
-                Ok(rgba) => {
+                Ok((hits, rgba)) => {
+                    if !smoke.announced {
+                        smoke.announced = true;
+                        // ⚠️ Uma linha, uma vez. É ela que separa "o smoke subiu" de "o smoke
+                        // DESENHOU": o boot já imprime acima, e um boot sem quadro é exatamente o
+                        // modo de falha em que a janela fica vazia e ninguém sabe de quem é a culpa.
+                        // Zero pixels aqui = a peça está fora do quadro ou o campo saiu vazio.
+                        println!("[field-smoke] primeiro quadro desenhado — {hits} pixels de peça");
+                    }
                     smoke.frame = Some(Arc::new(rgba));
                     smoke.inflight = None;
                 }
@@ -226,7 +237,7 @@ pub(crate) fn draw(area: EditorRect, scene_out: &mut VectorScene) {
         // Uma requisição em voo por vez: só pede a próxima quando a anterior chegou.
         if smoke.inflight.is_none() {
             smoke.cam.yaw += SPIN;
-            let (tx, rx) = channel();
+            let (tx, rx) = channel::<(usize, Vec<u8>)>();
             let doc = smoke.doc.clone();
             let cam = smoke.cam;
             let matcap = Arc::clone(&smoke.matcap);
@@ -241,7 +252,7 @@ pub(crate) fn draw(area: EditorRect, scene_out: &mut VectorScene) {
                     BACKGROUND,
                 );
                 // O receptor pode ter sumido (janela fechada): descartar é a resposta certa.
-                let _ = tx.send(px);
+                let _ = tx.send((g.hits(), px));
             });
             smoke.inflight = Some(rx);
         }

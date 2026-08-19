@@ -38,9 +38,9 @@ python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"   # o placar VIVO
 | | |
 |---|---|
 | base | `main` `ee1432203` — a linha foi **reaberta por fast-forward** depois de a integração ter entrado |
-| commits desta janela | **1** (`15fbce95c`, o espaço do campo) |
-| estado | **verde** — `fmt` 0, `clippy` 0, suítes das crates tocadas 0 falhas |
-| smoke pendente | **`PH2D_GPU_COOK_DEMO=60`** — nunca smokado |
+| commits desta janela | `git log --oneline main..HEAD` (⚠️ não se pina aqui — o commit que escreve o número muda o número) |
+| estado | **verde** — `fmt` 0, `clippy` 0, LOC 0, suítes das crates tocadas 0 falhas |
+| smoke pendente | **`PH2D_GPU_COOK_DEMO=60`** — a **v1 foi REPROVADA** e a v2 aguarda re-smoke (lei 8 do §4) |
 
 ⚠️ **Dois smokes de ontem também nunca foram vistos pelo Enio** e já estão no `main`:
 `=58` (re-smoke depois da correção do relógio que expirava) e `=59` (a porta de tempo).

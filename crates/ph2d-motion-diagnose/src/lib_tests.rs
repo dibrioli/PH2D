@@ -217,3 +217,116 @@ fn the_appropriate_flock_stamp_graph_is_clean() {
         "the appropriate flock-stamp graph must warn nowhere: {diags:?}"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// **A RAMIFICAÇÃO MORTA** (doc 89, folha 15 — o `value.switch`).
+// ─────────────────────────────────────────────────────────────────────────────
+
+use ph2d_nodegraph::graph::Edge;
+
+/// Um `value.switch` com as portas de `wired` ligadas a constantes, mais o `select`.
+fn switch_with(wired: &[u16]) -> (Graph, NodeRegistry, NodeId) {
+    let mut reg = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("register all nodes");
+    let mut g = Graph::new();
+    let seed = g.add_node("motion.grid");
+    let src = |g: &mut Graph| {
+        let n = g.add_node("value.pattern");
+        g.connect(Edge {
+            from: (seed, 0),
+            to: (n, 0),
+            delayed: false,
+        })
+        .expect("a contagem vem da geometria");
+        n
+    };
+    let sw = g.add_node("value.switch");
+    let sel = src(&mut g);
+    g.connect(Edge {
+        from: (sel, 0),
+        to: (sw, 0),
+        delayed: false,
+    })
+    .expect("select");
+    for &p in wired {
+        let s = src(&mut g);
+        g.connect(Edge {
+            from: (s, 0),
+            to: (sw, p),
+            delayed: false,
+        })
+        .expect("uma entrada");
+    }
+    (g, reg, sw)
+}
+
+fn deficits_of(g: &Graph, reg: &NodeRegistry, node: NodeId) -> Vec<Deficit> {
+    diagnose(g, reg)
+        .into_iter()
+        .filter(|d| d.node == node)
+        .map(|d| d.deficit)
+        .collect()
+}
+
+/// **UM BURACO NO MEIO É AVISADO; UMA CAUDA VAZIA NÃO É.**
+///
+/// ⚠️ **As duas metades são o gate** — sem a segunda ele passaria marcando *todo* mux de duas
+/// vias, que é como se escreve o caso comum, e o artista desligaria os avisos.
+#[test]
+fn a_hole_in_the_middle_of_a_router_is_warned_and_an_empty_tail_is_not() {
+    // `in0` e `in2` ligadas, `in1` VAZIA: o índice 1 existe e lê zero.
+    let (g, reg, sw) = switch_with(&[1, 3]);
+    assert_eq!(
+        deficits_of(&g, &reg, sw),
+        vec![Deficit::DeadBranch("in1")],
+        "a porta vazia ANTES de uma ligada tem de ser nomeada"
+    );
+
+    // `in0` e `in1` ligadas, `in2`/`in3` vazias: um mux de duas vias, legítimo.
+    let (g, reg, sw) = switch_with(&[1, 2]);
+    assert!(
+        deficits_of(&g, &reg, sw).is_empty(),
+        "uma cauda vazia é como se escreve um mux de duas vias: {:?}",
+        deficits_of(&g, &reg, sw)
+    );
+}
+
+/// **A REGRA É DERIVADA DA FORMA DO MANIFESTO, e o vizinho prova-o.**
+///
+/// O `motion.combine` também tem `in0..in3` e **não** tem `select`: ele concatena o que estiver
+/// ligado, então um buraco ali é inofensivo. Um aviso nele seria o falso positivo que o ADR-0155
+/// já pagou uma vez.
+#[test]
+fn a_concatenator_with_the_same_port_names_is_never_warned() {
+    let mut reg = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("register all nodes");
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let comb = g.add_node("motion.combine");
+    let out = g.add_node("motion.output");
+    // `in0` e `in2`, com a `in1` no meio VAZIA — a mesma forma que o switch acusa.
+    for (from, to) in [
+        ((grid, 0), (comb, 0)),
+        ((grid, 0), (comb, 2)),
+        ((comb, 0), (out, 0)),
+    ] {
+        g.connect(Edge {
+            from,
+            to,
+            delayed: false,
+        })
+        .expect("connect");
+    }
+    assert!(
+        deficits_of(&g, &reg, comb).is_empty(),
+        "o concatenador não roteia por índice: {:?}",
+        deficits_of(&g, &reg, comb)
+    );
+    // O CONTROLE: a MESMA forma num nó que roteia por índice É avisada (senão este gate
+    // estaria a provar que o diagnóstico não funciona).
+    let (gs, regs, sw) = switch_with(&[1, 3]);
+    assert_eq!(
+        deficits_of(&gs, &regs, sw),
+        vec![Deficit::DeadBranch("in1")]
+    );
+}

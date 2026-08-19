@@ -296,6 +296,12 @@ fn explain(d: &Diagnostic) -> String {
         (Deficit::Shadowed(ty), _) => {
             format!("Another '{ty}' already drives this screen pass — only the first one in the graph has any effect")
         }
+        // ⚠️ **Uma ramificação morta no meio do roteador.** A mensagem nomeia a PORTA (é o
+        // que ele tem de ligar) e diz o que o índice dela devolve hoje — sem isso ele lê um
+        // zero e não sabe se a ramificação está vazia ou se ela vale zero.
+        (Deficit::DeadBranch(port), _) => {
+            format!("Input '{port}' is empty but a later one is wired — that branch reads 0")
+        }
         _ => "This node produces data nothing downstream consumes, so it does nothing".into(),
     }
 }

@@ -135,6 +135,50 @@ pub enum Deficit {
     /// ⚠️ **Sempre [`Fix::Offer`]**: apagar qual dos dois é decisão do artista, e um
     /// auto-heal que apagasse um nó seria a única cura desta casa que destrói trabalho.
     Shadowed(&'static str),
+    /// **Um BURACO no meio das portas de um roteador** — `in1` vazia com `in2` ligada.
+    ///
+    /// Um `value.switch` escolhe por índice: `clamp(round(select), 0, N−1)`. Uma porta
+    /// vazia é um índice que existe e **lê `0.0`** — e `0` é um valor legítimo, então o
+    /// artista não distingue *"esta ramificação está vazia"* de *"esta ramificação vale
+    /// zero"*. Medido: com só `in0`/`in1` ligadas, `select = 2` e `select = 3` devolvem
+    /// `0.000` sem sinal nenhum.
+    ///
+    /// ⚠️ **Só o buraco do MEIO é diagnosticado, e a distinção é o que impede o ruído:**
+    /// deixar `in2`/`in3` vazias é como se escreve um mux de duas vias — legítimo, comum,
+    /// e o `select` nem lá chega (o clamp para em `N−1`... e é justamente por o clamp
+    /// parar em `N−1` e não no ÚLTIMO LIGADO que a cauda vazia também lê zero; isso é
+    /// comportamento **documentado e deliberado** no doc-comment do kernel daquele nó, e
+    /// mudá-lo seria outra função). Uma porta vazia **antes** de uma ligada não tem
+    /// leitura inocente: o índice dela está no meio do alcance que o artista está a
+    /// varrer.
+    ///
+    /// ⚠️ **Sempre [`Fix::Offer`]**: o que ligar ali é escolha do artista, e ligar por
+    /// palpite é a única cura desta casa que INVENTA conteúdo. Carrega o NOME DA PORTA.
+    DeadBranch(&'static str),
+}
+
+impl Deficit {
+    /// **Um exemplar de CADA variante — a fonte de qualquer censo sobre esta lista.**
+    ///
+    /// ⚠️ **Ela existe porque um `enum` não se itera, e o consumidor que mais importa termina
+    /// num `_ =>`:** o `explain` do shell escolhe a frase que o artista lê, e um variante novo
+    /// cai no catch-all *em silêncio* — compila, corre, e diz ao artista uma coisa que não é o
+    /// defeito dele. Uma lista escrita à mão do lado do gate teria o mesmo buraco um nível
+    /// acima (é preciso lembrar de a estender); aqui ela mora **ao lado da definição**, onde
+    /// quem acrescenta o variante já está.
+    ///
+    /// Os payloads são exemplos reais do repo, não placeholders: uma frase pode depender do
+    /// conteúdo (`InertProducer("accel")` tem braço próprio), então um censo sobre nomes
+    /// inventados provaria menos do que parece.
+    pub const ALL: &'static [Deficit] = &[
+        Deficit::InertProducer("accel"),
+        Deficit::InertProducer("inv_mass"),
+        Deficit::InertProducer("falloff"),
+        Deficit::MissingSource("P"),
+        Deficit::MissingInput("shape"),
+        Deficit::Shadowed("fx.glow"),
+        Deficit::DeadBranch("in1"),
+    ];
 }
 
 /// Os tipos cujo nó configura um **passe de tela inteira**, lido UMA vez do grafo — para
@@ -214,6 +258,17 @@ pub fn diagnose(graph: &Graph, reg: &NodeRegistry) -> Vec<Diagnostic> {
             out.push(Diagnostic {
                 node: inst.id,
                 deficit: Deficit::MissingInput(port),
+                fix: Fix::Offer,
+            });
+            continue;
+        }
+        // Um buraco no meio das portas de um roteador: o índice existe e lê zero em
+        // silêncio. Reportado ANTES dos transientes pela mesma lei — a ramificação morta é
+        // a causa, e a saída do nó não é "inerte", é *parcialmente* muda.
+        if let Some(port) = dead_branch(graph, reg, inst.id, ty) {
+            out.push(Diagnostic {
+                node: inst.id,
+                deficit: Deficit::DeadBranch(port),
                 fix: Fix::Offer,
             });
             continue;
@@ -388,6 +443,53 @@ fn missing_input(
                     .any(|e| !e.delayed && e.to == (node, idx))
             })
     })
+}
+
+/// **A primeira porta VAZIA que ainda tem uma porta LIGADA depois dela**, num nó que
+/// roteia por ÍNDICE.
+///
+/// ⚠️ **A regra é DERIVADA da forma do manifesto, não de uma lista de nomes** — um nó que
+/// oferece uma porta `select` **e** portas `in0`, `in1`, … roteia por índice, e é isso que
+/// torna uma porta vazia um índice morto. A alternativa (uma const com `"value.switch"`
+/// dentro, como a `SINGLETON_SCREEN_PASSES`) era possível e é pior aqui: ali a lista existe
+/// porque *"ser um passe de tela"* não se lê do manifesto; aqui lê-se. Um roteador novo com
+/// esta forma **nasce coberto**.
+///
+/// ⚠️ **E a forma exclui os vizinhos que também têm `in0..in3`:** o `motion.combine`
+/// concatena o que estiver ligado e não tem `select` — nele um buraco é inofensivo, e um
+/// aviso ali seria o falso positivo que faz o artista desligar os avisos.
+fn dead_branch(
+    graph: &Graph,
+    reg: &NodeRegistry,
+    node: NodeId,
+    ty: NodeTypeId,
+) -> Option<&'static str> {
+    let manifest = reg.manifests().find(|m| m.id == ty)?;
+    if !manifest.inputs.iter().any(|p| p.name == "select") {
+        return None;
+    }
+    let wired = |idx: usize| {
+        graph
+            .edges()
+            .iter()
+            .any(|e| !e.delayed && e.to == (node, idx as u16))
+    };
+    let routed: Vec<(usize, &'static str)> = manifest
+        .inputs
+        .iter()
+        .enumerate()
+        .filter(|(_, p)| {
+            p.name
+                .strip_prefix("in")
+                .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+        })
+        .map(|(i, p)| (i, p.name))
+        .collect();
+    let last_wired = routed.iter().rposition(|(i, _)| wired(*i))?;
+    routed[..last_wired]
+        .iter()
+        .find(|(i, _)| !wired(*i))
+        .map(|(_, name)| *name)
 }
 
 /// Any access that can WRITE the column to the node's output. `ReadWriteExisting`

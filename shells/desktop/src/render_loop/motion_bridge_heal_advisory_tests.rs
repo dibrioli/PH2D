@@ -23,14 +23,10 @@ fn every_deficit_has_its_own_advisory_and_none_falls_into_the_catch_all() {
         deficit: Deficit::InertProducer("uma_coluna_que_nao_existe"),
         fix: Fix::Offer,
     });
-    for deficit in [
-        Deficit::InertProducer("accel"),
-        Deficit::InertProducer("inv_mass"),
-        Deficit::InertProducer("falloff"),
-        Deficit::MissingSource("P"),
-        Deficit::MissingInput("shape"),
-        Deficit::Shadowed("fx.glow"),
-    ] {
+    // ⚠️ **A lista vem do CRATE, não daqui** (`Deficit::ALL`, ao lado da definição). Uma cópia
+    // local tinha o mesmo buraco um nível acima: quem acrescenta um variante está no `enum`, não
+    // neste arquivo, e uma lista que é preciso LEMBRAR de estender não é um censo.
+    for &deficit in Deficit::ALL {
         let fix = if matches!(deficit, Deficit::InertProducer("accel")) {
             Fix::Reorder
         } else {
@@ -63,5 +59,15 @@ fn every_deficit_has_its_own_advisory_and_none_falls_into_the_catch_all() {
     assert!(
         shadowed.contains("fx.glow"),
         "a mensagem tem de nomear o tipo: {shadowed}"
+    );
+    // E a da ramificação morta NOMEIA a porta, pela mesma razão: é o que ele tem de ligar.
+    let dead = explain(&Diagnostic {
+        node: NodeId(0),
+        deficit: Deficit::DeadBranch("in1"),
+        fix: Fix::Offer,
+    });
+    assert!(
+        dead.contains("in1"),
+        "a mensagem tem de nomear a porta: {dead}"
     );
 }

@@ -122,7 +122,7 @@ ausente.
 
 ---
 
-## §4 — As ONZE LEIS que esta linha pagou para aprender
+## §4 — As DOZE LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -170,15 +170,25 @@ são estilo.
    `the_colour_carries_the_field_all_the_way_to_the_instance` (que lê o `tint` **no
    instance**, depois do lowering). *Ao desenhar uma cena, meça o elemento em PÍXEIS e
    pergunte que canal perceptual carrega o sinal — antes de a mandar.*
-9. ⛔ **OLHE o arquivo antes de escrever nele.** Nesta janela eu sobrescrevi a cena `=51`
+9. **UMA SUBAMOSTRA UNIFORME PODE DESENHAR UMA FIGURA QUE NÃO ESTÁ LÁ.** O carimbo dos cards
+   (`preview_points`) subamostrava por **passo fixo**, e sobre uma GRADE isso **alia numa
+   reta**: com 441 pontos e 21 colunas o passo é 10, `10·k mod 21` anda −1 por linha, e
+   **21 das 45** amostras caíam na MESMA diagonal (5 das 21 diagonais tocadas). Os cards
+   mostravam um traço enquanto o canvas mostrava manchas — e **o gate que existia ficava
+   verde**, porque ele media se o carimbo *abrangia* a grade, e uma diagonal abrange todas as
+   linhas e todas as colunas. ⚠️ **A cobertura também não acusa**: dividido em nove ladrilhos,
+   o passo fixo enchia os nove. *O que se mede é ESTRUTURA, não cobertura.* Cura: um jitter
+   determinístico dentro do balde (4 de 45 na pior diagonal), com o passo fixo como **controle
+   negativo dentro do próprio gate**.
+10. ⛔ **OLHE o arquivo antes de escrever nele.** Nesta janela eu sobrescrevi a cena `=51`
    inteira ao criar um módulo com um nome que já existia (`…_demos_space.rs`). Recuperou-se
    com `git checkout --`, mas só porque a árvore estava limpa. *Um `ls` antes do `Write`
    custa nada.*
-10. ⚠️ **A suíte inteira é um relógio.** Duas corridas marcaram falhas que eram **carga**
+11. ⚠️ **A suíte inteira é um relógio.** Duas corridas marcaram falhas que eram **carga**
    (`the_cost_of_depth_is_linear_not_explosive` e
    `the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke`), com `load average` em 14,8.
    Sozinhas passam. *Nada desta workstation vale acima de `load ~5`.*
-11. **A porta de tempo é uma COLUNA, não um escopo** — ela não herda a recusa
+12. **A porta de tempo é uma COLUNA, não um escopo** — ela não herda a recusa
     `CookError::SequentialInTimeScope`. Se acrescentar uma porta a outro nó, o gate
     `the_time_port_is_a_column_not_a_cook_scope` é o molde.
 

@@ -176,6 +176,27 @@ fn preview_of(outputs: &[CookValue]) -> Option<Vec<[f32; 2]>> {
 /// The stamp's points from a stream. Striding again over an already-tapped
 /// stream is a no-op (`step == 1` at 48 rows or fewer), so the two paths share
 /// this rather than one of them getting a private "already sampled" variant.
+///
+/// ## ⚠️ Por que há um JITTER dentro do balde, e não um passo fixo
+///
+/// Um passo fixo sobre uma GRADE **alia numa reta**, e o Enio viu isso antes de qualquer
+/// gate: os cards de uma cena de blocos 21×21 desenhavam um **traço diagonal** enquanto o
+/// canvas mostrava manchas. Medido — 441 pontos, `step = 10`, 21 colunas:
+///
+/// | subamostra | pior diagonal | diagonais ocupadas |
+/// |---|---|---|
+/// | passo fixo (antes) | **21 de 45** | **5** de 21 |
+/// | jitter no balde | 4 | 19 |
+/// | bit-reversal (van der Corput) | 9 | 10 |
+///
+/// A causa é ressonância: `10·k mod 21` anda **−1 por linha**, então as amostras marcham em
+/// diagonal. ⚠️ **E a cobertura NÃO acusa** — dividido em nove ladrilhos, o passo fixo enche
+/// os nove (4 a 7 amostras cada). *Uma subamostra pode ser perfeitamente uniforme e mesmo
+/// assim desenhar uma figura que não está lá* — o que se mede aqui é ESTRUTURA, não cobertura.
+///
+/// O jitter é uma função pura do índice do balde (determinística: um preview que cintilasse
+/// entre quadros seria pior que o traço), e com `step == 1` ele é `% 1 == 0`, ou seja o
+/// caminho de ≤48 pontos fica **byte-idêntico**.
 fn preview_points(stream: &Stream) -> Option<Vec<[f32; 2]>> {
     let Some(Column::Vec2(p)) = stream.get("P") else {
         return None;
@@ -183,8 +204,22 @@ fn preview_points(stream: &Stream) -> Option<Vec<[f32; 2]>> {
     if p.is_empty() {
         return None;
     }
-    let step = p.len().div_ceil(PREVIEW_POINTS).max(1);
-    Some(p.iter().step_by(step).copied().collect())
+    let (n, step) = (p.len(), p.len().div_ceil(PREVIEW_POINTS).max(1));
+    Some(
+        (0..n.div_ceil(step))
+            .map(|k| p[(k * step + jitter(k) % step).min(n - 1)])
+            .collect(),
+    )
+}
+
+/// O deslocamento dentro do balde `k` — um hash inteiro (Murmur-ish finalizer), **puro e
+/// determinístico**. Ver [`preview_points`] para a medição que o motivou.
+fn jitter(k: usize) -> usize {
+    let mut x = (k as u32).wrapping_mul(0x9E37_79B1);
+    x ^= x >> 16;
+    x = x.wrapping_mul(0x7FEB_352D);
+    x ^= x >> 15;
+    x as usize
 }
 
 /// The single non-zero `texture_id` this node's stream carries on EVERY instance, or

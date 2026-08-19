@@ -239,44 +239,6 @@ fn the_stretched_band_is_anisotropic_where_the_control_is_not() {
     eprintln!("[=60] razao dx/dy: controle {plain:.3}, esticada {stretched:.3}");
 }
 
-/// **A ORDEM importa: «esticar e rodar» ≠ «rodar e esticar»** — e a banda 4 é a primeira.
-///
-/// ⚠️ Este gate defende a lei escrita no `FieldSpace::at`. Ele constrói a ordem CONTRÁRIA à
-/// mão e exige que ela dê outro ponto de amostragem — se as duas coincidissem, a ordem seria
-/// uma escolha sem consequência e o comentário que a justifica seria uma nota a envelhecer.
-#[test]
-fn stretch_then_rotate_is_not_rotate_then_stretch() {
-    let (turn, scale, scale_y) = knobs();
-    let ph = turn / 360.0;
-    let sin_c = |p: f32| {
-        let f = p - p.floor();
-        let q = if f < 0.5 {
-            let u = f * 2.0;
-            4.0 * u * (1.0 - u)
-        } else {
-            let u = (f - 0.5) * 2.0;
-            -4.0 * u * (1.0 - u)
-        };
-        0.225 * (q * q.abs() - q) + q
-    };
-    let (c, s) = (sin_c(ph + 0.25), sin_c(ph));
-    // Um ponto FORA dos eixos — neles as duas ordens coincidem por simetria.
-    let (px, py) = (1.7f32, 0.9f32);
-    let ours = {
-        let (x, y) = (px * scale, py * scale_y);
-        (x * c - y * s, x * s + y * c)
-    };
-    let other = {
-        let (x, y) = (px * c - py * s, px * s + py * c);
-        (x * scale, y * scale_y)
-    };
-    let d = (ours.0 - other.0).abs().max((ours.1 - other.1).abs());
-    assert!(
-        d > 0.05,
-        "as duas ordens tem de dar pontos de amostragem diferentes, e diferem {d}"
-    );
-}
-
 /// **A sonda que a mensagem cita** — ela imprime, não afirma.
 #[test]
 #[ignore = "sonda: imprime os numeros que a mensagem da cena cita"]
@@ -290,6 +252,124 @@ fn measure_what_the_scene_shows() {
             "  banda {}: {} pontos, tamanho {lo:.3}..{hi:.3}, luminancia {tlo:.3}..{thi:.3}  ({label})",
             i + 1,
             f.len()
+        );
+    }
+}
+
+/// A variação média do campo ao longo das quatro direções da grade: `[→, ↓, ↘, ↙]`.
+/// As faixas correm na direção de **MENOR** variação.
+fn variation_by_direction(band: usize) -> [f32; 4] {
+    let side = side();
+    let d = band_field(band);
+    let mut acc = [0.0f32; 4];
+    let mut cnt = [0usize; 4];
+    for r in 0..side {
+        for c in 0..side {
+            let i = r * side + c;
+            let mut add = |k: usize, j: usize| {
+                acc[k] += (d[j] - d[i]).abs();
+                cnt[k] += 1;
+            };
+            if c + 1 < side {
+                add(0, i + 1);
+            }
+            if r + 1 < side {
+                add(1, i + side);
+            }
+            if c + 1 < side && r + 1 < side {
+                add(2, i + side + 1);
+            }
+            if c > 0 && r + 1 < side {
+                add(3, i + side - 1);
+            }
+        }
+    }
+    std::array::from_fn(|k| acc[k] / cnt[k].max(1) as f32)
+}
+
+/// **A BANDA 4 TEM FAIXAS NA DIAGONAL, e a 3 na horizontal** — a rotação tem de girar a
+/// ANISOTROPIA, não só a fatia de ruído que se vê.
+///
+/// ⚠️ **Este gate é um report do Enio, e ele derrubou a lei que eu tinha escrito.** A v3
+/// aplicava *escala primeiro, rotação depois*, com um comentário a defendê-la — e medido, a
+/// banda 4 saía com faixas **horizontais**, iguais às da banda 3 (variação `→ 0,0077` contra
+/// `↓ 0,0218`). O motivo é geométrico: com `M = R·S` as feições do mundo são a pré-imagem de
+/// manchas redondas, `S⁻¹R⁻¹(círculo)`, e os eixos dessa elipse são os de `S⁻¹` — ou seja **os
+/// eixos do MUNDO**. A rotação só troca *qual* pedaço de ruído se vê; a anisotropia fica
+/// colada à tela. *Um knob que não move o que promete é um knob que mente.*
+///
+/// Com `M = S·R` (rodar o ponto **primeiro**), `M⁻¹ = R⁻¹S⁻¹` e os eixos da elipse saem
+/// girados de `−θ` — as faixas viram. ⚠️ E as bandas 1–3 **não mudam**: com escala uniforme
+/// `S = s·I` comuta com `R`, e na banda 3 a rotação é zero.
+///
+/// ⚠️ **Ele SUBSTITUI um gate que dava falso conforto.** O anterior
+/// (`stretch_then_rotate_is_not_rotate_then_stretch`) construía as duas ordens à mão e
+/// afirmava que elas **diferem** — verdade, e inútil: ele nunca perguntou **qual** delas o
+/// nó embarcava. Um gate que prova que duas escolhas são distintas não defende a escolha.
+/// Este mede a direção que o olho lê, que é a afirmação que o produto faz.
+///
+/// Medido depois da correção: banda 4 `→ 0,0185 · ↓ 0,0186 · ↘ 0,0202 · ↙ 0,0110`.
+#[test]
+fn the_fourth_band_runs_its_stripes_on_the_diagonal() {
+    let flat = variation_by_direction(2);
+    let least = |v: [f32; 4]| (0..4).min_by(|a, b| v[*a].total_cmp(&v[*b])).unwrap();
+    assert_eq!(
+        least(flat),
+        0,
+        "a banda 3 tem de ter faixas HORIZONTAIS (a menor variacao no →), e mede {flat:?}"
+    );
+    let turned = variation_by_direction(3);
+    let k = least(turned);
+    assert!(
+        k == 2 || k == 3,
+        "a banda 4 tem de ter faixas na DIAGONAL, e a menor variacao dela esta' no {} \
+         ({turned:?}) -- se for a mesma da banda 3, a rotacao nao girou a anisotropia",
+        ["→", "↓", "↘", "↙"][k]
+    );
+}
+
+/// **SONDA — em que DIREÇÃO as faixas correm?** Imprime a variação média do campo ao longo
+/// de quatro direções da grade; as faixas correm na de MENOR variação.
+#[test]
+#[ignore = "sonda: imprime numeros, nao afirma"]
+fn measure_the_stripe_direction() {
+    let side = side();
+    eprintln!("\n[=60] variacao media do campo, por direcao (a faixa corre na MENOR)");
+    for (b, label) in band_labels() {
+        let d = band_field(b);
+        let mut acc = [0.0f32; 4];
+        let mut cnt = [0usize; 4];
+        for r in 0..side {
+            for c in 0..side {
+                let i = r * side + c;
+                let mut add = |k: usize, j: usize| {
+                    acc[k] += (d[j] - d[i]).abs();
+                    cnt[k] += 1;
+                };
+                if c + 1 < side {
+                    add(0, i + 1); // →  (horizontal)
+                }
+                if r + 1 < side {
+                    add(1, i + side); // ↓  (vertical)
+                }
+                if c + 1 < side && r + 1 < side {
+                    add(2, i + side + 1); // ↘
+                }
+                if c > 0 && r + 1 < side {
+                    add(3, i + side - 1); // ↙
+                }
+            }
+        }
+        let m: Vec<f32> = (0..4).map(|k| acc[k] / cnt[k].max(1) as f32).collect();
+        let least = (0..4).min_by(|a, b| m[*a].total_cmp(&m[*b])).unwrap();
+        let name = ["horizontal", "vertical", "diagonal ↘", "diagonal ↙"][least];
+        eprintln!(
+            "  banda {}: → {:.4}  ↓ {:.4}  ↘ {:.4}  ↙ {:.4}   => faixas na {name}  ({label})",
+            b + 1,
+            m[0],
+            m[1],
+            m[2],
+            m[3]
         );
     }
 }

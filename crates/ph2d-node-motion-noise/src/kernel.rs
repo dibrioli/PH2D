@@ -73,15 +73,16 @@ const NS_LIB: &str = "\
             return 0.225 * (p * abs(p) - p) + p;\n\
         }\n\
         fn ns_space(p: vec2<f32>) -> vec2<f32> {\n\
-            // ESCALA primeiro, roda depois -- a ordem do `FieldSpace::at` do lib.rs.\n\
+            // RODA primeiro, escala depois -- a ordem do `FieldSpace::at` do lib.rs,\n\
+            // e o porque dela estar escrito la' (a outra nao gira as faixas).\n\
             var sy = params.scale;\n\
             if (params.uniform == 0.0) { sy = params.scale_y; }\n\
-            let x = p.x * params.scale;\n\
-            let y = p.y * sy;\n\
             let ph = params.rotation / 360.0;\n\
             let c = ns_sin_cycles(ph + 0.25);\n\
             let s = ns_sin_cycles(ph);\n\
-            return vec2<f32>(x * c - y * s, x * s + y * c);\n\
+            let x = p.x * c - p.y * s;\n\
+            let y = p.x * s + p.y * c;\n\
+            return vec2<f32>(x * params.scale, y * sy);\n\
         }\n\
         fn ns_delta(i: u32) -> f32 {\n\
             let p = ns_space(read_in_P(i));\n\

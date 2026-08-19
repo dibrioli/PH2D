@@ -288,20 +288,34 @@ impl FieldSpace {
 
     /// O ponto `(x, y)` do mundo, no espaço do campo.
     ///
-    /// ⚠️ **Escala PRIMEIRO, roda depois.** A outra ordem faria o `scale_y` esticar
-    /// um eixo que a rotação já virou, e aí girar o campo mudaria também a forma
-    /// dele — dois knobs a responder pela mesma coisa.
+    /// ⚠️ **RODA primeiro, escala depois — e a ordem contrária foi ESCRITA, DEFENDIDA
+    /// num comentário e REPROVADA pelo olho do Enio.** Ela dizia *"o `scale_y` não
+    /// pode esticar um eixo que a rotação já virou"*, e é falsa. A geometria:
     ///
-    /// ⚠️ **Quem GUARDA esta ordem é o gate de paridade CPU×GPU**, e a mutação
-    /// mediu-o: inverter as duas linhas aqui **não** move nenhum gate desta crate
-    /// (qualquer ordem é *um* espaço, e os gates de rotação e de eixo continuam
-    /// verdes) — o que reprova é
-    /// `the_noise_field_space_matches_the_cpu_on_the_device`, porque o corpo WGSL
-    /// tem a ordem escrita do outro lado. *Uma lei sem gate próprio às vezes já tem
-    /// um dono; o que ela não pode é não ter nenhum.*
+    /// As feições do campo são a **pré-imagem** de manchas redondas. Com
+    /// `M = R·S` (escala primeiro) elas são `S⁻¹R⁻¹(círculo)`, e os eixos dessa
+    /// elipse são os de `S⁻¹` — **os eixos do MUNDO**. Ou seja: com o campo
+    /// anisotrópico, a rotação **não gira as faixas**; ela só troca *qual* pedaço de
+    /// ruído se vê. Medido na cena `=60`: a banda rodada-e-esticada saía com faixas
+    /// horizontais idênticas às da só-esticada (variação `→ 0,0077` contra
+    /// `↓ 0,0218`). *Um knob que não move o que promete é um knob que mente.*
+    ///
+    /// Com `M = S·R`, `M⁻¹ = R⁻¹S⁻¹` e os eixos da elipse saem girados de `−θ` — as
+    /// faixas viram, que é o que «rodar o campo» quer dizer.
+    ///
+    /// ⚠️ **E as outras três bandas não mudam:** com escala uniforme `S = s·I`
+    /// **comuta** com `R`, então o caso isotrópico é o mesmo nas duas ordens; e sem
+    /// rotação não há o que ordenar.
+    ///
+    /// ⚠️ **Quem guarda esta ordem são DOIS gates, e eles medem coisas diferentes:**
+    /// `the_fourth_band_runs_its_stripes_on_the_diagonal` (a direção das faixas — o
+    /// que o olho lê) e `the_noise_field_space_matches_the_cpu_on_the_device` (que as
+    /// duas cópias da lei concordam). O segundo sozinho deixou a ordem errada passar,
+    /// porque *paridade prova que os dois lados fazem o mesmo, nunca que o mesmo é
+    /// certo*.
     fn at(&self, px: f32, py: f32) -> (f32, f32) {
-        let (x, y) = (px * self.sx, py * self.sy);
-        (x * self.cos - y * self.sin, x * self.sin + y * self.cos)
+        let (x, y) = (px * self.cos - py * self.sin, px * self.sin + py * self.cos);
+        (x * self.sx, y * self.sy)
     }
 }
 

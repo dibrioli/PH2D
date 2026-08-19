@@ -122,7 +122,7 @@ ausente.
 
 ---
 
-## §4 — As DOZE LEIS que esta linha pagou para aprender
+## §4 — As TREZE LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -180,15 +180,25 @@ são estilo.
    o passo fixo enchia os nove. *O que se mede é ESTRUTURA, não cobertura.* Cura: um jitter
    determinístico dentro do balde (4 de 45 na pior diagonal), com o passo fixo como **controle
    negativo dentro do próprio gate**.
-10. ⛔ **OLHE o arquivo antes de escrever nele.** Nesta janela eu sobrescrevi a cena `=51`
+10. **PARIDADE PROVA QUE OS DOIS LADOS FAZEM O MESMO, NUNCA QUE O MESMO É CERTO.** A ordem
+    do espaço do `motion.noise` (`escala→rotação`) foi escrita, **defendida num comentário** e
+    coberta pelo gate de paridade CPU×GPU — e estava **errada**: com `M = R·S` as feições do
+    mundo são `S⁻¹R⁻¹(círculo)`, cujos eixos são os do MUNDO, então **a rotação não gira as
+    faixas** de um campo anisotrópico. O olho do Enio apanhou (*"não há faixas diagonais"*);
+    a paridade nunca poderia. ⚠️ **E o gate «próprio» que existia dava falso conforto**: ele
+    construía as duas ordens à mão e provava que elas **diferem** — verdade, e inútil, porque
+    nunca perguntou **qual** delas o nó embarcava. *Um gate que prova que duas escolhas são
+    distintas não defende a escolha.* Cura: um gate que mede a **direção das faixas**, que é
+    a afirmação que o produto faz.
+11. ⛔ **OLHE o arquivo antes de escrever nele.** Nesta janela eu sobrescrevi a cena `=51`
    inteira ao criar um módulo com um nome que já existia (`…_demos_space.rs`). Recuperou-se
    com `git checkout --`, mas só porque a árvore estava limpa. *Um `ls` antes do `Write`
    custa nada.*
-11. ⚠️ **A suíte inteira é um relógio.** Duas corridas marcaram falhas que eram **carga**
+12. ⚠️ **A suíte inteira é um relógio.** Duas corridas marcaram falhas que eram **carga**
    (`the_cost_of_depth_is_linear_not_explosive` e
    `the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke`), com `load average` em 14,8.
    Sozinhas passam. *Nada desta workstation vale acima de `load ~5`.*
-12. **A porta de tempo é uma COLUNA, não um escopo** — ela não herda a recusa
+13. **A porta de tempo é uma COLUNA, não um escopo** — ela não herda a recusa
     `CookError::SequentialInTimeScope`. Se acrescentar uma porta a outro nó, o gate
     `the_time_port_is_a_column_not_a_cook_scope` é o molde.
 

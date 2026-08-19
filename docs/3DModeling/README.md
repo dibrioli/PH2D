@@ -21,7 +21,7 @@ são `min` e um operador sobre dois números, e o **raio do fillet fica editáve
 | Wave | Estado | O que ficou |
 |---|---|---|
 | **W0** — spike + imagem | ✅ | Os dois arredondamentos exatos a **0,00 %**; vértice triplo fecha; JIT **5,3×**; a aresta viva da **malha** serrilha (item aberto, mecanismo nomeado) |
-| **W1** — documento + ADR | 🔶 | [ADR-0161](../architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md) · [`ph2d-field`](../../crates/ph2d-field/) (o documento, 10 gates) · [`ph2d-field-eval`](../../crates/ph2d-field-eval/) (a ponte, 9 gates). **Falta:** a ponte ECS |
+| **W1** — documento + ADR | ✅ | [ADR-0161](../architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md) · [`ph2d-field`](../../crates/ph2d-field/) (o documento, 12 gates) · [`ph2d-field-eval`](../../crates/ph2d-field-eval/) (a avaliação, 9 gates) · [`ph2d-field-ecs`](../../crates/ph2d-field-ecs/) (a ponte, 4 gates + 2 no shell). **Um objeto de campo é salvo e desfeito** |
 | **W2** — ver a coisa | 🔶 | [`ph2d-field-render`](../../crates/ph2d-field-render/) (o traçado, 6 gates) + o smoke no shell. **Medido: 25 ms a 640×480**, 14× o serial. **Falta:** órbita por mouse e perspectiva |
 
 **Smoke (roda agora):**

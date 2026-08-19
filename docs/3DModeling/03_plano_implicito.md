@@ -288,9 +288,27 @@ ter opinião sobre o canvas que ele um dia vai ser.
 O resto da W2 (malha grossa ao mexer, fina ao parar) só volta a fazer sentido para **exportação**:
 a tela não passa pela malha (§5.3).
 
-### W3 — Os perfis vêm do editor vetorial
+### W3 — Os perfis vêm do editor vetorial ✅ **FEITA (2026-08-19)**
 Distância 2D com sinal de path (§5.2), `extrude` e `revolve`. **É aqui que o fluxo do MoI renasce**,
 com a caneta que a casa já tem.
+
+Medições, decisões e os três vermelhos que ensinaram alguma coisa:
+[`04_resultados_perfis.md`](04_resultados_perfis.md). O resumo:
+
+- O sinal (winding number) vira árvore **sem `if` e sem divisão** — `dir·cross > 0` casa os dois
+  sentidos de cruzamento num único `compare`.
+- Dois gates de **oráculo independente**: um `n`-gono extrudado é o `Cylinder` analítico, um `n`-gono
+  revolvido é o `Torus` analítico — e erram pela **flecha exata** que a geometria prevê.
+- ⭐ O arredondamento das arestas **verticais** vem do *corner widget* do editor vetorial: o
+  cozimento parte de `VecPath::cooked()`. *Uma quina, um dono.*
+- ⚠️ O `Revolve` gira em torno de **Y** (o `Cylinder`/`Torus` são simétricos em Z), porque o eixo tem
+  de estar **dentro** do plano de desenho do perfil. A divergência é decisão, e tem gate.
+- Custo **linear** nas arestas (a soma do winding não poda por intervalo): orçamento medido de
+  **~64 arestas** por perfil a 640×480, e `TOLERANCE_RATIO = 1e-3` cai em ~50. As cenas de smoke
+  saem com **36** e **40**.
+- ⛔ **Gatilho medido e NÃO construído:** acima de ~128 arestas (contorno de letra, SVG importado) o
+  traçado sai do orçamento. As duas direções — hierarquia espacial dentro da árvore, e GPU — estão
+  nomeadas em [`04_resultados_perfis.md`](04_resultados_perfis.md) §7, sem uma linha escrita.
 
 ### W4 — As operações e o painel
 União/diferença/intersecção **com raio por operação**, casca, offset, draft, padrões. Painel de abas.

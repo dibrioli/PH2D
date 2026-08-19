@@ -27,6 +27,10 @@
 //!
 //! [ADR-0161]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 
+pub mod profile;
+
+pub use profile::{FillRule, Profile, ProfileError};
+
 use serde::{Deserialize, Serialize};
 
 /// Versão do formato serializado (**HR-14**: save format é versionado e migrável).
@@ -35,8 +39,11 @@ use serde::{Deserialize, Serialize};
 /// lados sem saber que são o mesmo degrau. Ao mexer, **conte**, não escolha
 /// ([`CLAUDE.md §5.0`]).
 ///
+/// v2: as primitivas de **perfil** ([`Primitive::Extrude`] / [`Primitive::Revolve`]) — o desenho do
+/// editor vetorial virando sólido.
+///
 /// [`CLAUDE.md §5.0`]: ../../../CLAUDE.md
-pub const FIELD_DOC_VERSION: u32 = 1;
+pub const FIELD_DOC_VERSION: u32 = 2;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -48,7 +55,12 @@ pub struct NodeId(pub u32);
 /// **deslocamento da superfície** com a fonte encolhida na mesma medida (ADR-0161 §3). É por isso
 /// que ele vive na primitiva e não numa operação: arredondar a aresta de uma caixa não envolve
 /// segunda forma nenhuma.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+// ⚠️ **Sem `Copy` desde a v2**, e a razão é `Extrude`: um perfil é uma lista de pontos, e um tipo
+// que se copia por bit não pode conter um `Vec`. A alternativa — pôr os perfis numa segunda arena e
+// referi-los por índice — foi recusada: ela mantinha o `Copy` e comprava, em troca, uma segunda
+// classe inteira de erro (índice pendente), que é exatamente o que a arena de nós existe para
+// tornar impossível. Uma invariante, um lugar.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Primitive {
     /// Caixa de meias-extensões `half`, com as 12 arestas arredondadas em `round`.
     Box { half: [f32; 3], round: f32 },
@@ -63,6 +75,32 @@ pub enum Primitive {
     },
     /// Toro no plano XY: `major` é o raio do anel, `minor` a espessura do tubo.
     Torus { major: f32, minor: f32 },
+    /// **O perfil puxado ao longo de Z**, de `−half_height` a `+half_height`, com o **aro** (a
+    /// aresta entre a parede e a tampa) arredondado em `round`.
+    ///
+    /// ⚠️ As arestas **verticais** — as quinas do próprio contorno — não são assunto deste `round`:
+    /// elas são o que o perfil desenhou. Quem as quer redondas arredonda a quina **no editor
+    /// vetorial**, e o raio vivo de lá chega aqui já cozido. *Uma quina, um dono.*
+    Extrude {
+        profile: Profile,
+        half_height: f32,
+        round: f32,
+    },
+    /// **O perfil girado em torno do eixo Y.** O `x` do perfil é a distância ao eixo e o `y` é a
+    /// altura.
+    ///
+    /// ⚠️ **Y, e não Z — de propósito, e ao contrário do [`Primitive::Cylinder`] e do
+    /// [`Primitive::Torus`], que são simétricos em Z.** A regra que manda aqui não é a coerência
+    /// entre primitivas, é a coerência com o **plano de desenho**: o perfil vem do editor vetorial,
+    /// que desenha em XY, e o eixo de uma revolução tem de estar **dentro** do plano do perfil. A
+    /// extrusão sai do plano (por Z), a revolução gira em torno de uma reta do plano (o Y). Quem
+    /// quiser outro eixo roda o nó — é para isso que o [`Xform`] existe.
+    ///
+
+    /// ⚠️ O perfil **não pode cruzar o eixo** (`x < 0`): a superfície de revolução de um contorno
+    /// que cruza o eixo auto-intersecta, e o campo que sai disso deixa de ser uma distância. O
+    /// documento recusa ([`FieldError::ProfileCrossesAxis`]) em vez de produzir a forma errada.
+    Revolve { profile: Profile },
 }
 
 /// O **caráter** do arredondamento de uma operação.
@@ -193,6 +231,9 @@ pub enum FieldError {
     RoundTooLarge { node: u32, round: f32, limit: f32 },
     /// Escala não-uniforme, ou não-finita (ver [`Xform::scale`]).
     BadScale { node: u32 },
+    /// O perfil de um [`Primitive::Revolve`] tem ponto com `x < 0` — a superfície de revolução
+    /// auto-intersecta e o campo deixa de ser uma distância.
+    ProfileCrossesAxis { node: u32, min_x: f32 },
 }
 
 impl FieldDoc {
@@ -294,14 +335,14 @@ impl FieldDoc {
                         }
                     }
                 }
-                NodeKind::Leaf(p) => validate_primitive(idx, *p)?,
+                NodeKind::Leaf(p) => validate_primitive(idx, p)?,
             }
         }
         Ok(())
     }
 }
 
-fn validate_primitive(idx: u32, p: Primitive) -> Result<(), FieldError> {
+fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldError> {
     let positive = |v: f32, what: &'static str| -> Result<(), FieldError> {
         if !v.is_finite() || v <= 0.0 {
             Err(FieldError::NonPositive { node: idx, what })
@@ -320,7 +361,7 @@ fn validate_primitive(idx: u32, p: Primitive) -> Result<(), FieldError> {
             Ok(())
         }
     };
-    match p {
+    match *p {
         Primitive::Box { half, round } => {
             for h in half {
                 positive(h, "half")?;
@@ -344,6 +385,29 @@ fn validate_primitive(idx: u32, p: Primitive) -> Result<(), FieldError> {
         Primitive::Torus { major, minor } => {
             positive(major, "major")?;
             positive(minor, "minor")
+        }
+        Primitive::Extrude {
+            profile: _,
+            half_height,
+            round,
+        } => {
+            positive(half_height, "half_height")?;
+            // ⚠️ O limite é a meia-altura, e **só** ela. Um `round` maior do que a meia-largura do
+            // perfil não é um erro: a receita (encolher a fonte, depois deslocar) é uma **abertura
+            // morfológica**, e o que ela faz a um pescoço mais fino que `2·round` é exatamente o
+            // que arredondar com esse raio deveria fazer — o pescoço desaparece. O campo continua a
+            // ser um limite conservador de distância; a forma é a certa.
+            //
+            // Na altura não é assim: com `round ≥ half_height` o termo axial inverte de sinal e o
+            // sólido deixa de existir — isso não é abertura, é uma forma que ninguém pediu.
+            round_fits(round, half_height)
+        }
+        Primitive::Revolve { ref profile } => {
+            let min_x = profile.bounds().0[0];
+            if min_x < 0.0 {
+                return Err(FieldError::ProfileCrossesAxis { node: idx, min_x });
+            }
+            Ok(())
         }
     }
 }

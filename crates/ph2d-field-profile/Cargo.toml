@@ -1,0 +1,35 @@
+[package]
+name = "ph2d-field-profile"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A COSTURA entre o editor vetorial e o modelador 3D (ADR-0161, W3): um
+# `VecPath` desenhado com a caneta da casa vira o `Profile` de onde saem
+# `Extrude` e `Revolve`.
+#
+# ⚠️ **Ela existe para que nenhuma das duas pontas conheça a outra.** O
+# documento do modelador (`ph2d-field`) não pode depender do documento do editor
+# de vetores — se dependesse, um arquivo salvo do modelador passaria a depender
+# do schema do outro módulo, e um quebraria o outro. Toda a conversão (e só ela)
+# mora aqui.
+[dependencies]
+# O destino: o documento do modelador.
+ph2d-field = { path = "../ph2d-field" }
+
+# A fonte: o documento do editor vetorial. A dependência aponta nesta direção e
+# NUNCA na inversa.
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+
+# O achatamento. `kurbo::flatten` é o método de Raph Levien (subdivisão em
+# quadráticas com passo fracionário), que produz **menos segmentos para o mesmo
+# erro** do que a fórmula de Wang — e o nº de segmentos é literalmente o custo do
+# traçado (~26 nós de árvore por aresta, avaliados por pixel; medido em
+# `docs/3DModeling/01_resultados_spike.md`). Mesma versão que a
+# `ph2d-vec-boolean` já usa.
+kurbo = "0.13"

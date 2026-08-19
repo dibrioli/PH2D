@@ -5487,6 +5487,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-field-profile"
+version = "0.0.0"
+dependencies = [
+ "kurbo 0.13.0",
+ "ph2d-field",
+ "ph2d-vec-scene",
+]
+
+[[package]]
 name = "ph2d-field-render"
 version = "0.0.0"
 dependencies = [
@@ -5704,6 +5713,7 @@ dependencies = [
  "ph2d-eval-motion",
  "ph2d-field",
  "ph2d-field-ecs",
+ "ph2d-field-profile",
  "ph2d-field-render",
  "ph2d-flip",
  "ph2d-flip-colorize",

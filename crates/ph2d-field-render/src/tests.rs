@@ -230,3 +230,51 @@ fn measure_trace_cost() {
         }
     }
 }
+
+/// **Quanto custa traçar um PERFIL** — em função do número de arestas (W3).
+///
+/// ⚠️ É este número que escolhe a tolerância de cozimento, e não o contrário: a tolerância decide
+/// quantas arestas o perfil tem, e cada aresta é ~26 nós avaliados **por pixel**. Um perfil é a
+/// única primitiva do módulo cujo custo o autor controla sem saber.
+///
+/// `#[ignore]`: medição.
+#[test]
+#[ignore]
+fn measure_profile_trace_cost() {
+    println!("arestas |   serial | paralelo | pixels");
+    for n in [8_usize, 16, 32, 64, 128, 256, 512] {
+        let contour: Vec<[f32; 2]> = (0..n)
+            .map(|i| {
+                let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+                [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+            })
+            .collect();
+        let profile = ph2d_field::Profile::new(vec![contour], ph2d_field::FillRule::NonZero, 1e-3)
+            .expect("perfil");
+        let doc = FieldDoc::new(
+            vec![ph2d_field_eval::leaf(
+                Primitive::Extrude {
+                    profile,
+                    half_height: 0.4,
+                    round: 0.06,
+                },
+                Xform::IDENTITY,
+            )],
+            NodeId(0),
+        )
+        .expect("extrusão");
+
+        let mut row = format!("{n:7} |");
+        let mut hits = 0;
+        for parallel in [false, true] {
+            let t0 = std::time::Instant::now();
+            let g = trace_with_threads(&doc, &Orbit::default(), 640, 480, parallel);
+            hits = g.hits();
+            row.push_str(&format!(
+                " {:6.1} ms |",
+                t0.elapsed().as_secs_f64() * 1000.0
+            ));
+        }
+        println!("{row} {hits}");
+    }
+}

@@ -318,6 +318,9 @@ ph2d-field-render = { path = "../../crates/ph2d-field-render" }
 ph2d-field = { path = "../../crates/ph2d-field" }
 # ADR-0161 — a ponte ECS: e ela que faz um objeto de campo ser salvo e desfeito.
 ph2d-field-ecs = { path = "../../crates/ph2d-field-ecs" }
+# ADR-0161 W3 — a costura com o editor vetorial: um `VecPath` desenhado com a
+# caneta da casa vira o perfil de onde saem `Extrude` e `Revolve`.
+ph2d-field-profile = { path = "../../crates/ph2d-field-profile" }
 # `half`: SO para converter os texels f16 de um matcap da casa
 # (`ph2d-mesh-render::matcap::decode`) em f32 linear, no smoke do campo. Ja esta
 # no `Cargo.lock` — e aresta, nao pacote novo.

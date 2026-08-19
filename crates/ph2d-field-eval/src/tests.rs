@@ -329,3 +329,349 @@ fn the_exported_mesh_sits_on_the_surface() {
         errs[1]
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// W3 — os perfis, e as duas formas que eles geram
+//
+// ⚠️ O gate decisivo desta wave é o de **oráculo independente**: um polígono regular extrudado tem
+// de ser o cilindro que ele aproxima, e um polígono regular revolvido tem de ser o toro que ele
+// traça. Os dois lados são código completamente diferente — a fórmula analítica de `ops.rs` e a
+// soma sobre arestas de `profile.rs` —, então concordarem não é tautologia.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+use ph2d_field::{FillRule, Profile};
+
+/// Polígono regular de `n` lados **inscrito** no círculo de raio `r`, centrado em `c`, com o
+/// vértice 0 no ângulo 0.
+///
+/// Inscrito, e não circunscrito, porque é o que torna o erro **derivável**: a flecha (sagita)
+/// `r·(1 − cos(π/n))` é exatamente o quanto o meio da aresta fica aquém do círculo.
+fn ngon(n: usize, r: f64, c: [f64; 2]) -> Vec<[f32; 2]> {
+    (0..n)
+        .map(|i| {
+            let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+            [(c[0] + r * a.cos()) as f32, (c[1] + r * a.sin()) as f32]
+        })
+        .collect()
+}
+
+/// A flecha: o quanto o meio da aresta de um `n`-gono inscrito fica aquém do círculo de raio `r`.
+fn sagitta(n: usize, r: f64) -> f64 {
+    r * (1.0 - (std::f64::consts::PI / (n as f64)).cos())
+}
+
+fn profile_of(contours: Vec<Vec<[f32; 2]>>, fill: FillRule) -> Profile {
+    Profile::new(contours, fill, 1e-3).expect("perfil de teste é válido")
+}
+
+fn doc_of(p: Primitive) -> FieldDoc {
+    doc_of_posed(p, Xform::IDENTITY)
+}
+
+fn doc_of_posed(p: Primitive, x: Xform) -> FieldDoc {
+    FieldDoc::new(vec![leaf(p, x)], NodeId(0)).expect("documento de uma folha")
+}
+
+/// ⭐ **O oráculo independente da extrusão.** Um `n`-gono inscrito, puxado, TEM de ser o cilindro
+/// que ele aproxima — e tem de errar exatamente a flecha, nem mais nem menos.
+///
+/// Três afirmações, e cada uma mata um bug diferente:
+///
+/// 1. no **vértice**, sobre o círculo, o campo é `0` — a superfície passa onde o perfil passa;
+/// 2. no **meio da aresta**, sobre o círculo, o campo é `+sagita` — o erro é o previsto pela
+///    geometria, e não um número qualquer;
+/// 3. sobre uma grelha 3D inteira, `|extrusão − cilindro| ≤ sagita`, o que é a distância de
+///    Hausdorff entre os dois sólidos. Um sinal trocado em qualquer região reprova aqui.
+#[test]
+fn an_extruded_polygon_is_the_cylinder_it_approximates() {
+    let (r, h) = (0.5_f64, 0.4_f64);
+    for n in [8_usize, 16, 32] {
+        let prof = profile_of(vec![ngon(n, r, [0.0, 0.0])], FillRule::NonZero);
+        let f = Field::new(&doc_of(Primitive::Extrude {
+            profile: prof,
+            half_height: h as f32,
+            round: 0.0,
+        }));
+        let s = sagitta(n, r);
+
+        // (1) e (2): sobre o círculo, no vértice e no meio da aresta.
+        let step = std::f64::consts::TAU / (n as f64);
+        for k in 0..n {
+            let at_angle = |a: f64| f.at(r * a.cos(), r * a.sin(), 0.0);
+            let vertex = at_angle(step * (k as f64));
+            assert!(
+                vertex.abs() < EPS,
+                "n={n}: o vértice {k} tem de estar SOBRE a superfície, e mediu {vertex:e}"
+            );
+            let middle = at_angle(step * (k as f64 + 0.5));
+            assert!(
+                (middle - s).abs() < EPS,
+                "n={n}: o meio da aresta {k} tem de ficar a exatamente a flecha ({s:.6}) do \
+                 círculo, e mediu {middle:.6}"
+            );
+        }
+
+        // (3) o oráculo, sobre uma grelha.
+        let cyl = Field::new(&doc_of(Primitive::Cylinder {
+            radius: r as f32,
+            half_height: h as f32,
+            round: 0.0,
+        }));
+        let mut worst = 0.0_f64;
+        for i in -6..=6 {
+            for j in -6..=6 {
+                for k in -6..=6 {
+                    let (x, y, z) = (
+                        f64::from(i) * 0.12,
+                        f64::from(j) * 0.12,
+                        f64::from(k) * 0.12,
+                    );
+                    worst = worst.max((f.at(x, y, z) - cyl.at(x, y, z)).abs());
+                }
+            }
+        }
+        assert!(
+            worst <= s + EPS,
+            "n={n}: o polígono e o círculo distam no máximo a flecha ({s:.6}); a pior amostra \
+             deu {worst:.6}"
+        );
+    }
+}
+
+/// ⭐ **O oráculo independente da revolução**, e ele prova mais do que o da extrusão: a
+/// substituição `x → √(x²+z²)` tem de dar a distância EXATA, não uma aproximação — e o toro
+/// analítico é quem diz.
+#[test]
+fn a_revolved_polygon_is_the_torus_it_traces() {
+    let (major, minor) = (0.6_f64, 0.2_f64);
+    for n in [16_usize, 32, 64] {
+        let prof = profile_of(vec![ngon(n, minor, [major, 0.0])], FillRule::NonZero);
+        let f = Field::new(&doc_of(Primitive::Revolve { profile: prof }));
+        // ⚠️ **Os dois eixos NÃO são o mesmo, e é de propósito.** O `Torus` da casa tem o anel no
+        // plano XY (eixo de revolução = Z), como o `Cylinder`; o `Revolve` gira em torno de **Y**,
+        // porque o plano de desenho do perfil é o XY e o eixo tem de estar DENTRO dele (ver a nota
+        // de `Primitive::Revolve`). Comparar os dois exige pôr o toro de pé: 90° em torno de X leva
+        // o anel de XY para XZ.
+        //
+        // Este quarto de volta é o gate: sem ele o erro medido é da ORDEM DA PEÇA (0,83 numa peça
+        // de raio 0,8), e um erro dessa magnitude é a assinatura de dois eixos diferentes — não de
+        // uma fórmula errada.
+        let k = std::f64::consts::FRAC_1_SQRT_2 as f32;
+        let torus = Field::new(&doc_of_posed(
+            Primitive::Torus {
+                major: major as f32,
+                minor: minor as f32,
+            },
+            Xform {
+                rotation: [k, 0.0, 0.0, k],
+                ..Xform::IDENTITY
+            },
+        ));
+        let s = sagitta(n, minor);
+
+        // O vértice 0 do perfil está em (major + minor, 0); girado, ele é o ponto
+        // (major + minor, 0, 0) — que tem de estar SOBRE a superfície.
+        let on = f.at(major + minor, 0.0, 0.0);
+        assert!(
+            on.abs() < EPS,
+            "n={n}: o vértice do perfil tem de sobreviver à revolução, e mediu {on:e}"
+        );
+
+        let mut worst = 0.0_f64;
+        for i in -8..=8 {
+            for j in -8..=8 {
+                for k in -8..=8 {
+                    let (x, y, z) = (
+                        f64::from(i) * 0.13,
+                        f64::from(j) * 0.13,
+                        f64::from(k) * 0.13,
+                    );
+                    worst = worst.max((f.at(x, y, z) - torus.at(x, y, z)).abs());
+                }
+            }
+        }
+        assert!(
+            worst <= s + EPS,
+            "n={n}: a revolução do polígono e o toro distam no máximo a flecha ({s:.6}); a pior \
+             amostra deu {worst:.6}"
+        );
+        assert!(
+            worst > 0.1 * s,
+            "n={n}: um erro de {worst:e} contra uma flecha de {s:e} é BOM DEMAIS — a grelha não \
+             está a tocar a superfície, e o gate acima estaria a passar sem medir nada"
+        );
+    }
+}
+
+/// ⭐ **O caso que separa um sinal certo de um sinal por acaso: o entalhe de um L.**
+///
+/// O ponto `(1,5 · 1,5)` está **fora** da peça e cercado por ela em dois lados. Uma regra de sinal
+/// tirada da aresta mais próxima erra ali; o winding number acerta. E como as arestas são todas
+/// eixo-alinhadas, a distância é **exata e conhecida**, não uma tolerância.
+#[test]
+fn the_sign_survives_the_notch_of_a_concave_profile() {
+    // (0,0) (2,0) (2,1) (1,1) (1,2) (0,2) — anti-horário, área 3.
+    let l = vec![
+        [0.0_f32, 0.0],
+        [2.0, 0.0],
+        [2.0, 1.0],
+        [1.0, 1.0],
+        [1.0, 2.0],
+        [0.0, 2.0],
+    ];
+    for fill in [FillRule::NonZero, FillRule::EvenOdd] {
+        let f = Field::new(&doc_of(Primitive::Extrude {
+            profile: profile_of(vec![l.clone()], fill),
+            half_height: 10.0,
+            round: 0.0,
+        }));
+        // Dentro do braço de baixo, e dentro do braço da esquerda: −0,5 nos dois.
+        for (x, y) in [(0.5, 0.5), (1.5, 0.5), (0.5, 1.5)] {
+            let v = f.at(x, y, 0.0);
+            assert!(
+                (v + 0.5).abs() < EPS,
+                "{fill:?}: ({x},{y}) está dentro, a 0,5 da parede, e mediu {v:.6}"
+            );
+        }
+        // ⭐ O entalhe: FORA, apesar de ter peça a oeste e a sul.
+        let notch = f.at(1.5, 1.5, 0.0);
+        assert!(
+            (notch - 0.5).abs() < EPS,
+            "{fill:?}: o entalhe (1,5 · 1,5) está FORA, a 0,5 da peça, e mediu {notch:.6}"
+        );
+        // A quina reflexa é superfície.
+        let corner = f.at(1.0, 1.0, 0.0);
+        assert!(
+            corner.abs() < EPS,
+            "{fill:?}: a quina reflexa é superfície, e mediu {corner:e}"
+        );
+    }
+}
+
+/// ⚠️ **A aresta de FECHO existe** — e este gate a mede onde a ausência dela é visível.
+///
+/// Num triângulo `(0,0) (1,0) (0,1)`, a aresta que fecha é a de `x = 0`. Um ponto a oeste dela dista
+/// 0,25; se o laço esquecesse o segmento último→primeiro, o mais próximo passaria a ser um
+/// **vértice**, a 0,559 — mais que o dobro. É um bug clássico e ele não dá erro nenhum.
+#[test]
+fn the_closing_edge_of_a_contour_exists() {
+    let tri = vec![[0.0_f32, 0.0], [1.0, 0.0], [0.0, 1.0]];
+    let f = Field::new(&doc_of(Primitive::Extrude {
+        profile: profile_of(vec![tri], FillRule::NonZero),
+        half_height: 10.0,
+        round: 0.0,
+    }));
+    let v = f.at(-0.25, 0.5, 0.0);
+    assert!(
+        (v - 0.25).abs() < EPS,
+        "sem a aresta de fecho isto mede ~0,559 (a distância a um vértice); mediu {v:.6}"
+    );
+}
+
+/// ⭐ **As duas regras de preenchimento existem, e discordam onde têm de discordar.**
+///
+/// Dois quadrados concêntricos com a **mesma** orientação: sob `EvenOdd` o de dentro é buraco (a
+/// paridade alterna), sob `NonZero` é sólido (o enrolamento é 2). Um gate que só testasse a regra
+/// default passaria com a outra por implementar — e o sintoma seria um buraco que aparece cheio,
+/// em silêncio.
+#[test]
+fn the_two_fill_rules_disagree_exactly_where_the_winding_says_so() {
+    let square = |a: f32| vec![[-a, -a], [a, -a], [a, a], [-a, a]];
+    let both_ccw = vec![square(1.0), square(0.5)];
+
+    let hole = Field::new(&doc_of(Primitive::Extrude {
+        profile: profile_of(both_ccw.clone(), FillRule::EvenOdd),
+        half_height: 10.0,
+        round: 0.0,
+    }));
+    let solid = Field::new(&doc_of(Primitive::Extrude {
+        profile: profile_of(both_ccw, FillRule::NonZero),
+        half_height: 10.0,
+        round: 0.0,
+    }));
+    let (h, s) = (hole.at(0.0, 0.0, 0.0), solid.at(0.0, 0.0, 0.0));
+    assert!(
+        (h - 0.5).abs() < EPS,
+        "even-odd: o miolo é BURACO, a 0,5 da parede; mediu {h:.6}"
+    );
+    assert!(
+        (s + 0.5).abs() < EPS,
+        "non-zero com as duas voltas no mesmo sentido: o miolo é SÓLIDO; mediu {s:.6}"
+    );
+
+    // E sob `NonZero`, inverter o contorno de dentro reproduz o buraco — que é como um compound
+    // path desenhado à mão o exprime.
+    let mut inner_cw = square(0.5);
+    inner_cw.reverse();
+    let carved = Field::new(&doc_of(Primitive::Extrude {
+        profile: profile_of(vec![square(1.0), inner_cw], FillRule::NonZero),
+        half_height: 10.0,
+        round: 0.0,
+    }));
+    let c = carved.at(0.0, 0.0, 0.0);
+    assert!(
+        (c - 0.5).abs() < EPS,
+        "non-zero com o contorno de dentro invertido: buraco; mediu {c:.6}"
+    );
+}
+
+/// ⭐ **O aro da extrusão entrega o raio pedido**, pelo mesmo par de pontos independentes que os
+/// gates do arredondamento externo usam: o centro do arco (onde o campo vale `−r`) e um ponto do
+/// próprio arco (onde vale `0`).
+#[test]
+fn an_extruded_rim_delivers_the_radius_asked() {
+    let (a, h) = (0.5_f64, 0.4_f64);
+    for r in [0.05_f64, 0.1, 0.2] {
+        let square = vec![
+            [-(a as f32), -(a as f32)],
+            [a as f32, -(a as f32)],
+            [a as f32, a as f32],
+            [-(a as f32), a as f32],
+        ];
+        let f = Field::new(&doc_of(Primitive::Extrude {
+            profile: profile_of(vec![square], FillRule::NonZero),
+            half_height: h as f32,
+            round: r as f32,
+        }));
+        // O centro do arco do aro, na secção (x, z): fica DENTRO, a `r` da superfície.
+        let centre = f.at(a - r, 0.0, h - r);
+        assert!(
+            (centre + r).abs() < EPS,
+            "r={r}: o centro do arco do aro vale −r; mediu {centre:.6}"
+        );
+        // E um ponto do arco, a 45°, é superfície.
+        let k = std::f64::consts::FRAC_1_SQRT_2;
+        let on = f.at(a - r + r * k, 0.0, h - r + r * k);
+        assert!(
+            on.abs() < EPS,
+            "r={r}: o ponto a 45° do aro é superfície; mediu {on:e}"
+        );
+        // ⚠️ E o raio NÃO encolheu a peça: a parede continua em `x = a`.
+        let wall = f.at(a, 0.0, 0.0);
+        assert!(
+            wall.abs() < EPS,
+            "r={r}: arredondar o aro não pode mover a parede; mediu {wall:e}"
+        );
+    }
+}
+
+/// O tamanho da árvore em função do número de arestas — **é ele que manda no custo do traçado**.
+///
+/// `#[ignore]`: é medição, não afirmação. Roda-se quando se quer o número.
+#[test]
+#[ignore]
+fn measure_profile_tree_size() {
+    println!("arestas | nós da árvore | nós por aresta");
+    for n in [8_usize, 16, 32, 64, 128, 256] {
+        let prof = profile_of(vec![ngon(n, 0.5, [0.0, 0.0])], FillRule::NonZero);
+        let tree = compile(&doc_of(Primitive::Extrude {
+            profile: prof,
+            half_height: 0.4,
+            round: 0.05,
+        }));
+        let mut ctx = fidget::context::Context::new();
+        let _ = ctx.import(&tree);
+        let len = ctx.len();
+        println!("{n:7} | {len:13} | {:.1}", len as f64 / n as f64);
+    }
+}

@@ -241,3 +241,198 @@ fn union_all_is_identity_for_one_and_nothing_for_none() {
         .expect("válido");
     assert_eq!(same, one);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// W3 — o perfil
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+fn unit_square() -> Vec<[f32; 2]> {
+    vec![[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]]
+}
+
+fn a_profile() -> Profile {
+    Profile::new(vec![unit_square()], FillRule::NonZero, 1e-3).expect("quadrado")
+}
+
+/// ⚠️ **O ponto de fecho repetido é REMOVIDO.**
+///
+/// Quem constrói uma polilinha fechada à mão repete o primeiro ponto no fim — é o hábito de todo
+/// formato de desenho. Aqui isso seria uma aresta de comprimento **zero**, e a distância
+/// ponto-segmento divide pelo comprimento ao quadrado: `0/0`, e o campo inteiro vira `NaN` a partir
+/// dali. O construtor limpa em vez de recusar, porque a entrada é legítima — só a representação é
+/// que não.
+#[test]
+fn a_repeated_closing_point_is_removed_not_kept() {
+    let mut with_closing = unit_square();
+    with_closing.push(with_closing[0]);
+    let p = Profile::new(vec![with_closing], FillRule::NonZero, 1e-3).expect("quadrado fechado");
+    assert_eq!(
+        p.segment_count(),
+        4,
+        "o ponto de fecho repetido tem de sair: {:?}",
+        p.contours()[0]
+    );
+}
+
+/// Pontos consecutivos iguais no meio do contorno também saem — mesma razão.
+#[test]
+fn consecutive_duplicate_points_are_removed() {
+    let mut dupes = vec![[-1.0_f32, -1.0], [-1.0, -1.0], [1.0, -1.0]];
+    dupes.extend([[1.0_f32, 1.0], [1.0, 1.0], [-1.0, 1.0]]);
+    let p = Profile::new(vec![dupes], FillRule::NonZero, 1e-3).expect("quadrado com repetidos");
+    assert_eq!(p.segment_count(), 4);
+}
+
+/// Um contorno que colapsou numa reta não delimita área — e é recusado por uma extensão nula da
+/// caixa, **não** pela área.
+///
+/// ⚠️ A distinção importa: uma figura em **oito** tem área líquida zero e é um perfil legítimo sob
+/// `EvenOdd`. Recusar por área mataria o caso válido e deixaria passar este.
+#[test]
+fn a_contour_collapsed_to_a_line_is_refused() {
+    let line = vec![[0.0_f32, 0.0], [1.0, 0.0], [2.0, 0.0]];
+    match Profile::new(vec![line], FillRule::NonZero, 1e-3) {
+        Err(ProfileError::Collapsed {
+            contour, height, ..
+        }) => {
+            assert_eq!(contour, 0);
+            assert_eq!(height, 0.0);
+        }
+        other => panic!("uma reta não é perfil: {other:?}"),
+    }
+}
+
+#[test]
+fn a_profile_needs_three_points_a_finite_coordinate_and_a_tolerance() {
+    assert_eq!(
+        Profile::new(vec![], FillRule::NonZero, 1e-3),
+        Err(ProfileError::Empty)
+    );
+    assert_eq!(
+        Profile::new(vec![vec![[0.0, 0.0], [1.0, 1.0]]], FillRule::NonZero, 1e-3),
+        Err(ProfileError::TooFewPoints {
+            contour: 0,
+            points: 2
+        })
+    );
+    assert_eq!(
+        Profile::new(
+            vec![vec![[0.0, 0.0], [1.0, f32::NAN], [0.0, 1.0]]],
+            FillRule::NonZero,
+            1e-3
+        ),
+        Err(ProfileError::NonFinite { contour: 0 })
+    );
+    assert_eq!(
+        Profile::new(vec![unit_square()], FillRule::NonZero, 0.0),
+        Err(ProfileError::BadTolerance { tolerance: 0.0 })
+    );
+}
+
+/// ⭐ **Um perfil que cruza o eixo é RECUSADO na revolução.**
+///
+/// A superfície de revolução de um contorno que atravessa o eixo auto-intersecta, e o campo que sai
+/// disso deixa de ser uma distância — a marcha de raios atravessa a peça e o raio de um filete
+/// deixa de ser o raio. Recusar é a única resposta honesta: aceitar produziria uma forma errada sem
+/// um erro em lado nenhum.
+#[test]
+fn a_revolve_whose_profile_crosses_the_axis_is_refused() {
+    let crossing = Profile::new(
+        vec![vec![[-0.5, 0.0], [0.5, 0.0], [0.0, 1.0]]],
+        FillRule::NonZero,
+        1e-3,
+    )
+    .expect("triângulo é um perfil válido — é a REVOLUÇÃO dele que não é");
+    match FieldDoc::new(
+        vec![leaf(Primitive::Revolve { profile: crossing })],
+        NodeId(0),
+    ) {
+        Err(FieldError::ProfileCrossesAxis { node, min_x }) => {
+            assert_eq!(node, 0);
+            assert_eq!(min_x, -0.5);
+        }
+        other => panic!("cruzar o eixo tem de ser recusado: {other:?}"),
+    }
+    // Tocar o eixo (x = 0) é legítimo — é como um sólido de revolução se fecha em cima.
+    let touching = Profile::new(
+        vec![vec![[0.0, 0.0], [0.5, 0.0], [0.0, 1.0]]],
+        FillRule::NonZero,
+        1e-3,
+    )
+    .expect("perfil");
+    assert!(
+        FieldDoc::new(
+            vec![leaf(Primitive::Revolve { profile: touching })],
+            NodeId(0)
+        )
+        .is_ok(),
+        "um perfil que TOCA o eixo é como um sólido de revolução se fecha; recusá-lo proibiria a \
+         esfera"
+    );
+}
+
+/// ⚠️ Na extrusão o limite do `round` é a **meia-altura**, e só ela.
+///
+/// Um `round` maior que a meia-largura do perfil **não** é erro: a receita é uma abertura
+/// morfológica e o pescoço fino desaparece, que é o que arredondar com esse raio significa. Na
+/// altura é diferente — o termo axial inverte de sinal e o sólido deixa de existir.
+#[test]
+fn an_extrusion_bounds_the_round_by_the_height_and_not_by_the_profile() {
+    // O perfil tem meia-largura 1,0; o `round` abaixo é 1,5 — **maior que ela** — e mesmo assim
+    // passa, porque quem limita é a meia-altura (2,0).
+    let wide_round = FieldDoc::new(
+        vec![leaf(Primitive::Extrude {
+            profile: a_profile(),
+            half_height: 2.0,
+            round: 1.5,
+        })],
+        NodeId(0),
+    );
+    assert!(
+        wide_round.is_ok(),
+        "um round maior que a meia-largura do perfil é uma ABERTURA, não um erro"
+    );
+
+    match FieldDoc::new(
+        vec![leaf(Primitive::Extrude {
+            profile: a_profile(),
+            half_height: 0.3,
+            round: 0.3,
+        })],
+        NodeId(0),
+    ) {
+        Err(FieldError::RoundTooLarge { round, limit, .. }) => {
+            assert_eq!((round, limit), (0.3, 0.3));
+        }
+        other => panic!("round ≥ meia-altura tem de ser recusado: {other:?}"),
+    }
+}
+
+/// **HR-14 outra vez, agora para a forma que a v2 acrescentou.**
+///
+/// ⚠️ O gate irmão (`the_shape_of_a_saved_field_is_pinned`) continua a medir **145** bytes, e isso
+/// é um resultado, não um acaso: variantes novas no FIM de um `enum` não mexem nos bytes das
+/// antigas, então **todo documento já salvo continua a ler**. O `FIELD_DOC_VERSION` subiu para 2
+/// porque um leitor da v1 não sabe o que é um `Extrude` — não porque os arquivos antigos partiram.
+#[test]
+fn the_shape_of_a_saved_profile_is_pinned() {
+    let doc = FieldDoc::new(
+        vec![leaf(Primitive::Extrude {
+            profile: a_profile(),
+            half_height: 0.4,
+            round: 0.05,
+        })],
+        NodeId(0),
+    )
+    .expect("extrusão");
+    let bytes = postcard::to_allocvec(&doc).expect("serializa");
+    assert_eq!(
+        bytes.len(),
+        // ⚠️ MEDIDO na criação do gate (2026-08-19): 4 pontos × 2 × f32 + o cabeçalho da árvore.
+        84,
+        "a forma serializada do perfil mudou — suba FIELD_DOC_VERSION e escreva a migração, \
+         não re-pine este número"
+    );
+    let back: FieldDoc = postcard::from_bytes(&bytes).expect("desserializa");
+    assert_eq!(back, doc);
+}

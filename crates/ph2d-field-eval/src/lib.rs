@@ -17,6 +17,7 @@
 //! [ADR-0161]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 
 pub mod ops;
+pub mod profile;
 
 use fidget::context::Tree;
 use fidget::mesh::{Octree, Settings};
@@ -32,7 +33,7 @@ pub fn compile(doc: &FieldDoc) -> Tree {
     for node in doc.nodes() {
         // Seguro pela invariante da arena: todo filho já foi construído.
         let inner = match &node.kind {
-            NodeKind::Leaf(p) => primitive(*p),
+            NodeKind::Leaf(p) => primitive(p),
             NodeKind::Combine { op, children } => combine(*op, children, &built),
         };
         built.push(place(&inner, node.xform));
@@ -40,8 +41,8 @@ pub fn compile(doc: &FieldDoc) -> Tree {
     built[doc.root().0 as usize].clone()
 }
 
-fn primitive(p: Primitive) -> Tree {
-    match p {
+fn primitive(p: &Primitive) -> Tree {
+    match *p {
         Primitive::Box { half, round } => ops::sd_box(
             [f64::from(half[0]), f64::from(half[1]), f64::from(half[2])],
             f64::from(round),
@@ -53,6 +54,12 @@ fn primitive(p: Primitive) -> Tree {
             round,
         } => ops::sd_cylinder(f64::from(radius), f64::from(half_height), f64::from(round)),
         Primitive::Torus { major, minor } => ops::sd_torus(f64::from(major), f64::from(minor)),
+        Primitive::Extrude {
+            ref profile,
+            half_height,
+            round,
+        } => profile::sd_extrude(profile, f64::from(half_height), f64::from(round)),
+        Primitive::Revolve { ref profile } => profile::sd_revolve(profile),
     }
 }
 

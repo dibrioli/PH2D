@@ -182,14 +182,12 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   — ⚠️ *derivado, não auto-escrito*: a ferramenta **IMPRIME e sai vermelha**, `--write` **não existe**,
   e quem reconcilia a linha `Contagem` de cada folha é **quem roda**.
   ⚠️ **Todo canal novo é side-metadata no REGISTRY, nunca o contrato** (`NodeOp`/`OpResolver`/`NodeManifest` — §6).
-  ⚠️ **A PORTA DE TEMPO existe** (`oscillator`/`noise`/`wiggle`, 18/08): porta opcional VALUE **apendada**,
-  desligada ⇒ `ctx.playhead()` **bit-a-bit**, ligada ⇒ **um relógio por ELEMENTO** (pode vir de um `field.*`, de uma
-  distância, de áudio) — e **zero knobs novos**, porque *Time Offset*/*Scale*/*Stagger* são o `offset`/`rate`/`stagger`
-  do `value.time`. ⚠️ **Nada em `ph2d-nodegraph` mudou:** o orçamento anterior listava três saídas caras porque o
-  seletor de variante só vê params — e o canal certo (`ColumnAccess::ReadBroadcast` + o `const HAS_<porta>_<col>` do
-  codegen) **já existia**. *O TRAP 1 da conferência vale para a foundation, não só para o catálogo.*
+  ⚠️ **`oscillator`/`noise`/`wiggle` têm uma porta `time` opcional** — desligada ⇒ `ctx.playhead()` byte-idêntico,
+  ligada ⇒ **um relógio por ELEMENTO** (mecanismo: [handoff do FECHO](docs/Motion%20Nodes/handoffs/HANDOFF_INTEGRACAO_line_motion_value_FECHO_2026-08-18.md)).
   **Aberto:** os P1 restantes da folha 03 (simulação) · a folha 06 tem **1 P1** (transform do CAMPO do
-  `motion.noise`) · o gate `#[ignore]`
+  `motion.noise`) · ⚠️ o diagnóstico de nome do `value.attribute` **não olha o MODO**, então uma coluna `Vec2`
+  digitada à mão lê **zeros sem badge** (medido 18/08; os `Vec2` conhecidos têm chip, o buraco é o caso geral) ·
+  o gate `#[ignore]`
   `the_ceiling_is_honoured_on_every_tick_including_the_turn` (cena `=53`) — ⛔ **não afrouxe a barra** · a composição
   sub-passos × `damping` da `motion.verlet_rope`, **medida e não curada de propósito** · ⛔ a faixa de barras do
   `value.pattern` foi **revertida por veredito de produto sem mecanismo nomeado**: uma 2ª tentativa começa perguntando

@@ -8,8 +8,13 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**37 handoffs** · **8** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**45 handoffs** · **9** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
+
+> ⚠️ **Reconciliado em 2026-08-18, e a diferença era OITO.** O índice parou em 09/08 e
+> a pasta continuou a andar: cinco handoffs de 16–18/08 e um de 10/08 nunca entraram,
+> e a contagem `37` descrevia o dia em que foi escrita. *Um número que se conta lendo
+> a pasta não se escreve à mão* — `ls *.md | grep -v README | wc -l`.
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -50,6 +55,14 @@
 | 2026-08-04 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_MESTRE_2026-08-04.md](HANDOFF_INTEGRACAO_line_motion_value_MESTRE_2026-08-04.md) | integração | Handoff MESTRE de integração — line/motion-value (2026-08-04) |
 | 2026-08-07 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_params_2026-08-07.md](HANDOFF_INTEGRACAO_line_motion_value_params_2026-08-07.md) | integração | Handoff de integração — line/motion-value (os PARÂMETROS dos nós) |
 | 2026-08-09 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_conferencia_2026-08-09.md](HANDOFF_INTEGRACAO_line_motion_value_conferencia_2026-08-09.md) | integração | HANDOFF DE INTEGRAÇÃO — line/motion-value · A CONFERÊNCIA DOS NÓS (doc 89) |
+| 2026-08-10 |  | [HANDOFF_line_motion_value_TROCA_2026-08-10.md](HANDOFF_line_motion_value_TROCA_2026-08-10.md) | troca de agente | HANDOFF DE TROCA — `line/motion-value` · quem assume a linha lê isto primeiro |
+| 2026-08-16 |  | [HANDOFF_INTEGRACAO_line_motion_value_grupos_I_a_L_2026-08-16.md](HANDOFF_INTEGRACAO_line_motion_value_grupos_I_a_L_2026-08-16.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/motion-value`, grupos I..P + a auditoria (2026-08-16) |
+| 2026-08-16 |  | [HANDOFF_INTEGRACAO_line_motion_value_MESTRE_2026-08-16.md](HANDOFF_INTEGRACAO_line_motion_value_MESTRE_2026-08-16.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/motion-value` (2026-08-16) |
+| 2026-08-18 |  | [HANDOFF_line_motion_value_TROCA_2026-08-18.md](HANDOFF_line_motion_value_TROCA_2026-08-18.md) | troca de agente | HANDOFF DE TROCA — `line/motion-value` · quem assume a linha lê isto primeiro |
+| 2026-08-18 |  | [HANDOFF_INTEGRACAO_line_motion_value_wave_2026-08-18.md](HANDOFF_INTEGRACAO_line_motion_value_wave_2026-08-18.md) | integração | o `motion.wave` com N PRODUTORES — o 2º produtor por COMPOSIÇÃO (cena `=57`) |
+| 2026-08-18 |  | [HANDOFF_INTEGRACAO_line_motion_value_spacing_2026-08-18.md](HANDOFF_INTEGRACAO_line_motion_value_spacing_2026-08-18.md) | integração | a wave do ESPAÇAMENTO — `motion.path` conta pela distância (`PH2D_MOTION_NODE_PATH_SMOKE=2`) |
+| 2026-08-18 |  | [HANDOFF_INTEGRACAO_line_motion_value_grupo_Q_2026-08-18.md](HANDOFF_INTEGRACAO_line_motion_value_grupo_Q_2026-08-18.md) | integração | GRUPO Q + a PORTA DE TEMPO — os dois eixos, o relógio curvado, o relógio como CAMPO (`=58`/`=59`) |
+| 2026-08-18 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_FECHO_2026-08-18.md](HANDOFF_INTEGRACAO_line_motion_value_FECHO_2026-08-18.md) | integração | **FECHO DA LINHA** — os 8 itens da DIRETRIZ §1.5.9 medidos; o documento do INTEGRADOR |
 
 ---
 *Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na

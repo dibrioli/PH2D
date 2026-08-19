@@ -201,20 +201,20 @@ fn sponged(radius: f32, also_prev: bool) -> (Graph, NodeId) {
     let mut g = Graph::new();
     let w = wave_driven(&mut g, 0.5);
 
-    let fo = g.add_node("motion.falloff");
-    g.set_param(fo, "shape", 0.0); // Circle
-    g.set_param(fo, "curve", 2.0); // Smooth
-    g.set_param(fo, "radius", radius);
-    g.set_param(fo, "invert", 1.0); // 0 no centro, 1 na borda: a ESPONJA
-    wire(&mut g, w, 0, fo, 0, true);
+    let fall = g.add_node("motion.falloff");
+    g.set_param(fall, "shape", 0.0); // Circle
+    g.set_param(fall, "curve", 2.0); // Smooth
+    g.set_param(fall, "radius", radius);
+    g.set_param(fall, "invert", 1.0); // 0 no centro, 1 na borda: a ESPONJA
+    wire(&mut g, w, 0, fall, 0, true);
 
     // O valor é irrelevante — `scale = 0` zera-o —, mas a porta quer um produtor.
     let rd = g.add_node("value.attribute");
     g.set_param(rd, "mode", 0.0);
     g.set_text_param(rd, "attr", "falloff");
-    wire(&mut g, fo, 0, rd, 0, false);
+    wire(&mut g, fall, 0, rd, 0, false);
 
-    let mut prev = fo;
+    let mut prev = fall;
     for col in ["wave_h", "wave_prev"].iter().take(1 + also_prev as usize) {
         let dr = g.add_node("motion.drive");
         g.set_param(dr, "channel", 9.0); // Custom

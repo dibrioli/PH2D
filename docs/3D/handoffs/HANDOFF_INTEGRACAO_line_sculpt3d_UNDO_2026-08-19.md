@@ -291,9 +291,23 @@ adaptativa · **extração**. **18 gates verdes**, 3 alvos com o número medido.
 
 | | esfera 48×64 | toro 64×32 |
 |---|---|---|
-| **quads** (das faces emitidas) | **664 / 1 246 = 53,3 %** | **454 / 1 144 = 39,7 %** |
-| χ (alvo) | 5 (2) | 2 (0) |
-| Hausdorff (barra 1 %) | 3,14 % | — |
+| **quads** (das faces emitidas) | **380 / 494 = 76,9 %** | **415 / 479 = 86,6 %** |
+| χ (alvo) | 12 (2) | — |
+| Hausdorff (barra 1 %) | 4,22 % | — |
+
+⭐ **O número saltou de 53,3 % para 76,9 % com UMA peça**, lida no
+`src/field.cpp` da referência em vez de inferida: o
+`compat_position_extrinsic_4` enumera as **quatro quinas** da célula de cada lado
+e escolhe o **PAR mais próximo entre si** (16 combinações) — a minha versão
+arredondava cada lado ao ponto médio, independentemente, e as duas retículas
+nunca se procuravam. É esse passo que cria os **degraus**, e sem degraus não há
+platôs.
+
+⚠️ **E ele REFUTOU duas das minhas recusas medidas** (a hierarquia e o quociente
+da retícula): as duas eram consequência de **um** operador mal portado. *Uma
+medição só refuta o que ela de facto exercitou — e o que aquelas exercitavam era
+a minha aproximação, não a lei.* O gate que travava a recusa foi escrito a pedir
+*"não me apague, mude-me com o número novo"*, e foi assim que a virada apareceu.
 
 ⚠️ **A RÉGUA mentiu e corrigiu-se antes do algoritmo.** A `quad_fraction` media
 `quads / (quads + CICLOS não-quad)` — um ciclo de **31 lados** contava como UM

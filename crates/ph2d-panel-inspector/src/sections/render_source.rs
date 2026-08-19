@@ -179,32 +179,20 @@ pub(crate) fn paint_render_source_section(
         row_gap,
     );
 
-    paint_text(
-        text_system,
-        scene,
-        "Pixel format",
-        x,
-        cur_y,
-        label_font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    cur_y += label_font + SECTION_LABEL_TO_CONTROL_PX;
-    let btn_h = ROW_H_PX;
-    // Adaptive segmented GROUP — same canon as Strategy above.
-    let fmt_h = paint_segmented_group_adaptive(
-        Rect::new(x, cur_y, w, btn_h),
-        &[
-            ("RGBA8", true, ids::INSP_RENDER_FORMAT_RGBA8),
-            ("RGBA16", false, ids::INSP_RENDER_FORMAT_RGBA16),
-        ],
-        scene,
-        text_system,
-        theme,
-        store,
-        hit_index,
-    );
-    cur_y += fmt_h + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX;
+    // **O formato é um FACTO, não uma escolha** (plano `docs/Sprite_projeto/17` §5).
+    //
+    // ⚠️ Era um par segmentado `RGBA8 / RGBA16` que **não tinha arm de dispatch em nenhum
+    // lado**: pintado, registado em `populate.rs` (logo focável) e hit-indexado, mas clicar não
+    // fazia nada — nem um toast. E o aceso era o literal `true`/`false`, não estado, então ele
+    // dizia "RGBA8" para **toda** a gente — inclusive para um sprite cozido, que é BC/ASTC/ETC2
+    // comprimido na GPU. Duas mentiras a somar: um controle que não controla e um valor que não
+    // é lido.
+    //
+    // A cura é a do `feedback_a_label_must_promise_what_the_model_delivers`: o pipeline é
+    // `Rgba8UnormSrgb` de ponta a ponta (atlas, individual, mips), então não há escolha a
+    // oferecer — há um facto a dizer, na mesma forma das outras linhas de proveniência. Um
+    // seletor de RGBA16 volta quando o MODELO o entregar, com a medição de banda ao lado.
+    cur_y = paint_pair(scene, text_system, "Format", info.source_kind.pixel_format(), cur_y);
 
     let reimport_h = 30.0_f32; // LITERAL-PX-OK: Reimport button height
     let btn_rect = Rect::new(x, cur_y, w, reimport_h);

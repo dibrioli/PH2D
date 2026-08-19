@@ -420,6 +420,27 @@ pub enum InspectorSpriteSource {
     CookedTexture,
 }
 
+impl InspectorSpriteSource {
+    /// O formato de pixel que esta estratégia de facto usa, para a linha **Format** da seção
+    /// Render Source.
+    ///
+    /// ⚠️ **É um FACTO derivado da estratégia, nunca uma escolha do utilizador** (plano
+    /// `docs/Sprite_projeto/17` §5). O par segmentado `RGBA8 / RGBA16` que vivia ali não tinha
+    /// dispatch em lado nenhum **e** trazia o aceso como literal, então dizia "RGBA8" até para um
+    /// sprite cozido — que é BC/ASTC/ETC2 comprimido na GPU. O atlas e as texturas individuais são
+    /// `Rgba8UnormSrgb` de ponta a ponta (uma única `MipGenerator` serve cada store, e é isso que
+    /// o prova no fonte), então não há escolha a oferecer: há um facto a dizer.
+    pub fn pixel_format(self) -> &'static str {
+        match self {
+            // O atlas e o store individual criam ambos `Rgba8UnormSrgb`.
+            Self::Atlas { .. } | Self::Individual { .. } | Self::HandPacked => "RGBA8",
+            // Comprimida no dispositivo; o formato concreto depende do tier resolvido, e o
+            // Inspector não o tem em mãos (o `snapshot` também não traz dimensões por isso).
+            Self::CookedTexture => "GPU compressed",
+        }
+    }
+}
+
 /// Snapshot of the selected entity's local `Transform` published to
 /// the Inspector. Mirrors the canonical [`ph2d_ecs::Transform`]
 /// fields as raw arrays so the editor crate stays loose-coupled to
@@ -534,4 +555,36 @@ pub struct HierReparentIntent {
     /// field. Mutually exclusive with `before` — only one resolution
     /// fires per drop.
     pub after: Option<NodeId>,
+}
+
+#[cfg(test)]
+mod pixel_format_tests {
+    use super::InspectorSpriteSource;
+
+    /// O atlas e o store individual criam ambos `Rgba8UnormSrgb` — uma `MipGenerator` por store,
+    /// e é o fonte deles que o prova.
+    #[test]
+    fn the_cpu_backed_strategies_are_rgba8() {
+        assert_eq!(
+            InspectorSpriteSource::Atlas { key: 0 }.pixel_format(),
+            "RGBA8"
+        );
+        assert_eq!(
+            InspectorSpriteSource::Individual { texture_id: 1 }.pixel_format(),
+            "RGBA8"
+        );
+        assert_eq!(InspectorSpriteSource::HandPacked.pixel_format(), "RGBA8");
+    }
+
+    /// ⚠️ **A mentira que este método existe para acabar.** O par segmentado trazia o aceso como
+    /// literal `true`, então o painel dizia "RGBA8" para um sprite cozido — que é BC/ASTC/ETC2
+    /// comprimido no dispositivo. Um rótulo tem de prometer o que o modelo entrega.
+    #[test]
+    fn a_cooked_texture_is_not_claimed_to_be_rgba8() {
+        assert_ne!(
+            InspectorSpriteSource::CookedTexture.pixel_format(),
+            "RGBA8",
+            "uma textura cozida e' comprimida no dispositivo"
+        );
+    }
 }

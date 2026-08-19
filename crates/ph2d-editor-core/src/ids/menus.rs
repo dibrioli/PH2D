@@ -389,8 +389,6 @@ pub const INSP_SPRITE_FLIP_Y: NodeId = hash_node_id("insp_sprite_flip_y");
 /// alternative. RGBA16 is `Disabled` until the asset crate gains
 /// half-float / 16-bit-channel storage (currently only `ImageRgba8`).
 /// Reimport reads the pressed button to decide the target format.
-pub const INSP_RENDER_FORMAT_RGBA8: NodeId = hash_node_id("insp_render_format_rgba8");
-pub const INSP_RENDER_FORMAT_RGBA16: NodeId = hash_node_id("insp_render_format_rgba16");
 
 /// Map fixture entity name to canonical hierarchy `NodeId`. The
 /// placeholder fixture currently exposes only "Scene Root"; the

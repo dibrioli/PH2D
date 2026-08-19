@@ -115,12 +115,6 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
         "§0-§14 section orchestrator; ratcheted 431->424 when §11 Physics Body forced the honest split (section frame + phase B moved to paint_frame.rs). §12 Physics Joint (W3) added ~22 LOC and paid for them by moving the whole physics FAMILY out too — `paint_frame::paint_physics_sections` — landing back on exactly 424. ⚠️ Then §14 Platform Player (W5) pushed it to 427 and this entry did EXACTLY what its own last sentence promised — *the next section splits again*: the note distribution (a self-contained block that looks at no section at all) moved out to `paint_frame::split_notes`, landing at 414. Allowances shrink; they never grow.",
     ),
     (
-        "ph2d-panel-inspector/src/sections/render_source.rs",
-        "paint_render_source_section",
-        211,
-        "unmasked by the 2026-07-10 parser fix; ratcheted 305->284->211 — a F4b (a dobra do CORPO) fez a fn cruzar a tolerância e o *per-row split* que esta nota prometia foi FEITO por inteiro: a proveniência saiu para `paint_storage_rows` e a amostragem de REGIÃO, o maior bloco e o único com vocabulário próprio, para `paint_region_rows`. As tolerâncias encolhem, nunca crescem.",
-    ),
-    (
         "ph2d-panel-inspector/src/sections/transform.rs",
         "paint_transform_section",
         268,

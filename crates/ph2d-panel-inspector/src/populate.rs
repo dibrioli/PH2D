@@ -370,18 +370,10 @@ fn populate_render_strategy(store: &mut WidgetStore) {
             },
         );
     }
-    store.register(
-        ids::INSP_RENDER_FORMAT_RGBA8,
-        InteractiveState::Button {
-            state: ButtonState::Pressed,
-        },
-    );
-    store.register(
-        ids::INSP_RENDER_FORMAT_RGBA16,
-        InteractiveState::Button {
-            state: ButtonState::Disabled,
-        },
-    );
+    // ⚠️ `INSP_RENDER_FORMAT_RGBA8`/`_RGBA16` saíram daqui em 2026-08-19 (plano
+    // `docs/Sprite_projeto/17` §5): eram dois botões **registados e focáveis** cujo clique não
+    // tinha arm de dispatch em lado nenhum — nem um toast. O formato passou a ser uma linha de
+    // FACTO, derivada da estratégia, ao lado de `Storage` e `Source`.
     store.register(
         ids::INSP_RENDER_SOURCE_REIMPORT,
         InteractiveState::Button {

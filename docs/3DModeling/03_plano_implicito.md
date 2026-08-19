@@ -268,8 +268,25 @@ for b in $(git branch --format='%(refname:short)' | grep '^line/'); do
 done | sort -n | tail -1
 ```
 
-### W2 — Ver a coisa
-`ph2d-field-eval` → MDC → `ph2d-mesh` → `ph2d-mesh-render`. Malha grossa ao mexer, fina ao parar.
+### W2 — Ver a coisa 🔶 (traçado no shell feito; canvas de primeira classe ABERTO)
+
+O traçado já desenha dentro do app (`PH2D_FIELD_SMOKE`), **antes da chrome**, como conteúdo de
+canvas. ⚠️ **Item aberto, levantado pelo Enio no smoke de 19/08** (*"melhor fazer como foi feito o
+Sculpt ou já criar o canvas 3D estilo Blender"*) — e a decisão, para não ficar implícita:
+
+| | O que é | Veredito |
+|---|---|---|
+| **Sobreposição por `env`** (hoje) | Imagem pintada na área do canvas | ✅ certo **para um smoke**, ⛔ errado como produto: não é um modo, não tem cabeçalho, não divide |
+| **Como o `sculpt3d`** | Passe de GPU no `present.rs`, `LoadOp::Load`, cena 2D por baixo | ⚠️ **É o alvo estrutural**, mas pressupõe que o traçado esteja na GPU — hoje ele é de CPU, e a W0 disse para não abrir GPU sem número que peça |
+| **Canvas 3D "estilo Blender"** | Modo de viewport próprio, com cabeçalho e divisão | ⭐ **É o produto**, e é trabalho de **UI**, não de traçado — pertence à wave do painel (W4), junto do resto da chrome do módulo |
+
+**Decisão:** o modo de canvas de primeira classe entra na **W4**, com o painel, porque é a mesma
+pergunta (*como o módulo aparece no app*) e responder metade dela agora criaria a segunda resposta.
+Até lá o smoke fica como está — pintando **antes** da chrome e com **fundo transparente**, para não
+ter opinião sobre o canvas que ele um dia vai ser.
+
+O resto da W2 (malha grossa ao mexer, fina ao parar) só volta a fazer sentido para **exportação**:
+a tela não passa pela malha (§5.3).
 
 ### W3 — Os perfis vêm do editor vetorial
 Distância 2D com sinal de path (§5.2), `extrude` e `revolve`. **É aqui que o fluxo do MoI renasce**,

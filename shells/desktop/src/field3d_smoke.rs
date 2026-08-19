@@ -43,9 +43,13 @@ const TRACE_H: u32 = 480;
 /// Quanto a peça gira por traçado, em radianos.
 const SPIN: f32 = 0.035;
 
-/// O fundo do quadro. ⚠️ Literal aqui não fere o HR-15: isto não é UI do produto — é um smoke
-/// atrás de variável de ambiente, sem widget, sem tema e sem utilizador.
-const BACKGROUND: [u8; 4] = [24, 26, 30, 255];
+/// O fundo do quadro: **transparente**.
+///
+/// ⚠️ **Correção de um smoke do Enio (19/08):** *"o fundo está cinza escuro e acima do canvas"*.
+/// Um cinza opaco aqui era eu **inventando uma cor** — e uma cor de fundo inventada num app com
+/// tema é a segunda resposta a uma pergunta que o tema já responde (HR-15). Com alfa zero o canvas
+/// do app aparece por baixo, e o módulo deixa de ter opinião sobre o fundo.
+const BACKGROUND: [u8; 4] = [0, 0, 0, 0];
 
 struct Smoke {
     doc: FieldDoc,

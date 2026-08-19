@@ -8857,6 +8857,23 @@ impl crate::App {
             // Its sibling for the anchor dots — same reason (no stale entry
             // from a joint that left the scene), same frame.
             hero.gizmo.point_hit_map.clear();
+            // ADR-0161 — o smoke do módulo de modelagem 3D (`PH2D_FIELD_SMOKE=1..3`).
+            //
+            // ⚠️ **ANTES do `paint_hero_screen`, e é a correção de um smoke do Enio (19/08):**
+            // *"o fundo está cinza escuro e ACIMA do canvas"*. Depois da chrome, o traçado é uma
+            // sobreposição que tapa o app; antes dela, é **conteúdo de canvas**, com painéis e
+            // chrome por cima — que é o que um visualizador 3D tem de ser.
+            //
+            // O equivalente estrutural é o `sculpt3d`, que entra como passe de GPU no `present.rs`
+            // com `LoadOp::Load`. Aqui o traçado é de CPU, então o análogo honesto é a ordem de
+            // pintura. Um canvas 3D de primeira classe (modo próprio, não `env`) é item de wave.
+            //
+            // No-op silencioso sem a variável; todo o estado vive no próprio módulo, de propósito
+            // (`field3d_smoke`, §"Estado contido").
+            crate::field3d_smoke::draw(
+                ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
+                vector_scene,
+            );
             // Frame profiler: panel/chrome Vello encode (includes the painter panel's Paper preview).
             let hero_t0 = frame_prof_on().then(Instant::now);
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
@@ -8877,13 +8894,6 @@ impl crate::App {
                     paint_ctx.text,
                 );
             }
-            // ADR-0161 — o smoke do módulo de modelagem 3D (`PH2D_FIELD_SMOKE=1..3`). No-op
-            // silencioso sem a variável; todo o estado vive no próprio módulo, de propósito
-            // (`field3d_smoke`, §"Estado contido").
-            crate::field3d_smoke::draw(
-                ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
-                vector_scene,
-            );
             // Fase 0f: overlay the active rubber-band rect on top of
             // everything (panels, gizmo, hero chrome). Pure shell
             // concern — coords stay in screen space so the rect

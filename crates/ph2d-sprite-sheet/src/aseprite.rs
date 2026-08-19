@@ -110,8 +110,13 @@ mod tests {
     #[test]
     fn a_region_name_with_quotes_and_backslashes_survives() {
         let awkward = r#"he said "hi"\path"#;
-        let sheet = pack(1, "s".into(), vec![img(awkward, 8, 8)], PackOptions::default())
-            .expect("pack");
+        let sheet = pack(
+            1,
+            "s".into(),
+            vec![img(awkward, 8, 8)],
+            PackOptions::default(),
+        )
+        .expect("pack");
         let json = to_aseprite_json(&sheet, "s.png");
         let meta = ph2d_asset::parse_atlas_meta(json.as_bytes()).expect("JSON valido");
         assert!(meta.region(awkward).is_some(), "o nome tem de voltar igual");
@@ -121,7 +126,8 @@ mod tests {
     /// caminho absoluto quebraria assim que o artista movesse a pasta.
     #[test]
     fn the_image_reference_is_a_bare_filename() {
-        let sheet = pack(1, "s".into(), vec![img("a", 8, 8)], PackOptions::default()).expect("pack");
+        let sheet =
+            pack(1, "s".into(), vec![img("a", 8, 8)], PackOptions::default()).expect("pack");
         let json = to_aseprite_json(&sheet, "s.png");
         let meta = ph2d_asset::parse_atlas_meta(json.as_bytes()).expect("parse");
         assert!(!meta.image_filename.contains('/'));

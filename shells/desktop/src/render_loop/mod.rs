@@ -42,9 +42,6 @@ mod gizmo_readout;
 mod hierarchy;
 mod image_edit;
 mod inspector_commits;
-/// **A conversão entre estratégias de origem** (Render Source → Strategy) — irmão do
-/// `inspector_commits`, e o corte que o marcador de exceção de LOC daquele arquivo pedia.
-mod inspector_strategy;
 pub(crate) mod inspector_joint;
 /// The BREAK half (W-J7): the switch, the two thresholds, and the fact that
 /// neither is converted. Its own file for the shell's LOC cap.
@@ -99,6 +96,9 @@ mod inspector_player_brake_tests;
 mod inspector_player_fall_tests;
 #[cfg(test)]
 mod inspector_player_leave_tests;
+/// **A conversão entre estratégias de origem** (Render Source → Strategy) — irmão do
+/// `inspector_commits`, e o corte que o marcador de exceção de LOC daquele arquivo pedia.
+mod inspector_strategy;
 
 #[cfg(test)]
 mod inspector_player_brink_tests;
@@ -1377,6 +1377,40 @@ impl crate::App {
                 toasts.push(Toast::success(
                     "Mask smoke: paint some art, then the MASK chip — and SCRUB".to_string(),
                 ));
+            }
+        }
+
+        // **A FOLHA COMO OBJETO** (`PH2D_SHEET_SMOKE=1`, plano `docs/Sprite_projeto/17` §7): cinco
+        // peças de tamanhos diferentes entram, e sai UM objeto — um retângulo na hierarquia, com
+        // as peças arranjadas dentro como filhos.
+        //
+        // ⚠️ A folha fica SELECIONADA de propósito: é ela que o artista tem de conseguir mover,
+        // redimensionar, esconder e duplicar, e nenhuma dessas coisas tem código próprio — a
+        // seleção é o convite a verificá-lo.
+        if let Some(hero) = hero_screen.as_mut()
+            && crate::sheet_smoke::enabled()
+            && !std::mem::replace(&mut self.sheet_smoke_done, true)
+        {
+            let ppm = hero.project.pixels_per_meter;
+            if let Some((sheet, n)) = crate::sheet_smoke::spawn_if_enabled(
+                sim,
+                renderer,
+                asset_db,
+                vec_scene,
+                &mut self.vec_entities,
+                next_import_cell,
+                ppm,
+                atlas_asset_map,
+            ) {
+                hero.gizmo.replace_selection(Some(sheet));
+                hero.bus
+                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor::ViewFocusKind::Selected,
+                    });
+                toasts.push(Toast::success(format!(
+                    "Sheet smoke: {n} pieces packed into one object — move it, resize it, hide it"
+                )));
+                self.title_dirty = true;
             }
         }
 

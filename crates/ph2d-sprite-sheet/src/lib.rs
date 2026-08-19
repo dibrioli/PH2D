@@ -45,7 +45,7 @@
 pub mod aseprite;
 pub mod pack;
 pub use aseprite::to_aseprite_json;
-pub use pack::{PackError, PackInput, PackOptions, pack};
+pub use pack::{Layout, LayoutItem, PackError, PackInput, PackOptions, layout, pack};
 
 use ph2d_asset::AssetId;
 use serde::{Deserialize, Serialize};
@@ -340,7 +340,9 @@ mod tests {
     use super::*;
 
     fn rgba(w: u32, h: u32, seed: u8) -> Vec<u8> {
-        (0..(w * h * 4)).map(|i| (i as u8).wrapping_add(seed)).collect()
+        (0..(w * h * 4))
+            .map(|i| (i as u8).wrapping_add(seed))
+            .collect()
     }
 
     fn doc(w: u32, h: u32, seed: u8) -> SpritePixelDoc {
@@ -434,7 +436,12 @@ mod tests {
 
     #[test]
     fn a_sheet_round_trips_byte_identical() {
-        let sh = sheet(1, 8, 8, &[("idle_0", [0, 0, 4, 4]), ("idle_1", [4, 0, 4, 4])]);
+        let sh = sheet(
+            1,
+            8,
+            8,
+            &[("idle_0", [0, 0, 4, 4]), ("idle_1", [4, 0, 4, 4])],
+        );
         let bytes = encode(&[], std::slice::from_ref(&sh)).expect("encode");
         let (pixels, sheets) = decode(&bytes).expect("decode");
         assert!(pixels.is_empty());
@@ -448,7 +455,10 @@ mod tests {
     fn regions_are_sorted_by_name_so_the_index_is_stable() {
         let a = sheet(1, 8, 8, &[("zulu", [4, 0, 4, 4]), ("alpha", [0, 0, 4, 4])]);
         let b = sheet(1, 8, 8, &[("alpha", [0, 0, 4, 4]), ("zulu", [4, 0, 4, 4])]);
-        assert_eq!(a, b, "a mesma folha, declarada ao contrario, e' a mesma folha");
+        assert_eq!(
+            a, b,
+            "a mesma folha, declarada ao contrario, e' a mesma folha"
+        );
         assert_eq!(a.region(0).map(|r| r.name.as_str()), Some("alpha"));
         assert_eq!(a.region(1).map(|r| r.name.as_str()), Some("zulu"));
         assert_eq!(a.region(2), None);

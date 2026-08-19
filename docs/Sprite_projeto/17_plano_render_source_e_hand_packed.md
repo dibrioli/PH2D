@@ -185,36 +185,85 @@ com a medição de banda ao lado, e só quando houver quem peça.
    É aqui que `parse_atlas_meta` (Aseprite Hash + TexturePacker) **ganha o primeiro consumidor da
    sua vida** — ele tem **um** commit, de 2026-05-12, e nunca foi chamado por nada.
 
-## §7 — W5 · A ferramenta que CRIA uma folha (o pedido do Enio) — ⏳ metade feita
+## §7 — W5 · A ferramenta que CRIA uma folha — **a folha é um OBJETO**
 
-> **O núcleo já existe e é puro** (`ph2d-sprite-sheet::pack` + `::to_aseprite_json`, 28 testes):
-> N imagens nomeadas → uma folha determinística, e a folha → `.png` + `.json` do Aseprite, com
-> round-trip provado contra o **nosso próprio leitor**. Ele serve **qualquer** resposta à
-> pergunta de UX abaixo, e por isso foi construído primeiro.
+> **Decisão do Enio, 2026-08-19**, e ela é melhor que a proposta original (um painel com prévia):
 >
-> ⏸️ **O que falta é a metade de PRODUTO, e é decisão do Enio:** como ele escolhe o que entra na
-> folha e como rearranja o que o empacotador propôs. As opções mudam o que se constrói:
-> um pill de um clique sobre a seleção (barato, sem arranjo manual) · um painel docado com
-> pré-visualização e arrasto das regiões (é o que *hand*-packed sugere) · ou um modo de canvas.
-> Perguntar custa uma frase; construir o errado custa a wave.
+> > *"as imagens serão montadas numa «imagem virtual» colocada no canvas como uma sprite normal:
+> > uma área transparente com o gizmo da sprite e uma shadow decorativa, que aparece na hierarchy
+> > e que pode ser escondida, redimensionada, movida e duplicada, pode rasterizar com dimensão
+> > (resolução diferente) — algo bem versátil."*
 
-> *"não temos nenhuma ferramenta para criar um Hand-packed"* — Enio, 2026-08-19.
+### §7.1 — Por que isto é barato: a folha é um RETÂNGULO que ganhou um componente
 
-Drop-crate `crates/ph2d-tool-sheet-packer/` + painel irmão `crates/ph2d-panel-sheet-packer/`
-(caminho (A) + (B) da triagem; `Tool=12` **não se move** — sabor 3, pill + painel docado).
+A lei já está escrita no repo, no doc do [`VecFrame`](../../crates/ph2d-ecs/src/vec_frame.rs) —
+a **moldura**, que é literalmente *"o contêiner: uma tela, um card, um painel"*:
 
-- **Entrada:** os sprites selecionados. Sem seleção, o pill fica desabilitado com o motivo à vista.
-- **Arranjo:** empacotamento automático (o `rect_packer` do atlas dinâmico já está na workspace)
-  **mais o gesto manual** — é *hand*-packed: arrastar uma região é a razão de existir da ferramenta,
-  não um extra. Grade de encaixe, padding por região, e a folha cresce por potências de 2.
-- **Saída, e é o ponto que fecha o ciclo:** a folha entra no doc **e** exporta `folha.png` +
-  `folha.json` na forma **Aseprite Hash** — a mesma que o §6 lê. Escrever o formato que já sabemos
-  ler é o que torna a ferramenta reversível e testável contra si própria (round-trip).
-- **Ligação:** cada sprite de origem é re-apontado para `HandPacked { sheet, region }`, e a
-  célula/textura que ele ocupava é libertada pelo W2.
+> *"Não é um tipo novo de objeto. A entidade é a mesma que a ferramenta de forma produz — um
+> `VecPathRef` com `VecShape::Param { kind: Rectangle, w, h }` —, e este componente só acrescenta
+> **o que ela FAZ com os filhos**. Como consequência de ser um retângulo, saem **de graça** o
+> fill, o gradiente, o traço, o raio de canto vivo, a pilha de efeitos, o gizmo de escala, o
+> hit-test, o z-order, o undo e o save."*
 
-**Assersão-vermelha:** empacotar N sprites → exportar → **re-importar pelo §6** → as N regiões
-voltam com os mesmos retângulos e os mesmos pixels. Round-trip byte-a-byte.
+Confere-se item a item com o pedido do Enio, e **cada linha da lista dele já existe**:
+
+| O que ele pediu | De onde sai | Confirmado em |
+|---|---|---|
+| área transparente | o *fill* do retângulo | doc do `VecFrame` |
+| gizmo da sprite | uma forma vetorial publica `GizmoView` | ADR-0111, `snapshots.rs:330` |
+| shadow decorativa | efeito **Drop Shadow**, que já existe | `vec_filter_kinds.rs:155` |
+| aparece na hierarchy | é uma entidade com `Name` | — |
+| esconder | `Visibility` | — |
+| redimensionar / mover | gizmo + `Transform` + `VecShape.w/h` | doc do `VecFrame` |
+| duplicar | duplicação de entidade + subárvore | — |
+| rasterizar noutra resolução | §7.3 | — |
+
+⚠️ **E a lei dos DOIS TAMANHOS vem junto:** o `VecFrame` recusa ter `size` próprio porque *"dois
+tamanhos divergem no primeiro arrasto de alça, e o modo de falha é o pior que existe: o desenho
+concorda com um e o layout com o outro"*. A folha herda a recusa — o tamanho dela **é** o `w`/`h`
+do `VecShape`, nunca um campo do componente novo.
+
+**Componente:** `ph2d_ecs::SpriteSheetFrame { pixels_per_meter: f32, padding: u32 }`.
+A densidade é a verdade guardada (invariante sob redimensionar); o painel mostra e aceita também
+o tamanho em **pixels**, que é derivado — *uma fonte, duas leituras*.
+
+### §7.2 — O arranjo: os sprites são FILHOS, e arrastar já funciona
+
+Os sprites a empacotar viram **filhos** do retângulo. Consequência: **arrastar uma peça é mover um
+filho**, com o gizmo, o snap e o undo que o app já tem. Não se constrói uma superfície de arrasto
+nova — *a representação apaga o caso especial*.
+
+Um botão **Auto-arranjar** roda o `pack()` (já feito, §7.4) e **escreve as poses locais** dos
+filhos a partir dos retângulos empacotados: o empacotador **propõe**, o artista ajusta.
+
+⚠️ **Isto NÃO viola a lei do [ADR-0153]** (*"o passe publica onde as coisas ficam; ele não escreve
+onde elas estão"*). Aquela proíbe um **passe por-quadro** de tocar `Transform` — senão cada quadro
+de um resize vira um passo de undo. Aqui é **um clique**: uma edição autorada, um passo de undo.
+A distinção é *por-quadro vs. por-gesto*, e está nomeada aqui para não ser mal-lida depois.
+
+### §7.3 — O bake: «rasterizar com resolução diferente»
+
+Botão **Criar folha**: compõe os filhos numa imagem à densidade escolhida e produz um
+`AuthoredSheet`. O redimensionamento de cada filho reusa o resample Mitchell-Netravali que a
+ferramenta **Rasterize** já tem (`ph2d_tool_rasterize::rasterize`) — um só resampler no projeto.
+
+Duas saídas, o mesmo bake:
+1. **Reatar os filhos** como `SpriteSheetRef` → uma textura partilhada, um draw call (§6).
+2. **Exportar** `folha.png` + `folha.json` (§7.4) — e é isto que torna a ferramenta reversível.
+
+### §7.4 — O núcleo ✅ FEITO (28 testes)
+
+`ph2d-sprite-sheet::pack` (N imagens → uma folha determinística, tamanho medido, sem sobreposição,
+vão transparente) + `::to_aseprite_json` (a folha → o formato do artista).
+**Assersão-vermelha já verde:** `pack → to_aseprite_json → parse_atlas_meta` devolve os mesmos
+retângulos — round-trip contra **o leitor que o import de facto usa**.
+
+### §7.5 — Ordem de construção
+
+- **W5.1** — o componente + criar a folha a partir da seleção + a seção do Inspector + Auto-arranjar.
+- **W5.2** — o bake (reatar) + a exportação para disco.
+
+[ADR-0153]: ../architecture/decisions/0153-vector-auto-layout-is-taffy-behind-one-leaf-crate-and-the-pose-is-derived.md
 
 ## §8 — W6 · O painel honesto (e os testes que não existem)
 

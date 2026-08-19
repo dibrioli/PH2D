@@ -251,7 +251,8 @@ pub(crate) fn drain_equalize_sizes(
                 entity,
                 sim,
                 renderer,
-                asset_db, &edited,
+                asset_db,
+                &edited,
                 new_size_world,
             ) {
                 Err(err) => {

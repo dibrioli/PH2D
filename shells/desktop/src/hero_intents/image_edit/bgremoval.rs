@@ -96,7 +96,8 @@ pub(crate) fn drain_bgremoval(
             entity,
             sim,
             renderer,
-            asset_db, &edited,
+            asset_db,
+            &edited,
             old_size_world,
         ) {
             Err(err) => {
@@ -159,7 +160,14 @@ pub(crate) fn drain_bgremoval(
     let largest_centre = island_world_centre(largest.x, largest.y, largest.w, largest.h);
     let largest_world = [largest.w as f32 / px_per_m, largest.h as f32 / px_per_m];
     let edited = bake_premul(largest.w, largest.h, largest.rgba.clone());
-    match texture_edit::commit_edited_texture(entity, sim, renderer, asset_db, &edited, largest_world) {
+    match texture_edit::commit_edited_texture(
+        entity,
+        sim,
+        renderer,
+        asset_db,
+        &edited,
+        largest_world,
+    ) {
         Err(err) => {
             toasts.push(Toast::error(format!("Bg Removal failed: {err}")));
             return true;

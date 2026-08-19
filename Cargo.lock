@@ -7514,7 +7514,9 @@ version = "0.0.0"
 dependencies = [
  "ph2d-asset",
  "postcard",
+ "rect_packer",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

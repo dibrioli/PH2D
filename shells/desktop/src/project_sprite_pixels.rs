@@ -126,7 +126,6 @@ impl crate::App {
         }
     }
 
-
     /// Re-materializa os pixels e re-aponta cada sprite que os nomeia.
     ///
     /// Corre DEPOIS de `apply_project` (o mundo já foi restaurado, com bits novos) e **antes** de
@@ -175,7 +174,10 @@ impl crate::App {
             let Some(&(texture_id, premultiplied)) = by_id.get(&id) else {
                 continue; // carimbo sem pixels no arquivo — nada a devolver
             };
-            if let Some(mut sprite) = gfx.sim.world_mut().get_mut::<Sprite>(Entity::from_bits(bits))
+            if let Some(mut sprite) = gfx
+                .sim
+                .world_mut()
+                .get_mut::<Sprite>(Entity::from_bits(bits))
             {
                 reattach_pixels(&mut sprite, texture_id, premultiplied);
             }
@@ -241,7 +243,10 @@ impl crate::App {
                 );
                 continue;
             };
-            if let Some(mut sprite) = gfx.sim.world_mut().get_mut::<Sprite>(Entity::from_bits(bits))
+            if let Some(mut sprite) = gfx
+                .sim
+                .world_mut()
+                .get_mut::<Sprite>(Entity::from_bits(bits))
             {
                 bind_sheet_region(&mut sprite, texture_id, rect);
             }
@@ -337,7 +342,11 @@ mod tests {
     /// Um carimbo que sobreviveu a uma volta ao Atlas não pode arrastar pixels mortos.
     #[test]
     fn a_sprite_that_is_no_longer_individual_is_not_collected() {
-        assert!(!should_collect(&SpriteSource::Atlas { key: 0 }, false, false));
+        assert!(!should_collect(
+            &SpriteSource::Atlas { key: 0 },
+            false,
+            false
+        ));
         assert!(!should_collect(
             &SpriteSource::CookedTexture {
                 logical_id: ph2d_asset::LogicalTextureId::from_digest([0u8; 32]),

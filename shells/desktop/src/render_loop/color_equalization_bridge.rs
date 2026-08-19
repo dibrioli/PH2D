@@ -201,9 +201,9 @@ pub(super) fn dispatch(
             let entity = Entity::from_bits(entity_bits);
             let image =
                 SpriteImage::from_bytes(w, h, pixels, AlphaMode::Straight).into_premultiplied();
-            if let Err(e) =
-                texture_edit::commit_edited_texture(entity, sim, renderer, asset_db, &image, size_world)
-            {
+            if let Err(e) = texture_edit::commit_edited_texture(
+                entity, sim, renderer, asset_db, &image, size_world,
+            ) {
                 toasts.push(Toast::error(format!(
                     "Color Equalization: GPU texture upload failed ({e})"
                 )));

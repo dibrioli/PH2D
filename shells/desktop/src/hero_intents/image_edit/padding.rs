@@ -120,7 +120,14 @@ pub(crate) fn drain_padding(
         result.pixels,
         src.image.alpha,
     );
-    match texture_edit::commit_edited_texture(entity, sim, renderer, asset_db, &edited, new_size_world) {
+    match texture_edit::commit_edited_texture(
+        entity,
+        sim,
+        renderer,
+        asset_db,
+        &edited,
+        new_size_world,
+    ) {
         Err(err) => {
             toasts.push(Toast::error(format!("Padding failed: {err}")));
             true

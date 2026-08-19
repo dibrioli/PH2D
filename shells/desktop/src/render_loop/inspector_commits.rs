@@ -1,6 +1,6 @@
-//! Inspector commit phase — Transform / Visibility / Name / Sprite fields
-//! + Reimport drains. (A troca de ESTRATÉGIA de origem mudou-se para a
-//! [`super::inspector_strategy`] — vide a nota de LOC abaixo.)
+//! Inspector commit phase — os drains de Transform, Visibility, Name, campos
+//! de Sprite e Reimport. A troca de ESTRATÉGIA de origem mudou-se para o módulo
+//! irmão `inspector_strategy`; vide a nota de LOC abaixo.
 //!
 //! Wave 3.2 stage A — extracted from `render_loop::mod.rs` as a free
 //! function. Each consumes a snapshot pre-populated by the
@@ -26,8 +26,8 @@ use ph2d_ecs::scene::{
 use ph2d_ecs::{SimWorld, Transform, Visibility};
 use ph2d_editor::{
     BlendFieldEdit, HeroScreen, InspectorNameInfo, InspectorTransformInfo, InspectorVisibilityInfo,
-    OrderingFieldEdit, PhysicsFieldEdit, SamplingFieldEdit,
-    SpriteFieldEdit, Toast, ToastQueue, VisibilityFieldEdit,
+    OrderingFieldEdit, PhysicsFieldEdit, SamplingFieldEdit, SpriteFieldEdit, Toast, ToastQueue,
+    VisibilityFieldEdit,
 };
 use ph2d_render::Sprite;
 use std::collections::BTreeMap;

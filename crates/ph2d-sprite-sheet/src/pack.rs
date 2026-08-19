@@ -124,7 +124,90 @@ impl std::fmt::Display for PackError {
 
 impl std::error::Error for PackError {}
 
-/// Empacota `inputs` numa folha única.
+/// Uma peça a arranjar, **sem pixels** — só o nome e a caixa.
+///
+/// ⚠️ Existe porque **arranjar e compor são duas perguntas**: o auto-arranjo do canvas precisa de
+/// saber *onde cada peça fica* e nada mais (os pixels dele estão na GPU, e movê-los seria pagar
+/// uma leitura por arrasto); o bake precisa das duas. Separá-las é o que torna o botão
+/// *Auto-arranjar* barato.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LayoutItem {
+    pub name: String,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// O resultado de arranjar: o lado da folha e onde cada peça ficou.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Layout {
+    /// Lado da folha (quadrada, potência de dois).
+    pub size: u32,
+    /// `(nome, [x, y, w, h])` em pixels da folha, na MESMA ordem das entradas.
+    pub places: Vec<(String, [u32; 4])>,
+}
+
+/// **Arranja** — a metade geométrica do empacotamento, sem tocar num pixel.
+///
+/// A ordem de `places` espelha a de `items`, para o chamador reencontrar a sua peça por índice sem
+/// procurar por nome (o auto-arranjo do canvas tem uma entidade por item, e nomes podem repetir-se
+/// antes de a folha os desambiguar).
+pub fn layout(items: &[LayoutItem], opts: PackOptions) -> Result<Layout, PackError> {
+    if items.is_empty() {
+        return Err(PackError::Empty);
+    }
+    for i in items {
+        let (w, h) = (i.width + opts.padding, i.height + opts.padding);
+        if w > opts.max_size || h > opts.max_size {
+            return Err(PackError::TooLarge {
+                name: i.name.clone(),
+                width: i.width,
+                height: i.height,
+                max: opts.max_size,
+            });
+        }
+    }
+    // ⚠️ A ORDEM DE EMPACOTAMENTO: altura ↓, depois largura ↓, depois nome. As duas primeiras são
+    // a heurística clássica (peças altas primeiro deixam menos buraco na skyline); a terceira é o
+    // desempate que torna o resultado DETERMINÍSTICO — sem ela, duas peças do mesmo tamanho
+    // trocariam de lugar conforme a ordem de chegada, e a mesma cena daria folhas diferentes.
+    let mut order: Vec<usize> = (0..items.len()).collect();
+    order.sort_by(|&a, &b| {
+        let (x, y) = (&items[a], &items[b]);
+        y.height
+            .cmp(&x.height)
+            .then(y.width.cmp(&x.width))
+            .then(x.name.cmp(&y.name))
+    });
+    let biggest = items
+        .iter()
+        .map(|i| (i.width + opts.padding).max(i.height + opts.padding))
+        .max()
+        .unwrap_or(1);
+    let mut size = 64u32.max(biggest.next_power_of_two());
+    let placed = loop {
+        if let Some(p) = try_pack(items, &order, size, opts.padding) {
+            break p;
+        }
+        if size >= opts.max_size {
+            return Err(PackError::DoesNotFit {
+                count: items.len(),
+                max: opts.max_size,
+            });
+        }
+        size = (size * 2).min(opts.max_size);
+    };
+    // Reordena para a ordem de ENTRADA — o chamador indexa pela dele.
+    let mut places = vec![(String::new(), [0u32; 4]); items.len()];
+    for (idx, (x, y)) in placed {
+        places[idx] = (
+            items[idx].name.clone(),
+            [x, y, items[idx].width, items[idx].height],
+        );
+    }
+    Ok(Layout { size, places })
+}
+
+/// Empacota `inputs` numa folha única — arranja **e** compõe.
 ///
 /// A folha resultante já vem com as regiões ordenadas por nome (o construtor de
 /// [`AuthoredSheet`] garante), e os pixels compostos.
@@ -148,55 +231,24 @@ pub fn pack(
                 found: i.rgba.len(),
             });
         }
-        // Cada peça leva o padding consigo, então é o tamanho INFLADO que tem de caber.
-        let (w, h) = (i.width + opts.padding, i.height + opts.padding);
-        if w > opts.max_size || h > opts.max_size {
-            return Err(PackError::TooLarge {
-                name: i.name.clone(),
-                width: i.width,
-                height: i.height,
-                max: opts.max_size,
-            });
-        }
     }
-    // ⚠️ A ORDEM DE EMPACOTAMENTO: altura ↓, depois largura ↓, depois nome. As duas primeiras são
-    // a heurística clássica (peças altas primeiro deixam menos buraco na skyline); a terceira é o
-    // desempate que torna o resultado DETERMINÍSTICO — sem ela, duas peças do mesmo tamanho
-    // trocariam de lugar conforme a ordem de chegada, e a mesma cena daria folhas diferentes.
-    let mut order: Vec<usize> = (0..inputs.len()).collect();
-    order.sort_by(|&a, &b| {
-        let (x, y) = (&inputs[a], &inputs[b]);
-        y.height
-            .cmp(&x.height)
-            .then(y.width.cmp(&x.width))
-            .then(x.name.cmp(&y.name))
-    });
-
-    // A menor potência de dois em que tudo cabe. Começa no menor lado que a maior peça exige.
-    let biggest = inputs
+    // Arranjar é a MESMA função que o auto-arranjo do canvas usa — uma porta só para "onde cada
+    // peça fica", senão o botão e o bake divergiriam no dia em que uma fosse afinada.
+    let items: Vec<LayoutItem> = inputs
         .iter()
-        .map(|i| (i.width + opts.padding).max(i.height + opts.padding))
-        .max()
-        .unwrap_or(1);
-    let mut size = 64u32.max(biggest.next_power_of_two());
-    let placed = loop {
-        if let Some(p) = try_pack(&inputs, &order, size, opts.padding) {
-            break p;
-        }
-        if size >= opts.max_size {
-            return Err(PackError::DoesNotFit {
-                count: inputs.len(),
-                max: opts.max_size,
-            });
-        }
-        size = (size * 2).min(opts.max_size);
-    };
-
+        .map(|i| LayoutItem {
+            name: i.name.clone(),
+            width: i.width,
+            height: i.height,
+        })
+        .collect();
+    let plan = layout(&items, opts)?;
     // Compõe os pixels. A folha nasce **transparente**, e é isso que faz o padding ser padding em
     // vez de lixo: o que houver entre as regiões é alfa zero.
+    let size = plan.size;
     let mut rgba = vec![0u8; (size as usize) * (size as usize) * 4];
-    for (idx, (x, y)) in &placed {
-        blit(&mut rgba, size, &inputs[*idx], *x, *y);
+    for (idx, (_, rect)) in plan.places.iter().enumerate() {
+        blit(&mut rgba, size, &inputs[idx], rect[0], rect[1]);
     }
     Ok(AuthoredSheet::new(
         id,
@@ -204,19 +256,13 @@ pub fn pack(
         size,
         size,
         rgba,
-        placed
-            .iter()
-            .map(|(idx, (x, y))| {
-                let i = &inputs[*idx];
-                (i.name.clone(), [*x, *y, i.width, i.height])
-            })
-            .collect::<Vec<_>>(),
+        plan.places,
     ))
 }
 
 /// Tenta arrumar tudo numa folha `size × size`. `None` = não coube.
 fn try_pack(
-    inputs: &[PackInput],
+    items: &[LayoutItem],
     order: &[usize],
     size: u32,
     padding: u32,
@@ -224,7 +270,7 @@ fn try_pack(
     let mut packer = rect_packer::DensePacker::new(size as i32, size as i32);
     let mut out = Vec::with_capacity(order.len());
     for &idx in order {
-        let i = &inputs[idx];
+        let i = &items[idx];
         // `false` = sem rotação: uma região rodada obrigaria o consumidor a saber disso, e o
         // formato do Aseprite que exportamos não tem como dizê-lo sem entrar no campo `rotated`
         // que o nosso próprio leitor ignora.
@@ -270,7 +316,10 @@ mod tests {
 
     #[test]
     fn nothing_to_pack_is_an_error_not_an_empty_sheet() {
-        assert_eq!(pack(0, "s".into(), Vec::new(), opts()), Err(PackError::Empty));
+        assert_eq!(
+            pack(0, "s".into(), Vec::new(), opts()),
+            Err(PackError::Empty)
+        );
     }
 
     #[test]
@@ -307,7 +356,10 @@ mod tests {
             opts(),
         )
         .expect("pack");
-        assert_eq!(a, b, "a MESMA cena, declarada ao contrario, e' a mesma folha");
+        assert_eq!(
+            a, b,
+            "a MESMA cena, declarada ao contrario, e' a mesma folha"
+        );
     }
 
     /// Nenhuma região pode sobrepor outra — é a propriedade inteira de um empacotador.
@@ -379,7 +431,13 @@ mod tests {
             },
         )
         .unwrap_err();
-        assert!(matches!(e, PackError::DoesNotFit { count: 8, max: 1024 }));
+        assert!(matches!(
+            e,
+            PackError::DoesNotFit {
+                count: 8,
+                max: 1024
+            }
+        ));
     }
 
     /// Os PIXELS chegam ao sítio certo — não basta o retângulo estar certo.
@@ -412,7 +470,9 @@ mod tests {
         // Um canto que nenhuma região reclama tem de estar a zero.
         let inside_any = |x: u32, y: u32| {
             sheet.regions.iter().any(|r| {
-                x >= r.rect[0] && x < r.rect[0] + r.rect[2] && y >= r.rect[1]
+                x >= r.rect[0]
+                    && x < r.rect[0] + r.rect[2]
+                    && y >= r.rect[1]
                     && y < r.rect[1] + r.rect[3]
             })
         };
@@ -445,5 +505,83 @@ mod tests {
                 found: 8,
             })
         );
+    }
+}
+
+#[cfg(test)]
+mod layout_tests {
+    use super::*;
+
+    fn item(name: &str, w: u32, h: u32) -> LayoutItem {
+        LayoutItem {
+            name: name.to_string(),
+            width: w,
+            height: h,
+        }
+    }
+
+    fn opts() -> PackOptions {
+        PackOptions {
+            padding: 0,
+            max_size: 1024,
+        }
+    }
+
+    /// ⚠️ **A ordem de `places` espelha a de ENTRADA**, e é contrato: o auto-arranjo do canvas tem
+    /// uma entidade por item e precisa de reencontrar a sua peça por índice — nomes podem
+    /// repetir-se antes de a folha os desambiguar, então procurar por nome seria uma aposta.
+    #[test]
+    fn places_come_back_in_the_input_order() {
+        let items = vec![
+            item("zulu", 8, 40),
+            item("alpha", 8, 8),
+            item("mike", 8, 24),
+        ];
+        let plan = layout(&items, opts()).expect("layout");
+        assert_eq!(plan.places.len(), 3);
+        for (i, (name, rect)) in plan.places.iter().enumerate() {
+            assert_eq!(name, &items[i].name, "posicao {i}");
+            assert_eq!(rect[2], items[i].width);
+            assert_eq!(rect[3], items[i].height);
+        }
+    }
+
+    /// Arranjar e compor têm de dar o MESMO arranjo — senão o botão *Auto-arranjar* poria as
+    /// peças num sítio e o bake noutro, e o artista veria a folha mudar ao assar.
+    #[test]
+    fn arranging_and_composing_agree() {
+        let names = ["a", "b", "c", "d"];
+        let sizes = [(12u32, 20u32), (30, 8), (16, 16), (5, 40)];
+        let items: Vec<LayoutItem> = names
+            .iter()
+            .zip(sizes)
+            .map(|(n, (w, h))| item(n, w, h))
+            .collect();
+        let inputs: Vec<PackInput> = names
+            .iter()
+            .zip(sizes)
+            .map(|(n, (w, h))| PackInput {
+                name: n.to_string(),
+                width: w,
+                height: h,
+                rgba: vec![0; (w * h * 4) as usize],
+            })
+            .collect();
+        let plan = layout(&items, opts()).expect("layout");
+        let sheet = pack(1, "s".into(), inputs, opts()).expect("pack");
+        assert_eq!(plan.size, sheet.width);
+        for (name, rect) in &plan.places {
+            let region = sheet
+                .regions
+                .iter()
+                .find(|r| &r.name == name)
+                .expect("regiao");
+            assert_eq!(&region.rect, rect, "'{name}' num sitio diferente");
+        }
+    }
+
+    #[test]
+    fn nothing_to_arrange_is_an_error() {
+        assert_eq!(layout(&[], opts()), Err(PackError::Empty));
     }
 }

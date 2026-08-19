@@ -559,6 +559,8 @@ pub(crate) struct App {
     pub(crate) line_smoke_done: bool,
     /// `PH2D_MASK_SMOKE` one-shot latch (doc 25 §13.9 — the coverage-law scene).
     pub(crate) mask_smoke_done: bool,
+    /// Latch one-shot de `PH2D_SHEET_SMOKE` — a folha como objeto (plano Sprite 17 §7).
+    pub(crate) sheet_smoke_done: bool,
     /// `PH2D_TAPER_SMOKE` one-shot latch (the Procreate Touch Taper scene).
     pub(crate) taper_smoke_done: bool,
     /// Latch for the `PH2D_WETPAINT_SMOKE` canvas (Wet Paint mode, ADR-0134 W1; same rationale).

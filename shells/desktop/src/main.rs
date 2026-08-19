@@ -362,9 +362,6 @@ mod project_settings;
 /// irmão do `project_painter`, e o chão que faltava debaixo dele: cobre o funil que TODAS as
 /// ferramentas de imagem atravessam, não um produtor só.
 mod project_sprite_pixels;
-/// **O import de uma folha hand-packed** (`folha.png` + `folha.json`) — irmão do
-/// `image_import`, e o primeiro consumidor que o `parse_atlas_meta` tem desde 2026-05-12.
-mod sheet_import;
 /// **A tabela de COR autorada viaja no arquivo** (plano UI/UX W6) — irmão de `project`
 /// pelo teto de LOC, cortado por assunto.
 mod project_tokens;
@@ -374,6 +371,15 @@ mod scroll_smoke;
 mod sculpt3d;
 mod shape_build;
 mod shape_build_gesture;
+/// **O import de uma folha hand-packed** (`folha.png` + `folha.json`) — irmão do
+/// `image_import`, e o primeiro consumidor que o `parse_atlas_meta` tem desde 2026-05-12.
+/// **A folha como OBJETO** (plano `docs/Sprite_projeto/17` §7) — criar uma a partir da seleção e
+/// arranjar as peças dentro dela. Quase nada aqui é código novo: a folha é um retângulo vivo que
+/// ganhou um componente, como a moldura.
+mod sheet_frame;
+mod sheet_import;
+/// `PH2D_SHEET_SMOKE` — a cena que exerce a folha como OBJETO (plano `docs/Sprite_projeto/17` §7).
+mod sheet_smoke;
 mod signal_smoke;
 /// ⭐ A cena da TABELA SINAL → PAPEL (`PH2D_BUILD_SMOKE=68`) — ⚠️ NÃO é o `signal_smoke`, que é
 /// a cena do R0 (`PH2D_SIGNAL_SMOKE`): ali o assunto é a SAÍDA, aqui é o CONSUMIDOR.
@@ -707,6 +713,7 @@ impl App {
             #[cfg(feature = "sculpt3d")]
             sculpt3d_pending: None,
             mask_smoke_done: false,
+            sheet_smoke_done: false,
             taper_smoke_done: false,
             wetpaint_smoke_done: false,
             stack_smoke_done: false,

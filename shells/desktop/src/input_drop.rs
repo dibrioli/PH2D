@@ -107,9 +107,8 @@ impl App {
                         regions,
                         bits,
                     } => {
-                        gfx.toasts.push(Toast::success(format!(
-                            "Sheet {name}: {regions} sprites"
-                        )));
+                        gfx.toasts
+                            .push(Toast::success(format!("Sheet {name}: {regions} sprites")));
                         sheet_bits.extend(bits);
                     }
                     crate::sheet_import::SheetImportResult::Err { name, error } => {

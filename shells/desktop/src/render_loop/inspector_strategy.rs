@@ -26,7 +26,9 @@
 //!    tornar impossível, e a razão de a leitura passar por ele e não por um `readback` local.
 
 use ph2d_asset::{AssetDb, AssetId};
-use ph2d_ecs::scene::{ComponentRegistry, EditorCommand, EditorCommandQueue, apply_editor_commands};
+use ph2d_ecs::scene::{
+    ComponentRegistry, EditorCommand, EditorCommandQueue, apply_editor_commands,
+};
 use ph2d_ecs::{SimWorld, SpritePixels};
 use ph2d_editor::screens::hero::HeroScreen;
 use ph2d_editor::{RequestedSpriteStrategy, Toast, ToastQueue};
@@ -60,21 +62,23 @@ pub(super) fn dispatch(
         return false;
     };
     match (current.source, requested) {
-        (SpriteSource::Atlas { key }, RequestedSpriteStrategy::Individual) => promote_to_individual(
-            entity,
-            entity_bits,
-            key,
-            current,
-            hero,
-            sim,
-            renderer,
-            asset_db,
-            atlas_asset_map,
-            toasts,
-            editor_queue,
-            component_registry,
-            sprite_type_id,
-        ),
+        (SpriteSource::Atlas { key }, RequestedSpriteStrategy::Individual) => {
+            promote_to_individual(
+                entity,
+                entity_bits,
+                key,
+                current,
+                hero,
+                sim,
+                renderer,
+                asset_db,
+                atlas_asset_map,
+                toasts,
+                editor_queue,
+                component_registry,
+                sprite_type_id,
+            )
+        }
         (SpriteSource::Individual { texture_id }, RequestedSpriteStrategy::Atlas) => {
             demote_to_atlas(
                 entity,
@@ -224,7 +228,8 @@ fn demote_to_atlas(
     component_registry: &ComponentRegistry,
     sprite_type_id: u64,
 ) -> bool {
-    let Some(read) = texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
+    let Some(read) =
+        texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
         toasts.push(Toast::error(
             "Cannot pack into the atlas — this sprite's pixels are unreadable",
@@ -347,7 +352,9 @@ fn sprites_referencing_texture_id(sim: &mut SimWorld, texture_id: u32) -> usize 
     let world = sim.world_mut();
     let mut q = world.query::<&Sprite>();
     q.iter(world)
-        .filter(|s| matches!(s.source, SpriteSource::Individual { texture_id: t } if t == texture_id))
+        .filter(
+            |s| matches!(s.source, SpriteSource::Individual { texture_id: t } if t == texture_id),
+        )
         .count()
 }
 
@@ -377,7 +384,9 @@ fn release_texture_if_unused(texture_id: u32, sim: &mut SimWorld, renderer: &mut
 /// `Pressed`/`Hovered` ao lado do que continua ativo.
 fn reject_visual_reset(hero: &mut HeroScreen, clicked: RequestedSpriteStrategy) {
     let id = match clicked {
-        RequestedSpriteStrategy::Atlas => ph2d_editor::screens::hero::ids::INSP_RENDER_STRATEGY_ATLAS,
+        RequestedSpriteStrategy::Atlas => {
+            ph2d_editor::screens::hero::ids::INSP_RENDER_STRATEGY_ATLAS
+        }
         RequestedSpriteStrategy::Individual => {
             ph2d_editor::screens::hero::ids::INSP_RENDER_STRATEGY_INDIVIDUAL
         }

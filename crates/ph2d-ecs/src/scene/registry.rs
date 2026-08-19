@@ -391,6 +391,12 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // Ctrl+Z) devolveria o sprite sem saber de que folha ele era, e a regiao autorada
     // sobreviveria apenas como um retangulo solto que ninguem sabe re-derivar.
     reg.register::<crate::SpriteSheetRef>("ph2d::ecs::SpriteSheetRef");
+    // ESTE RETANGULO E' UMA FOLHA (plano Sprite 17 §7) -- a "imagem virtual" onde as pecas sao
+    // montadas. Gemeo do `VecFrame`: a entidade e' um retangulo vivo e o componente so' diz o que
+    // ela FAZ com os filhos. Sem o registro, o snapshot o DESCARTA e reabrir o projeto devolveria
+    // um retangulo qualquer com sprites soltos por baixo -- a folha deixaria de ser uma folha, em
+    // silencio, e o proximo bake nao teria o que assar.
+    reg.register::<crate::SpriteSheetFrame>("ph2d::ecs::SpriteSheetFrame");
 }
 
 #[cfg(test)]
@@ -444,7 +450,8 @@ mod tests {
         // + 1 posicao do controle (VecWidgetValue, plano UI/UX W8b.4)
         // + 1 icone escolhido (VecWidgetIcon, plano UI/UX W8b §6.2)
         // + 1 nome duravel dos pixels proprios (SpritePixels, plano Sprite 17 §3)
-        // + 1 regiao de folha hand-packed (SpriteSheetRef, plano Sprite 17 §6).
+        // + 1 regiao de folha hand-packed (SpriteSheetRef, plano Sprite 17 §6)
+        // + 1 folha como OBJETO (SpriteSheetFrame, plano Sprite 17 §7).
         //
         // **Este número existe para doer.** Um componente que não passa por aqui é
         // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só
@@ -456,9 +463,10 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 59);
+        assert_eq!(reg.len(), 60);
         assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteSheetRef").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::SpriteSheetFrame").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecAnchors").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecResizeBox").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecWidget").is_some());

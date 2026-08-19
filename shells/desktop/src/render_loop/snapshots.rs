@@ -697,9 +697,12 @@ pub(super) fn publish(
         // O rótulo legível de uma origem hand-packed. Derivado AQUI (e não no painel) porque o
         // painel é chrome e não pode depender do documento de folhas sem inverter a seta.
         let sheet_label = match source_kind {
-            ph2d_editor::InspectorSpriteSource::HandPacked { sheet, region } => sheets
-                .get(&sheet)
-                .and_then(|s| s.region(region).map(|r| format!("{} \u{00b7} {}", s.name, r.name))),
+            ph2d_editor::InspectorSpriteSource::HandPacked { sheet, region } => {
+                sheets.get(&sheet).and_then(|s| {
+                    s.region(region)
+                        .map(|r| format!("{} \u{00b7} {}", s.name, r.name))
+                })
+            }
             _ => None,
         };
         let world_size = [

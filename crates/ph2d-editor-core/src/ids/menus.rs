@@ -384,12 +384,6 @@ pub const INSP_SPRITE_FLIP_X: NodeId = hash_node_id("insp_sprite_flip_x");
 /// Vertical flip checkbox — see [`INSP_SPRITE_FLIP_X`].
 pub const INSP_SPRITE_FLIP_Y: NodeId = hash_node_id("insp_sprite_flip_y");
 
-/// M14.5 inspector phase: pixel-format segmented picker in the
-/// Render Source section. Pressed = current choice, Normal = the
-/// alternative. RGBA16 is `Disabled` until the asset crate gains
-/// half-float / 16-bit-channel storage (currently only `ImageRgba8`).
-/// Reimport reads the pressed button to decide the target format.
-
 /// Map fixture entity name to canonical hierarchy `NodeId`. The
 /// placeholder fixture currently exposes only "Scene Root"; the
 /// other `HIER_*` ids are kept reserved for the pilot project's

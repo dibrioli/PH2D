@@ -54,6 +54,7 @@ pub mod sim;
 pub mod sort_key;
 pub mod sorting;
 pub mod sprite_pixels;
+pub mod sprite_sheet_frame;
 pub mod sprite_sheet_ref;
 pub mod transform;
 pub mod transform_inverse;
@@ -80,13 +81,14 @@ pub use sampling::{
     resolve_texture_repeat,
 };
 pub use sim::{SimComponent, SimWorld};
-pub use sprite_pixels::SpritePixels;
-pub use sprite_sheet_ref::SpriteSheetRef;
 pub use sort_key::{SortInput, SortKey, compute_sort_ranks, effective_z_index};
 pub use sorting::{
     LayerId, OrderInLayer, ShowBehindParent, SortPoint, SortingGroup, SortingLayer, SortingLayers,
     TopLevel, YSort, ZAsRelative, ZIndexOverride,
 };
+pub use sprite_pixels::SpritePixels;
+pub use sprite_sheet_frame::SpriteSheetFrame;
+pub use sprite_sheet_ref::SpriteSheetRef;
 pub use transform::{
     GlobalTransform, GroupedChildren, Locked, SimRef, Transform, TransformPropagationState,
     WorklistBuf, is_locked_for_edit, propagate_transforms, propagate_transforms_into_present,

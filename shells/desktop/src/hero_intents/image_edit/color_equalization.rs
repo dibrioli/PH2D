@@ -68,7 +68,14 @@ pub(crate) fn drain_color_equalization(
     let edited =
         ph2d_render::SpriteImage::from_bytes(out_w, out_h, out, ph2d_render::AlphaMode::Straight)
             .into_premultiplied();
-    match texture_edit::commit_edited_texture(entity, sim, renderer, asset_db, &edited, old_size_world) {
+    match texture_edit::commit_edited_texture(
+        entity,
+        sim,
+        renderer,
+        asset_db,
+        &edited,
+        old_size_world,
+    ) {
         Err(err) => {
             toasts.push(Toast::error(format!("Color EQ failed: {err}")));
             true

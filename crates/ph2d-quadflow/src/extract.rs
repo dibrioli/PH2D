@@ -144,9 +144,34 @@ pub fn extract_with(
         Clustering::Lattice => cluster_lattice(mesh, orient, pos, scale),
     };
     let c = collapse(mesh, pos, orient, &cells);
-    let graph = neighbour_graph(mesh, &c, scale);
-    let cycles = trace_faces(&graph, &c.verts, &c.normals, orient);
-    let verts = c.verts.clone();
+    let mut graph = neighbour_graph(mesh, &c, scale);
+    prune_dangling(&mut graph);
+    let cycles: Vec<Vec<u32>> = trace_faces(&graph, &c.verts, &c.normals, orient)
+        .into_iter()
+        .flat_map(|cy| split_pinches(&cy))
+        .collect();
+
+    // ⚠️ **COMPACTAR ANTES de construir as faces: só as células que aparecem num
+    // ciclo entram na malha.** Um vértice órfão conta em `V` e não em `E` nem em
+    // `F` — ele empurra a característica de Euler para cima sem descrever nada, e
+    // faria a A3 medir a PODA em vez da topologia.
+    let mut remap = vec![u32::MAX; c.verts.len()];
+    let mut verts: Vec<[f32; 3]> = Vec::new();
+    let cycles: Vec<Vec<u32>> = cycles
+        .into_iter()
+        .map(|cy| {
+            cy.into_iter()
+                .map(|v| {
+                    let old = v as usize;
+                    if remap[old] == u32::MAX {
+                        remap[old] = verts.len() as u32;
+                        verts.push(c.verts[old]);
+                    }
+                    remap[old]
+                })
+                .collect()
+        })
+        .collect();
 
     let (mut faces, mut quads, mut non_quads, mut max_sides) = (Vec::new(), 0usize, 0usize, 0usize);
     for c in &cycles {
@@ -523,6 +548,68 @@ fn neighbour_graph(mesh: &Mesh, c: &Cells, scale: &ScaleField) -> Vec<BTreeSet<u
         }
     }
     g
+}
+
+/// **PARTE UM CICLO QUE SE PINÇA** — um passeio que volta ao mesmo vértice.
+///
+/// ⚠️ **Um ciclo que visita `X` duas vezes NÃO é um polígono**, e leque-triangulá-lo
+/// produz a mesma aresta em mais de duas faces — a saída deixa de ser manifold
+/// pela porta dos fundos. Medido na esfera: **6** arestas com três faces, e a
+/// soma dos lados a passar `2E` em 20.
+///
+/// O pinçamento é a assinatura de um **vértice não-manifold** no grafo de
+/// células: duas folhas da superfície a encontrarem-se num nó. Partir o ciclo no
+/// vértice repetido é a leitura correta — cada folha fica com o seu polígono.
+///
+/// ⚠️ **A pilha, e não uma varredura:** um ciclo pode pinçar-se várias vezes e
+/// aninhado (`A X B X C Y D Y`), e só uma pilha separa os laços na ordem certa.
+fn split_pinches(cycle: &[u32]) -> Vec<Vec<u32>> {
+    let mut out = Vec::new();
+    let mut stack: Vec<u32> = Vec::new();
+    for &v in cycle {
+        if let Some(at) = stack.iter().position(|&x| x == v) {
+            // O laço fechado entre a visita anterior e esta.
+            let loop_part: Vec<u32> = stack.split_off(at);
+            if loop_part.len() >= 3 {
+                out.push(loop_part);
+            }
+        }
+        stack.push(v);
+    }
+    if stack.len() >= 3 {
+        out.push(stack);
+    }
+    out
+}
+
+/// **A PODA DOS PENDENTES** — todo nó de uma grade fechada tem grau ≥ 3.
+///
+/// ⚠️ **Sem ela o sistema de rotação não descreve uma superfície, e a
+/// característica de Euler o denuncia.** Um nó de grau 1 faz o passeio ir `a→b` e
+/// voltar `b→a`: um ciclo de DOIS, que não delimita área. O ciclo é descartado
+/// (uma face de dois lados não existe) mas as duas arestas dirigidas já foram
+/// consumidas — e passam a não pertencer a face nenhuma. A soma dos comprimentos
+/// das faces deixa de ser `2E`, e `χ = V − E + F` sai **12** numa esfera, onde o
+/// máximo de uma superfície conexa é **2**.
+///
+/// ⚠️ **Iterativa, e é obrigatório:** podar um pendente pode deixar o vizinho com
+/// grau 2, e esse com grau 1. Uma passada só deixaria a cauda pela metade.
+fn prune_dangling(graph: &mut [BTreeSet<u32>]) {
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for c in 0..graph.len() {
+            if graph[c].is_empty() || graph[c].len() >= 3 {
+                continue;
+            }
+            let gone: Vec<u32> = graph[c].iter().copied().collect();
+            graph[c].clear();
+            for w in gone {
+                graph[w as usize].remove(&(c as u32));
+            }
+            changed = true;
+        }
+    }
 }
 
 /// **AS FACES, pelo SISTEMA DE ROTAÇÃO.**

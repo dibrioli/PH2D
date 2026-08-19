@@ -192,6 +192,41 @@ repo quase declarou sucesso sobre uma casca murcha.
 que a Q4 existe para curar — declarar zero antes do fluxo seria declarar que a
 técnica base não tem o defeito que a literatura inteira nomeia.
 
+### ⭐ O CONJUNTO DE ACEITAÇÃO DO §4, MEDIDO NO FIM DA JORNADA (2026-08-19)
+
+| # | asserção | esfera 48×64 | toro 64×32 | estado |
+|---|---|---|---|---|
+| **A1** | all-quad | **80,6 %** | **90,5 %** | ⏳ **a única aberta** — é o alvo do fluxo (Q4) |
+| **A2** | manifold | ✓ | ✓ | ✅ |
+| **A3** | gênero preservado | **χ = 2** (alvo 2) | **χ = 0** (alvo 0) | ✅ |
+| **A4** | forma ≤ 1 % da diagonal | **0,23 %** | **0,24 %** | ✅ |
+| **A6** | densidade adaptativa | ≥ 2× | — | ✅ |
+| **A7** | determinístico | ✓ | ✓ | ✅ |
+| **A8** | simetria 4-RoSy | ✓ | — | ✅ |
+
+**As três peças que fecharam A2/A3/A4, todas achadas por medição:**
+
+1. **A PODA DOS PENDENTES.** Um nó de grau 1 faz o passeio ir `a→b` e voltar
+   `b→a` — um ciclo de DOIS, que não delimita área. Ele é descartado, mas as duas
+   arestas dirigidas já foram consumidas e passam a não pertencer a face nenhuma:
+   a soma dos lados deixa de ser `2E` e **χ sai 12 numa esfera**, onde o máximo de
+   uma superfície conexa é 2. Poda iterativa (podar um pendente cria outro).
+2. **A PARTIÇÃO DOS PINÇAMENTOS.** Um ciclo que visita o mesmo vértice duas vezes
+   não é um polígono; leque-triangulá-lo põe a mesma aresta em três faces —
+   medido: **6** arestas assim na esfera, e a soma dos lados a passar `2E` em 20.
+   Partir o ciclo no vértice repetido é a leitura correta: o pinçamento é um
+   vértice **não-manifold** no grafo de células, e cada folha fica com o seu
+   polígono.
+3. **A RÉGUA DA A4 ERA PONTO-A-VÉRTICE.** Um remesh devolve uma malha mais
+   GROSSA, então um vértice da entrada está sempre a meia célula do vértice de
+   saída mais próximo — **por construção**. A régua media a densidade da saída, não
+   a fidelidade da forma. Com a distância **ponto-a-SUPERFÍCIE** (as sete regiões
+   de Voronoi do triângulo), a mesma malha mede **0,23 %** em vez de 4,22 %.
+
+⚠️ **Três vezes nesta jornada a RÉGUA se corrigiu antes do algoritmo** (a fração
+de quads por ciclos · a convergência do campo de posição · a Hausdorff por
+vértices). *Um instrumento errado acusa o produto do defeito que ele próprio tem.*
+
 ### ✅ Q3 FECHADA — o que ela entregou, MEDIDO (2026-08-19)
 
 | | esfera 48×64 | toro 64×32 |

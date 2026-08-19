@@ -51,7 +51,6 @@ fn edge_use(mesh: &Mesh) -> BTreeMap<(u32, u32), usize> {
 /// (subdivisão, normais, booleana) tem resposta para ela, e o sintoma aparece
 /// longe da causa.
 #[test]
-#[ignore = "Q4: a A2 e' o alvo do fluxo de custo minimo. MEDIDO 2026-08-19 (porte fiel): esfera chi=12, ciclos ate' 21 lados. ⛔ NAO afrouxe a barra -- ela e' a do ADR-0160 §4"]
 fn the_extracted_mesh_is_manifold() {
     for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
         let q = run(&mesh, 0.18);
@@ -75,7 +74,6 @@ fn the_extracted_mesh_is_manifold() {
 /// fixture que faz este gate discriminar: um remesh que costurasse o buraco
 /// devolveria 2 sobre uma entrada que vale 0, e nenhuma medição de forma veria.
 #[test]
-#[ignore = "Q4: a A3 e' o alvo do fluxo. MEDIDO 2026-08-19 (porte fiel + hierarquia): esfera chi=12 (alvo 2). ⛔ NAO afrouxe a barra"]
 fn the_genus_of_the_input_survives() {
     for (name, mesh, want) in [("esfera", sphere(), 2i64), ("toro", torus(), 0)] {
         let q = run(&mesh, 0.18);
@@ -99,7 +97,6 @@ fn the_genus_of_the_input_survives() {
 /// "sobre" a entrada e teria perdido a forma. Aqui as duas direções são medidas
 /// contra a diagonal da caixa, e a barra é a do ADR: **1 %**.
 #[test]
-#[ignore = "Q4: a A4 exige os nos da reticula em vez do centroide da celula. MEDIDO 2026-08-19 (porte fiel): 0,0422 da diagonal contra a barra de 0,01. ⛔ NAO afrouxe a barra"]
 fn the_shape_survives_within_one_percent() {
     for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
         let q = run(&mesh, 0.18);
@@ -131,9 +128,12 @@ fn the_shape_survives_within_one_percent() {
 /// aquela régua a esfera dava **60,9 %**; sob a régua honesta (sobre as faces
 /// EMITIDAS) ela era **53,3 %**.
 ///
-/// ⭐ **E com o porte FIEL do operador de compatibilidade + a hierarquia + o
-/// quociente da retícula, o número MEDIDO é `76,9 %` (esfera) e `86,6 %`
-/// (toro).** O piso abaixo sai daí.
+/// ⭐ **Com o pipeline completo — porte fiel do operador + hierarquia + quociente
+/// da retícula + poda dos pendentes + partição dos pinçamentos — o número MEDIDO
+/// é `80,6 %` (esfera) e `90,5 %` (toro).** O piso abaixo sai daí.
+///
+/// ⚠️ **A1 é a ÚNICA asserção do ADR-0160 §4 que continua aberta**, e ela é o
+/// alvo do fluxo de custo mínimo (Q4). A2, A3, A4, A6, A7 e A8 estão verdes.
 #[test]
 fn the_quad_fraction_is_measured_and_pinned() {
     for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
@@ -149,12 +149,12 @@ fn the_quad_fraction_is_measured_and_pinned() {
             q.quads > 0,
             "{name}: a extracao nao produziu um unico quad -- o passeio de faces nao esta' a fechar"
         );
-        // Piso MEDIDO (2026-08-19, porte fiel): esfera 76,9 %, toro 86,6 %. A
-        // margem é o que separa uma regressão de ruído de fixture.
+        // Piso MEDIDO (2026-08-19, pipeline completo): esfera **80,6 %**, toro
+        // **90,5 %**. A margem é o que separa uma regressão de ruído de fixture.
         assert!(
-            q.quad_fraction() > 0.70,
+            q.quad_fraction() > 0.78,
             "{name}: so' {:.1}% das faces sairam quad -- abaixo do piso MEDIDO desta onda \
-             (esfera 76,9 / toro 86,6)",
+             (esfera 80,6 / toro 90,5)",
             q.quad_fraction() * 100.0
         );
     }
@@ -191,23 +191,104 @@ fn bbox_diagonal(mesh: &Mesh) -> f32 {
     (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt()
 }
 
-/// A maior distância de um vértice de `from` ao vértice mais próximo de `to`.
+/// A maior distância de um vértice de `from` à **SUPERFÍCIE** de `to`.
 ///
-/// ⚠️ **Vértice-a-vértice e não ponto-a-superfície**, e a diferença está
-/// declarada: a versão exata mediria contra os triângulos, e sobre malhas desta
-/// densidade as duas coincidem dentro da barra. A versão exata é da Q4, quando a
-/// barra apertar.
+/// ⚠️ **Ponto-a-SUPERFÍCIE, e a primeira versão media ponto-a-VÉRTICE.** A
+/// diferença estava declarada ali com um *"as duas coincidem dentro da barra"* —
+/// e a barra apertou: um remesh devolve uma malha mais GROSSA, então um vértice
+/// da entrada está sempre a meia célula do vértice de saída mais próximo, **por
+/// construção**. Medido: 4,22 % da diagonal com a régua de vértices e **0,60 %**
+/// com a de superfície, sobre a MESMA malha. *A régua media a densidade da saída,
+/// não a fidelidade da forma.*
 fn one_sided(from: &Mesh, to: &Mesh) -> f32 {
+    let pos = to.positions();
     let mut worst = 0.0f32;
     for p in from.positions() {
         let mut best = f32::MAX;
-        for t in to.positions() {
-            let d = [p[0] - t[0], p[1] - t[1], p[2] - t[2]];
-            best = best.min(d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])));
+        for f in to.faces() {
+            let v = f.verts();
+            // Um quad é medido como os dois triângulos que o leque dá.
+            for k in 1..v.len() - 1 {
+                let d = point_triangle_sq(
+                    *p,
+                    pos[v[0] as usize],
+                    pos[v[k] as usize],
+                    pos[v[k + 1] as usize],
+                );
+                best = best.min(d);
+            }
         }
         worst = worst.max(best.sqrt());
     }
     worst
+}
+
+/// A distância ao QUADRADO de `p` ao triângulo `(a, b, c)`.
+///
+/// ⚠️ **As sete regiões de Voronoi do triângulo**, e nenhuma pode faltar: um
+/// ponto sobre a extensão de uma aresta pertence à aresta, e a fórmula
+/// baricêntrica crua devolveria um pé de perpendicular FORA do triângulo — uma
+/// distância menor que a verdadeira, que é o erro que faz uma medição de
+/// fidelidade aprovar uma malha errada.
+fn point_triangle_sq(p: [f32; 3], a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> f32 {
+    let sub = |x: [f32; 3], y: [f32; 3]| [x[0] - y[0], x[1] - y[1], x[2] - y[2]];
+    let dot3 = |x: [f32; 3], y: [f32; 3]| x[0].mul_add(y[0], x[1].mul_add(y[1], x[2] * y[2]));
+    let (ab, ac, ap) = (sub(b, a), sub(c, a), sub(p, a));
+
+    let (d1, d2) = (dot3(ab, ap), dot3(ac, ap));
+    if d1 <= 0.0 && d2 <= 0.0 {
+        return dot3(ap, ap);
+    }
+    let bp = sub(p, b);
+    let (d3, d4) = (dot3(ab, bp), dot3(ac, bp));
+    if d3 >= 0.0 && d4 <= d3 {
+        return dot3(bp, bp);
+    }
+    let vc = d1 * d4 - d3 * d2;
+    if vc <= 0.0 && d1 >= 0.0 && d3 <= 0.0 {
+        let t = d1 / (d1 - d3);
+        let q = [
+            t.mul_add(ab[0], a[0]),
+            t.mul_add(ab[1], a[1]),
+            t.mul_add(ab[2], a[2]),
+        ];
+        return dot3(sub(p, q), sub(p, q));
+    }
+    let cp = sub(p, c);
+    let (d5, d6) = (dot3(ab, cp), dot3(ac, cp));
+    if d6 >= 0.0 && d5 <= d6 {
+        return dot3(cp, cp);
+    }
+    let vb = d5 * d2 - d1 * d6;
+    if vb <= 0.0 && d2 >= 0.0 && d6 <= 0.0 {
+        let t = d2 / (d2 - d6);
+        let q = [
+            t.mul_add(ac[0], a[0]),
+            t.mul_add(ac[1], a[1]),
+            t.mul_add(ac[2], a[2]),
+        ];
+        return dot3(sub(p, q), sub(p, q));
+    }
+    let va = d3 * d6 - d5 * d4;
+    if va <= 0.0 && (d4 - d3) >= 0.0 && (d5 - d6) >= 0.0 {
+        let t = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+        let bc = sub(c, b);
+        let q = [
+            t.mul_add(bc[0], b[0]),
+            t.mul_add(bc[1], b[1]),
+            t.mul_add(bc[2], b[2]),
+        ];
+        return dot3(sub(p, q), sub(p, q));
+    }
+    // O interior: as coordenadas baricêntricas.
+    let denom = 1.0 / (va + vb + vc);
+    let (v, w) = (vb * denom, vc * denom);
+    let q = [
+        w.mul_add(ac[0], v.mul_add(ab[0], a[0])),
+        w.mul_add(ac[1], v.mul_add(ab[1], a[1])),
+        w.mul_add(ac[2], v.mul_add(ab[2], a[2])),
+    ];
+    dot3(sub(p, q), sub(p, q))
 }
 
 /// **A SONDA DA PERDA** — onde os não-quads nascem. ⚠️ `#[ignore]`: é medição.
@@ -235,5 +316,69 @@ fn measure_where_the_quads_are_lost() {
             *sides.entry(f.verts().len()).or_insert(0) += 1;
         }
         eprintln!("[quadflow] {name}: lados das faces {sides:?}");
+    }
+}
+
+/// **A SONDA DAS COMPONENTES** — χ = 12 numa esfera é aritmeticamente impossível
+/// para uma superfície CONEXA (o máximo é 2). ⚠️ `#[ignore]`: é medição.
+#[test]
+#[ignore = "sonda -- quantas componentes a extracao produz, e de que tamanho"]
+fn measure_the_components() {
+    for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
+        let q = run(&mesh, 0.18);
+        let n = q.mesh.vert_count();
+        let mut adj: Vec<Vec<u32>> = vec![Vec::new(); n];
+        for (a, b) in edge_use(&q.mesh).keys() {
+            adj[*a as usize].push(*b);
+            adj[*b as usize].push(*a);
+        }
+        let mut comp = vec![u32::MAX; n];
+        let mut sizes = Vec::new();
+        for s in 0..n {
+            if comp[s] != u32::MAX {
+                continue;
+            }
+            let c = sizes.len() as u32;
+            let mut queue = vec![s];
+            comp[s] = c;
+            let mut head = 0;
+            while head < queue.len() {
+                let v = queue[head];
+                head += 1;
+                for &w in &adj[v] {
+                    if comp[w as usize] == u32::MAX {
+                        comp[w as usize] = c;
+                        queue.push(w as usize);
+                    }
+                }
+            }
+            sizes.push(queue.len());
+        }
+        sizes.sort_unstable();
+        sizes.reverse();
+        let small: usize = sizes.iter().skip(1).sum();
+        eprintln!(
+            "[quadflow] {name}: {} componentes, tamanhos {:?}... ({small} vertices fora da maior)",
+            sizes.len(),
+            &sizes[..sizes.len().min(8)]
+        );
+    }
+}
+
+/// **A SONDA DA CONSERVAÇÃO** — a soma dos comprimentos dos ciclos TEM de ser
+/// `2E`. ⚠️ `#[ignore]`: é medição.
+#[test]
+#[ignore = "sonda -- as arestas dirigidas que somem do passeio de faces"]
+fn measure_directed_edge_conservation() {
+    for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
+        let q = run(&mesh, 0.18);
+        let e = edge_use(&q.mesh).len();
+        let sum: usize = q.mesh.faces().iter().map(|f| f.verts().len()).sum();
+        let once = edge_use(&q.mesh).values().filter(|c| **c == 1).count();
+        let over = edge_use(&q.mesh).values().filter(|c| **c > 2).count();
+        eprintln!(
+            "[quadflow] {name}: 2E={} soma_lados={sum} | arestas com 1 face={once}, com >2={over}",
+            2 * e
+        );
     }
 }

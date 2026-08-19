@@ -202,7 +202,7 @@ fn sharpen_on(mut mesh: Mesh, amount: f32) -> Mesh {
 /// guarda faz a primeira sangrar e deixa a segunda VERDE, que é o que significa
 /// *identidade no regime da referência*. `min(1, 6/n)` vale exactamente `1` para
 /// todo `n <= 6` — a valência de um quad ou de um triângulo regular —, então
-/// nenhuma malha que a referência contemple vê um bit diferente.
+/// nenhuma malha que a referência abranja vê um bit diferente.
 #[test]
 fn the_sharpen_does_not_blow_up_a_high_valence_mesh_and_leaves_a_regular_one_alone() {
     let (_, hi) = crate::FilterKind::Sharpen.range();

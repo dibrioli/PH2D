@@ -40,19 +40,51 @@ impl Default for View {
     }
 }
 
-fn norm(v: [f64; 3]) -> [f64; 3] {
+pub fn norm(v: [f64; 3]) -> [f64; 3] {
     let l = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
     [v[0] / l, v[1] / l, v[2] / l]
 }
-fn cross(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+pub fn cross(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
     [
         a[1] * b[2] - a[2] * b[1],
         a[2] * b[0] - a[0] * b[2],
         a[0] * b[1] - a[1] * b[0],
     ]
 }
-fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
+pub fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
     a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+}
+
+/// ⚠️ **UMA função de sombreamento, usada pelos DOIS caminhos** (malha e traçado do campo).
+///
+/// Se cada um tivesse a sua, a comparação entre eles mediria a iluminação junto com a geometria —
+/// e a pergunta desta W0 é exatamente *qual dos dois está errado*. Duas luzes diferentes tornariam
+/// a resposta indistinguível da montagem.
+pub fn shade(n: [f64; 3], z_axis: [f64; 3]) -> [u8; 3] {
+    // A malha é estanque: normal virada para trás é orientação, não geometria.
+    let n = if dot(n, z_axis) < 0.0 {
+        [-n[0], -n[1], -n[2]]
+    } else {
+        n
+    };
+    let key = norm([0.6, 0.8, 0.5]);
+    let fill = norm([-0.7, 0.2, 0.3]);
+    let lambert = dot(n, key).max(0.0) * 0.78 + dot(n, fill).max(0.0) * 0.22;
+    let ambient = 0.16 + 0.10 * (n[1] * 0.5 + 0.5);
+    let lit = (lambert + ambient).clamp(0.0, 1.0);
+    [
+        (lit.powf(0.85) * 236.0) as u8,
+        (lit.powf(0.92) * 226.0) as u8,
+        (lit.powf(1.0) * 212.0) as u8,
+    ]
+}
+
+/// A base ortonormal da câmera: `(x, y, z)` em espaço de mundo.
+pub fn basis(from: [f64; 3]) -> ([f64; 3], [f64; 3], [f64; 3]) {
+    let z_axis = norm(from);
+    let x_axis = norm(cross([0.0, 1.0, 0.0], z_axis));
+    let y_axis = cross(z_axis, x_axis);
+    (x_axis, y_axis, z_axis)
 }
 
 /// Rasteriza a malha e devolve RGBA8.
@@ -64,10 +96,7 @@ pub fn render(view: &View, verts: &[[f32; 3]], tris: &[[u32; 3]]) -> Vec<u8> {
     }
     let mut depth = vec![f64::NEG_INFINITY; w * h];
 
-    let z_axis = norm(view.from);
-    let up = [0.0, 1.0, 0.0];
-    let x_axis = norm(cross(up, z_axis));
-    let y_axis = cross(z_axis, x_axis);
+    let (x_axis, y_axis, z_axis) = basis(view.from);
 
     let half = (h.min(w) as f64) * 0.5;
     let to_screen = |p: [f64; 3]| -> [f64; 3] {
@@ -81,10 +110,6 @@ pub fn render(view: &View, verts: &[[f32; 3]], tris: &[[u32; 3]]) -> Vec<u8> {
         let vz = dot(p, z_axis);
         [w as f64 * 0.5 + vx * half, h as f64 * 0.5 - vy * half, vz]
     };
-
-    // Luz principal + preenchimento, ambas em espaço de mundo.
-    let key = norm([0.6, 0.8, 0.5]);
-    let fill = norm([-0.7, 0.2, 0.3]);
 
     for t in tris {
         let p: Vec<[f64; 3]> = t
@@ -106,23 +131,7 @@ pub fn render(view: &View, verts: &[[f32; 3]], tris: &[[u32; 3]]) -> Vec<u8> {
             [c[0] / l, c[1] / l, c[2] / l]
         };
 
-        // Frente ao observador? (a malha é estanque, então as costas não interessam)
-        let facing = dot(n, z_axis);
-        let n = if facing < 0.0 {
-            [-n[0], -n[1], -n[2]]
-        } else {
-            n
-        };
-
-        let lambert = dot(n, key).max(0.0) * 0.78 + dot(n, fill).max(0.0) * 0.22;
-        let ambient = 0.16 + 0.10 * (n[1] * 0.5 + 0.5);
-        let lit = (lambert + ambient).clamp(0.0, 1.0);
-        // Rampa levemente quente, para a faceta ler melhor que um cinza puro.
-        let rgb = [
-            (lit.powf(0.85) * 236.0) as u8,
-            (lit.powf(0.92) * 226.0) as u8,
-            (lit.powf(1.0) * 212.0) as u8,
-        ];
+        let rgb = shade(n, z_axis);
 
         let s: Vec<[f64; 3]> = p.iter().map(|q| to_screen(*q)).collect();
 

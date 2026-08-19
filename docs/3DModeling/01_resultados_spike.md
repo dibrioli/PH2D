@@ -6,21 +6,38 @@ Reprodução: `cd spikes/field-spike && cargo run --release` (e `--features jit`
 
 ---
 
-## Veredito: **o caminho se sustenta, e o buraco tem endereço**
+## Veredito: **a geometria está perfeita; o defeito era inteiramente da MALHA**
+
+> ⚠️ **Este veredito é a 2ª volta.** A 1ª entregou a malha ao Enio, e o smoke dele foi:
+> *"quinas externas horríveis e completamente inúteis para arte; quinas internas ruins mas
+> promissoras"*. Aquele veredito não separava **a geometria** (o campo e os operadores) da
+> **extração** (a malha) — e uma imagem tirada da malha mostra as duas somadas. A §1c foi escrita
+> para separá-las, e a resposta foi limpa.
 
 | Pergunta da W0 (`03_plano_implicito.md` §6) | Resultado |
 |---|---|
-| 1. Quina viva | ❌ **REPROVOU** — a aresta é **quantizada à grade** (§2). É o item de trabalho que a W0 existiu para achar |
+| 1. Quina viva | ⭐ **PERFEITA no campo** (§1c) · ❌ **quebrada na malha** (§2). Duas respostas porque são duas perguntas |
 | 2. Os dois caracteres de fillet | ✅ entregues, e **visivelmente diferentes** (§1) |
 | 3. O raio pedido é o entregue? | ✅ **exato: erro 0,00 %**. ⚠️ orgânico: **entrega 75 % do pedido**, sempre (§4) |
-| 4. Resolução × tempo × memória | ✅ **35 ms** a 128³, **118 ms** a 256³, pico **105 MiB** (§5) |
-| 5. Intérprete × JIT | ✅ **decidido: JIT fica DESLIGADO** — ganho **zero** (§6) |
+| 4. Resolução × tempo × memória | ✅ malha 128³ em **21 ms**; traçado do campo em **57 ms**, um núcleo (§5) |
+| 5. Intérprete × JIT | ⚠️ **CORRIGIDO — o JIT PAGA: 5,3× no traçado, 1,6× na malha** (§6) |
 | 6. Determinismo (HR-5) | ✅ **byte-idêntico** entre corridas (§7) |
 | *(extra)* ponte `fidget → ph2d_mesh` | ✅ funciona; o STL saiu pelo exportador da casa (§8) |
 
-⛔ **Nenhum kill-criterion disparou.** O do raio (*"se o raio pedido não for o entregue, PARA"*) é
-justamente o que passou com nota máxima. O da quina abre trabalho nomeado, que é o que ele manda:
-*"a extração de malha é reescrita por nós ou trocada; **não se afrouxa a barra**"*.
+⛔ **Nenhum kill-criterion disparou.** O do raio (*"se o raio pedido não for o entregue, PARA"*)
+passou com nota máxima. O da quina abre trabalho nomeado — e a §1c **muda a natureza desse
+trabalho**: não é preciso consertar a malha para o artista **ver** quina perfeita; é preciso
+consertá-la para **exportar**.
+
+### ⭐ A consequência de arquitetura, e ela é grande
+
+**O que o artista vê passa a ser o campo traçado, não a malha.** A malha vira um artefato de
+**exportação**, onde se pode gastar resolução e tempo à vontade. Isto inverte a decisão do
+`03_plano_implicito.md` §5.3, que dizia *"um avaliador só, sem GPU"* — aquela decisão foi tomada com
+o **relógio** da malhagem, e o argumento que a derruba não é velocidade, é **qualidade**:
+*a malha estava a definir o teto do que se vê, e ela é o caminho pior.*
+⚠️ É literalmente a lei do [`CLAUDE.md §0`](../../CLAUDE.md): **nunca deixe o caminho mais lento
+definir o produto.**
 
 ---
 
@@ -47,7 +64,45 @@ E de perto, que é onde a imagem pode **reprovar** o motor:
 
 ---
 
-## §2 — A quina viva: reprovou, e o mecanismo está NOMEADO
+## §1c — A **verdade do campo**: a mesma cena, a mesma luz, **sem malha**
+
+Traçado de raios contra o campo, ponto a ponto. O que sai aqui é o **teto** — a forma que o modelo
+de facto tem, livre de qualquer erro de extração.
+
+![campo](imagens/w0_campo.png)
+
+E de perto, no mesmo enquadramento em que a malha serrilhava:
+
+![campo de perto](imagens/w0_campo_zoom.png)
+
+⭐ **Zero serrilhado. A quina do cubo é uma navalha, o filete é liso, o aro do cilindro é um
+círculo.** Mesma câmera, mesma função de sombreamento, mesmas árvores — muda **só** quem responde
+"onde está a superfície".
+
+### O que isto prova, e o que **não** prova
+
+| Prova | Não prova |
+|---|---|
+| A geometria, os operadores e o campo estão **corretos** | Que a malha não precisa de conserto — **precisa**, para exportar |
+| O defeito do smoke era **inteiramente** da extração de malha | Que dá para exportar sem malha (não dá) |
+| Trocar de extrator **salvaria** o resultado (o problema não é a fonte) | Qual extrator |
+
+**Custo do traçado** (560×560, **um núcleo**):
+
+| cena | intérprete | **JIT** |
+|---|---:|---:|
+| cubo | 111 ms | **46 ms** |
+| junção — união dura | 243 ms | **52 ms** |
+| junção — arredondamento exato | 303 ms | **57 ms** |
+| junção — arredondamento orgânico | 324 ms | **59 ms** |
+
+⚠️ **57 ms num núcleo, sem GPU nenhuma.** Esta máquina tem **32**, e o traçado é o trabalho mais
+paralelizável que existe (um raio não fala com o vizinho). Interatividade em tempo real com a
+**geometria verdadeira** não é aposta — é aritmética a partir deste número.
+
+---
+
+## §2 — A quina viva: reprovou **na malha**, e o mecanismo está NOMEADO
 
 Erro da malha **nos vértices** (a malha está sobre a superfície?), profundidade 7, célula 0,01562:
 
@@ -163,34 +218,64 @@ sempre — e o [`feedback_a_label_must_promise_what_the_model_delivers`](../../p
 
 ## §5 — Resolução × tempo × memória (os números que viram teto)
 
-| profundidade | grade | triângulos | tempo | pico RSS |
+| profundidade | grade | triângulos | intérprete | **JIT** |
 |---:|---:|---:|---:|---:|
-| 5 | 32³ | 7.116 | **2,7 ms** | 67 MiB |
-| 6 | 64³ | 28.814 | **9,9 ms** | 67 MiB |
-| 7 | 128³ | 108.428 | **35,1 ms** | 73 MiB |
-| 8 | 256³ | 372.540 | **117,7 ms** | 105 MiB |
+| 5 | 32³ | 7.116 | 2,9 ms | 3,7 ms |
+| 6 | 64³ | 28.814 | 9,5 ms | **6,7 ms** |
+| 7 | 128³ | 108.428 | 34,3 ms | **21,1 ms** |
+| 8 | 256³ | 372.540 | 123,2 ms | **77,7 ms** |
 
-**Malhar em 64³ custa 10 ms** — cabe num quadro de 60 fps com folga. Em 128³, 35 ms: cabe em
-"malha grossa ao mexer, fina ao parar". ⚠️ Isto é **um núcleo, sem GPU, sem JIT**.
+Pico de memória residente do processo inteiro: **131 MiB** com JIT (inclui o traçado da §1c).
 
-**Consequência para o §5.3 do plano:** a marcha de raios em GPU **não é necessária para começar** —
-e um segundo avaliador não entra sem número que o justifique.
+**Malhar 256³ custa 78 ms** — ou seja, a malha de **exportação** é praticamente instantânea, e nada
+obriga a economizar resolução nela. Um núcleo, sem GPU.
+
+**Consequência para o §5.3 do plano:** a conclusão anterior (*"nenhuma GPU, um avaliador só"*) foi
+tirada com o relógio da **malhagem**, e a §1c mostrou que a malhagem não é o caminho que o artista
+olha. O traçado a **57 ms num núcleo** já é confortável; com os 32 desta máquina é tempo real, e a
+GPU deixa de ser necessidade para ser margem. ⚠️ **A ordem certa é: threads primeiro, GPU só se a
+medição pedir** — não o inverso.
 
 ---
 
-## §6 — Intérprete × JIT: o `unsafe` **não se paga**
+## §6 — Intérprete × JIT: ⚠️ **medição CORRIGIDA — o JIT paga, e muito**
 
-| profundidade | intérprete | JIT | ganho |
+### O erro que eu cometi, porque a próxima LLM vai cometê-lo
+
+A primeira tabela desta seção dizia *"ganho zero, o JIT fica desligado"*. **Estava errada.** O spike
+construía a forma com `VmShape` nos **dois** lados — e `VmShape` é `Shape<VmFunction>`, a máquina
+**virtual**, sempre. Ligar a feature `jit` traz a crate `fidget-jit` e faz o build passar, mas
+**não troca o tipo**: o JIT é `JitShape = Shape<JitFunction>`, outro tipo, que é preciso escolher.
+
+⚠️ **A pista estava na própria tabela:** quatro medições, quatro empates dentro do ruído. *Dois
+motores diferentes não empatam quatro vezes.* Um empate perfeito não é um resultado — é a
+assinatura de estar a comparar uma coisa **com ela mesma**, e uma comparação assim **sempre passa e
+nunca informa**.
+
+### Os números, agora com os dois motores de facto diferentes
+
+**Traçado do campo** (avaliação pura — o caminho que passa a ser o que o artista vê):
+
+| cena | intérprete | JIT | **ganho** |
+|---|---:|---:|---:|
+| cubo | 111 ms | 46 ms | **2,4×** |
+| junção — união dura | 243 ms | 52 ms | **4,7×** |
+| junção — arredondamento exato | 303 ms | 57 ms | **5,3×** |
+| junção — arredondamento orgânico | 324 ms | 59 ms | **5,5×** |
+
+**Malhagem** (dominada por travessia de octree e QEF, não por avaliação):
+
+| profundidade | intérprete | JIT | **ganho** |
 |---:|---:|---:|---:|
-| 5 | 2,7 ms | 3,0 ms | **−11 %** |
-| 6 | 9,9 ms | 10,1 ms | **−2 %** |
-| 7 | 35,1 ms | 36,8 ms | **−5 %** |
-| 8 | 117,7 ms | 119,8 ms | **−2 %** |
+| 5 | 2,9 ms | 3,7 ms | 0,8× |
+| 6 | 9,5 ms | 6,7 ms | **1,4×** |
+| 7 | 34,3 ms | 21,1 ms | **1,6×** |
+| 8 | 123,2 ms | 77,7 ms | **1,6×** |
 
-⛔ **O JIT fica DESLIGADO.** Ganho zero (dentro do ruído, e do lado errado). O HR-2 exige
-justificativa escrita para `unsafe`; aqui não há sequer o que justificar. **O relógio da malhagem
-está na travessia do octree e no QEF, não na avaliação do campo** — e é por isso que acelerar o
-avaliador não move o resultado.
+✅ **O JIT fica LIGADO.** A justificativa que o HR-2 exige para `unsafe` existe e é forte: **5,3× no
+caminho que o artista olha**. A intuição original — *"o relógio da malhagem está no octree, não na
+avaliação"* — sobrevive como explicação do **1,6×** contra o **5,3×**: os dois caminhos têm gargalos
+diferentes, e é por isso que medir os dois era necessário.
 
 ---
 
@@ -208,19 +293,24 @@ recusa de validação, nas quatro cenas. O núcleo da W2 está provado antes de 
 
 ## Decisões forçadas pelos números
 
-1. ⛔ **JIT desligado** (§6) — e a feature fica no `Cargo.toml` só para re-medir.
-2. ✅ **O operador EXATO é o default** (§4) — validado a 0,00 %.
-3. ⚠️ **O `k` do orgânico não vai à UI como "raio"** (§4) — calibrar ×4/3 ou renomear.
-4. ⚠️ **A malhagem é o item de trabalho da W1/W2** (§2) — com o mecanismo já nomeado.
-5. ⛔ **Sem GPU por ora** (§5) — 10 ms a 64³ num núcleo não justifica um segundo avaliador.
+1. ⭐ **O que se VÊ é o campo traçado; a malha é para EXPORTAR** (§1c) — a inversão central desta
+   volta, e o motivo é qualidade, não velocidade.
+2. ✅ **JIT LIGADO** (§6) — 5,3× no traçado. É a justificativa de `unsafe` que o HR-2 pede.
+3. ✅ **O operador EXATO é o default** (§4) — validado a 0,00 %.
+4. ⚠️ **O `k` do orgânico não vai à UI como "raio"** (§4) — calibrar ×4/3 ou renomear.
+5. ⚠️ **A malhagem continua item de trabalho** (§2) — mas para o **export**, e não mais no caminho
+   crítico do que o artista olha. O mecanismo já está nomeado.
 6. ⛔ **Não rastrear Lipschitz pela cadeia** (§3) — a degradação não vem do encadeamento.
+7. ⚠️ **O passo da marcha é `1/√2`, não `1`** — imposto pelo ‖∇f‖ medido na §3. Um passo de `d`
+   atravessaria a superfície e furaria a imagem.
 
 ## ⛔ Recusas MEDIDAS
 
 | Recusa | Número que a sustenta |
 |---|---|
-| Ligar o JIT da `fidget` | ganho **−2 % a −11 %** (§6) |
-| Segundo avaliador em GPU antes de precisar | 64³ em **9,9 ms** num núcleo (§5) |
+| ~~Ligar o JIT~~ → **recusa RETIRADA** | a medição que a sustentava comparava `VmShape` com `VmShape` (§6) |
+| Julgar a geometria pela imagem da **malha** | o campo traçado sai **perfeito** na mesma cena (§1c) |
 | Re-distanciamento / Lipschitz encadeado como cura | 1 aplicação degrada **igual** a 2 (§3) |
 | Expor o `k` do orgânico como "raio" | entrega **75 %** do pedido, sempre (§4) |
 | Culpar a resolução pelo serrilhado | refinar **não** muda o desvio em células (§2.1) |
+| Passo de marcha igual a `d` | ‖∇f‖ chega a **√2** ⇒ o passo seguro é `d/√2` (§3) |

@@ -150,7 +150,7 @@ pub fn radius_error(op: &dyn Fn(&Tree, &Tree) -> Tree, r: f64) -> f64 {
 /// sólido** — puro fato geométrico de cortar um canto, não defeito de malha. Medir pelo baricentro
 /// mistura "a malha errou" com "a quina existe", que são a resposta e a pergunta.
 pub fn vertex_error(field: &Field, verts: &[[f32; 3]]) -> SurfaceError {
-    let (mut sum, mut worst, mut most_neg) = (0.0, 0.0f64, 0.0f64);
+    let (mut sum, mut worst) = (0.0, 0.0f64);
     let mut n = 0usize;
     for v in verts {
         let f = field.at(v[0] as f64, v[1] as f64, v[2] as f64);
@@ -160,12 +160,10 @@ pub fn vertex_error(field: &Field, verts: &[[f32; 3]]) -> SurfaceError {
         n += 1;
         sum += f.abs();
         worst = worst.max(f.abs());
-        most_neg = most_neg.min(f);
     }
     SurfaceError {
         mean_abs: if n == 0 { f64::NAN } else { sum / n as f64 },
         max_abs: worst,
-        most_negative: most_neg,
     }
 }
 
@@ -255,43 +253,16 @@ pub fn edge_capture(verts: &[[f32; 3]], ex: f64, ey: f64, z_span: f64, cell: f64
     }
 }
 
-/// Quão longe a **malha** ficou da superfície verdadeira.
+/// O resultado de [`vertex_error`].
 ///
-/// Avalia o campo no baricentro de cada triângulo: numa malha perfeita todos dariam 0. É a sonda da
-/// **quina viva**: se o contorno arredondar um canto, os triângulos de lá caem para dentro do
-/// sólido (valor negativo) e aparecem aqui — sem depender de olhar a imagem.
+/// ⚠️ **A sonda por BARICENTRO foi removida daqui, e a remoção é o registro.** Ela media o campo no
+/// centro de cada triângulo e parecia a medida óbvia da quina — mas um triângulo que atravessa uma
+/// aresta viva tem os três vértices exatos sobre a superfície e o **baricentro dentro do sólido**,
+/// por pura geometria de cortar um canto. Ela reportava 8,3e-3 de erro numa malha cujos vértices
+/// estão a 2,5e-7: misturava *"a malha errou"* com *"a quina existe"*, que são a resposta e a
+/// pergunta. *Código morto mente; comentário velho mente igual* — por isso ela sai, e o motivo fica.
 #[derive(Debug, Clone, Copy)]
 pub struct SurfaceError {
     pub mean_abs: f64,
     pub max_abs: f64,
-    pub most_negative: f64,
-}
-
-pub fn surface_error(field: &Field, verts: &[[f32; 3]], tris: &[[u32; 3]]) -> SurfaceError {
-    let (mut sum, mut worst, mut most_neg) = (0.0, 0.0f64, 0.0f64);
-    for t in tris {
-        let mut c = [0.0f64; 3];
-        for i in t {
-            let v = verts[*i as usize];
-            c[0] += v[0] as f64 / 3.0;
-            c[1] += v[1] as f64 / 3.0;
-            c[2] += v[2] as f64 / 3.0;
-        }
-        let f = field.at(c[0], c[1], c[2]);
-        if !f.is_finite() {
-            continue;
-        }
-        sum += f.abs();
-        worst = worst.max(f.abs());
-        most_neg = most_neg.min(f);
-    }
-    SurfaceError {
-        mean_abs: if tris.is_empty() {
-            f64::NAN
-        } else {
-            sum / tris.len() as f64
-        },
-        max_abs: worst,
-        most_negative: most_neg,
-    }
 }

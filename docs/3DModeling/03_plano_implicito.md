@@ -197,15 +197,30 @@ reescreve é **uma** crate — e nenhum arquivo salvo quebra.
 ### §5.3 — Onde roda, e o teto que **só a medição** pode escrever
 
 ⚠️ [`CLAUDE.md §0`](../../CLAUDE.md): *o teto é o do HARDWARE, nunca o do caminho lento* — e proíbe
-escrever qualquer `MAX_*` antes de medir. Então este plano **não escreve teto nenhum**. O que ele
-escreve é o que a W0 tem de medir:
+escrever qualquer `MAX_*` antes de medir.
 
-- **Um avaliador só, para começar.** A `fidget` alega **2048³ em ~77 ms** com JIT em CPU (número do
-  autor). Se isso se confirmar, um segundo motor em GPU seria complexidade sem ganho — e a casa
-  registra que *dois motores sobre um estado é pior que um motor lento*.
-- **A marcha de raios em GPU é a candidata seguinte**, e é o que dá preview instantâneo sem malhar
-  nada. ⚠️ Ela seria um **segundo avaliador** ⇒ entra só sob a lei do Flip: **duas implementações,
-  UMA lei, unidas por gate de paridade com a barra derivada do formato**. Não antes da medição.
+### ⭐ MEDIDO na W0 — e a resposta **inverteu** o que esta seção previa
+
+A previsão era *"malhar e desenhar a malha; a marcha de raios é a candidata seguinte, e só entra com
+número"*. O número veio ([`01_resultados_spike.md`](01_resultados_spike.md) §1c) e disse o
+contrário:
+
+| Caminho | O que ele entrega | Custo medido (1 núcleo, JIT) |
+|---|---|---|
+| **Traçar o campo** | ⭐ **quina perfeita, filete liso, zero serrilhado** | **57 ms** / quadro a 560² |
+| Malhar e rasterizar | ❌ aresta viva serrilhada (§2 do spike) | 21 ms a 128³ |
+
+**O que o artista vê passa a ser o campo traçado. A malha é o artefato de EXPORTAÇÃO.**
+Não é troca por velocidade — é por **qualidade**: a malha estava a definir o teto do que se vê, e é
+o caminho pior. *Deixar a malha definir a imagem era exatamente o erro que o §0 do `CLAUDE.md`
+proíbe.*
+
+⚠️ **E o JIT entra**: 5,3× no traçado (a medição anterior estava errada — comparava `VmShape` com
+`VmShape`; registro em `01_resultados_spike.md` §6). A justificativa de `unsafe` que o HR-2 exige
+passa a existir e está escrita.
+
+**Ordem de trabalho que a medição impõe:** traçado com JIT → **threads** (32 nesta máquina, e um
+raio não fala com o vizinho) → GPU **só se** a medição ainda pedir. ⛔ Não o inverso.
 
 ---
 

@@ -11,6 +11,7 @@
 //! que **não** se escreve de memória.
 
 mod probe;
+mod raymarch;
 mod render;
 mod sdf;
 
@@ -19,7 +20,20 @@ use std::time::{Duration, Instant};
 
 use fidget::context::Tree;
 use fidget::mesh::{Octree, Settings};
-use fidget::vm::VmShape;
+
+/// O motor de avaliação sob medição.
+///
+/// ⚠️ **Esta linha é a correção de um erro de método meu (2026-08-19).** A primeira comparação
+/// "intérprete × JIT" usava `VmShape` nos DOIS lados — e `VmShape` é
+/// `Shape<VmFunction>`, a máquina **virtual**, sempre. Ligar a feature `jit` traz a crate
+/// `fidget-jit` mas **não troca o tipo**: o JIT é `JitShape = Shape<JitFunction>`, outro tipo.
+/// O resultado foi uma tabela que dizia "o JIT não dá ganho" **medindo o intérprete duas vezes** —
+/// um empate perfeito, que era a pista: dois motores diferentes não empatam em 4 medições.
+/// *Uma medição que compara uma coisa com ela mesma sempre passa, e nunca informa.*
+#[cfg(feature = "jit")]
+pub type Engine = fidget::jit::JitShape;
+#[cfg(not(feature = "jit"))]
+pub type Engine = fidget::vm::VmShape;
 
 /// A peça de teste é a que quebra o Bevel do Blender: **três volumes no mesmo vértice**.
 /// Três cilindros ortogonais que se cruzam na origem dão, de uma vez: arestas curvas onde dois se
@@ -72,7 +86,7 @@ fn scenes() -> Vec<Scene> {
 
 /// Malha a árvore e devolve `(vértices, triângulos, tempo)`.
 fn mesh_at(tree: &Tree, depth: u8) -> (Vec<[f32; 3]>, Vec<[u32; 3]>, Duration) {
-    let shape = VmShape::from(tree.clone());
+    let shape = Engine::from(tree.clone());
     let bound_shape = shape.try_into().expect("a árvore não tem variáveis extras");
     let settings = Settings {
         depth,
@@ -220,6 +234,52 @@ fn main() {
     render::write_png(&out.join("00_comparativo_zoom.png"), zw, zh, &zsheet).expect("gravar folha");
     println!(
         "\n→ `out/00_comparativo.png` (geral) e `out/00_comparativo_zoom.png` (a aresta de perto)\n"
+    );
+
+    // ── 1c. A VERDADE do campo, sem malha ───────────────────────────────────────────
+    // O veredito do Enio sobre a malha não distingue "a geometria é ruim" de "a extração é ruim".
+    // Este bloco traça o campo direto: o que sai aqui é o TETO da forma.
+    println!("## 1c. A verdade do campo — traçado direto, sem malha\n");
+    println!("| cena | tempo | pixels atingidos | passos | avaliações |");
+    println!("|---|---:|---:|---:|---:|");
+    let mut truth = Vec::new();
+    let mut truth_zoom = Vec::new();
+    for scene in scenes() {
+        let view = render::View::default();
+        let t0 = Instant::now();
+        let (rgba, st) = raymarch::trace(&view, &scene.tree);
+        let dt = t0.elapsed();
+        println!(
+            "| {} | {:.0} ms | {} | {} | {} |",
+            scene.label,
+            dt.as_secs_f64() * 1000.0,
+            st.hits,
+            st.steps,
+            st.evals
+        );
+        render::write_png(
+            &out.join(format!("{}_campo.png", scene.key)),
+            view.width,
+            view.height,
+            &rgba,
+        )
+        .expect("gravar png do campo");
+        truth.push((view.width, view.height, rgba));
+
+        let zoom = render::View {
+            scale: 7.0,
+            target: [0.30, 0.30, 0.22],
+            ..Default::default()
+        };
+        let (rgba_z, _) = raymarch::trace(&zoom, &scene.tree);
+        truth_zoom.push((zoom.width, zoom.height, rgba_z));
+    }
+    let (tw, th, tsheet) = render::contact_sheet(&truth, 10);
+    render::write_png(&out.join("01_campo.png"), tw, th, &tsheet).expect("gravar folha do campo");
+    let (tzw, tzh, tzsheet) = render::contact_sheet(&truth_zoom, 10);
+    render::write_png(&out.join("01_campo_zoom.png"), tzw, tzh, &tzsheet).expect("gravar folha");
+    println!(
+        "\n→ `out/01_campo.png` e `out/01_campo_zoom.png` — **a mesma cena, a mesma luz, sem malha**\n"
     );
 
     // ── 1b. A quina viva, em número ─────────────────────────────────────────────────

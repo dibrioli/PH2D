@@ -228,12 +228,17 @@ impl NodeOp for ValueAttribute {
 /// de reconferir a nota*. The executable form now lives in the shell
 /// (`the_channel_picker_fits_the_panels_ceiling`), where the table and the cap meet.
 ///
+/// ⚠️ **`pub` porque um gate FORA desta crate a lê** — o
+/// `every_non_scalar_column_is_reachable_or_deliberately_hidden` do shell varre o registry
+/// inteiro e cruza esta tabela com a denylist do picker. Ele não caberia aqui: esta crate
+/// não vê os outros nós, e o `registry-init` que os vê não pode ser dependência dela.
+///
 /// ⚠️ **Every entry must name a column something WRITES** — an entry is a promise that a
 /// word yields a quantity, and a word that resolves to nothing takes the module's ordinary
 /// miss (zeros at full length) with no way for the artist to tell it apart from a typo.
 /// The gate that holds this builds the stream a producer leaves and reads it back through
 /// the entry itself, rather than comparing the table against a second list of names.
-const READ_CHANNELS: &[ReadChannel] = &[
+pub const READ_CHANNELS: &[ReadChannel] = &[
     // ⚠️ **A POSIÇÃO — a coluna mais básica do stream, e a ÚNICA que não tinha entrada.**
     // Todo gerador escreve `P` e todo transform a lê; ela estava ausente desta lista por
     // omissão, não por decisão (nenhuma cerca a mencionava). O relato veio do Enio a olhar

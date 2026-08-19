@@ -90,6 +90,22 @@ pub struct UnresolvedRead {
 /// * **o nome resolve mas a PISTA não existe** (pedir `Z` de um `Vec2`) — esse é o
 ///   miss ordinário da escada, **sobre um nome certo**; o `mode` é um param f32 e
 ///   quem o julga é o painel, não esta regra.
+///
+///   ⚠️ **2026-08-19 — esta cerca foi reaberta, MEDIDA e mantida.** A razão escrita
+///   (*"quem o julga é o painel"*) é **falsa para um caso**: o campo `Custom…` escreve
+///   o nome com o **modo escalar**, sempre, e ninguém confere — então uma coluna `Vec2`
+///   digitada à mão lê zeros em silêncio. O que decidiu foi o TAMANHO do buraco: as
+///   colunas não-escalares do repo inteiro são **seis** (`P` · `size` · `vel` · `accel`
+///   · `tint` · `sim_d`), **quatro têm chip** no picker e as **duas** restantes estão
+///   na denylist `INTERNAL` dele. Cair no buraco exige digitar à mão um transiente que
+///   o picker esconde de propósito.
+///
+///   ⇒ Em vez de um badge (que custaria a **dimensão** da coluna a atravessar esta
+///   assinatura e o `UnresolvedRead` a ganhar uma espécie nova), o que ficou é um gate
+///   no shell — `every_non_scalar_column_is_reachable_or_deliberately_hidden` — que
+///   torna a situação **impossível de nascer**: uma coluna `Vec2` nova sem chip e fora
+///   da denylist reprova no dia em que for escrita. *Um aviso de runtime cura o caso;
+///   um gate cura a classe, e é mais barato.*
 #[must_use]
 pub fn unresolved_reads(
     graph: &Graph,

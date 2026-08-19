@@ -140,13 +140,20 @@ pub(super) fn source_options(motion: &MotionState) -> Vec<String> {
 /// transient ones, sort + dedup what remains, and lead with the current pick (so its
 /// chip is stable even on a frame the stream did not cook). Extracted so the rule is
 /// tested without a live cook.
+/// A coluna do próprio domínio de valor + os transientes de sim/máscara que um artista nunca
+/// lê — o que o picker `Custom…` esconde.
+///
+/// ⚠️ **No escopo do módulo, e não dentro da função, porque um GATE a lê:** o
+/// `every_non_scalar_column_is_reachable_or_deliberately_hidden` cruza esta lista com os
+/// chips do `value.attribute`, e uma denylist que só existisse dentro de um corpo de função
+/// obrigaria o gate a manter uma segunda cópia — que é a forma que diverge.
+pub(super) const INTERNAL: &[&str] = &["v", "falloff", "accel", "sim_d", "sim_t", "weight"];
+
 fn keep_extra_columns<'a>(
     names: impl Iterator<Item = &'a str>,
     covered: &std::collections::BTreeSet<&str>,
     keep: &str,
 ) -> Vec<String> {
-    // The value domain's own column + the sim/mask transients an artist never reads.
-    const INTERNAL: &[&str] = &["v", "falloff", "accel", "sim_d", "sim_t", "weight"];
     let mut out: Vec<String> = names
         .filter(|n| !covered.contains(*n) && !INTERNAL.contains(n))
         .map(|n| n.to_string())
@@ -161,8 +168,70 @@ fn keep_extra_columns<'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::keep_extra_columns;
+    use super::{INTERNAL, keep_extra_columns};
     use std::collections::BTreeSet;
+
+    /// **TODA COLUNA NÃO-ESCALAR OU TEM CHIP, OU ESTÁ DELIBERADAMENTE ESCONDIDA.**
+    ///
+    /// ⚠️ **Este gate substitui um aviso de runtime que a MEDIÇÃO dissolveu.** O plano desta
+    /// linha listava *"o diagnóstico de nome não olha o MODO"* como defeito a curar: o campo
+    /// `Custom…` escreve o nome com o **modo escalar**, e uma coluna `Vec2` em modo escalar
+    /// cai no `_` da escada do `value.attribute` — **zeros em silêncio**. Verdade. Mas o
+    /// tamanho do buraco, medido, é outro: as colunas não-escalares do repo inteiro são
+    /// **seis** (`P` · `size` · `vel` · `accel` · `tint` · `sim_d`), e delas **quatro têm
+    /// chip** e **duas estão na denylist `INTERNAL`** deste próprio arquivo. Ou seja: para
+    /// cair no buraco é preciso **digitar à mão** um transiente que o picker esconde.
+    ///
+    /// ⇒ Em vez de um badge de runtime (que custaria a dimensão da coluna a atravessar o
+    /// `ph2d-motion-diagnose` e uma cerca escrita a ser cruzada), o que fica é este gate:
+    /// **a situação não pode nascer**. Uma coluna `Vec2` nova sem chip e fora da denylist
+    /// reprova aqui, no dia em que for escrita.
+    ///
+    /// ⚠️ **O escopo é honesto e nomeado:** ele varre as colunas que os `GpuKernel` DECLARAM
+    /// (é o que o registry expõe). O `reads.rs` do diagnose já mediu que a união declarada é
+    /// menor que a que a CPU de facto escreve — então isto cobre o que tem kernel, e não o
+    /// universo. *Um gate que diz o que cobre é melhor que um que promete tudo.*
+    #[test]
+    fn every_non_scalar_column_is_reachable_or_deliberately_hidden() {
+        let mut reg = ph2d_node_registry::NodeRegistry::new();
+        ph2d_node_registry_init::register_all_nodes(&mut reg).expect("todo nó registra");
+
+        let chips: BTreeSet<&str> = ph2d_node_value_attribute::READ_CHANNELS
+            .iter()
+            .map(|c| c.column)
+            .collect();
+        let hidden: BTreeSet<&str> = INTERNAL.iter().copied().collect();
+
+        use ph2d_nodegraph::gpu::KernelResolver;
+        let mut seen: BTreeSet<&str> = BTreeSet::new();
+        for m in reg.manifests() {
+            let Some(kernel) = reg.gpu_kernel(m.id) else {
+                continue;
+            };
+            for b in kernel.bindings {
+                if b.dim != ph2d_nodegraph::port::Dim::Scalar {
+                    seen.insert(b.column);
+                }
+            }
+        }
+        // CONTROLE POSITIVO: a varredura de facto ENCONTROU colunas não-escalares. Sem isto,
+        // um registry vazio (ou um `gpu_kernels` que mudasse de forma) passaria de graça.
+        assert!(
+            seen.len() >= 4,
+            "a varredura tem de achar as colunas nao-escalares, e achou {seen:?}"
+        );
+        let orphans: Vec<&str> = seen
+            .iter()
+            .copied()
+            .filter(|c| !chips.contains(c) && !hidden.contains(c))
+            .collect();
+        assert!(
+            orphans.is_empty(),
+            "estas colunas Vec2/Vec4 nao tem chip no picker E nao estao na denylist {orphans:?} \
+             -- quem as digitar no campo `Custom...` recebe ZEROS em silencio (o campo escreve \
+             o modo escalar). Ou de' um chip a cada uma, ou esconda-as no `INTERNAL` com o motivo"
+        );
+    }
 
     /// Curated + internal columns are dropped, the rest sorted, and the current pick
     /// leads. A stream carrying `age`/`vel`/`opacity` (curated), `v` (internal), and

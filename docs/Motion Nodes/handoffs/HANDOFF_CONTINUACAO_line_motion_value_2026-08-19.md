@@ -77,14 +77,22 @@ Um defeito silencioso vale mais que uma feature, e há **dois** nomeados e medid
 1. ⛔ **Um SEGUNDO `fx.glow` é silenciosamente INERTE** (folha 11) — `from_graph` faz
    `.find(…)` e o segundo nó nunca corre. O artista empilha dois glows, vê um, e conclui que
    o parâmetro não funciona.
-2. ⛔ **O diagnóstico de nome do `value.attribute` não olha o MODO** — `unresolved_reads`
-   recebe só os **nomes** (`columns::names_at`), então uma coluna `Vec2` digitada à mão no
-   campo livre **resolve** para o diagnóstico e **lê zeros** para o cook, sem badge. Os `Vec2`
-   que a tabela conhece já têm chip (é a cura do caso real); **o caso geral fica**. Preço: o
-   callback e o `ph2d-motion-diagnose` teriam de carregar a **dimensão** da coluna.
+2. ✅ **FEITO em 2026-08-19, e a medição DISSOLVEU o item como estava escrito.** O
+   diagnóstico de nome de facto não olha o modo — mas o buraco é menor do que a nota dizia:
+   as colunas não-escalares do repo são **seis** (`P` · `size` · `vel` · `accel` · `tint` ·
+   `sim_d`), **quatro têm chip** e as **duas** restantes estão na denylist `INTERNAL` do
+   picker. Cair nele exige digitar à mão um transiente que o picker esconde. ⇒ em vez do
+   badge, um **gate de classe**
+   (`every_non_scalar_column_is_reachable_or_deliberately_hidden`) que torna a situação
+   impossível de nascer. *Um aviso de runtime cura o caso; um gate cura a classe.*
 
-⚠️ Estes dois não precisam de cena nova — o smoke deles é *"empilhe dois glows"* e *"digite
-`vel` no campo livre"*. Se quiser uma cena, faça-a mostrar o **antes/depois** lado a lado.
+✅ **O Grupo S está FECHADO** (2026-08-19). Nenhum dos dois precisou de cena nova: o smoke do
+primeiro é *"empilhe dois glows e veja o badge no segundo"*, e o segundo virou gate.
+
+⚠️ **E a lição do segundo vale para o resto do plano:** o item foi escrito como *"há um
+defeito, cure-o"* e a medição mostrou que o defeito era **alcançável só por um gesto que o
+produto esconde**. *Meça o TAMANHO do buraco antes de escolher o tamanho da cura* — vale para
+todas as células dos grupos abaixo.
 
 ### Grupo T — as folhas que FECHAM (3 células, 2 folhas)
 

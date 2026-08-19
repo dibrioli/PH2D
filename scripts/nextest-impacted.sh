@@ -25,9 +25,57 @@ export CARGO_INCREMENTAL=0
 
 BASE="${BASE:-origin/main}"
 
-# Changed crate DIR names under crates/ (dir == package name by ph2d-* convention).
-CHANGED=$(git diff --name-only "${BASE}"... 2>/dev/null \
-  | sed -n 's#^crates/\([^/]*\)/.*#\1#p' | sort -u)
+# ⚠️ **O PACOTE SE DERIVA DO `cargo metadata`, NUNCA DO PREFIXO DO CAMINHO.**
+#
+# Isto era `sed -n 's#^crates/\([^/]*\)/.*#\1#p'`, e a consequência foi medida em
+# 2026-08-19: um diff inteiramente em `shells/desktop/src/` produzia `CHANGED`
+# **vazio**, o script caía no ramo "no crate changes" e rodava **4 testes** —
+# saindo VERDE. `shells/desktop` é o shell inteiro (sculpt3d, undo, persistência,
+# `input_dispatch`), e todo fechamento de linha cujo diff fosse só de shell correu
+# com essa cobertura. O mesmo valia para `tools/` e `tests/`.
+#
+# ⚠️ E o dir NÃO é o nome do pacote fora de `crates/` (`shells/desktop` é o
+# `ph2d-host-desktop`), então a convenção antiga não podia simplesmente ser
+# estendida a mais um prefixo: a fonte tem de ser o manifesto.
+CHANGED=$(git diff --name-only "${BASE}"... 2>/dev/null | python3 -c '
+import json, os, subprocess, sys
+
+changed = [l.strip() for l in sys.stdin if l.strip()]
+if not changed:
+    sys.exit(0)
+
+meta = json.loads(subprocess.run(
+    ["cargo", "metadata", "--no-deps", "--format-version", "1"],
+    capture_output=True, text=True, check=True).stdout)
+root = meta["workspace_root"]
+
+# (dir relativo à raiz, nome do pacote), do mais LONGO para o mais curto: uma
+# crate aninhada dentro de outra pasta de crate tem de vencer a de fora.
+pkgs = []
+for p in meta["packages"]:
+    d = os.path.relpath(os.path.dirname(p["manifest_path"]), root)
+    pkgs.append(("" if d == "." else d + "/", p["name"]))
+pkgs.sort(key=lambda x: -len(x[0]))
+
+hit, rust_missed = set(), []
+for f in changed:
+    for prefix, name in pkgs:
+        if f.startswith(prefix):
+            hit.add(name)
+            break
+    else:
+        if f.endswith(".rs"):
+            rust_missed.append(f)
+
+# ⚠️ Silêncio é o defeito que esta função existe para não repetir: um `.rs` que
+# não caia em pacote nenhum é exatamente o caso que ficava verde por omissão.
+for f in rust_missed:
+    print(f"[nextest-impacted] AVISO: {f} nao pertence a pacote nenhum do workspace",
+          file=sys.stderr)
+
+for name in sorted(hit):
+    print(name)
+' | sort -u)
 
 if [ -z "$CHANGED" ]; then
     echo "[nextest-impacted] no crate changes vs ${BASE}; running determinism golden only."

@@ -186,7 +186,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ligada ⇒ **um relógio por ELEMENTO** (mecanismo: [handoff do FECHO](docs/Motion%20Nodes/handoffs/HANDOFF_INTEGRACAO_line_motion_value_FECHO_2026-08-18.md)).
   ⚠️ **O `motion.noise` tem o ESPAÇO do campo** (`rotation` + `uniform`/`scale_y`) — e *escala maior num eixo
   = feição MENOR nele*; o **offset** e o **scale uniforme** NÃO são params, saem da composição e do próprio `scale`.
-  **Aberto:** os P1 restantes da folha 03 (simulação) · ✅ **a folha 06 FECHOU** (0 P1; restam 18 P2) ·
+  ⚠️ **`substeps` é o RELÓGIO DO GRAFO, e a palavra tem dono:** só `sim.zone` e `motion.integrate` a declaram (censo
+  `only_the_declared_clock_owners_offer_the_substeps_param`, teto **64** nos dois porque o ritmo é partilhado). Um
+  sub-passo LOCAL de um solver folha usa outra chave — a `motion.verlet_rope` usa `solver_substeps` (rótulo "Substeps"),
+  e enquanto usava a mesma o app corria as duas leis e a corda caía **4,8× menos** que os gates dela medem.
+  **Aberto:** os P1 restantes da folha 03 (simulação) · ✅ **as folhas 06 e 17 FECHARAM** (0 P1) ·
   o gate `#[ignore]`
   `the_ceiling_is_honoured_on_every_tick_including_the_turn` (cena `=53`) — ⛔ **não afrouxe a barra** · a composição
   sub-passos × `damping` da `motion.verlet_rope`, **medida e não curada de propósito** · ⛔ a faixa de barras do

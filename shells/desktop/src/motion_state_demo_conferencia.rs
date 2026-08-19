@@ -458,3 +458,41 @@ const SPAN_FREE: f32 = 9.6234;
 const SPAN_CAPPED: f32 = 3.2184;
 const RAMP_EARLY: f32 = 0.1200;
 const RAMP_LATE: f32 = 0.2600;
+
+/// **A CENA `=61` — O SUB-PASSO DO INTEGRADOR** (doc 89, folha 17, a linha 76).
+///
+/// ⚠️ **UMA banda, e isso é o desenho:** o ritmo do sub-passo é do GRAFO, então dois
+/// integradores lado a lado a pedir `1` e `16` correriam **os dois a 16**. O que separa as
+/// duas respostas é o slider, e a prosa manda mexer nele.
+pub(super) fn substep(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_substep::build_substep_demo_document(doc, registry).unwrap_or_default();
+    let (ring, subs, strength) = conferencia_demos_substep::numbers();
+    eprintln!(
+        "[substep-demo] UMA banda ({} saida): o ANEL cinzento e' o alvo, a bolinha laranja e' a\n  \
+         simulacao. Atrator de forca {strength:.0} no centro; ela nasce em cima do anel (raio \
+         {ring:.1}).",
+        sinks.len(),
+    );
+    eprintln!(
+        "  (!) DE' PLAY: a bolinha cai para o centro, atravessa e volta. Sem erro de integracao ela
+  tocaria o anel a CADA meia volta, para sempre.
+  (!) A cena nasce com Substeps = {subs:.0} (o topo da faixa do slider): ela volta a {SUB_TOP:.2},
+  16% para la' do anel. Clique na bolinha, ache o slider \"Substeps\" no painel de parametros e
+  ARRASTE-O ATE 1: ela passa a subir a {SUB_ONE:.2}, TRES vezes o anel, e cada volta vai mais
+  longe que a anterior. Suba de novo e ela encolhe de volta.
+  (!) O que voce esta' a ver nao e' ruido, e' ENERGIA: um passo grande ACRESCENTA velocidade a
+  cada ida e volta, e por isso o erro cresce em vez de se cancelar.
+  (!) DEU ERRADO se arrastar o slider nao mudar NADA (o numero nao chegou ao relogio), ou se a
+  bolinha sumir da tela ja' no {subs:.0} (isso e' outra coisa, nao o passo).
+  (!) UMA banda de proposito: o ritmo e' do GRAFO INTEIRO, entao duas bolinhas a pedir numeros
+  diferentes correriam as duas no maior -- a cena diria que o botao nao faz nada. A cena `=52`
+  mostra 1 contra 8 lado a lado porque o `Substeps` da CORDA e' outro mecanismo (local a ela)."
+    );
+    sinks
+}
+
+// Os numeros medidos por `measure_integrate_substeps::where_one_substep_breaks_and_eight_hold`
+// na forca que a cena autora — raio maximo em 3 s, partindo de 4,0.
+const SUB_TOP: f32 = 4.65;
+const SUB_ONE: f32 = 12.86;

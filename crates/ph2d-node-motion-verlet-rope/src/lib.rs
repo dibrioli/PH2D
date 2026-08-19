@@ -184,8 +184,38 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
         // Quantas vezes o tique é RE-INTEGRADO (Cavalry Forge *Time Step*,
         // Vellum *substeps*). `1` = o passo único que sempre shipou, byte a byte.
+        //
+        // ⚠️ **A CHAVE não é `substeps`, e isso não é gosto — é o que separa este
+        // knob LOCAL do relógio do grafo.** `ph2d_nodegraph::cook::SUBSTEPS_PARAM`
+        // é a convenção de MANIFESTO que declara *"o meu interior sub-tica"*: todo
+        // nó que oferece um param com aquele nome vira declarante, e o
+        // sequenciador passa a rodar o cone dele `n` vezes por tique — no ritmo do
+        // GRAFO, que é o maior que qualquer declarante pede.
+        //
+        // Este param chegou quatro dias depois daquela convenção e trouxe o mesmo
+        // nome com outro significado, e as duas leis compunham-se em silêncio.
+        // Medido (`measure_substeps_name_collision`, uma corda de 24 pontos,
+        // gravidade 98, 1 s):
+        //
+        // | `substeps` | só o laço interno | + o sequenciador (o app) |
+        // |---|---|---|
+        // | 1 | −5,417659 | −5,417659 |
+        // | 2 | −5,693257 | −5,934411 |
+        // | 8 | **−5,929894** | **−1,238351** |
+        //
+        // A 8 a corda caía **4,8× menos** do que os gates deste crate medem, e a
+        // `= 1` as duas rotas concordam ao bit — que é por que ninguém viu. E a
+        // terceira metade: uma corda a 8 levava o ritmo do grafo inteiro de 1 a 8,
+        // então uma `sim.zone` ao lado, que nada tem com ela, mudava de resposta
+        // (19,011 → 19,298) e passava a custar 8×.
+        //
+        // ⚠️ **As duas leis são a MESMA lei** — a corda a `substeps = n` sem
+        // relógio e a corda a `1` com `n` sub-passadas do `Cook::substep`
+        // concordam a `1e-5` em `n = 1..16` e em dois `damping`. O que fica é a
+        // rota que funciona em TODO caminho: o laço mora no `eval`, e o bracket do
+        // relógio é do CPU pump (esta corda não tem lowering de GPU).
         ParamSpec {
-            name: "substeps",
+            name: "solver_substeps",
             default: 1.0,
         },
     ],
@@ -589,7 +619,7 @@ impl NodeOp for MotionVerletRope {
             damping: ctx.param("damping").clamp(0.0, 0.99),
             pin_tail: ctx.param("pin_tail") >= 0.5,
             bend: ctx.param("bend").clamp(0.0, 1.0),
-            substeps: (ctx.param("substeps").round() as i64).clamp(1, MAX_SUBSTEPS) as usize,
+            substeps: (ctx.param("solver_substeps").round() as i64).clamp(1, MAX_SUBSTEPS) as usize,
         };
         let playhead = ctx.playhead() as f32;
         let anchor = [
@@ -641,7 +671,6 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 #[path = "tests.rs"]
 mod tests;
 
-#[cfg(test)]
 #[cfg(test)]
 #[path = "substep_tests.rs"]
 mod substep_tests;

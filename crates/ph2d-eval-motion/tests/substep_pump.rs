@@ -123,6 +123,14 @@ fn the_default_of_one_leaves_the_frame_byte_identical() {
 
 /// **A declaração vem do MANIFESTO**, e é por isso que não há tabela paralela a manter: quem
 /// oferece o param é quem sub-tica. Um nó que não o declara é invisível ao achador.
+///
+/// ⚠️ **ISTO É UM SPOT-CHECK, NÃO O GUARDA — e a distinção custou um defeito.** Nomear três nós
+/// prova que *aqueles três* estão bem e não diz nada sobre os outros ~118: foi por aí que a
+/// `motion.verlet_rope` entrou, em 2026-08-16, com um param `substeps` que era um laço dentro do
+/// `eval` dela, e o app passou a compor as duas leis (a cauda caía 4,8× menos do que os gates
+/// daquele crate medem). O guarda é o **CENSO** sobre o registry inteiro,
+/// `substeps::only_the_declared_clock_owners_offer_the_substeps_param` no `ph2d-node-registry-init`
+/// — este teste fica por ser barato e por correr onde o registry completo não está.
 #[test]
 fn the_declaration_is_the_manifest_param_not_a_side_table() {
     assert!(

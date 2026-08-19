@@ -97,7 +97,7 @@ pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
     // esta casa chama de bug de ergonomia. Os dois números multiplicam, os dois estão
     // no painel, e é aqui que o produto fica escrito.
     ParamHardMax {
-        param: "substeps",
+        param: "solver_substeps",
         max: 16.0,
     },
 ];
@@ -166,8 +166,11 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // ⚠️ O slider para em **8** e a caixa digita até **16**: o par soft/hard do
     // doc 88 B2 — a faixa de arrasto é onde a mão trabalha, e o teto digitável é
     // onde o disfuncional começa (a tabela está no `PARAM_HARD_MAX`).
+    // ⚠️ A CHAVE é `solver_substeps` e o RÓTULO é "Substeps" — o artista vê a palavra da
+    // referência, e a convenção de relógio do grafo (`SUBSTEPS_PARAM`) não é reclamada por um nó
+    // folha. O porquê, com a tabela medida, está no `ParamSpec` do `lib.rs`.
     ParamUiHint {
-        param: "substeps",
+        param: "solver_substeps",
         label: "Substeps",
         min: 1.0,
         max: 8.0,

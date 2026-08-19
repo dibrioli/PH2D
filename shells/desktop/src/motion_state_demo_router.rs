@@ -334,6 +334,7 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
         Ok("58") => animadores::axes(doc, registry),
         Ok("59") => animadores::clock(doc, registry),
         Ok("60") => animadores::field_space(doc, registry),
+        Ok("61") => conferencia::substep(doc, registry),
         _ => Vec::new(),
     }
 }

@@ -196,3 +196,72 @@ fn measure_what_the_scene_shows() {
         (worst_span(&p[3]) / rest - 1.0) * 100.0
     );
 }
+
+/// **A CENA TEM DE DIZER O MESMO NO CAMINHO QUE O APP CORRE** — e é exactamente aqui que um
+/// defeito viveu três dias sem ninguém o ver.
+///
+/// O `run` acima marcha com `cook` + `advance_tick` e mais nada. O app põe **o pump** à frente:
+/// `MotionCookPump::substep_declared_zones` procura declarantes de `substeps` e sub-tica o cone de
+/// cada um. Enquanto o param desta corda se chamava `substeps` (a chave que a folha 13 reservou
+/// para o relógio do GRAFO), ela virava declarante sem querer e o app corria **as duas leis** — o
+/// laço interno dela dentro de cada sub-passada do relógio. Medido na altura: a cauda caía
+/// **−1,2384** contra os **−5,9299** que os gates do crate da corda medem.
+///
+/// ⚠️ **A cura foi a chave (`solver_substeps`), e este gate é o que impede a recaída AQUI:** ele
+/// marcha a cena pelas duas rotas e exige o MESMO resultado, ao bit. Se alguém devolver o nome
+/// reservado a esta corda, é este teste que fica vermelho na cena que o Enio smokou.
+#[test]
+fn the_scenes_ropes_read_the_same_through_the_pump_the_app_runs() {
+    let reg = registry();
+    let mut doc = MotionDoc::default();
+    let sinks = build_weight_demo_document(&mut doc, &reg).expect("a cena monta");
+    let plain = run(60);
+
+    let mut cook = Cook::new();
+    let mut out = vec![Vec::new(); sinks.len()];
+    for k in 0..60 {
+        let t = k as f64 * DT;
+        // A ordem do app: os substeps declarados ANTES do cook do quadro.
+        if let Some(frame_start) = cook.prev_playhead() {
+            for island in ph2d_nodegraph::cook::substep_islands(&doc.graph, &reg) {
+                cook.substep(
+                    &doc.graph,
+                    &reg,
+                    island.root,
+                    frame_start,
+                    t,
+                    island.substeps,
+                )
+                .expect("substep");
+            }
+        }
+        cook.advance_tick(&doc.graph, &reg, t)
+            .expect("o tique avança o `pre`");
+        for (i, s) in sinks.iter().enumerate() {
+            let v = cook.cook(&doc.graph, &reg, *s, t).expect("a banda coze");
+            if let Some(Column::Vec2(p)) = v[0].as_stream().get("P") {
+                out[i] = p.clone();
+            }
+        }
+    }
+
+    // O CONTROLE de que a fixture não está morta: a cena de facto simula.
+    assert!(
+        worst_span(&plain[3]) > 0.0,
+        "a corda substepada precisa de ter pose"
+    );
+    for (band, (a, b)) in plain.iter().zip(&out).enumerate() {
+        assert_eq!(a.len(), b.len(), "a banda {band} muda de tamanho pelo pump");
+        for (i, (p, q)) in a.iter().zip(b).enumerate() {
+            for c in 0..2 {
+                assert_eq!(
+                    p[c].to_bits(),
+                    q[c].to_bits(),
+                    "banda {band}, ponto {i}, eixo {c}: o pump mudou a cena ({} vs {})",
+                    p[c],
+                    q[c]
+                );
+            }
+        }
+    }
+}

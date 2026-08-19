@@ -467,3 +467,124 @@ fn reading_another_zone_through_a_pre_does_not_couple_them() {
         "duas ilhas, um relogio de grafo: {islands:?}"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// **QUEM PODE DECLARAR O RELÓGIO** — o censo, e o defeito que ele existe para pegar.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Os únicos tipos autorizados a subdividir o relógio do GRAFO.
+///
+/// ⚠️ **Esta lista é curta de propósito, e o critério é o ESCOPO, não a aritmética.** O ritmo que
+/// um declarante pede é o do grafo inteiro (`substep_islands` — todas as ilhas correm no maior),
+/// e no device é o plano inteiro que marcha `n` vezes. Isso é certo para um nó que É a simulação
+/// do objeto — a zona, o integrador — e errado para um solver folha, cujo knob local passaria a
+/// custar `n×` em tudo o que estiver ao lado.
+const CLOCK_DECLARERS: &[&str] = &["motion.integrate", "sim.zone"];
+
+/// **O CENSO — e o spot-check que ele substitui deixou passar o defeito.**
+///
+/// O gate anterior (`the_declaration_is_the_manifest_param_not_a_side_table`, no
+/// `ph2d-eval-motion`) nomeava três nós e afirmava que eles não declaram. Isso prova que aqueles
+/// três estão bem e **não diz nada** sobre os outros ~118 — e foi exatamente por ali que o
+/// `motion.verlet_rope` entrou, quatro dias depois da convenção, com um param `substeps` que era
+/// um laço `for` dentro do `eval` dele. As duas leis compunham-se em silêncio: medido, a corda a
+/// `substeps = 8` caía **−1,238** no app contra os **−5,930** que os gates do crate dela medem, e
+/// o ritmo do grafo saltava de 1 para 8 por causa dela.
+///
+/// Um censo pergunta ao registry inteiro. É a diferença entre *"estes três estão bem"* e
+/// *"ninguém mais o faz"*.
+#[test]
+fn only_the_declared_clock_owners_offer_the_substeps_param() {
+    let reg = registry();
+    let mut found: Vec<&str> = reg
+        .manifests()
+        .filter(|m| {
+            m.param_default(ph2d_nodegraph::cook::SUBSTEPS_PARAM)
+                .is_some()
+        })
+        .map(|m| m.name)
+        .collect();
+    found.sort_unstable();
+    let mut want: Vec<&str> = CLOCK_DECLARERS.to_vec();
+    want.sort_unstable();
+    assert_eq!(
+        found,
+        want,
+        "um param chamado `{}` DECLARA o relógio do grafo. Se este nó quis um sub-passo LOCAL, \
+         a chave tem de ser outra (o `motion.verlet_rope` usa `solver_substeps`); se quis mesmo \
+         o relógio, acrescente-o a CLOCK_DECLARERS com o motivo",
+        ph2d_nodegraph::cook::SUBSTEPS_PARAM
+    );
+}
+
+/// **O defeito, do lado do comportamento:** uma corda a 8 não pode mexer numa zona ao lado.
+///
+/// ⚠️ **O controle POSITIVO está no mesmo teste**, e sem ele isto passaria com o achador partido:
+/// a mesma zona, ao lado de uma SEGUNDA zona a 8, tem de mudar — senão o gate estaria a provar
+/// que o mecanismo não funciona em vez de que ele não vaza.
+#[test]
+fn a_leaf_solvers_own_substeps_never_reaches_a_neighbour() {
+    let reg = registry();
+
+    // ⚠️ **A chave do knob sai do MANIFESTO, não de um literal** — e isso é o que torna este gate
+    // uma prova em vez de uma tautologia. Escrito com `"solver_substeps"` à mão, ele não corre
+    // contra o mundo de ANTES da correção (o `validate` recusa o param desconhecido antes de
+    // qualquer medição) e a mutação que reverte o nome falha por tecnicalidade em vez de por
+    // comportamento. Perguntar *"como se chama o sub-passo desta corda?"* faz o gate medir a
+    // mesma coisa nos dois mundos.
+    let knob = ph2d_node_motion_verlet_rope::MANIFEST
+        .params
+        .iter()
+        .find(|p| p.name.contains("substeps"))
+        .expect("a corda tem um knob de sub-passo")
+        .name;
+
+    let alone = neighbour_zone_after(&reg, |_g| {});
+    let with_rope = neighbour_zone_after(&reg, |g| {
+        let r = g.add_node("motion.verlet_rope");
+        g.set_param(r, "count", 24.0);
+        g.set_param(r, knob, 8.0);
+        wire(g, r, 0, r, 2, true);
+    });
+    assert_eq!(
+        alone.to_bits(),
+        with_rope.to_bits(),
+        "o knob local de uma corda mexeu no relógio da zona: {alone} -> {with_rope}"
+    );
+
+    // CONTROLE POSITIVO: um declarante de verdade ao lado MUDA a zona.
+    let with_zone = neighbour_zone_after(&reg, |g| {
+        let z = falling_zone(g, 40.0);
+        g.set_param(z, "substeps", 8.0);
+    });
+    assert_ne!(
+        alone.to_bits(),
+        with_zone.to_bits(),
+        "uma 2ª zona a 8 TEM de acelerar o relógio do grafo — senão este gate está a provar um \
+         achador morto"
+    );
+}
+
+/// Marcha uma zona que cai, com o que `extra` puser no mesmo grafo, pelo caminho do pump
+/// (ilhas + `Cook::substep`), e devolve o X final dela.
+fn neighbour_zone_after(reg: &NodeRegistry, extra: impl FnOnce(&mut Graph)) -> f32 {
+    let mut g = Graph::new();
+    let zone = falling_zone(&mut g, 40.0);
+    extra(&mut g);
+    g.validate(reg).expect("bem-tipado");
+
+    let mut cook = Cook::new();
+    let mut last = f32::NAN;
+    for k in 0..30u64 {
+        let t = (k + 1) as f64 / 60.0;
+        if let Some(frame_start) = cook.prev_playhead() {
+            for island in ph2d_nodegraph::cook::substep_islands(&g, reg) {
+                cook.substep(&g, reg, island.root, frame_start, t, island.substeps)
+                    .expect("substep");
+            }
+        }
+        last = px(cook.cook(&g, reg, zone, t).expect("coza")[0].as_stream());
+        cook.advance_tick(&g, reg, t).expect("tick");
+    }
+    last
+}

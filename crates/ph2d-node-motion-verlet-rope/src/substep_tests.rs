@@ -127,7 +127,7 @@ fn cook_rope_pose(substeps: Option<f32>) -> Vec<[f32; 2]> {
     g.set_param(rope, "count", 12.0);
     g.set_param(rope, "gravity", 9.8);
     if let Some(s) = substeps {
-        g.set_param(rope, "substeps", s);
+        g.set_param(rope, "solver_substeps", s);
     }
     g.connect(Edge {
         from: (rope, 0),

@@ -121,7 +121,7 @@ fn rope(g: &mut Graph, substeps: bool, x: f32, y: f32) -> Option<NodeId> {
     // duas bandas empatam e a cena não separa nada; o regime em que a diferença
     // VIVE é o do passo grande, que é onde o artista a encontra.
     g.set_param(r, "iterations", 3.0);
-    g.set_param(r, "substeps", if substeps { SUBSTEPS } else { 1.0 });
+    g.set_param(r, "solver_substeps", if substeps { SUBSTEPS } else { 1.0 });
 
     let whip = g.add_node("value.lfo");
     g.set_pos(whip, Pos { x: x - 220.0, y });

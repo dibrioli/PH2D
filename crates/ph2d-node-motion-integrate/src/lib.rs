@@ -57,7 +57,7 @@ use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
-use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
+use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod columns;
@@ -111,9 +111,73 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     // playhead ⇒ Temporal (`motion.oscillator`, `pulse.beat`).
     effect: Effect::Temporal,
     clock: Clock::Frame,
-    params: &[],
+    // ⚠️ **Este param não é lido pelo `eval` — ele é lido pelo SEQUENCIADOR**, e a
+    // convenção é de manifesto: um nó que oferece um param chamado
+    // [`ph2d_nodegraph::cook::SUBSTEPS_PARAM`] declara *"o meu interior sub-tica"*
+    // (`sim.zone` é o outro declarante). Um sub-passo é propriedade do RELÓGIO, não
+    // uma conta que este nó faz — o `dt` daqui é `playhead − sim_t`, então
+    // subdividir o playhead subdivide a integração sem tocar num kernel, na CPU e
+    // no device pela mesma porta.
+    //
+    // ⚠️ **E é por isso que ele re-pergunta quanta FORÇA há.** A cadeia de `force.*`
+    // vive no cone deste nó, então cada sub-passada re-cozinha-a — que é o que a
+    // referência chama substep, e o que um laço dentro deste `eval` não pode dar
+    // (ali `accel` já está congelado). Medido com um `force.wind` a rajar dentro do
+    // tique, a resposta ANDA com as sub-passadas (21,715 → 21,535 → 21,423 em
+    // 1/4/16); com força constante ela só refina, e o erro cai **exactamente pela
+    // metade** a cada dobra (0,3333 → 0,1667 → 0,0834 → 0,0417 → 0,0208, razão
+    // 2,000× — a assinatura de Euler de 1ª ordem).
+    //
+    // ⚠️ A célula da folha 17 listava quatro rotas recusadas, e **duas delas
+    // caíram** em 2026-08-12 sem que a nota fosse reconferida (§0: quem move o
+    // número que tornava algo inalcançável tem de reconferir a nota) — o motor do
+    // sub-tique aterrou ali, e nada nele sabe o que é uma zona.
+    params: &[ParamSpec {
+        name: "substeps",
+        default: 1.0,
+    }],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// **O teto é do RELÓGIO DE PAREDE, e a tabela é esta** (§0: meça antes de limitar). Custo por
+/// QUADRO da cadeia `grid → integrate`+`force.wind` no caminho de REFERÊNCIA (CPU), contra o
+/// orçamento de 60 fps (16,67 ms) — `measure_integrate_substeps::what_a_substep_costs_the_
+/// integrator_per_frame`:
+///
+/// | elementos | sub=1 | sub=8 | sub=16 | sub=32 | sub=64 |
+/// |---|---|---|---|---|---|
+/// | 256 | 0,007 | 0,056 | 0,109 | 0,223 | 0,436 |
+/// | 4.096 | 0,092 | 0,706 | 1,413 | 2,839 | 5,660 |
+/// | 16.384 | 0,406 | 3,036 | 5,953 | 12,128 | **24,034** |
+///
+/// O custo é **linear** em `n` e nos sub-passos. A 16.384 elementos `sub = 64` custa **144% de um
+/// quadro** na CPU — e é a CPU que não o paga, não o produto: o device marcha o plano inteiro pela
+/// mesma porta (`graph_substeps`) e é o caminho que shipa (§5, cook GPU-resident por default).
+///
+/// ⚠️ **O número é o MESMO da `sim.zone`, e isso é correção, não simetria decorativa:** o ritmo é
+/// do GRAFO — todas as ilhas correm no maior que qualquer declarante pede. Um teto menor aqui
+/// seria contornado por uma zona ao lado a pedir 64, ou seja, seria uma mentira no painel.
+///
+/// A faixa CONFORTÁVEL do arrasto para em **16**, onde o erro medido já é **0,10%** do percurso
+/// (0,0208 em 20,0) — abaixo do que qualquer olho separa.
+const MAX_SUBSTEPS: f32 = 64.0;
+
+/// O `IntSlider` é o que faz a unidade cair em `ParamUnit::Count` sem uma 2ª declaração — um
+/// sub-passo é uma CONTAGEM, e meio sub-passo não quer dizer nada.
+static PARAM_HINTS: &[ph2d_node_registry::ParamUiHint] = &[ph2d_node_registry::ParamUiHint {
+    param: "substeps",
+    label: "Substeps",
+    min: 1.0,
+    max: 16.0,
+    step: 1.0,
+    widget: ph2d_node_registry::ParamWidget::IntSlider,
+}];
+
+/// O teto digitável, MEDIDO — a tabela está no doc-comment de [`MAX_SUBSTEPS`].
+static PARAM_HARD_MAX: &[ph2d_node_registry::ParamHardMax] = &[ph2d_node_registry::ParamHardMax {
+    param: "substeps",
+    max: MAX_SUBSTEPS,
+}];
 
 /// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0126 side channel + ADR-0127/0130):
 /// the WGSL port of [`step`], element for element.
@@ -412,6 +476,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,
         },
     );
+    reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     // ADR-0130: per-element: accumulates forces, never reorders/rewrites id.
     reg.register_dense_window(MANIFEST.id);

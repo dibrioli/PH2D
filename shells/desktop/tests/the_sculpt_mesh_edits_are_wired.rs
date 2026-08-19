@@ -610,6 +610,37 @@ fn the_remesh_has_a_key_and_it_says_both_counts() {
 
 #[test]
 fn the_remesh_refuses_with_the_stack_built_instead_of_flattening_it() {
+    // ⚠️ **A lista sai do ENUM, lida do fonte — não de um número escrito aqui.**
+    // A primeira versão pinava `3`, e o dia em que a retopologia nasceu (uma
+    // quarta causa, `Quad`) o gate reprovou sobre um despacho CORRETO: ele
+    // contava braços contra uma constante que ninguém tinha reconferido. *Um
+    // gate que carrega a contagem que ele deveria derivar envelhece com a
+    // primeira variante nova.*
+    let enum_src = std::fs::read_to_string("src/sculpt3d_history.rs")
+        .expect("o enum das recusas é legível a partir do pacote");
+    let body = enum_src
+        .split("pub(super) enum RemeshRefusal {")
+        .nth(1)
+        .and_then(|t| t.split("\n}").next())
+        .expect("o enum das recusas tem corpo");
+    let causes: Vec<&str> = body
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.starts_with("///") && !l.starts_with("//") && l.contains('('))
+        .chain(
+            body.lines()
+                .map(str::trim)
+                .filter(|l| !l.starts_with("//") && l.ends_with(',') && !l.contains('(')),
+        )
+        .filter_map(|l| l.split(['(', ',']).next())
+        .filter(|l| !l.is_empty())
+        .collect();
+    assert!(
+        causes.len() >= 3,
+        "o enum das recusas encolheu para {} variantes: {causes:?}",
+        causes.len()
+    );
+    let causes_list = causes;
     // ⚠️ A alternativa não é neutra: achatar a pilha em silêncio destrói níveis
     // que o artista autorou. A recusa é a MESMA lei do `close_holes` — tapar e
     // remesh trocam a topologia da base, e todo nível acima é `subdivide` dela.
@@ -631,7 +662,7 @@ fn the_remesh_refuses_with_the_stack_built_instead_of_flattening_it() {
     // causas (pilha montada · cena vazia · o campo sem interior) entravam num
     // `Option` só, e o chamador elegia UMA mensagem para as três. Um campo que
     // vazava mandava o artista reverter níveis que ele não tem.
-    for cause in ["MultiresStack", "EmptyScene", "Engine"] {
+    for cause in &causes_list {
         assert!(
             block.contains(cause),
             "a recusa `{cause}` sumiu do despacho: o artista não é informado dela"
@@ -644,9 +675,11 @@ fn the_remesh_refuses_with_the_stack_built_instead_of_flattening_it() {
     // a propriedade é que haja uma por causa — então o gate conta BRAÇOS.
     let arms = block.matches("Err(RemeshRefusal::").count();
     assert_eq!(
-        arms, 3,
-        "são {arms} braços de recusa para três causas: alguma partilha a mensagem de outra, \
-         que é o defeito de origem — um campo vazado mandando reverter níveis inexistentes"
+        arms,
+        causes_list.len(),
+        "são {arms} braços de recusa para {} causas: alguma partilha a mensagem de outra, \
+         que é o defeito de origem — um campo vazado mandando reverter níveis inexistentes",
+        causes_list.len()
     );
 }
 

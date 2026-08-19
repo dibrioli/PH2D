@@ -10,9 +10,9 @@
 
 | arquivo (história, verbatim) | tamanho | o doc VIVO de onde saiu |
 |---|---:|---|
-| [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md) | 677 KB | [`HANDOFF_line_physics.md`](../../Physics/handoffs/HANDOFF_line_physics.md) |
+| [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md) | 678 KB | [`HANDOFF_line_physics.md`](../../Physics/handoffs/HANDOFF_line_physics.md) |
 
-**1 arquivos · 677 KB** de história fora do caminho quente.
+**1 arquivos · 678 KB** de história fora do caminho quente.
 
 > ⚠️ Cada recorte foi feito por `python3 scripts/doc-split.py`, que **aborta se as duas
 > metades não remontarem o original byte-a-byte (sha256)**. Nenhuma linha foi editada.

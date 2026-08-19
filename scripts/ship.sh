@@ -59,6 +59,22 @@ run_optional "cargo-audit (CVE scan)" cargo-audit cargo audit
 # red after the push. Same engine + config as spike.yml.
 run_optional "typos (project-wide typo scan)" typos typos
 
+# ── índices DERIVADOS: em dia? ──────────────────────────────────────────
+# ⚠️ Estes índices existem porque a alternativa (lista mantida à mão) envelhece na
+# primeira semana — foi o que aconteceu com a tabela "Estado por-wave" do tracker
+# da física, que parou em 2026-07-20 enquanto o doc seguia até 08-15. Mas um
+# gerador que ninguém invoca produz exatamente a mesma dívida: medido em
+# 2026-08-18, `cargo-check-narrow.sh` está no CLAUDE.md §2 e foi chamado 5 vezes
+# em 101 sessões, contra 13.791 `cargo check` à mão. Ferramenta só é adotada
+# quando um passo escrito a chama pelo NOME — e este é o passo.
+run "índice de ADRs em dia" bash scripts/adr-index.sh --check
+for _a in docs/archive/*/; do
+    [ -d "$_a" ] || continue
+    # só as pastas que têm README derivado (as antigas, escritas à mão, ficam de fora)
+    grep -q 'INDICE-DERIVADO' "${_a}README.md" 2>/dev/null || continue
+    run "índice de $(basename "$_a") em dia" python3 scripts/archive-index.py "${_a%/}" --check
+done
+
 # ── CI `test` job parity (nextest covers arch gates + cook-hash) ─────────
 # ⚠️ `CARGO_INCREMENTAL=0` nos DOIS: o perfil `ci-test` só roda em BATCH, então
 # incremental não colhe nada ali e paga 11 GB (CLAUDE.md §2, medido 2026-08-16).

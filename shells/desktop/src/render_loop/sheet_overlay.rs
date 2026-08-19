@@ -56,7 +56,7 @@ const LABEL_GAP_PX: f64 = 4.0;
 ///
 /// ⚠️ Existe porque o nome é do artista: um nome longo sem teto atravessaria a tela e cobriria a
 /// arte que ele está a tentar ver.
-const LABEL_MAX_W_PX: f32 = 240.0;
+const LABEL_MAX_W_PX: f32 = 340.0;
 
 /// Desenha a decoração de cada folha da cena.
 ///
@@ -73,7 +73,7 @@ pub(crate) fn draw(
     if px_per_world <= 0.0 {
         return;
     }
-    for (entity, _cfg) in sheets(sim) {
+    for (entity, cfg) in sheets(sim) {
         let Some((w, h)) = sheet_size_world(sim, entity) else {
             continue;
         };
@@ -107,9 +107,17 @@ pub(crate) fn draw(
         let edge = resolve(ColorToken::BorderStrong, theme);
         // A faixa = externo ⊖ interno, pela regra even-odd. É este caminho que recorta as
         // hachuras — elas são traçadas de lado a lado e o clip fica com o que interessa.
+        //
+        // ⚠️ **O CLIP É EM ESPAÇO DE CENA, e o `push_clip` NÃO aceita transformação** — ele usa
+        // `Affine::IDENTITY` por dentro. Empurrar o caminho em coordenadas LOCAIS (aqui, ±2,5
+        // unidades) recorta uma caixinha na origem da tela e apaga tudo o que se desenhar a
+        // seguir. E o modo de falha é MUDO: os contornos continuam a aparecer, porque são
+        // traçados depois do `pop_layer` — o que se vê é uma moldura vazia, que se lê como
+        // *"esqueceram de desenhar o padrão"* e não como *"o recorte comeu o padrão"*.
+        // Foi exatamente isto que fez as listras não existirem nas duas primeiras tentativas.
         let mut band = outer.clone();
         band.extend(inner.iter());
-        scene.push_clip_with_rule(&band, Fill::EvenOdd);
+        scene.push_clip_with_rule(&(xf * band), Fill::EvenOdd);
         // ⚠️ **Um FUNDO por baixo das listras**, e é ele que as torna listras. Sem fundo, as
         // diagonais ficavam a flutuar sobre o canvas e liam-se como ruído — foi o que a 1ª
         // tentativa entregou. O par fundo-claro + traço-escuro é o que faz a faixa ser uma
@@ -139,11 +147,23 @@ pub(crate) fn draw(
         // **O NOME, no topo à esquerda** — fora da folha, apoiado na quina, como o rótulo de uma
         // prancheta. Fora e não dentro porque dentro ele cobriria a primeira peça, que é
         // exatamente onde o empacotador põe a maior.
-        let label = sim
-            .world()
-            .get::<Name>(entity)
-            .map(|n| n.0.clone())
-            .unwrap_or_else(|| "Sprite Sheet".to_string());
+        // O nome **e a resolução** (Enio 2026-08-19). A resolução é a pergunta que o artista faz a
+        // seguir a *"que folha é esta?"* — e é DERIVADA (densidade × tamanho), então mostrá-la
+        // aqui é de graça e mantém-se sozinha em passo quando ele redimensiona ou muda a
+        // densidade. Guardá-la seria o segundo tamanho que o `SpriteSheetFrame` recusa ter.
+        //
+        // ⚠️ `\u{00d7}` (×) e não a letra `x`: o gate `no_tofu_glyphs` conhece este glifo, e é o
+        // mesmo que a linha `Source` do Inspector já usa — duas grafias para a mesma ideia é
+        // como uma delas passa a parecer outra coisa.
+        let label = format!(
+            "{}  {} \u{00d7} {}",
+            sim.world()
+                .get::<Name>(entity)
+                .map(|n| n.0.clone())
+                .unwrap_or_else(|| "Sprite Sheet".to_string()),
+            cfg.pixels_for(w as f32),
+            cfg.pixels_for(h as f32),
+        );
         // A quina superior-esquerda da FAIXA em LOCAL (`+y` é para cima, então o topo é `+hh`).
         // ⚠️ Da faixa, e não do conteúdo: com a decoração agora por fora, ancorar no conteúdo
         // punha o nome em cima da própria faixa.

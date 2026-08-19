@@ -192,6 +192,46 @@ repo quase declarou sucesso sobre uma casca murcha.
 que a Q4 existe para curar — declarar zero antes do fluxo seria declarar que a
 técnica base não tem o defeito que a literatura inteira nomeia.
 
+### ✅ Q3 FECHADA — o que ela entregou, MEDIDO (2026-08-19)
+
+| | esfera 48×64 | toro 64×32 |
+|---|---|---|
+| células (vértices de saída) | 957 | 799 |
+| **quads** | **664 (60,9 %)** | **454 (51,9 %)** |
+| não-quads | 426 | 420 |
+| maior ciclo | 4 | 10 |
+| χ (alvo) | **5** (2) | **2** (0) |
+| Hausdorff bilateral (barra 1 %) | **3,14 %** | — |
+
+⇒ **A1 e A7 verdes. A2, A3 e A4 NÃO.** Os três gates ficam no repo com a barra
+do §4 intacta e um `#[ignore]` que carrega **o número medido** no motivo —
+⛔ **não os afrouxe**: eles são a definição de pronto do remesh, e afrouxá-los
+trocaria o alvo pela medição de hoje.
+
+### ⚠️ E a Q3 REFUTOU o plano de ondas deste ADR
+
+**A hierarquia multirresolução não é um enfeite da Q2: ela é PRÉ-REQUISITO da
+extração.** O Instant Meshes quocienta pela retícula porque o campo de posição
+dele forma **platôs**; sem hierarquia o campo varia continuamente (medido:
+`the_field_never_leaves_its_own_cell`), não há retícula partilhada a que agarrar,
+e a Q3 teve de crescer células **por semente** — o que dá um resultado
+quad-dominante mas não all-quad.
+
+⚠️ **Dois caminhos morreram medidos pelo caminho, e ficam registados:**
+
+| tentativa | medição que a matou |
+|---|---|
+| células por **`union-find` sobre um limiar de distância** | união é **transitiva**: uma corrente de arestas curtas fundiu a esfera de 3 072 vértices em **4 células**. E a corrente sempre existe quando o quad pedido é maior que a aresta da malha — o caso normal de um remesh |
+| arestas de saída = **arestas da entrada que atravessam células** | a entrada é uma triangulação ⇒ ~6 vizinhas por célula ⇒ o passeio devolve **triângulos**: **7,2 %** de quads. A grade de quads precisa das **quatro** direções da cruz |
+
+**O plano corrigido:**
+
+| onda | conteúdo |
+|---|---|
+| **Q3.5** | a **HIERARQUIA** multirresolução (colapso de arestas + prolongação), e os campos resolvidos de cima para baixo |
+| **Q4** | o **fluxo de custo mínimo** — e só então A2/A3/A4 são exigíveis |
+| **Q5** | a costura no shell |
+
 ---
 
 ## §6 — O que este ADR NÃO decide

@@ -28,8 +28,8 @@
 //! | passo | o que é | estado |
 //! |---|---|---|
 //! | **1. orientação** | um campo 4-RoSy por vértice, suavizado | ✅ [`orientation`] |
-//! | 2. posição | a retícula local + a escala adaptativa | ⏳ Q2 |
-//! | 3. extração | a malha a partir dos dois campos | ⏳ Q3 |
+//! | **2. posição** | a retícula local + a escala adaptativa | ✅ [`position`] + [`scale`] |
+//! | **3. extração** | a malha a partir dos dois campos | ✅ [`extract`] |
 //! | 4. consistência | o fluxo de custo mínimo (o passo do QuadriFlow) | ⏳ Q4 |
 //!
 //! ⚠️ **Nada aqui é alcançável pelo produto ainda** — a costura no shell é a Q5.
@@ -38,6 +38,8 @@
 
 #![forbid(unsafe_code)]
 
+/// **A EXTRAÇÃO — os dois campos viram malha** — ver [`extract`].
+pub mod extract;
 /// **O CAMPO DE ORIENTAÇÃO** — ver [`orientation`].
 pub mod orientation;
 /// **O CAMPO DE POSIÇÃO** — ver [`position`].
@@ -45,6 +47,7 @@ pub mod position;
 /// **A ESCALA, uniforme ou adaptativa** — ver [`scale`].
 pub mod scale;
 
+pub use extract::{Quadrangulation, extract};
 pub use orientation::{OrientationField, compat_orientation_extrinsic_4, solve_orientation};
 pub use position::{PositionField, compat_position_extrinsic_4, position_round_4, solve_position};
 pub use scale::{MAX_ADAPTIVE_RATIO, ScaleField};

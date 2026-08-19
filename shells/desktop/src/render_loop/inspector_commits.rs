@@ -1,5 +1,6 @@
-//! Inspector commit phase — Transform / Visibility / Name / Sprite
-//! source-strategy + Reimport drains.
+//! Inspector commit phase — Transform / Visibility / Name / Sprite fields
+//! + Reimport drains. (A troca de ESTRATÉGIA de origem mudou-se para a
+//! [`super::inspector_strategy`] — vide a nota de LOC abaixo.)
 //!
 //! Wave 3.2 stage A — extracted from `render_loop::mod.rs` as a free
 //! function. Each consumes a snapshot pre-populated by the
@@ -9,20 +10,13 @@
 //! `title_dirty`).
 //!
 //! Behavior-preserving lift.
-//
-// ph2d-loc-cap: 651 LOC — `dispatch` is a sequence of independent per-field
-// commit drains (Transform / Visibility / Name / Sprite / Reimport) lifted
-// verbatim from mod.rs, plus inline unit tests. Splitting into per-field
-// sibling modules is a focused Sprite-Inspector follow-up: side-effecting
-// drain code with no isolation, where a blind split risks regressions the
-// gate can't catch. Pre-existing debt; tracked exception to unblock the
-// accumulated W2/W3 ship (Coord ship-prep 2026-06-02). +12 (gold-standard
-// joint anchor): a joint's Position commit re-seats the A anchor — through the
-// bridge's anchor door, from `mod.rs` (see the tail of the Transform drain).
-// ⚠️ O número acima estava OBSOLETO (651 contra 687 medidos): o marcador só
-// precisa EXISTIR para o gate passar, então ele não envelhece com barulho.
-// Re-medido em W-SignalLeave, que soma +22 fundindo os DOIS nomes de sinal num
-// laço só em vez de duplicar o arm inteiro.
+//!
+//! ⚠️ **A exceção de LOC deste arquivo foi RETIRADA em 2026-08-19, e não movida.** Ela pedia por
+//! escrito, desde 2026-06-02, *"splitting into per-field sibling modules is a focused
+//! Sprite-Inspector follow-up"* — e é exatamente isso que a [`super::inspector_strategy`] é: a
+//! troca de estratégia de origem saiu daqui inteira (−157 linhas), o arquivo voltou a **555** e o
+//! teto de 600 do HR-18 volta a morder de verdade. *Um marcador que só precisa existir para o
+//! gate passar não envelhece com barulho* — este envelheceu 36 linhas em silêncio antes de sair.
 
 use crate::EPS_PIXELS_PER_METER;
 use ph2d_asset::{AssetDb, AssetId};
@@ -32,10 +26,10 @@ use ph2d_ecs::scene::{
 use ph2d_ecs::{SimWorld, Transform, Visibility};
 use ph2d_editor::{
     BlendFieldEdit, HeroScreen, InspectorNameInfo, InspectorTransformInfo, InspectorVisibilityInfo,
-    OrderingFieldEdit, PhysicsFieldEdit, RequestedSpriteStrategy, SamplingFieldEdit,
+    OrderingFieldEdit, PhysicsFieldEdit, SamplingFieldEdit,
     SpriteFieldEdit, Toast, ToastQueue, VisibilityFieldEdit,
 };
-use ph2d_render::{Sprite, SpriteRenderer};
+use ph2d_render::Sprite;
 use std::collections::BTreeMap;
 
 /// Apply one [`SpriteFieldEdit`] to a `Sprite`, enforcing the schema
@@ -111,7 +105,6 @@ pub(super) fn dispatch(
     name_edit: Option<InspectorNameInfo>,
     signal_edit: Option<InspectorNameInfo>,
     signal_leave_edit: Option<InspectorNameInfo>,
-    sprite_source_change: Option<(u64, RequestedSpriteStrategy)>,
     sprite_edits: &[(u64, SpriteFieldEdit)],
     ordering_edits: &[(u64, OrderingFieldEdit)],
     sampling_edits: &[(u64, SamplingFieldEdit)],
@@ -120,7 +113,6 @@ pub(super) fn dispatch(
     visibility_section_edits: &[(u64, VisibilityFieldEdit)],
     hero: &mut HeroScreen,
     sim: &mut SimWorld,
-    renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
     toasts: &mut ToastQueue,
@@ -455,164 +447,6 @@ pub(super) fn dispatch(
             }
         }
     }
-    // M14.C: drain Render Source Strategy switch. Atlas →
-    // Individual works (re-decode source pixels +
-    // `acquire_individual` for the renderer, then a canonical
-    // `EditorCommand::SetComponent` for the updated `Sprite` —
-    // audit fix #8 puts this on the same pipeline as Transform
-    // / Visibility / Name). Individual → Atlas and any
-    // HandPacked transition surface a toast — atlas re-insert +
-    // hand-packed asset picker land in M14.C+.
-    if let Some((entity_bits, requested)) = sprite_source_change {
-        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
-        let current_sprite = sim.world().get::<Sprite>(entity).copied();
-        // Audit fix #7 helper: when a swap is rejected (toast
-        // path), demote the clicked Strategy button's stored
-        // state back to Normal so it doesn't keep painting
-        // Pressed/Hovered alongside the still-active button.
-        let reject_visual_reset = |hero: &mut HeroScreen, clicked: RequestedSpriteStrategy| {
-            let id = match clicked {
-                RequestedSpriteStrategy::Atlas => {
-                    ph2d_editor::screens::hero::ids::INSP_RENDER_STRATEGY_ATLAS
-                }
-                RequestedSpriteStrategy::Individual => {
-                    ph2d_editor::screens::hero::ids::INSP_RENDER_STRATEGY_INDIVIDUAL
-                }
-                RequestedSpriteStrategy::HandPacked => {
-                    ph2d_editor::screens::hero::ids::INSP_RENDER_STRATEGY_HANDPACKED
-                }
-            };
-            if let Some(ph2d_editor::InteractiveState::Button { state }) = hero.store.get_mut(id) {
-                *state = ph2d_editor::widget::ButtonState::Normal;
-            }
-        };
-        match (current_sprite.map(|s| s.source), requested) {
-            (
-                Some(ph2d_render::SpriteSource::Atlas { key }),
-                RequestedSpriteStrategy::Individual,
-            ) => {
-                let decoded = atlas_asset_map.get(&key).and_then(|aid| {
-                    asset_db.get(aid).and_then(|asset| match &*asset {
-                        ph2d_asset::Asset::ImageRgba8 {
-                            width,
-                            height,
-                            pixels,
-                        } => Some((*width, *height, pixels.clone())),
-                        _ => None,
-                    })
-                });
-                match decoded {
-                    Some((w, h, pixels)) => match renderer.acquire_individual(w, h, &pixels) {
-                        Ok(texture_id) => {
-                            // Audit fix #8: route the Sprite mutation through
-                            // `EditorCommand::SetComponent` so MCP / Luau / audit-log
-                            // consumers see the same flow as Transform / Name. The
-                            // renderer-side `acquire_individual` already happened;
-                            // what we encode is the updated `Sprite` (size + tint
-                            // preserved from the snapshot).
-                            let mut updated = current_sprite.unwrap_or(ph2d_render::Sprite::atlas(
-                                0,
-                                [1.0, 1.0],
-                                [1.0, 1.0, 1.0, 1.0],
-                            ));
-                            updated.source = ph2d_render::SpriteSource::Individual { texture_id };
-                            // Freshly-decoded image is straight alpha;
-                            // clear any premultiplied flag carried over
-                            // from a prior BG-Removal Apply on this sprite.
-                            updated.premultiplied = false;
-                            match postcard::to_allocvec(&updated) {
-                                Ok(data) => {
-                                    let push_res = editor_queue.push(EditorCommand::SetComponent {
-                                        entity: entity_bits,
-                                        type_id: sprite_type_id,
-                                        data,
-                                    });
-                                    if let Err(e) = push_res {
-                                        toasts
-                                            .push(Toast::error(format!("Editor queue full: {e}")));
-                                        title_dirty = true;
-                                    } else if let Err(e) = apply_editor_commands(
-                                        sim.world_mut(),
-                                        editor_queue,
-                                        component_registry,
-                                    ) {
-                                        toasts.push(Toast::error(format!(
-                                            "Strategy commit failed: {e}"
-                                        )));
-                                        title_dirty = true;
-                                    } else {
-                                        toasts.push(Toast::success(format!(
-                                            "Strategy · Individual (texture {})",
-                                            texture_id
-                                        )));
-                                        title_dirty = true;
-                                    }
-                                }
-                                Err(e) => {
-                                    toasts.push(Toast::error(format!("Sprite encode failed: {e}")));
-                                    title_dirty = true;
-                                }
-                            }
-                        }
-                        Err(err) => {
-                            toasts.push(Toast::error(format!("Individual acquire failed: {err}")));
-                            title_dirty = true;
-                            reject_visual_reset(hero, requested);
-                        }
-                    },
-                    None => {
-                        toasts.push(Toast::error(
-                            "Cannot promote to Individual — source asset missing",
-                        ));
-                        title_dirty = true;
-                        reject_visual_reset(hero, requested);
-                    }
-                }
-            }
-            (Some(ph2d_render::SpriteSource::Atlas { .. }), RequestedSpriteStrategy::Atlas)
-            | (
-                Some(ph2d_render::SpriteSource::Individual { .. }),
-                RequestedSpriteStrategy::Individual,
-            ) => {
-                // No-op: requested matches current. The `apply_event`
-                // guard already short-circuits identical clicks, but
-                // keep this branch explicit so an out-of-band publish
-                // (script, future MCP) doesn't accidentally bounce.
-            }
-            // W2.T2: a cooked KTX2 source can't be re-authored into an
-            // Atlas/Individual/Hand-packed strategy from the inspector (it
-            // has no atlas key nor a CPU-readable bake). Reject any
-            // requested change and snap the radio back. Placed before the
-            // generic `(Some(_), …)` / `(_, HandPacked)` arms so all three
-            // cooked-source cases get this accurate message.
-            (Some(ph2d_render::SpriteSource::CookedTexture { .. }), _) => {
-                toasts.push(Toast::info(
-                    "Cooked textures come from the asset pipeline — render strategy is read-only",
-                ));
-                title_dirty = true;
-                reject_visual_reset(hero, requested);
-            }
-            (Some(_), RequestedSpriteStrategy::Atlas) => {
-                toasts.push(Toast::info(
-                    "Individual · Atlas swap is M14.C+ (atlas re-insert path)",
-                ));
-                title_dirty = true;
-                reject_visual_reset(hero, requested);
-            }
-            (_, RequestedSpriteStrategy::HandPacked) => {
-                toasts.push(Toast::info(
-                    "Hand-packed strategy needs an atlas asset — M14.C+ asset picker",
-                ));
-                title_dirty = true;
-                reject_visual_reset(hero, requested);
-            }
-            (None, _) => {
-                // Entity vanished between commit and drain (despawn,
-                // hierarchy delete) — silent no-op.
-            }
-        }
-    }
-
     title_dirty
 }
 

@@ -42,6 +42,9 @@ mod gizmo_readout;
 mod hierarchy;
 mod image_edit;
 mod inspector_commits;
+/// **A conversão entre estratégias de origem** (Render Source → Strategy) — irmão do
+/// `inspector_commits`, e o corte que o marcador de exceção de LOC daquele arquivo pedia.
+mod inspector_strategy;
 pub(crate) mod inspector_joint;
 /// The BREAK half (W-J7): the switch, the two thresholds, and the fact that
 /// neither is converted. Its own file for the shell's LOC cap.
@@ -8587,7 +8590,6 @@ impl crate::App {
                 name_edit,
                 signal_edit,
                 signal_leave_edit,
-                sprite_source_change,
                 &sprite_edits,
                 &ordering_edits,
                 &sampling_edits,
@@ -8596,7 +8598,6 @@ impl crate::App {
                 &visibility_section_edits,
                 hero,
                 sim,
-                renderer,
                 asset_db,
                 atlas_asset_map,
                 toasts,
@@ -8605,6 +8606,24 @@ impl crate::App {
                 *transform_type_id,
                 *visibility_type_id,
                 *name_type_id,
+                *sprite_type_id,
+            ) {
+                self.title_dirty = true;
+            }
+            // A troca de ESTRATÉGIA de origem sai por uma porta própria (irmã, pelo teto de LOC):
+            // ela precisa do `atlas_asset_map` e do `next_import_cell` em modo MUTÁVEL — a volta
+            // ao atlas ocupa uma célula nova —, e o `dispatch` acima recebe o mapa por leitura.
+            if inspector_strategy::dispatch(
+                sprite_source_change,
+                hero,
+                sim,
+                renderer,
+                asset_db,
+                atlas_asset_map,
+                next_import_cell,
+                toasts,
+                editor_queue,
+                component_registry,
                 *sprite_type_id,
             ) {
                 self.title_dirty = true;

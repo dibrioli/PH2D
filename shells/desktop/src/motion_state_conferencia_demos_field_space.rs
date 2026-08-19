@@ -12,21 +12,27 @@
 //!    banda que prova a ORDEM — se o nó rodasse primeiro, elas sairiam deitadas como as da
 //!    banda 3.
 //!
-//! ## ⚠️ O campo é o TAMANHO do ponto, e a primeira versão desta cena falhou por isso
+//! ## ⚠️ O campo é a COR do ponto, e esta cena falhou DUAS vezes antes disso
 //!
-//! O smoke do Enio reprovou-a com *"não tem nada girado nem na diagonal"*, e a medição achou
-//! **três números errados ao mesmo tempo** — todos do mesmo tipo, e nenhum visível num teste:
+//! **v1 — o campo empurrava a POSIÇÃO.** Reprovada com *"não tem nada girado nem na
+//! diagonal"*. Três números errados ao mesmo tempo, nenhum visível num teste: ⚠️ um sprite
+//! **sem coluna `size` desenha a `1,0`** (o `SIZE_IDENTITY` do shell) contra um vão de
+//! `0,32` — o bloco era uma **placa sólida** · o deslocamento valia **1,31×** o vão · e
+//! havia **2,5** manchas no bloco inteiro. Mais um erro de desenho: *"o padrão girou"* lido
+//! a partir de pontos que sobem e descem é quase ilegível.
 //!
-//! | | medido na v1 | consequência |
-//! |---|---|---|
-//! | tamanho do ponto ÷ vão | **1,0 ÷ 0,32 = 3,1×** | ⚠️ um sprite sem coluna `size` desenha a **1,0** (o `SIZE_IDENTITY` do shell): os quadrados cobriam 3× o vizinho e o bloco era uma **placa sólida** |
-//! | deslocamento ÷ vão | **1,31×** | as peças cruzavam as fileiras vizinhas |
-//! | manchas no bloco | **2,5** | duas manchas não mostram rotação — não há padrão para virar |
+//! **v2 — o campo virou o TAMANHO.** Reprovada outra vez, e desta a ARITMÉTICA explica: com
+//! o bloco a 220 px e 21 pontos de lado, a célula mede **10,5 px** e os pontos iam de
+//! **3,4 px a 9,5 px**. O padrão estava lá e o olho não o via — 441 quadradinhos de 3 a 9 px
+//! não formam imagem. ⚠️ E não havia como sair disso por números: para as manchas terem
+//! pontos que cheguem **e** os pontos serem grandes na tela seria preciso mais janela do que
+//! existe. *Duas exigências que puxam a mesma folga em direções opostas não se resolvem
+//! afinando; resolvem-se trocando o canal.*
 //!
-//! E um quarto, de desenho: o campo empurrava só em **Y**, e *"o padrão girou"* lido a partir
-//! de pontos que sobem e descem é quase ilegível. A cura foi mudar o que o campo escreve: ele
-//! agora dirige o **`Size`**, e o bloco vira um **retrato do campo** em pontos. Uma rotação de
-//! 45° numa imagem é óbvia; num deslocamento vertical, não é.
+//! **v3 — o campo é a COR.** O brilho e o matiz leem-se num ponto de 8 px, o que o tamanho
+//! não faz. O `motion.color_ramp` pega o campo de volta (`value.attribute(Size)`) e pinta o
+//! `tint`; o tamanho **fica** como pista secundária, mas com pouca excursão, para nenhum
+//! ponto sumir.
 //!
 //! *Um gate mede o que a cena PRODUZ; só o olho mede o que ela MOSTRA.*
 //!
@@ -52,11 +58,17 @@ const GAP: f32 = 0.26;
 /// ⚠️ **Ele existe porque a ausência da coluna `size` não é «pequeno», é `1,0`** — o
 /// `SIZE_IDENTITY` que o shell passa ao `lower_to_instances`. Sem esta linha o bloco é uma
 /// placa de quadrados sobrepostos, que foi como a v1 chegou ao smoke.
-const DOT: f32 = 0.16;
-/// Quanto o campo soma ao tamanho. ⚠️ `DOT + AMPLITUDE = 0,25` contra um vão de `0,26`:
-/// **o maior ponto ainda não toca o vizinho** (0,96 do vão), e o contraste entre o menor e o
-/// maior é **3,6×**, que é o que faz o campo se ler como imagem.
-const AMPLITUDE: f32 = 0.09;
+const DOT: f32 = 0.19;
+/// Quanto o campo soma ao tamanho. ⚠️ **Pequeno de propósito na v3:** quem carrega o campo é
+/// a COR, e o tamanho é só a pista secundária. Medido, os pontos ficam entre **5,8 px** e
+/// **9,5 px** na tela — nenhum some, que é o que a v2 não conseguiu garantir enquanto tentava
+/// que o tamanho carregasse tudo (3,4 px no menor).
+const AMPLITUDE: f32 = 0.05;
+/// A faixa que o campo ocupa depois de lido de volta pelo chip **Size**, que devolve
+/// `|size| = s·√2`. É a entrada do `value.map_range`, e ela é **a mesma nas quatro bandas**
+/// de propósito: cores comparáveis entre blocos é o que permite dizer *"é o MESMO campo"*.
+const FIELD_LO: f32 = (DOT - AMPLITUDE) * std::f32::consts::SQRT_2;
+const FIELD_HI: f32 = (DOT + AMPLITUDE) * std::f32::consts::SQRT_2;
 /// A escala espacial do campo. ⚠️ Escolhida pelo NÚMERO DE MANCHAS, não pelo gosto:
 /// `5,20 · 0,77 = 4,0` células de ruído atravessam o bloco. Com as **2,5** da v1 não havia
 /// padrão suficiente para uma rotação se ver.
@@ -121,7 +133,50 @@ fn noise(
     g.set_param(n, "uniform", if stretched { 0.0 } else { 1.0 });
     g.set_param(n, "scale_y", SCALE_Y);
     wire(g, src, n)?;
-    Some(n)
+
+    // ── O campo volta como COR ────────────────────────────────────────────────────
+    // ⚠️ Pelo chip **Size** do picker (`attr = "size"`, modo Length), que é um gesto que o
+    // artista TEM — e não pela lane 0, que ele não tem (é um P2 nomeado da folha 15).
+    let read = g.add_node("value.attribute");
+    g.set_pos(
+        read,
+        Pos {
+            x: x + 200.0,
+            y: y + 90.0,
+        },
+    );
+    g.set_param(read, "mode", 1.0); // Length
+    g.set_text_param(
+        read,
+        ph2d_node_value_attribute::ATTR_KEY,
+        "size".to_string(),
+    );
+    wire(g, n, read)?;
+
+    let norm = g.add_node("value.map_range");
+    g.set_pos(
+        norm,
+        Pos {
+            x: x + 400.0,
+            y: y + 90.0,
+        },
+    );
+    g.set_param(norm, "in_lo", FIELD_LO);
+    g.set_param(norm, "in_hi", FIELD_HI);
+    g.set_param(norm, "out_lo", 0.0);
+    g.set_param(norm, "out_hi", 1.0);
+    wire(g, read, norm)?;
+
+    let paint = g.add_node("motion.color_ramp");
+    g.set_pos(paint, Pos { x: x + 600.0, y });
+    wire(g, n, paint)?;
+    g.connect(Edge {
+        from: (norm, 0),
+        to: (paint, 1),
+        delayed: false,
+    })
+    .ok()?;
+    Some(paint)
 }
 
 /// Põe a banda no lugar e a termina num `motion.output`.
@@ -159,7 +214,7 @@ pub(crate) fn build_field_space_demo_document(
         let ns = noise(g, src, rotation, stretched, 440.0, gy)?;
         let dx = if i % 2 == 0 { -BAND } else { BAND };
         let dy = if i < 2 { BAND } else { -BAND };
-        sinks.push(place(g, ns, dx, dy, 660.0, gy)?);
+        sinks.push(place(g, ns, dx, dy, 1260.0, gy)?);
     }
     Some(sinks)
 }
@@ -167,10 +222,10 @@ pub(crate) fn build_field_space_demo_document(
 /// Os rótulos das quatro bandas, na ordem em que a cena as monta.
 pub(crate) fn band_labels() -> impl Iterator<Item = (usize, &'static str)> {
     [
-        "EM CIMA 'A ESQUERDA -- CONTROLE: manchas redondas",
+        "EM CIMA 'A ESQUERDA -- CONTROLE: manchas de cor REDONDAS",
         "EM CIMA 'A DIREITA  -- RODADO 45 graus: as MESMAS manchas, na diagonal",
-        "EM BAIXO 'A ESQUERDA -- COMPRIMIDO no Y: listras DEITADAS",
-        "EM BAIXO 'A DIREITA  -- OS DOIS: listras na DIAGONAL (a ordem que o no' aplica)",
+        "EM BAIXO 'A ESQUERDA -- COMPRIMIDO no Y: faixas de cor DEITADAS",
+        "EM BAIXO 'A DIREITA  -- OS DOIS: faixas na DIAGONAL (a ordem que o no' aplica)",
     ]
     .into_iter()
     .enumerate()

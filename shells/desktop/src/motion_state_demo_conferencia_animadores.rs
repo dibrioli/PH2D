@@ -270,18 +270,21 @@ pub(super) fn field_space(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<N
     }
     eprintln!(
         "  (!) ESTA CENA JULGA-SE PARADA -- o `speed` e' zero nos quatro.
-  (!) O CAMPO E' O TAMANHO DO PONTO. Cada bloco e' um RETRATO do campo: ponto grande onde
-  ele e' alto, ponto pequeno onde e' baixo. Nao ha' movimento nenhum para procurar.
-  (!) Mesma semente, mesma amplitude, mesma oitava, mesma escala ({scale:.2}) nos quatro.
-  Se um bloco parecer ter pontos MAIORES que os outros, a cena perdeu o controle -- o que
-  muda e' ONDE o campo e' amostrado, nunca quanto ele vale.
-  (!) EM CIMA 'A ESQUERDA: manchas redondas. 'A DIREITA: as MESMAS manchas viradas
+  (!) O CAMPO E' A COR DO PONTO. Cada bloco e' um RETRATO do campo, pintado num gradiente:
+  cores quentes onde ele e' alto, frias onde e' baixo. Nao ha' movimento para procurar --
+  procure MANCHAS DE COR.
+  (!) Mesma semente, mesma amplitude, mesma oitava, mesma escala ({scale:.2}) nos quatro, e
+  a mesma faixa de cor. Se um bloco parecer ter cores mais FORTES que os outros, a cena
+  perdeu o controle -- o que muda e' ONDE o campo e' amostrado, nunca quanto ele vale.
+  (!) EM CIMA 'A ESQUERDA: manchas de cor REDONDAS. 'A DIREITA: as MESMAS manchas viradas
   {turn:.0} graus -- compare as duas de cima lado a lado, e' para isso que estao juntas.
   (!) EM BAIXO 'A ESQUERDA: `Uniform` desligado e `Scale Y` em {scale_y:.2} (contra
-  {scale:.2} no X) -- as manchas viram LISTRAS DEITADAS. Escala MAIOR num eixo = feicao
+  {scale:.2} no X) -- as manchas viram FAIXAS DEITADAS. Escala MAIOR num eixo = feicao
   MENOR nele: o mesmo passo de mundo cobre mais campo.
   (!) EM BAIXO 'A DIREITA: os dois juntos, e a ORDEM e' esticar e DEPOIS rodar. E' por
-  isso que estas listras saem NA DIAGONAL, e nao deitadas como as da esquerda.
+  isso que estas faixas saem NA DIAGONAL, e nao deitadas como as da esquerda.
+  (!) O tamanho do ponto tambem segue o campo, mas de leve -- ele e' a pista secundaria.
+  Duas versoes desta cena falharam por tentarem que o TAMANHO carregasse tudo.
   (!) Abra o painel de PARAMS num deles: ha' uma secao `Space` nova, e o `Scale Y` so'
   aparece com o `Uniform` desligado -- sob ele seria um controle que nao move um quadro.
   (!) O que NAO esta' aqui e' medido: o *offset* do campo ja' sai de

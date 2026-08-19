@@ -153,18 +153,23 @@ são estilo.
    `placar_conferencia.py` era chaveada por `(arquivo, nº)`; acrescentar uma linha desalinhou
    tudo e o placar imprimiu **um ✅ a menos**. Hoje a chave é um TRECHO e cada uma tem de
    casar **exactamente uma** linha, senão a ferramenta sai vermelha.
-8. **UM GATE MEDE O QUE A CENA PRODUZ; SÓ O OLHO MEDE O QUE ELA MOSTRA.** A `=60` passou
-   nos quatro gates e o Enio reprovou-a com *"não tem nada girado nem na diagonal"*. A
-   medição achou **três números errados ao mesmo tempo**, e nenhum era de comportamento:
-   ⚠️ um sprite **sem coluna `size` desenha a `1,0`** (o `SIZE_IDENTITY` do shell) contra um
-   vão de `0,32` — o bloco era uma placa sólida · o deslocamento valia **1,31×** o vão ·
-   e havia **2,5** manchas no bloco inteiro, que não chegam para uma rotação se ver. Mais um
-   quarto, de desenho: *"o padrão girou"* lido a partir de pontos que sobem e descem é
-   ilegível. A cura foi o campo dirigir o **`Size`** — o bloco vira um **retrato** do campo.
-   ⚠️ **E os dois números viraram gate** (`the_dots_never_touch_so_the_field_is_readable` e
-   `the_block_holds_enough_blobs_for_a_rotation_to_read`): depois de o olho falhar, o número
-   que ele achou é gate. *Ao desenhar uma cena, meça o tamanho do ponto contra o vão e quantas
-   feições cabem no quadro — antes de a mandar.*
+8. **UM GATE MEDE O QUE A CENA PRODUZ; SÓ O OLHO MEDE O QUE ELA MOSTRA.** A `=60` foi
+   reprovada **duas vezes** com todos os gates verdes, e a segunda é a lição maior.
+   **v1 (posição):** ⚠️ um sprite **sem coluna `size` desenha a `1,0`** (o `SIZE_IDENTITY` do
+   shell) contra um vão de `0,32` — o bloco era uma placa sólida · o deslocamento valia
+   **1,31×** o vão · e havia **2,5** manchas no bloco inteiro.
+   **v2 (tamanho):** o padrão estava lá e o olho não o via — com o bloco a 220 px e 21 pontos
+   de lado, os pontos iam de **3,4 px a 9,5 px**. ⚠️ **E a aritmética mostrou que não havia
+   saída por números:** para as manchas terem pontos que cheguem **e** os pontos serem
+   grandes seria preciso mais janela do que existe. *Duas exigências que puxam a mesma folga
+   em direções opostas não se resolvem afinando; resolvem-se trocando o CANAL.*
+   **v3 (cor):** `motion.color_ramp` pinta o `tint` a partir do campo lido de volta
+   (`value.attribute(Size)` → `value.map_range`). Luminância medida: **0,073 a 0,923**.
+   ⚠️ **Os números viraram três gates** — `the_dots_never_touch_so_the_field_is_readable`,
+   `the_block_holds_enough_blobs_for_a_rotation_to_read` e
+   `the_colour_carries_the_field_all_the_way_to_the_instance` (que lê o `tint` **no
+   instance**, depois do lowering). *Ao desenhar uma cena, meça o elemento em PÍXEIS e
+   pergunte que canal perceptual carrega o sinal — antes de a mandar.*
 9. ⛔ **OLHE o arquivo antes de escrever nele.** Nesta janela eu sobrescrevi a cena `=51`
    inteira ao criar um módulo com um nome que já existia (`…_demos_space.rs`). Recuperou-se
    com `git checkout --`, mas só porque a árvore estava limpa. *Um `ls` antes do `Write`

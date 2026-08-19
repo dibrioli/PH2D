@@ -29,6 +29,33 @@ fn band_field(band: usize) -> Vec<f32> {
     pump.instances.iter().map(|i| i.size[0]).collect()
 }
 
+/// A COR de cada ponto de uma banda, como um só número: a luminância do `tint`.
+///
+/// ⚠️ Na v3 é a cor que carrega o campo, então é ela que precisa de gate. Ler o `tint`
+/// **no instance** (e não o `t` que entra no ramp) é o que prova que a cor atravessa o
+/// lowering — que é onde a v2 teria falhado se a cor tivesse sido a resposta desde o início.
+fn band_tint(band: usize) -> Vec<f32> {
+    let mut reg = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("todo nó registra");
+    let mut doc = MotionDoc::default();
+    let sinks = build_field_space_demo_document(&mut doc, &reg).expect("a cena monta");
+    let mut pump = MotionCookPump::new();
+    pump.advance_or_scrub_scoped(
+        &doc.graph,
+        &reg,
+        std::slice::from_ref(&sinks[band]),
+        0,
+        |k| k as f64 / 60.0,
+        [0.0, 0.0, 1.0, 1.0],
+        [1.0, 1.0],
+        &Default::default(),
+    );
+    pump.instances
+        .iter()
+        .map(|i| 0.2126 * i.tint[0] + 0.7152 * i.tint[1] + 0.0722 * i.tint[2])
+        .collect()
+}
+
 /// O pior `|Δ|` entre dois campos.
 fn worst(a: &[f32], b: &[f32]) -> f32 {
     a.iter()
@@ -70,16 +97,44 @@ fn the_dots_never_touch_so_the_field_is_readable() {
             i + 1,
             gap()
         );
+        // ⚠️ **O PISO é o que a v2 não conseguiu manter.** Lá o menor ponto media 3,4 px
+        // porque o tamanho carregava o campo sozinho; aqui quem o carrega é a cor, e o
+        // tamanho só precisa de nunca sumir. `0,12 · (220/21 / 0,26) ≈ 4,9 px`.
         assert!(
-            lo > 0.02,
-            "banda {}: o menor ponto mede {lo} -- abaixo disto ele some da tela",
+            lo > 0.12,
+            "banda {}: o menor ponto mede {lo} -- na tela isto e' menos de 5 px",
             i + 1
         );
+    }
+}
+
+/// **A COR CARREGA O CAMPO — e ela chega ao instance.**
+///
+/// ⚠️ Este gate é a v3 escrita como número. A v2 falhou porque o único canal do campo era o
+/// tamanho, e um ponto de 3,4 px não desenha imagem nenhuma. O contraste que se exige agora
+/// é de **luminância**, que se lê num ponto de 8 px — e ele é medido **no `tint` do
+/// instance**, depois do lowering, não no valor que entra no `motion.color_ramp`.
+#[test]
+fn the_colour_carries_the_field_all_the_way_to_the_instance() {
+    for (i, _) in band_labels() {
+        let t = band_tint(i);
+        let (lo, hi) = range(&t);
         assert!(
-            hi > lo * 2.0,
-            "banda {}: contraste de so' {:.2}x ({lo}..{hi}) -- o campo nao se le'",
+            hi - lo > 0.25,
+            "banda {}: a luminancia varia so' {:.3} ({lo:.3}..{hi:.3}) -- o campo nao se le' \
+             na cor, e o tamanho sozinho ja' falhou no smoke",
             i + 1,
-            hi / lo
+            hi - lo
+        );
+    }
+    // E as bandas têm de diferir NA COR, não só no tamanho — é a cor que o olho lê.
+    for (i, j) in [(0, 1), (0, 2), (2, 3)] {
+        let d = worst(&band_tint(i), &band_tint(j));
+        assert!(
+            d > 0.1,
+            "as bandas {} e {} tem de diferir na COR, e diferem {d}",
+            i + 1,
+            j + 1
         );
     }
 }
@@ -226,16 +281,15 @@ fn stretch_then_rotate_is_not_rotate_then_stretch() {
 #[test]
 #[ignore = "sonda: imprime os numeros que a mensagem da cena cita"]
 fn measure_what_the_scene_shows() {
-    eprintln!("\n[=60] o que a cena monta (o campo E' o tamanho do ponto)");
+    eprintln!("\n[=60] o que a cena monta (o campo E' a COR do ponto)");
     for (i, label) in band_labels() {
         let f = band_field(i);
         let (lo, hi) = range(&f);
+        let (tlo, thi) = range(&band_tint(i));
         eprintln!(
-            "  banda {}: {} pontos, {lo:.3} .. {hi:.3} (contraste {:.1}x, vao {:.2})  ({label})",
+            "  banda {}: {} pontos, tamanho {lo:.3}..{hi:.3}, luminancia {tlo:.3}..{thi:.3}  ({label})",
             i + 1,
-            f.len(),
-            hi / lo,
-            gap()
+            f.len()
         );
     }
 }

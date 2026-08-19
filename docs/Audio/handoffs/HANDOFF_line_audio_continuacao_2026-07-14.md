@@ -1,5 +1,7 @@
 # Handoff de continuação — `line/audio` (pós-integração de 2026-07-14)
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-14 (`a2a6c082c`).
+
 > **Você é a linha de áudio.** A jornada anterior (W3 + W4 + W6 + ADR-0120) **integrou**. Este
 > documento é o seu briefing: onde a linha está, o que sobrou, e as minas que já explodiram uma vez.
 >

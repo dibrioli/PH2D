@@ -1,5 +1,7 @@
 # HANDOFF — implementação do Deform (transform/deformação do Painter)
 
+**Status:** FECHADO 2026-07-04 · no `main` em `222dc2288` (o commit que trouxe este arquivo).
+
 > **Ponto de entrada único** para o agente que vai assumir a implementação numa **nova máquina
 > desktop Linux**. Escrito 2026-07-04. Design 100% fechado em [`docs/Deform/`](.).
 > Leia este arquivo inteiro primeiro.

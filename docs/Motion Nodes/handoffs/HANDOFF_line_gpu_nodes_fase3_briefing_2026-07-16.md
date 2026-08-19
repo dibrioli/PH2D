@@ -1,5 +1,7 @@
 # BRIEFING — continuação de `line/gpu-nodes` (GPU/M5 **Fase 3**): a **simulação** na GPU
 
+**Status:** FECHADO 2026-07-16 · no `main` em `70c566e21` (o commit que trouxe este arquivo).
+
 > Para o **novo agente implementador** que assume a linha Motion/GPU. A Fase 2 + a F1.2 landaram e
 > estão fechadas; o **desenho da sua fatia já está escrito** ([ADR-0127](../../architecture/decisions/0127-gpu-simulation-pre-is-arc-pingpong-plan-becomes-a-dag.md))
 > — você **executa** o ADR, não o re-inventa. **Autor:** o agente da Fase 2/F1.2, 2026-07-16, a pedido

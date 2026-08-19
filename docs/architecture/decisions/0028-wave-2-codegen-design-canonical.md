@@ -49,7 +49,7 @@ Toda aparência (tokens, icons) e declaração funcional (tools) origina aqui.
 
 - `crates/ph2d-tokens/build.rs` lê `tokens.json` → emite `tokens_generated.rs` com
   const arrays de 4 themes resolvidos (`$inherits` aplicado).
-- `crates/ph2d-editor/build.rs` lê `docs/design/icons/*.svg` → emite
+- `crates/ph2d-editor-core/build.rs` lê `docs/design/icons/*.svg` → emite
   `icons_generated.rs` com per-icon `IconCmd` arrays + `ICON_CMDS_BY_ID` + `lookup_cmds`
   + `ALL_ICON_SLUGS`.
 
@@ -148,7 +148,7 @@ re-exported from `ph2d_tokens::*`.
   re-parse `tokens.json` with `serde_json` (dev-only dep,
   independent of build.rs's ad-hoc parser) and assert every public
   token API agrees with the JSON. Drift fails CI with inline diff.
-- `crates/ph2d-editor/tests/no_literal_color.rs` (extended) —
+- `crates/ph2d-editor-core/tests/no_literal_color.rs` (extended) —
   matcher now catches `Color::WHITE/BLACK/TRANSPARENT`,
   `Color::{rgba8, rgb8, from_rgba8, from_rgba, from_rgb}(`, all of
   the above prefixed with `VelloColor::`. Same allowlist mechanism
@@ -156,7 +156,7 @@ re-exported from `ph2d_tokens::*`.
   the existing tree annotated as legitimate (token-cast bridges,
   alpha-checker tiles, drop-overlay scrim theme-invariant, note
   text on highlighter background).
-- `crates/ph2d-editor/tests/no_magic_numeric.rs` (new, warn mode) —
+- `crates/ph2d-editor-core/tests/no_magic_numeric.rs` (new, warn mode) —
   bans bare `\d+\.\d+` literals in `widget/**` and `screens/**`
   outside structural ratios `{0.0, ±0.5, ±1.0, ±2.0}`. Allowlist
   via `// LITERAL-PX-OK: <reason>` per-line +

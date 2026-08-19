@@ -10,6 +10,8 @@ relacionados: ["[[06.1-Waves-riscos-e-alvos]]", "[[03.7-Oraculo-de-fidelidade]]"
 
 # Handoff de integração — `line/sculpt3d` (W4..W8.2)
 
+**Status:** FECHADO 2026-08-02 · no `main` em `f278be202` (o commit que trouxe este arquivo).
+
 > **SMOKE APROVADO pelo Enio, wave a wave** — a última rodada em 2026-08-02
 > (`PH2D_SCULPT3D_SMOKE=7`, os verbos da lista): *"Smoke OK"*. A linha está fechada e aguarda ordem
 > de integração. **Ela não integra, não faz ship e não pusha.**

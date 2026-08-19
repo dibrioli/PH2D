@@ -11,7 +11,7 @@
 
 O editor M13 tem:
 
-- 31 widgets data-only com `state: ButtonState/SliderState/...` em cada struct (vide `crates/ph2d-editor/src/widget/`).
+- 31 widgets data-only com `state: ButtonState/SliderState/...` em cada struct (vide `crates/ph2d-editor-core/src/widget/`).
 - Cada `paint_X(widget, rect, scene, theme)` desenha o estado declarado no struct — corretamente para todos os 7 estados de cada widget, conferido por 309 testes.
 - AccessKit `Node` para todo widget interativo (HR-12), com `NodeId` estável por widget.
 - Shell desktop (`shells/desktop/src/main.rs`) consome `PointerEvent` via `HostHandler::on_pointer` — atualmente serve só pra (a) BrushTool desenhar sprites, (b) `dragging: Option<NodeId>` ad-hoc para arrastar o Slider único do PanelControl ativo (`main.rs:389-400` — `find().filter(matches!(PanelControl::Slider))`).
@@ -160,7 +160,7 @@ Modelo C é tentador para projetos pequenos; em editor com 31 widgets + Inspecto
 
 ## Esboço de implementação (se Modelo B aprovado)
 
-Novo crate ou módulo: `crates/ph2d-editor/src/interaction/` com:
+Novo crate ou módulo: `crates/ph2d-editor-core/src/interaction/` com:
 
 ```rust
 // interaction/state.rs — pré-populado na construção da tela; nunca insere on-demand.

@@ -1,5 +1,7 @@
 # Handoff MESTRE de integração — `line/motion-value` (2026-08-04)
 
+**Status:** FECHADO 2026-08-04 · no `main` em `59197c631` (o commit que trouxe este arquivo).
+
 **Branch:** `line/motion-value` · **Base (merge-base com `main`):** `dc0587cbe` ·
 **HEAD:** `7bd6c0e0c` · **20 commits** · **87 arquivos, +6811 / −719**
 

@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO (MESTRE) — `line/sculpt3d`
 
+**Status:** FECHADO 2026-08-17 · no `main` em `77c7db4f9` (o commit que trouxe este arquivo).
+
 **Data:** 2026-08-17 · **branch:** `line/sculpt3d` · **tip:** `75df717c4`
 **Base:** `c1bf582dc` · **39 commits** · **115 arquivos** · **+17.890/−1.542**
 

@@ -17,16 +17,16 @@ HR-18 declarada mas inativa. main.rs caiu de 3463 → 2421 LOC.
 de colisão e divergência permanecem**, suficientes para que multi-agente paralelo ainda
 gere merge conflicts ou (pior) divergência silenciosa entre design e implementação:
 
-1. `crates/ph2d-editor/src/icons.rs` — 874 LOC, enum IconId com 89 variants + fn cmds()
+1. `crates/ph2d-editor-core/src/icons.rs` — 874 LOC, enum IconId com 89 variants + fn cmds()
    715 LOC. SVGs canônicos correspondentes existem em `docs/design/icons/*.svg` (89
    arquivos, paridade 1:1). Port é **manual** e mantém-se à mão.
 2. `crates/ph2d-tokens/src/color.rs` — header admite "manual sync — future codegen via
    build.rs". tokens.json é declarada source-of-truth mas não-conectada.
 3. `crates/ph2d-editor/src/widget.rs` (98 LOC) + diretório `widget/` (8640 LOC, 30
    widgets). Cada widget novo edita `widget.rs` com `mod X` + `pub use X::*` — colisão alta.
-4. `crates/ph2d-editor/src/screens/hero.rs` — impl block de 918 LOC. struct `HeroScreen`
+4. `crates/ph2d-editor-core/src/screens/hero.rs` — impl block de 918 LOC. struct `HeroScreen`
    carrega 20 campos `pending_*`. State centralizado cresce sem teto.
-5. `crates/ph2d-editor/src/screens/hero/fixture.rs::topbar_clusters()` — 160 LOC
+5. `crates/ph2d-editor-core/src/screens/hero/fixture.rs::topbar_clusters()` — 160 LOC
    hard-coded duplicam manifests dos tool-crates. Registry runtime existe mas chrome não
    o consome.
 6. `crates/ph2d-editor/src/screens/hero/ids.rs` — 253 consts em ranges manuais
@@ -46,7 +46,7 @@ automaticamente:
 - `docs/design/tokens.json` (canonical, OKLCH 4 themes)
 - `crates/ph2d-tokens/src/*` (Rust mirror manual)
 - `docs/design/icons/*.svg` (89 SVGs Lucide-derived)
-- `crates/ph2d-editor/src/icons.rs` (enum manual)
+- `crates/ph2d-editor-core/src/icons.rs` (enum manual)
 - `docs/design/component-library.html` (mockup visual)
 - `docs/design/screens/*.html` (17 mockups full-viewport)
 
@@ -380,10 +380,10 @@ ad-hoc evita isso.
   - Suporta: `<rect>`, `<circle>`, `<line>`, `<path d=...>`, `<polyline points=...>`.
   - Aceita modifiers `rx`, `ry`, `transform="translate/scale/rotate"`.
   - Reusa `kurbo::BezPath::from_svg(d)` para `<path>` (já existe em vello/kurbo).
-- NOVO `crates/ph2d-editor/build.rs` (~80 LOC; varre `docs/design/icons/*.svg`,
+- NOVO `crates/ph2d-editor-core/build.rs` (~80 LOC; varre `docs/design/icons/*.svg`,
   chama `ph2d-icon-codegen`, escreve `OUT_DIR/icons_generated.rs`)
 - EDIT `crates/ph2d-editor/Cargo.toml` — `[build-dependencies]` ganha ph2d-icon-codegen + walkdir
-- EDIT `crates/ph2d-editor/src/icons.rs` (874→~50 LOC): `include!(concat!(env!("OUT_DIR"), "/icons_generated.rs"))`. Mantém o tipo `IconCmd` e re-exporta as funções geradas com nomes Rust-friendly (`save_bezpath`, `open_bezpath`, etc.). **enum `IconId` desaparece**.
+- EDIT `crates/ph2d-editor-core/src/icons.rs` (874→~50 LOC): `include!(concat!(env!("OUT_DIR"), "/icons_generated.rs"))`. Mantém o tipo `IconCmd` e re-exporta as funções geradas com nomes Rust-friendly (`save_bezpath`, `open_bezpath`, etc.). **enum `IconId` desaparece**.
 - EDIT consumers em `crates/ph2d-editor/src/screens/hero/topbar.rs`, `fixture.rs`,
   `left_rail.rs`: trocar `IconId::Save` por `save_bezpath` (function pointer).
 - EDIT `crates/ph2d-tool-*/src/lib.rs`: manifest `icon_fn` já usa fn pointer; sem mudança.
@@ -398,7 +398,7 @@ hero antes/depois).
 **Critério de aceite:**
 - `cargo check --workspace` verde.
 - `cargo test --workspace` verde.
-- `wc -l crates/ph2d-editor/src/icons.rs` < 100.
+- `wc -l crates/ph2d-editor-core/src/icons.rs` < 100.
 - Smoke visual: editor abre, TopBar/LeftRail/Image Tools row → todos ícones
   renderizados idênticos (golden image hero diff SSIM ≥ 0.985).
 
@@ -446,7 +446,7 @@ se algum baseline gravado tem NodeId literal. Auditoria do `git grep`.
 `ColorToken::resolve(theme)`.
 
 **Arquivos:**
-- NOVO `tests/architecture/no_literal_color.rs` — cargo-walk `crates/ph2d-editor/src/widget/**/*.rs` + `crates/ph2d-editor/src/screens/**/*.rs`; grep regex `\b0x[0-9A-Fa-f]{6,8}\b`; exception `// LITERAL-COLOR-OK: <razão>`.
+- NOVO `tests/architecture/no_literal_color.rs` — cargo-walk `crates/ph2d-editor-core/src/widget/**/*.rs` + `crates/ph2d-editor-core/src/screens/**/*.rs`; grep regex `\b0x[0-9A-Fa-f]{6,8}\b`; exception `// LITERAL-COLOR-OK: <razão>`.
 
 **Allowlist explícita** (justificada no header do teste):
 - `widget/blender_color_picker/*.rs` — color math interno usa hex de tabela HSV.
@@ -496,7 +496,7 @@ lists para tools migradas morrem.
 **Pré-condições:** PRs 11.2 (icon_fn) + 11.3 (ids estáveis) mergeados.
 
 **Arquivos:**
-- EDIT `crates/ph2d-editor/src/screens/hero/fixture.rs::topbar_clusters()`:
+- EDIT `crates/ph2d-editor-core/src/screens/hero/fixture.rs::topbar_clusters()`:
   ```rust
   pub fn topbar_clusters(reg: &Registry) -> Vec<(NodeId, TopBarCluster)> {
       let mut out = Vec::with_capacity(16);
@@ -599,7 +599,7 @@ adiciona key validation contra bundle.
 > arquivos legacy. Janela B' roda em paralelo com Janela B (chrome derivado) — não
 > compartilham arquivos.
 
-#### PR 11.7a — `crates/ph2d-editor/src/grid_snap/` decomposição interna
+#### PR 11.7a — `crates/ph2d-editor-core/src/grid_snap/` decomposição interna
 **Objetivo:** quebrar `panel.rs` (2869 LOC) e `state.rs` (1250 LOC) em sub-files
 < 600 LOC cada. Movimentação puramente mecânica — comportamento idêntico.
 
@@ -608,12 +608,12 @@ adiciona key validation contra bundle.
   (orquestrador ~200 LOC) + `panel/square.rs` + `panel/hex.rs` + `panel/iso.rs` +
   `panel/staggered.rs` + `panel/tri.rs` + `panel/quadtree.rs` + `panel/voronoi.rs` +
   `panel/chunks.rs` (1 sub-arquivo por GridKind; cada ~250-400 LOC).
-- EDIT `crates/ph2d-editor/src/grid_snap/state.rs` (1250) → `state/mod.rs`
+- EDIT `crates/ph2d-editor-core/src/grid_snap/state.rs` (1250) → `state/mod.rs`
   (~200 LOC, GridSnapState struct + traits) + `state/cfg_square.rs` +
   `state/cfg_hex.rs` + `state/cfg_iso.rs` + `state/cfg_staggered.rs` +
   `state/cfg_tri.rs` + `state/cfg_quadtree.rs` + `state/cfg_voronoi.rs` +
   `state/cfg_chunks.rs` (1 Cfg por GridKind).
-- EDIT `crates/ph2d-editor/src/grid_snap/mod.rs` — re-export interno mantém API.
+- EDIT `crates/ph2d-editor-core/src/grid_snap/mod.rs` — re-export interno mantém API.
 
 **Risco:** MÉDIO. Refactor mecânico extenso (~4000 LOC redistribuídas). Smoke visual
 obrigatório (Grid Settings panel cicla 11 kinds + snap funciona).
@@ -712,7 +712,7 @@ por domínio. Cresce-se por adicionar campo em sub-state, não em HeroScreen cen
       pub widget_gallery_visible: bool,
   }
   ```
-- EDIT `crates/ph2d-editor/src/screens/hero.rs` (918→~400 LOC):
+- EDIT `crates/ph2d-editor-core/src/screens/hero.rs` (918→~400 LOC):
   ```rust
   pub struct HeroScreen {
       pub inspector: InspectorState,
@@ -856,7 +856,7 @@ grid-snap e bgremoval ganham SEUS PRÓPRIOS `panel/`, `state/`, `render/`, `algo
 extraído), PR 11.8 (Action Bus genérico).
 
 **Arquivos:**
-- MOVE `crates/ph2d-editor/src/grid_snap/` (sub-arquivos pós-PR-11.7a) → `crates/ph2d-tool-grid-snap/src/`.
+- MOVE `crates/ph2d-editor-core/src/grid_snap/` (sub-arquivos pós-PR-11.7a) → `crates/ph2d-tool-grid-snap/src/`.
   - `panel/` (8 sub-files) → tool-crate.
   - `state/` (9 sub-files) → tool-crate. **`GridSnapState` deixa de ser campo de `HeroScreen`** — passa a viver no tool-crate; editor consulta via Action Bus / trait getter ou Resource externa em PresentWorld.
   - `render/`, `inspect.rs`, `ids.rs` → tool-crate.
@@ -867,9 +867,9 @@ extraído), PR 11.8 (Action Bus genérico).
 - EDIT `crates/ph2d-tool-bgremoval/Cargo.toml` — ganha dep `ph2d-editor` (idem).
 - EDIT `crates/ph2d-editor/src/lib.rs` — remove `pub mod grid_snap;`.
 - EDIT `crates/ph2d-editor/src/tools/mod.rs` — remove `pub mod bgremoval;`.
-- EDIT `crates/ph2d-editor/src/screens/hero.rs` — `grid_snap_state` field substituído por callback/trait acesso ao tool-crate via Registry lookup.
+- EDIT `crates/ph2d-editor-core/src/screens/hero.rs` — `grid_snap_state` field substituído por callback/trait acesso ao tool-crate via Registry lookup.
 - EDIT `shells/desktop/src/main.rs` + `hero_intents::image_edit::*` — consumers de `GridSnapState` e `BgRemovalTool` usam path novo.
-- DELETE `crates/ph2d-editor/src/grid_snap/` (vazio após move).
+- DELETE `crates/ph2d-editor-core/src/grid_snap/` (vazio após move).
 - DELETE `crates/ph2d-editor/src/tools/bgremoval/` (vazio após move).
 
 **Decisão técnica chave — onde mora o state da tool stateful?**
@@ -885,7 +885,7 @@ Smoke visual exaustivo obrigatório.
 - `cargo test --workspace` verde.
 - Smoke: Grid Settings panel funciona idêntico; cicla 11 kinds; snap funciona em gizmo Translate + drag-drop.
 - Smoke: BgRemoval tool ativável; preview snapshot push; full Apply funciona.
-- `wc -l crates/ph2d-editor/src/grid_snap/` retorna nothing (deleted).
+- `wc -l crates/ph2d-editor-core/src/grid_snap/` retorna nothing (deleted).
 - `wc -l crates/ph2d-editor/src/tools/bgremoval/` retorna nothing (deleted).
 - Periférico de grid-snap ou bgremoval pode trabalhar 100% em `crates/ph2d-tool-<slug>/` sem nunca abrir arquivo em `crates/ph2d-editor/`.
 
@@ -1113,10 +1113,10 @@ Pre-Wave-1 esse paralelismo seria impossível.
 - [ ] **Cross-validation lints todos verdes**: `tool_manifest_design_sync`,
       `chrome_manifest_coverage`, `no_literal_color`, `node_id_collisions`.
 - [ ] `wc -l shells/desktop/src/main.rs` < 400.
-- [ ] `wc -l crates/ph2d-editor/src/icons.rs` < 100.
-- [ ] `wc -l crates/ph2d-editor/src/screens/hero.rs` impl block < 500.
+- [ ] `wc -l crates/ph2d-editor-core/src/icons.rs` < 100.
+- [ ] `wc -l crates/ph2d-editor-core/src/screens/hero.rs` impl block < 500.
 - [ ] **TODOS arquivos `.rs` em `crates/ph2d-*/src/**/*.rs` e `shells/*/src/**/*.rs` < 600 LOC** (HR-18 enforce). Sem exceções.
-- [ ] `crates/ph2d-editor/src/grid_snap/` deletado (movido para `ph2d-tool-grid-snap`).
+- [ ] `crates/ph2d-editor-core/src/grid_snap/` deletado (movido para `ph2d-tool-grid-snap`).
 - [ ] `crates/ph2d-editor/src/tools/bgremoval/` deletado (movido para `ph2d-tool-bgremoval`).
 - [ ] **Princípio canonical Wave 2 validado**: Periférico pode trabalhar em
       `crates/ph2d-tool-<slug>/` sem nunca abrir arquivo em `crates/ph2d-editor/`
@@ -1194,7 +1194,7 @@ conhecidos hoje (PH2D ainda interno).
   5. CI valida cross-source: `.toml` ↔ `MANIFEST`, `.svg` ↔ `icon_fn`, label_key ↔
      bundle Fluent (quando ativo).
 - **§15 anti-patterns**: 2 novos itens:
-  - **Manual SVG → BezPath porting**: `crates/ph2d-editor/src/icons.rs` enum gigante era
+  - **Manual SVG → BezPath porting**: `crates/ph2d-editor-core/src/icons.rs` enum gigante era
     antipattern. Wave 2 ADR-0028 substituiu por `build.rs` codegen automático.
   - **Color hex literal em widget/screens**: usar `ColorToken::resolve(theme)`;
     enforced em CI por `no_literal_color`.
@@ -1209,10 +1209,10 @@ Vide §11 acima.
   Cargo.toml, icons.rs, fixture.rs, ids.rs (todos automatizados).
 - **`03-Agente-Periferico.md` v1.2**:
   - Periférico de tool: começa em `docs/design/tools/<slug>.toml` + drop SVG.
-  - Periférico de widget: cria widget novo em `crates/ph2d-editor/src/widget/<slug>.rs`;
+  - Periférico de widget: cria widget novo em `crates/ph2d-editor-core/src/widget/<slug>.rs`;
     adiciona ao `widget.rs` (append-only via script de validação); golden image baseline
     auto-gerada pode ser commit junto.
-  - Periférico de screen: trabalha em `crates/ph2d-editor/src/screens/<name>/` (subpasta
+  - Periférico de screen: trabalha em `crates/ph2d-editor-core/src/screens/<name>/` (subpasta
     própria por screen).
 
 ---

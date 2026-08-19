@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/sculpt3d`, a DEMÃO idêntica ao Blender
 
+**Status:** FECHADO 2026-08-16 · no `main` em `b7b277fd9` (o commit que trouxe este arquivo).
+
 **Data:** 2026-08-16 · **branch:** `line/sculpt3d` · **tip:** `b4bec8b88`
 **Ordem que abriu a jornada:** *"a tarefa é tornar Layer Tool idêntico ao Blender. GO!!!!!!!!!"*
 **Supersede**, apenas como *o que integrar agora*, o

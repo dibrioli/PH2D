@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/motion-value` · A CONFERÊNCIA DOS NÓS (doc 89)
 
+**Status:** FECHADO 2026-08-09 · no `main` em `a43bf9fa3` (o commit que trouxe este arquivo).
+
 **Data:** 2026-08-09 · **Branch:** `line/motion-value` · **Base:** `main` (a linha está **em cima
 do `main` de hoje** — `git log HEAD..main` = **0**, nenhum rebase pendente)
 **Commits:** 41 · **122 arquivos, +18.616 / −2.174** · **45 arquivos novos**

@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/motion-value` (2026-08-16)
 
+**Status:** FECHADO 2026-08-16 · no `main` em `eb0737827` (o commit que trouxe este arquivo).
+
 > **Este documento SUPERSEDE**, como *o que integrar agora*, o
 > [`HANDOFF_line_motion_value_TROCA_2026-08-10.md`](HANDOFF_line_motion_value_TROCA_2026-08-10.md)
 > — ⚠️ *o detalhe de mecanismo de cada wave continua LÁ e nas entradas da §5 do

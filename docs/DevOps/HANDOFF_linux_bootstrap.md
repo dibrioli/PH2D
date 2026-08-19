@@ -1,5 +1,7 @@
 # HANDOFF — bootstrap da máquina Linux (dev rápido)
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-04 (`aba6c84d5`).
+
 > **Para o Claude Code rodando no VS Code do PC Linux.** Objetivo: deixar este clone
 > **idêntico** ao Mac e pronto para dev. Execute os passos na ordem; PARE onde indicado.
 > Detalhe/racional completo em [`MULTI_MACHINE_SETUP.md`](MULTI_MACHINE_SETUP.md) (leia se algo falhar).

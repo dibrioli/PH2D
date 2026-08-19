@@ -1,5 +1,7 @@
 # Handoff de integração — `line/audio` → `main` (DIRETRIZ §1.5.9)
 
+**Status:** FECHADO 2026-07-17 · no `main` em `d5dcbec3b` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador**. O Enio deu a ordem: integrar esta linha no `main` **e fazer o ship**.
 > Você é quem fecha a última integração da jornada (CLAUDE.md §3, Modo L). Autor: dono da linha,
 > 2026-07-16. **Leia o §0 antes de tocar em `git`.**

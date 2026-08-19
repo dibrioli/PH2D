@@ -1,5 +1,7 @@
 # HANDOFF de integração — linha `line/motion-value` (docs 16–33: valor + M3 + M4 + cauda M1 + expression + UI)
 
+**Status:** FECHADO 2026-07-11 · no `main` em `e5b7ff724` (o commit que trouxe este arquivo).
+
 > Documento do protocolo DIRETRIZ §1.5.9: a linha fechou, **não integra nem pusha** — este handoff
 > vai pro **agente integrador dedicado** que o Enio abrir. Worktree:
 > `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value`.

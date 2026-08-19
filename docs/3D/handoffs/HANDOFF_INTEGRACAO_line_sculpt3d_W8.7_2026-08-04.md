@@ -1,5 +1,7 @@
 # Handoff de integração — `line/sculpt3d`, **W8.7: os canais no DOCUMENTO**
 
+**Status:** FECHADO 2026-08-04 · no `main` em `cda8773f5` (o commit que trouxe este arquivo).
+
 > **Data:** 2026-08-04 · **Branch:** `line/sculpt3d` · **Base:** `main` de 2026-08-02
 > **Commits (W8.7):** `5b31e9a1d` · `1bfeb7b7a` · `1584762b2` (+ o commit de docs)
 > ⚠️ **E a §8.bis descreve a W8.8, que fechou DEPOIS deste smoke e ainda não foi julgada.**

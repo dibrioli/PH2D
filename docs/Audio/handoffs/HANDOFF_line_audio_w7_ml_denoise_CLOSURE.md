@@ -1,5 +1,7 @@
 # HANDOFF (CLOSURE) — `line/audio` · W7: AI Denoise (DeepFilterNet via `tract`)
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-15 (`09c3d06f6`).
+
 > Closes the build-out briefed in [`HANDOFF_line_audio_w7_ml_denoise.md`](HANDOFF_line_audio_w7_ml_denoise.md).
 > **The line is fenced and waiting.** It does NOT integrate or push — that is Enio's explicit
 > order, via a dedicated integrator (CLAUDE.md §0.7). Author: build-out agent, 2026-07-15.
@@ -154,7 +156,6 @@ design) — the default build is untouched by W7.
 - The three inherited-debt items in §5 want their owners' proper fixes (esp. the `fx_presets` split).
 
 **Do NOT integrate or push. Fence held; hand this to Enio.**
-
 
 ---
 

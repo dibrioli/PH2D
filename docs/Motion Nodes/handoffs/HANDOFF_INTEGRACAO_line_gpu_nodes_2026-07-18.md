@@ -1,5 +1,6 @@
 # HANDOFF DE INTEGRAÇÃO — `line/gpu-nodes` (ADR-0130 + emenda 1) · 2026-07-18
 
+**Status:** FECHADO 2026-07-18 · no `main` em `030a48b2e` (o commit que trouxe este arquivo).
 
 > ⚠️ **HISTÓRICO — INTEGRADO À `main` EM 2026-07-18.** Este doc conta o briefing do integrador. Quem continua a linha começa em [`HANDOFF_line_gpu_nodes_continuacao_2026-07-18.md`](HANDOFF_line_gpu_nodes_continuacao_2026-07-18.md).
 

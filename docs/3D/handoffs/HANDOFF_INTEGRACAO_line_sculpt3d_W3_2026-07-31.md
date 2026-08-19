@@ -10,6 +10,8 @@ relacionados: ["[[05.2-Doacao-de-sombreamento-para-2D]]", "[[06.1-Waves-riscos-e
 
 # Handoff de integração — `line/sculpt3d`
 
+**Status:** FECHADO 2026-07-31 · no `main` em `e155524fb` (o commit que trouxe este arquivo).
+
 > **SMOKE APROVADO pelo Enio** (2026-08-01, `PH2D_SCULPT3D_SMOKE=2`): *"Smoke OK"*. A linha está
 > fechada e aguarda ordem de integração. **Ela não integra nem faz ship.**
 

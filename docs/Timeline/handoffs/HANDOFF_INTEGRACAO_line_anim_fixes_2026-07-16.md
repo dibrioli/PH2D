@@ -1,5 +1,7 @@
 # Handoff de INTEGRAÇÃO — `line/anim-fixes` (DIRETRIZ §1.5.9)
 
+**Status:** FECHADO 2026-07-18 · no `main` em `40d56a7fd` (o commit que trouxe este arquivo).
+
 > ⚠️ **SUBSTITUÍDO por [`HANDOFF_INTEGRACAO_line_anim_nesting_2026-07-19.md`](HANDOFF_INTEGRACAO_line_anim_nesting_2026-07-19.md).**
 > A branch continuou depois deste documento e ganhou o **nesting** (ADR-0133): são 16 commits,
 > não 4. Este arquivo segue correto para o detalhe dos 2 primeiros fixes, mas **não descreve mais

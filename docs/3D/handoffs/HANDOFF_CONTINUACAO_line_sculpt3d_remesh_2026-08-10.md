@@ -1,5 +1,7 @@
 # HANDOFF — `line/sculpt3d`, o REMESH (2026-08-10)
 
+**Status:** FECHADO 2026-08-10 · no `main` em `80907ee75` (o commit que trouxe este arquivo).
+
 > **A linha NÃO está fechada.** Seis commits de pé, a wave FECHADA, e o que
 > resta é o smoke do Enio. Ele **supersede** o
 > [`HANDOFF_CONTINUACAO_..._2026-08-10`](HANDOFF_CONTINUACAO_line_sculpt3d_2026-08-10.md)

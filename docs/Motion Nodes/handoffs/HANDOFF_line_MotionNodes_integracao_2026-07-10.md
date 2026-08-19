@@ -1,5 +1,7 @@
 # HANDOFF de integração — linha `line/MotionNodes` (família pulse + domínio de valor, docs 06–14) — smoke aprovado 2026-07-11
 
+**Status:** FECHADO 2026-07-10 · no `main` em `b3144d3af` (o commit que trouxe este arquivo).
+
 > Documento do protocolo DIRETRIZ §1.5.9: a linha fechou, **não integra nem pusha** — este handoff
 > vai pro **agente integrador dedicado** que o Enio abrir. Worktree:
 > `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-MotionNodes`.

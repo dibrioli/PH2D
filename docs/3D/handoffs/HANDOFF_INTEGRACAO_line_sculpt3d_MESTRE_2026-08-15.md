@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/sculpt3d`, 2026-08-15 (MESTRE)
 
+**Status:** FECHADO 2026-08-15 · no `main` em `13ca31191` (o commit que trouxe este arquivo).
+
 > **Este arquivo SUPERSEDE** o `HANDOFF_INTEGRACAO_line_sculpt3d_MESTRE_2026-08-09.md`
 > **apenas como *o que integrar agora*.** ⚠️ *O detalhe de mecanismo das waves
 > W14..W17 continua LÁ e não foi copiado para cá.*

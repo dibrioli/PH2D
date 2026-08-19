@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/gpu-nodes` · 2026-07-19
 
+**Status:** FECHADO 2026-07-19 · no `main` em `374cb930b` (o commit que trouxe este arquivo).
+
 > **Para o agente integrador.** A linha está FECHADA e **smokada e aprovada pelo
 > Enio** (2026-07-19). Nada foi integrado, nada foi pushado (CLAUDE.md §0.7).
 >

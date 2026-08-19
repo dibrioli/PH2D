@@ -1,5 +1,7 @@
 # HANDOFF DE TROCA — `line/motion-value` · quem assume a linha lê isto primeiro
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-08-10 (`7b3370b70`).
+
 **Data:** 2026-08-10 · **Branch:** `line/motion-value` · **Worktree:**
 `Worktrees/line-motion-value/` · **Base:** `main` @ `76788440a` (linha **recém-aberta do
 ZERO**, 0 commits próprios — a jornada anterior JÁ INTEGROU)

@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/anim` (duração explícita + containers como aba + bugs)
 
+**Status:** FECHADO 2026-07-23 · no `main` em `e48c141ef` (o commit que trouxe este arquivo).
+
 > **Modo L.** A linha está **FECHADA**, **todos os smokes aprovados pelo Enio**
 > (*"Tudo ficou maravilhoso. Todos os bugs corrigidos e as animações complexas com
 > múltiplos containers funcionam perfeitamente."* — 2026-07-23), **aguardando ordem

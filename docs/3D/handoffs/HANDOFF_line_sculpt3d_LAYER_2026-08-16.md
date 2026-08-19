@@ -1,5 +1,7 @@
 # HANDOFF — `line/sculpt3d`: o **Verb::Layer** bit-idêntico ao Blender
 
+**Status:** FECHADO 2026-08-16 · no `main` em `b99079dc6` (o commit que trouxe este arquivo).
+
 **Data:** 2026-08-16 · **Branch:** `line/sculpt3d` · **Worktree:** `Worktrees/line-sculpt3d/`
 **HEAD:** `172625199` · árvore **limpa**, nada pushado, gate verde (fmt · clippy · release · debug).
 **Formato:** este doc é o bloco de

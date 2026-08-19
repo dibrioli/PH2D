@@ -1,5 +1,7 @@
 # HANDOFF — `line/anim`: os bugs da DURAÇÃO EXPLÍCITA + autokey (2026-07-23)
 
+**Status:** FECHADO 2026-07-23 · no `main` em `6dba7900b` (o commit que trouxe este arquivo).
+
 > ## ⬛ RE-SMOKE 2 (2026-07-23, commit `4ade61919`) — o Bug B foi APROVADO; o véu+clamp tinham RAIZ SEPARADA, agora fechada
 >
 > **Enio aprovou o Bug B** ("colocando a playhead além do tempo de duração e usando autokey, os

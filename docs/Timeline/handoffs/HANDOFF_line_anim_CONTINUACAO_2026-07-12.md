@@ -1,5 +1,7 @@
 # HANDOFF — continuação da linha `line/anim` (Timeline)
 
+**Status:** FECHADO 2026-07-12 · no `main` em `b85dbcec0` (o commit que trouxe este arquivo).
+
 > **Para:** o **próximo agente-de-linha** que assumir `line/anim`.
 > **De:** o agente anterior (fechou W4.cauda + W5 de autoria; **integrado ao `main` em 2026-07-11**).
 > **Data:** 2026-07-12 · **Regime:** Modo L (workstation).

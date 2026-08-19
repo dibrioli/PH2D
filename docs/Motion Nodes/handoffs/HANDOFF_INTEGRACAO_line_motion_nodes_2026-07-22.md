@@ -1,5 +1,7 @@
 # Handoff de integração — `line/motion-nodes` (2026-07-22)
 
+**Status:** FECHADO 2026-07-22 · no `main` em `22e108bc0` (o commit que trouxe este arquivo).
+
 > A família de **deformers do Motion foi para a GPU**: o 6º canal do resolver
 > (`reduce → broadcast → map`) e cinco nós CPU-only agora cozinham 100% no
 > device. **SMOKE OK (Enio, 2026-07-22)** — a cena =16 (O ORGANISMO) aprovada.

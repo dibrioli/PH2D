@@ -1,5 +1,7 @@
 # HANDOFF — Time remap ainda quebra a animação · fila W5 · protocolo de integração (linha `line/anim`)
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-11 (`dc6b12bfa`).
+
 > **✅ RESOLVIDO (2026-07-11, commit `72803d18`):** o fix do §3 foi aplicado, com o repro do §2
 > vermelho→verde no caminho real do shell + varredura do §4.2 completa + gate batched verde.
 > Prova e detalhes no **[handoff de integração §13](HANDOFF_line_anim_integracao_2026-07-11.md)**.

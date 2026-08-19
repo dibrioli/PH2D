@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/motion-value` (2026-07-30)
 
+**Status:** FECHADO 2026-07-30 · no `main` em `540fed96c` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador** (DIRETRIZ §1.5.9). A linha está **FECHADA**, todos os smokes das
 > features aprovados pelo Enio, aguardando **ordem explícita de integração** (Enio-only). O
 > implementador NÃO integra nem pusha.

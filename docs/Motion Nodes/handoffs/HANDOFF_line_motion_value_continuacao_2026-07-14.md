@@ -1,5 +1,7 @@
 # HANDOFF — continuação da linha `line/motion-value` (Motion Nodes)
 
+**Status:** FECHADO 2026-07-14 · no `main` em `48dfe209c` (o commit que trouxe este arquivo).
+
 **Data:** 2026-07-14 · **Para:** o **próximo agente-de-linha** (você) · **De:** o agente que fechou as
 7 fatias da jornada de 2026-07-13 · **Modo:** **L** (worktree, DIRETRIZ §1.5)
 

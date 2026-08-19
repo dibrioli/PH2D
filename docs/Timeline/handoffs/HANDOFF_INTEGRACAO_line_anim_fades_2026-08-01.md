@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/anim`, a wave dos FADES (2026-08-01)
 
+**Status:** FECHADO 2026-08-01 · no `main` em `377b5eac2` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador**. A linha está FECHADA, todos os smokes foram aprovados pelo
 > Enio, e ela **não integra nem pusha sozinha** (CLAUDE.md §0.7). Leia o §0 e o §1 antes de
 > qualquer comando: eles são os dois lugares onde uma integração desta linha pode dar errado.

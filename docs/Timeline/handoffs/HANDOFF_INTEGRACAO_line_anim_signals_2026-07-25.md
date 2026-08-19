@@ -1,5 +1,7 @@
 # Handoff de integração — `line/anim`: SINAIS DA TIMELINE (ADR-0143) + `Interp::Nearest`
 
+**Status:** FECHADO 2026-07-25 · no `main` em `99434fd74` (o commit que trouxe este arquivo).
+
 **Data:** 2026-07-25 · **Linha:** `line/anim` · **Estado:** FECHADA, pendente de smoke + ordem de
 integração. **NÃO integrei nem pushei** (CLAUDE §0.7).
 

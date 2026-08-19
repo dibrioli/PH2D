@@ -1,5 +1,7 @@
 # HANDOFF — `line/motion-value`: continuação dos Motion Nodes (2026-07-13)
 
+**Status:** FECHADO 2026-07-13 · no `main` em `44f89ad73` (o commit que trouxe este arquivo).
+
 > **Para o agente que assume a linha.** A jornada anterior fechou e **foi integrada ao `main`**
 > (35 commits, 17 crates-nó novas). Este documento é o seu briefing completo: como se trabalha
 > aqui, o que existe de verdade, e a fila.

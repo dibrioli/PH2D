@@ -1,5 +1,7 @@
 # HANDOFF — `line/motion-value` (doc 86 §9.6, item 3): filho vetor/flip de grupo SEM NOME carimba pelo drawing id
 
+**Status:** FECHADO 2026-08-03 · no `main` em `6675733ad` (o commit que trouxe este arquivo).
+
 **Data:** 2026-08-03 · **Linha:** `line/motion-value` (re-aberta pós-integração de 2026-08-02) · **Commit:** `54f2f9ffc` (feat) + handoff · **Estado:** FECHADA, **SMOKE APROVADO pelo Enio (2026-08-03, "parece OK")** — a estrela vetor SEM NOME do centro aparece nas 16 cópias. Pendente só de **ordem de integração (Enio-only)**.
 
 ## O que mudou (uma frase)

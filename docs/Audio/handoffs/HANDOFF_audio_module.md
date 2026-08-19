@@ -1,5 +1,7 @@
 # HANDOFF — Módulo de Áudio (`line/audio`)
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-06 (`ef8696f97`).
+
 > Para o próximo agente. Contém: (1) proposta/plano do módulo, (2) arquitetura,
 > (3) a linha `line/audio` e a integração ao `main` (Modo L), (4) o histórico do
 > BUG "meter vivo, sem som" (**RESOLVIDO**). Leia o §0 + o §1 antes de mexer.

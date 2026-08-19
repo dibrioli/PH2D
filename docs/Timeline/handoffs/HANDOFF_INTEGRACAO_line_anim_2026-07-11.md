@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — linha `line/anim` (Timeline W4 cauda + W5)
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-11 (`75e31c7d1`).
+
 > **Para:** o **agente integrador** (DIRETRIZ §1.5.3–1.5.4). **De:** a linha `line/anim`.
 > **Data:** 2026-07-11 · **Regime:** Modo L (workstation) · **Ordem do Enio:** integrar ao `main`.
 > **Status da linha:** FECHADA, gate de fechamento VERDE, **NÃO integrada, NÃO shipada**.

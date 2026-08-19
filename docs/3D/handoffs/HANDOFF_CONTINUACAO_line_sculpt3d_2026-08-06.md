@@ -1,5 +1,7 @@
 # HANDOFF DE CONTINUAÇÃO — `line/sculpt3d` (2026-08-06)
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-08-06 (`af43bdeab`).
+
 > Para o **agente NOVO que assume esta linha viva**. Não é handoff de integração
 > (esse é o `HANDOFF_INTEGRACAO_line_sculpt3d_MESTRE_2026-08-04.md`, e ele descreve
 > o que **já entrou** no `main`). Este descreve o que está **na linha e ainda não

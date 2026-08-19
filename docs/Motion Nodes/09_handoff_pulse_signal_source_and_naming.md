@@ -1,5 +1,7 @@
 # HANDOFF 09 — Família pulse: matar o "clock hack", criar uma fonte de sinal de verdade, e arrumar os nomes
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-10 (`8a8adc901`).
+
 > Para o **próximo implementador** que continua a linha `line/MotionNodes`.
 > Escrito depois de o Enio apontar dois problemas reais nos nós novos (pulse.threshold /
 > pulse.counter / motion.strobe). Leia inteiro antes de tocar código. Contexto do estudo

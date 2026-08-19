@@ -1,5 +1,7 @@
 # HANDOFF — continuação da linha `line/motion-value` (Motion Nodes)
 
+**Status:** FECHADO 2026-07-12 · no `main` em `4366a1fca` (o commit que trouxe este arquivo).
+
 > ⚠️ **HISTÓRICO — CONSUMIDO.** A jornada que este documento abriu FECHOU e INTEGROU (2026-07-13,
 > 7 fatias). O handoff vivo é [`HANDOFF_line_motion_value_continuacao_2026-07-14.md`](HANDOFF_line_motion_value_continuacao_2026-07-14.md).
 

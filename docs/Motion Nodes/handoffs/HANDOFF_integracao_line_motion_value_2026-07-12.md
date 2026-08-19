@@ -1,5 +1,7 @@
 # Handoff de integração — `line/motion-value` (DIRETRIZ §1.5.9)
 
+**Status:** FECHADO 2026-07-12 · no `main` em `457139a2a` (o commit que trouxe este arquivo).
+
 > **Para o agente integrador.** A linha está FECHADA. Não integrei, não shipei, não pushei.
 > Data: 2026-07-12.
 

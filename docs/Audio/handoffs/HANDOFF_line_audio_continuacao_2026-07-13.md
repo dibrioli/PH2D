@@ -1,5 +1,7 @@
 # Handoff — continuação da `line/audio` (para o próximo agente)
 
+**Status:** FECHADO 2026-07-13 · no `main` em `c315e18ef` (o commit que trouxe este arquivo).
+
 > **Escrito por:** o agente que fechou a linha `audio` (W2 · cortes/peças · ADR-0117 memória ·
 > ADR-0118 streaming · ADR-0119 regiões de loop). **Integração já feita** — `main` contém tudo.
 > **Este documento é o seu briefing completo.** Leia inteiro antes de codar.

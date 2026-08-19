@@ -1,5 +1,7 @@
 # HANDOFF — integração `line/anim` → `main` (2026-07-16)
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-17 (`f7da756dd`).
+
 > Para o **agente integrador**, munido deste doc (DIRETRIZ §1.5.9). A linha está FECHADA e
 > **não integra, não pusha, não roda ship** — isso é ordem EXPLÍCITA do Enio, e ele já a deu:
 > *"vamos à integração ao main"*. Este doc diz o que entra, contra o que colide, e em que ordem.

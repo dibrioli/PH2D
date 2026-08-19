@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/anim` (2026-07-12, **final**)
 
+**Status:** FECHADO 2026-07-12 · no `main` em `c91c5f43b` (o commit que trouxe este arquivo).
+
 > **Para:** o **agente integrador** (e o Enio, para a decisão de ordem em §6).
 > **De:** o agente da linha `line/anim`.
 > **Estado:** linha **FECHADA**. Smoke do Enio **OK**. Não integrei e não fiz ship (CLAUDE.md §0.7).

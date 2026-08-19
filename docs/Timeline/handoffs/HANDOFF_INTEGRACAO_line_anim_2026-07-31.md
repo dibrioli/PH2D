@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/anim` → `main` (2026-07-31)
 
+**Status:** FECHADO 2026-07-31 · no `main` em `7862b6ddd` (o commit que trouxe este arquivo).
+
 > **Para o agente integrador.** A linha está **FECHADA**: árvore limpa, 88 commits, todos os
 > smokes aprovados pelo Enio. Ela **não** foi pushada e **não** foi integrada.
 > Leia §1 e §2 antes de qualquer comando: os dois pontos que exigem decisão humana estão lá.

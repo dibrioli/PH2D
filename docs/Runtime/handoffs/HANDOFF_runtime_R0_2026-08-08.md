@@ -1,5 +1,7 @@
 # HANDOFF — o RUNTIME, para quem assume (`line/runtime`)
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-08-08 (`b5757a49e`).
+
 > **Para quem retoma.** Faça a **FASE 0** do
 > [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md)
 > **antes de abrir qualquer arquivo** — a janela abre na raiz (que é `main`) e os mesmos paths

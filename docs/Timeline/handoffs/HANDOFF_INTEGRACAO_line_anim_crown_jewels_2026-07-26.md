@@ -1,5 +1,7 @@
 # Handoff de integração — `line/anim`: AS JOIAS DA COROA (Waves A/B/C) + sinais + `Interp::Nearest`
 
+**Status:** FECHADO 2026-07-26 · no `main` em `c5e259826` (o commit que trouxe este arquivo).
+
 **Data:** 2026-07-26 · **Linha:** `line/anim` · **Worktree:** `Worktrees/line-anim` ·
 **Estado:** FECHADA, aguardando ordem de integração. **NÃO integrei nem pushei** (CLAUDE §0.7 —
 integração é Enio-only, por um integrador dedicado).

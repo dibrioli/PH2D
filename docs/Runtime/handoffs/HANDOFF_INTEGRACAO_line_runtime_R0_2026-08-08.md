@@ -1,5 +1,7 @@
 # Handoff de integração — `line/runtime` R0: a saída de sinais
 
+**Status:** FECHADO 2026-08-08 · no `main` em `0be47bc6a` (o commit que trouxe este arquivo).
+
 > **A saída de sinais existe: os dois produtores publicam nela, e o consumidor deixou de ser um
 > toast escrito à mão duas vezes.** Pendente de smoke. A linha NÃO integra e NÃO faz ship.
 

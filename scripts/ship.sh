@@ -68,6 +68,9 @@ run_optional "typos (project-wide typo scan)" typos typos
 # em 101 sessões, contra 13.791 `cargo check` à mão. Ferramenta só é adotada
 # quando um passo escrito a chama pelo NOME — e este é o passo.
 run "índice de ADRs em dia" bash scripts/adr-index.sh --check
+# ⚠️ Mesmo argumento, outros 14 diretórios: o `docs/Motion Nodes/` tinha 99 arquivos
+# e ZERO índice, e 45% dos markdowns do repo eram inalcançáveis a partir do roteador.
+run "índices de docs em dia" bash scripts/doc-index.sh --check
 for _a in docs/archive/*/; do
     [ -d "$_a" ] || continue
     # só as pastas que têm README derivado (as antigas, escritas à mão, ficam de fora)

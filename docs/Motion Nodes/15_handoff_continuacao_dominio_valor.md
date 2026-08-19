@@ -1,5 +1,7 @@
 # 15 — Handoff de CONTINUAÇÃO: próxima linha do Motion (domínio de valor + resto do M2)
 
+**Status:** FECHADO 2026-07-11 · no `main` em `1bba95aac` (o commit que trouxe este arquivo).
+
 **Data:** 2026-07-11 · **De:** agente que fechou o domínio de valor (docs 12–14, integrado no main
 `1c7c9a22`) · **Para:** o próximo agente-de-linha do Motion Nodes. **Você NÃO vai reusar a linha
 anterior — você abre uma linha nova do main** e segue a implementação. Este doc te diz onde

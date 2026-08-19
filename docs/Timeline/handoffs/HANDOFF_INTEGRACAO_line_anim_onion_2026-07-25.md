@@ -1,5 +1,7 @@
 # Handoff de integração — `line/anim` · **o ONION da timeline** (ADR-0142) + a cauda
 
+**Status:** FECHADO 2026-07-25 · no `main` em `bb8e3a770` (o commit que trouxe este arquivo).
+
 > DIRETRIZ §1.5.9. A linha está **FECHADA**. Não integrei nem pushei — isso é ordem
 > explícita do Enio, por um **agente integrador dedicado**. Este documento é a porta única
 > da integração da linha inteira **hoje**; a metade do MOTION PATH tem seu próprio handoff

@@ -1,5 +1,7 @@
 # Handoff de integração — `line/anim` · **o MOTION PATH** (ADR-0141)
 
+**Status:** FECHADO 2026-07-24 · no `main` em `83f25d4c8` (o commit que trouxe este arquivo).
+
 > DIRETRIZ §1.5.9. A linha está **fechada**. Não integrei nem pushei — isso é ordem
 > explícita do Enio, por um agente integrador dedicado.
 

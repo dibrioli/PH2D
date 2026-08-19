@@ -93,8 +93,8 @@ modelo antigo sem interferência até concluírem; migram só pós-`done`.
 | `crates/ph2d-editor/src/lib.rs` | 96 (50 `pub use`) | re-export |
 | `crates/ph2d-editor/src/widget.rs` | 98 | `mod X` + `pub use` |
 | `crates/ph2d-editor/src/tools/mod.rs` | 17 | `pub mod X` + `pub use` |
-| `crates/ph2d-editor/src/icons.rs` | enum 89 variants | `IconId::X` + match arm + entry em `ALL_ICONS` |
-| `crates/ph2d-editor/src/screens/hero/fixture.rs` | `topbar_clusters()` Vec | item novo |
+| `crates/ph2d-editor-core/src/icons.rs` | enum 89 variants | `IconId::X` + match arm + entry em `ALL_ICONS` |
+| `crates/ph2d-editor-core/src/screens/hero/fixture.rs` | `topbar_clusters()` Vec | item novo |
 | `crates/ph2d-editor/src/screens/hero/ids.rs` | NodeId ranges | const novo |
 | `crates/ph2d-editor/Cargo.toml` | — | dep nova (Coordenador only) |
 
@@ -624,7 +624,7 @@ nenhum outro consumer.
 `icons.rs` por feature nova.
 
 **Arquivos editados:**
-- `crates/ph2d-editor/src/screens/hero/fixture.rs` —
+- `crates/ph2d-editor-core/src/screens/hero/fixture.rs` —
   `topbar_clusters()` vira:
   ```rust
   pub fn topbar_clusters(reg: &Registry) -> Vec<(NodeId, TopBarCluster)> {
@@ -639,8 +639,8 @@ nenhum outro consumer.
       out
   }
   ```
-- `crates/ph2d-editor/src/screens/hero/left_rail.rs` — análogo.
-- `crates/ph2d-editor/src/icons.rs` — itens migrados perdem variants
+- `crates/ph2d-editor-core/src/screens/hero/left_rail.rs` — análogo.
+- `crates/ph2d-editor-core/src/icons.rs` — itens migrados perdem variants
   do enum. Variants restantes (ícones de chrome fixo: Save, Open,
   Settings, Play, etc.) permanecem.
 
@@ -813,7 +813,7 @@ bounded.
 **Objetivo:** purgar código obsoleto, atualizar canônicos.
 
 **Arquivos editados:**
-- `crates/ph2d-editor/src/icons.rs`: remover variants do `enum IconId`
+- `crates/ph2d-editor-core/src/icons.rs`: remover variants do `enum IconId`
   que não têm consumer em chrome fixo (todos os ícones de tool).
 - `crates/ph2d-editor/src/screens/hero/ids.rs`: remover consts de
   NodeId que ficaram só em chrome fixo (TopBar/LeftRail derivados ganham
@@ -982,7 +982,7 @@ Plano todo está `done` quando:
 - [ ] HR-18 CI gate verde.
 - [ ] Todos os 3 jobs de CI lint stack (HR-13/HR-15/HR-7) verdes.
 - [ ] `wc -l shells/desktop/src/main.rs` < 400.
-- [ ] `wc -l crates/ph2d-editor/src/icons.rs` < 600 (cap explícito;
+- [ ] `wc -l crates/ph2d-editor-core/src/icons.rs` < 600 (cap explícito;
       hoje é o maior risco).
 - [ ] Smoke visual: PH2D_HERO_LIVE=1 cargo run -p ph2d-host-desktop
       abre editor, todas tools migradas funcionam, Inspector edita,

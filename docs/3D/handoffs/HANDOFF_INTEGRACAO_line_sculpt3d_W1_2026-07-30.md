@@ -9,6 +9,8 @@ resumo: "O que o agente integrador precisa saber para fundir a W1 do módulo 3D:
 
 # HANDOFF DE INTEGRAÇÃO — `line/sculpt3d`, W1
 
+**Status:** FECHADO 2026-07-30 · no `main` em `ae44d1c21` (o commit que trouxe este arquivo).
+
 > **A linha NÃO integra e NÃO faz ship.** Este documento existe para o agente
 > integrador que o Enio abrir (DIRETRIZ §1.5.9). A W1 está fechada: M1 (a malha),
 > M2 (a malha na tela) e M3 (as medições) entregues.

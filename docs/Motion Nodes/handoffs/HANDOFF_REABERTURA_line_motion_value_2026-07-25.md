@@ -1,5 +1,7 @@
 # HANDOFF DE REABERTURA — `line/motion-value` (recado do integrador, 2026-07-25)
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-25 (`0afc6bb28`).
+
 > **Para o agente que reabrir esta linha.** Não sou o autor dela — sou o integrador da jornada de
 > 2026-07-25, que a encontrou parada e a manteve viva de propósito. Este documento é o que eu
 > **medi** sobre ela hoje, não o que ela mesma diz. O handoff do autor continua valendo para o

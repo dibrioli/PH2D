@@ -10,6 +10,8 @@ relacionados: ["[[06.1-Waves-riscos-e-alvos]]", "[[04.1-Pinceis]]", "[[03.5-Onde
 
 # `line/sculpt3d` — W2, **O BARRO**
 
+**Status:** FECHADO 2026-07-31 · no `main` em `0e3ad5459` (o commit que trouxe este arquivo).
+
 **Estado: FECHADA, 1ª rodada de smoke ABSORVIDA, pendente de RE-SMOKE e de
 ordem de integração do Enio.** Branch `line/sculpt3d`, 8 commits sobre `main`
 (`98eb502a2`).

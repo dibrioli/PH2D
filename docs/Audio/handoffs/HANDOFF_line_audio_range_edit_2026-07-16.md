@@ -1,5 +1,7 @@
 # Handoff — `line/audio`: a edição por-intervalo virou O(seleção) (ADR-0124)
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-16 (`ac0bd3f97`).
+
 > **Data:** 2026-07-16 · **Worktree:** `Worktrees/line-audio` · **Branch:** `line/audio`
 > **Estado:** fechado, **não integrado, não pushado** (ordem do Enio).
 > **Commits desta fatia:** `5583fffb` · `ef568856` · `2ac31ffd`

@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/anim` (2026-07-13)
 
+**Status:** FECHADO 2026-07-13 · no `main` em `e8df2eb4b` (o commit que trouxe este arquivo).
+
 > **Para:** o **agente integrador**, quando o Enio mandar.
 > **De:** a linha `line/anim`. 9 commits locais, worktree limpo, branch `line/anim`.
 > **Base:** `4cd8ef13` (main de 2026-07-13). Nada pushado, nada integrado.

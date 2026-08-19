@@ -1,5 +1,7 @@
 # HANDOFF DE CONTINUAÇÃO — linha `line/audio`
 
+**Status:** FECHADO 2026-07-12 · no `main` em `b024abc43` (o commit que trouxe este arquivo).
+
 > **Para o próximo agente-de-linha.** **W4 e W6 fecharam** (2026-07-12) e estão
 > **commitados localmente, à espera de integração** — que é ordem exclusiva do Enio.
 > Entregável: [`HANDOFF_audio_w4_integracao.md`](HANDOFF_audio_w4_integracao.md).

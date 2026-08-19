@@ -1,5 +1,6 @@
 # HANDOFF (briefing de continuação) — `line/gpu-nodes` · ADR-0130 · o emitter na GPU (o gather por `id`)
 
+**Status:** FECHADO 2026-07-17 · no `main` em `821b07d2a` (o commit que trouxe este arquivo).
 
 > ⚠️ **HISTÓRICO — INTEGRADO À `main` EM 2026-07-18.** Este doc conta as fatias 1-5 + a emenda 1. Quem continua a linha começa em [`HANDOFF_line_gpu_nodes_continuacao_2026-07-18.md`](HANDOFF_line_gpu_nodes_continuacao_2026-07-18.md).
 

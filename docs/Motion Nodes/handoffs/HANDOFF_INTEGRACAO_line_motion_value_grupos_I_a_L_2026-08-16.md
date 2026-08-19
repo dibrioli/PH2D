@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/motion-value`, grupos I..P + a auditoria (2026-08-16)
 
+**Status:** FECHADO 2026-08-16 · no `main` em `3d4ccf657` (o commit que trouxe este arquivo).
+
 > **Estado:** linha FECHADA, gate completo VERDE, **aguardando ordem de integração do Enio.**
 > A linha não integra e não pusha (CLAUDE.md §0.7). Este documento é o que o **agente integrador** precisa.
 >

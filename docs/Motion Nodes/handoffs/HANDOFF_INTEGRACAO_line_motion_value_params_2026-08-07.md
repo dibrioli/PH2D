@@ -1,5 +1,7 @@
 # Handoff de integração — `line/motion-value` (os PARÂMETROS dos nós)
 
+**Status:** FECHADO 2026-08-07 · no `main` em `1425c1202` (o commit que trouxe este arquivo).
+
 > DIRETRIZ §1.5.9. **A linha NÃO integra e NÃO pusha** — este documento é o que o Enio passa ao
 > agente integrador. Escrito por MEDIÇÃO: todo número aqui saiu de um comando, não de memória.
 

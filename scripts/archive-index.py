@@ -40,7 +40,10 @@ def main() -> None:
     itens = []
     for dirpath, _, arquivos in os.walk(pasta):
         for a in sorted(arquivos):
-            if not a.endswith(".md") or a == "README.md":
+            # ⚠️ só o README.md da RAIZ da pasta é o índice; um `UI_Bugs/README.md`
+            # arquivado é CONTEÚDO. Excluir por nome escondia 3 de 21 arquivos, e o
+            # índice de um arquivo que não lista tudo é pior que não existir.
+            if not a.endswith(".md") or (a == "README.md" and dirpath.rstrip("/") == pasta):
                 continue
             p = os.path.join(dirpath, a)
             n = os.path.getsize(p)

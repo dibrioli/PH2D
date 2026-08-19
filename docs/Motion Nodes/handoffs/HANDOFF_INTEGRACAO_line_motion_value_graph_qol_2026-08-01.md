@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/motion-value` (QoL do editor de nós)
 
+**Status:** FECHADO 2026-08-01 · no `main` em `cd9646734` (o commit que trouxe este arquivo).
+
 **Data:** 2026-08-01 · **Branch:** `line/motion-value` · **HEAD:** `879d9703c` · **Base:** `main`
 **Ordem do Enio:** *"Smoke OK. Handoff para outro agente fazer integração ao MAIN"* — todos os smokes aprovados.
 

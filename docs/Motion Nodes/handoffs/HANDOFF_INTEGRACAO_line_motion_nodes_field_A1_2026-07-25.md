@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/motion-nodes` (família `field.*` + A1 curva) — 2026-07-25
 
+**Status:** FECHADO 2026-07-25 · no `main` em `0f4a19e4e` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador** (a linha NÃO integra a si mesma — §0.7). A linha está
 > **FECHADA e VERDE**; este doc é o que ela entrega. Ordem do Enio: integrar ao main.
 > Reaberta após a integração dos deformers (2026-07-23); tudo aqui é `main..line/motion-nodes`.

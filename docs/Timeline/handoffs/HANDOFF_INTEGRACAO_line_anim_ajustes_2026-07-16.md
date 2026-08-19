@@ -1,5 +1,7 @@
 # Handoff de INTEGRAÇÃO — `line/anim-ajustes` (DIRETRIZ §1.5.9)
 
+**Status:** FECHADO 2026-07-18 · no `main` em `f603f343f` (o commit que trouxe este arquivo).
+
 > A linha está **fechada**. Ela **não integra nem faz ship** — este documento vai ao
 > **agente integrador**, por ordem explícita do Enio (CLAUDE §0.7).
 

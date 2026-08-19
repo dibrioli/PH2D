@@ -1,5 +1,7 @@
 # HANDOFF — `line/audio` · Precificação fora do frame de edição (ADR-0125)
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-16 (`a562f8519`).
+
 - **Data:** 2026-07-16 · **Linha:** `line/audio` (Modo L)
 - **Estado:** **FECHADA**. Não integrada, não pushada, `ship.sh` não rodado (ordem do Enio).
 - **ADR:** [0125](../../architecture/decisions/0125-audio-pricing-a-shipping-target-is-export-work-not-edit-work.md)

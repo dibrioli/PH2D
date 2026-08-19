@@ -1,5 +1,7 @@
 # HANDOFF — `line/audio` · W7: denoise ML nativo (DeepFilterNet via `tract`)
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-15 (`6a64ba522`).
+
 > **Para o próximo agente que assume a linha.** Este documento é auto-suficiente: leia-o inteiro
 > antes de tocar em código. A decisão já está tomada e provada; sua tarefa é o **build-out**.
 > **Autor do handoff:** agente anterior (2026-07-15). **Worktree:** `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-audio`.

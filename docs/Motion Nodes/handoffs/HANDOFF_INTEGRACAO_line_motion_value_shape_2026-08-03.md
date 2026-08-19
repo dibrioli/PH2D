@@ -1,5 +1,7 @@
 # Handoff de integração — `line/motion-value` · `source.shape` (vetor vivo na GPU)
 
+**Status:** FECHADO 2026-08-03 · no `main` em `ff2dd0bfa` (o commit que trouxe este arquivo).
+
 **Data:** 2026-08-03 · **Branch:** `line/motion-value` · **Commit:** `97b318f98`
 **ADR:** [0154](../../architecture/decisions/0154-motion-shapes-are-live-gpu-vector-not-baked-tiles.md) (⚠️ **número PROVISÓRIO** — renumera na integração se o `main` do dia já tiver 0154).
 

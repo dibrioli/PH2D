@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/sculpt3d`, jornada de 2026-08-05 → 08
 
+**Status:** FECHADO 2026-08-08 · no `main` em `fcc239fbd` (o commit que trouxe este arquivo).
+
 > **Para o agente integrador.** Este documento é a fonte; o `06.1-Waves-riscos-e-alvos.md`
 > tem o detalhe por wave. Ordem do Enio em 2026-08-08: *"Smoke OK. Handoff para
 > integração com o main"*.

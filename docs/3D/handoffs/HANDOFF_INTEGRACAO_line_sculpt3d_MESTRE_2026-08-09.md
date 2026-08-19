@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/sculpt3d`, 2026-08-09 (MESTRE)
 
+**Status:** FECHADO 2026-08-09 · no `main` em `5bfe201e0` (o commit que trouxe este arquivo).
+
 > **Para o agente integrador.** Este documento **supersede** o
 > [`MESTRE_2026-08-08`](HANDOFF_INTEGRACAO_line_sculpt3d_MESTRE_2026-08-08.md)
 > apenas como *o que integrar agora*; ⚠️ **o detalhe de mecanismo das waves até a

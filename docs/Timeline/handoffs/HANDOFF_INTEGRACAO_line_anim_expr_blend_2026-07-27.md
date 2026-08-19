@@ -1,5 +1,7 @@
 # Handoff de integração — `line/anim` · Expressões como fonte de lane que FADEIA (ADR-0152)
 
+**Status:** FECHADO 2026-07-27 · no `main` em `70f4afc0d` (o commit que trouxe este arquivo).
+
 **Data:** 2026-07-27 · **Linha:** `line/anim` · **Estado:** FECHADA, gateada, aguardando smoke do Enio + ordem de integração (§0.7 — a linha NÃO integra nem pusha sozinha).
 
 ## Uma frase

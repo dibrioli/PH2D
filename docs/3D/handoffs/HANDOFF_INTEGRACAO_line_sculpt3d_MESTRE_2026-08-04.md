@@ -1,5 +1,7 @@
 # Handoff de integração — `line/sculpt3d`, **MESTRE** (W8.3 → W9.1)
 
+**Status:** FECHADO 2026-08-04 · no `main` em `db05d4036` (o commit que trouxe este arquivo).
+
 > **Data:** 2026-08-04 · **Branch:** `line/sculpt3d` · **Base:** `main` em `dc0587cbe`
 > **Commits:** **28** (`0ae9950f3` … `e397540f1`) · 88 arquivos, +12.886 / −1.210
 > ✅ **TODOS OS SMOKES APROVADOS pelo Enio** — as cinco waves W8.3..W8.7 num smoke só

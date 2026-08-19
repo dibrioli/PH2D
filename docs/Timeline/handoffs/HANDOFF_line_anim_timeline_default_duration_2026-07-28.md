@@ -1,5 +1,7 @@
 # HANDOFF — `line/anim` · a DURAÇÃO PADRÃO da timeline (0 = infinito · 4 s + véu sempre)
 
+**Status:** FECHADO 2026-07-28 · no `main` em `33e45501b` (o commit que trouxe este arquivo).
+
 > Para o próximo agente que assumir `line/anim`. Leia isto **inteiro** antes de tocar código —
 > ele nomeia o que já foi decidido, MEDIDO e **REPROVADO**, para você não reconstruir dead ends.
 > Onboarding da worktree: [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md).

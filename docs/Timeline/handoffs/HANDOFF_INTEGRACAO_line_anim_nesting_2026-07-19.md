@@ -1,5 +1,7 @@
 # Handoff de INTEGRAÇÃO — `line/anim-fixes` (DIRETRIZ §1.5.9)
 
+**Status:** FECHADO 2026-07-19 · no `main` em `c63302c52` (o commit que trouxe este arquivo).
+
 > **Substitui** [`HANDOFF_INTEGRACAO_line_anim_fixes_2026-07-16.md`](HANDOFF_INTEGRACAO_line_anim_fixes_2026-07-16.md),
 > que cobria só os 2 primeiros commits. A branch continuou e agora carrega o **nesting**
 > ([ADR-0133](../../architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md)).

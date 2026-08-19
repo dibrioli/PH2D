@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — linha `line/audio` (W4 fechado)
 
+**Status:** FECHADO 2026-07-12 · no `main` em `71e67a147` (o commit que trouxe este arquivo).
+
 > **DIRETRIZ §1.5.9.** A linha **fechou, comitou local e PAROU**. Não integra, não faz ship,
 > não pusha (§0.7 — Enio-only, via agente integrador dedicado).
 > Tracker do módulo: [`HANDOFF_audio_module.md`](HANDOFF_audio_module.md) ·

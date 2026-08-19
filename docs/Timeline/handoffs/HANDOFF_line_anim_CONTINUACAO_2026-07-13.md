@@ -1,5 +1,7 @@
 # HANDOFF DE CONTINUAÇÃO — `line/anim` (2026-07-13)
 
+**Status:** FECHADO 2026-07-13 · no `main` em `4cd8ef131` (o commit que trouxe este arquivo).
+
 > **Para:** o **próximo agente** da linha `line/anim`.
 > **De:** o agente que fechou a composição de clips (ADR-0115) — **integrada no main**.
 > **Estado:** a linha **integrou**. O worktree está **desatualizado** (§1). Nada em voo, nada quebrado.

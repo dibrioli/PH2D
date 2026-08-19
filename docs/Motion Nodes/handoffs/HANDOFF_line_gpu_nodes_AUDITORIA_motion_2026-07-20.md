@@ -1,5 +1,7 @@
 # HANDOFF — `line/gpu-nodes` · A GRANDE AUDITORIA do Motion Nodes · 2026-07-20
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-20 (`156d664ac`).
+
 > **Para o agente NOVO que assume esta linha.** Você vai fazer uma **auditoria
 > ampla de TODO o sistema Motion Nodes** (bugs · melhorias · performance) ANTES de
 > qualquer implementação nova. Depois da auditoria, continua a linha de onde o

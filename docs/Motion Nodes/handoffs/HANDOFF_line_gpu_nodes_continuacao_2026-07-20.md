@@ -1,5 +1,7 @@
 # HANDOFF (continuação) — `line/gpu-nodes` · ADR-0140 (a grade de vizinhança) · 2026-07-20
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-20 (`ced4b205d`).
+
 > **Para o próximo agente desta linha.** Você está ASSUMINDO uma linha que já
 > existe. Antes de ler qualquer código, faça a **FASE 0** do bloco de troca
 > ([`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md)):

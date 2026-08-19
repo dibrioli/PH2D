@@ -1,5 +1,7 @@
 # Handoff de INTEGRAÇÃO — `line/anim-fixes` (continuação pós-nesting) — 2026-07-21
 
+**Status:** FECHADO 2026-07-21 · no `main` em `88919bc5d` (o commit que trouxe este arquivo).
+
 > **DIRETRIZ §1.5.9.** A linha reabriu DEPOIS da integração do nesting (o ADR-0133 já está
 > na `main`; este é o corpo seguinte). **Tudo smokado e aprovado pelo Enio** — a última
 > rodada em 2026-07-21 (*"Smoke OK!"*) sobre o tip. A linha NÃO integrou e NÃO pushou.

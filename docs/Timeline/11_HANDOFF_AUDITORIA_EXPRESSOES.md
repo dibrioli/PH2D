@@ -1,5 +1,7 @@
 # HANDOFF — AUDITORIA TOTAL do editor de Expressões
 
+**Status:** FECHADO 2026-07-29 · no `main` em `2e4777da9` (o commit que trouxe este arquivo).
+
 > ⚠️ **HISTÓRICO a partir de 2026-07-30** — a AUTORIA de expressões (o card + o catálogo de
 > receitas) foi **retirada** por ordem do Enio; o MOTOR ficou. O que este doc mede sobre o
 > catálogo segue válido, mas o código que ele descreve não existe mais no `main`. Registro

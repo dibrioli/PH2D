@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/motion-value` (command-palette + doc 86: objetos no grafo, Duplicator, ponte de render, preview em moldura)
 
+**Status:** FECHADO 2026-08-02 · no `main` em `eaaa7f1d9` (o commit que trouxe este arquivo).
+
 **Data:** 2026-08-02 · **Branch:** `line/motion-value` · **HEAD:** `72c617dc0` · **Base (merge-base):** `main` `3197c5c9e`
 **Ordem do Enio:** *"Smoke OK"* (aprovando cada fatia, incl. o lote final doc 86 B1/A5) — **todos os smokes aprovados.**
 

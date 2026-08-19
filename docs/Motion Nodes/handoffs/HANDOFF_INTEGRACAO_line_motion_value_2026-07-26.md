@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/motion-value` (reabertura, 2026-07-26)
 
+**Status:** FECHADO 2026-07-26 · no `main` em `aa5d05cba` (o commit que trouxe este arquivo).
+
 > Para o **agente integrador**, munido deste handoff (DIRETRIZ §1.5.3–1.5.9). A
 > linha está **FECHADA**. Integração e ship **só por ordem explícita do Enio** — o
 > implementador NÃO integra nem pusha (CLAUDE.md §0.7). Este documento é o mapa.

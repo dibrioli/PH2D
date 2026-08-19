@@ -1,5 +1,7 @@
 # Handoff de CONTINUAÇÃO — `line/anim-fixes` (novo agente assume)
 
+**Status:** FECHADO 2026-07-19 · no `main` em `5235df2e9` (o commit que trouxe este arquivo).
+
 > Para o agente que assume a linha **depois da integração do nesting** (2026-07-19).
 > Este doc é o "onde paramos + para onde ir". A **mecânica de reabrir a linha** é o BLOCO de
 > [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md)

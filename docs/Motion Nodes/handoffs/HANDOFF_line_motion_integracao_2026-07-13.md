@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/motion-value` (2026-07-13)
 
+**Status:** FECHADO 2026-07-13 · no `main` em `f76625d21` (o commit que trouxe este arquivo).
+
 > ⚠️ **HISTÓRICO — CONSUMIDO PELO INTEGRADOR.** A linha INTEGROU em 2026-07-13 (`main` `4d203d48`).
 > Este era o handoff PRO INTEGRADOR; o handoff vivo da linha é
 > [`HANDOFF_line_motion_value_continuacao_2026-07-14.md`](HANDOFF_line_motion_value_continuacao_2026-07-14.md).

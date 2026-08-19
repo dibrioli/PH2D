@@ -1,5 +1,7 @@
 # BRIEFING — `line/gpu-nodes` (GPU/M5 **Fase 1**): o motor de nós GPU-resident
 
+**Status:** FECHADO 2026-07-15 · no `main` em `c87341bf9` (o commit que trouxe este arquivo).
+
 > Para o **novo agente implementador**. Isto te passa a próxima fase e a linha. Leia inteiro antes de
 > tocar em código — é curto de propósito. A Fase 0 já landou; você constrói em cima dela.
 > **Autor:** o agente da Fase 0 (`line/cook-parallel`), 2026-07-15, a pedido do Enio.

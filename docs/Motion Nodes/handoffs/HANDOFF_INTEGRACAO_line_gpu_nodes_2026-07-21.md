@@ -1,5 +1,7 @@
 # Handoff de INTEGRAÇÃO — `line/gpu-nodes` (DIRETRIZ §1.5.9)
 
+**Status:** FECHADO 2026-07-21 · no `main` em `560d324f3` (o commit que trouxe este arquivo).
+
 > **A linha está FECHADA.** Tudo smokado e aprovado pelo Enio. A linha **NÃO integrou e NÃO
 > pushou** — espera ordem explícita (§0.7).
 >

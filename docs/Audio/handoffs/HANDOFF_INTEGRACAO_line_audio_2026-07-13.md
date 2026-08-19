@@ -1,5 +1,7 @@
 # Handoff de integração — `line/audio` (DIRETRIZ §1.5.9)
 
+**Status:** FECHADO 2026-07-13 · no `main` em `659e751e0` (o commit que trouxe este arquivo).
+
 > **Para o agente integrador.** Este é o único documento que você precisa ler desta linha.
 > Ele está ordenado pelo §1.5.9: identidade · foundational tocado · **símbolos que colidem** ·
 > contratos congelados · o que só o ship pega · ordem e smoke.

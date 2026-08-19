@@ -156,7 +156,14 @@ def main() -> None:
     corpo, n_links = reancorar(
         "".join(arquivo), os.path.dirname(args.arquivo), os.path.dirname(args.archive), raiz
     )
-    rel_vivo = os.path.relpath(args.arquivo, os.path.dirname(args.archive))
+    # ⚠️ AMBOS relativos ao DESTINO, e ambos com o espaço escapado. A 1ª versão
+    # gravava `](../../../CLAUDE.md)` fixo — correto a 3 níveis, quebrado a 4 e 5
+    # (20 de 21 arquivos), e `](.../Vector Module/x.md)` com espaço literal não é
+    # link válido. Um cabeçalho gerado erra em TODOS os arquivos de uma vez.
+    esc = lambda x: x.replace(os.sep, "/").replace(" ", "%20")
+    dir_arq = os.path.dirname(args.archive)
+    rel_vivo = esc(os.path.relpath(args.arquivo, dir_arq))
+    rel_claude = esc(os.path.relpath("CLAUDE.md", dir_arq))
     cab = (
         f"# ARQUIVO — {os.path.basename(args.arquivo)} (história, {len(arquivo)} linhas)\n\n"
         f"> ⚠️ **Isto NÃO é o estado atual de nada.** É a história recortada de\n"
@@ -164,7 +171,7 @@ def main() -> None:
         f"> linha foi editada, e a remontagem das duas metades bate sha256 com o original.\n"
         f">\n"
         f"> Use para responder *\"por que isto ficou assim?\"* — **nunca** para decidir a próxima\n"
-        f"> ação. O que vale hoje está no doc vivo e no [`CLAUDE.md §5`](../../../CLAUDE.md).\n"
+        f"> ação. O que vale hoje está no doc vivo e no [`CLAUDE.md §5`]({rel_claude}).\n"
         f">\n"
         f"> ⛔ O que estiver aqui marcado **«medido e REJEITADO»** continua rejeitado: uma\n"
         f"> recusa com medição atrás não volta à fila por ter mudado de arquivo.\n"

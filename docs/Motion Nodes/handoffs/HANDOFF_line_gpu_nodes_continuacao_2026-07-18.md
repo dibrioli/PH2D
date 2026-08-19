@@ -1,5 +1,7 @@
 # HANDOFF (briefing de continuação) — `line/gpu-nodes` · pós-integração 2026-07-18
 
+**Status:** FECHADO 2026-07-18 · no `main` em `1d8d5294c` (o commit que trouxe este arquivo).
+
 > **Você é o agente que continua esta linha em contexto fresco.** A linha foi
 > **INTEGRADA à `main`** (2026-07-18) e o worktree já está sincronizado por cima
 > dela. Este doc é o ponto de partida; os anteriores viraram histórico (§5).

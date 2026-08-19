@@ -1,5 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/motion-value` (bypass de grupo + seleção de fio)
 
+**Status:** FECHADO 2026-08-01 · no `main` em `c0c1233e0` (o commit que trouxe este arquivo).
+
 **Data:** 2026-08-01 · **Branch:** `line/motion-value` · **HEAD:** `5724bf231` · **Base:** `main` (`3197c5c9e`)
 **Ordem do Enio:** *"smoke OK. siga"* (×3, aprovando cada fatia) — todos os smokes aprovados.
 

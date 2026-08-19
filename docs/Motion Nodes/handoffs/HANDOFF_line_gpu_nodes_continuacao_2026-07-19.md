@@ -1,5 +1,7 @@
 # HANDOFF (continuação) — `line/gpu-nodes` · pós-integração 2026-07-19
 
+**Status:** INDETERMINADO — ver o corpo (o corpo não declara estado) · no `main` desde 2026-07-19 (`54a3a1000`).
+
 > **Para o próximo agente desta linha.** Você está ASSUMINDO uma linha que já
 > existe e **já integrou ao main** — a jornada anterior fechou, smokou (Enio,
 > 2026-07-19) e integrou. Antes de ler qualquer código, faça a **FASE 0** do bloco

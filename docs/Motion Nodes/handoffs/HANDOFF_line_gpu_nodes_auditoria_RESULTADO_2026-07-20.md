@@ -1,5 +1,7 @@
 # RESULTADO — A GRANDE AUDITORIA do Motion Nodes · `line/gpu-nodes` · 2026-07-20
 
+**Status:** INDETERMINADO — ver o corpo (diz "NÃO integrado") · no `main` desde 2026-07-20 (`e57106df6`).
+
 > Auditoria de TODO o sistema Motion Nodes (bugs · melhorias · performance),
 > conduzida antes de qualquer implementação nova, conforme
 > [`HANDOFF_line_gpu_nodes_AUDITORIA_motion_2026-07-20.md`](HANDOFF_line_gpu_nodes_AUDITORIA_motion_2026-07-20.md).

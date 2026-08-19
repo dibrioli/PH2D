@@ -1,5 +1,7 @@
 # HANDOFF DE CONTINUAÇÃO — `line/sculpt3d` (2026-08-10)
 
+**Status:** FECHADO 2026-08-10 · no `main` em `470da287b` (o commit que trouxe este arquivo).
+
 > **Para o agente que assume a linha.** Ele **supersede** o
 > [`HANDOFF_CONTINUACAO_..._2026-08-06`](HANDOFF_CONTINUACAO_line_sculpt3d_2026-08-06.md)
 > como *"comece aqui"* — aquele descreve um mundo em que a W10.7 ainda não tinha

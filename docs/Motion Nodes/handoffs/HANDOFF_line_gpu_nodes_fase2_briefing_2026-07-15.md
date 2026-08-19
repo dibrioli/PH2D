@@ -1,5 +1,7 @@
 # BRIEFING — continuação de `line/gpu-nodes` (GPU/M5 **F1.2 + Fase 2**): portar os nós pro motor
 
+**Status:** FECHADO 2026-07-15 · no `main` em `909b5731b` (o commit que trouxe este arquivo).
+
 > Para o **novo agente implementador**. A F1.1 landou e foi **aprovada no smoke pelo Enio**
 > (2026-07-15): o motor GPU-resident existe, o chain `grid → oscillator → move → output`
 > cozinha inteiro na GPU e o renderer lê o buffer sem readback. Você constrói em cima.

@@ -361,6 +361,19 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **Ler:** [`project.rs`](shells/desktop/src/project.rs) · [`undo.rs`](shells/desktop/src/undo.rs) ·
   [história](docs/archive/estado-2026-08-18/editor-shell.md)
 
+- **Image Tools — os utilitários de bitmap** (⚠️ **~30 k LOC que esta seção nunca mencionou**, achado
+  da auditoria de 2026-08-18): `ph2d-tool-color-equalization` (10.291) · `ph2d-tool-bgremoval` (8.377) ·
+  `-upscale` (1.788) · `-equalize-sizes` · `-rasterize` · `-padding` · `-make-square` · `-real-size` ·
+  `-trim-transparency`, mais os painéis irmãos. Cada uma é **drop-crate** sob o contrato `Tool=12` (§6),
+  e três implementam `RasterEditTool` — ⚠️ **quatro**, contando o Painter: quem escrever a 5ª herda essa conta.
+  Vizinhos sem entrada própria: `ph2d-inpaint` (2.140) · `ph2d-grid` + `ph2d-panel-grid-snap` (7.012) ·
+  `ph2d-tokens` (5.141, o design system do §7) · `docs/Deform/` · `docs/Pixel Art/`.
+  **Ler:** [`docs/Image Tools Bugs/`](docs/Image%20Tools%20Bugs/) · [`docs/Inpaint/`](docs/Inpaint/)
+- ⚠️ **As duas maiores crates do repo não eram nomeadas em lugar nenhum deste arquivo:**
+  [`ph2d-tool-painter`](crates/ph2d-tool-painter/) (**136.093 LOC** — é onde o módulo Painter de facto
+  vive; o §5 nomeava só `ph2d-paint-gpu`) e [`ph2d-editor-core`](crates/ph2d-editor-core/) (**84.015** —
+  widgets, ids, interaction, e **53** gates de arquitetura em `tests/`). *Um módulo que o roteador não
+  nomeia é procurado por `grep`, não alcançado por link.*
 - **Retirados (histórico — não reconstrua sem ler o porquê):** a simulação de **aquarela/fluid/wash**
   ([ADR-0096](docs/architecture/decisions/0096-remove-watercolor-fluid-pivot-mixer-brush.md), supersede ADR-0085..0095) ·
   o **brush engine** original ([ADR-0099](docs/architecture/decisions/0099-remove-painting-brush-engine-preserve-layers-effects.md),

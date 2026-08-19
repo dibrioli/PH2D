@@ -160,6 +160,13 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **Modo L: o caminho é o da SUA worktree** (`.../PH2D/Worktrees/line-<módulo>`), não o do primário — o Enio roda de outro diretório, e sem o `cd` o comando falha ou testa a árvore errada.
 - ⚠️ **Nenhuma leitura de relógio desta workstation vale nada acima de `load ~5`** (medido: o mesmo binário deu 11,36 e
   5,50 ms para o mesmo passe). Gates de razão reprovam sob carga sem que uma linha de código tenha mudado.
+  ⚠️ **Flake CONFIRMADA e pré-existente, 2026-08-18:** `a_round_live_offset_costs_like_the_other_joins`
+  ([`ph2d-vec-boolean/tests/offset_live_cost.rs`](crates/ph2d-vec-boolean/tests/offset_live_cost.rs))
+  reprovou no `ship.sh` como o **único ✗ de 15.323 testes**, no teste 15.294/16.324 — ou seja, no pico
+  do fan-out — e passou **5 de 5** sozinho na máquina calma. O commit em causa não tocava **uma linha**
+  de código de produção. Ela mede a razão de duas medianas de uma operação **sub-milissegundo**, com um
+  piso de 200 µs no divisor: sob 16 mil testes em paralelo isso é ruído. *Re-rode sozinho **antes** de
+  suspeitar da sua mudança* — irmã da flake já listada na Timeline.
 - ⚠️ **Gates de GPU são `#[ignore]`** e precisam de adapter — *skip gracioso não é verde*; e o `nextest` **cancela na
   primeira falha**: use `--no-fail-fast`, senão suítes inteiras nunca chegam a correr.
 

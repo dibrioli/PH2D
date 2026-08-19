@@ -15,7 +15,7 @@
 #
 # ⚠️ A REVOGAÇÃO é derivada por MAPA REVERSO, e a direção é o que importa. Este repo escreve
 # `- **Supersede:** ...` no ADR **NOVO** (o que revoga), nunca no revogado. Um grep por
-# `supersed` marca portanto o lado ERRADO: a primeira versão deste script procurou
+# um grep pela palavra marca portanto o lado ERRADO: a primeira versão deste script procurou
 # "superseded by" e devolveu **0 de 30** — o padrão estava invertido, e a contagem zero foi o
 # que denunciou. Aqui lemos as linhas `Supersede:` e marcamos os NÚMEROS CITADOS nelas.
 #

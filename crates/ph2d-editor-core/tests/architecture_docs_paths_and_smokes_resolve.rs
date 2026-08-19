@@ -20,7 +20,7 @@
 //!   onde o Enio APRENDE a ferramenta (`CLAUDE.md §0.8`) — um smoke morto ensina
 //!   que o produto está partido.
 //!
-//! ⚠️ **Escopo idêntico ao do irmão, de propósito:** só o cânone *instrucional*.
+//! ⚠️ **Escopo idêntico ao do irmão, de propósito:** só o cânone de INSTRUÇÃO.
 //! ADR, plano, handoff e `docs/archive/` registram o que FOI ou o que se PLANEIA
 //! e citam livremente coisas que morreram — cobrá-los aqui transformaria o gate
 //! num gerador de ruído, e um gate ruidoso é desligado.

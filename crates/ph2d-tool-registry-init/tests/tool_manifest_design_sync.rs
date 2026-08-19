@@ -173,6 +173,7 @@ fn expected_icon_slug(manifest_id: &str) -> Option<&'static str> {
         "painter" => "painter",
         "rasterize" => "rasterize",
         "real_size" => "real-size",
+        "sheet_packer" => "sheet-packer",
         "trim_transparency" => "trim-transparency",
         "upscale" => "upscale",
         "vector" => "vector",

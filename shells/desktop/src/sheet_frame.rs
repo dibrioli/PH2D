@@ -18,13 +18,14 @@
 //! undo que o app já tem. *A representação apaga o caso especial.* O auto-arranjo apenas
 //! **propõe** poses; quem decide é o artista, com o mouse.
 //!
-//! ## ⚠️ O RE-arranjo ainda não está aqui, e é decisão, não esquecimento
+//! ## O RE-arranjo voltou COM o botão, como prometido
 //!
-//! O verbo *"arranjar outra vez"* (depois de o artista acrescentar, tirar ou redimensionar uma
-//! peça) precisa de um **botão**, e o botão precisa da ferramenta de imagem que o plano §7.5
-//! nomeia. Escrever a função agora e ligá-la depois é exatamente o *"armar e fiar depois"* que a
-//! DIRETIVA proíbe — e é a doença que esta linha inteira existe para curar: a seção Render Source
-//! tinha três controles mortos por esse mecanismo. Ela volta **no mesmo commit** que o botão.
+//! ⚠️ O verbo *"arranjar outra vez"* foi escrito, ficou **órfão** (o `dead_code` apanhou-o) e foi
+//! **removido** — porque escrever a função e ligá-la depois é o *"armar e fiar depois"* que a
+//! DIRETIVA proíbe, e é a doença que esta linha inteira existe para curar (a seção Render Source
+//! tinha três controles mortos por esse mecanismo). Ele volta agora, no MESMO commit em que
+//! nasce o pill que o chama: clicar `[SHEET]` com uma folha selecionada re-arranja os filhos
+//! dela. *Uma função sem chamador não é trabalho adiantado; é código morto com data de validade.*
 
 use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, SpriteSheetFrame, Transform, VecShape};
 use ph2d_render::Sprite;
@@ -82,11 +83,70 @@ pub(crate) fn create_from_selection(
     Ok(entity.to_bits())
 }
 
+/// Re-arranja os filhos de uma folha que já existe — o `[SHEET]` clicado sobre a própria folha.
+///
+/// ⚠️ **Isto escreve `Transform`, e não viola a lei do [ADR-0153]** (*"o passe publica onde as
+/// coisas ficam; ele não escreve onde elas estão"*). Aquela proíbe um passe **por-quadro** de
+/// tocar poses — senão cada quadro de um resize vira um passo de undo. Aqui é **um clique**: uma
+/// edição autorada, um passo de undo. A distinção é *por-quadro vs. por-gesto*.
+///
+/// A folha é redimensionada para caber o arranjo, porque é isso que um empacotador faz; o artista
+/// pode alargá-la depois sem que as peças se mexam.
+///
+/// [ADR-0153]: ../../../docs/architecture/decisions/0153-vector-auto-layout-is-taffy-behind-one-leaf-crate-and-the-pose-is-derived.md
+pub(crate) fn arrange_children(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    frame_bits: u64,
+) -> Result<usize, SheetFrameError> {
+    let entity = Entity::from_bits(frame_bits);
+    let Some(cfg) = sim.world().get::<SpriteSheetFrame>(entity).copied() else {
+        return Err(SheetFrameError::NotASheet);
+    };
+    let children = child_bits(sim, entity);
+    let pieces = collect_pieces(sim, &children);
+    if pieces.is_empty() {
+        return Err(SheetFrameError::NoSprites);
+    }
+    let plan = plan_for(&pieces, &cfg)?;
+    let side_m = plan.size as f32 / density(&cfg);
+    resize_frame(sim, scene, entity, side_m);
+    place(sim, &pieces, &plan, &cfg, side_m);
+    Ok(pieces.len())
+}
+
+/// Os filhos diretos de uma entidade, em bits.
+fn child_bits(sim: &mut SimWorld, parent: Entity) -> Vec<u64> {
+    let world = sim.world_mut();
+    let mut q = world.query::<(Entity, &ChildOf)>();
+    q.iter(world)
+        .filter(|(_, c)| c.0 == parent)
+        .map(|(e, _)| e.to_bits())
+        .collect()
+}
+
+/// Redimensiona a folha para caber o arranjo — a receita **e** a geometria, pela porta que as
+/// mantém em passo. Sem ela, a primeira edição de parâmetro re-cozinha da caixa ANTIGA e o
+/// redimensionamento evapora em silêncio (o defeito que o `resize_recipe` documenta).
+fn resize_frame(sim: &mut SimWorld, scene: &mut VecScene, entity: Entity, side_m: f32) {
+    if !crate::vec_shape_live::resize_recipe(sim, entity, side_m as f64, side_m as f64) {
+        return;
+    }
+    let Some(shape) = sim.world().get::<VecShape>(entity).cloned() else {
+        return;
+    };
+    if let Some(id) = sim.world().get::<ph2d_ecs::VecPathRef>(entity).map(|r| r.0) {
+        crate::vec_shape_live::recook_into(scene, id, &shape);
+    }
+}
+
 /// Por que uma folha não pôde nascer ou ser arranjada.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum SheetFrameError {
     /// A seleção (ou a folha) não tem sprite nenhum.
     NoSprites,
+    /// A entidade clicada não é uma folha.
+    NotASheet,
     /// O retângulo não pôde ser criado no documento vetorial.
     ShapeFailed,
     /// O empacotador recusou — a razão dele, verbatim.
@@ -97,6 +157,7 @@ impl std::fmt::Display for SheetFrameError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NoSprites => write!(f, "select at least one sprite first"),
+            Self::NotASheet => write!(f, "select a sprite sheet, or sprites to pack"),
             Self::ShapeFailed => write!(f, "the sheet rectangle could not be created"),
             Self::Pack(e) => write!(f, "{e}"),
         }

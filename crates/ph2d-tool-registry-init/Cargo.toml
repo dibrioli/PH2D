@@ -57,6 +57,7 @@ ph2d-tool-padding = { path = "../ph2d-tool-padding" }
 ph2d-tool-painter = { path = "../ph2d-tool-painter" }
 ph2d-tool-rasterize = { path = "../ph2d-tool-rasterize" }
 ph2d-tool-real-size = { path = "../ph2d-tool-real-size" }
+ph2d-tool-sheet-packer = { path = "../ph2d-tool-sheet-packer" }
 ph2d-tool-trim-transparency = { path = "../ph2d-tool-trim-transparency" }
 ph2d-tool-upscale = { path = "../ph2d-tool-upscale" }
 ph2d-tool-vector = { path = "../ph2d-tool-vector" }

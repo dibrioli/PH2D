@@ -52,6 +52,17 @@ const RASTER_EDIT_EXCEPTIONS: &[&str] = &[
     "ph2d-tool-real-size",
     "ph2d-tool-rasterize",
     "ph2d-tool-trim-transparency",
+    // Sheet Packer: **não edita pixels de sprite nenhum**. Ele cria um OBJETO (a folha) e
+    // reparenta as peças selecionadas para dentro dele, escrevendo POSES — os pixels de cada
+    // peça ficam exatamente onde estavam, na GPU. `RasterEditTool` é a superfície de
+    // `set_source(rgba, w, h)` → preview → commit, e aqui não há `rgba` nenhum a entrar.
+    //
+    // ⚠️ Ele é **multi-sprite-required**, como o `equalize-sizes` e pela mesma razão de fundo:
+    // o resultado depende da seleção INTEIRA (o arranjo é uma relação entre as peças), e não
+    // cabe num buffer único. E ⚠️ **o bake é outra coisa** — quando a folha assar os filhos numa
+    // imagem, isso será uma ação DA FOLHA (um botão na seção dela), não deste pill; se algum dia
+    // ele ganhar preview de pixels, esta isenção tem de ser reavaliada, não herdada.
+    "ph2d-tool-sheet-packer",
 ];
 
 fn workspace_root() -> PathBuf {

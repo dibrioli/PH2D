@@ -1,0 +1,29 @@
+# Sheet Packer — empacota a SELEÇÃO numa folha de sprites (plano `docs/Sprite_projeto/17` §7).
+# Com sprites selecionados, o pill cria UM objeto: a folha, com as peças arranjadas dentro como
+# filhos — movíveis, redimensionáveis e desfazíveis com o gizmo de sempre.
+#
+# ⚠️ Ele age sobre a seleção INTEIRA, ao contrário dos irmãos por-sprite desta fila: empacotar N
+# sprites é um ato só, e N atos independentes dariam N folhas de uma peça cada.
+#
+# Último pill da fila Image Tools (order 140).
+#
+# Fonte canônica de `crates/ph2d-tool-sheet-packer/src/manifest.rs`.
+
+[tool]
+id          = "sheet_packer"
+cluster     = "image_tools"
+zone        = "top_right"
+order       = 140
+a11y_role   = "Button"
+icon_slug   = "sheet-packer"
+touches_sim = false
+
+[label]
+pt_br_inline = "Empacotar Folha"
+en_us_inline = "Sheet Packer"
+fluent_key   = "tool.sheet_packer.label"
+
+[memory_budget]
+vram_mb        = 0
+ram_mb         = 0
+heap_script_mb = 0

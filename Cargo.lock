@@ -7781,6 +7781,7 @@ dependencies = [
  "ph2d-tool-rasterize",
  "ph2d-tool-real-size",
  "ph2d-tool-registry",
+ "ph2d-tool-sheet-packer",
  "ph2d-tool-sync",
  "ph2d-tool-trim-transparency",
  "ph2d-tool-upscale",
@@ -7794,6 +7795,16 @@ version = "0.0.0"
 dependencies = [
  "ph2d-ecs",
  "ph2d-editor-core",
+]
+
+[[package]]
+name = "ph2d-tool-sheet-packer"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-core",
+ "ph2d-tool-registry",
+ "ph2d-vector",
 ]
 
 [[package]]

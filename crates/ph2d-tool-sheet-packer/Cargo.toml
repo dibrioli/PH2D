@@ -1,0 +1,27 @@
+[package]
+name = "ph2d-tool-sheet-packer"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Sheet Packer — empacota a SELEÇÃO numa folha de sprites (plano `docs/Sprite_projeto/17` §7).
+#
+# ⚠️ Ilha sem `algorithm`, e é o desenho a funcionar: o empacotamento puro vive na
+# `ph2d-sprite-sheet` e a costura com o ECS na shell (`sheet_frame`). Uma terceira cópia da lei
+# de arranjo aqui seria a segunda resposta a "onde cada peça fica".
+
+[dependencies]
+# Tipos do registry (ToolManifest, Zone, …) — o único ponto de acoplamento de um tool crate.
+# Nunca depende de `ph2d-editor` (ciclo).
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+# Primitivas vetoriais (BezPath) para o glifo.
+ph2d-vector = { path = "../ph2d-vector" }
+# Acessibilidade (Role) para a declaração do manifesto (HR-12).
+ph2d-a11y = { path = "../ph2d-a11y" }
+# MemoryBudget para a declaração de orçamento (HR-13).
+ph2d-core = { path = "../ph2d-core" }

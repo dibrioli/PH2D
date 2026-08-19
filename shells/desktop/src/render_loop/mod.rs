@@ -2614,6 +2614,12 @@ impl crate::App {
             let mut make_square_entities: Vec<u64> = Vec::new();
             let mut real_size_entities: Vec<u64> = Vec::new();
             let mut rasterize_entities: Vec<u64> = Vec::new();
+            // ⚠️ **Este NÃO é por-sprite, e é a exceção da fila.** A chrome emite um
+            // `OneShotImageOp` por entidade selecionada; os irmãos aplicam o bake a cada um
+            // isoladamente, e este junta a leva inteira para criar **uma** folha. N atos
+            // independentes dariam N folhas de uma peça cada — um verbo que fala da RELAÇÃO
+            // entre as peças não cabe num evento por peça.
+            let mut sheet_packer_entities: Vec<u64> = Vec::new();
             let mut undo_image_edit = false;
             // ADR-0108 Fase 1: a Boolean button (Union/Subtract/Intersect) in the
             // docked Vector panel forwards a `ToolPanelEvent::Click`; the op acts
@@ -3686,6 +3692,9 @@ impl crate::App {
                         }
                         "rasterize" => {
                             rasterize_entities.push(entity_bits);
+                        }
+                        "sheet_packer" => {
+                            sheet_packer_entities.push(entity_bits);
                         }
                         "bgremoval" => {
                             bgremoval_leftover.push(oneshot);
@@ -8667,6 +8676,76 @@ impl crate::App {
                 *name_type_id,
                 *sprite_type_id,
             ) {
+                self.title_dirty = true;
+            }
+            // **EMPACOTAR A SELEÇÃO NUMA FOLHA** (plano `docs/Sprite_projeto/17` §7) — o pill
+            // `[SHEET]` da fila de Image Tools, que substitui o `PH2D_SHEET_SMOKE`.
+            //
+            // ⚠️ **UMA chamada para a leva INTEIRA**, e não uma por entidade: empacotar N sprites
+            // é um ato só. A folha nasce, eles viram filhos dela e o arranjo automático coloca-os.
+            if !sheet_packer_entities.is_empty() {
+                // **O MESMO pill tem dois verbos, escolhidos pelo que está selecionado**: com
+                // sprites, ele CRIA a folha; com uma folha, ele RE-ARRANJA os filhos dela.
+                //
+                // ⚠️ É um botão só de propósito. O artista acrescenta uma peça à folha (ou
+                // redimensiona uma) e quer o encaixe refeito — pedir-lhe para procurar um
+                // segundo controle noutro sítio, para o mesmo verbo, é como se descobre que
+                // ele não existe. *A pergunta é «arrume isto», e o que muda é o «isto».*
+                let sheets: Vec<u64> = sheet_packer_entities
+                    .iter()
+                    .copied()
+                    .filter(|&b| {
+                        sim.world()
+                            .get::<ph2d_ecs::SpriteSheetFrame>(ph2d_ecs::Entity::from_bits(b))
+                            .is_some()
+                    })
+                    .collect();
+                if !sheets.is_empty() {
+                    let mut moved = 0usize;
+                    let mut failure: Option<String> = None;
+                    for bits in &sheets {
+                        match crate::sheet_frame::arrange_children(sim, vec_scene, *bits) {
+                            Ok(n) => moved += n,
+                            Err(e) => {
+                                failure.get_or_insert_with(|| e.to_string());
+                            }
+                        }
+                    }
+                    if let Some(e) = failure {
+                        toasts.push(Toast::error(format!("Sheet: {e}")));
+                    } else {
+                        toasts.push(Toast::success(format!("Sheet re-packed: {moved} pieces")));
+                    }
+                    self.title_dirty = true;
+                    sheet_packer_entities.clear();
+                }
+            }
+            if !sheet_packer_entities.is_empty() {
+                let ppm = hero.project.pixels_per_meter;
+                match crate::sheet_frame::create_from_selection(
+                    sim,
+                    vec_scene,
+                    &mut self.vec_entities,
+                    &sheet_packer_entities,
+                    ppm,
+                ) {
+                    Ok(sheet) => {
+                        // A folha fica selecionada: é ela que o artista vai querer mover,
+                        // redimensionar ou nomear a seguir — e é o convite a verificar que tudo
+                        // isso funciona sem uma linha de código próprio.
+                        hero.gizmo.replace_selection(Some(sheet));
+                        toasts.push(Toast::success(format!(
+                            "Sheet: {} pieces packed into one object",
+                            sheet_packer_entities.len()
+                        )));
+                    }
+                    // ⚠️ A razão sobe VERBATIM do empacotador — ela nomeia a peça grande demais
+                    // ou o conjunto que não cabe, e é isso que diz ao artista o que fazer a
+                    // seguir. Um "não foi possível" mandá-lo-ia adivinhar entre cem sprites.
+                    Err(e) => {
+                        toasts.push(Toast::error(format!("Sheet: {e}")));
+                    }
+                }
                 self.title_dirty = true;
             }
             // A troca de ESTRATÉGIA de origem sai por uma porta própria (irmã, pelo teto de LOC):

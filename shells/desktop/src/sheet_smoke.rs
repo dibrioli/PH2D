@@ -15,9 +15,11 @@
 //! nem do [`crate::sheet_frame`]. Sai de ser um retângulo com filhos. É o smoke que torna essa
 //! afirmação verificável em vez de uma promessa no doc.
 //!
-//! ⚠️ Ele é a porta **provisória**: a definitiva é uma ferramenta de imagem com pill próprio, e
-//! está nomeada no plano §7.5. Um smoke existe para o gesto poder ser exercido antes disso — não
-//! para o substituir.
+//! ⚠️ **Ele já NÃO é a porta** — a porta é o pill `[SHEET]` da fila de Image Tools
+//! (`ph2d-tool-sheet-packer`), que nasceu na mesma wave. O que este smoke faz agora é montar a
+//! cena em UM passo, para o gesto poder ser exercido sem o artista ter de importar cinco imagens
+//! antes. *Um smoke que continua a dizer-se «a porta provisória» depois de a definitiva existir
+//! é a próxima nota a envelhecer.*
 
 use ph2d_core::Vec2;
 

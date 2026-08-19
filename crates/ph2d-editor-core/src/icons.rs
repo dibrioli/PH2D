@@ -186,6 +186,12 @@ pub enum IconId {
     Search,
     Select,
     Settings,
+    /// Sheet Packer — a folha e o arranjo (plano `docs/Sprite_projeto/17` §7).
+    ///
+    /// ⚠️ **Entre `Settings` e `SkipBack`, e a ordem é gateada** (`enum_order_matches_svgs`):
+    /// `Sheet` < `Skip` porque `h` < `k`. Sair de ordem quebra **todos** os ícones, não só este —
+    /// a tabela é indexada pela posição.
+    SheetPacker,
     SkipBack,
     SkipForward,
     Smear,
@@ -629,6 +635,7 @@ mod tests {
         IconId::Search,
         IconId::Select,
         IconId::Settings,
+        IconId::SheetPacker,
         IconId::SkipBack,
         IconId::SkipForward,
         IconId::Smear,

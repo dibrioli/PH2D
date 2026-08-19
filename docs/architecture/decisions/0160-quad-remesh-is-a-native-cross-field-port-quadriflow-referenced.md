@@ -200,8 +200,8 @@ técnica base não tem o defeito que a literatura inteira nomeia.
 | **quads** | **664 de 1 246 faces (53,3 %)** | **454 de 1 144 (39,7 %)** |
 | não-quads | 426 | 420 |
 | maior ciclo | 4 | 10 |
-| χ (alvo) | **5** (2) | **2** (0) |
-| Hausdorff bilateral (barra 1 %) | **3,14 %** | — |
+| χ (alvo) | **12** (2) | — |
+| Hausdorff bilateral (barra 1 %) | **4,22 %** | — |
 
 ⇒ **A1 e A7 verdes. A2, A3 e A4 NÃO.** Os três gates ficam no repo com a barra
 do §4 intacta e um `#[ignore]` que carrega **o número medido** no motivo —
@@ -274,10 +274,63 @@ sem re-medir.
 | 1 | células por `union-find` sobre limiar de distância | esfera → **4 células** |
 | 2 | arestas de saída = arestas da entrada | **7,2 %** de quads |
 | 3 | coarsening por **média** de posição/normal | encolhe o modelo; perde em **24/24** combinações |
-| 4 | **hierarquia** no caminho do produto | **38,9 %** contra 53,3 % |
-| 5 | células pelo **quociente da retícula** | **1** célula na esfera |
+| 4 | ~~**hierarquia** no caminho do produto~~ | ⚠️ **REFUTADA pelo §5-quater** — com o porte fiel ela GANHA (76,9 % vs 42,9 %) |
+| 5 | ~~células pelo **quociente da retícula**~~ | ⚠️ **REFUTADA pelo §5-quater** — com o porte fiel não colapsa, e é o PRODUTO |
 | 6 | arestas por escolha **MÚTUA** (valência ≤ 4 por construção) | remove arestas de mais: ciclos de **31** lados, **53,3 % → 35,0 %** |
 | 7 | semeadura de **POISSON** (ponto mais distante) | células regulares ≠ grade melhor: **53,3 % → 48,9 %** |
+
+---
+
+## §5-quater — ⭐ O PORTE FIEL VIROU A MESA, e ele REFUTOU DUAS RECUSAS MINHAS
+
+**MEDIDO 2026-08-19, depois de ler o `src/field.cpp` da referência:**
+
+| campo × células | esfera | toro |
+|---|---|---|
+| plano + semente (o que a Q3 entregava) | 42,9 % | 43,4 % |
+| **hierarquia + retícula** (o produto agora) | **76,9 %** | **86,6 %** |
+
+### A peça que faltava
+
+O `compat_position_extrinsic_4` desta crate **não era o da referência**. Ele
+arredondava **cada lado ao ponto médio, independentemente**. O da referência
+(`field.cpp`) faz outra coisa:
+
+1. `position_floor_index_4` — o **`floor`** dá a CÉLULA em que o ponto médio caiu;
+2. as **quatro quinas** dessa célula são enumeradas **de cada lado**;
+3. escolhe-se o **PAR** (de 16) que minimiza a distância **entre si**.
+
+⇒ É o passo 3 que **puxa uma retícula até à outra**: a quina escolhida pode estar
+a um passo inteiro do nó mais próximo do próprio vértice, e é esse passo que vira
+o **degrau**. Sem degraus não há platôs.
+
+### ⚠️ E isto REFUTA as recusas 4 e 5 deste ADR
+
+As duas — *"a hierarquia não paga"* e *"o quociente pela retícula colapsa"* —
+eram consequência de **UM operador mal portado**. Com o porte fiel a hierarquia
+ganha por **1,8×** e o quociente não colapsa (433 células, não 1).
+
+**A lição, e ela vale mais que a wave:** *uma medição só refuta o que ela de facto
+exercitou* — e o que aquelas exercitavam era a **minha aproximação**, não a lei da
+referência. É exatamente por isso que a
+[DIRETIVA §1](../../IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md) manda
+**portar** o algoritmo publicado antes de escrever a própria versão.
+
+⚠️ **O gate `the_hierarchy_pays_and_the_number_is_here` foi escrito a afirmar o
+CONTRÁRIO**, com a mensagem *"NÃO apague este gate: mude-o, com o número novo ao
+lado"* — e foi assim que a virada foi apanhada em vez de passar despercebida.
+
+### ⚠️ Uma divergência DECLARADA que fica
+
+O critério de colapso da referência compara os **índices inteiros**
+(`extract_graph`: `(shift.first − shift.second).abs().sum() == 0`). O porte
+literal existe (`compat_position_extrinsic_index_4`, gateado) e **MEDIDO dá
+19,3 %** de quads, com χ = 280 e ciclos de 63 lados. O que shipa é o mesmo
+critério expresso **num referencial só** (*o campo de `w`, trazido à retícula de
+`v`, anda?*) — **76,9 %**. Os índices de cada lado vivem na retícula do seu
+vértice, e igualá-los pressupõe um referencial partilhado que a nossa otimização
+— sem o limiar de `error` e sem os passes de limpeza do `extract_graph` — ainda
+não garante. **Ligar o critério literal é trabalho da Q4.**
 
 ---
 

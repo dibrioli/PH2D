@@ -193,14 +193,108 @@ pub fn position_round_4(
     ]
 }
 
-/// **OS DOIS REPRESENTANTES de dois campos de posição**, reduzidos ao mesmo
-/// ponto de referência — o irmão do
-/// [`crate::orientation::compat_orientation_extrinsic_4`].
+/// **O ÍNDICE INTEIRO da célula de `o` que contém `p`** — o `floor`, não o
+/// `round`.
 ///
-/// A referência é o [`middle_point`] dos dois vértices: o ponto que respeita os
-/// **dois** planos tangentes. Reduzir ambos os campos a ele é o que faz a
-/// comparação medir *quão desalinhadas as duas retículas estão* em vez de *quão
-/// longe os dois vértices estão*.
+/// Porte de `position_floor_index_4` (`instant-meshes`, `src/field.cpp`),
+/// BSD-3-Clause.
+///
+/// ⚠️ **`floor` e não `round`, e a diferença é o que torna a enumeração
+/// possível:** o `floor` nomeia a CÉLULA em que o ponto caiu, e as quatro quinas
+/// dela são `+0/+1` em cada eixo. Com `round` ter-se-ia o nó mais próximo — um
+/// ponto, não uma célula — e não haveria o que enumerar.
+#[must_use]
+pub fn position_floor_index_4(
+    o: [f32; 3],
+    q: [f32; 3],
+    n: [f32; 3],
+    p: [f32; 3],
+    scale: f32,
+) -> [i32; 2] {
+    let s = scale.max(crate::scale::MIN_EDGE);
+    let inv = 1.0 / s;
+    let t = cross(n, q);
+    let d = [p[0] - o[0], p[1] - o[1], p[2] - o[2]];
+    [
+        (dot(q, d) * inv).floor() as i32,
+        (dot(t, d) * inv).floor() as i32,
+    ]
+}
+
+/// O nó `(a, b)` da retícula de `o`.
+fn lattice_node(o: [f32; 3], q: [f32; 3], t: [f32; 3], a: i32, b: i32, s: f32) -> [f32; 3] {
+    let (fa, fb) = (a as f32 * s, b as f32 * s);
+    [
+        fa.mul_add(q[0], fb.mul_add(t[0], o[0])),
+        fa.mul_add(q[1], fb.mul_add(t[1], o[1])),
+        fa.mul_add(q[2], fb.mul_add(t[2], o[2])),
+    ]
+}
+
+/// **O PAR DE QUINAS MAIS PRÓXIMAS ENTRE SI**, e os índices inteiros delas.
+///
+/// Porte de `compat_position_extrinsic_index_4` (`instant-meshes`,
+/// `src/field.cpp`), BSD-3-Clause. Devolve `(índice de 0, índice de 1, custo)`.
+///
+/// ⚠️ **É a peça que a primeira versão desta crate NÃO tinha, e a ausência custou
+/// a wave inteira.** Aquela arredondava CADA lado ao ponto médio,
+/// independentemente — então cada campo ficava junto do seu próprio vértice, as
+/// duas retículas nunca se procuravam, e o campo saía **suave** em vez de
+/// escalonado. Sem degraus não há platôs; sem platôs a extração não tem células,
+/// e o quociente pela retícula funde o modelo inteiro (medido: 1 célula numa
+/// esfera de 3 072 vértices).
+///
+/// Aqui as **quatro quinas** da célula de cada lado são enumeradas e escolhe-se o
+/// **PAR** que minimiza a distância — 16 combinações. É isto que **puxa uma
+/// retícula até à outra**: a quina escolhida pode estar a um passo inteiro de
+/// distância do nó mais próximo do próprio vértice, e é esse passo que vira o
+/// degrau.
+#[must_use]
+#[allow(clippy::too_many_arguments)]
+pub fn compat_position_extrinsic_index_4(
+    p0: [f32; 3],
+    n0: [f32; 3],
+    q0: [f32; 3],
+    o0: [f32; 3],
+    s0: f32,
+    p1: [f32; 3],
+    n1: [f32; 3],
+    q1: [f32; 3],
+    o1: [f32; 3],
+    s1: f32,
+) -> ([i32; 2], [i32; 2], f32) {
+    let (t0, t1) = (cross(n0, q0), cross(n1, q1));
+    let middle = middle_point(p0, n0, p1, n1);
+    let a = position_floor_index_4(o0, q0, n0, middle, s0);
+    let b = position_floor_index_4(o1, q1, n1, middle, s1);
+
+    let (mut best, mut bi, mut bj) = (f32::INFINITY, 0i32, 0i32);
+    for i in 0..4i32 {
+        let p = lattice_node(o0, q0, t0, (i & 1) + a[0], ((i & 2) >> 1) + a[1], s0);
+        for j in 0..4i32 {
+            let r = lattice_node(o1, q1, t1, (j & 1) + b[0], ((j & 2) >> 1) + b[1], s1);
+            let d = [p[0] - r[0], p[1] - r[1], p[2] - r[2]];
+            let cost = dot(d, d);
+            // ⚠️ `<` estrito: com o empate a primeira vence, e é isso que mantém
+            // a função determinística sobre uma malha simétrica.
+            if cost < best {
+                best = cost;
+                bi = i;
+                bj = j;
+            }
+        }
+    }
+    (
+        [(bi & 1) + a[0], ((bi & 2) >> 1) + a[1]],
+        [(bj & 1) + b[0], ((bj & 2) >> 1) + b[1]],
+        best,
+    )
+}
+
+/// **OS DOIS REPRESENTANTES de dois campos de posição** — as quinas que o
+/// [`compat_position_extrinsic_index_4`] escolheu, em 3D.
+///
+/// Porte de `compat_position_extrinsic_4` (`instant-meshes`, `src/field.cpp`).
 #[must_use]
 #[allow(clippy::too_many_arguments)]
 pub fn compat_position_extrinsic_4(
@@ -215,10 +309,10 @@ pub fn compat_position_extrinsic_4(
     o1: [f32; 3],
     s1: f32,
 ) -> ([f32; 3], [f32; 3]) {
-    let middle = middle_point(p0, n0, p1, n1);
+    let (ia, ib, _) = compat_position_extrinsic_index_4(p0, n0, q0, o0, s0, p1, n1, q1, o1, s1);
     (
-        position_round_4(o0, q0, n0, middle, s0),
-        position_round_4(o1, q1, n1, middle, s1),
+        lattice_node(o0, q0, cross(n0, q0), ia[0], ia[1], s0),
+        lattice_node(o1, q1, cross(n1, q1), ib[0], ib[1], s1),
     )
 }
 

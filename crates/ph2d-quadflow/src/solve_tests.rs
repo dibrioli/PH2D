@@ -16,38 +16,33 @@ fn torus() -> Mesh {
     shapes::torus(64, 32, 1.0, 0.35)
 }
 
-/// ⛔ **MEDIDO E REJEITADO: a hierarquia NÃO paga, e o lever é outro.**
-///
-/// A Q3 concluiu que a hierarquia multirresolução era pré-requisito da extração.
-/// **A medição refutou a conclusão**, e este gate é o registro executável dela.
+/// ⭐ **A HIERARQUIA PAGA — e este gate já disse o contrário, com número.**
 ///
 /// | campo × células | esfera | toro |
 /// |---|---|---|
-/// | plano + semente (**o produto**) | **60,9 %** | **51,9 %** |
-/// | hierarquia + semente | 48,8 % | 50,2 % |
-/// | plano + retícula | 0 % (1 célula) | 0 % (5 células) |
-/// | hierarquia + retícula | 0 % (2 células) | 0 % (9 células) |
+/// | plano + semente | 42,9 % | 43,4 % |
+/// | **hierarquia + retícula** (o produto) | **76,9 %** | **86,6 %** |
 ///
-/// E a varredura de `(topo × varreduras)` — **24 combinações** — nunca passou de
-/// **52,3 %**: nenhum ajuste dos dois números faz a hierarquia ganhar.
+/// ⚠️ **A HISTÓRIA DESTE GATE É A LIÇÃO DA WAVE.** Ele nasceu a afirmar
+/// `flat > deep` — porque era isso que a medição dizia — e a mensagem dele pedia:
+/// *"NÃO apague este gate: mude-o, com o número novo ao lado"*. Foi exatamente o
+/// que aconteceu.
 ///
-/// ⚠️ **Por que a conclusão da Q3 estava errada:** ela supôs que a extração
-/// usava a retícula, e por isso um campo com platôs a ajudaria. Ela **não usa** —
-/// o crescimento por semente lê o campo como uma DISTÂNCIA, e um campo mais
-/// suave não muda distância nenhuma. *A hipótese não era sobre a hierarquia: era
-/// sobre a extração, e eu testei a metade errada.*
+/// O que mudou não foi a hierarquia: foi o **operador**. O
+/// `compat_position_extrinsic_4` da crate não era o da referência — ele
+/// arredondava cada lado ao ponto médio, independentemente, em vez de enumerar as
+/// **quatro quinas** da célula de cada lado e escolher o **PAR mais próximo entre
+/// si** (16 combinações). Sem esse operador as duas retículas nunca se procuram,
+/// o campo sai suave, não há platôs — e sem platôs a hierarquia não tem o que
+/// propagar e o quociente pela retícula funde tudo.
 ///
-/// ⚠️ **E o quociente pela retícula — a leitura natural da referência — colapsa**
-/// por aritmética, não por afinação: os vértices da entrada distam muito menos
-/// que uma célula, então o passo inteiro entre duas retículas vizinhas é `(0,0)`
-/// em toda parte.
-///
-/// ⇒ **O lever da Q4 é a EXTRAÇÃO**, não os campos. A hierarquia fica no repo
-/// gateada e correta — ela é o andaime que uma extração baseada em retícula vai
-/// precisar —, mas **não está no caminho do produto**, e este gate impede que
-/// alguém a ligue sem re-medir.
+/// ⇒ ⚠️ **DUAS recusas MEDIDAS eram consequência de UM operador mal portado**
+/// (a hierarquia e o quociente da retícula). *Uma medição só refuta o que ela de
+/// facto exercitou — e o que ela exercitava era a minha aproximação, não a lei.*
+/// É a razão de a DIRETIVA mandar **portar** a referência antes de escrever a
+/// própria versão.
 #[test]
-fn the_hierarchy_does_not_pay_yet_and_the_gate_says_so() {
+fn the_hierarchy_pays_and_the_number_is_here() {
     let mesh = sphere();
     let scale = ScaleField::uniform(&mesh, 0.18);
 
@@ -64,10 +59,9 @@ fn the_hierarchy_does_not_pay_yet_and_the_gate_says_so() {
         deep.quad_fraction() * 100.0
     );
     assert!(
-        flat.quad_fraction() > deep.quad_fraction(),
-        "a hierarquia passou a ganhar do caminho plano ({:.1}% vs {:.1}%) -- a recusa MEDIDA desta \
-         wave deixou de valer, e o caminho do produto tem de ser reconsiderado. NAO apague este \
-         gate: mude-o, com o numero novo ao lado.",
+        deep.quad_fraction() > flat.quad_fraction() * 1.5,
+        "a hierarquia ({:.1}%) deixou de ganhar do caminho plano ({:.1}%) com folga -- MEDIDO em \
+         2026-08-19: 76,9% contra 42,9%. NAO apague este gate: mude-o, com o numero novo ao lado.",
         deep.quad_fraction() * 100.0,
         flat.quad_fraction() * 100.0
     );

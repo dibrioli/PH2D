@@ -156,16 +156,26 @@ fn the_position_energy_settles_and_the_field_stays_on_the_surface() {
         eprintln!("[quadflow] posicao: {it:>3} varreduras -> energia {e:.4}");
     }
 
-    let (a, b) = (seen[seen.len() - 2].1, seen[seen.len() - 1].1);
+    // ⚠️ **A lei é a MONOTONIA, e a afirmação de CONVERGÊNCIA saiu daqui por
+    // medição.** Este gate exigia que 16 e 32 varreduras dessem a mesma energia —
+    // e passava enquanto o `compat_position_extrinsic_4` era a aproximação que
+    // arredondava cada lado ao ponto médio: aquele operador não tinha o que
+    // fazer, então parava logo. Com o porte fiel (as 16 combinações de quinas) a
+    // energia **continua a descer** em 32 varreduras — 1447 → 765 —, e isso é o
+    // operador a trabalhar, não a divergir. *Um gate de convergência sobre um
+    // passe que não fazia nada é um gate que aprova o nada.*
+    let mut last = f64::INFINITY;
+    for (it, e) in &seen {
+        assert!(
+            *e <= last + noise,
+            "a energia SUBIU para {e} em {it} varreduras: a suavizacao esta' a divergir"
+        );
+        last = *e;
+    }
+    let b = seen[seen.len() - 1].1;
     assert!(
-        (a - b).abs() <= noise.max(a * 0.02),
-        "de {} para {} varreduras a energia ainda anda ({a:.4} -> {b:.4}): nao convergiu",
-        seen[seen.len() - 2].0,
-        seen[seen.len() - 1].0
-    );
-    assert!(
-        b < seen[0].1,
-        "a suavizacao nao andou: semente {:.4} -> {b:.4}",
+        b < seen[0].1 * 0.75,
+        "a suavizacao mal andou: semente {:.4} -> {b:.4}",
         seen[0].1
     );
 }

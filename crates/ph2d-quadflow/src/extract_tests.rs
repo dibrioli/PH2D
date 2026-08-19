@@ -10,15 +10,15 @@ use std::collections::BTreeMap;
 use ph2d_mesh::{Mesh, shapes};
 
 use super::{Quadrangulation, extract};
-use crate::orientation::solve_orientation;
-use crate::position::solve_position;
 use crate::scale::ScaleField;
 
 /// A corrida inteira, num sítio só.
 fn run(mesh: &Mesh, edge: f32) -> Quadrangulation {
-    let orient = solve_orientation(mesh, 32);
+    // ⚠️ **A porta do produto é a HIERÁRQUICA.** O quociente pela retícula só
+    // funciona sobre campos com platôs, e os platôs vêm de resolver os campos de
+    // cima para baixo.
     let scale = ScaleField::uniform(mesh, edge);
-    let pos = solve_position(mesh, &orient, &scale, 32);
+    let (orient, pos) = crate::solve::solve_fields(mesh, &scale);
     extract(mesh, &orient, &pos, &scale).expect("a extracao devolveu uma malha bem formada")
 }
 
@@ -51,7 +51,7 @@ fn edge_use(mesh: &Mesh) -> BTreeMap<(u32, u32), usize> {
 /// (subdivisão, normais, booleana) tem resposta para ela, e o sintoma aparece
 /// longe da causa.
 #[test]
-#[ignore = "Q4: a A2 e' o alvo do fluxo de custo minimo. MEDIDO 2026-08-19: esfera chi=5, ciclos ate' 10 lados. ⛔ NAO afrouxe a barra -- ela e' a do ADR-0160 §4"]
+#[ignore = "Q4: a A2 e' o alvo do fluxo de custo minimo. MEDIDO 2026-08-19 (porte fiel): esfera chi=12, ciclos ate' 21 lados. ⛔ NAO afrouxe a barra -- ela e' a do ADR-0160 §4"]
 fn the_extracted_mesh_is_manifold() {
     for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
         let q = run(&mesh, 0.18);
@@ -75,7 +75,7 @@ fn the_extracted_mesh_is_manifold() {
 /// fixture que faz este gate discriminar: um remesh que costurasse o buraco
 /// devolveria 2 sobre uma entrada que vale 0, e nenhuma medição de forma veria.
 #[test]
-#[ignore = "Q4: a A3 exige a hierarquia multirresolucao. MEDIDO 2026-08-19: esfera chi=5 (alvo 2), toro chi=2 (alvo 0). ⛔ NAO afrouxe a barra"]
+#[ignore = "Q4: a A3 e' o alvo do fluxo. MEDIDO 2026-08-19 (porte fiel + hierarquia): esfera chi=12 (alvo 2). ⛔ NAO afrouxe a barra"]
 fn the_genus_of_the_input_survives() {
     for (name, mesh, want) in [("esfera", sphere(), 2i64), ("toro", torus(), 0)] {
         let q = run(&mesh, 0.18);
@@ -99,7 +99,7 @@ fn the_genus_of_the_input_survives() {
 /// "sobre" a entrada e teria perdido a forma. Aqui as duas direções são medidas
 /// contra a diagonal da caixa, e a barra é a do ADR: **1 %**.
 #[test]
-#[ignore = "Q4: a A4 exige os nos da reticula em vez do centroide da celula. MEDIDO 2026-08-19: 0,0314 da diagonal contra a barra de 0,01. ⛔ NAO afrouxe a barra"]
+#[ignore = "Q4: a A4 exige os nos da reticula em vez do centroide da celula. MEDIDO 2026-08-19 (porte fiel): 0,0422 da diagonal contra a barra de 0,01. ⛔ NAO afrouxe a barra"]
 fn the_shape_survives_within_one_percent() {
     for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
         let q = run(&mesh, 0.18);
@@ -128,10 +128,12 @@ fn the_shape_survives_within_one_percent() {
 /// ⚠️ **O piso foi RE-DERIVADO depois de a RÉGUA se corrigir.** A primeira
 /// versão media `quads / (quads + ciclos não-quad)` — e um ciclo de 31 lados
 /// contava como **um** não-quad enquanto virava 29 triângulos na malha. Sob
-/// aquela régua a esfera dava **60,9 %** e o toro **51,9 %**; sob a régua honesta
-/// (sobre as faces EMITIDAS) eles são **53,3 %** e **39,7 %**. O piso abaixo sai
-/// do número honesto — ⛔ e não é um afrouxamento: a barra antiga nunca foi
-/// cumprida, ela era medida por um instrumento errado.
+/// aquela régua a esfera dava **60,9 %**; sob a régua honesta (sobre as faces
+/// EMITIDAS) ela era **53,3 %**.
+///
+/// ⭐ **E com o porte FIEL do operador de compatibilidade + a hierarquia + o
+/// quociente da retícula, o número MEDIDO é `76,9 %` (esfera) e `86,6 %`
+/// (toro).** O piso abaixo sai daí.
 #[test]
 fn the_quad_fraction_is_measured_and_pinned() {
     for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
@@ -147,12 +149,12 @@ fn the_quad_fraction_is_measured_and_pinned() {
             q.quads > 0,
             "{name}: a extracao nao produziu um unico quad -- o passeio de faces nao esta' a fechar"
         );
-        // Piso MEDIDO (2026-08-19): esfera 53,3 %, toro 39,7 %. A margem é o que
-        // separa uma regressão de ruído de fixture.
+        // Piso MEDIDO (2026-08-19, porte fiel): esfera 76,9 %, toro 86,6 %. A
+        // margem é o que separa uma regressão de ruído de fixture.
         assert!(
-            q.quad_fraction() > 0.35,
+            q.quad_fraction() > 0.70,
             "{name}: so' {:.1}% das faces sairam quad -- abaixo do piso MEDIDO desta onda \
-             (esfera 53,3 / toro 39,7)",
+             (esfera 76,9 / toro 86,6)",
             q.quad_fraction() * 100.0
         );
     }

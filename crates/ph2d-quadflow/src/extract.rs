@@ -94,9 +94,10 @@ pub fn extract(
     pos: &PositionField,
     scale: &ScaleField,
 ) -> Result<Quadrangulation, MeshError> {
-    // ⚠️ **`Seed`, e a alternativa está MEDIDA e REJEITADA** — ver o doc da
-    // [`Clustering::Lattice`].
-    extract_with(mesh, orient, pos, scale, Clustering::Seed)
+    // ⚠️ **`Lattice` — o quociente da referência.** Ele SÓ funciona sobre campos
+    // com platôs, e é por isso que a porta do produto é a
+    // [`crate::solve::solve_fields`] (hierárquica) e não o caminho plano.
+    extract_with(mesh, orient, pos, scale, Clustering::Lattice)
 }
 
 /// **Como os vértices viram células** — as duas leis, medidas uma contra a outra.
@@ -107,17 +108,23 @@ pub enum Clustering {
     /// **O QUOCIENTE PELA RETÍCULA** — dois vizinhos são a mesma célula quando o
     /// passo inteiro entre as retículas deles é `(0,0)`.
     ///
-    /// ⛔ **MEDIDO E REJEITADO (2026-08-19).** Ele COLAPSA: a esfera de 3 072
-    /// vértices sai com **1 célula**, o toro com **5** — e a hierarquia não muda
-    /// isso (2 e 9). A razão é aritmética e mata a ideia inteira: o campo fica a
-    /// menos de `s/√2` do seu vértice (gate `the_field_never_leaves_its_own_cell`)
-    /// e os vértices vizinhos distam **muito menos que uma célula** (0,098 contra
-    /// 0,18 na fixture) — então o passo inteiro entre duas retículas vizinhas é
-    /// `(0,0)` em toda parte, a relação é universal, e o `union-find` funde tudo.
+    /// ⭐ **É O CAMINHO DO PRODUTO** — e ele esteve MEDIDO E REJEITADO por meio
+    /// dia, o que é a lição desta wave.
     ///
-    /// ⚠️ **Fica no código como recusa com ENDEREÇO**, não como opção: quem
-    /// voltar a esta ideia — e ela é a leitura natural da referência — encontra o
-    /// número antes de a reconstruir.
+    /// Ele colapsava (esfera → **1 célula**) porque o
+    /// `compat_position_extrinsic_4` da crate **não era o da referência**:
+    /// arredondava cada lado ao ponto médio, independentemente, em vez de
+    /// enumerar as quatro quinas de cada lado e escolher o **PAR** mais próximo.
+    /// Sem esse operador as duas retículas nunca se procuram, o campo sai suave,
+    /// não há degraus — e o quociente funde tudo.
+    ///
+    /// Com o porte fiel: **76,9 %** de quads na esfera e **86,6 %** no toro,
+    /// contra 71,7 %/75,6 % do crescimento por semente.
+    ///
+    /// ⚠️ **A lição não é sobre este enum:** duas recusas MEDIDAS (esta e a da
+    /// hierarquia) eram consequências de **um** operador mal portado. *Uma
+    /// medição só refuta o que ela de facto exercitou* — e o que ela exercitava
+    /// era a minha aproximação, não a lei.
     Lattice,
 }
 
@@ -295,8 +302,24 @@ fn cluster_lattice(
             if w <= v {
                 continue;
             }
-            // O campo de `w`, reduzido à retícula de `v`: se ele não andou, os
-            // dois descrevem o MESMO nó.
+            // **O campo de `w`, trazido à retícula de `v`, ANDA?** Se o passo
+            // inteiro é `(0,0)`, os dois descrevem o mesmo nó da grade.
+            //
+            // ⚠️ **É o critério da referência expresso num referencial só.** O
+            // `extract_graph` compara os dois índices inteiros
+            // (`shift.first − shift.second == 0`), e o porte literal disso vive
+            // aqui ao lado (`compat_position_extrinsic_index_4`) — MEDIDO, ele dá
+            // **19,3 %** de quads contra os **76,9 %** desta forma, com χ = 280 e
+            // ciclos de 63 lados. Os índices de cada lado vivem na retícula do
+            // SEU vértice, e igualá-los exige que os dois campos já partilhem o
+            // referencial — o que a nossa otimização, sem o limiar de `error` e
+            // sem os passes de limpeza do `extract_graph`, ainda não garante.
+            // *A função fica portada e gateada; ligá-la é trabalho da Q4.*
+            //
+            // ⚠️ E o teste **não** pode ser a distância entre as quinas que o
+            // `compat_position_extrinsic_4` devolve: ele escolhe o par mais
+            // PRÓXIMO por construção, então aquela distância é sempre minúscula e
+            // o `union-find` funde o modelo inteiro (medido: **1 célula**).
             let snapped = crate::position::position_round_4(
                 pos.at(v),
                 orient.dir(v),

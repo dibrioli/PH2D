@@ -291,9 +291,22 @@ adaptativa · **extração**. **18 gates verdes**, 3 alvos com o número medido.
 
 | | esfera 48×64 | toro 64×32 |
 |---|---|---|
-| **quads** | **664 (60,9 %)** | **454 (51,9 %)** |
+| **quads** (das faces emitidas) | **664 / 1 246 = 53,3 %** | **454 / 1 144 = 39,7 %** |
 | χ (alvo) | 5 (2) | 2 (0) |
 | Hausdorff (barra 1 %) | 3,14 % | — |
+
+⚠️ **A RÉGUA mentiu e corrigiu-se antes do algoritmo.** A `quad_fraction` media
+`quads / (quads + CICLOS não-quad)` — um ciclo de **31 lados** contava como UM
+não-quad enquanto virava **29 triângulos**. Ela *melhorava* quando as falhas
+ficavam maiores: uma tentativa que trocou 582 triângulos por 918 marcou
+**60,9 % → 71,9 %** e era, honestamente, **53,3 % → 35,0 %**. Todos os números
+deste handoff são os re-medidos.
+
+⚠️ **SETE recusas MEDIDAS, cada uma com o número no sítio** (ADR §5-bis): o
+`union-find` transitivo (4 células) · as arestas da entrada (7,2 %) · o
+coarsening por média · a **hierarquia** no produto (38,9 % vs 53,3 %) · o
+quociente pela retícula (1 célula) · a escolha **mútua** (35,0 %) · a semeadura
+de **Poisson** (48,9 %).
 
 ⚠️ **A2/A3/A4 NÃO estão verdes**, e os três gates ficam com a **barra do §4
 intacta** + `#[ignore]` carregando o número medido. ⛔ **Não os afrouxe:** eles
@@ -305,11 +318,18 @@ célula, imóvel entre 32 e 2 048 varreduras) · o `union-find` transitivo (a es
 de 3 072 vértices em **4 células**) · as arestas da entrada como arestas de saída
 (**7,2 %** de quads, porque a entrada é uma triangulação).
 
-⚠️ **E a Q3 REFUTOU o plano de ondas do próprio ADR:** a hierarquia
-multirresolução é **pré-requisito** da extração, não enfeite da Q2 — sem platôs
-no campo de posição não há retícula partilhada a que agarrar. Plano corrigido no
-ADR: **Q3.5** = a hierarquia · **Q4** = o fluxo de custo mínimo (e só então
-A2/A3/A4 são exigíveis) · **Q5** = a costura.
+⚠️ **A Q3 refutou o plano do ADR, e a Q3.5 refutou a refutação.** A Q3 concluiu
+que a hierarquia era pré-requisito; ela foi **construída, gateada e medida** — e
+perde do caminho plano em **24/24** combinações. A conclusão da Q3 supunha que a
+extração usava a retícula, e ela **não usa**: o crescimento por semente lê o
+campo como uma DISTÂNCIA. *A hipótese não era sobre a hierarquia — era sobre a
+extração, e a Q3.5 testou a metade errada.*
+
+⇒ **O lever da Q4 é a EXTRAÇÃO.** A hierarquia fica no repo, correta e gateada,
+**fora do caminho do produto**, com um gate que impede ligá-la sem re-medir. O
+passo concreto que resta é o porte da extração REAL do QuadriFlow
+(`extract_graph`/`extract_faces` + o fluxo de custo mínimo) — trabalho grande e
+cuidadoso, e é ele que move A2/A3/A4.
 
 ⚠️ **Nada é alcançável pelo produto ainda** — dívida DECLARADA no doc-comment da
 crate e no ADR §5.

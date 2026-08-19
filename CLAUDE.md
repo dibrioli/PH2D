@@ -201,7 +201,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   vetorial, que só aquele smoke encena).
   **Ler:** [índice do módulo](docs/Motion%20Nodes/README.md) · ⚠️ [`BUGS_motion_nodes.md`](docs/Motion%20Nodes/BUGS_motion_nodes.md)
   (**o único `BUGS_*` que esta seção não listava**, e foi lido 22×) · [as 17 folhas](docs/Motion%20Nodes/89_conferencia/README.md)
-  — a **folha 03** é [`03_simulacao.md`](docs/Motion%20Nodes/89_conferencia/03_simulacao.md) · [handoffs](docs/Motion%20Nodes/handoffs/README.md) ·
+  — a **folha 03** é [`03_simulacao.md`](docs/Motion%20Nodes/89_conferencia/03_simulacao.md) · ⚠️ **o PLANO da próxima janela** está no [handoff de continuação](docs/Motion%20Nodes/handoffs/HANDOFF_CONTINUACAO_line_motion_value_2026-08-19.md) (os grupos seguintes, e as dez leis que a linha pagou) · [handoffs](docs/Motion%20Nodes/handoffs/README.md) ·
   [história](docs/archive/estado-2026-08-18/motion-nodes.md)
 
 - **Timeline** — dope-sheet + graph editor + transporte sobre `ph2d-core::Playhead` (`ph2d-panel-timeline` +

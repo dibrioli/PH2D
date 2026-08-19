@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**45 handoffs** · **9** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**46 handoffs** · **10** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 > ⚠️ **Reconciliado em 2026-08-18, e a diferença era OITO.** O índice parou em 09/08 e
@@ -63,6 +63,7 @@
 | 2026-08-18 |  | [HANDOFF_INTEGRACAO_line_motion_value_spacing_2026-08-18.md](HANDOFF_INTEGRACAO_line_motion_value_spacing_2026-08-18.md) | integração | a wave do ESPAÇAMENTO — `motion.path` conta pela distância (`PH2D_MOTION_NODE_PATH_SMOKE=2`) |
 | 2026-08-18 |  | [HANDOFF_INTEGRACAO_line_motion_value_grupo_Q_2026-08-18.md](HANDOFF_INTEGRACAO_line_motion_value_grupo_Q_2026-08-18.md) | integração | GRUPO Q + a PORTA DE TEMPO — os dois eixos, o relógio curvado, o relógio como CAMPO (`=58`/`=59`) |
 | 2026-08-18 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_FECHO_2026-08-18.md](HANDOFF_INTEGRACAO_line_motion_value_FECHO_2026-08-18.md) | integração | **FECHO DA LINHA** — os 8 itens da DIRETRIZ §1.5.9 medidos; o documento do INTEGRADOR |
+| 2026-08-19 | ◆ | [HANDOFF_CONTINUACAO_line_motion_value_2026-08-19.md](HANDOFF_CONTINUACAO_line_motion_value_2026-08-19.md) | continuação | **O PLANO e as tarefas em aberto** — os quatro grupos seguintes, as dez leis que a linha pagou, e o ritual de cada célula |
 
 ---
 *Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na

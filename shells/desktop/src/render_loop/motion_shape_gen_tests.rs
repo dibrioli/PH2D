@@ -175,10 +175,17 @@ fn the_params_panel_shows_only_the_shapes_kind_params() {
         circle.contains(&"kind") && circle.contains(&"size"),
         "a circle shows Shape + Size"
     );
+    // ⚠️ **O `corner` PASSOU A APARECER no círculo em 2026-08-19, e é uma correção** (Enio:
+    // *"não há opções de corner na UI"*). Um círculo INTEIRO não tem quina — mas o MESMO
+    // círculo com `sweep < 360` é uma rosca cortada e tem QUATRO, e o slider é como se chega
+    // lá. Esconder o controle até a forma já estar cortada seria pedir ao artista que
+    // adivinhasse a ordem dos gestos.
+    for p in ["kind", "size", "sweep", "start", "inner", "corner"] {
+        assert!(circle.contains(&p), "a circle shows {p}");
+    }
     for p in [
         "aspect",
         "sides",
-        "corner",
         "star_depth",
         "cleft",
         "tooth_depth",

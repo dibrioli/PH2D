@@ -258,13 +258,22 @@ pub(crate) static PARAM_GATES: &[ParamGate] = &[
     //
     // ⚠️ **A lista é DERIVADA, não escrita de cabeça:** a sonda
     // `which_kinds_the_corner_moves` empurra o número em cada espécie e imprime quem responde.
-    // São **36** — as 7 de fora (Circle · Ellipse · Heart · Pill · Cylinder · Junction ·
-    // Moon) não têm quina nenhuma, e mostrar-lhes o slider seria o botão morto que o gate
+    // São **38** — as 5 de fora (Heart · Pill · Cylinder · Junction · Moon) não têm quina
+    // nenhuma, e mostrar-lhes o slider seria o botão morto que o gate
     // `no_kind_hides_a_live_knob_or_shows_a_dead_one` recusa nos dois sentidos.
+    //
+    // ⚠️ **O `Circle` e a `Ellipse` estão aqui, e foram a CORREÇÃO** (Enio, 2026-08-19: *"não
+    // há opções de corner na UI"*). Um círculo INTEIRO não tem quina; o MESMO círculo com
+    // `sweep < 360` é uma rosca cortada e tem QUATRO. A primeira versão desta lista foi
+    // derivada de um único ponto do espaço de params — o neutro — e escondeu o slider
+    // exactamente na forma que o pedia. Um param é do KIND se ele move a forma em ALGUMA
+    // configuração alcançável daquele kind, e é isso que a `CONTEXTS` do gate encena.
     ParamGate {
         param: param::CORNER,
         when: param::KIND,
         values: &[
+            ShapeKind::Circle as i32,
+            ShapeKind::Ellipse as i32,
             ShapeKind::Square as i32,
             ShapeKind::Rectangle as i32,
             ShapeKind::Polygon as i32,

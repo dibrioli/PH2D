@@ -101,3 +101,46 @@ fn the_circle_family_and_the_box_show_different_knobs() {
         "a caixa retangular tem os quatro cantos"
     );
 }
+
+/// **TODO KNOB QUE A CENA AUTORA TEM DE APARECER NO PAINEL DAQUELA FORMA.**
+///
+/// ⚠️ **É a forma mais afiada do defeito que o Enio reportou** (*"não há opções de corner na
+/// UI"*): a cena escreve `corner = 0,18` no anel cortado, a geometria RESPONDE — as quatro
+/// quinas arredondam —, e o painel **esconde** o slider, porque a tabela de visibilidade é
+/// keyed no `kind` e o `kind` daquela forma é `Circle`. Um círculo INTEIRO não tem quina; um
+/// círculo com `sweep < 360` tem quatro. A tabela olhava só metade do descritor.
+///
+/// ⚠️ **E o gate irmão (`no_kind_hides_a_live_knob_or_shows_a_dead_one`) passava**, porque a
+/// base dele é o descritor NEUTRO — um círculo inteiro. *A fixture não continha o fenômeno.*
+/// Este gate não tem como não conter: ele lê os knobs que a CENA de facto escreveu.
+#[test]
+fn every_knob_the_scene_authors_is_visible_on_that_shape() {
+    let reg = registry();
+    let mut g = Graph::new();
+    build_knob_row(&mut g);
+    let gates = reg
+        .param_gates(ph2d_node_motion_shape::MANIFEST.id)
+        .expect("a forma declara gates");
+
+    for node in g.nodes().iter().filter(|n| n.type_name == "source.shape") {
+        let Some(over) = g.node_param_overrides(node.id) else {
+            continue;
+        };
+        let kind = over.get("kind").copied().unwrap_or(0.0) as i32;
+        for (name, value) in over {
+            // Só os knobs que a cena moveu do neutro: escrever o default não é autorar.
+            if *value == crate::render_loop::motion_shape_gen::manifest_default(name) {
+                continue;
+            }
+            let shown = gates
+                .iter()
+                .find(|gt| gt.param == name)
+                .is_none_or(|gt| gt.values.contains(&kind));
+            assert!(
+                shown,
+                "a cena escreve `{name} = {value}` numa forma de kind {kind}, e o painel \
+                 ESCONDE esse slider — o artista vê o efeito e não acha o controle"
+            );
+        }
+    }
+}

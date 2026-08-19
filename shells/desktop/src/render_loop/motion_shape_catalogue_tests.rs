@@ -20,6 +20,22 @@ fn neutral() -> ShapeParams {
 }
 use ph2d_node_motion_shape::{ALL_KINDS, KIND_LABELS, ShapeKind, ShapeParams};
 
+/// **As configurações em que um knob é procurado.** Um param está VIVO numa espécie se ele
+/// move a forma em ALGUMA delas — e não apenas no descritor neutro.
+///
+/// ⚠️ **A segunda existe porque a primeira escondeu o `corner` da rosca cortada** (Enio,
+/// 2026-08-19: *"não há opções de corner na UI"*). Um `Circle` inteiro não tem quina nenhuma;
+/// o MESMO `Circle` com `sweep < 360` tem quatro. Uma tabela de visibilidade derivada de um
+/// único ponto do espaço de params responde sobre aquele ponto, não sobre a espécie — e o
+/// artista, que vê a forma responder, não acha o controle.
+const CONTEXTS: &[fn(&mut ShapeParams)] = &[
+    |_p| {},
+    |p| {
+        p.sweep = 220.0;
+        p.inner = 0.5;
+    },
+];
+
 /// **A que decide se a wave pode existir.** Rotear tudo pelo `cook()` só é seguro se
 /// as oito formas que shipavam saírem iguais — um grafo salvo guarda o índice do
 /// `kind`, e uma forma que mudasse calada reescreveria a arte de quem já a autorou.
@@ -240,12 +256,18 @@ fn no_kind_hides_a_live_knob_or_shows_a_dead_one() {
     };
     for (i, kind) in ALL_KINDS.iter().enumerate() {
         for (name, context, apply) in nudge {
-            let mut before = base(*kind);
-            context(&mut before);
-            let untouched = build_shape_path(&before);
-            let mut p = before;
-            apply(&mut p);
-            let live = !same(&build_shape_path(&p), &untouched);
+            // ⚠️ **VIVO em ALGUMA configuração alcançável, não no neutro.** A versão anterior
+            // media um ponto só e escondeu o `corner` da rosca cortada — um `Circle` inteiro
+            // não tem quina, o mesmo `Circle` com `sweep < 360` tem quatro (Enio, 2026-08-19).
+            let live = CONTEXTS.iter().any(|ctx| {
+                let mut before = base(*kind);
+                ctx(&mut before);
+                context(&mut before);
+                let untouched = build_shape_path(&before);
+                let mut p = before;
+                apply(&mut p);
+                !same(&build_shape_path(&p), &untouched)
+            });
             let shown = param_gate_shows(name, i);
             assert_eq!(
                 live,
@@ -388,18 +410,22 @@ fn which_kinds_the_corner_moves() {
     let mut live: Vec<&str> = Vec::new();
     let mut dead: Vec<&str> = Vec::new();
     for (i, kind) in ALL_KINDS.iter().enumerate() {
-        let base = ShapeParams {
-            kind: *kind,
-            ..neutral()
-        };
-        let bumped = ShapeParams {
-            corner: 0.4,
-            ..base
-        };
-        if all_geometry(&build_shape_path(&bumped)) == all_geometry(&build_shape_path(&base)) {
-            dead.push(KIND_LABELS[i]);
-        } else {
+        let live_here = CONTEXTS.iter().any(|ctx| {
+            let mut base = ShapeParams {
+                kind: *kind,
+                ..neutral()
+            };
+            ctx(&mut base);
+            let bumped = ShapeParams {
+                corner: 0.4,
+                ..base
+            };
+            all_geometry(&build_shape_path(&bumped)) != all_geometry(&build_shape_path(&base))
+        });
+        if live_here {
             live.push(KIND_LABELS[i]);
+        } else {
+            dead.push(KIND_LABELS[i]);
         }
     }
     eprintln!("\n[corner] VIVO em {} especies:\n  {live:?}", live.len());

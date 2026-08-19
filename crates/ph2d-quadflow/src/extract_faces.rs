@@ -109,7 +109,17 @@ pub(super) fn trace_faces(
                 let Some(&i) = index[b as usize].get(&a) else {
                     break;
                 };
-                let next = order[b as usize][(i + 1) % deg];
+                // ⚠️ **O ANTECESSOR, e não o sucessor.** A ordem angular é
+                // construída com `e2 = n × e1`, que é anti-horária vista **de
+                // fora**; o passeio que delimita a face à esquerda tem então de
+                // tomar o vizinho ANTERIOR a `a` em torno de `b`. Com o sucessor
+                // o passeio delimita a face do outro lado: a malha sai
+                // COERENTE e inteira do avesso — volume com sinal **−4,15** numa
+                // esfera —, e o artista vê o interior dela (smoke do Enio,
+                // 2026-08-19). ⚠️ Coerência e SENTIDO são propriedades
+                // diferentes, e um gate que só conta faces por aresta não vê
+                // nenhuma das duas.
+                let next = order[b as usize][(i + deg - 1) % deg];
                 (a, b) = (b, next);
                 if (a, b) == (u, v) {
                     break;
@@ -233,9 +243,22 @@ pub(super) fn pair_triangles(faces: &[Face], verts: &[[f32; 3]]) -> (Vec<Face>, 
         taken[i] = true;
         taken[j] = true;
         merged += 1;
-        // A ordem `c, a, d, b` percorre o quad: o oposto de um lado, a aresta, o
-        // oposto do outro, e de volta.
-        replacement.insert(i, Face::quad(c, a, d, b));
+        // ⚠️ **O SENTIDO em que `i` percorre a aresta DECIDE a ordem do quad, e a
+        // primeira versão não perguntava.** Ela escrevia sempre `(c, a, d, b)` —
+        // certo quando `i` vai de `a` para `b`, e **invertido** quando vai de `b`
+        // para `a`. Um quad invertido partilha as arestas com os vizinhos no
+        // MESMO sentido que eles, a normal dele aponta para dentro, e o culling
+        // abre um buraco na peça: foi o que o smoke do Enio devolveu, com 54
+        // arestas assim numa esfera.
+        //
+        // A fronteira do par, tirada a aresta partilhada, é
+        // `x → d → y → c → x` com `(x, y)` na ordem em que **`i`** a percorre.
+        let (x, y) = if traverses(&faces[i], a, b) {
+            (a, b)
+        } else {
+            (b, a)
+        };
+        replacement.insert(i, Face::quad(c, x, d, y));
     }
 
     for (i, f) in faces.iter().enumerate() {
@@ -246,6 +269,12 @@ pub(super) fn pair_triangles(faces: &[Face], verts: &[[f32; 3]]) -> (Vec<Face>, 
         }
     }
     (out, merged)
+}
+
+/// **A face percorre `a → b`?** — a pergunta que a ordem do quad depende.
+fn traverses(f: &Face, a: u32, b: u32) -> bool {
+    let v = f.verts();
+    (0..v.len()).any(|k| v[k] == a && v[(k + 1) % v.len()] == b)
 }
 
 fn tri_normal(a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> [f32; 3] {

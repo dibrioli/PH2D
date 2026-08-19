@@ -190,6 +190,42 @@ repo quase declarou sucesso sobre uma casca murcha.
 
 ---
 
+## §5-sexies — ⚠️ O GATE DA A2 ESTAVA PELA METADE, e o SMOKE achou
+
+**Report do Enio (2026-08-19, duas fotos): a peça sai com BURACOS, e depois com
+LEQUES.** O diagnóstico dele — *"provavelmente as normais estão invertidas"* —
+estava certo, e o defeito passou por **todos** os gates.
+
+⚠️ **Porque o gate da A2 media a coisa errada.** Ele contava **faces por
+aresta** e chamava a isso *manifold*. A contagem **não vê a orientação**: duas
+faces podem partilhar uma aresta e percorrê-la no **mesmo sentido** — a contagem
+dá 2, o `χ` fecha, e as duas normais apontam para lados opostos. Do lado do
+artista isso é a peça com buracos, porque o *backface culling* apaga metade dela.
+
+**O gate novo afirma DUAS propriedades, e a segunda não decorre da primeira:**
+
+1. **COERÊNCIA** — toda aresta DIRIGIDA aparece no máximo uma vez;
+2. **SENTIDO** — o volume com sinal (teorema da divergência) é **positivo**. Uma
+   malha perfeitamente coerente pode estar inteira do avesso.
+
+Ele achou **dois** defeitos independentes, um por propriedade:
+
+| # | defeito | medição |
+|---|---|---|
+| 1 | o **emparelhamento** montava o quad sempre como `(c, a, d, b)` — certo quando o triângulo vai de `a` para `b`, **invertido** quando vai de `b` para `a`. O sentido nunca era perguntado | **54** arestas dirigidas em duas faces |
+| 2 | o passeio de faces tomava o vizinho **sucessor** na ordem angular; com `e2 = n × e1` (anti-horária vista de FORA) quem delimita a face é o **antecessor** | volume **−4,15** numa esfera, ou seja a malha inteira do avesso |
+
+**Depois das duas curas, na malha do PRODUTO (98 306 vértices):** `χ = 2` · 0
+arestas não-manifold · **0 arestas dirigidas repetidas** · volume **+4,43** ·
+96,4 % de quads.
+
+⚠️ **A lição é a mesma da régua, na quarta vez:** *um gate que conta não vê o
+sentido.* E as fixtures dos gates (48×64) são menores que a malha do produto
+(98 306) — o `measure_the_kill_criterion` passou a medir as quatro propriedades
+**na malha que o artista de facto vê**, porque foi lá que o smoke achou.
+
+---
+
 ## §5-quinquies — ✅ Q5 FECHADA, e o KILL-CRITERION cobrado
 
 O botão **`Quad Retopology`** vive na seção *Topology*, ao lado do `Remesh`, com
@@ -236,7 +272,7 @@ técnica base não tem o defeito que a literatura inteira nomeia.
 | # | asserção | esfera 48×64 | toro 64×32 | estado |
 |---|---|---|---|---|
 | **A1** | all-quad | **89,0 %** | **92,6 %** | ⏳ **a única aberta** — o resto é o alvo do fluxo (Q4) |
-| **A2** | manifold | ✓ | ✓ | ✅ |
+| **A2** | manifold **e ORIENTÁVEL** | ✓ | ✓ | ✅ (⚠️ ver §5-sexies) |
 | **A3** | gênero preservado | **χ = 2** (alvo 2) | **χ = 0** (alvo 0) | ✅ |
 | **A4** | forma ≤ 1 % da diagonal | **0,23 %** | **0,24 %** | ✅ |
 | **A6** | densidade adaptativa | ≥ 2× | — | ✅ |

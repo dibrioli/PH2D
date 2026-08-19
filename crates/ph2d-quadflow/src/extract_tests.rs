@@ -420,10 +420,115 @@ fn measure_the_kill_criterion() {
         q.mesh.vert_count(),
         q.quad_fraction() * 100.0
     );
+
+    // ⚠️ **E as propriedades de FORMA na malha do PRODUTO, não só nas fixtures.**
+    // Os gates correm sobre 48×64 e 64×32; o que o artista vê tem 98 306
+    // vértices, e foi lá que o smoke achou a peça do avesso.
+    let mut dir: BTreeMap<(u32, u32), usize> = BTreeMap::new();
+    for f in q.mesh.faces() {
+        let v = f.verts();
+        for i in 0..v.len() {
+            *dir.entry((v[i], v[(i + 1) % v.len()])).or_insert(0) += 1;
+        }
+    }
+    let e = edge_use(&q.mesh);
+    let chi = q.mesh.vert_count() as i64 - e.len() as i64 + q.mesh.faces().len() as i64;
+    eprintln!(
+        "[quadflow] chi={chi} (esperado 2) | arestas com >2 faces: {} | dirigidas repetidas: {} | maior ciclo {}",
+        e.values().filter(|c| **c > 2).count(),
+        dir.values().filter(|c| **c > 1).count(),
+        q.max_sides
+    );
+    let pos = q.mesh.positions();
+    let mut vol = 0.0f64;
+    for f in q.mesh.faces() {
+        let v = f.verts();
+        for k in 1..v.len() - 1 {
+            let (a, b, c) = (
+                pos[v[0] as usize],
+                pos[v[k] as usize],
+                pos[v[k + 1] as usize],
+            );
+            vol += f64::from(a[0].mul_add(
+                b[1].mul_add(c[2], -(b[2] * c[1])),
+                a[1].mul_add(
+                    b[2].mul_add(c[0], -(b[0] * c[2])),
+                    a[2] * b[0].mul_add(c[1], -(b[1] * c[0])),
+                ),
+            )) / 6.0;
+        }
+    }
+    eprintln!("[quadflow] volume com sinal {vol:.4} (a esfera unitaria vale 4,189)");
     assert!(
         campos + extracao < 3.0,
         "o passe custou {:.2} s, e o kill-criterion do ADR-0160 §4 e' 3 s -- a feature nao existe \\
          nesta forma: ela vira offline (fora do laco interativo, com barra) ou nao entra",
         campos + extracao
     );
+}
+
+/// ⭐ **A2, A METADE QUE FALTAVA: A SAÍDA É ORIENTÁVEL E APONTA PARA FORA.**
+///
+/// ⚠️ **O gate irmão contava faces por aresta e chamava a isso *manifold* — e a
+/// contagem não vê a ORIENTAÇÃO.** Duas faces podem partilhar uma aresta e
+/// percorrê-la no MESMO sentido: a contagem dá 2, o `χ` fecha, e as duas normais
+/// apontam para lados opostos. Do lado do artista isso é a peça **com buracos**,
+/// porque o *backface culling* apaga metade dela — foi exatamente o que o smoke
+/// do Enio devolveu (2026-08-19, foto).
+///
+/// Duas propriedades, e a segunda não decorre da primeira:
+///
+/// 1. **COERÊNCIA** — toda aresta interna é percorrida uma vez em cada sentido.
+///    É a definição de uma superfície orientada.
+/// 2. **SENTIDO** — o volume com sinal (teorema da divergência) é **positivo**.
+///    Uma malha perfeitamente coerente pode estar inteira do avesso, e a
+///    coerência não diz nada sobre isso.
+#[test]
+fn the_extracted_mesh_is_consistently_oriented_and_faces_outward() {
+    for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
+        let q = run(&mesh, 0.18);
+
+        // (1) cada aresta DIRIGIDA aparece no máximo uma vez.
+        let mut dir: BTreeMap<(u32, u32), usize> = BTreeMap::new();
+        for f in q.mesh.faces() {
+            let v = f.verts();
+            for i in 0..v.len() {
+                *dir.entry((v[i], v[(i + 1) % v.len()])).or_insert(0) += 1;
+            }
+        }
+        let twice = dir.values().filter(|c| **c > 1).count();
+        assert_eq!(
+            twice, 0,
+            "{name}: {twice} arestas dirigidas aparecem em DUAS faces -- as duas percorrem a \
+             aresta no mesmo sentido, entao as normais delas apontam para lados opostos e o \
+             culling abre um buraco na peca"
+        );
+
+        // (2) o volume com sinal — para FORA.
+        let pos = q.mesh.positions();
+        let mut vol = 0.0f64;
+        for f in q.mesh.faces() {
+            let v = f.verts();
+            for k in 1..v.len() - 1 {
+                let (a, b, c) = (
+                    pos[v[0] as usize],
+                    pos[v[k] as usize],
+                    pos[v[k + 1] as usize],
+                );
+                vol += f64::from(a[0].mul_add(
+                    b[1].mul_add(c[2], -(b[2] * c[1])),
+                    a[1].mul_add(
+                        b[2].mul_add(c[0], -(b[0] * c[2])),
+                        a[2] * b[0].mul_add(c[1], -(b[1] * c[0])),
+                    ),
+                )) / 6.0;
+            }
+        }
+        eprintln!("[quadflow] {name}: volume com sinal {vol:.4}");
+        assert!(
+            vol > 0.0,
+            "{name}: o volume com sinal saiu {vol:.4} -- a malha esta' do AVESSO, e o artista ve' \
+             o interior dela"
+        );
+    }
 }

@@ -256,7 +256,16 @@ fn measure_what_the_scene_shows() {
     }
 }
 
-/// A variação média do campo ao longo das quatro direções da grade: `[→, ↓, ↘, ↙]`.
+/// Os nomes das quatro direções, na ordem de [`variation_by_direction`].
+///
+/// ⚠️ **Sem setas Unicode, e não é estilo:** o gate `no_tofu_glyphs_in_ui_strings` varre os
+/// literais do shell e `→ ↓ ↘ ↙` estão fora da fonte do app — uma seta que o artista veria
+/// como um quadrado vazio. Ela reprovou este arquivo, e a regra vale mesmo numa mensagem de
+/// teste: a fonte não sabe que aquela string era só para mim.
+const DIRECTIONS: [&str; 4] = ["horizontal", "vertical", "diagonal A", "diagonal B"];
+
+/// A variação média do campo ao longo das quatro direções da grade, nesta ordem:
+/// `[horizontal, vertical, diagonal "\\", diagonal "/"]`.
 /// As faixas correm na direção de **MENOR** variação.
 fn variation_by_direction(band: usize) -> [f32; 4] {
     let side = side();
@@ -292,8 +301,8 @@ fn variation_by_direction(band: usize) -> [f32; 4] {
 ///
 /// ⚠️ **Este gate é um report do Enio, e ele derrubou a lei que eu tinha escrito.** A v3
 /// aplicava *escala primeiro, rotação depois*, com um comentário a defendê-la — e medido, a
-/// banda 4 saía com faixas **horizontais**, iguais às da banda 3 (variação `→ 0,0077` contra
-/// `↓ 0,0218`). O motivo é geométrico: com `M = R·S` as feições do mundo são a pré-imagem de
+/// banda 4 saía com faixas **horizontais**, iguais às da banda 3 (variação horizontal
+/// `0,0077` contra vertical `0,0218`). O motivo é geométrico: com `M = R·S` as feições do mundo são a pré-imagem de
 /// manchas redondas, `S⁻¹R⁻¹(círculo)`, e os eixos dessa elipse são os de `S⁻¹` — ou seja **os
 /// eixos do MUNDO**. A rotação só troca *qual* pedaço de ruído se vê; a anisotropia fica
 /// colada à tela. *Um knob que não move o que promete é um knob que mente.*
@@ -308,7 +317,8 @@ fn variation_by_direction(band: usize) -> [f32; 4] {
 /// nó embarcava. Um gate que prova que duas escolhas são distintas não defende a escolha.
 /// Este mede a direção que o olho lê, que é a afirmação que o produto faz.
 ///
-/// Medido depois da correção: banda 4 `→ 0,0185 · ↓ 0,0186 · ↘ 0,0202 · ↙ 0,0110`.
+/// Medido depois da correção, banda 4: horizontal `0,0185` · vertical `0,0186` ·
+/// diagonal `"\\"` `0,0202` · diagonal `"/"` **`0,0110`** — a menor, que é onde a faixa corre.
 #[test]
 fn the_fourth_band_runs_its_stripes_on_the_diagonal() {
     let flat = variation_by_direction(2);
@@ -316,7 +326,7 @@ fn the_fourth_band_runs_its_stripes_on_the_diagonal() {
     assert_eq!(
         least(flat),
         0,
-        "a banda 3 tem de ter faixas HORIZONTAIS (a menor variacao no →), e mede {flat:?}"
+        "a banda 3 tem de ter faixas HORIZONTAIS (a menor variacao na horizontal), e mede {flat:?}"
     );
     let turned = variation_by_direction(3);
     let k = least(turned);
@@ -324,7 +334,7 @@ fn the_fourth_band_runs_its_stripes_on_the_diagonal() {
         k == 2 || k == 3,
         "a banda 4 tem de ter faixas na DIAGONAL, e a menor variacao dela esta' no {} \
          ({turned:?}) -- se for a mesma da banda 3, a rotacao nao girou a anisotropia",
-        ["→", "↓", "↘", "↙"][k]
+        DIRECTIONS[k]
     );
 }
 
@@ -347,24 +357,24 @@ fn measure_the_stripe_direction() {
                     cnt[k] += 1;
                 };
                 if c + 1 < side {
-                    add(0, i + 1); // →  (horizontal)
+                    add(0, i + 1); // horizontal
                 }
                 if r + 1 < side {
-                    add(1, i + side); // ↓  (vertical)
+                    add(1, i + side); // vertical
                 }
                 if c + 1 < side && r + 1 < side {
-                    add(2, i + side + 1); // ↘
+                    add(2, i + side + 1); // diagonal "\"
                 }
                 if c > 0 && r + 1 < side {
-                    add(3, i + side - 1); // ↙
+                    add(3, i + side - 1); // diagonal "/"
                 }
             }
         }
         let m: Vec<f32> = (0..4).map(|k| acc[k] / cnt[k].max(1) as f32).collect();
         let least = (0..4).min_by(|a, b| m[*a].total_cmp(&m[*b])).unwrap();
-        let name = ["horizontal", "vertical", "diagonal ↘", "diagonal ↙"][least];
+        let name = DIRECTIONS[least];
         eprintln!(
-            "  banda {}: → {:.4}  ↓ {:.4}  ↘ {:.4}  ↙ {:.4}   => faixas na {name}  ({label})",
+            "  banda {}: horiz {:.4}  vert {:.4}  diag-A {:.4}  diag-B {:.4}   => faixas na {name}  ({label})",
             b + 1,
             m[0],
             m[1],

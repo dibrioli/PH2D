@@ -211,12 +211,7 @@ fn render_live(
         &view,
         camera,
         Some(rig),
-        // ⚠️ **A vista PADRÃO, e é a premissa da medição.** Esta sonda compara a
-        // luz da malha com a do passe de tinta; a cavidade é um termo que só a
-        // primeira tem e o matcap é outra luz inteira — qualquer um dos dois
-        // ligado aqui faria a comparação medir a diferença entre dois MODELOS em
-        // vez da diferença entre duas implementações do mesmo.
-        ph2d_mesh_render::Shade::default(),
+        shared_law_shade(),
         size,
     );
     gpu.queue.submit([enc.finish()]);
@@ -301,7 +296,7 @@ fn compare(
             &gpu.queue,
             camera,
             size,
-            ph2d_mesh_render::Shade::default(),
+            shared_law_shade(),
             None,
         )
         .expect("a malha esta la'");
@@ -377,6 +372,59 @@ fn compare(
         }
     }
     c
+}
+
+/// **A VISTA EM QUE AS DUAS LUZES DESCREVEM A MESMA LEI** — a premissa desta
+/// sonda, escrita por NOME em vez de herdada.
+///
+/// Esta comparação só significa alguma coisa entre **duas implementações da
+/// mesma lei**: o barro aceso pelo rig do documento contra o passe de tinta
+/// aceso pelo mesmo rig. Todo termo que **só o barro tem** é ruído aqui, e cada
+/// um está zerado abaixo com o motivo ao lado.
+///
+/// ⚠️ **ELA VINHA DE `Shade::default()`, E ISSO CUSTOU DEZ DIAS DE GATE
+/// VERMELHO NO `main`.** O doc que vivia no sítio da chamada já dizia *"o matcap
+/// é outra luz inteira — ligá-lo aqui faria a comparação medir a diferença entre
+/// dois MODELOS"*; em 2026-08-09 o `DEFAULT_MATCAP` passou a `Some(0)` por
+/// **decisão de produto** (o barro abre aceso pela luz do OLHO, como no
+/// SculptGL), e a premissa quebrou **em silêncio**. O gate passou a medir
+/// *matcap contra rig* e a acusar 0,3370 sobre um produto correto.
+///
+/// ⚠️ **É a lei do `CLAUDE.md` §0.0 na direção inversa:** quem move o número que
+/// sustentava uma nota tem de reconferir a nota — e um default COMPARTILHADO é
+/// exatamente o número que ninguém sabe que sustenta alguma coisa.
+///
+/// ⚠️ **Os SETE campos estão escritos, e nenhum vem de `..Default::default()`.**
+/// Não é verbosidade: com o literal completo, **um campo NOVO na [`Shade`] é um
+/// erro de COMPILAÇÃO aqui** — quem o acrescentar é obrigado a dizer se ele é da
+/// lei partilhada ou só do barro. Com `..Default::default()` o próximo termo
+/// entraria mudo, que é precisamente como este entrou.
+fn shared_law_shade() -> ph2d_mesh_render::Shade {
+    ph2d_mesh_render::Shade {
+        // ⭐ **O rig do documento, e não a luz do olho.** É o único modelo que a
+        // tinta também implementa — comparar contra um matcap é comparar duas
+        // leis diferentes e chamar à diferença um defeito.
+        matcap: None,
+        // A cavidade é leitura de FORMA e só o barro a tem no caminho desta
+        // sonda: a tinta a recebe assada, por outro canal.
+        cavity: 0.0,
+        // O AO assado entra na tinta pelo `form_occlusion`, que é um plano
+        // separado — deixá-lo vivo aqui poria a mesma sombra num lado só.
+        ao: 0.0,
+        // O AO de TELA é medido por-vista e não existe no passe de tinta.
+        ssao: 0.0,
+        // O espalhamento é um MATERIAL do barro; a tinta não o modela.
+        sss: ph2d_mesh_render::SssParams {
+            strength: 0.0,
+            ..ph2d_mesh_render::SssParams::default()
+        },
+        // ⚠️ O ambiente com DIREÇÃO ainda não chegou à tinta — o
+        // `DEFAULT_ENV = 0.0` diz isso, e o doc dele nomeia a adoção como
+        // follow-up. Zerar aqui é honrar essa fronteira em vez de a atravessar.
+        env: 0.0,
+        // Uma vista, não uma lei.
+        wireframe: false,
+    }
 }
 
 /// A esfera do smoke `=11`, a câmera do escultor e o rig do artista.

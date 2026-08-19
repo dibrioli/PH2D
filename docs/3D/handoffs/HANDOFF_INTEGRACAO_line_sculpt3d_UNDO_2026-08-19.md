@@ -143,7 +143,59 @@ está provado.
 
 ---
 
-## §5 — ⚠️ UM VERMELHO PRÉ-EXISTENTE NO `main` (NÃO é desta linha)
+## §5 — ✅ O VERMELHO PRÉ-EXISTENTE, CURADO — e o produto nunca esteve errado
+
+> **Resolvido.** O gate voltou a **0,0020 / 0,0049** — o número EXATO que o autor
+> mediu em 2026-08-03. A suíte `sculpt3d` inteira: **92 passaram, 0 falharam**.
+
+### A causa, numa frase
+
+A sonda tirava a vista de **`Shade::default()`**, e em 2026-08-09 o
+`DEFAULT_MATCAP` passou a **`Some(0)`** por **decisão de produto** (o barro abre
+aceso pela luz do OLHO, como no SculptGL — pedido do Enio). ⇒ Ela passou a
+comparar **matcap contra rig**: duas leis diferentes, e a diferença entre elas
+não é um defeito.
+
+⚠️ **O doc do próprio sítio da chamada já dizia isto**, palavra por palavra:
+*"o matcap é outra luz inteira — qualquer um dos dois ligado aqui faria a
+comparação medir a diferença entre dois MODELOS em vez da diferença entre duas
+implementações do mesmo."* A frase estava certa e ninguém a reconferiu quando o
+default se mexeu.
+
+⇒ É o `CLAUDE.md` §0.0 na direção inversa: **quem move o número que sustentava
+uma nota tem de reconferir a nota** — e um *default compartilhado* é exatamente o
+número que ninguém sabe que sustenta alguma coisa.
+
+### A cura é ESTRUTURAL, não um ajuste
+
+A vista da sonda passa a ser escrita **por nome**, `shared_law_shade()`, com os
+**sete** campos da [`Shade`] listados e cada zero com o motivo ao lado.
+
+⚠️ **Nada de `..Default::default()`, e não é verbosidade:** com o literal
+completo, **um campo NOVO na `Shade` é um erro de COMPILAÇÃO ali** — quem o
+acrescentar é obrigado a dizer se ele pertence à lei partilhada ou só ao barro.
+Com o `..` o próximo termo entraria mudo, que é precisamente como este entrou.
+
+⚠️ **Zero linhas de produto mudaram** — o módulo é `#[cfg(test)]`
+(`sculpt3d_bake.rs:224`).
+
+### ⛔ QUATRO hipóteses REFUTADAS pelo caminho — não as repita
+
+| hipótese | como morreu |
+|---|---|
+| **W16, o ambiente direcional** | `DEFAULT_ENV = 0.0` — desligado por default; com `env = 0` os dois lados usam o mesmo piso plano |
+| **SSAO** (`DEFAULT_SSAO_STRENGTH = 1.0`, e só o barro o tem) | desligado na corrida viva ⇒ números **idênticos**, dígito a dígito (a textura não medida devolve 0 = *"nada oclui"*) |
+| **SSS** | `strength = 0` e `sss_diffuse` degenera em `max(n·l, 0)` **exactamente** |
+| **a forma não chegar ao passe** (`has_form == 0`) | sonda: a normal do aro chega com `w = 1.0`; os dois structs do uniform batem campo a campo; e **os dois lados chamam `canvas_normal(in.n_view)`** |
+
+⚠️ **A medição que fechou o caso** foi um `return` plantado no shader do barro
+que **não executava** — porque o fluxo saía antes, pelo ramo do matcap. *Um
+`return` que não muda a saída é a prova de que a leitura do fluxo estava errada*,
+e foi mais barato que as quatro leituras que o precederam.
+
+---
+
+## §5-ter — Notas do antigo §5 (histórico do diagnóstico)
 
 ```
 sculpt3d::bake::light_measure::the_two_lights_agree_where_the_form_turns_away

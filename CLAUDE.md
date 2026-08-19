@@ -373,9 +373,10 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   vale para o FILTRO** (é mais um peso por-vértice, como a máscara — nos 9, o Sharpen incluído; ⚠️ o alpha é um campo
   **infinito**, então num gesto de malha inteira um carimbo **ladrilha**) · ⚠️ **VERMELHO PRÉ-EXISTENTE no `main`:**
   `the_two_lights_agree_where_the_form_turns_away` mede **0,3370** contra a barra de **0,01** — é `#[ignore]`, então o
-  **CI nunca o rodou**, e ⛔ **quatro causas já foram REFUTADAS por medição** (a W16/ambiente direcional, o SSAO, o SSS,
-  a forma não chegar): o barro está **certo** no aro (0,2447 = ambiente × albedo) e é o assado que satura — diagnóstico
-  numérico no [handoff](docs/3D/handoffs/HANDOFF_INTEGRACAO_line_sculpt3d_UNDO_2026-08-19.md) §5 · **quad remesh por
+  **CI nunca o rodou** — ✅ **CURADO, e o produto nunca esteve errado:** a sonda tirava a vista de `Shade::default()`, e
+  o **`DEFAULT_MATCAP` virou `Some(0)`** por decisão de produto em 09/08 ⇒ ela passou a medir *matcap contra rig*, que o
+  doc dela já chamava de *"outra luz inteira"*. A vista agora é escrita **por nome, os 7 campos**, então um termo novo é
+  **erro de compilação** ali. Voltou a **0,0020** — o número exato do autor · **quad remesh por
   campo cruzado** ([ADR-0160](docs/architecture/decisions/0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md)):
   a **Q1** (campo de orientação 4-RoSy) está na `ph2d-quadflow`; Q2..Q5 abertas, e ⚠️ **nada disso é alcançável pelo
   produto ainda** (a costura é a Q5).

@@ -113,7 +113,7 @@ O `set_source_snapshot` rebuilda o thumbnail e re-roda o preview com os params a
 - [x] `pub mod bgremoval;` em `crates/ph2d-editor/src/tools/mod.rs`.
 - [x] Re-export de `BgRemovalTool` em `lib.rs` para consumo do shells/desktop.
 - [x] HeroScreen: novo campo `pub pending_bgremoval: Option<u64>` (asset id token).
-- [x] Variant `IconId::BgRemoval` em `crates/ph2d-editor/src/icons.rs` ligado ao `eraser_bezpath()` deste módulo.
+- [x] Variant `IconId::BgRemoval` em `crates/ph2d-editor-core/src/icons.rs` ligado ao `eraser_bezpath()` deste módulo.
 - [x] LeftRail entry em `screens/hero/left_rail.rs` apontando para `ToolId::new("bgremoval")` + `IconId::BgRemoval`.
 - [x] ToolRegistry register em `shells/desktop/src/main.rs`: `registry.register(Box::new(BgRemovalTool::default()));`.
 - [x] Snapshot push handler: chama `tool.set_source_snapshot(rgba, w, h)` no `on_activate` + na transição de seleção ativa.

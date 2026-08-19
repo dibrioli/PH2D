@@ -51,7 +51,7 @@
 | **Física / corpo rígido / colisão** | [ADR-0131](docs/architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) (o *porquê*) + tracker [`docs/Physics/handoffs/HANDOFF_line_physics.md`](docs/Physics/handoffs/HANDOFF_line_physics.md) (estado) + [`00_plano_waves.md`](docs/Physics/00_plano_waves.md) (waves) + [`BUGS_physics.md`](docs/Physics/BUGS_physics.md) (bugs cuja causa enganava) |
 | **Fim de dia · o disco encheu · "por que o target é tão grande?"** | [DIRETIVA_FIM_DE_DIA.md](docs/IntegracaoMultiAgente/DIRETIVA_FIM_DE_DIA.md) — os 3 portões antes de apagar, e a **§2-bis** com a decomposição MEDIDA do target (54% é `incremental/`) e as 3 regras que atacam o pico |
 | **Quem é o Enio / estado do projeto** | [project-memory/MEMORY.md](project-memory/MEMORY.md) |
-| **Quem possui o quê agora** | [SESSION_ACTIVE.md](docs/SESSION_ACTIVE.md) |
+| **Quem possui o quê agora** | **Modo L: `git worktree list`** — o registro de posse é a própria árvore, e responde na hora. ⚠️ [SESSION_ACTIVE.md](docs/SESSION_ACTIVE.md) é do **Modo C** e o seu único escritor autorizado (o Coordenador) **não existe neste tier**: em 2026-08-18 ele estava parado desde 04/08 com 5 worktrees vivas |
 | **Achar um ADR pelo número** | [`decisions/README.md`](docs/architecture/decisions/README.md) — índice **derivado** (`bash scripts/adr-index.sh`), com o `Status:` e quem alega supersedê-lo |
 
 > **Os 14 comandos de fluxo vivem em [`.claude/commands/`](.claude/commands/) e são versionados** —

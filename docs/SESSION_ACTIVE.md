@@ -11,6 +11,15 @@ N Implementadores; os Implementadores **leem antes de cada burst** e não escrev
 > integrador dedicado**, só por ordem explícita do Enio). Rode `bash scripts/hw-profile.sh`
 > antes de assumir qual dos dois vale nesta máquina.
 
+> ⚠️ **PARADO desde 2026-08-04, e não é defeito de ninguém: este doc é do MODO C.** O seu
+> único escritor autorizado é o **Coordenador**, e o tier `workstation` não tem Coordenador
+> (ADR-0106). Medido em 2026-08-18: ele estava intocado há duas semanas enquanto **cinco**
+> worktrees estavam vivas.
+>
+> **No Modo L, o registro de posse é `git worktree list`** — a própria árvore, sempre exata,
+> sem ninguém para atualizar. *Um post-it que depende de um papel que não existe mais só pode
+> mentir.* Este arquivo fica para quando a máquina for `constrained`.
+
 **Não é log histórico nem fonte de estado.**
 - Estado por-módulo (waves/tasks) → **CLAUDE.md §5**.
 - Contratos congelados → **CLAUDE.md §6**.

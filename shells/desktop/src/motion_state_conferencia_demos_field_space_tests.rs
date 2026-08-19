@@ -1,36 +1,15 @@
 //! Os gates da cena `=60` — o espaço do campo.
+//!
+//! ⚠️ **Dois destes gates existem porque o SMOKE reprovou a v1** (*"não tem nada girado nem
+//! na diagonal"*), e são os que um gate de comportamento não apanharia: eles medem se a cena
+//! é **legível**, não se ela computa. *Um gate mede o que a cena produz; só o olho mede o que
+//! ela mostra — mas depois de o olho falhar, o número que ele achou vira gate.*
 
 use super::*;
 use ph2d_eval_motion::MotionCookPump;
 
-/// A altura de GRADE de cada peça do bloco — a régua de que o deslocamento se subtrai.
-///
-/// ⚠️ **Monta-se pela MESMA função `block` da cena**, não por uma cópia dos params: uma
-/// segunda escrita de `SIDE`/`GAP` aqui seria um número a envelhecer sozinho.
-fn block_grid_y() -> Vec<f32> {
-    let mut reg = NodeRegistry::new();
-    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("todo nó registra");
-    let mut g = Graph::new();
-    let node = block(&mut g, 0.0, 0.0);
-    let mut cook = ph2d_nodegraph::cook::Cook::new();
-    let out = cook.cook(&g, &reg, node, 0.0).expect("coza");
-    let ph2d_nodegraph::value::CookValue::Instances(st) = &out[0] else {
-        panic!("stream")
-    };
-    match st.get("P") {
-        Some(ph2d_nodegraph::attr::Column::Vec2(v)) => v.iter().map(|p| p[1]).collect(),
-        _ => Vec::new(),
-    }
-}
-
-/// O deslocamento vertical de cada peça de uma banda: a altura de mundo menos a da GRADE.
-///
-/// ⚠️ **A subtração é o que faz este oráculo medir o CAMPO e não a arrumação** — e a régua
-/// tem de ser a grade REAL, não a média. A primeira versão subtraiu a média e reprovou sobre
-/// produto correto: a grade tem 15 fileiras e varre 4,48 de mundo em Y, então o «desvio da
-/// média» era dominado pelo `gap_y` e a razão dx/dy do CONTROLE media **0,21** em vez de ~1.
-/// *Uma régua errada mede a régua.*
-fn band_delta(band: usize) -> Vec<f32> {
+/// O TAMANHO de cada ponto de uma banda — que nesta cena **é** o campo.
+fn band_field(band: usize) -> Vec<f32> {
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("todo nó registra");
     let mut doc = MotionDoc::default();
@@ -47,27 +26,20 @@ fn band_delta(band: usize) -> Vec<f32> {
         [1.0, 1.0],
         &Default::default(),
     );
-    let base = block_grid_y();
-    pump.instances
-        .iter()
-        .zip(&base)
-        .map(|(i, g)| i.world_pos[1] - g)
-        .collect()
+    pump.instances.iter().map(|i| i.size[0]).collect()
 }
 
-/// O pior `|Δ|` entre dois padrões de deslocamento.
+/// O pior `|Δ|` entre dois campos.
 fn worst(a: &[f32], b: &[f32]) -> f32 {
     a.iter()
         .zip(b)
         .fold(0.0f32, |m, (x, y)| m.max((x - y).abs()))
 }
 
-/// A maior excursão de um padrão — a régua contra a qual as diferenças se leem.
-fn span(v: &[f32]) -> f32 {
-    let (lo, hi) = v
-        .iter()
-        .fold((f32::MAX, f32::MIN), |(l, h), x| (l.min(*x), h.max(*x)));
-    hi - lo
+/// `(menor, maior)` de um campo.
+fn range(v: &[f32]) -> (f32, f32) {
+    v.iter()
+        .fold((f32::MAX, f32::MIN), |(l, h), x| (l.min(*x), h.max(*x)))
 }
 
 /// **AS QUATRO BANDAS EXISTEM, e a mensagem tem quatro rótulos.**
@@ -81,57 +53,111 @@ fn the_scene_builds_the_four_bands_its_message_names() {
     assert_eq!(band_labels().count(), 4, "quatro rotulos");
 }
 
-/// **AS QUATRO SÃO DIFERENTES ENTRE SI, e nenhuma é «mais agitada».**
+/// **OS PONTOS NUNCA SE TOCAM — a cena é LEGÍVEL.**
 ///
-/// ⚠️ As duas metades e a segunda é a que custa. *"As bandas diferem"* ficaria verde numa
-/// cena em que o espaço mudasse a AMPLITUDE — e aí o artista leria «o de baixo mexe mais»
-/// em vez de «o campo virou», que é a coisa errada de ensinar. Então o gate pede que os
-/// quatro padrões sejam distintos **e** que a excursão deles fique na mesma ordem.
+/// ⚠️ **Este gate é o smoke reprovado, escrito como número.** Na v1 o campo empurrava a
+/// POSIÇÃO e a coluna `size` ficava ausente — e ausente **não é «pequeno», é `1,0`** (o
+/// `SIZE_IDENTITY` do shell). Com um vão de `0,32`, cada quadrado cobria **3,1×** o vizinho:
+/// o bloco era uma placa sólida e não havia o que ver. Nenhum gate de comportamento notou,
+/// porque o cook estava certo.
+#[test]
+fn the_dots_never_touch_so_the_field_is_readable() {
+    for (i, _) in band_labels() {
+        let (lo, hi) = range(&band_field(i));
+        assert!(
+            hi < gap(),
+            "banda {}: o maior ponto mede {hi} contra um vao de {} -- eles se sobrepoem",
+            i + 1,
+            gap()
+        );
+        assert!(
+            lo > 0.02,
+            "banda {}: o menor ponto mede {lo} -- abaixo disto ele some da tela",
+            i + 1
+        );
+        assert!(
+            hi > lo * 2.0,
+            "banda {}: contraste de so' {:.2}x ({lo}..{hi}) -- o campo nao se le'",
+            i + 1,
+            hi / lo
+        );
+    }
+}
+
+/// **HÁ MANCHAS QUE CHEGUEM PARA UMA ROTAÇÃO SE VER.**
+///
+/// ⚠️ O segundo achado do smoke: a v1 punha **2,5** células de ruído no bloco inteiro, e duas
+/// manchas não mostram rotação — não há padrão para virar. O gate conta quantas vezes o campo
+/// atravessa a própria média ao longo da fileira central, que é quantas vezes ele sobe e desce.
+#[test]
+fn the_block_holds_enough_blobs_for_a_rotation_to_read() {
+    let f = band_field(0);
+    let side = side();
+    let mid = side / 2;
+    let row: Vec<f32> = (0..side).map(|c| f[mid * side + c]).collect();
+    let mean = row.iter().sum::<f32>() / row.len() as f32;
+    let crossings = row
+        .windows(2)
+        .filter(|w| (w[0] - mean) * (w[1] - mean) < 0.0)
+        .count();
+    assert!(
+        crossings >= 3,
+        "a fileira central cruza a media {crossings} vezes -- com menos de 3 nao ha' padrao \
+         suficiente para uma rotacao se ver (a v1 tinha 2,5 celulas no bloco INTEIRO)"
+    );
+    eprintln!("[=60] a fileira central cruza a media {crossings} vezes");
+}
+
+/// **AS QUATRO SÃO DIFERENTES ENTRE SI, e nenhuma é «mais forte».**
+///
+/// ⚠️ As duas metades, e a segunda é a que custa: *"as bandas diferem"* ficaria verde numa
+/// cena em que o espaço mudasse a AMPLITUDE, e aí o artista leria «aquele tem pontos maiores»
+/// em vez de «o campo virou».
 #[test]
 fn every_band_is_a_different_field_and_none_is_merely_louder() {
-    let bands: Vec<Vec<f32>> = (0..4).map(band_delta).collect();
+    let bands: Vec<Vec<f32>> = (0..4).map(band_field).collect();
     for (i, a) in bands.iter().enumerate() {
         for (j, b) in bands.iter().enumerate().skip(i + 1) {
             let d = worst(a, b);
             assert!(
-                d > 0.05,
+                d > 0.02,
                 "as bandas {} e {} tem de amostrar o campo em sitios diferentes, e diferem {d}",
                 i + 1,
                 j + 1
             );
         }
     }
-    let spans: Vec<f32> = bands.iter().map(|b| span(b)).collect();
+    let spans: Vec<f32> = bands
+        .iter()
+        .map(|b| {
+            let (lo, hi) = range(b);
+            hi - lo
+        })
+        .collect();
     let (lo, hi) = spans
         .iter()
         .fold((f32::MAX, f32::MIN), |(l, h), x| (l.min(*x), h.max(*x)));
     assert!(
         hi < lo * 2.0,
-        "nenhuma banda pode ser «mais agitada»: as excursoes vao de {lo} a {hi}"
+        "nenhuma banda pode ser «mais forte»: as excursoes vao de {lo} a {hi}"
     );
 }
 
 /// **A BANDA 3 É ANISOTRÓPICA e o CONTROLE não é** — a metade que prova o `scale_y`.
 ///
-/// O oráculo é a razão entre o quanto o campo varia ao longo de X e ao longo de Y, medida
-/// por vizinhos: um campo isotrópico varia igual nos dois eixos.
+/// ⚠️ **A DIREÇÃO é contra-intuitiva e a medição a corrigiu.** Um `scale_y` MAIOR faz o mesmo
+/// passo de mundo cobrir mais espaço de ruído, então o campo varia **mais depressa** em Y e
+/// as manchas ficam **baixas e largas** — listras deitadas. Logo `dx/dy` tem de **CAIR**.
 ///
-/// ⚠️ **A DIREÇÃO é contra-intuitiva e a medição a corrigiu.** Um `scale_y` MAIOR faz o
-/// mesmo passo de mundo cobrir mais espaço de ruído, então o campo varia **mais depressa**
-/// em Y e as manchas ficam **baixas e largas** — listras deitadas. Logo `dx/dy` tem de
-/// **CAIR**, não subir. A primeira versão deste gate pediu o contrário e reprovou sobre
-/// código correcto (0,341 contra 0,976 do controle).
-///
-/// ⚠️ Sem o controle, *"a banda 3 varia diferente nos dois eixos"* ficaria verde sobre um
-/// campo de ruído qualquer — um Perlin de uma oitava **não** é perfeitamente isotrópico numa
-/// amostra finita, e é por isso que a barra é uma RAZÃO ENTRE BANDAS, não um valor absoluto.
+/// Sem o controle, *"a banda 3 varia diferente nos dois eixos"* ficaria verde sobre um campo
+/// qualquer — um Perlin de uma oitava **não** é perfeitamente isotrópico numa amostra finita,
+/// e é por isso que a barra é uma RAZÃO ENTRE BANDAS, não um valor absoluto.
 #[test]
 fn the_stretched_band_is_anisotropic_where_the_control_is_not() {
-    let side = 15usize;
+    let side = side();
     let ratio = |band: usize| {
-        let d = band_delta(band);
-        let mut dx = 0.0f32;
-        let mut dy = 0.0f32;
+        let d = band_field(band);
+        let (mut dx, mut dy) = (0.0f32, 0.0f32);
         for r in 0..side {
             for c in 0..side {
                 let i = r * side + c;
@@ -160,15 +186,13 @@ fn the_stretched_band_is_anisotropic_where_the_control_is_not() {
 
 /// **A ORDEM importa: «esticar e rodar» ≠ «rodar e esticar»** — e a banda 4 é a primeira.
 ///
-/// ⚠️ Este é o gate que defende a lei escrita no `FieldSpace::at`. Ele constrói a ordem
-/// CONTRÁRIA à mão (rodar o ponto e só então esticar o Y) e exige que ela dê outro campo —
-/// se as duas coincidissem, a ordem seria uma escolha sem consequência e o comentário que a
-/// justifica seria uma nota a envelhecer.
+/// ⚠️ Este gate defende a lei escrita no `FieldSpace::at`. Ele constrói a ordem CONTRÁRIA à
+/// mão e exige que ela dê outro ponto de amostragem — se as duas coincidissem, a ordem seria
+/// uma escolha sem consequência e o comentário que a justifica seria uma nota a envelhecer.
 #[test]
 fn stretch_then_rotate_is_not_rotate_then_stretch() {
     let (turn, scale, scale_y) = knobs();
     let ph = turn / 360.0;
-    // A mesma senoide parabólica dos dois lados — aqui só para construir o CONTRA-exemplo.
     let sin_c = |p: f32| {
         let f = p - p.floor();
         let q = if f < 0.5 {
@@ -181,7 +205,7 @@ fn stretch_then_rotate_is_not_rotate_then_stretch() {
         0.225 * (q * q.abs() - q) + q
     };
     let (c, s) = (sin_c(ph + 0.25), sin_c(ph));
-    // Um ponto qualquer FORA dos eixos — nos eixos as duas ordens coincidem por simetria.
+    // Um ponto FORA dos eixos — neles as duas ordens coincidem por simetria.
     let (px, py) = (1.7f32, 0.9f32);
     let ours = {
         let (x, y) = (px * scale, py * scale_y);
@@ -202,14 +226,16 @@ fn stretch_then_rotate_is_not_rotate_then_stretch() {
 #[test]
 #[ignore = "sonda: imprime os numeros que a mensagem da cena cita"]
 fn measure_what_the_scene_shows() {
-    eprintln!("\n[=60] o que a cena monta");
+    eprintln!("\n[=60] o que a cena monta (o campo E' o tamanho do ponto)");
     for (i, label) in band_labels() {
-        let d = band_delta(i);
+        let f = band_field(i);
+        let (lo, hi) = range(&f);
         eprintln!(
-            "  banda {}: {} pecas, excursao {:.4}  ({label})",
+            "  banda {}: {} pontos, {lo:.3} .. {hi:.3} (contraste {:.1}x, vao {:.2})  ({label})",
             i + 1,
-            d.len(),
-            span(&d)
+            f.len(),
+            hi / lo,
+            gap()
         );
     }
 }

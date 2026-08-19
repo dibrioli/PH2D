@@ -122,7 +122,7 @@ ausente.
 
 ---
 
-## §4 — As LEIS que esta linha pagou para aprender
+## §4 — As ONZE LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -153,15 +153,27 @@ são estilo.
    `placar_conferencia.py` era chaveada por `(arquivo, nº)`; acrescentar uma linha desalinhou
    tudo e o placar imprimiu **um ✅ a menos**. Hoje a chave é um TRECHO e cada uma tem de
    casar **exactamente uma** linha, senão a ferramenta sai vermelha.
-8. ⛔ **OLHE o arquivo antes de escrever nele.** Nesta janela eu sobrescrevi a cena `=51`
+8. **UM GATE MEDE O QUE A CENA PRODUZ; SÓ O OLHO MEDE O QUE ELA MOSTRA.** A `=60` passou
+   nos quatro gates e o Enio reprovou-a com *"não tem nada girado nem na diagonal"*. A
+   medição achou **três números errados ao mesmo tempo**, e nenhum era de comportamento:
+   ⚠️ um sprite **sem coluna `size` desenha a `1,0`** (o `SIZE_IDENTITY` do shell) contra um
+   vão de `0,32` — o bloco era uma placa sólida · o deslocamento valia **1,31×** o vão ·
+   e havia **2,5** manchas no bloco inteiro, que não chegam para uma rotação se ver. Mais um
+   quarto, de desenho: *"o padrão girou"* lido a partir de pontos que sobem e descem é
+   ilegível. A cura foi o campo dirigir o **`Size`** — o bloco vira um **retrato** do campo.
+   ⚠️ **E os dois números viraram gate** (`the_dots_never_touch_so_the_field_is_readable` e
+   `the_block_holds_enough_blobs_for_a_rotation_to_read`): depois de o olho falhar, o número
+   que ele achou é gate. *Ao desenhar uma cena, meça o tamanho do ponto contra o vão e quantas
+   feições cabem no quadro — antes de a mandar.*
+9. ⛔ **OLHE o arquivo antes de escrever nele.** Nesta janela eu sobrescrevi a cena `=51`
    inteira ao criar um módulo com um nome que já existia (`…_demos_space.rs`). Recuperou-se
    com `git checkout --`, mas só porque a árvore estava limpa. *Um `ls` antes do `Write`
    custa nada.*
-9. ⚠️ **A suíte inteira é um relógio.** Duas corridas marcaram falhas que eram **carga**
+10. ⚠️ **A suíte inteira é um relógio.** Duas corridas marcaram falhas que eram **carga**
    (`the_cost_of_depth_is_linear_not_explosive` e
    `the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke`), com `load average` em 14,8.
    Sozinhas passam. *Nada desta workstation vale acima de `load ~5`.*
-10. **A porta de tempo é uma COLUNA, não um escopo** — ela não herda a recusa
+11. **A porta de tempo é uma COLUNA, não um escopo** — ela não herda a recusa
     `CookError::SequentialInTimeScope`. Se acrescentar uma porta a outro nó, o gate
     `the_time_port_is_a_column_not_a_cook_scope` é o molde.
 
@@ -218,10 +230,14 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && \
   env PH2D_GPU_COOK_DEMO=60 cargo run -p ph2d-host-desktop --release
 ```
 
-Quatro blocos, o **mesmo** ruído; muda só o espaço. Julga-se **PARADO**.
-1. controle · 2. rodado 45° · 3. comprimido no Y (listras deitadas) · 4. os dois, nessa ordem.
-⚠️ Se um bloco parecer **mais agitado** que os outros, a cena perdeu o controle — o que muda
-é ONDE o campo é amostrado, nunca quanto ele vale.
+Quatro blocos em **2×2**, o **mesmo** ruído; muda só o espaço. Julga-se **PARADO**, e o
+campo **É o tamanho do ponto** — cada bloco é um retrato dele, não um movimento.
+Em cima: controle (manchas redondas) · rodado 45°. Em baixo: listras deitadas · listras na
+diagonal. ⚠️ Se um bloco parecer ter pontos **maiores** que os outros, a cena perdeu o
+controle — o que muda é ONDE o campo é amostrado, nunca quanto ele vale.
+
+⚠️ **Esta é a v2.** A v1 foi reprovada no smoke (*"não tem nada girado nem na diagonal"*) —
+o porquê, e os dois gates que nasceram dele, estão na lei **8** do §4.
 
 ---
 

@@ -269,18 +269,19 @@ pub(super) fn field_space(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<N
         eprintln!("  {}. {label}", i + 1);
     }
     eprintln!(
-        "  (!) ESTA CENA JULGA-SE PARADA -- o `speed` e' zero nos quatro. Um campo a rolar
-  mostraria movimento e esconderia a FORMA, que e' o que a cena existe para mostrar.
-  (!) Mesma semente, mesma amplitude, mesma oitava, mesma escala ({scale:.2}). Se um bloco
-  parecer MAIS AGITADO que os outros, a cena perdeu o controle -- o que muda e' ONDE o
-  campo e' amostrado, nunca quanto ele vale.
-  (!) 2: as manchas viraram {turn:.0} graus. Nao procure «mais movimento»; procure a
-  DIRECAO em que elas se alinham.
-  (!) 3: `Uniform` desligado e `Scale Y` em {scale_y:.2} (contra {scale:.2} no X) -- as
-  manchas viram LISTRAS DEITADAS. Escala MAIOR num eixo = feicao MENOR nele: o mesmo
-  passo de mundo cobre mais campo.
-  (!) 4: os dois juntos, e a ORDEM e' esticar e DEPOIS rodar. E' por isso que as listras
-  daqui saem inclinadas, e nao alinhadas com a tela como as da banda 3.
+        "  (!) ESTA CENA JULGA-SE PARADA -- o `speed` e' zero nos quatro.
+  (!) O CAMPO E' O TAMANHO DO PONTO. Cada bloco e' um RETRATO do campo: ponto grande onde
+  ele e' alto, ponto pequeno onde e' baixo. Nao ha' movimento nenhum para procurar.
+  (!) Mesma semente, mesma amplitude, mesma oitava, mesma escala ({scale:.2}) nos quatro.
+  Se um bloco parecer ter pontos MAIORES que os outros, a cena perdeu o controle -- o que
+  muda e' ONDE o campo e' amostrado, nunca quanto ele vale.
+  (!) EM CIMA 'A ESQUERDA: manchas redondas. 'A DIREITA: as MESMAS manchas viradas
+  {turn:.0} graus -- compare as duas de cima lado a lado, e' para isso que estao juntas.
+  (!) EM BAIXO 'A ESQUERDA: `Uniform` desligado e `Scale Y` em {scale_y:.2} (contra
+  {scale:.2} no X) -- as manchas viram LISTRAS DEITADAS. Escala MAIOR num eixo = feicao
+  MENOR nele: o mesmo passo de mundo cobre mais campo.
+  (!) EM BAIXO 'A DIREITA: os dois juntos, e a ORDEM e' esticar e DEPOIS rodar. E' por
+  isso que estas listras saem NA DIAGONAL, e nao deitadas como as da esquerda.
   (!) Abra o painel de PARAMS num deles: ha' uma secao `Space` nova, e o `Scale Y` so'
   aparece com o `Uniform` desligado -- sob ele seria um controle que nao move um quadro.
   (!) O que NAO esta' aqui e' medido: o *offset* do campo ja' sai de

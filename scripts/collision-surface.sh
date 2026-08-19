@@ -25,6 +25,18 @@
 #   bash scripts/collision-surface.sh            # contra 'main'
 #   bash scripts/collision-surface.sh <ref>      # contra outra base
 #
+# ⚠️ DE DENTRO DE UMA WORKTREE, INVOQUE O CAMINHO ABSOLUTO DO PRIMÁRIO:
+#
+#   cd .../PH2D/Worktrees/line-<módulo> && bash /caminho/para/PH2D/scripts/collision-surface.sh
+#
+# Motivo, medido na integração de 2026-08-19: este script nasceu no `main` HOJE, e toda
+# worktree forkada antes disso **não o tem** — `bash scripts/collision-surface.sh` de dentro
+# dela devolve *"Arquivo ou diretório inexistente"*, que é o passo nº 1 do protocolo do
+# integrador a falhar em TODAS as linhas abertas. Invocar a cópia do primário funciona porque
+# a primeira coisa que ele faz é `cd "$(git rev-parse --show-toplevel)"` — ou seja, ele mede
+# a árvore de onde foi CHAMADO, não a de onde vive. *Um script novo só existe nas árvores que
+# nasceram depois dele.*
+#
 # Só lê (git + arquivos). Não escreve nada, não muda branch, seguro a qualquer momento.
 
 set -uo pipefail

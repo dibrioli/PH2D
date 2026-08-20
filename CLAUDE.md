@@ -376,19 +376,19 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **CI nunca o rodou** — ✅ **CURADO, e o produto nunca esteve errado:** a sonda tirava a vista de `Shade::default()`, e
   o **`DEFAULT_MATCAP` virou `Some(0)`** por decisão de produto em 09/08 ⇒ ela passou a medir *matcap contra rig*, que o
   doc dela já chamava de *"outra luz inteira"*. A vista agora é escrita **por nome, os 7 campos**, então um termo novo é
-  **erro de compilação** ali. Voltou a **0,0020** — o número exato do autor · **quad remesh por
-  campo cruzado** ([ADR-0160](docs/architecture/decisions/0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md)):
-  **Q1..Q3 na `ph2d-quadflow`** (orientação 4-RoSy · posição + escala adaptativa · extração). ✅ **ALCANÇÁVEL PELO ARTISTA** — botão
-  **`Quad Retopology`** na seção Topology, undo pela entrada do voxel remesh, smoke **`=35`**. Medido na malha que o
-  módulo abre (98 306 vértices): **96,4% de quads em 2,06 s**; χ e manifold corretos, forma a **0,23%** da diagonal
-  (barra 1%). ⚠️ **O kill-criterion do ADR disparou a 7,51 s e a cura foi MEDIR**: a qualidade satura na 1ª varredura,
-  então `SWEEPS_PER_LEVEL` caiu de 8 para **2** (tabela no doc-comment). ⚠️ **Duas recusas MEDIDAS foram REFUTADAS por um porte fiel** — o
-  `compat_position_extrinsic_4` enumera as 4 quinas de cada lado e escolhe o PAR mais próximo (16 combinações);
-  *uma medição só refuta o que ela exercitou*. ⚠️ E **três vezes a RÉGUA se corrigiu antes do algoritmo** (fração
-  por ciclos · convergência sobre um passe inerte · Hausdorff ponto-a-vértice). ⚠️ **A2/A3/A4 do ADR NÃO estão verdes** — os 3 gates ficam com a barra intacta e
-  o número medido no `#[ignore]`; ⛔ **não os afrouxe**. ⚠️ A Q3 **refutou o plano do próprio ADR**: a hierarquia
-  multirresolução é **pré-requisito** da extração, não enfeite da Q2 (Q3.5). E ⚠️ **nada disso é alcançável pelo
-  produto ainda** — a costura é a Q5.
+  **erro de compilação** ali. Voltou a **0,0020** — o número exato do autor · **quad remesh — PIVOTOU**
+  ([ADR-0161](docs/architecture/decisions/0161-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md),
+  plano vivo [`docs/3D/quad-remesh/PLAN.md`](docs/3D/quad-remesh/PLAN.md)). O que existe hoje é o **porte fiel** do
+  Instant Meshes (BSD) em `ph2d-quadflow`, alcançável pelo botão **`Quad Retopology`** (smoke **`=35`**) — e ele
+  **NÃO é o padrão-ouro**: medido lado a lado com o oráculo `quadwild-bimdf` sobre um corpus de 10 malhas
+  (`ph2d-quadbench/`), ele dá **65–83% de quads e 21–49% de vértices irregulares** contra **100% e 0,2%**. Uma grade
+  numa esfera admite **oito** irregulares. ⚠️ **É a CLASSE do algoritmo, não afinação** — a família local nunca negocia
+  globalmente. O caminho é a família global (campo cruzado + patches + quantização inteira), **clean-room dos papers**,
+  com o binário GPL só como oráculo **fora da árvore**. ⚠️ **Três premissas do briefing do pivô foram REFUTADAS pela
+  preparação** e mudam o preço: **não há pressão de caneta** (há gate a afirmá-lo), o Sculpt **não tem DAG** (é snapshot
+  + undo), e a `Mesh` é **f32**. ⚠️ E o que o porte custou está registrado: **três vezes a RÉGUA se corrigiu antes do
+  algoritmo**, e a fração de 96,4% que este §5 anunciava era **fabricada** (vinha de emparelhar triângulos e fechar
+  n-gons com um nó no meio — operações que criam quads que a referência nunca emite).
   **Smokes:** `PH2D_SCULPT3D_SMOKE=<n>` (a W9 é a cena **`=34`**). ⚠️ **Rode uma vez SEM a env var** — é a metade que
   prova a inércia.
   **Ler:** [porta do cofre](docs/3D/README.md) · [00-INDEX](docs/3D/00-INDEX.md) · [handoffs](docs/3D/handoffs/README.md) ·

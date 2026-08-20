@@ -100,6 +100,23 @@ const MIN_GAIN: f32 = 1e-4;
 /// ⚠️ **Os índices de FACE também sobrevivem a uma rodada** — ela reescreve dois
 /// slots do vetor e o devolve com o mesmo comprimento —, e é isso que deixa as
 /// faces flipadas serem as sementes da rodada seguinte sem remapeamento.
+/// **A MESMA TROCA, sobre a malha INTEIRA** — a porta que o remesh isotrópico usa.
+///
+/// ⚠️ **Ela existe porque o [`relax`] é por REGIÃO de propósito**: no traço, as
+/// sementes são as faces que o corte mexeu, e varrer o modelo todo a cada dab
+/// seria pagar o modelo para detalhar uma unha. O remesh isotrópico é o caso
+/// oposto — ele é um passe global, sob comando — e derivar a lista de sementes
+/// no chamador seria a mesma resposta escrita num segundo sítio.
+///
+/// ⚠️ **Ponto de extensão APPEND-ONLY** (`CLAUDE.md` §0.2): ela não muda o
+/// [`relax`] nem o que o traço vê; ela só nomeia o caso "todas as faces".
+///
+/// Devolve quantas trocas aconteceram.
+pub fn relax_valence(mesh: &mut Mesh, scratch: &mut RegionScratch) -> usize {
+    let all: Vec<u32> = (0..mesh.face_count() as u32).collect();
+    relax(mesh, &all, scratch)
+}
+
 pub(crate) fn relax(mesh: &mut Mesh, seeds: &[u32], scratch: &mut RegionScratch) -> usize {
     let mut total = 0;
     let mut work: Vec<u32> = seeds.to_vec();

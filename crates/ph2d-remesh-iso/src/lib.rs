@@ -1,0 +1,373 @@
+//! **REMESH ISOTRÓPICO** — o estágio que faltava inteiro (ADR-0161, F1).
+//!
+//! # Por que ele existe: a medição
+//!
+//! O oráculo `quadwild-bimdf` converge para **~9 300 triângulos qualquer que
+//! seja a entrada**. Medido em 2026-08-20, na bancada `ph2d-quadbench`:
+//!
+//! | entrada | vértices antes | vértices **depois** | aresta média depois |
+//! |---|---|---|---|
+//! | `cube` | **8** | **6 146** | 0,0356 |
+//! | `torus 64×32` | 2 048 | 5 176 | 0,0568 |
+//! | `sculpt_hooked` | 3 386 | 4 651 | 0,0588 |
+//! | `sphere_sculpt_98k` | **98 306** | **4 636** | 0,0576 |
+//!
+//! ⭐ **Oito vértices e noventa e oito mil saem no mesmo lugar.** É *este* passe
+//! que torna a densidade da saída independente da densidade da entrada — e a
+//! ausência dele é por que o nosso pipeline devolvia **malha vazia** num cubo: o
+//! piso do `edge_for_detail` é derivado da aresta de entrada, e uma entrada de 8
+//! vértices não resolve grade nenhuma.
+//!
+//! # A lei, e o que dela é MEDIDO
+//!
+//! ⚠️ **O alvo de aresta é uma fração da DIAGONAL DA CAIXA, não da entrada.** É a
+//! única forma de a saída não herdar a doença da entrada. O `alpha` do preset
+//! `Organic` do oráculo é **0,02**, e sobre o cubo (a única fixtura plana, onde
+//! a curvatura não pede refino) ele bate quase exato: `0,02 × 1,732 = 0,0346`
+//! contra **0,0356** medidos.
+//!
+//! ⚠️ **Nas fixturas CURVAS o oráculo termina mais FINO que `alpha × diag`**
+//! (0,0566 contra 0,0693 na esfera; 0,0588 contra 0,0859 na `sculpt_hooked`) —
+//! ou seja, ele refina abaixo do alvo onde a curvatura pede. *Essa metade da lei
+//! ainda não está portada, e é o primeiro item aberto do F1* — o que existe aqui
+//! é o alvo **uniforme**, que já é o que faz a densidade parar de depender da
+//! entrada.
+//!
+//! # O laço, e de quem é cada peça
+//!
+//! Clean-room a partir da literatura (Botsch & Kobbelt 2004, *A Remeshing
+//! Approach to Multiresolution Modeling*; QuadWild 2021 §4). ⛔ Nenhuma linha
+//! traduzida de fonte GPL — ADR-0161.
+//!
+//! 1. **partir** as arestas acima de `4/3` do alvo — [`ph2d_mesh::refine_in_sphere`];
+//! 2. **colapsar** as abaixo de `4/5` — [`ph2d_mesh::collapse_in_sphere`];
+//! 3. **trocar** as arestas que melhoram a valência — [`ph2d_mesh::relax_valence`];
+//! 4. **relaxar** tangencialmente e **reprojetar** na superfície ORIGINAL.
+//!
+//! ⚠️ **Os três primeiros passos já existiam na engine, testados**, e são a
+//! topologia dinâmica que o pincel usa. O que este crate acrescenta é o passe
+//! **global** e o passo 4. *O plano mandava conferir antes de construir outra
+//! estrutura de malha, e a resposta foi: não construa.*
+
+#![forbid(unsafe_code)]
+
+use ph2d_mesh::{Birth, Mesh, RegionScratch, Remap};
+
+/// **A fração da diagonal da caixa que vira o lado do triângulo** — MEDIDA.
+///
+/// É o `alpha` do preset `basic_setup_Organic.txt` do oráculo. Ver o doc do
+/// módulo para a tabela que o confirma sobre o cubo.
+pub const ALPHA: f32 = 0.02;
+
+/// **A histerese entre partir e colapsar** — a lei clássica `[4/5, 4/3]`.
+///
+/// ⚠️ **Não é gosto: é o que impede o passe de oscilar.** Se as duas soleiras
+/// fossem o alvo, uma aresta ligeiramente longa seria partida em duas
+/// ligeiramente curtas, que seriam colapsadas de volta, para sempre. A banda
+/// `[4/5·t, 4/3·t]` é a mais estreita que fecha: partir uma aresta de `4/3·t` dá
+/// duas de `2/3·t`, e `2/3 > 4/5 · 4/5`… ⚠️ **e ela ainda assim NÃO fecha para
+/// toda aresta** — é por isso que o laço tem teto de rodadas e sai quando o
+/// número de vértices para de mudar, e não quando "não há mais o que fazer".
+const SPLIT_FACTOR: f32 = 4.0 / 3.0;
+/// O par da [`SPLIT_FACTOR`].
+const COLLAPSE_FACTOR: f32 = 4.0 / 5.0;
+
+/// **Quantas rodadas do laço** — teto de TERMINAÇÃO, não de qualidade.
+///
+/// ⚠️ Medido: as fixturas do corpus convergem (contagem de vértices estável
+/// dentro de 1 %) em **6 a 9** rodadas; o cubo, que parte de 8 vértices e tem de
+/// chegar a ~6 000, é o pior caso. O teto existe porque este passe corre sob
+/// comando do artista e uma malha patológica que oscilasse travaria a janela.
+pub const MAX_ROUNDS: usize = 24;
+
+/// O que o passe fez.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Report {
+    /// Vértices antes.
+    pub verts_before: usize,
+    /// Vértices depois.
+    pub verts_after: usize,
+    /// Quantas rodadas do laço correram.
+    pub rounds: usize,
+    /// Quantas trocas de aresta (flips) o passe fez ao todo.
+    pub flips: usize,
+}
+
+/// **O ALVO DE ARESTA desta malha** — `ALPHA × diagonal da caixa`.
+///
+/// ⚠️ **Da CAIXA e não da malha.** Uma média de arestas da entrada faria a saída
+/// herdar a densidade da entrada, que é exatamente a propriedade que este passe
+/// existe para destruir.
+#[must_use]
+pub fn target_edge(mesh: &Mesh, alpha: f32) -> f32 {
+    let b = mesh.bounds();
+    let d = [
+        b.max[0] - b.min[0],
+        b.max[1] - b.min[1],
+        b.max[2] - b.min[2],
+    ];
+    let diag = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
+    (alpha.max(1.0e-6) * diag).max(1.0e-6)
+}
+
+/// **REMALHA a malha isotropicamente**, no lugar.
+///
+/// A malha de saída tem triângulos de lado ≈ [`target_edge`] em toda parte,
+/// **independentemente** de como a entrada estava.
+///
+/// ⚠️ **A entrada é TRIANGULADA na porta.** As três operações da engine recusam
+/// quads por geometria (partir uma aresta de um quad devolve um triângulo e um
+/// pentágono), e deixar a recusa chegar ao chamador seria transformar um detalhe
+/// de representação numa condição de erro do produto.
+pub fn remesh_isotropic(mesh: &mut Mesh, alpha: f32) -> Report {
+    let verts_before = mesh.vert_count();
+    mesh.triangulate();
+
+    // ⚠️ **A superfície de referência é uma CÓPIA do estado de entrada**, tirada
+    // depois do `triangulate` e antes da primeira edição. Reprojetar contra a
+    // malha que está a ser editada seria pedir a uma superfície que se corrigisse
+    // contra si mesma — o alisamento então encolhe sem nada a segurá-lo, que é o
+    // mecanismo já medido e registrado na recusa 13 do ADR-0160.
+    let reference = mesh.clone();
+    let target = target_edge(mesh, alpha);
+
+    let (mut scratch, mut births, mut remap) = (
+        RegionScratch::default(),
+        Vec::<Birth>::new(),
+        Remap::default(),
+    );
+    let mut flips = 0usize;
+    let mut rounds = 0usize;
+    let mut last = usize::MAX;
+    while rounds < MAX_ROUNDS {
+        rounds += 1;
+        // A esfera cobre a malha inteira: este é o passe GLOBAL, e as três portas
+        // da engine são por-região porque o traço as usa por-dab.
+        let (centre, radius) = whole(mesh);
+
+        ph2d_mesh::refine_in_sphere(
+            mesh,
+            centre,
+            radius,
+            target * SPLIT_FACTOR,
+            &mut births,
+            &mut scratch,
+        );
+        let (centre, radius) = whole(mesh);
+        ph2d_mesh::collapse_in_sphere(
+            mesh,
+            centre,
+            radius,
+            target * COLLAPSE_FACTOR,
+            &mut remap,
+            &mut scratch,
+        );
+        flips += ph2d_mesh::relax_valence(mesh, &mut scratch);
+        relax_and_project(mesh, &reference, target);
+
+        // ⚠️ **A saída é por ESTABILIDADE, não por "não há mais o que fazer".** A
+        // banda de histerese não fecha para toda aresta (ver `SPLIT_FACTOR`), e um
+        // laço que esperasse zero operações não terminaria em malha nenhuma.
+        let now = mesh.vert_count();
+        if last != usize::MAX && (now as f32 - last as f32).abs() <= 0.01 * last as f32 {
+            break;
+        }
+        last = now;
+    }
+
+    Report {
+        verts_before,
+        verts_after: mesh.vert_count(),
+        rounds,
+        flips,
+    }
+}
+
+/// A esfera que cobre a malha inteira.
+fn whole(mesh: &Mesh) -> ([f32; 3], f32) {
+    let b = mesh.bounds();
+    let c = [
+        (b.min[0] + b.max[0]) * 0.5,
+        (b.min[1] + b.max[1]) * 0.5,
+        (b.min[2] + b.max[2]) * 0.5,
+    ];
+    let d = [b.max[0] - c[0], b.max[1] - c[1], b.max[2] - c[2]];
+    // ⚠️ **Com folga**: um raio exatamente igual ao da caixa deixa de fora, por
+    // arredondamento, as arestas que tocam a fronteira — e são justamente as da
+    // silhueta, que é onde o artista olha.
+    let r = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
+    (c, r * 1.5 + 1.0e-4)
+}
+
+/// **PASSO 4 — relaxação tangencial com reprojeção.**
+///
+/// ⚠️ **SÓ a componente tangente do deslocamento**, e a razão está medida: a
+/// média dos vizinhos de um nó sobre uma superfície curva cai **para dentro**
+/// dela (é a corda, não o arco), e essa componente normal é a que tira volume.
+/// A projeção de volta transforma o encolhimento num deslize **ao longo** da
+/// superfície, que é tudo o que se quer aqui.
+fn relax_and_project(mesh: &mut Mesh, reference: &Mesh, target: f32) {
+    let n = mesh.vert_count();
+    if n == 0 {
+        return;
+    }
+    let neighbours: Vec<Vec<u32>> = {
+        let adj = mesh.adjacency();
+        (0..n)
+            .map(|v| adj.vert_verts.neighbours(v).to_vec())
+            .collect()
+    };
+    let normals: Vec<[f32; 3]> = mesh.normals().to_vec();
+    let mut target_pos = vec![[0.0f32; 3]; n];
+    {
+        let pos = mesh.positions();
+        for v in 0..n {
+            let ns = &neighbours[v];
+            if ns.len() < 3 {
+                target_pos[v] = pos[v];
+                continue;
+            }
+            let mut sum = [0.0f32; 3];
+            for &w in ns {
+                let p = pos[w as usize];
+                for i in 0..3 {
+                    sum[i] += p[i];
+                }
+            }
+            let inv = 1.0 / ns.len() as f32;
+            let p = pos[v];
+            let d = [
+                sum[0].mul_add(inv, -p[0]),
+                sum[1].mul_add(inv, -p[1]),
+                sum[2].mul_add(inv, -p[2]),
+            ];
+            let nv = normals[v];
+            let along = dot(d, nv);
+            target_pos[v] = [
+                LAMBDA.mul_add(along.mul_add(-nv[0], d[0]), p[0]),
+                LAMBDA.mul_add(along.mul_add(-nv[1], d[1]), p[1]),
+                LAMBDA.mul_add(along.mul_add(-nv[2], d[2]), p[2]),
+            ];
+        }
+    }
+    for t in &mut target_pos {
+        *t = project_onto(reference, *t, target);
+    }
+    mesh.positions_mut().copy_from_slice(&target_pos);
+    // ⚠️ **O `rebuild` paga a dívida que o `positions_mut` nomeia**: sem ele a
+    // caixa, o octree e as normais descrevem a malha de antes — e a rodada
+    // seguinte leria a caixa errada para montar a esfera global.
+    mesh.rebuild();
+}
+
+/// Meio passo de Laplaciano — o amortecimento que o torna monótono.
+const LAMBDA: f32 = 0.5;
+
+/// **O PONTO MAIS PRÓXIMO da superfície de referência.**
+///
+/// ⚠️ **O raio de busca DOBRA até achar face.** Um raio fixo devolve zero faces
+/// sobre uma parte esparsa do modelo, e a projeção vira um no-op **silencioso** —
+/// o Laplaciano então roda sem freio e a peça encolhe.
+fn project_onto(mesh: &Mesh, p: [f32; 3], seed_radius: f32) -> [f32; 3] {
+    let b = mesh.bounds();
+    let d = [
+        b.max[0] - b.min[0],
+        b.max[1] - b.min[1],
+        b.max[2] - b.min[2],
+    ];
+    let diag = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
+    let mut radius = seed_radius.max(1.0e-6);
+    let mut hits: Vec<u32> = Vec::new();
+    loop {
+        hits.clear();
+        mesh.octree().faces_in_sphere(p, radius, &mut hits);
+        if !hits.is_empty() || radius > diag {
+            break;
+        }
+        radius *= 2.0;
+    }
+    if hits.is_empty() {
+        return p;
+    }
+    let (verts, faces) = (mesh.positions(), mesh.faces());
+    let (mut best, mut best_p) = (f32::INFINITY, p);
+    for &f in &hits {
+        let v = faces[f as usize].verts();
+        for k in 1..v.len() - 1 {
+            let q = closest_on_triangle(
+                p,
+                verts[v[0] as usize],
+                verts[v[k] as usize],
+                verts[v[k + 1] as usize],
+            );
+            let d = sub(q, p);
+            let dist = dot(d, d);
+            if dist < best {
+                best = dist;
+                best_p = q;
+            }
+        }
+    }
+    best_p
+}
+
+/// O ponto do triângulo mais próximo de `p` — as sete regiões de Voronoi.
+fn closest_on_triangle(p: [f32; 3], a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> [f32; 3] {
+    let (ab, ac, ap) = (sub(b, a), sub(c, a), sub(p, a));
+    let (d1, d2) = (dot(ab, ap), dot(ac, ap));
+    if d1 <= 0.0 && d2 <= 0.0 {
+        return a;
+    }
+    let bp = sub(p, b);
+    let (d3, d4) = (dot(ab, bp), dot(ac, bp));
+    if d3 >= 0.0 && d4 <= d3 {
+        return b;
+    }
+    let vc = d1.mul_add(d4, -(d3 * d2));
+    if vc <= 0.0 && d1 >= 0.0 && d3 <= 0.0 {
+        let v = d1 / (d1 - d3);
+        return axpy(v, ab, a);
+    }
+    let cp = sub(p, c);
+    let (d5, d6) = (dot(ab, cp), dot(ac, cp));
+    if d6 >= 0.0 && d5 <= d6 {
+        return c;
+    }
+    let vb = d5.mul_add(d2, -(d1 * d6));
+    if vb <= 0.0 && d2 >= 0.0 && d6 <= 0.0 {
+        let w = d2 / (d2 - d6);
+        return axpy(w, ac, a);
+    }
+    let va = d3.mul_add(d6, -(d5 * d4));
+    if va <= 0.0 && (d4 - d3) >= 0.0 && (d5 - d6) >= 0.0 {
+        let w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+        return axpy(w, sub(c, b), b);
+    }
+    let denom = 1.0 / (va + vb + vc);
+    let (v, w) = (vb * denom, vc * denom);
+    [
+        w.mul_add(ac[0], v.mul_add(ab[0], a[0])),
+        w.mul_add(ac[1], v.mul_add(ab[1], a[1])),
+        w.mul_add(ac[2], v.mul_add(ab[2], a[2])),
+    ]
+}
+
+fn axpy(t: f32, d: [f32; 3], o: [f32; 3]) -> [f32; 3] {
+    [
+        t.mul_add(d[0], o[0]),
+        t.mul_add(d[1], o[1]),
+        t.mul_add(d[2], o[2]),
+    ]
+}
+
+fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
+    a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2]))
+}
+
+fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+}
+
+#[cfg(test)]
+#[path = "lib_tests.rs"]
+mod tests;

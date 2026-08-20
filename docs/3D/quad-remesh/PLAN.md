@@ -2,7 +2,8 @@
 
 > **Documento VIVO.** Decisão e fronteira jurídica: [ADR-0161](../../architecture/decisions/0161-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md).
 > O que o porte local entregou e por quê: [ADR-0160](../../architecture/decisions/0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md).
-> ⚠️ Este plano **aguarda aprovação**. Nenhuma linha de código de produto foi escrita para ele.
+> ✅ **Aprovado pelo Enio em 2026-08-20** (*"Siga como achar melhor... buscamos o estado da arte independente dos custos"*).
+> Estado: **F1 FEITA** (§4-bis). Próximo: **F2** (campo cruzado com rounding inteiro) — que a medição do F1 confirmou ser o lever.
 
 ---
 
@@ -149,7 +150,7 @@ Cada fase fecha com o benchmark verde sobre o corpus e um sumário curto de desv
 | fase | o que entrega | ✅ aceita quando |
 |---|---|---|
 | **F0** | harness na bancada: corpus + oráculo + `metrics.py` + Hausdorff + screenshots | as três colunas (atual · oráculo · nova) saem de **um** comando; ⚠️ a baseline já está medida (§1.3) — falta o Hausdorff e o harness sair do `#[cfg(test)]` do shell |
-| **F1** | sanitização + **remesh isotrópico** + sizing field | `cube` deixa de devolver malha vazia; a densidade da saída deixa de depender da densidade da entrada (é a lacuna §3-2) |
+| **F1** | sanitização + **remesh isotrópico** + sizing field | ✅ **FEITO em 2026-08-20** (`crates/ph2d-remesh-iso`) — ver §4-bis |
 | **F2** | cross field MIQ-style + streamlines no viewport | ⭐ **vértices irregulares ≤ 2 %** no corpus liso (hoje: 21–49 %). É esta fase que mata os sintomas 1 e 2 |
 | **F3** | tracing + patches | nº de patches na mesma ordem do oráculo (15 na `sculpt_hooked`); zero patch não-disco |
 | **F4** | ⭐ **solver Bi-MDF** | quads **= 100,0 %** no corpus fechado; χ preservado; **fase crítica** |
@@ -160,6 +161,70 @@ Cada fase fecha com o benchmark verde sobre o corpus e um sumário curto de desv
 
 ⚠️ **F6 e F8 estão precificadas com o defeito de premissa embutido** (ADR-0161): elas não são
 "mais uma fase do remesher", são infraestrutura de produto que hoje não existe.
+
+---
+
+## 4-bis — ✅ F1 FEITA, e a medição REFUTOU a esperança que a acompanhava
+
+`crates/ph2d-remesh-iso` — split/collapse/flip/relax-tangencial com reprojeção,
+**clean-room** (Botsch & Kobbelt 2004; QuadWild 2021 §4). ⚠️ **Os três primeiros
+passos já existiam na engine, testados** (`refine_in_sphere`,
+`collapse_in_sphere`, `dyntopo_flip`): o que o crate acrescenta é o passe
+**global** e a reprojeção. *O plano mandava conferir antes de construir outra
+estrutura de malha, e a resposta foi: não construa.*
+
+**A propriedade entregue** (gate `the_output_density_does_not_depend_on_the_input_density`):
+
+| entrada | vértices antes | depois | aresta / alvo |
+|---|---|---|---|
+| cubo | **8** | 4 857 | 1,09× |
+| esfera 24×36 | 830 | **2 544** | 1,09× |
+| esfera 96×144 | **13 682** | **2 608** | 1,09× |
+
+⭐ **830 e 13 682 saem a 2,5 % um do outro.** A densidade da saída deixou de
+depender da entrada, e as três chegam ao **mesmo múltiplo do próprio alvo**.
+
+### ⛔ E o que ela NÃO comprou — o número que muda o plano
+
+Corpus inteiro, o nosso remesher **sem** e **com** o F1 na frente:
+
+| malha | quads sem → com | **irregulares sem → com** | oráculo |
+|---|---|---|---|
+| `cube` | **vazia** → **100,0 %** | — → **3,7 %** | 0,2 % |
+| `sculpt_hooked` ⭐ | 70,5 → 80,6 % | 40,5 → **32,0 %** | 0,3 % |
+| `sculpt_punctured` | 76,0 → 81,5 % | 34,4 → 29,6 % | 2,2 % |
+| `sphere_uv_96x144` | 68,7 → 72,9 % | 39,7 → 35,3 % | 0,2 % |
+| `torus_64x32` | 64,9 → 66,2 % | 48,9 → 45,3 % | 0,0 % |
+| `sculpt_ridged` | 75,3 → 77,3 % | 27,6 → **28,7 %** ⚠️ | 0,4 % |
+| `sphere_sculpt_98k` | 82,7 → 76,5 % | 21,2 → **33,5 %** ⚠️ | 0,2 % |
+| `sphere_shuffled` | 74,8 → 74,6 % | 29,7 → **33,1 %** ⚠️ | 0,2 % |
+
+⭐ **O F1 cura exatamente UM caso — o `cube`, que não tinha entrada para
+resolver — e nos outros nove move a agulha alguns pontos, para os DOIS lados.**
+
+⇒ **A tese do pivô está agora MEDIDA, não afirmada.** As 20–45 % de
+singularidades **não são a malha de entrada**: são a **classe** do algoritmo. Se
+fossem da entrada, uniformizá-la teria de as derrubar, e ela não derruba.
+
+⚠️ **Consequência de plano, e é a razão de esta seção existir:** ⛔ **não gastar
+mais nenhuma jornada a afinar o F1.** Ele é **pré-requisito** do pipeline global
+(o oráculo depende dele para ser indiferente à entrada), não uma melhoria do
+local. Os levers são **F2** (campo cruzado com rounding inteiro global) e **F4**
+(quantização Bi-MDF).
+
+⚠️ **E por isso o F1 NÃO foi ligado ao produto.** Ele piora três das dez malhas
+com o extrator local, e ligá-lo agora seria trocar um número por outro sem
+ganho: ele entra **junto com o F2**, que é quem o consome.
+
+### O que ficou aberto no F1
+
+1. ⛔ **A metade ADAPTATIVA da lei de densidade.** Medido: sobre o cubo (plano) o
+   oráculo bate `alpha × diagonal` quase exato (0,0346 pedido, 0,0356 medido);
+   nas fixturas **curvas** ele termina **mais fino** (0,0566 contra 0,0693 na
+   esfera). Ele refina abaixo do alvo onde a curvatura pede, e essa metade não
+   está portada.
+2. A **sanitização** (manifold/orientação/degenerados) ainda não existe como
+   estágio próprio — `sculpt_punctured` entra quebrada e sai quebrada.
 
 ---
 
@@ -201,7 +266,7 @@ que pode matar o plano. *Descobrir no fim que o solver não fecha seria descobri
 
 ## 7 — O que este plano ainda NÃO sabe
 
-1. ⛔ **A lei de densidade do estágio 2 do oráculo** (§3, §5) — é a primeira medição da F1.
+1. ⛔ **A metade ADAPTATIVA da lei de densidade** — a uniforme está medida e portada (§4-bis); a que segue a curvatura, não.
 2. ⛔ **O QEx 2013** não foi obtido.
 3. ⛔ **Ninguém mediu Hausdorff** ainda: `metrics.py` cobre contagem, topologia e ângulo; a fidelidade
    geométrica é a lacuna do F0.

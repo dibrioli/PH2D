@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-remesh-iso"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O REMESH ISOTROPICO de pre-processamento (ADR-0161, estagio F1): split /
+# collapse / flip / relax tangencial com reprojecao na superficie original.
+#
+# ⚠️ Ele existe porque a MEDICAO o nomeou: o oraculo `quadwild-bimdf` converge
+# para ~9.300 triangulos QUALQUER que seja a entrada (um cubo de 12 faces vira
+# 12.288), e e' este estagio que torna a densidade da saida independente da
+# densidade da entrada. Sem ele, o nosso pipeline devolvia malha VAZIA num cubo.
+#
+# ⚠️ Clean-room a partir da literatura (Botsch & Kobbelt 2004; QuadWild 2021 §4).
+# Nenhuma linha traduzida de fonte GPL -- ver ADR-0161.
+
+[dependencies]
+ph2d-mesh = { path = "../ph2d-mesh" }

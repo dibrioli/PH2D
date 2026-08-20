@@ -77,6 +77,7 @@ pub use curvature::{
     curvature_at, curvature_of, curvature_pair_at, recompute_curvature, world_curvature_at,
 };
 pub use dyntopo::{Birth, Refine, edge_target, refine_in_sphere};
+pub use dyntopo_flip::relax_valence;
 pub use edges::Edges;
 pub use export::{ExportPiece, MeshFormat, triangle_count, write_obj, write_ply, write_stl};
 pub use extract::{Extract, extract_masked};

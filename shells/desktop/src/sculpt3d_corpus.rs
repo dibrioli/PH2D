@@ -100,7 +100,12 @@ fn dump_the_quad_remesh_corpus() {
 #[test]
 #[ignore = "sonda de preparacao -- baseline do remesher atual sobre o corpus (ADR-0161)"]
 fn dump_the_current_remesher_baseline() {
-    let dir = Path::new(CORPUS).parent().expect("a bancada").join("ours");
+    let sub = if std::env::var("PH2D_BENCH_ISO").ok().as_deref() == Some("1") {
+        "ours_iso"
+    } else {
+        "ours"
+    };
+    let dir = Path::new(CORPUS).parent().expect("a bancada").join(sub);
     std::fs::create_dir_all(&dir).expect("o diretorio da bancada existe");
     let mut entries: Vec<std::path::PathBuf> = std::fs::read_dir(CORPUS)
         .expect("o corpus foi escrito antes")
@@ -121,6 +126,19 @@ fn dump_the_current_remesher_baseline() {
             continue;
         };
         let mesh = p.mesh;
+        // ⚠️ **O ESTÁGIO F1, ligado por variável de ambiente.** Ele é o passe que
+        // a medição do oráculo nomeou (a densidade da saída deixa de depender da
+        // entrada), e a sonda tem de poder medir os DOIS lados — senão não há
+        // como dizer se ele move a agulha.
+        let mut mesh = mesh;
+        let iso = std::env::var("PH2D_BENCH_ISO").ok().as_deref() == Some("1");
+        if iso {
+            let r = ph2d_remesh_iso::remesh_isotropic(&mut mesh, ph2d_remesh_iso::ALPHA);
+            eprintln!(
+                "[baseline]   F1: {} -> {} v em {} rodadas",
+                r.verts_before, r.verts_after, r.rounds
+            );
+        }
         // ⚠️ Os MESMOS defaults do painel — a baseline tem de ser o que o artista
         // de facto obtém, não um ponto escolhido para favorecer o número.
         let t = std::time::Instant::now();
